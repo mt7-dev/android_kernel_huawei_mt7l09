@@ -1,0 +1,62 @@
+;==============================================================================
+;   版权所有(C) 1987-2020, 深圳华为技术有限公司.
+;
+;   文 件 名 :  SystemInit.cmm
+;
+;   作    者 :  wuzechun
+;
+;   描    述 :  Trace32 Connect Initialization
+;
+;   修改记录 :  2011年6月7日  v1.00  wuzechun  创建
+;
+;==============================================================================
+
+
+;==============================================================================
+; define some variables
+;==============================================================================
+local &arg_core_num
+
+local &CoreBase
+local &CtiBase
+local &PtmBase
+
+local &cmm_dir
+
+ENTRY &arg_core_num
+
+&cmm_dir=os.ppd()         ; directory where this script is running from
+
+do &cmm_dir\window.cmm
+
+;print "param:&arg_core_num"
+
+; turn off all the vector catch register bits for now - they cause problems
+tronchip.SET ADDRESS OFF
+tronchip.SET ERROR OFF
+tronchip.SET swi OFF
+tronchip.SET undef OFF
+tronchip.SET pabort OFF
+tronchip.SET dabort OFF
+tronchip.set reset off
+
+;choose hex mode for input
+ radix hex
+ 
+break.reset
+;SYStem.RESet
+
+system.cpu CortexA9
+
+system.up
+ print "initializing multitask support..."
+ 
+; screen.off
+cd D:\t32\demo\arm\kernel\linux
+task.config linux
+menu.reprogram linux
+
+
+enddo
+
+

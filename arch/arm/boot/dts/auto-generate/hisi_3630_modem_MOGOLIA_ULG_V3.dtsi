@@ -1,0 +1,107 @@
+/*
+ * Hisilicon Ltd. Hi3630 SoC
+ *
+ * Copyright (C) 2012-2013 Hisilicon Ltd.
+ * Author: nobody
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * publishhed by the Free Software Foundation.
+ */
+
+/{
+	modem_pintrl {
+		compatible = "arm,modem_pintrl";
+			pinctrl-names = "init","default","idle";
+			/*table: gpio_group gpio_pin mux_addr mux_value cfg_addr cfg_value gpio_dir gpio_value*/
+			pinctrl-0 = <
+						15         3      0x178      1       0x200      0           0           0
+						15         4      0x17c      1       0x204      0           0           0
+						16         1      0x190      1       0x218      0           0           0
+						16         2      0x194      1       0x21c      0           0           0
+						16         3      0x198      1       0x220      0           0           0
+						16         4      0x19c      1       0x224      0           0           0
+						16         5      0x1a0      1       0x228      0           0           0
+						16         6      0x1a4      1       0x22c      0           0           0
+						16         7      0x1a8      1       0x230      0           0           0
+						17         0      0x1ac      1       0x234      0           0           0
+						17         1      0x1b0      1       0x238      0           0           0
+						17         2      0x1b4      1       0x23c      0           0           0
+						17         3      0x1b8      1       0x240      0           0           0
+						17         4      0x1bc      1       0x244      0           0           0
+						17         5      0x1c0      1       0x248      0           0           0
+						17         6      0x1c4      1       0x24c      0           0           0
+						17         7      0x1c8      1       0x250      0           0           0
+						18         0      0x1cc      1       0x254      0           0           0
+						18         1      0x1d0      1       0x258      0           0           0
+						18         4      0x1dc      1       0x264      0           0           0
+						18         5      0x1e0      1       0x268      0           0           0
+						18         6      0x1e4      1       0x26c      0           0           0
+						18         7      0x1e8      1       0x270      0           0           0
+						19         0      0x1ec      1       0x274      0           0           0
+						19         1      0x1f0      1       0x278      0           0           0
+						19         6      0xfff      0       0x284      1           0           0
+						19         7      0xfff      0       0x288      1           0           0
+						>;
+			pinctrl-1 = <
+						15         3      0x178      1       0x200      0           0           0
+						15         4      0x17c      1       0x204      0           0           0
+						16         1      0x190      1       0x218      0           0           0
+						16         2      0x194      1       0x21c      0           0           0
+						16         3      0x198      1       0x220      0           0           0
+						16         4      0x19c      1       0x224      0           0           0
+						16         5      0x1a0      1       0x228      0           0           0
+						16         6      0x1a4      1       0x22c      0           0           0
+						16         7      0x1a8      1       0x230      0           0           0
+						17         0      0x1ac      1       0x234      0           0           0
+						17         1      0x1b0      1       0x238      0           0           0
+						17         2      0x1b4      1       0x23c      0           0           0
+						17         3      0x1b8      1       0x240      0           0           0
+						17         4      0x1bc      1       0x244      0           0           0
+						17         5      0x1c0      1       0x248      0           0           0
+						17         6      0x1c4      1       0x24c      0           0           0
+						17         7      0x1c8      1       0x250      0           0           0
+						18         0      0x1cc      1       0x254      0           0           0
+						18         1      0x1d0      1       0x258      0           0           0
+						18         4      0x1dc      1       0x264      0           0           0
+						18         5      0x1e0      1       0x268      0           0           0
+						18         6      0x1e4      1       0x26c      0           0           0
+						18         7      0x1e8      1       0x270      0           0           0
+						19         0      0x1ec      1       0x274      0           0           0
+						19         1      0x1f0      1       0x278      0           0           0
+						19         6      0xfff      0       0x284      1           0           0
+						19         7      0xfff      0       0x288      1           0           0
+						>;
+			pinctrl-2 = <
+						15         3      0x178      0       0x200      2           0           0
+						15         4      0x17c      0       0x204      2           0           0
+						16         1      0x190      0       0x218      2           0           0
+						16         2      0x194      0       0x21c      2           0           0
+						16         3      0x198      0       0x220      2           0           0
+						16         4      0x19c      0       0x224      2           0           0
+						16         5      0x1a0      0       0x228      2           0           0
+						16         6      0x1a4      0       0x22c      2           0           0
+						16         7      0x1a8      0       0x230      2           0           0
+						17         0      0x1ac      0       0x234      2           0           0
+						17         1      0x1b0      0       0x238      2           0           0
+						17         2      0x1b4      0       0x23c      2           0           0
+						17         3      0x1b8      0       0x240      2           0           0
+						17         4      0x1bc      0       0x244      2           0           0
+						17         5      0x1c0      0       0x248      2           0           0
+						17         6      0x1c4      0       0x24c      2           0           0
+						17         7      0x1c8      0       0x250      2           0           0
+						18         0      0x1cc      0       0x254      2           0           0
+						18         1      0x1d0      0       0x258      2           0           0
+						18         4      0x1dc      0       0x264      2           0           0
+						18         5      0x1e0      0       0x268      2           0           0
+						18         6      0x1e4      0       0x26c      2           0           0
+						18         7      0x1e8      0       0x270      2           0           0
+						19         0      0x1ec      0       0x274      2           0           0
+						19         1      0x1f0      0       0x278      2           0           0
+						19         6      0xfff      0       0x284      1           0           0
+						19         7      0xfff      0       0x288      1           0           0
+						>;
+			pinctrl-num   = <27 27 27>;
+			status = "disable";
+	};
+};

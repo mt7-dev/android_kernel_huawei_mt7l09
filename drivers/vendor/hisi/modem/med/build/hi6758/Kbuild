@@ -1,0 +1,131 @@
+EXTRA_CFLAGS += -Iarch/arm/mach-balong/include/mach
+EXTRA_CFLAGS += -Iarch/arm/include/asm
+EXTRA_CFLAGS += -Iinclude/linux
+EXTRA_CFLAGS += -Iinclude/generated
+EXTRA_CFLAGS += -I$(BALONG_TOPDIR)/config/product/include/$(OBB_PRODUCT_NAME)/
+EXTRA_CFLAGS += -I$(BALONG_TOPDIR)/config/product/define/$(OBB_PRODUCT_NAME)/config/
+EXTRA_CFLAGS += -I$(BALONG_TOPDIR)/include/app/
+EXTRA_CFLAGS += -I$(BALONG_TOPDIR)/include/drv/
+EXTRA_CFLAGS += -I$(BALONG_TOPDIR)/include/nv/gu/codec
+EXTRA_CFLAGS += -I$(BALONG_TOPDIR)/include/nv/gu/was
+EXTRA_CFLAGS += -I$(BALONG_TOPDIR)/include/nv/gu/nas
+EXTRA_CFLAGS += -I$(BALONG_TOPDIR)/include/med/
+EXTRA_CFLAGS += -I$(BALONG_TOPDIR)/include/phy/gphy
+EXTRA_CFLAGS += -I$(BALONG_TOPDIR)/include/phy/wphy
+EXTRA_CFLAGS += -I$(BALONG_TOPDIR)/include/ps/gups
+EXTRA_CFLAGS += -I$(BALONG_TOPDIR)/include/ps/tlps
+EXTRA_CFLAGS += -I$(BALONG_TOPDIR)/include/ps/nas
+EXTRA_CFLAGS += -I$(BALONG_TOPDIR)/include/taf
+EXTRA_CFLAGS += -I$(BALONG_TOPDIR)/include/tools
+EXTRA_CFLAGS += -I$(BALONG_TOPDIR)/config/log
+EXTRA_CFLAGS += -I$(BALONG_TOPDIR)/config/nvim/include/gu
+EXTRA_CFLAGS += -I$(BALONG_TOPDIR)/config/nvim/include/tl/tlps
+EXTRA_CFLAGS += -I$(BALONG_TOPDIR)/config/osa
+EXTRA_CFLAGS += -I$(BALONG_TOPDIR)/include/oam/comm/om
+EXTRA_CFLAGS += -I$(BALONG_TOPDIR)/include/oam/comm/osa
+EXTRA_CFLAGS += -I$(BALONG_TOPDIR)/include/oam/comm/scm
+EXTRA_CFLAGS += -I$(BALONG_TOPDIR)/include/oam/comm/si
+EXTRA_CFLAGS += -I$(BALONG_TOPDIR)/include/oam/comm/socp
+EXTRA_CFLAGS += -I$(BALONG_TOPDIR)/include/oam/comm/usimm
+EXTRA_CFLAGS += -I$(BALONG_TOPDIR)/include/oam/comm/errno
+EXTRA_CFLAGS += -I$(BALONG_TOPDIR)/include/oam/comm/nvim
+EXTRA_CFLAGS += -I$(BALONG_TOPDIR)/include/oam/gu/log
+EXTRA_CFLAGS += -I$(BALONG_TOPDIR)/include/oam/gu/om
+EXTRA_CFLAGS += -I$(BALONG_TOPDIR)/include/oam/gu/nvim
+EXTRA_CFLAGS += -I$(BALONG_TOPDIR)/include/oam/gu/hpa
+EXTRA_CFLAGS += -I$(BALONG_TOPDIR)/include/oam/lt/msp
+EXTRA_CFLAGS += -I$(BALONG_TOPDIR)/include/oam/lt/diag
+EXTRA_CFLAGS += -I$(BALONG_TOPDIR)/platform/$(CFG_PLATFORM_HISI_BALONG)
+
+EXTRA_CFLAGS += -I$(BALONG_TOPDIR)/modem/med/hi6758/inc 
+EXTRA_CFLAGS += -I$(BALONG_TOPDIR)/modem/med/hi6758/src/codec/common/inc
+EXTRA_CFLAGS += -I$(BALONG_TOPDIR)/modem/med/hi6758/src/codec/common/inc/hme
+EXTRA_CFLAGS += -I$(BALONG_TOPDIR)/modem/med/hi6758/src/codec/amr/inc
+EXTRA_CFLAGS += -I$(BALONG_TOPDIR)/modem/med/hi6758/src/codec/efr/inc
+EXTRA_CFLAGS += -I$(BALONG_TOPDIR)/modem/med/hi6758/src/codec/fr/inc
+EXTRA_CFLAGS += -I$(BALONG_TOPDIR)/modem/med/hi6758/src/codec/hr/inc
+EXTRA_CFLAGS += -I$(BALONG_TOPDIR)/modem/med/hi6758/src/codec/pp/inc
+EXTRA_CFLAGS += -I$(BALONG_TOPDIR)/modem/med/hi6758/src/common/inc
+EXTRA_CFLAGS += -I$(BALONG_TOPDIR)/modem/med/hi6758/src/drv/inc
+EXTRA_CFLAGS += -I$(BALONG_TOPDIR)/modem/med/hi6758/src/hal/inc
+EXTRA_CFLAGS += -I$(BALONG_TOPDIR)/modem/med/hi6758/src/voice/inc
+EXTRA_CFLAGS += -I$(BALONG_TOPDIR)/modem/med/hi6758/src/bbit/inc
+
+#系统相关的宏定义
+EXTRA_CFLAGS += -D__LINUX_ARM_ARCH__=7 -march=armv7-a -Uarm \
+		-DVOS_LINUX=4 -DOSA_CPU_ACPU=1 -DVOS_OS_VER=VOS_LINUX -DVOS_OSA_CPU=OSA_CPU_ACPU -D__LOG_RELEASE__ \
+		-DBSP_CORE_APP -DGU_MODE -DMSP_SUPPORT_USB_VCOM1 -DMSP_SUPPORT_USB_VCOM2 -DVOS_DOPRA_VER=2 -DNDIS_RELEASE
+
+#子系统内部宏定义
+EXTRA_CFLAGS += -D_UCOM_USE_STD_LIB -D_MED_C89_
+		
+#编译器相关的宏定义
+EXTRA_CFLAGS += -fsigned-char
+
+#codec_common
+MED-objs := hi6758/src/codec/common/src/codec_com_codec.o
+MED-objs += hi6758/src/codec/common/src/etsi_mac_32.o
+MED-objs += hi6758/src/codec/common/src/etsi_oper_32b.o
+MED-objs += hi6758/src/codec/common/src/etsi_basicop2.o		
+
+#codec_amr
+MED-objs += hi6758/src/codec/amr/src/amr_interface.o
+MED-objs += hi6758/src/codec/amr/src/amr_convert.o
+MED-objs += hi6758/src/codec/amr/src/codec_amr_interface.o
+
+#codec_efr
+MED-objs += hi6758/src/codec/efr/src/codec_efr_interface.o
+MED-objs += hi6758/src/codec/efr/src/efr_interface.o
+
+#codec_fr
+MED-objs += hi6758/src/codec/fr/src/fr_interface.o
+
+#codec_hr
+MED-objs += hi6758/src/codec/hr/src/hr_interface.o
+
+#codec_pp
+MED-objs += hi6758/src/codec/pp/src/med_pp_main.o
+
+#common
+MED-objs += hi6758/src/common/src/fsm.o
+MED-objs += hi6758/src/common/src/ucom_mem.o
+MED-objs += hi6758/src/common/src/ucom_comm.o
+MED-objs += hi6758/src/common/src/ucom_stdlib.o
+MED-objs += hi6758/src/common/src/ucom_mem_dyn.o
+MED-objs += hi6758/src/common/src/aeabi/aeabi_memclr.o
+MED-objs += hi6758/src/common/src/aeabi/aeabi_memcpy.o
+MED-objs += hi6758/src/common/src/aeabi/aeabi_memmove.o
+
+#drv
+MED-objs += hi6758/src/drv/src/med_drv_sio.o
+
+#hal
+MED-objs += hi6758/src/hal/src/hal_timer.o
+MED-objs += hi6758/src/hal/src/hal_dma.o
+
+#voice
+MED-objs += hi6758/src/voice/src/voice_amr_mode.o
+MED-objs += hi6758/src/voice/src/voice_api.o
+MED-objs += hi6758/src/voice/src/voice_debug.o
+MED-objs += hi6758/src/voice/src/voice_log.o
+MED-objs += hi6758/src/voice/src/voice_mc.o
+MED-objs += hi6758/src/voice/src/voice_pcm.o
+MED-objs += hi6758/src/voice/src/voice_proc.o
+MED-objs += hi6758/src/voice/src/voice_fid.o
+MED-objs += hi6758/src/voice/src/voice_trace.o
+
+#bbit
+MED-objs += hi6758/src/bbit/src/bbit_test_dma.o
+MED-objs += hi6758/src/bbit/src/bbit_test_osa.o
+MED-objs += hi6758/src/bbit/src/bbit_test_pcvoice.o
+MED-objs += hi6758/src/bbit/src/bbit_test_sio.o
+MED-objs += hi6758/src/bbit/src/bbit_test_timer.o
+MED-objs += hi6758/src/bbit/src/bbit_test_neon.o
+MED-objs += hi6758/src/bbit/src/bbit_test_pp.o
+MED-objs += hi6758/src/bbit/src/bbit_test_vocodec.o
+MED-objs += hi6758/src/bbit/src/bbit_test_mntn.o
+
+obj-y  := MED.o
+
+
+

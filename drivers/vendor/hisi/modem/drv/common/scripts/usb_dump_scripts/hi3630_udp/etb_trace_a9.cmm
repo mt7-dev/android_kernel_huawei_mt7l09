@@ -1,0 +1,42 @@
+; System Settings
+
+	SYStem.CPU CORTEXa9MPCORE
+	
+	SYStem.Option DACR ON          ; give Debugger global write permissions
+	
+ ; add hardware specific options here
+	TrOnchip.Set DABORT OFF        ; used by Linux for page miss!
+	TrOnchip.Set PABORT OFF        ; used by Linux for page miss!
+	TrOnchip.Set UNDEF OFF         ; may be used by Linux for FPU detection
+	SYStem.Option MMUSPACES ON     ; enable space ids to virtual addresses
+
+	SYStem.CONFIG ETMBASE 0x80036000
+    	system.config tpiubase 0x80032000
+	SYStem.Up
+
+; Load the target code
+	;Data.LOAD D:\balong_modem.elf
+	d.load.auto *.elf
+
+	;d.load D:\etb\vmlinux  /nocode
+	;y.spath.SETRECURSEDIR Z:\disk3\jiangguang\k3v3-4.4\kernel\
+
+; ETM Settings
+	ETM.PortSize 32.
+	ETM.ContextID On
+	ETM.TRACEID 3.     ;need modify it by the trace target
+	ETM.PortMode  Wrapped
+	ETM.DataTrace OFF
+    ETM.ON
+
+	
+; Import trace data
+;	LA.Mode FLOWTRACE ON
+	;LA.IMPORT.ETB D:\etb_24.bin
+	LA.IMPORT.ETB *.bin
+	la.list tp tpc flen list.exec run address symbol cycle data list.code list.asm
+	
+	print "EOF"
+	ENDDO
+	
+	

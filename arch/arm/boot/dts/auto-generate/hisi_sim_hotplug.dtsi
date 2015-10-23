@@ -1,0 +1,41 @@
+/*
+ * Hisilicon Ltd. Hi3630 SoC
+ *
+ * Copyright (C) 2012-2013 Hisilicon Ltd.
+ * Author: w00221409 <hw.wangxiaoyin@huawei.com>
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * publishhed by the Free Software Foundation.
+ */
+
+/{
+	sim0 {
+		compatible = "hisilicon,sim-hotplug0";
+		gpios = <&gpio23 5 0>;
+		sim_id = <0>;
+		pinctrl-names = "default", "idle";
+		pinctrl-0 = <&gpio103_pmx_func &gpio104_pmx_func &gpio105_pmx_func
+				&gpio103_cfg_func &gpio104_cfg_func &gpio105_cfg_func>;
+		pinctrl-1 = <&gpio103_pmx_idle &gpio104_pmx_idle &gpio105_pmx_idle
+				&gpio103_cfg_idle &gpio104_cfg_idle &gpio105_cfg_idle>;
+		ap_to_lpm3_sim_input = <0x000C0001 0x06>;
+		ap_to_lpm3_sim_output = <0x000C0101 0x06>;
+		send_msg_to_lpm3 = <0>;
+		status = "disabled";
+	};
+	sim1 {
+		compatible = "hisilicon,sim-hotplug1";
+		gpios = <&gpio25 5 0>;
+		sim_id = <1>;
+		pinctrl-names = "default", "idle";
+		pinctrl-0 = <&gpio106_pmx_func &gpio107_pmx_func &gpio108_pmx_func
+				&gpio106_cfg_func &gpio107_cfg_func &gpio108_cfg_func>;
+		pinctrl-1 = <&gpio106_pmx_idle &gpio107_pmx_idle &gpio108_pmx_idle
+				&gpio106_cfg_idle &gpio107_cfg_idle &gpio108_cfg_idle>;
+		ap_to_lpm3_sim_input = <0x000C0001 0x07>;
+		ap_to_lpm3_sim_output = <0x000C0101 0x07>;
+		send_msg_to_lpm3 = <0>;
+		status = "disabled";
+	};
+};

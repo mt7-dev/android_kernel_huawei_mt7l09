@@ -1,0 +1,1 @@
+obj-y			+= vic_balong.o

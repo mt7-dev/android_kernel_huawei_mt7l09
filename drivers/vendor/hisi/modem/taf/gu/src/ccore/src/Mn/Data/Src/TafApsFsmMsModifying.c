@@ -1,0 +1,2942 @@
+
+
+#ifdef __cplusplus
+#if __cplusplus
+    extern "C" {
+#endif
+#endif
+
+/*****************************************************************************
+  1 头文件包含
+*****************************************************************************/
+#include "Taf_Aps.h"
+#include "MnApsComm.h"
+#include "TafLog.h"
+#include "TafApsCtx.h"
+#include "TafApsFsmMainTbl.h"
+#include "TafApsFsmMsDeactivatingTbl.h"
+#include "TafApsFsmMsModifying.h"
+#include "TafApsFsmMsModifyingTbl.h"
+#include "TafApsProcIpFilter.h"
+#include "MmcApsInterface.h"
+#include "TafApsSndInternalMsg.h"
+#if (FEATURE_ON == FEATURE_LTE)
+#include "SmEsmInterface.h"
+#include "MnApsMultiMode.h"
+#include "ApsL4aInterface.h"
+#include "TafApsSndL4a.h"
+#include "TafApsSndSm.h"
+#endif
+#include "TafApsComFunc.h"
+#include "MnComm.h"
+
+
+/*****************************************************************************
+    协议栈打印打点方式下的.C文件宏定义
+*****************************************************************************/
+#define    THIS_FILE_ID        PS_FILE_ID_TAF_APS_FSM_MSMODIFYING_C
+
+/******************************************************************************
+   2 全局变量定义
+*****************************************************************************/
+
+
+/******************************************************************************
+   3 函数实现
+******************************************************************************/
+
+VOS_UINT32 TAF_APS_RcvAtPsCallModifyReq_MsModifying_Init(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+)
+{
+    MMC_APS_RAT_TYPE_ENUM_UINT32        enCurrRatType;
+    VOS_UINT8                           ucPdpId;
+
+    /* 初始化, 获取消息内容 */
+    enCurrRatType                       = TAF_APS_GetCurrPdpEntityRatType();
+
+    /* 获取PDPId */
+    ucPdpId                             = (VOS_UINT8)TAF_APS_GetCurrFsmEntityPdpId();
+
+    /* 保存子状态机的入口消息 */
+    TAF_APS_SaveCurrSubFsmEntryMsg(ulEventType,pstMsg);
+
+    /*--------------------------------------------------------------------------
+       当前模为G/W:  子状态迁移至TAF_APS_MS_MODIFYING_SUBSTA_WAIT_SM_MODIFY_CNF
+       当前模为LTE:  子状态迁移至TAF_APS_MS_MODIFYING_SUBSTA_WAIT_ESM_MODIFY_CNF
+       当前模为NULL: 子状态迁移至TAF_APS_MS_MODIFYING_SUBSTA_SUSPEND
+    --------------------------------------------------------------------------*/
+    switch (enCurrRatType)
+    {
+        case MMC_APS_RAT_TYPE_GSM:
+        case MMC_APS_RAT_TYPE_WCDMA:
+            TAF_APS_SetCurrPdpEntityMainFsmState(TAF_APS_STA_MS_MODIFYING);
+            TAF_APS_RcvAtPsCallModifyReq_MsModifying_GuMode();
+            break;
+
+#if (FEATURE_ON == FEATURE_LTE)
+        case MMC_APS_RAT_TYPE_LTE:
+            TAF_APS_SetCurrPdpEntityMainFsmState(TAF_APS_STA_MS_MODIFYING);
+            TAF_APS_RcvAtPsCallModifyReq_MsModifying_LteMode();
+            break;
+#endif
+
+        case MMC_APS_RAT_TYPE_NULL:
+            TAF_APS_SetCurrPdpEntityMainFsmState(TAF_APS_STA_MS_MODIFYING);
+            TAF_APS_SetCurrPdpEntitySubFsmState(TAF_APS_MS_MODIFYING_SUBSTA_SUSPEND);
+
+            /* 起保护定时器 */
+            TAF_APS_StartTimer(TI_TAF_APS_MS_MODIFYING,
+                               TI_TAF_APS_MS_MODIFYING_LEN,
+                               ucPdpId);
+            break;
+
+        default:
+            TAF_WARNING_LOG(WUEPS_PID_TAF,
+                "TAF_APS_RcvAtPsCallModifyReq_MsModifying_Init: Wrong RAT type!");
+            break;
+    }
+
+    return VOS_TRUE;
+}
+
+/*****************************************************************************
+ 函 数 名  : TAF_APS_RcvSmPdpModifyInd_MsModifying_Init
+ 功能描述  : TAF_APS_MS_MODIFYING_SUBSTA_INIT子状态下
+             收到D_PMC_SMREG_PDP_MODIFY_IND消息的处理
+ 输入参数  : ulEventType                - 消息ID
+             pstMsg                     - 消息指针
+ 输出参数  : 无
+ 返 回 值  : VOS_TRUE                   - 消息处理成功
+             VOS_FALSE                  - 消息处理失败
+ 调用函数  :
+ 被调函数  :
+
+ 修改历史      :
+  1.日    期   : 2012年1月4日
+    作    者   : zhangyizhan 60575
+    修改内容   : 新生成函数
+
+*****************************************************************************/
+VOS_UINT32  TAF_APS_RcvSmPdpModifyInd_MsModifying_Init(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+)
+{
+    MMC_APS_RAT_TYPE_ENUM_UINT32        enCurrRatType;
+    VOS_UINT8                           ucPdpId;
+
+    /* 初始化, 获取消息内容 */
+    enCurrRatType                       = TAF_APS_GetCurrPdpEntityRatType();
+
+    /* 获取PDPId */
+    ucPdpId                             = (VOS_UINT8)TAF_APS_GetCurrFsmEntityPdpId();
+
+    /* 保存子状态机的入口消息 */
+    TAF_APS_SaveCurrSubFsmEntryMsg(ulEventType,pstMsg);
+
+    /* 只有GSM模式下才处理此消息，其他模式不会收到此消息 */
+    if (MMC_APS_RAT_TYPE_GSM == enCurrRatType)
+    {
+        TAF_APS_SetCurrPdpEntityMainFsmState(TAF_APS_STA_MS_MODIFYING);
+
+        /* 子状态迁移至TAF_APS_MS_MODIFYING_SUBSTA_WAIT_SM_MODIFY_CNF */
+        TAF_APS_SetCurrPdpEntitySubFsmState(TAF_APS_MS_MODIFYING_SUBSTA_WAIT_SNDCP_MODIFY_RSP);
+
+        /* 起保护定时器 */
+        TAF_APS_StartTimer(TI_TAF_APS_MS_MODIFYING,
+                           TI_TAF_APS_MS_MODIFYING_LEN,
+                           ucPdpId);
+    }
+    else
+    {
+        TAF_WARNING_LOG(WUEPS_PID_TAF,
+                "TAF_APS_RcvSmPdpModifyInd_MsModifying_Init: Wrong RAT type!");
+    }
+
+    return VOS_TRUE;
+}
+
+
+VOS_UINT32  TAF_APS_RcvAtSetPdpContextStateReq_MsModifying_Suspend(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+)
+{
+    TAF_PS_MSG_STRU                    *pstAppMsg;
+    TAF_PS_SET_PDP_STATE_REQ_STRU      *pstPdpContextStateReq;
+    VOS_UINT8                           ucPdpId;
+
+    /* 获取当前处理的PDP ID */
+    ucPdpId                 = TAF_APS_GetCurrFsmEntityPdpId();
+
+    /* 初始化, 获取消息内容 */
+    pstAppMsg               = (TAF_PS_MSG_STRU*)pstMsg;
+    pstPdpContextStateReq   = (TAF_PS_SET_PDP_STATE_REQ_STRU*)(pstAppMsg->aucContent);
+
+    /* 已经激活该APS实体, 再激活该APS实体所用的CID,上报ERROR事件,
+       否则,发起去激活状态进行迁移 */
+    if (TAF_CGACT_ACT == pstPdpContextStateReq->stCidListStateInfo.ucState)
+    {
+        /* 上报PDP激活错误事件 */
+        TAF_APS_SndSetPdpCtxStateCnf(&(pstPdpContextStateReq->stCtrl),
+                                    TAF_PS_CAUSE_CID_INVALID);
+    }
+    else
+    {
+        /* 停止全流程状态机保护定时器*/
+        TAF_APS_StopTimer(TI_TAF_APS_MS_MODIFYING, ucPdpId);
+
+        /*------------------------------------------------------------------
+           加载TAF_APS_STA_MS_DEACTIVATING状态机
+           加载后子状态切换为TAF_APS_MS_DEACTIVATING_SUBSTA_INIT
+           在TAF_APS_MS_DEACTIVATING_SUBSTA_INIT子状态中
+           处理ID_MSG_TAF_PS_CALL_END_REQ消息
+        ------------------------------------------------------------------*/
+        TAF_APS_InitSubFsm(TAF_APS_FSM_MS_DEACTIVATING,
+                           TAF_APS_GetMsDeactivatingFsmDescAddr(),
+                           TAF_APS_MS_DEACTIVATING_SUBSTA_INIT);
+    }
+
+    return VOS_TRUE;
+}
+
+
+VOS_UINT32  TAF_APS_RcvAtPsPppDailOrigReq_MsModifying_Suspend(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+)
+{
+    TAF_PS_MSG_STRU                    *pstAppMsg;
+    TAF_PS_PPP_DIAL_ORIG_REQ_STRU      *pstPppDialOrigReq;
+
+    /* 初始化, 获取消息内容 */
+    pstAppMsg           = (TAF_PS_MSG_STRU*)pstMsg;
+    pstPppDialOrigReq   = (TAF_PS_PPP_DIAL_ORIG_REQ_STRU*)(pstAppMsg->aucContent);
+
+    /* 正在激活该APS实体, 激活该APS实体所用的CID, 返回ERROR */
+    TAF_APS_SndPppDialOrigCnf(&(pstPppDialOrigReq->stCtrl),
+                             TAF_PS_CAUSE_CID_INVALID);
+
+    return VOS_TRUE;
+}
+
+
+VOS_UINT32 TAF_APS_RcvAtPsCallOrigReq_MsModifying_Suspend(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+)
+{
+    TAF_PS_MSG_STRU                    *pstAppMsg;
+    TAF_PS_CALL_ORIG_REQ_STRU          *pstCallOrigReq;
+
+    /* 初始化, 获取消息内容 */
+    pstAppMsg       = (TAF_PS_MSG_STRU*)pstMsg;
+    pstCallOrigReq  = (TAF_PS_CALL_ORIG_REQ_STRU*)(pstAppMsg->aucContent);
+
+    /* 正在修改该APS实体, 激活该APS实体所用的CID, 返回ERROR */
+    TAF_APS_SndCallOrigCnf(&(pstCallOrigReq->stCtrl),
+                          pstCallOrigReq->stDialParaInfo.ucCid,
+                          TAF_PS_CAUSE_CID_INVALID);
+
+    return VOS_TRUE;
+}
+
+/*****************************************************************************
+ 函 数 名  : TAF_APS_RcvAtPsCallEndReq_MsModifying_Suepend
+ 功能描述  : TAF_APS_MS_MODIFYING_SUBSTA_SUSPEND子状态下
+             收到ID_MSG_TAF_PS_CALL_END_REQ消息的处理
+ 输入参数  : ulEventType:消息类型
+             pstMsg     : ID_MSG_TAF_PS_CALL_END_REQ消息
+ 输出参数  : 无
+ 返 回 值  : VOS_TRUE   : 消息处理成功
+             VOS_FALSE  : 消息处理失败
+ 调用函数  :
+ 被调函数  :
+
+ 修改历史      :
+  1.日    期   : 2011年12月29日
+    作    者   : zhangyizhan 60575
+    修改内容   : 新生成函数
+
+*****************************************************************************/
+VOS_UINT32 TAF_APS_RcvAtPsCallEndReq_MsModifying_Suspend(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+)
+{
+    VOS_UINT8                           ucPdpId;
+
+    /* 获取当前处理的PDP ID */
+    ucPdpId = TAF_APS_GetCurrFsmEntityPdpId();
+
+    /* 停止全流程状态机保护定时器*/
+    TAF_APS_StopTimer(TI_TAF_APS_MS_MODIFYING, ucPdpId);
+
+    /*------------------------------------------------------------------
+       加载TAF_APS_STA_MS_DEACTIVATING状态机
+       加载后子状态切换为TAF_APS_MS_DEACTIVATING_SUBSTA_INIT
+
+       在TAF_APS_MS_DEACTIVATING_SUBSTA_INIT子状态中
+       处理ID_MSG_TAF_PS_CALL_END_REQ消息
+    ------------------------------------------------------------------*/
+    TAF_APS_InitSubFsm(TAF_APS_FSM_MS_DEACTIVATING,
+                       TAF_APS_GetMsDeactivatingFsmDescAddr(),
+                       TAF_APS_MS_DEACTIVATING_SUBSTA_INIT);
+
+    return VOS_TRUE;
+}
+
+/*****************************************************************************
+ 函 数 名  : TAF_APS_RcvAtPsCallModifyReq_MsModifying_Suspend
+ 功能描述  : TAF_APS_MS_MODIFYING_SUBSTA_SUSPEND子状态下
+             收到ID_MSG_TAF_PS_CALL_MODIFY_REQ消息的处理
+ 输入参数  : ulEventType:消息类型
+             pstMsg     : ID_MSG_TAF_PS_CALL_MODIFY_REQ消息
+ 输出参数  : 无
+ 返 回 值  : VOS_TRUE   : 消息处理成功
+             VOS_FALSE  : 消息处理失败
+ 调用函数  :
+ 被调函数  :
+
+ 修改历史      :
+  1.日    期   : 2011年12月29日
+    作    者   : zhangyizhan 60575
+    修改内容   : 新生成函数
+
+*****************************************************************************/
+VOS_UINT32  TAF_APS_RcvAtPsCallModifyReq_MsModifying_Suspend(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+)
+{
+    TAF_PS_MSG_STRU                    *pstAppMsg;
+    TAF_PS_CALL_MODIFY_REQ_STRU        *pstCallModifyReq;
+
+    /* 初始化, 获取消息内容 */
+    pstAppMsg           = (TAF_PS_MSG_STRU*)pstMsg;
+    pstCallModifyReq    = (TAF_PS_CALL_MODIFY_REQ_STRU*)(pstAppMsg->aucContent);
+
+    /* 正在修改该APS实体, 修改该APS实体, 返回ERROR */
+    TAF_APS_SndCallModifyCnf(&(pstCallModifyReq->stCtrl),
+                            TAF_PS_CAUSE_CID_INVALID);
+
+    return VOS_TRUE;
+}
+
+/*****************************************************************************
+ 函 数 名  : TAF_APS_RcvAtPsCallAnswerReq_MsModifying_Suspend
+ 功能描述  : TAF_APS_MS_MODIFYING_SUBSTA_SUSPEND子状态下
+             收到ID_MSG_TAF_PS_CALL_ANSWER_REQ消息的处理
+ 输入参数  : ulEventType:消息类型
+             pstMsg     : ID_MSG_TAF_PS_CALL_ANSWER_REQ消息
+ 输出参数  : 无
+ 返 回 值  : VOS_TRUE   : 消息处理成功
+             VOS_FALSE  : 消息处理失败
+ 调用函数  :
+ 被调函数  :
+
+ 修改历史      :
+  1.日    期   : 2011年12月29日
+    作    者   : zhangyizhan 60575
+    修改内容   : 新生成函数
+
+*****************************************************************************/
+VOS_UINT32  TAF_APS_RcvAtPsCallAnswerReq_MsModifying_Suspend(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+)
+{
+    TAF_PS_MSG_STRU                    *pstAppMsg;
+    TAF_PS_CALL_ANSWER_REQ_STRU        *pstCallAnswerReq;
+
+    /* 初始化, 获取消息内容 */
+    pstAppMsg                           = (TAF_PS_MSG_STRU*)pstMsg;
+    pstCallAnswerReq                    = (TAF_PS_CALL_ANSWER_REQ_STRU*)(pstAppMsg->aucContent);
+
+    /* PS域MT呼叫流程, 方案未确定, 目前直接返回ERROR */
+    TAF_APS_SndCallAnswerCnf(&(pstCallAnswerReq->stCtrl),
+                            pstCallAnswerReq->stAnsInfo.ucCid,
+                            TAF_ERR_UNSPECIFIED_ERROR);
+
+    return VOS_TRUE;
+}
+
+/*****************************************************************************
+ 函 数 名  : TAF_APS_RcvAtPsCallHangupReq_MsModifying_Suspend
+ 功能描述  : TAF_APS_MS_MODIFYING_SUBSTA_SUSPEND子状态下
+             收到ID_MSG_TAF_PS_CALL_HANGUP_REQ消息的处理
+ 输入参数  : ulEventType:消息类型
+             pstMsg     : ID_MSG_TAF_PS_CALL_HANGUP_REQ消息
+ 输出参数  : 无
+ 返 回 值  : VOS_TRUE   : 消息处理成功
+             VOS_FALSE  : 消息处理失败
+ 调用函数  :
+ 被调函数  :
+
+ 修改历史      :
+  1.日    期   : 2011年12月29日
+    作    者   : zhangyizhan 60575
+    修改内容   : 新生成函数
+
+*****************************************************************************/
+VOS_UINT32  TAF_APS_RcvAtPsCallHangupReq_MsModifying_Suspend(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+)
+{
+    TAF_PS_MSG_STRU                    *pstAppMsg;
+    TAF_PS_CALL_HANGUP_REQ_STRU        *pstCallHangupReq;
+
+    /* 初始化, 获取消息内容 */
+    pstAppMsg                           = (TAF_PS_MSG_STRU*)pstMsg;
+    pstCallHangupReq                    = (TAF_PS_CALL_HANGUP_REQ_STRU*)(pstAppMsg->aucContent);
+
+    /* PS域MT呼叫流程, 方案未确定, 目前直接返回ERROR */
+    TAF_APS_SndCallHangupCnf(&(pstCallHangupReq->stCtrl),
+                            TAF_ERR_UNSPECIFIED_ERROR);
+
+    return VOS_TRUE;
+}
+
+
+VOS_UINT32 TAF_APS_RcvSmPdpDeactivateInd_MsModifying_Suspend(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+)
+{
+    VOS_UINT8                           ucPdpId;
+    APS_PDP_CONTEXT_ENTITY_ST          *pstPdpEntity;
+    SMREG_PDP_DEACTIVATE_IND_STRU      *pstSmPdpDeactivateInd;
+
+    /* 初始化, 获取消息内容 */
+    ucPdpId                             = TAF_APS_GetCurrFsmEntityPdpId();
+    pstPdpEntity                        = TAF_APS_GetPdpEntInfoAddr(ucPdpId);
+    pstSmPdpDeactivateInd               = (SMREG_PDP_DEACTIVATE_IND_STRU *)pstMsg;
+
+    /* 停止全流程状态机保护定时器*/
+    TAF_APS_StopTimer(TI_TAF_APS_MS_MODIFYING, ucPdpId);
+
+    /* 同步PDP状态&信息给ESM */
+#if (FEATURE_ON == FEATURE_LTE)
+    MN_APS_SndEsmPdpInfoInd(TAF_APS_GetPdpEntInfoAddr(ucPdpId),
+                            SM_ESM_PDP_OPT_DEACTIVATE);
+#endif
+
+    /* 上报ID_EVT_TAF_PS_CALL_PDP_DEACTIVATE_IND事件 */
+    TAF_APS_SndPdpDeActivateInd(ucPdpId, TAF_APS_MapSmCause(pstSmPdpDeactivateInd->enCause));
+
+    /* 如果已经激活SNDCP, 需要向SNDCP发送去激活指示, 并等待SNDCP的响应，
+       如果SNDCP没有激活, 直接上报PDP去激活成功事件 */
+    if ( (APS_USED == pstPdpEntity->PdpProcTrackFlag)
+      && (APS_USED == pstPdpEntity->PdpProcTrack.ucSNDCPActOrNot) )
+    {
+        /* 释放SNDCP资源 */
+        Aps_ReleaseSndcpResource(ucPdpId);
+
+        pstPdpEntity->PdpProcTrack.ucSNDCPActOrNot = APS_SNDCP_INACT;
+    }
+
+    /* 释放APS资源 */
+    Aps_ReleaseApsResource(ucPdpId);
+
+    /* 配置IP过滤器 */
+    TAF_APS_IpfConfigUlFilter(ucPdpId);
+
+    /* 主状态迁移至TAF_APS_STA_INACTIVE, 退出子状态机 */
+    TAF_APS_SetCurrPdpEntityMainFsmState(TAF_APS_STA_INACTIVE);
+    TAF_APS_QuitCurrSubFsm();
+
+    return VOS_TRUE;
+}
+
+
+VOS_UINT32 TAF_APS_RcvApsLocalPdpDeactivateInd_MsModifying_Suspend(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+)
+{
+    VOS_UINT8                               ucPdpId;
+    APS_PDP_CONTEXT_ENTITY_ST              *pstPdpEntity;
+
+    TAF_APS_INTER_PDP_DEACTIVATE_REQ_STRU  *pstLocalPdpDeactInd;
+
+    /* 初始化, 获取消息内容 */
+    ucPdpId                     = TAF_APS_GetCurrFsmEntityPdpId();
+    pstPdpEntity                = TAF_APS_GetPdpEntInfoAddr(ucPdpId);
+    pstLocalPdpDeactInd         = (TAF_APS_INTER_PDP_DEACTIVATE_REQ_STRU *)pstMsg;
+
+    /* 停止全流程状态机保护定时器*/
+    TAF_APS_StopTimer(TI_TAF_APS_MS_MODIFYING, ucPdpId);
+
+    /* 同步PDP状态&信息给ESM */
+#if (FEATURE_ON == FEATURE_LTE)
+    MN_APS_SndEsmPdpInfoInd(TAF_APS_GetPdpEntInfoAddr(ucPdpId),
+                            SM_ESM_PDP_OPT_DEACTIVATE);
+#endif
+
+    /* 上报ID_EVT_TAF_PS_CALL_PDP_DEACTIVATE_IND事件 */
+    TAF_APS_SndPdpDeActivateInd(ucPdpId, TAF_APS_MapSmCause(pstLocalPdpDeactInd->enCause));
+
+    /* 如果已经激活SNDCP, 需要向SNDCP发送去激活指示, 并等待SNDCP的响应，
+       如果SNDCP没有激活, 直接上报PDP去激活成功事件 */
+    if ( (APS_USED == pstPdpEntity->PdpProcTrackFlag)
+      && (APS_USED == pstPdpEntity->PdpProcTrack.ucSNDCPActOrNot) )
+    {
+        /* 释放SNDCP资源 */
+        Aps_ReleaseSndcpResource(ucPdpId);
+
+        pstPdpEntity->PdpProcTrack.ucSNDCPActOrNot = APS_SNDCP_INACT;
+    }
+
+    /* 释放APS资源 */
+    Aps_ReleaseApsResource(ucPdpId);
+
+    /* 配置IP过滤器 */
+    TAF_APS_IpfConfigUlFilter(ucPdpId);
+
+    /* 主状态迁移至TAF_APS_STA_INACTIVE, 退出子状态机 */
+    TAF_APS_SetCurrPdpEntityMainFsmState(TAF_APS_STA_INACTIVE);
+    TAF_APS_QuitCurrSubFsm();
+
+    return VOS_TRUE;
+}
+
+
+VOS_UINT32 TAF_APS_RcvMmcServiceStatusInd_MsModifying_Suspend(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+)
+{
+    MMC_APS_SERVICE_STATUS_IND_STRU    *pstSerStaInd;
+
+    /* 初始化, 获取消息内容 */
+    pstSerStaInd                        = (MMC_APS_SERVICE_STATUS_IND_STRU*)pstMsg;
+
+    /* 设置当前网络类型 */
+    TAF_APS_SetCurrPdpEntityRatType(pstSerStaInd->enRatType);
+
+    /* 设置PS域SIM卡状态信息 */
+    TAF_APS_SetCurrPdpEntitySimRegStatus(pstSerStaInd->ulPsSimRegStatus);
+
+    if ( (MMC_APS_RAT_TYPE_GSM == pstSerStaInd->enRatType)
+      || (MMC_APS_RAT_TYPE_WCDMA == pstSerStaInd->enRatType))
+    {
+        /* GU模下发起PDP修改请求 */
+        TAF_APS_RcvAtPsCallModifyReq_MsModifying_GuMode();
+    }
+#if (FEATURE_ON == FEATURE_LTE)
+    else if (MMC_APS_RAT_TYPE_LTE == pstSerStaInd->enRatType)
+    {
+        /* LTE模下发起EPS承载修改请求 */
+        TAF_APS_RcvAtPsCallModifyReq_MsModifying_LteMode();
+    }
+#endif
+    else
+    {
+        TAF_WARNING_LOG(WUEPS_PID_TAF,
+            "TAF_APS_RcvMmcServiceStatusInd_MsModifying_WaitSndcpModifyRspSuspend:rev msg err!");
+    }
+
+    return VOS_TRUE;
+}
+VOS_UINT32 TAF_APS_RcvTiTafApsMsModifyingExpired_MsModifying_Suspend(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+)
+{
+    VOS_UINT8                           ucPdpId;
+
+    /* 初始化, 获取消息内容 */
+    ucPdpId                             = TAF_APS_GetCurrFsmEntityPdpId();
+
+    /* 上报ID_EVT_TAF_PS_CALL_PDP_MODIFY_REJ事件 */
+    TAF_APS_SndPdpModifyRej(ucPdpId, TAF_PS_CAUSE_SM_MAX_TIME_OUT);
+
+    /* 主状态迁移至TAF_APS_STA_ACTIVE, 退出子状态机 */
+    TAF_APS_SetCurrPdpEntityMainFsmState(TAF_APS_STA_ACTIVE);
+    TAF_APS_QuitCurrSubFsm();
+
+    return VOS_TRUE;
+}
+VOS_UINT32 TAF_APS_RcvAtSetPdpContextStateReq_MsModifying_WaitSmModifyCnf(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+)
+{
+    TAF_PS_MSG_STRU                    *pstAppMsg;
+    TAF_PS_SET_PDP_STATE_REQ_STRU      *pstPdpContextStateReq;
+    VOS_UINT8                           ucPdpId;
+
+    /* 初始化, 获取消息内容 */
+    pstAppMsg                           = (TAF_PS_MSG_STRU*)pstMsg;
+    pstPdpContextStateReq               = (TAF_PS_SET_PDP_STATE_REQ_STRU*)(pstAppMsg->aucContent);
+
+    /* 获取当前处理的PDP ID */
+    ucPdpId                             = TAF_APS_GetCurrFsmEntityPdpId();
+
+    /* 已经激活该APS实体, 再激活该APS实体所用的CID,上报ERROR事件,
+       否则,发起去激活状态进行迁移 */
+    if (TAF_CGACT_ACT == pstPdpContextStateReq->stCidListStateInfo.ucState)
+    {
+        /* 上报PDP激活错误事件 */
+        TAF_APS_SndSetPdpCtxStateCnf(&(pstPdpContextStateReq->stCtrl),
+                                    TAF_PS_CAUSE_CID_INVALID);
+    }
+    else
+    {
+        /* 停止全流程状态机保护定时器*/
+        TAF_APS_StopTimer(TI_TAF_APS_MS_MODIFYING, ucPdpId);
+
+        /*------------------------------------------------------------------
+           加载TAF_APS_STA_MS_DEACTIVATING状态机
+           加载后子状态切换为TAF_APS_MS_DEACTIVATING_SUBSTA_INIT
+
+           在TAF_APS_MS_DEACTIVATING_SUBSTA_INIT子状态中
+           处理ID_MSG_TAF_PS_CALL_END_REQ消息
+        ------------------------------------------------------------------*/
+        TAF_APS_InitSubFsm(TAF_APS_FSM_MS_DEACTIVATING,
+                           TAF_APS_GetMsDeactivatingFsmDescAddr(),
+                           TAF_APS_MS_DEACTIVATING_SUBSTA_INIT);
+    }
+
+    return VOS_TRUE;
+}
+
+
+VOS_UINT32 TAF_APS_RcvAtPsPppDailOrigReq_MsModifying_WaitSmModifyCnf(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+)
+{
+    TAF_PS_MSG_STRU                    *pstAppMsg;
+    TAF_PS_PPP_DIAL_ORIG_REQ_STRU      *pstPppDialOrigReq;
+
+    /* 初始化, 获取消息内容 */
+    pstAppMsg                           = (TAF_PS_MSG_STRU*)pstMsg;
+    pstPppDialOrigReq                   = (TAF_PS_PPP_DIAL_ORIG_REQ_STRU*)(pstAppMsg->aucContent);
+
+    /* 正在激活该APS实体, 激活该APS实体所用的CID, 返回ERROR */
+    TAF_APS_SndPppDialOrigCnf(&(pstPppDialOrigReq->stCtrl),
+                             TAF_PS_CAUSE_CID_INVALID);
+
+    return VOS_TRUE;
+
+}
+
+
+VOS_UINT32 TAF_APS_RcvAtPsCallOrigReq_MsModifying_WaitSmModifyCnf(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+)
+{
+    TAF_PS_MSG_STRU                    *pstAppMsg;
+    TAF_PS_CALL_ORIG_REQ_STRU          *pstCallOrigReq;
+
+    /* 初始化, 获取消息内容 */
+    pstAppMsg                           = (TAF_PS_MSG_STRU*)pstMsg;
+    pstCallOrigReq                      = (TAF_PS_CALL_ORIG_REQ_STRU*)(pstAppMsg->aucContent);
+
+    /* 正在修改该APS实体, 激活该APS实体所用的CID, 返回ERROR */
+    TAF_APS_SndCallOrigCnf(&(pstCallOrigReq->stCtrl),
+                          pstCallOrigReq->stDialParaInfo.ucCid,
+                          TAF_PS_CAUSE_CID_INVALID);
+
+    return VOS_TRUE;
+}
+
+
+VOS_UINT32 TAF_APS_RcvAtPsCallEndReq_MsModifying_WaitSmModifyCnf(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+)
+{
+    VOS_UINT8                           ucPdpId;
+
+    /* 获取当前处理的PDP ID */
+    ucPdpId = TAF_APS_GetCurrFsmEntityPdpId();
+
+    /* 停止全流程状态机保护定时器*/
+    TAF_APS_StopTimer(TI_TAF_APS_MS_MODIFYING, ucPdpId);
+
+    /*------------------------------------------------------------------
+       加载TAF_APS_STA_MS_DEACTIVATING状态机
+       加载后子状态切换为TAF_APS_MS_DEACTIVATING_SUBSTA_INIT
+
+       在TAF_APS_MS_DEACTIVATING_SUBSTA_INIT子状态中
+       处理ID_MSG_TAF_PS_CALL_END_REQ消息
+    ------------------------------------------------------------------*/
+    TAF_APS_InitSubFsm(TAF_APS_FSM_MS_DEACTIVATING,
+                       TAF_APS_GetMsDeactivatingFsmDescAddr(),
+                       TAF_APS_MS_DEACTIVATING_SUBSTA_INIT);
+
+    return VOS_TRUE;
+}
+
+
+VOS_UINT32 TAF_APS_RcvAtPsCallModifyReq_MsModifying_WaitSmModifyCnf(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+)
+{
+    TAF_PS_MSG_STRU                    *pstAppMsg;
+    TAF_PS_CALL_MODIFY_REQ_STRU        *pstCallModifyReq;
+
+    /* 初始化, 获取消息内容 */
+    pstAppMsg                           = (TAF_PS_MSG_STRU*)pstMsg;
+    pstCallModifyReq                    = (TAF_PS_CALL_MODIFY_REQ_STRU*)(pstAppMsg->aucContent);
+
+    /* 正在修改该APS实体, 修改该APS实体, 返回ERROR */
+    TAF_APS_SndCallModifyCnf(&(pstCallModifyReq->stCtrl),
+                            TAF_PS_CAUSE_CID_INVALID);
+
+    return VOS_TRUE;
+}
+
+
+VOS_UINT32 TAF_APS_RcvAtPsCallAnswerReq_MsModifying_WaitSmModifyCnf(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+)
+{
+    TAF_PS_MSG_STRU                    *pstAppMsg;
+    TAF_PS_CALL_ANSWER_REQ_STRU        *pstCallAnswerReq;
+
+    /* 初始化, 获取消息内容 */
+    pstAppMsg                           = (TAF_PS_MSG_STRU*)pstMsg;
+    pstCallAnswerReq                    = (TAF_PS_CALL_ANSWER_REQ_STRU*)(pstAppMsg->aucContent);
+
+    /* PS域MT呼叫流程, 方案未确定, 目前直接返回ERROR */
+    TAF_APS_SndCallAnswerCnf(&(pstCallAnswerReq->stCtrl),
+                            pstCallAnswerReq->stAnsInfo.ucCid,
+                            TAF_ERR_UNSPECIFIED_ERROR);
+
+    return VOS_TRUE;
+}
+
+
+VOS_UINT32 TAF_APS_RcvAtPsCallHangupReq_MsModifying_WaitSmModifyCnf(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+)
+{
+    TAF_PS_MSG_STRU                    *pstAppMsg;
+    TAF_PS_CALL_HANGUP_REQ_STRU        *pstCallHangupReq;
+
+    /* 初始化, 获取消息内容 */
+    pstAppMsg                           = (TAF_PS_MSG_STRU*)pstMsg;
+    pstCallHangupReq                    = (TAF_PS_CALL_HANGUP_REQ_STRU*)(pstAppMsg->aucContent);
+
+    /* PS域MT呼叫流程, 方案未确定, 目前直接返回ERROR */
+    TAF_APS_SndCallHangupCnf(&(pstCallHangupReq->stCtrl),
+                            TAF_ERR_UNSPECIFIED_ERROR);
+
+    return VOS_TRUE;
+}
+
+
+VOS_UINT32 TAF_APS_RcvSmPdpModifyCnf_MsModifying_WaitSmModifyCnf(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+)
+{
+    SMREG_PDP_MODIFY_CNF_STRU          *pstPdpModifyCnf;
+    APS_PDP_CONTEXT_ENTITY_ST          *pstPdpEntity;
+    VOS_UINT32                          ulRet;
+    VOS_UINT8                           ucPdpId;
+    MMC_APS_RAT_TYPE_ENUM_UINT32        enCurrRatType;
+    APS_MDFCNF_PARA_ST                  stParam;
+
+    /* 初始化, 获取消息内容 */
+    pstPdpModifyCnf                     = (SMREG_PDP_MODIFY_CNF_STRU *)pstMsg;
+    ucPdpId                             = TAF_APS_GetCurrFsmEntityPdpId();
+    enCurrRatType                       = TAF_APS_GetCurrPdpEntityRatType();
+    pstPdpEntity                        = TAF_APS_GetPdpEntInfoAddr(ucPdpId);
+
+    /* 保存子状态机的入口消息 */
+    TAF_APS_SaveCurrSubFsmEntryMsg(ulEventType,pstMsg);
+
+    /* 检查输入的参数 */
+    ulRet = Aps_PdpMdfCnfParaCheck(pstPdpModifyCnf, &stParam);
+    if (APS_PARA_VALID != ulRet)
+    {
+        /* 上报ID_EVT_TAF_PS_CALL_PDP_DEACTIVATE_IND事件 */
+        TAF_APS_SndPdpDeActivateInd(ucPdpId, TAF_PS_CAUSE_SM_NW_PROTOCOL_ERR_UNSPECIFIED);
+
+        /* 发送内部消息，进行去激活操作，状态机不迁移，直接在当前状态处理 */
+        TAF_APS_SndInterPdpDeactivateReq(ucPdpId, SM_TAF_CAUSE_SM_NW_PROTOCOL_ERR_UNSPECIFIED);
+
+        return VOS_TRUE;
+    }
+
+    /*检查QOS是否满足MIN*/
+    if (APS_USED == pstPdpModifyCnf->bitOpNegotiatedQos)
+    {
+        /*MDF_CNF消息中有QOS,则与MIN_QOS进行比较 */
+        if (APS_PARA_VALID == Aps_CheckQosSatisify(ucPdpId, &stParam.PdpQos))
+        {
+            /*满足MINQOS*/
+            Aps_PdpMdfCnfQosSatisfy(ucPdpId, &stParam, pstPdpModifyCnf);
+
+#if (FEATURE_ON == FEATURE_LTE)
+            /* 同步PDP信息给ESM */
+            MN_APS_SndEsmPdpInfoInd(TAF_APS_GetPdpEntInfoAddr(ucPdpId),
+                                    SM_ESM_PDP_OPT_MODIFY);
+#endif
+        }
+        else
+        {
+            /* 上报事件 */
+            TAF_APS_SndPdpModifyRej(ucPdpId, TAF_PS_CAUSE_SM_NW_QOS_NOT_ACCEPTED);
+
+            /* 发送内部消息，进行去激活操作，状态机不转换，直接在当前状态处理 */
+            TAF_APS_SndInterPdpDeactivateReq(ucPdpId, SM_TAF_CAUSE_SM_NW_QOS_NOT_ACCEPTED);
+
+            /* 设置去激活事件上报标识, 内部去激活后, 根据该标识决定是否上报 */
+            pstPdpEntity->ucInterDeactNotifyFlg = VOS_TRUE;
+
+            return VOS_TRUE;
+        }
+    }
+    else
+    {
+        /*若SM返回的MDF_CNF消息中无 QOS, 则表示UE申请的QOS被接受了,或者没有修改QOS*/
+        Aps_PdpMdfCnfQosSatisfy(ucPdpId, &stParam, pstPdpModifyCnf);
+
+#if (FEATURE_ON == FEATURE_LTE)
+
+        /* 同步PDP信息给ESM */
+        MN_APS_SndEsmPdpInfoInd(TAF_APS_GetPdpEntInfoAddr(ucPdpId),
+                                SM_ESM_PDP_OPT_MODIFY);
+#endif
+    }
+
+    switch (enCurrRatType)
+    {
+        case MMC_APS_RAT_TYPE_GSM:
+
+            /* 子状态迁移至TAF_APS_MS_MODIFYING_SUBSTA_WAIT_SNDCP_MODIFY_RSP */
+            TAF_APS_SetCurrPdpEntitySubFsmState(TAF_APS_MS_MODIFYING_SUBSTA_WAIT_SNDCP_MODIFY_RSP);
+            break;
+
+        case MMC_APS_RAT_TYPE_WCDMA:
+
+            /* 停止全流程状态机保护定时器*/
+            TAF_APS_StopTimer(TI_TAF_APS_MS_MODIFYING, ucPdpId);
+
+            /* 主状态迁移至TAF_APS_STA_ACTIVE, 退出子状态机 */
+            TAF_APS_SetCurrPdpEntityMainFsmState(TAF_APS_STA_ACTIVE);
+            TAF_APS_QuitCurrSubFsm();
+            break;
+
+        default:
+            TAF_WARNING_LOG(WUEPS_PID_TAF,
+                "TAF_APS_RcvSmPdpModifyCnf_MsModifying_WaitSmModifyCnf: Wrong RAT type!");
+            break;
+    }
+
+    return VOS_TRUE;
+}
+VOS_UINT32 TAF_APS_RcvSmPdpModifyRej_MsModifying_WaitSmModifyCnf(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+)
+{
+    VOS_UINT8                           ucPdpId;
+    SMREG_PDP_MODIFY_REJ_STRU          *pstSmMsg;
+
+    /* 初始化, 获取消息内容 */
+    pstSmMsg                            = (SMREG_PDP_MODIFY_REJ_STRU *)pstMsg;
+    ucPdpId                             = TAF_APS_GetCurrFsmEntityPdpId();
+
+    /* 停止全流程状态机保护定时器*/
+    TAF_APS_StopTimer(TI_TAF_APS_MS_MODIFYING, ucPdpId);
+
+    /* 上报ID_EVT_TAF_PS_CALL_PDP_MODIFY_REJ事件 */
+    TAF_APS_SndPdpModifyRej(ucPdpId, TAF_APS_MapSmCause(pstSmMsg->enCause));
+
+    /* 主状态迁移至TAF_APS_STA_ACTIVE, 退出子状态机 */
+    TAF_APS_SetCurrPdpEntityMainFsmState(TAF_APS_STA_ACTIVE);
+    TAF_APS_QuitCurrSubFsm();
+
+    return VOS_TRUE;
+}
+
+
+VOS_UINT32 TAF_APS_RcvSmPdpDeactivateInd_MsModifying_WaitSmModifyCnf(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+)
+{
+    VOS_UINT8                           ucPdpId;
+    APS_PDP_CONTEXT_ENTITY_ST          *pstPdpEntity;
+    SMREG_PDP_DEACTIVATE_IND_STRU      *pstSmPdpDeactivateInd;
+
+    /* 初始化, 获取消息内容 */
+    ucPdpId                             = TAF_APS_GetCurrFsmEntityPdpId();
+    pstPdpEntity                        = TAF_APS_GetPdpEntInfoAddr(ucPdpId);
+    pstSmPdpDeactivateInd               = (SMREG_PDP_DEACTIVATE_IND_STRU *)pstMsg;
+
+    /* 停止全流程状态机保护定时器*/
+    TAF_APS_StopTimer(TI_TAF_APS_MS_MODIFYING, ucPdpId);
+
+    /* 同步PDP状态&信息给ESM */
+#if (FEATURE_ON == FEATURE_LTE)
+    MN_APS_SndEsmPdpInfoInd(TAF_APS_GetPdpEntInfoAddr(ucPdpId),
+                            SM_ESM_PDP_OPT_DEACTIVATE);
+#endif
+
+    /* 上报ID_EVT_TAF_PS_CALL_PDP_DEACTIVATE_IND事件 */
+    TAF_APS_SndPdpDeActivateInd(ucPdpId, TAF_APS_MapSmCause(pstSmPdpDeactivateInd->enCause));
+
+    /* 如果已经激活SNDCP, 需要向SNDCP发送去激活指示, 并等待SNDCP的响应，
+       如果SNDCP没有激活, 直接上报PDP去激活成功事件 */
+    if ( (APS_USED == pstPdpEntity->PdpProcTrackFlag)
+      && (APS_USED == pstPdpEntity->PdpProcTrack.ucSNDCPActOrNot) )
+    {
+        /* 释放SNDCP资源 */
+        Aps_ReleaseSndcpResource(ucPdpId);
+
+        pstPdpEntity->PdpProcTrack.ucSNDCPActOrNot = APS_SNDCP_INACT;
+    }
+
+    /* 释放APS资源 */
+    Aps_ReleaseApsResource(ucPdpId);
+
+    /* 配置IP过滤器 */
+    TAF_APS_IpfConfigUlFilter(ucPdpId);
+
+    /* 主状态迁移至TAF_APS_STA_INACTIVE, 退出子状态机 */
+    TAF_APS_SetCurrPdpEntityMainFsmState(TAF_APS_STA_INACTIVE);
+    TAF_APS_QuitCurrSubFsm();
+
+    return VOS_TRUE;
+}
+
+
+VOS_UINT32 TAF_APS_RcvApsLocalPdpDeactivateInd_MsModifying_WaitSmModifyCnf(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+)
+{
+    VOS_UINT8                               ucPdpId;
+    APS_PDP_CONTEXT_ENTITY_ST              *pstPdpEntity;
+
+    TAF_APS_INTER_PDP_DEACTIVATE_REQ_STRU  *pstLocalPdpDeactInd;
+
+    /* 初始化, 获取消息内容 */
+    ucPdpId                     = TAF_APS_GetCurrFsmEntityPdpId();
+    pstPdpEntity                = TAF_APS_GetPdpEntInfoAddr(ucPdpId);
+    pstLocalPdpDeactInd         = (TAF_APS_INTER_PDP_DEACTIVATE_REQ_STRU *)pstMsg;
+
+    /* 停止全流程状态机保护定时器*/
+    TAF_APS_StopTimer(TI_TAF_APS_MS_MODIFYING, ucPdpId);
+
+    /* 同步PDP状态&信息给ESM */
+#if (FEATURE_ON == FEATURE_LTE)
+    MN_APS_SndEsmPdpInfoInd(TAF_APS_GetPdpEntInfoAddr(ucPdpId),
+                            SM_ESM_PDP_OPT_DEACTIVATE);
+#endif
+
+    /* 上报ID_EVT_TAF_PS_CALL_PDP_DEACTIVATE_IND事件 */
+    TAF_APS_SndPdpDeActivateInd(ucPdpId, TAF_APS_MapSmCause(pstLocalPdpDeactInd->enCause));
+
+    /* 如果已经激活SNDCP, 需要向SNDCP发送去激活指示, 并等待SNDCP的响应，
+       如果SNDCP没有激活, 直接上报PDP去激活成功事件 */
+    if ( (APS_USED == pstPdpEntity->PdpProcTrackFlag)
+      && (APS_USED == pstPdpEntity->PdpProcTrack.ucSNDCPActOrNot) )
+    {
+        /* 释放SNDCP资源 */
+        Aps_ReleaseSndcpResource(ucPdpId);
+
+        pstPdpEntity->PdpProcTrack.ucSNDCPActOrNot = APS_SNDCP_INACT;
+    }
+
+    /* 释放APS资源 */
+    Aps_ReleaseApsResource(ucPdpId);
+
+    /* 配置IP过滤器 */
+    TAF_APS_IpfConfigUlFilter(ucPdpId);
+
+    /* 主状态迁移至TAF_APS_STA_INACTIVE, 退出子状态机 */
+    TAF_APS_SetCurrPdpEntityMainFsmState(TAF_APS_STA_INACTIVE);
+    TAF_APS_QuitCurrSubFsm();
+
+    return VOS_TRUE;
+}
+
+
+VOS_UINT32 TAF_APS_RcvMmcServiceStatusInd_MsModifying_WaitSmModifyCnf(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+)
+{
+    MMC_APS_SERVICE_STATUS_IND_STRU    *pstSerStaInd;
+
+    /* 初始化, 获取消息内容 */
+    pstSerStaInd                        = (MMC_APS_SERVICE_STATUS_IND_STRU*)pstMsg;
+
+    /* 设置当前网络类型 */
+    TAF_APS_SetCurrPdpEntityRatType(pstSerStaInd->enRatType);
+
+    /* 设置PS域SIM卡状态信息 */
+    TAF_APS_SetCurrPdpEntitySimRegStatus(pstSerStaInd->ulPsSimRegStatus);
+
+    /* 处理挂起指示 */
+    if (MMC_APS_RAT_TYPE_NULL == pstSerStaInd->enRatType)
+    {
+        /* 子状态迁移至TAF_APS_MS_MODIFYING_SUBSTA_WAIT_SM_MODIFY_CNF_SUSPEND */
+        TAF_APS_SetCurrPdpEntitySubFsmState(TAF_APS_MS_MODIFYING_SUBSTA_WAIT_SM_MODIFY_CNF_SUSPEND);
+    }
+    else
+    {
+        /* 此时到L模应该是一条异常消息 */
+        TAF_WARNING_LOG(WUEPS_PID_TAF,
+            "TAF_APS_RcvMmcServiceStatusInd_MsModifying_WaitSmModifyCnf: Wrong RAT Type!");
+
+        return VOS_TRUE;
+    }
+
+    return VOS_TRUE;
+}
+
+/*****************************************************************************
+ 函 数 名  : TAF_APS_RcvTafInternalPdpDeaReq_MsModifying_WaitSmModifyCnf
+ 功能描述  : TAF_APS_MS_MODIFYING_SUBSTA_WAIT_SM_MODIFY_CNF状态下收到
+             ID_APS_APS_INTERNAL_PDP_DEACTIVATE_REQ消息的处理
+ 输入参数  : ulEventType                - 消息ID
+             pstMsg                     - 消息指针
+ 输出参数  : 无
+ 返 回 值  : VOS_TRUE                   - 消息处理成功
+             VOS_FALSE                  - 消息处理失败
+ 调用函数  :
+ 被调函数  :
+
+ 修改历史      :
+  1.日    期   : 2011年12月30日
+    作    者   : zhangyizhan 60575
+    修改内容   : 新生成函数
+
+*****************************************************************************/
+VOS_UINT32  TAF_APS_RcvTafInternalPdpDeaReq_MsModifying_WaitSmModifyCnf(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+)
+{
+    VOS_UINT8                           ucPdpId;
+
+    /* 初始化, 获取Pdp ID */
+    ucPdpId                             = TAF_APS_GetCurrFsmEntityPdpId();
+
+    /* 停止全流程状态机保护定时器*/
+    TAF_APS_StopTimer(TI_TAF_APS_MS_MODIFYING, ucPdpId);
+
+    /*------------------------------------------------------------------
+       加载TAF_APS_STA_MS_DEACTIVATING状态机
+       加载后子状态切换为TAF_APS_MS_DEACTIVATING_SUBSTA_INIT
+
+       在TAF_APS_MS_DEACTIVATING_SUBSTA_INIT子状态中处理
+       ID_MSG_TAF_PS_SET_PDP_CONTEXT_STATE_REQ消息
+    ------------------------------------------------------------------*/
+    TAF_APS_InitSubFsm(TAF_APS_FSM_MS_DEACTIVATING,
+                       TAF_APS_GetMsDeactivatingFsmDescAddr(),
+                       TAF_APS_MS_DEACTIVATING_SUBSTA_INIT);
+
+    return VOS_TRUE;
+}
+
+
+VOS_UINT32  TAF_APS_RcvRabmLocalPdpDeactReq_MsModifying_WaitSmModifyCnf(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+)
+{
+    VOS_UINT8                           ucPdpId;
+
+    /* 获取PDP ID */
+    ucPdpId                             = TAF_APS_GetCurrFsmEntityPdpId();
+
+    /* 上报ID_EVT_TAF_PS_CALL_PDP_DEACTIVATE_IND事件 */
+    TAF_APS_SndPdpDeActivateInd(ucPdpId, TAF_PS_CAUSE_SM_RAB_SETUP_FAILURE);
+
+    /* 发送内部消息，进行去激活操作，状态机不迁移，直接在当前状态处理 */
+    TAF_APS_SndInterPdpDeactivateReq(ucPdpId, SM_TAF_CAUSE_SM_NW_REGULAR_DEACTIVATION);
+
+    return VOS_TRUE;
+}
+VOS_UINT32 TAF_APS_RcvTiTafApsMsModifyingExpired_MsModifying_WaitSmModifyCnf(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+)
+{
+    VOS_UINT8                           ucPdpId;
+
+    /* 初始化, 获取消息内容 */
+    ucPdpId                             = TAF_APS_GetCurrFsmEntityPdpId();
+
+    /* 上报ID_EVT_TAF_PS_CALL_PDP_MODIFY_REJ事件 */
+    TAF_APS_SndPdpModifyRej(ucPdpId, TAF_PS_CAUSE_SM_MAX_TIME_OUT);
+
+    /* 主状态迁移至TAF_APS_STA_ACTIVE, 退出子状态机 */
+    TAF_APS_SetCurrPdpEntityMainFsmState(TAF_APS_STA_ACTIVE);
+    TAF_APS_QuitCurrSubFsm();
+
+    return VOS_TRUE;
+}
+VOS_UINT32 TAF_APS_RcvAtSetPdpContextStateReq_MsModifying_WaitSmModifyCnfSuspend(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+)
+{
+    TAF_PS_MSG_STRU                    *pstAppMsg;
+    TAF_PS_SET_PDP_STATE_REQ_STRU      *pstPdpContextStateReq;
+    VOS_UINT8                           ucPdpId;
+
+    /* 获取PDP ID */
+    ucPdpId                             = TAF_APS_GetCurrFsmEntityPdpId();
+
+    /* 初始化, 获取消息内容 */
+    pstAppMsg                           = (TAF_PS_MSG_STRU*)pstMsg;
+    pstPdpContextStateReq               = (TAF_PS_SET_PDP_STATE_REQ_STRU*)(pstAppMsg->aucContent);
+
+    /* 已经激活该APS实体, 再激活该APS实体所用的CID,上报ERROR事件,
+       否则,发起去激活状态进行迁移 */
+    if ( TAF_CGACT_ACT == pstPdpContextStateReq->stCidListStateInfo.ucState )
+    {
+        /* 上报PDP激活错误事件 */
+        TAF_APS_SndSetPdpCtxStateCnf(&(pstPdpContextStateReq->stCtrl),
+                                    TAF_PS_CAUSE_CID_INVALID);
+    }
+    else
+    {
+        /* 停止全流程状态机保护定时器*/
+        TAF_APS_StopTimer(TI_TAF_APS_MS_MODIFYING, ucPdpId);
+
+        /*------------------------------------------------------------------
+           加载TAF_APS_STA_MS_DEACTIVATING状态机
+           加载后子状态切换为TAF_APS_MS_DEACTIVATING_SUBSTA_INIT
+
+           在TAF_APS_MS_DEACTIVATING_SUBSTA_INIT子状态中处理
+           ID_MSG_TAF_PS_SET_PDP_CONTEXT_STATE_REQ消息
+           子状态迁移至TAF_APS_MS_DEACTIVATING_SUBSTA_SUSPEND
+        ------------------------------------------------------------------*/
+        TAF_APS_InitSubFsm(TAF_APS_FSM_MS_DEACTIVATING,
+                           TAF_APS_GetMsDeactivatingFsmDescAddr(),
+                           TAF_APS_MS_DEACTIVATING_SUBSTA_INIT);
+    }
+
+    return VOS_TRUE;
+}
+
+
+VOS_UINT32 TAF_APS_RcvAtPsPppDailOrigReq_MsModifying_WaitSmModifyCnfSuspend(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+)
+{
+    TAF_PS_MSG_STRU                    *pstAppMsg;
+    TAF_PS_PPP_DIAL_ORIG_REQ_STRU      *pstPppDialOrigReq;
+
+    /* 初始化, 获取消息内容 */
+    pstAppMsg                           = (TAF_PS_MSG_STRU*)pstMsg;
+    pstPppDialOrigReq                   = (TAF_PS_PPP_DIAL_ORIG_REQ_STRU*)(pstAppMsg->aucContent);
+
+    /* 正在激活该APS实体, 激活该APS实体所用的CID, 返回ERROR */
+    TAF_APS_SndPppDialOrigCnf(&(pstPppDialOrigReq->stCtrl),
+                             TAF_PS_CAUSE_CID_INVALID);
+
+    return VOS_TRUE;
+}
+
+
+VOS_UINT32 TAF_APS_RcvAtPsCallOrigReq_MsModifying_WaitSmModifyCnfSuspend(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+)
+{
+    TAF_PS_MSG_STRU                    *pstAppMsg;
+    TAF_PS_CALL_ORIG_REQ_STRU          *pstCallOrigReq;
+
+    /* 初始化, 获取消息内容 */
+    pstAppMsg                           = (TAF_PS_MSG_STRU*)pstMsg;
+    pstCallOrigReq                      = (TAF_PS_CALL_ORIG_REQ_STRU*)(pstAppMsg->aucContent);
+
+    /* 正在激活该APS实体, 激活该APS实体所用的CID, 返回ERROR */
+    TAF_APS_SndCallOrigCnf(&(pstCallOrigReq->stCtrl),
+                          pstCallOrigReq->stDialParaInfo.ucCid,
+                          TAF_PS_CAUSE_CID_INVALID);
+
+    return VOS_TRUE;
+}
+
+
+VOS_UINT32 TAF_APS_RcvAtPsCallEndReq_MsModifying_WaitSmModifyCnfSuspend(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+)
+{
+    VOS_UINT8                           ucPdpId;
+
+    /* 获取当前处理的PDP ID */
+    ucPdpId = TAF_APS_GetCurrFsmEntityPdpId();
+
+    /* 停止全流程状态机保护定时器*/
+    TAF_APS_StopTimer(TI_TAF_APS_MS_MODIFYING, ucPdpId);
+
+    /*------------------------------------------------------------------
+       加载TAF_APS_STA_MS_DEACTIVATING状态机
+       加载后子状态切换为TAF_APS_MS_DEACTIVATING_SUBSTA_INIT
+
+       在TAF_APS_MS_DEACTIVATING_SUBSTA_INIT子状态中处理
+       ID_MSG_TAF_PS_SET_PDP_CONTEXT_STATE_REQ消息
+       子状态迁移至TAF_APS_MS_DEACTIVATING_SUBSTA_SUSPEND
+    ------------------------------------------------------------------*/
+    TAF_APS_InitSubFsm(TAF_APS_FSM_MS_DEACTIVATING,
+                       TAF_APS_GetMsDeactivatingFsmDescAddr(),
+                       TAF_APS_MS_DEACTIVATING_SUBSTA_INIT);
+
+   return VOS_TRUE;
+}
+
+
+VOS_UINT32 TAF_APS_RcvAtPsCallModifyReq_MsModifying_WaitSmModifyCnfSuspend(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+)
+{
+    TAF_PS_MSG_STRU                    *pstAppMsg;
+    TAF_PS_CALL_MODIFY_REQ_STRU        *pstCallModifyReq;
+
+    /* 初始化, 获取消息内容 */
+    pstAppMsg                           = (TAF_PS_MSG_STRU*)pstMsg;
+    pstCallModifyReq                    = (TAF_PS_CALL_MODIFY_REQ_STRU*)(pstAppMsg->aucContent);
+
+    /* 正在修改该APS实体, 修改该APS实体, 返回ERROR */
+    TAF_APS_SndCallModifyCnf(&(pstCallModifyReq->stCtrl),
+                            TAF_PS_CAUSE_CID_INVALID);
+
+    return VOS_TRUE;
+}
+
+
+VOS_UINT32 TAF_APS_RcvAtPsCallAnswerReq_MsModifying_WaitSmModifyCnfSuspend(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+)
+{
+    TAF_PS_MSG_STRU                    *pstAppMsg;
+    TAF_PS_CALL_ANSWER_REQ_STRU        *pstCallAnswerReq;
+
+    /* 初始化, 获取消息内容 */
+    pstAppMsg                           = (TAF_PS_MSG_STRU*)pstMsg;
+    pstCallAnswerReq                    = (TAF_PS_CALL_ANSWER_REQ_STRU*)(pstAppMsg->aucContent);
+
+    /* PS域MT呼叫流程, 方案未确定, 目前直接返回ERROR */
+    TAF_APS_SndCallAnswerCnf(&(pstCallAnswerReq->stCtrl),
+                            pstCallAnswerReq->stAnsInfo.ucCid,
+                            TAF_ERR_UNSPECIFIED_ERROR);
+
+    return VOS_TRUE;
+}
+
+
+VOS_UINT32 TAF_APS_RcvAtPsCallHangupReq_MsModifying_WaitSmModifyCnfSuspend(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+)
+{
+    TAF_PS_MSG_STRU                    *pstAppMsg;
+    TAF_PS_CALL_HANGUP_REQ_STRU        *pstCallHangupReq;
+
+    /* 初始化, 获取消息内容 */
+    pstAppMsg                           = (TAF_PS_MSG_STRU*)pstMsg;
+    pstCallHangupReq                    = (TAF_PS_CALL_HANGUP_REQ_STRU*)(pstAppMsg->aucContent);
+
+    /* PS域MT呼叫流程, 方案未确定, 目前直接返回ERROR */
+    TAF_APS_SndCallHangupCnf(&(pstCallHangupReq->stCtrl),
+                            TAF_ERR_UNSPECIFIED_ERROR);
+
+    return VOS_TRUE;
+}
+
+
+VOS_UINT32 TAF_APS_RcvSmPdpModifyRej_MsModifying_WaitSmModifyCnfSuspend(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+)
+{
+    VOS_UINT8                           ucPdpId;
+    SMREG_PDP_MODIFY_REJ_STRU          *pstSmMsg;
+
+    /* 初始化, 获取消息内容 */
+    pstSmMsg                            = (SMREG_PDP_MODIFY_REJ_STRU *)pstMsg;
+    ucPdpId                             = TAF_APS_GetCurrFsmEntityPdpId();
+
+    /* 停止全流程状态机保护定时器*/
+    TAF_APS_StopTimer(TI_TAF_APS_MS_MODIFYING, ucPdpId);
+
+    /* 上报ID_EVT_TAF_PS_CALL_PDP_MODIFY_REJ事件 */
+    TAF_APS_SndPdpModifyRej(ucPdpId, TAF_APS_MapSmCause(pstSmMsg->enCause));
+
+    /* 主状态迁移至TAF_APS_STA_ACTIVE, 退出子状态机 */
+    TAF_APS_SetCurrPdpEntityMainFsmState(TAF_APS_STA_ACTIVE);
+    TAF_APS_QuitCurrSubFsm();
+
+    return VOS_TRUE;
+}
+
+
+VOS_UINT32 TAF_APS_RcvSmPdpDeactivateInd_MsModifying_WaitSmModifyCnfSuspend(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+)
+{
+    VOS_UINT8                           ucPdpId;
+    APS_PDP_CONTEXT_ENTITY_ST          *pstPdpEntity;
+    SMREG_PDP_DEACTIVATE_IND_STRU      *pstSmPdpDeactivateInd;
+
+    ucPdpId                             = TAF_APS_GetCurrFsmEntityPdpId();
+    pstPdpEntity                        = TAF_APS_GetPdpEntInfoAddr(ucPdpId);
+    pstSmPdpDeactivateInd               = (SMREG_PDP_DEACTIVATE_IND_STRU*)pstMsg;
+
+    /* ID_PMC_SMREG_PDP_DEACTIV_IND消息处理说明,在状态机中不需要对TEARDOWN
+       再进行判断处理,APS在收到ID_PMC_SMREG_PDP_DEACTIV_IND消息首先进行预处
+       理,如果消息中带有TEARDOWN,预处理中找出都有哪些PDP待去激活,然后,将
+       ID_PMC_SMREG_PDP_DEACTIV_IND分发到相应的实体状态中,所以,在状态机中不再
+       对ID_PMC_SMREG_PDP_DEACTIV_IND中的TEARDOWN再作处理 */
+
+    /* 停止全流程状态机保护定时器*/
+    TAF_APS_StopTimer(TI_TAF_APS_MS_MODIFYING, ucPdpId);
+
+#if (FEATURE_ON == FEATURE_LTE)
+
+    /* 同步PDP状态&信息给ESM */
+    MN_APS_SndEsmPdpInfoInd(TAF_APS_GetPdpEntInfoAddr(ucPdpId),
+                            SM_ESM_PDP_OPT_DEACTIVATE);
+#endif
+
+    /* 如果SNDCP已经激活, 则去激活SNDCP */
+    if ( (APS_USED == pstPdpEntity->PdpProcTrackFlag)
+      && (APS_USED == pstPdpEntity->PdpProcTrack.ucSNDCPActOrNot))
+    {
+        /* 释放SNDCP资源 */
+        Aps_ReleaseSndcpResource(ucPdpId);
+
+        pstPdpEntity->PdpProcTrack.ucSNDCPActOrNot = APS_SNDCP_INACT;
+    }
+
+    /* 上报ID_EVT_TAF_PS_CALL_PDP_DEACTIVATE_IND事件 */
+    TAF_APS_SndPdpDeActivateInd(ucPdpId, TAF_APS_MapSmCause(pstSmPdpDeactivateInd->enCause));
+
+    /* 释放APS资源 */
+    Aps_ReleaseApsResource(ucPdpId);
+
+    /* 配置IP过滤器 */
+    TAF_APS_IpfConfigUlFilter(ucPdpId);
+
+    /* 主状态迁移至TAF_APS_STA_INACTIVE, 退出子状态机 */
+    TAF_APS_SetCurrPdpEntityMainFsmState(TAF_APS_STA_INACTIVE);
+    TAF_APS_QuitCurrSubFsm();
+
+    return VOS_TRUE;
+}
+
+
+VOS_UINT32 TAF_APS_RcvApsLocalPdpDeactivateInd_MsModifying_WaitSmModifyCnfSuspend(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+)
+{
+    VOS_UINT8                               ucPdpId;
+    APS_PDP_CONTEXT_ENTITY_ST              *pstPdpEntity;
+
+    TAF_APS_INTER_PDP_DEACTIVATE_REQ_STRU  *pstLocalPdpDeactInd;
+
+    ucPdpId                     = TAF_APS_GetCurrFsmEntityPdpId();
+    pstPdpEntity                = TAF_APS_GetPdpEntInfoAddr(ucPdpId);
+    pstLocalPdpDeactInd         = (TAF_APS_INTER_PDP_DEACTIVATE_REQ_STRU *)pstMsg;
+
+    /* 停止全流程状态机保护定时器 */
+    TAF_APS_StopTimer(TI_TAF_APS_MS_MODIFYING, ucPdpId);
+
+#if (FEATURE_ON == FEATURE_LTE)
+
+    /* 同步PDP状态&信息给ESM */
+    MN_APS_SndEsmPdpInfoInd(TAF_APS_GetPdpEntInfoAddr(ucPdpId),
+                            SM_ESM_PDP_OPT_DEACTIVATE);
+#endif
+
+    /* 如果SNDCP已经激活, 则去激活SNDCP */
+    if ( (APS_USED == pstPdpEntity->PdpProcTrackFlag)
+      && (APS_USED == pstPdpEntity->PdpProcTrack.ucSNDCPActOrNot))
+    {
+        /* 释放SNDCP资源 */
+        Aps_ReleaseSndcpResource(ucPdpId);
+
+        pstPdpEntity->PdpProcTrack.ucSNDCPActOrNot = APS_SNDCP_INACT;
+    }
+
+    /* 上报ID_EVT_TAF_PS_CALL_PDP_DEACTIVATE_IND事件 */
+    TAF_APS_SndPdpDeActivateInd(ucPdpId, TAF_APS_MapSmCause(pstLocalPdpDeactInd->enCause));
+
+    /* 释放APS资源 */
+    Aps_ReleaseApsResource(ucPdpId);
+
+    /* 配置IP过滤器 */
+    TAF_APS_IpfConfigUlFilter(ucPdpId);
+
+    /* 主状态迁移至TAF_APS_STA_INACTIVE, 退出子状态机 */
+    TAF_APS_SetCurrPdpEntityMainFsmState(TAF_APS_STA_INACTIVE);
+    TAF_APS_QuitCurrSubFsm();
+
+    return VOS_TRUE;
+}
+
+
+VOS_UINT32 TAF_APS_RcvMmcServiceStatusInd_MsModifying_WaitSmModifyCnfSuspend(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+)
+{
+    MMC_APS_SERVICE_STATUS_IND_STRU    *pstSerStaInd;
+#if (FEATURE_ON == FEATURE_LTE)
+    VOS_UINT8                           ucPdpId;
+#endif
+
+    /* 初始化, 获取消息内容 */
+    pstSerStaInd                        = (MMC_APS_SERVICE_STATUS_IND_STRU*)pstMsg;
+
+    /* 切换网络类型 */
+    TAF_APS_SetCurrPdpEntityRatType(pstSerStaInd->enRatType);
+
+    /* 设置PS域SIM卡状态信息 */
+    TAF_APS_SetCurrPdpEntitySimRegStatus(pstSerStaInd->ulPsSimRegStatus);
+
+    if ( (MMC_APS_RAT_TYPE_GSM == pstSerStaInd->enRatType)
+      || (MMC_APS_RAT_TYPE_WCDMA == pstSerStaInd->enRatType))
+    {
+        /*GU模下 ,不需要处理,继续等SM的回复,状态回到
+          TAF_APS_MS_DEACTIVATING_SUBSTA_WAIT_SM_DEACTIVATE_CNF
+        */
+        TAF_APS_SetCurrPdpEntitySubFsmState(TAF_APS_MS_MODIFYING_SUBSTA_WAIT_SM_MODIFY_CNF);
+    }
+#if (FEATURE_ON == FEATURE_LTE)
+    else if (MMC_APS_RAT_TYPE_LTE == pstSerStaInd->enRatType)
+    {
+        ucPdpId = TAF_APS_GetCurrFsmEntityPdpId();
+
+        /*向SM发送abort消息*/
+        TAF_APS_SndSmPdpAbortReq(ucPdpId);
+
+        /* LTE模下发起EPS承载修改请求 */
+        TAF_APS_RcvAtPsCallModifyReq_MsModifying_LteMode();
+    }
+#endif
+    else
+    {
+        ;
+    }
+
+    return VOS_TRUE;
+
+}
+
+
+VOS_UINT32 TAF_APS_RcvTiTafApsMsModifyingExpired_MsModifying_WaitSmModifyCnfSuspend(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+)
+{
+    VOS_UINT8                           ucPdpId;
+
+    /* 初始化, 获取消息内容 */
+    ucPdpId                             = TAF_APS_GetCurrFsmEntityPdpId();
+
+    /* 上报ID_EVT_TAF_PS_CALL_PDP_MODIFY_REJ事件 */
+    TAF_APS_SndPdpModifyRej(ucPdpId, TAF_PS_CAUSE_SM_MAX_TIME_OUT);
+
+    /* 主状态迁移至TAF_APS_STA_ACTIVE, 退出子状态机 */
+    TAF_APS_SetCurrPdpEntityMainFsmState(TAF_APS_STA_ACTIVE);
+    TAF_APS_QuitCurrSubFsm();
+
+    return VOS_TRUE;
+}
+VOS_UINT32 TAF_APS_RcvAtSetPdpContextStateReq_MsModifying_WaitSndcpModifyRsp(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+)
+{
+    TAF_PS_MSG_STRU                    *pstAppMsg;
+    TAF_PS_SET_PDP_STATE_REQ_STRU      *pstPdpContextStateReq;
+    VOS_UINT8                           ucPdpId;
+
+    /* 获取PDP ID */
+    ucPdpId                             = TAF_APS_GetCurrFsmEntityPdpId();
+
+    /* 初始化, 获取消息内容 */
+    pstAppMsg                           = (TAF_PS_MSG_STRU*)pstMsg;
+    pstPdpContextStateReq               = (TAF_PS_SET_PDP_STATE_REQ_STRU*)(pstAppMsg->aucContent);
+
+    /* 已经激活该APS实体, 再激活该APS实体所用的CID,上报ERROR事件,
+       否则,发起去激活状态进行迁移 */
+    if (TAF_CGACT_ACT == pstPdpContextStateReq->stCidListStateInfo.ucState )
+    {
+        /* 上报PDP激活错误事件 */
+        TAF_APS_SndSetPdpCtxStateCnf(&(pstPdpContextStateReq->stCtrl),
+                                    TAF_PS_CAUSE_CID_INVALID);
+    }
+    else
+    {
+        /* 停止全流程状态机保护定时器*/
+        TAF_APS_StopTimer(TI_TAF_APS_MS_MODIFYING, ucPdpId);
+
+        /*------------------------------------------------------------------
+           加载TAF_APS_STA_MS_DEACTIVATING状态机
+           加载后子状态切换为TAF_APS_MS_DEACTIVATING_SUBSTA_INIT
+
+           在TAF_APS_MS_DEACTIVATING_SUBSTA_INIT子状态中处理
+           ID_MSG_TAF_PS_SET_PDP_CONTEXT_STATE_REQ消息
+        ------------------------------------------------------------------*/
+        TAF_APS_InitSubFsm(TAF_APS_FSM_MS_DEACTIVATING,
+                           TAF_APS_GetMsDeactivatingFsmDescAddr(),
+                           TAF_APS_MS_DEACTIVATING_SUBSTA_INIT);
+    }
+
+    return VOS_TRUE;
+}
+
+
+VOS_UINT32 TAF_APS_RcvAtPsPppDailOrigReq_MsModifying_WaitSndcpModifyRsp(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+)
+{
+    TAF_PS_MSG_STRU                    *pstAppMsg;
+    TAF_PS_PPP_DIAL_ORIG_REQ_STRU      *pstPppDialOrigReq;
+
+    /* 初始化, 获取消息内容 */
+    pstAppMsg                           = (TAF_PS_MSG_STRU*)pstMsg;
+    pstPppDialOrigReq                   = (TAF_PS_PPP_DIAL_ORIG_REQ_STRU*)(pstAppMsg->aucContent);
+
+    /* 正在激活该APS实体, 激活该APS实体所用的CID, 返回ERROR */
+    TAF_APS_SndPppDialOrigCnf(&(pstPppDialOrigReq->stCtrl),
+                             TAF_PS_CAUSE_CID_INVALID);
+
+    return VOS_TRUE;
+}
+
+
+VOS_UINT32 TAF_APS_RcvAtPsCallOrigReq_MsModifying_WaitSndcpModifyRsp(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+)
+{
+    TAF_PS_MSG_STRU                    *pstAppMsg;
+    TAF_PS_CALL_ORIG_REQ_STRU          *pstCallOrigReq;
+
+    /* 初始化, 获取消息内容 */
+    pstAppMsg                           = (TAF_PS_MSG_STRU*)pstMsg;
+    pstCallOrigReq                      = (TAF_PS_CALL_ORIG_REQ_STRU*)(pstAppMsg->aucContent);
+
+    /* 正在激活该APS实体, 激活该APS实体所用的CID, 返回ERROR */
+    TAF_APS_SndCallOrigCnf(&(pstCallOrigReq->stCtrl),
+                          pstCallOrigReq->stDialParaInfo.ucCid,
+                          TAF_PS_CAUSE_CID_INVALID);
+
+    return VOS_TRUE;
+}
+
+
+VOS_UINT32 TAF_APS_RcvAtPsCallEndReq_MsModifying_WaitSndcpModifyRsp(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+)
+{
+    VOS_UINT8                           ucPdpId;
+
+    /* 获取当前处理的PDP ID */
+    ucPdpId = TAF_APS_GetCurrFsmEntityPdpId();
+
+    /* 停止全流程状态机保护定时器*/
+    TAF_APS_StopTimer(TI_TAF_APS_MS_MODIFYING, ucPdpId);
+
+    /*------------------------------------------------------------------
+       加载TAF_APS_STA_MS_DEACTIVATING状态机
+       加载后子状态切换为TAF_APS_MS_DEACTIVATING_SUBSTA_INIT
+
+       在TAF_APS_MS_DEACTIVATING_SUBSTA_INIT子状态中
+       处理ID_MSG_TAF_PS_CALL_END_REQ消息
+    ------------------------------------------------------------------*/
+    TAF_APS_InitSubFsm(TAF_APS_FSM_MS_DEACTIVATING,
+                       TAF_APS_GetMsDeactivatingFsmDescAddr(),
+                       TAF_APS_MS_DEACTIVATING_SUBSTA_INIT);
+
+    return VOS_TRUE;
+}
+
+
+VOS_UINT32 TAF_APS_RcvAtPsCallModifyReq_MsModifying_WaitSndcpModifyRsp(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+)
+{
+    TAF_PS_MSG_STRU                    *pstAppMsg;
+    TAF_PS_CALL_MODIFY_REQ_STRU        *pstCallModifyReq;
+
+    /* 初始化, 获取消息内容 */
+    pstAppMsg                           = (TAF_PS_MSG_STRU*)pstMsg;
+    pstCallModifyReq                    = (TAF_PS_CALL_MODIFY_REQ_STRU*)(pstAppMsg->aucContent);
+
+    /* 正在修改该APS实体, 修改该APS实体, 返回ERROR */
+    TAF_APS_SndCallModifyCnf(&(pstCallModifyReq->stCtrl),
+                            TAF_PS_CAUSE_CID_INVALID);
+
+    return VOS_TRUE;
+}
+
+
+VOS_UINT32 TAF_APS_RcvAtPsCallAnswerReq_MsModifying_WaitSndcpModifyRsp(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+)
+{
+    TAF_PS_MSG_STRU                    *pstAppMsg;
+    TAF_PS_CALL_ANSWER_REQ_STRU        *pstCallAnswerReq;
+
+    /* 初始化, 获取消息内容 */
+    pstAppMsg        = (TAF_PS_MSG_STRU*)pstMsg;
+    pstCallAnswerReq = (TAF_PS_CALL_ANSWER_REQ_STRU*)(pstAppMsg->aucContent);
+
+    /* PS域MT呼叫流程, 方案未确定, 目前直接返回ERROR */
+    TAF_APS_SndCallAnswerCnf(&(pstCallAnswerReq->stCtrl),
+                            pstCallAnswerReq->stAnsInfo.ucCid,
+                            TAF_ERR_UNSPECIFIED_ERROR);
+
+    return VOS_TRUE;
+}
+
+
+VOS_UINT32 TAF_APS_RcvAtPsCallHangupReq_MsModifying_WaitSndcpModifyRsp(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+)
+{
+    TAF_PS_MSG_STRU                    *pstAppMsg;
+    TAF_PS_CALL_HANGUP_REQ_STRU        *pstCallHangupReq;
+
+    /* 初始化, 获取消息内容 */
+    pstAppMsg                           = (TAF_PS_MSG_STRU*)pstMsg;
+    pstCallHangupReq                    = (TAF_PS_CALL_HANGUP_REQ_STRU*)(pstAppMsg->aucContent);
+
+    /* PS域MT呼叫流程, 方案未确定, 目前直接返回ERROR */
+    TAF_APS_SndCallHangupCnf(&(pstCallHangupReq->stCtrl),
+                            TAF_ERR_UNSPECIFIED_ERROR);
+
+    return VOS_TRUE;
+}
+
+
+VOS_UINT32 TAF_APS_RcvSndcpModifyRsp_MsModifying_WaitSndcpModifyRsp(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+)
+{
+    VOS_UINT8                           ucPdpId;
+    APS_SNDCP_MODIFY_RSP_ST            *pstSnModifyRsp;
+    TAF_APS_ENTRY_MSG_STRU             *pstEntryMsg;
+
+    /* 初始化, 获取消息内容 */
+    pstSnModifyRsp                      = &((APS_SNDCP_MODIFY_RSP_MSG*)pstMsg)->ApsSnMdfRsp;
+    ucPdpId                             = TAF_APS_GetCurrFsmEntityPdpId();
+    pstEntryMsg                         = TAF_APS_GetCurrSubFsmMsgAddr();
+
+    /* 根据触发流程的入口消息判断回复消息类型 */
+    switch (pstEntryMsg->ulEventType)
+    {
+        case TAF_BuildEventType(WUEPS_PID_SM, ID_SMREG_PDP_MODIFY_CNF):
+            /* 如果是用户发起的MODIFY，上报ID_EVT_TAF_PS_CALL_PDP_MODIFY_CNF事件 */
+            TAF_APS_SndPdpModifyCnf(ucPdpId);
+            break;
+
+        case TAF_BuildEventType(WUEPS_PID_SM, ID_SMREG_PDP_MODIFY_IND):
+
+            /* 如果是网络发起的MODIFY，上报ID_EVT_TAF_PS_CALL_PDP_MODIFY_IND事件 */
+            TAF_APS_SndPdpModifyInd(ucPdpId);
+            break;
+
+        default:
+            TAF_WARNING_LOG(WUEPS_PID_TAF,
+                "TAF_APS_RcvSndcpModifyRsp_MsModifying_WaitSndcpModifyRsp: invalid message!");
+            return VOS_TRUE;
+    }
+
+    /* 设置RABM的传输模式 */
+    Aps_SnMsgModSnMdfRsp(pstSnModifyRsp);
+
+    /* 停止全流程状态机保护定时器*/
+    TAF_APS_StopTimer(TI_TAF_APS_MS_MODIFYING, ucPdpId);
+
+    /* 主状态迁移至TAF_APS_STA_ACTIVE */
+    TAF_APS_SetCurrPdpEntityMainFsmState(TAF_APS_STA_ACTIVE);
+
+    /* 退出子状态机 */
+    TAF_APS_QuitCurrSubFsm();
+
+    return VOS_TRUE;
+}
+
+
+VOS_UINT32 TAF_APS_RcvSndcpStatusReq_MsModifying_WaitSndcpModifyRsp(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+)
+{
+    VOS_UINT32                          ulRet;
+    VOS_UINT8                           ucPdpId;
+    APS_SNDCP_STATUS_REQ_ST            *pstSnStatusReq;
+
+    /* 初始化, 获取消息内容 */
+    pstSnStatusReq                      = &((APS_SNDCP_STATUS_REQ_MSG*)pstMsg)->ApsSnStatusReq;
+    ucPdpId                             = TAF_APS_GetCurrFsmEntityPdpId();
+
+    /* 对SAPI进行检查 */
+    ulRet = Aps_SnMsgModSnStatusReqParaCheck(pstSnStatusReq);
+    if ( APS_PARA_VALID != ulRet )
+    {
+        MN_WARN_LOG("TAF_APS_RcvSndcpStatusReq_MsModifying_WaitSndcpModifyRsp:Aps_SnMsgModSnStatusReqParaCheck ERR ");
+        return VOS_TRUE;
+    }
+
+    /* 检查当前APS实体中的SAPI是否满足SN STATUS消息中指定的SAPI，满足时转入去激活 */
+    ulRet = TAF_APS_ValidatePdpForSnStatusReq(ucPdpId, pstSnStatusReq);
+    if (VOS_TRUE == ulRet)
+    {
+        /* 上报ID_EVT_TAF_PS_CALL_PDP_DEACTIVATE_IND事件 */
+        TAF_APS_SndPdpDeActivateInd(ucPdpId, TAF_PS_CAUSE_SM_NW_LLC_OR_SNDCP_FAILURE);
+
+        /* 发送内部消息，进行去激活操作，状态机不迁移，直接在当前状态处理 */
+        TAF_APS_SndInterPdpDeactivateReq(ucPdpId, SM_TAF_CAUSE_SM_NW_PROTOCOL_ERR_UNSPECIFIED);
+    }
+
+    return VOS_TRUE;
+}
+
+/*****************************************************************************
+ 函 数 名  : TAF_APS_RcvTafInternalPdpDeaReq_MsModifying_WaitSndcpModifyRsp
+ 功能描述  : TAF_APS_MS_MODIFYING_SUBSTA_WAIT_SNDCP_MODIFY_RSP子状态下
+             收到ID_APS_APS_INTERNAL_PDP_DEACTIVATE_REQ消息的处理
+ 输入参数  : ulEventType                - 消息ID
+             pstMsg                     - 消息指针
+ 输出参数  : 无
+ 返 回 值  : VOS_TRUE                   - 消息处理成功
+             VOS_FALSE                  - 消息处理失败
+ 调用函数  :
+ 被调函数  :
+
+ 修改历史      :
+  1.日    期   : 2012年1月2日
+    作    者   : zhangyizhan 60575
+    修改内容   : 新生成函数
+
+*****************************************************************************/
+VOS_UINT32  TAF_APS_RcvTafInternalPdpDeaReq_MsModifying_WaitSndcpModifyRsp(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+)
+{
+    VOS_UINT8                           ucPdpId;
+
+    /* 初始化, 获取Pdp ID */
+    ucPdpId                             = TAF_APS_GetCurrFsmEntityPdpId();
+
+    /* 停止全流程状态机保护定时器*/
+    TAF_APS_StopTimer(TI_TAF_APS_MS_MODIFYING, ucPdpId);
+
+    /*------------------------------------------------------------------
+       加载TAF_APS_STA_MS_DEACTIVATING状态机
+       加载后子状态切换为TAF_APS_MS_DEACTIVATING_SUBSTA_INIT
+
+       在TAF_APS_MS_DEACTIVATING_SUBSTA_INIT子状态中处理
+       ID_MSG_TAF_PS_SET_PDP_CONTEXT_STATE_REQ消息
+    ------------------------------------------------------------------*/
+    TAF_APS_InitSubFsm(TAF_APS_FSM_MS_DEACTIVATING,
+                       TAF_APS_GetMsDeactivatingFsmDescAddr(),
+                       TAF_APS_MS_DEACTIVATING_SUBSTA_INIT);
+
+    return VOS_TRUE;
+}
+
+
+VOS_UINT32 TAF_APS_RcvMmcServiceStatusInd_MsModifying_WaitSndcpModifyRsp(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+)
+{
+    MMC_APS_SERVICE_STATUS_IND_STRU    *pstSerStaInd;
+
+    /* 初始化, 获取消息内容 */
+    pstSerStaInd        = (MMC_APS_SERVICE_STATUS_IND_STRU*)pstMsg;
+
+
+    /* 设置当前网络类型 */
+    TAF_APS_SetCurrPdpEntityRatType(pstSerStaInd->enRatType);
+
+    /* 设置PS域SIM卡状态信息 */
+    TAF_APS_SetCurrPdpEntitySimRegStatus(pstSerStaInd->ulPsSimRegStatus);
+
+    /* 处理挂起指示 */
+    if (MMC_APS_RAT_TYPE_NULL == pstSerStaInd->enRatType)
+    {
+        /* 子状态迁移至TAF_APS_MS_MODIFYING_SUBSTA_WAIT_SNDCP_MODIFY_RSP_SUSPEND */
+        TAF_APS_SetCurrPdpEntitySubFsmState(TAF_APS_MS_MODIFYING_SUBSTA_WAIT_SNDCP_MODIFY_RSP_SUSPEND);
+    }
+    else
+    {
+        /* 此时到L模应该是一条异常消息 */
+        TAF_WARNING_LOG(WUEPS_PID_TAF,
+            "TAF_APS_RcvMmcServiceStatusInd_MsModifying_WaitSndcpModifyRsp: Wrong RAT Type!");
+
+        return VOS_TRUE;
+    }
+
+    return VOS_TRUE;
+}
+
+
+VOS_UINT32 TAF_APS_RcvTiTafApsMsModifyingExpired_MsModifying_WaitSndcpModifyRsp(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+)
+{
+    VOS_UINT8                           ucPdpId;
+
+    /* 初始化, 获取消息内容 */
+    ucPdpId                             = TAF_APS_GetCurrFsmEntityPdpId();
+
+    /* 上报ID_EVT_TAF_PS_CALL_PDP_MODIFY_REJ事件 */
+    TAF_APS_SndPdpModifyRej(ucPdpId, TAF_PS_CAUSE_SM_MAX_TIME_OUT);
+
+    /* 主状态迁移至TAF_APS_STA_ACTIVE, 退出子状态机 */
+    TAF_APS_SetCurrPdpEntityMainFsmState(TAF_APS_STA_ACTIVE);
+    TAF_APS_QuitCurrSubFsm();
+
+    return VOS_TRUE;
+}
+VOS_UINT32 TAF_APS_RcvAtSetPdpContextStateReq_MsModifying_WaitSndcpModifyRspSuspend(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+)
+{
+    TAF_PS_MSG_STRU                    *pstAppMsg;
+    TAF_PS_SET_PDP_STATE_REQ_STRU      *pstPdpContextStateReq;
+    VOS_UINT8                           ucPdpId;
+
+    /* 初始化, 获取消息内容 */
+    pstAppMsg             = (TAF_PS_MSG_STRU*)pstMsg;
+    pstPdpContextStateReq = (TAF_PS_SET_PDP_STATE_REQ_STRU*)(pstAppMsg->aucContent);
+    ucPdpId               = TAF_APS_GetCurrFsmEntityPdpId();
+
+    /* 已经激活该APS实体, 再激活该APS实体所用的CID,上报ERROR事件,
+       否则,发起去激活状态进行迁移 */
+    if ( TAF_CGACT_ACT == pstPdpContextStateReq->stCidListStateInfo.ucState )
+    {
+        /* 上报PDP激活错误事件 */
+        TAF_APS_SndSetPdpCtxStateCnf(&(pstPdpContextStateReq->stCtrl),
+                                    TAF_PS_CAUSE_CID_INVALID);
+    }
+    else
+    {
+        /* 停止全流程状态机保护定时器*/
+        TAF_APS_StopTimer(TI_TAF_APS_MS_MODIFYING, ucPdpId);
+
+        /*------------------------------------------------------------------
+           加载TAF_APS_STA_MS_DEACTIVATING状态机
+           加载后子状态切换为TAF_APS_MS_DEACTIVATING_SUBSTA_INIT
+
+           在TAF_APS_MS_DEACTIVATING_SUBSTA_INIT子状态中
+           处理ID_MSG_TAF_PS_SET_PDP_CONTEXT_STATE_REQ消息
+        ------------------------------------------------------------------*/
+        TAF_APS_InitSubFsm(TAF_APS_FSM_MS_DEACTIVATING,
+                           TAF_APS_GetMsDeactivatingFsmDescAddr(),
+                           TAF_APS_MS_DEACTIVATING_SUBSTA_INIT);
+    }
+
+    return VOS_TRUE;
+
+}
+
+
+VOS_UINT32 TAF_APS_RcvAtPsPppDailOrigReq_MsModifying_WaitSndcpModifyRspSuspend(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+)
+{
+    TAF_PS_MSG_STRU                    *pstAppMsg;
+    TAF_PS_PPP_DIAL_ORIG_REQ_STRU      *pstPppDialOrigReq;
+
+    /* 初始化, 获取消息内容 */
+    pstAppMsg         = (TAF_PS_MSG_STRU*)pstMsg;
+    pstPppDialOrigReq = (TAF_PS_PPP_DIAL_ORIG_REQ_STRU*)(pstAppMsg->aucContent);
+
+    /* 正在激活该APS实体, 激活该APS实体所用的CID, 返回ERROR */
+    TAF_APS_SndPppDialOrigCnf(&(pstPppDialOrigReq->stCtrl),
+                             TAF_PS_CAUSE_CID_INVALID);
+
+    return VOS_TRUE;
+
+}
+
+
+VOS_UINT32 TAF_APS_RcvAtPsCallOrigReq_MsModifying_WaitSndcpModifyRspSuspend(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+)
+{
+    TAF_PS_MSG_STRU                    *pstAppMsg;
+    TAF_PS_CALL_ORIG_REQ_STRU          *pstCallOrigReq;
+
+    /* 初始化, 获取消息内容 */
+    pstAppMsg       = (TAF_PS_MSG_STRU*)pstMsg;
+    pstCallOrigReq  = (TAF_PS_CALL_ORIG_REQ_STRU*)(pstAppMsg->aucContent);
+
+    /* 正在激活该APS实体, 激活该APS实体所用的CID, 返回ERROR */
+    TAF_APS_SndCallOrigCnf(&(pstCallOrigReq->stCtrl), pstCallOrigReq->stDialParaInfo.ucCid, TAF_PS_CAUSE_CID_INVALID);
+
+    return VOS_TRUE;
+
+}
+
+
+VOS_UINT32 TAF_APS_RcvAtPsCallEndReq_MsModifying_WaitSndcpModifyRspSuspend(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+)
+{
+    VOS_UINT8                           ucPdpId;
+
+    /* 获取当前处理的PDP ID */
+    ucPdpId = TAF_APS_GetCurrFsmEntityPdpId();
+
+    /* 停止全流程状态机保护定时器*/
+    TAF_APS_StopTimer(TI_TAF_APS_MS_MODIFYING, ucPdpId);
+
+    /*------------------------------------------------------------------
+       加载TAF_APS_STA_MS_DEACTIVATING状态机
+       加载后子状态切换为TAF_APS_MS_DEACTIVATING_SUBSTA_INIT
+
+       在TAF_APS_MS_DEACTIVATING_SUBSTA_INIT子状态中
+       处理ID_MSG_TAF_PS_SET_PDP_CONTEXT_STATE_REQ消息
+    ------------------------------------------------------------------*/
+    TAF_APS_InitSubFsm(TAF_APS_FSM_MS_DEACTIVATING,
+                       TAF_APS_GetMsDeactivatingFsmDescAddr(),
+                       TAF_APS_MS_DEACTIVATING_SUBSTA_INIT);
+
+    return VOS_TRUE;
+}
+
+
+VOS_UINT32 TAF_APS_RcvAtPsCallModifyReq_MsModifying_WaitSndcpModifyRspSuspend(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+)
+{
+    TAF_PS_MSG_STRU                    *pstAppMsg;
+    TAF_PS_CALL_MODIFY_REQ_STRU        *pstCallModifyReq;
+
+    /* 初始化, 获取消息内容 */
+    pstAppMsg        = (TAF_PS_MSG_STRU*)pstMsg;
+    pstCallModifyReq = (TAF_PS_CALL_MODIFY_REQ_STRU*)(pstAppMsg->aucContent);
+
+    /* 异常消息, 直接向用户返回OK */
+    TAF_APS_SndCallModifyCnf(&(pstCallModifyReq->stCtrl), TAF_PS_CAUSE_CID_INVALID);
+
+    return VOS_TRUE;
+}
+
+
+VOS_UINT32 TAF_APS_RcvAtPsCallAnswerReq_MsModifying_WaitSndcpModifyRspSuspend(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+)
+{
+    TAF_PS_MSG_STRU                    *pstAppMsg;
+    TAF_PS_CALL_ANSWER_REQ_STRU        *pstCallAnswerReq;
+
+    /* 初始化, 获取消息内容 */
+    pstAppMsg                           = (TAF_PS_MSG_STRU*)pstMsg;
+    pstCallAnswerReq                    = (TAF_PS_CALL_ANSWER_REQ_STRU*)(pstAppMsg->aucContent);
+
+    /* PS域MT呼叫流程, 方案未确定, 目前直接返回ERROR */
+    TAF_APS_SndCallAnswerCnf(&(pstCallAnswerReq->stCtrl),
+                            pstCallAnswerReq->stAnsInfo.ucCid,
+                            TAF_ERR_UNSPECIFIED_ERROR);
+
+    return VOS_TRUE;
+}
+
+
+VOS_UINT32 TAF_APS_RcvAtPsCallHangupReq_MsModifying_WaitSndcpModifyRspSuspend(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+)
+{
+    TAF_PS_MSG_STRU                    *pstAppMsg;
+    TAF_PS_CALL_HANGUP_REQ_STRU        *pstCallHangupReq;
+
+    /* 初始化, 获取消息内容 */
+    pstAppMsg                           = (TAF_PS_MSG_STRU*)pstMsg;
+    pstCallHangupReq                    = (TAF_PS_CALL_HANGUP_REQ_STRU*)(pstAppMsg->aucContent);
+
+    /* PS域MT呼叫流程, 方案未确定, 目前直接返回ERROR */
+    TAF_APS_SndCallHangupCnf(&(pstCallHangupReq->stCtrl),
+                            TAF_ERR_UNSPECIFIED_ERROR);
+
+    return VOS_TRUE;
+}
+
+
+VOS_UINT32 TAF_APS_RcvSndcpModifyRsp_MsModifying_WaitSndcpModifyRspSuspend(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+)
+{
+    VOS_UINT8                           ucPdpId;
+
+    /* 初始化, 获取消息内容 */
+    ucPdpId                             = TAF_APS_GetCurrFsmEntityPdpId();
+
+    /* 停止全流程状态机保护定时器*/
+    TAF_APS_StopTimer(TI_TAF_APS_MS_MODIFYING, ucPdpId);
+
+    /* 上报ID_EVT_TAF_PS_CALL_PDP_MODIFY_CNF事件 */
+    TAF_APS_SndPdpModifyCnf(ucPdpId);
+
+    /* 主状态迁移至TAF_APS_STA_ACTIVE, 退出子状态机 */
+    TAF_APS_SetCurrPdpEntityMainFsmState(TAF_APS_STA_ACTIVE);
+
+    /* 退出子状态机 */
+    TAF_APS_QuitCurrSubFsm();
+
+    return VOS_TRUE;
+}
+VOS_UINT32 TAF_APS_RcvSndcpStatusReq_MsModifying_WaitSndcpModifyRspSuspend(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+)
+{
+    VOS_UINT32                          ulRet;
+    VOS_UINT8                           ucPdpId;
+    APS_SNDCP_STATUS_REQ_ST            *pstSnStatusReq;
+
+    pstSnStatusReq                      = &((APS_SNDCP_STATUS_REQ_MSG*)pstMsg)->ApsSnStatusReq;
+    ucPdpId                             = TAF_APS_GetCurrFsmEntityPdpId();
+
+    ulRet = Aps_SnMsgModSnStatusReqParaCheck(pstSnStatusReq);
+    if (APS_PARA_VALID != ulRet)
+    {
+        TAF_WARNING_LOG(WUEPS_PID_TAF,
+            "TAF_APS_RcvSndcpStatusReq_MsModifying_WaitSndcpModifyRspSuspend: Check para failed! ");
+
+        return VOS_TRUE;
+    }
+
+    ulRet = TAF_APS_ValidatePdpForSnStatusReq(ucPdpId, pstSnStatusReq);
+    if (VOS_TRUE == ulRet)
+    {
+        /* 上报ID_EVT_TAF_PS_CALL_PDP_DEACTIVATE_IND事件 */
+        TAF_APS_SndPdpDeActivateInd(ucPdpId, TAF_PS_CAUSE_SM_NW_LLC_OR_SNDCP_FAILURE);
+
+        /* 发送内部消息，进行去激活操作，状态机不迁移，直接在当前状态处理 */
+        TAF_APS_SndInterPdpDeactivateReq(ucPdpId, SM_TAF_CAUSE_SM_NW_PROTOCOL_ERR_UNSPECIFIED);
+    }
+
+    return VOS_TRUE;
+}
+
+
+VOS_UINT32 TAF_APS_RcvMmcServiceStatusInd_MsModifying_WaitSndcpModifyRspSuspend(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+)
+{
+    MMC_APS_SERVICE_STATUS_IND_STRU    *pstSerStaInd;
+#if (FEATURE_ON == FEATURE_LTE)
+    APS_PDP_CONTEXT_ENTITY_ST          *pstPdpEntity;
+    VOS_UINT8                           ucPdpId;
+#endif
+
+    /* 初始化, 获取消息内容 */
+    pstSerStaInd                        = (MMC_APS_SERVICE_STATUS_IND_STRU*)pstMsg;
+
+    /* 设置当前网络类型 */
+    TAF_APS_SetCurrPdpEntityRatType(pstSerStaInd->enRatType);
+
+    /* 设置PS域SIM卡状态信息 */
+    TAF_APS_SetCurrPdpEntitySimRegStatus(pstSerStaInd->ulPsSimRegStatus);
+
+    if ( (MMC_APS_RAT_TYPE_GSM == pstSerStaInd->enRatType)
+      || (MMC_APS_RAT_TYPE_WCDMA == pstSerStaInd->enRatType))
+    {
+        /*GU模下 ,不需要处理,继续等SNDCP的回复,状态回到
+          TAF_APS_MS_MODIFYING_SUBSTA_WAIT_SNDCP_MODIFY_RSP
+        */
+        TAF_APS_SetCurrPdpEntitySubFsmState(TAF_APS_MS_MODIFYING_SUBSTA_WAIT_SNDCP_MODIFY_RSP);
+    }
+#if (FEATURE_ON == FEATURE_LTE)
+    else if (MMC_APS_RAT_TYPE_LTE == pstSerStaInd->enRatType)
+    {
+        ucPdpId                             = TAF_APS_GetCurrFsmEntityPdpId();
+        pstPdpEntity                        = TAF_APS_GetPdpEntInfoAddr(ucPdpId);
+
+        /* 释放SNDCP资源 */
+        Aps_ReleaseSndcpResource(ucPdpId);
+
+        /* 设置SNDCP未激活 */
+        pstPdpEntity->PdpProcTrack.ucSNDCPActOrNot = APS_SNDCP_INACT;
+
+        /* LTE模下发起EPS承载修改请求 */
+        TAF_APS_RcvAtPsCallModifyReq_MsModifying_LteMode();
+    }
+#endif
+    else
+    {
+        TAF_WARNING_LOG(WUEPS_PID_TAF,
+            "TAF_APS_RcvMmcServiceStatusInd_MsModifying_WaitSndcpModifyRspSuspend:rev msg err!");
+    }
+
+    return VOS_TRUE;
+}
+
+/*****************************************************************************
+ 函 数 名  : TAF_APS_RcvTafInternalPdpDeaReq_MsModifying_WaitSndcpModifyRspSuspend
+ 功能描述  : TAF_APS_MS_MODIFYING_SUBSTA_WAIT_SNDCP_MODIFY_RSP_SUSPEND状态下收到
+             ID_APS_APS_INTERNAL_PDP_DEACTIVATE_REQ消息的处理
+ 输入参数  : ulEventType                - 消息ID
+             pstMsg                     - 消息指针
+ 输出参数  : 无
+ 返 回 值  : VOS_TRUE                   - 消息处理成功
+             VOS_FALSE                  - 消息处理失败
+ 调用函数  :
+ 被调函数  :
+
+ 修改历史      :
+  1.日    期   : 2011年12月30日
+    作    者   : zhangyizhan 60575
+    修改内容   : 新生成函数
+
+*****************************************************************************/
+VOS_UINT32  TAF_APS_RcvTafInternalPdpDeaReq_MsModifying_WaitSndcpModifyRspSuspend(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+)
+{
+    VOS_UINT8                           ucPdpId;
+
+    /* 初始化, 获取Pdp ID */
+    ucPdpId                             = TAF_APS_GetCurrFsmEntityPdpId();
+
+    /* 停止全流程状态机保护定时器*/
+    TAF_APS_StopTimer(TI_TAF_APS_MS_MODIFYING, ucPdpId);
+
+    /*------------------------------------------------------------------
+       加载TAF_APS_STA_MS_DEACTIVATING状态机
+       加载后子状态切换为TAF_APS_MS_DEACTIVATING_SUBSTA_INIT
+
+       在TAF_APS_MS_DEACTIVATING_SUBSTA_INIT子状态中处理
+       ID_MSG_TAF_PS_SET_PDP_CONTEXT_STATE_REQ消息
+    ------------------------------------------------------------------*/
+    TAF_APS_InitSubFsm(TAF_APS_FSM_MS_DEACTIVATING,
+                       TAF_APS_GetMsDeactivatingFsmDescAddr(),
+                       TAF_APS_MS_DEACTIVATING_SUBSTA_INIT);
+
+    return VOS_TRUE;
+}
+
+
+
+VOS_UINT32 TAF_APS_RcvTiTafApsMsModifyingExpired_MsModifying_WaitSndcpModifyRspSuspend(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+)
+{
+    VOS_UINT8                           ucPdpId;
+
+    /* 初始化, 获取消息内容 */
+    ucPdpId                             = TAF_APS_GetCurrFsmEntityPdpId();
+
+    /* 上报ID_EVT_TAF_PS_CALL_PDP_MODIFY_REJ事件 */
+    TAF_APS_SndPdpModifyRej(ucPdpId, TAF_PS_CAUSE_SM_MAX_TIME_OUT);
+
+    /* 主状态迁移至TAF_APS_STA_ACTIVE, 退出子状态机 */
+    TAF_APS_SetCurrPdpEntityMainFsmState(TAF_APS_STA_ACTIVE);
+    TAF_APS_QuitCurrSubFsm();
+
+    return VOS_TRUE;
+}
+VOS_UINT32 TAF_APS_RcvAtPsCallModifyReq_MsModifying_GuMode(VOS_VOID)
+{
+    VOS_UINT8                           ucErrCode;
+    VOS_UINT8                           ucPdpId;
+    TAF_APS_TIMER_STATUS_ENUM_U8        enTimerStatus;
+    TAF_APS_ENTRY_MSG_STRU             *pstEntryMsg;
+    TAF_PS_MSG_STRU                    *pstAppMsg;
+    TAF_PS_CALL_MODIFY_REQ_STRU        *pstCallModifyReq;
+
+    /* 初始化, 获取消息内容 */
+    ucErrCode                           = TAF_ERR_NO_ERROR;
+    pstEntryMsg                         = TAF_APS_GetCurrSubFsmMsgAddr();
+    pstAppMsg                           = (TAF_PS_MSG_STRU*)(pstEntryMsg->aucEntryMsgBuffer);
+    pstCallModifyReq                    = (TAF_PS_CALL_MODIFY_REQ_STRU*)(pstAppMsg->aucContent);
+    ucPdpId                             = TAF_APS_GetCurrFsmEntityPdpId();
+
+    /* 修改PS CALL参数: QOS等 */
+    Aps_PsCallModify(pstCallModifyReq->stCtrl.usClientId,
+                     pstCallModifyReq->stCtrl.ucOpId,
+                     ucPdpId,
+                     &ucErrCode);
+    if (TAF_ERR_NO_ERROR != ucErrCode)
+    {
+        /* 返回PDP操作结果 */
+        TAF_APS_SndCallModifyCnf(&(pstCallModifyReq->stCtrl),
+                                TAF_PS_CAUSE_UNKNOWN);
+
+        /* 主状态迁移至TAF_APS_STA_ACTIVE, 退出子状态机 */
+        TAF_APS_SetCurrPdpEntityMainFsmState(TAF_APS_STA_ACTIVE);
+        TAF_APS_QuitCurrSubFsm();
+    }
+    else
+    {
+        /* 返回PDP操作结果 */
+        TAF_APS_SndCallModifyCnf(&(pstCallModifyReq->stCtrl),
+                                TAF_PS_CAUSE_SUCCESS);
+
+        /* 子状态迁移至TAF_APS_MS_MODIFYING_SUBSTA_WAIT_SM_MODIFY_CNF */
+        TAF_APS_SetCurrPdpEntitySubFsmState(TAF_APS_MS_MODIFYING_SUBSTA_WAIT_SM_MODIFY_CNF);
+
+        /* 由于可能GU和LTE间反复多次切换，因此有可能定时器之前已经启动，此处不能
+           重启，因此只有定时器未启动时才启动 */
+        enTimerStatus = TAF_APS_GetTimerStatus(TI_TAF_APS_MS_MODIFYING,
+                                               ucPdpId);
+        if (TAF_APS_TIMER_STATUS_STOP == enTimerStatus)
+        {
+            /* 起保护定时器 */
+            TAF_APS_StartTimer(TI_TAF_APS_MS_MODIFYING,
+                               TI_TAF_APS_MS_MODIFYING_LEN,
+                               ucPdpId);
+        }
+    }
+
+    return VOS_TRUE;
+}
+
+#if (FEATURE_ON == FEATURE_LTE)
+VOS_UINT32 TAF_APS_RcvAtSetPdpContextStateReq_MsModifying_WaitL4aModifyCnf(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+)
+{
+    VOS_UINT8                           ucPdpId;
+    TAF_PS_MSG_STRU                    *pstAppMsg;
+    TAF_PS_SET_PDP_STATE_REQ_STRU      *pstPdpContextStateReq;
+
+    /* 初始化, 获取消息内容 */
+    pstAppMsg             = (TAF_PS_MSG_STRU*)pstMsg;
+    pstPdpContextStateReq = (TAF_PS_SET_PDP_STATE_REQ_STRU*)(pstAppMsg->aucContent);
+    ucPdpId               = TAF_APS_GetCurrFsmEntityPdpId();
+
+    /* 已经激活该APS实体, 再激活该APS实体所用的CID,上报ERROR事件,
+       否则,发起去激活状态进行迁移 */
+    if (TAF_CGACT_ACT == pstPdpContextStateReq->stCidListStateInfo.ucState )
+    {
+        /* 上报PDP激活错误事件 */
+        TAF_APS_SndSetPdpCtxStateCnf(&(pstPdpContextStateReq->stCtrl),
+                                    TAF_PS_CAUSE_CID_INVALID);
+    }
+    else
+    {
+        /* 停止激活流程定时器 */
+        TAF_APS_StopTimer(TI_TAF_APS_MS_MODIFYING,
+                          ucPdpId);
+
+        /* 上报ID_EVT_TAF_PS_CALL_PDP_DEACTIVATE_CNF事件 */
+        TAF_APS_SndPdpDeActivateCnf(ucPdpId, TAF_APS_GetPdpEntCurrCid(ucPdpId));
+
+        /* 向SM发送ABORT请求, 取消当前激活操作 */
+        TAF_APS_SndL4aAbortReq(TAF_APS_GetPdpEntCurrCid(ucPdpId));
+
+        /* 释放APS资源 */
+        Aps_ReleaseApsResource(ucPdpId);
+
+        /* 主状态迁移至TAF_APS_STA_INACTIVE, 退出子状态机 */
+        TAF_APS_SetCurrPdpEntityMainFsmState(TAF_APS_STA_INACTIVE);
+        TAF_APS_QuitCurrSubFsm();
+
+    }
+
+    return VOS_TRUE;
+
+}
+
+
+VOS_UINT32 TAF_APS_RcvAtPsPppDailOrigReq_MsModifying_WaitL4aModifyCnf(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+)
+{
+    TAF_PS_MSG_STRU                    *pstAppMsg;
+    TAF_PS_PPP_DIAL_ORIG_REQ_STRU      *pstPppDialOrigReq;
+
+    /* 初始化, 获取消息内容 */
+    pstAppMsg                           = (TAF_PS_MSG_STRU*)pstMsg;
+    pstPppDialOrigReq                   = (TAF_PS_PPP_DIAL_ORIG_REQ_STRU*)(pstAppMsg->aucContent);
+
+    /* 正在修改该APS实体, 激活该APS实体所用的CID, 返回ERROR */
+    TAF_APS_SndPppDialOrigCnf(&(pstPppDialOrigReq->stCtrl),
+                             TAF_PS_CAUSE_CID_INVALID);
+
+    return VOS_TRUE;
+
+}
+
+
+VOS_UINT32 TAF_APS_RcvAtPsCallOrigReq_MsModifying_WaitL4aModifyCnf(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+)
+{
+    TAF_PS_MSG_STRU                    *pstAppMsg;
+    TAF_PS_CALL_ORIG_REQ_STRU          *pstCallOrigReq;
+
+    /* 初始化, 获取消息内容 */
+    pstAppMsg       = (TAF_PS_MSG_STRU*)pstMsg;
+    pstCallOrigReq  = (TAF_PS_CALL_ORIG_REQ_STRU*)(pstAppMsg->aucContent);
+
+    /* 正在修改该APS实体, 激活该APS实体所用的CID, 返回ERROR */
+    TAF_APS_SndCallOrigCnf(&(pstCallOrigReq->stCtrl),
+                          pstCallOrigReq->stDialParaInfo.ucCid,
+                          TAF_PS_CAUSE_CID_INVALID);
+
+    return VOS_TRUE;
+}
+
+
+VOS_UINT32 TAF_APS_RcvAtPsCallEndReq_MsModifying_WaitL4aModifyCnf(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+)
+{
+    VOS_UINT8                           ucPdpId;
+
+    /* 获取当前处理的PDP ID */
+    ucPdpId = TAF_APS_GetCurrFsmEntityPdpId();
+
+    /* 停止全流程状态机保护定时器*/
+    TAF_APS_StopTimer(TI_TAF_APS_MS_MODIFYING, ucPdpId);
+
+    /*------------------------------------------------------------------
+       加载TAF_APS_STA_MS_DEACTIVATING状态机
+       加载后子状态切换为TAF_APS_MS_DEACTIVATING_SUBSTA_INIT
+
+       在TAF_APS_MS_DEACTIVATING_SUBSTA_INIT子状态中
+       处理ID_MSG_TAF_PS_SET_PDP_CONTEXT_STATE_REQ消息
+    ------------------------------------------------------------------*/
+    TAF_APS_InitSubFsm(TAF_APS_FSM_MS_DEACTIVATING,
+                       TAF_APS_GetMsDeactivatingFsmDescAddr(),
+                       TAF_APS_MS_DEACTIVATING_SUBSTA_INIT);
+
+    return VOS_TRUE;
+}
+
+
+VOS_UINT32 TAF_APS_RcvAtPsCallModifyReq_MsModifying_WaitL4aModifyCnf(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+)
+{
+    TAF_PS_MSG_STRU                    *pstAppMsg;
+    TAF_PS_CALL_MODIFY_REQ_STRU        *pstCallModifyReq;
+
+    /* 初始化, 获取消息内容 */
+    pstAppMsg                           = (TAF_PS_MSG_STRU*)pstMsg;
+    pstCallModifyReq                    = (TAF_PS_CALL_MODIFY_REQ_STRU*)(pstAppMsg->aucContent);
+
+    /* 异常消息, 直接向用户返回ERROR */
+    TAF_APS_SndCallModifyCnf(&(pstCallModifyReq->stCtrl),
+                            TAF_PS_CAUSE_CID_INVALID);
+
+    return VOS_TRUE;
+}
+
+
+VOS_UINT32 TAF_APS_RcvAtPsCallAnswerReq_MsModifying_WaitL4aModifyCnf(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+)
+{
+    TAF_PS_MSG_STRU                    *pstAppMsg;
+    TAF_PS_CALL_ANSWER_REQ_STRU        *pstCallAnswerReq;
+
+    /* 初始化, 获取消息内容 */
+    pstAppMsg                           = (TAF_PS_MSG_STRU*)pstMsg;
+    pstCallAnswerReq                    = (TAF_PS_CALL_ANSWER_REQ_STRU*)(pstAppMsg->aucContent);
+
+    /* PS域MT呼叫流程, 方案未确定, 目前直接返回ERROR */
+    TAF_APS_SndCallAnswerCnf(&(pstCallAnswerReq->stCtrl),
+                            pstCallAnswerReq->stAnsInfo.ucCid,
+                            TAF_ERR_UNSPECIFIED_ERROR);
+
+    return VOS_TRUE;
+}
+
+
+VOS_UINT32 TAF_APS_RcvAtPsCallHangupReq_MsModifying_WaitL4aModifyCnf(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+)
+{
+    TAF_PS_MSG_STRU                    *pstAppMsg;
+    TAF_PS_CALL_HANGUP_REQ_STRU        *pstCallHangupReq;
+
+    /* 初始化, 获取消息内容 */
+    pstAppMsg                           = (TAF_PS_MSG_STRU*)pstMsg;
+    pstCallHangupReq                    = (TAF_PS_CALL_HANGUP_REQ_STRU*)(pstAppMsg->aucContent);
+
+    /* PS域MT呼叫流程, 方案未确定, 目前直接返回ERROR */
+    TAF_APS_SndCallHangupCnf(&(pstCallHangupReq->stCtrl),
+                            TAF_ERR_UNSPECIFIED_ERROR);
+
+    return VOS_TRUE;
+}
+
+
+VOS_UINT32 TAF_APS_RcvL4aPdpModifyCnf_MsModifying_WaitL4aModifyCnf(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+)
+{
+    VOS_UINT8                           ucPdpId;
+
+    /* 初始化, 获取消息内容 */
+    ucPdpId = TAF_APS_GetCurrFsmEntityPdpId();
+
+    /* 停止全流程状态机保护定时器*/
+    TAF_APS_StopTimer(TI_TAF_APS_MS_MODIFYING, ucPdpId);
+
+    /* 上报ID_EVT_TAF_PS_CALL_PDP_MODIFY_CNF事件 */
+    TAF_APS_SndPdpModifyCnf(ucPdpId);
+
+    /* 主状态迁移至TAF_APS_STA_ACTIVE, 退出子状态机 */
+    TAF_APS_SetCurrPdpEntityMainFsmState(TAF_APS_STA_ACTIVE);
+    TAF_APS_QuitCurrSubFsm();
+
+    return VOS_TRUE;
+}
+
+
+
+VOS_UINT32 TAF_APS_RcvL4aPdpModifyRej_MsModifying_WaitL4aModifyCnf(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+)
+{
+    VOS_UINT8                           ucPdpId;
+    APS_L4A_PDP_MODIFY_REJ_STRU        *pstL4aPdpModifyRej;
+
+    /* 初始化, 获取消息内容 */
+    pstL4aPdpModifyRej                  = (APS_L4A_PDP_MODIFY_REJ_STRU*)pstMsg;
+    ucPdpId                             = TAF_APS_GetCurrFsmEntityPdpId();
+
+    /* 停止全流程状态机保护定时器*/
+    TAF_APS_StopTimer(TI_TAF_APS_MS_MODIFYING, ucPdpId);
+
+    /* 上报ID_EVT_TAF_PS_CALL_PDP_MODIFY_REJ事件 */
+    TAF_APS_SndPdpModifyRej(ucPdpId, TAF_APS_MapL4aCause(pstL4aPdpModifyRej->ulEsmCause));
+
+    /* 主状态迁移至TAF_APS_STA_ACTIVE, 退出子状态机 */
+    TAF_APS_SetCurrPdpEntityMainFsmState(TAF_APS_STA_ACTIVE);
+    TAF_APS_QuitCurrSubFsm();
+
+    return VOS_TRUE;
+}
+
+
+VOS_UINT32 TAF_APS_RcvMmcServiceStatusInd_MsModifying_WaitL4aModifyCnf(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+)
+{
+    MMC_APS_SERVICE_STATUS_IND_STRU    *pstSerStaInd;
+
+    /* 初始化, 获取消息内容 */
+    pstSerStaInd                        = (MMC_APS_SERVICE_STATUS_IND_STRU*)pstMsg;
+
+    /* 设置当前网络类型 */
+    TAF_APS_SetCurrPdpEntityRatType(pstSerStaInd->enRatType);
+
+    /* 设置PS域SIM卡状态信息 */
+    TAF_APS_SetCurrPdpEntitySimRegStatus(pstSerStaInd->ulPsSimRegStatus);
+
+    if (MMC_APS_RAT_TYPE_NULL == pstSerStaInd->enRatType)
+    {
+        /* 子状态迁移至TAF_APS_MS_MODIFYING_SUBSTA_WAIT_SM_MODIFY_CNF_SUSPEND */
+        TAF_APS_SetCurrPdpEntitySubFsmState(TAF_APS_MS_MODIFYING_SUBSTA_WAIT_L4A_MODIFY_CNF_SUSPEND);
+    }
+    else
+    {
+        TAF_WARNING_LOG(WUEPS_PID_TAF,
+            "TAF_APS_RcvMmcServiceStatusInd_MsModifying_WaitL4aModifyCnf: Wrong RAT Type!");
+
+        return VOS_TRUE;
+    }
+
+    return VOS_TRUE;
+}
+
+
+VOS_UINT32 TAF_APS_RcvEsmSmEpsBearerInfoInd_MsModifying_WaitL4aModifyCnf(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+)
+{
+    VOS_UINT8                           ucPdpId;
+    APS_PDP_CONTEXT_ENTITY_ST          *pstPdpEntity;
+    TAF_APS_EPS_BEARER_INFO_IND_STRU   *pstBearerInfo;
+
+    pstBearerInfo = (TAF_APS_EPS_BEARER_INFO_IND_STRU*)pstMsg;
+    ucPdpId       = TAF_APS_GetCurrFsmEntityPdpId();
+
+    /* 获取该PDPID的PDP实体内容地址 */
+    pstPdpEntity = TAF_APS_GetPdpEntInfoAddr(ucPdpId);
+
+
+    /* 根据EPS承载的操作类型(Activate, Deactivate, Modify),
+       调用相应的处理函数 */
+    if (SM_ESM_PDP_OPT_DEACTIVATE == pstBearerInfo->enPdpOption)
+    {
+        MN_APS_ProcEsmBearerInfoIndOptDeactivate(pstPdpEntity, pstBearerInfo);
+    }
+    else if (SM_ESM_PDP_OPT_MODIFY == pstBearerInfo->enPdpOption)
+    {
+        MN_APS_ProcEsmBearerInfoIndOptModify(pstPdpEntity, pstBearerInfo);
+    }
+    else
+    {
+        TAF_WARNING_LOG(WUEPS_PID_TAF,"TAF_APS_RcvEsmSmEpsBearerInfoInd_MsModifying_WaitL4aModifyCnf: Wrong option.");
+    }
+
+    return VOS_TRUE;
+}
+
+
+VOS_UINT32 TAF_APS_RcvTiTafApsMsModifyingExpired_MsModifying_WaitL4aModifyCnf(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+)
+{
+    VOS_UINT8                           ucPdpId;
+
+    /* 初始化, 获取消息内容 */
+    ucPdpId                             = TAF_APS_GetCurrFsmEntityPdpId();
+
+    /* 上报ID_EVT_TAF_PS_CALL_PDP_MODIFY_REJ事件 */
+    TAF_APS_SndPdpModifyRej(ucPdpId, TAF_PS_CAUSE_SM_MAX_TIME_OUT);
+
+    /* 主状态迁移至TAF_APS_STA_ACTIVE, 退出子状态机 */
+    TAF_APS_SetCurrPdpEntityMainFsmState(TAF_APS_STA_ACTIVE);
+    TAF_APS_QuitCurrSubFsm();
+
+    return VOS_TRUE;
+}
+VOS_UINT32 TAF_APS_RcvAtSetPdpContextStateReq_MsModifying_WaitL4aModifyCnfSuspend(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+)
+{
+    VOS_UINT8                           ucPdpId;
+    TAF_PS_MSG_STRU                    *pstAppMsg;
+    TAF_PS_SET_PDP_STATE_REQ_STRU      *pstSetPdpCtxStateReq;
+
+    /* 初始化, 获取消息内容 */
+    pstAppMsg                           = (TAF_PS_MSG_STRU*)pstMsg;
+    pstSetPdpCtxStateReq                = (TAF_PS_SET_PDP_STATE_REQ_STRU*)(pstAppMsg->aucContent);
+    ucPdpId                             = TAF_APS_GetCurrFsmEntityPdpId();
+
+    /* 已经激活该APS实体, 再激活该APS实体所用的CID,上报ERROR事件,
+       否则,发起去激活状态进行迁移 */
+    if (TAF_CGACT_ACT == pstSetPdpCtxStateReq->stCidListStateInfo.ucState)
+    {
+        /* 上报PDP激活错误事件 */
+        TAF_APS_SndSetPdpCtxStateCnf(&(pstSetPdpCtxStateReq->stCtrl),
+                                    TAF_PS_CAUSE_CID_INVALID);
+    }
+    else
+    {
+        /* 停止激活流程定时器 */
+        TAF_APS_StopTimer(TI_TAF_APS_MS_MODIFYING,
+                          ucPdpId);
+
+        /* 上报ID_EVT_TAF_PS_CALL_PDP_DEACTIVATE_CNF事件 */
+        TAF_APS_SndPdpDeActivateCnf(ucPdpId, TAF_APS_GetPdpEntCurrCid(ucPdpId));
+
+        /* 向SM发送ABORT请求, 取消当前激活操作 */
+        TAF_APS_SndL4aAbortReq(TAF_APS_GetPdpEntCurrCid(ucPdpId));
+
+        /* 释放APS资源 */
+        Aps_ReleaseApsResource(ucPdpId);
+
+        /* 主状态迁移至TAF_APS_STA_INACTIVE, 退出子状态机 */
+        TAF_APS_SetCurrPdpEntityMainFsmState(TAF_APS_STA_INACTIVE);
+        TAF_APS_QuitCurrSubFsm();
+    }
+
+    return VOS_TRUE;
+}
+
+
+VOS_UINT32 TAF_APS_RcvAtPsPppDailOrigReq_MsModifying_WaitL4aModifyCnfSuspend(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+)
+{
+    TAF_PS_MSG_STRU                    *pstAppMsg;
+    TAF_PS_PPP_DIAL_ORIG_REQ_STRU      *pstPppDialOrigReq;
+
+    /* 初始化, 获取消息内容 */
+    pstAppMsg                           = (TAF_PS_MSG_STRU*)pstMsg;
+    pstPppDialOrigReq                   = (TAF_PS_PPP_DIAL_ORIG_REQ_STRU*)(pstAppMsg->aucContent);
+
+    /* 正在修改该APS实体, 激活该APS实体所用的CID, 返回ERROR */
+    TAF_APS_SndPppDialOrigCnf(&(pstPppDialOrigReq->stCtrl),
+                             TAF_PS_CAUSE_CID_INVALID);
+
+    return VOS_TRUE;
+}
+
+
+VOS_UINT32 TAF_APS_RcvAtPsCallOrigReq_MsModifying_WaitL4aModifyCnfSuspend(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+)
+{
+    TAF_PS_MSG_STRU                    *pstAppMsg;
+    TAF_PS_CALL_ORIG_REQ_STRU          *pstCallOrigReq;
+
+    /* 初始化, 获取消息内容 */
+    pstAppMsg                           = (TAF_PS_MSG_STRU*)pstMsg;
+    pstCallOrigReq                      = (TAF_PS_CALL_ORIG_REQ_STRU*)(pstAppMsg->aucContent);
+
+    /* 正在修改该APS实体, 激活该APS实体所用的CID, 返回ERROR */
+    TAF_APS_SndCallOrigCnf(&(pstCallOrigReq->stCtrl), pstCallOrigReq->stDialParaInfo.ucCid, TAF_PS_CAUSE_CID_INVALID);
+
+    return VOS_TRUE;
+}
+
+
+VOS_UINT32 TAF_APS_RcvAtPsCallEndReq_MsModifying_WaitL4aModifyCnfSuspend(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+)
+{
+    VOS_UINT8                           ucPdpId;
+
+    /* 获取当前处理的PDP ID */
+    ucPdpId = TAF_APS_GetCurrFsmEntityPdpId();
+
+    /* 停止全流程状态机保护定时器*/
+    TAF_APS_StopTimer(TI_TAF_APS_MS_MODIFYING, ucPdpId);
+
+    /*------------------------------------------------------------------
+       加载TAF_APS_STA_MS_DEACTIVATING状态机
+       加载后子状态切换为TAF_APS_MS_DEACTIVATING_SUBSTA_INIT
+
+       在TAF_APS_MS_DEACTIVATING_SUBSTA_INIT子状态中处理
+       ID_MSG_TAF_PS_CALL_END_REQ消息
+       子状态迁移至TAF_APS_MS_DEACTIVATING_SUBSTA_SUSPEND
+    ------------------------------------------------------------------*/
+    TAF_APS_InitSubFsm(TAF_APS_FSM_MS_DEACTIVATING,
+                       TAF_APS_GetMsDeactivatingFsmDescAddr(),
+                       TAF_APS_MS_DEACTIVATING_SUBSTA_INIT);
+
+    return VOS_TRUE;
+}
+
+
+VOS_UINT32 TAF_APS_RcvAtPsCallModifyReq_MsModifying_WaitL4aModifyCnfSuspend(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+)
+{
+    TAF_PS_MSG_STRU                    *pstAppMsg;
+    TAF_PS_CALL_MODIFY_REQ_STRU        *pstCallModifyReq;
+
+    /* 初始化, 获取消息内容 */
+    pstAppMsg                           = (TAF_PS_MSG_STRU*)pstMsg;
+    pstCallModifyReq                    = (TAF_PS_CALL_MODIFY_REQ_STRU*)(pstAppMsg->aucContent);
+
+    /* 异常消息, 直接向用户返回ERROR */
+    TAF_APS_SndCallModifyCnf(&(pstCallModifyReq->stCtrl), TAF_PS_CAUSE_CID_INVALID);
+
+    return VOS_TRUE;
+}
+
+
+VOS_UINT32 TAF_APS_RcvAtPsCallAnswerReq_MsModifying_WaitL4aModifyCnfSuspend(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+)
+{
+    TAF_PS_MSG_STRU                    *pstAppMsg;
+    TAF_PS_CALL_ANSWER_REQ_STRU        *pstCallAnswerReq;
+
+    /* 初始化, 获取消息内容 */
+    pstAppMsg                           = (TAF_PS_MSG_STRU*)pstMsg;
+    pstCallAnswerReq                    = (TAF_PS_CALL_ANSWER_REQ_STRU*)(pstAppMsg->aucContent);
+
+    /* PS域MT呼叫流程, 方案未确定, 目前直接返回ERROR */
+    TAF_APS_SndCallAnswerCnf(&(pstCallAnswerReq->stCtrl),
+                            pstCallAnswerReq->stAnsInfo.ucCid,
+                            TAF_ERR_UNSPECIFIED_ERROR);
+
+    return VOS_TRUE;
+}
+
+
+VOS_UINT32 TAF_APS_RcvAtPsCallHangupReq_MsModifying_WaitL4aModifyCnfSuspend(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+)
+{
+    TAF_PS_MSG_STRU                    *pstAppMsg;
+    TAF_PS_CALL_HANGUP_REQ_STRU        *pstCallHangupReq;
+
+    /* 初始化, 获取消息内容 */
+    pstAppMsg                           = (TAF_PS_MSG_STRU*)pstMsg;
+    pstCallHangupReq                    = (TAF_PS_CALL_HANGUP_REQ_STRU*)(pstAppMsg->aucContent);
+
+    /* PS域MT呼叫流程, 方案未确定, 目前直接返回ERROR */
+    TAF_APS_SndCallHangupCnf(&(pstCallHangupReq->stCtrl),
+                            TAF_ERR_UNSPECIFIED_ERROR);
+
+    return VOS_TRUE;
+}
+
+
+VOS_UINT32 TAF_APS_RcvL4aPdpModifyCnf_MsModifying_WaitL4aModifyCnfSuspend(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+)
+{
+    VOS_UINT8                           ucPdpId;
+
+    /* 初始化, 获取消息内容 */
+    ucPdpId                             = TAF_APS_GetCurrFsmEntityPdpId();
+
+    /* 停止全流程状态机保护定时器*/
+    TAF_APS_StopTimer(TI_TAF_APS_MS_MODIFYING, ucPdpId);
+
+    /* 上报ID_EVT_TAF_PS_CALL_PDP_MODIFY_CNF事件 */
+    TAF_APS_SndPdpModifyCnf(ucPdpId);
+
+    /* 主状态迁移至TAF_APS_STA_ACTIVE, 退出子状态机 */
+    TAF_APS_SetCurrPdpEntityMainFsmState(TAF_APS_STA_ACTIVE);
+    TAF_APS_QuitCurrSubFsm();
+
+    return VOS_TRUE;
+}
+
+
+
+VOS_UINT32 TAF_APS_RcvL4aPdpModifyRej_MsModifying_WaitL4aModifyCnfSuspend(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+)
+{
+    VOS_UINT8                           ucPdpId;
+    APS_L4A_PDP_MODIFY_REJ_STRU        *pstL4aPdpModifyRej;
+
+    /* 初始化, 获取消息内容 */
+    pstL4aPdpModifyRej                  = (APS_L4A_PDP_MODIFY_REJ_STRU*)pstMsg;
+    ucPdpId                             = TAF_APS_GetCurrFsmEntityPdpId();
+
+    /* 如果错误码不是异系统, 则该修改流程终止 */
+    if (APS_L4A_ERR_SM_SUSPENDED != pstL4aPdpModifyRej->ulEsmCause)
+    {
+        /* 上报ID_EVT_TAF_PS_CALL_PDP_MODIFY_REJ事件 */
+        TAF_APS_SndPdpModifyRej(ucPdpId, TAF_APS_MapL4aCause(pstL4aPdpModifyRej->ulEsmCause));
+
+        /* 停止全流程状态机保护定时器*/
+        TAF_APS_StopTimer(TI_TAF_APS_MS_MODIFYING, ucPdpId);
+
+        /* 主状态迁移至TAF_APS_STA_ACTIVE, 退出层2状态机 */
+        TAF_APS_SetCurrPdpEntityMainFsmState(TAF_APS_STA_ACTIVE);
+        TAF_APS_QuitCurrSubFsm();
+    }
+    else
+    {
+        /* 子状态迁移至TAF_APS_MS_MODIFYING_SUBSTA_SUSPEND */
+        TAF_APS_SetCurrPdpEntitySubFsmState(TAF_APS_MS_MODIFYING_SUBSTA_SUSPEND);
+    }
+
+    return VOS_TRUE;
+}
+
+/*****************************************************************************
+ 函 数 名  : TAF_APS_RcvMmcServiceStatusInd_MsModifying_WaitL4aModifyCnfSuspend
+ 功能描述  : TAF_APS_MS_MODIFYING_SUBSTA_WAIT_L4A_MODIFY_CNF_SUSPEND子状态下
+             收到ID_MMC_APS_SERVICE_STATUS_IND消息的处理
+ 输入参数  : ulEventType                - 消息ID
+             pstMsg                     - 消息指针
+ 输出参数  : 无
+ 返 回 值  : VOS_TRUE                   - 消息处理成功
+             VOS_FALSE                  - 消息处理失败
+ 调用函数  :
+ 被调函数  :
+
+ 修改历史      :
+  1.日    期   : 2012年1月2日
+    作    者   : zhangyizhan 60575
+    修改内容   : 新生成函数
+
+*****************************************************************************/
+VOS_UINT32  TAF_APS_RcvMmcServiceStatusInd_MsModifying_WaitL4aModifyCnfSuspend(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+)
+{
+    MMC_APS_SERVICE_STATUS_IND_STRU    *pstSerStaInd;
+
+    /* 初始化, 获取消息内容 */
+    pstSerStaInd                        = (MMC_APS_SERVICE_STATUS_IND_STRU*)pstMsg;
+
+    /* 设置当前网络类型 */
+    TAF_APS_SetCurrPdpEntityRatType(pstSerStaInd->enRatType);
+
+    /* 设置PS域SIM卡状态信息 */
+    TAF_APS_SetCurrPdpEntitySimRegStatus(pstSerStaInd->ulPsSimRegStatus);
+
+    if ( (MMC_APS_RAT_TYPE_GSM == pstSerStaInd->enRatType)
+      || (MMC_APS_RAT_TYPE_WCDMA == pstSerStaInd->enRatType))
+    {
+        /* 在GU下重新发起MODIFY */
+        TAF_APS_RcvAtPsCallModifyReq_MsModifying_GuMode();
+    }
+    else if (MMC_APS_RAT_TYPE_LTE == pstSerStaInd->enRatType)
+    {
+        /*L模下 ,不需要处理,继续等L4A的回复,状态回到
+          TAF_APS_MS_MODIFYING_SUBSTA_WAIT_L4A_MODIFY_CNF
+        */
+        TAF_APS_SetCurrPdpEntitySubFsmState(TAF_APS_MS_MODIFYING_SUBSTA_WAIT_L4A_MODIFY_CNF);
+    }
+    else
+    {
+        TAF_WARNING_LOG(WUEPS_PID_TAF,
+            "TAF_APS_RcvMmcServiceStatusInd_MsModifying_WaitL4aModifyCnfSuspend:rev msg err!");
+    }
+
+    return VOS_TRUE;
+}
+
+
+VOS_UINT32 TAF_APS_RcvEsmSmEpsBearerInfoInd_MsModifying_WaitL4aModifyCnfSuspend(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+)
+{
+    VOS_UINT8                           ucPdpId;
+    APS_PDP_CONTEXT_ENTITY_ST          *pstPdpEntity;
+    TAF_APS_EPS_BEARER_INFO_IND_STRU   *pstBearerInfo;
+
+    pstBearerInfo = (TAF_APS_EPS_BEARER_INFO_IND_STRU*)pstMsg;
+    ucPdpId       = TAF_APS_GetCurrFsmEntityPdpId();
+
+    /* 获取该PDPID的PDP实体内容地址 */
+    pstPdpEntity = TAF_APS_GetPdpEntInfoAddr(ucPdpId);
+
+
+    /* 根据EPS承载的操作类型(Activate, Deactivate, Modify),
+       调用相应的处理函数 */
+    if (SM_ESM_PDP_OPT_DEACTIVATE == pstBearerInfo->enPdpOption)
+    {
+        MN_APS_ProcEsmBearerInfoIndOptDeactivate(pstPdpEntity, pstBearerInfo);
+    }
+    else if (SM_ESM_PDP_OPT_MODIFY == pstBearerInfo->enPdpOption)
+    {
+        MN_APS_ProcEsmBearerInfoIndOptModify(pstPdpEntity, pstBearerInfo);
+    }
+    else
+    {
+        TAF_WARNING_LOG(WUEPS_PID_TAF,"TAF_APS_RcvEsmSmEpsBearerInfoInd_MsModifying_WaitL4aModifyCnfSuspend: Wrong option.");
+    }
+
+    return VOS_TRUE;
+}
+
+
+VOS_UINT32 TAF_APS_RcvTiTafApsMsModifyingExpired_MsModifying_WaitL4aModifyCnfSuspend(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+)
+{
+    VOS_UINT8                           ucPdpId;
+
+    /* 初始化, 获取消息内容 */
+    ucPdpId                             = TAF_APS_GetCurrFsmEntityPdpId();
+
+    /* 上报ID_EVT_TAF_PS_CALL_PDP_MODIFY_REJ事件 */
+    TAF_APS_SndPdpModifyRej(ucPdpId, TAF_PS_CAUSE_SM_MAX_TIME_OUT);
+
+    /* 主状态迁移至TAF_APS_STA_ACTIVE, 退出子状态机 */
+    TAF_APS_SetCurrPdpEntityMainFsmState(TAF_APS_STA_ACTIVE);
+    TAF_APS_QuitCurrSubFsm();
+
+    return VOS_TRUE;
+}
+VOS_UINT32 TAF_APS_RcvAtPsCallModifyReq_MsModifying_LteMode(VOS_VOID)
+{
+    VOS_UINT8                           ucPdpId;
+    TAF_APS_TIMER_STATUS_ENUM_U8        enTimerStatus;
+    TAF_APS_ENTRY_MSG_STRU             *pstEntryMsg;
+    TAF_PS_MSG_STRU                    *pstAppMsg;
+    TAF_PS_CALL_MODIFY_REQ_STRU        *pstCallModifyReq;
+
+    /* 初始化, 获取消息内容 */
+    pstEntryMsg                         = TAF_APS_GetCurrSubFsmMsgAddr();
+    pstAppMsg                           = (TAF_PS_MSG_STRU*)(pstEntryMsg->aucEntryMsgBuffer);
+    pstCallModifyReq                    = (TAF_PS_CALL_MODIFY_REQ_STRU*)(pstAppMsg->aucContent);
+    ucPdpId                             = TAF_APS_GetCurrFsmEntityPdpId();
+
+    /* 向L4A发送modify请求 */
+    TAF_APS_SndL4aCallModifyReq(pstCallModifyReq);
+
+    /* 返回PDP操作结果 */
+    TAF_APS_SndCallModifyCnf(&(pstCallModifyReq->stCtrl),
+                            TAF_PS_CAUSE_SUCCESS);
+
+    /* 子状态迁移至TAF_APS_MS_MODIFYING_SUBSTA_WAIT_L4A_MODIFY_CNF */
+    TAF_APS_SetCurrPdpEntitySubFsmState(TAF_APS_MS_MODIFYING_SUBSTA_WAIT_L4A_MODIFY_CNF);
+
+    /* 由于可能GU和LTE间反复多次切换，因此有可能定时器之前已经启动，此处不能
+       重启，因此只有定时器未启动时才启动 */
+    enTimerStatus = TAF_APS_GetTimerStatus(TI_TAF_APS_MS_MODIFYING,
+                                           ucPdpId);
+    if (TAF_APS_TIMER_STATUS_STOP == enTimerStatus)
+    {
+        /* 起保护定时器 */
+        TAF_APS_StartTimer(TI_TAF_APS_MS_MODIFYING,
+                           TI_TAF_APS_MS_MODIFYING_LEN,
+                           ucPdpId);
+    }
+
+    return VOS_TRUE;
+}
+
+#endif
+
+
+#ifdef __cplusplus
+    #if __cplusplus
+        }
+    #endif
+#endif
+

@@ -1,0 +1,25 @@
+menu "nat speed acceleration"
+	depends on NET && INET && NETFILTER && NF_CONNTRACK
+
+config NAT_SA
+	tristate "nat speed acceleration module"
+	help
+	  If this option is enabled, the kernel will include support
+	  for soft nat speedup.
+
+if NAT_SA
+config NAT_SA_DEBUG
+	bool "debug info for nat sa module"
+	help
+	  Enable to check the debug info. Strongly suggested to disable 
+	  when compiled an release version
+
+config NAT_SA_REL_TRACE
+	bool "debug info in release version"
+	help
+	  Eanble to check the state info in release version. Suggested 
+          to enable this macro. It could be disabled if you insist.
+	
+endif #if NAT_SOFT_SPEEDUP
+
+endmenu

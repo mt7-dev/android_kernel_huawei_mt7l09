@@ -1,0 +1,26 @@
+system.option mmuspaces on
+
+d.load.elf vmlinux /nocode
+
+mmu.format linux swapper_pg_dir 0xc0000000--0xc1ffffff 0x50000000
+
+if OS.FILE(acore.bin)
+(
+  d.load.binary acore.bin 0xc0000000 /noclear
+  ;d.load.binary acore.bin 0x50000000 /noclear
+)
+
+if OS.FILE(share.bin)
+(
+  d.load.binary share.bin 0xf5600000 /noclear
+)
+if OS.FILE(dump.bin)
+(
+  d.load.binary dump.bin 0xf5800000 /noclear  
+)
+
+
+
+
+
+	

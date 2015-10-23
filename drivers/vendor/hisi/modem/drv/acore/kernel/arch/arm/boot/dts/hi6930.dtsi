@@ -1,0 +1,45 @@
+/*
+ * Hisilicon HI6930 SoC device tree source
+ *
+ * Copyright (c) 2012 Hisilicon Electronics Co., Ltd.
+ *
+ * Hisilicon HI6930 SoC device nodes are listed in this file.
+ * HI6930 based board files can include this file and provide
+ * values for board specfic bindings.
+ *
+ * Note: This file does not include device nodes for all the controllers in
+ * HI6930 SoC. As device tree coverage for HI6930 increases,
+ * additional nodes can be added to this file.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
+*/
+
+/include/ "skeleton.dtsi"
+
+/ {
+	interrupt-parent = <&gic>;
+
+	gic:interrupt-controller@4000000 {
+		compatible = "arm,cortex-a9-gic";
+		#interrupt-cells = <3>;
+		interrupt-controller;
+		reg = <0x4001000 0x1000>, <0x4000100 0x100>;
+	};
+	amba {
+		compatible = "arm,amba-bus";
+		#address-cells = <1>;
+		#size-cells = <1>;
+		interrupt-parent = <&gic>;
+		ranges;
+		
+		serial: uart@90016000 {
+			compatible = "arm,primecell";
+			arm,primecell-periphid = <0x000c21c0>;
+			reg = <0x90016000 0x1000>;
+			interrupts = <0 71 4>;   /*103 - 32 = 71*/
+			status = "okay";
+		};
+	};
+};

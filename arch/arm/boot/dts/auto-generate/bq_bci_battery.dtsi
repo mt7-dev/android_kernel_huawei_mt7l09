@@ -1,0 +1,9 @@
+/ {
+	pmic: pmic@FFF34000 {
+		bq_bci_battery:battery {
+			compatible = "huawei,bq_bci_battery";
+			status = "disable";
+		};
+	};
+};
+

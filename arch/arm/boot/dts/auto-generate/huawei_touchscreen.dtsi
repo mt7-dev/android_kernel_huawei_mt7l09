@@ -1,0 +1,38 @@
+/ {
+	touchscreen {
+		compatible = "huawei,touchscreen";
+		bus_type = "i2c";
+		bus_id = <1>;
+		product = "mogolia";
+		support_chip_name = "synaptics", "cypress";
+		synaptics: touchscreen@70 {
+			compatible = "synaptics";
+			slave_address = <0x70>;
+			pinctrl-names = "default", "idle";
+			pinctrl-0 = <&gpio161_cfg_func &gpio200_cfg_func>;
+			pinctrl-1 = <&gpio161_cfg_idle &gpio200_cfg_idle>;
+			synaptics-vdd-supply = <&ldo17>;
+			synaptics-io-supply = <&lsw50>;
+			reset_gpio = <&gpio20 1 0>;
+			attn_gpio = <&gpio25 0 0>;
+			irq_config = <0>;
+			algo_id = <1>;
+			raw_data_limit = "0",/*rawdata-max*/
+					 "0", /*rawdata-min*/
+					 "0",/*deltadata-max*/
+					 "0",/*deltadata-min*/
+					 "0",/*rx-to-rx-diff-max*/
+					 "0", /*rx-to-rx-diff-min*/
+					 "0", /*tx-to-tx-diff-max*/
+					 "0";/*tx-to-tx-diff-min*/
+		};
+		cypress: touchscreen@1a {
+			compatible = "cypress";
+			slave_address = <0x1a>;
+			attn_gpio = <&gpio25 0 0>;
+			reset_gpio = <&gpio20 1 0>;
+			irq_config = <3>;
+			algo_id = <1>;
+		};
+	};
+};

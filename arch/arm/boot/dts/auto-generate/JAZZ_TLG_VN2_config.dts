@@ -1,0 +1,23 @@
+/*
+ * Hisilicon Ltd.
+ *
+ * A15x4 A7x4
+ *
+ * It is only a demo for hisilicon hi3630 board. You show change the
+ * address of each node according to datasheet.
+ */
+
+/dts-v1/;
+
+
+/include/ "JAZZ_TLG_VN1_config.dtsi"
+/include/ "hisi_3630_pin_JAZZ_TLG_VN2.dtsi"
+/include/ "hisi_3630_modem_JAZZ_TLG_VN2.dtsi"
+/ {
+	board_info: board_info {
+		hisi,boardid = <1 3 7>;
+		hisi,boardname = "Jazz_TL+G_VN2";
+		hisi,modem_id = <0x3FF53400>;
+		hw,public;
+	};
+};

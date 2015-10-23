@@ -1,0 +1,320 @@
+;==============================================================================
+;   版权所有(C) 1987-2020, 深圳华为技术有限公司.
+;
+;   文 件 名 :  task_switch.cmm
+;
+;   作    者 :  zhuhongfei
+;
+;   描    述 :  cpu trace, etb data analyser
+;
+;   修改记录 :  2013年12月12日  v1.00  zhuhongfei  创建
+;
+;==============================================================================
+&task_name_mark=0x2000005			//任务名的标志
+&cp_task_name_offset=0
+//最大任务数量
+&max_task_num=0x80
+//下一条任务、中断切换记录
+;&next_record=data.long(SD:(v.address(g_dump_ptr_info.task_swt_ptr)))
+
+
+&sec_offset_local=data.long(SD:(&sec_offset))
+&sec_size_local=data.long(SD:(&sec_size))
+
+//任务切换分区起始地址
+&sec_begin=&cp_mntn_addr+&sec_offset_local+0x10
+//任务切换分区结束地址
+&sec_end=&cp_mntn_addr+&sec_offset_local+&sec_size_local
+
+data.find (&dump_base_all+&cp_mntn_offset+&cp_map_offset)--(&dump_base_all+&cp_mntn_offset+&cp_map_offset+&cp_map_size) %long &task_name_mark
+if found()
+(
+	&cp_task_name_offset=TRACK.ADDRESS()+0x4
+	print "cp_task_name_offset &cp_task_name_offset"
+)
+else
+(
+	dialog.ok "dump.bin is invalid"
+	ENDDO
+)
+	
+&task_sec_addr_begin=0x100000
+&task_sec_len=0
+&max_task_record_cnt=0
+
+&tmp1=data.long(SD:(&sec_begin-0x10))
+&tmp2=data.long(SD:(&sec_begin-0x4))
+&tmp_len=0
+//循环buffer未写满
+if &tmp1!=&tmp2
+(
+	print "&tmp1!=&tmp2 &sec_begin"
+	&task_sec_len=&next_record-&sec_begin
+	&max_task_record_cnt=&task_sec_len/8
+	d.copy &sec_begin--(&sec_begin+&task_sec_len-1) &task_sec_addr_begin /verify	
+)
+else
+(
+	print "&tmp1==&tmp2 &sec_begin"
+	&task_rear=data.long(SD:(&sec_begin-0x8))
+	&next_record=&task_rear*4+&sec_begin
+	&task_sec_len=&sec_size_local-0x10
+	&max_task_record_cnt=&task_sec_len/8
+	&tmp_len=&sec_end-&next_record
+	//记录排序
+	print "tmp_len &tmp_len"
+	print "sec_end &sec_end"
+	print "next_record &next_record"
+	d.copy &next_record--(&next_record+&tmp_len-1) &task_sec_addr_begin /verify
+	d.copy &sec_begin--(&sec_begin+&task_sec_len-&tmp_len-1) (&task_sec_addr_begin+&tmp_len) /verify	
+)
+;print "next_record &next_record"
+print "sec_end &sec_end"
+print "tmp_len &tmp_len"
+
+local &task_id
+local &timestamp
+local &next_timestamp
+local &task_name
+
+AREA.Create testarea 70. 10000.
+WINPOS , , 70. 30.
+
+//显示列表头
+PRINT "-----ID------------Timestamp----------Name--------------Duration--------"
+//所有任务名存储区域按照struct task_name_t存放
+//---------------------------------------------
+//|**0 1 2 3 | 4 5 6 7 8 9 10 11 12 13 14 15**|
+//|**  tid   |			task_name		    **|
+//---------------------------------------------
+&task_name_t_len=0x10
+&i=1
+&fin_flag=0
+&max_print_cnt=0x3E8
+&sec_all_task_offset=0
+&sec_all_task_offset=&cp_mntn_addr+data.long(&cp_task_name_offset)
+&task_name_sec_base=&sec_all_task_offset+0x10
+
+//记录最大显示数量，默认显示1000条
+if &max_task_record_cnt<0x3E8
+(
+	&max_print_cnt=&max_task_record_cnt
+)
+
+//计算当前显示地址，需要显示最后的记录
+&present_record=&task_sec_addr_begin+&task_sec_len-&max_print_cnt*0x8
+
+while &fin_flag==0
+(
+	&task_id=data.short(SD:(&present_record+0x2))
+	&timestamp=data.long(SD:(&present_record+0x4))
+	&next_timestamp=data.long(SD:(&present_record+0xC))
+	&duration=&next_timestamp-&timestamp
+	if &task_id==0xAAAA
+	(
+		//中断进入
+		&task_name="in"
+		&task_id=data.short(SD:(&present_record))
+		print format.string("&task_id", 12., ' ')+"  |    "+format.string("&timestamp", 12., ' ')+"|    "+format.string("&task_name", 16., ' ')+"|    &duration"	
+	)
+	else if &task_id==0xBBBB
+	(
+		//中断退出
+		&task_name="out"
+		&task_id=data.short(SD:(&present_record))
+		print format.string("&task_id", 12., ' ')+"  |    "+format.string("&timestamp", 12., ' ')+"|    "+format.string("&task_name", 16., ' ')+"|    &duration"	
+	)
+	else
+	(
+		//任务
+		&task_name=data.long(SD:(&present_record))
+		&task_id=data.long(SD:(&present_record))
+		//在所有任务名存储区，查找任务名
+		&j=0
+		&hit_flag=0
+		&task_id_tmp=0
+		&task_name_sec_addr=&task_name_sec_base
+		while &hit_flag==0
+		(
+			//获取任务ID
+			&task_id_tmp=data.long(SD:(&task_name_sec_addr))
+			//找到匹配的任务ID
+			if &task_id_tmp==&task_id
+			(
+				//更新任务名
+				&task_name=data.string(SD:(&task_name_sec_addr+4))
+				&hit_flag=1
+			)
+			
+			//计算下一个任务信息存放地址
+			&task_name_sec_addr=&task_name_sec_addr+&task_name_t_len
+			&j=&j+1
+			
+			//超过最大任务数量，未找到，显示任务ID
+			if &j>&max_task_num
+			(
+				&hit_flag=1
+			)
+		)
+		print  format.string("&task_id", 12., ' ')+"  |    "+format.string("&timestamp", 12., ' ')+"|    "+format.string("&task_name", 16., ' ')+"|    &duration"	
+	)
+	
+	//下一条记录地址
+	&present_record=&present_record+8
+		
+	//超过最大输出数量，遍历结束
+	&i=&i+1
+	if &i>&max_print_cnt	//默认显示1000条
+	(
+		&fin_flag=1
+	)
+)	
+
+DIALOG.AREA testarea
+(
+	HEADER "task switch record"
+	
+	POS 5 1 3 1
+	TEXT "ID"
+	POS 10 1 11 1
+	TEXT "Timestamp"
+	POS 20 1 5 1
+	TEXT "Name"	
+	POS 32 1 8 1
+	TEXT "Duration"	
+	
+	POS 0.25 0 8 1
+	query_option: COMBOBOX "1000,2000,4000,all" ""
+	
+	POS 9 0 5 1
+	BUTTON "query"
+	(
+		&record_cnt=dialog.string(query_option)
+		if "&record_cnt"=="1000"
+		(
+			&max_print_cnt=0x3E8	//1000
+		)
+		else if "&record_cnt"=="2000"
+		(
+			&max_print_cnt=0x7D0	//2000
+		)
+		else if "&record_cnt"=="4000"
+		(
+			&max_print_cnt=0xFA0	//4000
+		)
+		else
+		(
+			&max_print_cnt=&max_task_record_cnt
+		)
+		
+		if &max_print_cnt>&max_task_record_cnt
+		(
+			&max_print_cnt=&max_task_record_cnt
+		)
+
+		//计算当前显示地址，需要显示最后的记录
+		&present_record=&task_sec_addr_begin+&task_sec_len-&max_print_cnt*0x8
+		
+		AREA.CLEAR testarea
+		//显示列表头
+		PRINT "-----ID------------Timestamp----------Name--------------Duration--------"
+		//所有任务名存储区域按照struct task_name_t存放
+		;&task_name_t_len=v.sizeof(task_name_t)
+		&task_name_t_len=0x10
+		&i=1
+		&fin_flag=0
+		while &fin_flag==0
+		(
+			&task_id=data.short(SD:(&present_record+2))
+			&timestamp=data.long(SD:(&present_record+4))
+			&next_timestamp=data.long(SD:(&present_record+0xC))
+			&duration=&next_timestamp-&timestamp
+			if &task_id==0xAAAA
+			(
+				//中断进入
+				&task_name="in"
+				&task_id=data.short(SD:(&present_record))
+				print format.string("&task_id", 12., ' ')+"  |    "+format.string("&timestamp", 12., ' ')+"|    "+format.string("&task_name", 16., ' ')+"|    &duration"	
+			)
+			else if &task_id==0xBBBB
+			(
+				//中断退出
+				&task_name="out"
+				&task_id=data.short(SD:(&present_record))
+				print format.string("&task_id", 12., ' ')+"  |    "+format.string("&timestamp", 12., ' ')+"|    "+format.string("&task_name", 16., ' ')+"|    &duration"		
+			)
+			else
+			(
+				//任务
+				&task_name=data.long(SD:(&present_record))
+				&task_id=data.long(SD:(&present_record))
+				//在所有任务名存储区，查找任务名
+				&j=0
+				&hit_flag=0
+				&task_id_tmp=0
+				&task_name_sec_addr=&task_name_sec_base
+				while &hit_flag==0
+				(
+					//获取任务ID
+					;&task_id_tmp=data.long(SD:(v.address(((task_name_t *)&task_name_sec_addr).tid)))
+					&task_id_tmp=data.long(SD:(&task_name_sec_addr))
+					//找到匹配的任务ID
+					if &task_id_tmp==&task_id
+					(
+						//更新任务名
+						;&task_name=data.string(SD:(v.address(((task_name_t *)&task_name_sec_addr).taskname)))
+						&task_name=data.string(SD:(&task_name_sec_addr+4))
+						&hit_flag=1
+					)
+					
+					//计算下一个任务信息存放地址
+					&task_name_sec_addr=&task_name_sec_addr+&task_name_t_len
+					&j=&j+1
+					
+					//超过最大任务数量，未找到，显示任务ID
+					if &j>&max_task_num
+					(
+						&hit_flag=1
+					)
+				)
+				print  format.string("&task_id", 12., ' ')+"  |    "+format.string("&timestamp", 12., ' ')+"|    "+format.string("&task_name", 16., ' ')+"|    &duration"		
+			)
+			
+			//下一条记录地址
+			&present_record=&present_record+8
+				
+			//超过最大输出数量，遍历结束
+			&i=&i+1
+			if &i>&max_print_cnt	//默认显示1000条
+			(
+				&fin_flag=1
+				print "&max_print_cnt"
+			)
+		)
+		
+		DIALOG.Enable BTN_CLEAN
+	)
+
+	POS 15 0 6 1
+	
+	BTN_CLEAN: button "clean"
+	(
+		AREA.CLEAR testarea
+		; disable clean button
+		DIALOG.Disable BTN_CLEAN
+	)
+
+	; close button
+	POS 22 0 8 1
+	BUTTON "close" "goto closeDialog"
+
+	; handle [X] and Escape
+	CLOSE "goto closeDialog"
+)
+
+DIALOG.Enable BTN_CLEAN
+STOP
+	
+closeDialog:
+  DIALOG.END
+  ENDDO

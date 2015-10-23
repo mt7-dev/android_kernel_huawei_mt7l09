@@ -1,0 +1,16 @@
+#
+# ARASAN SDIO card drivers
+#
+
+comment "ARASAN SDIO Card Drivers"
+
+config SDIO_ARASAN
+	tristate "ARASAN SDIO Card driver"
+	default n
+	help
+	  Say Y here to enable the RASAN SDIO Card driver support.
+	  Almost everyone wishing RASAN SDIO Card support
+	  should say Y or M here.
+
+config SDIO_ARASAN_DEBUG
+	bool "ARASAN SDIO Card debugging"

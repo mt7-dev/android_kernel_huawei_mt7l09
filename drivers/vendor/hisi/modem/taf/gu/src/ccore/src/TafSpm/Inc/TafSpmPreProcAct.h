@@ -1,0 +1,314 @@
+
+#ifndef _TAF_SPM_PREPROCACT_H_
+#define _TAF_SPM_PREPROCACT_H_
+
+/*****************************************************************************
+  1 其他头文件包含
+*****************************************************************************/
+#include  "vos.h"
+#include "UsimPsInterface.h"
+#include "MnErrorCode.h"
+
+#ifdef __cplusplus
+#if __cplusplus
+extern "C" {
+#endif
+#endif
+
+
+#pragma pack(4)
+
+/*****************************************************************************
+  2 宏定义
+*****************************************************************************/
+
+
+/*****************************************************************************
+  3 枚举定义
+*****************************************************************************/
+
+
+/*****************************************************************************
+  4 全局变量声明
+*****************************************************************************/
+
+
+/*****************************************************************************
+  5 消息头定义
+*****************************************************************************/
+
+
+/*****************************************************************************
+  6 消息定义
+*****************************************************************************/
+
+
+/*****************************************************************************
+  7 STRUCT定义
+*****************************************************************************/
+
+
+/*****************************************************************************
+  8 UNION定义
+*****************************************************************************/
+
+
+/*****************************************************************************
+  9 OTHERS定义
+*****************************************************************************/
+
+
+/*****************************************************************************
+  10 函数声明
+*****************************************************************************/
+VOS_UINT32 TAF_SPM_RcvAppOrigReq_PreProc(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+);
+VOS_UINT32 TAF_SPM_RcvAppSupsCmdReq_PreProc(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+);
+VOS_UINT32 TAF_SPM_RcvAppGetInfoReq_PreProc(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+);
+VOS_UINT32 TAF_SPM_RcvAppStartDtmfReq_PreProc(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+);
+VOS_UINT32 TAF_SPM_RcvAppStopDtmfReq_PreProc(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+);
+VOS_UINT32 TAF_SPM_RcvAppGetCdurReq_PreProc(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+);
+VOS_UINT32 TAF_SPM_RcvAppGetCallInfoReq_PreProc(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+);
+VOS_UINT32 TAF_SPM_RcvAppGetClprReq_PreProc(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+);
+VOS_UINT32 TAF_SPM_RcvAppSendRpdataDirect_PreProc(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+);
+VOS_UINT32 TAF_SPM_RcvProcUssSsReq_PreProc(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+);
+VOS_UINT32 TAF_SPM_RcvRegisterSsReq_PreProc(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+);
+VOS_UINT32 TAF_SPM_RcvEraseSsReq_PreProc(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+);
+VOS_UINT32 TAF_SPM_RcvActivateSsReq_PreProc(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+);
+VOS_UINT32 TAF_SPM_RcvDeactivateSsReq_PreProc(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+);
+VOS_UINT32 TAF_SPM_RcvInterrogateSsReq_PreProc(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+);
+VOS_UINT32 TAF_SPM_RcvRegPwdSsReq_PreProc(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+);
+VOS_UINT32 TAF_SPM_RcvEraseCCentrySsReq_PreProc(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+);
+VOS_UINT32 TAF_SPM_RcvRleaseSsReq_PreProc(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+);
+VOS_UINT32 TAF_SPM_RcvStkOrigReq_PreProc(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+);
+
+#if (FEATURE_ON == FEATURE_IMS)
+VOS_UINT32 TAF_SPM_RcvMsgSmmaInd_PreProc(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+);
+
+VOS_UINT32 TAF_SPM_RcvMsgReportInd_PreProc(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+);
+
+VOS_UINT32 TAF_SPM_RcvImsaCallOrigCnf_PreProc(
+    struct MsgCB                       *pstMsg
+);
+VOS_UINT32 TAF_SPM_RcvImsaCallOrig_PreProc(
+    struct MsgCB                       *pstMsg
+);
+VOS_UINT32 TAF_SPM_RcvImsaCallProc_PreProc(
+    struct MsgCB                       *pstMsg
+);
+VOS_UINT32 TAF_SPM_RcvImsaCallAlerting_PreProc(
+    struct MsgCB                       *pstMsg
+);
+VOS_UINT32 TAF_SPM_RcvImsaCallConnect_PreProc(
+    struct MsgCB                       *pstMsg
+);
+VOS_UINT32 TAF_SPM_RcvImsaCallSupsCmdCnf_PreProc(
+    struct MsgCB                       *pstMsg
+);
+VOS_UINT32 TAF_SPM_RcvImsaCallRelease_PreProc(
+    struct MsgCB                       *pstMsg
+);
+VOS_UINT32 TAF_SPM_RcvImsaCallIncoming_PreProc(
+    struct MsgCB                       *pstMsg
+);
+
+VOS_UINT32 TAF_SPM_RcvImsaCallStartDtmfCnf_PreProc(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+);
+VOS_UINT32 TAF_SPM_RcvImsaCallStopDtmfCnf_PreProc(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+);
+
+VOS_UINT32 TAF_SPM_RcvImsaCallStartDtmfRsltInd_PreProc(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+);
+VOS_UINT32 TAF_SPM_RcvImsaCallStopDtmfRsltInd_PreProc(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+);
+
+VOS_UINT32 TAF_SPM_RcvImsaCallSsCmdRslt_PreProc(
+    struct MsgCB                       *pstMsg
+);
+VOS_UINT32 TAF_SPM_RcvImsaCallSsNotify_PreProc(
+    struct MsgCB                       *pstMsg
+);
+VOS_UINT32 TAF_SPM_RcvImsaCallAllRelease_PreProc(
+    struct MsgCB                       *pstMsg
+);
+
+VOS_UINT32 TAF_SPM_RcvImsaCallMsg_PreProc(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+);
+VOS_UINT32 TAF_SPM_RcvImsaGetCallInfoCnf_PreProc(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+);
+VOS_UINT32 TAF_SPM_RcvImsaChannelInfoInd_PreProc(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+);
+VOS_UINT32 TAF_SPM_RcvImsaGetClprCnf_PreProc(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+);
+VOS_UINT32 TAF_SPM_RcvImsaCallHold_PreProc(
+    struct MsgCB                       *pstMsg
+);
+VOS_UINT32 TAF_SPM_RcvImsaCallRetrieve_PreProc(
+    struct MsgCB                       *pstMsg
+);
+VOS_UINT32 TAF_SPM_RcvImsaSsMsg_PreProc(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstRcvMsg
+);
+VOS_UINT32 TAF_SPM_RcvInternalDomainSelInd_PreProc(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+);
+VOS_UINT32 TAF_SPM_RcvImsaNormalRegStatusNotify_PreProc(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+);
+
+VOS_UINT32 TAF_SPM_RcvMmaServiceStatusChangeNotify_PreProc(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+);
+VOS_UINT32 TAF_SPM_RcvMmaNetworkCapabilityChangeNotify_PreProc(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+);
+VOS_UINT32 TAF_SPM_RcvMmaRatChangeNotify_PreProc(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+);
+
+VOS_UINT32 TAF_SPM_RcvMmaImsVoiceCapInd_PreProc(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+);
+
+VOS_UINT32 TAF_SPM_RcvCcSrvReqProtectTimerExpired_PreProc(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+);
+VOS_UINT32 TAF_SPM_RcvSmsSrvReqProtectTimerExpired_PreProc(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+);
+VOS_UINT32 TAF_SPM_RcvSsSrvReqProtectTimerExpired_PreProc(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+);
+
+VOS_UINT32 TAF_SPM_RcvImsaCallMsgSyncInd_PreProc(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+);
+
+VOS_UINT32 TAF_SPM_RcvImsaCallInviteNewPtptCnf_PreProc(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+);
+#endif
+
+VOS_UINT32 TAF_SPM_RcvMmaPowerOffInd_PreProc(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+);
+
+VOS_UINT32 TAF_SPM_IsSsServiceReqAllowed_PreProc(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg,
+    TAF_PH_ERR_CODE                    *penCause
+);
+VOS_UINT32 TAF_SPM_IsSmsServiceReqAllowed_PreProc(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg,
+    VOS_UINT32                         *pulCause
+);
+
+#if (VOS_OS_VER == VOS_WIN32)
+#pragma pack()
+#else
+#pragma pack(0)
+#endif
+
+
+
+
+#ifdef __cplusplus
+    #if __cplusplus
+        }
+    #endif
+#endif
+
+#endif /* end of TafSpmPreProcAct */
+

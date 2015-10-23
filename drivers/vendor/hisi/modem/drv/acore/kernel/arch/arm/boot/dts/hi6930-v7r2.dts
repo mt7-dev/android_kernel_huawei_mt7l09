@@ -1,0 +1,35 @@
+/*
+ * Hisilicon HI6930 SoC device tree source
+ *
+ * Copyright (c) 2012 Hisilicon Electronics Co., Ltd.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
+*/
+
+/dts-v1/;
+/include/ "hi6930.dtsi"
+
+/ {
+	model = "HISILICON HI6930 board based on v7r2";
+	compatible = "hisilicon,v7r2";
+	#address-cells = <1>;
+	#size-cells = <1>;
+
+	chosen {
+		bootargs = "root=/dev/ram0 rw console=ttyAMA0,115200 console=uw_tty0,115200 rdinit=/init loglevel=5 mem=31m";
+		linux,initrd-start = <0>;
+		linux,initrd-end = <0>;
+	};
+
+	memory {
+		device_type = "memory";
+		reg = <0x0 0x0>;
+	};
+
+	L2: cache-controller {
+        compatible = "arm,pl310-cache";
+        reg = <0x4ff00000 0x1000>;
+	};
+};

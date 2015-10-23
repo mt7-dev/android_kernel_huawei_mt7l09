@@ -1,0 +1,46 @@
+/*
+ *  Copyright (C) 2013 Huawei co Ltd.
+ *
+ *  This program is free software; you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License version 2 as
+ *  publishhed by the Free Software Foundation.
+ */
+
+/ {
+	audio_hal_config {
+		compatible = "audio_hal_config";
+		aud_para = "default";
+		mic_type = <0>;
+		mic_num = <1>;
+		fm_type = <1>;
+		hs_pa = "NONE";
+		spk_pa = "HISI_6421";
+		spk_route = "LINEOUT_MONO";
+		ril_type = "NONE";
+		modem_algo = "NONE";
+		mic_policy = "NONE";
+		soc_modem = "NONE";
+		hw,public = "aud_para", "mic_type", "mic_num", "fm_type",
+					"hs_pa", "spk_pa", "spk_route", "ril_type",
+					"modem_algo", "mic_policy", "soc_modem";
+		status = "disabled";
+	};
+
+	audio_mic_policy {
+		compatible = "audio_mic_policy";
+		voice_call_headphone = "SUB_MIC";
+		voice_call_speaker = "MAIN_SUB_MIC";
+		voip_headphone = "SUB_MIC";
+		voip_speaker = "MAIN_SUB_MIC";
+		recorder_single_channel = "MAIN_MIC";
+		recorder_dual_channel = "MAIN_SUB_MIC";
+		camcorder_single_channel = "SUB_MIC";
+		camcorder_dual_channel = "MAIN_SUB_MIC";
+		karaoke_headphone = "MAIN_MIC";
+		karaoke_speaker = "SUB_MIC";
+		hw,public = "voice_call_headphone", "voice_call_speaker", "voip_headphone", "voip_speaker",
+					"recorder_single_channel", "recorder_dual_channel", "camcorder_single_channel", "camcorder_dual_channel",
+					"karaoke_headphone", "karaoke_speaker";
+		status = "disabled";
+	};
+};

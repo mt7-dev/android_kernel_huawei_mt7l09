@@ -1,0 +1,398 @@
+;==============================================================================
+;   版权所有(C) 1987-2020, 深圳华为技术有限公司.
+;
+;   文 件 名 :  ext_sec_dump.cmm
+;
+;   作    者 :  zhuhongfei
+;
+;   描    述 :  dump扩展数据导出
+;
+;   修改记录 :  2013年12月12日  v1.00  zhuhongfei  创建
+;
+;==============================================================================
+
+//读取16个扩展数据区基本信息
+&sec_name_1=data.string(SD:(v.address(g_dump_ext_map.reserved1.name)))
+&sec_len_1=data.long(SD:(v.address(g_dump_ext_map.reserved1.length)))
+&sec_offset_1=data.long(SD:(v.address(g_dump_ext_map.reserved1.offset)))
+
+&sec_name_2=data.string(SD:(v.address(g_dump_ext_map.reserved2.name)))
+&sec_len_2=data.long(SD:(v.address(g_dump_ext_map.reserved2.length)))
+&sec_offset_2=data.long(SD:(v.address(g_dump_ext_map.reserved2.offset)))
+
+&sec_name_3=data.string(SD:(v.address(g_dump_ext_map.reserved3.name)))
+&sec_len_3=data.long(SD:(v.address(g_dump_ext_map.reserved3.length)))
+&sec_offset_3=data.long(SD:(v.address(g_dump_ext_map.reserved3.offset)))
+
+&sec_name_4=data.string(SD:(v.address(g_dump_ext_map.reserved4.name)))
+&sec_len_4=data.long(SD:(v.address(g_dump_ext_map.reserved4.length)))
+&sec_offset_4=data.long(SD:(v.address(g_dump_ext_map.reserved4.offset)))
+
+&sec_name_5=data.string(SD:(v.address(g_dump_ext_map.reserved5.name)))
+&sec_len_5=data.long(SD:(v.address(g_dump_ext_map.reserved5.length)))
+&sec_offset_5=data.long(SD:(v.address(g_dump_ext_map.reserved5.offset)))
+
+&sec_name_6=data.string(SD:(v.address(g_dump_ext_map.reserved6.name)))
+&sec_len_6=data.long(SD:(v.address(g_dump_ext_map.reserved6.length)))
+&sec_offset_6=data.long(SD:(v.address(g_dump_ext_map.reserved6.offset)))
+
+&sec_name_7=data.string(SD:(v.address(g_dump_ext_map.reserved7.name)))
+&sec_len_7=data.long(SD:(v.address(g_dump_ext_map.reserved7.length)))
+&sec_offset_7=data.long(SD:(v.address(g_dump_ext_map.reserved7.offset)))
+
+&sec_name_8=data.string(SD:(v.address(g_dump_ext_map.reserved8.name)))
+&sec_len_8=data.long(SD:(v.address(g_dump_ext_map.reserved8.length)))
+&sec_offset_8=data.long(SD:(v.address(g_dump_ext_map.reserved8.offset)))
+
+&sec_name_9=data.string(SD:(v.address(g_dump_ext_map.reserved9.name)))
+&sec_len_9=data.long(SD:(v.address(g_dump_ext_map.reserved9.length)))
+&sec_offset_9=data.long(SD:(v.address(g_dump_ext_map.reserved9.offset)))
+
+&sec_name_10=data.string(SD:(v.address(g_dump_ext_map.reserved10.name)))
+&sec_len_10=data.long(SD:(v.address(g_dump_ext_map.reserved10.length)))
+&sec_offset_10=data.long(SD:(v.address(g_dump_ext_map.reserved10.offset)))
+
+&sec_name_11=data.string(SD:(v.address(g_dump_ext_map.reserved11.name)))
+&sec_len_11=data.long(SD:(v.address(g_dump_ext_map.reserved11.length)))
+&sec_offset_11=data.long(SD:(v.address(g_dump_ext_map.reserved11.offset)))
+
+&sec_name_12=data.string(SD:(v.address(g_dump_ext_map.reserved12.name)))
+&sec_len_12=data.long(SD:(v.address(g_dump_ext_map.reserved12.length)))
+&sec_offset_12=data.long(SD:(v.address(g_dump_ext_map.reserved12.offset)))
+
+&sec_name_13=data.string(SD:(v.address(g_dump_ext_map.reserved13.name)))
+&sec_len_13=data.long(SD:(v.address(g_dump_ext_map.reserved13.length)))
+&sec_offset_13=data.long(SD:(v.address(g_dump_ext_map.reserved13.offset)))
+
+&sec_name_14=data.string(SD:(v.address(g_dump_ext_map.reserved14.name)))
+&sec_len_14=data.long(SD:(v.address(g_dump_ext_map.reserved14.length)))
+&sec_offset_14=data.long(SD:(v.address(g_dump_ext_map.reserved14.offset)))
+
+&sec_name_15=data.string(SD:(v.address(g_dump_ext_map.reserved15.name)))
+&sec_len_15=data.long(SD:(v.address(g_dump_ext_map.reserved15.length)))
+&sec_offset_15=data.long(SD:(v.address(g_dump_ext_map.reserved15.offset)))
+
+&sec_name_16=data.string(SD:(v.address(g_dump_ext_map.reserved16.name)))
+&sec_len_16=data.long(SD:(v.address(g_dump_ext_map.reserved16.length)))
+&sec_offset_16=data.long(SD:(v.address(g_dump_ext_map.reserved16.offset)))
+
+//界面设置
+DIALOG
+(
+  HEADER "扩展数据导出"
+  POS 1. 0. 28. 1.
+  TEXT "扩展数据区:"
+
+  POS 1. 2. 3. 1.
+  section1: CHECKBOX "" ""
+  POS 5. 2. 10. 1.
+  sec1: DYNTEXT "reserved"  
+  POS 1. 3. 3. 1.
+  section2: CHECKBOX "" ""
+  POS 5. 3. 10. 1.
+  sec2: DYNTEXT "reserved" 
+  POS 1. 4. 3. 1.
+  section3: CHECKBOX "" ""
+  POS 5. 4. 10. 1.
+  sec3: DYNTEXT "reserved" 
+  POS 1. 5. 3. 1.
+  section4: CHECKBOX "" ""
+  POS 5. 5. 10. 1.
+  sec4: DYNTEXT "reserved" 
+  POS 1. 6. 3. 1.
+  section5: CHECKBOX "" ""
+  POS 5. 6. 10. 1.
+  sec5: DYNTEXT "reserved" 
+  POS 1. 7. 3. 1.
+  section6: CHECKBOX "" ""
+  POS 5. 7. 10. 1.
+  sec6: DYNTEXT "reserved" 
+  POS 1. 8. 3. 1.
+  section7: CHECKBOX "" ""
+  POS 5. 8. 10. 1.
+  sec7: DYNTEXT "reserved" 
+  POS 1. 9. 3. 1.
+  section8: CHECKBOX "" ""
+  POS 5. 9. 10. 1.
+  sec8: DYNTEXT "reserved" 
+  POS 1. 10. 3. 1.
+  section9: CHECKBOX "" ""
+  POS 5. 10. 10. 1.
+  sec9: DYNTEXT "reserved" 
+  POS 1. 11. 3. 1.
+  section10: CHECKBOX "" ""
+  POS 5. 11. 10. 1.
+  sec10: DYNTEXT "reserved" 
+  POS 1. 12. 3. 1.
+  section11: CHECKBOX "" ""
+  POS 5. 12. 10. 1.
+  sec11: DYNTEXT "reserved" 
+  POS 1. 13. 3. 1.
+  section12: CHECKBOX "" ""
+  POS 5. 13. 10. 1.
+  sec12: DYNTEXT "reserved" 
+  POS 1. 14. 3. 1.
+  section13: CHECKBOX "" ""
+  POS 5. 14. 10. 1.
+  sec13: DYNTEXT "reserved" 
+  POS 1. 15. 3. 1.
+  section14: CHECKBOX "" ""
+  POS 5. 15. 10. 1.
+  sec14: DYNTEXT "reserved" 
+  POS 1. 16. 3. 1.
+  section15: CHECKBOX "" ""
+  POS 5. 16. 10. 1.
+  sec15: DYNTEXT "reserved" 
+  POS 1. 17. 3. 1.
+  section16: CHECKBOX "" ""
+  POS 5. 17. 10. 1.
+  sec16: DYNTEXT "reserved"   
+
+;button OK (Default)
+  POS 1. 19. 10. 1.
+  DEFBUTTON "Export" "CONTinue"
+
+;button Clear
+  POS 17. 19. 10. 1.
+  DEFBUTTON "Uncheck" "GOTO Action_Uncheck"
+
+
+;define action when window is closed
+  CLOSE "goto normal_exit"
+)
+
+&tmp_name=""
+//动态设置扩展区名
+if "&sec_name_1"!="&tmp_name"
+(
+	dialog.set sec1 "&sec_name_1"
+)
+if "&sec_name_2"!="&tmp_name"
+(
+	dialog.set sec2 "&sec_name_2"
+)	
+if "&sec_name_3"!="&tmp_name"
+(
+	dialog.set sec3 "&sec_name_3"
+)	
+if "&sec_name_4"!="&tmp_name"
+(
+	dialog.set sec4 "&sec_name_4"
+)
+if "&sec_name_5"!="&tmp_name"
+(
+	dialog.set sec5 "&sec_name_5"
+)
+if "&sec_name_6"!="&tmp_name"
+(
+	dialog.set sec6 "&sec_name_6"
+)
+if "&sec_name_7"!="&tmp_name"
+(
+	dialog.set sec7 "&sec_name_7"
+)
+if "&sec_name_8"!="&tmp_name"
+(
+	dialog.set sec8 "&sec_name_8"
+)
+if "&sec_name_9"!="&tmp_name"
+(
+	dialog.set sec9 "&sec_name_9"
+)
+if "&sec_name_10"!="&tmp_name"
+(
+	dialog.set sec10 "&sec_name_10"
+)
+if "&sec_name_11"!="&tmp_name"
+(
+	dialog.set sec11 "&sec_name_11"
+)
+if "&sec_name_12"!="&tmp_name"
+(
+	dialog.set sec12 "&sec_name_12"
+)
+if "&sec_name_13"!="&tmp_name"
+(
+	dialog.set sec13 "&sec_name_13"
+)
+if "&sec_name_14"!="&tmp_name"
+(
+	dialog.set sec14 "&sec_name_14"
+)
+if "&sec_name_15"!="&tmp_name"
+(
+	dialog.set sec15 "&sec_name_15"
+)
+if "&sec_name_16"!="&tmp_name"
+(
+	dialog.set sec16 "&sec_name_16"
+)
+
+//配置扩展区默认属性，长度为0的禁止导出
+if &sec_len_1==0
+(
+	dialog.disable section1
+)
+if &sec_len_2==0
+(
+	dialog.disable section2
+)
+if &sec_len_3==0
+(
+	dialog.disable section3
+)
+if &sec_len_4==0
+(
+	dialog.disable section4
+)
+if &sec_len_5==0
+(
+	dialog.disable section5
+)
+if &sec_len_6==0
+(
+	dialog.disable section6
+)
+if &sec_len_7==0
+(
+	dialog.disable section7
+)
+if &sec_len_8==0
+(
+	dialog.disable section8
+)
+if &sec_len_9==0
+(
+	dialog.disable section9
+)
+if &sec_len_10==0
+(
+	dialog.disable section10
+)
+if &sec_len_11==0
+(
+	dialog.disable section11
+)
+if &sec_len_12==0
+(
+	dialog.disable section12
+)
+if &sec_len_13==0
+(
+	dialog.disable section13
+)
+if &sec_len_14==0
+(
+	dialog.disable section14
+)
+if &sec_len_15==0
+(
+	dialog.disable section15
+)
+if &sec_len_16==0
+(
+	dialog.disable section16
+)
+
+waitforok:
+;STOP command halts script execution 
+  STOP 
+;script will continue here when "Export" button is clicked
+
+//导出扩展区数据
+if dialog.boolean(section1)
+(
+	d.save.b "&sec_name_1.bin" (&mntn_addr+&sec_offset_1)--(&mntn_addr+&sec_offset_1+&sec_len_1-1)
+) 
+if dialog.boolean(section2)
+(
+	d.save.b "&sec_name_2.bin" (&mntn_addr+&sec_offset_2)--(&mntn_addr+&sec_offset_2+&sec_len_2-1)
+) 
+if dialog.boolean(section3)
+(
+	d.save.b "&sec_name_3.bin" (&mntn_addr+&sec_offset_3)--(&mntn_addr+&sec_offset_3+&sec_len_3-1)
+) 
+if dialog.boolean(section4)
+(
+	d.save.b "&sec_name_4.bin" (&mntn_addr+&sec_offset_4)--(&mntn_addr+&sec_offset_4+&sec_len_4-1)
+) 
+if dialog.boolean(section5)
+(
+	d.save.b "&sec_name_5.bin" (&mntn_addr+&sec_offset_5)--(&mntn_addr+&sec_offset_5+&sec_len_5-1)
+) 
+if dialog.boolean(section6)
+(
+	d.save.b "&sec_name_6.bin" (&mntn_addr+&sec_offset_6)--(&mntn_addr+&sec_offset_6+&sec_len_6-1)
+) 
+if dialog.boolean(section7)
+(
+	d.save.b "&sec_name_7.bin" (&mntn_addr+&sec_offset_7)--(&mntn_addr+&sec_offset_7+&sec_len_7-1)
+) 
+if dialog.boolean(section8)
+(
+	d.save.b "&sec_name_8.bin" (&mntn_addr+&sec_offset_8)--(&mntn_addr+&sec_offset_8+&sec_len_8-1)
+) 
+if dialog.boolean(section9)
+(
+	d.save.b "&sec_name_9.bin" (&mntn_addr+&sec_offset_9)--(&mntn_addr+&sec_offset_9+&sec_len_9-1)
+) 
+if dialog.boolean(section10)
+(
+	d.save.b "&sec_name_10.bin" (&mntn_addr+&sec_offset_10)--(&mntn_addr+&sec_offset_10+&sec_len_10-1)
+) 
+if dialog.boolean(section11)
+(
+	d.save.b "&sec_name_11.bin" (&mntn_addr+&sec_offset_11)--(&mntn_addr+&sec_offset_11+&sec_len_11-1)
+) 
+if dialog.boolean(section12)
+(
+	d.save.b "&sec_name_12.bin" (&mntn_addr+&sec_offset_12)--(&mntn_addr+&sec_offset_12+&sec_len_12-1)
+) 
+if dialog.boolean(section13)
+(
+	d.save.b "&sec_name_13.bin" (&mntn_addr+&sec_offset_13)--(&mntn_addr+&sec_offset_13+&sec_len_13-1)
+) 
+if dialog.boolean(section14)
+(
+	d.save.b "&sec_name_14.bin" (&mntn_addr+&sec_offset_14)--(&mntn_addr+&sec_offset_14+&sec_len_14-1)
+) 
+if dialog.boolean(section15)
+(
+	d.save.b "&sec_name_15.bin" (&mntn_addr+&sec_offset_15)--(&mntn_addr+&sec_offset_15+&sec_len_15-1)
+) 
+if dialog.boolean(section16)
+(
+	d.save.b "&sec_name_16.bin" (&mntn_addr+&sec_offset_16)--(&mntn_addr+&sec_offset_16+&sec_len_16-1)
+) 
+
+dialog.ok "export finished"
+
+;close dialog window  
+  DIALOG.END
+ENDDO
+
+
+Action_Uncheck:
+  &FALSE=(0==1)
+  DIALOG.SET section1 &FALSE
+  DIALOG.SET section2 &FALSE
+  DIALOG.SET section3 &FALSE
+  DIALOG.SET section4 &FALSE
+  DIALOG.SET section5 &FALSE
+  DIALOG.SET section6 &FALSE
+  DIALOG.SET section7 &FALSE
+  DIALOG.SET section8 &FALSE
+  DIALOG.SET section9 &FALSE
+  DIALOG.SET section10 &FALSE
+  DIALOG.SET section11 &FALSE
+  DIALOG.SET section12 &FALSE
+  DIALOG.SET section13 &FALSE
+  DIALOG.SET section14 &FALSE
+  DIALOG.SET section15 &FALSE
+  DIALOG.SET section16 &FALSE
+
+GOTO waitforok
+
+normal_exit:
+	dialog.end
+	ENDDO

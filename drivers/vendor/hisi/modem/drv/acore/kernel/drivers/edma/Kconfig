@@ -1,0 +1,18 @@
+#
+# Balong EDMA engine configuration
+#
+
+comment "balong edma driver"
+
+config EDMA_SUPPORT
+	tristate "support edma"
+	default n
+	help
+	  EDMA driver
+	  
+config EDMA_TEST
+	tristate "edma test"
+	depends on EDMA_SUPPORT
+	default n
+	help
+	  EDMA test

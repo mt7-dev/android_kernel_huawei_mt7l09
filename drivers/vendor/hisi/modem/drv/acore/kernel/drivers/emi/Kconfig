@@ -1,0 +1,12 @@
+#
+# Balong EMI  configuration
+#
+
+comment "balong emi driver"
+
+config EMI_SUPPORT
+	tristate "support emi"
+	select FB_2_4_INCH_BALONG
+	help
+	  EMI driver
+	  

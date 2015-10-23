@@ -1,0 +1,203 @@
+
+
+/*****************************************************************************
+  1 其他头文件包含
+*****************************************************************************/
+#include  "vos.h"
+#include  "PsTypeDef.h"
+#include  "TafMmaCtx.h"
+
+#ifdef __cplusplus
+#if __cplusplus
+extern "C" {
+#endif
+#endif
+
+
+#pragma pack(4)
+
+/*****************************************************************************
+  2 宏定义
+*****************************************************************************/
+#define TAF_MMA_UNIVERAL_MSG_ID                (0xFFFFFFFF)
+
+
+/*****************************************************************************
+  3 枚举定义
+*****************************************************************************/
+
+enum TAF_MMA_ABORT_FSM_TYPE
+{
+    TAF_MMA_ABORT_FSM_IMMEDIATELY           = 0,
+    TAF_MMA_ABORT_FSM_DELAY                 = 1,
+    TAF_MMA_ABORT_BUTT
+};
+typedef VOS_UINT8 TAF_MMA_ABORT_FSM_TYPE_UINT8;
+
+
+enum TAF_MMA_MSG_COMPARE_PRIO_RSLT_ENUM
+{
+    TAF_MMA_MSG_COMPARE_PRIO_RSLT_ABORT              ,                          /* 高优先级消息中断当前流程 */
+    TAF_MMA_MSG_COMPARE_PRIO_RSLT_STORE              ,                          /* 需要缓存的消息 */
+    TAF_MMA_MSG_COMPARE_PRIO_RSLT_INITFSM            ,                          /* 进入状态机中处理 */
+    TAF_MMA_MSG_COMPARE_PRIO_RSLT_DISCARD            ,                          /* 直接丢弃的消息 */
+
+    TAF_MMA_MSG_COMPARE_PRIO_RSLT_BUTT
+};
+typedef VOS_UINT32 TAF_MMA_MSG_COMPARE_PRIO_RSLT_ENUM_UINT32;
+
+/*****************************************************************************
+  4 全局变量声明
+*****************************************************************************/
+
+
+/*****************************************************************************
+  5 消息头定义
+*****************************************************************************/
+
+
+/*****************************************************************************
+  6 消息定义
+*****************************************************************************/
+
+
+/*****************************************************************************
+  7 STRUCT定义
+*****************************************************************************/
+
+
+typedef VOS_UINT32 (*TAF_MMA_MSG_COMPARE_FUNC)(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg,
+    TAF_MMA_ABORT_FSM_TYPE_UINT8       *penAbortType
+);
+
+
+typedef struct
+{
+    VOS_UINT32                          ulCurrEventType;        /* 需比较的消息 */
+    TAF_MMA_MSG_COMPARE_FUNC            pfCompareFun;           /* 比较函数 */
+}  TAF_MMA_MSG_COMPARE_STRU;
+
+
+typedef struct
+{
+    TAF_MMA_FSM_ID_ENUM_UINT32          enFsmId;                /* 当前运行的FSM ID */
+    VOS_UINT32                          ulSize;                 /* 动作表的大小字节数除以ACT结构的大小 */
+    TAF_MMA_MSG_COMPARE_STRU           *pfCompareTbl;           /* 比较函数表 */
+}  TAF_MMA_FSM_MSG_COMPARE_STRU;
+
+/*****************************************************************************
+  8 UNION定义
+*****************************************************************************/
+
+
+/*****************************************************************************
+  9 OTHERS定义
+*****************************************************************************/
+
+
+/*****************************************************************************
+  10 函数声明
+*****************************************************************************/
+TAF_MMA_MSG_COMPARE_PRIO_RSLT_ENUM_UINT32 TAF_MMA_GetMsgComparePrioRslt(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg,
+    TAF_MMA_ABORT_FSM_TYPE_UINT8       *penAbortType
+);
+
+
+VOS_UINT32 TAF_MMA_ComparePhoneModeSetReqPrioWithPhoneMode(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg,
+    TAF_MMA_ABORT_FSM_TYPE_UINT8       *penAbortType
+);
+
+VOS_UINT32 TAF_MMA_CompareAtSyscfgReqPrioWithPhoneMode(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg,
+    TAF_MMA_ABORT_FSM_TYPE_UINT8       *penAbortType
+);
+
+
+VOS_UINT32 TAF_MMA_CompareAtPlmnListReqPrioWithPhoneMode(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg,
+    TAF_MMA_ABORT_FSM_TYPE_UINT8       *penAbortType
+);
+
+VOS_UINT32 TAF_MMA_CompareMmaInterUsimStatusChangeIndPrioWithPhoneMode(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg,
+    TAF_MMA_ABORT_FSM_TYPE_UINT8       *penAbortType
+);
+
+
+VOS_UINT32 TAF_MMA_CompareAtPlmnUserSelReqPrioWithPhoneMode(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg,
+    TAF_MMA_ABORT_FSM_TYPE_UINT8       *penAbortType
+);
+
+VOS_UINT32 TAF_MMA_CompareAtAttachPrioWithPhoneMode(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg,
+    TAF_MMA_ABORT_FSM_TYPE_UINT8       *penAbortType
+);
+
+
+VOS_UINT32 TAF_MMA_CompareAtDetachPrioWithPhoneMode(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg,
+    TAF_MMA_ABORT_FSM_TYPE_UINT8       *penAbortType
+);
+
+
+VOS_UINT32 TAF_MMA_CompareAtPlmnReselPrioWithPhoneMode(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg,
+    TAF_MMA_ABORT_FSM_TYPE_UINT8       *penAbortType
+);
+
+
+
+
+
+
+
+    
+
+
+
+#define TAF_MMA_COMPARE_TBL_ITEM(ulCurrMsgType, pCompareFun)\
+{\
+    (ulCurrMsgType),\
+    ((pCompareFun))\
+}
+
+
+#define TAF_MMA_FSM_COMPARE_TBL_ITEM(enFsmId, astFsmCompareTbl)\
+{\
+    ( enFsmId),\
+    ((sizeof(astFsmCompareTbl))/sizeof(TAF_MMA_MSG_COMPARE_STRU)),\
+    (astFsmCompareTbl)\
+}
+
+
+
+#if (VOS_OS_VER == VOS_WIN32)
+#pragma pack()
+#else
+#pragma pack(0)
+#endif
+
+
+
+
+#ifdef __cplusplus
+    #if __cplusplus
+        }
+    #endif
+#endif
+
+

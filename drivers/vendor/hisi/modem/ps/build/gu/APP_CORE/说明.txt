@@ -1,0 +1,17 @@
+V3R2使用如下文件：
+Makefile
+Makefile_V3
+ps_code_gu_app_core_inc.mk
+ps_code_gu_app_core_nwinquire.sh
+ps_code_gu_app_core_ps_comm.mk
+ps_code_gu_app_core_ps_gu.mk
+
+V7R1使用如下文件：
+Makefile
+Makefile_V7
+
+如下文件暂不使用：
+ps_code_gu_app_core_inc_v7.mk
+ps_code_gu_app_core_ps_comm_v7.mk
+ps_code_gu_app_core_ps_gu_v7.mk
+ps_code_gu_app_core_ps_v7.sh

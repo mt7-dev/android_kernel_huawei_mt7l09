@@ -1,0 +1,333 @@
+/{
+	hisi_noc@0 {
+		#address-cells = <1>;
+		#size-cells = <1>;
+		ranges;
+
+		compatible = "hisilicon,hi3630-noc";
+		interrupts = <0 123 0x4>,<0 126 0x4>;
+		pwrack-reg = <0x384>;
+
+		dma_bus@FDF40000 {
+			compatible = "hisilicon,hi3630-noc-node";
+			bus-name = "cfg_sys_noc_bus";
+			reg = <0xFDF40000 0x1000>;
+			eprobe-hwirq = <0>;
+			eprobe-offset = <0x800>;
+			eprobe-autoenable;
+			pwrack-bit = <8>;
+		};
+
+		sys_bus@E8100000 {
+			compatible = "hisilicon,hi3630-noc-node";
+			bus-name = "cfg_sys_noc_bus";
+			reg = <0xE8100000 0x2000>;
+			eprobe-hwirq = <1>;
+			eprobe-offset = <0x800>;
+			eprobe-autoenable;
+			pwrack-bit = <6>;
+		};
+
+		asp_bus@E8090000 {
+			compatible = "hisilicon,hi3630-noc-node";
+			bus-name = "cfg_sys_noc_bus";
+			reg = <0xE8090000 0x1000>;
+			eprobe-hwirq = <2>;
+			eprobe-offset = <0x400>;
+			pwrack-bit = <0>;
+		};
+		modem_bus@E8080000 {
+			compatible = "hisilicon,hi3630-noc-node";
+			bus-name = "cfg_sys_noc_bus";
+			reg = <0xE8080000 0x1000>;
+			eprobe-hwirq = <3>;
+			eprobe-offset = <0x400>;
+			pwrack-bit = <3>;
+		};
+
+		dbg_bus@FF000000 {
+			compatible = "hisilicon,hi3630-noc-node";
+			bus-name = "cfg_sys_noc_bus";
+			reg = <0xFF000000 0x1000>;
+			eprobe-hwirq = <4>;
+			eprobe-offset = <0x800>;
+			/*eprobe-autoenable;*/
+			pwrack-bit = <9>;
+		};
+
+		peri_vcodec_bus@E8920000 {
+			compatible = "hisilicon,hi3630-noc-node";
+			bus-name = "vcodec_bus";
+			reg = <0xE8920000 0x1000>;
+			eprobe-hwirq = <5>;
+			eprobe-offset = <0x400>;
+			pwrack-bit = <4>;
+		};
+
+		dss_bus@E85C0000 {
+			compatible = "hisilicon,hi3630-noc-node";
+			bus-name = "vivo_bus";
+			reg = <0xE85C0000 0x6000>;
+			eprobe-hwirq = <6>;
+			eprobe-offset = <0x400>;
+			pwrack-bit = <13>;
+		};
+
+		cfg_bus@E82A0000 {
+			compatible = "hisilicon,hi3630-noc-node";
+			bus-name = "cfg_sys_noc_bus";
+			reg = <0xE82A0000 0x1000>;
+			eprobe-hwirq = <7>;
+			eprobe-offset = <0x400>;
+			eprobe-autoenable;
+			pwrack-bit = <7>;
+		};
+		mmc0_bus@FF180000 {
+			compatible = "hisilicon,hi3630-noc-node";
+			bus-name = "cfg_sys_noc_bus";
+			reg = <0xFF180000 0x1000>;
+			eprobe-hwirq = <8>;
+			eprobe-offset = <0x400>;
+			pwrack-bit = <1>;
+		};
+		mmc1_bus@FF100000 {
+			compatible = "hisilicon,hi3630-noc-node";
+			bus-name = "cfg_sys_noc_bus";
+			reg = <0xFF100000 0x1000>;
+			eprobe-hwirq = <9>;
+			eprobe-offset = <0x400>;
+			pwrack-bit = <2>;
+		};
+
+		lpm3_transcation_bus@0xE82A0800 {
+			compatible = "hisilicon,hi3630-noc-node";
+			bus-name = "cfg_sys_noc_bus";
+			reg = <0xE82A0800 0x1000>;
+			eprobe-hwirq = <10>;
+			eprobe-offset = <0x0>;
+			eprobe-autoenable;
+			pwrack-bit = <7>;
+		};
+
+		iom3_transcation_bus@E8101000 {
+			compatible = "hisilicon,hi3630-noc-node";
+			bus-name = "cfg_sys_noc_bus";
+			reg = <0xE8101000 0x1000>;
+			eprobe-hwirq = <11>;
+			eprobe-offset = <0x0>;
+			//eprobe-autoenable;
+			pwrack-bit = <6>;
+		};
+
+		asp_transcation_bus@E8090800 {
+			compatible = "hisilicon,hi3630-noc-node";
+			bus-name = "cfg_sys_noc_bus";
+			reg = <0xE8090800 0x1000>;
+			eprobe-hwirq = <12>;
+			eprobe-offset = <0x0>;
+			eprobe-autoenable;
+			pwrack-bit = <0>;
+		};
+
+		modem_transcation_bus@E8080800 {
+			compatible = "hisilicon,hi3630-noc-node";
+			bus-name = "cfg_sys_noc_bus";
+			reg = <0xE8080800 0x1000>;
+			eprobe-hwirq = <13>;
+			eprobe-offset = <0x0>;
+			eprobe-autoenable;
+			pwrack-bit = <3>;
+		};
+
+		emmc_transcation_bus@FF180800 {
+			compatible = "hisilicon,hi3630-noc-node";
+			bus-name = "cfg_sys_noc_bus";
+			reg = <0xFF180800 0x1000>;
+			eprobe-hwirq = <14>;
+			eprobe-offset = <0x0>;
+			eprobe-autoenable;
+			pwrack-bit = <1>;
+		};
+
+		dss0_rd_transcation_bus@E85C2000 {
+			compatible = "hisilicon,hi3630-noc-node";
+			bus-name = "vivo_bus";
+			reg = <0xE85C2000 0x1000>;
+			eprobe-hwirq = <15>;
+			eprobe-offset = <0x0>;
+			eprobe-autoenable;
+			pwrack-bit = <13>;
+		};
+
+		dss0_wr_transcation_bus@E85C3000 {
+			compatible = "hisilicon,hi3630-noc-node";
+			bus-name = "vivo_bus";
+			reg = <0xE85C3000 0x1000>;
+			eprobe-hwirq = <16>;
+			eprobe-offset = <0x0>;
+			eprobe-autoenable;
+			pwrack-bit = <13>;
+		};
+
+		dss1_rd_transcation_bus@E85C4000 {
+			compatible = "hisilicon,hi3630-noc-node";
+			bus-name = "vivo_bus";
+			reg = <0xE85C4000 0x1000>;
+			eprobe-hwirq = <17>;
+			eprobe-offset = <0x0>;
+			eprobe-autoenable;
+			pwrack-bit = <13>;
+		};
+
+		dss1_wr_transcation_bus@E85C5000 {
+			compatible = "hisilicon,hi3630-noc-node";
+			bus-name = "vivo_bus";
+			reg = <0xE85C5000 0x1000>;
+			eprobe-hwirq = <18>;
+			eprobe-offset = <0x0>;
+			eprobe-autoenable;
+			pwrack-bit = <13>;
+		};
+
+		isp1_rd_transcation_bus@E85D1000 {
+			compatible = "hisilicon,hi3630-noc-node";
+			bus-name = "vivo_bus";
+			reg = <0xE85D1000 0x1000>;
+			eprobe-hwirq = <19>;
+			eprobe-offset = <0x0>;
+			eprobe-autoenable;
+			pwrack-bit = <5>;
+		};
+
+		isp1_wr_transcation_bus@E85D2000 {
+			compatible = "hisilicon,hi3630-noc-node";
+			bus-name = "vivo_bus";
+			reg = <0xE85D2000 0x1000>;
+			eprobe-hwirq = <20>;
+			eprobe-offset = <0x0>;
+			eprobe-autoenable;
+			pwrack-bit = <5>;
+		};
+
+		isp2_rd_transcation_bus@E85D3000 {
+			compatible = "hisilicon,hi3630-noc-node";
+			bus-name = "vivo_bus";
+			reg = <0xE85D3000 0x1000>;
+			eprobe-hwirq = <21>;
+			eprobe-offset = <0x0>;
+			eprobe-autoenable;
+			pwrack-bit = <5>;
+		};
+
+		isp2_wr_transcation_bus@E85D4000 {
+			compatible = "hisilicon,hi3630-noc-node";
+			bus-name = "vivo_bus";
+			reg = <0xE85D4000 0x1000>;
+			eprobe-hwirq = <22>;
+			eprobe-offset = <0x0>;
+			eprobe-autoenable;
+			pwrack-bit = <5>;
+		};
+
+		isp3_rd_transcation_bus@E85D5000 {
+			compatible = "hisilicon,hi3630-noc-node";
+			bus-name = "vivo_bus";
+			reg = <0xE85D5000 0x1000>;
+			eprobe-hwirq = <23>;
+			eprobe-offset = <0x0>;
+			eprobe-autoenable;
+			pwrack-bit = <5>;
+		};
+
+		isp3_wr_transcation_bus@E85D6000 {
+			compatible = "hisilicon,hi3630-noc-node";
+			bus-name = "vivo_bus";
+			reg = <0xE85D6000 0x1000>;
+			eprobe-hwirq = <24>;
+			eprobe-offset = <0x0>;
+			eprobe-autoenable;
+			pwrack-bit = <5>;
+		};
+
+		vdec_transcation_bus@E8930000 {
+			compatible = "hisilicon,hi3630-noc-node";
+			bus-name = "vcodec_bus";
+			reg = <0xE8930000 0x1000>;
+			eprobe-hwirq = <25>;
+			eprobe-offset = <0x0>;
+			eprobe-autoenable;
+			pwrack-bit = <10>;
+		};
+
+		venc_transcation_bus@E8940000 {
+			compatible = "hisilicon,hi3630-noc-node";
+			bus-name = "vcodec_bus";
+			reg = <0xE8940000 0x1000>;
+			eprobe-hwirq = <26>;
+			eprobe-offset = <0x0>;
+			eprobe-autoenable;
+			pwrack-bit = <11>;
+		};
+
+		sysbus_packet_bus@E8100C00 {
+			compatible = "hisilicon,hi3630-noc-node";
+			bus-name = "cfg_sys_noc_bus";
+			reg = <0xE8100C00 0x0200>;
+			eprobe-hwirq = <27>;
+			eprobe-offset = <0x0>;
+			eprobe-autoenable;
+			pwrack-bit = <6>;
+		};
+
+		vcodecbus_packet_bus@E8920800 {
+			compatible = "hisilicon,hi3630-noc-node";
+			bus-name = "vcodec_bus";
+			reg = <0xE8920800 0x0200>;
+			eprobe-hwirq = <28>;
+			eprobe-offset = <0x0>;
+			eprobe-autoenable;
+			pwrack-bit = <4>;
+		};
+
+		vivobus_ddrc0_rd_packet_bus@E85C0800 {
+			compatible = "hisilicon,hi3630-noc-node";
+			bus-name = "vivo_bus";
+			reg = <0xE85C0800 0x0200>;
+			eprobe-hwirq = <29>;
+			eprobe-offset = <0x0>;
+			eprobe-autoenable;
+			pwrack-bit = <13>;
+		};
+
+		vivobus_ddrc0_wr_packet_bus@E85C0C00 {
+			compatible = "hisilicon,hi3630-noc-node";
+			bus-name = "vivo_bus";
+			reg = <0xE85C0C00 0x0200>;
+			eprobe-hwirq = <30>;
+			eprobe-offset = <0x0>;
+			eprobe-autoenable;
+			pwrack-bit = <13>;
+		};
+
+		vivobus_ddrc1_rd_packet_bus@E85C1000 {
+			compatible = "hisilicon,hi3630-noc-node";
+			bus-name = "vivo_bus";
+			reg = <0xE85C1000 0x0200>;
+			eprobe-hwirq = <31>;
+			eprobe-offset = <0x0>;
+			eprobe-autoenable;
+			pwrack-bit = <13>;
+		};
+
+		vivobus_ddrc1_rd_packet_bus@E85C1400 {
+			compatible = "hisilicon,hi3630-noc-node";
+			bus-name = "vivo_bus";
+			reg = <0xE85C1400 0x0200>;
+			eprobe-hwirq = <32>;
+			eprobe-offset = <0x0>;
+			eprobe-autoenable;
+			pwrack-bit = <13>;
+		};
+
+	}; /* end of hisi_noc */
+};

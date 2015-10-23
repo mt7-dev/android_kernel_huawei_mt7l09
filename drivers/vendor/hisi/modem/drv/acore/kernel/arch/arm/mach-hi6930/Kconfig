@@ -1,0 +1,85 @@
+if ARCH_HI6930
+
+menu "HI6930 Soc Type"
+
+config  ARCH_TEST
+	bool "hi6930 Test"
+	select CPU_V7
+	select ARM_GIC
+	help
+	    support for hisilicon hi6930 Test platform
+
+config  ARCH_P531
+	bool "hi6930 P531"
+	select CPU_V7
+	select ARM_GIC
+	select MIGHT_HAVE_PCI
+	select ARCH_SUPPORTS_MSI
+	select MIGHT_HAVE_CACHE_L2X0
+	help
+	    support for hisilicon hi6930 P531 platform
+
+config  ARCH_V7R2
+	bool "hi6930 v7r2"
+	select CPU_V7
+	select ARM_GIC
+	select MIGHT_HAVE_PCI
+	select ARCH_SUPPORTS_MSI
+	select MIGHT_HAVE_CACHE_L2X0
+	help
+	    support for hisilicon hi6930 v7r2 platform
+
+config  ARCH_V711
+	bool "hi6930 v711"
+	select CPU_V7
+	select ARM_GIC
+	select MIGHT_HAVE_PCI
+	select ARCH_SUPPORTS_MSI
+	help
+	    support for hisilicon hi6930 v711 platform
+endmenu
+
+config BALONG_EASY_SHELL
+	bool "balong easy shell(ecall) support"
+	default y
+	help
+	Support for the Hisilicon Balong easy shell.
+
+config BALONG_PCIE_RC
+	bool "balong pcie rc mode support"
+	default n
+	help
+	Support for the Hisilicon Balong Pcie RC Mode.
+
+config BALONG_PCIE_EP
+	bool "balong pcie ep mode support"
+	default n
+	help
+	Support for the Hisilicon Balong Pcie EP Mode.
+
+config HAVE_CPU_IDLE
+    bool "balong cpu idle support"
+    select CPU_IDLE
+    default n
+	help
+	   support for the Hisilicon Balong cpu idle.
+
+config BSP_TEST_ACORE
+	bool "hi6930 test "
+	default n
+	help
+	Support for hisilicon hi6930 test.	
+
+
+config BALONG_PM_SUSPEND
+	bool "balong pm suspend"
+	select SUSPEND
+	select ARCH_SUSPEND_POSSIBLE
+	select PM
+	select PM_SLEEP
+	select CPU_V7
+	default n
+	help
+	support for pm suspend
+
+endif

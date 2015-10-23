@@ -1,0 +1,212 @@
+-IBALONG_TOPDIR/build/tools/pc_lint/lint
+-IBALONG_TOPDIR/modem/system/android/android_4.2_r1/kernel/include
+
+// 库文件选项
++libclass(all)
++macros
+
+// 包含其他选项文件
+co-gnu3.lnt
+options.lnt
+
+
+// 不报告库文件的告警 todo: 1) 这个地方要用 sed 命令改掉; 2) 第二个头文件库干啥用的
++libh(BALONG_TOPDIR/modem/system/android/android_4.2_r1/kernel/include)
++libh(BALONG_TOPDIR/modem/system/android/android_4.2_r1/kernel/include/linux)
++libh(BALONG_TOPDIR/modem/system/android/android_4.2_r1/external/openssl/crypto/bf)
+-elib(*)    //不报告库文件的告警
+
+-I./external
+//-header(/home/y00221789/balongv7r2_bugfix/vendor/hisi/modem/system/android/android_4.2_r1/kernel/arch/arm/include/generated/autoconf.h)
+
+// 屏蔽的告警 todo: 每个告警的含义需要写清楚
+-e1075 //两个名字空间包含同样的名称
+-e960 //触犯MISRA必需的规则 详见pclint手册
+-e10 //期望的字符串
+-e505 //逗号操作符左参数冗余
+-e539 //不期望从当前位置积极缩排
+-e602 //注释嵌套使用
+-e525 //从当前位置消极缩排
+-e164
+-e730 //函数的变量为布尔型
+-e155 //在一个表达式内忽略 {…}系列，假定为0
+-e506 //常量值布尔,发现在一个上下文中的一个量需要一个布尔
+-e434 //符号“\”与新行之间有空格
+-e607 //在字符串内发现宏的参数 'Symbol'
+-e606 //非ANSI转义系列: '\String'
+-e86 //结构 'Symbol' 没有数据元素
+-e731 //布尔型变量使用了== or !=
+-e655 //位方式操作使用 (兼容)枚举
+-e19 //无效的声明
+-e830 //在以前的信息中位置引用
+-e522 //期望有void类型、赋值、++、――
+-e528 //符号“Symbol”没有引用
+-e715 //符号没有使用
+-e666 //有副作用的表达式传递给宏的重复的参数
+-e46 //域类型应该是int
+-e762 //declared symbol 'Symbol'定义多余
+-e718 //Symbol'符号没有定义，假定返回int
+-e767 //宏定义在另一个模块有不同的定义
+-e551 //静态符号“symbol”被赋值后没有被使用
+-e40
+-e69
+-e514 //Boolean非法使用
+-e746
+-e515 //函数调用时，传递的参数个数与该函数定义的参数个数不一致
+//关闭info级别告警
+-e7?? //关闭700-799的信息
+-e8?? //关闭800-899的信息
+-e830
+
+/* 去掉本注释符则屏蔽告警，用于测试 
+-e132
+-e123
+-e522
+-e652
+-e124
+-e732
+-e713
+-e110
+-e529
+-e533
+-e570
+-e734
+-e578
+-e648
+-e737
+-e574
+-e760
+-e129
+-e64
+-e550
+-e82
+-e346
+-e502
+-e63
+-e115
+-e69
+-e656
+-e37
+-e18
+-e730
+-e718
+-e746
+-e614
+-e702
+-e157
+-e701
+-e62
+-e665
+-e40
+-e767
+-e514
+-e530
+-e527
+-e806
+-e84
+-e661
+-e573
+-e744
+-e752
+-e778
+-e413
+-e553
+-e613
+-e512
+-e135
+-e24
+-e35
+-e88
+-e747
+-e712
+-e516
+-e101
+-e668
+-e429
+-e716
+-e813
+-e620
+-e722
+-e401
+-e14
+-e571
+-e114
+-e564
+-e38
+-e546
+-e617
+-e663
+-e86
+-e729
+-e156
+-e30
+-e34
+-e144
+-e644
+-e572
+-e563
+-e569
+-e616
+-e504
+-e647
+-e650
+-e509
+-e560
+-e662
+-e415
+-e416
+-e414
+-e58
+-e794
+-e773
+-e31
+-e26
+-e43
+-e830
+-e831
+-e93  
+-e615    
+-e651
+-e958   
+-e745
+-e959
+去掉本注释符则屏蔽告警，用于测试  */
+
+-elib(15)   // redeclaration of symbol
+-elib(516)  // lots of redeclarations in Linux stdlib.h
+-elib(652)  // suppress message about #define of earlier declared symbols
+-elib(762)  // suppress message about multiple identical declarations and
+-elib(760)  // suppress message about multiple identical macro defs
+-elib(553)  // undefined preprocessor variables are taken as 0
+-elib(410)  // unusual size_t
+-elib(624)  // typedef symbol redeclared
+-elib(607)  // parameter substitution within string
+-elib(537)  // repeated include files
+-elib(2)    // unclosed quotes in nserve.h
+-elib(123)  // size is both a variable and a macro with args
+-elib(522) //function return value ignored
+-elib(655)  // bitwise operator combining compatible enum's
+-elib(641)  // converting enum's to int
+-elib(537)  // repeated include file (ios.h)
+-elib(747) //significant prototype coercion
+-elib(740) //unusual pointer casts
+-elib(763)   // redundant declaration
+-elib(569)   // loss of information 8-bits - 7bits
+-elib(148)              // Some of the libraries are redefining member
+
+// 需要单独定义的宏
+-D__asm__=
++DEXPORT_SYMBOL(x)=
++DEXPORT_SYMBOL_GPL(x)=
+-DPCLINT
+//-D__GNUC__=4
+-D__linux__
+-D__FUNCTION__
+-DVOS_OS_VER=VOS_LINUX
+-DVOS_LINUX=4
+
+-D__KERNEL__
+
+// 用于PC-LINT结果分析的输出选项
+-"format=%(%F(%l):%) $ %t %n: (%t -- %m)"
+-width(80,2)

@@ -1,0 +1,55 @@
+diff --git a/src/acore/at/src/AtCmdMsgProc.c b/src/acore/at/src/AtCmdMsgProc.c
+index b78aa6b..f12ead4 100755
+--- a/src/acore/at/src/AtCmdMsgProc.c
++++ b/src/acore/at/src/AtCmdMsgProc.c
+@@ -47,7 +47,7 @@
+ 
+ #if (FEATURE_ON==FEATURE_LTE)
+ #include "msp_nvim.h"
+-#include "msp_cfg.h"
++
+ #include "LPsNvInterface.h"
+ #include "LNvCommon.h"
+ #endif
+diff --git a/src/acore/at/src/AtInit.c b/src/acore/at/src/AtInit.c
+index 9a83e2e..412abe8 100755
+--- a/src/acore/at/src/AtInit.c
++++ b/src/acore/at/src/AtInit.c
+@@ -30,7 +30,8 @@
+ 
+ #if (FEATURE_ON == FEATURE_LTE)
+ #include "msp_nvim.h"
+-#include "msp_cfg.h"
++#include "msp_nv_id.h"
++#include "msp_nv_def.h"
+ #include "LPsNvInterface.h"
+ #include "at_lte_common.h"      /* ADDED by c64416 for V9R1/V7R1 AT, 2013/09/18 */
+ #endif
+diff --git a/src/acore/at/src/AtQueryParaCmd.c b/src/acore/at/src/AtQueryParaCmd.c
+index e851075..5e753fc 100755
+--- a/src/acore/at/src/AtQueryParaCmd.c
++++ b/src/acore/at/src/AtQueryParaCmd.c
+@@ -54,7 +54,8 @@
+ 
+ #if (FEATURE_ON==FEATURE_LTE)
+ #include "msp_nvim.h"
+-#include "msp_cfg.h"
++#include "msp_nv_def.h"
++#include "msp_nv_id.h"
+ #include "at_common.h"
+ /* ADD by c64416 for V9R1/V7R1 AT, 2013/09/18 begin */
+ #include "at_lte_common.h"
+diff --git a/src/acore/at/src/AtSetParaCmd.c b/src/acore/at/src/AtSetParaCmd.c
+index 43c1e04..3e439e7 100755
+--- a/src/acore/at/src/AtSetParaCmd.c
++++ b/src/acore/at/src/AtSetParaCmd.c
+@@ -63,7 +63,8 @@
+ /*DTS2012031606877             : h00135900 start in 2011-03-16*/
+ #if (FEATURE_ON==FEATURE_LTE)
+ #include "msp_nvim.h"
+-#include "msp_cfg.h"
++#include "msp_nv_def.h"
++#include "msp_nv_id.h"
+ #include "at_common.h"
+ #include "gen_msg.h"
+ /* ADD by c64416 for V9R1/V7R1 AT, 2013/09/18 begin */

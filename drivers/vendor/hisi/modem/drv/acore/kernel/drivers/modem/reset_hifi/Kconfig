@@ -1,0 +1,12 @@
+#
+# hifi reset driver
+#
+
+comment "hifi  reset"
+
+config HIFI_RESET
+	tristate "support hifi reset feature"
+	default n
+	help
+	 hifi reset
+

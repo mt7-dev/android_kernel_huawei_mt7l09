@@ -1,0 +1,154 @@
+/*
+ * Hisilicon Ltd. Hi3630 SoC
+ *
+ * Copyright (C) 2012-2014 Hisilicon Ltd.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * publishhed by the Free Software Foundation.
+ */
+
+ /{
+	hisi_ipc: ipc@e8611000 {
+		compatible = "hisilicon,HiIPCV230";
+		reg = <0xe8611000 0x1000>;
+		interrupts = <0 188 4>, <0 189 4>;
+		clocks = <&pclk>;
+		clock-names = "apb_pclk";
+
+		/*
+		 * "remote processor type"
+		 * <remote_processor_type: meaning>
+		 * <0: GIC_1>;
+		 * <1: GIC_2>;
+		 * <2: IOM3>;
+		 * <3: LPM3>;
+		 * <4: HIFI>;
+		 * <5: MCPU>;
+		 * <6: BBE16>;
+		 * <7: UNCERTAIN>;
+		 *
+		 * "remote processor"
+		 * <remote_processor, remote_processor_type>
+		 * <"HI3630_GIC_1",	0>;
+		 * <"HI3630_GIC_2",	1>;
+		 * <"HI3630_IOM3",	2>;
+		 * <"HI3630_LPM3",	3>;
+		 * <"HI3630_LPM3_SYNC",	3>;
+		 * <"HI3630_LPM3_FOR_RDR",	3>;
+		 * <"HI3630_HIFI",	4>;
+		 * <"HI3630_UNCERTAIN",	7>;
+		 */
+		remote_processor_num = <8>;
+		remote_processor = "HI3630_GIC_1",
+				"HI3630_GIC_2",
+				"HI3630_IOM3",
+				"HI3630_LPM3",
+				"HI3630_LPM3_SYNC",
+				"HI3630_LPM3_FOR_RDR",
+				"HI3630_HIFI",
+				"HI3630_UNCERTAIN";
+		remote_processor_type = <0 1 2 3 3 3 4 7>;
+		unlock_key = <0x1ACCE551>;
+		capability = <8>;
+		status = "disabled";
+
+		/*
+		 * "func"
+		 * <mbox_type, is_src_mbox, is_des_mbox>;
+		 */
+		mailboxes = <9>;
+		mailbox-0 {
+			compatible = "HiIPCV230,rx-mailbox-fast";
+			func = <1 0 1>;
+			interrupts = <0 193 4>;
+			src_remote_processor = "HI3630_LPM3";
+			des_remote_processor = "HI3630_GIC_2";
+			src_bit = <3>;
+			des_bit = <1>;
+			index = <0>;
+		};
+
+		mailbox-2 {
+			compatible = "HiIPCV230,rx-mailbox-fast";
+			func = <1 0 1>;
+			interrupts = <0 195 4>;
+			src_remote_processor = "HI3630_HIFI";
+			des_remote_processor = "HI3630_GIC_2";
+			src_bit = <4>;
+			des_bit = <1>;
+			index = <2>;
+		};
+
+		mailbox-4 {
+			compatible = "HiIPCV230,rx-mailbox-fast";
+			func = <1 0 1>;
+			interrupts = <0 197 4>;
+			src_remote_processor = "HI3630_IOM3";
+			des_remote_processor = "HI3630_GIC_2";
+			src_bit = <2>;
+			des_bit = <1>;
+			index = <4>;
+		};
+
+		mailbox-10 {
+			compatible = "HiIPCV230,tx-mailbox-fast";
+			func = <1 1 0>;
+			src_remote_processor = "HI3630_GIC_1";
+			des_remote_processor = "HI3630_IOM3";
+			src_bit = <0>;
+			des_bit = <2>;
+			index = <10>;
+		};
+
+		mailbox-13 {
+			compatible = "HiIPCV230,tx-mailbox-fast";
+			func = <1 1 0>;
+			src_remote_processor = "HI3630_GIC_1";
+			des_remote_processor = "HI3630_LPM3";
+			src_bit = <0>;
+			des_bit = <3>;
+			index = <13>;
+		};
+
+		mailbox-14 {
+			compatible = "HiIPCV230,tx-mailbox-fast";
+			func = <1 1 0>;
+			src_remote_processor = "HI3630_GIC_2";
+			des_remote_processor = "HI3630_LPM3_SYNC";
+			src_bit = <1>;
+			des_bit = <3>;
+			index = <14>;
+		};
+
+		mailbox-17 {
+			compatible = "HiIPCV230,tx-mailbox-fast";
+			func = <1 1 0>;
+			src_remote_processor = "HI3630_GIC_2";
+			des_remote_processor = "HI3630_LPM3_FOR_RDR";
+			src_bit = <1>;
+			des_bit = <3>;
+			index = <17>;
+		};
+
+		mailbox-18 {
+			compatible = "HiIPCV230,tx-mailbox-fast";
+			func = <1 1 0>;
+			src_remote_processor = "HI3630_GIC_2";
+			des_remote_processor = "HI3630_HIFI";
+			src_bit = <1>;
+			des_bit = <4>;
+			index = <18>;
+		};
+
+		mailbox-25 {
+			compatible = "HiIPCV230,mailbox-comm";
+			func = <0 1 1>;
+			src_remote_processor = "HI3630_UNCERTAIN";
+			des_remote_processor = "HI3630_UNCERTAIN";
+			src_bit = <7>;
+			des_bit = <7>;
+			index = <25>;
+		};
+	};
+ };

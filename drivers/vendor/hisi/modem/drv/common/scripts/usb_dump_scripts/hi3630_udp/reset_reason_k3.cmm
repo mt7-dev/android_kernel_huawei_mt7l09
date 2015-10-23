@@ -1,0 +1,74 @@
+;==============================================================================
+;   版权所有(C) 1987-2020, 深圳华为技术有限公司.
+;
+;   文 件 名 :  task_switch.cmm
+;
+;   作    者 :  zhuhongfei
+;
+;   描    述 :  cpu trace, etb data analyser
+;
+;   修改记录 :  2013年12月12日  v1.00  zhuhongfei  创建
+;
+;==============================================================================
+	
+	//异常原因为任务复位，恢复任务TCB，打印基本信息
+	if (&exc_task_addr!=0xFFFFFFFF)
+	(	
+		//恢复异常任务寄存器
+		v ((WIND_TCB*)&exc_task_addr).regs.r[0] = g_dump_base_info.regSet[0]
+		v ((WIND_TCB*)&exc_task_addr).regs.r[1] = g_dump_base_info.regSet[1]
+		v ((WIND_TCB*)&exc_task_addr).regs.r[2] = g_dump_base_info.regSet[2]
+		v ((WIND_TCB*)&exc_task_addr).regs.r[3] = g_dump_base_info.regSet[3]
+		v ((WIND_TCB*)&exc_task_addr).regs.r[4] = g_dump_base_info.regSet[4]
+		v ((WIND_TCB*)&exc_task_addr).regs.r[5] = g_dump_base_info.regSet[5]
+		v ((WIND_TCB*)&exc_task_addr).regs.r[6] = g_dump_base_info.regSet[6]
+		v ((WIND_TCB*)&exc_task_addr).regs.r[7] = g_dump_base_info.regSet[7]
+		v ((WIND_TCB*)&exc_task_addr).regs.r[8] = g_dump_base_info.regSet[8]
+		v ((WIND_TCB*)&exc_task_addr).regs.r[9] = g_dump_base_info.regSet[9]
+		v ((WIND_TCB*)&exc_task_addr).regs.r[10] = g_dump_base_info.regSet[10]
+		v ((WIND_TCB*)&exc_task_addr).regs.r[11] = g_dump_base_info.regSet[11]
+		v ((WIND_TCB*)&exc_task_addr).regs.r[12] = g_dump_base_info.regSet[12]
+		v ((WIND_TCB*)&exc_task_addr).regs.r[13] = g_dump_base_info.regSet[13]
+		v ((WIND_TCB*)&exc_task_addr).regs.r[14] = g_dump_base_info.regSet[14]
+		v ((WIND_TCB*)&exc_task_addr).regs.pc = g_dump_base_info.regSet[15]
+		v ((WIND_TCB*)&exc_task_addr).regs.cpsr = g_dump_base_info.regSet[16]	
+		
+		//打印基本异常信息
+		&reboot_task_name=data.string(SD:(v.address(g_dump_base_info.taskName)))
+		&mod_id=data.long(SD:(v.address(g_dump_base_info.modId)))
+		&arg1=data.long(SD:(v.address(g_dump_base_info.arg1)))
+		&arg2=data.long(SD:(v.address(g_dump_base_info.arg2)))
+		&arg3=data.long(SD:(v.address(g_dump_base_info.arg3)))
+		&arg3_len=data.long(SD:(v.address(g_dump_base_info.arg3_length)))
+		print "g_dump_base_info.taskName"
+		dialog.ok "reboot task: &reboot_task_name" \
+				     "mod id:        &mod_id" \
+				     "arg1:            &arg1" \
+				     "arg2:            &arg2" \
+				     "arg3:            &arg3" \
+				     "arg3 length:  &arg3_len"
+	)
+	
+	//异常原因为中断复位，打印基本信息
+	if (&exc_int_addr!=0xFFFFFFFF)
+	(			
+		//打印基本异常信息
+		&reboot_int_name=&exc_int_addr
+		&mod_id=data.long(SD:(v.address(g_dump_base_info.modId)))
+		&arg1=data.long(SD:(v.address(g_dump_base_info.arg1)))
+		&arg2=data.long(SD:(v.address(g_dump_base_info.arg2)))
+		&arg3=data.long(SD:(v.address(g_dump_base_info.arg3)))
+		&arg3_len=data.long(SD:(v.address(g_dump_base_info.arg3_length)))
+
+		dialog.ok "reboot int:    &reboot_int_name" \
+				     "mod id:        &mod_id" \
+				     "arg1:            &arg1" \
+				     "arg2:            &arg2" \
+				     "arg3:            &arg3" \
+				     "arg3 length:  &arg3_len"
+	)
+	else
+		goto closeDialog
+closeDialog:
+	print "reboot reaseon is error"
+ENDDO

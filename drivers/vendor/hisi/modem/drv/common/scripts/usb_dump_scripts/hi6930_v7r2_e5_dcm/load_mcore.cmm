@@ -1,0 +1,56 @@
+;==============================================================================
+;   版权所有(C) 1987-2020, 深圳华为技术有限公司.
+;
+;   文 件 名 :  load_mcore.cmm
+;
+;   作    者 :  zhuhongfei
+;
+;   描    述 :  Trace32 Connect Initialization
+;
+;   修改记录 :  2014年1月17日  v1.00  zhuhongfei  创建
+;
+;==============================================================================
+
+system.cpu CortexM3
+TASK.CONFIG d:\t32\demo\arm\kernel\rtxarm\rtx
+MENU.ReProgram d:\t32\demo\arm\kernel\rtxarm\rtx
+sys.mode up
+
+if OS.FILE(dump.bin)
+(
+	d.load.binary dump.bin /noclear
+)
+else
+(
+	dialog.ok "cann't find dump.bin"
+	ENDDO
+)
+
+//保存sysctrol、debug寄存器
+d.save.b mcore_regs.bin 0x80100--(0x80100+0xff) 
+//保存tcm，64K
+d.save.b mcore_tcm.bin 0x80200--(0x80200+0xffff)
+
+//加载异常文件
+d.load.elf bsp_mcore.elf /nocode
+d.load.b mcore_tcm.bin 0x10000000 /noclear
+d.load.b mcore_regs.bin 0xE000ED00 /noclear
+
+r.s r0 data.long(SD:(v.address(g_dump_regs[0])))
+r.s r1 data.long(SD:(v.address(g_dump_regs[1])))
+r.s r2 data.long(SD:(v.address(g_dump_regs[2])))
+r.s r3 data.long(SD:(v.address(g_dump_regs[3])))
+r.s r4 data.long(SD:(v.address(g_dump_regs[4])))
+r.s r5 data.long(SD:(v.address(g_dump_regs[5])))
+r.s r6 data.long(SD:(v.address(g_dump_regs[6])))
+r.s r7 data.long(SD:(v.address(g_dump_regs[7])))
+r.s r8 data.long(SD:(v.address(g_dump_regs[8])))
+r.s r9 data.long(SD:(v.address(g_dump_regs[9])))
+r.s r10 data.long(SD:(v.address(g_dump_regs[10])))
+r.s r11 data.long(SD:(v.address(g_dump_regs[11])))
+r.s r12 data.long(SD:(v.address(g_dump_regs[12])))
+r.s r13 data.long(SD:(v.address(g_dump_regs[13])))
+r.s r14 data.long(SD:(v.address(g_dump_regs[14])))
+r.s pc data.long(SD:(v.address(g_dump_regs[15])))
+r.s xpsr data.long(SD:(v.address(g_dump_regs[16])))
+

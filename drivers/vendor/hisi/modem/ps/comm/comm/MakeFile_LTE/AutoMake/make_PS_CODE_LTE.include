@@ -1,0 +1,30 @@
+# Core information
+
+PSDIR = ../..
+PSINC = $(SRCTOP)/PS_CODE
+
+
+EXTRA_CFLAGS += -I$(PSINC)/COMM_CODE/LINK/Inc/ \
+		-I$(PSINC)/COMM_CODE/FC/Inc/ \
+		-I$(PSINC)/COMM_CODE/DEVMGR/Inc/ \
+		-I$(PSINC)/COMM_CODE/STL/Inc/ \
+		-I$(PSINC)/COMM_CODE/MEM/Inc/ \
+		-I$(PSINC)/COMM_CODE/NDIS/Inc/ \
+		-I$(PSINC)/COMM_CODE/DIPC/Inc/ \
+		-I$(PSINC)/COMM_CODE/PPP/Inc/ \
+		-I$(PSINC)/COMM_CODE/ND/IPCOMM/Inc/ \
+		-I$(PSINC)/COMM_CODE/ND/NDSERVER/Inc/ \
+
+TTFOBJ        = $(PSDIR)/COMM_CODE/STL/Src/LUPQueue.o\
+		$(PSDIR)/COMM_CODE/NDIS/Src/PsNdis.o\
+		$(PSDIR)/COMM_CODE/NDIS/Src/Ipv4DhcpServer.o\
+		$(PSDIR)/COMM_CODE/ND/NDSERVER/Src/IpNdServer.o\
+		$(PSDIR)/COMM_CODE/ND/IPCOMM/Src/IpComm.o\
+		
+
+PSCMDOBJ += $(PSDIR)/COMM_CODE/STL/Src/.*.o.cmd\
+		$(PSDIR)/COMM_CODE/NDIS/Src/.*.o.cmd\		
+
+
+LPS-objs += $(TTFOBJ)
+## dependencies

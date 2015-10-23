@@ -1,0 +1,11 @@
+#
+# acore image load
+#
+
+comment "lmsp lps gumsp gups acore image"
+
+config BALONG_OAM_PS
+	tristate "support lmsp lps gumsp gups"
+	default n
+	help
+	  lmsp lps gumsp gups acore image

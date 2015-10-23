@@ -1,0 +1,11 @@
+#
+# hkadc
+#
+
+comment "hkadc driver"
+
+config HKADC_BALONG
+	tristate "hkadc driver"
+	default n
+	help
+	  hkadc driver

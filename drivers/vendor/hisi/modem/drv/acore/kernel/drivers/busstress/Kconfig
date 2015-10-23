@@ -1,0 +1,11 @@
+#
+# Balong busstress test configuration
+#
+
+comment "balong busstress test"
+
+config BUSSTRESS
+	tristate "busstress"
+	help
+	  BUSSTRESS test
+	  

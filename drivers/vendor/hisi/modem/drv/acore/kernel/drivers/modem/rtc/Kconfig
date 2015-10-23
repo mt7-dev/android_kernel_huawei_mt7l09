@@ -1,0 +1,28 @@
+if RTC_CLASS
+config BALONG_RTC
+	tristate "balong RTC support"
+	depends on ICC_BALONG
+	default n
+	help
+	  This is a driver for the balong on-chip Counter0 (Time-Of-Year
+	  counter) to be used as a RTC.
+
+	  This driver can also be built as a module. If so, the module
+	  will be called rtc-ls1x.
+config BALONG_RTC_TEST
+	tristate "rtc test"
+	depends on BALONG_RTC
+	default n
+	help
+	  rtc test
+config HI6551_RTC
+	tristate "balong RTC support"
+	depends on ICC_BALONG
+	default n
+	help
+	  This is a driver for the balong on-chip Counter0 (Time-Of-Year
+	  counter) to be used as a RTC.
+
+	  This driver can also be built as a module. If so, the module
+	  will be called rtc-ls1x.
+endif # RTC_CLASS

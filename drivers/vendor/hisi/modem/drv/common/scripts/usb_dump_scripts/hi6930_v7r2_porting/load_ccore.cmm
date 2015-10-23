@@ -1,0 +1,14 @@
+d.load.elf balongv7r2_mcore.elf /nocode
+
+if OS.FILE(ccore.bin)
+(
+  d.load.binary ccore.bin 0x52000000 /noclear
+)
+if OS.FILE(share.bin)
+(
+  d.load.binary share.bin 0x56600000 /noclear
+)
+if OS.FILE(dump.bin)
+(
+  d.load.binary dump.bin 0x56780000 /noclear
+)

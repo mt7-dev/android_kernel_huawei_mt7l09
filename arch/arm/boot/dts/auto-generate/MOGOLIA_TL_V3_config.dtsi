@@ -1,0 +1,25 @@
+/*
+ * Hisilicon Ltd.
+ *
+ * A15x4 A7x4
+ *
+ * It is only a demo for hisilicon hi3630 board. You show change the
+ * address of each node according to datasheet.
+ */
+
+
+
+/include/ "MOGOLIA_TL_V1_config.dtsi"
+/include/ "hisi_3630_pin_MOGOLIA_TL_V3.dtsi"
+/include/ "hisi_3630_modem_MOGOLIA_TL_V3.dtsi"
+/ {
+	board_info: board_info {
+		hisi,boardid = <9 0 7>;
+		hisi,boardname = "Mogolia_TL_V3";
+		hw,public;
+	};
+
+	panel_lcd_jdi {
+		lcd-bl-type = <1>;
+	};
+};

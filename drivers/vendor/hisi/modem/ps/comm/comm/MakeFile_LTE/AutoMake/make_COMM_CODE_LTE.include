@@ -1,0 +1,39 @@
+# Core information
+
+COMMINC = $(SRCTOP)/COMM_CODE
+
+INCLUDE_FLAG += -I$(LINUXROOT)/include/linux \
+
+EXTRA_CFLAGS += -I$(LINUXROOT)/arch/arm/mach-balong/include/mach \
+		-I$(COMMINC)/Balong_GU_Inc/Om/ \
+		-I$(COMMINC)/Balong_GU_Inc/Si/ \
+		-I$(COMMINC)/Balong_GU_Inc/DPM/ \
+		-I$(COMMINC)/Balong_GU_Inc/NVIM/ \
+		-I$(COMMINC)/Balong_GU_Inc/PsLog/ \
+		-I$(COMMINC)/Balong_GU_Inc/HPA/ \
+		-I$(COMMINC)/Balong_LTE_Inc/LPHY/ \
+		-I$(COMMINC)/Balong_LTE_Inc/LPS/ \
+		-I$(COMMINC)/Balong_LTE_Inc/MSP/ \
+                -I$(COMMINC)/Balong_MultiMode_Inc/COMM/ \
+		-I$(COMMINC)/Balong_MultiMode_Inc/DRV/ \
+		-I$(COMMINC)/Balong_MultiMode_Inc/GUMSP/LOGID/ \
+		-I$(COMMINC)/Balong_MultiMode_Inc/GUMSP/NVID/ \
+		-I$(COMMINC)/Balong_MultiMode_Inc/GUMSP/OSA/ \
+		-I$(COMMINC)/Balong_MultiMode_Inc/GUMSP/USIMM/ \
+		-I$(COMMINC)/Balong_MultiMode_Inc/GUPS/ \
+		-I$(COMMINC)/Balong_MultiMode_Inc/LPS/ \
+		-I$(COMMINC)/Balong_MultiMode_Inc/LMSP/ \
+		-I$(COMMINC)/Balong_MultiMode_Inc/TAF/ \
+		-I$(COMMINC)/Config/$(PLAT_FORM_PRODUCT)/ \
+		-I$(COMMINC)/Balong_GU_Inc/$(PLAT_FORM)/APP/ \
+		-I$(COMMINC)/Balong_GU_Inc/$(PLAT_FORM)/Comm/ \
+		-I$(COMMINC)/Balong_GU_Inc/$(PLAT_FORM)/DRV/ \
+		-I$(COMMINC)/Balong_GU_Inc/$(PLAT_FORM)/GBBP/ \
+		-I$(COMMINC)/Balong_GU_Inc/$(PLAT_FORM)/GDSP/ \
+		-I$(COMMINC)/Balong_GU_Inc/$(PLAT_FORM)/Media/ \
+		-I$(COMMINC)/Balong_GU_Inc/$(PLAT_FORM)/NVIM/ \
+		-I$(COMMINC)/Balong_GU_Inc/$(PLAT_FORM)/OAM/ \
+		-I$(COMMINC)/Balong_GU_Inc/$(PLAT_FORM)/SOC/ \
+		-I$(COMMINC)/Balong_GU_Inc/$(PLAT_FORM)/Tool/ \
+		-I$(COMMINC)/Balong_GU_Inc/$(PLAT_FORM)/WBBP/ \
+		-I$(COMMINC)/Balong_GU_Inc/$(PLAT_FORM)/WDSP/

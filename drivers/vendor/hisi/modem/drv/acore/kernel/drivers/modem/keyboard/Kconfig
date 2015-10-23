@@ -1,0 +1,11 @@
+#
+# Keyboard configuration
+#
+
+config BALONG_KEYBOARD_GPIO
+	tristate "Balong GPIO Buttons"
+	depends on ARCH_HI6930 && GPIO_BALONG
+	help
+	  Balong gpio_key for DCM E5
+
+

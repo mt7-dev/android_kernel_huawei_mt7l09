@@ -1,0 +1,23 @@
+// T32 Fri Feb 08 13:22:39 2002
+
+ B::
+ 
+ TOOLBAR ON
+ STATUSBAR ON
+ 
+ WINPOS 0.0 0.0 69% 80% 12. 1. W000
+ WINTABS 10. 10. 25. 62.
+ DATA.list
+ 
+ WINPOS 0. 79% 69% 28% 0. 0. W001
+ Area
+
+ WINPOS 68% 0. 33% 66% 0. 0. W002
+ register /spotlight
+ 
+ WINPOS  68% 62% 33% 42% 0. 0. W003
+ Var.Frame /Locals /Caller /ARGS
+ 
+ setup.var %open.on %hex %symbol
+ 
+ ENDDO

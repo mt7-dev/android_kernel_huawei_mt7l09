@@ -1,0 +1,104 @@
+EXTRA_CFLAGS += -Iarch/arm/mach-balong/include/mach
+EXTRA_CFLAGS += -Iarch/arm/include/asm
+EXTRA_CFLAGS += -Iinclude/linux
+EXTRA_CFLAGS += -Iinclude/generated
+EXTRA_CFLAGS += -I$(BALONG_TOPDIR)/include/med
+EXTRA_CFLAGS += -I$(BALONG_TOPDIR)/include/nv/gu/codec
+EXTRA_CFLAGS += -I$(BALONG_TOPDIR)/include/oam/comm/osa
+EXTRA_CFLAGS += -I$(BALONG_TOPDIR)/include/oam/comm/om
+EXTRA_CFLAGS += -I$(BALONG_TOPDIR)/include/oam/gu/nvim
+EXTRA_CFLAGS += -I$(BALONG_TOPDIR)/include/oam/gu/log
+EXTRA_CFLAGS += -I$(BALONG_TOPDIR)/include/oam/gu/om
+EXTRA_CFLAGS += -I$(BALONG_TOPDIR)/include/oam/comm/si
+EXTRA_CFLAGS += -I$(BALONG_TOPDIR)/include/oam/comm/usimm
+EXTRA_CFLAGS += -I$(BALONG_TOPDIR)/include/oam/comm/errno
+EXTRA_CFLAGS += -I$(BALONG_TOPDIR)/include/oam/comm/socp
+EXTRA_CFLAGS += -I$(BALONG_TOPDIR)/include/oam/comm/nvim
+EXTRA_CFLAGS += -I$(BALONG_TOPDIR)/include/oam/lt/msp/
+EXTRA_CFLAGS += -I$(BALONG_TOPDIR)/include/oam/lt/diag/
+EXTRA_CFLAGS += -I$(BALONG_TOPDIR)/include/taf
+EXTRA_CFLAGS += -I$(BALONG_TOPDIR)/include/ps/tlps
+EXTRA_CFLAGS += -I$(BALONG_TOPDIR)/include/ps/gups
+EXTRA_CFLAGS += -I$(BALONG_TOPDIR)/include/nv/gu/ttf
+EXTRA_CFLAGS += -I$(BALONG_TOPDIR)/include/nv/gu/oam
+EXTRA_CFLAGS += -I$(BALONG_TOPDIR)/include/nv/gu/nas
+EXTRA_CFLAGS += -I$(BALONG_TOPDIR)/include/nv/gu/was
+EXTRA_CFLAGS += -I$(BALONG_TOPDIR)/include/ps/nas
+EXTRA_CFLAGS += -I$(BALONG_TOPDIR)/config/osa
+EXTRA_CFLAGS += -I$(BALONG_TOPDIR)/config/nvim/include/gu
+EXTRA_CFLAGS += -I$(BALONG_TOPDIR)/modem/ps/inc/gu
+EXTRA_CFLAGS += -I$(BALONG_TOPDIR)/modem/ps/as/gu/ttf/TTFComm/Inc
+EXTRA_CFLAGS += -Idrivers/hisi/modem/ps/comm/comm/LINK/Inc
+EXTRA_CFLAGS += -Idrivers/hisi/modem/ps/comm/comm/DICC/Inc
+EXTRA_CFLAGS += -Idrivers/hisi/modem/ps/comm/comm/DIPC/Inc
+EXTRA_CFLAGS += -Idrivers/hisi/modem/ps/comm/comm/FLOWCTRL/Inc
+EXTRA_CFLAGS += -Idrivers/hisi/modem/ps/comm/comm/IMM/Inc
+EXTRA_CFLAGS += -Idrivers/hisi/modem/ps/comm/comm/MEMCTRL/Inc
+EXTRA_CFLAGS += -Idrivers/hisi/modem/ps/comm/comm/MUX/Inc
+EXTRA_CFLAGS += -Idrivers/hisi/modem/ps/comm/comm/NFEXT/Inc
+EXTRA_CFLAGS += -Idrivers/hisi/modem/ps/comm/comm/NDIS/Inc
+EXTRA_CFLAGS += -Idrivers/hisi/modem/ps/comm/comm/ND/IPCOMM/Inc
+EXTRA_CFLAGS += -Idrivers/hisi/modem/ps/comm/comm/ND/NDSERVER/Inc
+EXTRA_CFLAGS += -Idrivers/hisi/modem/ps/comm/comm/PPP/Inc
+EXTRA_CFLAGS += -Idrivers/hisi/modem/ps/comm/comm/STL/Inc
+EXTRA_CFLAGS += -I$(BALONG_TOPDIR)/modem/oam/inc/gu/acore/om
+EXTRA_CFLAGS += -I$(BALONG_TOPDIR)/modem/oam/inc/gu/comm/om
+
+
+EXTRA_CFLAGS += -D__LINUX_ARM_ARCH__=7 -march=armv7-a -Uarm -DVOS_LINUX=4 -DOSA_CPU_ACPU=1 -DVOS_OS_VER=VOS_LINUX -DVOS_OSA_CPU=OSA_CPU_ACPU -D__LOG_RELEASE__ -DBSP_CORE_APP -DGU_MODE -DMSP_SUPPORT_USB_VCOM1 -DMSP_SUPPORT_USB_VCOM2 -DVOS_DOPRA_VER=2 -DNDIS_RELEASE -DBALONG_PHY_V200=2 -DBALONG_PHY_V300=3 -DBALONG_PHY_VER=BALONG_PHY_V300 -DBALONG_CHIP_V200=2 -DBALONG_CHIP_V300=3 -DBALONG_CHIP_V500=4 -DBALONG_CHIP_VER=BALONG_CHIP_V500 -DMSP_GUNAS_AT_UNITE
+
+EXTRA_CFLAGS += -fsigned-char 
+
+GUPS-objs := comm/comm/LINK/Src/TTFLink.o
+GUPS-objs += comm/comm/LINK/Src/TTFUtil.o
+GUPS-objs += comm/comm/DICC/Src/Dicc.o
+GUPS-objs += comm/comm/DIPC/Src/PsDipc.o
+GUPS-objs += comm/comm/MUX/Src/PsMux.o
+GUPS-objs += comm/comm/MEMCTRL/Src/TTFMemCtrl.o
+GUPS-objs += comm/comm/FLOWCTRL/Src/ACpuLoad.o
+GUPS-objs += comm/comm/FLOWCTRL/Src/Fc.o
+GUPS-objs += comm/comm/FLOWCTRL/Src/FcACore.o
+GUPS-objs += comm/comm/FLOWCTRL/Src/FcACoreCReset.o
+GUPS-objs += comm/comm/IMM/Src/IMMmemMntn.o
+GUPS-objs += comm/comm/IMM/Src/IMMmemRB.o
+GUPS-objs += comm/comm/IMM/Src/IMMmemZC.o
+GUPS-objs += comm/comm/PPP/Src/acf.o
+GUPS-objs += comm/comm/PPP/Src/async.o
+GUPS-objs += comm/comm/PPP/Src/auth.o
+GUPS-objs += comm/comm/PPP/Src/chap.o
+GUPS-objs += comm/comm/PPP/Src/hdlc.o
+GUPS-objs += comm/comm/PPP/Src/ipcp.o
+GUPS-objs += comm/comm/PPP/Src/lcp.o
+GUPS-objs += comm/comm/PPP/Src/link.o
+GUPS-objs += comm/comm/PPP/Src/pap.o
+GUPS-objs += comm/comm/PPP/Src/ppp_atcmd.o
+GUPS-objs += comm/comm/PPP/Src/ppp_fsm.o
+GUPS-objs += comm/comm/PPP/Src/ppp_init.o
+GUPS-objs += comm/comm/PPP/Src/ppp_input.o
+GUPS-objs += comm/comm/PPP/Src/ppp_mbuf.o
+GUPS-objs += comm/comm/PPP/Src/ppp_public.o
+GUPS-objs += comm/comm/PPP/Src/pppid.o
+GUPS-objs += comm/comm/PPP/Src/proto.o
+GUPS-objs += comm/comm/PPP/Src/throughput.o
+GUPS-objs += comm/comm/PPP/Src/hdlc_hardware.o
+GUPS-objs += comm/comm/PPP/Src/hdlc_software.o
+GUPS-objs += comm/comm/Pstool/Src/Acpu_view.o
+GUPS-objs += comm/comm/NFEXT/IpsMntn.o
+GUPS-objs += comm/comm/NFEXT/NetfilterEx.o
+GUPS-objs += comm/comm/NFEXT/NetfilterExCtrl.o
+GUPS-objs += comm/comm/HISOCKET/Src/hisocket.o
+
+GUPS-objs += comm/comm/STL/Src/LUPQueue.o
+GUPS-objs += comm/comm/NDIS/Src/PsNdis.o
+GUPS-objs += comm/comm/NDIS/Src/Ipv4DhcpServer.o
+GUPS-objs += comm/comm/ND/IPCOMM/Src/IpComm.o
+GUPS-objs += comm/comm/ND/NDSERVER/Src/IpNdServer.o  
+
+ifeq ($(CFG_TTF_SKB_EXP),NO)
+GUPS-objs += comm/comm/IMM/Src/IMMmem_PS.o    
+endif
+
+obj-y  := GUPS.o
+
+
+

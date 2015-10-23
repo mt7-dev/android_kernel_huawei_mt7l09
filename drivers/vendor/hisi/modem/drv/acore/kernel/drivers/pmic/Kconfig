@@ -1,0 +1,61 @@
+menuconfig PMIC
+	bool "Voltage and Current Support"
+	help
+	  Generic Voltage and Current support.
+
+	  This framework is designed to provide a generic interface to voltage
+	  and current regulators within the Linux kernel. It's intended to
+	  provide voltage and current control to client or consumer drivers and
+	  also provide status information to user space applications through a
+	  sysfs interface.
+
+	  The intention is to allow systems to dynamically control regulator
+	  output in order to save power and prolong battery life. This applies
+	  to both voltage regulators (where voltage output is controllable) and
+	  current sinks (where current output is controllable).
+
+	  This framework safely compiles out if not selected so that client
+	  drivers can still be used in systems with no software controllable
+	  regulators.
+
+	  If unsure, say no.
+
+if PMIC
+
+config POWER_PMIC_HI6451
+	tristate "National Semiconductors HI6451 PMIC driver"
+	depends on SPI
+	help
+	 Say Y here to support the voltage regulators and convertors
+	 on National Semiconductors HI6451 PMIC
+     
+config POWER_PMIC_HI6551
+	tristate "National Semiconductors HI6551 PMIC driver"
+	help
+	 Say Y here to support the voltage regulators and convertors
+	 on National Semiconductors HI6551 PMIC
+          
+config POWER_PMIC_HI6559
+	tristate "National Semiconductors HI6559 PMIC driver"
+	help
+	 Say Y here to support the voltage regulators and convertors
+	 on National Semiconductors HI6559 PMIC
+     
+config HI6551_COUL
+ 	tristate "National Semiconductors HI6551 COUL driver"
+	depends on POWER_PMIC_HI6551
+	help
+	 Say Y here to support the voltage and current decetion
+	 on National Semiconductors HI6551 PMIC  
+     
+config POWER_PMIC_DEBUG
+	tristate "National Semiconductors PMIC_DEBUG driver"
+	help
+	 Say Y here to support the debug on National Semiconductors PMIC Moudle
+config POWER_PMIC_TEST
+	tristate "National Semiconductors PMIC_TEST driver"
+	help
+	 Say Y here to support the debug on National Semiconductors PMIC Moudle
+
+endif
+

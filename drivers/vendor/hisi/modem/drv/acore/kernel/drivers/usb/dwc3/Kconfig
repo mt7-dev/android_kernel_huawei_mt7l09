@@ -1,0 +1,51 @@
+config USB_DWC3
+	tristate "DesignWare USB3 DRD Core Support"
+	depends on (USB && USB_GADGET)
+	select USB_OTG_UTILS
+	select USB_GADGET_DUALSPEED
+	select USB_GADGET_SUPERSPEED
+	select USB_XHCI_PLATFORM if USB_SUPPORT && USB_XHCI_HCD
+	help
+	  Say Y or M here if your system has a Dual Role SuperSpeed
+	  USB controller based on the DesignWare USB3 IP Core.
+
+	  If you choose to build this driver is a dynamically linked
+	  module, the module will be called dwc3.ko.
+
+if USB_DWC3
+config GADGET_SUPPORT_REMOTE_WAKEUP
+	bool "Support the remote wakeup"
+	help
+	  Say Y here to support remote gadget remote wakeup.
+
+config USB_DWC3_DEBUG
+	bool "Enable Debugging Messages"
+	help
+	  Say Y here to enable debugging messages on DWC3 Driver.
+
+config USB_DWC3_VERBOSE
+	bool "Enable Verbose Debugging Messages"
+	depends on USB_DWC3_DEBUG
+	help
+	  Say Y here to enable verbose debugging messages on DWC3 Driver.
+
+config DWC3_INTERRUPT_GATHER
+	bool "dwc3 interrupt gather"
+	help
+		select it if you'd like to reduce the interrupt pressure.
+
+config DWC3_DBG
+	bool "dwc3 dbg(balong) system"
+	help
+		select it if you'd like to use dwc3 dbg system.
+
+config USB_DWC3_FORCE_HOST
+	bool "Force host mode"
+	---help---
+	  Say 'Y' to force dwc3 to host mode.
+	  
+config USB_DWC3_FORCE_DEVICE
+	bool "Force device mode"
+	---help---
+	  Say 'Y' to force dwc3 to device mode.
+endif

@@ -1,0 +1,716 @@
+;system.jtagclock 1Mhz
+
+local &ClearWin
+local &imgDir
+
+&imgDir= "D:\image"
+
+&ClearWin=          "no"          ; Remove all windows before startin
+
+;specific the bin file
+&m3boot_file= "&imgDir\ucos.bin"
+&m3boot_size= OS.FILE.SIZE(&m3boot_file)
+&m3boot_addr= 0x00000000
+
+&ptable_file= "&imgDir\ptable.bin"
+&ptable_size= OS.FILE.SIZE(&ptable_file)
+&ptable_addr= 0x00080000
+
+&fastboot_file= "&imgDir\fastboot.img"
+&fastboot_size= OS.FILE.SIZE(&fastboot_file)
+&fastboot_addr= 0x00000000
+
+&vxworks_file= "&imgDir\balongv7r1_mcore.bin"
+&vxworks_size= OS.FILE.SIZE(&vxworks_file)
+&vxworks_addr= 0x018c0000
+
+&kernel_file= "&imgDir\boot.img"
+&kernel_size= OS.FILE.SIZE(&kernel_file)
+&kernel_addr= 0x038c0000
+
+&system_file= "&imgDir\system.img"
+&system_size= OS.FILE.SIZE(&system_file)
+&system_addr= 0x03ec0000
+
+&flashBurnFile=  "&imgDir\fastboot.img.elf"
+&TempAddr=  0x52c00000
+&runStack=  0x4fe1b000   ;0x4fe3fff0   ; the C function rum time stack
+&retValue=  0		 ; 
+&readAddr=  0x51000000
+
+
+
+;define nand burn opts
+&nandformat=  0
+&nandwrite=  1
+&nandread=  2 
+&nanderase=  3
+&blockerase=  6
+&erasebyaddr= 7
+&ddrcheck= 8
+&writeyaffs= 9
+&readyaffs= 0xa
+&makefactory= 0xb
+&writefactory= 0xc
+
+if "&ClearWin"=="yes"
+  (
+    WinCLEAR
+    WinPage.Reset
+  )
+  
+;Fix windows dimensions as begin from the top-left of the screen, with
+;50% width and 100% higth of the screen. the windows named "Balong", with the
+;heading string "Trace32 Memu for Balong".
+
+WINPOS 0. 0. 50% 100% ,  , Balong NORMAL "Trace32 Memu for Balong"
+area
+area.RESET 
+gosub NormalMenu
+  
+NormalMenu:
+  
+  ;do T32_cortexA9_0.cmm
+  ;wait 1.s
+  ;do init.cmm
+  ;wait 1.s
+
+  R.S CPSR 0xD3
+  ;R.S XPSR 0xD3
+  r.s r13 &runStack
+  gosub MainMenu
+  
+  ;WinCLEAR
+  ;WinPage.Reset
+  sys.down
+    
+    
+MainMenu:
+
+  print "------------------MAIN MENU------------------"
+  print "  1: Enter the debug mode"
+  print "  2: Erase Menu"
+  print "  3: Download Menu"
+  print "  4: Read Menu"
+  print "  5: Make Factory Image"
+  print "  6: Factory Image down"
+  print "  7: Make patition Table"
+  print "  8: Debug mode"
+  print "  9: Exit"
+  print
+  print
+  print " Please make a choice: "
+  
+  enter &Choice
+  &Choice=&Choice+0
+  print &Choice
+  
+  if "&ClearWin"=="yes"
+  (
+    area.RESET
+  )
+  
+  if (&Choice==2)
+ (
+EraseMenu:
+;
+      print
+      print "------------ ERASE FUNC MENU ------------"
+      print "  1: Erase Specific Block(include bad block)"
+      print "  2: Safe Erase  (By Block Number)"
+      print "  3: Safe Erase  (By Address)"
+      print "  4: Force Erase (By Block Number)"
+      print "  5: Force Erase (By Address)"
+      print "  6: Format the Flash"
+      print "  0: Return to Up Level"
+      print
+      print
+      print " Please make a choice: "
+
+      &t32_cmm_stopped=1
+      enter &Choice
+      &Choice=&Choice+0
+      &t32_cmm_stopped=0
+      print &Choice
+      print
+      
+      if "&ClearWin"=="yes"
+      (
+        area.RESET
+      )
+
+      
+      if (&Choice==1)
+      (
+        print "Erase Specific Block(include bad block)"
+        print "enter the erase block:"
+        enter &eraseStartBlock
+        &eraseEndBlock=&eraseStartBlock+1
+        print
+        gosub EraseBlock &eraseStartBlock &eraseEndBlock 0
+      )
+      else if (&Choice==2)
+      (
+        print "Safe Erase (By Block Number)"
+        print "enter strat block num:"
+        enter &eraseStartBlock
+        print "enter end block num:"
+        enter &eraseEndBlock
+        print
+        gosub EraseBlock &eraseStartBlock &eraseEndBlock 1
+      )
+      else if (&Choice==3)
+      (
+        print "Safe Erase (By Address)"
+        print "enter strat address:"
+        enter &eraseStartAddr
+        print "enter end address:"
+        enter &eraseEndAddr
+        print
+        gosub EraseAddr &eraseStartAddr &eraseEndAddr 1
+      )
+      else if (&Choice==4)
+      (
+        print "Force Erase (By Block Number)"
+        print "enter strat block num:"
+        enter &eraseStartBlock
+        print "enter end block num:"
+        enter &eraseEndBlock
+        print
+        gosub EraseBlock &eraseStartBlock &eraseEndBlock 0
+      )
+      else if (&Choice==5)
+      (
+        print "Force Erase (By Address)"
+        print "enter strat address:"
+        enter &eraseStartAddr
+        print "enter end address:"
+        enter &eraseEndAddr
+        print
+        gosub EraseAddr &eraseStartAddr &eraseEndAddr 0
+      )
+      else if (&Choice==6)
+      (
+        print "Format the flash"
+        print
+        print
+        gosub formatflash
+      )
+      else
+      (
+        goto MainMenu
+      )
+      goto EraseMenu
+  )
+  else if (&Choice==3)
+  (
+DownloadMenu:
+;
+      print
+      print "---------- DOWNLOAD FUNC MENU -----------"
+      print "  1: Download m3boot"
+      print "  2: Download ptable"
+      print "  3: Download fastboot"
+      print "  4: Download vxworks"
+      print "  5: Download kernel"
+      print "  6: Download system"
+      print "  0: Return to Up Level"
+      print
+      print
+      print " Please make a choice: "
+
+      &t32_cmm_stopped=1
+      enter &Choice
+      &Choice=&Choice+0
+      &t32_cmm_stopped=0
+      print
+      
+      if (&Choice==1)
+      (        
+	&cmd_buffer="flash:m3boot"
+        gosub PgrmBinFile &cmd_buffer &m3boot_file &m3boot_size &m3boot_addr
+      )
+      else if (&Choice==2)
+      (
+	&cmd_buffer="flash:ptable"
+ 	gosub PgrmBinFile &cmd_buffer &ptable_file &ptable_size &ptable_addr
+      )
+      else if (&Choice==3)
+      (
+	&cmd_buffer="flash:fastboot"
+        gosub PgrmBinFile &cmd_buffer &fastboot_file &fastboot_size &fastboot_addr
+      )
+      else if (&Choice==4)
+      (
+      	&cmd_buffer="flash:vxworks"
+        gosub PgrmBinFile &cmd_buffer &vxworks_file &vxworks_size &vxworks_addr
+      )
+      else if (&Choice==5)
+      (
+	&cmd_buffer="flash:kernel"
+        gosub PgrmBinFile &cmd_buffer &kernel_file &kernel_size &kernel_addr
+      )
+      else if (&Choice==6)
+      (
+	&cmd_buffer="flash:system"
+        gosub PgrmBinFile &cmd_buffer &system_file &system_size &system_addr
+      )
+      else if (&Choice==7)
+      (      
+        print "Download all image"
+	
+      	print "-->Start to Download m3boot"
+	&cmd_buffer="flash:m3boot"
+        gosub PgrmBinFile &cmd_buffer &m3boot_file &m3boot_size &m3boot_addr  
+
+        print "-->Start to Download ptable"
+      	&cmd_buffer="flash:ptable"
+ 	gosub PgrmBinFile &cmd_buffer &ptable_file &ptable_size &ptable_addr
+
+        print "-->Start to Download fastboot"
+      	&cmd_buffer="flash:fastboot"
+        gosub PgrmBinFile &cmd_buffer &fastboot_file &fastboot_size &fastboot_addr
+
+        print "-->Start to Download vxworks"
+      	&cmd_buffer="flash:vxworks"
+        gosub PgrmBinFile &cmd_buffer &vxworks_file &vxworks_size &vxworks_addr
+
+        print "-->Start to Download kernel"
+      	&cmd_buffer="flash:kernel"
+        gosub PgrmBinFile &cmd_buffer &kernel_file &kernel_size &kernel_addr
+	
+	print "-->Start to Download system"
+	&cmd_buffer="flash:system"
+        gosub PgrmBinFile &cmd_buffer &system_file &system_size &system_addr        
+      )
+      else
+      (
+        goto MainMenu
+      )
+      goto DownloadMenu    
+   )
+  else if (&Choice==4)
+  (
+readMenu:
+;
+      print
+      print "---------- READ FUNC MENU -----------"
+      print "  1: Read m3"
+      print "  2: Read ptable"
+      print "  3: Read fastboot"
+      print "  4: Read vxworks"
+      print "  5: Read kernel"
+      print "  6: Read system"
+      print "  0: Return to Up Level"
+      print
+      print
+      print " Please make a choice: "
+
+      &t32_cmm_stopped=1
+      enter &Choice
+      &Choice=&Choice+0
+      &t32_cmm_stopped=0
+      print &Choice
+      print
+      
+      if (&Choice==1)
+      (
+        print "Read m3boot"
+      	&m3boot_size= OS.FILE.SIZE(&m3boot_file)     	
+        gosub readfromnand &m3boot_addr &m3boot_size
+        data.save.BINARY &m3boot_file.load &readAddr++(&m3boot_size-1)
+      )
+      else if (&Choice==2)
+      (
+        print "Read BOOTROM"
+        print " Please enter the load address: "  
+      	enter &LoadAddr
+      	&LoadAddr=&LoadAddr+0
+      	print &LoadAddr
+      	&BootromSize= OS.FILE.SIZE(&BootromFile)     	
+        gosub readfromnand &LoadAddr &BootromSize
+        data.save.BINARY &BootromFile.load &readAddr++(&BootromSize-1)
+
+      )
+      else if (&Choice==3)
+      (
+        print "Read Ptable"
+        print " Please enter the load address: "  
+      	enter &LoadAddr
+      	&LoadAddr=&LoadAddr+0
+      	print &LoadAddr
+      	&PtableFileSize= OS.FILE.SIZE(&PtableFile)     	
+        gosub readfromnand &LoadAddr &PtableFileSize
+        data.save.BINARY &PtableFile.load &readAddr++(&PtableFileSize-1)
+      )
+      else if (&Choice==4)
+      (
+        print "Read UnionImage"
+        print " Please enter the load address: "  
+      	enter &LoadAddr
+      	&LoadAddr=&LoadAddr+0
+      	print &LoadAddr
+      	&UnionImageSize= OS.FILE.SIZE(&UnionImageFile)     	
+        gosub readfromnand &LoadAddr &UnionImageSize
+        data.save.BINARY &UnionImageFile.load &readAddr++(&UnionImageSize-1)
+      )
+      else if (&Choice==5)
+      (
+        print "Read Fastboot"
+        print " Please enter the load address: "  
+      	enter &LoadAddr
+      	&LoadAddr=&LoadAddr+0
+      	print &LoadAddr
+      	&FastBootSize= OS.FILE.SIZE(&FastBootFile)     	
+        gosub readfromnand &LoadAddr &FastBootSize
+        data.save.BINARY &FastBootFile.load &readAddr++(&FastBootSize-1)
+
+      )
+      else if (&Choice==6)
+      (
+        print "Read Linux"
+        print " Please enter the load address: "  
+      	enter &LoadAddr
+      	&LoadAddr=&LoadAddr+0
+      	print &LoadAddr
+      	&LinuxImageSize= OS.FILE.SIZE(&LinuxImageFile)     	
+        gosub readfromnand &LoadAddr &LinuxImageSize
+        data.save.BINARY &LinuxImageFile.load &readAddr++(&LinuxImageSize-1)
+      )       
+      else
+      (
+        goto MainMenu
+      )
+      goto readMenu
+  
+  )
+  else if (&Choice==8)
+  (
+debugMenu:
+;
+      print
+      print "---------- DEBUG FUNC MENU -----------"
+      print "  1: ddr memory check"
+      print "  0: Return to Up Level"
+      print
+      print
+      print " Please make a choice: "
+
+      &t32_cmm_stopped=1
+      enter &Choice
+      &Choice=&Choice+0
+      &t32_cmm_stopped=0
+      print &Choice
+      print
+
+      if (&Choice==1)
+      (
+        print "check ddr memory"
+        print " Please enter the start address: "  
+      	enter &StartAddr
+      	&StartAddr=&StartAddr+0
+      	print &StartAddr
+      	    
+      	print " Please enter the end address: "  
+      	enter &EndAddr
+      	&EndAddr=&EndAddr+0
+      	print &EndAddr
+      	 	
+        gosub ddrCheck3Step &StartAddr &EndAddr
+      )
+      else
+      (
+        goto MainMenu
+      )
+      goto debugMenu
+
+  )
+  else if (&Choice==9)
+  (
+      print "...exiting MainMenu"
+      sys.down     
+  )
+  else
+  (
+    print "Input parameter error"
+    print
+    print
+  )
+
+goto MainMenu
+
+return  ; to NormalMenu
+
+    
+
+
+PgrmBinFile:
+    ENTRY &CMDBuffer &BinFile &BinSize &BinAddr
+    print "Downloading " "&BinFile", " please wait for a few seconds." 
+    data.load.elf &flashBurnFile    
+
+    v (__alloc_next)=0x51c00000
+    ; wait board and ptable init finished
+    b.s usbloader_init
+    go
+    wait !run()
+    
+
+    r.s pc flash_main 
+    ;b.s jtag_cmd_loop  
+    ;go 
+    b.s _jtag_cmd     /write /onchip
+    data.load.binary &BinFile &TempAddr /NosYmbol
+    V (_jtag_cmd_buffer)="&CMDBuffer"
+    v (_jtag_arg0)=&TempAddr 
+    v (_jtag_arg1)=&BinSize
+    v (_jtag_arg2)=0
+    v (_jtag_cmd)=1  
+     
+    print "Loading the flashfile, wait for another few seconds."
+    go
+    wait !run()
+    b.d _jtag_cmd
+    print "return from the flash write"
+    print " &BinFile " "was programmed finished!"
+   
+return
+
+
+PgrmYaffsFile:
+    ENTRY &BinFile &BinBaseAddr &BinSize
+   
+    data.load.binary &BinFile &TempAddr
+    ;wait 1.s
+    
+    R.S CPSR 0xD3
+    r.s r13 &runStack
+    
+    data.load.elf &flashBurnFile
+    print "load the flashfile"
+    
+    ;wait 1.s 
+            
+    ;b.s nand_burn_entry  
+	r.s pc nand_burn_entry
+    r.s r0 &TempAddr    
+    Register.Set r1 &BinBaseAddr
+    Register.Set r2 &BinSize
+    Register.Set r3 &writeyaffs
+        
+    b.s exitnandburn
+    go     
+    wait 2.s
+    wait !run()
+    
+    ;g.u  ;go and return from the current function
+   
+    print "return from the writeyaffs"         
+    print " &BinFile " "was programmed finished!"
+    
+return
+
+
+WriteFactoryImage:
+    ENTRY &BinFile &BinBaseAddr &BinSize
+  
+    data.load.binary &BinFile &TempAddr   
+    wait 1.s
+      
+    data.load.elf &flashBurnFile
+    print "load the flashfile"  
+    wait 1.s 
+       
+    ;b.s nand_burn_entry
+    
+    R.S CPSR 0xD3
+    r.s r13 &runStack
+    
+    r.s r0 &TempAddr    
+    Register.Set r1 &BinBaseAddr
+    Register.Set r2 &BinSize
+    Register.Set r3 &writefactory
+    
+    b.s exitnandburn
+    go
+    
+    wait 5.s
+    wait !run()
+    print "return from the writeyaffs"         
+    print " &BinFile " "was write factory  finished!"
+        
+return
+
+readfromnand:
+    ENTRY &FlashBaseAddr &ReadSize
+           
+
+    
+    data.load.elf &flashBurnFile
+    print "load the flashfile"  
+    ;wait 1.s 
+    r.s pc nand_read_oob
+       
+    R.S CPSR 0xD3
+    r.s r13 &runStack
+    Register.Set r0 &FlashBaseAddr
+    Register.Set r1 &readAddr
+    Register.Set r2 &ReadSize
+    Register.Set r3 0
+    Register.Set r4 0
+
+    go
+    wait !run()
+    data.dump &readAddr /DIALOG
+    print "return from the nandread"
+        
+return
+
+makefactoryimage:
+    ENTRY &FlashBaseAddr &ReadSize
+    
+    data.load.elf &flashBurnFile
+    print "load the flashfile"  
+    wait 1.s 
+       
+    ;b.s nand_burn_entry
+    
+    R.S CPSR 0xD3
+    r.s r13 &runStack
+    Register.Set r0 &readAddr
+    Register.Set r1 &FlashBaseAddr
+    Register.Set r2 &ReadSize
+    Register.Set r3 &makefactory
+    
+    b.s exitnandburn
+    go
+    
+    wait 5.s
+    wait !run()
+    data.dump &readAddr /DIALOG
+    print "return from the nandread"
+        
+return
+
+EraseAddr:
+    ENTRY &eraseStartAddr &eraseEndAddr &eraseopt   
+    
+    data.load.elf &flashBurnFile
+    wait 1.s    
+
+    R.S CPSR 0xD3
+    r.s r13 &runStack
+    ;b.s nand_burn_entry
+    Register.Set r0 &eraseStartAddr
+    Register.Set r1 &eraseEndAddr
+    Register.Set r2 &eraseopt
+    Register.Set r3 &erasebyaddr
+    
+    b.s exitnandburn
+    go
+    wait 2.s
+    wait !run()
+              
+    print "return from erase flash"
+    
+ return
+
+
+
+EraseBlock:
+    ENTRY &eraseStartBlock &eraseEndBlock &eraseopt    
+    
+    print "Erase blocks from " &eraseStartBlock " to " &eraseEndBlock
+
+    print "Erase Block"
+    data.load.elf &flashBurnFile 
+    wait 1.s
+    R.S CPSR 0xD3
+    r.s r13 &runStack
+    
+	
+    r.s pc nand_burn_entry    
+    r.s r0 &eraseStartBlock
+    Register.Set r1 &eraseEndBlock
+    Register.Set r2 &eraseopt
+    Register.Set r3 &blockerase
+    
+    b.s exitnandburn
+    go     
+    wait !run()
+              
+    print "return from erase flash"
+    
+ return
+
+formatflash:
+
+    
+    data.load.elf &flashBurnFile
+    
+    wait 1.s    
+
+    R.S CPSR 0xD3
+    r.s r13 &runStack
+    ;b.s nand_burn_entry
+    Register.Set r0 0
+    Register.Set r1 0
+    Register.Set r2 0
+    Register.Set r3 &nandformat
+    
+    b.s exitnandburn
+    go
+    wait 2.s
+    wait !run()              
+    
+    
+    print "return from format flash"
+    
+ return
+
+ddrCheck3Step:
+    ENTRY  &StartAddr &EndAddr	
+    
+    data.load.elf &flashBurnFile
+    
+    wait 1s    
+
+    R.S CPSR 0xD3
+    r.s r13 &runStack
+    ;b.s nand_burn_entry
+    Register.Set r0 &StartAddr
+    Register.Set r1 &EndAddr
+    Register.Set r2 &readAddr
+    Register.Set r3 &ddrcheck
+    
+    b.s exitnandburn
+    go
+    wait 2.s
+    wait !run()              
+    
+    print "return from check ddr memory"
+    &retValue=data.long(SD:&readAddr)
+    if (&retValue==0)
+    (
+        print "check ddr memory success!"
+    )
+    else
+    (
+        print "check ddr memory failed!"
+    )
+    
+ return
+
+
+Exitmenu:
+    WinCLEAR
+    WinPage.Reset
+    sys.down
+
+
+
+
+
+
+
+

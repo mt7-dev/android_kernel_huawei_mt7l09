@@ -1,0 +1,170 @@
+# Copyright (C) 2008 The Android Open Source Project
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+
+on boot
+    mkdir /data/peers 0700 root system
+    mount tmpfs tmpfs /data/peers mode=0700,gid=1000
+    chown radio radio /data/peers
+    
+    #maoshunli
+    chmod 777 /dev/mtd/mtd1
+    
+    #liaojimao
+
+    chmod 777 /dev/HisiGE
+    chmod 777 /dev/graphics/fb0
+    chmod 777 /dev/galcore
+    chmod 777 /dev/graphics/galcore
+    
+    #caoyanhua
+	chmod 777 /sys/class/leds/lcd_backlight0/brightness
+    
+    mkdir /data/sensor/
+    chmod 777 /data/sensor/
+
+    chmod 777 /dev/hiif_misc
+    chmod 777 /dev/android_usb_enable
+
+    chmod 777 /dev/k3_batterymisc
+    #kf29248
+    chmod 777 /dev/spi3_hisipmu
+    
+    #add for audio tool
+    chmod 777 /dev/spi3_misc
+    chmod 777 /system/bin/audioRegctl
+    chmod 777 /proc/audioChannel/status
+    
+    #add for audio acoustic test
+    chmod 777 /proc/HiAcoustic/control
+    chmod 777 /proc/HiAcoustic/threshold
+    #modify by wuxuecheng
+     
+    mkdir /data/misc/wifi 0770 wifi wifi
+    chmod 0770 /data/misc/wifi
+    chmod 0660 /data/misc/wifi/wpa_supplicant.conf
+    mkdir /data/misc/wifi/sockets 0770 wifi wifi
+    mkdir /data/misc/dhcp 0770 dhcp dhcp
+    chown dhcp dhcp /data/misc/dhcp
+    setprop wifi.interface eth0
+    setprop ro.audio.analogMIC 1
+    setprop ro.audio.dobuleMIC 1
+
+    #add by qizuyong KF23847, 2010-8-17
+    chmod 777 /dev/mem
+    chmod 777 /dev/video0
+    chmod 777 /dev/hx170dec
+    chmod 777 /dev/hx280enc
+    chmod 777 /dev/memalloc
+    chmod 777 /dev/gralloc_pmem
+
+    chmod 660 /dev/appvcom
+    chmod 660 /dev/appvcom1
+    chmod 660 /dev/appvcom2
+    chmod 660 /dev/appvcom3
+    chmod 660 /dev/appvcom4
+    chmod 660 /dev/appvcom5
+    chmod 660 /dev/appvcom6
+    chmod 660 /dev/appvcom7
+    chmod 660 /dev/appvcom8
+    chmod 660 /dev/appvcom9
+    chmod 660 /dev/appvcom10
+    chmod 660 /dev/appvcom11
+    chmod 660 /dev/appvcom12
+    chmod 660 /dev/appvcom13
+    chmod 660 /dev/appvcom14
+    chmod 660 /dev/appvcom15
+    chmod 660 /dev/appvcom16
+    chmod 660 /dev/appvcom17
+    chmod 660 /dev/appvcom18
+    chmod 660 /dev/appvcom19
+    chmod 660 /dev/appvcom20
+    chmod 660 /dev/appvcom21
+    chmod 660 /dev/appvcom22
+    chmod 660 /dev/appvcom23
+    chmod 660 /dev/appvcom24
+    chmod 660 /dev/appvcom25
+    chmod 660 /dev/appvcom26
+    chmod 660 /dev/appvcom27
+    chmod 660 /dev/appvcomTLLOG
+    chmod 660 /dev/appvcomERRLOG
+    chmod 660 /dev/appvcomLOG
+    chmod 660 /dev/appvcomLOG1
+    
+    chown radio radio /dev/appvcom
+    chown radio radio /dev/appvcom1
+    chown radio radio /dev/appvcom5
+    chown radio radio /dev/appvcom6
+    chown radio radio /dev/appvcom10
+    chown radio radio /dev/appvcom13
+    chown radio radio /dev/appvcom14
+    
+    chown media media /dev/appvcom4
+    chown media media /dev/appvcom12
+    
+    chown system system /dev/appvcom2
+    chown system system /dev/appvcom8
+    
+    chown system system /dev/appvcomERRLOG
+
+  
+	chown system system /proc/portcfg	
+	
+    
+    chmod 777 /system/usr/keychars/h2w_headset.kcm.bin
+    chmod 777 /system/usr/keychars/k3_keypad.kcm.bin
+    chmod 777 /system/usr/keychars/qwerty2.kcm.bin
+    chmod 777 /system/usr/keychars/qwerty.kcm.bin
+
+    chmod 777 /dev/rtc0
+
+    chmod 777 /dev/ttyAMA3
+
+    mkdir /data/dumplog
+    chmod 777 /data/dumplog
+
+    chmod 777  /data/local/tmp
+    # cpufreq configurations
+    write /sys/devices/system/cpu/cpu0/cpufreq/scaling_min_freq 245760
+    write /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor ondemand
+    write /sys/devices/system/cpu/cpufreq/ondemand/sampling_rate 40000
+    write /sys/devices/system/cpu/cpufreq/ondemand/up_threshold 85
+
+service wpa_supplicant /system/bin/wpa_supplicant \
+    -Dwext -ieth0 -c/data/misc/wifi/wpa_supplicant.conf
+    socket wpa_eth0 dgram 660 wifi wifi
+    disabled
+    oneshot
+
+service dhcpcd /system/bin/dhcpcd -ABKL eth0
+    disabled
+    oneshot
+
+service pppd_gprs1 /system/bin/pppd call gprs1
+   user root
+   group radio cache inet misc
+   disabled
+   oneshot
+
+service pppd_gprs2 /system/bin/pppd call gprs2
+   user root
+   group radio cache inet misc
+   disabled
+   oneshot
+
+service pppd_gprs3 /system/bin/pppd call gprs3
+   user root
+   group radio cache inet misc
+   disabled
+   oneshot

@@ -1,0 +1,61 @@
+/*
+ * Hisilicon Ltd. Hi3630 SoC
+ *
+ * Copyright (C) 2012-2013 Hisilicon Ltd.
+ * Author: w00221409 <hw.wangxiaoyin@huawei.com>
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * publishhed by the Free Software Foundation.
+ */
+
+/{
+		ddr: ddr@fff20000 {
+			compatible = "hisilicon,hi3630-ddr";
+			reg = <0xfff20000 0x10000>;
+			interrupts = <0 124 4>;
+			status = "ok";
+		};
+
+		ddr_devfreq@fff20000 {
+			compatible = "hisilicon,ddr_devfreq";
+			reg = <0xfff20000 0x10000>;
+			clocks = <&clk_ddrc_min &clk_ddrc_freq>;
+			pm_qos_class = "memory_tput";
+			operating-points = <
+				/* kHz uV */
+				800000	0
+				667000	0
+				400000	0
+				360000	0
+				240000	0
+				120000	0
+			>;
+			status = "ok";
+		};
+
+		ddr_devfreq_up_threshold@fff20000 {
+			compatible = "hisilicon,ddr_devfreq";
+			reg = <0xfff20000 0x10000>;
+			clocks = <&clk_ddrc_max &clk_ddrc_freq>;
+			pm_qos_class = "memory_tput_up_threshold";
+			operating-points = <
+				/* kHz uV */
+				800000	0
+				667000	0
+				400000	0
+				360000	0
+				240000	0
+				120000	0
+			>;
+			status = "ok";
+		};
+
+		pasr: pasr@0 { /* DDR Partial Area Self-Refresh */
+			compatible = "hisilicon,pasr";
+			reg = <0x00000000 0x20000000>,
+				<0xfff20000 0x10000>,
+				<0xfff0a000 0x1000>;
+			status = "disabled";
+		};
+};

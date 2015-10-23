@@ -1,0 +1,13 @@
+/ {
+	amba {
+		i2c1: i2c@FDF0A000 {
+			bq2419x_charger:charger@6B {
+				compatible = "huawei,bq2419x_charger";
+				reg = <0x6B>;
+				gpio_cd = <&gpio0 3 0>;
+				gpio_int = <&gpio24 5 0>;
+				status = "disabled";
+			};
+		};
+	};
+};

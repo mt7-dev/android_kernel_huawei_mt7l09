@@ -1,0 +1,345 @@
+;==============================================================================
+;   版权所有(C) 1987-2020, 深圳华为技术有限公司.
+;
+;   文 件 名 :  dump_load_ccore.cmm
+;
+;   作    者 :  zhuhongfei
+;
+;   描    述 :  Trace32 Connect Initialization
+;
+;   修改记录 :  2013年12月12日  v1.00  zhuhongfei  创建
+;
+;==============================================================================
+global &cp_mntn_addr
+global &cp_mntn_offset				//modem侧可维可测相对于可维可测的偏移地址4.5M后为CP侧的
+global &exc_int_addr				//异常中断
+global &exc_task_addr				//异常任务
+global &cp_map_offset				//map的偏移
+global &cp_map_size					//map的大小  
+global &dump_base_all				//dump文件的基地址
+global &sec_offset				//任务切换
+global &sec_size				//任务切换的大小
+global &has_load_modem_elf		//是否已经加载过了elf文件，如果已经加载过为1，否则为0
+global &exc_dir				//异常文件目录
+&dump_base_all=0x3f800000				//dump文件的基地址
+&magic_num=0							//dump加载信息区标志，0xCCCC1234，用来兼容低版本
+&cp_mntn_offset=0x480000
+&cp_base_addr_offset=0x470000				//AP侧保存的CP侧的各个bin文件的物理地址的偏移，相对于总dump文件的基地址
+&cp_mntn_addr=0x3fc80000				//modem侧可维可测xiang
+&dump_load_info_offset=&cp_mntn_offset+0x128	//dump加载信息区域偏移
+&core_offset=&cp_mntn_offset+0x138				//modem加载地址在加载信息区的偏移
+&share_offset=&cp_mntn_offset+0x13C				//共享内存加载地址在加载信息区的偏移
+&mntn_offset=&cp_mntn_offset+0x140				//可维可测内存加载地址在加载信息区的偏移
+&task_stack=0								//存放栈地址和大小的地方
+&int_stack=0						//存放中断栈地址和大小的地方
+&cp_print_offset=0					//存放中断栈地址和大小的地方
+&cp_print_size=0					//存放中断栈地址和大小的地方
+&reboot_reaason_offset=0x44			//复位原因在dump文件中的偏移(相对于dump)
+&task_stack_mark=0x2000003			//任务栈的标志
+&int_stack_mark=0x2000004			//中断栈的标志
+&print_log_mark=0x2000007			//打印的标志
+&task_switch_mark=0x2000001			//任务切换标志
+&cp_map_offset=0x20						//内存分配情况相对于cp dump的偏移
+&cp_map_size=0x400						//内存分配情况的大小
+global &core_addr				//modem加载地址
+global &share_addr				//共享内存加载地址
+global &mntn_addr				//可维可测内存加载地址
+global &core_flag				//modem A9
+&exc_task_addr=0				//异常任务地址
+&exc_task_stack_size=0			//异常任务栈空间大小
+&stack_size=0x2000				//栈空间大小，如果异常任务栈大于stack_size（tshell任务），只恢复stack_size大小
+&reboot_reason=0				//复位原因
+&has_load_modem_elf=0
+
+&cmm_dir=os.pwd()
+&exc_dir=os.pwd()
+&core_flag=1
+radix hex
+system.cpu CortexA9
+
+//配置CoreSight基地址
+SYStem.CONFIG COREBASE 		0x80210000
+SYStem.CONFIG ETMBASE  		0x8021C000
+SYStem.CONFIG CTIBASE		0x80218000
+SYStem.CONFIG FUNNELBASE	0x80004000
+SYStem.CONFIG ETBBASE       0x80002000
+SYStem.CONFIG TPIUBASE      0x80005000
+SYStem.CONFIG CTICONFIG     CORTEXV1
+SYStem.Option ResBreak OFF
+SYStem.Option.DACR ON
+
+TASK.CONFIG D:\t32\demo\arm\kernel\vxworks\vxworks
+MENU.ReProgram D:\t32\demo\arm\kernel\vxworks\vxworks
+
+dialog.ok "please select rdr.bin directory"
+pwd d:\*
+&exc_dir=os.pwd()
+pwd D:\t32\scripts\sim			//恢复为原来的目录
+print "&exc_dir"
+if OS.FILE(&exc_dir\rdr.bin)
+(
+	d.load.binary &exc_dir\rdr.bin  /noclear
+)
+else
+(
+	dialog.ok "cann't find rdr.bin"
+	ENDDO
+)
+
+;找到栈和打印的在cp dump中的偏移的偏移
+data.find (&cp_mntn_offset+&cp_map_offset)--(&cp_mntn_offset+&cp_map_offset+&cp_map_size) %long &task_stack_mark
+if found()
+	&task_stack=TRACK.ADDRESS()+0x4
+
+data.find (&cp_mntn_offset+&cp_map_offset)--(&cp_mntn_offset+&cp_map_offset+&cp_map_size) %long &int_stack_mark
+if found()
+	&int_stack=TRACK.ADDRESS()+0x4
+
+data.find (&cp_mntn_offset+&cp_map_offset)--(&cp_mntn_offset+&cp_map_offset+&cp_map_size) %long &print_log_mark
+if found()
+	&cp_print_offset=TRACK.ADDRESS()+0x4
+	&cp_print_size=TRACK.ADDRESS()+0x8
+;找到任务切换
+data.find (&cp_mntn_offset+&cp_map_offset)--(&cp_mntn_offset+&cp_map_offset+&cp_map_size) %long &task_switch_mark
+if found()
+	&sec_offset=TRACK.ADDRESS()+0x4
+	&sec_size=TRACK.ADDRESS()+0x8
+	
+load_dump_file:
+	&core_offset=&cp_base_addr_offset+0x4
+	&share_offset=&cp_base_addr_offset+0x8
+	&mntn_offset=&cp_base_addr_offset+0x14
+	&sram_offset=&cp_base_addr_offset+0x0
+	&core_addr=data.long(SD:(&core_offset))
+	&share_addr=data.long(SD:(&share_offset))
+	&mntn_addr=data.long(SD:(&mntn_offset))
+	&sram_addr=data.long(SD:(&sram_offset))
+	&store_task_stack_addr=data.long(SD:(&task_stack))
+	&store_int_stack_addr=data.long(SD:(&int_stack))
+	&store_print_addr=data.long(SD:(&cp_print_offset))
+	&store_print_size=data.long(SD:(&cp_print_size))
+	print "&core_addr &share_addr &mntn_addr &sram_addr"
+
+	//加载异常文件
+	if OS.FILE(&exc_dir\modem.bin)
+	(
+		d.load.binary &exc_dir\modem.bin &core_addr
+	)
+	else
+	(
+		d.load.binary mode*.bin &core_addr
+	)
+	if OS.FILE(&exc_dir\modem_share.bin)
+	(
+		d.load.binary &exc_dir\modem_share.bin &share_addr /noclear
+	)
+	else
+	(
+		d.load.binary modem_shar*.bin &share_addr /noclear
+	)
+	d.load.b &exc_dir\rdr.bin &mntn_addr /noclear
+	if OS.FILE(&exc_dir\sram_96k.bin)
+	(
+		d.load.binary &exc_dir\sram_96k.bin &sram_addr /noclear
+	)
+	else
+	(
+		;d.load.binary sram_*.bin &sram_addr /noclear
+	)
+	if OS.FILE(&exc_dir\balong_modem.elf)
+	(
+		d.load.elf &exc_dir\balong_modem.elf  /nocode
+	)
+	else
+	(
+		d.load.elf balong_mode*.elf  /nocode
+		&has_load_modem_elf=1;
+	)
+	
+	&reboot_reason_addr=&reboot_reaason_offset+&dump_base_all
+	&reboot_reason=data.long(SD:(&reboot_reason_addr))
+	&exc_task_addr=data.long(SD:(v.address(g_dump_base_info.reboot_task)))
+	&exc_int_addr=data.long(SD:(v.address(g_dump_base_info.reboot_int)))
+	//复位原因未知，如：复位键复位
+	if (&reboot_reason==0xdead0def)
+	(
+		goto set_arm_reg
+	)
+	
+	//********************恢复当前任务栈数据 begin*********************
+	//计算栈空间大小
+	&current_task_addr=data.long(SD:(v.address(g_dump_base_info.current_task)))
+	&tcb_stack_base=data.long(SD:(v.address(((WIND_TCB*)&current_task_addr).pStackBase)))
+	&tcb_stack_end=data.long(SD:(v.address(((WIND_TCB*)&current_task_addr).pStackEnd)))
+	&exc_task_stack_size=&tcb_stack_base-&tcb_stack_end
+	print "&current_task_addr &exc_task_stack_size &tcb_stack_base"
+	if (&exc_task_stack_size>&stack_size)
+	(
+		&exc_task_stack_size=&stack_size
+	)
+		
+	//恢复栈数据
+	;&exc_task_stack_offset=data.long(SD:(v.address(g_dump_core_map.sec_task_stack.offset))) //异常任务栈偏移
+	&sec_task_stack_offset=&store_task_stack_addr
+	&exc_task_stack_offset=&sec_task_stack_offset //异常任务栈偏移
+	//要解析
+	print "task stack offset: &exc_task_stack_offset"
+	&exc_stack_addr=&cp_mntn_addr+&exc_task_stack_offset
+	d.copy &exc_stack_addr--(&exc_stack_addr+&exc_task_stack_size-1) &tcb_stack_base-&exc_task_stack_size /verify
+	//********************恢复当前任务栈数据 end***********************
+	
+	//********************恢复中断栈数据 begin*************************
+	//计算栈空间大小
+	&int_stack_base=data.long(SD:(vxIntStackBase))
+	&int_stack_end=data.long(SD:(vxIntStackEnd))
+	&int_task_stack_size=&int_stack_base-&int_stack_end
+	print "&exc_int_addr &int_task_stack_size &int_stack_base"
+	if (&int_task_stack_size>&stack_size)
+	(
+		&int_task_stack_size=&stack_size
+	)
+		
+	//恢复栈数据
+	;&int_task_stack_offset=data.long(SD:(v.address(g_dump_core_map.sec_int_stack.offset))) //异常中断栈偏移
+	&sec_int_stack_offset=&store_int_stack_addr
+	&int_task_stack_offset=&sec_int_stack_offset //异常中断栈偏移
+	print "int stack offset: &int_task_stack_offset"
+	&int_stack_addr=&cp_mntn_addr+&int_task_stack_offset
+	d.copy &int_stack_addr--(&int_stack_addr+&int_task_stack_size-1) &int_stack_base-&int_task_stack_size /verify
+	//********************恢复中断栈数据 end***************************	
+	
+		//异常原因为任务复位，恢复任务TCB，打印基本信息
+	if (&exc_task_addr!=0xFFFFFFFF)
+	(	
+		//恢复异常任务寄存器
+		v ((WIND_TCB*)&exc_task_addr).regs.r[0] = g_dump_base_info.regSet[0]
+		v ((WIND_TCB*)&exc_task_addr).regs.r[1] = g_dump_base_info.regSet[1]
+		v ((WIND_TCB*)&exc_task_addr).regs.r[2] = g_dump_base_info.regSet[2]
+		v ((WIND_TCB*)&exc_task_addr).regs.r[3] = g_dump_base_info.regSet[3]
+		v ((WIND_TCB*)&exc_task_addr).regs.r[4] = g_dump_base_info.regSet[4]
+		v ((WIND_TCB*)&exc_task_addr).regs.r[5] = g_dump_base_info.regSet[5]
+		v ((WIND_TCB*)&exc_task_addr).regs.r[6] = g_dump_base_info.regSet[6]
+		v ((WIND_TCB*)&exc_task_addr).regs.r[7] = g_dump_base_info.regSet[7]
+		v ((WIND_TCB*)&exc_task_addr).regs.r[8] = g_dump_base_info.regSet[8]
+		v ((WIND_TCB*)&exc_task_addr).regs.r[9] = g_dump_base_info.regSet[9]
+		v ((WIND_TCB*)&exc_task_addr).regs.r[10] = g_dump_base_info.regSet[10]
+		v ((WIND_TCB*)&exc_task_addr).regs.r[11] = g_dump_base_info.regSet[11]
+		v ((WIND_TCB*)&exc_task_addr).regs.r[12] = g_dump_base_info.regSet[12]
+		v ((WIND_TCB*)&exc_task_addr).regs.r[13] = g_dump_base_info.regSet[13]
+		v ((WIND_TCB*)&exc_task_addr).regs.r[14] = g_dump_base_info.regSet[14]
+		v ((WIND_TCB*)&exc_task_addr).regs.pc = g_dump_base_info.regSet[15]
+		v ((WIND_TCB*)&exc_task_addr).regs.cpsr = g_dump_base_info.regSet[16]	
+		
+		//打印基本异常信息
+		&reboot_task_name=data.string(SD:(v.address(g_dump_base_info.taskName)))
+		&mod_id=data.long(SD:(v.address(g_dump_base_info.modId)))
+		&arg1=data.long(SD:(v.address(g_dump_base_info.arg1)))
+		&arg2=data.long(SD:(v.address(g_dump_base_info.arg2)))
+		&arg3=data.long(SD:(v.address(g_dump_base_info.arg3)))
+		&arg3_len=data.long(SD:(v.address(g_dump_base_info.arg3_length)))
+		print "g_dump_base_info.taskName"
+		dialog.ok "reboot task: &reboot_task_name" \
+				     "mod id:        &mod_id" \
+				     "arg1:            &arg1" \
+				     "arg2:            &arg2" \
+				     "arg3:            &arg3" \
+				     "arg3 length:  &arg3_len"
+					 
+		//保存用户数据
+		if &arg3_len!=0
+		(
+			d.save.b usr_data.bin &arg3--(&arg3+&arg3_len-1)
+			dialog.ok "save usr data to usr_data.bin"
+		)
+	)
+	
+	//异常原因为中断复位，打印基本信息
+	if (&exc_int_addr!=0xFFFFFFFF)
+	(			
+		//打印基本异常信息
+		&reboot_int_name=&exc_int_addr
+		&mod_id=data.long(SD:(v.address(g_dump_base_info.modId)))
+		&arg1=data.long(SD:(v.address(g_dump_base_info.arg1)))
+		&arg2=data.long(SD:(v.address(g_dump_base_info.arg2)))
+		&arg3=data.long(SD:(v.address(g_dump_base_info.arg3)))
+		&arg3_len=data.long(SD:(v.address(g_dump_base_info.arg3_length)))
+
+		dialog.ok "reboot int:    &reboot_int_name" \
+				     "mod id:        &mod_id" \
+				     "arg1:            &arg1" \
+				     "arg2:            &arg2" \
+				     "arg3:            &arg3" \
+				     "arg3 length:  &arg3_len"
+					 
+		//保存用户数据
+		if &arg3_len!=0
+		(
+			d.save.b usr_data.bin &arg3--(&arg3+&arg3_len-1)
+			dialog.ok "save usr data to usr_data.bin"
+		)		
+	)
+
+set_arm_reg:	
+	//设置r0-r14, pc, cpsr
+	r.s r0 data.long(SD:(v.address(g_dump_base_info.regSet[0])))
+	r.s r1 data.long(SD:(v.address(g_dump_base_info.regSet[1])))
+	r.s r2 data.long(SD:(v.address(g_dump_base_info.regSet[2])))
+	r.s r3 data.long(SD:(v.address(g_dump_base_info.regSet[3])))
+	r.s r4 data.long(SD:(v.address(g_dump_base_info.regSet[4])))
+	r.s r5 data.long(SD:(v.address(g_dump_base_info.regSet[5])))
+	r.s r6 data.long(SD:(v.address(g_dump_base_info.regSet[6])))
+	r.s r7 data.long(SD:(v.address(g_dump_base_info.regSet[7])))
+	r.s r8 data.long(SD:(v.address(g_dump_base_info.regSet[8])))
+	r.s r9 data.long(SD:(v.address(g_dump_base_info.regSet[9])))
+	r.s r10 data.long(SD:(v.address(g_dump_base_info.regSet[10])))
+	r.s r11 data.long(SD:(v.address(g_dump_base_info.regSet[11])))
+	r.s r12 data.long(SD:(v.address(g_dump_base_info.regSet[12])))
+	r.s r13 data.long(SD:(v.address(g_dump_base_info.regSet[13])))
+	r.s r14 data.long(SD:(v.address(g_dump_base_info.regSet[14])))
+	r.s pc data.long(SD:(v.address(g_dump_base_info.regSet[15])))
+	r.s cpsr data.long(SD:(v.address(g_dump_base_info.regSet[16])))
+	
+	//保存临终打印到文件log.txt，在当前窗口打开log.txt
+	&print_offset=&store_print_addr 												//临终打印区域偏移
+	&print_size=&store_print_size													//临终打印区域大小
+	print "print offset: &print_offset print size: &print_size"
+	d.save.b log.txt (&cp_mntn_addr+&print_offset)++&print_size
+	
+	os.command %windir%\system32\notepad.exe log.txt
+	cd d:\t32\scripts\sim
+	//编辑工具栏，添加trace/print按钮
+	menu.rp
+	(
+		add
+		toolbar
+		(
+			delete "MODEM SIMULATER"
+			default
+			separator
+			toolitem "CPU Trace" ":alist" "do etb_trace_a9_k3.cmm"
+			separator
+			toolitem "临终打印" ":atrigger" "os.command %windir%\system32\notepad.exe log.txt"
+			separator
+			toolitem "任务切换" ":correlate" "do task_switch_k3.cmm"
+			separator
+			toolitem "复位原因" ":atrigger" "do reset_reason_k3.cmm"
+			separator				
+		)
+	)
+	ENDDO
+
+load_dump_file_old:
+	d.load.elf balong_modem.elf /nocode
+	if OS.FILE(modem.bin)
+	(
+	  d.load.binary ccore.bin 0x30000000 /noclear
+	)
+	if OS.FILE(share.bin)
+	(
+	  d.load.binary share.bin 0x36200000 /noclear
+	)
+	if OS.FILE(dump.bin)
+	(
+	  d.load.binary dump.bin 0x3F800000 /noclear
+	)
+	ENDDO

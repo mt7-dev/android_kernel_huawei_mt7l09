@@ -1,0 +1,39 @@
+; System Settings
+
+	SYStem.CPU CORTEXa9MPCORE
+
+	SYStem.Option DACR ON          ; give Debugger global write permissions
+	
+ ; add hardware specific options here
+	TrOnchip.Set DABORT OFF        ; used by Linux for page miss!
+	TrOnchip.Set PABORT OFF        ; used by Linux for page miss!
+	TrOnchip.Set UNDEF OFF         ; may be used by Linux for FPU detection
+	SYStem.Option MMUSPACES ON     ; enable space ids to virtual addresses
+
+	SYStem.CONFIG ETMBASE 0x8011C000
+    system.config tpiubase 0x8011d000
+	SYStem.Up
+
+; Load the target code
+	Data.LOAD.Elf vmlinux  
+
+; ETM Settings
+	ETM.PortSize 32.
+	ETM.ContextID On
+	ETM.TRACEID 2.
+	ETM.PortMode  Wrapped
+	ETM.DataTrace OFF
+    ETM.ON
+
+	print "initializing RTOS support..."
+	TASK.CONFIG ~~/demo\arm\kernel\linux\linux       	; loads Linux awareness 
+	MENU.ReProgram ~~/demo\arm\kernel\linux\linux    	; loads Linux menu 
+	
+; Import trace data
+	LA.Mode FLOWTRACE ON
+	LA.IMPORT.ETB c_om.bin
+	la.list tp tpc flen list.exec run address symbol cycle data list.code list.asm
+	
+	ENDDO
+	
+	

@@ -1,0 +1,37 @@
+comment "Huawei Sensor"
+
+config HUAWEI_CAMERA_USE_FAKE_SENSOR
+	bool "fake sensor for emulator"
+    default n
+	depends on HUAWEI_CAMERA
+
+config HUAWEI_CAMERA_USE_IMX135
+	bool "imx135"
+    default n
+	depends on HUAWEI_CAMERA
+
+config HUAWEI_CAMERA_USE_IMX214
+	bool "imx214"
+    default y
+	depends on HUAWEI_CAMERA
+
+config HUAWEI_CAMERA_USE_OV5648
+	bool "ov5648"
+    default y
+	depends on HUAWEI_CAMERA
+
+config HUAWEI_CAMERA_USE_IMX179_REAR
+	bool "imx179_rear"
+    default y
+	depends on HUAWEI_CAMERA
+
+config HUAWEI_CAMERA_USE_IMX179_FRONT
+	bool "imx179_front"
+    default y
+	depends on HUAWEI_CAMERA
+
+config HUAWEI_CAMERA_USE_OV8865_REAR
+	bool "ov8865_rear"
+    default y
+	depends on HUAWEI_CAMERA
+

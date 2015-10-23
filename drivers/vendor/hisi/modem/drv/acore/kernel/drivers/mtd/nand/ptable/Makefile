@@ -1,0 +1,1 @@
+obj-$(CONFIG_MTD_NAND_BALONG_NANDC)     +=ptable_common.o ptable_product.o

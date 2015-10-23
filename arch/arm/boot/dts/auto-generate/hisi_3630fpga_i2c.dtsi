@@ -1,0 +1,89 @@
+/*
+ * Hisilicon Ltd. Hi3630 SoC
+ *
+ * Copyright (C) 2012-2013 Hisilicon Ltd.
+ * Author: w00221409 <hw.wangxiaoyin@huawei.com>
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * publishhed by the Free Software Foundation.
+ */
+
+/{
+	amba{
+		i2c0: i2c@FDF09000 {
+			compatible = "hisilicon,designware-i2c";
+			#address-cells = <1>;
+			#size-cells = <0>;
+			reg = <0xFDF09000 0x1000>;
+			interrupts = <0 67 4>;
+			clocks = <&clk_gate_i2c0 &pclk>;
+			clock-names = "clk_i2c0", "apb_pclk";
+			delay-off = <300>;
+			reset-controller-reg = <0x78 0x7c 0x80 4>;
+			status = "disabled";
+		};
+
+		i2c1: i2c@FDF0A000 {
+			compatible = "hisilicon,designware-i2c";
+			#address-cells = <1>;
+			#size-cells = <0>;
+			reg = <0xFDF0A000 0x1000>;
+			interrupts = <0 68 4>;
+			clocks = <&clk_gate_i2c1  &pclk>;
+			clock-names = "clk_i2c1", "apb_pclk";
+			delay-off = <300>;
+			reset-controller-reg = <0x78 0x7c 0x80 5>;
+			status = "disabled";
+		};
+
+		i2c2: i2c@FDF0B000 {
+			compatible = "hisilicon,designware-i2c";
+			#address-cells = <1>;
+			#size-cells = <0>;
+			reg = <0xFDF0B000 0x1000>;
+			interrupts = <0 69 4>;
+			clocks = <&clk_gate_i2c2 &pclk>;
+			clock-names = "clk_i2c2", "apb_pclk";
+			dmas =	<&dma0 16          /* read channel */
+				 &dma0 17>;        /* write channel */
+			dma-names = "rx", "tx";
+			delay-off = <300>;
+			reset-controller-reg = <0x78 0x7c 0x80 6>;
+			status = "disabled";
+		};
+
+		i2c3: i2c@FDF0C000 {
+			compatible = "hisilicon,designware-i2c";
+			#address-cells = <1>;
+			#size-cells = <0>;
+			reg = <0xFDF0C000 0x1000>;
+			interrupts = <0 70 4>;
+			clocks = <&clk_gate_i2c3 &pclk>;
+			clock-names = "clk_i2c3", "apb_pclk";
+			dmas =	<&dma0 18          /* read channel */
+				 &dma0 19>;        /* write channel */
+			dma-names = "rx", "tx";
+			delay-off = <300>;
+			reset-controller-reg = <0x78 0x7c 0x80 7>;
+			status = "disabled";
+		};
+
+		i2c4: i2c@FDF0D000 {
+			compatible = "hisilicon,designware-i2c";
+			#address-cells = <1>;
+			#size-cells = <0>;
+			reg = <0xFDF0D000 0x1000>;
+			interrupts = <0 71 4>;
+			clocks = <&pclk_gate_i2c4 &pclk>;
+			clock-names = "clk_i2c4", "apb_pclk";
+			dmas =	<&dma0 20          /* read channel */
+				 &dma0 21>;        /* write channel */
+			dma-names = "rx", "tx";
+			delay-off = <300>;
+			reset-controller-reg = <0x78 0x7c 0x80 27>;
+			status = "disabled";
+		};
+
+	};
+};

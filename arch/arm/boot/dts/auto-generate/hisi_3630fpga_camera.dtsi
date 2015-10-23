@@ -1,0 +1,237 @@
+/*
+ * Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+/include/ "hisi_3630fpga_gpio.dtsi"
+/include/ "hisi_k3v3_hi6421v300.dtsi"
+/include/ "hisi_3630fpga_i2c.dtsi"
+/include/ "hisi_3630fpga_clock.dtsi"
+/*/include / "hisi_3630_pin_fpga.dtsi"*/
+/ {
+
+	hisi,hisi_camera {
+		compatible = "hisi,hisi_camera";
+		hisi,is_fpga = <0>;
+		status = "disable";
+	};
+
+	hisi,hisi_sensor@0 {
+		compatible = "hisi,hisi_sensor_0";
+		hisi,sensor-name = "hisi_sensor_0";
+		status = "disable";
+	};
+
+	hisi,hisi_sensor@1 {
+		compatible = "hisi,hisi_sensor_1";
+		hisi,sensor-name = "hisi_sensor_1";
+		status = "disable";
+	};
+
+	hisi,hisi_isp {
+		compatible = "hisi,hisi_isp";
+		hisi,isp-name = "hisi_isp";
+		hisi,isp-base = <0xE8400000 0x800000>;
+		hisi,isp-base-flag = <0x00000200>;
+		hisi,isp-irq = <163>;
+		hisi,isp-irq-flag = <0x00000400>;
+		clocks = <&clk_gate_ispmcu &clk_gate_ispmipi &clk_gate_ispcore>;
+		clock-names = "clk_isp", "clk_ispmipi", "clk_ispcore";
+		vcc_isp-supply = <&ispsubsys>;
+		pinctrl-names = "default", "idle";
+		pinctrl-0 = <>;
+		pinctrl-1 = <>;
+		status = "disable";
+	};
+
+	hisi,hisi_vcm@0 {
+		compatible = "hisi,hisi_vcm_0";
+		hisi,vcm-name = "hisi_vcm_0";
+		status = "disable";
+	};
+
+	hisi,hisi_csi {
+		compatible = "hisi,csi-phy";
+		hisi,csi-name = "csi-phy";
+		hisi,csi-base-offset = <0x7F400 0x7F800>;
+		hisi,csi0-irq = <165>;
+		hisi,csi0-irq-flag = <0x00000400>;
+		hisi,csi1-irq = <166>;
+		hisi,csi1-irq-flag = <0x00000400>;
+		clocks = <&clk_gate_dphy1 &clk_gate_dphy3>;
+		clock-names = "clk_dphy1", "clk_dphy3";
+		status = "disable";
+	};
+
+	hisi,imx135@0 {
+		compatible = "hisi,imx135_liteon_m";
+		hisi,sensor_name = "imx135_liteon_m";
+		hisi,sensor_index = <0>;
+		hisi,interface_type = <1>;
+		hisi,csi_lane = <3>;
+		hisi,csi_index = <0>;
+		hisi,csi_mipi_clk = <0x2c>;
+		hisi,pd_valid = <0>;
+		hisi,reset_valid = <0>;
+		hisi,vcmpd_valid = <0>;
+		hisi,i2c-index = <0>;
+		hisi,i2c-speed = <400>;
+		hisi,i2c-addr = <0xa>; /* 240000 / 64 / 400 = 10 */
+		hisi,i2c-addr_bits = <1>;
+		hisi,i2c-val_bits = <0>;
+		hisi,sensor_chipid = <0x0135>;
+		hisi,vcm_name = "ad5823";
+		hisi,vcm_enable = <1>;
+		hisi,ldo_num = <4>;
+		dvdd-supply = <&ldo20>;
+		avdd-supply = <&ldo21>;
+		avdd2-supply = <&ldo19>;
+		iopw-supply = <&lsw52>;
+		hisi,gpio_num = <4>;
+		/* FSIN, RESETB, PWDN,PWDN2 */
+		gpios = <&gpio3 3 0 &gpio3 1 0 &gpio3 6 0 &gpio3 5 0>;
+		status = "disable";
+	};
+
+	hisi,imx135@1 {
+		compatible = "hisi,imx135_liteon_s";
+		hisi,sensor_name = "imx135_liteon_s";
+		hisi,sensor_index = <1>;
+		hisi,interface_type = <2>;
+		hisi,csi_lane = <3>;
+		hisi,csi_index = <1>;
+		hisi,csi_mipi_clk = <0x2c>;
+		hisi,pd_valid = <0>;
+		hisi,reset_valid = <0>;
+		hisi,vcmpd_valid = <0>;
+		hisi,i2c-index = <1>;
+		hisi,i2c-speed = <0xa>; /* 240000 / 64 / 400 = 10 */
+		hisi,i2c-addr = <0x20>;
+		hisi,i2c-addr_bits = <1>;
+		hisi,i2c-val_bits = <0>;
+		hisi,sensor_chipid = <0x0135>;
+		hisi,vcm_name = "ad5823";
+		hisi,vcm_enable = <0>;
+		hisi,ldo_num = <4>;
+		dvdd-supply = <&ldo20>;
+		avdd-supply = <&ldo21>;
+		avdd2-supply = <&ldo19>;
+		iopw-supply = <&lsw52>;
+		hisi,gpio_num = <4>;
+		/* FSIN, RESETB, PWDN,PWDN2 */
+		gpios = <&gpio3 3 0 &gpio3 1 0 &gpio3 6 0 &gpio3 5 0>;
+		status = "disable";
+	};
+
+	hisi,ov5648@0 {
+		compatible = "hisi,ov5648_liteon_m";
+		hisi,sensor_name = "ov5648_liteon_m";
+		hisi,sensor_index = <0>; /* must change to 1 in chip mode */
+		hisi,interface_type = <1>;
+		hisi,csi_lane = <1>;
+		hisi,csi_index = <0>; /* must change to 2 in chip mode */
+		hisi,csi_mipi_clk = <0x2c>;
+		hisi,pd_valid = <0>;
+		hisi,reset_valid = <0>;
+		hisi,vcmpd_valid = <0>;
+		hisi,i2c-index = <0>;
+		hisi,i2c-speed = <0xa>; /* 240000 / 64 / 400 = 10 */
+		hisi,i2c-addr = <0x6c>;
+		hisi,i2c-addr_bits = <1>;
+		hisi,i2c-val_bits = <0>;
+		hisi,sensor_chipid = <0x5648>;
+		hisi,vcm_name = "ad5823";
+		hisi,vcm_enable = <1>;
+		hisi,ldo_num = <3>;
+		dvdd-supply = <&lsw52>;
+		avdd-supply = <&ldo19>;
+		iopw-supply = <&lsw52>;
+		hisi,gpio_num = <3>;
+		/* FSIN, RESETB, PWDN */
+		gpios = <&gpio3 4 0 &gpio3 5 0 &gpio3 2 0>;
+		status = "disable";
+	};
+
+	hisi,ov5648@1 {
+		compatible = "hisi,ov5648_liteon_s";
+		hisi,sensor_name = "ov5648_liteon_s";
+		hisi,sensor_index = <1>;
+		hisi,interface_type = <2>;
+		hisi,csi_lane = <1>;
+		hisi,csi_index = <1>;
+		hisi,csi_mipi_clk = <0x2c>;
+		hisi,pd_valid = <0>;
+		hisi,reset_valid = <0>;
+		hisi,vcmpd_valid = <0>;
+		hisi,i2c-index = <1>;
+		hisi,i2c-speed = <0xa>; /* 240000 / 64 / 400 = 10 */
+		hisi,i2c-addr = <0x6c>;
+		hisi,i2c-addr_bits = <1>;
+		hisi,i2c-val_bits = <0>;
+		hisi,sensor_chipid = <0x5648>;
+		hisi,vcm_name = "ad5823";
+		hisi,vcm_enable = <0>;
+		hisi,ldo_num = <3>;
+		dvdd-supply = <&lsw52>;
+		avdd-supply = <&ldo19>;
+		iopw-supply = <&lsw52>;
+		hisi,gpio_num = <3>;
+		/* FSIN, RESETB, PWDN */
+		gpios = <&gpio3 4 0 &gpio3 5 0 &gpio3 2 0>;
+		status = "disable";
+	};
+
+	hisi,imx214@0 {
+		compatible = "hisi,imx214_sunny_m";
+		hisi,sensor_name = "imx214_sunny_m";
+		hisi,sensor_index = <0>;
+		hisi,interface_type = <1>;
+		hisi,csi_lane = <3>;
+		hisi,csi_index = <0>;
+		hisi,csi_mipi_clk = <0x2c>;
+		hisi,pd_valid = <0>;
+		hisi,reset_valid = <0>;
+		hisi,vcmpd_valid = <0>;
+		hisi,i2c-index = <0>;
+		hisi,i2c-speed = <0xa>; /* 240000 / 64 / 400 = 10 */
+		hisi,i2c-addr = <0x20>;
+		hisi,i2c-addr_bits = <1>;
+		hisi,i2c-val_bits = <0>;
+		hisi,sensor_chipid = <0x0214>;
+		hisi,vcm_name = "dw9714";
+		hisi,vcm_enable = <1>;
+		hisi,ldo_num = <4>;
+		dvdd-supply = <&ldo20>;
+		avdd-supply = <&ldo21>;
+		avdd2-supply = <&ldo19>;
+		iopw-supply = <&lsw52>;
+		hisi,gpio_num = <4>;
+		/* FSIN, RESETB, PWDN,PWDN2 */
+		gpios = <&gpio3 3 0 &gpio3 1 0 &gpio3 6 0 &gpio3 5 0>;
+		status = "disable";
+	};
+
+	hisi,ad5823 {
+		compatible = "hisi,ad5823";
+		hisi,vcm-name = "ad5823";
+		hisi,slave-addr = <0x18>;
+		hisi,vcm-index = <0>;
+		status = "disable";
+	};
+
+	hisi,dw9714 {
+		compatible = "hisi,dw9714";
+		hisi,vcm-name = "dw9714";
+		hisi,slave-addr = <0x18>;
+		hisi,vcm-index = <0>;
+		status = "disable";
+	};
+};

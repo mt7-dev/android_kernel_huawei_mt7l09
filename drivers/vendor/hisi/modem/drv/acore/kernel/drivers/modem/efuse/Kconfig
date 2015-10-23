@@ -1,0 +1,8 @@
+#
+# EFUSE infrastructure and drivers
+#
+
+config EFUSE_BALONG
+	tristate "Hisi Balong EFUSE Read/Write support"
+	help
+	  Support for the Hisi balongv7r2 SoC Read or write.

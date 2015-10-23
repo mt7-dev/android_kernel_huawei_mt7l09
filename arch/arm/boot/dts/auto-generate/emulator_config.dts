@@ -1,0 +1,248 @@
+/*
+ * Hisilicon Ltd.
+ *
+ * A15x4 A7x4
+ *
+ * It is only a demo for hisilicon hi3630emulator board. You show change the
+ * address of each node according to datasheet.
+ */
+
+/dts-v1/;
+
+/include/ "hisi_3630emulator.dtsi"
+/include/ "hisi_3630_pin_emulator.dtsi"
+/ {
+	model = "Hisilicon hi3630fpga Development Board";
+	compatible = "hisilicon,hi3630emulator";
+	#address-cells = <1>;
+	#size-cells = <1>;
+	interrupt-parent = <&gic>;
+
+	board_info: board_info {
+		hisi,boardid = <0 0 1>;
+		hisi,boardname = "Hisilicon,Emulator";
+		hw,public;
+	};
+
+	chosen {};
+
+	clusters {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		cluster0: cluster@0 { /*A15 cluster*/
+			reg = <0>;
+			freqs = <64000>;
+			cores {
+				#address-cells = <1>;
+				#size-cells = <0>;
+
+				core0: core@0 {
+					reg = <0>;
+				};
+			};
+		};
+
+		cluster1: cluster@1 { /*A7 cluster*/
+			reg = <1>;
+			freqs = <64000>;
+			cores {
+				#address-cells = <1>;
+				#size-cells = <0>;
+
+				core1: core@0 {
+					reg = <0>;
+				};
+			};
+		};
+
+	};
+
+	cpus {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		cpu0: cpu@0 {
+			device_type = "cpu";
+			compatible = "arm,cortex-a7";
+			cci-control-port = <&cci_control1>;
+			reg = <0x100>;
+			cluster = <&cluster1>;
+			core = <&core1>;
+			clock-frequency = <80000000>;
+
+			operating-points = <
+				/* kHz    uV */
+				64000   800000
+				384000  800000
+				595200  860000
+				787200  920000
+				998400  960000
+				1171000 1000000
+			>;
+			clock-latency = <61036>; /* ns */
+		};
+
+		cpu1: cpu@1 {
+			device_type = "cpu";
+			compatible = "arm,cortex-a15";
+			cci-control-port = <&cci_control2>;
+			reg = <0>;
+			cluster = <&cluster0>;
+			core = <&core0>;
+			clock-frequency = <80000000>;
+
+			operating-points = <
+				/* kHz    uV */
+				64000    800000
+				499200   800000
+				787200   860000
+				998400   920000
+				1190400  960000
+				1401600  1000000
+				1593600  1050000
+			>;
+			clock-latency = <31036>; /* ns */
+		};
+
+	};
+
+	memory {
+		device_type = "memory";
+		reg = <0 0x20000000>;
+	};
+
+	timer {
+		status = "ok";
+	};
+
+	hisi_sysctrl: sysctrl@fff0a000 {
+		status = "ok";
+	};
+
+        hisi_pctrl: pctrl@e8a09000 {
+                status = "ok";
+        };
+
+        hisi_crgctrl: crgctrl@fff35000 {
+                status = "ok";
+        };
+
+        hisi_pmctrl: pmctrl@fff31000 {
+                status = "ok";
+        };
+
+	amba {
+		hisi_serial0: uart@fdf02000 {
+			status = "ok";
+		};
+
+		gpio0: gpio@e8a0b000 {
+			status = "ok";
+		};
+
+		gpio1: gpio@e8a0c000 {
+			status = "ok";
+		};
+
+		gpio2: gpio@e8a0d000 {
+			status = "ok";
+		};
+
+		gpio3: gpio@e8a0e000 {
+			status = "ok";
+		};
+
+		gpio4: gpio@e8a0f000 {
+			status = "ok";
+		};
+
+		gpio5: gpio@e8a10000 {
+			status = "ok";
+		};
+
+		gpio6: gpio@e8a11000 {
+			status = "ok";
+		};
+
+		gpio7: gpio@e8a12000 {
+			status = "ok";
+		};
+
+		gpio8: gpio@e8a13000 {
+			status = "ok";
+		};
+
+		gpio9: gpio@e8a14000 {
+			status = "ok";
+		};
+
+		gpio10: gpio@e8a15000 {
+			status = "ok";
+		};
+
+		gpio11: gpio@e8a16000 {
+			status = "ok";
+		};
+
+		gpio12: gpio@e8a17000 {
+			status = "ok";
+		};
+
+		gpio13: gpio@e8a18000 {
+			status = "ok";
+		};
+
+		gpio14: gpio@e8a19000 {
+			status = "ok";
+		};
+
+		gpio15: gpio@e8a1a000 {
+			status = "ok";
+		};
+
+		gpio16: gpio@e8a1b000 {
+			status = "ok";
+		};
+
+		gpio17: gpio@e8a1c000 {
+			status = "ok";
+		};
+
+		gpio18: gpio@e8a1d000 {
+			status = "ok";
+		};
+
+		gpio19: gpio@e8a1e000 {
+			status = "ok";
+		};
+
+		gpio20: gpio@e8a1f000 {
+			status = "ok";
+		};
+
+		gpio21: gpio@e8a20000 {
+			status = "ok";
+		};
+
+		gpio22: gpio@fff0b000 {
+			status = "ok";
+		};
+
+		gpio23: gpio@fff0c000 {
+			status = "ok";
+		};
+
+		gpio24: gpio@fff0d000 {
+			status = "ok";
+		};
+
+		gpio25: gpio@fff0e000 {
+			status = "ok";
+		};
+
+		gpio26: gpio@fff0f000 {
+			status = "ok";
+		};
+	};
+};

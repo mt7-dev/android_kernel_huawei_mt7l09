@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no" ?>
+<Profile FormatVersion="1">
+    <Tools>
+		<Tool Filename="cmd" AllowIntercept="true" />
+		<Tool Filename="python" AllowIntercept="true" />
+		<Tool Filename="obuild" AllowIntercept="true" />
+		<Tool Filename="make" AllowIntercept="true" />
+		<Tool Filename="sh" AllowIntercept="true" />
+		<!--Windriver compiler-->
+		<Tool Filename="dcc" AllowRemote="true" DeriveCaptionFrom="lastparam" />
+		<Tool Filename="das" AllowRemote="true" DeriveCaptionFrom="lastparam" />
+		<Tool Filename="ccarm" AllowRemote="true" DeriveCaptionFrom="lastparam" />
+		<!--Tensilica compiler-->
+		<Tool Filename="xt-make" AllowIntercept="true" />
+		<Tool Filename="xt-xcc" AllowRemote="false" DeriveCaptionFrom="lastparam" />
+		<Tool Filename="xt-as" AllowRemote="false" DeriveCaptionFrom="lastparam" />
+		<Tool Filename="cc1" AllowRemote="false"  />
+		<Tool Filename="be" AllowRemote="false"  />
+		<Tool Filename="inline" AllowRemote="false"  />
+		<!--zsp compiler-->
+		<Tool Filename="zdmake" AllowIntercept="true" />
+		<Tool Filename="zdcc" AllowRemote="false" DeriveCaptionFrom="lastparam"  />
+    </Tools>
+</Profile>

@@ -1,0 +1,68 @@
+;==============================================================================
+;   版权所有(C) 1987-2020, 深圳华为技术有限公司.
+;
+;   文 件 名 :  trace_list.cmm
+;
+;   作    者 :  zhuhongfei
+;
+;   描    述 :  cpu trace, etb data analyser
+;
+;   修改记录 :  2013年12月12日  v1.00  zhuhongfei  创建
+;
+;==============================================================================
+
+&trace_flag=data.long(SD:(v.address(g_dump_cfg.traceOnstartFlag)))
+&trace_core_set=data.long(SD:(v.address(g_dump_cfg.traceCoreSet)))
+
+if &trace_flag==0
+(
+	goto trace_disable
+)
+
+//配置ETM
+ETM.PortSize 32.
+ETM.ContextID On
+//APP Core
+if &core_flag==0
+(
+	ETM.TRACEID 2.
+	if &trace_core_set!=0
+	(
+		goto trace_disable
+	)
+)
+//Modem Core
+if &core_flag==1
+(
+	ETM.TRACEID 3.
+	if &trace_core_set!=1
+	(
+		goto trace_disable
+	)	
+)
+ETM.PortMode  Wrapped
+ETM.DataTrace OFF
+ETM.ON
+
+//保存trace数据
+&trace_magic=data.long(SD:(data.long(SD:(g_ul_etb_data_base))))		//trace分区magic num，0x89ABCDEF
+&trace_addr=data.long(SD:(g_ul_etb_data_base))+8					//trace数据基地址
+&trace_len=data.long(SD:(data.long(SD:(g_ul_etb_data_base))+4))-1	//trace数据长度，在保存文件时，需要将长度减1
+print "&trace_magic &trace_addr &trace_len"
+if (&trace_magic==0x89ABCDEF)
+(
+	LA.RESET
+	d.save.b c_om.bin &trace_addr++&trace_len
+	LA.Mode FLOWTRACE ON
+	LA.IMPORT.ETB c_om.bin
+	la.list tp tpc flen list.exec run address symbol cycle data list.code list.asm		
+)
+else
+(
+	goto trace_disable
+)
+ENDDO
+
+trace_disable:
+	dialog.ok "trace is not enable"
+	ENDDO

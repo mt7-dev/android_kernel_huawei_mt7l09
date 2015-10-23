@@ -1,0 +1,603 @@
+"Configuration V2.2"
+"Configuration2"
+"SIM"
+[
+"BuildNumber"
+"BuildNumber"
+"~"
+value "2"
+]
+[
+"Configuration Container"
+"ConfVersion2"
+"Please upgrade to T32Start version >= 2.2.14 to load this .ts2 file!"
+]
+[
+"Simulator"
+"Simulator"
+"~"
+[
+"T32Executable"
+"Target"
+"~"
+value "ARM"
+]
+[
+"CoreAdvancedOptions"
+"CoreAdvancedOptions"
+"Advanced Settings"
+[
+"DirectorySettings"
+"Directories"
+"Paths"
+[
+"String"
+"WorkingPath"
+"~"
+value "%//Settings/CoreAdvancedOptions/Directories/WorkingPath%"
+]
+[
+"String"
+"SystemPath"
+"~"
+value "%//Settings/CoreAdvancedOptions/Directories/SystemPath%"
+]
+[
+"String"
+"TempPath"
+"~"
+value "d:\t32\temp"
+]
+[
+"String"
+"HelpPath"
+"~"
+value "%//Settings/CoreAdvancedOptions/Directories/HelpPath%"
+]
+[
+"String"
+"LicenseFile"
+"~"
+value "%//Settings/CoreAdvancedOptions/Directories/LicenseFile%"
+]
+]
+"InterfaceSettings"
+"Interfaces"
+"~"
+[
+"Port"
+"APIPort"
+"API Port"
+[
+"Boolean"
+"APIPort.UsePort"
+"Use Port"
+value "no"
+]
+[
+"PACKLEN"
+"PACKLEN"
+"Max UDP Packet Size"
+value "1024"
+]
+[
+"Boolean"
+"APIPort.AutoIncrementPort"
+"Use Auto Increment Port"
+value "yes"
+]
+[
+"Int"
+"APIPort.PortStartValue"
+"Port Start Value"
+value "20000"
+]
+[
+"Int"
+"APIPort.PortValue"
+"Port Value"
+value "20000"
+]
+]
+[
+"Port"
+"IntercomPort"
+"Intercom Port"
+[
+"Boolean"
+"IntercomPort.UsePort"
+"Use Port"
+value "no"
+]
+[
+"PACKLEN"
+"PACKLEN"
+"Max UDP Packet Size"
+value "1024"
+]
+[
+"Boolean"
+"IntercomPort.AutoIncrementPort"
+"Use Auto Increment Port"
+value "yes"
+]
+[
+"Int"
+"IntercomPort.PortStartValue"
+"Port Start Value"
+value "10000"
+]
+[
+"Int"
+"IntercomPort.PortValue"
+"Port Value"
+value "10000"
+]
+]
+[
+"Port"
+"GDBPort"
+"GDB Port"
+[
+"Boolean"
+"GDBPort.UsePort"
+"Use Port"
+value "no"
+]
+[
+"PACKLEN"
+"PACKLEN"
+"Max UDP Packet Size"
+value "1024"
+]
+[
+"Boolean"
+"GDBPort.AutoIncrementPort"
+"Use Auto Increment Port"
+value "yes"
+]
+[
+"Int"
+"GDBPort.PortStartValue"
+"Port Start Value"
+value "30000"
+]
+[
+"Int"
+"GDBPort.PortValue"
+"Port Value"
+value "30000"
+]
+]
+[
+"DisplaySettings"
+"Display"
+"~"
+[
+"String"
+"Title"
+"~"
+value "Trace32 %T [%D @%N]"
+]
+[
+"Boolean"
+"SmallFontSize"
+"~"
+value "yes"
+]
+[
+"Boolean"
+"FullScreen"
+"~"
+value "yes"
+]
+[
+"Boolean"
+"Iconic"
+"~"
+value "no"
+]
+[
+"Boolean"
+"MDI"
+"MWI"
+value "no"
+]
+[
+"Language"
+"Language"
+"~"
+value "EN"
+]
+]
+[
+"InternalSettings"
+"InternalSettings"
+"Internal"
+[
+"Boolean"
+"Debug"
+"~"
+value "no"
+]
+[
+"Boolean"
+"Attach"
+"~"
+value "no"
+]
+[
+"Boolean"
+"MultiCore"
+"~"
+value "no"
+]
+[
+"Boolean"
+"NoSelfTest"
+"~"
+value "no"
+]
+[
+"Boolean"
+"Passive"
+"~"
+value "no"
+]
+[
+"String"
+"T32Executable"
+"~"
+value ""
+]
+[
+"String"
+"SysFCC"
+"~"
+value ""
+]
+[
+"String"
+"SysFCCCPU"
+"~"
+value ""
+]
+]
+[
+"StartupScript"
+"StartupScript"
+"~"
+[
+"ListBasedCombo"
+"Source"
+"~"
+value "File"
+]
+[
+"String"
+"File"
+"~"
+value "D:\t32\scripts\sim\SystemInit_app.cmm"
+]
+[
+"BuiltinScript"
+"BuiltinScript"
+"Built-in Script"
+value ""
+]
+[
+"String"
+"Parameters"
+"~"
+value ""
+]
+]
+]
+[
+"String"
+"T32ID"
+"~"
+value ""
+]
+[
+"String"
+"Interface"
+"~"
+value "SIM"
+]
+]
+[
+"Simulator"
+"Simulator2"
+"~"
+[
+"T32Executable"
+"Target"
+"~"
+value "ARM"
+]
+[
+"CoreAdvancedOptions"
+"CoreAdvancedOptions"
+"Advanced Settings"
+[
+"DirectorySettings"
+"Directories"
+"Paths"
+[
+"String"
+"WorkingPath"
+"~"
+value "%//Settings/CoreAdvancedOptions/Directories/WorkingPath%"
+]
+[
+"String"
+"SystemPath"
+"~"
+value "%//Settings/CoreAdvancedOptions/Directories/SystemPath%"
+]
+[
+"String"
+"TempPath"
+"~"
+value "d:\t32\temp"
+]
+[
+"String"
+"HelpPath"
+"~"
+value "%//Settings/CoreAdvancedOptions/Directories/HelpPath%"
+]
+[
+"String"
+"LicenseFile"
+"~"
+value "%//Settings/CoreAdvancedOptions/Directories/LicenseFile%"
+]
+]
+"InterfaceSettings"
+"Interfaces"
+"~"
+[
+"Port"
+"APIPort"
+"API Port"
+[
+"Boolean"
+"APIPort.UsePort"
+"Use Port"
+value "no"
+]
+[
+"PACKLEN"
+"PACKLEN"
+"Max UDP Packet Size"
+value "1024"
+]
+[
+"Boolean"
+"APIPort.AutoIncrementPort"
+"Use Auto Increment Port"
+value "yes"
+]
+[
+"Int"
+"APIPort.PortStartValue"
+"Port Start Value"
+value "20000"
+]
+[
+"Int"
+"APIPort.PortValue"
+"Port Value"
+value "20001"
+]
+]
+[
+"Port"
+"IntercomPort"
+"Intercom Port"
+[
+"Boolean"
+"IntercomPort.UsePort"
+"Use Port"
+value "no"
+]
+[
+"PACKLEN"
+"PACKLEN"
+"Max UDP Packet Size"
+value "1024"
+]
+[
+"Boolean"
+"IntercomPort.AutoIncrementPort"
+"Use Auto Increment Port"
+value "yes"
+]
+[
+"Int"
+"IntercomPort.PortStartValue"
+"Port Start Value"
+value "10000"
+]
+[
+"Int"
+"IntercomPort.PortValue"
+"Port Value"
+value "10001"
+]
+]
+[
+"Port"
+"GDBPort"
+"GDB Port"
+[
+"Boolean"
+"GDBPort.UsePort"
+"Use Port"
+value "no"
+]
+[
+"PACKLEN"
+"PACKLEN"
+"Max UDP Packet Size"
+value "1024"
+]
+[
+"Boolean"
+"GDBPort.AutoIncrementPort"
+"Use Auto Increment Port"
+value "yes"
+]
+[
+"Int"
+"GDBPort.PortStartValue"
+"Port Start Value"
+value "30000"
+]
+[
+"Int"
+"GDBPort.PortValue"
+"Port Value"
+value "30001"
+]
+]
+[
+"DisplaySettings"
+"Display"
+"~"
+[
+"String"
+"Title"
+"~"
+value "TRACE32 PowerView for %T %O [%D @%N]"
+]
+[
+"Boolean"
+"SmallFontSize"
+"~"
+value "yes"
+]
+[
+"Boolean"
+"FullScreen"
+"~"
+value "yes"
+]
+[
+"Boolean"
+"Iconic"
+"~"
+value "no"
+]
+[
+"Boolean"
+"MDI"
+"MWI"
+value "no"
+]
+[
+"Language"
+"Language"
+"~"
+value "EN"
+]
+]
+[
+"InternalSettings"
+"InternalSettings"
+"Internal"
+[
+"Boolean"
+"Debug"
+"~"
+value "no"
+]
+[
+"Boolean"
+"Attach"
+"~"
+value "no"
+]
+[
+"Boolean"
+"MultiCore"
+"~"
+value "no"
+]
+[
+"Boolean"
+"NoSelfTest"
+"~"
+value "no"
+]
+[
+"Boolean"
+"Passive"
+"~"
+value "no"
+]
+[
+"String"
+"T32Executable"
+"~"
+value ""
+]
+[
+"String"
+"SysFCC"
+"~"
+value ""
+]
+[
+"String"
+"SysFCCCPU"
+"~"
+value ""
+]
+]
+[
+"StartupScript"
+"StartupScript"
+"~"
+[
+"ListBasedCombo"
+"Source"
+"~"
+value "File"
+]
+[
+"String"
+"File"
+"~"
+value "D:\t32\scripts\sim\SystemInit_comm.cmm"
+]
+[
+"BuiltinScript"
+"BuiltinScript"
+"Built-in Script"
+value ""
+]
+[
+"String"
+"Parameters"
+"~"
+value ""
+]
+]
+]
+[
+"String"
+"T32ID"
+"~"
+value ""
+]
+[
+"String"
+"Interface"
+"~"
+value "SIM"
+]
+]
+

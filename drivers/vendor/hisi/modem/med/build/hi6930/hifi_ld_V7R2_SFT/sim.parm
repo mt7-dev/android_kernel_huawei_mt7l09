@@ -1,0 +1,11 @@
+//  Memory map file to generate linker scripts for programs run on the ISS.
+
+// $Id: //depot/rel/Cottonwood/Xtensa/SWConfig/ldscripts/sim.parm#1 $
+
+// Customer ID=7664; Build=0x3b0ef; Copyright (c) 2004-2007 by Tensilica Inc.  ALL RIGHTS RESERVED.
+// These coded instructions, statements, and computer programs are the
+// copyrighted works and confidential proprietary information of Tensilica Inc.
+// They may not be modified, copied, reproduced, distributed, or disclosed to
+// third parties in any manner, medium, or form, in whole or in part, without
+// the prior written consent of Tensilica Inc.
+

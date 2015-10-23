@@ -1,0 +1,11 @@
+#
+# pcie docking test
+#
+
+comment "balong pcie docking test"
+
+config BALONG_PCIE_DOCKING_TEST
+	tristate "balong pcie docking test"
+	default n
+	help
+	  balong pcie docking test 

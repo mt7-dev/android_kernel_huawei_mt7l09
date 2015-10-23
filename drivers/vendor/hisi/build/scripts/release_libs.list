@@ -1,0 +1,16 @@
+lib/ascomm_ccore.o
+lib/gas_ccore.o
+lib/gudsp_comm_RT.o
+lib/gudsp_mcore.o
+lib/gudsp_mcore_RT.o
+lib/pscomm_ccore.o
+lib/tds_dsp_ddr_data.bin
+lib/ten_lte_dtcm.bin
+lib/ten_lte_itcm.bin
+lib/ten_pub_dtcm.bin
+lib/ten_pub_itcm.bin
+lib/tlas_ccore.o
+lib/ttf_ccore.o
+lib/was_ccore.o
+
+image/lphy.bin
