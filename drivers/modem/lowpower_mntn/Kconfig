@@ -1,0 +1,11 @@
+#
+# multicore communication driver
+#
+
+comment "multicore communication driver"
+
+config PWC_MNTN_ACORE
+	tristate "support lowpower mntn"
+	default n
+	help
+	  lowpower mntn balong

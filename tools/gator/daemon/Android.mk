@@ -49,4 +49,5 @@ LOCAL_C_INCLUDES := $(LOCAL_PATH)
 LOCAL_MODULE := gatord
 LOCAL_MODULE_TAGS := optional
 
-include $(BUILD_EXECUTABLE)
+# Comment to fix build/core/base_rules.mk:154: *** out/target/product/hwmt7_l09/obj/KERNEL_OBJ/source/tools/gator/daemon: MODULE.TARGET.EXECUTABLES.gatord already defined by kernel/huawei/hwmt7_l09/tools/gator/daemon.  Stop.
+##include $(BUILD_EXECUTABLE)

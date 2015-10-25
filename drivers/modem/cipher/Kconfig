@@ -1,0 +1,10 @@
+#
+# Balong cipher-kdf driver configuration
+#
+
+comment "balong cipher-kdf driver"
+
+config KDF_HASH
+	tristate "cipher-kdf"
+	help
+		cipher-kdf driver
