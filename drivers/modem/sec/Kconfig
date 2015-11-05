@@ -1,0 +1,11 @@
+#
+# image check
+#
+
+comment "image check driver"
+
+config SEC_CHECK
+	tristate "image check driver"
+	default n
+	help
+	  image check driver

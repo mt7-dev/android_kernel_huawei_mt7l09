@@ -1,0 +1,1 @@
+obj-$(CONFIG_HIFI_RESET)        += reset_hifi.o

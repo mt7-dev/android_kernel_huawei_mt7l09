@@ -1,0 +1,10 @@
+#
+# cshell driver
+#
+
+comment "cshell driver"
+
+config HI6930_CSHELL
+	tristate "support cshell"
+	help
+	  cshell driver

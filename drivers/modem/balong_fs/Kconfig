@@ -1,0 +1,17 @@
+#
+# balong early mount fs 
+#
+
+comment "balong early mount fs"
+
+config BALONG_EARLY_FS
+	tristate "balong early mount fs"
+	default n
+	help
+	  balong early mount fs
+	  
+config BALONG_EARLY_FS_TEST
+	tristate "balong early mount fs test"
+	default n
+	help
+	  balong early mount fs test

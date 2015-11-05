@@ -1,0 +1,8 @@
+#
+# IOS infrastructure and drivers
+#
+
+config IOS_BALONG
+	tristate "Hisi Balong IO Pad support"
+	help
+	  Support for the Hisi balongv7r2 SoC IO PAD.
