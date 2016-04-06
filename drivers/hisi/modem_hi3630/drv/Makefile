@@ -75,7 +75,9 @@ ifeq ($(strip $(CFG_CONFIG_IPF)),YES)
 obj-y				+= ipf/
 endif
 obj-y				+= lowpower_mntn/
-obj-$(CONFIG_BALONG_OAM_PS)  += $(if $(findstring .o,$(shell ls $(CURDIR)/drivers/hisi/modem_hi3630/drv/balong_oam_ps)), balong_oam_ps/, )
+#EDIT TO GET IT WORK - gabry3795
+#obj-$(CONFIG_BALONG_OAM_PS)  += $(if $(findstring .o,$(shell ls $(CURDIR)/drivers/hisi/modem_hi3630/drv/balong_oam_ps)), balong_oam_ps/, )
++obj-$(CONFIG_BALONG_OAM_PS)  += $(if $(findstring .o,$(shell ls $(BALONG_TOPDIR)/../../../drivers/hisi/modem_hi3630/drv/balong_oam_ps)), balong_oam_ps/, )
 
 subdir-ccflags-y := -Werror
 
