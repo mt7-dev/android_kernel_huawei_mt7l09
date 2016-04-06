@@ -15,6 +15,7 @@ extern "C" {
 *****************************************************************************/
 #include "vos.h"
 #include "LPSCommon.h"
+#include    "LnasErrlogInterface.h"
 
 #if (VOS_OS_VER != VOS_WIN32)
 #pragma pack(4)
@@ -61,6 +62,7 @@ enum EMM_ESM_MSG_TYPE_ENUM
     ID_EMM_ESM_RESUME_RSP                = (0x0F+ESM_EMM_MSG_ID_HEADER),/* _H2ASN_MsgChoice EMM_ESM_RESUME_RSP_STRU */
     ID_EMM_ESM_BEARER_MODIFY_REQ         = (0x11+ESM_EMM_MSG_ID_HEADER),/* _H2ASN_MsgChoice EMM_ESM_BEARER_MODIFY_REQ_STRU */
     ID_EMM_ESM_CLR_ESM_PROC_RES_NOTIFY   = (0x13+ESM_EMM_MSG_ID_HEADER),/* _H2ASN_MsgChoice EMM_ESM_CLR_ESM_PROC_RES_NOTIFY_STRU */
+    ID_EMM_ESM_SAVE_ERRLOG_IND          =  (0x19+ESM_EMM_MSG_ID_HEADER),/* _H2ASN_MsgChoice  EMM_ESM_SAVE_ERRLOG_IND_STRU */
 
     /*EMM发送给SM的消息原语*/
     ID_EMM_ESM_EST_CNF                   = (0x02+EMM_ESM_MSG_ID_HEADER),/* _H2ASN_MsgChoice EMM_ESM_EST_CNF_STRU */
@@ -443,6 +445,27 @@ typedef struct
     VOS_UINT32                          ulEpsId;         /* 当前修改的EPSID*/
 } EMM_ESM_BEARER_MODIFY_REQ_STRU;
 
+/*****************************************************************************
+ 结构名    : EMM_ESM_ERRLOG_STRU
+ 结构说明  : ESM发给EMM的ERRLOG信息
+*****************************************************************************/
+typedef struct
+{
+    VOS_UINT32                         ulEsmMsgSize;
+    VOS_UINT8                          aucEsmMsg[4];       /* ERRLOG的前四个字节内容*/
+}EMM_ESM_ERRLOG_STRU;
+
+/*****************************************************************************
+结构名    : EMM_ESM_SAVE_ERRLOG_IND_STRU
+结构说明  : EMM_ESM_SAVE_ERRLOG_IND_STRU数据结构
+*****************************************************************************/
+typedef struct
+{
+    VOS_MSG_HEADER                                                /*_H2ASN_Skip*/
+    VOS_UINT32                                      ulMsgId;      /*_H2ASN_Skip*/
+
+    EMM_ESM_ERRLOG_STRU                             stEmmEsmErrlog;
+}EMM_ESM_SAVE_ERRLOG_IND_STRU;
 
 /*****************************************************************************
  结构名    : EMM_ESM_CLR_ESM_PROC_RES_NOTIFY_STRU
@@ -509,6 +532,9 @@ extern VOS_UINT32 NAS_ESM_DecodeNwEsmMsgGetEsmCause(
                                                 VOS_UINT8  *pucMsg,
                                                 VOS_UINT32 ulMsgLen,
                                                 VOS_UINT8 *enEsmCause);
+
+extern VOS_UINT16 NAS_EMM_GetErrLogAlmLevel(LNAS_OM_ERRLOG_ALM_ID_ENUM_UINT16 enAlmId);
+extern VOS_UINT32 NAS_EMM_IsErrLogNeedRecord(VOS_UINT16 usLevel);
 
 
 /*****************************************************************************

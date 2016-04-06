@@ -22,6 +22,7 @@
 #define CONFIG_K3V3_CLK_CRG
 #endif
 
+#ifndef __KERNEL__
 static __inline__ void set_hi_crg_clkdis5_irm_pd_clk_dis(unsigned int v)
 {
 	return set_hi_crg_clkdis5_irmbbp_pd_clk_dis(v);
@@ -58,7 +59,7 @@ static __inline__ unsigned int get_hi_crg_clkstat5(void)
 #endif
 }
 /* get clk/mtcmos status  ---- end */
-
+#endif
 
 #endif
 

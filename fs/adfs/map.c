@@ -11,38 +11,7 @@
 #include <asm/unaligned.h>
 #include "adfs.h"
 
-/*
- * The ADFS map is basically a set of sectors.  Each sector is called a
- * zone which contains a bitstream made up of variable sized fragments.
- * Each bit refers to a set of bytes in the filesystem, defined by
- * log2bpmb.  This may be larger or smaller than the sector size, but
- * the overall size it describes will always be a round number of
- * sectors.  A fragment id is always idlen bits long.
- *
- *  < idlen > <       n        > <1>
- * +---------+-------//---------+---+
- * | frag id |  0000....000000  | 1 |
- * +---------+-------//---------+---+
- *
- * The physical disk space used by a fragment is taken from the start of
- * the fragment id up to and including the '1' bit - ie, idlen + n + 1
- * bits.
- *
- * A fragment id can be repeated multiple times in the whole map for
- * large or fragmented files.  The first map zone a fragment starts in
- * is given by fragment id / ids_per_zone - this allows objects to start
- * from any zone on the disk.
- *
- * Free space is described by a linked list of fragments.  Each free
- * fragment describes free space in the same way as the other fragments,
- * however, the frag id specifies an offset (in map bits) from the end
- * of this fragment to the start of the next free fragment.
- *
- * Objects stored on the disk are allocated object ids (we use these as
- * our inode numbers.)  Object ids contain a fragment id and an optional
- * offset.  This allows a directory fragment to contain small files
- * associated with that directory.
- */
+
 
 /*
  * For the future...

@@ -61,6 +61,7 @@ struct f_acm {
 
 	/* SetControlLineState request -- CDC 1.1 section 6.2.14 (INPUT) */
 	u16				port_handshake_bits;
+/*lint -e750 */
 #define ACM_CTRL_RTS	(1 << 1)	/* unused with full duplex */
 #define ACM_CTRL_DTR	(1 << 0)	/* host is ready for data r/w */
 
@@ -73,6 +74,7 @@ struct f_acm {
 #define ACM_CTRL_BRK		(1 << 2)
 #define ACM_CTRL_DSR		(1 << 1)
 #define ACM_CTRL_DCD		(1 << 0)
+/*lint +e750 */
 };
 
 static inline struct f_acm *func_to_acm(struct usb_function *f)

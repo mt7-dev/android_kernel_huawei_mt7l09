@@ -64,8 +64,21 @@
 #define SCM_FLUSH_CACHE(ptr, size)
 #define SCM_INVALID_CACHE(ptr, size)
 #elif (VOS_OS_VER == VOS_LINUX)
-#define SCM_FLUSH_CACHE(ptr, size) dma_map_single(0, ptr, size, DMA_TO_DEVICE)
-#define SCM_INVALID_CACHE(ptr, size) dma_map_single(0, ptr, size, DMA_FROM_DEVICE)
+extern unsigned long long g_socp_dma_mask;
+#define SCM_FLUSH_CACHE(ptr, size)                      \
+    do{                                                 \
+        struct device dev;                              \
+        memset(&dev,0,sizeof(struct device));           \
+        dev.dma_mask = (unsigned long long *)(&g_socp_dma_mask);    \
+        dma_map_single(&dev, ptr, size, DMA_TO_DEVICE);  \
+    }while(0)
+#define SCM_INVALID_CACHE(ptr, size)                    \
+    do{                                                 \
+        struct device dev;                              \
+        memset(&dev,0,sizeof(struct device));           \
+        dev.dma_mask = (unsigned long long *)(&g_socp_dma_mask);    \
+        dma_map_single(&dev, ptr, size, DMA_FROM_DEVICE);  \
+    }while(0)
 #endif
 
 /*

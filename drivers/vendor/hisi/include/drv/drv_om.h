@@ -74,19 +74,6 @@ BSP_S32 BSP_OM_RegRead(BSP_U32 u32RegAddr, ENADDRTYPE enAddrType, BSP_U32 *pu32V
 BSP_S32 BSP_OM_RegWrite(BSP_U32 u32RegAddr, ENADDRTYPE enAddrType, BSP_U32 u32Value);
 
 /*****************************************************************************
-* 函 数 名  : DRV_LOG_LVL_SET
-*
-* 功能描述  : HSO设置底软打印级别处理函数
-*
-* 输入参数  : log_swt_stru:各个模块的打印级别值
-*                         data_len:      参数log_swt_stru的长度
-* 输出参数  : 无
-*
-* 返 回 值  : BSP_OK 成功;其他 失败
-*****************************************************************************/
-BSP_U32 DRV_LOG_LVL_SET(VOID *log_swt_stru ,BSP_U32 data_len);
-
-/*****************************************************************************
 * 函 数 名  : ddmPhaseScoreBoot
 *
 * 功能描述  : 上层调用的打点计时函数

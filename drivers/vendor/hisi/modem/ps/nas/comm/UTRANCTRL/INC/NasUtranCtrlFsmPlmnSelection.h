@@ -71,6 +71,12 @@ VOS_UINT32 NAS_UTRANCTRL_RcvMmcInterSkipSearchWasIndMsg_PlmnSelection_Init(
     struct MsgCB                       *pstMsg
 );
 
+VOS_UINT32 NAS_UTRANCTRL_RcvMmcInterSkipSearchTdsIndMsg_PlmnSelection_Init(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+);
+
+
 VOS_UINT32 NAS_UTRANCTRL_RcvTiWaitWasPlmnSearchCnfExpired_PlmnSelection_Init(
     VOS_UINT32                          ulEventType,
     struct MsgCB                       *pstMsg
@@ -157,6 +163,16 @@ VOS_UINT32 NAS_UTRANCTRL_RcvRrmmPlmnSearchCnf_PlmnSelection_WaitWasPlmnSearchCnf
     VOS_UINT32                          ulEventType,
     struct MsgCB                       *pstMsg
 );
+
+
+
+VOS_UINT32 NAS_UTRANCTRL_RcvInterAbortUtranCtrlPlmnSearchReq_PlmnSelection_WaitWasPlmnSearchCnf(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+);
+
+
+
 VOS_UINT32  NAS_UTRANCTRL_RcvTdPlmnSearchCnf_PlmnSelection_WaitWasPlmnSearchCnf(
     VOS_UINT32                          ulEventType,
     struct MsgCB                       *pstMsg

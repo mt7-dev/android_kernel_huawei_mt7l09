@@ -103,7 +103,12 @@ extern VOS_UINT32 OM_ReadNv(APP_OM_MSG_EX_STRU *pstAppToOmMsg, VOS_UINT16 usRetu
 
 extern VOS_UINT32 OM_WriteNv(APP_OM_MSG_EX_STRU *pstAppToOmMsg, VOS_UINT16 usReturnPrimId);
 
+/* Modify by H59254 */
+#if (FEATURE_OFF == FEATURE_MERGE_OM_CHAN)
 extern VOS_UINT32 OM_SysCtrlCmd(VOS_UINT16 usClientId, VOS_UINT32 ulMode, MODEM_ID_ENUM_UINT16 enModemID);
+#else
+extern VOS_UINT32 OM_SysCtrlCmd(OM_LOGIC_CHANNEL_ENUM_UINT32 enChannel, VOS_UINT16 usClientId, VOS_UINT32 ulMode, MODEM_ID_ENUM_UINT16 enModemID);
+#endif
 
 extern VOS_UINT32 OM_SetFTMReq(APP_OM_MSG_EX_STRU *pstAppToOmMsg,VOS_UINT16 usReturnPrimId);
 

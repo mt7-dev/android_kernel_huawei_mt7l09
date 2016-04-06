@@ -1,4 +1,3 @@
-/*DTS2013032504265 zhangxianfeng 00186749 20130322 create*/
 #include <linux/init.h>
 #include <linux/module.h>
 #include <linux/types.h>

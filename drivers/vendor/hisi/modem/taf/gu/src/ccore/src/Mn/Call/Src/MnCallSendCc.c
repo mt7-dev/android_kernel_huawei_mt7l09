@@ -46,7 +46,7 @@ extern "C" {
 
 *****************************************************************************/
 LOCAL VOS_VOID  MN_CALL_FillIeCause(
-    NAS_CC_CAUSE_VALUE_ENUM_U8          enCauseVal,
+    NAS_CC_CAUSE_VALUE_ENUM_U32          enCauseVal,
     NAS_CC_IE_CAUSE_STRU                *pstCauseIe
 )
 {
@@ -889,23 +889,6 @@ VOS_UINT32  MN_CALL_SendCcRetrieveReq(
 
     return VOS_OK;
 }
-
-
-/*****************************************************************************
- 函 数 名  : MN_CALL_SendCcSimpleFacility
- 功能描述  : 发送简单的MNCC_FACILITY_REQ原语(除Operation Code之外没有其它参数)
- 输入参数  : CallId - 呼叫的ID
-             OpCode - Operation Code
- 输出参数  : 无
- 返 回 值  : VOS_OK - 发送成功, VOS_ERR - 发送失败
- 调用函数  :
- 被调函数  :
-
- 修改历史      :
-  1.日    期   : 2007年9月20日
-    作    者   : 丁庆 49431
-    修改内容   : 新生成函数
-*****************************************************************************/
 VOS_UINT32  MN_CALL_SendCcSimpleFacility(
     MN_CALL_ID_T                        callId,
     MN_CALL_SS_OPERATION_CODE_T         opCode
@@ -968,6 +951,11 @@ VOS_UINT32  MN_CALL_SendCcSimpleFacility(
     }
 
     ulLen = MN_CALL_FacilityEncode( pstFac->stFacility.aucFacility, &unComponent);
+
+    /*是否填入SS version indicator,目前填1*/
+    pstFac->stSSVersion.IsExist         = 1;
+    pstFac->stSSVersion.LastOctOffset   = 1;
+    pstFac->stSSVersion.Version         = 0;
 
     /*数据块中的数据长度为LV结构中的L的大小加上Tag的长度，也就是为L+1*/
     NAS_IE_SET_BLOCK_SIZE(&pstFac->stFacility, aucFacility, ulLen);
@@ -1412,13 +1400,13 @@ VOS_UINT32  MN_CALL_SendCcBufferedEmgSetupReq(
 #if (FEATURE_ON == FEATURE_IMS)
 VOS_VOID  TAF_CALL_SendCcSrvccCallInfoNtf(
     VOS_UINT8                           ucCallNum,
-    MNCC_ENTITY_STATUS_STRU            *pstEntitySta 
+    MNCC_ENTITY_STATUS_STRU            *pstEntitySta
 )
 {
-    VOS_UINT8                           i;    
+    VOS_UINT8                           i;
     MsgBlock                           *pMsg                = VOS_NULL_PTR;
     MNCC_SRVCC_CALL_INFO_NOTIFY_STRU   *pstSrvccCallInfoNtf = VOS_NULL_PTR;
-    
+
     /* 申请MNCC_ALERT_REQ原语:call id对该消息来说是无效的,不用关注,因此填写为0 */
     pMsg = MN_CALL_AllocMnccPrimitive(0, MNCC_SRVCC_CALL_INFO_NOTIFY, (MNCC_REQ_PARAM_UNION **)&pstSrvccCallInfoNtf);
 
@@ -1430,17 +1418,17 @@ VOS_VOID  TAF_CALL_SendCcSrvccCallInfoNtf(
 
     /* 填充消息 */
     pstSrvccCallInfoNtf->ucCallNum = ucCallNum;
-    
+
     for (i = 0; i < ucCallNum; i++)
-    {     
+    {
         PS_MEM_CPY(&(pstSrvccCallInfoNtf->astEntityStatus[i]), &pstEntitySta[i], sizeof(MNCC_ENTITY_STATUS_STRU));
     }
 
     if (VOS_TRUE == MN_CALL_GetChannelOpenFlg())
     {
         pstSrvccCallInfoNtf->ucTchAvail  = VOS_TRUE;
-    }   
-    
+    }
+
     /* 发送消息给CC */
     if (VOS_OK != MN_CALL_SendMnccPrimitive(pMsg))
     {

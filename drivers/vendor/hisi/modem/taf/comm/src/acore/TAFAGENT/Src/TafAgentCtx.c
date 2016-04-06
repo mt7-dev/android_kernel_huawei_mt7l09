@@ -39,7 +39,7 @@ VOS_UINT32 Taf_Agent_InitCtx(VOS_VOID)
     g_stTafAgentCtx.pucTafAcpuCnfMsg = VOS_NULL_PTR;
 
     /* 分配互斥信号量 */
-    if (VOS_OK != VOS_SmMCreate("SYNC", VOS_SEMA4_FIFO, &g_stTafAgentCtx.ulTafAcpuSyncSem))
+    if (VOS_OK != VOS_SmMCreate("SYNC", VOS_SEMA4_FIFO, &g_stTafAgentCtx.hTafAcpuSyncSem))
     {
         TAFAGENT_ERROR_LOG(ACPU_PID_TAFAGENT, "Create aps acpu sycn sem failed!");
         TAF_AGENT_DBG_CREATE_MUTEX_SEM_FAIL_NUM(1);
@@ -48,11 +48,11 @@ VOS_UINT32 Taf_Agent_InitCtx(VOS_VOID)
     }
     else
     {
-        TAF_AGENT_DBG_SAVE_MUTEX_SEM_ID(g_stTafAgentCtx.ulTafAcpuSyncSem);
+        TAF_AGENT_DBG_SAVE_MUTEX_SEM_ID(g_stTafAgentCtx.hTafAcpuSyncSem);
     }
 
     /* 分配二进制信号量 */
-    if (VOS_OK != VOS_SmBCreate( "CNF", 0, VOS_SEMA4_FIFO, &g_stTafAgentCtx.ulTafAcpuCnfSem))
+    if (VOS_OK != VOS_SmBCreate( "CNF", 0, VOS_SEMA4_FIFO, &g_stTafAgentCtx.hTafAcpuCnfSem))
     {
         TAFAGENT_ERROR_LOG(ACPU_PID_TAFAGENT, "Create aps acpu cnf sem failed!");
         TAF_AGENT_DBG_CREATE_BINARY_SEM_FAIL_NUM(1);
@@ -61,7 +61,7 @@ VOS_UINT32 Taf_Agent_InitCtx(VOS_VOID)
     }
     else
     {
-        TAF_AGENT_DBG_SAVE_BINARY_SEM_ID(g_stTafAgentCtx.ulTafAcpuCnfSem);
+        TAF_AGENT_DBG_SAVE_BINARY_SEM_ID(g_stTafAgentCtx.hTafAcpuCnfSem);
     }
 
     g_stTafAgentCtx.ulInitFlg = VOS_TRUE;
@@ -74,15 +74,15 @@ VOS_UINT32 Taf_Agent_InitCtx(VOS_VOID)
 }
 
 
-VOS_UINT32 TAF_AGENT_GetTafAcpuSyncSem(VOS_VOID)
+VOS_SEM TAF_AGENT_GetTafAcpuSyncSem(VOS_VOID)
 {
-    return g_stTafAgentCtx.ulTafAcpuSyncSem;
+    return g_stTafAgentCtx.hTafAcpuSyncSem;
 }
 
 
-VOS_UINT32 TAF_AGENT_GetTafAcpuCnfSem(VOS_VOID)
+VOS_SEM TAF_AGENT_GetTafAcpuCnfSem(VOS_VOID)
 {
-    return g_stTafAgentCtx.ulTafAcpuCnfSem;
+    return g_stTafAgentCtx.hTafAcpuCnfSem;
 }
 
 
@@ -126,10 +126,10 @@ VOS_VOID TAF_AGENT_ShowStats(VOS_VOID)
 {
     vos_printf("********************TAF AGENT统计信息*******************\n");
     vos_printf("模块初始化标识                              %d\n", g_stTafAgentCtx.ulInitFlg);
-    vos_printf("当前的互斥信号量                            %x\n", g_stTafAgentCtx.ulTafAcpuSyncSem);
-    vos_printf("当前的互斥信号量                            %x\n", g_stTafAgentCtx.ulTafAcpuCnfSem);
-    vos_printf("创建的互斥信号量                            %x\n", g_stTafAgentStats.ulMutexSemId);
-    vos_printf("创建的二进制信号量                          %x\n", g_stTafAgentStats.ulBinarySemId);
+    vos_printf("当前的互斥信号量                            %x\n", g_stTafAgentCtx.hTafAcpuSyncSem);
+    vos_printf("当前的互斥信号量                            %x\n", g_stTafAgentCtx.hTafAcpuCnfSem);
+    vos_printf("创建的互斥信号量                            %p\n", g_stTafAgentStats.ulMutexSemId);
+    vos_printf("创建的二进制信号量                          %p\n", g_stTafAgentStats.ulBinarySemId);
     vos_printf("创建互斥信号量失败次数                      %d\n", g_stTafAgentStats.ulCreateMutexSemFailNum);
     vos_printf("创建二进制信号量失败次数                    %d\n", g_stTafAgentStats.ulCreateBinarySemFailNum);
     vos_printf("锁互斥信号量失败次数                        %d\n", g_stTafAgentStats.ulLockMutexSemFailNum);

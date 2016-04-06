@@ -20,8 +20,13 @@
 #include <linux/mmc/core.h>
 #include <linux/mmc/pm.h>
 
+#ifdef CONFIG_HW_MMC_TEST
+#define CARD_ADDR_MAGIC 0xA5A55A5AA5A55A5ALL
+#endif
+
 struct mmc_ios {
 	unsigned int	clock;			/* clock rate */
+	unsigned int	old_rate;
 	unsigned short	vdd;
 
 /* vdd stores the bit number of the selected voltage range from below. */
@@ -51,15 +56,27 @@ struct mmc_ios {
 
 	unsigned char	timing;			/* timing specification used */
 
+#if defined (CONFIG_ARCH_HI6XXX)
 #define MMC_TIMING_LEGACY	0
 #define MMC_TIMING_MMC_HS	1
 #define MMC_TIMING_SD_HS	2
-#define MMC_TIMING_UHS_SDR12	3
-#define MMC_TIMING_UHS_SDR25	4
-#define MMC_TIMING_UHS_SDR50	5
-#define MMC_TIMING_UHS_SDR104	6
-#define MMC_TIMING_UHS_DDR50	7
-#define MMC_TIMING_MMC_HS200	8
+#define MMC_TIMING_UHS_SDR12	MMC_TIMING_LEGACY
+#define MMC_TIMING_UHS_SDR25	MMC_TIMING_SD_HS
+#define MMC_TIMING_UHS_SDR50	3
+#define MMC_TIMING_UHS_SDR104	4
+#define MMC_TIMING_UHS_DDR50	5
+#define MMC_TIMING_MMC_HS200	6
+#elif defined (CONFIG_ARCH_HI3XXX)
+#define MMC_TIMING_LEGACY       0
+#define MMC_TIMING_MMC_HS       1
+#define MMC_TIMING_SD_HS        2
+#define MMC_TIMING_UHS_SDR12    3
+#define MMC_TIMING_UHS_SDR25    4
+#define MMC_TIMING_UHS_SDR50    5
+#define MMC_TIMING_UHS_SDR104   6
+#define MMC_TIMING_UHS_DDR50    7
+#define MMC_TIMING_MMC_HS200    8
+#endif
 
 #define MMC_SDR_MODE		0
 #define MMC_1_2V_DDR_MODE	1
@@ -136,7 +153,7 @@ struct mmc_host_ops {
 	int	(*card_busy)(struct mmc_host *host);
 
 	/* The tuning command opcode value is different for SD and eMMC cards */
-	int	(*execute_tuning)(struct mmc_host *host, u32 opcode);
+	int	(*execute_tuning)(struct mmc_host *host,u32 opcode);
 	int	(*select_drive_strength)(unsigned int max_dtr, int host_drv, int card_drv);
 	void	(*hw_reset)(struct mmc_host *host);
 	void	(*card_event)(struct mmc_host *host);
@@ -145,6 +162,9 @@ struct mmc_host_ops {
 				unsigned int offset, unsigned int len);
 	int	(*panic_erase)(struct raw_hd_struct *rhd, unsigned int offset,
 				unsigned int len);
+#ifdef CONFIG_MMC_PASSWORDS
+	int	(*sd_lock_reset)(struct mmc_host *host);
+#endif
 };
 
 struct mmc_card;
@@ -375,6 +395,7 @@ struct mmc_host {
 	unsigned int		slotno;	/* used for sdio acpi binding */
 
 	int					sd_need_reinit;
+	int					sd_in_reinit;
 #ifdef CONFIG_MMC_EMBEDDED_SDIO
 	struct {
 		struct sdio_cis			*cis;
@@ -382,6 +403,10 @@ struct mmc_host {
 		struct sdio_embedded_func	*funcs;
 		int				num_funcs;
 	} embedded_sdio_data;
+#endif
+
+#ifdef CONFIG_HW_MMC_TEST
+    int test_status;            /* save mmc_test status */
 #endif
 
 	unsigned long		private[0] ____cacheline_aligned;
@@ -428,10 +453,11 @@ int mmc_suspend_host(struct mmc_host *);
 int mmc_resume_host(struct mmc_host *);
 int mmc_reinit_host(struct mmc_host *);
 
-int mmc_power_save_host_for_wifi(struct mmc_host *host);
-int mmc_power_restore_host_for_wifi(struct mmc_host *host);
 int mmc_power_save_host(struct mmc_host *host);
 int mmc_power_restore_host(struct mmc_host *host);
+
+int mmc_power_save_host_for_wifi(struct mmc_host *host);
+int mmc_power_restore_host_for_wifi(struct mmc_host *host);
 
 void mmc_detect_change(struct mmc_host *, unsigned long delay);
 void mmc_request_done(struct mmc_host *, struct mmc_request *);

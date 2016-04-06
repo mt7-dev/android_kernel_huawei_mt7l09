@@ -23,18 +23,11 @@
  ***************************************************************************
 */
 
-/* < DTS2013122401935 wangdedong 00204535 2013.12.24 begin */
 #include <linux/spinlock.h>
 #include <linux/atomic.h>
 
 extern spinlock_t g_rdr_dump_stack_lock;
 extern atomic_t rdr_crit_dump_stack;
-/* DTS2013122401935 wangdedong 00204535 2013.12.24 end > */
-extern unsigned long hisi_reserved_modem_phymem;
-extern unsigned long hisi_reserved_modem_share_phymem;
-extern unsigned long hisi_reserved_debug_socp_phymem;
-extern unsigned long hisi_reserved_hifi3_phymem;
-extern unsigned long hisi_reserved_debug_phymem;
 s32 rdr_mem_init(void);
 
 
@@ -43,10 +36,9 @@ extern int g_rdr_dump_stack_len;
 extern int *bsp_dump_log_buf_len;
 
 typedef void (*rdr_funcptr_0)(void);
-typedef void (*rdr_funcptr_1)(u32);
-typedef void (*rdr_funcptr_2)(u32, u32);
-typedef void (*rdr_funcptr_3)(u32, u32, u32);
-
+typedef void (*rdr_funcptr_1)(unsigned long);
+typedef void (*rdr_funcptr_2)(unsigned long, unsigned long);
+typedef void (*rdr_funcptr_3)(unsigned long, unsigned long, unsigned long);
 int  task_switch_hook_del(rdr_funcptr_2 switch_hook);
 void int_switch_hook_delete(void);
 void exc_hook_delete(void);

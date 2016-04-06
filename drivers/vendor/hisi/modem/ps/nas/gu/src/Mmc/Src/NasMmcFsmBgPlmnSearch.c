@@ -73,6 +73,8 @@ VOS_UINT32    NAS_MMC_RcvTiHPlmnTimerExpired_BgPlmnSearch_Init(
     /* 保存状态机入口消息 */
     NAS_MMC_SaveCurEntryMsg(ulEventType, pstMsg);
 
+    NAS_MMC_UpdateHighPrioPlmnList_BgPlmnSearch();    
+
     /* 保存当前驻留网络到状态机上下文 */
     NAS_MMC_SetPreCampPlmn_BgPlmnSearch(pstCurrCampPlmnId, NAS_MML_GetCurrNetRatType());
 
@@ -114,6 +116,8 @@ VOS_UINT32    NAS_MMC_RcvTiHPlmnTimerExpired_BgPlmnSearch_Init(
 
     return VOS_TRUE;
 }
+
+
 VOS_UINT32    NAS_MMC_RcvTiHighPrioRatHPlmnTimerExpired_BgPlmnSearch_Init(
     VOS_UINT32                          ulEventType,
     struct MsgCB                       *pstMsg
@@ -138,6 +142,8 @@ VOS_UINT32    NAS_MMC_RcvTiHighPrioRatHPlmnTimerExpired_BgPlmnSearch_Init(
 
     /* 保存状态机入口消息 */
     NAS_MMC_SaveCurEntryMsg(ulEventType, pstMsg);
+
+    NAS_MMC_UpdateHighPrioPlmnList_BgPlmnSearch();    
 
     /* 保存当前驻留网络到状态机上下文 */
     NAS_MMC_SetPreCampPlmn_BgPlmnSearch(pstCurrCampPlmnId, NAS_MML_GetCurrNetRatType());
@@ -185,6 +191,10 @@ VOS_UINT32    NAS_MMC_RcvTiHighPrioRatHPlmnTimerExpired_BgPlmnSearch_Init(
 
     return VOS_TRUE;
 }
+
+
+
+
 VOS_UINT32    NAS_MMC_RcvTiPeriodHighPrioPlmnSearchExpired_BgPlmnSearch_Init(
     VOS_UINT32                          ulEventType,
     struct MsgCB                       *pstMsg
@@ -206,6 +216,8 @@ VOS_UINT32    NAS_MMC_RcvTiPeriodHighPrioPlmnSearchExpired_BgPlmnSearch_Init(
 
     /* 保存状态机入口消息 */
     NAS_MMC_SaveCurEntryMsg(ulEventType, pstMsg);
+
+    NAS_MMC_UpdateHighPrioPlmnList_BgPlmnSearch();    
 
     /* 保存当前驻留网络到状态机上下文 */
     NAS_MMC_SetPreCampPlmn_BgPlmnSearch(pstCurrCampPlmnId, NAS_MML_GetCurrNetRatType());
@@ -3127,6 +3139,10 @@ VOS_UINT32    NAS_MMC_RcvAreaLostInd_BgPlmnSearch_WaitCsPsRegRsltInd(
     /* 当前信号更新 */
     NAS_MML_InitRssiValue(NAS_MML_GetCampCellInfo());
 
+
+    /* 通知MM/GMM进入丢网,MM会释放CS业务 */
+    NAS_MMC_SndMmCoverageLostInd();
+    NAS_MMC_SndGmmCoverageLostInd();
     /* 更新服务状态 */
     NAS_MMC_SetCsServiceStatus(NAS_MMC_NO_SERVICE);
 
@@ -5703,6 +5719,9 @@ VOS_VOID NAS_MMC_ProcCsRegRslt_BgPlmnSearch(
     NAS_MMC_GU_ACTION_RSLT_INFO_STRU                        stActionRslt;
 #endif
 
+    NAS_MMC_DPLMN_NPLMN_CFG_INFO_STRU                      *pstDPlmnNPlmnCfgInfo = VOS_NULL_PTR;
+    pstDPlmnNPlmnCfgInfo  = NAS_MMC_GetDPlmnNPlmnCfgInfo();
+
     enService = NAS_MMC_ConverMmStatusToMmc(NAS_MMC_REG_DOMAIN_CS,
                                             (NAS_MM_COM_SERVICE_STATUS_ENUM_UINT8)pstCsRegRsltInd->ulServiceStatus);
 
@@ -5714,6 +5733,15 @@ VOS_VOID NAS_MMC_ProcCsRegRslt_BgPlmnSearch(
 
         /* 根据注册结果更新注册信息表 */
         NAS_MMC_UpdatePlmnRegInfoList(NAS_MML_GetCurrCampPlmnId(), NAS_MMC_REG_DOMAIN_CS, NAS_MML_REG_FAIL_CAUSE_NULL);
+
+        /* 更新DPLMN NPLMN列表 */
+        if (VOS_TRUE == NAS_MMC_IsRoam())
+        {
+            NAS_MMC_UpdateDPlmnNPlmnList(NAS_MML_GetCurrCampPlmnId(),NAS_MML_GetCurrNetRatType(), NAS_MMC_REG_DOMAIN_CS,&pstDPlmnNPlmnCfgInfo->usDplmnListNum,pstDPlmnNPlmnCfgInfo->astDPlmnList);
+            NAS_MMC_DeleteDPlmnNPlmnList(NAS_MML_GetCurrCampPlmnId(),NAS_MML_GetCurrNetRatType(), NAS_MMC_REG_DOMAIN_CS,&pstDPlmnNPlmnCfgInfo->usNplmnListNum,pstDPlmnNPlmnCfgInfo->astNPlmnList);
+            NAS_MMC_WriteDplmnNplmnToNvim();
+            NAS_MMC_LogDplmnNplmnList();
+        }
 
         /* 对Hplmn的Rej Lai信息的清除 */
         NAS_MMC_ClearHplmnRejDomainInfo(NAS_MML_GetCurrCampPlmnId(), NAS_MMC_REG_DOMAIN_CS);
@@ -5751,6 +5779,15 @@ VOS_VOID NAS_MMC_ProcCsRegRslt_BgPlmnSearch(
         {
             /* 根据注册结果更新注册信息表 */
             NAS_MMC_UpdatePlmnRegInfoList(NAS_MML_GetCurrCampPlmnId(), NAS_MMC_REG_DOMAIN_CS, pstCsRegRsltInd->enRegFailCause);
+
+            /* 更新DPLMN NPLMN列表 */
+            if (VOS_TRUE == NAS_MMC_IsRoam())
+            {
+                NAS_MMC_UpdateDPlmnNPlmnList(NAS_MML_GetCurrCampPlmnId(),NAS_MML_GetCurrNetRatType(), NAS_MMC_REG_DOMAIN_CS,&pstDPlmnNPlmnCfgInfo->usNplmnListNum,pstDPlmnNPlmnCfgInfo->astNPlmnList);
+                NAS_MMC_DeleteDPlmnNPlmnList(NAS_MML_GetCurrCampPlmnId(),NAS_MML_GetCurrNetRatType(), NAS_MMC_REG_DOMAIN_CS,&pstDPlmnNPlmnCfgInfo->usDplmnListNum,pstDPlmnNPlmnCfgInfo->astDPlmnList);
+                NAS_MMC_WriteDplmnNplmnToNvim();
+                NAS_MMC_LogDplmnNplmnList();
+            }
         }
 #if   (FEATURE_ON == FEATURE_LTE)
         /* 小于 NAS_MML_REG_FAIL_CAUSE_OTHER_CAUSE的拒绝原因是UE尝试发起注册的原因值，需要通知LMM */
@@ -10220,8 +10257,41 @@ VOS_UINT8  NAS_MMC_IsHighPrioRatHplmnSearch_BgPlmnSearch(VOS_VOID)
 
     return VOS_FALSE;
 }
+VOS_VOID  NAS_MMC_UpdateHighPrioPlmnList_BgPlmnSearch(VOS_VOID)
+{
+    NAS_MMC_PLMN_SELECTION_LIST_INFO_STRU                  *pstPlmnSelectionListInfo = VOS_NULL_PTR;
+    NAS_UTRANCTRL_UTRAN_MODE_ENUM_UINT8                     enCurrUtranMode;
+    NAS_MMC_SEARCHED_PLMN_LIST_INFO_STRU                    stSearchedPlmnListInfo;
+
+    enCurrUtranMode = NAS_UTRANCTRL_GetCurrUtranMode();
+
+    PS_MEM_SET(&stSearchedPlmnListInfo, 0X00, sizeof(NAS_MMC_SEARCHED_PLMN_LIST_INFO_STRU));
+
+    /* 在GTL模式时候，如果当前在L下，则更新GU网络为不存在 */
+    if ( (NAS_MML_NET_RAT_TYPE_LTE      == NAS_MML_GetCurrNetRatType()) 
+      && (NAS_UTRANCTRL_UTRAN_MODE_TDD  == enCurrUtranMode) )
+    {
+        /* 获取高优先级网络列表 */
+        pstPlmnSelectionListInfo = NAS_MMC_GetHighPrioPlmnList();
+        
+        /* 更新GSM的网络不存在, 高低网络个数都为0 */
+        stSearchedPlmnListInfo.enRatType = NAS_MML_NET_RAT_TYPE_GSM;
+        NAS_MMC_UpdatePlmnListInPlmnSelectionList(&stSearchedPlmnListInfo,
+                                                  pstPlmnSelectionListInfo,
+                                                  VOS_FALSE);
+
+        /* 更新UTRAN TDD上的网络不存在, 高低网络个数都为0 */
+        stSearchedPlmnListInfo.enRatType = NAS_MML_NET_RAT_TYPE_WCDMA;
+        NAS_MMC_UpdatePlmnListInPlmnSelectionList(&stSearchedPlmnListInfo,
+                                                  pstPlmnSelectionListInfo,
+                                                  VOS_FALSE);
+    }
+
+    return ;
+}
 
 #if (FEATURE_ON == FEATURE_LTE)
+
 VOS_UINT32 NAS_MMC_IsNeedEnableLTE_FastSpecSearch(VOS_VOID)
 {
     NAS_MML_LTE_CAPABILITY_STATUS_ENUM_UINT32               enLteCapabilityStatus;

@@ -696,6 +696,72 @@ VOS_VOID CMMCA_REG_RcvNoServiceReq(
 }
 
 
+VOS_VOID CMMCA_REG_RcvBearDetachReq(
+    VOS_VOID                           *pMsg
+)
+{
+    CBPCA_DATA_IND_MSG_STRU            *pstDataInd  = VOS_NULL_PTR;
+    CMMCA_MMC_RAT_BEAR_DETACH_REQ_STRU  stBearDetachReq;
+    TAF_MMA_DETACH_PARA_STRU            stDetachPara;
+    VOS_UINT32                          ulRslt;
+    VOS_UINT8                           ucOpId;
+
+    /* 参考VIA接口文档，解析消息 */
+    pstDataInd = (CBPCA_DATA_IND_MSG_STRU *)pMsg;
+
+    PS_MEM_SET(&stBearDetachReq, 0, sizeof(CMMCA_MMC_RAT_BEAR_DETACH_REQ_STRU));
+
+    /* 调用解析函数将CMD码流解析成对应的数据结构，解析函数已保证参数的有效性 */
+    ulRslt = CMMCA_ParseBearDetachReq((VOS_UINT16)(pstDataInd->ulDataLen),
+                                      pstDataInd->aucData,
+                                      &stBearDetachReq);
+    if (VOS_OK != ulRslt)
+    {
+        /* 直接回RSP(FAIL) */
+        CMMCA_PKT_SndBearDetachRsp(CMMCA_MMC_RAT_ID_EUTRAN, CMMCA_MMC_BEAR_DETACH_RSP_FAIL);
+
+        return;
+    }
+
+    /* 申请OPID,缓存pMsg到与OPID相应的buffer */
+    ucOpId = 0x0;
+
+    CMMCA_AssignOpid(&ucOpId);
+
+    ulRslt = CMMCA_SaveItemInCmdBufferQueue(ucOpId, (VOS_UINT8 *)(pstDataInd->aucData), pstDataInd->ulDataLen);
+
+    if (VOS_OK != ulRslt)
+    {
+        /* 打印错误信息 */
+        CMMCA_ERROR_LOG("CMMCA_REG_RcvBearDetachReq: CMMCA_SaveItemInCmdBufferQueue fail!");
+
+        /* 直接回RSP(FAIL) */
+        CMMCA_PKT_SndBearDetachRsp(CMMCA_MMC_RAT_ID_EUTRAN, CMMCA_MMC_BEAR_DETACH_RSP_FAIL);
+
+        return;
+    }
+
+    /* 执行Detach操作 */
+    PS_MEM_SET(&stDetachPara, 0, sizeof(TAF_MMA_DETACH_PARA_STRU));
+
+    stDetachPara.enDetachCause  = TAF_MMA_DETACH_CAUSE_NORMAL;
+    stDetachPara.ucDetachDomain = TAF_PH_SERVICE_PS;
+
+    if (VOS_TRUE != TAF_MMA_DetachReq(WUEPS_PID_CMMCA, CMMCA_CLIENT_ID, ucOpId, &stDetachPara))
+    {
+        CMMCA_ERROR_LOG("CMMCA_REG_RcvBearDetachReq: TAF_MMA_DetachReq SEND fail!");
+
+        /* 直接回RSP(FAIL) */
+        CMMCA_PKT_SndBearDetachRsp(CMMCA_MMC_RAT_ID_EUTRAN, CMMCA_MMC_BEAR_DETACH_RSP_FAIL);
+
+        /* 释放opid,清空缓存 */
+        CMMCA_DelItemInCmdBufferQueue(ucOpId);
+
+        return ;
+    }
+
+    return;
+}
 VOS_VOID CMMCA_REG_RcvMmaSysCfgCnf(
     VOS_VOID                           *pMsg
 )
@@ -899,7 +965,7 @@ VOS_VOID CMMCA_REG_RcvMmaServiceStateInd(
     pstServStatusInd        = (TAF_MMA_SERVICE_STATUS_IND_STRU*)pMsg;
     pstRegCtx               = CMMCA_REG_GetCtxAddr();
 
-    /* 遍历队列, 如果当前存在有这5个消息对应的操作，不用报状态，返回 */
+    /* 遍历队列, 如果当前存在有这6个消息对应的操作，不用报状态，返回 */
     pstCmdBufferQueue = CMMCA_GetCmdBufferQueueAddr();
     for (i = 0; i < CMMCA_MAX_CMD_BUFFER_QUEUE_SIZE; i++)
     {
@@ -911,7 +977,8 @@ VOS_VOID CMMCA_REG_RcvMmaServiceStateInd(
              || (ID_CMMCA_MMC_RAT_PS_REG_REQ           == usCmdId)
              || (ID_CMMCA_MMC_RAT_CELL_INFO_PS_REG_REQ == usCmdId)
              || (ID_CMMCA_MMC_RAT_POWERDOWN_REQ        == usCmdId)
-             || (ID_CMMCA_MMC_RAT_NO_SERVICE_REQ       == usCmdId))
+             || (ID_CMMCA_MMC_RAT_NO_SERVICE_REQ       == usCmdId)
+             || (ID_CMMCA_MMC_RAT_BEARER_DETACH_REQ    == usCmdId))
             {
                 pstRegCtx->ucPsSrvSta     = pstServStatusInd->PsSrvSta;
                 pstRegCtx->ucPsSimValid   = pstServStatusInd->ucPsSimValid;
@@ -924,6 +991,7 @@ VOS_VOID CMMCA_REG_RcvMmaServiceStateInd(
     }
 
     PS_MEM_SET(&stRatInfo, 0, sizeof(CMMCA_RAT_SYS_INFO_STRU));
+
     if (TAF_REPORT_SRVSTA_NO_SERVICE == pstServStatusInd->PsSrvSta)
     {
         stRatInfo.ulMcc           = CMMCA_INVALID_MCC;
@@ -998,6 +1066,7 @@ VOS_VOID CMMCA_REG_RcvMmaPowerSaveCnf(
     TAF_MMA_POWER_SAVE_CNF_STRU        *pstPowerSaveCnf = VOS_NULL_PTR;
     VOS_UINT8                           ucOpid;
     CMMCA_MMC_RAT_CMD_ID_ENUM_UINT16    usCmdId;
+    CMMCA_RAT_SYS_INFO_STRU             stRatInfo;
 
     /* 解析消息的opid,根据opid查找缓存的请求消息 */
     pstPowerSaveCnf = (TAF_MMA_POWER_SAVE_CNF_STRU*)pMsg;
@@ -1009,11 +1078,13 @@ VOS_VOID CMMCA_REG_RcvMmaPowerSaveCnf(
         return;
     }
 
-    /* 增加请求消息异常判断，如果不是ID_CMMCA_MMC_RAT_NO_SERVICE_REQ/ID_CMMCA_MMC_RAT_DATACONNECTION_CMD_REQ,则丢弃此cnf */
+    /* 增加请求消息异常判断，如果不是ID_CMMCA_MMC_RAT_NO_SERVICE_REQ/ID_CMMCA_MMC_RAT_DATACONNECTION_CMD_REQ/
+        ID_CMMCA_MMC_RAT_BEARER_DETACH_REQ,则丢弃此cnf */
     usCmdId = CMMCA_ConvertDoubleOctetStrToU16(pstCmdBuffer->pucMsgInfo);
 
     if ((ID_CMMCA_MMC_RAT_NO_SERVICE_REQ         != usCmdId)
-     && (ID_CMMCA_MMC_RAT_DATACONNECTION_CMD_REQ != usCmdId))
+     && (ID_CMMCA_MMC_RAT_DATACONNECTION_CMD_REQ != usCmdId)
+     && (ID_CMMCA_MMC_RAT_BEARER_DETACH_REQ      != usCmdId))
     {
         CMMCA_ERROR_LOG("CMMCA_REG_RcvMmaPowerSaveCnf: cmdId invalid!");
         return;
@@ -1037,7 +1108,7 @@ VOS_VOID CMMCA_REG_RcvMmaPowerSaveCnf(
             CMMCA_REG_SndNoServiceRsp(CMMCA_MMC_RAT_ID_EUTRAN, CMMCA_MMC_NO_SERV_RSP_FAIL);
         }
     }
-    else
+    else if (ID_CMMCA_MMC_RAT_DATACONNECTION_CMD_REQ == usCmdId)
     {
         /* 回复ID_CMMCA_RAT_MMC_DATACONNECTION_CMD_RSP到CBPCA */
         CMMCA_REG_SndPktDataCmdRsp(CMMCA_MMC_RAT_ID_EUTRAN, CMMCA_IRAT_DATA_CONNECT_CMD_RSP_PKT_DISABLED);
@@ -1046,14 +1117,32 @@ VOS_VOID CMMCA_REG_RcvMmaPowerSaveCnf(
         /* 设置Modem的状态为INACTIVE */
         CMMCA_SetModemStatus(CMMCA_MODEM_STATUS_INACTIVE);
     }
+    else
+    {
+        if (TAF_MMA_APP_OPER_RESULT_SUCCESS == pstPowerSaveCnf->enRslt)
+        {
+            CMMCA_PKT_SndBearDetachRsp(CMMCA_MMC_RAT_ID_EUTRAN, CMMCA_MMC_BEAR_DETACH_RSP_SUCC);
+
+            /* 回复ID_CMMCA_RAT_MMC_NWT_ST_CHG_IND(RAT_ACQUIRE)到RAT */
+            PS_MEM_SET(&stRatInfo, 0, sizeof(CMMCA_RAT_SYS_INFO_STRU));
+
+            stRatInfo.ulMcc           = CMMCA_INVALID_MCC;
+            stRatInfo.ulMnc           = CMMCA_INVALID_MNC;
+            stRatInfo.enPriorityClass = CMMCA_RAT_GMSS_PRIORITY_CLASS_UNAVL;
+
+            CMMCA_REG_SndNtwStChgInd(CMMCA_MMC_RAT_ID_EUTRAN, CMMCA_RAT_NOTIFY_CAUSE_PS_DEREGED, CMMCA_RAT_CPST_SYSLOST, &stRatInfo);
+        }
+        else
+        {
+            CMMCA_PKT_SndBearDetachRsp(CMMCA_MMC_RAT_ID_EUTRAN, CMMCA_MMC_BEAR_DETACH_RSP_FAIL);
+        }
+    }
 
     /* 释放opid,清空缓存 */
     CMMCA_DelItemInCmdBufferQueue(ucOpid);
 
     return;
 }
-
-
  VOS_VOID CMMCA_REG_RcvMmaRegCnf(
      VOS_VOID                           *pMsg
  )
@@ -1141,11 +1230,13 @@ VOS_VOID CMMCA_REG_RcvMmaDetachCnf(
         return;
     }
 
-    /* 增加请求消息异常判断，如果不是ID_CMMCA_MMC_RAT_NO_SERVICE_REQ/ID_CMMCA_MMC_RAT_DATACONNECTION_CMD_REQ,则丢弃此cnf */
+    /* 增加请求消息异常判断，如果不是ID_CMMCA_MMC_RAT_NO_SERVICE_REQ/ID_CMMCA_MMC_RAT_DATACONNECTION_CMD_REQ/
+        ID_CMMCA_MMC_RAT_BEARER_DETACH_REQ,则丢弃此cnf */
     usCmdId = CMMCA_ConvertDoubleOctetStrToU16(pstCmdBuffer->pucMsgInfo);
 
     if ((ID_CMMCA_MMC_RAT_NO_SERVICE_REQ         != usCmdId)
-     && (ID_CMMCA_MMC_RAT_DATACONNECTION_CMD_REQ != usCmdId))
+     && (ID_CMMCA_MMC_RAT_DATACONNECTION_CMD_REQ != usCmdId)
+     && (ID_CMMCA_MMC_RAT_BEARER_DETACH_REQ      != usCmdId))
     {
 
         CMMCA_ERROR_LOG("CMMCA_REG_RcvMmaDetachCnf:  cmdId invalid!");
@@ -1947,6 +2038,54 @@ VOS_VOID CMMCA_REG_SndPktDataCmdRsp(
 
     /* 调用CBPCA_SndDataToCbpca函数发数据给CPBCA */
     ulRslt = CBPCA_SndDataToCbpca(WUEPS_PID_CMMCA, CMMCA_CBPCA_DATA_REQ, pucCmdData, CMMCA_CMD_RAT_PKT_DATA_CMD_RSP_LEN);
+
+    if (VOS_OK != ulRslt)
+    {
+        PS_MEM_FREE(WUEPS_PID_CMMCA, pucCmdData);
+
+        return;
+    }
+
+    /* 消息发送结束，释放内存 */
+    PS_MEM_FREE(WUEPS_PID_CMMCA, pucCmdData);
+
+    return;
+}
+
+
+VOS_VOID CMMCA_PKT_SndBearDetachRsp(
+    CMMCA_MMC_RAT_ID_ENUM_UINT8         enRatId,
+    VOS_UINT8                           ucStatus
+)
+{
+    CMMCA_RAT_MMC_BEAR_DETACH_RSP_STRU  stBearDetachRsp;
+    VOS_UINT8                          *pucCmdData = VOS_NULL_PTR;
+    VOS_UINT32                          ulRslt;
+
+    pucCmdData = (VOS_UINT8 *)PS_MEM_ALLOC(WUEPS_PID_CMMCA, CMMCA_CMD_RAT_BEAR_DETACH_RSP_LEN);
+
+    if (VOS_NULL_PTR == pucCmdData)
+    {
+        CMMCA_ERROR_LOG("CMMCA_PKT_SndBearDetachRsp: PS_MEM_ALLOC fail!");
+        return;
+    }
+
+    /* 构造 CMMCA_RAT_MMC_BEARER_DETACH_RSP_STRU */
+    stBearDetachRsp.enRatId  = enRatId;
+    stBearDetachRsp.ucStatus = ucStatus;
+
+    /* 调用CMMCA_PackBearDetachRsp函数打包发送消息 */
+    ulRslt = CMMCA_PackBearDetachRsp(&stBearDetachRsp, CMMCA_CMD_RAT_BEAR_DETACH_RSP_LEN, pucCmdData);
+
+    if (VOS_OK != ulRslt)
+    {
+        PS_MEM_FREE(WUEPS_PID_CMMCA, pucCmdData);
+
+        return;
+    }
+
+    /* 调用CBPCA_SndDataToCbpca函数发数据给CPBCA */
+    ulRslt = CBPCA_SndDataToCbpca(WUEPS_PID_CMMCA, CMMCA_CBPCA_DATA_REQ, pucCmdData, CMMCA_CMD_RAT_BEAR_DETACH_RSP_LEN);
 
     if (VOS_OK != ulRslt)
     {

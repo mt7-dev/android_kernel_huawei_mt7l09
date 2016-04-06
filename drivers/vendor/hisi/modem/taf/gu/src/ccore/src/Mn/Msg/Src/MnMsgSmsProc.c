@@ -765,15 +765,55 @@ LOCAL MN_MSG_RETRY_FLAG_U8 MSG_JudgeRetryFlg(VOS_VOID)
 
     return MN_MSG_RETRY_BEGIN;
 }
+PS_BOOL_ENUM_UINT8 MSG_CheckSmsTpErrorRetry(
+    VOS_UINT32                          ulFailCause
+)
+{
+    VOS_UINT32                          ulCause;
+    PS_BOOL_ENUM_UINT8                  enRet;
+
+    enRet = PS_TRUE;
+
+    /* 判断是否是TP ERROR */
+    if (TAF_MSG_ERROR_TP_ERROR_BEGIN  != (ulFailCause & TAF_MSG_ERROR_TP_ERROR_BEGIN))
+    {
+        return PS_TRUE;
+    }
+
+    ulCause = ulFailCause & (~TAF_MSG_ERROR_TP_ERROR_BEGIN);
+
+    switch(ulCause)
+    {
+        /* 拒绝原因为 SM Rejected-Duplicate SM 则不需要重发 */
+        case MN_MSG_TP_CAUSE_REJECTED_DUPLICATE_SM:
+            enRet = PS_FALSE;
+            break;
+
+        default:
+            enRet = PS_TRUE;
+            break;
+    }
+
+    return enRet;
+}
+
+
 
 LOCAL VOS_BOOL MSG_IsProcessRetry(
     MN_MSG_MO_ENTITY_STRU              *pstMoEntity,
-    SMR_SMT_ERROR_ENUM_UINT32           enErrCause
+    SMR_SMT_ERROR_ENUM_UINT32           enErrCause,
+    VOS_UINT32                          ulMoFailCause
 )
 {
     MN_MSG_RETRY_FLAG_U8                enRetryFlg = MN_MSG_RETRY_OFF;
     VOS_UINT32                          ulRet;
     MN_MSG_SEND_DOMAIN_ENUM_U8          enOldSendDomain;
+
+    /* 判断TP 错误原因值是否需要重试 */
+    if ( PS_FALSE == MSG_CheckSmsTpErrorRetry(ulMoFailCause))
+    {
+        return VOS_FALSE;
+    }
 
     enRetryFlg = MSG_JudgeRetryFlg();
 
@@ -824,7 +864,7 @@ LOCAL VOS_BOOL MSG_IsProcessRetry(
     {
         /* 需要进行重发,启动重发间隔定时器,定时器超时后再进行重发 */
         MN_MSG_StartTimer(MN_MSG_ID_WAIT_RETRY_INTERVAL, 0);
-        
+
         return VOS_TRUE;
     }
 
@@ -832,10 +872,10 @@ LOCAL VOS_BOOL MSG_IsProcessRetry(
     MN_MSG_StopTimer(MN_MSG_ID_WAIT_RETRY_PERIOD);
 
     MN_MSG_StopTimer(MN_MSG_ID_WAIT_RETRY_INTERVAL);
-    
+
     return VOS_FALSE;
-    
-    
+
+
 }
 LOCAL VOS_VOID MSG_CreateEFSmsrContent(
     const MN_MSG_RAW_TS_DATA_STRU       *pstRawData,
@@ -1245,14 +1285,14 @@ LOCAL VOS_VOID MSG_ProcNoClassSm(
     MN_MSG_MEM_FLAG_ENUM_U8             enAppMemStatus;
     MN_OPERATION_ID_T                   bcopId;
     MN_MSG_DELIVER_EVT_INFO_STRU        stDeliverEvt;
-    
+
     MN_MSG_RCVMSG_ACT_ENUM_U8           enRcvSmAct;                             /*action of received msg*/
 
     MN_INFO_LOG("MSG_ProcNoClassSm: Step into function.");
     MSG_BuildDeliverEvtParm(pstCfgParm,pstScAddr,pstRawData,&stDeliverEvt);
     bcopId = MN_MSG_GetBCopId();
     MN_NORM_LOG1("MSG_ProcNoClassSm: pstCfgParm->enRcvSmAct is ", pstCfgParm->enRcvSmAct);
-    
+
 
 
     /* 默认取配置中的SmAct,在<MT>=3,收到的是CLASS3短信时候，需要修改按照+CMT方式上报 */
@@ -1265,11 +1305,11 @@ LOCAL VOS_VOID MSG_ProcNoClassSm(
       && (MN_MSG_MSG_CLASS_3            == pstTsData->u.stDeliver.stDcs.enMsgClass) )
     {
         enRcvSmAct = MN_MSG_RCVMSG_ACT_TRANSFER_AND_ACK;
-        
+
         if ( MN_MSG_CSMS_MSG_VERSION_PHASE2_PLUS == pstCfgParm->enSmsServVersion )
         {
             enRcvSmAct = MN_MSG_RCVMSG_ACT_TRANSFER_ONLY;
-        }        
+        }
     }
 
     if (MN_MSG_RCVMSG_ACT_DISCARD == enRcvSmAct)
@@ -1285,7 +1325,7 @@ LOCAL VOS_VOID MSG_ProcNoClassSm(
     {
         stDeliverEvt.enMemStore = MN_MSG_MEM_STORE_NONE;
         stDeliverEvt.ulInex     = 0;
-        
+
         /*广播上报来一条短信*/
         MN_MSG_ReportRcvMsgEvent(bcopId,&stDeliverEvt);
         /*创建收短信相关信息*/
@@ -1314,7 +1354,7 @@ LOCAL VOS_VOID MSG_ProcNoClassSm(
             /* 通知AT进行+CMT方式存储 */
             stDeliverEvt.enMemStore = MN_MSG_MEM_STORE_NONE;
             stDeliverEvt.ulInex     = 0;
-            
+
             MN_MSG_ReportRcvMsgEvent(bcopId,&stDeliverEvt);
         }
     }
@@ -1402,7 +1442,7 @@ LOCAL VOS_UINT32 MSG_IsRequireDownloadMsg(
 {
     MN_MSG_CUSTOM_CFG_INFO_STRU        *pstCustomCfgAddr = VOS_NULL_PTR;
     MN_MSG_USIM_EFUST_INFO_STRU         stEfUstInfo;
-    
+
     PS_MEM_SET(&stEfUstInfo,0X00,sizeof(stEfUstInfo));
     MN_MSG_ReadUstInfo(&stEfUstInfo);
 
@@ -1426,7 +1466,7 @@ LOCAL VOS_UINT32 MSG_IsRequireDownloadMsg(
     {
         return VOS_FALSE;
     }
-    
+
     /* 是OTA短信，要求DOWNLOAD */
     if ((MN_MSG_MSG_CLASS_2 == pstTsData->u.stDeliver.stDcs.enMsgClass)
      && ((MN_MSG_TP_PID_SIM_DATA_DOWNLOAD == pstTsData->u.stDeliver.enPid)
@@ -1493,10 +1533,10 @@ LOCAL VOS_VOID MSG_ProcSmsDeliver(
     {
         MN_MSG_Internal_SendRpt(VOS_TRUE,0,0);
         MN_NORM_LOG("MSG_DiscardVsimCtrlMsg: VSIM feature discard deliver message.");
-        
+
         return;
     }
-    
+
     MN_MSG_GetAndSaveActiveMessageInfo(&pstTsData->u.stDeliver);
 
     /* 当前短信功能是否支持 */
@@ -2248,46 +2288,149 @@ VOS_UINT32  MN_MSG_IsLteNeedSmsRetry(
 }
 
 #endif
+VOS_UINT32 TAF_MSG_IsSmsRetryCause_CmSrvRej(
+    NAS_MMCM_REL_CAUSE_ENUM_UINT32         enCause
+)
+{
+    /* cm service rej原因值是network failure时需要重拨，其他原因值不需要重拨 */
+    if (NAS_MMCM_REL_CAUSE_CM_SRV_REJ_NETWORK_FAILURE == enCause)
+    {
+        return VOS_TRUE;
+    }
+
+    return VOS_FALSE;
+}
+VOS_UINT32 TAF_MSG_IsSmsRetryCause_MmInterErr(
+    NAS_MMCM_REL_CAUSE_ENUM_UINT32         enCause
+)
+{
+    /* NAS_CC_CAUSE_MM_INTER_ERR_RESUME_TO_GU_FAIL是GU报resume_ind时ucCsResumeResult为fail, GU接入层异常，没必要再重拨
+       NAS_CC_CAUSE_MM_INTER_ERR_BACK_TO_LTE是CSFB异系统失败重回LTE, MMC会去GU下搜网，需要重拨
+       NAS_MMCM_REL_CAUSE_MM_INTER_ERR_SND_SAPI3_FAIL是消息发送异常，不需要重拨
+       NAS_MMCM_REL_CAUSE_MM_INTER_ERR_EST_SAPI3_FAIL是GAS回复的失败，需要重拨
+       NAS_MMCM_REL_CAUSE_MM_INTER_ERR_ECALL_INACTIVE 不需要重拨
+       NAS_MMCM_REL_CAUSE_MM_INTER_ERR_OUT_OF_COVERAGE 短信业务时不需要重拨 */
+
+    switch (enCause)
+    {
+        case NAS_MMCM_REL_CAUSE_MM_INTER_ERR_FORB_LA:
+        case NAS_MMCM_REL_CAUSE_MM_INTER_ERR_CS_ACCESS_BAR:
+        case NAS_MMCM_REL_CAUSE_MM_INTER_ERR_CS_DETACH:
+        case NAS_MMCM_REL_CAUSE_MM_INTER_ERR_CS_SIM_INVALID:
+        case NAS_MMCM_REL_CAUSE_MM_INTER_ERR_NOT_SUPPORT_CS_CALL_S1_MODE_ONLY:
+        case NAS_MMCM_REL_CAUSE_MM_INTER_ERR_RESUME_TO_GU_FAIL:
+        case NAS_MMCM_REL_CAUSE_MM_INTER_ERR_TI_INVALID:
+        case NAS_MMCM_REL_CAUSE_MM_INTER_ERR_WAIT_EST_CNF_TIME_OUT:
+        case NAS_MMCM_REL_CAUSE_MM_INTER_ERR_CC_CONN_REQ_EXIST:
+        case NAS_MMCM_REL_CAUSE_MM_INTER_ERR_UE_INVALID_STATE:
+        case NAS_MMCM_REL_CAUSE_MM_INTER_ERR_WAIT_CC_REEST_TIME_OUT:
+        case NAS_MMCM_REL_CAUSE_MM_INTER_ERR_SND_SAPI3_FAIL:
+        case NAS_MMCM_REL_CAUSE_MM_INTER_ERR_ECALL_INACTIVE:
+        case NAS_MMCM_REL_CAUSE_MM_INTER_ERR_REEST_FAIL:
+        case NAS_MMCM_REL_CAUSE_MM_INTER_ERR_CC_REL_REQ:
+        case NAS_MMCM_REL_CAUSE_MM_INTER_ERR_LTE_LIMITED_SERVICE:
+
+            return VOS_FALSE;
+
+        default:
+            return VOS_TRUE;
+    }
+}
+
+
+
+VOS_UINT32 TAF_MSG_IsSmsRetryCause_RrConnFail(
+    NAS_MMCM_REL_CAUSE_ENUM_UINT32         enCause
+)
+{
+    if ((NAS_MMCM_REL_CAUSE_RR_CONN_FAIL_IMMEDIATE_ASSIGN_REJECT          == enCause)
+     || (NAS_MMCM_REL_CAUSE_RR_CONN_FAIL_ACCESS_BAR                       == enCause)
+     || (NAS_MMCM_REL_CAUSE_RR_CONN_FAIL_T3122_RUNING                     == enCause)
+     || (NAS_MMCM_REL_CAUSE_RR_CONN_FAIL_CURRENT_PROTOCOL_NOT_SUPPORT     == enCause)
+     || (NAS_MMCM_REL_CAUSE_RR_CONN_FAIL_INVALID_UE_STATE                 == enCause)
+     || (NAS_MMCM_REL_CAUSE_RR_CONN_FAIL_CELL_BARRED                      == enCause))
+    {
+        return VOS_FALSE;
+    }
+    else
+    {
+        return VOS_TRUE;
+    }
+}
+
+
+VOS_UINT32 TAF_MSG_IsSmsRetryCause_RrRel(
+    NAS_MMCM_REL_CAUSE_ENUM_UINT32         enCause
+)
+{
+    if ( (NAS_MMCM_REL_CAUSE_RR_REL_AUTH_REJ    == enCause)
+      || (NAS_MMCM_REL_CAUSE_RR_REL_RL_FAILURE  == enCause)
+      || (NAS_MMCM_REL_CAUSE_RR_REL_NAS_REL_REQ == enCause) )
+    {
+        return VOS_FALSE;
+    }
+    else
+    {
+        return VOS_TRUE;
+    }
+}
+
+
 VOS_UINT32  MN_MSG_IsGuNeedSmsRetry(
     SMR_SMT_ERROR_ENUM_UINT32           enErrCause
 )
 {
     NAS_MMCM_REL_CAUSE_ENUM_UINT32      enMmCmErrCause;
+    VOS_UINT32                          ulRslt;
+
+    ulRslt  = VOS_TRUE;
 
     /* 是CS失败原因值，则判断CAUSE值 */
     if ( SMR_SMT_ERROR_CS_ERROR_BEGIN == (enErrCause & SMR_SMT_ERROR_CS_ERROR_BEGIN) )
     {
+
         enMmCmErrCause = (NAS_MMCM_REL_CAUSE_ENUM_UINT32)(enErrCause - SMR_SMT_ERROR_CS_ERROR_BEGIN);
 
-        switch ( enMmCmErrCause )
+        /* cm service reject */
+        if ((enMmCmErrCause >= NAS_MMCM_REL_CAUSE_CM_SRV_REJ_BEGIN)
+         && (enMmCmErrCause <= NAS_MMCM_REL_CAUSE_CM_SRV_REJ_END))
         {
-            /* 需要进行短信重发 */
-            case NAS_MMCM_REL_CAUSE_AS_REJ_LOW_LEVEL_FAIL :
-            case NAS_MMCM_REL_CAUSE_MM_WRONG_STATE :
-            case NAS_MMCM_REL_CAUSE_MM_NO_SERVICE :
-            case NAS_MMCM_REL_CAUSE_MM_LIMIT_SERVICE :
-            case NAS_MMCM_REL_CAUSE_MM_TIMER_T3230_EXP :
-                
-                return VOS_TRUE;
-
-            /* CS失败如下原因值不需要进行短信重发 */
-            case NAS_MMCM_REL_CAUSE_AS_REJ_OTHER_CAUSES :
-            case NAS_MMCM_REL_CAUSE_MM_REJ_OTHER_CAUSES :
-                return VOS_FALSE;
-
-            /* 默认需要进行重发 */
-            default:
-                MN_WARN_LOG("MN_MSG_IsGuNeedSmsRetry:error cause invalid");
-                return VOS_TRUE;
+            ulRslt = TAF_MSG_IsSmsRetryCause_CmSrvRej(enMmCmErrCause);
         }
-        
+        /* est_cnf失败，与NAS_MM_IsAbleRecover_EstCnfFailResult的处理逻辑保持一致 */
+        else if ((enMmCmErrCause >= NAS_CC_CAUSE_RR_CONN_FAIL_BEGIN)
+              && (enMmCmErrCause <= NAS_CC_CAUSE_RR_CONN_FAIL_END))
+        {
+            ulRslt = TAF_MSG_IsSmsRetryCause_RrConnFail(enMmCmErrCause);
+
+        }
+
+        /* rel_ind, 除了鉴权被拒，其他原因值与NAS_MM_IsNeedCmServiceRetry_RelIndResult的处理逻辑保持一致 */
+        else if ((enMmCmErrCause >= NAS_CC_CAUSE_RR_REL_BEGIN)
+              && (enMmCmErrCause <= NAS_CC_CAUSE_RR_REL_END))
+        {
+            ulRslt = TAF_MSG_IsSmsRetryCause_RrRel(enMmCmErrCause);
+        }
+
+        /* MM INTER ERR */
+        else if ((enMmCmErrCause >= NAS_CC_CAUSE_MM_INTER_ERR_BEGIN)
+              && (enMmCmErrCause <= NAS_CC_CAUSE_MM_INTER_ERR_END))
+        {
+            ulRslt = TAF_MSG_IsSmsRetryCause_MmInterErr(enMmCmErrCause);
+        }
+
+        else
+        {
+            /* CSFB Service reject，CSFB LMM fail，在短信过程中不可能出现，不需要重拨 */
+            ulRslt  = VOS_FALSE;
+        }
+
     }
 
     /* 非CS域失败，需要进行重发 */
-    return VOS_TRUE;
-    
-}
+    return ulRslt;
 
+}
 
 
 VOS_UINT8 MN_MSG_StartLinkCtrl(VOS_VOID)
@@ -2303,7 +2446,7 @@ VOS_UINT8 MN_MSG_StartLinkCtrl(VOS_VOID)
     {
         return MN_MSG_LINK_CTRL_DISABLE;
     }
-    
+
     return MN_MSG_GetLinkCtrlParam();
 }
 VOS_VOID  MN_MSG_RcvSmsRpRpt(SMR_SMT_MO_REPORT_STRU *pstMsg)
@@ -2319,6 +2462,10 @@ VOS_VOID  MN_MSG_RcvSmsRpRpt(SMR_SMT_MO_REPORT_STRU *pstMsg)
     MN_MSG_SEND_FAIL_FLAG_U8            enSendFailFlag;
     VOS_BOOL                            bIsTimerStart;
     VOS_BOOL                            bRetryProcess = VOS_FALSE;
+    NAS_OM_SMS_MO_REPORT_STRU           stSmsMoReportPara;
+
+    VOS_UINT32                          ulMoFailCause;
+
 
 #if (FEATURE_ON == FEATURE_LTE)
     LMM_SMS_ERR_CAUSE_ENUM_UINT32       enErrorCause;
@@ -2409,21 +2556,19 @@ VOS_VOID  MN_MSG_RcvSmsRpRpt(SMR_SMT_MO_REPORT_STRU *pstMsg)
             /* 记录短信发送异常log */
             MN_MSG_FailErrRecord(pstMsg->enErrorCode);
 #endif
+
+            /* SMS MO FAIL事件上报 */
+            stSmsMoReportPara.ulCause = pstMsg->enErrorCode;
+            stSmsMoReportPara.ucSmsMr = stMoEntity.ucMr;
+
+            NAS_EventReport(WUEPS_PID_TAF, NAS_OM_EVENT_SMS_MO_FAIL,
+                            &stSmsMoReportPara, sizeof(stSmsMoReportPara));
+
         }
         else
 #endif
 
         {
-            
-            /* 判断当前是否需要进行重发 */
-            bRetryProcess = MSG_IsProcessRetry(&stMoEntity, pstMsg->enErrorCode);
-            
-            if (VOS_TRUE == bRetryProcess)
-            {
-                MN_MSG_SaveRpErrInfo(pstMsg);
-                return;
-            }
-
             MSG_DecodeRpErr(pstMsg->stRpduData.aucData, (VOS_UINT8)pstMsg->stRpduData.ulDataLen, &stRpErr);
             PS_MEM_CPY(&stRpCause,&stRpErr.stRpCause,sizeof(stRpCause));
             if (VOS_TRUE == stRpErr.bRpUserDataExist)
@@ -2433,11 +2578,29 @@ VOS_VOID  MN_MSG_RcvSmsRpRpt(SMR_SMT_MO_REPORT_STRU *pstMsg)
             }
             stRawData.enTpduType = MN_MSG_TPDU_SUBMIT_RPT_ERR;
 
-            MN_MNTN_RecordSmsMoFailure(MSG_GetMoFailCause(&stRawData, pstMsg->enErrorCode));
+            ulMoFailCause = MSG_GetMoFailCause(&stRawData, pstMsg->enErrorCode);
+
+            /* 判断当前是否需要进行重发 */
+            bRetryProcess = MSG_IsProcessRetry(&stMoEntity, pstMsg->enErrorCode, ulMoFailCause);
+            if (VOS_TRUE == bRetryProcess)
+            {
+                MN_MSG_SaveRpErrInfo(pstMsg);
+                return;
+            }
+
+            MN_MNTN_RecordSmsMoFailure(ulMoFailCause);
+
 #if (FEATURE_ON == FEATURE_PTM)
             /* 记录短信发送异常log */
             MN_MSG_FailErrRecord(pstMsg->enErrorCode);
 #endif
+
+            /* SMS MO FAIL事件上报 */
+            stSmsMoReportPara.ulCause = pstMsg->enErrorCode;
+            stSmsMoReportPara.ucSmsMr = stMoEntity.ucMr;
+
+            NAS_EventReport(WUEPS_PID_TAF, NAS_OM_EVENT_SMS_MO_FAIL,
+                            &stSmsMoReportPara, sizeof(stSmsMoReportPara));
 
         }
 
@@ -2521,6 +2684,10 @@ VOS_VOID MN_MSG_ProcSmsMsg(
             /* 记录短信发送异常log */
             MN_MSG_FailErrRecord(((SMR_SMT_MT_ERR_STRU *)pstData)->enErrorCode);
 #endif
+
+            NAS_EventReport(WUEPS_PID_SMS, NAS_OM_EVENT_SMS_MT_FAIL,
+                            &(((SMR_SMT_MT_ERR_STRU *)pstData)->enErrorCode), sizeof(TAF_MSG_ERROR_ENUM_UINT32));
+
             break;
         case SMR_SMT_LINK_CLOSE_IND:
             MN_MSG_StopTimer(MN_MSG_TID_LINK_CTRL);
@@ -2924,7 +3091,7 @@ VOS_VOID MN_MSG_RcvUsimEnvelopeCnf(
 
 #if (FEATURE_ON == FEATURE_IMS)
 VOS_VOID TAF_MSG_ProcEfsmsFile(
-    MN_MSG_MO_ENTITY_STRU              *pstMoEntity, 
+    MN_MSG_MO_ENTITY_STRU              *pstMoEntity,
     MN_MSG_SUBMIT_RPT_EVT_INFO_STRU    *pstSubmitRptEvt
 )
 {
@@ -2943,14 +3110,14 @@ VOS_VOID TAF_MSG_ProcEfsmsFile(
 #endif
     {
         ulRet = VOS_FALSE;
-        
+
         ulRet = MSG_UpdateEfSmsInfo(pstMoEntity,&enCurMemStore);
         MN_INFO_LOG1("TAF_MSG_UpdateEfsmsInfo: result of TAF_MSG_UpdateEfsmsInfo is ",
                      (VOS_INT32)ulRet);
-                     
+
         pstSubmitRptEvt->enSaveArea   = enCurMemStore;
         pstSubmitRptEvt->ulSaveIndex = pstMoEntity->ulSaveIndex;
-        
+
 #if (NAS_FEATURE_SMS_NVIM_SMSEXIST == FEATURE_ON)
         if ((MN_MSG_MEM_STORE_NV == enCurMemStore)
          && (VOS_OK == ulRet))
@@ -2972,13 +3139,14 @@ VOS_VOID TAF_MSG_RcvImsaRpRpt(
     MN_MSG_RP_ERR_STRU                  stRpErr;
     MN_MSG_RP_ACK_STRU                  stRpAck;
     MN_MSG_SUBMIT_RPT_EVT_INFO_STRU     stSubmitRptEvt;
+    NAS_OM_SMS_MO_REPORT_STRU           stSmsMoReportPara;
 
     PS_MEM_SET(&f_stMsgTsData,0X00,sizeof(f_stMsgTsData));
     PS_MEM_SET(&stMoEntity,0X00,sizeof(stMoEntity));
     PS_MEM_SET(&stRpCause,0X00,sizeof(stRpCause));
     PS_MEM_SET(&stRpErr,0X00,sizeof(stRpErr));
     PS_MEM_SET(&stRpAck,0X00,sizeof(stRpAck));
-    PS_MEM_SET(&stSubmitRptEvt,0X00,sizeof(stSubmitRptEvt));    
+    PS_MEM_SET(&stSubmitRptEvt,0X00,sizeof(stSubmitRptEvt));
 
     MN_MSG_GetMoEntity(&stMoEntity);
     if (MN_MSG_MO_STATE_WAIT_REPORT_IND != stMoEntity.enSmaMoState)
@@ -2986,15 +3154,15 @@ VOS_VOID TAF_MSG_RcvImsaRpRpt(
         MN_WARN_LOG("MSG_RcvSmsRpRpt:Mo State is NULL");
         return;
     }
-    
+
     if (SMR_SMT_ERROR_NO_ERROR == pstMsg->enErrorCode)
     {
         MSG_DecodeRpAck(pstMsg->stRpduData.aucData, (VOS_UINT8)pstMsg->stRpduData.ulDataLen, &stRpAck);
         if (VOS_TRUE == stRpAck.bRpUserDataExist)
         {
             stSubmitRptEvt.stRawData.ulLen = stRpAck.ucRpUserDataLen;
-            PS_MEM_CPY(&(stSubmitRptEvt.stRawData.aucData[0]), 
-                       stRpAck.aucRpUserData, 
+            PS_MEM_CPY(&(stSubmitRptEvt.stRawData.aucData[0]),
+                       stRpAck.aucRpUserData,
                        stRpAck.ucRpUserDataLen);
         }
         stSubmitRptEvt.stRawData.enTpduType = MN_MSG_TPDU_SUBMIT_RPT_ACK;
@@ -3010,12 +3178,19 @@ VOS_VOID TAF_MSG_RcvImsaRpRpt(
             {
                 MN_MSG_UpdateAppMemStatus(MN_MSG_MEM_FULL_UNSET);
             }
-            
+
             MN_MSG_UpdateMemExceedFlag(MN_MSG_MEM_FULL_UNSET);
         }
+
+        /* SMS MO SUCC事件上报 */
+        stSmsMoReportPara.ulCause = MN_ERR_NO_ERROR;
+        stSmsMoReportPara.ucSmsMr = stMoEntity.ucMr;
+
+        NAS_EventReport(WUEPS_PID_SMS, NAS_OM_EVENT_SMS_MO_SUCC,
+                        &stSmsMoReportPara, sizeof(stSmsMoReportPara));
     }
     else
-    {        
+    {
         MSG_DecodeRpErr(pstMsg->stRpduData.aucData, (VOS_UINT8)pstMsg->stRpduData.ulDataLen, &stRpErr);
         PS_MEM_CPY(&stRpCause,&stRpErr.stRpCause,sizeof(stRpCause));
         if (VOS_TRUE == stRpErr.bRpUserDataExist)
@@ -3028,8 +3203,15 @@ VOS_VOID TAF_MSG_RcvImsaRpRpt(
         stSubmitRptEvt.stRawData.enTpduType = MN_MSG_TPDU_SUBMIT_RPT_ERR;
 
         MN_MNTN_RecordSmsMoFailure(MSG_GetMoFailCause(&(stSubmitRptEvt.stRawData), pstMsg->enErrorCode));
+
+        /* SMS MO FAIL事件上报 */
+        stSmsMoReportPara.ucSmsMr = stMoEntity.ucMr;
+        stSmsMoReportPara.ulCause = MSG_GetMoFailCause(&(stSubmitRptEvt.stRawData), pstMsg->enErrorCode);
+
+        NAS_EventReport(WUEPS_PID_TAF, NAS_OM_EVENT_SMS_MO_FAIL,
+                        &stSmsMoReportPara, sizeof(stSmsMoReportPara));
     }
-    
+
     stSubmitRptEvt.ucMr        = stMoEntity.ucMr;
     stSubmitRptEvt.ulSaveIndex = stMoEntity.ulSaveIndex;
     stSubmitRptEvt.enSaveArea  = stMoEntity.enSaveArea;
@@ -3040,7 +3222,7 @@ VOS_VOID TAF_MSG_RcvImsaRpRpt(
 
     /* destory MO entity*/
     MN_MSG_DestroyMoInfo();
-    
+
     return;
 }
 

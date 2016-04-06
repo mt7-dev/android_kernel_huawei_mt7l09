@@ -53,24 +53,24 @@ typedef struct
     u32                     init_state;         /* 通道初始化状态，初始化后自动修改 */
     SOCP_CODER_SRC_ENUM_U32     en_src_chan_id;     /* 编码源通道ID，固定配置 */
     SOCP_CODER_DST_ENUM_U32     en_dst_chan_id;     /* 编码目的通道ID */
-    SOCP_DATA_TYPE_E            en_data_type;       /* 数据来源类型 */
-    SOCP_ENCSRC_CHNMODE_E       en_chan_mode;       /* 通道类型 */
-    SOCP_CHAN_PRIORITY_E        en_chan_level;      /* 通道优先级 */
-    u32                     bd_buf;             /* 编码源通道BD数据空间内存指针 */
+    SOCP_DATA_TYPE_ENUM_UIN32            en_data_type;       /* 数据来源类型 */
+    SOCP_ENCSRC_CHNMODE_ENUM_UIN32       en_chan_mode;       /* 通道类型 */
+    SOCP_CHAN_PRIORITY_ENUM_UIN32        en_chan_level;      /* 通道优先级 */
+    void*                     bd_buf;             /* 编码源通道BD数据空间内存指针 */
     u32                     bd_buf_phy;         /* 编码源通道BD数据空间内存指针物理地址 */
     u32                     bd_buf_len;         /* 编码源通道BD数据空间大小 */
-    u32                     rd_buf;             /* 编码源通道RD数据空间内存指针 */
+    void*                     rd_buf;             /* 编码源通道RD数据空间内存指针 */
     u32                     rd_buf_phy;         /* 编码源通道RD数据空间内存指针物理地址 */
     u32                     rd_buf_len;         /* 编码源通道RD数据空间大小 */
 }bsp_om_socp_coder_src_cfg_s;
 
 typedef struct
 {
-    u32                     start_ptr;      /*  起始地址*/
-    u32                     start_phy_ptr;
-    u32                     write_ptr;   /* log数据保存写指针*/
-    u32                     read_ptr;   /* buf 空间释放的写地址*/
-    u32                     send_ptr;   /* buf数据发送到SOCP的读地址*/
+    void*                     start_ptr;      /*  起始地址*/
+    void*                     start_phy_ptr;
+    void*                     write_ptr;   /* log数据保存写指针*/
+    void*                     read_ptr;   /* buf 空间释放的写地址*/
+    void*                     send_ptr;   /* buf数据发送到SOCP的读地址*/
     u32                     buf_len;    /* buf 大小*/
     u32                     buf_size;   /* 保存的数据长度*/
     u32                     last_pading_len;  /* buf 尾部未被使用的空间*/
@@ -81,10 +81,11 @@ typedef struct
 
 typedef struct  _bsp_om_list
 {
-    u32                     buf_addr;
-    u32                     buf_len;
+    void*                     buf_addr;
     struct _bsp_om_list      *pnext;
     struct _bsp_om_list      *ptail;
+    u32                     buf_len;
+    u32                     res;
 }bsp_om_list_s;
 
 typedef struct
@@ -116,7 +117,8 @@ typedef struct
 
 
 
-void* bsp_om_alloc(u32 size, u32 *phy_real_addr);
+void* bsp_om_alloc(u32 size, u32* phy_real_addr);
+
 
 u32 sys_view_init(void);
 

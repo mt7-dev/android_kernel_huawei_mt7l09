@@ -93,12 +93,15 @@ VOS_VOID IMSA_USSD_ClearResource(VOS_VOID)
 
 
 
-VOS_VOID IMSA_SsProcSpmMsgProcessUssdReq(const SPM_IMSA_PROCESS_USSD_REQ_STRU *pstUssdReq)
+VOS_UINT32 IMSA_SsProcSpmMsgProcessUssdReq(VOS_VOID     *pMsg)
 {
     IMSA_IMS_USSD_ENCTYPE_ENUM_UINT8   encType;
     VOS_UINT16   usLength = 0;
     VOS_UINT8    aucMessage[TAF_SS_MAX_USSDSTRING_LEN*2];
     IMSA_USSD_MANAGER_STRU              *pstUssdManager;
+    SPM_IMSA_PROCESS_USSD_REQ_STRU *pstUssdReq = VOS_NULL_PTR;
+
+    pstUssdReq = (SPM_IMSA_PROCESS_USSD_REQ_STRU*)pMsg;
 
     pstUssdManager = IMSA_USSD_GetEntityAddress();
 
@@ -110,7 +113,7 @@ VOS_VOID IMSA_SsProcSpmMsgProcessUssdReq(const SPM_IMSA_PROCESS_USSD_REQ_STRU *p
         (VOS_VOID)IMSA_SendSpmUssdErrorEvt(  pstUssdReq->usClientId,
                                     pstUssdReq->ucOpId,
                                     TAF_ERR_IMSA_USSD_BUSY);
-        return;
+        return VOS_TRUE;
     }
 
     /*保存ClientId和opId*/
@@ -159,16 +162,15 @@ VOS_VOID IMSA_SsProcSpmMsgProcessUssdReq(const SPM_IMSA_PROCESS_USSD_REQ_STRU *p
 
     /*给IMS发送消息*/
     IMSA_USSD_SndImsUssdReqMsg(encType,usLength,aucMessage);
-    return;
+    return VOS_TRUE;
 
 }
 
 
-VOS_VOID IMSA_SsProcSpmMsgReleaseReq(const SPM_IMSA_RELEASE_REQ_STRU *pstUssdRelReq)
+VOS_UINT32 IMSA_SsProcSpmMsgReleaseReq(VOS_VOID* pMsg)
 {
 
     IMSA_USSD_MANAGER_STRU              *pstUssdManager;
-    (void)pstUssdRelReq;
 
     pstUssdManager = IMSA_USSD_GetEntityAddress();
 
@@ -178,7 +180,7 @@ VOS_VOID IMSA_SsProcSpmMsgReleaseReq(const SPM_IMSA_RELEASE_REQ_STRU *pstUssdRel
         IMSA_INFO_LOG("IMSA_SsProcSpmMsgReleaseReq: USSD State is err!");
 
 
-        return;
+        return VOS_TRUE;
     }
 
     /*停止等待网侧响应定时器*/
@@ -192,7 +194,7 @@ VOS_VOID IMSA_SsProcSpmMsgReleaseReq(const SPM_IMSA_RELEASE_REQ_STRU *pstUssdRel
     /*给IMS发送消息*/
     IMSA_USSD_SndImsUssdDisconnectMsg();
 
-    return;
+    return VOS_TRUE;
 
 }
 VOS_VOID IMSA_USSD_SndImsUssdReqMsg
@@ -599,6 +601,22 @@ VOS_VOID IMSA_USSD_ProcTimerMsgWaitAppRsp(const VOS_VOID *pRcvMsg)
 
 
     return;
+}
+
+
+VOS_UINT32 IMSA_IsSsConnExist(VOS_VOID)
+{
+    IMSA_USSD_MANAGER_STRU              *pstUssdManager;
+
+    pstUssdManager = IMSA_USSD_GetEntityAddress();
+
+    if ((IMSA_USSD_MO_CONN_STATE == pstUssdManager->enUssdState) ||
+        (IMSA_USSD_MT_CONN_STATE == pstUssdManager->enUssdState))
+    {
+        return VOS_TRUE;
+    }
+
+    return VOS_FALSE;
 }
 /*lint +e961*/
 /*lint +e960*/

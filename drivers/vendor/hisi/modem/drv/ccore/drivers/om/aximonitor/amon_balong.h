@@ -40,7 +40,11 @@ extern "C"
 #define AXI_EDMA_BINDEX                 128                         /* EDMA二维传输步长 */
 #define SOC_EDMA_REQUEST                EDMA_AMON_SOC               /* SOC EDMA外设请求号 */
 #define CPUFAST_EDMA_REQUEST            EDMA_AMON_CPUFAST           /* CPUFAST EDMA外设请求号 */
+#if (FEATURE_OFF == FEATURE_MERGE_OM_CHAN)
 #define AXI_SOCP_CHAN_ID                SOCP_CODER_SRC_MUTIL_MEDIA2 /* MONITOR使用的SOCP源通道ID */
+#else
+#define AXI_SOCP_CHAN_ID                SOCP_CODER_SRC_GU_IND2 /* MONITOR使用的SOCP源通道ID */
+#endif
 #define SOCP_BD_PACKET_SIZE             8                           /* SOCP BD包大小 */
 #define SOCP_BD_BUF_SIZE                (SOCP_BD_PACKET_SIZE*1024)  /* SOCP BD buffer大小 */
 #define SOCP_RD_PACKET_SIZE             8                           /* SOCP RD包大小 */
@@ -444,7 +448,7 @@ void axi_reg_getbits(axi_config_enum_uint32 config, unsigned int reg, unsigned i
 /* AXI寄存器写位操作 */
 void axi_reg_setbits(axi_config_enum_uint32 config, unsigned int reg, unsigned int pos, unsigned int bits, unsigned int value);
 #define AXI_REG_SETBITS(config, reg, pos, bits, value)  axi_reg_setbits(config, reg, pos, bits, value)
-
+#ifdef ENABLE_BUILD_AMON
 void axi_sc_clk_open(axi_config_enum_uint32 config);
 void axi_sc_clk_close(axi_config_enum_uint32 config);
 void axi_sc_mon_start(axi_config_enum_uint32 config);
@@ -506,7 +510,12 @@ AXI_MON_CONFIG_CNF_STRU * bsp_axi_mon_config(u8 * data, u32 * out_len);
 s32 bsp_axi_mon_start(u8 * data);
 /* 监控终止接口 */
 AXI_MON_TERMINATE_CNF_STRU * bsp_axi_mon_terminate(u8 * data, u32 * out_len);
-
+#else
+static inline s32 bsp_axi_mon_start(u8 * data){return 0;}
+static inline AXI_MON_TERMINATE_CNF_STRU * bsp_axi_mon_terminate(u8 * data, u32 * out_len){return NULL;}
+static inline AXI_MON_CONFIG_CNF_STRU * bsp_axi_mon_config(u8 * data, u32 * out_len){return NULL;}
+static inline AXI_DATA_CONFIG_CNF_STRU * bsp_axi_capt_config(u8 * data, u32 * out_len){return NULL;}
+#endif
 #ifdef __cplusplus
 }
 #endif

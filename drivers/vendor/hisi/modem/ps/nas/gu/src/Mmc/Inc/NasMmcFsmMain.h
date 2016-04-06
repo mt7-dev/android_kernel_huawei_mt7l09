@@ -92,6 +92,11 @@ VOS_UINT32 NAS_MMC_RcvSwitchOnRslt_NULL(
     struct MsgCB                       *pstMsg
 );
 
+VOS_UINT32 NAS_MMC_RcvPowerOffReq_NULL(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+);
+
 VOS_UINT32 NAS_MMC_RcvPowerOffReq_L1Main(
     VOS_UINT32                          ulEventType,
     struct MsgCB                       *pstMsg
@@ -253,6 +258,11 @@ VOS_UINT32  NAS_MMC_RcvForbLaTimerExpired_OnPlmn(
 );
 
 VOS_UINT32  NAS_MMC_RcvAreaLostInd_Initial(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+);
+
+VOS_UINT32 NAS_MMC_RcvSuspendInd_Initial(
     VOS_UINT32                          ulEventType,
     struct MsgCB                       *pstMsg
 );
@@ -523,6 +533,16 @@ VOS_UINT32 NAS_MMC_RcvMmaImsVoiceCapInd_OnPlmn(
     struct MsgCB                       *pstMsg
 );
 
+#if (FEATURE_ON == FEATURE_IMS)
+VOS_UINT32 NAS_MMC_RcvMmaImsSwitchStateInd_OnPlmn(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+);
+#endif
+VOS_UINT32 NAS_MMC_RcvMmaVoiceDomainChangeInd_OnPlmn(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+);
 #if (VOS_OS_VER == VOS_WIN32)
 #pragma pack()
 #else

@@ -182,6 +182,51 @@ VOS_VOID NAS_EMM_RelReq(NAS_LMM_BARRED_IND_ENUM_UINT32 enBarStatus)
 }
 
 
+VOS_VOID  NAS_EMM_MsAuthInitEnterIdleProc(VOS_UINT32 ulCause)
+{
+    if (EMM_MS_REG_INIT == NAS_LMM_GetEmmCurFsmMS())
+    {
+        NAS_EMM_MsRegInitSsWtCnAttCnfProcMsgRrcRelInd(ulCause);
+    }
+    else if (EMM_MS_TAU_INIT == NAS_LMM_GetEmmCurFsmMS())
+    {
+        NAS_EMM_MsTauInitSsWaitCNCnfProcMsgRrcRelInd(ulCause);
+    }
+    else if (EMM_MS_SER_INIT == NAS_LMM_GetEmmCurFsmMS())
+    {
+        NAS_EMM_MsSerInitSsWaitCnSerCnfProcMsgRrcRelInd(ulCause);
+    }
+    else if (EMM_MS_DEREG_INIT == NAS_LMM_GetEmmCurFsmMS())
+    {
+        NAS_EMM_MsDrgInitSsWtCnDetCnfProcMsgRrcRelInd(ulCause);
+    }
+    else if (EMM_MS_REG == NAS_LMM_GetEmmCurFsmMS())
+    {
+        if (EMM_SS_REG_IMSI_DETACH_WATI_CN_DETACH_CNF == NAS_LMM_GetEmmCurFsmSS())
+        {
+            NAS_EMM_ProcMsRegImsiDetachInitMsgRrcRelInd(ulCause);
+        }
+        else if (EMM_SS_REG_NORMAL_SERVICE == NAS_LMM_GetEmmCurFsmSS())
+        {
+            NAS_EMM_MsRegSsNmlSrvProcMsgRrcRelInd(ulCause);
+        }
+        else if (EMM_SS_REG_ATTEMPTING_TO_UPDATE_MM == NAS_LMM_GetEmmCurFsmSS())
+        {
+            NAS_EMM_MsRegSsRegAttemptUpdateMmProcMsgRrcRelInd(ulCause);
+        }
+        else
+        {
+            return ;
+        }
+    }
+    else
+    {
+        return ;
+    }
+}
+
+
+
 VOS_UINT32  NAS_EMM_MsRrcConnRelInitSsWaitRrcRelCnfMsgRrcMmRelInd
                                  (VOS_UINT32 ulMsgId, const VOS_VOID *pMsgStru)
 {
@@ -228,6 +273,8 @@ VOS_UINT32  NAS_EMM_MsRrcConnRelInitSsWaitRrcRelCnfMsgRrcMmRelInd
 
         /* 状态出栈*/
         NAS_EMM_FSM_PopState();
+
+        NAS_EMM_MsAuthInitEnterIdleProc(pstRrcRelInd->enRelCause);
     }
 
     return NAS_LMM_MSG_HANDLED;
@@ -266,6 +313,8 @@ VOS_UINT32  NAS_EMM_MsRrcConnRelInitSsWaitRrcRelCnfMsgRrcMmRelCnf
 
         /* 状态出栈*/
         NAS_EMM_FSM_PopState();
+
+        NAS_EMM_MsAuthInitEnterIdleProc(LRRC_LNAS_REL_CAUSE_OTHER_REASON);
     }
 
     return NAS_LMM_MSG_HANDLED;
@@ -302,6 +351,8 @@ VOS_UINT32  NAS_EMM_MsRrcConnRelInitSsWaitRrcRelMsgTIWaitRrcRelTO
 
         /* 状态出栈*/
         NAS_EMM_FSM_PopState();
+
+        NAS_EMM_MsAuthInitEnterIdleProc(LRRC_LNAS_REL_CAUSE_OTHER_REASON);
     }
     return NAS_LMM_MSG_HANDLED;
 }
@@ -435,6 +486,10 @@ VOS_UINT32  NAS_EMM_MsRrcConnRelInitSsWaitRrcRelMsgCnDetatchReq
 
     pRcvEmmMsg = (NAS_EMM_CN_DETACH_REQ_MT_STRU *)pMsgStru;
 
+    #if (FEATURE_PTM == FEATURE_ON)
+    NAS_EMM_DetachErrRecord(pRcvEmmMsg);
+    #endif
+
     ulStaAtStackTop = NAS_LMM_FSM_GetStaAtStackTop(NAS_LMM_PARALLEL_FSM_EMM);
 
     if ((ulStaAtStackTop == NAS_LMM_PUB_COMP_EMMSTATE(EMM_MS_REG,EMM_SS_REG_NORMAL_SERVICE))
@@ -553,19 +608,28 @@ VOS_UINT32  NAS_EMM_MsRrcConnRelInitSsWaitRrcRelMsgEsmdataReq
         /* 如果没给RRC发释放请求，则之前一定启动了3440等网络释放 */
         if(NAS_EMM_CONN_RELEASING != NAS_EMM_GetConnState())
         {
+            /* 如果是紧急类型的，则停止T3440定时器，主动发链路释放 */
             if (VOS_TRUE == pstsmdatareq->ulIsEmcType)
             {
                 NAS_LMM_SetEmmInfoIsEmerPndEsting(VOS_TRUE);
-            }
+                NAS_LMM_StopStateTimer(TI_NAS_EMM_STATE_T3440);
 
-            /* 透传SM消息 */
-            NAS_EMM_SER_SendMrrcDataReq_ESMdata(&pstsmdatareq->stEsmMsg);
+                /*启动定时器TI_NAS_EMM_MRRC_WAIT_RRC_REL*/
+                NAS_LMM_StartStateTimer(TI_NAS_EMM_MRRC_WAIT_RRC_REL_CNF);
+
+                /*向MRRC发送NAS_EMM_MRRC_REL_REQ消息*/
+                NAS_EMM_SndRrcRelReq(NAS_LMM_NOT_BARRED);
+
+                /* 设置连接状态为释放过程中 */
+                NAS_EMM_SetConnState(NAS_EMM_CONN_RELEASING);
+
+            }
+            return NAS_LMM_STORE_HIGH_PRIO_MSG;
         }
     }
 
     return NAS_LMM_MSG_HANDLED;
 }
-
 VOS_UINT32  NAS_EMM_MsRrcConnRelInitSsWaitRrcRelMsgTcDataReq
 (
     VOS_UINT32                          ulMsgId,
@@ -595,8 +659,8 @@ VOS_UINT32  NAS_EMM_MsRrcConnRelInitSsWaitRrcRelMsgTcDataReq
     {
         if(NAS_EMM_CONN_RELEASING != NAS_EMM_GetConnState())
         {
-            /* 透传TC消息 */
-            NAS_EMM_SER_SendMrrcDataReq_Tcdata(pstTcdataReq);
+            /* 高优先级缓存 */
+            return NAS_LMM_STORE_HIGH_PRIO_MSG;
         }
     }
     return NAS_LMM_MSG_HANDLED;
@@ -667,6 +731,8 @@ VOS_UINT32  NAS_EMM_MsRrcRelInitSsWaitRelCnfMsgMmcCoverageLostInd(
 
         /* 状态出栈*/
         NAS_EMM_FSM_PopState();
+
+        NAS_EMM_MsAuthInitEnterIdleProc(LRRC_LNAS_REL_CAUSE_OTHER_REASON);
     }
     return  NAS_LMM_MSG_HANDLED;
 }

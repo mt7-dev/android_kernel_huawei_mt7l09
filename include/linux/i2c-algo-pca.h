@@ -58,9 +58,6 @@ struct i2c_algo_pca_data {
 	int  (*read_byte)		(void *data, int reg);
 	int  (*wait_for_completion)	(void *data);
 	void (*reset_chip)		(void *data);
-	/* For PCA9564, use one of the predefined frequencies:
-	 * 330000, 288000, 217000, 146000, 88000, 59000, 44000, 36000
-	 * For PCA9665, use the frequency you want here. */
 	unsigned int			i2c_clock;
 	unsigned int			chip;
 };

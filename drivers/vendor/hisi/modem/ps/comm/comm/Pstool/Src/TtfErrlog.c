@@ -14,13 +14,13 @@ extern "C" {
 
 #define    THIS_FILE_ID        PS_FILE_ID_TTF_ERR_LOG_C
 
-
 #if (FEATURE_PTM == FEATURE_ON)
 
 /*****************************************************************************
   2 全局变量定义
 *****************************************************************************/
 TTF_MNTN_ERR_LOG_ENT_STRU               g_stTtfMntnErrlogEnt = {0};
+
 TTF_MNTN_ERR_LOG_RPT_CB                 apErrLogRptCb[MODEM_ID_BUTT][MODULE_ID_BUTT];
 
 /* ALM ID从1开始的，所以数组0的取值为BUTT */
@@ -33,11 +33,15 @@ VOS_UINT8                               g_aucTtfErrlogAlmLevTbl[TTF_ERR_LOG_ALM_
     TTF_ERR_LOG_ALM_LEV_CRITICAL,
     TTF_ERR_LOG_ALM_LEV_MAJOR,
     TTF_ERR_LOG_ALM_LEV_CRITICAL,
-    TTF_ERR_LOG_ALM_LEV_MAJOR
+    TTF_ERR_LOG_ALM_LEV_MAJOR,
+    TTF_ERR_LOG_ALM_LEV_CRITICAL,
+    TTF_ERR_LOG_ALM_LEV_CRITICAL
 };
 
-TTF_MNTN_ERR_LOG_WRLC_LI_ERR_CTX_STRU   g_stErrLogLiErrCtx;
+TTF_MNTN_ERR_LOG_WRLC_LI_ERR_CTX_STRU       g_stErrLogLiErrCtx;
 
+TTF_MNTN_COMM_INFO_MODEM0_STRU             *pstTtfMntnCommInfoModem0;
+TTF_MNTN_COMM_INFO_MODEM1_STRU             *pstTtfMntnCommInfoModem1;
 
 /*****************************************************************************
   3 函数实现
@@ -46,6 +50,11 @@ TTF_MNTN_ERR_LOG_WRLC_LI_ERR_CTX_STRU   g_stErrLogLiErrCtx;
 
 VOS_VOID TTF_MNTN_InitErrlogBuffer(MODEM_ID_ENUM_UINT16  enModemId)
 {
+    if (enModemId >= MODEM_ID_BUTT)
+    {
+        return;
+    }
+
     if (VOS_NULL_PTR != TTF_ERR_LOG_ENT_BUF_GET(enModemId))
     {
         return;
@@ -54,14 +63,18 @@ VOS_VOID TTF_MNTN_InitErrlogBuffer(MODEM_ID_ENUM_UINT16  enModemId)
     TTF_ERR_LOG_ENT_BUF_SET(enModemId, (VOS_UINT8 *)PS_ALLOC_STATIC_MEM(UEPS_PID_SN, TTF_ERR_LOG_BUF_SIZE));
 
     TTF_ERR_LOG_ENT_RINGID_SET(enModemId, OM_RingBufferCreateEx((VOS_CHAR *)TTF_ERR_LOG_ENT_BUF_GET(enModemId), TTF_ERR_LOG_BUF_SIZE));
-}
 
+    TTF_ERR_LOG_ENT_BUFFER_OVER_CNT_SET(enModemId, 0);
+
+    return;
+}
 
 
 VOS_UINT32 TTF_MNTN_InitErrLogEnt(VOS_UINT32 ulPid)
 {
     MODEM_ID_ENUM_UINT16        enModemId;
     VOS_UINT32                  ulRslt;
+    VOS_UINT32                  ulTtfCommInfoBufLen;
 
     if (VOS_YES == TTF_ERR_LOG_ENT_STATE_GET())
     {
@@ -71,11 +84,37 @@ VOS_UINT32 TTF_MNTN_InitErrLogEnt(VOS_UINT32 ulPid)
     PS_MEM_SET(&g_stTtfMntnErrlogEnt, 0, sizeof(TTF_MNTN_ERR_LOG_ENT_STRU));
     PS_MEM_SET(apErrLogRptCb, 0, sizeof(apErrLogRptCb));
 
+    ulTtfCommInfoBufLen =   sizeof(TTF_MNTN_COMM_INFO_MODEM0_STRU);
+
+    /* 初始化主卡基本配置信息结构体 */
+    pstTtfMntnCommInfoModem0 = (TTF_MNTN_COMM_INFO_MODEM0_STRU *)PS_ALLOC_STATIC_MEM(UEPS_PID_SN, ulTtfCommInfoBufLen);
+    PS_MEM_SET(pstTtfMntnCommInfoModem0, 0, sizeof(TTF_MNTN_COMM_INFO_MODEM0_STRU));
+
+    TTF_ERR_LOG_FILL_HEADER(
+        &(pstTtfMntnCommInfoModem0->stHeader),
+        MODEM_ID_0,
+        TTF_ERR_LOG_ALM_ID_COMM_INFO_MODEM0,
+        TTF_ERR_LOG_ALM_LEV_CRITICAL,
+        (sizeof(TTF_MNTN_COMM_INFO_MODEM0_STRU) - sizeof(OM_ERR_LOG_HEADER_STRU)));
+
+    /* 初始化副卡基本配置信息结构体 */
+    ulTtfCommInfoBufLen =   sizeof(TTF_MNTN_COMM_INFO_MODEM1_STRU);
+
+    pstTtfMntnCommInfoModem1 = (TTF_MNTN_COMM_INFO_MODEM1_STRU *)PS_ALLOC_STATIC_MEM(UEPS_PID_SN, ulTtfCommInfoBufLen);
+    PS_MEM_SET(pstTtfMntnCommInfoModem1, 0, sizeof(TTF_MNTN_COMM_INFO_MODEM1_STRU));
+
+    TTF_ERR_LOG_FILL_HEADER(
+        &(pstTtfMntnCommInfoModem1->stHeader),
+        MODEM_ID_1,
+        TTF_ERR_LOG_ALM_ID_COMM_INFO_MODEM1,
+        TTF_ERR_LOG_ALM_LEV_CRITICAL,
+        (sizeof(TTF_MNTN_COMM_INFO_MODEM1_STRU) - sizeof(OM_ERR_LOG_HEADER_STRU)));
+
     /* 创建互斥信号量，每个Modem 1个 */
     for (enModemId = 0; enModemId < MODEM_ID_BUTT; enModemId++)
     {
         ulRslt    = VOS_SmMCreate("TFEL", VOS_SEMA4_FIFO,
-                        (VOS_UINT32 *)(&TTF_ERR_LOG_ENT_SEM_GET(enModemId)));
+                        (VOS_SEM *)(&TTF_ERR_LOG_ENT_SEM_GET(enModemId)));
 
         if (VOS_OK != ulRslt)
         {
@@ -84,7 +123,6 @@ VOS_UINT32 TTF_MNTN_InitErrLogEnt(VOS_UINT32 ulPid)
 
             return ulRslt;
         }
-
 
         /* 读NV项获取当前上报状态 */
         ulRslt = NV_ReadEx(enModemId, en_NV_Item_ErrLogCtrlInfo,
@@ -117,7 +155,11 @@ VOS_UINT32 TTF_MNTN_ErrLogRcvCtrlInd(MsgBlock *pstMsg, void *p)
 
     pstCtrlInd = (OM_ERROR_LOG_CTRL_IND_STRU *)pstMsg;
 
-    enModemId = VOS_GetModemIDFromPid(pstCtrlInd->ulReceiverPid);
+    enModemId = (MODEM_ID_ENUM_UINT16)VOS_GetModemIDFromPid(pstCtrlInd->ulReceiverPid);
+    if (enModemId >= MODEM_ID_BUTT)
+    {
+        return VOS_ERR;
+    }
 
     TTF_ERR_LOG_ENT_CTRL_STATUS_SET(enModemId, pstCtrlInd->ucAlmStatus);
     TTF_ERR_LOG_ENT_CTRL_LEV_SET(enModemId, pstCtrlInd->ucAlmLevel);
@@ -126,14 +168,18 @@ VOS_UINT32 TTF_MNTN_ErrLogRcvCtrlInd(MsgBlock *pstMsg, void *p)
 }
 
 
+/*lint -e{416,419,831} */
 VOS_VOID TTF_MNTN_ErrlogBufRpt(VOS_UINT32 ulSenderPid, VOS_UINT32 ulReceiverPid, MODEM_ID_ENUM_UINT16 enModemId)
 {
     VOS_UINT32                      ulRslt;
-    VOS_UINT32                      ulBufSize;
+    VOS_UINT32                      ulErrLogBufSize;
+    VOS_UINT32                      ulTtfCommInfoBufSize;
     VOS_UINT32                      ulMsgLen;
     OM_RING_ID                      pRingId;
     VOS_UINT32                      ulCpuID;
     OM_ERR_LOG_REPORT_CNF_STRU     *pstLogRpt;
+    VOS_UINT32                      ulOffSetLen;
+    VOS_CHAR                       *pucContent;
 
     if (enModemId >= MODEM_ID_BUTT)
     {
@@ -153,21 +199,35 @@ VOS_VOID TTF_MNTN_ErrlogBufRpt(VOS_UINT32 ulSenderPid, VOS_UINT32 ulReceiverPid,
         return;
     }
 
+    if (MODEM_ID_0 == enModemId)
+    {
+        ulTtfCommInfoBufSize =  sizeof(TTF_MNTN_COMM_INFO_MODEM0_STRU);
+
+        pstTtfMntnCommInfoModem0->usRingBufferOverCounter = TTF_ERR_LOG_ENT_BUFFER_OVER_CNT_GET(enModemId);
+        TTF_ERR_LOG_ENT_BUFFER_OVER_CNT_SET(enModemId, 0);
+    }
+    else
+    {
+        ulTtfCommInfoBufSize =  sizeof(TTF_MNTN_COMM_INFO_MODEM1_STRU);
+
+        pstTtfMntnCommInfoModem1->usRingBufferOverCounter = TTF_ERR_LOG_ENT_BUFFER_OVER_CNT_GET(enModemId);
+        TTF_ERR_LOG_ENT_BUFFER_OVER_CNT_SET(enModemId, 0);
+    }
+
     pRingId   = TTF_ERR_LOG_ENT_RINGID_GET(enModemId);
 
     /* Default没有异常 */
-    ulBufSize = 0;
+    ulErrLogBufSize = 0;
 
     if (VOS_NULL_PTR != pRingId)
     {
-        /* 保留的长度复位 */
-        TTF_ERR_LOG_ENT_RST_BUF_RSV_LEN(enModemId);
-
         /* 将各模块本地缓存的数据写入Buffer */
         TTF_MNTN_ErrlogCbRun(enModemId);
 
-        ulRslt = VOS_SmP(TTF_ERR_LOG_ENT_SEM_GET(enModemId), TTF_ERR_SEM_TIMEOUT_LEN);
+        /* 保留的长度复位 */
+        TTF_ERR_LOG_ENT_RST_BUF_RSV_LEN(enModemId);
 
+        ulRslt = VOS_SmP(TTF_ERR_LOG_ENT_SEM_GET(enModemId), TTF_ERR_SEM_TIMEOUT_LEN);
         if(VOS_OK != ulRslt)
         {
             PS_LOG2(ulSenderPid, 0, PS_PRINT_WARNING,
@@ -176,44 +236,65 @@ VOS_VOID TTF_MNTN_ErrlogBufRpt(VOS_UINT32 ulSenderPid, VOS_UINT32 ulReceiverPid,
             return;
         }
 
-        ulBufSize = (VOS_UINT32)OM_RingBufferNBytes(pRingId);
+        ulErrLogBufSize = (VOS_UINT32)OM_RingBufferNBytes(pRingId);
 
-        if (ulBufSize > TTF_ERR_LOG_BUF_SIZE)
+        if (ulErrLogBufSize > TTF_ERR_LOG_BUF_SIZE)
         {
             OM_RingBufferFlush(pRingId);
 
             PS_LOG1(ulSenderPid, 0, PS_PRINT_WARNING,
-                "TTF_MNTN_ErrlogBufGet: ulBufSize invalid!", (VOS_INT32)ulBufSize);
+                "TTF_MNTN_ErrlogBufRpt: ulErrLogBufSize invalid!", (VOS_INT32)ulErrLogBufSize);
 
-            ulBufSize = 0;
+            ulErrLogBufSize = 0;
         }
 
         VOS_SmV(TTF_ERR_LOG_ENT_SEM_GET(enModemId));
     }
 
-    /*lint -e413*/
-    ulMsgLen  = (TTF_OFFSET_OF(OM_ERR_LOG_REPORT_CNF_STRU, aucContent[0])) + ulBufSize;
-    pstLogRpt = (OM_ERR_LOG_REPORT_CNF_STRU *)PS_ALLOC_MSG_WITH_HEADER_LEN(ulSenderPid, ulMsgLen);
+    TTF_GET_OFFSET(ulOffSetLen, OM_ERR_LOG_REPORT_CNF_STRU, aucContent);
+    ulMsgLen  = ulOffSetLen + ulTtfCommInfoBufSize + ulErrLogBufSize;
 
+    pstLogRpt = (OM_ERR_LOG_REPORT_CNF_STRU *)PS_ALLOC_MSG_WITH_HEADER_LEN(ulSenderPid, ulMsgLen);
     if (VOS_NULL_PTR == pstLogRpt)
     {
+        PS_LOG1(ulSenderPid, 0, PS_PRINT_WARNING,
+                "TTF_MNTN_ErrlogBufRpt: PS_ALLOC_MSG_WITH_HEADER_LEN fail!", (VOS_INT32)ulMsgLen);
         return;
     }
 
-    if (0 != ulBufSize)
+    pucContent = (VOS_CHAR *)(pstLogRpt->aucContent);
+
+    if (MODEM_ID_0 == enModemId)
     {
-        TTF_MNTN_ErrlogBufGet(ulSenderPid, enModemId, (VOS_CHAR *)(pstLogRpt->aucContent), ulBufSize);
+        /* 拷贝基本配置信息 */
+        PS_MEM_CPY((VOS_VOID *)pucContent, (VOS_VOID *)pstTtfMntnCommInfoModem0, (VOS_UINT32)(sizeof(TTF_MNTN_COMM_INFO_MODEM0_STRU)));
+        pucContent += (VOS_UINT32)(sizeof(TTF_MNTN_COMM_INFO_MODEM0_STRU));
+    }
+    else
+    {
+        /* 拷贝基本配置信息 */
+        PS_MEM_CPY((VOS_VOID *)pucContent, (VOS_VOID *)pstTtfMntnCommInfoModem1, (VOS_UINT32)(sizeof(TTF_MNTN_COMM_INFO_MODEM1_STRU)));
+        pucContent += (VOS_UINT32)(sizeof(TTF_MNTN_COMM_INFO_MODEM1_STRU));
+    }
+
+    /* 拷贝异常事件 */
+    if (0 != ulErrLogBufSize)
+    {
+        TTF_MNTN_ErrlogBufGet(  ulSenderPid,
+                                enModemId,
+                                pucContent,
+                                ulErrLogBufSize);
     }
 
     pstLogRpt->ulReceiverPid    = ulReceiverPid;
     pstLogRpt->ulMsgName        = ID_OM_ERR_LOG_REPORT_CNF;
     pstLogRpt->ulMsgType        = OM_ERR_LOG_MSG_ERR_REPORT;
     pstLogRpt->ulMsgSN          = VOS_GetSlice();
-    pstLogRpt->ulRptlen         = ulBufSize;
-
-    /*lint +e413*/
+    pstLogRpt->ulRptlen         = ulTtfCommInfoBufSize + ulErrLogBufSize;
 
     PS_SEND_MSG(UEPS_PID_SN, pstLogRpt);
+
+    return;
 }
 VOS_UINT32 TTF_MNTN_ErrLogRcvRptReq(MsgBlock *pstMsg, void *p)
 {
@@ -289,7 +370,6 @@ VOS_VOID TTF_MNTN_ErrlogBufPut(VOS_UINT32 ulPid,  VOS_CHAR *pBuffer, VOS_UINT32 
     VOS_UINT32              ulBuffFreeSize;
     OM_RING_ID              pRingId;
 
-
     if (VOS_NULL_PTR == pBuffer)
     {
         PS_LOG(ulPid, 0, PS_PRINT_WARNING,
@@ -299,7 +379,6 @@ VOS_VOID TTF_MNTN_ErrlogBufPut(VOS_UINT32 ulPid,  VOS_CHAR *pBuffer, VOS_UINT32 
     }
 
     enModemId = VOS_GetModemIDFromPid(ulPid);
-
     if (enModemId >= MODEM_ID_BUTT)
     {
         PS_LOG1(ulPid, 0, PS_PRINT_ERROR,
@@ -330,21 +409,23 @@ VOS_VOID TTF_MNTN_ErrlogBufPut(VOS_UINT32 ulPid,  VOS_CHAR *pBuffer, VOS_UINT32 
 
     ulBuffFreeSize  =(VOS_UINT32) OM_RingBufferFreeBytes(pRingId);
 
-    /* Buffer已经不够了，就不再往里面写数据了 */
-    if (ulBuffFreeSize >= (ulBytes + TTF_ERR_LOG_ENT_GET_BUF_RSV_LEN(enModemId)))
+    /* Buffer不足，溢出处理 */
+    if (ulBuffFreeSize < (ulBytes + TTF_ERR_LOG_ENT_GET_BUF_RSV_LEN(enModemId)))
     {
-        ulRslt = (VOS_UINT32)OM_RingBufferPut(pRingId, pBuffer, (VOS_INT)ulBytes);
+        TTF_ERR_LOG_ENT_UPDT_BUFFER_OVER_CNT(enModemId, 1);
+        OM_RingBufferFlush(pRingId);
+    }
 
-        if (ulBytes != ulRslt)
-        {
-            OM_RingBufferFlush(pRingId);
+    ulRslt = (VOS_UINT32)OM_RingBufferPut(pRingId, pBuffer, (VOS_INT)ulBytes);
 
-            PS_LOG2(ulPid, 0, PS_PRINT_ERROR,
-                "TTF_MNTN_ErrlogBufGet: ERROR OM_RingBufferPut fail!",(VOS_INT32)ulRslt, (VOS_INT32)ulBytes);
-        }
+    if (ulBytes != ulRslt)
+    {
+        OM_RingBufferFlush(pRingId);
     }
 
     VOS_SmV(TTF_ERR_LOG_ENT_SEM_GET(enModemId));
+
+    return;
 }
 VOS_UINT8 TTF_MNTN_ErrLogGetModuleId(VOS_UINT32 ulPid)
 {
@@ -432,6 +513,10 @@ VOS_VOID GTTF_MNTN_ErrlogTbfAbnmlEvt(VOS_UINT32 ulPid, VOS_UINT16 usType)
 
     ucAlmLev    = TTF_ERR_LOG_GET_ALM_LEV(TTF_ERR_LOG_ALM_ID_GPRS_TBF_ABNML);
     enModemId   = VOS_GetModemIDFromPid(ulPid);
+    if (enModemId >= MODEM_ID_BUTT)
+    {
+        return;
+    }
 
     if (!TTF_ERR_LOG_NEED_RPT_LEV(enModemId, ucAlmLev))
     {
@@ -464,6 +549,10 @@ VOS_VOID GTTF_MNTN_ErrlogMdlErrEvt(VOS_UINT32 ulPid, VOS_VOID *pMdlErr)
 
     ucAlmLev    = TTF_ERR_LOG_GET_ALM_LEV(TTF_ERR_LOG_ALM_ID_GSM_MDL_ERR);
     enModemId   = VOS_GetModemIDFromPid(ulPid);
+    if (enModemId >= MODEM_ID_BUTT)
+    {
+        return;
+    }
 
     if (!TTF_ERR_LOG_NEED_RPT_LEV(enModemId, ucAlmLev))
     {
@@ -492,6 +581,10 @@ VOS_VOID WTTF_MNTN_ErrlogRlcResetEvt(VOS_UINT8 ucRbId,
 
     ucAlmLev    = TTF_ERR_LOG_GET_ALM_LEV(TTF_ERR_LOG_ALM_ID_WRLC_RESET);
     enModemId   = VOS_GetModemIDFromPid(WUEPS_PID_RLC);
+    if (enModemId >= MODEM_ID_BUTT)
+    {
+        return;
+    }
 
     if (!TTF_ERR_LOG_NEED_RPT_LEV(enModemId, ucAlmLev))
     {
@@ -525,11 +618,13 @@ VOS_VOID WTTF_MNTN_ErrlogRlcLiErrEvt(VOS_UINT8 ucRbId,
         return;
     }
 
-
     /* check need th record the Li error number */
     ucAlmLev    = TTF_ERR_LOG_GET_ALM_LEV(TTF_ERR_LOG_ALM_ID_WRLC_LI_ERR);
     enModemId   = VOS_GetModemIDFromPid(WUEPS_PID_RLC);
-
+    if (enModemId >= MODEM_ID_BUTT)
+    {
+        return;
+    }
 
     if (!TTF_ERR_LOG_NEED_RPT_LEV(enModemId, ucAlmLev))
     {
@@ -569,7 +664,7 @@ VOS_VOID WTTF_MNTN_ErrlogRlcLiErrEvt(VOS_UINT8 ucRbId,
         g_stErrLogLiErrCtx.astWrlcLiErrInfo[ucRbId].stLiErrInfo.ulLiErrCnt  = 1;
         g_stErrLogLiErrCtx.astWrlcLiErrInfo[ucRbId].stLiErrInfo.ucRbId      = ucRbId;
 
-        TTF_ERR_LOG_ENT_UPDT_BUF_RSV_LEN(VOS_GetModemIDFromPid(WUEPS_PID_RLC), sizeof(TTF_MNTN_ERR_LOG_WRLC_LI_ERR_STRU));
+        TTF_ERR_LOG_ENT_UPDT_BUF_RSV_LEN(enModemId, sizeof(TTF_MNTN_ERR_LOG_WRLC_LI_ERR_STRU));
     }
     else
     {
@@ -590,6 +685,10 @@ VOS_VOID WTTF_MNTN_ErrlogFlushRlcErrEvt(VOS_VOID)
 
     ucAlmLev = TTF_ERR_LOG_GET_ALM_LEV(TTF_ERR_LOG_ALM_ID_WRLC_LI_ERR);
     enModemId   = VOS_GetModemIDFromPid(WUEPS_PID_RLC);
+    if (enModemId >= MODEM_ID_BUTT)
+    {
+        return;
+    }
 
     if (!TTF_ERR_LOG_NEED_RPT_LEV(enModemId, ucAlmLev))
     {
@@ -620,19 +719,23 @@ VOS_VOID WTTF_MNTN_ErrlogFlushRlcErrEvt(VOS_VOID)
 VOS_VOID  WTTF_MNTN_ErrlogTfciFailEvt(VOS_UINT8 ucMacState,
     TTF_MNTN_ERR_LOG_TFC_ERR_NO_CHOICE_ENUM8 enType)
 {
-     VOS_UINT8                      ucAlmLev;
-     WTTF_MNTN_TFCI_FAIL_STRU       stTtfMNtnTfciFail;
-     MODEM_ID_ENUM_UINT16           enModemId;
+    VOS_UINT8                      ucAlmLev;
+    WTTF_MNTN_TFCI_FAIL_STRU       stTtfMNtnTfciFail;
+    MODEM_ID_ENUM_UINT16           enModemId;
 
-     ucAlmLev       = TTF_ERR_LOG_GET_ALM_LEV(TTF_ERR_LOG_ALM_ID_WRLC_TFCI_FAIL);
-     enModemId      = VOS_GetModemIDFromPid(WUEPS_PID_RLC);
+    ucAlmLev       = TTF_ERR_LOG_GET_ALM_LEV(TTF_ERR_LOG_ALM_ID_WRLC_TFCI_FAIL);
+    enModemId      = VOS_GetModemIDFromPid(WUEPS_PID_RLC);
+    if (enModemId >= MODEM_ID_BUTT)
+    {
+        return;
+    }
 
-     if (!TTF_ERR_LOG_NEED_RPT_LEV(enModemId, ucAlmLev))
-     {
-         return;
-     }
+    if (!TTF_ERR_LOG_NEED_RPT_LEV(enModemId, ucAlmLev))
+    {
+        return;
+    }
 
-     TTF_ERR_LOG_FILL_HEADER(
+    TTF_ERR_LOG_FILL_HEADER(
              &stTtfMNtnTfciFail.stHeader,
              enModemId,
              TTF_ERR_LOG_ALM_ID_WRLC_TFCI_FAIL,
@@ -648,9 +751,108 @@ VOS_VOID  WTTF_MNTN_ErrlogTfciFailEvt(VOS_UINT8 ucMacState,
 
     return;
 }
+GTTF_UL_INFO_STRU * TTF_MNTN_ErrlogGetCommInfoBuffAddrForGUL(VOS_UINT32 ulPid)
+{
+    MODEM_ID_ENUM_UINT16        enModemId       = VOS_GetModemIDFromPid(ulPid);
+    GTTF_UL_INFO_STRU          *pstGttfULInfo;
+
+    if (enModemId >= MODEM_ID_BUTT)
+    {
+        PS_LOG1(ulPid, 0, PS_PRINT_WARNING,
+                "TTF_MNTN_ErrlogGetCommInfoBuffAddrForGUL: Invalid ModemId ", enModemId);
+        enModemId = MODEM_ID_0;
+    }
+
+    if (MODEM_ID_0 == enModemId)
+    {
+        pstGttfULInfo = &(pstTtfMntnCommInfoModem0->astGttfUlInfo[pstTtfMntnCommInfoModem0->ucGUlIndex]);
+        pstGttfULInfo->ulSlice = VOS_GetSlice();
+
+        TTF_ERR_LOG_COMM_COUNTER_INCR(pstTtfMntnCommInfoModem0->ucGUlIndex, TTF_ERR_LOG_COMM_INFO_CNT);
+    }
+    else
+    {
+        pstGttfULInfo = &(pstTtfMntnCommInfoModem1->astGttfUlInfo[pstTtfMntnCommInfoModem1->ucGUlIndex]);
+        pstGttfULInfo->ulSlice = VOS_GetSlice();
+
+        TTF_ERR_LOG_COMM_COUNTER_INCR(pstTtfMntnCommInfoModem1->ucGUlIndex, TTF_ERR_LOG_COMM_INFO_CNT);
+    }
+
+    return pstGttfULInfo;
+}
+
+
+GTTF_DL_INFO_STRU * TTF_MNTN_ErrlogGetCommInfoBuffAddrForGDL(VOS_UINT32 ulPid)
+{
+    MODEM_ID_ENUM_UINT16        enModemId       = VOS_GetModemIDFromPid(ulPid);
+    GTTF_DL_INFO_STRU          *pstGttfDLInfo;
+
+    if (enModemId >= MODEM_ID_BUTT)
+    {
+        PS_LOG1(ulPid, 0, PS_PRINT_WARNING,
+                "TTF_MNTN_ErrlogGetCommInfoBuffAddrForGDL: Invalid ModemId ", enModemId);
+        enModemId = MODEM_ID_0;
+    }
+
+    if (MODEM_ID_0 == enModemId)
+    {
+        pstGttfDLInfo = &(pstTtfMntnCommInfoModem0->astGttfDlInfo[pstTtfMntnCommInfoModem0->ucGDlIndex]);
+        pstGttfDLInfo->ulSlice = VOS_GetSlice();
+
+        TTF_ERR_LOG_COMM_COUNTER_INCR(pstTtfMntnCommInfoModem0->ucGDlIndex, TTF_ERR_LOG_COMM_INFO_CNT);
+    }
+    else
+    {
+        pstGttfDLInfo = &(pstTtfMntnCommInfoModem1->astGttfDlInfo[pstTtfMntnCommInfoModem1->ucGDlIndex]);
+        pstGttfDLInfo->ulSlice = VOS_GetSlice();
+
+        TTF_ERR_LOG_COMM_COUNTER_INCR(pstTtfMntnCommInfoModem1->ucGDlIndex, TTF_ERR_LOG_COMM_INFO_CNT);
+    }
+
+    return pstGttfDLInfo;
+}
+
+
+WTTF_MAC_UL_INFO_STRU * TTF_MNTN_ErrlogGetCommInfoBuffAddrForWUL(VOS_VOID)
+{
+    WTTF_MAC_UL_INFO_STRU          *pstWttfULInfo;
+
+    pstWttfULInfo = &(pstTtfMntnCommInfoModem0->astWttfMacUlInfo[pstTtfMntnCommInfoModem0->ucWMacUlIndex]);
+    pstWttfULInfo->ulSlice = VOS_GetSlice();
+
+    TTF_ERR_LOG_COMM_COUNTER_INCR(pstTtfMntnCommInfoModem0->ucWMacUlIndex, TTF_ERR_LOG_COMM_INFO_CNT);
+
+    return pstWttfULInfo;
+}
+
+
+WTTF_UL_SCHED_INFO_STRU * TTF_MNTN_ErrlogGetCommInfoBuffAddrForWUlSched(VOS_VOID)
+{
+    WTTF_UL_SCHED_INFO_STRU          *pstWttfUlSchedInfo;
+
+    pstWttfUlSchedInfo = &(pstTtfMntnCommInfoModem0->astWttfUlSchedInfo[pstTtfMntnCommInfoModem0->ucWUlSchedIndex]);
+    pstWttfUlSchedInfo->ulSlice = VOS_GetSlice();
+
+    return pstWttfUlSchedInfo;
+}
+
+
+WTTF_MAC_DL_INFO_STRU * TTF_MNTN_ErrlogGetCommInfoBuffAddrForWDL(VOS_VOID)
+{
+    WTTF_MAC_DL_INFO_STRU          *pstWttfDLInfo;
+
+    pstWttfDLInfo = &(pstTtfMntnCommInfoModem0->astWttfMacDlInfo[pstTtfMntnCommInfoModem0->ucWMacDlIndex]);
+    pstWttfDLInfo->ulSlice = VOS_GetSlice();
+
+    TTF_ERR_LOG_COMM_COUNTER_INCR(pstTtfMntnCommInfoModem0->ucWMacDlIndex, TTF_ERR_LOG_COMM_INFO_CNT);
+
+    return pstWttfDLInfo;
+}
+
+
 VOS_VOID TTF_MNTN_ErrlogShow(VOS_VOID)
 {
-    VOS_UINT32 ulIndx;
+    VOS_UINT32                      ulIndx;
 
     vos_printf("Errlog 实体状态:        %u \r\n", TTF_ERR_LOG_ENT_STATE_GET());
 
@@ -672,6 +874,8 @@ VOS_VOID TTF_MNTN_ErrlogShow(VOS_VOID)
         TTF_ERR_LOG_CB_SHOW(ulIndx, MODULE_ID_SN);
         TTF_ERR_LOG_CB_SHOW(ulIndx, MODULE_ID_DL);
     }
+
+    return;
 }
 
 #endif

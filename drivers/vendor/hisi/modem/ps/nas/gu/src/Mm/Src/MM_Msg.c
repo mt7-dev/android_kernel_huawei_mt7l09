@@ -115,7 +115,6 @@ VOS_UINT8 Mm_ComMsgAuthReqRcv (
         g_MmMsgAuthReq.MmIeCKSN.ucCksn
             = (VOS_UINT8)(pucRcvMsg[2] & MM_IE_CKSN_KEY_SEQUENCE_MASK);         /* 存储CKSN                                 */
 
-        NAS_MML_SetSimCsSecurityCksn(g_MmMsgAuthReq.MmIeCKSN.ucCksn);
 
         if ( MM_FALSE == MM_IeChkRand( &pucRcvMsg[3] ) )
         {
@@ -146,10 +145,14 @@ VOS_UINT8 Mm_ComMsgAuthReqRcv (
                 {
                     g_MmMsgAuthReq.ucAutnFlg = MM_IE_AUTN_PRESENT;
                     g_MmMsgAuthReq.MmIeAUTN.ucAutnLen = pucRcvMsg[usIndex];     /* 获得AUTN的长度                           */
+                    if ( MM_IE_AUTN_MAX_LEN < pucRcvMsg[usIndex] )
+                    {
+                        g_MmMsgAuthReq.MmIeAUTN.ucAutnLen = MM_IE_AUTN_MAX_LEN;
+                    }
                     PS_MEM_CPY(
                                 g_MmMsgAuthReq.MmIeAUTN.aucAutn,
                                 &pucRcvMsg[usIndex + 1],
-                                pucRcvMsg[usIndex]
+                                g_MmMsgAuthReq.MmIeAUTN.ucAutnLen
                                 );                                              /* 获得AUTN                                 */
                 }
                 usIndex = usIndex + pucRcvMsg[usIndex] + 1;
@@ -280,7 +283,7 @@ VOS_UINT8 Mm_ComMsgAuthRjctRcv ()
 
     pstCurrCampPlmnId = NAS_MML_GetCurrCampPlmnId();
     pstAuthRejInfo = NAS_MML_GetAuthRejInfo();
-  
+
     if (pstAuthRejInfo->ucHplmnCsAuthRejCounter < pstAuthRejInfo->ucMaxAuthRejNo)
     {
         if ((VOS_TRUE == NAS_MML_ComparePlmnIdWithHplmn(pstCurrCampPlmnId))
@@ -288,8 +291,8 @@ VOS_UINT8 Mm_ComMsgAuthRjctRcv ()
         {
             pstAuthRejInfo->ucHplmnCsAuthRejCounter++;
             return MM_EVENT_ID_INVALID;
-        }            
-    } 
+        }
+    }
 
     return ucEventId;                                                           /* 返回事件ID                               */
 }
@@ -942,6 +945,8 @@ VOS_UINT8 Mm_SysInfo_Pre_Check(VOS_VOID *pRcvMsg)
 
     ucCsForbFlg = VOS_TRUE;
 
+    NAS_MM_LogMmCtxInfo();
+
     if (NAS_MML_NET_RAT_TYPE_GSM == NAS_MML_GetCurrNetRatType())
     {
         pGSysInfo = (MMCMM_GSM_SYS_INFO_IND_ST *)pRcvMsg;
@@ -978,7 +983,7 @@ VOS_UINT8 Mm_SysInfo_Pre_Check(VOS_VOID *pRcvMsg)
         Mm_TimerStop(MM_TIMER_EMERGENCY_CSFB_HO_WAIT_SYSINFO);
     }
 
-    
+
     /* 若卡无效，假流程回复给MMC,在搜网注册时，若不回复，MMC会一直处在等待CS注册结果状态 */
     if (VOS_FALSE == NAS_MML_GetSimCsRegStatus())
     {
@@ -1079,12 +1084,12 @@ VOS_VOID NAS_MM_ResetHplmnRejCauseChangedCounter (VOS_VOID)
     pstChangeCauseCounterInfo->ucMmHplmnRejCauseChangedCounter = 0;
 
     return;
-    
+
 }
 
 
 VOS_VOID NAS_MM_HandleHplmnRejCauseChange (
-    VOS_UINT8                          *pucRcvMsg,                          
+    VOS_UINT8                          *pucRcvMsg,
     VOS_UINT8                           ucConfigCauseNvim
 )
 {
@@ -1103,15 +1108,15 @@ VOS_VOID NAS_MM_HandleHplmnRejCauseChange (
     }
     else
     {
-        pucRcvMsg[2] = ucConfigCauseNvim;    
+        pucRcvMsg[2] = ucConfigCauseNvim;
     }
 
     return;
 
 }
 VOS_VOID NAS_MM_ChangeRegRejCauseAvoidInvalidSim (
-    VOS_UINT8                          *pucRcvMsg,                          
-    VOS_UINT16                          usMsgSize                           
+    VOS_UINT8                          *pucRcvMsg,
+    VOS_UINT16                          usMsgSize
 )
 {
     NAS_MML_PLMN_ID_STRU               *pstCurrCampPlmnId = VOS_NULL_PTR;
@@ -1121,7 +1126,7 @@ VOS_VOID NAS_MM_ChangeRegRejCauseAvoidInvalidSim (
 
     enChangeRegRejType = NAS_MML_GetChangeRegRejCauFlg();
     ucRejCause = 0;
-    
+
     /* 增加测试卡保护，测试卡时不修改，直接返回 */
     if (VOS_TRUE == NAS_USIMMAPI_IsTestCard())
     {
@@ -1144,7 +1149,7 @@ VOS_VOID NAS_MM_ChangeRegRejCauseAvoidInvalidSim (
 
     /* 取得当前驻留的PLMN ID */
     pstCurrCampPlmnId = NAS_MML_GetCurrCampPlmnId();
-    
+
     ucRejCause = pucRcvMsg[2];
 
     if ((NAS_MML_REG_FAIL_CAUSE_IMSI_UNKNOWN_IN_HLR == ucRejCause)
@@ -1161,7 +1166,7 @@ VOS_VOID NAS_MM_ChangeRegRejCauseAvoidInvalidSim (
             pucRcvMsg[2] = NAS_MML_GetPreferredRegRejCause_NOT_HPLMN_EHPLMN();
         }
     }
-    
+
 }
 VOS_UINT8 Mm_ComMsgChkProc(
                         RRMM_DATA_IND_FOR_PCLINT_STRU       *pMsg               /* 当前处理的消息                           */
@@ -2190,6 +2195,10 @@ VOS_VOID Mm_ComMsgLuReqSndOfEstReq(
     VOS_UINT16              usIdx = 0;
     VOS_UINT8               i;
 
+    VOS_UINT8                           ucCsfbMtFlg;
+
+    ucCsfbMtFlg = NAS_MM_GetCsfbMtLauFlg();
+
     pucSndMsg = (VOS_UINT8 *) MM_MEM_ALLOC(
                                       VOS_MEMPOOL_INDEX_MM,
                                       usMsgSize,
@@ -2258,8 +2267,10 @@ VOS_VOID Mm_ComMsgLuReqSndOfEstReq(
 
 #if   (FEATURE_ON == FEATURE_LTE)
 
+
             /* 根据当前是否在CSFB MT流程，封装Additional update parameters IE */
-            if ( NAS_MML_CSFB_SERVICE_STATUS_MT_EXIST == NAS_MML_GetCsfbServiceStatus() )
+            if ( (NAS_MML_CSFB_SERVICE_STATUS_MT_EXIST == NAS_MML_GetCsfbServiceStatus())
+              || (VOS_TRUE == ucCsfbMtFlg) )
             {
                 usIdx = usMsgSize;
 
@@ -2552,6 +2563,11 @@ VOS_UINT8 Mm_ComMsgLuAccptRcv (
     }
     else
     {
+
+        /* lau成功清除CSMT标志 */
+        NAS_MM_SetCsfbMtLauFlg(VOS_FALSE);
+
+
         /* 收到Accept消息时需要重置 stChangeRegRejTo17CounterInfo */
         NAS_MM_ResetHplmnRejCauseChangedCounter();
         if ( MM_FALSE == MM_IeChkLai( &pucRcvMsg[usIndex] ) )
@@ -2600,8 +2616,13 @@ VOS_UINT8 Mm_ComMsgLuAccptRcv (
                 NAS_MML_DecodeEmergencyNumList(&usIndex, pucRcvMsg, usMsgSize);
 
                 g_MmMsgLuAccpt.ucEmcFlg = MM_TRUE;
-                
+
                 ulResult = MM_DECODE_SUCCESS;
+            }
+            else if (0x35 == pucRcvMsg[usIndex])
+            {
+                 usIndex = usIndex + 3;
+                 ulResult = MM_DECODE_SUCCESS;
             }
             else
             {                                                                   /* 解码其它可选的IE */
@@ -2895,12 +2916,12 @@ VOS_UINT8 MM_IeChkAutn (
                    VOS_UINT8      *pucRcvIe                                         /* 当前处理的消息                           */
                    )
 {
-    VOS_UINT8       ucIndex = 0;
-
-    if ( 16 != pucRcvIe[ucIndex] )
+    /* 第一个字节为长度，第二个字节开始是AUTN的取值 */
+    if ( 16 != pucRcvIe[0] )
     {
-        return MM_FALSE;
+        NAS_MM_LogAutnLenInfo(pucRcvIe[0]);
     }
+
     return MM_TRUE;
 }
 
@@ -3478,7 +3499,7 @@ VOS_UINT32 NAS_MM_ProcCsDetach(
     else
     {
         g_MmGlobalInfo.stDetachInfo.enDetachType |= MM_WAIT_CS_DETACH;
-        
+
         NAS_MM_LocalDetach();
 
 
@@ -3504,7 +3525,7 @@ VOS_UINT32 NAS_MM_ProcCsPsDetach(
 
     NAS_MM_InitLaiInfo(NAS_MM_GetAttemptUpdateLaiInfo());
 
-    
+
     /* 当前存在CS域ATTACH标志，则先直接回复ATTACH CNF结果 */
     if ( MM_WAIT_CS_ATTACH  == (g_MmGlobalInfo.stAttachInfo.enAttachType & MM_WAIT_CS_ATTACH) )
     {
@@ -3531,7 +3552,7 @@ VOS_UINT32 NAS_MM_ProcCsPsDetach(
     else
     {
         g_MmGlobalInfo.stDetachInfo.enDetachType |= MM_WAIT_CS_PS_DETACH;
-        
+
         NAS_MM_LocalDetach();
         return VOS_TRUE;
     }
@@ -3594,20 +3615,20 @@ VOS_UINT32 NAS_MM_RcvMmcLauReq(
 
     pstLauReq               = (MMCMM_LAU_REQ_STRU*)pstRcvMsg;
     ucPsRestrictionFlg      = NAS_MML_GetPsRestrictRegisterFlg();
-  
+
     /* NMO1下,MM不需要进行注册 */
     if ((VOS_TRUE       == NAS_MML_GetPsAttachAllowFlg())
      && (MM_NET_MODE_I  == g_MmGlobalInfo.ucNewNtMod)
      && (MM_FALSE       == g_MmGlobalInfo.ucLikeB)
      && (VOS_FALSE      == ucPsRestrictionFlg))
     {
-        return MM_EVENT_ID_INVALID; 
-    }    
+        return MM_EVENT_ID_INVALID;
+    }
 
     /* 检测是否被在当前网络上被拒#17(MMC已判断),且失败达到最大次数 */
     if ( g_MmGlobalInfo.LuInfo.ucLuAttmptCnt < MM_CONST_NUM_4 )
     {
-        return MM_EVENT_ID_INVALID; 
+        return MM_EVENT_ID_INVALID;
     }
 
     if ( (MM_IDLE_ATTEMPTING_TO_UPDATE == Mm_GetState())
@@ -3616,7 +3637,7 @@ VOS_UINT32 NAS_MM_RcvMmcLauReq(
         /* 直接进行lau */
         g_MmGlobalInfo.LuInfo.ucLuType = MM_IE_LUT_NORMAL_LU;
         Mm_ComLuOnly();
-    }       
+    }
 
     return MM_EVENT_ID_INVALID;
 }
@@ -3657,12 +3678,14 @@ VOS_VOID NAS_MM_RcvCcSrvccCallInfoNtf(
         return;
     }
 #endif
-    
+
     /* 边界检查，避免数组越界 */
     if (pstCcMsg->ucTiNum > NAS_MM_MAX_CC_CONNECTION_NUM)
     {
         pstCcMsg->ucTiNum = NAS_MM_MAX_CC_CONNECTION_NUM;
     }
+
+    NAS_MM_SetRcvSrvccCallInfoFlg(VOS_TRUE);
 
     /* 按照协议规定，SRVCC成功到GU后,都当做MT CALL */
     for (i = 0; i < pstCcMsg->ucTiNum ; i++)
@@ -3674,7 +3697,7 @@ VOS_VOID NAS_MM_RcvCcSrvccCallInfoNtf(
             g_MmGlobalInfo.ConnCtrlInfo[MM_CONN_CTRL_CC].aucMMConnExtFlg[0] |=
                         (VOS_UINT8 )( 0x01 << ucTI );
         }
-        else if ((MM_CONST_NUM_7 < ucTI) 
+        else if ((MM_CONST_NUM_7 < ucTI)
               && (MM_CONST_NUM_15 > ucTI))
         {
             g_MmGlobalInfo.ConnCtrlInfo[MM_CONN_CTRL_CC].aucMMConnExtFlg[1] |=
@@ -3688,6 +3711,154 @@ VOS_VOID NAS_MM_RcvCcSrvccCallInfoNtf(
     return;
 }
 #endif
+VOS_UINT8 NAS_MM_RcvCspagingInd_PreProc(
+    VOS_VOID                           *pstRcvMsg
+)
+{
+/* Added by zwx247453 for CHR optimize, 2015-03-13 begin */
+#if (FEATURE_ON == FEATURE_PTM)
+    NAS_MM_ParseErrLogCsPagingInfo(pstRcvMsg);
+#endif
+/* Added by zwx247453 for CHR optimize, 2015-03-13 end */
+
+    switch (g_MmGlobalInfo.ucState)
+    {
+        case MM_IDLE_PLMN_SEARCH:
+        case MM_IDLE_NORMAL_SERVICE:
+        case MM_IDLE_LIMITED_SERVICE:
+        case MM_IDLE_ATTEMPTING_TO_UPDATE:
+        case MM_IDLE_LOCATION_UPDATE_NEEDED:
+        case LOCATION_UPDATING_PENDING:
+
+            return MM_EVENT_ID_PAGING_IND;
+
+        default:
+#if (FEATURE_ON == FEATURE_PTM)
+            /* 判断为非IDLE状态，记录异常 */
+            NAS_MM_CsPagingFailRecord(NAS_ERR_LOG_CS_PAGING_CAUSE_MM_STATE_ERR);
+#endif
+            return MM_EVENT_ID_PAGING_IND;
+    }
+}
+
+
+VOS_UINT32 NAS_MM_GetLauRequestInfo(
+    NAS_MSG_STRU                           *pstLauReqMsg,
+    NAS_LAU_TYPE_ENUM_UINT8                *penLauType,
+    VOS_UINT8                              *pucFollowOnFlg,
+    NAS_ADDITION_UPDATE_PARA_ENUM_UINT8    *penAdditionUpdatePara
+)
+{
+    VOS_UINT8                          *pucMsg  = VOS_NULL_PTR;
+    VOS_UINT32                          ulIndex;
+    VOS_UINT32                          ulMsgSize;
+    VOS_UINT32                          ulPointer;
+
+    /* 参数检查 */
+    if ( (VOS_NULL_PTR == pstLauReqMsg)
+      || (VOS_NULL_PTR == penLauType)
+      || (VOS_NULL_PTR == pucFollowOnFlg)
+      || (VOS_NULL_PTR == penAdditionUpdatePara) )
+    {
+        return VOS_ERR;
+    }
+
+    /* 初始化 */
+    ulPointer   = (VOS_UINT32)pstLauReqMsg->aucNasMsg;
+    pucMsg      = (VOS_UINT8 *)ulPointer;
+    ulIndex     = 0;
+    ulMsgSize   = pstLauReqMsg->ulNasMsgSize;
+
+    /* LAU的消息长度最小为11  */
+    if (ulMsgSize < 11)
+    {
+        return VOS_ERR;
+    }
+
+    /* 跳过 Mobility 和 Skip Indicator */
+    ulIndex     = ulIndex + 1;
+
+    /* 判断是否是LAU消息 */
+    if(MM_IE_MSG_TYPE_LU_REQUEST != (pucMsg[ulIndex] & 0x3F))
+    {
+        return VOS_ERR;
+    }
+    /* 增加msg type  长度 */
+    ulIndex     = ulIndex + 1;
+
+    /* 解析LAU type 和 Follow */
+    *penLauType  = pucMsg[ulIndex] & 0x03;
+
+    /* 解析Follow */
+    if ((pucMsg[ulIndex] & 0x8) > 0)
+    {
+        *pucFollowOnFlg = VOS_TRUE;
+    }
+    else
+    {
+        *pucFollowOnFlg = VOS_FALSE;
+    }
+
+    /* 直接跳到Mobile identity */
+    ulIndex     = ulIndex + 7;
+
+    /* 解析Mobile identity 长度 */
+    if (( 0 == pucMsg[ulIndex] ) || ( 8 <  pucMsg[ulIndex] ))
+    {
+        return VOS_ERR;
+    }
+    else
+    {
+        ulIndex = ulIndex + pucMsg[ulIndex];
+    }
+
+    *penAdditionUpdatePara = NAS_ADDITION_UPDATE_PARA_NONE;
+
+    while (ulIndex < ulMsgSize)
+    {
+        if (0x33 == pucMsg[ulIndex])
+        {
+            ulIndex = ulIndex + 5;
+        }
+        else if (0xC0 == (pucMsg[ulIndex] & 0xF0 ))
+        {
+            switch (pucMsg[ulIndex] & 0x3)
+            {
+                case 1:
+                    *penAdditionUpdatePara = NAS_ADDITION_UPDATE_PARA_MT;
+                    break;
+
+                case 2:
+                    *penAdditionUpdatePara = NAS_ADDITION_UPDATE_PARA_MO;
+                    break;
+
+                case 3:
+                    *penAdditionUpdatePara = NAS_ADDITION_UPDATE_PARA_MO_MT;
+                    break;
+
+                default:
+                    *penAdditionUpdatePara = NAS_ADDITION_UPDATE_PARA_NONE;
+                    break;
+            }
+            break;
+        }
+        else if (0xD0 == (pucMsg[ulIndex] & 0xF0 ))
+        {
+            ulIndex = ulIndex + 1;
+        }
+        else if (0xE0 == (pucMsg[ulIndex] & 0xF0 ))
+        {
+            ulIndex = ulIndex + 1;
+        }
+        else
+        {
+            ulIndex = ulIndex + 1;
+        }
+    }
+
+    return VOS_OK;
+}
+
 #ifdef  __cplusplus
   #if  __cplusplus
   }

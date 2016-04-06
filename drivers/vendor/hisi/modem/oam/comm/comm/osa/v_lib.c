@@ -54,7 +54,7 @@ extern "C" {
 #define MASK_BIT_01             0x00000001
 #define MASK_HI_NBITS(x)        (MASK_BIT_ALL << (MAX_SHIFT_NUM - (x)))
 
-#define VOS_STOL(S)             (VOS_UINT32)(S)
+#define VOS_STOL(S)             (VOS_UINT_PTR)(S)
 
 
 typedef enum _bit64CompareResult
@@ -241,7 +241,7 @@ VOS_CHAR VOS_CharToLower( VOS_CHAR Char )
  Return     :
  Other      :
  *****************************************************************************/
-VOS_INT8 VOS_StrNiCmp( VOS_CHAR * Str1, VOS_CHAR * Str2, SIZE_T Length )
+VOS_INT8 VOS_StrNiCmp( VOS_CHAR * Str1, VOS_CHAR * Str2, VOS_SIZE_T Length )
 {
     VOS_CHAR Char1, Char2;
     VOS_CHAR *pTempStr1 = Str1;
@@ -395,7 +395,7 @@ VOS_UINT32 VOS_StrLen( VOS_CHAR * Str )
 
     for (sc = Str; *sc != '\0'; ++sc)
         /* nothing */;
-    return VOS_STOL(sc) - VOS_STOL(Str);
+    return (VOS_UINT32)(VOS_STOL(sc) - VOS_STOL(Str));
 }
 
 /*****************************************************************************
@@ -439,7 +439,7 @@ VOS_CHAR* VOS_StrRChr( VOS_CHAR * Str, VOS_CHAR Char )
  Return     :
  Other      :
  *****************************************************************************/
-VOS_INT VOS_MemCmp( const VOS_VOID * Dest, const VOS_VOID * Src, SIZE_T Count )
+VOS_INT VOS_MemCmp( const VOS_VOID * Dest, const VOS_VOID * Src, VOS_SIZE_T Count )
 {
     /*const unsigned char *su1, *su2;
     int res = 0;*/
@@ -518,7 +518,7 @@ VOS_CHAR * VOS_StrStr( VOS_CHAR * Str1, VOS_CHAR * Str2 )
  Return     : A pointer to Dest
  Other      :
  *****************************************************************************/
-VOS_CHAR *VOS_StrNCpy( VOS_CHAR *Dest, VOS_CHAR *Src, SIZE_T Count )
+VOS_CHAR *VOS_StrNCpy( VOS_CHAR *Dest, VOS_CHAR *Src, VOS_SIZE_T Count )
 {
     char *tmp = Dest;
     char *pTempSrc = Src;
@@ -599,7 +599,7 @@ VOS_UINT32 VOS_StrNLen( VOS_CHAR * Str, VOS_UINT32 Count )
         /* nothing */
     }
 
-    return VOS_STOL( Temp ) - VOS_STOL( Str );
+    return (VOS_UINT32)(VOS_STOL( Temp ) - VOS_STOL( Str ));
 }
 #endif /* DMT */
 
@@ -613,7 +613,7 @@ VOS_UINT32 VOS_StrNLen( VOS_CHAR * Str, VOS_UINT32 Count )
  Return     : None
  Other      :
  *****************************************************************************/
-VOS_VOID * V_MemSet( VOS_VOID * ToSet, VOS_CHAR Char, SIZE_T Count,
+VOS_VOID * V_MemSet( VOS_VOID * ToSet, VOS_CHAR Char, VOS_SIZE_T Count,
                      VOS_UINT32 ulFileID, VOS_INT32 usLineNo )
 {
     VOS_UINT32  ulSize;
@@ -662,7 +662,7 @@ VOS_VOID * V_MemSet( VOS_VOID * ToSet, VOS_CHAR Char, SIZE_T Count,
  Return     :
  Other      :
  *****************************************************************************/
-VOS_VOID * V_MemCpy( VOS_VOID * Dest, const VOS_VOID * Src, SIZE_T Count,
+VOS_VOID * V_MemCpy( VOS_VOID * Dest, const VOS_VOID * Src, VOS_SIZE_T Count,
                        VOS_UINT32 ulFileID, VOS_INT32 usLineNo )
 {
     VOS_UINT32  ulSize;
@@ -718,7 +718,7 @@ VOS_VOID * V_MemCpy( VOS_VOID * Dest, const VOS_VOID * Src, SIZE_T Count,
  Return     :
  Other      :
  *****************************************************************************/
-VOS_VOID * V_MemMove( VOS_VOID * Dest, const VOS_VOID * Src, SIZE_T Count,
+VOS_VOID * V_MemMove( VOS_VOID * Dest, const VOS_VOID * Src, VOS_SIZE_T Count,
                         VOS_UINT32 ulFileID, VOS_INT32 usLineNo )
 {
 	VOS_UINT32  ulSize;
@@ -1254,7 +1254,7 @@ overflowHandle:
  Return     : The length of the string segment
  Other      :
  *****************************************************************************/
-SIZE_T VOS_StrSpn(const VOS_CHAR *Str1, const VOS_CHAR *Str2)
+VOS_SIZE_T VOS_StrSpn(const VOS_CHAR *Str1, const VOS_CHAR *Str2)
 {
     const VOS_CHAR *pscSave;
     const VOS_CHAR *pscTemp;

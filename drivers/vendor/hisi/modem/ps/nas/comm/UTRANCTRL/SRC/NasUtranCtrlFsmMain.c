@@ -366,6 +366,26 @@ VOS_UINT32 NAS_UTRANCTRL_RcvMmcGmmStartCnf_Main(
 }
 
 
+VOS_UINT32 NAS_UTRANCTRL_RcvPlmnSearchReq_Main(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+)
+{
+    NAS_UTRANCTRL_SetSwithOnPlmnSearchFlag(VOS_TRUE);
+
+    /* 消息未被处理完成需继续处理 */
+    return VOS_FALSE;
+}
+VOS_UINT32 NAS_UTRANCTRL_RcvMmaAcqReq_Main(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+)
+{
+    NAS_UTRANCTRL_SetSwithOnPlmnSearchFlag(VOS_FALSE);
+
+    /* 消息未被处理完成需继续处理 */
+    return VOS_FALSE;
+}
 VOS_UINT32 NAS_UTRANCTRL_RcvPlmnSpecialReq_Main(
     VOS_UINT32                          ulEventType,
     struct MsgCB                       *pstMsg
@@ -375,6 +395,8 @@ VOS_UINT32 NAS_UTRANCTRL_RcvPlmnSpecialReq_Main(
     {
         NAS_UTRANCTRL_SetSearchedSpecTdMccFlg(VOS_FALSE);
     }
+
+    NAS_UTRANCTRL_SetSwithOnPlmnSearchFlag(VOS_FALSE);
 
     /* 消息未被处理完成需继续处理 */
     return VOS_FALSE;
@@ -775,6 +797,14 @@ VOS_UINT32 NAS_UTRANCTRL_RcvWasPlmnSrchCnf_Main(
     RRMM_PLMN_SEARCH_CNF_STRU          *pstSrchCnfMsg;
     NAS_UTRANCTRL_UTRAN_MODE_ENUM_UINT8 enUtranMode;
 
+    VOS_UINT32                          ulExistHongKongMcc;
+    NAS_MMC_DPLMN_NPLMN_CFG_INFO_STRU  *pstDPlmnNPlmnInfo = VOS_NULL_PTR;
+    VOS_UINT8                           ucSwitchOnPlmnSearchFlag;
+
+    ulExistHongKongMcc = VOS_FALSE;
+    pstDPlmnNPlmnInfo  = NAS_MMC_GetDPlmnNPlmnCfgInfo();
+    ucSwitchOnPlmnSearchFlag = NAS_UTRANCTRL_GetSwithOnPlmnSearchFlag();
+
     enUtranMode     = NAS_UTRANCTRL_GetCurrUtranMode();
 
     pstSrchCnfMsg   = (RRMM_PLMN_SEARCH_CNF_STRU *)pstMsg;
@@ -842,16 +872,51 @@ VOS_UINT32 NAS_UTRANCTRL_RcvWasPlmnSrchCnf_Main(
         NAS_UTRANCTRL_SetCurrUtranMode(NAS_UTRANCTRL_UTRAN_MODE_TDD);
     }
 
+
+    ulExistHongKongMcc = NAS_UTRANCTRL_IsSpecPlmnMccInGuRrcPlmnIdList(NAS_UTRANCTRL_HONGKONG_MCC, &(pstSrchCnfMsg->PlmnIdList));
+
+    if ((NAS_UTRANCTRL_UTRAN_MODE_FDD == NAS_UTRANCTRL_GetCurrUtranMode())
+     && (VOS_FALSE == ulExistHongKongMcc)
+     && (VOS_TRUE == pstDPlmnNPlmnInfo->ucActiveFlg)
+     && (VOS_TRUE == ucSwitchOnPlmnSearchFlag)
+     && ((pstSrchCnfMsg->PlmnIdList.ulHighPlmnNum != 0)
+      || (pstSrchCnfMsg->PlmnIdList.ulLowPlmnNum != 0)))
+    {
+        /* 开机搜网场景，如果was搜网结果中没有一个网络mcc在tds mcc列表中且不包括香港网络，且高低质量网络个数不全为0，
+           则跳过tds搜网，清除缓存*/
+        NAS_UTRANCTRL_ClearBufferedSndUtranReqMsg();
+
+        /* 进入MMC状态机处理 */
+        return VOS_FALSE;
+    }
+
     /* 切换到适配模块的选网状态机进行处理 */
     NAS_UTRANCTRL_SwitchCurrFsmCtx(NAS_UTRANCTRL_FSM_PLMN_SELECTION);
 
     /* was的搜网回复消息在适配模块的选网状态机进行处理  */
     return VOS_TRUE;
 }
+VOS_UINT32 NAS_UTRANCTRL_RcvInterAbortUtranCtrlPlmnSearchReq_Main(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+)
+{
 
+    /* 如果当前UTRANCTRL模的等指定搜网回复时状态定时器运行则停止定时器 */
+    if (NAS_MMC_TIMER_STATUS_RUNING == NAS_UTRANCTRL_GetTimerStatus(TI_NAS_UTRANCTRL_WAIT_WAS_PLMN_SEARCH_CNF))
+    {
+        NAS_UTRANCTRL_StopTimer(TI_NAS_UTRANCTRL_WAIT_WAS_PLMN_SEARCH_CNF);
+    }
 
+    /* 更新utran mode为fdd，utranctrl 搜网状态机退出，消息进mmc继续处理，通知接入层打断由mmc处理 */
+    NAS_UTRANCTRL_SetCurrUtranMode(NAS_UTRANCTRL_UTRAN_MODE_FDD);
 
+    /* 通知mmc MMCMMC_INTER_ABORT_UTRAN_CTRL_PLMN_SEARCH_CNF*/
+    NAS_MMC_SndInterAbortUtranCtrlPlmnSearchCnfMsg();
 
+    return VOS_TRUE;
+
+}
 VOS_UINT32 NAS_UTRANCTRL_RcvMmcInterSkipSearchWasIndMsg_Main(
     VOS_UINT32                          ulEventType,
     struct MsgCB                       *pstMsg
@@ -866,7 +931,20 @@ VOS_UINT32 NAS_UTRANCTRL_RcvMmcInterSkipSearchWasIndMsg_Main(
     /* was的搜网回复消息在适配模块的选网状态机进行处理  */
     return VOS_TRUE;
 }
+VOS_UINT32 NAS_UTRANCTRL_RcvMmcInterSkipSearchTdsIndMsg_Main(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+)
+{
+    /* SKIP TDS时候，则设置当前为FDD模式 */
+    NAS_UTRANCTRL_SetCurrUtranMode(NAS_UTRANCTRL_UTRAN_MODE_FDD);
 
+    /* 切换到适配模块的选网状态机进行处理 */
+    NAS_UTRANCTRL_SwitchCurrFsmCtx(NAS_UTRANCTRL_FSM_PLMN_SELECTION);
+
+    /* tds的搜网回复消息在适配模块的选网状态机进行处理  */
+    return VOS_TRUE;
+}
 
 
 
@@ -1218,6 +1296,8 @@ VOS_UINT32 NAS_UTRANCTRL_RcvMmcInterSearchReq_Main(
     {
         NAS_UTRANCTRL_SetSearchedSpecTdMccFlg(VOS_FALSE);
     }
+
+    NAS_UTRANCTRL_SetSwithOnPlmnSearchFlag(VOS_FALSE);
 
     /* 当前消息进入后续MMC状态机处理 */
     return VOS_FALSE;

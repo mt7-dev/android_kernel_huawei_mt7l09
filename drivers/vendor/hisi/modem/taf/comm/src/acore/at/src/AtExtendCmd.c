@@ -9,6 +9,7 @@
 #include "AtDeviceCmd.h"
 #include "AtCmdPacketProc.h"
 
+#include "AtTestParaCmd.h"
 #ifdef __cplusplus
 #if __cplusplus
 extern "C" {
@@ -137,7 +138,7 @@ AT_PAR_CMD_ELEMENT_STRU g_astAtExtendCmdTbl[] =
     (TAF_UINT8*)"+CCHC",    (TAF_UINT8*)"(0-4294967295)"},
 
     {AT_CMD_CGLA,
-    At_SetCglaPara, AT_SET_PARA_TIME, TAF_NULL_PTR,    AT_NOT_SET_TIME,  At_CmdTestProcOK, AT_NOT_SET_TIME,
+    At_SetCglaPara, AT_SET_CGLA_PARA_TIME, TAF_NULL_PTR,    AT_NOT_SET_TIME,  At_CmdTestProcOK, AT_NOT_SET_TIME,
     VOS_NULL_PTR,        AT_NOT_SET_TIME,
     AT_CME_INCORRECT_PARAMETERS, CMD_TBL_NO_LIMITED,
     (TAF_UINT8*)"+CGLA",    (TAF_UINT8*)"(0-4294967295),(8-522),(command)"},
@@ -697,6 +698,15 @@ AT_PAR_CMD_ELEMENT_STRU g_astAtExtendCmdTbl[] =
     VOS_NULL_PTR,        AT_NOT_SET_TIME,
     AT_CME_INCORRECT_PARAMETERS,    CMD_TBL_NO_LIMITED,
     (VOS_UINT8 *)"+CIREP",   (VOS_UINT8 *)"(0,1)"},
+
+    /* Added by zwx247453 for VOLTE SWITCH, 2015-02-02, Begin */
+    {AT_CMD_CEVDP,
+    AT_SetCevdpPara, AT_SET_PARA_TIME,   AT_QryCevdpPara,     AT_QRY_PARA_TIME,    VOS_NULL_PTR, AT_NOT_SET_TIME,
+    VOS_NULL_PTR,   AT_NOT_SET_TIME,
+    AT_CME_INCORRECT_PARAMETERS, CMD_TBL_NO_LIMITED,
+    (VOS_UINT8*)"+CEVDP", (VOS_UINT8*)"(1-4)"},
+    /* Added by zwx247453 for VOLTE SWITCH, 2015-02-02, End */
+
 #endif
 
 #if (FEATURE_ON == FEATURE_AT_HSUART)
@@ -718,6 +728,12 @@ AT_PAR_CMD_ELEMENT_STRU g_astAtExtendCmdTbl[] =
     AT_CME_INCORRECT_PARAMETERS,    CMD_TBL_PIN_IS_LOCKED,
     (VOS_UINT8 *)"+IFC",    (VOS_UINT8 *)"(0,2),(0,2)"},
 #endif
+    {AT_CMD_CCLK,
+    AT_SetCclkPara,  AT_NOT_SET_TIME,   AT_QryCclkPara,   AT_NOT_SET_TIME,    VOS_NULL_PTR, AT_NOT_SET_TIME,
+    VOS_NULL_PTR,   AT_NOT_SET_TIME,
+    AT_CME_INCORRECT_PARAMETERS,    CMD_TBL_PIN_IS_LOCKED,
+    (VOS_UINT8 *)"+CCLK",    VOS_NULL_PTR},
+
 };
 
 /*****************************************************************************

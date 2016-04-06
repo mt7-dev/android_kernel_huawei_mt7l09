@@ -23,7 +23,7 @@ VOS_VOID diag_HsicAppRdCB(VOS_VOID)
 }
 
 
-#ifdef FEATURE_UPGRADE_TL
+#ifndef FEATURE_USB_ZERO_COPY
 VOS_VOID diag_HsicCtrlWrtCB (VOS_CHAR* pDoneBuff, VOS_INT s32DoneSize)
 #else
 VOS_VOID diag_HsicCtrlWrtCB (VOS_CHAR* pDoneBuff,VOS_CHAR* phyAddr,VOS_INT s32DoneSize)
@@ -32,7 +32,7 @@ VOS_VOID diag_HsicCtrlWrtCB (VOS_CHAR* pDoneBuff,VOS_CHAR* phyAddr,VOS_INT s32Do
     diag_PortWrtCB(EN_DIAG_HSIC_BEARER_DIAG_CTRL,pDoneBuff,s32DoneSize);
 }
 
-#ifdef FEATURE_UPGRADE_TL
+#ifndef FEATURE_USB_ZERO_COPY
 VOS_VOID diag_HsicAppWrtCB (VOS_CHAR* pDoneBuff, VOS_INT s32DoneSize)
 #else
 VOS_VOID diag_HsicAppWrtCB (VOS_CHAR* pDoneBuff,VOS_CHAR* phyAddr,VOS_INT s32DoneSize)

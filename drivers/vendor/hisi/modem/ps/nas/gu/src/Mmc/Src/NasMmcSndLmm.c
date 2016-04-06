@@ -500,10 +500,10 @@ VOS_VOID NAS_MMC_BuildSndLmmEquPlmnInfo(
 
     ucEmcPdpStatusFlg = NAS_MML_GetEmcPdpStatusFlg();
 
-            
+
     /* 获取禁止接入技术的PLMN信息 */
     pstDisabledRatPlmnCfg = NAS_MML_GetDisabledRatPlmnCfg();
-    
+
     /* 获取运营商定制的MCC列表 */
     NAS_MML_GetRoamEnabledMccList(aulComparedMcc);
 
@@ -512,7 +512,7 @@ VOS_VOID NAS_MMC_BuildSndLmmEquPlmnInfo(
 
     ucSndEplmnNum   = pstEquPlmnInfo->ucEquPlmnNum;
     PS_MEM_CPY(astUniquePlmnList, pstEquPlmnInfo->astEquPlmnAddr, ucSndEplmnNum * sizeof(NAS_MML_PLMN_ID_STRU));
-    
+
     /* 从列表中删除重复的网络 */
     NAS_MMC_DelDuplicatedPlmnInPlmnList(&ucSndEplmnNum, astUniquePlmnList);
 
@@ -529,12 +529,12 @@ VOS_VOID NAS_MMC_BuildSndLmmEquPlmnInfo(
         /* 删除forb plmn for gprs */
         NAS_MML_DelPlmnsInRefList(&ucSndEplmnNum, astUniquePlmnList,
                        pstForbidPlmnInfo->ucForbGprsPlmnNum, pstForbidPlmnInfo->astForbGprsPlmnList);
-        
+
         /* 删除在禁止接入技术的PLMN列表中的EPLMN */
-        NAS_MML_DelEqualPlmnsInDisableRatList(&ucSndEplmnNum, 
-                                              astUniquePlmnList, 
+        NAS_MML_DelEqualPlmnsInDisableRatList(&ucSndEplmnNum,
+                                              astUniquePlmnList,
                                               NAS_MML_NET_RAT_TYPE_LTE,
-                                              pstDisabledRatPlmnCfg->ulDisabledRatPlmnNum, 
+                                              pstDisabledRatPlmnCfg->ulDisabledRatPlmnNum,
                                               pstDisabledRatPlmnCfg->astDisabledRatPlmnId);
 
     }
@@ -1411,6 +1411,60 @@ VOS_VOID  NAS_MMC_SndLmmEnableLteNotify(VOS_VOID)
 }
 
 
+
+VOS_VOID NAS_MMC_SndLmmCsConnStatusNotify(
+    VOS_UINT8                           ucCsRrConnStatusFlg,
+    VOS_UINT8                           ucCsEmergencyConnStatusFlg
+)
+{
+    MMC_LMM_CS_CONN_STATUS_NOTIFY_STRU *pstMsg = VOS_NULL_PTR;
+
+#if (VOS_WIN32 == VOS_OS_VER)
+
+    /* 申请内存 */
+    pstMsg = (MMC_LMM_CS_CONN_STATUS_NOTIFY_STRU *)PS_ALLOC_MSG(WUEPS_PID_MMC,
+                                               sizeof(MMC_LMM_CS_CONN_STATUS_NOTIFY_STRU) - VOS_MSG_HEAD_LENGTH);
+#else
+    pstMsg = (MMC_LMM_CS_CONN_STATUS_NOTIFY_STRU *)NAS_MML_GetIntMsgSendBuf(sizeof(MMC_LMM_CS_CONN_STATUS_NOTIFY_STRU));
+#endif
+
+    if (VOS_NULL_PTR == pstMsg)
+    {
+        NAS_ERROR_LOG(WUEPS_PID_MM, "NAS_MMC_SndLmmConnStatusNotify():ERROR:MALLOC MEMORY FAILURE");
+        return ;
+    }
+
+    PS_MEM_SET((VOS_INT8*)pstMsg + VOS_MSG_HEAD_LENGTH, 0,
+                    sizeof(MMC_LMM_CS_CONN_STATUS_NOTIFY_STRU) - VOS_MSG_HEAD_LENGTH);
+
+    pstMsg->ulReceiverCpuId             = VOS_LOCAL_CPUID;
+    pstMsg->ulReceiverPid               = PS_PID_MM;
+    pstMsg->ulSenderCpuId               = VOS_LOCAL_CPUID;
+    pstMsg->ulSenderPid                 = WUEPS_PID_MMC;
+    pstMsg->ulLength                    = sizeof(MMC_LMM_CS_CONN_STATUS_NOTIFY_STRU) - VOS_MSG_HEAD_LENGTH;
+    pstMsg->ulMsgId                     = ID_MMC_LMM_CS_CONN_STATUS_NOTIFY;
+    pstMsg->ulOpId                      = 0;
+    pstMsg->ucCsRrConnStatusFlg         = ucCsRrConnStatusFlg;
+    pstMsg->ucCsEmergencyConnStatusFlg  = ucCsEmergencyConnStatusFlg;
+    
+
+#if (VOS_WIN32 == VOS_OS_VER)
+
+    /* 调用VOS发送原语 */
+    if ( VOS_OK != PS_SEND_MSG( WUEPS_PID_MM, pstMsg ) )
+    {
+        NAS_ERROR_LOG(WUEPS_PID_MMC, "NAS_MMC_SndLmmConnStatusNotify():ERROR:SEND MESSAGE FAILURE");
+        return ;
+    }
+#else
+
+    /* 内部消息的发送 */
+    NAS_MML_SndInternalMsg(pstMsg);
+
+#endif
+
+    return;
+}
 VOS_UINT32  NAS_MMC_FormatProcTypeToLmm(
     NAS_MML_PROC_TYPE_ENUM_U32          enProcType,
     MMC_LMM_ACTION_TYPE_ENUM_UINT32    *penActionType
@@ -1469,6 +1523,9 @@ VOS_UINT32  NAS_MMC_FormatProcTypeToLmm(
 
     return VOS_OK;
 }
+
+
+
 VOS_UINT32  NAS_MMC_ConvertAttachTypeToLmm(
     VOS_UINT32                          ulAttachType,
     MMC_LMM_ATT_REQ_TYPE_ENUM_UINT32   *penLmmAttachType
@@ -3209,6 +3266,62 @@ VOS_VOID NAS_MMC_SndLmmImsVoiceCapChangeNtf(
 }
 
 
+
+
+VOS_VOID NAS_MMC_SndLmmVoiceDomainChangeInd(
+    MMC_LMM_VOICE_DOMAIN_ENUM_UINT32    enVoiceDomain
+)
+{
+    MMC_LMM_VOICE_DOMAIN_CHANGE_IND_STRU       *pstMsg     = VOS_NULL_PTR;
+    VOS_UINT32                                  ulRet;
+
+#if (defined (NAS_STUB) || defined(__PS_WIN32_RECUR__))
+    pstMsg = (MMC_LMM_VOICE_DOMAIN_CHANGE_IND_STRU *)PS_ALLOC_MSG(WUEPS_PID_MMC,
+                                               sizeof(MMC_LMM_VOICE_DOMAIN_CHANGE_IND_STRU) - VOS_MSG_HEAD_LENGTH);
+#else
+    pstMsg = (MMC_LMM_VOICE_DOMAIN_CHANGE_IND_STRU *)NAS_MML_GetIntMsgSendBuf(sizeof(MMC_LMM_VOICE_DOMAIN_CHANGE_IND_STRU));
+#endif
+
+    /* 若分配内存出错,返回*/
+    if (VOS_NULL_PTR == pstMsg)
+    {
+        NAS_ERROR_LOG(WUEPS_PID_MMC, "NAS_MMC_SndLmmVoiceDomainChangeInd():ERROR:Memory Alloc Error for pstMsg");
+
+        return;
+    }
+
+    PS_MEM_SET( (VOS_INT8*)pstMsg + VOS_MSG_HEAD_LENGTH, 0X0,
+               sizeof(MMC_LMM_VOICE_DOMAIN_CHANGE_IND_STRU) - VOS_MSG_HEAD_LENGTH );
+
+    /* 消息IE项赋值 */
+    pstMsg->ulReceiverPid   = PS_PID_MM;
+    pstMsg->ulReceiverCpuId = VOS_LOCAL_CPUID;
+    pstMsg->ulSenderCpuId   = VOS_LOCAL_CPUID;
+    pstMsg->ulSenderPid     = WUEPS_PID_MMC;
+    pstMsg->ulMsgId         = ID_MMC_LMM_VOICE_DOMAIN_CHANGE_IND;
+    pstMsg->ulLength        = sizeof(MMC_LMM_VOICE_DOMAIN_CHANGE_IND_STRU) - VOS_MSG_HEAD_LENGTH;
+    pstMsg->enVoiceDomain   = enVoiceDomain;
+
+#if (defined (NAS_STUB) || defined(__PS_WIN32_RECUR__))
+    /* 调用VOS发送原语 */
+    ulRet = PS_SEND_MSG( WUEPS_PID_MMC, pstMsg );
+    if ( VOS_OK != ulRet )
+    {
+        NAS_ERROR_LOG(WUEPS_PID_MMC, "NAS_MMC_SndLmmVoiceDomainChangeInd():ERROR:SEND MESSAGE FAILURE");
+
+        return;
+    }
+#else
+    /* 内部消息的发送 */
+    ulRet = NAS_MML_SndInternalMsg(pstMsg);
+    if ( VOS_TRUE != ulRet )
+    {
+        NAS_ERROR_LOG(WUEPS_PID_MMC, "NAS_MMC_SndLmmVoiceDomainChangeInd():ERROR:SEND MESSAGE FAILURE");
+
+        return;
+    }
+#endif
+}
 
 #endif
 

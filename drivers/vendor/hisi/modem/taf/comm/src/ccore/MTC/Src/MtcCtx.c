@@ -303,6 +303,23 @@ MTC_MODEM_POWER_STATE_ENUM_UINT8 MTC_GetModemPowerState(MODEM_ID_ENUM_UINT16 enM
 }
 
 
+VOS_VOID MTC_SetModemImsaState(
+    MODEM_ID_ENUM_UINT16                enModemId,
+    MTC_MODEM_POWER_STATE_ENUM_UINT8    enState
+)
+{
+    MTC_GetCtxAddr()->astModemInfo[enModemId].enImsaState = enState;
+
+    return;
+}
+
+
+MTC_MODEM_POWER_STATE_ENUM_UINT8 MTC_GetModemImsaState(MODEM_ID_ENUM_UINT16 enModemId)
+{
+    return MTC_GetModemCtxAddr(enModemId)->enImsaState;
+}
+
+
 VOS_VOID MTC_SetModemUsimValidFlag(
     MODEM_ID_ENUM_UINT16                enModemId,
     VOS_UINT8                           ucUsimValidStatus

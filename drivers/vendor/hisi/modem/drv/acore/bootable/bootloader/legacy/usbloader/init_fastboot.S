@@ -69,26 +69,6 @@ USB_BURN:
     BEQ    MAIN
 
     /* load flash partition table start */
-#ifndef BSP_CONFIG_EDA
-LOAD_PARTITION_TABLE:
-    #ifndef NANDC_OOBLENGTH_8BITECCTYPE
-    /* set oob length 32Byte, just effective for ecc type 8bit/512Byte */
-    LDR    r1, =(HI_NANDC_REGBASE_ADDR + HI_NFC_OOB_SEL_OFFSET)
-    LDR    r2, =0
-    STR    r2, [r1]
-    #endif
-    /* prepare for read fastboot from flash */
-    LDR    r1, =(PTABLE_NAND_OFFSET + NANDC_BUF_BASE_ADDR)
-    LDR    r2, =SHM_MEM_PTABLE_ADDR
-    LDR    r3, =SHM_MEM_PTABLE_SIZE
-    ADD    r3,r3,r2
-LOOP_PTABLE:
-    LDMIA  r1!,{r4-r11}
-    STMIA  r2!,{r4-r11}
-    CMP    r2,r3
-    BLO    LOOP_PTABLE
-#endif
-
 MAIN:
     /* call main */
     LDR r4, =_main

@@ -122,6 +122,13 @@ VOS_UINT32 AT_TestApThroughputPara(VOS_UINT8 ucIndex);
 
 VOS_UINT32 AT_SetApEndPppPara(VOS_UINT8 ucIndex);
 
+VOS_UINT32 AT_SetApDsFlowRptCfgPara(VOS_UINT8 ucIndex);
+VOS_UINT32 AT_QryApDsFlowRptCfgPara(VOS_UINT8 ucIndex);
+
+VOS_UINT32 AT_SetDsFlowNvWriteCfgPara(VOS_UINT8 ucIndex);
+VOS_UINT32 AT_QryDsFlowNvWriteCfgPara(VOS_UINT8 ucIndex);
+
+VOS_UINT32 AT_SetImsPdpCfg(VOS_UINT8 ucIndex);
 
 #if (VOS_OS_VER == VOS_WIN32)
 #pragma pack()

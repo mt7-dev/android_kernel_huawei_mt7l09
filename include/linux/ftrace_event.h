@@ -45,12 +45,7 @@ struct trace_event;
 int ftrace_raw_output_prep(struct trace_iterator *iter,
 			   struct trace_event *event);
 
-/*
- * The trace entry - the most basic unit of tracing. This is what
- * is printed in the end as a single line in the trace output, such as:
- *
- *     bash-15816 [01]   235.197585: idle_cpu <- irq_enter
- */
+
 struct trace_entry {
 	unsigned short		type;
 	unsigned char		flags;
@@ -324,10 +319,6 @@ enum {
 	FILTER_PTR_STRING,
 	FILTER_TRACE_FN,
 };
-
-#define EVENT_STORAGE_SIZE 128
-extern struct mutex event_storage_mutex;
-extern char event_storage[EVENT_STORAGE_SIZE];
 
 extern int trace_event_raw_init(struct ftrace_event_call *call);
 extern int trace_define_field(struct ftrace_event_call *call, const char *type,

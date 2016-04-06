@@ -31,6 +31,12 @@ extern "C" {
 *****************************************************************************/
 #define MN_CALL_DISC_EVENT_CAUSE_LEN        (3)
 
+#define MN_CALL_IS_OPEN_CODEC(ucCallState, ucStartedHifiFlag)           \
+               ( (CALL_IMSA_SRVCC_CALL_ACTIVE       == ucCallState)        \
+              || (CALL_IMSA_SRVCC_CALL_HELD         == ucCallState)         \
+              || ((CALL_IMSA_SRVCC_CALL_ALERTING    == ucCallState)         \
+               && (VOS_TRUE                         == ucStartedHifiFlag)))
+
 /*****************************************************************************
   3类型定义
 *****************************************************************************/
@@ -479,7 +485,7 @@ VOS_VOID  MN_CALL_UpdateSsNotify(
 *****************************************************************************/
 VOS_VOID  MN_CALL_UpdateCcCause(
     MN_CALL_ID_T                        callId,
-    MN_CALL_CC_CAUSE_ENUM_U8            enCcCause
+    NAS_CC_CAUSE_VALUE_ENUM_U32         enCcCause
 );
 
 /*****************************************************************************
@@ -542,6 +548,16 @@ VOS_VOID  MN_CALL_GetCallState(
     MN_CALL_STATE_ENUM_U8               *penCallState,
     MN_CALL_MPTY_STATE_ENUM_U8          *penMptyState
 );
+
+TAF_CALL_SUB_STATE_ENUM_UINT8 TAF_CALL_GetCallSubState(
+    MN_CALL_ID_T                        callId
+);
+
+VOS_VOID TAF_CALL_SetCallSubState(
+    MN_CALL_ID_T                        callId,
+    TAF_CALL_SUB_STATE_ENUM_UINT8       enCallSubState
+);
+
 
 /*****************************************************************************
  函 数 名  : MN_CALL_GetCallsByState
@@ -826,6 +842,13 @@ VOS_VOID  MN_CALL_UpdateTi(
     VOS_UINT8                           ucTi
 );
 
+VOS_UINT8 TAF_CALL_GetSrvccLocalAlertedFlagByCallId(
+    MN_CALL_ID_T                        callId
+);
+VOS_VOID TAF_CALL_SetSrvccLocalAlertedFlagByCallId(
+    MN_CALL_ID_T                        callId,
+    VOS_UINT8                           ucSrvccLocalAlertedFlag
+);
 
 /*****************************************************************************
  函 数 名  : MN_CALL_GetNotIdleStateCalls
@@ -1299,7 +1322,7 @@ VOS_UINT32 MN_CALL_GetUeDiscEventInfo(
 
 VOS_UINT32 MN_CALL_IsNeedCallRedial(
     MN_CALL_ID_T                        ucCallId,
-    NAS_CC_CAUSE_VALUE_ENUM_U8          enCause
+    NAS_CC_CAUSE_VALUE_ENUM_U32         enCause
 );
 VOS_UINT32 TAF_CALL_IsOrigNeedRpt(VOS_VOID);
 VOS_UINT32 TAF_CALL_IsConfNeedRpt(VOS_VOID);
@@ -1395,13 +1418,17 @@ VOS_VOID TAF_CALL_SendSupsCmdCnf(
 
 VOS_VOID TAF_CALL_CreateCallEntitiesWithImsCallInfo(
     VOS_UINT8                           ucSrvccCallNum,
-    CALL_IMSA_SRVCC_CALL_INFO_STRU     *pstSrvccCallInfo 
+    CALL_IMSA_SRVCC_CALL_INFO_STRU     *pstSrvccCallInfo,
+    VOS_UINT8                           ucStartedHifiFlag
 );
 
 VOS_VOID TAF_CALL_ProcSrvccDtmfBuffInfo(TAF_CALL_DTMF_BUFF_STRU *pstDtmfBuffInfo);
 #endif
 MN_CALL_MGMT_STRU *TAF_CALL_GetCallEntityAddr(VOS_VOID);
 
+VOS_UINT32 TAF_CALL_IsCallRedialCause(
+    NAS_CC_CAUSE_VALUE_ENUM_U32         enCause
+);
 #if ((VOS_OS_VER == VOS_WIN32) || (VOS_OS_VER == VOS_NUCLEUS))
 #pragma pack()
 #else

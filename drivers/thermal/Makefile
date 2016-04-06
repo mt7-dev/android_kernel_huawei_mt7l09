@@ -2,8 +2,13 @@
 # Makefile for sensor chip drivers.
 #
 
+ifndef CONFIG_HI6XXX_THERMAL
 obj-$(CONFIG_THERMAL)		+= thermal_sys.o
 thermal_sys-y			+= thermal_core.o
+
+# interface to/from other layers providing sensors
+thermal_sys-$(CONFIG_THERMAL_HWMON)		+= thermal_hwmon.o
+thermal_sys-$(CONFIG_THERMAL_OF)		+= of-thermal.o
 
 # governors
 thermal_sys-$(CONFIG_THERMAL_GOV_FAIR_SHARE)	+= fair_share.o
@@ -24,5 +29,6 @@ obj-$(CONFIG_ARMADA_THERMAL)	+= armada_thermal.o
 obj-$(CONFIG_DB8500_CPUFREQ_COOLING)	+= db8500_cpufreq_cooling.o
 obj-$(CONFIG_INTEL_POWERCLAMP)	+= intel_powerclamp.o
 
-obj-$(CONFIG_THERMAL_TSENSOR)	+= hisi_tsens.o
-obj-$(CONFIG_THERMAL_PERIPHERAL)	+= hisi_peripheral_tm.o hisi_ntc_tm_table.o
+obj-$(CONFIG_HI3XXX_THERMAL_TSENSOR)	+= hisi_tsens.o
+obj-$(CONFIG_HI3XXX_THERMAL_PERIPHERAL)	+= hisi_peripheral_tm.o hisi_ntc_tm_table.o
+endif

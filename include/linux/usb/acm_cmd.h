@@ -38,7 +38,8 @@ typedef enum tagUDI_IOCTL_CMD_TYPE
 /* 异步数据收发结构 */
 typedef struct tagACM_WR_ASYNC_INFO
 {
-    char* pBuffer;
+    char *pVirAddr;
+    char *pPhyAddr;
     unsigned int u32Size;
     void* pDrvPriv;
 }ACM_WR_ASYNC_INFO;
@@ -65,7 +66,7 @@ typedef struct tagACM_READ_BUFF_INFO
 }ACM_READ_BUFF_INFO;
 
 
-typedef void (*ACM_WRITE_DONE_CB_T)(char* buf, int size);
+typedef void (*ACM_WRITE_DONE_CB_T)(char *pVirAddr, char *pPhyAddr, int size);
 typedef void (*ACM_READ_DONE_CB_T)(void);
 typedef void (*ACM_EVENT_CB_T)(ACM_EVT_E evt);
 typedef void (*ACM_FREE_CB_T)(char* buf);

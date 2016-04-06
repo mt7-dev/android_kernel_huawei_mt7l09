@@ -28,9 +28,6 @@
 #include "msp_errno.h"
 #include "SOCPInterface.h"
 #include "MtaPhyInterface.h"
-#if (FEATURE_ON==FEATURE_LTE)
-#include "gen_msg.h"
-#endif
 
 #include "AcpuReset.h"
 #include "siapppih.h"
@@ -98,8 +95,6 @@ extern "C" {
 #define MN_MSG_TP_MTI_MASK              (3)
 #define MN_MSG_SMS_MAX_NUM              (255)
 
-#define TAF_MAX_FLAFH_INFO_LEN          (255)
-
 #define AT_INVALID_INDEX                (65535)
 #define AT_AP_SPEED_STRLEN              (16)
 
@@ -142,7 +137,6 @@ extern "C" {
 #define AT_GET_IPCP_LENGTH(pucData)   ((((TAF_UINT16)(*(pucData))) & 0x00FF) | ((((TAF_UINT16)(*((pucData) + 1)) << 8)) & 0xFF00))
 #endif
 
-#define AT_ATDATA_RCV_DATA_REQ(ClientId,ucRabId,ucDomain,pData,usLen)  Taf_DataReq(ClientId,ucDomain,ucRabId,usLen,pData)
 
 #define AT_STOP_TIMER_CMD_READY(ucIndex)  {\
                                               AT_StopRelTimer(ucIndex, &gastAtClientTab[ucIndex].hTimer);\
@@ -162,7 +156,7 @@ extern "C" {
 #define At_CheckCmdSms(Char,Mode)    ((0 == (Mode))?((ucAtS3) == (Char)):((((ucAtS3) == (Char)) || (('\x1a') == (Char))) || (('\x1b') == (Char))))
 #define At_CheckSplitChar(Char)      ((((ucAtS3) == (Char)) || (('\x1a') == (Char))) || (('\x1b') == (Char)))
 
-#define AT_UNICODE2VALUE(x)    (x) = ((((x) & 0x00ff) << 8) | (((x) & 0xff00) >> 8))
+#define AT_UNICODE2VALUE(x)    ((x) = ((((x) & 0x00ff) << 8) | (((x) & 0xff00) >> 8)))
 
 #define AT_CMD_BUF_LEN                          12040
 #define AT_CLIENT_NULL                          0         /*未使用状态*/
@@ -260,12 +254,16 @@ typedef TAF_UINT8   AT_MSG_DELETE_ENUM_U8;
 #define AT_QRY_PARA_TIME   (30000) /*<==A32D12429*/
 #define AT_TEST_PARA_TIME  (30000)
 
+#define AT_SET_CGLA_PARA_TIME   (90000)
+
 /* 解决DCM 461-0701-0202 461-0701-0203重传过程中AT命令提前结束问题 */
 #define AT_SMS_SET_PARA_TIME   (105000) /*<==A32D12591*/
 
 #if (FEATURE_IMS == FEATURE_ON)
 /* increase 15s for CMGS and CMSS set command */
-#define AT_SMS_CMGS_SET_PARA_TIME        (180000)
+
+#define AT_SMS_CMGS_SET_PARA_TIME        (210000)
+
 #define AT_SMS_CMSS_SET_PARA_TIME        (180000)
 /* increase 15s for SS service request command */
 #define AT_SS_CUSD_SET_PARA_TIME         (45000)
@@ -336,9 +334,9 @@ typedef TAF_UINT8   AT_MSG_DELETE_ENUM_U8;
 #define AT_HSDPA_DISABLE_STATE                  (0)     /*en_NV_Item_WAS_RadioAccess_Capa NV项中HSDPA为未使能状态*/
 #define AT_HSDSCH_PHY_CATEGORY_DEFAULT_VAL      (10)     /*en_NV_Item_WAS_RadioAccess_Capa NV项中HSDPA能力等级默认值*/
 #define AT_PS_PTL_VER_R7                        (4)     /*en_NV_Item_WAS_RadioAccess_Capa NV项中Access Stratum Release Indicator*/
-#define AT_QOS_TRAFFIC_CLASS_INTERACTIVE        (3)     /*en_NV_Item_TRAFFIC_CLASS_Type NV项中TrafficClass的默认值*/
+
 #define AT_SIM_LOCK_MNC_NUM_DEFAULT_VAL         (0xaa)     /*en_NV_Item_CustomizeSimLockPlmnInfo NV项中mnc num的默认值*/
-#define AT_SIM_LOCK_PLMN_RANGE_DEFAULT_VAL      (0xAA)  /*en_NV_Item_CustomizeSimLockPlmnInfo NV中range_begin和range_end的默认值*/
+#define AT_SIM_LOCK_PLMN_RANGE_DEFAULT_VAL      (0xAAU)  /*en_NV_Item_CustomizeSimLockPlmnInfo NV中range_begin和range_end的默认值*/
 #define AT_SIM_LOCK_MAXTIMES_DEFAULT_VAL        (10)    /*en_NV_Item_CustomizeSimLockMaxTimes NV中LockMaxTimes的默认值*/
 #define AT_GPRS_ACT_TIMER_LEN_DEFAULT_VAL       (0)     /*en_NV_Item_GPRS_ActiveTimerLength NV项默认值为20s,单位:秒*/
 #define AT_HSDSCH_PHY_CATEGORY_6                (6)     /*WAS_HSDSCH_PHY_CATEGORY_6*/
@@ -371,9 +369,6 @@ typedef TAF_UINT8   AT_MSG_DELETE_ENUM_U8;
 
 #define AT_AP_RATE_STRLEN                        (16)
 
-#if !defined(AT_ARRAY_SIZE)
-#define AT_ARRAY_SIZE(a)                (sizeof((a)) / sizeof((a[0])))
-#endif
 #define AT_FASTDORM_DEFAULT_TIME_LEN            (5)
 
 #define AT_FACTORY_INFO_LEN             (78)
@@ -394,6 +389,7 @@ typedef TAF_UINT8   AT_MSG_DELETE_ENUM_U8;
 #define AT_PERSONALIZATION_SUBNET_CODE_BCD_LEN              (4)         /* 锁网锁卡NETSUB类型锁网号段BCD编码的长度 */
 #define AT_PERSONALIZATION_SP_CODE_BCD_LEN                  (4)         /* 锁网锁卡SP类型锁网号段BCD编码的长度 */
 #define AT_PERSONALIZATION_CODE_FOURTH_CHAR_INDEX           (3)         /* 锁网锁卡号段第四个字符的索引 */
+#define AT_NVWRSECCTRL_PARA_SECTYPE_LEN                     (1)         /* ^NVWRSECCTRL安全控制类型参数长度 */
 
 #define AT_APSEC_CMD_MAX_LEN            (553)       /* "AT^APSEC=<SP_request>"(9+544) 命令最大长度 */
 #define AT_APSEC_CMD_MIN_LEN            (21)        /* "AT^APSEC=<SP_request>"(9+12)  命令最小长度 */
@@ -460,12 +456,33 @@ extern VOS_UINT32  At_SimlockPlmnNumToAscii(
 /*物理端口最大个数*/
 #define AT_PHY_PORT_MAX                 (AT_PORT_BUTT)
 
-/*提供给OM注册端口接收函数的接口*/
-VOS_VOID AT_RcvFuncReg(AT_PHY_PORT_ENUM_UINT32 ulPhyPort, CPM_FUNC pRcvFunc);
 
 /*提供给OM查询发送数据的函数接口*/
-
+#if (FEATURE_OFF == FEATURE_MERGE_OM_CHAN)
 extern CPM_FUNC               g_apAtPortDataRcvFuncTab[AT_PHY_PORT_MAX];
+/*提供给OM注册端口接收函数的接口*/
+VOS_VOID AT_RcvFuncReg(AT_PHY_PORT_ENUM_UINT32 ulPhyPort, CPM_FUNC pRcvFunc);
+#else
+extern CPM_RCV_FUNC               g_apAtPortDataRcvFuncTab[AT_PHY_PORT_MAX];
+/*提供给OM注册端口接收函数的接口*/
+VOS_VOID AT_RcvFuncReg(AT_PHY_PORT_ENUM_UINT32 ulPhyPort, CPM_RCV_FUNC pRcvFunc);
+#endif
+
+/*****************************************************************************
+ 枚举名    : AT_VOICE_DOMAIN_TYPE_ENUM
+ 协议表格  :
+ 枚举说明  : 优选域类型
+*****************************************************************************/
+enum AT_VOICE_DOMAIN_TYPE_ENUM
+{
+    AT_VOICE_DOMAIN_TYPE_CS_ONLY            = 1,
+    AT_VOICE_DOMAIN_TYPE_CS_PREFERRED       = 2,
+    AT_VOICE_DOMAIN_TYPE_IMS_PS_PREFERRED   = 3,
+    AT_VOICE_DOMAIN_TYPE_IMS_PS_ONLY        = 4,
+    AT_VOICE_DOMAIN_TYPE_BUTT
+};
+typedef VOS_UINT32 AT_VOICE_DOMAIN_TYPE_ENUM_UINT32;
+
 
 /*****************************************************************************
  枚举名    : AT_TEMPPRT_STATUS_IND_ENUM
@@ -1143,10 +1160,16 @@ typedef enum
     AT_CMD_CHIPSN,
     AT_CMD_HANDLEDECT,
 
+    /* Added by zhuli for VSIM, 2013-10-15 Begin */
     AT_CMD_HVSDH,
     AT_CMD_HVSST,
     AT_CMD_HVSCONT,
     AT_CMD_HVPDH,
+    AT_CMD_SCICHG,
+    AT_CMD_HVTEE,
+    AT_CMD_HVCHECKCARD,
+    /* Added by zhuli for VSIM, 2013-10-15 end */
+
     AT_CMD_EOPLMN,
 
     AT_CMD_NETSCAN,
@@ -1197,8 +1220,37 @@ typedef enum
     AT_CMD_FPOWDET,
 
     AT_CMD_JDETEX,
-	
+
     AT_CMD_CARDTYPE,
+
+    AT_CMD_GSMFREQLOCK,
+
+#if (FEATURE_ON == FEATURE_IMS)
+    AT_CMD_CALL_MODIFY_INIT,
+    AT_CMD_CALL_MODIFY_ANS,
+    AT_CMD_ECONFDIAL,
+    AT_CMD_CLCCECONF,
+    AT_CMD_ECONFERR,
+#endif
+    AT_CMD_CHLD_EX,
+    AT_CMD_CDMACONNST,
+    AT_CMD_CCLK,
+
+    AT_CMD_APDSFLOWRPTCFG,
+
+    AT_CMD_DSFLOWNVWRCFG,
+
+    /* Added by zwx247453 for VOLTE SWITCH, 2015-02-02, Begin */
+    AT_CMD_IMSSWITCH,
+    AT_CMD_CEVDP,
+    /* Added by zwx247453 for VOLTE SWITCH, 2015-02-02, End */
+
+    AT_CMD_NVWRSECCTRL,
+
+    AT_CMD_IMSPDPCFG,
+
+    AT_CMD_LOGENALBE,
+
     AT_CMD_COMM_BUTT,
 
 }AT_CMD_INDEX_ENUM;
@@ -1233,7 +1285,6 @@ typedef enum
 
     AT_CMD_H_SET,
     AT_CMD_END_SET,
-    AT_CMD_CALL_END_SET,
     AT_CMD_H_PS_SET,
 
     AT_CMD_A_SET,
@@ -1946,8 +1997,35 @@ typedef enum
     AT_CMD_FPOWDET_QRY,
 
     AT_CMD_JDETEX_SET,
-	
+
     AT_CMD_CARDTYPE_QUERY,
+    AT_CMD_GSM_FREQLOCK_SET,
+
+#if (FEATURE_ON == FEATURE_IMS)
+    AT_CMD_CALL_MODIFY_INIT_SET,
+    AT_CMD_CALL_MODIFY_ANS_SET,
+    AT_CMD_ECONF_DIAL_SET,
+    AT_CMD_CLCCECONF_QRY,
+    /* Added by zwx247453 for VOLTE SWITCH, 2015-02-02, Begin */
+    AT_CMD_IMS_SWITCH_SET,
+    AT_CMD_IMS_SWITCH_QRY,
+    AT_CMD_VOICE_DOMAIN_SET,
+    AT_CMD_VOICE_DOMAIN_QRY,
+    /* Added by zwx247453 for VOLTE SWITCH, 2015-02-02, End */
+#endif
+    AT_CMD_CHLD_EX_SET,
+    AT_CMD_APDS_SET,
+
+    AT_CMD_APDSFLOWRPTCFG_SET,
+    AT_CMD_APDSFLOWRPTCFG_QRY,
+
+    AT_CMD_DSFLOWNVWRCFG_SET,
+    AT_CMD_DSFLOWNVWRCFG_QRY,
+
+    AT_CMD_NVWRSECCTRL_SET,
+
+    AT_CMD_IMSPDPCFG_SET,
+
     AT_CMD_INVALID,
 
     /* GU模AT命令和公共命令的当前处理ID，新增命令处理ID时要添加到此ID前 */
@@ -2025,6 +2103,13 @@ typedef enum
     AT_STRING_CIREPH,
     AT_STRING_CIREPI,
     AT_STRING_CIREGU,
+
+    AT_STRING_CALL_MODIFY_IND,
+    AT_STRING_CALL_MODIFY_BEG,
+    AT_STRING_CALL_MODIFY_END,
+
+    AT_STRING_ECONFSTATE,
+
 #endif
 
     AT_STRING_BUTT
@@ -2047,10 +2132,6 @@ typedef TAF_UINT8 AT_CMD_BLOCK_STATE_TYPE;
 #define AT_CMD_PEND             1
 #define AT_CMD_ABORT            2
 
-typedef TAF_UINT8 AT_MODE_TYPE;
-#define AT_CMD_MODE                     (0)
-#define AT_DATA_MODE                    (1)
-#define AT_ONLINE_CMD_MODE              (2)
 
 typedef TAF_UINT8 AT_DATA_STATE_TYPE;
 #define AT_DATA_STOP_STATE            0
@@ -2065,9 +2146,6 @@ typedef TAF_UINT8 AT_CHANNEL_TYPE;
 #define AT_CMD_CHANNEL           0
 #define AT_DATA_CHANNEL          1
 
-typedef TAF_UINT8 AT_IND_MODE_TYPE;
-#define AT_IND_MODE             0
-#define AT_NO_IND_MODE            1
 
 typedef TAF_UINT8 AT_DATA_MODE_TYPE;
 #define AT_DATA_BUTT_MODE           0
@@ -2082,10 +2160,6 @@ typedef TAF_UINT8 AT_V_TYPE;
 #define AT_V_BREVITE_TYPE            0
 #define AT_V_ENTIRE_TYPE            1
 
-typedef TAF_UINT8 AT_CSCS_TYPE;
-#define AT_CSCS_IRA_CODE            0
-#define AT_CSCS_UCS2_CODE           1
-#define AT_CSCS_GSM_7Bit_CODE       2
 
 typedef TAF_UINT8 AT_CMD_ECHO_TYPE;
 #define AT_E_NO_ECHO_CMD            0
@@ -2309,7 +2383,6 @@ typedef TAF_UINT8 AT_SAT_ENVELOPE_TYPE;
 #define TAF_WEBUI_VER_LEN           (127)
 #define TAF_FLASH_INFO_LEN          (100)
 #define TAF_NET_MODE_LEN            (10)
-#define TAF_DLOAD_INFO_LEN          (1024)
 
 /*WIFI打开模式*/
 #define AT_WIFI_START_NORMAL         (0)
@@ -2340,20 +2413,6 @@ typedef TAF_UINT8 AT_SAT_ENVELOPE_TYPE;
 /*WIFI功率的上下限*/
 #define AT_WIFI_POWER_MIN             (-15)
 #define AT_WIFI_POWER_MAX             (30)
-
-/*WIFI 相关 NV长度*/
-#define AT_WIFI_BASIC_NV_LEN          (116)
-#define AT_WIFI_SEC_NV_LEN            (205)
-
-/*WIFI SSID KEY最大长度*/
-
-#define AT_WIFI_KEY_NUM               (AT_WIFI_MAX_SSID_NUM)
-
-
-/*WEB UI 密码最大长度*/
-#define AT_WEBUI_PWD_MAX              (16)
-#define AT_WEBUI_PWD_MAX_SET          (0)
-#define AT_WEBUI_PWD_VERIFY           (1)
 
 #define AT_FEATURE_EXIST              (1)
 #define AT_FEATURE_MAX                (15)
@@ -2451,21 +2510,7 @@ enum AT_SD_ENABLE_FLAG_ENUM
     AT_SD_ENABLE_FLAG_DISABLE,
     AT_SD_ENABLE_FLAG_BUTT
 };
-enum AT_CS_CALL_STATE_ENUM
-{
-    AT_CS_CALL_STATE_ORIG               = 0,                                    /* originate a MO Call */
-    AT_CS_CALL_STATE_CALL_PROC,                                                 /* Call is Proceeding */
-    AT_CS_CALL_STATE_ALERTING,                                                  /* Alerting,MO Call */
-    AT_CS_CALL_STATE_CONNECT,                                                   /* Call Connect */
-    AT_CS_CALL_STATE_RELEASED,                                                  /* Call Released */
-    AT_CS_CALL_STATE_INCOMMING,                                                 /* Incoming Call */
-    AT_CS_CALL_STATE_WAITING,                                                   /* Waiting Call */
-    AT_CS_CALL_STATE_HOLD,                                                      /* Hold Call */
-    AT_CS_CALL_STATE_RETRIEVE,                                                  /* Call Retrieved */
 
-    AT_CS_CALL_STATE_BUTT
-};
-typedef VOS_UINT8 AT_CS_CALL_STATE_ENUM_UINT8;
 
 
 /*****************************************************************************
@@ -2510,6 +2555,11 @@ typedef struct
     VOS_UINT8                           ucPriOrDiv;      /* 当前是主集配置还是分集配置*/
     AT_DSP_RF_ON_OFF_ENUM_UINT8         ucTxOnOff;       /* Tx On off值*/
     VOS_UINT8                           ucRxonOrTxon;    /* 记录最近一次执行的是打开接收机(RXON=1)操作还是打开发射机(TXON=1)操作*/
+
+
+
+
+    VOS_UINT8                           aucReserved[2];
     VOS_BOOL                            bPowerFlag;      /* Power是否有效*/
     VOS_UINT16                          usPower;         /* AT^FWAVE设置的功率值*/
     VOS_UINT16                          usTxMode;        /* AT^FWAVE设置的<type>值转换为发送给物理层的值(该变量只在G物理层使用):
@@ -2519,9 +2569,12 @@ typedef struct
 
 typedef struct
 {
-    TAF_UINT8                           aucBuffer[AT_SMS_SEG_MAX_LENGTH];         /*开始是SMSC的地址，之后是TPDU*/
+    MN_MSG_ASCII_ADDR_STRU              stAsciiAddr;                            /*<oa/da>[,<tooa/toda>*/
+    TAF_UINT8                           aucBuffer[AT_SMS_SEG_MAX_LENGTH];       /*开始是SMSC的地址，之后是TPDU*/
+    TAF_BOOL                            bWaitForNvStorageStatus;
+    TAF_BOOL                            bWaitForUsimStorageStatus;
+    TAF_BOOL                            bWaitForCpmsSetRsp;
     TAF_UINT8                           ucCnmaType;                             /*记录+CNMA[=<n>中的<n>*/
-    MN_MSG_ASCII_ADDR_STRU              stAsciiAddr;                                 /*<oa/da>[,<tooa/toda>*/
     TAF_UINT8                           ucPduLen;                               /*TPDU的字节数，不包括SMSC地址的字节数*/
     MN_MSG_COMMAND_TYPE_ENUM_U8         CommandType;
     TAF_UINT8                           ucMessageNumber;                        /*[1,3]或者绝对编号*/
@@ -2530,19 +2583,18 @@ typedef struct
     MN_MSG_MEM_STORE_ENUM_U8            enSmMemStore;
     TAF_UINT8                           ucMsgDeleteTypes;
     TAF_UINT8                           ucMsgSentSmNum;
-    TAF_BOOL                            bWaitForNvStorageStatus;
-    TAF_BOOL                            bWaitForUsimStorageStatus;
-    TAF_BOOL                            bWaitForCpmsSetRsp;
     TAF_UINT8                           ucFo;
     MN_MSG_TP_PID_TYPE_ENUM_U8          enPid;                                  /*TP-PID*/
+    VOS_UINT8                           aucReserved[1];
 }AT_SMS_STRU;
 
 typedef struct
 {
-    MN_CALL_CLIR_CFG_ENUM_U8    ClirInfo;
     MN_CALL_CUG_CFG_STRU        CugMode;
+    MN_CALL_CLIR_CFG_ENUM_U8    ClirInfo;
     MN_CALL_TYPE_ENUM_U8        CallType;
     MN_CALL_ID_T                CallId;
+    VOS_UINT8                   aucReserved[5];
 }AT_CALL_INFO_STRU;
 
 
@@ -2561,44 +2613,34 @@ typedef struct
     TAF_UINT8               ModemStatus;                                        /* Modem 状态 */
     AT_IND_MODE_TYPE        IndMode;                                            /* 指示当前命令模式，只针对MUX和APP */
     AT_DATA_STATE_TYPE      DataState;                                          /* 指示当前数据模式，只针对MUX和APP */
-    /* 删除usDataFlg参数 */
-
-    AT_CMD_CURRENT_OPT_ENUM CmdCurrentOpt;                                      /* 指示当前用户的命令操作类型 */
-
-    TAF_UINT16              usPppId;
-
-    pAtAppCBF               pAppCallBack;
 
     TAF_UINT8               ucCsRabId;
     TAF_UINT8               ucPsRabId;
     TAF_UINT8               ucCid;
 
-    AT_CALL_INFO_STRU       AtCallInfo;
+    AT_CMD_CURRENT_OPT_ENUM CmdCurrentOpt;                                      /* 指示当前用户的命令操作类型 */
 
     TAF_UINT32              ulCause;                                            /* 指示当前Cause值 */
 
-    /* Delete ucClckPsw */
+    pAtAppCBF               pAppCallBack;
+
+    AT_CALL_INFO_STRU       AtCallInfo;
+
+    TAF_UINT16              usPppId;
+
     TAF_UINT16              usSmsTxtLen;                                        /* 指示当前短信文本长度 */
     TAF_UINT16              usAsyRtnNum;                                        /* 指示当前挂起命令个数 */
+
+    VOS_UINT8               aucReserved[2];
 
     HTIMER                  hTimer;                                             /* 对应的定时器 */
     TAF_UINT32              ulTemp;
 
-    AT_SMS_STRU             AtSmsData;
     AT_CMD_INDEX_ENUM       CmdIndex;                                           /* 指示当前用户的命令索引 */
 
+    AT_SMS_STRU             AtSmsData;
 } AT_CLIENT_MANAGE_STRU;
 
-typedef struct
-{
-    AT_CMD_INDEX_ENUM CmdIndex;
-    pAtSetParaFunc   pSetParaFunc;
-    TAF_UINT32 ulSetTime;
-    pAtQueryParaFunc pQryParaFunc;
-    TAF_UINT32 ulQryTime;
-    TAF_UINT8  *Cmd;
-    TAF_UINT8  *Para;
-}AT_CMD_TAB_TYPE_STRU;
 
 typedef struct
 {
@@ -2608,7 +2650,7 @@ typedef struct
 
 typedef struct
 {
-    AT_RRETURN_CODE_ENUM ucIndex;
+    AT_RRETURN_CODE_ENUM_UINT32 ucIndex;
     TAF_UINT8  *Result[2];
 }AT_RETURN_TAB_TYPE_STRU;
 
@@ -2638,7 +2680,7 @@ typedef TAF_INT (*USB_SERIAL_SEND_DATA)
 typedef struct
 {
     TAF_UINT8                           ucIndex;
-    TAF_UINT8                           aucReserve1[1];
+    TAF_UINT8                           aucReserve1[5];
     TAF_UINT16                          usDataLen;
     TAF_UINT8                           *pData;
 }AT_PS_MODEM_DATA_IND_STRU;
@@ -2731,7 +2773,7 @@ typedef struct
 #define AT_SETPORT_DEV_LEN              (21)
 
 /* 设备形态对应表长度 */
-#define AT_SETPORT_DEV_MAP_LEN AT_SETPORT_DEV_LEN + 1
+#define AT_SETPORT_DEV_MAP_LEN          (AT_SETPORT_DEV_LEN + 1)
 
 /* 设备形态最多17个组合 */
 #define AT_SETPORT_PARA_MAX_LEN 17
@@ -2798,7 +2840,6 @@ typedef struct
 {
     VOS_UINT32  ulCount;                                    /* AT组合命令中';'号出现的次数 */
     VOS_UINT16  ausSCPosition[AT_COMBINE_MAX_SEMICOLON];    /* AT组合命令中';'号出现的位置(数组索引) */
-    VOS_UINT8   aucRsv[2];                                  /* 四字节对齐 */
 }AT_COMBINE_CMD_SEMICOLON_PARSE_STRU;
 
 
@@ -2810,6 +2851,7 @@ typedef struct
     {
         VOS_UINT32  ulLen;
         VOS_UINT8   aucCombineCmd[AT_COMBINE_MAX_LEN];
+        VOS_UINT8   aucReserved[3];
     }stCombineCmd[AT_COMBINE_MAX_COMBINE_CMD];
 }AT_COMBINE_CMD_SPLIT_STRU;   /* 根据分号进行AT码流的分隔，将AT码流分隔为若干个组合AT命令 */
 
@@ -2822,7 +2864,7 @@ typedef struct
     {
         VOS_UINT32  ulLen;
         VOS_UINT8   aucATCmd[AT_INDEPENDENT_CMD_MAX_LEN];
-        VOS_UINT8   ucRsv;                                  /*四字节对齐*/
+        VOS_UINT8   aucReserved[3];                         /*四字节对齐*/
     }stATCmd[AT_COMBINE_MAX_SUB_CMD];
 }AT_COMBINE_CMD_PARSE_RSLT_STRU;    /* 组合AT命令解析结果 */
 
@@ -2832,12 +2874,6 @@ typedef struct
     TAF_UINT32          ulBuffLen;                     /* 缓存码流的长度 */
     TAF_UINT8           aucDataBuff[AT_COM_BUFF_LEN];  /* 缓存码流 */
 }AT_DATA_STREAM_BUFFER_STRU;           /* AT码流缓存结构体 */
-
-typedef struct
-{
-    HTIMER                      HoldCmdTimer;
-    AT_DATA_STREAM_BUFFER_STRU  stHoldCmd;
-}AT_HOLD_CMD_STRU;    /* AT缓存结构体 */
 
 /* begin V7R1 PhaseI Modify */
 typedef struct
@@ -2851,6 +2887,7 @@ typedef struct
     MN_PH_SUB_SYS_MODE_EX_ENUM_U8       enSubSysMode;
     VOS_CHAR                           *pcStrSubSysModeName ;
 }AT_PH_SUB_SYS_MODE_TBL_STRU;
+
 /* end V7R1 PhaseI Modify */
 
 enum AT_RRC_VERSION_ENUM
@@ -2964,6 +3001,14 @@ typedef struct
     PS_BOOL_ENUM_UINT8                  enEdpdchGainFactorFlg;                  /* E-DPDCH功率回退因子使能标志位 */
     VOS_UINT8                           aucRsv4[7];
 }AT_NVIM_UE_CAPA_STRU;
+enum AT_NVWR_SEC_TYPE_ENUM
+{
+    AT_NVWR_SEC_TYPE_OFF = 0,                                                   /* 安全控制关闭 */
+    AT_NVWR_SEC_TYPE_ON,                                                        /* 安全控制开启 */
+    AT_NVWR_SEC_TYPE_BLACKLIST,                                                 /* 安全控制黑名单模式 */
+    AT_NVWR_SEC_TYPE_BUTT
+};
+typedef VOS_UINT8 AT_NVWR_SEC_TYPE_ENUM_UINT8;
 enum AT_SYSCFGEX_RAT_TYPE_ENUM
 {
     AT_SYSCFGEX_RAT_AUTO = 0,              /* 接入技术为自动模式 */
@@ -3077,30 +3122,14 @@ extern AT_PB_CONVERSION_TABLE_STRU  g_astGsmToUnicode[AT_PB_GSM_MAX_NUM];
 extern AT_PB_CONVERSION_TABLE_STRU  g_astGsm7extToUnicode[AT_PB_GSM7EXT_MAX_NUM];
 
 
-extern MN_MSG_CLASS0_TAILOR_U8                 g_enClass0Tailor;
-extern AT_PB_CONVERSION_TABLE_STRU  g_astIraToUnicode[AT_PB_IRA_MAX_NUM];
-extern AT_PB_CONVERSION_TABLE_STRU  g_astGsmToUnicode[AT_PB_GSM_MAX_NUM];
-extern AT_PB_CONVERSION_TABLE_STRU  g_astGsm7extToUnicode[AT_PB_GSM7EXT_MAX_NUM];
-
 extern AT_CMD_FORMAT_TYPE                   gucAtCmdFmtType;
-extern AT_PARSE_PARA_TYPE_STRU              gastAtParaList[AT_MAX_PARA_NUMBER];
-extern AT_PARA_NUM_RANGE_STRU               gastAtParaNumRange[AT_PARA_MAX_NUM];
-extern TAF_UINT8                            gucAtParaIndex;
 extern pAtChkFuncType                       pgAtCheckFunc;
-extern TAF_UINT8                            gucAtParaCheckIndex;
-extern TAF_UINT8                            gucAtParaNumRangeIndex;
-extern TAF_UINT8                            gucAtParaStrRangeIndex;
-extern TAF_UINT8                            gaucAtParaStrRange[AT_PARA_MAX_NUM][AT_PARA_SCALE_MAX_LEN + 1];
 extern AT_V_TYPE                            gucAtVType;            /* 指示命令返回码类型 */
 extern AT_CSCS_TYPE                         gucAtCscsType;
 extern AT_CLIENT_MANAGE_STRU                gastAtClientTab[AT_MAX_CLIENT_NUM];
-extern TAF_UINT8                            ucAtS5;
-extern TAF_UINT8                            ucAtS6;
-extern TAF_UINT8                            ucAtS7;
 extern TAF_UINT8                            gaucAtCrLf[];               /*回车换行*/
 extern const TAF_UINT8                      gaucAtCmeErrorStr[];        /*错误提示字串*/
 extern const TAF_UINT8                      gaucAtCmsErrorStr[];        /*错误提示字串*/
-extern TAF_UINT8                            gaucAtCmdNotSupportStr[];   /*命令不支持提示字串*/
 extern const TAF_UINT8                      gaucAtTooManyParaStr[];     /*参数太多提示字串*/
 extern AT_SEND_DATA_BUFFER_STRU             gstAtSendData;
 extern AT_SEND_DATA_BUFFER_STRU             gstAtCombineSendData[];
@@ -3139,10 +3168,6 @@ extern AT_SET_PORT_PARA_MAP_STRU            g_astSetPortParaMap[AT_SETPORT_DEV_M
 extern AT_DEVICE_CMD_CTRL_STRU              g_stAtDevCmdCtrl;
 extern VOS_BOOL                             g_bAtDataLocked;
 extern VOS_UINT8                            g_ucDtrDownFlag;
-
-
-
-extern AT_DOWNLINK_RATE_CATEGORY_STRU       g_stAtDlRateCategory;
 
 #if (FEATURE_ON == FEATURE_SECURITY_SHELL)
 extern AT_SP_WORD_CTX_STRU                  g_stSpWordCtx;
@@ -3189,7 +3214,6 @@ extern TAF_UINT32   At_ClientIdToUserId (TAF_UINT16 usClientId, TAF_UINT8 *pucIn
 
 extern TAF_UINT32   At_CheckPbSpecialCmd (TAF_UINT8* pData, TAF_UINT16 ulLen);
 extern TAF_VOID     At_FormatResultData(TAF_UINT8 ucIndex,TAF_UINT32 ReturnCode);
-extern TAF_UINT32   At_Auc2ul(TAF_UINT8 *nptr,TAF_UINT16 usLen,TAF_UINT32 *pRtn);
 extern TAF_UINT32   At_ParseExtendCmd(TAF_UINT8 * pData, TAF_UINT16 usLen);
 extern TAF_UINT32   At_ParseDCmd(TAF_UINT8 * pData, TAF_UINT16 usLen);
 extern TAF_UINT32   At_ParseSCmd(TAF_UINT8 * pData, TAF_UINT16 usLen);
@@ -3202,12 +3226,10 @@ extern TAF_UINT32   At_QryParaCmd(TAF_UINT8 ucIndex);
 extern TAF_VOID     At_SendResultData(TAF_UINT8 ucIndex, TAF_UINT8* pData, TAF_UINT16 usLen );
 extern VOS_VOID     AT_DisplayResultData (VOS_UINT8 ucIndex,VOS_UINT16 usLen);
 extern VOS_VOID     AT_DisplaySelResultData(VOS_UINT16 usLen,VOS_UINT8 ucCount);
-extern TAF_VOID At_RangeCopy(TAF_UINT8 *pucDst,TAF_UINT8 * pucBegain, TAF_UINT8 * pucEnd);
 extern VOS_VOID     At_ProcHoldAtCmd (VOS_UINT8 ucIndex);
 extern TAF_UINT32   At_CheckUsimStatus (
     TAF_UINT8                          *pucCmdName,
     VOS_UINT8                           ucIndex);
-extern TAF_UINT32   At_UpString(TAF_UINT8 *pData,TAF_UINT16 usLen);
 extern TAF_UINT32   At_AsciiNum2BcdNum (TAF_UINT8 *pucDst, TAF_UINT8 *pucSrc, TAF_UINT16 usSrcLen);
 extern TAF_UINT32   At_AtioRcvDataInd (TAF_UINT8 ucIndex,TAF_UINT8* pData,TAF_UINT16 usLen);
 extern TAF_UINT32   At_UnicodePrint2Unicode(TAF_UINT8 *pData,TAF_UINT16 *pLen);
@@ -3235,22 +3257,17 @@ extern TAF_UINT32 At_UnicodeTransferTo82(const TAF_UINT8 *pucData,
 extern TAF_UINT32   At_UnicodeTransfer(TAF_UINT8 *pData, TAF_UINT16 *pLen, TAF_UINT32 ulMaxLength);
 extern TAF_UINT32 At_OneUnicodeToGsm(TAF_UINT16 usSrc, TAF_UINT8 *pucDst, TAF_UINT16 *pusDstLen);
 extern TAF_VOID At_PbGsmToUnicode(TAF_UINT8 *pucSrc, TAF_UINT16 usSrcLen, TAF_UINT8 *pucDst, TAF_UINT16 *pusDstLen);
-extern TAF_UINT32 At_UnicodeTransferTo81CalcLength(const TAF_UINT8 *pucData, TAF_UINT16 usLen, TAF_UINT16 *pusBaseCode, TAF_UINT16 *pusDstLen);
-extern TAF_UINT32 At_UnicodeTransferTo82CalcLength(const TAF_UINT8 *pucData, TAF_UINT16 usLen, TAF_UINT16 *pusBaseCode, TAF_UINT16 *pusDstLen);
-extern TAF_UINT32 At_UnicodeTransferTo81(const TAF_UINT8 *pucData, TAF_UINT16 usLen, TAF_UINT16 usCodeBase, TAF_UINT8 *pucDest);
-extern TAF_UINT32 At_UnicodeTransferTo82(const TAF_UINT8 *pucData, TAF_UINT16 usLen, TAF_UINT16 usCodeBase, TAF_UINT8 *pucDest);
 extern TAF_UINT8*   At_GetStrContent(TAF_UINT32 ulType);
 extern TAF_UINT32 At_SendRxOnOffToHPA( VOS_UINT32 ulRxSwitch );
 extern TAF_UINT32 At_SendTxOnOffToHPA( TAF_UINT8 ucRxSwitch );
 extern VOS_UINT32 At_SendRxOnOffToGHPA( VOS_UINT8 ucIndex, VOS_UINT32 ulRxSwitch );
 extern VOS_UINT32 At_SendTxOnOffToGHPA( VOS_UINT8 ucIndex, VOS_UINT8 ucSwitch );
 extern TAF_UINT32   At_String2Hex(TAF_UINT8 *nptr,TAF_UINT16 usLen,TAF_UINT32 *pRtn);
-extern TAF_UINT32 At_DigitString2Hex(TAF_UINT8 *nptr,TAF_UINT16 usLen,TAF_UINT32 *pRtn);
 extern TAF_UINT32   AT_CountDigit(TAF_UINT8 *pData,TAF_UINT32 ulLen,TAF_UINT8 Char,TAF_UINT32 ulIndex);
 extern TAF_UINT16   At_UnicodeFormatPrint(const TAF_UINT8 *pSrc, TAF_UINT8 *pDest, TAF_UINT32 Dcs);
 extern TAF_UINT32   At_Ascii2UnicodePrint(TAF_UINT32 MaxLength,TAF_INT8 *headaddr,TAF_UINT8 *pucDst, TAF_UINT8 *pucSrc, TAF_UINT16 usSrcLen);
 extern TAF_UINT16   At_PrintReportData(TAF_UINT32 MaxLength,TAF_INT8 *headaddr,TAF_UINT8 ucDataCodeType,TAF_UINT8 *pucDst,TAF_UINT8 *pucSrc,TAF_UINT16 usSrcLen);
-extern TAF_UINT32   At_ChgTafErrorCode(TAF_UINT8 ucIndex,TAF_UINT16 usTafErrorCode);
+extern TAF_UINT32   At_ChgTafErrorCode(TAF_UINT8 ucIndex,TAF_ERROR_CODE_ENUM_UINT32 enTafErrorCode);
 /* Del At_AbortCmdProc */
 extern TAF_UINT32   At_CheckCharWcmd(TAF_UINT8 * pData, TAF_UINT16 usLen);
 extern TAF_UINT32   At_ParseWCmd(TAF_UINT8 * pData, TAF_UINT16 usLen);
@@ -3259,15 +3276,12 @@ extern TAF_VOID     At_UsimGsm7bit2AsciiTransfer(TAF_UINT8 *pucData, TAF_UINT32 
 extern TAF_UINT32   At_HexString2AsciiNumPrint(TAF_UINT32 MaxLength,TAF_INT8 *headaddr,TAF_UINT8 *pucDst, TAF_UINT8 *pucSrc, TAF_UINT16 usSrcLen);
 extern TAF_UINT32   At_MuxCmdProc (TAF_UINT8 ucIndex, TAF_UINT8* pData, TAF_UINT16 usLen);
 extern TAF_UINT32   At_CheckMuxCmd(TAF_UINT8 *pData,TAF_UINT16 usLen );
-extern TAF_UINT32   At_StartTimer(TAF_UINT32 usLength,TAF_UINT8 ucIndex);
 extern TAF_VOID     At_SendReportMsg(TAF_UINT8 ucType,TAF_UINT8* pData,TAF_UINT16 usLen);
 extern TAF_VOID     At_SmsMsgProc(MN_AT_IND_EVT_STRU *pstData,TAF_UINT16 usLen);
 extern TAF_VOID     At_SetMsgProc(TAF_UINT8* pData,TAF_UINT16 usLen);
 extern TAF_VOID     At_QryMsgProc(TAF_UINT8* pData,TAF_UINT16 usLen);
 extern TAF_VOID     At_CsMsgProc(MN_AT_IND_EVT_STRU *pstData,TAF_UINT16 usLen);
 extern TAF_VOID     At_PppReleaseIndProc(TAF_UINT8 ucIndex);
-extern TAF_UINT32   At_OneUnicodeToGsm(TAF_UINT16 usSrc, TAF_UINT8 *pucDst, TAF_UINT16 *pusDstLen);
-
 extern TAF_VOID     At_PhMsgProc(TAF_UINT8* pData,TAF_UINT16 usLen);
 extern TAF_VOID     At_SsMsgProc(TAF_UINT8* pData,TAF_UINT16 usLen);
 extern TAF_VOID     At_DataStatusMsgProc(TAF_UINT8* pData,TAF_UINT16 usLen);
@@ -3276,7 +3290,6 @@ extern TAF_VOID     At_SendDataProc(TAF_UINT8* pData,TAF_UINT16 usLen);
 extern TAF_VOID     At_CmdCnfMsgProc(TAF_UINT8* pData,TAF_UINT16 usLen);
 extern TAF_VOID     At_VcMsgProc(MN_AT_IND_EVT_STRU *pstData,TAF_UINT16 usLen);
 extern TAF_INT32    At_sprintf(TAF_INT32 MaxLength,TAF_CHAR *headaddr,TAF_CHAR *curraddr,const TAF_CHAR *fmt,...);
-extern TAF_INT32    At_sprintfUnsigned(TAF_INT32 MaxLength,TAF_CHAR *headaddr,TAF_CHAR *curraddr,const TAF_CHAR *fmt,...);
 extern TAF_VOID     At_PIHMsgProc(MsgBlock* pMsg);
 extern TAF_VOID     At_STKMsgProc(MsgBlock* pMsg);
 extern TAF_VOID     At_PbMsgProc(MsgBlock* pMsg);
@@ -3341,8 +3354,6 @@ extern VOS_UINT32 AT_SetTmmiPara(VOS_UINT8 ucIndex);
 extern VOS_UINT32 AT_QryTmmiPara(VOS_UINT8 ucIndex);
 extern VOS_UINT32 AT_SetChrgEnablePara(VOS_UINT8 ucIndex);
 extern VOS_UINT32 AT_QryChrgEnablePara(VOS_UINT8 ucIndex);
-
-extern VOS_UINT32 AT_TestChrgEnablePara(VOS_UINT8 ucIndex);
 
 extern VOS_UINT32 AT_QryChrgInfoPara(VOS_UINT8 ucIndex);
 extern VOS_UINT32 AT_SetTestScreenPara(VOS_UINT8 ucIndex);
@@ -3680,6 +3691,12 @@ extern VOS_UINT32   AT_SetVertime ( VOS_UINT8 ucIndex );
 /*内部设置和查询NV项命令*/
 #if ( VOS_WIN32 == VOS_OS_VER )
 extern VOS_UINT32   AT_SetNvimPara(VOS_UINT8 ucIndex);
+
+/* Modified by c00318887 for DPlmn扩容和优先接入HPLMN, 2015-5-18, begin */
+extern VOS_UINT32 AT_ResetNplmn ( VOS_UINT8 ucIndex );
+/* Modified by c00318887 for DPlmn扩容和优先接入HPLMN, 2015-5-18, end */
+
+
 extern VOS_UINT32 AT_SetPidReinitPara ( VOS_UINT8 ucIndex );
 extern VOS_UINT32   AT_SetRplmnStub( VOS_UINT8 ucIndex );
 extern TAF_UINT32 AT_SetUSIMPara(TAF_UINT8 ucIndex);
@@ -3740,7 +3757,7 @@ extern VOS_UINT32 AT_QryShellPara(VOS_UINT8 ucIndex);
 #endif
 #if (FEATURE_ON==FEATURE_LTE)
 
-extern VOS_UINT32 AT_SetRsrpCfgPara ( VOS_UINT8 ucIndex );;
+extern VOS_UINT32 AT_SetRsrpCfgPara ( VOS_UINT8 ucIndex );
 extern VOS_UINT32  AT_QryRsrpCfgPara ( VOS_UINT8 ucIndex );
 extern VOS_UINT32 AT_SetRscpCfgPara ( VOS_UINT8 ucIndex );
 extern VOS_UINT32 AT_SetEcioCfgPara ( VOS_UINT8 ucIndex );
@@ -3813,9 +3830,6 @@ extern TAF_UINT32   At_QryCsmpPara(TAF_UINT8 ucIndex);
 extern TAF_UINT32   At_QryCpmsPara(TAF_UINT8 ucIndex);
 extern TAF_UINT32   At_QryCgsmsPara(TAF_UINT8 ucIndex);
 extern TAF_UINT32   At_QryCgregPara(TAF_UINT8 ucIndex);
-#if(FEATURE_ON == FEATURE_LTE)
-extern VOS_UINT32 At_QryCeregPara(VOS_UINT8 ucIndex);
-#endif
 extern TAF_UINT32   At_QryCregPara(TAF_UINT8 ucIndex);
 extern TAF_UINT32   At_QryCsdhPara(TAF_UINT8 ucIndex);
 extern VOS_UINT32 At_QryMaxFreelockSizePara(VOS_UINT8 ucIndex);
@@ -3891,7 +3905,7 @@ extern TAF_VOID     At_PrintCsmsInfo(
 );
 
 extern MN_OPERATION_ID_T  At_GetOpId(
-    TAF_VOID
+    VOS_VOID
 );
 
 extern TAF_VOID     At_HandleSmtBuffer(
@@ -3911,7 +3925,7 @@ extern TAF_UINT32   At_GetScaFromInputStr(
 );
 
 extern MN_MSG_TS_DATA_INFO_STRU * At_GetMsgMem(
-    TAF_VOID
+    VOS_VOID
 );
 
 extern TAF_UINT16   At_PrintMsgFo(
@@ -4033,7 +4047,7 @@ extern TAF_UINT32   At_SmsPrintState(
 );
 
 extern MN_MSG_SEND_ACK_PARM_STRU * At_GetAckMsgMem(
-    TAF_VOID
+    VOS_VOID
 );
 
 extern TAF_VOID     At_MsgResultCodeFormat(
@@ -4056,19 +4070,8 @@ extern TAF_VOID     At_SetCscaCsmpRspProc(
     MN_MSG_EVENT_INFO_STRU              *pstEvent
 );
 
-VOS_UINT32 AT_TestCpbsPara(VOS_UINT8 ucIndex);
 
-VOS_UINT32 AT_TestCpbrPara(VOS_UINT8 ucIndex);
-
-
-#if ((FEATURE_ON == FEATURE_GCBS) || (FEATURE_ON == FEATURE_WCBS))
-extern VOS_UINT32 AT_TestCscbPara(VOS_UINT8 ucIndex);
-#endif
 extern VOS_UINT32 AT_TestSetPort(VOS_UINT8 ucIndex);
-
-extern VOS_UINT32 AT_TestCnmaPara(VOS_UINT8 ucIndex);
-
-extern VOS_UINT32 AT_TestCpasPara(VOS_UINT8 ucIndex);
 
 extern VOS_UINT32 AT_TestRstriggerPara(VOS_UINT8 ucIndex);
 
@@ -4093,20 +4096,6 @@ VOS_UINT32 AT_TestWikeyPara(VOS_UINT8 ucIndex);
 extern VOS_UINT32  AT_SetDissdCmd(VOS_UINT8 ucIndex);
 
 extern VOS_UINT32 AT_SetSdrebootCmd(VOS_UINT8 ucIndex);
-extern VOS_VOID AT_QryCscaRspProc(
-    TAF_UINT8                           ucIndex,
-    MN_MSG_EVENT_INFO_STRU             *pstEvent
-);
-
-extern VOS_VOID At_SmsStubRspProc(
-    VOS_UINT8                           ucIndex,
-    MN_MSG_EVENT_INFO_STRU             *pstEvent
-);
-
-extern TAF_VOID     At_DeleteRspProc(
-    TAF_UINT8                           ucIndex,
-    MN_MSG_EVENT_INFO_STRU              *pstEvent
-);
 
 extern TAF_VOID     At_DeleteTestRspProc(
     TAF_UINT8                           ucIndex,
@@ -4128,6 +4117,11 @@ extern TAF_VOID     At_WriteSmRspProc(
     MN_MSG_EVENT_INFO_STRU              *pstEvent
 );
 
+extern TAF_VOID  At_DeleteRspProc(
+    TAF_UINT8                           ucIndex,
+    MN_MSG_EVENT_INFO_STRU              *pstEvent
+);
+
 extern TAF_VOID     At_SetCnmaRspProc(
     TAF_UINT8                           ucIndex,
     MN_MSG_EVENT_INFO_STRU              *pstEvent
@@ -4140,10 +4134,6 @@ extern TAF_VOID     At_SendSmRspProc(
 
 extern TAF_UINT32   At_CheckDigit( TAF_UINT8 Char );
 extern TAF_UINT32   At_CheckColon( TAF_UINT8 Char );
-extern TAF_UINT32   At_RangeToU32(
-    TAF_UINT8                           *pucBegain,
-    TAF_UINT8                           *pucEnd
-);
 
 extern TAF_UINT32   At_SetCmStubPara(TAF_UINT8 ucIndex);
 
@@ -4370,7 +4360,6 @@ extern TAF_UINT32 AT_QryDloadVerPara(VOS_UINT8 ucIndex);
 extern TAF_UINT32 AT_QryDloadInfoPara(VOS_UINT8 ucIndex);
 extern TAF_UINT32 AT_QryAuthorityIdPara(VOS_UINT8 ucIndex);
 extern VOS_UINT32 AT_QryAuthorityVerPara( VOS_UINT8 ucIndex );
-extern VOS_UINT32 AT_TestCpmsPara(VOS_UINT8 ucIndex);
 extern TAF_UINT32 AT_QryNvRststtsPara(VOS_UINT8 ucIndex);
 extern TAF_UINT32 AT_QryFlashInfoPara(VOS_UINT8 ucIndex);
 extern VOS_UINT32 AT_QryAuthverPara(VOS_UINT8 ucIndex);
@@ -4393,7 +4382,7 @@ extern TAF_UINT32   At_PbSCPBRCmdPrint(VOS_UINT8 ucIndex,TAF_UINT16 *pusDataLen,
 extern TAF_VOID     At_PbSearchCnfProc(VOS_UINT8 ucIndex,SI_PB_EVENT_INFO_STRU  *pEvent);
 
 
-extern  TAF_VOID    At_CombineCmdStruInit(TAF_VOID);
+extern  TAF_VOID    At_CombineCmdStruInit(VOS_VOID);
 extern  TAF_VOID    At_ResetCombineCmdStru(TAF_UINT8    ucIndex);
 extern  TAF_UINT32  At_FormatCmdStr ( TAF_UINT8 *pData, TAF_UINT16 *pLen);
 extern  TAF_UINT32  At_ScanDelChar( TAF_UINT8 *pData, TAF_UINT16 *pLen);
@@ -4455,8 +4444,8 @@ VOS_VOID  At_ProcDeliverEtwsPrimNotify(
 #endif
 
 extern TAF_UINT32   Ppp_ReleasePppReq ( TAF_UINT16 usPppId);
-extern TAF_UINT8    Cca_CurState(TAF_VOID);
-extern TAF_VOID     SysCtrl_RFLdoDown(TAF_VOID);
+extern TAF_UINT8    Cca_CurState(VOS_VOID);
+extern TAF_VOID     SysCtrl_RFLdoDown(VOS_VOID);
 
 extern TAF_UINT32   At_SetCdtmfsPara(
     TAF_UINT8                           ucIndex
@@ -4526,8 +4515,7 @@ extern VOS_UINT32   MMA_PhoneGetAllOperNumByShortNameFromOperTbl( TAF_PH_OPERATO
 extern VOS_UINT32   MMA_PhoneGetAllOperInfoByLongNameFromOperTbl( TAF_PH_OPERATOR_NAME_STRU   *pstOrigOperName,
                                                                                        TAF_PH_OPERATOR_NAME_STRU   *pstOperName);
 extern VOS_UINT32   MMA_PhoneGetAllOperInfoByShortNameFromOperTbl( TAF_PH_OPERATOR_NAME_STRU   *pstOrigOperName,
-                                                                                       TAF_PH_OPERATOR_NAME_STRU   *pstOperName);
-extern VOS_VOID   MMA_GetProductionVersion(VOS_CHAR *pcDest);
+                                                                                      TAF_PH_OPERATOR_NAME_STRU   *pstOperName);
 
 extern VOS_BOOL AT_PH_IsPlmnValid(TAF_PLMN_ID_STRU *pstPlmnId);
 extern VOS_BOOL MN_PH_IsUsingPlmnSel(VOS_VOID);
@@ -4728,10 +4716,6 @@ extern VOS_VOID  AT_QryParaRegisterTimeProc(
     VOS_VOID                           *pPara
 );
 
-
-extern VOS_UINT32 AT_QryEqverPara(
-    VOS_UINT8                           ucIndex
-);
 extern VOS_VOID  AT_QryParaAnQueryProc(
     VOS_UINT8                           ucIndex,
     VOS_UINT8                           OpId,
@@ -4743,9 +4727,6 @@ extern VOS_VOID  AT_QryParaHomePlmnProc(
     VOS_UINT8                           OpId,
     VOS_VOID                           *pPara
 );
-extern VOS_UINT32 AT_SetProdNamePara(
-    VOS_UINT8 ucIndex
-);
 extern VOS_VOID  AT_QryParaCsnrProc(
     VOS_UINT8                           ucIndex,
     VOS_UINT8                           OpId,
@@ -4753,9 +4734,6 @@ extern VOS_VOID  AT_QryParaCsnrProc(
 );
 extern VOS_UINT32 AT_SetFwavePara(
     VOS_UINT8 ucIndex
-);
-extern VOS_UINT32 AT_QryProdNamePara(
-    VOS_UINT8                           ucIndex
 );
 
 extern VOS_VOID  AT_QryParaSpnProc(
@@ -4774,18 +4752,6 @@ VOS_VOID AT_ShowCccRst(
     NAS_CC_STATE_INFO_STRU              *pstCcState,
     VOS_UINT16                          *pusLength
 );
-
-
-
-VOS_UINT32 AT_StartRelTimer(
-    HTIMER                             *phTm,
-    VOS_UINT32                          ulLength,
-    VOS_UINT32                          ulName,
-    VOS_UINT32                          ulParam,
-    VOS_UINT8                           ucMode
-);
-
-VOS_UINT32 AT_StopRelTimer(VOS_UINT32 ulName, HTIMER *phTm);
 
 
 
@@ -4968,7 +4934,6 @@ extern VOS_UINT32 atSetFRXONPara(VOS_UINT8 ucClientId);
 extern VOS_UINT32 atSetFRXONParaCnfProc(VOS_UINT8 ucClientId, VOS_VOID *pMsgBlock);
 extern VOS_UINT32 atQryFRXONPara(VOS_UINT8 ucClientId);
 extern VOS_UINT32 atQryFRXONParaCnfProc(VOS_UINT8 ucClientId, VOS_VOID *pMsgBlock);
-extern VOS_UINT32 atSetFWAVEParaCnfProc(VOS_UINT8 ucClientId, VOS_VOID * pMsgBlock);
 extern VOS_UINT32 atSetFLNAPara(VOS_UINT8 ucClientId);
 extern VOS_UINT32 atSetFLNAParaCnfProc(VOS_UINT8 ucClientId, VOS_VOID *pMsgBlock);
 extern VOS_UINT32 atQryFLNAPara(VOS_UINT8 ucClientId);
@@ -4992,35 +4957,8 @@ extern VOS_UINT32 atQryRSimPara(VOS_UINT8 ucClientId);
 
 extern VOS_UINT32 atQrySfeaturePara(VOS_UINT8 ucClientId);
 extern VOS_UINT32 atSetFWAVEPara(VOS_UINT8 ucClientId);
-extern VOS_UINT32 atSetFCALIIP2SPara(VOS_UINT8 ucClientId);
-extern VOS_UINT32 atSetFCALIIP2SParaCnfProc(VOS_UINT8 ucClientId, VOS_VOID *pMsgBlock);
-extern VOS_UINT32 atQryFCALIIP2SPara(VOS_UINT8 ucClientId);
-extern VOS_UINT32 atQryFCALIIP2SParaCnfProc(VOS_UINT8 ucClientId, VOS_VOID *pMsgBlock);
 
-extern VOS_UINT32 atSetFCALIDCOCSPara(VOS_UINT8 ucClientId);
-extern VOS_UINT32 atSetFCALIDCOCSParaCnfProc(VOS_UINT8 ucClientId, VOS_VOID *pMsgBlock);
-extern VOS_UINT32 atQryFCALIDCOCSPara(VOS_UINT8 ucClientId);
-extern VOS_UINT32 atQryFCALIDCOCSParaCnfProc(VOS_UINT8 ucClientId, VOS_VOID *pMsgBlock);
 
-extern VOS_UINT32 atSetFGAINSTATESPara(VOS_UINT8 ucClientId);
-extern VOS_UINT32 atSetFGAINSTATESParaCnfProc(VOS_UINT8 ucClientId, VOS_VOID *pMsgBlock);
-extern VOS_UINT32 atQryFGAINSTATESPara(VOS_UINT8 ucClientId);
-extern VOS_UINT32 atQryFGAINSTATESParaCnfProc(VOS_UINT8 ucClientId, VOS_VOID *pMsgBlock);
-
-extern VOS_UINT32 atSetFDBBATTSPara(VOS_UINT8 ucClientId);
-extern VOS_UINT32 atSetFDBBATTSParaCnfProc(VOS_UINT8 ucClientId, VOS_VOID *pMsgBlock);
-extern VOS_UINT32 atQryFDBBATTSPara(VOS_UINT8 ucClientId);
-extern VOS_UINT32 atQryFDBBATTSParaCnfProc(VOS_UINT8 ucClientId, VOS_VOID *pMsgBlock);
-
-extern VOS_UINT32 atSetFBBATTSPara(VOS_UINT8 ucClientId);
-extern VOS_UINT32 atSetFBBATTSParaCnfProc(VOS_UINT8 ucClientId, VOS_VOID *pMsgBlock);
-extern VOS_UINT32 atQryFBBATTSPara(VOS_UINT8 ucClientId);
-extern VOS_UINT32 atQryFBBATTSParaCnfProc(VOS_UINT8 ucClientId, VOS_VOID *pMsgBlock);
-
-extern VOS_UINT32 atSetFCALITXIQSPara(VOS_UINT8 ucClientId);
-extern VOS_UINT32 atSetFCALITXIQSParaCnfProc(VOS_UINT8 ucClientId, VOS_VOID *pMsgBlock);
-extern VOS_UINT32 atQryFCALITXIQSPara(VOS_UINT8 ucClientId);
-extern VOS_UINT32 atQryFCALITXIQSParaCnfProc(VOS_UINT8 ucClientId, VOS_VOID *pMsgBlock);
 /*非信令综测start */
 extern VOS_UINT32 atSetSSYNCPara(VOS_UINT8 ucClientId);
 extern VOS_UINT32 atSetSSYNCParaCnfProc(VOS_UINT8 ucClientId, VOS_VOID *pMsgBlock);
@@ -5221,27 +5159,11 @@ extern VOS_UINT32 AT_QryAcInfoPara(VOS_UINT8 ucIndex);
 extern VOS_UINT32 At_SmsProc ( VOS_UINT8 ucIndex, VOS_UINT8 *pData, VOS_UINT16 usLen);
 extern VOS_VOID AT_DiscardInvalidCharForSms(TAF_UINT8* pData, TAF_UINT16 *pusLen);
 
-extern VOS_UINT32 At_TestVtsPara(VOS_UINT8 ucIndex);
-extern VOS_UINT32 At_TestCuus1Para(VOS_UINT8 ucIndex);
-extern VOS_UINT32 At_TestCcwaPara(VOS_UINT8 ucIndex);
-extern VOS_UINT32 At_TestCcfcPara(VOS_UINT8 ucIndex);
-extern VOS_UINT32 At_TestCusdPara(VOS_UINT8 ucIndex);
-extern VOS_UINT32 At_TestCpwdPara(VOS_UINT8 ucIndex);
-extern VOS_UINT32 At_TestClckPara(VOS_UINT8 ucIndex);
 extern VOS_UINT32 At_TestCmlckPara(VOS_UINT8 ucIndex);
-extern VOS_UINT32 At_TestCgeqnegPara(VOS_UINT8 ucIndex);
-extern VOS_UINT32 At_TestCgpaddr(VOS_UINT8 ucIndex);
-extern VOS_UINT32 At_TestCgeqreqPara(VOS_UINT8 ucIndex);
-extern VOS_UINT32 At_TestCgansPara(VOS_UINT8 ucIndex);
-extern VOS_UINT32 At_TestCgansExtPara(VOS_UINT8 ucIndex);
 extern VOS_UINT32 At_TestCgauthPara(VOS_UINT8 ucIndex);
-extern VOS_UINT32 At_TestCgdnsPara(VOS_UINT8 ucIndex);
-extern VOS_UINT32 At_TestCgdataPara(VOS_UINT8 ucIndex);
 extern VOS_UINT32 At_TestCpasPara(VOS_UINT8 ucIndex);
 
 
-VOS_UINT32 At_TestCopsPara(TAF_UINT8 ucIndex);
-VOS_UINT32 At_TestCpolPara(TAF_UINT8 ucIndex);
 VOS_UINT32 AT_TestSyscfg(VOS_UINT8 ucIndex);
 VOS_UINT32 AT_TestSyscfgEx(VOS_UINT8 ucIndex);
 VOS_VOID AT_ClacCmdProc(VOS_VOID);
@@ -5272,23 +5194,7 @@ VOS_UINT32 at_L4aCnfProc(MsgBlock* pMsgBlockTmp);
 /* AT处理LTE装备FTM回复消息入口 */
 VOS_UINT32 At_FtmEventMsgProc(VOS_VOID *pMsg);
 
-VOS_UINT32 At_TestCgdcont(VOS_UINT8 ucIndex);
-VOS_UINT32 At_TestCgdscont(VOS_UINT8 ucIndex);
 VOS_UINT32 At_TestCgatt(VOS_UINT8 ucIndex);
-VOS_UINT32 At_TestCgtft(VOS_UINT8 ucIndex);
-VOS_UINT32 At_TestCgact(VOS_UINT8 ucIndex);
-VOS_UINT32 At_TestCgcmod(VOS_UINT8 ucIndex);
-VOS_UINT32 At_TestCgautoPara(VOS_UINT8 ucIndex);
-VOS_UINT32 At_TestCgpaddr(VOS_UINT8 ucIndex);
-VOS_UINT32 At_TestAuhtdata(VOS_UINT8 ucIndex);
-VOS_UINT32 At_TestNdisconn(VOS_UINT8 ucIndex);
-VOS_UINT32 At_TestNdisDup(VOS_UINT8 ucIndex);
-
-VOS_UINT32 At_TestCgeqos(VOS_UINT8 ucIndex);
-VOS_UINT32 At_TestCgeqosrdp(VOS_UINT8 ucIndex);
-VOS_UINT32 At_TestCgcontrdp(VOS_UINT8 ucIndex);
-VOS_UINT32 At_TestCgscontrdp(VOS_UINT8 ucIndex);
-VOS_UINT32 At_TestCgtftrdp(VOS_UINT8 ucIndex);
 
 VOS_UINT32 At_TestNdisAdd(VOS_UINT8 ucIndex);
 
@@ -5432,7 +5338,6 @@ extern VOS_UINT32 AT_QryCposrPara(VOS_UINT8 ucIndex);
 extern VOS_UINT32 AT_QryXcposrPara(VOS_UINT8 ucIndex);
 extern VOS_UINT32 AT_TestXcposrPara(VOS_UINT8 ucIndex);
 extern VOS_UINT32 AT_TestCgpsClockPara(VOS_UINT8 ucIndex);
-extern VOS_UINT32 AT_TestCposrPara(VOS_UINT8 ucIndex);
 extern VOS_UINT32 At_ProcXmlText ( TAF_UINT8 ucIndex, TAF_UINT8 *pData, TAF_UINT16 usLen);
 
 VOS_UINT32 AT_SetGpsInfoPara(VOS_UINT8 ucIndex);
@@ -5498,16 +5403,6 @@ VOS_UINT32 AT_SetCmutPara(VOS_UINT8 ucIndex);
 VOS_UINT32 AT_QryCmutPara(VOS_UINT8 ucIndex);
 
 
-/*****************************************************************************
- 函 数 名  : AT_TestCmutPara
- 功能描述  : +CMUT=? 测试命令
- 输入参数  : ucIndex --- 用户索引
- 输出参数  : 无
- 返 回 值  : VOS_UINT32
- 调用函数  :
- 被调函数  :
-*****************************************************************************/
-VOS_UINT32 AT_TestCmutPara(VOS_UINT8 ucIndex);
 
 VOS_UINT32 At_AbortCopsPara(
     VOS_UINT8                           ucIndex
@@ -5577,7 +5472,6 @@ VOS_UINT32 AT_SetCbgPara(VOS_UINT8 ucIndex);
 VOS_UINT32 AT_QryCbgPara(VOS_UINT8 ucIndex);
 VOS_UINT32 AT_SetCopnPara(VOS_UINT8 ucIndex);
 
-VOS_UINT32 AT_TestCbgPara( VOS_UINT8 ucIndex );
 
 VOS_VOID At_RcvMnCallSetCssnCnf(MN_AT_IND_EVT_STRU *pstData);
 VOS_UINT32 AT_FillSsBsService(
@@ -5658,7 +5552,6 @@ VOS_UINT32 AT_RcvTempprtStatusInd(VOS_VOID *pMsg);
 VOS_UINT32 At_QryIMEIVerifyPara(VOS_UINT8 ucIndex);
 VOS_UINT32 AT_SetNCellMonitorPara(VOS_UINT8 ucIndex);
 VOS_UINT32 AT_QryNCellMonitorPara(VOS_UINT8 ucIndex);
-VOS_UINT32 AT_TestNCellMonitorPara(VOS_UINT8 ucIndex);
 VOS_UINT32 AT_QryUserSrvStatePara(VOS_UINT8 ucIndex);
 
 
@@ -5678,7 +5571,6 @@ VOS_UINT32 AT_SetRefclkfreqPara(VOS_UINT8 ucIndex);
 
 VOS_UINT32 AT_QryRefclkfreqPara(VOS_UINT8 ucIndex);
 
-VOS_UINT32 AT_TestRefclkfreqPara(VOS_UINT8 ucIndex);
 
 /* Added by d0212987 for OM output log , 2013-6-4, begin */
 VOS_UINT32 At_SetPullomlogrrcPara(VOS_UINT8 ucIndex);
@@ -5693,8 +5585,8 @@ VOS_UINT32 At_SetHandleDect(VOS_UINT8 ucIndex);
 
 /*vSIM Project Begin*/
 extern VOS_UINT32 AT_RcvDrvAgentHvpdhSetCnf(VOS_VOID *pMsg);
-extern unsigned long AtBase64Decode(const void* pcode,const unsigned long code_size,void* out_pdata,
-                            const unsigned long data_size,unsigned long* out_pwrited_data_size);
+extern unsigned int AtBase64Decode(const void* pcode,const unsigned int code_size,void* out_pdata,
+                                const unsigned int data_size,unsigned int* out_pwrited_data_size);
 extern TAF_VOID At_PIHIndProc(TAF_UINT8 ucIndex, SI_PIH_EVENT_INFO_STRU *pEvent);
 /*vSIM Project Begin*/
 
@@ -5768,26 +5660,6 @@ TAF_UINT32 AT_SetCiregPara(TAF_UINT8 ucIndex);
 *****************************************************************************/
 TAF_UINT32 AT_SetCirepPara(TAF_UINT8 ucIndex);
 
-/*****************************************************************************
- 函 数 名  : AT_TestCiregPara
- 功能描述  : +CIREG=?测试命令处理函数
- 输入参数  : VOS_UINT8 ucIndex
- 输出参数  : 无
- 返 回 值  : VOS_UINT32
-
-*****************************************************************************/
-VOS_UINT32 AT_TestCiregPara(VOS_UINT8 ucIndex);
-
-/*****************************************************************************
- 函 数 名  : AT_TestCirepPara
- 功能描述  : +CIREP=?测试命令处理函数
- 输入参数  : VOS_UINT8 ucIndex
- 输出参数  : 无
- 返 回 值  : VOS_UINT32
-
-*****************************************************************************/
-VOS_UINT32 AT_TestCirepPara(VOS_UINT8 ucIndex);
-
 VOS_UINT32 AT_QryClccPara(VOS_UINT8 ucIndex);
 
 VOS_UINT32 AT_SetVolteimpuPara(VOS_UINT8 ucIndex);
@@ -5801,8 +5673,32 @@ extern VOS_UINT32 AT_SetUiccAuthPara(VOS_UINT8 ucIndex);
 extern VOS_UINT32 AT_SetURSMPara(VOS_UINT8 ucIndex);
 
 extern VOS_UINT32 AT_SetKsNafAuthPara(VOS_UINT8 ucIndex);
+VOS_UINT32 AT_SetCallModifyInitPara(VOS_UINT8 ucIndex);
+VOS_UINT32 AT_SetCallModifyAnsPara(VOS_UINT8 ucIndex);
+
+VOS_UINT32 AT_SetEconfDialPara(VOS_UINT8 ucIndex);
+VOS_UINT32 AT_QryClccEconfInfo(VOS_UINT8 ucIndex);
+VOS_UINT32 AT_QryEconfErrPara(VOS_UINT8 ucIndex);
+
+/* Added by zwx247453 for VOLTE SWITCH, 2015-02-02, Begin */
+extern VOS_UINT32 AT_SetImsSwitchPara(VOS_UINT8 ucIndex);
+extern VOS_UINT32 AT_QryImsSwitchPara(VOS_UINT8 ucIndex);
+extern VOS_UINT32 AT_SetCevdpPara(VOS_UINT8 ucIndex);
+extern VOS_UINT32 AT_QryCevdpPara(VOS_UINT8 ucIndex);
+extern VOS_UINT32 AT_InputValueTransToVoiceDomain(
+    VOS_UINT32                          ulValue,
+    TAF_MMA_VOICE_DOMAIN_ENUM_UINT32   *penVoiceDomain
+);
+/* Added by zwx247453 for VOLTE SWITCH, 2015-02-02, End */
 
 #endif
+VOS_UINT32 AT_FillCalledNumPara(
+    VOS_UINT8                          *pucAtPara,
+    VOS_UINT16                          usLen,
+    MN_CALL_CALLED_NUM_STRU            *pstCalledNum
+);
+VOS_UINT32 At_SetChldExPara(VOS_UINT8 ucIndex);
+
 extern VOS_UINT32 At_SetAntSwitchPara(VOS_UINT8 ucIndex);
 extern VOS_UINT32 AT_QryAntSwitchPara(VOS_UINT8 ucIndex);
 
@@ -5823,6 +5719,11 @@ VOS_VOID At_ConvertDetachTypeToServiceDomain(
 );
 
 extern VOS_UINT32 At_QryCardTypePara(VOS_UINT8 ucIndex);
+
+extern VOS_UINT32 AT_QryCclkPara(VOS_UINT8 ucIndex);
+extern VOS_UINT32 AT_SetCclkPara(VOS_UINT8 ucIndex);
+
+extern TAF_UINT32 At_AsciiNum2HexString(TAF_UINT8 *pucSrc, TAF_UINT16 *pusSrcLen);
 
 #if ((TAF_OS_VER == TAF_WIN32) || (TAF_OS_VER == TAF_NUCLEUS))
 #pragma pack()

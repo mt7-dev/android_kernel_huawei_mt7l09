@@ -44,6 +44,9 @@ extern "C" {
 /* DCM定制需求 GU到L的切换不判断被禁TA开关, 初始化为关闭 */
 VOS_UINT32    g_ulHoIgnoreForbidTaFlag = NAS_EMM_HO_IGNORE_FORBID_TA_FLAG_INVALID;
 
+/* 兰州CSFB定制需求 RRC触发的GU到L的异系统变换TAU类型NV开关, 打开: 1, 关闭: 0
+功能开启时，所有RRC触发的GU到L的异系统变换后，到L下均要发起imsi_attach类型的TAU */
+VOS_UINT32    g_ulNasCsfbTauType2Flag = 0;
 
 /*****************************************************************************
   3 Function
@@ -475,6 +478,9 @@ VOS_UINT32    NAS_EMM_NoCellSuspendMsgMmcPlmnReq( VOS_VOID )
             {
 
                 NAS_EMM_LocalDetachProc();
+                #if (FEATURE_PTM == FEATURE_ON)
+                NAS_EMM_LocalDetachErrRecord(EMM_ERR_LOG_LOCAL_DETACH_TYPE_OTHER);
+                #endif
 
                 /* 将状态转移至MS_DEREG + SS_DEREG_PLMN_SEARCH状态 */
                 NAS_EMM_PUBU_FSMTranState(  EMM_MS_DEREG,
@@ -1065,7 +1071,9 @@ VOS_VOID  NAS_EMM_RegForbidSysInfoProc( EMMC_EMM_FORBIDDEN_INFO_ENUM_UINT32  ulF
         if(NAS_MML_PS_BEARER_STATE_INACTIVE == NAS_EMM_IsEpsBearStatusAct())
         {
             NAS_EMM_LocalDetachProc();
-
+            #if (FEATURE_PTM == FEATURE_ON)
+            NAS_EMM_LocalDetachErrRecord(EMM_ERR_LOG_LOCAL_DETACH_TYPE_GU2L_NO_EPS_BEAR);
+            #endif
             NAS_LMM_DeregReleaseResource();
 
             NAS_EMM_PUBU_FSMTranState(  EMM_MS_DEREG,
@@ -1112,6 +1120,9 @@ VOS_VOID  NAS_EMM_GU2LNoEpsBearProc(VOS_VOID)
     NAS_EMM_PUBU_LOG_INFO("NAS_EMM_GU2LNoEpsBearProc is entered");
 
     NAS_EMM_LocalDetachProc();
+    #if (FEATURE_PTM == FEATURE_ON)
+    NAS_EMM_LocalDetachErrRecord(EMM_ERR_LOG_LOCAL_DETACH_TYPE_GU2L_NO_EPS_BEAR);
+    #endif
 
     NAS_LMM_DeregReleaseResource();
 
@@ -1372,6 +1383,12 @@ VOS_UINT32  NAS_EMM_MsResumeSsRrcOriWaitSysInfoIndMsgSysInfoInd(
         NAS_LMM_SetEmmInfoRegDomain(NAS_LMM_REG_DOMAIN_PS);
     }
 
+    if (NAS_EMM_YES == NAS_EMM_IsEmcCsfbHappenedAndLaiChangWithCsPsUeMode())
+    {
+        NAS_EMM_TAU_LOG_WARN("NAS_EMM_MsResumeSsRrcOriWaitSysInfoIndMsgSysInfoInd:EMC CSFB,LAI CHANG ");
+        NAS_LMM_SetEmmInfoRegDomain(NAS_LMM_REG_DOMAIN_PS);
+    }
+
     /* 若RESUME之前是 NO IMSI状态，过来后还要继续NO IMSI状态 */
     if(EMM_SS_DEREG_NO_IMSI == NAS_EMM_GetSsBefResume())
     {
@@ -1446,8 +1463,8 @@ VOS_UINT32  NAS_EMM_MsResumeSsRrcOriWaitSysInfoIndMsgAreaLostInd
     /*清除BAR标识*/
     NAS_EMM_ClearBarResouce();
 
-    /* 关闭当前EMM的状态定时器*/
-    NAS_LMM_StopAllEmmStateTimer();
+    /* 关闭当前EMM的除Del Forb Ta Proid之外的状态定时器, Del Forb Ta Proid只能在关机时停止*/
+    NAS_LMM_StopAllStateTimerExceptDelForbTaProidTimer();
 
     switch(NAS_EMM_GetResumeType())
     {
@@ -1457,6 +1474,12 @@ VOS_UINT32  NAS_EMM_MsResumeSsRrcOriWaitSysInfoIndMsgAreaLostInd
                     && (NAS_EMM_YES == NAS_EMM_IsCsPsUeMode()))
                 {
                     NAS_EMM_TAU_LOG_INFO("NAS_EMM_MsResumeSsRrcOriWaitSysInfoIndMsgAreaLostInd:LAU OR COMBINED RAU");
+                    NAS_LMM_SetEmmInfoRegDomain(NAS_LMM_REG_DOMAIN_PS);
+                }
+
+                if (NAS_EMM_YES == NAS_EMM_IsEmcCsfbHappenedAndLaiChangWithCsPsUeMode())
+                {
+                    NAS_EMM_TAU_LOG_WARN("NAS_EMM_MsResumeSsRrcOriWaitSysInfoIndMsgAreaLostInd:EMC CSFB,LAI CHANG ");
                     NAS_LMM_SetEmmInfoRegDomain(NAS_LMM_REG_DOMAIN_PS);
                 }
                 NAS_EMM_TAU_SaveEmmTAUStartCause(NAS_EMM_TAU_START_CAUSE_OTHERS);
@@ -1485,6 +1508,58 @@ VOS_UINT32  NAS_EMM_MsResumeSsRrcOriWaitSysInfoIndMsgAreaLostInd
     }
     return NAS_LMM_MSG_HANDLED;
 }
+VOS_UINT32 NAS_EMM_IsLauOrComRauOrSrvccHappenedWithCsPsUeMode(VOS_VOID)
+{
+    if(((NAS_EMM_LAU_OR_COMBINED_RAU_HAPPENED == NAS_LMM_GetEmmInfoLauOrComRauFlag())
+        || (NAS_EMM_SRVCC_HAPPENED == NAS_LMM_GetEmmInfoSrvccFlag()))
+        && (NAS_EMM_YES == NAS_EMM_IsCsPsUeMode()))
+    {
+        return NAS_EMM_YES;
+    }
+    return NAS_EMM_NO;
+}
+VOS_UINT32 NAS_EMM_IsG2LAndGmmSuspendWithCsPsUeMode
+(
+    NAS_LMM_RSM_SYS_CHNG_DIR_ENUM_UINT32    enRsmDir
+)
+{
+    if ((NAS_LMM_RSM_SYS_CHNG_DIR_G2L == enRsmDir)
+        && (GMM_LMM_GPRS_SUSPENSION == NAS_LMM_GetEmmInfoPsState())
+        && (NAS_EMM_YES == NAS_EMM_IsCsPsUeMode()))
+    {
+        return NAS_EMM_YES;
+    }
+    return NAS_EMM_NO;
+}
+
+
+VOS_UINT32 NAS_EMM_IsEmcCsfbHappenedAndLaiChangWithCsPsUeMode(VOS_VOID)
+{
+    if ((NAS_EMM_LAU_OR_COMBINED_RAU_NOT_HAPPENED == NAS_LMM_GetEmmInfoLauOrComRauFlag())
+        && (VOS_TRUE == NAS_LMM_GetEmmInfoCsEmcConneExitFlag())
+        && (VOS_TRUE == NAS_LMM_GetEmmInfoLaiChangeFlag())
+        && (NAS_EMM_YES == NAS_EMM_IsCsPsUeMode()))
+    {
+        return NAS_EMM_YES;
+    }
+    return NAS_EMM_NO;
+}
+
+
+VOS_UINT32 NAS_EMM_IsG2LIsrActAndP4ConditionSatisfied(NAS_LMM_RSM_SYS_CHNG_DIR_ENUM_UINT32    enRsmDir )
+{
+    if ((NAS_LMM_RSM_SYS_CHNG_DIR_G2L == enRsmDir)
+        && (NAS_EMM_YES == NAS_EMM_IsAnnexP4ConditionSatisfied())
+        && (MMC_LMM_TIN_RAT_RELATED_TMSI == NAS_EMM_GetTinType()))
+    {
+        return NAS_EMM_YES;
+    }
+    return NAS_EMM_NO;
+}
+
+
+
+
 VOS_VOID  NAS_EMM_RrcResumeReselTypeSetTauStartCause(VOS_VOID  )
 {
     MMC_LMM_TIN_TYPE_ENUM_UINT32        enTinType       = MMC_LMM_TIN_INVALID;
@@ -1498,11 +1573,15 @@ VOS_VOID  NAS_EMM_RrcResumeReselTypeSetTauStartCause(VOS_VOID  )
     /* 获取U模连接状态 */
     enPacketMmState = NAS_LMM_GetEmmInfoUConnState();
 
-    if(((NAS_EMM_LAU_OR_COMBINED_RAU_HAPPENED == NAS_LMM_GetEmmInfoLauOrComRauFlag())
-        || (NAS_EMM_SRVCC_HAPPENED == NAS_LMM_GetEmmInfoSrvccFlag()))
-        && (NAS_EMM_YES == NAS_EMM_IsCsPsUeMode()))
+    if(NAS_EMM_YES == NAS_EMM_IsLauOrComRauOrSrvccHappenedWithCsPsUeMode())
     {
         NAS_EMM_TAU_LOG_INFO("NAS_EMM_RrcResumeReselTypeSetTauStartCause:LAU OR COMBINED RAU");
+        NAS_LMM_SetEmmInfoRegDomain(NAS_LMM_REG_DOMAIN_PS);
+    }
+
+    if (NAS_EMM_YES == NAS_EMM_IsEmcCsfbHappenedAndLaiChangWithCsPsUeMode())
+    {
+        NAS_EMM_TAU_LOG_INFO("NAS_EMM_RrcResumeReselTypeSetTauStartCause:EMC CSFB,LAI CHANG ");
         NAS_LMM_SetEmmInfoRegDomain(NAS_LMM_REG_DOMAIN_PS);
     }
 
@@ -1559,16 +1638,13 @@ VOS_VOID  NAS_EMM_RrcResumeReselTypeSetTauStartCause(VOS_VOID  )
     /* c)when the UE performs an intersystem change from A/Gb mode to S1 mode and
          the EPS services were previously suspended in A/Gb mode;
          这个条件时联合TAU所独有的 */
-    if ((NAS_LMM_RSM_SYS_CHNG_DIR_G2L == enRsmDir)
-        && (GMM_LMM_GPRS_SUSPENSION == NAS_LMM_GetEmmInfoPsState())
-        && (NAS_EMM_YES == NAS_EMM_IsCsPsUeMode()))
+    if (NAS_EMM_YES == NAS_EMM_IsG2LAndGmmSuspendWithCsPsUeMode(enRsmDir))
     {
         NAS_EMM_TAU_LOG_INFO("NAS_EMM_RrcResumeReselTypeSetTauStartCause:EPS service suspended init tau");
         NAS_EMM_TAU_SaveEmmTAUStartCause(NAS_EMM_TAU_START_CAUSE_OTHERS);
         NAS_LMM_SetEmmInfoTriggerTauSysChange(NAS_EMM_YES);
         return;
     }
-
     /* d)when the UE performs an intersystem change from A/Gb or Iu mode to S1 mode,
          and the UE previously either performed a location area update procedure
          or a combined routing area update procedure in A/Gb or Iu mode,
@@ -1616,6 +1692,12 @@ VOS_VOID  NAS_EMM_RrcResumeRedirTypeSetTauStartCause(VOS_VOID )
         NAS_LMM_SetEmmInfoRegDomain(NAS_LMM_REG_DOMAIN_PS);
     }
 
+    if (NAS_EMM_YES == NAS_EMM_IsEmcCsfbHappenedAndLaiChangWithCsPsUeMode())
+    {
+        NAS_EMM_TAU_LOG_WARN("NAS_EMM_MsResumeSsRrcOriWaitSysInfoIndMsgAreaLostInd:EMC CSFB,LAI CHANG ");
+        NAS_LMM_SetEmmInfoRegDomain(NAS_LMM_REG_DOMAIN_PS);
+    }
+
     /* e)when the UE enters EMM-REGISTERED.NORMAL-SERVICE and the UE's TIN indicates "P-TMSI" */
     if (MMC_LMM_TIN_P_TMSI == ulTinType)
     {
@@ -1653,12 +1735,16 @@ VOS_VOID  NAS_EMM_RrcResumeRedirTypeSetTauStartCause(VOS_VOID )
         return;
     }
 
+    if (NAS_EMM_YES == NAS_EMM_IsEmcCsfbHappenedAndLaiChangWithCsPsUeMode())
+    {
+        NAS_EMM_TAU_LOG_WARN("NAS_EMM_MsResumeSsRrcOriWaitSysInfoIndMsgAreaLostInd:EMC CSFB,LAI CHANG ");
+        NAS_LMM_SetEmmInfoRegDomain(NAS_LMM_REG_DOMAIN_PS);
+    }
+
     /*q)When the UE performs an intersystem change from A/Gb mode to S1 mode and the TIN indicates "RAT-related TMSI",
     but the UE is required to perform tracking area updating for IMS voice termination as specified in 3GPP TS 24.008 [13],
     annex P.4*/
-    if ((NAS_LMM_RSM_SYS_CHNG_DIR_G2L == enRsmDir)
-        && (NAS_EMM_YES == NAS_EMM_IsAnnexP4ConditionSatisfied())
-        && (MMC_LMM_TIN_RAT_RELATED_TMSI == NAS_EMM_GetTinType()))
+    if (NAS_EMM_YES == NAS_EMM_IsG2LIsrActAndP4ConditionSatisfied(enRsmDir))
     {
         NAS_EMM_TAU_LOG_INFO("NAS_EMM_RrcResumeRedirTypeSetTauStartCause:ISR ACT and P.4 init tau");
         NAS_EMM_TAU_SaveEmmTAUStartCause(NAS_EMM_TAU_START_CAUSE_OTHERS);
@@ -1668,6 +1754,31 @@ VOS_VOID  NAS_EMM_RrcResumeRedirTypeSetTauStartCause(VOS_VOID )
     return;
 }
 
+VOS_VOID  NAS_EMM_MsResumeSsRrcOriWaitSysInfoIndMsgWtSysInfoTimerExpHoProc(VOS_VOID)
+{
+    /*对于GU2L的场景，根据激活前状态进入NO CELL状态或NO IMSI状态 */
+    if(NAS_EMM_YES == NAS_EMM_IsLauOrComRauOrSrvccHappenedWithCsPsUeMode())
+    {
+        NAS_EMM_TAU_LOG_INFO("NAS_EMM_MsResumeSsRrcOriWaitSysInfoIndMsgWtSysInfoTimerExp:LAU OR COMBINED RAU");
+        NAS_LMM_SetEmmInfoRegDomain(NAS_LMM_REG_DOMAIN_PS);
+    }
+
+    if (NAS_EMM_YES == NAS_EMM_IsEmcCsfbHappenedAndLaiChangWithCsPsUeMode())
+    {
+        NAS_EMM_TAU_LOG_WARN("NAS_EMM_MsResumeSsRrcOriWaitSysInfoIndMsgWtSysInfoTimerExp:EMC CSFB,LAI CHANG ");
+        NAS_LMM_SetEmmInfoRegDomain(NAS_LMM_REG_DOMAIN_PS);
+    }
+    NAS_EMM_TAU_SaveEmmTAUStartCause(NAS_EMM_TAU_START_CAUSE_OTHERS);
+    NAS_LMM_SetEmmInfoTriggerTauSysChange(NAS_EMM_YES);
+    NAS_EMM_GU2LResumeStateChng();
+    if (NAS_EMM_CONN_IDLE != NAS_EMM_GetConnState())
+    {
+        /*发送RRC_MM_REL_REQ*/
+        NAS_EMM_RelReq(NAS_LMM_NOT_BARRED);
+    }
+    return;
+
+}
 
 
 VOS_UINT32  NAS_EMM_MsResumeSsRrcOriWaitSysInfoIndMsgWtSysInfoTimerExp(
@@ -1679,6 +1790,10 @@ VOS_UINT32  NAS_EMM_MsResumeSsRrcOriWaitSysInfoIndMsgWtSysInfoTimerExp(
 
     NAS_EMM_PUBU_LOG1_NORM("NAS_EMM_MsResumeSsRrcOriWaitSysInfoIndMsgWtSysInfoTimerExp:NAS_EMM_GetResumeType()=",
                                NAS_EMM_GetResumeType());
+
+    #if (FEATURE_PTM == FEATURE_ON)
+    NAS_EMM_RatErrRecord(EMM_OM_ERRLOG_REVERSE_WAIT_SYSINFO_TIMEOUT_PROCEDURE);
+    #endif
 
     switch(NAS_EMM_GetResumeType())
     {
@@ -1699,21 +1814,7 @@ VOS_UINT32  NAS_EMM_MsResumeSsRrcOriWaitSysInfoIndMsgWtSysInfoTimerExp(
                 break;
         /*对于GU2L的场景，根据激活前状态进入NO CELL状态或NO IMSI状态 */
         case    NAS_LMM_SYS_CHNG_TYPE_HO:
-                if(((NAS_EMM_LAU_OR_COMBINED_RAU_HAPPENED == NAS_LMM_GetEmmInfoLauOrComRauFlag())
-                    || (NAS_EMM_SRVCC_HAPPENED == NAS_LMM_GetEmmInfoSrvccFlag()))
-                    && (NAS_EMM_YES == NAS_EMM_IsCsPsUeMode()))
-                {
-                    NAS_EMM_TAU_LOG_INFO("NAS_EMM_MsResumeSsRrcOriWaitSysInfoIndMsgWtSysInfoTimerExp:LAU OR COMBINED RAU");
-                    NAS_LMM_SetEmmInfoRegDomain(NAS_LMM_REG_DOMAIN_PS);
-                }
-                NAS_EMM_TAU_SaveEmmTAUStartCause(NAS_EMM_TAU_START_CAUSE_OTHERS);
-                NAS_LMM_SetEmmInfoTriggerTauSysChange(NAS_EMM_YES);
-                NAS_EMM_GU2LResumeStateChng();
-                if (NAS_EMM_CONN_IDLE != NAS_EMM_GetConnState())
-                {
-                    /*发送RRC_MM_REL_REQ*/
-                    NAS_EMM_RelReq(NAS_LMM_NOT_BARRED);
-                }
+                NAS_EMM_MsResumeSsRrcOriWaitSysInfoIndMsgWtSysInfoTimerExpHoProc();
                 break;
         case    NAS_LMM_SYS_CHNG_TYPE_RSL:
                 if (EMM_MS_REG == NAS_EMM_GetMsBefResume())
@@ -1733,6 +1834,11 @@ VOS_UINT32  NAS_EMM_MsResumeSsRrcOriWaitSysInfoIndMsgWtSysInfoTimerExp(
                     NAS_LMM_SetEmmInfoRegDomain(NAS_LMM_REG_DOMAIN_PS);
                 }
 
+                if (NAS_EMM_YES == NAS_EMM_IsEmcCsfbHappenedAndLaiChangWithCsPsUeMode())
+                {
+                    NAS_EMM_TAU_LOG_WARN("NAS_EMM_MsResumeSsRrcOriWaitSysInfoIndMsgWtSysInfoTimerExp:EMC CSFB,LAI CHANG ");
+                    NAS_LMM_SetEmmInfoRegDomain(NAS_LMM_REG_DOMAIN_PS);
+                }
                 NAS_EMM_TAU_SaveEmmTAUStartCause(NAS_EMM_TAU_START_CAUSE_OTHERS);
                 NAS_LMM_SetEmmInfoTriggerTauSysChange(NAS_EMM_YES);
 
@@ -1755,6 +1861,8 @@ VOS_UINT32  NAS_EMM_MsResumeSsRrcOriWaitSysInfoIndMsgWtSysInfoTimerExp(
     }
     return NAS_LMM_MSG_HANDLED;
 }
+
+
 VOS_UINT32  NAS_EMM_MsResumeSsRrcOriWaitSysInfoIndMsgRrcRelInd(
                                         VOS_UINT32  ulMsgId,
                                   const VOS_VOID   *pMsgStru  )
@@ -2050,6 +2158,14 @@ VOS_UINT32 NAS_EMM_ProcSysCommonCheckTauFlag( VOS_VOID )
         return NAS_EMM_YES;
     }
 
+    if(NAS_EMM_YES == NAS_EMM_GetVoiceDomainChange() )
+    {
+        NAS_EMM_TAU_LOG_INFO("NAS_EMM_RegSomeStateStartTAUNeeded: VOICE DOMAIN CHANG ");
+        NAS_EMM_TAU_SaveEmmTAUStartCause(NAS_EMM_TAU_START_CAUSE_VOICE_DOMAIN_CHANGE);
+        NAS_EMM_TAU_StartTAUREQ();
+        return NAS_EMM_YES;
+    }
+
     return NAS_EMM_NO;
 }
 /*****************************************************************************
@@ -2123,6 +2239,14 @@ VOS_UINT32 NAS_EMM_ProcHoSysCommonCheckTauFlag( VOS_VOID )
         return NAS_EMM_YES;
     }
 
+    if(NAS_EMM_YES == NAS_EMM_GetVoiceDomainChange() )
+    {
+        NAS_EMM_TAU_LOG_INFO("NAS_EMM_RegSomeStateStartTAUNeeded: VOICE DOMAIN CHANG ");
+        NAS_EMM_TAU_SaveEmmTAUStartCause(NAS_EMM_TAU_START_CAUSE_VOICE_DOMAIN_CHANGE);
+        NAS_EMM_TAU_StartTAUREQ();
+        return NAS_EMM_YES;
+    }
+
     return NAS_EMM_NO;
 }
 
@@ -2175,8 +2299,11 @@ VOS_VOID  NAS_EMM_ProcSysWhenRsmGu2LRegReselect( VOS_VOID )
     NAS_LMM_RSM_SYS_CHNG_DIR_ENUM_UINT32    enRsmDir    = NAS_LMM_RSM_SYS_CHNG_DIR_BUTT;
     NAS_LMM_NETWORK_INFO_STRU          *pMmNetInfo      = NAS_EMM_NULL_PTR;
 
-    /* 获取TIN值 */
-    enTinType = NAS_EMM_GetTinType();
+    if (NAS_EMM_YES == NAS_EMM_IsPtmsiTauActiveFlagSatified())
+    {
+        NAS_EMM_TAU_LOG_INFO("NAS_EMM_ProcSysWhenRsmGu2LRegReselect: PTMSI, save active flag ctrl.");
+        NAS_EMM_TAU_SaveEmmPtmsiActiveFlagCtrl(NAS_EMM_PTMSI_ACTIVE_FLAG_CTRL_VALID);
+    }
 
     /* 获取U模连接状态 */
     enPacketMmState = NAS_LMM_GetEmmInfoUConnState();
@@ -2187,6 +2314,8 @@ VOS_VOID  NAS_EMM_ProcSysWhenRsmGu2LRegReselect( VOS_VOID )
     /*leili modify for isr begin*/
     NAS_EMM_ProcConnGu2LReselect();
     /*leili modify for isr end*/
+    /* 获取TIN值 */
+    enTinType = NAS_EMM_GetTinType();
 
     /* e)when the UE enters EMM-REGISTERED.NORMAL-SERVICE and the UE's TIN indicates "P-TMSI" */
     if (MMC_LMM_TIN_P_TMSI == enTinType)
@@ -2233,35 +2362,35 @@ VOS_VOID  NAS_EMM_ProcSysWhenRsmGu2LRegReselect( VOS_VOID )
     /* c)when the UE performs an intersystem change from A/Gb mode to S1 mode and
          the EPS services were previously suspended in A/Gb mode;
          这个条件时联合TAU所独有的 */
-    if ((NAS_LMM_RSM_SYS_CHNG_DIR_G2L == enRsmDir)
-        && (GMM_LMM_GPRS_SUSPENSION == NAS_LMM_GetEmmInfoPsState())
-        && (NAS_EMM_YES == NAS_EMM_IsCsPsUeMode()))
+    if (NAS_EMM_YES == NAS_EMM_IsG2LAndGmmSuspendWithCsPsUeMode(enRsmDir))
     {
         NAS_EMM_TAU_LOG_INFO("NAS_EMM_ProcSysWhenRsmGu2LRegReselect:EPS service suspended init tau");
         NAS_EMM_TAU_StartTauForInterRat();
         return ;
     }
-
     /* d)when the UE performs an intersystem change from A/Gb or Iu mode to S1 mode,
          and the UE previously either performed a location area update procedure
          or a combined routing area update procedure in A/Gb or Iu mode,
          in order to re-establish the SGs association. In this case the EPS update
          type IE shall be set to "combined TA/LA updating with IMSI attach"; */
-    if (((NAS_EMM_LAU_OR_COMBINED_RAU_HAPPENED == NAS_LMM_GetEmmInfoLauOrComRauFlag())
-        || (NAS_EMM_SRVCC_HAPPENED == NAS_LMM_GetEmmInfoSrvccFlag()))
-        && (NAS_EMM_YES == NAS_EMM_IsCsPsUeMode()))
+    if (NAS_EMM_YES == NAS_EMM_IsLauOrComRauOrSrvccHappenedWithCsPsUeMode())
     {
         NAS_EMM_TAU_LOG_INFO("NAS_EMM_ProcSysWhenRsmGu2LRegReselect:LAU or Combined Rau init tau");
         NAS_EMM_TAU_StartTauForInterRat();
         return ;
     }
 
+    if (NAS_EMM_YES == NAS_EMM_IsEmcCsfbHappenedAndLaiChangWithCsPsUeMode())
+    {
+        NAS_EMM_TAU_LOG_WARN("NAS_EMM_ProcSysWhenRsmGu2LRegReselect:EMC CSFB,LAI CHANG ");
+        NAS_LMM_SetEmmInfoRegDomain(NAS_LMM_REG_DOMAIN_PS);
+    }
+
     /*q)When the UE performs an intersystem change from A/Gb mode to S1 mode and the TIN indicates "RAT-related TMSI",
     but the UE is required to perform tracking area updating for IMS voice termination as specified in 3GPP TS 24.008 [13],
     annex P.4*/
-    if ((NAS_LMM_RSM_SYS_CHNG_DIR_G2L == enRsmDir)
-        && (NAS_EMM_YES == NAS_EMM_IsAnnexP4ConditionSatisfied())
-        && (MMC_LMM_TIN_RAT_RELATED_TMSI == NAS_EMM_GetTinType()))
+    if (NAS_EMM_YES == NAS_EMM_IsG2LIsrActAndP4ConditionSatisfied(enRsmDir))
+
     {
         NAS_EMM_TAU_LOG_INFO("NAS_EMM_ProcSysWhenRsmGu2LRegReselect:ISR act and P.4 init tau");
         NAS_EMM_TAU_StartTauForInterRat();
@@ -2305,14 +2434,23 @@ VOS_VOID  NAS_EMM_ProcSysWhenRsmGu2LRegReselect( VOS_VOID )
     /* 确保EU状态为EU1*/
     NAS_EMM_TAUSER_SaveAuxFsmUpStat(EMM_US_UPDATED_EU1);
 
+    /* 清除Active flag */
+    NAS_EMM_TAU_ClearActiveFlagProc();
     return;
 }
+
+
 VOS_VOID  NAS_EMM_ProcSysWhenRsmGu2LRegRedirect( VOS_VOID )
 {
     MMC_LMM_TIN_TYPE_ENUM_UINT32            ulTinType   = MMC_LMM_TIN_INVALID;
     NAS_LMM_RSM_SYS_CHNG_DIR_ENUM_UINT32    enRsmDir    = NAS_LMM_RSM_SYS_CHNG_DIR_BUTT;
     NAS_LMM_NETWORK_INFO_STRU              *pMmNetInfo  = NAS_EMM_NULL_PTR;
 
+    if (NAS_EMM_YES == NAS_EMM_IsPtmsiTauActiveFlagSatified())
+    {
+        NAS_EMM_TAU_LOG_INFO("NAS_EMM_ProcSysWhenRsmGu2LRegRedirect: PTMSI, save active flag ctrl.");
+        NAS_EMM_TAU_SaveEmmPtmsiActiveFlagCtrl(NAS_EMM_PTMSI_ACTIVE_FLAG_CTRL_VALID);
+    }
     /* 获取TIN值 */
     ulTinType = NAS_EMM_GetTinType();
 
@@ -2341,9 +2479,7 @@ VOS_VOID  NAS_EMM_ProcSysWhenRsmGu2LRegRedirect( VOS_VOID )
     /* c)when the UE performs an intersystem change from A/Gb mode to S1 mode and
          the EPS services were previously suspended in A/Gb mode;
          这个条件时联合TAU所独有的 */
-    if ((NAS_LMM_RSM_SYS_CHNG_DIR_G2L == enRsmDir)
-        && (GMM_LMM_GPRS_SUSPENSION == NAS_LMM_GetEmmInfoPsState())
-        && (NAS_EMM_YES == NAS_EMM_IsCsPsUeMode()))
+    if (NAS_EMM_YES == NAS_EMM_IsG2LAndGmmSuspendWithCsPsUeMode(enRsmDir))
     {
         NAS_EMM_TAU_LOG_INFO("NAS_EMM_ProcSysWhenRsmGu2LRegRedirect:EPS service suspended init tau");
         NAS_EMM_TAU_StartTauForInterRat();
@@ -2355,15 +2491,18 @@ VOS_VOID  NAS_EMM_ProcSysWhenRsmGu2LRegRedirect( VOS_VOID )
          or a combined routing area update procedure in A/Gb or Iu mode,
          in order to re-establish the SGs association. In this case the EPS update
          type IE shall be set to "combined TA/LA updating with IMSI attach"; */
-    if (((NAS_EMM_LAU_OR_COMBINED_RAU_HAPPENED == NAS_LMM_GetEmmInfoLauOrComRauFlag())
-        || (NAS_EMM_SRVCC_HAPPENED == NAS_LMM_GetEmmInfoSrvccFlag()))
-        && (NAS_EMM_YES == NAS_EMM_IsCsPsUeMode()))
+    if (NAS_EMM_YES == NAS_EMM_IsLauOrComRauOrSrvccHappenedWithCsPsUeMode())
     {
         NAS_EMM_TAU_LOG_INFO("NAS_EMM_ProcSysWhenRsmGu2LRegRedirect:LAU or Combined Rau init tau");
         NAS_EMM_TAU_StartTauForInterRat();
         return ;
     }
 
+    if (NAS_EMM_YES == NAS_EMM_IsEmcCsfbHappenedAndLaiChangWithCsPsUeMode())
+    {
+        NAS_EMM_TAU_LOG_WARN("NAS_EMM_ProcSysWhenRsmGu2LRegRedirect:EMC CSFB,LAI CHANG ");
+        NAS_LMM_SetEmmInfoRegDomain(NAS_LMM_REG_DOMAIN_PS);
+    }
     /*q)When the UE performs an intersystem change from A/Gb mode to S1 mode and the TIN indicates "RAT-related TMSI",
     but the UE is required to perform tracking area updating for IMS voice termination as specified in 3GPP TS 24.008 [13],
     annex P.4*/
@@ -2412,9 +2551,12 @@ VOS_VOID  NAS_EMM_ProcSysWhenRsmGu2LRegRedirect( VOS_VOID )
 
     /* 确保EU状态为EU1*/
     NAS_EMM_TAUSER_SaveAuxFsmUpStat(EMM_US_UPDATED_EU1);
+    /* 清除Active flag */
+    NAS_EMM_TAU_ClearActiveFlagProc();
 
     return;
 }
+
 VOS_VOID  NAS_EMM_ProcSysWhenRsmGu2LHo( VOS_VOID )
 {
     MMC_LMM_TIN_TYPE_ENUM_UINT32            ulTinType   = MMC_LMM_TIN_INVALID;
@@ -2478,6 +2620,12 @@ VOS_VOID  NAS_EMM_ProcSysWhenRsmGu2LHo( VOS_VOID )
         return ;
     }
 
+    if (NAS_EMM_YES == NAS_EMM_IsEmcCsfbHappenedAndLaiChangWithCsPsUeMode())
+    {
+        NAS_EMM_TAU_LOG_WARN("NAS_EMM_ProcSysWhenRsmGu2LRegRedirect:EMC CSFB,LAI CHANG ");
+        NAS_LMM_SetEmmInfoRegDomain(NAS_LMM_REG_DOMAIN_PS);
+    }
+
     /*q)When the UE performs an intersystem change from A/Gb mode to S1 mode and the TIN indicates "RAT-related TMSI",
     but the UE is required to perform tracking area updating for IMS voice termination as specified in 3GPP TS 24.008 [13],
     annex P.4*/
@@ -2523,6 +2671,13 @@ VOS_VOID  NAS_EMM_ProcSysWhenRsmGu2LHo( VOS_VOID )
 }
 VOS_VOID  NAS_EMM_ProcSuitSysWhenRsmGu2LReg(VOS_VOID)
 {
+    /* 兰州CSFB定制需求开关打开时，所有RRC触发的异系统变换到L下均发起
+       IMSI_ATTACH类型TAU,目的是解决发起type1类型的TAU导致概率无法收到被叫问题 */
+    if(NAS_EMM_YES == g_ulNasCsfbTauType2Flag)
+    {
+        NAS_LMM_SetEmmInfoRegDomain(NAS_LMM_REG_DOMAIN_PS);
+    }
+
     switch ( NAS_EMM_GetResumeType())
     {
         case NAS_LMM_SYS_CHNG_TYPE_RSL:
@@ -2535,7 +2690,11 @@ VOS_VOID  NAS_EMM_ProcSuitSysWhenRsmGu2LReg(VOS_VOID)
             NAS_EMM_ProcSysWhenRsmGu2LRegRedirect();
             break;
         case NAS_LMM_SYS_CHNG_TYPE_CCO:
-
+            if (NAS_EMM_YES == NAS_EMM_IsPtmsiTauActiveFlagSatified())
+            {
+                NAS_EMM_TAU_LOG_INFO("NAS_EMM_ProcSysWhenRsmGu2LRegCco: PTMSI, save active flag ctrl.");
+                NAS_EMM_TAU_SaveEmmPtmsiActiveFlagCtrl(NAS_EMM_PTMSI_ACTIVE_FLAG_CTRL_VALID);
+            }
             /* CCO需要发起建链，暂定发起TAU */
             if ((NAS_EMM_T3412_EXP_YES_REG_NO_AVALABLE_CELL == NAS_LMM_GetEmmInfoT3412ExpCtrl())
             && (NAS_LMM_REG_DOMAIN_CS_PS == NAS_LMM_GetEmmInfoRegDomain()))
@@ -2590,8 +2749,9 @@ VOS_VOID  NAS_EMM_ProcSuitSysWhenMmcOriRsmGu2LDeReg(VOS_VOID)
 {
     VOS_UINT32                          ulSendResult;
     NAS_MM_TA_STRU                     *pstLastAttmpRegTa = NAS_EMM_NULL_PTR;
-    NAS_MM_TA_STRU                      stCurTa           = {0};
+    NAS_MM_TA_STRU                      stCurTa;
 
+    PS_MEM_SET(&stCurTa, 0, sizeof(NAS_MM_TA_STRU));
     /* 获取当前TA和上次尝试注册的TA信息 */
     NAS_EMM_GetCurrentTa(&stCurTa);
     pstLastAttmpRegTa                  = NAS_LMM_GetEmmInfoNetInfoLastAttmpRegTaAddr();
@@ -2706,6 +2866,12 @@ VOS_VOID  NAS_EMM_MmcResumeSetTauStartCause(VOS_VOID)
         NAS_LMM_SetEmmInfoRegDomain(NAS_LMM_REG_DOMAIN_PS);
     }
 
+    if (NAS_EMM_YES == NAS_EMM_IsEmcCsfbHappenedAndLaiChangWithCsPsUeMode())
+    {
+        NAS_EMM_TAU_LOG_WARN("NAS_EMM_MmcResumeSetTauStartCause:EMC CSFB,LAI CHANG ");
+        NAS_LMM_SetEmmInfoRegDomain(NAS_LMM_REG_DOMAIN_PS);
+    }
+
     /*c)when the UE enters EMM-REGISTERED.NORMAL-SERVICE and the UE's TIN indicates "P-TMSI"*/
     if (MMC_LMM_TIN_P_TMSI == NAS_EMM_GetTinType())
     {
@@ -2738,8 +2904,8 @@ VOS_UINT32  NAS_EMM_MsResumeSsMmcOriWaitSysInfoIndMsgAreaLostInd
     NAS_EMM_PUBU_LOG1_NORM("NAS_EMM_MsResumeSsMmcOriWaitSysInfoIndMsgAreaLostInd:NAS_EMM_GetMsBefResume() =",
                             NAS_EMM_GetMsBefResume());
 
-    /* 关闭当前EMM的状态定时器*/
-    NAS_LMM_StopAllEmmStateTimer();
+    /* 关闭当前EMM的除Del Forb Ta Proid之外的状态定时器, Del Forb Ta Proid只能在关机时停止*/
+    NAS_LMM_StopAllStateTimerExceptDelForbTaProidTimer();
 
     /*根据RESUME前的状态进行状态迁移*/
     if(EMM_MS_DEREG == NAS_EMM_GetMsBefResume())
@@ -2963,6 +3129,14 @@ VOS_UINT32   NAS_EMM_MmcOriResumeCheckTauFlag(VOS_VOID)
         return NAS_EMM_YES;
     }
 
+    if(NAS_EMM_YES == NAS_EMM_GetVoiceDomainChange() )
+    {
+        NAS_EMM_TAU_LOG_INFO("NAS_EMM_RegSomeStateStartTAUNeeded: VOICE DOMAIN CHANG ");
+        NAS_EMM_TAU_SaveEmmTAUStartCause(NAS_EMM_TAU_START_CAUSE_VOICE_DOMAIN_CHANGE);
+        NAS_EMM_TAU_StartTAUREQ();
+        return NAS_EMM_YES;
+    }
+
     return NAS_EMM_NO;
 }
 
@@ -3022,12 +3196,27 @@ VOS_UINT32  NAS_EMM_MsResumeSsMmcOriWaitSysInfoIndMsgSysInfoInd
                         NAS_EMM_GetResumeType());
 
     pstsysinfo = (EMMC_EMM_SYS_INFO_IND_STRU *)pMsgStru;
+    /*问题背景:主叫走CSFB流程被用户快速挂断电话，此时走CSFB回退流程，
+    回退到L的时候，由于TA在TALIST里面，所以不会发起TAU跟网侧交互，但是
+    此时核心网PS域已经开始往2/3G迁移，这样会导致被叫不通，或者收不到短信
+    改动:增加标识维护识别上面的这种场景，在回到L的时候保证发起TAU*/
+    if(PS_TRUE == NAS_EMM_GetCsfbProcedureFlag())
+    {
+         NAS_EMM_TAUSER_SaveAuxFsmUpStat(EMM_US_NOT_UPDATED_EU2);
+         NAS_EMM_SetCsfbProcedureFlag(PS_FALSE);
+    }
 
     if(((NAS_EMM_LAU_OR_COMBINED_RAU_HAPPENED == NAS_LMM_GetEmmInfoLauOrComRauFlag())
         || (NAS_EMM_SRVCC_HAPPENED == NAS_LMM_GetEmmInfoSrvccFlag()))
         && (NAS_EMM_YES == NAS_EMM_IsCsPsUeMode()))
     {
         NAS_EMM_TAU_LOG_INFO("NAS_EMM_MsResumeSsMmcOriWaitSysInfoIndMsgSysInfoInd:LAU OR COMBINED RAU");
+        NAS_LMM_SetEmmInfoRegDomain(NAS_LMM_REG_DOMAIN_PS);
+    }
+
+    if (NAS_EMM_YES == NAS_EMM_IsEmcCsfbHappenedAndLaiChangWithCsPsUeMode())
+    {
+        NAS_EMM_TAU_LOG_WARN("NAS_EMM_MsResumeSsMmcOriWaitSysInfoIndMsgSysInfoInd:EMC CSFB,LAI CHANG ");
         NAS_LMM_SetEmmInfoRegDomain(NAS_LMM_REG_DOMAIN_PS);
     }
 
@@ -3305,8 +3494,180 @@ VOS_UINT32  NAS_LMM_PreProcMmcImsVoiceCapChangeNotify(MsgBlock *    pMsg )
 
     return NAS_LMM_MSG_HANDLED;
 }
+VOS_UINT32  NAS_LMM_PreProcMmcImsVoiceDomainChangeInd(MsgBlock *    pMsg )
+{
+
+    MMC_LMM_VOICE_DOMAIN_CHANGE_IND_STRU        *pstImsVoiceDomainChangInd;
+    NAS_EMM_PUB_INFO_STRU                        *pstPubInfo;
+    NAS_LMM_VOICE_DOMAIN_ENUM_UINT32            enVoiceDomain;
+    VOS_UINT32                                  ulCurEmmStat;
+    NAS_LMM_PTL_TI_ENUM_UINT16                  enPtlTimerId;
+    MMC_LMM_TAU_RSLT_ENUM_UINT32                ulTauRslt = MMC_LMM_TAU_RSLT_BUTT;
+
+    NAS_EMM_PUBU_LOG_INFO("NAS_LMM_PreProcMmcImsVoiceDomainChangeInd is entered");
+
+    ulCurEmmStat = NAS_LMM_PUB_COMP_EMMSTATE(NAS_EMM_CUR_MAIN_STAT,
+                                            NAS_EMM_CUR_SUB_STAT);
+
+    pstImsVoiceDomainChangInd = (VOS_VOID*)pMsg;
+    pstPubInfo = NAS_LMM_GetEmmInfoAddr();
+
+    enVoiceDomain = pstPubInfo->ulVoiceDomain;
+
+    //pstPubInfo->ulVoiceDomain = pstImsVoiceDomainChangInd->enVoiceDomain;
+
+    /* 如果voice domain没有发生变化，直接退出 */
+    if (enVoiceDomain == pstImsVoiceDomainChangInd->enVoiceDomain)
+    {
+        return NAS_LMM_MSG_HANDLED;
+    }
+
+    /* 如果当前处于从模，则直接退出 */
+    if (NAS_LMM_CUR_LTE_SUSPEND == NAS_EMM_GetCurLteState())
+    {
+        pstPubInfo->ulVoiceDomain = pstImsVoiceDomainChangInd->enVoiceDomain;
+        /* 设置触发TAU的标识 */
+        NAS_EMM_SetVoiceDomainChange(VOS_TRUE);
+        return NAS_LMM_MSG_HANDLED;
+    }
+
+    /* 在开机或者关机，DETACH过程中，不处理该消息 */
+    if((EMM_MS_NULL == NAS_EMM_CUR_MAIN_STAT) ||
+        (EMM_MS_DEREG == NAS_EMM_CUR_MAIN_STAT) ||
+        (EMM_MS_DEREG_INIT == NAS_EMM_CUR_MAIN_STAT))
+    {
+        return NAS_LMM_MSG_HANDLED;
+    }
+
+    switch(ulCurEmmStat)
+    {
+        case    NAS_LMM_PUB_COMP_EMMSTATE(EMM_MS_REG_INIT,EMM_SS_ATTACH_WAIT_ESM_PDN_RSP):
+                pstPubInfo->ulVoiceDomain = pstImsVoiceDomainChangInd->enVoiceDomain;
+                break;
+
+        case    NAS_LMM_PUB_COMP_EMMSTATE(EMM_MS_REG_INIT,EMM_SS_ATTACH_WAIT_CN_ATTACH_CNF):
+        case    NAS_LMM_PUB_COMP_EMMSTATE(EMM_MS_REG_INIT,EMM_SS_ATTACH_WAIT_ESM_BEARER_CNF):
+        case    NAS_LMM_PUB_COMP_EMMSTATE(EMM_MS_REG_INIT,EMM_SS_ATTACH_WAIT_RRC_DATA_CNF):
+                return NAS_LMM_STORE_LOW_PRIO_MSG;
+
+        case    NAS_LMM_PUB_COMP_EMMSTATE(EMM_MS_REG, EMM_SS_REG_NORMAL_SERVICE):
+                pstPubInfo->ulVoiceDomain = pstImsVoiceDomainChangInd->enVoiceDomain;
+                /* 设置触发TAU的标识 */
+                NAS_EMM_SetVoiceDomainChange(VOS_TRUE);
+                NAS_EMM_TAU_SaveEmmTAUStartCause(NAS_EMM_TAU_START_CAUSE_VOICE_DOMAIN_CHANGE);
+                NAS_EMM_TAU_StartTAUREQ();
+                break;
+
+        case    NAS_LMM_PUB_COMP_EMMSTATE(EMM_MS_REG, EMM_SS_REG_ATTEMPTING_TO_UPDATE):
+        case    NAS_LMM_PUB_COMP_EMMSTATE(EMM_MS_REG, EMM_SS_REG_ATTEMPTING_TO_UPDATE_MM):
+                pstPubInfo->ulVoiceDomain = pstImsVoiceDomainChangInd->enVoiceDomain;
+                /* 设置触发TAU的标识 */
+                NAS_EMM_SetVoiceDomainChange(VOS_TRUE);
+                /* 如果T3411启动，或者3402启动，则等定时器超时 */
+                if (NAS_EMM_YES != NAS_EMM_IsT3411orT3402Running(&enPtlTimerId))
+                {
+                    NAS_EMM_TAU_SaveEmmTAUStartCause(NAS_EMM_TAU_START_CAUSE_VOICE_DOMAIN_CHANGE);
+                    NAS_EMM_TAU_StartTAUREQ();
+                }
+                break;
+
+        case    NAS_LMM_PUB_COMP_EMMSTATE(EMM_MS_REG, EMM_SS_REG_WAIT_ACCESS_GRANT_IND):
+                pstPubInfo->ulVoiceDomain = pstImsVoiceDomainChangInd->enVoiceDomain;
+                /* 设置触发TAU的标识 */
+                NAS_EMM_SetVoiceDomainChange(VOS_TRUE);
+                 /* 看信令是否被BAR，否: TAU;   是: 不做特殊处理 */
+                if (NAS_EMM_SUCC != NAS_EMM_JudgeBarType(NAS_EMM_BAR_TYPE_MO_SIGNAL))
+                {
+                    NAS_LMM_PUBM_LOG_NORM("NAS_EMM_MsRegSsWaitAccGrantIndRcvLrrcSyscfgCnfProc: TAU  start");
+
+                    NAS_EMM_TAU_SaveEmmTAUStartCause(NAS_EMM_TAU_START_CAUSE_VOICE_DOMAIN_CHANGE);
+                    NAS_EMM_TAU_StartTAUREQ();
+                }
+                break;
+
+        case    NAS_LMM_PUB_COMP_EMMSTATE(EMM_MS_REG, EMM_SS_REG_IMSI_DETACH_WATI_CN_DETACH_CNF):
+                return NAS_LMM_STORE_LOW_PRIO_MSG;
+
+        case    NAS_LMM_PUB_COMP_EMMSTATE(EMM_MS_TAU_INIT, EMM_SS_TAU_WAIT_CN_TAU_CNF):
+                pstPubInfo->ulVoiceDomain = pstImsVoiceDomainChangInd->enVoiceDomain;
+                /* 设置触发TAU的标识 */
+                NAS_EMM_SetVoiceDomainChange(VOS_TRUE);
+                /* 终止原有TAU流程，重新发起 */
+                ulTauRslt = MMC_LMM_TAU_RSLT_FAILURE;
+                NAS_EMM_MmcSendTauActionResultIndOthertype((VOS_VOID*)&ulTauRslt);
+                NAS_LMM_StopStateTimer(TI_NAS_EMM_STATE_TAU_T3430);
+
+                NAS_EMM_AdStateConvert(EMM_MS_REG,
+                                       EMM_SS_REG_PLMN_SEARCH,
+                                       TI_NAS_EMM_STATE_NO_TIMER);
+
+                NAS_EMM_RelReq(NAS_LMM_NOT_BARRED);
+                break;
+
+        /* SERVICE过程中，终止原有SERVICE流程，重新发起TAU */
+        case    NAS_LMM_PUB_COMP_EMMSTATE(EMM_MS_SER_INIT, EMM_SS_SER_WAIT_CN_SER_CNF):
+                pstPubInfo->ulVoiceDomain = pstImsVoiceDomainChangInd->enVoiceDomain;
+
+                /* 设置触发TAU的标识 */
+                NAS_EMM_SetVoiceDomainChange(VOS_TRUE);
+
+                NAS_EMM_SER_AbnormalOver();
 
 
+                /*设置流程冲突标志位*/
+                NAS_EMM_TAU_SaveEmmCollisionCtrl(NAS_EMM_COLLISION_SERVICE);
+
+                /* 转入REG.PLMN-SEARCH等系统消息 */
+                NAS_EMM_AdStateConvert(EMM_MS_REG,
+                                       EMM_SS_REG_PLMN_SEARCH,
+                                       TI_NAS_EMM_STATE_NO_TIMER);
+
+                /* 全都发释放，RRC在空闲态和连接态处理基本相同 */
+                /* 如果处于连接态，直接发送释放消息 */
+                NAS_EMM_PUBU_LOG_NORM("NAS_EMM_MsTauSerRcvLrrcSyscfgCnfProc: Connected! SndRrcRelReq. ");
+
+                /*发送RRC_MM_REL_REQ*/
+                NAS_EMM_RelReq(NAS_LMM_NOT_BARRED);
+                break;
+
+        case    NAS_LMM_PUB_COMP_EMMSTATE(EMM_MS_AUTH_INIT, EMM_SS_AUTH_WAIT_CN_AUTH):
+        case    NAS_LMM_PUB_COMP_EMMSTATE(EMM_MS_RRC_CONN_EST_INIT, EMM_SS_RRC_CONN_WAIT_EST_CNF):
+        case    NAS_LMM_PUB_COMP_EMMSTATE(EMM_MS_RRC_CONN_REL_INIT, EMM_SS_RRC_CONN_WAIT_REL_CNF):
+                return NAS_LMM_STORE_HIGH_PRIO_MSG;
+
+        default:
+                pstPubInfo->ulVoiceDomain = pstImsVoiceDomainChangInd->enVoiceDomain;
+                /* 设置触发TAU的标识 */
+                NAS_EMM_SetVoiceDomainChange(VOS_TRUE);
+                break;
+    }
+
+    return NAS_LMM_MSG_HANDLED;
+}
+VOS_UINT32  NAS_LMM_PreProcMmcCsConnStatusNotify(MsgBlock *    pMsg )
+{
+
+    MMC_LMM_CS_CONN_STATUS_NOTIFY_STRU     *pstCsConnStatusNotify;
+
+    NAS_EMM_PUBU_LOG_INFO("NAS_LMM_PreProcMmcCsConnStatusNotify is entered");
+
+    pstCsConnStatusNotify = (MMC_LMM_CS_CONN_STATUS_NOTIFY_STRU *)pMsg;
+
+    /* 如果发起了紧急建链，则记录紧急建链的标识，否则清除该标识 */
+    if((VOS_TRUE == pstCsConnStatusNotify->ucCsRrConnStatusFlg) &&
+        (VOS_TRUE == pstCsConnStatusNotify->ucCsEmergencyConnStatusFlg))
+    {
+        NAS_EMM_PUBU_LOG_INFO("NAS_LMM_PreProcMmcCsConnStatusNotify is entered,EMC CONN EXIT");
+        NAS_LMM_SetEmmInfoCsEmcConneExitFlag(VOS_TRUE);
+    }
+    else if((VOS_FALSE == pstCsConnStatusNotify->ucCsRrConnStatusFlg) &&
+            (VOS_TRUE == pstCsConnStatusNotify->ucCsEmergencyConnStatusFlg))
+    {
+        NAS_EMM_PUBU_LOG_INFO("NAS_LMM_PreProcMmcCsConnStatusNotify is entered,EMC CONN NOT EXIT");
+        NAS_LMM_SetEmmInfoCsEmcConneExitFlag(VOS_FALSE);
+    }
+    return NAS_LMM_MSG_HANDLED;
+}
 
 #ifdef __cplusplus
     #if __cplusplus

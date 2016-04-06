@@ -137,6 +137,20 @@ enum
 	__TCP_MIB_MAX
 };
 
+#ifdef CONFIG_HW_WIFIPRO
+enum
+{
+	WIFIPRO_TCP_MIB_NUM = 0,
+	WIFIPRO_TCP_MIB_INSEGS,				/* InSegs */
+	WIFIPRO_TCP_MIB_OUTSEGS,			/* OutSegs */
+	WIFIPRO_TCP_MIB_RETRANSSEGS,			/* RetransSegs */
+	WIFIPRO_TCP_MIB_INERRS,				/* InErrs */
+	WIFIPRO_TCP_MIB_OUTRSTS,			/* OutRsts */
+	WIFIPRO_TCP_MIB_ACKS,			/* ACKs */
+	__WIFIPRO_TCP_MIB_MAX
+};
+#endif
+
 /* udp mib definitions */
 /*
  * RFC 1213:  MIB-II UDP group

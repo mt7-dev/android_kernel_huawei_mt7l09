@@ -90,7 +90,7 @@ typedef struct
 {
     VOS_CHAR                            *pString;
     MN_MMI_OPERATION_TYPE_ENUM_U8       enOperationType;
-    VOS_UINT8                           aucRsv[3];
+    VOS_UINT8                           aucRsv[7];
 }MN_MMI_STR_OPERATION_Tbl_STRU;
 
 typedef struct
@@ -105,7 +105,7 @@ typedef struct
 {
     VOS_CHAR                            *pcMmiSc;                               /* MMI value of SC */
     VOS_UINT8                           ucNetSc;                                /* Network SC */
-    VOS_UINT8                           aucRsv[3];
+    VOS_UINT8                           aucRsv[7];
 } MN_MMI_SC_TABLE_STRU;
 
 
@@ -114,21 +114,21 @@ typedef struct
     VOS_CHAR                            *pcMmiBs;                               /* MMI value of BS */
     VOS_UINT8                           ucNetBsCode;                            /* Network Basic Service Code */
     VOS_UINT8                           ucNetBsType;                            /* Network Basic Service Type */
-    VOS_UINT8                           aucRsv[2];
+    VOS_UINT8                           aucRsv[6];
 } MN_MMI_BS_TABLE_STRU;
 
 typedef struct
 {
     VOS_CHAR                            *pcMmiChldStr;
     MN_CALL_SUPS_CMD_ENUM_U8            enChldOpType;
-    VOS_UINT8                           aucRsv[3];
+    VOS_UINT8                           aucRsv[7];
 }MN_MMI_CHLD_OP_Tbl_STRU;
 
 typedef struct
 {
     VOS_CHAR                            *pcSsOpStr;
     MN_MMI_OPERATION_TYPE_ENUM_U8       enSsOpType;
-    VOS_UINT8                           aucRsv[3];
+    VOS_UINT8                           aucRsv[7];
 }MN_MMI_SS_OP_Tbl_STRU;
 
 /*****************************************************************************
@@ -137,13 +137,15 @@ typedef struct
  修改历史:
   1.日    期   : 2013年05月06日
     作    者   : 傅映君/62575
-    修改内容   : SS FDN&Call Control，删除SubseqMmiOperationType 
+    修改内容   : SS FDN&Call Control，删除SubseqMmiOperationType
 *****************************************************************************/
 typedef struct
 {
     MN_MMI_OPERATION_TYPE_ENUM_U8       MmiOperationType;                       /*当前的操作类型*/
 
     TAF_UINT8                           aReserved[2];
+
+    MN_CALL_CLIR_CFG_ENUM_U8            enClir;
 
     MN_CALL_ORIG_PARAM_STRU             MnCallOrig;
     MN_CALL_SUPS_PARAM_STRU             MnCallSupsReq;
@@ -156,7 +158,6 @@ typedef struct
     TAF_SS_GETPWD_RSP_STRU              GetPwdReq;
     TAF_SS_PROCESS_USS_REQ_STRU         ProcessUssdReq;
     TAF_PH_PIN_DATA_STRU                PinReq;
-    MN_CALL_CLIR_CFG_ENUM_U8            enClir;
     TAF_SS_ERASECC_ENTRY_REQ_STRU       stCcbsEraseReq;
 
 }MN_MMI_OPERATION_PARAM_STRU;
@@ -197,6 +198,72 @@ VOS_UINT32 MMI_GetSCTblSize(VOS_VOID);
 
 MN_MMI_SC_TABLE_STRU *MMI_GetSCTblAddr(VOS_VOID);
 
+
+extern VOS_BOOL MMI_DecodeScAndSi(
+    VOS_CHAR                            *pInMmiStr,
+    MN_MMI_OPERATION_PARAM_STRU         *pMmiOpParam,
+    MN_MMI_SC_SI_PARA_STRU              *pstScSiPara,
+    VOS_CHAR                            **ppOutMmiStr
+);
+extern VOS_BOOL MMI_JudgeUssdOperation(
+    VOS_CHAR                            *pcMmiStr
+);
+extern VOS_UINT32 MMI_TransMmiSsCodeToNetSsCode(
+    MN_MMI_SC_SI_PARA_STRU              *pstScSiPara,
+    VOS_UINT8                           *pucNetSsCode
+);
+extern VOS_UINT32 MMI_FillInRegisterSSPara(
+    MN_MMI_SC_SI_PARA_STRU              *pstScSiPara,
+    MN_MMI_OPERATION_PARAM_STRU         *pMmiOpParam,
+    VOS_UINT8                           ucNetSsCode
+);
+extern VOS_UINT32 MMI_FillInEraseSSPara(
+    MN_MMI_SC_SI_PARA_STRU              *pstScSiPara,
+    MN_MMI_OPERATION_PARAM_STRU         *pstMmiOpParam,
+    VOS_UINT8                           ucNetSsCode
+);
+extern VOS_UINT32 MMI_FillInActivateSSPara(
+    MN_MMI_SC_SI_PARA_STRU             *pstScSiPara,
+    MN_MMI_OPERATION_PARAM_STRU        *pMmiOpParam,
+    VOS_UINT8                           ucNetSsCode
+);
+extern VOS_UINT32 MMI_FillInDeactivateSSPara(
+    MN_MMI_SC_SI_PARA_STRU              *pstScSiPara,
+    MN_MMI_OPERATION_PARAM_STRU         *pMmiOpParam,
+    VOS_UINT8                           ucNetSsCode
+);
+extern VOS_UINT32 MMI_FillInInterrogateSSPara(
+    MN_MMI_SC_SI_PARA_STRU              *pstScSiPara,
+    MN_MMI_OPERATION_PARAM_STRU         *pstMmiOpParam,
+    VOS_UINT8                           ucNetSsCode
+);
+extern VOS_UINT32 MMI_FillInProcessUssdReqPara(
+    VOS_CHAR                            *pcInMmiStr,
+    VOS_CHAR                            **ppcOutRestMmiStr,
+    MN_MMI_OPERATION_PARAM_STRU         *pstMmiOpParam
+);
+extern VOS_VOID MMI_JudgeMmiOperationType(
+    VOS_CHAR                            *pInMmiStr,
+    MN_MMI_OPERATION_PARAM_STRU         *pMmiOpParam,
+    MN_MMI_SC_SI_PARA_STRU              *pstScSiPara,
+    VOS_CHAR                            **ppOutRestMmiStr,
+    VOS_UINT32                          *pulErrCode,
+    VOS_UINT8                           ucNetSsCode
+);
+extern VOS_BOOL MMI_MatchSsOpTbl(
+    VOS_CHAR                            *pInMmiStr,
+    MN_MMI_OPERATION_PARAM_STRU         *pMmiOpParam,
+    MN_MMI_SC_SI_PARA_STRU              *pstScSiPara,
+    VOS_CHAR                            **ppOutRestMmiStr,
+    VOS_UINT32                          *pulErrCode,
+    VOS_UINT8                           *pucNetSsCode
+);
+extern VOS_BOOL MMI_JudgeSsOperation(
+    VOS_CHAR                            *pInMmiStr,
+    VOS_CHAR                            **ppOutRestMmiStr,
+    MN_MMI_OPERATION_PARAM_STRU         *pMmiOpParam,
+    VOS_UINT32                          *pulErrCode
+);
 #if ((TAF_OS_VER == TAF_WIN32) || (TAF_OS_VER == TAF_NUCLEUS))
 #pragma pack()
 #else

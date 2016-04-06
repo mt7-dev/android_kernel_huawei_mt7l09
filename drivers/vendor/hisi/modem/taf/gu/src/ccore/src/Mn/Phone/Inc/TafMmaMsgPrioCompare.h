@@ -160,12 +160,74 @@ VOS_UINT32 TAF_MMA_CompareAtPlmnReselPrioWithPhoneMode(
 );
 
 
+#if (FEATURE_ON == FEATURE_IMS)
+VOS_UINT32 TAF_MMA_CompareImsSwitchSetReqPrioWithPhoneMode(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg,
+    TAF_MMA_ABORT_FSM_TYPE_UINT8       *penAbortType
+);
+VOS_UINT32 TAF_MMA_ComparePhoneModeSetReqPrioWithImsSwitch(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg,
+    TAF_MMA_ABORT_FSM_TYPE_UINT8       *penAbortType
+);
+VOS_UINT32 TAF_MMA_CompareAtSyscfgReqPrioWithImsSwitch(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg,
+    TAF_MMA_ABORT_FSM_TYPE_UINT8       *penAbortType
+);
+VOS_UINT32 TAF_MMA_CompareMmaInterUsimStatusChangeIndPrioWithImsSwitch(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg,
+    TAF_MMA_ABORT_FSM_TYPE_UINT8       *penAbortType
+);
+VOS_UINT32 TAF_MMA_CompareAtPlmnListReqPrioWithImsSwitch(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg,
+    TAF_MMA_ABORT_FSM_TYPE_UINT8       *penAbortType
+);
+VOS_UINT32 TAF_MMA_CompareAtPlmnUserSelReqPrioWithImsSwitch(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg,
+    TAF_MMA_ABORT_FSM_TYPE_UINT8       *penAbortType
+);
+VOS_UINT32 TAF_MMA_CompareAtAttachPrioWithImsSwitch(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg,
+    TAF_MMA_ABORT_FSM_TYPE_UINT8       *penAbortType
+);
+VOS_UINT32 TAF_MMA_CompareAtDetachPrioWithImsSwitch(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg,
+    TAF_MMA_ABORT_FSM_TYPE_UINT8       *penAbortType
+);
+VOS_UINT32 TAF_MMA_CompareAtPlmnReselPrioWithImsSwitch(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg,
+    TAF_MMA_ABORT_FSM_TYPE_UINT8       *penAbortType
+);
+VOS_UINT32 TAF_MMA_CompareImsSwitchSetReqPrioWithImsSwitch(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg,
+    TAF_MMA_ABORT_FSM_TYPE_UINT8       *penAbortType
+);
+VOS_UINT32 TAF_MMA_CompareMmcSyscfgCnfPrioWithImsSwitch(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg,
+    TAF_MMA_ABORT_FSM_TYPE_UINT8       *penAbortType
+);
+VOS_UINT32 TAF_MMA_CompareMmcPlmnReselCnfPrioWithImsSwitch(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg,
+    TAF_MMA_ABORT_FSM_TYPE_UINT8       *penAbortType
+);
+VOS_UINT32 TAF_MMA_CompareMmcDetachCnfPrioWithImsSwitch(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg,
+    TAF_MMA_ABORT_FSM_TYPE_UINT8       *penAbortType
+);
+#endif
 
-
-
-
-
-    
 
 
 

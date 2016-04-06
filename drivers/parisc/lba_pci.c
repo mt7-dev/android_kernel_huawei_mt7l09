@@ -1169,66 +1169,7 @@ lba_legacy_resources(struct parisc_device *pa_dev, struct lba_device *lba_dev)
 	 */
 	sba_distributed_lmmio(pa_dev, r);
 #else
-	/*
-	 * The LBA BASE/MASK registers control IO -> System routing.
-	 *
-	 * The following code works but doesn't get us what we want.
-	 * Well, only because firmware (v5.0) on C3000 doesn't program
-	 * the LBA BASE/MASE registers to be the exact inverse of 
-	 * the corresponding SBA registers. Other Astro/Pluto
-	 * based platform firmware may do it right.
-	 *
-	 * Should someone want to mess with MSI, they may need to
-	 * reprogram LBA BASE/MASK registers. Thus preserve the code
-	 * below until MSI is known to work on C3000/A500/N4000/RP3440.
-	 *
-	 * Using the code below, /proc/iomem shows:
-	 * ...
-	 * f0000000-f0ffffff : PCI00 LMMIO
-	 *   f05d0000-f05d0000 : lcd_data
-	 *   f05d0008-f05d0008 : lcd_cmd
-	 * f1000000-f1ffffff : PCI01 LMMIO
-	 * f4000000-f4ffffff : PCI02 LMMIO
-	 *   f4000000-f4001fff : sym53c8xx
-	 *   f4002000-f4003fff : sym53c8xx
-	 *   f4004000-f40043ff : sym53c8xx
-	 *   f4005000-f40053ff : sym53c8xx
-	 *   f4007000-f4007fff : ohci_hcd
-	 *   f4008000-f40083ff : tulip
-	 * f6000000-f6ffffff : PCI03 LMMIO
-	 * f8000000-fbffffff : PCI00 ELMMIO
-	 *   fa100000-fa4fffff : stifb mmio
-	 *   fb000000-fb1fffff : stifb fb
-	 *
-	 * But everything listed under PCI02 actually lives under PCI00.
-	 * This is clearly wrong.
-	 *
-	 * Asking SBA how things are routed tells the correct story:
-	 * LMMIO_BASE/MASK/ROUTE f4000001 fc000000 00000000
-	 * DIR0_BASE/MASK/ROUTE fa000001 fe000000 00000006
-	 * DIR1_BASE/MASK/ROUTE f9000001 ff000000 00000004
-	 * DIR2_BASE/MASK/ROUTE f0000000 fc000000 00000000
-	 * DIR3_BASE/MASK/ROUTE f0000000 fc000000 00000000
-	 *
-	 * Which looks like this in /proc/iomem:
-	 * f4000000-f47fffff : PCI00 LMMIO
-	 *   f4000000-f4001fff : sym53c8xx
-	 *   ...[deteled core devices - same as above]...
-	 *   f4008000-f40083ff : tulip
-	 * f4800000-f4ffffff : PCI01 LMMIO
-	 * f6000000-f67fffff : PCI02 LMMIO
-	 * f7000000-f77fffff : PCI03 LMMIO
-	 * f9000000-f9ffffff : PCI02 ELMMIO
-	 * fa000000-fbffffff : PCI03 ELMMIO
-	 *   fa100000-fa4fffff : stifb mmio
-	 *   fb000000-fb1fffff : stifb fb
-	 *
-	 * ie all Built-in core are under now correctly under PCI00.
-	 * The "PCI02 ELMMIO" directed range is for:
-	 *  +-[02]---03.0  3Dfx Interactive, Inc. Voodoo 2
-	 *
-	 * All is well now.
-	 */
+
 	r->start = READ_REG32(lba_dev->hba.base_addr + LBA_LMMIO_BASE);
 	if (r->start & 1) {
 		unsigned long rsize;

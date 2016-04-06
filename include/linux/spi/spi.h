@@ -420,6 +420,8 @@ extern void spi_unregister_master(struct spi_master *master);
 
 extern struct spi_master *spi_busnum_to_master(u16 busnum);
 
+extern void dev_spi_dsm_client_notify(const char* content, int errNum, struct spi_device *spi);
+
 /*---------------------------------------------------------------------------*/
 
 /*

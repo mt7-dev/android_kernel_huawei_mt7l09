@@ -239,7 +239,7 @@
 
 #define UN_SPD_MASK	0x0030
 #define UN_SPD_HI	0x0010	/* Use 56000 instead of 38400 bps */
-#define UN_SPD_VHI	0x0020	/* Use 115200 instead of 38400 bps */
+#define UN_SPD_VHI	0x0020
 #define UN_SPD_CUST	0x0030	/* Use user-specified divisor */
 
 #define UN_SKIP_TEST	0x0040 /* Skip UART test during autoconfiguration */

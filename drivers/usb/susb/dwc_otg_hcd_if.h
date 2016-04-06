@@ -88,13 +88,23 @@ struct dwc_otg_hcd_function_ops {
 /** This function allocates dwc_otg_hcd structure and returns pointer on it. */
 extern dwc_otg_hcd_t *dwc_otg_hcd_alloc_hcd(void);
 
+/**
+ * update timer expires
+ */
+void dwc_hcd_keep_wake_lock(struct dwc_otg_hcd *hcd);
+
+/**
+ * wake unlock right now
+ */
+void dwc_hcd_drop_wake_lock(struct dwc_otg_hcd *hcd);
+
 /** This function should be called to initiate HCD Core.
  *
  * @param hcd The HCD
  * @param core_if The DWC_OTG Core
  *
  * Returns -DWC_E_NO_MEMORY if no enough memory.
- * Returns 0 on success
+ * Returns 0 on success  
  */
 extern int dwc_otg_hcd_init(dwc_otg_hcd_t * hcd, dwc_otg_core_if_t * core_if);
 
@@ -143,7 +153,7 @@ extern int dwc_otg_hcd_start(dwc_otg_hcd_t * hcd,
 
 /**
  * Halts the DWC_otg host mode operations in a clean manner. USB transfers are
- * stopped.
+ * stopped. 
  *
  * @param hcd The HCD
  */
@@ -156,7 +166,7 @@ extern void dwc_otg_hcd_stop(dwc_otg_hcd_t * hcd);
  * @param typeReq Request Type
  * @param wValue wValue from control request
  * @param wIndex wIndex from control request
- * @param buf data buffer
+ * @param buf data buffer 
  * @param wLength data buffer length
  *
  * Returns -DWC_E_INVALID if invalid argument is passed
@@ -313,7 +323,7 @@ extern void dwc_otg_hcd_urb_set_iso_desc_params(dwc_otg_hcd_urb_t * dwc_otg_urb,
 /** Get status of ISOC descriptor, specified by desc_num
  *
  * @param dwc_otg_urb DWC_OTG URB
- * @param desc_num ISOC descriptor number
+ * @param desc_num ISOC descriptor number 
  */
 extern uint32_t dwc_otg_hcd_urb_get_iso_desc_status(dwc_otg_hcd_urb_t *
 						    dwc_otg_urb, int desc_num);

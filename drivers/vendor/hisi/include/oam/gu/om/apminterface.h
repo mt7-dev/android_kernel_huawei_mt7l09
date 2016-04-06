@@ -157,9 +157,9 @@ typedef struct
  * º¯ÊýÉùÃ÷                                    *
  *---------------------------------------------*/
 
-extern VOS_UINT32 g_aulShpaLoadPhySemaphor[MODEM_ID_BUTT];
+extern VOS_SEM g_aulShpaLoadPhySemaphor[MODEM_ID_BUTT];
 
-extern VOS_UINT32 g_aulShpaActivePhySemaphor[MODEM_ID_BUTT];
+extern VOS_SEM g_aulShpaActivePhySemaphor[MODEM_ID_BUTT];
 
 extern VOS_UINT32 g_aulShpaCurSysId[MODEM_ID_BUTT];
 

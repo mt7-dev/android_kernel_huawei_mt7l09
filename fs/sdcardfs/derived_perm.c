@@ -31,6 +31,7 @@ static void inherit_derived_state(struct inode *parent, struct inode *child)
 	ci->d_uid = pi->d_uid;
 	ci->d_gid = pi->d_gid;
 	ci->d_mode = pi->d_mode;
+	ci->under_android = pi->under_android;
 }
 
 /* helper function for derived state */
@@ -86,7 +87,9 @@ void get_derived_permission(struct dentry *parent, struct dentry *dentry)
 			if (!strcasecmp(dentry->d_name.name, "Android")) {
 				/* App-specific directories inside; let anyone traverse */
 				info->perm = PERM_ANDROID;
-				info->d_mode = 00771;
+				info->under_android = true;
+				//info->d_mode = 00771;
+            /*
 			} else if (sbi->options.split_perms) {
 				if (!strcasecmp(dentry->d_name.name, "DCIM")
 					|| !strcasecmp(dentry->d_name.name, "Pictures")) {
@@ -99,44 +102,50 @@ void get_derived_permission(struct dentry *parent, struct dentry *dentry)
 						|| !strcasecmp(dentry->d_name.name, "Ringtones")) {
 					info->d_gid = AID_SDCARD_AV;
 				}
+            */
 			}
 			break;
 		case PERM_ANDROID:
 			if (!strcasecmp(dentry->d_name.name, "data")) {
 				/* App-specific directories inside; let anyone traverse */
 				info->perm = PERM_ANDROID_DATA;
-				info->d_mode = 00771;
+				//info->d_mode = 00771;
 			} else if (!strcasecmp(dentry->d_name.name, "obb")) {
 				/* App-specific directories inside; let anyone traverse */
 				info->perm = PERM_ANDROID_OBB;
-				info->d_mode = 00771;
+				//info->d_mode = 00771;
 				// FIXME : this feature will be implemented later.
 				/* Single OBB directory is always shared */
+			} else if (!strcasecmp(dentry->d_name.name, "media")) {
+				/* App-specific directories inside; let anyone traverse */
+				info->perm = PERM_ANDROID_MEDIA;
+				//info->d_mode = 00771;
 			} else if (!strcasecmp(dentry->d_name.name, "user")) {
 				/* User directories must only be accessible to system, protected
 				 * by sdcard_all. Zygote will bind mount the appropriate user-
 				 * specific path. */
 				info->perm = PERM_ANDROID_USER;
 				info->d_gid = AID_SDCARD_ALL;
-				info->d_mode = 00770;
+				//info->d_mode = 00770;
 			}
 			break;
 		/* same policy will be applied on PERM_ANDROID_DATA
 		 * and PERM_ANDROID_OBB */
 		case PERM_ANDROID_DATA:
 		case PERM_ANDROID_OBB:
+		case PERM_ANDROID_MEDIA:
 			appid = get_appid(sbi->pkgl_id, dentry->d_name.name);
 			if (appid != 0) {
 				info->d_uid = multiuser_get_uid(parent_info->userid, appid);
 			}
-			info->d_mode = 00770;
+			//info->d_mode = 00770;
 			break;
 		case PERM_ANDROID_USER:
 			/* Root of a secondary user */
 			info->perm = PERM_ROOT;
 			info->userid = simple_strtoul(dentry->d_name.name, NULL, 10);
 			info->d_gid = AID_SDCARD_R;
-			info->d_mode = 00771;
+			//info->d_mode = 00771;
 			break;
 	}
 }
@@ -204,21 +213,19 @@ int is_obbpath_invalid(struct dentry *dent)
 			path_get(&di->lower_path);
 			//lower_parent = lock_parent(lower_path->dentry);
 
-                        /*DTS2014052108291, kamlloc in spinlock use GFP_ATOMIC begin */
 			path_buf = kmalloc(PATH_MAX, GFP_ATOMIC);
-                        if (!path_buf) {
-			    path_put(&di->lower_path);
-                            spin_unlock(&di->lock);
-                            printk(KERN_ERR "sdcardfs: %s: kmalloc fail in obbpath invalid\n", __func__);
-                            return -ENOMEM;
-                        }
-                        /*DTS2014052108291, kamlloc in spinlock use GFP_ATOMIC end */
-                        obbpath_s = d_path(&di->lower_path, path_buf, PATH_MAX);
-			if (d_unhashed(di->lower_path.dentry) ||
-				strcasecmp(sbi->obbpath_s, obbpath_s)) {
+			if(!path_buf) {
 				ret = 1;
+				printk(KERN_ERR "sdcardfs: "
+					"fail to allocate path_buf in %s.\n", __func__);
+			} else {
+				obbpath_s = d_path(&di->lower_path, path_buf, PATH_MAX);
+				if (d_unhashed(di->lower_path.dentry) ||
+					strcasecmp(sbi->obbpath_s, obbpath_s)) {
+					ret = 1;
+				}
+				kfree(path_buf);
 			}
-			kfree(path_buf);
 
 			//unlock_dir(lower_parent);
 			path_put(&di->lower_path);

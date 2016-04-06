@@ -801,30 +801,6 @@ static short hpi6000_adapter_boot_load_dsp(struct hpi_adapter_obj *pao,
 				test_data = test_data << 1;
 			}
 		}
-
-		/* memory map of ASI6200
-		   00000000-0000FFFF    16Kx32 internal program
-		   01800000-019FFFFF    Internal peripheral
-		   80000000-807FFFFF    CE0 2Mx32 SDRAM running @ 100MHz
-		   90000000-9000FFFF    CE1 Async peripherals:
-
-		   EMIF config
-		   ------------
-		   Global EMIF control
-		   0 -
-		   1 -
-		   2 -
-		   3 CLK2EN = 1   CLKOUT2 enabled
-		   4 CLK1EN = 0   CLKOUT1 disabled
-		   5 EKEN = 1 <--!! C6713 specific, enables ECLKOUT
-		   6 -
-		   7 NOHOLD = 1   external HOLD disabled
-		   8 HOLDA = 0    HOLDA output is low
-		   9 HOLD = 0             HOLD input is low
-		   10 ARDY = 1    ARDY input is high
-		   11 BUSREQ = 0   BUSREQ output is low
-		   12,13 Reserved = 1
-		 */
 		hpi_write_word(pdo, 0x01800000, 0x34A8);
 
 		/* EMIF CE0 setup - 2Mx32 Sync DRAM
@@ -1041,13 +1017,7 @@ static short hpi6000_adapter_boot_load_dsp(struct hpi_adapter_obj *pao,
 		iowrite32(0x00030003, pdo->prHPI_control);
 		hpios_delay_micro_seconds(10000);
 
-		/* wait for a non-zero value in hostcmd -
-		 * indicating initialization is complete
-		 *
-		 * Init could take a while if DSP checks SDRAM memory
-		 * Was 200000. Increased to 2000000 for ASI8801 so we
-		 * don't get 938 errors.
-		 */
+
 		timeout = 2000000;
 		while (timeout) {
 			do {

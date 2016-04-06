@@ -252,6 +252,12 @@ VOS_UINT32  NAS_MMC_RcvMmaOtherModemInfoNotify_PreProc(
     struct MsgCB                       *pstMsg
 );
 
+VOS_UINT32  NAS_MMC_RcvMmaOtherModemDplmnNplmnInfoNotify_PreProc(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+);
+
+
 VOS_UINT32  NAS_MMC_RcvMmaNcellInfoNotify_PreProc(
     VOS_UINT32                          ulEventType,
     struct MsgCB                       *pstMsg
@@ -496,6 +502,11 @@ VOS_UINT32  NAS_MMC_RcvRrMmRelInd_PreProc(
 	struct MsgCB                        *pstMsg
 );
 
+VOS_UINT32  NAS_MMC_RcvMmRrConnInfoInd_PreProc(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                        *pstMsg
+);
+
 VOS_UINT32 NAS_MMC_RcvWasAcInfoChange_PreProc(
     VOS_UINT32                          ulEventType,
     struct MsgCB                        *pstMsg
@@ -506,6 +517,11 @@ VOS_UINT32  NAS_MMC_RcvLmmMmcStatusInd_PreProc(
     struct MsgCB                       *pstMsg
 );
 
+
+VOS_UINT32  NAS_MMC_RcvLmmSimAuthFailInd_PreProc(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+);
 #endif
 
 VOS_UINT32  NAS_MMC_RcvRrMmCipherInfoInd_PreProc(
@@ -707,6 +723,31 @@ VOS_UINT32 NAS_MMC_RcvLmmInfoChangeNotifyInd_PreProc(
 );
 
 
+#if (FEATURE_ON == FEATURE_IMS)
+VOS_UINT32 NAS_MMC_RcvMmaImsSrvInfoNotify_PreProc(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+);
+#endif
+
+#if (FEATURE_ON == FEATURE_IMS)
+VOS_UINT32 NAS_MMC_RcvMmaImsSwitchStateInd_PreProc(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+);
+#endif
+
+VOS_UINT32 NAS_MMC_RcvMmaVoiceDomainChangeInd_PreProc(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+);
+VOS_VOID NAS_MMC_ProcVoiceDomainDisableLte_PreProc(VOS_VOID);
+
+
+VOS_UINT32  NAS_MMC_RcvMmaImsiRefreshInd_PreProc(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+);
 
 #if (VOS_OS_VER == VOS_WIN32)
 #pragma pack()

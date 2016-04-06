@@ -59,6 +59,8 @@ extern "C" {
 #define AT_TDS_SCALIB_TEST_STR "(CACHE,USE,SAVE,GET,READ,INI,BEGIN,END,SET),(APCOFFSETFLAG,APCOFFSET,APC,APCFREQ,AGC,AGCFREQ),(1,5,6),(DATA)"
 #endif
 
+#define BAND_WIDTH_NUMS 6
+
 /*****************************************************************************
   3 枚举定义
 *****************************************************************************/
@@ -96,8 +98,6 @@ typedef VOS_UINT32  AT_TSELRF_PATH_ENUM_UINT32;
 /*****************************************************************************
   4 全局变量声明
 *****************************************************************************/
-/* 是否具有权限标志(控制DIAG/SHELL口的权限) */
-extern AT_E5_RIGHT_FLAG_ENUM_U32        g_enATE5RightFlag;
 
 /* 由于 g_stATDislogPwd 中的 DIAG口的状态要放入备份NV列表; 而密码不用备份
    故将 g_stATDislogPwd 中的密码废弃, 仅使用其中的 DIAG 口状态;
@@ -199,6 +199,15 @@ VOS_VOID At_RfPllStatusCnfProc(PHY_AT_RF_PLL_STATUS_CNF_STRU *pstMsg);
 
 VOS_UINT32 AT_QryFpowdetTPara(VOS_UINT8 ucIndex);
 VOS_VOID At_RfFpowdetTCnfProc(PHY_AT_POWER_DET_CNF_STRU *pstMsg);
+
+VOS_UINT32 AT_SetNvwrSecCtrlPara(VOS_UINT8 ucIndex);
+VOS_UINT32 AT_RcvMtaNvwrSecCtrlSetCnf( VOS_VOID *pMsg );
+VOS_UINT32 AT_QryNvwrSecCtrlPara(VOS_UINT8 ucIndex);
+VOS_BOOL AT_IsNVWRAllowedNvId(VOS_UINT16 usNvId);
+
+
+
+
 #if (VOS_OS_VER == VOS_WIN32)
 #pragma pack()
 #else

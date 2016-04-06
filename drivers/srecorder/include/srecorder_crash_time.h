@@ -1,18 +1,4 @@
-/**
-    @copyright: Huawei Technologies Co., Ltd. 2012-2012. All rights reserved.
-    
-    @file: srecorder_crash_time.h
-    
-    @brief: 读取死机时当前系统的时间(UTC格式)
-    
-    @version: 1.0 
-    
-    @author: QiDechun ID: 216641
-    
-    @date: 2012-06-30
-    
-    @history:
-*/
+
 
 #ifndef SRECORDER_CRASH_TIME_H
 #define SRECORDER_CRASH_TIME_H

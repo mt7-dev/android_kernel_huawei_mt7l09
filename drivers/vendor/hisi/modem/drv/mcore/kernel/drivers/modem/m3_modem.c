@@ -4,6 +4,7 @@
 #include <bsp_nvim.h>
 #include <bsp_hkadc.h>
 #include <bsp_softtimer.h>
+#include <bsp_pmu_hi6561.h>
 #include <socp_balong.h>
 #include <om_balong.h>
 #include <regulator_balong.h>
@@ -16,7 +17,6 @@
 #include <m3_modem.h>
 #include <modem_start.h>
 #include <bsp_reset.h>
-#include <bsp_pmu_hi6561.h>
 #include <bsp_dual_modem.h>
 
 #ifdef K3V3_LPM3_HAS_MODEM_FEATURE
@@ -50,11 +50,11 @@ void modem_init()
 #endif
 	tem_protect_init();
     cpufreq_init();
-    pastar_init();
 	pm_modem_init();
 #if defined(CONFIG_BALONG_MODEM_RESET)
     bsp_reset_init();
 #endif
+	bsp_pastar_init();
 	wakeup_modem_init();
 	g_modem_st.init_flag = MODEM_ALREADY_INIT_MAGIC;
     writel(bsp_get_slice_value(), PWR_TCM_MODEM_INIT_ADDR + 0x14);

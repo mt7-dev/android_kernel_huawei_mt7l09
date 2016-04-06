@@ -4,7 +4,7 @@
 #include <bsp_memmap.h>
 #include <hi_timer.h>
 #include <hi_syscrg.h>
-#include <hi_bbp_systime.h>
+#include <hi_bbp_systime.h>/*lint !e322*/
 
 #ifdef CONFIG_USE_TIMER_STAMP
 #define TIMER_STAMP_ADDR        (HI_TIMER_05_REGBASE_ADDR_VIRT+HI_TIMER_CURRENTVALUE_OFFSET)
@@ -26,7 +26,9 @@
 #ifdef __KERNEL__
 #define timer_func irq_handler_t
 #elif defined(__VXWORKS__)
-#define timer_func VOIDFUNCPTR
+//#define timer_func VOIDFUNCPTR
+typedef void  (*timer_func)(void *);
+
 #endif
 #define  hardtimer_print_error(fmt, ...)    (bsp_trace(BSP_LOG_LEVEL_ERROR, BSP_MODU_HARDTIMER, "[hardtimer]: <%s> "fmt"\n", __FUNCTION__, ##__VA_ARGS__))
 #if defined(__KERNEL__)||defined(__VXWORKS__)
@@ -36,7 +38,7 @@ struct bsp_hardtimer_control
 	u32 mode;
 	u32 timeout;
 	timer_func func;
-	u32 para;
+	void* para;
 	DRV_TIMER_UNIT unit; /*计数单位*/
 };
 #endif

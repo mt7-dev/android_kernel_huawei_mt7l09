@@ -1,18 +1,4 @@
-/**
-    @copyright: Huawei Technologies Co., Ltd. 2012-2012. All rights reserved.
-    
-    @file: srecorder_allps_info.c
-    
-    @brief: 读取死机时所有进程的信息
-    
-    @version: 1.0 
-    
-    @author: QiDechun ID: 216641
-    
-    @date: 2012-06-30
-    
-    @history:
-*/
+
 
 /*----includes-----------------------------------------------------------------------*/
 
@@ -423,13 +409,11 @@ int srecorder_get_allps_info(srecorder_reserved_mem_info_t *pmem_info)
         return -1;
     }
 
-    /* DTS2012101502012 wupeng 20121015 begin */
-    if (srecorder_log_has_been_dumped(ALL_PS_INFO_BIT4) || pmem_info->dump_modem_crash_log_only)
+    if (srecorder_log_has_been_dumped(ALL_PS_INFO_BIT4) || pmem_info->dump_modem_crash_log_only)/* [false alarm]:there is pmem_info protect before  */
     {
         SRECORDER_PRINTK("all ps info have been dumped successfully!\n");
         return -1;
     }
-    /* DTS2012101502012 wupeng 20121015 end */
     
     if (0 != srecorder_write_info_header(pmem_info, ALL_PS_INFO_BIT4, &pinfo_header))
     {

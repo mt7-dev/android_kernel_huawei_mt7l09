@@ -259,6 +259,7 @@ VOS_VOID Rabm_TimerProcess( REL_TIMER_MSG *pTimer )
 
 
         case RABM_TIMER_RESEND_EST_REQ:
+            RABM_TimerStart(RABM_REESTABLISH_REQ_SENT, RABM_RABM_REEST_PROT_TIMER_LEN);
             RABM_SndRabReestReq();
             break;
 
@@ -309,6 +310,8 @@ VOS_VOID Rabm_Init()
     gRabm3GTo2GSwitch   = RABM_3G_TO_2G_SWITCH_OFF;       /*3G到2G切换标识的初始化*/
     gRabm3GTo2GT1Switch = RABM_3G_TO_2G_T1_OFF;           /*Rabm.3To2.T1定时器是否启动标识的初始化*/
     /*初始化3G中记录切换前所处状态的数组*/
+
+    g_ulNasRabmResendEstTimer                      = NAS_RABM_TIMER_STATUS_STOP;
 
     gRabm2GTo3GDataResume = VOS_FALSE;
 

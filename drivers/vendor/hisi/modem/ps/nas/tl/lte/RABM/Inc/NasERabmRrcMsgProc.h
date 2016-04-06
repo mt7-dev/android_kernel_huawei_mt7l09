@@ -66,7 +66,7 @@ extern "C" {
 /*****************************************************************************
   8 Fuction Extern
 *****************************************************************************/
-extern VOS_VOID  NAS_ERABM_InformEsmBearerStatus( VOS_VOID );
+extern VOS_VOID  NAS_ERABM_InformEsmBearerStatus( VOS_UINT8 ucSessionId );
 extern VOS_VOID  NAS_ERABM_RcvRabmRrcRabInd(const LRRC_LRABM_RAB_IND_STRU *pRcvMsg );
 extern VOS_VOID  NAS_ERABM_RcvRabmRrcStatusInd(const LRRC_LRABM_STATUS_IND_STRU *pRcvMsg );
 extern VOS_VOID  NAS_ERABM_RcvRabmRrcStatusMsgProc( VOS_UINT32 ulRabCnt,

@@ -50,8 +50,11 @@ typedef struct dwc_otg_core_if dwc_otg_core_if_t;
 /** Maximum number of Endpoints/HostChannels */
 #define MAX_EPS_CHANNELS 16
 
+/** default host tx fifo size */
+#define HPTXFSIZ_DEFAULT_VALUE 0x10002000
+
 extern dwc_otg_core_if_t *dwc_otg_cil_init(const uint32_t * _reg_base_addr);
-extern void dwc_otg_core_init(dwc_otg_core_if_t * _core_if);
+extern int dwc_otg_core_init(dwc_otg_core_if_t * _core_if);
 extern void dwc_otg_cil_remove(dwc_otg_core_if_t * _core_if);
 
 extern void dwc_otg_enable_global_interrupts(dwc_otg_core_if_t * _core_if);
@@ -82,7 +85,8 @@ extern int32_t dwc_otg_get_param_otg_cap(dwc_otg_core_if_t * core_if);
 #define DWC_OTG_CAP_PARAM_HNP_SRP_CAPABLE 0
 #define DWC_OTG_CAP_PARAM_SRP_ONLY_CAPABLE 1
 #define DWC_OTG_CAP_PARAM_NO_HNP_SRP_CAPABLE 2
-#define dwc_param_otg_cap_default DWC_OTG_CAP_PARAM_HNP_SRP_CAPABLE
+/* #define dwc_param_otg_cap_default DWC_OTG_CAP_PARAM_HNP_SRP_CAPABLE */
+#define dwc_param_otg_cap_default DWC_OTG_CAP_PARAM_NO_HNP_SRP_CAPABLE
 
 extern int dwc_otg_set_param_opt(dwc_otg_core_if_t * core_if, int32_t val);
 extern int32_t dwc_otg_get_param_opt(dwc_otg_core_if_t * core_if);
@@ -114,7 +118,6 @@ extern int32_t dwc_otg_get_param_dma_desc_enable(dwc_otg_core_if_t * core_if);
 #define dwc_param_dma_desc_enable_default 1
 #define DWC_PARAM_DMA_DESC_ENABLE 1
 #define DWC_PARAM_DMA_DESC_DISABLE 0
-
 
 /** The DMA Burst size (applicable only for External DMA
  * Mode). 1, 4, 8 16, 32, 64, 128, 256 (default 32)
@@ -193,7 +196,7 @@ extern int32_t dwc_otg_get_param_data_fifo_size(dwc_otg_core_if_t * core_if);
 extern int dwc_otg_set_param_dev_rx_fifo_size(dwc_otg_core_if_t * core_if,
 					      int32_t val);
 extern int32_t dwc_otg_get_param_dev_rx_fifo_size(dwc_otg_core_if_t * core_if);
-#define dwc_param_dev_rx_fifo_size_default 1064
+#define dwc_param_dev_rx_fifo_size_default 512
 
 /** Number of 4-byte words in the non-periodic Tx FIFO in device mode
  * when dynamic FIFO sizing is enabled.
@@ -203,7 +206,7 @@ extern int dwc_otg_set_param_dev_nperio_tx_fifo_size(dwc_otg_core_if_t *
 						     core_if, int32_t val);
 extern int32_t dwc_otg_get_param_dev_nperio_tx_fifo_size(dwc_otg_core_if_t *
 							 core_if);
-#define dwc_param_dev_nperio_tx_fifo_size_default 1024
+#define dwc_param_dev_nperio_tx_fifo_size_default 256
 
 /** Number of 4-byte words in each of the periodic Tx FIFOs in device
  * mode when dynamic FIFO sizing is enabled.
@@ -267,7 +270,8 @@ extern int32_t dwc_otg_get_param_max_packet_count(dwc_otg_core_if_t * core_if);
 extern int dwc_otg_set_param_host_channels(dwc_otg_core_if_t * core_if,
 					   int32_t val);
 extern int32_t dwc_otg_get_param_host_channels(dwc_otg_core_if_t * core_if);
-#define dwc_param_host_channels_default 12
+/* #define dwc_param_host_channels_default 12 */
+#define dwc_param_host_channels_default 16
 
 /** The number of endpoints in addition to EP0 available for device
  * mode operations.
@@ -377,7 +381,8 @@ extern int dwc_otg_set_param_dev_tx_fifo_size(dwc_otg_core_if_t * core_if,
 					      int fifo_num, int32_t val);
 extern int32_t dwc_otg_get_param_dev_tx_fifo_size(dwc_otg_core_if_t * core_if,
 						  int fifo_num);
-#define dwc_param_dev_tx_fifo_size_default 768
+/* #define dwc_param_dev_tx_fifo_size_default 768 */
+#define dwc_param_dev_tx_fifo_size_default 256
 
 /** Thresholding enable flag-
  * bit 0 - enable non-ISO Tx thresholding
@@ -477,12 +482,6 @@ extern int32_t dwc_otg_get_param_ahb_single(dwc_otg_core_if_t * core_if);
 
 extern int dwc_otg_set_param_otg_ver(dwc_otg_core_if_t * core_if, int32_t val);
 extern int32_t dwc_otg_get_param_otg_ver(dwc_otg_core_if_t * core_if);
-/*
- * OTG Version (OTGVer)
- * Indicates the OTG revision.
- * 1'0: OTG Version 1.3. In this version the core supports Data line pulsing and VBus pulsing for SRP.
- * 1'b1: OTG Version 2.0. In this version the core supports only Data line pulsing for SRP.
- */
 #define dwc_param_otg_ver_default 0
 
 /** @} */

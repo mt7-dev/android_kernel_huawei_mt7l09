@@ -1,13 +1,4 @@
-/*
-    Aureal Vortex Soundcard driver.
 
-    IO addr collected from asp4core.vxd:
-    function    address
-    0005D5A0    13004
-    00080674    14004
-    00080AFF    12818
-
- */
 
 #define CHIP_AU8830
 

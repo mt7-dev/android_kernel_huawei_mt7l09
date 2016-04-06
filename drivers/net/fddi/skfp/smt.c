@@ -1231,11 +1231,7 @@ void smt_set_timestamp(struct s_smc *smc, u_char *p)
 	u_long	time ;
 	u_long	utime ;
 
-	/*
-	 * timestamp is 64 bits long ; resolution is 80 nS
-	 * our clock resolution is 10mS
-	 * 10mS/80ns = 125000 ~ 2^17 = 131072
-	 */
+
 	utime = smt_get_time() ;
 	time = utime * 100 ;
 	time /= TICKS_PER_SECOND ;

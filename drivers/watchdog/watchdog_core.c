@@ -88,7 +88,10 @@ int watchdog_init_timeout(struct watchdog_device *wdd,
 	/* try to get the timeout_sec property */
 	if (dev == NULL || dev->of_node == NULL)
 		return ret;
-	of_property_read_u32(dev->of_node, "timeout-sec", &t);
+		
+	if(of_property_read_u32(dev->of_node, "timeout-sec", &t) < 0)
+		ret = -EINVAL; 
+		
 	if (!watchdog_timeout_invalid(wdd, t))
 		wdd->timeout = t;
 	else

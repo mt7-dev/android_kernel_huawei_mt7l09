@@ -25,6 +25,8 @@
 #include "TafSdcLib.h"
 #include "Nasrrcinterface.h"
 
+#include "TafMmaFsmImsSwitchTbl.h"
+
 #ifdef __cplusplus
 #if __cplusplus
 extern "C" {
@@ -422,7 +424,6 @@ VOS_VOID TAF_MMA_RegFsm( VOS_VOID  )
                          VOS_NULL_PTR,
                          VOS_NULL_PTR);
 
-
     /* 注册Main状态机 */
     TAF_FSM_RegisterFsm((TAF_MMA_GetMainFsmDescAddr()),
                          "TAF:FSM:MMA:MAIN",
@@ -432,12 +433,23 @@ VOS_VOID TAF_MMA_RegFsm( VOS_VOID  )
                          VOS_NULL_PTR);
 
     /* 注册Sub状态机 */
+    /* 注册Phone Mode子状态机 */
     TAF_FSM_RegisterFsm((TAF_MMA_GetPhoneModeFsmDescAddr()),
                          "TAF:FSM:MMA:Phone Mode",
                          (VOS_UINT32)TAF_MMA_GetPhoneModeStaTblSize(),
                          TAF_MMA_GetPhoneModeProcessStaTbl(),
                          VOS_NULL_PTR,
                          TAF_MMA_InitFsmCtx_PhoneMode);
+
+#if (FEATURE_IMS == FEATURE_ON)
+    /* 注册IMS SWITCH子状态机 */
+    TAF_FSM_RegisterFsm((TAF_MMA_GetImsSwitchFsmDescAddr()),
+                         "TAF:FSM:MMA:IMS SWITCH",
+                         (VOS_UINT32)TAF_MMA_GetImsSwitchStaTblSize(),
+                         TAF_MMA_GetImsSwitchProcessStaTbl(),
+                         VOS_NULL_PTR,
+                         VOS_NULL_PTR);
+#endif
 }
 VOS_UINT32  TAF_MMA_InitTask( VOS_VOID )
 {
@@ -735,11 +747,11 @@ VOS_VOID TAF_MMA_InitTimerId(VOS_VOID)
     g_stPhPinOperTimer.ulTimerId                        = TI_MN_PH_PIN_OPER;
 
     g_stSyscfgWaitDetachCnfTimer.ulTimerId              = TI_MN_MMA_SYSCFG_WAIT_DETACH_CNF;
-    
+
     g_stPnnListMemProtectTimer.ulTimerId                = TI_TAF_MMA_PNN_LIST_MEM_PROTECT_TIMER;
 
     g_stPowerDownDelayTimer.ulTimerId                   = TI_TAF_MMA_DELAY_POWER_DOWN;
-            
+
 
     g_stNetScanProtectTimer.ulTimerId                   = TI_TAF_MMA_NET_SCAN_TIMER;
     g_stAbortNetScanProtectTimer.ulTimerId              = TI_TAF_MMA_ABORT_NET_SCAN_TIMER;
@@ -997,7 +1009,7 @@ VOS_VOID TAF_MMA_InitPhoneModeCtrlCtx(
     /* 默认初始化快速开机标志为Disable */
     gstMmaValue.ulQuickStartFlg = MMA_QUICK_START_DISABLE;
 
-    
+
 
     /* 默认初始化为上电需要初始化栈 */
     pstCtrlCtx->ulAutoInitPsFlg     = VOS_TRUE;

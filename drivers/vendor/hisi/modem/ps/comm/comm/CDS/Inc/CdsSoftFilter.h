@@ -70,6 +70,8 @@ typedef struct
 
     IPV6_ADDR_UN                    unIpv6SrcAddr;              /*源IPv6地址*/
     IPV6_ADDR_UN                    unIpv6DestAddr;             /*目的IPv6地址*/
+    VOS_UINT8                       ucIpVersion;                /*IP版本号*/
+    VOS_UINT8                       aucRsv[3];
 
 }CDS_IP_DATA_INFO_STRU;
 

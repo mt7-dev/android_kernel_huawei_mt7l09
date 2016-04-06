@@ -187,6 +187,10 @@ int fb_copy_cmap(const struct fb_cmap *from, struct fb_cmap *to)
 
 int fb_cmap_to_user(const struct fb_cmap *from, struct fb_cmap_user *to)
 {
+	/*avoid security attacks , do not provided this interface */
+	printk(KERN_ERR "fbcmap: FBIOGETCMAP not support\n" );
+	return -EINVAL;
+#if 0
 	int tooff = 0, fromoff = 0;
 	int size;
 
@@ -211,6 +215,7 @@ int fb_cmap_to_user(const struct fb_cmap *from, struct fb_cmap_user *to)
 		if (copy_to_user(to->transp+tooff, from->transp+fromoff, size))
 			return -EFAULT;
 	return 0;
+#endif
 }
 
 /**
@@ -262,6 +267,10 @@ int fb_set_cmap(struct fb_cmap *cmap, struct fb_info *info)
 
 int fb_set_user_cmap(struct fb_cmap_user *cmap, struct fb_info *info)
 {
+	/*avoid security attacks , do not provided this interface */
+	printk(KERN_ERR "fbcmap: FBIOPUTCMAP not support\n" );
+	return -EINVAL;
+#if 0
 	int rc, size = cmap->len * sizeof(u16);
 	struct fb_cmap umap;
 
@@ -296,6 +305,7 @@ out1:
 out:
 	fb_dealloc_cmap(&umap);
 	return rc;
+#endif
 }
 
 /**

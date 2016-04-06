@@ -458,15 +458,15 @@ VOS_VOID GMM_SuspendTimer(VOS_VOID)
             /* MMA通过SYSCFGEX触发detach和attach流程，如果detach发出后网络未响应时,
                此时进入一个新的LA和RA需要触发LAU/RAU时,避免反复的GPRS挂起延长MMA等待
                detach回复的时长,导致MMA在detach超时进行attach后GMM的detach定时器超时
-               触发本地detach,此时不停止GMM启动的detach定时器,超时后直接进行本地detach   
+               触发本地detach,此时不停止GMM启动的detach定时器,超时后直接进行本地detach
             */
             if ((VOS_TRUE                    == NAS_MMA_GetServiceDomainSet())
              && (GMM_TIMER_PROTECT_PS_DETACH == i)
-             && (NAS_MML_NET_RAT_TYPE_GSM    == enCurRat)) 
+             && (NAS_MML_NET_RAT_TYPE_GSM    == enCurRat))
             {
                 continue;
             }
-        
+
             GMM_SuspendSingleTimer(i);
             /*g_GmmTimerMng.ulTimerRunMask &= ~(VOS_UINT32)(0x00000001 << i);*/
         }
@@ -530,21 +530,21 @@ VOS_VOID GMM_ResumeTimer(VOS_UINT8 ucResume)
         {
             continue;
         }
-       
+
         if (0 != (gstGmmSuspendCtrl.ulTimerRunMask & (0x00000001 << i)))
         {
             /* MMA通过SYSCFGEX触发detach和attach流程，如果detach发出后网络未响应时,
                此时进入一个新的LA和RA需要触发LAU/RAU时,避免反复的GPRS挂起延长MMA等待
                detach回复的时长,导致MMA在detach超时进行attach后GMM的detach定时器超时
-               触发本地detach,此时不停止GMM启动的detach定时器,超时后直接进行本地detach   
+               触发本地detach,此时不停止GMM启动的detach定时器,超时后直接进行本地detach
             */
             if ((VOS_TRUE                    == NAS_MMA_GetServiceDomainSet())
-             && (GMM_TIMER_PROTECT_PS_DETACH == i) 
-             && (NAS_MML_NET_RAT_TYPE_GSM    == enCurRat)) 
+             && (GMM_TIMER_PROTECT_PS_DETACH == i)
+             && (NAS_MML_NET_RAT_TYPE_GSM    == enCurRat))
             {
                 continue;
             }
-        
+
             if (VOS_OK != Mm_StartRelTimer(&g_GmmTimerMng.aTimerInf[i].hTimer,
                                             WUEPS_PID_GMM,
                                             gstGmmSuspendCtrl.ulTimerValue[i],
@@ -591,7 +591,7 @@ VOS_VOID Gmm_Tim3302Expired(VOS_VOID)
         if ((VOS_TRUE       == NAS_GMM_IsAllowedCombinedAttach_GmmRegisteredAttemptingToUpdateMm())
          && (GMM_NET_MODE_II == g_GmmGlobalCtrl.ucNetMod)
          && (GMM_NET_MODE_I  == g_GmmGlobalCtrl.SysInfo.ucNetMod))
-        
+
         {
             Gmm_RoutingAreaUpdateInitiate(GMM_COMBINED_RALAU_WITH_IMSI_ATTACH); /* 调用函数触发RAU过程                      */
         }
@@ -625,14 +625,14 @@ VOS_VOID Gmm_Tim3310Expired(VOS_VOID)
     enCurRat = NAS_MML_GetCurrNetRatType();
 
     enCause = NAS_MML_REG_FAIL_CAUSE_TIMER_TIMEOUT;
-    
+
     /* 如果当前接入技术是G，给GAS发送GRRGMM_GPRS_PROC_IND,类型为ATTACH,标志为FINISH */
     if ( (NAS_MML_NET_RAT_TYPE_GSM == enCurRat)
       || (NAS_MML_NET_RAT_TYPE_WCDMA== enCurRat))
     {
         NAS_GMM_SndRrmmGmmProcNotify(RRMM_GMM_PROC_TYPE_ATTACH, RRMM_GMM_PROC_FLAG_FINISH);
     }
-    
+
     if (GMM_REGISTERED_INITIATED == g_GmmGlobalCtrl.ucState)
     {                                                                           /* 判断GMM状态是GMM_REGISTERED_INITIATED    */
         Gmm_TimerStop(GMM_TIMER_T3318);                                         /* 停止T3318                                */
@@ -661,7 +661,7 @@ VOS_VOID Gmm_Tim3310Expired(VOS_VOID)
             {
                 NAS_GMM_SndRrmmGmmProcNotify(RRMM_GMM_PROC_TYPE_ATTACH, RRMM_GMM_PROC_FLAG_START);
             }
-            
+
             pNasMsg = Gmm_AttachRequestMsgMake();                               /* 调用函数制作空口消息attach request       */
 
             Gmm_SndRrmmDataReq(RRC_NAS_MSG_PRIORTY_HIGH, pNasMsg);              /* 使用RRMM_DATA_REQ原语发送attach request  */
@@ -792,7 +792,7 @@ VOS_VOID Gmm_Tim3311Expired(VOS_VOID)
         /* 如果当前只是PS ONLY， 或者网络模式II,则不需要进行联合ATTACH */
         if ( VOS_TRUE == NAS_GMM_IsAllowedCombinedAttach_GmmRegisteredAttemptingToUpdateMm() )
         {
-        
+
             Gmm_RoutingAreaUpdateInitiate(GMM_COMBINED_RALAU_WITH_IMSI_ATTACH);
         }
         else
@@ -1205,10 +1205,10 @@ VOS_VOID NAS_GMM_TimerProtectPsDetachExpired(VOS_VOID)
         case GMM_REGISTERED_LIMITED_SERVICE :
             Gmm_ComStaChg(GMM_DEREGISTERED_LIMITED_SERVICE);
             break;
-            
+
         case GMM_REGISTERED_UPDATE_NEEDED :
             Gmm_ComStaChg(GMM_DEREGISTERED_ATTACH_NEEDED);
-            break;            
+            break;
 
         /* 如下状态不进行迁移 */
         case GMM_DEREGISTERED_NO_IMSI :
@@ -1250,10 +1250,10 @@ VOS_VOID NAS_Gmm_RcvMmCsLocalDetachInd(
         case GMM_REGISTERED_INITIATED:
             NAS_Gmm_RcvMmCsLocalDetachInd_RegInit();
             break;
-            
+
         case GMM_ROUTING_AREA_UPDATING_INITIATED:
             NAS_Gmm_RcvMmCsLocalDetachInd_RauInit();
-            break;            
+            break;
 
         default:
             break;
@@ -1326,7 +1326,7 @@ VOS_VOID Gmm_Tim3321Expired_DeregInit(VOS_VOID)
             /* 收到网侧的去注册成功后需要通知MM，否则MM不启动T3212定时器 */
             NAS_GMM_SndMmGprsDetachComplete();
         }
-        
+
 
 
         /* 向MMC发送PS注册结果 */
@@ -1417,7 +1417,7 @@ VOS_VOID Gmm_Tim3330Expired(VOS_VOID)
     ucPsRestrictionFlg  = NAS_MML_GetPsRestrictRegisterFlg();
 
     enCause  = NAS_MML_REG_FAIL_CAUSE_TIMER_TIMEOUT;
-    
+
     if ( (NAS_MML_NET_RAT_TYPE_GSM == enCurRat)
       || (NAS_MML_NET_RAT_TYPE_WCDMA == enCurRat) )
     {
@@ -1432,7 +1432,7 @@ VOS_VOID Gmm_Tim3330Expired(VOS_VOID)
             NAS_GMM_SndRrmmGmmProcNotify(RRMM_GMM_PROC_TYPE_NORMAL_RAU, RRMM_GMM_PROC_FLAG_FINISH);
         }
     }
-    
+
     if (GMM_RAU_FOR_WAITSERVICE == gstGmmSuspendCtrl.ucRauCause)
     {
         /* 此标志记录的是系统间重选或者切换时,RAI相同时,当后续有上行数据时需要发送RAU.
@@ -1779,7 +1779,7 @@ VOS_VOID Gmm_Tim5sExpired(VOS_VOID)
     Gmm_HoldBufferFree();
 
     GMM_BufferMsgDump();
-    
+
     Gmm_ComVariantInit();
 
     return;
@@ -1814,7 +1814,7 @@ VOS_VOID Gmm_RcvTimerExpired(
     NAS_INFO_LOG1(WUEPS_PID_GMM, "Gmm_RcvTimerExpired:INFO: Timer Expired: ", ucTimerId);
 
     NAS_TIMER_EventReport(ucTimerId, WUEPS_PID_GMM, NAS_OM_EVENT_TIMER_OPERATION_EXPIRED);
-    
+
     if (0 != ( g_GmmTimerMng.ulTimerRunMask & ( 0x00000001 << ucTimerId )))
     {
         /* 指定Timer已经启动  */
@@ -1945,6 +1945,19 @@ VOS_VOID Gmm_RcvTimerExpired(
     case GMM_TIMER_PROTECT_PS_DETACH:
         NAS_GMM_TimerProtectPsDetachExpired();
         break;
+
+
+
+    /* GMM的GMM_TIMER_HO_WAIT_SYSINFO保护定时器超时 */
+    case GMM_TIMER_HO_WAIT_SYSINFO:
+        NAS_GMM_TimerHoWaitSysinfoExpired();
+        break;
+
+#if (FEATURE_ON == FEATURE_LTE)
+    case GMM_TIMER_DELAY_VOICE_DOMAIN_TRIG_RAU:
+        NAS_GMM_TimerDelayVoiceDomainTrigRauExpired();
+        break;
+#endif
 
 
     default:
@@ -2159,9 +2172,9 @@ VOS_VOID GMM_TimProtectForRrRel()
     }
     else
     {
-        
+
     }
-    
+
 
     /* 向MMC发送PS注册结果 */
     NAS_GMM_SndMmcPsRegResultInd(GMM_MMC_ACTION_ATTACH,
@@ -2505,6 +2518,87 @@ VOS_UINT32 NAS_GMM_IsNeedStartT3323(VOS_VOID)
 #endif
 
 
+
+
+VOS_VOID NAS_GMM_TimerHoWaitSysinfoExpired(VOS_VOID)
+{
+    /* 当前不在GMM_SUSPENDED_WAIT_FOR_SYSINFO状态，则不需要处理  */
+    if ( GMM_SUSPENDED_WAIT_FOR_SYSINFO != Gmm_GetState() )
+    {
+        return ;
+    }
+
+    if ( NAS_MML_NET_RAT_TYPE_WCDMA != NAS_MML_GetCurrNetRatType())
+    {
+        return;
+    }
+
+    Gmm_RoutingAreaUpdateInitiate(GMM_UPDATING_TYPE_INVALID);
+
+    return;
+}
+
+
+#if (FEATURE_ON == FEATURE_LTE)
+VOS_VOID NAS_GMM_TimerDelayVoiceDomainTrigRauExpired(VOS_VOID)
+{
+    /* 相关协议章节:
+    3GPP 24008:
+    4.7.5.1 Normal and periodic routing area updating procedure
+
+    The normal routing area updating procedure is initiated:
+    ......
+    -    when the UE's usage setting or the voice domain preference for E-UTRAN change in the MS;
+    ......
+    */
+
+    NAS_MML_CONN_STATUS_INFO_STRU      *pstConnStatus = VOS_NULL_PTR;
+
+    pstConnStatus   = NAS_MML_GetConnStatus();
+
+    /* voice domain和上次发起注册时的相同，不需要再做RAU */
+    if (g_GmmGlobalCtrl.UeInfo.enVoiceDomainFromRegReq == NAS_MML_GetVoiceDomainPreference())
+    {
+        return;
+    }
+
+    /* 如果存在CS业务则直接返回 */
+    if (VOS_TRUE == pstConnStatus->ucCsServiceConnStatusFlg)
+    {
+        return;
+    }
+
+    /* 如果正在发起CS业务则启动定时器，业务发起失败依靠定时器触发RAU，
+       业务发起成功定时器超时时会直接返回 */
+    if ((VOS_TRUE == NAS_MML_GetCsServiceBufferStatusFlg())
+     && (VOS_TRUE == pstConnStatus->ucCsSigConnStatusFlg))
+    {
+        Gmm_TimerStart(GMM_TIMER_DELAY_VOICE_DOMAIN_TRIG_RAU);
+
+        return;
+    }
+
+    if ((GMM_REGISTERED_NORMAL_SERVICE == g_GmmGlobalCtrl.ucState)
+     || (GMM_REGISTERED_ATTEMPTING_TO_UPDATE_MM == g_GmmGlobalCtrl.ucState))
+    {
+        Gmm_RoutingAreaUpdateInitiate(GMM_UPDATING_TYPE_INVALID);
+        return;
+    }
+
+    if ((GMM_ROUTING_AREA_UPDATING_INITIATED == g_GmmGlobalCtrl.ucState)
+     || (GMM_SERVICE_REQUEST_INITIATED == g_GmmGlobalCtrl.ucState)
+     || (GMM_REGISTERED_INITIATED == g_GmmGlobalCtrl.ucState)
+     || (GMM_REGISTERED_IMSI_DETACH_INITIATED == g_GmmGlobalCtrl.ucState))
+    {
+        Gmm_TimerStart(GMM_TIMER_DELAY_VOICE_DOMAIN_TRIG_RAU);
+    }
+
+    return;
+}
+#endif
+
+
+/*lint -restore */
 
 #ifdef  __cplusplus
   #if  __cplusplus

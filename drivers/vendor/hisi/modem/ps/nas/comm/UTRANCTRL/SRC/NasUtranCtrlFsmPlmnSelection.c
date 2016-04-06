@@ -17,6 +17,10 @@
 #include "NasMmlLib.h"
 #include "NasMmcComFunc.h"
 
+#include "NasMmcFsmPlmnSelection.h"
+
+
+
 #ifdef __cplusplus
 #if __cplusplus
 extern "C" {
@@ -82,6 +86,26 @@ VOS_UINT32 NAS_UTRANCTRL_RcvMmcInterSkipSearchWasIndMsg_PlmnSelection_Init(
 
     /* 启动定时器 */
     NAS_UTRANCTRL_StartTimer(TI_NAS_UTRANCTRL_WAIT_WAS_SUSPEND_CNF, TI_NAS_UTRANCTRL_WAIT_WAS_SUSPEND_CNF_LEN);
+
+    /* 消息处理完成不需继续进入MMC状态机处理 */
+    return VOS_TRUE;
+}
+VOS_UINT32 NAS_UTRANCTRL_RcvMmcInterSkipSearchTdsIndMsg_PlmnSelection_Init(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+)
+{
+    /* 保存状态机入口消息 */
+    NAS_UTRANCTRL_SaveCurEntryMsg(ulEventType, pstMsg);
+
+    /* tds下搜网失败需要在w下继续搜网 挂起tds */
+    NAS_UTRANCTRL_SndGuAsSuspendReq(TPS_PID_RRC);
+
+    /* 迁移状态到等到TDS挂起回复 */
+    NAS_UTRANCTRL_FSM_SetCurrState(NAS_UTRANCTRL_PLMN_SELECTION_STA_WAIT_TD_SUSPEND_CNF);
+
+    /* 启动定时器 */
+    NAS_UTRANCTRL_StartTimer(TI_NAS_UTRANCTRL_WAIT_TD_SUSPEND_CNF, TI_NAS_UTRANCTRL_WAIT_TD_SUSPEND_CNF_LEN);
 
     /* 消息处理完成不需继续进入MMC状态机处理 */
     return VOS_TRUE;
@@ -602,8 +626,10 @@ VOS_UINT32 NAS_UTRANCTRL_RcvRrmmSuspendCnf_PlmnSelection_WaitTdSuspendCnf(
     /* 取得当前缓存消息的头 */
     pstMsgHeader = (MSG_HEADER_STRU *)pstEntryMsg->aucEntryMsgBuffer;
 
-    /* 如果当前的入口消息为定时器超时，则需要构造搜网回复失败消息 */
-    if ( VOS_PID_TIMER == pstMsgHeader->ulSenderPid )
+    /* 如果当前的入口消息为定时器超时，或者MMC发送的内部SKIP 搜索TDS消息,则需要构造搜网回复失败消息 */
+    if ((VOS_PID_TIMER == pstMsgHeader->ulSenderPid)
+      || ((WUEPS_PID_MMC                  == pstMsgHeader->ulSenderPid)
+       && (MMCMMC_INTER_SKIP_SEARCH_TDS_IND == pstMsgHeader->ulMsgName)))
     {
         /* 构造指定搜网回复失败消息到内存的缓存区域 */
         NAS_UTRANCTRL_BuildRrMmPlmnSearchCnfFailMsg(WUEPS_PID_WRR,
@@ -667,6 +693,15 @@ VOS_UINT32 NAS_UTRANCTRL_RcvRrmmPlmnSearchCnf_PlmnSelection_WaitWasPlmnSearchCnf
 {
     RRMM_PLMN_SEARCH_CNF_STRU          *pstSrchCnfMsg;
 
+    NAS_UTRANCTRL_ENTRY_MSG_STRU       *pstEntryMsg       = VOS_NULL_PTR;
+    MSG_HEADER_STRU                    *pstMsgHeader      = VOS_NULL_PTR;
+
+    /* 取当前缓存的系统消息 */
+    pstEntryMsg = NAS_UTRANCTRL_GetCurrEntryMsgAddr();
+
+    /* 取得当前缓存消息的头 */
+    pstMsgHeader = (MSG_HEADER_STRU *)pstEntryMsg->aucEntryMsgBuffer;
+
     pstSrchCnfMsg = (RRMM_PLMN_SEARCH_CNF_STRU *)pstMsg;
 
     /* 停止保护定时器 */
@@ -696,26 +731,29 @@ VOS_UINT32 NAS_UTRANCTRL_RcvRrmmPlmnSearchCnf_PlmnSelection_WaitWasPlmnSearchCnf
     }    
 
     /* 根据搜网列表更新中国网络标记 */
-    NAS_UTRANCTRL_UpdateSearchedSpecTdMccFLg(NAS_UTRANCTRL_GetSpecTdMccListNum(),
-                                             NAS_UTRANCTRL_GetSpecTdMccList(),
-                                             &(pstSrchCnfMsg->PlmnIdList));
+    if (MMCMMC_INTER_SKIP_SEARCH_TDS_IND != pstMsgHeader->ulMsgName)
+    {
+        NAS_UTRANCTRL_UpdateSearchedSpecTdMccFLg(NAS_UTRANCTRL_GetSpecTdMccListNum(),
+                                                 NAS_UTRANCTRL_GetSpecTdMccList(),
+                                                 &(pstSrchCnfMsg->PlmnIdList));
 
-    /* 根据中国网络标记设置utran工作模式 */
-    if (VOS_TRUE == NAS_UTRANCTRL_GetSearchedSpecTdMccFlg())
-    {
-        NAS_UTRANCTRL_SetCurrUtranMode(NAS_UTRANCTRL_UTRAN_MODE_TDD);
+        /* 根据中国网络标记设置utran工作模式 */
+        if (VOS_TRUE == NAS_UTRANCTRL_GetSearchedSpecTdMccFlg())
+        {
+            NAS_UTRANCTRL_SetCurrUtranMode(NAS_UTRANCTRL_UTRAN_MODE_TDD);
+        }
+        else if ((0 != pstSrchCnfMsg->PlmnIdList.ulHighPlmnNum)
+              || (0 != pstSrchCnfMsg->PlmnIdList.ulLowPlmnNum))
+        {
+            /* 未搜到中国网络并且W携带非空列表,更新工作模式为FDD */
+            NAS_UTRANCTRL_SetCurrUtranMode(NAS_UTRANCTRL_UTRAN_MODE_FDD);
+        }
+        else
+        {
+            /* W携带空列表不修改工作模式 */
+        }
     }
-    else if ((0 != pstSrchCnfMsg->PlmnIdList.ulHighPlmnNum)
-          || (0 != pstSrchCnfMsg->PlmnIdList.ulLowPlmnNum))
-    {
-        /* 未搜到中国网络并且W携带非空列表,更新工作模式为FDD */
-        NAS_UTRANCTRL_SetCurrUtranMode(NAS_UTRANCTRL_UTRAN_MODE_FDD);
-    }
-    else
-    {
-        /* W携带空列表不修改工作模式 */
-    }
-
+	
     /* 根据当前工作模式为TDD则需要回到TD下 */
     if (NAS_UTRANCTRL_UTRAN_MODE_TDD   == NAS_UTRANCTRL_GetCurrUtranMode())
     {
@@ -737,6 +775,31 @@ VOS_UINT32 NAS_UTRANCTRL_RcvRrmmPlmnSearchCnf_PlmnSelection_WaitWasPlmnSearchCnf
     /* 消息处理完成继续进入MMC状态机处理 */
     return VOS_FALSE;
 }
+VOS_UINT32 NAS_UTRANCTRL_RcvInterAbortUtranCtrlPlmnSearchReq_PlmnSelection_WaitWasPlmnSearchCnf(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+)
+{
+    /* 停止保护定时器 */
+    NAS_UTRANCTRL_StopTimer(TI_NAS_UTRANCTRL_WAIT_WAS_PLMN_SEARCH_CNF);
+
+    /* 更新utran mode为fdd，utranctrl 搜网状态机退出，消息进mmc继续处理，通知接入层打断由mmc处理 */
+    NAS_UTRANCTRL_SetCurrUtranMode(NAS_UTRANCTRL_UTRAN_MODE_FDD);
+
+    /* 通知mmc MMCMMC_INTER_ABORT_UTRAN_CTRL_PLMN_SEARCH_CNF*/
+    NAS_MMC_SndInterAbortUtranCtrlPlmnSearchCnfMsg();
+
+    /* 状态机切换到MAIN */
+    NAS_UTRANCTRL_SwitchCurrFsmCtx(NAS_UTRANCTRL_FSM_MAIN);
+
+    return VOS_TRUE;
+}
+
+
+
+
+
+
 VOS_UINT32  NAS_UTRANCTRL_RcvTdPlmnSearchCnf_PlmnSelection_WaitWasPlmnSearchCnf(
     VOS_UINT32                          ulEventType,
     struct MsgCB                       *pstMsg
@@ -931,8 +994,43 @@ VOS_UINT32 NAS_UTRANCTRL_RcvRrmmPlmnStopCnf_PlmnSelection_WaitWasPlmnStopCnf(
     struct MsgCB                       *pstMsg
 )
 {
+    NAS_UTRANCTRL_ENTRY_MSG_STRU       *pstBufferEntryMsg = VOS_NULL_PTR;
+
+    MSG_HEADER_STRU                    *pstMsgHeader      = VOS_NULL_PTR;
+    NAS_UTRANCTRL_ENTRY_MSG_STRU       *pstEntryMsg       = VOS_NULL_PTR;
+
+    pstEntryMsg = NAS_UTRANCTRL_GetCurrEntryMsgAddr();
+
+    /* 取得当前缓存消息的头 */
+    pstMsgHeader = (MSG_HEADER_STRU *)pstEntryMsg->aucEntryMsgBuffer;
+
+    /* 获得当前缓存的缓冲区地址 */
+    pstBufferEntryMsg = NAS_UTRANCTRL_GetBufferUtranSndMmcMsgAddr();
+
     /* 停止保护定时器 */
     NAS_UTRANCTRL_StopTimer(TI_NAS_UTRANCTRL_WAIT_WAS_PLMN_STOP_CNF);
+
+    if ((VOS_FALSE == NAS_UTRANCTRL_GetSearchedSpecTdMccFlg())
+     && (WUEPS_PID_MMC                  == pstMsgHeader->ulSenderPid)
+     && (MMCMMC_INTER_SKIP_SEARCH_TDS_IND == pstMsgHeader->ulMsgName))
+    {
+        /* 构造指定搜网回复失败消息到内存的缓存区域 */
+        NAS_UTRANCTRL_BuildRrMmPlmnSearchCnfFailMsg(WUEPS_PID_WRR,
+                                                    WUEPS_PID_MMC,
+                                                    (RRMM_PLMN_SEARCH_CNF_STRU *)pstBufferEntryMsg->aucEntryMsgBuffer);
+
+        /* 保存构造指定搜网回复失败消息事件类型 */
+        pstBufferEntryMsg->ulEventType = NAS_UTRANCTRL_GetMsgEventType( (struct MsgCB *)pstBufferEntryMsg->aucEntryMsgBuffer );
+
+        /* 设置需要替换入口消息标记 */
+        NAS_UTRANCTRL_SetReplaceMmcMsgFlg(VOS_TRUE);
+
+        /* 状态机切换到MAIN */
+        NAS_UTRANCTRL_SwitchCurrFsmCtx(NAS_UTRANCTRL_FSM_MAIN);
+
+        /* 消息处理完成继续进入MMC状态机处理 */
+        return VOS_FALSE;
+    }
 
     /* 此时需要回到TD下,向WAS发送挂起请求 */
     NAS_UTRANCTRL_SndGuAsSuspendReq(WUEPS_PID_WRR);
@@ -946,6 +1044,8 @@ VOS_UINT32 NAS_UTRANCTRL_RcvRrmmPlmnStopCnf_PlmnSelection_WaitWasPlmnStopCnf(
     /* 消息处理完成不需继续处理 */
     return VOS_TRUE;
 }
+
+
 VOS_UINT32  NAS_UTRANCTRL_RcvTdPlmnSearchCnf_PlmnSelection_WaitWasPlmnStopCnf(
     VOS_UINT32                          ulEventType,
     struct MsgCB                       *pstMsg
@@ -975,8 +1075,43 @@ VOS_UINT32 NAS_UTRANCTRL_RcvTiWaitWasPlmnStopCnfExpired_PlmnSelection_WaitWasPlm
     struct MsgCB                       *pstMsg
 )
 {
+    NAS_UTRANCTRL_ENTRY_MSG_STRU       *pstBufferEntryMsg = VOS_NULL_PTR;
+
+    MSG_HEADER_STRU                    *pstMsgHeader      = VOS_NULL_PTR;
+    NAS_UTRANCTRL_ENTRY_MSG_STRU       *pstEntryMsg       = VOS_NULL_PTR;
+
+    pstEntryMsg = NAS_UTRANCTRL_GetCurrEntryMsgAddr();
+
+    /* 取得当前缓存消息的头 */
+    pstMsgHeader = (MSG_HEADER_STRU *)pstEntryMsg->aucEntryMsgBuffer;
+
+    /* 获得当前缓存的缓冲区地址 */
+    pstBufferEntryMsg = NAS_UTRANCTRL_GetBufferUtranSndMmcMsgAddr();
+
     /* 异常打印 */
     NAS_WARNING_LOG(WUEPS_PID_MMC, "NAS_UTRANCTRL_RcvTiWaitWasPlmnStopCnfExpired_PlmnSelection_WaitWasPlmnStopCnf: ENTERED");
+
+    if ((VOS_FALSE == NAS_UTRANCTRL_GetSearchedSpecTdMccFlg())
+     && (WUEPS_PID_MMC                  == pstMsgHeader->ulSenderPid)
+     && (MMCMMC_INTER_SKIP_SEARCH_TDS_IND == pstMsgHeader->ulMsgName))
+    {
+        /* 构造指定搜网回复失败消息到内存的缓存区域 */
+        NAS_UTRANCTRL_BuildRrMmPlmnSearchCnfFailMsg(WUEPS_PID_WRR,
+                                                    WUEPS_PID_MMC,
+                                                    (RRMM_PLMN_SEARCH_CNF_STRU *)pstBufferEntryMsg->aucEntryMsgBuffer);
+
+        /* 保存构造指定搜网回复失败消息事件类型 */
+        pstBufferEntryMsg->ulEventType = NAS_UTRANCTRL_GetMsgEventType( (struct MsgCB *)pstBufferEntryMsg->aucEntryMsgBuffer );
+
+        /* 设置需要替换入口消息标记 */
+        NAS_UTRANCTRL_SetReplaceMmcMsgFlg(VOS_TRUE);
+
+        /* 状态机切换到MAIN */
+        NAS_UTRANCTRL_SwitchCurrFsmCtx(NAS_UTRANCTRL_FSM_MAIN);
+
+        /* 消息处理完成继续进入MMC状态机处理 */
+        return VOS_FALSE;
+    }
 
     /* 此时需要回到TD下,向WAS发送挂起请求 */
     NAS_UTRANCTRL_SndGuAsSuspendReq(WUEPS_PID_WRR);
@@ -990,6 +1125,8 @@ VOS_UINT32 NAS_UTRANCTRL_RcvTiWaitWasPlmnStopCnfExpired_PlmnSelection_WaitWasPlm
     /* 消息处理完成不需继续处理 */
     return VOS_TRUE;
 }
+
+
 VOS_UINT32 NAS_UTRANCTRL_RcvRrmmPlmnStopCnf_PlmnSelection_WaitTdPlmnStopCnf(
     VOS_UINT32                          ulEventType,
     struct MsgCB                       *pstMsg

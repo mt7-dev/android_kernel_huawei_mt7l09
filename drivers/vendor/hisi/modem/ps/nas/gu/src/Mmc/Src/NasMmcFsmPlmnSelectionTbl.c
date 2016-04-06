@@ -93,6 +93,14 @@ NAS_ACT_STRU   g_astNasMmcPlmnSelectionWaitWasPlmnSearchCnfActTbl[]        =
                       RRMM_PLMN_SEARCH_CNF,
                       NAS_MMC_RcvRrMmPlmnSrchCnf_PlmnSelection_WaitWasPlmnSearchCnf),
 
+    NAS_ACT_TBL_ITEM( WUEPS_PID_WRR,
+                      RRMM_SEARCHED_PLMN_INFO_IND,
+                      NAS_MMC_RcvSearchedPlmnInfoInd_PlmnSelection_WaitWasPlmnSearchCnf),
+
+    NAS_ACT_TBL_ITEM( WUEPS_PID_MMC,
+                      MMCMMC_INTER_ABORT_UTRAN_CTRL_PLMN_SEARCH_CNF,
+                      NAS_MMC_RcvInterAbortUtranCtrlPlmnSearchCnf_WaitWasPlmnSearchCnf),
+
     NAS_ACT_TBL_ITEM( VOS_PID_TIMER,
                       TI_NAS_MMC_WAIT_WAS_PLMN_SEARCH_CNF,
                       NAS_MMC_RcvTiWaitWasPlmnSearchCnfExpired_PlmnSelection_WaitWasPlmnSearchCnf),
@@ -118,6 +126,10 @@ NAS_ACT_STRU   g_astNasMmcPlmnSelectionWaitGasPlmnSearchCnfActTbl[]        =
                       TI_NAS_MMC_WAIT_GAS_PLMN_SEARCH_CNF,
                       NAS_MMC_RcvTiWaitGasPlmnSearchCnfExpired_PlmnSelection_WaitGasPlmnSearchCnf),
 
+    NAS_ACT_TBL_ITEM( UEPS_PID_GAS,
+                      RRMM_SEARCHED_PLMN_INFO_IND,
+                      NAS_MMC_RcvSearchedPlmnInfoInd_PlmnSelection_WaitGasPlmnSearchCnf),
+
 };
 
 #if   (FEATURE_ON == FEATURE_LTE)
@@ -136,6 +148,10 @@ NAS_ACT_STRU   g_astNasMmcPlmnSelectionWaitLmmPlmnSearchCnfActTbl[]             
     NAS_ACT_TBL_ITEM( PS_PID_MM,
                       ID_LMM_MMC_PLMN_SRCH_CNF,
                       NAS_MMC_RcvLmmPlmnCnf_PlmnSelection_WaitLmmPlmnSearchCnf),
+
+    NAS_ACT_TBL_ITEM( PS_PID_MM,
+                      ID_LMM_MMC_SEARCHED_PLMN_INFO_IND,
+                      NAS_MMC_RcvLmmSearchedPlmnInfoInd_PlmnSelection_WaitLmmPlmnSearchCnf),
 
     NAS_ACT_TBL_ITEM( PS_PID_MM,
                       ID_LMM_MMC_ATTACH_CNF,

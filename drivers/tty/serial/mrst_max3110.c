@@ -481,7 +481,6 @@ static int serial_m3110_startup(struct uart_port *port)
 		return -1;
 	}
 
-	/* Disable all IRQ and config it to 115200, 8n1 */
 	config = WC_TAG | WC_FIFO_ENABLE
 			| WC_1_STOPBITS
 			| WC_8BIT_WORD

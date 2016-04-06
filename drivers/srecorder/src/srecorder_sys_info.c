@@ -1,18 +1,4 @@
-/**
-    @copyright: Huawei Technologies Co., Ltd. 2012-2012. All rights reserved.
-    
-    @file: srecorder_sys_info.c
-    
-    @brief: 读取死机时当前系统的信息
-    
-    @version: 1.0 
-    
-    @author: QiDechun ID: 216641
-    
-    @date: 2012-06-30
-    
-    @history:
-*/
+
 
 /*----includes-----------------------------------------------------------------------*/
 
@@ -68,7 +54,7 @@ do                        \
 
 #define VM_LAZY_FREE	0x01
 #define VM_LAZY_FREEING	0x02
-#define VM_VM_AREA	0x04
+//#define VM_VM_AREA	0x04
 
 
 /*----local variables------------------------------------------------------------------*/
@@ -99,6 +85,7 @@ static void srecorder_get_vmalloc_info(vmalloc_info *vmi)
     struct vmap_area *va;
     unsigned long free_area_size;
     unsigned long prev_end;
+    struct list_head * phead = (struct list_head *)srecorder_get_vmap_area_list();
 
     vmi->used = 0;
     vmi->largest_chunk = 0;
@@ -123,7 +110,7 @@ static void srecorder_get_vmalloc_info(vmalloc_info *vmi)
         goto out;
     }
 
-    list_for_each_entry(va, (struct list_head *)srecorder_get_vmap_area_list(), list)
+    list_for_each_entry(va, phead, list)
     {
         unsigned long addr = va->va_start;
 
@@ -292,7 +279,9 @@ static long srecorder_nr_blockdev_pages(void)
     
     if (spin_trylock((spinlock_t *)srecorder_get_bdev_lock()))
     {
+/*lint -e666 */
         list_for_each_entry(bdev, (struct list_head *)srecorder_get_all_bdevs(), bd_list)
+/*lint +e666 */
         {
             ret += bdev->bd_inode->i_mapping->nrpages;
         }
@@ -341,7 +330,7 @@ int srecorder_get_sys_info(srecorder_reserved_mem_info_t *pmem_info)
 
     if (unlikely(NULL == pmem_info 
         || INVALID_KSYM_ADDR == srecorder_get_cpu_name()
-        || INVALID_KSYM_ADDR == srecorder_get_machine_name()
+        || INVALID_KSYM_ADDR == srecorder_get_machine_name())
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 10, 0))
 #else
 #ifdef CONFIG_SWAP
@@ -351,19 +340,17 @@ int srecorder_get_sys_info(srecorder_reserved_mem_info_t *pmem_info)
 #endif
 #endif
         || INVALID_KSYM_ADDR == srecorder_get_bdev_lock() 
-        || INVALID_KSYM_ADDR == srecorder_get_all_bdevs()))
+        || INVALID_KSYM_ADDR == srecorder_get_all_bdevs())
     {
         SRECORDER_PRINTK("File [%s] line [%d] invalid param or kernel symbol addr!\n", __FILE__, __LINE__);
         return -1;
     }
 
-    /* DTS2012101502012 wupeng 20121015 begin */
     if (srecorder_log_has_been_dumped(SYS_INFO_BIT1) || pmem_info->dump_modem_crash_log_only)
     {
         SRECORDER_PRINTK("sys info has been dumped successfully!\n");
         return 0;  
     }
-    /* DTS2012101502012 wupeng 20121015 end */
     
     if (0 != srecorder_write_info_header(pmem_info, SYS_INFO_BIT1, &pinfo_header))
     {

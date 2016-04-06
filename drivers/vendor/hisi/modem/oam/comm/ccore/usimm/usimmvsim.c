@@ -11,6 +11,7 @@
 #include "usimmvsimauth.h"
 #include "FileSysInterface.h"
 #include "softcrypto.h"
+#include "NasNvInterface.h"
 
 #ifdef __cplusplus
 #if __cplusplus
@@ -47,12 +48,15 @@ USIMM_VSIM_FILE_INFO_STRU g_astUSIMMVSimFileInfo[] =
     {"EFPLMNWACT",  0x6F60, USIMM_OPTIONAL_FILE,        USIMM_VSIM_WRITE_AVALIBALE},
     {"EFSMSP",      0x6F42, USIMM_OPTIONAL_FILE,        USIMM_VSIM_WRITE_AVALIBALE},
     {"EFSMSS",      0x6F43, USIMM_OPTIONAL_FILE,        USIMM_VSIM_WRITE_AVALIBALE},
-    {"EFLOCIGPRS",  0x6F53, USIMM_OPTIONAL_FILE,        USIMM_VSIM_WRITE_AVALIBALE}
+    {"EFLOCIGPRS",  0x6F53, USIMM_OPTIONAL_FILE,        USIMM_VSIM_WRITE_AVALIBALE},
+    {"EFICCID",     0x2FE2, USIMM_OPTIONAL_FILE,        USIMM_VSIM_WRITE_UNAVALIBALE}
 };
 
 USIMM_VSIM_AUTH_INFO_STRU g_stUSIMMVSimAuthInfo;
+
 VOS_CHAR *g_pcUSIMMVSimXmlFilePath = VSIM_XML_FILE_PATH;
 
+extern int efuseReadHUK(BSP_U32 *pBuf, BSP_U32 len);
 
 /*****************************************************************************
 º¯ Êý Ãû  : USIMM_File_Open
@@ -354,6 +358,30 @@ VOS_VOID USIMM_InitVsimGlobal(VOS_VOID)
 
     return;
 }
+VOS_BOOL USIMM_CheckSupportAP(VOS_VOID)
+{
+    NAS_NVIM_SYSTEM_APP_CONFIG_STRU stAPPConfig;
+
+    if(NV_OK != NV_Read(en_NV_Item_System_APP_Config, &stAPPConfig, sizeof(VOS_UINT16)))
+    {
+        USIMM_ERROR_LOG("SI_STK_CheckSupportAP: Read en_NV_Item_System_APP_Config Failed");
+
+        return VOS_FALSE;
+    }
+
+    if(SYSTEM_APP_ANDROID == stAPPConfig.usSysAppConfigType)
+    {
+        USIMM_NORMAL_LOG("SI_STK_CheckSupportAP: System App is Android");
+
+        return VOS_TRUE;
+    }
+
+    USIMM_NORMAL_LOG("SI_STK_CheckSupportAP: System App is other");
+
+    return VOS_FALSE;
+}
+
+
 VOS_UINT32 USIMM_VsimGetRealKiOpc(VOS_UINT8 *pucKi, VOS_UINT8 *pucOpc)
 {
     VOS_UINT8                           aucKey[VSIM_DH_AGREE_KEY] = {0};
@@ -361,6 +389,7 @@ VOS_UINT32 USIMM_VsimGetRealKiOpc(VOS_UINT8 *pucKi, VOS_UINT8 *pucOpc)
     VOS_UINT8                           aucOpc[USIMM_VSIM_SECUR_MAX_LEN];
     NVIM_VSIM_HVSDH_NV_STRU             stNVDHKey;
     DH_KEY                              stDHPara;
+    VSIM_KEYDATA_STRU                   stCPrivateKey;   /* µ¥°åË½Ô¿ */
 
     VOS_MemSet(&stDHPara, 0, sizeof(stDHPara));
 
@@ -388,7 +417,17 @@ VOS_UINT32 USIMM_VsimGetRealKiOpc(VOS_UINT8 *pucKi, VOS_UINT8 *pucOpc)
         return VOS_OK;
     }
 
-    VOS_MemCpy(stDHPara.privateValue, stNVDHKey.stCPrivateKey.aucKey, VSIM_DH_PRIVATE_KEY);
+    if(VOS_OK != USIMM_VsimHUKDecode(stNVDHKey.stCPrivateKey.aucKey, 
+                                        VSIM_DH_PRIVATE_KEY, 
+                                        stCPrivateKey.aucKey, 
+                                        &stCPrivateKey.ulKeyLen))
+    {
+        USIMM_ERROR_LOG("USIMM_VsimGetRealKiOpc: USIMM_VsimHUKDecode is Failed");
+
+        return VOS_ERR;
+    }
+
+    VOS_MemCpy(stDHPara.privateValue, stCPrivateKey.aucKey, VSIM_DH_PRIVATE_KEY);
 
     stDHPara.priVallen = VSIM_DH_PRIVATE_KEY;
 
@@ -429,6 +468,8 @@ VOS_UINT32 USIMM_VsimGetRealKiOpc(VOS_UINT8 *pucKi, VOS_UINT8 *pucOpc)
 
     return VOS_OK;
 }
+
+
 VOS_UINT32 USIMM_SetVsimFile(USIMM_SETFILE_REQ_STRU *pstMsg)
 {
     VOS_UINT32                          ulResult;
@@ -637,7 +678,40 @@ VOS_VOID USIMM_VsimBase16Encode(VOS_UINT8 *pucSrc, VOS_UINT8 *pucDst, VOS_UINT32
 }
 
 
+VOS_UINT32 USIMM_VsimHUKDecode(VOS_UINT8       *pucSrc,
+                                            VOS_UINT32      ulSrcLen,
+                                            VOS_UINT8       *pucDst,
+                                            VOS_UINT32      *pulDstLen)
+{
+#if (FEATURE_ON == FEATURE_SECURITY_PHONE)
+    VOS_UINT8           auckey[USIMM_HUK_LEN];
+    VOS_INT32           lDstLen;
 
+    if (BSP_OK != efuseReadHUK((BSP_U32 *)auckey, (sizeof(auckey)/sizeof(BSP_U32))))
+    {
+        USIMM_ERROR_LOG("USIMM_VsimHUKDecode: efuseReadHUK Failed");
+
+        return VOS_ERR;
+    }
+
+    lDstLen = AESDecryptS(pucSrc, (VOS_INT)ulSrcLen, auckey, USIMM_HUK_BITS, pucDst, VSIM_DH_AGREE_KEY);
+
+    if (VOS_NULL == lDstLen)
+    {
+        USIMM_ERROR_LOG("USIMM_VsimHUKDecode: AESEncrypt Fail");
+
+        return VOS_ERR;
+    }
+
+    *pulDstLen = (VOS_UINT32)lDstLen;
+#else
+    VOS_MemCpy(pucDst, pucSrc, ulSrcLen);
+
+    *pulDstLen = ulSrcLen;
+#endif  /*(FEATURE_ON == FEATURE_SECURITY_PHONE)*/
+
+    return VOS_OK;
+}
 VOS_UINT32 USIMM_VsimConfidentialDataVerify(VOS_VOID)
 {
     VOS_UINT32                          ulImsiLen;
@@ -654,6 +728,7 @@ VOS_UINT32 USIMM_VsimConfidentialDataVerify(VOS_VOID)
     VOS_UINT8                           aucSimkey[USIMM_VSIM_SIM_KEY_HASH_LEN/2];
     NVIM_VSIM_HVSDH_NV_STRU             stNVDHKey;
     DH_KEY                              stDHPara;
+    VSIM_KEYDATA_STRU                   stCPrivateKey;   /* µ¥°åË½Ô¿ */
 
     VOS_MemSet(&stDHPara, 0, sizeof(stDHPara));
 
@@ -712,8 +787,17 @@ VOS_UINT32 USIMM_VsimConfidentialDataVerify(VOS_VOID)
         return VOS_ERR;
     }
 
+    if (VOS_OK != USIMM_VsimHUKDecode(stNVDHKey.stCPrivateKey.aucKey, 
+                                        VSIM_DH_PRIVATE_KEY, 
+                                        stCPrivateKey.aucKey, 
+                                        &stCPrivateKey.ulKeyLen))
+    {
+        USIMM_ERROR_LOG("USIMM_VsimConfidentialDataVerify: USIMM_VsimHUKDecode is Failed");
 
-    VOS_MemCpy(stDHPara.privateValue, stNVDHKey.stCPrivateKey.aucKey, VSIM_DH_PRIVATE_KEY);
+        return VOS_ERR;
+    }
+
+    VOS_MemCpy(stDHPara.privateValue, stCPrivateKey.aucKey, VSIM_DH_PRIVATE_KEY);
 
     stDHPara.priVallen = VSIM_DH_PRIVATE_KEY;
 
@@ -735,13 +819,18 @@ VOS_UINT32 USIMM_VsimConfidentialDataVerify(VOS_VOID)
         return VOS_ERR;
     }
 
+#ifndef OAM_DMT
     if (VOS_OK == VOS_MemCmp(aucSimkey, aucCipher, USIMM_VSIM_SIM_KEY_HASH_LEN/2))
     {
         return VOS_OK;
     }
 
     return VOS_ERR;
+#else
+    return VOS_OK;
+#endif  /*OAM_DMT*/
 }
+
 
 VOS_UINT32 USIMM_AuthenVirtulUsim(USIMM_AUTH_REQ_STRU *pstMsg)
 {
@@ -1579,7 +1668,14 @@ VOS_UINT32 USIMM_InitVsimCard(USIMM_MsgBlock *pMsg)
 
     gastUSIMMCardAppInfo[USIMM_UICC_USIM].enCardType     = USIMM_CARD_NOCARD;
 
-    pucXMLData = USIMM_ReadVsimFile(WUEPS_PID_USIM);
+    if (VOS_TRUE == USIMM_CheckSupportAP())
+    {
+        pucXMLData = g_pucUSIMMVsimData;
+    }
+    else
+    {
+        pucXMLData = USIMM_ReadVsimFile(WUEPS_PID_USIM);
+    }
 
     if(VOS_NULL_PTR == pucXMLData)
     {
@@ -1591,6 +1687,8 @@ VOS_UINT32 USIMM_InitVsimCard(USIMM_MsgBlock *pMsg)
     ulResult = USIMM_DecodeVsimFile(pucXMLData);
 
     VOS_MemFree(WUEPS_PID_USIM, pucXMLData);
+
+    g_pucUSIMMVsimData = VOS_NULL_PTR;
 
     if (VOS_OK != ulResult)
     {

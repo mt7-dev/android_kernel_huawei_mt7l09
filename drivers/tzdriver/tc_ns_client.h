@@ -1,32 +1,7 @@
-/*
- * FileName:
- * Author:         h00211444  Version: 0.0.1  Date: 2012-12-25
- * Description:
- * Version:
- * Function List:
- *                 1.
- * History:
- *     <author>   <time>    <version >   <desc>
- */
+
 
 #ifndef _TC_NS_CLIENT_H_
 #define _TC_NS_CLIENT_H_
-
-//#define TC_DEBUG
-
-#define TC_NS_CLIENT_IOC_MAGIC  't'
-#define TC_NS_CLIENT_DEV            "tc_ns_client"
-#define TC_NS_CLIENT_DEV_NAME   "/dev/tc_ns_client"
-
-#ifdef TC_DEBUG
-#define TCDEBUG(fmt, args...) printk(KERN_INFO "%s(%i, %s): " fmt "\n", \
-        __func__, current->pid, current->comm, ## args)
-#else
-#define TCDEBUG(fmt, args...)
-#endif
-
-#define TCERR(fmt, args...) printk(KERN_ERR "%s(%i, %s): " fmt "\n", \
-        __func__, current->pid, current->comm, ## args)
 
 typedef struct {
     unsigned int method;
@@ -36,12 +11,17 @@ typedef struct {
 typedef union {
     struct {
         unsigned int buffer;
+        unsigned int buffer_h_addr;
         unsigned int offset;
+        unsigned int h_offset;
         unsigned int size_addr;
+        unsigned int size_h_addr;
     } memref;
     struct {
         unsigned int a_addr;
+        unsigned int a_h_addr;
         unsigned int b_addr;
+        unsigned int b_h_addr;
     } value;
 } TC_NS_ClientParam;
 
@@ -56,14 +36,20 @@ typedef struct {
     unsigned int cmd_id;
     TC_NS_ClientReturn returns;
     TC_NS_ClientLogin login;
-    unsigned int paramTypes;
     TC_NS_ClientParam params[4];
+    unsigned int paramTypes;
     bool started;
 } TC_NS_ClientContext;
 
 #define IMG_LOAD_FIND_NO_DEV_ID  0xFFFF00A5
 #define IMG_LOAD_FIND_NO_SHARE_MEM 0xFFFF00A6
 #define IMG_LOAD_SECURE_RET_ERROR 0xFFFF00A7
+
+#define TST_CMD_01 (1)
+#define TST_CMD_02 (2)
+#define TST_CMD_03 (3)
+#define TST_CMD_04 (4)
+#define TST_CMD_05 (5)
 
 #define TC_NS_CLIENT_IOCTL_SES_OPEN_REQ \
     _IOW(TC_NS_CLIENT_IOC_MAGIC, 1, TC_NS_ClientContext)
@@ -91,5 +77,8 @@ typedef struct {
         _IOWR(TC_NS_CLIENT_IOC_MAGIC, 12, unsigned int)
 #define TC_NS_CLIENT_IOCTL_CANCEL_CMD_REQ \
         _IOWR(TC_NS_CLIENT_IOC_MAGIC, 13, TC_NS_ClientContext)
-
+#define TC_NS_CLIENT_IOCTL_LOGIN \
+        _IOWR(TC_NS_CLIENT_IOC_MAGIC, 14, int)
+#define TC_NS_CLIENT_IOCTL_TST_CMD_REQ \
+        _IOWR(TC_NS_CLIENT_IOC_MAGIC, 15, int)
 #endif

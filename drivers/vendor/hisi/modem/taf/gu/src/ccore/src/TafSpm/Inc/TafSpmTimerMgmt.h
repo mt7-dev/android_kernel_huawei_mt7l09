@@ -22,8 +22,10 @@ extern "C" {
 /*****************************************************************************
   2 宏定义
 *****************************************************************************/
-#define             TI_TAF_SPM_WAIT_PB_FDN_CHECK_CNF_LEN                (5000)
-#define             TI_TAF_SPM_WAIT_USIM_CALL_CTRL_CNF_LEN              (5000)
+/* 增强型会议发起多个联系人，进行FDN/CC检查的保护时长增长致8s */
+#define             TI_TAF_SPM_WAIT_PB_FDN_CHECK_CNF_LEN                (8000)
+#define             TI_TAF_SPM_WAIT_USIM_CALL_CTRL_CNF_LEN              (8000)
+
 /*
  * The following service request timer value dependence on:
  *  1. SMS: AT_SMS_CMGS_SET_PARA_TIME/AT_SMS_CMSS_SET_PARA_TIME
@@ -59,7 +61,7 @@ enum TAF_SPM_TIMER_ID_ENUM
     TI_TAF_SPM_CC_SRV_REQ_PROTECT_TIMER,                                                /* CC 业务请求保护定时器 */
     TI_TAF_SPM_SMS_SRV_REQ_PROTECT_TIMER,                                               /* SMS 业务请求保护定时器 */
     TI_TAF_SPM_SS_SRV_REQ_PROTECT_TIMER,                                                /* SS 业务请求保护定时器 */
-    
+
     TI_TAF_SPM_TIMER_BUTT
 };
 typedef VOS_UINT32 TAF_SPM_TIMER_ID_ENUM_UINT32;
@@ -98,7 +100,7 @@ typedef struct
 {
     MSG_HEADER_STRU                     stMsgHeader;
     TAF_SPM_TIMER_STATUS_ENUM_UINT8     enTimerStatus;      /* 定时器状态 */
-    VOS_UINT8                           aucReserve[1];      /* 保留位 */    
+    VOS_UINT8                           aucReserve[1];      /* 保留位 */
     VOS_UINT16                          usClientId;         /* 定时器关联client ID */
     VOS_UINT32                          ulLen;              /* 定时器时长 */
 }TAF_SPM_TIMER_INFO_STRU;

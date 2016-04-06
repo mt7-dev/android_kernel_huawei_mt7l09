@@ -52,7 +52,11 @@ extern "C" {
 #define ADS_DL_IPF_RD_RSLT_IS_VER_ERR_PKT(usRslt)   ((usRslt) & ADS_DL_IPF_RD_RSLT_VER_ERR_FLG)
 
 /* 从RD Out域获取搬移后的数据包 */
+#if(FEATURE_OFF == FEATURE_SKB_EXP)
+#define ADS_DL_GET_DATA_FROM_IPF_OUT(ulOut)         (phys_to_virt(ulOut))
+#else
 #define ADS_DL_GET_DATA_FROM_IPF_OUT(ulOut)         ((VOS_UINT8*)(ulOut))
+#endif
 
 /* 从RD PktLen域获取搬移后的数据包长度 */
 #define ADS_DL_GET_LEN_FROM_IPF_PKT_LEN(usPktLen)   ((VOS_UINT16)(usPktLen))
@@ -67,7 +71,7 @@ extern "C" {
 #define ADS_DL_GET_MODEM_ID_FROM_RD_USER_FIELD1(i)  ((i >> 8) & 0xFF)
 
 /* RD的user field 1，高1byte为Modem id，低1byte为Rab Id，获取RAB ID */
-#define ADS_DL_GET_RAB_ID_FROM_RD_USER_FIELD1(i)    (i & 0xFF)
+#define ADS_DL_GET_RAB_ID_FROM_RD_USER_FIELD1(i)    (i & 0xFFU)
 
 /* 下行AD0数据包的长度 */
 #define ADS_DL_AD0_DATA_LEN                          (448)
@@ -119,7 +123,7 @@ typedef struct
 {
     VOS_UINT8                            ucRabId;                               /* Rab Id*/
     ADS_PKT_TYPE_ENUM_UINT8              enPktType;                             /* Pkt Type*/
-    VOS_UINT8                            aucRsv[2];                             /* 保留 */
+    VOS_UINT8                            aucRsv[6];                             /* 保留 */
     CDS_ADS_DL_IPF_BEARER_ID_ENUM_UINT32 enBearId;                              /* Bear Id*/
     VOS_UINT32                           ulLen;                                 /* 搬移后的数据包长度 */
     VOS_UINT8                           *pucData;                               /* 搬移后的数据包指针 */
@@ -150,10 +154,6 @@ VOS_UINT32 ADS_DL_RcvAtMsg(MsgBlock* pMsg);
 VOS_UINT32 ADS_DL_RcvTafPdpStatusInd(MsgBlock *pMsg);
 VOS_UINT32 ADS_DL_RcvCdsMsg(MsgBlock *pMsg);
 VOS_INT32 ADS_DL_IpfIntCB(VOS_VOID);
-VOS_UINT32 ADS_DL_RegDlDataCallback(
-    VOS_UINT8                           ucRabId,
-    RCV_DL_DATA_FUNC                    pFunc
-);
 VOS_VOID ADS_DL_SendNdClientDataInd(
     IPF_RD_DESC_S                      *pstRdDesc
 );
@@ -184,9 +184,6 @@ VOS_VOID ADS_DL_ConfigAdq(
 );
 VOS_VOID ADS_DL_ProcAdq(VOS_VOID);
 VOS_VOID ADS_DL_InitAdq(VOS_VOID);
-VOS_VOID ADS_DL_ProcRd(
-    IPF_RD_DESC_S                      *pstRdDesc
-);
 #endif
 
 VOS_UINT32 ADS_DL_RcvCcpuResetStartInd(

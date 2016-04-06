@@ -60,7 +60,12 @@ typedef struct
     VOS_UINT8                           ucSmsStatusInEfsmsSupportFlg;           /* 表明NVIM中是否能保存短信状态报告*/
     VOS_UINT8                           ucPsOnlyCsServiceSupportFlg;            /*支持短信状态报告存到EFSMS文件*/
     VOS_UINT8                           ucLocalStoreFlg;                        /*modem local store message when no RP ACK*/
-    VOS_UINT8                           aucReserve[2];
+
+    VOS_UINT8                           ucGetScAddrIgnoreScIndication; /* 0x6f42文件中sc indication指示不存在短信中心号码时，如果短信中心号码合法是否读取，
+                                                                       VOS_FALSE:sc indication指示短信中心号码不存在则不读取短信中心号码；
+                                                                       VOS_TRUE: sc indication指示短信中心号码不存在读取短信中心号码 */
+    VOS_UINT8                           aucReserve[1];
+
 }MN_MSG_CUSTOM_CFG_INFO_STRU;
 
 

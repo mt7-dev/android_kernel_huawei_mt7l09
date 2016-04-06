@@ -11,13 +11,7 @@
 #include "NasCommDef.h"
 #include "TafAppMma.h"
 
-#include "NasOmInterface.h"
-#include "NasOmTrans.h"
-
-#if (FEATURE_ON == FEATURE_PTM)
-#include "omerrorlog.h"
-#include "NasErrorLog.h"
-#endif
+#include "NasMntn.h"
 
 #ifdef __cplusplus
 #if __cplusplus
@@ -137,7 +131,7 @@ extern "C" {
 
 #define     GMM_TIMER_T3323                             (25)                    /* ISR去激活定时器 */
 
-#define     GMM_TIMER_CS_CONN_NOT_EXIST_WAIT_SYSINFO    (26)                    /* GMM收到MM的cs信令连接不存在消息时判断如果W下，GS关联不存在，RRC连接存在网络模式I,cs ps mode需要启动等系统消息定时器，D态WAS不会上报系统消息，定时器超时需要做联合rau*/
+#define     GMM_TIMER_HO_WAIT_SYSINFO                   (26)                    /* GMM收到MM的cs信令连接不存在消息时判断如果W下，GS关联不存在，RRC连接存在网络模式I,cs ps mode需要启动等系统消息定时器，D态WAS不会上报系统消息，定时器超时需要做联合rau*/
 
 
 #define     GMM_TIMER_DELAY_RADIO_CAPA_TRIGED_RAU       (27)                    /* 在TC的GCF测试中，GMM延迟向MMC回复SUSPEND_RSP定时器 */
@@ -149,6 +143,7 @@ extern "C" {
 
 #define     GMM_TIMER_PROTECT_PS_DETACH                 (30)                    /* GMMCS域detach保护定时器 */
 
+#define     GMM_TIMER_DELAY_VOICE_DOMAIN_TRIG_RAU       (31)                    /* VOICE DOMAIN发生变化时，GMM暂时不能做RAU,启保护定时器 */
 /* 注意:    增加新定时器，请同步更新 GMM_TIMER_NUM */
 
 /* 当对所有的TIMER操作相同时，可以使用下面的宏作为TIMER的种类 */
@@ -208,6 +203,7 @@ extern "C" {
 
 #define     MM_TIMER_WAIT_GET_HO_SECU_INFO_CNF          (23)
 
+#define    MM_TIMER_PROTECT_MT_CSFB_PAGING_PROCEDURE    (24)   
 /* MMA TIMER ID List */
 #define TAF_USIM_OPPIN                  (80)      /*操作PIN的定时器ID */
 #define TAF_USIM_SPN                    (81)      /*读SPN文件定时器   */
@@ -271,28 +267,6 @@ extern "C" {
     (ucValue1) > (ucValue2) ? (ucValue2) : (ucValue1);
 
 
-#define NAS_COMM_BULID_ERRLOG_HEADER_INFO(pstHeader, ModemId, AlmId, AlmLevel, ulSlice, ulLength) \
-{ \
-    (pstHeader)->ulMsgModuleId     = OM_ERR_LOG_MOUDLE_ID_GUNAS; \
-    (pstHeader)->usModemId         = ModemId; \
-    (pstHeader)->usAlmId           = AlmId; \
-    (pstHeader)->usAlmLevel        = AlmLevel; \
-    (pstHeader)->usAlmType         = NAS_ERR_LOG_ALM_TYPE_COMMUNICATION; \
-    (pstHeader)->usAlmLowSlice     = ulSlice; \
-    (pstHeader)->usAlmHighSlice    = 0; \
-    (pstHeader)->ulAlmLength       = ulLength; \
-}
-
-
-#define NAS_COMM_BULID_FTM_HEADER_INFO(pstHeader, ulLen, ModemId, usFuncId) \
-{ \
-    (pstHeader)->ulMsgModuleId     = OM_ERR_LOG_MOUDLE_ID_GUNAS; \
-    (pstHeader)->usModemId         = ModemId; \
-    (pstHeader)->usProjectId       = usFuncId; \
-    (pstHeader)->ulProjectLength   = ulLen; \
-}
-
-
 /*****************************************************************************
   3类型定义
 *****************************************************************************/
@@ -325,73 +299,6 @@ typedef struct
     VOS_UINT32    ulUsed;                           /* 1: 错误码有效 0：错误码无效 */
     VOS_UINT32    ulErrCode;
 }SM_PDP_ACT_ERR_CODE_STRU;
-typedef struct
-{
-    VOS_UINT16   usPid;
-    VOS_UINT16   usTimerName;
-}NAS_TIMER_EVENT_STRU;
-
-
-typedef struct
-{
-    VOS_UINT32 ulItems;
-    VOS_UINT32 aulTimerMsg[NAS_MAX_TIMER_EVENT];
-}NAS_TIMER_EVENT_INFO_STRU;
-
-
-typedef struct
-{
-    VOS_UINT32                          ulCommand;
-    NAS_TIMER_EVENT_INFO_STRU           stTimerMsg;
-}OM_MMC_TIMER_REPORT_CFG_REQ_STRU;
-
-#define NAS_TRACE_BUF_LEN 	            (256)
-
-#define NAS_TRACE_LEVEL_LOW             (0x00000001)
-#define NAS_TRACE_LEVEL_MED             (0x00000002)
-#define NAS_TRACE_LEVEL_HIGH            (0x00000004)
-#define NAS_TRACE_LEVEL_TOP             (NAS_TRACE_LEVEL_LOW | NAS_TRACE_LEVEL_MED | NAS_TRACE_LEVEL_HIGH)
-
-#define NAS_TRACE_OUTPUT_ASHELL         (0x00000001)
-#define NAS_TRACE_OUTPUT_CSHELL         (0x00000002)
-#define NAS_TRACE_OUTPUT_ALL            (NAS_TRACE_OUTPUT_ASHELL | NAS_TRACE_OUTPUT_CSHELL)
-
-#define NAS_MNTN_LOG_FORMAT(ulPrintLength, pcBuf, ulBufSize, pcFmt)\
-            {\
-                va_list pArgList;\
-                va_start(pArgList, pcFmt);\
-                ulPrintLength += VOS_nvsprintf(pcBuf + ulPrintLength,\
-                                    ulBufSize - ulPrintLength, pcFmt, pArgList);\
-                va_end(pArgList);\
-                if (ulPrintLength > (ulBufSize - 1))\
-                {\
-                    ulPrintLength = ulBufSize - 1;\
-                }\
-                *(pcBuf + ulPrintLength) = '\0';\
-            }
-
-#if (VOS_OS_VER == VOS_WIN32) || defined(_lint)
-#define NAS_DBG_PRINT(lvl, fmt, ...)\
-            vos_printf(fmt, ##__VA_ARGS__)
-#else
-#define NAS_DBG_PRINT(lvl, fmt, ...)\
-            do\
-            {\
-                if (lvl == (g_ulNasTraceLevle & lvl))\
-                {\
-                    NAS_MNTN_LogPrintf("[TICK:%u][%s][LINE:%d] "fmt"\n", VOS_GetTick(), __FUNCTION__, __LINE__, ##__VA_ARGS__);\
-                }\
-            }while(0)
-#endif
-
-#define NAS_TRACE_LOW(...)\
-            NAS_DBG_PRINT(NAS_TRACE_LEVEL_LOW, __VA_ARGS__)
-
-#define NAS_TRACE_MED(...)\
-            NAS_DBG_PRINT(NAS_TRACE_LEVEL_MED, __VA_ARGS__)
-
-#define NAS_TRACE_HIGH(...)\
-            NAS_DBG_PRINT(NAS_TRACE_LEVEL_HIGH, __VA_ARGS__)
 
 
 /*****************************************************************************
@@ -406,38 +313,6 @@ typedef struct
 #define     NAS_MEM_FAIL()              PS_LOG(WUEPS_PID_OM, 0, PS_PRINT_ERROR, "NAS Mem Operation Failed!");
 #define     NAS_MSG_FAIL()              PS_LOG(WUEPS_PID_OM, 0, PS_PRINT_ERROR, "NAS Msg Opration Failed!");
 #define     NAS_TIMER_FAIL()            PS_LOG(WUEPS_PID_OM, 0, PS_PRINT_ERROR, "NAS Timer Opration Failed!");
-
-/*****************************************************************************
- NAS层LOG函数定义:
-*****************************************************************************/
-#ifndef SUBMOD_NULL
-#define    SUBMOD_NULL                                                  (0)
-#endif
-
-#define    NAS_INFO_LOG(Mod, String)                                    PS_LOG ( (Mod), SUBMOD_NULL,  PS_PRINT_INFO, (String) )
-#define    NAS_INFO_LOG1(Mod, String,Para1)                             PS_LOG1 ( (Mod), SUBMOD_NULL, PS_PRINT_INFO, (String), (VOS_INT32)(Para1) )
-#define    NAS_INFO_LOG2(Mod, String,Para1,Para2)                       PS_LOG2 ( (Mod), SUBMOD_NULL, PS_PRINT_INFO, (String), (VOS_INT32)(Para1), (VOS_INT32)(Para2) )
-#define    NAS_INFO_LOG3(Mod, String,Para1,Para2,Para3)                 PS_LOG3 ( (Mod), SUBMOD_NULL, PS_PRINT_INFO, (String), (VOS_INT32)(Para1), (VOS_INT32)(Para2), (VOS_INT32)(Para3) )
-#define    NAS_INFO_LOG4(Mod, String,Para1,Para2,Para3,Para4)           PS_LOG4 ( (Mod), SUBMOD_NULL, PS_PRINT_INFO, (String), (VOS_INT32)(Para1), (VOS_INT32)(Para2), (VOS_INT32)(Para3), (VOS_INT32)(Para4) )
-
-#define    NAS_NORMAL_LOG(Mod, String)                                  PS_LOG ( (Mod), SUBMOD_NULL,  PS_PRINT_NORMAL, (String) )
-#define    NAS_NORMAL_LOG1(Mod, String,Para1)                           PS_LOG1 ( (Mod), SUBMOD_NULL, PS_PRINT_NORMAL, (String), (VOS_INT32)(Para1) )
-#define    NAS_NORMAL_LOG2(Mod, String,Para1,Para2)                     PS_LOG2 ( (Mod), SUBMOD_NULL, PS_PRINT_NORMAL, (String), (VOS_INT32)(Para1), (VOS_INT32)(Para2) )
-#define    NAS_NORMAL_LOG3(Mod, String,Para1,Para2,Para3)               PS_LOG3 ( (Mod), SUBMOD_NULL, PS_PRINT_NORMAL, (String), (VOS_INT32)(Para1), (VOS_INT32)(Para2), (VOS_INT32)(Para3) )
-#define    NAS_NORMAL_LOG4(Mod, String,Para1,Para2,Para3,Para4)         PS_LOG4 ( (Mod), SUBMOD_NULL, PS_PRINT_NORMAL, (String), (VOS_INT32)(Para1), (VOS_INT32)(Para2), (VOS_INT32)(Para3), (VOS_INT32)(Para4) )
-
-#define    NAS_WARNING_LOG(Mod, String)                                 PS_LOG ( (Mod), SUBMOD_NULL,  PS_PRINT_WARNING, (String) )
-#define    NAS_WARNING_LOG1(Mod, String,Para1)                          PS_LOG1 ( (Mod), SUBMOD_NULL, PS_PRINT_WARNING, (String), (VOS_INT32)(Para1) )
-#define    NAS_WARNING_LOG2(Mod, String,Para1,Para2)                    PS_LOG2 ( (Mod), SUBMOD_NULL, PS_PRINT_WARNING, (String), (VOS_INT32)(Para1), (VOS_INT32)(Para2) )
-#define    NAS_WARNING_LOG3(Mod, String,Para1,Para2,Para3)              PS_LOG3 ( (Mod), SUBMOD_NULL, PS_PRINT_WARNING, (String), (VOS_INT32)(Para1), (VOS_INT32)(Para2), (VOS_INT32)(Para3) )
-#define    NAS_WARNING_LOG4(Mod, String,Para1,Para2,Para3,Para4)        PS_LOG4 ( (Mod), SUBMOD_NULL, PS_PRINT_WARNING, (String), (VOS_INT32)(Para1), (VOS_INT32)(Para2), (VOS_INT32)(Para3), (VOS_INT32)(Para4) )
-
-#define    NAS_ERROR_LOG(Mod, String)                                   PS_LOG ( (Mod), SUBMOD_NULL,  PS_PRINT_ERROR, (String) )
-#define    NAS_ERROR_LOG1(Mod, String,Para1)                            PS_LOG1 ( (Mod), SUBMOD_NULL, PS_PRINT_ERROR, (String), (VOS_INT32)(Para1) )
-#define    NAS_ERROR_LOG2(Mod, String,Para1,Para2)                      PS_LOG2 ( (Mod), SUBMOD_NULL, PS_PRINT_ERROR, (String), (VOS_INT32)(Para1), (VOS_INT32)(Para2) )
-#define    NAS_ERROR_LOG3(Mod, String,Para1,Para2,Para3)                PS_LOG3 ( (Mod), SUBMOD_NULL, PS_PRINT_ERROR, (String), (VOS_INT32)(Para1), (VOS_INT32)(Para2), (VOS_INT32)(Para3) )
-#define    NAS_ERROR_LOG4(Mod, String,Para1,Para2,Para3,Para4)          PS_LOG4 ( (Mod), SUBMOD_NULL, PS_PRINT_ERROR, (String), (VOS_INT32)(Para1), (VOS_INT32)(Para2), (VOS_INT32)(Para3), (VOS_INT32)(Para4) )
-
 
 /* 对PID,MsgName,以及EventType的操作 */
 #define NAS_BuildEventType(usSndPid,usMsgName)         (((usSndPid) << 16) | (usMsgName))                    /* 根据 Pid以及usMsgName 构建EventType  */
@@ -455,16 +330,7 @@ typedef struct
 /*****************************************************************************
   5 全局变量声明
 *****************************************************************************/
-/*NAS收到USIM 卡状态上报事件的slice*/
-extern VOS_UINT32 g_ulUsimChangeProcSlice;
 
-/*NAS收到PLMN SEARCH CNF的slice*/
-extern VOS_UINT32 g_ulPlmnSrchCnfSlice;
-
-/*NAS收到PS注册成功的slice*/
-extern VOS_UINT32 g_ulPSRegSuccSlice;
-
-extern VOS_UINT32 g_ulNasTraceLevle;
 
 /*****************************************************************************
   6 接口函数声明
@@ -490,9 +356,6 @@ extern VOS_UINT32   NAS_StopRelTimer(
     HTIMER                              *phTm
 );
 
-
-extern TAF_PH_RAT_TYPE_ENUM_UINT8  MMC_GetCurRadioMode(VOS_VOID);
-
 /***  All the following functions are defined in MM_CellProc1.c  ***/
 extern VOS_VOID NAS_MM_StoreCsUnavailableInfo(
     VOS_UINT16                          usCause,
@@ -505,75 +368,7 @@ extern VOS_VOID NAS_GMM_StorePsUnavailableInfo(
     NAS_MNTN_PS_UNAVAILABLE_INFO_STRU  *pstPsUnavailableInfo
 );
 
-/***  All the following functions are defined in MMC_Main.c  ***/
-extern VOS_VOID NAS_MMC_OutputPositionInfo(NAS_MNTN_POSITION_INFO_STRU *pstPositionInfo);
-
-/***  All the following functions are defined in MMC_Com.c  ***/
-
-extern VOS_UINT32 NAS_MMC_IsRoam();
-
-/***  All the following functions are defined in GmmAttach.c  ***/
-extern VOS_VOID NAS_MNTN_ServiceUnavailableType(
-    VOS_UINT16                          usCause,
-    VOS_BOOL                           *pbEventRequired
-);
-
-/***  All the following functions are defined in MmaAppLocal.c  ***/
-extern VOS_VOID NAS_MMA_OutputPlmnSrchBand(VOS_UINT32 *pulBand);
-
-extern VOS_VOID NAS_MMA_OutputUsimInfo(NAS_MNTN_USIM_INFO_STRU *pstUsimInfo);
-
-/***  All the following functions are defined in SmRcvGmm.c  ***/
-extern VOS_VOID NAS_MNTN_RecordPdpActiveFail(
-    NAS_MNTN_ACTIVE_FAIL_TYPE_ENUM_UINT32                       enFailType,
-    VOS_UINT8                                                   ucCntxtIndex,
-    VOS_UINT8                                                   ucSmCause,
-    VOS_UINT8                                                   ucRegisterFlg
-);
-
-/***  All the following functions are defined in NasCom.c  ***/
-extern VOS_VOID NAS_MNTN_RecordPlmnUnavailable(
-    VOS_UINT8                           ucValIndex,
-    VOS_UINT8                           ucCurTimes
-);
-
-
-
-VOS_VOID  NAS_SetNasOtaSwitch(
-    VOS_UINT32                          ulNasOTASwitch
-);
-
-VOS_UINT32 NAS_GetNasOtaSwitch( VOS_VOID );
-
 extern VOS_BOOL NAS_PreventTestImsiRegFlg(VOS_VOID);
-
-
-
-VOS_UINT32 NAS_IsNeedTimerEventReport(
-    VOS_UINT32                          ulEventType
-);
-
-extern NAS_TIMER_EVENT_INFO_STRU* NAS_GetTimerEventReportCfg(VOS_VOID);
-
-VOS_VOID NAS_TIMER_EventReport(
-    VOS_UINT32                          ulTimerName,
-    VOS_UINT32                          ulPid,
-    NAS_OM_EVENT_ID_ENUM                enEventId
-);
-
-
-#if (FEATURE_ON == FEATURE_PTM)
-VOS_UINT16 NAS_GetErrLogAlmLevel(NAS_ERR_LOG_ALM_ID_ENUM_U16 enAlmId);
-VOS_VOID NAS_COM_MntnPutRingbuf(
-    VOS_UINT32                          ulName,
-    VOS_UINT32                          ulPid,
-    VOS_UINT8                          *pucData,
-    VOS_UINT32                          ulLen
-);
-#endif
-
-VOS_VOID NAS_MNTN_LogPrintf(VOS_CHAR *pcFmt, ...);
-
 
 #if ((VOS_OS_VER == VOS_WIN32) || (VOS_OS_VER == VOS_NUCLEUS))
 #pragma pack()

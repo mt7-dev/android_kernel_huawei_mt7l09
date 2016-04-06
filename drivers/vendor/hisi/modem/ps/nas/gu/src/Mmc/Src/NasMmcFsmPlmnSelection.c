@@ -687,6 +687,78 @@ VOS_UINT32 NAS_MMC_RcvMmcAbortFsmMsg_PlmnSelection_WaitGasPlmnSearchCnf(
 
     return VOS_TRUE;
 }
+
+VOS_UINT32 NAS_MMC_IsNeedSortPlmnListRcvRrcPlmnSearchCnfFail_PlmnSelection(
+    NAS_MMC_SEARCHED_PLMN_LIST_INFO_STRU                   *pstInterPlmnSearchInfo,
+    NAS_MML_NET_RAT_TYPE_ENUM_UINT8                         enRat
+)
+{
+    VOS_UINT32                          i;
+    NAS_MML_PLMN_WITH_RAT_STRU         *pstCurrSearchingPlmn = VOS_NULL_PTR;
+    VOS_UINT8                           ucSearchedPlmnAllSameWithCurrSearchingPlmn;
+
+    pstCurrSearchingPlmn                       = NAS_MMC_GetCurrSearchingPlmn_PlmnSelection();
+    ucSearchedPlmnAllSameWithCurrSearchingPlmn = VOS_TRUE;
+
+    if (VOS_FALSE == NAS_MMC_IsNeedSortRoamPlmnSelectionList_PlmnSelection(enRat))
+    {
+        return VOS_FALSE;
+    }
+
+    /* 如果搜网失败带上来存在的高质量网络或低质量网络中有一个国家码
+       与rplmn或hplmn相同，则返回false */
+    for (i = 0; i < pstInterPlmnSearchInfo->ulHighPlmnNum; i++)
+    {
+        if (VOS_TRUE == NAS_MMC_IsPlmnMccSameWithRplmn(pstInterPlmnSearchInfo->astHighPlmnList[i].ulMcc))
+        {
+            NAS_MMC_SetExistRplmnOrHplmnFlag_PlmnSelection(VOS_TRUE);
+            return VOS_FALSE;
+        }
+
+        if (VOS_TRUE == NAS_MMC_IsPlmnMccSameWithHplmn(pstInterPlmnSearchInfo->astHighPlmnList[i].ulMcc))
+        {
+            NAS_MMC_SetExistRplmnOrHplmnFlag_PlmnSelection(VOS_TRUE);
+            return VOS_FALSE;
+        }
+
+        if (VOS_FALSE == NAS_MML_ComparePlmnMcc(pstCurrSearchingPlmn->stPlmnId.ulMcc, pstInterPlmnSearchInfo->astHighPlmnList[i].ulMcc))
+        {
+            ucSearchedPlmnAllSameWithCurrSearchingPlmn = VOS_FALSE;
+        }
+    }
+
+    for (i = 0; i < pstInterPlmnSearchInfo->ulLowPlmnNum; i++)
+    {
+        if (VOS_TRUE == NAS_MMC_IsPlmnMccSameWithRplmn(pstInterPlmnSearchInfo->astLowPlmnList[i].stPlmnId.ulMcc))
+        {
+            NAS_MMC_SetExistRplmnOrHplmnFlag_PlmnSelection(VOS_TRUE);
+            return VOS_FALSE;
+        }
+
+        if (VOS_TRUE == NAS_MMC_IsPlmnMccSameWithHplmn(pstInterPlmnSearchInfo->astLowPlmnList[i].stPlmnId.ulMcc))
+        {
+            NAS_MMC_SetExistRplmnOrHplmnFlag_PlmnSelection(VOS_TRUE);
+            return VOS_FALSE;
+        }
+
+        if (VOS_FALSE == NAS_MML_ComparePlmnMcc(pstCurrSearchingPlmn->stPlmnId.ulMcc, pstInterPlmnSearchInfo->astLowPlmnList[i].stPlmnId.ulMcc))
+        {
+            ucSearchedPlmnAllSameWithCurrSearchingPlmn = VOS_FALSE;
+        }
+    }
+
+    /* 搜网失败带上来存在的网络都跟搜索的网络同一国家码，则不重新构造排序搜网列表 */
+    if (VOS_TRUE == ucSearchedPlmnAllSameWithCurrSearchingPlmn)
+    {
+        return VOS_FALSE;
+    }
+
+    return VOS_TRUE;
+
+}
+
+
+
 VOS_UINT32 NAS_MMC_RcvRrMmPlmnSrchCnf_PlmnSelection_WaitWasPlmnSearchCnf(
     VOS_UINT32                          ulEventType,
     struct MsgCB                       *pstMsg
@@ -695,6 +767,17 @@ VOS_UINT32 NAS_MMC_RcvRrMmPlmnSrchCnf_PlmnSelection_WaitWasPlmnSearchCnf(
     RRMM_PLMN_SEARCH_CNF_STRU                              *pstSrchCnfMsg = VOS_NULL_PTR;
     NAS_MML_PLMN_WITH_RAT_STRU                              stDestPlmn;
     NAS_MMC_SEARCHED_PLMN_LIST_INFO_STRU                    stPlmnSearchInfo;
+
+    VOS_UINT32                                              ulIsNeedSortRoamPlmnList;
+    NAS_MMC_ROAM_PLMN_LIST_INFO_STRU                        stSearchedExistPlmnInfo;
+    NAS_MMC_ROAM_PLMN_LIST_INFO_STRU                        stNewRoamPlmnSelectionList;
+    NAS_MMC_PLMN_SELECTION_LIST_INFO_STRU                  *pstPlmnSrchList   = VOS_NULL_PTR;
+
+    /* 获取选网列表 */
+    pstPlmnSrchList                = NAS_MMC_GetPlmnSelectionListInfo_PlmnSelection();
+    ulIsNeedSortRoamPlmnList       = VOS_FALSE;
+    PS_MEM_SET(&stSearchedExistPlmnInfo, 0, sizeof(stSearchedExistPlmnInfo));
+    PS_MEM_SET(&stNewRoamPlmnSelectionList, 0, sizeof(stNewRoamPlmnSelectionList));
 
     pstSrchCnfMsg = (RRMM_PLMN_SEARCH_CNF_STRU *)pstMsg;
 
@@ -729,8 +812,6 @@ VOS_UINT32 NAS_MMC_RcvRrMmPlmnSrchCnf_PlmnSelection_WaitWasPlmnSearchCnf(
         return VOS_TRUE;
     }
 
-    /* 设置当前接入技术进行了全频搜网 */
-    NAS_MMC_SetAllBandSearch_PlmnSelection(NAS_MML_NET_RAT_TYPE_WCDMA, VOS_TRUE);
 
     /* 将搜网消息中携带的网络信息转换为内部消息中网络信息 */
     NAS_MMC_ConvertRrcPlmnList2SearchedPlmnListInfo(NAS_MML_NET_RAT_TYPE_WCDMA,
@@ -738,7 +819,38 @@ VOS_UINT32 NAS_MMC_RcvRrMmPlmnSrchCnf_PlmnSelection_WaitWasPlmnSearchCnf(
                                                      &stPlmnSearchInfo);
 
     /* 根据消息中携带的搜网信息更新搜网列表 */
-    NAS_MMC_UpdatePlmnSearchList_PlmnSelection(&stPlmnSearchInfo);
+    NAS_MMC_UpdatePlmnSearchList_PlmnSelection(&stPlmnSearchInfo, NAS_MMC_IsNeedSortAvailablePlmnSelectionList_PlmnSelection());
+
+    /* 如果搜网失败结果中带上来的网络没有一个跟rplmn或hplmn
+       同一国家码且之前未排过序，需要构造漫游搜网列表插入原搜网列表头部*/
+    ulIsNeedSortRoamPlmnList = NAS_MMC_IsNeedSortPlmnListRcvRrcPlmnSearchCnfFail_PlmnSelection(&stPlmnSearchInfo, NAS_MML_NET_RAT_TYPE_WCDMA);
+
+    if (VOS_TRUE == ulIsNeedSortRoamPlmnList)
+    {
+        /* 把高低质量网络提取加入roam搜网列表 */
+        NAS_MMC_BuildSearchedPlmnListInfoByRrcSearchCnfFail(NAS_MML_NET_RAT_TYPE_WCDMA, &stPlmnSearchInfo, &stSearchedExistPlmnInfo);
+        NAS_MMC_BuildRoamPlmnSelectionListBySearchedExistPlmnInfo(NAS_MML_NET_RAT_TYPE_WCDMA,
+                     &stSearchedExistPlmnInfo, &stNewRoamPlmnSelectionList);
+
+        /* 把排过序的roam搜网列表插入搜网列表前面 */
+        NAS_MMC_AddRoamPlmnSelectionListInPlmnSelectionList(&stNewRoamPlmnSelectionList, pstPlmnSrchList);
+
+        /* 设置该接入技术已经收到过接入层searched plmn info ind进行过一轮排序 */
+        NAS_MMC_SetSearchedRoamPlmnSortedFlag_PlmnSelection(NAS_MML_NET_RAT_TYPE_WCDMA, VOS_TRUE);
+
+
+        /* 根据消息中携带的搜网信息更新搜网列表 */
+        NAS_MMC_UpdatePlmnSearchList_PlmnSelection(&stPlmnSearchInfo, NAS_MMC_IsNeedSortAvailablePlmnSelectionList_PlmnSelection());
+
+        /* 可维可测,将选网列表输出 */
+        NAS_MMC_LogPlmnSelectionList(pstPlmnSrchList);
+        NAS_MMC_LogDplmnNplmnList();
+
+    }
+
+
+    /* 更新当前接入技术进行了全频搜网,如果在前面更新漫游网络可能无法加入漫游搜网列表，所以构造完漫游搜网列表后再更新进行过全频搜网*/
+    NAS_MMC_SetAllBandSearch_PlmnSelection(NAS_MML_NET_RAT_TYPE_WCDMA, VOS_TRUE);
 
     /* 当还存在下一个需要搜索的网络时，继续进行搜网，否则，进入限制驻留 */
     if (VOS_TRUE == NAS_MMC_GetNextSearchPlmn_PlmnSelection(&stDestPlmn))
@@ -765,6 +877,185 @@ VOS_UINT32 NAS_MMC_RcvRrMmPlmnSrchCnf_PlmnSelection_WaitWasPlmnSearchCnf(
     return VOS_TRUE;
 
 }
+VOS_VOID NAS_MMC_UpdateExistRplmnOrHplmnFlag_PlmnSelection(
+    NAS_MMC_ROAM_PLMN_LIST_INFO_STRU   *pstSearchedExistPlmnInfo
+)
+{
+    VOS_UINT32                          ulIndex;
+
+
+    for (ulIndex = 0; ulIndex < pstSearchedExistPlmnInfo->usSearchPlmnNum; ulIndex++)
+    {
+        if (VOS_TRUE == NAS_MMC_IsPlmnMccSameWithRplmn(pstSearchedExistPlmnInfo->astPlmnSelectionList[ulIndex].stPlmnWithRat.stPlmnId.ulMcc))
+        {
+            NAS_MMC_SetExistRplmnOrHplmnFlag_PlmnSelection(VOS_TRUE);
+            return;
+        }
+
+        if (VOS_TRUE == NAS_MMC_IsPlmnMccSameWithHplmn(pstSearchedExistPlmnInfo->astPlmnSelectionList[ulIndex].stPlmnWithRat.stPlmnId.ulMcc))
+        {
+            NAS_MMC_SetExistRplmnOrHplmnFlag_PlmnSelection(VOS_TRUE);
+            return;
+        }
+    }
+
+    return;
+
+}
+
+
+
+VOS_UINT32 NAS_MMC_RcvSearchedPlmnInfoInd_PlmnSelection_WaitWasPlmnSearchCnf(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+)
+{
+    RRMM_SEARCHED_PLMN_INFO_IND_STRU                       *pstSearchedPlmnInfoMsg = VOS_NULL_PTR;
+    NAS_MMC_PLMN_SELECTION_LIST_INFO_STRU                  *pstPlmnSrchList   = VOS_NULL_PTR;
+    NAS_MMC_ROAM_PLMN_LIST_INFO_STRU                        stNewRoamPlmnSelectionList;
+    NAS_MMC_ROAM_PLMN_LIST_INFO_STRU                        stSearchedExistPlmnInfo;
+
+    pstSearchedPlmnInfoMsg        = (RRMM_SEARCHED_PLMN_INFO_IND_STRU *)pstMsg;
+    PS_MEM_SET(&stNewRoamPlmnSelectionList, 0, sizeof(stNewRoamPlmnSelectionList));
+    PS_MEM_SET(&stSearchedExistPlmnInfo, 0, sizeof(stSearchedExistPlmnInfo));
+
+
+    /* 获取选网列表 */
+    pstPlmnSrchList = NAS_MMC_GetPlmnSelectionListInfo_PlmnSelection();
+
+    if (pstSearchedPlmnInfoMsg->ulAvailPlmnNum > NAS_RRC_MAX_AVAILPLMN_NUM)
+    {
+        pstSearchedPlmnInfoMsg->ulAvailPlmnNum = NAS_RRC_MAX_AVAILPLMN_NUM;
+    }
+    NAS_MMC_BuildSearchedPlmnInfoByRrcSearchedPlmnInfoInd(pstSearchedPlmnInfoMsg, &stSearchedExistPlmnInfo);
+
+    NAS_MMC_UpdateExistRplmnOrHplmnFlag_PlmnSelection(&stSearchedExistPlmnInfo);
+
+    if (VOS_FALSE == NAS_MMC_IsNeedSortRoamPlmnSelectionList_PlmnSelection(NAS_MML_NET_RAT_TYPE_WCDMA))
+    {
+        return VOS_TRUE;
+    }
+
+    if (VOS_TRUE == NAS_MMC_IsNeedStopPlmnSearchRcvRrcSearchedPlmnInfoInd_PlmnSelection(NAS_MML_NET_RAT_TYPE_WCDMA,pstSearchedPlmnInfoMsg))
+    {
+        /* 开机漫游场景对漫游搜网列表排序，原则如下:
+         1、接入层上报存在的网络放在漫游搜网列表前面,在NPLMN中的网络不添加，
+            支持的所有接入技术都添加，当前搜网的接入技术优先
+         2、在gastNetworkNameTbl中找出跟当前存在网络相同国家码的plmn加入漫游搜网列表，
+            在NPLMN中的网络不添加，支持的所有接入技术都添加，当前搜网的接入技术优先
+         3、根据DPLMN->UPLMN->OPLMN->AVAILABLE PLMN顺序对漫游搜网列表进行排序
+        */
+        NAS_MMC_BuildRoamPlmnSelectionListBySearchedExistPlmnInfo(NAS_MML_NET_RAT_TYPE_WCDMA,
+            &stSearchedExistPlmnInfo, &stNewRoamPlmnSelectionList);
+
+        /* 把排过序的roam搜网列表插入搜网列表前面 */
+        NAS_MMC_AddRoamPlmnSelectionListInPlmnSelectionList(&stNewRoamPlmnSelectionList, pstPlmnSrchList);
+
+        /* 可维可测,将选网列表输出 */
+        NAS_MMC_LogPlmnSelectionList(pstPlmnSrchList);
+        NAS_MMC_LogDplmnNplmnList();
+
+        /* 设置该接入技术已经收到过接入层searched plmn info ind进行过一轮排序 */
+        NAS_MMC_SetSearchedRoamPlmnSortedFlag_PlmnSelection(NAS_MML_NET_RAT_TYPE_WCDMA, VOS_TRUE);
+
+        /* 通知utran ctrl模块打断当前搜网，更新utran ctrl mode为fdd */
+        NAS_MMC_SndInterAbortUtranCtrlPlmnSearchReqMsg();
+
+    }
+
+    return VOS_TRUE;
+
+}
+
+
+VOS_UINT32 NAS_MMC_RcvInterAbortUtranCtrlPlmnSearchCnf_WaitWasPlmnSearchCnf(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+)
+{
+     /* 停止保护定时器 */
+     NAS_MMC_StopTimer(TI_NAS_MMC_WAIT_WAS_PLMN_SEARCH_CNF);
+
+
+     /* 通知AS停止指定搜网 */
+     NAS_MMC_SndAsPlmnSrchStopReq(WUEPS_PID_WRR);
+
+     /*根据不同的搜网模式，迁移到不同的L2状态，启动不同保护定时器*/
+     NAS_MMC_FSM_SetCurrState(NAS_MMC_PLMN_SELECTION_STA_WAIT_WAS_PLMN_STOP_CNF);
+
+     NAS_MMC_StartTimer(TI_NAS_MMC_WAIT_WAS_PLMN_STOP_CNF, TI_NAS_MMC_WAIT_WAS_PLMN_STOP_CNF_LEN);
+
+     return VOS_TRUE;
+
+}
+VOS_UINT32 NAS_MMC_RcvSearchedPlmnInfoInd_PlmnSelection_WaitGasPlmnSearchCnf(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+)
+{
+    RRMM_SEARCHED_PLMN_INFO_IND_STRU                       *pstSearchedPlmnInfoMsg = VOS_NULL_PTR;
+    NAS_MMC_PLMN_SELECTION_LIST_INFO_STRU                  *pstPlmnSrchList   = VOS_NULL_PTR;
+    NAS_MMC_ROAM_PLMN_LIST_INFO_STRU                        stNewRoamPlmnSelectionList;
+    NAS_MMC_ROAM_PLMN_LIST_INFO_STRU                        stSearchedExistPlmnInfo;
+
+    pstSearchedPlmnInfoMsg        = (RRMM_SEARCHED_PLMN_INFO_IND_STRU *)pstMsg;
+    PS_MEM_SET(&stNewRoamPlmnSelectionList, 0, sizeof(stNewRoamPlmnSelectionList));
+    PS_MEM_SET(&stSearchedExistPlmnInfo, 0, sizeof(stSearchedExistPlmnInfo));
+
+    /* 获取选网列表 */
+    pstPlmnSrchList = NAS_MMC_GetPlmnSelectionListInfo_PlmnSelection();
+    if (pstSearchedPlmnInfoMsg->ulAvailPlmnNum > NAS_RRC_MAX_AVAILPLMN_NUM)
+    {
+        pstSearchedPlmnInfoMsg->ulAvailPlmnNum = NAS_RRC_MAX_AVAILPLMN_NUM;
+    }
+
+    NAS_MMC_BuildSearchedPlmnInfoByRrcSearchedPlmnInfoInd(pstSearchedPlmnInfoMsg, &stSearchedExistPlmnInfo);
+
+    NAS_MMC_UpdateExistRplmnOrHplmnFlag_PlmnSelection(&stSearchedExistPlmnInfo);
+
+    if (VOS_FALSE == NAS_MMC_IsNeedSortRoamPlmnSelectionList_PlmnSelection(NAS_MML_NET_RAT_TYPE_GSM))
+    {
+        return VOS_TRUE;
+    }
+
+    if (VOS_TRUE == NAS_MMC_IsNeedStopPlmnSearchRcvRrcSearchedPlmnInfoInd_PlmnSelection(NAS_MML_NET_RAT_TYPE_GSM, pstSearchedPlmnInfoMsg))
+    {
+        /* 开机漫游场景对漫游搜网列表排序，原则如下:
+         1、接入层上报存在的网络放在漫游搜网列表前面,在NPLMN中的网络不添加，
+            支持的所有接入技术都添加，当前搜网的接入技术优先
+         2、在gastNetworkNameTbl中找出跟当前存在网络相同国家码的plmn加入漫游搜网列表，
+            在NPLMN中的网络不添加，支持的所有接入技术都添加，当前搜网的接入技术优先
+         3、根据DPLMN->UPLMN->OPLMN->AVAILABLE PLMN顺序对漫游搜网列表进行排序
+        */
+        NAS_MMC_BuildRoamPlmnSelectionListBySearchedExistPlmnInfo(NAS_MML_NET_RAT_TYPE_GSM,
+            &stSearchedExistPlmnInfo, &stNewRoamPlmnSelectionList);
+
+        /* 把排过序的roam搜网列表插入搜网列表前面 */
+        NAS_MMC_AddRoamPlmnSelectionListInPlmnSelectionList(&stNewRoamPlmnSelectionList, pstPlmnSrchList);
+
+        /* 可维可测,将选网列表输出 */
+        NAS_MMC_LogPlmnSelectionList(pstPlmnSrchList);
+        NAS_MMC_LogDplmnNplmnList();
+
+        /* 设置该接入技术已经收到过接入层searched plmn info ind进行过一轮排序 */
+        NAS_MMC_SetSearchedRoamPlmnSortedFlag_PlmnSelection(NAS_MML_NET_RAT_TYPE_GSM, VOS_TRUE);
+
+        /* 停止保护定时器 */
+        NAS_MMC_StopTimer(TI_NAS_MMC_WAIT_GAS_PLMN_SEARCH_CNF);
+
+        /* 通知接入层停止当前搜网 */
+        NAS_MMC_SndAsPlmnSrchStopReq(UEPS_PID_GAS);
+
+        NAS_MMC_FSM_SetCurrState(NAS_MMC_PLMN_SELECTION_STA_WAIT_GAS_PLMN_STOP_CNF);
+
+        NAS_MMC_StartTimer(TI_NAS_MMC_WAIT_GAS_PLMN_STOP_CNF, TI_NAS_MMC_WAIT_GAS_PLMN_STOP_CNF_LEN);
+    }
+
+    return VOS_TRUE;
+
+}
+
+
 VOS_UINT32 NAS_MMC_RcvRrMmPlmnSrchCnf_PlmnSelection_WaitGasPlmnSearchCnf(
     VOS_UINT32                          ulEventType,
     struct MsgCB                       *pstMsg
@@ -773,6 +1064,17 @@ VOS_UINT32 NAS_MMC_RcvRrMmPlmnSrchCnf_PlmnSelection_WaitGasPlmnSearchCnf(
     RRMM_PLMN_SEARCH_CNF_STRU                              *pstSrchCnfMsg = VOS_NULL_PTR;
     NAS_MML_PLMN_WITH_RAT_STRU                              stDestPlmn;
     NAS_MMC_SEARCHED_PLMN_LIST_INFO_STRU                    stPlmnSearchInfo;
+
+    VOS_UINT32                                              ulIsNeedSortRoamPlmnList;
+    NAS_MMC_ROAM_PLMN_LIST_INFO_STRU                        stSearchedExistPlmnInfo;
+    NAS_MMC_ROAM_PLMN_LIST_INFO_STRU                        stNewRoamPlmnSelectionList;
+    NAS_MMC_PLMN_SELECTION_LIST_INFO_STRU                  *pstPlmnSrchList   = VOS_NULL_PTR;
+
+    /* 获取选网列表 */
+    pstPlmnSrchList                  = NAS_MMC_GetPlmnSelectionListInfo_PlmnSelection();
+    ulIsNeedSortRoamPlmnList         = VOS_FALSE;
+    PS_MEM_SET(&stSearchedExistPlmnInfo, 0, sizeof(stSearchedExistPlmnInfo));
+    PS_MEM_SET(&stNewRoamPlmnSelectionList, 0, sizeof(stNewRoamPlmnSelectionList));
 
     pstSrchCnfMsg = (RRMM_PLMN_SEARCH_CNF_STRU *)pstMsg;
 
@@ -807,8 +1109,6 @@ VOS_UINT32 NAS_MMC_RcvRrMmPlmnSrchCnf_PlmnSelection_WaitGasPlmnSearchCnf(
         return VOS_TRUE;
     }
 
-    /* 更新当前接入技术进行了全频搜网 */
-    NAS_MMC_SetAllBandSearch_PlmnSelection(NAS_MML_NET_RAT_TYPE_GSM, VOS_TRUE);
 
     /* 将搜网消息中携带的网络信息转换为内部消息中网络信息 */
     NAS_MMC_ConvertRrcPlmnList2SearchedPlmnListInfo(NAS_MML_NET_RAT_TYPE_GSM,
@@ -816,7 +1116,39 @@ VOS_UINT32 NAS_MMC_RcvRrMmPlmnSrchCnf_PlmnSelection_WaitGasPlmnSearchCnf(
                                                      &stPlmnSearchInfo);
 
     /* 根据消息中携带的搜网信息更新搜网列表 */
-    NAS_MMC_UpdatePlmnSearchList_PlmnSelection(&stPlmnSearchInfo);
+    NAS_MMC_UpdatePlmnSearchList_PlmnSelection(&stPlmnSearchInfo, NAS_MMC_IsNeedSortAvailablePlmnSelectionList_PlmnSelection());
+
+    /* 如果搜网失败结果中带上来的网络没有一个跟rplmn或hplmn
+       同一国家码且之前未排过序，需要构造漫游搜网列表插入原搜网头部*/
+    ulIsNeedSortRoamPlmnList = NAS_MMC_IsNeedSortPlmnListRcvRrcPlmnSearchCnfFail_PlmnSelection(&stPlmnSearchInfo, NAS_MML_NET_RAT_TYPE_GSM);
+
+    if (VOS_TRUE == ulIsNeedSortRoamPlmnList)
+    {
+        /* 把高低质量网络提取加入roam搜网列表 */
+        NAS_MMC_BuildSearchedPlmnListInfoByRrcSearchCnfFail(NAS_MML_NET_RAT_TYPE_GSM, &stPlmnSearchInfo, &stSearchedExistPlmnInfo);
+        NAS_MMC_BuildRoamPlmnSelectionListBySearchedExistPlmnInfo(NAS_MML_NET_RAT_TYPE_GSM,
+            &stSearchedExistPlmnInfo, &stNewRoamPlmnSelectionList);
+
+        /* 把排过序的roam搜网列表插入搜网列表前面 */
+        NAS_MMC_AddRoamPlmnSelectionListInPlmnSelectionList(&stNewRoamPlmnSelectionList, pstPlmnSrchList);
+
+        /* 设置该接入技术已经收到过接入层searched plmn info ind进行过一轮排序 */
+        NAS_MMC_SetSearchedRoamPlmnSortedFlag_PlmnSelection(NAS_MML_NET_RAT_TYPE_GSM, VOS_TRUE);
+
+        /* 根据消息中携带的搜网信息更新搜网列表 */
+        NAS_MMC_UpdatePlmnSearchList_PlmnSelection(&stPlmnSearchInfo, NAS_MMC_IsNeedSortAvailablePlmnSelectionList_PlmnSelection());
+
+        /* 可维可测,将选网列表输出 */
+        NAS_MMC_LogPlmnSelectionList(pstPlmnSrchList);
+        NAS_MMC_LogDplmnNplmnList();
+
+    }
+
+
+    /* 更新当前接入技术进行了全频搜网,如果在前面更新漫游网络可能无法加入漫游搜网列表，所以构造完漫游搜网列表后再更新进行过全频搜网*/
+    NAS_MMC_SetAllBandSearch_PlmnSelection(NAS_MML_NET_RAT_TYPE_GSM, VOS_TRUE);
+
+
 
     /* 当还存在下一个需要搜索的网络时，继续进行搜网，否则，进入限制驻留 */
     if (VOS_TRUE == NAS_MMC_GetNextSearchPlmn_PlmnSelection(&stDestPlmn))
@@ -844,6 +1176,8 @@ VOS_UINT32 NAS_MMC_RcvRrMmPlmnSrchCnf_PlmnSelection_WaitGasPlmnSearchCnf(
 
 }
 
+
+
 VOS_UINT32 NAS_MMC_RcvTiWaitWasPlmnSearchCnfExpired_PlmnSelection_WaitWasPlmnSearchCnf(
     VOS_UINT32                          ulEventType,
     struct MsgCB                       *pstMsg
@@ -869,9 +1203,9 @@ VOS_UINT32 NAS_MMC_RcvTiWaitWasPlmnSearchCnfExpired_PlmnSelection_WaitWasPlmnSea
     stPlmnSearchInfo.ulLowPlmnNum  = 0x0;
     stPlmnSearchInfo.enRatType     = NAS_MML_NET_RAT_TYPE_WCDMA;
 
-    /* 更新搜网列表 */
-    NAS_MMC_UpdatePlmnSearchList_PlmnSelection(&stPlmnSearchInfo);
-    
+    /* 根据消息中携带的搜网信息更新搜网列表 */
+    NAS_MMC_UpdatePlmnSearchList_PlmnSelection(&stPlmnSearchInfo, NAS_MMC_IsNeedSortAvailablePlmnSelectionList_PlmnSelection());
+
     /* 通知AS停止指定搜网 */
     NAS_MMC_SndAsPlmnSrchStopReq(WUEPS_PID_WRR);
 
@@ -909,8 +1243,8 @@ VOS_UINT32 NAS_MMC_RcvTiWaitGasPlmnSearchCnfExpired_PlmnSelection_WaitGasPlmnSea
     stPlmnSearchInfo.enRatType     = NAS_MML_NET_RAT_TYPE_GSM;
 
     /* 根据消息中携带的搜网信息更新搜网列表 */
-    NAS_MMC_UpdatePlmnSearchList_PlmnSelection(&stPlmnSearchInfo);
-    
+    NAS_MMC_UpdatePlmnSearchList_PlmnSelection(&stPlmnSearchInfo, NAS_MMC_IsNeedSortAvailablePlmnSelectionList_PlmnSelection());
+
     NAS_MMC_SndAsPlmnSrchStopReq(UEPS_PID_GAS);
 
     NAS_MMC_FSM_SetCurrState(NAS_MMC_PLMN_SELECTION_STA_WAIT_GAS_PLMN_STOP_CNF);
@@ -919,8 +1253,6 @@ VOS_UINT32 NAS_MMC_RcvTiWaitGasPlmnSearchCnfExpired_PlmnSelection_WaitGasPlmnSea
 
     return VOS_TRUE;
 }
-
-
 
 VOS_UINT32 NAS_MMC_RcvMmcAbortFsmMsg_PlmnSelection_WaitAsSuspendCnf(
     VOS_UINT32                          ulEventType,
@@ -1970,6 +2302,10 @@ VOS_UINT32 NAS_MMC_RcvMmCsRegResultInd_PlmnSelection_WaitCsPsRegRsltInd(
 
         if (VOS_TRUE == NAS_MMC_ProcUserSearchRegRslt_PlmnSelection(enCsRegCause,enPsRegCause))
         {
+
+            /* 在GSM下，如果CS注册成功，PS未注册，则删除FORB GPRS信息 */
+            NAS_MMC_ProcUserSpecPlmnSrchForbGprsInfo_PlmnSelection();            
+                
             /*更新入口消息为普通的搜网请求，后续有新的用户请求时，可以打断该状态机*/
             NAS_MMC_SaveCommonPlmnSrchEntryMsg_PlmnSelection();
 
@@ -2003,8 +2339,6 @@ VOS_UINT32 NAS_MMC_RcvMmCsRegResultInd_PlmnSelection_WaitCsPsRegRsltInd(
     return VOS_TRUE;
 
 }
-
-
 VOS_UINT32 NAS_MMC_RcvTiWaitCsPsRegRsltIndExpired_PlmnSelection_WaitCsPsRegRsltInd(
     VOS_UINT32                          ulEventType,
     struct MsgCB                       *pstMsg
@@ -2783,6 +3117,10 @@ VOS_UINT32 NAS_MMC_RcvAreaLostInd_PlmnSelection_WaitCsPsRegRsltInd(
 
     /* 当前信号更新 */
     NAS_MML_InitRssiValue(NAS_MML_GetCampCellInfo());
+
+    /* 通知MM/GMM进入丢网,MM会释放CS业务 */
+    NAS_MMC_SndMmCoverageLostInd();
+    NAS_MMC_SndGmmCoverageLostInd();
 
     /*如果当前需要退出状态机*/
     if (VOS_TRUE == NAS_MMC_GetAbortFlag_PlmnSelection())
@@ -4175,8 +4513,12 @@ VOS_UINT32 NAS_MMC_RcvMmaRegReq_PlmnSelection_WaitMmaRegReq(
     NAS_MML_NET_RAT_TYPE_ENUM_UINT8                         enNetRatType;
     NAS_MML_PLMN_WITH_RAT_STRU                              stDestPlmn;
     NAS_MMC_PLMN_SEARCH_SCENE_ENUM_UINT32                   enPlmnSearchScene;
+    MMA_MMC_PLMN_ID_STRU                                    stPlmnId;
     NAS_MMC_INTER_PLMN_SEARCH_REQ_STRU                     *pstInterPlmnSrchMsg = VOS_NULL_PTR;
     MMA_MMC_REG_REQ_STRU                                   *pstRegReq = VOS_NULL_PTR;
+
+    stPlmnId.ulMcc     = NAS_MML_INVALID_MCC;
+    stPlmnId.ulMnc     = NAS_MML_INVALID_MNC;
 
     /* 停止保护定时器TI_NAS_MMC_WAIT_MMA_REG_REQ */
     NAS_MMC_StopTimer(TI_NAS_MMC_WAIT_MMA_REG_REQ);
@@ -4184,6 +4526,27 @@ VOS_UINT32 NAS_MMC_RcvMmaRegReq_PlmnSelection_WaitMmaRegReq(
     /* 如果有ABORT标志，直接退出 */
     if (VOS_TRUE == NAS_MMC_GetAbortFlag_PlmnSelection())
     {
+        /* 在没有打断时，才会构造内部搜网消息，搜网场景更新为REG_NCELL/REG_HPLMN/...
+           所以有打断时，NAS_MMC_IsMmaRegReq_PlmnSelection不会为VOS_TRUE
+           需要在这个分支里回reg_cnf */
+        if (VOS_TRUE == NAS_MMC_IsNormalServiceStatus())
+        {
+            NAS_MMC_SndMmaRegCnf(MMC_MMA_REG_RESULT_SUCCESS, NAS_MML_GetCurrCampPlmnId(),
+                                 NAS_MML_GetCurrCampArfcn());
+        }
+        else
+        {
+            if (NAS_MMC_SPEC_PLMN_SEARCH_RUNNING != NAS_MMC_GetSpecPlmnSearchState())
+            {
+                NAS_MMC_SndMmaRegCnf(MMC_MMA_REG_RESULT_REG_FAILURE, NAS_MML_GetCurrCampPlmnId(),
+                                 NAS_MML_GetCurrCampArfcn());
+            }
+            else
+            {
+                NAS_MMC_SndMmaRegCnf(MMC_MMA_REG_RESULT_ACQ_FAILURE, &stPlmnId, 0x0);
+            }
+        }
+
         NAS_MMC_SndRslt_PlmnSelection(NAS_MMC_PLMN_SELECTION_ABORTED);
 
         NAS_MMC_FSM_QuitFsmL2();
@@ -4261,7 +4624,10 @@ VOS_UINT32 NAS_MMC_RcvMmcAbortFsmMsg_PlmnSelection_WaitMmaRegReq(
     pstAbortMsg = (NAS_MMC_ABORT_FSM_STRU*)pstMsg;
 
     /* 若打断类型是用户请求的关机，则直接退出等注册请求状态机 */
-    if (NAS_BuildEventType(WUEPS_PID_MMA, ID_MMA_MMC_POWER_OFF_REQ) == pstAbortMsg->ulEventType)
+    /* 若打断类型是ID_MMA_MMC_POWER_SAVE_REQ，也需要直接退出状态机 */
+    if ( (NAS_BuildEventType(WUEPS_PID_MMA, ID_MMA_MMC_POWER_OFF_REQ) == pstAbortMsg->ulEventType)
+      || (NAS_BuildEventType(WUEPS_PID_MMA, ID_MMA_MMC_POWER_SAVE_REQ) == pstAbortMsg->ulEventType) 
+      || (NAS_BuildEventType(WUEPS_PID_MMA, ID_MMA_MMC_ACQ_REQ)        == pstAbortMsg->ulEventType) )
     {
         NAS_MMC_StopTimer(TI_NAS_MMC_WAIT_MMA_REG_REQ);
 
@@ -4280,8 +4646,6 @@ VOS_UINT32 NAS_MMC_RcvMmcAbortFsmMsg_PlmnSelection_WaitMmaRegReq(
 
     return VOS_TRUE;
 }
-
-
 VOS_UINT32 NAS_MMC_RcvTiWaitMmaRegReqExpired_PlmnSelection_WaitMmaRegReq(
     VOS_UINT32                          ulEventType,
     struct MsgCB                       *pstMsg
@@ -4328,6 +4692,206 @@ VOS_UINT32 NAS_MMC_RcvMmcAbortFsmMsg_PlmnSelection_WaitLmmPlmnSearchCnf(
 
     return VOS_TRUE;
 }
+VOS_UINT32 NAS_MMC_IsNeedStopPlmnSearchRcvLteSearchedPlmnInfoInd_PlmnSelection(
+    LMM_MMC_SEARCHED_PLMN_INFO_IND_STRU                    *pstSearchedPlmnInfoInd
+)
+{
+    NAS_MML_PLMN_WITH_RAT_STRU                             *pstCurrSearchingPlmn;
+    NAS_MMC_PLMN_SELECTION_LIST_INFO_STRU                  *pstPlmnSelectionList = VOS_NULL_PTR;
+    VOS_UINT32                                              ulIndex;
+    NAS_MML_PLMN_WITH_RAT_STRU                              stPlmnIdWithRat;
+    VOS_UINT32                                              ulIsExistDiffMccWithCurrSearchingMcc;
+    VOS_UINT8                                               ucIsExistSearchedPlmnPrioCurrSearchingPlmn;
+    NAS_MML_PLMN_ID_STRU                                    stGUNasPlmnId;
+    NAS_MMC_ROAM_PLMN_INFO_STRU                             stCurrSearchRoamPlmnInfo;
+    NAS_MMC_ROAM_PLMN_INFO_STRU                             stSearchedExistRoamPlmnInfo;
+    VOS_UINT8                                               ucIsAllSearchedPlmnDisableLteRoam;
+    VOS_UINT8                                               ucAllSearchedPlmnForbiddenPlmnFlag;
+    NAS_MMC_ROAM_PLMN_TYPE_ENUM_UINT8                       enRoamPlmnType;
+
+    PS_MEM_SET(&stCurrSearchRoamPlmnInfo, 0, sizeof(stCurrSearchRoamPlmnInfo));
+    PS_MEM_SET(&stSearchedExistRoamPlmnInfo, 0, sizeof(stSearchedExistRoamPlmnInfo));
+    PS_MEM_SET(&stPlmnIdWithRat, 0, sizeof(stPlmnIdWithRat));
+    PS_MEM_SET(&stGUNasPlmnId, 0, sizeof(stGUNasPlmnId));
+
+    pstCurrSearchingPlmn                       = NAS_MMC_GetCurrSearchingPlmn_PlmnSelection();
+    pstPlmnSelectionList                       = NAS_MMC_GetPlmnSelectionListInfo_PlmnSelection();
+    ulIsExistDiffMccWithCurrSearchingMcc       = VOS_FALSE;
+    ucIsExistSearchedPlmnPrioCurrSearchingPlmn = VOS_FALSE;
+    ucIsAllSearchedPlmnDisableLteRoam          = VOS_TRUE;
+    ucAllSearchedPlmnForbiddenPlmnFlag         = VOS_TRUE;
+    enRoamPlmnType                             = NAS_MMC_ROAM_PLMN_TYPE_BUTT;
+
+    stCurrSearchRoamPlmnInfo.stPlmnWithRat.stPlmnId.ulMcc = pstCurrSearchingPlmn->stPlmnId.ulMcc;
+    stCurrSearchRoamPlmnInfo.stPlmnWithRat.stPlmnId.ulMnc = pstCurrSearchingPlmn->stPlmnId.ulMnc;
+    stCurrSearchRoamPlmnInfo.stPlmnWithRat.enRat          = pstCurrSearchingPlmn->enRat;
+    stCurrSearchRoamPlmnInfo.enNetStatus                  = NAS_MMC_NET_STATUS_NO_SEARCHED;
+    stCurrSearchRoamPlmnInfo.enPlmnType                   = NAS_MMC_GetRoamPlmnTypeInPlmnSelectionList(&stCurrSearchRoamPlmnInfo.stPlmnWithRat, pstPlmnSelectionList);
+    stCurrSearchRoamPlmnInfo.aucLac[0]                    = NAS_MML_LAC_LOW_BYTE_INVALID;
+    stCurrSearchRoamPlmnInfo.aucLac[1]                    = NAS_MML_LAC_HIGH_BYTE_INVALID;
+
+
+    /* 接入层指示存在的网络跟rplmn或hplmn是同一国家码非漫游场景则不处理该消息*/
+    for (ulIndex = 0; ulIndex < pstSearchedPlmnInfoInd->ulTaiNum; ulIndex++)
+    {
+        NAS_MMC_ConvertLmmPlmnToGUNasFormat(&pstSearchedPlmnInfoInd->stTaiList[ulIndex].stPlmnId,
+                                            &stGUNasPlmnId);
+
+
+
+        /* 如果当前搜索的网络和searched plmn info ind消息中的plmn相同则不处理，
+            等接入层的search cnf success消息*/
+        if (VOS_TRUE == NAS_MML_CompareBcchPlmnwithSimPlmn(&pstCurrSearchingPlmn->stPlmnId, &stGUNasPlmnId))
+        {
+            return VOS_FALSE;
+        }
+
+        /* 判断带上来的网络是否都禁止lte 漫游，如果禁止lte漫游需要打断当前l搜网*/
+        if (VOS_FALSE == NAS_MMC_IsNeedDisableLteRoam(stGUNasPlmnId.ulMcc))
+        {
+            ucIsAllSearchedPlmnDisableLteRoam = VOS_FALSE;
+        }
+
+        /* 判断searched plmn info ind中带上来的网络是否跟正在搜索的网络同MCC,
+           如果都是相同MCC,则无需打断当前搜网，如果存在不同MCC的网络则打断当前搜网 */
+
+        stSearchedExistRoamPlmnInfo.stPlmnWithRat.stPlmnId.ulMcc = stGUNasPlmnId.ulMcc;
+        stSearchedExistRoamPlmnInfo.stPlmnWithRat.stPlmnId.ulMnc = stGUNasPlmnId.ulMnc;
+        stSearchedExistRoamPlmnInfo.stPlmnWithRat.enRat          = NAS_MML_NET_RAT_TYPE_LTE;
+        stSearchedExistRoamPlmnInfo.enNetStatus =  NAS_MMC_GetSpecRoamPlmnNetStatusInPlmnSelectionList(&stSearchedExistRoamPlmnInfo.stPlmnWithRat, pstPlmnSelectionList);
+
+        if (NAS_MMC_NET_STATUS_SEARCHED_REGISTERED != stSearchedExistRoamPlmnInfo.enNetStatus)
+        {
+            stSearchedExistRoamPlmnInfo.enNetStatus = NAS_MMC_NET_STATUS_SEARCHED_EXIST;
+        }
+
+        stSearchedExistRoamPlmnInfo.enPlmnType  = NAS_MMC_GetRoamPlmnTypeInPlmnSelectionList(&stSearchedExistRoamPlmnInfo.stPlmnWithRat, pstPlmnSelectionList);
+        stSearchedExistRoamPlmnInfo.aucLac[0]   = pstSearchedPlmnInfoInd->stTaiList[ulIndex].stTac.ucTac;
+        stSearchedExistRoamPlmnInfo.aucLac[1]   = pstSearchedPlmnInfoInd->stTaiList[ulIndex].stTac.ucTacCnt;
+
+        if (VOS_FALSE == NAS_MML_ComparePlmnMcc(pstCurrSearchingPlmn->stPlmnId.ulMcc, stGUNasPlmnId.ulMcc))
+        {
+            ulIsExistDiffMccWithCurrSearchingMcc = VOS_TRUE;
+
+            /* 如果带上来的网络都是nplmn或forbidden plmn，不同mcc也先不打断 */
+            enRoamPlmnType = NAS_MMC_GetRoamPlmnType(&stSearchedExistRoamPlmnInfo);
+
+            if ((NAS_MMC_ROAM_PLMN_TYPE_FORBIDDEN != enRoamPlmnType)
+             && (NAS_MMC_ROAM_PLMN_TYPE_NPLMN != enRoamPlmnType))
+            {
+                ucAllSearchedPlmnForbiddenPlmnFlag = VOS_FALSE;
+            }
+        }
+        else
+        {
+            /* 报上来的网络优先级高于当前搜索的网络，则需要打断当前搜网 */
+            if (-1 == NAS_MMC_ActCompareRoamPlmnPrio(&stCurrSearchRoamPlmnInfo, &stSearchedExistRoamPlmnInfo, NAS_MML_GetMsPrioRatList()))
+            {
+                ucIsExistSearchedPlmnPrioCurrSearchingPlmn = VOS_TRUE;
+            }
+        }
+    }
+
+    if (VOS_TRUE == ucIsAllSearchedPlmnDisableLteRoam)
+    {
+        /* 更新disable LTE能力标记 */
+        NAS_MML_SetLteCapabilityStatus(NAS_MML_LTE_CAPABILITY_STATUS_DISABLE_UNNOTIFY_AS);
+        NAS_MML_SetDisableLteReason(MMC_LMM_DISABLE_LTE_REASON_LTE_ROAMING_NOT_ALLOWED);
+        return VOS_TRUE;
+    }
+
+    /* searched plmn info ind消息中带上来的网络存在与当前搜的网络不同国家码的网络，
+       且不都是nplmn和forbidden plmn则打断当前搜网*/
+    if ((VOS_TRUE == ulIsExistDiffMccWithCurrSearchingMcc)
+     && (VOS_FALSE == ucAllSearchedPlmnForbiddenPlmnFlag))
+    {
+        return VOS_TRUE;
+    }
+
+    /* searched plmn info ind 消息中带上来的网络与当前搜的网络同国家码，
+       但优先级高于或等于当前搜索的网，则打断当前搜网*/
+    if (VOS_TRUE == ucIsExistSearchedPlmnPrioCurrSearchingPlmn)
+    {
+        return VOS_TRUE;
+    }
+
+    return VOS_FALSE;
+}
+
+
+VOS_UINT32 NAS_MMC_RcvLmmSearchedPlmnInfoInd_PlmnSelection_WaitLmmPlmnSearchCnf(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+)
+{
+    LMM_MMC_SEARCHED_PLMN_INFO_IND_STRU                    *pstSearchedPlmnInfoInd = VOS_NULL_PTR;
+    NAS_MMC_PLMN_SELECTION_LIST_INFO_STRU                  *pstPlmnSrchList   = VOS_NULL_PTR;
+    NAS_MMC_ROAM_PLMN_LIST_INFO_STRU                        stNewRoamPlmnSelectionList;
+    NAS_MMC_ROAM_PLMN_LIST_INFO_STRU                        stExistRoamPlmnSelectionList;
+    NAS_MML_PLMN_ID_STRU                                    stGUNasPlmnId;
+
+    pstSearchedPlmnInfoInd   = (LMM_MMC_SEARCHED_PLMN_INFO_IND_STRU*)pstMsg;
+    PS_MEM_SET(&stExistRoamPlmnSelectionList, 0, sizeof(stExistRoamPlmnSelectionList));
+    PS_MEM_SET(&stNewRoamPlmnSelectionList, 0, sizeof(stNewRoamPlmnSelectionList));
+    PS_MEM_SET(&stGUNasPlmnId, 0, sizeof(stGUNasPlmnId));
+
+    /* 获取选网列表 */
+    pstPlmnSrchList       = NAS_MMC_GetPlmnSelectionListInfo_PlmnSelection();
+
+
+    NAS_MMC_BuildSearchedPlmnInfoByLteSearchedPlmnInfoInd(pstSearchedPlmnInfoInd, &stExistRoamPlmnSelectionList);
+
+    NAS_MMC_UpdateExistRplmnOrHplmnFlag_PlmnSelection(&stExistRoamPlmnSelectionList);
+
+    if (VOS_FALSE == NAS_MMC_IsNeedSortRoamPlmnSelectionList_PlmnSelection(NAS_MML_NET_RAT_TYPE_LTE))
+    {
+        return VOS_TRUE;
+    }
+
+    /* 消息中ulAvailPlmnNum参数超过NAS_RRC_MAX_AVAILPLMN_NUM，认为非法，重新赋值*/
+    if (pstSearchedPlmnInfoInd->ulTaiNum > LMM_MMC_MAX_SEARCHED_TAI_NUM)
+    {
+        pstSearchedPlmnInfoInd->ulTaiNum = LMM_MMC_MAX_SEARCHED_TAI_NUM;
+    }
+
+    if (VOS_TRUE == NAS_MMC_IsNeedStopPlmnSearchRcvLteSearchedPlmnInfoInd_PlmnSelection(pstSearchedPlmnInfoInd))
+    {
+        /* 开机漫游场景对漫游搜网列表排序，原则如下:
+         1、接入层上报存在的网络放在漫游搜网列表前面,在NPLMN中的网络不添加，
+            支持的所有接入技术都添加，当前搜网的接入技术优先
+         2、在gastNetworkNameTbl中找出跟当前存在网络相同国家码的plmn加入漫游搜网列表，
+            在NPLMN中德网络不添加，支持的所有接入技术都添加，当前搜网的接入技术优先
+         3、根据DPLMN->UPLMN->OPLMN->AVAILABLE PLMN顺序对漫游搜网列表进行排序
+        */
+        NAS_MMC_BuildRoamPlmnSelectionListBySearchedExistPlmnInfo(NAS_MML_NET_RAT_TYPE_LTE,
+            &stExistRoamPlmnSelectionList, &stNewRoamPlmnSelectionList);
+
+        /* 把排过序的roam搜网列表插入搜网列表前面 */
+        NAS_MMC_AddRoamPlmnSelectionListInPlmnSelectionList(&stNewRoamPlmnSelectionList, pstPlmnSrchList);
+
+        /* 可维可测,将选网列表输出 */
+        NAS_MMC_LogPlmnSelectionList(pstPlmnSrchList);
+        NAS_MMC_LogDplmnNplmnList();
+
+
+        /* 设置该接入技术已经收到过接入层searched plmn info ind进行过一轮排序 */
+        NAS_MMC_SetSearchedRoamPlmnSortedFlag_PlmnSelection(NAS_MML_NET_RAT_TYPE_LTE, VOS_TRUE);
+
+        /* 停止保护定时器 */
+        NAS_MMC_StopTimer(TI_NAS_MMC_WAIT_LMM_PLMN_SEARCH_CNF);
+
+        /* 通知LMM停止指定搜网 */
+        NAS_MMC_SndLmmPlmnSrchStopReq();
+
+        /*根据不同的搜网模式，迁移到不同的L2状态，启动不同保护定时器*/
+        NAS_MMC_FSM_SetCurrState(NAS_MMC_PLMN_SELECTION_STA_WAIT_LMM_PLMN_STOP_CNF);
+
+        NAS_MMC_StartTimer(TI_NAS_MMC_WAIT_LMM_PLMN_STOP_CNF, TI_NAS_MMC_WAIT_LMM_PLMN_STOP_CNF_LEN);
+
+    }
+
+    return VOS_TRUE;
+}
 
 
 VOS_UINT32 NAS_MMC_RcvLmmPlmnCnf_PlmnSelection_WaitLmmPlmnSearchCnf(
@@ -4338,6 +4902,17 @@ VOS_UINT32 NAS_MMC_RcvLmmPlmnCnf_PlmnSelection_WaitLmmPlmnSearchCnf(
     LMM_MMC_PLMN_SRCH_CNF_STRU                             *pstLmmSrchCnfMsg = VOS_NULL_PTR;
     NAS_MML_PLMN_WITH_RAT_STRU                              stDestPlmn;
     NAS_MMC_SEARCHED_PLMN_LIST_INFO_STRU                    stPlmnSearchInfo;
+
+    VOS_UINT32                                              ulIsNeedSortRoamPlmnList;
+    NAS_MMC_ROAM_PLMN_LIST_INFO_STRU                        stSearchedExistPlmnInfo;
+    NAS_MMC_ROAM_PLMN_LIST_INFO_STRU                        stNewRoamPlmnSelectionList;
+    NAS_MMC_PLMN_SELECTION_LIST_INFO_STRU                  *pstPlmnSrchList   = VOS_NULL_PTR;
+
+    /* 获取选网列表 */
+    pstPlmnSrchList                  = NAS_MMC_GetPlmnSelectionListInfo_PlmnSelection();
+    ulIsNeedSortRoamPlmnList         = VOS_FALSE;
+    PS_MEM_SET(&stSearchedExistPlmnInfo, 0, sizeof(stSearchedExistPlmnInfo));
+    PS_MEM_SET(&stNewRoamPlmnSelectionList, 0, sizeof(stNewRoamPlmnSelectionList));
 
     /* 解决版本Coverity问题 */
     PS_MEM_SET(&stDestPlmn, 0, sizeof(NAS_MML_PLMN_WITH_RAT_STRU));
@@ -4362,16 +4937,44 @@ VOS_UINT32 NAS_MMC_RcvLmmPlmnCnf_PlmnSelection_WaitLmmPlmnSearchCnf(
         return VOS_TRUE;
     }
 
-    /* 更新当前接入技术进行了全频搜网 */
-    NAS_MMC_SetAllBandSearch_PlmnSelection(NAS_MML_NET_RAT_TYPE_LTE, VOS_TRUE);
 
     /* 将搜网消息中携带的网络信息转换为内部消息中网络信息 */
     NAS_MMC_ConvertLmmPlmnList2SearchedPlmnListInfo(&(pstLmmSrchCnfMsg->stPlmnIdList),
                                                      &stPlmnSearchInfo);
 
-    /* 根据消息中携带的搜网信息更新搜网列表 */
-    NAS_MMC_UpdatePlmnSearchList_PlmnSelection(&stPlmnSearchInfo);
 
+    /* 根据消息中携带的搜网信息更新搜网列表 */
+    NAS_MMC_UpdatePlmnSearchList_PlmnSelection(&stPlmnSearchInfo, NAS_MMC_IsNeedSortAvailablePlmnSelectionList_PlmnSelection());
+
+    /* 如果搜网失败结果中带上来的网络没有一个跟rplmn或hplmn
+       同一国家码且之前未排过序，需要构造漫游搜网列表插入原搜网头部*/
+    ulIsNeedSortRoamPlmnList = NAS_MMC_IsNeedSortPlmnListRcvRrcPlmnSearchCnfFail_PlmnSelection(&stPlmnSearchInfo, NAS_MML_NET_RAT_TYPE_LTE);
+
+    if (VOS_TRUE == ulIsNeedSortRoamPlmnList)
+    {
+        /* 把高低质量网络提取加入roam搜网列表 */
+        NAS_MMC_BuildSearchedPlmnListInfoByRrcSearchCnfFail(NAS_MML_NET_RAT_TYPE_LTE, &stPlmnSearchInfo, &stSearchedExistPlmnInfo);
+
+        NAS_MMC_BuildRoamPlmnSelectionListBySearchedExistPlmnInfo(NAS_MML_NET_RAT_TYPE_LTE,
+            &stSearchedExistPlmnInfo, &stNewRoamPlmnSelectionList);
+
+        /* 把排过序的roam搜网列表插入搜网列表前面 */
+        NAS_MMC_AddRoamPlmnSelectionListInPlmnSelectionList(&stNewRoamPlmnSelectionList, pstPlmnSrchList);
+
+        /* 设置该接入技术已经收到过接入层searched plmn info ind进行过一轮排序 */
+        NAS_MMC_SetSearchedRoamPlmnSortedFlag_PlmnSelection(NAS_MML_NET_RAT_TYPE_LTE, VOS_TRUE);
+
+        /* 根据消息中携带的搜网信息更新搜网列表 */
+        NAS_MMC_UpdatePlmnSearchList_PlmnSelection(&stPlmnSearchInfo, NAS_MMC_IsNeedSortAvailablePlmnSelectionList_PlmnSelection());
+
+        /* 可维可测,将选网列表输出 */
+        NAS_MMC_LogPlmnSelectionList(pstPlmnSrchList);
+        NAS_MMC_LogDplmnNplmnList();
+    }
+
+
+    /* 更新当前接入技术进行了全频搜网,如果在前面更新漫游网络可能无法加入漫游搜网列表，所以构造完漫游搜网列表后再更新进行过全频搜网*/
+    NAS_MMC_SetAllBandSearch_PlmnSelection(NAS_MML_NET_RAT_TYPE_LTE, VOS_TRUE);
 
     /* 当还存在下一个需要搜索的网络时，继续进行搜网，否则，进入限制驻留 */
     if (VOS_TRUE == NAS_MMC_GetNextSearchPlmn_PlmnSelection(&stDestPlmn))
@@ -4399,8 +5002,6 @@ VOS_UINT32 NAS_MMC_RcvLmmPlmnCnf_PlmnSelection_WaitLmmPlmnSearchCnf(
     return VOS_TRUE;
 
 }
-
-
 VOS_UINT32 NAS_MMC_RcvLmmAttachCnf_PlmnSelection_WaitLmmPlmnSearchCnf(
     VOS_UINT32                          ulEventType,
     struct MsgCB                       *pstMsg
@@ -4478,8 +5079,9 @@ VOS_UINT32 NAS_MMC_RcvTiWaitLmmPlmnSearchCnfExpired_PlmnSelection_WaitLmmPlmnSea
     stPlmnSearchInfo.enRatType     = NAS_MML_NET_RAT_TYPE_LTE;
 
     /* 根据消息中携带的搜网信息更新搜网列表 */
-    NAS_MMC_UpdatePlmnSearchList_PlmnSelection(&stPlmnSearchInfo);
-    
+    NAS_MMC_UpdatePlmnSearchList_PlmnSelection(&stPlmnSearchInfo, NAS_MMC_IsNeedSortAvailablePlmnSelectionList_PlmnSelection());
+
+
     /* 通知LMM停止指定搜网 */
     NAS_MMC_SndLmmPlmnSrchStopReq();
 
@@ -5278,7 +5880,8 @@ VOS_UINT32 NAS_MMC_RcvLmmMmcServiceRsltInd_PlmnSelection_WaitEpsRegRsltInd(
     struct MsgCB                       *pstMsg
 )
 {
-    LMM_MMC_SERVICE_RESULT_IND_STRU                        *pstSerRsltMsg = VOS_NULL_PTR;
+    LMM_MMC_SERVICE_RESULT_IND_STRU                        *pstSerRsltMsg       = VOS_NULL_PTR;
+    NAS_MMC_INTER_PLMN_SEARCH_REQ_STRU                     *pstInterPlmnSrchMsg = VOS_NULL_PTR;
     NAS_MMC_ADDITIONAL_ACTION_ENUM_UINT8                    enAdditionalAction;
 
     pstSerRsltMsg     = (LMM_MMC_SERVICE_RESULT_IND_STRU*)pstMsg;
@@ -5305,6 +5908,25 @@ VOS_UINT32 NAS_MMC_RcvLmmMmcServiceRsltInd_PlmnSelection_WaitEpsRegRsltInd(
         NAS_MMC_FSM_QuitFsmL2();
 
         return VOS_TRUE;
+    }
+
+    if ((VOS_TRUE                                 == NAS_MML_IsCsfbServiceStatusExist())
+     && (NAS_MMC_ADDITIONAL_ACTION_PLMN_SELECTION == enAdditionalAction))
+    {
+        pstInterPlmnSrchMsg = (NAS_MMC_INTER_PLMN_SEARCH_REQ_STRU*)PS_MEM_ALLOC(WUEPS_PID_MMC, sizeof(NAS_MMC_INTER_PLMN_SEARCH_REQ_STRU));
+        if (VOS_NULL_PTR != pstInterPlmnSrchMsg)
+        {
+            /* 修改入口消息为CSFB触发的搜网 */
+            NAS_MMC_BulidInterPlmnSearchReqMsg(NAS_MMC_PLMN_SEARCH_SCENE_CSFB_SERVIEC_REJ, VOS_NULL_PTR, 0, pstInterPlmnSrchMsg);
+            NAS_MMC_SaveCurEntryMsg(NAS_BuildEventType(WUEPS_PID_MMC, MMCMMC_INTER_PLMN_SEARCH_REQ),
+                                    (struct MsgCB*)pstInterPlmnSrchMsg);
+            PS_MEM_FREE(WUEPS_PID_MMC, pstInterPlmnSrchMsg);
+        }
+        else
+        {
+            /* 异常打印 */
+            NAS_ERROR_LOG(WUEPS_PID_MMC, "NAS_MMC_RcvLmmMmcServiceRsltInd_PlmnSelection_WaitEpsRegRsltInd Alloc mem fail");
+        }
     }
 
     NAS_MMC_PerformAdditionalActionRegFinished_PlmnSelection();
@@ -6159,7 +6781,8 @@ VOS_UINT32 NAS_MMC_RcvLmmMmcServiceRsltInd_PlmnSelection_WaitEpsConnRelInd(
     struct MsgCB                       *pstMsg
 )
 {
-    LMM_MMC_SERVICE_RESULT_IND_STRU                        *pstSerRsltMsg = VOS_NULL_PTR;
+    LMM_MMC_SERVICE_RESULT_IND_STRU                        *pstSerRsltMsg       = VOS_NULL_PTR;
+    NAS_MMC_INTER_PLMN_SEARCH_REQ_STRU                     *pstInterPlmnSrchMsg = VOS_NULL_PTR;
     NAS_MMC_ADDITIONAL_ACTION_ENUM_UINT8                    enAdditionalAction;
 
     pstSerRsltMsg     = (LMM_MMC_SERVICE_RESULT_IND_STRU*)pstMsg;
@@ -6186,6 +6809,25 @@ VOS_UINT32 NAS_MMC_RcvLmmMmcServiceRsltInd_PlmnSelection_WaitEpsConnRelInd(
         NAS_MMC_FSM_QuitFsmL2();
 
         return VOS_TRUE;
+    }
+
+    if ((VOS_TRUE                                 == NAS_MML_IsCsfbServiceStatusExist())
+     && (NAS_MMC_ADDITIONAL_ACTION_PLMN_SELECTION == enAdditionalAction))
+    {
+        pstInterPlmnSrchMsg = (NAS_MMC_INTER_PLMN_SEARCH_REQ_STRU*)PS_MEM_ALLOC(WUEPS_PID_MMC, sizeof(NAS_MMC_INTER_PLMN_SEARCH_REQ_STRU));
+        if (VOS_NULL_PTR != pstInterPlmnSrchMsg)
+        {
+            /* 修改入口消息为CSFB触发的搜网 */
+            NAS_MMC_BulidInterPlmnSearchReqMsg(NAS_MMC_PLMN_SEARCH_SCENE_CSFB_SERVIEC_REJ, VOS_NULL_PTR, 0, pstInterPlmnSrchMsg);
+            NAS_MMC_SaveCurEntryMsg(NAS_BuildEventType(WUEPS_PID_MMC, MMCMMC_INTER_PLMN_SEARCH_REQ),
+                                    (struct MsgCB*)pstInterPlmnSrchMsg);
+            PS_MEM_FREE(WUEPS_PID_MMC, pstInterPlmnSrchMsg);
+        }
+        else
+        {
+            /* 异常打印 */
+            NAS_ERROR_LOG(WUEPS_PID_MMC, "NAS_MMC_RcvLmmMmcServiceRsltInd_PlmnSelection_WaitEpsConnRelInd Alloc mem fail");
+        }
     }
 
     NAS_MMC_PerformAdditionalActionRegFinished_PlmnSelection();
@@ -8214,6 +8856,79 @@ VOS_UINT32 NAS_MMC_IsNeedAddEhplmnWhenSearchRplmn_PlmnSelection(
 
 
 
+VOS_UINT32 NAS_MMC_IsNeedAddEplmnWhenSearchRplmn_PlmnSelection(
+    NAS_MML_PLMN_WITH_RAT_STRU         *pstDestPlmn
+)
+{
+    NAS_MMC_PLMN_SEARCH_SCENE_ENUM_UINT32                   enPlmnSearchScene;
+    NAS_MMC_PLMN_TYPE_ENUM_UINT8                            enPlmnType;
+    NAS_MMC_PLMN_SELECTION_LIST_INFO_STRU                  *pstPlmnSelectionList = VOS_NULL_PTR;
+    VOS_UINT8                                               ucSearchRplmnAndEplmnFlg;
+
+    enPlmnSearchScene                = NAS_MMC_GetPlmnSearchScene_PlmnSelection();
+    pstPlmnSelectionList             = NAS_MMC_GetPlmnSelectionListInfo_PlmnSelection();
+    enPlmnType                       = NAS_MMC_GetPlmnTypeInPlmnSelectionList(pstDestPlmn, pstPlmnSelectionList);
+    ucSearchRplmnAndEplmnFlg         = NAS_MMC_GetSearchRplmnAndEplmnFlg_PlmnSelection(pstDestPlmn->enRat);
+
+    /* csfb搜网到gu场景，搜rplmn时需要携带eplmn信息增加搜网速度 */
+    if ( (NAS_MMC_PLMN_TYPE_RPLMN == enPlmnType)
+      && (VOS_FALSE == ucSearchRplmnAndEplmnFlg)
+      && (NAS_MMC_PLMN_SEARCH_SCENE_CSFB_SERVIEC_REJ == enPlmnSearchScene)
+      && (NAS_MML_NET_RAT_TYPE_LTE != pstDestPlmn->enRat))
+    {
+        return VOS_TRUE;
+    }
+
+    return VOS_FALSE;
+}
+
+/* Modified by c00318887 for DPlmn扩容和优先接入HPLMN, 2015-5-18, begin */
+/*****************************************************************************
+ 函 数 名  : NAS_MMC_IsNeedAddHplmnWhenSeachDplmn_PlmnSelection
+ 功能描述  : 判断是否需要将EPLMN加入目的搜网列表
+ 输入参数  : pstDestPlmn    - 搜网plmn id
+ 输出参数  : 无
+ 返 回 值  : VOS_TRUE:需要将EPLMN加入目的搜网列表
+             VOS_FALSE:不需要将EPLMN加入目的搜网列表
+ 调用函数  :
+ 被调函数  :
+
+ 修改历史     :
+ 1.日    期   : 2015年5月18日
+   作    者   : c00318887
+   修改内容   : 新建函数
+
+*****************************************************************************/
+VOS_UINT32 NAS_MMC_IsNeedAddHplmnWhenSeachDplmn_PlmnSelection(
+    NAS_MML_PLMN_WITH_RAT_STRU         *pstDestPlmn
+)
+{
+    NAS_MMC_DPLMN_NPLMN_CFG_INFO_STRU                      *pstDplmnNplmnCfgInfo = VOS_NULL_PTR;
+    VOS_UINT32                                              ulEventType;
+    VOS_UINT8                                               ucSearchDplmnAndHplmnFlg;
+    
+    ulEventType                         = NAS_MMC_GetCurrFsmEventType();
+    pstDplmnNplmnCfgInfo                = NAS_MMC_GetDPlmnNPlmnCfgInfo();
+    ucSearchDplmnAndHplmnFlg            = NAS_MMC_GetSearchDplmnAndHplmnFlg_PlmnSelection(pstDestPlmn->enRat);
+
+    if (VOS_FALSE == pstDplmnNplmnCfgInfo->ucActiveFlg)
+    {
+        return VOS_FALSE;
+    }
+
+    /* 自动模式 且 开机搜网时，携带HPLMN */
+    if ( (NAS_MMC_PLMN_SELECTION_MODE_AUTO == NAS_MMC_GetPlmnSelectionMode())
+      && (VOS_FALSE == ucSearchDplmnAndHplmnFlg)
+      && (ulEventType == NAS_BuildEventType(WUEPS_PID_MMA, ID_MMA_MMC_PLMN_SEARCH_REQ))
+       )
+    {
+        return VOS_TRUE;
+    }
+
+    return VOS_FALSE;
+}
+/* Modified by c00318887 for DPlmn扩容和优先接入HPLMN, 2015-5-18, end */
+
 
 VOS_VOID NAS_MMC_SndSpecPlmnSearchReq_PlmnSelection(
     NAS_MML_PLMN_WITH_RAT_STRU         *pstDestPlmn
@@ -8313,6 +9028,20 @@ VOS_VOID NAS_MMC_SndSpecPlmnSearchReq_PlmnSelection(
         NAS_MMC_SetSearchRplmnAndHplmnFlg_PlmnSelection(pstDestPlmn->enRat, VOS_TRUE);
     }
 
+    if (VOS_TRUE == NAS_MMC_IsNeedAddEplmnWhenSearchRplmn_PlmnSelection(pstDestPlmn))
+    {
+        NAS_MMC_AddEPlmnInDestPlmnList(&stDestPlmnList);
+        NAS_MMC_SetSearchRplmnAndEplmnFlg_PlmnSelection(pstDestPlmn->enRat, VOS_TRUE);
+    }
+
+    /* Modified by c00318887 for DPlmn扩容和优先接入HPLMN, 2015-5-18, begin */
+    if (VOS_TRUE == NAS_MMC_IsNeedAddHplmnWhenSeachDplmn_PlmnSelection(pstDestPlmn))
+    {
+        NAS_MMC_AddEHPlmnInDestPlmnList(&stDestPlmnList);
+        NAS_MMC_SetSearchDplmnAndHplmnFlg_PlmnSelection(pstDestPlmn->enRat, VOS_TRUE);
+    }
+    /* Modified by c00318887 for DPlmn扩容和优先接入HPLMN, 2015-5-18, end */
+    
     /* 根据不同的接入技术发送搜网请求 */
     switch (pstDestPlmn->enRat)
     {
@@ -8760,26 +9489,40 @@ VOS_VOID NAS_MMC_UpdatePlmnSearchInfo_PlmnSelection(
 
     return;
 }
-
-
 VOS_VOID NAS_MMC_UpdatePlmnSearchList_PlmnSelection(
-    NAS_MMC_SEARCHED_PLMN_LIST_INFO_STRU                    *pstInterPlmnSearchInfo
+    NAS_MMC_SEARCHED_PLMN_LIST_INFO_STRU                    *pstInterPlmnSearchInfo,
+    VOS_UINT32                                               ulIsNeedSortAvailPlmnList
 )
 {
     NAS_MMC_PLMN_SELECTION_LIST_INFO_STRU                  *pstPlmnSelectionList = VOS_NULL_PTR;
 
+    VOS_UINT32                                              ulIsCsfbExist;
+
     pstPlmnSelectionList = NAS_MMC_GetPlmnSelectionListInfo_PlmnSelection();
+
+    ulIsCsfbExist        = NAS_MML_IsCsfbServiceStatusExist();
 
     /* 自动搜网且搜网场景不为REG_HPLMN,也不为REG_PREF_PLMN,这两种搜网场景可以搜索的网络已经都在选网列表中了 */
     if (VOS_TRUE == NAS_MMC_IsNeedSearchAvailPlmn_PlmnSelection())
     {
-        /* 更新完毕需要将剩余网络补充到选网列表 */
-        NAS_MMC_UpdatePlmnListInPlmnSelectionList(pstInterPlmnSearchInfo,
-                                                  pstPlmnSelectionList,
-                                                  VOS_TRUE);
+        if (VOS_TRUE == ulIsNeedSortAvailPlmnList)
+        {
+            /* 更新完毕需要将剩余网络补充到选网列表 */
+            NAS_MMC_UpdatePlmnListInPlmnSelectionList(pstInterPlmnSearchInfo,
+                                                     pstPlmnSelectionList,
+                                                     VOS_TRUE);
 
-        /*重新对高质量网络进行排序*/
-        NAS_MMC_SortAvailPlmnInPlmnSelectionList(pstPlmnSelectionList);
+
+            /*重新对高质量网络进行排序*/
+            NAS_MMC_SortAvailPlmnInPlmnSelectionList(pstPlmnSelectionList);
+        }
+        else
+        {
+            /* 判断search cnf fail带上来的网络是否在搜网列表中，如果不在且与rplmn和hplmn mcc
+               不同则插入rplmn前面，如果rplmn不存在则插入hplmn前面 */
+            NAS_MMC_UpdateRoamPlmnListInPlmnSelectionList(pstInterPlmnSearchInfo,
+                                                     pstPlmnSelectionList, VOS_TRUE);
+        }
     }
     else
     {
@@ -8789,11 +9532,22 @@ VOS_VOID NAS_MMC_UpdatePlmnSearchList_PlmnSelection(
                                                   VOS_FALSE);
     }
 
+
+    /* 如果当前是CSFB触发的搜网，则将L的网络排序到后面 */
+    if ( (NAS_MMC_PLMN_SEARCH_SCENE_CSFB_SERVIEC_REJ == NAS_MMC_GetPlmnSearchScene_PlmnSelection())
+      && (VOS_TRUE                                   == ulIsCsfbExist) )
+    {
+        NAS_MMC_SortPlmnSearchListSpecRatPrioLowest(NAS_MML_NET_RAT_TYPE_LTE,
+                                                pstPlmnSelectionList);
+    }
+
     /* 可维可测，输出选网列表信息 */
     NAS_MMC_LogPlmnSelectionList(pstPlmnSelectionList);
 
     return;
 }
+
+
 VOS_VOID NAS_MMC_RefreshPlmnSelectionListAfterRegFail_PlmnSelection(
     NAS_MMC_ADDITIONAL_ACTION_ENUM_UINT8 enAdditionalAction
 )
@@ -8805,6 +9559,12 @@ VOS_VOID NAS_MMC_RefreshPlmnSelectionListAfterRegFail_PlmnSelection(
 
 #if (FEATURE_ON == FEATURE_LTE)
     VOS_UINT32                                              ulDisableLteByCsPsModeOne;
+
+
+    VOS_UINT32                                              ulIsNeedSortAvailablePlmnSelectionList;
+
+    ulIsNeedSortAvailablePlmnSelectionList = NAS_MMC_IsNeedSortAvailablePlmnSelectionList_PlmnSelection();
+
 
     ulDisableLteByCsPsModeOne = NAS_MMC_IsDisableLteNeedLocalReleaseEpsConn();
 #endif
@@ -8824,7 +9584,8 @@ VOS_VOID NAS_MMC_RefreshPlmnSelectionListAfterRegFail_PlmnSelection(
     {
 #if (FEATURE_ON == FEATURE_LTE)
         if ((NAS_MML_LTE_CAPABILITY_STATUS_DISABLE_UNNOTIFY_AS == NAS_MML_GetLteCapabilityStatus())
-         && ( VOS_TRUE == ulDisableLteByCsPsModeOne))
+         && (VOS_TRUE == ulDisableLteByCsPsModeOne)
+         && (VOS_TRUE == ulIsNeedSortAvailablePlmnSelectionList))
         {
             NAS_MMC_RefreshPlmnSelectionList_DisableLte_CsPsMode1RegSuccess(pstPlmnSelectionList, pstSearchRatInfo);
         }
@@ -9537,6 +10298,28 @@ VOS_VOID NAS_MMC_LoadInterSysFsm_PlmnSelection(
 }
 
 
+
+VOS_VOID NAS_MMC_ProcUserSpecPlmnSrchForbGprsInfo_PlmnSelection( VOS_VOID )
+{
+    NAS_MML_LAI_STRU                   *pstLai          = VOS_NULL_PTR;
+    NAS_MML_REG_FAIL_CAUSE_ENUM_UINT16  enCsRegCause;
+    NAS_MML_REG_FAIL_CAUSE_ENUM_UINT16  enPsRegCause;
+
+    pstLai              = NAS_MML_GetCurrCampLai();
+    enCsRegCause        = NAS_MMC_GetCsRegCause_PlmnSelection();
+    enPsRegCause        = NAS_MMC_GetPsRegCause_PlmnSelection();
+
+    /* 在GSM下，如果CS注册成功，PS未注册，则删除FORB GPRS信息 */
+    if ( (NAS_MML_NET_RAT_TYPE_GSM          == NAS_MML_GetCurrNetRatType())
+      && (NAS_MML_REG_FAIL_CAUSE_NULL       == enCsRegCause)
+      && (NAS_MML_REG_FAIL_CAUSE_BUTT       == enPsRegCause) )
+    {
+        NAS_MML_DelForbGprsPlmn(&(pstLai->stPlmnId));
+    }
+
+    return;
+
+}
 VOS_VOID NAS_MMC_SaveCommonPlmnSrchEntryMsg_PlmnSelection( VOS_VOID )
 {
     MMA_MMC_PLMN_SEARCH_REQ_STRU        stPlmnSrhReg;
@@ -9615,6 +10398,7 @@ VOS_VOID  NAS_MMC_UpdateUserSpecPlmnSearchInfo_PlmnSelection(
         NAS_MMC_StopTimer(TI_NAS_MMC_HIGH_PRIO_RAT_HPLMN_TIMER);
         
         NAS_MMC_ResetCurHighPrioRatHplmnTimerFirstSearchCount_L1Main();
+        NAS_MMC_InitTdHighRatSearchCount();
     }
 
     /* 将当前搜网模式写入NVIM中 */
@@ -9644,6 +10428,9 @@ VOS_VOID NAS_MMC_ProcCsRegRslt_PlmnSelection(
     NAS_MMC_GU_ACTION_RSLT_INFO_STRU                        stActionRslt;
 #endif
 
+    NAS_MMC_DPLMN_NPLMN_CFG_INFO_STRU                      *pstDPlmnNPlmnCfgInfo = VOS_NULL_PTR;
+    pstDPlmnNPlmnCfgInfo  = NAS_MMC_GetDPlmnNPlmnCfgInfo();
+
     enService = NAS_MMC_ConverMmStatusToMmc(NAS_MMC_REG_DOMAIN_CS,
                                             (NAS_MM_COM_SERVICE_STATUS_ENUM_UINT8)pstCsRegRsltInd->ulServiceStatus);
 
@@ -9657,6 +10444,15 @@ VOS_VOID NAS_MMC_ProcCsRegRslt_PlmnSelection(
 
         /* 根据注册结果更新注册信息表 */
         NAS_MMC_UpdatePlmnRegInfoList(NAS_MML_GetCurrCampPlmnId(), NAS_MMC_REG_DOMAIN_CS, NAS_MML_REG_FAIL_CAUSE_NULL);
+
+        /* 更新DPLMN NPLMN列表 */
+        if (VOS_TRUE == NAS_MMC_IsRoam())
+        {
+            NAS_MMC_UpdateDPlmnNPlmnList(NAS_MML_GetCurrCampPlmnId(),NAS_MML_GetCurrNetRatType(), NAS_MMC_REG_DOMAIN_CS,&pstDPlmnNPlmnCfgInfo->usDplmnListNum,pstDPlmnNPlmnCfgInfo->astDPlmnList);
+            NAS_MMC_DeleteDPlmnNPlmnList(NAS_MML_GetCurrCampPlmnId(),NAS_MML_GetCurrNetRatType(), NAS_MMC_REG_DOMAIN_CS,&pstDPlmnNPlmnCfgInfo->usNplmnListNum,pstDPlmnNPlmnCfgInfo->astNPlmnList);
+            NAS_MMC_WriteDplmnNplmnToNvim();
+            NAS_MMC_LogDplmnNplmnList();
+        }
 
         /* 对Hplmn的Rej Lai信息的清除 */
         NAS_MMC_ClearHplmnRejDomainInfo(NAS_MML_GetCurrCampPlmnId(), NAS_MMC_REG_DOMAIN_CS);
@@ -9719,6 +10515,15 @@ VOS_VOID NAS_MMC_ProcCsRegRslt_PlmnSelection(
         {
             /* 只在跟网测真实发生交互的时候才更新注册信息表 */
             NAS_MMC_UpdatePlmnRegInfoList(NAS_MML_GetCurrCampPlmnId(), NAS_MMC_REG_DOMAIN_CS, pstCsRegRsltInd->enRegFailCause);
+
+            /* 更新DPLMN NPLMN列表 */
+            if (VOS_TRUE == NAS_MMC_IsRoam())
+            {
+                NAS_MMC_UpdateDPlmnNPlmnList(NAS_MML_GetCurrCampPlmnId(),NAS_MML_GetCurrNetRatType(), NAS_MMC_REG_DOMAIN_CS,&pstDPlmnNPlmnCfgInfo->usNplmnListNum,pstDPlmnNPlmnCfgInfo->astNPlmnList);
+                NAS_MMC_DeleteDPlmnNPlmnList(NAS_MML_GetCurrCampPlmnId(),NAS_MML_GetCurrNetRatType(), NAS_MMC_REG_DOMAIN_CS,&pstDPlmnNPlmnCfgInfo->usDplmnListNum,pstDPlmnNPlmnCfgInfo->astDPlmnList);
+                NAS_MMC_WriteDplmnNplmnToNvim();
+                NAS_MMC_LogDplmnNplmnList();
+            }
         }
 
         /* PS注册成功, CS注册失败, 原因为11 12 13 15的情况, 需要清除该标志.
@@ -10952,7 +11757,7 @@ VOS_UINT32  NAS_MMC_RcvRrmmLimitServiceCampInd_PlmnSelection(
     {
         for (ulIndex = 0; ulIndex < NAS_MML_MAX_RAT_NUM; ulIndex++)
         {
-            NAS_MMC_UpdatePlmnSearchList_PlmnSelection(&(pastIntraPlmnSrchInfo[ulIndex]));
+            NAS_MMC_UpdatePlmnSearchList_PlmnSelection(&(pastIntraPlmnSrchInfo[ulIndex]), VOS_TRUE);
         }
 
         /* 当还存在下一个需要搜索的网络时，继续进行搜网，否则，继续等待 */
@@ -11063,6 +11868,190 @@ VOS_UINT32  NAS_MMC_IsInterPlmnSearch_PlmnSelection(VOS_VOID)
 
     return VOS_FALSE;
 }
+VOS_UINT32  NAS_MMC_IsNeedSortAvailablePlmnSelectionList_PlmnSelection(VOS_VOID)
+{
+    NAS_MMC_DPLMN_NPLMN_CFG_INFO_STRU  *pstDplmnNplmnCfgInfo = VOS_NULL_PTR;
+    NAS_MML_PLMN_RAT_PRIO_STRU         *pstPrioRatList  = VOS_NULL_PTR;
+    VOS_UINT8                           i;
+
+    pstPrioRatList       = NAS_MML_GetMsPrioRatList();
+    pstDplmnNplmnCfgInfo = NAS_MMC_GetDPlmnNPlmnCfgInfo();
+
+    /* 如果漫游开机优化特性开启且已经进行过漫游搜网列表排序，则不需要对搜网列表中available网络进行重新排序 */
+    if (VOS_FALSE == pstDplmnNplmnCfgInfo->ucActiveFlg)
+    {
+        return VOS_TRUE;
+    }
+
+    for (i = 0 ; i < pstPrioRatList->ucRatNum; i++)
+    {
+        if (VOS_TRUE == NAS_MMC_GetSearchedRoamPlmnSortedFlag_PlmnSelection(pstPrioRatList->aucRatPrio[i]))
+        {
+            return VOS_FALSE;
+        }
+    }
+
+    return VOS_TRUE;
+}
+VOS_UINT32  NAS_MMC_IsNeedSortRoamPlmnSelectionList_PlmnSelection(
+    NAS_MML_NET_RAT_TYPE_ENUM_UINT8     enRat
+)
+{
+    NAS_MMC_DPLMN_NPLMN_CFG_INFO_STRU  *pstDplmnNplmnCfgInfo = VOS_NULL_PTR;
+    VOS_UINT32                          ulCurrFsmEventType;
+
+    ulCurrFsmEventType   = NAS_MMC_GetCurrFsmEventType();
+    pstDplmnNplmnCfgInfo = NAS_MMC_GetDPlmnNPlmnCfgInfo();
+
+    /* 漫游搜网优化定制关闭不处理 */
+    if (VOS_FALSE == pstDplmnNplmnCfgInfo->ucActiveFlg)
+    {
+        return VOS_FALSE;
+    }
+
+    /* 手动搜网模式不处理该消息 */
+    if (NAS_MMC_PLMN_SELECTION_MODE_MANUAL == NAS_MMC_GetPlmnSelectionMode())
+    {
+        return VOS_FALSE;
+    }
+
+    /* 只有开机搜网才处理该消息 */
+    if (ulCurrFsmEventType != NAS_BuildEventType(WUEPS_PID_MMA, ID_MMA_MMC_PLMN_SEARCH_REQ))
+    {
+        return VOS_FALSE;
+    }
+
+    /* 该模式已排过一次序，则不需要排第二次 */
+    if (VOS_TRUE == NAS_MMC_GetSearchedRoamPlmnSortedFlag_PlmnSelection(enRat))
+    {
+        return VOS_FALSE;
+    }
+
+    /* 之前接入层上报的searched plmn info ind或search cnf中
+       存在和rplmn或hplmn相同国家码的网络，则认为非漫游走原有流程，不打断当前搜网 */
+    if (VOS_TRUE == NAS_MMC_GetExistRplmnOrHplmnFlag_PlmnSelection())
+    {
+        return VOS_FALSE;
+    }
+
+    return VOS_TRUE;
+}
+
+
+
+VOS_UINT32 NAS_MMC_IsNeedStopPlmnSearchRcvRrcSearchedPlmnInfoInd_PlmnSelection(
+    NAS_MML_NET_RAT_TYPE_ENUM_UINT8     enRat,
+    RRMM_SEARCHED_PLMN_INFO_IND_STRU   *pstSearchedPlmnInfoMsg
+)
+{
+    NAS_MML_PLMN_WITH_RAT_STRU                             *pstCurrSearchingPlmn = VOS_NULL_PTR;
+    VOS_UINT32                                              ulIndex;
+    NAS_MML_PLMN_WITH_RAT_STRU                              stPlmnIdWithRat;
+    VOS_UINT32                                              ulIsExistDiffMccWithCurrSearchingMcc;
+    VOS_UINT8                                               ucIsExistSearchedPlmnPrioCurrSearchingPlmn;
+    NAS_MMC_PLMN_SELECTION_LIST_INFO_STRU                  *pstPlmnSelectionList = VOS_NULL_PTR;
+    NAS_MMC_ROAM_PLMN_INFO_STRU                             stCurrSearchRoamPlmnInfo;
+    NAS_MMC_ROAM_PLMN_INFO_STRU                             stSearchedExistRoamPlmnInfo;
+    RRMM_SEARCHED_PLMN_INFO_IND_STRU                        stSearchedPlmnInfoMsg;
+    VOS_UINT8                                               ucAllSearchedPlmnForbiddenPlmnFlag;
+    NAS_MMC_ROAM_PLMN_TYPE_ENUM_UINT8                       enRoamPlmnType;
+
+    PS_MEM_SET(&stCurrSearchRoamPlmnInfo, 0, sizeof(stCurrSearchRoamPlmnInfo));
+    PS_MEM_SET(&stSearchedExistRoamPlmnInfo, 0, sizeof(stSearchedExistRoamPlmnInfo));
+    PS_MEM_SET(&stPlmnIdWithRat, 0, sizeof(stPlmnIdWithRat));
+    PS_MEM_CPY(&stSearchedPlmnInfoMsg, pstSearchedPlmnInfoMsg, sizeof(stSearchedPlmnInfoMsg));
+
+    pstCurrSearchingPlmn                       = NAS_MMC_GetCurrSearchingPlmn_PlmnSelection();
+    ulIsExistDiffMccWithCurrSearchingMcc       = VOS_FALSE;
+    ucIsExistSearchedPlmnPrioCurrSearchingPlmn = VOS_FALSE;
+    pstPlmnSelectionList                       = NAS_MMC_GetPlmnSelectionListInfo_PlmnSelection();
+    ucAllSearchedPlmnForbiddenPlmnFlag         = VOS_TRUE;
+    enRoamPlmnType                             = NAS_MMC_ROAM_PLMN_TYPE_BUTT;
+
+    stCurrSearchRoamPlmnInfo.stPlmnWithRat.stPlmnId.ulMcc = pstCurrSearchingPlmn->stPlmnId.ulMcc;
+    stCurrSearchRoamPlmnInfo.stPlmnWithRat.stPlmnId.ulMnc = pstCurrSearchingPlmn->stPlmnId.ulMnc;
+    stCurrSearchRoamPlmnInfo.stPlmnWithRat.enRat          = pstCurrSearchingPlmn->enRat;
+    stCurrSearchRoamPlmnInfo.enNetStatus                  = NAS_MMC_NET_STATUS_NO_SEARCHED;
+    stCurrSearchRoamPlmnInfo.enPlmnType                   = NAS_MMC_GetRoamPlmnTypeInPlmnSelectionList(&stCurrSearchRoamPlmnInfo.stPlmnWithRat, pstPlmnSelectionList);
+    stCurrSearchRoamPlmnInfo.aucLac[0]                    = NAS_MML_LAC_LOW_BYTE_INVALID;
+    stCurrSearchRoamPlmnInfo.aucLac[1]                    = NAS_MML_LAC_HIGH_BYTE_INVALID;
+
+
+    /* 接入层指示存在的网络跟rplmn或hplmn是同一国家码非漫游场景则不处理该消息*/
+    for (ulIndex = 0; ulIndex < stSearchedPlmnInfoMsg.ulAvailPlmnNum; ulIndex++)
+    {
+
+
+        /* 如果当前搜索的网络和searched plmn info ind消息中的plmn相同则不处理，
+           等接入层的search cnf success消息*/
+        if (VOS_TRUE == NAS_MML_CompareBcchPlmnwithSimPlmn(&pstCurrSearchingPlmn->stPlmnId, (NAS_MML_PLMN_ID_STRU *)&stSearchedPlmnInfoMsg.astPlmnWithLacList[ulIndex].stPlmnId))
+        {
+            return VOS_FALSE;
+        }
+
+        /* 判断searched plmn info ind中带上来的网络是否跟正在搜索的网络同MCC,
+           如果都是相同MCC,且带上来存在的网络不是禁止网络不在NPLMN且优先级高于当前搜索的网络,
+           或与当前搜索的网络优先级相同，则需打断当前搜网，
+           如果存在不同MCC的网络且不全是nplmn和forbidden plmn则打断当前搜网 */
+
+        stSearchedExistRoamPlmnInfo.stPlmnWithRat.stPlmnId.ulMcc = stSearchedPlmnInfoMsg.astPlmnWithLacList[ulIndex].stPlmnId.ulMcc;
+        stSearchedExistRoamPlmnInfo.stPlmnWithRat.stPlmnId.ulMnc = stSearchedPlmnInfoMsg.astPlmnWithLacList[ulIndex].stPlmnId.ulMnc;
+        stSearchedExistRoamPlmnInfo.stPlmnWithRat.enRat          = enRat;
+        stSearchedExistRoamPlmnInfo.enNetStatus =  NAS_MMC_GetSpecRoamPlmnNetStatusInPlmnSelectionList(&stSearchedExistRoamPlmnInfo.stPlmnWithRat, pstPlmnSelectionList);
+
+        if (NAS_MMC_NET_STATUS_SEARCHED_REGISTERED != stSearchedExistRoamPlmnInfo.enNetStatus)
+        {
+            stSearchedExistRoamPlmnInfo.enNetStatus = NAS_MMC_NET_STATUS_SEARCHED_EXIST;
+        }
+
+        stSearchedExistRoamPlmnInfo.enPlmnType  = NAS_MMC_GetRoamPlmnTypeInPlmnSelectionList(&stSearchedExistRoamPlmnInfo.stPlmnWithRat, pstPlmnSelectionList);
+        stSearchedExistRoamPlmnInfo.aucLac[0]   = (stSearchedPlmnInfoMsg.astPlmnWithLacList[ulIndex].usLac & 0xFF00) >> 8;
+        stSearchedExistRoamPlmnInfo.aucLac[1]   = (stSearchedPlmnInfoMsg.astPlmnWithLacList[ulIndex].usLac & 0x00FF);
+
+        if (VOS_FALSE == NAS_MML_ComparePlmnMcc(pstCurrSearchingPlmn->stPlmnId.ulMcc, stSearchedPlmnInfoMsg.astPlmnWithLacList[ulIndex].stPlmnId.ulMcc))
+        {
+            ulIsExistDiffMccWithCurrSearchingMcc  = VOS_TRUE;
+
+            /* 如果带上来的网络都是nplmn或forbidden plmn，不同mcc也先不打断 */
+            enRoamPlmnType = NAS_MMC_GetRoamPlmnType(&stSearchedExistRoamPlmnInfo);
+
+            if ((NAS_MMC_ROAM_PLMN_TYPE_FORBIDDEN != enRoamPlmnType)
+             && (NAS_MMC_ROAM_PLMN_TYPE_NPLMN != enRoamPlmnType))
+            {
+                ucAllSearchedPlmnForbiddenPlmnFlag = VOS_FALSE;
+            }
+        }
+        else
+        {
+            if (-1 == NAS_MMC_ActCompareRoamPlmnPrio(&stCurrSearchRoamPlmnInfo, &stSearchedExistRoamPlmnInfo, NAS_MML_GetMsPrioRatList()))
+            {
+                ucIsExistSearchedPlmnPrioCurrSearchingPlmn = VOS_TRUE;
+            }
+        }
+
+    }
+
+
+     /* searched plmn info ind消息中带上来的网络存在与当前搜的网络不同国家码的网络，
+       且不都是nplmn和forbidden plmn则打断当前搜网*/
+    if ((VOS_TRUE == ulIsExistDiffMccWithCurrSearchingMcc)
+     && (VOS_FALSE == ucAllSearchedPlmnForbiddenPlmnFlag))
+    {
+        return VOS_TRUE;
+    }
+
+    if (VOS_TRUE == ucIsExistSearchedPlmnPrioCurrSearchingPlmn)
+    {
+        return VOS_TRUE;
+    }
+
+    return VOS_FALSE;
+
+}
+
+
+
+
 VOS_UINT32 NAS_MMC_IsNeedSndEplmn_PlmnSelection( VOS_VOID )
 {
     NAS_MML_EQUPLMN_INFO_STRU                              *pstEplmnInfo  = VOS_NULL_PTR;

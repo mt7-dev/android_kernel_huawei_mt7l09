@@ -154,7 +154,7 @@ s32 sram_suspend(void)
 {
     s32 ret = 0;
 
-    ret = bsp_edma_m2m_channel(0, HI_AP_SRAM_MEM_BASE_ADDR, SHM_MEM_RESTORE_AXI_ADDR+0x20000000, SHM_MEM_RESTORE_AXI_SIZE);
+    ret = bsp_edma_m2m_channel(0, HI_AP_SRAM_MEM_BASE_ADDR, (u32)SHM_MEM_RESTORE_AXI_ADDR+0x20000000, SHM_MEM_RESTORE_AXI_SIZE);
     if(ret != 0)
     {
         g_dpm_count_st.suspend_dma_start_times++;
@@ -172,7 +172,7 @@ __ao_func void sram_resume_start(void)
 {
     s32 ret = 0;
 
-    ret = bsp_edma_m2m_channel(0, SHM_MEM_RESTORE_AXI_ADDR+0x20000000, HI_AP_SRAM_MEM_BASE_ADDR,  SHM_MEM_RESTORE_AXI_SIZE);
+    ret = bsp_edma_m2m_channel(0, (u32)SHM_MEM_RESTORE_AXI_ADDR+0x20000000, HI_AP_SRAM_MEM_BASE_ADDR,  SHM_MEM_RESTORE_AXI_SIZE);
     if(ret != 0)
     {
         g_dpm_count_st.resume_dma_start_times++;
@@ -229,11 +229,11 @@ __ao_func void modem_resume(void)
 	status = SCINT_STATUS;
     if(status & 0xc00000)
     {
-        writel(0x12345678, SHM_TIMESTAMP_ADDR);
+        writel(0x12345678, (u32)SHM_TIMESTAMP_ADDR);
     }
     else
     {
-        writel(0x87654321, SHM_TIMESTAMP_ADDR);
+        writel(0x87654321, (u32)SHM_TIMESTAMP_ADDR);
     }
     mdm_udelay(5, gNvDrxDelaySt.lpm3_0);
 	memcpy((void*)(PWR_TCM_MODEM_RESUME_ADDR), modem_string, 8);
@@ -262,7 +262,7 @@ void modem_resume_ok(void)
 /* 1:lte bbp wakeup     0:not lte bbp wakeup */
 void modem_set_bbpwakeup_flag(u32 flag)
 {
-    writel(flag, SHM_TIMESTAMP_ADDR);
+    writel(flag, (u32)SHM_TIMESTAMP_ADDR);
 }
 
 void modem_save_drx_timestamp(void)
@@ -272,9 +272,9 @@ void modem_save_drx_timestamp(void)
     tmp = readl(SHM_TIMESTAMP_ADDR);
     if(tmp == 1)
     {
-        writel(*(u32*)(0x2300c), SHM_TIMESTAMP_ADDR + 0x10);
-		writel(*(u32*)(PWR_TCM_MODEM_RESUME_ADDR + 0x10), SHM_TIMESTAMP_ADDR + 0x14);
-		writel(*(u32*)(PWR_TCM_MODEM_RESUME_ADDR + 0x30), SHM_TIMESTAMP_ADDR + 0x18);
-		writel(*(u32*)(PWR_TCM_MODEM_UP_ADDR + 0x10), SHM_TIMESTAMP_ADDR + 0x1C);
+        writel(*(u32*)(0x2300c), (u32)SHM_TIMESTAMP_ADDR + 0x10);
+		writel(*(u32*)(PWR_TCM_MODEM_RESUME_ADDR + 0x10), (u32)SHM_TIMESTAMP_ADDR + 0x14);
+		writel(*(u32*)(PWR_TCM_MODEM_RESUME_ADDR + 0x30), (u32)SHM_TIMESTAMP_ADDR + 0x18);
+		writel(*(u32*)(PWR_TCM_MODEM_UP_ADDR + 0x10), (u32)SHM_TIMESTAMP_ADDR + 0x1C);
     }
 }

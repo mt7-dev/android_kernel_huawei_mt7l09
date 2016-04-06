@@ -92,35 +92,37 @@ extern "C" {
 #define VOS_MAX_SEM_NUMBER                                  150
 #endif
 
+typedef VOS_UINT_PTR                    VOS_SEM;
+
 VOS_VOID VOS_SemCtrlBlkInit(VOS_VOID);
 
 
 VOS_UINT32 VOS_SmMCreate( VOS_CHAR   Sm_Name[4],
                           VOS_UINT32 Flags,
-                          VOS_UINT32 *Sm_ID );
+                          VOS_SEM *Sm_ID );
 
 VOS_UINT32 VOS_SmCCreate( VOS_CHAR   acSmName[4],
                           VOS_UINT32 ulSmInit,
                           VOS_UINT32 ulFlags,
-                          VOS_UINT32 *pulSmID );
+                          VOS_SEM *pulSmID );
 
 VOS_UINT32 VOS_SmBCreate( VOS_CHAR Sm_Name[4],
                           VOS_UINT32 Sm_Init,
                           VOS_UINT32 Flags,
-                          VOS_UINT32 * Sm_ID );
+                          VOS_SEM * Sm_ID );
 
 VOS_UINT32 VOS_SmCreate( VOS_CHAR Sm_Name[4],
                          VOS_UINT32 Sm_Init,
                          VOS_UINT32 Flags,
-                         VOS_UINT32 * Sm_ID );
+                         VOS_SEM * Sm_ID );
 
-VOS_UINT32 VOS_SmDelete( VOS_UINT32 Sm_ID );
+VOS_UINT32 VOS_SmDelete( VOS_SEM Sm_ID );
 
-VOS_UINT32 VOS_SmP( VOS_UINT32 Sm_ID, VOS_UINT32 ulTimeOutInMillSec );
+VOS_UINT32 VOS_SmP( VOS_SEM Sm_ID, VOS_UINT32 ulTimeOutInMillSec );
 
-VOS_UINT32 VOS_SmV( VOS_UINT32 Sm_ID );
+VOS_UINT32 VOS_SmV( VOS_SEM Sm_ID );
 
-VOS_UINT32 VOS_Sm_AsyP( VOS_UINT32 Sm_ID );
+VOS_UINT32 VOS_Sm_AsyP( VOS_SEM Sm_ID );
 
 #ifdef __cplusplus
 #if __cplusplus

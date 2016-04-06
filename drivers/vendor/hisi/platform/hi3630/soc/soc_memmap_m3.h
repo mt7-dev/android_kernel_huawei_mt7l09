@@ -411,15 +411,20 @@ extern "C" {
 
 #define HI_ABB_REG_BASE_ADDR                  (0xA1F8C000)
 #define HI_ABB_REG_SIZE                       (0x2000)
-/*对应memmory map 中的 SYS CTRL项*/
-#define HI_BBP_SYSTIME_BASE_ADDR              (0X4020A000)
-#define HI_BBP_SYSTIME_SIZE                    SZ_4K
+
 
 #define HI_AP_SYSCTRL_BASE_ADDR               (0X4020A000)
 #define HI_AP_SYSCTRL_REG_SIZE                (SZ_4K)
 #define HI_AP_SYS_CNT_BASE_ADDR              (0x40208000)
 #define HI_AP_SYS_CNT_SIZE                   (SZ_8K)
-
+#ifdef BSP_CONFIG_BOARD_SFT
+#define HI_BBP_SYSTIME_BASE_ADDR              (HI_AP_SYS_CNT_BASE_ADDR)
+#define HI_BBP_SYSTIME_SIZE                    HI_AP_SYS_CNT_SIZE
+#else
+/*对应memmory map 中的 SYS CTRL项*/
+#define HI_BBP_SYSTIME_BASE_ADDR              (0X4020A000)
+#define HI_BBP_SYSTIME_SIZE                    SZ_4K
+#endif
 
 /* DRX */
 /*bbp lte drx*/

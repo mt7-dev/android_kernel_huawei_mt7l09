@@ -31,7 +31,10 @@ extern "C" {
 #define LRRC_GURRC_LTE_ARFCN_MAX_NUM                        8
 
 /* UE支持的EUTRAN频点的最大测量数目 */
-#define LRRC_GURRC_LTE_PHY_MAX_SUPPORT_CARRIER_NUM          4
+/* Begin: add inter meas ferq num */
+/* UE支持的EUTRAN频点的最大测量数目 */
+#define LRRC_GURRC_LTE_PHY_MAX_SUPPORT_CARRIER_NUM          6
+/* End: add inter meas ferq num */
 
 /* EUTRAN 单个频点支持小区最大数目 */
 #define LRRC_GURRC_MAX_LTE_CELL_PER_FREQ_NUM                32
@@ -78,7 +81,7 @@ extern "C" {
 #define LRRC_WRRC_UE_CAP_UTRAN_MAX_LEN                      256
 
 /* EUTRAN UE 能力编码后最大长度*/
-#define LRRC_WRRC_UE_CAP_EUTRAN_MAX_LEN                     256
+#define LRRC_WRRC_UE_CAP_EUTRAN_MAX_LEN                     1024
 
 /* GERAN CS UE 能力编码后最大长度*/
 #define LRRC_GRR_UE_CAP_GEREN_CS_MAX_LEN                    128

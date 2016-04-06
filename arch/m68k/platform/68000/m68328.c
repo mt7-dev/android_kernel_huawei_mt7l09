@@ -1,17 +1,5 @@
 /***************************************************************************/
 
-/*
- *  m68328.c - 68328 specific config
- *
- *  Copyright (C) 1993 Hamish Macdonald
- *  Copyright (C) 1999 D. Jeff Dionne
- *
- * This file is subject to the terms and conditions of the GNU General Public
- * License.  See the file COPYING in the main directory of this archive
- * for more details.
- *
- * VZ Support/Fixes             Evan Stawnyczy <e@lineo.ca>
- */
 
 /***************************************************************************/
 

@@ -143,7 +143,7 @@ static int hs_dw_i2c_probe(struct platform_device *pdev)
 	priv->reset_status_off = data[2];
 	priv->reset_bit = data[3];
 
-#ifdef CONFIG_ARCH_HI3630
+#if defined(CONFIG_HISI_3635) || defined(CONFIG_ARCH_HI3630)
 	r = devm_pinctrl_state_select(d, PINCTRL_STATE_DEFAULT);
 	if (r<0)
 		dev_warn(&pdev->dev,
@@ -156,7 +156,7 @@ static int hs_dw_i2c_probe(struct platform_device *pdev)
 	d->get_clk_rate_khz = hs_i2c_dw_get_clk_rate_khz;
 	d->reset_controller = hs_i2c_dw_reset_controller;
 
-#ifdef CONFIG_ARCH_HI3630
+#if defined(CONFIG_HISI_3635) || defined(CONFIG_ARCH_HI3630)
 	r = clk_prepare_enable(d->clk);
 	if(r) {
 		dev_warn(&pdev->dev,"Unable to enable clock!\n");
@@ -233,8 +233,8 @@ static int hs_dw_i2c_probe(struct platform_device *pdev)
 	//DMA probe
 	i2c_dw_dma_probe(d);
 
-#ifdef CONFIG_ARCH_HI3630
-	clk_disable_unprepare(d->clk);
+#if defined(CONFIG_HISI_3635) || defined(CONFIG_ARCH_HI3630)
+	clk_disable(d->clk);
 
 	r = devm_pinctrl_state_select(d, PINCTRL_STATE_IDLE);
 	if (r<0)
@@ -242,15 +242,15 @@ static int hs_dw_i2c_probe(struct platform_device *pdev)
 				 "pins are not configured from the driver\n");
 #endif
 	return 0;
-err:
 
-#ifdef CONFIG_ARCH_HI3630
+err:
+#if defined(CONFIG_HISI_3635) || defined(CONFIG_ARCH_HI3630)
 	clk_disable_unprepare(d->clk);
 #endif
 	//devm_clk_put(&pdev->dev, d->clk);
 	d->clk = NULL;
 
-#ifdef CONFIG_ARCH_HI3630
+#if defined(CONFIG_HISI_3635) || defined(CONFIG_ARCH_HI3630)
 	r = devm_pinctrl_state_select(d, PINCTRL_STATE_IDLE);
 	if (r<0)
 		dev_warn(&pdev->dev,
@@ -311,7 +311,7 @@ static int hs_dw_i2c_resume(struct device *dev)
 
 	dev_info(&pdev->dev, "%s: resume +\n", __func__);
 
-	ret = clk_prepare_enable(i_dev->clk);
+	ret = clk_enable(i_dev->clk);
 	if(ret) {
 		dev_err(&pdev->dev, "clk_prepare_enable failed!\n");
 		return -EAGAIN;
@@ -319,7 +319,7 @@ static int hs_dw_i2c_resume(struct device *dev)
 	hs_i2c_dw_reset_controller(i_dev);
 	i2c_dw_init(i_dev);
 	i2c_dw_disable_int(i_dev);
-	clk_disable_unprepare(i_dev->clk);
+	clk_disable(i_dev->clk);
 
 	mutex_unlock(&i_dev->lock);
 

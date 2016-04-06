@@ -78,11 +78,11 @@ VOS_VOID   VOS_StrToUpper( VOS_CHAR* Str );
 
 VOS_VOID   VOS_StrToLower( VOS_CHAR* Str );
 
-VOS_INT8 VOS_StrNiCmp( VOS_CHAR * Str1, VOS_CHAR * Str2, SIZE_T Length );
+VOS_INT8 VOS_StrNiCmp( VOS_CHAR * Str1, VOS_CHAR * Str2, VOS_SIZE_T Length );
 
 VOS_CHAR * VOS_StrCpy( VOS_CHAR * Dest, VOS_CHAR * Src );
 
-VOS_CHAR * VOS_StrNCpy( VOS_CHAR * Dest, VOS_CHAR * Src, SIZE_T Count );
+VOS_CHAR * VOS_StrNCpy( VOS_CHAR * Dest, VOS_CHAR * Src, VOS_SIZE_T Count );
 
 VOS_INT   VOS_StrCmp( VOS_CHAR * Str1, VOS_CHAR * Str2 );
 
@@ -95,24 +95,24 @@ VOS_CHAR* VOS_StrRChr( VOS_CHAR * Str, VOS_CHAR Char );
 VOS_UINT32 VOS_StrNLen( VOS_CHAR * Str, VOS_UINT32 Count );
 
 /*lint -function(memcmp,VOS_MemCmp)*/
-VOS_INT VOS_MemCmp( const VOS_VOID * Dest, const VOS_VOID * Src, SIZE_T Count );
+VOS_INT VOS_MemCmp( const VOS_VOID * Dest, const VOS_VOID * Src, VOS_SIZE_T Count );
 
 /*lint -function(memset,V_MemSet)*/
-VOS_VOID * V_MemSet( VOS_VOID * ToSet, VOS_CHAR Char, SIZE_T Count,
+VOS_VOID * V_MemSet( VOS_VOID * ToSet, VOS_CHAR Char, VOS_SIZE_T Count,
                      VOS_UINT32 ulFileID, VOS_INT32 usLineNo );
 
 #define VOS_MemSet( ToSet, Char, Count )\
     V_MemSet( (ToSet), (Char), (Count), VOS_FILE_ID, __LINE__ )
 
 /*lint -function(memcpy,V_MemCpy)*/
-VOS_VOID * V_MemCpy( VOS_VOID * Dest, const VOS_VOID * Src, SIZE_T Count,
+VOS_VOID * V_MemCpy( VOS_VOID * Dest, const VOS_VOID * Src, VOS_SIZE_T Count,
                        VOS_UINT32 ulFileID, VOS_INT32 usLineNo );
 
 #define VOS_MemCpy( Dest, Src, Count )\
     V_MemCpy( (Dest), (Src), (Count), VOS_FILE_ID, __LINE__ )
 
 /*lint -function(memmove,V_MemMove)*/
-VOS_VOID * V_MemMove( VOS_VOID * Dest, const VOS_VOID * Src, SIZE_T Count,
+VOS_VOID * V_MemMove( VOS_VOID * Dest, const VOS_VOID * Src, VOS_SIZE_T Count,
                         VOS_UINT32 ulFileID, VOS_INT32 usLineNo );
 
 #define VOS_MemMove( Dest, Src, Count )\
@@ -154,7 +154,7 @@ VOS_UINT32 VOS_Rand( VOS_UINT32 ulRange );
 
 VOS_VOID VOS_SetSeed( VOS_UINT32 ulSeed );
 
-SIZE_T VOS_StrSpn(const VOS_CHAR *Str1, const VOS_CHAR *Str2);
+VOS_SIZE_T VOS_StrSpn(const VOS_CHAR *Str1, const VOS_CHAR *Str2);
 
 VOS_CHAR *VOS_StrPbrk(const VOS_CHAR *Str1, const VOS_CHAR *Str2);
 

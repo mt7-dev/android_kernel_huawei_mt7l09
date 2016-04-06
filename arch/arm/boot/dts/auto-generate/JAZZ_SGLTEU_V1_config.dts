@@ -9,17 +9,18 @@
 
 /dts-v1/;
 
+/include/ "fastboot.dtsi"
 /include/ "hisi_3630_hsic.dtsi"
-/include/ "huawei_ext_modem.dtsi"
 /include/ "huawei_usbswitch.dtsi"
-
 /include/ "JAZZ_ULG_V1_config.dtsi"
-/include/ "hisi_3630_pin_JAZZ_SGLTEU_V1.dtsi"
-/include/ "hisi_3630_modem_JAZZ_SGLTEU_V1.dtsi"
+/include/ "JAZZ_SGLTEU_V1_pin.dtsi"
+/include/ "huawei_ext_modem.dtsi"
+/include/ "JAZZ_SGLTEU_V1_modem_pin.dtsi"
+
 / {
+	hisi,boardid = <9 5 0 7>;
+	hisi,boardname = "JAZZ_SGLTEU_V1";
 	board_info: board_info {
-		hisi,boardid = <5 0 7>;
-		hisi,boardname = "Jazz_SGLTE+U_V1";
 		hisi,modem_id = <0x3ff63000>;
 		hw,public;
 	};
@@ -37,7 +38,8 @@
 		i2c1: i2c@FDF0A000 {
 			pn547_nfc:nfc@28 {
 					  nfc_nxp_name = "Jazz_V1_libnfc-nxp.conf";
-					  hw,public="nfc_nxp_name";
+					  nfc_card_num = <0x2>;
+					  hw,public="nfc_nxp_name","nfc_card_num";
 			};
 		};
 	};

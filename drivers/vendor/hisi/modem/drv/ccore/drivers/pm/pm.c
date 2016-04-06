@@ -11,7 +11,7 @@
 /* 1 Date        : */
 /* Modification  : Create file */
 /******************************************************************************/
-/*lint --e{537,438}*/
+/*lint --e{322,537,539,438}*/
 /* Warning 537: (Warning -- Repeated include  */
 /* Warning 438: (Warning -- Last value assigned  not used) */
 /*lint *** --e{537,713,732,701,438,830}*/
@@ -110,7 +110,7 @@ void pm_save_drx_timer_stamp(void)
     time_save_addr = (u32*)STAMP_PWRUP_CODE_BEGIN;
     drx_time_save_addr = (u32*)DRX_PM_TIMESTAMP_ADDR;
 
-    if(readl(DRX_PM_FLAG_FROM_M3)==1)
+    if(readl((unsigned)DRX_PM_FLAG_FROM_M3)==1)
     {
         *(u32*)DRX_PM_FLAG_FROM_M3 = 2;
         *(u32*)DRX_PM_FLAG_FOR_MSP = 1;
@@ -209,6 +209,7 @@ void pm_disable_all_gic(void)
 		gic_int_set_reg++;
 		gic_int_clear_reg++;
 	}
+	writel(0x0,GIC_CPU_BASE);/*!e539*/
 }
 
 /*****************************************************************************
@@ -228,6 +229,7 @@ void pm_enable_all_gic(void)
 		*gic_int_set_reg = gic_disable_bak[i];
 		gic_int_set_reg++;
 	}
+	writel(0x1,GIC_CPU_BASE);/*!e539*/
 }
 
 struct pm_info
@@ -580,6 +582,15 @@ void hi6930_pm_enable_l2x0(void)
 	sysL2CacheResume();
 }
 #endif
+u32 pm_asm_flag = 0;
+u32 pm_in_waiting_pd(void)
+{
+	return pm_asm_flag;
+}
+void pm_asm_flag_set(u32 flag)
+{
+	pm_asm_flag=flag;
+}
 
 void balong_pm_enter(suspend_state_t state)
 {
@@ -623,7 +634,9 @@ void balong_pm_enter(suspend_state_t state)
             pm_timer_stamp(STAMP_AFTER_PIN_POWERDOWN);
 
             pm_ctrl_info.pm_enter_asm_count++;
+			pm_asm_flag_set(1);
             pm_asm_cpu_go_sleep();
+			pm_asm_flag_set(0);
             pm_timer_stamp(STAMP_SLEEP_ASM_OUT);
 
 			(void)modem_pintrl_config(MODEM_PIN_NORMAL);
@@ -728,11 +741,11 @@ u32 debug_pm_threshold = 0;
 int bsp_suspend(void)
 {
     u32 idle_time_ms=0;;
-	unsigned long flags = 0;
+	int flags = 0;
     u32 BBP_sleeptimer=0;
     s32 ret = -1;
 
-	local_irq_save(flags);
+	flags = intIFLock();
     if(taskLock()==ERROR) /*In fact, taskLock only return OK*/
     {}
 
@@ -750,9 +763,9 @@ int bsp_suspend(void)
         if(debug_pm_threshold)
             pm_printk(BSP_LOG_LEVEL_ERROR,"idle_time_ms=%d ms, BBP_sleeptimer=%d slice \n",idle_time_ms,BBP_sleeptimer);
     }
+	intIFUnlock(flags);
     if(taskUnlock()==ERROR)/*In fact, taskLock only return OK*/
     {}
-    local_irq_restore(flags);
     return ret;
 }
 
@@ -764,6 +777,8 @@ void balong_pm_init(void)
     u32 ret;
     NV_ID_DRV_ENUM nv_id;
     u32 pm_code_begin,pm_code_size;
+    void *pm_addr = NULL;
+    
     nv_id = NV_ID_DRV_PM;
     ret = bsp_nvm_read(nv_id, (u8 *)(&g_nv_pm_config), sizeof(DRV_NV_PM_TYPE));
     if(ret!=0)
@@ -792,6 +807,7 @@ void balong_pm_init(void)
     else
     {
         pm_stamp_init();
+        pm_addr = (void*)PM_MEM_V2P(PM_MEM_CCORE_BASE_ADDR+0x8);
         //pm_asm_gic_flag = pm_ctrl_info.gic_flag; /* flag for pm_asm_sleep.s */
         pm_code_begin = (u32)pm_asm_boot_code_begin;
         pm_code_size = (u32)pm_asm_sleep_end-pm_code_begin;
@@ -799,7 +815,7 @@ void balong_pm_init(void)
     	pm_printk(BSP_LOG_LEVEL_DEBUG,"cpuMemoryCopy addr 0x%x .\n",PM_MEM_CCORE_BASE_ADDR);
         memcpy((void*)PM_MEM_CCORE_BASE_ADDR,(void*)pm_code_begin,(pm_code_size+PM_ASM_CODE_COPY_OFFSET));
 
-        hi_syssc_set_mdma9_boot_addr(PM_MEM_CCORE_BASE_ADDR);
+        hi_syssc_set_mdma9_boot_addr((unsigned int)PM_MEM_CCORE_BASE_ADDR);
 
         pm_wakeup_init();
 
@@ -815,18 +831,21 @@ void balong_pm_init(void)
 void debug_balong_pm_init(void)
 {
     u32 pm_code_begin,pm_code_size;
+    void *pm_addr = NULL;
+    
     pm_ctrl_info.deepsleep_nv = 1;
     pm_ctrl_info.deepsleep_Tth_nv = 100;
     pm_ctrl_info.TLbbp_sleeptimer_Tth_nv = 320;
 
     //pm_asm_gic_flag = pm_ctrl_info.gic_flag; /* flag for pm_asm_sleep.s */
+    pm_addr = (void*)PM_MEM_V2P(PM_MEM_CCORE_BASE_ADDR+0x8);
     pm_code_begin = (u32)pm_asm_boot_code_begin;
     pm_code_size = (u32)pm_asm_sleep_end-pm_code_begin;
 	/* copy the pm_asm_sleep code to PM MEMORY */
 	pm_printk(BSP_LOG_LEVEL_DEBUG,"cpuMemoryCopy addr 0x%x .\n",PM_MEM_CCORE_BASE_ADDR);
     memcpy((void*)PM_MEM_CCORE_BASE_ADDR,(void*)pm_code_begin,(pm_code_size+PM_ASM_CODE_COPY_OFFSET));
 
-    hi_syssc_set_mdma9_boot_addr(PM_MEM_CCORE_BASE_ADDR);
+    hi_syssc_set_mdma9_boot_addr((unsigned int)PM_MEM_CCORE_BASE_ADDR);
 
     cpuidle_set_deepsleep_ops(bsp_suspend);
 }

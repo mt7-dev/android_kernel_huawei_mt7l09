@@ -527,7 +527,7 @@ static void frontend_init(struct budget *budget)
 		}
 		break;
 
-	case 0x1005: // Hauppauge/TT Nova-T budget (L64781/Grundig 29504-401(tsa5060))
+	case 0x1005:
 
 		budget->dvb_frontend = dvb_attach(l64781_attach, &grundig_29504_401_config, &budget->i2c_adap);
 		if (budget->dvb_frontend) {
@@ -602,7 +602,7 @@ static void frontend_init(struct budget *budget)
 		}
 		break;
 
-	case 0x5f61: /* Fujitsu Siemens Activy Budget-T PCI rev GR (L64781/Grundig 29504-401(tsa5060)) */
+	case 0x5f61:
 		budget->dvb_frontend = dvb_attach(l64781_attach, &grundig_29504_401_config_activy, &budget->i2c_adap);
 		if (budget->dvb_frontend) {
 			budget->dvb_frontend->tuner_priv = &tuner_address_grundig_29504_401_activy;

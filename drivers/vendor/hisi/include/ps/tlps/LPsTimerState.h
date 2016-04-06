@@ -339,8 +339,9 @@ enum RRC_STATE_TI_ENUM
 
     TI_RRC_APP_RSSI_REPORT,           /* RSSI周期上报定时器 */
     /* begin: 2014-03- 20 CL MULT add */
-	TI_LRRC_LRRC_WAIT_CDMA_CNF,
-	/* end: 2014-03- 20 CL MULT add */
+    TI_LRRC_LRRC_WAIT_CDMA_CNF,
+    TI_LRRC_LRRC_WAIT_CDMA_STOP_CNF,
+    /* end: 2014-03- 20 CL MULT add */
     TI_RRC_STATE_BUTT
 };
 typedef VOS_UINT16 RRC_STATE_TI_ENUM_UINT16;

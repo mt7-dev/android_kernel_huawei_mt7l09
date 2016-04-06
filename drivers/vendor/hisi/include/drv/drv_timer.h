@@ -44,7 +44,8 @@ typedef enum
 	TIMER_DSP_TIMER1_ID                     =DSP_TIMER1,                      /*DSP使用                             liujing*/
 	TIMER_CCPU_DRX2_STABLE_ID               =CCPU_DRX2  ,                     /*C CORE tcxo稳定时钟xujingcui                    */
 	TIMER_CCPU_DRX_TIMER_ID                 =CCPU_DRX_TIMER,                  /*处理非实时性唤醒,cuijunqiang          */
-	TIMER_ACPU_OM_TCXO_ID                   =ACPU_OM_TIMER,                  /*解决vos timer频繁唤醒, cuijunqiang    */
+	TIMER_ACPU_OM_TCXO_ID                   =ACPU_OM_TIMER,                   /*解决vos timer频繁唤醒, cuijunqiang    */
+	TIMER_DSP_SWITCH_DELAY_ID               =DSP_SWITCH_DELAY_ID,             /*解决低功耗dsp启动延时, cuijunqiang    */
 	TIMER_CCPU_G1PHY_DRX_ID                 =1000 ,                           /*只有V9R1使用，V7R2和K3V3等产品形态打桩:luoqingquan*/
 	TIMER_ID_MAX                            =24
 } DRV_TIMER_ID;
@@ -64,7 +65,6 @@ typedef enum
     TIMER_UNIT_NONE,                /* 2表示单位1，即直接操作load寄存器模式  */
     TIMER_UNIT_BUTT
 }DRV_TIMER_UNIT;
-
 
 BSP_VOID DRV_TIMER_DEBUG_REGISTER(unsigned int timer_id,FUNCPTR_1 routinue, int arg); 
 

@@ -19,7 +19,34 @@ extern "C" {
 #include "MnCallApi.h"
 
 /*****************************************************************************
-  2 类型定义
+  2 宏定义
+*****************************************************************************/
+/* NAS_CC_CAUSE_CC_INTER_ERR_BEGIN要与TAF_CS_CAUSE_CC_INTER_ERR_T303_TIME_OUT的值一致 */
+#define             NAS_CC_CAUSE_NW_SECTION_BEGIN                (0x0000)
+#define             NAS_CC_CAUSE_NW_SECTION_END                  (0x00FF)
+#define             NAS_CC_CAUSE_CM_SRV_REJ_BEGIN                (0x0100)
+#define             NAS_CC_CAUSE_CM_SRV_REJ_END                  (0x01FF)
+#define             NAS_CC_CAUSE_CSFB_SRV_REJ_BEGIN              (0x0200)
+#define             NAS_CC_CAUSE_CSFB_SRV_REJ_END                (0x02FF)
+#define             NAS_CC_CAUSE_SMS_CP_ERR_BEGIN                (0x0300)
+#define             NAS_CC_CAUSE_SMS_CP_ERR_END                  (0x03FF)
+#define             NAS_CC_CAUSE_SMS_RP_ERR_BEGIN                (0x0400)
+#define             NAS_CC_CAUSE_SMS_RP_ERR_END                  (0x04FF)
+#define             NAS_CC_CAUSE_SS_NW_REJ_BEGIN                 (0x0500)
+#define             NAS_CC_CAUSE_SS_NW_REJ_END                   (0x05FF)
+#define             NAS_CC_CAUSE_RR_CONN_FAIL_BEGIN              (0x0600)
+#define             NAS_CC_CAUSE_RR_CONN_FAIL_END                (0x06FF)
+#define             NAS_CC_CAUSE_RR_REL_BEGIN                    (0x0700)
+#define             NAS_CC_CAUSE_RR_REL_END                      (0x07FF)
+#define             NAS_CC_CAUSE_CSFB_LMM_FAIL_BEGIN             (0x0800)
+#define             NAS_CC_CAUSE_CSFB_LMM_FAIL_END               (0x08FF)
+#define             NAS_CC_CAUSE_MM_INTER_ERR_BEGIN              (0x0900)
+#define             NAS_CC_CAUSE_MM_INTER_ERR_END                (0x09FF)
+#define             NAS_CC_CAUSE_CC_INTER_ERR_BEGIN              (0x0A1F)
+#define             NAS_CC_CAUSE_CC_INTER_ERR_END                (0x0AFF)
+
+/*****************************************************************************
+  3 类型定义
 *****************************************************************************/
 /* EXT bit of IE octet */
 enum
@@ -873,70 +900,226 @@ typedef VOS_UINT8   NAS_CC_LOCATION_ENUM_U8;
 
 enum NAS_CC_CAUSE_VALUE_ENUM                                                    /* Cause value (octet 4)             */
 {
-    NAS_CC_CAUSE_1                                          =   1,              /*   1. Unassigned (unallocated) number            */
-    NAS_CC_CAUSE_3                                          =   3,              /*   3. No route to destination                    */
-    NAS_CC_CAUSE_6                                          =   6,              /*   6. Channel unacceptable                       */
-    NAS_CC_CAUSE_8                                          =   8,              /*   8. Operator determined barring                */
-    NAS_CC_CAUSE_16                                         =  16,              /*  16. Normal call clearing                       */
-    NAS_CC_CAUSE_17                                         =  17,              /*  17. User busy                                  */
-    NAS_CC_CAUSE_18                                         =  18,              /*  18. No user responding                         */
-    NAS_CC_CAUSE_19                                         =  19,              /*  19. User alerting, no answer                   */
-    NAS_CC_CAUSE_21                                         =  21,              /*  21. Call rejected                              */
-    NAS_CC_CAUSE_22                                         =  22,              /*  22. Number changed                             */
-    NAS_CC_CAUSE_25                                         =  25,              /*  25. Pre-emption                                */
-    NAS_CC_CAUSE_26                                         =  26,              /*  26. Non selected user clearing                 */
-    NAS_CC_CAUSE_27                                         =  27,              /*  27. Destination out of order                   */
-    NAS_CC_CAUSE_28                                         =  28,              /*  28. Invalid number format                      */
-    NAS_CC_CAUSE_29                                         =  29,              /*  29. Facility rejected                          */
-    NAS_CC_CAUSE_30                                         =  30,              /*  30. Response to STATUS ENQUIRY                 */
-    NAS_CC_CAUSE_31                                         =  31,              /*  31. Normal, unspecified                        */
-    NAS_CC_CAUSE_34                                         =  34,              /*  34. No circuit/channel available               */
-    NAS_CC_CAUSE_38                                         =  38,              /*  38. Network out of order                       */
-    NAS_CC_CAUSE_41                                         =  41,              /*  41. Temporary failure                          */
-    NAS_CC_CAUSE_42                                         =  42,              /*  42. Switching equipment congestion             */
-    NAS_CC_CAUSE_43                                         =  43,              /*  43. Access information discarded               */
-    NAS_CC_CAUSE_44                                         =  44,              /*  44. requested circuit/channel not available    */
-    NAS_CC_CAUSE_47                                         =  47,              /*  47. Resources unavailable, unspecified         */
-    NAS_CC_CAUSE_49                                         =  49,              /*  49. Quality of service unavailable             */
-    NAS_CC_CAUSE_50                                         =  50,              /*  50. Requested facility not subscribed          */
-    NAS_CC_CAUSE_55                                         =  55,              /*  55. Incoming calls barred within the CUG       */
-    NAS_CC_CAUSE_57                                         =  57,              /*  57. Bearer capability not authorized           */
-    NAS_CC_CAUSE_58                                         =  58,              /*  58. Bearer capability not presently available  */
-    NAS_CC_CAUSE_63                                         =  63,              /*  63. Service or option not available, unspec    */
-    NAS_CC_CAUSE_65                                         =  65,              /*  65. Bearer service not implemented             */
-    NAS_CC_CAUSE_68                                         =  68,              /*  68. ACM equal to or greater than ACMmax        */
-    NAS_CC_CAUSE_69                                         =  69,              /*  69. Requested facility not implemented         */
-    NAS_CC_CAUSE_70                                         =  70,              /*  70. Only restricted digital info BC available  */
-    NAS_CC_CAUSE_79                                         =  79,              /*  79. Service or option not implemented, unspec  */
-    NAS_CC_CAUSE_81                                         =  81,              /*  81. Invalid transaction identifier value       */
-    NAS_CC_CAUSE_87                                         =  87,              /*  87. User not member of CUG                     */
-    NAS_CC_CAUSE_88                                         =  88,              /*  88. Incompatible destination Incompatible para */
-    NAS_CC_CAUSE_91                                         =  91,              /*  91. Invalid transit network selection          */
-    NAS_CC_CAUSE_95                                         =  95,              /*  95. Semantically incorrect message             */
-    NAS_CC_CAUSE_96                                         =  96,              /*  96. Invalid mandatory information              */
-    NAS_CC_CAUSE_97                                         =  97,              /*  97. Msg type non-existent or not implemented   */
-    NAS_CC_CAUSE_98                                         =  98,              /*  98. Msg type not compatible with protocol state*/
-    NAS_CC_CAUSE_99                                         =  99,              /*  99. IE non-existent or not implemented         */
-    NAS_CC_CAUSE_100                                        = 100,              /* 100. Conditional IE error                       */
-    NAS_CC_CAUSE_101                                        = 101,              /* 101. Message not compatible with protocol state */
-    NAS_CC_CAUSE_102                                        = 102,              /* 102. Recovery on timer expiry Timer number      */
-    NAS_CC_CAUSE_111                                        = 111,              /* 111. Protocol error, unspecified                */
-    NAS_CC_CAUSE_127                                        = 127,              /* 127. Interworking, unspecified                  */
-    NAS_CC_CAUSE_128                                        = 128,              /* 128. DTMF buffer is full                  */
+    NAS_CC_CAUSE_1                                          =  NAS_CC_CAUSE_NW_SECTION_BEGIN + 1,              /*   1. Unassigned (unallocated) number            */
+    NAS_CC_CAUSE_3                                          =  NAS_CC_CAUSE_NW_SECTION_BEGIN + 3,              /*   3. No route to destination                    */
+    NAS_CC_CAUSE_6                                          =  NAS_CC_CAUSE_NW_SECTION_BEGIN + 6,              /*   6. Channel unacceptable                       */
+    NAS_CC_CAUSE_8                                          =  NAS_CC_CAUSE_NW_SECTION_BEGIN + 8,              /*   8. Operator determined barring                */
+    NAS_CC_CAUSE_16                                         =  NAS_CC_CAUSE_NW_SECTION_BEGIN + 16,              /*  16. Normal call clearing                       */
+    NAS_CC_CAUSE_17                                         =  NAS_CC_CAUSE_NW_SECTION_BEGIN + 17,              /*  17. User busy                                  */
+    NAS_CC_CAUSE_18                                         =  NAS_CC_CAUSE_NW_SECTION_BEGIN + 18,              /*  18. No user responding                         */
+    NAS_CC_CAUSE_19                                         =  NAS_CC_CAUSE_NW_SECTION_BEGIN + 19,              /*  19. User alerting, no answer                   */
+    NAS_CC_CAUSE_21                                         =  NAS_CC_CAUSE_NW_SECTION_BEGIN + 21,              /*  21. Call rejected                              */
+    NAS_CC_CAUSE_22                                         =  NAS_CC_CAUSE_NW_SECTION_BEGIN + 22,              /*  22. Number changed                             */
+    NAS_CC_CAUSE_24                                         =  NAS_CC_CAUSE_NW_SECTION_BEGIN + 24,
+    NAS_CC_CAUSE_25                                         =  NAS_CC_CAUSE_NW_SECTION_BEGIN + 25,              /*  25. Pre-emption                                */
+    NAS_CC_CAUSE_26                                         =  NAS_CC_CAUSE_NW_SECTION_BEGIN + 26,              /*  26. Non selected user clearing                 */
+    NAS_CC_CAUSE_27                                         =  NAS_CC_CAUSE_NW_SECTION_BEGIN + 27,              /*  27. Destination out of order                   */
+    NAS_CC_CAUSE_28                                         =  NAS_CC_CAUSE_NW_SECTION_BEGIN + 28,              /*  28. Invalid number format                      */
+    NAS_CC_CAUSE_29                                         =  NAS_CC_CAUSE_NW_SECTION_BEGIN + 29,              /*  29. Facility rejected                          */
+    NAS_CC_CAUSE_30                                         =  NAS_CC_CAUSE_NW_SECTION_BEGIN + 30,              /*  30. Response to STATUS ENQUIRY                 */
+    NAS_CC_CAUSE_31                                         =  NAS_CC_CAUSE_NW_SECTION_BEGIN + 31,              /*  31. Normal, unspecified                        */
+    NAS_CC_CAUSE_34                                         =  NAS_CC_CAUSE_NW_SECTION_BEGIN + 34,              /*  34. No circuit/channel available               */
+    NAS_CC_CAUSE_38                                         =  NAS_CC_CAUSE_NW_SECTION_BEGIN + 38,              /*  38. Network out of order                       */
+    NAS_CC_CAUSE_41                                         =  NAS_CC_CAUSE_NW_SECTION_BEGIN + 41,              /*  41. Temporary failure                          */
+    NAS_CC_CAUSE_42                                         =  NAS_CC_CAUSE_NW_SECTION_BEGIN + 42,              /*  42. Switching equipment congestion             */
+    NAS_CC_CAUSE_43                                         =  NAS_CC_CAUSE_NW_SECTION_BEGIN + 43,              /*  43. Access information discarded               */
+    NAS_CC_CAUSE_44                                         =  NAS_CC_CAUSE_NW_SECTION_BEGIN + 44,              /*  44. requested circuit/channel not available    */
+    NAS_CC_CAUSE_47                                         =  NAS_CC_CAUSE_NW_SECTION_BEGIN + 47,              /*  47. Resources unavailable, unspecified         */
+    NAS_CC_CAUSE_49                                         =  NAS_CC_CAUSE_NW_SECTION_BEGIN + 49,              /*  49. Quality of service unavailable             */
+    NAS_CC_CAUSE_50                                         =  NAS_CC_CAUSE_NW_SECTION_BEGIN + 50,              /*  50. Requested facility not subscribed          */
+    NAS_CC_CAUSE_55                                         =  NAS_CC_CAUSE_NW_SECTION_BEGIN + 55,              /*  55. Incoming calls barred within the CUG       */
+    NAS_CC_CAUSE_57                                         =  NAS_CC_CAUSE_NW_SECTION_BEGIN + 57,              /*  57. Bearer capability not authorized           */
+    NAS_CC_CAUSE_58                                         =  NAS_CC_CAUSE_NW_SECTION_BEGIN + 58,              /*  58. Bearer capability not presently available  */
+    NAS_CC_CAUSE_63                                         =  NAS_CC_CAUSE_NW_SECTION_BEGIN + 63,              /*  63. Service or option not available, unspec    */
+    NAS_CC_CAUSE_65                                         =  NAS_CC_CAUSE_NW_SECTION_BEGIN + 65,              /*  65. Bearer service not implemented             */
+    NAS_CC_CAUSE_68                                         =  NAS_CC_CAUSE_NW_SECTION_BEGIN + 68,              /*  68. ACM equal to or greater than ACMmax        */
+    NAS_CC_CAUSE_69                                         =  NAS_CC_CAUSE_NW_SECTION_BEGIN + 69,              /*  69. Requested facility not implemented         */
+    NAS_CC_CAUSE_70                                         =  NAS_CC_CAUSE_NW_SECTION_BEGIN + 70,              /*  70. Only restricted digital info BC available  */
+    NAS_CC_CAUSE_79                                         =  NAS_CC_CAUSE_NW_SECTION_BEGIN + 79,              /*  79. Service or option not implemented, unspec  */
+    NAS_CC_CAUSE_81                                         =  NAS_CC_CAUSE_NW_SECTION_BEGIN + 81,              /*  81. Invalid transaction identifier value       */
+    NAS_CC_CAUSE_87                                         =  NAS_CC_CAUSE_NW_SECTION_BEGIN + 87,              /*  87. User not member of CUG                     */
+    NAS_CC_CAUSE_88                                         =  NAS_CC_CAUSE_NW_SECTION_BEGIN + 88,              /*  88. Incompatible destination Incompatible para */
+    NAS_CC_CAUSE_91                                         =  NAS_CC_CAUSE_NW_SECTION_BEGIN + 91,              /*  91. Invalid transit network selection          */
+    NAS_CC_CAUSE_95                                         =  NAS_CC_CAUSE_NW_SECTION_BEGIN + 95,              /*  95. Semantically incorrect message             */
+    NAS_CC_CAUSE_96                                         =  NAS_CC_CAUSE_NW_SECTION_BEGIN + 96,              /*  96. Invalid mandatory information              */
+    NAS_CC_CAUSE_97                                         =  NAS_CC_CAUSE_NW_SECTION_BEGIN + 97,              /*  97. Msg type non-existent or not implemented   */
+    NAS_CC_CAUSE_98                                         =  NAS_CC_CAUSE_NW_SECTION_BEGIN + 98,              /*  98. Msg type not compatible with protocol state*/
+    NAS_CC_CAUSE_99                                         =  NAS_CC_CAUSE_NW_SECTION_BEGIN + 99,              /*  99. IE non-existent or not implemented         */
+    NAS_CC_CAUSE_100                                        =  NAS_CC_CAUSE_NW_SECTION_BEGIN + 100,              /* 100. Conditional IE error                       */
+    NAS_CC_CAUSE_101                                        =  NAS_CC_CAUSE_NW_SECTION_BEGIN + 101,              /* 101. Message not compatible with protocol state */
+    NAS_CC_CAUSE_102                                        =  NAS_CC_CAUSE_NW_SECTION_BEGIN + 102,              /* 102. Recovery on timer expiry Timer number      */
+    NAS_CC_CAUSE_111                                        =  NAS_CC_CAUSE_NW_SECTION_BEGIN + 111,              /* 111. Protocol error, unspecified                */
+    NAS_CC_CAUSE_127                                        =  NAS_CC_CAUSE_NW_SECTION_BEGIN + 127,              /* 127. Interworking, unspecified                  */
+    NAS_CC_CAUSE_128                                        =  NAS_CC_CAUSE_NW_SECTION_BEGIN + 128,              /* 128. DTMF buffer is full                  */
+
+    /* cm service rej */
+    NAS_CC_CAUSE_CM_SRV_REJ_IMSI_UNKNOWN_IN_HLR                                 = NAS_CC_CAUSE_CM_SRV_REJ_BEGIN + 2,
+    NAS_CC_CAUSE_CM_SRV_REJ_ILLEGAL_MS                                          = NAS_CC_CAUSE_CM_SRV_REJ_BEGIN + 3,
+    NAS_CC_CAUSE_CM_SRV_REJ_IMSI_UNKNOWN_IN_VLR                                 = NAS_CC_CAUSE_CM_SRV_REJ_BEGIN + 4,
+    NAS_CC_CAUSE_CM_SRV_REJ_IMEI_NOT_ACCEPTED                                   = NAS_CC_CAUSE_CM_SRV_REJ_BEGIN + 5,
+    NAS_CC_CAUSE_CM_SRV_REJ_ILLEGAL_ME                                          = NAS_CC_CAUSE_CM_SRV_REJ_BEGIN + 6,
+    NAS_CC_CAUSE_CM_SRV_REJ_PLMN_NOT_ALLOWED                                    = NAS_CC_CAUSE_CM_SRV_REJ_BEGIN + 11,
+    NAS_CC_CAUSE_CM_SRV_REJ_LOCATION_AREA_NOT_ALLOWED                           = NAS_CC_CAUSE_CM_SRV_REJ_BEGIN + 12,
+    NAS_CC_CAUSE_CM_SRV_REJ_ROAMING_NOT_ALLOWED_IN_THIS_LOCATION_AREA           = NAS_CC_CAUSE_CM_SRV_REJ_BEGIN + 13,
+    NAS_CC_CAUSE_CM_SRV_REJ_NO_SUITABLE_CELLS_IN_LOCATION_AREA                  = NAS_CC_CAUSE_CM_SRV_REJ_BEGIN + 15,
+    NAS_CC_CAUSE_CM_SRV_REJ_NETWORK_FAILURE                                     = NAS_CC_CAUSE_CM_SRV_REJ_BEGIN + 17,
+    NAS_CC_CAUSE_CM_SRV_REJ_MAC_FAILURE                                         = NAS_CC_CAUSE_CM_SRV_REJ_BEGIN + 20,
+    NAS_CC_CAUSE_CM_SRV_REJ_SYNCH_FAILURE                                       = NAS_CC_CAUSE_CM_SRV_REJ_BEGIN + 21,
+    NAS_CC_CAUSE_CM_SRV_REJ_CONGESTION                                          = NAS_CC_CAUSE_CM_SRV_REJ_BEGIN + 22,
+    NAS_CC_CAUSE_CM_SRV_REJ_GSM_AUTHENTICATION_UNACCEPTABLE                     = NAS_CC_CAUSE_CM_SRV_REJ_BEGIN + 23,
+    NAS_CC_CAUSE_CM_SRV_REJ_NOT_AUTHORIZED_FOR_THIS_CSG                         = NAS_CC_CAUSE_CM_SRV_REJ_BEGIN + 25,
+    NAS_CC_CAUSE_CM_SRV_REJ_SERVICE_OPTION_NOT_SUPPORTED                        = NAS_CC_CAUSE_CM_SRV_REJ_BEGIN + 32,
+    NAS_CC_CAUSE_CM_SRV_REJ_REQUESTED_SERVICE_OPTION_NOT_SUBSCRIBED             = NAS_CC_CAUSE_CM_SRV_REJ_BEGIN + 33,
+    NAS_CC_CAUSE_CM_SRV_REJ_SERVICE_OPTION_TEMPORARILY_OUT_OF_ORDER             = NAS_CC_CAUSE_CM_SRV_REJ_BEGIN + 34,
+    NAS_CC_CAUSE_CM_SRV_REJ_CALL_CANNOT_BE_IDENTIFIED                           = NAS_CC_CAUSE_CM_SRV_REJ_BEGIN + 38,
+    NAS_CC_CAUSE_CM_SRV_REJ_RETRY_UPON_ENTRY_INTO_A_NEW_CELL_0                  = NAS_CC_CAUSE_CM_SRV_REJ_BEGIN + 48,
+    NAS_CC_CAUSE_CM_SRV_REJ_RETRY_UPON_ENTRY_INTO_A_NEW_CELL_1                  = NAS_CC_CAUSE_CM_SRV_REJ_BEGIN + 49,
+    NAS_CC_CAUSE_CM_SRV_REJ_RETRY_UPON_ENTRY_INTO_A_NEW_CELL_2                  = NAS_CC_CAUSE_CM_SRV_REJ_BEGIN + 50,
+    NAS_CC_CAUSE_CM_SRV_REJ_RETRY_UPON_ENTRY_INTO_A_NEW_CELL_3                  = NAS_CC_CAUSE_CM_SRV_REJ_BEGIN + 51,
+    NAS_CC_CAUSE_CM_SRV_REJ_RETRY_UPON_ENTRY_INTO_A_NEW_CELL_4                  = NAS_CC_CAUSE_CM_SRV_REJ_BEGIN + 52,
+    NAS_CC_CAUSE_CM_SRV_REJ_RETRY_UPON_ENTRY_INTO_A_NEW_CELL_5                  = NAS_CC_CAUSE_CM_SRV_REJ_BEGIN + 53,
+    NAS_CC_CAUSE_CM_SRV_REJ_RETRY_UPON_ENTRY_INTO_A_NEW_CELL_6                  = NAS_CC_CAUSE_CM_SRV_REJ_BEGIN + 54,
+    NAS_CC_CAUSE_CM_SRV_REJ_RETRY_UPON_ENTRY_INTO_A_NEW_CELL_7                  = NAS_CC_CAUSE_CM_SRV_REJ_BEGIN + 55,
+    NAS_CC_CAUSE_CM_SRV_REJ_RETRY_UPON_ENTRY_INTO_A_NEW_CELL_8                  = NAS_CC_CAUSE_CM_SRV_REJ_BEGIN + 56,
+    NAS_CC_CAUSE_CM_SRV_REJ_RETRY_UPON_ENTRY_INTO_A_NEW_CELL_9                  = NAS_CC_CAUSE_CM_SRV_REJ_BEGIN + 57,
+    NAS_CC_CAUSE_CM_SRV_REJ_RETRY_UPON_ENTRY_INTO_A_NEW_CELL_10                 = NAS_CC_CAUSE_CM_SRV_REJ_BEGIN + 58,
+    NAS_CC_CAUSE_CM_SRV_REJ_RETRY_UPON_ENTRY_INTO_A_NEW_CELL_11                 = NAS_CC_CAUSE_CM_SRV_REJ_BEGIN + 59,
+    NAS_CC_CAUSE_CM_SRV_REJ_RETRY_UPON_ENTRY_INTO_A_NEW_CELL_12                 = NAS_CC_CAUSE_CM_SRV_REJ_BEGIN + 60,
+    NAS_CC_CAUSE_CM_SRV_REJ_RETRY_UPON_ENTRY_INTO_A_NEW_CELL_13                 = NAS_CC_CAUSE_CM_SRV_REJ_BEGIN + 61,
+    NAS_CC_CAUSE_CM_SRV_REJ_RETRY_UPON_ENTRY_INTO_A_NEW_CELL_14                 = NAS_CC_CAUSE_CM_SRV_REJ_BEGIN + 62,
+    NAS_CC_CAUSE_CM_SRV_REJ_RETRY_UPON_ENTRY_INTO_A_NEW_CELL_15                 = NAS_CC_CAUSE_CM_SRV_REJ_BEGIN + 63,
+    NAS_CC_CAUSE_CM_SRV_REJ_SEMANTICALLY_INCORRECT_MESSAGE                      = NAS_CC_CAUSE_CM_SRV_REJ_BEGIN + 95,
+    NAS_CC_CAUSE_CM_SRV_REJ_INVALID_MANDATORY_INFORMATION                       = NAS_CC_CAUSE_CM_SRV_REJ_BEGIN + 96,
+    NAS_CC_CAUSE_CM_SRV_REJ_MESSAGE_TYPE_NONEXISTENT_OR_NOT_IMPLEMENTED         = NAS_CC_CAUSE_CM_SRV_REJ_BEGIN + 97,
+    NAS_CC_CAUSE_CM_SRV_REJ_MESSAGE_TYPE_NOT_COMPATIBLE_WITH_THE_PROTOCAL_STATE = NAS_CC_CAUSE_CM_SRV_REJ_BEGIN + 98,
+    NAS_CC_CAUSE_CM_SRV_REJ_INFOMATION_ELEMENT_NONEXISTENT_OR_NOT_IMPLEMENTED   = NAS_CC_CAUSE_CM_SRV_REJ_BEGIN + 99,
+    NAS_CC_CAUSE_CM_SRV_REJ_CONDITIONAL_IE_ERROR                                = NAS_CC_CAUSE_CM_SRV_REJ_BEGIN + 100,
+    NAS_CC_CAUSE_CM_SRV_REJ_MESSAGE_NOT_COMPATIBLE_WITH_THE_PROTOCOL_STATE      = NAS_CC_CAUSE_CM_SRV_REJ_BEGIN + 101,
+    NAS_CC_CAUSE_CM_SRV_REJ_PROTOCOL_ERROR_UNSPECIFIED                          = NAS_CC_CAUSE_CM_SRV_REJ_BEGIN + 111,
+
+    /* CSFB service rej */
+    NAS_CC_CAUSE_CSFB_SRV_REJ_ILLEGAL_UE                                        = NAS_CC_CAUSE_CSFB_SRV_REJ_BEGIN + 3,
+    NAS_CC_CAUSE_CSFB_SRV_REJ_ILLEGAL_ME                                        = NAS_CC_CAUSE_CSFB_SRV_REJ_BEGIN + 6,
+    NAS_CC_CAUSE_CSFB_SRV_REJ_EPS_SERVICES_NOT_ALLOWED                          = NAS_CC_CAUSE_CSFB_SRV_REJ_BEGIN + 7,
+    NAS_CC_CAUSE_CSFB_SRV_REJ_EPS_SERVICES_AND_NONEPS_SERVICES_NOT_ALLOWED      = NAS_CC_CAUSE_CSFB_SRV_REJ_BEGIN + 8,
+    NAS_CC_CAUSE_CSFB_SRV_REJ_UE_IDENTITY_CANNOT_BE_DERIVED_BY_NW               = NAS_CC_CAUSE_CSFB_SRV_REJ_BEGIN + 9,
+    NAS_CC_CAUSE_CSFB_SRV_REJ_IMPLICITLY_DETACHED                               = NAS_CC_CAUSE_CSFB_SRV_REJ_BEGIN + 10,
+    NAS_CC_CAUSE_CSFB_SRV_REJ_PLMN_NOT_ALLOWED                                  = NAS_CC_CAUSE_CSFB_SRV_REJ_BEGIN + 11,
+    NAS_CC_CAUSE_CSFB_SRV_REJ_TRACKING_AREA_NOT_ALLOWED                         = NAS_CC_CAUSE_CSFB_SRV_REJ_BEGIN + 12,
+    NAS_CC_CAUSE_CSFB_SRV_REJ_ROAMING_NOT_ALLOWED_IN_THIS_TA                    = NAS_CC_CAUSE_CSFB_SRV_REJ_BEGIN + 13,
+    NAS_CC_CAUSE_CSFB_SRV_REJ_NO_SUITABLE_CELLS_IN_TRACKING_AREA                = NAS_CC_CAUSE_CSFB_SRV_REJ_BEGIN + 15,
+    NAS_CC_CAUSE_CSFB_SRV_REJ_CS_DOMAIN_NOT_AVAILABLE                           = NAS_CC_CAUSE_CSFB_SRV_REJ_BEGIN + 18,
+    NAS_CC_CAUSE_CSFB_SRV_REJ_CONGESTION                                        = NAS_CC_CAUSE_CSFB_SRV_REJ_BEGIN + 22,
+    NAS_CC_CAUSE_CSFB_SRV_REJ_NOT_AUTHORIZED_FOR_THIS_CSG                       = NAS_CC_CAUSE_CSFB_SRV_REJ_BEGIN + 25,
+    NAS_CC_CAUSE_CSFB_SRV_REJ_REQ_SER_OPTION_NOT_AUTHORIZED_IN_PLMN             = NAS_CC_CAUSE_CSFB_SRV_REJ_BEGIN + 35,
+    NAS_CC_CAUSE_CSFB_SRV_REJ_CS_SERVICE_TEMPORARILY_NOT_AVAILABLE              = NAS_CC_CAUSE_CSFB_SRV_REJ_BEGIN + 39,
+    NAS_CC_CAUSE_CSFB_SRV_REJ_NO_EPS_BEARER_CONTEXT_ACTIVATED                   = NAS_CC_CAUSE_CSFB_SRV_REJ_BEGIN + 40,
+    NAS_CC_CAUSE_CSFB_SRV_REJ_SEVERE_NETWORK_FAILURE                            = NAS_CC_CAUSE_CSFB_SRV_REJ_BEGIN + 42,
 
 
-    /* MM层自定义上报的内部错误原因值 */
-    NAS_CC_CAUSE_AS_REJ_LOW_LEVEL_FAIL                       = 200,
-    NAS_CC_CAUSE_AS_REJ_OTHER_CAUSES                         = 201,
-    NAS_CC_CAUSE_MM_WRONG_STATE                              = 202,
-    NAS_CC_CAUSE_MM_NO_SERVICE                               = 203,
-    NAS_CC_CAUSE_MM_LIMIT_SERVICE                            = 204,
-    NAS_CC_CAUSE_MM_TIMER_T3230_EXP                          = 205,
-    NAS_CC_CAUSE_MM_REJ_OTHER_CAUSES                         = 206,
-    NAS_CC_CAUSE_CNM_REJ_TIMER_T303_EXP                      = 207,
-    NAS_CC_CAUSE_CNM_OTHER_REJ_CAUSES                        = 208
+    /* AS rr connection fail */
+    NAS_CC_CAUSE_RR_CONN_FAIL_CONGESTION                              = NAS_CC_CAUSE_RR_CONN_FAIL_BEGIN + 1,
+    NAS_CC_CAUSE_RR_CONN_FAIL_UNSPECIFIED                             = NAS_CC_CAUSE_RR_CONN_FAIL_BEGIN + 2,
+    NAS_CC_CAUSE_RR_CONN_FAIL_ACCESS_BAR                              = NAS_CC_CAUSE_RR_CONN_FAIL_BEGIN + 3,
+    NAS_CC_CAUSE_RR_CONN_FAIL_EST_CONN_FAIL                           = NAS_CC_CAUSE_RR_CONN_FAIL_BEGIN + 4,
+    NAS_CC_CAUSE_RR_CONN_FAIL_IMMEDIATE_ASSIGN_REJECT                 = NAS_CC_CAUSE_RR_CONN_FAIL_BEGIN + 5,
+    NAS_CC_CAUSE_RR_CONN_FAIL_RANDOM_ACCESS_REJECT                    = NAS_CC_CAUSE_RR_CONN_FAIL_BEGIN + 6,
+    NAS_CC_CAUSE_RR_CONN_FAIL_T3122_RUNING                            = NAS_CC_CAUSE_RR_CONN_FAIL_BEGIN + 7,
+    NAS_CC_CAUSE_RR_CONN_FAIL_NO_RF                                   = NAS_CC_CAUSE_RR_CONN_FAIL_BEGIN + 8,
+    NAS_CC_CAUSE_RR_CONN_FAIL_LOW_LEVEL_SEARCHING_NETWORK             = NAS_CC_CAUSE_RR_CONN_FAIL_BEGIN + 9,
+    NAS_CC_CAUSE_RR_CONN_FAIL_RANDOM_ACCESS_SEND_FAIL                 = NAS_CC_CAUSE_RR_CONN_FAIL_BEGIN + 10,
+    NAS_CC_CAUSE_RR_CONN_FAIL_NO_VALID_INFO                           = NAS_CC_CAUSE_RR_CONN_FAIL_BEGIN + 11,
+    NAS_CC_CAUSE_RR_CONN_FAIL_UE_NOT_ALLOW                            = NAS_CC_CAUSE_RR_CONN_FAIL_BEGIN + 12,
+    NAS_CC_CAUSE_RR_CONN_FAIL_TIME_OUT                                = NAS_CC_CAUSE_RR_CONN_FAIL_BEGIN + 13,
+    NAS_CC_CAUSE_RR_CONN_FAIL_NO_RANDOM_ACCESS_RESOURCE               = NAS_CC_CAUSE_RR_CONN_FAIL_BEGIN + 14,
+    NAS_CC_CAUSE_RR_CONN_FAIL_INVALID_IMMEDIATE_ASSIGNED_MSG          = NAS_CC_CAUSE_RR_CONN_FAIL_BEGIN + 15,
+    NAS_CC_CAUSE_RR_CONN_FAIL_ACTIVE_PHYSICAL_CHANNEL_FAIL            = NAS_CC_CAUSE_RR_CONN_FAIL_BEGIN + 16,
+    NAS_CC_CAUSE_RR_CONN_FAIL_AIR_MSG_DECODE_ERROR                    = NAS_CC_CAUSE_RR_CONN_FAIL_BEGIN + 17,
+    NAS_CC_CAUSE_RR_CONN_FAIL_CURRENT_PROTOCOL_NOT_SUPPORT            = NAS_CC_CAUSE_RR_CONN_FAIL_BEGIN + 18,
+    NAS_CC_CAUSE_RR_CONN_FAIL_INVALID_UE_STATE                        = NAS_CC_CAUSE_RR_CONN_FAIL_BEGIN + 19,
+    NAS_CC_CAUSE_RR_CONN_FAIL_CELL_BARRED                             = NAS_CC_CAUSE_RR_CONN_FAIL_BEGIN + 20,
+    NAS_CC_CAUSE_RR_CONN_FAIL_FAST_RETURN_TO_LTE                      = NAS_CC_CAUSE_RR_CONN_FAIL_BEGIN + 21,
+    NAS_CC_CAUSE_RR_CONN_FAIL_RA_FAIL_NO_VALID_INFO                   = NAS_CC_CAUSE_RR_CONN_FAIL_BEGIN + 22,
+    NAS_CC_CAUSE_RR_CONN_FAIL_RJ_INTER_RAT                            = NAS_CC_CAUSE_RR_CONN_FAIL_BEGIN + 23,
+
+
+    /* AS Rel ind */
+    NAS_CC_CAUSE_RR_REL_AUTH_REJ                                      = NAS_CC_CAUSE_RR_REL_BEGIN + 0,
+    NAS_CC_CAUSE_RR_REL_NORMAL_EVENT                                  = NAS_CC_CAUSE_RR_REL_BEGIN + 1,
+    NAS_CC_CAUSE_RR_REL_NORMAL_UNSPECIFIED                            = NAS_CC_CAUSE_RR_REL_BEGIN + 2,
+    NAS_CC_CAUSE_RR_REL_PREEMPTIVE_RELEASE                            = NAS_CC_CAUSE_RR_REL_BEGIN + 3,
+    NAS_CC_CAUSE_RR_REL_CONGESTION                                    = NAS_CC_CAUSE_RR_REL_BEGIN + 4,
+    NAS_CC_CAUSE_RR_REL_REEST_REJ                                     = NAS_CC_CAUSE_RR_REL_BEGIN + 5,
+    NAS_CC_CAUSE_RR_REL_DIRECTED_SIGNAL_CONN_REEST                    = NAS_CC_CAUSE_RR_REL_BEGIN + 6,
+    NAS_CC_CAUSE_RR_REL_USER_INACTIVE                                 = NAS_CC_CAUSE_RR_REL_BEGIN + 7,
+    NAS_CC_CAUSE_RR_REL_UTRAN_RELEASE                                 = NAS_CC_CAUSE_RR_REL_BEGIN + 8,
+    NAS_CC_CAUSE_RR_REL_RRC_ERROR                                     = NAS_CC_CAUSE_RR_REL_BEGIN + 9,
+    NAS_CC_CAUSE_RR_REL_RL_FAILURE                                    = NAS_CC_CAUSE_RR_REL_BEGIN + 10,
+    NAS_CC_CAUSE_RR_REL_OTHER_REASON                                  = NAS_CC_CAUSE_RR_REL_BEGIN + 11,
+    NAS_CC_CAUSE_RR_REL_NO_RF                                         = NAS_CC_CAUSE_RR_REL_BEGIN + 12,
+    NAS_CC_CAUSE_RR_REL_RLC_ERR_OR                                    = NAS_CC_CAUSE_RR_REL_BEGIN + 13,
+    NAS_CC_CAUSE_RR_REL_CELL_UP_DATE_FAIL                             = NAS_CC_CAUSE_RR_REL_BEGIN + 14,
+    NAS_CC_CAUSE_RR_REL_NAS_REL_REQ                                   = NAS_CC_CAUSE_RR_REL_BEGIN + 15,
+    NAS_CC_CAUSE_RR_REL_CONN_FAIL                                     = NAS_CC_CAUSE_RR_REL_BEGIN + 16,     /* redial */
+    NAS_CC_CAUSE_RR_REL_NAS_DATA_ABSENT                               = NAS_CC_CAUSE_RR_REL_BEGIN + 17,     /* redial */
+    NAS_CC_CAUSE_RR_REL_T314_EXPIRED                                  = NAS_CC_CAUSE_RR_REL_BEGIN + 18,
+    NAS_CC_CAUSE_RR_REL_W_RL_FAIL                                     = NAS_CC_CAUSE_RR_REL_BEGIN + 19,
+
+    NAS_CC_CAUSE_RR_REL_G_RL_FAIL                                     = NAS_CC_CAUSE_RR_REL_BEGIN + 20,
+
+
+    /* CSFB LMM Error */
+    NAS_CC_CAUSE_CSFB_LMM_FAIL_LMM_LOCAL_FAIL                         = NAS_CC_CAUSE_CSFB_LMM_FAIL_BEGIN + 0,
+    NAS_CC_CAUSE_CSFB_LMM_FAIL_AUTH_REJ                               = NAS_CC_CAUSE_CSFB_LMM_FAIL_BEGIN + 1,
+    NAS_CC_CAUSE_CSFB_LMM_FAIL_T3417_TIME_OUT                         = NAS_CC_CAUSE_CSFB_LMM_FAIL_BEGIN + 2,
+    NAS_CC_CAUSE_CSFB_LMM_FAIL_APP_DETACH_SERVICE                     = NAS_CC_CAUSE_CSFB_LMM_FAIL_BEGIN + 3,
+    NAS_CC_CAUSE_CSFB_LMM_FAIL_CN_DETACH_SERVICE                      = NAS_CC_CAUSE_CSFB_LMM_FAIL_BEGIN + 4,
+    NAS_CC_CAUSE_CSFB_LMM_FAIL_FOR_OTHERS                             = NAS_CC_CAUSE_CSFB_LMM_FAIL_BEGIN + 5,
+    NAS_CC_CAUSE_CSFB_LMM_FAIL_FOR_EMM_STATE                          = NAS_CC_CAUSE_CSFB_LMM_FAIL_BEGIN + 6,
+    NAS_CC_CAUSE_CSFB_LMM_FAIL_SMS_ONLY                               = NAS_CC_CAUSE_CSFB_LMM_FAIL_BEGIN + 7,
+    NAS_CC_CAUSE_CSFB_LMM_FAIL_PS_ONLY                                = NAS_CC_CAUSE_CSFB_LMM_FAIL_BEGIN + 8,
+    NAS_CC_CAUSE_CSFB_LMM_FAIL_TAU_COLL_ABNORMAL                      = NAS_CC_CAUSE_CSFB_LMM_FAIL_BEGIN + 9,
+
+
+    /* MM Inter Error */
+    NAS_CC_CAUSE_MM_INTER_ERR_FORB_LA                                 = NAS_CC_CAUSE_MM_INTER_ERR_BEGIN + 0,
+    NAS_CC_CAUSE_MM_INTER_ERR_FORB_OTHER                              = NAS_CC_CAUSE_MM_INTER_ERR_BEGIN + 1,
+    NAS_CC_CAUSE_MM_INTER_ERR_CS_ACCESS_BAR                           = NAS_CC_CAUSE_MM_INTER_ERR_BEGIN + 2,
+    NAS_CC_CAUSE_MM_INTER_ERR_CS_DETACH                               = NAS_CC_CAUSE_MM_INTER_ERR_BEGIN + 3,
+    NAS_CC_CAUSE_MM_INTER_ERR_CS_SIM_INVALID                          = NAS_CC_CAUSE_MM_INTER_ERR_BEGIN + 4,
+    NAS_CC_CAUSE_MM_INTER_ERR_CS_SERVICE_CONGESTION                   = NAS_CC_CAUSE_MM_INTER_ERR_BEGIN + 5,
+    NAS_CC_CAUSE_MM_INTER_ERR_T3230_TIMER_OUT                         = NAS_CC_CAUSE_MM_INTER_ERR_BEGIN + 6,
+    NAS_CC_CAUSE_MM_INTER_ERR_SEARCHING_NETWORK                       = NAS_CC_CAUSE_MM_INTER_ERR_BEGIN + 7,
+    NAS_CC_CAUSE_MM_INTER_ERR_INTER_RAT_SYSTEM_CHANGE                 = NAS_CC_CAUSE_MM_INTER_ERR_BEGIN + 8,
+    NAS_CC_CAUSE_MM_INTER_ERR_NOT_SUPPORT_CS_CALL_S1_MODE_ONLY        = NAS_CC_CAUSE_MM_INTER_ERR_BEGIN + 9,
+    NAS_CC_CAUSE_MM_INTER_ERR_OUT_OF_COVERAGE                         = NAS_CC_CAUSE_MM_INTER_ERR_BEGIN + 10,
+    NAS_CC_CAUSE_MM_INTER_ERR_ATTEMPTING_TO_UPDATE                    = NAS_CC_CAUSE_MM_INTER_ERR_BEGIN + 11,
+    NAS_CC_CAUSE_MM_INTER_ERR_CSFB_ALREADY_EXISTS                     = NAS_CC_CAUSE_MM_INTER_ERR_BEGIN + 12,
+    NAS_CC_CAUSE_MM_INTER_ERR_RESUME_TO_GU_FAIL                       = NAS_CC_CAUSE_MM_INTER_ERR_BEGIN + 13,
+    NAS_CC_CAUSE_MM_INTER_ERR_TI_INVALID                              = NAS_CC_CAUSE_MM_INTER_ERR_BEGIN + 14,
+    NAS_CC_CAUSE_MM_INTER_ERR_WAIT_EST_CNF_TIME_OUT                   = NAS_CC_CAUSE_MM_INTER_ERR_BEGIN + 15,   /* redial */
+    NAS_CC_CAUSE_MM_INTER_ERR_CC_CONN_REQ_EXIST                       = NAS_CC_CAUSE_MM_INTER_ERR_BEGIN + 16,
+    NAS_CC_CAUSE_MM_INTER_ERR_UE_INVALID_STATE                        = NAS_CC_CAUSE_MM_INTER_ERR_BEGIN + 17,
+    NAS_CC_CAUSE_MM_INTER_ERR_WAIT_CC_REEST_TIME_OUT                  = NAS_CC_CAUSE_MM_INTER_ERR_BEGIN + 18,
+    NAS_CC_CAUSE_MM_INTER_ERR_BACK_TO_LTE                             = NAS_CC_CAUSE_MM_INTER_ERR_BEGIN + 19,
+    NAS_CC_CAUSE_MM_INTER_ERR_RESUME_TO_EHRPD                         = NAS_CC_CAUSE_MM_INTER_ERR_BEGIN + 20,
+    NAS_CC_CAUSE_MM_INTER_ERR_SND_SAPI3_FAIL                          = NAS_CC_CAUSE_MM_INTER_ERR_BEGIN + 21,   /* 短信业务SAPI3发送失败,不重拨 */
+    NAS_CC_CAUSE_MM_INTER_ERR_EST_SAPI3_FAIL                          = NAS_CC_CAUSE_MM_INTER_ERR_BEGIN + 22,   /* 短信业务SAPI3建立时GAS回复失败,重拨 */
+    NAS_CC_CAUSE_MM_INTER_ERR_ECALL_INACTIVE                          = NAS_CC_CAUSE_MM_INTER_ERR_BEGIN + 23,   /* eCall Inactive状态,不重拨 */
+    NAS_CC_CAUSE_MM_INTER_ERR_REEST_FAIL                              = NAS_CC_CAUSE_MM_INTER_ERR_BEGIN + 24,   /* MM reest状态收到est_cnf(失败)或rel ind,不重拨 */
+    NAS_CC_CAUSE_MM_INTER_ERR_CC_REL_REQ                              = NAS_CC_CAUSE_MM_INTER_ERR_BEGIN + 25,
+    NAS_CC_CAUSE_MM_INTER_ERR_LTE_LIMITED_SERVICE                     = NAS_CC_CAUSE_MM_INTER_ERR_BEGIN + 26,
+
+
+    /* CC Inter Error */
+    NAS_CC_CAUSE_CC_INTER_ERR_T303_TIME_OUT                           = NAS_CC_CAUSE_CC_INTER_ERR_BEGIN + 0,
+    NAS_CC_CAUSE_CC_INTER_ERR_T335_TIME_OUT                           = NAS_CC_CAUSE_CC_INTER_ERR_BEGIN + 1,
+    NAS_CC_CAUSE_CC_INTER_ERR_WAIT_RAB_TIME_OUT                       = NAS_CC_CAUSE_CC_INTER_ERR_BEGIN + 2,
+    NAS_CC_CAUSE_CC_INTER_ERR_NO_TCH                                  = NAS_CC_CAUSE_CC_INTER_ERR_BEGIN + 3,
+
+    NAS_CC_CAUSE_BUTT                                                 = 0xFFFFFFFF
 };
-typedef VOS_UINT8   NAS_CC_CAUSE_VALUE_ENUM_U8;
+typedef VOS_UINT32   NAS_CC_CAUSE_VALUE_ENUM_U32;
 
 
 /* [10.5.4.11a] CLIR suppression */
@@ -1950,7 +2133,7 @@ typedef struct
 
 typedef struct
 {
-    NAS_CC_CAUSE_VALUE_ENUM_U8          CauseValue          :7;
+    MN_CALL_CC_CAUSE_ENUM_U8            CauseValue          :7;
     VOS_UINT8                           Ext                 :1;
 }NAS_CC_IE_CAUSE_OCTET4_STRU;
 

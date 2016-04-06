@@ -21,6 +21,10 @@
 #include "TafOamInterface.h"
 #include "DspInterface.h"
 
+#if (FEATURE_ON == FEATURE_MERGE_OM_CHAN)
+#include "omoperator.h"
+#endif
+
 #ifdef __cplusplus
 #if __cplusplus
 extern "C" {
@@ -72,7 +76,10 @@ SPY_RECORD_STRU                 g_stSpyTimeRecord;
 #define SPY_GetType(ulIndex)    (g_stSpyTimeRecord.astRecord[ulIndex].acType)
 #endif
 
+#if (FEATURE_OFF == FEATURE_MERGE_OM_CHAN)
 extern VOS_UINT32 OM_SysCtrlCmd(VOS_UINT16 usClientId, VOS_UINT32 ulMode, MODEM_ID_ENUM_UINT16 enModemID);
+#endif
+
 #if (RAT_MODE != RAT_GU)
 extern VOS_VOID L_ExtAntenStatus(VOS_INT32 para);
 #endif
@@ -913,8 +920,11 @@ VOS_UINT32 Spy_SoftPowerOff(VOS_VOID)
     Spy_TimeRecord("Soft Power Off");
     g_stSpyStatisticsInfo.ulSoftPowerOffNum++;
 #endif
-
+#if (FEATURE_OFF == FEATURE_MERGE_OM_CHAN)
     OM_SysCtrlCmd(OAM_CLIENT_ID_SPY, TAF_PH_MODE_LOWPOWER, MODEM_ID_0);
+#else
+    OM_SysCtrlCmd(OM_LOGIC_CHANNEL_IND, OAM_CLIENT_ID_SPY, TAF_PH_MODE_LOWPOWER, MODEM_ID_0);
+#endif //(FEATURE_OFF == FEATURE_MERGE_OM_CHAN)
 
 #endif
 
@@ -928,8 +938,11 @@ VOS_UINT32 Spy_SoftPowerOn(VOS_VOID)
     Spy_TimeRecord("Soft Power On");
     g_stSpyStatisticsInfo.ulSoftPowerOnNum++;
 #endif
-
+#if (FEATURE_OFF == FEATURE_MERGE_OM_CHAN)
     OM_SysCtrlCmd(OAM_CLIENT_ID_SPY, TAF_PH_MODE_FULL, MODEM_ID_0);
+#else
+    OM_SysCtrlCmd(OM_LOGIC_CHANNEL_IND, OAM_CLIENT_ID_SPY, TAF_PH_MODE_FULL, MODEM_ID_0);
+#endif //(FEATURE_OFF == FEATURE_MERGE_OM_CHAN)
 #endif
 
     return VOS_OK;

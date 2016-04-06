@@ -21,6 +21,9 @@
 #include "bsp_om_server.h"
 #include "bsp_bbp.h"
 #include "bsp_om_log.h"
+/* add time sample yangzhi 8-16 B:*/
+#include "bsp_hardtimer.h"
+/* add time sample yangzhi 8-16 E!*/
 /*lint -restore*/
 #define    THIS_MODU_ID        BSP_MODU_LOG
 
@@ -64,16 +67,19 @@ bsp_log_swt_cfg_s  g_mod_peint_level_info[BSP_MODU_MAX]    =
     {BSP_LOG_LEVEL_ERROR}, {BSP_LOG_LEVEL_ERROR}, {BSP_LOG_LEVEL_ERROR}, {BSP_LOG_LEVEL_ERROR}
 };
 u32 g_get_buf_fail = 0;
-extern dump_nv_s            g_dump_cfg ;
 
 log_bin_ind_cb        g_log_ind_cb = NULL;
-extern osl_sem_id                send_task_sem;
 
 u32 bsp_log_level_set(bsp_log_level_e log_level);
 void bsp_log_header_packet(bsp_module_e mod_id,bsp_log_level_e log_level,u8 *print_buf,u32 buf_size);
 void bsp_log_show(void);
 
+/* add time sample yangzhi 8-16 B:*/
+char log_buf_temp[BSP_LOG_BUF_LEN] = {0};
 
+bsp_log_buf_ctrl_s g_log_buf_ctrl;
+bool log_init_flag = FALSE;
+/* add time sample yangzhi 8-16 E!*/
 /*****************************************************************************
   3 函数实现
 *****************************************************************************/
@@ -282,16 +288,21 @@ void bsp_log_header_packet(bsp_module_e mod_id,bsp_log_level_e log_level,u8 *pri
 *
 * 返 回 值  : 无
 *****************************************************************************/
-
 void bsp_trace(bsp_log_level_e log_level, bsp_module_e mod_id,char *fmt,...)
 {
-    int ret_len;
-    u8 *log_buf = NULL;
     va_list arglist;
     s32 _args[6];
     s32 i;
     int flag;
-
+	/* add time sample yangzhi 8-16 B:*/
+    u32 time_cur =0;
+    int sprint_len = 0;
+    int fmt_len = 0;
+    int buf_back_len = 0;
+    char  buf_trans_temp[BSP_TRACE_BUF_LEN_MAX+1] = {0};
+    char* ptr_log_msg = NULL;
+	/* add time sample yangzhi 8-16 E!*/
+	
     if(mod_id >= BSP_MODU_MAX )
     {
         return ;
@@ -301,114 +312,80 @@ void bsp_trace(bsp_log_level_e log_level, bsp_module_e mod_id,char *fmt,...)
     {
         return ;
     }
-
-    /* 根据NV项的配置选择打印输出方式*/
-    if( BSP_LOG_SEND_TO_SHELL == g_om_global_info.om_cfg.nv_cfg.log_switch)
+	
+	/* add time sample yangzhi 8-16 B:*/
+	/*lint -save -e530*/
+    if(FALSE == log_init_flag)
     {
-        /*lint -save -e530*/
-        va_start(arglist, fmt);
-        /*lint -restore +e530*/
-        for(i = 0; i < 6; i++)
-        {
-            _args[i] = va_arg(arglist, s32);
-        }
-        va_end(arglist);
-
-        flag = intLock();
-         /* 如果当前处于锁中断或者是中断上下文*/
-        if(VXWORKS_INT_LOCK_FLAG&flag)
-        {
-            printksync((char*)fmt, _args[0], _args[1],_args[2],_args[3],_args[4],_args[5]);
-        }
-        else
-        {
-            logMsg((char*)fmt, _args[0], _args[1],_args[2],_args[3],_args[4],_args[5]);
-        }
-
-        intUnlock(flag);
+        g_log_buf_ctrl.buf_offset= 0;
+        memset(log_buf_temp,0,BSP_LOG_BUF_LEN);
+        g_log_buf_ctrl.write_ptr = log_buf_temp;
+        log_init_flag = TRUE;
     }
-    else if(( BSP_LOG_SEND_TO_HSO == g_om_global_info.om_cfg.nv_cfg.log_switch)
-                &&( TRUE== bsp_om_get_hso_conn_flag()))
+    time_cur = bsp_get_slice_value();
+    sprint_len = snprintf(buf_trans_temp,BSP_TRACE_BUF_LEN_MAX,"[%08x(dec:%d)]",time_cur,time_cur);
+    if(sprint_len > BSP_TRACE_BUF_LEN_MAX)
     {
-         /* 默认bsp trace 都往串口打印，可以通过NV项控制*/
-        if(g_dump_cfg.dump_cfg.Bits.log_ctrl == 0)
-        {
-            va_start(arglist, fmt);
-            for(i = 0; i < 6; i++)
-            {
-            _args[i] = va_arg(arglist, s32);
-            }
-            va_end(arglist);
-
-            flag = intLock();
-
-            /* 如果当前处于锁中断或者是中断上下文*/
-            if(VXWORKS_INT_LOCK_FLAG&flag)
-            {
-                printksync((char*)fmt, _args[0], _args[1],_args[2],_args[3],_args[4],_args[5]);
-            }
-            else
-            {
-                logMsg((char*)fmt, _args[0], _args[1],_args[2],_args[3],_args[4],_args[5]);
-            }
-
-            intUnlock(flag);
-        }
-        ret_len = BSP_PRINT_BUF_LEN;
-
-        log_buf = (u8*)bsp_om_get_log_buf((u32)ret_len);
-
-        if(NULL == log_buf)
-        {
-            g_get_buf_fail++;
-            return;
-        }
-
-         /*兼容PS上报格式*/
-        va_start(arglist, fmt);
-        /*lint -save -e119*/
-        vsnprintf((char *)(log_buf+sizeof(bsp_trace_s)+1), BSP_PRINT_BUF_LEN -sizeof(bsp_trace_s)-1, fmt, arglist); /* [false alarm]:屏蔽Fority错误 */
-         /*lint -restore*/
-        va_end(arglist);
-
-        bsp_log_header_packet(mod_id,log_level,log_buf,(u32)ret_len);
-
-        /* send data to socp src chan.
-           don't do this if interrupt is locked, because semGive will reschedule task and unlock interrupt. */
-        flag = intLock();
-        if(!(VXWORKS_INT_LOCK_FLAG&flag))
-        {
-            osl_sem_up(&send_task_sem);
-        }
-        intUnlock(flag);
+        return ;
     }
-    else if(( BSP_LOG_SEND_TO_HSO == g_om_global_info.om_cfg.nv_cfg.log_switch)
-                &&( TRUE != g_om_global_info.hso_connect_flag))
+    va_start(arglist, fmt);
+    /*lint -restore +e530*/
+    for(i = 0; i < 6; i++)
     {
-         va_start(arglist, fmt);
-        for(i = 0; i < 6; i++)
-        {
-            _args[i] = va_arg(arglist, s32);
-        }
-        va_end(arglist);
-        flag = intLock();
-         /* 如果当前处于锁中断或者是中断上下文*/
-        if(VXWORKS_INT_LOCK_FLAG&flag)
-        {
+        _args[i] = va_arg(arglist, s32);
+    }
+    va_end(arglist);
 
-            printksync((char*)fmt, _args[0], _args[1],_args[2],_args[3],_args[4],_args[5]);
-        }
-        else
-        {
-            logMsg((char*)fmt, _args[0], _args[1],_args[2],_args[3],_args[4],_args[5]);
-        }
-
-        intUnlock(flag);
+    fmt_len = snprintf(buf_trans_temp+sprint_len,BSP_TRACE_BUF_LEN_MAX - sprint_len,fmt,_args[0],_args[1],\
+        _args[2],_args[3],_args[4],_args[5]);
+    if(sprint_len > BSP_TRACE_BUF_LEN_MAX)
+    {
+        return ;
+    }
+    fmt_len = fmt_len +sprint_len;
+	buf_trans_temp[fmt_len +1] = '\0';
+    fmt_len +=1;
+    flag = intLock();
+     /* 如果当前处于锁中断或者是中断上下文*/
+    if(VXWORKS_INT_LOCK_FLAG&flag)
+    {
+        printksync((char*)buf_trans_temp,0,0,0,0,0,0);
     }
     else
     {
-
+        if(NULL != g_log_buf_ctrl.write_ptr)
+        {
+            ptr_log_msg = g_log_buf_ctrl.write_ptr;
+            
+			/* if tail of the buffer*/
+            if((g_log_buf_ctrl.buf_offset + fmt_len)>= BSP_LOG_BUF_LEN)
+            {
+                buf_back_len = BSP_LOG_BUF_LEN-g_log_buf_ctrl.buf_offset;
+                memcpy(g_log_buf_ctrl.write_ptr, buf_trans_temp, buf_back_len);
+                
+                /* set to head of buffer */
+                g_log_buf_ctrl.write_ptr = log_buf_temp;
+                memcpy(g_log_buf_ctrl.write_ptr, buf_trans_temp+buf_back_len, (fmt_len - buf_back_len));
+                buf_back_len = fmt_len - buf_back_len;
+                g_log_buf_ctrl.buf_offset= buf_back_len;
+                g_log_buf_ctrl.write_ptr +=buf_back_len;
+            }
+            else
+            {
+                memcpy(g_log_buf_ctrl.write_ptr,buf_trans_temp,fmt_len);
+                g_log_buf_ctrl.write_ptr +=fmt_len;
+                g_log_buf_ctrl.buf_offset += fmt_len; 
+            }
+            logMsg(ptr_log_msg, 0,0,0,0,0,0); 
+        }
+        else
+        {
+            logMsg((char*)buf_trans_temp, 0,0,0,0,0,0);
+        }
     }
+    /* add time sample yangzhi 8-16 E!*/
+	
+    intUnlock(flag);
 
     return ;
 }

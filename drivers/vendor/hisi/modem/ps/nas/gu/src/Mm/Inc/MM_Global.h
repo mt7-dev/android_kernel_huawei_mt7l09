@@ -247,6 +247,9 @@ typedef struct
     VOS_UINT8                 ucT3212ExpiredFlg;                                /* 记录T3212溢出的标志                      */
     VOS_UINT8                 ucT3213AttmptCnt;                                 /* T3213超时计数器                          */
     VOS_UINT8                 ucImmAccRejLuAttmptCnt;                           /* G下立即指派拒绝场景LU尝试次数*/
+
+    VOS_UINT8                 ucCsfbMtLauFlg;                                      /* CSFB收到寻呼后，设置MT FLG,在后续LAU时候，携带MT标志 */
+
 }MM_LU_INFO_STRU;
 
 
@@ -304,7 +307,6 @@ typedef VOS_UINT8 MM_SERVICE_STATUS_ENUM_UINT8;
 /* 恢复结果 ResumeResult 取值 */
 #define MM_RESUME_RESULT_SUCCESS    0x00
 #define MM_RESUME_RESULT_FAILURE    0x01
-
 typedef struct
 {
     NAS_MML_NET_RAT_TYPE_ENUM_UINT8     enOldNetType;                           /* 挂起前的网络接入技术 */
@@ -554,14 +556,16 @@ typedef struct
     /* MM中增加全局变量指示是否进行联合注册 */
     VOS_UINT8                        ucIsComBined;
 
-    
+
     NAS_MML_NET_RAT_TYPE_ENUM_UINT8     enPreRatType;
 
     VOS_UINT8                           ucLauAcceptContainDiffNbLaiFlg;             /* lau accept消息中携带与系统消息中位置区不同的NB LAI,UE需要在连接释放后马上发起lau */
 
     VOS_UINT8                           ucSrvccFlg;                                 /* VOS_TRUE:当前处于SRVCC过程中 VOS_FALSE:当前不处于SRVCC过程中;收到RRC的SRVCC通知更新为TRUE,收到RRC的RESUME IND指示后清除 */
-    VOS_UINT8                           aucReserve[3];
+    VOS_UINT8                           ucRcvSrvccCallInfoFlg;                  /* SRVCC过程中CC同步CALLINFO标识 */
+    VOS_UINT8                           aucReserve[1];
     
+    RRC_NAS_EST_RESULT_ENUM_UINT32     enEstCnfResult;
 }MM_GLOBAL_CTRL_STRU;
 
 

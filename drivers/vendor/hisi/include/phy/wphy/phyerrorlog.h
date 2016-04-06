@@ -86,6 +86,14 @@ enum PHY_ERR_LOG_ALM_ID_ENUM
     PHY_ERR_LOG_ALM_GSM_DEC_FAIL        = 0x04,                                 /* DSC记录 */
     PHY_ERR_LOG_ALM_GSM_RXLEV_MEAS      = 0x05,                                 /* 处理记录 */
     PHY_ERR_LOG_ALM_GSM_FB_SB_IND       = 0x06,                                 /* 搜索记录 */
+
+    PHY_ERR_LOG_ALM_GSM_CS_RLB          = 0x1001,                               /* CS 链路质量差 */
+    PHY_ERR_LOG_ALM_GSM_CS_NO_UL_DATA   = 0x1002,                               /* CS 无上行数据 */
+    PHY_ERR_LOG_ALM_GSM_CS_ERROR_DETECT = 0x1003,                               /* 检测到异常error */
+    /* 业务类故障告警 */
+    PHY_ERR_LOG_ALM_WCDMA_TX_POWER_DROP_DETECT  = 0x2001,                       /* 检测到发射功率太低 */
+    PHY_ERR_LOG_ALM_WCDMA_PILOT_BER_RISE_DETECT = 0x2002,                       /* 检测到pilotber陡升 */
+
     PHY_ERR_LOG_ALM_ID_BUTT
 };
 typedef VOS_UINT16 PHY_ERR_LOG_ALM_ID_ENUM_UINT16;
@@ -134,6 +142,16 @@ enum PHY_GSM_RPT_REASON_ENUM
 };
 typedef VOS_UINT16 PHY_GSM_RPT_REASON_ENUM_UINT16;
 
+
+
+enum PHY_GSM_CS_ERROR_REASON_ENUM
+{
+    PHY_GSM_CS_ERROR_RLB            = 0,                         /* CS链路差 */
+    PHY_GSM_CS_ERROR_NO_UL_DATA     = 1,                         /* 无上行语音数据 */
+    PHY_GSM_CS_ERROR_DETECT         = 2,                         /* 异常error */
+    PHY_GSM_CS_ERROR_REASON_BUTT
+};
+typedef VOS_UINT16 PHY_GSM_CS_ERROR_REASON_ENUM_UINT16;
 
 
 /*****************************************************************************
@@ -303,9 +321,69 @@ typedef struct
     VOS_UINT16                              usTxPwr;
     VOS_UINT16                              usErrBlk;
     VOS_UINT16                              usDecBlk;
+    VOS_UINT16                              usResv;
 }PHY_FTM_GSM_DCH_PARA_EVENT_STRU;
 
 
+typedef struct
+{
+    OM_ERR_LOG_HEADER_STRU                  stHeader;
+    PHY_GSM_CS_ERROR_REASON_ENUM_UINT16     enRptReason;
+    VOS_UINT16                              usChannelType;                      /* 信道类型 */
+    VOS_UINT16                              usAssignRxTs;                       /* 业务时隙 */
+    VOS_UINT16                              usRxlev;                            /* 信号强度 */
+    VOS_UINT16                              usCIAverage;                        /* CI平均值 */
+    VOS_UINT16                              usErrBitSub;                        /* SUB 误bit数量 */
+    VOS_UINT16                              usTotalBitSub;                      /* SUB bit统计总量 */
+    VOS_UINT16                              usResv;
+}PHY_ERRLOG_GSM_CS_RLB_EVENT_STRU;
+
+
+/*******************************************************************************
+ 结构名    : PHY_ERRLOG_GSM_CS_NO_UL_DATA_EVENT_STRU
+ 结构说明  : GSM无上行语音数据时上报的消息结构体
+ 1.日    期   : 2014年7月5日
+   作    者   : lmx
+   修改内容   : 新建
+*******************************************************************************/
+typedef struct
+{
+    OM_ERR_LOG_HEADER_STRU                  stHeader;
+    PHY_GSM_CS_ERROR_REASON_ENUM_UINT16     enCsErrorReason;
+    VOS_UINT16                              usChannelType;
+    VOS_UINT16                              usAssignRxTs;
+    VOS_UINT16                              usResv;
+    VOS_UINT32                              ulFn;                                   /* 帧号 */
+    VOS_UINT32                              ulQb;                                   /* QB 0~4999 */
+    VOS_UINT32                              ulTimeSlice;                            /* 发送时刻时戳 */
+    VOS_UINT16                              usChanCodeTime;                        /* 上行编码时间, 单位:0.1 ms */
+    VOS_UINT16                              usChanDecodeTime;
+}PHY_ERRLOG_GSM_CS_NO_UL_DATA_EVENT_STRU;
+
+
+
+typedef struct
+{
+    OM_ERR_LOG_HEADER_STRU                  stHeader;
+    PHY_GSM_CS_ERROR_REASON_ENUM_UINT16     enRptReason;
+    VOS_UINT16                              usChannelType;                      /* 信道类型 */
+    VOS_UINT16                              usAssignRxTs;                       /* 业务时隙 */
+    VOS_UINT16                              usResv;
+}PHY_ERRLOG_GSM_CS_ERROR_DETECT_EVENT_STRU;
+
+
+typedef struct
+{
+    OM_ERR_LOG_HEADER_STRU                  stHeader;
+    PHY_INT16                               shwTxPwr;                           /* 当前发射功率，单位0.1dBm */
+    PHY_UINT16                              uhwReseved;
+}PHY_MNTN_WCDMA_TX_POWER_DROP_EVENT_STRU;
+typedef struct
+{
+    OM_ERR_LOG_HEADER_STRU                  stHeader;
+    PHY_UINT16                              uhwPrePilotBer;                     /* 前个窗内的pilot ber，50表示50% */
+    PHY_UINT16                              uhwCurrPilotBer;                    /* 后个窗内的pilot ber，10表示10% */
+}PHY_MNTN_WCDMA_PILOT_BER_RISE_EVENT_STRU;
 
 /*****************************************************************************
   8 UNION定义

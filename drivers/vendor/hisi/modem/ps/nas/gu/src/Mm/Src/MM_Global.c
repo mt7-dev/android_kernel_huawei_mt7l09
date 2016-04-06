@@ -171,42 +171,6 @@ const MM_CELL_FUN_TYPE        aMmEvent3[33] = {
     Mm_Nop,                                         /* S31: TEST_CONTROL_ACTIVE                         */
     Mm_Nop,                                        /* S32: MM_INTER_RAT_CHANGE                         */
 };
-const MM_CELL_FUN_TYPE        aMmEvent4[33] = {
-    Mm_Nop,                                         /* S0 : MM_NULL                                     */
-    Mm_Nop,                                         /* S1 : MM IDLE NO CELL AVAILABLE                   */
-    Mm_Nop,                                         /* S2 : MM IDLE PLMN SEARCH                         */
-    Mm_Nop,                                         /* S3 : MM IDLE NORMAL SERVICE                      */
-    Mm_Nop,                                         /* S4 : MM IDLE LIMITED SERVICE                     */
-    Mm_Nop,                                         /* S5 : MM IDLE ATTEMPTING TO UPDATE                */
-    Mm_Nop,                                         /* S6 : MM IDLE LOCATION UPDATE NEEDED              */
-    Mm_Nop,                                         /* S7 : MM IDLE PLMN SEARCH, NORMAL SERVICE         */
-    Mm_Nop,                                         /* S8 : MM IDLE NO IMSI                             */
-    Mm_Cell_S9_E4,                                  /* S9 : WAIT FOR OUTGOING MM CONNECTION             */
-    Mm_Cell_S10_E4,                                 /* S10: MM CONNECTION ACTIVE                        */
-    Mm_Cell_S11_E4,                                 /* S11: WAIT FOR NETWORK COMMAND                    */
-    Mm_Cell_S12_E4,                                 /* S12: WAIT FOR RR CONNECTION (MM CONNECTION)      */
-    Mm_Cell_S13_E4,                                 /* S13: WAIT FOR REESTABLISH(WAIT FOR REEST REQ)    */
-    Mm_Cell_S14_E4,                                 /* S14: WAIT FOR REESTABLISH(WAIT FOR EST_CNF)      */
-    Mm_Nop,                                         /* S15: WAIT FOR RR ACTIVE                          */
-    Mm_Cell_S16_E4,                                 /* S16: WAIT FOR ADDITIONAL OUTGOING MM CONNECTION  */
-    Mm_Nop,                                         /* S17: LOCATION UPDATING PENDING                   */
-    Mm_Nop,                                         /* S18: IMSI DETACH PENDING                         */
-    Mm_Cell_S19_E4,                                 /* S19: WAIT FOR ATTACH                             */
-    Mm_Nop,                                         /* S20: MM IDLE RECEIVING GROUPCALL(NORMAL SERVICE) */
-    Mm_Nop,                                         /* S21: MM IDLE RECEIVING GROUPCALL(LIMITED SERVICE)*/
-    Mm_Cell_S12_E4,                                 /* S22: WAIT FOR RR CONNECTION (LOCATION UPDATING)  */
-    Mm_Cell_S9_E4,                                  /* S23: LOCATION UPDATING INITIATED                 */
-    Mm_Cell_S9_E4,                                  /* S24: LOCATION UPDATE REJECTED                    */
-    Mm_Cell_S12_E4,                                 /* S25: WAIT FOR RR CONNECTION (IMSI DETACH)        */
-    Mm_Cell_S9_E4,                                  /* S26: IMSI DETACH INITIATED                       */
-    Mm_Cell_S10_E4,                                 /* S27: PROCESS CM SERVICE PROMPT                   */
-    Mm_Nop,                                         /* S28: MM CONNECTION ACTIVE (GROUP TRANSMIT MODE)  */
-    Mm_Nop,                                         /* S29: WAIT FOR RR CONNECTION (GROUP TRANSMIT WAIT *
-                                                     * FOR RR CONNECTION (GROUP TRANSMIT MODE)          */
-    Mm_Nop,                                         /* S30:  RR CONNECTION RELEASE NOT ALLOWED          */
-    Mm_Nop,                                         /* S31: TEST_CONTROL_ACTIVE                         */
-    Mm_Nop,                                        /* S32: MM_INTER_RAT_CHANGE                         */
-};
 const MM_CELL_FUN_TYPE        aMmEvent5[33] = {
     Mm_Cell_S0_E5,                                  /* S0 : MM_NULL                                     */
     Mm_Cell_S1_E5,                                  /* S1 : MM IDLE NO CELL AVAILABLE                   */
@@ -482,7 +446,7 @@ const MM_CELL_FUN_TYPE        aMmEvent12[33] = {
     Mm_Cell_S4_E12,                                 /* S16: WAIT FOR ADDITIONAL OUTGOING MM CONNECTION  */
 
     Mm_Cell_S17_E12,                                /* S17: LOCATION UPDATING PENDING                   */
-    
+
     Mm_Cell_S18_E12,                                /* S18: IMSI DETACH PENDING                         */
     Mm_Cell_S4_E12,                                 /* S19: WAIT FOR ATTACH                             */
     Mm_Nop,                                         /* S20: MM IDLE RECEIVING GROUPCALL(NORMAL SERVICE) */
@@ -3338,7 +3302,7 @@ const MM_CELL_FUN_TYPE*       gaMmStateTable[89] = {
     aMmEvent1,
     aMmEvent2,
     aMmEvent3,
-    aMmEvent4,
+    (MM_CELL_FUN_TYPE *)0,
     aMmEvent5,
     aMmEvent6,
     aMmEvent7,

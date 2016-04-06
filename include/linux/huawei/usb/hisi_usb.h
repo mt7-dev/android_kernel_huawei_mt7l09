@@ -1,6 +1,7 @@
 #ifndef _HISI_USB_H_
 #define _HISI_USB_H_
 
+#if (defined CONFIG_HI3635_USB) || (defined CONFIG_ARCH_HI3630) || (defined CONFIG_ARCH_HI6XXX)
 enum hisi_charger_type {
 	CHARGER_TYPE_SDP = 0,		/* Standard Downstreame Port */
 	CHARGER_TYPE_CDP,		/* Charging Downstreame Port */
@@ -44,4 +45,13 @@ static inline int hisi_usb_otg_event(enum otg_dev_event_type event_type)
 }
 #endif
 
+static inline int hisi_usb_id_change(enum otg_dev_event_type event)
+{
+	if ((event == ID_FALL_EVENT) || (event == ID_RISE_EVENT))
+		return hisi_usb_otg_event(event);
+	else
+		return 0;
+}
+
+#endif /* CONFIG_HI3635_USB */
 #endif /* _HISI_USB_H_*/

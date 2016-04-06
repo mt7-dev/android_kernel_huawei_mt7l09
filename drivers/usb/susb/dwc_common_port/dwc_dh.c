@@ -109,6 +109,17 @@ int dwc_dh_modpow(void *mem_ctx, void *num, uint32_t num_len,
 	uint32_t *bignum_exp = dwc_alloc(mem_ctx, exp_len + 4);
 	uint32_t *bignum_mod = dwc_alloc(mem_ctx, mod_len + 4);
 
+    /* In case malloc fail */
+	if (!bignum_num || !bignum_exp || !bignum_mod) {
+		if (bignum_num)
+			dwc_free(mem_ctx, bignum_num);
+		if (bignum_exp)
+			dwc_free(mem_ctx, bignum_exp);
+		if (bignum_mod)
+			dwc_free(mem_ctx, bignum_mod);
+		return -1;
+	}
+
 	dh_swap_bytes(num, &bignum_num[1], num_len);
 	bignum_num[0] = num_len / 4;
 
@@ -155,17 +166,18 @@ int dwc_dh_pk(void *mem_ctx, uint8_t nd, uint8_t *exp, uint8_t *pk, uint8_t *has
 	DWC_MEMCPY(&m3[0], pk, 384);
 	DWC_SHA256(m3, 385, hash);
 
-	dh_dump("PK", pk, 384);
-	dh_dump("SHA-256(M3)", hash, 32);
+ 	dh_dump("PK", pk, 384);
+ 	dh_dump("SHA-256(M3)", hash, 32);
 	return 0;
 }
 
+static uint8_t g_mv[784];
 int dwc_dh_derive_keys(void *mem_ctx, uint8_t nd, uint8_t *pkh, uint8_t *pkd,
 		       uint8_t *exp, int is_host,
 		       char *dd, uint8_t *ck, uint8_t *kdk)
 {
 	int retval;
-	uint8_t mv[784];
+	uint8_t *mv = g_mv;
 	uint8_t sha_result[32];
 	uint8_t dhkey[384];
 	uint8_t shared_secret[384];
@@ -225,12 +237,12 @@ int dwc_dh_derive_keys(void *mem_ctx, uint8_t nd, uint8_t *pkh, uint8_t *pkd,
 
 	message = "connection key";
 	DWC_HMAC_SHA256(message, DWC_STRLEN(message), dhkey, 32, sha_result);
-	dh_dump("HMAC(SHA-256, DHKey, connection key)", sha_result, 32);
+ 	dh_dump("HMAC(SHA-256, DHKey, connection key)", sha_result, 32);
 	DWC_MEMCPY(ck, sha_result, 16);
 
 	message = "key derivation key";
 	DWC_HMAC_SHA256(message, DWC_STRLEN(message), dhkey, 32, sha_result);
-	dh_dump("HMAC(SHA-256, DHKey, key derivation key)", sha_result, 32);
+ 	dh_dump("HMAC(SHA-256, DHKey, key derivation key)", sha_result, 32);
 	DWC_MEMCPY(kdk, sha_result, 32);
 
 	return 0;

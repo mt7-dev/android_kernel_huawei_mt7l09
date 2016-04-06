@@ -39,35 +39,31 @@
 #include <linux/buffer_head.h>
 #include <linux/ctype.h>
 #include <linux/regulator/consumer.h>
-#include <linux/regulator/driver.h>
-#include <linux/regulator/machine.h>
-#include <hsad/config_interface.h>
-#include <hsad/config_mgr.h>
 #include <linux/vmalloc.h>
 #include <linux/random.h>
 #include <linux/irq.h>
-//#include "drv_regulator_user.h"
 #include "extisp.h"
 #include "cam_log.h"
-//#include "mini_cam_log.h"
-//#include "mini_k3_isp.h"
 #include <linux/amba/pl022.h>
 #include <linux/pinctrl/consumer.h>
+#include <dsm/dsm_pub.h>
+#include "sensor_commom.h"
+#include "extisp_reg.h"
 
 #ifdef LOG_TAG
 #undef LOG_TAG
 #define LOG_TAG "mini_isp"
 #endif
 
-#define MINI_ISP_SPI_SPEED_BOOT		(12000000)
+
+#define MINI_ISP_DMD_ERROR_COUNT    (17)
+
+#define MINI_ISP_SPI_SPEED_BOOT		(10000000)
 #define MINI_ISP_SPI_SPEED_NORMAL	(24000000)
-#define MINI_ISP_BOOT_CODE		("/system/miniBoot.bin")
-#define MINI_ISP_BASIC_CODE		("/system/TBM_Latour.bin")
+
 #define MINI_ISP_WAIT_TIMEOUT	(HZ*2)
 #define MINI_ISP_POLL_TIMES		(20)
 #define MINI_ISP_MAX_ERR_CODE	(10)
-
-#define MINI_ISP_CMD_DELAY_US	(1000)
 
 #define MINI_ISP_FW_LOG_BUF		(4096)
 
@@ -78,17 +74,35 @@
 #define ISPCMD_DUMMYBYTES		(4)
 #define ISPCMD_LENFLDBYTES		(2)
 #define ISPCMD_OPCODEBYTES		(2)
-#define ISPCMD_CKSUMBYTES		(2) 
+#define ISPCMD_CKSUMBYTES		(2)
 #define ISPCMD_HDRSIZE			(ISPCMD_LENFLDBYTES+ISPCMD_OPCODEBYTES)
 #define ISPCMD_HDRSIZEWDUMMY	(ISPCMD_LENFLDBYTES+ISPCMD_OPCODEBYTES+ISPCMD_DUMMYBYTES)
 
-#define MINI_ISP_SPI_CS_GPIO		(66)
+//#define MINI_ISP_DEBUG_DUMP_LOG
+
+struct dsm_client_ops ops={
+	.poll_state = NULL,
+	.dump_func = NULL,
+};
+
+struct dsm_dev dev_extisp = {
+	.name = "dsm_extisp",
+	.device_name = NULL,
+	.ic_name = NULL,
+	.module_name = NULL,
+	.fops = &ops,
+	.buff_size = 256,
+};
 
 struct misp_plat_data {
 	int spi_cs_gpio;
 	int irq_gpio;
 	int reset_gpio;
-	int power_gpio;
+#if 0
+	int dvdd_gpio;
+	int vcc_gpio;
+	struct regulator_bulk_data iovdd;
+#endif
 	/* spi master config */
 	struct pl022_config_chip spidev0_chip_info;
 	/* pin control config */
@@ -146,7 +160,10 @@ struct misp_data {
 	wait_queue_head_t	wait_queue;
 	wait_queue_head_t	sync_queue;
 	wait_queue_head_t	pwdn_queue;
+	wait_queue_head_t	chipid_queue;
+    wait_queue_head_t   ois_queue;
 	int		state;
+	int		extisp_type;
 	u32		last_error_code[MINI_ISP_MAX_ERR_CODE];
 	/*
 	 * NOTE: All buffers should be dma-safe buffers
@@ -171,6 +188,7 @@ struct misp_data {
 	struct misp_fw_ver_info fw_info;
 	struct misp_fw_ver_info boot_info;
 	u32 	flush_reg_flag;
+	struct dsm_client *client_extisp;
 };
 
 typedef enum {
@@ -191,6 +209,7 @@ enum {
 	MINI_ISP_STATE_READY			= (1U<<0),
 	MINI_ISP_STATE_SYNC				= (1U<<1),
 	MINI_ISP_STATE_PWDN				= (1U<<2),
+    MINI_ISP_STATE_OIS              = (1U<<3),
 };
 
 enum {
@@ -200,6 +219,10 @@ enum {
 	MINI_ISP_IRQ_LOG_FULL			= (1U<<3),
 	MINI_ISP_IRQ_SYNC				= (1U<<4),
 	MINI_ISP_IRQ_PWDN				= (1U<<5),
+	MINI_ISP_IRQ_OIS_INITDONE       = (1U<<6),
+    MINI_ISP_IRQ_OIS                = (1U<<7), //0x0080
+	MINI_ISP_IRQ_CHIPID_AL6045				= 0xB100,
+	MINI_ISP_IRQ_CHIPID_AL6010				= 0xB101,
 };
 
 enum {
@@ -224,163 +247,18 @@ enum {
 };
 
 static struct misp_data *misp_drv_data;
-static u32 misp_default_reg_table [] ={
-	0xffe80200,
-	0xffe80228,
-	0xffe80250,
-	0xffe80278,
-	0xffe802a0,
-	0xffe802c8,
-	0xffe802f0,
-	0xffe80318,
-	0xffe80340,
-	0xffe80368,
-	0xffe80390,
-	0xffe803b8,
-	0xffe803e0,
-	0xffe80408,
-	0xffe80430,
-	0xffe80458,
-	0xffe80480,
-	0xffe804a8,
-	0xffe804d0,
-	0xffe804f8,
-	0xffe80520,
-	0xffe80548,
-	0xffe80570,
-	0xffe80598,
-	0xffe805c0,
-	0xffe805e8,
-	0xffe80610,
-	0xffe80638,
-	0xffe80660,
-	0xffe80688,
-	0xffe806b0,
-	0xffe806b0,
-	0xffe80700,
-	0xffe80728,
-	0xffe80750,
-	0xffe80778,
-	0xffe807a0,
-	0xffe807c8,
-	0xffe807f0,
-	0xffe80818,
-	0xffe80840,
-	0xffe80868,
 
-	0xffeb0000,
-	0xffeb0028,
-	0xffeb0050,
-	0xffeb0078,
-	0xffeb00a0,
-	0xffeb00c8,
-	0xffeb00f0,
-	0xffeb0118,
-	0xffeb0140,
-	0xffeb0168,
+#define MINI_ISP_CHIP_DET_CODE		    ("chip_det.bin")
+#define MINI_ISP_BOOT_CODE_AL6045		("miniBoot.bin")
+#define MINI_ISP_BASIC_CODE_AL6045		("TBM_Latour.bin")
+#define MINI_ISP_BOOT_CODE_AL6010		("miniBoot2.bin")
+#define MINI_ISP_BASIC_CODE_AL6010		("TBM_Latour2.bin")
 
-	0xffeb1000,
-	0xffeb1028,
-	0xffeb1050,
-	0xffeb1078,
-	0xffeb10a0,
-	0xffeb10c8,
-	0xffeb10f0,
-	0xffeb1118,
-	0xffeb1140,
-	0xffeb1168,
+char misp_firmware_path[NAME_MAX]={0};
+char mini_isp_boot_code[NAME_MAX]={0};
+char mini_isp_basic_code[NAME_MAX]={0};
 
-	0xffeba000,
-	0xffeba028,
-
-	0xffebb000,
-	0xffebb028,
-
-	0xffedc000,
-	0xffedc028,
-	0xffedc050,
-	0xffedc078,
-	0xffedc0a0,
-	0xffedc0c8,
-	0xffedc0f0,
-
-	0xffedd000,
-	0xffedd028,
-	0xffedd050,
-	0xffedd078,
-	0xffedd0a0,
-	0xffedd0c8,
-	0xffedd0f0,
-
-	0xffede000,
-	0xffede028,
-	0xffede050,
-	0xffede078,
-	0xffede0a0,
-	0xffede0c8,
-	0xffede0f0,
-
-	0xffedf000,
-	0xffedf028,
-	0xffedf050,
-	0xffedf078,
-	0xffedf0a0,
-	0xffedf0c8,
-	0xffedf0f0,
-	0xffe30000,
-
-	0xfff10900,
-	0xfff10928,
-
-	0xfff18900,
-	0xfff18928,
-
-	0xfffa1000,
-	0xfffa1028,
-	0xfffa1050,
-	0xfffa1078,
-	0xfffa10a0,
-	0xfffa10c8,
-	0xfffa10f0,
-	0xfffa1118,
-	0xfffa1140,
-	0xfffa1168,
-	0xfffa1190,
-
-	0xfffa2000,
-	0xfffa2028,
-	0xfffa2050,
-	0xfffa2078,
-	0xfffa20a0,
-	0xfffa20c8,
-	0xfffa20f0,
-	0xfffa2118,
-	0xfffa2140,
-	0xfffa2168,
-	0xfffa2190,
-
-	0xfffa3000,
-	0xfffa3028,
-
-	0xfffa4000,
-	0xfffa4028,
-
-	0xfffa9000,
-	0xfffa9028,
-	0xfffa9050,
-	0xfffa9078,
-	0xfffa90a0,
-	0xfffa90c8,
-
-	0xfffaa000,
-	0xfffaa028,
-	0xfffaa050,
-	0xfffaa078,
-	0xfffaa0a0,
-	0xfffaa0c8,
-};
-
-static unsigned char s_module_id[3] = {0};
+u32 extisp_spi_normal_speed = MINI_ISP_SPI_SPEED_NORMAL;
 
 static struct misp_data* get_misp_data(void);
 static int misp_send_cmd(struct misp_data *devdata, u16 opcode, u8 *param, u32 len);
@@ -388,8 +266,12 @@ static int misp_recv_data(struct misp_data *devdata, u8 *param, u32 len);
 static int misp_recv_block(struct misp_data *devdata, u8 *out, u32 len);
 static u16 calculate_checksum(u8 *buf, u16 size);
 static void spi_data_debug(const void *buf, int data_len, int dbg_len);
+static void misp_cmd_delay(void);
 static void misp_dump_err(struct work_struct *work);
 static void misp_dump_log(struct work_struct *work);
+#ifdef MINI_ISP_DEBUG_DUMP_LOG
+static void misp_dump_log1(void);
+#endif
 static int misp_spi_send(struct misp_data *devdata, u32 len);
 static int misp_spi_recv(struct misp_data *devdata, u32 len);
 static int misp_poll_status(struct misp_data *devdata);
@@ -403,26 +285,285 @@ static void misp_dump_ram(struct misp_data *pdata, u32 start, u32 total, u32 mod
 static void misp_write_reg(struct misp_data *pdata, u32 addr, u32 val);
 static void misp_test_spi(struct misp_data *pdata);
 
-/* 
- * mini isp export functions, export to other driver modules to use.
- * include :
- * @applicaton-layer spi cmd
- * @init and exit function
- * @power control funciont
- */
 
-void set_sensor_module_id(int index, unsigned char module_id)
+void misp_set_spi_speed(u32 speed)
 {
-	/* index 0:rear sensor, index 1: fore sensor */
-	cam_info("%s index=%d, module_id=%d.", __func__, index, module_id);
-	if (0 == index) {
-		s_module_id[0] = s_module_id[1] = module_id;
-	} else if (1 == index) {
-		s_module_id[2] = module_id;
-	}
+    cam_info("%s: speed(%d)", __func__, speed);
+    extisp_spi_normal_speed = speed;
 }
-EXPORT_SYMBOL(set_sensor_module_id);
 
+static void misp_set_firmware_path(char * path,int type)
+{
+    if(type == EXTISP_AL6010){
+        snprintf(mini_isp_boot_code,NAME_MAX,"%s%s",path,MINI_ISP_BOOT_CODE_AL6010);
+        snprintf(mini_isp_basic_code,NAME_MAX,"%s%s",path,MINI_ISP_BASIC_CODE_AL6010);
+    } else if (type == EXTISP_AL6045) {
+        snprintf(mini_isp_boot_code,NAME_MAX,"%s%s",path,MINI_ISP_BOOT_CODE_AL6045);
+        snprintf(mini_isp_basic_code,NAME_MAX,"%s%s",path,MINI_ISP_BASIC_CODE_AL6045);
+    }
+
+    cam_info("%s: mini_isp_boot_code(%s),mini_isp_basic_code(%s)",
+            __func__, mini_isp_boot_code,mini_isp_basic_code);
+}
+
+#if 0
+static int _misp_get_chipid(void)
+{
+	struct misp_data *drv_data = get_misp_data();
+	struct misp_plat_data *plat_data = NULL;
+	int ret = 0;
+	int type = EXTISP_NULL;
+    char mini_isp_chip_det_code[NAME_MAX]={0};
+
+	cam_info("%s enter", __func__);
+	if (!drv_data) {
+		cam_err("%s no driver data", __func__);
+		return type;
+	}
+
+        if(drv_data->extisp_type !=EXTISP_NULL){
+	    type = drv_data->extisp_type;
+            cam_info("%s extisp_type = %d", __func__, type);
+            return type;
+        }
+
+	misp_init();
+	misp_set_power(1);
+	hwcam_mclk_enable(0, 1);
+
+	ret = mutex_lock_interruptible(&drv_data->busy_lock);
+	if (ret)
+		goto out;
+
+	plat_data = &drv_data->plat_data;
+
+	drv_data->extisp_type = EXTISP_NULL;
+
+	/* reset mini-isp keep low for at least 200us, release to high for 20ms */
+	gpio_direction_output(plat_data->reset_gpio,  0);
+	msleep(16);
+	gpio_direction_output(plat_data->reset_gpio,  1);
+	msleep(10);
+
+	/* load boot code firmware */
+	drv_data->spi->max_speed_hz = MINI_ISP_SPI_SPEED_BOOT;
+	ret = spi_setup(drv_data->spi);
+	if (ret < 0) {
+		cam_err("%s - failed to setup spi speed:%u", __func__,
+										drv_data->spi->max_speed_hz);
+		goto out;
+	}
+    if(misp_firmware_path[0] == 0){
+        strncpy(misp_firmware_path,"/system/miniisp/",sizeof(misp_firmware_path));
+    }
+    snprintf(mini_isp_chip_det_code,NAME_MAX,"%s%s",misp_firmware_path,MINI_ISP_CHIP_DET_CODE);
+
+	ret = misp_load_boot_code(drv_data, mini_isp_chip_det_code);
+	if (ret)
+		goto out;
+	msleep(1);
+
+	wait_event_interruptible_timeout(drv_data->chipid_queue,
+					(drv_data->extisp_type != EXTISP_NULL),
+					MINI_ISP_WAIT_TIMEOUT);
+
+	type = drv_data->extisp_type;
+
+	cam_info("enter %s,extisp_type=%d", __func__, type);
+
+	misp_set_firmware_path(misp_firmware_path,type);
+
+out:
+	mutex_unlock(&drv_data->busy_lock);
+	hwcam_mclk_enable(0, 0);
+	misp_set_power(0);
+	misp_exit();
+
+	return type;
+
+}
+#endif
+
+int misp_get_chipid(void)
+{
+    struct misp_data *drv_data = get_misp_data();
+    int extisp_type = EXTISP_NULL;
+
+    extisp_type = altek6045_get_chipid();
+    if(misp_firmware_path[0] == 0){
+        strncpy(misp_firmware_path,"/system/miniisp/",sizeof(misp_firmware_path));
+    }
+    misp_set_firmware_path(misp_firmware_path,extisp_type);
+    drv_data->extisp_type = extisp_type;
+    cam_info("%s extisp_type = %d",__func__,extisp_type);
+    return extisp_type;
+}
+
+
+int misp_exec_write_block_res(u16 cmd, u8 *in, u32 in_len, bool out_to_block, u8 *out,u32 bulk_len, u32 out_len)
+{
+	struct misp_data *devdata = get_misp_data();
+	int err = 0;
+	u8 ctrl_byte = USPICTRL_MS_CB_DIS;
+	struct spi_transfer	xfer[2];
+	struct spi_message	m;
+	int status;
+	cam_info("Enter: %s", __func__);
+
+	if(!devdata) {
+		cam_err("%s no driver data", __func__);
+		return -ENODEV;
+	}
+	memset(xfer, 0, sizeof(xfer));
+
+	err = mutex_lock_interruptible(&devdata->busy_lock);
+	if(err)
+		goto out;
+	devdata->state = MINI_ISP_STATE_IDLE;
+	if(misp_send_cmd(devdata, cmd, in, in_len))
+		goto out;
+
+	cam_debug("%s send cmd to switch bulk mode", __func__);
+	wait_event_interruptible_timeout(devdata->wait_queue,\
+				(devdata->state == MINI_ISP_STATE_READY),\
+				MINI_ISP_WAIT_TIMEOUT);
+
+	if (devdata->state != MINI_ISP_STATE_READY) {
+		cam_err("%s wait ready signal timeout", __func__);
+		err = -EAGAIN;
+		goto out;
+	}
+
+	devdata->state = MINI_ISP_STATE_IDLE;  //reset devdata state
+
+	/*one message only, incase broken by spi interrupt */
+	devdata->ext_buf[0] = ctrl_byte;
+	memcpy(devdata->tx_buf, out, bulk_len);
+	xfer[0].tx_buf = devdata->ext_buf;
+	xfer[0].len = sizeof(ctrl_byte);
+	xfer[0].cs_change = 1;
+	xfer[0].delay_usecs = 1;
+	xfer[1].tx_buf = devdata->tx_buf;
+	xfer[1].len = bulk_len;
+	spi_message_init(&m);
+	spi_message_add_tail(&xfer[0], &m);
+	spi_message_add_tail(&xfer[1], &m);
+	status = spi_sync(devdata->spi, &m);
+	if (status) {
+		cam_info("%s - sync error: status=%d", __func__, status);
+	}
+
+	//TODO: cannot wait ready interrupt
+
+	wait_event_interruptible_timeout(devdata->wait_queue,\
+				(devdata->state == MINI_ISP_STATE_READY),\
+				MINI_ISP_WAIT_TIMEOUT);
+
+	if (devdata->state != MINI_ISP_STATE_READY) {
+		cam_warn("%s wait ready signal timeout2", __func__);
+		err = -EAGAIN;
+		goto out;
+	}
+
+	if (out_to_block)
+		err = misp_recv_block(devdata, out, bulk_len);
+	else
+		err = misp_recv_data(devdata, in, out_len);
+
+
+out:
+	misp_cmd_delay();
+	mutex_unlock(&devdata->busy_lock);
+	return err;
+
+}
+
+int misp_exec_write_block(u16 cmd, u8 *in, u32 in_len, u8 *out, u32 out_len)
+{
+	struct misp_data *devdata = get_misp_data();
+	int err = 0;
+	//int i;
+	u8 ctrl_byte = USPICTRL_MS_CB_DIS;
+	struct spi_transfer	xfer[2];
+	struct spi_message	m;
+	int status;
+	cam_debug("Enter: %s", __func__);
+
+    if(!devdata) {
+        cam_err("%s no driver data", __func__);
+        return -ENODEV;
+    }
+	memset(xfer, 0, sizeof(xfer));
+
+    err = mutex_lock_interruptible(&devdata->busy_lock);
+    if(err)
+        goto out;
+	devdata->state = MINI_ISP_STATE_IDLE;
+	if(misp_send_cmd(devdata, cmd, in, in_len))
+		goto out;
+
+	wait_event_interruptible_timeout(devdata->wait_queue,\
+				(devdata->state == MINI_ISP_STATE_READY),\
+				MINI_ISP_WAIT_TIMEOUT);
+
+	if (devdata->state != MINI_ISP_STATE_READY) {
+		cam_warn("%s wait ready signal timeout", __func__);
+		err = -EAGAIN;
+		goto out;
+	}
+
+
+    // print buffer for debug
+//    for(i = 0; i < out_len; i++) {
+//        cam_info("%s buf[%d] = 0x%02x", __func__, i, out[i]);
+//    }
+	/*one message only, incase broken by spi interrupt */
+	devdata->ext_buf[0] = ctrl_byte;
+	memcpy(devdata->tx_buf, out, out_len);
+	xfer[0].tx_buf = devdata->ext_buf;
+	xfer[0].len = sizeof(ctrl_byte);
+	xfer[0].cs_change = 1;
+	xfer[0].delay_usecs = 1;
+	xfer[1].tx_buf = devdata->tx_buf;
+	xfer[1].len = out_len;
+	spi_message_init(&m);
+	spi_message_add_tail(&xfer[0], &m);
+	spi_message_add_tail(&xfer[1], &m);
+	status = spi_sync(devdata->spi, &m);
+	if (status) {
+		cam_info("%s - sync error: status=%d", __func__, status);
+	}
+
+    //TODO: cannot wait ready interrupt
+/*
+	wait_event_interruptible_timeout(devdata->wait_queue,\
+				(devdata->state == MINI_ISP_STATE_READY),\
+				MINI_ISP_WAIT_TIMEOUT);
+
+	if (devdata->state != MINI_ISP_STATE_READY) {
+		cam_warn("%s wait ready signal timeout2", __func__);
+		err = -EAGAIN;
+		goto out;
+	}
+*/
+	if(cmd != ISPCMD_CAMERA_TAKEZSLPICTURES && cmd != ISPCMD_BULK_WRITE_PDAF_AREA){
+		wait_event_interruptible_timeout(devdata->ois_queue, \
+				(devdata->state == MINI_ISP_STATE_OIS), \
+				MINI_ISP_WAIT_TIMEOUT);
+
+		if (devdata->state != MINI_ISP_STATE_OIS) {
+			cam_warn("%s wait ois signal timeout", __func__);
+			err = -EAGAIN;
+			goto out;
+		}
+	}
+out:
+	misp_cmd_delay();
+	mutex_unlock(&devdata->busy_lock);
+	return err;
+
+    return 0;
+}
 
 int misp_exec_unidir_cmd(u16 cmd, bool set_flag,
 							bool out_to_block, u8 *param, u32 len)
@@ -445,8 +586,9 @@ int misp_exec_unidir_cmd(u16 cmd, bool set_flag,
 			goto out;
 
 		/* special cmd <stream off> need to wait until done*/
-		if ((cmd == ISPCMD_CAMERA_PREVIEWSTREAMONOFF) &&
-			(param[0]==0 && param[1]==0 && param[2]==0)) {
+		if (((cmd == ISPCMD_CAMERA_PREVIEWSTREAMONOFF) &&
+			(param[0]==0 && param[1]==0 && param[2]==0)) ||
+                cmd == ISPCMD_BULK_WRITE_OIS_DATA) {
 
 			wait_event_interruptible_timeout(devdata->sync_queue,\
 						(devdata->state == MINI_ISP_STATE_SYNC),\
@@ -480,11 +622,75 @@ int misp_exec_unidir_cmd(u16 cmd, bool set_flag,
 			err = misp_recv_data(devdata, param, len);
 	}
 out:
-	udelay(MINI_ISP_CMD_DELAY_US);
+	misp_cmd_delay();
 	mutex_unlock(&devdata->busy_lock);
 	return err;
 }
 EXPORT_SYMBOL(misp_exec_unidir_cmd);
+
+int misp_get_module_info(uint8_t index,uint16_t *sensor_id, uint8_t *module_id)
+{
+    uint8_t buf[3];
+    u16 opCode = 0;
+    int ret = 0;
+
+	if ((sensor_id == NULL) || (module_id == NULL)) {
+		cam_err("%s NULL pointer", __func__);
+		return -EINVAL;
+	}
+    //use low spi speed when reading module id
+    misp_set_spi_speed(MINI_ISP_SPI_SPEED_BOOT);
+    misp_load_fw(NULL);
+    //recover high speed
+    misp_set_spi_speed(MINI_ISP_SPI_SPEED_NORMAL);
+
+    if(index == 0){
+        opCode = ISPCMD_SYSTEM_GET_FIRSTSENSORID;
+    } else {
+        opCode = ISPCMD_SYSTEM_GET_SECONDSENSORID;
+    }
+    ret = misp_exec_unidir_cmd(opCode,0,0,buf,3);
+    if(ret==0){
+        *sensor_id= buf[0]+(buf[1]<<8);
+        *module_id = buf[2];
+    }
+    cam_info("%s sensor_id = 0x%04x module_id = 0x%02x",__func__,*sensor_id,*module_id);
+    return ret;
+}
+EXPORT_SYMBOL(misp_get_module_info);
+
+int misp_get_pipeline_status(void)
+{
+	uint8_t buf[7] = {0};
+	struct misp_data *drv_data = get_misp_data();
+	u16 opCode = 0;
+	int ret = 0;
+	if (drv_data == NULL) {
+		cam_info("%s drv_data is NULL!",__func__);
+		return -1;
+	}
+	opCode = ISPCMD_SYSTEM_GET_PIPELINE_STATUS;
+
+	ret = misp_exec_unidir_cmd(opCode,0,0,buf,7);
+	if (ret == 0) {
+		if(!dsm_client_ocuppy(drv_data->client_extisp)){
+			dsm_client_record(drv_data->client_extisp, "misp ActiveMIPI:%x\n", buf[0]);
+			dsm_client_record(drv_data->client_extisp, "misp ErrorCode:%x\n", buf[1]);
+			dsm_client_record(drv_data->client_extisp, "misp MIPI_CLK_status:%x\n", buf[2]);
+			dsm_client_record(drv_data->client_extisp, "misp MIPI_lane_A_status:%x\n", buf[3]);
+			dsm_client_record(drv_data->client_extisp, "misp MIPI_lane_B_status:%x\n", buf[4]);
+			dsm_client_record(drv_data->client_extisp, "misp MIPI_lane_C_status:%x\n", buf[5]);
+			dsm_client_record(drv_data->client_extisp, "misp MIPI_lane_D_status:%x\n", buf[6]);
+			dsm_client_notify(drv_data->client_extisp, DSM_EXTISP_PIPE_ERROR_NO);
+			cam_info("[I/DSM] %s dsm_client_notify", drv_data->client_extisp->client_name);
+		}
+	} else {
+		cam_info("%s failt ret = %x",__func__, ret);
+	}
+	return ret;
+}
+EXPORT_SYMBOL(misp_get_pipeline_status);
+
 
 int misp_exec_bidir_cmd(u16 cmd, u8 *in, u32 in_len,
 						bool out_to_block, u8 *out, u32 out_len)
@@ -526,7 +732,7 @@ int misp_exec_bidir_cmd(u16 cmd, u8 *in, u32 in_len,
 		err = misp_recv_data(devdata, out, out_len);
 
 out:
-	udelay(MINI_ISP_CMD_DELAY_US);
+	misp_cmd_delay();
 	mutex_unlock(&devdata->busy_lock);
 	return err;
 }
@@ -563,40 +769,6 @@ int misp_init(void)
 	drv_data->flush_reg_flag = MINI_ISP_FLUSH_REG_NONE;
 
 	return ret;
-	/* init power ldo */
-#if 0
-	ldo_core = regulator_get(&drv_data->spi->dev, MINI_ISP_ANALOG_VDD);
-	if (IS_ERR_OR_NULL(ldo_core)) {
-		cam_err("%s failed to get misp core(1.1v) ldo", __func__);
-		ret = -ENODEV;
-		goto err_core_ldo_get;
-	}
-
-	ldo_io = regulator_get(&drv_data->spi->dev, M_CAMERA_IO_VDD);
-	if (IS_ERR_OR_NULL(ldo_io)) {
-		cam_err("%s failed to get misp IO(1.8) ldo", __func__);
-		ret = -ENODEV;
-		goto err_io_ldo_get;
-	}
-
-	ret |= regulator_set_mode(ldo_core, REGULATOR_MODE_NORMAL);
-	ret |= regulator_set_voltage(ldo_core, LDO_VOLTAGE_11V, LDO_VOLTAGE_11V);
-
-	ret |= regulator_set_mode(ldo_io, REGULATOR_MODE_NORMAL);
-	ret |= regulator_set_voltage(ldo_io, LDO_VOLTAGE_18V, LDO_VOLTAGE_18V);
-
-	if (ret) {
-		cam_err("%s failed to config misp ldo voltage", __func__);
-		goto err_config_ldo;
-	}
-
-	drv_data->ldo_core = ldo_core;
-	drv_data->ldo_io = ldo_io;
-
-	/* debug level reset */
-	drv_data->debug_log_level = MINI_ISP_LOG_LEVEL_NONE;
-	drv_data->flush_reg_flag = MINI_ISP_FLUSH_REG_NONE;
-#endif
 }
 EXPORT_SYMBOL(misp_init);
 
@@ -622,70 +794,136 @@ int misp_exit(void)
 			cam_err("could not set idle pins");
 	}
 
+	gpio_direction_output(plat_data->reset_gpio,  0);
+
 	/* set gpio to input when exit */
-	gpio_direction_input(plat_data->spi_cs_gpio);
 	gpio_direction_input(plat_data->reset_gpio);
+	gpio_direction_input(plat_data->spi_cs_gpio);
 
 	flush_work(&drv_data->dump_err_work);
 	flush_work(&drv_data->dump_log_work);
-#if 0
-	/* deinit power ldo */
-	if (drv_data->ldo_core)
-		regulator_put(drv_data->ldo_core);
-
-	if (drv_data->ldo_io)
-		regulator_put(drv_data->ldo_io);
-
-	drv_data->ldo_core = NULL;
-	drv_data->ldo_io = NULL;
-#endif
 	/* debug level reset */
 	drv_data->debug_log_level = 0;
 
 	return ret;
 }
 EXPORT_SYMBOL(misp_exit);
-#if 0
-int misp_set_power(camera_power_state power)
+
+int misp_stop(void)
 {
 	struct misp_data *drv_data = get_misp_data();
-	struct misp_plat_data *plat_data = NULL;
-	int ret = 0;
+	u8 mode = 5;
+	int ret = 0, err= 0;
 
-	cam_info("%s power=%s", __func__, (power==POWER_ON)?"on":"off");
+	cam_info("%s enter", __func__);
 
 	if (!drv_data) {
 		cam_err("%s no driver data", __func__);
 		return -ENODEV;
 	}
 
-	if (!drv_data->ldo_core || !drv_data->ldo_io) {
-		cam_err("%s no ldo", __func__);
-		return -EINVAL;
+	err = mutex_lock_interruptible(&drv_data->busy_lock);
+	if (err)
+		goto out;
+
+	drv_data->state = MINI_ISP_STATE_IDLE;
+	err = misp_send_cmd(drv_data, ISPCMD_SYSTEM_CHANGEMODE, &mode, sizeof(mode));
+
+	ret = wait_event_interruptible_timeout(drv_data->pwdn_queue,\
+						(drv_data->state == MINI_ISP_STATE_PWDN),\
+						msecs_to_jiffies(100));
+	if (ret <= 0) {
+		cam_warn("%s wait pwdn signal timeout", __func__);
+	} else {
+		cam_info("%s pwdn signal", __func__);
+	}
+
+out:
+	misp_cmd_delay();
+	mutex_unlock(&drv_data->busy_lock);
+
+	return err;
+}
+EXPORT_SYMBOL(misp_stop);
+
+#if 0
+ int misp_set_power(int on)
+{
+	struct misp_data *drv_data = get_misp_data();
+	struct misp_plat_data *plat_data = NULL;
+	int ret = 0;
+
+	cam_info("%s on=%d", __func__, on);
+
+	if (!drv_data) {
+		cam_err("%s no driver data", __func__);
+		return -ENODEV;
 	}
 
 	plat_data = &drv_data->plat_data;
 
-	if (power == POWER_ON) {
-		/* (1)dc/dc 1.1v power up 1:enable 0:disable */
-		gpio_direction_output(plat_data->power_gpio,  1);
-		udelay(5);
-		/* (2)core 1.1v ldo power up */
-		ret |= regulator_enable(drv_data->ldo_core);
-		udelay(5);
-		/* (3)io 1.8v ldo power up */
-		ret |= regulator_enable(drv_data->ldo_io);
-		msleep(2);
+	//reset should be low before power down
+	if(!on) {
+		gpio_direction_output(plat_data->reset_gpio,  0);
+	}
+
+	if (on) {
+		ret = gpio_request(plat_data->dvdd_gpio, "dvdd_gpio");
+		if (ret) {
+			cam_err("%s gpio_request - dvdd_gpio failled",__func__);
+		}
+		else {
+			gpio_direction_output(plat_data->dvdd_gpio,  1);
+			gpio_free(plat_data->dvdd_gpio);
+		}
+		msleep(4);
+		if(plat_data->dvdd_gpio != plat_data->vcc_gpio) {
+			ret = gpio_request(plat_data->vcc_gpio, "vcc_gpio");
+			if (ret) {
+				cam_err("%s gpio_request - vcc_gpio failled",__func__);
+			}
+			else {
+				gpio_direction_output(plat_data->vcc_gpio,  1);
+				gpio_free(plat_data->vcc_gpio);
+			}
+			msleep(1);
+		}
+		if(plat_data->iovdd.consumer) {
+			ret = regulator_bulk_enable(1, &plat_data->iovdd);
+			if (ret) {
+				cam_err("%s regulator_enable iovdd  failled",__func__);
+			}
+		}
+		msleep(1);
 	} else {
-		/* (1)io 1.8v ldo power down */
-    	ret |= regulator_disable(drv_data->ldo_io);
-		udelay(5);
-		/* (2)analog 1.1v ldo power down */
-    	ret |= regulator_disable(drv_data->ldo_core);
-    	udelay(5);
-		/* (3)dc/dc 1.1v power down 1:enable 0:disable */
-    	gpio_direction_output(plat_data->power_gpio, 0);
-		msleep(2);
+
+		if(plat_data->iovdd.consumer) {
+			ret = regulator_bulk_disable(1, &plat_data->iovdd);
+			if (ret) {
+				cam_err("%s regulator_disable iovdd  failled",__func__);
+			}
+		}
+    		msleep(1);
+		if(plat_data->dvdd_gpio != plat_data->vcc_gpio) {
+			ret = gpio_request(plat_data->vcc_gpio, "vcc_gpio");
+			if (ret) {
+				cam_err("%s gpio_request - vcc_gpio failled",__func__);
+			}
+			else {
+				gpio_direction_output(plat_data->vcc_gpio, 0);
+				gpio_free(plat_data->vcc_gpio);
+			}
+			msleep(1);
+		}
+		ret = gpio_request(plat_data->dvdd_gpio, "dvdd_gpio");
+		if (ret) {
+			cam_err("%s gpio_request - dvdd_gpio failled",__func__);
+		}
+		else {
+			gpio_direction_output(plat_data->dvdd_gpio,  0);
+			gpio_free(plat_data->dvdd_gpio);
+		}
+		msleep(1);
 	}
 
 	return ret;
@@ -743,7 +981,7 @@ int misp_reset_vcm(void)
 	}
 
 out:
-	udelay(MINI_ISP_CMD_DELAY_US);
+	misp_cmd_delay();
 	mutex_unlock(&drv_data->busy_lock);
 
 	return err;
@@ -753,14 +991,22 @@ EXPORT_SYMBOL(misp_reset_vcm);
 int misp_flush_reg(void)
 {
 	struct misp_data *drv_data = get_misp_data();
-	u32 *addr_table = misp_default_reg_table;
-	u32 size = ARRAY_SIZE(misp_default_reg_table);
+	u32 *addr_table = NULL;
+	u32 size = 0;
 
 	cam_info("%s enter", __func__);
 
 	if (!drv_data) {
 		cam_err("%s no driver data", __func__);
 		return -ENODEV;
+	}
+
+	if(drv_data->extisp_type == EXTISP_AL6045){
+		addr_table = misp_default_reg_table;
+		size = ARRAY_SIZE(misp_default_reg_table);
+	}else{
+		addr_table = misp_al6010_reg_table;
+		size = ARRAY_SIZE(misp_al6010_reg_table);
 	}
 
 	/* don't dump twice */
@@ -776,7 +1022,7 @@ int misp_flush_reg(void)
 }
 EXPORT_SYMBOL(misp_flush_reg);
 
-int misp_load_fw(void)
+int _misp_load_fw(u8 *out_fw_disp)
 {
 	struct misp_data *drv_data = get_misp_data();
 	struct misp_plat_data *plat_data = NULL;
@@ -790,15 +1036,19 @@ int misp_load_fw(void)
 
 	plat_data = &drv_data->plat_data;
 
+	if(mini_isp_boot_code[0] == 0 || mini_isp_basic_code[0] == 0){
+		cam_err("%s invalid firmware path", __func__);
+		return -ENODEV;
+	}
+
 	ret = mutex_lock_interruptible(&drv_data->busy_lock);
 	if (ret)
 		goto out;
 
-	/* reset mini-isp keep low for at least 200us, release to high for 20ms */
 	gpio_direction_output(plat_data->reset_gpio,  0);
-	msleep(1);
+	msleep(15);
 	gpio_direction_output(plat_data->reset_gpio,  1);
-	msleep(25);
+	msleep(10);
 
 	/* load boot code firmware */
 	drv_data->spi->max_speed_hz = MINI_ISP_SPI_SPEED_BOOT;
@@ -808,13 +1058,14 @@ int misp_load_fw(void)
 										drv_data->spi->max_speed_hz);
 		goto out;
 	}
-	ret = misp_load_boot_code(drv_data, MINI_ISP_BOOT_CODE);
+
+	ret = misp_load_boot_code(drv_data, mini_isp_boot_code);
 	if (ret)
 		goto out;
 	msleep(1);
 
 	/* load main code firmware */
-	drv_data->spi->max_speed_hz = MINI_ISP_SPI_SPEED_NORMAL;
+	drv_data->spi->max_speed_hz = extisp_spi_normal_speed;
 	ret = spi_setup(drv_data->spi);
 	if (ret < 0) {
 		cam_err("%s - failed to setup spi speed:%u", __func__,
@@ -822,27 +1073,54 @@ int misp_load_fw(void)
 		goto out;
 	}
 	drv_data->state = MINI_ISP_STATE_IDLE;
-	ret |= misp_load_basic_code(drv_data, MINI_ISP_BASIC_CODE);
+	ret |= misp_load_basic_code(drv_data, mini_isp_basic_code);
 	if (ret)
 		goto out;
 
-	wait_event_interruptible_timeout(drv_data->wait_queue,\
+	wait_event_timeout(drv_data->wait_queue,\
 					(drv_data->state == MINI_ISP_STATE_READY),\
 					MINI_ISP_WAIT_TIMEOUT);
 	if (drv_data->state != MINI_ISP_STATE_READY) {
-		cam_warn("%s wait ready signal timeout", __func__);
+		cam_err("%s wait ready signal timeout", __func__);
+		ret = -EAGAIN;
+//#if 0
+//#endif
 	} else {
 		cam_info("%s sucess to load fw.", __func__);
-		cam_info("%s set sensor module id(%d %d %d).", __func__, s_module_id[0], s_module_id[1], s_module_id[2]);
-		misp_send_cmd(drv_data, ISPCMD_CAMERA_SET_SENSOR_MODULE_ID, s_module_id, sizeof(s_module_id));
+		if(out_fw_disp) {
+			memcpy(out_fw_disp, drv_data->fw_info.info,sizeof(drv_data->fw_info.info));
+		}
 	}
 
 out:
 	mutex_unlock(&drv_data->busy_lock);
 	return ret;
 }
-EXPORT_SYMBOL(misp_load_fw);
 
+int misp_load_fw(u8 *out_fw_disp)
+{
+    struct misp_data *drv_data = get_misp_data();
+    int retry = 0;
+    int ret = 0;
+
+    for(retry = 0; retry < 2; retry++)
+    {
+        ret = _misp_load_fw(out_fw_disp);
+        if (0 == ret)
+            break;
+    }
+    if(ret)
+    {
+        if(!dsm_client_ocuppy(drv_data->client_extisp))
+        {
+			dsm_client_record(drv_data->client_extisp, "%s wait ready signal timeout\n", __func__);
+			dsm_client_notify(drv_data->client_extisp, DSM_EXTISP_LOAD_FW_ERROR_NO);
+		}
+    }
+    return ret;
+}
+
+EXPORT_SYMBOL(misp_load_fw);
 
 /*
  * mini isp local functions, no need to export to other driver modules.
@@ -1025,7 +1303,7 @@ static irqreturn_t misp_irq_thread(int irq, void *handle)
 	/* handle ready done */
 	if (irq_code & MINI_ISP_IRQ_READY_DONE) {
 		drv_data->state = MINI_ISP_STATE_READY;
-		wake_up_interruptible(&drv_data->wait_queue);
+		wake_up(&drv_data->wait_queue);
 	}
 
 	/* handle sync signal */
@@ -1041,12 +1319,17 @@ static irqreturn_t misp_irq_thread(int irq, void *handle)
 	}
 
 	/* handle cmd error */
-	if (irq_code & MINI_ISP_IRQ_CMD_ERR)
+	if (irq_code & MINI_ISP_IRQ_CMD_ERR){
 		cam_err("mini isp critical error, cmd not respond");
+		altek6045_notify_error(MINI_ISP_IRQ_CMD_ERR);
+        queue_work(drv_data->work_queue, &drv_data->dump_err_work);
+	}
 
 	/* handle other error */
-	if (irq_code & MINI_ISP_IRQ_OTHRE_ERR)
+	if (irq_code & MINI_ISP_IRQ_OTHRE_ERR){
+		altek6045_notify_error(MINI_ISP_IRQ_OTHRE_ERR);
 		queue_work(drv_data->work_queue, &drv_data->dump_err_work);
+	}
 
 	/* handle dump log */
 	if (irq_code & MINI_ISP_IRQ_LOG_FULL) {
@@ -1054,14 +1337,124 @@ static irqreturn_t misp_irq_thread(int irq, void *handle)
 			queue_work(drv_data->work_queue, &drv_data->dump_log_work);
 	}
 
+#if 0
+	if (irq_code == MINI_ISP_IRQ_CHIPID_AL6045) {
+		drv_data->extisp_type = EXTISP_AL6045;
+		wake_up_interruptible(&drv_data->chipid_queue);
+	}
+
+	if (irq_code == MINI_ISP_IRQ_CHIPID_AL6010) {
+		drv_data->extisp_type = EXTISP_AL6010;
+		wake_up_interruptible(&drv_data->chipid_queue);
+	}
+#endif
+	/* handle other error */
+	if (irq_code & MINI_ISP_IRQ_OIS_INITDONE){
+		altek6045_notify_ois_done(MINI_ISP_IRQ_OIS_INITDONE);
+	}
+
+    if(irq_code & MINI_ISP_IRQ_OIS) {
+        drv_data->state = MINI_ISP_STATE_OIS;
+        wake_up_interruptible(&drv_data->ois_queue);
+    }
 	return IRQ_HANDLED;
+}
+
+struct err_map {
+	u32 err_head;
+	char *err_name;
+	u32 err_num;
+};
+
+static struct err_map misp_error_table[] = {
+	{0x001, "PQ", DSM_EXTISP_PQ_ERROR_NO},
+	{0x020, "I2C", DSM_EXTISP_I2C_ERROR_NO},
+	{0x021, "USPI", DSM_EXTISP_USPI_ERROR_NO},
+	{0x022, "VCM", DSM_EXTISP_VCM_ERROR_NO},
+	{0x044, "Interrupt", DSM_EXTISP_INTERRUPT_ERROR_NO},
+	{0x045, "CommonFunc", DSM_EXTISP_COMMONFUNC_ERROR_NO},
+	{0x060, "A3", DSM_EXTISP_A3_ERROR_NO},
+	{0x061, "PIPE", DSM_EXTISP_PIPE_ERROR_NO},
+	{0x062, "RDN", DSM_EXTISP_RDN_ERROR_NO},
+	{0x070, "TXLM", DSM_EXTISP_TXLM_ERROR_NO},
+	{0x074, "mipiTx", DSM_EXTISP_MTX_ERROR_NO},
+	{0x0D0, "mipiRx", DSM_EXTISP_MRX_ERROR_NO},
+	{0x0D2, "FEC0", DSM_EXTISP_FEC0_ERROR_NO},
+	{0x0D4, "SENSOR", DSM_EXTISP_SENSOR_ERROR_NO},
+	{0x202, "FEC1", DSM_EXTISP_FEC1_ERROR_NO},
+	{0x203, "CAP", DSM_EXTISP_CAP_ERROR_NO},
+	{0xfff, "other fail", DSM_EXTISP_OTHER_ERROR_NO}, //end
+};
+
+void parser_dmd_error(u32 err, char* out_err_name, char* out_err_num)
+{
+	u32 head = 0, index = 0;
+	bool find = false;
+
+	cam_info("%s: last_error_code[0] = 0x%08x", __func__, err);
+
+	for (index = 0; index < MINI_ISP_DMD_ERROR_COUNT;index++) {
+		head = (err>>20);
+		if (head == misp_error_table[index].err_head ) {
+			cam_info("%s: head = 0x%08x", __func__, head);
+			snprintf(out_err_name, 16, "%s", misp_error_table[index].err_name);
+			snprintf(out_err_num, 8, "%d",	misp_error_table[index].err_num);
+			find = true;
+			break;
+		}
+	}
+
+	if (find == false) {
+		cam_info("%s: head = 0x%08x", __func__, head);
+		snprintf(out_err_name, 16, "%s", misp_error_table[MINI_ISP_DMD_ERROR_COUNT-1].err_name);
+		snprintf(out_err_num, 8, "%d", misp_error_table[MINI_ISP_DMD_ERROR_COUNT-1].err_num);
+	}
+
+	cam_info("[I/DSM] %s: err_name = %s, err_num = %s", __func__, out_err_name, out_err_num);
+}
+
+
+static void misp_cmd_delay(void)
+{
+	enum {
+		MINI_ISP_CMD_DELAY_US = 1200,
+		MINI_ISP_MIN_DELAY_LOOP_US = 50,
+	};
+
+	int cnt = 0;
+	int loop_cnt = MINI_ISP_CMD_DELAY_US / MINI_ISP_MIN_DELAY_LOOP_US;
+	struct timeval start_time, end_time;
+	long us_time_gap;
+
+	do_gettimeofday(&start_time);
+	for (cnt = 0; cnt < loop_cnt; cnt++) {
+		udelay(MINI_ISP_MIN_DELAY_LOOP_US);
+	}
+	do_gettimeofday(&end_time);
+
+	us_time_gap = ((end_time.tv_usec < start_time.tv_usec) ?
+		(1000000 - start_time.tv_usec + end_time.tv_usec) :
+		(end_time.tv_usec - start_time.tv_usec));
+	if (us_time_gap < MINI_ISP_CMD_DELAY_US) {
+		udelay(MINI_ISP_CMD_DELAY_US - us_time_gap);
+	}
 }
 
 static void misp_dump_err(struct work_struct *work)
 {
 	struct misp_data *drv_data =
 		container_of(work, struct misp_data, dump_err_work);
-	int err = 0, index = 0;
+      int err = 0, index = 0;
+      char err_info[256] = {0};
+      char tmp_err[20] = {0};
+      char err_name[16] = {0};
+      char err_num[8] = {0};
+      u32 err_code = 0;
+      int iSize = 0;
+#ifdef MINI_ISP_DEBUG_DUMP_LOG
+	u32 *default_reg_table = misp_default_reg_table;
+	u32 default_reg_table_count = ARRAY_SIZE(misp_default_reg_table);
+#endif
 
 	cam_info("%s enter", __func__);
 
@@ -1079,17 +1472,168 @@ static void misp_dump_err(struct work_struct *work)
 	err = misp_recv_data(drv_data, (u8 *)drv_data->last_error_code,
 						sizeof(u32)*MINI_ISP_MAX_ERR_CODE);
 out:
-	udelay(MINI_ISP_CMD_DELAY_US);
+	misp_cmd_delay();
 	mutex_unlock(&drv_data->busy_lock);
+#ifdef MINI_ISP_DEBUG_DUMP_LOG
+	misp_get_pipeline_status();
+
+	misp_dump_log1();
+	if(drv_data->extisp_type == EXTISP_AL6045){
+	    default_reg_table = misp_default_reg_table;
+		default_reg_table_count = ARRAY_SIZE(misp_default_reg_table);
+	}else{
+	    default_reg_table = misp_al6010_reg_table;
+		default_reg_table_count = ARRAY_SIZE(misp_al6010_reg_table);
+	}
+	misp_dump_reg(drv_data, default_reg_table, default_reg_table_count);
+
+#endif
+
 
 	/* dump last error code */
 	if (!err) {
 		for (index=0; index<MINI_ISP_MAX_ERR_CODE; index++) {
-			cam_info("misp last error code[%d] = 0x%08x",
-					index, drv_data->last_error_code[index]);
+			cam_info("misp last error code[%d] = 0x%08x",index, drv_data->last_error_code[index]);
+			iSize = snprintf(tmp_err, sizeof(tmp_err), "[%d]: 0x%08x\n", index, drv_data->last_error_code[index]);
+			strncat(err_info, tmp_err, (sizeof(err_info)-iSize));
+		}
+
+		cam_info("%s: last_error_code[0] = 0x%08x", __func__, drv_data->last_error_code[0]);
+
+		if(drv_data->last_error_code[0] != 0){
+			parser_dmd_error( drv_data->last_error_code[0], err_name, err_num);
+
+			cam_info("[I/DSM] %s: err_name = %s", __func__, err_name);
+			cam_info("[I/DSM] %s: err_num = %s", __func__, err_num);
+
+			err_code = simple_strtoul(err_num, NULL, 0);
+
+			if(!dsm_client_ocuppy(drv_data->client_extisp)){
+				dsm_client_record(drv_data->client_extisp, "misp %s fail\n", err_name);
+				dsm_client_record(drv_data->client_extisp, "misp last error code:\n");
+				dsm_client_record(drv_data->client_extisp, err_info);
+				dsm_client_notify(drv_data->client_extisp, err_code);
+				cam_info("[I/DSM] %s dsm_client_notify", drv_data->client_extisp->client_name);
+			}
 		}
 	}
 }
+
+void misp_dump_default_reg(struct work_struct *work)
+{
+	struct misp_data *drv_data = get_misp_data();
+	u32 *default_reg_table = misp_default_reg_table;
+	u32 default_reg_table_count = ARRAY_SIZE(misp_default_reg_table);
+
+	cam_info("enter %s",__func__);
+
+	if(drv_data == NULL){
+		cam_info("%s misp_dta is null",__func__);
+		return;
+	}
+
+	if(drv_data->extisp_type == EXTISP_NULL){
+		cam_info("%s misp type is null",__func__);
+		return;
+	}
+
+	if(drv_data->extisp_type == EXTISP_AL6045){
+		default_reg_table = misp_default_reg_table;
+		default_reg_table_count = ARRAY_SIZE(misp_default_reg_table);
+	}else{
+		default_reg_table = misp_al6010_reg_table;
+		default_reg_table_count = ARRAY_SIZE(misp_al6010_reg_table);
+	}
+	misp_dump_reg(drv_data, default_reg_table, default_reg_table_count);
+}
+
+#ifdef  MINI_ISP_DEBUG_DUMP_LOG
+static void misp_dump_log1(void)
+{
+	int err = 0;
+	struct misp_data *devdata = get_misp_data();
+	struct file *fp = NULL;
+	mm_segment_t oldfs = get_fs();
+	u8 param[8], ctrl_byte = USPICTRL_MS_CB_DIS;
+	u32 *psize, *pblock;
+	size_t len;
+	struct spi_transfer	xfer[2];
+	struct spi_message	m;
+	int status;
+
+	cam_info("%s enter", __func__);
+
+	psize  = (u32 *)&param[0];
+	pblock = (u32 *)&param[4];
+	*psize = MINI_ISP_FW_LOG_BUF;
+	*pblock= SPI_BLOCK_BUF_SIZE;
+	memset(xfer, 0, sizeof(xfer));
+
+	/* save log to buffer */
+	err = mutex_lock_interruptible(&devdata->busy_lock);
+	if (err)
+		goto cmd_out;
+
+	err = misp_send_cmd(devdata, ISPCMD_BULK_LOG_DUMP, param, sizeof(param));
+	if (err)
+		goto cmd_out;
+
+	err = misp_poll_status(devdata);
+	if (err)
+		goto cmd_out;
+
+	/*one message only, incase broken by spi interrupt */
+	devdata->ext_buf[0] = ctrl_byte;
+	xfer[0].tx_buf = devdata->ext_buf;
+	xfer[0].len = sizeof(ctrl_byte);
+	xfer[0].cs_change = 1;
+	xfer[0].delay_usecs = 1;
+	xfer[1].rx_buf = devdata->rx_buf;
+	xfer[1].len = MINI_ISP_FW_LOG_BUF;
+	spi_message_init(&m);
+	spi_message_add_tail(&xfer[0], &m);
+	spi_message_add_tail(&xfer[1], &m);
+	status = spi_sync(devdata->spi, &m);
+	if (status) {
+		cam_info("%s - sync error: status=%d", __func__, status);
+	}
+
+	/* dump log buffer to file */
+	devdata->rx_buf[MINI_ISP_FW_LOG_BUF-1] = 0;
+	len = strlen((char *)(devdata->rx_buf));
+	if (len == 0) {
+		cam_warn("%s no data in log buf", __func__);
+		goto cmd_out;
+	}
+
+	set_fs(KERNEL_DS);
+	fp = filp_open("/data/camera/misp.log", O_CREAT|O_APPEND|O_RDWR, 0666);
+	if (IS_ERR_OR_NULL(fp)) {
+		cam_err("%s open log file error", __func__);
+		goto file_out;
+	}
+	if (fp->f_pos < (4*1024*1024L)) {
+		vfs_write(fp, devdata->rx_buf, len, &fp->f_pos);
+	} else {
+		cam_warn("%s log file is larger than 4MB", __func__);
+		filp_close(fp, NULL);
+		fp = filp_open("/data/camera/misp.log", O_CREAT|O_TRUNC|O_RDWR, 0666);
+		if (IS_ERR_OR_NULL(fp)) {
+			cam_err("%s create new log file error", __func__);
+			goto file_out;
+		}
+		vfs_write(fp, devdata->rx_buf, len, &fp->f_pos);
+	}
+
+file_out:
+	if (!IS_ERR_OR_NULL(fp))
+		filp_close(fp, NULL);
+	set_fs(oldfs);
+cmd_out:
+	misp_cmd_delay();
+	mutex_unlock(&devdata->busy_lock);
+}
+#endif
 
 static void misp_dump_log(struct work_struct *work)
 {
@@ -1151,7 +1695,7 @@ static void misp_dump_log(struct work_struct *work)
 	}
 
 	set_fs(KERNEL_DS);
-	fp = filp_open("/data/k3_camera/misp.log", O_CREAT|O_APPEND|O_WRONLY, 0666);
+	fp = filp_open("/data/camera/misp.log", O_CREAT|O_APPEND|O_RDWR, 0666);
 	if (IS_ERR_OR_NULL(fp)) {
 		cam_err("%s open log file error", __func__);
 		goto file_out;
@@ -1161,7 +1705,7 @@ static void misp_dump_log(struct work_struct *work)
 	} else {
 		cam_warn("%s log file is larger than 4MB", __func__);
 		filp_close(fp, NULL);
-		fp = filp_open("/data/k3_camera/misp.log", O_CREAT|O_TRUNC|O_WRONLY, 0666);
+		fp = filp_open("/data/camera/misp.log", O_CREAT|O_TRUNC|O_RDWR, 0666);
 		if (IS_ERR_OR_NULL(fp)) {
 			cam_err("%s create new log file error", __func__);
 			goto file_out;
@@ -1174,7 +1718,7 @@ file_out:
 		filp_close(fp, NULL);
 	set_fs(oldfs);
 cmd_out:
-	udelay(MINI_ISP_CMD_DELAY_US);
+	misp_cmd_delay();
 	mutex_unlock(&devdata->busy_lock);
 }
 
@@ -1185,7 +1729,7 @@ static int misp_spi_send(struct misp_data *devdata, u32 len)
 	struct spi_transfer	xfer[2];
 	struct spi_message	m;
 
-	cam_info("%s - send buf len=%d:", __func__, len);
+	cam_debug("%s - send buf len=%d:", __func__, len);
 
 	if ((!devdata) || (len > SPI_TX_BUF_SIZE)) {
 		cam_err("%s - invalid arg devdata=%p,len=%d",__func__, devdata, len);
@@ -1368,10 +1912,10 @@ static int misp_load_basic_code(struct misp_data *devdata, char *name)
 	u8 param[16];
 	u32 *p_addr = (u32 *)&param[0];
 	u32 *p_total_size =  (u32 *)&param[4];
-	u32 *p_block_size =  (u32 *)&param[8]; 
+	u32 *p_block_size =  (u32 *)&param[8];
 	u32 *p_chk_sum =  (u32 *)&param[12];
 	u8 ctrl_byte = USPICTRL_MS_CB_DIS;
-	
+
 	set_fs(KERNEL_DS);
 	fp = filp_open(name, O_RDONLY, 0644);
 	if (IS_ERR_OR_NULL(fp)) {
@@ -1606,7 +2150,9 @@ static void misp_dump_reg(struct misp_data *pdata,
 	u32 *pstart=(u32 *)&param[0], *pcount=(u32 *)&param[4], index;
 	int ret;
 	char name[64];
-
+#ifdef MINI_ISP_DEBUG_DUMP_LOG
+	struct timeval timeval;
+#endif
 	if (reg_table_size == 0) {
 		cam_err("%s invalid reg table size", __func__);
 		return;
@@ -1616,12 +2162,17 @@ static void misp_dump_reg(struct misp_data *pdata,
 				reg_table[0], reg_table[reg_table_size-1]);
 
 	memset(name, 0, sizeof(name));
-	snprintf(name, sizeof(name), "/data/k3_camera/misp_0x%08x.regx",
-													reg_table[0]);
+#ifdef MINI_ISP_DEBUG_DUMP_LOG
+	do_gettimeofday(&timeval);
+	snprintf(name, sizeof(name),
+		"/data/camera/misp_0x%08x_%08d.regx",reg_table[0],(int)timeval.tv_sec);
+#else
+	snprintf(name, sizeof(name), "/data/camera/misp_0x%08x.regx",reg_table[0]);
+#endif
 
 	/* create reg file */
 	set_fs(KERNEL_DS);
-	fp = filp_open(name, O_CREAT|O_TRUNC|O_WRONLY, 0666);
+	fp = filp_open(name, O_CREAT|O_TRUNC|O_RDWR, 0666);
 	if (IS_ERR_OR_NULL(fp)) {
 		cam_err("%s create reg bin file error", __func__);
 		set_fs(oldfs);
@@ -1742,10 +2293,10 @@ static void misp_dump_ram(struct misp_data *pdata,
 	cam_info("%s start=0x%x, total=%u, mode=%u", __func__, start, total, mode);
 
 	memset(name, 0, sizeof(name));
-	snprintf(name, sizeof(name), "/data/k3_camera/misp_0x%08x.ram", start);
+	snprintf(name, sizeof(name), "/data/camera/misp_0x%08x.ram", start);
 
 	set_fs(KERNEL_DS);
-	fp = filp_open(name, O_CREAT|O_TRUNC|O_WRONLY, 0666);
+	fp = filp_open(name, O_CREAT|O_TRUNC|O_RDWR, 0666);
 	if (IS_ERR_OR_NULL(fp)) {
 		cam_err("%s create ram bin file error", __func__);
 		set_fs(oldfs);
@@ -1891,6 +2442,14 @@ static ssize_t misp_config_store(struct device *dev,
 		return 0;
 	}
 
+	if(pdata->extisp_type == EXTISP_AL6045){
+		default_reg_table = misp_default_reg_table;
+		default_reg_table_count = ARRAY_SIZE(misp_default_reg_table);
+	}else{
+		default_reg_table = misp_al6010_reg_table;
+		default_reg_table_count = ARRAY_SIZE(misp_al6010_reg_table);
+	}
+
 	if (count == 0)
 		return 0;
 
@@ -1943,76 +2502,75 @@ static ssize_t misp_config_store(struct device *dev,
 		misp_write_reg(pdata, write_reg_addr, write_reg_val);
 	} else if (0 == strncmp("test_spi", pos, strlen("test_spi"))) {
 		misp_test_spi(pdata);
+	}else if (0 == strncmp("dump_err", pos, strlen("dump_err"))) {
+            queue_work(pdata->work_queue, &pdata->dump_err_work);
 	}
 
 	return count;
 }
 
-static void hi6630_spidev0_cs_set(u32 control)
+static void misp_spi_cs_set(u32 control)
 {
-	int ret;
+	int ret = 0;
+	struct misp_data *drv_data = get_misp_data();
+	struct misp_plat_data *plat_data = NULL;
 
-	//cam_info("%s: control = %s\n", __func__, (control==0)?"select":"diselect");
+	if (!drv_data) {
+		cam_err("%s no driver data", __func__);
+		return ;
+	}
 
+	//cam_info("%s: control = %s", __func__, (control==0)?"select":"diselect");
+
+	plat_data = &drv_data->plat_data;
 	if (SSP_CHIP_SELECT == control) {
+		ret = gpio_direction_output(plat_data->spi_cs_gpio, control);
 		/* cs steup time at least 10ns */
-		ndelay(20);
-		ret = gpio_direction_output(MINI_ISP_SPI_CS_GPIO, control);
+		ndelay(10);
 	} else {
 		/* cs hold time at least 4*40ns(@25MHz) */
-		ret = gpio_direction_output(MINI_ISP_SPI_CS_GPIO, control);
+		ret = gpio_direction_output(plat_data->spi_cs_gpio, control);
 		ndelay(200);
 	}
 
     if (ret < 0)
-		pr_err("%s: fail to set gpio cs, result = %d.", __func__, ret);
+		cam_err("%s: fail to set gpio cs, result = %d.", __func__, ret);
 }
 
-/*
-static struct pl022_config_chip spidev0_chip_info = {
-	.cs_control = hi6630_spidev0_cs_set,
-};
-*/
 int extisp_get_dt_data(struct device *dev, struct misp_plat_data *plat_data)
 {
 	struct device_node *np;
 
-	if (!dev || !dev->of_node) {
+	if (!dev || !dev->of_node || !plat_data) {
 		cam_err("%s dev or dev node is NULL", __func__);
 		return -EINVAL;
 	}
 
 	np = dev->of_node;
-	of_property_read_u32(np, "mini_isp,cs_gpio",
-		&plat_data->spi_cs_gpio);	
-	of_property_read_u32(np, "mini_isp,reset_gpio",
-		&plat_data->reset_gpio);
-	/*of_property_read_u32(np, "mini_isp,power_gpio",
-		&plat_data->power_gpio);	*/
-	of_property_read_u32(np, "mini_isp,irq_gpio",
-		&plat_data->irq_gpio);
+	of_property_read_u32(np, "mini_isp,cs_gpio", &plat_data->spi_cs_gpio);
+	of_property_read_u32(np, "mini_isp,reset_gpio", &plat_data->reset_gpio);
+	of_property_read_u32(np, "mini_isp,irq_gpio", &plat_data->irq_gpio);
+
+	cam_info("spi_cs_gpio=%d,reset_gpio=%d,irq_gpio=%d",
+		plat_data->spi_cs_gpio,plat_data->reset_gpio,
+		plat_data->irq_gpio);
+
 
 	plat_data->spidev0_chip_info.hierarchy = 0;
-	of_property_read_u32(np, "pl022,interface",
-		&plat_data->spidev0_chip_info.iface);
-	of_property_read_u32(np, "pl022,com-mode",
-		&plat_data->spidev0_chip_info.com_mode);
-	of_property_read_u32(np, "pl022,rx-level-trig",
-		&plat_data->spidev0_chip_info.rx_lev_trig);
-	of_property_read_u32(np, "pl022,tx-level-trig",
-		&plat_data->spidev0_chip_info.tx_lev_trig);
-	of_property_read_u32(np, "pl022,ctrl-len",
-		&plat_data->spidev0_chip_info.ctrl_len);
-	of_property_read_u32(np, "pl022,wait-state",
-		&plat_data->spidev0_chip_info.wait_state);
-	of_property_read_u32(np, "pl022,duplex",
-		&plat_data->spidev0_chip_info.duplex);
+	of_property_read_u32(np, "pl022,interface", &plat_data->spidev0_chip_info.iface);
+	of_property_read_u32(np, "pl022,com-mode", &plat_data->spidev0_chip_info.com_mode);
+	of_property_read_u32(np, "pl022,rx-level-trig", &plat_data->spidev0_chip_info.rx_lev_trig);
+	of_property_read_u32(np, "pl022,tx-level-trig", &plat_data->spidev0_chip_info.tx_lev_trig);
+	of_property_read_u32(np, "pl022,ctrl-len", &plat_data->spidev0_chip_info.ctrl_len);
+	of_property_read_u32(np, "pl022,wait-state", &plat_data->spidev0_chip_info.wait_state);
+	of_property_read_u32(np, "pl022,duplex", &plat_data->spidev0_chip_info.duplex);
 #if defined(CONFIG_ARCH_HI3630FPGA) || defined(CONFIG_ARCH_HI3630)
 	plat_data->spidev0_chip_info.slave_tx_disable =
 		of_property_read_bool(np, "pl022,slave-tx-disable");
 #endif
+
 	/* use gpio cs control */
-	plat_data->spidev0_chip_info.cs_control = hi6630_spidev0_cs_set;
+	plat_data->spidev0_chip_info.cs_control = misp_spi_cs_set;
 
 	plat_data->pinctrl = devm_pinctrl_get(dev);
 	if (IS_ERR(plat_data->pinctrl)) {
@@ -2072,14 +2630,15 @@ static int mini_isp_probe(struct spi_device *spi)
 	/* step 2: init driver data */
 	drv_data->spi = spi;
 	drv_data->state = MINI_ISP_STATE_IDLE;
-	drv_data->debug_config = (MINI_ISP_DEBUG_SPI_DATA|
-				MINI_ISP_DEBUG_LOG_FILE);
+	drv_data->debug_config = MINI_ISP_DEBUG_LOG_FILE;
 	mutex_init(&drv_data->busy_lock);
 	INIT_WORK(&drv_data->dump_log_work, misp_dump_log);
 	INIT_WORK(&drv_data->dump_err_work, misp_dump_err);
 	init_waitqueue_head(&drv_data->wait_queue);
 	init_waitqueue_head(&drv_data->sync_queue);
 	init_waitqueue_head(&drv_data->pwdn_queue);
+	init_waitqueue_head(&drv_data->chipid_queue);
+    init_waitqueue_head(&drv_data->ois_queue);
 	drv_data->work_queue = create_singlethread_workqueue(
 									dev_name(&spi->dev));
 	if (!drv_data->work_queue) {
@@ -2115,12 +2674,6 @@ static int mini_isp_probe(struct spi_device *spi)
 		goto err_reset_gpio;
 	}
 
-	/*ret = gpio_request(plat_data->power_gpio, "mini_isp_dcdc");
-	if (ret) {
-		cam_err("probe - request power gpio error");
-		goto err_power_gpio;
-	}*/
-
 	ret = gpio_request(plat_data->irq_gpio, "mini_isp_irq");
 	if (ret) {
 		cam_err("probe - request irq gpio error");
@@ -2149,6 +2702,15 @@ static int mini_isp_probe(struct spi_device *spi)
 	/* setp 6: set driver_data to device */
 	spi_set_drvdata(spi, drv_data);
 
+	if (drv_data->client_extisp == NULL) {
+		drv_data->client_extisp = dsm_register_client(&dev_extisp);
+	}
+
+	/* setp 7: set default firmware path */
+	drv_data->extisp_type = EXTISP_AL6045;
+	strncpy(misp_firmware_path,"/system/miniisp/",sizeof(misp_firmware_path));
+	misp_set_firmware_path(misp_firmware_path, EXTISP_AL6045);
+
 	misp_drv_data = drv_data;
 
 	cam_info("mini isp probe success");
@@ -2159,10 +2721,8 @@ err_dev_attr:
 err_irq_config:
 	gpio_free(plat_data->irq_gpio);
 err_irq_gpio:
-//	gpio_free(plat_data->power_gpio);
-//err_power_gpio:
 	gpio_free(plat_data->reset_gpio);
-err_reset_gpio:	
+err_reset_gpio:
 	gpio_free(plat_data->spi_cs_gpio);
 err_cs_gpio:
 err_spi_setup:

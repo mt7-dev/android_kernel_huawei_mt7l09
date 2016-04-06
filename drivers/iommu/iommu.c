@@ -754,6 +754,17 @@ int iommu_domain_has_cap(struct iommu_domain *domain,
 }
 EXPORT_SYMBOL_GPL(iommu_domain_has_cap);
 
+int iommu_get_pgtbl_base(struct iommu_domain *domain, unsigned long iova_start,
+				unsigned long *ptb_base, unsigned long *iova_base)
+{
+	if (unlikely(domain->ops->get_pgtbl_base  == NULL))
+		return 0;
+
+	return domain->ops->get_pgtbl_base(domain, iova_start,
+				ptb_base, iova_base);
+}
+EXPORT_SYMBOL_GPL(iommu_get_pgtbl_base);
+
 int iommu_map(struct iommu_domain *domain, unsigned long iova,
 	      phys_addr_t paddr, size_t size, int prot)
 {
@@ -966,6 +977,8 @@ int iommu_domain_get_attr(struct iommu_domain *domain,
 			  enum iommu_attr attr, void *data)
 {
 	struct iommu_domain_geometry *geometry;
+	struct iommu_domain_capablity *capablity;
+
 	bool *paging;
 	int ret = 0;
 	u32 *count;
@@ -988,6 +1001,13 @@ int iommu_domain_get_attr(struct iommu_domain *domain,
 		else
 			ret = -ENODEV;
 
+		break;
+	case DOMAIN_ATTR_CAPABLITY:
+		capablity = data;
+		*capablity = domain->capablity;
+		break;
+		
+	case DOMAIN_ATTR_FORMAT_DATA:
 		break;
 	default:
 		if (!domain->ops->domain_get_attr)

@@ -122,7 +122,6 @@ static void dw_kmsg_dump(struct kmsg_dumper *dumper,
 		early_mrst_console.write(&early_mrst_console, line, len);
 }
 
-/* Set the ratio rate to 115200, 8n1, IRQ disabled */
 static void max3110_write_config(void)
 {
 	u16 config;
@@ -169,11 +168,7 @@ void mrst_early_console_init(void)
 		      | (SPI_TMOD_TO << SPI_TMOD_OFFSET);
 	dw_writel(pspi, ctrl0, ctrlr0);
 
-	/*
-	 * Change the spi0 clk to comply with 115200 bps, use 100000 to
-	 * calculate the clk dividor to make the clock a little slower
-	 * than real baud rate.
-	 */
+
 	dw_writel(pspi, baudr, freq/100000);
 
 	/* Disable all INT for early phase */
@@ -264,7 +259,6 @@ void hsu_early_console_init(const char *s)
 	/* Disable FIFO */
 	writeb(0x0, phsu + UART_FCR);
 
-	/* Set to default 115200 bps, 8n1 */
 	lcr = readb(phsu + UART_LCR);
 	writeb((0x80 | lcr), phsu + UART_LCR);
 	writeb(0x18, phsu + UART_DLL);

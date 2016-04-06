@@ -888,7 +888,6 @@ static int usblp_wwait(struct usblp *usblp, int nonblock)
 					break;
 				}
 			} else {
-				/* Prod the printer, Gentoo#251237. */
 				mutex_lock(&usblp->mut);
 				usblp_read_status(usblp, usblp->statusbuf);
 				mutex_unlock(&usblp->mut);

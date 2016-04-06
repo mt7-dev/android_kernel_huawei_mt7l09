@@ -79,6 +79,14 @@ extern "C" {
 
 #define     WSLEEP_TASK_STACK_SIZE          (2048)
 
+/*****************************************************************************
+  8 SCM RCV 的任务定义
+*****************************************************************************/
+
+#define     SCM_OM_CFG_TASK_STACK_SIZE      (8096)
+
+#define     SCM_CBT_REQ_TASK_STACK_SIZE     (8096)
+
 
 #if ((VOS_OS_VER == VOS_WIN32) || (VOS_OS_VER == VOS_NUCLEUS))
 #pragma pack()

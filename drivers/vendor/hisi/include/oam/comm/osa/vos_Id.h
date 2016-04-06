@@ -89,6 +89,7 @@ typedef struct
     VOS_UINT32          ulMsgPeakSize;
     VOS_UINT32          ulMemPeakSize;
 #endif
+    VOS_UINT8           aucRsv[4];
 } VOS_PID_RECORD;
 
 extern VOS_PID_RECORD   vos_PidRecords[ ];
@@ -101,6 +102,7 @@ extern VOS_PID_RECORD   vos_PidRecords[ ];
 typedef struct
 {
     int                 Fid;
+    VOS_UINT8           aucRsv[4];
     Init_Fun_Type       InitFunc;     //VOS_ULFUNCPTR       InitFunc;
     VOS_UINT32          StartOrder;
 
@@ -116,6 +118,7 @@ typedef struct
     VOS_UINT32          QueueOptions;
     /* which should be del when only one FID exists */
     VOS_UINT32          MAXQidSize;
+    VOS_UINT8           aucRsv1[4];
 
     /*VOS_UINT32          EventProcTaskTid;
     VOS_UINT32          EventProcTaskPriority;

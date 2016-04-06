@@ -78,12 +78,6 @@ LMSPOBJ := $(CURR_WORKDIR)/lt/comm/diag/diag_api.o \
 	$(CURR_WORKDIR)/lt/comm/diag/diag_debug.o \
 	$(CURR_WORKDIR)/lt/acore/diag/diag_fw.o \
 	$(CURR_WORKDIR)/lt/acore/diag/diag_app_agent.o \
-	$(CURR_WORKDIR)/lt/acore/diag/diag_vcom.o\
-	$(CURR_WORKDIR)/lt/acore/diag/diag_usb.o \
-	$(CURR_WORKDIR)/lt/acore/diag/diag_port.o \
-	$(CURR_WORKDIR)/lt/acore/diag/diag_sd.o \
-	$(CURR_WORKDIR)/lt/acore/diag/diag_tcp.o \
-	$(CURR_WORKDIR)/lt/acore/diag/diag_hisc.o \
 	$(CURR_WORKDIR)/lt/comm/diag/diag_fs_proc.o\
 	$(CURR_WORKDIR)/lt/comm/list/blist.o \
 	$(CURR_WORKDIR)/lt/comm/drx/drx_msp_api.o\
@@ -99,6 +93,14 @@ LMSPOBJ := $(CURR_WORKDIR)/lt/comm/diag/diag_api.o \
 	$(LT_AT_DIR)/at_lte_upgrade_proc.o \
 	$(LT_AT_DIR)/AtDeviceCmdTL.o \
 	$(LT_AT_DIR)/at_comm_cmd.o
+ifeq ($(CFG_FEATURE_MERGE_OM_CHAN),FEATURE_OFF)
+LMSPOBJ +=$(CURR_WORKDIR)/lt/acore/diag/diag_vcom.o\
+	$(CURR_WORKDIR)/lt/acore/diag/diag_usb.o \
+	$(CURR_WORKDIR)/lt/acore/diag/diag_port.o \
+	$(CURR_WORKDIR)/lt/acore/diag/diag_sd.o \
+	$(CURR_WORKDIR)/lt/acore/diag/diag_tcp.o \
+	$(CURR_WORKDIR)/lt/acore/diag/diag_hisc.o 
+endif		
 
 LMSP_CMD_OBJ := $(foreach dir,$(dir $(LMSPOBJ)),$(dir).*.o.cmd)
 
@@ -126,13 +128,16 @@ EXTRA_CFLAGS += $(MSP_SDM_MACRO) $(MSP_PRODUCT_CFG)
 EXTRA_CFLAGS += -fsigned-char -DVOS_LINUX=4 -DOSA_CPU_ACPU=1 -DVOS_OS_VER=VOS_LINUX -DVOS_OSA_CPU=OSA_CPU_ACPU -DPRODUCT_CFG_MULTIMODE_LTE -D__LOG_RELEASE__ 
 #Defined in top shell script(Comm Definition)
 EXTRA_CFLAGS += $(INCLUDE_FLAG) $(DRV_INCLUDE_FLAG) $(ASM_INCLUDE_FLAG) $(PLATFORM_FLAG)
-EXTRA_CFLAGS += $(INCLUDE_COMM_DIR_FLAG) $(INCLUDE_OWN_DIR_FLAG) $(CC_INC_DIRS)
+EXTRA_CFLAGS += $(INCLUDE_COMM_DIR_FLAG) $(INCLUDE_OWN_DIR_FLAG) $(CC_INC_DIRS) -Wno-pointer-to-int-cast
 
+export KBUILD_CFLAGS := $(filter-out -Werror,$(KBUILD_CFLAGS))
 
 #***********************************************************
 #include rules. must be droped at the bottom, OBB_BUILD_ACTION values: cc tqe lint fortify
 #***********************************************************
 include $(BALONG_TOPDIR)/build/scripts/rules/cc_linux_rules.mk
+
+export KBUILD_CFLAGS := $(filter-out -Werror,$(KBUILD_CFLAGS))
 
 #pclint
 #PCLINT_SYSTEM_INC_FILE		:=$(BALONG_TOPDIR)/build/tools/pc_lint/lint/android.lnt

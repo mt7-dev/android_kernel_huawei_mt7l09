@@ -80,6 +80,11 @@ VOS_UINT32 NAS_MMC_RcvStartReq_SwitchOn_Init(
     VOS_UINT8                           aucPsLocInfo[NAS_MML_PS_LOCI_SIM_FILE_LEN];
 
     NAS_MML_RPLMN_CFG_INFO_STRU        *pstRplmnCfgInfo = VOS_NULL_PTR;
+
+    NAS_MMC_DPLMN_NPLMN_CFG_INFO_STRU  *pstDPlmnNPlmnCfgInfo = VOS_NULL_PTR;
+
+    pstDPlmnNPlmnCfgInfo                = NAS_MMC_GetDPlmnNPlmnCfgInfo();
+
     pstMsIdentity                       = NAS_MML_GetSimMsIdentity();
     pstStartReq                         = (MMA_MMC_START_REQ_STRU*)pstMsg;
     pstRplmnCfgInfo                     = NAS_MML_GetRplmnCfg();
@@ -118,7 +123,7 @@ VOS_UINT32 NAS_MMC_RcvStartReq_SwitchOn_Init(
     NAS_MMC_ProcRrmRegister_SwitchOn();
 #endif
 
-
+    NAS_MMC_LogRplmnCfgInfo();
     /* 将NV中保存的上次的IMSI保存到开机上下文中，用于开机状态机的IMSI是否改变的判决 */
     PS_MEM_CPY( NAS_MMC_GetLastImsi_SwitchOn(),
                 pstRplmnCfgInfo->aucLastImsi, NAS_MAX_IMSI_LENGTH );
@@ -139,6 +144,11 @@ VOS_UINT32 NAS_MMC_RcvStartReq_SwitchOn_Init(
 #endif
             /* 更新Ps Loc file无效*/
             PS_MEM_SET(aucPsLocInfo, (VOS_CHAR)0xFF, sizeof(aucPsLocInfo));
+            /* 换卡需要将nplmn清除，重新更新nv项和mmc全局变量 */
+            pstDPlmnNPlmnCfgInfo->usNplmnListNum = 0;
+            PS_MEM_SET(pstDPlmnNPlmnCfgInfo->astNPlmnList, 0, sizeof(pstDPlmnNPlmnCfgInfo->astNPlmnList));
+            NAS_MMC_WriteDplmnNplmnToNvim();
+            NAS_MMC_LogDplmnNplmnList();
 
             /* routing area update status应该为02 */
             aucPsLocInfo[NAS_MML_PS_LOCI_SIM_FILE_LEN-1] = NAS_MML_ROUTING_UPDATE_STATUS_PLMN_NOT_ALLOWED;
@@ -190,6 +200,8 @@ VOS_UINT32 NAS_MMC_RcvStartReq_SwitchOn_Init(
 
     return VOS_TRUE;
 }
+
+
 VOS_VOID NAS_MMC_ClearWaitSimFilesCnfFlg_SwitchOn_WaitSimFilesCnf(
     VOS_UINT16                          usEfId
 )
@@ -1368,6 +1380,7 @@ VOS_VOID NAS_MMC_ReadNvimInfo_SwitchOn()
     NAS_MMC_ReadImeisvNvim();
 
     NAS_MMC_ReadChangeRegRejCauFlgNvim();
+    NAS_MMC_ReadRoamingRejectNoRetryFlgNvim();
 
     /* 从NV中读取协议版本 */
     NAS_MMC_ReadSupported3GppReleaseNvim();
@@ -1550,6 +1563,10 @@ VOS_VOID NAS_MMC_ReadNvimInfo_SwitchOn()
     NAS_MMC_ReadLteCustomMccInfoNvim();
     
     NAS_MMC_ReadUltraFlashCsfbSupportFlgNvim();
+
+    /* 0xD20B这个NV项会更新aucNetworkCapability中的srvcc能力，如果和8197中的配置不一致，以0xD20B中的为准
+       该NV要放在8197 NV项之后读取 */
+    NAS_MMC_ReadSrvccSupportFlgNvim();
 #endif
 
     NAS_MMC_ReadSvlteSupportFlagNvim();
@@ -1582,10 +1599,27 @@ VOS_VOID NAS_MMC_ReadNvimInfo_SwitchOn()
     NAS_MMC_ReadIgnoreAuthRejFlgNvim();
     NAS_MMC_ReadLteDisabledUseLteInfoFlagNvim();
 
-    NAS_MMC_ReadHighPrioRatHplmnTimerInfoNvim();
+    NAS_MMC_ReadHighPrioRatHplmnTimerCfgNvim();
 
     NAS_MMC_Read3GPP2UplmnNotPrefFlgNvim();
 
+    NAS_MMC_ReadSyscfgTriPlmnSrchCfgNvim();
+    NAS_MMC_ReadDplmnNplmnInfoNvim();
+
+    NAS_MMC_ReadUmtsCodecTypeNvim();
+    NAS_MMC_ReadMedCodecTypeNvim();
+
+    NAS_MMC_ReadRelPsSignalConCfgNvim();
+
+#if  (FEATURE_ON == FEATURE_IMS)
+    NAS_MMC_ReadImsRatSupportNvim();
+    NAS_MMC_ReadImsCapNvim();
+    NAS_MMC_ReadUssdOnImsNvim();
+#endif
+	
+    NAS_MMC_ReadRoamDisplayCfgNvim();
+    
+    NAS_MMC_ReadProtectMtCsfbPagingProcedureLenNvim();
     return;
 }
 

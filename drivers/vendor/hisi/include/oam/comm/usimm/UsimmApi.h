@@ -168,7 +168,7 @@ extern VOS_UINT32       gulUSIMMAPIMessageNum ;
 
 extern VOS_UINT32       gulUSIMMOpneSpeed;
 
-extern VOS_UINT32       gulUSIMMApiSmId;
+extern VOS_SEM          gulUSIMMApiSmId;
 
 extern const VOS_UINT8  g_aucServIsimToUsim[];
 
@@ -571,6 +571,7 @@ typedef struct
 {
     VOS_MSG_HEADER
     USIMM_CMDTYPE_ENUM_UINT16       enMsgType;
+    VOS_UINT16                      usRsv;
 }USIMM_ACTIVE_CARD_REQ_STRU;
 
 typedef struct

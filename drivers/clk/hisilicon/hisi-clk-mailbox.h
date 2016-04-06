@@ -1,6 +1,6 @@
 #ifndef __HISI_CLK_MAILBOX_H__
 #define __HISI_CLK_MAILBOX_H__
-#include <linux/huawei/mailbox.h>
+#include <linux/hisi/hisi_mailbox.h>
 #include <linux/completion.h>
 
 #define	LPM3_CMD_LEN	2

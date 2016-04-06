@@ -24,84 +24,67 @@
 /* big-endian to little-endian */
 #define ISP_BIG_ENDIAN(a) ((a) + 3 - 2 * ((a) & 0x3))
 
-extern unsigned int hw_isp_base;
+extern unsigned char *hw_isp_base;
 
-#define GETREG8_ISPHW(reg) \
+#define ISPHW_GETREG8(reg) \
 	(*(volatile unsigned char *)(hw_isp_base + (((reg) - 0x30000) << 2)))
-#define SETREG8_ISPHW(reg, value) \
+#define ISPHW_SETREG8(reg, value) \
 	(*((volatile unsigned char *)(hw_isp_base + (((reg) - 0x30000) << 2))) = (value))
 
-#define GETREG8(reg) \
+#define ISP_GETREG8(reg) \
 	(((reg) >= COMMAND_BUFFER_END) ? \
 		(((reg) >= ISP_COMMAND_BEGIN && (reg) <= ISP_COMMAND_END) ? \
 			((*(volatile unsigned char *)(hw_isp_base + (((reg) - 0x30000) << 2))) & 0xff) : \
 			(*(volatile unsigned char *)(hw_isp_base +(reg)))) : \
 		(*(volatile unsigned char *)(hw_isp_base + ISP_BIG_ENDIAN((reg)))))
 
-#define SETREG8(reg, value) \
+#define ISP_SETREG8(reg, value) \
 	(((reg) >= COMMAND_BUFFER_END) ? \
 		(((reg) >= ISP_COMMAND_BEGIN && (reg) <= ISP_COMMAND_END) ? \
-			(*((volatile unsigned char *)(hw_isp_base + ((reg - 0x30000) << 2))) = (value)) : \
-			(*((volatile unsigned char *)(hw_isp_base + reg)) = (value))) : \
+			(*((volatile unsigned char *)(hw_isp_base + (((reg) - 0x30000) << 2))) = (value)) : \
+			(*((volatile unsigned char *)(hw_isp_base + (reg))) = (value))) : \
 		(*((volatile unsigned char *)(hw_isp_base + ISP_BIG_ENDIAN(reg))) = (value)))
 
-#define GETREG32(reg, value) \
+#define ISP_GETREG32(reg)  ((ISP_GETREG8(reg) << 24) | (ISP_GETREG8((reg) + 1) << 16) | (ISP_GETREG8((reg) + 2) << 8) | (ISP_GETREG8((reg) + 3)))
+
+#define ISP_GETREG16(reg)  ((ISP_GETREG8(reg) << 8) | (ISP_GETREG8((reg) + 1)))
+
+#define ISP_SETREG16(reg, value) \
 	do { \
-		(value) = (GETREG8(reg) << 24) + \
-			(GETREG8((reg) + 1) << 16) + \
-			(GETREG8((reg) + 2) << 8) + \
-			(GETREG8((reg) + 3)); \
+		ISP_SETREG8((reg), ((value) >> 8) & 0xff); \
+		ISP_SETREG8(((reg) + 1), (value) & 0xff);    \
 	} while (0)
 
-#define GETREG16(reg, value) \
+#define ISP_SETREG32(reg, value) \
 	do { \
-		(value) = (GETREG8(reg) << 8) + \
-		(GETREG8((reg) + 1)); \
-	} while (0)
-
-#define SETREG16(reg, value) \
-	do { \
-		SETREG8((reg), ((value) >> 8) & 0xff); \
-		SETREG8((reg) + 1, (value) & 0xff);    \
-	} while (0)
-
-#define SETREG32(reg, value) \
-	do { \
-		SETREG8(reg,     ((value) >> 24) & 0xff); \
-		SETREG8(reg + 1, ((value) >> 16) & 0xff); \
-		SETREG8(reg + 2, ((value) >> 8) & 0xff);  \
-		SETREG8(reg + 3, ((value) >> 0) & 0xff);  \
+		ISP_SETREG8((reg),     ((value) >> 24) & 0xff); \
+		ISP_SETREG8(((reg) + 1), ((value) >> 16) & 0xff); \
+		ISP_SETREG8(((reg) + 2), ((value) >> 8) & 0xff);  \
+		ISP_SETREG8(((reg) + 3), ((value) >> 0) & 0xff);  \
 	} while (0)
 
 
 #define MMU_SETREG32(reg,val) \
 	do {\
-		*(volatile unsigned int*)(hw_isp_base+reg) = val;\
+		*(volatile unsigned int*)(hw_isp_base+(reg)) = (val);\
 	}while(0)
 
 #define MMU_GETREG32(reg,val) \
 	do {\
-		val = *(volatile unsigned int*)(hw_isp_base+reg); \
+		(val) = *(volatile unsigned int*)(hw_isp_base+(reg)); \
 	}while(0)
 
-#define MY_GETREG32(reg) \
-		((GETREG8(reg) << 24) + \
-		(GETREG8((reg) + 1) << 16) + \
-		(GETREG8((reg) + 2) << 8) + \
-		GETREG8((reg) + 3))
-
-#define MY_GETREG16(reg) ((GETREG8(reg) << 8) + GETREG8((reg) + 1))
 
 #define get_writeback_expo(flow) \
-	(GETREG8(REG_FW_AECAGC_WRITESENSOR_ENABLE(flow)) ? \
-	MY_GETREG32(REG_FW_AECAGC_MANUAL_EXPO(flow)) : MY_GETREG32(REG_FW_WRITEBACK_EXPO(flow)))
+	(ISP_GETREG8(REG_FW_AECAGC_WRITESENSOR_ENABLE(flow)) ? \
+	ISP_GETREG32(REG_FW_AECAGC_MANUAL_EXPO(flow)) : ISP_GETREG32(REG_FW_WRITEBACK_EXPO(flow)))
 
 #define get_writeback_gain(flow) \
-	(GETREG8(REG_FW_AECAGC_WRITESENSOR_ENABLE(flow)) ? \
-	MY_GETREG16(REG_FW_AECAGC_MANUAL_GAIN(flow)) : MY_GETREG16(REG_FW_WRITEBACK_GAIN(flow)))
+	(ISP_GETREG8(REG_FW_AECAGC_WRITESENSOR_ENABLE(flow)) ? \
+	ISP_GETREG16(REG_FW_AECAGC_MANUAL_GAIN(flow)) : ISP_GETREG16(REG_FW_WRITEBACK_GAIN(flow)))
 
 extern unsigned int HW_CSI_GETREG32(unsigned int reg);
 extern void HW_CSI_SETREG32(unsigned int reg, unsigned int val);
-extern void hw_io_set_isp_base(unsigned int isp_base_addr);
+extern void hw_io_set_isp_base(unsigned char *isp_base_addr);
 
 #endif

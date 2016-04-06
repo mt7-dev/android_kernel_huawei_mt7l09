@@ -637,6 +637,10 @@ VOS_UINT32  NAS_EMM_MsRegSsNmlSrvMsgCnDetachReq(VOS_UINT32  ulMsgId,
     /*向MRRC发送DETACH ACCEPT消息*/
     NAS_EMM_MrrcSendDetAcpMt();
 
+    #if (FEATURE_PTM == FEATURE_ON)
+    NAS_EMM_DetachErrRecord(pRcvEmmMsg);
+    #endif
+
     if (NAS_EMM_DETACH_TYPE_MT_IMSI_DETACH == pRcvEmmMsg->ucDetType)
     {
         NAS_EMM_DETACH_LOG_NORM("NAS_EMM_MsRegSsNmlSrvMsgCnDetachReq: Process Imsi Detach!");
@@ -737,6 +741,10 @@ VOS_UINT32  NAS_EMM_MsRegSsLimitedSrvMsgCnDetachReq
     /*向MRRC发送DETACH ACCEPT消息*/
     NAS_EMM_MrrcSendDetAcpMt();
 
+    #if (FEATURE_PTM == FEATURE_ON)
+    NAS_EMM_DetachErrRecord(pRcvEmmMsg);
+    #endif
+
     if (NAS_EMM_DETACH_TYPE_MT_IMSI_DETACH == pRcvEmmMsg->ucDetType)
     {
         NAS_EMM_DETACH_LOG_NORM("NAS_EMM_MsRegSsLimitedSrvMsgCnDetachReq: Process Imsi Detach!");
@@ -831,6 +839,10 @@ VOS_UINT32  NAS_EMM_MsRegSsRegAttemptUpdateMmMsgCnDetachReq
         NAS_EMM_DETACH_LOG_ERR("NAS_EMM_MsRegSsRegAttemptUpdateMmMsgCnDetachReq: NAS_EMM_CN_DETACH_REQ_MT_STRU PARA ERR!");
         return  NAS_LMM_ERR_CODE_PARA_INVALID;
     }
+
+    #if (FEATURE_PTM == FEATURE_ON)
+    NAS_EMM_DetachErrRecord(pRcvEmmMsg);
+    #endif
 
     /* 丢弃IMSI DETACH类型的CN DETACH */
     if (NAS_EMM_DETACH_TYPE_MT_IMSI_DETACH == pRcvEmmMsg->ucDetType)
@@ -1059,6 +1071,10 @@ VOS_UINT32  NAS_EMM_MsDrgInitSsWtCnDetCnfMsgCnDetachReq(VOS_UINT32  ulMsgId,
     /*向MRRC发送DETACH ACCEPT消息*/
     NAS_EMM_MrrcSendDetAcpMt();
 
+    #if (FEATURE_PTM == FEATURE_ON)
+    NAS_EMM_DetachErrRecord(pRcvEmmMsg);
+    #endif
+
     /* lihong00150010 emergency tau&service begin */
     if (VOS_TRUE == NAS_EMM_GLO_AD_GetUsimPullOutFlag())
     {
@@ -1183,6 +1199,10 @@ VOS_UINT32  NAS_EMM_MsRegImsiDetachWtCnDetCnfMsgCnDetachReq
 
     NAS_EMM_GLO_AD_GetMtDetachAccTxCnt() = 0;
 
+    #if (FEATURE_PTM == FEATURE_ON)
+    NAS_EMM_DetachErrRecord(pRcvEmmMsg);
+    #endif
+
     /*给网络回复DETACH ACCEPT消息*/
     NAS_EMM_MrrcSendDetAcpMt();
 
@@ -1286,6 +1306,10 @@ VOS_UINT32  NAS_EMM_MsRegInitMsgCnDetachReq
         return  NAS_LMM_ERR_CODE_PARA_INVALID;
     }
 
+    #if (FEATURE_PTM == FEATURE_ON)
+    NAS_EMM_DetachErrRecord(pRcvEmmMsg);
+    #endif
+
     /* 丢弃IMSI DETACH类型的CN DETACH */
     if (NAS_EMM_DETACH_TYPE_MT_IMSI_DETACH == pRcvEmmMsg->ucDetType)
     {
@@ -1337,6 +1361,41 @@ VOS_UINT32  NAS_EMM_MsRegInitMsgCnDetachReq
     return  NAS_LMM_MSG_HANDLED;
 }
 
+VOS_VOID NAS_EMM_MsTauInitSsWtCnTauCnfMsgCnDetReqCollisionDetProc(const VOS_UINT32 *pvTauRslt)
+{
+    /* 向MMC发被 MO DETACH 打断 LMM_MMC_TAU_RESULT_IND*/
+    NAS_EMM_MmcSendTauActionResultIndOthertype((VOS_VOID*)pvTauRslt);
+
+    if (MMC_LMM_MO_DET_CS_ONLY != NAS_EMM_GLO_AD_GetDetTypeMo())
+    {
+        /*修改状态：进入主状态DEREG子状态DEREG_NORMAL_SERVICE*/
+        NAS_EMM_AdStateConvert(     EMM_MS_DEREG,
+                                    EMM_SS_DEREG_NORMAL_SERVICE,
+                                    TI_NAS_EMM_STATE_NO_TIMER);
+        NAS_EMM_TAU_CollisionDetachProc();
+
+        /*本地DETACH释放资源:动态内存、赋初值 */
+        NAS_LMM_DeregReleaseResource();
+    }
+    else
+    {
+        /*修改状态：进入主状态EMM_MS_REG子状态EMM_SS_REG_NORMAL_SERVICE*/
+        NAS_EMM_AdStateConvert(     EMM_MS_REG,
+                                    EMM_SS_REG_NORMAL_SERVICE,
+                                    TI_NAS_EMM_STATE_NO_TIMER);
+        NAS_EMM_TAU_CollisionDetachProc();
+
+        /* 设置注册域为PS */
+        NAS_LMM_SetEmmInfoRegDomain(NAS_LMM_REG_DOMAIN_PS);
+
+        /* IMSI DETACH后释放资源 */
+        NAS_LMM_ImsiDetachReleaseResource();
+    }
+    return;
+
+}
+
+
 
 VOS_UINT32    NAS_EMM_MsTauInitSsWtCnTauCnfMsgCnDetatchReq(VOS_UINT32  ulMsgId,
                                                          VOS_VOID   *pMsgStru)
@@ -1366,6 +1425,10 @@ VOS_UINT32    NAS_EMM_MsTauInitSsWtCnTauCnfMsgCnDetatchReq(VOS_UINT32  ulMsgId,
         return  NAS_LMM_ERR_CODE_PARA_INVALID;
 
     }
+
+    #if (FEATURE_PTM == FEATURE_ON)
+    NAS_EMM_DetachErrRecord(pRcvEmmMsg);
+    #endif
 
     /* 丢弃IMSI DETACH类型的CN DETACH */
     if (NAS_EMM_DETACH_TYPE_MT_IMSI_DETACH == pRcvEmmMsg->ucDetType)
@@ -1421,35 +1484,7 @@ VOS_UINT32    NAS_EMM_MsTauInitSsWtCnTauCnfMsgCnDetatchReq(VOS_UINT32  ulMsgId,
             break;
 
         case NAS_EMM_COLLISION_DETACH:
-
-            /* 向MMC发被 MO DETACH 打断 LMM_MMC_TAU_RESULT_IND*/
-            NAS_EMM_MmcSendTauActionResultIndOthertype((VOS_VOID*)&enTauRslt);
-
-            if (MMC_LMM_MO_DET_CS_ONLY != NAS_EMM_GLO_AD_GetDetTypeMo())
-            {
-                /*修改状态：进入主状态DEREG子状态DEREG_NORMAL_SERVICE*/
-                NAS_EMM_AdStateConvert(     EMM_MS_DEREG,
-                                            EMM_SS_DEREG_NORMAL_SERVICE,
-                                            TI_NAS_EMM_STATE_NO_TIMER);
-                NAS_EMM_TAU_CollisionDetachProc();
-
-                /*本地DETACH释放资源:动态内存、赋初值 */
-                NAS_LMM_DeregReleaseResource();
-            }
-            else
-            {
-                /*修改状态：进入主状态EMM_MS_REG子状态EMM_SS_REG_NORMAL_SERVICE*/
-                NAS_EMM_AdStateConvert(     EMM_MS_REG,
-                                            EMM_SS_REG_NORMAL_SERVICE,
-                                            TI_NAS_EMM_STATE_NO_TIMER);
-                NAS_EMM_TAU_CollisionDetachProc();
-
-                /* 设置注册域为PS */
-                NAS_LMM_SetEmmInfoRegDomain(NAS_LMM_REG_DOMAIN_PS);
-
-                /* IMSI DETACH后释放资源 */
-                NAS_LMM_ImsiDetachReleaseResource();
-            }
+            NAS_EMM_MsTauInitSsWtCnTauCnfMsgCnDetReqCollisionDetProc(&enTauRslt);
             break;
 
         default:
@@ -1573,7 +1608,9 @@ VOS_VOID NAS_EMM_MsSerInitSsWtCnSerCnfMsgCnReAttachDetatchReq
         /* 如果不是紧急CSFB给MM发终止消息,继续RE-ATTACH流程 */
         if (VOS_TRUE == NAS_EMM_SER_IsNotEmergencyCsfb())
         {
-            NAS_EMM_MmSendCsfbSerEndInd(MM_LMM_CSFB_SERVICE_RSLT_FAILURE);
+            NAS_EMM_SetCsfbProcedureFlag(PS_FALSE);
+
+            NAS_EMM_MmSendCsfbSerEndInd(MM_LMM_CSFB_SERVICE_RSLT_CN_DETACH_FAIL, NAS_LMM_CAUSE_NULL);
         }
         else
         {
@@ -1655,8 +1692,10 @@ VOS_VOID NAS_EMM_MsSerInitSsWtCnSerCnfMsgCnDetachCause2
         case NAS_EMM_SER_START_CAUSE_MT_CSFB_REQ:
             NAS_EMM_SER_AbnormalOver();
 
+            NAS_EMM_SetCsfbProcedureFlag(PS_FALSE);
+
             /* 给MM发终止 */
-            NAS_EMM_MmSendCsfbSerEndInd(MM_LMM_CSFB_SERVICE_RSLT_FAILURE);
+            NAS_EMM_MmSendCsfbSerEndInd(MM_LMM_CSFB_SERVICE_RSLT_CN_DETACH_FAIL, NAS_LMM_CAUSE_NULL);
 
             /* 状态迁移到REG.NORMAL_SERVICE*/
             NAS_EMM_AdStateConvert(EMM_MS_REG,
@@ -1734,7 +1773,9 @@ VOS_VOID NAS_EMM_MsSerInitSsWtCnSerCnfMsgCnNotReAttachDetatchReq
         /* 如果不是紧急CSFB给MM发终止消息 */
         if (VOS_TRUE == NAS_EMM_SER_IsNotEmergencyCsfb())
         {
-            NAS_EMM_MmSendCsfbSerEndInd(MM_LMM_CSFB_SERVICE_RSLT_FAILURE);
+            NAS_EMM_SetCsfbProcedureFlag(PS_FALSE);
+
+            NAS_EMM_MmSendCsfbSerEndInd(MM_LMM_CSFB_SERVICE_RSLT_CN_DETACH_FAIL, NAS_LMM_CAUSE_NULL);
         }
         else
         {
@@ -1787,6 +1828,10 @@ VOS_UINT32    NAS_EMM_MsSerInitSsWtCnSerCnfMsgCnDetatchReq(VOS_UINT32  ulMsgId,
     NAS_EMM_DETACH_LOG1_INFO("Detach type is:",pRcvEmmMsg->ucDetType);
 
     NAS_EMM_GLO_AD_GetMtDetachAccTxCnt() = 0;
+
+    #if (FEATURE_PTM == FEATURE_ON)
+    NAS_EMM_DetachErrRecord(pRcvEmmMsg);
+    #endif
 
     switch(pRcvEmmMsg->ucDetType)
     {
@@ -2140,6 +2185,12 @@ VOS_UINT32  NAS_EMM_MsDrgInitSsWtCnDetCnfMsgAuthRej(
     (VOS_VOID)ulMsgId;
     (VOS_VOID)pMsgStru;
 
+    /* 鉴权拒绝优化处理 */
+    if (NAS_EMM_YES == NAS_EMM_IsNeedIgnoreHplmnAuthRej())
+    {
+        return  NAS_LMM_MSG_HANDLED;
+    }
+
     NAS_EMM_ProcDetachAuthRej(NAS_EMM_AUTH_REJ_INTRA_CAUSE_NORMAL);
 
 
@@ -2166,12 +2217,16 @@ VOS_UINT32  NAS_EMM_MsRegImsiDetachWtCnDetCnfMsgAuthRej
                                                 ulMsgId,
                                                 pMsgStru);
 
+    /* 鉴权拒绝优化处理 */
+    if (NAS_EMM_YES == NAS_EMM_IsNeedIgnoreHplmnAuthRej())
+    {
+        return  NAS_LMM_MSG_HANDLED;
+    }
+
     NAS_EMM_ProcDetachAuthRej(NAS_EMM_AUTH_REJ_INTRA_CAUSE_NORMAL);
 
     return NAS_LMM_MSG_HANDLED;
 }
-
-
 VOS_VOID  NAS_EMM_ProcMsRegImsiDetachInitMsgRrcRelInd
 (
     VOS_UINT32                          ulCause

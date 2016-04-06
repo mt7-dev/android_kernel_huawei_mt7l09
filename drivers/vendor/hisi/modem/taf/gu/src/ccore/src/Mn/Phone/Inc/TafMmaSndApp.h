@@ -66,14 +66,14 @@ extern "C" {
 VOS_VOID TAF_MMA_SndSysCfgSetCnf(
     TAF_MMA_CTRL_STRU                  *pstCtrl,
     TAF_MMA_APP_OPER_RESULT_ENUM_UINT32 enRslt,
-    TAF_PHONE_ERROR                     usErrorCause
+    TAF_ERROR_CODE_ENUM_UINT32          enErrorCause
 );
 
 VOS_VOID TAF_MMA_SndPhoneModeSetCnf(
     TAF_MMA_CTRL_STRU                  *pstCtrl,
     TAF_PH_MODE                         ucPhMode,
     TAF_MMA_APP_OPER_RESULT_ENUM_UINT32 enRslt,
-    TAF_PHONE_ERROR                     usErrorCause
+    TAF_ERROR_CODE_ENUM_UINT32          enErrorCause
 );
 
 VOS_VOID TAF_MMA_SndAcqBestNetworkCnf(
@@ -96,7 +96,7 @@ VOS_VOID TAF_MMA_SndPowerSaveCnf(
 VOS_VOID TAF_MMA_SndDetachCnf(
     TAF_MMA_CTRL_STRU                  *pstCtrl,
     TAF_MMA_APP_OPER_RESULT_ENUM_UINT32 enDetachRslt,
-    TAF_PHONE_ERROR                     usErrorCause
+    TAF_ERROR_CODE_ENUM_UINT32          enErrorCause
 );
 
 
@@ -120,6 +120,29 @@ VOS_VOID TAF_MMA_SndSimStatusInd(
 );
 
 #endif
+
+
+#if (FEATURE_ON == FEATURE_IMS)
+VOS_VOID TAF_MMA_SndImsSwitchSetCnf(
+    TAF_MMA_CTRL_STRU                  *pstCtrl,
+    TAF_MMA_APP_OPER_RESULT_ENUM_UINT32 enResult,
+    TAF_ERROR_CODE_ENUM_UINT32          enErrorCause
+);
+VOS_VOID TAF_MMA_SndImsSwitchQryCnf(
+    TAF_MMA_CTRL_STRU                          *pstCtrl,
+    VOS_UINT8                                   ucImsSwitch
+);
+#endif
+VOS_VOID TAF_MMA_SndVoiceDomainSetCnf(
+    TAF_MMA_CTRL_STRU                  *pstCtrl,
+    TAF_MMA_APP_OPER_RESULT_ENUM_UINT32 enResult,
+    TAF_ERROR_CODE_ENUM_UINT32          enErrorCause
+);
+VOS_VOID TAF_MMA_SndVoiceDomainQryCnf(
+    TAF_MMA_CTRL_STRU                  *pstCtrl,
+    TAF_MMA_VOICE_DOMAIN_ENUM_UINT32    enVoiceDomain
+);
+
 
 #if (VOS_OS_VER == VOS_WIN32)
 #pragma pack()

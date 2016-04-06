@@ -56,9 +56,9 @@ struct drv_hifi_image_sec
     unsigned short                      sn;              /* 编号 */
     unsigned char                       type;            /* 类型 */
     unsigned char                       load_attib;      /* 加载属性 */
-    unsigned long                       src_offset;      /* 在文件中的偏移, bytes */
-    unsigned long                       des_addr;        /* 加载目的地址, bytes */
-    unsigned long                       size;            /* 段长度, bytes */
+    unsigned int                       src_offset;      /* 在文件中的偏移, bytes */
+    unsigned int                       size;            /* 段长度, bytes */
+    void*                       des_addr;        /* 加载目的地址, bytes */
 };
 
 /*****************************************************************************
@@ -68,7 +68,7 @@ struct drv_hifi_image_sec
 struct drv_hifi_image_head
 {
     char                                time_stamp[24]; /* 镜像编译时间 */
-    unsigned long                       image_size;     /* 镜像文件大小, bytes */
+    unsigned int                       image_size;     /* 镜像文件大小, bytes */
     unsigned int                        sections_num;   /* 文件包含段数目 */
     struct drv_hifi_image_sec           sections[HIFI_SEC_MAX_NUM];    /* 段信息, 共sections_num个 */
 };
@@ -79,9 +79,9 @@ struct drv_hifi_image_head
 *****************************************************************************/
 struct drv_hifi_sec_addr
 {
-    unsigned int  sec_source_addr;	/*段的源地址*/
+    void*  sec_source_addr;	/*段的源地址*/
     unsigned int  sec_length;	    /*段的长度*/
-    unsigned int  sec_dest_addr;    /*段的目的地址*/
+    void*  sec_dest_addr;    /*段的目的地址*/
 };
 
 /*****************************************************************************
@@ -182,7 +182,7 @@ int bsp_load_modem_dsp(void);
 
 /* the interface below is just for myself */
 
-extern void drv_hifi_fill_mb_info(unsigned int addr);
+extern void drv_hifi_fill_mb_info(unsigned int * addr);
 void bsp_dsp_init(void);
 
 

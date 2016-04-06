@@ -257,8 +257,9 @@ typedef union
     NAS_CC_MSG_RELEASE_MT_STRU          stRel;
     NAS_CC_MSG_RELEASE_COMPLETE_MT_STRU stRelComp;
     NAS_CC_MSG_FACILITY_MT_STRU         stFac;
-    NAS_CC_CAUSE_VALUE_ENUM_U8          enCause;
+    NAS_CC_CAUSE_VALUE_ENUM_U32         enCause;
     VOS_UINT8                           ucInvokeId;
+    VOS_UINT8                           ucReseved[3];
     NAS_CC_SYNC_IND_STRU                stSyncInd;
     MNCC_MSG_EST_STRU                   stEstInd;
     NAS_CC_MSG_RECALL_STRU              stRecall;

@@ -79,6 +79,7 @@ extern "C" {
 #define MM_IE_NETWORK_DAYLIGHT_SAVING_TIME_VALUE_LEN    (1)
 #define MM_IE_LSA_IDENTITY_VALUE_MAX_LEN                (3)
 
+#define MM_IE_AUTN_MAX_LEN                              (16)
 
 
 /* IE结构体定义 */

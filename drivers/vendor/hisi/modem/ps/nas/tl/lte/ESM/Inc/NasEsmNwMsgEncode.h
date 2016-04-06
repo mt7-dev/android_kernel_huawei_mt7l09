@@ -313,6 +313,12 @@ extern VOS_UINT32  NAS_ESM_ApnTransformaton
     const APP_ESM_APN_INFO_STRU  *pstAPNInfoBeforeTrans
 );
 
+extern VOS_UINT32 NAS_ESM_CheckApnReverseTransformationParaValid
+(
+    const APP_ESM_APN_INFO_STRU  *pstAPNInfoAfterTrans,
+    const NAS_ESM_CONTEXT_APN_STRU  *pstAPNInfoBeforeTrans
+);
+
 
 extern VOS_UINT32  NAS_ESM_ApnReverseTransformation
 (

@@ -118,7 +118,7 @@ static void aphy_channel_switch(struct b43_wldev *dev, unsigned int channel)
 		 * r8 = (((freq * 15 * 0xE1FC780F) >> 32) / 29) & 0x0F;
 		 *    = (freq * 0.025862069
 		 */
-		r8 = 3 * freq / 116;	/* is equal to r8 = freq * 0.025862 */
+		r8 = 3 * freq / 116;
 	}
 	b43_radio_write16(dev, 0x0007, (r8 << 4) | r8);
 	b43_radio_write16(dev, 0x0020, (r8 << 4) | r8);

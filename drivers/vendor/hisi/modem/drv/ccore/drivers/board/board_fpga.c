@@ -43,13 +43,15 @@ void p531_fpga_multi_mode_init()
 
 void k3v3_fpga_init()
 {
-    u8 iregVal;
+    //u8 iregVal;
 
 	if(bsp_board_type_is_gutl())
 	{
+		writel(0x78fc,0xe020007c);
 		/* LBUSΩ‚À¯ */
 		writel(0x10, 0xe1fa0024);
-
+		}
+#if 0
         /*hi6551≈‰÷√*/
         /*≈‰÷√ldo24Œ™3v*/
         writel(0x04, (0xe1f96000+(0xb4<<2)));
@@ -60,6 +62,7 @@ void k3v3_fpga_init()
         iregVal |=  0x01;
         writel((u32)iregVal, 0xe1f96000+(0x11c<<2));
 	}
+#endif
 }
 
 void board_fpga_init(void)
@@ -68,7 +71,7 @@ void board_fpga_init(void)
     p531_fpga_multi_mode_init();
 #endif
 
-#ifdef BSP_CONFIG_K3V3_SFT
+#ifdef BSP_CONFIG_BOARD_SFT
     k3v3_fpga_init();
 #endif
 

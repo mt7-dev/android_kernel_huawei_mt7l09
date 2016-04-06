@@ -114,6 +114,32 @@
 #define PMUBASE       	   0xfff34000
 #define PCTRLBASE		0xE8A09000
 
+
+/*ipc processor max*/
+#define IPC_PROCESSOR_MAX		6
+/*ipc mailbox max*/
+#define NSIPC_MAILBOX_MAX		27
+
+#define AP_IPC_PROC_MAX			2
+
+#define IPC_MBXDATA_MAX			8
+/*line -emacro(750,*)*/
+/*lint -e750*/
+#define IPC_MBX_SOURCE_OFFSET(m)		((m) << 6)
+#define IPC_MBX_DSTATUS_OFFSET(m)		(0x0C + ((m) << 6))
+#define IPC_MBXDATA_OFFSET(m, idex)		(0x20 + 4 * (idex) + ((m) << 6))
+/*lint +e750*/
+/*line +emacro(750,*)*/
+
+unsigned char *processor_name[IPC_PROCESSOR_MAX] = {
+	"gic1",
+	"gic2",
+	"iom3",
+	"lpm3",
+	"hifi",
+	"modem"
+};
+
 #define SPE_IRQ_NUM_MAX		2
 
 struct hisi_nvic {
@@ -125,7 +151,7 @@ static struct hisi_nvic nvic_special_irq[SPE_IRQ_NUM_MAX] = {
 	{205, "MODEM"},
 	{223, "COMB_GIC_IPC"}
 };
-
+#define IPC_COMBO_AP		223
 extern bool console_suspend_enabled;
 
 static unsigned g_usavedcfg;
@@ -150,6 +176,7 @@ struct sysreg_base_addr {
 	void __iomem *crg_base;
 	void __iomem *pmic_base;
 	void __iomem *reserved_base;
+	void __iomem *nsipc_base;
 };
 
 struct sysreg_base_addr sysreg_base;
@@ -248,6 +275,16 @@ static int map_sysregs(void)
 	if (!sysreg_base.pmic_base)
 		goto err;
 
+	np = of_find_compatible_node(NULL, NULL, "hisilicon,HiIPCV230");
+	if (!np) {
+		pr_err("%s: dts[%s] node not found\n",
+				__func__, "hisilicon,HiIPCV230");
+		goto err;
+	}
+	sysreg_base.nsipc_base = of_iomap(np, 0);
+	if (!sysreg_base.nsipc_base)
+		goto err;
+
 	sysreg_base.reserved_base = ioremap((unsigned long)hisi_reserved_pm_phymem, PM_BUFFER_SIZE);
 	if (!sysreg_base.reserved_base)
 		goto err;
@@ -262,6 +299,8 @@ err:
 	sysreg_base.pctrl_base = NULL;
 	sysreg_base.crg_base = NULL;
 	sysreg_base.reserved_base = NULL;
+	sysreg_base.nsipc_base = NULL;
+
 	return -ENODEV;
 }
 
@@ -340,6 +379,69 @@ void debuguart_reinit(void)
 	writel(uregv, (sysreg_base.uart_base + 0x30));
 }
 
+
+unsigned int proc_mask_to_id(unsigned int mask)
+{
+	unsigned int i = 0;
+
+	for (i = 0; i < IPC_PROCESSOR_MAX; i++) {
+		if (mask & BIT(i)) {
+			break;
+		}
+	}
+
+	return i;
+}
+
+void ipc_mbx_irq_show(void __iomem *base, unsigned int mbx)
+{
+	unsigned int ipc_source = 0;
+	unsigned int ipc_dest = 0;
+	unsigned int src_id = 0;
+	unsigned int dest_id = 0;
+	unsigned int i = 0;
+
+	ipc_source = readl(base + IPC_MBX_SOURCE_OFFSET(mbx));
+	src_id = proc_mask_to_id(ipc_source);
+	if (src_id < AP_IPC_PROC_MAX) {
+		/*is ack irq*/
+		ipc_dest = readl(base + IPC_MBX_DSTATUS_OFFSET(mbx));
+		dest_id = proc_mask_to_id(ipc_dest);
+		if (dest_id < IPC_PROCESSOR_MAX) {
+			printk("SR:mailbox%d: ack from %s\n", mbx, processor_name[dest_id]);
+		} else {
+			printk("SR:mailbox%d: ack from unknown\n", mbx);
+		}
+	} else if (src_id < IPC_PROCESSOR_MAX) {
+		/*is receive irq*/
+		printk("SR:mailbox%d: send by %s\n", mbx, processor_name[src_id]);
+	} else {
+		printk("SR:mailbox%d: src id unknown\n", mbx);
+	}
+
+	for (i = 0; i < IPC_MBXDATA_MAX; i++) {
+		printk("SR:[MBXDATA%d]:0x%x\n", i, readl(base + IPC_MBXDATA_OFFSET(mbx, i)));
+	}
+}
+
+void combo_ipc_irq_show(unsigned int nsipc_state)
+{
+	unsigned int mbx = 0;
+
+	/*ns ipc irq detail show*/
+	printk("SR:nsipc irq state:0x%x\n", nsipc_state);
+	if (sysreg_base.nsipc_base == NULL) {
+		printk("SR:nsipc base is NULL\n");
+		return;
+	}
+	for (mbx = 0; mbx <= NSIPC_MAILBOX_MAX; mbx++) {
+		if ((nsipc_state & BIT(mbx)) > 0) {
+			ipc_mbx_irq_show(sysreg_base.nsipc_base, mbx);
+		}
+	}
+
+}
+
 /****************************************
 *function: pm_status_show
 *description:
@@ -405,13 +507,17 @@ void pm_nvic_pending_dump(void)
 {
 	unsigned int wake_irq;
 	int i;
+	unsigned int nsipc_state;
 
 	wake_irq = readl(sysreg_base.reserved_base + PM_WAKE_IRQ_SPECIAL_OFFSET);
 
 	for (i = 0; i < SPE_IRQ_NUM_MAX; i++) {
-		if (wake_irq & BIT(i))
+		if (wake_irq & BIT(i)) {
 			pr_info("wake up special irq: %d, irq name: %s\n",
 				nvic_special_irq[i].irq, nvic_special_irq[i].name);
+			nsipc_state = readl(sysreg_base.nsipc_base + 0x804 + (0 << 3)) | readl(sysreg_base.nsipc_base + 0x804 + (1 << 3));
+			combo_ipc_irq_show(nsipc_state);
+		}
 	}
 }
 

@@ -56,6 +56,11 @@ extern "C" {
 
 /* 指定plmn搜索失败后，上报的plmn最大数  */
 #define LRRC_LNAS_MAX_SEARCHED_PLMN_NUM   16
+
+/*begin:add by wangmiao00272217 for 漫游搜网优化*/
+#define LRRC_LMM_MAX_SEARCHED_TAI_NUM    16
+/*end:add by wangmiao00272217 for 漫游搜网优化*/
+
 /* NAS数据最大长度 */
 #define LRRC_LNAS_MAX_DATA_LENGTH         1024
 
@@ -89,11 +94,15 @@ extern "C" {
 #define LRABM_LRRC_MSG_HDR                (PS_MSG_ID_NAS_TO_RRC_BASE + 0x40)
 #define LRRC_LRABM_MSG_HDR                (PS_MSG_ID_RRC_TO_NAS_BASE + 0x40)
 
-#define LRRC_LRRC_IsGuRedir_Flow()      ( LRRC_COMM_GetFlowCtrlFlg() ==LRRC_FLOW_CTRL_TYPE_L2W_REDIR_FAIL || \
+#define LRRC_LRRC_IsGUCRedir_Flow()      ( LRRC_COMM_GetFlowCtrlFlg() ==LRRC_FLOW_CTRL_TYPE_L2W_REDIR_FAIL || \
                                              LRRC_COMM_GetFlowCtrlFlg() ==LRRC_FLOW_CTRL_TYPE_L2W_START_REDIR || \
                                              LRRC_COMM_GetFlowCtrlFlg() ==LRRC_FLOW_CTRL_TYPE_L2G_REDIR_FAIL || \
                                              LRRC_COMM_GetFlowCtrlFlg() ==LRRC_FLOW_CTRL_TYPE_L2G_START_REDIR || \
-                                             LRRC_COMM_GetFlowCtrlFlg() ==LRRC_FLOW_CTRL_TYPE_L2T_START_REDIR  )
+                                             LRRC_COMM_GetFlowCtrlFlg() ==LRRC_FLOW_CTRL_TYPE_L2T_START_REDIR || \
+                                             LRRC_COMM_GetFlowCtrlFlg() ==LRRC_FLOW_CTRL_TYPE_L2C_START_RESEL || \
+                                             LRRC_COMM_GetFlowCtrlFlg() ==LRRC_FLOW_CTRL_TYPE_L2C_RESEL_FAIL || \
+                                             LRRC_COMM_GetFlowCtrlFlg() ==LRRC_FLOW_CTRL_TYPE_L2C_START_REDIR || \
+                                             LRRC_COMM_GetFlowCtrlFlg() ==LRRC_FLOW_CTRL_TYPE_L2C_REDIR_FAIL)
 
 /*****************************************************************************
   3 Massage Declare
@@ -190,6 +199,8 @@ enum LRRC_LNAS_MSG_ID_ENUM
     ID_LRRC_LMM_UTRAN_MODE_CNF            = (LRRC_LMM_MSG_HDR + 0x20),   /* _H2ASN_MsgChoice LRRC_LMM_UTRAN_MODE_CNF_STRU */
 
     ID_LRRC_LMM_SUSPEND_INFO_CHANGE_IND   = (LRRC_LMM_MSG_HDR + 0x21),   /* _H2ASN_MsgChoice LRRC_LMM_SUSPEND_INFO_CHANGE_IND_STRU */
+
+    ID_LRRC_LMM_SEARCHED_PLMN_INFO_IND    = (LRRC_LMM_MSG_HDR + 0x22),     /* _H2ASN_MsgChoice LRRC_LMM_SEARCHED_PLMN_INFO_IND_STRU */
 
     /* RRC发给RABM的原语 */
     ID_LRRC_LRABM_RAB_IND                 = (LRRC_LRABM_MSG_HDR + 0x0d),   /* _H2ASN_MsgChoice LRRC_LRABM_RAB_IND_STRU */
@@ -313,6 +324,7 @@ enum LRRC_LNAS_INFO_TYPE_ENUM
     LRRC_LNAS_INFO_TYPE_AC,
     LRRC_LNAS_INFO_TYPE_PLMNID,
     LRRC_LNAS_INFO_TYPE_HO_PRIO_SELECT_PLMNID,
+    LRRC_LNAS_INFO_TYPE_RPLMN,
     LRRC_LNAS_INFO_TYPE_BUTT
 };
 typedef VOS_UINT32 LRRC_LNAS_INFO_TYPE_ENUM_UINT32;
@@ -1326,6 +1338,23 @@ typedef struct
 }LRRC_LMM_PLMN_SEARCH_CNF_STRU;
 
 /*****************************************************************************
+ 结构名    : LRRC_LMM_SEARCHED_PLMN_LIST_INFO_IND_STRU
+ 协议表格  : 用以plmn list和plmn spec搜索过程中向nas上报当前搜网结果
+ ASN.1描述 :
+ 结构说明  : LRRC_LMM_SEARCHED_PLMN_LIST_INFO_IND_STRU数据结构
+*****************************************************************************/
+typedef struct
+{
+    VOS_MSG_HEADER                                            /*_H2ASN_Skip*/
+    LRRC_LNAS_MSG_ID_ENUM_UINT32          enMsgId;            /*_H2ASN_Skip*/
+
+    VOS_UINT32                            ulTaiNum;            /* Plmn的个数    */
+
+    LRRC_LNAS_TA_STRU                     stTaiList[LRRC_LMM_MAX_SEARCHED_TAI_NUM];
+}LRRC_LMM_SEARCHED_PLMN_INFO_IND_STRU;
+
+
+/*****************************************************************************
  结构名    : LRRC_LMM_PLMN_SEARCH_STOP_REQ_STRU
  协议表格  :
  ASN.1描述 :
@@ -1729,6 +1758,21 @@ typedef struct
 }LRRC_LMM_AREA_LOST_IND_STRU;
 
 /*****************************************************************************
+ 枚举名    : LRRC_LNAS_ACCESS_MODE_ENUM
+ 协议表格  :
+ ASN.1描述 :
+ 枚举说明  : SysInfoInd消息中的accessMode
+*****************************************************************************/
+enum LRRC_LNAS_ACCESS_MODE_ENUM
+{
+    LRRC_LNAS_ACCESS_MODE_TDD           = 0,                /* TDD模式*/
+    LRRC_LNAS_ACCESS_MODE_FDD           = 1,                /* FDD模式 */
+    LRRC_LNAS_ACCESS_MODE_BUTT
+};
+typedef VOS_UINT8  LRRC_LNAS_ACCESS_MODE_ENUM_UINT8;
+
+
+/*****************************************************************************
  结构名    : LRRC_LMM_SYS_INFO_IND_STRU
  协议表格  :
  ASN.1描述 :
@@ -1752,8 +1796,9 @@ typedef struct
     /*Modify by sunbing 49683 for CL multimode 2014-01-09 begin*/
     VOS_UINT16                            usArfcn;            /* 驻留频点信息 */
     VOS_UINT8                             ucBandWidth;        /* 带宽信息 */
-    VOS_UINT8                             ucRsv;
     /*Modify by sunbing 49683 for CL multimode 2014-01-09 end*/
+
+    LRRC_LNAS_ACCESS_MODE_ENUM_UINT8    enAccessType;
 
 }LRRC_LMM_SYS_INFO_IND_STRU;
 
@@ -2495,6 +2540,10 @@ extern LRRC_LNAS_SMC_CTRL_ENUM_UINT8 LRRC_LNAS_GetSmcState( VOS_VOID );
 
 extern LRRC_LNAS_RESULT_ENUM_UINT32  LRRC_GetEutraUeCap(
         const LRRC_LNAS_PLMN_ID_STRU stPlmnId, VOS_UINT16 *pusDataLen, VOS_UINT8 *pucEncData );
+
+
+extern VOS_UINT8 LRRC_LNAS_GetPowerOffFlag(VOS_VOID);
+
 /*****************************************************************************
   9 OTHERS
 *****************************************************************************/

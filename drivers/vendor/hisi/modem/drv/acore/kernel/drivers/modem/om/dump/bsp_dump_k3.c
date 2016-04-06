@@ -33,8 +33,36 @@
 #include "bsp_nvim.h"
 #include <linux/huawei/rdr.h>
 
-#ifndef RDR_CCORE
+/* RDR未打开对RDR中的内容打桩处理 */
+#ifndef CONFIG_HISI_RDR
 #define RDR_CCORE 2
+
+struct rdr_struct_s * pbb = NULL;
+
+s32 rdr_dump_register_hook(int field_id, void * func)
+{
+    printk("rdr_dump_register_hook is stub, no rdr.\n");
+    return -1;
+}
+
+u32 *rdr_core_addr_fun(char *daddr, int core_id)
+{
+    printk("rdr_core_addr_fun is stub, no rdr.\n");
+	return 0;
+}
+
+u8 *rdr_balong_reg_field(u32 field_id, u32 len)
+{
+    printk("rdr_balong_reg_field is stub, no rdr.\n");
+	return 0;
+}
+
+void hisi_system_error(enum rdr_modid_e mod_id,
+			u32 arg1, u32 arg2, char *data, u32 length)
+{
+    printk("hisi_system_error is stub, no rdr.\n");
+	return;
+}
 #endif
 
 #define RDR_CCORE_ADDR \
@@ -66,6 +94,13 @@ s32 bsp_dump_get_cp_field(u32 field_id, char** buffer, u32* length)
     *length = 0;
     
     pCPArea = (dump_area_t*)RDR_CCORE_ADDR;
+
+    if(pCPArea == 0 )
+    {
+        printk("bsp_dump_get_cp_field: error RDR_CCORE_ADDR is NULL.\n");
+        return BSP_ERROR; 
+    }
+    
     prdr_global = (dump_global_internal_t *)(RDR_AREA_RESERVE_ADDR->ap_cp_share.content.rdr_global_internal);
 
     if(prdr_global->comm_internal.init_flag != DUMP_INIT_FLAG)
@@ -105,30 +140,36 @@ s32 bsp_dump_print(void)
 EXPORT_SYMBOL_GPL(bsp_dump_print);
 
 /* 根据mod_id获取对应的buffer地址，失败返回0 */
-u32 bsp_dump_get_buffer_addr(dump_save_modid_t mod_id)
+char* bsp_dump_get_buffer_addr(dump_save_modid_t mod_id)
 {
-    u32 addr = 0;
+    char* addr = 0;
     dump_save_t * top_head = (dump_save_t *)pbb;
     dump_area_t * area_head;
     u32 i;
+
+    if(pbb == NULL)
+    {
+        printk("bsp_dump_get_buffer_addr: error pbb is NULL\n");
+        return 0;
+    }
 
     /* 获取AP buffer */
     if((mod_id & 0x0F000000) == 0x01000000)
     {
         /* AP对应area 0 */
-        area_head = (dump_area_t *)((u32)pbb + top_head->area_info[0].offset);
+        area_head = (dump_area_t *)((char*)pbb + top_head->area_info[0].offset);
     }
     /* 获取CP buffer */
     else if((mod_id & 0x0F000000) == 0x02000000)
     {
         /* CP对应area 2 */
-        area_head = (dump_area_t *)((u32)pbb + top_head->area_info[2].offset);
+        area_head = (dump_area_t *)((char*)pbb + top_head->area_info[2].offset);
     }
     /* 获取LPM3 buffer */
     else if((mod_id & 0x0F000000) == 0x04000000)
     {
         /* LPM3对应area 5 */
-        area_head = (dump_area_t *)((u32)pbb + top_head->area_info[5].offset);
+        area_head = (dump_area_t *)((char*)pbb + top_head->area_info[5].offset);
         if(area_head->head.magic_num != 0x88118811)
         {
             printk("%s: LPM3 rdr filed is not inited\n", __FUNCTION__);
@@ -146,8 +187,8 @@ u32 bsp_dump_get_buffer_addr(dump_save_modid_t mod_id)
     {
         if(mod_id == area_head->fields[i].field_id)
         {
-            addr = (u32)area_head + area_head->fields[i].offset_addr;
-            printk("%s: field found, offset 0x%x, addr 0x%x\n", __FUNCTION__, area_head->fields[i].offset_addr, addr);
+            addr = (char*)area_head + area_head->fields[i].offset_addr;
+            printk("%s: field found, offset 0x%x, addr %p\n", __FUNCTION__, area_head->fields[i].offset_addr, addr);
             break;
         }
     }
@@ -204,7 +245,7 @@ s32 bsp_dump_get_buffer(dump_save_modid_t mod_id, char** buffer, u32* length)
 {
     if((!buffer) || (!length))
     {
-        printk("bsp_dump_get_buffer, invalid param!.buffer=0x%x length=0x%x\n", (u32)buffer, (u32)length);
+        printk("bsp_dump_get_buffer, invalid param!.buffer=%p length=%p\n", buffer, length);
         return BSP_ERR_DUMP_INVALID_PARAM;
     }
 
@@ -284,7 +325,7 @@ s32 bsp_dump_save_file(dump_save_file_t file_id, char* buffer, u32 length, dump_
 
     if((DUMP_SAVE_FILE_BUTT <= file_id) || ((DUMP_SAVE_FILE_MODE_BUTT <= mode)) || (!buffer) || (!length))
     {
-        printk("bsp_dump_save_file[%d]:  invalid param! %d 0x%x %d %d\n", __LINE__, (u32)file_id, (u32)buffer, (u32)length, (u32)mode);
+        printk("bsp_dump_save_file[%d]:  invalid param! %d %p %d %d\n", __LINE__, (u32)file_id, buffer, (u32)length, (u32)mode);
         return BSP_ERR_DUMP_INVALID_PARAM;
     }
 

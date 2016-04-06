@@ -225,6 +225,7 @@ One each for ROM_COMPRESS, ROM_RESIDENT, and ROM_COPY images.
 #include "sysLib.h"
 #include "config.h"
 #include "usrConfig.h"
+#include "modem_l2_test_case.h"
 
 /*
  * BSP_BOOT_CACHE_SYNC is an optionally defined macro that a BSP
@@ -365,6 +366,10 @@ void rom_mmu_enable(void);
 void rom_mmu_disable(void);
 void rom_mmu_l2cache_enable(void);
 void rom_mmu_l2cache_disable(void);
+void rom_mmu_l2cache_init(void);
+void rom_mmu_l2cache_flush(void);
+void rom_mmu_cache_clean(void);
+
 /*******************************************************************************
 *
 * romStart - generic ROM initialization for compressed images
@@ -384,6 +389,72 @@ void rom_mmu_l2cache_disable(void);
 
 #define RAM_DST_ADRS (MCORE_TEXT_START_ADDR)
 
+#ifdef ATE_L2CACHE_TEST
+void ate_l2cache_test_case(void)
+{
+    unsigned int test_count = 0;
+
+    for(test_count = 0; test_count < 5; test_count++)
+    {
+        memcpy((void*)(ATE_l2_TEST_LOW_ADDR + ATE_L2_TEST_BUFFER_SIZE * test_count),
+                (void*)MCORE_TEXT_START_ADDR_COMPRESSED,
+                       ATE_L2_TEST_BUFFER_SIZE);
+
+        if (memcmp( (void*)(ATE_l2_TEST_LOW_ADDR + ATE_L2_TEST_BUFFER_SIZE * test_count),
+                     (void*)MCORE_TEXT_START_ADDR_COMPRESSED,
+                      ATE_L2_TEST_BUFFER_SIZE))
+        {
+            while (1)
+            {
+                writel(0xFFFFFFFF, ATE_L2_TEST_FLAG);
+                rom_mmu_cache_clean();
+                rom_mmu_l2cache_flush();
+            }
+        }
+        memcpy((void*)(ATE_L2_TEST_HIGH_ADDR - test_count * ATE_L2_TEST_BUFFER_SIZE),
+               (void*)(ATE_l2_TEST_LOW_ADDR + ATE_L2_TEST_BUFFER_SIZE * test_count),
+                        ATE_L2_TEST_BUFFER_SIZE);
+        if (memcmp((void*)(ATE_L2_TEST_HIGH_ADDR - test_count * ATE_L2_TEST_BUFFER_SIZE),
+                    (void*)(ATE_l2_TEST_LOW_ADDR + ATE_L2_TEST_BUFFER_SIZE * test_count),
+                            ATE_L2_TEST_BUFFER_SIZE))
+        {
+            while (1)
+            {
+                writel(0xFFFFFFFF, ATE_L2_TEST_FLAG);
+                rom_mmu_cache_clean();
+                rom_mmu_l2cache_flush();
+            }
+        }
+
+    }
+    for(test_count = 5; test_count < 10; test_count++)
+    {
+        memset((void*)(ATE_l2_TEST_LOW_ADDR + ATE_L2_TEST_BUFFER_SIZE * test_count),
+                       0x5a5a5a5a,
+                       ATE_L2_TEST_BUFFER_SIZE);
+        memcpy((void*)(ATE_L2_TEST_HIGH_ADDR - test_count * ATE_L2_TEST_BUFFER_SIZE),
+               (void*)(ATE_l2_TEST_LOW_ADDR + ATE_L2_TEST_BUFFER_SIZE * test_count),
+                        ATE_L2_TEST_BUFFER_SIZE);
+        if (memcmp((void*)(ATE_L2_TEST_HIGH_ADDR - test_count * ATE_L2_TEST_BUFFER_SIZE),
+                    (void*)(ATE_l2_TEST_LOW_ADDR + ATE_L2_TEST_BUFFER_SIZE * test_count),
+                            ATE_L2_TEST_BUFFER_SIZE))
+        {
+            while (1)
+            {
+                writel(0xFFFFFFFF, ATE_L2_TEST_FLAG);
+                rom_mmu_cache_clean();
+                rom_mmu_l2cache_flush();
+            }
+        }
+    }
+    while (1)
+    {
+        writel(0xA5A5A5A5, ATE_L2_TEST_FLAG);
+        rom_mmu_cache_clean();
+        rom_mmu_l2cache_flush();
+    }
+}
+#endif
 void romStart
     (
     FAST int startType      /* start type */
@@ -443,10 +514,14 @@ void romStart
     rom_mmu_enable();
 
 #ifdef BSP_CONFIG_HI3630
+    rom_mmu_l2cache_init();
     rom_mmu_l2cache_enable();
 #endif
 
-#ifdef MODEM_L2CACHE_TEST
+#ifdef ATE_L2CACHE_TEST
+    ate_l2cache_test_case();
+
+#elif defined (MODEM_L2CACHE_TEST)
 
 #define MODEM_L2CACHE_TEST_BUFFER_SIZE (0x100000)
 
@@ -466,10 +541,9 @@ void romStart
         while (1)
             writel(0xA5A5A5A5, SHM_MEM_LOADM_ADDR);
     }
+
     return; /* return to dead loop */
-
 #else
-
     /* decompress the main image */
     if (UNCMP_RTN (UNCACHED(binArrayStart),
         UNCACHED(RAM_DST_ADRS),

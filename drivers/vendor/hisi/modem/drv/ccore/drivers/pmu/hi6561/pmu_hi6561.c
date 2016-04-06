@@ -118,7 +118,7 @@ u8 pastar_status_value[PMU_HI6561_POWER_ID_BUTT];
 /*用于标识PA/RF供电单元是Pastar or 其它*/
 NV_PAPOWER_UNIT_STRU pa_power_unit;
 NV_RFPOWER_UNIT_STRU rf_power_unit;
-
+NV_DRV_FEM_SHARE_POWER fem_share_power;
 
 
 /*****************************************************************************
@@ -430,8 +430,6 @@ static int pmu_hi6561_apt_enable_local(HI6561_ID_ENUM chip_id)
 	ret|=pmu_hi6561_reg_write(0x2c,0x6a,chip_id);
 
 	/*优化buck 0*/
-	ret|=pmu_hi6561_reg_write(0x29,0xbe,chip_id);
-	ret|=pmu_hi6561_reg_write(0x2a,0xe9,chip_id);
 
 	return ret;
 }
@@ -465,8 +463,6 @@ static int pmu_hi6561_apt_disable_local(HI6561_ID_ENUM chip_id)
 		return ret;
 	}
 	/*优化buck0*/
-	ret|=pmu_hi6561_reg_write(0x29,0xbe,chip_id);
-	ret|=pmu_hi6561_reg_write(0x2a,0xe9,chip_id);
 	return ret;
 }
 
@@ -584,6 +580,7 @@ char *pmu_hi6561_exc_isr(HI6561_ID_ENUM chip_id )
 	if(OK!=ret)
 	{
 		mipi_print_error("Error: pastar exception regitster data failed!reg addr:0x%x\n", HI6561_STATUS1_OFFSET);
+		return err_list[EXCEPTION_MAX];
 	}
 
     reg_val[0]=reg_val[0]&(~HI6561_NO_PWR_REG_RO_MASK);
@@ -608,6 +605,7 @@ char *pmu_hi6561_exc_isr(HI6561_ID_ENUM chip_id )
     	if(OK != ret)
     	{
     		mipi_print_error("Error: pastar exception regitster data failed!reg addr:0x%x\n", HI6561_NO_PWR_REG_RO_OFFSET);
+			return err_list[EXCEPTION_MAX];
     	}
 
         /* 异常信息发送给A核，A核再上报 */
@@ -970,6 +968,8 @@ static int pmu_hi6561_initial(HI6561_ID_ENUM chip_id)
 		ret|=pmu_hi6561_reg_write(0x36,0x01,chip_id);
 		ret|=pmu_hi6561_reg_write(0x37,0x09,chip_id);
 		ret|=pmu_hi6561_reg_write(0x38,0x04,chip_id);
+		ret|=pmu_hi6561_reg_write(0x29,0xbe,chip_id);
+		ret|=pmu_hi6561_reg_write(0x2a,0xe9,chip_id);
 	}
 	if(MIPI_OK!=ret)
 	{
@@ -1046,7 +1046,12 @@ int pmu_hi6561_init_phase1(void)
 	if(NV_OK != ret){
 		mipi_print_error("get pa/rf power unit nv error,not set!\n");
 	}
-    
+
+	ret |= (int)bsp_nvm_read((u32)NV_ID_DRV_FEM_SHARE_POWER,(u8 *)&fem_share_power,(u32)sizeof(NV_DRV_FEM_SHARE_POWER));
+	if(NV_OK != ret){
+		mipi_print_error("get fem shared power nv error,not set!\n");
+	}
+
 	/*init lock*/
 	spin_lock_init(&pmu_hi6561_lock[0]);
 	spin_lock_init(&pmu_hi6561_lock[1]);
@@ -1062,23 +1067,16 @@ int pmu_hi6561_init_phase1(void)
 
 #define PMU_SAVE_REG_NUM_MAX 20
 unsigned char hi6561_save_reg_list[]={
-	HI6561_CLASSAB_CTRL_OFFSET,	/*0x4c*/
-	HI6561_NO_PWR_REG_RO_OFFSET,/*0x6a*/
-	HI6561_BUCK0_ADJ5_OFFSET,	/*0x2d*/
-	HI6561_BUCK1_ADJ3_OFFSET,	/*0x32*/
-	HI6561_BUCK2_ADJ2_OFFSET,	/*0x37*/
-	HI6561_BUCK2_ADJ3_OFFSET,	/*0x38*/
-	HI6561_SET_BUCK2_OFFSET,	/*0x26*/
-	HI6561_SET_BUCK1_OFFSET,	/*0x27*/
+    HI6561_BUCK0_ADJ4_OFFSET,	/*0x2c*/
 	HI6561_SET_BUCK0_OFFSET,	/*0x28*/
-	HI6561_SET_LDO1_OFFSET,		/*0x48*/
-	HI6561_SET_LDO2_OFFSET,		/*0x49*/
-	HI6561_ILIM_CTRL1_OFFSET,	/*0x4e*/
-	HI6561_BUCK0_ADJ4_OFFSET,	/*0x2c*/
+	HI6561_BUCK0_ADJ1_OFFSET,   /*0x29*/
+	HI6561_BUCK0_ADJ2_OFFSET,	/*0x2a*/
 };
 
 unsigned char hi6561_0_save_reg_data[PMU_SAVE_REG_NUM_MAX];
 unsigned char hi6561_1_save_reg_data[PMU_SAVE_REG_NUM_MAX];
+
+
 unsigned int pmu_hi6561_reg_save(void)
 {
 	int i=0;
@@ -1092,27 +1090,39 @@ unsigned int pmu_hi6561_reg_save(void)
 			mipi_print_error("pmu hi6561 0 save fail!\n");
 			return (unsigned int)MIPI_ERROR;
 		}
+		if(rf_power_unit.rfpower_m1 == RF_POWER_FROM_HI6561){
 
-		ret = pmu_hi6561_reg_read(hi6561_save_reg_list[i],&hi6561_1_save_reg_data[i],HI6561_1);
-		if(ret){
-			mipi_print_error("pmu hi6561 1 save fail!\n");
-			return (unsigned int)MIPI_ERROR;
+			ret = pmu_hi6561_reg_read(hi6561_save_reg_list[i],&hi6561_1_save_reg_data[i],HI6561_1);
+			if(ret){
+				mipi_print_error("pmu hi6561 1 save fail!\n");
+				return (unsigned int)MIPI_ERROR;
+			}
 		}
 	}
+	
 	/*需要确保在进入深睡时，0x6a两个寄存器为0，防止漏电流*/
 	pmu_hi6561_reg_write(0x6a,0,HI6561_0);
 
 	pmu_hi6561_reg_write(0x6a,0,HI6561_1);
 	return MIPI_OK;
 }
+
+void pmu_hi6561_close_all_power(void)
+{
+	pmu_hi6561_power_off(PMU_HI6561_LDO1,0);/*close LDO1*/
+}
+
 unsigned int pmu_hi6561_reg_resume(void)
 {
-#if 0
 	int index=0;
-	int chip_id=0;
 	int ret=0;
 
 	int re_num=sizeof(hi6561_save_reg_list)/sizeof(unsigned char);
+
+	/*初始化*/
+	pmu_hi6561_init_phase2();
+
+	/*恢复*/
 	for(index=0;index<re_num;index++)
 	{
 		ret = pmu_hi6561_reg_write(hi6561_save_reg_list[index],hi6561_0_save_reg_data[index],0);
@@ -1121,22 +1131,16 @@ unsigned int pmu_hi6561_reg_resume(void)
 			return (unsigned int)MIPI_ERROR;
 		}
 
-		ret = pmu_hi6561_reg_write(hi6561_save_reg_list[index],hi6561_1_save_reg_data[index],1);
-		if(ret){
-			mipi_print_error("pmu hi6561 resume fail!\n");
-			return (unsigned int)MIPI_ERROR;
-		}
-	}
-
-
-	pmu_hi6561_voltage_set(PMU_HI6561_BUCK_PA,3300,0);/*buck0 3.3v */
-	pmu_hi6561_voltage_set(PMU_HI6561_BUCK1,1800,0);/*buck1 1.8v */
-
-
-	pmu_hi6561_voltage_set(PMU_HI6561_BUCK_PA,3300,1);/*buck0 3.3v */
-	pmu_hi6561_voltage_set(PMU_HI6561_BUCK1,1800,1);/*buck1 1.8v */
-#endif
-	pmu_hi6561_init_phase2();
+	    if(rf_power_unit.rfpower_m1 == RF_POWER_FROM_HI6561)
+        {
+    		ret = pmu_hi6561_reg_write(hi6561_save_reg_list[index],hi6561_1_save_reg_data[index],1);
+    		if(ret){
+    			mipi_print_error("pmu hi6561 1 resume fail!\n");
+    			return (unsigned int)MIPI_ERROR;
+    		}
+        }
+    }
+    
 	adp_pmu_hi6561_resume();
 	return MIPI_OK;
 

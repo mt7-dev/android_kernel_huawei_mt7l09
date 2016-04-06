@@ -49,7 +49,8 @@ static inline struct of_mm_gpio_chip *to_of_mm_gpio_chip(struct gpio_chip *gc)
 
 extern int of_get_named_gpio_flags(struct device_node *np,
 		const char *list_name, int index, enum of_gpio_flags *flags);
-
+extern int of_get_gpio_by_prop(struct device_node *np, const char *propname,
+			   int prop_index, int gpio_index, enum of_gpio_flags *flags);
 extern int of_mm_gpiochip_add(struct device_node *np,
 			      struct of_mm_gpio_chip *mm_gc);
 
@@ -64,6 +65,12 @@ extern int of_gpio_simple_xlate(struct gpio_chip *gc,
 /* Drivers may not strictly depend on the GPIO support, so let them link. */
 static inline int of_get_named_gpio_flags(struct device_node *np,
 		const char *list_name, int index, enum of_gpio_flags *flags)
+{
+	return -ENOSYS;
+}
+
+static inline int of_get_gpio_by_prop(struct device_node *np, const char *propname,
+			   int prop_index, int gpio_index, enum of_gpio_flags *flags)
 {
 	return -ENOSYS;
 }

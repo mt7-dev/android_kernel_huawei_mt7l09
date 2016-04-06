@@ -178,7 +178,7 @@ static void nxt6000_setup(struct dvb_frontend* fe)
 
 	nxt6000_writereg(state, RS_COR_SYNC_PARAM, SYNC_PARAM);
 	nxt6000_writereg(state, BER_CTRL, /*(1 << 2) | */ (0x01 << 1) | 0x01);
-	nxt6000_writereg(state, VIT_BERTIME_2, 0x00);  // BER Timer = 0x000200 * 256 = 131072 bits
+	nxt6000_writereg(state, VIT_BERTIME_2, 0x00);
 	nxt6000_writereg(state, VIT_BERTIME_1, 0x02);  //
 	nxt6000_writereg(state, VIT_BERTIME_0, 0x00);  //
 	nxt6000_writereg(state, VIT_COR_INTEN, 0x98); // Enable BER interrupts

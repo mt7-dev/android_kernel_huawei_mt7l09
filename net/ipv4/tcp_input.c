@@ -75,6 +75,10 @@
 #include <asm/unaligned.h>
 #include <net/netdma.h>
 
+#ifdef CONFIG_HW_WIFIPRO
+#include "wifipro_tcp_monitor.h"
+#endif
+
 int sysctl_tcp_timestamps __read_mostly = 1;
 int sysctl_tcp_window_scaling __read_mostly = 1;
 int sysctl_tcp_sack __read_mostly = 1;
@@ -98,6 +102,7 @@ int sysctl_tcp_thin_dupack __read_mostly;
 
 int sysctl_tcp_moderate_rcvbuf __read_mostly = 1;
 int sysctl_tcp_early_retrans __read_mostly = 3;
+int sysctl_tcp_default_init_rwnd __read_mostly = TCP_DEFAULT_INIT_RCVWND;
 
 #define FLAG_DATA		0x01 /* Incoming frame contained data.		*/
 #define FLAG_WIN_UPDATE		0x02 /* Incoming ACK was a window update.	*/
@@ -120,6 +125,11 @@ int sysctl_tcp_early_retrans __read_mostly = 3;
 
 #define TCP_REMNANT (TCP_FLAG_FIN|TCP_FLAG_URG|TCP_FLAG_SYN|TCP_FLAG_PSH)
 #define TCP_HP_BITS (~(TCP_RESERVED_BITS|TCP_FLAG_PSH))
+extern void notify_chr_thread_to_send_msg(unsigned int dstAddr,unsigned int srcAddr);
+
+#define HW_TCP_TIMESTAMP_ERR_THRESHOLD    (1)
+extern void hw_dhd_check_and_disable_timestamps(void);
+static void hw_tcp_check_and_disable_timestamps(void);
 
 /* Adapt the MSS value used to make delayed ack decision to the
  * real world.
@@ -351,14 +361,14 @@ static void tcp_grow_window(struct sock *sk, const struct sk_buff *skb)
 static void tcp_fixup_rcvbuf(struct sock *sk)
 {
 	u32 mss = tcp_sk(sk)->advmss;
-	u32 icwnd = TCP_DEFAULT_INIT_RCVWND;
+	u32 icwnd = sysctl_tcp_default_init_rwnd;
 	int rcvmem;
 
 	/* Limit to 10 segments if mss <= 1460,
 	 * or 14600/mss segments, with a minimum of two segments.
 	 */
 	if (mss > 1460)
-		icwnd = max_t(u32, (1460 * TCP_DEFAULT_INIT_RCVWND) / mss, 2);
+		icwnd = max_t(u32, (1460 * icwnd) / mss, 2);
 
 	rcvmem = SKB_TRUESIZE(mss + MAX_TCP_HEADER);
 	while (tcp_win_from_space(rcvmem) < mss)
@@ -1075,7 +1085,7 @@ static bool tcp_check_dsack(struct sock *sk, const struct sk_buff *ack_skb,
 	}
 
 	/* D-SACK for already forgotten data... Do dumb counting. */
-	if (dup_sack && tp->undo_marker && tp->undo_retrans &&
+	if (dup_sack && tp->undo_marker && tp->undo_retrans > 0 &&
 	    !after(end_seq_0, prior_snd_una) &&
 	    after(end_seq_0, tp->undo_marker))
 		tp->undo_retrans--;
@@ -1130,7 +1140,7 @@ static int tcp_match_skb_to_sack(struct sock *sk, struct sk_buff *skb,
 			unsigned int new_len = (pkt_len / mss) * mss;
 			if (!in_sack && new_len < pkt_len) {
 				new_len += mss;
-				if (new_len > skb->len)
+				if (new_len >= skb->len)
 					return 0;
 			}
 			pkt_len = new_len;
@@ -1154,7 +1164,7 @@ static u8 tcp_sacktag_one(struct sock *sk,
 
 	/* Account D-SACK for retransmitted packet. */
 	if (dup_sack && (sacked & TCPCB_RETRANS)) {
-		if (tp->undo_marker && tp->undo_retrans &&
+		if (tp->undo_marker && tp->undo_retrans > 0 &&
 		    after(end_seq, tp->undo_marker))
 			tp->undo_retrans--;
 		if (sacked & TCPCB_SACKED_ACKED)
@@ -1850,7 +1860,7 @@ static void tcp_clear_retrans_partial(struct tcp_sock *tp)
 	tp->lost_out = 0;
 
 	tp->undo_marker = 0;
-	tp->undo_retrans = 0;
+	tp->undo_retrans = -1;
 }
 
 void tcp_clear_retrans(struct tcp_sock *tp)
@@ -2700,7 +2710,7 @@ static void tcp_enter_recovery(struct sock *sk, bool ece_ack)
 
 	tp->prior_ssthresh = 0;
 	tp->undo_marker = tp->snd_una;
-	tp->undo_retrans = tp->retrans_out;
+	tp->undo_retrans = tp->retrans_out ? : -1;
 
 	if (inet_csk(sk)->icsk_ca_state < TCP_CA_CWR) {
 		if (!ece_ack)
@@ -2720,13 +2730,12 @@ static void tcp_process_loss(struct sock *sk, int flag, bool is_dupack)
 	bool recovered = !before(tp->snd_una, tp->high_seq);
 
 	if (tp->frto) { /* F-RTO RFC5682 sec 3.1 (sack enhanced version). */
-		if (flag & FLAG_ORIG_SACK_ACKED) {
-			/* Step 3.b. A timeout is spurious if not all data are
-			 * lost, i.e., never-retransmitted data are (s)acked.
-			 */
-			tcp_try_undo_loss(sk, true);
+		/* Step 3.b. A timeout is spurious if not all data are
+		 * lost, i.e., never-retransmitted data are (s)acked.
+		 */
+		if (tcp_try_undo_loss(sk, flag & FLAG_ORIG_SACK_ACKED))
 			return;
-		}
+
 		if (after(tp->snd_nxt, tp->high_seq) &&
 		    (flag & FLAG_DATA_SACKED || is_dupack)) {
 			tp->frto = 0; /* Loss was real: 2nd part of step 3.a */
@@ -2896,21 +2905,7 @@ EXPORT_SYMBOL(tcp_valid_rtt_meas);
  */
 static void tcp_ack_saw_tstamp(struct sock *sk, int flag)
 {
-	/* RTTM Rule: A TSecr value received in a segment is used to
-	 * update the averaged RTT measurement only if the segment
-	 * acknowledges some new data, i.e., only if it advances the
-	 * left edge of the send window.
-	 *
-	 * See draft-ietf-tcplw-high-performance-00, section 3.3.
-	 * 1998/04/10 Andrey V. Savochkin <saw@msu.ru>
-	 *
-	 * Changed: reset backoff as soon as we see the first valid sample.
-	 * If we do not, we get strongly overestimated rto. With timestamps
-	 * samples are accepted even from very old segments: f.e., when rtt=1
-	 * increases to 8, we retransmit 5 times and after 8 seconds delayed
-	 * answer arrives rto becomes 120 seconds! If at least one of segments
-	 * in window is lost... Voila.	 			--ANK (010210)
-	 */
+
 	struct tcp_sock *tp = tcp_sk(sk);
 
 	tcp_valid_rtt_meas(sk, tcp_time_stamp - tp->rx_opt.rcv_tsecr);
@@ -3134,6 +3129,12 @@ static int tcp_clean_rtx_queue(struct sock *sk, int prior_fackets,
 
 		tcp_ack_update_rtt(sk, flag, seq_rtt);
 		tcp_rearm_rto(sk);
+
+#ifdef CONFIG_HW_WIFIPRO
+		if(is_wifipro_on && tp->srtt != 0 && !(flag & FLAG_RETRANS_DATA_ACKED)){
+		    wifipro_update_rtt(tp->srtt, sk);
+		}
+#endif
 
 		if (tcp_is_reno(tp)) {
 			tcp_remove_reno_sacks(sk, pkts_acked);
@@ -5130,6 +5131,10 @@ int tcp_rcv_established(struct sock *sk, struct sk_buff *skb,
 
 	tp->rx_opt.saw_tstamp = 0;
 
+#ifdef CONFIG_HUAWEI_BASTET
+	bastet_delay_sock_sync_notify(sk);
+#endif
+
 	/*	pred_flags is 0xS?10 << 16 + snd_wnd
 	 *	if header_prediction is to be made
 	 *	'S' will always be tp->tcp_header_len >> 2
@@ -5403,6 +5408,32 @@ static bool tcp_rcv_fastopen_synack(struct sock *sk, struct sk_buff *synack,
 	return false;
 }
 
+/* "sysctl_tcp_timestamps" is linked to "/proc/sys/net/ipv4/tcp_timestamps".
+ * default value of "sysctl_tcp_timestamps" is 1.
+ * here will try to disable tcp_timestamps(set to 0) if timestamp error over 5 times
+ * it will be done in dhd driver, because only try it in wlan network.
+ * WARNING: this function only should be called when timestamp err happened.
+ * WARNING: if any more changes for sysctl_tcp_timestamps, please check whole logic.
+ */
+static void hw_tcp_check_and_disable_timestamps(void)
+{
+	static int tcp_ts_err = 0;
+	static int last_timestamps = 0;
+
+	if (0 == last_timestamps && 1 == sysctl_tcp_timestamps) {
+		printk("last_ts init or tcp_timestamps resotre to enabled, clear err count.\n");
+		tcp_ts_err = 0;
+	}
+	if (sysctl_tcp_timestamps && (++tcp_ts_err > HW_TCP_TIMESTAMP_ERR_THRESHOLD)) {
+		printk("TCP timestamp error, check network interface and try to disable ts.\n");
+#ifdef CONFIG_BCMDHD
+		hw_dhd_check_and_disable_timestamps();
+#endif
+		tcp_ts_err = 0;
+	}
+	last_timestamps = sysctl_tcp_timestamps;
+}
+
 static int tcp_rcv_synsent_state_process(struct sock *sk, struct sk_buff *skb,
 					 const struct tcphdr *th, unsigned int len)
 {
@@ -5410,6 +5441,7 @@ static int tcp_rcv_synsent_state_process(struct sock *sk, struct sk_buff *skb,
 	struct tcp_sock *tp = tcp_sk(sk);
 	struct tcp_fastopen_cookie foc = { .len = -1 };
 	int saved_clamp = tp->rx_opt.mss_clamp;
+	struct inet_sock *inet=inet_sk(sk);
 
 	tcp_parse_options(skb, &tp->rx_opt, 0, &foc);
 	if (tp->rx_opt.saw_tstamp && tp->rx_opt.rcv_tsecr)
@@ -5431,6 +5463,8 @@ static int tcp_rcv_synsent_state_process(struct sock *sk, struct sk_buff *skb,
 		if (tp->rx_opt.saw_tstamp && tp->rx_opt.rcv_tsecr &&
 		    !between(tp->rx_opt.rcv_tsecr, tp->retrans_stamp,
 			     tcp_time_stamp)) {
+			printk("tcp timestamp error, to check and disable tcp_timestamps.\n");
+			hw_tcp_check_and_disable_timestamps(); /* tcp timestamps workround */
 			NET_INC_STATS_BH(sock_net(sk), LINUX_MIB_PAWSACTIVEREJECTED);
 			goto reset_and_undo;
 		}
@@ -5466,6 +5500,18 @@ static int tcp_rcv_synsent_state_process(struct sock *sk, struct sk_buff *skb,
 		 */
 
 		TCP_ECN_rcv_synack(tp, th);
+
+		if(icsk->icsk_retransmits > 2)
+		{
+#ifndef CONFIG_ARCH_HI3630 /*just for compile*/
+			SOCK_DEBUG(sk, "tcp_rcv_synsent_state_process:icsk_retransmits=%d,notify_chr_thread_to_send_msg()!\n", icsk->icsk_retransmits);
+			notify_chr_thread_to_send_msg(inet->inet_daddr,inet->inet_saddr);
+#endif 
+		}
+		else
+		{
+			SOCK_DEBUG(sk, "tcp_rcv_synsent_state_process:icsk_retransmits=%d\n", icsk->icsk_retransmits);
+		}
 
 		tcp_init_wl(tp, TCP_SKB_CB(skb)->seq);
 		tcp_ack(sk, skb, FLAG_SLOWPATH);

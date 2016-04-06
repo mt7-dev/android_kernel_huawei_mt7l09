@@ -50,6 +50,9 @@ obj-y	+= davinci/
 
 obj-$(CONFIG_ARCH_OMAP)	+= omap/
 
-obj-$(CONFIG_VIDEO_HISI_CAMERA) += hisi-cam/
+obj-$(CONFIG_VIDEO_HI3630_CAMERA) += ovisp23/
+
+obj-$(CONFIG_VIDEO_HI6210_CAMERA)   += ovisp22/capture/
+obj-$(CONFIG_VIDEO_HI6210_FAKE_CAMERA)  += ovisp22/fake_capture/
 
 ccflags-y += -I$(srctree)/drivers/media/i2c

@@ -158,6 +158,10 @@ VOS_UINT32 TAF_APS_SndL4aCallOrigReq(
         PS_MEM_CPY(pstNdisConnReq->stDialPara.aucAPN,
                    pstCallOrigReq->stDialParaInfo.aucApn,
                    sizeof(pstNdisConnReq->stDialPara.aucAPN));
+
+/* Added by zhuli for K3V3VSIM项目, 2014-10-16, begin */
+        PIH_GetVsimAPN(APS_L4A_MAX_APN_LEN, pstNdisConnReq->stDialPara.aucAPN, &pstNdisConnReq->stDialPara.ucAPNLen);
+/* Added by zhuli for K3V3VSIM项目, 2014-10-16, end */
     }
 
     if (VOS_TRUE == pstCallOrigReq->stDialParaInfo.bitOpAuthType)

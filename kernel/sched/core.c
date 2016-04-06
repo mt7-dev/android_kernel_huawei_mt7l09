@@ -73,7 +73,9 @@
 #include <linux/init_task.h>
 #include <linux/binfmts.h>
 #include <linux/context_tracking.h>
-
+#ifdef CONFIG_HUAWEI_MSG_POLICY
+#include <huawei_platform/power/msgnotify.h>
+#endif
 #include <asm/switch_to.h>
 #include <asm/tlb.h>
 #include <asm/irq_regs.h>
@@ -1238,7 +1240,7 @@ out:
 		 * leave kernel.
 		 */
 		if (p->mm && printk_ratelimit()) {
-			printk_sched("process %d (%s) no longer affine to cpu%d\n",
+			printk_deferred("process %d (%s) no longer affine to cpu%d\n",
 					task_pid_nr(p), p->comm, cpu);
 		}
 	}
@@ -1410,7 +1412,11 @@ void scheduler_ipi(void)
 {
 	if (llist_empty(&this_rq()->wake_list)
 			&& !tick_nohz_full_cpu(smp_processor_id())
-			&& !got_nohz_idle_kick())
+			&& !got_nohz_idle_kick()
+#ifdef CONFIG_SCHED_HMP
+			&& !this_rq()->wake_for_idle_pull
+#endif
+			)
 		return;
 
 	/*
@@ -1437,6 +1443,11 @@ void scheduler_ipi(void)
 		this_rq()->idle_balance = 1;
 		raise_softirq_irqoff(SCHED_SOFTIRQ);
 	}
+#ifdef CONFIG_SCHED_HMP
+	else if (unlikely(this_rq()->wake_for_idle_pull))
+		raise_softirq_irqoff(SCHED_SOFTIRQ);
+#endif
+
 	irq_exit();
 }
 
@@ -1601,7 +1612,9 @@ int wake_up_state(struct task_struct *p, unsigned int state)
 	return try_to_wake_up(p, state, 0);
 }
 
-extern unsigned int task_fork_on_a15;
+#if defined(CONFIG_ARCH_HI3XXX)||defined(CONFIG_ARCH_HI6XXX)
+extern unsigned int task_fork_on_bigcluster;
+#endif
 /*
  * Perform scheduler related setup for a newly forked process p.
  * p is forked by current.
@@ -1630,27 +1643,37 @@ static void __sched_fork(struct task_struct *p)
 	p->se.avg.runnable_avg_sum = 0;
 #ifdef CONFIG_SCHED_HMP
 	/* keep LOAD_AVG_MAX in sync with fair.c if load avg series is changed */
-#define LOAD_AVG_MAX 47742
+#define LOAD_AVG_MAX 47742	
 #define LOAD_AVG_MIN 0
+
 	p->se.avg.hmp_last_up_migration = 0;
 	p->se.avg.hmp_last_down_migration = 0;
-    if(p->mm){
-        if(!task_fork_on_a15){
+#if defined(CONFIG_ARCH_HI3XXX)||defined(CONFIG_ARCH_HI6XXX)
+	if(!task_fork_on_bigcluster){
             p->se.avg.load_avg_ratio = 0;
             p->se.avg.load_avg_contrib =
                     (0 * scale_load_down(p->se.load.weight));
             p->se.avg.runnable_avg_period = LOAD_AVG_MIN;
             p->se.avg.runnable_avg_sum = LOAD_AVG_MIN;
             p->se.avg.usage_avg_sum = LOAD_AVG_MIN;
-        }else{
+    }else if(hmp_task_should_forkboost(p)){
 		    p->se.avg.load_avg_ratio = 1023;
 		    p->se.avg.load_avg_contrib =
 				    (1023 * scale_load_down(p->se.load.weight));
 		    p->se.avg.runnable_avg_period = LOAD_AVG_MAX;
 		    p->se.avg.runnable_avg_sum = LOAD_AVG_MAX;
 		    p->se.avg.usage_avg_sum = LOAD_AVG_MAX;
-	    }
-    }
+	}
+#else
+	if(hmp_task_should_forkboost(p)){
+	    p->se.avg.load_avg_ratio = 1023;
+	    p->se.avg.load_avg_contrib =
+			    (1023 * scale_load_down(p->se.load.weight));
+	    p->se.avg.runnable_avg_period = LOAD_AVG_MAX;
+	    p->se.avg.runnable_avg_sum = LOAD_AVG_MAX;
+	    p->se.avg.usage_avg_sum = LOAD_AVG_MAX;
+	}
+#endif    
 #endif
 #endif
 #ifdef CONFIG_SCHEDSTATS
@@ -2070,6 +2093,69 @@ int task_switch_hook_del(rdr_funcptr_2 switch_hook)
 }
 EXPORT_SYMBOL(task_switch_hook_del);
 #else
+#define MAX_TASK_SWITCH_RTN 3 /* max task switch callout routines */
+static rdr_funcptr_2 task_switch_ls[MAX_TASK_SWITCH_RTN] = { NULL };
+
+/**
+ * param1:hook:routine to be added to table
+ * param2:table:table which to add
+ * param3:max_entries:max entries in table
+*/
+int hook_add_to_tail(void *hook, void *table[], int max_entries)
+{
+       int ix;
+
+       if (table == NULL)
+               return -1;
+
+       preempt_disable(); /* disable task switching */
+
+       /* find a slot after last hook in table */
+       for (ix = 0; ix < max_entries; ++ix) {
+               if (table[ix] == NULL) {
+                       table[ix] = hook;
+                       preempt_enable(); /* re-enable task switching */
+                       return 0;
+               }
+       }
+
+       /* no free slot found */
+       preempt_enable(); /* re-enable task switching */
+
+       return -1;
+}
+
+int task_switch_hook_add(rdr_funcptr_2 switch_hook)
+{
+       /* translate hookLib errno's to taskLib errno's */
+       return hook_add_to_tail(switch_hook, (void **)task_switch_ls,
+                       MAX_TASK_SWITCH_RTN);
+}
+EXPORT_SYMBOL(task_switch_hook_add);
+
+int task_switch_hook_del(rdr_funcptr_2 switch_hook)
+{
+       int ix;
+
+       preempt_disable();/* disable task switching */
+
+       /* find a slot after last hook in table */
+       for (ix = 0; ix < MAX_TASK_SWITCH_RTN; ++ix) {
+               if (task_switch_ls[ix] == switch_hook) {
+                       task_switch_ls[ix] = NULL;
+                       preempt_enable(); /* re-enable task switching */
+                       return 0;
+               }
+       }
+
+       /* no free slot found */
+       preempt_enable(); /* re-enable task switching */
+
+       return -1;
+}
+EXPORT_SYMBOL(task_switch_hook_del);
+
+#if 0
 int hook_add_to_tail(void *hook, void *table[], int max_entries)
 {
 	return -1;
@@ -2085,7 +2171,7 @@ int task_switch_hook_del(rdr_funcptr_2 switch_hook)
 	return -1;
 }
 #endif
-
+#endif
 /*
  * context_switch - switch to the new MM and the new
  * thread's register state.
@@ -2131,7 +2217,7 @@ context_switch(struct rq *rq, struct task_struct *prev,
 	context_tracking_task_switch(prev, next);
 
 #ifdef CONFIG_HISI_RDR
-#ifndef CONFIG_HISI_RDR_SWITCH
+#ifdef CONFIG_HISI_RDR_SWITCH
 	/* do switch hooks */
 	{
 		int ix;
@@ -2140,8 +2226,17 @@ context_switch(struct rq *rq, struct task_struct *prev,
 			(*task_switch_ls[ix])((int)prev, (int)next);
 	}
 #endif
+#else
+//#ifndef CONFIG_ARCH_HI6XXX
+       /* do switch hooks */
+       {
+               int ix;
+               for (ix = 0; (ix < MAX_TASK_SWITCH_RTN)
+                               && (task_switch_ls[ix]); ++ix)
+                       (*task_switch_ls[ix])((void *)prev, (void *)next);
+       }
+//#endif
 #endif
-
 	/* Here we just switch the register state and the stack. */
 	switch_to(prev, next, prev);
 
@@ -2690,6 +2785,18 @@ static void __update_cpu_load(struct rq *this_rq, unsigned long this_load,
 	sched_avg_update(this_rq);
 }
 
+#ifdef CONFIG_SMP
+unsigned long get_rq_runnable_load(struct rq *rq)
+{
+       return rq->cfs.runnable_load_avg;
+}
+#else
+unsigned long get_rq_runnable_load(struct rq *rq)
+{
+       return rq->load.weight;
+}
+#endif
+
 #ifdef CONFIG_NO_HZ_COMMON
 /*
  * There is no sane way to deal with nohz on smp when using jiffies because the
@@ -2711,7 +2818,7 @@ static void __update_cpu_load(struct rq *this_rq, unsigned long this_load,
 void update_idle_cpu_load(struct rq *this_rq)
 {
 	unsigned long curr_jiffies = ACCESS_ONCE(jiffies);
-	unsigned long load = this_rq->load.weight;
+	unsigned long load = get_rq_runnable_load(this_rq);
 	unsigned long pending_updates;
 
 	/*
@@ -2757,11 +2864,12 @@ void update_cpu_load_nohz(void)
  */
 static void update_cpu_load_active(struct rq *this_rq)
 {
+	unsigned long load = get_rq_runnable_load(this_rq);
 	/*
 	 * See the mess around update_idle_cpu_load() / update_cpu_load_nohz().
 	 */
 	this_rq->last_load_update_tick = jiffies;
-	__update_cpu_load(this_rq, this_rq->load.weight, 1);
+	__update_cpu_load(this_rq, load, 1);
 
 	calc_load_account_active(this_rq);
 }
@@ -3140,6 +3248,10 @@ need_resched:
 		rq->nr_switches++;
 		rq->curr = next;
 		++*switch_count;
+
+#ifdef CONFIG_HUAWEI_MSG_POLICY
+		update_msg_stat(cpu, prev, next);
+#endif
 
 		context_switch(rq, prev, next); /* unlocks the rq */
 		/*
@@ -5409,7 +5521,6 @@ static int __cpuinit sched_cpu_active(struct notifier_block *nfb,
 				      unsigned long action, void *hcpu)
 {
 	switch (action & ~CPU_TASKS_FROZEN) {
-	case CPU_STARTING:
 	case CPU_DOWN_FAILED:
 		set_cpu_active((long)hcpu, true);
 		return NOTIFY_OK;
@@ -7867,23 +7978,6 @@ static void cpu_cgroup_css_offline(struct cgroup *cgrp)
 	sched_offline_group(tg);
 }
 
-static int
-cpu_cgroup_allow_attach(struct cgroup *cgrp, struct cgroup_taskset *tset)
-{
-	const struct cred *cred = current_cred(), *tcred;
-	struct task_struct *task;
-
-	cgroup_taskset_for_each(task, cgrp, tset) {
-		tcred = __task_cred(task);
-
-		if ((current != task) && !capable(CAP_SYS_NICE) &&
-		    cred->euid != tcred->uid && cred->euid != tcred->suid)
-			return -EACCES;
-	}
-
-	return 0;
-}
-
 static int cpu_cgroup_can_attach(struct cgroup *cgrp,
 				 struct cgroup_taskset *tset)
 {
@@ -8250,7 +8344,7 @@ struct cgroup_subsys cpu_cgroup_subsys = {
 	.css_offline	= cpu_cgroup_css_offline,
 	.can_attach	= cpu_cgroup_can_attach,
 	.attach		= cpu_cgroup_attach,
-	.allow_attach	= cpu_cgroup_allow_attach,
+	.allow_attach	= subsys_cgroup_allow_attach,
 	.exit		= cpu_cgroup_exit,
 	.subsys_id	= cpu_cgroup_subsys_id,
 	.base_cftypes	= cpu_files,

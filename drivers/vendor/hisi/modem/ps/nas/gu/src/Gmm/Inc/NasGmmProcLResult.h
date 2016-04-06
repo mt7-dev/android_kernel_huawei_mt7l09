@@ -66,7 +66,8 @@ typedef struct
   10 º¯ÊýÉùÃ÷
 *****************************************************************************/
 #if (FEATURE_ON == FEATURE_LTE)
-extern VOS_UINT32 NAS_GMM_CheckGmmInDeregisterState( VOS_VOID );
+extern VOS_UINT32 NAS_GMM_IsGutiInfoValid( VOS_VOID );
+
 
 extern VOS_VOID NAS_GMM_ConvertLmmPlmnToGmmPlmnId(
            MMC_LMM_PLMN_ID_STRU                *pstLmmPlmn,

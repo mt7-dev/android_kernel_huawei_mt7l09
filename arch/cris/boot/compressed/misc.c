@@ -257,11 +257,6 @@ static inline void serial_setup(reg_scope_instances regi_ser)
 	tr_ctrl.en = 1; /* enable transmitter */
 	rec_ctrl.en = 1; /* enabler receiver */
 
-	/*
-	 * The baudrate setup used to be a bit fishy, but now transmitter and
-	 * receiver are both set to the intended baud rate, 115200.
-	 * The magic value is 29.493 MHz.
-	 */
 	tr_ctrl.base_freq = regk_ser_f29_493;
 	rec_ctrl.base_freq = regk_ser_f29_493;
 	tr_baud.div = (29493000 / 8) / 115200;

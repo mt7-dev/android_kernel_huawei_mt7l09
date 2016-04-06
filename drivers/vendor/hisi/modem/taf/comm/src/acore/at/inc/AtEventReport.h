@@ -31,6 +31,9 @@
 #include "siappstk.h"
 #include "MnCallApi.h"
 
+#include "AtParse.h"
+#include "AtCtx.h"
+
 #ifdef __cplusplus
 #if __cplusplus
 extern "C" {
@@ -58,9 +61,48 @@ extern "C" {
 #define AT_GET_CMS_SMS_ERR_CODE_MAP_TBL_SIZE() (sizeof(g_astAtCmsSmsErrCodeMapTbl)/sizeof(AT_CMS_SMS_ERR_CODE_MAP_STRU))
 
 
+#define AT_EVT_IS_VIDEO_CALL(enCallType)            \
+           ((MN_CALL_TYPE_VIDEO_TX == enCallType)   \
+         || (MN_CALL_TYPE_VIDEO_RX == enCallType)   \
+         || (MN_CALL_TYPE_VIDEO    == enCallType))
+
+#define AT_EVT_IS_CS_VIDEO_CALL(enCallType, enVoiceDomain)  \
+           ((MN_CALL_TYPE_VIDEO         == enCallType)      \
+         && (TAF_CALL_VOICE_DOMAIN_3GPP == enVoiceDomain))
+
+#define AT_EVT_IS_PS_VIDEO_CALL(enCallType, enVoiceDomain)  \
+           (((MN_CALL_TYPE_VIDEO        == enCallType)      \
+          || (MN_CALL_TYPE_VIDEO_TX     == enCallType)      \
+          || (MN_CALL_TYPE_VIDEO_RX     == enCallType))     \
+         && (TAF_CALL_VOICE_DOMAIN_IMS  == enVoiceDomain))
+
+#define AT_EVT_REL_IS_NEED_CLR_TIMER_STATUS_CMD(CmdCurrentOpt)  \
+           ((AT_CMD_D_CS_VOICE_CALL_SET == CmdCurrentOpt)       \
+         || (AT_CMD_D_CS_DATA_CALL_SET  == CmdCurrentOpt)       \
+         || (AT_CMD_APDS_SET            == CmdCurrentOpt)       \
+         || (AT_CMD_CHLD_EX_SET         == CmdCurrentOpt)       \
+         || (AT_CMD_A_SET               == CmdCurrentOpt)       \
+         || (AT_CMD_END_SET             == CmdCurrentOpt))
+
 /*****************************************************************************
   3 枚举定义
 *****************************************************************************/
+
+enum AT_CS_CALL_STATE_ENUM
+{
+    AT_CS_CALL_STATE_ORIG               = 0,                                    /* originate a MO Call */
+    AT_CS_CALL_STATE_CALL_PROC,                                                 /* Call is Proceeding */
+    AT_CS_CALL_STATE_ALERTING,                                                  /* Alerting,MO Call */
+    AT_CS_CALL_STATE_CONNECT,                                                   /* Call Connect */
+    AT_CS_CALL_STATE_RELEASED,                                                  /* Call Released */
+    AT_CS_CALL_STATE_INCOMMING,                                                 /* Incoming Call */
+    AT_CS_CALL_STATE_WAITING,                                                   /* Waiting Call */
+    AT_CS_CALL_STATE_HOLD,                                                      /* Hold Call */
+    AT_CS_CALL_STATE_RETRIEVE,                                                  /* Call Retrieved */
+
+    AT_CS_CALL_STATE_BUTT
+};
+typedef VOS_UINT8 AT_CS_CALL_STATE_ENUM_UINT8;
 
 
 /*****************************************************************************
@@ -103,7 +145,7 @@ typedef struct
 typedef struct
 {
     TAF_MSG_ERROR_ENUM_UINT32           enMsgErrorCode;
-    AT_RRETURN_CODE_ENUM                enAtErrorCode;
+    AT_RRETURN_CODE_ENUM_UINT32         enAtErrorCode;
 }AT_SMS_ERROR_CODE_MAP_STRU;
 
 
@@ -794,6 +836,31 @@ VOS_UINT32 AT_RcvTafPsEvtReportDsFlowInd(
     VOS_VOID                           *pEvtInfo
 );
 
+VOS_UINT32 AT_RcvTafPsEvtSetApDsFlowRptCfgCnf(
+    VOS_UINT8                           ucIndex,
+    VOS_VOID                           *pEvtInfo
+);
+
+VOS_UINT32 AT_RcvTafPsEvtGetApDsFlowRptCfgCnf(
+    VOS_UINT8                           ucIndex,
+    VOS_VOID                           *pEvtInfo
+);
+
+VOS_UINT32 AT_RcvTafPsEvtApDsFlowReportInd(
+    VOS_UINT8                           ucIndex,
+    VOS_VOID                           *pEvtInfo
+);
+
+VOS_UINT32 AT_RcvTafPsEvtSetDsFlowNvWriteCfgCnf(
+    VOS_UINT8                           ucIndex,
+    VOS_VOID                           *pEvtInfo
+);
+
+VOS_UINT32 AT_RcvTafPsEvtGetDsFlowNvWriteCfgCnf(
+    VOS_UINT8                           ucIndex,
+    VOS_VOID                           *pEvtInfo
+);
+
 /*****************************************************************************
  函 数 名  : AT_RcvTafPsEvtSetPdpAuthInfoCnf
  功能描述  :
@@ -1083,7 +1150,7 @@ VOS_VOID At_RcvXlemaQryCnf(
  输入参数  : VOS_UINT8                           ucIndex -- AT通道索引号
              TAF_SS_CALL_INDEPENDENT_EVENT_STRU *pEvent  -- SS Event消息
  输出参数  : 无
- 返 回 值  : AT_RRETURN_CODE_ENUM   -- AT命令错误码
+ 返 回 值  : AT_RRETURN_CODE_ENUM_UINT32   -- AT命令错误码
 *****************************************************************************/
 VOS_UINT32 AT_GetSsEventErrorCode(
     VOS_UINT8                           ucIndex,
@@ -1155,8 +1222,54 @@ VOS_VOID At_ProcQryClccResult(
     MN_CALL_INFO_QRY_CNF_STRU          *pstCallInfos,
     VOS_UINT8                           ucIndex
 );
+
+VOS_VOID At_RcvTafCallModifyCnf(
+    MN_AT_IND_EVT_STRU                 *pstData,
+    VOS_UINT16                          usLen
+);
+VOS_VOID At_RcvTafCallAnswerRemoteModifyCnf(
+    MN_AT_IND_EVT_STRU                 *pstData,
+    VOS_UINT16                          usLen
+);
+VOS_VOID At_RcvTafCallModifyStatusInd(
+    MN_AT_IND_EVT_STRU                 *pstData,
+    VOS_UINT16                          usLen
+);
+
+VOS_VOID AT_RcvTafEconfDialCnf(
+    MN_AT_IND_EVT_STRU                 *pstData,
+    VOS_UINT16                          usLen
+);
+
+VOS_VOID AT_RcvTafEconfNotifyInd(
+    MN_AT_IND_EVT_STRU                 *pstData,
+    VOS_UINT16                          usLen
+);
+
+VOS_VOID AT_RcvTafGetEconfInfoCnf(
+    MN_AT_IND_EVT_STRU                 *pstData,
+    VOS_UINT16                          usLen
+);
+
 #endif
 
+TAF_UINT32 At_HexText2AsciiStringSimple(
+    TAF_UINT32                          MaxLength,
+    TAF_INT8                           *headaddr,
+    TAF_UINT8                          *pucDst,
+    TAF_UINT32                          ulLen,
+    TAF_UINT8                          *pucStr
+);
+PS_BOOL_ENUM_UINT8 At_CheckOrigCnfCallType(
+    MN_CALL_INFO_STRU                  *pstCallInfo,
+    VOS_UINT8                           ucIndex
+);
+
+
+VOS_UINT32 AT_RcvTafPsEvtSetImsPdpCfgCnf(
+    VOS_UINT8                           ucIndex,
+    VOS_VOID                           *pEvtInfo
+);
 
 #if (VOS_OS_VER == VOS_WIN32)
 #pragma pack()

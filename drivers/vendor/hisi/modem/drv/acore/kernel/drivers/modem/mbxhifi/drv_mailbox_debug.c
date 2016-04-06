@@ -30,16 +30,16 @@ extern "C" {
 *****************************************************************************/
 #if (MAILBOX_LOG_LEVEL != MAILBOX_LOG_NONE)
 
-MAILBOX_EXTERN long mailbox_log_erro(
+MAILBOX_EXTERN int mailbox_log_erro(
                 unsigned int   err_no,
-                unsigned int   param1,
-                unsigned int   param2,
-                unsigned long   line_no,
+                unsigned long   param1,
+                unsigned long   param2,
+                unsigned int   line_no,
                 char*           file_name)
 {
     struct mb *mb      = &g_mailbox_handle;
     struct mb_log  *record = &mb->log_array[0];
-    unsigned long log_out = MAILBOX_FALSE; 
+    unsigned int log_out = MAILBOX_FALSE; 
     char * erro_str = MAILBOX_NULL;
     
     /*1.记录最近错误轨迹*/
@@ -56,7 +56,6 @@ MAILBOX_EXTERN long mailbox_log_erro(
     if ((err_no > MAILBOX_CRIT_RET_START) && (err_no < MAILBOX_CRIT_RET_END)) {
         erro_str = "mb Critical!";
         log_out = MAILBOX_TRUE;
-        mailbox_out(("file_name %s line_no(0x%x)!"RT, file_name, (unsigned int)line_no));
         mailbox_assert(err_no);
     } 
 #endif
@@ -83,19 +82,19 @@ MAILBOX_EXTERN long mailbox_log_erro(
 #endif
 
     if (MAILBOX_FULL == err_no) {
-        mailbox_out(("mb(0x%x) full !"RT, param1));
+        mailbox_out(("mb(%lu) full !"RT, param1));
         log_out = MAILBOX_TRUE;
     } else if (MAILBOX_NOT_READY == err_no) {
-        mailbox_out(("remote mb(0x%x) not ready!"RT, param1));
+        mailbox_out(("remote mb(%lu) not ready!"RT, param1));
         log_out = MAILBOX_TRUE;
     }
 
     if (MAILBOX_TRUE == log_out) {
-        mailbox_out(("%s:0x%08x, param1:0x%08x, param2:0x%08x, (line:%d),(file:%s)"RT,
-            erro_str, err_no,  param1,  param2, (int)line_no, file_name));
+        mailbox_out(("%s:0x%08x, param1:%lu, param2:%lu, (line:%d),(file:%s)"RT,
+            erro_str, err_no,  param1,  param2, (unsigned int)line_no, file_name));
     }
 
-    return err_no;
+    return (int)err_no;
 }
 #endif
 
@@ -103,14 +102,14 @@ MAILBOX_EXTERN long mailbox_log_erro(
 /*对总时间和最大单次时间进行统计*/
 void mailbox_statistic_slice(
                 struct mb_slice* slice,                
-                unsigned long mailcode, 
-                unsigned long threslhold,
-                unsigned long erro_code
+                unsigned int mailcode, 
+                unsigned int threslhold,
+                unsigned int erro_code
                 )
 {          
-    signed long slice_diff;
-    unsigned long slice_end = mailbox_get_timestamp();
-    unsigned long slice_start = slice->start;
+    unsigned int slice_diff;
+    unsigned int slice_end = (unsigned int)mailbox_get_timestamp();
+    unsigned int slice_start = slice->start;
 
     slice_diff = mailbox_get_slice_diff(slice_start, slice_end);
     if (slice_diff < 0) {
@@ -141,7 +140,7 @@ void mailbox_statistic_slice(
 void mailbox_record_sche_send(void *priv)
 {
     struct mb_buff *mbuf = (struct mb_buff *)priv;
-    mbuf->mntn.sche.start = mailbox_get_timestamp();
+    mbuf->mntn.sche.start = (unsigned long)mailbox_get_timestamp();
 }
 
 /*记录中断响应后，调度处理的时间点，并进行统计*/
@@ -157,12 +156,12 @@ void mailbox_record_sche_recv(void *priv)
 /*可维可测: 记录剩余空间最小值*/
 void mailbox_record_send(
                 struct mb_mntn* mntn,                
-                unsigned long mailcode, 
-                unsigned long time_stamp,
+                unsigned int mailcode, 
+                unsigned int time_stamp,
                 unsigned long mail_addr)
 {
     struct mb_queue *m_queue = &mntn->mbuff->mail_queue;
-    unsigned long size_left = mailbox_queue_left(m_queue->rear, m_queue->front, m_queue->length);
+    unsigned int size_left = (unsigned int)mailbox_queue_left(m_queue->rear, m_queue->front, m_queue->length);
 
     /*可维可测: 记录剩余空间最小值*/
     if (size_left < mntn->peak_traffic_left){
@@ -179,13 +178,13 @@ void mailbox_record_send(
 /*记录发送核IPC中断触发到接受核中断响应之间的时间*/
 void mailbox_record_transport(
                 struct mb_mntn* mntn, 
-                unsigned long mailcode, 
-                unsigned long write_slice,
-                unsigned long read_slice,
+                unsigned int mailcode, 
+                unsigned int write_slice,
+                unsigned int read_slice,
                 unsigned long mail_addr)
 {
     struct mb_queue *m_queue = &mntn->mbuff->mail_queue;
-    unsigned long  size_left = mailbox_queue_left(m_queue->rear, m_queue->front, m_queue->length);
+    unsigned int  size_left = (unsigned int)mailbox_queue_left(m_queue->rear, m_queue->front, m_queue->length);
 
     /*可维可测: 记录剩余空间最小值*/
     if (size_left < mntn->peak_traffic_left){
@@ -215,8 +214,8 @@ void mailbox_record_transport(
 /*记录响应核邮箱用户回调函数执行时间*/
 void mailbox_record_receive(
                 struct mb_mntn* mntn,                
-                unsigned long mailcode, 
-                unsigned long slice_start)
+                unsigned int mailcode, 
+                unsigned int slice_start)
 {          
     mntn->deal.start = slice_start;
     mailbox_statistic_slice(&mntn->deal, mailcode, 
@@ -225,7 +224,7 @@ void mailbox_record_receive(
 }
 
 /*清除某个邮箱通道的可维可测信息*/
-void mailbox_clear_mntn( struct mb_mntn *mntn, long clear)
+void mailbox_clear_mntn( struct mb_mntn *mntn, int clear)
 {
     struct mb_buff   *mbuff;
     if (clear) {
@@ -241,7 +240,7 @@ void mailbox_clear_mntn( struct mb_mntn *mntn, long clear)
 
 MAILBOX_LOCAL void mailbox_show_general(struct mb_cfg *cfg)
 {
-    struct mb_head   *pBoxHead   =  (struct mb_head*)cfg->head_addr;
+    struct mb_head   *pBoxHead   =  (struct mb_head*)(cfg->head_addr);
 
     /*总体信息*/
     mailbox_out(("Max Id,      HeadAddr,    DataAddr,     DataSize,   IntSrcId"RT));
@@ -266,8 +265,8 @@ MAILBOX_LOCAL void mailbox_show_receive(struct mb_buff *mbuf)
 {
     struct mb_mntn      *mntn         =  &(mbuf->mntn);    /*此邮箱通道的可维可测数据*/
     struct mb_cb        *callback     =  mbuf->read_cb;    /*此邮箱通道的功能回调函数队列*/
-    unsigned long        max_use      =  mailbox_get_use_id(mbuf->config->butt_id);
-    unsigned long        i            =  0;
+    unsigned int        max_use      =  mailbox_get_use_id(mbuf->config->butt_id);
+    unsigned int        i            =  0;
 
     mailbox_out((":---------------------------------------------:"RT));
     mailbox_out(("Receive info:"RT));
@@ -276,7 +275,7 @@ MAILBOX_LOCAL void mailbox_show_receive(struct mb_buff *mbuf)
     mailbox_out(("Mail Read Call Back show:"RT));
     mailbox_out(("Use Id,  Call Back,     User Handle"RT));
     while (i < max_use) {
-        mailbox_out(("%d,       0x%08x,    0x%08x"RT, (int)i, (unsigned int)callback->func, 
+        mailbox_out(("%d,       0x%08x,    0x%08x"RT, (unsigned int)i, (unsigned int)callback->func,
                                                 (unsigned int)callback->handle));
         callback++;
         i++;
@@ -284,33 +283,33 @@ MAILBOX_LOCAL void mailbox_show_receive(struct mb_buff *mbuf)
 
     /*平均调度等待及最大调度等待时间*/
     if (MAILBOX_TRUE != mntn->sche.overflow) {
-        mailbox_out(("Schedule Avg. slice:%4d, total:%d"RT, 
-      (int)((mbuf->seq_num + 1) ? (mntn->sche.total)/(mbuf->seq_num + 1) : 0), (int)mbuf->seq_num));
+        mailbox_out(("Schedule Avg. slice:%4d, total:%d"RT,
+      (unsigned int)((mbuf->seq_num + 1) ? (mntn->sche.total)/(mbuf->seq_num + 1) : 0) , (unsigned int)(mbuf->seq_num)));
     } else {
         mailbox_out(("Schedule Avg. data overflow "RT));
     }
-    mailbox_out(("Schedule Max. slice:%4d,  Use ID:0x%08x"RT, (int)(mntn->sche.max),
-                                            (int)mntn->sche.code));
-    
+    mailbox_out(("Schedule Max. slice:%4d,  Use ID:0x%08x"RT, (unsigned int)(mntn->sche.max),
+                                            (unsigned int)(mntn->sche.code)));
+
     /*平均传送及最大传送时间*/
     if (MAILBOX_TRUE != mntn->trans.overflow) {
         mailbox_out(("Transfers Avg. slice:%4d, total:%d"RT,(int)((mbuf->seq_num + 1) ?
-                ((mntn->trans.total)/(mbuf->seq_num + 1)) : 0 ),  (int)mbuf->seq_num));
+                ((mntn->trans.total)/(mbuf->seq_num + 1)) : 0 ),  (unsigned int)(mbuf->seq_num)));
     } else {
         mailbox_out(("Transfers Max. data overflow"RT));
     }
-    mailbox_out(("Transfers Max. slice:%4d,  Use ID:0x%08x"RT, (int)(mntn->trans.max),
+    mailbox_out(("Transfers Max. slice:%4d,  Use ID:0x%08x"RT, (unsigned int)(mntn->trans.max),
                 (int)(mntn->trans.code)));/*lint -e539*/
 
     /*平均处理及最大处理时间*/
     if (MAILBOX_TRUE != mntn->deal.overflow) {
-        mailbox_out(("Call Back Avg. slice:%4d, total:%d"RT,
-            (int)((mbuf->seq_num + 1) ? (mntn->deal.total)/(mbuf->seq_num + 1) : 0), (int)mbuf->seq_num ) );
+        mailbox_out(("Call Back Avg. slice:%4d, total:%d"RT,(unsigned int)((mbuf->seq_num + 1) ?
+            (mntn->deal.total)/(mbuf->seq_num + 1) : 0), (unsigned int)(mbuf->seq_num)));
     } else {
         mailbox_out(("Call Back Avg. data overflow"RT));
     }
-    mailbox_out(("Call Back Max. slice:%4d,  Use ID:0x%08x"RT, 
-            (int)(mntn->deal.max), (int)mntn->deal.code));
+    mailbox_out(("Call Back Max. slice:%4d,  Use ID:0x%08x"RT,
+            (unsigned int)(mntn->deal.max), (unsigned int)(mntn->deal.code)));
 
 
     mailbox_out((":---------------------------------------------:"RT));
@@ -320,10 +319,10 @@ MAILBOX_LOCAL void mailbox_show_detail(struct mb *mb,
                 int clear)
 {
     struct mb_mntn        *mntn         =  MAILBOX_NULL;  /*此邮箱通道的可维可测数据*/
-    unsigned long          channel  =  mbuf->channel_id;
+    unsigned int          channel  =  mbuf->channel_id;
     struct mb_queue       *queue   =  &mbuf->mail_queue;
     struct mb_mail        *mail;
-    unsigned long i;
+    unsigned int i;
     
     mailbox_out(("mail box show channel(0x%08x) information:"RT, (unsigned int)channel));
 
@@ -333,11 +332,11 @@ MAILBOX_LOCAL void mailbox_show_detail(struct mb *mb,
     mntn = &(mbuf->mntn);
     /*显示此邮箱最近传输的几个use ID信息, 最近的显示在前面*/
     i = mntn->track_prob ;
-    mailbox_out(("Latest transmit mails track:(%d total)"RT, (int)mbuf->seq_num));
+    mailbox_out(("Latest transmit mails track:(%d total)"RT, (unsigned int)mbuf->seq_num));
     mailbox_out(("id   ,address     ,send slice   ,recv slice  ,diff slice"RT));
     do {
         i = ((0 == i) ? (MAILBOX_RECORD_USEID_NUM - 1) : (i - 1));
-        mail = (struct mb_mail *)mntn->track_array[i].mail_addr;
+        mail = (struct mb_mail *)(mntn->track_array[i].mail_addr);
 
         if (mail && (0 == mntn->track_array[i].recv_slice)) {
             mntn->track_array[i].recv_slice = mail->ulReadSlice;
@@ -370,7 +369,7 @@ MAILBOX_LOCAL void mailbox_show_detail(struct mb *mb,
         mntn->peak_traffic_left = queue->length;
     }
     mailbox_out(("Peak Traffic: %d%%, Peak: 0x%x, Total: 0x%x"RT,
-        (int)(100*(queue->length - mntn->peak_traffic_left)/queue->length),
+        (int)100*(queue->length - mntn->peak_traffic_left)/queue->length,
         (unsigned int)(queue->length - mntn->peak_traffic_left), (unsigned int)queue->length));
     
     mailbox_out((":------------------------------------------------:"RT));
@@ -379,9 +378,9 @@ MAILBOX_LOCAL void mailbox_show_detail(struct mb *mb,
 }
 
 
-MAILBOX_EXTERN long mailbox_show(
-                unsigned long    channel,
-                unsigned long    show_flag)
+MAILBOX_EXTERN int mailbox_show(
+                unsigned int    channel,
+                unsigned int    show_flag)
 {
     struct mb_cfg         *config     = &g_mailbox_global_cfg_tbl[0];
     struct mb_buff        *mbuf       = MAILBOX_NULL;
@@ -389,13 +388,13 @@ MAILBOX_EXTERN long mailbox_show(
     struct mb_link        *recv_tbl   = MAILBOX_NULL;    /*指向主结构体的接收通道数组基地址*/
     struct mb             *mb   = MAILBOX_NULL;
     struct mb_log         *record = MAILBOX_NULL;
-    unsigned long          i;
-    unsigned long          j;
-    unsigned long          clear = MAILBOX_FALSE;
+    unsigned int          i;
+    unsigned int          j;
+    unsigned int          clear = MAILBOX_FALSE;
     
     mb =  mailbox_get_mb();
     if (MAILBOX_NULL == mb) {
-        return (unsigned long)MAILBOX_ERRO;
+        return (int)MAILBOX_ERRO;
     }
 
     if ( MAILBOX_SHOW_CLEAR & show_flag ) {
@@ -410,7 +409,7 @@ MAILBOX_EXTERN long mailbox_show(
             if (MAILBOX_NULL != send_tbl[i].channel_buff) {
                 mbuf  =   send_tbl[i].channel_buff;
                 for (j = 0; j < send_tbl[i].carrier_butt; j++) {
-                    mailbox_show_detail(mb, mbuf, clear);
+                    mailbox_show_detail(mb, mbuf, (int)clear);
                     mbuf++;
                 }
             }
@@ -422,7 +421,7 @@ MAILBOX_EXTERN long mailbox_show(
             if (MAILBOX_NULL != recv_tbl[i].channel_buff) {
                 mbuf  =   recv_tbl[i].channel_buff;
                 for (j = 0; j < recv_tbl[i].carrier_butt; j++) {
-                    mailbox_show_detail(mb, mbuf, clear);
+                    mailbox_show_detail(mb, mbuf, (int)clear);
                     mbuf++;
                 }
             }
@@ -432,7 +431,7 @@ MAILBOX_EXTERN long mailbox_show(
         mbuf = mailbox_get_channel_handle(mb, channel);
 
         if (MAILBOX_NULL != mbuf) {
-            mailbox_show_detail(mb, mbuf, clear);
+            mailbox_show_detail(mb, mbuf, (int)clear);
         } else {
             /*如果通道号没有指明，列出邮箱模块各通道的总体状态:*/
             mailbox_out(("mail box show global channel config:"RT));
@@ -450,7 +449,7 @@ MAILBOX_EXTERN long mailbox_show(
 
                i = ((0 == i) ? (MAILBOX_ERRO_ARRAY_NUM - 1) : (i - 1));
                mailbox_out(("0x%-8x,  %-8d,  %-8s"RT,(unsigned int)record[i].erro_num,
-                (int)record[i].line,  record[i].file));
+                (unsigned int)(record[i].line), (record[i].file)));
 
             } while (i != (mb->log_prob));
              mailbox_out(("track end."RT));
@@ -462,9 +461,9 @@ MAILBOX_EXTERN long mailbox_show(
 }
 #else
 
-MAILBOX_EXTERN long mailbox_show(
-                unsigned long    channel,
-                unsigned long    show_flag)
+MAILBOX_EXTERN int mailbox_show(
+                unsigned int    channel,
+                unsigned int    show_flag)
 {
     return MAILBOX_OK;
 }

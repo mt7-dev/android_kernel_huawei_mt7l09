@@ -894,7 +894,7 @@
 			dtable: clkdiv@0 {
 				#hisilicon,clkdiv-table-cells = <2>;
 			};
-
+			
 			div_shareaxi: clkdiv@1 {
 				compatible = "hisilicon,hi3620-clk-div";
 				#clock-cells = <0>;
@@ -1601,7 +1601,6 @@
 				clock-output-names = "clk_dsi_phy_esc0";
 			};
 		};
-
 		edc1: edc@fa206900 {
 			compatible = "hisilicon,hi3620-fb";
 			clocks = <&ldiclk1 &edcclk1>;

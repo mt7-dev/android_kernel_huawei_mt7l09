@@ -73,24 +73,7 @@
  */
 #define USTCNT_TX_INTR_MASK (USTCNT_TXEE)
 
-/*
- * 68328 and 68EZ328 UARTS are a little bit different. EZ328 has special
- * "Old data interrupt" which occures whenever the data stay in the FIFO
- * longer than 30 bits time. This allows us to use FIFO without compromising
- * latency. '328 does not have this feature and without the real  328-based
- * board I would assume that RXRE is the safest setting.
- *
- * For EZ328 I use RXHE (Half empty) interrupt to reduce the number of
- * interrupts. RXFE (receive queue full) causes the system to lose data
- * at least at 115200 baud
- *
- * If your board is busy doing other stuff, you might consider to use
- * RXRE (data ready intrrupt) instead.
- *
- * The other option is to make these INTR masks run-time configurable, so
- * that people can dynamically adapt them according to the current usage.
- *                                  -- Vladimir Gurevich
- */
+
 
 /* (es) */
 #if defined(CONFIG_M68EZ328) || defined(CONFIG_M68VZ328)
@@ -469,7 +452,7 @@ struct {
 	{1,0x26}, /* 19200 */
 	{0,0x26}, /* 38400 */
 	{1,0x38}, /* 57600 */
-	{0,0x38}, /* 115200 */
+	{0,0x38},
 };
 #else
  hw_baud_table[18] = {
@@ -490,7 +473,7 @@ struct {
                  {2,0x26}, /* 19200 */
                  {1,0x26}, /* 38400 */
                  {0,0x26}, /* 57600 */
-                 {1,0x38}, /* 115200 */
+                 {1,0x38},
 }; 
 #endif
 /* rate = 1036800 / ((65 - prescale) * (1<<divider)) */

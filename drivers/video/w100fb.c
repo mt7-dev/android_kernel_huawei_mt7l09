@@ -500,7 +500,7 @@ static int w100fb_check_var(struct fb_var_screeninfo *var, struct fb_info *info)
 	var->width = -1;
 	var->vmode = FB_VMODE_NONINTERLACED;
 	var->sync = 0;
-	var->pixclock = 0x04;  /* 171521; */
+	var->pixclock = 0x04;
 
 	return 0;
 }
@@ -736,7 +736,7 @@ int w100fb_probe(struct platform_device *pdev)
 
 	info->var.xres_virtual = info->var.xres;
 	info->var.yres_virtual = info->var.yres;
-	info->var.pixclock = 0x04;  /* 171521; */
+	info->var.pixclock = 0x04;
 	info->var.sync = 0;
 	info->var.grayscale = 0;
 	info->var.xoffset = info->var.yoffset = 0;

@@ -34,6 +34,9 @@
 #include "TafMtcInterface.h"
 #endif
 
+#if (FEATURE_ON == FEATURE_PTM)
+#include "NasErrorLog.h"
+#endif
 
 #ifdef  __cplusplus
   #if  __cplusplus
@@ -432,7 +435,7 @@ VOS_VOID MN_MNTN_RecordSmsMoFailure(TAF_MSG_ERROR_ENUM_UINT32 enErrorCode)
 
     NAS_MMA_OutputUsimInfo(&stSmsMoFailEvent.stUsimInfo);
 
-    NAS_MMC_OutputPositionInfo(&stSmsMoFailEvent.stPositionInfo);
+    NAS_MNTN_OutputPositionInfo(&stSmsMoFailEvent.stPositionInfo);
 
     MN_MSG_OutputSmsMoFailureInfo(enErrorCode, &stSmsMoFailEvent.stMoFail);
 
@@ -665,7 +668,7 @@ VOS_VOID MN_CS_SendMsgToAt(
     pMsg->ulReceiverPid   = WUEPS_PID_AT;
 
     pMsg->usMsgName = (TAF_UINT16)MN_CALLBACK_CS_CALL;
-    pMsg->usLen     = usLength;     /* 类型 */
+    pMsg->usLen     = (VOS_UINT16)(sizeof(MN_CALL_INFO_STRU) + ulEventTypeLen);     /* 类型 */
     pMsg->clientId  = MN_GetRealClientId(clientId, WUEPS_PID_TAF);
 
     pstEvent->clientId = MN_GetRealClientId(pstEvent->clientId, WUEPS_PID_TAF);
@@ -857,7 +860,7 @@ VOS_VOID MN_MSG_SendMsgToAt(
     pMsg->aucReserved1[0] = 0;
     pMsg->aucReserved1[1] = 0;
     pMsg->clientId  = MN_GetRealClientId(clientId, WUEPS_PID_TAF);
-    pMsg->usLen     = usLength;     /* 类型 */
+    pMsg->usLen     = (VOS_UINT16)(sizeof(MN_MSG_EVENT_INFO_STRU) + ulEventTypeLen);     /* 类型 */
 
     pstEvent->clientId = MN_GetRealClientId(pstEvent->clientId, WUEPS_PID_TAF);
 
@@ -1359,8 +1362,7 @@ VOS_VOID MN_SETPARA_SendMsgToOam(
     pstMsg->ulMsgId         = TAF_OAM_PHONE_SET_CNF;
     pstMsg->ucParaType      = ucParaType;
     pstMsg->ucResult        = Result;
-    PS_MEM_SET(pstMsg->aucReserved1, 0x00, sizeof(pstMsg->aucReserved1));
-    PS_MEM_SET(pstMsg->aucReserved2, 0x00, sizeof(pstMsg->aucReserved2));
+    PS_MEM_SET(pstMsg->aucReserved, 0x00, sizeof(pstMsg->aucReserved));
 
     /* 发送消息到OAM; */
     if (0 != PS_SEND_MSG( WUEPS_PID_TAF, pstMsg))
@@ -1656,7 +1658,7 @@ VOS_VOID MN_VC_SendMsgToAt(
     pMsg->aucReserved1[0] = 0;
     pMsg->aucReserved1[1] = 0;
     pMsg->clientId  = MN_GetRealClientId(clientId, WUEPS_PID_TAF);
-    pMsg->usLen     = usLength;     /* 类型 */
+    pMsg->usLen     = (VOS_UINT16)(sizeof(MN_MSG_EVENT_INFO_STRU) + ulEventTypeLen);     /* 类型 */
 
     pstEvent->clientId = MN_GetRealClientId(pstEvent->clientId, WUEPS_PID_TAF);
 
@@ -2047,7 +2049,7 @@ VOS_VOID TAF_CALL_SendMsgToAt(
     pstMsg->ulReceiverPid   = WUEPS_PID_AT;
     pstMsg->usMsgName       = MN_CALLBACK_CS_CALL;
     pstMsg->clientId        = MN_GetRealClientId(usClientId, WUEPS_PID_TAF);
-    pstMsg->usLen           = (VOS_UINT16)ulLength;
+    pstMsg->usLen           = (VOS_UINT16)(ulEvtTypeLen + ulLength);
 
     /* 填写事件内容 */
     PS_MEM_CPY(pstMsg->aucContent, &enEventType, ulEvtTypeLen);
@@ -2363,6 +2365,89 @@ VOS_UINT32  MN_CALL_JudgeMtCallType(
 
     return VOS_OK;
 }
+
+#if (FEATURE_ON == FEATURE_IMS)
+
+VOS_VOID TAF_SndMmaImsSrvInfoNotify(
+    VOS_UINT8                           ucImsCallFlg
+)
+{
+    TAF_MMA_IMS_SRV_INFO_NOTIFY_STRU              *pstMsg = VOS_NULL_PTR;
+
+    pstMsg = (TAF_MMA_IMS_SRV_INFO_NOTIFY_STRU *)PS_ALLOC_MSG_WITH_HEADER_LEN(WUEPS_PID_TAF,sizeof(TAF_MMA_IMS_SRV_INFO_NOTIFY_STRU));
+
+    if (VOS_NULL_PTR == pstMsg)
+    {
+        MN_WARN_LOG("TAF_SPM_SendMsgSmmaRsp:ERROR: VOS_AllocMsg fail.");
+        return;
+    }
+
+    PS_MEM_SET(pstMsg, 0, sizeof(TAF_MMA_IMS_SRV_INFO_NOTIFY_STRU));
+
+    pstMsg->ulSenderCpuId           = VOS_LOCAL_CPUID;
+    pstMsg->ulSenderPid             = WUEPS_PID_TAF;
+    pstMsg->ulReceiverCpuId         = VOS_LOCAL_CPUID;
+    pstMsg->ulReceiverPid           = WUEPS_PID_MMA;
+    pstMsg->ulLength                = sizeof(TAF_MMA_IMS_SRV_INFO_NOTIFY_STRU) - VOS_MSG_HEAD_LENGTH;
+    pstMsg->ulMsgName               = ID_TAF_MMA_IMS_SRV_INFO_NOTIFY;
+    pstMsg->ucImsCallFlg            = ucImsCallFlg;
+
+    if ( VOS_OK != PS_SEND_MSG( WUEPS_PID_TAF, pstMsg ) )
+    {
+        MN_WARN_LOG( "TAF_SndMmaImsSrvInfoNotify:WARNING:SEND ID_TAF_MMA_IMS_SRV_INFO_NOTIFY msg FAIL!" );
+    }
+
+    return;
+}
+#endif
+
+#if (FEATURE_ON == FEATURE_PTM)
+
+VOS_VOID TAF_SndAcpuOmFaultErrLogInd(
+    VOS_VOID                           *pData,
+    VOS_UINT32                          ulDataLen
+)
+{
+    OM_FAULT_ERR_LOG_IND_STRU          *pstFaultRptInd = VOS_NULL_PTR;
+    VOS_UINT32                          ulMsgLen;
+    VOS_UINT32                          ulContentAddr;
+
+    /* 申请消息结构内存 */
+    /*lint -e961*/
+    ulMsgLen     = sizeof(OM_FAULT_ERR_LOG_IND_STRU) - VOS_MSG_HEAD_LENGTH - 4 + ulDataLen;
+    /*lint +e961*/
+    pstFaultRptInd = (OM_FAULT_ERR_LOG_IND_STRU*)PS_ALLOC_MSG(WUEPS_PID_TAF, ulMsgLen);
+    if (VOS_NULL_PTR == pstFaultRptInd)
+    {
+        PS_LOG(WUEPS_PID_TAF, VOS_NULL, PS_PRINT_ERROR, "TAF_SndAcpuOmFaultErrLogInd:ERROR: Alloc msg fail.");
+        return;
+    }
+
+    /* 构造消息结构体 */
+    pstFaultRptInd->ulReceiverCpuId   = VOS_LOCAL_CPUID;
+    pstFaultRptInd->ulSenderCpuId     = VOS_LOCAL_CPUID;
+    pstFaultRptInd->ulReceiverPid     = ACPU_PID_OM;
+    pstFaultRptInd->ulSenderPid       = WUEPS_PID_TAF;
+    pstFaultRptInd->ulMsgName         = ID_OM_FAULT_ERR_LOG_IND;
+    pstFaultRptInd->ulMsgType         = OM_ERR_LOG_MSG_FAULT_REPORT;
+    pstFaultRptInd->ulMsgSN           = 0;
+    pstFaultRptInd->ulRptlen          = ulDataLen;
+
+    ulContentAddr                     = (VOS_UINT32)pstFaultRptInd->aucContent;
+    PS_MEM_CPY((VOS_UINT8 *)ulContentAddr, pData, ulDataLen);
+
+    /* 发送消息到ACPU OM模块 */
+    if (VOS_OK != PS_SEND_MSG(WUEPS_PID_TAF, pstFaultRptInd))
+    {
+        PS_LOG(WUEPS_PID_TAF, VOS_NULL, PS_PRINT_ERROR, "TAF_SndAcpuOmFaultErrLogInd:ERROR: SEND MSG FIAL.");
+    }
+
+    return;
+}
+#endif
+
+/*lint -restore */
+
 #ifdef  __cplusplus
   #if  __cplusplus
   }

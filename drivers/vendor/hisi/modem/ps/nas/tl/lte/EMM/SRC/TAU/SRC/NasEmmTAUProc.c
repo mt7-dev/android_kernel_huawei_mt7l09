@@ -10,6 +10,7 @@
 #include "NasEmmAttDetInclude.h"
 /* lihong00150010 emergency tau&service end */
 
+#include "ImsaLmmInterface.h"
 
 /*lint -e767*/
 #define    THIS_FILE_ID        PS_FILE_ID_NASEMMTAUPROC_C
@@ -1569,11 +1570,12 @@ VOS_VOID    NAS_EMM_TAU_SendMrrcDataReq_TAUReq(NAS_EMM_MSG_TYPE_ENUM_UINT32 ulEm
         NAS_EMM_TAU_LOG_ERR( "NAS_EMM_TAU_SendMrrcDataReq_TAUReq: MSG ALLOC ERR !!");
         return;
     }
-	/* lihong00150010 emergency tau&service begin */
+    /* lihong00150010 emergency tau&service begin */
     /* 如果存在上行Pending或者存在COLLISION标志，则携带'ACTIVE'标志*/
     if((NAS_EMM_UPLINK_PENDING == NAS_EMM_TAU_GetEmmUplinkPending())
      || (NAS_EMM_COLLISION_NONE != NAS_EMM_TAU_GetEmmCollisionCtrl())
-     || (NAS_EMM_TAU_START_CAUSE_ESM_EMC_PDN_REQ == NAS_EMM_TAU_GetEmmTAUStartCause()))
+     || (NAS_EMM_TAU_START_CAUSE_ESM_EMC_PDN_REQ == NAS_EMM_TAU_GetEmmTAUStartCause())
+     || (NAS_EMM_PTMSI_ACTIVE_FLAG_CTRL_VALID == NAS_EMM_TAU_GetEmmPtmsiActiveFlagCtrl()))
     {/* lihong00150010 emergency tau&service end */
         NAS_EMM_TAU_SaveEmmTauReqActiveCtrl(NAS_EMM_TAU_WITH_BEARER_EST_REQ);
     }
@@ -1653,6 +1655,8 @@ VOS_VOID    NAS_EMM_TAU_SendMrrcDataReq_TAUReq(NAS_EMM_MSG_TYPE_ENUM_UINT32 ulEm
     return;
 
 }
+
+
 VOS_VOID    NAS_EMM_TAU_SendEsmBearerStatusInd(const NAS_EMM_CN_TAU_ACP_STRU   *pMsgStru )
 {
     EMM_ESM_BEARER_STATUS_IND_STRU       *psmbearerstatusind  =  NAS_EMM_NULL_PTR;
@@ -1863,7 +1867,16 @@ VOS_VOID NAS_EMM_TAU_SetImsiDetachFlag
 VOS_VOID  NAS_EMM_TAU_IsUplinkPending( VOS_VOID )
 {
    if((EMM_ESM_UP_SINGNAL_PENDING == NAS_ESM_IsUpSingnalPending())
-    ||(EMM_ERABM_UP_DATA_PENDING == NAS_ERABM_IsDataPending()))
+    ||(EMM_ERABM_UP_DATA_PENDING == NAS_ERABM_IsDataPending())
+    #if (FEATURE_ON == FEATURE_IMS)
+    /* modified by jiaguocai 00355737 2015-09-14 for TAU active flag,begin */
+    /* 如果有IMS业务，且当前不是数据连接态时，才设置上行PENDING的标识，
+    避免IMS通话过程中，在L内切换时，还将上行pending设置为true */
+    ||((VOS_TRUE == IMSA_LMM_IsExitImsService())
+        && (NAS_EMM_CONN_DATA != NAS_EMM_GetConnState()))
+    /* Modified by jiaguocai 00355737 2015-9-14 for TAU active flag,end */
+    #endif
+    )
    {
         NAS_EMM_TAU_SetEmmUplinkPending(NAS_EMM_UPLINK_PENDING);
    }
@@ -1959,36 +1972,61 @@ VOS_UINT32  NAS_EMM_TAU_RrcRelCauseTriggerTau(VOS_VOID)
     else if(NAS_EMM_TRIGGER_TAU_RRC_REL_CONN_FAILURE ==
                                         NAS_LMM_GetEmmInfoTriggerTauRrcRel())
     {
-         /* 不能删除，如果有上行PENDING,则会发起SERVICE */
-         NAS_EMM_TAU_IsUplinkPending();
+        /* 如果是因CSFB DELAY定时器导致的之前的CSFB没能发起，此时无论需发起TAU还是SERVICE，
+        都要先发EXT SERVICE，否则一旦发起SERVICE，后续就不会再发起EXT SERVICE*/
+        if((VOS_TRUE == NAS_EMM_SER_IsCsfbProcedure())
+            &&(NAS_EMM_COLLISION_SERVICE == NAS_EMM_TAU_GetEmmCollisionCtrl()))
+        {
+            /* 设置UE接受CSFB */
+            NAS_EMM_SER_SaveEmmSerCsfbRsp(NAS_EMM_CSFB_RSP_ACCEPTED_BY_UE);
 
-         if(NAS_EMM_UPLINK_PENDING == NAS_EMM_TAU_GetEmmUplinkPending())
-         {
-             /*存在上行数据pending时,触发SR之前需要给MMC上报TAU结果以使MMC通知CDS切换至LTE模式 */
-             pMmNetInfo                          = NAS_LMM_GetEmmInfoNetInfoAddr();
-             NAS_EMM_SetLVRTai(&pMmNetInfo->stPresentNetId);
-             NAS_EMM_SetTauTypeNoProcedure();
-             NAS_EMM_MmcSendTauActionResultIndSuccWithoutPara();
-             NAS_EMM_TAUSER_SaveAuxFsmUpStat(EMM_US_UPDATED_EU1);
-             /* lihong00150010 emergency tau&service begin */
-             if (NAS_LMM_REG_STATUS_EMC_REGED != NAS_LMM_GetEmmInfoRegStatus())
-             {
-                 /*保存PS LOC信息*/
-                 NAS_LMM_WritePsLoc(NAS_NV_ITEM_UPDATE);
-             }
-             /* lihong00150010 emergency tau&service end */
-             NAS_EMM_TAU_LOG_INFO("NAS_EMM_RrcRelCauseTriggerTau:Init Ser.");
-             NAS_EMM_SER_UplinkPending();
-         }
-         else
-         {
-             NAS_EMM_TAU_LOG_INFO("NAS_EMM_RrcRelCauseTriggerTau:RRC connection failure");
-             /*NAS_EMM_TAU_SaveEmmTAUStartCause(NAS_EMM_TAU_START_CAUSE_RRC_REL_CONN_FAILURE );*/
-             NAS_EMM_TAU_SaveEmmTAUStartCause(NAS_EMM_TAU_START_CAUSE_OTHERS);
-             NAS_EMM_TAU_StartTAUREQ();
-         }
+            /*启动定时器3417*/
+            NAS_LMM_StartStateTimer(TI_NAS_EMM_STATE_SERVICE_T3417_EXT);
 
-         return NAS_EMM_YES;
+            /*转换EMM状态机MS_SER_INIT+SS_SER_WAIT_CN_CNF*/
+            NAS_EMM_TAUSER_FSMTranState(EMM_MS_SER_INIT, EMM_SS_SER_WAIT_CN_SER_CNF, TI_NAS_EMM_STATE_SERVICE_T3417_EXT);
+
+            /*组合并发送MRRC_DATA_REQ(SERVICE_REQ)*/
+            NAS_EMM_SER_SendMrrcDataReq_ExtendedServiceReq();
+
+            /* 清除之前记录的SERVICE冲突 */
+            NAS_EMM_TAU_SaveEmmCollisionCtrl(NAS_EMM_COLLISION_NONE);
+
+            return NAS_EMM_YES;
+        }
+        else
+        {
+            /* 不能删除，如果有上行PENDING,则会发起SERVICE */
+            NAS_EMM_TAU_IsUplinkPending();
+
+            if(NAS_EMM_UPLINK_PENDING == NAS_EMM_TAU_GetEmmUplinkPending())
+            {
+                /*存在上行数据pending时,触发SR之前需要给MMC上报TAU结果以使MMC通知CDS切换至LTE模式 */
+                pMmNetInfo                          = NAS_LMM_GetEmmInfoNetInfoAddr();
+                NAS_EMM_SetLVRTai(&pMmNetInfo->stPresentNetId);
+                NAS_EMM_SetTauTypeNoProcedure();
+                NAS_EMM_MmcSendTauActionResultIndSuccWithoutPara();
+                NAS_EMM_TAUSER_SaveAuxFsmUpStat(EMM_US_UPDATED_EU1);
+                /* lihong00150010 emergency tau&service begin */
+                if (NAS_LMM_REG_STATUS_EMC_REGED != NAS_LMM_GetEmmInfoRegStatus())
+                {
+                    /*保存PS LOC信息*/
+                    NAS_LMM_WritePsLoc(NAS_NV_ITEM_UPDATE);
+                }
+                /* lihong00150010 emergency tau&service end */
+                NAS_EMM_TAU_LOG_INFO("NAS_EMM_RrcRelCauseTriggerTau:Init Ser.");
+                NAS_EMM_SER_UplinkPending();
+            }
+            else
+            {
+                NAS_EMM_TAU_LOG_INFO("NAS_EMM_RrcRelCauseTriggerTau:RRC connection failure");
+                /*NAS_EMM_TAU_SaveEmmTAUStartCause(NAS_EMM_TAU_START_CAUSE_RRC_REL_CONN_FAILURE );*/
+                NAS_EMM_TAU_SaveEmmTAUStartCause(NAS_EMM_TAU_START_CAUSE_OTHERS);
+                NAS_EMM_TAU_StartTAUREQ();
+            }
+
+            return NAS_EMM_YES;
+        }
     }
     else
     {
@@ -2128,6 +2166,15 @@ VOS_UINT32  NAS_EMM_RegSomeStateStartTAUNeeded( VOS_VOID )
         return NAS_EMM_YES;
     }
 
+    /* o)when the UE's usage setting or the voice domain preference for E-UTRAN change in the UE */
+    if(NAS_EMM_YES == NAS_EMM_GetVoiceDomainChange() )
+    {
+        NAS_EMM_TAU_LOG_INFO("NAS_EMM_RegSomeStateStartTAUNeeded: VOICE DOMAIN CHANG ");
+        NAS_EMM_TAU_SaveEmmTAUStartCause(NAS_EMM_TAU_START_CAUSE_VOICE_DOMAIN_CHANGE);
+        NAS_EMM_TAU_StartTAUREQ();
+        return NAS_EMM_YES;
+    }
+
     return NAS_EMM_NO;
 
 }
@@ -2138,9 +2185,10 @@ VOS_VOID  NAS_EMM_RegSomeStateMsgSysInfoTaiNotInTaiList( VOS_VOID )
 {
     MMC_LMM_TAU_RSLT_ENUM_UINT32        ulTauRslt = MMC_LMM_TAU_RSLT_BUTT;
     NAS_MM_TA_STRU                     *pstLastAttmpRegTa = NAS_EMM_NULL_PTR;
-    NAS_MM_TA_STRU                      stCurTa           = {0};
+    NAS_MM_TA_STRU                      stCurTa;
     NAS_LMM_PTL_TI_ENUM_UINT16          enPtlTimerId     = NAS_LMM_PTL_TI_BUTT;
 
+    PS_MEM_SET(&stCurTa, 0, sizeof(NAS_MM_TA_STRU));
     NAS_EMM_TAU_LOG_NORM("NAS_EMM_RegSomeStateMsgSysInfoTaiNotInTaiList is entered!");
 
     /* 获取当前TA和上次尝试注册的TA信息 */
@@ -2380,10 +2428,11 @@ VOS_UINT32  NAS_EMM_RegStateMmcOriResumeSysInfoWaitTimerExp3411or3402Running( VO
 VOS_UINT32  NAS_EMM_RegStateMmcOriResumeSysInfoRecogniseWaitTimerExp( VOS_VOID )
 {
     NAS_MM_TA_STRU                     *pstLastAttmpRegTa = NAS_EMM_NULL_PTR;
-    NAS_MM_TA_STRU                      stCurTa           = {0};
+    NAS_MM_TA_STRU                      stCurTa;
     NAS_LMM_PTL_TI_ENUM_UINT16          enPtlTimerId     = NAS_LMM_PTL_TI_BUTT;
     MMC_LMM_TAU_RSLT_ENUM_UINT32        ulTauRslt = MMC_LMM_TAU_RSLT_BUTT;
 
+    PS_MEM_SET(&stCurTa, 0, sizeof(NAS_MM_TA_STRU));
     /* 获取当前TA和上次尝试注册的TA信息 */
     NAS_EMM_GetCurrentTa(&stCurTa);
     pstLastAttmpRegTa                  = NAS_LMM_GetEmmInfoNetInfoLastAttmpRegTaAddr();
@@ -2456,6 +2505,24 @@ VOS_UINT32  NAS_EMM_RegStateMmcOriResumeSysInfoRecogniseWaitTimerExp( VOS_VOID )
     return NAS_EMM_FAIL;
 }
 
+VOS_VOID NAS_EMM_RegStateMmcOriResumeSysInfoWithTmsiProc(VOS_VOID)
+{
+    if ((NAS_EMM_T3412_EXP_YES_REG_NO_AVALABLE_CELL == NAS_LMM_GetEmmInfoT3412ExpCtrl())
+        && (NAS_LMM_REG_DOMAIN_CS_PS == NAS_LMM_GetEmmInfoRegDomain()))
+    {
+        NAS_EMM_TAU_LOG_INFO("NAS_EMM_RegStateMmcOriResumeSysInfoNeednotWaitTimerExpProc:combined succ");
+
+        /* 将注册域改为PS，是为了回到REG+NORMAL_SERVICE态后，如果要发起联合TAU，则
+            TAU类型应该填为combined TA/LA updating with IMSI attach */
+        NAS_LMM_SetEmmInfoRegDomain(NAS_LMM_REG_DOMAIN_PS);
+
+    }
+    /*NAS_EMM_TAU_SaveEmmTAUStartCause(     NAS_EMM_TAU_START_CAUSE_SYSINFO);*/
+    NAS_EMM_TAU_SaveEmmTAUStartCause(NAS_EMM_TAU_START_CAUSE_OTHERS);
+    NAS_LMM_SetEmmInfoTriggerTauSysChange(NAS_EMM_YES);
+    NAS_EMM_TAU_StartTAUREQ();
+    return;
+}
 
 /*****************************************************************************
  Function Name   : NAS_EMM_RegStateMmcOriResumeSysInfoNeednotWaitTimerExpProc
@@ -2477,25 +2544,17 @@ VOS_VOID  NAS_EMM_RegStateMmcOriResumeSysInfoNeednotWaitTimerExpProc( VOS_VOID )
     /* 打印进入该函数， INFO_LEVEL */
     NAS_EMM_TAU_LOG_INFO("NAS_EMM_RegStateMmcOriResumeSysInfoNeednotWaitTimerExpProc is entered.");
 
+    if (NAS_EMM_YES == NAS_EMM_IsPtmsiTauActiveFlagSatified())
+    {
+        NAS_EMM_TAU_LOG_INFO("NAS_EMM_RegStateMmcOriResumeSysInfoNeednotWaitTimerExpProc: PTMSI, save active flag ctrl.");
+        NAS_EMM_TAU_SaveEmmPtmsiActiveFlagCtrl(NAS_EMM_PTMSI_ACTIVE_FLAG_CTRL_VALID);
+    }
+
     /*c)when the UE enters EMM-REGISTERED.NORMAL-SERVICE and the UE's TIN indicates "P-TMSI"*/
     if (MMC_LMM_TIN_P_TMSI == NAS_EMM_GetTinType())
     {
         NAS_EMM_TAU_LOG_INFO("NAS_EMM_RegStateMmcOriResumeSysInfoNeednotWaitTimerExpProc:TIN is p-tmsi");
-
-        if ((NAS_EMM_T3412_EXP_YES_REG_NO_AVALABLE_CELL == NAS_LMM_GetEmmInfoT3412ExpCtrl())
-            && (NAS_LMM_REG_DOMAIN_CS_PS == NAS_LMM_GetEmmInfoRegDomain()))
-        {
-            NAS_EMM_TAU_LOG_INFO("NAS_EMM_RegStateMmcOriResumeSysInfoNeednotWaitTimerExpProc:combined succ");
-
-            /* 将注册域改为PS，是为了回到REG+NORMAL_SERVICE态后，如果要发起联合TAU，则
-                TAU类型应该填为combined TA/LA updating with IMSI attach */
-            NAS_LMM_SetEmmInfoRegDomain(NAS_LMM_REG_DOMAIN_PS);
-
-        }
-        /*NAS_EMM_TAU_SaveEmmTAUStartCause(     NAS_EMM_TAU_START_CAUSE_SYSINFO);*/
-        NAS_EMM_TAU_SaveEmmTAUStartCause(NAS_EMM_TAU_START_CAUSE_OTHERS);
-        NAS_LMM_SetEmmInfoTriggerTauSysChange(NAS_EMM_YES);
-        NAS_EMM_TAU_StartTAUREQ();
+        NAS_EMM_RegStateMmcOriResumeSysInfoWithTmsiProc();
         return;
     }
 
@@ -2517,6 +2576,13 @@ VOS_VOID  NAS_EMM_RegStateMmcOriResumeSysInfoNeednotWaitTimerExpProc( VOS_VOID )
 
         return;
     }
+
+    if (NAS_EMM_YES == NAS_EMM_IsEmcCsfbHappenedAndLaiChangWithCsPsUeMode())
+    {
+        NAS_EMM_TAU_LOG_WARN("NAS_EMM_RegStateMmcOriResumeSysInfoNeednotWaitTimerExpProc:EMC CSFB,LAI CHANG ");
+        NAS_LMM_SetEmmInfoRegDomain(NAS_LMM_REG_DOMAIN_PS);
+    }
+
     /* 获取G模连接状态 */
     enGprsMmState = NAS_LMM_GetEmmInfoGConnState();
 
@@ -2616,6 +2682,8 @@ VOS_VOID  NAS_EMM_RegStateMmcOriResumeSysInfoNeednotWaitTimerExpProc( VOS_VOID )
         /*向MMC发送LMM_MMC_TAU_RESULT_IND消息*/
         NAS_EMM_MmcSendTauActionResultIndSuccWithoutPara();
 
+        NAS_EMM_TAU_ClearActiveFlagProc();
+
         return;
     }
 
@@ -2629,10 +2697,11 @@ VOS_VOID  NAS_EMM_RegStateMmcOriResumeSysInfoNeednotWaitTimerExpProc( VOS_VOID )
 VOS_VOID  NAS_EMM_RegNormalServiceOrUpdateMMMsgSysInfoCommProc( VOS_VOID)
 {
     NAS_MM_NETWORK_ID_STRU             *pstPresentNetInfo = NAS_EMM_NULL_PTR;
-    NAS_MM_TA_STRU                      stCurTa           = {0};
+    NAS_MM_TA_STRU                      stCurTa;
     NAS_LMM_PTL_TI_ENUM_UINT16          enPtlTimerId     = NAS_LMM_PTL_TI_BUTT;
     VOS_UINT32                          ulRslt = NAS_EMM_FAIL;
 
+    PS_MEM_SET(&stCurTa, 0, sizeof(NAS_MM_TA_STRU));
     /* 获取当前TA信息 */
     NAS_EMM_GetCurrentTa(&stCurTa);
     pstPresentNetInfo                  = NAS_LMM_GetEmmInfoNetInfoPresentNetAddr();
@@ -2792,6 +2861,9 @@ VOS_VOID  NAS_EMM_EmcPndReqTauAbnormalCommProc
     /*向MMC发送本地LMM_MMC_DETACH_IND消息*/
     NAS_EMM_MmcSendDetIndLocal( MMC_LMM_L_LOCAL_DETACH_OTHERS);
 
+    #if (FEATURE_PTM == FEATURE_ON)
+    NAS_EMM_LocalDetachErrRecord(EMM_ERR_LOG_LOCAL_DETACH_TYPE_OTHER);
+    #endif
     /* 记录ATTACH触发原因值 */
     NAS_EMM_GLO_AD_GetAttCau() = EMM_ATTACH_CAUSE_ESM_ATTACH_FOR_INIT_EMC_BERER;
 
@@ -2801,6 +2873,19 @@ VOS_VOID  NAS_EMM_EmcPndReqTauAbnormalCommProc
 }
 /* lihong00150010 emergency tau&service end */
 
+VOS_VOID  NAS_EMM_TAU_ClearActiveFlagProc(VOS_VOID)
+{
+    NAS_EMM_TAU_LOG_INFO( "NAS_EMM_TAU_ClearActiveFlagProc is entered.");
+
+
+
+    /* TAU的active flag标识清除 */
+    NAS_EMM_TAU_SaveEmmTauReqActiveCtrl(NAS_EMM_TAU_NO_BEARER_EST_REQ);
+
+    NAS_EMM_TAU_SaveEmmPtmsiActiveFlagCtrl(NAS_EMM_PTMSI_ACTIVE_FLAG_CTRL_INVALID);
+
+    return;
+}
 /*lint +e961*/
 /*lint +e960*/
 /*lint +e831*/

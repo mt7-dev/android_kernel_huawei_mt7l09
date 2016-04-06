@@ -30,7 +30,7 @@
 
 #define CORESIGHT_UNLOCK	(0xC5ACCE55)
 
-#define TIMEOUT_US		(5000000)
+#define TIMEOUT_US		(100)
 
 #define BM(lsb, msb)		((BIT(msb) - BIT(lsb)) + BIT(msb))
 #define BMVAL(val, lsb, msb)	((val & BM(lsb, msb)) >> lsb)

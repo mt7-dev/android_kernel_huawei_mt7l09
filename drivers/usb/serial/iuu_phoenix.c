@@ -804,7 +804,6 @@ static int iuu_uart_baud(struct usb_serial_port *port, u32 baud_base,
 
 	if (!dataout)
 		return -ENOMEM;
-	/*baud = (((priv->clk / 35) * baud_base) / 100000); */
 	baud = baud_base;
 
 	if (baud < 1200 || baud > 230400) {

@@ -184,35 +184,6 @@ typedef struct
 
 }ESM_FTM_INFO_MANAGE_STRU;
 
-typedef struct
-{
-    NAS_ESM_CAUSE_ENUM_UINT8            ulCauseId;    /*cause ID*/
-    LNAS_OM_ERRLOG_ID_ENUM_UINT16       ulErrorlogID; /*error id*/
-}NAS_ESM_CN_CAUSE_TRANS_STRU;
-
-typedef struct
-{
-    VOS_UINT32                             ulActionFlag;
-    VOS_UINT32                             ulMsgSN;
-     /* ERR LOG上报级别,每个模块的每个级别对应一个ERR LOG缓存数组
-    故障&告警级别
-    Warning： 0x04代表提示，
-    Minor：   0x03代表次要
-    Major：   0x02答标重要
-    Critical：0x01代表紧急    */
-    NAS_ESM_ERRLOG_LEVEL_ENUM_UINT16       usALMLevel;
-    NAS_ESM_ERRLOG_TYPE_ENUM_UINT16        usALMType;
-    /* EMM最新ERR LOG发生的时间戳 */
-    VOS_UINT32                             ulAlmLowSlice;/*时间戳*/
-    VOS_UINT32                             ulAlmHighSlice;
-
-    VOS_UINT32                             ulErrLogAmount;
-    VOS_UINT32                             ulNextNullPos;
-    ESM_ERR_INFO_DETAIL_STRU               stEsmErrInfoDetail[NAS_ESM_ERRLOG_MAX_NUM];
-
-}ESM_ERRLOG_INFO_MANAGE_STRU;
-
-/* xiongxianghui00253310 modify for ftmerrlog end   */
 
 typedef struct
 {
@@ -232,8 +203,6 @@ extern VOS_UINT32                  g_NasEsmOmInfoIndFlag;
 /* xiongxianghui00253310 modify for ftmerrlog begin */
 extern ESM_FTM_INFO_MANAGE_STRU             g_astEsmFtmInfoManage;
 extern ESM_DATABASE_INFO_STRU               g_astEsmInfo;
-extern ESM_ERRLOG_INFO_MANAGE_STRU          g_astEsmErrlogInfoManage;
-
 /* xiongxianghui00253310 modify for ftmerrlog end   */
 
 extern VOS_UINT32   g_ulRptPdpStatus;
@@ -249,14 +218,6 @@ extern VOS_UINT32   NAS_ESM_RevOmFtmCtrlMsg(MsgBlock   *pMsgStru);
 extern VOS_UINT32   NAS_ESM_CompareEsmDatabaseInfo(VOS_VOID);
 extern VOS_VOID     NAS_ESM_UpdateEsmDatabaseInfo(VOS_VOID);
 extern VOS_VOID     NAS_ESM_SendOmFtmMsg(VOS_VOID);
-
-extern VOS_VOID     NAS_ESM_ErrlogInfoInit(VOS_VOID);
-extern VOS_UINT32   NAS_ESM_RevOmErrlogCtrlMsg(MsgBlock   *pMsgStru);
-extern VOS_UINT32   NAS_ESM_RevOmReadErrlogReq(const MsgBlock   *pMsgStru);
-extern VOS_VOID     NAS_ESM_SendOmErrlogCnf(VOS_VOID);
-extern VOS_VOID     NAS_ESM_ErrlogInfoProc(VOS_UINT8 ucCnCause);
-extern LNAS_OM_ERRLOG_ID_ENUM_UINT16  NAS_ESM_CnCauseProc(VOS_UINT8 ucCnCause);
-
 extern VOS_VOID NAS_ESM_OmMsgDistrForAcpuPidOm( VOS_VOID *pRcvMsg );
 
 

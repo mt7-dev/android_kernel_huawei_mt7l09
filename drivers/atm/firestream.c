@@ -267,12 +267,7 @@ static struct reginit_item PHY_NTC_INIT[] = {
 };
 
 
-/* Safetyfeature: If the card interrupts more than this number of times
-   in a jiffy (1/100th of a second) then we just disable the interrupt and
-   print a message. This prevents the system from hanging. 
 
-   150000 packets per second is close to the limit a PC is going to have
-   anyway. We therefore have to disable this for production. -- REW */
 #undef IRQ_RATE_LIMIT // 100
 
 /* Interrupts work now. Unlike serial cards, ATM cards don't work all

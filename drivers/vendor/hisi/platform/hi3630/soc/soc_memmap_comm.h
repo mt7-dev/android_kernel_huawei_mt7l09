@@ -9,7 +9,6 @@ extern "C" {
 #endif
 
 #include "product_config.h"
-
 /* 非2^n大小的宏，内核未定义，需要放到公共区 */
 #ifndef SZ_20K
 #define SZ_20K                           (0x00005000)
@@ -526,6 +525,15 @@ extern "C" {
 #define HI_BBP_TSTU_BASE_ADDR               (0xE1d00000)
 #define HI_BBP_TSTU_SIZE                     SZ_8K
 
+#ifdef BSP_CONFIG_HI3635
+/* CoreSignt Core1 PTM */
+#define HI_CORESIGHT_PTM1_BASE_ADDR          0xEC0BC000
+#define HI_CORESIGHT_PTM1_SIZE               SZ_4K
+
+/* CoreSignt FUNNEL */
+#define HI_CORESIGHT_FUNNEL_BASE_ADDR        0xEC081000
+#define HI_CORESIGHT_FUNNEL_SIZE             SZ_4K
+#else
 /* CoreSignt Core1 PTM */
 #define HI_CORESIGHT_PTM1_BASE_ADDR          0xffefc000
 #define HI_CORESIGHT_PTM1_SIZE               SZ_4K
@@ -533,8 +541,9 @@ extern "C" {
 /* CoreSignt FUNNEL */
 #define HI_CORESIGHT_FUNNEL_BASE_ADDR        0xffec1000
 #define HI_CORESIGHT_FUNNEL_SIZE             SZ_4K
+#endif
 
-#ifdef  BSP_CONFIG_K3V3_SFT/*ctu在sft版本，区分单模多模*/
+#ifdef  BSP_CONFIG_BOARD_SFT/*ctu在sft版本，区分单模多模*/
 
 #ifdef  FEATURE_MULTIMODE_GUL
 #define HI_CTU_BASE_ADDR                      (0xE1820000)
@@ -549,20 +558,34 @@ extern "C" {
 
 #define HI_BBP_CTU_BASE_ADDR                 HI_CTU_BASE_ADDR
 
-#ifdef BSP_CONFIG_K3V3_SFT
+#ifdef BSP_CONFIG_BOARD_SFT
 #define HI_ABB_REG_BASE_ADDR                  (0xE1F8E000)
 #else
 #define HI_ABB_REG_BASE_ADDR                  (0xE1F8C000)
 #endif
 #define HI_ABB_REG_SIZE                       (0x2000)
 
-#ifdef BSP_CONFIG_K3V3_SFT
+#ifdef BSP_CONFIG_BOARD_SFT
 #define HI_BBP_SYSTIME_BASE_ADDR              (0xFFF08000)
 #else
 #define HI_BBP_SYSTIME_BASE_ADDR              (HI_AP_SYSCTRL_BASE_ADDR)
 #endif
 #define HI_BBP_SYSTIME_SIZE                    SZ_8K
 
+#if (defined BSP_CONFIG_HI3630) && (defined BSP_CONFIG_BOARD_SFT)
+#define HI_BBP_APB_REGBASE_ADDR     (0xE080FC20)//SRAM ,规避fpga平台，上层drx访问data abort
+#define HI_BBP_APB_REG_SIZE                   (SZ_8K)
+/*bbp lte drx*/
+#define HI_BBP_LTEDRX_BASE_ADDR               (HI_BBP_APB_REGBASE_ADDR)
+
+#define HI_GBBP_DRX_REG_BASE_ADDR             (HI_BBP_APB_REGBASE_ADDR+0x800)
+
+#define HI_GBBP1_DRX_REG_BASE_ADDR	          (HI_BBP_APB_REGBASE_ADDR+0xC00)
+
+/*bbp tds drx*/
+#define HI_BBP_TDSDRX_BASE_ADDR               (HI_BBP_APB_REGBASE_ADDR+0x1400)
+
+#else
 /* DRX */
 #define HI_BBP_APB_REGBASE_ADDR               (0xFFF12000)
 #define HI_BBP_APB_REG_SIZE                   SZ_8K
@@ -577,6 +600,7 @@ extern "C" {
 /*bbp tds drx*/
 #define HI_BBP_TDSDRX_BASE_ADDR               (HI_BBP_APB_REGBASE_ADDR+0x1400)
 
+#endif
 #ifdef BSP_CONFIG_K3V3_ASIC
 /* todo: COMM ON的基地址为(0xE82B8000:为hkadc地址),上层已做0x3000的偏移，故返回地址需要减去0x3000, duliang/liujing确认*/
 #define HI_BBP_COMM_ON_BASE_ADDR              (0xE82B5000)

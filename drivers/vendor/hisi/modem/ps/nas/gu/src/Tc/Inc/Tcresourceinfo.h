@@ -117,12 +117,13 @@ typedef struct
 /* 全局控制信息 */
 typedef struct
 {
-    TC_RAB_INFO_STRU                     TcRabInfo;                             /* RAB实体信息                              */
-    TC_MODE_INFO_STRU                    TcModeInfo;                            /* 模式信息                                 */
-    VOS_UINT8                            ucTcState;                             /* TC所处的状态                             */
-    VOS_UINT8                            ucMsgType;                             /* TC接收到的消息类型                       */
-    VOS_UINT8                            ucCnDomain;                            /* TC从哪个信令上接收到消息                 */
-    VOS_UINT8                            ucRrcConnStatus;                       /* RRC连接是否存在                          */
+    TC_RAB_INFO_STRU                     TcRabInfo;                             /* RAB实体信息 */
+    TC_MODE_INFO_STRU                    TcModeInfo;                            /* 模式信息 */
+    VOS_UINT8                            ucTcState;                             /* TC所处的状态 */
+    VOS_UINT8                            ucMsgType;                             /* TC接收到的消息类型 */
+    VOS_UINT8                            ucCnDomain;                            /* TC从哪个信令上接收到消息 */
+    VOS_UINT8                            ucRrcConnStatus;                       /* RRC连接是否存在 */
+    VOS_UINT8                            ucSndWphyCloseLoopNtfLable;            /* 是否已经给物理层下发闭环通知 */
     VOS_UINT16                           usTchLoopType;                         /* TCH 测试环回类型 */
 }TC_GLOBAL_CTRL_STRU;
 

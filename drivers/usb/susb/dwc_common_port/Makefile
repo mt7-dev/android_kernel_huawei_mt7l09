@@ -2,19 +2,18 @@
 # Makefile for DWC_common library
 #
 
-ccflags-y	:= -DDWC_LINUX
-#ccflags-y	+= -DDEBUG
-#ccflags-y	+= -DDWC_DEBUG_REGS
-#ccflags-y	+= -DDWC_DEBUG_MEMORY
+EXTRA_CFLAGS	+= -DDWC_LINUX
+EXTRA_CFLAGS	+= -DDEBUG
+#EXTRA_CFLAGS	+= -DDWC_DEBUG_REGS
+#EXTRA_CFLAGS	+= -DDWC_DEBUG_MEMORY
 
-ccflags-y	+= -DDWC_LIBMODULE
-ccflags-y	+= -DDWC_CCLIB
+EXTRA_CFLAGS	+= -DDWC_LIBMODULE
+EXTRA_CFLAGS	+= -DDWC_CCLIB
 #ccflags-y	+= -DDWC_CRYPTOLIB
-ccflags-y	+= -DDWC_NOTIFYLIB
-ccflags-y	+= -DDWC_UTFLIB
+EXTRA_CFLAGS	+= -DDWC_NOTIFYLIB
+EXTRA_CFLAGS	+= -DDWC_UTFLIB
 
 obj-y			 := dwc_common_port_lib.o
-
 dwc_common_port_lib-y := dwc_cc.o
 #dwc_common_port_lib-y +=  dwc_modpow.o
 dwc_common_port_lib-y += dwc_dh.o
@@ -22,3 +21,6 @@ dwc_common_port_lib-y += dwc_dh.o
 dwc_common_port_lib-y += dwc_notifier.o
 dwc_common_port_lib-y += dwc_common_linux.o
 dwc_common_port_lib-y += dwc_mem.o
+
+clean:
+	rm -rf *.o *.ko .*.cmd *.mod.c .*.o.d .*.o.tmp modules.order Module.markers Module.symvers .tmp_versions/

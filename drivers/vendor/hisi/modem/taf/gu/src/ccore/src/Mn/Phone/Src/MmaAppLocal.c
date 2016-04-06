@@ -1331,6 +1331,7 @@ VOS_UINT32 MMA_TestPrefPlmn(
     MN_PH_PREF_PLMN_TYPE_ENUM_U8        enPrefPLMNType;
     TAF_PHONE_EVENT_INFO_STRU          *pstPhoneEvent = VOS_NULL_PTR;
     MN_APP_REQ_MSG_STRU                *pRcvMsg;
+    TAF_USER_PLMN_LIST_STRU            *pstPrefPlmnList;
     VOS_UINT16                          ClientId;
     VOS_UINT8                           OpId;
 
@@ -1340,25 +1341,45 @@ VOS_UINT32 MMA_TestPrefPlmn(
 
     enPrefPLMNType = pRcvMsg->aucContent[0];
 
-    pstPhoneEvent = (TAF_PHONE_EVENT_INFO_STRU *)PS_MEM_ALLOC(WUEPS_PID_MMA, sizeof(TAF_PHONE_EVENT_INFO_STRU));
+    pstPrefPlmnList = (TAF_USER_PLMN_LIST_STRU *)PS_MEM_ALLOC(WUEPS_PID_MMA, sizeof(TAF_USER_PLMN_LIST_STRU));
+
+    if (VOS_NULL_PTR != pstPrefPlmnList)
+    {
+        PS_MEM_SET(pstPrefPlmnList, 0, sizeof(TAF_USER_PLMN_LIST_STRU));
+    }
+    else
+    {
+        return VOS_TRUE;
+    }
+
+    pstPhoneEvent   = (TAF_PHONE_EVENT_INFO_STRU *)PS_MEM_ALLOC(WUEPS_PID_MMA, sizeof(TAF_PHONE_EVENT_INFO_STRU));
 
     if (VOS_NULL_PTR != pstPhoneEvent)
     {
-        Taf_InitEventInfoOP(pstPhoneEvent);
-
-        /*标别该事件为TAF_MSG_MMA_TEST_PREF_PLMN_CNF消息的回复消息,*/
-        pstPhoneEvent->ClientId           = ClientId;
-        pstPhoneEvent->OpId               = OpId;
-        pstPhoneEvent->OP_PrefPlmnList    = 1;
-        pstPhoneEvent->PhoneEvent         = TAF_PH_EVT_TEST_PREF_PLMN_CNF;
-        pstPhoneEvent->PhoneError         = TAF_ERR_NO_ERROR;
-
-        MMA_QryPrefPlmnInfo(enPrefPLMNType,&(pstPhoneEvent->stPrefPlmnList));
-
-        MN_PH_SendMsg(pstPhoneEvent->ClientId,(VOS_UINT8*)pstPhoneEvent,sizeof(TAF_PHONE_EVENT_INFO_STRU));
-
-        PS_MEM_FREE(WUEPS_PID_MMA, pstPhoneEvent);
+        PS_MEM_SET(pstPhoneEvent, 0, sizeof(TAF_PHONE_EVENT_INFO_STRU));
     }
+    else
+    {
+        PS_MEM_FREE(WUEPS_PID_MMA, pstPrefPlmnList);
+        return VOS_TRUE;
+    }
+
+    Taf_InitEventInfoOP(pstPhoneEvent);
+
+    /*标别该事件为TAF_MSG_MMA_TEST_PREF_PLMN_CNF消息的回复消息,*/
+    pstPhoneEvent->ClientId           = ClientId;
+    pstPhoneEvent->OpId               = OpId;
+    pstPhoneEvent->OP_PrefPlmnList    = 1;
+    pstPhoneEvent->PhoneEvent         = TAF_PH_EVT_TEST_PREF_PLMN_CNF;
+    pstPhoneEvent->PhoneError         = TAF_ERR_NO_ERROR;
+
+    MMA_QryPrefPlmnInfo(enPrefPLMNType, pstPrefPlmnList);
+    pstPhoneEvent->ulPrefPlmnNum = pstPrefPlmnList->usPlmnNum;
+
+    MN_PH_SendMsg(pstPhoneEvent->ClientId, (VOS_UINT8*)pstPhoneEvent, sizeof(TAF_PHONE_EVENT_INFO_STRU));
+
+    PS_MEM_FREE(WUEPS_PID_MMA, pstPhoneEvent);
+    PS_MEM_FREE(WUEPS_PID_MMA, pstPrefPlmnList);
 
     return VOS_TRUE;
 }
@@ -2036,7 +2057,7 @@ VOS_VOID TAF_MMA_QryMmPlmnInfo(
     TAF_SDC_SERVICE_STATUS_ENUM_UINT8   enPsServiceStatus;
 
     enCsServiceStatus = TAF_SDC_GetCsServiceStatus();
-    enPsServiceStatus = TAF_SDC_GetPsServiceStatus(); 
+    enPsServiceStatus = TAF_SDC_GetPsServiceStatus();
 
     /*获取当前PLMN中所带的运营商信息*/
     PS_MEM_SET(&stMmPlmnInfo, 0, sizeof(TAF_MMA_MM_INFO_PLMN_NAME_STRU));
@@ -2044,7 +2065,7 @@ VOS_VOID TAF_MMA_QryMmPlmnInfo(
     if ( (TAF_SDC_SERVICE_STATUS_NORMAL_SERVICE == enCsServiceStatus)
       || (TAF_SDC_SERVICE_STATUS_NORMAL_SERVICE == enPsServiceStatus) )
     {
-        pstPlmnId = (TAF_PLMN_ID_STRU *)TAF_SDC_GetCurrCampPlmnId(); 
+        pstPlmnId = (TAF_PLMN_ID_STRU *)TAF_SDC_GetCurrCampPlmnId();
 
         if ((pstPlmnId->Mcc == gstMmaValue.stOperatorNameInfo.stOperatorPlmnId.ulMcc)
         &&  (pstPlmnId->Mnc == gstMmaValue.stOperatorNameInfo.stOperatorPlmnId.ulMnc))
@@ -2052,7 +2073,7 @@ VOS_VOID TAF_MMA_QryMmPlmnInfo(
             stMmPlmnInfo.ucLongNameLen  = NAS_MMA_TranslateNtwkName2UCS2(gstMmaValue.stOperatorNameInfo.aucOperatorNameLong,
                                                             (VOS_CHAR *)(stMmPlmnInfo.aucLongName),
                                                              NAS_MML_MAX_OPER_LONG_NAME_LEN);
-            
+
             stMmPlmnInfo.ucShortNameLen = NAS_MMA_TranslateNtwkName2UCS2(gstMmaValue.stOperatorNameInfo.aucOperatorNameShort,
                                                             (VOS_CHAR *)(stMmPlmnInfo.aucShortName),
                                                             NAS_MML_MAX_OPER_SHORT_NAME_LEN);
@@ -3385,7 +3406,6 @@ VOS_VOID Mma_LoadDefault(VOS_VOID)
         MMA_WARNINGLOG("Mma_LoadDefault():WARNING:Write NV:SelPlmn_Mode, FAIL!");
     }
 
-    PS_MEM_SET(stSetBand.aucUeSupportGsmBand,(VOS_CHAR)0xff,NVIM_MAX_FDD_FREQ_BANDS_NUM);
 
     stSetBand.unGsmBand.BitBand.BandGsm850 = 1;
     stSetBand.unGsmBand.BitBand.BandGsmP900 = 1;
@@ -3398,18 +3418,8 @@ VOS_VOID Mma_LoadDefault(VOS_VOID)
     stSetBand.unWcdmaBand.BitBand.BandWCDMA_II_1900 = 1;
     stSetBand.unWcdmaBand.BitBand.BandWCDMA_V_850 = 1;
 
-    stSetBand.aucUeSupportGsmBand[0]=3;
-    stSetBand.aucUeSupportGsmBand[1]=4;
-    stSetBand.aucUeSupportGsmBand[2]=5;
-    stSetBand.aucUeSupportGsmBand[3]=6;
-    stSetBand.aucUeSupportGsmBand[4]=7;
-    stSetBand.aucUeSupportGsmBand[5]=8;
-
-    PS_MEM_SET(stSetBand.aucUeSupportWcdmaBand,(VOS_CHAR)0xff,NVIM_MAX_FDD_FREQ_BANDS_NUM);
-    stSetBand.aucUeSupportWcdmaBand[0]=1;
-    stSetBand.aucUeSupportWcdmaBand[1]=2;
-    stSetBand.aucUeSupportWcdmaBand[2]=5;
-
+    PS_MEM_SET(stSetBand.aucReserved1, 0, sizeof(stSetBand.aucReserved1));
+    PS_MEM_SET(stSetBand.aucReserved2, 0, sizeof(stSetBand.aucReserved2));
 
     /* 更新频段NV */
     if (NV_OK != NV_Write(en_NV_Item_Support_Freqbands,
@@ -5084,7 +5094,7 @@ VOS_UINT32 TAF_MMA_IsCellChange(MMC_MMA_SYS_INFO_IND_STRU *pstCurrSysInfo)
     TAF_SDC_PLMN_ID_STRU               *pstOldPlmnId = VOS_NULL_PTR;
     VOS_UINT16                          stOldLac;
     VOS_UINT8                           stOldRac;
-    VOS_UINT32                          stOldCellId;    
+    VOS_UINT32                          stOldCellId;
 
     pstOldPlmnId = TAF_SDC_GetCurrCampPlmnId();
     stOldLac     = TAF_SDC_GetCurrCampLac();
@@ -5108,21 +5118,32 @@ VOS_VOID TAF_MMA_ProcMmcSysInfoInNormalService(
     VOS_UINT32                          ulCellChangeFlg
 )
 {
+    TAF_SDC_CREG_TYPE_ENUM_UINT8        enCreg;
+    TAF_SDC_CGREG_TYPE_ENUM_UINT8       enCgreg;
+    TAF_SDC_CEREG_TYPE_ENUM_UINT8       enCereg;
+
+    enCreg  = TAF_SDC_GetCregType();
+    enCgreg = TAF_SDC_GetCgregType();
+    enCereg = TAF_SDC_GetCeregType();
+
     if ((VOS_TRUE == NAS_MMA_CellIdChangeForStkLocSta())
      || (TAF_REPORT_SRVSTA_NORMAL_SERVICE != g_stMmsStkLocStaSysInfo.enServiceStatus))
     {
         NAS_MMA_ReportLociStatus();
     }
 
-    if ((TAF_SDC_SYS_MODE_LTE != TAF_SDC_GetSysMode())
-     && (VOS_TRUE                 == ulCellChangeFlg))
+
+    if (VOS_TRUE    == ulCellChangeFlg)
     {
-        if (TAF_SDC_SERVICE_STATUS_NORMAL_SERVICE == TAF_SDC_GetPsServiceStatus())
+        if ( (TAF_SDC_SERVICE_STATUS_NORMAL_SERVICE == TAF_SDC_GetPsServiceStatus())
+          && ( (TAF_SDC_CGREG_TYPE_ENTIRE == enCgreg)
+            || (TAF_SDC_CEREG_TYPE_ENTIRE == enCereg) ) )
         {
             TAF_MMA_ReportRegStatus(TAF_SDC_GetPsRegStatus(), MMA_MMC_SRVDOMAIN_PS);
         }
 
-        if (TAF_SDC_SERVICE_STATUS_NORMAL_SERVICE == TAF_SDC_GetCsServiceStatus())
+        if ( (TAF_SDC_SERVICE_STATUS_NORMAL_SERVICE == TAF_SDC_GetCsServiceStatus())
+          && (TAF_SDC_CREG_TYPE_ENTIRE == enCreg) )
         {
              TAF_MMA_ReportRegStatus(TAF_SDC_GetCsRegStatus(), MMA_MMC_SRVDOMAIN_CS);
         }
@@ -5136,7 +5157,7 @@ VOS_UINT32 TAF_MMA_RcvMmcSysInfoInd(
     struct MsgCB                       *pstMsg
 )
 {
-    VOS_UINT32                                              ulCellChangeFlg;    
+    VOS_UINT32                                              ulCellChangeFlg;
     TAF_SDC_SERVICE_STATUS_ENUM_UINT8                       enCsServiceStauts;
     TAF_SDC_SERVICE_STATUS_ENUM_UINT8                       enPsServiceStatus;
     NAS_MML_MISCELLANEOUS_CFG_INFO_STRU                    *pstMiscellaneousCfgInfo = VOS_NULL_PTR;
@@ -5146,10 +5167,14 @@ VOS_UINT32 TAF_MMA_RcvMmcSysInfoInd(
 
 
     TAF_SDC_CAMP_PLMN_INFO_STRU                             stOldCampPlmnInfo;
+#if (FEATURE_ON == FEATURE_CL_INTERWORK)
     VOS_UINT32                                              ulIsClInterWorkFlg;
+#endif
     TAF_SDC_CAMP_PLMN_INFO_STRU                            *pstCurCampPlmnInfo     = VOS_NULL_PTR;
 
+#if (FEATURE_ON == FEATURE_CL_INTERWORK)
     ulIsClInterWorkFlg = TAF_MMA_IsPowerOnCLInterWork();
+#endif
 
     pstCurCampPlmnInfo = TAF_SDC_GetCampPlmnInfo();
 
@@ -5183,6 +5208,8 @@ VOS_UINT32 TAF_MMA_RcvMmcSysInfoInd(
     TAF_SDC_SetCurrCampLac(pstMmcSysInfo->usLac);
     TAF_SDC_SetCurrCampRac(pstMmcSysInfo->ucRac);
     TAF_SDC_SetCurrCampCellId(pstMmcSysInfo->stCellId.aulCellId[0]);
+
+    TAF_SDC_SetCurrLmmAccessType(pstMmcSysInfo->enLmmAccessType);
 
 #if (FEATURE_MULTI_MODEM == FEATURE_ON)
     TAF_MMA_SndMtcSysInfo(pstMmcSysInfo->ucIsFobbiddenPlmnFlag,
@@ -5450,10 +5477,12 @@ VOS_UINT32 TAF_MMA_GetPidFromClientId(
 }
 
 
-VOS_VOID MMA_PhModeReport(VOS_UINT16           ClientId,
-                                   VOS_UINT8             OpId,
-                                   TAF_PH_OP_MODE_CNF_STRU   stPhMode,
-                                   TAF_PH_ERR_CODE       usErrorCode)
+VOS_VOID MMA_PhModeReport(
+    VOS_UINT16                          ClientId,
+    VOS_UINT8                           OpId,
+    TAF_PH_OP_MODE_CNF_STRU             stPhMode,
+    TAF_ERROR_CODE_ENUM_UINT32          enErrorCode
+)
 {
     TAF_PHONE_EVENT_INFO_STRU          *pstPhoneEvent = VOS_NULL_PTR;
     TAF_MMA_CTRL_STRU                   stCtrlInfo;
@@ -5462,7 +5491,7 @@ VOS_VOID MMA_PhModeReport(VOS_UINT16           ClientId,
 
     enRslt = TAF_MMA_APP_OPER_RESULT_SUCCESS;
 
-    if ( TAF_ERR_NO_ERROR != usErrorCode )
+    if ( TAF_ERR_NO_ERROR != enErrorCode )
     {
         enRslt = TAF_MMA_APP_OPER_RESULT_FAILURE;
     }
@@ -5484,11 +5513,11 @@ VOS_VOID MMA_PhModeReport(VOS_UINT16           ClientId,
     pstPhoneEvent->PhoneEvent = TAF_PH_EVT_OPER_MODE_IND;
 
     /* 如果有错误填写错误码 */
-    if ( TAF_ERR_NO_ERROR != usErrorCode )
+    if ( TAF_ERR_NO_ERROR != enErrorCode )
     {
         pstPhoneEvent->OP_PhoneError = 1;
-        pstPhoneEvent->PhoneError = usErrorCode;
-        MMA_INFOLOG1("MMA_PhModeReport():INFO:Report Error code:",usErrorCode);
+        pstPhoneEvent->PhoneError = enErrorCode;
+        MMA_INFOLOG1("MMA_PhModeReport():INFO:Report Error code:",(VOS_INT32)enErrorCode);
     }
 
 
@@ -5497,7 +5526,7 @@ VOS_VOID MMA_PhModeReport(VOS_UINT16           ClientId,
     pstPhoneEvent->OpId     = OpId;
 
     if ( ( TAF_PH_CMD_SET == stPhMode.CmdType )
-       &&( TAF_ERR_NO_ERROR == usErrorCode ) )
+      && ( TAF_ERR_NO_ERROR == enErrorCode ) )
     {
         /* 设置成功事件广播 */
         pstPhoneEvent->ClientId = MMA_CLIENTID_BROADCAST;
@@ -5516,7 +5545,7 @@ VOS_VOID MMA_PhModeReport(VOS_UINT16           ClientId,
             TAF_MMA_SndPhoneModeSetCnf(&stCtrlInfo,
                                        stPhMode.PhMode,
                                        enRslt,
-                                       usErrorCode);
+                                       enErrorCode);
         }
         else if (VOS_PID_BUTT != ulRcvPid)
         {
@@ -6475,7 +6504,7 @@ VOS_VOID  MN_MMA_UpdateRatTrigedAttachPara(
         {
             return;
         }
-        
+
         *pusSetFlg     |= MMA_SYS_CFG_SRV_DOMAIN_SET_NEED_PS_ATTACH;
         *pucAttachType  = TAF_PH_PS_OPERATE;
     }
@@ -6486,7 +6515,7 @@ VOS_VOID  MN_MMA_UpdateRatTrigedAttachPara(
         {
             return;
         }
-        
+
         *pusSetFlg     |= MMA_SYS_CFG_SRV_DOMAIN_SET_NEED_CS_ATTACH;
         *pucAttachType  = TAF_PH_CS_OPERATE;
     }
@@ -6841,6 +6870,8 @@ VOS_VOID MMA_PhSysCfgSet(
                 break;
 
             default:
+                TAF_MMA_ReportSysCfgSetCnf(TAF_ERR_CMD_TYPE_ERROR);
+
                 MN_WARN_LOG("MMA_PhSysCfgSet:WARNING: error status");
                 break;
         }
@@ -7439,7 +7470,7 @@ VOS_VOID MN_MMA_GetSupportedUserLteBand(
 
 #endif
 VOS_VOID TAF_MMA_ReportSysCfgSetCnf(
-    TAF_PH_ERR_CODE                     usErrorCode
+    TAF_ERROR_CODE_ENUM_UINT32          enErrorCode
 )
 {
     TAF_MMA_OPER_CTX_STRU              *pstMmaOperCtx   = VOS_NULL_PTR;
@@ -7449,7 +7480,7 @@ VOS_VOID TAF_MMA_ReportSysCfgSetCnf(
     pstMmaOperCtx   = TAF_MMA_GetOperCtxAddr();
     enRslt          = TAF_MMA_APP_OPER_RESULT_SUCCESS;
 
-    if ( TAF_ERR_NO_ERROR != usErrorCode )
+    if ( TAF_ERR_NO_ERROR != enErrorCode )
     {
         enRslt = TAF_MMA_APP_OPER_RESULT_FAILURE;
     }
@@ -7459,7 +7490,7 @@ VOS_VOID TAF_MMA_ReportSysCfgSetCnf(
         /* 进行SYSCFG的设置回复 */
         TAF_MMA_SndSysCfgSetCnf(&(pstMmaOperCtx[ucCtxIndex].stCtrl),
                                 enRslt,
-                                usErrorCode);
+                                enErrorCode);
 
         /* SYSCFG设置完成后，清除CTX中内容  */
         TAF_MMA_ClearOperCtx(ucCtxIndex);
@@ -7478,7 +7509,7 @@ VOS_VOID MMA_PhSysCfgReport(
     VOS_UINT16                          ClientId,
     VOS_UINT8                           OpId,
     TAF_PH_CMD_TYPE                     ucCmdType,
-    TAF_PH_ERR_CODE                     usErrorCode
+    TAF_ERROR_CODE_ENUM_UINT32          enErrorCode
 )
 {
     TAF_PHONE_EVENT_INFO_STRU          *pstEvent;
@@ -7510,11 +7541,11 @@ VOS_VOID MMA_PhSysCfgReport(
     pstEvent->PhoneEvent = TAF_PH_EVT_SYS_CFG_CNF;
 
     /* 如果有错误填写错误码 */
-    if (TAF_ERR_NO_ERROR != usErrorCode)
+    if (TAF_ERR_NO_ERROR != enErrorCode)
     {
         pstEvent->OP_PhoneError = 1;
-        pstEvent->PhoneError = usErrorCode;
-        MMA_WARNINGLOG1("MMA_PhModeReport():WARNING:Report Error code:", usErrorCode);
+        pstEvent->PhoneError = enErrorCode;
+        MMA_WARNINGLOG1("MMA_PhModeReport():WARNING:Report Error code:", (VOS_INT32)enErrorCode);
     }
 
 
@@ -8010,8 +8041,8 @@ VOS_VOID MMA_PinHandle (VOS_UINT16 ClientId, VOS_UINT8 OpId,
     VOS_UINT32          ulRet;
     VOS_UINT8           ucError = TAF_ERR_NO_ERROR;
     VOS_UINT32          ulResult;
-    VOS_UINT8           ucSimType;    
-    
+    VOS_UINT8           ucSimType;
+
     TAF_SDC_USIM_STATUS_ENUM_UINT8  enUsimStatus;
 
     enUsimStatus = TAF_SDC_GetSimStatus();
@@ -8021,7 +8052,7 @@ VOS_VOID MMA_PinHandle (VOS_UINT16 ClientId, VOS_UINT8 OpId,
     stPinTmp.ucRemain = MMA_PIN_REMAINS_UNINIT;
 
     /*增加PIN码有效性判断*/
-    
+
     if (TAF_SDC_USIM_STATUS_NO_PRESENT == enUsimStatus)
     {
         MMA_WARNINGLOG("MMA_PinHandle():WARNING:sim busy!");
@@ -8031,7 +8062,7 @@ VOS_VOID MMA_PinHandle (VOS_UINT16 ClientId, VOS_UINT8 OpId,
                              TAF_PH_EVT_OP_PIN_CNF );
         return;
     }
-    
+
     if ( (TAF_SDC_USIM_STATUS_READY_TIMEROUT == enUsimStatus)
       || (TAF_SDC_USIM_STATUS_BUTT == enUsimStatus))
     {
@@ -8041,9 +8072,9 @@ VOS_VOID MMA_PinHandle (VOS_UINT16 ClientId, VOS_UINT8 OpId,
                              TAF_ERR_SIM_BUSY,
                              TAF_PH_EVT_OP_PIN_CNF );
         return;
-    }    
-    
-    
+    }
+
+
     if ( MMA_SUCCESS != Mma_CheckPin(stPinData))
     {
         MMA_WARNINGLOG("MMA_PinHandle():WARNING:INPUT PIN is Error!");
@@ -9395,6 +9426,7 @@ VOS_VOID MMA_PhoneGetNetworkName(VOS_UINT16    ClientId,
     TAF_SDC_SERVICE_STATUS_ENUM_UINT8    enCsServiceStatus;
     TAF_SDC_SERVICE_STATUS_ENUM_UINT8    enPsServiceStatus;
     MMA_MMC_OPERATOR_NAME_INFO_STRU      stMmcName;
+    VOS_UINT32                           ulRet;
 
     enCsServiceStatus = TAF_SDC_GetCsServiceStatus();
     enPsServiceStatus = TAF_SDC_GetPsServiceStatus();
@@ -9407,7 +9439,6 @@ VOS_VOID MMA_PhoneGetNetworkName(VOS_UINT16    ClientId,
     /* 该字段无用，at会根据自己记录的全局变量上报format */
     stOperatorNameTmp.NameFormat        = TAF_PH_NETWORKNAME_ALL;
     stOperatorNameTmp.RaMode            = TAF_SDC_GetSysMode();
-
 
     /* mmc对不同状态的plmn Id判断不准确，使用随SYS_INFO上报的PLMN ID, 加上当前服务状态的判定 */
     if ( (TAF_SDC_SERVICE_STATUS_NORMAL_SERVICE == enCsServiceStatus)
@@ -9427,18 +9458,26 @@ VOS_VOID MMA_PhoneGetNetworkName(VOS_UINT16    ClientId,
     if ((pstPlmnId->Mcc == gstMmaValue.stOperatorNameInfo.stOperatorPlmnId.ulMcc)
      && (pstPlmnId->Mnc == gstMmaValue.stOperatorNameInfo.stOperatorPlmnId.ulMnc))
     {
-        TAF_MMA_TranslateNtwkName2Str((VOS_UINT8 *)(gstMmaValue.stOperatorNameInfo.aucOperatorNameLong), 
-                                      (VOS_CHAR *)stMmcName.aucOperatorNameLong, 
-                                      TAF_PH_OPER_NAME_LONG);
-        TAF_MMA_TranslateNtwkName2Str((VOS_UINT8 *)(gstMmaValue.stOperatorNameInfo.aucOperatorNameShort), 
-                                      (VOS_CHAR *)stMmcName.aucOperatorNameShort, 
-                                      TAF_PH_OPER_NAME_SHORT);
-        
-        PS_MEM_CPY(stOperatorNameTmp.Name.aucOperatorNameLong,
-             stMmcName.aucOperatorNameLong, sizeof(stOperatorNameTmp.Name.aucOperatorNameLong));
-        
-        PS_MEM_CPY(stOperatorNameTmp.Name.aucOperatorNameShort,
-              stMmcName.aucOperatorNameShort, sizeof(stOperatorNameTmp.Name.aucOperatorNameShort));
+        ulRet = TAF_MMA_TranslateNtwkName2Str(gstMmaValue.stOperatorNameInfo.aucOperatorNameLong,
+                                              (VOS_CHAR *)stMmcName.aucOperatorNameLong,
+                                              TAF_PH_OPER_NAME_LONG);
+        if (VOS_OK == ulRet)
+        {
+            PS_MEM_CPY(stOperatorNameTmp.Name.aucOperatorNameLong,
+                       stMmcName.aucOperatorNameLong,
+                       sizeof(stOperatorNameTmp.Name.aucOperatorNameLong));
+        }
+
+        ulRet = TAF_MMA_TranslateNtwkName2Str(gstMmaValue.stOperatorNameInfo.aucOperatorNameShort,
+                                              (VOS_CHAR *)stMmcName.aucOperatorNameShort,
+                                              TAF_PH_OPER_NAME_SHORT);
+
+        if (VOS_OK == ulRet)
+        {
+            PS_MEM_CPY(stOperatorNameTmp.Name.aucOperatorNameShort,
+                       stMmcName.aucOperatorNameShort,
+                       sizeof(stOperatorNameTmp.Name.aucOperatorNameShort));
+        }
     }
 
     stOperatorNameTmp.PlmnSelMode  = TAF_MMA_GetPlmnSelectionMode();
@@ -12385,7 +12424,7 @@ VOS_UINT32 TAF_MMA_IsImsiChanged(
     }
 
     pucSdcImsi = TAF_SDC_GetLastSimImsi();
-	
+
     if (0 != VOS_MemCmp(pucSdcImsi, pstUsimMsg->aucIMSI, pstUsimMsg->ucIMSILen))
     {
         return VOS_TRUE;
@@ -19740,7 +19779,7 @@ VOS_VOID TAF_MMA_DefaultAlphaToAscii(
 
     return;
 }
-VOS_VOID TAF_MMA_TranslateNtwkName2Str(
+VOS_UINT32 TAF_MMA_TranslateNtwkName2Str(
     VOS_UINT8                       *pucIeNtwkName,
     VOS_CHAR                        *pucNtwkName,
     VOS_UINT32                       ulLen
@@ -19766,26 +19805,27 @@ VOS_VOID TAF_MMA_TranslateNtwkName2Str(
 
     if (0 == ucIeLen)
     {
-        return;
+        return VOS_OK;
     }
 
     if (ulLen == 0)
     {
-        return;
-    }
-
-    pucDecodeNwName = (VOS_UINT8 *)PS_MEM_ALLOC(WUEPS_PID_MMA, ulLen);
-    if (VOS_NULL_PTR == pucDecodeNwName)
-    {
-        PS_LOG(WUEPS_PID_MMA, VOS_NULL, PS_PRINT_WARNING, "TAF_MMA_TranslateNtwkName2Str: Alloc memory fail.");
-        return;
+        return VOS_ERR;
     }
 
     if (0 == ucCodScheme)
     {
+        /* 7Bit编码解析 */
         uc7BitCharNum   = (VOS_UINT8)(((ucIeLen -1) * 8) / 7);
         if (uc7BitCharNum < ulLen)
         {
+            pucDecodeNwName = (VOS_UINT8 *)PS_MEM_ALLOC(WUEPS_PID_MMA, ulLen);
+            if (VOS_NULL_PTR == pucDecodeNwName)
+            {
+                PS_LOG(WUEPS_PID_MMA, VOS_NULL, PS_PRINT_WARNING, "TAF_MMA_TranslateNtwkName2Str: Alloc memory fail.");
+                return VOS_ERR;
+            }
+
             ulRslt = TAF_STD_UnPack7Bit(pTmpNtwkName, uc7BitCharNum, 0, pucDecodeNwName);
 
             if (VOS_OK != ulRslt)
@@ -19799,17 +19839,14 @@ VOS_VOID TAF_MMA_TranslateNtwkName2Str(
                 uc7BitCharNum -= 1;
             }
             TAF_MMA_DefaultAlphaToAscii(pucDecodeNwName, uc7BitCharNum, (VOS_UINT8 *)pucNtwkName);
+
+            MMA_FREE_MEM(pucDecodeNwName);
+            return VOS_OK;
         }
     }
-    else if (1 == ucCodScheme)
-    {
-        TAF_MMA_HexAlpha2AsciiString(ulLen, (VOS_UINT8 *)pucNtwkName,(VOS_UINT8 *)pTmpNtwkName, (TAF_UINT16)ucIeLen-1);
-    }
-    else
-    {
-    }
 
-    MMA_FREE_MEM(pucDecodeNwName);
+    /* 为了方便应用对接，此处不再支持其他编码类型 */
+    return VOS_ERR;
 }
 VOS_VOID TAF_MMA_QryPlmnPara(
     VOS_UINT16                          usClientId,
@@ -20195,6 +20232,40 @@ VOS_VOID TAF_MMA_SndMtcRegStatusInd(VOS_UINT8 ucIsUsimValidFlag)
 }
 
 
+
+VOS_VOID TAF_MMA_SndMtcImsaStateInd(MTC_MODEM_POWER_STATE_ENUM_UINT8 enPowerState)
+{
+    VOS_UINT16                          ulLenth;
+    MMA_MTC_IMSA_STATE_IND_STRU        *pstImsaState = VOS_NULL_PTR;
+
+    ulLenth = sizeof(MMA_MTC_IMSA_STATE_IND_STRU) - VOS_MSG_HEAD_LENGTH;
+
+    /* 分配消息空间 */
+    pstImsaState  = (MMA_MTC_IMSA_STATE_IND_STRU *)PS_ALLOC_MSG(WUEPS_PID_MMA, ulLenth);
+    if (VOS_NULL_PTR == pstImsaState)
+    {
+        MN_ERR_LOG("TAF_MMA_SndMtcImsaStateInd: Alloc Msg Failed!");
+        return;
+    }
+
+    /* 清消息空间 */
+    PS_MEM_SET((VOS_UINT8*)pstImsaState + VOS_MSG_HEAD_LENGTH, 0, ulLenth);
+
+    /* 填充消息 */
+    pstImsaState->stMsgHeader.ulReceiverPid      = UEPS_PID_MTC;
+    pstImsaState->stMsgHeader.ulMsgName          = ID_MMA_MTC_IMSA_STATE_IND;
+    pstImsaState->enPowerState                   = enPowerState;
+
+    /* 发送消息 */
+    if (VOS_OK != PS_SEND_MSG(WUEPS_PID_MMA, pstImsaState))
+    {
+        MN_ERR_LOG("TAF_MMA_SndMtcImsaStateInd: Snd Msg Failed!");
+    }
+
+    return;
+
+}
+
 #endif
 
 
@@ -20402,15 +20473,16 @@ VOS_VOID  TAF_DRVAPI_PWRCTRL_SLEEPVOTE_LOCK(
     enClientId = enPwcClientId;
 #endif
 
+
+    ulRslt = DRV_PWRCTRL_SLEEPVOTE_LOCK(enClientId);
+
+
+    TAF_MMA_LogDrvApiPwrCtrlSleepVoteLock(ulRslt, enClientId);
+
     if (VOS_TRUE == TAF_MMA_GetMmaLogInfoFlag())
     {
         vos_printf("\n*TAF_DRVAPI_PWRCTRL_SLEEPVOTE_LOCK:enClientId = %d\n", enClientId);
     }
-
-    ulRslt = DRV_PWRCTRL_SLEEPVOTE_LOCK(enClientId);
-    
-    
-    TAF_MMA_LogDrvApiPwrCtrlSleepVoteLock(ulRslt, enClientId);
 }
 
 
@@ -20816,6 +20888,131 @@ VOS_UINT32 TAF_MMA_IsPowerOnCLInterWork(VOS_VOID)
     return VOS_TRUE;
 }
 
+
+/* Added by zwx247453 for CHR optimize, 2015-3-13 Begin */
+#if (FEATURE_ON == FEATURE_PTM)
+/*****************************************************************************
+ 函 数 名  : TAF_MMA_RatFrequentlySwitchRecord
+ 功能描述  : 记录四模频繁切换事件
+ 输入参数  : VOS_VOID
+ 输出参数  : 无
+ 返 回 值  : VOS_VOID
+ 调用函数  :
+ 被调函数  :
+
+ 修改历史      :
+  1.日    期   : 2015年03月13日
+    作    者   : zwx247453
+    修改内容   : 新生成函数
+*****************************************************************************/
+VOS_VOID TAF_MMA_RatFrequentlySwitchRecord(VOS_VOID)
+{
+    NAS_ERR_LOG_RAT_FREQUENTLY_SWITCH_EVENT_STRU           *pstRatFreqSwitchEvent = VOS_NULL_PTR;
+    VOS_UINT32                                              ulNvSwitchNum;
+    VOS_UINT32                                              ulEventLength;
+    VOS_UINT32                                              ulActuallyReadLength;
+    VOS_UINT8                                               ucActiveRptFlag;
+    VOS_UINT8                                               ucRatSwitchRptFlag;
+    VOS_UINT16                                              usLevel;
+
+    /* 查询对应Alarm Id是否需要记录异常信息 */
+    usLevel             = NAS_GetErrLogAlmLevel(NAS_ERR_LOG_ALM_RAT_FREQUENTLY_SWITCH);
+
+    ucActiveRptFlag     = TAF_SDC_GetErrlogActiveRptFlag();
+    ucRatSwitchRptFlag  = TAF_SDC_GetErrlogRatSwitchRptFlag();
+    ulNvSwitchNum       = TAF_SDC_GetErrlogRatSwitchStatisticNum();
+    ulEventLength       = sizeof(NAS_ERR_LOG_RAT_FREQUENTLY_SWITCH_EVENT_STRU);
+
+    /* 只有当主动上报的NV打开，才上报 */
+    if ((VOS_FALSE == ucActiveRptFlag)
+     || (VOS_FALSE == ucRatSwitchRptFlag))
+    {
+        return;
+    }
+
+    pstRatFreqSwitchEvent = (NAS_ERR_LOG_RAT_FREQUENTLY_SWITCH_EVENT_STRU *)PS_MEM_ALLOC(
+                                WUEPS_PID_MMA, ulEventLength);
+
+    if (VOS_NULL_PTR == pstRatFreqSwitchEvent)
+    {
+        NAS_ERROR_LOG(WUEPS_PID_MMA, "TAF_MMA_RatFrequentlySwitchRecord(): PS_MEM_ALLOC error.");
+
+        return;
+    }
+
+    PS_MEM_SET(pstRatFreqSwitchEvent, 0x00, ulEventLength);
+
+    NAS_COMM_BULID_ERRLOG_HEADER_INFO(&(pstRatFreqSwitchEvent->stHeader),
+                                      VOS_GetModemIDFromPid(WUEPS_PID_MMA),
+                                      NAS_ERR_LOG_ALM_RAT_FREQUENTLY_SWITCH,
+                                      usLevel,
+                                      VOS_GetSlice(),
+                                      (ulEventLength - sizeof(OM_ERR_LOG_HEADER_STRU)));
+
+    pstRatFreqSwitchEvent->ulStatisticTime = TAF_SDC_GetErrlogRatSwitchStatisticTime();
+    pstRatFreqSwitchEvent->ulSwitchNum     = ulNvSwitchNum;
+
+    /* 填充结构体中astPositionInfo数组元素 */
+    /* 从队列中rear位置开始到队列中front位置拷贝到stGutlFreqSwitchEvent中 */
+    ulActuallyReadLength = TAF_SDC_GetRecordFromRatSwitchRingBuf((VOS_CHAR *)pstRatFreqSwitchEvent->astRatSwitchInfo,
+                          ulNvSwitchNum * sizeof(NAS_ERR_LOG_RAT_SWITCH_RECORD_STRU));
+
+    if (ulActuallyReadLength != (ulNvSwitchNum * sizeof(NAS_ERR_LOG_RAT_SWITCH_RECORD_STRU)))
+    {
+        PS_MEM_FREE(WUEPS_PID_MMA, pstRatFreqSwitchEvent);
+
+        return;
+    }
+
+    TAF_SDC_CleanRatSwitchRingBuf();
+
+    /* 将RAT频繁切换信息发送给ACPU OM模块 */
+    TAF_SndAcpuOmFaultErrLogInd(pstRatFreqSwitchEvent, ulEventLength);
+
+    /* RAT频繁切换，只需要上报，不需要记录到共享缓存中。*/
+
+    NAS_COM_MntnPutRingbuf(NAS_ERR_LOG_ALM_RAT_FREQUENTLY_SWITCH,
+                           WUEPS_PID_MMA,
+                           (VOS_UINT8 *)pstRatFreqSwitchEvent,
+                           ulEventLength);
+
+    PS_MEM_FREE(WUEPS_PID_MMA, pstRatFreqSwitchEvent);
+
+    return;
+}
+#endif
+/* Added by zwx247453 for CHR optimize, 2015-3-13 End */
+
+
+/*****************************************************************************
+ 函 数 名  : TAF_MMA_CheckImsiRefresh
+ 功能描述  : 判断是IMSI REFRESH场景则通知MMC
+ 输入参数  : 无
+ 输出参数  : 无
+ 返 回 值  : VOS_VOID
+ 调用函数  :
+ 被调函数  :
+
+ 修改历史      :
+  1.日    期   : 2015年11月19日
+    作    者   : z00359541
+    修改内容   : 新生成函数
+*****************************************************************************/
+VOS_VOID TAF_MMA_ProcImsiRefresh(
+    USIMM_CARD_SERVIC_ENUM_UINT32       enCardStatus,
+    VOS_UINT32                          ulImsiChg
+)
+{
+    /* IMSI Change前后卡状态都是AVAILABLE则认为是IMSI REFRESH */
+    if ((TAF_SDC_USIM_STATUS_VALID == TAF_SDC_GetSimStatus())
+     && (USIMM_CARD_SERVIC_AVAILABLE == enCardStatus)
+     && (VOS_TRUE == ulImsiChg))
+    {
+        TAF_MMA_SndMmcImsiRefreshInd();
+    }
+}
+
+/*lint -restore */
 
 #ifdef  __cplusplus
   #if  __cplusplus

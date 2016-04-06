@@ -32,18 +32,19 @@ extern "C" {
 #endif
 
 #if (defined __KERNEL__) && (defined BSP_CONFIG_HI3630)
-extern unsigned int g_ap_sysctrl_regbase_addr_virt;
-extern unsigned int g_ap_syscnt_regbase_addr_virt;
-extern unsigned int g_ddr_share_mem_addr_virt;
-extern unsigned int g_ddr_gu_addr_virt;
-extern unsigned int g_ddr_mntn_addr_virt;
-extern unsigned int g_ipf_regbase_addr_virt;
-extern unsigned int g_socp_regbase_addr_virt;
-extern unsigned int g_ipc_regbase_addr_virt;
-extern unsigned int g_lpm3_tcm_virt;
-extern unsigned int g_bbp_systimer_regbase_addr_virt;
-extern unsigned int g_sram_virt;
-
+extern void* g_ap_sysctrl_regbase_addr_virt;
+extern void* g_ap_syscnt_regbase_addr_virt;
+extern void* g_ddr_share_mem_addr_virt;
+//extern unsigned long g_ddr_share_mem_addr_virt;
+extern void* g_ddr_gu_addr_virt;
+extern void* g_ddr_mntn_addr_virt;
+extern void* g_ipf_regbase_addr_virt;
+extern void* g_socp_regbase_addr_virt;
+extern void* g_ipc_regbase_addr_virt;
+extern void* g_lpm3_tcm_virt;
+extern void* g_bbp_systimer_regbase_addr_virt;
+extern void* g_sram_virt;
+extern void* g_modem_sysctrl_base_addr_virt;
 #define HI_AP_SYSCTRL_BASE_ADDR_VIRT			g_ap_sysctrl_regbase_addr_virt
 #define HI_AP_SYS_CNT_BASE_ADDR_VIRT            g_ap_syscnt_regbase_addr_virt
 #define DDR_SHARED_MEM_VIRT_ADDR                g_ddr_share_mem_addr_virt
@@ -56,8 +57,21 @@ extern unsigned int g_sram_virt;
 #define HI_M3TCM0_MEM_ADDR_VIRT                 g_lpm3_tcm_virt
 #define HI_M3TCM1_MEM_ADDR_VIRT                 (HI_M3TCM0_MEM_ADDR_VIRT + HI_M3TCM0_MEM_SIZE)
 #define HI_SRAM_MEM_ADDR_VIRT                   g_sram_virt
+#define HI_SYSCTRL_BASE_ADDR_VIRT               g_modem_sysctrl_base_addr_virt
+#define HI_SYSCRG_BASE_ADDR_VIRT                HI_SYSCTRL_BASE_ADDR_VIRT
+#define HI_SYSSC_BASE_ADDR_VIRT                 HI_SYSCTRL_BASE_ADDR_VIRT
+#define HI_SYSSC_AO_BASE_ADDR_VIRT              HI_SYSCTRL_BASE_ADDR_VIRT
+#define HI_PWRCTRL_BASE_ADDR_VIRT               HI_SYSCTRL_BASE_ADDR_VIRT
 
 #else   /* !((defined __KERNEL__) && (defined BSP_CONFIG_HI3630)) */
+/* system controller */
+#ifdef HI_SYSCTRL_BASE_ADDR
+#define HI_SYSCTRL_BASE_ADDR_VIRT               HI_IO_ADDRESS(HI_SYSCTRL_BASE_ADDR)
+#define HI_SYSCRG_BASE_ADDR_VIRT                HI_IO_ADDRESS(HI_SYSCTRL_BASE_ADDR)
+#define HI_SYSSC_BASE_ADDR_VIRT                 HI_IO_ADDRESS(HI_SYSCTRL_BASE_ADDR)
+#define HI_SYSSC_AO_BASE_ADDR_VIRT                 HI_IO_ADDRESS(HI_SYSCTRL_BASE_ADDR)
+#define HI_PWRCTRL_BASE_ADDR_VIRT               HI_IO_ADDRESS(HI_SYSCTRL_BASE_ADDR)
+#endif
 
 #ifndef DDR_GU_ADDR_VIRT
 #define DDR_GU_ADDR_VIRT 0               /* todo:需要删除，待GU确认 */
@@ -173,14 +187,7 @@ extern unsigned int g_sram_virt;
 #ifdef HI_PCIE_PHY_BASE_ADDR
 #define HI_PCIE_PHY_BASE_ADDR_VIRT              HI_IO_ADDRESS(HI_PCIE_PHY_BASE_ADDR)
 #endif
-/* system controller */
-#ifdef HI_SYSCTRL_BASE_ADDR
-#define HI_SYSCTRL_BASE_ADDR_VIRT               HI_IO_ADDRESS(HI_SYSCTRL_BASE_ADDR)
-#define HI_SYSCRG_BASE_ADDR_VIRT                HI_IO_ADDRESS(HI_SYSCTRL_BASE_ADDR)
-#define HI_SYSSC_BASE_ADDR_VIRT                 HI_IO_ADDRESS(HI_SYSCTRL_BASE_ADDR)
-#define HI_SYSSC_AO_BASE_ADDR_VIRT                 HI_IO_ADDRESS(HI_SYSCTRL_BASE_ADDR)
-#define HI_PWRCTRL_BASE_ADDR_VIRT               HI_IO_ADDRESS(HI_SYSCTRL_BASE_ADDR)
-#endif
+
 /* wdog */
 #ifdef HI_WDT_BASE_ADDR
 #define HI_WDT_BASE_ADDR_VIRT                   HI_IO_ADDRESS(HI_WDT_BASE_ADDR)

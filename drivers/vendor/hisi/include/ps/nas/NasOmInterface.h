@@ -162,6 +162,8 @@ typedef enum
 
     NAS_OM_EVENT_PA_STAR_ABNORMAL,
 
+    NAS_OM_EVENT_SMS_MT_FAIL,
+
     NAS_OM_EVENT_ID_BUTT
 }NAS_OM_EVENT_ID_ENUM;
 
@@ -562,8 +564,9 @@ typedef VOS_UINT8 NAS_OM_SERVICE_TYPE_ENUM_UINT8;
 *****************************************************************************/
 typedef struct
 {
-    VOS_UINT8 ucSmsMr;
-    VOS_UINT8 ucCause;
+    VOS_UINT8                           ucSmsMr;
+    VOS_UINT8                           aucReserve[3];
+    VOS_UINT32                          ulCause;
 }NAS_OM_SMS_MO_REPORT_STRU;
 
 typedef struct

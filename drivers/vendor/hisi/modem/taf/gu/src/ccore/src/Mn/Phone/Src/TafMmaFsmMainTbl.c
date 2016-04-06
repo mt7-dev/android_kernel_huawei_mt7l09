@@ -32,80 +32,86 @@ TAF_ACT_STRU   g_astTafMmaMainActTbl[]                      =
     /* OM的消息处理 */
     TAF_ACT_TBL_ITEM( WUEPS_PID_OM,
                       OAM_MMA_PHONE_MODE_SET_REQ,
-                      TAF_MMA_RcvAppPhoneModeSetReq_Main),                 
+                      TAF_MMA_RcvAppPhoneModeSetReq_Main),
 
     /* 内部消息的处理 */
     TAF_ACT_TBL_ITEM( WUEPS_PID_MMA,
                       MMA_MMA_INTER_POWER_INIT,
                       TAF_MMA_RcvMmaInterPowerInit_Main ),
-                      
+
     TAF_ACT_TBL_ITEM( WUEPS_PID_MMA,
                       MMA_MMA_INTER_USIM_STATUS_CHANGE_IND,
                       TAF_MMA_RcvMmaInterUsimStatusChangeInd_Main ),
 
     TAF_ACT_TBL_ITEM( WUEPS_PID_MMA,
                       MMA_MMA_PHONE_MODE_RSLT_IND,
-                      TAF_MMA_RcvMmaPhoneModeRsltInd_Main),                      
+                      TAF_MMA_RcvMmaPhoneModeRsltInd_Main),
 
     TAF_ACT_TBL_ITEM( WUEPS_PID_MMA,
                       MMA_MMA_SIM_LOCK_STATUS_CHANGE_IND,
                       TAF_MMA_RcvMmaSimlockStatusChangeInd_Main ),
 
+#if (FEATURE_IMS == FEATURE_ON)
+    TAF_ACT_TBL_ITEM( WUEPS_PID_MMA,
+                      MMA_MMA_IMS_SWITCH_RSLT_IND,
+                      TAF_MMA_RcvMmaImsSwitchRsltInd_Main),
+#endif
+
     /* USIM的消息处理 */
-    TAF_ACT_TBL_ITEM( WUEPS_PID_USIM,                      
+    TAF_ACT_TBL_ITEM( WUEPS_PID_USIM,
                       PS_USIM_GET_STATUS_IND,
                       TAF_MMA_RcvPihUsimStatusInd_Main),
 
-    TAF_ACT_TBL_ITEM( MAPS_PIH_PID,                      
+    TAF_ACT_TBL_ITEM( MAPS_PIH_PID,
                       PS_USIM_GET_STATUS_IND,
                       TAF_MMA_RcvPihUsimStatusInd_Main),
 
-    TAF_ACT_TBL_ITEM( MAPS_PIH_PID,                      
+    TAF_ACT_TBL_ITEM( MAPS_PIH_PID,
                       PS_USIM_REFRESH_IND,
                       TAF_MMA_RcvUsimRefreshIndMsg_Main),
 
     /* MMC的消息处理 */
-    TAF_ACT_TBL_ITEM( WUEPS_PID_MMC,                      
+    TAF_ACT_TBL_ITEM( WUEPS_PID_MMC,
                       ID_MMC_MMA_ATTACH_CNF,
-                      Sta_AttachCnf),   
+                      Sta_AttachCnf),
 
-    TAF_ACT_TBL_ITEM( WUEPS_PID_MMC,                      
+    TAF_ACT_TBL_ITEM( WUEPS_PID_MMC,
                       ID_MMC_MMA_DETACH_CNF,
-                      Sta_DetachCnf),   
- 
-    TAF_ACT_TBL_ITEM( WUEPS_PID_MMC,                      
+                      Sta_DetachCnf),
+
+    TAF_ACT_TBL_ITEM( WUEPS_PID_MMC,
                       ID_MMC_MMA_DETACH_IND,
-                      Sta_DetachInd),   
+                      Sta_DetachInd),
 
-    TAF_ACT_TBL_ITEM( WUEPS_PID_MMC,                      
+    TAF_ACT_TBL_ITEM( WUEPS_PID_MMC,
                       ID_MMC_MMA_PLMN_LIST_CNF,
-                      Sta_PlmnListInd),   
-                      
-    TAF_ACT_TBL_ITEM( WUEPS_PID_MMC,                      
+                      Sta_PlmnListInd),
+
+    TAF_ACT_TBL_ITEM( WUEPS_PID_MMC,
                       ID_MMC_MMA_PLMN_LIST_REJ,
-                      Sta_PlmnListRej),   
+                      Sta_PlmnListRej),
 
-    TAF_ACT_TBL_ITEM( WUEPS_PID_MMC,                      
+    TAF_ACT_TBL_ITEM( WUEPS_PID_MMC,
                       ID_MMC_MMA_PLMN_LIST_ABORT_CNF,
-                      TAF_MMA_RcvPlmnListAbortCnf),   
+                      TAF_MMA_RcvPlmnListAbortCnf),
 
-    TAF_ACT_TBL_ITEM( WUEPS_PID_MMC,                      
+    TAF_ACT_TBL_ITEM( WUEPS_PID_MMC,
                       ID_MMC_MMA_SPEC_PLMN_SEARCH_ABORT_CNF,
-                      TAF_MMA_RcvSpecPlmnSearchAbortCnf),   
- 
-    TAF_ACT_TBL_ITEM( WUEPS_PID_MMC,                      
+                      TAF_MMA_RcvSpecPlmnSearchAbortCnf),
+
+    TAF_ACT_TBL_ITEM( WUEPS_PID_MMC,
                       ID_MMC_MMA_PLMN_SPECIAL_SEL_CNF,
-                      TAF_MMA_RcvMmcPlmnSpecialSelCnf),   
+                      TAF_MMA_RcvMmcPlmnSpecialSelCnf),
 
-    TAF_ACT_TBL_ITEM( WUEPS_PID_MMC,                      
+    TAF_ACT_TBL_ITEM( WUEPS_PID_MMC,
                       ID_MMC_MMA_PLMN_RESEL_CNF,
-                      TAF_MMA_RcvMmcPlmnReselCnf),   
+                      TAF_MMA_RcvMmcPlmnReselCnf),
 
-    TAF_ACT_TBL_ITEM( WUEPS_PID_MMC,                      
+    TAF_ACT_TBL_ITEM( WUEPS_PID_MMC,
                       ID_MMC_MMA_PLMN_SPECIAL_SEL_REJ,
-                      TAF_MMA_RcvMmcUserPlmnRej),   
+                      TAF_MMA_RcvMmcUserPlmnRej),
 
-    TAF_ACT_TBL_ITEM( WUEPS_PID_MMC,                      
+    TAF_ACT_TBL_ITEM( WUEPS_PID_MMC,
                       ID_MMC_MMA_SYS_CFG_CNF,
                       Sta_SysCfgCnf),
 
@@ -121,21 +127,21 @@ TAF_ACT_STRU   g_astTafMmaMainActTbl[]                      =
 
     TAF_ACT_TBL_ITEM( WUEPS_PID_AT,
                       TAF_MSG_MMA_PLMN_LIST,
-                      MMA_PhoneProc),    
-                      
-    TAF_ACT_TBL_ITEM( WUEPS_PID_AT,                      
-                      TAF_MSG_MMA_PLMN_LIST_ABORT_REQ,
-                      MMA_PhoneProc),    
+                      MMA_PhoneProc),
 
-    TAF_ACT_TBL_ITEM( WUEPS_PID_AT,                      
+    TAF_ACT_TBL_ITEM( WUEPS_PID_AT,
+                      TAF_MSG_MMA_PLMN_LIST_ABORT_REQ,
+                      MMA_PhoneProc),
+
+    TAF_ACT_TBL_ITEM( WUEPS_PID_AT,
                       TAF_MSG_MMA_PLMN_USER_SEL,
-                      MMA_SetPlmnUserSel), 
-                      
-    TAF_ACT_TBL_ITEM( WUEPS_PID_AT,                      
+                      MMA_SetPlmnUserSel),
+
+    TAF_ACT_TBL_ITEM( WUEPS_PID_AT,
                       TAF_MSG_MMA_PLMN_RESEL,
-                      MMA_PhoneProc),   
-                                            
-    TAF_ACT_TBL_ITEM( WUEPS_PID_AT,                      
+                      MMA_PhoneProc),
+
+    TAF_ACT_TBL_ITEM( WUEPS_PID_AT,
                       TAF_MSG_MMA_ATTACH,
                       MMA_PhoneProc),
 
@@ -143,6 +149,11 @@ TAF_ACT_STRU   g_astTafMmaMainActTbl[]                      =
                       ID_TAF_MMA_DETACH_REQ,
                       TAF_MMA_RcvDetachReq_Main),
 
+#if (FEATURE_IMS == FEATURE_ON)
+    TAF_ACT_TBL_ITEM( WUEPS_PID_TAF,
+                      ID_TAF_MMA_IMS_SWITCH_SET_REQ,
+                      TAF_MMA_RcvTafImsSwitchSetReq_Main),
+#endif
 };
 
 

@@ -628,10 +628,6 @@ void __pminit determine_clocks(int verbose)
 	quot = 1;
 	while (__serial_clock_speed_HZ / quot / 16 / 65536 > 3000)
 		quot += 1;
-
-	/* double the divisor if P0 is clear, so that if/when P0 is set, it's still achievable
-	 * - we have to be careful - dividing too much can mean we can't get 115200 baud
-	 */
 	if (__serial_clock_speed_HZ > 32000000 && !(clkc & CLKC_P0))
 		quot <<= 1;
 

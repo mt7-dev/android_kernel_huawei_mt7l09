@@ -19,6 +19,10 @@
 #include "LNvCommon.h"
 #endif
 
+#if (FEATURE_ON == FEATURE_IMS)
+#include "ImsaNvInterface.h"
+#endif
+
 #ifdef __cplusplus
 #if __cplusplus
 extern "C" {
@@ -264,21 +268,7 @@ VOS_VOID TAF_MMA_ReadUserSetLteBands(VOS_VOID)
 
 #endif
 
-/*****************************************************************************
- 函 数 名  : TAF_MMA_ReadFreqBandNvim
- 功能描述  : 从NV项en_NV_Item_Support_Freqbands中获取当前系统设置的频段值
- 输入参数  : 无
- 输出参数  : 无
- 返 回 值  :
- 调用函数  :
- 被调函数  :
 
- 修改历史      :
-  1.日    期   : 2010年4月23日
-    作    者   : likelai
-    修改内容   : 新生成函数
-
-*****************************************************************************/
 VOS_VOID  TAF_MMA_ReadFreqBandNvim(VOS_VOID)
 {
     MN_MMA_SYSCFG_USER_SET_BAND_STRU   *pstUserSetBand = VOS_NULL_PTR;
@@ -300,13 +290,12 @@ VOS_VOID  TAF_MMA_ReadFreqBandNvim(VOS_VOID)
     pstUserSetBand->uUserSetUeFormatGuBand.unWcdmaBand.ulBand = stUserSetFreqBand.ulWcdmaBand;
     pstUserSetBand->uUserSetUeFormatGuBand.unGsmBand.ulBand   = stUserSetFreqBand.ulGsmBand;
 
-    PS_MEM_CPY(pstUserSetBand->uUserSetUeFormatGuBand.aucUeSupportWcdmaBand,
-                stUserSetFreqBand.aucUeSupportWcdmaBand,
-                NVIM_MAX_FDD_FREQ_BANDS_NUM);
-
-    PS_MEM_CPY(pstUserSetBand->uUserSetUeFormatGuBand.aucUeSupportGsmBand,
-               stUserSetFreqBand.aucUeSupportGsmBand,
-               NVIM_MAX_FDD_FREQ_BANDS_NUM);
+    PS_MEM_SET(pstUserSetBand->uUserSetUeFormatGuBand.aucReserved1,
+               0,
+               sizeof(pstUserSetBand->uUserSetUeFormatGuBand.aucReserved1));
+    PS_MEM_SET(pstUserSetBand->uUserSetUeFormatGuBand.aucReserved2,
+               0,
+               sizeof(pstUserSetBand->uUserSetUeFormatGuBand.aucReserved2));
 
     return;
 }
@@ -1447,7 +1436,6 @@ VOS_VOID TAF_MMA_UpdateUeBandNvim()
     MMA_UE_SUPPORT_FREQ_BAND_STRU       stSetBand;
     MMA_UE_SUPPORT_FREQ_BAND_STRU       stUeOrigSupportFreqBand;
     MMA_USER_BAND_SET_UN                uUeOrigSupportFreqBand;
-    MMA_USER_BAND_SET_UN                uValidSetBand;
 
     PS_MEM_SET(&stOrigUserSetGuBand, 0x00, sizeof(stOrigUserSetGuBand));
     PS_MEM_SET(&ulBand, 0x00, sizeof(ulBand));
@@ -1455,20 +1443,7 @@ VOS_VOID TAF_MMA_UpdateUeBandNvim()
     PS_MEM_SET(&stSetBand, 0x00, sizeof(stSetBand));
     PS_MEM_SET(&stUeOrigSupportFreqBand, 0x00, sizeof(stUeOrigSupportFreqBand));
     PS_MEM_SET(&uUeOrigSupportFreqBand, 0x00, sizeof(uUeOrigSupportFreqBand));
-    PS_MEM_SET(&uValidSetBand, 0x00, sizeof(uValidSetBand));
 
-    /*若ForbBandNV激活,进行频段检查和 更新NV项*/
-    if (NV_ITEM_ACTIVE == gstMmaForbBand.ucActiveFlag)
-    {
-        if (VOS_FALSE == gstMmaForbBand.ucForbStatus)
-        {
-            /*根据禁止频段的信息更新FreqBandNV和UsersetBandNV*/
-            MMA_UpdateBandNvRefForbBand();
-
-            /*更新禁止频段的Status为TRUE 1*/
-            MMA_UpdateForbBandStatusToNV();
-        }
-    }
 
     /* 读NV8265到stOrigUserSetGuBand中 */
     TAF_MMA_ReadUserSettedBandNvim();
@@ -1484,20 +1459,106 @@ VOS_VOID TAF_MMA_UpdateUeBandNvim()
     /*将当前系统设置的频段转换为用户设置的格式*/
     MMA_SwitchUESupportBand2UserSetBand(gstMmaValue.stLastSyscfgSet.stUserSetBand.uUserSetUeFormatGuBand, &uUeOrigSupportFreqBand);
 
-    /* 如果用户设置频段、射频频段交集、NV 8229的交集与NV 8229值相同，则直接返回不需要写NV */
-    uValidSetBand.ulPrefBand = uUserSetBand.ulPrefBand & uUeOrigSupportFreqBand.ulPrefBand;
-    if (uValidSetBand.ulPrefBand != uUeOrigSupportFreqBand.ulPrefBand)
+    /* 如果用户设置频段、射频频段交集与NV 8229值相同，则直接返回不需要写NV */
+    if (uUserSetBand.ulPrefBand != uUeOrigSupportFreqBand.ulPrefBand)
     {
-        MMA_SwitchUserSetBand2UESupportBand(uValidSetBand, &stSetBand);
+        MMA_SwitchUserSetBand2UESupportBand(uUserSetBand, &stSetBand);
 
         /* 写NV:en_NV_Item_Support_Freqbands,更新全局变量 */
         TAF_MMA_UpdateSupportFreqBand(&stSetBand);
+    }
+
+    /*若ForbBandNV激活,进行频段检查和 更新NV项*/
+    if (NV_ITEM_ACTIVE == gstMmaForbBand.ucActiveFlag)
+    {
+        if (VOS_FALSE == gstMmaForbBand.ucForbStatus)
+        {
+            /*根据禁止频段的信息更新FreqBandNV和UsersetBandNV*/
+            MMA_UpdateBandNvRefForbBand();
+
+            /*更新禁止频段的Status为TRUE 1*/
+            MMA_UpdateForbBandStatusToNV();
+        }
     }
 
     return;
 }
 
 
+
+#if (FEATURE_IMS == FEATURE_ON)
+
+VOS_UINT32 TAF_MMA_UpdataVoiceDomainNv(
+    VOS_UINT32                          ulVoiceDomain
+)
+{
+    VOS_UINT32                          ulLength;
+    LNAS_LMM_NV_VOICE_DOMAIN_STRU       stVoiceDomain;
+
+    /* 先获取NV的长度 */
+    ulLength = 0;
+    NV_GetLength(EN_NV_ID_UE_VOICE_DOMAIN, &ulLength);
+
+    if (ulLength > sizeof(LNAS_LMM_NV_VOICE_DOMAIN_STRU))
+    {
+        return VOS_FALSE;
+    }
+
+    /* 读NV项EN_NV_ID_UE_VOICE_DOMAIN，失败，直接返回 */
+    if (NV_OK != NV_Read(EN_NV_ID_UE_VOICE_DOMAIN,
+                         &stVoiceDomain, ulLength))
+    {
+        return VOS_FALSE;
+    }
+
+    stVoiceDomain.enVoicDomain  = (NAS_LMM_VOICE_DOMAIN_ENUM_UINT32)ulVoiceDomain;
+
+    if (NV_OK != NV_Write(EN_NV_ID_UE_VOICE_DOMAIN,
+                          &stVoiceDomain, ulLength))
+    {
+        return VOS_FALSE;
+    }
+
+    return VOS_TRUE;
+}
+
+
+VOS_UINT32 TAF_MMA_UpdateLteImsSupportNv(
+    VOS_UINT8                           ucFlag
+)
+{
+    VOS_UINT32                          ulLength;
+    IMSA_NV_IMS_RAT_SUPPORT_STRU        stImsSupport;
+
+    /* 先获取NV的长度 */
+    ulLength = 0;
+    NV_GetLength(EN_NV_ID_IMS_RAT_SUPPORT, &ulLength);
+
+    if (ulLength > sizeof(IMSA_NV_IMS_RAT_SUPPORT_STRU))
+    {
+        return VOS_FALSE;
+    }
+
+    /* 读NV项EN_NV_ID_IMS_RAT_SUPPORT，失败，直接返回 */
+    if (NV_OK != NV_Read(EN_NV_ID_IMS_RAT_SUPPORT,
+                         &stImsSupport, ulLength))
+    {
+        return VOS_FALSE;
+    }
+
+    stImsSupport.ucLteImsSupportFlag    = ucFlag;
+    stImsSupport.ucLteEmsSupportFlag    = ucFlag;
+
+    if (NV_OK != NV_Write(EN_NV_ID_IMS_RAT_SUPPORT,
+                          &stImsSupport, ulLength))
+    {
+        return VOS_FALSE;
+    }
+
+    return VOS_TRUE;
+}
+
+#endif
 
 #ifdef __cplusplus
     #if __cplusplus

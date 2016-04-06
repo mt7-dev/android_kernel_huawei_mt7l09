@@ -1420,8 +1420,8 @@ int wvlan_uil_get_info(struct uilreq *urq, struct wl_private *lp)
 			case CFG_NIC_MAC_ADDR:
 			case CFG_SUPPORTED_DATA_RATES:  /* need to ensure we can treat this as a string */
 				break;
-			/* case CFG_CNF_COUNTRY_INFO: */     /* special case, see page 75  of 022486, Rev C. */
-			/* case CFG_CURRENT_COUNTRY_INFO: */ /* special case, see page 101 of 022486, Rev C. */
+			/* case CFG_CNF_COUNTRY_INFO: */
+			/* case CFG_CURRENT_COUNTRY_INFO: */
 			/*
 				lp->ltvRecord.u.u16[0] = CNV_INT_TO_LITTLE(lp->ltvRecord.u.u16[0]);
 				lp->ltvRecord.u.u16[3] = CNV_INT_TO_LITTLE(lp->ltvRecord.u.u16[3]);

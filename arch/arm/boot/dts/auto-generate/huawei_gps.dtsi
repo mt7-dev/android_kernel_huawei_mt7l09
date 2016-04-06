@@ -8,16 +8,16 @@
 
 / {
     gps_power:gps_power{
-        compatible = "huawei,gps_power";
-        huawei,gps_cal_req = <12>;
-        huawei,gps_en = <95>;
-        huawei,gps_refclk = <23>;
-        huawei,gps_blanking = <24>;
-        clocks = <&clk_pmu32kc>;
-        clock-names = "apb_pclk";
-        /*huawei,gps_power-supply = <&buck5>;
-        pinctrl-names = "default";
-        pinctrl-0 = <&uart3_pmx_func &uart3_cfg_func>;*/
-        status = "disabled";
+		compatible = "huawei,gps_power";
+		huawei,gps_cal_req = <12>;
+		huawei,gps_en = <&gpio11 7 0>;
+		huawei,gps_hostwake = <&gpio26 2 0>;
+		clocks = <&clk_pmu32kc>, <&clk_gate_gps_m>;
+		clock-names = "gps_32k", "clk_gps";
+		pinctrl-names = "default","idle";
+		pinctrl-0 = <&gpio097_pmx_func &gpio097_cfg_func>;
+		pinctrl-1 = <&gpio097_pmx_idle &gpio097_cfg_idle>;
+		huawei,gps_refclk = <97>;
+		status = "disabled";
     };
 };

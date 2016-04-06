@@ -31,7 +31,7 @@
 #include "hi3630_log.h"
 #include "hi3630_pcm_hdmi.h"
 
-#include "../../../drivers/video/k3/hdmi/k3_hdmi.h"
+#include "../../../drivers/video/hisi/hdmi/k3_hdmi.h"
 
 static const unsigned int freq[] = {
 	8000,	11025,	12000,	16000,

@@ -15,7 +15,13 @@ ifeq ($(strip $(CFG_FEATURE_WIFI_ON)),YES)
   endif
 endif
 
-export ARCH=arm
+
+ifeq ($(strip $(CFG_OS_ANDROID_AARCH64)),YES)
+export ARCH          :=arm64
+else
+export ARCH          :=arm
+endif
+
 export DHDARCH=arm
 export VERBOSE=1
 export LINUXDIR=$(LINUX_KERNEL)
@@ -24,6 +30,8 @@ WIFI_BRCM_PATH_DRIVER :=$(WIFI_PATH)/wifi_brcm
 WIFI_PATH_OUT :=$(LINUX_KERNEL)/../out/target/product/balongv7r2/obj/KERNEL_OBJ/drivers
 WIFI_BRCM_PTAH := $(OBB_ANDROID_DIR)/out/target/product/$(CFG_OS_ANDROID_PRODUCT_NAME)/system/bin/wifi_brcm
 RFILE_PTAH := $(OBB_ANDROID_DIR)/out/target/product/$(CFG_OS_ANDROID_PRODUCT_NAME)/system/rfile
+TARGET_PRODUCT_OUT_DIR := $(OBB_ANDROID_DIR)/out/target/product/$(CFG_OS_ANDROID_PRODUCT_NAME)
+
 export LINUXVER=3.4.5
 
 #链接脚本需要使用, define文件里的内容替换生成的temp文件
@@ -42,6 +50,8 @@ OBC_MAKE_ANDROID_CHOISE :=K3_ANDROID
 else
 OBC_MAKE_ANDROID_CHOISE :=V7R2_ANDROID
 endif
+
+
 
 .PHONY:all pre_build bsp_kernel bsp_android bsp_wifi
 all: bsp_system_zip
@@ -69,7 +79,7 @@ bsp_wifi_testmode:pre_build
 	$(Q)cp -pf $(WIFI_PATH)/open-src_test_mode/src/dhd/linux/dhd-cdc-usb-hsic-gpl-$(LINUXVER)/dhd.ko $(PRODUCT_TARGET_DIR)/bin/dhd_test_mode.ko
 	
 bsp_android: bsp_kernel
-	MAKEFLAGS= ./build_android.sh $(OBB_ANDROID_DIR) $(CFG_OS_ANDROID_PRODUCT_NAME) $(OBC_MAKE_ANDROID_CHOISE)
+	MAKEFLAGS= ./build_android.sh $(OBB_ANDROID_DIR) $(CFG_OS_ANDROID_PRODUCT_NAME) $(OBC_MAKE_ANDROID_CHOISE) $(ARCH)
 	$(Q)-rm -rf $(USE_FASTBOOT_LINK_FILE)
 	$(Q)-rm -rf $(USE_ONCHIP_LINK_FILE)
 	$(Q)-rm -rf $(USE_MAKE_BOOT_FILE)
@@ -101,7 +111,7 @@ endif
 # android independent image
 %image %.img : bsp_kernel
 	@echo do [$@]
-	MAKEFLAGS= ./build_android.sh $(OBB_ANDROID_DIR) $(CFG_OS_ANDROID_PRODUCT_NAME) $(OBC_MAKE_ANDROID_CHOISE) $@
+	MAKEFLAGS= ./build_android.sh $(OBB_ANDROID_DIR) $(CFG_OS_ANDROID_PRODUCT_NAME) $(OBC_MAKE_ANDROID_CHOISE)  $(ARCH) $@
 
 %.mk %akefile :
 	@echo nothing to be done for [$@]
@@ -111,11 +121,13 @@ force:
 # 
 %:: bsp_kernel
 	$(warning do[$@])
-	MAKEFLAGS= ./build_android.sh $(OBB_ANDROID_DIR) $(CFG_OS_ANDROID_PRODUCT_NAME) $(OBC_MAKE_ANDROID_CHOISE) $@
+	MAKEFLAGS= ./build_android.sh $(OBB_ANDROID_DIR) $(CFG_OS_ANDROID_PRODUCT_NAME) $(OBC_MAKE_ANDROID_CHOISE)  $(ARCH) $@
 
 .PHONY:clean
 clean: do_clean
-	$(Q)$(MAKE) -s -C $(OBB_ANDROID_DIR) clean 
+ifneq ($(wildcard $(TARGET_PRODUCT_OUT_DIR)),)
+	$(Q)$(MAKE) -C $(OBB_ANDROID_DIR) clean 
+endif	
 	$(Q)-rm -f $(OBB_PRODUCT_DELIVERY_DIR)/image/system.img 
 	$(Q)-rm -f $(OBB_PRODUCT_DELIVERY_DIR)/lib/scripts.tar
 

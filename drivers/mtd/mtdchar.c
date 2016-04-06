@@ -547,7 +547,7 @@ static int mtdchar_blkpg_ioctl(struct mtd_info *mtd,
 	if (copy_from_user(&a, arg, sizeof(struct blkpg_ioctl_arg)))
 		return -EFAULT;
 
-	if (copy_from_user(&p, a.data, sizeof(struct blkpg_partition)))
+	if (copy_from_user((void *)(&p), a.data, sizeof(struct blkpg_partition)))
 		return -EFAULT;
 
 	switch (a.op) {
@@ -579,7 +579,7 @@ static int mtdchar_write_ioctl(struct mtd_info *mtd,
 	void __user *usr_data, *usr_oob;
 	int ret;
 
-	if (copy_from_user(&req, argp, sizeof(req)) ||
+	if (copy_from_user((void *)(&req), argp, sizeof(req)) ||
 			!access_ok(VERIFY_READ, req.usr_data, req.len) ||
 			!access_ok(VERIFY_READ, req.usr_oob, req.ooblen))
 		return -EFAULT;

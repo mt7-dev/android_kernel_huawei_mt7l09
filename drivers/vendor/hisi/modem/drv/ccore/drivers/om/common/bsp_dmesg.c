@@ -354,7 +354,7 @@ int dmesg_save(const char* buffer, const unsigned length)
     memcpy((void *)buffer, (void *)s1, (u32)l1);
     memcpy((void *)(buffer+l1), (void *)s2, (u32)l2);
 
-    return 0;
+    return (int)(l1+l2);
 }
 
 void dmesg(void)

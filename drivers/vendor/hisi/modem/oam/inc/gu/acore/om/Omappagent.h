@@ -51,7 +51,11 @@ extern "C"{
 #define OM_LINK_STATUS_REQ          (0x0305)
 #define OM_HSIC_CONNECT_REQ         (0x0307)
 #define OM_RECORD_DBU_INFO_REQ      (0x0309)
+#if (FEATURE_OFF == FEATURE_MERGE_OM_CHAN)
 #define OM_SET_FTM_MODE_REQ         (0x030a)
+#else
+#define OM_CBT_SEND_DATA_REQ        (0x030d)
+#endif
 
 #define IS_CAGENT_CNF_MSG(usPrimId) (0 == (usPrimId >> 8))
 
@@ -91,7 +95,7 @@ typedef struct
     VOS_UINT32  ulLine;             /* 调用ErrorLog API所在文件的行号 */
     VOS_UINT32  ulErrNo;            /* ErrorLog的错误号 */
     VOS_UINT32  ulLen;              /* ErrorLog的输出内容的长度 */
-    VOS_UINT8   aucData[4];         /* ErrorLog的输出内容，内容长度根据ulLen值确定 */
+    VOS_UINT8   aucData[8];         /* ErrorLog的输出内容，内容长度根据ulLen值确定 */
 }ERRORLOG_REQ_STRU;
 
 typedef struct

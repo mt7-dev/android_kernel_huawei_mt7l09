@@ -227,9 +227,12 @@ extern "C"{
 #define APP_OM_QUERY_MODEM_NUM_REQ                0x8211
 #define OM_APP_QUERY_MODEM_NUM_CNF                0x8212
 
+/* Modify by H59254 */
+#if (FEATURE_OFF == FEATURE_MERGE_OM_CHAN)
 /*OM<->APP : 将可维可测信息保存到文件中 */
 #define APP_OM_WRITE_NV_LOG_FILE_REQ              0x8213
 #define OM_APP_WRITE_NV_LOG_FILE_CNF              0x8214
+#endif
 
 /*OM<->APP : 查询64位slice值 */
 #define APP_OM_QUERY_SLICE_REQ                    0x8215

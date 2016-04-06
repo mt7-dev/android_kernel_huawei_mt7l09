@@ -58,13 +58,11 @@
 #include <asm/virt.h>
 
 #include "atags.h"
-
-/* DTS2013031107868 qidechun 2013-03-11 begin */ 
 #ifdef CONFIG_DUMP_SYS_INFO
 #include <linux/module.h>
 #include <linux/srecorder.h>
 #endif
-/* DTS2013031107868 qidechun 2013-03-11 end */ 
+#include <asm/fiq_glue.h>
 
 
 #if defined(CONFIG_FPE_NWFPE) || defined(CONFIG_FPE_FASTFPE)
@@ -144,7 +142,12 @@ EXPORT_SYMBOL(elf_platform);
 static const char *cpu_name;
 static const char *machine_name;
 
-/* DTS2013031107868 qidechun 2013-03-11 begin */ 
+#ifdef CONFIG_HISI_ALTER_HARDWARE_NAME
+#define MAX_HARDWARE_NAME 128
+char alter_hardware_name[MAX_HARDWARE_NAME]={0};
+EXPORT_SYMBOL(alter_hardware_name);
+#endif
+
 #ifdef CONFIG_DUMP_SYS_INFO
 unsigned long get_cpu_name(void)
 {
@@ -158,7 +161,6 @@ unsigned long get_machine_name(void)
 }
 EXPORT_SYMBOL(get_machine_name);
 #endif
-/* DTS2013031107868 qidechun 2013-03-11 end */ 
 
 static char __initdata cmd_line[COMMAND_LINE_SIZE];
 struct machine_desc *machine_desc __initdata;
@@ -480,6 +482,8 @@ void notrace cpu_init(void)
 	      "I" (offsetof(struct stack, und[0])),
 	      PLC (PSR_F_BIT | PSR_I_BIT | SVC_MODE)
 	    : "r14");
+
+	fiq_glue_resume();
 }
 
 u32 __cpu_logical_map[NR_CPUS] = { [0 ... NR_CPUS-1] = MPIDR_INVALID };
@@ -575,6 +579,7 @@ void __init dump_machine_table(void)
 int __init arm_add_memory(phys_addr_t start, phys_addr_t size)
 {
 	struct membank *bank = &meminfo.bank[meminfo.nr_banks];
+	u64 aligned_start;
 
 	if (meminfo.nr_banks >= NR_BANKS) {
 		printk(KERN_CRIT "NR_BANKS too low, "
@@ -587,10 +592,16 @@ int __init arm_add_memory(phys_addr_t start, phys_addr_t size)
 	 * Size is appropriately rounded down, start is rounded up.
 	 */
 	size -= start & ~PAGE_MASK;
-	bank->start = PAGE_ALIGN(start);
+	aligned_start = PAGE_ALIGN(start);
 
-#ifndef CONFIG_ARM_LPAE
-	if (bank->start + size < bank->start) {
+#ifndef CONFIG_ARCH_PHYS_ADDR_T_64BIT
+	if (aligned_start > ULONG_MAX) {
+		printk(KERN_CRIT "Ignoring memory at 0x%08llx outside "
+		       "32-bit physical address space\n", (long long)start);
+		return -EINVAL;
+	}
+
+	if (aligned_start + size > ULONG_MAX) {
 		printk(KERN_CRIT "Truncating memory at 0x%08llx to fit in "
 			"32-bit physical address space\n", (long long)start);
 		/*
@@ -598,10 +609,25 @@ int __init arm_add_memory(phys_addr_t start, phys_addr_t size)
 		 * 32 bits, we use ULONG_MAX as the upper limit rather than 4GB.
 		 * This means we lose a page after masking.
 		 */
-		size = ULONG_MAX - bank->start;
+		size = ULONG_MAX - aligned_start;
 	}
 #endif
 
+	if (aligned_start < PHYS_OFFSET) {
+		if (aligned_start + size <= PHYS_OFFSET) {
+			pr_info("Ignoring memory below PHYS_OFFSET: 0x%08llx-0x%08llx\n",
+				aligned_start, aligned_start + size);
+			return -EINVAL;
+		}
+
+		pr_info("Ignoring memory below PHYS_OFFSET: 0x%08llx-0x%08llx\n",
+			aligned_start, (u64)PHYS_OFFSET);
+
+		size -= PHYS_OFFSET - aligned_start;
+		aligned_start = PHYS_OFFSET;
+	}
+
+	bank->start = aligned_start;
 	bank->size = size & ~(phys_addr_t)(PAGE_SIZE - 1);
 
 	/*
@@ -647,7 +673,6 @@ static int __init early_mem(char *p)
 }
 early_param("mem", early_mem);
 
-/* < DTS2013092906363 hanpeng 20131008 begin */
 #ifdef CONFIG_FEATURE_HUAWEI_EMERGENCY_DATA
 #define DATAMOUNT_FLAG_FAIL 0x0587C90A
 #define DATAMOUNT_FLAG_SUCCESS 0 // datamount_flag initialization value
@@ -663,6 +688,7 @@ unsigned int get_datamount_flag(void)
     return datamount_flag;
 }
 EXPORT_SYMBOL(get_datamount_flag);
+
 void set_datamount_flag(int value)
 {
     datamount_flag = value;
@@ -672,32 +698,15 @@ EXPORT_SYMBOL(set_datamount_flag);
 static int __init early_param_boottype(char * p)
 {
     if (p) {
-        if (!strcmp(p,"MountFail,")) {
+        if (!strcmp(p,"mountfail")) {
             datamount_flag = DATAMOUNT_FLAG_FAIL;
         }
     }
+	//printk(KERN_ALERT "kernel_log: func = %s, doubledata p = %s, datamount_flag = %d\n", __FUNCTION__, p, datamount_flag);
     return 0;
 }
-early_param("normal_reset_type", early_param_boottype);
+early_param("boottype", early_param_boottype);
 #endif
-/* DTS2013092906363 hanpeng 20131008 end > */
-
-static int __init early_parse_storage_cmdline(char *p)
-{
-	phys_addr_t size;
-	phys_addr_t start;
-	char *endp;
-
-	start = 0x80000000;
-	size  = memparse(p, &endp);
-	if (*endp == '@')
-		start = memparse(endp + 1, NULL);
-
-	arm_add_memory(start, size);
-
-	return 0;
-}
-early_param("mem_append", early_parse_storage_cmdline);
 
 static void __init request_standard_resources(struct machine_desc *mdesc)
 {
@@ -975,6 +984,9 @@ static const char *hwcap_str[] = {
 	"vfpv4",
 	"idiva",
 	"idivt",
+	"vfpd32",
+	"lpae",
+	"evtstrm",
 	NULL
 };
 
@@ -996,9 +1008,11 @@ static void print_cpuinfo_array(struct seq_file *m, char *pre, u32 width, u32 *s
 	char str[10] = {0};
 	u32 value, old_value;
 
-	if (pre)
-		sprintf(str, "%s", pre);
-	sprintf(str, "%s%%0%dx", str, width);
+	if (pre){
+		snprintf(str, sizeof(str), "%s%%0%dx", pre, width);
+	} else {
+	       snprintf(str, sizeof(str), "%s%%0%dx", str, width);
+	}
 
 	old_value = (source[0] >> bit) & mask;
 	seq_printf(m, str, old_value);
@@ -1107,7 +1121,16 @@ static int c_show(struct seq_file *m, void *v)
 		seq_printf(m, "%d\n\n", cpuid & 15);
 #endif
 
+#ifdef CONFIG_HISI_ALTER_HARDWARE_NAME
+    if(alter_hardware_name[0] != 0) {
+        seq_printf(m, "Hardware\t: %s\n", alter_hardware_name);
+    }
+    else {
+        seq_printf(m, "Hardware\t: %s\n", machine_name);
+    }
+#else
 	seq_printf(m, "Hardware\t: %s\n", machine_name);
+#endif
 	seq_printf(m, "Revision\t: %04x\n", system_rev);
 	seq_printf(m, "Serial\t\t: %08x%08x\n",
 		   system_serial_high, system_serial_low);

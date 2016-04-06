@@ -50,7 +50,7 @@
 #define DW_IC_FS_SCL_HCNT	0x1c
 #define DW_IC_FS_SCL_LCNT	0x20
 
-#ifdef CONFIG_I2C_DESIGNWARE_HI3630
+#ifdef CONFIG_I2C_DESIGNWARE_HI3XXX
 #define DW_IC_HS_SCL_HCNT	0x24
 #define DW_IC_HS_SCL_LCNT	0x28
 #define IC_SDA_HOLD             0x7C
@@ -101,7 +101,7 @@
 #define DW_IC_INTR_START_DET	0x400
 #define DW_IC_INTR_GEN_CALL	0x800
 
-#ifdef CONFIG_I2C_DESIGNWARE_HI3630
+#ifdef CONFIG_I2C_DESIGNWARE_HI3XXX
 #define DW_IC_DATACMD_READ_FLAG         0x100
 #define DW_IC_DATACMD_STOP_FLAG         0x200
 #define DW_IC_DATACMD_RESTART_FLAG      0x400
@@ -180,7 +180,7 @@
 
 #define I2C_DW_MAX_DMA_BUF_LEN          (60*1024)
 
-#ifndef CONFIG_I2C_DESIGNWARE_HI3630
+#ifndef CONFIG_I2C_DESIGNWARE_HI3XXX
 static char *abort_sources[] = {
 	[ABRT_7B_ADDR_NOACK] =
 		"slave address not acknowledged (7bit mode)",
@@ -639,7 +639,7 @@ int i2c_dw_init(struct dw_i2c_dev *dev)
 	u32 input_clock_khz;
 	u32 hcnt, lcnt;
 	u32 reg;
-#ifdef CONFIG_I2C_DESIGNWARE_HI3630
+#ifdef CONFIG_I2C_DESIGNWARE_HI3XXX
 	u32 sda_delay_count;
 #endif
 	input_clock_khz = dev->get_clk_rate_khz(dev);
@@ -709,7 +709,7 @@ int i2c_dw_init(struct dw_i2c_dev *dev)
 	/* Spike Suppression*/
 	dw_writel(dev, 1, IC_FS_SPKLEN);
 	dw_writel(dev, 1, IC_HS_SPKLEN);
-#ifdef CONFIG_I2C_DESIGNWARE_HI3630
+#ifdef CONFIG_I2C_DESIGNWARE_HI3XXX
 	/* SDA HOLD TIME */
 	if(I2C_DELAY_70NS == dev->delay_off) {
 		sda_delay_count = (input_clock_khz * 70)/1000000;
@@ -757,7 +757,6 @@ int devm_pinctrl_state_select(struct dw_i2c_dev *dev,const char *name)
 	return 0;
 }
 
-#ifdef CONFIG_HS3630_I2C_DEBUG
 /* print reg*/
 static void i2c_print_controller_reg(struct dw_i2c_dev *dev)
 {
@@ -774,12 +773,11 @@ static void i2c_print_controller_reg(struct dw_i2c_dev *dev)
 		}
 	}
 }
-#endif
 
 /* reset i2c controller */
 static void reset_i2c_controller(struct dw_i2c_dev *dev)
 {
-#ifdef CONFIG_ARCH_HI3630
+#if defined(CONFIG_HISI_3635) || defined(CONFIG_ARCH_HI3630)
 	int r;
 	r = devm_pinctrl_state_select(dev, PINCTRL_STATE_IDLE);
 	if (r<0)
@@ -798,7 +796,7 @@ static void reset_i2c_controller(struct dw_i2c_dev *dev)
 
 	i2c_dw_disable_int(dev);
 
-#ifdef CONFIG_ARCH_HI3630
+#if defined(CONFIG_HISI_3635) || defined(CONFIG_ARCH_HI3630)
 	r = devm_pinctrl_state_select(dev, PINCTRL_STATE_DEFAULT);
 	if (r<0)
 		dev_warn(dev->platform_dev,
@@ -938,7 +936,7 @@ i2c_dw_xfer_msg(struct dw_i2c_dev *dev)
 				/* avoid rx buffer overrun */
 				if (rx_limit - dev->rx_outstanding <= 0)
 					break;
-#ifdef CONFIG_I2C_DESIGNWARE_HI3630
+#ifdef CONFIG_I2C_DESIGNWARE_HI3XXX
 				dw_writel(dev, cmd | 0x100, DW_IC_DATA_CMD);
 #else
 				dw_writel(dev, 0x100, DW_IC_DATA_CMD);
@@ -947,7 +945,7 @@ i2c_dw_xfer_msg(struct dw_i2c_dev *dev)
 				dev->rx_outstanding++;
 
 			} else {
-#ifdef CONFIG_I2C_DESIGNWARE_HI3630
+#ifdef CONFIG_I2C_DESIGNWARE_HI3XXX
 				dw_writel(dev, cmd | *buf++, DW_IC_DATA_CMD);
 #else
 				dw_writel(dev, *buf++, DW_IC_DATA_CMD);
@@ -1024,18 +1022,20 @@ i2c_dw_read(struct dw_i2c_dev *dev)
 static int i2c_dw_handle_tx_abort(struct dw_i2c_dev *dev)
 {
 	unsigned long abort_source = dev->abort_source;
-	int i;
+	unsigned long i;
 
 	if (abort_source & DW_IC_TX_ABRT_NOACK) {
+		/*lint -e666*/
 		for_each_set_bit(i, &abort_source, ARRAY_SIZE(abort_sources))
 			dev_dbg(dev->dev,
 				"%s: %s\n", __func__, abort_sources[i]);
+		/*lint +e666*/
 		return -EREMOTEIO;
 	}
-
+	/*lint -e666*/
 	for_each_set_bit(i, &abort_source, ARRAY_SIZE(abort_sources))
 		dev_err(dev->dev, "%s: %s\n", __func__, abort_sources[i]);
-
+	/*lint +e666*/
 	if (abort_source & DW_IC_TX_ARB_LOST)
 		return -EAGAIN;
 	else if (abort_source & DW_IC_TX_ABRT_GCALL_READ)
@@ -1094,7 +1094,7 @@ static int i2c_dw_xfer_msg_dma(struct dw_i2c_dev *dev, int *alllen)
 
 	dma_txbuf = (u16 *)dev->dmatx.buf;
 
-#ifdef CONFIG_I2C_DESIGNWARE_HI3630
+#ifdef CONFIG_I2C_DESIGNWARE_HI3XXX
 	for (; dev->msg_write_idx < dev->msgs_num; dev->msg_write_idx++) {
 		u32 cmd = 0;
 		buf = msgs[dev->msg_write_idx].buf;
@@ -1227,7 +1227,7 @@ i2c_dw_xfer(struct i2c_adapter *adap, struct i2c_msg msgs[], int num)
 	struct dw_i2c_dev *dev = i2c_get_adapdata(adap);
 	int totallen = 0;
 	int ret;
-#ifdef CONFIG_ARCH_HI3630
+#if defined(CONFIG_HISI_3635) || defined(CONFIG_ARCH_HI3630)
 	int r;
 #endif
 
@@ -1236,8 +1236,8 @@ i2c_dw_xfer(struct i2c_adapter *adap, struct i2c_msg msgs[], int num)
 	mutex_lock(&dev->lock);
 	//pm_runtime_get_sync(dev->dev);
 
-#ifdef CONFIG_ARCH_HI3630
-	r = clk_prepare_enable(dev->clk);
+#if defined(CONFIG_HISI_3635) || defined(CONFIG_ARCH_HI3630)
+	r = clk_enable(dev->clk);
 	if(r) {
 		dev_warn(dev->platform_dev,"Unable to enable clock!\n");
 		return  -EINVAL;
@@ -1353,7 +1353,7 @@ i2c_dw_xfer(struct i2c_adapter *adap, struct i2c_msg msgs[], int num)
 done:
 	i2c_dw_dma_clear(dev);
 
-#ifdef CONFIG_ARCH_HI3630
+#if defined(CONFIG_HISI_3635) || defined(CONFIG_ARCH_HI3630)
 	if (-ETIMEDOUT == ret) {
 		ret = -EAGAIN;
 		if(++(dev->timeout_count) >= 2){
@@ -1369,7 +1369,7 @@ done:
 						"pins are not configured from the driver\n");
 		}
 	}
-	clk_disable_unprepare(dev->clk);
+	clk_disable(dev->clk);
 	r = devm_pinctrl_state_select(dev, PINCTRL_STATE_IDLE);
 	if (r<0)
 		dev_warn(dev->platform_dev,

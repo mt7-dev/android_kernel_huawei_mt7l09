@@ -144,6 +144,9 @@ struct cpu_dbs_common_info {
 	 */
 	struct mutex timer_mutex;
 	ktime_t time_stamp;
+#ifdef CONFIG_HUAWEI_MSG_POLICY
+	u64 cputime_msg_timestamp;
+#endif
 };
 
 struct od_cpu_dbs_info_s {
@@ -169,7 +172,6 @@ struct od_dbs_tuners {
 	unsigned int sampling_rate;
 	unsigned int sampling_down_factor;
 	unsigned int up_threshold;
-	unsigned int adj_up_threshold;
 	unsigned int powersave_bias;
 	unsigned int io_is_busy;
 };
@@ -255,6 +257,8 @@ static ssize_t show_sampling_rate_min_gov_pol				\
 	struct dbs_data *dbs_data = policy->governor_data;		\
 	return sprintf(buf, "%u\n", dbs_data->min_sampling_rate);	\
 }
+
+extern struct mutex cpufreq_governor_lock;
 
 void dbs_check_cpu(struct dbs_data *dbs_data, int cpu);
 bool need_load_eval(struct cpu_dbs_common_info *cdbs,

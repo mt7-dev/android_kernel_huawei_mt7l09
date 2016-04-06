@@ -22,7 +22,13 @@ extern "C" {
 #include "TafAgentInterface.h"
 #include "DrvInterface.h"
 
+#if (FEATURE_ON == FEATURE_PTM)
 #include "NasErrorLog.h"
+#endif
+
+#include "NasComm.h"
+
+/*lint -e958*/
 
 /*****************************************************************************
     协议栈打印打点方式下的.C文件宏定义
@@ -2263,19 +2269,14 @@ VOS_VOID TAF_MTA_RcvAcpuOmErrLogRptReq(
     VOS_CHAR                           *pbuffer   = VOS_NULL_PTR;
     VOS_UINT32                          ulBufUseLen;
     VOS_UINT32                          ulRealLen;
+    VOS_UINT32                          ulTotalLen;
+    NAS_ERR_LOG_MNTN_EVENT_STRU         stNasErrLogMntnEvent;
 
     /* 查询一下RING BUFFER中有多少数据，以便分配内存 */
     ulBufUseLen = TAF_SDC_GetErrLogRingBufferUseBytes();
+    ulTotalLen = ulBufUseLen + sizeof(NAS_ERR_LOG_MNTN_EVENT_STRU);
 
-    /* 如果RING BUFFER中没有数据，也需要给OM发送消息 */
-    if (0 == ulBufUseLen)
-    {
-        /* 发送ID_OM_ERR_LOG_REPORT_CNF内容为空的消息给OM */
-        TAF_MTA_SndAcpuOmErrLogRptCnf(VOS_NULL_PTR, 0);
-        return;
-    }
-
-    pbuffer = (VOS_CHAR *)PS_MEM_ALLOC(UEPS_PID_MTA, ulBufUseLen);
+    pbuffer = (VOS_CHAR *)PS_MEM_ALLOC(UEPS_PID_MTA, ulTotalLen);
     if (VOS_NULL_PTR == pbuffer)
     {
         /* 发送ID_OM_ERR_LOG_REPORT_CNF内容为空的消息给OM */
@@ -2283,7 +2284,7 @@ VOS_VOID TAF_MTA_RcvAcpuOmErrLogRptReq(
         return;
     }
 
-    PS_MEM_SET(pbuffer, 0, ulBufUseLen);
+    PS_MEM_SET(pbuffer, 0, ulTotalLen);
 
     /* 获取RING BUFFER的内容 */
     ulRealLen = TAF_SDC_GetErrLogRingBufContent(pbuffer, ulBufUseLen);
@@ -2295,18 +2296,37 @@ VOS_VOID TAF_MTA_RcvAcpuOmErrLogRptReq(
         return;
     }
 
+    /* 将缓冲区溢出次数信息追加在RingBuf后面 */
+    NAS_COMM_BULID_ERRLOG_HEADER_INFO(&stNasErrLogMntnEvent.stHeader,
+                                      VOS_GetModemIDFromPid(UEPS_PID_MTA),
+                                      NAS_ERR_LOG_ALM_MNTN,
+                                      NAS_GetErrLogAlmLevel(NAS_ERR_LOG_ALM_MNTN),
+                                      VOS_GetSlice(),
+                                      (sizeof(NAS_ERR_LOG_MNTN_EVENT_STRU) - sizeof(OM_ERR_LOG_HEADER_STRU)));
+
+    stNasErrLogMntnEvent.ulCount = TAF_SDC_GetErrlogOverflowCnt();
+
+    PS_MEM_CPY(pbuffer + ulBufUseLen, &stNasErrLogMntnEvent, sizeof(stNasErrLogMntnEvent));
+
     /* 获取完了后需要将RINGBUFFER清空 */
     TAF_SDC_CleanErrLogRingBuf();
 
+    /* 重置溢出计数 */
+    TAF_SDC_SetErrlogOverflowCnt(0);
+
+    /* 可维可测BUF溢出的勾包 */
+    NAS_COM_MntnPutRingbuf(NAS_ERR_LOG_ALM_MNTN,
+                           UEPS_PID_MTA,
+                           (VOS_UINT8 *)&stNasErrLogMntnEvent,
+                           sizeof(stNasErrLogMntnEvent));
+
     /* 发送ID_OM_ERR_LOG_REPORT_CNF消息给ACPU OM */
-    TAF_MTA_SndAcpuOmErrLogRptCnf(pbuffer, ulBufUseLen);
+    TAF_MTA_SndAcpuOmErrLogRptCnf(pbuffer, ulTotalLen);
 
     PS_MEM_FREE(UEPS_PID_MTA, pbuffer);
 
     return;
 }
-
-
 VOS_VOID TAF_MTA_RcvAcpuOmErrLogCtrlInd(
     VOS_VOID                           *pMsg
 )
@@ -2496,6 +2516,178 @@ VOS_VOID TAF_MTA_RcvLrrcDpdtValueQryCnf(VOS_VOID *pMsg)
 }
 #endif
 
+
+VOS_UINT32 TAF_MTA_SndGasSetFreqLockReq(
+    AT_MTA_SET_GSM_FREQLOCK_REQ_STRU   *pstSetGFreqLockReq
+)
+{
+    MTA_GRR_FREQLOCK_SET_REQ_STRU      *pstSetGFreqReq = VOS_NULL_PTR;
+    VOS_UINT32                          ulLength;
+
+    /* 申请消息结构内存 */
+    ulLength              = sizeof(MTA_GRR_FREQLOCK_SET_REQ_STRU) - VOS_MSG_HEAD_LENGTH;
+    pstSetGFreqReq        = (MTA_GRR_FREQLOCK_SET_REQ_STRU *)PS_ALLOC_MSG(UEPS_PID_MTA, ulLength);
+    if (VOS_NULL_PTR == pstSetGFreqReq)
+    {
+        MTA_ERROR_LOG("TAF_MTA_SndGasSetFreqLockReq: Alloc msg fail!");
+        return VOS_ERR;
+    }
+
+    pstSetGFreqReq->stMsgHeader.ulReceiverPid   = UEPS_PID_GAS;
+    pstSetGFreqReq->stMsgHeader.ulMsgName       = ID_MTA_GRR_FREQLOCK_SET_REQ;
+    pstSetGFreqReq->enLockFlg                   = pstSetGFreqLockReq->enableFlag;
+    pstSetGFreqReq->usFreq                      = pstSetGFreqLockReq->usFreq;
+    pstSetGFreqReq->aucReserved[0]              = 0;
+    pstSetGFreqReq->aucReserved[1]              = 0;
+    pstSetGFreqReq->aucReserved[2]              = 0;
+    pstSetGFreqReq->enBand                      = (MTA_RRC_GSM_BAND_ENUM_UINT16)pstSetGFreqLockReq->enBand;
+
+    /* 发送消息到AS */
+    if (VOS_OK != PS_SEND_MSG(UEPS_PID_MTA, pstSetGFreqReq))
+    {
+        MTA_ERROR_LOG("TAF_MTA_SndGasSetFreqLockReq: Send msg fail!");
+        return VOS_ERR;
+    }
+
+    return VOS_OK;
+}
+
+
+VOS_VOID TAF_MTA_RcvAtSetGFreqLockReq(
+    VOS_VOID                           *pMsg
+)
+{
+    AT_MTA_MSG_STRU                    *pstSetReq           = VOS_NULL_PTR;
+    AT_MTA_SET_GSM_FREQLOCK_REQ_STRU   *pstSetGFreqLockReq  = VOS_NULL_PTR;
+    MTA_AT_SET_GSM_FREQLOCK_CNF_STRU    stSetGFreqLockCnf;
+    VOS_UINT32                          ulResult;
+
+    pstSetReq                   = (AT_MTA_MSG_STRU *)pMsg;
+    pstSetGFreqLockReq          = (AT_MTA_SET_GSM_FREQLOCK_REQ_STRU *)(pstSetReq->aucContent);
+    stSetGFreqLockCnf.enResult  = MTA_AT_RESULT_ERROR;
+
+    /* 如果当前定时器已启动，则返回失败 */
+    if (TAF_MTA_TIMER_STATUS_RUNING == TAF_MTA_GetTimerStatus(TI_TAF_MTA_WAIT_SET_GSM_FREQLOCK_CNF))
+    {
+        TAF_MTA_SndAtMsg(&pstSetReq->stAppCtrl,
+                         ID_MTA_AT_SET_GSM_FREQLOCK_CNF,
+                         sizeof(stSetGFreqLockCnf),
+                         (VOS_UINT8*)&stSetGFreqLockCnf);
+        return;
+    }
+
+    ulResult = TAF_MTA_SndGasSetFreqLockReq(pstSetGFreqLockReq);
+
+    if (VOS_OK != ulResult)
+    {
+        /* 消息发送失败，给at回复失败*/
+        TAF_MTA_SndAtMsg(&pstSetReq->stAppCtrl,
+                         ID_MTA_AT_SET_GSM_FREQLOCK_CNF,
+                         sizeof(stSetGFreqLockCnf),
+                         (VOS_UINT8*)&stSetGFreqLockCnf);
+        return;
+    }
+
+    /* 启动保护定时器 */
+    TAF_MTA_StartTimer(TI_TAF_MTA_WAIT_SET_GSM_FREQLOCK_CNF,
+                       TI_TAF_MTA_WAIT_SET_GSM_FREQLOCK_CNF_TIMER_LEN);
+
+    /* 添加消息进等待队列 */
+    TAF_MTA_SaveItemInCmdBufferQueue(TI_TAF_MTA_WAIT_SET_GSM_FREQLOCK_CNF,
+                                    (VOS_UINT8*)&pstSetReq->stAppCtrl,
+                                     sizeof(AT_APPCTRL_STRU));
+
+    return;
+}
+
+
+VOS_VOID TAF_MTA_RcvGasSetFreqLockCnf(
+    VOS_VOID                           *pMsg
+)
+{
+    TAF_MTA_CMD_BUFFER_STRU            *pstCmdBuf       = VOS_NULL_PTR;
+    AT_APPCTRL_STRU                    *pstAppCtrl      = VOS_NULL_PTR;
+    GRR_MTA_FREQLOCK_SET_CNF_STRU      *pstSetCnf       = VOS_NULL_PTR;
+    MTA_AT_SET_GSM_FREQLOCK_CNF_STRU    stMtaAtSetCnf;
+
+    /* 初始化消息变量 */
+    stMtaAtSetCnf.enResult = MTA_AT_RESULT_ERROR;
+
+    /* 判断定时器是否运行 */
+    if (TAF_MTA_TIMER_STATUS_STOP == TAF_MTA_GetTimerStatus(TI_TAF_MTA_WAIT_SET_GSM_FREQLOCK_CNF))
+    {
+        MTA_WARNING_LOG("TAF_MTA_RcvGasSetFreqLockCnf:Timer was already stop!");
+        return;
+    }
+
+    /* 停止保护定时器 */
+    TAF_MTA_StopTimer(TI_TAF_MTA_WAIT_SET_GSM_FREQLOCK_CNF);
+
+    /* 获取当前定时器对应的消息队列 */
+    pstCmdBuf = TAF_MTA_GetItemFromCmdBufferQueue(TI_TAF_MTA_WAIT_SET_GSM_FREQLOCK_CNF);
+    if (VOS_NULL_PTR == pstCmdBuf)
+    {
+        MTA_WARNING_LOG("TAF_MTA_RcvGasSetFreqLockCnf: get command buffer failed!");
+        return;
+    }
+
+    /* 取出之前保存的锁频消息 */
+    pstAppCtrl = (AT_APPCTRL_STRU *)pstCmdBuf->pucMsgInfo;
+
+    /* 获取设置结果，上报AT结果 */
+    pstSetCnf    = (GRR_MTA_FREQLOCK_SET_CNF_STRU *)pMsg;
+
+    if (MTA_RRC_RESULT_NO_ERROR == pstSetCnf->enResult)
+    {
+        stMtaAtSetCnf.enResult = MTA_AT_RESULT_NO_ERROR;
+    }
+
+    /* 给at回消息 */
+    TAF_MTA_SndAtMsg((AT_APPCTRL_STRU *)pstAppCtrl,
+                     ID_MTA_AT_SET_GSM_FREQLOCK_CNF,
+                     sizeof(stMtaAtSetCnf),
+                     (VOS_UINT8*)&stMtaAtSetCnf);
+
+    /* 从等待队列中删除消息 */
+    TAF_MTA_DelItemInCmdBufferQueue(TI_TAF_MTA_WAIT_SET_GSM_FREQLOCK_CNF);
+    return;
+}
+
+
+VOS_VOID TAF_MTA_RcvTiWaitGasSetGFreqLockExpired(
+    VOS_VOID                           *pMsg
+)
+{
+    TAF_MTA_CMD_BUFFER_STRU            *pstCmdBuf       = VOS_NULL_PTR;
+    AT_APPCTRL_STRU                    *pstAppCtrl      = VOS_NULL_PTR;
+    MTA_AT_SET_GSM_FREQLOCK_CNF_STRU    stSetCnf;
+
+    /* 获取当前定时器对应的消息队列 */
+    pstCmdBuf = TAF_MTA_GetItemFromCmdBufferQueue(TI_TAF_MTA_WAIT_SET_GSM_FREQLOCK_CNF);
+
+    if (VOS_NULL_PTR == pstCmdBuf)
+    {
+        return;
+    }
+
+    pstAppCtrl = (AT_APPCTRL_STRU *)pstCmdBuf->pucMsgInfo;
+
+    stSetCnf.enResult = MTA_AT_RESULT_ERROR;
+
+    /* 上报给AT模块查询错误 */
+    TAF_MTA_SndAtMsg((AT_APPCTRL_STRU *)pstAppCtrl,
+                     ID_MTA_AT_SET_GSM_FREQLOCK_CNF,
+                     sizeof(stSetCnf),
+                     (VOS_UINT8*)&stSetCnf);
+
+    /* 从等待队列中删除消息 */
+    TAF_MTA_DelItemInCmdBufferQueue(TI_TAF_MTA_WAIT_SET_GSM_FREQLOCK_CNF);
+
+    return;
+}
+
+
+/*lint +e958*/
 
 #ifdef __cplusplus
 #if __cplusplus

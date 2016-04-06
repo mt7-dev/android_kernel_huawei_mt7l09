@@ -360,6 +360,7 @@ extern "C" {
 
 #define IMS_NIC_DRV_ETH_INIT(name, unit)        ipcom_drv_eth_init(name, unit, IP_NULL)
 
+#define IMS_TCPIP_CLOSE_IPV6_BAD()              ipcom_sysvar_set("ipnet.inet6.DupAddrDetectTransmits", "0", IPCOM_SYSVAR_FLAG_OVERWRITE)
 
 /*****************************************************************************
   3 Ã¶¾Ù¶¨Òå

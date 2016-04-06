@@ -25,6 +25,7 @@
 #include "AtCmdMsgProc.h"
 #include "TafStdlib.h"
 
+#include "at_common.h"
 
 #ifdef  __cplusplus
   #if  __cplusplus
@@ -526,6 +527,13 @@ const AT_STRING_TYPE_STRU gastAtStringTab[]=
     {AT_STRING_CIREPH, (VOS_UINT8 *)"+CIREPH"},
     {AT_STRING_CIREPI, (VOS_UINT8 *)"+CIREPI"},
     {AT_STRING_CIREGU, (VOS_UINT8 *)"+CIREGU"},
+
+    {AT_STRING_CALL_MODIFY_IND, (VOS_UINT8 *)"^CALLMODIFYIND:"},
+    {AT_STRING_CALL_MODIFY_BEG, (VOS_UINT8 *)"^CALLMODIFYBEG:"},
+    {AT_STRING_CALL_MODIFY_END, (VOS_UINT8 *)"^CALLMODIFYEND:"},
+
+    {AT_STRING_ECONFSTATE, (VOS_UINT8 *)"^ECONFSTATE:"},
+
 #endif
 
     {AT_STRING_BUTT,(TAF_UINT8*)"\"\""},
@@ -587,7 +595,11 @@ VOS_UINT8                               g_ucDtrDownFlag         = VOS_FALSE;    
                                                                                 直接清除返回*/
 
 /*保存各物理端口对应的接收数据函数，以AT_PHY_PORT_ENUM为索引。*/
+#if (FEATURE_OFF == FEATURE_MERGE_OM_CHAN)
 CPM_FUNC                                g_apAtPortDataRcvFuncTab[AT_PHY_PORT_MAX]
+#else
+CPM_RCV_FUNC                            g_apAtPortDataRcvFuncTab[AT_PHY_PORT_MAX]
+#endif
                                                 = {VOS_NULL_PTR, VOS_NULL_PTR, VOS_NULL_PTR, VOS_NULL_PTR};
 
 
@@ -622,7 +634,7 @@ AT_SP_WORD_CTX_STRU                     g_stSpWordCtx = {0};
 
 *****************************************************************************/
 MN_OPERATION_ID_T  At_GetOpId(
-    TAF_VOID
+    VOS_VOID
 )
 {
     g_OpId++;
@@ -677,7 +689,7 @@ TAF_UINT32 At_ClientIdToUserId (
 TAF_VOID At_SendReportMsg(TAF_UINT8 ucType,TAF_UINT8* pData,TAF_UINT16 usLen)
 {
     MN_AT_IND_EVT_STRU                  *pstEvent;
-    TAF_UINT32                          ulTmpAddr;
+    VOS_UINT_PTR                         ulTmpAddr;
     /* 增加自定义的ITEM，共4个字节 */
 
     pstEvent = (MN_AT_IND_EVT_STRU *)PS_ALLOC_MSG(WUEPS_PID_AT, (usLen + MN_AT_INTERFACE_MSG_HEADER_LEN));
@@ -694,8 +706,8 @@ TAF_VOID At_SendReportMsg(TAF_UINT8 ucType,TAF_UINT8* pData,TAF_UINT16 usLen)
     pstEvent->usMsgName         = ucType;
     pstEvent->usLen             = usLen;
 
-    ulTmpAddr = (TAF_UINT32)pstEvent->aucContent;
-    PS_MEM_CPY((TAF_VOID *)ulTmpAddr, pData, usLen);
+    ulTmpAddr = (VOS_UINT_PTR)pstEvent->aucContent;
+    PS_MEM_CPY((VOS_VOID *)ulTmpAddr, pData, usLen);
 
     /*发送消息到AT_PID;*/
     if ( 0 != PS_SEND_MSG( WUEPS_PID_AT, pstEvent ) )
@@ -975,7 +987,7 @@ MN_MSG_SEND_PARM_STRU * At_GetDirectSendMsgMem(
     修改内容   : 新生成函数
 *****************************************************************************/
 MN_MSG_TS_DATA_INFO_STRU * At_GetMsgMem(
-    TAF_VOID
+    VOS_VOID
 )
 {
     PS_MEM_SET(&g_stAtMsgTsDataInfo, 0x00, sizeof(g_stAtMsgTsDataInfo));
@@ -1041,7 +1053,7 @@ MN_MSG_WRITE_PARM_STRU * At_GetWriteMsgMem(
     修改内容   : 新生成函数
 *****************************************************************************/
 MN_MSG_SEND_ACK_PARM_STRU * At_GetAckMsgMem(
-    TAF_VOID
+    VOS_VOID
 )
 {
     PS_MEM_SET(&g_stAtMsgAckParm, 0x00, sizeof(g_stAtMsgAckParm));
@@ -2122,7 +2134,7 @@ VOS_UINT32 At_ProcSimLockPara(
     }
     else
     {
-        PS_MEM_SET(pstParalist, 0x00, (ulParaCnt * sizeof(AT_PARSE_PARA_TYPE_STRU)));
+        PS_MEM_SET(pstParalist, 0x00, (VOS_SIZE_T)(ulParaCnt * sizeof(AT_PARSE_PARA_TYPE_STRU)));
     }
 
     /* 将 At^simlock的参数解析到 At格式的参数列表中 */
@@ -2360,7 +2372,7 @@ VOS_UINT32 AT_HandleSimLockDataWriteCmd(
     }
 
     /* 保存参数 */
-    PS_MEM_CPY(pstSimlockDataWrite->aucCategoryData, (pucData + usPos), (usLen - usPos));
+    PS_MEM_CPY(pstSimlockDataWrite->aucCategoryData, (pucData + usPos), (VOS_SIZE_T)(usLen - usPos));
 
     /* 设置命令类型，操作类型和参数个数 */
     g_stATParseCmd.ucCmdOptType = AT_CMD_OPT_SET_PARA_CMD;
@@ -2811,7 +2823,7 @@ VOS_VOID At_InterTimerOutProc(
     VOS_UINT8                           ucIndex
 )
 {
-    AT_RRETURN_CODE_ENUM                ulResult;
+    AT_RRETURN_CODE_ENUM_UINT32         ulResult;
 
     ulResult = AT_FAILURE;
 
@@ -3005,6 +3017,10 @@ VOS_VOID AT_RcvTiS0Expired(
 
     pstCcCtx = AT_GetModemCcCtxAddrFromClientId(ucClientIndex);
 
+    PS_MEM_SET(&stCallMgmtParam, 0, sizeof(MN_CALL_SUPS_PARAM_STRU));
+
+    /* 目前只有voice支持自动接听功能，calltype 固定填为voice */
+    stCallMgmtParam.enCallType    = MN_CALL_TYPE_VOICE;
     stCallMgmtParam.enCallSupsCmd = MN_CALL_SUPS_CMD_HOLD_ACT_ACPT_OTH;
 
     stCallMgmtParam.callId = (MN_CALL_ID_T)pstMsg->ulPara;
@@ -3141,6 +3157,7 @@ VOS_INT32 At_sprintf(VOS_INT32 MaxLength,VOS_CHAR *pHeadAddr,VOS_CHAR *pCurrAddr
     VOS_UINT32 ulNum = 0;
     VOS_INT32 lNumSrc = 0;      /* 原始数据 */
     VOS_INT32 slNum = 0;        /* 转换后的数据 */
+    VOS_UINT32 ulSignFlag = VOS_FALSE;
     VOS_CHAR *pData = NULL;
     VOS_CHAR *sc = NULL;
     VOS_CHAR *s = NULL;
@@ -3161,6 +3178,13 @@ VOS_INT32 At_sprintf(VOS_INT32 MaxLength,VOS_CHAR *pHeadAddr,VOS_CHAR *pCurrAddr
             ulLen2 = 0;
 
             pData++;
+
+            if('+' == (*pData) && 'd' == *(pData + 1))
+            {
+                pData++;
+                ulSignFlag = VOS_TRUE;
+                ulLen1 = 0;     /* 有符号整型打印符号 */
+            }
 
             if('0' == (*pData))
             {
@@ -3216,9 +3240,10 @@ VOS_INT32 At_sprintf(VOS_INT32 MaxLength,VOS_CHAR *pHeadAddr,VOS_CHAR *pCurrAddr
                 {
                     slLength += (VOS_INT32)(ulLen1- ulLen2);
                 }
-                else if(lNumSrc < 0)    /* 如果ulLen2 >= ulLen1,且lNumSrc<0，则要加上负号的一个空间 */
+                else if(lNumSrc < 0 || ulSignFlag == VOS_TRUE)    /* 如果ulLen2 >= ulLen1,且lNumSrc<0，则要加上负号的一个空间 */
                 {
                     slLength++;
+                    ulSignFlag = VOS_FALSE;
                 }
                 else
                 {
@@ -3295,9 +3320,6 @@ VOS_INT32 At_sprintf(VOS_INT32 MaxLength,VOS_CHAR *pHeadAddr,VOS_CHAR *pCurrAddr
 }
 
 #endif
-
-
-
 TAF_INT32 At_sprintfUnsigned(TAF_INT32 MaxLength,TAF_CHAR *headaddr,TAF_CHAR *curraddr,const TAF_CHAR *fmt,...)
 {
     TAF_INT32  Length = 0;
@@ -3517,7 +3539,11 @@ VOS_UINT32 At_UnlockSimLock(
     return VOS_ERR;
 
 }
+#if (FEATURE_OFF == FEATURE_MERGE_OM_CHAN)
 VOS_VOID AT_RcvFuncReg(AT_PHY_PORT_ENUM_UINT32 ulPhyPort, CPM_FUNC pRcvFunc)
+#else
+VOS_VOID AT_RcvFuncReg(AT_PHY_PORT_ENUM_UINT32 ulPhyPort, CPM_RCV_FUNC pRcvFunc)
+#endif
 {
     /*check para*/
     if (AT_PORT_BUTT <= ulPhyPort)

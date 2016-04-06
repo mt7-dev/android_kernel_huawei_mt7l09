@@ -26,13 +26,11 @@
 #include <linux/tty_flip.h>
 #include <linux/slab.h>
 #include <linux/export.h>
-#ifdef CONFIG_K3V3_BALONG_MODEM
-#include <linux/console.h>
-#endif
 
 #include <linux/module.h>
 
 #include "u_serial.h"
+/*#include "drv_usb_shell.h" */ /* added by hisi-balong */
 
 
 /*
@@ -60,11 +58,8 @@
  * needs a simple byte stream interface for some messaging protocol that
  * is managed in userspace ... OBEX, PTP, and MTP have been mentioned.
  */
-#ifdef CONFIG_K3V3_BALONG_MODEM
-#define PREFIX	ACM_CONSOLE_NAME
-#else
+
 #define PREFIX	"ttyGS"
-#endif
 
 /*
  * gserial is the lifecycle interface, used by USB functions
@@ -88,10 +83,9 @@
  * consider it a NOP.  A third layer is provided by the TTY code.
  */
 #define QUEUE_SIZE		16
+#define ONCE_WRITE_BUF_SIZE		8192		/* once max TX*/
 #define WRITE_BUF_SIZE		8192		/* TX only */
-#ifdef CONFIG_K3V3_BALONG_MODEM
-#define READ_BUF_SIZE       1536
-#endif
+
 
 /* circular buffer */
 struct gs_buf {
@@ -129,18 +123,6 @@ struct gs_port {
 
 	/* REVISIT this state ... */
 	struct usb_cdc_line_coding port_line_coding;	/* 8-N-1 etc */
-#ifdef CONFIG_K3V3_BALONG_MODEM
-	unsigned line_state_on;
-
-	unsigned stat_write_no_mem;
-	unsigned stat_write_not_conn;
-	unsigned stat_con_write_no_mem;
-	unsigned stat_con_write_not_conn;
-	unsigned stat_port_is_connect;
-	unsigned stat_cannt_push;
-	char* in_name;
-	char* out_name;
-#endif
 };
 
 /* increase N_PORTS if you need more */
@@ -151,9 +133,6 @@ static struct portmaster {
 } ports[MAX_U_SERIAL_PORTS];
 
 #define GS_CLOSE_TIMEOUT		15		/* seconds */
-#ifdef CONFIG_K3V3_BALONG_MODEM
-extern struct acm_name_type_tbl g_acm_tty_type_table[MAX_U_SERIAL_PORTS];
-#endif
 
 
 #ifdef VERBOSE_DEBUG
@@ -166,9 +145,6 @@ extern struct acm_name_type_tbl g_acm_tty_type_table[MAX_U_SERIAL_PORTS];
 #define pr_vdebug(fmt, arg...) \
 	({ if (0) pr_debug(fmt, ##arg); })
 #endif /* pr_vdebug */
-#endif
-#ifdef CONFIG_K3V3_BALONG_MODEM
-static int gs_acm_is_console_enable(void);
 #endif
 
 /*-------------------------------------------------------------------------*/
@@ -328,22 +304,11 @@ gs_alloc_req(struct usb_ep *ep, unsigned len, gfp_t kmalloc_flags)
 
 	if (req != NULL) {
 		req->length = len;
-#ifdef CONFIG_K3V3_BALONG_MODEM
-		/* if len is 0, alloc the empty req */
-		if (0 == len) {
-			req->buf = NULL;
-			//req->dma = (dma_addr_t)NULL;
-		}
-		else {
-#endif
 		req->buf = kmalloc(len, kmalloc_flags);
 		if (req->buf == NULL) {
 			usb_ep_free_request(ep, req);
 			return NULL;
 		}
-#ifdef CONFIG_K3V3_BALONG_MODEM
-		}
-#endif
 	}
 
 	return req;
@@ -357,9 +322,6 @@ EXPORT_SYMBOL_GPL(gs_alloc_req);
  */
 void gs_free_req(struct usb_ep *ep, struct usb_request *req)
 {
-#ifdef CONFIG_K3V3_BALONG_MODEM
-	if (req->buf)
-#endif
 	kfree(req->buf);
 	usb_ep_free_request(ep, req);
 }
@@ -417,7 +379,7 @@ __acquires(&port->port_lock)
 			break;
 
 		req = list_entry(pool->next, struct usb_request, list);
-		len = gs_send_packet(port, req->buf, in->maxpacket);
+		len = gs_send_packet(port, req->buf, ONCE_WRITE_BUF_SIZE);
 		if (len == 0) {
 			wake_up_interruptible(&port->drain_wait);
 			break;
@@ -426,11 +388,8 @@ __acquires(&port->port_lock)
 
 		req->length = len;
 		list_del(&req->list);
-#ifdef CONFIG_K3V3_BALONG_MODEM
-		req->zero = (len % in->maxpacket) ? (0) : (1);
-#else
+
 		req->zero = (gs_buf_data_avail(&port->port_write_buf) == 0);
-#endif
 
 		pr_vdebug(PREFIX "%d: tx len=%d, 0x%02x 0x%02x 0x%02x ...\n",
 				port->port_num, len, *((u8 *)req->buf),
@@ -448,11 +407,20 @@ __acquires(&port->port_lock)
 		spin_lock(&port->port_lock);
 
 		if (status) {
-			pr_debug("%s: %s %s err %d\n",
+			printk(KERN_INFO "[gs_start_tx_printk]%s: %s %s err %d\n",
 					__func__, "queue", in->name, status);
 			list_add(&req->list, pool);
 			break;
 		}
+
+#ifndef FINAL_RELEASE_MODE
+        if(1 == port->port_num)
+        {
+             printk(KERN_INFO "[gs_start_tx_printk]%d:len=%d,%c%c%c%c%c%c ...\n",
+                    port->port_num, req->length,*((u8 *)req->buf),*((u8 *)req->buf+1),
+                    *((u8 *)req->buf+2),*((u8 *)req->buf+3),*((u8 *)req->buf+4),*((u8 *)req->buf+5));
+        }
+#endif
 
 		port->write_started++;
 
@@ -503,13 +471,21 @@ __acquires(&port->port_lock)
 		spin_lock(&port->port_lock);
 
 		if (status) {
-			pr_debug("%s: %s %s err %d\n",
+			printk(KERN_INFO "[gs_start_rx]%s: %s %s err %d\n",
 					__func__, "queue", out->name, status);
 			list_add(&req->list, pool);
 			break;
 		}
 		port->read_started++;
-
+#ifndef FINAL_RELEASE_MODE
+        if(1 == port->port_num)
+        {
+             printk(KERN_INFO "[gs_start_rx]%d:len=%d,%c%c%c%c%c%c%c%c ...\n",
+                    port->port_num, req->length, *((u8 *)req->buf),*((u8 *)req->buf+1)
+                    ,*((u8 *)req->buf+2),*((u8 *)req->buf+3),*((u8 *)req->buf+4)
+                    ,*((u8 *)req->buf+5),*((u8 *)req->buf+6),*((u8 *)req->buf+7));
+        }
+#endif
 		/* abort immediately after disconnect */
 		if (!port->port_usb)
 			break;
@@ -584,9 +560,6 @@ static void gs_rx_push(unsigned long _port)
 			if (count != size) {
 				/* stop pushing; TTY layer can't handle more */
 				port->n_read += count;
-#ifdef CONFIG_K3V3_BALONG_MODEM
-				port->stat_cannt_push++;
-#endif
 				pr_vdebug(PREFIX "%d: rx block %d/%d\n",
 						port->port_num,
 						count, req->actual);
@@ -637,18 +610,7 @@ static void gs_read_complete(struct usb_ep *ep, struct usb_request *req)
 
 	/* Queue all received data until the tty layer is ready for it. */
 	spin_lock(&port->port_lock);
-#ifdef CONFIG_K3V3_BALONG_MODEM
-	/* we start rx in connect, so if usr not open the dev, drop the rx data */
-	if (!port->port.count) {
-		list_add_tail(&req->list, &port->read_pool);
-		port->read_started--;
-	}
-	else {
-#endif
 	list_add_tail(&req->list, &port->read_queue);
-#ifdef CONFIG_K3V3_BALONG_MODEM
-	}
-#endif
 	tasklet_schedule(&port->push);
 	spin_unlock(&port->port_lock);
 }
@@ -697,28 +659,17 @@ static void gs_free_requests(struct usb_ep *ep, struct list_head *head,
 
 static int gs_alloc_requests(struct usb_ep *ep, struct list_head *head,
 		void (*fn)(struct usb_ep *, struct usb_request *),
-#ifdef CONFIG_K3V3_BALONG_MODEM
-		int *allocated, bool is_in)
-#else
 		int *allocated)
-#endif
 {
 	int			i;
 	struct usb_request	*req;
 	int n = allocated ? QUEUE_SIZE - *allocated : QUEUE_SIZE;
-#ifdef CONFIG_K3V3_BALONG_MODEM
-	unsigned alloc_size = is_in ? ep->maxpacket : READ_BUF_SIZE;
-#endif
 	/* Pre-allocate up to QUEUE_SIZE transfers, but if we can't
 	 * do quite that many this time, don't fail ... we just won't
 	 * be as speedy as we might otherwise be.
 	 */
 	for (i = 0; i < n; i++) {
-#ifdef CONFIG_K3V3_BALONG_MODEM
-		req = gs_alloc_req(ep, alloc_size, GFP_ATOMIC);
-#else
-		req = gs_alloc_req(ep, ep->maxpacket, GFP_ATOMIC);
-#endif
+		req = gs_alloc_req(ep, ONCE_WRITE_BUF_SIZE, GFP_ATOMIC);
 		if (!req)
 			return list_empty(head) ? -ENOMEM : 0;
 		req->complete = fn;
@@ -744,7 +695,7 @@ static int gs_start_io(struct gs_port *port)
 	struct usb_ep		*ep = port->port_usb->out;
 	int			status;
 	unsigned		started;
-
+       printk(KERN_INFO "Enter gs_start_io!\n");
 	/* Allocate RX and TX I/O buffers.  We can't easily do this much
 	 * earlier (with GFP_KERNEL) because the requests are coupled to
 	 * endpoints, as are the packet sizes we'll be using.  Different
@@ -752,22 +703,18 @@ static int gs_start_io(struct gs_port *port)
 	 * and high speed vs full speed changes packet sizes too.
 	 */
 	status = gs_alloc_requests(ep, head, gs_read_complete,
-#ifdef CONFIG_K3V3_BALONG_MODEM
-		&port->read_allocated, false);
-#else
 		&port->read_allocated);
-#endif
 	if (status)
+	{
+		printk(KERN_INFO "gs_start_io: status is: %d!\n", status);
 		return status;
+	}
 
 	status = gs_alloc_requests(port->port_usb->in, &port->write_pool,
-#ifdef CONFIG_K3V3_BALONG_MODEM
-			gs_write_complete, &port->write_allocated, true);
-#else
 			gs_write_complete, &port->write_allocated);
-#endif
 	if (status) {
 		gs_free_requests(ep, head, &port->read_allocated);
+		printk(KERN_INFO "gs_start_io: status is: %d!\n", status);
 		return status;
 	}
 
@@ -777,9 +724,6 @@ static int gs_start_io(struct gs_port *port)
 
 	/* unblock any pending writes into our circular buffer */
 	if (started) {
-#ifdef CONFIG_K3V3_BALONG_MODEM
-		if (port->port.tty)
-#endif
 		tty_wakeup(port->port.tty);
 	} else {
 		gs_free_requests(ep, head, &port->read_allocated);
@@ -787,7 +731,7 @@ static int gs_start_io(struct gs_port *port)
 			&port->write_allocated);
 		status = -EIO;
 	}
-
+       printk(KERN_INFO "Exit gs_start_io!\n");
 	return status;
 }
 
@@ -805,7 +749,7 @@ static int gs_open(struct tty_struct *tty, struct file *file)
 	int		port_num = tty->index;
 	struct gs_port	*port;
 	int		status;
-
+       printk(KERN_INFO "Enter gs_open!\n");
 	do {
 		mutex_lock(&ports[port_num].lock);
 		port = ports[port_num].port;
@@ -834,8 +778,11 @@ static int gs_open(struct tty_struct *tty, struct file *file)
 
 		switch (status) {
 		default:
+		{
+			printk(KERN_INFO "return default fix!\n");
 			/* fully handled */
 			return status;
+		}
 		case -EAGAIN:
 			/* must do the work */
 			break;
@@ -860,8 +807,10 @@ static int gs_open(struct tty_struct *tty, struct file *file)
 		spin_lock_irq(&port->port_lock);
 
 		if (status) {
-			pr_debug("gs_open: ttyGS%d (%p,%p) no buffer\n",
+			printk(KERN_INFO "gs_open: ttyGS%d (%p,%p) no buffer\n",
 				port->port_num, tty, file);
+			//pr_debug("gs_open: ttyGS%d (%p,%p) no buffer\n",
+			//	port->port_num, tty, file);
 			port->openclose = false;
 			goto exit_unlock_port;
 		}
@@ -881,18 +830,17 @@ static int gs_open(struct tty_struct *tty, struct file *file)
 
 	/* if connected, start the I/O stream */
 	if (port->port_usb) {
-#if ACM_TTY_SUPPORT_NOTIFY
 		struct gserial	*gser = port->port_usb;
-
-		pr_debug("gs_open: start ttyGS%d\n", port->port_num);
+		printk(KERN_INFO "gs_open: start ttyGS%d\n", port->port_num);
+		//pr_debug("gs_open: start ttyGS%d\n", port->port_num);
+		gs_start_io(port);
 
 		if (gser->connect)
 			gser->connect(gser);
-#endif
-		gs_start_io(port);/*K3V3 balong modem change the place*/
 	}
 
-	pr_debug("gs_open: ttyGS%d (%p,%p)\n", port->port_num, tty, file);
+	printk(KERN_INFO "gs_open: ttyGS%d (%p,%p)\n", port->port_num, tty, file);
+	//pr_debug("gs_open: ttyGS%d (%p,%p)\n", port->port_num, tty, file);
 
 	status = 0;
 
@@ -937,10 +885,8 @@ static void gs_close(struct tty_struct *tty, struct file *file)
 	port->port.count = 0;
 
 	gser = port->port_usb;
-#if ACM_TTY_SUPPORT_NOTIFY
 	if (gser && gser->disconnect)
 		gser->disconnect(gser);
-#endif
 
 	/* wait for circular write buffer to drain, disconnect, or at
 	 * most GS_CLOSE_TIMEOUT seconds; then discard the rest
@@ -986,27 +932,6 @@ static int gs_write(struct tty_struct *tty, const unsigned char *buf, int count)
 			port->port_num, tty, count);
 
 	spin_lock_irqsave(&port->port_lock, flags);
-#ifdef CONFIG_K3V3_BALONG_MODEM
-	if (unlikely(!port->port.count)) {
-		spin_unlock_irqrestore(&port->port_lock, flags);
-		return -EINVAL;
-	}
-	if (unlikely(!port->port_usb)) {
-		port->stat_write_not_conn++;
-		spin_unlock_irqrestore(&port->port_lock, flags);
-		return -ESHUTDOWN;
-	}
-	/*
-	 * we don't have enough room for some data
-	 * may be the host don't start read, so drop the data.
-	 * otherwise the printed thread may pending forever.
-	 */
-	if (!port->line_state_on && list_empty(&port->write_pool)) {
-		port->stat_write_no_mem++;
-		spin_unlock_irqrestore(&port->port_lock, flags);
-		return -ENOMEM;
-	}
-#endif
 	if (count)
 		count = gs_buf_put(&port->port_write_buf, buf, count);
 	/* treat count == 0 as flush_chars() */
@@ -1277,42 +1202,42 @@ int gserial_connect(struct gserial *gser, u8 port_num)
 	struct gs_port	*port;
 	unsigned long	flags;
 	int		status;
-
+       printk(KERN_INFO "Enter gserial_connect!\n");
 	if (port_num >= MAX_U_SERIAL_PORTS)
 		return -ENXIO;
 
 	port = ports[port_num].port;
 	if (!port) {
-		pr_err("serial line %d not allocated.\n", port_num);
+		printk(KERN_INFO "serial line %d not allocated.\n", port_num);
+		//pr_err("serial line %d not allocated.\n", port_num);
 		return -EINVAL;
 	}
 	if (port->port_usb) {
-		pr_err("serial line %d is in use.\n", port_num);
+	    printk(KERN_INFO "serial line %d is in use.\n", port_num);
+		//pr_err("serial line %d is in use.\n", port_num);
 		return -EBUSY;
 	}
 
-#ifdef CONFIG_K3V3_BALONG_MODEM
-	/* mask the not ready interrupt for usb netcard class function driver */
-	gser->out->enable_xfer_in_progress = 1;
-#endif
 	/* activate the endpoints */
 	status = usb_ep_enable(gser->in);
 	if (status < 0)
+	{
+	       printk(KERN_INFO "gserial_connect status is %d\n", status);
 		return status;
+	}
 	gser->in->driver_data = port;
 
 	status = usb_ep_enable(gser->out);
 	if (status < 0)
+	{
+	       printk(KERN_INFO "status is %d\n", status);
 		goto fail_out;
+	}
 	gser->out->driver_data = port;
 
 	/* then tell the tty glue that I/O can work */
 	spin_lock_irqsave(&port->port_lock, flags);
-#ifdef CONFIG_K3V3_BALONG_MODEM
-	gser->ioport = (void*)port;
-#else
 	gser->ioport = port;
-#endif
 	port->port_usb = gser;
 
 	/* REVISIT unclear how best to handle this state...
@@ -1325,33 +1250,24 @@ int gserial_connect(struct gserial *gser, u8 port_num)
 	/* if it's already open, start I/O ... and notify the serial
 	 * protocol about open/close status (connect/disconnect).
 	 */
-	 /*balong modem change gs_start_io() place*/
-	gs_start_io(port);/* usb rx fifo is shared, so must submit rx req at any time */
-#if ACM_TTY_SUPPORT_NOTIFY
 	if (port->port.count) {
-		pr_debug("gserial_connect: start ttyGS%d\n", port->port_num);
+	    printk(KERN_INFO "gserial_connect: start ttyGS%d\n", port->port_num);
+		//pr_debug("gserial_connect: start ttyGS%d\n", port->port_num);
+		gs_start_io(port);
 		if (gser->connect)
 			gser->connect(gser);
 	} else {
 		if (gser->disconnect)
 			gser->disconnect(gser);
 	}
-#endif
 
 	spin_unlock_irqrestore(&port->port_lock, flags);
-#ifdef CONFIG_K3V3_BALONG_MODEM
-	port->in_name = (char*)gser->in->name;
-	port->out_name = (char*)gser->out->name;
-	port->stat_port_is_connect = 1;
-#endif
+       printk(KERN_INFO "Last status is %d\n", status);
 	return status;
 
 fail_out:
 	usb_ep_disable(gser->in);
 	gser->in->driver_data = NULL;
-#ifdef CONFIG_K3V3_BALONG_MODEM
-	port->stat_port_is_connect = 0;
-#endif
 	return status;
 }
 EXPORT_SYMBOL_GPL(gserial_connect);
@@ -1392,9 +1308,11 @@ void gserial_disconnect(struct gserial *gser)
 	/* disable endpoints, aborting down any active I/O */
 	usb_ep_disable(gser->out);
 	gser->out->driver_data = NULL;
+	gser->out->desc = NULL;
 
 	usb_ep_disable(gser->in);
 	gser->in->driver_data = NULL;
+	gser->in->desc = NULL;
 
 	/* finally, free any unused/unusable I/O buffers */
 	spin_lock_irqsave(&port->port_lock, flags);
@@ -1408,104 +1326,15 @@ void gserial_disconnect(struct gserial *gser)
 		port->write_allocated = port->write_started = 0;
 
 	spin_unlock_irqrestore(&port->port_lock, flags);
-#ifdef CONFIG_K3V3_BALONG_MODEM
-	port->stat_port_is_connect = 0;
-#endif
 }
 EXPORT_SYMBOL_GPL(gserial_disconnect);
-#ifdef CONFIG_K3V3_BALONG_MODEM
-int gserial_line_state(struct gserial *gser, u8 port_num, u32 state)
-{
-    struct gs_port	*port;
-
-	if (!gs_tty_driver || port_num >= n_ports)
-		return -ENXIO;
-
-	port = ports[port_num].port;
-	port->line_state_on = (state & U_ACM_CTRL_DTR);
-	return 0;
-}
-
-
-/* implement for usb console dev */
-extern struct console* get_uart_console(void);
-
-static inline int gs_acm_is_console_enable(void)
-{
-	return 0;
-}
-
-
-static void acm_serial_dump_ep_info(struct gs_port *port)
-{
-	char* find;
-	unsigned ep_num;
-
-	if (port->stat_port_is_connect) {
-		pr_emerg("in ep name:\t\t\t <%s>\n", port->in_name);
-		find = strstr(port->in_name, "ep");
-		if (find) {
-			/* skip "ep" */
-			find += 2;
-			ep_num = simple_strtoul(find, NULL, 0);
-			pr_emerg("in ep num:\t\t\t <%d>\n", ep_num * 2 + 1);
-		}
-		pr_emerg("out ep name:\t\t\t <%s>\n", port->out_name);
-		find = strstr(port->out_name, "ep");
-		if (find) {
-			/* skip "ep" */
-			find += 2;
-			ep_num = simple_strtoul(find, NULL, 0);
-			pr_emerg("out ep num:\t\t\t <%d>\n", ep_num * 2);
-		}
-	}
-	else {
-		pr_emerg("the acm dev is not connect\n");
-	}
-}
-
-int acm_serial_dump(int idx)
-{
-	struct gs_port *port;
-
-	if (idx >= ACM_TTY_USED_COUNT) {
-		pr_emerg("serial port num:%d is not valid\n", idx);
-		return -1;
-	}
-	port = ports[ACM_CONSOLE_IDX].port;
-	if (NULL == port) {
-		pr_emerg("serial port not alloc\n");
-		return -1;
-	}
-
-	pr_emerg("serial port is connect:       %s\n", (port->port_usb) ? ("connect") : ("disconnect"));
-	pr_emerg("console tty name:             %s\n", ACM_CONSOLE_NAME);
-	acm_serial_dump_ep_info(port);
-	pr_emerg("open_count:                   %d\n", port->port.count);
-	pr_emerg("line_state_on:                %d\n", port->line_state_on);
-	pr_emerg("port_write_buf buf_buf:       0x%x\n", (unsigned)port->port_write_buf.buf_buf);
-	pr_emerg("port_write_buf buf_get:       0x%x\n", (unsigned)port->port_write_buf.buf_get);
-	pr_emerg("port_write_buf buf_put:       0x%x\n", (unsigned)port->port_write_buf.buf_put);
-	pr_emerg("port_write_buf buf_size:      %d\n", port->port_write_buf.buf_size);
-	pr_emerg("read_started:                 %d\n", port->read_started);
-	pr_emerg("n_read:                       %d\n", port->n_read);
-	pr_emerg("read_allocated:               %d\n", port->read_allocated);
-	pr_emerg("write_started:                %d\n", port->write_started);
-	pr_emerg("write_allocated:              %d\n", port->write_allocated);
-	pr_emerg("stat_con_write_not_conn:      %d\n", port->stat_con_write_not_conn);
-	pr_emerg("stat_con_write_no_mem:        %d\n", port->stat_con_write_no_mem);
-	pr_emerg("stat_write_not_conn:          %d\n", port->stat_write_not_conn);
-	pr_emerg("stat_write_no_mem:            %d\n", port->stat_write_no_mem);
-	pr_emerg("stat_cannt_push:              %d\n", port->stat_cannt_push);
-
-	return 0;
-}
-#endif
 
 static int userial_init(void)
 {
 	unsigned			i;
 	int				status;
+
+    printk(KERN_INFO "%s +\n",__func__);
 
 	gs_tty_driver = alloc_tty_driver(MAX_U_SERIAL_PORTS);
 	if (!gs_tty_driver)
@@ -1545,6 +1374,8 @@ static int userial_init(void)
 			MAX_U_SERIAL_PORTS,
 			(MAX_U_SERIAL_PORTS == 1) ? "" : "s");
 
+    printk(KERN_INFO "%s -\n",__func__);
+
 	return status;
 fail:
 	put_tty_driver(gs_tty_driver);
@@ -1562,3 +1393,51 @@ static void userial_cleanup(void)
 module_exit(userial_cleanup);
 
 MODULE_LICENSE("GPL");
+
+/* added by hisi-balong */
+/**
+ * ashell_console_device() - callback for console device, to return driver
+ * of current console
+ * @cons: contex of current console
+ * @gidx: console index, negtive
+ * Return the console driver .
+ */
+struct tty_driver *ashell_console_device(struct console *cons, int *gidx)
+{
+    if (gidx){
+       *gidx = 0;
+    }
+
+    return gs_tty_driver;
+}
+
+/**
+ * usb_tty_driver_get() - get usb tty device's driver
+ * @void: param null
+ * Return usb tty device's driver .
+ */
+struct tty_driver *usb_tty_driver_get(void)
+{
+    return gs_tty_driver;
+}
+
+/**
+ * usb_tty_port_get() - get usb tty device's port
+ * @handle: tty context
+ * Return usb tty device's port .
+ */
+struct gserial *usb_tty_port_get(void *handle)
+{
+    struct tty_struct *tty = (struct tty_struct *)handle;
+    struct gs_port *port = NULL;
+
+    if (tty) {
+        port = (struct gs_port *)tty->driver_data;
+        if (port) {
+            return (port->port_usb);
+        }
+    }
+
+    return NULL;
+}
+/* added by hisi-balong */

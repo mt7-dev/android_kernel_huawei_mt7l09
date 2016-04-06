@@ -337,7 +337,7 @@ VOS_VOID NAS_STKAPI_EnvelopeRspDataFree(
 
 VOS_UINT32 NAS_STKAPI_EnvelopeDownload(
     VOS_UINT32                          ulSenderPid,
-    VOS_UINT16                          usClientId,
+    VOS_UINT32                          ulSendPara,
     SI_STK_ENVELOPE_STRU               *pstENStru
 );
 

@@ -23,8 +23,9 @@ extern "C" {
 /*****************************************************************************
     协议栈打印打点方式下的.C文件宏定义
 *****************************************************************************/
-
+/*lint -e960*/
 #define    THIS_FILE_ID        PS_FILE_ID_RNIC_CTX_C
+/*lint +e960*/
 
 
 /*****************************************************************************
@@ -260,10 +261,10 @@ VOS_VOID RNIC_InitIpv4v6PdpCtx(
 }
 VOS_VOID RNIC_InitResetSem(VOS_VOID)
 {
-    g_stRnicCtx.ulResetSem  = 0;
+    g_stRnicCtx.hResetSem  = VOS_NULL_PTR;
 
     /* 分配二进制信号量 */
-    if (VOS_OK != VOS_SmBCreate( "RNIC", 0, VOS_SEMA4_FIFO, &g_stRnicCtx.ulResetSem))
+    if (VOS_OK != VOS_SmBCreate( "RNIC", 0, VOS_SEMA4_FIFO, &g_stRnicCtx.hResetSem))
     {
         vos_printf("Create rnic acpu cnf sem failed!\r\n");
         RNIC_DBG_SET_SEM_INIT_FLAG(VOS_FALSE);
@@ -273,7 +274,7 @@ VOS_VOID RNIC_InitResetSem(VOS_VOID)
     }
     else
     {
-        RNIC_DBG_SAVE_BINARY_SEM_ID(g_stRnicCtx.ulResetSem);
+        RNIC_DBG_SAVE_BINARY_SEM_ID(g_stRnicCtx.hResetSem);
     }
 
     RNIC_DBG_SET_SEM_INIT_FLAG(VOS_TRUE);
@@ -410,9 +411,9 @@ RNIC_SPEC_CTX_STRU *RNIC_GetSpecNetCardCtxAddr(VOS_UINT8 ucRmNetId)
 
 
 
-VOS_UINT32 RNIC_GetResetSem(VOS_VOID)
+VOS_SEM RNIC_GetResetSem(VOS_VOID)
 {
-    return g_stRnicCtx.ulResetSem;
+    return g_stRnicCtx.hResetSem;
 }
 
 

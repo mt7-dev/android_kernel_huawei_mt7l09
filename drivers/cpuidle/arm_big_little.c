@@ -246,7 +246,7 @@ static int __init bl_idle_driver_init(struct cpuidle_driver *drv, int cpu_id)
 		cpuid = is_smp() ? cpu_info->cpuid : read_cpuid_id();
 
 		/* read cpu id part number */
-		if ((cpuid & 0xFFF0) == cpu_id)
+		if ((cpuid & 0xff00fff0) == cpu_id)
 			cpumask_set_cpu(cpu, cpumask);
 	}
 
@@ -273,25 +273,28 @@ static int __init bl_idle_init(void)
 	if (ret)
 		goto out_uninit_little;
 
-	pr_err("%s reigster  little driver sucessfully!\n", __func__);
+	pr_err("%s bl_idle_driver_init sucessfully!\n", __func__);
 	ret = cpuidle_register(&bl_idle_little_driver, NULL);
 	if (ret)
 		goto out_uninit_big;
 
 	pr_err("%s reigster  little driver sucessfully!\n", __func__);
+
 	ret = cpuidle_register(&bl_idle_big_driver, NULL);
 	if (ret)
 		goto out_unregister_little;
 
-	pr_err("%s reigster  little driver sucessfully!\n", __func__);
-	return 0;
+	pr_err("%s reigster  big driver sucessfully!\n", __func__);
 
+	return 0;
 out_unregister_little:
 	cpuidle_unregister(&bl_idle_little_driver);
 out_uninit_big:
 	kfree(bl_idle_big_driver.cpumask);
 out_uninit_little:
 	kfree(bl_idle_little_driver.cpumask);
+
+	pr_err("%s fail!!!\n", __func__);
 
 	return ret;
 }

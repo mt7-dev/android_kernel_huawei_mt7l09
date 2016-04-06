@@ -134,7 +134,7 @@ MN_MSG_CBLANG_ENUM_U8 MN_MSG_Iso639LangToDef(
 }
 
 
-LOCAL VOS_UINT32 MN_MSG_DecodeDcsIf01(
+VOS_UINT32 MN_MSG_DecodeDcsIf01(
     VOS_UINT8                           ucDcs,
     MN_MSG_CBDCS_CODE_STRU              *pstDcsInfo
 )

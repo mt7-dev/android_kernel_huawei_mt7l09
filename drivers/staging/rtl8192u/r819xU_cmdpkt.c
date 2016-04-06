@@ -339,7 +339,6 @@ cmdpkt_beacontimerinterrupt_819xusb(
 	u16 tx_rate;
 	{
 		//
-		// 070117, rcnjko: 87B have to S/W beacon for DTM encryption_cmn.
 		//
 		if(priv->ieee80211->current_network.mode == IEEE_A  ||
 			priv->ieee80211->current_network.mode == IEEE_N_5G ||
@@ -359,30 +358,6 @@ cmdpkt_beacontimerinterrupt_819xusb(
 	}
 
 }
-
-
-
-
-/*-----------------------------------------------------------------------------
- * Function:    cmpk_handle_interrupt_status()
- *
- * Overview:    The function is responsible for extract the message from
- *				firmware. It will contain dedicated info in
- *				ws-07-0063-v06-rtl819x-command-packet-specification-070315.doc.
- *				Please refer to chapter "Interrupt Status Element".
- *
- * Input:       struct net_device *dev,
- *			u8*	pmsg		-	Message Pointer of the command packet.
- *
- * Output:      NONE
- *
- * Return:      NONE
- *
- * Revised History:
- *  When			Who			Remark
- *  05/12/2008	amy		Add this for rtl8192 porting from windows code.
- *
- *---------------------------------------------------------------------------*/
 static	void
 cmpk_handle_interrupt_status(
 	struct net_device *dev,

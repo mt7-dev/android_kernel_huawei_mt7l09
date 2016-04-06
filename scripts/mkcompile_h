@@ -52,6 +52,12 @@ if test -z "$KBUILD_BUILD_HOST"; then
 else
 	LINUX_COMPILE_HOST=$KBUILD_BUILD_HOST
 fi
+
+if [ "$OBB_PRODUCT_FINAL_RELEASE" == "true" ]; then
+        LINUX_COMPILE_BY="android"
+        LINUX_COMPILE_HOST="localhost"
+fi
+
 if [ "$HIDE_PRODUCT_INFO" == "true" ]; then
 	LINUX_COMPILE_BY="android"
 	LINUX_COMPILE_HOST="localhost"

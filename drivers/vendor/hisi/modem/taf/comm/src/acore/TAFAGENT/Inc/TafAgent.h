@@ -34,7 +34,6 @@ extern "C" {
 /*****************************************************************************
   4 º¯ÊýÊµÏÖ
 *****************************************************************************/
-extern VOS_UINT32 TAF_AGENT_FidInit (enum VOS_INIT_PHASE_DEFINE enPhase);
 extern VOS_UINT32 TAF_AGENT_PidInit(enum VOS_INIT_PHASE_DEFINE enPhase);
 extern VOS_VOID TAF_AGENT_ProcMsg(MsgBlock* pstMsg);
 

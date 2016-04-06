@@ -121,21 +121,6 @@ enum APP_VC_IOCTL_AUDIO_OUT_DEV_ENUM
 typedef VOS_UINT16 APP_VC_IOCTL_AUDIO_OUT_DEV_ENUM_U16;
 
 
-enum APP_VC_OPEN_CHANNEL_FAIL_CAUSE_ENUM
-{
-    APP_VC_OPEN_CHANNEL_CAUSE_SUCC                = 0,                          /* 成功 */
-    APP_VC_OPEN_CHANNEL_FAIL_CAUSE_STARTED,                                     /* HIFI已经启动 */
-    APP_VC_OPEN_CHANNEL_FAIL_CAUSE_PORT_CFG_FAIL,                               /* 端口配置失败 */
-    APP_VC_OPEN_CHANNEL_FAIL_CAUSE_SET_DEVICE_FAIL,                             /* 设置Device失败 */
-    APP_VC_OPEN_CHANNEL_FAIL_CAUSE_SET_START_FAIL,                              /* start失败 */
-    APP_VC_OPEN_CHANNEL_FAIL_CAUSE_SET_VOLUME_FAIL,                             /* 设置音量失败 */
-    APP_VC_OPEN_CHANNEL_FAIL_CAUSE_SAMPLE_RATE_FAIL,                            /* 速率采样失败 */
-    APP_VC_OPEN_CHANNEL_FAIL_CAUSE_TI_START_EXPIRED,                            /* start保护定时器超时 */
-
-    APP_VC_OPEN_CHANNEL_FAIL_CAUSE_BUTT
-};
-typedef VOS_UINT32  APP_VC_OPEN_CHANNEL_FAIL_CAUSE_ENUM_UINT32;
-
 
 /*****************************************************************************
  结构名    : VC_OM_PCVOICE_TRANS_STATUS_STRU

@@ -107,6 +107,9 @@ extern VOS_VOID  NAS_EMM_ProcMsRegImsiDetachInitMsgRrcRelInd
 extern VOS_VOID  NAS_EMM_ProcNoUsimOfDrgInitMsgCnDetachReq( VOS_VOID   *pMsgStru);
 extern VOS_VOID  NAS_EMM_ProcNoUsimCnDetReqNotReattach(
                                const NAS_EMM_CN_DETACH_REQ_MT_STRU       *pRcvEmmMsg);
+
+extern VOS_VOID NAS_EMM_DetachErrRecord(
+        NAS_EMM_CN_DETACH_REQ_MT_STRU       *pstCnDetach);
 /*****************************************************************************
   9 OTHERS
 *****************************************************************************/

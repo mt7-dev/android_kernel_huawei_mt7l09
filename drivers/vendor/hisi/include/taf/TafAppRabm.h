@@ -53,26 +53,8 @@ extern "C"{
 #define   TAF_RABM_MAX_ENT_NUM               11
 
 
-/*---------------------------------------------------------
-             Structs used for DS Flow Report.
----------------------------------------------------------*/
-typedef struct
-{
-    /*0 - The Rabid is not actived.
-      1 - The Rabid is activated */
-    TAF_UINT8       ucFlag;
-
-    TAF_UINT32      ulUplinkByteRate;     /*与网侧协商的发送数据的速率(字节/秒)*/
-    TAF_UINT32      ulDownlinkByteRate;   /*与网侧协商的接收数据的速率(字节/秒)*/
-}TAF_DS_FLOW_ONE_RATE_STRU;
 
 
-
-VOS_VOID Taf_DataReq ( VOS_UINT16    ClientId,
-                       VOS_UINT8        ucDomain,
-                       VOS_UINT8        ucRabId,
-                       VOS_UINT16       usDataLen,
-                       VOS_UINT8       *pData);
 
 #if ((TAF_OS_VER == TAF_WIN32) || (TAF_OS_VER == TAF_NUCLEUS))
 #pragma pack()

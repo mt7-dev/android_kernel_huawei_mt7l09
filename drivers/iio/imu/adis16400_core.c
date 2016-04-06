@@ -26,6 +26,7 @@
 #include <linux/list.h>
 #include <linux/module.h>
 #include <linux/debugfs.h>
+#include <linux/bitops.h>
 
 #include <linux/iio/iio.h>
 #include <linux/iio/sysfs.h>
@@ -447,7 +448,7 @@ static int adis16400_read_raw(struct iio_dev *indio_dev,
 		mutex_unlock(&indio_dev->mlock);
 		if (ret)
 			return ret;
-		val16 = ((val16 & 0xFFF) << 4) >> 4;
+		val16 = sign_extend32(val16, 11);
 		*val = val16;
 		return IIO_VAL_INT;
 	case IIO_CHAN_INFO_OFFSET:
@@ -632,7 +633,7 @@ static const struct iio_chan_spec adis16400_channels[] = {
 	ADIS16400_MAGN_CHAN(Z, ADIS16400_ZMAGN_OUT, 14),
 	ADIS16400_TEMP_CHAN(ADIS16400_TEMP_OUT, 12),
 	ADIS16400_AUX_ADC_CHAN(ADIS16400_AUX_ADC, 12),
-	IIO_CHAN_SOFT_TIMESTAMP(12)
+	IIO_CHAN_SOFT_TIMESTAMP(ADIS16400_SCAN_TIMESTAMP),
 };
 
 static const struct iio_chan_spec adis16448_channels[] = {
@@ -659,7 +660,7 @@ static const struct iio_chan_spec adis16448_channels[] = {
 		},
 	},
 	ADIS16400_TEMP_CHAN(ADIS16448_TEMP_OUT, 12),
-	IIO_CHAN_SOFT_TIMESTAMP(11)
+	IIO_CHAN_SOFT_TIMESTAMP(ADIS16400_SCAN_TIMESTAMP),
 };
 
 static const struct iio_chan_spec adis16350_channels[] = {
@@ -677,7 +678,7 @@ static const struct iio_chan_spec adis16350_channels[] = {
 	ADIS16400_MOD_TEMP_CHAN(X, ADIS16350_XTEMP_OUT, 12),
 	ADIS16400_MOD_TEMP_CHAN(Y, ADIS16350_YTEMP_OUT, 12),
 	ADIS16400_MOD_TEMP_CHAN(Z, ADIS16350_ZTEMP_OUT, 12),
-	IIO_CHAN_SOFT_TIMESTAMP(11)
+	IIO_CHAN_SOFT_TIMESTAMP(ADIS16400_SCAN_TIMESTAMP),
 };
 
 static const struct iio_chan_spec adis16300_channels[] = {
@@ -690,7 +691,7 @@ static const struct iio_chan_spec adis16300_channels[] = {
 	ADIS16400_AUX_ADC_CHAN(ADIS16300_AUX_ADC, 12),
 	ADIS16400_INCLI_CHAN(X, ADIS16300_PITCH_OUT, 13),
 	ADIS16400_INCLI_CHAN(Y, ADIS16300_ROLL_OUT, 13),
-	IIO_CHAN_SOFT_TIMESTAMP(14)
+	IIO_CHAN_SOFT_TIMESTAMP(ADIS16400_SCAN_TIMESTAMP),
 };
 
 static const struct iio_chan_spec adis16334_channels[] = {
@@ -701,7 +702,7 @@ static const struct iio_chan_spec adis16334_channels[] = {
 	ADIS16400_ACCEL_CHAN(Y, ADIS16400_YACCL_OUT, 14),
 	ADIS16400_ACCEL_CHAN(Z, ADIS16400_ZACCL_OUT, 14),
 	ADIS16400_TEMP_CHAN(ADIS16350_XTEMP_OUT, 12),
-	IIO_CHAN_SOFT_TIMESTAMP(8)
+	IIO_CHAN_SOFT_TIMESTAMP(ADIS16400_SCAN_TIMESTAMP),
 };
 
 static struct attribute *adis16400_attributes[] = {
@@ -741,7 +742,7 @@ static struct adis16400_chip_info adis16400_chips[] = {
 		.channels = adis16350_channels,
 		.num_channels = ARRAY_SIZE(adis16350_channels),
 		.gyro_scale_micro = IIO_DEGREE_TO_RAD(73260), /* 0.07326 deg/s */
-		.accel_scale_micro = IIO_G_TO_M_S_2(2522), /* 0.002522 g */
+		.accel_scale_micro = IIO_G_TO_M_S_2(2522),
 		.temp_scale_nano = 145300000, /* 0.1453 C */
 		.temp_offset = 25000000 / 145300, /* 25 C = 0x00 */
 		.flags = ADIS16400_NO_BURST | ADIS16400_HAS_SLOW_MODE,

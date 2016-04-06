@@ -4,8 +4,6 @@
   1 头文件包含
 *****************************************************************************/
 #include "pslog.h"
-#include "om.h"
-#include "PsTypeDef.h"
 #include "TafStdlib.h"
 #include "MnErrorCode.h"
 #include "MnMsgApi.h"
@@ -237,7 +235,9 @@ VOS_UINT32  TAF_STD_UnPack7Bit(
         pucUnPackedChar[ulLoop] = (VOS_UINT8)(pucOrgChar[ulPos] >> ulOffset);
         if (ulOffset > 1)
         {
-            pucUnPackedChar[ulLoop] |= (VOS_UINT8)((pucOrgChar[ulPos + 1] << (8 - ulOffset)) & TAF_STD_7BIT_MASK);
+            /*lint -e701*/
+            pucUnPackedChar[ulLoop] |= (VOS_UINT8)((pucOrgChar[ulPos + 1UL] << (8 - ulOffset)) & TAF_STD_7BIT_MASK);
+            /*lint +e701*/
         }
         else
         {
@@ -292,10 +292,10 @@ VOS_UINT32  TAF_STD_Pack7Bit(
             return VOS_ERR;
         }
 
-        pucPackedChar[ulPos] |= (VOS_UINT8)((pucOrgChar[ulLoop] & TAF_STD_7BIT_MASK) << ulOffset);
+        pucPackedChar[ulPos] |= (VOS_UINT8)((VOS_UINT32)(pucOrgChar[ulLoop] & TAF_STD_7BIT_MASK) << ulOffset);
         if (ulOffset > 1)
         {
-            pucPackedChar[ulPos + 1] = (VOS_UINT8)((pucOrgChar[ulLoop] & TAF_STD_7BIT_MASK) >> (8 - ulOffset));
+            pucPackedChar[ulPos + 1UL] = (VOS_UINT8)((pucOrgChar[ulLoop] & TAF_STD_7BIT_MASK) >> (8 - ulOffset));
         }
 
         ulPos   += (ulOffset + 7) / 8;

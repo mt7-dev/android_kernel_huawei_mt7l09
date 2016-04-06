@@ -50,7 +50,6 @@
 //#define DX_DUMP_BYTES
 //#define DX_DEBUG
 //#define ENABLE_CYCLE_COUNT
-//#define DX_IRQ_DELAY 100000
 
 /* Define the CryptoCell DMA cache coherency signals configuration */
 #ifdef DISABLE_COHERENT_DMA_OPS

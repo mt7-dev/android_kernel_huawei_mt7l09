@@ -26,8 +26,8 @@ VOS_VOID Tc_SndRlcTcModeInfo(VOS_UINT8 ucTcFlag, VOS_UINT8 ucTcMode);
 
 VOS_VOID Tc_RcvCloseLoop(VOS_UINT8 * pRcvTcMsg);
 VOS_VOID Tc_RcvOpenLoop();
-VOS_VOID Tc_RcvActRbTset();
-VOS_VOID Tc_RcvDeactRbTset();
+VOS_VOID Tc_RcvActRbTest();
+VOS_VOID Tc_RcvDeactRbTest();
 
 VOS_VOID Tc_SndMtaResetStoredPosInfoInd(TC_UE_POS_TECH_ENUM_UINT8 enUePosTech);
 VOS_VOID Tc_RcvResetUePosStoredInfo(VOS_UINT8 * pRcvTcMsg);
@@ -89,6 +89,7 @@ VOS_VOID NAS_TC_RcvMmRelInd(
 VOS_VOID NAS_TC_RcvGmmHandoverInd(
     struct MsgCB                       *pstMsg
 );
+VOS_VOID Tc_SndRfaTestControlMsg(VOS_UINT32 ulMsgName);
 VOS_VOID NAS_TC_SndWphyCloseLoopNtf(VOS_VOID);
 VOS_VOID NAS_TC_SndWphyOpenLoopNtf(VOS_VOID);
 

@@ -318,6 +318,7 @@ u32 nv_write_to_file(struct nv_ref_data_info_stru* ref_info)
     u32 off;
     u32 temp_prio = 0;
     unsigned long nvflag;
+    struct nv_ctrl_file_info_stru*ctrl_info = (struct nv_ctrl_file_info_stru*)NV_GLOBAL_CTRL_INFO_ADDR;
 
     if(NV_HIGH_PRIORITY == ref_info->priority)
     {
@@ -345,7 +346,7 @@ u32 nv_write_to_file(struct nv_ref_data_info_stru* ref_info)
          /*[false alarm]:Value Never Read*/
         off = ddr_info->file_info[ref_info->file_id-1].offset+ref_info->nv_off;
         /* coverity[sleep] */
-        ret = bsp_nvm_flushEx(0,ddr_info->file_len,ref_info->itemid);
+        ret = bsp_nvm_flushEx(ctrl_info->ctrl_size,(ddr_info->file_len-ctrl_info->ctrl_size),ref_info->itemid);
     }
 
     if(true == nv_isSysNv(ref_info->itemid))

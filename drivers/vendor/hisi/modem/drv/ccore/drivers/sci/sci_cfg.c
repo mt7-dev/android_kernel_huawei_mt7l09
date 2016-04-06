@@ -57,6 +57,8 @@ const char * g_pcCardRecordFileName[] = {SCI0_RECORD_LOG_PATH_LOST_CARD,
 const char * g_pcCardTaskName[] = {SCI_CARD0_SYNC_TASK_NAME,
                                    SCI_CARD1_SYNC_TASK_NAME};
 
+
+
 /*****************************************************************************
   3 函数实现
 *****************************************************************************/
@@ -159,6 +161,10 @@ int bsp_sci_cfg(unsigned int card_id, unsigned int sci_id)
 
         /*卡0投票*/
         p_sci_cfg->sleep_vote = PWRCTRL_SLEEP_SCI0;
+        p_sci_cfg->slot_switch_flag = SCI_SLOT_SWITCH_NONE;
+        p_sci_cfg->sci_pmu = NULL;
+        p_sci_cfg->task_id = 0;
+        p_sci_cfg->sci_int_handler = NULL;
         
     }
     else if (CARD_CONNECT_SCI1 == sci_id) {
@@ -189,6 +195,11 @@ int bsp_sci_cfg(unsigned int card_id, unsigned int sci_id)
 
         /*卡0投票*/
         p_sci_cfg->sleep_vote = PWRCTRL_SLEEP_SCI1;
+        p_sci_cfg->slot_switch_flag = SCI_SLOT_SWITCH_NONE;        
+        p_sci_cfg->sci_pmu = NULL;
+        p_sci_cfg->task_id = 0;
+        p_sci_cfg->sci_int_handler = NULL;
+        
     }
     else 
     {
@@ -306,6 +317,7 @@ int bsp_sci_parse_nv(NV_SCI_CFG_UNION * nv)
     修改内容   : 新生成函数
 
 *****************************************************************************/
+
 int bsp_sci_cfg_init(void)
 {
     unsigned int i = 0;

@@ -531,6 +531,12 @@ config SRAM
 	  the genalloc API. It is supposed to be used for small on-chip SRAM
 	  areas found on many SoCs.
 
+config UID_CPUTIME
+	tristate "Per-UID cpu time statistics"
+	depends on PROFILING
+	help
+	  Per UID based cpu time statistics exported to /proc/uid_cputime
+
 config APANIC
 	bool "Android kernel panic diagnostics driver"
 	default n
@@ -561,6 +567,7 @@ config APANIC_MMC_MEMDUMP
 	 Driver which handles kernel panics and attempts to write
 	 full memeory dump through mmc.
 
+
 source "drivers/misc/c2port/Kconfig"
 source "drivers/misc/eeprom/Kconfig"
 source "drivers/misc/cb710/Kconfig"
@@ -571,5 +578,5 @@ source "drivers/misc/altera-stapl/Kconfig"
 source "drivers/misc/mei/Kconfig"
 source "drivers/misc/hilog/Kconfig"
 source "drivers/misc/vmw_vmci/Kconfig"
-source "drivers/misc/hisi_6421_spk/Kconfig"
+source "drivers/misc/drv2605/Kconfig"
 endmenu

@@ -1,0 +1,100 @@
+/*
+ * Hisilicon Ltd. hi3xxxASIC SoC
+ *
+ * Copyright (C) 2013 Hisilicon Technologies CO., Ltd.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * publishhed by the Free Software Foundation.
+ */
+/ {
+	// framebuffer & panel begin
+	framebuffer@E8500000 {
+		compatible = "hisilicon,hisifb";
+		fastboot_enable_flag = <1>;
+		dss_base_phy = <0xE8500000>;
+		// dss_base, CRGPERI base
+		reg = <0xE8500000 0x80000>, <0xFFF35000 0x1000>;
+		// dss-pdp irq, dss-sdp irq, dss-adp irq, dss-dsi0 irq, dss-dsi1 irq
+		interrupts = <0 145 4>, <0 146 4>, <0 147 4>, <0 151 4>, <0 152 4>;
+
+		regulator_dsssubsys-supply = <&dsssubsys>;
+		regulator_sdp-supply = <&sdp>;
+		regulator_adp-supply = <&adp>;
+		// dss axi clk, dss pri clk, dss aux clk, dss pxl0 clk, dss pxl1 clk, dss pclk, dss dphy0 clk, dss dphy1 clk
+		clocks = <&aclk_gate_dss>, <&clk_gate_edc0>, <&clk_gate_edc1>, <&clk_gate_ldi0>, <&clk_gate_ldi1>, <&pclk_gate_dss>, <&clk_gate_dphy0>, <&clk_gate_dphy1>;
+		clock-names = "aclk_dss", "clk_edc0", "clk_edc1", "clk_ldi0", "clk_ldi1", "pclk_dss", "clk_dphy0", "clk_dphy1";
+		status = "ok";
+	};
+
+	panel_pwm {
+		compatible = "hisilicon,hisipwm";
+		reg = <0xE8A04000 0x1000>;
+		clocks = <&clk_gate_pwm0>;
+		clock-names = "clk_pwm0";
+		pinctrl-names = "default","idle";
+		pinctrl-0 = <&gpio098_pmx_func &gpio098_cfg_func>;
+		pinctrl-1 = <&gpio098_pmx_idle &gpio098_cfg_idle>;
+		status = "ok";
+	};
+
+	panel_blpwm {
+		compatible = "hisilicon,hisiblpwm";
+		reg = <0xE8A05000 0x1000>;
+		clocks = <&clk_gate_pwm1>;
+		clock-names = "clk_pwm1";
+		pinctrl-names = "default","idle";
+		pinctrl-0 = <&gpio098_pmx_func &gpio098_cfg_func>;
+		pinctrl-1 = <&gpio098_pmx_idle &gpio098_cfg_idle>;
+		status = "disabled";
+	};
+
+	panel_lcdc_fake {
+		compatible = "hisilicon,lcdc_fake_panel";
+		status = "disabled";
+	};
+
+	panel_mipi_fake {
+		compatible = "hisilicon,mipi_fake_panel";
+		gpios = <&gpio4 3 0>, <&gpio4 5 0>, <&gpio4 6 0>, <&gpio5 1 0>, <&gpio5 2 0>;
+		lcdio-vcc-supply = <&lsw50>;
+		lcdanalog-vcc-supply = <&ldo17>;
+		status = "disabled";
+	};
+
+	panel_lcd_toshiba_MDY90 {
+		compatible = "hisilicon,mipi_toshiba_MDY90";
+		gpios = <&gpio4 5 0>, <&gpio5 1 0>;
+		lcdio-vcc-supply = <&lsw50>;
+		lcdanalog-vcc-supply = <&ldo17>;
+		pinctrl-names = "default", "idle";
+		pinctrl-0 = <&gpio037_cfg_func &gpio041_cfg_func>;
+		pinctrl-1 = <&gpio037_cfg_idle &gpio041_cfg_idle>;
+		status = "disabled";
+	};
+
+
+	panel_hdmi {
+		compatible = "hisilicon,k3hdmi";
+		id = <1>;
+		// hdmi base, CRGPERI base, PMCtrl base
+		reg = <0xe852c000 0x2000>, <0xFFF35000 0x1000>, <0xfff31000 0x1000>;
+		// hdmi irq
+		interrupts = <0 153 4>;
+		clocks = <&pclk_gate_hdmi>, <&pclk_gate_hdmiefc>, <&clk_gate_cec>, <&clk_gate_edc0>, <&clk_gate_ldi1>, <&clk_gate_ppll2>, <&clk_mux_ldi1>;
+		clock-names = "pclk_hdmi", "pclk_hdmiefc", "clk_cec", "clk_edc0", "clk_ldi1", "clk_ppll2", "clkmux_ldi1";
+		hdmivcc-supply = <&sdp>;
+		status = "ok";
+	};
+
+	panel_hdmi_fake {
+		compatible = "hisilicon,hdmi_fake_panel";
+		status = "ok";
+	};
+
+	panel_offlinecomposer {
+		compatible = "hisilicon,offlinecomposer_panel";
+		status = "ok";
+	};
+	// framebuffer & panel end
+};

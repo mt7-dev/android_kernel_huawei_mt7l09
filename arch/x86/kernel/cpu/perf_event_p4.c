@@ -1306,14 +1306,7 @@ static __initconst const struct x86_pmu p4_pmu = {
 	.max_period		= (1ULL << (ARCH_P4_CNTRVAL_BITS - 1)) - 1,
 	.hw_config		= p4_hw_config,
 	.schedule_events	= p4_pmu_schedule_events,
-	/*
-	 * This handles erratum N15 in intel doc 249199-029,
-	 * the counter may not be updated correctly on write
-	 * so we need a second write operation to do the trick
-	 * (the official workaround didn't work)
-	 *
-	 * the former idea is taken from OProfile code
-	 */
+
 	.perfctr_second_write	= 1,
 
 	.format_attrs		= intel_p4_formats_attr,

@@ -765,8 +765,8 @@ VOS_VOID USIMM_InitGlobalVarOnReset(VOS_VOID)
 
     for(i = 0; i < USIMM_UICC_BUTT; i++)
     {
-        gastUSIMMCardAppInfo[i].enCardType = USIMM_CARD_NOCARD;
-        gastUSIMMCardAppInfo[i].enCardService = USIMM_CARD_SERVIC_ABSENT;
+        gastUSIMMCardAppInfo[i].enCardType      = USIMM_CARD_NOCARD;
+        gastUSIMMCardAppInfo[i].enCardService   = USIMM_CARD_SERVIC_ABSENT;
     }
 
     gastUSIMMCardAppInfo[USIMM_UICC_USIM].enStateChange = USIMM_CARD_STATE_CHANGED;
@@ -1815,6 +1815,8 @@ VOS_UINT32 USIMM_Select2GApp(VOS_VOID)
 
     USIMM_SaveDFPinInfo();
 
+    g_stUSIMMCardVersionType.ucHasWGModule  = VOS_TRUE;
+
     if (0x10 == (gstUSIMMCurFileInfo.stDFInfo.ucCharaByte & 0x70)) /*SIM卡根据文件特性字节切换电压*/
     {
         USIMM_NORMAL_LOG("USIMM_Select2GApp: SIM Card Need Change the Voltage.");
@@ -2301,12 +2303,13 @@ VOS_UINT32 USIMM_CheckCLStep(VOS_VOID)
         return VOS_OK;
     }
 
+    g_stUSIMMCardVersionType.enCardMode     = USIMM_CARD_ICC_TYPE;
+
     if (VOS_TRUE == stNVData.ucLCEnableFlg)
     {
         ulCDMAResult = USIMM_SelectFile(USIMM_GSM_APP, USIMM_NEED_FCP, ARRAYSIZE(ausCDMAPath), ausCDMAPath);
         ulGsmResult = USIMM_SelectFile(USIMM_GSM_APP, USIMM_NEED_FCP, ARRAYSIZE(ausGSMPath), ausGSMPath);
 
-        g_stUSIMMCardVersionType.enCardMode     = USIMM_CARD_ICC_TYPE;
         g_stUSIMMCardVersionType.ucHasCModule   = (VOS_OK == ulCDMAResult);
         g_stUSIMMCardVersionType.ucHasWGModule  = (VOS_OK == ulGsmResult);
 

@@ -514,22 +514,29 @@ config REGULATOR_AS3711
 	  This driver provides support for the voltage regulators on the
 	  AS3711 PMIC
 
-config PMU_NOT_EXIST_FPGA
-	bool "FPGA exist pmu board"
-	default n
-	help
-	  Say 'Y' here if your FPGA board not exist PMU board.
-
-config REGULATOR_HI6421
+config HI3XXX_REGULATOR_HI6421V300
 	tristate "HiSilicon Hi6421 PMIC regulators"
-	depends on MFD_HI6421_PMIC
+	depends on HI3XXX_HI6421V300_PMIC
 	help
 	  This driver provides support for the voltage regulators on the
 	  HiSilicon Hi6421 PMU / Codec IC.
-
-config REGULATOR_HI3630
+	  
+config REGULATOR_HI6XXX
+	tristate "REGULATOR_HI6XXX"
+	depends on HISI_HI6XXX_PMIC || SCHARGER_POWER_HI6XXX
+	---help---
+	Regulator module depend on PMIC  Scharge IC mtcmos driver
+	
+config HI3XXX_REGULATOR_KIRIN930
 	tristate "HiSilicon system interior voltage PMIC"
-	depends on REGULATOR_HI3630_CORE
+	depends on HI3XXX_HI3630_CORE
+	help
+	  This driver provides support for the voltage regulators on the
+	  HiSilicon system interior voltage / Codec IC.
+
+config HI3XXX_REGULATOR_KIRIN920
+	tristate "HiSilicon system interior voltage PMIC"
+	depends on HI3XXX_HI3630_CORE
 	help
 	  This driver provides support for the voltage regulators on the
 	  HiSilicon system interior voltage / Codec IC.

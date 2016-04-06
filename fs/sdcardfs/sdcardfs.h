@@ -42,9 +42,12 @@
 #include <linux/types.h>
 #include <linux/security.h>
 #include <linux/string.h>
+#include <linux/ratelimit.h>
 #include "multiuser.h"
 
-#define SDCARDFS_SUPER_MAGIC 0xb550ca10
+/* the file system magic number */
+#define SDCARDFS_SUPER_MAGIC	0xb550ca10
+
 /* the file system name */
 #define SDCARDFS_NAME "sdcardfs"
 
@@ -67,13 +70,14 @@
 #define AID_SDCARD_ALL    1035	/* access all users external storage */
 
 #define AID_PACKAGE_INFO  1027
-
+/*
 #define fix_derived_permission(x)	\
 	do {						\
 		(x)->i_uid = SDCARDFS_I(x)->d_uid;	\
 		(x)->i_gid = SDCARDFS_I(x)->d_gid;	\
 		(x)->i_mode = ((x)->i_mode & S_IFMT) | SDCARDFS_I(x)->d_mode;\
 	} while (0)
+*/
 
 /* OVERRIDE_CRED() and REVERT_CRED()
  * 	OVERRID_CRED()
@@ -118,6 +122,8 @@ typedef enum {
 	PERM_ANDROID_DATA,
 	/* This node is "/Android/obb" */
 	PERM_ANDROID_OBB,
+	/* This node is "/Android/media" */
+	PERM_ANDROID_MEDIA,
 	/* This node is "/Android/user" */
 	PERM_ANDROID_USER,
 } perm_t;
@@ -164,6 +170,12 @@ extern struct dentry *sdcardfs_lookup(struct inode *dir, struct dentry *dentry,
 extern int sdcardfs_interpose(struct dentry *dentry, struct super_block *sb,
 			    struct path *lower_path);
 
+#ifdef SDCARD_FS_XATTR
+extern int sdcardfs_setxattr(struct dentry *dentry, const char *name, const void *value, size_t size, int flags);
+extern ssize_t sdcardfs_getxattr(struct dentry *dentry, const char *name, void *value, size_t size);
+extern ssize_t sdcardfs_listxattr(struct dentry *dentry, char *list, size_t size);
+extern int sdcardfs_removexattr(struct dentry *dentry, const char *name);
+#endif // SDCARD_FS_XATTR
 /* file private data */
 struct sdcardfs_file_info {
 	struct file *lower_file;
@@ -182,6 +194,7 @@ struct sdcardfs_inode_info {
 	gid_t d_gid;
 	mode_t d_mode;
 
+	bool under_android;
 	struct inode vfs_inode;
 };
 
@@ -196,10 +209,12 @@ struct sdcardfs_mount_options {
 	uid_t fs_low_uid;
 	gid_t fs_low_gid;
 	gid_t write_gid;
+	gid_t m_gid;
 	int split_perms;
 	derive_t derive;
 	lower_fs_t lower_fs;
 	unsigned int reserved_mb;
+	mode_t mask;
 };
 
 /* sdcardfs super-block data in memory */
@@ -212,6 +227,7 @@ struct sdcardfs_sb_info {
 	char *obbpath_s;
 	struct path obbpath;
 	void *pkgl_id;
+	char *devpath;
 };
 
 /*
@@ -255,6 +271,19 @@ static inline struct inode *sdcardfs_lower_inode(const struct inode *i)
 static inline void sdcardfs_set_lower_inode(struct inode *i, struct inode *val)
 {
 	SDCARDFS_I(i)->lower_inode = val;
+}
+
+/* copy the inode attrs from src to dest except uid and gid */
+static inline void sdcardfs_copy_inode_attr(struct inode *dest, const struct inode *src)
+{
+	dest->i_mode = src->i_mode;
+	dest->i_rdev = src->i_rdev;
+	dest->i_atime = src->i_atime;
+	dest->i_mtime = src->i_mtime;
+	dest->i_ctime = src->i_ctime;
+	dest->i_blkbits = src->i_blkbits;
+	dest->i_flags = src->i_flags;
+	set_nlink(dest, src->i_nlink);
 }
 
 /* superblock to lower superblock */
@@ -329,6 +358,15 @@ static inline void sdcardfs_put_reset_##pname(const struct dentry *dent) \
 
 SDCARDFS_DENT_FUNC(lower_path)
 SDCARDFS_DENT_FUNC(orig_path)
+
+static inline void sdcardfs_copy_lower_path(const struct dentry *dent,
+					struct path *lower_path)
+{
+	spin_lock(&SDCARDFS_D(dent)->lock);
+	pathcpy(lower_path, &SDCARDFS_D(dent)->lower_path);
+	spin_unlock(&SDCARDFS_D(dent)->lock);
+	return;
+}
 
 static inline int has_graft_path(const struct dentry *dent)
 {
@@ -443,6 +481,49 @@ out:
 	return err;
 }
 
+
+static inline void fix_derived_permission(struct inode* x)
+{
+    struct sdcardfs_sb_info *sbi = SDCARDFS_SB(x->i_sb);
+    int visible_mode = 0775 & ~(sbi->options.mask);
+    struct inode *current_lower_inode = sdcardfs_lower_inode(x);
+    struct sdcardfs_inode_info *info = SDCARDFS_I(x);
+
+    x->i_uid = SDCARDFS_I(x)->d_uid;
+    x->i_gid = SDCARDFS_I(x)->d_gid;
+
+    if (sbi->options.m_gid == AID_SDCARD_RW) {
+        /* As an optimization, certain trusted system components only run
+         * as owner but operate across all users. Since we're now handing
+         * out the sdcard_rw GID only to trusted apps, we're okay relaxing
+         * the user boundary enforcement for the default view. The UIDs
+         * assigned to app directories are still multiuser aware. */
+        x->i_gid = AID_SDCARD_RW;
+    } else {
+        x->i_gid = multiuser_get_uid(info->userid, sbi->options.m_gid);
+    }
+
+    if (SDCARDFS_I(x)->perm == PERM_LEGACY_PRE_ROOT) {
+        /* Top of multi-user view should always be visible to ensure
+         * secondary users can traverse inside. */
+        visible_mode = 0711;
+    } else if (SDCARDFS_I(x)->under_android) {
+        /* Block "other" access to Android directories, since only apps
+         * belonging to a specific user should be in there; we still
+         * leave +x open for the default view. */
+        if (sbi->options.m_gid == AID_SDCARD_RW) {
+            visible_mode = visible_mode & ~0006;
+        } else {
+            visible_mode = visible_mode & ~0007;
+        }
+    }
+    int owner_mode = current_lower_inode->i_mode & 0700;
+    int filtered_mode = visible_mode & (owner_mode | (owner_mode >> 3) | (owner_mode >> 6));
+    x->i_mode = (x->i_mode & S_IFMT) | filtered_mode;
+
+}
+
+
 /*
  * Return 1, if a disk has enough free space, otherwise 0.
  * We assume that any files can not be overwritten.
@@ -462,12 +543,12 @@ static inline int check_min_free_space(struct dentry *dentry, size_t size, int d
 		sdcardfs_put_lower_path(dentry, &lower_path);
 
 		if (unlikely(err))
-			return 0;
-
+			goto out_invalid;
+	
 		/* Invalid statfs informations. */
 		if (unlikely(statfs.f_bsize == 0))
-			return 0;
-
+			goto out_invalid;
+	
 		/* if you are checking directory, set size to f_bsize. */
 		if (unlikely(dir))
 			size = statfs.f_bsize;
@@ -477,15 +558,38 @@ static inline int check_min_free_space(struct dentry *dentry, size_t size, int d
 
 		/* not enough space */
 		if ((u64)size > avail)
-			return 0;
-
+			goto out_nospc;
+	
 		/* enough space */
 		if ((avail - size) > (sbi->options.reserved_mb * 1024 * 1024))
 			return 1;
-
-		return 0;
+		goto out_nospc;
 	} else
 		return 1;
+
+out_invalid:
+	printk(KERN_INFO "statfs               : invalid return\n");
+	printk(KERN_INFO "vfs_statfs error#    : %d\n", err);
+	printk(KERN_INFO "statfs.f_type        : 0x%X\n", (u32)statfs.f_type);
+	printk(KERN_INFO "statfs.f_blocks      : %llu blocks\n", statfs.f_blocks);
+	printk(KERN_INFO "statfs.f_bfree       : %llu blocks\n", statfs.f_bfree);
+	printk(KERN_INFO "statfs.f_files       : %llu\n", statfs.f_files);
+	printk(KERN_INFO "statfs.f_ffree       : %llu\n", statfs.f_ffree);
+	printk(KERN_INFO "statfs.f_fsid.val[1] : 0x%X\n", (u32)statfs.f_fsid.val[1]);
+	printk(KERN_INFO "statfs.f_fsid.val[0] : 0x%X\n", (u32)statfs.f_fsid.val[0]);
+	printk(KERN_INFO "statfs.f_namelen     : %ld\n", statfs.f_namelen);
+	printk(KERN_INFO "statfs.f_frsize      : %ld\n", statfs.f_frsize);
+	printk(KERN_INFO "statfs.f_flags       : %ld\n", statfs.f_flags);
+	printk(KERN_INFO "sdcardfs reserved_mb : %u\n", sbi->options.reserved_mb);
+	if (sbi->devpath)
+		printk(KERN_INFO "sdcardfs source path : %s\n", sbi->devpath);
+
+out_nospc:
+	printk_ratelimited(KERN_INFO "statfs.f_bavail : %llu blocks / "
+				     "statfs.f_bsize : %ld bytes / "
+				     "required size : %llu byte\n"
+				,statfs.f_bavail, statfs.f_bsize, (u64)size);
+	return 0;
 }
 
 #endif	/* not _SDCARDFS_H_ */

@@ -45,6 +45,9 @@ extern "C" {
 
 #define  NAS_EMM_REBOOT_TYPE_RRC_RESUME_ECM_FAIL                       9
 
+#define  NAS_EMM_REBOOT_TYPE_RRC_START_FAIL                            10
+#define  NAS_EMM_REBOOT_TYPE_RRC_START_WAIT_RRC_TIMEOUT_FAIL           11
+
 
 
 

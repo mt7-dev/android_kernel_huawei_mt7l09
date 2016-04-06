@@ -9,14 +9,15 @@
 
 /dts-v1/;
 
-
+/include/ "fastboot.dtsi"
 /include/ "JAZZ_TLG_VN1_config.dtsi"
-/include/ "hisi_3630_pin_JAZZ_TLG_VN2.dtsi"
-/include/ "hisi_3630_modem_JAZZ_TLG_VN2.dtsi"
+/include/ "JAZZ_TLG_VN2_pin.dtsi"
+/include/ "JAZZ_TLG_VN2_modem_pin.dtsi"
+
 / {
+	hisi,boardid = <9 1 3 7>;
+	hisi,boardname = "JAZZ_TLG_VN2";
 	board_info: board_info {
-		hisi,boardid = <1 3 7>;
-		hisi,boardname = "Jazz_TL+G_VN2";
 		hisi,modem_id = <0x3FF53400>;
 		hw,public;
 	};

@@ -8,10 +8,10 @@
   1 Include Headfile
 *****************************************************************************/
 #include  "vos.h"
-#include  "LPsCommon.h"
-#include  "NasLmmPubmTimer.h"
+#include  "LPSCommon.h"
+#include  "NasLmmPubMTimer.h"
 #include  "NasEsmPublic.h"
-#include  "NasErabmPublic.h"
+#include  "NasERabmPublic.h"
 
 /*****************************************************************************
   1.1 Cplusplus Announce
@@ -214,7 +214,7 @@ enum LNAS_OM_TI_MSG_ENUM
     LNAS_OM_LOG_CARD_IMSI_INFO_IND,                                             /*_H2ASN_MsgChoice NAS_LMM_LOG_CARD_IMSI_INFO_STRU*/
     LNAS_OM_LOG_USIMM_SERVICE_INFO_IND,                                         /*_H2ASN_MsgChoice NAS_LMM_LOG_USIMM_SERVICE_INFO_STRU*/
     LNAS_OM_LOG_USIMM_TEST_MODE_INFO_IND,                                       /*_H2ASN_MsgChoice NAS_LMM_LOG_USIM_TEST_MODE_INFO_STRU*/
-
+    LNAS_OM_LOG_IMSI_REFRESH_STATUS_IND,                                        /*_H2ASN_MsgChoice NAS_EMM_IMSI_REFRESH_STATUS_STRU*/
     LNAS_OM_LOG_MSG_BUTT
     /*PC REPLAY MODIFY BY LEILI END*/
 };

@@ -407,6 +407,11 @@ VOS_VOID NAS_EMM_PLMN_CsPagingProc
             NAS_EMM_SER_RcvRrcCsPagingInd(enPagingUeId);
         }
     }
+    /* REG ATTEMPING_TO_UPDATE_MM态下CS PAGING需上报给MM,解决UPDATE MM态下不处理CS PAGING问题,提高用户体验 */
+    else if(ulCurEmmStat == NAS_LMM_PUB_COMP_EMMSTATE( EMM_MS_REG, EMM_SS_REG_ATTEMPTING_TO_UPDATE_MM))
+    {
+        NAS_EMM_SER_RegAttempToUpdateMmRcvRrcCsPagingInd(enPagingUeId);
+    }
     else
     {
         NAS_LMM_EMM_PLMN_LOG_WARN(    "NAS_EMM_PLMN_CsPagingProc:NAS State cannot process cs paging!");
@@ -994,6 +999,8 @@ VOS_UINT32    NAS_EMM_MsNullSsWaitRrcStartCnfMsgRrcStartCnf(
     else
     {
         ulAppRslt = MMC_LMM_FAIL;
+        /*如果开机失败，则直接让封装底软的接口reboot modem以便保存现场*/
+        NAS_EMM_SendMmcErrInd(NAS_EMM_REBOOT_TYPE_RRC_START_FAIL);
     }
 
     if (NAS_EMM_PLMN_OK == NAS_EMM_CheckAppMsgPara(ID_MMC_LMM_START_REQ))
@@ -1059,14 +1066,10 @@ VOS_UINT32    NAS_EMM_MsNullSsWaitRrcStartCnfMsgRrcStartCnf(
 
     return NAS_LMM_MSG_HANDLED;
 }
-
-
 VOS_UINT32  NAS_EMM_MsNullSsWaitRrcStartCnfMsgTimerExp(
                 VOS_UINT32              ulMsgId,
                 const VOS_VOID         *pMsg )
 {
-    VOS_UINT32                          ulRet;
-
     (VOS_VOID)ulMsgId;
 
     /* 打印进入该函数， INFO_LEVEL */
@@ -1087,9 +1090,10 @@ VOS_UINT32  NAS_EMM_MsNullSsWaitRrcStartCnfMsgTimerExp(
         return(NAS_LMM_MSG_DISCARD);
     }
 
-    ulRet = NAS_EMM_MsNullSsWaitRrcStartCnfProcMsgTimerExp(MMC_LMM_FAIL);
+    /*如果开机失败，则直接让封装底软的接口reboot modem以便保存现场*/
+    NAS_EMM_SendMmcErrInd(NAS_EMM_REBOOT_TYPE_RRC_START_WAIT_RRC_TIMEOUT_FAIL);
 
-    return(ulRet);
+    return(NAS_LMM_SUCC);
 }
 
 
@@ -1182,6 +1186,9 @@ VOS_VOID NAS_EMM_ProcLocalStop( VOS_VOID )
 
     VOS_UINT32                          ulSendResult;
     NAS_EMM_FSM_STATE_STRU              EmmState;
+    /* Add by y00307272 for IMSI REFRESH PORTECT,2015-11-18,Begin */
+    VOS_UINT8                           ucImsiRefreshFlag;
+    /* Add by y00307272 for IMSI REFRESH PORTECT,2015-11-18,Begin */
     NAS_EMM_PLMN_INIT_EMMSTATE(EmmState);
 
     /*向ESM发送EMM_ESM_STATUS_IND消息*/
@@ -1203,7 +1210,15 @@ VOS_VOID NAS_EMM_ProcLocalStop( VOS_VOID )
         NAS_EMM_SecuDeregClrSecuCntxt();
 
         /* 写入EMM NV相关信息 */
-        NAS_EMM_WriteNvMmInfo();
+        /* Add by y00307272 for IMSI REFRESH PORTECT,2015-11-18,Begin */
+        ucImsiRefreshFlag = NAS_MML_GetImsiRefreshStatus();
+        NAS_LMM_SndOmImsiRefreshStatus(ucImsiRefreshFlag);
+        /* IMSI REFRESH 情况下不写卡 */
+        if(VOS_FALSE == ucImsiRefreshFlag)
+        {
+            NAS_EMM_WriteNvMmInfo();
+        }
+        /* Add by y00307272 for IMSI REFRESH PORTECT,2015-11-18,End */
     }
 
     /* 向MMC发送MMC_EMM_STOP_REQ消息 */
@@ -1225,6 +1240,8 @@ VOS_VOID NAS_EMM_ProcLocalStop( VOS_VOID )
     NAS_LMM_StaTransProc(EmmState);
     return;
 }
+
+
 VOS_UINT32    NAS_EMM_MsNotNullNotRegMsgAppStopReq(
                     VOS_UINT32                              ulMsgId,
                     VOS_VOID                                *pMsg )
@@ -1402,7 +1419,9 @@ VOS_UINT32    NAS_EMM_MsNullSsWaitRrcStopCnfMsgRrcStopCnf(
                                      ulSendResult);
         }
     }
-
+    /* 清除关机标识,该标志提供给LRRC,用于LRRC判断空口是否是关机detach 该标志
+       在LMM收到MMC的stop req时置为1 */
+    NAS_LMM_SetEmmInfoLtePowerOffFlag(NAS_EMM_NO);
     /*清除APP参数*/
     NAS_EMM_ClearAppMsgPara();
 
@@ -1449,7 +1468,9 @@ VOS_UINT32    NAS_EMM_MsNullSsWaitRrcStopCnfMsgTimerExp(
                                      ulResult);
         }
     }
-
+    /* 清除关机标识,该标志提供给LRRC,用于LRRC判断空口是否是关机detach 该标志
+       在LMM收到MMC的stop req时置为1 */
+    NAS_LMM_SetEmmInfoLtePowerOffFlag(NAS_EMM_NO);
     /*清除APP参数*/
     NAS_EMM_ClearAppMsgPara();
 
@@ -1700,8 +1721,19 @@ VOS_UINT32    NAS_EMM_MsNotNullSsAnyStateMsgMmcCoverageLostInd(
     /*清除BAR标识*/
     NAS_EMM_ClearBarResouce();
 
-    /* 关闭当前EMM的状态定时器和协议定时器 */
-    NAS_LMM_StopAllEmmStateTimer();
+    /* 关闭当前EMM的除Del Forb Ta Proid之外的状态定时器, Del Forb Ta Proid只能在关机时停止*/
+    NAS_LMM_StopAllStateTimerExceptDelForbTaProidTimer();
+
+    /* 如果当前CSFB延时定时器在运行，说明在REG-NORMAL态下释放过程中收到CSFB，
+       但是在释放后搜小区出现丢网，此时应触发去GU搜网继续CSFB */
+    if(NAS_LMM_TIMER_RUNNING == NAS_LMM_IsPtlTimerRunning(TI_NAS_EMM_PTL_CSFB_DELAY))
+    {
+        /* 停止CSFB时延定时器 */
+        NAS_LMM_StopPtlTimer(TI_NAS_EMM_PTL_CSFB_DELAY);
+
+        /* 给MMC上报SERVICE失败触发搜网去GU */
+        NAS_EMM_MmcSendSerResultIndOtherType(MMC_LMM_SERVICE_RSLT_FAILURE);
+    }
 
     if ((EMM_MS_REG         == EmmState.enMainState) ||
         (EMM_MS_TAU_INIT    == EmmState.enMainState) ||
@@ -1772,8 +1804,8 @@ VOS_UINT32 NAS_EMM_MsRegSsRegAttemptUpdateMmMsgMmcCoverageLostInd
     /*清除BAR标识*/
     NAS_EMM_ClearBarResouce();
 
-    /* 关闭当前EMM的状态定时器和协议定时器 */
-    NAS_LMM_StopAllEmmStateTimer();
+    /* 关闭当前EMM的除Del Forb Ta Proid之外的状态定时器, Del Forb Ta Proid只能在关机时停止*/
+    NAS_LMM_StopAllStateTimerExceptDelForbTaProidTimer();
 
     /* 记录UPDATE_MM标识 */
     /*NAS_LMM_SetEmmInfoUpdateMmFlag(NAS_EMM_UPDATE_MM_FLAG_VALID);*/
@@ -1794,8 +1826,10 @@ VOS_UINT32    NAS_EMM_MsDeregSsAttemptToAttachMsgMmcSysInfoInd(
     EMMC_EMM_SYS_INFO_IND_STRU         *pstMmcSysInfoInd;
     VOS_UINT32                          ulSendResult;
     NAS_MM_TA_STRU                     *pstLastAttmpRegTa = NAS_EMM_NULL_PTR;
-    NAS_MM_TA_STRU                      stCurTa           = {0};
+    NAS_MM_TA_STRU                      stCurTa;
     NAS_EMM_ESM_MSG_BUFF_STRU          *pstEsmMsg = NAS_EMM_NULL_PTR;
+
+    PS_MEM_SET(&stCurTa, 0, sizeof(NAS_MM_TA_STRU));
 
     (VOS_VOID)ulMsgId;
 
@@ -1981,9 +2015,10 @@ VOS_UINT32 NAS_EMM_MsDeregSsLimitSrvMsgMmcSysInfoInd(
     EMMC_EMM_SYS_INFO_IND_STRU         *pstMmcSysInfoInd = NAS_EMM_NULL_PTR;
     NAS_EMM_FSM_STATE_STRU              EmmState;
     NAS_MM_TA_STRU                     *pstLastAttmpRegTa = NAS_EMM_NULL_PTR;
-    NAS_MM_TA_STRU                      stCurTa           = {0};
+    NAS_MM_TA_STRU                      stCurTa;
     NAS_EMM_ESM_MSG_BUFF_STRU          *pstEsmMsg = NAS_EMM_NULL_PTR;
 
+    PS_MEM_SET(&stCurTa, 0, sizeof(NAS_MM_TA_STRU));
     (VOS_VOID)ulMsgId;
 
     NAS_EMM_PLMN_INIT_EMMSTATE(EmmState);
@@ -2082,9 +2117,10 @@ VOS_UINT32 NAS_EMM_MsDeregSsPlmnSearchMsgMmcSysInfoInd(
     EMMC_EMM_SYS_INFO_IND_STRU         *pstMmcSysInfoInd = NAS_EMM_NULL_PTR;
     NAS_EMM_FSM_STATE_STRU              EmmState;
     NAS_MM_TA_STRU                     *pstLastAttmpRegTa = NAS_EMM_NULL_PTR;
-    NAS_MM_TA_STRU                      stCurTa           = {0};
+    NAS_MM_TA_STRU                      stCurTa;
     NAS_EMM_ESM_MSG_BUFF_STRU          *pstEsmMsg = NAS_EMM_NULL_PTR;
 
+    PS_MEM_SET(&stCurTa, 0, sizeof(NAS_MM_TA_STRU));
     (VOS_VOID)ulMsgId;
 
     NAS_EMM_PLMN_INIT_EMMSTATE(EmmState);
@@ -2187,9 +2223,10 @@ VOS_UINT32 NAS_EMM_MsDeregSsNoCellAvailMsgMmcSysInfoInd
     EMMC_EMM_SYS_INFO_IND_STRU         *pstMmcSysInfoInd = NAS_EMM_NULL_PTR;
     NAS_EMM_FSM_STATE_STRU              EmmState;
     NAS_MM_TA_STRU                     *pstLastAttmpRegTa = NAS_EMM_NULL_PTR;
-    NAS_MM_TA_STRU                      stCurTa           = {0};
+    NAS_MM_TA_STRU                      stCurTa;
     NAS_EMM_ESM_MSG_BUFF_STRU          *pstEsmMsg = NAS_EMM_NULL_PTR;
 
+    PS_MEM_SET(&stCurTa, 0, sizeof(NAS_MM_TA_STRU));
     (VOS_VOID)ulMsgId;
 
     NAS_EMM_PLMN_INIT_EMMSTATE(EmmState);
@@ -2372,12 +2409,13 @@ VOS_UINT32    NAS_EMM_MsNotNullSsAnyStateMsgRrcPagingInd(
         NAS_LMM_EMM_PLMN_LOG_WARN("NAS_EMM_MsNotNullSsAnyStateMsgRrcPagingInd: STATE ERROR!!");
         return NAS_LMM_MSG_DISCARD;
     }
-
+    #if 0
     if (NAS_EMM_CONN_IDLE != NAS_EMM_GetConnState())
     {
         /*更新连接状态*/
         NAS_EMM_MrrcChangeRrcStatusToIdle();
     }
+    #endif
 
     /*get RRC_PAGING_IND Msg*/
     pMsgRrcPagingInd = (LRRC_LMM_PAGING_IND_STRU *)pMsg;
@@ -2395,6 +2433,9 @@ VOS_UINT32    NAS_EMM_MsNotNullSsAnyStateMsgRrcPagingInd(
     /*Paging with IMSI*/
     if(LRRC_LNAS_IMSI_LTE == pMsgRrcPagingInd->enPagingUeId)
     {
+        #if (FEATURE_PTM == FEATURE_ON)
+        NAS_EMM_PagingErrRecord(EMM_OM_ERRLOG_PAGING_PS_IMSI);
+        #endif
         NAS_EMM_PLMN_ImsiPagingProc();
     }
     /*Paging with S-TMSI*/
@@ -2484,7 +2525,7 @@ VOS_VOID  NAS_EMM_ProcRrcStopRslt( VOS_VOID )
     return;
 }
 
-
+#if 0
 
 VOS_UINT32  NAS_EMM_MsNullSsWaitRrcStartCnfProcMsgTimerExp(VOS_UINT32 ulErrCause)
 {
@@ -2534,13 +2575,16 @@ VOS_UINT32  NAS_EMM_MsNullSsWaitRrcStartCnfProcMsgTimerExp(VOS_UINT32 ulErrCause
 
     return(NAS_LMM_MSG_HANDLED);
 }
-
+#endif
 
 
 VOS_UINT32  NAS_EMM_MsNullSsWaitSwitchOffProcMsgRrcRelInd(VOS_VOID)
 {
     VOS_UINT32                          ulSendResult;
     NAS_EMM_FSM_STATE_STRU              EmmState;
+    /* Add by y00307272 for IMSI REFRESH PORTECT,2015-11-18,Begin */
+    VOS_UINT8                           ucImsiRefreshFlag;
+    /* Add by y00307272 for IMSI REFRESH PORTECT,2015-11-18,Begin */
 
     NAS_EMM_PLMN_INIT_EMMSTATE(         EmmState);
 
@@ -2571,7 +2615,15 @@ VOS_UINT32  NAS_EMM_MsNullSsWaitSwitchOffProcMsgRrcRelInd(VOS_VOID)
     NAS_EMM_SecuDeregClrSecuCntxt();
 
     /* 写入EMM NV相关信息 */
-    NAS_EMM_WriteNvMmInfo();
+    /* Add by y00307272 for IMSI REFRESH PORTECT,2015-11-18,Begin */
+    ucImsiRefreshFlag = NAS_MML_GetImsiRefreshStatus();
+    NAS_LMM_SndOmImsiRefreshStatus(ucImsiRefreshFlag);
+    /* IMSI REFRESH 情况下不写卡 */
+    if(VOS_FALSE == ucImsiRefreshFlag)
+    {
+        NAS_EMM_WriteNvMmInfo();
+    }
+    /* Add by y00307272 for IMSI REFRESH PORTECT,2015-11-18,End */
 
     /* 启动TI_NAS_EMM_WAIT_MMC_STOP_CNF_TIMER */
     NAS_LMM_StartStateTimer(             TI_NAS_EMM_WAIT_MMC_STOP_CNF_TIMER);
@@ -2584,6 +2636,9 @@ VOS_UINT32  NAS_EMM_MsNullSsWaitSwitchOffProcMsgRrcRelInd(VOS_VOID)
 
     return(                             NAS_LMM_MSG_HANDLED);
 }
+
+
+
 VOS_UINT32  NAS_EMM_MsNullSsWaitSwitchOffMsgRrcErrInd(
     VOS_UINT32                                              ulMsgId,
     VOS_VOID                                                *pMsg )

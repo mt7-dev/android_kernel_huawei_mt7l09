@@ -31,6 +31,7 @@
 #include <media/huawei/flash_cfg.h>
 #include "hw_subdev.h"
 #include "cam_log.h"
+#include <dsm/dsm_pub.h>
 
 #define CAMERA_FLASH_MAX	2
 #define CAMERA_FLASH_ARRAY_SIZE	10
@@ -51,7 +52,7 @@
 
 /********************** flash controler struct define **********************/
 
-/* check flash led open or short by zwx211899 */
+/* check flash led open or short */
 typedef enum {
 	FLASH_LED_NORMAL = 0,
 	FLASH_LED_FAULT,
@@ -82,7 +83,7 @@ struct hw_flash_fn_t {
 	int (*flash_exit) (struct hw_flash_ctrl_t *);
 	int (*flash_match) (struct hw_flash_ctrl_t *);
 	int (*flash_get_dt_data) (struct hw_flash_ctrl_t *);
-	/* add check flash short & open by zwx211899 */
+	/* add check flash short & open*/
 	int (*flash_check) (struct hw_flash_ctrl_t *);
 	int (*flash_register_attribute)(struct hw_flash_ctrl_t *, struct device *);
 };

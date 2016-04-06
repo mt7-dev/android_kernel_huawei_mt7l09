@@ -53,197 +53,11 @@ NF_EXT_NV_STRU                      g_stNfExtNv;
 
 NF_EXT_HOOK_MASK_NV_STRU            g_stExHookMask;
 
-extern VOS_VOID IPS_MNTN_FlowCtrl(VOS_UINT32 ulFcType, IPS_MNTN_TRACE_MSG_TYPE_ENUM_UINT16  usType);
-
 /*****************************************************************************
   4 结构定义
 *****************************************************************************/
 /* 扩展netfilter开关映射表 */
-#ifndef __UT_CENTER__
-NF_EXT_MASK_OPS_STRU g_stNfExtMaskOps[]    =
-{
-    {
-        NF_EXT_BR_PRE_ROUTING_HOOK_ON_MASK,
-        {
-            .hook       = NFExt_BrPreRoutingHook,
-            .owner      = THIS_MODULE,
-            .pf         = NFPROTO_BRIDGE,
-            .hooknum    = NF_BR_PRE_ROUTING,
-            .priority   = NF_BR_PRI_FILTER_OTHER,       /* 网桥hook点的最低优先级 */
-        }
-    },
-    {
-        NF_EXT_BR_POST_ROUTING_HOOK_ON_MASK,
-        {
-            .hook       = NFExt_BrPostRoutingHook,
-            .owner      = THIS_MODULE,
-            .pf         = NFPROTO_BRIDGE,
-            .hooknum    = NF_BR_POST_ROUTING,
-            .priority   = NF_BR_PRI_FILTER_OTHER,
-        }
-    },
-    {
-        NF_EXT_BR_FORWARD_HOOK_ON_MASK,
-        {
-            .hook       = NFExt_BrForwardHook,
-            .owner      = THIS_MODULE,
-            .pf         = NFPROTO_BRIDGE,
-            .hooknum    = NF_BR_FORWARD,
-            .priority   = NF_BR_PRI_FILTER_OTHER,
-        }
-    },
-    {
-        NF_EXT_BR_LOCAL_IN_HOOK_ON_MASK,
-        {
-            .hook       = NFExt_BrLocalInHook,
-            .owner      = THIS_MODULE,
-            .pf         = NFPROTO_BRIDGE,
-            .hooknum    = NF_BR_LOCAL_IN,
-            .priority   = NF_BR_PRI_FILTER_OTHER,
-        }
-    },
-    {
-        NF_EXT_BR_LOCAL_OUT_HOOK_ON_MASK,
-        {
-            .hook       = NFExt_BrLocalOutHook,
-            .owner      = THIS_MODULE,
-            .pf         = NFPROTO_BRIDGE,
-            .hooknum    = NF_BR_LOCAL_OUT,
-            .priority   = NF_BR_PRI_FILTER_OTHER,
-        }
-    },
-    {
-        NF_EXT_ARP_LOCAL_IN_ON_MASK,
-        {
-            .hook       = NFExt_ArpInHook,
-            .owner      = THIS_MODULE,
-            .pf         = NFPROTO_ARP,
-            .hooknum    = NF_ARP_IN,
-            .priority   = NF_IP_PRI_CONNTRACK,      /* ARP hook点的优先级 */
-        }
-    },
-    {
-        NF_EXT_ARP_LOCAL_OUT_ON_MASK,
-        {
-            .hook       = NFExt_ArpOutHook,
-            .owner      = THIS_MODULE,
-            .pf         = NFPROTO_ARP,
-            .hooknum    = NF_ARP_OUT,
-            .priority   = NF_IP_PRI_CONNTRACK,
-        }
-    },
-    {
-        NF_EXT_IP4_PRE_ROUTING_HOOK_ON_MASK,
-        {
-            .hook       = NFExt_Ip4PreRoutingHook,
-            .owner      = THIS_MODULE,
-            .pf         = NFPROTO_IPV4,
-            .hooknum    = NF_INET_PRE_ROUTING,
-            .priority   = NF_IP_PRI_MANGLE,         /* 高于DNAT hook点的优先级 */
-        }
-    },
-    {
-        NF_EXT_IP4_POST_ROUTING_HOOK_ON_MASK,
-        {
-            .hook       = NFExt_Ip4PostRoutingHook,
-            .owner      = THIS_MODULE,
-            .pf         = NFPROTO_IPV4,
-            .hooknum    = NF_INET_POST_ROUTING,
-            .priority   = NF_IP_PRI_SELINUX_LAST,   /* 低于SNAT hook点的优先级 */
-        }
-    },
-    {
-        NF_EXT_IP4_LOCAL_IN_HOOK_ON_MASK,
-        {
-            .hook       = NFExt_Ip4LocalInHook,
-            .owner      = THIS_MODULE,
-            .pf         = NFPROTO_IPV4,
-            .hooknum    = NF_INET_LOCAL_IN,
-            .priority   = NF_IP_PRI_SELINUX_LAST,
-        }
-    },
-    {
-        NF_EXT_IP4_LOCAL_OUT_HOOK_ON_MASK,
-        {
-            .hook       = NFExt_Ip4LocalOutHook,
-            .owner      = THIS_MODULE,
-            .pf         = NFPROTO_IPV4,
-            .hooknum    = NF_INET_LOCAL_OUT,
-            .priority   = NF_IP_PRI_SELINUX_LAST,
-        }
-    },
-    {
-        NF_EXT_IP4_FORWARD_HOOK_ON_MASK,
-        {
-            .hook       = NFExt_Ip4ForwardHook,
-            .owner      = THIS_MODULE,
-            .pf         = NFPROTO_IPV4,
-            .hooknum    = NF_INET_FORWARD,
-            .priority   = NF_IP_PRI_SELINUX_LAST,
-        }
-    },
-    {
-        NF_EXT_IP6_PRE_ROUTING_HOOK_ON_MASK,
-        {
-            .hook       = NFExt_Ip6PreRoutingHook,
-            .owner      = THIS_MODULE,
-            .pf         = NFPROTO_IPV6,
-            .hooknum    = NF_INET_PRE_ROUTING,
-            .priority   = NF_IP_PRI_MANGLE,
-        }
-    },
-    {
-        NF_EXT_IP6_POST_ROUTING_HOOK_ON_MASK,
-        {
-            .hook       = NFExt_Ip6PostRoutingHook,
-            .owner      = THIS_MODULE,
-            .pf         = NFPROTO_IPV6,
-            .hooknum    = NF_INET_POST_ROUTING,
-            .priority   = NF_IP_PRI_SELINUX_LAST,
-        }
-    },
-    {
-        NF_EXT_IP6_LOCAL_IN_HOOK_ON_MASK,
-        {
-            .hook       = NFExt_Ip6LocalInHook,
-            .owner      = THIS_MODULE,
-            .pf         = NFPROTO_IPV6,
-            .hooknum    = NF_INET_LOCAL_IN,
-            .priority   = NF_IP_PRI_SELINUX_LAST,
-        }
-    },
-    {
-        NF_EXT_IP6_LOCAL_OUT_HOOK_ON_MASK,
-        {
-            .hook       = NFExt_Ip6LocalOutHook,
-            .owner      = THIS_MODULE,
-            .pf         = NFPROTO_IPV6,
-            .hooknum    = NF_INET_LOCAL_OUT,
-            .priority   = NF_IP_PRI_SELINUX_LAST,
-        }
-    },
-    {
-        NF_EXT_IP6_FORWARD_HOOK_ON_MASK,
-        {
-            .hook       = NFExt_Ip6ForwardHook,
-            .owner      = THIS_MODULE,
-            .pf         = NFPROTO_IPV6,
-            .hooknum    = NF_INET_FORWARD,
-            .priority   = NF_IP_PRI_SELINUX_LAST,
-        }
-    },
-    {
-        NF_EXT_BR_FORWARD_FLOW_CTRL_HOOK_ON_MASK,
-        {
-            .hook       = NFExt_BrForwardFlowCtrlHook,
-            .owner      = THIS_MODULE,
-            .pf         = NFPROTO_BRIDGE,
-            .hooknum    = NF_BR_FORWARD,
-            .priority   = NF_BR_PRI_FILTER_BRIDGED,             /* 与包过滤优先级相同,优先级在这里不能为0 */
-        }
-    }
-};
-#else
+#if (VOS_OS_VER == VOS_WIN32) || defined (__PC_LINT__)
 struct module stModuleTmp;
 struct module *THIS_MODULE  = &stModuleTmp;
 /*lint -e570 -e64 -e34 -e651*/
@@ -251,6 +65,7 @@ NF_EXT_MASK_OPS_STRU g_stNfExtMaskOps[]    =
 {
     {
         NF_EXT_BR_PRE_ROUTING_HOOK_ON_MASK,
+        {0,0,0,0},
         {
             {0},
             NFExt_BrPreRoutingHook,
@@ -262,6 +77,7 @@ NF_EXT_MASK_OPS_STRU g_stNfExtMaskOps[]    =
     },
     {
         NF_EXT_BR_POST_ROUTING_HOOK_ON_MASK,
+        {0,0,0,0},
         {
             {0},
             NFExt_BrPostRoutingHook,
@@ -273,6 +89,7 @@ NF_EXT_MASK_OPS_STRU g_stNfExtMaskOps[]    =
     },
     {
         NF_EXT_BR_FORWARD_HOOK_ON_MASK,
+        {0,0,0,0},
         {
             {0},
             NFExt_BrForwardHook,
@@ -284,6 +101,7 @@ NF_EXT_MASK_OPS_STRU g_stNfExtMaskOps[]    =
     },
     {
         NF_EXT_BR_LOCAL_IN_HOOK_ON_MASK,
+        {0,0,0,0},
         {
             {0},
             NFExt_BrLocalInHook,
@@ -295,6 +113,7 @@ NF_EXT_MASK_OPS_STRU g_stNfExtMaskOps[]    =
     },
     {
         NF_EXT_BR_LOCAL_OUT_HOOK_ON_MASK,
+        {0,0,0,0},
         {
             {0},
             NFExt_BrLocalOutHook,
@@ -306,6 +125,7 @@ NF_EXT_MASK_OPS_STRU g_stNfExtMaskOps[]    =
     },
     {
         NF_EXT_ARP_LOCAL_IN_ON_MASK,
+        {0,0,0,0},
         {
             {0},
             NFExt_ArpInHook,
@@ -317,6 +137,7 @@ NF_EXT_MASK_OPS_STRU g_stNfExtMaskOps[]    =
     },
     {
         NF_EXT_ARP_LOCAL_OUT_ON_MASK,
+        {0,0,0,0},
         {
             {0},
             NFExt_ArpOutHook,
@@ -328,6 +149,7 @@ NF_EXT_MASK_OPS_STRU g_stNfExtMaskOps[]    =
     },
     {
         NF_EXT_IP4_PRE_ROUTING_HOOK_ON_MASK,
+        {0,0,0,0},
         {
             {0},
             NFExt_Ip4PreRoutingHook,
@@ -339,6 +161,7 @@ NF_EXT_MASK_OPS_STRU g_stNfExtMaskOps[]    =
     },
     {
         NF_EXT_IP4_POST_ROUTING_HOOK_ON_MASK,
+        {0,0,0,0},
         {
             {0},
             NFExt_Ip4PostRoutingHook,
@@ -350,6 +173,7 @@ NF_EXT_MASK_OPS_STRU g_stNfExtMaskOps[]    =
     },
     {
         NF_EXT_IP4_LOCAL_IN_HOOK_ON_MASK,
+        {0,0,0,0},
         {
             {0},
             NFExt_Ip4LocalInHook,
@@ -361,6 +185,7 @@ NF_EXT_MASK_OPS_STRU g_stNfExtMaskOps[]    =
     },
     {
         NF_EXT_IP4_LOCAL_OUT_HOOK_ON_MASK,
+        {0,0,0,0},
         {
             {0},
             NFExt_Ip4LocalOutHook,
@@ -372,6 +197,7 @@ NF_EXT_MASK_OPS_STRU g_stNfExtMaskOps[]    =
     },
     {
         NF_EXT_IP4_FORWARD_HOOK_ON_MASK,
+        {0,0,0,0},
         {
             {0},
             NFExt_Ip4ForwardHook,
@@ -383,6 +209,7 @@ NF_EXT_MASK_OPS_STRU g_stNfExtMaskOps[]    =
     },
     {
         NF_EXT_IP6_PRE_ROUTING_HOOK_ON_MASK,
+        {0,0,0,0},
         {
             {0},
             NFExt_Ip6PreRoutingHook,
@@ -394,6 +221,7 @@ NF_EXT_MASK_OPS_STRU g_stNfExtMaskOps[]    =
     },
     {
         NF_EXT_IP6_POST_ROUTING_HOOK_ON_MASK,
+        {0,0,0,0},
         {
             {0},
             NFExt_Ip6PostRoutingHook,
@@ -405,6 +233,7 @@ NF_EXT_MASK_OPS_STRU g_stNfExtMaskOps[]    =
     },
     {
         NF_EXT_IP6_LOCAL_IN_HOOK_ON_MASK,
+        {0,0,0,0},
         {
             {0},
             NFExt_Ip6LocalInHook,
@@ -416,6 +245,7 @@ NF_EXT_MASK_OPS_STRU g_stNfExtMaskOps[]    =
     },
     {
         NF_EXT_IP6_LOCAL_OUT_HOOK_ON_MASK,
+        {0,0,0,0},
         {
             {0},
             NFExt_Ip6LocalOutHook,
@@ -427,6 +257,7 @@ NF_EXT_MASK_OPS_STRU g_stNfExtMaskOps[]    =
     },
     {
         NF_EXT_IP6_FORWARD_HOOK_ON_MASK,
+        {0,0,0,0},
         {
             {0},
             NFExt_Ip6ForwardHook,
@@ -438,6 +269,7 @@ NF_EXT_MASK_OPS_STRU g_stNfExtMaskOps[]    =
     },
     {
         NF_EXT_BR_FORWARD_FLOW_CTRL_HOOK_ON_MASK,
+        {0,0,0,0},
         {
             {0},
             NFExt_BrForwardFlowCtrlHook,
@@ -449,26 +281,207 @@ NF_EXT_MASK_OPS_STRU g_stNfExtMaskOps[]    =
     }
 };
 /*lint +e570 +e64 +e34 +e651*/
-#endif
-
-
-/* 用于内核态向用户态传输的虚拟设备的file_operations */
-#ifndef __UT_CENTER__
-struct file_operations g_stNfExtFileOps = {
-        .poll    = NFExt_Poll,
-        .read    = NFExt_Read,
-        .write   = NFExt_Write,
-        .open    = NFExt_Open,
-        .release = NFExt_Release
-
-};
 #else
-struct file_operations g_stNfExtFileOps = {
-        NFExt_Poll,
-        NFExt_Read,
-        NFExt_Write,
-        NFExt_Open,
-        NFExt_Release
+NF_EXT_MASK_OPS_STRU g_stNfExtMaskOps[]    =
+{
+    {
+        NF_EXT_BR_PRE_ROUTING_HOOK_ON_MASK,
+        {0,0,0,0},
+        {
+            .hook       = NFExt_BrPreRoutingHook,
+            .owner      = THIS_MODULE,
+            .pf         = NFPROTO_BRIDGE,
+            .hooknum    = NF_BR_PRE_ROUTING,
+            .priority   = NF_BR_PRI_FILTER_OTHER,       /* 网桥hook点的最低优先级 */
+        }
+    },
+    {
+        NF_EXT_BR_POST_ROUTING_HOOK_ON_MASK,
+        {0,0,0,0},
+        {
+            .hook       = NFExt_BrPostRoutingHook,
+            .owner      = THIS_MODULE,
+            .pf         = NFPROTO_BRIDGE,
+            .hooknum    = NF_BR_POST_ROUTING,
+            .priority   = NF_BR_PRI_FILTER_OTHER,
+        }
+    },
+    {
+        NF_EXT_BR_FORWARD_HOOK_ON_MASK,
+        {0,0,0,0},
+        {
+            .hook       = NFExt_BrForwardHook,
+            .owner      = THIS_MODULE,
+            .pf         = NFPROTO_BRIDGE,
+            .hooknum    = NF_BR_FORWARD,
+            .priority   = NF_BR_PRI_FILTER_OTHER,
+        }
+    },
+    {
+        NF_EXT_BR_LOCAL_IN_HOOK_ON_MASK,
+        {0,0,0,0},
+        {
+            .hook       = NFExt_BrLocalInHook,
+            .owner      = THIS_MODULE,
+            .pf         = NFPROTO_BRIDGE,
+            .hooknum    = NF_BR_LOCAL_IN,
+            .priority   = NF_BR_PRI_FILTER_OTHER,
+        }
+    },
+    {
+        NF_EXT_BR_LOCAL_OUT_HOOK_ON_MASK,
+        {0,0,0,0},
+        {
+            .hook       = NFExt_BrLocalOutHook,
+            .owner      = THIS_MODULE,
+            .pf         = NFPROTO_BRIDGE,
+            .hooknum    = NF_BR_LOCAL_OUT,
+            .priority   = NF_BR_PRI_FILTER_OTHER,
+        }
+    },
+    {
+        NF_EXT_ARP_LOCAL_IN_ON_MASK,
+        {0,0,0,0},
+        {
+            .hook       = NFExt_ArpInHook,
+            .owner      = THIS_MODULE,
+            .pf         = NFPROTO_ARP,
+            .hooknum    = NF_ARP_IN,
+            .priority   = NF_IP_PRI_CONNTRACK,      /* ARP hook点的优先级 */
+        }
+    },
+    {
+        NF_EXT_ARP_LOCAL_OUT_ON_MASK,
+        {0,0,0,0},
+        {
+            .hook       = NFExt_ArpOutHook,
+            .owner      = THIS_MODULE,
+            .pf         = NFPROTO_ARP,
+            .hooknum    = NF_ARP_OUT,
+            .priority   = NF_IP_PRI_CONNTRACK,
+        }
+    },
+    {
+        NF_EXT_IP4_PRE_ROUTING_HOOK_ON_MASK,
+        {0,0,0,0},
+        {
+            .hook       = NFExt_Ip4PreRoutingHook,
+            .owner      = THIS_MODULE,
+            .pf         = NFPROTO_IPV4,
+            .hooknum    = NF_INET_PRE_ROUTING,
+            .priority   = NF_IP_PRI_MANGLE,         /* 高于DNAT hook点的优先级 */
+        }
+    },
+    {
+        NF_EXT_IP4_POST_ROUTING_HOOK_ON_MASK,
+        {0,0,0,0},
+        {
+            .hook       = NFExt_Ip4PostRoutingHook,
+            .owner      = THIS_MODULE,
+            .pf         = NFPROTO_IPV4,
+            .hooknum    = NF_INET_POST_ROUTING,
+            .priority   = NF_IP_PRI_SELINUX_LAST,   /* 低于SNAT hook点的优先级 */
+        }
+    },
+    {
+        NF_EXT_IP4_LOCAL_IN_HOOK_ON_MASK,
+        {0,0,0,0},
+        {
+            .hook       = NFExt_Ip4LocalInHook,
+            .owner      = THIS_MODULE,
+            .pf         = NFPROTO_IPV4,
+            .hooknum    = NF_INET_LOCAL_IN,
+            .priority   = NF_IP_PRI_SELINUX_LAST,
+        }
+    },
+    {
+        NF_EXT_IP4_LOCAL_OUT_HOOK_ON_MASK,
+        {0,0,0,0},
+        {
+            .hook       = NFExt_Ip4LocalOutHook,
+            .owner      = THIS_MODULE,
+            .pf         = NFPROTO_IPV4,
+            .hooknum    = NF_INET_LOCAL_OUT,
+            .priority   = NF_IP_PRI_SELINUX_LAST,
+        }
+    },
+    {
+        NF_EXT_IP4_FORWARD_HOOK_ON_MASK,
+        {0,0,0,0},
+        {
+            .hook       = NFExt_Ip4ForwardHook,
+            .owner      = THIS_MODULE,
+            .pf         = NFPROTO_IPV4,
+            .hooknum    = NF_INET_FORWARD,
+            .priority   = NF_IP_PRI_SELINUX_LAST,
+        }
+    },
+    {
+        NF_EXT_IP6_PRE_ROUTING_HOOK_ON_MASK,
+        {0,0,0,0},
+        {
+            .hook       = NFExt_Ip6PreRoutingHook,
+            .owner      = THIS_MODULE,
+            .pf         = NFPROTO_IPV6,
+            .hooknum    = NF_INET_PRE_ROUTING,
+            .priority   = NF_IP_PRI_MANGLE,
+        }
+    },
+    {
+        NF_EXT_IP6_POST_ROUTING_HOOK_ON_MASK,
+        {0,0,0,0},
+        {
+            .hook       = NFExt_Ip6PostRoutingHook,
+            .owner      = THIS_MODULE,
+            .pf         = NFPROTO_IPV6,
+            .hooknum    = NF_INET_POST_ROUTING,
+            .priority   = NF_IP_PRI_SELINUX_LAST,
+        }
+    },
+    {
+        NF_EXT_IP6_LOCAL_IN_HOOK_ON_MASK,
+        {0,0,0,0},
+        {
+            .hook       = NFExt_Ip6LocalInHook,
+            .owner      = THIS_MODULE,
+            .pf         = NFPROTO_IPV6,
+            .hooknum    = NF_INET_LOCAL_IN,
+            .priority   = NF_IP_PRI_SELINUX_LAST,
+        }
+    },
+    {
+        NF_EXT_IP6_LOCAL_OUT_HOOK_ON_MASK,
+        {0,0,0,0},
+        {
+            .hook       = NFExt_Ip6LocalOutHook,
+            .owner      = THIS_MODULE,
+            .pf         = NFPROTO_IPV6,
+            .hooknum    = NF_INET_LOCAL_OUT,
+            .priority   = NF_IP_PRI_SELINUX_LAST,
+        }
+    },
+    {
+        NF_EXT_IP6_FORWARD_HOOK_ON_MASK,
+        {0,0,0,0},
+        {
+            .hook       = NFExt_Ip6ForwardHook,
+            .owner      = THIS_MODULE,
+            .pf         = NFPROTO_IPV6,
+            .hooknum    = NF_INET_FORWARD,
+            .priority   = NF_IP_PRI_SELINUX_LAST,
+        }
+    },
+    {
+        NF_EXT_BR_FORWARD_FLOW_CTRL_HOOK_ON_MASK,
+        {0,0,0,0},
+        {
+            .hook       = NFExt_BrForwardFlowCtrlHook,
+            .owner      = THIS_MODULE,
+            .pf         = NFPROTO_BRIDGE,
+            .hooknum    = NF_BR_FORWARD,
+            .priority   = NF_BR_PRI_FILTER_BRIDGED,             /* 与包过滤优先级相同,优先级在这里不能为0 */
+        }
+    }
 };
 #endif
 
@@ -476,155 +489,6 @@ struct file_operations g_stNfExtFileOps = {
 /******************************************************************************
    5 函数实现
 ******************************************************************************/
-
-unsigned int NFExt_Poll(struct file *file, poll_table *wait)
-{
-    unsigned int mask = 0;
-
-    /*增加一个等待队列到 poll_table*/
-    poll_wait(file, &g_stExEntity.stWaitHeadDev, wait);
-
-    if ( NF_EXT_FLAG_BLOCKED != g_stExEntity.ulIsBlkflag )
-    {
-        /* 设备可读，置上掩码 */
-        mask |= POLLIN | POLLRDNORM;
-    }
-
-    return mask;
-}
-
-/*****************************************************************************
- 函 数 名  : NFExt_open
- 功能描述  : 虚拟设备的open函数
- 输入参数  : struct inode *inode    索引结点
-             struct file *file      指向文件的指针
- 输出参数  : 无
- 返 回 值  : int :该函数是linux回调函数，要和linux的原型匹配，故不使用osa封装类型
- 调用函数  :
- 被调函数  :
-
- 修改历史      :
-  1.日    期   : 2011年11月22日
-    作    者   : caikai
-    修改内容   : Created
-*****************************************************************************/
-int NFExt_Open(struct inode *inode, struct file *file)
-{
-    /*设备已经打开*/
-    if ( 0 != g_stExEntity.ulIsDeviceOpen )
-    {
-        return -EBUSY;
-    }
-
-    g_stExEntity.ulIsDeviceOpen++;
-    return 0;
-}
-
-
-/*****************************************************************************
- 函 数 名  : NFExt_release
- 功能描述  : 虚拟设备的release函数
- 输入参数  : struct inode *inode    索引结点
-             struct file *file      指向文件的指针
- 输出参数  : int :该函数是linux回调函数，要和linux的原型匹配，故不使用osa封装类型
- 返 回 值  : 0
- 调用函数  :
- 被调函数  :
-
- 修改历史      :
-  1.日    期   : 2011年11月22日
-    作    者   : caikai
-    修改内容   : Created
-*****************************************************************************/
-int NFExt_Release(struct inode *inode, struct file *file)
-{
-    if( g_stExEntity.ulIsDeviceOpen > 0 )
-    {
-        g_stExEntity.ulIsDeviceOpen--;
-    }
-
-    return 0;
-}
-
-/*****************************************************************************
- 函 数 名  : NFExt_read
- 功能描述  : 虚拟设备的read函数
- 输入参数  : struct file *filp,     指向文件的指针
-             char *buff,            用户态的缓冲区
-             size_t len,            待拷贝的内容
-             loff_t *offset         偏移值
- 输出参数  : 无
- 返 回 值  : ssize_t
- 调用函数  :
- 被调函数  :
-
- 修改历史      :
-  1.日    期   : 2011年11月22日
-    作    者   : caikai
-    修改内容   : Created
-*****************************************************************************/
-ssize_t NFExt_Read(struct file *filp, char *buff,
-                       size_t len, loff_t *offset)
-{
-    if( VOS_NULL_PTR == buff )
-    {
-        vos_printf("NFExt_Read: The buff is null!\n");
-
-        return -1;
-    }
-    /* 改变阻塞条件 */
-    g_stExEntity.ulIsBlkflag     = NF_EXT_FLAG_BLOCKED;
-
-    len                          = min(len, DEV_BUFF_LEN);
-
-    /*从内核态拷贝内容到用户态*/
-    if (0 != copy_to_user(buff, g_stExEntity.aucKbuff, (unsigned long)len))
-    {
-        vos_printf("NFExt_Read:The data read fail!");
-        return -1;
-    }
-    return (ssize_t)len;
-}
-
-/*****************************************************************************
- 函 数 名  : NFExt_write
- 功能描述  : 虚拟设备的write函数
- 输入参数  : struct file *filp,     指向文件的指针
-             char *buff,            用户态的缓冲区
-             size_t len,            待拷贝的内容
-             loff_t *offset         偏移值
- 输出参数  : 无
- 返 回 值  : ssize_t
- 调用函数  :
- 被调函数  :
-
- 修改历史      :
-  1.日    期   : 2011年11月22日
-    作    者   : caikai
-    修改内容   : Created
-*****************************************************************************/
-ssize_t NFExt_Write(struct file *filp, const char *buff,
-                       size_t len, loff_t *offset)
-{
-    memset(g_stExEntity.aucKbuff, 0x0, DEV_BUFF_LEN);
-
-    if ( DEV_BUFF_LEN >= len )
-    {
-        /*从用户态拷贝内容到内核态*/
-        if (0 != copy_from_user(g_stExEntity.aucKbuff, buff, (unsigned long)len))
-        {
-            vos_printf("NFExt_Write:The data write fail!");
-            return -EINVAL;
-        }
-        return (ssize_t)len;
-    }
-    else
-    {
-        vos_printf("NFExt_Write:The data to be writen is too long!");
-        return -EINVAL;
-    }
-}
-
 /*****************************************************************************
  函 数 名  : NFExt_UnregHooks
  功能描述  : 根据需要停止抓包模块的掩码，将抓包的钩子函数解除内核注册
@@ -802,31 +666,7 @@ VOS_UINT32  NFExt_Get1stInetIpv4Addr(struct net_device *pstDev)
         return 0;
     }
 
-    return htonl(pinDev->ifa_list->ifa_address);
-}
-
-/*****************************************************************************
- 函 数 名  : NFExt_SndConfigToUserSpace
- 功能描述  : 当OM有配置命令时调用，把read从阻塞中解放
- 输入参数  : NF_EXT_NETWORK_INQUIRE_CONFIG_STRU *pstNetInquireCfgReq 内核态与用户态交互结构
- 输出参数  : 无
- 返 回 值  : 无
- 调用函数  :
- 被调函数  :
-
- 修改历史      :
-  1.日    期   : 2011年11月22日
-    作    者   : caikai
-    修改内容   : Created
-*****************************************************************************/
-VOS_VOID  NFExt_SndConfigToUserSpace(NETWORK_INQUIRE_CONFIG_STRU *pstNetInquireCfgReq)
-{
-    memcpy(g_stExEntity.aucKbuff, pstNetInquireCfgReq, DEV_BUFF_LEN);
-
-    g_stExEntity.ulIsBlkflag = NF_EXT_FLAG_UNBLOCKED;
-
-    /*唤醒休眠的进程*/
-    wake_up_interruptible(&g_stExEntity.stWaitHeadDev);
+    return (VOS_UINT32)htonl((VOS_ULONG)pinDev->ifa_list->ifa_address);
 }
 
 /*****************************************************************************
@@ -847,21 +687,11 @@ VOS_VOID NFExt_RcvNfExtInfoCfgReq(VOS_VOID *pMsg)
 {
     OM_PS_PARAM_REQ_STRU                    *pstOmMsg;
     IPS_MNTN_INFO_CFG_REQ_STRU              *pstNfExtCfgReq;
-    NETWORK_INQUIRE_CONFIG_STRU              stNetInquireCfgReq;
     IPS_MNTN_INFO_CFG_CNF_STRU               stNfExtCfgCnf;
     IPS_MNTN_RESULT_TYPE_ENUM_UINT16         enResult;
 
     pstOmMsg                = (OM_PS_PARAM_REQ_STRU *)pMsg;
     pstNfExtCfgReq          = (IPS_MNTN_INFO_CFG_REQ_STRU *)(pstOmMsg->aucData);
-
-    /* 根据SDT配置将配置发至用户态程序 */
-    if (IPS_MNTN_INFO_REPORT_START == pstNfExtCfgReq->enCommand)
-    {
-        stNetInquireCfgReq.ulOnOffMask  = NW_INQUIRE_CFG_ALL_MASK;
-    }
-    stNetInquireCfgReq.ulTimerLen   = (VOS_UINT32)(pstNfExtCfgReq->usTimeLen);
-
-    NFExt_SndConfigToUserSpace(&stNetInquireCfgReq);
 
     enResult            = IPS_MNTN_RESULT_OK;
 
@@ -876,63 +706,6 @@ VOS_VOID NFExt_RcvNfExtInfoCfgReq(VOS_VOID *pMsg)
     /* 发送OM透明消息 */
     IPS_MNTN_SndCfgCnf2Om( ID_IPS_OM_MNTN_INFO_CONFIG_CNF,
         sizeof(IPS_MNTN_INFO_CFG_CNF_STRU), &stNfExtCfgCnf );
-}
-
-/*****************************************************************************
- 函 数 名  : NFExt_DeviceInit
- 功能描述  : NFExt虚拟设备初始化
- 输入参数  : VOS_VOID
- 输出参数  : 无
- 返 回 值  : int
- 调用函数  :
- 被调函数  :
-
- 修改历史      :
-  1.日    期   : 2011年11月22日
-    作    者   : caikai
-    修改内容   : Created
-*****************************************************************************/
-VOS_INT NFExt_DeviceInit(VOS_VOID)
-{
-    VOS_INT         iRet     = -1;
-
-    /* 动态生成虚拟字符设备编号 */
-    iRet    = alloc_chrdev_region(&(g_stExEntity.ulDevNo), MINOR_NO_START, DEVICE_NUM, DEVICE_NAME);
-    if ( iRet < 0 )
-    {
-        vos_printf("NFExt_DeviceInit: register_chrdev error!\n");
-        return iRet;
-    }
-
-    /* 初始化一个虚拟字符设备 */
-    cdev_init(&(g_stExEntity.stNfExtCdev), &g_stNfExtFileOps);
-    g_stExEntity.stNfExtCdev.owner = THIS_MODULE;
-
-    /* 向内核注册字符设备，通知内核cdev的信息 */
-    iRet     = cdev_add(&(g_stExEntity.stNfExtCdev), g_stExEntity.ulDevNo, DEVICE_NUM);
-    if ( iRet < 0 )
-    {
-        vos_printf("NFExt_DeviceInit: cdev_add error!\n");
-        return iRet;
-    }
-
-    g_stExEntity.pstNfExtClass = class_create(THIS_MODULE, CLASS_NAME);
-    if ( IS_ERR(g_stExEntity.pstNfExtClass) )
-    {
-        vos_printf("NFExt_DeviceInit: class_create error，exec [mknod] manually!\n");
-    }
-    else
-    {
-        /* 在/dev目录下创建设备结点 */
-        device_create(g_stExEntity.pstNfExtClass, NULL, g_stExEntity.ulDevNo, NULL, DEVICE_NAME);
-    }
-
-    memset(g_stExEntity.aucKbuff, 0x0, DEV_BUFF_LEN);
-
-    /*初始化等待队列*/
-    init_waitqueue_head(&g_stExEntity.stWaitHeadDev);
-
-    return 0;
 }
 VOS_VOID NFExt_SelfTaskInit(VOS_VOID)
 {
@@ -951,7 +724,7 @@ VOS_VOID NFExt_SelfTaskInit(VOS_VOID)
 }
 VOS_INT NFExt_RingBufferPut( OM_RING_ID rngId, VOS_CHAR *buffer, VOS_INT nbytes )
 {
-    VOS_UINT32  ulFlags;
+    VOS_ULONG   ulFlags = 0UL;
     VOS_INT     iRst;
 
     iRst = 0;
@@ -969,7 +742,7 @@ VOS_INT NFExt_RingBufferPut( OM_RING_ID rngId, VOS_CHAR *buffer, VOS_INT nbytes 
 
 VOS_INT NFExt_RingBufferGet( OM_RING_ID rngId, VOS_CHAR *buffer, VOS_INT maxbytes )
 {
-    VOS_UINT32  ulFlags;
+    VOS_ULONG   ulFlags = 0UL;
     VOS_INT     iRst;
 
     iRst = 0;
@@ -988,12 +761,16 @@ VOS_INT NFExt_RingBufferGet( OM_RING_ID rngId, VOS_CHAR *buffer, VOS_INT maxbyte
 VOS_VOID NFExt_FlushRingBuffer(OM_RING_ID rngId)
 {
     NF_EXT_DATA_RING_BUF_STRU   stData;
-    VOS_UINT32                  ulFlags;
+    VOS_ULONG                   ulFlags = 0UL;
+    VOS_INT                     iRst = 0;
 
     while (!OM_RingBufferIsEmpty(rngId))
     {
-        NFExt_RingBufferGet(rngId, (VOS_CHAR*)(&stData), sizeof(NF_EXT_DATA_RING_BUF_STRU));
-        NF_EXT_MEM_FREE(ACPU_PID_NFEXT, stData.pData);
+        iRst = NFExt_RingBufferGet(rngId, (VOS_CHAR*)(&stData), sizeof(NF_EXT_DATA_RING_BUF_STRU));
+        if (0 != iRst)
+        {
+            NF_EXT_MEM_FREE(ACPU_PID_NFEXT, stData.pData);
+        }
     }
 
     spin_lock_irqsave(&g_stExEntity.stLockTxTask, ulFlags);
@@ -1044,7 +821,6 @@ VOS_UINT32 NFExt_AddDataToRingBuf(NF_EXT_DATA_RING_BUF_STRU *pstData)
 
 VOS_VOID NFExt_CtrlTxMsgTask(VOS_VOID)
 {
-
     NF_EXT_DATA_RING_BUF_STRU   stData;
     VOS_UINT32                  ulRst;
 
@@ -1053,7 +829,6 @@ VOS_VOID NFExt_CtrlTxMsgTask(VOS_VOID)
     VOS_UINT32              i;
 #endif
 
-
 /* 解决UT死循环问题 */
 #ifndef __UT_CENTER__
     for ( ; ; )
@@ -1061,7 +836,6 @@ VOS_VOID NFExt_CtrlTxMsgTask(VOS_VOID)
     for (i = 0; i < 1; i++)
 #endif
     {
-
         if (VOS_NULL_PTR == g_stExEntity.pRingBufferId)
         {
             PS_LOG(ACPU_PID_NFEXT, 0, PS_PRINT_WARNING,
@@ -1069,9 +843,8 @@ VOS_VOID NFExt_CtrlTxMsgTask(VOS_VOID)
             break;
         }
 
-        /*lint -e522*/
+        /*lint -e{522,666} */
         wait_event_interruptible(g_stExEntity.stWaitHeadTxTask, (VOS_TRUE != OM_RingBufferIsEmpty(g_stExEntity.pRingBufferId)));
-        /*lint +e522*/
 
         ulRst = (VOS_UINT32)NFExt_RingBufferGet(g_stExEntity.pRingBufferId, (VOS_CHAR *)&stData,
             sizeof(NF_EXT_DATA_RING_BUF_STRU));
@@ -1096,8 +869,6 @@ VOS_VOID NFExt_CtrlTxMsgTask(VOS_VOID)
         }
     }
 }
-
-
 VOS_UINT32 NFExt_ReadNvCfg(VOID)
 {
     VOS_UINT32                     ulRet;
@@ -1172,15 +943,7 @@ VOS_VOID NFExt_EntityInit(VOS_VOID)
 *****************************************************************************/
 VOS_INT NFExt_Init(VOS_VOID)
 {
-    VOS_INT     iRet;
     VOS_UINT32  ulRet;
-
-    /* 虚拟字符设备初始化 */
-    iRet = NFExt_DeviceInit();
-    if ( 0 != iRet )
-    {
-        return iRet;
-    }
 
     ulRet = NFExt_ReadNvCfg();
     if (VOS_ERR == ulRet)
@@ -1218,19 +981,6 @@ void NFExt_Uninit(VOS_VOID)
 {
     /*去注册钩子函数*/
     NFExt_UnregHooks(g_stExEntity.ulCurHookOnMask);
-
-    /*================================*/
-    /*删除设备*/
-    /*================================*/
-
-    cdev_del(&(g_stExEntity.stNfExtCdev));
-
-    device_destroy(g_stExEntity.pstNfExtClass, g_stExEntity.ulDevNo);
-
-    class_destroy(g_stExEntity.pstNfExtClass);
-
-    /*去注册设备号*/
-    unregister_chrdev_region(g_stExEntity.ulDevNo, DEVICE_NUM);
 }
 
 /*****************************************************************************
@@ -1256,7 +1006,7 @@ VOS_VOID NFExt_FlowCtrlInit(VOS_VOID)
 /*lint -e550*/
 VOS_VOID  NFExt_BrSetFlowCtrl(VOS_VOID)
 {
-    VOS_UINT32  ulFlags;
+    VOS_ULONG       ulFlags = 0UL;
 
     local_irq_save(ulFlags);
     g_stExFlowCtrlEntity.ulFlowCtrlMsk |= NF_EXT_BR_FORWARD_FLOW_CTRL_MASK;
@@ -1270,7 +1020,7 @@ VOS_VOID  NFExt_BrSetFlowCtrl(VOS_VOID)
 /*lint -e550*/
 VOS_VOID  NFExt_BrStopFlowCtrl(VOS_VOID)
 {
-    VOS_UINT32  ulFlags;
+    VOS_ULONG       ulFlags = 0UL;
 
     local_irq_save(ulFlags);
     g_stExFlowCtrlEntity.ulFlowCtrlMsk &= ~NF_EXT_BR_FORWARD_FLOW_CTRL_MASK;

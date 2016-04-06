@@ -382,12 +382,12 @@ void DRV_USIMMSCI_FUNC_REGISTER(OMSCIFUNCPTR omSciFuncPtr)
 * 修改记录  : 
 *
 *****************************************************************************/
-BSP_U32 DRV_USIMMSCI_RECORD_DATA_SAVE(BSP_VOID) 
+BSP_U32 DRV_USIMMSCI_RECORD_DATA_SAVE(SCI_LOG_MODE log_mode) 
 {
 #if defined(INSTANCE_1)
-    return (BSP_U32)I1_bsp_sci_record_data_save();
+    return (BSP_U32)I1_bsp_sci_record_data_save(log_mode);
 #else
-    return (BSP_U32)bsp_sci_record_data_save();
+    return (BSP_U32)bsp_sci_record_data_save(log_mode);
 #endif
 }
 
@@ -541,6 +541,50 @@ BSP_VOID DRV_USIMMSCI_POWER_ON(BSP_VOID)
 BSP_VOID DRV_USIMMSCI_POWER_OFF(BSP_VOID) 
 {
 	return ;
+}
+/*****************************************************************************
+* 函 数 名  : DRV_USIMMSCI_SLOT_SWITCH
+*
+* 功能描述  : 本接口实现卡槽切换
+* 输入参数  : SCI_SLOT sci_slot0   卡槽0对应的SCI ID
+                            SCI_SLOT sci_slot1   卡槽1对应的SCI ID
+* 输出参数  : 无
+*
+* 返 回 值  : 切换状态
+*
+* 修改记录  : 
+*
+*****************************************************************************/
+
+BSP_S32  DRV_USIMMSCI_SLOT_SWITCH(SCI_SLOT sci_slot0,SCI_SLOT sci_slot1)
+{
+#if defined(INSTANCE_1)
+    return I1_bsp_sci_slot_switch( sci_slot0,  sci_slot1);
+#else
+    return bsp_sci_slot_switch( sci_slot0,  sci_slot1);
+#endif
+}
+/*****************************************************************************
+* 函 数 名  : DRV_USIMMSC_GET_SLOT_STATE
+*
+* 功能描述  : 本接口查询当前的卡槽对应关系
+* 输入参数  : 
+* 输出参数  : SCI_SLOT* sci_slot0   卡槽0对应的SCI ID
+                            SCI_SLOT* sci_slot1   卡槽1对应的SCI ID
+*
+* 返 回 值  : 查询状态
+*
+* 修改记录  : 
+*
+*****************************************************************************/
+
+BSP_S32  DRV_USIMMSCI_GET_SLOT_STATE(SCI_SLOT* sci_slot0,SCI_SLOT* sci_slot1)
+{
+#if defined(INSTANCE_1)
+    return I1_bsp_sci_get_slot_state(sci_slot0, sci_slot1);
+#else
+    return bsp_sci_get_slot_state(sci_slot0, sci_slot1);
+#endif
 }
 
 

@@ -17,7 +17,9 @@
 #define  rse_print_info(fmt, ...)     (bsp_trace(BSP_LOG_LEVEL_ERROR, BSP_MODU_RSE, "[rse]: "fmt, ##__VA_ARGS__))
 
 
-RF_NV_RSE_CFG_STRU rse_cfg = {0x0,0x0,0x0,0x0,0x0};
+RF_NV_RSE_CFG_STRU     rse_cfg     = {0x0,0x0,0x0,0x0,0x0};
+unsigned int           rse_mipi_en = 0;
+DRV_DRV_ANT_SW_MIPI_CONFIG rse_mipi_cfg;
 
 int bsp_rf_rse_init(void)
 {
@@ -28,9 +30,27 @@ int bsp_rf_rse_init(void)
     if (ret !=  0)
     {
         rse_print_error(" read rse NV=0x%x, ret = %d \n",NV_ID_RF_RSE_CFG, ret);
-        return -1;
     }
-    return 0;
+	
+    ret = bsp_nvm_read(NV_ID_DRV_RSE_MIPI_EN,(u8*)&rse_mipi_en,sizeof(rse_mipi_en));
+    if (ret !=  0)
+    {
+        rse_print_error(" read rse NV=0x%x, ret = %d \n",NV_ID_RF_RSE_CFG, ret);
+    }
+
+	if(rse_mipi_en)
+	{
+	    ret |= bsp_nvm_read(NV_ID_DRV_RSE_MIPI_CONFIG,(u8*)&rse_mipi_cfg,sizeof(rse_mipi_cfg));
+	    if (ret !=  0)
+	    {
+	        rse_print_error(" read rse NV=0x%x, ret = %d ,rse mipi can't config!\n",NV_ID_DRV_RSE_MIPI_CONFIG, ret);
+	    }
+		else{
+			ret = bsp_rse_mipi_config_on();
+		}
+	}
+
+    return ret;
 }
 
 int bsp_rse_on(void)
@@ -101,8 +121,62 @@ int bsp_rse_off(void)
     return ret;
 
 }
+int bsp_rse_mipi_config_on(void)
+{
+	int ret = 0;
 
+	/*打开天线开关的电源*/	
+	ret =  bsp_pmu_hi6561_rf_poweron(0);
+	ret |= bsp_pmu_hi6561_rf_poweroff(0);
+	ret |= bsp_pmu_hi6561_rf_poweron(1);
+	ret |= bsp_pmu_hi6561_rf_poweroff(1);
+	if(ret){
+		rse_print_error("pmu 6561 power config fail!\n");
+		return -1;
+	}
+	
+	/*rse mipi init*/
+	ret =  bsp_rse_mipi_base_config(0);
+	ret |= bsp_rse_mipi_base_config(1);	
+	if(ret){
+		rse_print_error("rse mipi config fail!\n");
+		return -1;
+	}
+
+	return 0;
+}
+
+
+int bsp_rse_mipi_base_config(PWC_COMM_MODEM_E modem_id)
+{
+	int ret      = 0;
+	int index    = 0;
+	u8  mipi_chn = 0;
+	u8  slave_id = 0;
+	u8  offset   = 0;
+	u8  data     = 0;
+
+
+	/*配置天线开关寄存器*/
+	for(; index < RSE_MIPI_SW_REG_NUM ; index++){
+		if(rse_mipi_cfg.all_switch[modem_id].modem_switch[index].is_invalid){			
+			mipi_chn = rse_mipi_cfg.all_switch[modem_id].modem_switch[index].mipi_chn;
+			slave_id = rse_mipi_cfg.all_switch[modem_id].modem_switch[index].slave_id;
+			offset	 = rse_mipi_cfg.all_switch[modem_id].modem_switch[index].reg_offset;
+			data	 = rse_mipi_cfg.all_switch[modem_id].modem_switch[index].value;
+
+			ret = bsp_mipi_data_send(MIPI_WRITE, slave_id, offset, data, mipi_chn);
+			if(ret){
+				rse_print_error("mipi send rse data failed! mipi id =%d\n",mipi_chn);
+				return ret;
+			}
+		}
+	}
+
+	return 0;
+}
 #else
+unsigned int           rse_mipi_en = 0;
 int bsp_rf_rse_init(void)
 {
     return 0;
@@ -116,6 +190,19 @@ int bsp_rse_on(void)
 int bsp_rse_off(void)
 {
     return -1;
+}
+int bsp_rse_mipi_config(PWC_COMM_MODEM_E modem_id)
+{
+	return -1;
+}
+int bsp_rse_mipi_config_on(void)
+{
+	return -1;
+}
+
+int bsp_rse_mipi_base_config(PWC_COMM_MODEM_E modem_id)
+{
+    return 0;
 }
 
 #endif

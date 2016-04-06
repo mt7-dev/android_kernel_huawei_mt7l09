@@ -84,8 +84,10 @@ error:
 
 int rdr_compr_init(void)
 {
+/*lint -e666*/
 	size_t size = max(zlib_deflate_workspacesize(MAX_WBITS, MAX_MEM_LEVEL),
 			zlib_inflate_workspacesize());
+/*lint +e666*/
 	stream.workspace = vmalloc(size);
 	if (!stream.workspace)
 		return -ENOMEM;

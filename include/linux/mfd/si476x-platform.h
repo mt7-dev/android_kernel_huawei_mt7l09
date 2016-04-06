@@ -190,28 +190,7 @@ enum si476x_func {
 };
 
 
-/**
- * @xcload: Selects the amount of additional on-chip capacitance to
- *          be connected between XTAL1 and gnd and between XTAL2 and
- *          GND. One half of the capacitance value shown here is the
- *          additional load capacitance presented to the xtal. The
- *          minimum step size is 0.277 pF. Recommended value is 0x28
- *          but it will be layout dependent. Range is 0–0x3F i.e.
- *          (0–16.33 pF)
- * @ctsien: enable CTSINT(interrupt request when CTS condition
- *          arises) when set
- * @intsel: when set A1 pin becomes the interrupt pin; otherwise,
- *          INTB is the interrupt pin
- * @func:   selects the boot function of the device. I.e.
- *          SI476X_BOOTLOADER  - Boot loader
- *          SI476X_FM_RECEIVER - FM receiver
- *          SI476X_AM_RECEIVER - AM receiver
- *          SI476X_WB_RECEIVER - Weatherband receiver
- * @freq:   oscillator's crystal frequency:
- *          SI476X_XTAL_37P209375_MHZ - 37.209375 Mhz
- *          SI476X_XTAL_36P4_MHZ      - 36.4 Mhz
- *          SI476X_XTAL_37P8_MHZ      - 37.8 Mhz
- */
+
 struct si476x_power_up_args {
 	enum si476x_ibias6x ibias6x;
 	enum si476x_xstart  xstart;

@@ -26,6 +26,7 @@ BSP_TASK_INT_INFO_CTRL_STRU      int_lock_stru = {0};
 osl_sem_id                task_swt_sem;
 osl_sem_id                int_lock_sem;
 
+
 int  QueueFrontDel(dump_queue_t *Q, u32 del_num);
 
 /*****************************************************************************
@@ -140,7 +141,7 @@ void report_sysview_trace(bsp_sysview_type_e data_type)
     {
         return;
     }
-    p_sysview_trace_stru = (BSP_SYS_VIEW_TRACE_STRU *)bsp_om_get_buf(BSP_OM_SOCP_BUF_TYPE,send_buf_len );
+    p_sysview_trace_stru = bsp_om_get_buf(BSP_OM_SOCP_BUF_TYPE,send_buf_len );
 
     if(NULL == p_sysview_trace_stru)
     {
@@ -155,7 +156,7 @@ void report_sysview_trace(bsp_sysview_type_e data_type)
     /*从dump模块指定地址中获取数据、发送数据到SOCP、更新dump模块队列指针*/
     memcpy((u8*)p_sysview_trace_stru +sizeof(BSP_SYS_VIEW_TRACE_STRU),(u8*)(queue_head->data+q_front),data_size);
 
-    if(BSP_OK == bsp_om_into_send_list((u32)p_sysview_trace_stru,send_buf_len))
+    if(BSP_OK == bsp_om_into_send_list((void*)p_sysview_trace_stru,send_buf_len))
     {
         QueueFrontDel(queue_head,data_size/sizeof(int));
         g_sysview_debug[data_type].info_send_times++;
@@ -164,7 +165,7 @@ void report_sysview_trace(bsp_sysview_type_e data_type)
     else
     {
         QueueFrontDel(queue_head,data_size/sizeof(int));
-        bsp_om_free_buf((u32)p_sysview_trace_stru,send_buf_len );
+        bsp_om_free_buf((void*)p_sysview_trace_stru,send_buf_len );
     }
 
     bsp_om_buf_sem_give();
@@ -227,7 +228,7 @@ u32 bsp_task_swt_set(u32 set_swt,u32 period)
         {
             osl_sem_init( SEM_EMPTY,&task_swt_sem);
 
-            task_info_stru.task_id = (s32)kthread_run(task_view_task, NULL, "task_view_task");
+            task_info_stru.task_id = kthread_run(task_view_task, NULL, "task_view_task");
             if(task_info_stru.task_id != 0)
             {
 
@@ -273,7 +274,7 @@ u32 bsp_int_lock_set(u32 set_swt,u32 period)
         {
             osl_sem_init(SEM_EMPTY,&int_lock_sem);
 
-            int_lock_stru.task_id = (s32)kthread_run(int_lock_view_task, NULL, "int_lock_task");
+            int_lock_stru.task_id = kthread_run(int_lock_view_task, NULL, "int_lock_task");
 
             if(int_lock_stru.task_id != 0)
             {

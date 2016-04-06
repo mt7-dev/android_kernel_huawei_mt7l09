@@ -109,6 +109,8 @@ config I2C_I801
 	    Avoton (SOC)
 	    Wellsburg (PCH)
 	    Coleto Creek (PCH)
+	    Wildcat Point-LP (PCH)
+	    BayTrail (SOC)
 
 	  This driver can also be built as a module.  If so, the module
 	  will be called i2c-i801.
@@ -421,13 +423,13 @@ config I2C_DESIGNWARE_PCI
 	  This driver can also be built as a module.  If so, the module
 	  will be called i2c-designware-pci.
 
-config I2C_DESIGNWARE_HI3630
+config I2C_DESIGNWARE_HI3XXX
 	tristate "K3V3 I2C new features"
-	depends on ARCH_HI3630FPGA || ARCH_HI3630
+	depends on ARCH_HI3630FPGA || ARCH_HI3630 || HISI_3635_FPGA || HISI_3635
 
 config HISI_I2C_DESIGNWARE
 	tristate "Synopsys DesignWare Hisilicon"
-	depends on ARCH_HI3630FPGA || ARCH_HI3630
+	depends on ARCH_HI3630FPGA || ARCH_HI3630 || HISI_3635_FPGA || HISI_3635
 	depends on HAVE_CLK
 	select I2C_DESIGNWARE_CORE
 	help
@@ -967,5 +969,11 @@ config SCx200_ACB
 
 	  This support is also available as a module.  If so, the module
 	  will be called scx200_acb.
+
+config I2C_DESIGNWARE_HI6XXX
+	tristate "HISILICON HI6XXXX board designware I2C chip support"
+	depends on ARCH_HI6620 || ARCH_HI6XXX
+	help
+	  Enable the designware I2C support on HISILICON HI6620 UDP board
 
 endmenu

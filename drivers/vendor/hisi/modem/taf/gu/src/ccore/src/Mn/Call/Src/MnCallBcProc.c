@@ -263,13 +263,13 @@ VOS_UINT32  MN_CALL_IsCodecTypeValid(
 
 
 
-VOS_UINT32  MN_CALL_IsUmtsCodecTypeValid( 
+VOS_UINT32  MN_CALL_IsUmtsCodecTypeValid(
     VOS_UINT8                           ucUmtsCodecType
 )
 {
     if ( ( MN_CALL_UMTS_CODEC_TYPE_AMR != ucUmtsCodecType )
       && ( MN_CALL_UMTS_CODEC_TYPE_AMR2 != ucUmtsCodecType )
-      && ( MN_CALL_UMTS_CODEC_TYPE_AMRWB != ucUmtsCodecType ))      
+      && ( MN_CALL_UMTS_CODEC_TYPE_AMRWB != ucUmtsCodecType ))
     {
         return VOS_FALSE;
     }
@@ -372,7 +372,7 @@ VOS_VOID  MN_CALL_UmtsCapaProcInit( VOS_VOID )
         f_stMnCallUmtsCodecTypes.ucCnt++;
     }
 
-    
+
     if ( VOS_TRUE == ulDefaultValue )
     {
         f_stMnCallUmtsCodecTypes.ucCnt = 0;
@@ -390,7 +390,7 @@ VOS_UINT32 MN_CALL_CapaProcInit()
     MN_CALL_GsmCapaProcInit();
 
     MN_CALL_UmtsCapaProcInit();
-    
+
     return VOS_OK;
 
 } /* MN_CALL_CapaProcInit */
@@ -1276,6 +1276,8 @@ VOS_UINT32  MN_CALL_BuildBcOfSetup(
 
     case MN_CALL_TYPE_CS_DATA:
     case MN_CALL_TYPE_VIDEO:
+    case MN_CALL_TYPE_VIDEO_TX:
+    case MN_CALL_TYPE_VIDEO_RX:
         /* 构造数据的BC参数 */
         ulRes = MN_CALL_BuildBcForData(MN_CALL_TA_MODE_DATA, pstDataCfg, pstBc1);
         break;

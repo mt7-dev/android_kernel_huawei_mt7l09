@@ -8,7 +8,7 @@ extern "C"{
 #include <bsp_shared_ddr.h>
 #include <bsp_icc.h>
 
-#define SRAM_PASTAR_DPM_INFO SHM_MEM_PASTAR_DPM_INFO_ADDR
+#define SRAM_PASTAR_DPM_INFO (unsigned long)(SHM_MEM_PASTAR_DPM_INFO_ADDR)
 #define PASTAR_DPM_SUSPEND_MASK_OFFSET 0
 #define PASTAR_DPM_EN_TIMESTAMP_OFFSET 4
 #define PASTAR_DPM_SWITCH_OFFSET 8
@@ -231,6 +231,7 @@ void adp_pmu_hi6561_resume(void);
 
 
 unsigned int pmu_hi6561_reg_save(void);
+void pmu_hi6561_close_all_power(void);
 
 
 unsigned int pmu_hi6561_reg_resume(void);
@@ -251,9 +252,10 @@ char *pmu_hi6561_exc_isr(HI6561_ID_ENUM chip_id );
 #else
 void pastar_resume_early(void);
 void pastar_suspend_late(void);
-void pastar_init(void);
 
 #endif
+void bsp_pastar_leakage_bugfix(void);
+void bsp_pastar_init(void);
 #ifdef __cplusplus
 }
 #endif

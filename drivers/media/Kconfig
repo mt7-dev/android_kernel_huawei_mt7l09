@@ -145,8 +145,6 @@ source "drivers/media/dvb-core/Kconfig"
 comment "Media drivers"
 source "drivers/media/rc/Kconfig"
 
-source "drivers/media/huawei/Kconfig"
-
 #
 # V4L platform/mem2mem drivers
 #
@@ -157,6 +155,7 @@ source "drivers/media/platform/Kconfig"
 source "drivers/media/mmc/Kconfig"
 source "drivers/media/parport/Kconfig"
 source "drivers/media/radio/Kconfig"
+source "drivers/media/huawei/Kconfig"
 
 comment "Supported FireWire (IEEE 1394) Adapters"
 	depends on DVB_CORE && FIREWIRE

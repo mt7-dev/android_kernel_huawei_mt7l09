@@ -221,7 +221,12 @@ extern VOS_VOID   NAS_EMM_SER_RrcRelCause_T3417Exp(VOS_VOID);
 extern VOS_VOID   NAS_EMM_SER_RrcRelCause_SERREJ367(VOS_VOID);
 extern VOS_UINT32 NAS_EMM_SER_SuccNeedtoContinueTau(VOS_VOID);
 extern VOS_UINT32 NAS_EMM_SER_AbnormalNeedtoContinueTau(VOS_VOID);
-extern VOS_VOID  NAS_EMM_SER_SERREJ367
+/* 提高主叫呼通率:根据R13协议,ESR#7需要去GU下尝试 */
+extern VOS_VOID  NAS_EMM_SER_SERREJ36
+(
+    const NAS_EMM_CN_SER_REJ_STRU   *pMsgStru
+);
+extern VOS_VOID  NAS_EMM_SER_SERREJ7
 (
     const NAS_EMM_CN_SER_REJ_STRU   *pMsgStru
 );
@@ -255,10 +260,17 @@ extern VOS_UINT32 NAS_EMM_SndServiceReqFailProc(VOS_VOID* pMsg,VOS_UINT32 *pulIs
 extern VOS_UINT32 NAS_EMM_SndExtendedServiceReqFailProc(VOS_VOID* pMsg,VOS_UINT32 *pulIsDelBuff);
 
 
+extern VOS_UINT32 NAS_EMM_SndExtendedServiceReqSuccProc(VOS_VOID* pMsg);
+
 extern VOS_VOID  NAS_EMM_SER_SERREJ18
 (
     const NAS_EMM_CN_SER_REJ_STRU   *pMsgStru
 );
+extern VOS_VOID NAS_EMM_SER_SERREJ35
+(
+    const NAS_EMM_CN_SER_REJ_STRU   *pMsgStru
+);
+
 
 extern VOS_VOID  NAS_EMM_SER_SERREJ40
 (
@@ -300,7 +312,8 @@ extern VOS_VOID  NAS_EMM_MmSendCsfbSerPaingInd
 extern VOS_VOID    NAS_EMM_SER_SendMrrcDataReq_ExtendedServiceReq(VOS_VOID);
 extern VOS_VOID  NAS_EMM_MmSendCsfbSerEndInd
 (
-    MM_LMM_CSFB_SERVICE_RSLT_ENUM_UINT32     enCsfbSrvRslt
+    MM_LMM_CSFB_SERVICE_RSLT_ENUM_UINT32     enCsfbSrvRslt,
+    NAS_EMM_CN_CAUSE_ENUM_UINT8              ucEMMCnCause
 );
 extern VOS_VOID   NAS_EMM_SER_RcvEsmDataReq(VOS_VOID   *pMsgStru);
 extern VOS_VOID   NAS_EMM_SER_SaveEsmMsg(const EMM_ESM_DATA_REQ_STRU  *pMsgStru);
@@ -342,6 +355,25 @@ extern VOS_VOID  NAS_EMM_EmcPndReqSerAbnormalCommProc
     NAS_EMM_SUB_STATE_ENUM_UINT16       ucSs
 );
 /* lihong00150010 emergency tau&service end */
+extern VOS_VOID  NAS_EMM_MsSerInitSsWaitCnSerCnfProcMsgRrcRelInd( VOS_UINT32 ulCause);
+
+extern VOS_VOID NAS_EMM_LocalDetachErrRecord(
+        EMM_ERR_LOG_LOCAL_DETACH_TYPE_ENUM_UINT16       enLocalDetType);
+extern VOS_VOID    NAS_EMM_SER_RegAttempToUpdateMmRcvRrcCsPagingInd
+(
+    LRRC_LNAS_PAGING_UE_ID_ENUM_UINT32 enPagingUeId
+);
+extern VOS_UINT32 NAS_EMM_MsSerInitPreProcMmNormalCsfbNotifyMsg
+(
+    MM_LMM_CSFB_SERVICE_TYPE_ENUM_UINT32  enCsfbSrvTyp
+);
+extern VOS_UINT32  NAS_EMM_MsRegSsAttempToUpdateMmMsgMmCsfbSerStartNotify
+(
+    VOS_UINT32                          ulMsgId,
+    VOS_VOID                           *pMsgStru
+);
+extern VOS_UINT32 NAS_EMM_SER_VerifyCsfbFailNormalCsfbNotifyMsgProc(VOS_VOID);
+
 /*****************************************************************************
   9 OTHERS
 *****************************************************************************/

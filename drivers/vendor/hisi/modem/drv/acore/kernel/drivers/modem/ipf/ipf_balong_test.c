@@ -26,7 +26,7 @@ extern "C" {
 #include <linux/sched.h>
 #include <linux/slab.h>
 #include <asm/io.h>
-#include <asm/system.h>
+//#include <asm/system.h>
 #include <linux/semaphore.h>
 #include <linux/interrupt.h>
 #include <linux/workqueue.h>
@@ -43,6 +43,10 @@ extern "C" {
 #include <bsp_busstress.h>
 #endif
 //#define printcmpresult
+#include <linux/platform_device.h>
+
+extern struct platform_device balong_device_ipf;
+
 
 typedef enum tagIPF_ADQ_CONFIG_E
 {
@@ -904,12 +908,12 @@ BSP_S32 IpfDlIntCb301(BSP_VOID)
 	for(j = 0; j < u32Num; j++)
 	{	
 		//IPF_PRINT("stRd[%d].u32OutPtr =%x\n",j,stRd[j].u32OutPtr);
-		if(NULL == (BSP_U32 *)stRd[j].u32OutPtr)
+		if(NULL == (BSP_U32 *)(unsigned long)stRd[j].u32OutPtr)
 		{
 			//IPF_PRINT("stRd[%d].u32OutPtr =NULL !\n",i);
 			return ERROR;
 		}
-		s32Ret = CmpDMAData((BSP_U32 *)g_pu8STDlData, (BSP_U32 *)stRd[j].u32OutPtr, stRd[j].u16PktLen);
+		s32Ret = CmpDMAData((BSP_U32 *)g_pu8STDlData, (BSP_U32 *)(unsigned long)stRd[j].u32OutPtr, stRd[j].u16PktLen);
 		
 		/*数据比对*/
 		if(0 != s32Ret)
@@ -928,7 +932,7 @@ BSP_S32 IpfDlIntCb301(BSP_VOID)
 		    IPF_PRINT("stRd[%d].u32OutPtr\n",j);
                   IPF_PRINT("===================================\n");
                   IPF_PRINT("stRd[%d].u32OutPtr =%x\n",j,stRd[j].u32OutPtr);
-		    p=(BSP_U32 *)stRd[j].u32OutPtr;
+		    p=(BSP_U32 *)(unsigned long)stRd[j].u32OutPtr;
 		    for(i=0; i<25; i++)
 		    {
 		        IPF_PRINT("0x%08x    0x%08x    0x%08x    0x%08x\n", *(p+i), *(p+i+1), *(p+i+2), *(p+i+3));
@@ -961,12 +965,12 @@ BSP_S32 IpfDlIntCb302(BSP_VOID)
 	for(j = 0; j < u32Num; j++)
 	{	
 		IPF_PRINT("stRd[%d].u32OutPtr =%x stRd[%d].u16PktLen =%u \n",j,stRd[j].u32OutPtr,j,stRd[j].u16PktLen);
-		if(NULL == (BSP_U32 *)stRd[j].u32OutPtr)
+		if(NULL == (BSP_U32 *)(unsigned long)stRd[j].u32OutPtr)
 		{
 			IPF_PRINT("stRd[%d].u32OutPtr =NULL !\n",j);
 			return ERROR;
 		}
-		s32Ret = CmpDMAData((BSP_U32 *)g_pu8STDlData, (BSP_U32 *)stRd[j].u32OutPtr, stRd[j].u16PktLen);
+		s32Ret = CmpDMAData((BSP_U32 *)g_pu8STDlData, (BSP_U32 *)(unsigned long)stRd[j].u32OutPtr, stRd[j].u16PktLen);
 		
 		/*数据比对*/
 		if(0 != s32Ret)
@@ -1009,7 +1013,7 @@ BSP_S32 IpfDlIntCb302(BSP_VOID)
 	        }
 	        for(i=0;i < u32AD0Num;i++)
 	        {
-	            memset((BSP_U32 *)ADdlshort[i].u32OutPtr1, 0, 438);
+	            memset((BSP_U32 *)(unsigned long)ADdlshort[i].u32OutPtr1, 0, 438);
 	        }
 	}
 	if(u32AD1Num > 10)
@@ -1021,7 +1025,7 @@ BSP_S32 IpfDlIntCb302(BSP_VOID)
 	        }
 	        for(i=0;i < u32AD1Num;i++)
 	        {
-	            memset((BSP_U32 *)ADdllong[i].u32OutPtr1, 0, 1500);
+	            memset((BSP_U32 *)(unsigned long)ADdllong[i].u32OutPtr1, 0, 1500);
 	        }
 
 	}
@@ -1147,15 +1151,15 @@ BSP_S32 IPF_ST_DL_ACore_INIT(BSP_VOID)
 
 	for(i=0; i < IPF_DLAD0_DESC_SIZE; i++)
 	{    	
-    		ADdlshort[i].u32OutPtr0 = (BSP_U32)NULL;    
+    	ADdlshort[i].u32OutPtr0 = (BSP_U32)(unsigned long)NULL;    
 		p_vir_addr = kmalloc(438, GFP_KERNEL);    
 		memset(p_vir_addr,0x0,438);
 		ADdlshort[i].u32OutPtr0 = virt_to_phys(p_vir_addr);/*dma_map_single(NULL, p_vir_addr, 438, DMA_TO_DEVICE);    */    
-		ADdlshort[i].u32OutPtr1 = (BSP_U32)p_vir_addr;
+		ADdlshort[i].u32OutPtr1 = (BSP_U32)(unsigned long)p_vir_addr;
 
-		dma_map_single(NULL, p_vir_addr, 438, DMA_TO_DEVICE);
+		dma_map_single(&(balong_device_ipf.dev), p_vir_addr, 438, DMA_TO_DEVICE);
 
-		if(NULL == (BSP_U32 *)ADdlshort[i].u32OutPtr0)
+		if(NULL == (BSP_U32 *)(unsigned long)ADdlshort[i].u32OutPtr0)
 			{
 		            IPF_PRINT(" TESTERROR    IPF_ST_DL_INIT ADMEMmallocfail:%d\n",__LINE__);
 		            goto error1;
@@ -1163,14 +1167,14 @@ BSP_S32 IPF_ST_DL_ACore_INIT(BSP_VOID)
 	}
 	for(i=0; i < IPF_DLAD1_DESC_SIZE; i++)
 	{
-    		ADdllong[i].u32OutPtr0 = (BSP_U32)NULL;
+    	ADdllong[i].u32OutPtr0 = (BSP_U32)(unsigned long)NULL;
 		p_vir_addr = kmalloc(1500, GFP_KERNEL);  
 		memset(p_vir_addr,0x0,1500);
 		ADdllong[i].u32OutPtr0 = virt_to_phys(p_vir_addr);        
-    		ADdllong[i].u32OutPtr1 = (BSP_U32)p_vir_addr;    
+    	ADdllong[i].u32OutPtr1 = (BSP_U32)(unsigned long)p_vir_addr;    
 
-		dma_map_single(NULL, p_vir_addr ,1500,DMA_TO_DEVICE);
-		if(NULL == (BSP_U32 *)ADdllong[i].u32OutPtr0)
+		dma_map_single(&(balong_device_ipf.dev), p_vir_addr ,1500,DMA_TO_DEVICE);
+		if(NULL == (BSP_U32 *)(unsigned long)ADdllong[i].u32OutPtr0)
 			{
 		            IPF_PRINT(" TESTERROR    IPF_ST_DL_INIT ADMEMmallocfail:%d\n",__LINE__);
 		            goto error1;
@@ -1194,18 +1198,18 @@ error1:
 	do
 	{
 		i--;
-		kfree((BSP_U32 *)(ADdlshort[i].u32OutPtr0));
+		kfree((BSP_U32 *)(unsigned long)(ADdlshort[i].u32OutPtr0));
 	}while(i);
 	return ERROR;
 
 	do
 	{
 		i--;
-		kfree((BSP_U32 *)(ADdllong[i].u32OutPtr0));
+		kfree((BSP_U32 *)(unsigned long)(ADdllong[i].u32OutPtr0));
 	}while(i);
 	for(i=0; i < IPF_DLAD0_DESC_SIZE; i++)
 	{
-		kfree((BSP_U32 *)(ADdlshort[i].u32OutPtr0));
+		kfree((BSP_U32 *)(unsigned long)(ADdlshort[i].u32OutPtr0));
 	}
 	return ERROR;
 }
@@ -1241,7 +1245,7 @@ BSP_S32  BSP_IPF_AINIT(BSP_VOID)
 
 BSP_S32 BSP_IPF_ST_000(BSP_VOID)
 {
-	BSP_U32 ipf_Shared_ddr_start = SHM_MEM_IPF_ADDR;
+	void* ipf_Shared_ddr_start = SHM_MEM_IPF_ADDR;
 	
 	BSP_U32 ipf_Shared_ddr_ul_start = IPF_ULBD_MEM_ADDR;
 
@@ -1255,9 +1259,9 @@ BSP_S32 BSP_IPF_ST_000(BSP_VOID)
 	BSP_U32 ipf_Shared_ddr_debug_dlcd_size = IPF_DEBUG_DLCD_SIZE;
 	BSP_U32 ipf_Shared_ddr_end = IPF_DEBUG_INFO_END_ADDR;
 	BSP_U32 ipf_reg_basic_addr = HI_IPF_REGBASE_ADDR;
-	BSP_U32 ipf_reg_basic_addr_virt = HI_IPF_REGBASE_ADDR_VIRT;
+	void* ipf_reg_basic_addr_virt = HI_IPF_REGBASE_ADDR_VIRT;
 		
-	IPF_PRINT("ipf_Shared_ddr_start                    value is 0x%x \n", ipf_Shared_ddr_start);
+	IPF_PRINT("ipf_Shared_ddr_start                    value is 0x%p \n", ipf_Shared_ddr_start);
 	IPF_PRINT("ipf_Shared_ddr_ul_start                value is 0x%x \n", ipf_Shared_ddr_ul_start);
 	IPF_PRINT("ipf_Shared_ddr_filter_pwc_start     value is 0x%x \n", ipf_Shared_ddr_filter_pwc_start);
 	IPF_PRINT("ipf_Shared_ddr_pwc_info_start      value is 0x%x \n", ipf_Shared_ddr_pwc_info_start);
@@ -1266,7 +1270,7 @@ BSP_S32 BSP_IPF_ST_000(BSP_VOID)
 	IPF_PRINT("ipf_Shared_ddr_debug_dlcd_size    value is 0x%x \n", ipf_Shared_ddr_debug_dlcd_size);
 	IPF_PRINT("ipf_Shared_ddr_end                     value is 0x%x \n", ipf_Shared_ddr_end);
 	IPF_PRINT("ipf_reg_basic_addr                     value is 0x%x \n", ipf_reg_basic_addr);
-	IPF_PRINT("ipf_reg_basic_addr_virt                     value is 0x%x \n", ipf_reg_basic_addr_virt);
+	IPF_PRINT("ipf_reg_basic_addr_virt                     value is 0x%p \n", ipf_reg_basic_addr_virt);
 	return IPF_SUCCESS;
 }
 /* test BSP_IPF_ConfigTimeout */
@@ -1552,11 +1556,11 @@ error2:
 #else
 	for(i=0; i < IPF_DLAD0_DESC_SIZE; i++)
 	{
-    		ADdlshort[i].u32OutPtr0 = (BSP_U32)NULL;
-		ADdlshort[i].u32OutPtr0 = (BSP_U32)kmalloc(438,GFP_KERNEL);
+    	ADdlshort[i].u32OutPtr0 = (BSP_U32)(unsigned long)NULL;
+		ADdlshort[i].u32OutPtr0 = (BSP_U32)(unsigned long)kmalloc(438,GFP_KERNEL);
 		ADdlshort[i].u32OutPtr1 = ADdlshort[i].u32OutPtr0;
 
-		if(NULL == (BSP_U32 *)ADdlshort[i].u32OutPtr0)
+		if(NULL == (BSP_U32 *)(unsigned long)ADdlshort[i].u32OutPtr0)
 			{
 		            IPF_PRINT(" TESTERROR    IPF_ST_UL_INIT ADMEMmallocfail:%d\n",__LINE__);
 		            goto error1;
@@ -1564,11 +1568,11 @@ error2:
 	}
 	for(i=0; i < IPF_DLAD1_DESC_SIZE; i++)
 	{
-    		ADdllong[i].u32OutPtr0 = (BSP_U32)NULL;
-		ADdllong[i].u32OutPtr0 = (BSP_U32)kmalloc(1500,GFP_KERNEL);
+    	ADdllong[i].u32OutPtr0 = (BSP_U32)(unsigned long)NULL;
+		ADdllong[i].u32OutPtr0 = (BSP_U32)(unsigned long)kmalloc(1500,GFP_KERNEL);
 		ADdllong[i].u32OutPtr1 = ADdllong[i].u32OutPtr0;
 
-		if(NULL == (BSP_U32 *)ADdllong[i].u32OutPtr0)
+		if(NULL == (BSP_U32 *)(unsigned long)ADdllong[i].u32OutPtr0)
 			{
 		            IPF_PRINT(" TESTERROR    IPF_ST_UL_INIT ADMEMmallocfail:%d\n",__LINE__);
 		            goto error2;
@@ -1616,12 +1620,12 @@ error2:
 		
 		for(i=0; i < IPF_DLAD0_DESC_SIZE; i++)
 	{
-		kfree((BSP_U32 *)(ADdlshort[i].u32OutPtr0));
+		kfree((BSP_U32 *)(unsigned long)(ADdlshort[i].u32OutPtr0));
 	}
 
 	for(i=0; i < IPF_DLAD1_DESC_SIZE; i++)
 	{
-		kfree((BSP_U32 *)(ADdllong[i].u32OutPtr0));
+		kfree((BSP_U32 *)(unsigned long)(ADdllong[i].u32OutPtr0));
 	}
 
     s32Ret = BSP_IPF_ConfigDlAd(IPF_AD_0,IPF_ULAD0_DESC_SIZE,&ADdlshort[0]);
@@ -1667,18 +1671,18 @@ error1:
 	do
 	{
 		i--;
-		kfree((BSP_U32 *)(ADdlshort[i].u32OutPtr0));
+		kfree((BSP_U32 *)(unsigned long)(ADdlshort[i].u32OutPtr0));
 	}while(i);
 	return ERROR;
 error2:
 	do
 	{
 		i--;
-		kfree((BSP_U32 *)(ADdllong[i].u32OutPtr0));
+		kfree((BSP_U32 *)(unsigned long)(ADdllong[i].u32OutPtr0));
 	}while(i);
 	for(i=0; i < IPF_ULAD0_DESC_SIZE; i++)
 	{
-		kfree((BSP_U32 *)(ADdlshort[i].u32OutPtr0));
+		kfree((BSP_U32 *)(unsigned long)(ADdlshort[i].u32OutPtr0));
 	}
 	return ERROR;
 
@@ -4836,8 +4840,8 @@ BSP_S32 BSP_IPF_ST_100(BSP_VOID)
     memcpy(pu8shortData, &stIPHeader, sizeof(StreamIPv4Header));
     memcpy(pu8shortData+sizeof(StreamIPv4Header), &stUDP, sizeof(StreamUDP));
 	
-    pBuff = (BSP_VOID *)dma_map_single(NULL, (BSP_VOID *)pu8Data, u16Len, DMA_TO_DEVICE);        
-    stUlPara[0].u32Data = (BSP_U32)pBuff;
+    pBuff = (BSP_VOID *)dma_map_single(&(balong_device_ipf.dev), (BSP_VOID *)pu8Data, u16Len, DMA_TO_DEVICE);        
+    stUlPara[0].u32Data = (BSP_U32)(unsigned long)pBuff;
     stUlPara[0].u16Len = u16Len;
     stUlPara[0].u16UsrField1 = 0;
     stUlPara[0].u32UsrField2 = 0x102;
@@ -4845,8 +4849,8 @@ BSP_S32 BSP_IPF_ST_100(BSP_VOID)
     /*链0只搬移无中断*/
     stUlPara[0].u16Attribute = 0x06;
 	
-    pBuff = (BSP_VOID *)dma_map_single(NULL, (BSP_VOID *)pu8shortData, u16shortLen, DMA_TO_DEVICE);        
-    stUlPara[1].u32Data = (BSP_U32)pBuff;
+    pBuff = (BSP_VOID *)dma_map_single(&(balong_device_ipf.dev), (BSP_VOID *)pu8shortData, u16shortLen, DMA_TO_DEVICE);        
+    stUlPara[1].u32Data = (BSP_U32)(unsigned long)pBuff;
     stUlPara[1].u16Len = u16shortLen;
     stUlPara[1].u16UsrField1 = 0;
     stUlPara[1].u32UsrField2 = 0x102;
@@ -4926,11 +4930,11 @@ BSP_S32 BSP_IPF_ST_101(BSP_VOID)
     memcpy(pu8Data, &stIPHeader, sizeof(StreamIPv4Header));
     memcpy(pu8Data+sizeof(StreamIPv4Header), &stUDP, sizeof(StreamUDP));
 
-    IPF_PRINT("sizeof(StreamIPv4Header) = %d  sizeof(StreamUDP) = %d \n", 
+    IPF_PRINT("sizeof(StreamIPv4Header) = %ld  sizeof(StreamUDP) = %ld \n", 
                       sizeof(StreamIPv4Header), sizeof(StreamUDP));
 
-    pBuff = (BSP_VOID *)dma_map_single(NULL, (BSP_VOID *)pu8Data, u16Len, DMA_TO_DEVICE);        
-    stUlPara[0].u32Data = (BSP_U32)pBuff;
+    pBuff = (BSP_VOID *)dma_map_single(&(balong_device_ipf.dev), (BSP_VOID *)pu8Data, u16Len, DMA_TO_DEVICE);        
+    stUlPara[0].u32Data = (BSP_U32)(unsigned long)pBuff;
     stUlPara[0].u16Len = u16Len;
     stUlPara[0].u16UsrField1 = 0;
     stUlPara[0].u32UsrField2 = 0x101;
@@ -5019,8 +5023,8 @@ BSP_S32 BSP_IPF_ST_102(BSP_VOID)
     memcpy(pu8shortData, &stIPHeader, sizeof(StreamIPv4Header));
     memcpy(pu8shortData+sizeof(StreamIPv4Header), &stUDP, sizeof(StreamUDP));
 	
-    pBuff = (BSP_VOID *)dma_map_single(NULL, (BSP_VOID *)pu8Data, u16Len, DMA_TO_DEVICE);        
-    stUlPara[0].u32Data = (BSP_U32)pBuff;
+    pBuff = (BSP_VOID *)dma_map_single(&(balong_device_ipf.dev), (BSP_VOID *)pu8Data, u16Len, DMA_TO_DEVICE);        
+    stUlPara[0].u32Data = (BSP_U32)(unsigned long)pBuff;
     stUlPara[0].u16Len = u16Len;
     stUlPara[0].u16UsrField1 = 0;
     stUlPara[0].u32UsrField2 = 0x102;
@@ -5028,8 +5032,8 @@ BSP_S32 BSP_IPF_ST_102(BSP_VOID)
     /*链0只搬移无中断*/
     stUlPara[0].u16Attribute = 0x06;
 	
-    pBuff = (BSP_VOID *)dma_map_single(NULL, (BSP_VOID *)pu8shortData, u16shortLen, DMA_TO_DEVICE);        
-    stUlPara[1].u32Data = (BSP_U32)pBuff;
+    pBuff = (BSP_VOID *)dma_map_single(&(balong_device_ipf.dev), (BSP_VOID *)pu8shortData, u16shortLen, DMA_TO_DEVICE);        
+    stUlPara[1].u32Data = (BSP_U32)(unsigned long)pBuff;
     stUlPara[1].u16Len = u16shortLen;
     stUlPara[1].u16UsrField1 = 0;
     stUlPara[1].u32UsrField2 = 0x102;
@@ -5127,10 +5131,10 @@ BSP_S32 BSP_IPF_ST_102sn(BSP_U32 u32sendnum)
     memcpy(pu8shortData, &stIPHeader, sizeof(StreamIPv4Header));
     memcpy(pu8shortData+sizeof(StreamIPv4Header), &stUDP, sizeof(StreamUDP));
 	
-    pBuff = (BSP_VOID *)dma_map_single(NULL, (void *)pu8Data, u16shortLen, DMA_TO_DEVICE);        
+    pBuff = (BSP_VOID *)dma_map_single(&(balong_device_ipf.dev), (void *)pu8Data, u16shortLen, DMA_TO_DEVICE);        
 for(i=0;i<IPF_ULBD_DESC_SIZE;i++)
 {
-    stUlPara[i].u32Data = (BSP_U32)pBuff;
+    stUlPara[i].u32Data = (BSP_U32)(unsigned long)pBuff;
     stUlPara[i].u16Len = u16shortLen;
     stUlPara[i].u16UsrField1 = 0;
     stUlPara[i].u32UsrField2 = 0x102;
@@ -5200,10 +5204,10 @@ BSP_S32 BSP_IPF_ST_103(BSP_VOID)
     memcpy(pu8Data, &stIPHeader, sizeof(StreamIPv4Header));
     memcpy(pu8Data+sizeof(StreamIPv4Header), &stUDP, sizeof(StreamUDP));
 	
-    pBuff = (BSP_VOID *)dma_map_single(NULL, (BSP_VOID *)pu8Data, u16Len, DMA_TO_DEVICE);        
+    pBuff = (BSP_VOID *)dma_map_single(&(balong_device_ipf.dev), (BSP_VOID *)pu8Data, u16Len, DMA_TO_DEVICE);        
     for(i=0;i<IPF_ULBD_DESC_SIZE;i++)
     {
-        stUlPara[i].u32Data = (BSP_U32)pBuff;
+        stUlPara[i].u32Data = (BSP_U32)(unsigned long)pBuff;
         stUlPara[i].u16Len = u16Len;
         stUlPara[i].u16UsrField1 = 0;
         stUlPara[i].u32UsrField2 = 0x102;
@@ -5283,11 +5287,11 @@ BSP_S32 BSP_IPF_ST_104(BSP_VOID)
     memcpy(pu8Data, &stIPHeader, sizeof(StreamIPv4Header));
     memcpy(pu8Data+sizeof(StreamIPv4Header), &stUDP, sizeof(StreamUDP));
 
-    IPF_PRINT("sizeof(StreamIPv4Header) = %d  sizeof(StreamUDP) = %d \n", 
+    IPF_PRINT("sizeof(StreamIPv4Header) = %ld  sizeof(StreamUDP) = %ld \n", 
                       sizeof(StreamIPv4Header), sizeof(StreamUDP));
 
-    pBuff = (BSP_VOID *)dma_map_single(NULL, (BSP_VOID *)pu8Data, u16Len, DMA_TO_DEVICE);        
-    stUlPara[0].u32Data = (BSP_U32)pBuff;
+    pBuff = (BSP_VOID *)dma_map_single(&(balong_device_ipf.dev), (BSP_VOID *)pu8Data, u16Len, DMA_TO_DEVICE);        
+    stUlPara[0].u32Data = (BSP_U32)(unsigned long)pBuff;
     stUlPara[0].u16Len = u16Len;
     stUlPara[0].u16UsrField1 = 0;
     stUlPara[0].u32UsrField2 = 0x101;
@@ -5384,11 +5388,11 @@ BSP_S32 BSP_IPF_ST_105(BSP_VOID)
     memcpy(pu8Data, &stIPHeader, sizeof(StreamIPv4Header));
     memcpy(pu8Data+sizeof(StreamIPv4Header), &stUDP, sizeof(StreamUDP));
 
-    IPF_PRINT("sizeof(StreamIPv4Header) = %d  sizeof(StreamUDP) = %d \n", 
+    IPF_PRINT("sizeof(StreamIPv4Header) = %ld  sizeof(StreamUDP) = %ld \n", 
                       sizeof(StreamIPv4Header), sizeof(StreamUDP));
 
-    pBuff = (BSP_VOID *)dma_map_single(NULL, (BSP_VOID *)pu8Data, u16Len, DMA_TO_DEVICE);        
-    stUlPara[0].u32Data = (BSP_U32)pBuff;
+    pBuff = (BSP_VOID *)dma_map_single(&(balong_device_ipf.dev), (BSP_VOID *)pu8Data, u16Len, DMA_TO_DEVICE);        
+    stUlPara[0].u32Data = (BSP_U32)(unsigned long)pBuff;
     stUlPara[0].u16Len = u16Len;
     stUlPara[0].u16UsrField1 = 0;
     stUlPara[0].u32UsrField2 = 0x101;
@@ -5476,8 +5480,8 @@ BSP_S32 BSP_IPF_ST_111(BSP_VOID)
     memcpy(pu8Data, &stIPHeader, sizeof(StreamIPv4Header));
     memcpy(pu8Data+sizeof(StreamIPv4Header), &stUDP, sizeof(StreamUDP));
 
-    pBuff = (BSP_VOID *)dma_map_single(NULL, (BSP_VOID *)pu8Data, u16Len, DMA_TO_DEVICE);        
-    stUlPara[0].u32Data = (BSP_U32)pBuff;
+    pBuff = (BSP_VOID *)dma_map_single(&(balong_device_ipf.dev), (BSP_VOID *)pu8Data, u16Len, DMA_TO_DEVICE);        
+    stUlPara[0].u32Data = (BSP_U32)(unsigned long)pBuff;
     stUlPara[0].u16Len = u16Len;
     stUlPara[0].u16UsrField1 = 0;
     stUlPara[0].u32UsrField2 = 0x211;
@@ -5559,8 +5563,8 @@ BSP_S32 BSP_IPF_ST_112(BSP_VOID)
     memcpy(pu8Data, &stIPHeader, sizeof(StreamIPv4Header));
     memcpy(pu8Data+sizeof(StreamIPv4Header), &stUDP, sizeof(StreamUDP));
 
-    pBuff = (BSP_VOID *)dma_map_single(NULL, (BSP_VOID *)pu8Data, u16Len, DMA_TO_DEVICE);        
-    stUlPara[0].u32Data = (BSP_U32)pBuff;
+    pBuff = (BSP_VOID *)dma_map_single(&(balong_device_ipf.dev), (BSP_VOID *)pu8Data, u16Len, DMA_TO_DEVICE);        
+    stUlPara[0].u32Data = (BSP_U32)(unsigned long)pBuff;
     stUlPara[0].u16Len = u16Len;
     stUlPara[0].u16UsrField1 = 0;
     stUlPara[0].u32UsrField2 = 0x212;
@@ -5647,8 +5651,8 @@ BSP_S32 BSP_IPF_ST_113(BSP_VOID)
     memcpy(pu8Data, &stIPHeader, sizeof(StreamIPv4Header));
     memcpy(pu8Data+sizeof(StreamIPv4Header), &stUDP, sizeof(StreamUDP));
 
-    pBuff = (BSP_U32 *)dma_map_single(NULL, (BSP_VOID *)pu8Data, u16Len, DMA_TO_DEVICE);        
-    stUlPara[0].u32Data = (BSP_U32)pBuff;
+    pBuff = (BSP_U32 *)dma_map_single(&(balong_device_ipf.dev), (BSP_VOID *)pu8Data, u16Len, DMA_TO_DEVICE);        
+    stUlPara[0].u32Data = (BSP_U32)(unsigned long)pBuff;
     stUlPara[0].u16Len = u16Len;
     stUlPara[0].u16UsrField1 = 0;
     stUlPara[0].u32UsrField2 = 0x213;
@@ -5764,10 +5768,10 @@ BSP_S32 BSP_IPF_UlSend(BSP_VOID)
     memcpy(pu8Data, &stIPHeader, sizeof(StreamIPv4Header));
     memcpy(pu8Data+sizeof(StreamIPv4Header), &stUDP, sizeof(StreamUDP));
 	
-    pBuff = (BSP_VOID *)dma_map_single(NULL, (BSP_VOID *)pu8Data, u16Len, DMA_TO_DEVICE);  
+    pBuff = (BSP_VOID *)dma_map_single(&(balong_device_ipf.dev), (BSP_VOID *)pu8Data, u16Len, DMA_TO_DEVICE);  
     for(i=0;i<IPF_ULBD_DESC_SIZE;i++)
     {
-        stUlPara[i].u32Data = (BSP_U32)pBuff;
+        stUlPara[i].u32Data = (BSP_U32)(unsigned long)pBuff;
         stUlPara[i].u16Len = u16Len-i*9;
         stUlPara[i].u16UsrField1 = 0;
         stUlPara[i].u32UsrField2 = 0x102;
@@ -5840,10 +5844,10 @@ BSP_S32 BSP_IPF_UlSend122(BSP_VOID)
     memcpy(pu8Data, &stIPHeader, sizeof(StreamIPv4Header));
     memcpy(pu8Data+sizeof(StreamIPv4Header), &stUDP, sizeof(StreamUDP));
 	
-    pBuff = (BSP_VOID *)dma_map_single(NULL, (BSP_VOID *)pu8Data, u16Len, DMA_TO_DEVICE);  
+    pBuff = (BSP_VOID *)dma_map_single(&(balong_device_ipf.dev), (BSP_VOID *)pu8Data, u16Len, DMA_TO_DEVICE);  
     for(i=0;i<IPF_ULBD_DESC_SIZE;i++)
     {
-        stUlPara[i].u32Data = (BSP_U32)pBuff;
+        stUlPara[i].u32Data = (BSP_U32)(unsigned long)pBuff;
         stUlPara[i].u16Len = u16Len-i*9;
         stUlPara[i].u16UsrField1 = 0;
         stUlPara[i].u32UsrField2 = 0x102;
@@ -5939,11 +5943,11 @@ BSP_S32 BSP_IPF_ST_131(BSP_VOID)
     memcpy(pu8Data, &stIPHeader, sizeof(StreamIPv4Header));
     memcpy(pu8Data+sizeof(StreamIPv4Header), &stUDP, sizeof(StreamUDP));
 
-    IPF_PRINT("sizeof(StreamIPv4Header) = %d  sizeof(StreamUDP) = %d \n", 
+    IPF_PRINT("sizeof(StreamIPv4Header) = %ld  sizeof(StreamUDP) = %ld \n", 
                       sizeof(StreamIPv4Header), sizeof(StreamUDP));
 
-    pBuff = (BSP_VOID *)dma_map_single(NULL, (BSP_VOID *)pu8Data, u16Len, DMA_TO_DEVICE);        
-    stUlPara[0].u32Data = (BSP_U32)pBuff;
+    pBuff = (BSP_VOID *)dma_map_single(&(balong_device_ipf.dev), (BSP_VOID *)pu8Data, u16Len, DMA_TO_DEVICE);        
+    stUlPara[0].u32Data = (BSP_U32)(unsigned long)pBuff;
     stUlPara[0].u16Len = u16Len;
     stUlPara[0].u16UsrField1 = 0;
     stUlPara[0].u32UsrField2 = 0x101;
@@ -6080,7 +6084,7 @@ BSP_S32 ipf_ul_stress_test_routine(BSP_VOID)
 	    IPF_PRINT("sizeof(StreamIPv4Header) = %d  sizeof(StreamUDP) = %d \n", 
 	                      sizeof(StreamIPv4Header), sizeof(StreamUDP));
 #endif
-	    pBuff = (BSP_U8 *)dma_map_single(NULL, (void *)g_pu8Data, g_u16Len, DMA_TO_DEVICE);        
+	    pBuff = (BSP_U8 *)dma_map_single(&(balong_device_ipf.dev), (void *)g_pu8Data, g_u16Len, DMA_TO_DEVICE);        
 
 	    g_stUlPara[0].u32Data = (BSP_U32)pBuff;
 	    g_stUlPara[0].u16Len = g_u16Len;
@@ -6493,14 +6497,14 @@ BSP_S32 IpfDltestIntCb(void)
         for(j = 0; j < u32Num; j++)
         {	
        /* 	IPF_PRINT("stRd[%d].u32OutPtr =%x stRd[%d].u16PktLen =%u \n",j,stRd[j].u32OutPtr,j,stRd[j].u16PktLen);*/
-		dma_map_single(NULL, (void*)stRd[j].u32OutPtr, stRd[j].u16PktLen, DMA_FROM_DEVICE);
+		dma_map_single(&(balong_device_ipf.dev), (void*)(unsigned long)stRd[j].u32OutPtr, stRd[j].u16PktLen, DMA_FROM_DEVICE);
 
 		if(0 == stRd[j].u32OutPtr)
 		{
         		IPF_PRINT("stRd[%d].u32OutPtr =%x !return ERROR\n",j,stRd[j].u32OutPtr);
 			return ERROR;
 		}
-		s32Ret = CmpDMAData((BSP_U32 *)g_pu8STDlData, (BSP_U32 *)stRd[j].u32OutPtr, stRd[j].u16PktLen);
+		s32Ret = CmpDMAData((BSP_U32 *)g_pu8STDlData, (BSP_U32 *)(unsigned long)stRd[j].u32OutPtr, stRd[j].u16PktLen);
 		u32RecivedData += stRd[j].u16PktLen;
 		/*数据比对*/
 		if(0 != s32Ret)
@@ -6521,7 +6525,7 @@ BSP_S32 IpfDltestIntCb(void)
 					
 		                  IPF_PRINT("Err stRd[%d].u32OutPtr =%x\n",j,stRd[j].u32OutPtr);
 		                  IPF_PRINT("===================================\n");
-				    p=(BSP_U32 *)stRd[j].u32OutPtr;
+				    p=(BSP_U32 *)(unsigned long)stRd[j].u32OutPtr;
 				    for(i=0; i<4; i++)
 				    {
 				        IPF_PRINT("0x%08x    0x%08x    0x%08x    0x%08x\n", *(p+i), *(p+i+1), *(p+i+2), *(p+i+3));

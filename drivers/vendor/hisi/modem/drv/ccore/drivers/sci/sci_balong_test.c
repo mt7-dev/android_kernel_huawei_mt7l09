@@ -5694,7 +5694,7 @@ VXTEST_STATUS tstSciUsimRecordSave(void)
 		
 	}
 
-	s32Ret = bsp_sci_record_data_save();
+	s32Ret = bsp_sci_record_data_save(SCI_LOG_RESET_FAIL);
 	if(s32Ret != OK)
 	{
         printf("%s(%d): tstSciUsimRecordSave data save FAILED!\n", __FUNCTION__, __LINE__);
@@ -5760,6 +5760,160 @@ VXTEST_STATUS tstSciUsimParityDetect(void)
 
 }
 
+VXTEST_STATUS tstSciUsimGetSCICfg(void)
+{
+    SCI_SLOT sci_slot0;
+    SCI_SLOT sci_slot1;
+    bsp_sci_get_slot_state(&sci_slot0, &sci_slot1);
+    sci_print_error("CARD SLOT0 CFG is %d\n",sci_slot0);
+    sci_print_error("CARD SLOT1 CFG is %d\n",sci_slot1);
+	return VXTEST_PASS;
+      
+}
+extern unsigned int g_SciNVValue ;
+
+VXTEST_STATUS tstSciUsimSlotSwitch(void)
+{
+    SCI_SLOT sci_slot0;
+    SCI_SLOT sci_slot1;
+    SCI_CFG_STRU * p_sci0_cfg = NULL;
+    SCI_CFG_STRU * p_sci1_cfg = NULL;
+    
+
+    if(SCI_DUAL != ((NV_SCI_CFG_UNION)g_SciNVValue).cfg.card_num)
+    {
+        sci_print("not support double card \n");
+        return VXTEST_FAIL;
+    }
+
+
+    p_sci0_cfg = (SCI_CFG_STRU *)((int)&_sci_cfg_data_start + \
+                                (int)(sizeof(SCI_CFG_STRU) * CARD0));
+    p_sci1_cfg = (SCI_CFG_STRU *)((int)&_sci_cfg_data_start + \
+                                (int)(sizeof(SCI_CFG_STRU) *  CARD1));
+    sci_print_error("SCI CFG before slot switch\n");
+    sci_print_error("p_sci0_cfg->card_id =%d\n",p_sci0_cfg->card_id);
+    sci_print_error("p_sci0_cfg->sci_id =%d\n",p_sci0_cfg->sci_id);
+    sci_print_error("p_sci0_cfg->base_addr =%d\n",p_sci0_cfg->base_addr);
+    sci_print_error("p_sci0_cfg->int_number =%d\n",p_sci0_cfg->int_number);
+    sci_print_error("p_sci0_cfg->clk_en_bit =%d\n",p_sci0_cfg->clk_en_bit);
+    sci_print_error("p_sci0_cfg->clk_dis_reg =%d\n",p_sci0_cfg->clk_dis_reg);
+    sci_print_error("p_sci0_cfg->record_enum =%d\n",p_sci0_cfg->record_enum);
+    sci_print_error("p_sci0_cfg->icc_chnl =%d\n",p_sci0_cfg->icc_chnl);
+    sci_print_error("p_sci0_cfg->record_file =%s\n",p_sci0_cfg->record_file);
+    sci_print_error("p_sci0_cfg->clk_gate =%d\n",p_sci0_cfg->clk_gate);
+    sci_print_error("p_sci0_cfg->sleep_vote =%d\n",p_sci0_cfg->sleep_vote);
+    sci_print_error("p_sci0_cfg->pwr_type =%s\n",p_sci0_cfg->pwr_type);
+    sci_print_error("p_sci0_cfg->syncTaskName =%s\n",p_sci0_cfg->syncTaskName);
+
+    sci_print_error("p_sci1_cfg->card_id =%d\n",p_sci1_cfg->card_id);
+    sci_print_error("p_sci1_cfg->sci_id =%d\n",p_sci1_cfg->sci_id);
+    sci_print_error("p_sci1_cfg->base_addr =%d\n",p_sci1_cfg->base_addr);
+    sci_print_error("p_sci1_cfg->int_number =%d\n",p_sci1_cfg->int_number);
+    sci_print_error("p_sci1_cfg->clk_en_bit =%d\n",p_sci1_cfg->clk_en_bit);
+    sci_print_error("p_sci1_cfg->clk_dis_reg =%d\n",p_sci1_cfg->clk_dis_reg);
+    sci_print_error("p_sci1_cfg->record_enum =%d\n",p_sci1_cfg->record_enum);
+    sci_print_error("p_sci1_cfg->icc_chnl =%d\n",p_sci1_cfg->icc_chnl);
+    sci_print_error("p_sci1_cfg->record_file =%s\n",p_sci1_cfg->record_file);
+    sci_print_error("p_sci1_cfg->clk_gate =%d\n",p_sci1_cfg->clk_gate);
+    sci_print_error("p_sci1_cfg->sleep_vote =%d\n",p_sci1_cfg->sleep_vote);
+    sci_print_error("p_sci1_cfg->pwr_type =%s\n",p_sci1_cfg->pwr_type);
+    sci_print_error("p_sci1_cfg->syncTaskName =%s\n",p_sci1_cfg->syncTaskName);
+
+    bsp_sci_get_slot_state(&sci_slot0, &sci_slot1);
+    if(sci_slot0 == 0)
+    {
+        sci_slot0 = 1;
+        sci_slot1 = 0;
+    }
+    else
+    {
+        sci_slot0 = 0;
+        sci_slot1 = 1;
+    }
+    
+    bsp_sci_slot_switch(sci_slot0, sci_slot1);
+    
+    sci_print_error("SCI CFG after slot switch\n");
+    sci_print_error("p_sci0_cfg->card_id =%d\n",p_sci0_cfg->card_id);
+    sci_print_error("p_sci0_cfg->sci_id =%d\n",p_sci0_cfg->sci_id);
+    sci_print_error("p_sci0_cfg->base_addr =%d\n",p_sci0_cfg->base_addr);
+    sci_print_error("p_sci0_cfg->int_number =%d\n",p_sci0_cfg->int_number);
+    sci_print_error("p_sci0_cfg->clk_en_bit =%d\n",p_sci0_cfg->clk_en_bit);
+    sci_print_error("p_sci0_cfg->clk_dis_reg =%d\n",p_sci0_cfg->clk_dis_reg);
+    sci_print_error("p_sci0_cfg->record_enum =%d\n",p_sci0_cfg->record_enum);
+    sci_print_error("p_sci0_cfg->icc_chnl =%d\n",p_sci0_cfg->icc_chnl);
+    sci_print_error("p_sci0_cfg->record_file =%s\n",p_sci0_cfg->record_file);
+    sci_print_error("p_sci0_cfg->clk_gate =%d\n",p_sci0_cfg->clk_gate);
+    sci_print_error("p_sci0_cfg->sleep_vote =%d\n",p_sci0_cfg->sleep_vote);
+    sci_print_error("p_sci0_cfg->pwr_type =%s\n",p_sci0_cfg->pwr_type);
+    sci_print_error("p_sci0_cfg->syncTaskName =%s\n",p_sci0_cfg->syncTaskName);
+
+    sci_print_error("p_sci1_cfg->card_id =%d\n",p_sci1_cfg->card_id);
+    sci_print_error("p_sci1_cfg->sci_id =%d\n",p_sci1_cfg->sci_id);
+    sci_print_error("p_sci1_cfg->base_addr =%d\n",p_sci1_cfg->base_addr);
+    sci_print_error("p_sci1_cfg->int_number =%d\n",p_sci1_cfg->int_number);
+    sci_print_error("p_sci1_cfg->clk_en_bit =%d\n",p_sci1_cfg->clk_en_bit);
+    sci_print_error("p_sci1_cfg->clk_dis_reg =%d\n",p_sci1_cfg->clk_dis_reg);
+    sci_print_error("p_sci1_cfg->record_enum =%d\n",p_sci1_cfg->record_enum);
+    sci_print_error("p_sci1_cfg->icc_chnl =%d\n",p_sci1_cfg->icc_chnl);
+    sci_print_error("p_sci1_cfg->record_file =%s\n",p_sci1_cfg->record_file);
+    sci_print_error("p_sci1_cfg->clk_gate =%d\n",p_sci1_cfg->clk_gate);
+    sci_print_error("p_sci1_cfg->sleep_vote =%d\n",p_sci1_cfg->sleep_vote);
+    sci_print_error("p_sci1_cfg->pwr_type =%s\n",p_sci1_cfg->pwr_type);
+    sci_print_error("p_sci1_cfg->syncTaskName =%s\n",p_sci1_cfg->syncTaskName);
+    return VXTEST_PASS;
+}
+
+VXTEST_STATUS tstSciUsimResetSlotSwitch(void)
+{
+     SCI_SLOT sci_slot0;
+     SCI_SLOT sci_slot1;
+     SCI_CFG_STRU * p_sci0_cfg = NULL;
+     SCI_CFG_STRU * p_sci1_cfg = NULL;
+     
+     u32 ulCardStatus;
+     u32 ulCardStatus1;
+    
+     if(SCI_DUAL != ((NV_SCI_CFG_UNION)g_SciNVValue).cfg.card_num)
+     {
+         sci_print("not support double card \n");
+         return VXTEST_FAIL;
+     }
+    
+    
+     p_sci0_cfg = (SCI_CFG_STRU *)((int)&_sci_cfg_data_start + \
+                                 (int)(sizeof(SCI_CFG_STRU) * CARD0));
+     p_sci1_cfg = (SCI_CFG_STRU *)((int)&_sci_cfg_data_start + \
+                                 (int)(sizeof(SCI_CFG_STRU) *  CARD1));
+     bsp_sci_get_slot_state(&sci_slot0, &sci_slot1);
+     if(sci_slot0 == 0)
+     {
+         sci_slot0 = 1;
+         sci_slot1 = 0;
+     }
+     else
+     {
+         sci_slot0 = 1;
+         sci_slot1 = 0;
+     }
+     
+     bsp_sci_slot_switch(sci_slot0, sci_slot1);
+     bsp_sci_reset(COLD_RESET);
+     I1_bsp_sci_reset(COLD_RESET);
+
+
+	ulCardStatus = bsp_sci_card_status_get();
+    ulCardStatus1 = I1_bsp_sci_card_status_get();
+	if(ulCardStatus == SCI_CARD_STATE_READY || ulCardStatus1 == SCI_CARD_STATE_READY)
+    {
+        
+        return VXTEST_PASS;
+    }   
+        
+     return VXTEST_FAIL;
+
+}
 
 
 /*lint +e525*/

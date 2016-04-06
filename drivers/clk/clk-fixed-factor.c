@@ -12,7 +12,7 @@
 #include <linux/slab.h>
 #include <linux/err.h>
 #include <linux/of.h>
-#ifdef CONFIG_HI3630_CLK
+#ifdef CONFIG_HI3XXX_CLK
 #include <linux/clkdev.h>
 #endif
 
@@ -100,6 +100,8 @@ struct clk *clk_register_fixed_factor(struct device *dev, const char *name,
 
 	return clk;
 }
+EXPORT_SYMBOL_GPL(clk_register_fixed_factor);
+
 #ifdef CONFIG_OF
 /**
  * of_fixed_factor_clk_setup() - Setup function for simple fixed factor clock
@@ -109,8 +111,7 @@ void __init of_fixed_factor_clk_setup(struct device_node *node)
 	struct clk *clk;
 	const char *clk_name = node->name;
 	const char *parent_name;
-	u32 div = 0;
-	u32 mult = 0;
+	u32 div, mult;
 
 	if (of_property_read_u32(node, "clock-div", &div)) {
 		pr_err("%s Fixed factor clock <%s> must have a clock-div property\n",
@@ -124,19 +125,14 @@ void __init of_fixed_factor_clk_setup(struct device_node *node)
 		return;
 	}
 
-	if (of_property_read_string(node, "clock-output-names", &clk_name)) {
-		pr_err("%s Fixed factor clock <%s> must have a clock name property\n",
-			__func__, node->name);
-		return;
-	}
-
+	of_property_read_string(node, "clock-output-names", &clk_name);
 	parent_name = of_clk_get_parent_name(node, 0);
 
-	clk = clk_register_fixed_factor(NULL, clk_name, parent_name, 0,
+	clk = clk_register_fixed_factor(NULL, clk_name, parent_name, CLK_SET_RATE_PARENT,
 					mult, div);
 	if (!IS_ERR(clk))
 		of_clk_add_provider(node, of_clk_src_simple_get, clk);
-#ifdef CONFIG_HI3630_CLK
+#ifdef CONFIG_HI3XXX_CLK
 	clk_register_clkdev(clk, clk_name, NULL);
 #endif
 }

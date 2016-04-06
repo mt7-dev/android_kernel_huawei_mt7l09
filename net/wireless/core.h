@@ -76,10 +76,9 @@ struct cfg80211_registered_device {
 	struct work_struct scan_done_wk;
 	struct work_struct sched_scan_results_wk;
 
+	struct mutex sched_scan_mtx;
 
-#ifdef CONFIG_NL80211_TESTMODE
-	struct genl_info *testmode_info;
-#endif
+	struct genl_info *cur_cmd_info;
 
 	struct work_struct conn_work;
 	struct work_struct event_work;
@@ -212,6 +211,7 @@ enum cfg80211_event_type {
 	EVENT_ROAMED,
 	EVENT_DISCONNECTED,
 	EVENT_IBSS_JOINED,
+	EVENT_DRV_RECOVERY,
 };
 
 struct cfg80211_event {
@@ -271,6 +271,9 @@ extern int cfg80211_dev_rename(struct cfg80211_registered_device *rdev,
 void ieee80211_set_bitrate_flags(struct wiphy *wiphy);
 
 void cfg80211_bss_expire(struct cfg80211_registered_device *dev);
+
+void cfg80211_bss_expire_p2p(struct cfg80211_registered_device *dev);
+
 void cfg80211_bss_age(struct cfg80211_registered_device *dev,
                       unsigned long age_secs);
 

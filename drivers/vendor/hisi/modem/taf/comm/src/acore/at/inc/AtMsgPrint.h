@@ -30,7 +30,7 @@
   1 头文件包含
 *****************************************************************************/
 #include  "vos.h"
-
+#include  "AtCtx.h"
 
 #ifdef __cplusplus
 #if __cplusplus
@@ -49,7 +49,7 @@ enum
     AT_MSG_SERV_STATE_NOT_SUPPORT,
     AT_MSG_SERV_STATE_SUPPORT
 };
-typedef TAF_UINT8 AT_MSG_SERV_STATE_ENUM_U8;
+typedef VOS_UINT8 AT_MSG_SERV_STATE_ENUM_U8;
 
 enum AT_MSG_PARSE_STATUS
 {
@@ -60,11 +60,10 @@ enum AT_MSG_PARSE_STATUS
     AT_MSG_PARSE_STATUS_END,
     AT_MSG_PARSE_STATUS_BUTT
 };
-typedef TAF_UINT32 AT_MSG_PARSE_STATUS_UINT32;
+typedef VOS_UINT32 AT_MSG_PARSE_STATUS_UINT32;
 
-typedef TAF_UINT32 (* AT_MSG_STATUS_CHK_FUNC)(TAF_UINT8);
+typedef VOS_UINT32 (* AT_MSG_STATUS_CHK_FUNC)(TAF_UINT8);
 
-#define AT_MAX_VALUE_FOR_UNSIGNED_UINT16                    65535
 
 /*****************************************************************************
   3类型定义
@@ -76,23 +75,10 @@ typedef struct
     AT_MSG_SERV_STATE_ENUM_U8           enSmsBM;
 }AT_MSG_SERV_STRU;
 
-typedef struct
-{
-    AT_MSG_PARSE_STATUS_UINT32   ulNextStatus;
-    AT_MSG_STATUS_CHK_FUNC        pFuncName;
-}AT_MSG_PARSE_SUBSTATUS_STRU;
-
-typedef struct
-{
-    AT_MSG_PARSE_STATUS_UINT32   ulStatus;
-    AT_MSG_PARSE_SUBSTATUS_STRU   *pstStatusTab;
-}NAS_CBS_DECODE_MAINSTATE_STRU;
-
 /*****************************************************************************
   4 宏定义
 *****************************************************************************/
 #define AT_MAX_TIMEZONE_VALUE                               48
-#define AT_MAX_VALUE_FOR_UNSIGNED_UINT16                    65535
 
 #define At_GetNumTypeFromAddrType(enNumType, ucAddrType) ((enNumType) = ((ucAddrType >> 4) & 0x07))
 #define At_GetNumPlanFromAddrType(enNumPlan, ucAddrType) ((enNumPlan) = (ucAddrType & 0x0f))
@@ -174,7 +160,7 @@ VOS_UINT32 At_SendDomainProtoToNvim(
     Author      : ---
     Modification: Created function
 *****************************************************************************/
-extern TAF_UINT32 At_CheckEnd( TAF_UINT8 Char );
+extern VOS_UINT32 At_CheckEnd( VOS_UINT8 Char );
 
 /*****************************************************************************
  Prototype      : At_CheckJuncture
@@ -191,7 +177,7 @@ extern TAF_UINT32 At_CheckEnd( TAF_UINT8 Char );
     Author      : ---
     Modification: Created function
 *****************************************************************************/
-extern TAF_UINT32 At_CheckJuncture( TAF_UINT8 Char );
+extern VOS_UINT32 At_CheckJuncture( VOS_UINT8 Char );
 
 /*****************************************************************************
  函 数 名  : At_ParseCsmpFo
@@ -209,8 +195,8 @@ extern TAF_UINT32 At_CheckJuncture( TAF_UINT8 Char );
     修改内容   : 新生成函数
 
 *****************************************************************************/
-extern TAF_UINT32 At_ParseCsmpFo(
-    TAF_UINT8                           *pucFo
+extern VOS_UINT32 At_ParseCsmpFo(
+    VOS_UINT8                           *pucFo
 );
 
 /*****************************************************************************
@@ -229,7 +215,7 @@ extern TAF_UINT32 At_ParseCsmpFo(
     修改内容   : 新生成函数
 
 *****************************************************************************/
-TAF_UINT32 At_ParseCsmpVp(
+VOS_UINT32 At_ParseCsmpVp(
     VOS_UINT8                           ucIndex,
     MN_MSG_VALID_PERIOD_STRU           *pstVp
 );
@@ -238,6 +224,12 @@ VOS_UINT32  AT_AsciiNumberToBcd(
     const VOS_CHAR                      *pcAsciiNumber,
     VOS_UINT8                           *pucBcdNumber,
     VOS_UINT8                           *pucBcdLen
+);
+
+VOS_UINT32  AT_BcdNumberToAscii(
+    const VOS_UINT8                     *pucBcdNumber,
+    VOS_UINT8                           ucBcdLen,
+    VOS_CHAR                            *pcAsciiNumber
 );
 
 #if ((TAF_OS_VER == TAF_WIN32) || (TAF_OS_VER == TAF_NUCLEUS))

@@ -11,6 +11,7 @@ extern "C"
 #include <bsp_memmap.h>
 #include <drv_reset.h>
 #include <bsp_ipc.h>
+#include <bsp_om.h>
 #include <bsp_shared_ddr.h>
 #include <bsp_hardtimer.h>
 #define RESET_OK                       (0)
@@ -26,7 +27,9 @@ enum RESET_SYSFS_VALUE
 {
 	BALONG_MODEM_OFF   = 2,
 	BALONG_MODEM_ON    = 6,
-	BALONG_MODEM_RESET = 10
+	BALONG_MODEM_RESET = 10,
+	BALONG_MODEM_RILD_SYS_ERR = 11,
+	BALONG_MODEM_3RD_SYS_ERR = 12
 };
 
 enum MODEM_RESET_BOOT_MODE
@@ -127,6 +130,7 @@ static inline u32 bsp_reset_ccore_is_reboot(void)
 #else /* !CONFIG_BALONG_MODEM_RESET */
 
 #define bsp_reset_bootflag_set(value)((value)=(value))
+#define HISI_RDR_MOD_CP_RILD 0x82000007
 static inline u32 bsp_reset_ccore_is_reboot(void)
 {
 	return 0;
@@ -136,7 +140,7 @@ static inline u32 bsp_reset_ccore_is_reboot(void)
 
 /*共享内存中保存MODEM单独复位流程中的时间戳*/
 /*以下用于CCPU 复位流程时间戳*/
-#define STAMP_RESET_BASE_ADDR                 (SHM_MEM_CCORE_RESET_ADDR)
+#define STAMP_RESET_BASE_ADDR                 (unsigned long)(SHM_MEM_CCORE_RESET_ADDR)
 #define STAMP_RESET_FIQ_COUNT                 (0x4 + STAMP_RESET_BASE_ADDR) /*用于FIQ次数*/
 #define STAMP_RESET_IDLE_FAIL_COUNT           (0x4 + STAMP_RESET_FIQ_COUNT) /*用于master idle失败次数*/
 #define STAMP_RESET_MASTER_ENTER_IDLE         (0x4 + STAMP_RESET_IDLE_FAIL_COUNT)
@@ -157,9 +161,9 @@ static inline u32 bsp_reset_ccore_is_reboot(void)
 #define STAMP_RESET_WBBP_SLAVE_STOP           (0x4 + STAMP_RESET_WBBP_MSTER_STOP)
 #define STAMP_RESET_WBBP_ENTER_IDLE           (0x4 + STAMP_RESET_WBBP_SLAVE_STOP)
 #define STAMP_RESET_MASTER_IDLE_QUIT          (0x4 + STAMP_RESET_WBBP_ENTER_IDLE)
-
+#define STAMP_RESET_FIQ_OUT_COUNT             (0x4 + STAMP_RESET_MASTER_IDLE_QUIT)
 /*以下用于M3单独复位流程时间戳*/
-#define STAMP_RESET_M3_BASE_ADDR              (0x4 + STAMP_RESET_MASTER_IDLE_QUIT)
+#define STAMP_RESET_M3_BASE_ADDR              (0x4 + STAMP_RESET_FIQ_OUT_COUNT)
 #define STAMP_RESET_M3_BUSERROR_STEP1         (0x4 + STAMP_RESET_M3_BASE_ADDR)
 #define STAMP_RESET_M3_BUSERROR_STEP2         (0x4 + STAMP_RESET_M3_BUSERROR_STEP1)
 #define STAMP_RESET_M3_BUSERROR_STEP3         (0x4 + STAMP_RESET_M3_BUSERROR_STEP2)

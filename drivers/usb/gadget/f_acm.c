@@ -23,9 +23,6 @@
 #include "u_serial.h"
 #include "gadget_chips.h"
 
-#ifdef CONFIG_K3V3_BALONG_MODEM
-#define USB_CDC_VENDOR_NTF_FLOW_CONTROL     0x1
-#endif
 extern int gserial_line_state(struct gserial *gser, u8 port_num, u32 state);
 /*
  * This CDC ACM function support just wraps control functions and
@@ -57,17 +54,8 @@ struct f_acm {
 	 */
 	spinlock_t			lock;
 
-#ifdef CONFIG_K3V3_BALONG_MODEM
-	int							support_notify;
-#endif
 	struct usb_ep			*notify;
 	struct usb_request		*notify_req;
-#ifdef CONFIG_K3V3_BALONG_MODEM
-	int (*pending_notify)(struct f_acm *acm);
-	/* cdc vendor flow control notify */
-	u32             rx_is_on;
-	u32             tx_is_on;
-#endif
 	struct usb_cdc_line_coding	port_line_coding;	/* 8-N-1 etc */
 
 	/* SetControlLineState request -- CDC 1.1 section 6.2.14 (INPUT) */
@@ -84,68 +72,7 @@ struct f_acm {
 #define ACM_CTRL_BRK		(1 << 2)
 #define ACM_CTRL_DSR		(1 << 1)
 #define ACM_CTRL_DCD		(1 << 0)
-#ifdef CONFIG_K3V3_BALONG_MODEM
-	enum acm_class_type			class_type;
-#endif
 };
-#ifdef CONFIG_K3V3_BALONG_MODEM
-struct acm_name_type_tbl g_acm_cdev_type_table[ACM_CDEV_COUNT] = {
-	/* name         type(prot id) */
-	{"ttyGS0",          USB_IF_PROTOCOL_PCUI},/*PC UI interface*/
-	{"acm_3g_diag",     USB_IF_PROTOCOL_3G_DIAG},/*3G Application interface*/
-	{"acm_a_shell",		USB_IF_PROTOCOL_3G_GPS},/*3G gps inerface*/
-	{"acm_c_shell",     USB_IF_PROTOCOL_BLUETOOTH},/*Bluetooth interface*/
-	{"acm_ctrl",		USB_IF_PROTOCOL_CTRL},/*Control interface*/
-	{"acm_4g_diag",     USB_IF_PROTOCOL_DIAG},/*Application interface*/
-	{"acm_gps",         USB_IF_PROTOCOL_GPS},/*GPS interface*/
-	{"acm_cdma_log",	USB_IF_PROTOCOL_CDMA_LOG},/*CDMA log interface*/
-	{"acm_voice",       USB_IF_PROTOCOL_PCVOICE},
-	{"unknown",         USB_IF_PROTOCOL_NOPNP}
-};
-
-struct acm_name_type_tbl g_acm_tty_type_table[MAX_U_SERIAL_PORTS] = {
-	/* name             type(prot id) */
-	{ACM_CONSOLE_NAME,  USB_IF_PROTOCOL_3G_GPS},
-	{"unknown",         USB_IF_PROTOCOL_NOPNP}
-};
-
-struct acm_name_type_tbl g_acm_mdm_type_table[ACM_MDM_COUNT] = {
-	/* name             type(prot id) */
-	{"acm_modem",       USB_IF_PROTOCOL_3G_MODEM},
-	{"unknown",         USB_IF_PROTOCOL_NOPNP}
-};
-static int g_acm_is_single_interface = ACM_IS_SINGLE_INTF;
-
-static inline int is_support_notify(enum acm_class_type type)
-{
-	switch (type) {
-	case acm_class_cdev:
-		return ACM_CDEV_SUPPORT_NOTIFY;
-	case acm_class_tty:
-		return ACM_CDEV_SUPPORT_NOTIFY;
-	case acm_class_modem:
-		return ACM_MODEM_SUPPORT_NOTIFY;
-	default:
-		return 0;
-	}
-}
-
-#define ACM_IS_TTY(acm)    ((acm)->class_type == acm_class_tty)
-#define ACM_IS_MDM(acm)    ((acm)->class_type == acm_class_modem)
-static inline unsigned char ACM_GET_TYPE(struct f_acm *acm)
-{
-	switch(acm->class_type) {
-	case acm_class_cdev:
-		return (unsigned char)g_acm_cdev_type_table[acm->port_num].type;
-	case acm_class_tty:
-		return (unsigned char)g_acm_tty_type_table[acm->port_num].type;
-	case acm_class_modem:
-		return (unsigned char)g_acm_mdm_type_table[acm->port_num].type;
-	default:
-		return 0xFF;
-	}
-}
-#endif
 
 static inline struct f_acm *func_to_acm(struct usb_function *f)
 {
@@ -232,19 +159,6 @@ static struct usb_cdc_union_desc acm_union_desc = {
 	/* .bMasterInterface0 =	DYNAMIC */
 	/* .bSlaveInterface0 =	DYNAMIC */
 };
-#ifdef CONFIG_K3V3_BALONG_MODEM
-static struct usb_interface_descriptor acm_single_interface_desc = {
-	.bLength =		USB_DT_INTERFACE_SIZE,
-	.bDescriptorType =	USB_DT_INTERFACE,
-	/* .bInterfaceNumber = DYNAMIC */
-	/* .bNumEndpoints =	DYNAMIC, */
-	.bInterfaceClass =	0xff,
-	.bInterfaceSubClass =	0x02,
-	.bInterfaceProtocol =	0x01,
-	/* .iInterface = DYNAMIC */
-};
-unsigned char prot_id[5];
-#endif
 /* full speed support: */
 
 static struct usb_endpoint_descriptor acm_fs_notify_desc = {
@@ -269,31 +183,6 @@ static struct usb_endpoint_descriptor acm_fs_out_desc = {
 	.bEndpointAddress =	USB_DIR_OUT,
 	.bmAttributes =		USB_ENDPOINT_XFER_BULK,
 };
-#ifdef CONFIG_K3V3_BALONG_MODEM
-static struct usb_descriptor_header **acm_fs_cur_function;
-static struct usb_descriptor_header *acm_fs_function_single[] = {
-	(struct usb_descriptor_header *) &acm_single_interface_desc,
-	(struct usb_descriptor_header *) &acm_header_desc,
-	(struct usb_descriptor_header *) &acm_descriptor,
-	(struct usb_descriptor_header *) &acm_call_mgmt_descriptor,
-	(struct usb_descriptor_header *) &acm_union_desc,
-	(struct usb_descriptor_header *) &acm_fs_in_desc,
-	(struct usb_descriptor_header *) &acm_fs_out_desc,
-	NULL,
-};
-
-static struct usb_descriptor_header *acm_fs_function_single_notify[] = {
-	(struct usb_descriptor_header *) &acm_single_interface_desc,
-	(struct usb_descriptor_header *) &acm_header_desc,
-	(struct usb_descriptor_header *) &acm_descriptor,
-	(struct usb_descriptor_header *) &acm_call_mgmt_descriptor,
-	(struct usb_descriptor_header *) &acm_union_desc,
-	(struct usb_descriptor_header *) &acm_fs_notify_desc,
-	(struct usb_descriptor_header *) &acm_fs_in_desc,
-	(struct usb_descriptor_header *) &acm_fs_out_desc,
-	NULL,
-};
-#endif
 
 static struct usb_descriptor_header *acm_fs_function[] = {
 	(struct usb_descriptor_header *) &acm_iad_descriptor,
@@ -332,31 +221,6 @@ static struct usb_endpoint_descriptor acm_hs_out_desc = {
 	.bmAttributes =		USB_ENDPOINT_XFER_BULK,
 	.wMaxPacketSize =	cpu_to_le16(512),
 };
-#ifdef CONFIG_K3V3_BALONG_MODEM
-static struct usb_descriptor_header **acm_hs_cur_function;
-static struct usb_descriptor_header *acm_hs_function_single[] = {
-	(struct usb_descriptor_header *) &acm_single_interface_desc,
-	(struct usb_descriptor_header *) &acm_header_desc,
-	(struct usb_descriptor_header *) &acm_descriptor,
-	(struct usb_descriptor_header *) &acm_call_mgmt_descriptor,
-	(struct usb_descriptor_header *) &acm_union_desc,
-	(struct usb_descriptor_header *) &acm_hs_in_desc,
-	(struct usb_descriptor_header *) &acm_hs_out_desc,
-	NULL,
-};
-
-static struct usb_descriptor_header *acm_hs_function_single_notify[] = {
-	(struct usb_descriptor_header *) &acm_single_interface_desc,
-	(struct usb_descriptor_header *) &acm_header_desc,
-	(struct usb_descriptor_header *) &acm_descriptor,
-	(struct usb_descriptor_header *) &acm_call_mgmt_descriptor,
-	(struct usb_descriptor_header *) &acm_union_desc,
-	(struct usb_descriptor_header *) &acm_hs_notify_desc,
-	(struct usb_descriptor_header *) &acm_hs_in_desc,
-	(struct usb_descriptor_header *) &acm_hs_out_desc,
-	NULL,
-};
-#endif
 
 static struct usb_descriptor_header *acm_hs_function[] = {
 	(struct usb_descriptor_header *) &acm_iad_descriptor,
@@ -391,9 +255,6 @@ static struct usb_ss_ep_comp_descriptor acm_ss_bulk_comp_desc = {
 	.bDescriptorType =      USB_DT_SS_ENDPOINT_COMP,
 };
 
-#ifdef CONFIG_K3V3_BALONG_MODEM
-static struct usb_descriptor_header **acm_ss_cur_function;
-#endif
 
 static struct usb_descriptor_header *acm_ss_function[] = {
 	(struct usb_descriptor_header *) &acm_iad_descriptor,
@@ -412,35 +273,6 @@ static struct usb_descriptor_header *acm_ss_function[] = {
 	NULL,
 };
 
-#ifdef CONFIG_K3V3_BALONG_MODEM
-static struct usb_descriptor_header *acm_ss_function_single[] = {
-	(struct usb_descriptor_header *) &acm_single_interface_desc,
-	(struct usb_descriptor_header *) &acm_header_desc,
-	(struct usb_descriptor_header *) &acm_descriptor,
-	(struct usb_descriptor_header *) &acm_call_mgmt_descriptor,
-	(struct usb_descriptor_header *) &acm_union_desc,
-	(struct usb_descriptor_header *) &acm_ss_in_desc,
-	(struct usb_descriptor_header *) &acm_ss_bulk_comp_desc,
-	(struct usb_descriptor_header *) &acm_ss_out_desc,
-	(struct usb_descriptor_header *) &acm_ss_bulk_comp_desc,
-	NULL,
-};
-
-static struct usb_descriptor_header *acm_ss_function_single_notify[] = {
-	(struct usb_descriptor_header *) &acm_single_interface_desc,
-	(struct usb_descriptor_header *) &acm_header_desc,
-	(struct usb_descriptor_header *) &acm_descriptor,
-	(struct usb_descriptor_header *) &acm_call_mgmt_descriptor,
-	(struct usb_descriptor_header *) &acm_union_desc,
-	(struct usb_descriptor_header *) &acm_hs_notify_desc,
-	(struct usb_descriptor_header *) &acm_ss_bulk_comp_desc,
-	(struct usb_descriptor_header *) &acm_ss_in_desc,
-	(struct usb_descriptor_header *) &acm_ss_bulk_comp_desc,
-	(struct usb_descriptor_header *) &acm_ss_out_desc,
-	(struct usb_descriptor_header *) &acm_ss_bulk_comp_desc,
-	NULL,
-};
-#endif
 
 /* string descriptors: */
 
@@ -507,6 +339,7 @@ static void acm_complete_set_line_coding(struct usb_ep *ep,
 static void acm_complete_41a3(struct usb_ep *ep,
 		struct usb_request *req)
 {
+	pr_info("buf: %02x\n", ((char *)req->buf)[0]);
 }
 
 static int acm_setup(struct usb_function *f, const struct usb_ctrlrequest *ctrl)
@@ -531,7 +364,7 @@ static int acm_setup(struct usb_function *f, const struct usb_ctrlrequest *ctrl)
 
 	case ((USB_DIR_OUT | USB_TYPE_VENDOR | USB_RECIP_INTERFACE) << 8)
 			| 0xa3:
-		pr_debug("f_acm request: wValue: 0x%04x, wIndex: 0x%04x, wLength: 0x%04x\n",
+		pr_info("f_acm request: wValue: 0x%04x, wIndex: 0x%04x, wLength: 0x%04x\n",
 			w_value, w_index, w_length);
 		value = w_length;
 		cdev->gadget->ep0->driver_data = acm;
@@ -574,14 +407,6 @@ static int acm_setup(struct usb_function *f, const struct usb_ctrlrequest *ctrl)
 		 * that bit, we should return to that no-flow state.
 		 */
 		acm->port_handshake_bits = w_value;
-#ifdef CONFIG_K3V3_BALONG_MODEM
-		if (ACM_IS_TTY(acm))
-			gserial_line_state(&acm->port, acm->port_num, (u32)w_value);
-		else if (ACM_IS_MDM(acm))
-			;/*gacm_modem_line_state(&acm->port, acm->port_num, (u32)w_value);*/
-		else
-			gacm_cdev_line_state(&acm->port, acm->port_num, (u32)w_value);
-#endif
 		break;
 
 	default:
@@ -608,101 +433,6 @@ invalid:
 	return value;
 }
 
-#ifdef CONFIG_K3V3_BALONG_MODEM
-static int acm_set_alt(struct usb_function *f, unsigned intf, unsigned alt)
-{
-	struct f_acm		*acm = func_to_acm(f);
-	struct usb_composite_dev *cdev = f->config->cdev;
-	bool is_setting = 0;
-	int ret;
-	/* we know alt == 0, so this is an activation or a reset */
-
-	/* if it is single interface, intf, acm->ctrl_id and acm->data_id
-	 * are the same, so we can setting data and notify interface in the same time.
-	 *
-	 * if it is multi interface, acm->ctrl_id and acm->data_id are different,
-	 * so the setting is go ahead in different times.
-	 */
-	if (intf == acm->ctrl_id) {
-		is_setting = 1;
-		if (acm->notify) {
-			if (acm->notify->driver_data) {
-				VDBG(cdev, "reset acm control interface %d\n", intf);
-				usb_ep_disable(acm->notify);
-			} else {
-				VDBG(cdev, "init acm ctrl interface %d\n", intf);
-				if (config_ep_by_speed(cdev->gadget, f, acm->notify))
-					return -EINVAL;
-			}
-		ret = usb_ep_enable(acm->notify);
-		if (ret < 0) {
-			ERROR(cdev, "Enable acm interface ep failed\n");
-			return ret;
-		}
-		acm->notify->driver_data = acm;
-		}
-	}
-
-	if (intf == acm->data_id) {
-		is_setting = 1;
-		if (acm->port.in->driver_data) {
-			DBG(cdev, "reset acm ttyGS%d\n", acm->port_num);
-			if (ACM_IS_TTY(acm))
-				gserial_disconnect(&acm->port);
-			if (ACM_IS_MDM(acm))
-				;//gacm_modem_disconnect(&acm->port);
-			else
-				gacm_cdev_disconnect(&acm->port);
-		}
-		if (!acm->port.in->desc || !acm->port.out->desc) {
-			DBG(cdev, "activate acm ttyGS%d\n", acm->port_num);
-			if (config_ep_by_speed(cdev->gadget, f,
-					acm->port.in) ||
-					config_ep_by_speed(cdev->gadget, f,
-					acm->port.out)) {
-				acm->port.in->desc = NULL;
-				acm->port.out->desc = NULL;
-				return -EINVAL;
-			}
-		}
-		if (ACM_IS_TTY(acm))
-			gserial_connect(&acm->port, acm->port_num);
-		else if (ACM_IS_MDM(acm))
-			;//gacm_modem_connect(&acm->port, acm->port_num);
-		else
-			gacm_cdev_connect(&acm->port, acm->port_num);
-	        bsp_usb_set_enum_stat(acm->data_id, 1);
-
-	}
-
-	if (!is_setting)
-		return -EINVAL;
-
-	return 0;
-}
-
-static void acm_disable(struct usb_function *f)
-{
-	struct f_acm	*acm = func_to_acm(f);
-	struct usb_composite_dev *cdev = f->config->cdev;
-
-	DBG(cdev, "acm ttyGS%d deactivated\n", acm->port_num);
-
-    if (ACM_IS_TTY(acm))
-		gserial_disconnect(&acm->port);
-	else if (ACM_IS_MDM(acm))
-		;//gacm_modem_disconnect(&acm->port);
-	else
-		gacm_cdev_disconnect(&acm->port);
-	if (acm->notify) {
-		usb_ep_disable(acm->notify);
-		acm->notify->driver_data = NULL;
-	}
-       bsp_usb_set_enum_stat(acm->data_id, 0);
-
-}
-
-#else
 static int acm_set_alt(struct usb_function *f, unsigned intf, unsigned alt)
 {
 	struct f_acm		*acm = func_to_acm(f);
@@ -714,11 +444,12 @@ static int acm_set_alt(struct usb_function *f, unsigned intf, unsigned alt)
 		if (acm->notify->driver_data) {
 			VDBG(cdev, "reset acm control interface %d\n", intf);
 			usb_ep_disable(acm->notify);
-		} else {
-			VDBG(cdev, "init acm ctrl interface %d\n", intf);
+		}
+
+		if (!acm->notify->desc)
 			if (config_ep_by_speed(cdev->gadget, f, acm->notify))
 				return -EINVAL;
-		}
+
 		usb_ep_enable(acm->notify);
 		acm->notify->driver_data = acm;
 
@@ -756,7 +487,7 @@ static void acm_disable(struct usb_function *f)
 	usb_ep_disable(acm->notify);
 	acm->notify->driver_data = NULL;
 }
-#endif
+
 /*-------------------------------------------------------------------------*/
 
 /**
@@ -773,13 +504,8 @@ static void acm_disable(struct usb_function *f)
  * See section 6.3.5 of the CDC 1.1 specification for information
  * about the only notification we issue:  SerialState change.
  */
- #ifdef CONFIG_K3V3_BALONG_MODEM
- static int acm_cdc_notify(struct f_acm *acm, u8 type, u16 value,
-		void *data, unsigned length, bool is_vendor)
- #else
 static int acm_cdc_notify(struct f_acm *acm, u8 type, u16 value,
 		void *data, unsigned length)
-#endif
 {
 	struct usb_ep			*ep = acm->notify;
 	struct usb_request		*req;
@@ -795,20 +521,14 @@ static int acm_cdc_notify(struct f_acm *acm, u8 type, u16 value,
 	req->length = len;
 	notify = req->buf;
 	buf = notify + 1;
-#ifdef CONFIG_K3V3_BALONG_MODEM
-	notify->bmRequestType = USB_DIR_IN
-			| (is_vendor ? USB_TYPE_VENDOR : USB_TYPE_CLASS)
-#else
 	notify->bmRequestType = USB_DIR_IN | USB_TYPE_CLASS
-#endif
+
 			| USB_RECIP_INTERFACE;
 	notify->bNotificationType = type;
 	notify->wValue = cpu_to_le16(value);
 	notify->wIndex = cpu_to_le16(acm->ctrl_id);
 	notify->wLength = cpu_to_le16(length);
-#ifdef CONFIG_K3V3_BALONG_MODEM
-	if (length && data)
-#endif
+
 	memcpy(buf, data, length);
 
 	/* ep_queue() can complete immediately if it fills the fifo... */
@@ -835,43 +555,17 @@ static int acm_notify_serial_state(struct f_acm *acm)
 	if (acm->notify_req) {
 		DBG(cdev, "acm ttyGS%d serial state %04x\n",
 				acm->port_num, acm->serial_state);
-#ifdef CONFIG_K3V3_BALONG_MODEM
-		status = acm_cdc_notify(acm, USB_CDC_NOTIFY_SERIAL_STATE,
-				0, &acm->serial_state, sizeof(acm->serial_state), 0);
-#else
 		status = acm_cdc_notify(acm, USB_CDC_NOTIFY_SERIAL_STATE,
 				0, &acm->serial_state, sizeof(acm->serial_state));
-#endif
 
 	} else {
 		acm->pending = true;
-#ifdef CONFIG_K3V3_BALONG_MODEM
-		acm->pending_notify = acm_notify_serial_state;
-#endif
 		status = 0;
 	}
 	spin_unlock(&acm->lock);
 	return status;
 }
-#ifdef CONFIG_K3V3_BALONG_MODEM
-static int acm_notify_flow_control(struct f_acm *acm)
-{
-	int status;
-	u16 value = (acm->rx_is_on ? 0x1 : 0x0) | (acm->tx_is_on ? 0x2 : 0x0);
 
-	spin_lock(&acm->lock);
-	if (acm->notify_req) {
-		status = acm_cdc_notify(acm, USB_CDC_VENDOR_NTF_FLOW_CONTROL,
-		value, NULL, 0, 1);
-	} else {
-		acm->pending = true;
-		acm->pending_notify = acm_notify_flow_control;
-		status = 0;
-	}
-	spin_unlock(&acm->lock);
-	return status;
-}
-#endif
 static void acm_cdc_notify_complete(struct usb_ep *ep, struct usb_request *req)
 {
 	struct f_acm		*acm = req->context;
@@ -885,13 +579,8 @@ static void acm_cdc_notify_complete(struct usb_ep *ep, struct usb_request *req)
 		doit = acm->pending;
 	acm->notify_req = req;
 	spin_unlock(&acm->lock);
-#ifdef CONFIG_K3V3_BALONG_MODEM
-	if (doit && acm->pending_notify)
-		acm->pending_notify(acm);
-#else
 	if (doit)
 		acm_notify_serial_state(acm);
-#endif
 }
 
 /* connect == the TTY link is open */
@@ -911,24 +600,6 @@ static void acm_disconnect(struct gserial *port)
 	acm->serial_state &= ~(ACM_CTRL_DSR | ACM_CTRL_DCD);
 	acm_notify_serial_state(acm);
 }
-#ifdef CONFIG_K3V3_BALONG_MODEM
-static void acm_notify_state(struct gserial *port, u16 state)
-{
-	struct f_acm		*acm = port_to_acm(port);
-
-	acm->serial_state = state;
-	(void)acm_notify_serial_state(acm);
-}
-
-static void acm_flow_control(struct gserial *port, u32 rx_is_on, u32 tx_is_on)
-{
-	struct f_acm		*acm = port_to_acm(port);
-
-	acm->rx_is_on = rx_is_on;
-	acm->tx_is_on = tx_is_on;
-	(void)acm_notify_flow_control(acm);
-}
-#endif
 
 static int acm_send_break(struct gserial *port, int duration)
 {
@@ -973,14 +644,6 @@ acm_bind(struct usb_configuration *c, struct usb_function *f)
 	status = usb_interface_id(c, f);
 	if (status < 0)
 		goto fail;
-#ifdef CONFIG_K3V3_BALONG_MODEM
-	if (g_acm_is_single_interface) {
-		acm->ctrl_id = acm->data_id = status;
-		acm_single_interface_desc.bInterfaceNumber = status;
-		acm_call_mgmt_descriptor.bDataInterface = status;
-	}
-	else {
-#endif
 	acm->ctrl_id = status;
 	acm_iad_descriptor.bFirstInterface = status;
 
@@ -995,10 +658,6 @@ acm_bind(struct usb_configuration *c, struct usb_function *f)
 	acm_data_interface_desc.bInterfaceNumber = status;
 	acm_union_desc.bSlaveInterface0 = status;
 	acm_call_mgmt_descriptor.bDataInterface = status;
-#ifdef CONFIG_K3V3_BALONG_MODEM
-	}
-	bsp_usb_add_setup_dev((unsigned)acm->data_id);
-#endif
 	status = -ENODEV;
 
 	/* allocate instance-specific endpoints */
@@ -1013,9 +672,6 @@ acm_bind(struct usb_configuration *c, struct usb_function *f)
 		goto fail;
 	acm->port.out = ep;
 	ep->driver_data = cdev;	/* claim */
-#ifdef CONFIG_K3V3_BALONG_MODEM
-	if (acm->support_notify) {
-#endif
 	ep = usb_ep_autoconfig(cdev->gadget, &acm_fs_notify_desc);
 	if (!ep)
 		goto fail;
@@ -1031,37 +687,20 @@ acm_bind(struct usb_configuration *c, struct usb_function *f)
 
 	acm->notify_req->complete = acm_cdc_notify_complete;
 	acm->notify_req->context = acm;
-#ifdef CONFIG_K3V3_BALONG_MODEM
-	}
-	else {
-		acm->notify = NULL;
-		acm->notify_req = NULL;
-	}
-#endif
 	/* support all relevant hardware speeds... we expect that when
 	 * hardware is dual speed, all bulk-capable endpoints work at
 	 * both speeds
 	 */
 	acm_hs_in_desc.bEndpointAddress = acm_fs_in_desc.bEndpointAddress;
 	acm_hs_out_desc.bEndpointAddress = acm_fs_out_desc.bEndpointAddress;
-#ifdef CONFIG_K3V3_BALONG_MODEM
-	if (acm->support_notify)
-#endif
 	acm_hs_notify_desc.bEndpointAddress =
 		acm_fs_notify_desc.bEndpointAddress;
 
 	acm_ss_in_desc.bEndpointAddress = acm_fs_in_desc.bEndpointAddress;
 	acm_ss_out_desc.bEndpointAddress = acm_fs_out_desc.bEndpointAddress;
-#ifdef CONFIG_K3V3_BALONG_MODEM
-	((struct usb_interface_descriptor *)acm_fs_cur_function[0])->bInterfaceProtocol = prot_id[acm->port_num];
-	((struct usb_interface_descriptor *)acm_hs_cur_function[0])->bInterfaceProtocol = prot_id[acm->port_num];
-	((struct usb_interface_descriptor *)acm_ss_cur_function[0])->bInterfaceProtocol = prot_id[acm->port_num];
-	status = usb_assign_descriptors(f, acm_fs_cur_function, acm_hs_cur_function,
-			acm_ss_cur_function);
-#else
+
 	status = usb_assign_descriptors(f, acm_fs_function, acm_hs_function,
 			acm_ss_function);
-#endif
 	if (status)
 		goto fail;
 
@@ -1106,43 +745,6 @@ static inline bool can_support_cdc(struct usb_configuration *c)
 	/* everything else is *probably* fine ... */
 	return true;
 }
-#ifdef CONFIG_K3V3_BALONG_MODEM
-static inline void acm_set_config_vendor(struct f_acm *acm)
-{
-	if (g_acm_is_single_interface) {
-
-		if (acm->support_notify) {
-			/* bulk in + bulk out + interrupt in */
-			acm_single_interface_desc.bNumEndpoints = 3;
-			acm_fs_cur_function = acm_fs_function_single_notify;
-			acm_hs_cur_function = acm_hs_function_single_notify;
-			acm_ss_cur_function = acm_ss_function_single_notify;
-		} else {
-			/* bulk in + bulk out */
-			acm_single_interface_desc.bNumEndpoints = 2;
-			acm_fs_cur_function = acm_fs_function_single;
-			acm_hs_cur_function = acm_hs_function_single;
-			acm_ss_cur_function = acm_ss_function_single;
-		}
-
-		acm_single_interface_desc.bInterfaceClass = 0xFF;
-		acm_single_interface_desc.bInterfaceSubClass = 0x02;
-		//acm_single_interface_desc.bInterfaceProtocol = ACM_GET_TYPE(acm);
-
-		prot_id[acm->port_num] = ACM_GET_TYPE(acm);
-
-		//printk("prot class is %d\n", acm_single_interface_desc.bInterfaceProtocol);
-	} else {
-		acm_control_interface_desc.bInterfaceClass = 0xFF;
-		acm_control_interface_desc.bInterfaceSubClass = 0x02;
-		acm_control_interface_desc.bInterfaceProtocol = ACM_GET_TYPE(acm);
-		acm_fs_cur_function = acm_fs_function;
-		acm_hs_cur_function = acm_hs_function;
-		acm_ss_cur_function = acm_ss_function;
-
-	}
-}
-#endif
 static void acm_free_func(struct usb_function *f)
 {
 	struct f_acm		*acm = func_to_acm(f);
@@ -1161,16 +763,8 @@ static struct usb_function *acm_alloc_func(struct usb_function_instance *fi)
 
 	spin_lock_init(&acm->lock);
 
-#ifdef CONFIG_K3V3_BALONG_MODEM
-	acm->class_type = acm_class_cdev;
-	acm->support_notify = is_support_notify(acm_class_cdev);
-#endif
 	acm->port.connect = acm_connect;
 	acm->port.disconnect = acm_disconnect;
-#ifdef CONFIG_K3V3_BALONG_MODEM
-	acm->port.notify_state = acm_notify_state;
-	acm->port.flow_control = acm_flow_control;
-#endif
 	acm->port.send_break = acm_send_break;
 
 	acm->port.func.name = "acm";
@@ -1186,9 +780,6 @@ static struct usb_function *acm_alloc_func(struct usb_function_instance *fi)
 	acm->port.func.unbind = acm_unbind;
 	acm->port.func.free_func = acm_free_func;
 
-#ifdef CONFIG_K3V3_BALONG_MODEM
-	acm_set_config_vendor(acm);
-#endif
 
 	return &acm->port.func;
 }

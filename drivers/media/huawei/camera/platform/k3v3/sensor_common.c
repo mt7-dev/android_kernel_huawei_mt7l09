@@ -15,7 +15,10 @@
 #include "hw_cci.h"
 #include "hw_isp_io.h"
 #include "hw_pmic.h"
+#include "extisp.h"
 //#include "isp_ops.h"
+
+extern bool is_ovisp23_poweron(void);
 
 int hw_mclk_config(sensor_t *s_ctrl,
 	struct sensor_power_setting *power_setting, int state)
@@ -23,6 +26,11 @@ int hw_mclk_config(sensor_t *s_ctrl,
 	int sensor_index;
 
 	cam_debug("%s enter.state:%d", __func__, state);
+	if (!is_ovisp23_poweron()) {
+		cam_notice("%s the ovisp has powered down.", __func__);
+		return 0;
+	}
+
 	if (SENSOR_INDEX_INVALID != power_setting->sensor_index) {
 		sensor_index = power_setting->sensor_index;
 	} else {
@@ -35,12 +43,12 @@ int hw_mclk_config(sensor_t *s_ctrl,
 	if (POWER_ON == state) {
 		/* mclk */
 		if (CAMERA_SENSOR_PRIMARY == sensor_index) {
-			SETREG8(REG_ISP_CLK_DIVIDER, 0x44);
+			ISP_SETREG8(REG_ISP_CLK_DIVIDER, 0x44);
 		} else {
-			SETREG8(REG_ISP_CLK_DIVIDER, 0x44);
+			ISP_SETREG8(REG_ISP_CLK_DIVIDER, 0x44);
 		}
 	} else {
-		SETREG8(REG_ISP_CLK_DIVIDER, 0);
+		ISP_SETREG8(REG_ISP_CLK_DIVIDER, 0);
 	}
 	if (0 != power_setting->delay) {
 		hw_camdrv_msleep(power_setting->delay);
@@ -189,6 +197,7 @@ int hw_sensor_power_up(sensor_t *s_ctrl)
 		= &s_ctrl->power_setting_array;
 	struct sensor_power_setting *power_setting = NULL;
 	int index = 0, rc = 0;
+	struct hisi_pmic_ctrl_t *pmic_ctrl = NULL;
 
 	cam_debug("%s enter.", __func__);
 
@@ -199,9 +208,10 @@ int hw_sensor_power_up(sensor_t *s_ctrl)
 		return 0;
 	}
 
-	if (ncp6925_ctrl.func_tbl->pmic_on)
-	{
-		ncp6925_ctrl.func_tbl->pmic_on(&ncp6925_ctrl, 0);
+	pmic_ctrl = hisi_get_pmic_ctrl();
+	if(pmic_ctrl != NULL) {
+		cam_info("pmic power on!");
+		pmic_ctrl->func_tbl->pmic_on(pmic_ctrl, 0);
 	}
 
 	for (index = 0; index < power_setting_array->size; index++) {
@@ -271,6 +281,9 @@ int hw_sensor_power_up(sensor_t *s_ctrl)
 			rc = hw_sensor_pmic_config(s_ctrl->board_info,
 				power_setting, POWER_ON);
 			break;
+		case SENSOR_CS:
+			rc = misp_init();
+			break;
 		default:
 			cam_err("%s invalid seq_type.", __func__);
 			break;
@@ -290,6 +303,8 @@ int hw_sensor_power_down(sensor_t *s_ctrl)
 		= &s_ctrl->power_setting_array;
 	struct sensor_power_setting *power_setting = NULL;
 	int index = 0, rc = 0;
+	struct hisi_pmic_ctrl_t *pmic_ctrl = NULL;
+
 
 	cam_debug("%s enter.", __func__);
 
@@ -358,6 +373,9 @@ int hw_sensor_power_down(sensor_t *s_ctrl)
 			rc = hw_sensor_pmic_config(s_ctrl->board_info,
 				power_setting, POWER_OFF);
 			break;
+		case SENSOR_CS:
+			rc = misp_exit();
+			break;
 		default:
 			cam_err("%s invalid seq_type.", __func__);
 			break;
@@ -365,9 +383,9 @@ int hw_sensor_power_down(sensor_t *s_ctrl)
 
 	}
 
-	if (ncp6925_ctrl.func_tbl->pmic_off)
-	{
-		ncp6925_ctrl.func_tbl->pmic_off(&ncp6925_ctrl);
+	pmic_ctrl = hisi_get_pmic_ctrl();
+	if(pmic_ctrl != NULL) {
+		pmic_ctrl->func_tbl->pmic_off(pmic_ctrl);
 	}
 
 	return rc;

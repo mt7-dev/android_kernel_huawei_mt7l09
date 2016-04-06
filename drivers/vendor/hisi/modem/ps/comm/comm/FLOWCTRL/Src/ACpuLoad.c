@@ -15,6 +15,14 @@
      Modification:Create
 
 ******************************************************************************/
+/*****************************************************************************
+   1 协议栈打印打点方式下的.C文件宏定义
+*****************************************************************************/
+#define THIS_FILE_ID                PS_FILE_ID_CPULOAD_C
+
+#include "product_config.h"
+#if(FEATURE_ON == FEATURE_ACPU_STAT)
+
 /******************************************************************************
    头文件包含
 ******************************************************************************/
@@ -26,7 +34,6 @@
 #include "TTFTaskPriority.h"
 #include "product_config.h"
 #include "TtfNvInterface.h"
-
 
 /*如果不是PC测试则要包含如下LINUX头文件*/
 #if(VOS_WIN32 != VOS_OS_VER)
@@ -43,9 +50,7 @@
 #include <linux/time.h>
 #include <linux/irqnr.h>
 #include <asm/cputime.h>
-#if(FEATURE_ON == FEATURE_ACPU_STAT)
 #include <linux/msa.h>
-#endif
 /*lint +e322 +e7*/
 #else
 #include "linuxstub.h"
@@ -57,14 +62,6 @@
   extern "C"{
   #endif
 #endif
-
-
-
-/*****************************************************************************
-   1 协议栈打印打点方式下的.C文件宏定义
-*****************************************************************************/
-#define THIS_FILE_ID                PS_FILE_ID_CPULOAD_C
-
 
 /******************************************************************************
    2 外部函数变量声明
@@ -108,13 +105,9 @@ CPULOAD_CFG_STRU        g_stNvCfg;
 
 VOS_VOID CPULOAD_ReadCpuStat(CPULOAD_STAT_INFO_STRU *pstCpu)
 {
-
     /* V9R1项目中使用宏开关判断是否读取CPU使用情况数据 */
-#if(FEATURE_ON == FEATURE_ACPU_STAT)
     /* 获取空闲任务的运行时间和总的运行时间 */
-
     msa_getcpu_idle(&(pstCpu->stCurrRecord.ulTotalTime), &(pstCpu->stCurrRecord.ulIdleTime));
-#endif
 
     return;
 }
@@ -130,7 +123,6 @@ VOS_VOID CPULOAD_UpdateSavInfo(CPULOAD_STAT_INFO_STRU *pstCpu)
 VOS_UINT32 CPULOAD_CalLoad(CPULOAD_STAT_INFO_STRU *pstCpu)
 {
     /* V9R1项目中使用宏开关进行打桩处理 */
-#if(FEATURE_ON == FEATURE_ACPU_STAT)
     VOS_UINT32                          ulIdle;
     VOS_UINT32                          ulTotal;
     VOS_UINT32                          ulLoad;
@@ -154,22 +146,12 @@ VOS_UINT32 CPULOAD_CalLoad(CPULOAD_STAT_INFO_STRU *pstCpu)
     pstCpu->ulCpuLoad = ulLoad;
 
     return ulLoad;
-#else
-    return 0;
-#endif
 }
 VOS_UINT32  CPULOAD_GetCpuLoad(VOS_VOID)
 {
     /* 使用宏开关判断是否需要打桩处理 */
-#if(FEATURE_ON == FEATURE_ACPU_STAT)
     return g_stRegularCpuLoad.ulCpuLoad;
-#else
-    /* 打桩处理 */
-    return CPULOAD_CPU_IDLE;
-#endif
 }
-
-
 VOS_VOID CPULOAD_InvokeRtpHooks(VOS_UINT32  ulLoad)
 {
     VOS_UINT32                          ulHookLoop;
@@ -233,8 +215,8 @@ VOS_UINT32 CPULOAD_Init(VOS_VOID)
     CPULOAD_CFG_STRU                   *pstNvCfg = &g_stNvCfg;
 
     /* CPU ID目前只有一个，赋值为0 */
-    VOS_MemSet(&g_stRegularCpuLoad, 0, sizeof(CPULOAD_STAT_INFO_STRU));
-    VOS_MemSet(&g_stUserDefCpuLoad, 0, sizeof(CPULOAD_STAT_INFO_STRU));
+    VOS_MemSet((VOS_VOID *)&g_stRegularCpuLoad, 0, sizeof(CPULOAD_STAT_INFO_STRU));
+    VOS_MemSet((VOS_VOID *)&g_stUserDefCpuLoad, 0, sizeof(CPULOAD_STAT_INFO_STRU));
 
     for ( ulHookLoop = 0 ; ulHookLoop < CPULOAD_MAX_HOOK_NUM ; ulHookLoop++ )
     {
@@ -255,7 +237,6 @@ VOS_UINT32 CPULOAD_Init(VOS_VOID)
     }
 
     /* V9R1项目中使用宏开关判断是否需要启动定时器 */
-#if(FEATURE_ON == FEATURE_ACPU_STAT)
     ulRtn = VOS_StartRelTimer(&g_stRegularCpuLoadTmr, ACPU_PID_CPULOAD,
                               pstNvCfg->ulMonitorTimerLen,
                               CPULOAD_REGULAR_TMR_NAME, 0,
@@ -264,7 +245,6 @@ VOS_UINT32 CPULOAD_Init(VOS_VOID)
     {
         return VOS_ERR;
     }
-#endif
 
     return VOS_OK;
 }
@@ -396,6 +376,25 @@ VOS_UINT32  CPULOAD_GetRegularTimerLen()
 {
     return g_stNvCfg.ulMonitorTimerLen;
 }
+
+#else
+
+/******************************************************************************
+   1 头文件包含
+******************************************************************************/
+#include "vos.h"
+
+/******************************************************************************
+   5 函数实现
+******************************************************************************/
+
+
+VOS_UINT32 CPULOAD_FidInit(enum VOS_INIT_PHASE_DEFINE enPhase)
+{
+    return VOS_OK;
+}
+
+#endif
 
 #ifdef  __cplusplus
   #if  __cplusplus

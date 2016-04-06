@@ -45,8 +45,6 @@ static inline unsigned int  __bsp_get_slice_value_hrt(void)
 #endif
 
 #ifdef __KERNEL__
-#define ST_WAKE_HARDTIMER_ADDR           1000
-#define ST_NORMAL_HARDTIMER_ADDR         HI_TIMER_13_REGBASE_ADDR_VIRT
 #define WAKE_TIMER_CLK                   1000
 #define NOWAKE_TIMER_CLK                 HI_TIMER13_CLK
 #define WAKE_TIMER_IRQ_ID                1000

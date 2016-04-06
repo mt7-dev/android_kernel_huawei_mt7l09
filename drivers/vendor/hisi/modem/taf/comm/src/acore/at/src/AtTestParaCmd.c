@@ -10,6 +10,8 @@
 #include "Taf_Tafm_Remote.h"
 #include "NasNvInterface.h"
 #include "TafNvInterface.h"
+
+#include "AtTestParaCmd.h"
 #ifdef  __cplusplus
   #if  __cplusplus
   extern "C"{

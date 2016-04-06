@@ -19,6 +19,15 @@ extern int sysctl_extfrag_threshold;
 extern int sysctl_extfrag_handler(struct ctl_table *table, int write,
 			void __user *buffer, size_t *length, loff_t *ppos);
 
+#ifdef CONFIG_ARM64
+extern unsigned long sysctl_compact_memory_s;
+extern unsigned long sysctl_compact_memory_s_min;
+extern unsigned long sysctl_compact_memory_ratio;
+extern unsigned long sysctl_compact_memory_ratio_min;
+extern unsigned long sysctl_compact_memory_ratio_max;
+extern void compact_memory_init(void);
+#endif
+
 extern int fragmentation_index(struct zone *zone, unsigned int order);
 extern unsigned long try_to_compact_pages(struct zonelist *zonelist,
 			int order, gfp_t gfp_mask, nodemask_t *mask,

@@ -19,6 +19,7 @@
 #include <linux/mutex.h>
 #include <linux/completion.h>
 #include <linux/kernel.h>
+#include <linux/slab.h>
 #include <linux/suspend.h>
 #include <linux/delay.h>
 #include <linux/platform_device.h>
@@ -62,6 +63,7 @@ EXPORT_SYMBOL(exception_log_buf);
 static int  __init hisi_log_init(void)
 {
 	int rc = 0;
+
 #ifdef CONFIG_HISI_RDR
 	u32 rdr_int = 0;
 
@@ -72,17 +74,17 @@ static int  __init hisi_log_init(void)
 	RDR_ASSERT(rdr_afreg(rdr_int, RDR_LOG_EXCEPTION_BUF, RDR_STR, EXCEPTION_LOG_BUF_LEN));
 	exception_log_buf = (volatile unsigned char *) field_addr(u32, rdr_int);
 #else
-	log_buf_info = (volatile log_buffer_head *)ioremap(HISI_LOG_INFO_BASE, LOG_INFO_BUF_LEN);
-	res_log_buf = (volatile unsigned char *)ioremap(HISI_KERNEL_LOG_BASE, KERNEL_LOG_BUF_LEN);
-	exception_log_buf = (volatile unsigned char *)ioremap(HISI_EXCEPTION_LOG_BASE, EXCEPTION_LOG_BUF_LEN);
+	log_buf_info = (volatile log_buffer_head *)ioremap_wc((volatile uint32_t *)HISI_LOG_INFO_BASE, LOG_INFO_BUF_LEN);
+	res_log_buf = (volatile unsigned char *)ioremap_wc((volatile uint32_t *)HISI_KERNEL_LOG_BASE, KERNEL_LOG_BUF_LEN);
+	exception_log_buf = (volatile unsigned char *)ioremap_wc((volatile uint32_t *)HISI_EXCEPTION_LOG_BASE, EXCEPTION_LOG_BUF_LEN);
+	printk("log_buf_info is 0x%p\n", log_buf_info);
+	printk("res_log_buf is 0x%p\n", res_log_buf);
 #endif
-	pr_info("k3log_init\n");
+	pr_info("hisi_log_init ok\n");
 	hilog_loaded  = 1;
 
-
-
-
 	return rc;
+
 }
 
 static void __init hisi_log_exit(void)

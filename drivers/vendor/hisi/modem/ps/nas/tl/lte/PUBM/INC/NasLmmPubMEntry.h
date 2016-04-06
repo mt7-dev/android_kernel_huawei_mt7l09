@@ -266,7 +266,17 @@ typedef  VOS_UINT32    NAS_EMM_EVENT_TYPE_ENUM_UINT32;
   5 STRUCT
 *****************************************************************************/
 
+typedef VOS_VOID (* NAS_LMM_ERRLOG_ACT_FUN )
+(
+    VOS_VOID*,
+    EMM_OM_ERRLOG_TYPE_ENUM_UINT16
+);
 
+typedef struct
+{
+    NAS_LMM_MAIN_STATE_ENUM_UINT16              enCurState;
+    NAS_LMM_ERRLOG_ACT_FUN                      pfErrlogFun;
+}NAS_LMM_ERRLOG_ACT_STRU;
 
 /*****************************************************************************
   6 UNION
@@ -310,6 +320,11 @@ extern  VOS_UINT32  NAS_LMM_GetEventType(MsgBlock                        *pMsg,
 extern  VOS_UINT32  NAS_LMM_MsgPreProcess(MsgBlock *         pMsg );
 extern  VOS_UINT32  NAS_LMM_PreProcAppStopReq(   MsgBlock  * pMsg);
 extern  VOS_UINT32  NAS_LMM_PreProcAppStartReq(   MsgBlock  * pMsg);
+extern VOS_UINT32  NAS_LMM_ProcAppDetReq
+(
+    const MMC_LMM_DETACH_REQ_STRU            *pstAppDetReq
+);
+
 extern  VOS_UINT32  NAS_LMM_PreProcAppDetReq(MsgBlock  * pMsg);
 extern  VOS_UINT32  NAS_LMM_PreProcIntraSystemInfoInd(MsgBlock  * pMsg);
 extern  VOS_UINT32  NAS_LMM_IntraMsgProcess(VOS_VOID);
@@ -414,6 +429,12 @@ extern VOS_UINT32  NAS_LMM_SvlteOrLcPsLocalDetachProc
     const MMC_LMM_DETACH_REQ_STRU            *pstAppDetReq
 );
 
+
+extern VOS_UINT32 NAS_EMM_PreProcMsgRrcPagingInd(MsgBlock  *pstMsg);
+
+extern VOS_VOID NAS_EMM_ProcErrlogEstCnfOrDataCnfFail(
+                 VOS_VOID*                         pstEmmProcessFail,
+                 EMM_OM_ERRLOG_TYPE_ENUM_UINT16    enErrType);
 
 /****************************************************************************
   9 OTHERS

@@ -1,3 +1,0 @@
-config HISI_DDR
-	bool "hisi hi3630 ddr test"
-	default m

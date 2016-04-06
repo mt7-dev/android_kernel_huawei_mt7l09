@@ -12,10 +12,6 @@
 *
 *************************************************************************/
 /*lint --e{537}*/
-#ifdef __VXWORKS__
-#include <string.h>
-#endif
-
 #ifdef __KERNEL__
 #include <linux/kernel.h>
 #include <linux/module.h>
@@ -23,15 +19,20 @@
 #include <linux/slab.h>
 #endif
 
+#if defined(__OS_VXWORKS__)
+#include <string.h>
+#endif
+
+#include <product_config.h>
+#include <hi_syssc_interface.h>
+#include <osl_types.h>
+#include <bsp_sram.h>
 #include <drv_nv_id.h>
 #include <drv_nv_def.h>
 #include <comm_nv_def.h>
+#include <bsp_version.h>
 #include <bsp_nvim.h>
 
-#include "osl_types.h"
-#include "product_config.h"
-#include "bsp_sram.h"
-#include "bsp_version.h"
 /*
 *--------------------------------------------------------------*
 * 宏定义                                                       *
@@ -285,12 +286,23 @@ u32 bsp_version_get_board_chip_type(void)
 		return HW_VER_K3V3_FPGA;
 	}
 
+	
+	/*若为k3v3 plus,只返回UDP硬件版本号*/
+	if(HW_VER_K3V3_PLUS_UDP_MASK == (type & HW_VER_K3V3_PLUS_UDP_MASK)){
+		return HW_VER_K3V3_UDP;/*暂时适配，后续删除*/
+	}
+
 	if(HW_VER_V711_UDP_MASK == (type & HW_VER_V711_UDP_MASK)){
 		return HW_VER_V711_UDP;
 	}
 
 	return type;
 }
+u32 bsp_version_get_chip_type(void)
+{
+	return get_hi_version_id_version_id();
+}
+
 #ifdef __KERNEL__
 char* bsp_dload_get_dload_version(void)
 {
@@ -338,6 +350,44 @@ int bsp_dload_get_dload_info(struct dload_info_type* dload_info)
 module_init(bsp_productinfo_init);
 
 #endif
+/*****************************************************************************
+* 函数	: bsp_get_board_actual_type
+* 功能	: get board actual type 
+* 输入	: void
+* 输出	: void
+* 返回	: BOARD_ACTUAL_TYPE_E       BBIT/SFT/ASIC
+*
+* 其它       : 无
+*
+*****************************************************************************/
+BOARD_ACTUAL_TYPE_E bsp_get_board_actual_type(void)
+{
+	u32 chip_ver = 0;
+
+	chip_ver = bsp_version_get_chip_type();
+
+	switch(chip_ver){
+		case CHIP_VER_P531_ASIC:
+		case CHIP_VER_P532_ASIC:
+			return BOARD_TYPE_BBIT;
+
+		case CHIP_VER_HI6950_ASIC:			
+		case CHIP_VER_HI3630_ASIC:
+		case CHIP_VER_HI6921_ASIC:
+		case CHIP_VER_HI6930_ASIC:
+		case CHIP_VER_HI3635_ASIC:
+			return BOARD_TYPE_ASIC;
+
+		case CHIP_VER_HI6950_SFT:
+		case CHIP_VER_HI3635_SFT:
+			return BOARD_TYPE_SFT;
+
+		default:
+			return BOARD_TYPE_MAX;		
+	}
+}
+
+
 int bsp_version_debug(void)
 {
 	int ret=0;
@@ -365,6 +415,7 @@ int bsp_version_debug(void)
 	ver_print_error("\n*************from func get*******************\n");
 	ver_print_error("\n***************************************************\n");
 	ver_print_error("Hardware index	:0x%x\n",bsp_version_get_hwversion_index());
+	ver_print_error("Chip Type   	:0x%x\n",bsp_version_get_chip_type());
 	ver_print_error("HardWare ver	:%s\n",bsp_version_get_hardware());
 	ver_print_error("Inner name		:%s\n",bsp_version_get_product_inner_name());
 	ver_print_error("Out name		:%s\n",bsp_version_get_product_out_name());

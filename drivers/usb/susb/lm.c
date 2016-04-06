@@ -12,22 +12,13 @@
 #include <linux/device.h>
 #include <linux/slab.h>
 #include "lm.h"
-#include <linux/string.h>
 
 #define to_lm_device(d)	container_of(d, struct lm_device, dev)
 #define to_lm_driver(d)	container_of(d, struct lm_driver, drv)
 
 static int lm_match(struct device *dev, struct device_driver *drv)
 {
-	if (!dev_name(dev) || !drv->name) {
-		WARN(!dev_name(dev), "logic model device no name!\n");
-		WARN(!drv->name, "logic model driver no name!\n");
-		return 0;
-	}
-	if (0 == strcmp(dev_name(dev), drv->name))
-		return 1;
-	else
-		return 0;
+	return 1;
 }
 
 static int lm_bus_probe(struct device *dev)
@@ -109,11 +100,7 @@ int lm_device_register(struct lm_device *dev)
 	dev->dev.release = lm_device_release;
 	dev->dev.bus = &lm_bustype;
 
-	if (dev->dev.init_name) {
-		ret = dev_set_name(&dev->dev, dev->dev.init_name, dev->id);
-	} else {
-		ret = dev_set_name(&dev->dev, "lm%d", dev->id);
-	}
+	ret = dev_set_name(&dev->dev, "lm%d", dev->id);
 	if (ret) {
 		WARN(1, "lm device set name fail\n");
 		return ret;

@@ -110,7 +110,7 @@ extern "C" {
 #define VOS_ERRNO_DRXTIME_STOP_INPUTISNULL                  0x2060f001
 #define VOS_ERRNO_DRXTIME_START_STOP_FAIL                   0x2060f002
 #define VOS_ERRNO_DRXTIME_START_MSGNOTINSTALL               0x2060f003
-
+#define VOS_ERRNO_DRXTIME_ERROR_TIMERHANDLE                 0x2060f004
 
 #define VOS_ERRNO_SYSTIMER_FULL                             0x2060FFFF
 
@@ -119,16 +119,37 @@ extern "C" {
 typedef struct
 {
     VOS_UINT32      ulStartCount;                   /* 调底软接口起定时器次数 */
+    VOS_UINT32      ulStartSlice;                   /* 调底软接口起定时器时间 */
     VOS_UINT32      ulStopCount;                    /* 调底软接口停定时器次数 */
     VOS_UINT32      ulExpireCount;                  /* 收到定时器中断次数 */
     VOS_UINT32      ulStartErrCount;                /* 调底软起定时器接口返回错误次数 */
     VOS_UINT32      ulStopErrCount;                 /* 调底软停定时器接口返回错误次数 */
     VOS_UINT32      ulElapsedErrCount;              /* 调底软获取剩余时间接口次数 */
     VOS_UINT32      ulElapsedContentErrCount;       /* 调底软获取剩余时间接口返回错误次数 */
+    VOS_UINT32      ulElapsedContentErrSlice;       /* 调底软获取剩余时间接口返回错误时间 */
+    VOS_UINT32      ulExpiredShortErrCount;         /* SOC Timer超时时间小于配置时间次数 */
+    VOS_UINT32      ulExpiredShortErrSlice;         /* SOC Timer超时时间小于配置时间时间 */
+    VOS_UINT32      ulExpiredSendErrCount;          /* SOC Timer发送消息失败次数 */
+    VOS_UINT32      ulExpiredSendErrSlice;          /* SOC Timer发送消息失败时间 */
 }VOS_TIMER_SOC_TIMER_INFO_STRU;
+
+typedef struct
+{
+    VOS_UINT32      ulAction;/* the value of start;exp;0XFFFFFFFF->stop 0xFFFFFFFE->expire */
+    VOS_UINT32      ulSlice;
+}RTC_SOC_TIMER_DEBUG_INFO_STRU;
 
 /* the Max length of timer unit is ms -> 18 hours*/
 #define VOS_TIMER_MAX_LENGTH                                64800000
+
+/* 32.768K */
+#define RTC_CYCLE_LENGTH                                    32.768
+
+#ifdef V8R1_SINGLECLOCK
+/* 32.000K */
+#define RTC_SINGLECLOCK_CYCLE_LENGTH                        32.000
+extern VOS_UINT16                                           g_usSingleXO;
+#endif
 
 struct TimerDrvStruct
 {
@@ -140,6 +161,7 @@ struct TimerDrvStruct
     VOS_UINT8     ucStatus;         /* status of timer                */
     VOS_UINT8     ucType;           /* indicate DOPRA or vrpS timer   */
     VOS_UINT8     ucLink;           /* which link the timer belong    */
+    VOS_UINT8     aucRsv[4];
 };
 
 #define VOS_RELTIMER_NOLOOP            0x0
@@ -159,6 +181,7 @@ struct RelTimerType
     VOS_PID        Pid;               /* which module group belongs to */
     VOS_UINT32     ulTmName;          /* timer name */
     VOS_UINT32     ulParam;           /* parameter for timeout handling */
+    VOS_UINT8      aucRsv[4];
     HTIMER         *phTimer;
     union
     {
@@ -177,6 +200,7 @@ typedef struct RelTimerGrpCBType
     VOS_UINT32      MaxTimers;   /* timer maximum number in group  */
     VOS_UINT32      InitFlag;    /* Initialize flag */
     VOS_PID         Pid;         /* which module group belongs to */
+    VOS_UINT8       aucRsv[4];
     REL_TIMER_FUNC  TimeOutFunc; /* timeout callback function */
     HTIMER          pTimer[1];   /* timer queue, it must be last field of this structure  */
 } ReltimerGrpCB;

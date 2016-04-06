@@ -578,7 +578,7 @@ static int reset_xd(struct rts51x_chip *chip)
 			XD_PAGE_512(xd_card);
 			xd_card->addr_cycle = 4;
 			xd_card->zone_cnt = 128;
-			xd_card->capacity = 4096000;	/* 128000 * 2 ^ 5 */
+			xd_card->capacity = 4096000;
 			break;
 		default:
 			continue;

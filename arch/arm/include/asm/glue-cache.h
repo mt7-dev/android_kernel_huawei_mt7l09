@@ -124,7 +124,9 @@
 #ifndef MULTI_CACHE
 #define __cpuc_flush_icache_all		__glue(_CACHE,_flush_icache_all)
 #define __cpuc_flush_kern_all		__glue(_CACHE,_flush_kern_cache_all)
+#define __cpuc_flush_kern_all_pm		__glue(_CACHE,_flush_kern_cache_all_pm)
 #define __cpuc_flush_kern_louis		__glue(_CACHE,_flush_kern_cache_louis)
+#define __cpuc_flush_kern_louis_pm		__glue(_CACHE,_flush_kern_cache_louis_pm)
 #define __cpuc_flush_user_all		__glue(_CACHE,_flush_user_cache_all)
 #define __cpuc_flush_user_range		__glue(_CACHE,_flush_user_cache_range)
 #define __cpuc_coherent_kern_range	__glue(_CACHE,_coherent_kern_range)
@@ -134,6 +136,8 @@
 #define dmac_map_area			__glue(_CACHE,_dma_map_area)
 #define dmac_unmap_area			__glue(_CACHE,_dma_unmap_area)
 #define dmac_flush_range		__glue(_CACHE,_dma_flush_range)
+#define dmac_inv_range			__glue(_CACHE,_dma_inv_range)
+#define dmac_clean_range		__glue(_CACHE,_dma_clean_range)
 #endif
 
 #endif

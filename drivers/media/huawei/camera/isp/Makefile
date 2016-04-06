@@ -2,6 +2,8 @@ ccflags-y += -Idrivers/media/huawei/camera
 
 obj-y = hwisp.o hwisp_stream.o
 
+CFLAGS_hwisp_stream.o = -I$(src)
+
 #ifeq ($(CONFIG_HUAWEI_CAMERA_USE_OVISP23),y)
 	obj-y += ovisp2.3/
 #endif

@@ -69,11 +69,7 @@ static void oldpiix_set_piomode (struct ata_port *ap, struct ata_device *adev)
 	u16 idetm_data;
 	int control = 0;
 
-	/*
-	 *	See Intel Document 298600-004 for the timing programing rules
-	 *	for PIIX/ICH. Note that the early PIIX does not have the slave
-	 *	timing port at 0x44.
-	 */
+
 
 	static const	 /* ISP  RTC */
 	u8 timings[][2]	= { { 0, 0 },

@@ -218,7 +218,7 @@ extern "C"{
 	#define LPHY_CHIP_BB_6930CS
 	#define LPHY_RFIC_HI6361
 
-#elif (defined(TL_PHY_ASIC_K3V3) || defined(TL_PHY_K3V3_SFT))
+#elif (defined(TL_PHY_ASIC_K3V3) || defined(TL_PHY_K3V3_SFT)||defined(TL_PHY_ASIC_K3V3_PLUS))
 
 
     #define MASTER_TCM_ADDR_OFFSET                  (0x0)
@@ -368,8 +368,8 @@ typedef struct __TLPHY_DDR_ADDR_INFO_STRU__
     + TPHY_NV_CFG_SIZE\
     + LPHY_MAILBOX_LCS_BANKA_MEM_SIZE \
     + LPHY_MAILBOX_CSU_BANKA_MEM_SIZE \
-    + LPHY_MAILBOX_STU_BANKA_MEM_SIZE)\
-    + LPHY_MAILBOX_RSV_BANKA_MEM_SIZE
+    + LPHY_MAILBOX_STU_BANKA_MEM_SIZE \
+    + LPHY_MAILBOX_RSV_BANKA_MEM_SIZE)
 
 /*邮箱基地址定义*/
 #if (defined(TENSILICA_PLATFORM) || defined(MS_VC6_PLATFORM))

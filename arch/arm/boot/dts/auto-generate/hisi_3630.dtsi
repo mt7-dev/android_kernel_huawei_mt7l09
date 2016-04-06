@@ -81,7 +81,24 @@
 			};
 		};
 	};
+	
+	reserved-memory {
+		#address-cells = <1>;
+		#size-cells = <1>;
+		ranges;
 
+		kernel_reserved0: reserved0@28000000 {
+			reg = <0x28000000 0x12a00000>;
+			no-map;
+		};
+
+		kernel_reserved1: reserved1@3f600000 {
+			reg = <0x3f600000 0x00a00000>;
+			no-map;
+		};
+
+	};
+	
 	cpus {
 		#address-cells = <1>;
 		#size-cells = <0>;
@@ -221,9 +238,6 @@
 		gpu-supply = <&g3d>;
 		operating-points = <
 			/* kHz */
-			/* 120000 0 */
-			/* 180000 0 */
-			/* 240000 0 */
 			288000 0
 			360000 0
 			480000 0
@@ -344,6 +358,13 @@
 		reg = <0xe8610000 0x1000>;
 	};
 
+	hisi_prktimer: prktimer@fff0a000 {
+		compatible = "hisilicon,prktimer";
+		fpga_flag = <0>;
+		reg = <0xfff0a000 0x1000>;
+		status = "disabled";
+	};
+
 	hisi_pmurtc: pmurtc@fff34000 {
 		compatible = "hisilicon,hi6421-pmurtc";
 		reg = <0xfff34000 0x1000>;
@@ -387,6 +408,12 @@
 		gpio-keyup,gpio-irq = <&gpio25 3 0>;
 		gpio-keydown,gpio-irq = <&gpio25 4 0>;
 		status = "disabled";
+	};
+
+	hisi_boost5v_control {
+		compatible = "hisilicon,boost5v_control";
+		reg = <0xFFF34000 0X1000>;
+		status = "ok";
 	};
 
 	hisi_axierr {
@@ -441,14 +468,15 @@
 	};
 
 	usb_otg@ff080000 {
-		compatible = "hisilicon,hi3630-usb-otg";
+		compatible = "hisilicon,usb-otg";
 		reg = <0xff080000 0x40000>;
 		interrupts = <0 115 0x4>;
 		otgdebugsubsys-supply = <&usb2otg>;
+		eyePattern = <0x01ee66e7>;
 	};
 
 	usb_otg_ahbif@ff0c0000 {
-		compatible = "hisilicon,hi3630-usb-otg-ahbif";
+		compatible = "hisilicon,usb-otg-ahbif";
 		reg = <0xff0c0000 0x40000>;
 	};
 
@@ -488,6 +516,64 @@
 		interrupts = <0 170 4>, <0 171 4>, <0 210 4>, <0 205 4>;
 		status = "ok";
 	};
+
+	pmx0: pinmux@e8612000 {
+		compatible = "pinctrl-single", "pinctrl-single0";
+		reg = <0xe8612000 0x1f8>;
+		#address-cells = <1>;
+		#size-cells = <1>;
+		#gpio-range-cells = <3>;
+		ranges;
+
+		pinctrl-single,register-width = <32>;
+		pinctrl-single,function-mask = <7>;
+		/* pin base, nr pins & gpio function */
+		pinctrl-single,gpio-range = <&range 0 126 0>;
+
+		range: gpio-range {
+			#pinctrl-single,gpio-range-cells = <3>;
+		};
+	};
+
+	pmx1: pinmux@fff11000 {
+		compatible = "pinctrl-single", "pinctrl-single1";
+		reg = <0xfff11000 0x84>;
+		#address-cells = <1>;
+		#size-cells = <1>;
+		#gpio-range-cells = <3>;
+		ranges;
+
+		pinctrl-single,register-width = <32>;
+		pinctrl-single,function-mask = <7>;
+		/* pin base, nr pins & gpio function */
+		pinctrl-single,gpio-range = <&range 0 33 0>;
+	};
+
+	pmx2: pinmux@e8612800 {
+		compatible = "pinconf-single", "pinctrl-single2";
+		reg = <0xe8612800 0x2c4>;
+		#address-cells = <1>;
+		#size-cells = <1>;
+		ranges;
+
+		pinctrl-single,register-width = <32>;
+	};
+
+	pmx3: pinmux@fff11800 {
+		compatible = "pinconf-single", "pinctrl-single3";
+		reg = <0xfff11800 0x98>;
+		#address-cells = <1>;
+		#size-cells = <1>;
+		ranges;
+
+		pinctrl-single,register-width = <32>;
+	};
+
+	hisi_modem_etb {
+                compatible = "hisilicon,modem-etb";
+                top_cssys-supply = <&top_cssys>;
+                status = "ok";
+        };
 
 	amba{
 		#address-cells = <1>;
@@ -537,6 +623,9 @@
 			compatible = "arm,pl011", "arm,primecell";
 			reg = <0xfdf02000 0x1000>;
 			interrupts = <0 56 4>;
+			fifo-deep-size = <64>;
+			clk-enable-flag = <1>;
+			clock-freq-high = <0>;
 			clocks = <&clk_gate_uart0 &pclk>;
 			clock-names = "clk_uart0", "apb_pclk";
 			status = "disabled";
@@ -549,7 +638,9 @@
 			dmas =	<&dma0 2          /* read channel */
 				 &dma0 3>;        /* write channel */
 			dma-names = "rx", "tx";
-
+			fifo-deep-size = <64>;
+			clk-enable-flag = <1>;
+			clock-freq-high = <0>;
 			clocks = <&clk_gate_uart1 &clk_gate_uart1>;
 			clock-names = "clk_uart1", "apb_pclk";
 			status = "disabled";
@@ -562,6 +653,9 @@
 			dmas =	<&dma0 4	  /* read channel */
 				 &dma0 5>;	  /* write channel */
 			dma-names = "rx", "tx";
+			fifo-deep-size = <64>;
+			clk-enable-flag = <1>;
+			clock-freq-high = <0>;
 			clocks = <&clk_gate_uart2 &pclk>;
 			clock-names = "clk_uart2", "apb_pclk";
 			status = "disabled";
@@ -577,6 +671,9 @@
 				 &dma0 7>;	  /* write channel */
 			dma-names = "rx", "tx";
 
+			fifo-deep-size = <64>;
+			clk-enable-flag = <1>;
+			clock-freq-high = <0>;
 			clocks = <&clk_gate_uart3 &clk_gate_uart3>;
 			clock-names = "clk_uart3", "apb_pclk";
 			status = "disabled";
@@ -589,7 +686,9 @@
 			dmas =	<&dma0 8	  /* read channel */
 				 &dma0 9>;	  /* write channel */
 			dma-names = "rx", "tx";
-
+			fifo-deep-size = <64>;
+			clk-enable-flag = <1>;
+			clock-freq-high = <1>;
 			clocks = <&clk_gate_uart4 &clk_gate_uart4>;
 			clock-names = "clk_uart4", "apb_pclk";
 			status = "disabled";
@@ -602,7 +701,9 @@
 			dmas =	<&dma0 10	   /* read channel */
 				 &dma0 11>;	   /* write channel */
 			dma-names = "rx", "tx";
-
+			fifo-deep-size = <64>;
+			clk-enable-flag = <1>;
+			clock-freq-high = <0>;
 			clocks = <&clk_gate_uart5 &clk_gate_uart5>;
 			clock-names = "clk_uart5", "apb_pclk";
 			status = "disabled";
@@ -613,73 +714,26 @@
 			compatible = "arm,pl011", "arm,primecell";
 			reg = <0xfff32000 0x1000>;
 			interrupts = <0 62 4>;
+			fifo-deep-size = <64>;
+			clk-enable-flag = <1>;
+			clock-freq-high = <0>;
 			clocks = <&clk_uart6 &pclk>;
 			clock-names = "uart6clk", "apb_pclk";
 			status = "disabled";
 		};
 
-		pmx0: pinmux@e8612000 {
-			compatible = "pinctrl-single", "pinctrl-single0";
-			reg = <0xe8612000 0x1f8>;
-			#address-cells = <1>;
-			#size-cells = <1>;
-			#gpio-range-cells = <3>;
-			ranges;
-
-			pinctrl-single,register-width = <32>;
-			pinctrl-single,function-mask = <7>;
-			/* pin base, nr pins & gpio function */
-			pinctrl-single,gpio-range = <&range 0 126 0>;
-
-			range: gpio-range {
-				#pinctrl-single,gpio-range-cells = <3>;
-			};
-		};
-
-		pmx1: pinmux@fff11000 {
-			compatible = "pinctrl-single", "pinctrl-single1";
-			reg = <0xfff11000 0x84>;
-			#address-cells = <1>;
-			#size-cells = <1>;
-			#gpio-range-cells = <3>;
-			ranges;
-
-			pinctrl-single,register-width = <32>;
-			pinctrl-single,function-mask = <7>;
-			/* pin base, nr pins & gpio function */
-			pinctrl-single,gpio-range = <&range 0 33 0>;
-		};
-
-		pmx2: pinmux@e8612800 {
-			compatible = "pinconf-single", "pinctrl-single2";
-			reg = <0xe8612800 0x2c4>;
-			#address-cells = <1>;
-			#size-cells = <1>;
-			ranges;
-
-			pinctrl-single,register-width = <32>;
-		};
-
-		pmx3: pinmux@fff11800 {
-			compatible = "pinconf-single", "pinctrl-single3";
-			reg = <0xfff11800 0x98>;
-			#address-cells = <1>;
-			#size-cells = <1>;
-			ranges;
-
-			pinctrl-single,register-width = <32>;
-		};
-
 		dma0: dma@fdf30000 {
-			compatible = "hisilicon,k3-dma-1.0";
+			compatible = "hisilicon,hisi-dma-1.0";
 			reg = <0xfdf30000 0x1000>;
 			#dma-cells = <1>;
 			dma-channels = <16>;
 			dma-requests = <27>;
+			dma-min-chan = <1>;
+			dma-used-chans = <0xFFFE>;
 			interrupts = <0 121 4>;
 			clocks = <&clk_gate_dmac &pclk>;
 			clock-names = "clk_dmac", "apb_pclk";
-			status = "disable";
+			status = "disabled";
 		};
 
 		hisi_lowpowerm3: lowpowerm3@FFF40000 {
@@ -736,9 +790,10 @@
 			interrupt-controller;
 			interrupts = <0 136 4>;
 			interrupt-names = "asp_irq";
-
+			status = "ok";
 			asp_common: asp_common@0 {
 				compatible = "hisilicon,hi3630-asp-common";
+				status = "ok";
 			};
 			asp_srcup_normal: asp_srcup_normal@0 {
 				compatible = "hisilicon,hi3630-srcup-normal";
@@ -746,14 +801,17 @@
 				interrupts = <1 0>;
 				interrupt-names = "asp_srcup_normal";
 				asp-srcup-normal-supply = <&asp>;
+				status = "ok";
 			};
 			asp_srcup_dsp: asp_srcup_dsp@0 {
 				compatible = "hisilicon,hi3630-srcup-dsp";
 				asp-srcup-dsp-supply = <&asp>;
+				status = "ok";
 			};
 			asp_srcdown: asp_srcudown@0 {
 				compatible = "hisilicon,hi3630-srcdown";
 				asp-srcdown-supply = <&asp>;
+				status = "ok";
 			};
 			asp_hdmi: asp_hdmi@0 {
 				compatible = "hisilicon,hi3630-pcm-hdmi";
@@ -764,9 +822,11 @@
 			};
 			fake_fm: fake_fm@0 {
 				compatible = "hisilicon,hi3630-fake-fm";
+				status = "ok";
 			};
 			fake_sio: fake_sio@0 {
 				compatible = "hisilicon,hi3630-fake-sio";
+				status = "ok";
 			};
 		};
 		asp_dmac: asp_dmac@E804B000 {
@@ -775,10 +835,12 @@
 			interrupts = <0 213 4>;
 			interrupt-names = "asp_dma_irq";
 			asp-dmac-supply = <&asp>;
+			status = "ok";
 		};
 		asp_dmac_voice: asp_dmac_voice@E804B000 {
 			compatible = "hisilicon,hi3630-pcm-asp-dma-voice";
 			asp-dmac-supply = <&asp>;
+			status = "ok";
 		};
 		sio_audio: sio@e804e800 {
 			compatible = "hisilicon,hi3630-sio";
@@ -899,6 +961,11 @@
 		modem_socp: modem_socp@ff030000 {
 			compatible = "hisilicon,modem_socp";
 			modem_socp-supply =<&socp>;
+		};
+		trusted_core {
+			compatible = "trusted_core";
+			interrupts = <0 206 4>;
+			sec-s-buring-supply = <&sec_s>;
 		};
 	};
 };

@@ -95,7 +95,7 @@ TAF_ACT_STRU        g_astTafSpmServiceCtrlInitActTbl[]   =
     TAF_ACT_TBL_ITEM( MAPS_STK_PID,
                       STK_SS_REGPWD_REQ,
                       TAF_SPM_RcvStkSSReqMsg_ServiceCtrl_Init ),
-                      
+
     TAF_ACT_TBL_ITEM( MAPS_STK_PID,
                       STK_SS_USSD_REQ,
                       TAF_SPM_RcvStkSSReqMsg_ServiceCtrl_Init ),
@@ -104,7 +104,7 @@ TAF_ACT_STRU        g_astTafSpmServiceCtrlInitActTbl[]   =
     TAF_ACT_TBL_ITEM( WUEPS_PID_AT,
                       MN_CALL_APP_ORIG_REQ,
                       TAF_SPM_RcvAtCallReqMsg_ServiceCtrl_Init ),
-                      
+
 
     /* AT SMS message */
     TAF_ACT_TBL_ITEM( WUEPS_PID_AT,
@@ -126,6 +126,11 @@ TAF_ACT_STRU        g_astTafSpmServiceCtrlInitActTbl[]   =
                       STK_MSG_SEND_REQ,
                       TAF_SPM_RcvStkSmsReqMsg_ServiceCtrl_Init ),
 
+#if (FEATURE_ON == FEATURE_IMS)
+    TAF_ACT_TBL_ITEM( WUEPS_PID_AT,
+                      TAF_CALL_APP_ECONF_DIAL_REQ,
+                      TAF_SPM_RcvAtCallReqMsg_ServiceCtrl_Init ),
+#endif
 };
 
 /* TAF_SPM_SERVICE_CTRL_STA_WAIT_PB_FDN_CHECK_CNF ¶¯×÷±í */

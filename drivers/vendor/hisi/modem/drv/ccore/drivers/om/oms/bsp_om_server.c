@@ -31,7 +31,11 @@ bsp_om_socp_coder_src_cfg_s g_bsp_om_socp_chan_info =
 {
     BSP_OM_SOCP_CHAN_INIT_FAIL,
     BSP_OM_CCPU_CODER_SRC_CHAN,
+#if (FEATURE_OFF == FEATURE_MERGE_OM_CHAN)
     SOCP_CODER_DST_LOM_IND,
+#else
+    SOCP_CODER_DST_OM_IND,
+#endif
     SOCP_DATA_TYPE_0,
     SOCP_ENCSRC_CHNMODE_LIST,
     SOCP_CHAN_PRIORITY_2 ,
@@ -66,7 +70,7 @@ bsp_om_list_debug_s  g_list_debug = {0};
 *****************************************************************************/
 u32 bsp_om_socp_chan_init(void);
 u32 bsp_om_buf_init(void);
-u32 bsp_om_socp_clean_rd_buf(u32 chan_id,SOCP_BUFFER_RW_S *rd_stru);
+u32 bsp_om_socp_clean_rd_buf(u32 chan_id,SOCP_BUFFER_RW_STRU *rd_stru);
 u32 bsp_om_clean_rd(void);
 void bsp_om_global_init(void);
 void bsp_om_get_head_from_list(u32 *pbuf,u32 *len);
@@ -156,8 +160,9 @@ void* bsp_om_alloc(u32 size, u32 *phy_real_addr)
         return NULL;
     }
     /*lint -save -e18 */
-    virt_addr = (void *)cacheDmaMalloc(size);
+    virt_addr = (void *)cacheDmaMalloc(size + 8);
     /*lint -restore +e18 */
+   virt_addr       = virt_addr - ((u32)virt_addr % 8)+8;
 
     *phy_real_addr = (u32)virt_addr;
 #endif
@@ -302,7 +307,7 @@ int bsp_om_buf_sem_give(void)
 
 u32 bsp_om_socp_chan_init(void)
 {
-    SOCP_CODER_SRC_CHAN_S               channle_stu = {0};
+    SOCP_CODER_SRC_CHAN_STRU               channle_stu = {0};
 
     /*编码源通道buf初始化*/
     /* 申请BD空间 */
@@ -392,7 +397,7 @@ void bsp_socp_chan_enable(void)
 
 u32 bsp_om_send_coder_src(u8 *send_data_virt, u32 send_len)
 {
-    SOCP_BUFFER_RW_S                 bd_buf = {0};
+    SOCP_BUFFER_RW_STRU                 bd_buf = {0};
     u32                          ulBDNum;
     SOCP_BD_DATA_STRU                *p_bd_data;
     u32                          send_data_phy = 0;
@@ -426,7 +431,7 @@ u32 bsp_om_send_coder_src(u8 *send_data_virt, u32 send_len)
 
     p_bd_data = (SOCP_BD_DATA_STRU *)(bd_buf.pBuffer);
 
-    p_bd_data->pucData    = (u8 *)send_data_phy;
+    p_bd_data->pucData    = send_data_phy;
     p_bd_data->usMsgLen   = (BSP_U16)send_len;
     p_bd_data->enDataType = SOCP_BD_DATA;
 
@@ -528,10 +533,10 @@ u32 bsp_om_buf_init(void)
 * 返 回 值  : BSP_OK 成功; 其他 失败
 *****************************************************************************/
 
-u32 bsp_om_socp_clean_rd_buf(u32 chan_id,SOCP_BUFFER_RW_S *rd_stru)
+u32 bsp_om_socp_clean_rd_buf(u32 chan_id,SOCP_BUFFER_RW_STRU *rd_stru)
 {
     u32             ret;
-    SOCP_BUFFER_RW_S    rd_buf_stru = {0};
+    SOCP_BUFFER_RW_STRU    rd_buf_stru = {0};
 
     osl_sem_down(&socp_opt_sem);
 
@@ -608,7 +613,7 @@ u32 bsp_om_clean_rd(void)
 {
     u32 i;
     u32 ret = BSP_OK;
-    SOCP_BUFFER_RW_S rd_buf = {0};
+    SOCP_BUFFER_RW_STRU rd_buf = {0};
     SOCP_RD_DATA_STRU rd_data = {0};
 
     ret = bsp_om_socp_clean_rd_buf(g_bsp_om_socp_chan_info.en_src_chan_id,&rd_buf);
@@ -620,7 +625,7 @@ u32 bsp_om_clean_rd(void)
         {
             memcpy((void *)&rd_data,(void *)(rd_buf.pBuffer),sizeof(SOCP_RD_DATA_STRU));
 
-            rd_data.pucData =(unsigned char *)bsp_om_phy_virt((u32)(rd_data.pucData));
+            rd_data.pucData = bsp_om_phy_virt((u32)(rd_data.pucData));
 
             ret =  bsp_om_free_buf((u32)(rd_data.pucData),(u32)(rd_data.usMsgLen)&0xffff);
 

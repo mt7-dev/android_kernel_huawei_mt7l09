@@ -34,11 +34,10 @@
 #if !defined(__DWC_PCD_H__)
 #define __DWC_PCD_H__
 
-#include <linux/workqueue.h>
-#include <linux/atomic.h>
 #include "dwc_otg_os_dep.h"
 #include "usb.h"
 #include "dwc_otg_cil.h"
+#include "dwc_otg_driver.h"
 #include "dwc_otg_pcd_if.h"
 struct cfiobject;
 
@@ -253,9 +252,6 @@ struct dwc_otg_pcd {
 	struct cfiobject *cfi;
 #endif
 
-	struct delayed_work disconnect_detect_work;
-	atomic_t is_enumdone_interrupt_received;
-	atomic_t is_set_address_request_received;
 };
 
 //FIXME this functions should be static, and this prototypes should be removed

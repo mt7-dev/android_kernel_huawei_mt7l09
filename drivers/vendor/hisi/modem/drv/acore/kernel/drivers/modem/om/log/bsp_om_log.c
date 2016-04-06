@@ -289,8 +289,6 @@ void bsp_log_header_packet(bsp_module_e mod_id,bsp_log_level_e log_level,u8 *pri
 void bsp_trace(bsp_log_level_e log_level,bsp_module_e mod_id,char *fmt,...)
 {
     char                      bsp_print_buffer[BSP_PRINT_BUF_LEN] ;
-    int ret_len;
-    u8 *log_buf = NULL;
     va_list arglist;
 
     /*打印级别过滤*/
@@ -304,73 +302,17 @@ void bsp_trace(bsp_log_level_e log_level,bsp_module_e mod_id,char *fmt,...)
         return ;
     }
 
-    /* 根据NV项的配置选择打印输出方式*/
-    if( BSP_LOG_SEND_TO_SHELL == g_om_global_info.om_cfg.nv_cfg.log_switch)
-    {
-        /*lint -save -e530*/
-        va_start(arglist, fmt);
-        /*lint -restore +e530*/
-        vsnprintf(bsp_print_buffer, BSP_PRINT_BUF_LEN, fmt, arglist); /* [false alarm]:屏蔽Fortify错误 */
-        va_end(arglist);
+    /*lint -save -e530*/
+    va_start(arglist, fmt);
+    /*lint -restore +e530*/
+    vsnprintf(bsp_print_buffer, BSP_PRINT_BUF_LEN, fmt, arglist); /* [false alarm]:屏蔽Fortify错误 */
+    va_end(arglist);
 
-        bsp_print_buffer[BSP_PRINT_BUF_LEN - 1] = '\0';
+    bsp_print_buffer[BSP_PRINT_BUF_LEN - 1] = '\0';
 
-        printk("%s", bsp_print_buffer);
+    printk("%s", bsp_print_buffer);
 
-        return;
-    }
-    else if(( BSP_LOG_SEND_TO_HSO == g_om_global_info.om_cfg.nv_cfg.log_switch)
-                &&( TRUE== bsp_om_get_hso_conn_flag()))
-    {
-        /* 默认bsp trace 都往串口打印，可以通过NV项控制*/
-    #ifdef BSP_CONFIG_HI3630
-        if(g_dump_config.dump_cfg.Bits.log_ctrl == 0)
-    #else
-        if(g_dump_cfg.dump_cfg.Bits.log_ctrl == 0)
-    #endif        
-        {
-            va_start(arglist, fmt);
-            ret_len = vsnprintf(bsp_print_buffer, BSP_PRINT_BUF_LEN, fmt, arglist); /* [false alarm]:屏蔽Fortify错误 */
-            va_end(arglist);
-
-            bsp_print_buffer[BSP_PRINT_BUF_LEN - 1] = '\0';
-
-            printk("%s", bsp_print_buffer);
-        }
-
-        ret_len = BSP_PRINT_BUF_LEN;
-
-        log_buf = (u8 *)bsp_om_get_log_buf((u32)ret_len);
-
-        if(NULL == log_buf)
-        {
-            g_get_buf_fail++;
-            return;
-        }
-
-        /*兼容PS上报格式*/
-        va_start(arglist, fmt);
-        vsnprintf((char *)(log_buf+sizeof(bsp_trace_s)+1), BSP_PRINT_BUF_LEN -sizeof(bsp_trace_s)-1, fmt, arglist); /* [false alarm]:屏蔽Fortify错误 */
-        va_end(arglist);
-
-        bsp_log_header_packet(mod_id,log_level,log_buf,(u32)ret_len);
-
-        /* send data to socp src chan */
-        osl_sem_up(&send_task_sem);
-    }
-    else if(( BSP_LOG_SEND_TO_HSO == g_om_global_info.om_cfg.nv_cfg.log_switch)
-                &&( TRUE!= g_om_global_info.hso_connect_flag))
-    {
-        va_start(arglist, fmt);
-        vsnprintf(bsp_print_buffer, BSP_PRINT_BUF_LEN, fmt, arglist); /* [false alarm]:屏蔽Fortify错误 */
-        va_end(arglist);
-
-        bsp_print_buffer[BSP_PRINT_BUF_LEN - 1] = '\0';
-
-        printk("%s", bsp_print_buffer);
-    }
-
-    return ;
+    return;
 }
 
 
@@ -391,7 +333,7 @@ u32 log_ind_enter_cnt=0;
 u32 log_ind_exit_cnt=0;
 void bsp_log_bin_ind(s32 str_id, void* ind_data, u32 ind_data_size)
 {
-    u32 pbuf = 0;
+    void* pbuf = 0;
     u32 buflen = 0;
     bsp_om_head_s        *bsp_om_header  = NULL;
     log_ind_enter_cnt++;
@@ -415,7 +357,7 @@ void bsp_log_bin_ind(s32 str_id, void* ind_data, u32 ind_data_size)
     }
     pbuf = bsp_om_get_buf(BSP_OM_SOCP_BUF_TYPE,buflen);
 
-    if(0 == pbuf)
+    if(NULL == pbuf)
     {
         bsp_om_buf_sem_give();
         return ;

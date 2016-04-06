@@ -329,7 +329,6 @@ enum {
 	/* Sharp RJ54N1CB0C, 0xCB0C = 51980 */
 	V4L2_IDENT_RJ54N1CB0C = 51980,
 
-	/* module m52790: just ident 52790 */
 	V4L2_IDENT_M52790 = 52790,
 
 	/* module cs53132a: just ident 53132 */

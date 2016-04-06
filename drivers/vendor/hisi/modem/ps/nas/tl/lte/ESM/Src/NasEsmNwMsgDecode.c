@@ -58,7 +58,7 @@ NAS_ESM_MSG_IE_STRU                     g_ModEpsbReq[] = {
 {NAS_ESM_MSG_RADIO_PRIO_IEI, 0xF0, NAS_MSG_FORMAT_TV,  1, 1, 1,  NAS_ESM_DecodeRadioPriority   },
 {NAS_ESM_MSG_PFI_IEI,        0xFF, NAS_MSG_FORMAT_TLV, 2, 3, 3,  NAS_ESM_DecodePacketFlowId    },
 {NAS_ESM_MSG_APN_AMBR_IEI,   0xFF, NAS_MSG_FORMAT_TLV, 2, 4, 8,  NAS_ESM_DecodeNwApnAmbrValue  },
-{NAS_ESM_MSG_PCO_IEI,        0xFF, NAS_MSG_FORMAT_TLV, 2, 3, 253,VOS_NULL_PTR                  }
+{NAS_ESM_MSG_PCO_IEI,        0xFF, NAS_MSG_FORMAT_TLV, 2, 3, 253,NAS_ESM_DecodeNwPco           }
 };
 #define  MOD_EPSB_REQ_MSG_IE_NUM (sizeof(g_ModEpsbReq)/sizeof(NAS_ESM_MSG_IE_STRU))
 
@@ -1699,17 +1699,19 @@ NAS_ESM_CAUSE_ENUM_UINT8  NAS_ESM_DecodeIpcpContent
  Description     : 判断PCO信元长度的合法性
  Input           : pucMsg      -- 空口消息码流
                    ucPcoLength -- PCO结构长度
- Output          : None
+ Output          : usDecodeLen -- 要解码的长度
  Return          : NAS_ESM_CAUSE_ENUM_UINT8
 
  History         :
     1.lihong00150010      2010-09-13  Draft Enact
+    2.chengmin00285307    2015-03-19  Mod For M Project
 
 *****************************************************************************/
 NAS_ESM_CAUSE_ENUM_UINT8  NAS_ESM_ValidatePcoLen
 (
     const VOS_UINT8                    *pucMsg,
-    VOS_UINT8                           ucPcoLength
+    VOS_UINT8                           ucPcoLength,
+    VOS_UINT16                         *pusDecodeLen
 )
 {
     VOS_UINT8                           ucAllPcoLength  = NAS_ESM_NULL;
@@ -1727,6 +1729,7 @@ NAS_ESM_CAUSE_ENUM_UINT8  NAS_ESM_ValidatePcoLen
     /* 如果PCO信元只包含配置协议项，则返回成功 */
     if (NAS_ESM_PCO_LEN_ONLY_CONFIGURAION_PROTOCOL == ucPcoLength)
     {
+        *pusDecodeLen = NAS_ESM_PCO_LEN_ONLY_CONFIGURAION_PROTOCOL;
         return NAS_ESM_CAUSE_SUCCESS;
     }
 
@@ -1743,13 +1746,16 @@ NAS_ESM_CAUSE_ENUM_UINT8  NAS_ESM_ValidatePcoLen
     ucPrePcoLength = pTmp[NAS_ESM_PCO_ITEM_LEN_OFFSET];
     ucAllPcoLength = ucPrePcoLength + (NAS_ESM_PCO_LEN_ONLY_CONFIGURAION_PROTOCOL
                                                     + NAS_ESM_SUM_LEN_OF_ID_LEN);
-    while (ucPcoLength > ucAllPcoLength)
+    /*到此处可认为可解析的长度为1，即仅包含CONFIGURATION PROTOCOL*/
+    *pusDecodeLen = NAS_ESM_PCO_LEN_ONLY_CONFIGURAION_PROTOCOL;
+
+    while (ucPcoLength >= ucAllPcoLength)
     {
+         *pusDecodeLen = ucAllPcoLength;
          /* 判断长度是否合法 */
          if ((ucAllPcoLength + NAS_ESM_SUM_LEN_OF_ID_LEN) > ucPcoLength)
          {
-             NAS_ESM_WARN_LOG("NAS_ESM_ValidatePcoLen:Pco Length Incorrect!");
-             return NAS_ESM_CAUSE_PROTOCOL_ERROR;
+             break;
          }
 
          /* 累加下一项的长度 */
@@ -1762,13 +1768,6 @@ NAS_ESM_CAUSE_ENUM_UINT8  NAS_ESM_ValidatePcoLen
 
          /* 保存下一项的长度信元的值 */
          ucPrePcoLength = *pucTemp;
-    }
-
-    /* 验证长度是否合法 */
-    if (ucPcoLength != ucAllPcoLength)
-    {
-        NAS_ESM_WARN_LOG("NAS_ESM_ValidatePcoLen: Pco Length mismatch!");
-        return NAS_ESM_CAUSE_PROTOCOL_ERROR;
     }
 
     return NAS_ESM_CAUSE_SUCCESS;
@@ -1786,10 +1785,12 @@ NAS_ESM_CAUSE_ENUM_UINT8  NAS_ESM_DecodePcoContent
     NAS_ESM_CONTEXT_PCO_STRU           *pstPco              = &pstMsgIE->stPcoInfo;
     VOS_UINT16                          usPcoItemId         = NAS_ESM_NULL;
     /* lihong00150010 ims begin */
-    NAS_ESM_IPV6_ADDR_STRU              stEmptyIpv6Addr     = {NAS_ESM_NULL};
-    NAS_ESM_IPV4_ADDR_STRU              stEmptyIpv4Addr     = {NAS_ESM_NULL};
+    NAS_ESM_IPV6_ADDR_STRU              stEmptyIpv6Addr;
+    NAS_ESM_IPV4_ADDR_STRU              stEmptyIpv4Addr;
     /* lihong00150010 ims end */
 
+    PS_MEM_SET(&stEmptyIpv6Addr, 0, sizeof(NAS_ESM_IPV6_ADDR_STRU));
+    PS_MEM_SET(&stEmptyIpv4Addr, 0, sizeof(NAS_ESM_IPV4_ADDR_STRU));
     /* 如果PCO功能已关闭，则直接跳过PCO内容并返回成功 */
     if (NAS_ESM_PCO_OFF  == NAS_ESM_GetPcoFlag())
     {
@@ -1827,17 +1828,17 @@ NAS_ESM_CAUSE_ENUM_UINT8  NAS_ESM_DecodePcoContent
 
                 enEsmCause = NAS_ESM_DecodePcoIpv6Item( &pucTmpMsg[ulSum],
                                                         &pstPco->astIpv6DnsServer[pstPco->ucIpv6DnsSerNum]);
-                if (NAS_ESM_CAUSE_SUCCESS != enEsmCause)
+                if (NAS_ESM_CAUSE_SUCCESS == enEsmCause)
                 {
-                    return enEsmCause;
+                    /* 如果获取的IPv6 DNS内容为全零，代表网侧无此DNS，则不增加DNS数量 */
+                    if (NAS_ESM_MEM_CMP(&pstPco->astIpv6DnsServer[pstPco->ucIpv6DnsSerNum],
+                                        &stEmptyIpv6Addr,
+                                        sizeof(NAS_ESM_IPV6_ADDR_STRU)))
+                    {
+                        pstPco->ucIpv6DnsSerNum++;
+                    }
                 }
-                /* 如果获取的IPv6 DNS内容为全零，代表网侧无此DNS，则不增加DNS数量 */
-                if (NAS_ESM_MEM_CMP(&pstPco->astIpv6DnsServer[pstPco->ucIpv6DnsSerNum],
-                                    &stEmptyIpv6Addr,
-                                    sizeof(NAS_ESM_IPV6_ADDR_STRU)))
-                {
-                    pstPco->ucIpv6DnsSerNum++;
-                }
+
                 ulSum += (pucTmpMsg[ulSum] + NAS_ESM_LEN_IE_OCTETS);
                 break;
             case NAS_ESM_PCO_ITEM_TYPE_PCSCF_IPV4:
@@ -1850,19 +1851,19 @@ NAS_ESM_CAUSE_ENUM_UINT8  NAS_ESM_DecodePcoContent
                 }
 
                 enEsmCause = NAS_ESM_DecodePcoIpv4Item(&pucTmpMsg[ulSum], &pstPco->astIpv4Pcscf[pstPco->ucIpv4PcscfNum]);
-                if (NAS_ESM_CAUSE_SUCCESS != enEsmCause)
+                if (NAS_ESM_CAUSE_SUCCESS == enEsmCause)
                 {
-                    return enEsmCause;
+                    /* lihong00150010 ims begin */
+                    /* 如果获取的IPv4 P-CSCF内容为全零，代表网侧无此P-CSCF，则不增加P-CSCF数量 */
+                    if (NAS_ESM_MEM_CMP(&pstPco->astIpv4Pcscf[pstPco->ucIpv4PcscfNum],
+                                        &stEmptyIpv4Addr,
+                                        sizeof(NAS_ESM_IPV4_ADDR_STRU)))
+                    {
+                        pstPco->ucIpv4PcscfNum++;
+                    }
+                    /* lihong00150010 ims end */
                 }
-                 /* lihong00150010 ims begin */
-                /* 如果获取的IPv4 P-CSCF内容为全零，代表网侧无此P-CSCF，则不增加P-CSCF数量 */
-                if (NAS_ESM_MEM_CMP(&pstPco->astIpv4Pcscf[pstPco->ucIpv4PcscfNum],
-                                    &stEmptyIpv4Addr,
-                                    sizeof(NAS_ESM_IPV4_ADDR_STRU)))
-                {
-                    pstPco->ucIpv4PcscfNum++;
-                }
-                 /* lihong00150010 ims end */
+
                 ulSum += (pucTmpMsg[ulSum] + NAS_ESM_LEN_IE_OCTETS);
                 break;
             case NAS_ESM_PCO_ITEM_TYPE_BCM:
@@ -1880,29 +1881,23 @@ NAS_ESM_CAUSE_ENUM_UINT8  NAS_ESM_DecodePcoContent
                 }
 
                 enEsmCause = NAS_ESM_DecodePcoIpv4Item(&pucTmpMsg[ulSum], &pstPco->astIpv4DnsServer[pstPco->ucIpv4DnsSerNum]);
-                if (NAS_ESM_CAUSE_SUCCESS != enEsmCause)
+                if (NAS_ESM_CAUSE_SUCCESS == enEsmCause)
                 {
-                    return enEsmCause;
+                    /* 如果获取的IPv4 DNS内容为全零，代表网侧无此DNS，则不增加DNS数量 */
+                    if (NAS_ESM_MEM_CMP(&pstPco->astIpv4DnsServer[pstPco->ucIpv4DnsSerNum],
+                                        &stEmptyIpv4Addr,
+                                        sizeof(NAS_ESM_IPV4_ADDR_STRU)))
+                    {
+                        pstPco->ucIpv4DnsSerNum++;
+                    }
                 }
 
-                /* 如果获取的IPv4 DNS内容为全零，代表网侧无此DNS，则不增加DNS数量 */
-                if (NAS_ESM_MEM_CMP(&pstPco->astIpv4DnsServer[pstPco->ucIpv4DnsSerNum],
-                                    &stEmptyIpv4Addr,
-                                    sizeof(NAS_ESM_IPV4_ADDR_STRU)))
-                {
-                    pstPco->ucIpv4DnsSerNum++;
-                }
                 ulSum += (pucTmpMsg[ulSum] + NAS_ESM_LEN_IE_OCTETS);
                 break;
 
             case NAS_ESM_PCO_ITEM_TYPE_IPCP:
                 /*LV格式译码*/
-                enEsmCause = NAS_ESM_DecodeIpcpContent(&pucTmpMsg[ulSum],pstPco);
-                if (NAS_ESM_CAUSE_SUCCESS != enEsmCause)
-                {
-                    return enEsmCause;
-                }
-
+                (VOS_VOID)NAS_ESM_DecodeIpcpContent(&pucTmpMsg[ulSum],pstPco);
                 ulSum += (pucTmpMsg[ulSum] + NAS_ESM_LEN_IE_OCTETS);
                 break;
 
@@ -1917,17 +1912,15 @@ NAS_ESM_CAUSE_ENUM_UINT8  NAS_ESM_DecodePcoContent
                 }
 
                 enEsmCause = NAS_ESM_DecodePcoIpv6Item(&pucTmpMsg[ulSum], &pstPco->astIpv6Pcscf[pstPco->ucIpv6PcscfNum]);
-                if (NAS_ESM_CAUSE_SUCCESS != enEsmCause)
+                if (NAS_ESM_CAUSE_SUCCESS == enEsmCause)
                 {
-                    return enEsmCause;
-                }
-
-                /* 如果获取的IPv6 P-CSCF内容为全零，代表网侧无此P-CSCF，则不增加P-CSCF数量 */
-                if (NAS_ESM_MEM_CMP(&pstPco->astIpv6Pcscf[pstPco->ucIpv6PcscfNum],
-                                    &stEmptyIpv6Addr,
-                                    sizeof(NAS_ESM_IPV6_ADDR_STRU)))
-                {
-                    pstPco->ucIpv6PcscfNum++;
+                    /* 如果获取的IPv6 P-CSCF内容为全零，代表网侧无此P-CSCF，则不增加P-CSCF数量 */
+                    if (NAS_ESM_MEM_CMP(&pstPco->astIpv6Pcscf[pstPco->ucIpv6PcscfNum],
+                                        &stEmptyIpv6Addr,
+                                        sizeof(NAS_ESM_IPV6_ADDR_STRU)))
+                    {
+                        pstPco->ucIpv6PcscfNum++;
+                    }
                 }
 
                 ulSum += (pucTmpMsg[ulSum] + NAS_ESM_LEN_IE_OCTETS);
@@ -1948,17 +1941,9 @@ NAS_ESM_CAUSE_ENUM_UINT8  NAS_ESM_DecodePcoContent
     /*重新调整DNS */
     NAS_ESM_OptimizeDnsServer(pstPco);
 
-    /* 判断PCO各项内容之和是否等于PCO 长度IE */
-    if (usMsgLen != ulSum)
-    {
-        NAS_ESM_WARN_LOG("NAS_ESM_DecodePcoContent:Pco length error!");
-        return NAS_ESM_CAUSE_PROTOCOL_ERROR;
-    }
 
     return NAS_ESM_CAUSE_SUCCESS;
 }
-
-
 /*lint -e415 -e416 -e661 -e662*/
 NAS_ESM_CAUSE_ENUM_UINT8  NAS_ESM_DecodeNwPco
 (
@@ -1968,11 +1953,12 @@ NAS_ESM_CAUSE_ENUM_UINT8  NAS_ESM_DecodeNwPco
 )
 {
     NAS_ESM_CAUSE_ENUM_UINT8            enEsmCause          = NAS_ESM_CAUSE_SUCCESS;
+    VOS_UINT16                          usDecodeLen;
 
     /*打印进入该函数*/
     NAS_ESM_INFO_LOG("NAS_ESM_DecodeNwPco is entered.");
 
-    enEsmCause = NAS_ESM_ValidatePcoLen(pucMsg,(VOS_UINT8)usMsgLen);
+    enEsmCause = NAS_ESM_ValidatePcoLen(pucMsg,(VOS_UINT8)usMsgLen,&usDecodeLen);
     if (NAS_ESM_CAUSE_SUCCESS != enEsmCause)
     {
         /*返回消息检测失败*/
@@ -1980,7 +1966,7 @@ NAS_ESM_CAUSE_ENUM_UINT8  NAS_ESM_DecodeNwPco
         return enEsmCause;
     }
 
-    enEsmCause = NAS_ESM_DecodePcoContent(usMsgLen, pucMsg, pstMsgIE);
+    enEsmCause = NAS_ESM_DecodePcoContent(usDecodeLen, pucMsg, pstMsgIE);
     if (NAS_ESM_CAUSE_SUCCESS != enEsmCause)
     {
         return enEsmCause;

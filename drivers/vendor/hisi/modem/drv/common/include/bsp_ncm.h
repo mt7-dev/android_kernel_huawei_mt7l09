@@ -49,10 +49,10 @@ typedef struct ncm_vendor_ctx
     ulong stat_notify_timeout;
 }ncm_vendor_ctx_t;
 
-BSP_U32 bsp_ncm_open(NCM_DEV_TYPE_E enDevType, BSP_U32 pu32NcmDevId);
-BSP_U32 bsp_ncm_write(BSP_U32 u32NcmDevId, BSP_VOID *pPktEncap, void *net_priv);
-BSP_U32 bsp_ncm_ioctl(BSP_U32 u32NcmDevId, NCM_IOCTL_CMD_TYPE_E enNcmCmd, BSP_VOID *param);
-BSP_U32 bsp_ncm_close(NCM_DEV_TYPE_E enDevType, BSP_U32 u32NcmDevId);
+void* bsp_ncm_open(NCM_DEV_TYPE_E enDevType, BSP_U32 pu32NcmDevId);
+BSP_U32 bsp_ncm_write(BSP_VOID * u32NcmDevId, BSP_VOID *pPktEncap, void *net_priv);
+BSP_U32 bsp_ncm_ioctl(BSP_VOID * u32NcmDevId, NCM_IOCTL_CMD_TYPE_E enNcmCmd, BSP_VOID *param);
+BSP_U32 bsp_ncm_close(NCM_DEV_TYPE_E enDevType, BSP_VOID * u32NcmDevId);
 
 #ifdef __cplusplus
 } /* allow C++ to use these headers */

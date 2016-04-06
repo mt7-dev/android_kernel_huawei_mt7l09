@@ -33,12 +33,12 @@ typedef  enum
     RESERVE       /* 保留        */
 }NDIS_NOTICE;
 
-typedef unsigned long (*pPCSCFUNC)(unsigned long CmdType, unsigned char *pApdu, unsigned long ApduLen);
+typedef unsigned int (*pPCSCFUNC)(unsigned int CmdType, unsigned char *pApdu, unsigned int ApduLen);
 
 /* NV项50091结构，代表设备将要枚举的端口形态 */
 typedef struct
 {
-    unsigned long ulStatus;
+    unsigned int ulStatus;
     unsigned char aucFirstPortStyle[DYNAMIC_PID_MAX_PORT_NUM];  /* 设备切换前端口形态 */
     unsigned char aucRewindPortStyle[DYNAMIC_PID_MAX_PORT_NUM]; /* 设备切换后端口形态 */
     unsigned char reserved[22];
@@ -63,9 +63,9 @@ typedef int  (*pComRecv)(unsigned char  uPortNo, unsigned char* pData, unsigned 
 
 typedef int  (*pUartRecv)(unsigned char uPortNo, unsigned char* pData, unsigned short uslength);
 
-typedef long (*pUsbStatus)(unsigned char ucStatus);
+typedef int (*pUsbStatus)(unsigned char ucStatus);
 
-typedef long  (*pUsbState)(unsigned char ucStatus);
+typedef int  (*pUsbState)(unsigned char ucStatus);
 
 typedef int  (*pComStatusNotify)(unsigned char uStatus);
 
@@ -121,7 +121,7 @@ typedef void (*USB_MODEM_COPY)
 (
     unsigned char   *pDest,
     unsigned char   *pSrc,
-    unsigned long   ulLen
+    unsigned int   ulLen
 );
 
 typedef struct
@@ -210,12 +210,12 @@ typedef unsigned int (*USB_NDIS_GET_WWAN_MODE)  /*获取当前网络模式cdma/wcdma*/
     void
 );
 
-typedef unsigned long (*USB_NET_DEV_SET_MAX_TX_PACKET_NUMBER)
+typedef unsigned int (*USB_NET_DEV_SET_MAX_TX_PACKET_NUMBER)
 (
-    unsigned long ulNumber
+    unsigned int ulNumber
 );
 
-typedef unsigned long (*MNTN_ERRLOGREGFUN)(char * cFileName,unsigned int ulFileId, unsigned int ulLine,
+typedef unsigned int (*MNTN_ERRLOGREGFUN)(char * cFileName,unsigned int ulFileId, unsigned int ulLine,
                 unsigned int ulErrNo, void * pBuf, unsigned int ulLen);
 
 /*****************************************************************************
@@ -249,7 +249,7 @@ unsigned int BSP_USB_PortTypeQuery(DRV_DYNAMIC_PID_TYPE_STRU *pstDynamicPidType)
 返回值：   0:    端口形态合法
            其他：端口形态非法
 *****************************************************************************/
-unsigned int BSP_USB_PortTypeValidCheck(unsigned char *pucPortType, unsigned long ulPortNum);
+unsigned int BSP_USB_PortTypeValidCheck(unsigned char *pucPortType, unsigned int ulPortNum);
 #define DRV_USB_PORT_TYPE_VALID_CHECK(pucPortType, ulPortNum)  \
                     BSP_USB_PortTypeValidCheck(pucPortType, ulPortNum)
 
@@ -263,7 +263,7 @@ unsigned int BSP_USB_PortTypeValidCheck(unsigned char *pucPortType, unsigned lon
            其他：获取端口形态列表失败
 *****************************************************************************/
 unsigned int BSP_USB_GetAvailabePortType(unsigned char *pucPortType,
-                            unsigned long *pulPortNum, unsigned long ulPortMax);
+                            unsigned int *pulPortNum, unsigned int ulPortMax);
 #define DRV_USB_GET_AVAILABLE_PORT_TYPE(pucPortType, pulPortNum, ulPortMax)  \
                 BSP_USB_GetAvailabePortType(pucPortType, pulPortNum, ulPortMax)
 
@@ -299,7 +299,7 @@ extern BSP_S32 BSP_USB_GetDiagModeValue(unsigned char *pucDialmode,
  输出参数  : 无。
  返 回 值  : 无。
 *****************************************************************************/
-extern unsigned char BSP_USB_GetPortMode(char*PsBuffer, unsigned long*Length );
+extern unsigned char BSP_USB_GetPortMode(char*PsBuffer, unsigned int*Length );
 #define DRV_GET_PORT_MODE(PsBuffer, Length)    BSP_USB_GetPortMode(PsBuffer,Length)
 
 /*****************************************************************************
@@ -331,7 +331,7 @@ extern void MNTN_ERRLOG_REG_FUNC(MNTN_ERRLOGREGFUN pRegFunc);
  返 回 值  : 0：OK；
             -1：ERROR
 *****************************************************************************/
-extern int BSP_USB_UdiagValueCheck(unsigned long DiagValue);
+extern int BSP_USB_UdiagValueCheck(unsigned int DiagValue);
 #define DRV_UDIAG_VALUE_CHECK(DiagValue)     BSP_USB_UdiagValueCheck(DiagValue)
 #define DRV_U2DIAG_VALUE_CHECK(DiagValue)     BSP_USB_UdiagValueCheck(DiagValue)
 
@@ -499,13 +499,13 @@ extern int USB_otg_switch_set(UINT8 ucValue);
 extern int USB_otg_switch_get(UINT8 *pucValue);
 #define DRV_USB_PHY_SWITCH_GET(value) USB_otg_switch_get(value)
 
-extern unsigned long USB_ETH_DrvSetDeviceAssembleParam(
-    unsigned long ulEthTxMinNum,
-    unsigned long ulEthTxTimeout,
-    unsigned long ulEthRxMinNum,
-    unsigned long ulEthRxTimeout);
+extern unsigned int USB_ETH_DrvSetDeviceAssembleParam(
+    unsigned int ulEthTxMinNum,
+    unsigned int ulEthTxTimeout,
+    unsigned int ulEthRxMinNum,
+    unsigned int ulEthRxTimeout);
 
-extern unsigned long USB_ETH_DrvSetHostAssembleParam(unsigned long ulHostOutTimeout);
+extern unsigned int USB_ETH_DrvSetHostAssembleParam(unsigned int ulHostOutTimeout);
 
 /********************************************************
 函数说明：协议栈查询HSIC是否支持NCM
@@ -632,8 +632,8 @@ extern int BSP_USB_NASSwitchGatewayRegFunc(USB_NET_DEV_SWITCH_GATEWAY switchGwMo
 #define DRV_USB_NAS_SWITCH_GATEWAY_REGFUNC(switchGwMode)    BSP_USB_NASSwitchGatewayRegFunc(switchGwMode)
 /*闪电卡还未开发 先暂时API 打桩end*/
 
-extern unsigned long USB_ETH_DrvSetRxFlowCtrl(unsigned long ulParam1, unsigned long ulParam2);
-extern unsigned long USB_ETH_DrvClearRxFlowCtrl(unsigned long ulParam1, unsigned long ulParam2);
+extern unsigned int USB_ETH_DrvSetRxFlowCtrl(unsigned int ulParam1, unsigned int ulParam2);
+extern unsigned int USB_ETH_DrvClearRxFlowCtrl(unsigned int ulParam1, unsigned int ulParam2);
 
 static INLINE BSP_VOID  DRV_AT_SETAPPDIALMODE(unsigned int ulStatus)
 {}
@@ -665,8 +665,8 @@ extern int l2_notify_register(FUNC_USB_LP_NOTIFY pUSBLPFunc);
  * PCSC(CCID) 接口
  * ---------------------------
  */
-typedef unsigned long (*pFunAPDUProcess)(unsigned long cmd_type, unsigned char *apdu, unsigned long apdu_len);
-typedef unsigned long (*GetCardStatus)(void);
+typedef unsigned int (*pFunAPDUProcess)(unsigned int cmd_type, unsigned char *apdu, unsigned int apdu_len);
+typedef unsigned int (*GetCardStatus)(void);
 
 typedef struct
 {
@@ -681,8 +681,8 @@ typedef struct
  输出参数  : None
  返 回 值  : void
 *****************************************************************************/
-unsigned long pcsc_usim_ctrl_cmd(unsigned long cmd_type, unsigned long status,
-                unsigned char *buf, unsigned long length);
+unsigned int pcsc_usim_ctrl_cmd(unsigned int cmd_type, unsigned int status,
+                unsigned char *buf, unsigned int length);
 #define DRV_PCSC_SEND_DATA(CmdType, Result, Buffer, Length) pcsc_usim_ctrl_cmd(CmdType, Result, Buffer, Length)
 
 /*****************************************************************************

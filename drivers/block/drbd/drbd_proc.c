@@ -60,12 +60,7 @@ void seq_printf_with_thousands_grouping(struct seq_file *seq, long v)
 		seq_printf(seq, "%ld", v);
 }
 
-/*lge
- * progress bars shamelessly adapted from driver/md/md.c
- * output looks like
- *	[=====>..............] 33.5% (23456/123456)
- *	finish: 2:20:20 speed: 6,345 (6,456) K/sec
- */
+
 static void drbd_syncer_progress(struct drbd_conf *mdev, struct seq_file *seq)
 {
 	unsigned long db, dt, dbdt, rt, rs_left;

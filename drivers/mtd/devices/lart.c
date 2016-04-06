@@ -1,35 +1,5 @@
 
-/*
- * MTD driver for the 28F160F3 Flash Memory (non-CFI) on LART.
- *
- * Author: Abraham vd Merwe <abraham@2d3d.co.za>
- *
- * Copyright (c) 2001, 2d3D, Inc.
- *
- * This code is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation.
- *
- * References:
- *
- *    [1] 3 Volt Fast Boot Block Flash Memory" Intel Datasheet
- *           - Order Number: 290644-005
- *           - January 2000
- *
- *    [2] MTD internal API documentation
- *           - http://www.linux-mtd.infradead.org/ 
- *
- * Limitations:
- *
- *    Even though this driver is written for 3 Volt Fast Boot
- *    Block Flash Memory, it is rather specific to LART. With
- *    Minor modifications, notably the without data/address line
- *    mangling and different bus settings, etc. it should be
- *    trivial to adapt to other platforms.
- *
- *    If somebody would sponsor me a different board, I'll
- *    adapt the driver (:
- */
+
 
 /* debugging */
 //#define LART_DEBUG

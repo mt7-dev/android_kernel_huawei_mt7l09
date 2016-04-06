@@ -29,6 +29,10 @@ extern "C" {
 #define NAS_RABM_GetCurrentSysMode()                (g_enNasRabmSysMode)
 #define NAS_RABM_SetSysMode(enMode)                 (g_enNasRabmSysMode = (enMode))
 
+#define NAS_RABM_SET_FD_REL_RRC_EXEC_FLG()  (g_stNasRabmFastDormCtx.ulRelRrcExecFlg = VOS_TRUE)
+#define NAS_RABM_CLR_FD_REL_RRC_EXEC_FLG()  (g_stNasRabmFastDormCtx.ulRelRrcExecFlg = VOS_FALSE)
+#define NAS_RABM_GET_FD_REL_RRC_EXEC_FLG()  (g_stNasRabmFastDormCtx.ulRelRrcExecFlg)
+
 /*****************************************************************************
   3 枚举定义
 *****************************************************************************/
@@ -129,6 +133,8 @@ typedef struct
     VOS_UINT32                                              ulUlDataCnt;                /* 上行数据计数器 */
     VOS_UINT32                                              ulDlDataCnt;                /* 下行数据计数器 */
 
+    VOS_UINT32                                              ulRelRrcExecFlg;
+
 } NAS_RABM_FASTDORM_CTX_STRU;
 
 
@@ -149,9 +155,13 @@ typedef struct
   9 OTHERS定义
 *****************************************************************************/
 
+/*****************************************************************************
+  10 全局变量声明
+*****************************************************************************/
+extern NAS_RABM_FASTDORM_CTX_STRU              g_stNasRabmFastDormCtx;
 
 /*****************************************************************************
-  10 函数声明
+  11 函数声明
 *****************************************************************************/
 
 /*****************************************************************************
@@ -476,6 +486,7 @@ VOS_VOID NAS_RABM_MNTN_TracePktLostEvt(
 VOS_VOID NAS_RABM_RcvReleaseRrcReq(
     AT_RABM_RELEASE_RRC_REQ_STRU       *pstMsg
 );
+extern VOS_VOID NAS_RABM_AbortRelRrcProcedure(VOS_VOID);
 
 #if (VOS_OS_VER == VOS_WIN32)
 #pragma pack()

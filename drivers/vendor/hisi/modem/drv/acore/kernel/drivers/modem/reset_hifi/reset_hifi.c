@@ -116,8 +116,8 @@ sreset_mgr_LLI * reset_do_regcbfunc(sreset_mgr_LLI *plink, const char *pname, pd
         || NULL == pcbfun
         || (priolevel < RESET_CBFUNC_PRIO_LEVEL_LOWT || priolevel > RESET_CBFUNC_PRIO_LEVEL_HIGH))
     {
-        printk(KERN_ERR "%s: fail in ccore reset regcb,fail, name 0x%x, cbfun 0x%x, prio %d\n", __FUNCTION__, \
-                        (unsigned int)pname, (unsigned int)pcbfun, priolevel);
+        printk(KERN_ERR "%s: fail in ccore reset regcb,fail, name 0x%s, cbfun 0x%p, prio %d\n", __FUNCTION__, \
+                        pname, pcbfun, priolevel);
         return NULL;
     }
 
@@ -192,7 +192,7 @@ int hifireset_doruncbfun (const char *pname, DRV_RESET_CALLCBFUN_MOMENT eparam)
                     printk(KERN_ERR "%s: fail to run cbfun of %s, at %d return %d\n", __FUNCTION__, phead->cbfuninfo.name, eparam, iresult);
                     break;
                 }
-                printk(KERN_INFO "%s: run %s cb function 0x%x\n", __FUNCTION__, phead->cbfuninfo.name, (unsigned int)phead->cbfuninfo.cbfun);
+                printk(KERN_INFO "%s: run %s cb function 0x%p\n", __FUNCTION__, phead->cbfuninfo.name,phead->cbfuninfo.cbfun);
             }
             phead = phead->pnext;
         }
@@ -205,7 +205,7 @@ int hifireset_doruncbfun (const char *pname, DRV_RESET_CALLCBFUN_MOMENT eparam)
                 && NULL != phead->cbfuninfo.cbfun)
             {
                 iresult  = phead->cbfuninfo.cbfun(eparam, phead->cbfuninfo.userdata);
-                printk(KERN_INFO "%s: run %s cb function 0x%x\n", __FUNCTION__, phead->cbfuninfo.name, (unsigned int)phead->cbfuninfo.cbfun);
+                printk(KERN_INFO "%s: run %s cb function 0x%p\n", __FUNCTION__, phead->cbfuninfo.name, phead->cbfuninfo.cbfun);
                 break;
             }
             phead = phead->pnext;

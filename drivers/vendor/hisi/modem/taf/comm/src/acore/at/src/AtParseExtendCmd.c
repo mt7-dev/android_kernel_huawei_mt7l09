@@ -19,8 +19,9 @@
 /*****************************************************************************
     协议栈打印打点方式下的.C文件宏定义
 *****************************************************************************/
+/*lint -e960*/
 #define    THIS_FILE_ID        PS_FILE_ID_AT_PARSEEXTENDCMD_C
-
+/*lint +e960*/
 
 /*****************************************************************************
    2 全局变量定义
@@ -376,7 +377,7 @@ VOS_UINT32 AT_ParseSetDockCmd(
                stAtCmdName.usCmdNameLen);
     stAtCmdName.aucCmdName[stAtCmdName.usCmdNameLen] = '\0';
     ulPos += stAtCmdName.usCmdNameLen;
-    
+
     ulPos += VOS_StrLen("=");
 
     /* 获取命令的参数字符串及长度 */

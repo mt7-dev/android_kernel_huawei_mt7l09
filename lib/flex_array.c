@@ -44,47 +44,7 @@ static inline int elements_fit_in_base(struct flex_array *fa)
 	return 0;
 }
 
-/**
- * flex_array_alloc - allocate a new flexible array
- * @element_size:	the size of individual elements in the array
- * @total:		total number of elements that this should hold
- * @flags:		page allocation flags to use for base array
- *
- * Note: all locking must be provided by the caller.
- *
- * @total is used to size internal structures.  If the user ever
- * accesses any array indexes >=@total, it will produce errors.
- *
- * The maximum number of elements is defined as: the number of
- * elements that can be stored in a page times the number of
- * page pointers that we can fit in the base structure or (using
- * integer math):
- *
- * 	(PAGE_SIZE/element_size) * (PAGE_SIZE-8)/sizeof(void *)
- *
- * Here's a table showing example capacities.  Note that the maximum
- * index that the get/put() functions is just nr_objects-1.   This
- * basically means that you get 4MB of storage on 32-bit and 2MB on
- * 64-bit.
- *
- *
- * Element size | Objects | Objects |
- * PAGE_SIZE=4k |  32-bit |  64-bit |
- * ---------------------------------|
- *      1 bytes | 4177920 | 2088960 |
- *      2 bytes | 2088960 | 1044480 |
- *      3 bytes | 1392300 |  696150 |
- *      4 bytes | 1044480 |  522240 |
- *     32 bytes |  130560 |   65408 |
- *     33 bytes |  126480 |   63240 |
- *   2048 bytes |    2040 |    1020 |
- *   2049 bytes |    1020 |     510 |
- *       void * | 1044480 |  261120 |
- *
- * Since 64-bit pointers are twice the size, we lose half the
- * capacity in the base structure.  Also note that no effort is made
- * to efficiently pack objects across page boundaries.
- */
+
 struct flex_array *flex_array_alloc(int element_size, unsigned int total,
 					gfp_t flags)
 {

@@ -1023,7 +1023,6 @@ static void control_par_to_var(struct fb_par_control *par, struct fb_var_screeni
 	 * (10^12 * clock_params[0] / (3906400 * clock_params[1]))
 	 * >> clock_params[2]
 	 */
-	/* (255990.17 * clock_params[0] / clock_params[1]) >> clock_params[2] */
 	var->pixclock = CONTROL_PIXCLOCK_BASE * par->regvals.clock_params[0];
 	var->pixclock /= par->regvals.clock_params[1];
 	var->pixclock >>= par->regvals.clock_params[2];

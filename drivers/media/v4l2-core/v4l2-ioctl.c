@@ -942,6 +942,12 @@ static int check_fmt(struct file *file, enum v4l2_buf_type type)
 		if (is_vbi && is_tx && ops->vidioc_g_fmt_sliced_vbi_out)
 			return 0;
 		break;
+    /*linux kernel3.10 update, 20140303, begin*/
+	case V4L2_BUF_TYPE_PRIVATE:
+		if (ops->vidioc_g_fmt_type_private)
+			return 0;
+		break;
+    /*linux kernel3.10 update, 20140303, end*/
 	default:
 		break;
 	}
@@ -1061,6 +1067,13 @@ static int v4l_enum_fmt(const struct v4l2_ioctl_ops *ops,
 		if (unlikely(!is_tx || !ops->vidioc_enum_fmt_vid_out_mplane))
 			break;
 		return ops->vidioc_enum_fmt_vid_out_mplane(file, fh, arg);
+    /*linux kernel3.10 update, 20140303, begin*/
+	case V4L2_BUF_TYPE_PRIVATE:
+		if (ops->vidioc_enum_fmt_type_private)
+			return ops->vidioc_enum_fmt_type_private(file,
+							fh, p);
+			break;
+    /*linux kernel3.10 update, 20140303, end*/
 	}
 	return -EINVAL;
 }
@@ -1115,6 +1128,13 @@ static int v4l_g_fmt(const struct v4l2_ioctl_ops *ops,
 		if (unlikely(!is_tx || is_vid || !ops->vidioc_g_fmt_sliced_vbi_out))
 			break;
 		return ops->vidioc_g_fmt_sliced_vbi_out(file, fh, arg);
+    /*linux kernel3.10 update, 20140303, begin*/
+    case V4L2_BUF_TYPE_PRIVATE:
+    	if (ops->vidioc_g_fmt_type_private)
+    		return ops->vidioc_g_fmt_type_private(file,
+    						fh, p);
+			break;
+    /*linux kernel3.10 update, 20140303, end*/
 	}
 	return -EINVAL;
 }
@@ -1179,6 +1199,14 @@ static int v4l_s_fmt(const struct v4l2_ioctl_ops *ops,
 			break;
 		CLEAR_AFTER_FIELD(p, fmt.sliced);
 		return ops->vidioc_s_fmt_sliced_vbi_out(file, fh, arg);
+    /*linux kernel3.10 update, 20140303, begin*/
+	case V4L2_BUF_TYPE_PRIVATE:
+		/* CLEAR_AFTER_FIELD(f, fmt.raw_data); <- does nothing */
+		if (ops->vidioc_s_fmt_type_private)
+			return ops->vidioc_s_fmt_type_private(file,
+							fh, p);
+		break;
+    /*linux kernel3.10 update, 20140303, end*/
 	}
 	return -EINVAL;
 }
@@ -1243,6 +1271,14 @@ static int v4l_try_fmt(const struct v4l2_ioctl_ops *ops,
 			break;
 		CLEAR_AFTER_FIELD(p, fmt.sliced);
 		return ops->vidioc_try_fmt_sliced_vbi_out(file, fh, arg);
+    /*linux kernel3.10 update, 20140303, begin*/
+	case V4L2_BUF_TYPE_PRIVATE:
+		/* CLEAR_AFTER_FIELD(f, fmt.raw_data); <- does nothing */
+		if (ops->vidioc_try_fmt_type_private)
+			return ops->vidioc_try_fmt_type_private(file,
+							fh, p);
+		break;
+    /*linux kernel3.10 update, 20140303, end*/
 	}
 	return -EINVAL;
 }
@@ -2319,7 +2355,7 @@ long
 video_usercopy(struct file *file, unsigned int cmd, unsigned long arg,
 	       v4l2_kioctl func)
 {
-	char	sbuf[128];
+	char	sbuf[512];
 	void    *mbuf = NULL;
 	void	*parg = (void *)arg;
 	long	err  = -EINVAL;

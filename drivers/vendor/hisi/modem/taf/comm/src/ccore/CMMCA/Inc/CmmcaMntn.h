@@ -97,6 +97,11 @@ VOS_VOID CMMCA_Debug_PrintDataIndLenErr(
 
 VOS_VOID  CMMCA_LogBuffFullInd(VOS_VOID);
 
+VOS_VOID CMMCA_Debug_PrintPdnAuthTypeErr(
+    CMMCA_MMC_RAT_CMD_ID_ENUM_UINT16    enCmdId,
+    VOS_UINT8                           ucAuthType
+);
+
 extern VOS_UINT32 OM_TraceMsgHook(VOS_VOID *pMsg);
 
 

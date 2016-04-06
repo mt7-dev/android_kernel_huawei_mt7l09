@@ -72,7 +72,6 @@
  * to 5112 Hz.
  */
 #define MAX_NUM_RATES	6
-/* ALSA seems to use rates between 192000 Hz and 5112 Hz. */
 #define RATE_MAX	192000
 #define RATE_MIN	5112
 

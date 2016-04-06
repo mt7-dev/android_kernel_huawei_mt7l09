@@ -112,11 +112,6 @@ config USB_GADGET_STORAGE_NUM_BUFFERS
 	   If selecting USB_GADGET_DEBUG_FILES this value may be set by
 	   a module parameter as well.
 	   If unsure, say 2.
- config K3V3_BALONG_MODEM
-    default y
-	tristate "K3V3 to balong modem  interface for usb"
-	help
-	   Add balong modem usb interface to k3v3
 #
 # USB Peripheral Controller Support
 #
@@ -517,6 +512,12 @@ config USB_F_SERIAL
 config USB_F_OBEX
 	tristate
 
+config USB_F_BALONG_ACM
+	tristate
+
+config MODEM_SUPPORT
+	tristate
+
 choice
 	tristate "USB Gadget Drivers"
 	default USB_ETH
@@ -827,6 +828,9 @@ config USB_G_ANDROID
 	select USB_F_ACM
 	select USB_LIBCOMPOSITE
 	select USB_U_SERIAL
+	select USB_F_SERIAL
+	select MODEM_SUPPORT
+	select USB_F_BALONG_ACM if (ARCH_HI3XXX)
 	help
 	  The Android Composite Gadget supports multiple USB
 	  functions: adb, acm, mass storage, mtp, accessory

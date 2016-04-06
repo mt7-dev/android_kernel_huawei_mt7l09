@@ -34,6 +34,21 @@ static ssize_t dump_info_store(struct kobject *kobj,
 {
 	if ((buf != NULL) && (*buf != '\0') && (!strncmp(buf, "dump", 4)))
 		dump_save();
+	rdr_rm_over3_file(OM_ROOT_PATH);
+
+	return count;
+}
+static ssize_t syserr_store(struct kobject *kobj,
+		struct kobj_attribute *attr, const char *buf, size_t count)
+{
+    int core;
+    int reason;
+	if ((buf != NULL) && (*buf != '\0') &&
+        (buf[0] >= '0' && buf[0]<='9') && (buf[1] >= '0' && buf[1] <='9')  ){
+        core = (buf[0]-'0')<<24;
+        reason = (buf[1]-'0');
+        hisi_system_error( RDR_NCP|core|reason, 0, 0, 0, 0);
+    }
 
 	return count;
 }
@@ -138,9 +153,12 @@ rdr_attr(sys_call);
 
 static struct kobj_attribute dump_info_attribute =
 	__ATTR(savefile, 0220, NULL, dump_info_store);
+static struct kobj_attribute syserr_attribute =
+	__ATTR(syserr, 0660, NULL, syserr_store);
 
 static struct attribute *attrs[] = {
 	&dump_info_attribute.attr,
+    &syserr_attribute.attr,
 #ifdef CONFIG_HISI_RDR_SWITCH
 	&task_switch_attr.attr,
 	&int_switch_attr.attr,

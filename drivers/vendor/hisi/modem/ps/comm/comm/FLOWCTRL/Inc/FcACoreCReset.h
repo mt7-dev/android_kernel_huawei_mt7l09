@@ -64,7 +64,7 @@ typedef VOS_UINT8 FC_ACORE_CRESET_MOMENT_ENUM_UINT8;
 /*****************************************************************************
   4 全局变量声明
 *****************************************************************************/
-extern VOS_UINT32      g_ulFcACoreCResetDoneSem;
+extern VOS_SEM      g_ulFcACoreCResetDoneSem;
 
 
 /*****************************************************************************
@@ -99,6 +99,7 @@ extern VOS_UINT32      g_ulFcACoreCResetDoneSem;
 extern VOS_UINT32 FC_ACORE_CResetProc(FC_ACORE_CRESET_MOMENT_ENUM_UINT8 enCResetMoment);
 extern VOS_INT FC_ACORE_CResetCallback(DRV_RESET_CALLCBFUN_MOMENT enParam, VOS_INT userdata);
 extern VOS_VOID FC_ACORE_CResetRcvStartRsp(VOID);
+extern VOS_UINT32  FC_ACORE_CResetSendNotify(FC_MSG_TYPE_ENUM_UINT16     usMsgName);
 
 #if (VOS_OS_VER == VOS_WIN32)
 #pragma pack()

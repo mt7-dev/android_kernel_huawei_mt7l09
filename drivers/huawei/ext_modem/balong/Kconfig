@@ -1,6 +1,0 @@
-config BALONG_EXT_MODEM
-	tristate "Balong ext modem boot control support"
-    default y
-    help
-	  This module adds support for balong modem based on
-	  Balong V3R3 chipset.

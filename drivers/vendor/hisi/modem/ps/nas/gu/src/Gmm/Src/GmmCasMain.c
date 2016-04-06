@@ -516,7 +516,7 @@ VOS_VOID GMM_SuspendMsgProc(struct MsgCB* pMsg, VOS_UINT8 *pucFollowOn)
     if (VOS_PID_TIMER == pMsg->ulSenderPid)
     {
         pTimerMsg = (REL_TIMER_MSG*)pMsg;
-        if ((GMM_TIMER_SUSPENDED == pTimerMsg->ulName) || (GMM_TIMER_T3314 == pTimerMsg->ulName) || (GMM_TIMER_TC_DELAY_SUSPEND_RSP == pTimerMsg->ulName) || (GMM_TIMER_T3323 == pTimerMsg->ulName))
+        if ((GMM_TIMER_HO_WAIT_SYSINFO == pTimerMsg->ulName) || (GMM_TIMER_SUSPENDED == pTimerMsg->ulName) || (GMM_TIMER_T3314 == pTimerMsg->ulName) || (GMM_TIMER_TC_DELAY_SUSPEND_RSP == pTimerMsg->ulName) || (GMM_TIMER_T3323 == pTimerMsg->ulName))
         {
             *pucFollowOn = GMM_TRUE;
             return;
@@ -1119,6 +1119,14 @@ VOS_VOID GMM_CasMsgProc_GmmSuspendNormalService(
     /* 局部变量声明 */
     MSG_HEADER_STRU         *pNasMsgHeader;
 
+    RRMM_DATA_IND_FOR_PCLINT_STRU  *pstRrmmDataInd          = VOS_NULL_PTR;
+    NAS_MSG_FOR_PCLINT_STRU        *pstNasMsg               = VOS_NULL_PTR;
+    LL_NAS_UNITDATA_IND_MSG        *pstLLUnitDataInd        = VOS_NULL_PTR;         
+
+    pstRrmmDataInd = (RRMM_DATA_IND_FOR_PCLINT_STRU *)pMsg;
+    pstNasMsg      = &pstRrmmDataInd->RcvNasMsg;    
+    pstLLUnitDataInd = (LL_NAS_UNITDATA_IND_MSG *)pMsg;
+
     /* 消息参数分析 */
     *pucFollowOn = GMM_FALSE;                                                   /* 默认不再进入原消息入口函数处理 */
 
@@ -1158,7 +1166,7 @@ VOS_VOID GMM_CasMsgProc_GmmSuspendNormalService(
             return;
         }
     }
-    else if ( WUEPS_PID_WRR == pMsg->ulSenderPid )
+    else if (WUEPS_PID_WRR == pMsg->ulSenderPid)
     {
         /* 挂起状态收到REL_IND GMM需要处理:清除并通知MMC信令连接标志 */
         if (RRMM_REL_IND == pNasMsgHeader->ulMsgName)
@@ -1167,6 +1175,27 @@ VOS_VOID GMM_CasMsgProc_GmmSuspendNormalService(
             GMM_LOG_INFO("GMM_CasMsgProc:Receive RRMM_REL_IND in SUSPENDED_NORMAL_SERVICE state.");
             return;
         }
+
+        
+        /* 透传给SM当前DATA_IND消息 */
+        if ( (RRMM_DATA_IND == pNasMsgHeader->ulMsgName)
+          && (GMM_PD_SM     == (pstNasMsg->aucNasMsg[0] & 0x0F)) )
+        {
+            *pucFollowOn = GMM_TRUE;
+            GMM_LOG_INFO("GMM_CasMsgProc:Receive RRMM_DATA_IND in SUSPENDED_NORMAL_SERVICE state.");
+            return;
+        } 
+    }
+    else if (UEPS_PID_LL == pMsg->ulSenderPid)
+    {            
+        /* LL透传给SM当前DATA_IND消息 */
+        if ( (ID_LL_UNITDATA_IND    == pNasMsgHeader->ulMsgName)
+          && (GMM_PD_SM             == (pstLLUnitDataInd->stUnitDataInd.aucPdu[0] & 0x0F)) )
+        {
+            *pucFollowOn = GMM_TRUE;
+            GMM_LOG_INFO("GMM_CasMsgProc:Receive ID_LL_UNITDATA_IND in SUSPENDED_NORMAL_SERVICE state.");
+            return;
+        } 
     }
     
     /* 挂起状态下需要处理LMM的安全上下文回复消息 */
@@ -1181,7 +1210,6 @@ VOS_VOID GMM_CasMsgProc_GmmSuspendNormalService(
         }
     }
 #endif
-
     else
     {
     }

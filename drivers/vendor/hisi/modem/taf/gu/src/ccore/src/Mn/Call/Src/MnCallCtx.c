@@ -48,6 +48,59 @@ MN_CALL_CUSTOM_CFG_INFO_STRU* MN_CALL_GetCustomCfgInfo( VOS_VOID )
 }
 
 
+
+TAF_CALL_CCWA_CTRL_MODE_ENUM_U8 TAF_CALL_GetCcwaCtrlMode(VOS_VOID)
+{
+    return MN_CALL_GetCustomCfgInfo()->enCcwaCtrlMode;
+}
+
+
+VOS_VOID TAF_CALL_SetCcwaCtrlMode(
+    TAF_CALL_CCWA_CTRL_MODE_ENUM_U8     enCcwaCtrlMode
+)
+{
+    MN_CALL_GetCustomCfgInfo()->enCcwaCtrlMode = enCcwaCtrlMode;
+
+    return;
+}
+
+
+TAF_CALL_APP_CFG_INFO_STRU* MN_CALL_GetAppCfgInfo(VOS_VOID)
+{
+    return &(MN_CALL_GetCtx()->stMsCfgInfo.stAppCfg);
+}
+
+
+VOS_VOID TAF_CALL_SetCcwaiFlg(
+    VOS_UINT8                           bCcwaiFlg
+)
+{
+    MN_CALL_GetAppCfgInfo()->ucCcwaiFlg = bCcwaiFlg;
+}
+
+
+VOS_UINT8 TAF_CALL_GetCcwaiFlg(VOS_VOID)
+{
+    return MN_CALL_GetAppCfgInfo()->ucCcwaiFlg;
+}
+
+VOS_UINT8 TAF_CALL_GetAtaReportOkAsyncFlag(VOS_VOID)
+{
+    return MN_CALL_GetCtx()->stMsCfgInfo.stCustomCfg.ucAtaReportOkAsyncFlag;
+}
+
+
+VOS_VOID TAF_CALL_SetAtaReportOkAsyncFlag(
+    VOS_UINT8                           ucAtaReportOkAsyncFlag
+)
+{
+    MN_CALL_GetCtx()->stMsCfgInfo.stCustomCfg.ucAtaReportOkAsyncFlag
+                           = ucAtaReportOkAsyncFlag;
+    return;
+}
+
+
+
 VOS_UINT32 MN_CALL_GetCallRedialSupportFlg(VOS_VOID)
 {
     return (MN_CALL_GetCtx()->stMsCfgInfo.stCustomCfg.stCallRedialCfg.ucIsCallRedialSupportFlg);
@@ -91,7 +144,10 @@ VOS_VOID MN_CALL_InitCtx(VOS_VOID)
 
     #if (FEATURE_ON == FEATURE_IMS)    
     TAF_CALL_SetSrvccState(MN_CALL_SRVCC_STATE_BUTT);
-    #endif
+
+    TAF_CALL_SetCcwaiFlg(VOS_TRUE);
+    TAF_CALL_SetCcwaCtrlMode(TAF_CALL_CCWA_CTRL_BY_3GPP);
+#endif
 }
 
 

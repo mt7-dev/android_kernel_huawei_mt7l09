@@ -25,6 +25,8 @@ extern "C" {
 #include "DrvInterface.h"
 #include "diag_cmd_param_plugin.h"
 #include "blist.h"
+#include "dms.h"
+
 #pragma pack(4)
 
 /*****************************************************************************
@@ -49,12 +51,12 @@ extern "C" {
 
 #if (FEATURE_ON == FEATURE_VCOM_EXT)
 /*APP VCOM TL log控制与数据通道*/
-#define DIAG_APPVCOM_CHAN_CTRL          APP_VCOM_DEV_INDEX_TLLOG
-#define DIAG_APPVCOM_CHAN_APP           APP_VCOM_DEV_INDEX_LOG1
+#define DIAG_APPVCOM_CHAN_CTRL          DMS_VCOM_OM_CHAN_TL_CTRL
+#define DIAG_APPVCOM_CHAN_APP           DMS_VCOM_OM_CHAN_TL_DATA
 #else
 /*保证编译，无实际意义*/
-#define DIAG_APPVCOM_CHAN_CTRL          APP_VCOM_DEV_INDEX_BUTT
-#define DIAG_APPVCOM_CHAN_APP           APP_VCOM_DEV_INDEX_BUTT
+#define DIAG_APPVCOM_CHAN_CTRL          DMS_VCOM_OM_CHAN_BUTT
+#define DIAG_APPVCOM_CHAN_APP           DMS_VCOM_OM_CHAN_BUTT
 #endif
 
 
@@ -258,7 +260,7 @@ VOS_VOID diag_BindListenTcpSocket(VOS_VOID);
 VOS_VOID diag_AcceptRecvFromSocket(VOS_VOID);
 
 VOS_UINT32 diag_VcomWriteSync(DIAG_PORT_PHY_BEAR_ENUM enPort,
-                                 APP_VCOM_DEV_INDEX_UINT8 enDevIndex,
+                                 VOS_UINT32 ulChan,
                                  VOS_UINT8 *pucDataBuf,VOS_UINT32 ulLen);
 
 #if(FEATURE_SOCP_ON_DEMAND == FEATURE_ON)

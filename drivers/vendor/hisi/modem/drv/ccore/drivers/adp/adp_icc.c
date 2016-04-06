@@ -1,0 +1,1 @@
+../../../acore/kernel/drivers/modem/adp/adp_icc.c

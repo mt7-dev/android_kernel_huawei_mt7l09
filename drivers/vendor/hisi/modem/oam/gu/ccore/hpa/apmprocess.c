@@ -73,13 +73,13 @@ VOS_UINT32                      g_aulShpaActiveState[MODEM_ID_BUTT][VOS_RATMODE_
 VOS_UINT32                      g_aulShpaCurSysId[MODEM_ID_BUTT];
 
 /* A semaphor. Get it when succeed to load DSP. */
-VOS_UINT32                      g_aulShpaLoadPhySemaphor[MODEM_ID_BUTT];
+VOS_SEM                         g_aulShpaLoadPhySemaphor[MODEM_ID_BUTT];
 
 /* A semaphor. Get it when succeed to Active DSP. */
-VOS_UINT32                      g_aulShpaActivePhySemaphor[MODEM_ID_BUTT];
+VOS_SEM                         g_aulShpaActivePhySemaphor[MODEM_ID_BUTT];
 
 /* A semaphor. Get it when save data to file. */
-VOS_UINT32                      g_ulLdfSavingSemaphor;
+VOS_SEM                         g_ulLdfSavingSemaphor;
 
 /* DSP Config info Data */
 DSP_CONFIG_CTRL_STRU            g_astDspConfigCtrl[MODEM_ID_BUTT];
@@ -1149,7 +1149,7 @@ VOS_UINT32 APM_InitSystemAddr(VOS_VOID)
 
     VOS_MemSet(&g_stSysAddr, 0, sizeof(g_stSysAddr));
 
-    g_stSysAddr.ulAHBBaseAddr       = DRV_GET_IP_BASE_ADDR(BSP_IP_TYPE_AHB);
+    g_stSysAddr.ulAHBBaseAddr       = (VOS_UINT_PTR)DRV_GET_IP_BASE_ADDR(BSP_IP_TYPE_AHB);
 
     if(0 == g_stSysAddr.ulAHBBaseAddr)
     {
@@ -1157,7 +1157,7 @@ VOS_UINT32 APM_InitSystemAddr(VOS_VOID)
         return VOS_ERR;
     }
 
-    g_stSysAddr.ulWBBPBaseAddr      = DRV_GET_IP_BASE_ADDR(BSP_IP_TYPE_WBBP);
+    g_stSysAddr.ulWBBPBaseAddr      = (VOS_UINT_PTR)DRV_GET_IP_BASE_ADDR(BSP_IP_TYPE_WBBP);
 
     if(0 == g_stSysAddr.ulWBBPBaseAddr)
     {
@@ -1165,7 +1165,7 @@ VOS_UINT32 APM_InitSystemAddr(VOS_VOID)
         return VOS_ERR;
     }
 
-    g_stSysAddr.ulWBBPDRXBaseAddr   = DRV_GET_IP_BASE_ADDR(BSP_IP_TYPE_WBBP_DRX);
+    g_stSysAddr.ulWBBPDRXBaseAddr   = (VOS_UINT_PTR)DRV_GET_IP_BASE_ADDR(BSP_IP_TYPE_WBBP_DRX);
 
     if(0 == g_stSysAddr.ulWBBPDRXBaseAddr)
     {
@@ -1173,7 +1173,7 @@ VOS_UINT32 APM_InitSystemAddr(VOS_VOID)
         return VOS_ERR;
     }
 
-    g_stSysAddr.ulGBBPBaseAddr      = DRV_GET_IP_BASE_ADDR(BSP_IP_TYPE_GBBP);
+    g_stSysAddr.ulGBBPBaseAddr      = (VOS_UINT_PTR)DRV_GET_IP_BASE_ADDR(BSP_IP_TYPE_GBBP);
 
     if(0 == g_stSysAddr.ulGBBPBaseAddr)
     {
@@ -1181,7 +1181,7 @@ VOS_UINT32 APM_InitSystemAddr(VOS_VOID)
         return VOS_ERR;
     }
 
-    g_stSysAddr.ulGBBPDRXBaseAddr   = DRV_GET_IP_BASE_ADDR(BSP_IP_TYPE_GBBP_DRX);
+    g_stSysAddr.ulGBBPDRXBaseAddr   = (VOS_UINT_PTR)DRV_GET_IP_BASE_ADDR(BSP_IP_TYPE_GBBP_DRX);
 
     if(0 == g_stSysAddr.ulGBBPDRXBaseAddr)
     {
@@ -1189,9 +1189,9 @@ VOS_UINT32 APM_InitSystemAddr(VOS_VOID)
         return VOS_ERR;
     }
 
-    g_stSysAddr.ulGBBP1BaseAddr      = DRV_GET_IP_BASE_ADDR(BSP_IP_TYPE_GBBP1);
+    g_stSysAddr.ulGBBP1BaseAddr      = (VOS_UINT_PTR)DRV_GET_IP_BASE_ADDR(BSP_IP_TYPE_GBBP1);
 
-    g_stSysAddr.ulGBBP1DRXBaseAddr   = DRV_GET_IP_BASE_ADDR(BSP_IP_TYPE_GBBP1_DRX);
+    g_stSysAddr.ulGBBP1DRXBaseAddr   = (VOS_UINT_PTR)DRV_GET_IP_BASE_ADDR(BSP_IP_TYPE_GBBP1_DRX);
 
     /*只有双卡版本才对于此地址判断，单卡版本和V3R3不判断数据使用底软的返回值*/
 #if  ( FEATURE_MULTI_MODEM == FEATURE_ON )
@@ -1208,7 +1208,7 @@ VOS_UINT32 APM_InitSystemAddr(VOS_VOID)
     }
 #endif
 
-    g_stSysAddr.ulSYSCTRLBaseAddr   = DRV_GET_IP_BASE_ADDR(BSP_IP_TYPE_SYSCTRL);
+    g_stSysAddr.ulSYSCTRLBaseAddr   = (VOS_UINT_PTR)DRV_GET_IP_BASE_ADDR(BSP_IP_TYPE_SYSCTRL);
 
     if(0 == g_stSysAddr.ulSYSCTRLBaseAddr)
     {
@@ -1222,7 +1222,7 @@ VOS_UINT32 APM_InitSystemAddr(VOS_VOID)
         return VOS_ERR;
     }
 
-    g_stSysAddr.ulHIFIAXIBaseAddr   = stAXIInfo.ulSectVirtAddr; /*上层用虚地址*/
+    g_stSysAddr.ulHIFIAXIBaseAddr   = (VOS_UINT_PTR)stAXIInfo.pSectVirtAddr; /*上层用虚地址*/
 
     if(VOS_OK != DRV_GET_FIX_AXI_ADDR(BSP_AXI_SECT_TYPE_TEMPERATURE, &stAXIInfo))
     {
@@ -1230,7 +1230,7 @@ VOS_UINT32 APM_InitSystemAddr(VOS_VOID)
         return VOS_ERR;
     }
 
-    g_stSysAddr.ulDSPTempBaseAddr   = stAXIInfo.ulSectVirtAddr; /*上层用虚地址*/
+    g_stSysAddr.ulDSPTempBaseAddr   = (VOS_UINT_PTR)stAXIInfo.pSectVirtAddr; /*上层用虚地址*/
 
 #ifdef FEATURE_DSP2ARM
     UCOM_SetTemparatureAddr(g_stSysAddr.ulDSPTempBaseAddr);

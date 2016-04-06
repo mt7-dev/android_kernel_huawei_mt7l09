@@ -191,6 +191,7 @@ OBC_LOCAL_SRC_FILE := \
     $(BALONG_TOPDIR)/modem/ps/nas/gu/src/Nasapi/src/AppInterfaceApi.c\
     $(BALONG_TOPDIR)/modem/ps/nas/gu/src/Nasapi/src/asnasapi.c\
     $(BALONG_TOPDIR)/modem/ps/nas/gu/src/Nasapi/src/NasCom.c\
+    $(BALONG_TOPDIR)/modem/ps/nas/gu/src/Nasapi/src/NasMntn.c\
     $(BALONG_TOPDIR)/modem/ps/nas/gu/src/Sm/Src/SmAgent.c\
     $(BALONG_TOPDIR)/modem/ps/nas/gu/src/Sm/Src/SmMain.c\
     $(BALONG_TOPDIR)/modem/ps/nas/gu/src/Sm/Src/smram.c\

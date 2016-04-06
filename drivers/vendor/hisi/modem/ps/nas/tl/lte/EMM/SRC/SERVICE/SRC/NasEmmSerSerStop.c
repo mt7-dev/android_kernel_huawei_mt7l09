@@ -186,6 +186,19 @@ VOS_UINT32  NAS_EMM_PreProcMsgMmCsfbSerAbortNotify( MsgBlock * pMsg )
     /* 如果CSFB时延定时器在运行，中止CSFB流程，如果已经发起TAU或SER，到流程完成时用ABORT标识进行处理 */
     NAS_LMM_StopPtlTimer(TI_NAS_EMM_PTL_CSFB_DELAY);
 
+    /*问题背景:主叫走CSFB流程被用户快速挂断电话，此时走CSFB回退流程，
+    回退到L的时候，由于TA在TALIST里面，所以不会发起TAU跟网侧交互，但是
+    此时核心网PS域已经开始往2/3G迁移，这样会导致被叫不通，或者收不到短信
+    改动:增加标识维护识别上面的这种场景，在回到L的时候保证发起TAU*/
+    /*add by lifuxin for extra TAU issue 2015-06-18 start*/
+    /*设置当前是EU值在csfb流程标识为真的情况下才置*/
+    if(PS_TRUE == NAS_EMM_GetCsfbProcedureFlag())
+    {
+        NAS_EMM_TAUSER_SaveAuxFsmUpStat(EMM_US_NOT_UPDATED_EU2);
+        NAS_EMM_SetCsfbProcedureFlag(PS_FALSE);
+    }
+    /*add by lifuxin for extra TAU issue 2015-06-18 end*/
+
     ulCurEmmStat = NAS_LMM_PUB_COMP_EMMSTATE(   NAS_EMM_CUR_MAIN_STAT,
                                                 NAS_EMM_CUR_SUB_STAT);
 
@@ -231,6 +244,9 @@ VOS_UINT32  NAS_EMM_PreProcMsgMmCsfbSerAbortNotify( MsgBlock * pMsg )
 
         /* 清除此次挂起的上层响应记录，恢复过程将使用 */
         NAS_EMM_GetUplayerCount() = NAS_EMM_SUSPEND_UPLAYER_NUM_INITVALUE;
+        /* 给LRRC回复SUSPEND RSP(SUCC)，解决LRRC收到SUSPEND REL REQ停止挂起流程，重新搜网驻留后不上报RESUME IND问题 */
+        /* 发送 LRRC_LMM_SUSPEND_RSP*/
+        NAS_EMM_SendLrrcSuspendRsp(LRRC_LNAS_SUCC);
 
         /*发送LRRC_LMM_SUSPEND_REL_REQ消息*/
         NAS_EMM_SndLrrcSuspendRelReq();

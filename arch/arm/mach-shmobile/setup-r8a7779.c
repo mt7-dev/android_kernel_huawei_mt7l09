@@ -463,22 +463,6 @@ void __init r8a7779_add_early_devices(void)
 {
 	early_platform_add_devices(r8a7779_devices_dt,
 				   ARRAY_SIZE(r8a7779_devices_dt));
-
-	/* Early serial console setup is not included here due to
-	 * memory map collisions. The SCIF serial ports in r8a7779
-	 * are difficult to entity map 1:1 due to collision with the
-	 * virtual memory range used by the coherent DMA code on ARM.
-	 *
-	 * Anyone wanting to debug early can remove UPF_IOREMAP from
-	 * the sh-sci serial console platform data, adjust mapbase
-	 * to a static M:N virt:phys mapping that needs to be added to
-	 * the mappings passed with iotable_init() above.
-	 *
-	 * Then add a call to shmobile_setup_console() from this function.
-	 *
-	 * As a final step pass earlyprint=sh-sci.2,115200 on the kernel
-	 * command line in case of the marzen board.
-	 */
 }
 
 #ifdef CONFIG_USE_OF

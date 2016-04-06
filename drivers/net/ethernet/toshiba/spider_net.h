@@ -195,23 +195,7 @@ extern char spider_net_driver_name[];
 #define SPIDER_NET_MACMODE_VALUE	0x00000001
 #define SPIDER_NET_BURSTLMT_VALUE	0x00000200 /* about 16 us */
 
-/* DMAC control register GDMACCNTR
- *
- * 1(0)				enable r/tx dma
- *  0000000				fixed to 0
- *
- *         000000			fixed to 0
- *               0(1)			en/disable descr writeback on force end
- *                0(1)			force end
- *
- *                 000000		fixed to 0
- *                       00		burst alignment: 128 bytes
- *                       11		burst alignment: 1024 bytes
- *
- *                         00000	fixed to 0
- *                              0	descr writeback size 32 bytes
- *                               0(1)	descr chain end interrupt enable
- *                                0(1)	descr status writeback enable */
+
 
 /* to set RX_DMA_EN */
 #define SPIDER_NET_DMA_RX_VALUE		0x80000000

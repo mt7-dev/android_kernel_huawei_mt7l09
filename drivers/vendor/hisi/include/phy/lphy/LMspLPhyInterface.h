@@ -2019,6 +2019,14 @@ typedef struct
 
 typedef struct
 {
+    UINT32 ulCmdId;
+    UINT16 usTdsTxiqCalFlag;
+    UINT16 usRsv;
+}CT_TDS_TXIQ_CAL_SET_STATUS_STRU;
+
+
+typedef struct
+{
     UINT32 ulCmdId;                      /*消息标识*/
     UINT8  ucType;
     UINT8  aucRsv[3];
@@ -2031,6 +2039,8 @@ typedef enum
 	COMM_AT_CMD_QUERY_BANDINFO,
 	COMM_AT_CMD_QUERY_RX_POWER,
 	COMM_AT_CMD_QUERY_HKADC,
+
+    COMM_AT_CT_TDSTXIQ_CAL_CMDID       = 0x6,
 
     COMM_AT_CT_APCCAL_CMDID            = 0x7,
     COMM_AT_CT_APCSTART_CMDID          = 0x8,

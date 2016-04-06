@@ -114,7 +114,11 @@ typedef enum
 	NV_ID_DRV_PAPOWER_UNIT  		   	   = 0xd13A,
 	NV_ID_DRV_ANTN_UNPD_FLAG               = 0xd13b,
 	NV_ID_DRV_ANTN_UNPD_CFG                = 0xd13c,
-	
+	NV_ID_DRV_FEM_SHARE_POWER              = 0xd13d,
+	NV_ID_DRV_RSE_MIPI_EN                  = 0xd13e,
+	NV_ID_DRV_RSE_MIPI_CONFIG              = 0xd13f,
+	NV_ID_DRV_DM_UART5_CFG				   = 0xd140,
+	NV_ID_DRV_FEM_VIO_ALWAYS_ON			   = 0xd150,
     /*按大小顺序添加*/
     NV_ID_DRV_ID_MAX                       = 0xd1ff
 

@@ -553,16 +553,21 @@ VOS_VOID Tc_RcvRabmTestCnf(VOS_VOID *pMsg)
 
 VOS_VOID Tc_RcvRabmTestLoopCnf()
 {
+    NAS_UTRANCTRL_UTRAN_MODE_ENUM_UINT8             enCurrUtranMode;
+
     switch(g_TcInfo.ucMsgType)
     {                                                                                   /* 根据当前的状态进行分发                   */
     case TC_CLOSE_UE_TEST_LOOP:
         Tc_SndDataReq(TC_CLOSE_UE_TEST_LOOP_CMP);                                       /* 发送闭环响应消息                         */
         g_TcInfo.ucTcState = TC_CLOSE_TEST_LOOP;                                        /* 状态迁入CLOSE                            */
 
-        if (NAS_UTRANCTRL_UTRAN_MODE_FDD == NAS_UTRANCTRL_GetCurrUtranMode())
+        enCurrUtranMode = NAS_UTRANCTRL_GetCurrUtranMode();
+        if ((VOS_FALSE == g_TcInfo.ucSndWphyCloseLoopNtfLable)
+         && (NAS_UTRANCTRL_UTRAN_MODE_FDD == enCurrUtranMode))
         {
             /* 根据DSP需求，在W下通知WPHY进入环回 */
             NAS_TC_SndWphyCloseLoopNtf();
+            g_TcInfo.ucSndWphyCloseLoopNtfLable = VOS_TRUE;
         }
 
         /* 闪灯: WCDMA PS环回建立 */
@@ -579,6 +584,7 @@ VOS_VOID Tc_RcvRabmTestLoopCnf()
         {
             /* 根据DSP需求，在W下通知WPHY退出环回 */
             NAS_TC_SndWphyOpenLoopNtf();
+            g_TcInfo.ucSndWphyCloseLoopNtfLable = VOS_FALSE;
         }
 
         /* 闪灯: WCDMA PS环回释放 */
@@ -915,6 +921,13 @@ VOS_VOID Tc_RcvActRbTest()
 
         Tc_SndRfaTestControlMsg(ID_TC_RFA_ACT_REQ);
 
+        if (NAS_UTRANCTRL_UTRAN_MODE_FDD == NAS_UTRANCTRL_GetCurrUtranMode())
+        {
+            /* 根据DSP需求，在W下通知WPHY进入环回 */
+            NAS_TC_SndWphyCloseLoopNtf();
+            g_TcInfo.ucSndWphyCloseLoopNtfLable = VOS_TRUE;
+        }
+
         Tc_SndRabmTestReq(TC_RB_TEST_ACTIVE);                                           /* 通知RABM激活                             */
         Tc_SndMmTestReq(TC_RB_TEST_ACTIVE);                                             /* 通知MM激活                               */
         Tc_SndGmmTestReq(TC_RB_TEST_ACTIVE);                                            /* 通知GMM激活                              */
@@ -929,10 +942,10 @@ VOS_VOID Tc_RcvActRbTest()
     }
     return;
 }
-
-
 VOS_VOID Tc_RcvDeactRbTest()
 {
+    NAS_UTRANCTRL_UTRAN_MODE_ENUM_UINT8             enCurrUtranMode;
+
     if(TC_MSG_INVALID != g_TcInfo.ucMsgType)
     {                                                                                   /* 没有正在处理其它消息                     */
         PS_LOG(WUEPS_PID_TC, VOS_NULL, PS_PRINT_WARNING, "Tc_RcvDeactRbTest:WARNING:TC_MSG_INVALID != g_TcInfo.ucMsgType");
@@ -945,6 +958,15 @@ VOS_VOID Tc_RcvDeactRbTest()
         g_TcInfo.ucMsgType = TC_DEACT_RB_TEST_MODE;                                     /* 记录正在处理的消息类型                   */
 
         Tc_SndRfaTestControlMsg(ID_TC_RFA_DEACT_REQ);
+
+        enCurrUtranMode = NAS_UTRANCTRL_GetCurrUtranMode();
+        if ((VOS_TRUE == g_TcInfo.ucSndWphyCloseLoopNtfLable)
+         && (NAS_UTRANCTRL_UTRAN_MODE_FDD == enCurrUtranMode))
+        {
+            /* 根据DSP需求，在W下通知WPHY退出环回 */
+            NAS_TC_SndWphyOpenLoopNtf();
+            g_TcInfo.ucSndWphyCloseLoopNtfLable = VOS_FALSE;
+        }
 
         Tc_SndDataReq(TC_DEACT_RB_TEST_MODE_CMP);                                       /* 发送去激活响应消息                       */
         Tc_SndRabmTestReq(TC_RB_TEST_DEACTIVE);                                         /* 通知RABM去激活                           */
@@ -959,8 +981,6 @@ VOS_VOID Tc_RcvDeactRbTest()
     }
     return;
 }
-
-
 VOS_VOID Tc_RcvResetUePosStoredInfo(VOS_UINT8 * pRcvTcMsg)
 {
     TC_UE_POS_TECH_ENUM_UINT8           enUePosTech;

@@ -177,13 +177,18 @@ extern IMSA_NORMAL_AT_REG_STATUS_ENUM_UINT32 IMSA_SRV_GetAtRegStatusFromSrvStatu
 (
     IMSA_SRV_STATUS_ENUM_UINT8          enSrvStatus
 );
-extern VOS_VOID IMSA_ProcTimerMsgPeriodTryImsEmcSrvExp(const VOS_VOID *pRcvMsg );
+
+/* delete PeriodImsEmcSrvTryTimer */
+
 extern VOS_UINT32 IMSA_SRV_IsHasActiveSipSignalPdp
 (
     IMSA_CONN_TYPE_ENUM_UINT32          enConnType
 );
 
-
+extern VOS_VOID IMSA_SRV_ProcModem1InfoInd
+(
+    const MMA_IMSA_MODEM1_INFO_IND_STRU          *pstModem1InfoInd
+);
 
 
 /*****************************************************************************

@@ -117,7 +117,7 @@ unsigned long RNIC_ConfigRmnetStatus(
  调用函数  :
  被调函数  :
 *****************************************************************************/
-unsigned long RNIC_StartFlowCtrl(unsigned char ucRmNetId);
+unsigned int RNIC_StartFlowCtrl(unsigned char ucRmNetId);
 
 
 /*****************************************************************************
@@ -130,7 +130,7 @@ unsigned long RNIC_StartFlowCtrl(unsigned char ucRmNetId);
  调用函数  :
  被调函数  :
 *****************************************************************************/
-unsigned long RNIC_StopFlowCtrl(unsigned char ucRmNetId);
+unsigned int RNIC_StopFlowCtrl(unsigned char ucRmNetId);
 
 
 #if (VOS_OS_VER == VOS_WIN32)

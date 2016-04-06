@@ -60,7 +60,7 @@ VOS_VOID ADS_UL_StopDsFlowStats(
     /* 如果所有上行队列已不存在，则停止流量统计定时器并清空流量统计信息 */
     if (VOS_FALSE == ADS_UL_IsAnyQueueExist(ucInstance))
     {
-        ADS_StopTimer(ACPU_PID_ADS_UL, ADS_GET_DSFLOW_TMR_ID(ucInstance));
+        ADS_StopTimer(ACPU_PID_ADS_UL, ADS_GET_DSFLOW_TMR_ID(ucInstance), ADS_TIMER_STOP_CAUSE_USER);
         ADS_InitStatsInfoCtx(ucInstance);
     }
 
@@ -89,7 +89,7 @@ VOS_VOID ADS_UL_StopRptStatsInfoTimer(VOS_VOID)
     {
         if (VOS_FALSE == ADS_UL_IsAnyQueueExist(ucInsIndex))
         {
-            ADS_StopTimer(ACPU_PID_ADS_UL, TI_ADS_RPT_STATS_INFO);
+            ADS_StopTimer(ACPU_PID_ADS_UL, TI_ADS_RPT_STATS_INFO, ADS_TIMER_STOP_CAUSE_USER);
         }
     }
 }
@@ -122,6 +122,9 @@ VOS_UINT32 ADS_UL_SendPacket(
     /* 增加上行接收数据统计个数 */
     ADS_DBG_RECV_UL_PKT_NUM(ucInstanceIndex, 1);
 
+    /* 流量统计 */
+    ADS_ULFlowAdd(ucInstanceIndex, pstData->len);
+
     /* 追踪上行接收数据 */
     ADS_MNTN_TraceRcvUlData();
 
@@ -139,6 +142,8 @@ VOS_UINT32 ADS_UL_SendPacket(
 
     return VOS_OK;
 }
+
+
 VOS_UINT32 ADS_UL_SendPacketEx(
     IMM_ZC_STRU                        *pstData,
     ADS_PKT_TYPE_ENUM_UINT8             enIpType,
@@ -170,6 +175,9 @@ VOS_UINT32 ADS_UL_SendPacketEx(
     /* 增加上行接收数据统计个数 */
     ADS_DBG_RECV_UL_PKT_NUM(ucInstanceIndex, 1);
 
+    /* 流量统计 */
+    ADS_ULFlowAdd(ucInstanceIndex, pstData->len);
+
     /* 追踪上行接收数据 */
     ADS_MNTN_TraceRcvUlData();
 
@@ -187,6 +195,8 @@ VOS_UINT32 ADS_UL_SendPacketEx(
     return VOS_OK;
 
 }
+
+
 IMM_ZC_STRU* ADS_UL_GetInstanceNextQueueNode(
     VOS_UINT8                           ucInstanceIndex,
     VOS_UINT8                          *pucRabId
@@ -210,7 +220,7 @@ IMM_ZC_STRU* ADS_UL_GetInstanceNextQueueNode(
            需跳过后面所有无效队列，继续从头查找 */
         if (VOS_NULL_PTR == ADS_UL_GET_QUEUE_LINK_INFO(ucInstanceIndex, *pucCurIndex))
         {
-            i += ADS_RAB_NUM_MAX - (*pucCurIndex + 1);
+            i += ADS_RAB_NUM_MAX - (*pucCurIndex + 1U);
 
             *pucCurIndex = 0;
 
@@ -297,7 +307,7 @@ IMM_ZC_STRU* ADS_UL_GetNextQueueNode(
     *pucInstanceIndex = ucCurInstanceIndex;
 
     /* 记录下次从哪个实例中去数据 */
-    pstAdsCtx->ucAdsCurInstanceIndex = (ucCurInstanceIndex + 1) % ADS_INSTANCE_MAX_NUM;
+    pstAdsCtx->ucAdsCurInstanceIndex = (ucCurInstanceIndex + 1U) % ADS_INSTANCE_MAX_NUM;
 
     return pstNode;
 }
@@ -468,12 +478,20 @@ VOS_VOID ADS_UL_SetMaxQueueLength(
 VOS_VOID ADS_UL_ConfigBD(VOS_UINT32 ulBdNum)
 {
     VOS_UINT32                          ulCnt;
-    BSP_S32                             lRslt;
+    VOS_INT32                           lRslt;
     VOS_UINT8                           ucRabId;
     IMM_ZC_STRU                        *pstImmZcNode;
     IPF_CONFIG_ULPARAM_S               *pstIpfConfigUlParam;
     VOS_UINT8                           ucInstanceIndex;
     VOS_UINT32                          i;
+#ifdef CONFIG_ARM64
+    struct device                       dev;
+    VOS_UINT64                          dma_mask = 0xffffffffULL;
+
+    VOS_MemSet(&dev, 0, (VOS_SIZE_T)sizeof(dev));
+
+    dev.dma_mask = &(dma_mask);
+#endif
 
     for (ulCnt = 0; ulCnt < ulBdNum; ulCnt++)
     {
@@ -489,7 +507,7 @@ VOS_VOID ADS_UL_ConfigBD(VOS_UINT32 ulBdNum)
         /* 获取配置IPF的BD信息 */
         pstIpfConfigUlParam = ADS_UL_GET_BD_CFG_PARA_PTR(ulCnt);
 
-        pstIpfConfigUlParam->u32Data      = (VOS_UINT32)virt_to_phys((VOS_UINT32 *)pstImmZcNode->data);
+        pstIpfConfigUlParam->u32Data      = (VOS_UINT32)virt_to_phys((VOS_VOID *)pstImmZcNode->data);
 
         pstIpfConfigUlParam->u16Len       = (VOS_UINT16)pstImmZcNode->len;
         pstIpfConfigUlParam->u16UsrField1 = (VOS_UINT16)ADS_UL_BUILD_BD_USER_FIELD_1(ucInstanceIndex, ucRabId);
@@ -523,7 +541,12 @@ VOS_VOID ADS_UL_ConfigBD(VOS_UINT32 ulBdNum)
         pstIpfConfigUlParam->u16Attribute = (VOS_UINT16)ADS_UL_BUILD_BD_ATTRIBUTE(VOS_FALSE, IPF_MODE_FILTERANDTRANS, ADS_UL_GET_BD_FC_HEAD(ucInstanceIndex));
 
         /* 需要将数据写回DDR，IPF从DDR中读数据 */
+
+#ifdef CONFIG_ARM64
+        ADS_CACHE_FLUSH_WITH_DEV(&dev, pstImmZcNode->data, pstIpfConfigUlParam->u16Len);
+#else
         ADS_CACHE_FLUSH(pstImmZcNode->data, pstIpfConfigUlParam->u16Len);
+#endif
 
         /* 将已配置的BD源内存保存到源内存队列 */
         ADS_UL_SaveIpfUlSrcMem(pstImmZcNode);
@@ -584,7 +607,7 @@ VOS_VOID ADS_UL_ProcIpfFailConfig(
 VOS_VOID ADS_UL_ConfigBD(VOS_UINT32 ulBdNum)
 {
     VOS_UINT32                          ulCnt;
-    BSP_S32                             lRslt;
+    VOS_INT32                           lRslt;
     VOS_UINT8                           ucRabId;
     IMM_ZC_STRU                        *pstImmZcNode;
     IPF_CONFIG_ULPARAM_S               *pstIpfConfigUlParam;
@@ -615,7 +638,7 @@ VOS_VOID ADS_UL_ConfigBD(VOS_UINT32 ulBdNum)
         /* 获取配置IPF的BD信息 */
         pstIpfConfigUlParam = ADS_UL_GET_BD_CFG_PARA_PTR(ulCnt);
 
-        pstIpfConfigUlParam->u32Data      = (VOS_UINT32)TTF_VIRT_TO_PHY((VOS_UINT32)pstImmZcNode->data);
+        pstIpfConfigUlParam->u32Data      = (VOS_UINT32)TTF_VIRT_TO_PHY((VOS_VOID *)pstImmZcNode->data);
         /* 上行只过滤不搬移，源地址和目的地址相同 */
         pstIpfConfigUlParam->u32DesAddr   = pstIpfConfigUlParam->u32Data;
         pstIpfConfigUlParam->u16Len       = (VOS_UINT16)pstImmZcNode->len;
@@ -726,7 +749,7 @@ VOS_VOID ADS_UL_ProcLinkData(VOS_VOID)
             break;
         }
         /* 当前队列中有数据，但是需要继续攒包 */
-        else if (ulAllUlQueueDataNum < ADS_UL_SEND_DATA_NUM_THREDHOLD)
+        else if (ulAllUlQueueDataNum <= ADS_UL_SEND_DATA_NUM_THREDHOLD)
         {
             ADS_StartTimer(ACPU_PID_ADS_UL, TI_ADS_UL_SEND, ADS_UL_GET_PROTECT_TIMER_LEN());
 
@@ -765,7 +788,7 @@ VOS_VOID ADS_UL_SendCdsStopSendDataRsp(
 
     PS_MEM_SET((VOS_INT8 *)pstStopSendDataRsp + VOS_MSG_HEAD_LENGTH,
                0x00,
-               sizeof(CDS_ADS_STOP_SENDDATA_RSP_STRU) - VOS_MSG_HEAD_LENGTH);
+               (VOS_SIZE_T)(sizeof(CDS_ADS_STOP_SENDDATA_RSP_STRU) - VOS_MSG_HEAD_LENGTH));
 
     /*填写消息内容*/
     pstStopSendDataRsp->ulReceiverPid = UEPS_PID_CDS;
@@ -806,7 +829,7 @@ VOS_VOID ADS_UL_SendCdsStartSendDataRsp(
 
     PS_MEM_SET((VOS_INT8 *)pstStartSendDataRsp + VOS_MSG_HEAD_LENGTH,
                0x00,
-               sizeof(CDS_ADS_START_SENDDATA_RSP_STRU) - VOS_MSG_HEAD_LENGTH);
+               (VOS_SIZE_T)(sizeof(CDS_ADS_START_SENDDATA_RSP_STRU) - VOS_MSG_HEAD_LENGTH));
 
     /*填写消息内容*/
     pstStartSendDataRsp->ulReceiverPid = UEPS_PID_CDS;
@@ -847,7 +870,7 @@ VOS_VOID ADS_UL_SendCdsClearDataRsp(
 
     PS_MEM_SET((VOS_INT8 *)pstClearDataRsp + VOS_MSG_HEAD_LENGTH,
                0x00,
-               sizeof(CDS_ADS_CLEAR_DATA_RSP_STRU) - VOS_MSG_HEAD_LENGTH);
+               (VOS_SIZE_T)(sizeof(CDS_ADS_CLEAR_DATA_RSP_STRU) - VOS_MSG_HEAD_LENGTH));
 
     /* 填写消息内容 */
     pstClearDataRsp->ulReceiverPid = UEPS_PID_CDS;
@@ -995,7 +1018,7 @@ VOS_UINT32 ADS_UL_RcvCdsStopSendDataInd(MsgBlock *pMsg)
     /* 所有承载都不允许发送，停止ADS_UL_SEND_TIMER定时器 */
     if (VOS_TRUE == ADS_UL_IsAllRabNotSndPermitFlg())
     {
-        ADS_StopTimer(ACPU_PID_ADS_UL, TI_ADS_UL_SEND);
+        ADS_StopTimer(ACPU_PID_ADS_UL, TI_ADS_UL_SEND, ADS_TIMER_STOP_CAUSE_USER);
     }
 
     /* 回复ID_CDS_ADS_STOP_SENDDATA_RSP消息 */
@@ -1107,7 +1130,7 @@ VOS_UINT32 ADS_UL_RcvCdsIpPacketMsg(MsgBlock *pMsg)
 
     PS_MEM_SET((VOS_INT8 *)pstAdsNdisDataInd + VOS_MSG_HEAD_LENGTH,
                0x00,
-               sizeof(ADS_NDIS_DATA_IND_STRU) - VOS_MSG_HEAD_LENGTH);
+               (VOS_SIZE_T)(sizeof(ADS_NDIS_DATA_IND_STRU) - VOS_MSG_HEAD_LENGTH));
 
     /* 填写消息内容 */
     pstAdsNdisDataInd->ulReceiverPid  = PS_PID_APP_NDIS;
@@ -1177,7 +1200,7 @@ VOS_UINT32 ADS_UL_RcvCcpuResetStartInd(
     /* 停止所有启动的定时器 */
     for (ucTiIndex = 0; ucTiIndex < ADS_MAX_TIMER_NUM; ucTiIndex++)
     {
-        ADS_StopTimer(ACPU_PID_ADS_UL, ucTiIndex);
+        ADS_StopTimer(ACPU_PID_ADS_UL, ucTiIndex, ADS_TIMER_STOP_CAUSE_USER);
     }
 
     /* 初始化每个实例的上下文 */
@@ -1289,6 +1312,51 @@ VOS_VOID ADS_UL_RcvTiRptStatsInfoExpired(
 
 
 
+VOS_VOID ADS_UL_RcvTiDataStatExpired(
+    VOS_UINT32                          ulTimerName,
+    VOS_UINT32                          ulParam
+)
+{
+    VOS_UINT32                          ulStatPktNum;
+
+    ulStatPktNum = ADS_UL_GET_STAT_PKT_NUM();
+
+    /* 根据数据包个数调整赞包门限 */
+    if (ulStatPktNum < ADS_UL_GET_WATER_LEVEL_ONE())
+    {
+        ADS_UL_SET_SEND_DATA_NUM_THREDHOLD(ADS_UL_DATA_THRESHOLD_ONE);
+        ADS_DBG_UL_LEVEL_ONE_CNT(1);
+    }
+    else if (ulStatPktNum <  ADS_UL_GET_WATER_LEVEL_TWO())
+    {
+        ADS_UL_SET_SEND_DATA_NUM_THREDHOLD(ADS_UL_DATA_THRESHOLD_TWO);
+        ADS_DBG_UL_LEVEL_TWO_CNT(1);
+    }
+    else if (ulStatPktNum <  ADS_UL_GET_WATER_LEVEL_THREE())
+    {
+        ADS_UL_SET_SEND_DATA_NUM_THREDHOLD(ADS_UL_DATA_THRESHOLD_THREE);
+        ADS_DBG_UL_LEVEL_THREE_CNT(1);
+    }
+    else
+    {
+        ADS_UL_SET_SEND_DATA_NUM_THREDHOLD(ADS_UL_DATA_THRESHOLD_FOUR);
+        ADS_DBG_UL_LEVEL_FOUR_CNT(1);
+    }
+
+    /* 100ms内没有数据包则该定时器不再启动 */
+    if (0 != ulStatPktNum)
+    {
+        /* 重新启动上行统计定时器 */
+        ADS_StartTimer(ACPU_PID_ADS_UL, TI_ADS_UL_DATA_STAT, ADS_UL_GET_STAT_TIMER_LEN());
+    }
+
+    /* 清空统计包的个数 */
+    ADS_UL_CLR_STAT_PKT_NUM();
+
+    return;
+}
+
+
 VOS_UINT32 ADS_UL_RcvTafMsg(MsgBlock *pMsg)
 {
     MSG_HEADER_STRU                    *pstMsg;
@@ -1349,7 +1417,7 @@ VOS_UINT32 ADS_UL_RcvTimerMsg(MsgBlock *pMsg)
     pstTimerMsg = (REL_TIMER_MSG *)pMsg;
 
     /* 停止该定时器 */
-    ADS_StopTimer(ACPU_PID_ADS_UL, pstTimerMsg->ulName);
+    ADS_StopTimer(ACPU_PID_ADS_UL, pstTimerMsg->ulName, ADS_TIMER_STOP_CAUSE_TIMEOUT);
 
     switch (pstTimerMsg->ulName)
     {
@@ -1366,6 +1434,10 @@ VOS_UINT32 ADS_UL_RcvTimerMsg(MsgBlock *pMsg)
 
         case TI_ADS_RPT_STATS_INFO:
             ADS_UL_RcvTiRptStatsInfoExpired(pstTimerMsg->ulName, pstTimerMsg->ulPara);
+            break;
+
+        case TI_ADS_UL_DATA_STAT:
+            ADS_UL_RcvTiDataStatExpired(pstTimerMsg->ulName, pstTimerMsg->ulPara);
             break;
 
         default:

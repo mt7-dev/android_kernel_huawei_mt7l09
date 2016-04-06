@@ -2,6 +2,15 @@
 # Makefile for multifunction miscellaneous devices
 #
 
+ifneq ($(TARGET_BUILD_VARIANT),user)
+EXTRA_CFLAGS += -DENABLE_HI6402_IRQ_DEBUG
+endif
+
+EXTRA_CFLAGS 	+= -I$(BALONG_TOPDIR)/include/drv/
+EXTRA_CFLAGS 	+= -I$(BALONG_TOPDIR)/modem/drv/common/include/
+EXTRA_CFLAGS 	+= -I$(BALONG_TOPDIR)/config/product/$(OBB_PRODUCT_NAME)/config/
+EXTRA_CFLAGS 	+= -I$(BALONG_TOPDIR)/platform/$(CFG_PLATFORM)/soc/
+
 88pm860x-objs			:= 88pm860x-core.o 88pm860x-i2c.o
 obj-$(CONFIG_MFD_88PM860X)	+= 88pm860x.o
 obj-$(CONFIG_MFD_88PM800)	+= 88pm800.o 88pm80x.o
@@ -157,7 +166,12 @@ obj-$(CONFIG_VEXPRESS_CONFIG)	+= vexpress-config.o vexpress-sysreg.o
 obj-$(CONFIG_VEXPRESS_SPC)	+= vexpress-spc.o
 obj-$(CONFIG_MFD_RETU)		+= retu-mfd.o
 obj-$(CONFIG_MFD_AS3711)	+= as3711.o
-obj-$(CONFIG_MFD_HI6421_PMIC)		+= hisi_hi6421v300.o
-obj-$(CONFIG_REGULATOR_HI3630_CORE)		+= hisi_hi3630.o
+obj-$(CONFIG_HI3XXX_HI6421V300_PMIC)		+= hi3xxx_hi6421v300.o
+obj-$(CONFIG_HI3XXX_HI6421V300_PMIC)		+= hi3xxx_pmic_mntn.o
+obj-$(CONFIG_HISI_HI6XXX_PMIC)		+= hi6xxx_pmic.o
+obj-$(CONFIG_HISI_HI6XXX_PMIC)		+= hi6xxx_pmic_mntn.o
+obj-$(CONFIG_HI3XXX_HI3630_CORE)		+= hi3xxx_hi3630.o
 obj-$(CONFIG_MFD_HI6401_IRQ)	+= hi6401_irq.o
+obj-$(CONFIG_MFD_HI6402_IRQ)	+= hi6402_irq.o
+obj-$(CONFIG_MFD_HI6402_IRQ)    += hi6402es_irq.o
 obj-$(CONFIG_MFD_HI3630_ASP_IRQ)	+= hi3630_asp_irq.o

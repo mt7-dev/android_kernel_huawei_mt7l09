@@ -92,9 +92,8 @@ void show_ilockdep_info(struct task_struct *t)
 		pr_err(FORMAT_LOCKING, (char *)ilockdep_lock->locking,
 			ilockdep_lock->locking_name);
 
-	if (ilockdep_lock->depth <= 0) {
-		pr_err("show_ilockdep_info: locked depth:%d.\n",
-			ilockdep_lock->depth);
+	if (ilockdep_lock->depth > 0) {
+		pr_err("---show_ilockdep_info: depth < 0.\n");
 		return;
 	}
 	pr_err("locked:\n");

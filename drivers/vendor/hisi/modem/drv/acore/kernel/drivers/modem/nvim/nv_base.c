@@ -151,7 +151,7 @@ u32 bsp_nvm_get_nvidlist(NV_LIST_INFO_STRU*  nvlist)
 {
     u32 i;
     struct nv_ctrl_file_info_stru* ctrl_info = (struct nv_ctrl_file_info_stru*)NV_GLOBAL_CTRL_INFO_ADDR;
-    struct nv_ref_data_info_stru* ref_info   = (struct nv_ref_data_info_stru*)(NV_GLOBAL_CTRL_INFO_ADDR+NV_GLOBAL_CTRL_INFO_SIZE\
+    struct nv_ref_data_info_stru* ref_info   = (struct nv_ref_data_info_stru*)((unsigned long)NV_GLOBAL_CTRL_INFO_ADDR+NV_GLOBAL_CTRL_INFO_SIZE\
         +NV_GLOBAL_FILE_ELEMENT_SIZE*ctrl_info->file_num);
 
     if(NULL == nvlist)
@@ -270,7 +270,14 @@ u32 bsp_nvm_flushEx(u32 off,u32 len,u32 itemid)
     FILE* fp = NULL;
     struct nv_global_ddr_info_stru* ddr_info = (struct nv_global_ddr_info_stru*)NV_GLOBAL_INFO_ADDR;
 
-    nv_debug(NV_API_FLUSH,0,0,0,0);
+    nv_debug(NV_API_FLUSH,0,off,len,itemid);
+    if((off+len) > (ddr_info->file_len))
+    {
+        nv_debug(NV_API_FLUSH,1,off,len,ddr_info->file_len);
+        goto nv_flush_err;
+    }
+
+
     if(nv_file_access((s8*)NV_IMG_PATH,0))
     {
         fp = nv_file_open((s8*)NV_IMG_PATH,(s8*)NV_FILE_WRITE);
@@ -284,23 +291,17 @@ u32 bsp_nvm_flushEx(u32 off,u32 len,u32 itemid)
     if(NULL == fp)
     {
         ret = BSP_ERR_NV_NO_FILE;
-        nv_debug(NV_API_FLUSH,1,ret,0,0);
+        nv_debug(NV_API_FLUSH,2,ret,0,0);
         goto nv_flush_err;
-    }
-    if((off+len) > (ddr_info->file_len))
-    {
-        off = 0;
-        len = ddr_info->file_len;
     }
 
     (void)nv_file_seek(fp,(s32)off,SEEK_SET);/*jump to write*/
-
     ret = (u32)nv_file_write((u8*)NV_GLOBAL_CTRL_INFO_ADDR+off,1,len,fp);
 
     nv_file_close(fp);
     if(ret != len)
     {
-        nv_debug(NV_API_FLUSH,2,0,ret,len);
+        nv_debug(NV_API_FLUSH,3,0,ret,len);
         ret = BSP_ERR_NV_WRITE_FILE_FAIL;
         goto nv_flush_err;
     }
@@ -318,8 +319,9 @@ u32 bsp_nvm_flush(void)
 {
     u32 ret;
     struct nv_global_ddr_info_stru* ddr_info = (struct nv_global_ddr_info_stru*)NV_GLOBAL_INFO_ADDR;
+    struct nv_ctrl_file_info_stru* ctrl_info = (struct nv_ctrl_file_info_stru*)NV_GLOBAL_CTRL_INFO_ADDR;
 
-    ret = bsp_nvm_flushEx(0,ddr_info->file_len,NV_ERROR);
+    ret = bsp_nvm_flushEx(ctrl_info->ctrl_size,(ddr_info->file_len-ctrl_info->ctrl_size),NV_ERROR);
     if(ret)
     {
         return ret;
@@ -351,7 +353,7 @@ u32 bsp_nvm_flushEn(void)
     fp = NULL;
     if(ret != ddr_info->file_len)
     {
-        nv_debug(NV_API_FLUSH,2,(u32)fp,ret,ddr_info->file_len);
+        nv_debug(NV_API_FLUSH,2,0,ret,ddr_info->file_len);
         ret = BSP_ERR_NV_WRITE_FILE_FAIL;
         goto nv_flush_err;
     }
@@ -368,6 +370,7 @@ u32 bsp_nvm_flushSys(u32 itemid)
 {
     u32 ret = NV_ERROR;
     FILE* fp = NULL;
+    u32 ulTotalLen = 0;
     struct nv_global_ddr_info_stru* ddr_info = (struct nv_global_ddr_info_stru*)NV_GLOBAL_INFO_ADDR;
 
     nv_create_flag_file((s8*)NV_SYS_FLAG_PATH);
@@ -387,12 +390,18 @@ u32 bsp_nvm_flushSys(u32 itemid)
         ret = BSP_ERR_NV_NO_FILE;
         goto nv_flush_err;
     }
-    ret = (u32)nv_file_write((u8*)NV_GLOBAL_CTRL_INFO_ADDR,1,ddr_info->file_len,fp);
-
+    ulTotalLen = ddr_info->file_len;
+#if defined(FEATURE_NV_FLASH_ON)
+    /*在nvdload分区文件末尾置标志0xabcd8765*/
+    *( unsigned int* )( (u8*)NV_GLOBAL_CTRL_INFO_ADDR + ddr_info->file_len )
+        = ( unsigned int )NV_FILE_TAIL_MAGIC_NUM;
+    ulTotalLen += sizeof(unsigned int);
+#endif
+    ret = (u32)nv_file_write((u8*)NV_GLOBAL_CTRL_INFO_ADDR,1,ulTotalLen,fp);
     nv_file_close(fp);
-    if(ret != ddr_info->file_len)
+    if(ret != ulTotalLen)
     {
-        nv_debug(NV_FUN_FLUSH_SYS,3,ret,ddr_info->file_len,0);
+        nv_debug(NV_FUN_FLUSH_SYS,3,ret,ulTotalLen,0);
         ret = BSP_ERR_NV_WRITE_FILE_FAIL;
         goto nv_flush_err;
     }
@@ -405,9 +414,6 @@ nv_flush_err:
     nv_help(NV_FUN_FLUSH_SYS);
     return ret;
 }
-
-
-
 u32 bsp_nvm_backup(void)
 {
     u32 ret = NV_ERROR;
@@ -894,6 +900,7 @@ s32 bsp_nvm_icc_task(void* parm)
     /* coverity[var_decl] */
     struct nv_icc_stru icc_cnf;
     u32 chanid;
+    int len = 0;
 
 
     /* coverity[no_escape] */
@@ -932,9 +939,11 @@ s32 bsp_nvm_icc_task(void* parm)
 
         g_nv_ctrl.task_proc_count ++;
 
-        memcpy(&icc_req,g_nv_ctrl.nv_icc_buf,sizeof(icc_req));
         /*lint -save -e578 -e530*/
-        nv_debug_trace(&icc_req, sizeof(icc_req));
+        len = sizeof(icc_req);
+        memcpy(&icc_req,g_nv_ctrl.nv_icc_buf,len);
+
+        nv_debug_trace(&icc_req, len);
         /*lint -restore +e578 +e530*/
         if(icc_req.msg_type == NV_ICC_REQ)
         {
@@ -1199,7 +1208,7 @@ s32 bsp_nvm_kernel_init(void)
 
     INIT_LIST_HEAD(&g_nv_ctrl.stList);
 /*lint -save -e740*/
-    ret = (u32)osl_task_init("drv_nv",15,1024,bsp_nvm_icc_task,NULL,(u32*)&g_nv_ctrl.task_id);
+    ret = (u32)osl_task_init("drv_nv",15,1024,bsp_nvm_icc_task,NULL,(void*)&g_nv_ctrl.task_id);
     if(ret)
     {
         nv_mntn_record("[%s]:nv task init err! ret :0x%x\n",__func__,ret);
@@ -1222,7 +1231,7 @@ s32 bsp_nvm_kernel_init(void)
         g_nv_ctrl.mid_prio = 20;
         nv_printf("read 0x%x fail,use default value! ret :0x%x\n",NV_ID_MSP_FLASH_LESS_MID_THRED,ret);
     }
-    nvchar_init();
+    /*nvchar_init();*/
     nv_mntn_record("Balong nv init ok!\n");
     return 0;
 
@@ -1234,7 +1243,6 @@ out:
 }
 
 #else
-
 u32 bsp_nvm_reload(void)
 {
     u32 ret;
@@ -1242,7 +1250,7 @@ u32 bsp_nvm_reload(void)
     u32 datalen;
     struct nv_global_ddr_info_stru* ddr_info = (struct nv_global_ddr_info_stru*)NV_GLOBAL_INFO_ADDR;
 
-    nv_debug(NV_FUN_MEM_INIT,0,NV_GLOBAL_INFO_ADDR,NV_GLOBAL_CTRL_INFO_ADDR,0);
+    nv_debug(NV_FUN_MEM_INIT,0,(unsigned long)NV_GLOBAL_INFO_ADDR,(unsigned long)NV_GLOBAL_CTRL_INFO_ADDR,0);
 
     /*重新加载之前清理各分区状态位*/
     ddr_info->mem_file_type &= ~(0x1 << NV_MEM_DATA_NVSYS_IMG);
@@ -1524,7 +1532,7 @@ s32 bsp_nvm_kernel_init(void)
     nv_flush_cache((void*)NV_GLOBAL_INFO_ADDR, (u32)NV_GLOBAL_INFO_SIZE);
     INIT_LIST_HEAD(&g_nv_ctrl.stList);
 /*lint -save -e740*/
-    ret = (u32)osl_task_init("drv_nv",15,1024,bsp_nvm_icc_task,NULL,(u32*)&g_nv_ctrl.task_id);
+    ret = (u32)osl_task_init("drv_nv",15,1024,bsp_nvm_icc_task,NULL,(void*)&g_nv_ctrl.task_id);
     if(ret)
     {
         nv_mntn_record("[%s]:nv task init err! ret :0x%x\n",__func__,ret);
@@ -1774,6 +1782,21 @@ void sc_file_copy(void)
         sc_sigle_file_copy(g_sc_path[i].new_path,g_sc_path[i].old_path);
     }
 }
+bool is_scNeedRestore(void)
+{
+    int i = 0;
+    int ret;
+    for(i = 0;i<12;i++)
+    {
+        ret = BSP_access(g_sc_path[i].new_path, 0);
+        if(ret)
+        {
+            printk("#############  %s is not exist!\n",g_sc_path[i].new_path);
+            return false;
+        }
+    }
+    return true;
+}
 /*lint -save -e537*/
 #include <linux/device.h>
 #include <linux/fs.h>
@@ -1903,10 +1926,16 @@ static int __init modem_nv_probe(struct platform_device *dev)
 
     sc_file_copy();
 
+    if(false == is_scNeedRestore())
+    {
+        nv_mntn_record("SC file is lost ,need to restore from factory!\n");
+        (void)sc_file_restore();
+    }
+
     ret = bsp_nvm_kernel_init();
 
     ret |= modemNv_ProcInit();
-    
+
     ret |= modemSc_ProcInit();
 
     BSP_SYNC_Give(SYNC_MODULE_NV);

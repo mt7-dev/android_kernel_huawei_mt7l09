@@ -4,7 +4,6 @@
 
 #ifndef PAGE_FLAGS_H
 #define PAGE_FLAGS_H
-
 #include <linux/types.h>
 #include <linux/bug.h>
 #include <linux/mmdebug.h>
@@ -72,6 +71,9 @@
  * SPARSEMEM_EXTREME with !SPARSEMEM_VMEMMAP).
  */
 enum pageflags {
+#ifdef CONFIG_HISI_MNTN
+	PG_memdump,		/* added for kernel dump. */
+#endif
 	PG_locked,		/* Page is locked. Don't touch. */
 	PG_error,
 	PG_referenced,
@@ -208,7 +210,9 @@ PAGEFLAG(Pinned, pinned) TESTSCFLAG(Pinned, pinned)	/* Xen */
 PAGEFLAG(SavePinned, savepinned);			/* Xen */
 PAGEFLAG(Reserved, reserved) __CLEARPAGEFLAG(Reserved, reserved)
 PAGEFLAG(SwapBacked, swapbacked) __CLEARPAGEFLAG(SwapBacked, swapbacked)
-
+#ifdef CONFIG_HISI_MNTN        
+PAGEFLAG(MemDump, memdump)   /*added for kernel dump*/
+#endif
 __PAGEFLAG(SlobFree, slob_free)
 
 /*

@@ -9,7 +9,6 @@ PS_COMM_SRC_FILES        := \
 	$(GUPSDIR)/comm/comm/DICC/Src/Dicc.c\
 	$(GUPSDIR)/comm/comm/DIPC/Src/PsDipc.c\
 	$(GUPSDIR)/comm/comm/MUX/Src/PsMux.c\
-	$(GUPSDIR)/comm/comm/MEMCTRL/Src/TTFMemCtrl.c\
 	$(GUPSDIR)/comm/comm/FLOWCTRL/Src/ACpuLoad.c\
 	$(GUPSDIR)/comm/comm/FLOWCTRL/Src/Fc.c\
 	$(GUPSDIR)/comm/comm/FLOWCTRL/Src/FcACore.c\
@@ -17,29 +16,13 @@ PS_COMM_SRC_FILES        := \
 	$(GUPSDIR)/comm/comm/IMM/Src/IMMmemMntn.c\
 	$(GUPSDIR)/comm/comm/IMM/Src/IMMmemRB.c\
 	$(GUPSDIR)/comm/comm/IMM/Src/IMMmemZC.c\
-	$(GUPSDIR)/comm/comm/PPP/Src/acf.c\
-	$(GUPSDIR)/comm/comm/PPP/Src/async.c\
-	$(GUPSDIR)/comm/comm/PPP/Src/auth.c\
-	$(GUPSDIR)/comm/comm/PPP/Src/chap.c\
-	$(GUPSDIR)/comm/comm/PPP/Src/hdlc.c\
-	$(GUPSDIR)/comm/comm/PPP/Src/ipcp.c\
-	$(GUPSDIR)/comm/comm/PPP/Src/lcp.c\
-	$(GUPSDIR)/comm/comm/PPP/Src/link.c\
-	$(GUPSDIR)/comm/comm/PPP/Src/pap.c\
 	$(GUPSDIR)/comm/comm/PPP/Src/ppp_atcmd.c\
-	$(GUPSDIR)/comm/comm/PPP/Src/ppp_fsm.c\
 	$(GUPSDIR)/comm/comm/PPP/Src/ppp_init.c\
 	$(GUPSDIR)/comm/comm/PPP/Src/ppp_input.c\
-	$(GUPSDIR)/comm/comm/PPP/Src/ppp_mbuf.c\
-	$(GUPSDIR)/comm/comm/PPP/Src/ppp_public.c\
-	$(GUPSDIR)/comm/comm/PPP/Src/pppid.c\
-	$(GUPSDIR)/comm/comm/PPP/Src/proto.c\
-	$(GUPSDIR)/comm/comm/PPP/Src/throughput.c\
-	$(GUPSDIR)/comm/comm/PPP/Src/hdlc_hardware.c\
-	$(GUPSDIR)/comm/comm/PPP/Src/hdlc_software.c\
 	$(GUPSDIR)/comm/comm/NFEXT/IpsMntn.c\
 	$(GUPSDIR)/comm/comm/NFEXT/NetfilterEx.c\
 	$(GUPSDIR)/comm/comm/NFEXT/NetfilterExCtrl.c\
+	$(GUPSDIR)/comm/comm/HISOCKET/Src/hisocket.c\
 	$(TAFDIR)/comm/src/acore/ADS/Src/AdsCtx.c\
 	$(TAFDIR)/comm/src/acore/ADS/Src/AdsDownLink.c\
 	$(TAFDIR)/comm/src/acore/ADS/Src/AdsInit.c\
@@ -114,26 +97,31 @@ PS_COMM_SRC_FILES        := \
 	$(TAFDIR)/comm/src/acore/dms/src/dms_acm_at_tx.c\
 	$(TAFDIR)/comm/src/acore/dms/src/dms_core.c\
 	$(TAFDIR)/comm/src/acore/dms/src/dms_debug.c\
-	$(TAFDIR)/comm/src/acore/dms/src/dms_ndis.c\
-	$(GUPSDIR)/comm/comm/HISOCKET/Src/hisocket.c\
+	$(TAFDIR)/comm/src/acore/dms/src/dms_ndis.c	
 
-
-ifeq ($(CFG_RAT_MODE),RAT_GU)
+ifeq ($(CFG_FEATURE_PPP),FEATURE_ON)
 PS_COMM_SRC_FILES        += \
-	$(GUPSDIR)/comm/comm/STL/Src/LUPQueue.c\
-	$(GUPSDIR)/comm/comm/NDIS/Src/PsNdis.c\
-	$(GUPSDIR)/comm/comm/NDIS/Src/Ipv4DhcpServer.c\
-	$(GUPSDIR)/comm/comm/ND/IPCOMM/Src/IpComm.c\
-	$(GUPSDIR)/comm/comm/ND/NDSERVER/Src/IpNdServer.c\
-    
+	$(GUPSDIR)/comm/comm/PPP/Src/acf.c\
+	$(GUPSDIR)/comm/comm/PPP/Src/async.c\
+	$(GUPSDIR)/comm/comm/PPP/Src/auth.c\
+	$(GUPSDIR)/comm/comm/PPP/Src/chap.c\
+	$(GUPSDIR)/comm/comm/PPP/Src/hdlc.c\
+	$(GUPSDIR)/comm/comm/PPP/Src/ipcp.c\
+	$(GUPSDIR)/comm/comm/PPP/Src/lcp.c\
+	$(GUPSDIR)/comm/comm/PPP/Src/link.c\
+	$(GUPSDIR)/comm/comm/PPP/Src/pap.c\
+	$(GUPSDIR)/comm/comm/PPP/Src/ppp_fsm.c\
+	$(GUPSDIR)/comm/comm/PPP/Src/ppp_mbuf.c\
+	$(GUPSDIR)/comm/comm/PPP/Src/ppp_public.c\
+	$(GUPSDIR)/comm/comm/PPP/Src/pppid.c\
+	$(GUPSDIR)/comm/comm/PPP/Src/proto.c\
+	$(GUPSDIR)/comm/comm/PPP/Src/throughput.c\
+	$(GUPSDIR)/comm/comm/PPP/Src/hdlc_hardware.c\
+	$(GUPSDIR)/comm/comm/PPP/Src/hdlc_software.c\
+	$(GUPSDIR)/comm/comm/MEMCTRL/Src/TTFMemCtrl.c
 endif
 
 ifeq ($(CFG_TTF_SKB_EXP),NO)
 PS_COMM_SRC_FILES        += \
-	$(GUPSDIR)/comm/comm/IMM/Src/IMMmem_PS.c\
-	
-    
+	$(GUPSDIR)/comm/comm/IMM/Src/IMMmem_PS.c   
 endif
-
-	
-

@@ -375,7 +375,7 @@ static struct dibx000_bandwidth_config xc3028_bw_config = {
 	0, 0, 1, 1, 0, /* misc: refdiv, bypclk_div, IO_CLK_en_core, ADClkSrc,
 			  modulo */
 	(3 << 14) | (1 << 12) | (524 << 0), /* sad_cfg: refsel, sel, freq_15k */
-	(1 << 25) | 5816102, /* ifreq = 5.200000 MHz */
+	(1 << 25) | 5816102,
 	20452225, /* timf */
 	30000000, /* xtal_hz */
 };
@@ -1117,7 +1117,7 @@ static struct dibx000_bandwidth_config dib807x_bw_config_12_mhz = {
 	0, 0, 1, 1, 2, /* misc: refdiv, bypclk_div, IO_CLK_en_core,
 			  ADClkSrc, modulo */
 	(3 << 14) | (1 << 12) | (599 << 0), /* sad_cfg: refsel, sel, freq_15k*/
-	(0 << 25) | 0, /* ifreq = 0.000000 MHz*/
+	(0 << 25) | 0,
 	18179755, /* timf*/
 	12000000, /* xtal_hz*/
 };

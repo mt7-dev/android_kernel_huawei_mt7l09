@@ -51,9 +51,9 @@ typedef enum tagBSP_DDR_TYPE_E
     BSP_DDR_TYPE_BUTTOM
 }BSP_DDR_TYPE_E;
 
-BSP_U32 BSP_GetIPBaseAddr(BSP_IP_TYPE_E enIPType);
+BSP_VOID* BSP_GetIPBaseAddr(BSP_IP_TYPE_E enIPType);
 #define DRV_GET_IP_BASE_ADDR(enIPType)  BSP_GetIPBaseAddr(enIPType)
-BSP_S32 BSP_GetMemAddrSize(BSP_DDR_TYPE_E enDdrType, BSP_U32 * addr, BSP_U32 * size);
+BSP_S32 BSP_GetMemAddrSize(BSP_DDR_TYPE_E enDdrType, void** addr, BSP_U32 * size);
 
 /* 需要查询的中断类型 */
 typedef enum tagBSP_INT_TYPE_E

@@ -111,10 +111,14 @@ config HW_SYSTEM_WR_PROTECT
 	bool "write protection function of system partitions."
 	depends on BLOCK
 	default n
-
 config BLOCK_COMPAT
 	bool
 	depends on BLOCK && COMPAT
 	default y
+
+config HISI_BLOCK_FREQUENCE_CONTROL
+	bool "add ddr frequence request base on block layer."
+	depends on BLOCK
+	default n
 
 source block/Kconfig.iosched

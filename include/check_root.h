@@ -1,6 +1,5 @@
 #ifndef _CHECK_ROOT_H_
 #define _CHECK_ROOT_H_
-
 #include <linux/fs.h>
 #include <linux/init.h>
 #include <linux/kernel.h>

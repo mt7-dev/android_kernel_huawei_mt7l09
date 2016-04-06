@@ -27,14 +27,30 @@
 #include <linux/seq_file.h>
 #include <linux/uaccess.h>
 #endif
-#ifdef CONFIG_HISI_RPROC
-#include <linux/huawei/hisi_rproc.h>
+#ifdef CONFIG_HI3XXX_RPROC
+#include <linux/hisi/hisi_rproc.h>
 #endif
 
 static DEFINE_MUTEX(tsens_mutex);
 
 #define TSENS_DRIVER_NAME	"hisi-tsens"
 static struct tsens_tm_device	*g_tmdev;
+
+#define CLUSTER0 				0
+#define CLUSTER1 				1
+#define GPU 					2
+#define MODEM 					3
+#define DDR 					4
+#define	TSENSOR_BUFFER_LENGTH	40
+
+char *hisi_tsensor_name[] = {
+	[CLUSTER0]			= "cluster0",
+	[CLUSTER1]			= "cluster1",
+	[GPU]			= "gpu",
+	[MODEM]			= "modem",
+	[DDR]			= "ddr",
+};
+
 
 /* Trips: warm and cool */
 enum tsens_trip_type {
@@ -78,7 +94,7 @@ struct tsens_context {
 	u32 		sensor_thermal_h;
 	u32 		sensor_thermal_l;
 };
-#ifdef CONFIG_HISI_RPROC
+#ifdef CONFIG_HI3XXX_RPROC
 enum {
 	TSENSOR_ENABLE = 0,
 	TSENSOR_DISABLE,
@@ -101,7 +117,12 @@ enum {
 #define TSENS_TEMP_END_VALUE		140/* 140 deg C */
 #define TSENS_ADC_START_VALUE		0
 #define TSENS_ADC_END_VALUE		255
+/*line -emacro(750,*)*/
+/*lint -e750*/
 #define ONE_DEGREE_VALUE		(180/255)/*degree C*/
+/*lint +e750*/
+/*line +emacro(750,*)*/
+
 
 static int tsens_tz_code_to_degc(int adc_val)
 {
@@ -143,7 +164,7 @@ static int hisi_tsens_cmd_send(struct tsens_tm_device_sensor *tm_sensor, int cmd
 {
 	int i, rc = 0;
 	u32 ack_buffer[2];
-	u32 tx_buffer[2];
+	u32 tx_buffer[2]={0};
 	int temperature;
 	int id;
 
@@ -225,7 +246,7 @@ static int hisi_tsens_mbox_notifier(struct notifier_block *nb, unsigned long len
 static int tsens_tz_get_temp(struct thermal_zone_device *thermal,
 			     unsigned long *temp)
 {
-#ifdef CONFIG_HISI_RPROC
+#ifdef CONFIG_HI3XXX_RPROC
 	struct tsens_tm_device_sensor *tm_sensor = thermal->devdata;
 
 	if (!tm_sensor || tm_sensor->mode != THERMAL_DEVICE_ENABLED || !temp)
@@ -278,7 +299,7 @@ static int tsens_tz_get_trip_type(struct thermal_zone_device *thermal,
 static int tsens_tz_activate_trip_type(struct thermal_zone_device *thermal,
 			int trip, enum thermal_trip_activation_mode mode)
 {
-#ifdef CONFIG_HISI_RPROC
+#ifdef CONFIG_HI3XXX_RPROC
 	struct tsens_tm_device_sensor *tm_sensor = thermal->devdata;
 	int ret;
 
@@ -335,7 +356,7 @@ static int tsens_tz_activate_trip_type(struct thermal_zone_device *thermal,
 static int tsens_tz_get_trip_temp(struct thermal_zone_device *thermal,
 				   int trip, unsigned long *temp)
 {
-#ifdef CONFIG_HISI_RPROC
+#ifdef CONFIG_HI3XXX_RPROC
 	struct tsens_tm_device_sensor *tm_sensor = thermal->devdata;
 
 	if (!tm_sensor || trip < 0 || !temp)
@@ -370,7 +391,7 @@ static int tsens_tz_get_trip_temp(struct thermal_zone_device *thermal,
 static int tsens_tz_set_trip_temp(struct thermal_zone_device *thermal,
 				   int trip, unsigned long temp)
 {
-#ifdef CONFIG_HISI_RPROC
+#ifdef CONFIG_HI3XXX_RPROC
 	struct tsens_tm_device_sensor *tm_sensor = thermal->devdata;
 	int ret;
 	int temperature;
@@ -532,7 +553,7 @@ static ssize_t dbg_control_tsens_set_value(struct file *filp, const char __user 
 	size_t count, loff_t *ppos)
 {
 	int rc = 0;
-#ifdef CONFIG_HISI_RPROC
+#ifdef CONFIG_HI3XXX_RPROC
 	struct tsens_tm_device_sensor *dbg_sensor = NULL;
 	char tmp[128] = {0};
 	long temperature, temp1, temp2, temp3, temp4;
@@ -753,6 +774,7 @@ static int  _tsens_register_thermal(void)
 	struct platform_device *pdev;
 	int rc = 0, i, j, k;
 	char name[18];
+	char *temp_buffer;
 
 	if (!g_tmdev) {
 		pr_err("TSENS early init not done!\n");
@@ -761,8 +783,16 @@ static int  _tsens_register_thermal(void)
 
 	pdev = g_tmdev->pdev;
 
+	temp_buffer = (char *)kmalloc(TSENSOR_BUFFER_LENGTH * sizeof(char), GFP_KERNEL);
+	if (!temp_buffer) {
+                pr_err("%s:Failed to alloc memory for temp buffer!\n", __func__);
+                return -ENOMEM;
+    }
+
 	for (i = 0, j = 0; i < g_tmdev->tsens_num_sensor; i++, j++) {
-		snprintf(name, sizeof(name), "tsens%d_tz_sensor", i);
+		memset(temp_buffer, 0, TSENSOR_BUFFER_LENGTH);
+		sprintf(temp_buffer, "%s", hisi_tsensor_name[i]);
+		snprintf(name, sizeof(name), temp_buffer, i);
 		g_tmdev->sensor[i].mode = THERMAL_DEVICE_ENABLED;
 		g_tmdev->sensor[i].sensor_num = i;
 		g_tmdev->sensor[i].tz_dev = thermal_zone_device_register(name,
@@ -774,6 +804,8 @@ static int  _tsens_register_thermal(void)
 			goto register_fail;
 		}
 	}
+	kfree(temp_buffer);
+	temp_buffer = NULL;
 
 	platform_set_drvdata(pdev, g_tmdev);
 	/*register tm sensor notify userspace work.*/
@@ -781,7 +813,7 @@ static int  _tsens_register_thermal(void)
 		INIT_WORK(&g_tmdev->sensor[k].work, notify_uspace_tsens_fn);
 	}
 
-#ifdef CONFIG_HISI_RPROC
+#ifdef CONFIG_HI3XXX_RPROC
 	g_tmdev->nb = kmalloc(sizeof(struct notifier_block), GFP_KERNEL);
 	if (!g_tmdev->nb) {
 		dev_err(&pdev->dev, "failed to get mbox notifier block !\n");
@@ -797,12 +829,14 @@ static int  _tsens_register_thermal(void)
 #endif
 
 	return 0;
-#ifdef CONFIG_HISI_RPROC
+#ifdef CONFIG_HI3XXX_RPROC
 mailbox_get_nb_fail:
 	kfree(g_tmdev->nb);
 mailbox_nb_malloc_fail:
 #endif
 register_fail:
+        kfree(temp_buffer);
+        temp_buffer = NULL;
 	for (i = 0; i < j; i++)
 		thermal_zone_device_unregister(g_tmdev->sensor[i].tz_dev);
 	return rc;
@@ -810,9 +844,13 @@ register_fail:
 
 static int  tsens_tm_remove(struct platform_device *pdev)
 {
+        int i;
 	struct tsens_tm_device *tmdev = platform_get_drvdata(pdev);
-	int i;
-#ifdef CONFIG_HISI_RPROC
+        if(tmdev == NULL){
+            return -1;
+        }
+
+#ifdef CONFIG_HI3XXX_RPROC
 	kfree(tmdev->nb);
 #endif
 	for (i = 0; i < tmdev->tsens_num_sensor; i++)

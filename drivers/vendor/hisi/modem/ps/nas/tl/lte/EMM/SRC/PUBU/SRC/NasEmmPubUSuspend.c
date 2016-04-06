@@ -224,7 +224,10 @@ VOS_VOID  NAS_EMM_ValidStateMsgMmcSuspendReq
 
     /* 记录挂起的参数: 挂起源 */
     NAS_EMM_SetSuspendOri(NAS_LMM_SYS_CHNG_ORI_MMC);
-
+    /* 清除挂起类型，解决问题:发生L2GU HO时,挂起类型置为HO,当HO失败回退到L时,由于挂起类型未被清除,
+        当L下发生丢网, MMC挂起LMM,LMM给ERABM发送ID_EMM_ERABM_SUSPEND_IND消息中携带的挂起类型为HO,
+        而ERABM在处理HO类型的挂起时会把所有承载的DRB状态状态置为挂起态,导致后续L上数传不通*/
+    NAS_EMM_SetSuspendType(LRRC_LMM_SYS_CHNG_TYPE_BUTT);
     /* 进入IDLE态*/
     /*NAS_EMM_MrrcChangeRrcStatusToIdle();*/
 
@@ -320,6 +323,39 @@ VOS_UINT32  NAS_EMM_PreProcMsgRrcSuspendRelCnf( MsgBlock * pMsg )
 
     return NAS_LMM_MSG_HANDLED;
 }
+/*****************************************************************************
+ Function Name   : NAS_EMM_PreProcMsgRrcSuspendRelCnf
+ Description     :
+ Input           : None
+ Output          : None
+ Return          : VOS_UINT32
+
+ History         :
+    1.HanLufeng 41410      2011-4-26  Draft Enact
+
+*****************************************************************************/
+VOS_VOID NAS_EMM_MsRrcConnEstInitRcvLrrcSuspendIndProc(MsgBlock * pMsg)
+{
+    VOS_UINT32                          ulMsgId = ID_LRRC_LMM_SUSPEND_IND;
+    LRRC_LMM_SUSPEND_IND_STRU          *pLrrcLmmSuspendInd;
+
+    pLrrcLmmSuspendInd = (LRRC_LMM_SUSPEND_IND_STRU *)pMsg;
+
+    if(   (LRRC_LMM_SYS_CHNG_TYPE_REDIR       == pLrrcLmmSuspendInd->enSysChngType)
+        || (LRRC_LMM_SYS_CHNG_TYPE_CCO_REVERSE == pLrrcLmmSuspendInd->enSysChngType) )
+    {   /* 建链过程，如果REDIRECT，或CCO_REVERSE, 则需要处理 */
+
+        NAS_LMM_IfEmmHasBeenPushedThenPop();
+        (VOS_VOID)NAS_EMM_RcvLrrcSuspendInd(ulMsgId, pMsg);
+    }
+    else
+    {   /* 如果是RESEL,则丢弃;
+           建链过程中，不会发生CCO, HO,*/
+        NAS_EMM_PUBU_LOG_NORM("NAS_EMM_MsRrcConnEstInitRcvLrrcSuspendIndProc: RESEL ");
+    }
+
+}
+
 
 
 /*****************************************************************************
@@ -374,20 +410,7 @@ VOS_UINT32  NAS_EMM_PreProcMsgRrcSuspendInd( MsgBlock * pMsg )
                 break;
 
         case    EMM_MS_RRC_CONN_EST_INIT:
-
-                if(   (LRRC_LMM_SYS_CHNG_TYPE_REDIR       == pLrrcLmmSuspendInd->enSysChngType)
-                   || (LRRC_LMM_SYS_CHNG_TYPE_CCO_REVERSE == pLrrcLmmSuspendInd->enSysChngType) )
-                {   /* 建链过程，如果REDIRECT，或CCO_REVERSE, 则需要处理 */
-
-                    NAS_LMM_IfEmmHasBeenPushedThenPop();
-                    ulRslt = NAS_EMM_RcvLrrcSuspendInd(ulMsgId, pMsg);
-                    (VOS_VOID)ulRslt;
-                }
-                else
-                {   /* 如果是RESEL,则丢弃;
-                       建链过程中，不会发生CCO, HO,*/
-                    NAS_EMM_PUBU_LOG_NORM("NAS_EMM_PreProcMsgRrcSuspendInd: RESEL ");
-                }
+                NAS_EMM_MsRrcConnEstInitRcvLrrcSuspendIndProc(pMsg);
 
                 break;
 
@@ -442,6 +465,8 @@ VOS_UINT32  NAS_EMM_PreProcMsgRrcSuspendInd( MsgBlock * pMsg )
 
     return NAS_LMM_MSG_HANDLED;
 }
+
+
 VOS_UINT32  NAS_EMM_RcvLrrcSuspendInd( VOS_UINT32  ulMsgId,
                                   const VOS_VOID   *pMsgStru  )
 {
@@ -485,8 +510,6 @@ VOS_UINT32  NAS_EMM_RcvLrrcSuspendInd( VOS_UINT32  ulMsgId,
 
     return NAS_LMM_MSG_HANDLED;
 }
-
-
 VOS_UINT32  NAS_EMM_MsSuspendSsRrcOriWaitMmcSuspendMmcSusRsp(VOS_UINT32        ulMsgId,
                                                              const VOS_VOID   *pMsgStru   )
 {
@@ -629,10 +652,22 @@ VOS_UINT32  NAS_EMM_MsSuspendSsRrcOriWaitOtherMsgMmcSuspendRelReq
     NAS_LMM_EMMC_LOG1_NORM("NAS_EMM_MsSuspendSsRrcOriWaitOtherMsgMmcSuspendRelReq.uspendRelCause =",
                             NAS_EMM_SUSPEND_REL_CAUSE_MMC_ORI);
 
+    /* 停止定时器 */
+    NAS_LMM_StopStateTimer(TI_NAS_EMM_RRCORI_WAIT_OTHER_SUSPEND_RSP_TIMER);
+
+    /* 清除此次挂起的上层响应记录，恢复过程将使用 */
+    NAS_EMM_GetUplayerCount() = NAS_EMM_SUSPEND_UPLAYER_NUM_INITVALUE;
+
+    /* 发送 LRRC_LMM_SUSPEND_RSP*/
+    NAS_EMM_SendLrrcSuspendRsp(LRRC_LNAS_SUCC);
 
     /*发送LRRC_LMM_SUSPEND_REL_REQ消息*/
     NAS_EMM_SndLrrcSuspendRelReq();
 
+    /* 直接转到EMM_SS_SUSPEND_WAIT_END态等待RESUME IND消息 */
+    NAS_EMM_PUBU_FSMTranState(      EMM_MS_SUSPEND,
+                                    EMM_SS_SUSPEND_WAIT_END,
+                                    TI_NAS_EMM_WAIT_SUSPEND_END_TIMER);
     return NAS_LMM_MSG_HANDLED;
 }
 VOS_UINT32  NAS_EMM_MsSuspendSsRrcOriWaitOtherMsgMmcDetachReq
@@ -673,8 +708,10 @@ VOS_UINT32  NAS_EMM_MsSuspendSsRrcOriWaitOtherMsgMmcDetachReq
     /* 如果是CSFB导致的挂起，中止CSFB和挂起回退到L主模 */
     if(LRRC_LMM_SUS_CAUSE_CSFB == NAS_EMM_GetSuspendCause())
     {
+        NAS_EMM_SetCsfbProcedureFlag(PS_FALSE);
+
         /* 通知MM中止CSFB */
-        NAS_EMM_MmSendCsfbSerEndInd(MM_LMM_CSFB_SERVICE_RSLT_FAILURE);
+        NAS_EMM_MmSendCsfbSerEndInd(MM_LMM_CSFB_SERVICE_RSLT_MMC_DETACH_FAIL, NAS_LMM_CAUSE_NULL);
 
         /* 只有CSFB的场景在这里可能收到CS DETACH，其它场景的CS DETACH预处理中已经处理 */
         if(MMC_LMM_MO_DET_CS_ONLY == pstAppDetReq->ulDetachType)
@@ -878,15 +915,13 @@ VOS_UINT32  NAS_EMM_MsSuspendSsWaitEndMsgMmcResumeNotify(
     {
         NAS_EMM_SendDetRslt(MMC_LMM_DETACH_RSLT_SUCCESS);
         NAS_EMM_EsmSendStatResult(EMM_ESM_ATTACH_STATUS_DETACHED);
-
-        /* 这个地方转到NO_CELL而不是NORMAL_SERVICE的用意是，
-           避免挂起结束改变状态时又给MMC上报一次注册状态变更 */
         NAS_EMM_AdStateConvert(EMM_MS_DEREG,
                                EMM_SS_DEREG_NO_CELL_AVAILABLE,
                                TI_NAS_EMM_STATE_NO_TIMER);
 
         /* 本地DETACH释放资源:动态内存、赋初值,释放链路 */
         NAS_LMM_DeregReleaseResource();
+        return NAS_LMM_MSG_HANDLED;
     }
 
     /* 挂起结束，改状态 */
@@ -894,8 +929,6 @@ VOS_UINT32  NAS_EMM_MsSuspendSsWaitEndMsgMmcResumeNotify(
 
     return NAS_LMM_MSG_HANDLED;
 }
-
-
 VOS_UINT32  NAS_EMM_MsSuspendSsWaitEndMsgMmcSuspendRelReq
 (
     VOS_UINT32  ulMsgId,
@@ -2257,6 +2290,8 @@ VOS_VOID NAS_EMM_ProGuAttachSucc
 
     pMmcActResult = (MMC_LMM_ACTION_RESULT_REQ_STRU *)pMsg;
 
+    NAS_LMM_SetEmmInfoRegStatus(NAS_LMM_REG_STATUS_NORM_REGED);
+
     if ((NAS_EMM_SUSPEND_GU_ACT_DOMAIN_YES == NAS_EMM_CheckGuActReqDomainPsRstDomainPs(pMsg))
         || (NAS_EMM_SUSPEND_GU_ACT_DOMAIN_YES == NAS_EMM_CheckGuActReqDomainCmbRstDomainCmb(pMsg)))
     {
@@ -2439,6 +2474,17 @@ VOS_VOID NAS_EMM_ProGuRauRst( MsgBlock * pMsg )
 
     NAS_EMM_ATTACH_LOG1_NORM("NAS_EMM_ProGuRauRst: ulActRst = .",
                             pMmcActResult->ulActRst);
+
+    /*如果不是被bar，并且是非周期性的联合rau，都统一将标志置为happend*/
+    if ((MMC_LMM_RSLT_TYPE_ACCESS_BARRED != pMmcActResult->ulActRst))
+    {
+        if ((NAS_EMM_SUSPEND_GU_ACT_DOMAIN_YES == NAS_EMM_CheckGuActReqDomainCmbRstDomainCmb(pMsg))
+            && (MMC_LMM_ACTION_PERIODC_RAU != pMmcActResult->enActionType))
+        {
+            /* 记录GU模曾经发起过RAU */
+            NAS_LMM_SetEmmInfoLauOrComRauFlag(NAS_EMM_LAU_OR_COMBINED_RAU_HAPPENED);
+        }
+    }
 
     /*只有请求域与结果域同时为PS ONLY或者PS/IMSI时，
       或者联合注册只有PS成功且网侧携带原因值为#2,16,17,22
@@ -2822,6 +2868,14 @@ VOS_VOID NAS_EMM_ProGuLauRst
 
     NAS_EMM_PUBU_LOG1_NORM("NAS_EMM_ProGuLauRst: ulActRst = ",
                             pMmcActResult->ulActRst);
+
+    /*如果不是被bar，都统一将标志置为happend*/
+    if (MMC_LMM_RSLT_TYPE_ACCESS_BARRED != pMmcActResult->ulActRst)
+    {
+        /* 记录GU模曾经发起过LAU */
+        NAS_LMM_SetEmmInfoLauOrComRauFlag(NAS_EMM_LAU_OR_COMBINED_RAU_HAPPENED);
+    }
+
 
     /* 从GU到L的异系统变换，如果在GU曾经发起过LAU或者联合RAU成功，则需要发起TAU，
        TAU类型为combined TA/LA with IMSI attach */
@@ -4091,7 +4145,9 @@ VOS_VOID  NAS_EMM_MsSuspendSsRrcOriWaitMmcSuspendFailProc(VOS_VOID)
 
                 NAS_EMM_SER_AbnormalOver();
 
-                NAS_EMM_MmSendCsfbSerEndInd(MM_LMM_CSFB_SERVICE_RSLT_T3417EXT_TIME_OUT);
+                NAS_EMM_SER_SaveEmmSERStartCause(NAS_EMM_SER_START_CAUSE_NULL);
+
+                NAS_EMM_MmSendCsfbSerEndInd(MM_LMM_CSFB_SERVICE_RSLT_T3417EXT_TIME_OUT, NAS_LMM_CAUSE_NULL);
 
                 /*转换EMM状态机MS_REG+EMM_SS_REG_NORMAL_SERVICE*/
                 NAS_EMM_TAUSER_FSMTranState(EMM_MS_REG, EMM_SS_REG_NORMAL_SERVICE, TI_NAS_EMM_STATE_NO_TIMER);

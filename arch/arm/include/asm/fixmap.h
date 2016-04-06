@@ -13,8 +13,14 @@
  * 0xfffe0000 and 0xfffeffff.
  */
 
+#if defined (CHIP_BB_HI6210)
+/*由于72KB的SRAM虚实地址必须相同(低功耗要求)，SRAM物理地址为0xFFF80000*/
+#define FIXADDR_START       0xffe00000UL
+#define FIXADDR_TOP         0xfff00000UL
+#else
 #define FIXADDR_START		0xfff00000UL
-#define FIXADDR_TOP		0xfffe0000UL
+#define FIXADDR_TOP		    0xfffe0000UL
+#endif
 #define FIXADDR_SIZE		(FIXADDR_TOP - FIXADDR_START)
 
 #define FIX_KMAP_BEGIN		0

@@ -125,16 +125,22 @@ VOS_VOID TAF_MTA_RcvAtSetUnsolicitedRptReq(VOS_VOID *pMsg)
         case AT_MTA_SET_CREG_RPT_TYPE:
             enRptCmdIndex   = TAF_SDC_RPT_CMD_CREG;
             ulRptCmdStatus  = (VOS_UINT32)pstSetUnsolicitedRptReq->u.ucCregRptFlg;
+
+            TAF_SDC_SetCregType(pstSetUnsolicitedRptReq->u.ucCregRptFlg);
             break;
 
         case AT_MTA_SET_CGREG_RPT_TYPE:
             enRptCmdIndex   = TAF_SDC_RPT_CMD_CGREG;
             ulRptCmdStatus  = (VOS_UINT32)pstSetUnsolicitedRptReq->u.ucCgregRptFlg;
+
+            TAF_SDC_SetCgregType(pstSetUnsolicitedRptReq->u.ucCgregRptFlg);
             break;
 
         case AT_MTA_SET_CEREG_RPT_TYPE:
             enRptCmdIndex   = TAF_SDC_RPT_CMD_CEREG;
             ulRptCmdStatus  = (VOS_UINT32)pstSetUnsolicitedRptReq->u.ucCeregRptFlg;
+
+            TAF_SDC_SetCeregType(pstSetUnsolicitedRptReq->u.ucCeregRptFlg);
             break;
 
         default:

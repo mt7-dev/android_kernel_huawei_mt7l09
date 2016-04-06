@@ -9,7 +9,9 @@
   #endif
 #endif
 
+/*lint -e960*/
 #define    THIS_FILE_ID        PS_FILE_ID_AT_PARSEPARA_C
+/*lint +e960*/
 
 
 /* 参数匹配初始空状态表 */

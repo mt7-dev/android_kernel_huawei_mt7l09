@@ -30,10 +30,10 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH
  * DAMAGE.
  * ========================================================================== */
-#ifndef DWC_HOST_ONLY
-
 #if !defined(__DWC_PCD_IF_H__)
 #define __DWC_PCD_IF_H__
+
+#ifndef DWC_HOST_ONLY
 
 //#include "dwc_os.h"
 #include "dwc_otg_core_if.h"
@@ -257,7 +257,7 @@ extern int dwc_otg_pcd_get_frame_number(dwc_otg_pcd_t * pcd);
  * @param buf_proc_intrvl Interval of ISOC Buffer processing
  * @param req_handle Handle of ISOC request
  * @param atomic_alloc Specefies whether to perform atomic allocation for
- *			internal data structures.
+ * 			internal data structures.
  *
  * Returns -DWC_E_NO_MEMORY if there is no enough memory.
  * Returns -DWC_E_INVALID if incorrect arguments are passed to the function.
@@ -317,7 +317,6 @@ extern int dwc_otg_pcd_get_iso_packet_count(dwc_otg_pcd_t * pcd,
  */
 extern int dwc_otg_pcd_wakeup(dwc_otg_pcd_t * pcd);
 
-// added by l00196665
 extern int dwc_otg_pcd_pullup(dwc_otg_pcd_t * pcd, int is_on);
 
 /** This function returns 1 if LPM support is enabled, and 0 otherwise. */
@@ -334,9 +333,9 @@ extern void dwc_otg_pcd_remote_wakeup(dwc_otg_pcd_t * pcd, int set);
 
 /** Starts micorsecond soft disconnect. */
 extern void dwc_otg_pcd_disconnect_us(dwc_otg_pcd_t * pcd, int no_of_usecs);
+
 /** Starts micorsecond soft connect. */
 extern void dwc_otg_pcd_connect_us(dwc_otg_pcd_t * pcd, int no_of_usecs);
-
 /** This function returns whether device is dualspeed.*/
 extern uint32_t dwc_otg_pcd_is_dualspeed(dwc_otg_pcd_t * pcd);
 
@@ -358,6 +357,6 @@ extern uint8_t *cfiw_ep_alloc_buffer(dwc_otg_pcd_t * pcd, void *pep,
 
 /** @} */
 
-#endif				/* __DWC_PCD_IF_H__ */
-
 #endif				/* DWC_HOST_ONLY */
+
+#endif				/* __DWC_PCD_IF_H__ */

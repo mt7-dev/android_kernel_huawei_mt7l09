@@ -1782,7 +1782,7 @@ static int mos7840_send_cmd_write_baud_rate(struct moschip_port *mos7840_port,
 
 	}
 
-	if (1) {		/* baudRate <= 115200) */
+	if (1) {
 		clk_sel_val = 0x0;
 		Data = 0x0;
 		status = mos7840_calc_baud_rate_divisor(port, baudRate, &divisor,

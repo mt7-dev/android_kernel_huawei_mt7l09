@@ -4,5 +4,5 @@
 
 # Core functionality.
 
-obj-y				+= bsp_om_server.o
+obj-y			+= bsp_om_server.o
 

@@ -635,6 +635,11 @@ VOS_UINT32  TAF_SSA_IsTiValid(VOS_UINT8   ucTi);
 VOS_VOID  Taf_SSA_ProcBufferedBeginReqMsg(ST_SSP_MSG *pMsg);
 
 
+VOS_UINT32 SSA_IsSsRetryCause(
+    SSA_SS_REL_CAUSE_ENUM_UINT32        enCause
+);
+
+
 #if ((VOS_OS_VER == VOS_WIN32) || (VOS_OS_VER == VOS_NUCLEUS))
 #pragma pack()
 #else

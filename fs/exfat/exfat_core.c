@@ -1239,7 +1239,15 @@ INT32 ffsGetStat(struct inode *inode, DIR_ENTRY_T *info)
 	 API should be revised */
 	p_fs->fs_func->get_uni_name_from_ext_entry(sb, &(fid->dir), fid->entry, uni_name.name);
 	if (*(uni_name.name) == 0x0)
-		get_uni_name_from_dos_entry(sb, (DOS_DENTRY_T *) ep, &uni_name, 0x1);
+	{
+		if (p_fs->vol_type == EXFAT)
+		{
+			printk("exfat ffsGetStat get_uni_name_from_ext_entry null and return FFS_MEDIAERR\n");
+			return FFS_MEDIAERR;
+		}
+		else
+			get_uni_name_from_dos_entry(sb, (DOS_DENTRY_T *) ep, &uni_name, 0x1);
+	}
 	nls_uniname_to_cstring(sb, info->Name, &uni_name);
 
 	if (p_fs->vol_type == EXFAT) {
@@ -1621,7 +1629,15 @@ INT32 ffsReadDir(struct inode *inode, DIR_ENTRY_T *dir_entry)
 			*(uni_name.name) = 0x0;
 			p_fs->fs_func->get_uni_name_from_ext_entry(sb, &dir, dentry, uni_name.name);
 			if (*(uni_name.name) == 0x0)
-				get_uni_name_from_dos_entry(sb, (DOS_DENTRY_T *) ep, &uni_name, 0x1);
+			{
+				if (p_fs->vol_type == EXFAT)
+				{
+					printk("exfat ffsReadDir get_uni_name_from_ext_entry null and return FFS_MEDIAERR\n");
+					return FFS_MEDIAERR;
+				}
+				else
+					get_uni_name_from_dos_entry(sb, (DOS_DENTRY_T *) ep, &uni_name, 0x1);
+			}
 			nls_uniname_to_cstring(sb, dir_entry->Name, &uni_name);
 			buf_unlock(sb, sector);
 
@@ -3905,6 +3921,12 @@ INT32 exfat_find_dir_entry(struct super_block *sb, CHAIN_T *p_dir, UNI_NAME_T *p
 				} else if (entry_type == TYPE_EXTEND) {
 					if (is_feasible_entry) {
 						name_ep = (NAME_DENTRY_T *) ep;
+
+						/* it's impossible that order is zero while is_feasible_entry is true, there must be something wrong with medadata */
+						if (order == 0) {
+							printk(KERN_ERR "[EXFAT] exfat_find_dir_entry: order can't be zero!\n");
+							return -2;
+						}
 
 						if ((++order) == 2)
 							uniname = p_uniname->name;

@@ -51,8 +51,7 @@ const IMSA_TIMER_EVT_FUNC_TBL_STRU    g_astImsaTimerEvtFuncTbl[] =
         IMSA_ProcTimerMsgWaitD2ImsStartOrStopCnfExp},
     {TI_IMSA_PERIOD_TRY_IMS_SRV,
         IMSA_ProcTimerMsgPeriodTryImsSrvExp},
-    {TI_IMSA_PERIOD_TRY_IMS_EMC_SRV,
-        IMSA_ProcTimerMsgPeriodTryImsEmcSrvExp},
+    /* delete PeriodImsEmcSrvTryTimer */
     {TI_IMSA_SIP_SIGAL_PDP_ORIG,
         IMSA_CONN_ProcTimerMsgSipSignalPdpOrigExp},
     {TI_IMSA_SIP_SIGAL_PDP_END,
@@ -62,6 +61,8 @@ const IMSA_TIMER_EVT_FUNC_TBL_STRU    g_astImsaTimerEvtFuncTbl[] =
     {TI_IMSA_REG_PROTECT,
         IMSA_RegProcTimeoutProtect},
     {TI_IMSA_REG_RETRY,
+        IMSA_RegProcTimeoutRetry},
+    {TI_IMSA_REG_PERIOD_TRY,
         IMSA_RegProcTimeoutRetry},
     {TI_IMSA_CALL_PROTECT,
         IMSA_CallProcTimeoutProtect},
@@ -75,6 +76,10 @@ const IMSA_TIMER_EVT_FUNC_TBL_STRU    g_astImsaTimerEvtFuncTbl[] =
         IMSA_CallProcTimeoutRedialMaxTime},
     {TI_IMSA_CALL_REDIAL_INTERVEL,
         IMSA_CallProcTimeoutRedialIntervel},
+    {TI_IMSA_CALL_NORMAL_TCALL,
+        IMSA_CallProcTimeoutTCall},
+    {TI_IMSA_CALL_EMC_TCALL,
+        IMSA_CallProcTimeoutEmcTCall},
     {TI_IMSA_SMS_TR1M,
         IMSA_SMS_ProcTimerMsgTr1m},
     {TI_IMSA_SMS_TR2M,
@@ -164,6 +169,8 @@ VOS_VOID IMSA_ProcTimerMsgWaitD2ImsStartOrStopCnfExp(const VOS_VOID *pRcvMsg)
         IMSA_ConfigSsConfInfo2Ims();
 
         IMSA_ConfigSecurityInfo2Ims();
+
+        IMSA_ConfigMediaParmInfo2Ims();
     }
     else
     {
@@ -188,19 +195,8 @@ VOS_VOID IMSA_TimerMsgDistr(const REL_TIMER_MSG *pRcvMsg )
     IMSA_TIMER_ID_ENUM_UINT16           enTimerName;
     VOS_UINT32                          i           = IMSA_NULL;
     IMSA_TIMER_EVT_FUNC                 pTimerEvtFunc  = VOS_NULL_PTR;
-    IMSA_CONTROL_MANAGER_STRU           *pstControlManager;
-
 
     enTimerName = (VOS_UINT16)PS_GET_REL_TIMER_NAME(pRcvMsg);
-    pstControlManager = IMSA_GetControlManagerAddress();
-
-    /* 关机过程中，除开关机定时器超时，其他的都不处理 */
-    if((IMSA_STATUS_STOPING == pstControlManager->enImsaStatus)
-        && (TI_IMSA_START_OR_STOP != enTimerName))
-    {
-        IMSA_WARN_LOG("IMSA_TimerMsgDistr: Status is Stoping!");
-        return;
-    }
 
     /* 在事件处理表中查找处理函数 */
     for ( i = 0; i < g_ulImsaTimerEvtFuncTblSize; i++ )

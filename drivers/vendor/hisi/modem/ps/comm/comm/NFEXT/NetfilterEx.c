@@ -24,10 +24,10 @@
 
 #include "NetfilterEx.h"
 
-#ifndef __UT_CENTER__
-#include <linux/inet.h>
+#if (VOS_OS_VER == VOS_WIN32)
+#include <linuxstub.h>
 #else
-#include "linuxstub.h"
+#include "linux/inet.h"
 #endif
 
 /*****************************************************************************
@@ -48,31 +48,6 @@
 
 extern NF_EXT_ENTITY_STRU           g_stExEntity;
 extern NF_EXT_FLOW_CTRL_ENTITY      g_stExFlowCtrlEntity;
-
-extern VOS_VOID IPS_MNTN_BridgePktInfoCB
-(
-    VOS_UINT8                              *pucSrcPort,
-    VOS_UINT8                              *pucDestPort,
-    VOS_UINT8                              *pucPktData,
-    VOS_UINT16                              usPktLen,
-    IPS_MNTN_TRACE_MSG_TYPE_ENUM_UINT16     usType
-);
-extern VOS_VOID IPS_MNTN_PktInfoCB
-(
-    VOS_UINT8                              *pucNetIfName,
-    VOS_UINT8                              *pucPktData,
-    VOS_UINT16                              usPktLen,
-    IPS_MNTN_TRACE_MSG_TYPE_ENUM_UINT16     usType
-);
-
-extern VOS_VOID IPS_MNTN_CtrlPktInfoCB
-(
-    VOS_UINT8                              *pucNetIfName,
-    VOS_UINT8                              *pucPktData,
-    VOS_UINT16                              usPktLen,
-    IPS_MNTN_TRACE_MSG_TYPE_ENUM_UINT16     usType
-);
-
 
 /******************************************************************************
   4 函数实现
@@ -101,7 +76,7 @@ NF_EXT_FLAG_OM_DATA_ENUM_U32 NFExt_IsOmData(struct sk_buff *skb)
     __be16               destPort;
     __be32               ulOmSocketIp;
 
-    ipHeader        = (struct iphdr *)(skb->network_header);
+    ipHeader        = (struct iphdr *)(skb_network_header(skb));
 
     /*如果不是TCP报文则直接返回*/
     if ( NF_EXT_RPO_TCP != ipHeader->protocol )
@@ -110,7 +85,7 @@ NF_EXT_FLAG_OM_DATA_ENUM_U32 NFExt_IsOmData(struct sk_buff *skb)
     }
 
     /* 传输层的数据在ip层之后 */
-    tcpHeader       = (struct tcphdr *)(skb->network_header + sizeof(struct iphdr));
+    tcpHeader       = (struct tcphdr *)(skb_network_header(skb) + sizeof(struct iphdr));
 
     srcIp           = ipHeader->saddr;
     destIp          = ipHeader->daddr;
@@ -156,7 +131,7 @@ VOS_VOID NFExt_BrDataExport( struct sk_buff *skb,
     pucData             = skb->data - MAC_HEADER_LENGTH;
     ulHookDataLen       = ((skb->len > NF_EXT_MAX_IP_SIZE) ? NF_EXT_MAX_IP_SIZE : skb->len) + MAC_HEADER_LENGTH;
 
-    IPS_MNTN_BridgePktInfoCB((VOS_UINT8 *)device_in->name, (VOS_UINT8 *)device_out->name, pucData, (VOS_UINT16)ulHookDataLen, usType);
+    IPS_MNTN_BridgePktInfoCB((const VOS_UINT8 *)device_in->name, (const VOS_UINT8 *)device_out->name, pucData, (VOS_UINT16)ulHookDataLen, usType);
 }
 
 /*****************************************************************************
@@ -177,8 +152,8 @@ VOS_VOID NFExt_BrDataExport( struct sk_buff *skb,
     修改内容   : Created
 *****************************************************************************/
 VOS_VOID NFExt_ArpDataExport( struct sk_buff *skb,
-                                const struct net_device *device,
-                                IPS_MNTN_TRACE_MSG_TYPE_ENUM_UINT16 usType)
+                                    const struct net_device *device,
+                                    IPS_MNTN_TRACE_MSG_TYPE_ENUM_UINT16 usType)
 {
     VOS_UINT8                       *pucData;
     VOS_UINT32                       ulHookDataLen;
@@ -186,7 +161,7 @@ VOS_VOID NFExt_ArpDataExport( struct sk_buff *skb,
     pucData             = skb->data;
     ulHookDataLen       = skb->len;
 
-    IPS_MNTN_CtrlPktInfoCB((VOS_UINT8 *)device->name, pucData, (VOS_UINT16)ulHookDataLen, usType);
+    IPS_MNTN_CtrlPktInfoCB((const VOS_UINT8 *)device->name, (const VOS_UINT8 *)pucData, (VOS_UINT16)ulHookDataLen, usType);
 }
 
 /*****************************************************************************
@@ -222,7 +197,7 @@ VOS_VOID NFExt_IpDataExport( struct sk_buff *skb,
     pucData           = skb->data - MAC_HEADER_LENGTH;
     ulHookDataLen     = ((skb->len > NF_EXT_MAX_IP_SIZE) ? NF_EXT_MAX_IP_SIZE : skb->len) + MAC_HEADER_LENGTH;
 
-    IPS_MNTN_PktInfoCB((VOS_UINT8 *)device->name, pucData, (VOS_UINT16)ulHookDataLen, usType);
+    IPS_MNTN_PktInfoCB((const VOS_UINT8 *)device->name, (const VOS_UINT8 *)pucData, (VOS_UINT16)ulHookDataLen, usType);
 }
 
 

@@ -1,4 +1,0 @@
-menu "huawei wifi linux driver"
-
-source "drivers/huawei/wifi/driver/bcmdhd/Kconfig"
-endmenu

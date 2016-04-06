@@ -165,6 +165,7 @@ static L4A_IND_MSG_FUN_TABLE_STRU g_astRpiPsIndTable[] = {
     {ID_APP_ESM_PDP_RELEASE_IND,    l4a_PktDeactivateInd2Aps,   "+CGACT0"},
     {ID_APP_ESM_PDP_MODIFY_IND,     l4a_PktPdpModifyInd2Aps,    "+CMOD"},
     {ID_APP_ESM_PDP_MANAGER_IND,    l4a_PktManagerInd2Aps,      "+CGANS"},
+    {ID_APP_ESM_PDP_SETUP_IND,      l4a_PktSetupInd2Aps,        "+CGACT1"},
     {ID_RRC_APP_CSQ_IND,            l4a_FunCsqInd,              "+CSQ"},
     {ID_RRC_APP_LWCLASH_IND,        l4a_FunLwclashInd,          "^LWURC"},
     {ID_MAC_APP_CA_CELL_CMD_IND,    l4a_FunLcacellInd,          "^LCACELLURC"},

@@ -243,7 +243,7 @@ struct rfile_mntn_stru
 struct bsp_rfile_common_cnf
 {
     u32                     opType;
-    struct list_head        *pstlist;
+    u32                     pstlist;    /*struct list_head        *pstlist;*/
     s32                     errorno;
     s32                     ret;
 };
@@ -252,7 +252,7 @@ struct bsp_rfile_common_cnf
 struct bsp_rfile_open_req
 {
     u32                     opType;
-    struct list_head        *pstlist;
+    u32                     pstlist;    /*struct list_head        *pstlist;*/
     s32                     mode;
     s32                     flags;
     s32                     nameLen;
@@ -262,7 +262,7 @@ struct bsp_rfile_open_req
 struct bsp_rfile_open_cnf
 {
     u32                     opType;
-    struct list_head        *pstlist;
+    u32                     pstlist;    /*struct list_head        *pstlist;*/
     s32                     errorno;
     s32                     ret;    /* 打开文件的描述符或错误码 */
 };
@@ -271,7 +271,7 @@ struct bsp_rfile_open_cnf
 struct bsp_rfile_seek_req
 {
     u32                     opType;
-    struct list_head        *pstlist;
+    u32                     pstlist;    /*struct list_head        *pstlist;*/
     u32                     fd;
     s32                     offset;
     s32                     whence;
@@ -281,7 +281,7 @@ struct bsp_rfile_seek_req
 struct bsp_rfile_read_req
 {
     u32                     opType;
-    struct list_head        *pstlist;
+    u32                     pstlist;    /*struct list_head        *pstlist;*/
     u32                     fd;
     u32                     ulSize;
 };
@@ -289,7 +289,7 @@ struct bsp_rfile_read_req
 struct bsp_rfile_read_cnf
 {
     u32                     opType;
-    struct list_head        *pstlist;
+    u32                     pstlist;    /*struct list_head        *pstlist;*/
     s32                     errorno;
     s32                     Size;
     u8                      aucData[0];
@@ -299,7 +299,7 @@ struct bsp_rfile_read_cnf
 struct bsp_rfile_write_req
 {
     u32                     opType;
-    struct list_head        *pstlist;
+    u32                     pstlist;    /*struct list_head        *pstlist;*/
     u32                     fd;
     u32                     ulSize;
     u8                      aucData[0];
@@ -309,7 +309,7 @@ struct bsp_rfile_write_req
 struct bsp_rfile_close_req
 {
     u32                     opType;
-    struct list_head        *pstlist;
+    u32                     pstlist;    /*struct list_head        *pstlist;*/
     s32                     errorno;
     u32                     fd;
 };
@@ -318,7 +318,7 @@ struct bsp_rfile_close_req
 struct bsp_rfile_remove_req
 {
     u32                     opType;
-    struct list_head        *pstlist;
+    u32                     pstlist;    /*struct list_head        *pstlist;*/
     s32                     pathLen;
     u8                      aucData[0];
 };
@@ -327,7 +327,7 @@ struct bsp_rfile_remove_req
 struct bsp_rfile_tell_req
 {
     u32                     opType;
-    struct list_head        *pstlist;
+    u32                     pstlist;    /*struct list_head        *pstlist;*/
     u32                     fd;
 };
 
@@ -335,7 +335,7 @@ struct bsp_rfile_tell_req
 struct bsp_rfile_mkdir_req
 {
     u32                     opType;
-    struct list_head        *pstlist;
+    u32                     pstlist;    /*struct list_head        *pstlist;*/
     s32                     pathLen;
     s32                     mode;
     u8                      aucData[0];
@@ -345,7 +345,7 @@ struct bsp_rfile_mkdir_req
 struct bsp_rfile_rmdir_req
 {
     u32                     opType;
-    struct list_head        *pstlist;
+    u32                     pstlist;    /*struct list_head        *pstlist;*/
     s32                     pathLen;
     u8                      aucData[0];
 };
@@ -354,7 +354,7 @@ struct bsp_rfile_rmdir_req
 struct bsp_rfile_opendir_req
 {
     u32                     opType;
-    struct list_head        *pstlist;
+    u32                     pstlist;    /*struct list_head        *pstlist;*/
     s32                     nameLen;
     u8                      aucData[0];
 };
@@ -362,7 +362,7 @@ struct bsp_rfile_opendir_req
 struct bsp_rfile_opendir_cnf
 {
     u32                     opType;
-    struct list_head        *pstlist;
+    u32                     pstlist;    /*struct list_head        *pstlist;*/
     s32                     errorno;
     s32                     dirhandle;
 };
@@ -371,7 +371,7 @@ struct bsp_rfile_opendir_cnf
 struct bsp_rfile_readdir_req
 {
     u32                     opType;
-    struct list_head        *pstlist;
+    u32                     pstlist;    /*struct list_head        *pstlist;*/
     u32                     dir;
     u32                     count;
 };
@@ -379,7 +379,7 @@ struct bsp_rfile_readdir_req
 struct bsp_rfile_readdir_cnf
 {
     u32                     opType;
-    struct list_head        *pstlist;
+    u32                     pstlist;    /*struct list_head        *pstlist;*/
     s32                     errorno;
     s32                     Size;
     u8                      aucData[0];
@@ -389,7 +389,7 @@ struct bsp_rfile_readdir_cnf
 struct bsp_rfile_closedir_req
 {
     u32                     opType;
-    struct list_head        *pstlist;
+    u32                     pstlist;    /*struct list_head        *pstlist;*/
     s32                     dir;
 };
 
@@ -397,7 +397,7 @@ struct bsp_rfile_closedir_req
 struct bsp_rfile_stat_req
 {
     u32                     opType;
-    struct list_head        *pstlist;
+    u32                     pstlist;    /*struct list_head        *pstlist;*/
     u32                     ulSize;
     u8                      aucData[0];
 };
@@ -405,7 +405,7 @@ struct bsp_rfile_stat_req
 struct bsp_rfile_stat_cnf
 {
     u32                     opType;
-    struct list_head        *pstlist;
+    u32                     pstlist;    /*struct list_head        *pstlist;*/
     s32                     errorno;
     s32                     ret;
     struct rfile_stat_stru  ststat;
@@ -415,7 +415,7 @@ struct bsp_rfile_stat_cnf
 struct bsp_rfile_access_req
 {
     u32                     opType;
-    struct list_head        *pstlist;
+    u32                     pstlist;    /*struct list_head        *pstlist;*/
     s32                     mode;
     s32                     pathlen;
     u8                      aucData[0];
@@ -426,7 +426,7 @@ struct bsp_rfile_access_req
 struct bsp_rfile_massread_req
 {
     u32                     opType;
-    struct list_head        *pstlist;
+    u32                     pstlist;    /*struct list_head        *pstlist;*/
     u32                     offset;
     u32                     size;
     u32                     datalen;        /* the length of partition string(include \0) */
@@ -438,7 +438,7 @@ struct bsp_rfile_massread_req
 struct bsp_rfile_masswrite_req
 {
     u32                     opType;
-    struct list_head        *pstlist;
+    u32                     pstlist;    /*struct list_head        *pstlist;*/
     u32                     offset;
     u32                     size;
     u32                     partitionlen;   /* the length of partition string(include \0) */
@@ -450,7 +450,7 @@ struct bsp_rfile_masswrite_req
 struct bsp_rfile_rename_req
 {
     u32                     opType;
-    struct list_head        *pstlist;
+    u32                     pstlist;    /*struct list_head        *pstlist;*/
     u32                     ulSize;
     u8                      aucData[0];
 };
@@ -458,7 +458,7 @@ struct bsp_rfile_rename_req
 struct bsp_rfile_rename_cnf
 {
     u32                     opType;
-    struct list_head        *pstlist;
+    u32                     pstlist;    /*struct list_head        *pstlist;*/
     s32                     errorno;
     s32                     ret;
 };

@@ -28,6 +28,10 @@
 
 #include "cpufreq_governor.h"
 
+#ifdef CONFIG_HUAWEI_MSG_POLICY
+#include <huawei_platform/power/msgnotify.h>
+#endif
+
 static struct attribute_group *get_sysfs_attr(struct dbs_data *dbs_data)
 {
 	if (have_governor_per_policy())
@@ -45,6 +49,10 @@ void dbs_check_cpu(struct dbs_data *dbs_data, int cpu)
 	unsigned int max_load = 0;
 	unsigned int ignore_nice;
 	unsigned int j;
+#ifdef CONFIG_HUAWEI_MSG_POLICY
+	u64 now_msg_timestamp;
+	unsigned int active_time;
+#endif
 
 	if (dbs_data->cdata->governor == GOV_ONDEMAND)
 		ignore_nice = od_tuners->ignore_nice_load;
@@ -53,7 +61,7 @@ void dbs_check_cpu(struct dbs_data *dbs_data, int cpu)
 
 	policy = cdbs->cur_policy;
 
-	/* Get Absolute Load (in terms of freq for ondemand gov) */
+	/* Get Absolute Load */
 	for_each_cpu(j, policy->cpus) {
 		struct cpu_dbs_common_info *j_cdbs;
 		u64 cur_wall_time, cur_idle_time;
@@ -101,16 +109,15 @@ void dbs_check_cpu(struct dbs_data *dbs_data, int cpu)
 
 		if (unlikely(!wall_time || wall_time < idle_time))
 			continue;
-
+#ifdef CONFIG_HUAWEI_MSG_POLICY
+		now_msg_timestamp = kcpustat_cpu(j).cpustat[CPUTIME_MESSAGE];
+		active_time = (unsigned int)adjust_active_time_by_msg(j, (wall_time - idle_time),
+			wall_time, (now_msg_timestamp - j_cdbs->cputime_msg_timestamp));
+		load = 100 * active_time / wall_time;
+		j_cdbs->cputime_msg_timestamp = now_msg_timestamp;
+#else
 		load = 100 * (wall_time - idle_time) / wall_time;
-
-		if (dbs_data->cdata->governor == GOV_ONDEMAND) {
-			int freq_avg = __cpufreq_driver_getavg(policy, j);
-			if (freq_avg <= 0)
-				freq_avg = policy->cur;
-
-			load *= freq_avg;
-		}
+#endif
 
 		if (load > max_load)
 			max_load = load;
@@ -133,8 +140,9 @@ void gov_queue_work(struct dbs_data *dbs_data, struct cpufreq_policy *policy,
 {
 	int i;
 
+	mutex_lock(&cpufreq_governor_lock);
 	if (!policy->governor_enabled)
-		return;
+		goto out_unlock;
 
 	if (!all_cpus) {
 		__gov_queue_work(smp_processor_id(), dbs_data, delay);
@@ -142,6 +150,8 @@ void gov_queue_work(struct dbs_data *dbs_data, struct cpufreq_policy *policy,
 		for_each_cpu(i, policy->cpus)
 			__gov_queue_work(i, dbs_data, delay);
 	}
+out_unlock:
+	mutex_unlock(&cpufreq_governor_lock);
 }
 EXPORT_SYMBOL_GPL(gov_queue_work);
 
@@ -323,6 +333,10 @@ int cpufreq_governor_dbs(struct cpufreq_policy *policy,
 			if (ignore_nice)
 				j_cdbs->prev_cpu_nice =
 					kcpustat_cpu(j).cpustat[CPUTIME_NICE];
+#ifdef CONFIG_HUAWEI_MSG_POLICY
+			j_cdbs->cputime_msg_timestamp =
+				kcpustat_cpu(cpu).cpustat[CPUTIME_MESSAGE];
+#endif
 
 			mutex_init(&j_cdbs->timer_mutex);
 			INIT_DEFERRABLE_WORK(&j_cdbs->work,
@@ -360,6 +374,7 @@ int cpufreq_governor_dbs(struct cpufreq_policy *policy,
 
 		mutex_lock(&dbs_data->mutex);
 		mutex_destroy(&cpu_cdbs->timer_mutex);
+		cpu_cdbs->cur_policy = NULL;
 
 		mutex_unlock(&dbs_data->mutex);
 

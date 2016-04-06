@@ -141,8 +141,9 @@ enum
 #define  NV_MEM_SYSTEM                  0xabcde123
 #define  NV_MEM_BACKUP                  0xdce582e1
 
-#define NV_CTRL_FILE_MAGIC_NUM       0x224e4944   /*文件头标志位*/
-#define NV_XML_DEC_SUCC_STATE        0x5687dcfe   /*fastboot 阶段xml解析是否成功标志*/
+#define NV_CTRL_FILE_MAGIC_NUM          0x224e4944   /*文件头标志位*/
+#define NV_XML_DEC_SUCC_STATE           0x5687dcfe   /*fastboot 阶段xml解析是否成功标志*/
+#define NV_FILE_TAIL_MAGIC_NUM          0xabcd8765   /*文件尾标志*/
 
 
 #define NV_FILE_READ                 "rb"

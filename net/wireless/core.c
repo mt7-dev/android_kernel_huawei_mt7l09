@@ -216,6 +216,7 @@ void cfg80211_stop_p2p_device(struct cfg80211_registered_device *rdev,
 			      struct wireless_dev *wdev)
 {
 	lockdep_assert_held(&rdev->devlist_mtx);
+	lockdep_assert_held(&rdev->sched_scan_mtx);
 
 	if (WARN_ON(wdev->iftype != NL80211_IFTYPE_P2P_DEVICE))
 		return;
@@ -266,7 +267,9 @@ static int cfg80211_rfkill_set_block(void *data, bool blocked)
 		case NL80211_IFTYPE_P2P_DEVICE:
 			/* but this requires it */
 			mutex_lock(&rdev->devlist_mtx);
+			mutex_lock(&rdev->sched_scan_mtx);
 			cfg80211_stop_p2p_device(rdev, wdev);
+			mutex_unlock(&rdev->sched_scan_mtx);
 			mutex_unlock(&rdev->devlist_mtx);
 			break;
 		default:
@@ -347,6 +350,7 @@ struct wiphy *wiphy_new(const struct cfg80211_ops *ops, int sizeof_priv)
 
 	mutex_init(&rdev->mtx);
 	mutex_init(&rdev->devlist_mtx);
+	mutex_init(&rdev->sched_scan_mtx);
 	INIT_LIST_HEAD(&rdev->wdev_list);
 	INIT_LIST_HEAD(&rdev->beacon_registrations);
 	spin_lock_init(&rdev->beacon_registrations_lock);
@@ -746,6 +750,7 @@ void cfg80211_dev_free(struct cfg80211_registered_device *rdev)
 	rfkill_destroy(rdev->rfkill);
 	mutex_destroy(&rdev->mtx);
 	mutex_destroy(&rdev->devlist_mtx);
+	mutex_destroy(&rdev->sched_scan_mtx);
 	list_for_each_entry_safe(reg, treg, &rdev->beacon_registrations, list) {
 		list_del(&reg->list);
 		kfree(reg);
@@ -779,6 +784,7 @@ static void wdev_cleanup_work(struct work_struct *work)
 	wdev = container_of(work, struct wireless_dev, cleanup_work);
 	rdev = wiphy_to_dev(wdev->wiphy);
 
+	mutex_lock(&rdev->sched_scan_mtx);
 
 	if (WARN_ON(rdev->scan_req && rdev->scan_req->wdev == wdev)) {
 		rdev->scan_req->aborted = true;
@@ -790,6 +796,7 @@ static void wdev_cleanup_work(struct work_struct *work)
 		__cfg80211_stop_sched_scan(rdev, false);
 	}
 
+	mutex_unlock(&rdev->sched_scan_mtx);
 
 	mutex_lock(&rdev->devlist_mtx);
 	rdev->opencount--;
@@ -810,6 +817,7 @@ void cfg80211_unregister_wdev(struct wireless_dev *wdev)
 		return;
 
 	mutex_lock(&rdev->devlist_mtx);
+	mutex_lock(&rdev->sched_scan_mtx);
 	list_del_rcu(&wdev->list);
 	rdev->devlist_generation++;
 
@@ -821,6 +829,7 @@ void cfg80211_unregister_wdev(struct wireless_dev *wdev)
 		WARN_ON_ONCE(1);
 		break;
 	}
+	mutex_unlock(&rdev->sched_scan_mtx);
 	mutex_unlock(&rdev->devlist_mtx);
 }
 EXPORT_SYMBOL(cfg80211_unregister_wdev);
@@ -850,7 +859,9 @@ void cfg80211_leave(struct cfg80211_registered_device *rdev,
 		break;
 	case NL80211_IFTYPE_P2P_CLIENT:
 	case NL80211_IFTYPE_STATION:
+		mutex_lock(&rdev->sched_scan_mtx);
 		__cfg80211_stop_sched_scan(rdev, false);
+		mutex_unlock(&rdev->sched_scan_mtx);
 
 		wdev_lock(wdev);
 #ifdef CONFIG_CFG80211_WEXT
@@ -985,6 +996,7 @@ static int cfg80211_netdev_notifier_call(struct notifier_block *nb,
 		cfg80211_update_iface_num(rdev, wdev->iftype, 1);
 		cfg80211_lock_rdev(rdev);
 		mutex_lock(&rdev->devlist_mtx);
+		mutex_lock(&rdev->sched_scan_mtx);
 		wdev_lock(wdev);
 		switch (wdev->iftype) {
 #ifdef CONFIG_CFG80211_WEXT
@@ -1016,6 +1028,7 @@ static int cfg80211_netdev_notifier_call(struct notifier_block *nb,
 			break;
 		}
 		wdev_unlock(wdev);
+		mutex_unlock(&rdev->sched_scan_mtx);
 		rdev->opencount++;
 		mutex_unlock(&rdev->devlist_mtx);
 		cfg80211_unlock_rdev(rdev);

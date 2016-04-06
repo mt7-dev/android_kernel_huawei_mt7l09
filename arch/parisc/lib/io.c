@@ -37,19 +37,7 @@ void memcpy_toio(volatile void __iomem *dst, const void *src, int count)
 	}
 }
 
-/*
-** Copies a block of memory from a device in an efficient manner.
-** Assumes the device can cope with 32-bit transfers.  If it can't,
-** don't use this function.
-**
-** CR16 counts on C3000 reading 256 bytes from Symbios 896 RAM:
-**	27341/64    = 427 cyc per int
-**	61311/128   = 478 cyc per short
-**	122637/256  = 479 cyc per byte
-** Ergo bus latencies dominant (not transfer size).
-**      Minimize total number of transfers at cost of CPU cycles.
-**	TODO: only look at src alignment and adjust the stores to dest.
-*/
+
 void memcpy_fromio(void *dst, const volatile void __iomem *src, int count)
 {
 	/* first compare alignment of src/dst */ 

@@ -18,7 +18,6 @@
 #include "TafSpmSndInternalMsg.h"
 #include "SpmImsaInterface.h"
 #include "TafSpmRedial.h"
-#include "TafSpmRedial.h"
 #include "TafSpmPreProcTbl.h"
 #include "TafSpmPreProcAct.h"
 #include "TafAgentInterface.h"
@@ -27,11 +26,14 @@
 #include "CallImsaInterface.h"
 #endif
 
-#include "TafSpmRedial.h"
 #include "TafSpmCtx.h"
 #include "NasSms.h"
 #include "TafSpmMntn.h"
 #include "MnMsgApi.h"
+
+#include "MnCall.h"
+
+
 
 #ifdef __cplusplus
 #if __cplusplus
@@ -60,22 +62,24 @@ VOS_UINT32 TAF_SPM_RcvAppOrigReq_PreProc(
     MN_CALL_EMERGENCY_CAT_STRU          stEmergencyCat;
 
     pstAppMsg                 = (MN_CALL_APP_REQ_MSG_STRU *)pstMsg;
-    
-    PS_MEM_SET(&stEmergencyCat, 0, sizeof(MN_CALL_EMERGENCY_CAT_STRU));    
-    
+
+    PS_MEM_SET(&stEmergencyCat, 0, sizeof(MN_CALL_EMERGENCY_CAT_STRU));
+
     /* call is allowed if phone mode is power on */
     if (TAF_PH_MODE_FULL != TAF_SDC_GetCurPhoneMode())
     {
         TAF_SPM_SendCcServiceRequetFail(ulEventType, pstMsg, TAF_CS_CAUSE_POWER_OFF);
-        
+
         return VOS_TRUE;
     }
 
     /* VIDEO call当做普通呼叫处理不做紧急呼叫号码检查 */
-    if (MN_CALL_TYPE_VIDEO != pstAppMsg->unParm.stOrig.enCallType)
+    if ((MN_CALL_TYPE_VIDEO    != pstAppMsg->unParm.stOrig.enCallType)
+     && (MN_CALL_TYPE_VIDEO_RX != pstAppMsg->unParm.stOrig.enCallType)
+     && (MN_CALL_TYPE_VIDEO_TX != pstAppMsg->unParm.stOrig.enCallType))
     {
         /* 判断是紧急呼更新紧急呼叫的CAT信息 */
-        if (VOS_TRUE  == TAF_SPM_IsEmergencyNum(&pstAppMsg->unParm.stOrig.stDialNumber, 
+        if (VOS_TRUE  == TAF_SPM_IsEmergencyNum(&pstAppMsg->unParm.stOrig.stDialNumber,
                                                 VOS_TRUE,
                                                 &stEmergencyCat))
         {
@@ -87,7 +91,7 @@ VOS_UINT32 TAF_SPM_RcvAppOrigReq_PreProc(
 
             return VOS_FALSE;
         }
-    }  
+    }
 
     /* forbid normal call when USIM service is not available */
     if (VOS_FALSE == TAF_SPM_IsUsimServiceAvailable())
@@ -95,7 +99,7 @@ VOS_UINT32 TAF_SPM_RcvAppOrigReq_PreProc(
         TAF_SPM_SendCcServiceRequetFail(ulEventType, pstMsg, TAF_CS_CAUSE_SIM_NOT_EXIST);
         return VOS_TRUE;
     }
-    
+
     /* 需要判断两个域卡无效,因为单域卡无效的情况能会disable LTE到GU下,需要到GU下继续尝试 */
     if (VOS_FALSE == TAF_SDC_IsUsimStausValid())
     {
@@ -111,12 +115,12 @@ VOS_UINT32 TAF_SPM_RcvAppSupsCmdReq_PreProc(
 )
 {
     VOS_UINT32                          ulRet;
-#if (FEATURE_ON == FEATURE_IMS)    
+#if (FEATURE_ON == FEATURE_IMS)
     MN_CALL_APP_REQ_MSG_STRU           *pstAppMsg = VOS_NULL_PTR;
 #endif
-    
+
     ulRet           = VOS_FALSE;
-    
+
 #if (FEATURE_ON == FEATURE_IMS)
     /* 如果已经IMS域呼叫存在，直接选择IMS域，其他情况返回VOS_FALSE，到CALL模块处理 */
     if (VOS_TRUE == TAF_SDC_GetImsCallExistFlg())
@@ -129,14 +133,14 @@ VOS_UINT32 TAF_SPM_RcvAppSupsCmdReq_PreProc(
          * 清除重拨缓存中保存的call请求信息，避免在GU下又发起重拨
          */
         pstAppMsg = (MN_CALL_APP_REQ_MSG_STRU *)pstMsg;
-        
+
         /* 用户挂机，如果有对应的重拨缓存存在，清除它 */
         switch (pstAppMsg->unParm.stCallMgmtCmd.enCallSupsCmd)
         {
             case MN_CALL_SUPS_CMD_REL_CALL_X:
                 TAF_SPM_FreeCallRedialBufferWithCallId(pstAppMsg->callId);
                 break;
-                
+
             case MN_CALL_SUPS_CMD_REL_ALL_CALL:
             case MN_CALL_SUPS_CMD_REL_ALL_EXCEPT_WAITING_CALL:
                 TAF_SPM_FreeCallRedialBufferWithClientId(pstAppMsg->clientId);
@@ -144,10 +148,10 @@ VOS_UINT32 TAF_SPM_RcvAppSupsCmdReq_PreProc(
 
             default:
                 break;
-        }    
+        }
     }
 #endif
-    
+
     return ulRet;
 }
 VOS_UINT32 TAF_SPM_RcvAppGetInfoReq_PreProc(
@@ -157,15 +161,15 @@ VOS_UINT32 TAF_SPM_RcvAppGetInfoReq_PreProc(
 {
     VOS_UINT32                                              ulRet;
     ulRet           = VOS_FALSE;
-    
+
 #if (FEATURE_ON == FEATURE_IMS)
     /* 如果已经IMS域呼叫存在，直接选择IMS域，其他情况返回VOS_FALSE，到CALL模块处理 */
     if (VOS_TRUE == TAF_SDC_GetImsCallExistFlg())
     {
         ulRet = TAF_SPM_ProcReqMsgBasedOnCsOverIp(ulEventType, pstMsg);
-    }    
+    }
 #endif
-    
+
     return ulRet;
 }
 VOS_UINT32 TAF_SPM_RcvAppStartDtmfReq_PreProc(
@@ -175,15 +179,15 @@ VOS_UINT32 TAF_SPM_RcvAppStartDtmfReq_PreProc(
 {
     VOS_UINT32                                              ulRet;
     ulRet           = VOS_FALSE;
-    
+
 #if (FEATURE_ON == FEATURE_IMS)
     /* 如果已经IMS域呼叫存在，直接选择IMS域，其他情况返回VOS_FALSE，到CALL模块处理 */
     if (VOS_TRUE == TAF_SDC_GetImsCallExistFlg())
     {
         ulRet = TAF_SPM_ProcReqMsgBasedOnCsOverIp(ulEventType, pstMsg);
-    }    
+    }
 #endif
-    
+
     return ulRet;
 }
 VOS_UINT32 TAF_SPM_RcvAppStopDtmfReq_PreProc(
@@ -193,15 +197,15 @@ VOS_UINT32 TAF_SPM_RcvAppStopDtmfReq_PreProc(
 {
     VOS_UINT32                                              ulRet;
     ulRet           = VOS_FALSE;
-    
+
 #if (FEATURE_ON == FEATURE_IMS)
     /* 如果已经IMS域呼叫存在，直接选择IMS域，其他情况返回VOS_FALSE，到CALL模块处理 */
     if (VOS_TRUE == TAF_SDC_GetImsCallExistFlg())
     {
         ulRet = TAF_SPM_ProcReqMsgBasedOnCsOverIp(ulEventType, pstMsg);
-    }    
+    }
 #endif
-    
+
     return ulRet;
 }
 VOS_UINT32 TAF_SPM_RcvAppGetCdurReq_PreProc(
@@ -211,15 +215,15 @@ VOS_UINT32 TAF_SPM_RcvAppGetCdurReq_PreProc(
 {
     VOS_UINT32                                              ulRet;
     ulRet           = VOS_FALSE;
-    
+
 #if (FEATURE_ON == FEATURE_IMS)
     /* 如果已经IMS域呼叫存在，直接选择IMS域，其他情况返回VOS_FALSE，到CALL模块处理 */
     if (VOS_TRUE == TAF_SDC_GetImsCallExistFlg())
     {
         ulRet = TAF_SPM_ProcReqMsgBasedOnCsOverIp(ulEventType, pstMsg);
-    }    
+    }
 #endif
-    
+
     return ulRet;
 }
 VOS_UINT32 TAF_SPM_RcvAppGetCallInfoReq_PreProc(
@@ -229,15 +233,15 @@ VOS_UINT32 TAF_SPM_RcvAppGetCallInfoReq_PreProc(
 {
     VOS_UINT32                                              ulRet;
     ulRet           = VOS_FALSE;
-    
+
 #if (FEATURE_ON == FEATURE_IMS)
     /* 如果已经IMS域呼叫存在，直接选择IMS域，其他情况返回VOS_FALSE，到CALL模块处理 */
     if (VOS_TRUE == TAF_SDC_GetImsCallExistFlg())
     {
         ulRet = TAF_SPM_ProcReqMsgBasedOnCsOverIp(ulEventType, pstMsg);
-    }    
+    }
 #endif
-    
+
     return ulRet;
 }
 VOS_UINT32 TAF_SPM_RcvAppGetClprReq_PreProc(
@@ -247,15 +251,15 @@ VOS_UINT32 TAF_SPM_RcvAppGetClprReq_PreProc(
 {
     VOS_UINT32                                              ulRet;
     ulRet           = VOS_FALSE;
-    
+
 #if (FEATURE_ON == FEATURE_IMS)
     /* 如果已经IMS域呼叫存在，直接选择IMS域，其他情况返回VOS_FALSE，到CALL模块处理 */
     if (VOS_TRUE == TAF_SDC_GetImsCallExistFlg())
     {
         ulRet = TAF_SPM_ProcReqMsgBasedOnCsOverIp(ulEventType, pstMsg);
-    }    
+    }
 #endif
-    
+
     return ulRet;
 }
 VOS_UINT32 TAF_SPM_RcvAppSendRpdataDirect_PreProc(
@@ -270,10 +274,10 @@ VOS_UINT32 TAF_SPM_RcvAppSendRpdataDirect_PreProc(
     {
         /* 如果不允许发起SMS业务，给AT回复失败，带相应的原因值 */
         TAF_SPM_SendSmsServiceRequetFail(ulEventType, pstMsg, ulCause);
-        
+
         return VOS_TRUE;
     }
-    
+
     /* 允许发起SMS业务时，要进行FDN&CALL CONTROL检查 */
     return VOS_FALSE;
 
@@ -285,7 +289,7 @@ VOS_UINT32 TAF_SPM_RcvProcUssSsReq_PreProc(
 {
     MN_APP_REQ_MSG_STRU                *pstRcvMsg   = VOS_NULL_PTR;
     TAF_SS_PROCESS_USS_REQ_STRU        *pstSsReqMsg = VOS_NULL_PTR;
-    TAF_PH_ERR_CODE                     enCause;
+    TAF_ERROR_CODE_ENUM_UINT32          enCause;
 
     pstRcvMsg   = (MN_APP_REQ_MSG_STRU *)pstMsg;
     pstSsReqMsg = (TAF_SS_PROCESS_USS_REQ_STRU *)&(pstRcvMsg->aucContent[0]);
@@ -311,8 +315,8 @@ VOS_UINT32 TAF_SPM_RcvProcUssSsReq_PreProc(
     if (VOS_FALSE == TAF_SPM_IsSsServiceReqAllowed_PreProc(ulEventType, pstMsg, &enCause))
     {
         /* 如果不允许发起SS业务，给AT回复失败，带相应的原因值 */
-        TAF_SPM_SendSsServiceRequetFail(ulEventType, pstMsg, enCause);
-        
+        TAF_SPM_SendSsServiceRequetFail(ulEventType, pstMsg, (TAF_SS_ERROR)enCause);
+
         return VOS_TRUE;
     }
 
@@ -326,15 +330,15 @@ VOS_UINT32 TAF_SPM_RcvRegisterSsReq_PreProc(
     struct MsgCB                       *pstMsg
 )
 {
-    
-    TAF_PH_ERR_CODE                     enCause;
+
+    TAF_ERROR_CODE_ENUM_UINT32          enCause;
 
     /* 检查当前卡状态及开关机状态是否允许发起SS业务 */
     if (VOS_FALSE == TAF_SPM_IsSsServiceReqAllowed_PreProc(ulEventType, pstMsg, &enCause))
     {
         /* 如果不允许发起SS业务，给AT回复失败，带相应的原因值 */
-        TAF_SPM_SendSsServiceRequetFail(ulEventType, pstMsg, enCause);
-        
+        TAF_SPM_SendSsServiceRequetFail(ulEventType, pstMsg, (TAF_SS_ERROR)enCause);
+
         return VOS_TRUE;
     }
 
@@ -346,120 +350,120 @@ VOS_UINT32 TAF_SPM_RcvEraseSsReq_PreProc(
     struct MsgCB                       *pstMsg
 )
 {
-    
-    TAF_PH_ERR_CODE                     enCause;
+
+    TAF_ERROR_CODE_ENUM_UINT32          enCause;
 
     /* 检查当前卡状态及开关机状态是否允许发起SS业务 */
     if (VOS_FALSE == TAF_SPM_IsSsServiceReqAllowed_PreProc(ulEventType, pstMsg, &enCause))
     {
         /* 如果不允许发起SS业务，给AT回复失败，带相应的原因值 */
-        TAF_SPM_SendSsServiceRequetFail(ulEventType, pstMsg, enCause);
-        
+        TAF_SPM_SendSsServiceRequetFail(ulEventType, pstMsg, (TAF_SS_ERROR)enCause);
+
         return VOS_TRUE;
     }
 
     /* 允许发起SS业务时，要进行FDN&CALL CONTROL检查 */
-    return VOS_FALSE;    
+    return VOS_FALSE;
 }
 VOS_UINT32 TAF_SPM_RcvActivateSsReq_PreProc(
     VOS_UINT32                          ulEventType,
     struct MsgCB                       *pstMsg
 )
 {
-    
-    TAF_PH_ERR_CODE                     enCause;
+
+    TAF_ERROR_CODE_ENUM_UINT32          enCause;
 
     /* 检查当前卡状态及开关机状态是否允许发起SS业务 */
     if (VOS_FALSE == TAF_SPM_IsSsServiceReqAllowed_PreProc(ulEventType, pstMsg, &enCause))
     {
         /* 如果不允许发起SS业务，给AT回复失败，带相应的原因值 */
-        TAF_SPM_SendSsServiceRequetFail(ulEventType, pstMsg, enCause);
-        
+        TAF_SPM_SendSsServiceRequetFail(ulEventType, pstMsg, (TAF_SS_ERROR)enCause);
+
         return VOS_TRUE;
     }
 
     /* 允许发起SS业务时，要进行FDN&CALL CONTROL检查 */
-    return VOS_FALSE;    
+    return VOS_FALSE;
 }
 VOS_UINT32 TAF_SPM_RcvDeactivateSsReq_PreProc(
     VOS_UINT32                          ulEventType,
     struct MsgCB                       *pstMsg
 )
 {
-    
-    TAF_PH_ERR_CODE                     enCause;
+
+    TAF_ERROR_CODE_ENUM_UINT32          enCause;
 
     /* 检查当前卡状态及开关机状态是否允许发起SS业务 */
     if (VOS_FALSE == TAF_SPM_IsSsServiceReqAllowed_PreProc(ulEventType, pstMsg, &enCause))
     {
         /* 如果不允许发起SS业务，给AT回复失败，带相应的原因值 */
-        TAF_SPM_SendSsServiceRequetFail(ulEventType, pstMsg, enCause);
-        
+        TAF_SPM_SendSsServiceRequetFail(ulEventType, pstMsg, (TAF_SS_ERROR)enCause);
+
         return VOS_TRUE;
     }
 
     /* 允许发起SS业务时，要进行FDN&CALL CONTROL检查 */
-    return VOS_FALSE;    
+    return VOS_FALSE;
 }
 VOS_UINT32 TAF_SPM_RcvInterrogateSsReq_PreProc(
     VOS_UINT32                          ulEventType,
     struct MsgCB                       *pstMsg
 )
 {
-    
-    TAF_PH_ERR_CODE                     enCause;
+
+    TAF_ERROR_CODE_ENUM_UINT32          enCause;
 
     /* 检查当前卡状态及开关机状态是否允许发起SS业务 */
     if (VOS_FALSE == TAF_SPM_IsSsServiceReqAllowed_PreProc(ulEventType, pstMsg, &enCause))
     {
         /* 如果不允许发起SS业务，给AT回复失败，带相应的原因值 */
-        TAF_SPM_SendSsServiceRequetFail(ulEventType, pstMsg, enCause);
-        
+        TAF_SPM_SendSsServiceRequetFail(ulEventType, pstMsg, (TAF_SS_ERROR)enCause);
+
         return VOS_TRUE;
     }
 
     /* 允许发起SS业务时，要进行FDN&CALL CONTROL检查 */
-    return VOS_FALSE;    
+    return VOS_FALSE;
 }
 VOS_UINT32 TAF_SPM_RcvRegPwdSsReq_PreProc(
     VOS_UINT32                          ulEventType,
     struct MsgCB                       *pstMsg
 )
 {
-    
-    TAF_PH_ERR_CODE                     enCause;
+
+    TAF_ERROR_CODE_ENUM_UINT32          enCause;
 
     /* 检查当前卡状态及开关机状态是否允许发起SS业务 */
     if (VOS_FALSE == TAF_SPM_IsSsServiceReqAllowed_PreProc(ulEventType, pstMsg, &enCause))
     {
         /* 如果不允许发起SS业务，给AT回复失败，带相应的原因值 */
-        TAF_SPM_SendSsServiceRequetFail(ulEventType, pstMsg, enCause);
-        
+        TAF_SPM_SendSsServiceRequetFail(ulEventType, pstMsg, (TAF_SS_ERROR)enCause);
+
         return VOS_TRUE;
     }
 
     /* 允许发起SS业务时，要进行FDN&CALL CONTROL检查 */
-    return VOS_FALSE;    
+    return VOS_FALSE;
 }
 VOS_UINT32 TAF_SPM_RcvEraseCCentrySsReq_PreProc(
     VOS_UINT32                          ulEventType,
     struct MsgCB                       *pstMsg
 )
 {
-    
-    TAF_PH_ERR_CODE                     enCause;
+
+    TAF_ERROR_CODE_ENUM_UINT32          enCause;
 
     /* 检查当前卡状态及开关机状态是否允许发起SS业务 */
     if (VOS_FALSE == TAF_SPM_IsSsServiceReqAllowed_PreProc(ulEventType, pstMsg, &enCause))
     {
         /* 如果不允许发起SS业务，给AT回复失败，带相应的原因值 */
-        TAF_SPM_SendSsServiceRequetFail(ulEventType, pstMsg, enCause);
-        
+        TAF_SPM_SendSsServiceRequetFail(ulEventType, pstMsg, (TAF_SS_ERROR)enCause);
+
         return VOS_TRUE;
     }
 
     /* 允许发起SS业务时，要进行FDN&CALL CONTROL检查 */
-    return VOS_FALSE;    
+    return VOS_FALSE;
 }
 VOS_UINT32 TAF_SPM_RcvRleaseSsReq_PreProc(
     VOS_UINT32                          ulEventType,
@@ -467,9 +471,9 @@ VOS_UINT32 TAF_SPM_RcvRleaseSsReq_PreProc(
 )
 {
     VOS_UINT32                          ulRet;
-    
+
     ulRet               = VOS_FALSE;
-    
+
 #if (FEATURE_ON == FEATURE_IMS)
     /* 如果已经IMS域USSD业务存在，直接选择IMS域，其他情况返回VOS_FALSE，按NAS信令流程处理 */
     if (VOS_TRUE == TAF_SDC_GetImsSsSrvExistFlg())
@@ -477,7 +481,7 @@ VOS_UINT32 TAF_SPM_RcvRleaseSsReq_PreProc(
         ulRet = TAF_SPM_ProcReqMsgBasedOnCsOverIp(ulEventType, pstMsg);
     }
 #endif
-    
+
     return ulRet;
 }
 VOS_UINT32 TAF_SPM_RcvStkOrigReq_PreProc(
@@ -487,7 +491,7 @@ VOS_UINT32 TAF_SPM_RcvStkOrigReq_PreProc(
 {
     VOS_UINT32                          ulRet;
     MN_CALL_EMERGENCY_CAT_STRU          stEmergencyCat;
-    MN_CALL_TYPE_ENUM_U8                enCallType; 
+    MN_CALL_TYPE_ENUM_U8                enCallType;
     VOS_UINT32                          ulExistBc;
     MN_APP_CALL_CALLORIG_REQ_STRU      *pstOrigParam = VOS_NULL_PTR;
 
@@ -496,7 +500,7 @@ VOS_UINT32 TAF_SPM_RcvStkOrigReq_PreProc(
     PS_MEM_SET(&stEmergencyCat, 0, sizeof(MN_CALL_EMERGENCY_CAT_STRU));
     enCallType  = MN_CALL_TYPE_VOICE;
     ulExistBc   = VOS_TRUE;
-    
+
     /* call is allowed if phone mode is power on */
     if (TAF_PH_MODE_FULL != TAF_SDC_GetCurPhoneMode())
     {
@@ -517,22 +521,25 @@ VOS_UINT32 TAF_SPM_RcvStkOrigReq_PreProc(
     if (VOS_TRUE != ulRet)
     {
         MN_WARN_LOG("MN_CALL_StkCallOrigReqProc: Fail to TAF_SPM_GetBcCallType.");
-        
+
         TAF_CALL_SendCallOrigCnf(pstOrigParam->usClientId,
                                  pstOrigParam->opID,
                                  pstOrigParam->callID,
                                  TAF_CS_CAUSE_CALL_CTRL_BEYOND_CAPABILITY);
-                                 
-        MN_CALL_ReportErrIndEvent(MN_CLIENT_ALL,
-                                  0,
-                                  TAF_CS_CAUSE_CALL_CTRL_BEYOND_CAPABILITY,
-                                  pstOrigParam->callID);
+
+#if (FEATURE_ON == FEATURE_PTM)
+        /* 记录CS呼叫异常log */
+        MN_CALL_CsCallErrRecord(pstOrigParam->callID, TAF_CS_CAUSE_CALL_CTRL_BEYOND_CAPABILITY);
+#endif
+
         return VOS_TRUE;
     }
-    
+
     /* VIDEO call当做普通呼叫处理不做紧急呼叫号码检查 */
     pstOrigParam->enCallType = enCallType;
-    if (MN_CALL_TYPE_VIDEO != pstOrigParam->enCallType)
+    if ((MN_CALL_TYPE_VIDEO    != pstOrigParam->enCallType)
+     && (MN_CALL_TYPE_VIDEO_RX != pstOrigParam->enCallType)
+     && (MN_CALL_TYPE_VIDEO_TX != pstOrigParam->enCallType))
     {
         /* 判断是紧急呼更新紧急呼叫的CAT信息 */
         if (VOS_TRUE  == TAF_SPM_IsEmergencyNum((MN_CALL_CALLED_NUM_STRU *)&pstOrigParam->stCalledAddr,
@@ -540,7 +547,7 @@ VOS_UINT32 TAF_SPM_RcvStkOrigReq_PreProc(
                                                   &stEmergencyCat))
         {
             pstOrigParam->enCallType        = MN_CALL_TYPE_EMERGENCY;
-            
+
             PS_MEM_CPY(&(pstOrigParam->stEmergencyCat),
                         &stEmergencyCat,
                         sizeof(MN_CALL_EMERGENCY_CAT_STRU));
@@ -555,14 +562,14 @@ VOS_UINT32 TAF_SPM_RcvStkOrigReq_PreProc(
 
         }
     }
-    
+
     /* forbid normal call when USIM service is not available */
     if (VOS_FALSE == TAF_SPM_IsUsimServiceAvailable())
     {
         TAF_SPM_SendCcServiceRequetFail(ulEventType, pstMsg, TAF_CS_CAUSE_SIM_NOT_EXIST);
         return VOS_TRUE;
     }
-    
+
     /* 需要判断两个域卡无效,因为单域卡无效的情况能会disable LTE到GU下,需要到GU下继续尝试 */
     if (VOS_FALSE == TAF_SDC_IsUsimStausValid())
     {
@@ -575,7 +582,6 @@ VOS_UINT32 TAF_SPM_RcvStkOrigReq_PreProc(
 
 
 #if (FEATURE_ON == FEATURE_IMS)
-
 VOS_UINT32 TAF_SPM_RcvMsgSmmaInd_PreProc(
     VOS_UINT32                          ulEventType,
     struct MsgCB                       *pstMsg
@@ -611,7 +617,7 @@ VOS_UINT32 TAF_SPM_RcvMsgReportInd_PreProc(
     {
         /* 从短信重拨缓存中取出缓存消息 */
         pstCacheMsg = TAF_SPM_GetSmsRedialBufferWithClientId(&ucIndex, pstMsgReportInd->usClientId);
-        
+
         if (VOS_NULL_PTR != pstCacheMsg)
         {
             if (VOS_TRUE == TAF_MSG_IsSmsRedialCauseValueFromImsDomain(pstMsgReportInd->stRptEvtInfo.enErrorCode))
@@ -619,24 +625,25 @@ VOS_UINT32 TAF_SPM_RcvMsgReportInd_PreProc(
                 if (TAF_BuildEventType(WUEPS_PID_TAF, ID_TAF_SPM_SMMA_IND) == pstCacheMsg->ulEventType)
                 {
                     /* SMMA消息，需要发送外部消息给MSG模块 */
-                    TAF_SPM_SendMsgSmmaRsp(TAF_MSG_SIGNALLING_TYPE_NAS_SIGNALLING);
+                    TAF_SPM_SendMsgSmmaRsp(TAF_MSG_SIGNALLING_TYPE_NAS_SIGNALLING,
+                                           (struct MsgCB*)&(pstCacheMsg->aucEntryMsgBuffer[0]));
                 }
                 else
                 {
                     /* 修改消息中的信令类型 */
-                    TAF_SPM_ProcReqMsgBasedOnNasSignalling(pstCacheMsg->ulEventType, 
+                    TAF_SPM_ProcReqMsgBasedOnNasSignalling(pstCacheMsg->ulEventType,
                                                            (struct MsgCB*)&(pstCacheMsg->aucEntryMsgBuffer[0]));
-                    
+
                     /* 更新入口消息 */
                     TAF_SPM_UpdateServiceCtrlEntryMsg(pstCacheMsg->ulEventType,
                                                       (struct MsgCB*)&(pstCacheMsg->aucEntryMsgBuffer[0]));
-                    
+
                     TAF_SPM_SetUpdateEntryMsgFlg(VOS_TRUE);
                 }
-                
+
                 /* 清除重拨缓存 */
                 TAF_SPM_FreeSpecificedIndexSmsRedialBuffer(ucIndex);
-        
+
                 /* 如果此时域选择缓存有消息存在，需要把消息转发给MSG模块 */
                 if (0 != TAF_SPM_GetSmsMsgQueueNum())
                 {
@@ -645,10 +652,10 @@ VOS_UINT32 TAF_SPM_RcvMsgReportInd_PreProc(
                 }
 
                 TAF_SPM_LogSrvDomainSelRedialInfo();
-                
+
                 return VOS_FALSE;
             }
-        
+
             /* 清除重拨缓存 */
             TAF_SPM_FreeSpecificedIndexSmsRedialBuffer(ucIndex);
 
@@ -685,8 +692,73 @@ VOS_UINT32 TAF_SPM_RcvMsgReportInd_PreProc(
     }
     return VOS_TRUE;
 }
+VOS_UINT32 TAF_SPM_RcvMsgCheckRsltInd_PreProc(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+)
+{
+    TAF_SPM_MSG_CHECK_RESULT_IND_STRU                      *pstMsgCheckRsltInd  = VOS_NULL_PTR;
+    TAF_SPM_ENTRY_MSG_STRU                                 *pstCacheMsg         = VOS_NULL_PTR;
+    VOS_UINT32                                              ulRst;
+    VOS_UINT8                                               ucIndex;
+    TAF_SPM_DOMAIN_SEL_RESULT_ENUM_UINT8                    enDomainSelRslt;
 
+    pstMsgCheckRsltInd = (TAF_SPM_MSG_CHECK_RESULT_IND_STRU *)pstMsg;
 
+    if ( (pstMsgCheckRsltInd->enRslt != TAF_MSG_ERROR_FDN_CHECK_FAIL)
+      && (pstMsgCheckRsltInd->enRslt != TAF_MSG_ERROR_FDN_CHECK_TIMEROUT)
+      && (pstMsgCheckRsltInd->enRslt != TAF_MSG_ERROR_CTRL_CHECK_FAIL)
+      && (pstMsgCheckRsltInd->enRslt != TAF_MSG_ERROR_CTRL_CHECK_TIMEOUT) )
+    {
+        return VOS_TRUE;
+    }
+
+#if (FEATURE_IMS == FEATURE_ON)
+    /* 清除IMS短信正在发送标志 */
+    TAF_SPM_SetImsSmsSendingFlg(VOS_FALSE);
+
+    TAF_NORMAL_LOG(WUEPS_PID_TAF, "TAF_SPM_RcvMsgCheckRsltInd_PreProc: ImsSmsSendingFlg FDN Or SMS CONTROL fail.");
+
+    if (VOS_TRUE == TAF_SDC_GetSmsRedailFromImsToCsSupportFlag())
+    {
+        /* 从短信重拨缓存中取出缓存消息 */
+        pstCacheMsg = TAF_SPM_GetSmsRedialBufferWithClientId(&ucIndex, pstMsgCheckRsltInd->usClientId);
+
+        if (VOS_NULL_PTR != pstCacheMsg)
+        {
+            /* 清除重拨缓存 */
+            TAF_SPM_FreeSpecificedIndexSmsRedialBuffer(ucIndex);
+        }
+    }
+#endif
+
+    /* 继续处理短信域选择queue */
+    if (0 != TAF_SPM_GetSmsMsgQueueNum())
+    {
+        enDomainSelRslt = TAF_SPM_DOMAIN_SEL_RESULT_BUTT;
+
+        ulRst = TAF_SPM_ProcSmsMsgQueue(&enDomainSelRslt);
+
+        /* check if domain selection type is buffer message */
+        if (TAF_SPM_DOMAIN_SEL_RESULT_BUFFER_MESSAGE != enDomainSelRslt)
+        {
+            if (0 != TAF_SPM_GetSmsMsgQueueNum())
+            {
+                /* 继续处理短信域选择缓存 */
+                TAF_SPM_SndInternalDomainSelectionInd();
+            }
+
+            /* log service domain selection infomation */
+            TAF_SPM_LogSrvDomainSelQueueInfo();
+        }
+
+        return ulRst;
+    }
+
+    TAF_SPM_LogSrvDomainSelRedialInfo();
+
+    return VOS_TRUE;
+}
 VOS_UINT32 TAF_SPM_RcvImsaCallOrigCnf_PreProc(
     struct MsgCB                       *pstMsg
 )
@@ -705,31 +777,40 @@ VOS_UINT32 TAF_SPM_RcvImsaCallOrigCnf_PreProc(
     PS_MEM_SET(&stCallInfo, 0, sizeof(MN_CALL_INFO_STRU));
 
     PS_MEM_CPY(&stCallInfo, &(pstImsaCallMsg->stCallInfo), sizeof(MN_CALL_INFO_STRU));
-    
+
     /* 只要MO成功时，才设置IMS域呼叫存在标识 */
     if (TAF_CS_CAUSE_SUCCESS == stCallInfo.enCause)
     {
         TAF_SDC_SetImsCallExistFlg(VOS_TRUE);
+        TAF_SndMmaImsSrvInfoNotify(VOS_TRUE);
+
+        /* 更新重拨缓存消息的call ID，方便消息在释放时查找 */
+        TAF_SPM_UpdateCallRedialBufferMsgWithCallId(stCallInfo.clientId, stCallInfo.callId);
     }
     else
     {
         /* IMSA不填写呼叫方向，本地修改一下该项，为后续重拨判断使用 */
         stCallInfo.enCallDir = MN_CALL_DIR_MO;
-        
+
         if (VOS_TRUE == TAF_SPM_IsCsCallRedialAllowed(&stCallInfo))
         {
             /* 获取呼叫重拨缓存消息 */
             pstCacheInfo = TAF_SPM_GetSpecificedIndexFromCallRedialBuffer(0);
-        
+
             /* 更新入口消息 */
             TAF_SPM_UpdateServiceCtrlEntryMsg(pstCacheInfo->ulEventType,
                                               (struct MsgCB*)&(pstCacheInfo->aucEntryMsgBuffer[0]));
-        
+
             TAF_SPM_SetUpdateEntryMsgFlg(VOS_TRUE);
-        
+
             /* 清除重拨缓存 */
             TAF_SPM_FreeSpecificedIndexCallRedialBuffer(0);
-        
+
+#if (FEATURE_ON == FEATURE_PTM)
+            TAF_SDC_SetErrLogImsCallFailFlag(VOS_TRUE);
+            TAF_SDC_SetErrLogImsCallFailCause(stCallInfo.enCause);
+#endif
+
             return VOS_FALSE;
         }
 
@@ -752,8 +833,10 @@ VOS_UINT32 TAF_SPM_RcvImsaCallOrigCnf_PreProc(
                         MN_CALL_EVT_CALL_ORIG_CNF,
                         &stCallInfo);
 
-    /* 构造Err_Ind消息，cliendId为广播类型 */
-    MN_CALL_ReportErrIndEvent(MN_CLIENT_ALL, 0, stCallInfo.enCause, 0);
+#if (FEATURE_ON == FEATURE_PTM)
+    /* 记录CS呼叫异常log */
+    MN_CALL_CsCallErrRecord(0, stCallInfo.enCause);
+#endif
 
     return VOS_TRUE;
 }
@@ -792,7 +875,7 @@ VOS_UINT32 TAF_SPM_RcvImsaCallOrig_PreProc(
 
     /* 更新重拨缓存消息的call ID，方便消息在释放时查找 */
     TAF_SPM_UpdateCallRedialBufferMsgWithCallId(stCallInfo.clientId, stCallInfo.callId);
-    
+
     return VOS_TRUE;
 }
 VOS_UINT32 TAF_SPM_RcvImsaCallProc_PreProc(
@@ -867,7 +950,7 @@ VOS_UINT32 TAF_SPM_RcvImsaCallAlerting_PreProc(
 
     /* 清除重拨缓存 */
     TAF_SPM_FreeCallRedialBufferWithCallId(pstImsaCallMsg->stCallInfo.callId);
-    
+
     return VOS_TRUE;
 }
 VOS_UINT32 TAF_SPM_RcvImsaCallConnect_PreProc(
@@ -974,12 +1057,17 @@ VOS_UINT32 TAF_SPM_RcvImsaCallRelease_PreProc(
             /* 更新入口消息 */
             TAF_SPM_UpdateServiceCtrlEntryMsg(pstCacheInfo->ulEventType,
                                               (struct MsgCB*)&(pstCacheInfo->aucEntryMsgBuffer[0]));
-            
+
             TAF_SPM_SetUpdateEntryMsgFlg(VOS_TRUE);
-            
+
             /* 清除重拨缓存 */
             TAF_SPM_FreeCallRedialBufferWithCallId(stCallInfo.callId);
-            
+
+#if (FEATURE_ON == FEATURE_PTM)
+            TAF_SDC_SetErrLogImsCallFailFlag(VOS_TRUE);
+            TAF_SDC_SetErrLogImsCallFailCause(stCallInfo.enCause);
+#endif
+
             return VOS_FALSE;
         }
     }
@@ -1002,11 +1090,31 @@ VOS_UINT32 TAF_SPM_RcvImsaCallRelease_PreProc(
                        MN_CALL_EVT_RELEASED,
                        &stCallInfo);
 
-    /* 构造Err_Ind消息,不受原来CS域NV项的控制 */
-    MN_CALL_ReportErrIndEvent(MN_CLIENT_ALL, 0, stCallInfo.enCause, 0);
+#if (FEATURE_ON == FEATURE_PTM)
+    /* 记录CS呼叫异常log */
+    MN_CALL_CsCallErrRecord(0, stCallInfo.enCause);
+#endif
+
+    /* 电话挂断时勾出相应的事件，第三个参数不能是空指针，第四个参数不能是0，否则事件报不上去 */
+    if(MN_CALL_DIR_MO == stCallInfo.enCallDir)
+    {
+        NAS_EventReport(WUEPS_PID_TAF,
+                        NAS_OM_EVENT_CC_MO_DISCONNECT,
+                        &(stCallInfo.enCause),
+                        sizeof(TAF_CS_CAUSE_ENUM_UINT32));
+    }
+    else
+    {
+        NAS_EventReport(WUEPS_PID_TAF,
+                        NAS_OM_EVENT_CC_MT_DISCONNECT,
+                        &(stCallInfo.enCause),
+                        sizeof(TAF_CS_CAUSE_ENUM_UINT32));
+    }
 
     return VOS_TRUE;
 }
+
+
 VOS_UINT32 TAF_SPM_RcvImsaCallIncoming_PreProc(
     struct MsgCB                       *pstMsg
 )
@@ -1027,6 +1135,7 @@ VOS_UINT32 TAF_SPM_RcvImsaCallIncoming_PreProc(
 
     /* 设置IMS域呼叫存在标识 */
     TAF_SDC_SetImsCallExistFlg(VOS_TRUE);
+    TAF_SndMmaImsSrvInfoNotify(VOS_TRUE);
 
     /* 增加主动上报相关全局变量的值 */
     PS_MEM_CPY(stCallInfo.aucCurcRptCfg,
@@ -1051,12 +1160,12 @@ VOS_UINT32 TAF_SPM_RcvImsaCallStartDtmfCnf_PreProc(
 )
 {
     IMSA_SPM_CALL_START_DTMF_CNF_STRU  *pstStartDtmfCnfMsg       = VOS_NULL_PTR;
-    TAF_CALL_EVT_DTMF_CNF_STRU          stDtmfCnf;    
+    TAF_CALL_EVT_DTMF_CNF_STRU          stDtmfCnf;
 
     pstStartDtmfCnfMsg      = (IMSA_SPM_CALL_START_DTMF_CNF_STRU *)pstMsg;
-    
+
     PS_MEM_SET(&stDtmfCnf, 0, sizeof(TAF_CALL_EVT_DTMF_CNF_STRU));
-    
+
     stDtmfCnf.callId        = pstStartDtmfCnfMsg->ucCallId;
     stDtmfCnf.usClientId    = pstStartDtmfCnfMsg->usClientId;
     stDtmfCnf.opId          = pstStartDtmfCnfMsg->ucOpId;
@@ -1064,7 +1173,7 @@ VOS_UINT32 TAF_SPM_RcvImsaCallStartDtmfCnf_PreProc(
     stDtmfCnf.enDtmfState   = pstStartDtmfCnfMsg->enDtmfState;
     stDtmfCnf.ucDtmfCnt     = pstStartDtmfCnfMsg->ucDtmfCnt;
 
-    
+
     TAF_CALL_SendMsg(pstStartDtmfCnfMsg->usClientId,
                      MN_CALL_EVT_START_DTMF_CNF,
                      &stDtmfCnf,
@@ -1083,9 +1192,9 @@ VOS_UINT32 TAF_SPM_RcvImsaCallStartDtmfRsltInd_PreProc(
     TAF_CALL_EVT_DTMF_CNF_STRU                              stDtmfCnf;
 
     pstDtmfRsltIndMsg      = (IMSA_SPM_CALL_START_DTMF_RSLT_IND_STRU *)pstMsg;
-    
+
     PS_MEM_SET(&stDtmfCnf, 0, sizeof(TAF_CALL_EVT_DTMF_CNF_STRU));
-    
+
     stDtmfCnf.callId        = pstDtmfRsltIndMsg->ucCallId;
     stDtmfCnf.usClientId    = pstDtmfRsltIndMsg->usClientId;
     stDtmfCnf.opId          = pstDtmfRsltIndMsg->ucOpId;
@@ -1093,7 +1202,7 @@ VOS_UINT32 TAF_SPM_RcvImsaCallStartDtmfRsltInd_PreProc(
     stDtmfCnf.enDtmfState   = pstDtmfRsltIndMsg->enDtmfState;
     stDtmfCnf.ucDtmfCnt     = pstDtmfRsltIndMsg->ucDtmfCnt;
 
-    
+
     TAF_CALL_SendMsg(pstDtmfRsltIndMsg->usClientId,
                      MN_CALL_EVT_START_DTMF_RSLT,
                      &stDtmfCnf,
@@ -1110,12 +1219,12 @@ VOS_UINT32 TAF_SPM_RcvImsaCallStopDtmfCnf_PreProc(
 )
 {
     IMSA_SPM_CALL_STOP_DTMF_CNF_STRU   *pstStopDtmfCnfMsg       = VOS_NULL_PTR;
-    TAF_CALL_EVT_DTMF_CNF_STRU          stDtmfCnf;    
+    TAF_CALL_EVT_DTMF_CNF_STRU          stDtmfCnf;
 
     pstStopDtmfCnfMsg      = (IMSA_SPM_CALL_STOP_DTMF_CNF_STRU *)pstMsg;
-    
+
     PS_MEM_SET(&stDtmfCnf, 0, sizeof(TAF_CALL_EVT_DTMF_CNF_STRU));
-    
+
     stDtmfCnf.callId       = pstStopDtmfCnfMsg->ucCallId;
     stDtmfCnf.usClientId   = pstStopDtmfCnfMsg->usClientId;
     stDtmfCnf.opId         = pstStopDtmfCnfMsg->ucOpId;
@@ -1123,7 +1232,7 @@ VOS_UINT32 TAF_SPM_RcvImsaCallStopDtmfCnf_PreProc(
     stDtmfCnf.enDtmfState  = pstStopDtmfCnfMsg->enDtmfState;
     stDtmfCnf.ucDtmfCnt    = pstStopDtmfCnfMsg->ucDtmfCnt;
 
-    
+
     TAF_CALL_SendMsg(pstStopDtmfCnfMsg->usClientId,
                      MN_CALL_EVT_STOP_DTMF_CNF,
                      &stDtmfCnf,
@@ -1142,9 +1251,9 @@ VOS_UINT32 TAF_SPM_RcvImsaCallStopDtmfRsltInd_PreProc(
     TAF_CALL_EVT_DTMF_CNF_STRU                              stDtmfCnf;
 
     pstDtmfRsltIndMsg      = (IMSA_SPM_CALL_STOP_DTMF_RSLT_IND_STRU *)pstMsg;
-    
+
     PS_MEM_SET(&stDtmfCnf, 0, sizeof(TAF_CALL_EVT_DTMF_CNF_STRU));
-    
+
     stDtmfCnf.callId        = pstDtmfRsltIndMsg->ucCallId;
     stDtmfCnf.usClientId    = pstDtmfRsltIndMsg->usClientId;
     stDtmfCnf.opId          = pstDtmfRsltIndMsg->ucOpId;
@@ -1152,7 +1261,7 @@ VOS_UINT32 TAF_SPM_RcvImsaCallStopDtmfRsltInd_PreProc(
     stDtmfCnf.enDtmfState   = pstDtmfRsltIndMsg->enDtmfState;
     stDtmfCnf.ucDtmfCnt     = pstDtmfRsltIndMsg->ucDtmfCnt;
 
-    
+
     TAF_CALL_SendMsg(pstDtmfRsltIndMsg->usClientId,
                      MN_CALL_EVT_STOP_DTMF_RSLT,
                      &stDtmfCnf,
@@ -1248,6 +1357,7 @@ VOS_UINT32 TAF_SPM_RcvImsaCallAllRelease_PreProc(
 
     /* 设置IMS域呼叫存在标识 */
     TAF_SDC_SetImsCallExistFlg(VOS_FALSE);
+    TAF_SndMmaImsSrvInfoNotify(VOS_FALSE);
 
     /* 如果无重拨在GU下发起，需要上报call all release事件给应用 */
     if (VOS_FALSE == TAF_SDC_GetCsCallExistFlg())
@@ -1260,16 +1370,16 @@ VOS_UINT32 TAF_SPM_RcvImsaCallAllRelease_PreProc(
         PS_MEM_SET(&stCallInfo, 0, sizeof(MN_CALL_INFO_STRU));
 
         PS_MEM_CPY(&stCallInfo, &(pstImsaCallMsg->stCallInfo), sizeof(MN_CALL_INFO_STRU));
-    
+
         /* 增加主动上报相关全局变量的值 */
         PS_MEM_CPY(stCallInfo.aucCurcRptCfg,
                     pstCurcRptCtrl->aucRptCfg,
                     MN_CALL_RPT_CFG_MAX_SIZE);
-        
+
         PS_MEM_CPY(stCallInfo.aucUnsolicitedRptCfg,
                     pstUnsolicitedRptCtrl->aucRptCfg,
                     MN_CALL_RPT_CFG_MAX_SIZE);
-        
+
         /* 构造一条MN_CALL_EVT_ALL_RELEASED消息，给相应的cliendId回复 */
         MN_SendClientEvent(pstImsaCallMsg->usClientId,
                            MN_CALLBACK_CS_CALL,
@@ -1517,11 +1627,11 @@ VOS_UINT32 TAF_SPM_RcvImsaSsMsg_PreProc(
         /* 网络主动发起的SS业务需要置上标志 */
         case TAF_SS_EVT_REGISTERSS_CNF:
         case TAF_SS_EVT_USS_NOTIFY_IND:
-        
+
             TAF_SDC_SetImsSsSrvExistFlg(VOS_TRUE);
 
             break;
-            
+
         /* 以下事件需要清除标志 */
         case TAF_SS_EVT_ERROR:
         case TAF_SS_EVT_ERASESS_CNF:
@@ -1532,11 +1642,11 @@ VOS_UINT32 TAF_SPM_RcvImsaSsMsg_PreProc(
         case TAF_SS_EVT_USS_RELEASE_COMPLETE_IND:
         case TAF_SS_EVT_ERASE_CC_ENTRY_CNF:
         case TAF_SS_EVT_PROBLEM:
-        
+
             TAF_SDC_SetImsSsSrvExistFlg(VOS_FALSE);
-        
+
             break;
-            
+
         /* 其他事件时不需要设置/清除标志 */
         default:
 
@@ -1577,12 +1687,12 @@ VOS_UINT32 TAF_SPM_RcvMmaServiceStatusChangeNotify_PreProc(
     VOS_UINT32                          ulRlst;
     TAF_SPM_SERVICE_STATUS_ENUM_UINT8   enLastPsStatus;
     TAF_SPM_SERVICE_STATUS_ENUM_UINT8   enCurrPsStatus;
-    
+
     /* 获取上次PS服务状态 */
     enLastPsStatus = TAF_SPM_GetLastPsServiceStatus();
 
     /* 更新当前的PS服务状态到SPM CONTEXT中 */
-    enCurrPsStatus = (TAF_SPM_SERVICE_STATUS_ENUM_UINT8)TAF_SDC_GetPsServiceStatus();   
+    enCurrPsStatus = (TAF_SPM_SERVICE_STATUS_ENUM_UINT8)TAF_SDC_GetPsServiceStatus();
     if (TAF_SPM_SERVICE_STATUS_BUTT < enCurrPsStatus)
     {
         return  VOS_FALSE;
@@ -1593,7 +1703,7 @@ VOS_UINT32 TAF_SPM_RcvMmaServiceStatusChangeNotify_PreProc(
     {
         /* 等待新IMS注册结果 */
         return VOS_TRUE;
-    }  
+    }
 
     /* 处理缓存的消息 */
     ulRlst = TAF_SPM_ProcBufferedMsgInQueue();
@@ -1609,7 +1719,7 @@ VOS_UINT32 TAF_SPM_RcvMmaNetworkCapabilityChangeNotify_PreProc(
 )
 {
     VOS_UINT32                          ulRlst;
-    
+
     /* 处理缓存的消息 */
     ulRlst = TAF_SPM_ProcBufferedMsgInQueue();
 
@@ -1682,7 +1792,7 @@ VOS_UINT32 TAF_SPM_RcvImsaCallMsgSyncInd_PreProc(
 )
 {
     VOS_UINT8                           ucNum;
-    VOS_UINT8                           i;    
+    VOS_UINT8                           i;
 
     /* 呼叫重拨未打开，直接返回 */
     if (VOS_TRUE == TAF_SDC_GetCallRedailFromImsToCsSupportFlag())
@@ -1690,7 +1800,7 @@ VOS_UINT32 TAF_SPM_RcvImsaCallMsgSyncInd_PreProc(
         /* 由于SRVCC过程前的呼叫请求，走换域重拨流程，IMSA保证在该消息前先发给SPM,
          * 因此，如果收到该消息时，重拨缓存中仍然有消息，它一定是在SRVCC过程中收到，
          * 可以清除呼叫重拨缓存，呼叫请求消息由call模块负责发起
-         */    
+         */
         ucNum = TAF_SPM_GetNumberOfCallRedialBuffer();
 
         for (i = 0; i < ucNum; i++)
@@ -1710,20 +1820,20 @@ VOS_UINT32 TAF_SPM_RcvImsaCallInviteNewPtptCnf_PreProc(
 {
     IMSA_SPM_CALL_INVITE_NEW_PTPT_CNF_STRU                 *pstNewPtptCnf         = VOS_NULL_PTR;
     TAF_SDC_CURC_RPT_CTRL_STRU                             *pstCurcRptCtrl        = VOS_NULL_PTR;
-    TAF_SDC_UNSOLICITED_RPT_CTRL_STRU                      *pstUnsolicitedRptCtrl = VOS_NULL_PTR;    
-    MN_CALL_INFO_STRU                                       stCallInfo;    
+    TAF_SDC_UNSOLICITED_RPT_CTRL_STRU                      *pstUnsolicitedRptCtrl = VOS_NULL_PTR;
+    MN_CALL_INFO_STRU                                       stCallInfo;
 
     pstNewPtptCnf = (IMSA_SPM_CALL_INVITE_NEW_PTPT_CNF_STRU *)pstMsg;
 
     pstCurcRptCtrl          = TAF_SDC_GetCurcRptCtrl();
     pstUnsolicitedRptCtrl   = TAF_SDC_GetUnsolicitedRptCtrl();
 
-    PS_MEM_SET(&stCallInfo, 0, sizeof(MN_CALL_INFO_STRU));    
+    PS_MEM_SET(&stCallInfo, 0, sizeof(MN_CALL_INFO_STRU));
 
     stCallInfo.clientId = pstNewPtptCnf->usClientId;
     stCallInfo.opId     = pstNewPtptCnf->ucOpId;
     stCallInfo.enCause  = pstNewPtptCnf->enCause;
-    
+
     /* 增加主动上报相关全局变量的值 */
     PS_MEM_CPY(stCallInfo.aucCurcRptCfg,
                 pstCurcRptCtrl->aucRptCfg,
@@ -1739,12 +1849,395 @@ VOS_UINT32 TAF_SPM_RcvImsaCallInviteNewPtptCnf_PreProc(
                        MN_CALL_EVT_CALL_ORIG_CNF,
                        &stCallInfo);
 
-    /* 构造Err_Ind消息，cliendId为广播类型 */
-    MN_CALL_ReportErrIndEvent(MN_CLIENT_ALL, 0, stCallInfo.enCause, 0);
-
-    return VOS_TRUE;    
-}
+#if (FEATURE_ON == FEATURE_PTM)
+    /* 记录CS呼叫异常log */
+    MN_CALL_CsCallErrRecord(0, stCallInfo.enCause);
 #endif
+
+    return VOS_TRUE;
+}
+VOS_UINT32 TAF_SPM_RcvImsaCallTypeChangeInfoInd_PreProc(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+)
+{
+    IMSA_SPM_CALL_TYPE_CHANGE_INFO_IND_STRU                 *pstImsaCallMsg           = VOS_NULL_PTR;
+
+    pstImsaCallMsg  = (IMSA_SPM_CALL_TYPE_CHANGE_INFO_IND_STRU *)pstMsg;
+
+    /* 网络下发的紧急呼列表中没有带110，拨打110时，按普通呼叫发出去，IMS指示需要建立紧急承载，以紧急呼重新发起，并携带原因值#380
+       IMSA建立紧急承载，以紧急呼发起域内重拨，此时上报ID_IMSA_SPM_CALL_TYPE_CHANGE_INFO_IND，指示呼叫类型变更 */
+
+    /* 更新重拨缓存消息的call type，在换域重拨时，以紧急呼发CS域重拨 */
+    TAF_SPM_UpdateCallRedialBufferMsgWithCallType(pstImsaCallMsg->usClientId,
+                                                  pstImsaCallMsg->enDestCallType,
+                                                  &(pstImsaCallMsg->stEmergencyCat));
+
+    return VOS_TRUE;
+}
+VOS_UINT32 TAF_SPM_RcvAppCallModifyReq_PreProc(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+)
+{
+    VOS_UINT32                          ulRet;
+    MN_CALL_MODIFY_CNF_STRU             stModifyCnf;
+    MN_CALL_APP_REQ_MSG_STRU           *pstAppMsg;
+
+    /* 该消息不进入到状态机处理 */
+    ulRet     = VOS_TRUE;
+    pstAppMsg = (MN_CALL_APP_REQ_MSG_STRU *)pstMsg;
+
+    /* 构造一条消息，给AT回复 */
+    PS_MEM_SET(&stModifyCnf, 0x00, sizeof(MN_CALL_MODIFY_CNF_STRU));
+
+    /* 如果已经IMS域呼叫存在，直接选择IMS域，其他情况返回VOS_FALSE当失败处理 */
+    if (VOS_TRUE == TAF_SDC_GetImsCallExistFlg())
+    {
+        ulRet = TAF_SPM_ProcReqMsgBasedOnCsOverIp(ulEventType, pstMsg);
+    }
+    else
+    {
+        /* 如果域选择为CS域则直接给AT回复失败 */
+        stModifyCnf.enEvent                 = MN_CALL_EVT_CALL_MODIFY_CNF;
+        stModifyCnf.usClientId              = pstAppMsg->clientId;
+        stModifyCnf.ucOpId                  = pstAppMsg->opId;
+        stModifyCnf.ucCallId                = pstAppMsg->callId;
+        stModifyCnf.enCause                 = TAF_CS_CAUSE_DOMAIN_SELECTION_FAILURE;
+
+        MN_SendReportMsg(MN_CALLBACK_CS_CALL, (VOS_UINT8 *)&stModifyCnf, sizeof(MN_CALL_MODIFY_CNF_STRU));
+    }
+
+    return ulRet;
+}
+
+
+VOS_UINT32 TAF_SPM_RcvAppCallAnswerRemoteModifyReq_PreProc(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+)
+{
+    VOS_UINT32                          ulRet;
+    MN_CALL_MODIFY_CNF_STRU             stModifyCnf;
+    MN_CALL_APP_REQ_MSG_STRU           *pstAppMsg;
+
+    /* 该消息不进入到状态机处理 */
+    ulRet     = VOS_TRUE;
+    pstAppMsg = (MN_CALL_APP_REQ_MSG_STRU *)pstMsg;
+
+    /* 构造一条消息，给AT回复 */
+    PS_MEM_SET(&stModifyCnf, 0x00, sizeof(MN_CALL_MODIFY_CNF_STRU));
+
+    /* 如果已经IMS域呼叫存在，直接选择IMS域，其他情况返回VOS_FALSE当失败处理 */
+    if (VOS_TRUE == TAF_SDC_GetImsCallExistFlg())
+    {
+        ulRet = TAF_SPM_ProcReqMsgBasedOnCsOverIp(ulEventType, pstMsg);
+    }
+    else
+    {
+        /* 如果域选择为CS域则直接给AT回复失败 */
+        stModifyCnf.enEvent                 = MN_CALL_EVT_CALL_ANSWER_REMOTE_MODIFY_CNF;
+        stModifyCnf.usClientId              = pstAppMsg->clientId;
+        stModifyCnf.ucOpId                  = pstAppMsg->opId;
+        stModifyCnf.ucCallId                = pstAppMsg->callId;
+        stModifyCnf.enCause                 = TAF_CS_CAUSE_DOMAIN_SELECTION_FAILURE;
+
+        MN_SendReportMsg(MN_CALLBACK_CS_CALL, (VOS_UINT8 *)&stModifyCnf, sizeof(MN_CALL_MODIFY_CNF_STRU));
+    }
+
+    return ulRet;
+}
+
+
+VOS_UINT32 TAF_SPM_RcvImsaCallModifyCnf_PreProc(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+)
+{
+    IMSA_SPM_CALL_MODIFY_CNF_STRU      *pstImsaMsg  = VOS_NULL_PTR;
+    MN_CALL_MODIFY_CNF_STRU             stModifyCnf;
+
+    pstImsaMsg  = (IMSA_SPM_CALL_MODIFY_CNF_STRU *)pstMsg;
+
+    /* 构造一条消息，给AT回复 */
+    PS_MEM_SET(&stModifyCnf, 0x00, sizeof(MN_CALL_MODIFY_CNF_STRU));
+
+    stModifyCnf.enEvent                 = MN_CALL_EVT_CALL_MODIFY_CNF;
+    stModifyCnf.usClientId              = pstImsaMsg->usClientId;
+    stModifyCnf.ucOpId                  = pstImsaMsg->ucOpId;
+    stModifyCnf.ucCallId                = pstImsaMsg->callId;
+    stModifyCnf.enCause                 = pstImsaMsg->enCause;
+
+    MN_SendReportMsg(MN_CALLBACK_CS_CALL, (VOS_UINT8 *)&stModifyCnf, sizeof(MN_CALL_MODIFY_CNF_STRU));
+
+    return VOS_TRUE;
+}
+VOS_UINT32 TAF_SPM_RcvImsaCallAnswerRemoteModifyCnf_PreProc(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+)
+{
+    IMSA_SPM_CALL_ANSWER_REMOTE_MODIFY_CNF_STRU    *pstImsaMsg  = VOS_NULL_PTR;
+    MN_CALL_MODIFY_CNF_STRU                         stModifyCnf;
+
+    pstImsaMsg  = (IMSA_SPM_CALL_ANSWER_REMOTE_MODIFY_CNF_STRU *)pstMsg;
+
+    /* 构造一条消息，给AT回复 */
+    PS_MEM_SET(&stModifyCnf, 0x00, sizeof(MN_CALL_MODIFY_CNF_STRU));
+
+    stModifyCnf.enEvent                 = MN_CALL_EVT_CALL_ANSWER_REMOTE_MODIFY_CNF;
+    stModifyCnf.usClientId              = pstImsaMsg->usClientId;
+    stModifyCnf.ucOpId                  = pstImsaMsg->ucOpId;
+    stModifyCnf.ucCallId                = pstImsaMsg->callId;
+    stModifyCnf.enCause                 = pstImsaMsg->enCause;
+
+    MN_SendReportMsg(MN_CALLBACK_CS_CALL, (VOS_UINT8 *)&stModifyCnf, sizeof(MN_CALL_MODIFY_CNF_STRU));
+
+    return VOS_TRUE;
+}
+VOS_UINT32 TAF_SPM_RcvImsaCallModifyStatusInd_PreProc(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+)
+{
+    IMSA_SPM_CALL_MODIFY_STATUS_IND_STRU   *pstImsaMsg  = VOS_NULL_PTR;
+    MN_CALL_EVT_MODIFY_STATUS_IND_STRU      stModifyInd;
+
+    pstImsaMsg  = (IMSA_SPM_CALL_MODIFY_STATUS_IND_STRU *)pstMsg;
+
+    /* 构造一条消息，给AT回复 */
+    PS_MEM_SET(&stModifyInd, 0x00, sizeof(MN_CALL_EVT_MODIFY_STATUS_IND_STRU));
+
+    stModifyInd.enEvent                 = MN_CALL_EVT_CALL_MODIFY_STATUS_IND;
+    stModifyInd.usClientId              = MN_GetRealClientId(pstImsaMsg->usClientId, WUEPS_PID_TAF);
+    stModifyInd.ucOpId                  = pstImsaMsg->ucOpId;
+    stModifyInd.ucCallId                = pstImsaMsg->callId;
+    stModifyInd.enModifyStatus          = (MN_CALL_MODIFY_STATUS_ENUM_UINT8)pstImsaMsg->enModifyStatus;
+    stModifyInd.enVoiceDomain           = pstImsaMsg->enVoiceDomain;
+    stModifyInd.enCurrCallType          = pstImsaMsg->enCurrCallType;
+    stModifyInd.enExpectCallType        = pstImsaMsg->enExpectCallType;
+    stModifyInd.enCause                 = pstImsaMsg->enCause;
+
+    MN_SendReportMsg(MN_CALLBACK_CS_CALL, (VOS_UINT8 *)&stModifyInd, sizeof(MN_CALL_EVT_MODIFY_STATUS_IND_STRU));
+
+    return VOS_TRUE;
+}
+VOS_UINT32 TAF_SPM_RcvAppEconfDialReq_PreProc(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+)
+{
+    MN_CALL_APP_REQ_MSG_STRU           *pstAppMsg;
+
+    pstAppMsg   = (MN_CALL_APP_REQ_MSG_STRU *)pstMsg;
+
+    /* 初始化Econf的信息 */
+    TAF_SPM_InitEconfInfo();
+
+    /* 解析电话号码相关信息 */
+    TAF_SPM_ParseEconfDailInfoFromMsg(pstMsg);
+
+    /* call is allowed if phone mode is power on */
+    if (TAF_PH_MODE_FULL != TAF_SDC_GetCurPhoneMode())
+    {
+        TAF_SPM_SendAtEconfDialCnf(pstAppMsg->clientId,
+                                   pstAppMsg->opId,
+                                   pstAppMsg->callId,
+                                   TAF_CS_CAUSE_POWER_OFF);
+        /* 记录状态 */
+        TAF_SPM_SetEconfPreRslt(TAF_CS_CAUSE_POWER_OFF);
+
+        /* 上报Notify Ind */
+        TAF_SPM_ReportEconfCheckRslt();
+
+        return VOS_TRUE;
+    }
+
+    /* 增强型多方通话只有MN_CALL_TYPE_VOICE类型 */
+    if (MN_CALL_TYPE_VOICE != pstAppMsg->unParm.stEconfDial.enCallType)
+    {
+        TAF_SPM_SendAtEconfDialCnf(pstAppMsg->clientId,
+                                   pstAppMsg->opId,
+                                   pstAppMsg->callId,
+                                   TAF_CS_CAUSE_NOT_ALLOW);
+        /* 记录状态 */
+        TAF_SPM_SetEconfPreRslt(TAF_CS_CAUSE_NOT_ALLOW);
+
+        /* 上报Notify Ind */
+        TAF_SPM_ReportEconfCheckRslt();
+
+        return VOS_TRUE;
+    }
+
+    /* forbid normal call when USIM service is not available */
+    if (VOS_FALSE == TAF_SPM_IsUsimServiceAvailable())
+    {
+        TAF_SPM_SendAtEconfDialCnf(pstAppMsg->clientId,
+                                   pstAppMsg->opId,
+                                   pstAppMsg->callId,
+                                   TAF_CS_CAUSE_SIM_NOT_EXIST);
+        /* 记录状态 */
+        TAF_SPM_SetEconfPreRslt(TAF_CS_CAUSE_SIM_NOT_EXIST);
+
+        /* 上报Notify Ind */
+        TAF_SPM_ReportEconfCheckRslt();
+
+        return VOS_TRUE;
+    }
+
+    /* 需要判断两个域卡无效,因为单域卡无效的情况能会disable LTE到GU下 */
+    if (VOS_FALSE == TAF_SDC_IsUsimStausValid())
+    {
+        TAF_SPM_SendAtEconfDialCnf(pstAppMsg->clientId,
+                                   pstAppMsg->opId,
+                                   pstAppMsg->callId,
+                                   TAF_CS_CAUSE_SIM_INVALID);
+
+        /* 记录状态 */
+        TAF_SPM_SetEconfPreRslt(TAF_CS_CAUSE_SIM_INVALID);
+
+        /* 上报Notify Ind */
+        TAF_SPM_ReportEconfCheckRslt();
+
+        return VOS_TRUE;
+    }
+
+    return VOS_FALSE;
+}
+
+
+VOS_UINT32 TAF_SPM_RcvImsaEconfDialCnf_PreProc(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+)
+{
+    IMSA_SPM_CALL_ECONF_DIAL_CNF_STRU     *pstImsaMsg  = VOS_NULL_PTR;
+
+    pstImsaMsg  = (IMSA_SPM_CALL_ECONF_DIAL_CNF_STRU *)pstMsg;
+
+    /* 只要MO成功时，才设置IMS域呼叫存在标识 */
+    if (TAF_CS_CAUSE_SUCCESS == pstImsaMsg->enCause)
+    {
+        TAF_SDC_SetImsCallExistFlg(VOS_TRUE);
+        TAF_SndMmaImsSrvInfoNotify(VOS_TRUE);
+    }
+
+    /* 构造一条消息，给AT回复 */
+    TAF_SPM_SendAtEconfDialCnf(pstImsaMsg->usClientId,
+                               pstImsaMsg->ucOpId,
+                               pstImsaMsg->ucCallId,
+                               pstImsaMsg->enCause);
+
+#if (FEATURE_ON == FEATURE_PTM)
+    /* 记录CS呼叫异常log */
+    MN_CALL_CsCallErrRecord(0, pstImsaMsg->enCause);
+#endif
+
+    return VOS_TRUE;
+}
+VOS_UINT32 TAF_SPM_RcvImsaEconfAddUsersCnf_PreProc(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+)
+{
+    IMSA_SPM_CALL_ECONF_ADD_USERS_CNF_STRU     *pstImsaMsg  = VOS_NULL_PTR;
+
+    pstImsaMsg  = (IMSA_SPM_CALL_ECONF_ADD_USERS_CNF_STRU *)pstMsg;
+
+    /* 构造一条消息，给AT回复 */
+    TAF_SPM_SendAtEconfDialCnf(pstImsaMsg->usClientId,
+                               pstImsaMsg->ucOpId,
+                               pstImsaMsg->ucOpId,
+                               pstImsaMsg->enCause);
+
+#if (FEATURE_ON == FEATURE_PTM)
+    /* 记录CS呼叫异常log */
+    MN_CALL_CsCallErrRecord(0, pstImsaMsg->enCause);
+#endif
+
+    return VOS_TRUE;
+}
+
+
+VOS_UINT32 TAF_SPM_RcvImsaEconfNotifyInd_PreProc(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+)
+{
+    IMSA_SPM_CALL_ECONF_NOTIFY_IND_STRU    *pstImsaMsg      = VOS_NULL_PTR;
+    TAF_CALL_EVT_ECONF_NOTIFY_IND_STRU     *pstNotifyInd    = VOS_NULL_PTR;
+
+    pstNotifyInd = (TAF_CALL_EVT_ECONF_NOTIFY_IND_STRU *)PS_MEM_ALLOC(WUEPS_PID_TAF, sizeof(TAF_CALL_EVT_ECONF_NOTIFY_IND_STRU));
+    if (VOS_NULL_PTR == pstNotifyInd)
+    {
+        return VOS_TRUE;
+    }
+
+    pstImsaMsg  = (IMSA_SPM_CALL_ECONF_NOTIFY_IND_STRU *)pstMsg;
+
+    /* 构造一条消息，给AT回复 */
+    PS_MEM_SET(pstNotifyInd, 0x00, sizeof(TAF_CALL_EVT_ECONF_NOTIFY_IND_STRU));
+
+    pstNotifyInd->enEvent          = TAF_CALL_EVT_ECONF_NOTIFY_IND;
+    pstNotifyInd->usClientId       = MN_GetRealClientId(pstImsaMsg->usClientId, WUEPS_PID_TAF);
+    pstNotifyInd->ucOpId           = pstImsaMsg->ucOpId;
+
+    if (pstImsaMsg->ucNumOfCalls > TAF_CALL_MAX_ECONF_CALLED_NUM)
+    {
+        pstNotifyInd->ucNumOfCalls = TAF_CALL_MAX_ECONF_CALLED_NUM;
+    }
+    else
+    {
+        pstNotifyInd->ucNumOfCalls = pstImsaMsg->ucNumOfCalls;
+    }
+
+    PS_MEM_CPY(pstNotifyInd->astCallInfo,
+               pstImsaMsg->astCallInfo,
+               sizeof(TAF_CALL_ECONF_INFO_PARAM_STRU) * pstImsaMsg->ucNumOfCalls);
+
+    MN_SendReportMsg(MN_CALLBACK_CS_CALL, (VOS_UINT8 *)pstNotifyInd, sizeof(TAF_CALL_EVT_ECONF_NOTIFY_IND_STRU));
+
+    PS_MEM_FREE(WUEPS_PID_TAF, pstNotifyInd);
+
+    return VOS_TRUE;
+}
+VOS_UINT32 TAF_SPM_RcvAppGetEconfInfoReq_PreProc(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+)
+{
+    /* 上层如果来查询会议状态，都发到IMSA去查询 */
+    TAF_SPM_ProcReqMsgBasedOnCsOverIp(ulEventType, pstMsg);
+
+    return VOS_TRUE;
+}
+VOS_UINT32 TAF_SPM_RcvImsaGetEconfInfoCnf_PreProc(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+)
+{
+    IMSA_SPM_CALL_GET_ECONF_CALLED_INFO_CNF_STRU   *pstImsaMsg  = VOS_NULL_PTR;
+
+    pstImsaMsg = (IMSA_SPM_CALL_GET_ECONF_CALLED_INFO_CNF_STRU *)pstMsg;
+
+    /* 与会者最多为5个 */
+    if (pstImsaMsg->ucNumOfCalls > TAF_CALL_MAX_ECONF_CALLED_NUM)
+    {
+        pstImsaMsg->ucNumOfCalls = TAF_CALL_MAX_ECONF_CALLED_NUM;
+    }
+
+    if (CALL_IMSA_GET_CALL_INFO_REQ_TYPE_CLCC == pstImsaMsg->enReqType)
+    {
+        /* 请求类型是CLCC查询呼叫信息,给AT回复 */
+        TAF_SPM_SendAtGetEconfCallInfoCnf(pstImsaMsg);
+    }
+
+    return VOS_TRUE;
+}
+
+#endif
+
+
 VOS_UINT32 TAF_SPM_RcvMmaPowerOffInd_PreProc(
     VOS_UINT32                          ulEventType,
     struct MsgCB                       *pstMsg
@@ -1753,7 +2246,7 @@ VOS_UINT32 TAF_SPM_RcvMmaPowerOffInd_PreProc(
 
 #if (FEATURE_ON == FEATURE_IMS)
     TAF_SPM_ProcMmaPowerOffInd();
-#endif    
+#endif
 
     /* return VOS_FASLE， APS also need this message */
     return VOS_FALSE;
@@ -1761,16 +2254,15 @@ VOS_UINT32 TAF_SPM_RcvMmaPowerOffInd_PreProc(
 VOS_UINT32 TAF_SPM_IsSsServiceReqAllowed_PreProc(
     VOS_UINT32                          ulEventType,
     struct MsgCB                       *pstMsg,
-    TAF_PH_ERR_CODE                    *penCause
+    TAF_ERROR_CODE_ENUM_UINT32         *penCause
 )
 {
     VOS_UINT32                          ulIsUsimValid;
 
-
     *penCause   = TAF_ERR_NO_ERROR;
-    
+
     ulIsUsimValid   = TAF_SDC_IsUsimStausValid();
-    
+
     /* SS is allowed if phone mode is power on */
     if (TAF_PH_MODE_FULL != TAF_SDC_GetCurPhoneMode())
     {
@@ -1796,7 +2288,7 @@ VOS_UINT32 TAF_SPM_IsSmsServiceReqAllowed_PreProc(
 )
 {
     *pulCause   = MN_ERR_NO_ERROR;
-        
+
     /* SMS is allowed if phone mode is power on */
     if (TAF_PH_MODE_FULL != TAF_SDC_GetCurPhoneMode())
     {
@@ -1820,6 +2312,7 @@ VOS_UINT32 TAF_SPM_IsSmsServiceReqAllowed_PreProc(
 
     return VOS_TRUE;
 }
+
 
 #ifdef __cplusplus
     #if __cplusplus

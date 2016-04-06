@@ -29,6 +29,7 @@
 #include <linux/hw_breakpoint.h>
 #include <linux/smp.h>
 #include <linux/cpu_pm.h>
+#include <linux/coresight.h>
 
 #include <asm/cacheflush.h>
 #include <asm/cputype.h>
@@ -37,6 +38,9 @@
 #include <asm/kdebug.h>
 #include <asm/traps.h>
 #include <asm/hardware/coresight.h>
+#ifdef CONFIG_ARCH_HI6XXX
+#include "../../../drivers/hisi/mntn/excDrv.h"
+#endif
 
 /* Breakpoint currently in use for each BRP. */
 static DEFINE_PER_CPU(struct perf_event *, bp_on_reg[ARM_MAX_BRP]);
@@ -167,7 +171,7 @@ static int debug_arch_supported(void)
 /* Can we determine the watchpoint access type from the fsr? */
 static int debug_exception_updates_fsr(void)
 {
-	return 0;
+	return get_debug_arch() >= ARM_DEBUG_ARCH_V8;
 }
 
 /* Determine number of WRP registers available. */
@@ -257,6 +261,7 @@ static int enable_monitor_mode(void)
 		break;
 	case ARM_DEBUG_ARCH_V7_ECP14:
 	case ARM_DEBUG_ARCH_V7_1:
+	case ARM_DEBUG_ARCH_V8:
 		ARM_DBG_WRITE(c0, c2, 2, (dscr | ARM_DSCR_MDBGEN));
 		isb();
 		break;
@@ -975,7 +980,7 @@ static void reset_ctrl_regs(void *unused)
 	 * Unconditionally clear the OS lock by writing a value
 	 * other than CS_LAR_KEY to the access register.
 	 */
-	ARM_DBG_WRITE(c1, c0, 4, ~CS_LAR_KEY);
+	ARM_DBG_WRITE(c1, c0, 4, ~CORESIGHT_UNLOCK);
 	isb();
 
 	/*
@@ -1060,6 +1065,15 @@ static inline void pm_init(void)
 
 static int __init arch_hw_breakpoint_init(void)
 {
+#ifdef CONFIG_ARCH_HI6XXX
+	/* NVE Switch */
+	if (!check_himntn(HIMNTN_WATCHPOINT_EN)) {
+		/* not enabled */
+		pr_info("HIMNTN_WATCHPOINT_EN is not enabled\n");
+		return 0;
+	}
+#endif
+
 	debug_arch = get_debug_arch();
 
 	if (!debug_arch_supported()) {

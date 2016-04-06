@@ -86,6 +86,7 @@ VOS_VOID  MN_CAL_ReadVideoCallNvim( VOS_VOID );
 
 VOS_VOID  MN_CALL_ReadCallRedialCfgNvim( VOS_VOID );
 
+VOS_VOID TAF_CALL_ReadCcwaCtrlModeNvim(VOS_VOID);
 
 #if (VOS_OS_VER == VOS_WIN32)
 #pragma pack()

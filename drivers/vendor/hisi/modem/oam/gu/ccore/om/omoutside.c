@@ -176,7 +176,7 @@ VOS_UINT32 OM_GetData(OM_ERR_LOG_MOUDLE_ID_ENUM_UINT32 enProjectModule, VOS_VOID
         return OM_APP_MSG_MODULE_ID_ERR;
     }
 
-    if ((VOS_NULL_PTR == pData) || ((sizeof(OM_ALARM_MSG_HEAD_STRU) + sizeof(OM_FTM_HEADER_STRU)) > ulLen))
+    if ((VOS_NULL_PTR == pData) || (sizeof(OM_ALARM_MSG_HEAD_STRU) > ulLen))
     {
         OM_CCPU_ERR_LOG2("\r\n OM_GetData: Module ID is %d, Send data is NULL or len is error:%d\n", enProjectModule, ulLen);
         return OM_APP_MSG_LENGTH_ERR;
@@ -206,11 +206,11 @@ VOS_UINT32 OM_GetData(OM_ERR_LOG_MOUDLE_ID_ENUM_UINT32 enProjectModule, VOS_VOID
     else if (OM_ERR_LOG_MSG_FTM_CNF == pstOmHead->ulMsgType)
     {
         pstOmFtmReportInd->ulMsgName     = ID_OM_FTM_REQUIRE_CNF;
-    }
-    else
-    {
-        OM_CCPU_ERR_LOG2("OM_GetData:Module ID is %d, Msg Type is Err %d\r\n", 
-                     enProjectModule, pstOmHead->ulMsgType);
+    } else if (OM_ERR_LOG_MSG_ERR_REPORT == pstOmHead->ulMsgType) {
+        pstOmFtmReportInd->ulMsgName     = ID_OM_ERR_LOG_REPORT_CNF;
+    } else {
+        OM_CCPU_ERR_LOG2("OM_GetData:Module ID is %d, Msg Type is Err %d\r\n",
+                         enProjectModule, pstOmHead->ulMsgType);
 
         VOS_FreeMsg(WUEPS_PID_OM_CALLBACK, pstOmFtmReportInd);
 
@@ -317,6 +317,66 @@ VOS_VOID OM_ErrLogMsgProc(MsgBlock* pMsg)
                 {
                     OM_CCPU_ERR_LOG2("OM_ErrLogMsgProc:Module ID is %d, return value fail: %d\r\n", 
                                  pstAppOmFtmReq->ulMsgModuleID, ulResult);
+                }
+            }
+            break;
+        }
+
+        case ID_OM_ERR_LOG_CTRL_IND:
+        {
+            OM_ERROR_LOG_CTRL_IND_STRU *pstOmErrCtrlInd = (OM_ERROR_LOG_CTRL_IND_STRU *)pMsg;
+
+            stAppOmCtrlStatus.stOmHeader.ulMsgType = OM_ERR_LOG_MSG_ON_OFF;
+            stAppOmCtrlStatus.stOmHeader.ulMsgLen  = sizeof(VOS_UINT32) + sizeof(VOS_UINT16) + 2*sizeof(VOS_UINT8); /* 该结构体长度 */
+            stAppOmCtrlStatus.ulMsgModuleID        = OM_APP_SWITCH_MSG_ID_ERR_LOG;  /* 参见Kirin商用Errlog故障定位&工程模式扩展方案-平台接口说明书控制命令业务接口 */
+            stAppOmCtrlStatus.usModemID            = pstOmErrCtrlInd->usModemID;
+            stAppOmCtrlStatus.ucAlmStatus          = pstOmErrCtrlInd->ucAlmStatus;
+            stAppOmCtrlStatus.ucAlmLevel           = pstOmErrCtrlInd->ucAlmLevel;
+
+            /*lint -e40*/
+            OM_CCPU_DEBUG_TRACE(((VOS_UINT8*)&stAppOmCtrlStatus), sizeof(stAppOmCtrlStatus), OM_CCPU_ERRLOG_RCV);
+            /*lint +e40*/
+           
+            for (ulIndex=0; ulIndex<(sizeof(g_astFTMCallBackFuncCtx) / sizeof(g_astFTMCallBackFuncCtx[0])); ulIndex++){
+                if (VOS_NULL_PTR == g_astFTMCallBackFuncCtx[ulIndex].pSendUlAtFunc){
+                    continue;
+                }
+                
+                ulResult = g_astFTMCallBackFuncCtx[ulIndex].pSendUlAtFunc(stAppOmCtrlStatus.ulMsgModuleID,
+                                                                                    (VOS_VOID *)&stAppOmCtrlStatus,
+                                                                                    sizeof(stAppOmCtrlStatus));
+                if (VOS_OK != ulResult){
+                    OM_CCPU_ERR_LOG2("OM_ErrLogMsgProc:Module ID is %d, return value fail: %d\r\n",
+                                             stAppOmCtrlStatus.ulMsgModuleID, ulResult);
+                }
+            }
+            break;
+        }
+
+        /* 一次上报 */
+        case ID_OM_ERR_LOG_REPORT_REQ:
+        {
+            APP_OM_REQ_ERR_LOG_STRU pstAppOmErrReq;
+            OM_ERR_LOG_REPORT_REQ_STRU *p       = (OM_ERR_LOG_REPORT_REQ_STRU *)pMsg;
+            pstAppOmErrReq.stOmHeader.ulMsgType = OM_ERR_LOG_MSG_SET_ERR_REPORT;
+            pstAppOmErrReq.stOmHeader.ulMsgLen  = sizeof(VOS_UINT32) + 2* sizeof(VOS_UINT16);
+            pstAppOmErrReq.ulMsgModuleID        = 0x01000000; /* 参见Kirin商用Errlog故障定位&工程模式扩展方案-平台接口说明书控制命令业务接口 */
+            pstAppOmErrReq.usModemID            = p->usModemID;
+            
+            OM_CCPU_DEBUG_TRACE(((VOS_UINT8*)&stAppOmCtrlStatus), sizeof(stAppOmCtrlStatus), OM_CCPU_ERRLOG_RCV);
+
+            for (ulIndex=0; ulIndex<(sizeof(g_astFTMCallBackFuncCtx) / sizeof(g_astFTMCallBackFuncCtx[0])); ulIndex++){
+                if (VOS_NULL_PTR == g_astFTMCallBackFuncCtx[ulIndex].pSendUlAtFunc){
+                    continue;
+                }
+
+                ulResult = g_astFTMCallBackFuncCtx[ulIndex].pSendUlAtFunc(pstAppOmErrReq.ulMsgModuleID,
+                                                                        (VOS_VOID *)&pstAppOmErrReq,
+                                                                        sizeof(pstAppOmErrReq));
+                
+                if (VOS_OK != ulResult){
+                    OM_CCPU_ERR_LOG2("OM_ErrLogMsgProc:Module ID is %d, return value fail: %d\r\n",
+                                 pstAppOmErrReq.ulMsgModuleID, ulResult);
                 }
             }
             break;

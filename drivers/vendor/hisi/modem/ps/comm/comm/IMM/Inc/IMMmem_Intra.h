@@ -169,7 +169,7 @@ typedef struct
 
 typedef void (*IMM_MEM_EXT_FREE_CALLBACK)(void *pAddr);
 typedef void (*IMM_MEM_USED_INFO_EVENT_RPT_CALLBACK)( unsigned char  ucPoolId, IMM_MEM_USED_INFO_TRIG_TYPE_ENUM_UINT8 enTrigType );
-typedef unsigned long (*IMM_OM_GET_SLICE_CALLBACK)(void);
+typedef unsigned int (*IMM_OM_GET_SLICE_CALLBACK)(void);
 
 
 typedef struct
@@ -185,7 +185,7 @@ typedef struct
 
     /* 指向长度索引表的指针 */
     unsigned char                       aucLenIndexTable[IMM_MEM_BLK_MAX_BYTE_LEN];
-    unsigned char                       aucResv[3];
+    unsigned char                       aucRsv1[3];
 
     /* 指向级数索引表的指针 */
     IMM_MEM_CLUSTER_STRU                astClusterTable[IMM_MEM_BLK_MAX_CLUSTER_NUM];
@@ -196,7 +196,9 @@ typedef struct
     unsigned short                      usImmExcThresholdCnt;   /* 申请内存失败超过门限次数 */
     unsigned short                      usImmAllocFailCnt;      /* 最后一次过门限申请内存失败次数 */
 
-    unsigned long                       ulImmMemMaxBlkCcpuUsedCnt; /* 最高档A核传给C核的库存量 */
+    unsigned int                        ulImmMemMaxBlkCcpuUsedCnt; /* 最高档A核传给C核的库存量 */
+
+    unsigned char                       aucRsv2[4];
 
     IMM_MEM_STRU                       *pstImmMemStStartAddr;   /* 指向ImmMemST首地址的指针 */
     IMM_MEM_EVENT_CALLBACK              pMemAllocEvent;
@@ -218,7 +220,7 @@ typedef struct
 {
     IMM_MEM_POOL_ID_ENUM_UINT8          enPoolId;           /* 本池 ID */
     unsigned char                       ucClusterCnt;       /* 本内存池有多少级 */
-    unsigned char                       aucResv[2];
+    unsigned char                       aucRsv[6];
 
     IMM_MEM_CLUSTER_CFG_INFO_STRU      *pstClusterCfgInfo;  /* 每级的具体信息 */
 } IMM_MEM_POOL_CFG_INFO_STRU;
@@ -236,7 +238,7 @@ typedef struct
 *****************************************************************************/
 typedef struct IMM_MEM_FREE_NULL_PTR_INFO
 {
-    unsigned long           ulImmMemFreeNullPtrCnt;     /* ImmMemFree 收到空指针次数 */
+    unsigned int           ulImmMemFreeNullPtrCnt;     /* ImmMemFree 收到空指针次数 */
     unsigned short          usImmMemFreeFileId;         /* ImmMemFree 收到空指针次数文件ID，仅保存最后一次收到空指针文件ID信息 */
     unsigned short          usImmMemFreeLineNum;        /* ImmMemFree 收到空指针次数文件ID，仅保存最后一次收到空指针行号信息 */
 }IMM_MEM_FREE_NULL_PTR_INFO_STRU;
@@ -249,8 +251,8 @@ typedef struct IMM_MEM_FREE_NULL_PTR_INFO
 *****************************************************************************/
 typedef struct IMM_MEM_FREE_INVALIED_MEM_INFO
 {
-    unsigned long                           ulInvalidImmMemCnt;         /* IMM MEM FREE 收到的非法内存个数 */
-    unsigned long                           ulInvalidImmMemAddr;        /* IMM MEM FREE 最后一次收到的非法IMM MEM 内存地址 */
+    unsigned int                           ulInvalidImmMemCnt;         /* IMM MEM FREE 收到的非法内存个数 */
+    unsigned int                           ulInvalidImmMemAddr;        /* IMM MEM FREE 最后一次收到的非法IMM MEM 内存地址 */
     unsigned short                          usImmMemFreeFileId;         /* IMM MEM FREE 最后一次收到的非法IMM MEM 内存文件ID信息 */
     unsigned short                          usImmMemFreeLineNum;        /* IMM MEM FREE 最后一次收到的非法IMM MEM 内存行号信息 */
     IMM_INVALID_MEM_TYPE_ENUM_UINT8         ucImmMemInvalidType;        /* IMM MEM FREE 最后一次收到的非法IMM MEM 内存类型信息 */
@@ -269,7 +271,7 @@ typedef struct IMM_MEM_FREE_MNTN_INFO
     IMM_MEM_FREE_INVALIED_MEM_INFO_STRU astImmMemFreeInvalidMemInfo;    /* IMM MEM FREE 收到的非法IMM MEM 内存信息 */
     IMM_MEM_FREE_NULL_PTR_INFO_STRU     astImmMemFreeNullPtrInfo;       /* IMM MEM FREE 收到一级指针为空的信息 */
     IMM_MEM_FREE_NULL_PTR_INFO_STRU     astImmMemFreeNullPPtrInfo;      /* IMM MEM FREE 收到二级指针为空的信息 */
-    unsigned long                       ulImmMemExtFreeFailCnt;         /* IMM MEM 释放外部内存失败次数 */
+    unsigned int                       ulImmMemExtFreeFailCnt;         /* IMM MEM 释放外部内存失败次数 */
 }IMM_MEM_FREE_MNTN_INFO_STRU;
 
 /*****************************************************************************
@@ -283,8 +285,8 @@ typedef struct IMM_MEM_FREE_MNTN_INFO
 extern IMM_MEM_POOL_STRU                        g_astImmMemPool[IMM_MEM_POOL_ID_BUTT];
 extern IMM_MEM_POOL_STRU * const                g_pstImmExtMemPool;
 extern const IMM_MEM_CLUSTER_CFG_INFO_STRU      g_astImmMemCtrlPoolClusterTableInfo[];
-extern const unsigned long * const              g_pulImmMemCtrlMemSuffix;
-extern const unsigned long * const              g_paulImmMemCtrlMemSpace;
+extern const unsigned int * const              g_pulImmMemCtrlMemSuffix;
+extern const unsigned int * const              g_paulImmMemCtrlMemSpace;
 extern unsigned short                           g_usImmAllocFailCntThreshold;
 extern unsigned short * const                   g_apusImmExcThresholdCnt[];
 extern unsigned short * const                   g_apusImmAllocFailCnt[];
@@ -301,7 +303,7 @@ extern void IMM_MemRegMntnFuncCallBack
     IMM_MEM_USED_INFO_EVENT_RPT_CALLBACK    pImmMemEventRptFunc
 );
 
-extern  unsigned long IMM_MemRegExtFreeCallBack
+extern  unsigned int IMM_MemRegExtFreeCallBack
 (
     IMM_MEM_EXT_FREE_CALLBACK           pMemExtFreeFunc
 );

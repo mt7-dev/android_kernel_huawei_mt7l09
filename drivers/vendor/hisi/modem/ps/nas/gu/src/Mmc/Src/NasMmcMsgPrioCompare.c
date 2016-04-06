@@ -947,8 +947,6 @@ VOS_UINT32 NAS_MMC_CompareRegReqPrioWithPlmnSelection(
 }
 
 
-
-
 VOS_UINT32 NAS_MMC_CompareSysCfgSetPrioWithPlmnSelection(
     VOS_UINT32                          ulEventType,
     struct MsgCB                       *pstMsg,
@@ -957,11 +955,23 @@ VOS_UINT32 NAS_MMC_CompareSysCfgSetPrioWithPlmnSelection(
 {
     VOS_UINT32                          ulCurrState;
     VOS_UINT32                          ulNeedPlmnSearch;
+    VOS_UINT32                          ulNeedHighPrioRat;
 
     ulCurrState         = NAS_MMC_GetFsmTopState();
 
     /* 判断当前SYSCFG配置是否会触发SYSCFG搜网 */
     ulNeedPlmnSearch    = NAS_MMC_IsPlmnSelectionNeeded_SysCfg( (MMA_MMC_SYS_CFG_SET_REQ_STRU *)pstMsg );
+
+    /* 如果NV打开且当前未驻留在最高优先级接入技术的PLMN上，需要打断 */
+    ulNeedHighPrioRat   = NAS_MMC_IsHighPrioRatSrchNeed_SysCfg( (MMA_MMC_SYS_CFG_SET_REQ_STRU *)pstMsg );
+
+    if ( (VOS_TRUE == NAS_MML_GetSyscfgTriHighRatSrchFlg())
+      && (VOS_FALSE == ulNeedPlmnSearch)
+      && (VOS_TRUE == ulNeedHighPrioRat) )
+    {
+        *penAbortType       = NAS_MMC_ABORT_FSM_IMMEDIATELY;
+        return NAS_MMC_MSG_COMPARE_PRIO_RSLT_ABORT;
+    }
 
     /* 对不需要搜网情况具体进行判断 */
     if  ( ( VOS_FALSE == ulNeedPlmnSearch )
@@ -1472,9 +1482,20 @@ VOS_UINT32  NAS_MMC_CompareSuspendIndPrioWithPlmnList(
         return NAS_MMC_MSG_COMPARE_PRIO_RSLT_INITFSM;
     }
 
+
+    /* 在等系统消息时候直接打断LIST搜网状态机，如果丢弃，则导致不回复SUSPEDN RSP,GAS复位 */
+    if ( ( NAS_MMC_FSM_PLMN_LIST == NAS_MMC_GetCurrFsmId())
+      && (( NAS_MMC_PLMN_LIST_STA_WAIT_GAS_SYS_INFO_IND ==  ulCurrState )
+       || ( NAS_MMC_PLMN_LIST_STA_WAIT_WAS_SYS_INFO_IND ==  ulCurrState )))
+    {
+        *penAbortType       = NAS_MMC_ABORT_FSM_IMMEDIATELY;
+        return NAS_MMC_MSG_COMPARE_PRIO_RSLT_ABORT;
+    }
+
     /* 其他情况与以前情况保持一致 */
     return NAS_MMC_MSG_COMPARE_PRIO_RSLT_DISCARD;
 }
+
 
 
 VOS_UINT32 NAS_MMC_CompareCmServiceIndPrioWithAnyCellSearch(
@@ -1531,7 +1552,6 @@ VOS_UINT32 NAS_MMC_CompareCmServiceIndPrioWithAnyCellSearch(
 
 
 #if (FEATURE_ON == FEATURE_LTE)
-
 VOS_UINT32  NAS_MMC_CompareLmmSuspendIndPrioWithPlmnList(
     VOS_UINT32                          ulEventType,
     struct MsgCB                       *pstMsg,
@@ -1634,6 +1654,20 @@ VOS_UINT32 NAS_MMC_CompareLmmServiceResultIndPrioWithPlmnSelection(
         {
            *penAbortType   = NAS_MMC_ABORT_FSM_IMMEDIATELY;
             return NAS_MMC_MSG_COMPARE_PRIO_RSLT_ABORT;
+        }
+    }
+
+    if ((VOS_TRUE == NAS_MML_IsCsfbServiceStatusExist())
+     && (VOS_TRUE == pstServiceRsltIndMsg->bitOpReqType)
+     && ((MMC_LMM_SERVICE_MO_CSFB_1XCSFB == pstServiceRsltIndMsg->ulReqType)
+      || (MMC_LMM_SERVICR_MT_CSFB_1XCSFB == pstServiceRsltIndMsg->ulReqType)))
+    {
+        if ((NAS_MMC_PLMN_SELECTION_STA_WAIT_EPS_REG_IND  ==  ulCurrState)
+         || (NAS_MMC_PLMN_SELECTION_STA_WAIT_EPS_CONN_REL_IND  ==  ulCurrState))
+        {
+            *penAbortType   = NAS_MMC_ABORT_FSM_IMMEDIATELY;
+
+             return NAS_MMC_MSG_COMPARE_PRIO_RSLT_ABORT;
         }
     }
 

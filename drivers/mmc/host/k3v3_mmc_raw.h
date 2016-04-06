@@ -11,6 +11,8 @@
  * your option) any later version.
  */
 
+#include <linux/mmc/core.h>
+
 #ifndef DRIVERS_MMC_HOST_K3V3_MMC_RAW_H
 #define DRIVERS_MMC_HOST_K3V3_MMC_RAW_H
 
@@ -19,5 +21,6 @@ extern int raw_mmc_panic_write(struct raw_hd_struct *rhd, char *buf,
 		unsigned int offset, unsigned int len);
 extern int raw_mmc_panic_erase(struct raw_hd_struct *rhd, unsigned int offset,
 		unsigned int len);
+extern int raw_mmc_read_async_done(void);
 
 #endif

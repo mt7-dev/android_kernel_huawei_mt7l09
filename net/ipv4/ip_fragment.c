@@ -623,9 +623,8 @@ static int ip_frag_reasm(struct ipq *qp, struct sk_buff *prev,
 	IPCB(head)->frag_max_size = qp->q.max_size;
 
 	iph = ip_hdr(head);
-        // DTS2014062600501 zhuweichen 20140630 begin
-	iph->frag_off = 0;
-        // DTS2014062600501 zhuweichen 20140630 end
+	/* max_size != 0 implies at least one fragment had IP_DF set */
+	iph->frag_off = qp->q.max_size ? htons(IP_DF) : 0;
 	iph->tot_len = htons(len);
 	iph->tos |= ecn;
 	IP_INC_STATS_BH(net, IPSTATS_MIB_REASMOKS);
@@ -679,27 +678,30 @@ EXPORT_SYMBOL(ip_defrag);
 struct sk_buff *ip_check_defrag(struct sk_buff *skb, u32 user)
 {
 	struct iphdr iph;
+	int netoff;
 	u32 len;
 
 	if (skb->protocol != htons(ETH_P_IP))
 		return skb;
 
-	if (!skb_copy_bits(skb, 0, &iph, sizeof(iph)))
+	netoff = skb_network_offset(skb);
+
+	if (skb_copy_bits(skb, netoff, &iph, sizeof(iph)) < 0)
 		return skb;
 
 	if (iph.ihl < 5 || iph.version != 4)
 		return skb;
 
 	len = ntohs(iph.tot_len);
-	if (skb->len < len || len < (iph.ihl * 4))
+	if (skb->len < netoff + len || len < (iph.ihl * 4))
 		return skb;
 
 	if (ip_is_fragment(&iph)) {
 		skb = skb_share_check(skb, GFP_ATOMIC);
 		if (skb) {
-			if (!pskb_may_pull(skb, iph.ihl*4))
+			if (!pskb_may_pull(skb, netoff + iph.ihl * 4))
 				return skb;
-			if (pskb_trim_rcsum(skb, len))
+			if (pskb_trim_rcsum(skb, netoff + len))
 				return skb;
 			memset(IPCB(skb), 0, sizeof(struct inet_skb_parm));
 			if (ip_defrag(skb, user))
@@ -822,20 +824,6 @@ static inline void ip4_frags_ctl_register(void)
 
 static int __net_init ipv4_frags_init_net(struct net *net)
 {
-	/* Fragment cache limits.
-	 *
-	 * The fragment memory accounting code, (tries to) account for
-	 * the real memory usage, by measuring both the size of frag
-	 * queue struct (inet_frag_queue (ipv4:ipq/ipv6:frag_queue))
-	 * and the SKB's truesize.
-	 *
-	 * A 64K fragment consumes 129736 bytes (44*2944)+200
-	 * (1500 truesize == 2944, sizeof(struct ipq) == 200)
-	 *
-	 * We will commit 4MB at one time. Should we cross that limit
-	 * we will prune down to 3MB, making room for approx 8 big 64K
-	 * fragments 8x128k.
-	 */
 	net->ipv4.frags.high_thresh = 4 * 1024 * 1024;
 	net->ipv4.frags.low_thresh  = 3 * 1024 * 1024;
 	/*

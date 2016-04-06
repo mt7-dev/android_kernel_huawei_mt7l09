@@ -80,7 +80,7 @@ typedef struct
 {
     VOS_UINT32                          ulEventType;
     MN_MMI_OPERATION_TYPE_ENUM_U8       enSsOpType;
-    VOS_UINT32                          aucReserved1[3];
+    VOS_UINT8                           aucReserved1[3];
 }TAF_MMI_OPERATION_TABLE_STRU;
 
 /*****************************************************************************

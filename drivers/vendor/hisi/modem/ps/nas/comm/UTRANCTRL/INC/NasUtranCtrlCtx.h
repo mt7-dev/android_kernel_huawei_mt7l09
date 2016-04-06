@@ -33,6 +33,8 @@ extern "C" {
 #define NAS_UTRANCTRL_SUPPORT_ALL_SIM_AUTO_SWITCH_UTRAN_NUM (0XFF)              /* 模式自动切换中支持任意SIM卡进行UTRAN模式的切换 */
 #define NAS_UTRANCTRL_TIMER_ID_START_INDEX                  (9000)              /* UTRANCTRL模块定时器ID的开始索引 */
 
+#define NAS_UTRANCTRL_HONGKONG_MCC                          (0x40504)           /* 香港国家码 */
+
 /*****************************************************************************
   3 枚举定义
 *****************************************************************************/
@@ -226,10 +228,16 @@ typedef struct
 typedef struct
 {
     VOS_UINT8                           ucReplaceMmcMsgFlg;                     /* 替换发给MMC的消息标记:VOS-TRUE:需要用缓存的消息替换发给MMC的消息；VOS_FALSE:不需要替换发给MMC的消息 */
-    VOS_UINT8                           aucReserve[3];
+
+    VOS_UINT8                           ucSwitchOnPlmnSearchFlag;            /* 标识是否为开机搜网场景，只有开机搜网场景才有跳过tds的处理，VOS_TRUE:是开机搜网 */
+    VOS_UINT8                           aucReserve[2];
+
     NAS_UTRANCTRL_ENTRY_MSG_STRU        stBufferUtranSndMmcMsg;                 /* 缓存的W/TD发送给MMC的消息 */
     NAS_UTRANCTRL_ENTRY_MSG_STRU        stBufferMmcSndUtranMsg;                 /* 缓存的MMC发送给W/TD的消息 */
 }NAS_UTRANCTRL_MAIN_CTRL_INFO_STRU;
+
+
+
 typedef struct
 {
     VOS_UINT8                           ucUeSndPcRecurFlg;                      /* PC回放是否需要导出全局变量,VOS_TRUE:需要, VOS_FALSE:不需要, */
@@ -336,6 +344,14 @@ VOS_VOID  NAS_UTRANCTRL_InitMaintainInfo(
     NAS_UTRANCTRL_INIT_CTX_TYPE_ENUM_UINT8                  enInitType,
     NAS_UTRANCTRL_MAINTAIN_CTX_STRU                        *pstMaintainInfo
 );
+
+VOS_VOID NAS_UTRANCTRL_SetSwithOnPlmnSearchFlag(
+    VOS_UINT8                           ucSwitchOnPlmnSearchFlag
+);
+VOS_UINT8 NAS_UTRANCTRL_GetSwithOnPlmnSearchFlag(VOS_VOID);
+
+
+
 VOS_VOID NAS_UTRANCTRL_SetReplaceMmcMsgFlg(
     VOS_UINT8       ucReplaceFlg
 );

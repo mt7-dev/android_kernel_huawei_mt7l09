@@ -1,13 +1,4 @@
-/*
- * FileName:
- * Author:         h00211444  Version: 0.0.1  Date: 2012-12-22
- * Description:
- * Version:
- * Function List:
- *                 1.
- * History:
- *     <author>   <time>    <version >   <desc>
- */
+
 
 #ifndef _TEE_CLIENT_CONSTANTS_H_
 #define _TEE_CLIENT_CONSTANTS_H_
@@ -27,6 +18,7 @@ enum global_service_cmd_id {
     GLOBAL_CMD_ID_TERMINATE_CONTENT_PATH,   /**< Global TaskÊÍ·Åcontent path*/
     GLOBAL_CMD_ID_ALLOC_EXCEPTION_MEM,
     GLOBAL_CMD_ID_TEE_TIME,
+    GLOBAL_CMD_ID_TEE_INFO,
     GLOBAL_CMD_ID_UNKNOWN         = 0x7FFFFFFE,
     GLOBAL_CMD_ID_MAX             = 0x7FFFFFFF
 };
@@ -61,6 +53,7 @@ enum TEEC_Result {
     TEE_ERROR_TAGET_DEAD = 0xFFFF3024,
     TEE_ERROR_GT_DEAD = 0xFFFF3124,
     TEEC_ERROR_MAC_INVALID = 0xFFFF3071,
+    TEEC_CLIENT_INTR = 0xFFFF4000,
 };
 
 /****************************************************
@@ -118,6 +111,7 @@ enum TEEC_LoginMethod {
 	TEEC_LOGIN_APPLICATION = 0x4,
 	TEEC_LOGIN_USER_APPLICATION = 0x5,
 	TEEC_LOGIN_GROUP_APPLICATION = 0x6,
+        TEEC_LOGIN_IDENTIFY = 0x7,
 };
 
 #endif

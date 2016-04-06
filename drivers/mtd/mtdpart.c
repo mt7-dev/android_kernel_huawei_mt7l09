@@ -434,7 +434,7 @@ static struct mtd_part *allocate_partition(struct mtd_info *master,
 		slave->offset = cur_offset;
 		if (mtd_mod_by_eb(cur_offset, master) != 0) {
 			/* Round up to next erasesize */
-			slave->offset = (mtd_div_by_eb(cur_offset, master) + 1) * master->erasesize;
+			slave->offset = (mtd_div_by_eb(cur_offset, master) + 1) * ((uint64_t)master->erasesize);
 			printk(KERN_NOTICE "Moving partition %d: "
 			       "0x%012llx -> 0x%012llx\n", partno,
 			       (unsigned long long)cur_offset, (unsigned long long)slave->offset);
@@ -549,7 +549,7 @@ int mtd_add_partition(struct mtd_info *master, char *name,
 	if (length == MTDPART_SIZ_FULL)
 		length = master->size - offset;
 
-	if (length <= 0)
+	if (length <= 0 || NULL == name)
 		return -EINVAL;
 
 	part.name = name;

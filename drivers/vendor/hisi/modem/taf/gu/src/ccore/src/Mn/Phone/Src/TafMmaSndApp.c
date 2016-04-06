@@ -33,7 +33,7 @@
 VOS_VOID TAF_MMA_SndSysCfgSetCnf(
     TAF_MMA_CTRL_STRU                  *pstCtrl,
     TAF_MMA_APP_OPER_RESULT_ENUM_UINT32 enRslt,
-    TAF_PHONE_ERROR                     usErrorCause
+    TAF_ERROR_CODE_ENUM_UINT32          enErrorCause
 )
 {
     TAF_MMA_SYS_CFG_CNF_STRU           *pstSndMsg   = VOS_NULL_PTR;
@@ -59,7 +59,7 @@ VOS_VOID TAF_MMA_SndSysCfgSetCnf(
     pstSndMsg->usClientId               = pstCtrl->usClientId;
     pstSndMsg->ucOpid                   = pstCtrl->ucOpId;
     pstSndMsg->enRslt                   = enRslt;
-    pstSndMsg->usErrorCause             = usErrorCause;
+    pstSndMsg->enErrorCause             = enErrorCause;
 
     ulRst = PS_SEND_MSG(WUEPS_PID_MMA, pstSndMsg);
 
@@ -79,7 +79,7 @@ VOS_VOID TAF_MMA_SndPhoneModeSetCnf(
     TAF_MMA_CTRL_STRU                  *pstCtrl,
     TAF_PH_MODE                         ucPhMode,
     TAF_MMA_APP_OPER_RESULT_ENUM_UINT32 enRslt,
-    TAF_PHONE_ERROR                     usErrorCause
+    TAF_ERROR_CODE_ENUM_UINT32          enErrorCause
 )
 {
     TAF_MMA_PHONE_MODE_SET_CNF_STRU    *pstSndMsg   = VOS_NULL_PTR;
@@ -107,7 +107,7 @@ VOS_VOID TAF_MMA_SndPhoneModeSetCnf(
     pstSndMsg->ucOpid                   = pstCtrl->ucOpId;
     pstSndMsg->ucPhMode                 = ucPhMode;
     pstSndMsg->enRslt                   = enRslt;
-    pstSndMsg->usErrorCause             = usErrorCause;
+    pstSndMsg->enErrorCause             = enErrorCause;
 
     ulRst = PS_SEND_MSG(WUEPS_PID_MMA, pstSndMsg);
 
@@ -263,7 +263,7 @@ VOS_VOID TAF_MMA_SndPowerSaveCnf(
 VOS_VOID TAF_MMA_SndDetachCnf(
     TAF_MMA_CTRL_STRU                  *pstCtrl,
     TAF_MMA_APP_OPER_RESULT_ENUM_UINT32 enDetachRslt,
-    TAF_PHONE_ERROR                     usErrorCause
+    TAF_ERROR_CODE_ENUM_UINT32          enErrorCause
 )
 {
     TAF_MMA_DETACH_CNF_STRU            *pstDetachCnf = VOS_NULL_PTR;
@@ -290,7 +290,7 @@ VOS_VOID TAF_MMA_SndDetachCnf(
     pstDetachCnf->usClientId        = pstCtrl->usClientId;
     pstDetachCnf->ucOpid            = pstCtrl->ucOpId;
     pstDetachCnf->enRslt            = enDetachRslt;
-    pstDetachCnf->usErrorCause      = usErrorCause;
+    pstDetachCnf->enErrorCause      = enErrorCause;
 
     /* ·¢ËÍÏûÏ¢ */
     if (VOS_OK != PS_SEND_MSG(WUEPS_PID_MMA, pstDetachCnf))
@@ -493,6 +493,180 @@ VOS_VOID TAF_MMA_SndSimStatusInd(
 #endif
 
 
+
+
+
+#if (FEATURE_ON == FEATURE_IMS)
+VOS_VOID TAF_MMA_SndImsSwitchSetCnf(
+    TAF_MMA_CTRL_STRU                  *pstCtrl,
+    TAF_MMA_APP_OPER_RESULT_ENUM_UINT32 enResult,
+    TAF_ERROR_CODE_ENUM_UINT32          enErrorCause
+)
+{
+    TAF_MMA_IMS_SWITCH_SET_CNF_STRU    *pstSndMsg   = VOS_NULL_PTR;
+    VOS_UINT32                          ulRst;
+
+    pstSndMsg = (TAF_MMA_IMS_SWITCH_SET_CNF_STRU*)PS_ALLOC_MSG_WITH_HEADER_LEN(
+                                             WUEPS_PID_MMA,
+                                             sizeof(TAF_MMA_IMS_SWITCH_SET_CNF_STRU));
+    if (VOS_NULL_PTR == pstSndMsg)
+    {
+        TAF_ERROR_LOG(WUEPS_PID_MMA, "TAF_MMA_SndImsSwitchSetCnf:Alloc Msg Failed");
+
+        return;
+    }
+
+    PS_MEM_SET((VOS_INT8 *)pstSndMsg + VOS_MSG_HEAD_LENGTH, 0,
+               sizeof(TAF_MMA_IMS_SWITCH_SET_CNF_STRU) - VOS_MSG_HEAD_LENGTH);
+
+    pstSndMsg->ulSenderCpuId            = VOS_LOCAL_CPUID;
+    pstSndMsg->ulSenderPid              = WUEPS_PID_MMA;
+    pstSndMsg->ulReceiverCpuId          = VOS_LOCAL_CPUID;
+    pstSndMsg->ulReceiverPid            = pstCtrl->ulModuleId;
+    pstSndMsg->ulMsgName                = ID_TAF_MMA_IMS_SWITCH_SET_CNF;
+    pstSndMsg->usClientId               = pstCtrl->usClientId;
+    pstSndMsg->ucOpid                   = pstCtrl->ucOpId;
+    pstSndMsg->enResult                 = enResult;
+    pstSndMsg->enErrorCause             = enErrorCause;
+
+    ulRst = PS_SEND_MSG(WUEPS_PID_MMA, pstSndMsg);
+    if (VOS_OK != ulRst)
+    {
+        TAF_ERROR_LOG(WUEPS_PID_MMA, "TAF_MMA_SndImsSwitchSetCnf:Send Msg Failed");
+    }
+
+    return;
+}
+
+
+
+VOS_VOID TAF_MMA_SndImsSwitchQryCnf(
+    TAF_MMA_CTRL_STRU                          *pstCtrl,
+    VOS_UINT8                                   ucImsSwitch
+)
+{
+    TAF_MMA_IMS_SWITCH_QRY_CNF_STRU    *pstSndMsg   = VOS_NULL_PTR;
+    VOS_UINT32                          ulRst;
+
+    pstSndMsg = (TAF_MMA_IMS_SWITCH_QRY_CNF_STRU*)PS_ALLOC_MSG_WITH_HEADER_LEN(
+                                             WUEPS_PID_MMA,
+                                             sizeof(TAF_MMA_IMS_SWITCH_QRY_CNF_STRU));
+    if (VOS_NULL_PTR == pstSndMsg)
+    {
+        TAF_ERROR_LOG(WUEPS_PID_MMA, "TAF_MMA_SndImsSwitchQryCnf:Alloc Msg Failed");
+
+        return;
+    }
+
+    PS_MEM_SET((VOS_INT8 *)pstSndMsg + VOS_MSG_HEAD_LENGTH, 0,
+               sizeof(TAF_MMA_IMS_SWITCH_QRY_CNF_STRU) - VOS_MSG_HEAD_LENGTH);
+
+    pstSndMsg->ulSenderCpuId            = VOS_LOCAL_CPUID;
+    pstSndMsg->ulSenderPid              = WUEPS_PID_MMA;
+    pstSndMsg->ulReceiverCpuId          = VOS_LOCAL_CPUID;
+    pstSndMsg->ulReceiverPid            = pstCtrl->ulModuleId;
+    pstSndMsg->ulMsgName                = ID_TAF_MMA_IMS_SWITCH_QRY_CNF;
+    pstSndMsg->usClientId               = pstCtrl->usClientId;
+    pstSndMsg->ucOpid                   = pstCtrl->ucOpId;
+    pstSndMsg->enImsSwitch              = ucImsSwitch;
+
+    ulRst = PS_SEND_MSG(WUEPS_PID_MMA, pstSndMsg);
+    if (VOS_OK != ulRst)
+    {
+        TAF_ERROR_LOG(WUEPS_PID_MMA, "TAF_MMA_SndImsSwitchSetCnf:Send Msg Failed");
+
+        return;
+    }
+
+    return;
+}
+#endif
+
+
+VOS_VOID TAF_MMA_SndVoiceDomainSetCnf(
+    TAF_MMA_CTRL_STRU                  *pstCtrl,
+    TAF_MMA_APP_OPER_RESULT_ENUM_UINT32 enResult,
+    TAF_ERROR_CODE_ENUM_UINT32          enErrorCause
+)
+{
+    TAF_MMA_VOICE_DOMAIN_SET_CNF_STRU  *pstSndMsg   = VOS_NULL_PTR;
+    VOS_UINT32                          ulRst;
+
+    pstSndMsg = (TAF_MMA_VOICE_DOMAIN_SET_CNF_STRU*)PS_ALLOC_MSG_WITH_HEADER_LEN(
+                                             WUEPS_PID_MMA,
+                                             sizeof(TAF_MMA_VOICE_DOMAIN_SET_CNF_STRU));
+    if (VOS_NULL_PTR == pstSndMsg)
+    {
+        TAF_ERROR_LOG(WUEPS_PID_MMA, "TAF_MMA_SndVoiceDomainSetCnf:Alloc Msg Failed");
+
+        return;
+    }
+
+    PS_MEM_SET((VOS_INT8 *)pstSndMsg + VOS_MSG_HEAD_LENGTH, 0,
+               sizeof(TAF_MMA_VOICE_DOMAIN_SET_CNF_STRU) - VOS_MSG_HEAD_LENGTH);
+
+    pstSndMsg->ulSenderCpuId            = VOS_LOCAL_CPUID;
+    pstSndMsg->ulSenderPid              = WUEPS_PID_MMA;
+    pstSndMsg->ulReceiverCpuId          = VOS_LOCAL_CPUID;
+    pstSndMsg->ulReceiverPid            = pstCtrl->ulModuleId;
+    pstSndMsg->ulMsgName                = ID_TAF_MMA_VOICE_DOMAIN_SET_CNF;
+    pstSndMsg->usClientId               = pstCtrl->usClientId;
+    pstSndMsg->ucOpid                   = pstCtrl->ucOpId;
+    pstSndMsg->enResult                 = enResult;
+    pstSndMsg->enErrorCause             = enErrorCause;
+
+    ulRst = PS_SEND_MSG(WUEPS_PID_MMA, pstSndMsg);
+    if (VOS_OK != ulRst)
+    {
+        TAF_ERROR_LOG(WUEPS_PID_MMA, "TAF_MMA_SndVoiceDomainSetCnf:Send Msg Failed");
+
+        return;
+    }
+
+    return;
+}
+
+
+VOS_VOID TAF_MMA_SndVoiceDomainQryCnf(
+    TAF_MMA_CTRL_STRU                  *pstCtrl,
+    TAF_MMA_VOICE_DOMAIN_ENUM_UINT32    enVoiceDomain
+)
+{
+    TAF_MMA_VOICE_DOMAIN_QRY_CNF_STRU  *pstSndMsg   = VOS_NULL_PTR;
+    VOS_UINT32                          ulRst;
+
+    pstSndMsg = (TAF_MMA_VOICE_DOMAIN_QRY_CNF_STRU*)PS_ALLOC_MSG_WITH_HEADER_LEN(
+                                             WUEPS_PID_MMA,
+                                             sizeof(TAF_MMA_VOICE_DOMAIN_QRY_CNF_STRU));
+    if (VOS_NULL_PTR == pstSndMsg)
+    {
+        TAF_ERROR_LOG(WUEPS_PID_MMA, "TAF_MMA_SndVoiceDomainQryCnf:Alloc Msg Failed");
+
+        return;
+    }
+
+    PS_MEM_SET((VOS_INT8 *)pstSndMsg + VOS_MSG_HEAD_LENGTH, 0,
+               sizeof(TAF_MMA_VOICE_DOMAIN_QRY_CNF_STRU) - VOS_MSG_HEAD_LENGTH);
+
+    pstSndMsg->ulSenderCpuId            = VOS_LOCAL_CPUID;
+    pstSndMsg->ulSenderPid              = WUEPS_PID_MMA;
+    pstSndMsg->ulReceiverCpuId          = VOS_LOCAL_CPUID;
+    pstSndMsg->ulReceiverPid            = pstCtrl->ulModuleId;
+    pstSndMsg->ulMsgName                = ID_TAF_MMA_VOICE_DOMAIN_QRY_CNF;
+    pstSndMsg->usClientId               = pstCtrl->usClientId;
+    pstSndMsg->ucOpid                   = pstCtrl->ucOpId;
+    pstSndMsg->enVoiceDomain            = enVoiceDomain;
+
+    ulRst = PS_SEND_MSG(WUEPS_PID_MMA, pstSndMsg);
+    if (VOS_OK != ulRst)
+    {
+        TAF_ERROR_LOG(WUEPS_PID_MMA, "TAF_MMA_SndVoiceDomainQryCnf:Send Msg Failed");
+
+        return;
+    }
+
+    return;
+}
 
 
 #ifdef  __cplusplus

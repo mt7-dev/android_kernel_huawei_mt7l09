@@ -299,7 +299,7 @@ config DETECT_HUNG_TASK
 	  enabled then all held locks will also be reported. This
 	  feature has negligible overhead.
 
-# /* < DTS2013100805232 weiyuan 20130926 begin */
+#
 config HW_DETECT_HUNG_TASK
 	bool "Huawei Enhance DETECT_HUNG_TASK"
 	depends on DETECT_HUNG_TASK
@@ -308,7 +308,7 @@ config HW_DETECT_HUNG_TASK
 	  Say Y here to enable the Huawei enhance hungtask,
 	  Enhanced by add function of Whitelist or Blacklist,
 	  that controls the processes be monitored by hungtask.
-# /* DTS2013100805232 weiyuan 20130926 end > */
+#
 
 config DEFAULT_HUNG_TASK_TIMEOUT
 	int "Default timeout for hung task detection (in seconds)"
@@ -1509,6 +1509,13 @@ config ASYNC_RAID6_TEST
 	  engine if one is available.
 
 	  If unsure, say N.
+
+config PANIC_ON_DATA_CORRUPTION
+	bool "Cause a Kernel Panic When Data Corruption is detected"
+	help
+	 Select this option to upgrade warnings for potentially
+	 recoverable data corruption scenarios to system-halting panics,
+	 for easier detection and debug.
 
 source "samples/Kconfig"
 

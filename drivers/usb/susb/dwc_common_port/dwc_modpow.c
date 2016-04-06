@@ -88,6 +88,10 @@ static Bignum newbn(void *mem_ctx, int length)
     Bignum b = snewn(mem_ctx, length + 1, BignumInt);
     //if (!b)
     //abort();		       /* FIXME */
+
+    if (!b)
+		return NULL;
+
     DWC_MEMSET(b, 0, (length + 1) * sizeof(*b));
     b[0] = length;
     return b;
@@ -189,7 +193,7 @@ static void internal_mod(BignumInt *a, int alen,
 	if (h >= m0) {
 	    /*
 	     * Special case.
-	     *
+	     * 
 	     * To illustrate it, suppose a BignumInt is 8 bits, and
 	     * we are dividing (say) A1:23:45:67 by A1:B2:C3. Then
 	     * our initial division will be 0xA123 / 0xA1, which
@@ -198,7 +202,7 @@ static void internal_mod(BignumInt *a, int alen,
 	     * are not violated, since the full number A1:23:... is
 	     * _less_ than the quotient prefix A1:B2:... and so the
 	     * following correction loop would have sorted it out.
-	     *
+	     * 
 	     * In this situation we set q to be the largest
 	     * quotient we _can_ stomach (0xFF, of course).
 	     */
@@ -207,7 +211,28 @@ static void internal_mod(BignumInt *a, int alen,
 	    /* Macro doesn't want an array subscript expression passed
 	     * into it (see definition), so use a temporary. */
 	    BignumInt tmplo = a[i];
-	    DIVMOD_WORD(q, r, h, tmplo, m0);
+	    //DIVMOD_WORD(q, r, h, tmplo, m0);
+
+	    do {
+  	        BignumDblInt n = (((BignumDblInt)h) << BIGNUM_INT_BITS) | tmplo;
+  	        q = 0;
+  	        r = 0;
+  	        if(n<m0)
+  	        {
+     	            q = 0;
+     	            r = m0;
+  	        }
+  	        else
+  	        {
+				while (n >= m0)
+  	            {
+  	                n = n-m0;
+  	                q++;
+  	                r = n;
+  	            }
+  	        }
+	    } while (0);
+
 
 	    /* Refine our estimate of q by looking at
 	     h:a[i]:a[i+1] / m0:m1 */
@@ -360,8 +385,9 @@ Bignum dwc_modpow(void *mem_ctx, Bignum base_in, Bignum exp, Bignum mod)
     /* We use big endian internally */
     mlen = mod[0];
     m = snewn(mem_ctx, mlen, BignumInt);
-    //if (!m)
-    //abort();		       /* FIXME */
+    if (!m)
+		return 0;
+
     for (j = 0; j < mlen; j++)
 	m[j] = mod[mod[0] - j];
 
@@ -379,8 +405,8 @@ Bignum dwc_modpow(void *mem_ctx, Bignum base_in, Bignum exp, Bignum mod)
 
     /* Allocate n of size mlen, copy base to n */
     n = snewn(mem_ctx, mlen, BignumInt);
-    //if (!n)
-    //abort();		       /* FIXME */
+    if (!n)
+		return 0;
     i = mlen - base[0];
     for (j = 0; j < i; j++)
 	n[j] = 0;
@@ -389,11 +415,11 @@ Bignum dwc_modpow(void *mem_ctx, Bignum base_in, Bignum exp, Bignum mod)
 
     /* Allocate a and b of size 2*mlen. Set a = 1 */
     a = snewn(mem_ctx, 2 * mlen, BignumInt);
-    //if (!a)
-    //abort();		       /* FIXME */
+    if (!a)
+		return 0;
     b = snewn(mem_ctx, 2 * mlen, BignumInt);
-    //if (!b)
-    //abort();		       /* FIXME */
+    if (!b)
+		return 0;
     for (i = 0; i < 2 * mlen; i++)
 	a[i] = 0;
     a[2 * mlen - 1] = 1;
@@ -445,6 +471,10 @@ Bignum dwc_modpow(void *mem_ctx, Bignum base_in, Bignum exp, Bignum mod)
 
     /* Copy result to buffer */
     result = newbn(mem_ctx, mod[0]);
+
+    if (!result)
+		return result;
+
     for (i = 0; i < mlen; i++)
 	result[result[0] - i] = a[i + mlen];
     while (result[0] > 1 && result[result[0]] == 0)
@@ -591,7 +621,7 @@ static __u32 dh_b[] = {
 	0x6fa452cd,
 	0x2df89d30,
 	0xc75f1b0f,
-	0x8ce3578f,
+	0x8ce3578f, 
 	0x7980a324,
 	0x5daec786,
 };

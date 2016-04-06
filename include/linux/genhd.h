@@ -423,6 +423,9 @@ extern struct block_device *bdget_disk(struct gendisk *disk, int partno);
 
 extern void set_device_ro(struct block_device *bdev, int flag);
 extern void set_disk_ro(struct gendisk *disk, int flag);
+#ifdef CONFIG_HW_SD_HEALTH_DETECT
+extern void set_sd_disk_health_status(struct gendisk *disk, char *status);
+#endif
 
 static inline int get_disk_ro(struct gendisk *disk)
 {
@@ -729,15 +732,5 @@ static inline int blk_part_pack_uuid(const u8 *uuid_str, u8 *to)
 	return -EINVAL;
 }
 #endif /* CONFIG_BLOCK */
-
-#define MAX_EMMC_PARTITION_NUM 50
-struct emmc_partition {
-	unsigned char name[128];
-	sector_t start;
-	sector_t size_sectors;
-	unsigned char flags;
-};
-
-extern struct emmc_partition g_emmc_partition[];
 
 #endif /* _LINUX_GENHD_H */

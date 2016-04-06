@@ -1,18 +1,4 @@
-/**
-    @copyright: Huawei Technologies Co., Ltd. 2012-2012. All rights reserved.
-    
-    @file: srecorder_dmesg.h
-    
-    @brief: 读取内核循环缓冲中的内容，即内核中用printk打印的信息。
-    
-    @version: 1.0 
-    
-    @author: QiDechun ID: 216641
-    
-    @date: 2012-06-21
-    
-    @history:
-*/
+
 
 #ifndef SRECORDER_DMESG_H
 #define SRECORDER_DMESG_H

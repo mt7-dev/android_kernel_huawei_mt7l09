@@ -1,1 +1,0 @@
-obj-$(CONFIG_HISI_IRQ_AFFINITY_DEBUGFS) += irq_affinity_debugfs.o

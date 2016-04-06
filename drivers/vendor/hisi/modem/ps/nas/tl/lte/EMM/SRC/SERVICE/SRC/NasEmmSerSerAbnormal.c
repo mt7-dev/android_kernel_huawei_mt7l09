@@ -70,6 +70,11 @@ VOS_UINT32 NAS_EMM_SER_AbnormalNeedtoContinueTau(VOS_VOID)
         return NAS_EMM_YES;
     }
 
+    if(NAS_EMM_YES == NAS_EMM_GetVoiceDomainChange() )
+    {
+        return NAS_EMM_YES;
+    }
+
 
     return NAS_EMM_NO;
 
@@ -252,11 +257,11 @@ VOS_UINT32 NAS_EMM_SER_IsNotEmergencyCsfb(VOS_VOID)
 
 
 
-VOS_VOID  NAS_EMM_SER_SERREJ367
+/* 提高主叫呼通率: ESR #7根据R13协议需要去GU下尝试 */
+VOS_VOID  NAS_EMM_SER_SERREJ36
 (
     const NAS_EMM_CN_SER_REJ_STRU   *pMsgStru
 )
-
 {
     NAS_EMM_SER_LOG_INFO( "NAS_EMM_SER_SERREJ367 entered.");
 
@@ -290,7 +295,7 @@ VOS_VOID  NAS_EMM_SER_SERREJ367
     if ((VOS_TRUE == NAS_EMM_SER_IsCsfbProcedure())
         && (VOS_TRUE == NAS_EMM_SER_IsNotEmergencyCsfb()))
     {
-        NAS_EMM_MmSendCsfbSerEndInd(MM_LMM_CSFB_SERVICE_RSLT_CN_REJ);
+        NAS_EMM_MmSendCsfbSerEndInd(MM_LMM_CSFB_SERVICE_RSLT_CN_REJ, pMsgStru->ucEMMCause);
     }
 
 
@@ -305,6 +310,54 @@ VOS_VOID  NAS_EMM_SER_SERREJ367
 
     return;
 }
+
+VOS_VOID  NAS_EMM_SER_SERREJ7
+(
+    const NAS_EMM_CN_SER_REJ_STRU   *pMsgStru
+)
+
+{
+    NAS_EMM_SER_LOG_INFO( "NAS_EMM_SER_SERREJ367 entered.");
+
+    /* 删除GUTI后会自动保存EPS_LOC,所以需要先设置STATUS */
+    /* set the EPS update status to EU3 ROAMING NOT ALLOWED */
+    NAS_LMM_GetMmAuxFsmAddr()->ucEmmUpStat = EMM_US_ROAMING_NOT_ALLOWED_EU3;
+
+    /*删除GUTI,KSIasme,TAI list,GUTI*/
+    NAS_EMM_ClearRegInfo(NAS_EMM_DELETE_RPLMN);
+
+    NAS_LMM_SetPsSimValidity(NAS_LMM_SIM_INVALID);
+    /*USIM无效，直到关机或拔卡*/
+    /*暂不处理*/
+	/* lihong00150010 emergency tau&service begin */
+    if (NAS_EMM_SER_START_CAUSE_ESM_DATA_REQ_EMC == NAS_EMM_SER_GetEmmSERStartCause())
+    {
+        NAS_EMM_TAU_SendEsmStatusInd(EMM_ESM_ATTACH_STATUS_EMC_ATTACHING);
+
+        /* 记录ATTACH触发原因值 */
+        NAS_EMM_GLO_AD_GetAttCau() = EMM_ATTACH_CAUSE_ESM_ATTACH_FOR_INIT_EMC_BERER;
+    }
+    else
+    {
+        NAS_EMM_TAU_SendEsmStatusInd(EMM_ESM_ATTACH_STATUS_DETACHED);
+    }
+	/* lihong00150010 emergency tau&service end */
+    /*转换EMM状态机MS_DEREG+SS_DEREG_LIMITED_SERVICE*/
+    NAS_EMM_TAUSER_FSMTranState(EMM_MS_DEREG, EMM_SS_DEREG_NO_IMSI, TI_NAS_EMM_STATE_NO_TIMER);
+
+    /*向MMC发送LMM_MMC_SERVICE_RESULT_IND消息*/
+    NAS_EMM_MmcSendSerResultIndRej(pMsgStru->ucEMMCause);
+
+    /*向LRRC发送LRRC_LMM_NAS_INFO_CHANGE_REQ携带USIM卡状态*/
+    NAS_EMM_SendUsimStatusToRrc(LRRC_LNAS_USIM_PRESENT_INVALID);
+
+    /*向MRRC发送NAS_EMM_MRRC_REL_REQ消息*/
+    NAS_EMM_RelReq(                     NAS_LMM_NOT_BARRED);
+
+    return;
+}
+
+
 VOS_VOID  NAS_EMM_SER_SERREJ9
 (
     const NAS_EMM_CN_SER_REJ_STRU   *pMsgStru
@@ -330,13 +383,7 @@ VOS_VOID  NAS_EMM_SER_SERREJ9
         NAS_EMM_TAU_SendEsmStatusInd(EMM_ESM_ATTACH_STATUS_DETACHED);
     }
 	/* lihong00150010 emergency tau&service end */
-    /* 如果是CSFB流程，且不是紧急CSFB，则给MM发终止消息 */
-    if ((VOS_TRUE == NAS_EMM_SER_IsCsfbProcedure())
-        && (VOS_TRUE == NAS_EMM_SER_IsNotEmergencyCsfb()))
-    {
-        NAS_EMM_MmSendCsfbSerEndInd(MM_LMM_CSFB_SERVICE_RSLT_CN_REJ);
-    }
-
+    /* 主叫呼通率提升: 在R13协议里描述,SerRej #9,需要去GU上尝试 */
     /*向MMC发送LMM_MMC_SERVICE_RESULT_IND消息*/
     NAS_EMM_MmcSendSerResultIndRej(pMsgStru->ucEMMCause);
 
@@ -359,8 +406,9 @@ VOS_VOID  NAS_EMM_SER_SERREJ9
 
         NAS_EMM_StartEmergencyAttach();
     }
-    else if (VOS_TRUE == NAS_EMM_SER_IsNotEmergencyCsfb())
-    {/* lihong00150010 emergency tau&service end */
+    else if (VOS_FALSE == NAS_EMM_SER_IsCsfbProcedure())
+    {/* CSFB 收到#9时需要去GU下尝试打电话 */
+    /* lihong00150010 emergency tau&service end */
         /* 延时发送attach请求 */
         NAS_EMM_ReattachDelay();
     }
@@ -377,8 +425,6 @@ VOS_VOID  NAS_EMM_SER_SERREJ9
     return;
 
 }
-
-
 VOS_VOID  NAS_EMM_SER_SERREJ10
 (
     const NAS_EMM_CN_SER_REJ_STRU   *pMsgStru
@@ -397,12 +443,7 @@ VOS_VOID  NAS_EMM_SER_SERREJ10
         NAS_EMM_TAU_SendEsmStatusInd(EMM_ESM_ATTACH_STATUS_DETACHED);
     }
 	/* lihong00150010 emergency tau&service end */
-    /* 如果是CSFB流程，且不是紧急CSFB，则给MM发终止消息 */
-    if ((VOS_TRUE == NAS_EMM_SER_IsCsfbProcedure())
-        && (VOS_TRUE == NAS_EMM_SER_IsNotEmergencyCsfb()))
-    {
-        NAS_EMM_MmSendCsfbSerEndInd(MM_LMM_CSFB_SERVICE_RSLT_CN_REJ);
-    }
+    /* 主叫呼通率提升: 在R13协议里描述,SerRej #10,需要去GU上尝试 */
 
     /*向MMC发送LMM_MMC_SERVICE_RESULT_IND消息*/
     NAS_EMM_MmcSendSerResultIndRej(pMsgStru->ucEMMCause);
@@ -430,8 +471,9 @@ VOS_VOID  NAS_EMM_SER_SERREJ10
 
         NAS_EMM_StartEmergencyAttach();
     }
-    else if (VOS_TRUE == NAS_EMM_SER_IsNotEmergencyCsfb())
-    {/* lihong00150010 emergency tau&service end */
+    else if (VOS_FALSE == NAS_EMM_SER_IsCsfbProcedure())
+    {/* CSFB流程收到ESR #10时,需要去GU下尝试 */
+    /* lihong00150010 emergency tau&service end */
         /* 延时发送attach请求 */
         NAS_EMM_ReattachDelay();
 
@@ -449,8 +491,6 @@ VOS_VOID  NAS_EMM_SER_SERREJ10
     return;
 
 }
-
-
 VOS_VOID  NAS_EMM_SER_SERREJ11
 (
     const NAS_EMM_CN_SER_REJ_STRU   *pMsgStru
@@ -483,11 +523,10 @@ VOS_VOID  NAS_EMM_SER_SERREJ11
     /*收到MMC搜网指令后再转入PLMN_SEARCH态*/
     NAS_EMM_TAUSER_FSMTranState(EMM_MS_DEREG, EMM_SS_DEREG_LIMITED_SERVICE, TI_NAS_EMM_STATE_NO_TIMER);
 
-    /* 如果是CSFB流程，且不是紧急CSFB，则给MM发终止消息 */
-    if ((VOS_TRUE == NAS_EMM_SER_IsCsfbProcedure())
-        && (VOS_TRUE == NAS_EMM_SER_IsNotEmergencyCsfb()))
+    /* 如果是MT CSFB流程，则给MM发终止消息 ,MO和紧急CSFB需要选网GU继续CC流程*/
+    if (NAS_EMM_SER_START_CAUSE_MT_CSFB_REQ== NAS_EMM_SER_GetEmmSERStartCause())
     {
-        NAS_EMM_MmSendCsfbSerEndInd(MM_LMM_CSFB_SERVICE_RSLT_CN_REJ);
+        NAS_EMM_MmSendCsfbSerEndInd(MM_LMM_CSFB_SERVICE_RSLT_CN_REJ, pMsgStru->ucEMMCause);
     }
 
     /*向MMC发送LMM_MMC_SERVICE_RESULT_IND消息*/
@@ -545,11 +584,10 @@ VOS_VOID  NAS_EMM_SER_SERREJ12
     /*转换EMM状态机MS_DEREG+SS_DEREG_LIMITED_SERVICE*/
     NAS_EMM_TAUSER_FSMTranState(EMM_MS_DEREG, EMM_SS_DEREG_LIMITED_SERVICE, TI_NAS_EMM_STATE_NO_TIMER);
 
-    /* 如果是CSFB流程，且不是紧急CSFB，则给MM发终止消息 */
-    if ((VOS_TRUE == NAS_EMM_SER_IsCsfbProcedure())
-        && (VOS_TRUE == NAS_EMM_SER_IsNotEmergencyCsfb()))
+    /* 如果是MT CSFB流程，则给MM发终止消息 ,MO和紧急CSFB需要选网GU继续CC流程*/
+    if (NAS_EMM_SER_START_CAUSE_MT_CSFB_REQ== NAS_EMM_SER_GetEmmSERStartCause())
     {
-        NAS_EMM_MmSendCsfbSerEndInd(MM_LMM_CSFB_SERVICE_RSLT_CN_REJ);
+        NAS_EMM_MmSendCsfbSerEndInd(MM_LMM_CSFB_SERVICE_RSLT_CN_REJ, pMsgStru->ucEMMCause);
     }
 
     /*向MMC发送LMM_MMC_SERVICE_RESULT_IND消息*/
@@ -597,11 +635,10 @@ VOS_VOID  NAS_EMM_SER_SERREJ13
     NAS_EMMC_SendRrcCellSelectionReq(LRRC_LNAS_FORBTA_CHANGE);
 
     /* lihong00150010 emergency tau&service begin */
-    /* 如果是CSFB流程，且不是紧急CSFB，则给MM发终止消息 */
-    if ((VOS_TRUE == NAS_EMM_SER_IsCsfbProcedure())
-        && (VOS_TRUE == NAS_EMM_SER_IsNotEmergencyCsfb()))
+    /* 如果是MT CSFB流程，则给MM发终止消息 ,MO和紧急CSFB需要选网GU继续CC流程*/
+    if (NAS_EMM_SER_START_CAUSE_MT_CSFB_REQ== NAS_EMM_SER_GetEmmSERStartCause())
     {
-        NAS_EMM_MmSendCsfbSerEndInd(MM_LMM_CSFB_SERVICE_RSLT_CN_REJ);
+        NAS_EMM_MmSendCsfbSerEndInd(MM_LMM_CSFB_SERVICE_RSLT_CN_REJ, pMsgStru->ucEMMCause);
     }
 
     /*向MMC发送LMM_MMC_SERVICE_RESULT_IND消息*/
@@ -661,12 +698,11 @@ VOS_VOID  NAS_EMM_SER_SERREJ15
 
     NAS_EMMC_SendRrcCellSelectionReq(LRRC_LNAS_FORBTA_CHANGE);
 
-	/* lihong00150010 emergency tau&service begin */
-    /* 如果是CSFB流程，且不是紧急CSFB，则给MM发终止消息 */
-    if ((VOS_TRUE == NAS_EMM_SER_IsCsfbProcedure())
-        && (VOS_TRUE == NAS_EMM_SER_IsNotEmergencyCsfb()))
+    /* lihong00150010 emergency tau&service begin */
+    /* 如果是MT CSFB流程，则给MM发终止消息 ,MO和紧急CSFB需要选网GU继续CC流程*/
+    if (NAS_EMM_SER_START_CAUSE_MT_CSFB_REQ== NAS_EMM_SER_GetEmmSERStartCause())
     {
-        NAS_EMM_MmSendCsfbSerEndInd(MM_LMM_CSFB_SERVICE_RSLT_CN_REJ);
+        NAS_EMM_MmSendCsfbSerEndInd(MM_LMM_CSFB_SERVICE_RSLT_CN_REJ, pMsgStru->ucEMMCause);
     }
 
     /*向MMC发送LMM_MMC_SERVICE_RESULT_IND消息*/
@@ -698,12 +734,13 @@ VOS_VOID  NAS_EMM_SER_SERREJ18
 )
 {
     NAS_LMM_SetEmmInfoRegDomain(NAS_LMM_REG_DOMAIN_PS);
-
-    /* 如果是CSFB流程，且不是紧急CSFB，则给MM发终止消息 */
-    if ((VOS_TRUE == NAS_EMM_SER_IsCsfbProcedure())
+    /* 测试卡模式下，按照协议要求结束CSFB流程
+       非测试卡模式下,为提升用户体验，不中止电话，搜网到GU下继续打电话 */
+    if ((PS_SUCC == LPS_OM_IsTestMode())
+        &&(VOS_TRUE == NAS_EMM_SER_IsCsfbProcedure())
         && (VOS_TRUE == NAS_EMM_SER_IsNotEmergencyCsfb()))
     {
-        NAS_EMM_MmSendCsfbSerEndInd(MM_LMM_CSFB_SERVICE_RSLT_CN_REJ);
+        NAS_EMM_MmSendCsfbSerEndInd(MM_LMM_CSFB_SERVICE_RSLT_CN_REJ, pMsgStru->ucEMMCause);
     }
 
     /*转换EMM状态机MS_REG+SS_REG_NORMAL_SERVIC*/
@@ -712,9 +749,8 @@ VOS_VOID  NAS_EMM_SER_SERREJ18
     /*向MMC发送LMM_MMC_SERVICE_RESULT_IND消息*/
     NAS_EMM_MmcSendSerResultIndRej(pMsgStru->ucEMMCause);
 
-    /* 如果是紧急CSFB或者不是数据连接态,主动释放 */
-    if ((VOS_FALSE == NAS_EMM_SER_IsNotEmergencyCsfb())
-        || (NAS_EMM_CONN_DATA != NAS_EMM_GetConnState()))
+    /* 连接态下，释放链路，搜网到GU下继续打电话 */
+    if (VOS_TRUE == NAS_EMM_SER_IsCsfbProcedure())
     {
         NAS_EMM_RelReq(NAS_LMM_NOT_BARRED);
     }
@@ -723,6 +759,23 @@ VOS_VOID  NAS_EMM_SER_SERREJ18
 
 }
 
+VOS_VOID NAS_EMM_SER_SERREJ35
+(
+    const NAS_EMM_CN_SER_REJ_STRU   *pMsgStru
+)
+{
+    /* 判断nas r10开关是否打开 */
+    if (NAS_RELEASE_CTRL)
+    {
+        NAS_EMM_SER_SERREJ11(pMsgStru);
+    }
+    else
+    {
+        NAS_EMM_ServiceReqRejectOtherCause(pMsgStru);
+    }
+    return;
+
+}
 VOS_VOID  NAS_EMM_SER_SERREJ40
 (
     const NAS_EMM_CN_SER_REJ_STRU   *pMsgStru
@@ -774,7 +827,7 @@ VOS_VOID  NAS_EMM_SER_SERREJ39
     if ((VOS_TRUE == NAS_EMM_SER_IsCsfbProcedure())
         && (VOS_TRUE == NAS_EMM_SER_IsNotEmergencyCsfb()))
     {
-        NAS_EMM_MmSendCsfbSerEndInd(MM_LMM_CSFB_SERVICE_RSLT_CN_REJ);
+        NAS_EMM_MmSendCsfbSerEndInd(MM_LMM_CSFB_SERVICE_RSLT_CN_REJ, pMsgStru->ucEMMCause);
     }
 
     /*转换EMM状态机MS_REG+SS_REG_NORMAL_SERVIC*/
@@ -808,6 +861,25 @@ VOS_VOID  NAS_EMM_SER_SERREJ39
     return;
 }
 
+#if (FEATURE_PTM == FEATURE_ON)
+
+ VOS_VOID NAS_EMM_SerCnRejErrRecord(
+                    NAS_EMM_CN_SER_REJ_STRU *pMsgStru,
+                    EMM_OM_LMM_CSFB_FAIL_CAUSE_ENUM_UINT8 enCsfbFailCause,
+                    EMM_OM_ERRLOG_TYPE_ENUM_UINT16   enErrlogType)
+ {
+      if(VOS_TRUE == NAS_EMM_SER_IsCsfbProcedure())
+      {
+          NAS_EMM_ExtServiceErrRecord(
+                  pMsgStru->ucEMMCause,
+                  enCsfbFailCause);
+      }
+      else
+      {
+          NAS_EMM_NorServiceErrRecord((VOS_VOID*)pMsgStru, enErrlogType);
+      }
+ }
+#endif
 
 
 VOS_VOID    NAS_EMM_SER_RcvServiceRejectMsg(const NAS_EMM_CN_SER_REJ_STRU   *pMsgStru)
@@ -819,6 +891,8 @@ VOS_VOID    NAS_EMM_SER_RcvServiceRejectMsg(const NAS_EMM_CN_SER_REJ_STRU   *pMs
     /*异常停止 SER*/
     NAS_EMM_SER_AbnormalOver();
 
+    NAS_EMM_SetCsfbProcedureFlag(PS_FALSE);
+
     /*设置SER的结果为 NAS_EMM_SER_RESULT_REJ*/
     /*NAS_EMM_SER_SaveSERresult(NAS_EMM_SER_RESULT_REJ);*/
 
@@ -826,10 +900,9 @@ VOS_VOID    NAS_EMM_SER_RcvServiceRejectMsg(const NAS_EMM_CN_SER_REJ_STRU   *pMs
     ucSerRejcause = pMsgStru->ucEMMCause;
 
 
-    /*设置SER REJ原因*/
-    /*NAS_EMM_SER_SaveEmmSERRejCause(ucSerRejcause);*/
-
-
+    #if (FEATURE_PTM == FEATURE_ON)
+    NAS_EMM_SerCnRejErrRecord((VOS_VOID*)pMsgStru, EMM_OM_LMM_CSFB_FAIL_CAUSE_CN_REJ, EMM_OM_ERRLOG_TYPE_CN_REJ);
+    #endif
 
     /*SER REJ #9&#10不释放连接，支持处理；
       其他原因值统一处理:释放连接*/
@@ -837,9 +910,12 @@ VOS_VOID    NAS_EMM_SER_RcvServiceRejectMsg(const NAS_EMM_CN_SER_REJ_STRU   *pMs
     {
         case    NAS_LMM_CAUSE_ILLEGAL_UE   :
         case    NAS_LMM_CAUSE_ILLEGAL_ME   :
-        case    NAS_LMM_CAUSE_EPS_SERV_NOT_ALLOW   :
+                NAS_EMM_SER_SERREJ36(pMsgStru);
+                break;
 
-                NAS_EMM_SER_SERREJ367(pMsgStru);
+        case    NAS_LMM_CAUSE_EPS_SERV_NOT_ALLOW   :
+                /* 主叫呼通率提升: ESR被#7拒时不给MM发CSFBEND_IND消息，搜网去GU下尝试打电话 */
+                NAS_EMM_SER_SERREJ7(pMsgStru);
                 break;
 
         case    NAS_LMM_CAUSE_UE_ID_NOT_DERIVED    :
@@ -858,14 +934,7 @@ VOS_VOID    NAS_EMM_SER_RcvServiceRejectMsg(const NAS_EMM_CN_SER_REJ_STRU   *pMs
                 NAS_EMM_SER_SERREJ11(pMsgStru);
                 break;
         case    NAS_LMM_CAUSE_REQUESTED_SER_OPTION_NOT_AUTHORIZED_IN_PLMN:
-                if (NAS_RELEASE_CTRL)
-                {
-                    NAS_EMM_SER_SERREJ11(pMsgStru);
-                }
-                else
-                {
-                    NAS_EMM_ServiceReqRejectOtherCause(pMsgStru);
-                }
+                NAS_EMM_SER_SERREJ35(pMsgStru);
                 break;
         case    NAS_LMM_CAUSE_TA_NOT_ALLOW   :
                 NAS_EMM_SER_SERREJ12(pMsgStru);
@@ -891,11 +960,6 @@ VOS_VOID    NAS_EMM_SER_RcvServiceRejectMsg(const NAS_EMM_CN_SER_REJ_STRU   *pMs
                 break;
 
 /* CSG功能尚未实现，收到REJ #25按非CSG处理，进入default处理分支*/
-#if 0
-        case    NAS_LMM_CAUSE_NOT_AUTHORIZED_FOR_THIS_CSG:
-                NAS_EMM_TAU_SaveEmmRRCRelCause(NAS_EMM_RRC_REL_CAUSE_SERREJ25);
-                break;
-#endif
         case    NAS_LMM_CAUSE_CS_NOT_AVAIL:
                 NAS_EMM_SER_SERREJ18(pMsgStru);
                 break;
@@ -999,6 +1063,13 @@ VOS_VOID  NAS_EMM_MsSerInitSsWaitCnSerCnfProcMsgRrcRelInd( VOS_UINT32 ulCause)
         {
             /*向MMC发送LMM_MMC_SERVICE_RESULT_IND消息*/
             NAS_EMM_MmcSendSerResultIndOtherType(MMC_LMM_SERVICE_RSLT_FAILURE);
+
+            #if (FEATURE_PTM == FEATURE_ON)
+            if (VOS_TRUE == NAS_EMM_SER_IsCsfbProcedure())
+            {
+                NAS_EMM_ExtServiceErrRecord(EMM_OM_ERRLOG_CN_CAUSE_NULL, EMM_OM_LMM_CSFB_FAIL_CAUSE_RRC_REL_OTHER);
+            }
+            #endif
         }
 
         /*send INTRA_CONN2IDLE_REQ，更新连接状态*/
@@ -1062,35 +1133,6 @@ VOS_VOID  NAS_EMM_MsSerInitSsWaitCnSerCnfProcMsgRrcRelInd( VOS_UINT32 ulCause)
 
     return;
 }
-VOS_UINT32 NAS_EMM_MsSerInitSsWaitCnSerCnfMsgAuthFail(
-                                                            VOS_UINT32  ulMsgId,
-                                                            VOS_VOID   *pMsgStru)
-{
-    NAS_EMM_INTRA_AUTH_FAIL_STRU        *pMsgAuthFail   = (NAS_EMM_INTRA_AUTH_FAIL_STRU *)pMsgStru;
-    VOS_UINT32                          ulCause;
-
-    (VOS_VOID)ulMsgId;
-
-    NAS_EMM_TAU_LOG_INFO("NAS_EMM_MsSerInitSsWaitCnSerCnfMsgAuthFail is entered.");
-
-    /*获得原因值*/
-    ulCause                                             =   pMsgAuthFail->ulCause;
-
-    /*依据原因值处理*/
-    if(NAS_EMM_AUTH_REJ_INTRA_CAUSE_NORMAL              ==  ulCause)
-    {
-        NAS_EMM_MsSerInitSsWaitCnSerCnfProcMsgAuthRej(      ulCause);
-
-    }
-    else
-    {
-        NAS_EMM_MsSerInitSsWaitCnSerCnfProcMsgRrcRelInd(    ulCause);
-    }
-
-    return NAS_LMM_MSG_HANDLED;
-}
-
-
 VOS_UINT32  NAS_EMM_MsSerInitSsWaitCnSerCnfMsgAuthRej(
                                         VOS_UINT32  ulMsgId,
                                         const VOS_VOID   *pMsgStru)
@@ -1101,14 +1143,18 @@ VOS_UINT32  NAS_EMM_MsSerInitSsWaitCnSerCnfMsgAuthRej(
 
     NAS_EMM_SER_LOG_INFO("NAS_EMM_MsSerInitSsWaitCnSerCnfMsgAuthRej enter!");
 
+    /* 鉴权拒绝优化处理 */
+    if (NAS_EMM_YES == NAS_EMM_IsNeedIgnoreHplmnAuthRej())
+    {
+        return  NAS_LMM_MSG_HANDLED;
+    }
+
     NAS_EMM_MsSerInitSsWaitCnSerCnfProcMsgAuthRej(NAS_EMM_AUTH_REJ_INTRA_CAUSE_NORMAL);
 
 
     return NAS_LMM_MSG_HANDLED;
 
 }
-
-
 VOS_UINT32 NAS_EMM_MsSerInitSsWaitCnSerCnfMsgRrcRelInd(
                                                             VOS_UINT32  ulMsgId,
                                                             VOS_VOID   *pMsgStru)
@@ -1123,6 +1169,9 @@ VOS_UINT32 NAS_EMM_MsSerInitSsWaitCnSerCnfMsgRrcRelInd(
     /*获得原因值*/
     ulCause                                             =   pRrcRelInd->enRelCause;
 
+    #if (FEATURE_PTM == FEATURE_ON)
+    NAS_EMM_NorServiceErrRecord((VOS_VOID*)pMsgStru, EMM_OM_ERRLOG_TYPE_LRRC_REL);
+    #endif
     NAS_EMM_MsSerInitSsWaitCnSerCnfProcMsgRrcRelInd(        ulCause);
 
     return NAS_LMM_MSG_HANDLED;
@@ -1144,6 +1193,10 @@ VOS_UINT32 NAS_EMM_MsSerInitSsWaitCnSerCnfMsgTimer3417Exp(  VOS_UINT32  ulMsgId,
         NAS_EMM_SER_LOG_WARN( "NAS_EMM_MsSerInitSsWaitCnSerCnfMsgTimer3417Exp ERROR !!");
         return NAS_LMM_MSG_DISCARD;
     }
+
+    #if (FEATURE_PTM == FEATURE_ON)
+    NAS_EMM_NorServiceErrRecord((VOS_VOID*)pMsgStru, EMM_OM_ERRLOG_TYPE_TIMEOUT);
+    #endif
 
     /*如果SR流程是由于SMS触发，需要回复SMS建链失败，并且清除SR的发起原因，*/
     if(NAS_EMM_SER_START_CAUSE_SMS_EST_REQ == NAS_EMM_SER_GetSerStartCause())
@@ -1204,7 +1257,16 @@ VOS_UINT32 NAS_EMM_MsSerInitSsWaitCnSerCnfMsgTimer3417ExtExp
         return NAS_LMM_MSG_DISCARD;
     }
 
+    NAS_EMM_SetCsfbProcedureFlag(PS_FALSE);
+
     NAS_EMM_SER_AbnormalOver();
+
+    #if (FEATURE_PTM == FEATURE_ON)
+        if (VOS_TRUE == NAS_EMM_SER_IsCsfbProcedure())
+        {
+            NAS_EMM_ExtServiceErrRecord(EMM_OM_ERRLOG_CN_CAUSE_NULL, EMM_OM_LMM_CSFB_FAIL_CAUSE_EXT3417_EXP);
+        }
+    #endif
 
 	/* 状态迁移到REG.NORMAL_SERVICE*/
     NAS_EMM_TAUSER_FSMTranState(EMM_MS_REG,
@@ -1224,7 +1286,9 @@ VOS_UINT32 NAS_EMM_MsSerInitSsWaitCnSerCnfMsgTimer3417ExtExp
     else if ((VOS_TRUE == NAS_EMM_SER_IsNotEmergencyCsfb())
          && (VOS_FALSE == NAS_EMM_SER_IsMoCsfbProcedure()))
     {
-        NAS_EMM_MmSendCsfbSerEndInd(MM_LMM_CSFB_SERVICE_RSLT_T3417EXT_TIME_OUT);
+        NAS_EMM_SER_SaveEmmSERStartCause(NAS_EMM_SER_START_CAUSE_NULL);
+
+        NAS_EMM_MmSendCsfbSerEndInd(MM_LMM_CSFB_SERVICE_RSLT_T3417EXT_TIME_OUT, NAS_LMM_CAUSE_NULL);
         if (NAS_EMM_CONN_DATA != NAS_EMM_GetConnState())
     	{
         	/* 如果有未完成的TAU，等在REG+NORMAL_SERVICE状态下收到系统消息后再处理 */
@@ -1288,7 +1352,9 @@ VOS_VOID NAS_EMM_MsSerInitSsWaitCnSerCnfProcMsgAuthRej(VOS_UINT32  ulCause)
     if ((VOS_TRUE == NAS_EMM_SER_IsCsfbProcedure())
         && (VOS_TRUE == NAS_EMM_SER_IsNotEmergencyCsfb()))
     {
-        NAS_EMM_MmSendCsfbSerEndInd(MM_LMM_CSFB_SERVICE_RSLT_AUTH_REJ);
+        NAS_EMM_SetCsfbProcedureFlag(PS_FALSE);
+
+        NAS_EMM_MmSendCsfbSerEndInd(MM_LMM_CSFB_SERVICE_RSLT_AUTH_REJ, NAS_LMM_CAUSE_NULL);
     }
 
     /* 删除GUTI后会自动保存EPS_LOC,所以需要先设置STATUS */
@@ -1344,6 +1410,14 @@ VOS_VOID NAS_EMM_SerbarCommProc(VOS_VOID)
 
     /*send INTRA_CONN2IDLE_REQ，更新连接状态*/
     NAS_EMM_CommProcConn2Ilde();
+
+    #if (FEATURE_PTM == FEATURE_ON)
+    if (VOS_TRUE == NAS_EMM_SER_IsCsfbProcedure())
+    {
+        NAS_EMM_ExtServiceErrRecord(EMM_OM_ERRLOG_CN_CAUSE_NULL, EMM_OM_LMM_CSFB_FAIL_CAUSE_RRC_EST_ACCESS_BAR);
+    }
+    #endif
+
 
     return;
  }
@@ -1417,19 +1491,57 @@ VOS_VOID  NAS_EMM_SER_ProcCellSearchFail(VOS_VOID)
 
 {
     NAS_EMM_SER_LOG_NORM("NAS_EMM_SER_ProcCellSearchFail is entered!");
-    /*停止SERVICE流程*/
-    NAS_EMM_SER_AbnormalOver();
+
+    /* ERABM收到ID_EMM_ERABM_REEST_IND结果失败或者ID_EMM_ERABM_RRC_CON_REL_IND时，会立刻停止1s定时器，若此时有上行数据时，
+       ERABM会CDS通知再次触发LMM发起建链，
+       而LRRC cell search时间可能会很长，这样会导致乒乓效应(ERABM一直触发LMM发起建链)，导致其他低优先级任务调度不到
+       所以此处:ser建链失败原因为LRRC_EST_CELL_SEARCHING时，不给ERABM发送ID_EMM_ERABM_REEST_IND和ID_EMM_ERABM_RRC_CON_REL_IND消息 */
+
+    /*停止T3417定时器*/
+    NAS_LMM_StopStateTimer(TI_NAS_EMM_STATE_SERVICE_T3417);
+
+    /*停止T3440定时器*/
+    NAS_LMM_StopStateTimer(TI_NAS_EMM_STATE_T3440);
+
+    /*停止T3417ext定时器*/
+    NAS_LMM_StopStateTimer(TI_NAS_EMM_STATE_SERVICE_T3417_EXT);
+
+    /*如果SR流程是由于SMS触发，需要回复SMS建链失败，并且清除SR的发起原因，*/
+    if(NAS_EMM_SER_START_CAUSE_SMS_EST_REQ == NAS_EMM_SER_GetSerStartCause())
+    {
+        /* SER异常的原因值上报暂时报LMM_SMS_ERR_CAUSE_OTHERS，
+           以后可能要根据相应的原因值进行具体细分处理，上报准确的原因值
+           此处作为遗留问题 */
+        NAS_LMM_SndLmmSmsErrInd(LMM_SMS_ERR_CAUSE_OTHERS);
+        NAS_EMM_SER_SaveEmmSERStartCause(NAS_EMM_SER_START_CAUSE_BUTT);
+    }
+
+    /*清空ESM_DATA缓存*/
+    NAS_EMM_SerClearEsmDataBuf();
 
     if (VOS_TRUE == NAS_EMM_SER_IsCsfbProcedure())
     {
-        /*向MMC发送LMM_MMC_SERVICE_RESULT_IND消息*/
-        NAS_EMM_MmcSendSerResultIndOtherType(MMC_LMM_SERVICE_RSLT_FAILURE);
+        /*modified by jiqiang for CSFB 20140922 begin */
+        /* 在UE搜网过程中发起CSFB，ext_service发出之后收到LRRC_LMM_EST_CNF,原因值为RRC_EST_CELL_SEARCHING，
+        增加延时Timer，不再发送MMC_LMM_SERVICE_RSLT_FAILURE;begin*/
+        NAS_LMM_StartPtlTimer(TI_NAS_EMM_PTL_CSFB_DELAY);
+        /*modified by jiqiang for CSFB 20140922 end */
     }
 
     NAS_EMM_TranStateRegNormalServiceOrRegUpdateMm();
-	 
-    /*send INTRA_CONN2IDLE_REQ，更新连接状态*/
-    NAS_EMM_CommProcConn2Ilde();
+
+    /*如果当前连接状态不是IDLE，则向 MMC上报*/
+    if(NAS_EMM_CONN_IDLE != NAS_EMM_GetConnState())
+    {
+        NAS_EMM_SendMmcStatusInd(MMC_LMM_STATUS_TYPE_CONN_STATE,
+                                 MMC_LMM_CONN_IDLE);
+    }
+
+    /* 把RRC连接状态设置为IDLE */
+    NAS_EMM_SetConnState(NAS_EMM_CONN_IDLE);
+
+    NAS_EMM_ClrAllUlDataReqBufferMsg();
+
 
     return;
 }
@@ -1474,6 +1586,9 @@ VOS_UINT32 NAS_EMM_MsSerInitSsWaitCnSerCnfMsgIntraConnectFailInd(   VOS_UINT32  
         /*向MMC发送本地LMM_MMC_DETACH_IND消息*/
         NAS_EMM_MmcSendDetIndLocal( MMC_LMM_L_LOCAL_DETACH_OTHERS);
 
+        #if (FEATURE_PTM == FEATURE_ON)
+        NAS_EMM_LocalDetachErrRecord(EMM_ERR_LOG_LOCAL_DETACH_TYPE_OTHER);
+        #endif
         NAS_EMM_CommProcConn2Ilde();
 
         if (LRRC_EST_CELL_SEARCHING == pMrrcConnectFailRelInd->enEstResult)
@@ -1544,6 +1659,13 @@ VOS_UINT32 NAS_EMM_MsSerInitSsWaitCnSerCnfMsgIntraConnectFailInd(   VOS_UINT32  
                 NAS_EMM_SER_AbnormalOver();
                 NAS_EMM_SER_RcvRrcRelInd();
 
+                #if (FEATURE_PTM == FEATURE_ON)
+                if (VOS_TRUE == NAS_EMM_SER_IsCsfbProcedure())
+                {
+                    NAS_EMM_ExtServiceErrRecord(EMM_OM_ERRLOG_CN_CAUSE_NULL, EMM_OM_LMM_CSFB_FAIL_CAUSE_RRC_EST_FAIL);
+                }
+                #endif
+
                 break;
 
     }
@@ -1610,6 +1732,19 @@ VOS_UINT32 NAS_EMM_SndServiceReqFailProc(VOS_VOID* pMsg,VOS_UINT32 *pulIsDelBuff
 
     return NAS_EMM_SUCC;
 }
+VOS_UINT32 NAS_EMM_SndExtendedServiceReqSuccProc(VOS_VOID* pMsg)
+{
+    /*问题背景:主叫走CSFB流程被用户快速挂断电话，此时走CSFB回退流程，
+    回退到L的时候，由于TA在TALIST里面，所以不会发起TAU跟网侧交互，但是
+    此时核心网PS域已经开始往2/3G迁移，这样会导致被叫不通，或者收不到短信
+    改动:增加标识维护识别上面的这种场景，在回到L的时候保证发起TAU*/
+
+    NAS_EMM_SetCsfbProcedureFlag(PS_TRUE);
+
+    return NAS_EMM_SUCC;
+}
+
+
 VOS_UINT32 NAS_EMM_SndExtendedServiceReqFailProc(VOS_VOID* pMsg,VOS_UINT32 *pulIsDelBuff)
 {
     LRRC_LMM_DATA_CNF_STRU              *pstRrcMmDataCnf = VOS_NULL_PTR;
@@ -1675,6 +1810,14 @@ VOS_UINT32 NAS_EMM_SndExtendedServiceReqFailProc(VOS_VOID* pMsg,VOS_UINT32 *pulI
             break;
 
         default:
+            /*问题背景:主叫走CSFB流程被用户快速挂断电话，此时走CSFB回退流程，
+            回退到L的时候，由于TA在TALIST里面，所以不会发起TAU跟网侧交互，但是
+            此时核心网PS域已经开始往2/3G迁移，这样会导致被叫不通，或者收不到短信
+            改动:增加标识维护识别上面的这种场景，在回到L的时候保证发起TAU*/
+            if(PS_TRUE == NAS_EMM_SER_IsCsfbProcedure())
+            {
+                NAS_EMM_SetCsfbProcedureFlag(PS_TRUE);
+            }
             break;
         }
 

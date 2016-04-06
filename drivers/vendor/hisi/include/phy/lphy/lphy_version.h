@@ -112,6 +112,7 @@ extern "C"{
 	#define LPHY_FEATURE_EMBMS_SWITCH		PHY_OFF
 	#define LPHY_FEATURE_ONE_XO_SWITCH		PHY_ON
 	#define LPHY_FEATURE_MAX_CARRIER_NUM	1	
+    #define LPHY_FEATURE_MAX_INTER_EMU_NUM	6
 #elif (defined(TL_PHY_ASIC_HI6930) || defined(BOARD_ASIC_BIGPACK) ||defined(TL_PHY_SFT))
     #define LPHY_ASIC_B720
     #define LPHY_ASIC               		(0xA0)
@@ -120,6 +121,7 @@ extern "C"{
 	#define LPHY_FEATURE_EMBMS_SWITCH		PHY_ON
 	#define LPHY_FEATURE_ONE_XO_SWITCH		PHY_OFF
 	#define LPHY_FEATURE_MAX_CARRIER_NUM	2	
+	#define LPHY_FEATURE_MAX_INTER_EMU_NUM	6
     #define BALONG_FEATURE_LTE_DT
     #define SG_REPORT
     
@@ -127,7 +129,7 @@ extern "C"{
 	#if defined(TL_PHY_ASIC_HI6930)
 		#define LPHY_IN_FACT_ASIC_BOARD
 	#endif
-#elif (defined(TL_PHY_ASIC_K3V3) || defined(TL_PHY_K3V3_SFT))
+#elif (defined(TL_PHY_ASIC_K3V3) || defined(TL_PHY_K3V3_SFT) || defined(TL_PHY_ASIC_K3V3_PLUS))
 	#define LPHY_ASIC_K3V3
     #define LPHY_ASIC               		(0xA3)
     #define LPHY_BOARD_VERSION      		(LPHY_ASIC)
@@ -135,13 +137,18 @@ extern "C"{
 	#define LPHY_FEATURE_LCS_SWITCH			PHY_OFF
 	#define LPHY_FEATURE_EMBMS_SWITCH		PHY_ON
 	#define LPHY_FEATURE_ONE_XO_SWITCH		PHY_OFF
-	#define LPHY_FEATURE_MAX_CARRIER_NUM	2	
+	#define LPHY_FEATURE_MAX_CARRIER_NUM	    2
+	#define LPHY_FEATURE_MAX_INTER_EMU_NUM	8
     #define BALONG_FEATURE_LTE_DT
     #define SG_REPORT
-    #if defined(TL_PHY_ASIC_K3V3)
+    #if (defined(TL_PHY_ASIC_K3V3) || defined(TL_PHY_ASIC_K3V3_PLUS))
         #define LPHY_IN_FACT_ASIC_BOARD
     #endif
-	
+
+    #if defined(TL_PHY_ASIC_K3V3_PLUS)
+        #define LPHY_ASIC_K3V3_PLUS
+    #endif
+
 #elif (defined(TL_PHY_ASIC_V810) || defined(TL_PHY_V810_SFT))
 
 	#define LPHY_ASIC_V810

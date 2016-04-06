@@ -406,6 +406,74 @@ VOS_VOID TAF_CALL_ReadCallNotSupportedCause(VOS_VOID)
 }
 
 
+VOS_VOID TAF_CALL_ReadAtaReportOkAsyncCfgNvim(VOS_VOID)
+{
+    TAF_CALL_NVIM_ATA_REPORT_OK_ASYNC_CFG_STRU              stAtaReportOkAsyncCfg;
+    VOS_UINT32                                              ulLength;
+
+    ulLength = 0;
+    NV_GetLength(en_NV_Item_Ata_Report_Ok_Async_Cfg, &ulLength);
+
+    PS_MEM_SET(&stAtaReportOkAsyncCfg, 0x0, sizeof(stAtaReportOkAsyncCfg));
+
+    /* 设置默认值为VOS_FALSE */
+    TAF_CALL_SetAtaReportOkAsyncFlag(VOS_FALSE);
+
+    if (ulLength > sizeof(TAF_CALL_NVIM_ATA_REPORT_OK_ASYNC_CFG_STRU))
+    {
+       return;
+    }
+
+    if (NV_OK != NV_Read(en_NV_Item_Ata_Report_Ok_Async_Cfg,
+                         &stAtaReportOkAsyncCfg,
+                         sizeof(stAtaReportOkAsyncCfg)))
+    {
+        return;
+    }
+
+    if (VOS_TRUE == stAtaReportOkAsyncCfg.ucAtaReportOkAsyncFlag)
+    {
+        TAF_CALL_SetAtaReportOkAsyncFlag(VOS_TRUE);
+    }
+
+    return;
+}
+VOS_VOID TAF_CALL_ReadCcwaCtrlModeNvim(VOS_VOID)
+{
+    TAF_CALL_NVIM_CCWA_CTRL_MODE_STRU                       stCcwaCtrlMode;
+    VOS_UINT32                                              ulLength;
+
+    ulLength = 0;
+    (VOS_VOID)NV_GetLength(en_NV_Item_Ccwa_Ctrl_Mode, &ulLength);
+
+    PS_MEM_SET(&stCcwaCtrlMode, 0x0, sizeof(stCcwaCtrlMode));
+
+    if (ulLength > sizeof(TAF_CALL_NVIM_CCWA_CTRL_MODE_STRU))
+    {
+        MN_ERR_LOG("TAF_CALL_ReadCcwaCtrlModeNvim():ERROR: en_NV_Item_Ccwa_Ctrl_Mode length Error");
+        return;
+    }
+
+    if (NV_OK != NV_Read(en_NV_Item_Ccwa_Ctrl_Mode,
+                         &stCcwaCtrlMode,
+                         sizeof(stCcwaCtrlMode)))
+    {
+        MN_ERR_LOG("TAF_CALL_ReadCcwaCtrlModeNvim():ERROR: en_NV_Item_Ccwa_Ctrl_Mode read Error");
+        return;
+    }
+
+
+    if (stCcwaCtrlMode.enCcwaCtrlMode >= TAF_CALL_CCWA_CTRL_MODE_BUTT)
+    {
+        MN_ERR_LOG("TAF_CALL_ReadCcwaCtrlModeNvim():ERROR: en_NV_Item_Ccwa_Ctrl_Mode enCcwaCtrlMode Error");
+        return;
+    }
+
+    TAF_CALL_SetCcwaCtrlMode(stCcwaCtrlMode.enCcwaCtrlMode);
+
+    return;
+}
+
 VOS_VOID MN_CALL_ReadNvimInfo(VOS_VOID)
 {
     /* en_NV_Item_CustomizeService */
@@ -435,6 +503,9 @@ VOS_VOID MN_CALL_ReadNvimInfo(VOS_VOID)
 
     TAF_CALL_ReadCallNotSupportedCause();
 
+    TAF_CALL_ReadAtaReportOkAsyncCfgNvim();
+
+    TAF_CALL_ReadCcwaCtrlModeNvim();
     return;
 }
 

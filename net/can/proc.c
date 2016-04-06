@@ -208,10 +208,7 @@ static void can_print_rcvlist(struct seq_file *m, struct hlist_head *rx_list,
 
 static void can_print_recv_banner(struct seq_file *m)
 {
-	/*
-	 *                  can1.  00000000  00000000  00000000
-	 *                 .......          0  tp20
-	 */
+
 	seq_puts(m, "  device   can_id   can_mask  function"
 			"  userdata   matches  ident\n");
 }

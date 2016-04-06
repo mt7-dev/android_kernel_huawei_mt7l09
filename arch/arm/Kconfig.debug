@@ -63,6 +63,28 @@ config DEBUG_USER
 	      8 - SIGSEGV faults
 	     16 - SIGBUS faults
 
+config FORCE_PAGES
+	bool "Force lowmem to be mapped with 4K pages"
+        help
+          There are some advanced debug features that can only be done when
+          memory is mapped with pages instead of sections. Enable this option
+          to always map lowmem pages with pages. This may have a performance
+          cost due to increased TLB pressure.
+
+          If unsure say N.		 
+config FREE_PAGES_RDONLY
+	bool "Set pages as read only while on the buddy list"
+	select FORCE_PAGES
+	select PAGE_POISONING
+	help
+          Pages are always mapped in the kernel. This means that anyone
+          can write to the page if they have the address. Enable this option
+          to mark pages as read only to trigger a fault if any code attempts
+          to write to a page on the buddy list. This may have a performance
+          impact.
+
+          If unsure, say N.
+		  
 config DEBUG_RODATA
 	bool "Write protect kernel text section"
 	default n
@@ -99,6 +121,22 @@ config DEBUG_HI3630_UART6_SUPPORT
 	---help---
 	   Say y here if you want kernel low-level debugging support
 	   on HI3630 UART6.
+
+config DEBUG_HI6620_UART0_SUPPORT
+	bool "Hisilicon HI6620 Debug UART0 Support"
+	depends on ARCH_HISI
+	default n
+	---help---
+	   Say y here if you want kernel low-level debugging support
+	   on HI6620 UART0.
+
+config DEBUG_HI6210_UART0_SUPPORT
+	bool "Hisilicon HI6210 Debug UART0 Support"
+	depends on ARCH_HISI
+	default n
+	---help---
+	   Say y here if you want kernel low-level debugging support
+	   on HI6210 UART0.
 
 # These options are only for real kernel hackers who want to get their hands dirty.
 config DEBUG_LL
@@ -315,6 +353,20 @@ choice
 		help
 		  Set DEBUG_HI3630_UART6_SUPPORT y if you want kernel low-level debugging support
 		  on HI3630 UART6.
+
+	config DEBUG_HI6620_UART0
+		bool "Hisilicon HI6620 Debug UART0"
+		depends on DEBUG_HI6620_UART0_SUPPORT
+		help
+		  Set DEBUG_HI6620_UART0_SUPPORT y if you want kernel low-level debugging support
+		  on HI6620 UART0.
+
+	config DEBUG_HI6210_UART0
+		bool "Hisilicon HI6210 Debug UART0"
+		depends on DEBUG_HI6210_UART0_SUPPORT
+		help
+		  Set DEBUG_HI6210_UART0_SUPPORT y if you want kernel low-level debugging support
+		  on HI6210 UART0.
 
 	config DEBUG_MMP_UART2
 		bool "Kernel low-level debugging message via MMP UART2"
@@ -688,7 +740,12 @@ config DEBUG_LL_INCLUDE
 	default "debug/cns3xxx.S" if DEBUG_CNS3XXX
 	default "debug/exynos.S" if DEBUG_EXYNOS_UART
 	default "debug/highbank.S" if DEBUG_HIGHBANK_UART
-	default "debug/hisilicon.S" if DEBUG_HI3620_UART0 || DEBUG_HI3716_UART0 || DEBUG_HI3630_UART0 || DEBUG_HI3630_UART6
+	default "debug/hisilicon.S" if DEBUG_HI3620_UART0 || \
+				 DEBUG_HI3716_UART0 || \
+				 DEBUG_HI3630_UART0 || \
+				 DEBUG_HI3630_UART6 || \
+				 DEBUG_HI6620_UART0 || \
+				 DEBUG_HI6210_UART0
 	default "debug/icedcc.S" if DEBUG_ICEDCC
 	default "debug/imx.S" if DEBUG_IMX1_UART || \
 				 DEBUG_IMX25_UART || \
@@ -735,14 +792,6 @@ config EARLY_PRINTK
 	  kernel low-level debugging functions. Add earlyprintk to your
 	  kernel parameters to enable this console.
 
-config OC_ETM
-	bool "On-chip ETM and ETB"
-	depends on ARM_AMBA
-	help
-	  Enables the on-chip embedded trace macrocell and embedded trace
-	  buffer driver that will allow you to collect traces of the
-	  kernel code.
-
 config ARM_KPROBES_TEST
 	tristate "Kprobes test module"
 	depends on KPROBES && MODULES
@@ -758,4 +807,70 @@ config PID_IN_CONTEXTIDR
 	  additional instructions during context switch. Say Y here only if you
 	  are planning to use hardware trace tools with this kernel.
 
+config DEBUG_SET_MODULE_RONX
+	bool "Set loadable kernel module data as NX and text as RO"
+	depends on MODULES
+	---help---
+	  This option helps catch unintended modifications to loadable
+	  kernel module's text and read-only data. It also prevents execution
+	  of module data. Such protection may interfere with run-time code
+	  patching and dynamic kernel tracing - and they might also protect
+	  against certain classes of kernel exploits.
+	  If in doubt, say "N".
+
+menuconfig CORESIGHT
+	bool "CoreSight Tracing Support"
+	select ARM_AMBA
+	help
+	  This framework provides a kernel interface for the CoreSight debug
+	  and trace drivers to register themselves with. It's intended to build
+	  a topological view of the CoreSight components based on a DT
+	  specification and configure the right serie of components when a
+	  trace source gets enabled.
+
+if CORESIGHT
+config CORESIGHT_LINKS_AND_SINKS
+	bool "CoreSight Link and Sink drivers"
+	help
+	  This enables support for CoreSight link and sink drivers that are
+	  responsible for transporting and collecting the trace data
+	  respectively.  Link and sinks are dynamically aggregated with a trace
+	  entity at run time to form a complete trace path.
+
+config CORESIGHT_LINK_AND_SINK_TMC
+	bool "Coresight generic TMC driver"
+	depends on CORESIGHT_LINKS_AND_SINKS
+	help
+	  This enables support for the Trace Memory Controller driver.  Depending
+	  on its configuration the device can act as a link (embedded trace router
+	  - ETR) or sink (embedded trace FIFO).  The driver complies with the
+	  generic implementation of the component without special enhancement or
+	  added features.
+
+config CORESIGHT_SINK_TPIU
+	bool "Coresight generic TPIU driver"
+	depends on CORESIGHT_LINKS_AND_SINKS
+	help
+	  This enables support for the Trace Port Interface Unit driver, responsible
+	  for bridging the gap between the on-chip coresight components and a trace
+	  port collection engine, typically connected to an external host for use
+	  case capturing more traces than the on-board coresight memory can handle.
+
+config CORESIGHT_SINK_ETBV10
+	bool "Coresight ETBv1.0 driver"
+	depends on CORESIGHT_LINKS_AND_SINKS
+	help
+	  This enables support for the Embedded Trace Buffer version 1.0 driver
+	  that complies with the generic implementation of the component without
+	  special enhancement or added features.
+
+config CORESIGHT_SOURCE_ETM3X
+	bool "CoreSight Embedded Trace Macrocell 3.x driver"
+	select CORESIGHT_LINKS_AND_SINKS
+	help
+	  This driver provides support for processor ETM3.x and PTM1.x modules,
+	  which allows tracing the instructions that a processor is executing
+	  This is primarily useful for instruction level tracing.  Depending
+	  the ETM version data tracing may also be available.
+endif
 endmenu

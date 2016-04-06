@@ -65,7 +65,8 @@ struct rdr_global_internal_s {
 	u32 hso_connect_flag;  /* HIDS connect status --by yangzhi */
 };
 
-#define ARCH_NAME_MAX 256
+#define DUMP_BUFF_MAX_SIZE   1024
+#define ARCH_NAME_MAX 512
 #define RDR_FNAME_LEN 128 /*63*/
 #define RDR_FILE_MAX_CNT 3
 
@@ -85,6 +86,15 @@ struct rdr_global_internal_s {
 #define RDR_HIFI_OCRAM        "/data/hisi_logs/memorydump/hifi3_ocram.bin"
 #define RDR_MODEM_SRAM96K_BIN	"/data/hisi_logs/memorydump/modem_sram.bin"
 #define RDR_LPM3_SRAM96K_BIN	"/data/hisi_logs/memorydump/lpm3_sram.bin"
+
+//cp apr path
+#define APR_CP_CSHELL_PATH_1 "/data/hwzd_logs/cp_log/modemlog/modemkmsg-log"
+#define APR_CP_CSHELL_PATH_2 "/data/hwzd_logs/cp_log/modemlog/modemkmsg-log.1"
+#define APR_CP_ETS_PATH_1 "/sdcard/log/modem/viacbp82d/via001.modemlog.trx.bin"
+#define APR_CP_ETS_PATH_2 "/sdcard/log/modem/viacbp82d/via002.modemlog.trx.bin"
+
+//cplog dir path 	96
+#define BALONGLTE_LOG_DIR_PATH "/sdcard/log/modem/balonglte/"
 
 /* control the trace, whether it is been enabled */
 struct dump_nv_s {
@@ -162,6 +172,7 @@ int rdr_wait4partition(char *path, int timeouts);
 int wait_for_fs_ready(void);
 int rdr_is_cp_modid(u32 mod);
 int rdr_is_cp_inap_modid(u32 mod);
+int rdr_is_ap_reboot_cp_modid(u32 mod);
 int raw_write_8m_to_dfx(void);
 int del_old_file(const char *dirname, const char *file_header,
 		unsigned int fd, const char *header);
@@ -185,7 +196,6 @@ void rdr_rm_over3_file(char *path);
 struct timespec current_kernel_time(void);
 int inquiry_rtc_init_ok(void);
 #ifdef _HIFI_WD_DEBUG
-int reset_mediaserver(void);
 int reset_hifi_sec(void);
 #endif
 #ifndef RDR_SIMPLE_DEBUG
@@ -214,7 +224,6 @@ int reset_hifi_sec(void);
 	pr_info(format, ##args);	\
 	pr_info("\n");		\
 	})
-/* < DTS2013122401935 wangdedong 00204535 2013.12.24 begin */
 #define rdr_spin_lock(lock) \
 	do {	\
 		pr_info("rdr:%s(), line:%d spin_lock\n", __func__, __LINE__);\
@@ -226,14 +235,11 @@ int reset_hifi_sec(void);
 		pr_info("rdr:%s(), line:%d spin_unlock\n", __func__, __LINE__);\
 		spin_unlock(lock);	\
 	} while (0)
-/* DTS2013122401935 wangdedong 00204535 2013.12.24 end > */
 #else
 #define DUMP_LOG(a)
 #define rdr_plog(format, args ...)
-/* < DTS2013122401935 wangdedong 00204535 2013.12.24 begin */
 #define rdr_spin_lock(lock) spin_lock(lock)
 #define rdr_spin_unlock(lock) spin_unlock(lock)
-/* DTS2013122401935 wangdedong 00204535 2013.12.24 end > */
 #endif
 
 #endif	/* End #define __RDR_INTERNAL_H__ */

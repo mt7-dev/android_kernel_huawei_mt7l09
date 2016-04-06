@@ -122,6 +122,7 @@ enum RF_NV_ID_ENUM
     en_NV_Item_GSM850_RX_AGC_FREQ_COMP                           = 10205,
     en_NV_Item_GSM850_RX_IP2_CAL                                 = 10206,
     en_NV_Item_GSM850_FEM_CHAN_CONNECT                           = 10207,
+    en_NV_Item_GSM850_SAR_BACKOFF_DPDT_SWAP                      = 10208,
     en_NV_Item_GSM850_BURST_RAMP                                 = 10240,
     en_NV_Item_GSM850_BURST_RAMP_INDEX                           = 10241,
     en_NV_Item_GSM850_PRE_MOD_SYMBOL                             = 10242,
@@ -243,6 +244,7 @@ enum RF_NV_ID_ENUM
     en_NV_Item_EDGE850_PA_VBIAS                                  = 10362,
     en_NV_Item_EDGE850_TX_BIAS                                   = 10363,
     en_NV_Item_EDGE850_TX_RF_BIAS_INDEX                          = 10364,
+    en_NV_Item_EDGE850_SAR_BACKOFF_DPDT_SWAP                     = 10365,
     en_NV_Item_EDGE850_APT_PA_VCC_TIMING                         = 10366,
     en_NV_Item_EDGE850_APT_MULTI_SLOT_PA_VCC_TIMING              = 10367,
     en_NV_Item_EDGE850_APT_DISABLE_PA_VCC_TIMING                 = 10368,
@@ -271,6 +273,7 @@ enum RF_NV_ID_ENUM
     en_NV_Item_GSM900_RX_AGC_FREQ_COMP                           = 10405,
     en_NV_Item_GSM900_RX_IP2_CAL                                 = 10406,
     en_NV_Item_GSM900_FEM_CHAN_CONNECT                           = 10407,
+    en_NV_Item_GSM900_SAR_BACKOFF_DPDT_SWAP                      = 10408,
     en_NV_Item_GSM900_BURST_RAMP                                 = 10440,
     en_NV_Item_GSM900_BURST_RAMP_INDEX                           = 10441,
     en_NV_Item_GSM900_PRE_MOD_SYMBOL                             = 10442,
@@ -392,6 +395,7 @@ enum RF_NV_ID_ENUM
     en_NV_Item_EDGE900_PA_VBIAS                                  = 10562,
     en_NV_Item_EDGE900_TX_BIAS                                   = 10563,
     en_NV_Item_EDGE900_TX_RF_BIAS_INDEX                          = 10564,
+    en_NV_Item_EDGE900_SAR_BACKOFF_DPDT_SWAP                     = 10565,
     en_NV_Item_EDGE900_APT_PA_VCC_TIMING                         = 10566,
     en_NV_Item_EDGE900_APT_MULTI_SLOT_PA_VCC_TIMING              = 10567,
     en_NV_Item_EDGE900_APT_DISABLE_PA_VCC_TIMING                 = 10568,
@@ -420,6 +424,8 @@ enum RF_NV_ID_ENUM
     en_NV_Item_DCS1800_RX_AGC_FREQ_COMP                          = 10605,
     en_NV_Item_DCS1800_RX_IP2_CAL                                = 10606,
     en_NV_Item_DCS1800_FEM_CHAN_CONNECT                          = 10607,
+    en_NV_Item_DCS1800_SAR_BACKOFF_DPDT_SWAP                     = 10608,
+
     en_NV_Item_DCS1800_BURST_RAMP                                = 10640,
     en_NV_Item_DCS1800_BURST_RAMP_INDEX                          = 10641,
     en_NV_Item_DCS1800_PRE_MOD_SYMBOL                            = 10642,
@@ -540,6 +546,8 @@ enum RF_NV_ID_ENUM
     en_NV_Item_EDGE1800_PA_VBIAS                                 = 10762,
     en_NV_Item_EDGE1800_TX_BIAS                                  = 10763,
     en_NV_Item_EDGE1800_TX_RF_BIAS_INDEX                         = 10764,
+    en_NV_Item_EDGE1800_SAR_BACKOFF_DPDT_SWAP                    = 10765,
+
     en_NV_Item_EDGE1800_APT_PA_VCC_TIMING                        = 10766,
     en_NV_Item_EDGE1800_APT_MULTI_SLOT_PA_VCC_TIMING             = 10767,
     en_NV_Item_EDGE1800_APT_DISABLE_PA_VCC_TIMING                = 10768,
@@ -581,6 +589,8 @@ enum RF_NV_ID_ENUM
     en_NV_Item_PCS1900_RX_AGC_FREQ_COMP                          = 10805,
     en_NV_Item_PCS1900_RX_IP2_CAL                                = 10806,
     en_NV_Item_PCS1900_FEM_CHAN_CONNECT                          = 10807,
+    en_NV_Item_PCS1900_SAR_BACKOFF_DPDT_SWAP                     = 10808,
+
     en_NV_Item_PCS1900_BURST_RAMP                                = 10840,
     en_NV_Item_PCS1900_BURST_RAMP_INDEX                          = 10841,
     en_NV_Item_PCS1900_PRE_MOD_SYMBOL                            = 10842,
@@ -701,6 +711,7 @@ enum RF_NV_ID_ENUM
     en_NV_Item_EDGE1900_PA_VBIAS                                 = 10962,
     en_NV_Item_EDGE1900_TX_BIAS                                  = 10963,
     en_NV_Item_EDGE1900_TX_RF_BIAS_INDEX                         = 10964,
+    en_NV_Item_EDGE1900_SAR_BACKOFF_DPDT_SWAP                    = 10965,
 
     en_NV_Item_EDGE1900_APT_PA_VCC_TIMING                        = 10966,
     en_NV_Item_EDGE1900_APT_MULTI_SLOT_PA_VCC_TIMING             = 10967,
@@ -808,6 +819,7 @@ enum RF_NV_ID_ENUM
     en_NV_Item_W_CS_INTRA_STEP23_PARA                            = 11082,
     en_NV_Item_W_QPC_REGDEFAULT                                  = 11083,
     en_NV_Item_W_DUAL_ANT_MEAS                                   = 11084,
+    en_NV_Item_W_DUAL_ANT_DPDT_PROTECT_TIME                      = 11085,
 
     en_NV_Item_W_RX_IP2_CAL_CHAN_B1                              = 11100,
     en_NV_Item_W_RX_IP2_CAL_AT1_B1                               = 11101,
@@ -945,6 +957,7 @@ enum RF_NV_ID_ENUM
     en_NV_Item_W_TUNER_MIPI_DATA_B1                              = 11267,
     en_NV_Item_W_HDET_HKADC_CHAN_B1                              = 11268,
     en_NV_Item_W_TX_CTUNE_LUT_CTRL_B1                            = 11269,
+    en_NV_Item_W_TX_SAR_BACKOFF_DPDT_SWAP_B1                     = 11276,
 
     en_NV_Item_W_RX_IP2_CAL_CHAN_B2                              = 11300,
     en_NV_Item_W_RX_IP2_CAL_AT1_B2                               = 11301,
@@ -1085,6 +1098,7 @@ enum RF_NV_ID_ENUM
     en_NV_Item_W_TUNER_MIPI_DATA_B2                              = 11467,
     en_NV_Item_W_HDET_HKADC_CHAN_B2                              = 11468,
     en_NV_Item_W_TX_CTUNE_LUT_CTRL_B2                            = 11469,
+    en_NV_Item_W_TX_SAR_BACKOFF_DPDT_SWAP_B2                     = 11476,
 
     en_NV_Item_W_RX_IP2_CAL_CHAN_B3                              = 11500,
     en_NV_Item_W_RX_IP2_CAL_AT1_B3                               = 11501,
@@ -1222,6 +1236,7 @@ enum RF_NV_ID_ENUM
     en_NV_Item_W_TUNER_MIPI_DATA_B3                              = 11667,
     en_NV_Item_W_HDET_HKADC_CHAN_B3                              = 11668,
     en_NV_Item_W_TX_CTUNE_LUT_CTRL_B3                            = 11669,
+    en_NV_Item_W_TX_SAR_BACKOFF_DPDT_SWAP_B3                     = 11676,
 
     en_NV_Item_W_RX_IP2_CAL_CHAN_B4                              = 11700,
     en_NV_Item_W_RX_IP2_CAL_AT1_B4                               = 11701,
@@ -1359,6 +1374,7 @@ enum RF_NV_ID_ENUM
     en_NV_Item_W_TUNER_MIPI_DATA_B4                              = 11867,
     en_NV_Item_W_HDET_HKADC_CHAN_B4                              = 11868,
     en_NV_Item_W_TX_CTUNE_LUT_CTRL_B4                            = 11869,
+    en_NV_Item_W_TX_SAR_BACKOFF_DPDT_SWAP_B4                     = 11876,
 
     en_NV_Item_W_RX_IP2_CAL_CHAN_B5                              = 11900,
     en_NV_Item_W_RX_IP2_CAL_AT1_B5                               = 11901,
@@ -1498,6 +1514,7 @@ enum RF_NV_ID_ENUM
     en_NV_Item_W_TUNER_MIPI_DATA_B5                              = 12067,
     en_NV_Item_W_HDET_HKADC_CHAN_B5                              = 12068,
     en_NV_Item_W_TX_CTUNE_LUT_CTRL_B5                            = 12069,
+    en_NV_Item_W_TX_SAR_BACKOFF_DPDT_SWAP_B5                     = 12076,
 
     en_NV_Item_W_RX_IP2_CAL_CHAN_B6                              = 12100,
     en_NV_Item_W_RX_IP2_CAL_AT1_B6                               = 12101,
@@ -1636,6 +1653,7 @@ enum RF_NV_ID_ENUM
     en_NV_Item_W_TUNER_MIPI_DATA_B6                              = 12267,
     en_NV_Item_W_HDET_HKADC_CHAN_B6                              = 12268,
     en_NV_Item_W_TX_CTUNE_LUT_CTRL_B6                            = 12269,
+    en_NV_Item_W_TX_SAR_BACKOFF_DPDT_SWAP_B6                     = 12276,
 
     en_NV_Item_W_RX_IP2_CAL_CHAN_B8                              = 12500,
     en_NV_Item_W_RX_IP2_CAL_AT1_B8                               = 12501,
@@ -1775,6 +1793,7 @@ enum RF_NV_ID_ENUM
     en_NV_Item_W_TUNER_MIPI_DATA_B8                              = 12667,
     en_NV_Item_W_HDET_HKADC_CHAN_B8                              = 12668,
     en_NV_Item_W_TX_CTUNE_LUT_CTRL_B8                            = 12669,
+    en_NV_Item_W_TX_SAR_BACKOFF_DPDT_SWAP_B8                     = 12676,
 
     en_NV_Item_W_RX_IP2_CAL_CHAN_B9                              = 12700,
     en_NV_Item_W_RX_IP2_CAL_AT1_B9                               = 12701,
@@ -1912,6 +1931,7 @@ enum RF_NV_ID_ENUM
     en_NV_Item_W_TUNER_MIPI_DATA_B9                              = 12867,
     en_NV_Item_W_HDET_HKADC_CHAN_B9                              = 12868,
     en_NV_Item_W_TX_CTUNE_LUT_CTRL_B9                            = 12869,
+    en_NV_Item_W_TX_SAR_BACKOFF_DPDT_SWAP_B9                     = 12876,
 
     en_NV_Item_W_RX_IP2_CAL_CHAN_B11                             = 13100,
     en_NV_Item_W_RX_IP2_CAL_AT1_B11                              = 13101,
@@ -2051,6 +2071,7 @@ enum RF_NV_ID_ENUM
     en_NV_Item_W_TUNER_MIPI_DATA_B11                             = 13267,
     en_NV_Item_W_HDET_HKADC_CHAN_B11                             = 13268,
     en_NV_Item_W_TX_CTUNE_LUT_CTRL_B11                           = 13269,
+    en_NV_Item_W_TX_SAR_BACKOFF_DPDT_SWAP_B11                    = 13276,
 
     en_NV_Item_W_RX_IP2_CAL_CHAN_B19                             = 13900,
     en_NV_Item_W_RX_IP2_CAL_AT1_B19                              = 13901,
@@ -2189,6 +2210,7 @@ enum RF_NV_ID_ENUM
     en_NV_Item_W_TUNER_MIPI_DATA_B19                             = 14067,
     en_NV_Item_W_HDET_HKADC_CHAN_B19                             = 14068,
     en_NV_Item_W_TX_CTUNE_LUT_CTRL_B19                           = 14069,
+    en_NV_Item_W_TX_SAR_BACKOFF_DPDT_SWAP_B19                    = 14076,
 
     /* 为底软保留该6360 NV项，后续删除 */
     en_NV_Item_PA_CONTROL_MIPI_MODE                              = 15011,

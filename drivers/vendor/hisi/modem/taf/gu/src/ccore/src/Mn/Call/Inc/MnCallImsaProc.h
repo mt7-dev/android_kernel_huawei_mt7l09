@@ -78,6 +78,10 @@ VOS_VOID TAF_CALL_SendImsaSrvccStatusNtf(
 );
 
 VOS_VOID TAF_CALL_ProcImsaMsgSyncInd(IMSA_CALL_MSG_SYNC_IND_STRU *pstMsgSyncInd);
+
+VOS_VOID TAF_CALL_ProcImsaCcwaCapNtf(
+    IMSA_CALL_CCWA_CAP_NOTIFY_STRU     *pstCcwaCapNtf
+);
 #endif
 
 

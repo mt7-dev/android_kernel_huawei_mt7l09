@@ -51,8 +51,8 @@ static u8 MAC_REG_TABLE[][2] =	{
 	{0x58, 0x00}, {0x59, 0x00}, {0x5a, 0x04}, {0x5b, 0x00}, {0x60, 0x24},
 	{0x61, 0x97}, {0x62, 0xF0}, {0x63, 0x09}, {0x80, 0x0F}, {0x81, 0xFF},
 	{0x82, 0xFF}, {0x83, 0x03},
-	{0xC4, 0x22}, {0xC5, 0x22}, {0xC6, 0x22}, {0xC7, 0x22}, {0xC8, 0x22}, /* lzm add 080826 */
-	{0xC9, 0x22}, {0xCA, 0x22}, {0xCB, 0x22}, {0xCC, 0x22}, {0xCD, 0x22}, /* lzm add 080826 */
+	{0xC4, 0x22}, {0xC5, 0x22}, {0xC6, 0x22}, {0xC7, 0x22}, {0xC8, 0x22},
+	{0xC9, 0x22}, {0xCA, 0x22}, {0xCB, 0x22}, {0xCC, 0x22}, {0xCD, 0x22},
 	{0xe2, 0x00},
 
 
@@ -143,15 +143,6 @@ static void PlatformIOWrite4Byte(struct net_device *dev, u32 offset, u32 data)
 
 		cmdByte = (u8)(data & 0x000000ff);
 		dataBytes = data>>8;
-
-		/*
-		 *	071010, rcnjko:
-		 *	The critical section is only BB read/write race condition.
-		 *	Assumption:
-		 *	1. We assume NO one will access BB at DIRQL, otherwise, system will crash for
-		 *	acquiring the spinlock in such context.
-		 *	2. PlatformIOWrite4Byte() MUST NOT be recursive.
-		 */
 		/* NdisAcquireSpinLock( &(pDevice->IoSpinLock) ); */
 
 		for (idx = 0; idx < 30; idx++) {
@@ -557,7 +548,6 @@ void UpdateInitialGain(struct net_device *dev)
 {
 	struct r8180_priv *priv = (struct r8180_priv *)ieee80211_priv(dev);
 
-	/* lzm add 080826 */
 	if (priv->eRFPowerState != eRfOn) {
 		/*	Don't access BB/RF under disable PLL situation.
 		 *	RT_TRACE(COMP_DIG, DBG_LOUD, ("UpdateInitialGain - pHalData->eRFPowerState!=eRfOn\n"));
@@ -951,9 +941,7 @@ static void MgntDisconnectAP(struct net_device *dev, u8 asRsn)
 static bool MgntDisconnect(struct net_device *dev, u8 asRsn)
 {
 	struct r8180_priv *priv = (struct r8180_priv *)ieee80211_priv(dev);
-	/*
-	 *	Schedule an workitem to wake up for ps mode, 070109, by rcnjko.
-	 */
+
 
 	if (IS_DOT11D_ENABLE(priv->ieee80211))
 		Dot11d_Reset(priv->ieee80211);
@@ -1051,16 +1039,9 @@ bool MgntActSet_RF_State(struct net_device *dev, RT_RF_POWER_STATE StateToSet, u
 		break;
 
 	case eRfOff:
-		 /* 070125, rcnjko: we always keep connected in AP mode. */
 
 		if (priv->RfOffReason > RF_CHANGE_BY_IPS) {
-			/*
-			 *	060808, Annie:
-			 *	Disconnect to current BSS when radio off. Asked by QuanTa.
-			 *
-			 *	Calling MgntDisconnect() instead of MgntActSet_802_11_DISASSOCIATE(),
-			 *	because we do NOT need to set ssid to dummy ones.
-			 */
+
 			MgntDisconnect(dev, disas_lv_ss);
 			/* Clear content of bssDesc[] and bssDesc4Query[] to avoid reporting old bss to UI. */
 		}

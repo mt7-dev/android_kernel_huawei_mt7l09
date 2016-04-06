@@ -66,6 +66,8 @@ extern "C"{
 #define SLEEP_INFO_MAX_LEN                      (16)
 #define SLEEP_INFO_RESET_ENABLE                 (0x5A5A5A5A)
 
+#define SLEEP_BBP_READY_TIMEOUT                 (131072)        /*以32K时钟计数，4s超时*/
+
 #define SLEEP_DEVICE_POWUP(enModemId, enMode, enCommMode) \
     { \
         DRV_PWRCTRL_PWRUP((PWC_COMM_MODE_E)enMode, enCommMode, (PWC_COMM_MODEM_E)enModemId); \
@@ -347,6 +349,9 @@ typedef struct
     SLEEP_RECORD_STRU               stDeviceTcxoError;
     VOS_UINT32                      aulABBState[64];
     VOS_UINT32                      ulBBPResumeTimeout;
+    VOS_UINT32                      ulBBPIsReadyStartSlice;
+    VOS_UINT32                      ulBBPIsReadyEndSlice;
+    VOS_UINT32                      ulBBPIsReadyTimeout;
 }SLEEP_DEVICE_STATE_STRU;
 
 /*****************************************************************************
@@ -409,6 +414,7 @@ VOS_UINT32  SLEEP_InfoFileName( VOS_CHAR * cFileName );
 VOS_UINT32  SLEEP_InfoWriteLog( VOS_UINT32 *pstInfo, VOS_UINT32 uLen );
 VOS_VOID    SLEEP_ActivateHWMsgProc(MsgBlock *pstMsg);
 VOS_UINT32  SLEEP_GetLogPath(VOS_CHAR *pucBuf, VOS_CHAR *pucOldPath, VOS_CHAR *pucUnitaryPath);
+VOS_VOID    SLEEP_GBBPIsReady( VOS_VOID );
 
 #if ((VOS_OS_VER == VOS_WIN32) || (VOS_OS_VER == VOS_NUCLEUS))
 #pragma pack()

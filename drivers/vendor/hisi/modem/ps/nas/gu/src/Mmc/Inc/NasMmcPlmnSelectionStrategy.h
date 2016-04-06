@@ -68,6 +68,7 @@ extern "C" {
 /*****************************************************************************
   7 STRUCT∂®“Â
 *****************************************************************************/
+typedef VOS_INT (* NAS_COMP_PLMN_PRIO_FUNC)(const VOS_VOID*, const VOS_VOID*);
 
 typedef VOS_VOID  (*pNasMmcPlmnSelectionListInitFunc)(
     NAS_MMC_PLMN_SELECTION_LIST_INFO_STRU *pstPlmnSelectionListInfo,
@@ -135,10 +136,6 @@ VOS_VOID NAS_MMC_InitPlmnSelectionList_Roaming_AreaLost(
     NAS_MMC_SEARCHED_PLMN_LIST_INFO_STRU                   *pstSearchedPlmnListInfo
 );
 
-VOS_VOID NAS_MMC_InitPlmnSelectionList_SyscfgSetHighPrioRat(
-    NAS_MMC_PLMN_SELECTION_LIST_INFO_STRU                  *pstPlmnSelectionListInfo,
-    NAS_MMC_SEARCHED_PLMN_LIST_INFO_STRU                   *pstSearchedPlmnListInfo
-);
 
 VOS_VOID NAS_MMC_InitPlmnSelectionList_AvailTimerExpire(
     NAS_MMC_PLMN_SELECTION_LIST_INFO_STRU *pstPlmnSelectionListInfo,
@@ -180,6 +177,14 @@ VOS_VOID NAS_MMC_InitPlmnSelectionListCsfbServiceRej(
     NAS_MMC_SEARCHED_PLMN_LIST_INFO_STRU   *pstSearchedPlmnListInfo
 );
 
+#if (FEATURE_ON == FEATURE_LTE)
+VOS_VOID NAS_MMC_InitPlmnSelectionList_EnableLte(
+    NAS_MMC_PLMN_SELECTION_LIST_INFO_STRU                  *pstPlmnSelectionListInfo,
+    NAS_MMC_SEARCHED_PLMN_LIST_INFO_STRU                   *pstSearchedPlmnListInfo
+);
+#endif
+
+
 VOS_VOID NAS_MMC_InitPlmnSelectionListRfEnable(
     NAS_MMC_PLMN_SELECTION_LIST_INFO_STRU                  *pstPlmnSelectionListInfo,
     NAS_MMC_SEARCHED_PLMN_LIST_INFO_STRU                   *pstSearchedPlmnListInfo
@@ -214,6 +219,11 @@ VOS_VOID NAS_MMC_AddEHPlmnInPlmnSelectionList(
 VOS_VOID NAS_MMC_AddEHPlmnInDestPlmnList(
     NAS_MML_PLMN_LIST_WITH_RAT_STRU                        *pstDestPlmnList
 );
+
+VOS_VOID NAS_MMC_AddEPlmnInDestPlmnList(
+    NAS_MML_PLMN_LIST_WITH_RAT_STRU                        *pstDestPlmnList
+);
+
 
 VOS_VOID NAS_MMC_AddUOPlmnInPlmnSelectionList(
     NAS_MMC_PLMN_SELECTION_LIST_INFO_STRU *pstPlmnSelectionListInfo
@@ -276,10 +286,12 @@ VOS_UINT32 NAS_MMC_UpdatePlmnNetStatusInPlmnSelectionList(
 );
 
 VOS_UINT32 NAS_MMC_GetSpecQualAvailPlmnInPlmnSelectionList(
-    NAS_MMC_PLMN_SELECTION_PLMN_INFO_STRU *pstAvailPlmnList,
-    NAS_MMC_NET_QUALITY_ENUM_UINT8         enPlmnQuality,
-    NAS_MMC_PLMN_SELECTION_LIST_INFO_STRU *pstPlmnSelectionListInfo
+    VOS_UINT32                                              ulAvailPlmnListNum,
+    NAS_MMC_PLMN_SELECTION_PLMN_INFO_STRU                  *pstAvailPlmnList,
+    NAS_MMC_NET_QUALITY_ENUM_UINT8                          enPlmnQuality,
+    NAS_MMC_PLMN_SELECTION_LIST_INFO_STRU                  *pstPlmnSelectionListInfo
 );
+
 
 
 VOS_VOID NAS_MMC_SortRatPrioSpecRat(
@@ -360,6 +372,8 @@ NAS_MMC_PLMN_TYPE_ENUM_UINT8 NAS_MMC_GetPlmnTypeInPlmnSelectionList(
 VOS_VOID NAS_MMC_LogAsPlmnList(
     NAS_MMC_SEARCHED_PLMN_LIST_INFO_STRU                    *pstSrchedPlmn
 );
+
+VOS_VOID NAS_MMC_LogDplmnNplmnList(VOS_VOID);
 
 VOS_VOID NAS_MMC_GetSpecPlmnNetStatusInPlmnSelectionList(
     NAS_MML_PLMN_ID_STRU                                   *pstPlmn,
@@ -485,6 +499,78 @@ VOS_UINT32 NAS_MMC_IsHighPrioPlmnSameCountry(
     NAS_MMC_PLMN_SELECTION_PLMN_INFO_STRU                  *pstHighPrioPlmnInfo,
     NAS_MML_PLMN_ID_STRU                                   *pstVPlmnId
 );
+NAS_MMC_ROAM_PLMN_TYPE_ENUM_UINT8 NAS_MMC_GetRoamPlmnType(
+    NAS_MMC_ROAM_PLMN_INFO_STRU        *pstPlmnInfo
+);
+
+VOS_UINT32 NAS_MMC_AppendPlmnInRoamPlmnSelectionList(
+    NAS_MMC_ROAM_PLMN_INFO_STRU                            *pstPlmn,
+    NAS_MMC_ROAM_PLMN_LIST_INFO_STRU                       *pstSearchedPlmnListInfo
+);
+VOS_VOID NAS_MMC_BuildRoamPlmnSelectionListBySearchedExistPlmnInfo(
+    NAS_MML_NET_RAT_TYPE_ENUM_UINT8                         enRat,
+    NAS_MMC_ROAM_PLMN_LIST_INFO_STRU                       *pstSearchedExistPlmnInfo,
+    NAS_MMC_ROAM_PLMN_LIST_INFO_STRU                       *pstNewRoamPlmnSelectionList
+);
+
+VOS_VOID NAS_MMC_BuildRoamPlmnSelectionPlmnInfo(
+    NAS_MML_PLMN_WITH_RAT_STRU         *pstPlmnWithRat,
+    NAS_MMC_ROAM_PLMN_INFO_STRU        *pstPlmnInfo
+);
+
+NAS_MMC_PLMN_TYPE_ENUM_UINT8 NAS_MMC_GetRoamPlmnTypeInPlmnSelectionList(
+    NAS_MML_PLMN_WITH_RAT_STRU                             *pstPlmnWithRat,
+    NAS_MMC_PLMN_SELECTION_LIST_INFO_STRU                  *pstPlmnSelectionListInfo
+);
+
+NAS_MMC_NET_STATUS_ENUM_UINT8 NAS_MMC_GetSpecRoamPlmnNetStatusInPlmnSelectionList(
+    NAS_MML_PLMN_WITH_RAT_STRU                             *pstPlmnWithRat,
+    NAS_MMC_PLMN_SELECTION_LIST_INFO_STRU                  *pstPlmnSelectionListInfo
+);
+
+
+VOS_VOID NAS_MMC_BuildSearchedPlmnListInfoByRrcSearchCnfFail(
+    NAS_MML_NET_RAT_TYPE_ENUM_UINT8                         enRat,
+    NAS_MMC_SEARCHED_PLMN_LIST_INFO_STRU                   *pstPlmnIdList,
+    NAS_MMC_ROAM_PLMN_LIST_INFO_STRU                       *pstSearchedExistPlmnInfo
+);
+
+VOS_VOID NAS_MMC_BuildSearchedPlmnInfoByRrcSearchedPlmnInfoInd(
+    RRMM_SEARCHED_PLMN_INFO_IND_STRU   *pstSearchedPlmnInfoMsg,
+    NAS_MMC_ROAM_PLMN_LIST_INFO_STRU   *pstSearchedExistPlmnInfo
+);
+
+VOS_INT32  NAS_MMC_ActCompareRoamPlmnPrio(
+    const VOS_VOID                  *pPlmn1Info,
+    const VOS_VOID                  *pPlmn2Info,
+    NAS_MML_PLMN_RAT_PRIO_STRU      *pstPrioRatList
+);
+
+VOS_VOID NAS_MMC_InsertRoamPlmnListInPlmnSelectionList(
+    VOS_UINT32                                              ulPlmnSearchNum,
+    NAS_MML_NET_RAT_TYPE_ENUM_UINT8                         enRat,
+    NAS_MML_PLMN_ID_STRU                                   *pstPlmnIdList,
+    NAS_MMC_PLMN_SELECTION_LIST_INFO_STRU                  *pstPlmnSelectionListInfo
+);
+
+VOS_VOID NAS_MMC_UpdateRoamPlmnListInPlmnSelectionList(
+    NAS_MMC_SEARCHED_PLMN_LIST_INFO_STRU                   *pstPlmnSearchInfo,
+    NAS_MMC_PLMN_SELECTION_LIST_INFO_STRU                  *pstPlmnSelectionListInfo,
+    VOS_UINT32                                              ulAppendFlg
+);
+
+VOS_UINT16 NAS_MMC_GetSpecPlmnTypeIndexInPlmnSelectionList(
+    NAS_MMC_PLMN_TYPE_ENUM_UINT8                            enSpecPlmnType,
+    NAS_MMC_PLMN_SELECTION_LIST_INFO_STRU                  *pstPlmnSelectionListInfo
+);
+
+
+VOS_VOID NAS_MMC_AddRoamPlmnSelectionListInPlmnSelectionList(
+    NAS_MMC_ROAM_PLMN_LIST_INFO_STRU                       *pstNewRoamPlmnSelectionList,
+    NAS_MMC_PLMN_SELECTION_LIST_INFO_STRU                  *pstPlmnSrchList
+);
+
+
 
 NAS_MML_NET_RAT_TYPE_ENUM_UINT8 NAS_MMC_GetPrioRat_SyscfgSet(VOS_VOID);
 

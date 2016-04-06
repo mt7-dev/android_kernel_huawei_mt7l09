@@ -29,7 +29,7 @@
 #if (VOS_OS_VER == VOS_LINUX)
 #include <asm/dma-mapping.h>
 #else
-#include "LinuxStub.h"
+#include "Linuxstub.h"
 #endif
 
 
@@ -70,7 +70,9 @@ extern "C" {
 #define ADS_RAB_ID_INVALID              (0xFF)
 
 /* 为了避免频繁触发IPF中断，需要采用攒包机制，攒包的最大个数 */
-#define ADS_UL_SEND_DATA_NUM_THREDHOLD  (32)
+#define ADS_UL_SEND_DATA_NUM_THREDHOLD          (g_stAdsCtx.stAdsIpfCtx.ulThredHoldNum)
+
+#define ADS_UL_SET_SEND_DATA_NUM_THREDHOLD(n)   (g_stAdsCtx.stAdsIpfCtx.ulThredHoldNum = (n))
 
 /* 申请的AD需要偏移14作为IPF RD的目的地址，14为MAC头的长度 */
 #define ADS_DL_AD_DATA_PTR_OFFSET       (14)
@@ -196,7 +198,61 @@ extern "C" {
 
 /* 获取上行队列数据包的类型*/
 #define ADS_UL_GET_QUEUE_PKT_TYPE(InstanceIndex, RabId) \
-        (g_stAdsCtx.astAdsSpecCtx[InstanceIndex].stAdsUlCtx.astAdsUlQueue[RabId].enPktType)
+            (g_stAdsCtx.astAdsSpecCtx[InstanceIndex].stAdsUlCtx.astAdsUlQueue[RabId].enPktType)
+
+
+/* 获取ADS上行发送保护定时器时长 */
+#define ADS_UL_GET_STAT_TIMER_LEN()     \
+            (g_stAdsCtx.stAdsIpfCtx.stUlAssemParmInfo.stThresholdStatInfo.ulStatTmrLen)
+
+#define ADS_UL_ADD_STAT_PKT_NUM(n)      \
+            (g_stAdsCtx.stAdsIpfCtx.stUlAssemParmInfo.stThresholdStatInfo.ulStatPktNum += (n))
+
+#define ADS_UL_GET_STAT_PKT_NUM()       \
+            (g_stAdsCtx.stAdsIpfCtx.stUlAssemParmInfo.stThresholdStatInfo.ulStatPktNum)
+
+#define ADS_UL_CLR_STAT_PKT_NUM()       \
+            (g_stAdsCtx.stAdsIpfCtx.stUlAssemParmInfo.stThresholdStatInfo.ulStatPktNum = 0)
+
+/* 获取上行赞包控制标记 */
+#define ADS_UL_GET_THRESHOLD_ACTIVE_FLAG() \
+            (g_stAdsCtx.stAdsIpfCtx.stUlAssemParmInfo.ulActiveFlag)
+
+/* 获取上行赞包的jiffies的时间计数 */
+#define ADS_UL_GET_JIFFIES_TMR_CNT()     (g_stAdsCtx.stAdsIpfCtx.stUlAssemParmInfo.ulProtectTmrCnt)
+
+/* 设置上行赞包的jiffies的时间计数 */
+#define ADS_UL_SET_JIFFIES_TMR_CNT(n)     (g_stAdsCtx.stAdsIpfCtx.stUlAssemParmInfo.ulProtectTmrCnt += (n))
+
+/* 获取上行赞包的jiffies的超时长度 */
+#define ADS_UL_GET_JIFFIES_EXP_TMR_LEN() (g_stAdsCtx.stAdsIpfCtx.stUlAssemParmInfo.ulProtectTmrExpCnt)
+
+/* 获取上行数据包水线等级 */
+#define ADS_UL_GET_WATER_LEVEL_ONE()    \
+            (g_stAdsCtx.stAdsIpfCtx.stUlAssemParmInfo.stWaterMarkLevel.ulWaterLevel1)
+
+#define ADS_UL_GET_WATER_LEVEL_TWO()    \
+            (g_stAdsCtx.stAdsIpfCtx.stUlAssemParmInfo.stWaterMarkLevel.ulWaterLevel2)
+
+#define ADS_UL_GET_WATER_LEVEL_THREE()  \
+            (g_stAdsCtx.stAdsIpfCtx.stUlAssemParmInfo.stWaterMarkLevel.ulWaterLevel3)
+
+#define ADS_UL_GET_WATER_LEVEL_FOUR()   \
+            (g_stAdsCtx.stAdsIpfCtx.stUlAssemParmInfo.stWaterMarkLevel.ulWaterLevel4)
+
+/* 获取上行赞包门限 */
+#define ADS_UL_DATA_THRESHOLD_ONE       \
+            (g_stAdsCtx.stAdsIpfCtx.stUlAssemParmInfo.stThresholdLevel.ulThreshold1)
+
+#define ADS_UL_DATA_THRESHOLD_TWO       \
+            (g_stAdsCtx.stAdsIpfCtx.stUlAssemParmInfo.stThresholdLevel.ulThreshold2)
+
+#define ADS_UL_DATA_THRESHOLD_THREE     \
+            (g_stAdsCtx.stAdsIpfCtx.stUlAssemParmInfo.stThresholdLevel.ulThreshold3)
+
+#define ADS_UL_DATA_THRESHOLD_FOUR      \
+            (g_stAdsCtx.stAdsIpfCtx.stUlAssemParmInfo.stThresholdLevel.ulThreshold4)
+
 
 /*******************************上行 End*******************************/
 
@@ -261,22 +317,43 @@ extern "C" {
     (((ucRabId) >= ADS_RAB_ID_MIN) && ((ucRabId) <= ADS_RAB_ID_MAX))
 
 #define ADS_UL_IS_REACH_THRESHOLD(ulAllUlQueueDataNum, ucSendingFlg) \
-    ((0 != ulAllUlQueueDataNum) && (0 == (ulAllUlQueueDataNum & 0x1F)) && (VOS_FALSE == ucSendingFlg))
+    ((0 != ulAllUlQueueDataNum) && (ulAllUlQueueDataNum >= ADS_UL_SEND_DATA_NUM_THREDHOLD) && (VOS_FALSE == ucSendingFlg))
 
 #if (VOS_OS_VER == VOS_LINUX)
 #if(FEATURE_OFF == FEATURE_SKB_EXP)
+#if 0
 #ifdef BSP_CONFIG_HI3630
+#define ADS_CACHE_FLUSH(data, len)      dma_map_single(0, data, len, DMA_TO_DEVICE)
+#define ADS_CACHE_INVALIDATE(data, len) dma_map_single(0, data, len, DMA_FROM_DEVICE)
+#else
+
+#if defined(FEATURE_KERNEL_LINUX_3_10)
+#define ADS_CACHE_FLUSH_WITH_DEV(dev, data, len)      dma_map_single(dev, data, len, DMA_TO_DEVICE)
+#define ADS_CACHE_INVALIDATE_WITH_DEV(dev, data, len) dma_map_single(dev, data, len, DMA_FROM_DEVICE)
+
 #define ADS_CACHE_FLUSH(data, len)      dma_map_single(0, data, len, DMA_TO_DEVICE)
 #define ADS_CACHE_INVALIDATE(data, len) dma_map_single(0, data, len, DMA_FROM_DEVICE)
 #else
 #define ADS_CACHE_FLUSH(data, len)      __dma_single_cpu_to_dev(data, len, DMA_TO_DEVICE)
 #define ADS_CACHE_INVALIDATE(data, len) __dma_single_dev_to_cpu(data, len, DMA_FROM_DEVICE)
 #endif
+#endif
+#endif
+
+#define ADS_CACHE_FLUSH_WITH_DEV(dev, data, len)      dma_map_single(dev, data, len, DMA_TO_DEVICE)
+#define ADS_CACHE_INVALIDATE_WITH_DEV(dev, data, len) dma_map_single(dev, data, len, DMA_FROM_DEVICE)
+
+#define ADS_CACHE_FLUSH(data, len)      dma_map_single(0, data, len, DMA_TO_DEVICE)
+#define ADS_CACHE_INVALIDATE(data, len) dma_map_single(0, data, len, DMA_FROM_DEVICE)
+
 #else
 #define ADS_CACHE_FLUSH(data, len)      __dma_single_cpu_to_dev_nocheck(data, len, DMA_TO_DEVICE)
 #define ADS_CACHE_INVALIDATE(data, len) __dma_single_dev_to_cpu_nocheck(data, len, DMA_FROM_DEVICE)
 #endif
 #else
+#define ADS_CACHE_FLUSH_WITH_DEV(dev, data, len)        (vos_printf("%c, %d\n", data, len))
+#define ADS_CACHE_INVALIDATE_WITH_DEV(dev, data, len)   (vos_printf("%c, %d\n", data, len))
+
 #define ADS_CACHE_FLUSH(data, len)      (vos_printf("%c, %d\n", data, len))
 #define ADS_CACHE_INVALIDATE(data, len) (vos_printf("%c, %d\n", data, len))
 #endif
@@ -322,23 +399,26 @@ typedef struct
 
     ADS_CDS_IPF_PKT_TYPE_ENUM_UINT8     enPktType;                              /* 数据包类型 */
 
-    VOS_UINT8                           aucRsv[2];
+    VOS_UINT8                           aucRsv[6];
 }ADS_UL_QUEUE_STRU;
 typedef struct
 {
     VOS_UINT8                           ucRabId;                                /* Rab Id */
     ADS_CDS_IPF_PKT_TYPE_ENUM_UINT8     enPktType;                              /* 数据包类型 */
-    VOS_UINT8                           aucRsv[2];                              /* 保留 */
+    VOS_UINT8                           aucRsv[6];                              /* 保留 */
     RCV_DL_DATA_FUNC                    pRcvDlDataFunc;                         /* 对应的下行接收函数 */
     RCV_DL_DATA_FUNC                    pRcvDlFilterDataFunc;                   /* 对应的下行过滤接收函数 */
     IMM_ZC_STRU                        *pstLstPkt;
     ADS_PKT_TYPE_ENUM_UINT8             enIpType;
+    VOS_UINT8                           aucRsv1[7];                              /* 保留 */
 }ADS_DL_RAB_INFO_STRU;
+
+
 typedef struct
 {
     VOS_UINT32              ulEnableMask;
     VOS_UINT32              ulFcActiveFlg;
-    VOS_UINT32              ulTmrCnt;
+    unsigned long           ulTmrCnt;
     VOS_UINT32              ulRdCnt;
     VOS_UINT32              ulRateUpLev;
     VOS_UINT32              ulRateDownLev;
@@ -355,13 +435,14 @@ typedef struct
 typedef struct
 {
     ADS_UL_QUEUE_STRU                   astAdsUlQueue[ADS_RAB_ID_MAX + 1];      /* 上行队列管理，只用5-15 */
+    ADS_UL_QUEUE_SCHEDULER_PRI_NV_STRU  stQueuePriNv;                           /* 从NV中读取的上行队列优先级对应的加权数 */
     VOS_UINT8                           aucPrioIndex[ADS_RAB_NUM_MAX];          /* 存储已排好优先级的上行队列的索引 */
     VOS_UINT8                           ucAdsUlCurIndex;                        /* 记录当前调度的队列 */
-    ADS_UL_QUEUE_SCHEDULER_PRI_NV_STRU  stQueuePriNv;                           /* 从NV中读取的上行队列优先级对应的加权数 */
     VOS_UINT8                           ucModemSndPermitFlg;                    /* Modem是否允许发送，默认允许发送 ,VOS_TRUE */
     VOS_UINT8                           aucRsv[3];
 #if(FEATURE_OFF == FEATURE_SKB_EXP)
     VOS_UINT32                          ulUlMaxQueueLength;                     /* 上行队列限长 */
+    VOS_UINT8                           aucReserved1[4];
 #endif
 }ADS_UL_CTX_STRU;
 typedef struct ADS_UL_DATA_STATS
@@ -387,6 +468,25 @@ typedef struct
 
 typedef struct
 {
+    VOS_UINT32                          ulStatTmrLen;                           /* 统计定时器长度 */
+    VOS_UINT32                          ulStatPktNum;                           /* 在单位时间内上行统计包的个数 */
+}ADS_UL_THRESHOLD_STAT_STRU;
+
+
+typedef struct
+{
+    VOS_UINT32                          ulActiveFlag;                           /* 使能标识: 0表示去使能,1表示使能 */
+    VOS_UINT32                          ulProtectTmrExpCnt;                     /* 保护定时器超时时长 */
+    unsigned long                       ulProtectTmrCnt;                        /* 保护定时器的计数 */
+    ADS_UL_WATER_MARK_LEVEL_STRU        stWaterMarkLevel;                       /* 动态水线值 */
+    ADS_UL_THRESHOLD_LEVEL_STRU         stThresholdLevel;                       /* 动态赞包门限值 */
+    ADS_UL_THRESHOLD_STAT_STRU          stThresholdStatInfo;                    /* 赞包状态统计 */
+}ADS_UL_DYNAMIC_ASSEM_INFO_STRU;
+
+
+
+typedef struct
+{
     IPF_CONFIG_ULPARAM_S                astIpfUlBdBuff[IPF_ULBD_DESC_SIZE];     /* 上行BD */
     IPF_RD_DESC_S                       astIpfDlRdBuff[IPF_DLRD_DESC_SIZE];     /* 下行RD */
 #if(FEATURE_OFF == FEATURE_SKB_EXP)
@@ -394,9 +494,11 @@ typedef struct
     IPF_AD_DESC_S                       astIpfDlAdBuff[ADS_DL_ADQ_MAX_NUM][IPF_DLAD0_DESC_SIZE];   /* 下行AD0 */
     IMM_ZC_HEAD_STRU                    stUlSrcMemFreeQue;                      /* IPF上行内存释放BUFF */
 #endif
+    ADS_UL_DYNAMIC_ASSEM_INFO_STRU      stUlAssemParmInfo;                      /* 上行动态组包信息 */
+    VOS_UINT32                          ulThredHoldNum;                         /* 上行赞包门限值 */
     VOS_UINT32                          ulProtectTmrLen;
     VOS_UINT8                           ucSendingFlg;                           /* 正在发送标志 */
-    VOS_UINT8                           aucRsv[3];
+    VOS_UINT8                           aucRsv[7];
 }ADS_IPF_CTX_STRU;
 
 
@@ -413,9 +515,9 @@ typedef struct
     ADS_IPF_CTX_STRU                    stAdsIpfCtx;                            /* 与IPF相关的上下文 */
     ADS_TIMER_CTX_STRU                  astAdsTiCtx[ADS_MAX_TIMER_NUM];         /* 定时器上下文 */
     VOS_UINT8                           ucAdsCurInstanceIndex;                  /* 当前实例的index */
-    VOS_UINT8                           aucRsv[3];
-    VOS_UINT32                          ulULResetSem;                           /* 二进制信号量，用于UL复位处理  */
-    VOS_UINT32                          ulDLResetSem;                           /* 二进制信号量，用于DL复位处理  */
+    VOS_UINT8                           aucRsv[7];
+    VOS_SEM                             hULResetSem;                            /* 二进制信号量，用于UL复位处理  */
+    VOS_SEM                             hDLResetSem;                            /* 二进制信号量，用于DL复位处理  */
 }ADS_CTX_STRU;
 
 /*****************************************************************************
@@ -442,10 +544,6 @@ VOS_UINT32 ADS_UL_IsAllRabNotSndPermitFlg(VOS_VOID);
 VOS_UINT32 ADS_UL_GetSpecInstanceSndPermitFlg(VOS_UINT8 ucInstanceIndex);
 VOS_VOID ADS_DL_ProcEvent(VOS_UINT32 ulEvent);
 VOS_VOID ADS_DL_SndEvent(VOS_UINT32 ulEvent);
-VOS_UINT32 ADS_GetCurrentRate(
-    VOS_UINT32                         *pulUlBpsRate,
-    VOS_UINT32                         *pulDlBpsRate
-);
 ADS_DL_CTX_STRU* ADS_GetDlCtx(VOS_UINT8 ucInstanceIndex);
 ADS_STATS_INFO_CTX_STRU* ADS_GetStatsInfoCtx(VOS_UINT8 ucInstanceIndex);
 ADS_TIMER_CTX_STRU* ADS_GetTiCtx(VOS_VOID);
@@ -517,9 +615,10 @@ VOS_VOID ADS_DL_ProcAdqEmptyEvent(VOS_UINT32 ulEvent);
 
 VOS_VOID ADS_DL_InitFcAssemParamInfo(VOS_VOID);
 
-VOS_UINT32 ADS_GetULResetSem(VOS_VOID);
-VOS_UINT32 ADS_GetDLResetSem(VOS_VOID);
+VOS_SEM ADS_GetULResetSem(VOS_VOID);
+VOS_SEM ADS_GetDLResetSem(VOS_VOID);
 VOS_VOID ADS_DL_ResetFcAssemParamInfo(VOS_VOID);
+VOS_VOID ADS_ResetUlCtx(VOS_UINT8 ucInstanceIndex);
 VOS_VOID ADS_ResetDlCtx(VOS_UINT8 ucInstanceIndex);
 VOS_VOID ADS_ResetSpecCtx(VOS_VOID);
 VOS_VOID ADS_ResetIpfCtx(VOS_VOID);

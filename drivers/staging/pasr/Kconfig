@@ -8,14 +8,21 @@ config PASR
 	  PASR consists on masking the refresh of unused segments or banks
 	  when DDR is in self-refresh state.
 
-config HI3630_PASR
-	bool "HI3630 PASR driver"
-	def_bool n
-	depends on (PASR && ARCH_HISI)
+config HI6210_PASR
+	bool "HI6210 PASR driver"
+	def_bool y
+	depends on (PASR && ARCH_HI6XXX)
 	---help---
-	  PASR support for Hi4511 board.
+	  PASR support for Hi6210 & Hi6220 board.
+
+config HI3635_PASR
+	bool "HI3635 PASR driver"
+	def_bool y
+	depends on (PASR && ARCH_HI3XXX)
+	---help---
+	  PASR support for Hi3635 board.
 
 config PASR_DEBUG
 	bool "Add PASR debug prints"
-	def_bool n
+	def_bool y
 	depends on PASR

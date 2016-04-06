@@ -688,6 +688,23 @@ VOS_VOID NAS_EMM_TAU_TAUReqRejectCasue25(VOS_VOID)
     return;
 }
 #endif
+VOS_VOID NAS_EMM_TAU_TAUReqRejectCasue35
+(
+    NAS_EMM_CN_CAUSE_ENUM_UINT8   ucTAUrejcause
+)
+{
+    /* 判断是否打开nas r10开关 */
+    if (NAS_RELEASE_CTRL)
+    {
+        NAS_EMM_TAU_TAUReqRejectCasue11();
+    }
+    else
+    {
+        NAS_EMM_TAU_TAUReqRejectOtherCause(ucTAUrejcause);
+    }
+    return;
+}
+
 /* lihong00150010 emergency tau&service end */
 
 VOS_VOID NAS_EMM_TAU_TAUReqRejectCasue40()
@@ -883,14 +900,7 @@ VOS_VOID    NAS_EMM_TAU_RcvTAURej
                 NAS_EMM_TAU_TAUReqRejectCasue11();
                 break;
         case    NAS_LMM_CAUSE_REQUESTED_SER_OPTION_NOT_AUTHORIZED_IN_PLMN:
-                if (NAS_RELEASE_CTRL)
-                {
-                    NAS_EMM_TAU_TAUReqRejectCasue11();
-                }
-                else
-                {
-                    NAS_EMM_TAU_TAUReqRejectOtherCause(ucTAUrejcause);
-                }
+                NAS_EMM_TAU_TAUReqRejectCasue35(ucTAUrejcause);
                 break;
         case    NAS_LMM_CAUSE_TA_NOT_ALLOW   :
                 NAS_EMM_TAU_TAUReqRejectCasue12();
@@ -963,7 +973,7 @@ VOS_UINT32 NAS_EMM_MsTauInitSsWaitCNCnfMsgTAURej(VOS_UINT32  ulMsgId,
 
     /* xiongxianghui00253310 modify for ftmerrlog begin */
     #if (FEATURE_PTM == FEATURE_ON)
-    NAS_LMM_ErrlogInfoProc(pstTAURej->ucEMMCause);
+    NAS_EMM_TAUErrRecord(pMsgStru, EMM_OM_ERRLOG_TYPE_CN_REJ);
     #endif
     /* xiongxianghui00253310 modify for ftmerrlog end   */
 

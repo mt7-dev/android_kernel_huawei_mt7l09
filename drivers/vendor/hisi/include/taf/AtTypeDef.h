@@ -23,7 +23,8 @@
 /*****************************************************************************
   1 其他头文件包含
 *****************************************************************************/
-#include "v_id.h"
+#include "vos.h"
+#include "om.h"
 
 #ifdef __cplusplus
 #if __cplusplus
@@ -37,6 +38,22 @@ extern "C" {
 /*****************************************************************************
   2 宏定义
 *****************************************************************************/
+#ifndef __AT_DISABLE_OM__
+#define AT_INFO_LOG(String)            PS_LOG(WUEPS_PID_AT, 0, PS_PRINT_INFO, String)
+#define AT_NORM_LOG(String)            PS_LOG(WUEPS_PID_AT, 0, PS_PRINT_NORMAL, String)
+#define AT_NORM_LOG1(String,Para1)     PS_LOG1(WUEPS_PID_AT, 0, PS_PRINT_NORMAL, String, (TAF_INT32)Para1)
+#define AT_WARN_LOG(String)            PS_LOG(WUEPS_PID_AT, 0, PS_PRINT_WARNING, String)
+#define AT_WARN_LOG1(String,Para1)     PS_LOG1(WUEPS_PID_AT, 0, PS_PRINT_WARNING, String, (TAF_INT32)Para1)
+#define AT_ERR_LOG(String)             PS_LOG(WUEPS_PID_AT, 0, PS_PRINT_ERROR, String)
+#define AT_ERR_LOG1(String, Para1)     PS_LOG1(WUEPS_PID_AT, 0, PS_PRINT_ERROR, String, (VOS_INT32)Para1)
+#define AT_LOG1(String, Para1)         PS_LOG1(WUEPS_PID_AT, 0, PS_PRINT_INFO, String, (TAF_INT32)Para1)
+#else
+#define AT_INFO_LOG(String)
+#define AT_NORM_LOG(String)
+#define AT_WARN_LOG(String)
+#define AT_ERR_LOG(String)
+#define AT_LOG1(String, Para1)
+#endif
 
 /*****************************************************************************
   3 枚举定义
@@ -74,9 +91,18 @@ enum AT_USER_TYPE_ENUM
 
     AT_BUTT_USER                        = 0xff
 };
-typedef TAF_UINT8 AT_USER_TYPE;
+typedef VOS_UINT8 AT_USER_TYPE;
 
 /*================================USER TYPE End================================*/
+
+typedef VOS_UINT8 AT_MODE_TYPE;
+#define AT_CMD_MODE                     (0)
+#define AT_DATA_MODE                    (1)
+#define AT_ONLINE_CMD_MODE              (2)
+
+typedef VOS_UINT8 AT_IND_MODE_TYPE;
+#define AT_IND_MODE                     (0)
+#define AT_NO_IND_MODE                  (1)
 
 /*****************************************************************************
   4 全局变量声明

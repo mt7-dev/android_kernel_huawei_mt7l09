@@ -95,7 +95,7 @@ extern "C" {
 
 #define  RRC_PHY_MAX_INTER_RAT_CELL             (64)    /*异系统测量请求，携带的最多小区个数*/
 
-#define RRC_PHY_MAX_INTER_RAT_LTE_FREQ           (4)    /* W下测量LTE频点个数 */
+#define RRC_PHY_MAX_INTER_RAT_LTE_FREQ           (6)    /* W下测量LTE频点个数 */
 #define RRC_PHY_MAX_SLAVE_WCDMA_CARRIER_NUM      (3)    /* w为从模时，WCDMA的频点个数 */
 #define RRC_PHY_MAX_SLAVE_GSM_CARRIER_NUM        (32)   /* w为从模时，GSM的频点个数 */
 

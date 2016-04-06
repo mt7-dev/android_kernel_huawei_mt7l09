@@ -33,6 +33,8 @@ const MTC_MSG_PROC_STRU                 g_astMtcMsgProcModem0MmaTab[] =
     {ID_MMA_MTC_EPLMN_INFO_IND,             MTC_RcvMmaEplmnInfoInd},
 
     {ID_MMA_MTC_REG_STATUS_IND,             MTC_RcvMmaRegStatusInd},
+
+    {ID_MMA_MTC_IMSA_STATE_IND,             MTC_RcvMmaImsaStateInd},
 };
 
 /* MTC模块处理来自Modem1 Mma消息函数对应表*/

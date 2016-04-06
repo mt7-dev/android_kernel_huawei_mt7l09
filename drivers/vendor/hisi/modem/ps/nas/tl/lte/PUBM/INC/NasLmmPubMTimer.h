@@ -165,6 +165,9 @@ extern "C" {
 #define NAS_LMM_TIMER_ZERO_VALUE         (0)
 #define TI_NAS_LMM_TIMER_MAX_LEN         (18*60*60*1000)     /* 18小时 */
 
+#define NAS_LMM_TIMER_161722Atmpt5CSPS1_TRUE             (1)
+#define NAS_LMM_TIMER_161722Atmpt5CSPS1_FALSE            (0)
+
 /*****************************************************************************
   3 Massage Declare
 *****************************************************************************/
@@ -234,6 +237,8 @@ extern VOS_VOID    NAS_LMM_StartStateTimer(
                            NAS_LMM_STATE_TI_ENUM_UINT16             enStateTimerId );
 extern VOS_VOID    NAS_LMM_StartPtlTimer(
                            NAS_LMM_PTL_TI_ENUM_UINT16               enPtlTimerId );
+extern VOS_VOID    NAS_LMM_Start3402Timer(VOS_UINT8 ucIs161722Atmpt5CsPs1);
+extern VOS_UINT32  NAS_LMM_IsNeedStop3402Timer(VOS_VOID);
 extern VOS_VOID    NAS_LMM_StopAllPtlTimer( VOS_VOID );
 extern VOS_VOID    NAS_LMM_StopAllStateTimer( VOS_VOID );
 extern VOS_VOID    NAS_LMM_StopPtlTimer(
@@ -242,7 +247,7 @@ extern VOS_VOID    NAS_LMM_StopStateTimer(
                            NAS_LMM_STATE_TI_ENUM_UINT16             enStateTimerId );
 extern VOS_VOID    NAS_LMM_SuspendStateTimer(
                            NAS_LMM_STATE_TI_ENUM_UINT16             enStateTimerId );
-extern VOS_VOID    NAS_LMM_StopAllEmmStateTimer(VOS_VOID);
+extern VOS_VOID    NAS_LMM_StopAllStateTimerExceptDelForbTaProidTimer(VOS_VOID);
 extern VOS_VOID  NAS_LMM_StartInactivePtlTimer( NAS_LMM_PTL_TI_ENUM_UINT16  enPtlTimerId);
 extern VOS_VOID  NAS_LMM_StartInactiveStateTimer( NAS_LMM_STATE_TI_ENUM_UINT16 enStateTimerId );
 extern VOS_VOID  NAS_LMM_GetStateTimerLen( NAS_LMM_STATE_TI_ENUM_UINT16   enStateTimerId,
@@ -255,7 +260,7 @@ extern NAS_LMM_TIMER_RUN_STA_ENUM_UINT32  NAS_LMM_IsStaTimerRunning(
 extern NAS_LMM_TIMER_RUN_STA_ENUM_UINT32  NAS_LMM_IsPtlTimerRunning(
                                     NAS_LMM_PTL_TI_ENUM_UINT16 enPtlTimerId );
 extern VOS_VOID    NAS_LMM_StopAllEmmPtlTimer( VOS_VOID );
-extern VOS_VOID    NAS_LMM_StopAllLmmTimerExcept3412_3423( VOS_VOID );
+/* 删除不用函数 */
 extern VOS_VOID    NAS_LMM_SuspendAllPtlTimerExpT3412( VOS_VOID );
 extern VOS_VOID    NAS_LMM_ResumeAllPtlTimer( VOS_VOID );
 extern VOS_VOID    NAS_LMM_SuspendAllPtlTimer( VOS_VOID );

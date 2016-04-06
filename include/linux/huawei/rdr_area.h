@@ -18,31 +18,31 @@
  * If u'll modify the area which is not zero,please ask for the orig author.
  */
 /* RDR area 0 begin: */
-#define RDR_AREA_0 (0x400000 - 0x200) /*AP, 4193792, w00204535 2013.12.26*/
+#define RDR_AREA_0 (0x400000 - 0x200)
 /* RDR area 0 end.   */
 
 /* RDR area 1 begin: */
-#define RDR_AREA_1 (0x480000 - 0x400000)/*reserved,512KB,w00204535 2013.12.26*/
+#define RDR_AREA_1 (0x480000 - 0x400000)
 /* RDR area 1 end.   */
 
 /* RDR area 2 begin: */
-#define RDR_AREA_2 (0x600000 - 0x480000)/*CP-BBE16,1536KB,w00204535 2013.12.26*/
+#define RDR_AREA_2 (0x600000 - 0x480000)
 /* RDR area 2 end.   */
 
 /* RDR area 3 begin: */
-#define RDR_AREA_3 (0x680000 - 0x600000)/*TeeOS,512KB,w00204535 2013.12.26*/
+#define RDR_AREA_3 (0x680000 - 0x600000)
 /* RDR area 3 end.   */
 
 /* RDR area 4 begin: */
-#define RDR_AREA_4 (0x700000 - 0x680000)/*HIFI,512KB,w00204535 2013.12.26*/
+#define RDR_AREA_4 (0x700000 - 0x680000)
 /* RDR area 4 end.   */
 
 /* RDR area 5 begin: */
-#define RDR_AREA_5 (0x780000 - 0x700000)/*LPM3,512KB,w00204535 2013.12.26*/
+#define RDR_AREA_5 (0x780000 - 0x700000)
 /* RDR area 5 end.   */
 
 /* RDR area 6 begin: */
-#define RDR_AREA_6 (0x7F8000 - 0x780000)/*IOM3,480KB,w00204535 2013.12.26*/
+#define RDR_AREA_6 (0x7F8000 - 0x780000)
 /* RDR area 6 end.   */
 
 /* RDR area 7 begin: */

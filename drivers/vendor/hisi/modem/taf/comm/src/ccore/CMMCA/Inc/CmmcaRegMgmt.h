@@ -160,7 +160,10 @@ VOS_VOID CMMCA_REG_SndMmcRejInd(
     CMMCA_RAT_CMD_REJ_REASON_ENUM_UINT8 enCause
 );
 
-
+VOS_VOID CMMCA_PKT_SndBearDetachRsp(
+    CMMCA_MMC_RAT_ID_ENUM_UINT8         enRatId,
+    VOS_UINT8                           ucStatus
+);
 
 VOS_VOID CMMCA_REG_RcvRatModeReq(
     VOS_VOID                           *pMsg
@@ -189,6 +192,11 @@ VOS_VOID CMMCA_REG_RcvNoServiceReq(
 VOS_VOID CMMCA_REG_RcvPktDataCmdReq(
     VOS_VOID                           *pMsg
 );
+
+VOS_VOID CMMCA_REG_RcvBearDetachReq(
+    VOS_VOID                           *pMsg
+);
+
 VOS_VOID CMMCA_REG_RcvMmaSysCfgCnf(
     VOS_VOID                           *pMsg
 );

@@ -14,7 +14,7 @@ extern "C" {
 ***************************************************************************/
 
 #define HI_TCXO_CLK                 (32*1024)
-#ifdef BSP_CONFIG_K3V3_SFT
+#ifdef BSP_CONFIG_BOARD_SFT
 #define HI_UART_CLK                 (20000000)
 #elif defined(BSP_CONFIG_K3V3_ASIC)
 #define HI_UART_CLK                 (19200000)

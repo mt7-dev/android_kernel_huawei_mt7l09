@@ -65,4 +65,5 @@ vob_include_dirs :=   $(WIND_BASE)/target/h \
 					  $(MSP_INC_DIR)\gu\ccore\sc \
 					  $(MSP_INC_DIR)\gu\ccore\sleep \
 					  $(MSP_INC_DIR)\gu\comm\om \
-					  $(MSP_INC_DIR)\gu\comm\bbplog
+					  $(MSP_INC_DIR)\gu\comm\bbplog \
+					  $(MSP_INC_DIR)\comm\comm\ppm

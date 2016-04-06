@@ -2,10 +2,12 @@
 #define TRACE_SYSTEM smp
 
 #if !defined(_TRACE_SMP_H) || defined(TRACE_HEADER_MULTI_READ)
+#ifndef  _TRACE_SMP_H
+typedef void (*__smp_call_func_t)(void *info);
+#endif
 #define _TRACE_SMP_H
 
 #include <linux/tracepoint.h>
-typedef void (*__smp_call_func_t)(void *info);
 
 DECLARE_EVENT_CLASS(smp_call_class,
 

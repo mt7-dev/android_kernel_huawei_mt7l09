@@ -192,11 +192,67 @@ u32 nv_boot_get_bak_file_info(const s8* mode,u32* offset,u32* len)
     return NV_ERROR;
 
 }
+/***************************************************************************
+ 函 数 名: nv_get_real_offset
+ 功能描述: 一个分区中逻辑地址到实际地址的转换(跳过坏块)
+ 输入参数:  partition_name:分区名称, blk_size:flash块大小
+            part_size:flash分区大小, offset:分区中的偏移地址
+            
+ 输出参数: 需要跳过的blk
+ 返 回 值: 0:
+ 注意事项: 由nand驱动检测当前要操作的块，这里只检测之前的坏块情况,
+****************************************************************************/
+unsigned int nv_get_real_offset( const char *partition_name, unsigned int blk_size,
+    unsigned int part_size, unsigned int partition_offset )
+{
+    int ret_val = 0;
+    unsigned int idx = 0;
+    unsigned int invlv_blk_num = 0, total_blk_num = 0;
+    unsigned int ret_num = 0;
+    unsigned int tmp_offset = 0;
 
+    /*当分区大小为零,或者需要检查的块为0时,直接返回*/
+    if ( ( 0 == blk_size ) || ( 0 == part_size ) || ( partition_offset < blk_size ) )
+    {
+        printf( "fastboot: dload nv blk or part size or invlv_blk_num is 0!\n" );
+        goto ret_err;
+    }
+
+    /*total_blk_num和invlv_blk_num至少为1*/
+    total_blk_num = part_size / blk_size; 
+    invlv_blk_num = partition_offset / blk_size;
+
+    printf( "fastboot: dload nv invlv_blk_num:%d, total_blk_num:%d!\n",
+        (int)invlv_blk_num, (int)total_blk_num );
+
+    for ( idx = 0; idx < total_blk_num /*-1?*/; idx++ )
+    {   
+        tmp_offset = idx * blk_size;
+        ret_val = bsp_nand_isbad( partition_name, tmp_offset );
+        if ( 1 == ret_val )
+        {
+            printf( "fastboot: dload nv skip bad blk, idx:%d!\n", (int)idx );
+            ret_num += 1;
+        }
+        else if ( 0 == --invlv_blk_num ) /*找到好块*/
+        {
+            break;
+        }
+    }
+
+    /*整个分区都没有找到好块的情况不用判断,nand驱动会处理*/
+    
+ret_err:
+    printf( "fastboot: dload nv skip total bad blk:%d!\n", ret_num );
+    return ret_num;
+}
 u32 nv_nand_init(void)
 {
     u32 ret = NV_ERROR;
     struct nand_spec  nand_info;
+    unsigned int nv_tail_magic = 0;
+    unsigned int real_offset = 0, skip_blk_num = 0;
+    unsigned int nv_dlaod_part_size = 0;
 
     memset(&g_boot_file_info,0,sizeof(struct nv_flash_global_ctrl_stru));
     /*get nand info*/
@@ -220,6 +276,35 @@ u32 nv_nand_init(void)
     {
         printf("[%s]:get sys nv info fail need to check file this sec!\n",__FUNCTION__);
     }
+
+    if ( NV_FILE_EXIST == g_boot_file_info.sys_nv.magic_num )
+    {
+        /*获取g_boot_nv_file[NV_FILE_SYS_NV].name分区size*/
+        nv_dlaod_part_size = bsp_get_part_cap( g_boot_nv_file[NV_FILE_SYS_NV].name );
+    
+        /*跳过要操作地址之前的坏块*/
+        skip_blk_num = nv_get_real_offset( g_boot_nv_file[NV_FILE_SYS_NV].name,
+            nand_info.blocksize, nv_dlaod_part_size, g_boot_file_info.sys_nv.len );
+
+        real_offset = skip_blk_num * nand_info.blocksize;
+        real_offset += g_boot_file_info.sys_nv.len;
+
+        /*判断nv dload分区末尾的魔数字是否有效*/
+        (void)bsp_nand_read( g_boot_nv_file[NV_FILE_SYS_NV].name, real_offset, 
+            (void *)&nv_tail_magic, sizeof(nv_tail_magic), NULL );
+        if( NV_FILE_TAIL_MAGIC_NUM != nv_tail_magic )
+        {
+            printf( "fastboot: dload nv part not valid: 0x%x!\n", nv_tail_magic );
+
+            /*清除nv dload分区有效标志(将会尝试从nvbackup分区获取)*/
+            g_boot_file_info.sys_nv.magic_num = 0;
+        }
+    }
+    else
+    {
+        printf("fastboot: dload nv part not check for pre_err!\n" );
+    }
+
     /*get bak info*/
     ret = nv_boot_sec_file_info_init(g_boot_nv_file[NV_FILE_BACKUP].name,&g_boot_file_info.bak_info);
     if(ret)

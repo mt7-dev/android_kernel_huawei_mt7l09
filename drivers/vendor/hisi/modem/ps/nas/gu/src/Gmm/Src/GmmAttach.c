@@ -20,6 +20,8 @@
 
 #include "NasGmmSndOm.h"
 
+#include "NasCcIe.h"
+
 #ifdef  __cplusplus
   #if  __cplusplus
   extern "C"{
@@ -430,6 +432,177 @@ VOS_VOID NAS_GMM_Fill_IE_PtmsiSignFromSrc(
 
     return;
 }
+VOS_VOID GMM_Fill_IE_ClassMark2(
+    VOS_UINT8                          *pClassMark2                             /* 填写ClassMark2 IE的首地址   */
+)
+{
+    VOS_UINT8                           aucClassMark2[GMM_MSG_LEN_CLASSMARK2];
+
+    PS_MEM_SET(aucClassMark2, 0, sizeof(aucClassMark2));
+
+    aucClassMark2[0] = GMM_IEI_CLASSMARK2;
+
+    NAS_MML_Fill_IE_ClassMark2(&aucClassMark2[1]);
+
+    PS_MEM_CPY(pClassMark2, aucClassMark2, GMM_MSG_LEN_CLASSMARK2);
+
+    return;
+}
+VOS_UINT8 GMM_Fill_IE_FDD_ClassMark3(
+    VOS_UINT8                          *pClassMark3                             /* 填写ClassMark3 IE的首地址   */
+)
+{
+    VOS_UINT8                           aucClassMark3[MS_CLASSMARK3_MAX_LEN];
+    VOS_UINT8                           ucLen;
+
+    PS_MEM_SET(aucClassMark3, 0, sizeof(aucClassMark3));
+
+    aucClassMark3[0] = GMM_IEI_CLASSMARK3;
+
+    NAS_MML_Fill_IE_FddClassMark3(&aucClassMark3[1]);
+
+    /* 第一位为长度,加上tag 和 len */
+    ucLen = aucClassMark3[1] + 2;
+    PS_MEM_CPY(pClassMark3, aucClassMark3, ucLen);
+
+    return ucLen;
+}
+
+
+VOS_UINT8 GMM_Fill_IE_TDD_ClassMark3(
+    VOS_UINT8                          *pClassMark3                             /* 填写ClassMark3 IE的首地址   */
+)
+{
+    VOS_UINT8                           aucClassMark3[MS_CLASSMARK3_MAX_LEN];
+    VOS_UINT8                           ucLen;
+
+    PS_MEM_SET(aucClassMark3, 0, sizeof(aucClassMark3));
+
+    aucClassMark3[0] = GMM_IEI_CLASSMARK3;
+
+    NAS_MML_Fill_IE_TddClassMark3(&aucClassMark3[1]);
+
+    /* 第一位为长度,加上tag 和 len */
+    ucLen = aucClassMark3[1] + 2;
+    PS_MEM_CPY(pClassMark3, aucClassMark3, ucLen);
+
+    return ucLen;
+}
+
+
+VOS_VOID  GMM_CALL_FillUmtsSupCodecList(
+    GMM_CALL_SUPPORT_CODEC_UNION       *punCodecList
+)
+{
+    NAS_MML_CALL_UMTS_CODEC_TYPE_STRU  *pstUmtsCodecType = VOS_NULL_PTR;
+    VOS_UINT32                          i;
+
+    pstUmtsCodecType = NAS_MML_CALL_GetCallUmtsCodecType();
+
+    for ( i = 0 ; i < pstUmtsCodecType->ucCnt ; i++ )
+    {
+        switch (pstUmtsCodecType->aucUmtsCodec[i])
+        {
+            case NAS_MML_CALL_UMTS_CODEC_TYPE_AMR :
+                punCodecList->stSupportCodec.CodecType_UMTSAMR     = VOS_TRUE;
+                break;
+
+            case NAS_MML_CALL_UMTS_CODEC_TYPE_AMR2 :
+                punCodecList->stSupportCodec.CodecType_UMTSAMR2    = VOS_TRUE;
+                break;
+
+            case NAS_MML_CALL_UMTS_CODEC_TYPE_AMRWB :
+                punCodecList->stSupportCodec.CodecType_UMTSAMRWB   = VOS_TRUE;
+                break;
+            default:
+                NAS_WARNING_LOG(WUEPS_PID_GMM, "GMM_CALL_FillUmtsSupCodecList: invalid speech version");
+                break;
+        }
+    }
+}
+
+
+VOS_VOID  GMM_CALL_FillGsmSupCodecList(
+    GMM_CALL_SUPPORT_CODEC_UNION       *punCodecList
+)
+{
+    NAS_MML_CALL_GSM_CODEC_TYPE_STRU   *pstGsmCodecType = VOS_NULL_PTR;
+    VOS_UINT32                          i;
+
+    pstGsmCodecType = NAS_MML_CALL_GetCallGsmCodeType();
+
+    for ( i = 0 ; i < pstGsmCodecType->ucCodecTypeNum; i++ )
+    {
+        switch (pstGsmCodecType->aucCodecType[i])
+        {
+            case NAS_MML_CALL_BC_VAL_SPH_VER_FR_1 :
+                punCodecList->stSupportCodec.CodecType_GSMFR        = VOS_TRUE;
+                break;
+
+            case NAS_MML_CALL_BC_VAL_SPH_VER_FR_2 :
+                punCodecList->stSupportCodec.CodecType_GSMEFR       = VOS_TRUE;
+                break;
+
+            case NAS_MML_CALL_BC_VAL_SPH_VER_FR_3 :
+                punCodecList->stSupportCodec.CodecType_GSMFRAMR     = VOS_TRUE;
+                break;
+
+            case NAS_MML_CALL_BC_VAL_SPH_VER_HR_1 :
+                punCodecList->stSupportCodec.CodecType_GSMHR        = VOS_TRUE;
+                break;
+
+            case NAS_MML_CALL_BC_VAL_SPH_VER_HR_3 :
+                punCodecList->stSupportCodec.CodecType_GSMHRAMR     = VOS_TRUE;
+                break;
+
+            case NAS_MML_CALL_BC_VAL_SPH_VER_FR_5 :
+                punCodecList->stSupportCodec.CodecType_GSMFRAMRWB   = VOS_TRUE;
+                break;
+            default:
+                NAS_WARNING_LOG(WUEPS_PID_GMM, "GMM_CALL_FillGsmSupCodecList: invalid speech version");
+                break;
+        }
+    }
+}
+
+
+VOS_UINT8  GMM_CALL_FillIeSupCodecList(
+    VOS_UINT8                          *pstCodecList                            /* 填写support codec IE的首地址   */
+)
+{
+    GMM_CALL_SUPPORT_CODEC_UNION        unCodec;
+    NAS_CC_IE_CODEC_INFO_STRU           astCodecList[2];
+    VOS_UINT8                           ucLen;
+
+    /* 设置支持的列表，目前填入了GSM和UMTS支持的codec list,
+       00 表示GSM, 04表示UMTS */
+    /* 具体赋值的含义参见26.103 */
+
+    PS_MEM_SET(&unCodec, 0x00, sizeof(unCodec));
+    astCodecList[0].SysId = 0x04;
+    astCodecList[0].LastOctOffsetengthOfBitMap = 0x02;
+    GMM_CALL_FillUmtsSupCodecList(&(unCodec));
+    astCodecList[0].CodecBitmapL = (VOS_UINT8)(unCodec.usSupportCodec);
+    astCodecList[0].CodecBitmapH = (VOS_UINT8)(unCodec.usSupportCodec >> 8);
+
+    /* 填写GSM支持的codec类型 */
+    PS_MEM_SET(&unCodec, 0x00, sizeof(unCodec));
+    GMM_CALL_FillGsmSupCodecList(&(unCodec));
+    astCodecList[1].SysId = 0x00;
+    astCodecList[1].LastOctOffsetengthOfBitMap = 0x02;
+    astCodecList[1].CodecBitmapL = (VOS_UINT8)(unCodec.usSupportCodec);
+    astCodecList[1].CodecBitmapH = (VOS_UINT8)(unCodec.usSupportCodec >> 8);
+
+    pstCodecList[0] = GMM_IEI_SUPPORTED_CODEC_LIST;
+    pstCodecList[1] = sizeof(astCodecList);
+    PS_MEM_CPY(&pstCodecList[2], astCodecList, sizeof(astCodecList));
+
+    ucLen = sizeof(astCodecList) + 2;
+    return ucLen;
+}
+
+
+
 VOS_VOID Gmm_FillDrxPara(
                      VOS_UINT8 *pAddr                                               /* 填写DRX parameter的首地址                */
                      )
@@ -497,11 +670,11 @@ VOS_UINT8 Gmm_Fill_IE_NetworkCapability(
 
 #if (FEATURE_ON == FEATURE_LTE)
 
-        /* 当前SIM卡时,或不支持L模的能力时,不能上报支持EPC的能力 */
+
+        /* 当前SIM卡时,不能上报支持EPC的能力 */
         enSimType = NAS_MML_GetSimType();
 
-        if ((VOS_FALSE == NAS_MML_IsNetRatSupported(NAS_MML_NET_RAT_TYPE_LTE))
-         || (NAS_MML_SIM_TYPE_SIM == enSimType))
+        if (NAS_MML_SIM_TYPE_SIM == enSimType)
         {
             pAddr[3] &= 0xFB;
         }
@@ -531,8 +704,13 @@ VOS_UINT8 Gmm_Fill_IE_NetworkCapability(
         || (VOS_TRUE  == ulLteCapDisablFlg))
         {
             pAddr[3] &= 0xF7;
+
+
+            /* 不支持PS INTER RAT HO FORM GERAN TO E-UTRAN */
+            pAddr[3] &= 0xBF;
+
         }
-        
+
         if ((VOS_TRUE == NAS_MML_IsNetRatSupported(NAS_MML_NET_RAT_TYPE_LTE)
          && (VOS_FALSE == ulLteCapDisablFlg))
          && (VOS_TRUE == ucIsrSupport))
@@ -553,6 +731,7 @@ VOS_UINT8 Gmm_Fill_IE_NetworkCapability(
 
     return ucLen;
 }
+
 VOS_UINT8 Gmm_Fill_IE_RadioAccessCapability(VOS_UINT8 *pAddr)
 {
     VOS_UINT8                                               ucLen;
@@ -1192,8 +1371,8 @@ NAS_MSG_STRU *Gmm_AttachRequestMsgMake(VOS_VOID)
     ulSupportLteFlg = NAS_MML_IsNetRatSupported(NAS_MML_NET_RAT_TYPE_LTE);
 #endif
 
-    /* 给填充消息分配的内存字节长度，请确保足够合理分配，目前最多能用到104个字节 */
-    ucMsgLen                            = 150;
+    /* 给填充消息分配的内存字节长度，请确保足够合理分配，目前最多能用到153个字节 */
+    ucMsgLen                            = 160;
     ucNumber                            = 2;
 
     pAttachRequest = (NAS_MSG_STRU*)
@@ -1272,6 +1451,30 @@ NAS_MSG_STRU *Gmm_AttachRequestMsgMake(VOS_VOID)
     cVersion = NAS_Common_Get_Supported_3GPP_Version(MM_COM_SRVDOMAIN_PS);
     if (cVersion >= PS_PTL_VER_R9)
     {
+        if (VOS_TRUE == NAS_MML_GetSupportSrvccFlg())
+        {
+            /* 填写classmark2 */
+            GMM_Fill_IE_ClassMark2(&pAttachRequest->aucNasMsg[ucNumber]);
+            ucNumber += GMM_MSG_LEN_CLASSMARK2;
+
+            /* 填写classmark3 */
+            if (NAS_UTRANCTRL_UTRAN_MODE_FDD == NAS_UTRANCTRL_GetCurrUtranMode())
+            {
+                ucNumber += GMM_Fill_IE_FDD_ClassMark3(&pAttachRequest->aucNasMsg[ucNumber]);
+            }
+            else if (NAS_UTRANCTRL_UTRAN_MODE_TDD == NAS_UTRANCTRL_GetCurrUtranMode())
+            {
+                ucNumber += GMM_Fill_IE_TDD_ClassMark3(&pAttachRequest->aucNasMsg[ucNumber]);
+            }
+            else
+            {
+            }
+
+            /* 填写support code list */
+            ucNumber += GMM_CALL_FillIeSupCodecList(&pAttachRequest->aucNasMsg[ucNumber]);
+
+        }
+
         /* An MS supporting S1 mode shall include this IE to indicate its capabilities to the network */
         if (VOS_TRUE == NAS_MML_IsNetRatSupported(NAS_MML_NET_RAT_TYPE_LTE))
         {
@@ -1293,6 +1496,9 @@ NAS_MSG_STRU *Gmm_AttachRequestMsgMake(VOS_VOID)
             ucNumber += NAS_Gmm_Fill_IE_AdditionalOldRAI(&pAttachRequest->aucNasMsg[ucNumber]);
 
         }
+
+        /* 记录本次attach时voice domain，后续voice domain发生变化时，需要做RAU */
+        g_GmmGlobalCtrl.UeInfo.enVoiceDomainFromRegReq  = NAS_MML_GetVoiceDomainPreference();
 
         /* 说明如果UE支持E-UTRAN能力且支持CS fallback and SMS over SGs，
            则ATTACH和RAU请求消息中需要带Voice domain preference and UE's usage setting IE项 */
@@ -2030,7 +2236,7 @@ VOS_VOID NAS_GMM_ResetHplmnRejCauseChangedCounter (VOS_VOID)
     pstChangeCauseCounterInfo->ucGmmHplmnRejCauseChangedCounter = 0;
 
     return;
-    
+
 }
 
 
@@ -2055,7 +2261,7 @@ VOS_VOID NAS_GMM_HandleHplmnRejCauseChange(
     }
     else
     {
-        pstMsg->aucNasMsg[2] = ucConfigCauseNvim;    
+        pstMsg->aucNasMsg[2] = ucConfigCauseNvim;
     }
 
     return;
@@ -2071,7 +2277,7 @@ VOS_VOID NAS_GMM_ChangeRegRejCauseAvoidInvalidSim(
     enChangeRegRejType = NAS_MML_GetChangeRegRejCauFlg();
 
     ucRejCause = 0;
-    
+
     /* 增加测试卡保护，测试卡时不修改，直接返回 */
     if (VOS_TRUE == NAS_USIMMAPI_IsTestCard())
     {
@@ -2098,15 +2304,15 @@ VOS_VOID NAS_GMM_ChangeRegRejCauseAvoidInvalidSim(
     {
         /* 如果是HPLMN/EHPLMN则修改为#17，否则修改为#13 */
         if (VOS_TRUE == NAS_MML_ComparePlmnIdWithHplmn(pstCurrCampPlmnId))
-        {  
+        {
             NAS_GMM_HandleHplmnRejCauseChange(pstMsg, NAS_MML_GetPreferredRegRejCause_HPLMN_EHPLMN());
         }
         else
-        {   
-            pstMsg->aucNasMsg[2] = NAS_MML_GetPreferredRegRejCause_NOT_HPLMN_EHPLMN(); 
+        {
+            pstMsg->aucNasMsg[2] = NAS_MML_GetPreferredRegRejCause_NOT_HPLMN_EHPLMN();
         }
     }
-    
+
 }
 
 
@@ -2312,7 +2518,7 @@ VOS_VOID Gmm_AttachAcceptResolveIe(
     VOS_UINT16                          usIeOffsetAdapt;
 
     usIeOffsetAdapt         = 0;
-    
+
     Gmm_SaveTimerValue(GMM_TIMER_T3312, pMsg->aucNasMsg[3]);                    /* 存储T3312时长                            */
 
     if (NAS_MML_NET_RAT_TYPE_WCDMA == NAS_MML_GetCurrNetRatType())
@@ -2609,6 +2815,22 @@ VOS_VOID Gmm_AttachAcceptGprsOnly(
     {
         enGmmCause = pMsg->aucNasMsg
             [pAttachAcceptIe->aucIeOffset[GMM_ATTACH_ACCEPT_IE_GMM_CAUSE] + 1]; /* 得到GMM CAUSE                            */
+    }
+
+    /* R11升级:   24008 4.7.3.2.3.2    Other GMM causevalues and the case that no GMM cause IE
+       was received are considered as abnormal cases. The combined attach procedure shall be
+       considered as failed for non-GPRS services */
+    if ((GMM_ATTACH_WHILE_IMSI_ATTACHED == g_GmmGlobalCtrl.ucSpecProc)
+     || (GMM_ATTACH_COMBINED            == g_GmmGlobalCtrl.ucSpecProc))
+    {                                                                       /* 当前的specific过程是COMBINED ATTACH      */
+        if ((NAS_MML_REG_FAIL_CAUSE_MSC_UNREACHABLE         != enGmmCause)
+         && (NAS_MML_REG_FAIL_CAUSE_NETWORK_FAILURE         != enGmmCause)
+         && (NAS_MML_REG_FAIL_CAUSE_PROCEDURE_CONGESTION    != enGmmCause)
+         && (NAS_MML_REG_FAIL_CAUSE_IMSI_UNKNOWN_IN_HLR     != enGmmCause))
+        {                                                                  /* 其他原因值                               */
+
+            enGmmCause = NAS_MML_REG_FAIL_CAUSE_MSC_UNREACHABLE;
+        }
     }
 
     if ((GMM_ATTACH_NORMAL_CS_TRANS == g_GmmGlobalCtrl.ucSpecProc)
@@ -3013,46 +3235,6 @@ VOS_UINT8 Gmm_AttachAcceptHandle_Attach_Result_IE_Handling(
                                    VOS_UINT8                   ucInterRatInfoFlg
                             )
 {
-    VOS_UINT32   ulGmmCause      = 0;                                                /* 定义临时变量存储GMM CAUSE                */
-
-    if (GMM_ATTACH_ACCEPT_IE_GMM_CAUSE_FLG
-        == (AttachAcceptIe.usOptionalIeMask
-            & GMM_ATTACH_ACCEPT_IE_GMM_CAUSE_FLG))
-    {
-        ulGmmCause = pMsg->aucNasMsg
-            [AttachAcceptIe.aucIeOffset[GMM_ATTACH_ACCEPT_IE_GMM_CAUSE] + 1];   /* 得到GMM CAUSE                            */
-    }
-
-
-    if (GMM_GPRS_ONLY_ATTACHED == (pMsg->aucNasMsg[2] & 0x03))
-    {
-        if ((GMM_ATTACH_WHILE_IMSI_ATTACHED == g_GmmGlobalCtrl.ucSpecProc)
-            || (GMM_ATTACH_COMBINED         == g_GmmGlobalCtrl.ucSpecProc))
-        {                                                                       /* 当前的specific过程是COMBINED ATTACH      */
-            if ((NAS_MML_REG_FAIL_CAUSE_MSC_UNREACHABLE         != ulGmmCause)
-                && (NAS_MML_REG_FAIL_CAUSE_NETWORK_FAILURE      != ulGmmCause)
-                && (NAS_MML_REG_FAIL_CAUSE_PROCEDURE_CONGESTION != ulGmmCause)
-                && (NAS_MML_REG_FAIL_CAUSE_IMSI_UNKNOWN_IN_HLR  != ulGmmCause))
-            {                                                                  /* 其他原因值                               */
-                NAS_MML_SetPsUpdateStatus(ucUpdateStaPre);           /* 更新状态不变                             */
-                if (GMM_TRUE == g_GmmAttachCtrl.ucSmCnfFlg)
-                {                                                              /* ATTACH过程是由SM触发的                   */
-                    Gmm_SndSmEstablishCnf(GMM_SM_EST_FAILURE,
-                                          GMM_SM_CAUSE_PROTOCOL_ERROR);                 /* 通知SM GMM注册失败                       */
-                    g_GmmAttachCtrl.ucSmCnfFlg = GMM_FALSE;                    /* 清ucSmCnfFlg标志                         */
-                }
-
-                NAS_GMM_UpdateAttemptCounterForSpecialCause(VOS_TRUE, ulGmmCause);
-                Gmm_AttachAttemptCounter(NAS_MML_REG_FAIL_CAUSE_COMB_REG_CS_FAIL_OTHER_CAUSE);            /* 调用异常处理函数                         */
-
-                g_GmmGlobalCtrl.ucSpecProc = GMM_NULL_PROCEDURE;               /* 清除当前进行的specific 流程标志          */
-
-                PS_LOG(WUEPS_PID_GMM, VOS_NULL, PS_PRINT_INFO, "Gmm_AttachAcceptHandle:INFO: specific procedure ended");
-
-                return GMM_FALSE;
-            }
-        }
-    }
 
     if (GMM_COMBINED_GPRS_IMSI_ATTACHED == (pMsg->aucNasMsg[2] & 0x03))
     {
@@ -3228,6 +3410,16 @@ VOS_VOID Gmm_AttachAcceptHandle(
     NAS_MML_SetPsUpdateStatus(NAS_MML_ROUTING_UPDATE_STATUS_UPDATED);             /* 置更新状态为GU1                          */
     Gmm_AttachAcceptResolveIe(&AttachAcceptIe, pMsg);                           /* 调用函数解析ATTACH ACCEPT消息的IE        */
 
+#if   (FEATURE_ON == FEATURE_LTE)
+     pstRplmnCfgInfo = NAS_MML_GetRplmnCfg();
+
+     if ( NAS_MML_TIN_TYPE_PTMSI != pstRplmnCfgInfo->enTinType)
+     {
+         NAS_GMM_WriteTinInfoNvim(NAS_MML_TIN_TYPE_PTMSI, pstRplmnCfgInfo->aucLastImsi);
+     }
+#endif
+
+
     Gmm_AttachAcceptHandle_REQUESTED_MS_INFORMATION_IE_Handling(pMsg,
                                                                 AttachAcceptIe,
                                                                &ucSndCompleteFlg,
@@ -3236,15 +3428,15 @@ VOS_VOID Gmm_AttachAcceptHandle(
     Gmm_AttachAcceptHandle_Emergency_Num_Handling(AttachAcceptIe);
 
 
-    /* report network feature information in UMTS. According to VoLTE SRS document, 
+    /* report network feature information in UMTS. According to VoLTE SRS document,
      * In utran network, the related capability information reported is not supported
      * now.
-     */         
-    NAS_GMM_SndMmcNetworkCapabilityInfoInd(GMM_MMC_NW_EMC_BS_NOT_SUPPORTED, 
-                                           NAS_MML_NW_IMS_VOICE_NOT_SUPPORTED, 
+     */
+    NAS_GMM_SndMmcNetworkCapabilityInfoInd(GMM_MMC_NW_EMC_BS_NOT_SUPPORTED,
+                                           NAS_MML_NW_IMS_VOICE_NOT_SUPPORTED,
                                            GMM_MMC_LTE_CS_CAPBILITY_NOT_SUPPORTED);
 
-    
+
     ucRst = Gmm_AttachAcceptHandle_Attach_Result_IE_Handling(pMsg,
                                                              AttachAcceptIe,
                                                              ucUpdateStaPre,
@@ -3323,20 +3515,9 @@ VOS_VOID Gmm_AttachAcceptHandle(
         PS_LOG(WUEPS_PID_GMM, VOS_NULL, PS_PRINT_INFO, "Gmm_AttachAcceptHandle:INFO: specific procedure ended");
     }
 
-#if   (FEATURE_ON == FEATURE_LTE)
-    /* phase I不支持ISR,固定填写PTMSI */
-
-    pstRplmnCfgInfo = NAS_MML_GetRplmnCfg();
-
-    if ( NAS_MML_TIN_TYPE_PTMSI != pstRplmnCfgInfo->enTinType)
-    {
-        NAS_GMM_WriteTinInfoNvim(NAS_MML_TIN_TYPE_PTMSI, pstRplmnCfgInfo->aucLastImsi);
-    }
-#endif
 
     return;
 }
-
 VOS_VOID Gmm_SndAttachReq(VOS_VOID)
 {
     NAS_MSG_STRU    *pSendNasMsg = VOS_NULL_PTR;                                /* 定义NAS_MSG_STRU类型的指针变量           */
@@ -3656,19 +3837,19 @@ VOS_VOID Gmm_RcvSmEstablishReq(VOS_VOID  *pMsg)
 
     ulPsAttachAllowFlg              = NAS_MML_GetPsAttachAllowFlg();
     ulCsOnlyDataServiceSupportFlg   = NAS_MML_GetCsOnlyDataServiceSupportFlg();
-    
+
     if ((VOS_TRUE != ulPsAttachAllowFlg)
      && (VOS_TRUE != ulCsOnlyDataServiceSupportFlg))
-    
+
     {
-        PS_LOG(WUEPS_PID_GMM, VOS_NULL, PS_PRINT_WARNING, 
+        PS_LOG(WUEPS_PID_GMM, VOS_NULL, PS_PRINT_WARNING,
         "Gmm_RcvSmEstablishReq:WARNING: GMM attached not allow.");
 
         Gmm_SndSmEstablishCnf(GMM_SM_EST_FAILURE, GMM_SM_CAUSE_PS_DETACH);        /* 向SM回CNF                                */
 
         return;
     }
-    
+
     switch (g_GmmGlobalCtrl.ucState)
     {
     case GMM_REGISTERED_INITIATED:
@@ -3820,13 +4001,23 @@ VOS_VOID Gmm_RcvAttachAcceptMsg(
     }
     NAS_GMM_ResetHplmnRejCauseChangedCounter();
 
-    g_ulPSRegSuccSlice = OM_GetSlice();
-
     g_GmmGlobalCtrl.ucGprsResumeFlg = GMM_FALSE;
 
     Gmm_TimerStop(GMM_TIMER_T3310);                                             /* 停止Timer3310                            */
     Gmm_TimerStop(GMM_TIMER_T3318);                                             /* 停止T3318                                */
     Gmm_TimerStop(GMM_TIMER_T3320);                                             /* 停止T3320                                */
+
+    /* 4.7.2.1.2 Handling of READY timer in the MS in Iu mode and S1 mode
+       The READY timer is not applicable for Iu mode and S1 mode.
+       Upon completion of a successful GPRS attach or routing area updating
+       procedure in Iu mode, the MS may stop the READY timer, if running.
+       Upon completion of a successful EPS attach or tracking area updating
+       procedure, the MS may stop the READY timer, if running. */
+    if (NAS_MML_NET_RAT_TYPE_WCDMA == NAS_MML_GetCurrNetRatType())
+    {
+        Gmm_TimerStop(GMM_TIMER_T3314);
+        gstGmmCasGlobalCtrl.GmmSrvState = GMM_AGB_GPRS_STANDBY;
+    }
 
     Gmm_AttachAcceptHandle(pMsg, bTlliUpdateFlag);                                               /* 调用函数解析ATTACH REQUEST的IE           */
 
@@ -3906,7 +4097,6 @@ VOS_VOID Gmm_RcvAttachAcceptMsg(
     }
     return;
 }
-
 VOS_VOID Gmm_RcvMmcGmmAttachReq(
     VOS_VOID                           *pMsg                                       /* 消息指针                                 */
 )

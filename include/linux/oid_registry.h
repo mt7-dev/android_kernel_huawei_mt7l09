@@ -26,31 +26,27 @@ enum OID {
 	OID_id_ecdsa_with_sha1,		/* 1.2.840.10045.4.1 */
 	OID_id_ecPublicKey,		/* 1.2.840.10045.2.1 */
 
-	/* PKCS#1 {iso(1) member-body(2) us(840) rsadsi(113549) pkcs(1) pkcs-1(1)} */
-	OID_rsaEncryption,		/* 1.2.840.113549.1.1.1 */
-	OID_md2WithRSAEncryption,	/* 1.2.840.113549.1.1.2 */
-	OID_md3WithRSAEncryption,	/* 1.2.840.113549.1.1.3 */
-	OID_md4WithRSAEncryption,	/* 1.2.840.113549.1.1.4 */
-	OID_sha1WithRSAEncryption,	/* 1.2.840.113549.1.1.5 */
-	OID_sha256WithRSAEncryption,	/* 1.2.840.113549.1.1.11 */
-	OID_sha384WithRSAEncryption,	/* 1.2.840.113549.1.1.12 */
-	OID_sha512WithRSAEncryption,	/* 1.2.840.113549.1.1.13 */
-	OID_sha224WithRSAEncryption,	/* 1.2.840.113549.1.1.14 */
-	/* PKCS#7 {iso(1) member-body(2) us(840) rsadsi(113549) pkcs(1) pkcs-7(7)} */
-	OID_data,			/* 1.2.840.113549.1.7.1 */
-	OID_signed_data,		/* 1.2.840.113549.1.7.2 */
-	/* PKCS#9 {iso(1) member-body(2) us(840) rsadsi(113549) pkcs(1) pkcs-9(9)} */
-	OID_email_address,		/* 1.2.840.113549.1.9.1 */
-	OID_content_type,		/* 1.2.840.113549.1.9.3 */
-	OID_messageDigest,		/* 1.2.840.113549.1.9.4 */
-	OID_signingTime,		/* 1.2.840.113549.1.9.5 */
-	OID_smimeCapabilites,		/* 1.2.840.113549.1.9.15 */
-	OID_smimeAuthenticatedAttrs,	/* 1.2.840.113549.1.9.16.2.11 */
+	OID_rsaEncryption,
+	OID_md2WithRSAEncryption,
+	OID_md3WithRSAEncryption,
+	OID_md4WithRSAEncryption,
+	OID_sha1WithRSAEncryption,
+	OID_sha256WithRSAEncryption,
+	OID_sha384WithRSAEncryption,
+	OID_sha512WithRSAEncryption,
+	OID_sha224WithRSAEncryption,
+	OID_data,
+	OID_signed_data,
+	OID_email_address,
+	OID_content_type,
+	OID_messageDigest,
+	OID_signingTime,
+	OID_smimeCapabilites,
+	OID_smimeAuthenticatedAttrs,
 
-	/* {iso(1) member-body(2) us(840) rsadsi(113549) digestAlgorithm(2)} */
-	OID_md2,			/* 1.2.840.113549.2.2 */
-	OID_md4,			/* 1.2.840.113549.2.4 */
-	OID_md5,			/* 1.2.840.113549.2.5 */
+	OID_md2,
+	OID_md4,
+	OID_md5,
 
 	OID_certAuthInfoAccess,		/* 1.3.6.1.5.5.7.1.1 */
 	OID_msOutlookExpress,		/* 1.3.6.1.4.1.311.16.4 */

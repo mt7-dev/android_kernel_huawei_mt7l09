@@ -7,6 +7,13 @@ if TTY
 menu "Serial drivers"
 	depends on HAS_IOMEM && GENERIC_HARDIRQS
 
+config SERIAL_EARLYCON
+	bool
+	help
+	  Support for early consoles with the earlycon parameter. This enables
+	  the console before standard serial driver is probed. The console is
+	  enabled when early_param is processed.
+
 source "drivers/tty/serial/8250/Kconfig"
 
 comment "Non-8250 serial port support"
@@ -64,6 +71,11 @@ config SERIAL_AMBA_PL011_CONSOLE
 	  "console=ttyAMA0". (Try "man bootparam" or see the documentation of
 	  your boot loader (lilo or loadlin) about how to pass options to the
 	  kernel at boot time.)
+
+config SERIAL_VOTE
+	bool "Support for vote on AMBA serial port"
+	depends on SERIAL_AMBA_PL011=y
+	select SERIAL_CORE_CONSOLE
 
 config SERIAL_SB1250_DUART
 	tristate "BCM1xxx on-chip DUART serial support"

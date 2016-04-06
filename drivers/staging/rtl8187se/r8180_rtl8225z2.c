@@ -313,11 +313,7 @@ s8 DbmToTxPwrIdx(struct r8180_priv *priv, WIRELESS_MODE WirelessMode,
 			TxPwrIdx = (s8)tmp;
 	}
 
-	/*
-	 * TRUE if we want to use a default implementation.
-	 * We shall set it to FALSE when we have exact translation formula
-	 * for target IC. 070622, by rcnjko.
-	 */
+
 	if (bUseDefault) {
 		if (PowerInDbm < 0)
 			TxPwrIdx = 0;

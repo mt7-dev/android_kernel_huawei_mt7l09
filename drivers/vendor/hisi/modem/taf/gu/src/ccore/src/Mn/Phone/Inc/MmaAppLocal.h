@@ -425,18 +425,13 @@ typedef union
     MMA_USER_PREF_BAND_STRU             BitBand;
 }MMA_USER_BAND_SET_UN;
 
-/*******************************************************************************
- 结构名    : UE_SUPPORT_FREQ_BAND_STRU
- 协议表格  :
- ASN.1描述 :
- 结构说明  : 频段定义
-*******************************************************************************/
+
 typedef struct
 {
     MMA_WCDMA_BAND_SET_UN                   unWcdmaBand;
     MMA_GSM_BAND_SET_UN                     unGsmBand;
-    VOS_UINT8                               aucUeSupportWcdmaBand[NVIM_MAX_FDD_FREQ_BANDS_NUM];
-    VOS_UINT8                               aucUeSupportGsmBand[NVIM_MAX_FDD_FREQ_BANDS_NUM];
+    VOS_UINT8                               aucReserved1[12];
+    VOS_UINT8                               aucReserved2[12];
 }MMA_UE_SUPPORT_FREQ_BAND_STRU;
 
 
@@ -1279,7 +1274,7 @@ VOS_VOID TAF_MMA_AtQryPnnListProc(VOS_VOID);
 VOS_VOID TAF_MMA_PnnListMemProtectTimerExpired(VOS_VOID);
 
 VOS_VOID TAF_MMA_RcvDelayPowerDownTimerExpired(VOS_VOID);
-    
+
 
 
 VOS_VOID TAF_MMA_SndAtSubPnnList(
@@ -1333,12 +1328,12 @@ VOS_VOID MMA_DefPhAccessMode(VOS_UINT16      ClientId,
 VOS_VOID MMA_DefPhClassType(VOS_UINT16           ClientId,
                             VOS_UINT8                  OpId,
                             TAF_PH_MS_CLASS_TYPE    MsClass);
-VOS_VOID MMA_PhModeReport(VOS_UINT16           ClientId,
-                                   VOS_UINT8             OpId,
-                                   TAF_PH_OP_MODE_CNF_STRU   stPhMode,
-                                   TAF_PH_ERR_CODE       usErrorCode);
-
-/* MMA_PhModeSet MMA_PhModeQuery MMA_PhModeHandle 函数移动位置 */
+VOS_VOID MMA_PhModeReport(
+    VOS_UINT16                          ClientId,
+    VOS_UINT8                           OpId,
+    TAF_PH_OP_MODE_CNF_STRU             stPhMode,
+    TAF_ERROR_CODE_ENUM_UINT32          enErrorCode
+);
 
 NAS_STK_SERVICE_STATUS_ENUM_UINT8 NAS_MMA_ConvertSdcServStaToStkServSta(
     TAF_SDC_REPORT_SRVSTA_ENUM_UINT8    enSdcSrvSta
@@ -1383,15 +1378,19 @@ VOS_UINT32 MMA_PhSysCfgSetCmdCheck(
                         TAF_PH_DETACH_TYPE      *pucDetachType);
 
 VOS_VOID TAF_MMA_ReportSysCfgSetCnf(
-    TAF_PH_ERR_CODE                     usErrorCode
+    TAF_ERROR_CODE_ENUM_UINT32          enErrorCode
 );
 
-VOS_VOID MMA_PhSysCfgQuery(VOS_UINT16     ClientId,
-                                  VOS_UINT8            OpId);
-VOS_VOID MMA_PhSysCfgReport(VOS_UINT16     ClientId,
-                                  VOS_UINT8            OpId,
-                                  TAF_PH_CMD_TYPE      ucCmdType,
-                                  TAF_PH_ERR_CODE       usErrorCode);
+VOS_VOID MMA_PhSysCfgQuery(
+    VOS_UINT16                          ClientId,
+    VOS_UINT8                           OpId
+);
+VOS_VOID MMA_PhSysCfgReport(
+    VOS_UINT16                          ClientId,
+    VOS_UINT8                           OpId,
+    TAF_PH_CMD_TYPE                     ucCmdType,
+    TAF_ERROR_CODE_ENUM_UINT32          enErrorCode
+);
 VOS_VOID MMA_PhSysCfgSetSrvDomainCheck(
                                     TAF_PH_SERVICE_DOMAIN   ucSrvDomain,
                                     MMA_SYS_CFG_SET_FLG     *pusSetFlg,
@@ -2221,7 +2220,7 @@ VOS_VOID TAF_MMA_QryMmPlmnInfo(
     VOS_UINT16                          usClientId,
     VOS_UINT8                           ucOpId
 );
-VOS_VOID TAF_MMA_TranslateNtwkName2Str(
+VOS_UINT32 TAF_MMA_TranslateNtwkName2Str(
     VOS_UINT8                       *pucIeNtwkName,
     VOS_CHAR                        *pucNtwkName,
     VOS_UINT32                       ulLen
@@ -2356,7 +2355,7 @@ VOS_UINT32 TAF_MMA_IsUsimStatusChange_UsimmCardServiceAvailable(
 );
 VOS_UINT32 TAF_MMA_IsUsimStatusChange_UsimmCardServiceSimPin(
     TAF_SDC_USIM_STATUS_ENUM_UINT8      enPreSimStatus
-);    
+);
 
 #if (FEATURE_MULTI_MODEM == FEATURE_ON)
 VOS_VOID TAF_MMA_SndMtcRatModeInd(
@@ -2371,6 +2370,7 @@ VOS_VOID TAF_MMA_SndMtcCurrCampPlmnInfoInd(
 );
 VOS_VOID TAF_MMA_SndMtcRegStatusInd(VOS_UINT8 ucIsUsimValidFlag);
 
+VOS_VOID TAF_MMA_SndMtcImsaStateInd(MTC_MODEM_POWER_STATE_ENUM_UINT8 enPowerState);
 
 #endif
 
@@ -2438,6 +2438,19 @@ VOS_VOID TAF_MMA_BuildMmaCtrlInfo(
 );
 
 VOS_UINT32 TAF_MMA_IsPowerOnCLInterWork(VOS_VOID);
+
+/* Added by zwx247453 for CHR optimize, 2015-3-13 Begin */
+#if (FEATURE_ON == FEATURE_PTM)
+VOS_VOID TAF_MMA_RatFrequentlySwitchRecord(VOS_VOID);
+#endif
+
+/* Added by zwx247453 for CHR optimize, 2015-3-13 End */
+
+
+VOS_VOID TAF_MMA_ProcImsiRefresh(
+    USIMM_CARD_SERVIC_ENUM_UINT32   enCardStatus,
+    VOS_UINT32                          ulImsiChg
+);
 
 #if ((VOS_OS_VER == VOS_WIN32) || (VOS_OS_VER == VOS_NUCLEUS))
 #pragma pack()

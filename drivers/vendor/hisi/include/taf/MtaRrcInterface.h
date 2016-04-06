@@ -73,6 +73,7 @@ enum MTA_RRC_MSG_TYPE_ENUM
 
     ID_MTA_RRC_JAM_DETECT_REQ                      = 0x001D,                    /* _H2ASN_MsgChoice MTA_RRC_JAM_DETECT_REQ_STRU */
 
+    ID_MTA_GRR_FREQLOCK_SET_REQ                    = 0x0021,                    /* _H2ASN_MsgChoice MTA_GRR_FREQLOCK_SET_REQ_STRU     */
     ID_MTA_RRC_MSG_POSITION_CNF                    = 0x0002,                    /* _H2ASN_MsgChoice MTA_RRC_POSITION_CNF_STRU */
 
     ID_RRC_MTA_QRY_NMR_CNF                         = 0x0004,                    /* _H2ASN_MsgChoice RRC_MTA_QRY_NMR_CNF_STRU */
@@ -105,6 +106,7 @@ enum MTA_RRC_MSG_TYPE_ENUM
     ID_RRC_MTA_JAM_DETECT_CNF                      = 0x0020,                    /* _H2ASN_MsgChoice RRC_MTA_JAM_DETECT_CNF_STRU */
     ID_RRC_MTA_JAM_DETECT_IND                      = 0x0022,                    /* _H2ASN_MsgChoice RRC_MTA_JAM_DETECT_IND_STRU */
 
+    ID_GRR_MTA_FREQLOCK_SET_CNF                    = 0x0026,                    /* _H2ASN_MsgChoice GRR_MTA_FREQLOCK_SET_CNF_STRU     */
     /* 消息方向MTA->LRRC */
     ID_MTA_LRRC_CELLINFO_QRY_REQ                = MTA_LRRC_MSG_TYPE_BASE + 1,   /* _H2ASN_MsgChoice MTA_LRRC_CELLINFO_QRY_REQ_STRU      */
 
@@ -175,6 +177,20 @@ enum MTA_RRC_JAM_RESULT_ENUM
     MTA_RRC_JAM_RESULT_BUTT
 };
 typedef VOS_UINT8 MTA_RRC_JAM_RESULT_ENUM_UINT8;
+
+
+enum MTA_RRC_GSM_BAND_ENUM
+{
+    MTA_RRC_GSM_BAND_850  = 0x00,
+    MTA_RRC_GSM_BAND_900,
+    MTA_RRC_GSM_BAND_1800,
+    MTA_RRC_GSM_BAND_1900,
+
+    MTA_RRC_GSM_BAND_BUTT
+};
+typedef VOS_UINT16 MTA_RRC_GSM_BAND_ENUM_UINT16;
+
+
 
 /*****************************************************************************
   4 全局变量声明
@@ -667,6 +683,20 @@ typedef struct
     VOS_UINT8                           aucReserved[3];
 } RRC_MTA_JAM_DETECT_IND_STRU;
 
+
+typedef struct
+{
+    MSG_HEADER_STRU                     stMsgHeader;                            /*_H2ASN_Skip*/
+    PS_BOOL_ENUM_UINT8                  enLockFlg;                              /* PS_TRUE:锁定，PS_FALSE:去锁定 */
+    VOS_UINT8                           aucReserved[3];                         /* 保留位 */
+    VOS_UINT16                          usFreq;                                 /* 频点值 */
+    MTA_RRC_GSM_BAND_ENUM_UINT16        enBand;                                 /* GSM频段 */
+} MTA_GRR_FREQLOCK_SET_REQ_STRU;
+typedef struct
+{
+    MSG_HEADER_STRU                     stMsgHeader;                            /*_H2ASN_Skip*/
+    MTA_RRC_RESULT_ENUM_UINT32          enResult;                               /* MTA_RRC_RESULT_NO_ERROR:锁频成功； MTA_RRC_RESULT_ERROR:锁频失败*/
+} GRR_MTA_FREQLOCK_SET_CNF_STRU;
 /*****************************************************************************
   8 UNION定义
 *****************************************************************************/

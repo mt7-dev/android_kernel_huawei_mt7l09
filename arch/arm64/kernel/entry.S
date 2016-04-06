@@ -25,9 +25,9 @@
 #include <asm/asm-offsets.h>
 #include <asm/errno.h>
 #include <asm/esr.h>
+#include <asm/ptrace.h>
 #include <asm/thread_info.h>
 #include <asm/unistd.h>
-#include <asm/unistd32.h>
 
 /*
  * Bad Abort numbers
@@ -39,25 +39,26 @@
 #define BAD_ERROR	3
 
 	.macro	kernel_entry, el, regsize = 64
-	sub	sp, sp, #S_FRAME_SIZE - S_LR	// room for LR, SP, SPSR, ELR
+	sub sp, sp, #S_FRAME_SIZE
 	.if	\regsize == 32
 	mov	w0, w0				// zero upper 32 bits of x0
 	.endif
-	push	x28, x29
-	push	x26, x27
-	push	x24, x25
-	push	x22, x23
-	push	x20, x21
-	push	x18, x19
-	push	x16, x17
-	push	x14, x15
-	push	x12, x13
-	push	x10, x11
-	push	x8, x9
-	push	x6, x7
-	push	x4, x5
-	push	x2, x3
-	push	x0, x1
+	stp x0, x1, [sp, #16 * 0]
+	stp x2, x3, [sp, #16 * 1]
+	stp x4, x5, [sp, #16 * 2]
+	stp x6, x7, [sp, #16 * 3]
+	stp x8, x9, [sp, #16 * 4]
+	stp x10, x11, [sp, #16 * 5]
+	stp x12, x13, [sp, #16 * 6]
+	stp x14, x15, [sp, #16 * 7]
+	stp x16, x17, [sp, #16 * 8]
+	stp x18, x19, [sp, #16 * 9]
+	stp x20, x21, [sp, #16 * 10]
+	stp x22, x23, [sp, #16 * 11]
+	stp x24, x25, [sp, #16 * 12]
+	stp x26, x27, [sp, #16 * 13]
+	stp x28, x29, [sp, #16 * 14]
+
 	.if	\el == 0
 	mrs	x21, sp_el0
 	.else
@@ -89,33 +90,44 @@
 	ldp	x21, x22, [sp, #S_PC]		// load ELR, SPSR
 	.if	\el == 0
 	ldr	x23, [sp, #S_SP]		// load return stack pointer
+	msr sp_el0, x23
+
+#ifdef CONFIG_ARM64_ERRATUM_845719
+	tbz	x22, #4, 1f
+#ifdef CONFIG_PID_IN_CONTEXTIDR
+	mrs 	x29, contextidr_el1
+	msr 	contextidr_el1, x29
+1:
+#else
+	msr 	contextidr_el1, xzr
+1:
+#endif
+#endif
+
 	.endif
+	msr elr_el1, x21 // set up the return data
+	msr spsr_el1, x22
 	.if	\ret
 	ldr	x1, [sp, #S_X1]			// preserve x0 (syscall return)
-	add	sp, sp, S_X2
 	.else
-	pop	x0, x1
+	ldp x0, x1, [sp, #16 * 0]
 	.endif
-	pop	x2, x3				// load the rest of the registers
-	pop	x4, x5
-	pop	x6, x7
-	pop	x8, x9
-	msr	elr_el1, x21			// set up the return data
-	msr	spsr_el1, x22
-	.if	\el == 0
-	msr	sp_el0, x23
-	.endif
-	pop	x10, x11
-	pop	x12, x13
-	pop	x14, x15
-	pop	x16, x17
-	pop	x18, x19
-	pop	x20, x21
-	pop	x22, x23
-	pop	x24, x25
-	pop	x26, x27
-	pop	x28, x29
-	ldr	lr, [sp], #S_FRAME_SIZE - S_LR	// load LR and restore SP
+	ldp x2, x3, [sp, #16 * 1]
+	ldp x4, x5, [sp, #16 * 2]
+	ldp x6, x7, [sp, #16 * 3]
+	ldp x8, x9, [sp, #16 * 4]
+	ldp x10, x11, [sp, #16 * 5]
+	ldp x12, x13, [sp, #16 * 6]
+	ldp x14, x15, [sp, #16 * 7]
+	ldp x16, x17, [sp, #16 * 8]
+	ldp x18, x19, [sp, #16 * 9]
+	ldp x20, x21, [sp, #16 * 10]
+	ldp x22, x23, [sp, #16 * 11]
+	ldp x24, x25, [sp, #16 * 12]
+	ldp x26, x27, [sp, #16 * 13]
+	ldp x28, x29, [sp, #16 * 14]
+	ldr lr, [sp, #S_LR]
+	add sp, sp, #S_FRAME_SIZE // restore sp
 	eret					// return to kernel
 	.endm
 
@@ -159,18 +171,18 @@ ENTRY(vectors)
 
 	ventry	el1_sync			// Synchronous EL1h
 	ventry	el1_irq				// IRQ EL1h
-	ventry	el1_fiq_invalid			// FIQ EL1h
+	ventry	el1_fiq				// FIQ EL1h
 	ventry	el1_error_invalid		// Error EL1h
 
 	ventry	el0_sync			// Synchronous 64-bit EL0
 	ventry	el0_irq				// IRQ 64-bit EL0
-	ventry	el0_fiq_invalid			// FIQ 64-bit EL0
+	ventry	el0_fiq				// FIQ 64-bit EL0
 	ventry	el0_error_invalid		// Error 64-bit EL0
 
 #ifdef CONFIG_COMPAT
 	ventry	el0_sync_compat			// Synchronous 32-bit EL0
 	ventry	el0_irq_compat			// IRQ 32-bit EL0
-	ventry	el0_fiq_invalid_compat		// FIQ 32-bit EL0
+	ventry	el0_fiq_compat			// FIQ 32-bit EL0
 	ventry	el0_error_invalid_compat	// Error 32-bit EL0
 #else
 	ventry	el0_sync_invalid		// Synchronous 32-bit EL0
@@ -275,7 +287,6 @@ el1_sp_pc:
 	 * Stack or PC alignment exception handling
 	 */
 	mrs	x0, far_el1
-	mov	x1, x25
 	mov	x2, sp
 	b	do_sp_pc_abort
 el1_undef:
@@ -288,6 +299,8 @@ el1_dbg:
 	/*
 	 * Debug exception handling
 	 */
+	cmp	x24, #ESR_EL1_EC_BRK64		// if BRK64
+	cinc	x24, x24, eq			// set bit '0'
 	tbz	x24, #0, el1_inv		// EL1 only
 	mrs	x0, far_el1
 	mov	x2, sp				// struct pt_regs
@@ -311,14 +324,14 @@ el1_irq:
 #endif
 #ifdef CONFIG_PREEMPT
 	get_thread_info tsk
-	ldr	x24, [tsk, #TI_PREEMPT]		// get preempt count
-	add	x0, x24, #1			// increment it
-	str	x0, [tsk, #TI_PREEMPT]
+	ldr	w24, [tsk, #TI_PREEMPT]		// get preempt count
+	add	w0, w24, #1			// increment it
+	str	w0, [tsk, #TI_PREEMPT]
 #endif
 	irq_handler
 #ifdef CONFIG_PREEMPT
-	str	x24, [tsk, #TI_PREEMPT]		// restore preempt count
-	cbnz	x24, 1f				// preempt count != 0
+	str	w24, [tsk, #TI_PREEMPT]		// restore preempt count
+	cbnz	w24, 1f				// preempt count != 0
 	ldr	x0, [tsk, #TI_FLAGS]		// get flags
 	tbz	x0, #TIF_NEED_RESCHED, 1f	// needs rescheduling?
 	bl	el1_preempt
@@ -339,6 +352,13 @@ el1_preempt:
 	tbnz	x0, #TIF_NEED_RESCHED, 1b	// needs rescheduling?
 	ret	x24
 #endif
+
+el1_fiq:
+	kernel_entry 1
+	mov	x0, sp
+	mrs	x1, esr_el1
+	b	fiq_dump
+ENDPROC(el1_fiq)
 
 /*
  * EL0 mode handlers.
@@ -400,6 +420,8 @@ el0_sync_compat:
 	b.eq	el0_undef
 	cmp	x24, #ESR_EL1_EC_CP14_64	// CP14 MRRC/MCRR trap
 	b.eq	el0_undef
+	cmp	x24, #ESR_EL1_EC_PC_ALIGN	// pc alignment exception
+	b.eq	el0_sp_pc
 	cmp	x24, #ESR_EL1_EC_BREAKPT_EL0	// debug exception in EL0
 	b.ge	el0_dbg
 	b	el0_inv
@@ -416,6 +438,11 @@ el0_svc_compat:
 el0_irq_compat:
 	kernel_entry 0, 32
 	b	el0_irq_naked
+el0_fiq_compat:
+	kernel_entry 0, 32
+	mov	x0, sp
+	mrs	x1, esr_el1
+	b	fiq_dump
 #endif
 
 el0_da:
@@ -423,6 +450,7 @@ el0_da:
 	 * Data abort handling
 	 */
 	mrs	x0, far_el1
+	bic	x0, x0, #(0xff << 56)
 	disable_step x1
 	isb
 	enable_dbg
@@ -476,6 +504,8 @@ el0_undef:
 	 * Undefined instruction
 	 */
 	mov	x0, sp
+	// enable interrupts before calling the main handler
+	enable_irq
 	b	do_undefinstr
 el0_dbg:
 	/*
@@ -506,15 +536,15 @@ el0_irq_naked:
 #endif
 	get_thread_info tsk
 #ifdef CONFIG_PREEMPT
-	ldr	x24, [tsk, #TI_PREEMPT]		// get preempt count
-	add	x23, x24, #1			// increment it
-	str	x23, [tsk, #TI_PREEMPT]
+	ldr	w24, [tsk, #TI_PREEMPT]		// get preempt count
+	add	w23, w24, #1			// increment it
+	str	w23, [tsk, #TI_PREEMPT]
 #endif
 	irq_handler
 #ifdef CONFIG_PREEMPT
-	ldr	x0, [tsk, #TI_PREEMPT]
-	str	x24, [tsk, #TI_PREEMPT]
-	cmp	x0, x23
+	ldr	w0, [tsk, #TI_PREEMPT]
+	str	w24, [tsk, #TI_PREEMPT]
+	cmp	w0, w23
 	b.eq	1f
 	mov	x1, #0
 	str	x1, [x1]			// BUG
@@ -525,6 +555,14 @@ el0_irq_naked:
 #endif
 	b	ret_to_user
 ENDPROC(el0_irq)
+
+el0_fiq:
+	kernel_entry 0
+	mov	x0, sp
+	mrs	x1, esr_el1
+	b	fiq_dump
+ENDPROC(el0_fiq)
+
 
 /*
  * This is the return code to user mode for abort handlers
@@ -586,7 +624,7 @@ fast_work_pending:
 	str	x0, [sp, #S_X0]			// returned x0
 work_pending:
 	tbnz	x1, #TIF_NEED_RESCHED, work_resched
-	/* TIF_SIGPENDING or TIF_NOTIFY_RESUME case */
+	/* TIF_SIGPENDING, TIF_NOTIFY_RESUME or TIF_FOREIGN_FPSTATE case */
 	ldr	x2, [sp, #S_PSTATE]
 	mov	x0, sp				// 'regs'
 	tst	x2, #PSR_MODE_MASK		// user mode regs?
@@ -641,8 +679,9 @@ el0_svc_naked:					// compat entry point
 	enable_irq
 
 	get_thread_info tsk
-	ldr	x16, [tsk, #TI_FLAGS]		// check for syscall tracing
-	tbnz	x16, #TIF_SYSCALL_TRACE, __sys_trace // are we tracing syscalls?
+	ldr	x16, [tsk, #TI_FLAGS]		// check for syscall hooks
+	tst	x16, #_TIF_SYSCALL_WORK
+	b.ne	__sys_trace
 	adr	lr, ret_fast_syscall		// return address
 	cmp     scno, sc_nr                     // check upper syscall limit
 	b.hs	ni_sys
@@ -658,10 +697,13 @@ ENDPROC(el0_svc)
 	 * switches, and waiting for our parent to respond.
 	 */
 __sys_trace:
-	mov	x1, sp
-	mov	w0, #0				// trace entry
-	bl	syscall_trace
+	mov	x0, sp
+	bl	syscall_trace_enter
 	adr	lr, __sys_trace_return		// return address
+	cmp	w0, #RET_SKIP_SYSCALL_TRACE	// skip syscall and tracing?
+	b.eq	ret_to_user
+	cmp	w0, #RET_SKIP_SYSCALL		// skip syscall?
+	b.eq	__sys_trace_return_skipped
 	uxtw	scno, w0			// syscall number (possibly new)
 	mov	x1, sp				// pointer to regs
 	cmp	scno, sc_nr			// check upper syscall limit
@@ -675,9 +717,9 @@ __sys_trace:
 
 __sys_trace_return:
 	str	x0, [sp]			// save returned x0
-	mov	x1, sp
-	mov	w0, #1				// trace exit
-	bl	syscall_trace
+__sys_trace_return_skipped:			// x0 already in regs[0]
+	mov	x0, sp
+	bl	syscall_trace_exit
 	b	ret_to_user
 
 /*

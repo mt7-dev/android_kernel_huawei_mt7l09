@@ -1,26 +1,4 @@
-/*
- *  Hisilicon K3 SOC camera driver source file
- *
- *  Copyright (C) Huawei Technology Co., Ltd.
- *
- * Author:	  h00145353
- * Email:	  alan.hefeng@huawei.com
- * Date:	  2013-12-27
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
- */
+
 
 
 #include <linux/module.h>
@@ -181,14 +159,41 @@ int ov5648_csi_disable(hwsensor_intf_t* si)
 	return ret;
 }
 
+static int ov5648_i2c_read (hwsensor_intf_t* intf, void * data)
+{
+	sensor_t* sensor = NULL;
+	int ret = 0;
+
+	sensor= I2S(intf);
+	ret = hw_sensor_i2c_read(sensor,data);
+
+	return ret;
+}
+
 static int
 ov5648_match_id(
         hwsensor_intf_t* si, void * data)
 {
     sensor_t* sensor = I2S(si);
     struct sensor_cfg_data *cdata = (struct sensor_cfg_data *)data;
+	struct sensor_cfg_data cdata_h;
+	struct sensor_cfg_data cdata_l;
+	u16 sensor_id = 0;
 
     cam_info("%s TODO.", __func__);
+    
+	cdata_h.cfg.reg.subaddr = 0x300A;
+	cdata_h.cfg.reg.value = 0;
+
+	cdata_l.cfg.reg.subaddr = 0x300B;
+	cdata_l.cfg.reg.value = 0;
+
+	ov5648_i2c_read((hwsensor_intf_t*)sensor, &cdata_h);
+	ov5648_i2c_read((hwsensor_intf_t*)sensor, &cdata_l);
+
+	sensor_id = (cdata_h.cfg.reg.value) << 8 | (cdata_l.cfg.reg.value);
+
+	cam_notice( "%s, line %d, sensor id: 0x%x", __func__, __LINE__, sensor_id);
 
 /*
     id = read_i2c();
@@ -199,21 +204,11 @@ ov5648_match_id(
         sensor->board_info->sensor_index = CAMERA_SENSOR_INVALID;
     }
 */
+    memset(cdata->cfg.name, 0, sizeof(cdata->cfg.name));
     cdata->data = sensor->board_info->sensor_index;
     hwsensor_writefile(sensor->board_info->sensor_index,
         sensor->board_info->name);
     return 0;
-}
-
-static int ov5648_i2c_read (hwsensor_intf_t* intf, void * data)
-{
-	sensor_t* sensor = NULL;
-	int ret = 0;
-
-	sensor= I2S(intf);
-	ret = hw_sensor_i2c_read(sensor,data);
-
-	return ret;
 }
 
 static int ov5648_i2c_write (hwsensor_intf_t* intf, void * data)
@@ -283,6 +278,12 @@ ov5648_config(
 	static bool csi_enable = false;
 	data = (struct sensor_cfg_data *)argp;
 	cam_debug("ov5648 cfgtype = %d",data->cfgtype);
+
+	if(!ov5648_power_on && (data->cfgtype != SEN_CONFIG_POWER_ON))
+	{
+		cam_err("%s POWER_ON must be done before other CMD %d",__func__,data->cfgtype);
+		return ret;
+	}
 	switch(data->cfgtype){
 		case SEN_CONFIG_POWER_ON:
 			if (!ov5648_power_on) {

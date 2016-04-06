@@ -20,8 +20,8 @@
 
 #include <linux/usb/composite.h>
 #include <asm/unaligned.h>
-#include <linux/huawei/usb/hw_rwswitch.h>
-
+#include <chipset_common/hwusb/hw_usb_rwswitch.h>
+#include "user_interface_id.c"
 /*
  * The code in this file is utility code, used to build a gadget driver
  * from one or more "function" drivers, one or more "configuration"
@@ -328,9 +328,26 @@ EXPORT_SYMBOL_GPL(usb_function_activate);
 int usb_interface_id(struct usb_configuration *config,
 		struct usb_function *function)
 {
-	unsigned id = config->next_interface_id;
+	int id = config->next_interface_id;
+    unsigned tag = (port_num&0xff00);
+    unsigned num = (port_num&0x00ff);
 
+    if (num >= MAX_NUM) {
+        printk(KERN_ERR "num is err %d!\n",num);
+        return -ENODEV;
+    }
+    if (tag !=0) {
+        id = user_interface_id(function, num);
+        if ((id >= MAX_CONFIG_INTERFACES) || (id < 0)) {
+            printk(KERN_ERR "the interface id is err !\n");
+            return -ENODEV;
+        }
+		config->interface[id] = function;
+        config->next_interface_id = port_map[num][MAX_ID];
+        return id;
+    }
 	if (id < MAX_CONFIG_INTERFACES) {
+        printk("%s:%d",function->name, id);
 		config->interface[id] = function;
 		config->next_interface_id = id + 1;
 		return id;
@@ -595,6 +612,7 @@ static void reset_config(struct usb_composite_dev *cdev)
 	}
 	cdev->config = NULL;
 
+
 	cdev->delayed_status = 0;
 }
 
@@ -854,7 +872,6 @@ void usb_remove_config(struct usb_composite_dev *cdev,
 
 	if (cdev->config == config)
 		reset_config(cdev);
-	/*Change due to DTS2014041608868*/
 	if (!list_empty(&cdev->configs))
 		list_del(&config->list);
 
@@ -989,7 +1006,6 @@ static int get_string(struct usb_composite_dev *cdev,
 		}
 	}
 
-	/*Change due to DTS2014041608868*/
 	list_for_each_entry(uc, &cdev->gstrings, list) {
 		struct usb_gadget_strings **sp;
 
@@ -1420,23 +1436,23 @@ composite_setup(struct usb_gadget *gadget, const struct usb_ctrlrequest *ctrl)
 		}
 		break;
         case USB_REQ_VENDOR_SWITCH_MODE: {
-		int mode = 0, state = 0;
+			int mode = 0, state = 0;
 
-		if ((ctrl->bRequestType != (USB_DIR_IN|USB_TYPE_VENDOR|USB_RECIP_DEVICE))
-		     || (w_index != 0))
-			goto unknown;
+			if ((ctrl->bRequestType != (USB_DIR_IN|USB_TYPE_VENDOR|USB_RECIP_DEVICE))
+				|| (w_index != 0))
+				goto unknown;
 
-		 /* Handle vendor customized request */
-		INFO(cdev, "vendor request: %d index: %d value: %d length: %d\n",
-			ctrl->bRequest, w_index, w_value, w_length);
+			/* Handle vendor customized request */
+			INFO(cdev, "vendor request: %d index: %d value: %d length: %d\n",
+				ctrl->bRequest, w_index, w_value, w_length);
 
-		mode = usb_port_mode_get();
-		state = usb_port_switch_request(w_value);  //manual switch USB mode
-		value = min(w_length, (u16)(sizeof(mode)+sizeof(state)));
-		memcpy(req->buf, &state, value/2);
-		memcpy(req->buf+value/2, &mode, value/2);
-            }
-            break;
+			mode = hw_usb_port_mode_get();
+			state = hw_usb_port_switch_request(w_value);  //manual switch USB mode
+			value = min(w_length, (u16)(sizeof(mode)+sizeof(state)));
+			memcpy(req->buf, &state, value/2);
+			memcpy(req->buf+value/2, &mode, value/2);
+		}
+		break;
 
 	default:
 unknown:
@@ -1509,11 +1525,6 @@ void composite_disconnect(struct usb_gadget *gadget)
 {
 	struct usb_composite_dev	*cdev = get_gadget_data(gadget);
 	unsigned long			flags;
-
-	if (!cdev) {
-		printk(KERN_ERR "cdev is not ready!\n");
-		return ;
-	}
 
 	/* REVISIT:  should we have config and device level
 	 * disconnect callbacks?

@@ -113,6 +113,7 @@ OBC_LOCAL_INC_DIR += \
 	$(BALONG_TOPDIR)/modem/ps/as/gu/comm/Frmwk/Inc \
 	$(BALONG_TOPDIR)/modem/ps/as/gu/comm/Pscfg/Inc \
 	$(BALONG_TOPDIR)/modem/ps/as/gu/gas/COMMON/Inc \
+    $(BALONG_TOPDIR)/modem/ps/as/gu/gas/MNTN/Inc \
     $(BALONG_TOPDIR)/modem/ps/as/gu/gas/GCOM/DATA/Inc \
     $(BALONG_TOPDIR)/modem/ps/as/gu/gas/GASM/Inc \
     $(BALONG_TOPDIR)/modem/ps/as/gu/gas/GCOM/Inc \
@@ -193,6 +194,7 @@ OBC_LOCAL_SRC_FILE := \
     $(BALONG_TOPDIR)/modem/ps/as/gu/gas/COMMON/Src/fsm.c\
     $(BALONG_TOPDIR)/modem/ps/as/gu/gas/COMMON/Src/GasMnTn.c\
     $(BALONG_TOPDIR)/modem/ps/as/gu/gas/COMMON/Src/GasErrLog.c\
+    $(BALONG_TOPDIR)/modem/ps/as/gu/gas/MNTN/Src/GasInterHoErrLog.c\
     $(BALONG_TOPDIR)/modem/ps/as/gu/gas/COMMON/Src/GasComm.c\
     $(BALONG_TOPDIR)/modem/ps/as/gu/gas/GASM/Src/GasGasm.c\
     $(BALONG_TOPDIR)/modem/ps/as/gu/gas/GASM/Src/GasGasmfunc.c\
@@ -371,6 +373,7 @@ OBC_LOCAL_SRC_FILE += \
     $(BALONG_TOPDIR)/modem/ps/as/gu/gas/Encodix/R9/Src/UserDefinedDataTypes.c
 
 OBC_LOCAL_SRC_FILE += \
+    $(BALONG_TOPDIR)/modem/ps/as/gu/gas/MNTN/Src/GasMntnL2G.c\
     $(BALONG_TOPDIR)/modem/ps/as/gu/gas/GCOM/DATA/Src/GasGcomCtxLte.c \
     $(BALONG_TOPDIR)/modem/ps/as/gu/gas/GCOM/GCOMC/Src/GasGcomcL2FsmBgGSearchL.c\
     $(BALONG_TOPDIR)/modem/ps/as/gu/gas/GCOM/GCOMC/Src/GasGcomcL2FsmLteAnrGsm.c\

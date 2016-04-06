@@ -150,13 +150,13 @@ typedef enum {
 	BTEFAIL_NOTAVAIL,	/* BTE not available */
 } bte_result_t;
 
-#define BTEFAIL_SH2_RESP_SHORT	0x1	/* bit 000001 */
-#define BTEFAIL_SH2_RESP_LONG	0x2	/* bit 000010 */
-#define BTEFAIL_SH2_RESP_DSP	0x4	/* bit 000100 */
-#define BTEFAIL_SH2_RESP_ACCESS	0x8	/* bit 001000 */
-#define BTEFAIL_SH2_CRB_TO	0x10	/* bit 010000 */
-#define BTEFAIL_SH2_NACK_LIMIT	0x20	/* bit 100000 */
-#define BTEFAIL_SH2_ALL		0x3F	/* bit 111111 */
+#define BTEFAIL_SH2_RESP_SHORT	0x1
+#define BTEFAIL_SH2_RESP_LONG	0x2
+#define BTEFAIL_SH2_RESP_DSP	0x4
+#define BTEFAIL_SH2_RESP_ACCESS	0x8
+#define BTEFAIL_SH2_CRB_TO	0x10
+#define BTEFAIL_SH2_NACK_LIMIT	0x20
+#define BTEFAIL_SH2_ALL		0x3F
 
 #define	BTE_ERR_BITS	0x3FUL
 #define	BTE_ERR_SHIFT	36

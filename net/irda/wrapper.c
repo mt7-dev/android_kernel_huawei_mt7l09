@@ -159,23 +159,7 @@ int async_wrap_skb(struct sk_buff *skb, __u8 *tx_buff, int buffsize)
 EXPORT_SYMBOL(async_wrap_skb);
 
 /************************* FRAME UNWRAPPING *************************/
-/*
- * Unwrap and unstuff SIR frames
- *
- * Complete rewrite by Jean II :
- * More inline, faster, more compact, more logical. Jean II
- * (16 bytes on P6 200MHz, old 5 to 7 us, new 4 to 6 us)
- * (24 bytes on P6 200MHz, old 9 to 10 us, new 7 to 8 us)
- * (for reference, 115200 b/s is 1 byte every 69 us)
- * And reduce wrapper.o by ~900B in the process ;-)
- *
- * Then, we have the addition of ZeroCopy, which is optional
- * (i.e. the driver must initiate it) and improve final processing.
- * (2005 B frame + EOF on P6 200MHz, without 30 to 50 us, with 10 to 25 us)
- *
- * Note : at FIR and MIR, HDLC framing is used and usually handled
- * by the controller, so we come here only for SIR... Jean II
- */
+
 
 /*
  * We can also choose where we want to do the CRC calculation. We can

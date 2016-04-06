@@ -21,7 +21,6 @@
 
 
 
-
 /*lint -save -e525 -e40 -e409 -e19 -e63 -e18 -e826 -e419 -e831 */
 
 #ifdef __cplusplus
@@ -36,6 +35,9 @@ u8* g_sciExcGblAddr = BSP_NULL;
 u8* g_sciDirGblAddr = BSP_NULL;
 
 u8* g_sciDataGblAddr= BSP_NULL;
+
+u8* g_sciDataLastNotRing = BSP_NULL;
+
 
 /*  ?é???é2a1|?ü′????ó*/
 extern uint32_t tickGet(void);
@@ -65,18 +67,22 @@ extern SCI_CFG_STRU g_stSciHwCfg;
 extern ATR_sBuffer g_strATRData;
 
 extern SCI_VOLTAGE_STATE g_sci_voltage_state;
+extern SCI_HW_ABNORMAL_E g_sci_hw_abnormal ;
+
 
 #define MAX_TMP_BUF_LEN 4096
 #define LPM3_SIM_LOG_RDR_ID  0x4000008
 #define ACORE_SIM_LOG_RDR_ID 0x1010032
 #define MAX_LOG_FILE_NUM     10
-#define TIME_LENGTH       14
+#define TIME_LENGTH       19
+#define SCI_LOG_FILE_NAME_LEN  (strlen(SCI0_RECORD_LOG_PATH_LOST_CARD) + strlen("index0_") + strlen("sci0_") + strlen(g_sci_log_name[0])  + strlen("2013_03_02_12_02_03") + strlen(".txt"))
 
 
-u32* sci_global_print(u32* exc_global,char * content_buf);
 
-u32* sci_register_print(u32* reg_global,char* content_buf);
-extern int bsp_om_append_file(char *filename, void * address, u32 length, u32 max_size);
+
+u32* sci_global_print(char*tmp_buf_start,u32* exc_global,char* content_buf);
+u32* sci_register_print(char*tmp_buf_start,u32* reg_global,char* content_buf);
+
 
 char* g_SciRecordEvent[]=
 {
@@ -92,6 +98,7 @@ char* g_SciRecordEvent[]=
     "SCI_EVENT_API_CLOCK_STOP",
     "SCI_EVENT_API_GET_STATUS",
     "SCI_EVENT_API_GET_ATR",
+    "SCI_EVENT_API_SLOT_SWITCH",    
     "SCI_EVENT_CARD_ACTIVE_START",
     "SCI_EVENT_CARD_ACTIVE_SUCCESS",
     "SCI_EVENT_ATR_REC_START",
@@ -155,6 +162,20 @@ char* g_ControlRecordEvent[]=
     "SIM_LEAVE_POSITION ",
     "SIM_STATUS_NONE    ",
 };
+
+/*后面有特殊处理，请增加文件名称时保持和已经定义的文件名长度一致，
+    否则将导致控制文件个数时出错*/
+char* g_sci_log_name[] =
+{
+    "normal_reset_fail_",                    /*复位失败*/
+    "protect_reset_suc_",                    /*保护性复位成功*/
+    "protect_reset_fal_",                    /*保护性复位失败*/
+    "receive__no__data_",                    /*没有数据返回*/
+    "receive_buff_over_",                    /*数据接收溢出*/
+    "voltg_switch_fail_",                    /*USIM电压切换失败*/
+    "defalut_file_name_",                    /*默认保存文件名*/
+};
+
 /*记录异常文件路径的全局变量*/
 char * g_pcCardRecordControlFile[] = {SCI0_RECORD_LOG_PATH_CONTROL,
                                          SCI1_RECORD_LOG_PATH_CONTROL};
@@ -214,13 +235,13 @@ __inline__ s32 QueueLoopIn(Queue *Q, u32 element)
  *****************************************************************************/
 void sci_record_init(void )
 {
-    if(BSP_OK != bsp_dump_get_buffer(g_stSciHwCfg.record_enum, &(g_sci_debug_base.sci_debug_base_addr), &g_sci_debug_base.sci_debug_base_addr_legth))
+    if(BSP_OK != bsp_dump_get_buffer(g_stSciHwCfg.record_enum, &(g_stSciHwCfg.g_sci_debug_base.sci_debug_base_addr), &g_stSciHwCfg.g_sci_debug_base.sci_debug_base_addr_legth))
     {
         sci_print_error("get debug buffer failed! \n");
 		return ;
     }
 
-    memset((void *)(g_sci_debug_base.sci_debug_base_addr),0,(g_sci_debug_base.sci_debug_base_addr_legth));
+    memset((void *)(g_stSciHwCfg.g_sci_debug_base.sci_debug_base_addr),0,(g_stSciHwCfg.g_sci_debug_base.sci_debug_base_addr_legth));
     
     usim_event_history_ptr=(SCI_EVENT_HISTORY_STRUCT  *)SCI_EVENT_BASE_ADDR;
     usim_event_history_ptr->event_ring=(SCI_EVENT_RING_STRUCT *)(SCI_EVENT_BASE_ADDR+0x20);
@@ -283,7 +304,7 @@ void sci_record_init_para(void)
  *****************************************************************************/
 void sci_event_record_stop(void)
 {
-    SCI_CHECK_RECORD_BASE(g_sci_debug_base.sci_debug_base_addr);
+    SCI_CHECK_RECORD_BASE(SCI_RECORD_BASE_ADDR);
     
 	usim_event_history_ptr=(SCI_EVENT_HISTORY_STRUCT  *)SCI_EVENT_BASE_ADDR;
     usim_event_history_ptr->init_flag = SCI_EVENT_RING_STOP_FLAG;
@@ -299,7 +320,7 @@ void sci_event_record_stop(void)
  *****************************************************************************/
 void sci_event_record_start(void)
 {
-    SCI_CHECK_RECORD_BASE(g_sci_debug_base.sci_debug_base_addr);
+    SCI_CHECK_RECORD_BASE(SCI_RECORD_BASE_ADDR);
     
 	usim_event_history_ptr=(SCI_EVENT_HISTORY_STRUCT  *)SCI_EVENT_BASE_ADDR;
     usim_event_history_ptr->init_flag = SCI_EVENT_RING_INIT_FLAG;
@@ -325,7 +346,7 @@ void sci_event_record_add(SCI_EVENT_HISTORY_STRUCT * event_ptr,
     u32     pos;
 
     /* judge record base */
-    SCI_CHECK_RECORD_BASE(g_sci_debug_base.sci_debug_base_addr);
+    SCI_CHECK_RECORD_BASE(SCI_RECORD_BASE_ADDR);
 
     if( SCI_EVENT_RING_INIT_FLAG == event_ptr->init_flag )
     {
@@ -361,18 +382,22 @@ void sci_event_record_add(SCI_EVENT_HISTORY_STRUCT * event_ptr,
 
 void sci_record_cmd_data(u8 tfrFlag, u8 dataLen, u8 *dataAddr)
 {
+    u32 timestamp = 0;
     /* judge record base */
-    SCI_CHECK_RECORD_BASE(g_sciDataGblAddr);
-    
+    SCI_CHECK_RECORD_BASE(SCI_RECORD_BASE_ADDR);
+    timestamp = omTimerGet();
     /* judge the range */
     if((g_sciDataGblAddr+dataLen+SCI_DATA_HALF_MAX_LGTH)>=(u8 *)(SCI_DATA_BASE_ADDR+SCI_DATA_BASE_SIZE))
     {
+        g_sciDataLastNotRing = g_sciDataGblAddr;
         g_sciDataGblAddr = (u8 *)(SCI_DATA_BASE_ADDR + SCI_DATA_RING_SIZE);
     }
 
     /* write to memory */
     *(g_sciDataGblAddr) = tfrFlag;
     g_sciDataGblAddr += sizeof(u8);
+    memcpy(g_sciDataGblAddr, &timestamp, sizeof(u32));
+    g_sciDataGblAddr += sizeof(u32);   
     *(g_sciDataGblAddr) = dataLen;
     g_sciDataGblAddr += sizeof(u8);
     /*if the data number is more than 8,just record the first and the last two bytes*/
@@ -404,7 +429,7 @@ void sci_record_exc_gbl(u32 excEvent, u32 u32RecvLen,  u32 u32TimeSamp)
 	volatile u32* pRegData;
 
     /* judge record base */
-    SCI_CHECK_RECORD_BASE(g_sciExcGblAddr);
+    SCI_CHECK_RECORD_BASE(SCI_RECORD_BASE_ADDR);
     
     /* write to memory */
     if((g_sciExcGblAddr+sizeof(SCI_STATE_STRU)+(sizeof(u32)*SCI_EXC_LOG_TYPE_NUM)+SCI_REGS_NUM+u32RecvLen)<(u8 *)(SCI_EXC_GBL_ADDR+SCI_EXC_GBL_SIZE))
@@ -446,7 +471,7 @@ void sci_record_exc_gbl(u32 excEvent, u32 u32RecvLen,  u32 u32TimeSamp)
  * Others:
  *****************************************************************************/
 
-void sci_record_format(char** tmp_buf, char *fmt,...)
+void sci_record_format(char*buf_start,char** tmp_buf, char *fmt,...)
 {
     u32 len = 0;
     char buf[256];
@@ -459,7 +484,7 @@ void sci_record_format(char** tmp_buf, char *fmt,...)
 	va_end(arglist);
 
     len = strlen(buf);
-    if((strlen(*tmp_buf)  + len) < MAX_TMP_BUF_LEN)
+    if((strlen(buf_start)  + len) < MAX_TMP_BUF_LEN)
     {
         memcpy(*tmp_buf,buf,len);
     
@@ -477,105 +502,12 @@ void sci_record_format(char** tmp_buf, char *fmt,...)
  * Others:
  *****************************************************************************/
 
-void sci_record_flush2file(char* logpath,char* tmp_buf_start,char** tmp_buf)
+void sci_record_flush2file(s32 fd,char* tmp_buf_start,char** tmp_buf)
 {
-    bsp_om_append_file(logpath, (void*)tmp_buf_start, strlen(tmp_buf_start), MAX_TMP_BUF_LEN * 24);
+    bsp_write(fd, (s8*)tmp_buf_start, strlen(tmp_buf_start));
+//    bsp_om_append_file(logpath, (void*)tmp_buf_start, strlen(tmp_buf_start), MAX_TMP_BUF_LEN * 24);
     memset(tmp_buf_start,'\0',MAX_TMP_BUF_LEN);
     *tmp_buf = tmp_buf_start;
-
-}
-/******************************************************************************
- * Function:      sci_get_log_name
- * Description: 通过当前的时间获取存储log的文件名
- * Input:
- * Output:
- * Return:
- * Others:
- *****************************************************************************/
-
-char* sci_get_log_name(char *logpath, char *log_name_head, struct rtc_time* tm, char *log_name, u32 log_name_len)
-{
-    char* position = NULL;
-    u32 length = 0;
-    char* log_back = log_name;
-    if(logpath == NULL || log_name_head == NULL || tm == NULL || log_name == NULL || log_name_len == 0)
-    {
-        return NULL;
-    }
-        
-    position = strstr(logpath, log_name_head);
-    length = ((u32)position - (u32)(logpath));
-    memcpy(log_name, logpath, length);
-    log_name += length;
-    sci_record_format(&log_name, "%s_%04d_%02d_%02d_%02d_%02d_%02d.txt", log_name_head, tm->tm_year, (tm->tm_mon + 1), tm->tm_mday, tm->tm_hour, tm->tm_min, tm->tm_sec);
-    return log_back;
-}
-
-/******************************************************************************
- * Function:      sci_control_file_save
- * Description: 更新控制文件里log文件列表
- * Input:
- * Output:
- * Return:
- * Others:
- *****************************************************************************/
-
-
-void sci_control_file_save(char* control_path,char* logpath)
-{
-    int ret = BSP_OK;
-    u32 file_length = 0;
-    s32 fd = -1;
-    u32 save_len = 0;
-    char* tmp_log_paths = NULL;
-    ret = bsp_access((s8*)control_path, 0);
-    if(ret == BSP_OK)
-    {
-         fd = bsp_open((const s8*)control_path, (s32)(RFILE_CREAT|RFILE_RDWR), (s32)0777);
-    }
-    else
-    {
-         fd = bsp_open((const s8*)control_path, (s32)(RFILE_APPEND|RFILE_RDWR), (s32)0777);
-    }
-    if(fd != BSP_ERROR)
-    {
-         ret = bsp_lseek(fd,0,SEEK_SET);
-         file_length = bsp_lseek(fd, 0, SEEK_END);
-         if(file_length == (u32)(strlen(logpath) * MAX_LOG_FILE_NUM))
-         {
-             save_len = (u32)((u32)strlen(logpath) * (u32)(MAX_LOG_FILE_NUM - 1))+ 1;
-             tmp_log_paths = malloc((unsigned int)save_len);
-             if(tmp_log_paths != NULL)
-             {
-                 memset((void *)tmp_log_paths,'\0', save_len);   
-                 ret = bsp_lseek(fd,0,SEEK_SET);
-                 bsp_read((u32)fd, (s8*)tmp_log_paths,(u32)(strlen(logpath)));
-                 ret = bsp_access((s8*)tmp_log_paths, 0);
-                 if(BSP_OK == ret)
-                 {
-                     bsp_remove((s8*)tmp_log_paths);
-                 }
-                 memset((void *)tmp_log_paths,'\0', save_len);
-                 
-                 ret = bsp_lseek(fd,(strlen(logpath)),SEEK_SET);
-                 if(ret != BSP_ERROR)
-                 {
-                     bsp_read((u32)fd, (s8*)tmp_log_paths,(u32)(((u32)strlen(logpath) * (u32)(MAX_LOG_FILE_NUM - 1))));
-                     bsp_close(fd);
-                     bsp_remove((s8*)control_path);
-                     bsp_om_append_file(control_path, (void*)tmp_log_paths, (u32)strlen(tmp_log_paths), (u32)(MAX_TMP_BUF_LEN * 24));
-                 }
-                 free(tmp_log_paths);
-             }
-                 
-         }
-            
-    }
-    
-    if(logpath != g_stSciHwCfg.record_file)
-    {
-         bsp_om_append_file(control_path, (void*)logpath, strlen(logpath), MAX_TMP_BUF_LEN * 24);
-    }
 
 }
 
@@ -589,7 +521,7 @@ void sci_control_file_save(char* control_path,char* logpath)
  *****************************************************************************/
 #ifdef BSP_CONFIG_HI3630
 
-void sci_control_record_save(u32 id,char* logpath,char* tmp_buf_start,char** tmp_buf)
+void sci_gpio_record_save(u32 id,s32 fd,char* tmp_buf_start,char** tmp_buf)
 {
    
     u32 i = 1;
@@ -603,13 +535,13 @@ void sci_control_record_save(u32 id,char* logpath,char* tmp_buf_start,char** tmp
     }
     if(id == ACORE_SIM_LOG_RDR_ID)
     {
-        sci_record_format(tmp_buf,"\nBegin to save ACORE SIM Log\n");
-        sci_record_format(tmp_buf,"The Acore rdr ID is 0x%.8x%, rdr address is 0x%.8x%\n",id, log);
+        sci_record_format(tmp_buf_start,tmp_buf,"\nBegin to save ACORE SIM Log\n");
+        sci_record_format(tmp_buf_start,tmp_buf,"The Acore rdr ID is 0x%.8x%, rdr address is 0x%.8x%\n",id, log);
     }
     else if(id == LPM3_SIM_LOG_RDR_ID)
     {
-        sci_record_format(tmp_buf,"\nBegin to save LPM3 SIM Log\n");
-        sci_record_format(tmp_buf,"The LPM3 rdr ID is 0x%.8x%, rdr address is 0x%.8x%\n",id, log);
+        sci_record_format(tmp_buf_start,tmp_buf,"\nBegin to save LPM3 SIM Log\n");
+        sci_record_format(tmp_buf_start,tmp_buf,"The LPM3 rdr ID is 0x%.8x%, rdr address is 0x%.8x%\n",id, log);
     }
     else
     {
@@ -622,24 +554,24 @@ void sci_control_record_save(u32 id,char* logpath,char* tmp_buf_start,char** tmp
         if(log->sim_no < 2 && log->sim_status < 4)
         {
             /*对应的卡只保存对应的拔插事件*/
-            if(g_stSciHwCfg.card_id == log->sim_no)
+            if(g_stSciHwCfg.sci_id == log->sim_no)
             {
-                sci_record_format(tmp_buf,"time : 0x%.8x  ",log->time);
-                sci_record_format(tmp_buf,"sim_no : %3d  ",log->sim_no);
-                sci_record_format(tmp_buf,"sim_status : %s  ",g_ControlRecordEvent[log->sim_status]);
-                sci_record_format(tmp_buf,"hpd_level : %3d  ",log->hpd_level);
-                sci_record_format(tmp_buf,"det_level : %3d  ",log->det_level);
-                sci_record_format(tmp_buf,"trace : %3d  ",log->trace);
-                sci_record_format(tmp_buf,"sim_mux : %3d ",log->sim_mux[0]);
-                sci_record_format(tmp_buf,"%3d ",log->sim_mux[1]);
-                sci_record_format(tmp_buf,"%3d \n",log->sim_mux[2]);
+                sci_record_format(tmp_buf_start,tmp_buf,"time : 0x%.8x  ",log->time);
+                sci_record_format(tmp_buf_start,tmp_buf,"sim_no : %3d  ",log->sim_no);
+                sci_record_format(tmp_buf_start,tmp_buf,"sim_status : %s  ",g_ControlRecordEvent[log->sim_status]);
+                sci_record_format(tmp_buf_start,tmp_buf,"hpd_level : %3d  ",log->hpd_level);
+                sci_record_format(tmp_buf_start,tmp_buf,"det_level : %3d  ",log->det_level);
+                sci_record_format(tmp_buf_start,tmp_buf,"trace : %3d  ",log->trace);
+                sci_record_format(tmp_buf_start,tmp_buf,"sim_mux : %3d ",log->sim_mux[0]);
+                sci_record_format(tmp_buf_start,tmp_buf,"%3d ",log->sim_mux[1]);
+                sci_record_format(tmp_buf_start,tmp_buf,"%3d \n",log->sim_mux[2]);
             }
             
         }
 
         if(i % 5 == 0)
         {
-            sci_record_flush2file(logpath,tmp_buf_start,tmp_buf);
+            sci_record_flush2file(fd,tmp_buf_start,tmp_buf);
         }
         
         log++;
@@ -647,6 +579,134 @@ void sci_control_record_save(u32 id,char* logpath,char* tmp_buf_start,char** tmp
     
 }
 #endif
+void sci_combine_log_name(char *log_name,char *fmt, ...)
+{
+    char buf[256] = {'\0',};
+    va_list arglist = (va_list)NULL;/*lint !e40 !e522*/
+    
+    va_start(arglist, fmt);
+    /*lint -save -e119*/
+    vsnprintf(buf, 256, fmt, arglist); /* [false alarm]:屏蔽Fority错误 */
+    /*lint -restore*/
+    va_end(arglist);
+    memcpy(log_name ,buf,strlen(buf));
+
+}
+/*lint -save -e550*/
+
+void sci_get_log_name(SCI_LOG_MODE log_mode,char* dir_path,char* control_path, char** logname)
+{
+    char* logpath = NULL;
+    char* log_name_head = NULL;
+    s32 ret = -1;
+    s32 fd = -1;
+    u32 file_length = 0;
+    u32 i = 0;
+    char oldname[128] = {'\0',};
+    char newname[128] = {'\0',};
+    struct rtc_time tm = {0};
+    char index_pos = -1;
+    char* all_name_buf= NULL;
+    
+    if(logname == NULL || control_path == NULL  || dir_path == NULL)
+    {   
+        return;
+    }
+    if(log_mode > SCI_LOG_BUTT)
+    {
+        log_mode = SCI_LOG_BUTT;
+    }
+    logpath = g_sci_log_name[log_mode]; 
+    log_name_head = (g_stSciHwCfg.card_id == 0) ? "sci0_" : "sci1_";
+    balong_rtc_readtime(NULL, &tm);
+    /* [false alarm]:fortify */
+    fd = bsp_access((s8*)dir_path, 0); //F_OK, 检查文件是否存在
+    /* [false alarm]:fortify */
+    if(0 != fd)
+    {
+        fd  = bsp_mkdir((s8*)dir_path, 0660);
+        if(fd < 0)/* [false alarm]:fortify */
+        {
+            bsp_trace(BSP_LOG_LEVEL_ERROR, BSP_MODU_OM, "create om dir failed! ret = %d\n", fd);
+            return ;
+        }
+    }
+
+    ret = bsp_access((s8*)control_path, 0);
+    if(ret != BSP_OK)
+    {
+         fd = bsp_open((const s8*)control_path, (s32)(RFILE_CREAT|RFILE_RDWR), (s32)0755);
+    }
+    else
+    {
+         fd = bsp_open((const s8*)control_path, (s32)(RFILE_APPEND|RFILE_RDWR), (s32)0755);
+    }
+    
+    ret = bsp_access((s8*)control_path, 0);
+
+    if(fd != BSP_ERROR)
+    {
+         ret = bsp_lseek(fd,0,SEEK_SET);
+         file_length = bsp_lseek(fd, 0, SEEK_END);           
+         ret = bsp_lseek(fd,0,SEEK_SET);
+        
+         /*当前控制文件已经写满，需要进行重新命名，
+                 保证index0开头的文件永远是最旧的*/
+         if(file_length == SCI_LOG_FILE_NAME_LEN * MAX_LOG_FILE_NUM)
+         {
+             bsp_read(fd, (s8*)oldname, SCI_LOG_FILE_NAME_LEN);
+             bsp_remove((s8*)oldname);
+             all_name_buf = malloc((MAX_LOG_FILE_NUM - 1 ) * SCI_LOG_FILE_NAME_LEN + 1);
+             if(all_name_buf == NULL)
+             {
+                return;
+             }
+             memset(all_name_buf,'\0',((MAX_LOG_FILE_NUM - 1 ) * SCI_LOG_FILE_NAME_LEN + 1));
+             for(i = 1; i < MAX_LOG_FILE_NUM;i++)
+             {                 
+                 bsp_read(fd, (s8*)oldname, SCI_LOG_FILE_NAME_LEN);
+                 memcpy(newname, oldname, sizeof(oldname));
+                 newname[strlen(dir_path) + strlen("sci0_") + strlen("index")] = oldname[strlen(dir_path) + strlen("sci0_") + strlen("index")] - 1;
+                 bsp_rename(oldname, newname);
+                 memcpy((all_name_buf + (i - 1) * SCI_LOG_FILE_NAME_LEN),newname,strlen(newname));
+             }
+             bsp_close(fd);
+             bsp_remove((s8*)control_path);
+             fd = bsp_open((const s8*)control_path, (s32)(RFILE_CREAT|RFILE_RDWR), (s32)0755);
+             if(fd == BSP_ERROR)
+             {
+                free(all_name_buf);
+                return ;
+             }
+             bsp_lseek(fd,0,SEEK_SET);
+             bsp_write(fd, (s8*) all_name_buf, strlen(all_name_buf));
+             free(all_name_buf);
+             /*控制文件修改完成，返回最终的文件名，并将其写入控制文件*/
+             /* [false alarm]:fortify */
+             sci_combine_log_name(*logname,"%s%s%s%d%s%s%04d_%02d_%02d_%02d_%02d_%02d.txt",dir_path,log_name_head,"index",9,"_",logpath,tm.tm_year, (tm.tm_mon + 1), tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec);
+             
+         }
+         else if(file_length == 0) /*当前文件为空，则直接返回index0的文件*/
+         {
+            /* [false alarm]:fortify */
+            sci_combine_log_name(*logname,"%s%s%s%d%s%s%04d_%02d_%02d_%02d_%02d_%02d.txt",dir_path,log_name_head,"index",0,"_",logpath,tm.tm_year, (tm.tm_mon + 1), tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec);
+         }
+         else /*文件中已有数据，则直接读取最后一条，将index+1*/
+         {
+            ret = bsp_lseek(fd, (file_length - SCI_LOG_FILE_NAME_LEN) ,SEEK_SET);         
+            bsp_read(fd, (s8*)oldname, SCI_LOG_FILE_NAME_LEN);
+           
+            index_pos = oldname[strlen(dir_path) + strlen("sci0_") + strlen("index")] -= '0';
+            index_pos += 1;
+            sci_combine_log_name(*logname,"%s%s%s%d%s%s%04d_%02d_%02d_%02d_%02d_%02d.txt",dir_path,log_name_head,"index",index_pos,"_",logpath,tm.tm_year, (tm.tm_mon + 1), tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec);
+         }
+         ret = bsp_write(fd, (s8*)(*logname),SCI_LOG_FILE_NAME_LEN);
+         bsp_close((u32)(fd));
+    }
+
+}
+
+
 /******************************************************************************
  * Function:      sciRecordDataSave
  * Description:
@@ -655,13 +715,14 @@ void sci_control_record_save(u32 id,char* logpath,char* tmp_buf_start,char** tmp
  * Return: fail or ok
  * Others:
  *****************************************************************************/
-u32 sci_record_data_save()
+ 
+u32 sci_record_data_save(SCI_LOG_MODE log_mode)
 {
     u8 dataLen,i;
     u8 * pucData;
     volatile u32* pMemData;
     u32 currentEventPos;
-    u32 count;
+    u32 count = 0;
     u32 eventId;  
 	u32 u32ArraySize = 0;
 	u32 u32ExcLen =0;
@@ -670,89 +731,71 @@ u32 sci_record_data_save()
 	char * logpath = NULL;
     char* tmp_buf = NULL;
     char* tmp_buf_start = NULL;
-    struct rtc_time tm = {};
-    s32 rtc_ret = 0;
-    char* log_name_head = NULL;
-    char* log_name = NULL;
-    u32 log_name_len = 0;
     char* control_path = g_pcCardRecordControlFile[g_stSciHwCfg.card_id];
-    
-
-
+    char* dir_path = SCI0_RECORD_LOG_PATH_LOST_CARD;    
+    s32 fd = -1;
     /* judge record base */
-    if(BSP_NULL == g_sci_debug_base.sci_debug_base_addr)
+    if(BSP_NULL == SCI_RECORD_BASE_ADDR)
     {
         sci_print_error("base addr is NULL!\n");
         return BSP_ERR_SCI_INVALIDPARA;
     }
-    
+
     /* record sci event */
     sci_event_record_stop();
     tmp_buf = malloc(sizeof(char) * MAX_TMP_BUF_LEN);
     if(tmp_buf == NULL)
+    {
         return BSP_ERR_SCI_INVALIDPARA;
+    }
     tmp_buf_start = tmp_buf;
     memset(tmp_buf,'\0',MAX_TMP_BUF_LEN);
 
-    logpath = g_stSciHwCfg.record_file;
-    if(g_stSciHwCfg.card_id == 0)
+    logpath = (char*)malloc(128 * sizeof(char));
+    if(logpath == NULL)
     {
-        log_name_head = "sci0Record_lost_card";
-    }
-    else
-    {
-        log_name_head = "sci1Record_lost_card";
-    }
-        
-    log_name_len = strlen(logpath) + TIME_LENGTH+ 15;
-    log_name = malloc(log_name_len);
-    if(log_name == NULL)
+        free(tmp_buf);
         return BSP_ERR_SCI_INVALIDPARA;
-    memset(log_name,'\0',log_name_len);
+    }    
+    memset(logpath,'\0',128);
 
-   rtc_ret = balong_rtc_readtime(NULL, &tm);
-   if(rtc_ret == 0)
-   {
-        memset(log_name,'\0',log_name_len);
-        logpath = sci_get_log_name(logpath, log_name_head, &tm, log_name, log_name_len);
-        if(logpath == NULL)
-        {
-            
-logpath = g_stSciHwCfg.record_file;
-        }
-   }
-   else
-   {
-        logpath = g_stSciHwCfg.record_file;
+    sci_get_log_name(log_mode,dir_path,control_path,&logpath);
 
-   }
-   ret = bsp_access((s8*)logpath, 0);
-   if(BSP_OK == ret)
-   {
+    if(strlen(logpath) != SCI_LOG_FILE_NAME_LEN)
+    {
+        free(logpath);
+        free(tmp_buf);
+        return (u32)BSP_ERROR;
+    }
+    ret = bsp_access((s8*)logpath, 0);
+    if(BSP_OK == ret)
+    {
        bsp_remove((s8*)logpath);
-   }
-
-   sci_control_file_save(control_path, logpath);
+    }
+    
+    fd = bsp_open((const s8*)logpath, (s32)(RFILE_CREAT|RFILE_RDWR), (s32)0755);
+    if(fd == BSP_ERROR)
+    {
+        free(logpath);
+        free(tmp_buf);
+        return (u32)BSP_ERROR;
+    }
     /* save ATR */
     sci_print("sci record save Begin:\n");
-
-
-    sci_record_format(&tmp_buf,"SCI ATR RECORD: \n");
+    sci_record_format(tmp_buf_start,&tmp_buf,"SCI ATR RECORD: \n");
     dataLen=*(u8 *)(SCI_RECORD_BASE_ADDR);
-    sci_record_format(&tmp_buf,"ATR Len: %d\n",dataLen);
-    sci_record_format(&tmp_buf,"DATA RECORD: \n");
+    sci_record_format(tmp_buf_start,&tmp_buf,"ATR Len: %d\n",dataLen);
+    sci_record_format(tmp_buf_start,&tmp_buf,"DATA RECORD: \n");
 
     pucData=(u8 *)(SCI_RECORD_BASE_ADDR+1);
 	dataLen = (dataLen>SCI_RECORD_ATR_SIZE) ? SCI_RECORD_ATR_SIZE : dataLen;
     for(i=0;i<dataLen;i++)
     {
-        sci_record_format(&tmp_buf,"  0x%.2x",*(pucData+i));
+        sci_record_format(tmp_buf_start,&tmp_buf,"  0x%.2x",*(pucData+i));
     }
-    sci_record_format(&tmp_buf,"\n");
-    sci_record_format(&tmp_buf,"\n");
-    sci_record_flush2file(logpath,tmp_buf_start,&tmp_buf);
-
-
+    sci_record_format(tmp_buf_start,&tmp_buf,"\n");
+    sci_record_format(tmp_buf_start,&tmp_buf,"\n");
+    sci_record_flush2file(fd,tmp_buf_start,&tmp_buf);
 
     /* save exc event */
 	pExcData=(u32 *)SCI_EXC_GBL_ADDR;
@@ -762,37 +805,38 @@ logpath = g_stSciHwCfg.record_file;
 
         /* print exc events */
 		eventId = *pExcData;
-        sci_record_format(&tmp_buf,"EVENT: %s \n",(g_SciRecordEvent[eventId]));
+        sci_record_format(tmp_buf_start,&tmp_buf,"EVENT: %s \n",(g_SciRecordEvent[eventId]));
 		pExcData += 1;
 
 		/* print global variables */
 		u32ExcLen = *pExcData;
-        sci_record_format(&tmp_buf,"global vars Length:  %d\n",(u32ExcLen /4 ));
+        sci_record_format(tmp_buf_start,&tmp_buf,"global vars Length:  %d\n",(u32ExcLen /4 ));        
 		pExcData +=1;
 
         /* coverity[returned_null] */
-	    pExcData = sci_global_print(pExcData,tmp_buf);
-        sci_record_flush2file(logpath,tmp_buf_start,&tmp_buf);
+	    pExcData = sci_global_print(tmp_buf_start,pExcData,tmp_buf);
+        sci_record_flush2file(fd,tmp_buf_start,&tmp_buf);
 
         
         /* print current regs */
         /* coverity[dereferencing] */
         u32ExcLen = *pExcData;
-        sci_record_format(&tmp_buf,"current reg Length:  %d\n", u32ExcLen);
+        sci_record_format(tmp_buf_start,&tmp_buf,"current reg Length:  %d\n", u32ExcLen);
         pExcData +=1;
         /* coverity[returned_null] */
-        pExcData = sci_register_print(pExcData, tmp_buf);
-        sci_record_flush2file(logpath,tmp_buf_start,&tmp_buf);
+        pExcData = sci_register_print(tmp_buf_start,pExcData, tmp_buf);
+        sci_record_flush2file(fd,tmp_buf_start,&tmp_buf);
 
-        /* coverity[dereferencing] */
-        print2file(logpath,"current time stampe:  0x%x\n", *pExcData);
+        /* coverity[dereferencing] */      
+        sci_record_format(tmp_buf_start,&tmp_buf,"current time stampe:  0x%x\n", *pExcData);      
+        sci_record_flush2file(fd,tmp_buf_start,&tmp_buf);
         pExcData +=1;
 
         
     }
 
     /*save cmd data */
-    sci_record_format(&tmp_buf,"\nSCI CMD DATA:  \n");
+    sci_record_format(tmp_buf_start,&tmp_buf,"\nSCI CMD DATA:  \n");
     sci_print("sci record data, addr is 0x%x\n",(u32)SCI_DATA_BASE_ADDR);
     pucData=(u8 *)SCI_DATA_BASE_ADDR;
     dataLen=*(++pucData);
@@ -802,42 +846,44 @@ logpath = g_stSciHwCfg.record_file;
         /*预留100字节余量*/
         if(((tmp_buf - tmp_buf_start) + 100) > MAX_TMP_BUF_LEN)
         {
-            sci_record_flush2file(logpath,tmp_buf_start,&tmp_buf);
+            sci_record_flush2file(fd,tmp_buf_start,&tmp_buf);
  
         }
         if((*pucData)==(u8)SCI_DATA_SEND_EVENT)/*send data*/
         {
-            sci_record_format(&tmp_buf,"SEND:  ");
+            sci_record_format(tmp_buf_start,&tmp_buf,"SEND:  timestamp:   ");
         }
         else/*receive data*/
         {
-            sci_record_format(&tmp_buf,"RCVE:  ");
+            sci_record_format(tmp_buf_start,&tmp_buf,"RCVE:  timestamp:   ");
         }
+        sci_record_format(tmp_buf_start,&tmp_buf,"0x%.4x     ",(u32*)pucData);
+        pucData += 4;
         if(dataLen<SCI_DATA_PER_MAX_LGTH)/*if data len less than 8,record the whole data*/
         {
             for(i=0;i<dataLen;i++)
             {
-                sci_record_format(&tmp_buf," 0x%.2x",*(pucData+2+i));
+                sci_record_format(tmp_buf_start,&tmp_buf," 0x%.2x",*(pucData+2+i));
             }
             if(0 == dataLen)
             {
-                sci_record_format(&tmp_buf," len:0x%.2x",dataLen);
+                sci_record_format(tmp_buf_start,&tmp_buf," len:0x%.2x",dataLen);
             }
         }
         else/*if data len more than 8,record the first two bytes and the last two bytes*/
         {
-           sci_record_format(&tmp_buf," 0x%.2x 0x%.2x...len:0x%.2x... 0x%.2x 0x%.2x",*(pucData+2),*(pucData+3),\
+           sci_record_format(tmp_buf_start,&tmp_buf," 0x%.2x 0x%.2x...len:0x%.2x... 0x%.2x 0x%.2x",*(pucData+2),*(pucData+3),\
                    dataLen, *(pucData+8),*(pucData+9));
         }
 
         pucData += (SCI_DATA_PER_MAX_LGTH + 2);
         
-        sci_record_format(&tmp_buf,"\n");
-        sci_record_format(&tmp_buf,"\n");
+        sci_record_format(tmp_buf_start,&tmp_buf,"\n");
+        sci_record_format(tmp_buf_start,&tmp_buf,"\n");
         dataLen=*(pucData+1);
 
     }
-    sci_record_flush2file(logpath,tmp_buf_start,&tmp_buf);
+    sci_record_flush2file(fd,tmp_buf_start,&tmp_buf);
 
 
     /* dir record */
@@ -846,14 +892,16 @@ logpath = g_stSciHwCfg.record_file;
 	u32ExcLen = *pExcData;/* [false alarm]:*/
 	while(0!=(*(pExcData+1)))
 	{
-		(void)print2file(logpath,"tick is  0x%.8x, timestampe is 0x%.8x\n", *(pExcData), *(pExcData+1));
+		//(void)print2file(logpath,"tick is  0x%.8x, timestampe is 0x%.8x\n", *(pExcData), *(pExcData+1));
+        sci_record_format(tmp_buf_start,&tmp_buf,"tick is  0x%.8x, timestampe is 0x%.8x\n", *(pExcData), *(pExcData+1));
+        sci_record_flush2file(fd,tmp_buf_start,&tmp_buf);
 		pExcData +=2;
 		
 	}
 
     /*save the event record*/
-    sci_record_format(&tmp_buf,"\n");
-    sci_record_format(&tmp_buf,"\nSCI EVENT RECORD:  \n");
+    sci_record_format(tmp_buf_start,&tmp_buf,"\n");
+    sci_record_format(tmp_buf_start,&tmp_buf,"\nSCI EVENT RECORD:  \n");
     currentEventPos=*(u32 *)(SCI_EVENT_BASE_ADDR+4);
     pMemData=(u32 *)(SCI_EVENT_BASE_ADDR+SCI_EVENT_HAED_SIZE);
 
@@ -863,9 +911,14 @@ logpath = g_stSciHwCfg.record_file;
     {
         sci_print_error("SCI:event record invalid!currentEventPos=0x%x\n",(int)currentEventPos,0,0,0,0,0);
         if(tmp_buf != NULL)
+        {
             free(tmp_buf_start);
-        if(log_name != NULL)
-            free(log_name);
+        }
+        if(logpath != NULL)
+        {
+            free(logpath);
+        }
+
         /* coverity[leaked_storage] */
         return BSP_ERR_SCI_INVALIDPARA;
     }
@@ -874,9 +927,13 @@ logpath = g_stSciHwCfg.record_file;
     {
         sci_print_error("SCI:event record magic invalid!\n",0,0,0,0,0,0);
         if(tmp_buf != NULL)
+        {
             free(tmp_buf_start);
-        if(log_name != NULL)
-            free(log_name);
+        }
+        if(logpath != NULL)
+        {
+            free(logpath);
+        }
         /* coverity[leaked_storage] */
         return BSP_ERR_SCI_INVALIDPARA;
     }
@@ -890,23 +947,23 @@ logpath = g_stSciHwCfg.record_file;
             /*预留100字节余量*/
             if(((tmp_buf - tmp_buf_start) + 100) > MAX_TMP_BUF_LEN)
             {
-                sci_record_flush2file(logpath,tmp_buf_start,&tmp_buf);
+                sci_record_flush2file(fd,tmp_buf_start,&tmp_buf);
 
             }
             eventId=*(pMemData);
 			if(eventId<u32ArraySize)
 			{
-			    sci_record_format(&tmp_buf,"0x%04x	%-35s\tpara1:0x%04x  para2:0x%08x	time:0x%x\n",count,(g_SciRecordEvent[eventId]), \
+			    sci_record_format(tmp_buf_start,&tmp_buf,"0x%04x	%-35s\tpara1:0x%04x  para2:0x%08x	time:0x%x\n",count,(g_SciRecordEvent[eventId]), \
 			    *(pMemData+1),*(pMemData+2),*(pMemData+3));
 				pMemData+=4;
-                sci_record_format(&tmp_buf,"\n");
+                sci_record_format(tmp_buf_start,&tmp_buf,"\n");
 			}
 			else
 		    {
-                sci_record_format(&tmp_buf,"there is a invalid eventId %d\n", eventId);
+                sci_record_format(tmp_buf_start,&tmp_buf,"there is a invalid eventId %d\n", eventId);
             }
          }
-        sci_record_flush2file(logpath,tmp_buf_start,&tmp_buf);
+        sci_record_flush2file(fd,tmp_buf_start,&tmp_buf);
 
     }
     else/*the record pointer reach to the ring area*/
@@ -915,26 +972,26 @@ logpath = g_stSciHwCfg.record_file;
         {
             if(((tmp_buf - tmp_buf_start) + 100) > MAX_TMP_BUF_LEN)
             {
-                sci_record_flush2file(logpath,tmp_buf_start,&tmp_buf);
+                sci_record_flush2file(fd,tmp_buf_start,&tmp_buf);
 
             }
             eventId=*(pMemData);
 			if(eventId<u32ArraySize)
 			{
-                sci_record_format(&tmp_buf,"0x%04x	%-35s\tpara1:0x%04x  para2:0x%08x	time:0x%x\n",count,(g_SciRecordEvent[eventId]), \
+                sci_record_format(tmp_buf_start,&tmp_buf,"0x%04x	%-35s\tpara1:0x%04x  para2:0x%08x	time:0x%x\n",count,(g_SciRecordEvent[eventId]), \
 						*(pMemData+1),*(pMemData+2),*(pMemData+3));
 
 				pMemData+=4;
-                sci_record_format(&tmp_buf,"\n");
+                sci_record_format(tmp_buf_start,&tmp_buf,"\n");
 			}
 			else
 			{
-                sci_record_format(&tmp_buf,"there is a invalid eventId %d\n", eventId);
+                sci_record_format(tmp_buf_start,&tmp_buf,"there is a invalid eventId %d\n", eventId);
             }
         }
 
-        sci_record_format(&tmp_buf,"MORE, 0--HEAD,POS: 0x%x\n", currentEventPos);
-        sci_record_flush2file(logpath,tmp_buf_start,&tmp_buf);
+        sci_record_format(tmp_buf_start,&tmp_buf,"MORE, 0--HEAD,POS: 0x%x\n", currentEventPos);
+        sci_record_flush2file(fd,tmp_buf_start,&tmp_buf);
 
 
         if(g_SciEventRingFull)/*the ring is full and restart from the ring head*/
@@ -946,26 +1003,26 @@ logpath = g_stSciHwCfg.record_file;
             {
                 if(((tmp_buf - tmp_buf_start) + 100) > MAX_TMP_BUF_LEN)
                 {
-                    sci_record_flush2file(logpath,tmp_buf_start,&tmp_buf);
+                    sci_record_flush2file(fd,tmp_buf_start,&tmp_buf);
 
                 }
                 eventId=*(pMemData);
     			if(eventId<u32ArraySize)
     			{
-                    sci_record_format(&tmp_buf,"0x%04x	%-35s\tpara1:0x%04x  para2:0x%08x	time:0x%x\n",count,(g_SciRecordEvent[eventId]), \
+                    sci_record_format(tmp_buf_start,&tmp_buf,"0x%04x	%-35s\tpara1:0x%04x  para2:0x%08x	time:0x%x\n",count,(g_SciRecordEvent[eventId]), \
     						*(pMemData+1),*(pMemData+2),*(pMemData+3));
     				pMemData+=4;
-                    sci_record_format(&tmp_buf,"\n");
+                    sci_record_format(tmp_buf_start,&tmp_buf,"\n");
     			}
     			else
     			{
-                    sci_record_format(&tmp_buf,"there is a invalid eventId %d\n", eventId);
+                    sci_record_format(tmp_buf_start,&tmp_buf,"there is a invalid eventId %d\n", eventId);
                 }
             }
 
         }
-        sci_record_format(&tmp_buf,"MORE, POS--END,POS: 0x%x\n", currentEventPos);
-        sci_record_flush2file(logpath,tmp_buf_start,&tmp_buf);
+        sci_record_format(tmp_buf_start,&tmp_buf,"MORE, POS--END,POS: 0x%x\n", currentEventPos);
+        sci_record_flush2file(fd,tmp_buf_start,&tmp_buf);
 
         
         pMemData=(u32 *)(SCI_EVENT_BASE_ADDR+SCI_EVENT_HAED_SIZE+
@@ -975,42 +1032,47 @@ logpath = g_stSciHwCfg.record_file;
         {
             if(((tmp_buf - tmp_buf_start) + 100) > MAX_TMP_BUF_LEN)
             {
-                sci_record_flush2file(logpath,tmp_buf_start,&tmp_buf);
+                sci_record_flush2file(fd,tmp_buf_start,&tmp_buf);
 
             }
             eventId=*(pMemData);
 			if(eventId<u32ArraySize)
 			{
-                sci_record_format(&tmp_buf,"0x%04x	%-35s\tpara1:0x%04x  para2:0x%08x	time:0x%x\n",count,(g_SciRecordEvent[eventId]), \
+                sci_record_format(tmp_buf_start,&tmp_buf,"0x%04x	%-35s\tpara1:0x%04x  para2:0x%08x	time:0x%x\n",count,(g_SciRecordEvent[eventId]), \
 						*(pMemData+1),*(pMemData+2),*(pMemData+3));
 				pMemData+=4;
-                sci_record_format(&tmp_buf,"\n");
+                sci_record_format(tmp_buf_start,&tmp_buf,"\n");
 			}
 			else
 			{
-                sci_record_format(&tmp_buf,"there is a invalid eventId %d\n", eventId);
+                sci_record_format(tmp_buf_start,&tmp_buf,"there is a invalid eventId %d\n", eventId);
             }
         }
-        sci_record_format(&tmp_buf,"MORE, HEAD--POS,POS: 0x%x\n", currentEventPos);
-        sci_record_flush2file(logpath,tmp_buf_start,&tmp_buf);
+        sci_record_format(tmp_buf_start,&tmp_buf,"MORE, HEAD--POS,POS: 0x%x\n", currentEventPos);
+        sci_record_flush2file(fd,tmp_buf_start,&tmp_buf);
 
         
     }
 
 #ifdef BSP_CONFIG_HI3630
     sci_print("lpm3 record save begin! \n");
-    sci_control_record_save(LPM3_SIM_LOG_RDR_ID, logpath, tmp_buf_start,&tmp_buf);
+    sci_gpio_record_save(LPM3_SIM_LOG_RDR_ID, fd, tmp_buf_start,&tmp_buf);
 
     sci_print("acore record save begin! \n");
-    sci_control_record_save(ACORE_SIM_LOG_RDR_ID, logpath, tmp_buf_start,&tmp_buf);
+    sci_gpio_record_save(ACORE_SIM_LOG_RDR_ID, fd, tmp_buf_start,&tmp_buf);
 #endif
 
     sci_print("sci record save OK! \n");
     if(tmp_buf != NULL)
+    {
         free(tmp_buf_start);
-    if(log_name != NULL)
-        free(log_name);
+    }
+    if(logpath != NULL)
+    {
+        free(logpath);
+    }
 
+    bsp_close((u32) fd);
     sci_event_record_start();
 
     return BSP_OK;
@@ -1027,8 +1089,8 @@ logpath = g_stSciHwCfg.record_file;
  *****************************************************************************/
 s32 sci_record_log_read(unsigned char *pucDataBuff, unsigned int * pulLength, unsigned int ulMaxLength)
 {
-    u32     i=0;  
     u32     ulDataShiftCnt  = 0;
+    u32     ulDataShiftCntNotRing  = 0;
     u32     ulEventShiftCnt = 0;
     u32     ulEventBaseCnt  = 0;
     u32     ulLogLength = 0;
@@ -1042,7 +1104,7 @@ s32 sci_record_log_read(unsigned char *pucDataBuff, unsigned int * pulLength, un
         return BSP_ERROR;
     }
 
-    if(ulMaxLength < SCI_RECORD_TOTAL_LEN)
+    if(ulMaxLength < sizeof(SCI_RECORD_INFO))
     {
         sci_print_error("ulMaxLength is too short: %d!\n",ulMaxLength);
         
@@ -1065,8 +1127,9 @@ s32 sci_record_log_read(unsigned char *pucDataBuff, unsigned int * pulLength, un
     ulLogLength += sizeof(unsigned short);
     ulLogLength += pStrRecordInfo->ATRlen;
 
+    pStrRecordInfo->enSciHwStatus = g_sci_hw_abnormal;
     /* regs */
-    if((BSP_NULL==g_sciRegGblAddr) || (BSP_NULL==g_sciDataGblAddr) || (BSP_NULL==usim_event_history_ptr))
+    if((g_stSciHwCfg.g_sci_debug_base.sci_debug_base_addr == NULL)||(BSP_NULL==g_sciRegGblAddr) || (BSP_NULL==g_sciDataGblAddr) || (BSP_NULL==usim_event_history_ptr))
     {
         sci_print_error("g_sciRegGblAddr:0x%x, g_sciDataGblAddr:0x%x, usim_event_history_ptr:0x%x!\n",g_sciRegGblAddr, g_sciDataGblAddr, usim_event_history_ptr);
         
@@ -1076,101 +1139,121 @@ s32 sci_record_log_read(unsigned char *pucDataBuff, unsigned int * pulLength, un
     ulLogLength += SCI_RECORD_REG_SIZE;
     
     /* data */
-    ulDataShiftCnt = g_sciDataGblAddr - (u8 *)SCI_DATA_BASE_ADDR;
-    ulDataShiftCnt = (ulDataShiftCnt>SCI_RECORD_DATA_REAL_LEN)?SCI_RECORD_DATA_REAL_LEN:ulDataShiftCnt;
-
-    pSciDataShift = (u8*)(g_sciDataGblAddr - ulDataShiftCnt);
-    for(i=0;i<(ulDataShiftCnt/SCI_DATA_TOTAL_MAX_LGTH);i++)
+    if((u32)g_sciDataGblAddr <= (u32)(SCI_DATA_BASE_ADDR + SCI_DATA_RING_SIZE))
     {
-        pSciDataShift += sizeof(u8);
-        memcpy((pStrRecordInfo->SciRecordData + i*SCI_RECORD_PER_DATA_LEN), pSciDataShift, SCI_RECORD_PER_DATA_LEN);
-        pSciDataShift += SCI_RECORD_PER_DATA_LEN;
-    }
-
-    ulLogLength += SCI_RECORD_DATA_LEN;
+        ulDataShiftCnt = g_sciDataGblAddr - (u8 *)SCI_DATA_BASE_ADDR;
+        ulDataShiftCnt = (ulDataShiftCnt>SCI_RECORD_DATA_REAL_LEN)?SCI_RECORD_DATA_REAL_LEN:ulDataShiftCnt;
+        /*保证拷贝的是最新的指令数据*/
+        pSciDataShift = (u8*)(g_sciDataGblAddr - ulDataShiftCnt);
+        memcpy(pStrRecordInfo->SciRecordData,pSciDataShift,ulDataShiftCnt);
+        ulLogLength += (ulDataShiftCnt);
     
+    }
+    else
+    {
+        /*最后一段空间*/
+        ulDataShiftCntNotRing = (u32)((u32)g_sciDataGblAddr - (u32)(SCI_DATA_BASE_ADDR + SCI_DATA_RING_SIZE));
+        ulDataShiftCntNotRing =  ulDataShiftCntNotRing / SCI_DATA_TOTAL_MAX_LGTH;
+        if(ulDataShiftCntNotRing < SCI_RECORD_DATA_CNT)
+        {
+            if(g_sciDataLastNotRing != NULL)
+            {
+                ulDataShiftCnt = (SCI_RECORD_DATA_CNT - ulDataShiftCntNotRing);
+                pSciDataShift = (u8*)(g_sciDataLastNotRing - (ulDataShiftCnt * SCI_RECORD_PER_DATA_LEN));
+            
+                memcpy(pStrRecordInfo->SciRecordData,pSciDataShift,SCI_RECORD_PER_DATA_LEN * ulDataShiftCnt);/*循环以前的buf*/
+                ulDataShiftCntNotRing *= SCI_DATA_TOTAL_MAX_LGTH;
+                memcpy((pStrRecordInfo->SciRecordData + SCI_RECORD_PER_DATA_LEN * ulDataShiftCnt),(SCI_DATA_BASE_ADDR + SCI_DATA_RING_SIZE),ulDataShiftCntNotRing );
+        
+            } 
+        }
+        else
+        {
+            memcpy(pStrRecordInfo->SciRecordData, (SCI_DATA_BASE_ADDR + SCI_DATA_RING_SIZE), SCI_RECORD_DATA_LEN);
+        }
+        ulLogLength += SCI_RECORD_DATA_LEN;
+        
+    }
+ 
     /* event */
     ulEventBaseCnt  = *(u32 *)(SCI_EVENT_BASE_ADDR+4);
-    ulEventShiftCnt = (ulEventBaseCnt>8)?8:ulEventBaseCnt;
+    ulEventShiftCnt = (ulEventBaseCnt>SCI_RECORD_EVENT_CNT)?SCI_RECORD_EVENT_CNT:ulEventBaseCnt;
     ulEventBaseCnt  = ulEventBaseCnt - ulEventShiftCnt;
-    usim_event_history_ptr->event_ring->event;
 
     ulEventBaseCnt += 1;
-    for(i=0;i<ulEventShiftCnt;i++)
-    {
-        pStrRecordInfo->SciEvent[i] = (unsigned int)(usim_event_history_ptr->event_ring[ulEventBaseCnt++].event);
-    } 
-
-    ulLogLength += ulEventShiftCnt*sizeof(u32);
+  
+    memcpy(pStrRecordInfo->SciEvent,(usim_event_history_ptr->event_ring + ulEventBaseCnt),(ulEventShiftCnt * 16));
+    
+    ulLogLength += ulEventShiftCnt*(sizeof(u32)*4);
     * pulLength = ulLogLength;
     
     return BSP_OK;
     
 }
 
-u32* sci_global_print(u32* exc_global,char * content_buf)
+u32* sci_global_print(char*tmp_buf_start,u32* exc_global,char* content_buf)
 {
     if(exc_global == NULL || content_buf == NULL)
     {
         return NULL;
     }
 
-    sci_record_format(&content_buf,"The global variable SCI_STATE_STRU g_strSciState is\n"); 
-    sci_record_format(&content_buf,"The g_strSciState->eCurrentState is   :  0x%.8x\n", *(exc_global++));    
-    sci_record_format(&content_buf,"The g_strSciState->eProtocol is       :  0x%.8x\n", *(exc_global++));   
-    sci_record_format(&content_buf,"The g_strSciState->eConvention is     :  0x%.8x\n", *(exc_global++));   
-    sci_record_format(&content_buf,"The g_strSciState->Padding is         :  0x%.8x\n", *(exc_global++));    
-    sci_record_format(&content_buf,"The g_strSciState->pBase              :  0x%.8x\n", *(exc_global++));   
-    sci_record_format(&content_buf,"The g_strSciState->pDataBuffer is     :  0x%.8x\n", *(exc_global++));   
-    sci_record_format(&content_buf,"The g_strSciState->DataLength is      :  0x%.8x\n", *(exc_global++));   
+    sci_record_format(tmp_buf_start,&content_buf,"The global variable SCI_STATE_STRU g_strSciState is\n"); 
+    sci_record_format(tmp_buf_start,&content_buf,"The g_strSciState->eCurrentState is   :  0x%.8x\n", *(exc_global++));    
+    sci_record_format(tmp_buf_start,&content_buf,"The g_strSciState->eProtocol is       :  0x%.8x\n", *(exc_global++));   
+    sci_record_format(tmp_buf_start,&content_buf,"The g_strSciState->eConvention is     :  0x%.8x\n", *(exc_global++));   
+    sci_record_format(tmp_buf_start,&content_buf,"The g_strSciState->Padding is         :  0x%.8x\n", *(exc_global++));    
+    sci_record_format(tmp_buf_start,&content_buf,"The g_strSciState->pBase              :  0x%.8x\n", *(exc_global++));   
+    sci_record_format(tmp_buf_start,&content_buf,"The g_strSciState->pDataBuffer is     :  0x%.8x\n", *(exc_global++));   
+    sci_record_format(tmp_buf_start,&content_buf,"The g_strSciState->DataLength is      :  0x%.8x\n", *(exc_global++));   
 
     /*apPL131_sSetupParams   sSetupParams*/   
-    sci_record_format(&content_buf,"The sSetupParams->ClockFreq is        :  0x%.8x\n", *(exc_global++));  
-    sci_record_format(&content_buf,"The sSetupParams->DebounceTime is     :  0x%.8x\n", *(exc_global++));  
-    sci_record_format(&content_buf,"The sSetupParams->ActEventTime is     :  0x%.8x\n", *(exc_global++)); 
-    sci_record_format(&content_buf,"The sSetupParams->DeactEventTime is   :  0x%.8x\n", *(exc_global++));   
-    sci_record_format(&content_buf,"The sSetupParams->ATRStartTime is     :  0x%.8x\n", *(exc_global++));  
-    sci_record_format(&content_buf,"The sSetupParams->ATRDuration is      :  0x%.8x\n", *(exc_global++));    
-    sci_record_format(&content_buf,"The sSetupParams->CharacterTime is    :  0x%.8x\n", *(exc_global++));
-    sci_record_format(&content_buf,"The sSetupParams->BlockTime is        :  0x%.8x\n", *(exc_global++)); 
-    sci_record_format(&content_buf,"The sSetupParams->BlockGuard is       :  0x%.8x\n", *(exc_global++));  
-    sci_record_format(&content_buf,"The sSetupParams->CardFreq is         :  0x%.8x\n", *(exc_global++)); 
-    sci_record_format(&content_buf,"The sSetupParams->ClockIsOpenDrain is :  0x%.8x\n", *(exc_global++)); 
-    sci_record_format(&content_buf,"The sSetupParams->ReceiveTime is      :  0x%.8x\n", *(exc_global++)); 
-    sci_record_format(&content_buf,"The sSetupParams->StopTime is         :  0x%.8x\n", *(exc_global++));   
-    sci_record_format(&content_buf,"The sSetupParams->StartTime is        :  0x%.8x\n", *(exc_global++));    
-    sci_record_format(&content_buf,"The sSetupParams->RxRetries is        :  0x%.8x\n", *(exc_global++)); 
-    sci_record_format(&content_buf,"The sSetupParams->TxRetries is        :  0x%.8x\n", *(exc_global++));  
-    sci_record_format(&content_buf,"The sSetupParams->eRxHandshake is     :  0x%.8x\n", *(exc_global++));
-    sci_record_format(&content_buf,"The sSetupParams->eTxHandshake is     :  0x%.8x\n", *(exc_global++));
-    sci_record_format(&content_buf,"The sSetupParams->Padding is          :  0x%.8x\n", *(exc_global++));
+    sci_record_format(tmp_buf_start,&content_buf,"The sSetupParams->ClockFreq is        :  0x%.8x\n", *(exc_global++));  
+    sci_record_format(tmp_buf_start,&content_buf,"The sSetupParams->DebounceTime is     :  0x%.8x\n", *(exc_global++));  
+    sci_record_format(tmp_buf_start,&content_buf,"The sSetupParams->ActEventTime is     :  0x%.8x\n", *(exc_global++)); 
+    sci_record_format(tmp_buf_start,&content_buf,"The sSetupParams->DeactEventTime is   :  0x%.8x\n", *(exc_global++));   
+    sci_record_format(tmp_buf_start,&content_buf,"The sSetupParams->ATRStartTime is     :  0x%.8x\n", *(exc_global++));  
+    sci_record_format(tmp_buf_start,&content_buf,"The sSetupParams->ATRDuration is      :  0x%.8x\n", *(exc_global++));    
+    sci_record_format(tmp_buf_start,&content_buf,"The sSetupParams->CharacterTime is    :  0x%.8x\n", *(exc_global++));
+    sci_record_format(tmp_buf_start,&content_buf,"The sSetupParams->BlockTime is        :  0x%.8x\n", *(exc_global++)); 
+    sci_record_format(tmp_buf_start,&content_buf,"The sSetupParams->BlockGuard is       :  0x%.8x\n", *(exc_global++));  
+    sci_record_format(tmp_buf_start,&content_buf,"The sSetupParams->CardFreq is         :  0x%.8x\n", *(exc_global++)); 
+    sci_record_format(tmp_buf_start,&content_buf,"The sSetupParams->ClockIsOpenDrain is :  0x%.8x\n", *(exc_global++)); 
+    sci_record_format(tmp_buf_start,&content_buf,"The sSetupParams->ReceiveTime is      :  0x%.8x\n", *(exc_global++)); 
+    sci_record_format(tmp_buf_start,&content_buf,"The sSetupParams->StopTime is         :  0x%.8x\n", *(exc_global++));   
+    sci_record_format(tmp_buf_start,&content_buf,"The sSetupParams->StartTime is        :  0x%.8x\n", *(exc_global++));    
+    sci_record_format(tmp_buf_start,&content_buf,"The sSetupParams->RxRetries is        :  0x%.8x\n", *(exc_global++)); 
+    sci_record_format(tmp_buf_start,&content_buf,"The sSetupParams->TxRetries is        :  0x%.8x\n", *(exc_global++));  
+    sci_record_format(tmp_buf_start,&content_buf,"The sSetupParams->eRxHandshake is     :  0x%.8x\n", *(exc_global++));
+    sci_record_format(tmp_buf_start,&content_buf,"The sSetupParams->eTxHandshake is     :  0x%.8x\n", *(exc_global++));
+    sci_record_format(tmp_buf_start,&content_buf,"The sSetupParams->Padding is          :  0x%.8x\n", *(exc_global++));
   
     /*apPL131_sATRParams   sATRParams*/
-    sci_record_format(&content_buf,"The sATRParams->eBitRateAdj is        :  0x%.8x\n", *(exc_global++));  
-    sci_record_format(&content_buf,"The sATRParams->eClkRateConv is       :  0x%.8x\n", *(exc_global++)); 
-    sci_record_format(&content_buf,"The sATRParams->eClkStopInd is        :  0x%.8x\n", *(exc_global++));  
-    sci_record_format(&content_buf,"The sATRParams->Padding is            :  0x%.8x\n", *(exc_global++)); 
-    sci_record_format(&content_buf,"The sATRParams->ClassInd is           :  0x%.8x\n", *(exc_global++)); 
-    sci_record_format(&content_buf,"The sATRParams->ProtocolType is       :  0x%.8x\n", *(exc_global++));  
-    sci_record_format(&content_buf,"The sATRParams->AltProtocolType is    :  0x%.8x\n", *(exc_global++));   
-    sci_record_format(&content_buf,"The sATRParams->ChGuard is            :  0x%.8x\n", *(exc_global++));  
-    sci_record_format(&content_buf,"The sATRParams->pATRBuffer is         :  0x%.8x\n", *(exc_global++));  
-    sci_record_format(&content_buf,"The sATRParams->BufferAt is           :  0x%.8x\n", *(exc_global++));   
-    sci_record_format(&content_buf,"The sATRParams->InterfaceByteQual is  :  0x%.8x\n", *(exc_global++));  
-    sci_record_format(&content_buf,"The sATRParams->HasChecksum is        :  0x%.8x\n", *(exc_global++)); 
-    sci_record_format(&content_buf,"The sATRParams->Checksum is           :  0x%.8x\n", *(exc_global++));  
-    sci_record_format(&content_buf,"The sATRParams->CharPresent is        :  0x%.8x\n", *(exc_global++));
-    sci_record_format(&content_buf,"The sATRParams->Grouping is           :  0x%.8x\n", *(exc_global++));
-    sci_record_format(&content_buf,"The sATRParams->Current is            :  0x%.8x\n", *(exc_global++));  
-    sci_record_format(&content_buf,"The sATRParams->NumHist is            :  0x%.8x\n", *(exc_global++));  
-    sci_record_format(&content_buf,"The sATRParams->WI is                 :  0x%.8x\n", *(exc_global++));
+    sci_record_format(tmp_buf_start,&content_buf,"The sATRParams->eBitRateAdj is        :  0x%.8x\n", *(exc_global++));  
+    sci_record_format(tmp_buf_start,&content_buf,"The sATRParams->eClkRateConv is       :  0x%.8x\n", *(exc_global++)); 
+    sci_record_format(tmp_buf_start,&content_buf,"The sATRParams->eClkStopInd is        :  0x%.8x\n", *(exc_global++));  
+    sci_record_format(tmp_buf_start,&content_buf,"The sATRParams->Padding is            :  0x%.8x\n", *(exc_global++)); 
+    sci_record_format(tmp_buf_start,&content_buf,"The sATRParams->ClassInd is           :  0x%.8x\n", *(exc_global++)); 
+    sci_record_format(tmp_buf_start,&content_buf,"The sATRParams->ProtocolType is       :  0x%.8x\n", *(exc_global++));  
+    sci_record_format(tmp_buf_start,&content_buf,"The sATRParams->AltProtocolType is    :  0x%.8x\n", *(exc_global++));   
+    sci_record_format(tmp_buf_start,&content_buf,"The sATRParams->ChGuard is            :  0x%.8x\n", *(exc_global++));  
+    sci_record_format(tmp_buf_start,&content_buf,"The sATRParams->pATRBuffer is         :  0x%.8x\n", *(exc_global++));  
+    sci_record_format(tmp_buf_start,&content_buf,"The sATRParams->BufferAt is           :  0x%.8x\n", *(exc_global++));   
+    sci_record_format(tmp_buf_start,&content_buf,"The sATRParams->InterfaceByteQual is  :  0x%.8x\n", *(exc_global++));  
+    sci_record_format(tmp_buf_start,&content_buf,"The sATRParams->HasChecksum is        :  0x%.8x\n", *(exc_global++)); 
+    sci_record_format(tmp_buf_start,&content_buf,"The sATRParams->Checksum is           :  0x%.8x\n", *(exc_global++));  
+    sci_record_format(tmp_buf_start,&content_buf,"The sATRParams->CharPresent is        :  0x%.8x\n", *(exc_global++));
+    sci_record_format(tmp_buf_start,&content_buf,"The sATRParams->Grouping is           :  0x%.8x\n", *(exc_global++));
+    sci_record_format(tmp_buf_start,&content_buf,"The sATRParams->Current is            :  0x%.8x\n", *(exc_global++));  
+    sci_record_format(tmp_buf_start,&content_buf,"The sATRParams->NumHist is            :  0x%.8x\n", *(exc_global++));  
+    sci_record_format(tmp_buf_start,&content_buf,"The sATRParams->WI is                 :  0x%.8x\n", *(exc_global++));
  
 
     return exc_global;
     
 }
 
-u32* sci_register_print(u32* reg_global,char* content_buf)
+u32* sci_register_print(char*tmp_buf_start,u32* reg_global,char* content_buf)
 {
     u32 i = 0;
 
@@ -1178,43 +1261,43 @@ u32* sci_register_print(u32* reg_global,char* content_buf)
     {
         return NULL;
     }
-    sci_record_format(&content_buf,"The current register variable are\n");
-    sci_record_format(&content_buf,"0x%.2x:  SCI_REG->RegData           :  0x%.8x \n", (SCI_BASE_ADDR+ (i++)*0x10),*((u32*)(reg_global++)));
-    sci_record_format(&content_buf,"0x%.2x:  SCI_REG->RegCtrl0          :  0x%.8x \n", (SCI_BASE_ADDR+ (i++)*0x10),*((u32*)(reg_global++)));
-    sci_record_format(&content_buf,"0x%.2x:  SCI_REG->RegCtrl1          :  0x%.8x \n", (SCI_BASE_ADDR+ (i++)*0x10),*((u32*)(reg_global++)));
-    sci_record_format(&content_buf,"0x%.2x:  SCI_REG->RegCtrl2          :  0x%.8x \n", (SCI_BASE_ADDR+ (i++)*0x10),*((u32*)(reg_global++)));
-    sci_record_format(&content_buf,"0x%.2x:  SCI_REG->RegClkICC         :  0x%.8x \n", (SCI_BASE_ADDR+ (i++)*0x10),*((u32*)(reg_global++)));
-    sci_record_format(&content_buf,"0x%.2x:  SCI_REG->RegBaudValue      :  0x%.8x \n", (SCI_BASE_ADDR+ (i++)*0x10),*((u32*)(reg_global++)));
-    sci_record_format(&content_buf,"0x%.2x:  SCI_REG->RegBaud           :  0x%.8x \n", (SCI_BASE_ADDR+ (i++)*0x10),*((u32*)(reg_global++)));
-    sci_record_format(&content_buf,"0x%.2x:  SCI_REG->RegTide           :  0x%.8x \n", (SCI_BASE_ADDR+ (i++)*0x10),*((u32*)(reg_global++)));
-    sci_record_format(&content_buf,"0x%.2x:  SCI_REG->RegDMACtrl        :  0x%.8x \n", (SCI_BASE_ADDR+ (i++)*0x10),*((u32*)(reg_global++)));
-    sci_record_format(&content_buf,"0x%.2x:  SCI_REG->RegStable         :  0x%.8x \n", (SCI_BASE_ADDR+ (i++)*0x10),*((u32*)(reg_global++)));
-    sci_record_format(&content_buf,"0x%.2x:  SCI_REG->RegATime          :  0x%.8x \n", (SCI_BASE_ADDR+ (i++)*0x10),*((u32*)(reg_global++)));
-    sci_record_format(&content_buf,"0x%.2x:  SCI_REG->RegDTime          :  0x%.8x \n", (SCI_BASE_ADDR+ (i++)*0x10),*((u32*)(reg_global++)));
-    sci_record_format(&content_buf,"0x%.2x:  SCI_REG->RegATRSTime       :  0x%.8x \n", (SCI_BASE_ADDR+ (i++)*0x10),*((u32*)(reg_global++)));
-    sci_record_format(&content_buf,"0x%.2x:  SCI_REG->RegATRDTime       :  0x%.8x \n", (SCI_BASE_ADDR+ (i++)*0x10),*((u32*)(reg_global++)));
-    sci_record_format(&content_buf,"0x%.2x:  SCI_REG->RegStopTime       :  0x%.8x \n", (SCI_BASE_ADDR+ (i++)*0x10),*((u32*)(reg_global++)));
-    sci_record_format(&content_buf,"0x%.2x:  SCI_REG->RegStartTime      :  0x%.8x \n", (SCI_BASE_ADDR+ (i++)*0x10),*((u32*)(reg_global++)));
-    sci_record_format(&content_buf,"0x%.2x:  SCI_REG->RegRetry          :  0x%.8x \n", (SCI_BASE_ADDR+ (i++)*0x10),*((u32*)(reg_global++)));
-    sci_record_format(&content_buf,"0x%.2x:  SCI_REG->RegChTimeLS       :  0x%.8x \n", (SCI_BASE_ADDR+ (i++)*0x10),*((u32*)(reg_global++)));
-    sci_record_format(&content_buf,"0x%.2x:  SCI_REG->RegChTimeMS       :  0x%.8x \n", (SCI_BASE_ADDR+ (i++)*0x10),*((u32*)(reg_global++)));
-    sci_record_format(&content_buf,"0x%.2x:  SCI_REG->RegBlkTimeLS      :  0x%.8x \n", (SCI_BASE_ADDR+ (i++)*0x10),*((u32*)(reg_global++)));
-    sci_record_format(&content_buf,"0x%.2x:  SCI_REG->RegBlkTimeMS      :  0x%.8x \n", (SCI_BASE_ADDR+ (i++)*0x10),*((u32*)(reg_global++)));
-    sci_record_format(&content_buf,"0x%.2x:  SCI_REG->RegChGuard        :  0x%.8x \n", (SCI_BASE_ADDR+ (i++)*0x10),*((u32*)(reg_global++)));
-    sci_record_format(&content_buf,"0x%.2x:  SCI_REG->RegBlkGuard       :  0x%.8x \n", (SCI_BASE_ADDR+ (i++)*0x10),*((u32*)(reg_global++)));
-    sci_record_format(&content_buf,"0x%.2x:  SCI_REG->RegRxTime         :  0x%.8x \n", (SCI_BASE_ADDR+ (i++)*0x10),*((u32*)(reg_global++)));
-    sci_record_format(&content_buf,"0x%.2x:  SCI_REG->RegFlag           :  0x%.8x \n", (SCI_BASE_ADDR+ (i++)*0x10),*((u32*)(reg_global++)));
-    sci_record_format(&content_buf,"0x%.2x:  SCI_REG->RegTxCount        :  0x%.8x \n", (SCI_BASE_ADDR+ (i++)*0x10),*((u32*)(reg_global++)));
-    sci_record_format(&content_buf,"0x%.2x:  SCI_REG->RegRxCount        :  0x%.8x \n", (SCI_BASE_ADDR+ (i++)*0x10),*((u32*)(reg_global++)));
-    sci_record_format(&content_buf,"0x%.2x:  SCI_REG->RegIntMask        :  0x%.8x \n", (SCI_BASE_ADDR+ (i++)*0x10),*((u32*)(reg_global++)));
-    sci_record_format(&content_buf,"0x%.2x:  SCI_REG->RegIntRaw         :  0x%.8x \n", (SCI_BASE_ADDR+ (i++)*0x10),*((u32*)(reg_global++)));
-    sci_record_format(&content_buf,"0x%.2x:  SCI_REG->RegIntStatus      :  0x%.8x \n", (SCI_BASE_ADDR+ (i++)*0x10),*((u32*)(reg_global++)));
-    sci_record_format(&content_buf,"0x%.2x:  SCI_REG->RegIntClear       :  0x%.8x \n", (SCI_BASE_ADDR+ (i++)*0x10),*((u32*)(reg_global++)));
-    sci_record_format(&content_buf,"0x%.2x:  SCI_REG->RegSyncAct        :  0x%.8x \n", (SCI_BASE_ADDR+ (i++)*0x10),*((u32*)(reg_global++)));
-    sci_record_format(&content_buf,"0x%.2x:  SCI_REG->RegSyncData       :  0x%.8x \n", (SCI_BASE_ADDR+ (i++)*0x10),*((u32*)(reg_global++)));
-    sci_record_format(&content_buf,"0x%.2x:  SCI_REG->RegSyncRaw        :  0x%.8x \n", (SCI_BASE_ADDR+ (i++)*0x10),*((u32*)(reg_global++)));
-    sci_record_format(&content_buf,"0x%.2x:  SCI_REG PADDING            :  0x%.8x \n", (SCI_BASE_ADDR+ (i++)*0x10),*((u32*)(reg_global++)));
-    sci_record_format(&content_buf,"0x%.2x:  SCI_REG PADDING            :  0x%.8x \n", (SCI_BASE_ADDR+ (i++)*0x10),*((u32*)(reg_global++)));
+    sci_record_format(tmp_buf_start,&content_buf,"The current register variable are\n");
+    sci_record_format(tmp_buf_start,&content_buf,"0x%.2x:  SCI_REG->RegData           :  0x%.8x \n", (SCI_BASE_ADDR+ (i++)*0x10),*((u32*)(reg_global++)));
+    sci_record_format(tmp_buf_start,&content_buf,"0x%.2x:  SCI_REG->RegCtrl0          :  0x%.8x \n", (SCI_BASE_ADDR+ (i++)*0x10),*((u32*)(reg_global++)));
+    sci_record_format(tmp_buf_start,&content_buf,"0x%.2x:  SCI_REG->RegCtrl1          :  0x%.8x \n", (SCI_BASE_ADDR+ (i++)*0x10),*((u32*)(reg_global++)));
+    sci_record_format(tmp_buf_start,&content_buf,"0x%.2x:  SCI_REG->RegCtrl2          :  0x%.8x \n", (SCI_BASE_ADDR+ (i++)*0x10),*((u32*)(reg_global++)));
+    sci_record_format(tmp_buf_start,&content_buf,"0x%.2x:  SCI_REG->RegClkICC         :  0x%.8x \n", (SCI_BASE_ADDR+ (i++)*0x10),*((u32*)(reg_global++)));
+    sci_record_format(tmp_buf_start,&content_buf,"0x%.2x:  SCI_REG->RegBaudValue      :  0x%.8x \n", (SCI_BASE_ADDR+ (i++)*0x10),*((u32*)(reg_global++)));
+    sci_record_format(tmp_buf_start,&content_buf,"0x%.2x:  SCI_REG->RegBaud           :  0x%.8x \n", (SCI_BASE_ADDR+ (i++)*0x10),*((u32*)(reg_global++)));
+    sci_record_format(tmp_buf_start,&content_buf,"0x%.2x:  SCI_REG->RegTide           :  0x%.8x \n", (SCI_BASE_ADDR+ (i++)*0x10),*((u32*)(reg_global++)));
+    sci_record_format(tmp_buf_start,&content_buf,"0x%.2x:  SCI_REG->RegDMACtrl        :  0x%.8x \n", (SCI_BASE_ADDR+ (i++)*0x10),*((u32*)(reg_global++)));
+    sci_record_format(tmp_buf_start,&content_buf,"0x%.2x:  SCI_REG->RegStable         :  0x%.8x \n", (SCI_BASE_ADDR+ (i++)*0x10),*((u32*)(reg_global++)));
+    sci_record_format(tmp_buf_start,&content_buf,"0x%.2x:  SCI_REG->RegATime          :  0x%.8x \n", (SCI_BASE_ADDR+ (i++)*0x10),*((u32*)(reg_global++)));
+    sci_record_format(tmp_buf_start,&content_buf,"0x%.2x:  SCI_REG->RegDTime          :  0x%.8x \n", (SCI_BASE_ADDR+ (i++)*0x10),*((u32*)(reg_global++)));
+    sci_record_format(tmp_buf_start,&content_buf,"0x%.2x:  SCI_REG->RegATRSTime       :  0x%.8x \n", (SCI_BASE_ADDR+ (i++)*0x10),*((u32*)(reg_global++)));
+    sci_record_format(tmp_buf_start,&content_buf,"0x%.2x:  SCI_REG->RegATRDTime       :  0x%.8x \n", (SCI_BASE_ADDR+ (i++)*0x10),*((u32*)(reg_global++)));
+    sci_record_format(tmp_buf_start,&content_buf,"0x%.2x:  SCI_REG->RegStopTime       :  0x%.8x \n", (SCI_BASE_ADDR+ (i++)*0x10),*((u32*)(reg_global++)));
+    sci_record_format(tmp_buf_start,&content_buf,"0x%.2x:  SCI_REG->RegStartTime      :  0x%.8x \n", (SCI_BASE_ADDR+ (i++)*0x10),*((u32*)(reg_global++)));
+    sci_record_format(tmp_buf_start,&content_buf,"0x%.2x:  SCI_REG->RegRetry          :  0x%.8x \n", (SCI_BASE_ADDR+ (i++)*0x10),*((u32*)(reg_global++)));
+    sci_record_format(tmp_buf_start,&content_buf,"0x%.2x:  SCI_REG->RegChTimeLS       :  0x%.8x \n", (SCI_BASE_ADDR+ (i++)*0x10),*((u32*)(reg_global++)));
+    sci_record_format(tmp_buf_start,&content_buf,"0x%.2x:  SCI_REG->RegChTimeMS       :  0x%.8x \n", (SCI_BASE_ADDR+ (i++)*0x10),*((u32*)(reg_global++)));
+    sci_record_format(tmp_buf_start,&content_buf,"0x%.2x:  SCI_REG->RegBlkTimeLS      :  0x%.8x \n", (SCI_BASE_ADDR+ (i++)*0x10),*((u32*)(reg_global++)));
+    sci_record_format(tmp_buf_start,&content_buf,"0x%.2x:  SCI_REG->RegBlkTimeMS      :  0x%.8x \n", (SCI_BASE_ADDR+ (i++)*0x10),*((u32*)(reg_global++)));
+    sci_record_format(tmp_buf_start,&content_buf,"0x%.2x:  SCI_REG->RegChGuard        :  0x%.8x \n", (SCI_BASE_ADDR+ (i++)*0x10),*((u32*)(reg_global++)));
+    sci_record_format(tmp_buf_start,&content_buf,"0x%.2x:  SCI_REG->RegBlkGuard       :  0x%.8x \n", (SCI_BASE_ADDR+ (i++)*0x10),*((u32*)(reg_global++)));
+    sci_record_format(tmp_buf_start,&content_buf,"0x%.2x:  SCI_REG->RegRxTime         :  0x%.8x \n", (SCI_BASE_ADDR+ (i++)*0x10),*((u32*)(reg_global++)));
+    sci_record_format(tmp_buf_start,&content_buf,"0x%.2x:  SCI_REG->RegFlag           :  0x%.8x \n", (SCI_BASE_ADDR+ (i++)*0x10),*((u32*)(reg_global++)));
+    sci_record_format(tmp_buf_start,&content_buf,"0x%.2x:  SCI_REG->RegTxCount        :  0x%.8x \n", (SCI_BASE_ADDR+ (i++)*0x10),*((u32*)(reg_global++)));
+    sci_record_format(tmp_buf_start,&content_buf,"0x%.2x:  SCI_REG->RegRxCount        :  0x%.8x \n", (SCI_BASE_ADDR+ (i++)*0x10),*((u32*)(reg_global++)));
+    sci_record_format(tmp_buf_start,&content_buf,"0x%.2x:  SCI_REG->RegIntMask        :  0x%.8x \n", (SCI_BASE_ADDR+ (i++)*0x10),*((u32*)(reg_global++)));
+    sci_record_format(tmp_buf_start,&content_buf,"0x%.2x:  SCI_REG->RegIntRaw         :  0x%.8x \n", (SCI_BASE_ADDR+ (i++)*0x10),*((u32*)(reg_global++)));
+    sci_record_format(tmp_buf_start,&content_buf,"0x%.2x:  SCI_REG->RegIntStatus      :  0x%.8x \n", (SCI_BASE_ADDR+ (i++)*0x10),*((u32*)(reg_global++)));
+    sci_record_format(tmp_buf_start,&content_buf,"0x%.2x:  SCI_REG->RegIntClear       :  0x%.8x \n", (SCI_BASE_ADDR+ (i++)*0x10),*((u32*)(reg_global++)));
+    sci_record_format(tmp_buf_start,&content_buf,"0x%.2x:  SCI_REG->RegSyncAct        :  0x%.8x \n", (SCI_BASE_ADDR+ (i++)*0x10),*((u32*)(reg_global++)));
+    sci_record_format(tmp_buf_start,&content_buf,"0x%.2x:  SCI_REG->RegSyncData       :  0x%.8x \n", (SCI_BASE_ADDR+ (i++)*0x10),*((u32*)(reg_global++)));
+    sci_record_format(tmp_buf_start,&content_buf,"0x%.2x:  SCI_REG->RegSyncRaw        :  0x%.8x \n", (SCI_BASE_ADDR+ (i++)*0x10),*((u32*)(reg_global++)));
+    sci_record_format(tmp_buf_start,&content_buf,"0x%.2x:  SCI_REG PADDING            :  0x%.8x \n", (SCI_BASE_ADDR+ (i++)*0x10),*((u32*)(reg_global++)));
+    sci_record_format(tmp_buf_start,&content_buf,"0x%.2x:  SCI_REG PADDING            :  0x%.8x \n", (SCI_BASE_ADDR+ (i++)*0x10),*((u32*)(reg_global++)));
 
     return reg_global;
     

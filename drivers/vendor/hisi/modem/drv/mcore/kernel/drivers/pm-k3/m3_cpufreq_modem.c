@@ -16,7 +16,7 @@
 #include <m3_modem.h>
 #include <m3_cpufreq_modem.h>
 #include <bsp_reset.h>
-
+#include <product_config.h>
 __ao_data T_CPUFREQ_ST g_cpufreq;
 
 __ao_data T_CPUFREQ_PROFILE gCpufrqProfile[CPUFREQ_MAX_PROFILE+1] =
@@ -165,11 +165,13 @@ void dfs_config_reg(u32 cur, u32 new)
 	/* 7 */
 
 	/* 8 */
+	#ifndef BSP_CONFIG_BOARD_SFT
 	do
 	{
 		tmp = readl(HI_SYSCTRL_BASE_ADDR + HI_CRG_A9PLL_CFG0_OFFSET);
 		tmp = (tmp >> 26) & 0x1;
 	}while(!tmp);
+	#endif
 
 	/* 9 */
 	tmp = readl(HI_SYSCTRL_BASE_ADDR + HI_CRG_A9PLL_CFG1_OFFSET);

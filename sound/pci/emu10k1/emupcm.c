@@ -1278,26 +1278,7 @@ static int snd_emu10k1_capture_efx_open(struct snd_pcm_substream *substream)
 	spin_lock_irq(&emu->reg_lock);
 	if (emu->card_capabilities->emu_model) {
 		/*  Nb. of channels has been increased to 16 */
-		/* TODO
-		 * SNDRV_PCM_FMTBIT_S16_LE | SNDRV_PCM_FMTBIT_S32_LE
-		 * SNDRV_PCM_RATE_44100 | SNDRV_PCM_RATE_48000 |
-		 * SNDRV_PCM_RATE_88200 | SNDRV_PCM_RATE_96000 |
-		 * SNDRV_PCM_RATE_176400 | SNDRV_PCM_RATE_192000
-		 * rate_min = 44100,
-		 * rate_max = 192000,
-		 * channels_min = 16,
-		 * channels_max = 16,
-		 * Need to add mixer control to fix sample rate
-		 *                 
-		 * There are 32 mono channels of 16bits each.
-		 * 24bit Audio uses 2x channels over 16bit
-		 * 96kHz uses 2x channels over 48kHz
-		 * 192kHz uses 4x channels over 48kHz
-		 * So, for 48kHz 24bit, one has 16 channels
-		 * for 96kHz 24bit, one has 8 channels
-		 * for 192kHz 24bit, one has 4 channels
-		 *
-		 */
+
 #if 1
 		switch (emu->emu1010.internal_clock) {
 		case 0:

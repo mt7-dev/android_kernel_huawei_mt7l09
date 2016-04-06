@@ -83,7 +83,14 @@ enum AT_MN_MSGTYPE_ENUM
 
     MN_CALL_APP_XLEMA_REQ,                                                      /* _H2ASN_MsgChoice MN_CALL_APP_REQ_MSG_STRU */
 
-    MN_CALL_APP_SET_CSSN_REQ,                                                /* _H2ASN_MsgChoice MN_CALL_APP_REQ_MSG_STRU */
+    MN_CALL_APP_SET_CSSN_REQ,                                                   /* _H2ASN_MsgChoice MN_CALL_APP_REQ_MSG_STRU */
+
+    MN_CALL_APP_CALL_MODIFY_REQ,                                                /* _H2ASN_MsgChoice MN_CALL_APP_REQ_MSG_STRU */
+    MN_CALL_APP_CALL_ANSWER_REMOTE_MODIFY_REQ,                                  /* _H2ASN_MsgChoice MN_CALL_APP_REQ_MSG_STRU */
+
+    TAF_CALL_APP_ECONF_DIAL_REQ,                                                /* _H2ASN_MsgChoice MN_CALL_APP_REQ_MSG_STRU */
+    TAF_CALL_APP_GET_ECONF_CALLED_INFO_REQ,                                     /* _H2ASN_MsgChoice MN_CALL_APP_REQ_MSG_STRU */
+
 
     /* AT与MSG模块间消息 */
     MN_APP_MSG_CLASS_MSG                                    = TAF_MSG_APP_MSG_BASE,
@@ -196,7 +203,7 @@ typedef struct
 typedef struct
 {
     VOS_MSG_HEADER
-    VOS_UINT16                          usMsgName;                              /* ??? */
+    VOS_UINT16                          usMsgName;
     VOS_UINT8                           aucReserved1[2];
     MN_CLIENT_ID_T                      clientId;
     VOS_UINT16                          usLen;

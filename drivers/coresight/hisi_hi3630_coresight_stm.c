@@ -128,7 +128,6 @@ struct stm_drvdata {
 	struct miscdevice	miscdev;
 	struct clk		*clk_at;
 	struct clk		*clk_dbg;
-	struct regulator_bulk_data *top_cssys_regu;
 	spinlock_t		spinlock;
 	struct channel_space	chs;
 	bool			enable;
@@ -138,7 +137,6 @@ struct stm_drvdata {
 
 static struct stm_drvdata *stmdrvdata;
 
-#if 0
 static int stm_enable_clock(struct stm_drvdata *drvdata)
 {
 	int ret = 0;
@@ -163,7 +161,6 @@ static void stm_disable_clock(struct stm_drvdata *drvdata)
 	clk_disable_unprepare(drvdata->clk_at);
 	clk_disable_unprepare(drvdata->clk_dbg);
 }
-#endif
 
 static int stm_hwevent_isenable(struct stm_drvdata *drvdata)
 {
@@ -281,18 +278,9 @@ static int stm_enable(struct coresight_device *csdev)
 	struct stm_drvdata *drvdata = dev_get_drvdata(csdev->dev.parent);
 
 	int ret;
-#if 1
-	ret = regulator_bulk_enable(1, drvdata->top_cssys_regu);
-	if (ret) {
-		printk("failed to enable regulators %d\n", ret);
-		return ret;
-	}
-#else
 	ret = stm_enable_clock(drvdata);
 	if (ret)
 		return ret;
-#endif
-
 
 	spin_lock(&drvdata->spinlock);
 	__stm_enable(drvdata);
@@ -364,14 +352,7 @@ static void stm_disable(struct coresight_device *csdev)
 	/* Wait for 100ms so that pending data has been written to HW */
 	msleep(100);
 
-#if 1
-	if (regulator_is_enabled(drvdata->top_cssys_regu->consumer)) {
-		regulator_bulk_disable(1, drvdata->top_cssys_regu);
-	}
-#else
 	stm_disable_clock(drvdata);
-#endif
-
 
 	dev_info(drvdata->dev, "STM tracing disabled\n");
 }
@@ -719,20 +700,15 @@ static int stm_probe(struct platform_device *pdev)
 	if (pdev->dev.of_node) {
 		pdata = of_get_coresight_platform_data(dev, pdev->dev.of_node);
 		if (IS_ERR(pdata)) {
-			dev_err(&pdev->dev, "of_get_coresight_platform_data error!\n");
+			dev_err(drvdata->dev, "of_get_coresight_platform_data error!\n");
 			return PTR_ERR(pdata);
 		}
 		pdev->dev.platform_data = pdata;
 	}
 
-	if (!pdata) {
-		dev_err(&pdev->dev, "coresight pdata is NULL\n");
-		return -ENODEV;
-	}
-
 	drvdata = devm_kzalloc(dev, sizeof(*drvdata), GFP_KERNEL);
 	if (!drvdata) {
-		dev_err(&pdev->dev, "coresight kzalloc error!\n");
+		dev_err(drvdata->dev, "coresight kzalloc error!\n");
 		return -ENOMEM;
 	}
 	/* Store the driver data pointer for use in exported functions */
@@ -779,9 +755,7 @@ static int stm_probe(struct platform_device *pdev)
 	}
 
 	spin_lock_init(&drvdata->spinlock);
-#if 1
-	drvdata->top_cssys_regu = &pdata->top_cssys_regu;
-#else
+
 	drvdata->clk_at= devm_clk_get(dev, pdata->clock_at);
 	if (IS_ERR(drvdata->clk_at)) {
 		dev_err(drvdata->dev, "coresight get clock error!\n");
@@ -807,7 +781,6 @@ static int stm_probe(struct platform_device *pdev)
 		dev_err(drvdata->dev, "coresight set clock rate error!\n");
 		goto err;
 	}
-#endif
 
 	drvdata->entity = OST_ENTITY_ALL;
 	drvdata->status = false;

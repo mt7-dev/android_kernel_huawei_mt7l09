@@ -740,7 +740,7 @@ config IKCONFIG_PROC
 
 config LOG_BUF_SHIFT
 	int "Kernel log buffer size (16 => 64KB, 18 => 256KB)"
-	range 12 18
+	range 12 20
 	default 18
 	help
 	  Select kernel log buffer size as a power of 2.
@@ -847,6 +847,37 @@ config CGROUP_FREEZER
 	help
 	  Provides a way to freeze and unfreeze all tasks in a
 	  cgroup.
+config CGROUP_PIDS
+	bool "PIDs cgroup subsystem"
+	help
+	  Provides enforcement of process number limits in the scope of a
+	  cgroup. Any attempt to fork more processes than is allowed in the
+	  cgroup will fail. PIDs are fundamentally a global resource because it
+	  is fairly trivial to reach PID exhaustion before you reach even a
+	  conservative kmemcg limit. As a result, it is possible to grind a
+	  system to halt without being limited by other cgroup policies. The
+	  PIDs cgroup subsystem is designed to stop this from happening.
+	  It should be noted that organisational operations (such as attaching
+	  to a cgroup hierarchy will *not* be blocked by the PIDs subsystem),
+	  since the PIDs limit only affects a process's ability to fork, not to
+	  attach to a cgroup.
+
+config CGROUP_PIDS_NOTIFY_USER
+	 bool "a notify user function for PIDs cgroup subsystem"
+	 depends on CGROUP_PIDS
+	 help
+	   Provides enforcement of process number limits in the scope of a
+	   cgroup. Any attempt to fork more soft limit processes than is allowed in the
+	   cgroup will notify the user space. user space monitor the event, it will do more
+	   control
+
+config CGROUP_IONICE
+	bool "ionice cgroup controller"
+	depends on BLOCK
+	help
+	  Provides a way to set ionice for tasks in a cgroup.
+	  It's useful in mobile devices where certain background apps
+	  are doing heavy io work.
 
 config CGROUP_DEVICE
 	bool "Device controller for cgroups"
@@ -1384,6 +1415,14 @@ config FUTEX
 	  Disabling this option will cause the kernel to be built without
 	  support for "fast userspace mutexes".  The resulting kernel may not
 	  run glibc-based applications correctly.
+
+config HAVE_FUTEX_CMPXCHG
+	bool
+	depends on FUTEX
+	help
+	  Architectures should select this if futex_atomic_cmpxchg_inatomic()
+	  is implemented and always working. This removes a couple of runtime
+	  checks.
 
 config EPOLL
 	bool "Enable eventpoll support" if EXPERT

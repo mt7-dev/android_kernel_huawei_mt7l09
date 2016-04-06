@@ -116,6 +116,8 @@ struct cpu_cache_fns {
 	void (*dma_map_area)(const void *, size_t, int);
 	void (*dma_unmap_area)(const void *, size_t, int);
 
+	void (*dma_inv_range)(const void *, const void *);
+	void (*dma_clean_range)(const void *, const void *);
 	void (*dma_flush_range)(const void *, const void *);
 };
 
@@ -143,6 +145,8 @@ extern struct cpu_cache_fns cpu_cache;
  */
 #define dmac_map_area			cpu_cache.dma_map_area
 #define dmac_unmap_area			cpu_cache.dma_unmap_area
+#define dmac_inv_range			cpu_cache.dma_inv_range
+#define dmac_clean_range		cpu_cache.dma_clean_range
 #define dmac_flush_range		cpu_cache.dma_flush_range
 
 #else
@@ -155,6 +159,8 @@ extern void __cpuc_flush_user_range(unsigned long, unsigned long, unsigned int);
 extern void __cpuc_coherent_kern_range(unsigned long, unsigned long);
 extern int  __cpuc_coherent_user_range(unsigned long, unsigned long);
 extern void __cpuc_flush_dcache_area(void *, size_t);
+extern void __cpuc_flush_kern_louis_pm(void);
+extern void __cpuc_flush_kern_all_pm(void);
 
 /*
  * These are private to the dma-mapping API.  Do not use directly.
@@ -164,6 +170,8 @@ extern void __cpuc_flush_dcache_area(void *, size_t);
  */
 extern void dmac_map_area(const void *, size_t, int);
 extern void dmac_unmap_area(const void *, size_t, int);
+extern void dmac_inv_range(const void *, const void *);
+extern void dmac_clean_range(const void *, const void *);
 extern void dmac_flush_range(const void *, const void *);
 
 #endif
@@ -213,6 +221,7 @@ extern void copy_to_user_page(struct vm_area_struct *, struct page *,
 static inline void __flush_icache_all(void)
 {
 	__flush_icache_preferred();
+	dsb();
 }
 
 /*
@@ -221,11 +230,12 @@ static inline void __flush_icache_all(void)
 #define flush_cache_louis()		__cpuc_flush_kern_louis()
 
 #define flush_cache_all()		__cpuc_flush_kern_all()
-
+#define flush_cache_louis_pm()		__cpuc_flush_kern_louis_pm()
+#define flush_cache_all_pm()		__cpuc_flush_kern_all_pm()
 
 /*HI3630: flush all cpu all cache*/
 #ifndef CONFIG_SMP
-#define hi3630_fc_allcpu_allcache()		flush_cache_all()
+#define hi3630_fc_allcpu_allcache()             flush_cache_all()
 #else
 extern void hi3630_fc_allcpu_allcache(void);
 #endif
@@ -446,6 +456,17 @@ static inline void __sync_cache_range_r(volatile void *p, size_t size)
 
 #define sync_cache_w(ptr) __sync_cache_range_w(ptr, sizeof *(ptr))
 #define sync_cache_r(ptr) __sync_cache_range_r(ptr, sizeof *(ptr))
+
+#ifdef CONFIG_FREE_PAGES_RDONLY
+int set_memory_ro(unsigned long addr, int numpages);
+int set_memory_rw(unsigned long addr, int numpages);
+
+#define mark_addr_rdonly(a)	set_memory_ro((unsigned long)a, 1);
+#define mark_addr_rdwrite(a)	set_memory_rw((unsigned long)a, 1);
+#else
+#define mark_addr_rdonly(a)
+#define mark_addr_rdwrite(a)
+#endif
 
 /*
  * Disabling cache access for one CPU in an ARMv7 SMP system is tricky.

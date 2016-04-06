@@ -36,7 +36,7 @@ u32 g_ul_socp_vote_rst = 0;
 * 返 回 值  :  无
 *****************************************************************************/
 /*lint -save -e101 -e550 */
-void socp_get_idle_buffer(SOCP_RING_BUF_S *pRingBuffer, SOCP_BUFFER_RW_S *pRWBuffer)
+void socp_get_idle_buffer(SOCP_RING_BUF_S *pRingBuffer, SOCP_BUFFER_RW_STRU *pRWBuffer)
 {
     if (pRingBuffer->u32Write < pRingBuffer->u32Read)
     {
@@ -80,7 +80,7 @@ void socp_get_idle_buffer(SOCP_RING_BUF_S *pRingBuffer, SOCP_BUFFER_RW_S *pRWBuf
 *
 * 返 回 值  :  无
 *****************************************************************************/
-void socp_get_data_buffer(SOCP_RING_BUF_S *pRingBuffer, SOCP_BUFFER_RW_S *pRWBuffer)
+void socp_get_data_buffer(SOCP_RING_BUF_S *pRingBuffer, SOCP_BUFFER_RW_STRU *pRWBuffer)
 {
     if (pRingBuffer->u32Read <= pRingBuffer->u32Write)
     {
@@ -486,7 +486,7 @@ s32 socp_reset_enc_chan(u32 u32ChanID)
 *****************************************************************************/
 u32 socp_get_enc_rd_size(u32 u32ChanID)
 {
-    SOCP_BUFFER_RW_S Buff;
+    SOCP_BUFFER_RW_STRU Buff;
 
     /* 根据读写指针获取buffer */
     SOCP_REG_READ(SOCP_REG_ENCSRC_RDQRPTR(u32ChanID), g_strSocpStat.sEncSrcChan[u32ChanID].sRdBuf.u32Read);
@@ -700,7 +700,7 @@ s32 socp_init(void)
 * 返 回 值  : 申请及配置成功与否的标识码
 *****************************************************************************/
 s32 bsp_socp_coder_set_src_chan(SOCP_CODER_SRC_ENUM_U32 enSrcChanID,
-                                            SOCP_CODER_SRC_CHAN_S *pSrcAttr)
+                                            SOCP_CODER_SRC_CHAN_STRU *pSrcAttr)
 {    
     u32 start;
     u32 end;
@@ -1178,7 +1178,7 @@ s32 bsp_socp_register_event_cb(u32 u32ChanID, socp_event_cb EventCB)
 *
 * 返 回 值  : 获取成功与否的标识码
 *****************************************************************************/
-s32 bsp_socp_get_write_buff(u32 u32SrcChanID, SOCP_BUFFER_RW_S *pBuff)
+s32 bsp_socp_get_write_buff(u32 u32SrcChanID, SOCP_BUFFER_RW_STRU *pBuff)
 {
     u32 u32ChanID;
     u32 u32ChanType;
@@ -1236,7 +1236,7 @@ s32 bsp_socp_write_done(u32 u32SrcChanID, u32 u32WrtSize)
     u32 u32ChanID;
     u32 u32ChanType;
     u32 u32WrtPad;
-    SOCP_BUFFER_RW_S RwBuff;
+    SOCP_BUFFER_RW_STRU RwBuff;
 
     /* 判断是否已经初始化 */
     SOCP_CHECK_INIT();
@@ -1361,7 +1361,7 @@ s32 bsp_socp_register_rd_cb(u32 u32SrcChanID, socp_rd_cb RdCB)
 *
 * 返 回 值  : 获取成功与否的标识码
 *****************************************************************************/
-s32 bsp_socp_get_rd_buffer(u32 u32SrcChanID, SOCP_BUFFER_RW_S *pBuff)
+s32 bsp_socp_get_rd_buffer(u32 u32SrcChanID, SOCP_BUFFER_RW_STRU *pBuff)
 {
     u32 u32ChanID;
     u32 u32ChanType;
@@ -1418,7 +1418,7 @@ s32 bsp_socp_read_rd_done(u32 u32SrcChanID, u32 u32RDSize)
 {
     u32 u32ChanID;
     u32 u32ChanType;
-    SOCP_BUFFER_RW_S RwBuff;
+    SOCP_BUFFER_RW_STRU RwBuff;
 
     /* 判断是否已经初始化 */
     SOCP_CHECK_INIT();

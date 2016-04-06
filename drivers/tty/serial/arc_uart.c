@@ -393,14 +393,7 @@ arc_serial_set_termios(struct uart_port *port, struct ktermios *new,
 	uartl = hw_val & 0xFF;
 	uarth = (hw_val >> 8) & 0xFF;
 
-	/*
-	 * UART ISS(Instruction Set simulator) emulation has a subtle bug:
-	 * A existing value of Baudh = 0 is used as a indication to startup
-	 * it's internal state machine.
-	 * Thus if baudh is set to 0, 2 times, it chokes.
-	 * This happens with BAUD=115200 and the formaula above
-	 * Until that is fixed, when running on ISS, we will set baudh to !0
-	 */
+
 	if (uart->is_emulated)
 		uarth = 1;
 

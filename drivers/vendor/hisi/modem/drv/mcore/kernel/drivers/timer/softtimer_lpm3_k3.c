@@ -248,25 +248,12 @@ s32 bsp_softtimer_free(struct softtimer_list *p)
 	p->init_flags = 0;
 	 return OK;   
 }
-static void expire_node_handler(struct list_head *head_ptr)
-{
-    struct softtimer_list *p=NULL;
-    while(!list_empty(head_ptr))
-    {
-        p = list_first_entry(head_ptr,struct softtimer_list,entry);
-	 list_del_init(&p->entry);
-	 if(p->func)
-        {
-            p->func(p->para);
-        }
-    }
-    return;
-}
 static void thread_softtimer_fun(void const *obj)
 {
 	struct softtimer_list     *p = NULL;
-	struct list_head ready_for_handle;
 	unsigned long flags;
+	softtimer_func func =NULL;
+	u32 para = 0;
 	/* coverity[no_escape] */
 	/*lint --e{569 } */
 	for( ; ; )
@@ -281,17 +268,25 @@ static void thread_softtimer_fun(void const *obj)
 			p = list_first_entry(&(timer_control.timer_list_head),struct softtimer_list,entry);
 			if(p->is_running == TIMER_TRUE)
 			{
-				INIT_LIST_HEAD(&ready_for_handle);
 				list_del_init(&p->entry);
 				p->is_running = TIMER_FALSE;
-				list_add_tail(&p->entry,&ready_for_handle);
+				func = p->func;
+				para = p->para;
+				local_irq_restore(flags); 
+				func(para);			
+				local_irq_save(flags);
 				while(!list_empty(&(timer_control.timer_list_head)))
 				{
 					p=list_first_entry(&(timer_control.timer_list_head),struct softtimer_list,entry);
 					if(0==p->timeout)
 					{
 						list_del_init(&p->entry);
-						list_add_tail(&p->entry,&ready_for_handle);
+						p->is_running = TIMER_FALSE;
+						func = p->func;
+						para = p->para;
+						local_irq_restore(flags); 
+						func(para);
+						local_irq_save(flags);
 					}
 					else
 						break;
@@ -306,21 +301,18 @@ static void thread_softtimer_fun(void const *obj)
 				{  
 					stop_hard_timer();
 				}	
-				local_irq_restore(flags); 
-				expire_node_handler(&ready_for_handle);				
 			}
 			else  if (p->is_running == TIMER_FALSE)
 			{
 				p->is_running = TIMER_TRUE;
 				start_hard_timer(p->timeout);
-				local_irq_restore(flags); 
 			}
 		}
 		else
 		{
 			stop_hard_timer();
-			local_irq_restore(flags); 
 		}
+		local_irq_restore(flags); 
 	} 
 }
 

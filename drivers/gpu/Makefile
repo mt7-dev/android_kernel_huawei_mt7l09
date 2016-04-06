@@ -1,2 +1,3 @@
-obj-y			+= drm/ vga/ arm/
-obj-$(CONFIG_TEGRA_HOST1X)	+= host1x/
+#obj-y			+= drm/ vga/ stub/ ion/ 
+#obj-$(CONFIG_MALI_DEVICE)		+= ump/
+obj-$(CONFIG_MALI_DEVICE)		+= arm/

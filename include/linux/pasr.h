@@ -9,12 +9,12 @@
 #include <linux/mm.h>
 #include <linux/spinlock.h>
 
-#ifdef CONFIG_HI3630_PASR
+//#if defined(CONFIG_HI6210_PASR) || defined(CONFIG_HI3635_PASR)
 /*#warning CONFIG_HI3630_PASR defined!*/
 //#define PASR_SECTION_SZ	(192 * 1024 * 1024)
 #define PASR_MAX_DIE_NR		4
 #define PASR_MAX_SECTION_NR_PER_DIE	8
-#endif
+//#endif
 
 #ifdef CONFIG_PASR
 

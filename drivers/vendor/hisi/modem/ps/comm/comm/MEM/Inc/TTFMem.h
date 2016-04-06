@@ -9,8 +9,7 @@
 #include "TTFLink.h"
 #include "TTFMemInterface.h"
 #include "TtfNvInterface.h"
-
-
+#include "DrvInterface.h"
 
 #ifdef __cplusplus
 #if __cplusplus
@@ -111,7 +110,7 @@ extern "C" {
     ((pstTtfMemPoolInfo)->aucLenIndexTable[(usLen)])
 
 
-#define TTF_MEM_BLK_MAX_BYTE_LEN            (3800)
+#define TTF_MEM_BLK_MAX_BYTE_LEN            (8204)
 
 
 #define TTF_MEM_NET_PAD                     (64)
@@ -141,18 +140,16 @@ Linux版本发生改变时需要重新check该值 */
 #endif
 
 #define TTF_NODE_MEM_RSV_LEN                offsetof(TTF_NODE_MEM_NODE_STRU, aucData)
-#define TTF_NODE_MEM_POOL_BASE_ADDR         g_stNodeMemSpace;
-
+#define TTF_NODE_MEM_POOL_BASE_ADDR         (g_stNodeMemSpace)
 
 /* C-CPU内存池掩码，对应位设置 */
 #define TTF_MEM_MASK_POOL(ucPoolId)         (((VOS_UINT32)1) << (ucPoolId))
 
-/* C-CPU上行IP包数据内存池需要给ADQ预留128块内存 */
-#define TTF_MEM_UL_IP_DATA_POOL_RSV_CNT     (128)
+/* C-CPU上行IP包数据内存池需要给ADQ预留内存，数量取决于IPF_ULAD0_DESC_SIZE + IPF_ULAD1_DESC_SIZE */
+#define TTF_MEM_UL_IP_DATA_POOL_RSV_CNT     (IPF_ULAD0_DESC_SIZE + IPF_ULAD1_DESC_SIZE)
 
 /* 内存申请失败复位打印个数 */
 #define TTF_MEM_DEBUG_NUM                   (60)
-
 
 #define TTF_MEM_RCOV_THRES                  (0x1F)
 #define TTF_MEM_RCOV_TIMER_LEN              (10 * 60 * 1000 * 33)   /* 默认10分钟, 单位slice */
@@ -705,7 +702,7 @@ extern VOS_UINT32 TTF_MemRegExtFreeCallBack
 
 extern VOS_VOID TTF_MemFreeShowMntnInfo( VOS_VOID );
 
-extern VOS_UINT32 TTF_GetCipherMemSection(VOS_UINT32 *pulBaseAddr);
+extern VOS_UINT32 TTF_GetCipherMemSection(VOS_UINT_PTR *pulBaseAddr);
 
 extern VOS_VOID TTF_NodeMemPoolInit(VOS_VOID);
 extern VOS_UINT8 *TTF_NodeMemAlloc_Debug(VOS_UINT32  ulPid, VOS_UINT16  usLen, VOS_UINT16  usFileId, VOS_UINT16  usLineNo);

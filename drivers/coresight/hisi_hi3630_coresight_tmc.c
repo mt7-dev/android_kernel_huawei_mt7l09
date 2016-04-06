@@ -28,9 +28,7 @@
 #include <linux/hisi_hi3630_of_coresight.h>
 #include <linux/hisi_hi3630_coresight.h>
 #include <linux/ion.h>
-#include <linux/hisi_ion.h>
-#include <linux/syscalls.h>
-
+#include <linux/hisi/hisi_ion.h>
 #if 0
 #include <linux/usb/usb_qdss.h>
 #include <mach/memory.h>
@@ -39,14 +37,6 @@
 #include <asm/mach/hisi_memory_dump.h>
 #endif
 #include "hisi_hi3630_coresight_priv.h"
-
-struct linux_dirent {
-	unsigned long	d_ino;
-	unsigned long	d_off;
-	unsigned short	d_reclen;
-	char		d_name[1];
-};
-
 
 #define tmc_writel(drvdata, val, off)	__raw_writel((val), drvdata->base + off)
 #define tmc_readl(drvdata, off)		__raw_readl(drvdata->base + off)
@@ -145,7 +135,6 @@ struct tmc_drvdata {
 	struct miscdevice	miscdev;
 	struct clk		*clk_at;
 	struct clk		*clk_dbg;
-	struct regulator_bulk_data *top_cssys_regu;
 	spinlock_t		spinlock;
 	struct mutex		read_lock;
 	int			read_count;
@@ -169,7 +158,6 @@ struct tmc_drvdata {
 	struct ion_handle *ion_handle;
 };
 
-#if 0
 static int tmc_enable_clock(struct tmc_drvdata *drvdata)
 {
 	int ret = 0;
@@ -194,7 +182,6 @@ static void tmc_disable_clock(struct tmc_drvdata *drvdata)
 	clk_disable_unprepare(drvdata->clk_at);
 	clk_disable_unprepare(drvdata->clk_dbg);
 }
-#endif
 
 static void tmc_wait_for_ready(struct tmc_drvdata *drvdata)
 {
@@ -468,17 +455,10 @@ static int tmc_enable(struct tmc_drvdata *drvdata, enum tmc_mode mode)
 	int ret;
 	unsigned long flags;
 
-#if 1
-	ret = regulator_bulk_enable(1, drvdata->top_cssys_regu);
-	if (ret) {
-		printk("failed to enable regulators %d\n", ret);
-		return ret;
-	}
-#else
 	ret = tmc_enable_clock(drvdata);
 	if (ret)
 		return ret;
-#endif
+
 	mutex_lock(&drvdata->usb_lock);
 	if (drvdata->config_type == TMC_CONFIG_TYPE_ETR) {
 		if (drvdata->out_mode == TMC_ETR_OUT_MODE_USB) {
@@ -528,13 +508,9 @@ err1:
 #endif
 err0:
 	mutex_unlock(&drvdata->usb_lock);
-#if 1
-	if (regulator_is_enabled(drvdata->top_cssys_regu->consumer)) {
-		regulator_bulk_disable(1, drvdata->top_cssys_regu);
-	}
-#else
+
 	tmc_disable_clock(drvdata);
-#endif
+
 	return ret;
 }
 
@@ -553,44 +529,6 @@ static int tmc_enable_link(struct coresight_device *csdev, int inport,
 	return tmc_enable(drvdata, TMC_MODE_HARDWARE_FIFO);
 }
 
-#define MAX_ETB_FILE_LEN (128)
-extern char *etb_file_path;
-static void save_tmc_data(struct tmc_drvdata *drvdata)
-{
-	int fd;
-	long bytes;
-	mm_segment_t old_fs;
-	char new_filename[MAX_ETB_FILE_LEN] = {0};
-
-	old_fs = get_fs();
-	set_fs(KERNEL_DS);
-
-	memset(new_filename, 0, sizeof(new_filename));
-	snprintf(new_filename, sizeof(new_filename), "%setb.bin", etb_file_path);
-
-	fd = sys_creat(new_filename, 0755);
-	if (fd < 0) {
-		pr_err("<%s()>, create file failed! fd(%d)\n", __func__, fd);
-		set_fs(old_fs);
-		return;
-	}
-
-	bytes = sys_write((unsigned int)fd, (const char *)drvdata->buf, drvdata->size);
-	if ((u32)bytes != drvdata->size) {
-		pr_err("<%s()>, write data failed(write length not equal:0x%x)\n", __func__, (int)bytes);
-		sys_close(fd);
-		set_fs(old_fs);
-		return;
-	}
-
-	sys_fsync(fd);
-	sys_close(fd);
-	set_fs(old_fs);
-	pr_info("<%s()>, save etb file %s success!\n", __func__, new_filename);
-
-	return;
-}
-
 static void __tmc_etb_dump(struct tmc_drvdata *drvdata)
 {
 	enum tmc_mem_intf_width memwidth;
@@ -599,7 +537,6 @@ static void __tmc_etb_dump(struct tmc_drvdata *drvdata)
 	uint32_t read_data;
 	int i;
 
-	printk("enter __tmc_etb_dump!\n");
 	memwidth = BMVAL(tmc_readl(drvdata, CORESIGHT_DEVID), 8, 10);
 	if (memwidth == TMC_MEM_INTF_WIDTH_32BITS)
 		memwords = 1;
@@ -611,14 +548,14 @@ static void __tmc_etb_dump(struct tmc_drvdata *drvdata)
 		memwords = 8;
 
 	bufp = drvdata->buf;
-
-	for (i = 0; i < drvdata->size / BYTES_PER_WORD; i++) {
-		read_data = tmc_readl(drvdata, TMC_RRD);
-		//printk("read_data:0x%2x\n", read_data);
-		if (read_data == 0xFFFFFFFF)
-			return;
-		memcpy(bufp, &read_data, BYTES_PER_WORD);
-		bufp += BYTES_PER_WORD;
+	while (1) {
+		for (i = 0; i < memwords; i++) {
+			read_data = tmc_readl(drvdata, TMC_RRD);
+			if (read_data == 0xFFFFFFFF)
+				return;
+			memcpy(bufp, &read_data, BYTES_PER_WORD);
+			bufp += BYTES_PER_WORD;
+		}
 	}
 }
 
@@ -713,13 +650,7 @@ out:
 	}
 	mutex_unlock(&drvdata->usb_lock);
 
-#if 1
-	if (regulator_is_enabled(drvdata->top_cssys_regu->consumer)) {
-		//regulator_bulk_disable(1, drvdata->top_cssys_regu);
-	}
-#else
 	tmc_disable_clock(drvdata);
-#endif
 
 	dev_info(drvdata->dev, "TMC disabled\n");
 }
@@ -729,7 +660,6 @@ static void tmc_disable_sink(struct coresight_device *csdev)
 	struct tmc_drvdata *drvdata = dev_get_drvdata(csdev->dev.parent);
 
 	tmc_disable(drvdata, TMC_MODE_CIRCULAR_BUFFER);
-	save_tmc_data(drvdata);
 }
 
 static void tmc_disable_link(struct coresight_device *csdev, int inport,
@@ -989,7 +919,7 @@ static ssize_t tmc_etr_store_out_mode(struct device *dev,
 	char str[10] = "";
 	unsigned long flags;
 	bool etr_bam_flag = false;
-	int ret = -1;
+	int ret;
 
 	if (strlen(buf) >= 10)
 		return -EINVAL;
@@ -1156,20 +1086,15 @@ static int tmc_probe(struct platform_device *pdev)
 	if (pdev->dev.of_node) {
 		pdata = of_get_coresight_platform_data(dev, pdev->dev.of_node);
 		if (IS_ERR(pdata)) {
-			dev_err(&pdev->dev, "of_get_coresight_platform_data error!\n");
+			dev_err(drvdata->dev, "of_get_coresight_platform_data error!\n");
 			return PTR_ERR(pdata);
 		}
 		pdev->dev.platform_data = pdata;
 	}
 
-	if (!pdata) {
-		dev_err(&pdev->dev, "coresight pdata is NULL\n");
-		return -ENODEV;
-	}
-
 	drvdata = devm_kzalloc(dev, sizeof(*drvdata), GFP_KERNEL);
 	if (!drvdata) {
-		dev_err(&pdev->dev, "coresight kzalloc error!\n");
+		dev_err(drvdata->dev, "coresight kzalloc error!\n");
 		return -ENOMEM;
 	}
 	drvdata->dev = &pdev->dev;
@@ -1191,14 +1116,7 @@ static int tmc_probe(struct platform_device *pdev)
 	spin_lock_init(&drvdata->spinlock);
 	mutex_init(&drvdata->read_lock);
 	mutex_init(&drvdata->usb_lock);
-#if 1
-	drvdata->top_cssys_regu = &pdata->top_cssys_regu;
-	ret = regulator_bulk_enable(1, drvdata->top_cssys_regu);
-	if (ret) {
-		printk("failed to enable regulators %d\n", ret);
-		return ret;
-	}
-#else
+
 	drvdata->clk_at= devm_clk_get(dev, pdata->clock_at);
 	if (IS_ERR(drvdata->clk_at)) {
 		dev_err(drvdata->dev, "coresight get clock error!\n");
@@ -1230,7 +1148,7 @@ static int tmc_probe(struct platform_device *pdev)
 		dev_err(drvdata->dev, "coresight clock prepare enable error!\n");
 		return ret;
 	}
-#endif
+
 	devid = tmc_readl(drvdata, CORESIGHT_DEVID);
 	drvdata->config_type = BMVAL(devid, 6, 7);
 
@@ -1249,14 +1167,11 @@ static int tmc_probe(struct platform_device *pdev)
 	if (drvdata->config_type == TMC_CONFIG_TYPE_ETR)
 		drvdata->size = SZ_1M;
 	else
-		drvdata->size = (tmc_readl(drvdata, TMC_RSZ) * BYTES_PER_WORD);
-#if 1
-	if (regulator_is_enabled(drvdata->top_cssys_regu->consumer)) {
-		regulator_bulk_disable(1, drvdata->top_cssys_regu);
-	}
-#else
+		drvdata->size = (tmc_readl(drvdata, TMC_RSZ) * BYTES_PER_WORD)
+				+ PAGE_SIZE;
+
 	tmc_disable_clock(drvdata);
-#endif
+
 	if (drvdata->config_type == TMC_CONFIG_TYPE_ETR) {
 		struct ion_client *client = NULL;
 		struct ion_handle *handle = NULL;
@@ -1270,7 +1185,7 @@ static int tmc_probe(struct platform_device *pdev)
 			dev_err(dev,"failed to create etr ion client!\n");
 			return -ENOMEM;
 		}
-		handle = ion_alloc(client, drvdata->size, PAGE_SIZE, ION_HEAP(ION_MISC_HEAP_ID), 0);
+		handle = ion_alloc(client, drvdata->size, PAGE_SIZE, ION_HEAP(ION_GRALLOC_HEAP_ID), 0);
 		if (IS_ERR_OR_NULL(handle)) {
 			dev_err(dev,"k3_etr failed to ion_alloc!\n");
 			goto err0;
@@ -1300,11 +1215,6 @@ static int tmc_probe(struct platform_device *pdev)
 			goto err0;
 #endif
 	} else {
-		drvdata->buf = devm_kzalloc(dev, drvdata->size, GFP_KERNEL);
-		if (!drvdata->buf) {
-			dev_err(dev,"coresight baddr kzalloc error!\n");
-			return -ENOMEM;
-		}
 #if 0
 		dev_info(dev,"tmc init type :! TMC_CONFIG_TYPE_ETR\n");
 		baddr = devm_kzalloc(dev, drvdata->size, GFP_KERNEL);

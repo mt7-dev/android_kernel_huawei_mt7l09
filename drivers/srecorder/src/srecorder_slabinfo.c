@@ -1,18 +1,4 @@
-/**
-    @copyright: Huawei Technologies Co., Ltd. 2012-2012. All rights reserved.
-    
-    @file: srecorder_slabinfo.c
-    
-    @brief: ¶ÁÈ¡slabinfoµÄÄÚÈÝ
-    
-    @version: 1.0 
-    
-    @author: QiDechun ID: 216641
-    
-    @date: 2012-06-21
-    
-    @history:
-*/
+
 
 /*----includes-----------------------------------------------------------------------*/
 
@@ -64,7 +50,11 @@
 
 /*----local macroes------------------------------------------------------------------*/
 
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(3, 8, 0))
+#ifdef CONFIG_SLAB
 #define check_irq_on()    do { } while(0)
+#endif
+#endif
 
 #ifdef CONFIG_SLUB
 #define OO_SHIFT 16
@@ -276,7 +266,7 @@ static int srecorder_format_slabinfo_header(srecorder_reserved_mem_info_t *pmem_
 {
     int bytes_read = 0;
     
-    if (unlikely(NULL == pmem_info) || unlikely(NULL == pmem_info->start_addr))
+    if (unlikely(NULL == pmem_info) || unlikely(NULL == pmem_info->start_addr))/* [false alarm]:there is pmem_info protect  */
     {
         SRECORDER_PRINTK("File [%s] line [%d] invalid param!\n", __FILE__, __LINE__);
         return -1;
@@ -354,7 +344,7 @@ static int srecorder_count_free(struct page *page)
         return 0;
     }
     
-    return page->objects - page->inuse;
+    return page->objects - page->inuse;/* [false alarm]:there is page protect before  */
 }
 
 
@@ -368,8 +358,9 @@ static unsigned long srecorder_count_partial(struct kmem_cache_node *n, int (*ge
     {
         return 0;
     }
-    
+/*lint -e666 */    
     if (spin_trylock_irqsave(&n->list_lock, flags))
+/*lint +e666 */
     {
         list_for_each_entry(page, &n->partial, lru)
         {
@@ -545,7 +536,7 @@ void srecorder_do_get_slabinfo(struct kmem_cache *cachep, struct slabinfo *sinfo
 
 
 #ifdef CONFIG_SLUB
-void srecorder_do_get_slabinfo(struct kmem_cache *s, struct slabinfo *sinfo)
+static void srecorder_do_get_slabinfo(struct kmem_cache *s, struct slabinfo *sinfo)
 {
     unsigned long nr_partials = 0;
     unsigned long nr_slabs = 0;
@@ -858,13 +849,11 @@ int srecorder_get_slabinfo(srecorder_reserved_mem_info_t *pmem_info)
     }
 #endif
 
-    /* DTS2012101502012 wupeng 20121015 begin */
     if (srecorder_log_has_been_dumped(SLABINFO_BIT6) || pmem_info->dump_modem_crash_log_only)
     {
         SRECORDER_PRINTK("slab info has been dumped successfully!\n");
         return 0;
     }
-    /* DTS2012101502012 wupeng 20121015 end */
     
     if (0 != srecorder_write_info_header(pmem_info, SLABINFO_BIT6, &pinfo_header))
     {

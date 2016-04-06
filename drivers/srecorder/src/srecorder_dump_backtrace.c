@@ -1,18 +1,4 @@
-/**
-    @copyright: Huawei Technologies Co., Ltd. 2012-2012. All rights reserved.
-    
-    @file: srecorder_dump_backtrace.c
-    
-    @brief: 进行内核堆栈回溯
-    
-    @version: 1.0 
-    
-    @author: QiDechun ID: 216641
-    
-    @date: 2012-07-04
-    
-    @history:
-*/
+
 
 /*----includes-----------------------------------------------------------------------*/
 
@@ -24,7 +10,9 @@
 #include <linux/version.h>
 #include <linux/ftrace.h>
 #include <asm/uaccess.h>
+#ifdef CONFIG_ARM
 #include <asm/system.h>
+#endif
 #include <asm/traps.h>
 
 #ifdef CONFIG_ARM_UNWIND
@@ -161,7 +149,7 @@ static void srecorder_dump_mem(srecorder_reserved_mem_info_t *pmem_info,
         return;
     }
     
-    /*
+   /*
    * We need to switch to kernel mode so that we can use __get_user
    * to safely read from kernel space.  Note that we now dump the
    * code first, just in case the backtrace kills us.
@@ -169,11 +157,16 @@ static void srecorder_dump_mem(srecorder_reserved_mem_info_t *pmem_info,
     fs = get_fs();
     set_fs(KERNEL_DS);
 
+#ifdef CONFIG_ARM
     bytes_read = SRECORDER_SNPRINTF(pmem_info->start_addr + pmem_info->bytes_read, pmem_info->bytes_left, 
         "%s%s(0x%08lx to 0x%08lx)\n", lvl, str, bottom, top);
+#else
+    bytes_read = SRECORDER_SNPRINTF(pmem_info->start_addr + pmem_info->bytes_read, pmem_info->bytes_left,
+        "%s%s(0x%016lx to 0x%016lx)\n", lvl, str, bottom, top);
+#endif
     srecorder_renew_meminfo(pmem_info, bytes_read);
     
-    for (first = bottom & (~31); first < top; first += 32)  /*32bit圆整*/
+    for (first = bottom & (~31); first < top; first += 32) /*32bit圆整*/
     {
         unsigned long p;
         char str[sizeof(" 12345678") * 8 + 1]; /*dump的深度为8*/
@@ -185,18 +178,23 @@ static void srecorder_dump_mem(srecorder_reserved_mem_info_t *pmem_info,
         {
             if (p >= bottom && p < top) 
             {
+#ifdef CONFIG_ARM
                 unsigned long val;
                 if (__get_user(val, (unsigned long *)p) == 0)
+#else
+                unsigned int val;
+                if (__get_user(val, (unsigned int *)p) == 0)
+#endif
                 {
                     sprintf(str + i * 9, " %08lx", val); /*9是" 12345678"的长度*/
                 }
                 else
                 {
-                    sprintf(str + i * 9, " ????????"); /*9是" 12345678"的长度*/
+                    sprintf(str + i * 9, " ?\?\?\?\?\?\?\?"); /*9是" 12345678"的长度*/
                 }
             }
         }
-        
+
         bytes_read = SRECORDER_SNPRINTF(pmem_info->start_addr + pmem_info->bytes_read, pmem_info->bytes_left, 
             "%s%04lx:%s\n", lvl, first & 0xffff, str);
         srecorder_renew_meminfo(pmem_info, bytes_read);
@@ -854,6 +852,24 @@ static int verify_stack(unsigned long sp)
 #endif
 
 
+void srecorder_dump_backtrace_entry64(srecorder_reserved_mem_info_t *pmem_info,
+    unsigned long where, unsigned long stack)
+{
+    int bytes_read = 0;
+
+    bytes_read = SRECORDER_SNPRINTF(pmem_info->start_addr
+        + pmem_info->bytes_read, pmem_info->bytes_left,
+        "[<%p>] %pS\n", (void *)where, (void *)where);
+    srecorder_renew_meminfo(pmem_info, bytes_read);
+
+    if (in_exception_text(where))
+    {
+        srecorder_dump_mem(pmem_info, "", "Exception stack", stack,
+            stack + sizeof(struct pt_regs));
+    }
+}
+
+
 /**
     @function: void srecorder_dump_backtrace(srecorder_reserved_mem_info_for_log_t *pmem_info, 
         struct pt_regs *regs, struct task_struct *tsk)
@@ -870,6 +886,7 @@ static int verify_stack(unsigned long sp)
 void srecorder_dump_backtrace(srecorder_reserved_mem_info_t *pmem_info, 
     struct pt_regs *regs, struct task_struct *tsk)
 {
+#ifdef CONFIG_ARM
 #ifdef CONFIG_ARM_UNWIND
     srecorder_unwind_backtrace(pmem_info, regs, tsk);
 #else
@@ -927,6 +944,52 @@ void srecorder_dump_backtrace(srecorder_reserved_mem_info_t *pmem_info,
     if (0 != ok)
     {
         srecorder_c_backtrace(fp, mode);
+    }
+#endif
+#else
+    /*  FOR ARM64 */
+    struct stackframe frame;
+    const register unsigned long current_sp asm ("sp");
+    int bytes_read = 0;
+
+    if (NULL == tsk)
+    {
+        tsk = current;
+    }
+
+    if (regs)
+    {
+        frame.fp = regs->regs[29];
+        frame.sp = regs->sp;
+        frame.pc = regs->pc;
+    }
+    else if (tsk == current)
+    {
+        frame.fp = (unsigned long)__builtin_frame_address(0);
+        frame.sp = current_sp;
+        frame.pc = (unsigned long)srecorder_dump_backtrace;
+    }
+    else
+    {
+        /*
+        * task blocked in __switch_to
+        */
+        frame.fp = thread_saved_fp(tsk);
+        frame.sp = thread_saved_sp(tsk);
+        frame.pc = thread_saved_pc(tsk);
+    }
+
+    while (1)
+    {
+        unsigned long where = frame.pc;
+        int ret;
+
+        ret = unwind_frame(&frame);
+        if (ret < 0)
+        {
+            break;
+        }
+        srecorder_dump_backtrace_entry64(pmem_info, where, frame.sp);
     }
 #endif
 }

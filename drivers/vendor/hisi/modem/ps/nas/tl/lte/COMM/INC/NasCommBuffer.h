@@ -33,7 +33,7 @@ extern "C" {
   2 macro
 *****************************************************************************/
 #define NAS_COMM_BUFF_ESM_MAX_ITEM_NUM                      (10)
-#define NAS_COMM_BUFF_ESM_ITEM_MAX_SIZE                     (1550)
+#define NAS_COMM_BUFF_ESM_ITEM_MAX_SIZE                     (1552)
 #define NAS_COMM_BUFF_EMM_MAX_ITEM_NUM                      (16)
 #define NAS_COMM_BUFF_EMM_ITEM_MAX_SIZE                     (300)
 

@@ -2029,6 +2029,7 @@ typedef union
 /********************************************************************************/
 /*    syssc 函数（项目名_模块名_寄存器名_成员名_set)        */
 /********************************************************************************/
+#ifndef __KERNEL__
 HI_SET_GET(hi_crg_clken3_reserved_1,reserved_1,HI_CRG_CLKEN3_T,HI_SYSSC_BASE_ADDR, HI_CRG_CLKEN3_OFFSET)
 HI_SET_GET(hi_crg_clken3_bbe_refclk_en,bbe_refclk_en,HI_CRG_CLKEN3_T,HI_SYSSC_BASE_ADDR, HI_CRG_CLKEN3_OFFSET)
 HI_SET_GET(hi_crg_clken3_a9_refclk_en,a9_refclk_en,HI_CRG_CLKEN3_T,HI_SYSSC_BASE_ADDR, HI_CRG_CLKEN3_OFFSET)
@@ -2884,6 +2885,7 @@ HI_SET_GET(hi_sec_ctrl2_region1_filter_st_addr,region1_filter_st_addr,HI_SEC_CTR
 HI_SET_GET(hi_sec_ctrl3_region1_filter_end_addr,region1_filter_end_addr,HI_SEC_CTRL3_T,HI_SYSSC_BASE_ADDR, HI_SEC_CTRL3_OFFSET)
 HI_SET_GET(hi_sec_ctrl4_secram_filter_st_addr,secram_filter_st_addr,HI_SEC_CTRL4_T,HI_SYSSC_BASE_ADDR, HI_SEC_CTRL4_OFFSET)
 HI_SET_GET(hi_sec_ctrl5_secram_filter_end_addr,secram_filter_end_addr,HI_SEC_CTRL5_T,HI_SYSSC_BASE_ADDR, HI_SEC_CTRL5_OFFSET)
+#endif
 
 #endif
 

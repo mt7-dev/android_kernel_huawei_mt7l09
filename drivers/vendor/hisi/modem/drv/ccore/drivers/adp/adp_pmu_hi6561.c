@@ -35,14 +35,18 @@
 spinlock_t    pctrl_pa_lock[HI6561_BUTT];
 /*lock for rf pwerctrl */
 spinlock_t    pctrl_rf_lock[HI6561_BUTT];
+/*lock for rf pwerctrl */
+spinlock_t    pctrl_fem_lock[HI6561_BUTT];
 
+u32 fem_power_vote = 0;/*0bit表示modem0，1bit表示modem1*/
 
 extern NV_RFPOWER_UNIT_STRU rf_power_unit;
 extern NV_PAPOWER_UNIT_STRU pa_power_unit;
 
 /*天线开关不下电特性nv*/
 extern unsigned int   sw_unpd_en;
-
+extern NV_DRV_FEM_SHARE_POWER fem_share_power;
+extern unsigned int		      rse_mipi_en;
 static HI6561_POWER_ID bsp_adpter_hi6561_powerid(EM_MODEM_CONSUMER_ID consumer_id)
 {
 	switch(consumer_id)
@@ -484,12 +488,160 @@ out:
 	return ret;
 
 }
+static PWC_COMM_STATUS_E pmu_hi6561_get_rf_powerstatus(PWC_COMM_MODEM_E modem_id)
+{
+
+	int ret = 0;
+	HI6561_POWER_ID power_id1 = PMU_HI6561_POWER_ID_BUTT;
+	HI6561_POWER_ID power_id2 = PMU_HI6561_POWER_ID_BUTT;
+	PWC_COMM_STATUS_E result = PWC_COMM_STATUS_BUTT;
+	unsigned long flags;
+	u8 status1 = 0;
+	u8 status2 = 0;
+
+	if(PWC_COMM_MODEM_BUTT<=modem_id){
+		mipi_print_error("invalid param with modem id %d\n",modem_id);
+		return PWC_COMM_STATUS_BUTT;
+	}
+
+	power_id1=bsp_adpter_hi6561_powerid(MODEM_RFIC0_ANALOG0);
+	power_id2=bsp_adpter_hi6561_powerid(MODEM_RFIC0_ANALOG1);
+
+	/*加锁保护*/
+	spin_lock_irqsave(&pctrl_rf_lock[modem_id],flags);
+    
+	ret=pmu_hi6561_power_status(power_id1,&status1,(HI6561_ID_ENUM)modem_id);
+	if(ret){
+		mipi_print_error("get rf power status failed!power id is %d\n",power_id1);
+		result = PWC_COMM_STATUS_BUTT;
+		goto out;
+	}
+
+	ret=pmu_hi6561_power_status(power_id2,&status2,(HI6561_ID_ENUM)modem_id);
+	if(ret){
+		mipi_print_error("get rf power status failed!power id is %d\n",power_id2);
+		result = PWC_COMM_STATUS_BUTT;
+		goto out;
+	}
+
+	if(status1&&status2){
+		result = PWC_COMM_MODEM_ON;
+	}
+	else if(0 == (status1 | status2)){
+		result = PWC_COMM_MODEM_OFF;
+	}
+	else{
+		result = PWC_COMM_STATUS_BUTT;
+	}
+    
+out:
+	spin_unlock_irqrestore(&pctrl_rf_lock[modem_id],flags);
+	return result;
+}
+static PWC_COMM_STATUS_E pmu_hi6561_get_fem_powerstatus(PWC_COMM_MODEM_E modem_id)
+{
+
+	int ret                  = 0;
+	HI6561_POWER_ID power_id = PMU_HI6561_POWER_ID_BUTT;
+	PWC_COMM_STATUS_E result = PWC_COMM_STATUS_BUTT;
+	unsigned long flags;
+	u8 status                = 0;
+
+	if(PWC_COMM_MODEM_BUTT<=modem_id){
+		mipi_print_error("invalid param with modem id %d\n",modem_id);
+		return PWC_COMM_STATUS_BUTT;
+	}
+
+	power_id = bsp_adpter_hi6561_powerid(MODEM_FEM0);
+
+	/*加锁保护*/
+	spin_lock_irqsave(&pctrl_fem_lock[modem_id],flags);
+
+	/*主副卡天线共电源特性*/
+	if(fem_share_power.en_flag && (PWC_COMM_MODEM_1 == modem_id)){
+		modem_id = PWC_COMM_MODEM_0;
+	}
+
+	ret=pmu_hi6561_power_status(power_id,&status,(HI6561_ID_ENUM)modem_id);
+	if(ret){
+		mipi_print_error("get rf power status failed!power id is %d\n",power_id);
+		result = PWC_COMM_STATUS_BUTT;
+		goto out;
+	}
+
+	if(status){
+		result = PWC_COMM_MODEM_ON;
+	}
+    
+out:
+	spin_unlock_irqrestore(&pctrl_fem_lock[modem_id],flags);
+	return result;
+}
+
+static PWC_COMM_STATUS_E pmu_ldo_get_rf_powerstatus(PWC_COMM_MODEM_E modem_id)
+{
+	/*todo:获取GPIO接口*/
+	int status1 = gpio_power_get_status(GPIO_POWER_FEM);
+	int status2 = gpio_power_get_status(GPIO_POWER_RF);
+
+	if(1==status1 && 1==status2){
+		return PWC_COMM_MODEM_ON;
+	}
+	else if(0==status1 && 0==status2){
+		return PWC_COMM_MODEM_OFF;
+	}
+
+	return PWC_COMM_STATUS_BUTT;
+}
+/*****************************************************************************
+ 函 数 名     : bsp_pmu_hi6561_get_rf_powerstatus
+ 功能描述  :RF 电源状态查询
+ 输入参数  : 无
+
+ 输出参数  :
+ 				PWC_COMM_STATUS_BUTT :error
+
+ 				0x10:power on
+ 				0x20:power off
+ 返 回 值  : rf电源开关状态
+*****************************************************************************/
+PWC_COMM_STATUS_E bsp_pmu_hi6561_get_rf_powerstatus(PWC_COMM_MODEM_E modem_id)
+{
+	u32 rfpower_local[PWC_COMM_MODEM_BUTT];
+	PWC_COMM_STATUS_E rf_status  = PWC_COMM_STATUS_BUTT;
+	PWC_COMM_STATUS_E fem_status = PWC_COMM_STATUS_BUTT;
+
+	rfpower_local[PWC_COMM_MODEM_0]=rf_power_unit.rfpower_m0;
+	rfpower_local[PWC_COMM_MODEM_1]=rf_power_unit.rfpower_m1;
+
+	if(RF_POWER_FROM_HI6561 == rfpower_local[modem_id]){/*需要pastar供电*/
+		rf_status  = pmu_hi6561_get_rf_powerstatus(modem_id);
+		fem_status = pmu_hi6561_get_fem_powerstatus(modem_id);
+
+		if((PWC_COMM_MODEM_ON == rf_status) && (PWC_COMM_MODEM_ON == fem_status)){
+			return PWC_COMM_MODEM_ON;
+		}
+		else if((PWC_COMM_MODEM_OFF == rf_status) && (PWC_COMM_MODEM_OFF == fem_status)){
+			return PWC_COMM_MODEM_OFF;
+		}
+		else{			
+			return PWC_COMM_STATUS_BUTT;
+		}
+	}
+	else if(RF_POWER_FROM_LDO == rfpower_local[modem_id]){/*需要ldo供电*/
+		return pmu_ldo_get_rf_powerstatus(modem_id);
+	}
+	else{/*不需要pastar或LDO供电*/
+		mipi_print_error("modem [%d] hasn't use pastar ,please check nv!\n",modem_id);
+		return PWC_COMM_STATUS_BUTT;
+	}
+
+}
 static int pmu_hi6561_rf_poweron(PWC_COMM_MODEM_E modem_id)
 {
 	int ret = MIPI_OK;
 	HI6561_POWER_ID power_id1;
 	HI6561_POWER_ID power_id2;
-	HI6561_POWER_ID power_id3;
 	unsigned long flags;
 
 	if(PWC_COMM_MODEM_BUTT<=modem_id){
@@ -498,10 +650,9 @@ static int pmu_hi6561_rf_poweron(PWC_COMM_MODEM_E modem_id)
 	}
 	power_id1=bsp_adpter_hi6561_powerid(MODEM_RFIC0_ANALOG0);
 	power_id2=bsp_adpter_hi6561_powerid(MODEM_RFIC0_ANALOG1);
-	power_id3=bsp_adpter_hi6561_powerid(MODEM_FEM0);
 
 	/*若电源已打开，无需重新开*/
-	if(PWC_COMM_MODEM_ON == bsp_pmu_hi6561_get_rf_powerstatus(modem_id)){
+	if(PWC_COMM_MODEM_ON == pmu_hi6561_get_rf_powerstatus(modem_id)){
 		return MIPI_OK;
 	}
 
@@ -528,16 +679,38 @@ static int pmu_hi6561_rf_poweron(PWC_COMM_MODEM_E modem_id)
 		mipi_print_error("pmu_hi6561_power_on failed!power id is %d\n",power_id2);
 		goto out;
 	}
+	
+out:
 
+	spin_unlock_irqrestore(&pctrl_rf_lock[modem_id],flags);
+	return ret;
+
+}
+static int pmu_hi6561_fem_poweron(PWC_COMM_MODEM_E modem_id)
+{
+	int ret = MIPI_OK;
+	HI6561_POWER_ID power_id;
+	unsigned long flags;
+
+	if(PWC_COMM_MODEM_BUTT <= modem_id){
+		mipi_print_error("invalid param with modem id %d\n",modem_id);
+		return MIPI_ERROR;
+	}
+	
+	power_id = bsp_adpter_hi6561_powerid(MODEM_FEM0);
+	/*上电过程需要加锁，以免中间有关闭电源请求*/
+	spin_lock_irqsave(&pctrl_fem_lock[modem_id],flags);
+	
 	/*打开FEM*/
-	ret=pmu_hi6561_power_on(power_id3,(HI6561_ID_ENUM)modem_id);
+	ret=pmu_hi6561_power_on(power_id,(HI6561_ID_ENUM)modem_id);
 	if(ret){
-		mipi_print_error("pmu_hi6561_power_on failed!power id is %d\n",power_id3);
+		mipi_print_error("pmu_hi6561_power_on failed!power id is %d\n",power_id);
 		goto out;
 	}
 
+	
 	/*将天线管脚切换为功能管脚*/	
-    if(sw_unpd_en && (0==modem_id)){
+	if(sw_unpd_en && (0==modem_id)){
 		/*将主分集天线开关配置为antn 功能*/
 		ret = bsp_antn_sw_unpd_config(MASTER_0 , 1);
 		if(ret){
@@ -549,32 +722,51 @@ static int pmu_hi6561_rf_poweron(PWC_COMM_MODEM_E modem_id)
 			mipi_print_error("bsp_antn_sw_unpd_config fail!gproup 1,mux 0\n");
 		}
 	}
-	
+		
 out:
 
-	spin_unlock_irqrestore(&pctrl_rf_lock[modem_id],flags);
+	spin_unlock_irqrestore(&pctrl_fem_lock[modem_id],flags);
 	return ret;
 
 }
-
 static int pmu_ldo_rf_poweron(PWC_COMM_MODEM_E modem_id)
 {
     unsigned long flags;
 
 	if(PWC_COMM_MODEM_1 == modem_id){
 		spin_lock_irqsave(&pctrl_rf_lock[modem_id],flags);
-		/*todo: 调用GPIO 123\124拉高*/
-        rf_gpio_set_high();
+
+		/*调用GPIO 拉高*/
+		gpio_power_set_high(GPIO_POWER_RF);
+		
+		spin_unlock_irqrestore(&pctrl_rf_lock[modem_id],flags);
+
+		return MIPI_OK;
+	}
+	else{
+		mipi_print_error("ldo power didn't supplied to modem[%d],please check nv congfig or hardware!\n",modem_id);
+		return MIPI_ERROR;
+	}
+}
+static int pmu_ldo_fem_poweron(PWC_COMM_MODEM_E modem_id)
+{
+    unsigned long flags;
+
+	if(PWC_COMM_MODEM_1 == modem_id){
+		spin_lock_irqsave(&pctrl_fem_lock[modem_id],flags);
+		/*调用GPIO 123\124拉高*/
+        gpio_power_set_high(GPIO_POWER_FEM);
 		
 		/*将天线管脚切换为功能管脚*/	
 		if(sw_unpd_en){
+
 			/*将副modem天线开关配置为antn 功能*/
 			if(bsp_antn_sw_unpd_config(NAGTIVE , 1)){
 				mipi_print_error("bsp_antn_sw_unpd_config fail!gproup 0,mux 0\n");
 			}
 		
 		}
-		spin_unlock_irqrestore(&pctrl_rf_lock[modem_id],flags);
+		spin_unlock_irqrestore(&pctrl_fem_lock[modem_id],flags);
 
 		return MIPI_OK;
 	}
@@ -586,37 +778,48 @@ static int pmu_ldo_rf_poweron(PWC_COMM_MODEM_E modem_id)
 int bsp_pmu_hi6561_rf_poweron(PWC_COMM_MODEM_E modem_id)
 {
 	u32 rfpower_local[PWC_COMM_MODEM_BUTT];
+	int ret = MIPI_OK;
 
 	rfpower_local[PWC_COMM_MODEM_0]=rf_power_unit.rfpower_m0;
 	rfpower_local[PWC_COMM_MODEM_1]=rf_power_unit.rfpower_m1;
 
+	/*主副卡天线共电源特性*/	
+	if(fem_share_power.en_flag ){
+		
+		fem_power_vote |= 1 << modem_id;
+
+		if(PWC_COMM_MODEM_1 == modem_id){
+		ret |= pmu_hi6561_fem_poweron(PWC_COMM_MODEM_0);
+		}
+	}
+
 	if(RF_POWER_FROM_HI6561 == rfpower_local[modem_id]){/*需要pastar供电*/
-		return pmu_hi6561_rf_poweron(modem_id);
+		ret  =  pmu_hi6561_rf_poweron(modem_id);		
+		ret |=	pmu_hi6561_fem_poweron(modem_id);
 	}
 	else if(RF_POWER_FROM_LDO == rfpower_local[modem_id]){/*需要ldo供电*/
-		return pmu_ldo_rf_poweron(modem_id);
+		ret  = pmu_ldo_rf_poweron(modem_id);
+		ret |= pmu_ldo_fem_poweron(modem_id);
 	}
 	else{/*不需要pastar或LDO供电*/
 		mipi_print_error("modem [%d] hasn't use pastar ,please check nv!\n",modem_id);
 		return MIPI_ERROR;
 	}
 
+	return ret;
+
 }
+
+
 static int pmu_ldo_rf_poweroff(PWC_COMM_MODEM_E modem_id)
 {
     unsigned long flags;
 	if(PWC_COMM_MODEM_1 == modem_id){
 		spin_lock_irqsave(&pctrl_rf_lock[modem_id],flags);
-		/*todo: 调用GPIO拉低*/
-        rf_gpio_set_low();
+
+		/*调用GPIO拉低*/
+        gpio_power_set_low(GPIO_POWER_RF);
 		
-		if(sw_unpd_en && (PWC_COMM_MODEM_1 == modem_id)){
-			/*将副modem天线开关配置为GPIO默认态*/
-			if(bsp_antn_sw_unpd_config(NAGTIVE , 0)){/*枚举*/
-				mipi_print_error("bsp_antn_sw_unpd_config fail!gproup 0,mux 0\n");
-			}
-			/*副modem天线开关不下电在gpio中实现*/
-		}
 		spin_unlock_irqrestore(&pctrl_rf_lock[modem_id],flags);
 		return MIPI_OK;
 	}
@@ -625,14 +828,38 @@ static int pmu_ldo_rf_poweroff(PWC_COMM_MODEM_E modem_id)
 		return MIPI_ERROR;
 	}
 }
+static int pmu_ldo_fem_poweroff(PWC_COMM_MODEM_E modem_id)
+{
+    unsigned long flags;
 
 
+	if(PWC_COMM_MODEM_1 == modem_id){
+		spin_lock_irqsave(&pctrl_fem_lock[modem_id],flags);
+		
+		if(sw_unpd_en){
+
+			/*将副modem天线开关配置为GPIO默认态*/
+			if(bsp_antn_sw_unpd_config(NAGTIVE , 0)){/*枚举*/
+				mipi_print_error("bsp_antn_sw_unpd_config fail!gproup 0,mux 0\n");
+			}
+		}
+		if((!rse_mipi_en) && (!sw_unpd_en)){
+			/*调用GPIO拉低*/
+	        gpio_power_set_low(GPIO_POWER_FEM);
+		}
+		spin_unlock_irqrestore(&pctrl_fem_lock[modem_id],flags);
+		return MIPI_OK;
+	}
+	else{
+		mipi_print_error("ldo power didn't supplied to modem[%d],please check nv congfig or hardware!\n",modem_id);
+		return MIPI_ERROR;
+	}
+}
 static int pmu_hi6561_rf_poweroff(PWC_COMM_MODEM_E modem_id)
 {
 	int ret = MIPI_OK;
 	HI6561_POWER_ID power_id1;
 	HI6561_POWER_ID power_id2;
-	HI6561_POWER_ID power_id3;
     unsigned long flags;
 
 	if(PWC_COMM_MODEM_BUTT<=modem_id){
@@ -642,10 +869,9 @@ static int pmu_hi6561_rf_poweroff(PWC_COMM_MODEM_E modem_id)
 
 	power_id1=bsp_adpter_hi6561_powerid(MODEM_RFIC0_ANALOG0);
 	power_id2=bsp_adpter_hi6561_powerid(MODEM_RFIC0_ANALOG1);
-	power_id3=bsp_adpter_hi6561_powerid(MODEM_FEM0);
 
 	/*若电源已关闭，无需重新开*/
-	if(PWC_COMM_MODEM_OFF == bsp_pmu_hi6561_get_rf_powerstatus(modem_id)){
+	if(PWC_COMM_MODEM_OFF == pmu_hi6561_get_rf_powerstatus(modem_id)){
 		return MIPI_OK;
 	}
 
@@ -674,8 +900,29 @@ static int pmu_hi6561_rf_poweroff(PWC_COMM_MODEM_E modem_id)
     {
 		mipi_print_error("Error:clear buck1/2 real over current status failed! modem id:%d\n", modem_id);
 	}
+
+out:
+	spin_unlock_irqrestore(&pctrl_rf_lock[modem_id],flags);
+	return ret;
+}
+static int pmu_hi6561_fem_poweroff(PWC_COMM_MODEM_E modem_id)
+{
+	int ret = MIPI_OK;
+	HI6561_POWER_ID power_id;
+    unsigned long flags;
+
+	if(PWC_COMM_MODEM_BUTT<=modem_id){
+		mipi_print_error("invalid param with modem id %d\n",modem_id);
+		return MIPI_ERROR;
+	}
+
+	power_id = bsp_adpter_hi6561_powerid(MODEM_FEM0);
+	/*加锁保护*/
+	spin_lock_irqsave(&pctrl_fem_lock[modem_id],flags);
+
     if(sw_unpd_en && (PWC_COMM_MODEM_0 == modem_id)){
-		/*将主分集天线开关配置为GPIO默认态*/
+
+		/*rse gpio 配置特性，将主分集天线开关配置为GPIO默认态*/
 		ret = bsp_antn_sw_unpd_config(MASTER_0 , 0);
 		if(ret){
 			mipi_print_error("bsp_antn_sw_unpd_config fail!gproup 0,mux 0\n");
@@ -686,145 +933,68 @@ static int pmu_hi6561_rf_poweroff(PWC_COMM_MODEM_E modem_id)
 			mipi_print_error("bsp_antn_sw_unpd_config fail!gproup 1,mux 0\n");
 		}
 	}
+	if(rse_mipi_en || sw_unpd_en){
+		/*rse mipi 配置特性，只需要保证天线开关不下电即可*/
+		goto out;
+	}
+	if (fem_share_power.en_flag){
+
+		/*共电源特性，副卡FEM与主卡共用电源*/	
+		if(!fem_power_vote){
+			ret = pmu_hi6561_power_off(power_id,HI6561_0);
+		}		
+	}	
 	else{
-		/*关闭FEM*/
-		ret = pmu_hi6561_power_off(power_id3,(HI6561_ID_ENUM)modem_id);
+		/*没有任何特性，可以正常关闭FEM*/
+		ret = pmu_hi6561_power_off(power_id,(HI6561_ID_ENUM)modem_id);
 		if(ret){
-			mipi_print_error("pmu_hi6561_power_off failed!power id is %d\n",power_id3);
+			mipi_print_error("pmu_hi6561_power_off failed!power id is %d\n",power_id);
 			ret = MIPI_ERROR;
 			goto out;
 		}
 	}
 
 out:
-	spin_unlock_irqrestore(&pctrl_rf_lock[modem_id],flags);
+	spin_unlock_irqrestore(&pctrl_fem_lock[modem_id],flags);
 	return ret;
 }
 int bsp_pmu_hi6561_rf_poweroff(PWC_COMM_MODEM_E modem_id)
 {
 	u32 rfpower_local[PWC_COMM_MODEM_BUTT];
+	int ret = MIPI_ERROR;
 
 	rfpower_local[PWC_COMM_MODEM_0]=rf_power_unit.rfpower_m0;
 	rfpower_local[PWC_COMM_MODEM_1]=rf_power_unit.rfpower_m1;
 
+	/*主副卡天线共电源特性*/
+	if(fem_share_power.en_flag ){
+		fem_power_vote &= ~(1 << modem_id);
+		if(PWC_COMM_MODEM_1 == modem_id){
+			ret = pmu_hi6561_fem_poweroff(PWC_COMM_MODEM_0);
+		}
+	}
+
 	if(RF_POWER_FROM_HI6561 == rfpower_local[modem_id]){/*需要pastar供电*/
-		return pmu_hi6561_rf_poweroff(modem_id);
+		ret  = pmu_hi6561_rf_poweroff(modem_id);
+		ret |= pmu_hi6561_fem_poweroff(modem_id);		
 	}
 	else if(RF_POWER_FROM_LDO == rfpower_local[modem_id]){/*需要ldo供电*/
-		return pmu_ldo_rf_poweroff(modem_id);
+		ret  = pmu_ldo_rf_poweroff(modem_id);
+		ret |= pmu_ldo_fem_poweroff(modem_id);
+
 	}
 	else{/*不需要pastar或LDO供电*/
 		mipi_print_error("modem [%d] hasn't use pastar ,please check nv!\n",modem_id);
-		return MIPI_ERROR;
+		ret = MIPI_ERROR;
 	}
 
-}
-
-static PWC_COMM_STATUS_E pmu_hi6561_get_rf_powerstatus(PWC_COMM_MODEM_E modem_id)
-{
-
-	int ret = 0;
-	HI6561_POWER_ID power_id1 = PMU_HI6561_POWER_ID_BUTT;
-	HI6561_POWER_ID power_id2 = PMU_HI6561_POWER_ID_BUTT;
-	HI6561_POWER_ID power_id3 = PMU_HI6561_POWER_ID_BUTT;
-	PWC_COMM_STATUS_E result = PWC_COMM_STATUS_BUTT;
-	unsigned long flags;
-	u8 status1 = 0;
-	u8 status2 = 0;
-	u8 status3 = 0;
-
-	if(PWC_COMM_MODEM_BUTT<=modem_id){
-		mipi_print_error("invalid param with modem id %d\n",modem_id);
-		return PWC_COMM_STATUS_BUTT;
+	if(rse_mipi_en){
+		ret = bsp_rse_mipi_base_config(modem_id);
+		if(ret){
+			mipi_print_error("rse mipi config fail!modem id %d\n",modem_id);
+		}
 	}
-
-	power_id1=bsp_adpter_hi6561_powerid(MODEM_RFIC0_ANALOG0);
-	power_id2=bsp_adpter_hi6561_powerid(MODEM_RFIC0_ANALOG1);
-	power_id3=bsp_adpter_hi6561_powerid(MODEM_FEM0);
-
-	/*加锁保护*/
-	spin_lock_irqsave(&pctrl_rf_lock[modem_id],flags);
-    
-	ret=pmu_hi6561_power_status(power_id1,&status1,(HI6561_ID_ENUM)modem_id);
-	if(ret){
-		mipi_print_error("get rf power status failed!power id is %d\n",power_id1);
-		result = PWC_COMM_STATUS_BUTT;
-		goto out;
-	}
-
-	ret=pmu_hi6561_power_status(power_id2,&status2,(HI6561_ID_ENUM)modem_id);
-	if(ret){
-		mipi_print_error("get rf power status failed!power id is %d\n",power_id2);
-		result = PWC_COMM_STATUS_BUTT;
-		goto out;
-	}
-
-	ret=pmu_hi6561_power_status(power_id3,&status3,(HI6561_ID_ENUM)modem_id);
-	if(ret){
-		mipi_print_error("get rf power status failed!power id is %d\n",power_id3);
-		result = PWC_COMM_STATUS_BUTT;
-		goto out;
-	}
-
-	if(status1&&status2&&status3){
-		result = PWC_COMM_MODEM_ON;
-	}
-	else if(0 == (status1 | status2 | status3)){
-		result = PWC_COMM_MODEM_OFF;
-	}
-	else{
-		result = PWC_COMM_STATUS_BUTT;
-	}
-    
-out:
-	spin_unlock_irqrestore(&pctrl_rf_lock[modem_id],flags);
-	return result;
-}
-static PWC_COMM_STATUS_E pmu_ldo_get_rf_powerstatus(PWC_COMM_MODEM_E modem_id)
-{
-	/*todo:获取GPIO接口*/
-	int gpio123 = ldo_gpio123_get_value();
-	int gpio124 = ldo_gpio124_get_value();
-
-	if(1==gpio123&&1==gpio124){
-		return PWC_COMM_MODEM_ON;
-	}
-	else if(0==gpio123&&0==gpio124){
-		return PWC_COMM_MODEM_OFF;
-	}
-
-	return PWC_COMM_STATUS_BUTT;
-}
-/*****************************************************************************
- 函 数 名     : bsp_pmu_hi6561_get_rf_powerstatus
- 功能描述  :RF 电源状态查询
- 输入参数  : 无
-
- 输出参数  :
- 				PWC_COMM_STATUS_BUTT :error
-
- 				0x10:power on
- 				0x20:power off
- 返 回 值  : rf电源开关状态
-*****************************************************************************/
-PWC_COMM_STATUS_E bsp_pmu_hi6561_get_rf_powerstatus(PWC_COMM_MODEM_E modem_id)
-{
-	u32 rfpower_local[PWC_COMM_MODEM_BUTT];
-
-	rfpower_local[PWC_COMM_MODEM_0]=rf_power_unit.rfpower_m0;
-	rfpower_local[PWC_COMM_MODEM_1]=rf_power_unit.rfpower_m1;
-
-	if(RF_POWER_FROM_HI6561 == rfpower_local[modem_id]){/*需要pastar供电*/
-		return pmu_hi6561_get_rf_powerstatus(modem_id);
-	}
-	else if(RF_POWER_FROM_LDO == rfpower_local[modem_id]){/*需要ldo供电*/
-		return pmu_ldo_get_rf_powerstatus(modem_id);
-	}
-	else{/*不需要pastar或LDO供电*/
-		mipi_print_error("modem [%d] hasn't use pastar ,please check nv!\n",modem_id);
-		return PWC_COMM_STATUS_BUTT;
-	}
-
+	return ret;
 }
 
 /*****************************************************************************
@@ -906,6 +1076,8 @@ int adp_pmu_hi6561_initial(HI6561_ID_ENUM chip_id)
 
 	spin_lock_init(&pctrl_rf_lock[chip_id]);
 
+	spin_lock_init(&pctrl_fem_lock[chip_id]);
+
 	/*for k3V3回片，打开副卡RF 电源*/
 	//pmu_ldo_rf_poweron(PWC_COMM_MODEM_1);
 	return 0;
@@ -913,8 +1085,13 @@ int adp_pmu_hi6561_initial(HI6561_ID_ENUM chip_id)
 
 void adp_pmu_hi6561_resume(void)
 {
+	fem_power_vote = 0;
+	
 	if(sw_unpd_en){
 		bsp_dpm_powerup_antn_config();
+	}
+	if(rse_mipi_en){
+		(void)bsp_rse_mipi_config_on();
 	}
 }
 #else

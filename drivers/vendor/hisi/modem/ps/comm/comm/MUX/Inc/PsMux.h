@@ -211,6 +211,8 @@ extern VOS_UINT32 MUX_DlciDlDataProc (AT_MUX_DLCI_TYPE_ENUM_UINT8 enDlci, VOS_UI
 extern VOS_VOID MUX_TraceUlData(VOS_UINT32 ulDeviceId, VOS_UINT8 *pucBuf, VOS_UINT16 usLen);
 extern VOS_VOID MUX_TraceDlData(AT_MUX_DLCI_TYPE_ENUM_UINT8 enDlci, VOS_UINT8 *pData, VOS_UINT16 usDataLen);
 extern VOS_VOID MUX_StaticInfoInit( VOS_VOID );
+extern VOS_UINT32 MUX_Pid_InitFunc( enum VOS_INIT_PHASE_DEFINE ip );
+extern VOS_UINT32 MUX_AtMsgProc( const MsgBlock *pMsgBlock );
 
 #if (VOS_OS_VER == VOS_WIN32)
 #pragma pack()

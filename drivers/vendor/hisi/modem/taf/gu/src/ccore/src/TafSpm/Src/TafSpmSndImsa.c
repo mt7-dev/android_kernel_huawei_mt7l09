@@ -194,6 +194,53 @@ VOS_UINT32 TAF_SPM_SendImsaGetCallInfoReq(
 }
 
 
+VOS_UINT32 TAF_SPM_SendImsaGetEconfInfoReq(
+    MN_CALL_APP_REQ_MSG_STRU           *pstAppMsg
+)
+{
+    SPM_IMSA_CALL_GET_ECONF_CALLED_INFO_REQ_STRU   *pstSendImsaMsg = VOS_NULL_PTR;
+
+    /* 构造消息 */
+    pstSendImsaMsg = (SPM_IMSA_CALL_GET_ECONF_CALLED_INFO_REQ_STRU *)PS_ALLOC_MSG_WITH_HEADER_LEN(
+                                                                WUEPS_PID_TAF,
+                                                                sizeof(SPM_IMSA_CALL_GET_ECONF_CALLED_INFO_REQ_STRU));
+    if (VOS_NULL_PTR == pstSendImsaMsg)
+    {
+        TAF_ERROR_LOG(WUEPS_PID_TAF,
+            "TAF_SPM_SendImsaGetEconfInfoReq: ERROR:Memory Alloc Error for pstMsg!");
+
+        return VOS_FALSE;
+    }
+
+    /* 初始化消息 */
+    PS_MEM_SET(((VOS_UINT8*)pstSendImsaMsg) + VOS_MSG_HEAD_LENGTH,
+               0x00,
+               sizeof(SPM_IMSA_CALL_GET_ECONF_CALLED_INFO_REQ_STRU) - VOS_MSG_HEAD_LENGTH);
+
+    /* 填写消息头 */
+    pstSendImsaMsg->ulSenderCpuId               = VOS_LOCAL_CPUID;
+    pstSendImsaMsg->ulSenderPid                 = WUEPS_PID_TAF;
+    pstSendImsaMsg->ulReceiverCpuId             = VOS_LOCAL_CPUID;
+    pstSendImsaMsg->ulReceiverPid               = PS_PID_IMSA;
+    pstSendImsaMsg->ulLength                    = sizeof(SPM_IMSA_CALL_GET_ECONF_CALLED_INFO_REQ_STRU) - VOS_MSG_HEAD_LENGTH;
+
+    /* 填写消息内容 */
+    pstSendImsaMsg->ulMsgId     = ID_SPM_IMSA_CALL_GET_ECONF_CALLED_INFO_REQ;
+    pstSendImsaMsg->usClientId  = pstAppMsg->clientId;
+    pstSendImsaMsg->ucOpId      = pstAppMsg->opId;
+    pstSendImsaMsg->enReqType   = CALL_IMSA_GET_CALL_INFO_REQ_TYPE_CLCC;
+
+    /* 发送消息 */
+    if (VOS_OK != PS_SEND_MSG(WUEPS_PID_TAF, pstSendImsaMsg))
+    {
+        TAF_ERROR_LOG(WUEPS_PID_TAF,
+            "TAF_SPM_SendImsaGetEconfInfoReq: Send message failed.");
+
+        return VOS_FALSE;
+    }
+
+    return VOS_TRUE;
+}
 VOS_UINT32 TAF_SPM_SendImsaGetClprReq(
     MN_CALL_APP_REQ_MSG_STRU           *pstAppMsg
 )
@@ -276,7 +323,7 @@ VOS_UINT32 TAF_SPM_SendImsaStartDtmfReq(
     pstSendImsaMsg->ulReceiverPid               = PS_PID_IMSA;
     pstSendImsaMsg->ulLength                    = sizeof(SPM_IMSA_CALL_START_DTMF_REQ_STRU) - VOS_MSG_HEAD_LENGTH;
 
-    /* 填写消息内容 */   
+    /* 填写消息内容 */
     pstSendImsaMsg->ulMsgId     = ID_SPM_IMSA_CALL_START_DTMF_REQ;
     pstSendImsaMsg->usClientId  = pstAppMsg->clientId;
     pstSendImsaMsg->ucOpId      = pstAppMsg->opId;
@@ -721,12 +768,12 @@ VOS_UINT32 TAF_SPM_SendImsaCallInviteNewPtptReq(
 
     /* 填写对方号码及呼叫类型 */
     pstSendImsaMsg->stNewPtptNumber.enNumType   = pstAppMsg->unParm.stOrig.stDialNumber.enNumType;
-    pstSendImsaMsg->stNewPtptNumber.ucNumLen    = pstAppMsg->unParm.stOrig.stDialNumber.ucNumLen;    
+    pstSendImsaMsg->stNewPtptNumber.ucNumLen    = pstAppMsg->unParm.stOrig.stDialNumber.ucNumLen;
     if (MN_CALL_MAX_CALLED_BCD_NUM_LEN < pstSendImsaMsg->stNewPtptNumber.ucNumLen)
     {
         pstSendImsaMsg->stNewPtptNumber.ucNumLen = MN_CALL_MAX_CALLED_BCD_NUM_LEN;
     }
-    
+
     PS_MEM_CPY(&(pstSendImsaMsg->stNewPtptNumber.aucBcdNum[0]),
                &(pstAppMsg->unParm.stOrig.stDialNumber.aucBcdNum[0]),
                pstSendImsaMsg->stNewPtptNumber.ucNumLen);
@@ -742,6 +789,254 @@ VOS_UINT32 TAF_SPM_SendImsaCallInviteNewPtptReq(
 
     return VOS_TRUE;
 }
+
+
+
+VOS_UINT32 TAF_SPM_SendImsaCallModifyReq(
+    MN_CALL_APP_REQ_MSG_STRU           *pstAppMsg
+)
+{
+    SPM_IMSA_CALL_MODIFY_REQ_STRU      *pstSendImsaMsg = VOS_NULL_PTR;
+
+    /* 构造消息 */
+    pstSendImsaMsg = (SPM_IMSA_CALL_MODIFY_REQ_STRU *)PS_ALLOC_MSG_WITH_HEADER_LEN(
+                                                      WUEPS_PID_TAF,
+                                                      sizeof(SPM_IMSA_CALL_MODIFY_REQ_STRU));
+    if (VOS_NULL_PTR == pstSendImsaMsg)
+    {
+        TAF_ERROR_LOG(WUEPS_PID_TAF,
+                "TAF_SPM_SendImsaCallModifyReq: ERROR:Memory Alloc Error for pstMsg!");
+
+        return VOS_FALSE;
+    }
+
+    /* 初始化消息 */
+    PS_MEM_SET(((VOS_UINT8 *)pstSendImsaMsg) + VOS_MSG_HEAD_LENGTH,
+               0x00,
+               (sizeof(SPM_IMSA_CALL_MODIFY_REQ_STRU) - VOS_MSG_HEAD_LENGTH));
+
+    /* 填写消息头 */
+    pstSendImsaMsg->ulSenderCpuId       = VOS_LOCAL_CPUID;
+    pstSendImsaMsg->ulSenderPid         = WUEPS_PID_TAF;
+    pstSendImsaMsg->ulReceiverCpuId     = VOS_LOCAL_CPUID;
+    pstSendImsaMsg->ulReceiverPid       = PS_PID_IMSA;
+    pstSendImsaMsg->ulLength            = (sizeof(SPM_IMSA_CALL_MODIFY_REQ_STRU) - VOS_MSG_HEAD_LENGTH);
+
+    /* 填写消息内容 */
+    pstSendImsaMsg->ulMsgId             = ID_SPM_IMSA_CALL_MODIFY_REQ;
+    pstSendImsaMsg->usClientId          = pstAppMsg->clientId;
+    pstSendImsaMsg->ucOpId              = pstAppMsg->opId;
+
+    pstSendImsaMsg->callId              = pstAppMsg->callId;
+    pstSendImsaMsg->enCurrCallType      = pstAppMsg->unParm.stModifyReq.enCurrCallType;
+    pstSendImsaMsg->enExpectCallType    = pstAppMsg->unParm.stModifyReq.enExpectCallType;
+
+    /* 发送消息 */
+    if (VOS_OK != PS_SEND_MSG(WUEPS_PID_TAF, pstSendImsaMsg))
+    {
+        TAF_ERROR_LOG(WUEPS_PID_TAF,
+                "TAF_SPM_SendImsaCallModifyReq: Send message failed.");
+
+        return VOS_FALSE;
+    }
+
+    return VOS_TRUE;
+}
+VOS_UINT32 TAF_SPM_SendImsaCallAnswerRemoteModifyReq(
+    MN_CALL_APP_REQ_MSG_STRU           *pstAppMsg
+)
+{
+    SPM_IMSA_CALL_ANSWER_REMOTE_MODIFY_REQ_STRU         *pstSendImsaMsg = VOS_NULL_PTR;
+
+    /* 构造消息 */
+    pstSendImsaMsg = (SPM_IMSA_CALL_ANSWER_REMOTE_MODIFY_REQ_STRU *)PS_ALLOC_MSG_WITH_HEADER_LEN(
+                                                      WUEPS_PID_TAF,
+                                                      sizeof(SPM_IMSA_CALL_ANSWER_REMOTE_MODIFY_REQ_STRU));
+    if (VOS_NULL_PTR == pstSendImsaMsg)
+    {
+        TAF_ERROR_LOG(WUEPS_PID_TAF,
+                "TAF_SPM_SendImsaCallAnswerRemoteModifyReq: ERROR:Memory Alloc Error for pstMsg!");
+
+        return VOS_FALSE;
+    }
+
+    /* 初始化消息 */
+    PS_MEM_SET(((VOS_UINT8 *)pstSendImsaMsg) + VOS_MSG_HEAD_LENGTH,
+               0x00,
+               (sizeof(SPM_IMSA_CALL_ANSWER_REMOTE_MODIFY_REQ_STRU) - VOS_MSG_HEAD_LENGTH));
+
+    /* 填写消息头 */
+    pstSendImsaMsg->ulSenderCpuId       = VOS_LOCAL_CPUID;
+    pstSendImsaMsg->ulSenderPid         = WUEPS_PID_TAF;
+    pstSendImsaMsg->ulReceiverCpuId     = VOS_LOCAL_CPUID;
+    pstSendImsaMsg->ulReceiverPid       = PS_PID_IMSA;
+    pstSendImsaMsg->ulLength            = sizeof(SPM_IMSA_CALL_ANSWER_REMOTE_MODIFY_REQ_STRU) - VOS_MSG_HEAD_LENGTH;
+
+    /* 填写消息内容 */
+    pstSendImsaMsg->ulMsgId             = ID_SPM_IMSA_CALL_ANSWER_REMOTE_MODIFY_REQ;
+    pstSendImsaMsg->usClientId          = pstAppMsg->clientId;
+    pstSendImsaMsg->ucOpId              = pstAppMsg->opId;
+
+    pstSendImsaMsg->callId              = pstAppMsg->callId;
+    pstSendImsaMsg->enCurrCallType      = pstAppMsg->unParm.stModifyReq.enCurrCallType;
+    pstSendImsaMsg->enExpectCallType    = pstAppMsg->unParm.stModifyReq.enExpectCallType;
+
+    /* 发送消息 */
+    if (VOS_OK != PS_SEND_MSG(WUEPS_PID_TAF, pstSendImsaMsg))
+    {
+        TAF_ERROR_LOG(WUEPS_PID_TAF,
+                "TAF_SPM_SendImsaCallAnswerRemoteModifyReq: Send message failed.");
+
+        return VOS_FALSE;
+    }
+
+    return VOS_TRUE;
+}
+VOS_UINT32 TAF_SPM_SendImsaEconfAddUsersReq(
+    MN_CALL_APP_REQ_MSG_STRU           *pstAppMsg
+)
+{
+    SPM_IMSA_CALL_ECONF_ADD_USERS_REQ_STRU     *pstSendImsaMsg  = VOS_NULL_PTR;
+    TAF_CALL_ECONF_DIAL_REQ_STRU               *pstEconfDialReq = VOS_NULL_PTR;
+    VOS_UINT32                                  ulMsgLen;
+
+    ulMsgLen       = sizeof(SPM_IMSA_CALL_ECONF_ADD_USERS_REQ_STRU);
+
+    /* 构造消息 */
+    pstSendImsaMsg = (SPM_IMSA_CALL_ECONF_ADD_USERS_REQ_STRU *)PS_ALLOC_MSG_WITH_HEADER_LEN(
+                                                               WUEPS_PID_TAF,
+                                                               ulMsgLen);
+    if (VOS_NULL_PTR == pstSendImsaMsg)
+    {
+        TAF_ERROR_LOG(WUEPS_PID_TAF,
+                "TAF_SPM_SendImsaEconfAddUsersReq: ERROR:Memory Alloc Error for pstMsg!");
+
+        return VOS_FALSE;
+    }
+
+    /* 初始化消息 */
+    PS_MEM_SET(((VOS_UINT8 *)pstSendImsaMsg) + VOS_MSG_HEAD_LENGTH,
+               0x00,
+               (ulMsgLen - VOS_MSG_HEAD_LENGTH));
+
+    pstEconfDialReq = (TAF_CALL_ECONF_DIAL_REQ_STRU *)&pstAppMsg->unParm;
+
+    /* 填写消息头 */
+    pstSendImsaMsg->ulSenderCpuId       = VOS_LOCAL_CPUID;
+    pstSendImsaMsg->ulSenderPid         = WUEPS_PID_TAF;
+    pstSendImsaMsg->ulReceiverCpuId     = VOS_LOCAL_CPUID;
+    pstSendImsaMsg->ulReceiverPid       = PS_PID_IMSA;
+    pstSendImsaMsg->ulLength            = ulMsgLen - VOS_MSG_HEAD_LENGTH;
+
+    /* 填写消息内容 */
+    pstSendImsaMsg->ulMsgId             = ID_SPM_IMSA_CALL_ECONF_ADD_USERS_REQ;
+    pstSendImsaMsg->usClientId          = pstAppMsg->clientId;
+    pstSendImsaMsg->ucOpId              = pstAppMsg->opId;
+
+    /* 填充有效的电话号码 */
+    PS_MEM_CPY(&pstSendImsaMsg->stEconfCalllist, &pstEconfDialReq->stEconfCalllist, sizeof(TAF_CALL_ECONF_CALL_LIST_STRU));
+
+    /* 发送消息 */
+    if (VOS_OK != PS_SEND_MSG(WUEPS_PID_TAF, pstSendImsaMsg))
+    {
+        TAF_ERROR_LOG(WUEPS_PID_TAF,
+                "TAF_SPM_SendImsaEconfAddUsersReq: Send message failed.");
+
+        return VOS_FALSE;
+    }
+
+    return VOS_TRUE;
+}
+
+
+VOS_UINT32 TAF_SPM_SendImsaEconfDialReq(
+    MN_CALL_APP_REQ_MSG_STRU           *pstAppMsg
+)
+{
+    SPM_IMSA_CALL_ECONF_DIAL_REQ_STRU  *pstSendImsaMsg = VOS_NULL_PTR;
+    VOS_UINT32                          ulMsgLen;
+
+    ulMsgLen       = sizeof(SPM_IMSA_CALL_ECONF_DIAL_REQ_STRU);
+
+    /* 构造消息 */
+    pstSendImsaMsg = (SPM_IMSA_CALL_ECONF_DIAL_REQ_STRU *)PS_ALLOC_MSG_WITH_HEADER_LEN(
+                                                          WUEPS_PID_TAF,
+                                                          ulMsgLen);
+    if (VOS_NULL_PTR == pstSendImsaMsg)
+    {
+        TAF_ERROR_LOG(WUEPS_PID_TAF,
+                "TAF_SPM_SendImsaEconfDialReq: ERROR:Memory Alloc Error for pstMsg!");
+
+        return VOS_FALSE;
+    }
+
+    /* 初始化消息 */
+    PS_MEM_SET(((VOS_UINT8 *)pstSendImsaMsg) + VOS_MSG_HEAD_LENGTH,
+               0x00,
+               (ulMsgLen - VOS_MSG_HEAD_LENGTH));
+
+    /* 填写消息头 */
+    pstSendImsaMsg->ulSenderCpuId       = VOS_LOCAL_CPUID;
+    pstSendImsaMsg->ulSenderPid         = WUEPS_PID_TAF;
+    pstSendImsaMsg->ulReceiverCpuId     = VOS_LOCAL_CPUID;
+    pstSendImsaMsg->ulReceiverPid       = PS_PID_IMSA;
+    pstSendImsaMsg->ulLength            = ulMsgLen - VOS_MSG_HEAD_LENGTH;
+
+    /* 填写消息内容 */
+    pstSendImsaMsg->ulMsgId             = ID_SPM_IMSA_CALL_ECONF_DIAL_REQ;
+    pstSendImsaMsg->usClientId          = pstAppMsg->clientId;
+    pstSendImsaMsg->ucOpId              = pstAppMsg->opId;
+    pstSendImsaMsg->stDialReq           = pstAppMsg->unParm.stEconfDial;
+
+    /* 发送消息 */
+    if (VOS_OK != PS_SEND_MSG(WUEPS_PID_TAF, pstSendImsaMsg))
+    {
+        TAF_ERROR_LOG(WUEPS_PID_TAF,
+                "TAF_SPM_SendImsaEconfDialReq: Send message failed.");
+
+        return VOS_FALSE;
+    }
+
+    return VOS_TRUE;
+}
+
+#if 0 /* 如果后续需要将检查成功的号码发给IMSA，需要使用这个函数 */
+
+VOS_VOID TAF_SPM_FillImsaEconfCallList(
+    TAF_CALL_ECONF_CALL_LIST_STRU      *pstCallList
+)
+{
+    TAF_SPM_CALL_ECONF_INFO_STRU       *pstEconfInfoAddr    = VOS_NULL_PTR;
+    VOS_UINT32                          ulIndex;
+    VOS_UINT32                          ulCallNum;
+
+    pstEconfInfoAddr    = TAF_SPM_GetCallEconfInfoAddr();
+    ulCallNum           = 0;
+
+    for (ulIndex = 0; ulIndex < pstEconfInfoAddr->ucCallNum; ulIndex++)
+    {
+        if (TAF_CS_CAUSE_SUCCESS == pstEconfInfoAddr->astEconfCheckInfo[ulIndex].enCheckRslt)
+        {
+            PS_MEM_CPY(&pstCallList->astDialNumber[ulCallNum],
+                       &pstEconfInfoAddr->astEconfCheckInfo[ulIndex].stCalledNumber,
+                       sizeof(MN_CALL_CALLED_NUM_STRU));
+
+            PS_MEM_CPY(&pstCallList->astSubaddr[ulCallNum],
+                       &pstEconfInfoAddr->astEconfCheckInfo[ulIndex].stSubaddr,
+                       sizeof(MN_CALL_SUBADDR_STRU));
+
+            ulCallNum++;
+        }
+    }
+
+    pstCallList->ulCallNum = ulCallNum;
+
+    return;
+}
+#endif
+
+
+
 #endif
 
 #ifdef __cplusplus

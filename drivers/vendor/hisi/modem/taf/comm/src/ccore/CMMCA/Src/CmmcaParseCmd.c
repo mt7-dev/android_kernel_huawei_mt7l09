@@ -2287,6 +2287,272 @@ VOS_UINT32 CMMCA_ParseOtherRatInfoInd(
 
     return VOS_OK;
 }
+
+
+VOS_UINT32 CMMCA_ParseBearDetachReq(
+    VOS_UINT16                          usParamBlklength,
+    VOS_UINT8                          *pucParamBlk,
+    CMMCA_MMC_RAT_BEAR_DETACH_REQ_STRU *pstBearDetachReq
+)
+{
+    /* NoServiceReq需要用以下参数:
+        Parameter Name Parameter Type Parameter              Description
+        enRatId          CMMCA_MMC_RAT_ID_ENUM_UINT8
+    */
+
+    VOS_UINT8                          *pucMsgBuff = VOS_NULL_PTR;
+
+    /* 输入参数由调用者保证正确性 */
+
+    /* 对总的码流长度length进行检查 */
+    if (usParamBlklength < CMMCA_CMD_RAT_BEAR_DETACH_REQ_LEN)
+    {
+        CMMCA_Debug_PrintDataIndLenErr(ID_CMMCA_MMC_RAT_BEARER_DETACH_REQ, usParamBlklength);
+
+        return VOS_ERR;
+    }
+
+    pucMsgBuff = pucParamBlk;
+
+    /* CmdId由调用函数保证正确性 */
+    pucMsgBuff += sizeof(CMMCA_MMC_RAT_CMD_ID_ENUM_UINT16);
+
+    /* 判断RatId是否是LTE */
+    if (CMMCA_MMC_RAT_ID_EUTRAN != *pucMsgBuff)
+    {
+        CMMCA_WARNING_LOG("CMMCA_ParseBearDetachReq: invalid RatId!");
+    }
+
+    pstBearDetachReq->enRatId = *pucMsgBuff;
+
+    return VOS_OK;
+}
+
+
+VOS_UINT32 CMMCA_PackBearDetachRsp(
+    CMMCA_RAT_MMC_BEAR_DETACH_RSP_STRU *pstBearDetachRsp,
+    VOS_UINT16                          usParamBlklength,
+    VOS_UINT8                          *pucParamBlk
+)
+{
+    /*
+       typedef PACKED struct
+       {
+          MmcRatIdT RatId;
+          uint8 Status;
+       } MmcPktRatBearerDetachRspMsgT;
+    */
+    VOS_UINT8                          *pucMsgBuff = VOS_NULL_PTR;
+
+    pucMsgBuff = pucParamBlk;
+
+    /* 输入参数由调用者保证正确性 */
+
+    /* 打包CmdId信息 */
+    CMMCA_ConvertU16ToDoubleOctetStr(ID_CMMCA_RAT_MMC_BEARER_DETACH_RSP, pucMsgBuff);
+    pucMsgBuff += sizeof(CMMCA_MMC_RAT_CMD_ID_ENUM_UINT16);
+
+    /* 打包RatId信息 */
+    *pucMsgBuff = pstBearDetachRsp->enRatId;
+    pucMsgBuff += sizeof(CMMCA_MMC_RAT_ID_ENUM_UINT8);
+
+    /* 打包ucStatus信息 */
+    *pucMsgBuff = pstBearDetachRsp->ucStatus;
+    pucMsgBuff += sizeof(VOS_UINT8);
+
+    /* 防止内存越界 */
+    if ((pucMsgBuff - pucParamBlk) > usParamBlklength)
+    {
+        return VOS_ERR;
+    }
+
+    return VOS_OK;
+}
+VOS_UINT32 CMMCA_PackSetPdnPcoAuthRsp(
+    CMMCA_SET_PDN_PCO_AUTH_RESULT_ENUM_UINT8        enRslt,
+    VOS_UINT16                                      usParamBlklength,
+    VOS_UINT8                                      *pucParamBlk
+)
+{
+    /* 打包码流格式描述:
+        第一层:
+        typedef struct{
+            uint16  Cmd;
+            uint8   ParamBlk[1];
+        } ValMmcMsgT;
+
+        第二层ParamBlk --> MmcRatAPI_RAT_SetPdnPcoAuth_RspT:
+        typedef PACKED struct
+        {
+           MmcRatIdT                RatId;
+           bool                     success;
+        } MmcRatAPI_RAT_SetPdnPcoAuth_RspT;
+    */
+
+    /* 输入参数由调用者保证正确性 */
+    VOS_UINT8                          *pucMsgBuff = VOS_NULL_PTR;
+
+    pucMsgBuff = pucParamBlk;
+
+    /* 打包CmdId信息 */
+    CMMCA_ConvertU16ToDoubleOctetStr(ID_CMMCA_RAT_MMC_SET_PDN_PCO_AUTH_RSP, pucMsgBuff);
+    pucMsgBuff += sizeof(CMMCA_MMC_RAT_CMD_ID_ENUM_UINT16);
+
+    /* 打包RatId信息 */
+    *pucMsgBuff = CMMCA_MMC_RAT_ID_EUTRAN;
+    pucMsgBuff += sizeof(CMMCA_MMC_RAT_ID_ENUM_UINT8);
+
+    /* 打包设置Pdn鉴权的结果 */
+    *pucMsgBuff = enRslt;
+    pucMsgBuff += sizeof(CMMCA_SET_PDN_PCO_AUTH_RESULT_ENUM_UINT8);
+
+    /* 防止内存越界 */
+    if ((pucMsgBuff - pucParamBlk) > usParamBlklength)
+    {
+        return VOS_ERR;
+    }
+
+    return VOS_OK;
+}
+VOS_UINT32 CMMCA_ConvertCdmaSetPdnPcoAuthModeToTaf(
+    CMMCA_MMC_RAT_AUTH_MODE_ENUM_UINT8  enAuthMode,
+    TAF_PDP_AUTH_TYPE_ENUM_UINT8       *penTafMode
+)
+{
+    switch(enAuthMode)
+    {
+        case CMMCA_RAT_AUTH_MODE_NONE:
+            *penTafMode     = TAF_PDP_AUTH_TYPE_NONE;
+            break;
+
+        case CMMCA_RAT_AUTH_MODE_PAP:
+            *penTafMode     = TAF_PDP_AUTH_TYPE_PAP;
+            break;
+
+        case CMMCA_RAT_AUTH_MODE_CHAP:
+            *penTafMode     = TAF_PDP_AUTH_TYPE_CHAP;
+            break;
+
+        default:
+            return VOS_ERR;
+    }
+
+    return VOS_OK;
+}
+
+
+VOS_UINT32 CMMCA_ParseSetPdnPcoAuthReq(
+    VOS_UINT16                          usParamBlklength,
+    VOS_UINT8                          *pucParamBlk,
+    TAF_AUTHDATA_EXT_STRU              *pstTafAuthDataExt
+)
+{
+    /* CMMC码流格式描述:
+        第一层:
+        typedef struct{
+            uint16  Cmd;
+            uint8   ParamBlk[1];
+        } ValMmcMsgT;
+
+        第二层ParamBlk --> RatMmcAPI_RAT_PDNTable_Setup_ReqT:
+        typedef PACKED struct
+        {
+           MmcRatIdT            RatId;
+           uint8        PDNid;
+           AuthModeT    AuthMode;
+           uint8        ModelName [MMC_MAX_USRID_LEN];
+           uint8        Username[MMC_MAX_USRID_LEN];
+           uint8        lenPswd;
+           uint8        Password[MMC_SIP_PASSWORD_LEN];
+        } RatMmcAPI_RAT_SetPdnPcoAuth_ReqT;
+
+        参数说明:
+        Parameter Name Parameter Type Parameter Description
+        AuthModeT          uint8          only AUTH_MODE_NONE, AUTH_MODE_PAP and AUTH_MODE_CHAP are allowed here
+    */
+    VOS_UINT8                          *pucMsgBuff = VOS_NULL_PTR;
+    VOS_UINT32                          ulRst;
+    VOS_UINT8                           ucPswdLen;
+    VOS_UINT8                           ucAuthType;
+
+    /* 输入参数由调用者保证正确性 */
+    /* 对总的码流长度length进行检查 */
+    if (usParamBlklength < CMMCA_CMD_SET_PDN_PCO_AUTH_REQ_LEN)
+    {
+        CMMCA_Debug_PrintDataIndLenErr(ID_CMMCA_MMC_API_SET_PDN_PCO_AUTH_REQ, usParamBlklength);
+
+        return VOS_ERR;
+    }
+
+    pucMsgBuff = pucParamBlk;
+
+    /* CmdId由调用函数保证正确性 */
+    pucMsgBuff += sizeof(CMMCA_MMC_RAT_CMD_ID_ENUM_UINT16);
+
+    /* 判断RatId是否是LTE */
+    if (CMMCA_MMC_RAT_ID_EUTRAN != *((CMMCA_MMC_RAT_ID_ENUM_UINT8 *)pucMsgBuff))
+    {
+        CMMCA_ERROR1_LOG("CMMCA_ParseSetPdnTabReq", *((CMMCA_MMC_RAT_ID_ENUM_UINT8 *)pucMsgBuff));
+    }
+
+    CMMCA_Debug_PrintRatId(ID_CMMCA_MMC_API_SET_PDN_PCO_AUTH_REQ,
+                           *((CMMCA_MMC_RAT_ID_ENUM_UINT8 *)pucMsgBuff));
+
+    pucMsgBuff += sizeof(CMMCA_MMC_RAT_ID_ENUM_UINT8);
+
+    /* CID */
+    pstTafAuthDataExt->ucCid = *pucMsgBuff;
+    pucMsgBuff += sizeof(VOS_UINT8);
+    if (pstTafAuthDataExt->ucCid > TAF_MAX_CID)
+    {
+        return VOS_ERR;
+    }
+
+    /* Auth Type */
+    ucAuthType = *pucMsgBuff;
+    pucMsgBuff += sizeof(VOS_UINT8);
+
+    /* 转换鉴权模式 */
+    ulRst = CMMCA_ConvertCdmaSetPdnPcoAuthModeToTaf((CMMCA_MMC_RAT_AUTH_MODE_ENUM_UINT8)ucAuthType, &pstTafAuthDataExt->enAuthType);
+    if (VOS_OK != ulRst)
+    {
+        CMMCA_Debug_PrintPdnAuthTypeErr(ID_CMMCA_MMC_API_SET_PDN_PCO_AUTH_REQ, ucAuthType);
+        return VOS_ERR;
+    }
+    pstTafAuthDataExt->bitOpAuthType = VOS_TRUE;
+
+    /* ModelName 暂不使用，直接跳过 */
+    pucMsgBuff += sizeof(VOS_UINT8) * CMMCA_RAT_AUTH_MAX_MODEL_NAME_LEN;
+
+    /* UserName 由于VIA 的长度小于APS定义的长度，所以直接拷贝 */
+    VOS_MemCpy(pstTafAuthDataExt->aucUserName, pucMsgBuff, sizeof(VOS_UINT8) * CMMCA_RAT_AUTH_MAX_MODEL_NAME_LEN);
+    pstTafAuthDataExt->aucUserName[CMMCA_RAT_AUTH_MAX_MODEL_NAME_LEN] = 0;
+    pstTafAuthDataExt->bitOpUserName = VOS_TRUE;
+    pucMsgBuff += sizeof(VOS_UINT8) * CMMCA_RAT_AUTH_MAX_MODEL_NAME_LEN;
+
+    /* PassWord 长度 */
+    ucPswdLen = *pucMsgBuff;
+    pucMsgBuff += sizeof(VOS_UINT8);
+
+    /* 长度检查 */
+    if (ucPswdLen > CMMCA_RAT_AUTH_MAX_PASSWORD_LEN)
+    {
+        CMMCA_Debug_PrintDataIndLenErr(ID_CMMCA_MMC_API_SET_PDN_PCO_AUTH_REQ, ucPswdLen);
+        ucPswdLen = CMMCA_RAT_AUTH_MAX_PASSWORD_LEN;
+    }
+
+    /* PassWord */
+    VOS_MemCpy(pstTafAuthDataExt->aucPassWord, pucMsgBuff, ucPswdLen);
+    pstTafAuthDataExt->bitOpPassWord= VOS_TRUE;
+    pstTafAuthDataExt->aucPassWord[ucPswdLen] = 0;
+    pucMsgBuff += sizeof(VOS_UINT8) * CMMCA_RAT_AUTH_MAX_PASSWORD_LEN;
+
+    /* 由于VIA接口中没有定义删除，所以直接赋值VOS_TRUE */
+    pstTafAuthDataExt->ucDefined     = VOS_TRUE;
+
+    return VOS_OK;
+}
+
 #endif
 
 #ifdef __cplusplus

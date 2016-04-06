@@ -96,15 +96,15 @@ int bsp_hifi_load_sections(void *hifi_image)
         if (DRV_HIFI_IMAGE_SEC_LOAD_STATIC == hifi_head->sections[i].load_attib)
         {
         	/* 静态加载 */
-            if ((hifi_head->sections[i].des_addr < DDR_HIFI_ADDR) ||
-                ((hifi_head->sections[i].des_addr + hifi_head->sections[i].size) > (DDR_HIFI_ADDR + DDR_HIFI_SIZE)))
+            if (((u32)hifi_head->sections[i].des_addr < DDR_HIFI_ADDR) ||
+                (((u32)hifi_head->sections[i].des_addr + hifi_head->sections[i].size) > (DDR_HIFI_ADDR + DDR_HIFI_SIZE)))
             {
                 bsp_trace(BSP_LOG_LEVEL_ERROR, BSP_MODU_DSP,
                     "error hifi address, %x \r\n", hifi_head->sections[i].des_addr);
                 return -1;
             }
 			/* 指向镜像存放的ddr   地址 */
-            section_virtual_addr = (void*)ioremap_nocache(hifi_head->sections[i].des_addr,
+            section_virtual_addr = (void*)ioremap_nocache((unsigned long)hifi_head->sections[i].des_addr,
                 hifi_head->sections[i].size);
             if (NULL == section_virtual_addr)
             {
@@ -135,7 +135,7 @@ int bsp_hifi_load_sections(void *hifi_image)
             /* update section info */
 			/* 更新段地址 */
             section_info->sec_addr_info[dynamic_section_num].sec_source_addr
-                = SHD_DDR_V2P((u32)&(section_info->sec_data[dynamic_section_data_offset]));
+                = (void*)SHD_DDR_V2P((u32)&(section_info->sec_data[dynamic_section_data_offset]));
 			/* 更新段长度 */
             section_info->sec_addr_info[dynamic_section_num].sec_length
                 = hifi_head->sections[i].size;
@@ -150,7 +150,7 @@ int bsp_hifi_load_sections(void *hifi_image)
         {
         	/* 无须底软加载 */
 
-            section_virtual_addr = (void*)ioremap_nocache(hifi_head->sections[i].des_addr,
+            section_virtual_addr = (void*)ioremap_nocache((unsigned long)hifi_head->sections[i].des_addr,
                 hifi_head->sections[i].size);
             if (NULL == section_virtual_addr)
             {
@@ -158,7 +158,7 @@ int bsp_hifi_load_sections(void *hifi_image)
                 return -ENOMEM;
             }
 			/* 将信息放入邮箱中 */
-            drv_hifi_fill_mb_info((u32)section_virtual_addr);
+            drv_hifi_fill_mb_info((unsigned int*)section_virtual_addr);
             iounmap(section_virtual_addr);
         }
         else
@@ -345,7 +345,11 @@ err_unmap:
 
 #ifdef HI_ONOFF_PHONE
 
+#ifdef HI3630_FASTBOOT_MODEM
 #define PARTITION_MODEM_DSP_NAME                "block2mtd: /dev/block/mmcblk0p27"
+#else
+#define PARTITION_MODEM_DSP_NAME                "block2mtd: /dev/block/mmcblk0p31"
+#endif
 
 int bsp_load_modem_dsp(void)
 {

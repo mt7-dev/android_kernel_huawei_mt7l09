@@ -130,6 +130,11 @@ VOS_UINT32 TAF_MMA_SndMmcOtherModemInfoNotify(
     struct MsgCB                       *pstMsg
 );
 
+VOS_UINT32 TAF_MMA_SndMmcOtherModemDplmnNplmnInfoNotify(
+    struct MsgCB                       *pstMsg
+);
+
+
 VOS_UINT32 TAF_MMA_SndMmcNcellInfoInd(
     struct MsgCB                       *pstMsg
 );
@@ -160,6 +165,19 @@ VOS_UINT32 TAF_MMA_SndMmcRegReq(
 VOS_UINT32 TAF_MMA_SndMmcPowerSaveReq(
     TAF_MMA_POWER_SAVE_PARA_STRU       *pstMmaPowerSavePara
 );
+
+VOS_VOID TAF_MMA_SndMmcImsSrvInfoNotify(
+    VOS_UINT8                           ucImsCallFlg
+);
+
+VOS_VOID TAF_MMA_SndMmcImsSwitchStateInd(
+    MMA_MMC_IMS_SWITCH_STATE_ENUM_UINT8 enImsSwitch
+);
+VOS_VOID TAF_MMA_SndMmcVoiceDomainChangeInd(
+    MMA_MMC_VOICE_DOMAIN_ENUM_UINT32    enVoiceDomain
+);
+
+VOS_VOID TAF_MMA_SndMmcImsiRefreshInd(VOS_VOID);
 
 #if (VOS_OS_VER == VOS_WIN32)
 #pragma pack()

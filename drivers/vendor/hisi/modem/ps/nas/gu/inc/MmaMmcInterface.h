@@ -11,6 +11,7 @@
 #include "NasMmlCtx.h"
 #include "NasComm.h"
 
+#include "NasNvInterface.h"
 
 #ifdef __cplusplus
 #if __cplusplus
@@ -71,20 +72,29 @@ enum MMA_MMC_MSG_ID_ENUM
     ID_MMA_MMC_UPDATE_UPLMN_NTF           = 28,                                 /* _H2ASN_MsgChoice MMA_MMC_UPDATE_UPLMN_NTF_STRU */
 
     ID_MMA_MMC_EOPLMN_SET_REQ             = 30,                                 /* _H2ASN_MsgChoice MMA_MMC_EOPLMN_SET_REQ_STRU */
-	
+
     ID_MMA_MMC_NET_SCAN_REQ               = 32,
     ID_MMA_MMC_ABORT_NET_SCAN_REQ         = 34,
 
     ID_MMA_MMC_OTHER_MODEM_INFO_NOTIFY    = 36,                                 /* _H2ASN_MsgChoice MMA_MMC_OTHER_MODEM_INFO_NOTIFY_STRU */
 
     ID_MMA_MMC_NCELL_INFO_NOTIFY  = 38,                                    /* _H2ASN_MsgChoice MMA_MMC_NCELL_INFO_NOTIFY_STRU */
-   
+
     ID_MMA_MMC_PS_TRANSFER_IND    = 40,
     ID_MMA_MMC_IMS_VOICE_CAP_IND          = 42,                                 /* _H2ASN_MsgChoice MMA_MMC_IMS_VOICE_CAP_IND_STRU */
 
     ID_MMA_MMC_ACQ_REQ                    = 44,
     ID_MMA_MMC_REG_REQ                    = 46,
     ID_MMA_MMC_POWER_SAVE_REQ             = 48,
+
+    ID_MMA_MMC_IMS_SRV_INFO_NOTIFY        = 50,                                 /* _H2ASN_MsgChoice MMA_MMC_IMS_SRV_INFO_NOTIFY_STRU */
+
+    ID_MMA_MMC_OTHER_MODEM_DPLMN_NPLMN_INFO_NOTIFY    = 52,   /* _H2ASN_MsgChoice MMA_MMC_OTHER_MODEM_DPLMN_NPLMN_INFO_NOTIFY_STRU */
+
+    ID_MMA_MMC_IMS_SWITCH_STATE_IND       = 54,                                 /* _H2ASN_MsgChoice MMA_MMC_IMS_SWITCH_STATE_IND_STRU */
+    ID_MMA_MMC_VOICE_DOMAIN_CHANGE_IND    = 56,                                 /* _H2ASN_MsgChoice MMA_MMC_VOICE_DOMAIN_CHANGE_IND_STRU */
+
+    ID_MMA_MMC_IMSI_REFRESH_IND           = 58,                                /* _H2ASN_MsgChoice MMA_MMC_IMSI_REFRESH_IND_STRU */
 
     /* MMC发送给MMA的消息原语*/
     ID_MMC_MMA_START_CNF                  = 1,                                  /* _H2ASN_MsgChoice MMC_MMA_START_CNF_STRU */
@@ -112,14 +122,14 @@ enum MMA_MMC_MSG_ID_ENUM
     ID_MMC_MMA_PLMN_RESEL_CNF             = 45,                                 /* _H2ASN_MsgChoice MMC_MMA_PLMN_RESEL_CNF_STRU */
     ID_MMC_MMA_REG_RESULT_IND             = 47,
 
-    ID_MMC_MMA_PLMN_SELE_START_IND        = 49, 
+    ID_MMC_MMA_PLMN_SELE_START_IND        = 49,
 
     ID_MMC_MMA_EOPLMN_SET_CNF             = 51,
     ID_MMC_MMA_USIM_AUTH_FAIL_IND         = 53,
 
     ID_MMC_MMA_NET_SCAN_CNF               = 55,
     ID_MMC_MMA_ABORT_NET_SCAN_CNF         = 57,
-	    
+
     ID_MMC_MMA_NETWORK_CAPABILITY_INFO_IND= 59,                                 /* _H2ASN_MsgChoice ID_MMC_MMA_NETWORK_CAPABILITY_INFO_IND */
     ID_MMC_MMA_CAMP_ON_IND                = 61,                                  /* _H2ASN_MsgChoice MMC_MMA_CAMP_ON_IND_STRU_STRU */
 
@@ -137,8 +147,6 @@ enum MMA_MMC_MSG_ID_ENUM
     ID_MMA_MMC_MSG_ID_ENUM_BUTT
 };
 typedef VOS_UINT32 MMA_MMC_MSG_ID_ENUM_UINT32;
-
-
 enum MMA_MMC_CARD_STATUS_ENUM
 {
     MMA_MMC_CARD_STATUS_SIM_PRESENT      = 0,                                   /* sim present */
@@ -475,6 +483,30 @@ enum MMC_MMA_REG_RESULT_ENUM
 typedef VOS_UINT32 MMC_MMA_REG_RESULT_ENUM_UINT32;
 
 
+
+enum MMA_MMC_VOICE_DOMAIN_ENUM
+{
+    MMA_MMC_VOICE_DOMAIN_CS_ONLY            = 0,    /* CS voice only */
+    MMA_MMC_VOICE_DOMAIN_IMS_PS_ONLY        = 1,    /* IMS PS voice only */
+    MMA_MMC_VOICE_DOMAIN_CS_PREFERRED       = 2,    /* CS vocie preferred, IMS PS voice as secondary */
+    MMA_MMC_VOICE_DOMAIN_IMS_PS_PREFERRED   = 3,    /* IMS PS voice preferred, CS vocie as secondary */
+
+    MMA_MMC_VOICE_DOMAIN_BUTT
+};
+typedef VOS_UINT8  MMA_MMC_VOICE_DOMAIN_ENUM_UINT32;
+
+
+enum MMA_MMC_IMS_SWITCH_STATE_ENUM
+{
+    MMA_MMC_IMS_SWITCH_STATE_OFF        = 0,
+    MMA_MMC_IMS_SWITCH_STATE_ON         = 1,
+    MMA_MMC_IMS_SWITCH_STATE_BUTT
+};
+typedef VOS_UINT8 MMA_MMC_IMS_SWITCH_STATE_ENUM_UINT8;
+
+
+typedef NAS_MML_LMM_ACCESS_TYPE_ENUM_UINT8  MMC_MMA_LMM_ACCESS_TYPE_ENUM_UINT8;
+
 /*****************************************************************************
   4 全局变量声明
 *****************************************************************************/
@@ -609,7 +641,8 @@ typedef struct
     VOS_UINT8                           ucCsAttachAllowFlag;
     VOS_UINT16                          usArfcn;
     MMC_MMA_PLMN_PRIORITY_CLASS_ENUM_UINT8                  enPrioClass;
-    VOS_UINT8                                               aucReserve[3];
+    MMC_MMA_LMM_ACCESS_TYPE_ENUM_UINT8                      enLmmAccessType;
+    VOS_UINT8                                               aucReserve[2];
 }MMC_MMA_SYS_INFO_IND_STRU;
 
 typedef NAS_MML_REG_FAIL_CAUSE_ENUM_UINT16 NAS_MMC_REG_FAIL_CAUSE_ENUM_UINT16;
@@ -637,10 +670,10 @@ typedef struct
     VOS_UINT32                                   bitOpSrvSta     : 1;
     VOS_UINT32                                   bitOpRegSta     : 1;
     VOS_UINT32                                   bitSpare        : 30;
-    
+
     MMA_MMC_SRVDOMAIN_ENUM_UINT32                enCnDomainId;
     VOS_UINT8                                    ucSimCsRegStatus;
-    VOS_UINT8                                    ucSimPsRegStatus;    
+    VOS_UINT8                                    ucSimPsRegStatus;
     VOS_UINT8                                    aucReserved[1];
     MMA_MMC_REG_STATE_ENUM_UINT8                 enRegState;
     MMA_MMC_SERVICE_STATUS_ENUM_UINT32           enServiceStatus;
@@ -898,7 +931,7 @@ typedef struct
 {
     MSG_HEADER_STRU                     MsgHeader;                                             /* 消息头*/
     TAF_UINT8                           aucVersion[NAS_MML_MAX_USER_OPLMN_VERSION_LEN];        /* OPLMN List版本号 */
-    TAF_UINT8                           ucIndex;                                /* 当前设置的组Index */ 
+    TAF_UINT8                           ucIndex;                                /* 当前设置的组Index */
     TAF_UINT8                           ucOPlmnCount;                           /* 单组实际设置OPLMN的个数 */
     TAF_UINT8                           aucOPlmnWithRat[NAS_MML_MAX_GROUP_CFG_OPLMN_DATA_LEN];  /* OPLMN的PDU数据，和EFOplmn文件一致 */
 }MMA_MMC_EOPLMN_SET_REQ_STRU;
@@ -1013,7 +1046,7 @@ typedef struct
 
 typedef struct
 {
-    MSG_HEADER_STRU                        MsgHeader;          /* _H2ASN_Skip */     
+    MSG_HEADER_STRU                        MsgHeader;          /* _H2ASN_Skip */
     MMA_MMC_NW_IMS_VOICE_CAP_ENUM_UINT8    enNwImsVoCap ;
     MMA_MMC_NW_EMC_BS_CAP_ENUM_UINT8       enNwEmcBsCap ;
     MMA_MMC_LTE_CS_CAPBILITY_ENUM_UINT8    enLteCsCap ;
@@ -1022,7 +1055,7 @@ typedef struct
 typedef struct
 {
     MSG_HEADER_STRU                     MsgHeader;                              /* _H2ASN_Skip */
-    VOS_UINT8                           ucCampOnFlg;                            /* VOS_TRUE:驻留;VOS_FALSE:未驻留 */ 
+    VOS_UINT8                           ucCampOnFlg;                            /* VOS_TRUE:驻留;VOS_FALSE:未驻留 */
     VOS_UINT8                           aucRsv[3];                              /* 保留   */
 }MMC_MMA_CAMP_ON_IND_STRU_STRU;
 typedef struct
@@ -1041,6 +1074,13 @@ typedef struct
 
 
 
+typedef struct
+{
+    MSG_HEADER_STRU                                        stMsgHeader;         /*_H2ASN_Skip*/
+    NAS_MMC_NVIM_CFG_DPLMN_NPLMN_INFO_STRU                 stCmccDplmnNplmnInfo;
+    NAS_MMC_NVIM_CFG_DPLMN_NPLMN_INFO_STRU                 stUnicomDplmnNplmnInfo;
+    NAS_MMC_NVIM_CFG_DPLMN_NPLMN_INFO_STRU                 stCtDplmnNplmnInfo;
+} MMA_MMC_OTHER_MODEM_DPLMN_NPLMN_INFO_NOTIFY_STRU;
 typedef struct
 {
     VOS_UINT8                           ucTdsArfcnNum;                          /* 0表示TDD频点不存在 */
@@ -1083,7 +1123,7 @@ typedef struct
 typedef struct
 {
     MSG_HEADER_STRU                                         MsgHeader;          /* _H2ASN_Skip */
-    
+
     VOS_UINT8                                               ucAvail;            /* IMS VOICE是否可用 */
     VOS_UINT8                                               aucRsv[3];
 }MMA_MMC_IMS_VOICE_CAP_IND_STRU;
@@ -1159,6 +1199,56 @@ typedef struct
 
 typedef  MMC_MMA_ACQ_CNF_STRU MMC_MMA_ACQ_IND_STRU;
 
+
+
+typedef struct
+{
+    MSG_HEADER_STRU                            stMsgHeader;
+    VOS_UINT8                                  ucImsCallFlg;
+    VOS_UINT8                                  aucReserve[3];
+}MMA_MMC_IMS_SRV_INFO_NOTIFY_STRU;
+
+
+/*****************************************************************************
+ 结构名    : MMA_MMC_IMS_SWITCH_STATE_IND_STRU
+ 结构说明  : ID_MMA_MMC_IMS_SWITCH_STATE_IND的结构体
+ 1.日    期   : 2015年02月11日
+   作    者   : f0017928
+   修改内容   : 新建
+*****************************************************************************/
+typedef struct
+{
+    MSG_HEADER_STRU                             stMsgHeader;
+    MMA_MMC_IMS_SWITCH_STATE_ENUM_UINT8         enImsSwitch;                    /* IMS能力开关,1:打开,0:关闭 */
+    VOS_UINT8                                   aucReserved[3];
+}MMA_MMC_IMS_SWITCH_STATE_IND_STRU;
+
+/*****************************************************************************
+ 结构名    : MMA_MMC_VOICE_DOMAIN_CHANGE_IND_STRU
+ 结构说明  : ID_MMA_MMC_VOICE_DOMAIN_CHANGE_IND的结构体
+ 1.日    期   : 2015年02月11日
+   作    者   : f0017928
+   修改内容   : 新建
+*****************************************************************************/
+typedef struct
+{
+    MSG_HEADER_STRU                             stMsgHeader;
+    MMA_MMC_VOICE_DOMAIN_ENUM_UINT32            enVoiceDomain;                  /* 语音优选域 */
+}MMA_MMC_VOICE_DOMAIN_CHANGE_IND_STRU;
+
+
+/*****************************************************************************
+ 结构名    : MMA_MMC_IMSI_REFRESH_IND_STRU
+ 结构说明  : ID_MMA_MMC_IMSI_REFRESH_IND的结构体
+  1.日    期   : 2015年11月17日
+    作    者   : z00359541
+    修改内容   : 新建
+*****************************************************************************/
+typedef struct
+{
+    MSG_HEADER_STRU                             stMsgHeader;
+    VOS_UINT8                                   aucReserve[4];
+}MMA_MMC_IMSI_REFRESH_IND_STRU;
 /*****************************************************************************
   8 UNION定义
 *****************************************************************************/

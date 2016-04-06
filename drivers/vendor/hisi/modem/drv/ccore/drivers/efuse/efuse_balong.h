@@ -21,9 +21,17 @@ extern "C" {
 #endif
 #include "osl_types.h"
 #include "bsp_efuse.h"
+#ifdef CONFIG_EFUSE
 
 int efuse_init(void);
+#else
 
+static inline int efuse_init(void)
+{
+    return 0;
+}
+
+#endif
 /*****************************************************************************
 * º¯ Êý Ãû  : efuseReadHUK
 *

@@ -64,7 +64,6 @@ void gdbstub_io_init(void)
 	FLOWCTL_CLEAR(DTR);
 	FLOWCTL_SET(RTS);
 
-//	gdbstub_set_baud(115200);
 
 	/* we want to get serial receive interrupts */
 	__UART(IER) = UART_IER_RDI | UART_IER_RLSI;

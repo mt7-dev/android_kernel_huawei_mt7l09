@@ -34,8 +34,8 @@
 #include <linux/module.h>
 #include <linux/moduleparam.h>
 #include <linux/slab.h>
-#include <drm/drmP.h>
-#include <drm/drm_core.h>
+#include "drmP.h"
+#include "drm_core.h"
 
 unsigned int drm_debug = 0;	/* 1 to enable debug output */
 EXPORT_SYMBOL(drm_debug);
@@ -46,24 +46,16 @@ EXPORT_SYMBOL(drm_vblank_offdelay);
 unsigned int drm_timestamp_precision = 20;  /* Default to 20 usecs. */
 EXPORT_SYMBOL(drm_timestamp_precision);
 
-/*
- * Default to use monotonic timestamps for wait-for-vblank and page-flip
- * complete events.
- */
-unsigned int drm_timestamp_monotonic = 1;
-
 MODULE_AUTHOR(CORE_AUTHOR);
 MODULE_DESCRIPTION(CORE_DESC);
 MODULE_LICENSE("GPL and additional rights");
 MODULE_PARM_DESC(debug, "Enable debug output");
 MODULE_PARM_DESC(vblankoffdelay, "Delay until vblank irq auto-disable [msecs]");
 MODULE_PARM_DESC(timestamp_precision_usec, "Max. error on timestamps [usecs]");
-MODULE_PARM_DESC(timestamp_monotonic, "Use monotonic timestamps");
 
 module_param_named(debug, drm_debug, int, 0600);
 module_param_named(vblankoffdelay, drm_vblank_offdelay, int, 0600);
 module_param_named(timestamp_precision_usec, drm_timestamp_precision, int, 0600);
-module_param_named(timestamp_monotonic, drm_timestamp_monotonic, int, 0600);
 
 struct idr drm_minors_idr;
 
@@ -109,6 +101,7 @@ EXPORT_SYMBOL(drm_ut_debug_printk);
 
 static int drm_minor_get_id(struct drm_device *dev, int type)
 {
+	int new_id;
 	int ret;
 	int base = 0, limit = 63;
 
@@ -120,11 +113,26 @@ static int drm_minor_get_id(struct drm_device *dev, int type)
                 limit = base + 255;
         }
 
+again:
+	if (idr_pre_get(&drm_minors_idr, GFP_KERNEL) == 0) {
+		DRM_ERROR("Out of memory expanding drawable idr\n");
+		return -ENOMEM;
+	}
 	mutex_lock(&dev->struct_mutex);
-	ret = idr_alloc(&drm_minors_idr, NULL, base, limit, GFP_KERNEL);
+	ret = idr_get_new_above(&drm_minors_idr, NULL,
+				base, &new_id);
 	mutex_unlock(&dev->struct_mutex);
+	if (ret == -EAGAIN) {
+		goto again;
+	} else if (ret) {
+		return ret;
+	}
 
-	return ret == -ENOSPC ? -EINVAL : ret;
+	if (new_id >= limit) {
+		idr_remove(&drm_minors_idr, new_id);
+		return -EINVAL;
+	}
+	return new_id;
 }
 
 struct drm_master *drm_master_create(struct drm_minor *minor)
@@ -203,7 +211,7 @@ EXPORT_SYMBOL(drm_master_put);
 int drm_setmaster_ioctl(struct drm_device *dev, void *data,
 			struct drm_file *file_priv)
 {
-	int ret;
+	int ret = 0;
 
 	if (file_priv->is_master)
 		return 0;
@@ -214,20 +222,20 @@ int drm_setmaster_ioctl(struct drm_device *dev, void *data,
 	if (!file_priv->master)
 		return -EINVAL;
 
-	if (file_priv->minor->master)
-		return -EINVAL;
-
-	mutex_lock(&dev->struct_mutex);
-	file_priv->minor->master = drm_master_get(file_priv->master);
-	file_priv->is_master = 1;
-	if (dev->driver->master_set) {
-		ret = dev->driver->master_set(dev, file_priv, false);
-		if (unlikely(ret != 0)) {
-			file_priv->is_master = 0;
-			drm_master_put(&file_priv->minor->master);
+	if (!file_priv->minor->master &&
+	    file_priv->minor->master != file_priv->master) {
+		mutex_lock(&dev->struct_mutex);
+		file_priv->minor->master = drm_master_get(file_priv->master);
+		file_priv->is_master = 1;
+		if (dev->driver->master_set) {
+			ret = dev->driver->master_set(dev, file_priv, false);
+			if (unlikely(ret != 0)) {
+				file_priv->is_master = 0;
+				drm_master_put(&file_priv->minor->master);
+			}
 		}
+		mutex_unlock(&dev->struct_mutex);
 	}
-	mutex_unlock(&dev->struct_mutex);
 
 	return 0;
 }
@@ -311,7 +319,6 @@ int drm_fill_in_dev(struct drm_device *dev,
 	drm_lastclose(dev);
 	return retcode;
 }
-EXPORT_SYMBOL(drm_fill_in_dev);
 
 
 /**
@@ -352,7 +359,7 @@ int drm_get_minor(struct drm_device *dev, struct drm_minor **minor, int type)
 	idr_replace(&drm_minors_idr, new_minor, minor_id);
 
 	if (type == DRM_MINOR_LEGACY) {
-		ret = drm_proc_init(new_minor, drm_proc_root);
+		ret = drm_proc_init(new_minor, minor_id, drm_proc_root);
 		if (ret) {
 			DRM_ERROR("DRM: Failed to initialize /proc/dri.\n");
 			goto err_mem;
@@ -390,7 +397,6 @@ err_idr:
 	*minor = NULL;
 	return ret;
 }
-EXPORT_SYMBOL(drm_get_minor);
 
 /**
  * Put a secondary minor number.
@@ -421,12 +427,6 @@ int drm_put_minor(struct drm_minor **minor_p)
 	kfree(minor);
 	*minor_p = NULL;
 	return 0;
-}
-EXPORT_SYMBOL(drm_put_minor);
-
-static void drm_unplug_minor(struct drm_minor *minor)
-{
-	drm_sysfs_device_remove(minor);
 }
 
 /**
@@ -485,25 +485,10 @@ void drm_put_dev(struct drm_device *dev)
 	drm_put_minor(&dev->primary);
 
 	list_del(&dev->driver_item);
-	kfree(dev->devname);
+	if (dev->devname) {
+		kfree(dev->devname);
+		dev->devname = NULL;
+	}
 	kfree(dev);
 }
 EXPORT_SYMBOL(drm_put_dev);
-
-void drm_unplug_dev(struct drm_device *dev)
-{
-	/* for a USB device */
-	if (drm_core_check_feature(dev, DRIVER_MODESET))
-		drm_unplug_minor(dev->control);
-	drm_unplug_minor(dev->primary);
-
-	mutex_lock(&drm_global_mutex);
-
-	drm_device_set_unplugged(dev);
-
-	if (dev->open_count == 0) {
-		drm_put_dev(dev);
-	}
-	mutex_unlock(&drm_global_mutex);
-}
-EXPORT_SYMBOL(drm_unplug_dev);

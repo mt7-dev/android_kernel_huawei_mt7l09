@@ -16,6 +16,7 @@ LDFLAGS		:=
 LDFLAGS_vmlinux	:=-p --no-undefined -X
 ifeq ($(CONFIG_CPU_ENDIAN_BE8),y)
 LDFLAGS_vmlinux	+= --be8
+LDFLAGS_MODULE	+= --be8
 endif
 
 OBJCOPYFLAGS	:=-O binary -R .comment -S
@@ -124,6 +125,7 @@ CHECKFLAGS	+= -D__arm__
 #Default value
 head-y		:= arch/arm/kernel/head$(MMUEXT).o
 textofs-y	:= 0x00008000
+textofs-$(CONFIG_ARCH_HI6XXX) := 0x00408000
 textofs-$(CONFIG_ARCH_HI3630FPGA) := 0x00208000
 textofs-$(CONFIG_ARCH_HI3630EMULATOR) := 0x00208000
 textofs-$(CONFIG_ARCH_HI3630) := 0x00608000
@@ -280,7 +282,7 @@ ifeq ($(CONFIG_USE_OF),y)
 KBUILD_DTBS := dtbs
 endif
 
-all:	$(KBUILD_IMAGE) $(KBUILD_DTBS)
+all:	$(KBUILD_IMAGE)
 
 boot := arch/arm/boot
 

@@ -21,6 +21,7 @@ void hisi_ringbuffer_init(struct hisi_ringbuffer_s *q, u32 bytes, u32 fieldcnt)
 	q->field_count = fieldcnt; /* How many u32 in ONE record. */
 }
 
+/*lint -e818 */
 void hisi_ringbuffer_write(struct hisi_ringbuffer_s *q, u32 *element)
 {
 	int rear;
@@ -30,9 +31,14 @@ void hisi_ringbuffer_write(struct hisi_ringbuffer_s *q, u32 *element)
 		q->rear = 0;
 	}
 
+/*lint -e713 */
 	rear = q->rear++;
+/*lint +e713 */
 
+/*lint -e737 */
 	memcpy((void *)&q->data[rear * q->field_count],
 		(void *)element, q->field_count * sizeof(u32));
+/*lint +e737 */
 	return;
 }
+/*lint +e818 */

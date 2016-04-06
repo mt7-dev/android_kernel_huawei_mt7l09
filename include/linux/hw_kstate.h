@@ -1,41 +1,58 @@
 /*
- * Copyright (c) Huawei Technologies Co., Ltd. 1998-2013. All rights reserved.
+ * Copyright (c) Huawei Technologies Co., Ltd. 1998-2014. All rights reserved.
  *
  * File name: hw_kstate.h
- * Description: This file use to send kernel state.
- * Author: chenyouzhen@huawei.com
+ * Description: This file use to send kernel state
+ * Author: gavin.yangsong@huawei.com
  * Version: 0.1
- * Date: 2013/11/14
+ * Date: 2014/07/17
  */
-
 #ifndef _LINUX_KSTATE_H
 #define _LINUX_KSTATE_H
 
-// message mask
-#define KSTATE_CLOSE_ALL_MASK      ( 0 )
-#define KSTATE_FPS_MASK            ( 1 << 0 )
-#define KSTATE_LOG_MASK            ( 1 << 1 )
-#define KSTATE_SUSPEND_MASK        ( 1 << 2 )
-#define KSTATE_FREEZER_MASK        ( 1 << 3 )
+#include <linux/types.h>
+#include <linux/list.h>
 
-// message type
+#define KSTATE_NAME_LEN_MAX 20
+
 typedef enum {
-    KSTATE_OFF_TYPE = 0, // disable
-    KSTATE_ON_TYPE,      // enable
-    KSTATE_REPORT_TYPE,  // report data
-    KSTATE_COMMAND_TYPE, // sync cmd data
-    KSTATE_END_TYPE,
-}kstate_type;
+    CHANNEL_ID_NONE         = 0x0,
+    CHANNEL_ID_LOCAL_SERVER = 0x1 << 0,
+    CHANNEL_ID_LOCAL_CLIENT = 0x1 << 1,
+    CHANNEL_ID_NETLINK      = 0x1 << 2,
+    CHANNEL_ID_KCOLLECT     = 0x1 << 3,
+    CHANNEL_ID_END
+} CHANNEL_ID;
 
-// message cmd
 typedef enum {
-    KSTATE_ISNOT_CMD = -1, // default is not command
-    KSTATE_BEGIN_CMD = 0,
-    KSTATE_EDC_CMD = 1,    // edc overlay count (KSTATE_FPS_MASK)
-    KSTATE_END_CMD,
-}kstate_cmd;
+    PACKET_TAG_NONE = 0,
+    PACKET_TAG_VALIDATE_CHANNEL,
+    PACKET_TAG_MONITOR_CMD,
+    PACKET_TAG_MONITOR_INFO,
+    PACKET_TAG_KCOLLECT,
+    PACKET_TAG_END
+} PACKET_TAG;
 
+/*data format between user and kernel*/
+struct ksmsg {
+    PACKET_TAG tag;
+    CHANNEL_ID src;
+    CHANNEL_ID dst;
+    unsigned int length;
+    char buffer[0];
+};
 
-int kstate(int mask, const char *fmt, ...);
+/*used for register*/
+struct kstate_opt {
+    struct list_head list;
+    CHANNEL_ID dst; //used to mark client
+    PACKET_TAG tag;
+    char name[KSTATE_NAME_LEN_MAX];
+    int (*hook) (CHANNEL_ID src, PACKET_TAG tag, const char *data, size_t len);
+};
+
+int kstate(CHANNEL_ID channel, PACKET_TAG tag, const char *data, size_t len);
+int kstate_register_hook(struct kstate_opt *opt);
+void kstate_unregister_hook(struct kstate_opt *opt);
 
 #endif // _LINUX_KSTATE_H

@@ -282,6 +282,7 @@ struct v4l2_pix_format {
 	__u32          		sizeimage;
 	__u32			colorspace;	/* enum v4l2_colorspace */
 	__u32			priv;		/* private data, depends on pixelformat */
+    __u32           flags;
 };
 
 /*      Pixel format         FOURCC                          depth  Description  */
@@ -335,6 +336,12 @@ struct v4l2_pix_format {
 #define V4L2_PIX_FMT_YUV420  v4l2_fourcc('Y', 'U', '1', '2') /* 12  YUV 4:2:0     */
 #define V4L2_PIX_FMT_HI240   v4l2_fourcc('H', 'I', '2', '4') /*  8  8-bit color   */
 #define V4L2_PIX_FMT_HM12    v4l2_fourcc('H', 'M', '1', '2') /*  8  YUV 4:2:0 16x16 macroblocks */
+/*linux kernel3.10 update, add 4 format, 20140303, begin*/
+#define V4L2_PIX_FMT_RAW8    v4l2_fourcc('R', 'A', 'W', '8')
+#define V4L2_PIX_FMT_RAW10   v4l2_fourcc('R', 'A', 'W', 'X')
+#define V4L2_PIX_FMT_RAW12   v4l2_fourcc('R', 'A', 'W', '2')
+#define V4L2_PIX_FMT_RAW14   v4l2_fourcc('R', 'A', 'W', '4')
+/*linux kernel3.10 update, add 4 format, 20140303, end*/
 #define V4L2_PIX_FMT_M420    v4l2_fourcc('M', '4', '2', '0') /* 12  YUV 4:2:0 2 lines y, 1 line uv interleaved */
 
 /* two planes -- one Y, one Cr + Cb interleaved  */
@@ -722,7 +729,16 @@ struct v4l2_framebuffer {
 /* FIXME: in theory we should pass something like PCI device + memory
  * region + offset instead of some physical address */
 	void                    *base;
-	struct v4l2_pix_format	fmt;
+    struct {
+        __u32 width;
+        __u32 height;
+        __u32 pixelformat;
+        __u32 field;
+        __u32 bytesperline;
+        __u32 sizeimage;
+        __u32 colorspace;
+        __u32 priv;
+    } fmt;
 };
 /*  Flags for the 'capability' field. Read only */
 #define V4L2_FBUF_CAP_EXTERNOVERLAY	0x0001
@@ -1079,8 +1095,9 @@ struct v4l2_dv_timings {
  */
 struct v4l2_enum_dv_timings {
 	__u32 index;
-	__u32 reserved[3];
-	struct v4l2_dv_timings timings;
+    __u32 pad;
+    __u32 reserved[2];
+    struct v4l2_dv_timings timings;
 };
 
 /** struct v4l2_bt_timings_cap - BT.656/BT.1120 timing capabilities
@@ -1121,7 +1138,8 @@ struct v4l2_bt_timings_cap {
  */
 struct v4l2_dv_timings_cap {
 	__u32 type;
-	__u32 reserved[3];
+    __u32 pad;
+    __u32 reserved[2];
 	union {
 		struct v4l2_bt_timings_cap bt;
 		__u32 raw_data[32];
@@ -1215,8 +1233,12 @@ struct v4l2_ext_control {
 	union {
 		__s32 value;
 		__s64 value64;
-		char *string;
-	};
+        char __user * string;
+        __u8 __user * p_u8;
+        __u16 __user * p_u16;
+        __u32 __user * p_u32;
+        void __user * ptr;
+    };
 } __attribute__ ((packed));
 
 struct v4l2_ext_controls {
@@ -1230,7 +1252,7 @@ struct v4l2_ext_controls {
 #define V4L2_CTRL_ID_MASK      	  (0x0fffffff)
 #define V4L2_CTRL_ID2CLASS(id)    ((id) & 0x0fff0000UL)
 #define V4L2_CTRL_DRIVER_PRIV(id) (((id) & 0xffff) >= 0x1000)
-
+#define V4L2_CTRL_MAX_DIMS (4)
 enum v4l2_ctrl_type {
 	V4L2_CTRL_TYPE_INTEGER	     = 1,
 	V4L2_CTRL_TYPE_BOOLEAN	     = 2,
@@ -1255,7 +1277,21 @@ struct v4l2_queryctrl {
 	__u32                flags;
 	__u32		     reserved[2];
 };
-
+struct v4l2_query_ext_ctrl {
+    __u32 id;
+    __u32 type;
+    char name[32];
+    __s64 minimum;
+    __s64 maximum;
+    __u64 step;
+    __s64 default_value;
+    __u32 flags;
+    __u32 elem_size;
+    __u32 elems;
+    __u32 nr_of_dims;
+    __u32 dims[V4L2_CTRL_MAX_DIMS];
+    __u32 reserved[32];
+};
 /*  Used in the VIDIOC_QUERYMENU ioctl for querying menu items */
 struct v4l2_querymenu {
 	__u32		id;
@@ -1675,9 +1711,16 @@ struct v4l2_pix_format_mplane {
 	__u32				colorspace;
 
 	struct v4l2_plane_pix_format	plane_fmt[VIDEO_MAX_PLANES];
-	__u8				num_planes;
-	__u8				reserved[11];
+    __u8				num_planes;
+    __u8 flags;
+    __u8 reserved[10];
 } __attribute__ ((packed));
+
+struct v4l2_sdr_format {
+    __u32 pixelformat;
+    __u32 buffersize;
+    __u8 reserved[24];
+} __attribute__((packed));
 
 /**
  * struct v4l2_format - stream data format
@@ -1697,7 +1740,8 @@ struct v4l2_format {
 		struct v4l2_window		win;     /* V4L2_BUF_TYPE_VIDEO_OVERLAY */
 		struct v4l2_vbi_format		vbi;     /* V4L2_BUF_TYPE_VBI_CAPTURE */
 		struct v4l2_sliced_vbi_format	sliced;  /* V4L2_BUF_TYPE_SLICED_VBI_CAPTURE */
-		__u8	raw_data[200];                   /* user-defined */
+        struct v4l2_sdr_format sdr;
+        __u8	raw_data[200];                   /* user-defined */
 	} fmt;
 };
 
@@ -1752,13 +1796,27 @@ struct v4l2_event_frame_sync {
 	__u32 frame_sequence;
 };
 
+#define V4L2_EVENT_SRC_CH_RESOLUTION (1 << 0)
+struct v4l2_event_src_change {
+      __u32 changes;
+};
+
+#define V4L2_EVENT_MD_FL_HAVE_FRAME_SEQ (1 << 0)
+struct v4l2_event_motion_det {
+    __u32 flags;
+    __u32 frame_sequence;
+    __u32 region_mask;
+};
+
 struct v4l2_event {
 	__u32				type;
 	union {
 		struct v4l2_event_vsync		vsync;
 		struct v4l2_event_ctrl		ctrl;
 		struct v4l2_event_frame_sync	frame_sync;
-		__u8				data[64];
+        struct v4l2_event_src_change src_change;
+        struct v4l2_event_motion_det motion_det;
+        __u8				data[128];
 	} u;
 	__u32				pending;
 	__u32				sequence;

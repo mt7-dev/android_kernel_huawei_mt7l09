@@ -305,8 +305,17 @@ endef
 
 # Built-in and composite module parts
 $(obj)/%.o: $(src)/%.c $(recordmcount_source) FORCE
+ifeq ($(MAKECMDGOALS),new_pc_lint)
+	@cat $(LINT_PATH)/empty.o > $@
+ifeq ($(OBB_AARCH64), true)
+	@-wine $(LINT_PATH)/LINT-NT.EXE $(lint_flags) $(LINT_PATH)/android.lnt $(LINT_PATH)/size-options-arm64.lnt $< > $(obj)/$*.lint
+else
+	@-wine $(LINT_PATH)/LINT-NT.EXE $(lint_flags) $(LINT_PATH)/android.lnt $(LINT_PATH)/size-options-arm32.lnt $< > $(obj)/$*.lint
+endif
+else
 	$(call cmd,force_checksrc)
 	$(call if_changed_rule,cc_o_c)
+endif
 
 # Single-part modules are special since we need to mark them in $(MODVERDIR)
 
@@ -341,7 +350,11 @@ quiet_cmd_as_o_S = AS $(quiet_modtag)  $@
 cmd_as_o_S       = $(CC) $(a_flags) -c -o $@ $<
 
 $(obj)/%.o: $(src)/%.S FORCE
+ifeq ($(MAKECMDGOALS),new_pc_lint)
+	@cat $(LINT_PATH)/empty.o > $@
+else
 	$(call if_changed_dep,as_o_S)
+endif
 
 targets += $(real-objs-y) $(real-objs-m) $(lib-y)
 targets += $(extra-y) $(MAKECMDGOALS) $(always)
@@ -425,7 +438,7 @@ endif
 link_multi_deps =                     \
 $(filter $(addprefix $(obj)/,         \
 $($(subst $(obj)/,,$(@:.o=-objs)))    \
-$($(subst $(obj)/,,$(@:.o=-y)))), $^)
+$($(subst $(obj)/,,$(@:.o=-y)))), $(subst $(KBUILD_SRC)/,,$^))
  
 quiet_cmd_link_multi-y = LD      $@
 cmd_link_multi-y = $(LD) $(ld_flags) -r -o $@ $(link_multi_deps) $(cmd_secanalysis)
@@ -477,3 +490,27 @@ endif
 # information in a variable se we can use it in if_changed and friends.
 
 .PHONY: $(PHONY)
+
+
+######################### add for pc-lint #########################
+export LINT_PATH = $(if $(KBUILD_SRC),$(srctree)/)../vendor/hisi/llt/ci/tools/pc-lint
+
+lint_flags = $(filter -I% -D%, $(c_flags)) -I$(LINT_PATH) -header"(generated/autoconf.h)" -D_lint -DLINUX_PC_LINT
+
+lint-y = $(real-objs-y) $(extra-y)
+lint-m = $(real-objs-m)
+lint-a = $(always)
+
+new_pc_lint: build = -f $(if $(KBUILD_SRC),$(srctree)/)scripts/Makefile.build new_pc_lint obj
+
+new_pc_lint: $(lint-y) $(lint-m) $(subdir-ym) $(lint-a)
+	@:
+
+
+
+###################################################################
+
+
+
+
+

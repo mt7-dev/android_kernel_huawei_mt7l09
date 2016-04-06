@@ -367,6 +367,8 @@ VOS_VOID  NAS_LMM_StaTransProc( NAS_LMM_FSM_STATE_STRU  stDestState )
         NAS_LMM_PUBM_LOG_WARN("NAS_LMM_StaTransProc: EMM STATE REMAINS. ");
         return;
     }
+    /* 保存转状态前状态,用于复位分析 */
+    NAS_EMM_SavePreEmmState();
 
     /*执行状态迁移引起的处理*/
     NAS_LMM_ActionBeforeTransToDestSta(stDestState);
@@ -524,6 +526,9 @@ VOS_VOID  NAS_LMM_ActionBeforeTransToDestSta( NAS_LMM_FSM_STATE_STRU  stDestStat
         /* 进入DEREG态，清除UE无线能力变化标识 */
         NAS_EMM_ClearUeRadioAccCapChgFlag();
 
+        /* 清除TAU的active flag */
+        NAS_EMM_TAU_ClearActiveFlagProc();
+
         /*leili modify for isr begin*/
         /*停止定时器*/
         NAS_LMM_StopPtlTimer(TI_NAS_EMM_PTL_T3412);
@@ -580,6 +585,10 @@ VOS_VOID  NAS_LMM_ActionBeforeTransToDestSta( NAS_LMM_FSM_STATE_STRU  stDestStat
         /*清空 EPS 承载上下文变更标志*/
         NAS_EMM_SetEpsContextStatusChange(NAS_EMM_EPS_BEARER_STATUS_NOCHANGE);
 
+        /* 清除VOICE DOMAIN发生变化的标识 */
+        NAS_EMM_SetVoiceDomainChange(NAS_EMM_NO);
+        NAS_LMM_SetEmmInfoLaiChangeFlag(VOS_FALSE);
+        NAS_LMM_SetEmmInfoCsEmcConneExitFlag(VOS_FALSE);
         NAS_LMM_SetEmmInfoTriggerTauSysChange(NAS_EMM_NO);
         NAS_LMM_StopStateTimer(TI_NAS_EMM_STATE_SERVICE_T3442);
 
@@ -807,54 +816,96 @@ VOS_VOID  NAS_LMM_AppStateChange( NAS_EMM_FSM_STATE_STRU  stEmmDestState)
 VOS_UINT32  NAS_LMM_IsRegisteredInHplmn()
 {
     NAS_MM_PLMN_LIST_STRU               stEHplmnList    = {0};
+    NAS_EMM_PLMN_ID_STRU                stHPlmn         = {{0}};
     VOS_UINT32                          ulRslt          = MMC_LMM_FAIL;
     MMC_LMM_PUB_INFO_STRU               stPubInfo;
     NAS_EMM_PLMN_ID_STRU               *pstCurentPlmn   = VOS_NULL_PTR;
+    VOS_UINT8                           ucHplmnInEplmnDisplayHomeFlg = VOS_FALSE;
+    VOS_UINT32                          i               = 0;
 
     pstCurentPlmn = NAS_LMM_GetEmmInfoPresentPlmnAddr();
+    /*调用MML的接口，获取当前是否需要对EPLMN进行判断*/
+    ucHplmnInEplmnDisplayHomeFlg = NAS_MML_GetHplmnInEplmnDisplayHomeFlg();
+    NAS_LMM_PUBM_LOG1_NORM("NAS_LMM_IsRegisteredInHplmn ucHplmnInEplmnDisplayHomeFlg=",ucHplmnInEplmnDisplayHomeFlg);
 
     NAS_LMM_MEM_SET(&stPubInfo,0,sizeof(MMC_LMM_PUB_INFO_STRU));
     /*PC REPLAY MODIFY BY LEILI BEGIN*/
     /* 如果EHPLMN获取成功，且个数不为0，则判断当前PLMN是否在EHPLMN列表中，如果
        存在，则是注册在HPLMN上，否则就是注册到RPLMN上 */
     ulRslt = NAS_EMM_GetGulPubInfo(MMC_LMM_EHPLMN, &stPubInfo);
+    NAS_LMM_PUBM_LOG1_NORM("NAS_LMM_IsRegisteredInHplmn NAS_EMM_GetGulPubInfo result=",ulRslt);
     /*PC REPLAY MODIFY BY LEILI END*/
     if ((MMC_LMM_SUCC == ulRslt) && (stPubInfo.u.stEHplmnList.ulPlmnNum > 0))
     {
-        NAS_LMM_PUBM_LOG1_NORM("NAS_LMM_StateMap HPLMN",stEHplmnList.ulPlmnNum);
-
+        /*首先直接根据当前PLMN进行判断是否漫游*/
+        NAS_LMM_PUBM_LOG_NORM("NAS_LMM_IsRegisteredInHplmn:EHPLMN valid!");
         NAS_LMM_MEM_CPY (   &stEHplmnList,
                             &stPubInfo.u.stEHplmnList,
                             sizeof(MMC_LMM_PLMN_LIST_STRU));
+        NAS_LMM_PUBM_LOG1_NORM("NAS_LMM_IsRegisteredInHplmn EHPLMN Num=",stEHplmnList.ulPlmnNum);
 
         if (NAS_LMM_MATCH_SUCCESS == NAS_LMM_PlmnIDMatchHplmnList(pstCurentPlmn, &stEHplmnList))
         {
+            NAS_LMM_PUBM_LOG_NORM("NAS_LMM_IsRegisteredInHplmn:EHPLMN valid and match curr PLMN succ!");
             return NAS_EMM_YES;
         }
-
+        /*如果不需要判断EPLMN，则返回*/
+        if (VOS_TRUE != ucHplmnInEplmnDisplayHomeFlg)
+        {
+            NAS_LMM_PUBM_LOG_NORM("NAS_LMM_IsRegisteredInHplmn:EHPLMN valid and match curr PLMN fail!");
+            return NAS_EMM_NO;
+        }
+        /*如果需要判断EPLMN，则获取EPLMN列表，进行遍历*/
+        NAS_LMM_PUBM_LOG_NORM("NAS_LMM_IsRegisteredInHplmn:matching EHPLMN and EPLMN!");
+        for (i = 0 ; i < NAS_LMM_GetEmmInfoNetInfoEplmnListAddr()->ulPlmnNum ; i ++)
+        {
+            if (NAS_LMM_MATCH_SUCCESS == NAS_LMM_PlmnIDMatchHplmnList(&(NAS_LMM_GetEmmInfoNetInfoEplmnListAddr()->astPlmnId[i]), &stEHplmnList))
+            {
+                NAS_LMM_PUBM_LOG_NORM("NAS_LMM_IsRegisteredInHplmn:EHPLMN valid and match EPLMN succ!");
+                return NAS_EMM_YES;
+            }
+        }
         return NAS_EMM_NO;
     }
 
     /* 如果EHPLMN无效，则判断当前PLMN与HPLMN是否相同，如果相同，则是注册在HPLMN
        上，否则就是注册到RPLMN上 */
     /*PC REPLAY MODIFY BY LEILI BEGIN*/
+    /*首先直接根据当前PLMN进行判断是否漫游*/
     ulRslt = NAS_EMM_GetGulPubInfo(MMC_LMM_HPLMN, &stPubInfo);
     if (MMC_LMM_SUCC != ulRslt)
     {
         NAS_LMM_PUBM_LOG_NORM("NAS_LMM_IsRegisteredInHplmn:Hplmn cannot be got!");
         return NAS_EMM_NO;
     }
+    NAS_LMM_MEM_CPY (   &stHPlmn,
+                        &stPubInfo.u.stHplmn,
+                        sizeof(NAS_MM_PLMN_ID_STRU));
     /*PC REPLAY MODIFY BY LEILI END*/
 
-    if (NAS_LMM_MATCH_SUCCESS == NAS_LMM_HplmnMatch((NAS_MM_PLMN_ID_STRU *)(&stPubInfo.u.stHplmn), pstCurentPlmn))
+    if (NAS_LMM_MATCH_SUCCESS == NAS_LMM_HplmnMatch(&stHPlmn, pstCurentPlmn))
     {
-     	return NAS_EMM_YES;
+        NAS_LMM_PUBM_LOG_NORM("NAS_LMM_IsRegisteredInHplmn:Hplmn match curr PLMN succ!");
+        return NAS_EMM_YES;
     }
-
+    /*如果不需要判断EPLMN，则返回*/
+    if (VOS_TRUE != ucHplmnInEplmnDisplayHomeFlg)
+    {
+        NAS_LMM_PUBM_LOG_NORM("NAS_LMM_IsRegisteredInHplmn:Hplmn match curr PLMN fail!");
+        return NAS_EMM_NO;
+    }
+    /*如果需要判断EPLMN，则获取EPLMN列表，进行遍历*/
+    NAS_LMM_PUBM_LOG_NORM("NAS_LMM_IsRegisteredInHplmn:matching HPLMN and EPLMN!");
+    for (i = 0 ; i < NAS_LMM_GetEmmInfoNetInfoEplmnListAddr()->ulPlmnNum ; i ++)
+    {
+        if (NAS_LMM_MATCH_SUCCESS == NAS_LMM_HplmnMatch(&stHPlmn, &(NAS_LMM_GetEmmInfoNetInfoEplmnListAddr()->astPlmnId[i])))
+        {
+            NAS_LMM_PUBM_LOG_NORM("NAS_LMM_IsRegisteredInHplmn:HPLMN match EPLMN succ!");
+            return NAS_EMM_YES;
+        }
+    }
     return NAS_EMM_NO;
 }
-
-
 VOS_VOID  NAS_LMM_StateMap(const NAS_EMM_FSM_STATE_STRU *pstEmmDestState,
                         NAS_APP_REG_STAT_ENUM_UINT32   *pulNasAppDstState)
 
@@ -1052,7 +1103,10 @@ MMC_LMM_SERVICE_STATUS_ENUM_UINT32  NAS_LMM_RegServiceStateMap(
             break;
 
         case EMM_SS_REG_ATTEMPTING_TO_UPDATE:
-            ulNasMmcDstServiceState = MMC_LMM_SERVICE_STATUS_LIMIT_SERVICE;
+            if(NAS_EMM_TAU_ATTEMPT_CNT_MAX <= NAS_EMM_TAU_GetEmmTAUAttemptCnt())
+            {
+                ulNasMmcDstServiceState = MMC_LMM_SERVICE_STATUS_LIMIT_SERVICE;
+            }
             break;
 
         case EMM_SS_REG_LIMITED_SERVICE:
@@ -1078,8 +1132,6 @@ MMC_LMM_SERVICE_STATUS_ENUM_UINT32  NAS_LMM_RegServiceStateMap(
 
     return ulNasMmcDstServiceState;
 }
-
-
 VOS_VOID  NAS_EMM_SendMmcServiceStatInd( VOS_UINT32 ulCsServiceStateChangeFlag,
                                                       VOS_UINT32 ulPsServiceStateChangeFlag)
 
@@ -1134,18 +1186,6 @@ VOS_VOID  NAS_EMM_SendMmcServiceStatInd( VOS_UINT32 ulCsServiceStateChangeFlag,
     }
     return;
 }
-
-/*****************************************************************************
- Function Name   : NAS_LMM_RegCSServiceStateMap
- Description     : 把当前EMM 注册状态映射为EMM内部定义上报给MMC的CS域服务状态
- Input           : 当前EMM状态
- Output          : 内部定义上报给MMC的服务状态
- Return          : VOS_VOID
-
- History         :
-    1.    FTY      2012-01-11  Draft Enact
-
-*****************************************************************************/
 MMC_LMM_SERVICE_STATUS_ENUM_UINT32  NAS_LMM_RegCSServiceStateMap(
                                         const NAS_EMM_FSM_STATE_STRU        *pstEmmDestState)
 {
@@ -1154,10 +1194,18 @@ MMC_LMM_SERVICE_STATUS_ENUM_UINT32  NAS_LMM_RegCSServiceStateMap(
     /*注册域为PS,CS服务状态都为NO SERVICE*/
     if(NAS_LMM_REG_DOMAIN_PS == NAS_LMM_GetEmmInfoRegDomain())
     {
-        NAS_LMM_PUBM_LOG1_NORM("NAS_LMM_RegCSServiceStateMap:NAS_LMM_GetEmmInfoRegDomain",NAS_LMM_GetEmmInfoRegDomain());
-        ulNasMmcDstServiceState = MMC_LMM_SERVICE_STATUS_NO_SERVICE;
+        /* 当UE没有被2和18拒,且子状态为EMM_SS_REG_ATTEMPTING_TO_UPDATE以及UPDATE_MM时不直接上报NO Service
+           为了解决高铁问题:在GU做了LAU后，回到L上做TAU被17拒,上报NO Service,导致掉网，主叫不通问题 */
+        if((NAS_EMM_REJ_YES == NAS_LMM_GetEmmInfoRejCause2Flag())
+            ||(NAS_EMM_REJ_YES == NAS_EMMC_GetRejCause18Flag())
+            ||((EMM_SS_REG_ATTEMPTING_TO_UPDATE != pstEmmDestState->enSubState)
+                &&(EMM_SS_REG_ATTEMPTING_TO_UPDATE_MM != pstEmmDestState->enSubState)))
+        {
+            NAS_LMM_PUBM_LOG1_NORM("NAS_LMM_RegCSServiceStateMap:NAS_LMM_GetEmmInfoRegDomain",NAS_LMM_GetEmmInfoRegDomain());
+            ulNasMmcDstServiceState = MMC_LMM_SERVICE_STATUS_NO_SERVICE;
 
-        return ulNasMmcDstServiceState;
+            return ulNasMmcDstServiceState;
+        }
     }
 
     switch(pstEmmDestState->enSubState)
@@ -1169,15 +1217,32 @@ MMC_LMM_SERVICE_STATUS_ENUM_UINT32  NAS_LMM_RegCSServiceStateMap(
             break;
 
         case EMM_SS_REG_ATTEMPTING_TO_UPDATE:
-        case EMM_SS_REG_LIMITED_SERVICE:
-        case EMM_SS_REG_WAIT_ACCESS_GRANT_IND:
-            ulNasMmcDstServiceState = MMC_LMM_SERVICE_STATUS_LIMIT_SERVICE;
+            if(NAS_EMM_TAU_ATTEMPT_CNT_MAX <= NAS_EMM_TAU_GetEmmTAUAttemptCnt())
+            {
+                ulNasMmcDstServiceState = MMC_LMM_SERVICE_STATUS_LIMIT_SERVICE;
+            }
             break;
 
+        case EMM_SS_REG_LIMITED_SERVICE:
+            ulNasMmcDstServiceState = MMC_LMM_SERVICE_STATUS_LIMIT_SERVICE;
+            break;
+        case EMM_SS_REG_WAIT_ACCESS_GRANT_IND:
+            /* tau过程中建链被bar时上报限制服务 */
+            if (NAS_EMM_BAR_PROCEDURE_TAU == NAS_EMM_GetBarProcedure())
+            {
+                ulNasMmcDstServiceState = MMC_LMM_SERVICE_STATUS_LIMIT_SERVICE;
+            }
+            break;
         case EMM_SS_REG_NORMAL_SERVICE:
             ulNasMmcDstServiceState = MMC_LMM_SERVICE_STATUS_NORMAL_SERVICE;
             break;
-
+        /* UPDATE_MM状态下5次TAU后上报限制服务:解决TAU PS ONLY、异系统TAU FAIL后上报无服务,导致主叫AT命令下不到modem问题 */
+        case EMM_SS_REG_ATTEMPTING_TO_UPDATE_MM:
+            if(NAS_EMM_TAU_ATTEMPT_CNT_MAX <= NAS_EMM_TAU_GetEmmTAUAttemptCnt())
+            {
+                ulNasMmcDstServiceState = MMC_LMM_SERVICE_STATUS_LIMIT_SERVICE;
+            }
+            break;
         default:
             break;
 
@@ -1515,7 +1580,8 @@ MMC_LMM_REGISTER_STATUS_ENUM_UINT32  NAS_LMM_RegRegisterStateMap(
     switch(pstEmmDestState->enSubState)
     {
         case EMM_SS_REG_WAIT_ACCESS_GRANT_IND:
-            ulNasMmcDstRegisterState = MMC_LMM_REGISTER_STATUS_NOT_REG_NOT_SRCHING;
+            /* TAU、SERVICE建链被bar时,注册状态不改变，解决TAU、SERVICE建链被bar时UE显示掉网问题 */
+            /* ulNasMmcDstRegisterState = MMC_LMM_REGISTER_STATUS_NOT_REG_NOT_SRCHING; */
             break;
 
         case EMM_SS_REG_LIMITED_SERVICE:
@@ -1538,22 +1604,12 @@ MMC_LMM_REGISTER_STATUS_ENUM_UINT32  NAS_LMM_RegRegisterStateMap(
             break;
 
         case EMM_SS_REG_ATTEMPTING_TO_UPDATE:
-            if(EMM_US_UPDATED_EU1 == NAS_LMM_GetMmAuxFsmAddr()->ucEmmUpStat)
-            {
-                if(NAS_EMM_YES == NAS_LMM_IsRegisteredInHplmn())
-                {
-                    ulNasMmcDstRegisterState = MMC_LMM_REGISTER_STATUS_REG_HPLMN;
-                }
-                else
-                {
-                    ulNasMmcDstRegisterState= MMC_LMM_REGISTER_STATUS_REG_ROAMING;
-                }
-            }
-            else
+            if(NAS_EMM_TAU_ATTEMPT_CNT_MAX <= NAS_EMM_TAU_GetEmmTAUAttemptCnt())
             {
                 ulNasMmcDstRegisterState = MMC_LMM_REGISTER_STATUS_NOT_REG_SRCHING;
             }
             break;
+
         default:
             break;
     }

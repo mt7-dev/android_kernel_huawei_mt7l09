@@ -322,7 +322,12 @@ typedef struct
     /*以下一个U32用于MSP部分的控制*/
     VOS_UINT32 ulPowerSwich:1;      /* bit 0 控制MSP部分是否进行DSP等器件的上下电动作 0:进行上下电  1:不进行上下电*/
     VOS_UINT32 ulVoteSwitch:1;      /* bit 1 控制MSP部分在DSP浅睡时是否投票给全系统睡眠 0:投票进行睡眠  1:不投票进行睡眠*/
-    VOS_UINT32 ulPowerReserve:30;   /* 保留 */
+
+    VOS_UINT32 ulReserve:6;
+
+    VOS_UINT32 ulMspPowerup:8;      /* MSP给射频上电的时长，以slice为单位 */
+    VOS_UINT32 ulDspTcmResume:8;    /* DSP专有镜像恢复的时长，以slice为单位 */
+    VOS_UINT32 ulInterval:8;        /* 加入的间隔时长，以slice为单位 */
 }NV_TL_DRX_RESUME_TIME_STRU;
 #ifdef __cplusplus
 #if __cplusplus

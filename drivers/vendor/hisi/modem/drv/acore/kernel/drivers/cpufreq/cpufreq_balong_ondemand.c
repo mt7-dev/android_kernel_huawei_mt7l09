@@ -521,7 +521,7 @@ void test_for_cpufreq_longtime(void)
 }
 void test_for_pmu_task(void)
 {
-	unsigned int task_id = 0;
+	struct task_struct*  task_id = 0;
 	osl_task_init("pmu_test", 16, 0x1000 ,(void *)test_for_pmuevent, NULL, &task_id);
 	//if (!idle_time)
 	//osl_task_init("pmu_test", 16, 0x1000 ,(void *)test_for_cpufreq_longtime, NULL, &task_id);

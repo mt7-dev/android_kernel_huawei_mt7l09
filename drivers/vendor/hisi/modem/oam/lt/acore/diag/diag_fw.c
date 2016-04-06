@@ -36,6 +36,10 @@ DIAG_FW_RX_INFO_STRU g_stDiagFwNodeInfoStru = {0};
 
 VOS_SEM g_DiagFwNodeSem =(VOS_SEM)0;
 
+#if ((FEATURE_ON == FEATURE_SOCP_ON_DEMAND)&&(FEATURE_ON == FEATURE_MERGE_OM_CHAN))
+VOS_BOOL g_DiagFwSocpVote = FALSE;
+#endif
+
 /*****************************************************************************
   3 Function
 *****************************************************************************/
@@ -428,6 +432,17 @@ VOS_VOID diag_FwDealDecodeCmdEntry(VOS_UINT8* pData,VOS_UINT32 ulLen)
        return;
     }
 
+#if ((FEATURE_ON == FEATURE_SOCP_ON_DEMAND) &&(FEATURE_ON == FEATURE_MERGE_OM_CHAN))
+    if(g_DiagFwSocpVote == FALSE)
+    {
+        ret = DRV_SOCP_VOTE(SOCP_VOTE_DIAG_FW,SOCP_VOTE_FOR_WAKE);
+        if(ret == ERR_MSP_SUCCESS)
+        {
+            g_DiagFwSocpVote = TRUE;
+        }
+    }
+#endif
+
     /*将解码后数据放入链表中*/
     pNode = diag_FwAddCmdToList(pData,ulLen);
     if (NULL == pNode)
@@ -483,11 +498,19 @@ VOS_VOID diag_FwDealAppAgentCnfEntry(VOS_UINT8* pData,VOS_UINT32 ulLen)
 #if(FEATURE_SOCP_ON_DEMAND == FEATURE_ON)
     if(MSP_STRU_ID_0_15_CMD_CATEGORY(ulCmdId) == DIAG_CMD_HOST_DISCONNECT)
     {
+#if (FEATURE_ON == FEATURE_MERGE_OM_CHAN)
+        if(ERR_MSP_SUCCESS != DRV_SOCP_VOTE(SOCP_VOTE_DIAG_FW, SOCP_VOTE_FOR_SLEEP))
+        {
+            DIAG_DEBUG_SDM_FUN(EN_DIAG_DEBUG_DIS_CONN_CFG, 0, 1, 1);
+        }
+        g_DiagFwSocpVote = FALSE;
+#else
         if(ERR_MSP_SUCCESS != DRV_SOCP_VOTE(SOCP_VOTE_DIAG_APP, SOCP_VOTE_FOR_SLEEP))
         {
             DIAG_DEBUG_SDM_FUN(EN_DIAG_DEBUG_DIS_CONN_CFG, 0, 1, 1);
         }
         g_diagSocpIsEnable = FALSE;
+#endif
     }
 #endif
 
@@ -595,7 +618,12 @@ VOS_VOID diag_FwSetChanSta(VOS_UINT32 flag)
 #if (FEATURE_BSP_LCH_OM == FEATURE_ON)
         DRV_OM_SET_HSO_CONN_FLAG(0);
 #endif
-#if(FEATURE_SOCP_ON_DEMAND == FEATURE_ON)
+
+#if (FEATURE_ON == FEATURE_SOCP_ON_DEMAND)
+#if (FEATURE_ON == FEATURE_MERGE_OM_CHAN)
+        (VOS_VOID)DRV_SOCP_VOTE(SOCP_VOTE_DIAG_FW,SOCP_VOTE_FOR_SLEEP);
+        g_DiagFwSocpVote = FALSE;
+#endif
         (VOS_VOID)DRV_SOCP_VOTE(SOCP_VOTE_DIAG_APP, SOCP_VOTE_FOR_SLEEP);
         g_diagSocpIsEnable = FALSE;
 #endif
@@ -648,8 +676,13 @@ VOS_UINT32 diag_FwMsgProcInit(enum VOS_INIT_PHASE_DEFINE ip)
             DIAG_DEBUG_SDM_FUN(EN_DIAG_DEBUG_FW_INIT_ERROR,ret,0,4);
             return ret;
         }
+#if((FEATURE_ON == FEATURE_SOCP_ON_DEMAND) &&(FEATURE_ON == FEATURE_MERGE_OM_CHAN))
+        (VOS_VOID)DRV_SOCP_VOTE(SOCP_VOTE_DIAG_FW, SOCP_VOTE_FOR_SLEEP);
+#endif
 
+#if (FEATURE_OFF == FEATURE_MERGE_OM_CHAN)
         diag_PortSetConnStaCB((DIAG_PORT_CONNECT_STA_PFN)diag_FwSetChanSta );
+#endif
     }
 
     return ret;
@@ -704,7 +737,19 @@ VOS_VOID diag_FwMsgProc(MsgBlock* pMsgBlock)
             DIAG_DEBUG_SDM_FUN(EN_DIAG_DEBUG_FW_AGENT_CNF_ENTRY,0,pMsgTmp->ulLen,3);
             diag_FwDealAgentCnfEntry(pMsgTmp->pContext,pMsgTmp->ulLen);
             break;
-
+#if (FEATURE_ON == FEATURE_MERGE_OM_CHAN)
+        case WUEAPP_PID_MUX:
+            pMsgTmp = (DIAG_DATA_MSG_STRU*)pMsgBlock;
+            if(ID_MSG_DIAG_HSO_DISCONN_IND == pMsgTmp->ulMsgId)
+            {
+                diag_FwSetChanSta(0);
+            }
+            else
+            {
+                diag_printf(" rcv from WUEAPP_PID_MUX err,msg id :0x%x\n",pMsgTmp->ulMsgId);
+            }
+            break;
+#endif
         /*接收到其他PID发过来的错误数据，不予处理 */
         default:
             DIAG_DEBUG_SDM_FUN(EN_DIAG_DEBUG_FW_ERROR_ENTRY,0,0,4);
@@ -789,13 +834,13 @@ VOS_UINT32 MSP_AppDiagFidInit(enum VOS_INIT_PHASE_DEFINE ip)
     {
         case VOS_IP_LOAD_CONFIG:
             drx_msp_init();
-
+#if (FEATURE_OFF == FEATURE_MERGE_OM_CHAN)
             ulRelVal = diag_PortInit();
             if (ulRelVal != VOS_OK)
             {
                 return VOS_ERR;
             }
-
+#endif
             ulRelVal = VOS_RegisterPIDInfo(MSP_PID_DIAG_FW, (Init_Fun_Type) diag_FwMsgProcInit, (Msg_Fun_Type) diag_FwMsgProc);
 
             if (ulRelVal != VOS_OK)
@@ -815,13 +860,13 @@ VOS_UINT32 MSP_AppDiagFidInit(enum VOS_INIT_PHASE_DEFINE ip)
             {
                 return VOS_ERR;
             }
-
+#if (FEATURE_OFF == FEATURE_MERGE_OM_CHAN)
             ulRelVal = VOS_RegisterSelfTask(MSP_FID_DIAG_ACPU, (VOS_TASK_ENTRY_TYPE)diag_PortTask, VOS_PRIORITY_M2, 0x2000);    //lint !e64
             if (VOS_NULL_BYTE  == ulRelVal)
             {
                 return VOS_ERR;
             }
-
+#endif
             break;
         default:
             break;
@@ -831,6 +876,7 @@ VOS_UINT32 MSP_AppDiagFidInit(enum VOS_INIT_PHASE_DEFINE ip)
 }
 /*lint -restore +e40*/
 
+#if (FEATURE_OFF == FEATURE_MERGE_OM_CHAN)
 VOS_UINT32 Diag_SocpDecodeDesDataProc(SOCP_DECODER_DST_ENUM_U32 enChanID,VOS_UINT8 *pucData, VOS_UINT32 ulSize,VOS_UINT8 *pucRBData, VOS_UINT32 ulRBSize)
 {
     VOS_UINT32 ulRet = ERR_MSP_SUCCESS;
@@ -873,7 +919,7 @@ VOS_UINT32 Diag_SocpDecodeDesDataProc(SOCP_DECODER_DST_ENUM_U32 enChanID,VOS_UIN
     pCurData = pData;
     while(1)/*lint !e716*/
     {
-        HeadInfo = (DIAG_SOCP_DECODE_PACKET_HEAD*)pCurData;
+        HeadInfo = (DIAG_SOCP_DECODE_PACKET_HEAD*)(pCurData+ulCurLen);
 
         /*没有HISI包头，认为无效包*/
         if( HeadInfo->ulMagic != DIAG_SOCP_DECODE_HEAD_MAGIC )
@@ -901,21 +947,58 @@ VOS_UINT32 Diag_SocpDecodeDesDataProc(SOCP_DECODER_DST_ENUM_U32 enChanID,VOS_UIN
         }
 
         /*移动指针到下一个包*/
-        ulCurLen += (sizeof(DIAG_SOCP_DECODE_PACKET_HEAD) + HeadInfo->ulDatalen);
+        ulCurLen += ((sizeof(DIAG_SOCP_DECODE_PACKET_HEAD) + HeadInfo->ulDatalen + 7)&(~7));
 
         /*下一个包的起始长度加上包头长度不能超过数据总长度*/
         if((ulCurLen + sizeof(DIAG_SOCP_DECODE_PACKET_HEAD)) >= ulTotalLen)
         {
             break;
         }
-        pCurData += ulCurLen;
     }
 
     VOS_MemFree(MSP_PID_DIAG_FW,pData);
     return ulRet;
+}
+#else
+VOS_UINT32 Diag_SocpDecodeDesDataProc(SOCP_DECODER_DST_ENUM_U32 enChanID,VOS_UINT8 *pucData, VOS_UINT32 ulSize,VOS_UINT8 *pucRBData, VOS_UINT32 ulRBSize)
+{
+    VOS_UINT32 ulRet = ERR_MSP_SUCCESS;
+    VOS_UINT32 ulTotalLen = 0;
+    VOS_UINT8* pData;
 
+    if(pucData == VOS_NULL)
+    {
+        DIAG_DEBUG_SDM_FUN(EN_DIAG_DEBUG_DECODE_PACKET_RCVE_ERROR, 0, 0, 0);
+        return ERR_MSP_INVALID_PARAMETER;
+    }
+    ulTotalLen = ulSize + ulRBSize;
+    if(!ulTotalLen)
+    {
+        DIAG_DEBUG_SDM_FUN(EN_DIAG_DEBUG_DECODE_PACKET_RCVE_ERROR, 0, 0, 1);
+        return ERR_MSP_INVALID_PARAMETER;
+    }
+    pData = VOS_MemAlloc(MSP_PID_DIAG_FW,DYNAMIC_MEM_PT,ulTotalLen);
+    if(pData == VOS_NULL)
+    {
+        DIAG_DEBUG_SDM_FUN(EN_DIAG_DEBUG_DECODE_PACKET_RCVE_ERROR, 0, 0, 2);
+        return ERR_MSP_MALLOC_FAILUE;
+    }
+    VOS_MemCpy(pData,pucData,ulSize);
+    if((VOS_NULL != pucRBData)&&(0 != ulRBSize))
+    {
+        VOS_MemCpy(pData+ulSize,pucRBData,ulRBSize);
+    }
+    DIAG_DEBUG_SDM_FUN(EN_DIAG_DEBUG_DECODE_PACKET_RCVE, enChanID, (VOS_UINT32)ulTotalLen, 0);
+    ulRet = diag_FwSendDecodeCmdToFw(pData,ulTotalLen);
+    if(ulRet)
+    {
+        diag_printf("diag_FwSendDecodeCmdToFw failed ,ulRet = 0x%x\n",ulRet);
+    }
+    VOS_MemFree(MSP_PID_DIAG_FW,pData);
+    return ulRet;
 }
 
+#endif
 
 #ifdef __cplusplus
     #if __cplusplus

@@ -91,7 +91,7 @@ static int adis16209_read_raw(struct iio_dev *indio_dev,
 			return IIO_VAL_INT_PLUS_MICRO;
 		case IIO_ACCEL:
 			*val = 0;
-			*val2 = IIO_G_TO_M_S_2(244140); /* 0.244140 mg */
+			*val2 = IIO_G_TO_M_S_2(244140);
 			return IIO_VAL_INT_PLUS_NANO;
 		case IIO_INCLI:
 		case IIO_ROT:

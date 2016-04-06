@@ -61,7 +61,7 @@ obj-$(CONFIG_SCSI)		+= scsi/
 obj-$(CONFIG_ATA)		+= ata/
 obj-$(CONFIG_TARGET_CORE)	+= target/
 obj-$(CONFIG_MTD)		+= mtd/
-obj-y                           += modem/
+obj-y                           += hisi/modem_hi3630/drv/
 
 #pmic
 obj-y	+= pmic/

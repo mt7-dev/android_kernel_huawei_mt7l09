@@ -52,14 +52,6 @@ static inline unsigned long calculate_ldr(int cpu)
 
 	return val;
 }
-
-/*
- * Set up the logical destination ID.
- *
- * Intel recommends to set DFR, LDR and TPR before enabling
- * an APIC.  See e.g. "AP-388 82489DX User's Manual" (Intel
- * document number 292116).  So here it goes...
- */
 static void bigsmp_init_apic_ldr(void)
 {
 	unsigned long val;

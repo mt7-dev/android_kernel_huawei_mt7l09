@@ -95,6 +95,14 @@ typedef struct
     CMMCA_PDN_INFO_STRU                 astPdnInfo[CMMCA_SUPPORTED_PDN_NUM_MAX];
 }CMMCA_PKT_PDN_TAB_BUFF_ITEM_STRU;
 
+
+typedef struct
+{
+    CMMCA_MMC_RAT_ID_ENUM_UINT8                     enRatId;
+    CMMCA_SET_PDN_PCO_AUTH_RESULT_ENUM_UINT8        ucResult;
+    VOS_UINT8                                       aucReserved[2];
+}CMMCA_MMC_SET_PDN_PCO_AUTH_CNF_STRU;
+
 /*****************************************************************************
   8 UNION∂®“Â
 *****************************************************************************/
@@ -243,6 +251,19 @@ VOS_VOID CMMCA_PKT_GenIpv6LanAddrWithRadomIID(
 CMMCA_RAT_MMC_PKT_ERRCODE_UINT8 CMMCA_PKT_TransferErrCode(
     TAF_PS_CAUSE_ENUM_UINT32            enCause
 );
+
+VOS_VOID CMMCA_PKT_SndSetPdnPcoAuthRsp(
+    CMMCA_SET_PDN_PCO_AUTH_RESULT_ENUM_UINT8        enRslt
+);
+
+VOS_UINT32 CMMCA_PKT_RcvTafSetPdnPcoAuthCnf(
+    VOS_VOID                           *pEvtInfo
+);
+
+VOS_VOID CMMCA_PKT_RcvCmmcSetPdnPcoAuthReq(
+    VOS_VOID                           *pMsg
+);
+
 
 #endif
 

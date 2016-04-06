@@ -1,28 +1,5 @@
 
-/* Description: nand controller operations in dependence on  hardware,
-*              this source file is only for some platforms but not for Linux
-*              platform.
-*
-*                   |                           Layer: platform(Vxworks/ADS/bootloater/fastboot)
-*              nand_balong.c
-*                   |
-*                   |                           Layer: porting
-*              nandc_nand.c
-*                   |
-*                   |
-*        ------------------------
-*          |                  |
-*          |(init)            |(operation)
-*       nandc_host.c       nandc_ctrl.c               Layer: controller
-*          |           -----------------------
-*      nandc_native.c         |
-*                      nandc_vxxx.c(nandc_v400.c)       Layer: hardware
-******************************************************************************
-*    Copyright (c) 2009-2011 by  Hisilicon Tech. Co., Ltd.
-*
-*    All rights reserved.
-*
-******************************************************************************/
+
 #ifdef __cplusplus
 extern "C"
 {
@@ -1007,12 +984,13 @@ erro:
  *				:   else  			- failure
  * Desciption	:	NULL
  */
-int bsp_nand_read(const char *partition_name, u32 partition_offset, void* ptr_ram_addr, u32 length, u32 *skip_len)
+int bsp_nand_read(const char *partition_name, loff_t partition_offset, void* ptr_ram_addr, size_t length, u32 *skip_len)
 {
 	int ret = 0;
 	u32 retlen = 0;
 	u32 offsetinblock;
 	u32 readsize;
+	u32 remainder = 0;
 	char * dst_addr = ptr_ram_addr;
 
     /* coverity[assign_zero] */
@@ -1048,7 +1026,8 @@ int bsp_nand_read(const char *partition_name, u32 partition_offset, void* ptr_ra
         }
 
         /* bad block management */
-		ret = mtd_block_isbad(mtd, (long long)(partition_offset - partition_offset % mtd->erasesize));
+        div_u64_rem(partition_offset, mtd->erasesize, &remainder);  /* 解决64位长除法问题 */
+		ret = mtd_block_isbad(mtd, (long long)(partition_offset - remainder));
 		if (ret)
 		{
 			printk(KERN_ERR"bad block detected, skip. partition offset is 0x%x\n", partition_offset);
@@ -1056,7 +1035,7 @@ int bsp_nand_read(const char *partition_name, u32 partition_offset, void* ptr_ra
 		}
 
 		/* read in block */
-		offsetinblock = partition_offset % mtd->erasesize;
+		offsetinblock = remainder;
         readsize = (offsetinblock + length < mtd->erasesize) ? length : (mtd->erasesize - offsetinblock);
         ret = mtd_read(mtd, (long long)partition_offset, readsize, &retlen, (unsigned char*)dst_addr);
         if(ret)
@@ -1104,9 +1083,10 @@ erro:
  *				:   else  			- failure
  * Desciption	:	NULL
  */
-int bsp_nand_erase(const char *partition_name, u32 partition_offset)
+int bsp_nand_erase(const char *partition_name, loff_t partition_offset)
 {
 	struct erase_info instr; 
+	u32 remainder = 0;
 	int ret = 0;
     
     /* coverity[assign_zero] */
@@ -1126,8 +1106,9 @@ int bsp_nand_erase(const char *partition_name, u32 partition_offset)
 		goto out;
 	}
 
+    div_u64_rem(partition_offset, mtd->erasesize, &remainder);
 	instr.mtd = mtd;
-	instr.addr = partition_offset - partition_offset % mtd->erasesize;
+	instr.addr = partition_offset - remainder;
 	instr.len = mtd->erasesize;
 	instr.time = 1000;
 	instr.retries = 2;
@@ -1170,7 +1151,7 @@ out:
  *				:   else  			- failure
  * Description	: 	write flash
  */
-s32 bsp_nand_write(const char *partition_name, u32 partition_offset, void* ptr_ram_addr, u32 length)
+int bsp_nand_write(const char *partition_name, loff_t partition_offset, void* ptr_ram_addr, size_t length)
 {
     /* coverity[assign_zero] */
 	long long addrblockalign;
@@ -1180,6 +1161,7 @@ s32 bsp_nand_write(const char *partition_name, u32 partition_offset, void* ptr_r
 	u32 retlen = 0;
 	u32 offsetinblock;
 	u32 writesize;
+	u32 remainder = 0;
     
 	unsigned char *ram_addr = ptr_ram_addr;
 	unsigned char *buffer = NULL;
@@ -1210,7 +1192,8 @@ s32 bsp_nand_write(const char *partition_name, u32 partition_offset, void* ptr_r
         }
 
 		/* quary whether bad block */
-		ret = mtd_block_isbad(mtd, (long long)(partition_offset - partition_offset % mtd->erasesize));
+        div_u64_rem(partition_offset, mtd->erasesize, &remainder);
+		ret = mtd_block_isbad(mtd, (long long)(partition_offset - remainder));
 		if (ret)
 		{
 		    /* bad block, skip */
@@ -1218,7 +1201,8 @@ s32 bsp_nand_write(const char *partition_name, u32 partition_offset, void* ptr_r
             goto skip;
 		}
 
-		addrblockalign = (long long)(partition_offset / mtd->erasesize * mtd->erasesize); /*lint !e647*/
+        
+		addrblockalign = (long long)(div_u64(partition_offset, mtd->erasesize) * mtd->erasesize); /*lint !e647*/
 
         /* not a whole block, need flash read and ddr copy */
         if((addrblockalign != partition_offset) || (length < mtd->erasesize))
@@ -1248,7 +1232,7 @@ s32 bsp_nand_write(const char *partition_name, u32 partition_offset, void* ptr_r
             }
 
             /* copy data to buffer */
-    		offsetinblock = partition_offset % mtd->erasesize;
+    		offsetinblock = remainder;
             writesize     = (offsetinblock + length < mtd->erasesize) ? length : (mtd->erasesize - offsetinblock);
             memcpy(tmp_buf + offsetinblock, ram_addr, writesize);
             buffer = tmp_buf;
@@ -1335,6 +1319,189 @@ erro:
 	return ret;
 }
 
+/*提供给NV模块,用来更新nv dload分区*/
+s32 bsp_nand_write_dload(const char *partition_name, u32 partition_offset, void* ptr_ram_addr, u32 length)
+{
+    struct erase_info instr; 
+    struct mtd_info *mtd = -1; /*注意这个初值必须为-1*/
+    int ret = 0;
+    unsigned int ret_len = 0;
+    /*对nv dload分区进行先全擦除,然后在更新length*/
+    unsigned int partition_offset_use = partition_offset;
+    unsigned int length_use = length;
+    
+    unsigned char *ram_addr = ptr_ram_addr;
+    unsigned char *buffer = NULL;
+    unsigned char *tmp_buf = NULL;
+    
+    /* check param */
+    if((!partition_name) || (!ptr_ram_addr))
+    {
+        printk(KERN_ERR "%s:param error.\n", __func__);
+        goto erro;
+    }
+
+    /* get mtd device */
+    mtd = get_mtd_device_nm(partition_name);
+    if (IS_ERR(mtd))
+    {
+        printk(KERN_ERR"get_mtd_device_nm error\n");
+        ret = PTR_ERR(mtd);
+        goto erro;
+    }
+
+    /*检查写开始地址是否是blk对齐的*/
+    ret_len = partition_offset % mtd->erasesize;
+    if( 0 != ret_len )
+    {
+        printk(KERN_ERR "%s:partition_offset is 0x%08x.\n", __func__, partition_offset);
+        goto erro;
+    }
+
+    /*erase first:擦除整个分区*/
+    while( partition_offset_use < ( mtd->size - 1 ) )
+    {
+        /* quary whether bad block */
+        ret = mtd_block_isbad( mtd, (long long)(partition_offset_use) );
+        if (ret)
+        {
+            /* bad block, skip */
+            printk( KERN_ERR "%s: bad block skip. partition_offset_use is: 0x%x\n",
+                __func__, partition_offset_use );
+            goto erase_skip;
+        }
+
+        /* erase a block */
+        instr.mtd      = mtd;
+        instr.addr     = (unsigned long long)partition_offset_use;
+        instr.len      = mtd->erasesize;
+        instr.time     = 1000; /*时间*/
+        instr.retries  = 2;    /*重试次数*/
+        instr.callback = NULL;
+        instr.priv     = 0;
+
+        ret = mtd_erase(mtd, &instr);
+        if(ret)
+        {
+            /* erase fail*/
+            printk( KERN_ERR "%s: mtd erase fail, offset: 0x%x\n",
+                __func__, partition_offset_use );
+
+            /* erase fail, mark bad */
+            ret = mtd_block_markbad(mtd, (long long)instr.addr);
+            if(ret)
+            {
+                printk(KERN_ERR"mtd mark block bad failed as erasing!\n");
+                goto erro;
+            }
+        }
+erase_skip:
+    partition_offset_use += mtd->erasesize;
+    } 
+
+    partition_offset_use = partition_offset;
+
+    /*then write*/
+    while( length_use > 0 )
+    {
+        if( partition_offset_use >= mtd->size )
+        {
+            printk(KERN_ERR"ERROR: invalid partition offset 0x%x!\n", 
+                partition_offset_use);
+            goto erro;
+        }
+
+        /* quary whether bad block */
+        ret = mtd_block_isbad( mtd, ( long long )( partition_offset_use ) );
+        if (ret)
+        {
+            /* bad block, skip */
+            printk( KERN_ERR "bad block detected, skip. partition offset is 0x%x\n", 
+            partition_offset_use );
+            goto write_skip;
+        }
+
+        if( length_use < mtd->erasesize )
+        {
+            /* get ram buffer, 并初始化为全0 */
+            if ( NULL == tmp_buf )
+            {
+                tmp_buf = (unsigned char *)vmalloc(mtd->erasesize);
+            }
+
+            if( NULL == tmp_buf )
+            {
+                printk( KERN_ERR "%s: malloc tem_buf failed!\n", __func__ );
+                goto erro;
+            }
+
+            memset( (void *)tmp_buf, 0, mtd->erasesize );
+            
+            /* copy data to buffer */
+            memcpy( (void *)tmp_buf, ( const void * )ram_addr, length_use);
+            buffer = tmp_buf;
+        }
+        else
+        {
+            buffer = ram_addr;
+        }
+
+        /* write data to flash */
+        /* coverity[noescape] */
+        ret = mtd_write(mtd, partition_offset_use, mtd->erasesize, &ret_len, (unsigned char*)buffer);
+        if(ret)
+        {
+            /*write fail*/
+            printk( KERN_ERR "%s: mtd write fail, offset: 0x%x\n", 
+                __func__, partition_offset_use );
+
+            /* write failed, mark bad */
+            ret = mtd_block_markbad( mtd, partition_offset_use );
+            if(ret)
+            {
+                /*写的过程中出现异常,并且标坏块失败*/
+                printk( KERN_ERR "bad! mtd mark block bad failed as writing!\n");
+                goto erro;
+            }
+            else
+            {
+                /*写失败,但是标坏块成功*/
+                goto write_skip;
+            }
+        }
+
+        if ( length_use < mtd->erasesize )
+        {
+            length_use = 0;
+        }
+        else
+        {
+            length_use -= mtd->erasesize;
+        }
+        ram_addr += mtd->erasesize;
+        /*continue;*/
+
+write_skip:
+        /*跳过坏块*/
+        partition_offset_use += mtd->erasesize;
+        continue;
+    } /* while(length > 0) */
+
+erro:
+    if(tmp_buf)
+    {
+        vfree(tmp_buf);
+    }
+
+    /* release mtd device */
+    if (!IS_ERR(mtd))
+    {
+        /* coverity[var_deref_model] */
+        put_mtd_device(mtd);
+    }
+
+    return ret;
+}
 /**
  * Name			: 	bsp_nand_isbad
  * Arguments	: 	@partition_name  	- partition name
@@ -1345,7 +1512,7 @@ erro:
  *              :   -1              - error
  * Description	: 	check whether a block is bad
  */
-int bsp_nand_isbad(const char *partition_name, u32 partition_offset)
+int bsp_nand_isbad(const char *partition_name, loff_t partition_offset)
 {
 	int ret = -1;
 	struct mtd_info *mtd = get_mtd_device_nm(partition_name);
@@ -1442,7 +1609,37 @@ ERRO:
     return ret;
 }
 #endif
+/****************************************************************
+函数功能: 在fastboot阶段获取分区大小
+输入参数: partition_name-分区名称
+输出参数: none
+返回参数: 分区size
+注意事项: 在fastboot阶段调用
+****************************************************************/
+unsigned int bsp_get_part_cap( const char *partition_name )
+{
+    unsigned int ret_size = 0;
+    struct ST_PART_TBL * ptable = ( void* )( 0 );
 
+    if ( ( void* )( 0 ) == partition_name )
+    {
+        cprintf( "fastboot: nv dload partition_name is NULL!\n" );
+        goto ERRO;
+    }
+
+    ptable = find_partition_by_name(partition_name);
+    if(!ptable)
+    {
+        cprintf( "fastboot: nv dload get ptable fail!\n" );
+        goto ERRO;
+    }
+
+    ret_size = ptable->capacity;
+    cprintf( "fastboot: nv dload cap is 0x%x.\n", ret_size );
+
+ERRO:
+    return ret_size;
+}
 /**
  * Name			:	bsp_nand_read
  * Arguments	:	@partition_name  	- partition name

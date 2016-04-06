@@ -125,28 +125,41 @@ typedef struct
 
     VOS_UINT8                           ucVoiceCallNotSupportedCause;
     VOS_UINT8                           ucVideoCallNotSupportedCause;
-    VOS_UINT8                           aucReserve[2];
+
+    VOS_UINT8                           ucAtaReportOkAsyncFlag;
+    VOS_UINT8                           aucReserve[1];
 
     MN_CALL_REDIAL_CFG_STRU             stCallRedialCfg;
+
+    TAF_CALL_CCWA_CTRL_MODE_ENUM_U8     enCcwaCtrlMode;
 }MN_CALL_CUSTOM_CFG_INFO_STRU;
 typedef struct
 {
+    /* 在VOLTE网络下(NV2340配置CCWA控制模式是UE控制)，默认支持呼叫等待 */
+    VOS_UINT8                           ucCcwaiFlg;
+    VOS_UINT8                           aucReserve[3];
+
+}TAF_CALL_APP_CFG_INFO_STRU;
+typedef struct
+{
     MN_CALL_CUSTOM_CFG_INFO_STRU        stCustomCfg;                            /* NVIM中的定制信息 */
+    TAF_CALL_APP_CFG_INFO_STRU          stAppCfg;                                /* AP配置的信息 */
 }MN_CALL_MS_CFG_INFO_STRU;
+
+
 typedef struct
 {
     VOS_BOOL                            bUsed;                                  /* 是否已被使用 */
     VOS_UINT32                          ulTi;                                   /* 该呼叫对应的CC实体的Ti */
     MN_CALL_CLIR_CFG_ENUM_U8            enClirCfg;                              /* 主叫号码限制的配置 */
-    VOS_UINT8                           aucReserved[3];
+    VOS_UINT8                           ucSrvccLocalAlertedFlag;                /* 在alerting状态SRVCC时，是否已经本地振铃 */
+    VOS_UINT8                           aucReserved[2];
     MN_CALL_CUG_CFG_STRU                stCugCfg;                               /* CUG的配置 */
     VOS_BOOL                            bRbSet;
     VOS_UINT32                          ulRbId;
     VOS_BOOL                            bVpChannelOpenFlg;                      /*记录呼叫类型为可视电话情况下业务信道是否已打开*/
     MN_CALL_INFO_STRU                   stCallInfo;                             /* 呼叫信息 */
 } MN_CALL_MGMT_STRU;
-
-
 typedef struct
 {
     MN_CALL_ID_T                        callId;                                 /* 产生事件的呼叫ID */
@@ -248,6 +261,21 @@ MN_CALL_MSG_BUFF_STRU*  MN_CALL_GetBufferedMsg( VOS_VOID );
 VOS_VOID MN_CALL_ClearBufferedMsg(VOS_VOID);
 VOS_VOID MN_CALL_InitCtx(VOS_VOID);
 
+
+TAF_CALL_CCWA_CTRL_MODE_ENUM_U8 TAF_CALL_GetCcwaCtrlMode(VOS_VOID);
+VOS_VOID TAF_CALL_SetCcwaCtrlMode(
+    TAF_CALL_CCWA_CTRL_MODE_ENUM_U8     enCcwaCtrlMode
+);
+TAF_CALL_APP_CFG_INFO_STRU* MN_CALL_GetAppCfgInfo(VOS_VOID);
+VOS_VOID TAF_CALL_SetCcwaiFlg(
+    VOS_UINT8                           bCcwaiFlg
+);
+VOS_UINT8 TAF_CALL_GetCcwaiFlg(VOS_VOID);
+
+VOS_VOID TAF_CALL_SetAtaReportOkAsyncFlag(
+    VOS_UINT8                           ucAtaReportOkAsyncFlag
+);
+VOS_UINT8 TAF_CALL_GetAtaReportOkAsyncFlag(VOS_VOID);
 
 #if (FEATURE_ON == FEATURE_IMS)
 VOS_VOID TAF_CALL_SetSrvccState(MN_CALL_SRVCC_STATE_ENUM_UINT8 enSrvccState);

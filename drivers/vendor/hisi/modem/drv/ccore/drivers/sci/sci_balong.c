@@ -182,13 +182,17 @@ extern u8* g_sciRegGblAddr;
 
 u32 g_detect_leave_time = 0;
 u32 g_sci_first_reset = 0;
+extern unsigned int g_SciNVValue ;
+extern const char * g_pcCardRecordFileName[2];
 
+SCI_HW_ABNORMAL_E g_sci_hw_abnormal = SCI_HW_STATE_OK;
+
+/*记录任务名的全局变量*/
+extern const char * g_pcCardTaskName[2];
 extern int QueueLoopIn(dump_queue_t *Q, UINT32 element);
-void sci_int_handler(void);
-
-void sci_rec_sync_task(void);
 void sci_buf_clear(void);
-
+void sci_int_handler(void);
+void sci_rec_sync_task(void);
 s32 sci_detect_cb(u32 channel_id, u32 len, void *context);
 u32 bsp_sci_reg_event(u32 u32Event, Sci_Event_Func pFunc);
 s32 sci_buf_add(u8 * pucRecbyte);
@@ -467,44 +471,9 @@ int sci_dma_init(void)
     return OK;
 }
 
-/*lint +e525*/
-/**************************************************
-*  Function:  sci_init
-*
-*  Description:
-*      Initialise the SCI.
-*
-*  Calls:
-*      sci_buf_clear
-*      intConnect
-*      intEnable
-*
-*
-*  Table Accessed: NONE
-*
-*  Table Updated: NONE
-*
-*  Input:
-*         None
-*
-*  Output:
-*         None
-*
-*  Return:
-*         None
-*
-******************************************************************/
-void sci_init(void)
+void sci_sem_init()
 {
-    SCI_STATE_STRU *const pstrState = &g_strSciState;
-
-    s32 ret = BSP_OK;
-	u32 sci_gcf_flag_nv = 0;
-
-	memset((void *)pstrState, 0, sizeof(SCI_STATE_STRU));
-    pstrState->pBase = (SCI_REG *) (g_stSciHwCfg.base_addr);
-    pstrState->eCurrentState = PL131_STATE_FIRSTINIT;
-
+    
     if (!g_SCIRecvSyncSem)
     {
         g_SCIRecvSyncSem = semBCreate(SEM_Q_FIFO, (SEM_B_STATE)SEM_EMPTY);
@@ -557,10 +526,120 @@ void sci_init(void)
             return;
         }
     }
-
-    if (!g_slSCITaskId)
+}
+void sci_sem_destory()
+{
+    s32 ret = -1;
+    if(g_SCIRecvSyncSem)
     {
-        g_slSCITaskId = taskSpawn(g_stSciHwCfg.syncTaskName, 128, 0, 20000, (FUNCPTR)sci_rec_sync_task, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+        ret = semDelete(g_SCIRecvSyncSem);
+        if(ret == 0)
+        {
+            g_SCIRecvSyncSem =0;
+        }
+        else
+        {
+            sci_print_error("g_SCIRecvSyncSem del fail\n");
+        }
+        
+    }
+    if(g_SCIClockStartSem)
+    {
+        ret = semDelete(g_SCIClockStartSem);
+        if(ret == 0)
+        {
+            g_SCIClockStartSem =0;
+        }
+        else
+        {
+            sci_print_error("g_SCIClockStartSem del fail\n");
+        }
+    
+    }
+    if(g_SCIClockStopSem)
+    {
+        ret = semDelete(g_SCIClockStopSem);
+        if(ret == 0)
+        {
+            g_SCIClockStopSem =0;
+        }
+        else
+        {
+            sci_print_error("g_SCIClockStopSem del fail\n");
+        }
+    }
+    if(g_SCISynSem)
+    {
+        ret = semDelete(g_SCISynSem);
+        if(ret == 0)
+        {
+            g_SCISynSem =0;
+        }
+        else
+        {
+            sci_print_error("g_SCISynSem del fail\n");
+        }
+    }
+    if(g_SCIDeactiveSyncSem)
+    {
+    
+        ret = semDelete(g_SCIDeactiveSyncSem);
+        if(ret == 0)
+        {
+            g_SCIDeactiveSyncSem =0;
+        }
+        else
+        {
+            sci_print_error("g_SCIDeactiveSyncSem del fail\n");
+        }
+        
+    }
+    
+}
+
+/*lint +e525*/
+/**************************************************
+*  Function:  sci_init
+*
+*  Description:
+*      Initialise the SCI.
+*
+*  Calls:
+*      sci_buf_clear
+*      intConnect
+*      intEnable
+*
+*
+*  Table Accessed: NONE
+*
+*  Table Updated: NONE
+*
+*  Input:
+*         None
+*
+*  Output:
+*         None
+*
+*  Return:
+*         None
+*
+******************************************************************/
+void sci_init(void)
+{
+    SCI_STATE_STRU *const pstrState = &g_strSciState;
+
+    s32 ret = BSP_OK;
+	u32 sci_gcf_flag_nv = 0;
+
+	memset((void *)pstrState, 0, sizeof(SCI_STATE_STRU));
+    pstrState->pBase = (SCI_REG *) (g_stSciHwCfg.base_addr);
+    pstrState->eCurrentState = PL131_STATE_FIRSTINIT;
+
+    sci_sem_init();
+
+    if (!g_stSciHwCfg.task_id)
+    {
+        g_stSciHwCfg.task_id = taskSpawn(g_stSciHwCfg.syncTaskName, 128, 0, 20000, (FUNCPTR)sci_rec_sync_task, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
     }
 
     /* init interrupts*/
@@ -569,6 +648,7 @@ void sci_init(void)
 	writel(0xffff, SCI_REG_INTCLEAR);
 
     intConnect((VOIDFUNCPTR*)(g_stSciHwCfg.int_number), (VOIDFUNCPTR)sci_int_handler, 0);
+    g_stSciHwCfg.sci_int_handler = (VOIDFUNCPTR)sci_int_handler;
     intEnable(g_stSciHwCfg.int_number);
 
     sci_dma_init();
@@ -592,8 +672,6 @@ void sci_init(void)
 	sci_print("[sci]: sim%d init OK!\n",__FUNCTION__,g_stSciHwCfg.card_id);
 
     SCI_RECORD_EVENT(SCI_EVENT_SCI_INIT_SUCCESS, (u32)g_stSciHwCfg.card_id, (__LINE__));
-
-	return ;
 
 }
 
@@ -640,13 +718,19 @@ s32 sci_buf_add(u8 * pucRecbyte)
 	if(g_strRecBuf.usLength >= SCI_BUF_MAX_LEN)
 	{
 	    SCI_RECORD_EVENT(SCI_EVENT_ERROR_DATA_REC_BUF_OVR,g_strRecBuf.usLength,(u32)pucRecbyte);
-
+        
         sci_print_error("usLength is larger than SCI_BUF_MAX_LEN, and is %d\n", g_strRecBuf.usLength);
-
-        /* buffer overflow Begin: */
-        apBIT_SET(pstrBase->RegCtrl2, PL131_REGCTRL2_FINISH, 1);
-
+        
         g_SciDeactivateFlag = TRUE;
+        g_sciRxStGblStru.RxDataRecFlag = SCI_RX_DATA_REC_ERROR;       
+        apBIT_SET(pstrBase->RegCtrl2, PL131_REGCTRL2_FINISH, 1);
+        if ((g_strRecBuf.usPrelen != 0) && (SCI_DEF_READ_READY == g_u32ReadFlag))
+        {
+            g_strRecBuf.usPrelen = 0;
+            semGive(g_SCIRecvSyncSem);
+        }
+ 
+
 		/* buffer overflow End! */
 		
 	}
@@ -981,185 +1065,195 @@ void bsp_sci_func_register(OMSCIFUNCPTR omSciFuncPtr)
 ******************************************************************/
 s32 bsp_sci_reset(RESET_MODE rstMode)
 {
-    s32 retvalue   = -1;
-    SCI_REG *pstrBase  = BSP_NULL;
-    SCI_STATE_STRU *const pstrState = &g_strSciState;
-    u32 i = 0;
+ 
+     s32 retvalue   = -1;
+     SCI_REG *pstrBase  = BSP_NULL;
+     SCI_STATE_STRU *const pstrState = &g_strSciState;
+     u32 i = 0;
 #ifdef BSP_CONFIG_HI3630
-    u32 pSciInOut = SIM_NOT_OUT;
-    u32 current_time = 0;
+     u32 pSciInOut = SIM_NOT_OUT;
+     u32 current_time = 0;
 #endif
-
-    SCI_RECORD_EVENT(SCI_EVENT_API_RESET_START, omTimerGet() , __LINE__);
-
+#if 0
+     if(g_stSciHwCfg.slot_switch_flag == SCI_SLOT_SWITCH_CHANGE)
+     {
+        sci_init();
+        SCI_RECORD_EVENT(SCI_EVENT_API_SLOT_SWITCH, omTimerGet() , __LINE__);
+     }
+#endif
+     SCI_RECORD_EVENT(SCI_EVENT_API_RESET_START, omTimerGet() , __LINE__);
+ 
 #ifdef BSP_CONFIG_HI3630
-    current_time = omTimerGet();
-    if((((current_time - g_detect_leave_time)/32) > 500) || g_sci_first_reset == 0)
-    {
-        if(g_sci_detect_state == SIM_CARD_LEAVE)
-        {
-            SCI_RECORD_EVENT(SCI_EVENT_DETECT_IND_M3, pSciInOut, __LINE__);
-            bsp_icc_send(ICC_CPU_MCU,g_stSciHwCfg.icc_chnl, (u8*)&pSciInOut, sizeof(u32));
-            g_detect_leave_time = 0;
-        }
-    }
-    
+     current_time = omTimerGet();
+     if((((current_time - g_detect_leave_time)/32) > 500) || g_sci_first_reset == 0 || g_stSciHwCfg.slot_switch_flag == SCI_SLOT_SWITCH_CHANGE)
+     {
+         if(g_sci_detect_state == SIM_CARD_LEAVE)
+         {
+             SCI_RECORD_EVENT(SCI_EVENT_DETECT_IND_M3, pSciInOut, __LINE__);
+             bsp_icc_send(ICC_CPU_MCU,g_stSciHwCfg.icc_chnl, (u8*)&pSciInOut, sizeof(u32));
+             g_detect_leave_time = 0;
+         }
+     }
+     
 #endif
-    g_sci_first_reset = 1;
-    pwrctrl_sci_low_power_exit();
-    SCI_RECORD_EVENT(SCI_EVENT_LOW_POWER_EXIT, 0 , __LINE__);
-	pwrctrl_sci_soft_clk_en();
+     g_stSciHwCfg.slot_switch_flag = SCI_SLOT_SWITCH_NONE;
 
+     g_sci_first_reset = 1;
+     pwrctrl_sci_low_power_exit();
+     SCI_RECORD_EVENT(SCI_EVENT_LOW_POWER_EXIT, 0 , __LINE__);
+     pwrctrl_sci_soft_clk_en();
+ 
 #ifdef BSP_CONFIG_HI3630
-    /* reset ip*/
-    if(CARD_CONNECT_SCI0 == g_stSciHwCfg.sci_id)
-    {
-        BSP_REG_SETBITS(HI_AP_SYSCTRL_BASE_ADDR, SCI_RESET_REG_ADDR, SCI_RESET_CARD0_BIT_SHIFT, 1, 1);
-    }
-    else
-    {
-        BSP_REG_SETBITS(HI_AP_SYSCTRL_BASE_ADDR, SCI_RESET_REG_ADDR, SCI_RESET_CARD1_BIT_SHIFT, 1, 1);
-    }
+     /* reset ip*/
+     if(CARD_CONNECT_SCI0 == g_stSciHwCfg.sci_id)
+     {
+         BSP_REG_SETBITS(HI_AP_SYSCTRL_BASE_ADDR, SCI_RESET_REG_ADDR, SCI_RESET_CARD0_BIT_SHIFT, 1, 1);
+     }
+     else
+     {
+         BSP_REG_SETBITS(HI_AP_SYSCTRL_BASE_ADDR, SCI_RESET_REG_ADDR, SCI_RESET_CARD1_BIT_SHIFT, 1, 1);
+         
+     }
 #endif
-
-	memset((void *)pstrState, 0, sizeof(SCI_STATE_STRU));
-    pstrState->pBase = (SCI_REG *) (g_stSciHwCfg.base_addr);
-    pstrBase = pstrState->pBase;
-
+ 
+     memset((void *)pstrState, 0, sizeof(SCI_STATE_STRU));
+     pstrState->pBase = (SCI_REG *) (g_stSciHwCfg.base_addr);
+     pstrBase = pstrState->pBase;
+ 
 #ifdef BSP_CONFIG_HI3630
-    /* unreset ip*/
-    if(CARD_CONNECT_SCI0 == g_stSciHwCfg.sci_id)
-    {
-        BSP_REG_SETBITS(HI_AP_SYSCTRL_BASE_ADDR, SCI_UNRESET_REG_ADDR, SCI_RESET_CARD0_BIT_SHIFT, 1, 1);
-    }
-    else
-    {
-        BSP_REG_SETBITS(HI_AP_SYSCTRL_BASE_ADDR, SCI_UNRESET_REG_ADDR, SCI_RESET_CARD1_BIT_SHIFT, 1, 1);
-    }
+     /* unreset ip*/
+     if(CARD_CONNECT_SCI0 == g_stSciHwCfg.sci_id)
+     {
+         BSP_REG_SETBITS(HI_AP_SYSCTRL_BASE_ADDR, SCI_UNRESET_REG_ADDR, SCI_RESET_CARD0_BIT_SHIFT, 1, 1);
+
+     }
+     else
+     {
+         BSP_REG_SETBITS(HI_AP_SYSCTRL_BASE_ADDR, SCI_UNRESET_REG_ADDR, SCI_RESET_CARD1_BIT_SHIFT, 1, 1);
+
+     }
 #endif
-
-    /* 清空buffer */
-    sci_buf_clear();
-    sci_atr_clear();
-
-    /*mask off & clear all interrupts*/
-	writel(SCI_DEF_MASK_ALL_IRQ, SCI_REG_INTMASK);
-	writel(SCI_DEF_CLEAR_ALL_IRQ, SCI_REG_INTCLEAR);
-
-    /*set pps related parameters as default value*/
-    g_Pl131_pps_state.PL131_PPS_ACTIVATION = 0;
-    g_Pl131_pps_state.ucTA1Flag = 0;
-    g_Pl131_pps_state.ucPPSFlag = 0;
-    g_Pl131_pps_state.PL131_PPS_Response = 0;
-    nActiveT = 0;
-
-    /*读取数据标志，保证预读后读取长度满足条件后只调用一次回调函数*/
-    g_u32ReadFlag = SCI_DEF_READ_FORBID;
-
-    g_sciRxStGblStru.RxDataRecFlag = SCI_RX_DATA_REC_OVER;
-
-    /* 先下电，保证是cold reset */
-    if(g_sciPmuRegu == NULL)
-    {
-        g_sciPmuRegu = regulator_get(NULL, g_stSciHwCfg.pwr_type);
-		if (NULL == g_sciPmuRegu )
-		{
-			sci_print_error("get pmu device failed.\n");
-            SCI_RECORD_EVENT(SCI_EVENT_REGULATOR_ERR,(*(g_stSciHwCfg.pwr_type)) , __LINE__);
-	        return ERROR;
-		}
-    }	
-    for(;i < 10 ;i++)
-    {
-        if(g_SciDeactivateFlag == TRUE)
-        {
-            taskDelay(1);
-        }
-        else
-        {
-            break;
-        }
-    }
-
-    retvalue = sci_set_voltage(SCI_VOLTAGE_SWITCH_CLASS_ZERO2CB);/*[false alarm]:*/
-    
-    if(retvalue != BSP_OK)
-    {
-       SCI_RECORD_EVENT(SCI_EVENT_API_RESET_FAILED,g_sci_voltage_state.sciClassKind, __LINE__);
-    }
-
-
-    /*set default configuration*/
-    pstrState->eCurrentState = PL131_STATE_FIRSTINIT;    /*ensures defaults used*/
-    pstrState->sSetupParams.ClockFreq = apPL131_DEF_REF_CLOCK;
-    pstrState->sSetupParams.eRxHandshake = apPL131_EVEN_HANDSHAKE;
-    pstrState->sSetupParams.RxRetries = PL131_DEF_RX_RETRIES;
-    pstrState->sSetupParams.TxRetries = PL131_DEF_TX_RETRIES;
-    pstrState->sSetupParams.CardFreq = PL131_DEF_CARDFREQ;
-    pstrState->sSetupParams.eTxHandshake = apPL131_EVEN_HANDSHAKE;
-
-    retvalue = appl131_params_set(&g_strSciState, NULL, NULL, NULL);/* [false alarm]:误报*/
-    if ((retvalue != apERR_NONE) && (retvalue != apERR_PL131_USEDEFAULT))
-    {
-        SCI_RECORD_EVENT(SCI_EVENT_BEYOND_LOG, pstrState->eCurrentState, __LINE__);
-        SCI_RECORD_EVENT(SCI_EVENT_API_RESET_FAILED,g_strSciState.eCurrentState, __LINE__);
-
-        sci_print_error("set parameter interface is error.\n");
-        return ERROR;
-    }
-
-    /*set up other registers if not from power on reset*/
-    BIT_SET(pstrBase->RegCtrl0, PL131_REGCTRL0_CONV, PL131_CONVENTION_DIRECT);/*[false alarm]:*/
-    BIT_SET(pstrBase->RegDMACtrl, PL131_REGDMA, apPL131_DMA_OFF); /* Disable DMA */    
-    BIT_SET(pstrBase->RegCtrl0, PL131_REGCTRL0_PARITYBIT, 1);/*设置奇偶位*/
-    
-    if (SCI_RX_DMA_MODE == g_sciRxStGblStru.RxModeFlag)/* [false alarm]: 误报*/
-    {   
-        SCI_RECORD_EVENT(SCI_EVENT_DMA_START, g_sciRxStGblStru.RxModeFlag, __LINE__);
-
-        if (OK != sci_rx_dma_start((u32*)(g_strRecBuf.usOutBuf), SCI_MAX_DATA_BUF_LEN * sizeof(u32)))/*lint !e740 !e826*/
-        {
-            sci_print_error("dma transfer start failed! \n");
-            return ERROR;
-        }
-
-    }
-
-    if (pstrState->eCurrentState == PL131_STATE_INACTIVECARD)/*[false alarm]:*/
-    {
-        SCI_RECORD_EVENT(SCI_EVENT_CARD_ACTIVE_START, pstrState->eCurrentState, __LINE__);/*[false alarm]:*/
-
-        retvalue = appl131_card_active_set(pstrState, TRUE, pstrState->sATRParams.pATRBuffer);
-        if (retvalue != apERR_NONE)
-        {
-            SCI_RECORD_EVENT(SCI_EVENT_API_RESET_FAILED,g_strSciState.eCurrentState, __LINE__);
-
-            sci_print_error("card active set interface is error.\n");
-            return retvalue;
-        }
-        SCI_RECORD_EVENT(SCI_EVENT_CARD_ACTIVE_SUCCESS, pstrState->eCurrentState, __LINE__);
-    }
-    else
-    {
-        SCI_RECORD_EVENT(SCI_EVENT_ERROR_NOCARD, pstrState->eCurrentState, __LINE__);
-
-        sci_print_error("no card!\n");
-    }
-
-	g_ulSciClkTimeStpFlag = apPL131_CLOCK_START;
-    g_u32ResetSuccess = SCI_DEF_RESET_SUCCESS;
-
-    if(PL131_STATE_READY == pstrState->eCurrentState)
-    {
-        g_sci_detect_state = SIM_CARD_IN;
-    }
-    else
-    {
-        g_sci_detect_state = SIM_CARD_OUT;
-    }
-    SCI_RECORD_EVENT(SCI_EVENT_API_RESET_FINISH, pstrState->eCurrentState, __LINE__);
-    return OK;
-}
+ 
+     /* 清空buffer */
+     sci_buf_clear();
+     sci_atr_clear();
+ 
+     /*mask off & clear all interrupts*/
+     writel(SCI_DEF_MASK_ALL_IRQ, SCI_REG_INTMASK);
+     writel(SCI_DEF_CLEAR_ALL_IRQ, SCI_REG_INTCLEAR);
+ 
+     /*set pps related parameters as default value*/
+     g_Pl131_pps_state.PL131_PPS_ACTIVATION = 0;
+     g_Pl131_pps_state.ucTA1Flag = 0;
+     g_Pl131_pps_state.ucPPSFlag = 0;
+     g_Pl131_pps_state.PL131_PPS_Response = 0;
+     nActiveT = 0;
+ 
+     /*读取数据标志，保证预读后读取长度满足条件后只调用一次回调函数*/
+     g_u32ReadFlag = SCI_DEF_READ_FORBID;
+ 
+     g_sciRxStGblStru.RxDataRecFlag = SCI_RX_DATA_REC_OVER;
+ 
+     if(g_stSciHwCfg.sci_pmu == NULL)
+     {
+         g_stSciHwCfg.sci_pmu = regulator_get( NULL,g_stSciHwCfg.pwr_type);
+         if(g_stSciHwCfg.sci_pmu == NULL)
+         {
+            sci_print_error("regulator get fail\n");
+            return BSP_ERROR;
+         }
+     }
+     for(;i < 10 ;i++)
+     {
+         if(g_SciDeactivateFlag == TRUE)
+         {
+             taskDelay(1);
+         }
+         else
+         {
+             break;
+         }
+     }
+ 
+     retvalue = sci_set_voltage(SCI_VOLTAGE_SWITCH_CLASS_ZERO2CB);/*[false alarm]:*/
+     
+     if(retvalue != BSP_OK)
+     {
+        SCI_RECORD_EVENT(SCI_EVENT_API_RESET_FAILED,g_sci_voltage_state.sciClassKind, __LINE__);
+     }
+ 
+ 
+     /*set default configuration*/
+     pstrState->eCurrentState = PL131_STATE_FIRSTINIT;    /*ensures defaults used*/
+     pstrState->sSetupParams.ClockFreq = apPL131_DEF_REF_CLOCK;
+     pstrState->sSetupParams.eRxHandshake = apPL131_EVEN_HANDSHAKE;
+     pstrState->sSetupParams.RxRetries = PL131_DEF_RX_RETRIES;
+     pstrState->sSetupParams.TxRetries = PL131_DEF_TX_RETRIES;
+     pstrState->sSetupParams.CardFreq = PL131_DEF_CARDFREQ;
+     pstrState->sSetupParams.eTxHandshake = apPL131_EVEN_HANDSHAKE;
+ 
+     retvalue = appl131_params_set(&g_strSciState, NULL, NULL, NULL);/* [false alarm]:误报*/
+     if ((retvalue != apERR_NONE) && (retvalue != apERR_PL131_USEDEFAULT))
+     {
+         SCI_RECORD_EVENT(SCI_EVENT_BEYOND_LOG, pstrState->eCurrentState, __LINE__);
+         SCI_RECORD_EVENT(SCI_EVENT_API_RESET_FAILED,g_strSciState.eCurrentState, __LINE__);
+ 
+         sci_print_error("set parameter interface is error.\n");
+         return ERROR;
+     }
+ 
+     /*set up other registers if not from power on reset*/
+     BIT_SET(pstrBase->RegCtrl0, PL131_REGCTRL0_CONV, PL131_CONVENTION_DIRECT);/*[false alarm]:*/
+     BIT_SET(pstrBase->RegDMACtrl, PL131_REGDMA, apPL131_DMA_OFF); /* Disable DMA */    
+     BIT_SET(pstrBase->RegCtrl0, PL131_REGCTRL0_PARITYBIT, 1);/*设置奇偶位*/
+     
+     if (SCI_RX_DMA_MODE == g_sciRxStGblStru.RxModeFlag)/* [false alarm]: 误报*/
+     {   
+         SCI_RECORD_EVENT(SCI_EVENT_DMA_START, g_sciRxStGblStru.RxModeFlag, __LINE__);
+ 
+         if (OK != sci_rx_dma_start((u32*)(g_strRecBuf.usOutBuf), SCI_MAX_DATA_BUF_LEN * sizeof(u32)))/*lint !e740 !e826*/
+         {
+             sci_print_error("dma transfer start failed! \n");
+             return ERROR;
+         }
+ 
+     }
+ 
+     if (pstrState->eCurrentState == PL131_STATE_INACTIVECARD)/*[false alarm]:*/
+     {
+         SCI_RECORD_EVENT(SCI_EVENT_CARD_ACTIVE_START, pstrState->eCurrentState, __LINE__);/*[false alarm]:*/
+ 
+         retvalue = appl131_card_active_set(pstrState, TRUE, pstrState->sATRParams.pATRBuffer);
+         if (retvalue != apERR_NONE)
+         {
+             SCI_RECORD_EVENT(SCI_EVENT_API_RESET_FAILED,g_strSciState.eCurrentState, __LINE__);
+ 
+             sci_print_error("card active set interface is error.\n");
+             return retvalue;
+         }
+         SCI_RECORD_EVENT(SCI_EVENT_CARD_ACTIVE_SUCCESS, pstrState->eCurrentState, __LINE__);
+     }
+     else
+     {
+         SCI_RECORD_EVENT(SCI_EVENT_ERROR_NOCARD, pstrState->eCurrentState, __LINE__);
+ 
+         sci_print_error("no card!\n");
+     }
+ 
+     g_ulSciClkTimeStpFlag = apPL131_CLOCK_START;
+     g_u32ResetSuccess = SCI_DEF_RESET_SUCCESS;
+ 
+     if(PL131_STATE_READY == pstrState->eCurrentState)
+     {
+         g_sci_detect_state = SIM_CARD_IN;
+     }
+     else
+     {
+         g_sci_detect_state = SIM_CARD_OUT;
+     }
+     SCI_RECORD_EVENT(SCI_EVENT_API_RESET_FINISH, pstrState->eCurrentState, __LINE__);
+     return OK;
+ }
 
 /******************************************************************
 *  Function:  bsp_sci_card_status_get
@@ -1327,7 +1421,7 @@ s32 bsp_sci_data_read_sync(u32 ulLength, u8 *pucRecData)
     
     SCI_RECORD_EVENT(SCI_EVENT_API_DATA_REC_START, (u32)pucRecData, __LINE__);
 
-	if ((ulLength > SCI_DEF_RECEIVE_MAX_LENGTH) || (NULL == pucRecData))
+	if ((ulLength > SCI_DEF_RECEIVE_MAX_LENGTH) || (NULL == pucRecData) || (0 == ulLength))
     {
         sci_print_error("u32Length = %d || pu8Data is NULL!",ulLength,0,0,0,0,0);
 
@@ -1343,14 +1437,14 @@ s32 bsp_sci_data_read_sync(u32 ulLength, u8 *pucRecData)
         return BSP_ERR_SCI_NOTINIT;
     }
 
-    if ((NULL == pucRecData) || (0 == ulLength))
+    /*if ((NULL == pucRecData) || (0 == ulLength))
     {
         SCI_RECORD_EVENT(SCI_EVENT_BEYOND_LOG, pstrState->eCurrentState, __LINE__);
 
         sci_print_error("read data length:%d, data pointer: 0x%x\n",ulLength, pucRecData, 0, 0, 0, 0);
 
         return BSP_ERR_SCI_INVALIDPARA;
-    }
+    }*/
 
     g_u32ReadFlag = SCI_DEF_READ_READY;
 	apBIT_SET((pstrState->pBase->RegIntClear), PL131_REGINTMASK_CHTOUT, 1);
@@ -1362,6 +1456,11 @@ s32 bsp_sci_data_read_sync(u32 ulLength, u8 *pucRecData)
     /* 如果当前数据量已经满足，直接拷贝数据返回 */
     if (recDataNum >= (u16)ulLength)
     {
+        if(g_sciRxStGblStru.RxDataRecFlag == SCI_RX_DATA_REC_ERROR)
+        {        
+            sci_record_data_save(SCI_LOG_BUF_OVER);
+            return BSP_ERR_SCI_NOCARD;
+        }
         g_sciRxStGblStru.RxDataRecFlag = SCI_RX_DATA_REC_SATISFIED;
 
         //added by yangzhi for dma test in 2010-11-25
@@ -1413,6 +1512,11 @@ s32 bsp_sci_data_read_sync(u32 ulLength, u8 *pucRecData)
             /* 解锁，接收数据 */
              /* coverity[lock_acquire] */
             intUnlock(sciLockKey);
+            if(g_sciRxStGblStru.RxDataRecFlag == SCI_RX_DATA_REC_ERROR)
+            {             
+                 sci_record_data_save(SCI_LOG_BUF_OVER);
+                 return BSP_ERR_SCI_NOCARD;
+            }
             /* coverity[sleep] */
             (void)semTake(g_SCIRecvSyncSem, 200);
 
@@ -1423,6 +1527,11 @@ s32 bsp_sci_data_read_sync(u32 ulLength, u8 *pucRecData)
             recDataNum = sci_count_length();
             if (recDataNum >= (u16)ulLength)
             {
+                if(g_sciRxStGblStru.RxDataRecFlag == SCI_RX_DATA_REC_ERROR)
+                {                
+                    sci_record_data_save(SCI_LOG_BUF_OVER);
+                    return BSP_ERR_SCI_NOCARD;
+                }
                 g_sciRxStGblStru.RxDataRecFlag = SCI_RX_DATA_REC_SATISFIED;
             }
 
@@ -1488,7 +1597,7 @@ s32 bsp_sci_data_read_sync(u32 ulLength, u8 *pucRecData)
                     {
                         memcpy((void *)g_sciRegGblAddr,(void *)SCI_BASE_ADDR,(int)SCI_RECORD_REG_SIZE);
                     }
-                    
+                    bsp_sci_record_data_save(SCI_LOG_NO_DATA);
                     /* coverity[missing_unlock] */
                     return BSP_ERR_SCI_NODATA;
                 }
@@ -1690,10 +1799,7 @@ void sci_rec_sync_task(void)
 			/* buffer overflow Begin: */
             sci_set_voltage(SCI_VOLTAGE_SWITCH_CLASS_CB2ZERO);
 
-            pwrctrl_sci_soft_clk_dis();
-			pwrctrl_sci_low_power_enter();
-
-            if(g_strRecBuf.usLength >= SCI_BUF_MAX_LEN) 
+            if(g_sciRxStGblStru.RxDataRecFlag == SCI_RX_DATA_REC_ERROR) 
             {
                 /*Set Other Global Flags for Safe*/
                 nActiveT = 10;
@@ -1705,19 +1811,26 @@ void sci_rec_sync_task(void)
         		SCI_RECORD_EVENT(SCI_EVENT_BEYOND_LOG, pstrState->eCurrentState, __LINE__);
 
                 pstrState->eCurrentState = PL131_STATE_INACTIVECARD;
-
+                sci_print_error("buf over deal\n");
                 g_u32ResetSuccess = SCI_DEF_NOT_RESET;
 
 
-            }else if(PL131_STATE_NOCARD != pstrState->eCurrentState)
+            }
+            else 
             {
-                semGive(g_SCIDeactiveSyncSem);
+                if(PL131_STATE_NOCARD != pstrState->eCurrentState)
+                {
+                    semGive(g_SCIDeactiveSyncSem);
+                    sci_print_error("sci normal deactive\n");
+                }
+                pwrctrl_sci_soft_clk_dis();
+			    pwrctrl_sci_low_power_enter();
+      
             }
 			/* buffer overflow End! */
             
             g_SciDeactivateFlag = FALSE;
-
-             continue;
+            continue;
         }
 
         /*do Vltg switch process*/
@@ -2000,6 +2113,7 @@ void sci_int_handler(void)
             /* coverity[equality_cond] */
             case bsPL131_REGINTMASK_ATRSTOUT:
             {
+                g_sci_hw_abnormal = SCI_HW_STATE_ATRSTOUT;
                 SCI_RECORD_EVENT(SCI_EVENT_INTR_ATRSTOUT, pstrState->eCurrentState, __LINE__);
 
 				SCI_RECORD_EXCGBL(SCI_EVENT_INTR_ATRSTOUT, pstrState->eCurrentState, omTimerGet());
@@ -2041,6 +2155,8 @@ void sci_int_handler(void)
                 case bsPL131_REGINTMASK_CHTOUT:
                 default:
                     event = SCI_EVENT_INTR_CHOUT;
+                    
+                    g_sci_hw_abnormal = SCI_HW_STATE_CHTOUT;
                     break;
                 }
 
@@ -2127,12 +2243,15 @@ void sci_int_handler(void)
                 {
                 case bsPL131_REGINTMASK_RORI:
                     event = SCI_EVENT_INTR_RORI;
+                    g_sci_hw_abnormal = SCI_HW_STATE_RORI;
                     break;
                 case bsPL131_REGINTMASK_TXERR:
                     event = SCI_EVENT_INTR_TX_ERR;
+                    g_sci_hw_abnormal = SCI_HW_STATE_TXERR;
                     break;
                 case bsPL131_REGINTMASK_ATRDTOUT:
                     event = SCI_EVENT_INTR_ATRDTOUT;
+                    g_sci_hw_abnormal = SCI_HW_STATE_ATRSTOUT;
                     break;
                 case bsPL131_REGINTMASK_BLKTOUT:
                 /* coverity[dead_error_begin] */
@@ -2841,10 +2960,10 @@ s32 bsp_sci_excreset_times(u32 ExcResetTimes)
 * 修改记录  : 2011年5月21日   yangzhi  creat
 *
 *****************************************************************************/
-u32 bsp_sci_record_data_save()
+u32 bsp_sci_record_data_save(SCI_LOG_MODE log_mode)
 {
     //return ((BSP_U32)sciRecordDataSave());
-    return sci_record_data_save();
+    return sci_record_data_save(log_mode);
 
 }
 
@@ -2873,9 +2992,9 @@ s32 sci_set_voltage(SCI_VOLTAGE_SWITCH_DIRECTION direction)
     
     if(direction != SCI_VOLTAGE_SWITCH_CLASS_ZERO2CB)
     {
-        regulator_disable(g_sciPmuRegu);
+        regulator_disable(g_stSciHwCfg.sci_pmu);
         SCI_RECORD_EVENT(SCI_EVENT_REGULATOR_DOWN, g_sci_voltage_state.sciClassKind, __LINE__);
-        taskDelay(1);
+        taskDelay(2);
     }
 
     
@@ -2889,7 +3008,7 @@ s32 sci_set_voltage(SCI_VOLTAGE_SWITCH_DIRECTION direction)
                     return BSP_ERROR;
                 }
             
-                retVal = regulator_set_voltage(g_sciPmuRegu,1800000,1800000);/*[false alarm]:*/
+                retVal = regulator_set_voltage(g_stSciHwCfg.sci_pmu,1800000,1800000);/*[false alarm]:*/
                 SCI_RECORD_EVENT(SCI_EVENT_VOLTAGE_CLASS_C2C, g_sci_voltage_state.sciClassKind, __LINE__);
                 g_sci_voltage_state.sciClassKind= PL131_SCI_Class_C;
                 break;
@@ -2901,7 +3020,7 @@ s32 sci_set_voltage(SCI_VOLTAGE_SWITCH_DIRECTION direction)
                     SCI_RECORD_EVENT(SCI_EVENT_VOLTAGE_ERROR, g_sci_voltage_state.sciClassKind, __LINE__);
                     return BSP_ERROR;           
                 }
-                retVal = regulator_set_voltage(g_sciPmuRegu,3000000,3000000);/*[false alarm]:*/
+                retVal = regulator_set_voltage(g_stSciHwCfg.sci_pmu,3000000,3000000);/*[false alarm]:*/
                 SCI_RECORD_EVENT(SCI_EVENT_VOLTAGE_CLASS_C2B, g_sci_voltage_state.sciClassKind, __LINE__);
                 g_sci_voltage_state.sciClassKind= PL131_SCI_Class_B;
                 break;
@@ -2913,7 +3032,7 @@ s32 sci_set_voltage(SCI_VOLTAGE_SWITCH_DIRECTION direction)
                     SCI_RECORD_EVENT(SCI_EVENT_VOLTAGE_ERROR, g_sci_voltage_state.sciClassKind, __LINE__);
                     return BSP_ERROR; 
                 }
-                retVal = regulator_set_voltage(g_sciPmuRegu,3000000,3000000);/*[false alarm]:*/
+                retVal = regulator_set_voltage(g_stSciHwCfg.sci_pmu,3000000,3000000);/*[false alarm]:*/
                 SCI_RECORD_EVENT(SCI_EVENT_VOLTAGE_CLASS_B2B, g_sci_voltage_state.sciClassKind, __LINE__);
                 g_sci_voltage_state.sciClassKind= PL131_SCI_Class_B;
                 break;
@@ -2930,7 +3049,7 @@ s32 sci_set_voltage(SCI_VOLTAGE_SWITCH_DIRECTION direction)
                  {
                      g_sci_voltage_state.sciClassKind = PL131_SCI_Class_C;
 
-                     retVal = regulator_set_voltage(g_sciPmuRegu,1800000,1800000);
+                     retVal = regulator_set_voltage(g_stSciHwCfg.sci_pmu,1800000,1800000);
                      if(retVal != 0)
                      {
                         SCI_RECORD_EVENT(SCI_EVENT_REGULATOR_ERR,retVal , __LINE__);
@@ -2941,7 +3060,7 @@ s32 sci_set_voltage(SCI_VOLTAGE_SWITCH_DIRECTION direction)
                     
                      g_sci_voltage_state.sciClassKind = PL131_SCI_Class_B;
                
-                     retVal = regulator_set_voltage(g_sciPmuRegu,3000000,3000000);
+                     retVal = regulator_set_voltage(g_stSciHwCfg.sci_pmu,3000000,3000000);
                      if(retVal != 0)
                      {
                         SCI_RECORD_EVENT(SCI_EVENT_REGULATOR_ERR,retVal , __LINE__);
@@ -2955,7 +3074,7 @@ s32 sci_set_voltage(SCI_VOLTAGE_SWITCH_DIRECTION direction)
     /*上电需要进行延时*/
     if(direction != SCI_VOLTAGE_SWITCH_CLASS_CB2ZERO)
     {
-        if(BSP_OK != regulator_enable(g_sciPmuRegu))
+        if(BSP_OK != regulator_enable(g_stSciHwCfg.sci_pmu))
         {
             SCI_RECORD_EVENT(SCI_EVENT_REGULATOR_ERR,0 , __LINE__);
             sci_print_error("get pmu device failed.\n");
@@ -3053,6 +3172,232 @@ u32 bsp_sci_blk_rcv(unsigned char *pu8Data,u32 *pulLength)
 }
 /* T=1 add End */
 
+
+void sci_set_cfg( SCI_CFG_STRU * p_sci_cfg,SCI_SLOT sci_slot,u32 card_id)
+{
+    
+    /* regs base\ int \ clk */
+    p_sci_cfg->base_addr  = ((sci_slot == SCI_ID_0) ? HI_SCI0_REGBASE_ADDR : HI_SCI1_REGBASE_ADDR);
+    p_sci_cfg->int_number = (sci_slot == SCI_ID_0) ? INT_LVL_SCI0 : INT_LVL_SCI1;
+    p_sci_cfg->sci_id     = sci_slot;
+    p_sci_cfg->dma_chan   = (sci_slot == SCI_ID_0)? EDMA_SCI0_RX : EDMA_SCI1_RX;     
+    p_sci_cfg->clk_en_reg  = HI_CRG_CLKEN4_OFFSET;
+    p_sci_cfg->clk_en_bit  = (sci_slot == SCI_ID_0)? SCI0_CLK_SET_BIT_SHIFT : SCI1_CLK_SET_BIT_SHIFT;
+    p_sci_cfg->clk_dis_reg = HI_CRG_CLKDIS4_OFFSET;        
+    p_sci_cfg->clk_dis_bit = (sci_slot == SCI_ID_0)? SCI0_CLK_SET_BIT_SHIFT : SCI1_CLK_SET_BIT_SHIFT ; 
+    
+    /* PMU */
+    p_sci_cfg->pwr_type = (sci_slot == SCI_ID_0)? CARD_PM_TYPE_SIM0 : CARD_PM_TYPE_SIM1;
+    
+    /*异常记录相关的配置，包括记录区的基地址以及记录文件路径*/
+    p_sci_cfg->record_enum= (sci_slot == SCI_ID_0)? CARD0_EXCP_RECORD_ADDR_NUM : CARD1_EXCP_RECORD_ADDR_NUM;
+#ifdef BSP_CONFIG_HI3630
+    p_sci_cfg->icc_chnl     = ((ICC_CHN_MCORE_CCORE << 16) | ((sci_slot == SCI_ID_0)? MCORE_CCORE_FUNC_SIM0 : MCORE_CCORE_FUNC_SIM1));
+#else
+    p_sci_cfg->icc_chnl     = ((ICC_CHN_IFC<< 16) | ((sci_slot == SCI_ID_0) ? IFC_RECV_FUNC_SIM0 : IFC_RECV_FUNC_SIM1));
+#endif
+    p_sci_cfg->record_file= (char *)g_pcCardRecordFileName[card_id];
+    
+    /* task */
+    p_sci_cfg->syncTaskName   = (char *)g_pcCardTaskName[card_id];
+    
+    /*卡0投票*/
+    p_sci_cfg->sleep_vote = (sci_slot == SCI_ID_0)?PWRCTRL_SLEEP_SCI0 : PWRCTRL_SLEEP_SCI1;
+    
+}
+int sci_resore_cfg(void)
+{
+    s32 ret = BSP_ERROR;
+    /* coverity[assign] */
+    NV_SCI_CFG_UNION nv_sci;
+
+    /*读取NV_SCI的值*/
+    ret = bsp_sci_get_nv(&nv_sci.value);
+    if(ret == BSP_ERROR)
+    {
+        nv_sci = (NV_SCI_CFG_UNION)g_SciNVValue ;
+    }
+
+    /*解析NV_SCI*/
+    if (BSP_ERROR == bsp_sci_parse_nv(&nv_sci)) 
+	{
+		sci_print_error("keep the before cfg fail\n");
+        return BSP_ERROR;
+    }
+    return BSP_OK;
+
+}
+
+void sci_uninit(SCI_CFG_STRU * p_sci_cfg)
+{
+    int retvalue;
+    if(p_sci_cfg->sci_int_handler!= NULL)
+    {
+        intDisable(p_sci_cfg->int_number);
+        intDisconnect((VOIDFUNCPTR*)(p_sci_cfg->int_number),p_sci_cfg->sci_int_handler, 0);
+        p_sci_cfg->sci_int_handler = NULL;
+    }
+
+    if(p_sci_cfg->task_id != 0)
+    {
+        retvalue = taskDelete(p_sci_cfg->task_id);
+        if(retvalue != 0)
+        {
+            sci_print_error("del task fail\n");
+        }
+        p_sci_cfg->task_id = 0;
+    }
+    sci_sem_destory();
+    
+    bsp_icc_event_unregister(p_sci_cfg->icc_chnl);
+    
+    /* init sci record */
+    if(p_sci_cfg->g_sci_debug_base.sci_debug_base_addr != NULL)
+    {
+        
+        memset(&(p_sci_cfg->g_sci_debug_base),0,sizeof(sci_debug_str));
+    }
+    
+    if(p_sci_cfg->sci_pmu != NULL)
+    {
+        p_sci_cfg->sci_pmu = NULL;
+    }
+    
+    if (SCI_RX_DMA_MODE == g_sciRxStGblStru.RxModeFlag)
+    {
+        bsp_edma_channel_free(p_sci_cfg->dma_chan);
+    }
+    
+    
+}
+
+int bsp_sci_init(void)
+{
+    unsigned int i = 0;
+    unsigned int init_func_num;
+    /* coverity[assign] */
+    int *p_init_start = (int *)&_sci_init_data_start;
+    int call_addr;
+   
+    SCI_INIT_FUNCP p_func_sci_init;
+    int card_type = 0;
+
+  
+
+    init_func_num = &_sci_init_data_end - &_sci_init_data_start;
+
+    card_type = ((NV_SCI_CFG_UNION *)&g_SciNVValue)->cfg.card_num; 
+    if(SCI_SINGLE == card_type)
+    {
+        init_func_num= 1;
+    }
+    else if (SCI_SINGLE_MODLEM1 == card_type)
+    {
+         init_func_num= 1;
+         /* coverity[ptr_arith] */
+         p_init_start++;
+    }
+    
+    sci_print_debug("init_func_num %d  start_add_opp 0x%0x\r\n", init_func_num,(p_init_start-(int*)&_sci_init_data_start));
+        
+    /*调用SCI的初始化*/
+    for (i = 0; i < init_func_num; i++) 
+	{
+        call_addr = *(volatile int *)p_init_start;
+        p_func_sci_init = (SCI_INIT_FUNCP)call_addr;
+        sci_print_debug("call init function of card%d, address is 0x%x\r\n",i, call_addr);
+        p_func_sci_init();
+        /* coverity[ptr_arith] */
+        p_init_start++;
+    }
+
+    return BSP_OK;
+}
+
+s32 bsp_sci_slot_switch(SCI_SLOT sci_slot0,SCI_SLOT sci_slot1)
+{
+    
+    SCI_CFG_STRU * p_sci0_cfg = NULL;
+    SCI_CFG_STRU * p_sci1_cfg = NULL;
+    u32 nv_back = g_SciNVValue;
+    
+    sci_print_error("enter sci slot switch\n");  
+    
+    SCI_RECORD_EVENT(SCI_EVENT_API_SLOT_SWITCH, (u32)sci_slot0, (__LINE__));
+
+    if(SCI_DUAL != ((NV_SCI_CFG_UNION)g_SciNVValue).cfg.card_num)
+    {
+        sci_print("not support double card \n");
+        return BSP_ERROR;
+    }
+
+    if(sci_slot0>= SCI_ID_BUTT || sci_slot1 >= SCI_ID_BUTT)
+    {
+        return BSP_ERROR;
+    }
+    
+    
+    p_sci0_cfg = (SCI_CFG_STRU *)((int)&_sci_cfg_data_start + \
+                                (int)(sizeof(SCI_CFG_STRU) * CARD0));
+    p_sci1_cfg = (SCI_CFG_STRU *)((int)&_sci_cfg_data_start + \
+                                (int)(sizeof(SCI_CFG_STRU) *  CARD1));
+     
+    if((sci_slot0 == p_sci0_cfg->sci_id) && (sci_slot1 == p_sci1_cfg->sci_id))
+    {
+        return BSP_OK;
+    }
+    sci_uninit(p_sci0_cfg);
+    sci_uninit(p_sci1_cfg);
+    sci_set_cfg( p_sci0_cfg,sci_slot0,CARD0) ;
+    sci_set_cfg( p_sci1_cfg,sci_slot1,CARD1) ;
+
+    if((sci_slot0 == SCI_ID_0 && sci_slot1 == SCI_ID_1))
+    {
+        g_SciNVValue = 0x802;
+    }
+    else if(sci_slot0 == SCI_ID_1 && sci_slot1 == SCI_ID_0)
+    {
+        g_SciNVValue = 0x102;
+    }
+  
+    if(BSP_OK != bsp_nvm_write(NV_ID_DRV_SCI_DSDA_SELECT, (u8*)&g_SciNVValue, NV_SCI_LEN)) 
+    {   
+        
+        sci_print("write nv fail,and use before nv cfg\n");
+        g_SciNVValue = nv_back;
+        sci_resore_cfg();
+        return BSP_ERROR;
+    }
+    sci_print("THE SLOT HAS BEEN CHANGED\n");
+    p_sci0_cfg->slot_switch_flag = SCI_SLOT_SWITCH_CHANGE;
+    p_sci1_cfg->slot_switch_flag = SCI_SLOT_SWITCH_CHANGE;
+	bsp_sci_init();
+        
+
+    return BSP_OK;
+ 
+}
+s32 bsp_sci_get_slot_state(SCI_SLOT* sci_slot0,SCI_SLOT* sci_slot1)
+{
+    SCI_CFG_STRU * p_sci0_cfg = NULL;
+    SCI_CFG_STRU * p_sci1_cfg = NULL;
+
+    
+    p_sci0_cfg = (SCI_CFG_STRU *)((int)&_sci_cfg_data_start + \
+                                (int)(sizeof(SCI_CFG_STRU) * CARD0));
+    p_sci1_cfg = (SCI_CFG_STRU *)((int)&_sci_cfg_data_start + \
+                                (int)(sizeof(SCI_CFG_STRU) *  CARD1));
+
+    if(SCI_DUAL != ((NV_SCI_CFG_UNION)g_SciNVValue).cfg.card_num)
+    {
+        sci_print("not support double card \n");
+        return BSP_ERROR;
+    }
+
+    *sci_slot0 = p_sci0_cfg->sci_id;
+    *sci_slot1 = p_sci1_cfg->sci_id;
+    return 0;
+}
 
 
 

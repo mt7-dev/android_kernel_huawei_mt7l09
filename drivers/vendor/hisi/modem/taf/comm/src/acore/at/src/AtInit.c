@@ -20,7 +20,6 @@
 #include "GasNvInterface.h"
 #include "NasNvInterface.h"
 #include "TafNvInterface.h"
-#include "omnvinterface.h"
 
 #include  "product_config.h"
 
@@ -36,9 +35,9 @@ extern "C" {
 /*****************************************************************************
     协议栈打印打点方式下的.C文件宏定义
 *****************************************************************************/
-/*lint -e767*/
+/*lint -e767 -e960*/
 #define    THIS_FILE_ID                 PS_FILE_ID_AT_INIT_C
-/*lint +e767*/
+/*lint +e767 +e960*/
 
 
 /*****************************************************************************
@@ -103,9 +102,11 @@ VOS_VOID AT_ReadPlatformNV(VOS_VOID)
 }
 VOS_VOID AT_ReadClientConfigNV(VOS_VOID)
 {
-    VOS_UINT8                           ucClientIndex;
-    AT_CLIENT_CTX_STRU                 *pstAtClientCtx = VOS_NULL_PTR;
     TAF_AT_NVIM_AT_CLIENT_CONFIG_STRU   stAtClientCfg;
+    AT_CLINET_CONFIG_DESC_STRU         *pstCfgDesc;
+    AT_CLIENT_CONFIGURATION_STRU       *pstClientCfg;
+    AT_CLIENT_CFG_MAP_TAB_STRU         *pstCfgMapTbl;
+    VOS_UINT8                           i;
 
     PS_MEM_SET(&stAtClientCfg, 0, sizeof(TAF_AT_NVIM_AT_CLIENT_CONFIG_STRU));
 
@@ -116,8 +117,8 @@ VOS_VOID AT_ReadClientConfigNV(VOS_VOID)
        ......
        按index顺序递增
        aucAtClientConfig[Index]
-       末两位对应一个client归属于哪个ModemId:00:表示modem0 01:表示modem1
-       第三位对应一个client是否允许广播:0:表示不允许 1:表示允许
+       BIT0-BIT1对应一个client归属于哪个ModemId:00:表示modem0 01:表示modem1
+       BIT2对应一个client是否允许广播:0:表示不允许 1:表示允许
     */
     if (VOS_OK != NV_ReadEx(MODEM_ID_0,
                             en_NV_Item_AT_CLIENT_CONFIG,
@@ -127,16 +128,17 @@ VOS_VOID AT_ReadClientConfigNV(VOS_VOID)
         return;
     }
 
-    for (ucClientIndex = 0; ucClientIndex < AT_CLIENT_BUTT; ucClientIndex++)
+    pstCfgDesc = (AT_CLINET_CONFIG_DESC_STRU *)&(stAtClientCfg.aucAtClientConfig[0]);
+
+    for (i = 0; i < AT_GET_CLIENT_CFG_TAB_LEN(); i++)
     {
-        pstAtClientCtx = AT_GetClientCtxAddr(ucClientIndex);
+        pstCfgMapTbl = AT_GetClientCfgMapTbl(i);
+        pstClientCfg = AT_GetClientConfig(pstCfgMapTbl->enClientId);
 
 #if (FEATURE_ON == FEATURE_MULTI_MODEM)
-        pstAtClientCtx->stClientConfiguration.enModemId
-            = stAtClientCfg.aucAtClientConfig[ucClientIndex] & 0x3;
+        pstClientCfg->enModemId   = pstCfgDesc[pstCfgMapTbl->enNvIndex].ucModemId;
 #endif
-        pstAtClientCtx->stClientConfiguration.ucReportFlg
-            = (stAtClientCfg.aucAtClientConfig[ucClientIndex] >> AT_NV_CLIENT_CONFIG_MODEM_ID_OFFSET) & 0x1;
+        pstClientCfg->ucReportFlg = pstCfgDesc[pstCfgMapTbl->enNvIndex].ucReportFlg;
     }
 
     return;
@@ -494,6 +496,9 @@ VOS_VOID AT_ReadAtDislogPwdNV(VOS_VOID)
 VOS_VOID AT_ReadAtRightPasswordNV(VOS_VOID)
 {
     TAF_AT_NVIM_RIGHT_OPEN_FLAG_STRU        stNvimRightOpenFlg;
+
+    PS_MEM_SET(&stNvimRightOpenFlg, 0x0, sizeof(stNvimRightOpenFlg));
+
     /* 从NV中获取当前操作AT命令的权限 */
     if (NV_OK != NV_ReadEx(MODEM_ID_0, en_NV_Item_AT_RIGHT_PASSWORD,
                            &stNvimRightOpenFlg,
@@ -1842,12 +1847,15 @@ VOS_UINT32  At_PidInit(enum VOS_INIT_PHASE_DEFINE enPhase)
                                      AT_CCpuResetCallback,
                                      0,
                                      ACPU_RESET_PRIORITY_AT);
-
+#if (VOS_OS_VER == VOS_LINUX)
+#ifdef CONFIG_HIFI_RESET
             /* 给低软注册回调函数，用于HIFI单独复位的处理 */
             DRV_HIFIRESET_REGCBFUNC(NAS_AT_FUNC_PROC_NAME,
                                     AT_HifiResetCallback,
                                     0,
                                     ACPU_RESET_PRIORITY_AT);
+#endif
+#endif
 
             break;
 

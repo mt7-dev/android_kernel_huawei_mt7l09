@@ -1881,14 +1881,18 @@ VOS_UINT32 USIMM_OpenChannelReq(VOS_UINT32 ulSenderPid,
     USIMM_OPEN_CHANNEL_REQ_STRU        *pstMsg;
     VOS_UINT32                          ulResult;
 
-    ulResult = USIMM_ApiParaCheck();
-
-    if(USIMM_API_SUCCESS != ulResult)
+    if (VOS_FALSE == USIMM_IsCLEnable())
     {
-        USIMM_WARNING_LOG("USIMM_MaxEFRecordNumReq: USIMM_ApiParaCheck is Failed");/*打印错误*/
+        ulResult = USIMM_ApiParaCheck();
 
-        return ulResult; /*返回函数错误信息*/
+        if(USIMM_API_SUCCESS != ulResult)
+        {
+            USIMM_WARNING_LOG("USIMM_MaxEFRecordNumReq: USIMM_ApiParaCheck is Failed");/*打印错误*/
+
+            return ulResult; /*返回函数错误信息*/
+        }
     }
+
     /* 卡状态检查 */
     if ((USIMM_OPENSPEEDENABLE == gulUSIMMOpenSpeed)
         || (gulUSIMMAPIMessageNum > USIMM_MAX_MSG_NUM))
@@ -1937,14 +1941,18 @@ VOS_UINT32 USIMM_CloseChannelReq(VOS_UINT32 ulSenderPid, VOS_UINT32 ulSessionID)
     USIMM_CLOSE_CHANNEL_REQ_STRU        *pstMsg;
     VOS_UINT32                          ulResult;
 
-    ulResult = USIMM_ApiParaCheck();
-
-    if(USIMM_API_SUCCESS != ulResult)
+    if (VOS_FALSE == USIMM_IsCLEnable())
     {
-        USIMM_WARNING_LOG("USIMM_MaxEFRecordNumReq: USIMM_ApiParaCheck is Failed");/*打印错误*/
+        ulResult = USIMM_ApiParaCheck();
 
-        return ulResult; /*返回函数错误信息*/
+        if(USIMM_API_SUCCESS != ulResult)
+        {
+            USIMM_WARNING_LOG("USIMM_MaxEFRecordNumReq: USIMM_ApiParaCheck is Failed");/*打印错误*/
+
+            return ulResult; /*返回函数错误信息*/
+        }
     }
+
     /* 卡状态检查 */
     if ((USIMM_OPENSPEEDENABLE == gulUSIMMOpenSpeed)
         || (gulUSIMMAPIMessageNum > USIMM_MAX_MSG_NUM))
@@ -1979,13 +1987,16 @@ VOS_UINT32 USIMM_AccessChannelReq(VOS_UINT32 ulSenderPid,
     USIMM_ACCESS_CHANNEL_REQ_STRU      *pstMsg;
     VOS_UINT32                          ulResult;
 
-    ulResult = USIMM_ApiParaCheck();
-
-    if(USIMM_API_SUCCESS != ulResult)
+    if (VOS_FALSE == USIMM_IsCLEnable())
     {
-        USIMM_WARNING_LOG("USIMM_MaxEFRecordNumReq: USIMM_ApiParaCheck is Failed");/*打印错误*/
+        ulResult = USIMM_ApiParaCheck();
 
-        return ulResult; /*返回函数错误信息*/
+        if(USIMM_API_SUCCESS != ulResult)
+        {
+            USIMM_WARNING_LOG("USIMM_MaxEFRecordNumReq: USIMM_ApiParaCheck is Failed");/*打印错误*/
+
+            return ulResult; /*返回函数错误信息*/
+        }
     }
 
     /* 检查卡状态和消息队列数量 */
@@ -2188,6 +2199,49 @@ VOS_UINT32 USIMM_GetCardCGType(VOS_UINT8 *pucCardMode, VOS_UINT8 *pucHasCModule,
 
     return USIMM_API_SUCCESS;
 }
+
+#if (FEATURE_VSIM == FEATURE_ON)
+/*****************************************************************************
+函 数 名  :USIMM_SaveHvteeVsimData
+功能描述  :保存共享内存中的VSIM数据
+输入参数  : ulDataLen: 数据长度
+            pucVsimData:数据内容
+输出参数  : 无
+返 回 值  : 无
+
+修订记录  :
+1.日    期  : 2014年10月09日
+  作    者  : 祝锂
+  修改内容  : Create
+*****************************************************************************/
+
+VOS_VOID USIMM_SaveHvteeVsimData(VOS_UINT32 ulDataLen, VOS_UINT8 *pucVsimData)
+{
+    if ((VOS_NULL_PTR == pucVsimData) || (VOS_NULL == ulDataLen))
+    {
+        return;
+    }
+
+    if (g_pucUSIMMVsimData != VOS_NULL_PTR)
+    {
+        VOS_MemFree(WUEPS_PID_USIM, g_pucUSIMMVsimData);
+    }
+
+    g_pucUSIMMVsimData = VOS_MemAlloc(WUEPS_PID_USIM, DYNAMIC_MEM_PT, ulDataLen+1);  /*多申请一个字节用于存储'\0'*/
+
+    if (VOS_NULL_PTR == g_pucUSIMMVsimData) /*申请失败会复位*/
+    {
+        return;
+    }
+
+    VOS_MemCpy(g_pucUSIMMVsimData, pucVsimData, ulDataLen);
+
+    g_pucUSIMMVsimData[ulDataLen] = '\0';
+
+    return;
+}
+
+#endif
 
 #ifdef __cplusplus
 #if __cplusplus

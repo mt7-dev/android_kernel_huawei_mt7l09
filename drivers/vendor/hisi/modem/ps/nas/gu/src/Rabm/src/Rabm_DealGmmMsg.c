@@ -685,6 +685,7 @@ VOS_VOID  NAS_RabmDeal3GTo2GSuspendIndMsg( VOS_VOID )
     if ( RABM_TRUE == g_ucReestTimerFlg )
     {
         RABM_TimerStop(0);
+        NAS_RabmStopTimer(RABM_TIMER_NAME_COMMON, RABM_TIMER_RESEND_EST_REQ);
         g_ucReestTimerFlg = RABM_FALSE;
     }
 
@@ -1125,6 +1126,9 @@ VOS_VOID NAS_RABM_RcvGmmReleaseRrcMmlProcStatusQryCnf(
       && (VOS_TRUE != pstProcStatus->stMmlProcStatus.bitOpPsSmsService)
       && (VOS_TRUE != pstProcStatus->stMmlProcStatus.bitOpCsSignal) )
     {
+        /* 设置释放RRC标识 */
+        NAS_RABM_SET_FD_REL_RRC_EXEC_FLG();
+
         /* 向WAS发送RRRABM_FASTDORM_START_REQ */
         NAS_RABM_SndWasFastDormStartReq(RABM_RELEASE_RRC_ENUM);
     }

@@ -38,7 +38,7 @@ static CHANNEL_LIST DefaultChannelPlan[] = {
 	{{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 36, 40, 44, 48, 52, 56, 60, 64}, 22},	/* MKK1	*/
 	{{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 36, 40, 44, 48, 52, 56, 60, 64}, 21},	/* Israel */
 	{{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 34, 38, 42, 46}, 17},			/* For 11a , TELEC */
-	{{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14}, 14}					/* For Global Domain. 1-11:active scan, 12-14 passive scan.*/	/* +YJ, 080626 */
+	{{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14}, 14}					/* For Global Domain. 1-11:active scan, 12-14 passive scan.*/
 };
 static int r8180_wx_get_freq(struct net_device *dev,
 			     struct iw_request_info *a,
@@ -191,7 +191,6 @@ static int r8180_wx_set_mode(struct net_device *dev, struct iw_request_info *a,
 	return ret;
 }
 
-/* YJ,add,080819,for hidden ap */
 struct  iw_range_with_scan_capa	{
 		/* Informative stuff (to choose between different interface) */
 
@@ -215,7 +214,6 @@ struct  iw_range_with_scan_capa	{
 		/* Scan capabilities */
 		__u8			scan_capa;
 };
-/* YJ,add,080819,for hidden ap */
 
 
 static int rtl8180_wx_get_range(struct net_device *dev,
@@ -1055,7 +1053,6 @@ static int r8180_wx_get_version(struct net_device *dev,
 	return 0;
 }
 
-/* added by amy 080818 */
 /*receive datarate from user typing valid rate is from 2 to 108 (1 - 54M), if input 0, return to normal rate adaptive. */
 static int r8180_wx_set_forcerate(struct net_device *dev,
 			     struct iw_request_info *info,
@@ -1357,10 +1354,10 @@ static inline int is_same_network(struct ieee80211_network *src,
 		 * We treat all <hidden> with the same BSSID and channel
 		 * as one network
 		 */
-		return (((src->ssid_len == dst->ssid_len) || (ieee->iw_mode == IW_MODE_INFRA)) && /* YJ,mod, 080819,for hidden ap */
+		return (((src->ssid_len == dst->ssid_len) || (ieee->iw_mode == IW_MODE_INFRA)) &&
 			(src->channel == dst->channel) &&
 			!memcmp(src->bssid, dst->bssid, ETH_ALEN) &&
-			(!memcmp(src->ssid, dst->ssid, src->ssid_len) || (ieee->iw_mode == IW_MODE_INFRA)) &&  /* YJ,mod, 080819,for hidden ap */
+			(!memcmp(src->ssid, dst->ssid, src->ssid_len) || (ieee->iw_mode == IW_MODE_INFRA)) &&
 			((src->capability & WLAN_CAPABILITY_IBSS) ==
 			(dst->capability & WLAN_CAPABILITY_IBSS)) &&
 			((src->capability & WLAN_CAPABILITY_BSS) ==

@@ -1704,7 +1704,7 @@ typedef enum _RT_JOIN_ACTION{
 typedef struct _IbssParms{
 	u16   atimWin;
 }IbssParms, *PIbssParms;
-#define MAX_NUM_RATES	264 // Max num of support rates element: 8,  Max num of ext. support rate: 255. 061122, by rcnjko.
+#define MAX_NUM_RATES	264
 
 // RF state.
 typedef	enum _RT_RF_POWER_STATE {
@@ -2046,7 +2046,6 @@ struct ieee80211_device {
 	bool enable_rx_imm_BA;
 	bool bibsscoordinator;
 
-	//+by amy for DM ,080515
 	//Dynamic Tx power for near/far range enable/Disable  , by amy , 2008-05-15
 	bool	bdynamic_txpower_enable;
 

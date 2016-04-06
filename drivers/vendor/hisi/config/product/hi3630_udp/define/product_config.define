@@ -19,11 +19,16 @@ CFG_PRODUCT_FULL_VERSION_STR          ="Balong K300V300C00B000"
 CFG_PRODUCT_FILE_VERSION_STR          ="2.1.6.8"
 
 
-CFG_PRODUCT_DLOAD_SOFTWARE_VER		= "21.180.00.00.031"
+CFG_PRODUCT_DLOAD_SOFTWARE_VER		= "21.150.00.00.030"
 
 # define when Binary obj compare
 CFG_FEATURE_OBJ_CMP 				=NO
 CFG_FEATURE_OBJ_DUMP				=NO
+
+#define hw version stub
+CFG_CONFIG_VERSION_STUB             =NO
+CFG_HW_VERSION_STUB                 =0x3f000606
+CFG_CONFIG_VER_MASK                 =0x3f000000
 
 # [pkg_info]: iso,dload, app.img
 #####################################################################
@@ -34,7 +39,6 @@ CFG_USE_USBLOADER_MERGE 			=YES
 #####################################################################
 # PLATFORM
 CFG_PLATFORM =hi3630
-
 
 # FEATURE_MULTIMODE:LTE/TDS/GTL/GUL/GUTL
 CFG_FEATURE_MULTIMODE_GUL = YES
@@ -53,6 +57,7 @@ CFG_OS_LINUX_PRODUCT_NAME          =hisi_3630_defconfig
 CFG_OS_ANDROID_MODEM_DECONFIG      =hi6930_modem_defconfig
 CFG_OS_ANDROID_TEMP_DECONFIG       =merge_hisi_k3v3fpga_defconfig
 CFG_OS_ANDROID_PRODUCT_NAME        =$(HW_PRODUCT)
+CFG_AP_CHIP_NAME                   =hi3630
 CFG_OS_ANDROID_SYNC_FILE_LIST      =include.list
 OBB_ANDROID_DIR                    =$(BALONG_TOPDIR)/../..
 CFG_OS_ANDROID_MODE                =normal
@@ -83,13 +88,13 @@ CFG_LPHY_UNI_DTCM_BASE	    =0xe2780000
 CFG_LPHY_UNI_ITCM_BASE	    =0xe2800000
 CFG_LPHY_PUB_DTCM_BASE		=0xe2780000
 CFG_LPHY_PUB_ITCM_BASE		=0xe2800000
-CFG_LPHY_PRV_DTCM_BASE		=0xe27c0000
+CFG_LPHY_PRV_DTCM_BASE		=0xe27c2000
 CFG_LPHY_PRV_ITCM_BASE		=0xe2840000
 CFG_LPHY_UNI_DTCM_SIZE		=0x80000
 CFG_LPHY_UNI_ITCM_SIZE		=0x80000
-CFG_LPHY_PUB_DTCM_SIZE		=0x40000
+CFG_LPHY_PUB_DTCM_SIZE		=0x42000
 CFG_LPHY_PUB_ITCM_SIZE		=0x40000
-CFG_LPHY_PRV_DTCM_SIZE		=0x40000
+CFG_LPHY_PRV_DTCM_SIZE		=0x3E000
 CFG_LPHY_PRV_ITCM_SIZE		=0x40000
 
 # TD/LTE DSP LALG
@@ -122,6 +127,7 @@ CFG_HIFI_LINK_DIR_NAME =hifi_ld_V7R1_CS_UDP_STICK
 # [bsp.comm_feature_info]:
 #####################################################################
 CFG_BSP_CONFIG_K3V3_ASIC = YES
+CFG_HI3630_FASTBOOT_MODEM = YES
 CFG_BSP_CONFIG_HI3630 = YES
 CFG_BSP_CONFIG_BOARD_UDP = YES
 CFG_BSP_CONFIG_EDA = NO
@@ -205,9 +211,13 @@ CFG_FEATURE_NV_RFILE_ON = NO
 
 #AT 升级命令
 CFG_FEATURE_UPGRADE_TL = YES
+CFG_FEATURE_USB_ZERO_COPY = YES
 
 # arm<->tlphy mailbox
 CFG_FEATURE_TLPHY_MAILBOX =YES
+
+#邮箱宏类型定义
+CFG_CONFIG_MAILBOX_TYPE = YES
 
 # build pastar
 CFG_CONFIG_PASTAR = YES
@@ -326,7 +336,7 @@ CFG_CONFIG_BALONG_MODEM_RESET = YES
 CFG_CONFIG_LOAD_SEC_IMAGE = YES
 
 # hifi reset
-CFG_CONFIG_HIFI_RESET = YES
+CFG_CONFIG_HIFI_RESET = NO
 
 # [bsp.memory_info.entry]
 ####################################################################
@@ -464,6 +474,8 @@ CFG_FEATURE_GCBS                                = FEATURE_ON
 
 # W小区广播
 CFG_FEATURE_WCBS                                = FEATURE_ON
+
+CFG_FEATURE_MERGE_OM_CHAN						= FEATURE_ON
 
 # 支持AP
 CFG_FEATURE_AP                                  = FEATURE_OFF
@@ -677,8 +689,13 @@ CFG_FEATURE_AT_HSUART                           = FEATURE_OFF
 CFG_NAS_FEATURE_SMS_NVIM_SMSEXIST                       = FEATURE_ON
 CFG_NAS_FEATURE_SMS_FLASH_SMSEXIST                      = FEATURE_ON
 
+#####################################################################
+# MBB->FEATURE_ON:eth_x          PHONE->FEATURE_OFF:rmnet           #
+#####################################################################
+CFG_FEATURE_RMNET_CUSTOM                                = FEATURE_OFF
+
 #表里AT通道中是否打开HSIC通道
-CFG_FEATURE_AT_HSIC                                     = FEATURE_ON
+CFG_FEATURE_AT_HSIC                                     = FEATURE_OFF
 
 
 #####################################################################
@@ -820,6 +837,9 @@ CFG_FEATURE_HW_CODEC                            = FEATURE_ON
 # 虚拟卡特性开关
 CFG_FEATURE_VSIM                                = FEATURE_ON
 
+# 虚拟卡手机特性开关
+CFG_FEATURE_SECURITY_PHONE                      = FEATURE_OFF
+
 # 语音软件上移ARM配置
 CFG_FEATURE_VOICE_UP                         = FEATURE_OFF
 
@@ -842,4 +862,6 @@ CFG_FEATURE_BSP_LCH_OM                       = FEATURE_ON
 
 
 #HISOCKET 功能开关
-CFG_FEATURE_HISOCKET				=FEATURE_ON
+CFG_FEATURE_HISOCKET				=FEATURE_OFF
+#DFS同步/异步配置接口特性宏,FEATURE_ON为使用同步配置接口
+CFG_FEATURE_DFS_SYNC                            =FEATURE_OFF

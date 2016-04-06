@@ -42,8 +42,9 @@ VOS_UINT32  MN_CALL_SendAppRequest(
         return VOS_ERR;
     }
 
-    PS_MEM_SET((VOS_INT8*)pstMsg + VOS_MSG_HEAD_LENGTH,0x00,
-                    sizeof(MN_CALL_APP_REQ_MSG_STRU) - VOS_MSG_HEAD_LENGTH);
+    PS_MEM_SET((VOS_INT8*)pstMsg + VOS_MSG_HEAD_LENGTH,
+                0x00,
+               (VOS_SIZE_T)(sizeof(MN_CALL_APP_REQ_MSG_STRU) - VOS_MSG_HEAD_LENGTH));
 
     /* ÌîÐ´VOSÏûÏ¢Í· */
     pstMsg->ulSenderCpuId               = VOS_LOCAL_CPUID;

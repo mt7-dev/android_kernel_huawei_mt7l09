@@ -485,11 +485,7 @@ static void hdmi_compute_pll(struct omap_dss_device *dssdev, int phy,
 	 */
 	pi->regm = phy * pi->regm2 / refclk;
 
-	/*
-	 * fractional multiplier is remainder of the difference between
-	 * multiplier and actual phy(required pixel clock thus should be
-	 * multiplied by 2^18(262144) divided by the reference clock
-	 */
+
 	mf = (phy - pi->regm / pi->regm2 * refclk) * 262144;
 	pi->regmf = pi->regm2 * mf / refclk;
 

@@ -1,7 +1,7 @@
 /*
  * hisi ipc mailbox driver
  *
- * Copyright (c) 2013-2014 Hisilicon Technologies CO., Ltd.
+ * Copyright (c) 2013- Hisilicon Technologies CO., Ltd.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -23,7 +23,6 @@
 #include <linux/init.h>
 #include <linux/interrupt.h>
 #include <linux/huawei/mailbox.h>
-#include <linux/huawei/hisi_irq_affinity.h>
 
 #define IPCBITMASK(n)				(1 << (n))
 #define IPCMBxSOURCE(mdev)			((mdev) << 6)
@@ -51,6 +50,7 @@
 #define HISI_PL320_IPC_MBOX_NUM_NAX		26
 #define IPC_UNLOCKED				0x00000000
 #define IPCACKMSG				0x00000000
+#define UNDEFINED_MBOX_IRQ			(-1)
 #define COMM_MBOX_IRQ				(-2)
 #define AUTOMATIC_ACK_CONFIG			(1 << 0)
 #define NO_FUNC_CONFIG				(0 << 0)
@@ -59,9 +59,6 @@
 #define SOURCE_STATUS				(1 << 5)
 #define DESTINATION_STATUS			(1 << 6)
 #define ACK_STATUS				(1 << 7)
-
-/* Optimize interrupts assignment */
-#define IPC_IRQ_AFFINITY_CPU			(1)
 
 enum {
 	RX_BUFFER_TYPE = 0,
@@ -194,9 +191,10 @@ static inline void __ipc_cpu_imask_clr(void __iomem *base, int source, int mdev)
 
 static inline void __ipc_cpu_imask_all(void __iomem *base, int mdev)
 {
-	unsigned int reg = 0x0;
+	unsigned int reg;
 	int i;
 
+	reg = reg & 0x0;
 	for (i = GIC_1; i < UNCERTAIN_REMOTE_PROCESSOR; i++)
 		reg = reg | IPCBITMASK(i);
 
@@ -216,11 +214,6 @@ static inline int __ipc_cpu_istatus(void __iomem *base, int mdev)
 static inline unsigned int __ipc_mbox_istatus(void __iomem *base, int cpu)
 {
 	return __raw_readl(base + IPCCPUxIMST(cpu));
-}
-
-static inline unsigned int __ipc_mbox_irstatus(void __iomem *base, int cpu)
-{
-	return __raw_readl(base + IPCCPUxIRST(cpu));
 }
 
 static inline unsigned int __ipc_status(void __iomem *base, int mdev)
@@ -252,25 +245,6 @@ static void hisi_mdev_shutdown(struct hisi_mbox_device *mdev)
 	 * reserve runtime power management proceeding for further modification,
 	 * if necessary.
 	 */
-	return;
-}
-
-static void
-hisi_mdev_dump_status(struct hisi_mbox_device *mdev)
-{
-	struct hisi_mbox_device_priv *priv = mdev->priv;
-
-	pr_info("====  mdev-%d registers dump  ====\n  [IPCMBSOURCE]  : 0x%08x\n  [IPCMBDSTATUS] : 0x%08x\n  [IPCMBMODE]    : 0x%08x\n  [IPCMBIMASK]   : 0x%08x\n  [IPCMBICLR]    : 0x%08x\n  [IPCCPUIRST]   : 0x%08x\n  [IPCMBDATA0]   : 0x%08x\n  [IPCMBDATA1]   : 0x%08x\n==============  end  =============\n",
-		priv->index,
-		__ipc_read_src(priv->idev->base, priv->index),
-		__ipc_des_status(priv->idev->base, priv->index),
-		__ipc_status(priv->idev->base, priv->index),
-		__ipc_cpu_imask_get(priv->idev->base, priv->index),
-		__ipc_cpu_istatus(priv->idev->base, priv->index),
-		__ipc_mbox_irstatus(priv->idev->base, priv->des),
-		__ipc_read(priv->idev->base, priv->index, 0),
-		__ipc_read(priv->idev->base, priv->index, 1));
-
 	return;
 }
 
@@ -380,17 +354,6 @@ static int hisi_mdev_is_ack(struct hisi_mbox_device *mdev)
 		is_ack = 1;
 
 	return is_ack;
-}
-
-static int hisi_mdev_is_ipc(struct hisi_mbox_device *mdev)
-{
-	struct hisi_mbox_device_priv *priv = mdev->priv;
-	int is_ipc = 0;
-
-	if ((DESTINATION_STATUS & __ipc_status(priv->idev->base, priv->index)))
-		is_ipc = 1;
-
-	return is_ipc;
 }
 
 static mbox_msg_len_t
@@ -517,7 +480,11 @@ hisi_mdev_send_msg(struct hisi_mbox_device *mdev, const char *rp_name,
 		goto out;
 	}
 
-	(void)hisi_mdev_hw_send(mdev, msg, len, need_auto_ack);
+	if (hisi_mdev_hw_send(mdev, msg, len, need_auto_ack)) {
+		pr_err("%s: mdev %s can not be sent\n", MODULE_NAME, mdev->name);
+		err = -EMDEVDIRTY;
+		goto out;
+	}
 
 out:
 	return err;
@@ -555,9 +522,6 @@ hisi_mdev_irq_request(struct hisi_mbox_device *mdev,
 				priv->idev->cmbox_info->gic_1_irq_requested--;
 				goto out;
 			}
-
-			hisi_irqaffinity_register(priv->idev->cmbox_info->cmbox_gic_1_irq,
-									IPC_IRQ_AFFINITY_CPU);
 		}
 
 		if (!priv->idev->cmbox_info->gic_2_irq_requested++) {
@@ -576,9 +540,6 @@ hisi_mdev_irq_request(struct hisi_mbox_device *mdev,
 				priv->idev->cmbox_info->gic_1_irq_requested--;
 				goto out;
 			}
-
-			hisi_irqaffinity_register(priv->idev->cmbox_info->cmbox_gic_2_irq,
-									IPC_IRQ_AFFINITY_CPU);
 		}
 	} else if (priv->idev->cmbox_info->cmbox_gic_1_irq == priv->irq) {
 		if (!priv->idev->cmbox_info->gic_1_irq_requested++) {
@@ -593,8 +554,6 @@ hisi_mdev_irq_request(struct hisi_mbox_device *mdev,
 				priv->idev->cmbox_info->gic_1_irq_requested--;
 				goto out;
 			}
-
-			hisi_irqaffinity_register(priv->irq, IPC_IRQ_AFFINITY_CPU);
 		}
 	} else if (priv->idev->cmbox_info->cmbox_gic_2_irq == priv->irq) {
 		if (!priv->idev->cmbox_info->gic_2_irq_requested++) {
@@ -609,8 +568,6 @@ hisi_mdev_irq_request(struct hisi_mbox_device *mdev,
 				priv->idev->cmbox_info->gic_2_irq_requested--;
 				goto out;
 			}
-
-			hisi_irqaffinity_register(priv->irq, IPC_IRQ_AFFINITY_CPU);
 		}
 	} else {
 		ret = request_irq(priv->irq, handler, IRQF_DISABLED, mdev->name, p);
@@ -619,8 +576,6 @@ hisi_mdev_irq_request(struct hisi_mbox_device *mdev,
 					MODULE_NAME, mdev->name, priv->irq);
 			goto out;
 		}
-
-		hisi_irqaffinity_register(priv->irq, IPC_IRQ_AFFINITY_CPU);
 	}
 
 out:
@@ -710,9 +665,6 @@ struct hisi_mbox_dev_ops hisi_mdev_ops = {
 	.request_irq = hisi_mdev_irq_request,
 	.free_irq = hisi_mdev_irq_free,
 	.irq_to_mdev = hisi_mdev_irq_to_mdev,
-	.status = hisi_mdev_dump_status,
-	.is_ack = hisi_mdev_is_ack,
-	.is_ipc = hisi_mdev_is_ipc,
 };
 
 static void hisi_ipc_device_put(struct hisi_ipc_device *idev)
@@ -876,6 +828,7 @@ hisi_ipc_device_get(struct hisi_ipc_device *idev,
 		src_name = NULL;
 		des_name = NULL;
 		index = -1;
+		irq = UNDEFINED_MBOX_IRQ;
 		rx_buffer = NULL;
 		ack_buffer = NULL;
 
@@ -976,7 +929,7 @@ deinit_mdevs:
 		kfree(mdevs[i]);
 	}
 
-	kfree(idev->buf_pool);
+	kfree(buf_pool);
 free_cmbox:
 	kfree(cmbox_info);
 free_rp:
@@ -1073,8 +1026,7 @@ static int hisi_ipc_device_suspend(struct device *dev)
 	struct hisi_ipc_device *idev = platform_get_drvdata(pdev);
 
 	pr_info("%s: suspend +\n", __func__);
-	if (idev)
-		hisi_mbox_device_deactivate(idev->mdev_res);
+	hisi_mbox_device_deactivate(idev->mdev_res);
 	pr_info("%s: suspend -\n", __func__);
 	return 0;
 }
@@ -1086,8 +1038,7 @@ static int hisi_ipc_device_resume(struct device *dev)
 	struct hisi_ipc_device *idev = platform_get_drvdata(pdev);
 
 	pr_info("%s: resume +\n", __func__);
-	if (idev)
-		hisi_mbox_device_activate(idev->mdev_res);
+	hisi_mbox_device_activate(idev->mdev_res);
 	pr_info("%s: resume -\n", __func__);
 	return 0;
 }

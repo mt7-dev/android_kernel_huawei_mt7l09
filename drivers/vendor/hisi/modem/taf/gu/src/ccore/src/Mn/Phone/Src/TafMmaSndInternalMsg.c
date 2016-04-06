@@ -247,7 +247,40 @@ VOS_VOID TAF_MMA_SndPhoneModeRsltInd(
     return;
 }
 
+#if (FEATURE_IMS == FEATURE_ON)
+VOS_VOID TAF_MMA_SndImsSwitchRsltInd(
+    TAF_MMA_IMS_SWITCH_RESULT_ENUM_UINT8                    enRslt
+)
+{
+    TAF_MMA_IMS_SWITCH_RSLT_IND_STRU   *pstInternalMsg = VOS_NULL_PTR;
+    VOS_UINT32                          ulLen;
 
+    /* 从内部消息队列中获取一个还没有使用的空间 */
+    ulLen           = sizeof(TAF_MMA_IMS_SWITCH_RSLT_IND_STRU);
+
+    pstInternalMsg  = (TAF_MMA_IMS_SWITCH_RSLT_IND_STRU*)TAF_MMA_GetIntMsgSendBuf(ulLen);
+
+    if (VOS_NULL_PTR == pstInternalMsg)
+    {
+        return;
+    }
+
+    PS_MEM_SET((VOS_UINT8*)pstInternalMsg + VOS_MSG_HEAD_LENGTH, 0,
+              ulLen - VOS_MSG_HEAD_LENGTH);
+
+    pstInternalMsg->MsgHeader.ulSenderCpuId   = VOS_LOCAL_CPUID;
+    pstInternalMsg->MsgHeader.ulSenderPid     = WUEPS_PID_MMA;
+    pstInternalMsg->MsgHeader.ulReceiverCpuId = VOS_LOCAL_CPUID;
+    pstInternalMsg->MsgHeader.ulReceiverPid   = WUEPS_PID_MMA;
+    pstInternalMsg->MsgHeader.ulMsgName       = MMA_MMA_IMS_SWITCH_RSLT_IND;
+    pstInternalMsg->MsgHeader.ulLength        = ulLen - VOS_MSG_HEAD_LENGTH;
+    pstInternalMsg->enRslt                    = enRslt;
+
+    TAF_MMA_SndInternalMsg(pstInternalMsg);
+
+    return;
+}
+#endif
 
 #ifdef __cplusplus
     #if __cplusplus

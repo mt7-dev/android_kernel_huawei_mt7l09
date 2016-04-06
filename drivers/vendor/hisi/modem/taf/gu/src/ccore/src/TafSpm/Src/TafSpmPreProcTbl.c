@@ -79,128 +79,128 @@ TAF_ACT_STRU        g_astTafSpmPreProcessActTbl[]   =
     TAF_ACT_TBL_ITEM( WUEPS_PID_AT,
                       MN_CALL_APP_ORIG_REQ,
                       TAF_SPM_RcvAppOrigReq_PreProc ),
-                      
-    TAF_ACT_TBL_ITEM( WUEPS_PID_AT,  
-                      MN_CALL_APP_SUPS_CMD_REQ, 
+
+    TAF_ACT_TBL_ITEM( WUEPS_PID_AT,
+                      MN_CALL_APP_SUPS_CMD_REQ,
                       TAF_SPM_RcvAppSupsCmdReq_PreProc ),
-                      
-    TAF_ACT_TBL_ITEM( WUEPS_PID_AT,  
-                      MN_CALL_APP_GET_INFO_REQ,           
+
+    TAF_ACT_TBL_ITEM( WUEPS_PID_AT,
+                      MN_CALL_APP_GET_INFO_REQ,
                       TAF_SPM_RcvAppGetInfoReq_PreProc ),
-    
-    TAF_ACT_TBL_ITEM( WUEPS_PID_AT,  
-                      MN_CALL_APP_START_DTMF_REQ,         
+
+    TAF_ACT_TBL_ITEM( WUEPS_PID_AT,
+                      MN_CALL_APP_START_DTMF_REQ,
                       TAF_SPM_RcvAppStartDtmfReq_PreProc ),
-    
-    TAF_ACT_TBL_ITEM( WUEPS_PID_AT,  
-                      MN_CALL_APP_STOP_DTMF_REQ,          
+
+    TAF_ACT_TBL_ITEM( WUEPS_PID_AT,
+                      MN_CALL_APP_STOP_DTMF_REQ,
                       TAF_SPM_RcvAppStopDtmfReq_PreProc ),
-    
-    TAF_ACT_TBL_ITEM( WUEPS_PID_AT,  
-                      MN_CALL_APP_GET_CDUR_REQ,           
+
+    TAF_ACT_TBL_ITEM( WUEPS_PID_AT,
+                      MN_CALL_APP_GET_CDUR_REQ,
                       TAF_SPM_RcvAppGetCdurReq_PreProc ),
-    
-    TAF_ACT_TBL_ITEM( WUEPS_PID_AT,  
-                      ID_TAFAGENT_MN_GET_CALL_INFO_REQ,   
+
+    TAF_ACT_TBL_ITEM( WUEPS_PID_AT,
+                      ID_TAFAGENT_MN_GET_CALL_INFO_REQ,
                       TAF_SPM_RcvAppGetCallInfoReq_PreProc ),
-    
-    TAF_ACT_TBL_ITEM( WUEPS_PID_AT,  
-                      MN_CALL_APP_CLPR_GET_REQ,           
+
+    TAF_ACT_TBL_ITEM( WUEPS_PID_AT,
+                      MN_CALL_APP_CLPR_GET_REQ,
                       TAF_SPM_RcvAppGetClprReq_PreProc ),
 
 
     /* AT SMS message */
-    TAF_ACT_TBL_ITEM( WUEPS_PID_AT,  
-                      MN_MSG_MSGTYPE_SEND_RPDATA_DIRECT,  
+    TAF_ACT_TBL_ITEM( WUEPS_PID_AT,
+                      MN_MSG_MSGTYPE_SEND_RPDATA_DIRECT,
                       TAF_SPM_RcvAppSendRpdataDirect_PreProc ),
-                      
-    TAF_ACT_TBL_ITEM( WUEPS_PID_AT,  
-                      MN_MSG_MSGTYPE_SEND_RPDATA_FROMMEM, 
+
+    TAF_ACT_TBL_ITEM( WUEPS_PID_AT,
+                      MN_MSG_MSGTYPE_SEND_RPDATA_FROMMEM,
                       TAF_SPM_RcvAppSendRpdataDirect_PreProc ),
-                      
+
     /* AT SS message */
-    TAF_ACT_TBL_ITEM( WUEPS_PID_AT,  
+    TAF_ACT_TBL_ITEM( WUEPS_PID_AT,
                       TAF_MSG_PROCESS_USS_MSG,
                       TAF_SPM_RcvProcUssSsReq_PreProc ),
-                      
-    TAF_ACT_TBL_ITEM( WUEPS_PID_AT,  
-                      TAF_MSG_REGISTERSS_MSG,             
+
+    TAF_ACT_TBL_ITEM( WUEPS_PID_AT,
+                      TAF_MSG_REGISTERSS_MSG,
                       TAF_SPM_RcvRegisterSsReq_PreProc ),
-    
-    TAF_ACT_TBL_ITEM( WUEPS_PID_AT,  
-                      TAF_MSG_ERASESS_MSG,                
+
+    TAF_ACT_TBL_ITEM( WUEPS_PID_AT,
+                      TAF_MSG_ERASESS_MSG,
                       TAF_SPM_RcvEraseSsReq_PreProc ),
-    
-    TAF_ACT_TBL_ITEM( WUEPS_PID_AT,  
-                      TAF_MSG_ACTIVATESS_MSG,             
+
+    TAF_ACT_TBL_ITEM( WUEPS_PID_AT,
+                      TAF_MSG_ACTIVATESS_MSG,
                       TAF_SPM_RcvActivateSsReq_PreProc ),
-    
-    TAF_ACT_TBL_ITEM( WUEPS_PID_AT,  
-                      TAF_MSG_DEACTIVATESS_MSG,           
+
+    TAF_ACT_TBL_ITEM( WUEPS_PID_AT,
+                      TAF_MSG_DEACTIVATESS_MSG,
                       TAF_SPM_RcvDeactivateSsReq_PreProc ),
-    
-    TAF_ACT_TBL_ITEM( WUEPS_PID_AT,  
-                      TAF_MSG_INTERROGATESS_MSG,          
+
+    TAF_ACT_TBL_ITEM( WUEPS_PID_AT,
+                      TAF_MSG_INTERROGATESS_MSG,
                       TAF_SPM_RcvInterrogateSsReq_PreProc ),
-    
-    TAF_ACT_TBL_ITEM( WUEPS_PID_AT,  
-                      TAF_MSG_REGPWD_MSG,          
+
+    TAF_ACT_TBL_ITEM( WUEPS_PID_AT,
+                      TAF_MSG_REGPWD_MSG,
                       TAF_SPM_RcvRegPwdSsReq_PreProc ),
 
-    TAF_ACT_TBL_ITEM( WUEPS_PID_AT,  
-                      TAF_MSG_ERASECCENTRY_MSG,          
+    TAF_ACT_TBL_ITEM( WUEPS_PID_AT,
+                      TAF_MSG_ERASECCENTRY_MSG,
                       TAF_SPM_RcvEraseCCentrySsReq_PreProc ),
 
-    TAF_ACT_TBL_ITEM( WUEPS_PID_AT,  
-                      TAF_MSG_RLEASE_MSG,                 
+    TAF_ACT_TBL_ITEM( WUEPS_PID_AT,
+                      TAF_MSG_RLEASE_MSG,
                       TAF_SPM_RcvRleaseSsReq_PreProc ),
-    
+
     /* STK CALL message */
-    TAF_ACT_TBL_ITEM( MAPS_STK_PID,  
-                      STK_CALL_CALLORIG_REQ,              
+    TAF_ACT_TBL_ITEM( MAPS_STK_PID,
+                      STK_CALL_CALLORIG_REQ,
                       TAF_SPM_RcvStkOrigReq_PreProc ),
-                    
-    TAF_ACT_TBL_ITEM( MAPS_STK_PID,  
-                      STK_CALL_SUPS_CMD_REQ,              
+
+    TAF_ACT_TBL_ITEM( MAPS_STK_PID,
+                      STK_CALL_SUPS_CMD_REQ,
                       TAF_SPM_RcvAppSupsCmdReq_PreProc ),
-                    
-    TAF_ACT_TBL_ITEM( MAPS_STK_PID,  
-                      STK_CALL_START_DTMF_REQ,            
+
+    TAF_ACT_TBL_ITEM( MAPS_STK_PID,
+                      STK_CALL_START_DTMF_REQ,
                       TAF_SPM_RcvAppStartDtmfReq_PreProc ),
-                    
-    TAF_ACT_TBL_ITEM( MAPS_STK_PID,  
-                      STK_CALL_STOP_DTMF_REQ,             
+
+    TAF_ACT_TBL_ITEM( MAPS_STK_PID,
+                      STK_CALL_STOP_DTMF_REQ,
                       TAF_SPM_RcvAppStopDtmfReq_PreProc ),
 
     /* STK SS message */
-    TAF_ACT_TBL_ITEM( MAPS_STK_PID,  
-                      STK_SS_REGISTERSS_REQ,              
+    TAF_ACT_TBL_ITEM( MAPS_STK_PID,
+                      STK_SS_REGISTERSS_REQ,
                       TAF_SPM_RcvRegisterSsReq_PreProc ),
-                      
-    TAF_ACT_TBL_ITEM( MAPS_STK_PID,  
-                      STK_SS_ERASESS_REQ,                 
+
+    TAF_ACT_TBL_ITEM( MAPS_STK_PID,
+                      STK_SS_ERASESS_REQ,
                       TAF_SPM_RcvEraseSsReq_PreProc ),
-                      
-    TAF_ACT_TBL_ITEM( MAPS_STK_PID,  
-                      STK_SS_ACTIVATESS_REQ,              
+
+    TAF_ACT_TBL_ITEM( MAPS_STK_PID,
+                      STK_SS_ACTIVATESS_REQ,
                       TAF_SPM_RcvActivateSsReq_PreProc ),
-                      
-    TAF_ACT_TBL_ITEM( MAPS_STK_PID,  
-                      STK_SS_DEACTIVATESS_REQ,            
+
+    TAF_ACT_TBL_ITEM( MAPS_STK_PID,
+                      STK_SS_DEACTIVATESS_REQ,
                       TAF_SPM_RcvDeactivateSsReq_PreProc ),
-                      
-    TAF_ACT_TBL_ITEM( MAPS_STK_PID,  
-                      STK_SS_INTERROGATESS_REQ,           
+
+    TAF_ACT_TBL_ITEM( MAPS_STK_PID,
+                      STK_SS_INTERROGATESS_REQ,
                       TAF_SPM_RcvInterrogateSsReq_PreProc ),
-                      
-    TAF_ACT_TBL_ITEM( MAPS_STK_PID,  
-                      STK_SS_USSD_REQ,                    
+
+    TAF_ACT_TBL_ITEM( MAPS_STK_PID,
+                      STK_SS_USSD_REQ,
                       TAF_SPM_RcvProcUssSsReq_PreProc ),
-                      
+
 
     /* STK SMS message */
-    TAF_ACT_TBL_ITEM( MAPS_STK_PID,  
-                      STK_MSG_SEND_REQ,                   
+    TAF_ACT_TBL_ITEM( MAPS_STK_PID,
+                      STK_MSG_SEND_REQ,
                       TAF_SPM_RcvAppSendRpdataDirect_PreProc ),
 
 #if (FEATURE_ON == FEATURE_IMS)
@@ -247,8 +247,8 @@ TAF_ACT_STRU        g_astTafSpmPreProcessActTbl[]   =
     TAF_ACT_TBL_ITEM( PS_PID_IMSA,
                       ID_IMSA_SPM_SS_MSG,
                       TAF_SPM_RcvImsaSsMsg_PreProc ),
-                      
-                      
+
+
     /* IMS register status notify message */
     TAF_ACT_TBL_ITEM( PS_PID_IMSA,
                       ID_IMSA_NORMAL_REG_STATUS_NOTIFY,
@@ -257,8 +257,13 @@ TAF_ACT_STRU        g_astTafSpmPreProcessActTbl[]   =
     TAF_ACT_TBL_ITEM( PS_PID_IMSA,
                       ID_IMSA_SPM_CALL_INVITE_NEW_PTPT_CNF,
                       TAF_SPM_RcvImsaCallInviteNewPtptCnf_PreProc ),
-                      
-    /* TAF INTERNAL message */                  
+
+
+    TAF_ACT_TBL_ITEM( PS_PID_IMSA,
+                      ID_IMSA_SPM_CALL_TYPE_CHANGE_INFO_IND,
+                      TAF_SPM_RcvImsaCallTypeChangeInfoInd_PreProc ),
+
+    /* TAF INTERNAL message */
     TAF_ACT_TBL_ITEM( WUEPS_PID_TAF,
                       TAF_SPM_INTERNAL_DOMAIN_SEL_IND,
                       TAF_SPM_RcvInternalDomainSelInd_PreProc ),
@@ -270,7 +275,11 @@ TAF_ACT_STRU        g_astTafSpmPreProcessActTbl[]   =
     TAF_ACT_TBL_ITEM( WUEPS_PID_TAF,
                       ID_TAF_SPM_MSG_REPORT_IND,
                       TAF_SPM_RcvMsgReportInd_PreProc ),
-                      
+
+    TAF_ACT_TBL_ITEM( WUEPS_PID_TAF,
+                      ID_TAF_SPM_MSG_CHECK_RESULT_IND,
+                      TAF_SPM_RcvMsgCheckRsltInd_PreProc ),
+
     /* MMA message */
     TAF_ACT_TBL_ITEM( WUEPS_PID_MMA,
                       ID_MMA_TAF_SERVICE_STATUS_CHANGE_NOTIFY,
@@ -294,14 +303,59 @@ TAF_ACT_STRU        g_astTafSpmPreProcessActTbl[]   =
 
     TAF_ACT_TBL_ITEM( VOS_PID_TIMER,
                       TI_TAF_SPM_SS_SRV_REQ_PROTECT_TIMER,
-                      TAF_SPM_RcvSsSrvReqProtectTimerExpired_PreProc ),        
+                      TAF_SPM_RcvSsSrvReqProtectTimerExpired_PreProc ),
 
     TAF_ACT_TBL_ITEM( WUEPS_PID_MMA,
                       ID_MMA_TAF_IMS_VOICE_CAP_IND,
                       TAF_SPM_RcvMmaImsVoiceCapInd_PreProc ),
 
+    TAF_ACT_TBL_ITEM( WUEPS_PID_AT,
+                      MN_CALL_APP_CALL_MODIFY_REQ,
+                      TAF_SPM_RcvAppCallModifyReq_PreProc ),
+
+    TAF_ACT_TBL_ITEM( WUEPS_PID_AT,
+                      MN_CALL_APP_CALL_ANSWER_REMOTE_MODIFY_REQ,
+                      TAF_SPM_RcvAppCallAnswerRemoteModifyReq_PreProc ),
+
+    TAF_ACT_TBL_ITEM( PS_PID_IMSA,
+                      ID_IMSA_SPM_CALL_MODIFY_CNF,
+                      TAF_SPM_RcvImsaCallModifyCnf_PreProc ),
+
+    TAF_ACT_TBL_ITEM( PS_PID_IMSA,
+                      ID_IMSA_SPM_CALL_ANSWER_REMOTE_MODIFY_CNF,
+                      TAF_SPM_RcvImsaCallAnswerRemoteModifyCnf_PreProc ),
+
+    TAF_ACT_TBL_ITEM( PS_PID_IMSA,
+                      ID_IMSA_SPM_CALL_MODIFY_STATUS_IND,
+                      TAF_SPM_RcvImsaCallModifyStatusInd_PreProc ),
+
+
+    TAF_ACT_TBL_ITEM( WUEPS_PID_AT,
+                      TAF_CALL_APP_ECONF_DIAL_REQ,
+                      TAF_SPM_RcvAppEconfDialReq_PreProc ),
+
+    TAF_ACT_TBL_ITEM( WUEPS_PID_AT,
+                      TAF_CALL_APP_GET_ECONF_CALLED_INFO_REQ,
+                      TAF_SPM_RcvAppGetEconfInfoReq_PreProc ),
+
+    TAF_ACT_TBL_ITEM( PS_PID_IMSA,
+                      ID_IMSA_SPM_CALL_ECONF_DIAL_CNF,
+                      TAF_SPM_RcvImsaEconfDialCnf_PreProc ),
+
+    TAF_ACT_TBL_ITEM( PS_PID_IMSA,
+                      ID_IMSA_SPM_CALL_ECONF_ADD_USERS_CNF,
+                      TAF_SPM_RcvImsaEconfAddUsersCnf_PreProc ),
+
+    TAF_ACT_TBL_ITEM( PS_PID_IMSA,
+                      ID_IMSA_SPM_CALL_ECONF_NOTIFY_IND,
+                      TAF_SPM_RcvImsaEconfNotifyInd_PreProc ),
+
+    TAF_ACT_TBL_ITEM( PS_PID_IMSA,
+                      ID_IMSA_SPM_CALL_GET_ECONF_CALLED_INFO_CNF,
+                      TAF_SPM_RcvImsaGetEconfInfoCnf_PreProc ),
+
 #endif
-        
+
 
     TAF_ACT_TBL_ITEM( WUEPS_PID_MMA,
                       MMA_TAF_POWER_OFF_IND,

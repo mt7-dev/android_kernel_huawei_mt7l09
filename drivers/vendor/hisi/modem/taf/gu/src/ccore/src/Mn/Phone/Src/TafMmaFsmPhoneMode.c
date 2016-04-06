@@ -69,6 +69,8 @@ extern MMA_TIMER_ST                             g_stPowerDownDelayTimer;
 
 extern MN_PH_REG_TIME_INFO_STRU                 g_stRegTimeInfo;
 
+extern VOS_VOID                                 SLEEP_GBBPIsReady(VOS_VOID);
+
 /*****************************************************************************
   6 函数实现
 *****************************************************************************/
@@ -250,6 +252,14 @@ VOS_UINT32 TAF_MMA_RcvImsaStartCnf_PhoneMode_WaitImsaStartCnf(
     /* 停止保护定时器 */
     TAF_MMA_StopTimer(TI_TAF_MMA_WAIT_IMSA_START_CNF);
 
+    /* 置IMS为已开机 */
+    TAF_SDC_SetCurImsSwitchState(TAF_SDC_IMS_SWITCH_STATE_ON);
+
+#if (FEATURE_MULTI_MODEM == FEATURE_ON)
+    /* 通知MTC IMSA的开机状态 */
+    TAF_MMA_SndMtcImsaStateInd(MTC_MODEM_POWER_ON);
+#endif
+
     /* 则向MMC发送开机请求 */
     TAF_MMA_SndStartReq_PhoneMode(WUEPS_PID_MMC);
 
@@ -266,13 +276,16 @@ VOS_UINT32 TAF_MMA_RcvTiWaitImsaStartCnfExpired_PhoneMode_WaitImsaStartCnf(
     /* warning打印 */
     TAF_WARNING_LOG(WUEPS_PID_MMA, "TAF_MMA_RcvTiWaitImsaStartCnfExpired_PhoneMode_WaitImsaStartCnf:time expired!");
 
+    NAS_TRACE_HIGH("Enter!");
+
+    /* 置IMS为已关机 */
+    TAF_SDC_SetCurImsSwitchState(TAF_SDC_IMS_SWITCH_STATE_OFF);
+
     /* 则向MMC发送开机请求 */
     TAF_MMA_SndStartReq_PhoneMode(WUEPS_PID_MMC);
 
     return VOS_TRUE;
 }
-
-
 VOS_UINT32 TAF_MMA_RcvImsaPowerOffCnf_PhoneMode_WaitImsaPowerOffCnf(
     VOS_UINT32                          ulEventType,
     struct MsgCB                       *pstMsg
@@ -280,6 +293,14 @@ VOS_UINT32 TAF_MMA_RcvImsaPowerOffCnf_PhoneMode_WaitImsaPowerOffCnf(
 {
     /* 停止保护定时器 */
     TAF_MMA_StopTimer(TI_TAF_MMA_WAIT_IMSA_POWER_OFF_CNF);
+
+    /* 置IMS为已关机 */
+    TAF_SDC_SetCurImsSwitchState(TAF_SDC_IMS_SWITCH_STATE_OFF);
+
+#if (FEATURE_MULTI_MODEM == FEATURE_ON)
+    /* 通知MTC IMSA的开机状态 */
+    TAF_MMA_SndMtcImsaStateInd(MTC_MODEM_POWER_OFF);
+#endif
 
     /* 则向MMC发送关机请求 */
     TAF_MMA_SndPowerOffReq_PhoneMode(WUEPS_PID_MMC);
@@ -296,6 +317,16 @@ VOS_UINT32 TAF_MMA_RcvTiWaitImsaPowerOffCnfExpired_PhoneMode_WaitImsaPowerOffCnf
 {
     /* warning打印 */
     TAF_WARNING_LOG(WUEPS_PID_MMA, "TAF_MMA_RcvTiWaitImsaPowerOffCnfExpired_PhoneMode_WaitImsaPowerOffCnf:time expired!");
+
+    NAS_TRACE_HIGH("Enter!");
+
+    /* 置IMS为已关机 */
+    TAF_SDC_SetCurImsSwitchState(TAF_SDC_IMS_SWITCH_STATE_OFF);
+
+#if (FEATURE_MULTI_MODEM == FEATURE_ON)
+    /* 通知MTC IMSA的开机状态 */
+    TAF_MMA_SndMtcImsaStateInd(MTC_MODEM_POWER_OFF);
+#endif
 
     /* 则向MMC发送关机请求 */
     TAF_MMA_SndPowerOffReq_PhoneMode(WUEPS_PID_MMC);
@@ -352,7 +383,7 @@ VOS_VOID TAF_MMA_SndStartReq_PhoneMode(
     if (PS_PID_IMSA == ulReceivePid)
     {
         /* 发送开机请求给IMSA */
-        TAF_MMA_SndImsaStartReq();
+        TAF_MMA_SndImsaStartReq(MMA_IMSA_START_TYPE_POWER_ON);
 
         /* 迁移状态到等待IMSA的开机回复 */
         TAF_MMA_FSM_SetCurrState(TAF_MMA_PHONE_MODE_STA_WAIT_IMSA_START_CNF);
@@ -410,7 +441,7 @@ VOS_VOID TAF_MMA_SndPowerOffReq_PhoneMode(
     if (PS_PID_IMSA == ulReceivePid)
     {
         /* 发送关机请求给IMSA */
-        TAF_MMA_SndImsaStopReq();
+        TAF_MMA_SndImsaStopReq(MMA_IMSA_STOP_TYPE_POWER_OFF);
 
         /* 迁移状态到等待IMSA的关机回复 */
         TAF_MMA_FSM_SetCurrState(TAF_MMA_PHONE_MODE_STA_WAIT_IMSA_POWER_OFF_CNF);
@@ -476,6 +507,13 @@ VOS_VOID TAF_MMA_ProcStartCnfSucc_NoPowerInit_PhoneMode(VOS_VOID)
     /*读全局变量进行模式判断，如果不为C+L互操作模式，则发搜网注册请求*/
     if (VOS_TRUE != TAF_MMA_IsPowerOnCLInterWork())
     {
+        /* SLEEP_GBBPIsReady同步接口，只有在已经ready时，才会给NAS返回 */
+        NAS_TRACE_HIGH("Start call API:SLEEP_GBBPIsReady");
+        
+        SLEEP_GBBPIsReady();
+        
+        NAS_TRACE_HIGH("End call API:SLEEP_GBBPIsReady");
+
         TAF_MMA_SndMmcPlmnSearchReq();
 
         Sta_AttachByModeService(STA_OPID_ATTATCH);
@@ -503,6 +541,8 @@ VOS_VOID TAF_MMA_ProcStartCnfSucc_NoPowerInit_PhoneMode(VOS_VOID)
 
     return;
 }
+
+
 VOS_VOID TAF_MMA_ProcStartCnfSucc_PowerInit_PhoneMode(VOS_VOID)
 {
     VOS_UINT32                          ulAutoSwitchOnFlg;
@@ -562,6 +602,13 @@ VOS_VOID TAF_MMA_ProcStartCnfSucc_PowerInit_PhoneMode(VOS_VOID)
     /*读全局变量进行模式判断，如果不为C+L互操作模式，则发搜网注册请求,否则等待CMMCA触发搜网注册请求 */
     if (VOS_TRUE != TAF_MMA_IsPowerOnCLInterWork())
     {
+        /* SLEEP_GBBP_IsReady同步接口，只有在已经ready时，才会给NAS返回 */
+        NAS_TRACE_HIGH("Start call API:SLEEP_GBBPIsReady");
+        
+        SLEEP_GBBPIsReady();
+        
+        NAS_TRACE_HIGH("End call API:SLEEP_GBBPIsReady");
+
         TAF_MMA_SndMmcPlmnSearchReq();
 
         Sta_AttachByModeService(STA_OPID_ATTATCH);
@@ -1209,7 +1256,9 @@ VOS_VOID TAF_MMA_ReportPhoneModeCnf_PhoneMode(VOS_VOID)
     VOS_UINT8                           ucOpId;
     TAF_PH_OP_MODE_CNF_STRU             stPhMode;
     VOS_UINT16                          usClientId;
-    TAF_PH_ERR_CODE                     usErrorCode;
+    TAF_ERROR_CODE_ENUM_UINT32          enErrorCode;
+
+    PS_MEM_SET(&stPhMode, 0x00, sizeof(stPhMode));
 
     /* 根据FSM ID获取该FSM 入口消息 */
     pstEntryMsg     = TAF_MMA_GetCurrFsmMsgAddr();
@@ -1217,7 +1266,7 @@ VOS_VOID TAF_MMA_ReportPhoneModeCnf_PhoneMode(VOS_VOID)
     ulEventType = pstEntryMsg->ulEventType;
     ucOpId      = TAF_MMA_GetCurrFsmEntryMsgOpId_PhoneMode();
     usClientId  = TAF_MMA_GetCurrFsmEntryMsgClientId_PhoneMode();
-    usErrorCode = TAF_MMA_GetCurPhoneErrorCode_PhoneMode();
+    enErrorCode = TAF_MMA_GetCurPhoneErrorCode_PhoneMode();
 
     /* 只需要OM或AT或CMMCA触发的开机或关机进行模式设置结果上报 */
     if ( (TAF_BuildEventType(WUEPS_PID_OM, OAM_MMA_PHONE_MODE_SET_REQ)      == ulEventType)
@@ -1226,7 +1275,7 @@ VOS_VOID TAF_MMA_ReportPhoneModeCnf_PhoneMode(VOS_VOID)
         stPhMode.CmdType = TAF_PH_CMD_SET;
         stPhMode.PhMode = TAF_SDC_GetCurPhoneMode();
 
-        MMA_PhModeReport(usClientId, ucOpId, stPhMode, usErrorCode);
+        MMA_PhModeReport(usClientId, ucOpId, stPhMode, enErrorCode);
 
         return;
     }

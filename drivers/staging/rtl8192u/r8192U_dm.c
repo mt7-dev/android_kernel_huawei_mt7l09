@@ -314,7 +314,6 @@ extern void init_rate_adaptive(struct net_device * dev)
 	if (priv->rf_type == RF_2T4R)
 	{
 		// 07/10/08 MH Modify for RA smooth scheme.
-		/* 2008/01/11 MH Modify 2T RATR table for different RSSI. 080515 porting by amy from windows code.*/
 		pra->upper_rssi_threshold_ratr		=	0x8f0f0000;
 		pra->middle_rssi_threshold_ratr		=	0x8f0ff000;
 		pra->low_rssi_threshold_ratr		=	0x8f0ff001;

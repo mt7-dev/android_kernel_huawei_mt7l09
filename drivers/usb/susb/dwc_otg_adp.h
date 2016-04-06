@@ -47,7 +47,7 @@
 #define DWC_OTG_ADP_UNKOWN	2
 
 typedef struct dwc_otg_adp {
-	uint32_t adp_started;
+	uint32_t adp_started;	
 	uint32_t initial_probe;
 	int32_t probe_timer_values[2];
 	uint32_t probe_enabled;

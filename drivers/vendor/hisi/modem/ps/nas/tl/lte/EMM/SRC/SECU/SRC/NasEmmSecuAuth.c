@@ -10,6 +10,8 @@
 #include    "NasEmmSerProc.h"
 #include    "NasEmmAttDetInterface.h"
 #include    "NasEmmTauInterface.h"
+#include    "NasEmmAttach.h"
+#include    "NasEmmTAUProc.h"
 
 
 /*lint -e767*/
@@ -338,64 +340,6 @@ VOS_VOID  NAS_EMM_UsimAuthFail( NAS_EMM_AUTH_FAIL_CAUSE_ENUM_UINT8 enAuthFailCau
 
     return;
 }
-VOS_VOID NAS_EMM_IntraAuthFail( VOS_UINT32 ulCause)
-{
-    NAS_EMM_INTRA_AUTH_FAIL_STRU       *pIntraAuthFail = VOS_NULL_PTR;
-
-    NAS_EMM_SECU_LOG_INFO("NAS_EMM_IntraAuthFail entered.");
-
-    /*申请消息内存*/
-    pIntraAuthFail = (VOS_VOID *)NAS_LMM_GetSendIntraMsgBuffAddr(
-                                        sizeof(NAS_EMM_INTRA_AUTH_FAIL_STRU) -
-                                        NAS_EMM_LEN_VOS_MSG_HEADER);
-
-    /*判断申请结果，若失败打印错误并退出*/
-    if (NAS_EMM_NULL_PTR == pIntraAuthFail)
-    {
-        NAS_EMM_SECU_LOG_ERR("NAS_EMM_IntraAuthFail: MSG ALLOC ERR!");
-        return;
-    }
-
-    /* 打包VOS消息头 */
-    NAS_EMM_SET_SECU_INTRA_MSG_HEADER(  pIntraAuthFail,
-                                        sizeof(NAS_EMM_INTRA_AUTH_FAIL_STRU)-
-                                        NAS_EMM_LEN_VOS_MSG_HEADER);
-
-
-    /* 填充DOPRA消息ID    */
-    pIntraAuthFail->ulMsgId =           ID_NAS_LMM_INTRA_AUTH_FAIL;
-    pIntraAuthFail->ulCause =           ulCause;
-
-    /*发送内部消息入队列*/
-    NAS_EMM_SEND_INTRA_MSG(             pIntraAuthFail);
-
-    return;
-}
-VOS_VOID  NAS_EMM_AuthCommProcCnRej(    VOS_VOID )
-{
-    VOS_UINT32                          ulCause;
-
-    NAS_EMM_SECU_LOG_INFO("NAS_EMM_AuthCommProcCnRej is entered.");
-
-    ulCause                            = NAS_EMM_AUTH_REJ_INTRA_CAUSE_NORMAL;
-
-    /* 停T3420，T3418*/
-    NAS_LMM_StopStateTimer(              TI_NAS_EMM_T3418);
-    NAS_LMM_StopStateTimer(              TI_NAS_EMM_T3420);
-
-    /* AUTH失败次数清零*/
-    NAS_EMM_GetAuthFailTimes() = 0;
-
-    /* 状态出栈*/
-    NAS_EMM_FSM_PopState();
-
-    /*发送内部消息INTRA_AUTH_FAIL*/
-    NAS_EMM_IntraAuthFail(              ulCause);
-
-    return;
-}
-
-
 VOS_VOID NAS_EMM_AuthCheckFail(VOS_VOID)
 {
     NAS_EMM_SECU_LOG_INFO("NAS_EMM_AuthCheckFail entered.");
@@ -601,87 +545,145 @@ VOS_UINT32  NAS_EMM_MsAuthInitSsWtCnAuthMsgCnAuthRej(
 {
     (VOS_VOID)(pMsgStru);
     (VOS_VOID)ulMsgId;
-    NAS_EMM_SECU_LOG_INFO( "NAS_EMM_MsAuthInitSsWtCnAuthMsgCnAuthRej entered.");
+    VOS_UINT32                          ulCurEmmStat;
 
-    /*CN AUTH REJ统一处理*/
-    NAS_EMM_AuthCommProcCnRej();
+    NAS_EMM_SECU_LOG_INFO( "NAS_EMM_MsAuthInitSsWtCnAuthMsgCnAuthRej entered.");
+    #if (FEATURE_PTM == FEATURE_ON)
+    NAS_EMM_AuthCnFailErrRecord(EMM_OM_ERRLOG_AUTH_FAIL_CN_REJ);
+    #endif
+
+    /* 鉴权拒绝优化处理 */
+    if (NAS_EMM_YES == NAS_EMM_IsNeedIgnoreHplmnAuthRej())
+    {
+        return  NAS_LMM_MSG_HANDLED;
+    }
+
+    /* 停T3420，T3418*/
+    NAS_LMM_StopStateTimer(              TI_NAS_EMM_T3418);
+    NAS_LMM_StopStateTimer(              TI_NAS_EMM_T3420);
+
+    /* AUTH失败次数清零*/
+    NAS_EMM_GetAuthFailTimes() = 0;
+
+    /* 状态出栈*/
+    NAS_EMM_FSM_PopState();
+
+    ulCurEmmStat = NAS_LMM_PUB_COMP_EMMSTATE(NAS_EMM_CUR_MAIN_STAT,
+                                            NAS_EMM_CUR_SUB_STAT);
+
+    switch(ulCurEmmStat)
+    {
+        case    NAS_LMM_PUB_COMP_EMMSTATE(EMM_MS_REG_INIT, EMM_SS_ATTACH_WAIT_CN_ATTACH_CNF):
+                NAS_EMM_MsRegInitSsWtCnAttCnfProcMsgAuthRej(NAS_EMM_AUTH_REJ_INTRA_CAUSE_NORMAL);
+                break;
+        case    NAS_LMM_PUB_COMP_EMMSTATE(EMM_MS_REG, EMM_SS_REG_NORMAL_SERVICE):
+        case    NAS_LMM_PUB_COMP_EMMSTATE(EMM_MS_REG, EMM_SS_REG_LIMITED_SERVICE):
+        case    NAS_LMM_PUB_COMP_EMMSTATE(EMM_MS_REG, EMM_SS_REG_ATTEMPTING_TO_UPDATE_MM):
+                NAS_EMM_MsRegSsNmlSrvProcMsgAuthRej(NAS_EMM_AUTH_REJ_INTRA_CAUSE_NORMAL);
+                break;
+        case    NAS_LMM_PUB_COMP_EMMSTATE(EMM_MS_REG, EMM_SS_REG_IMSI_DETACH_WATI_CN_DETACH_CNF):
+        case    NAS_LMM_PUB_COMP_EMMSTATE(EMM_MS_DEREG_INIT, EMM_SS_DETACH_WAIT_CN_DETACH_CNF):
+                NAS_EMM_ProcDetachAuthRej(NAS_EMM_AUTH_REJ_INTRA_CAUSE_NORMAL);
+                break;
+        case    NAS_LMM_PUB_COMP_EMMSTATE(EMM_MS_TAU_INIT, EMM_SS_TAU_WAIT_CN_TAU_CNF):
+                NAS_EMM_MsTauInitSsWaitCnTauCnfProcMsgAuthRej(NAS_EMM_AUTH_REJ_INTRA_CAUSE_NORMAL);
+                break;
+        case    NAS_LMM_PUB_COMP_EMMSTATE(EMM_MS_SER_INIT, EMM_SS_SER_WAIT_CN_SER_CNF):
+                NAS_EMM_MsSerInitSsWaitCnSerCnfProcMsgAuthRej(NAS_EMM_AUTH_REJ_INTRA_CAUSE_NORMAL);
+                break;
+        default:
+                break;
+    }
 
     return NAS_LMM_MSG_HANDLED;
 }
+
+
 VOS_UINT32  NAS_EMM_MsAuthInitSsWtCnAuthMsgAttachRej(
                                         VOS_UINT32  ulMsgId,
                                         VOS_VOID   *pMsgStru)
 {
-    NAS_EMM_CN_ATTACH_REJ_STRU         *pAttachRej = NAS_EMM_NULL_PTR;
-
     (VOS_VOID)(ulMsgId);
     (VOS_VOID)(pMsgStru);
 
     NAS_EMM_SECU_LOG_INFO("NAS_EMM_MsAuthInitSsWtCnAuthMsgAttachRej entered.");
 
-    pAttachRej                          = (NAS_EMM_CN_ATTACH_REJ_STRU *) pMsgStru;
+    /* 停T3420，T3418*/
+    NAS_LMM_StopStateTimer(              TI_NAS_EMM_T3418);
+    NAS_LMM_StopStateTimer(              TI_NAS_EMM_T3420);
 
-    /*判断如果原因值不是#3,输出warn信息，统一做cause #3的处理*/
-    if(NAS_LMM_CAUSE_ILLEGAL_UE != pAttachRej->ucCause)
-    {
-        NAS_EMM_SECU_LOG1_INFO( "NAS_EMM_MsAuthInitSsWtCnAuthMsgAttachRej:cause is not #3!",
-                               pAttachRej->ucCause);
-    }
+    /* AUTH失败次数清零*/
+    NAS_EMM_GetAuthFailTimes() = 0;
 
-    NAS_EMM_AuthCommProcCnRej();
+    /* 状态出栈*/
+    NAS_EMM_FSM_PopState();
+
+    /*状态出栈之后相当于在reg_init+wait_cn_attach_cnf状态下处理attach rej消息，
+      如果有转义处理，则根据相应的分支进行处理即可
+    */
+    NAS_EMM_MsRegInitSsWtCnAttCnfMsgCnAttachReject(ulMsgId, pMsgStru);
 
     return NAS_LMM_MSG_HANDLED;
 }
+
+
 VOS_UINT32  NAS_EMM_MsAuthInitSsWtCnAuthMsgTauRej(
                                         VOS_UINT32  ulMsgId,
                                         VOS_VOID   *pMsgStru)
 {
-    NAS_EMM_CN_TAU_REJ_STRU         *pTauRej = NAS_EMM_NULL_PTR;
-
     (VOS_VOID)(ulMsgId);
     (VOS_VOID)(pMsgStru);
 
 
     NAS_EMM_SECU_LOG_INFO( "NAS_EMM_MsAuthInitSsWtCnAuthMsgTauRej entered.");
 
-    pTauRej                          = (NAS_EMM_CN_TAU_REJ_STRU *) pMsgStru;
+    /* 停T3420，T3418*/
+    NAS_LMM_StopStateTimer(              TI_NAS_EMM_T3418);
+    NAS_LMM_StopStateTimer(              TI_NAS_EMM_T3420);
 
-    /*判断如果原因值不是#3,输出warn信息，统一做cause #3的处理*/
-    if(NAS_LMM_CAUSE_ILLEGAL_UE != pTauRej->ucEMMCause)
-    {
-        NAS_EMM_SECU_LOG1_INFO( "NAS_EMM_MsAuthInitSsWaitCnAuthMsgTauRej:cause is not #3!",
-                               pTauRej->ucEMMCause);
-    }
+    /* AUTH失败次数清零*/
+    NAS_EMM_GetAuthFailTimes() = 0;
 
-    NAS_EMM_AuthCommProcCnRej();
+    /* 状态出栈*/
+    NAS_EMM_FSM_PopState();
+
+    /*状态出栈之后相当于在tau_init+wait_cn_tau_cnf状态下处理tau rej消息，
+      如果有转义处理，则根据相应的分支进行处理即可
+    */
+    NAS_EMM_MsTauInitSsWaitCNCnfMsgTAURej(ulMsgId, pMsgStru);
 
     return NAS_LMM_MSG_HANDLED;
 }
+
+
 VOS_UINT32  NAS_EMM_MsAuthInitSsWtCnAuthMsgSerRej(
                                         VOS_UINT32  ulMsgId,
                                         VOS_VOID   *pMsgStru)
 {
-    NAS_EMM_CN_SER_REJ_STRU         *pSerRej = NAS_EMM_NULL_PTR;
-
     (VOS_VOID)(ulMsgId);
     (VOS_VOID)(pMsgStru);
 
 
     NAS_EMM_SECU_LOG_INFO( "NAS_EMM_MsAuthInitSsWtCnAuthMsgSerRej entered.");
+    /* 停T3420，T3418*/
+    NAS_LMM_StopStateTimer(              TI_NAS_EMM_T3418);
+    NAS_LMM_StopStateTimer(              TI_NAS_EMM_T3420);
 
-    pSerRej                          = (NAS_EMM_CN_SER_REJ_STRU *) pMsgStru;
+    /* AUTH失败次数清零*/
+    NAS_EMM_GetAuthFailTimes() = 0;
 
-   /*判断如果原因值不是#3,输出warn信息，统一做cause #3的处理*/
-    if(NAS_LMM_CAUSE_ILLEGAL_UE != pSerRej->ucEMMCause)
-    {
-         NAS_EMM_SECU_LOG1_INFO( "NAS_EMM_MsAuthInitSsWtCnAuthMsgSerRej:cause is not #3!",
-                               pSerRej->ucEMMCause);
-    }
+    /* 状态出栈*/
+    NAS_EMM_FSM_PopState();
 
-    NAS_EMM_AuthCommProcCnRej();
+    /*状态出栈之后相当于在ser_init+wait_cn_ser_cnf状态下处理ser rej消息，
+      如果有转义处理，则根据相应的分支进行处理即可
+    */
+    NAS_EMM_MsSerInitSsWaitCNSerCnfMsgServiceReject(ulMsgId, pMsgStru);
 
     return NAS_LMM_MSG_HANDLED;
 }
+
+
 VOS_UINT32  NAS_EMM_MsAuthInitSsWtCnAuthMsgT3418Exp(
                                         VOS_UINT32  ulMsgId,
                                         VOS_VOID   *pMsgStru )
@@ -757,7 +759,8 @@ VOS_UINT32  NAS_EMM_MsAuthInitSsWtCnAuthMsgRrcRelInd(
                                         VOS_VOID   *pMsgStru)
 {
     LRRC_LMM_REL_IND_STRU                *pRrcRelInd =       VOS_NULL_PTR;
-    VOS_UINT32                          ulCause;
+    VOS_UINT32                           ulCause;
+    VOS_UINT32                          ulCurEmmStat;
 
     NAS_EMM_SECU_LOG_INFO("NAS_EMM_MsAuthInitSsWtCnAuthMsgRrcRelInd entered.");
 
@@ -777,8 +780,33 @@ VOS_UINT32  NAS_EMM_MsAuthInitSsWtCnAuthMsgRrcRelInd(
     /* 状态出栈*/
     NAS_EMM_FSM_PopState();
 
-    /* 向相关的模块发消息*/
-    NAS_EMM_IntraAuthFail(              ulCause);
+    ulCurEmmStat = NAS_LMM_PUB_COMP_EMMSTATE(NAS_EMM_CUR_MAIN_STAT,
+                                            NAS_EMM_CUR_SUB_STAT);
+    switch(ulCurEmmStat)
+    {
+        case    NAS_LMM_PUB_COMP_EMMSTATE(EMM_MS_REG_INIT, EMM_SS_ATTACH_WAIT_CN_ATTACH_CNF):
+                NAS_EMM_MsRegInitSsWtCnAttCnfProcMsgRrcRelInd(ulCause);
+                break;
+        case    NAS_LMM_PUB_COMP_EMMSTATE(EMM_MS_REG, EMM_SS_REG_NORMAL_SERVICE):
+        case    NAS_LMM_PUB_COMP_EMMSTATE(EMM_MS_REG, EMM_SS_REG_LIMITED_SERVICE):
+        case    NAS_LMM_PUB_COMP_EMMSTATE(EMM_MS_REG, EMM_SS_REG_ATTEMPTING_TO_UPDATE_MM):
+                NAS_EMM_MsRegSsNmlSrvProcMsgRrcRelInd(ulCause);
+                break;
+        case    NAS_LMM_PUB_COMP_EMMSTATE(EMM_MS_REG, EMM_SS_REG_IMSI_DETACH_WATI_CN_DETACH_CNF):
+                NAS_EMM_ProcMsRegImsiDetachInitMsgRrcRelInd(ulCause);
+                break;
+        case    NAS_LMM_PUB_COMP_EMMSTATE(EMM_MS_TAU_INIT, EMM_SS_TAU_WAIT_CN_TAU_CNF):
+                NAS_EMM_MsTauInitSsWaitCNCnfProcMsgRrcRelInd(ulCause);
+                break;
+        case    NAS_LMM_PUB_COMP_EMMSTATE(EMM_MS_SER_INIT, EMM_SS_SER_WAIT_CN_SER_CNF):
+                NAS_EMM_MsSerInitSsWaitCnSerCnfProcMsgRrcRelInd(ulCause);
+                break;
+        case    NAS_LMM_PUB_COMP_EMMSTATE(EMM_MS_DEREG_INIT, EMM_SS_DETACH_WAIT_CN_DETACH_CNF):
+                NAS_EMM_MsDrgInitSsWtCnDetCnfProcMsgRrcRelInd(ulCause);
+                break;
+        default:
+                break;
+    }
 
     return NAS_LMM_MSG_HANDLED;
 
@@ -1083,11 +1111,14 @@ VOS_UINT32  NAS_EMM_MsAnyStateSsAnyStateMsgUsimAuthCnf(  VOS_UINT32  ulMsgId,
 
              /*USIM鉴权失败:MAC FAIL*/
         case USIMM_AUTH_MAC_FAILURE:
+             NAS_EMM_SndMmcSimAuthFailInd(LMM_MMC_SIM_AUTH_FAIL_MAC_FAILURE);
              NAS_EMM_UsimAuthFail(NAS_EMM_AUTH_MAC_FAILURE);
              break;
 
              /*USIM鉴权失败:SYNCFAIL*/
         case USIMM_AUTH_SYNC_FAILURE:
+             NAS_EMM_SndMmcSimAuthFailInd(LMM_MMC_SIM_AUTH_FAIL_SYNC_FAILURE);
+
              /*获取USIM_AUTH_CNF携带的AUTS:pstUsimAuthCnf->u.aucAuts第一个字节为Auts的长度*/
              NAS_LMM_MEM_CPY( NAS_EMM_GetSecuAuthAutsAddr(),
                             &(pstUsimAuthCnf->cnfdata.stTELECnf.aucAuts[NAS_EMM_USIM_CNF_AUTS_V_POS]),
@@ -1099,6 +1130,7 @@ VOS_UINT32  NAS_EMM_MsAnyStateSsAnyStateMsgUsimAuthCnf(  VOS_UINT32  ulMsgId,
 
         default:
              NAS_EMM_SECU_LOG_ERR("NAS_EMM_MsAnyStateSsAnyStateMsgUsimAuthCnf: USIM CNF RSLT ERR.");
+             NAS_EMM_SndMmcSimAuthFailInd(LMM_MMC_SIM_AUTH_FAIL_OTHER);
              break;
     }
 
@@ -1106,6 +1138,69 @@ VOS_UINT32  NAS_EMM_MsAnyStateSsAnyStateMsgUsimAuthCnf(  VOS_UINT32  ulMsgId,
 }
 /* lihong00150010 ims end */
 
+
+VOS_VOID NAS_EMM_SndMmcSimAuthFailInd(LMM_MMC_SIM_AUTH_FAIL_ENUM_UINT16  enSimAuthFailValue)
+{
+    LMM_MMC_SIM_AUTH_FAIL_IND_STRU    *pstSimAuthFailInd = NAS_EMM_NULL_PTR;
+    VOS_UINT32                        ulCompStaOfStackBase;              /*栈底状态*/
+    NAS_LMM_MAIN_STATE_ENUM_UINT16       enMainState;                    /*主状态*/
+
+    /* 打印进入该函数， INFO_LEVEL */
+    NAS_EMM_SECU_LOG_INFO( "NAS_EMM_SndMmcSimAuthFailInd is entered.");
+
+    /* 申请DOPRA消息 */
+    pstSimAuthFailInd = (VOS_VOID *)NAS_LMM_GetLmmMmcMsgBuf(sizeof(LMM_MMC_SIM_AUTH_FAIL_IND_STRU));
+
+    if(NAS_EMM_NULL_PTR == pstSimAuthFailInd)
+    {
+        NAS_EMM_SECU_LOG_ERR( "NAS_EMM_SndMmcSimAuthFailInd: MSG ALLOC ERR !!");
+        return;
+    }
+
+    /* 填写DOPRA消息头 */
+    /*EMM_PUBU_COMP_MMC_MSG_HEADER(pstSimAuthFailInd, sizeof(LMM_MMC_SIM_AUTH_FAIL_IND_STRU) - EMM_LEN_VOS_MSG_HEADER);*/
+    EMM_PUBU_COMP_MMC_MSG_HEADER(pstSimAuthFailInd, NAS_EMM_GET_MSG_LENGTH_NO_HEADER(LMM_MMC_SIM_AUTH_FAIL_IND_STRU));
+
+    /* 填写消息ID标识 */
+    pstSimAuthFailInd->ulMsgId    = ID_LMM_MMC_SIM_AUTH_FAIL_IND;
+
+    pstSimAuthFailInd->enSimAuthFailValue          = enSimAuthFailValue;
+    pstSimAuthFailInd->enSrvDomain                 = LMM_MMC_SRV_DOMAIN_PS;
+
+    enMainState = NAS_LMM_GetEmmCurFsmMS();
+
+    /*卡鉴权失败时所处service domain默认为PS，下列情况下为CS_PS*/
+    if ((EMM_MS_REG_INIT == enMainState && MMC_LMM_ATT_REQ_TYPE_CS_PS == NAS_EMM_GLO_GetAttReqType())
+         || (EMM_MS_TAU_INIT == enMainState && NAS_EMM_CN_TAU_TYPE_COMBINED_TA_LA_UPDATING == NAS_EMM_TAU_GetTAUtype())
+         || (EMM_MS_TAU_INIT == enMainState && NAS_EMM_CN_TAU_TYPE_COMBINED_TA_LA_WITH_IMSI == NAS_EMM_TAU_GetTAUtype()))
+    {
+        pstSimAuthFailInd->enSrvDomain             = LMM_MMC_SRV_DOMAIN_CS_PS;
+
+        NAS_EMM_SECU_LOG_INFO( "attach or tau state send mmc msg");
+
+        NAS_LMM_SendLmmMmcMsg((VOS_VOID*)pstSimAuthFailInd);
+        /*NAS_LMM_SEND_MSG(pstSimAuthFailInd);*/
+
+        return;
+    }
+
+    /*如果是鉴权压栈的情况，栈底状态为attach或tau时*/
+    ulCompStaOfStackBase = NAS_LMM_FSM_GetStaAtStackBase(NAS_LMM_PARALLEL_FSM_EMM);
+    if ((EMM_MS_REG_INIT == ulCompStaOfStackBase && MMC_LMM_ATT_REQ_TYPE_CS_PS == NAS_EMM_GLO_GetAttReqType())
+         || (EMM_MS_TAU_INIT == ulCompStaOfStackBase && NAS_EMM_CN_TAU_TYPE_COMBINED_TA_LA_UPDATING == NAS_EMM_TAU_GetTAUtype())
+         || (EMM_MS_TAU_INIT == ulCompStaOfStackBase && NAS_EMM_CN_TAU_TYPE_COMBINED_TA_LA_WITH_IMSI == NAS_EMM_TAU_GetTAUtype()))
+    {
+        pstSimAuthFailInd->enSrvDomain             = LMM_MMC_SRV_DOMAIN_CS_PS;
+
+        NAS_EMM_SECU_LOG_INFO( "stack bottom attach or tau state send mmc msg");
+
+        NAS_LMM_SendLmmMmcMsg((VOS_VOID*)pstSimAuthFailInd);
+        /*NAS_LMM_SEND_MSG(pstSimAuthFailInd);*/
+
+        return;
+    }
+
+}
 VOS_VOID    NAS_EMM_SECU_ClearResource(VOS_VOID)
 {
     NAS_EMM_SECU_LOG_NORM("NAS_EMM_SECU_ClearResource: enter.");

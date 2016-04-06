@@ -40,7 +40,6 @@ VOS_VOID  RNIC_InitAllTimers(
     for ( i = 0 ; i < RNIC_MAX_TIMER_NUM ; i++ )
     {
         pstRnicTimerCtx[i].hTimer        = VOS_NULL_PTR;
-        pstRnicTimerCtx[i].enTimerId     = TI_RNIC_TIMER_BUTT;
         pstRnicTimerCtx[i].enTimerStatus = RNIC_TIMER_STATUS_STOP;
     }
 }
@@ -53,7 +52,6 @@ VOS_VOID  RNIC_StartTimer(
 {
     VOS_UINT32                          ulRet;
     RNIC_TIMER_CTX_STRU                *pstRnicTimerCtx;
-    VOS_UINT32                          i;
     RNIC_UL_CTX_STRU                   *pstUlCtx;
     VOS_TIMER_PRECISION_ENUM_UINT32     enTimerPrecision;
 
@@ -63,28 +61,22 @@ VOS_VOID  RNIC_StartTimer(
     pstRnicTimerCtx     = RNIC_GetTimerAddr();
     enTimerPrecision    = VOS_TIMER_PRECISION_5;
 
+    /* 不在使用的定时器范围内 */
+    if (enTimerId >= RNIC_MAX_TIMER_NUM)
+    {
+        return;
+    }
+
     /* 如果缓存队列中该定时器已经启动则直接返回 */
-    for (i = 0 ; i < RNIC_MAX_TIMER_NUM ; i++)
+    if (RNIC_TIMER_STATUS_RUNING == pstRnicTimerCtx[enTimerId].enTimerStatus)
     {
-        if ((RNIC_TIMER_STATUS_RUNING == pstRnicTimerCtx[i].enTimerStatus)
-         && (enTimerId                == pstRnicTimerCtx[i].enTimerId))
-        {
-            RNIC_INFO_LOG1(ACPU_PID_RNIC, "RNIC_StartTimer:timer is running", enTimerId);
-            return;
-        }
+        return;
     }
 
-    for (i = 0 ; i < RNIC_MAX_TIMER_NUM ; i++)
+    /* 输入参数检查 */
+    if (0 == ulLen)
     {
-        if ( RNIC_TIMER_STATUS_STOP == pstRnicTimerCtx[i].enTimerStatus )
-        {
-            break;
-        }
-    }
-
-    if (i >= RNIC_MAX_TIMER_NUM)
-    {
-        RNIC_WARNING_LOG1(ACPU_PID_RNIC, "RNIC_StartTimer:too many timer", enTimerId);
+        RNIC_ERROR_LOG1(ACPU_PID_ADS_UL, "ADS_StartTimer:ulLen is",ulLen);
         return;
     }
 
@@ -113,7 +105,7 @@ VOS_VOID  RNIC_StartTimer(
 
 
     /* VOS_StartRelTimer 启动定时器 */
-    ulRet = VOS_StartRelTimer(&(pstRnicTimerCtx[i].hTimer),
+    ulRet = VOS_StartRelTimer(&(pstRnicTimerCtx[enTimerId].hTimer),
                               ACPU_PID_RNIC,
                               ulLen,
                               enTimerId,
@@ -132,8 +124,7 @@ VOS_VOID  RNIC_StartTimer(
         pstUlCtx->stULDataStats.ulULPeriodSndPkts = 0;
     }
 
-    pstRnicTimerCtx[i].enTimerId     = enTimerId;
-    pstRnicTimerCtx[i].enTimerStatus = RNIC_TIMER_STATUS_RUNING;
+    pstRnicTimerCtx[enTimerId].enTimerStatus = RNIC_TIMER_STATUS_RUNING;
 
 
     /* 定时器状态勾包出来 */
@@ -144,34 +135,29 @@ VOS_VOID  RNIC_StopTimer(
 )
 {
     RNIC_TIMER_CTX_STRU                *pstRnicTimerCtx;
-    VOS_UINT32                          i;
 
     pstRnicTimerCtx   =  RNIC_GetTimerAddr();
 
-    for ( i = 0 ; i < RNIC_MAX_TIMER_NUM ; i++ )
+    /* 不在使用的定时器范围内 */
+    if (enTimerId >= RNIC_MAX_TIMER_NUM)
     {
-        if ( ( RNIC_TIMER_STATUS_RUNING  == pstRnicTimerCtx[i].enTimerStatus )
-          && ( enTimerId                 == pstRnicTimerCtx[i].enTimerId))
-        {
-            break;
-        }
+        return;
     }
 
-    if ( i >= RNIC_MAX_TIMER_NUM)
+    /* 没有启动则不需要停止 */
+    if (RNIC_TIMER_STATUS_RUNING  != pstRnicTimerCtx[enTimerId].enTimerStatus)
     {
-        RNIC_WARNING_LOG1(ACPU_PID_RNIC, "RNIC_StopTimer:too many timer", enTimerId);
         return;
     }
 
     /* 停止VOS定时器: 当定时器的指针已经为空的时候, 说明其已经停止或者超时 */
-    if (VOS_NULL_PTR != pstRnicTimerCtx[i].hTimer)
+    if (VOS_NULL_PTR != pstRnicTimerCtx[enTimerId].hTimer)
     {
-        VOS_StopRelTimer(&(pstRnicTimerCtx[i].hTimer));
+        VOS_StopRelTimer(&(pstRnicTimerCtx[enTimerId].hTimer));
     }
 
-    pstRnicTimerCtx[i].hTimer        = VOS_NULL_PTR;
-    pstRnicTimerCtx[i].enTimerId     = TI_RNIC_TIMER_BUTT;
-    pstRnicTimerCtx[i].enTimerStatus = RNIC_TIMER_STATUS_STOP;
+    pstRnicTimerCtx[enTimerId].hTimer        = VOS_NULL_PTR;
+    pstRnicTimerCtx[enTimerId].enTimerStatus = RNIC_TIMER_STATUS_STOP;
 
     /* 定时器状态勾包出来 */
 #if (FEATURE_ON == FEATURE_LTE)
@@ -201,7 +187,6 @@ VOS_VOID  RNIC_StopAllTimer( VOS_VOID )
             VOS_StopRelTimer(&(pstRnicTimerCtx[i].hTimer));
 
             pstRnicTimerCtx[i].hTimer        = VOS_NULL_PTR;
-            pstRnicTimerCtx[i].enTimerId     = TI_RNIC_TIMER_BUTT;
             pstRnicTimerCtx[i].enTimerStatus = RNIC_TIMER_STATUS_STOP;
         }
     }
@@ -224,34 +209,30 @@ RNIC_TIMER_STATUS_ENUM_UINT8  RNIC_GetTimerStatus(
 )
 {
     RNIC_TIMER_CTX_STRU                *pstRnicTimerCtx;
-    VOS_UINT32                          i;
     VOS_UINT32                          ulLeftLen;
 
     pstRnicTimerCtx = RNIC_GetTimerAddr();
-
     ulLeftLen       = 0;
 
-    for (i = 0 ; i < RNIC_MAX_TIMER_NUM ; i++)
+    if (enTimerId >= RNIC_MAX_TIMER_NUM)
     {
-        if ((RNIC_TIMER_STATUS_RUNING  == pstRnicTimerCtx[i].enTimerStatus)
-         && (enTimerId                 == pstRnicTimerCtx[i].enTimerId))
+        return RNIC_TIMER_STATUS_STOP;
+    }
+
+    if (RNIC_TIMER_STATUS_RUNING == pstRnicTimerCtx[enTimerId].enTimerStatus)
+    {
+        if (VOS_OK != (VOS_GetRelTmRemainTime(&(pstRnicTimerCtx[enTimerId].hTimer), &ulLeftLen)))
         {
-            break;
+            RNIC_StopTimer(enTimerId);
+            return RNIC_TIMER_STATUS_STOP;
+        }
+        else
+        {
+            return RNIC_TIMER_STATUS_RUNING;
         }
     }
 
-    if (i >= RNIC_MAX_TIMER_NUM)
-    {
-        return RNIC_TIMER_STATUS_STOP;
-    }
-
-    if (VOS_OK != (VOS_GetRelTmRemainTime(&(pstRnicTimerCtx[i].hTimer), &ulLeftLen )))
-    {
-        RNIC_StopTimer(enTimerId);
-        return RNIC_TIMER_STATUS_STOP;
-    }
-
-    return RNIC_TIMER_STATUS_RUNING;
+    return RNIC_TIMER_STATUS_STOP;
 
 }
 

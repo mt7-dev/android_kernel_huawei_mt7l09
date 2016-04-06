@@ -19,6 +19,14 @@
 #include "CallImsaInterface.h"
 #include "TafNvInterface.h"
 
+#if (FEATURE_ON == FEATURE_PTM)
+#include "ImsaErrlogInterface.h"
+#include "omringbuffer.h"
+#endif
+
+/* zhaochen 00308719 begin for FIFI mailbox full reset 2015-11-09 */
+#include "ImsCodecInterface.h"
+/* zhaochen 00308719 end for FIFI mailbox full reset 2015-11-09 */
 /*****************************************************************************
   1.1 Cplusplus Announce
 *****************************************************************************/
@@ -45,7 +53,7 @@ extern "C" {
 #define IMSA_CALLED_NUMBER_MAX_NUM      (MN_CALL_MAX_CALLED_ASCII_NUM_LEN)
 #define IMSA_REG_ADDR_PAIR_MAX_NUM      (4)     /*2个不同类型UE IP地址对应2个PCSCF地址*/
 
-#define IMSA_PCSCF_MAX_NUM              (4)
+#define IMSA_PCSCF_MAX_NUM              (6)
 
 #define IMSA_IPV6_ADDR_STRING_LEN       (46)
 #define IMSA_IPV4_ADDR_STRING_LEN       (15)
@@ -104,6 +112,8 @@ extern "C" {
 
 #define  IMSA_CONN_MAX_NIC_PDP_NUM              (3)
 
+#define IMSA_VOICE_QCI                          (1)
+#define IMSA_VIDEO_QCI                          (2)
 
 /*****************************************************************************
   3 Massage Declare
@@ -140,6 +150,20 @@ enum    IMSA_CALL_STATUS_ENUM
     IMSA_CALL_STATUS_BUTT
 };
 typedef VOS_UINT8 IMSA_CALL_STATUS_ENUM_UINT8;
+
+/*****************************************************************************
+    枚举名    : IMSA_CALL_CALL_REASON_RESOURCE_RESULT_ENUM_UINT8
+    枚举说明  : 资源预留状态
+*****************************************************************************/
+enum    IMSA_CALL_CALL_REASON_RESOURCE_RESULT_ENUM
+{
+    IMSA_CALL_CALL_REASON_RESOURCE_READY,
+    IMSA_CALL_CALL_REASON_RESOURCE_ONLY_VOICE,
+    IMSA_CALL_CALL_REASON_RESOURCE_FAILED,
+    IMSA_CALL_CALL_REASON_RESOURCE_RESULT_BUTT
+};
+typedef VOS_UINT8 IMSA_CALL_CALL_REASON_RESOURCE_RESULT_ENUM_UINT8;
+
 
 /*****************************************************************************
     枚举名    : IMSA_CALL_MODE_ENUM
@@ -303,6 +327,23 @@ enum IMSA_VOICE_DOMAIN_ENUM
    IMSA_VOICE_DOMAIN_BUTT
 };
 typedef VOS_UINT32   IMSA_VOICE_DOMAIN_ENUM_UINT32;
+
+/*****************************************************************************
+ 枚举名    : IMSA_NRM_SRV_CON_SAT_STATUE_ENMUM
+ 结构说明  : 获取IMS普通服务的条件状况
+*****************************************************************************/
+enum IMSA_NRM_SRV_CON_SAT_STATUE_ENMUM
+{
+   IMSA_NRM_SRV_CON_SAT_STATUE_SUCC                     = 0,    /**< 满足获取普通服务的条件 */
+   IMSA_NRM_SRV_CON_SAT_STATUE_FAIL_RAT_NOT_SUPPORT     = 1,    /**< 不满足获取普通服务的条件，原因为接入技术不支持 */
+   IMSA_NRM_SRV_CON_SAT_STATUE_FAIL_ROAM_NOT_SUPPORT    = 2,    /**< 不满足获取普通服务的条件，原因为不支持漫游注册 */
+   IMSA_NRM_SRV_CON_SAT_STATUE_FAIL_USIM_NOT_SUPPORT    = 3,    /**< 不满足获取普通服务的条件，原因为USIM卡不支持 */
+   IMSA_NRM_SRV_CON_SAT_STATUE_FAIL_VOICE_NOT_SUPPORT   = 4,    /**< 不满足获取普通服务的条件，原因为IMS语音不支持 */
+   IMSA_NRM_SRV_CON_SAT_STATUE_FAIL_OTHERS              = 5,    /**< 不满足获取普通服务的条件，原因为其他 */
+
+   IMSA_NRM_SRV_CON_SAT_STATUE_BUTT
+};
+typedef VOS_UINT32   IMSA_NRM_SRV_CON_SAT_STATUE_ENMUM_UINT32;
 
 
 /*****************************************************************************
@@ -525,6 +566,11 @@ typedef struct
     IMSA_TIMER_STRU                     stProtectTimer;     /**< 保护定时器 */
 
     IMSA_REG_ADDR_PAIR_MGR_STRU         stPairMgrCtx;       /**< 注册地址对信息 */
+    VOS_UINT8                           ucImsaUsimNormOpid;
+    VOS_UINT8                           ucImsaUsimEmcOpid;
+    VOS_UINT8                           aucRsv[1];
+    VOS_UINT8                           ucTryRegTimes;       /**< 周期尝试IMS注册次数 */
+    IMSA_TIMER_STRU                     stPeriodTryRegTimer; /**< 新增周期尝试IMS注册定时器 */
 }IMSA_REG_ENTITY_STRU;
 
 /*****************************************************************************
@@ -569,6 +615,7 @@ typedef struct
 
 typedef IMSA_NV_IMS_REDIAL_CFG_STRU IMSA_IMS_REDIAL_CFG_STRU;
 
+typedef IMSA_NV_CMCC_CUSTOM_REQ_STRU IMSA_CMCC_CUSTOM_REQ_STRU;
 
 typedef struct
 {
@@ -576,6 +623,9 @@ typedef struct
     VOS_UINT8                           ucUtranImsSupportFlag; /**< UNTRAN IMS使能项,VOS_TRUE :支持，VOS_FALSE :不支持 */
     VOS_UINT8                           ucLteImsSupportFlag;    /**< LTE IMS使能项,VOS_TRUE :支持，VOS_FALSE :不支持 */
     VOS_UINT8                           ucGsmEmsSupportFlag;    /**< GSM EMS使能项,VOS_TRUE :支持，VOS_FALSE :不支持 */
+
+    VOS_UINT8                           ucRoamingImsNotSupportFlag; /**< 漫游网络下IMS使能项，VOS_TRUE:支持 VOS_FALSE:不支持 */
+    VOS_UINT8                           aucReserved[3];
 
     VOS_UINT8                           ucUtranEmsSupportFlag; /**< UNTRAN EMS使能项,VOS_TRUE :支持，VOS_FALSE :不支持 */
     VOS_UINT8                           ucLteEmsSupportFlag;    /**< LTE EMS使能项,VOS_TRUE :支持，VOS_FALSE :不支持 */
@@ -601,6 +651,7 @@ typedef struct
     IMSA_IMS_PORT_CONFIG_STRU           stImsPortConfig;        /**< IMS 端口配置信息 */
 
     IMSA_IMS_REDIAL_CFG_STRU            stImsRedialCfg;         /**< IMS域内重播配置 */
+    IMSA_CMCC_CUSTOM_REQ_STRU           stCMCCCustomReq;        /**< 中国移动定制需求 */
 }IMSA_CONFIG_PARA_STRU;
 
 typedef struct
@@ -610,8 +661,9 @@ typedef struct
     IMSA_EMS_STAUTS_ENUM_UINT8          enImsaEmsStatus;            /**< 当前网络是否支持EMS */
     IMSA_PS_SERVICE_STATUS_ENUM_UINT8   enImsaPsServiceStatus;      /**< 当前网络的PS服务状态:无服务,受限服务,正常服务 */
     VOS_UINT8                           ucImsaRoamingFlg;           /**< VOS_TRUE :漫游，VOS_FALSE :非漫游 */
+    VOS_UINT8                           ucServiceChangeIndAfterCampInfoChangeIndFlg;  /**< VOS_TRUE :等待接收SERVICE_CHANGE_IND，VOS_FALSE :不需要等待SERVICE_CHANGE_IND */
     MMA_IMSA_ACCESS_TYPE_ENUM_UINT8     enAccessType;
-    VOS_UINT8                           aucReserved[2];
+    VOS_UINT8                           aucReserved[1];
     VOS_UINT16                          usLac;
     VOS_UINT16                          usTac;
     MMA_IMSA_PLMN_ID_STRU               stPlmnId;
@@ -679,7 +731,6 @@ typedef struct
     IMSA_UEID_STRU                      stImsaUeId;                 /**< ue id */
     IMSA_HOME_NET_DOMAIN_NAME_STRU      stHomeNetDomainName;        /**< Home network domain name */
 }IMSA_COMMON_INFO_STRU;
-
 /*****************************************************************************
  结构名    : IMSA_CALL_SPM_MSG_STRU
  协议表格  :
@@ -702,9 +753,10 @@ typedef struct
     {
         MN_CALL_ORIG_PARAM_STRU         stOrigParam;        /**< 呼叫建立命令的参数 */
         MN_CALL_SUPS_PARAM_STRU         stSupsParam;        /**< 增值服务命令的参数 */
+        TAF_CALL_ECONF_DIAL_REQ_STRU     stEconfDialParam;   /**< 增强型多方通话的参数 */
+        TAF_CALL_ECONF_CALL_LIST_STRU    stEconfAddParam;    /**< 增强多方通话添加用户的参数*/
     } stParam;                                              /**< SPM命令对应的参数 */
 }IMSA_CALL_SPM_MSG_STRU;
-
 /*****************************************************************************
  结构名    : IMSA_CALL_NUMBER_STRU
  协议表格  :
@@ -730,6 +782,21 @@ typedef struct
     VOS_UINT8                           aucRsv[2];
     VOS_CHAR                            aucNumber[IMSA_CALLED_NUMBER_MAX_NUM+1]; /**< 实际号码 *//* FOR OVERFLOW 0831 */
 }IMSA_CALLED_NUMBER_STRU;
+typedef struct {
+    VOS_UINT32                              bitOpIsUsed      :1;
+    VOS_UINT32                              bitOpErrorInfo   :1;    /**< 是否包含错误信息 */
+    VOS_UINT32                              bitOpRsv         :30;
+
+    IMSA_IMS_ECONF_CALLER_STATE_ENUM_UINT8  enCallState;
+    VOS_UINT8                               ucTi;
+    VOS_CHAR                                acAlpha[IMSA_IMS_ALPHA_STRING_SZ + 1];
+    VOS_UINT8                               aucRsv;
+    IMSA_CALL_NUMBER_STRU                   stCallNumber;   /**< 主叫号码 */
+    IMSA_CALLED_NUMBER_STRU                 stCalledNumber; /**< 被叫号码 */
+    IMSA_CALL_NUMBER_STRU                   stConnectNumber;   /**< 连接号码 */
+    IMSA_CALL_NUMBER_STRU                   stRedirectNumber;   /**< 连接号码 */
+    IMSA_IMS_OUTPUT_ERROR_STRU              stErrorCode;
+}IMSA_CALL_ECONF_SUMMARY_STRU;
 
 /*****************************************************************************
  结构名    : IMSA_CALL_ENTITY_STRU
@@ -739,15 +806,15 @@ typedef struct
 *****************************************************************************/
 typedef struct
 {
-    VOS_UINT32                          bitOpIsUsed      :1;    /**< 呼叫实体是否被使用 */
-    VOS_UINT32                          bitOpRetryCsCall :1;    /**< CS域是否可以再尝试 */
-    VOS_UINT32                          bitOpEarlyMedia  :1;    /**< 是否使用Early Media */
-    VOS_UINT32                          bitOpResReady    :1;    /**< 资源准备好标识, 1 为准备好， 0 还未准备好 */
-    VOS_UINT32                          bitOpErrorInfo   :1;    /**< 是否包含错误信息 */
-    VOS_UINT32                          bitOpTransToCs   :1;    /**< 该路电话是否转入CS域 */
-    VOS_UINT32                          bitOpRsv         :26;
+    VOS_UINT32                          bitOpIsUsed             :1;    /**< 呼叫实体是否被使用 */
+    VOS_UINT32                          bitOpRetryCsCall        :1;    /**< CS域是否可以再尝试 */
+    VOS_UINT32                          bitOpLocalAlerting      :1;    /**< 是否使用本地振铃 */
+    VOS_UINT32                          bitOpNeedSendResResult  :1;    /**< 是否需要给IMS发送资源预留结果, 1 为需要， 0 不需要 */
+    VOS_UINT32                          bitOpErrorInfo          :1;    /**< 是否包含错误信息 */
+    VOS_UINT32                          bitOpTransToCs          :1;    /**< 该路电话是否转入CS域 */
+    VOS_UINT32                          bitOpRsv                :26;
 
-    VOS_UINT8                           ucId;           /**< 呼叫id */
+    VOS_UINT8                           ucSpmcallId;           /**< IMSA和SPM间交互的呼叫id */
     IMSA_CALL_STATUS_ENUM_UINT8         enStatus;       /**< 呼叫状态 */
     IMSA_CALL_TYPE_ENUM_UINT8           enType;         /**< 呼叫类型 */
 
@@ -773,7 +840,14 @@ typedef struct
 
     VOS_UINT8                           ucRedialTimes;  /* 重播次数 */
     VOS_UINT8                           ucCallEntityIndex;      /* 实体索引号 */
-    VOS_UINT8                           aucReserved[3];
+    VOS_UINT8                           ucImscallId;           /**< IMSA和IMS间交互的呼叫id */
+    VOS_UINT8                           ucIsEconfFlag;  /**< 是否是增强多方通话的标识 */
+    VOS_UINT8                           ucMaxUserNum;
+    VOS_UINT8                           ucCurUserNum;
+    VOS_UINT8                           ucTqosExpFlag;
+    VOS_UINT8                           aucRsv;
+
+    IMSA_CALL_ECONF_SUMMARY_STRU        stEconfCalllist[IMSA_IMS_ECONF_CALLED_MAX_NUM];    /* 增强多方通话的成员列表 */
 }IMSA_CALL_ENTITY_STRU;
 
 /*****************************************************************************
@@ -832,11 +906,30 @@ typedef struct
     IMSA_TIMER_STRU                     stProctectTimer;        /**< 保护定时器 */
     IMSA_TIMER_STRU                     stResReadyTimer;        /**< 等待资源Ready的定时器 */
 
+    #if 0
+    VOS_UINT8                           ulIsVoiceMediaPdpReady; /**< 记录普通语音媒体承载是否存在*/
+    VOS_UINT8                           ulIsVideoMediaPdpReady; /**< 记录普通视频媒体承载是否存在*/
+    #if 0
     VOS_UINT32                          ulIsMediaPdpReady;      /**< 记录普通媒体承载是否存在*/
-    VOS_UINT32                          ulIsEmcMediaPdpReady;   /**< 记录紧急媒体承载是否存在*/
+    #endif
+    VOS_UINT8                           ulIsEmcMediaPdpReady;   /**< 记录紧急媒体承载是否存在*/
+    VOS_UINT8                           ucRsv;
+    #endif
+
+    VOS_UINT8                           ucVoiceBearExistFlag;    /**< 记录语音媒体承载是否存在 */
+    VOS_UINT8                           ucVideoBearExistFlag;    /**< 记录视频媒体承载是否存在 */
+    VOS_UINT8                           aucRsv2[2];
+
+    VOS_UINT8                           ucRetryEmcRegFlag;      /**< 紧急呼叫收到#380，重新发起注册的标识 */
+    VOS_UINT8                           ucCallEntityIndex;      /**< 第一次紧急呼叫，使用的呼叫实体的ID */
+    VOS_UINT8                           ucId;                   /**< 第一次紧急呼叫，使用的CALL ID */
+    VOS_UINT8                           ucRsv2;
 
     VOS_UINT32                          ulLastResult;           /**< 最后失败原因 */
     VOS_UINT32                          ulLastStatusCode;       /**< 最后失败时服务器的原因值 */
+
+    VOS_UINT8                           ucIsTcallTimeOutProc;   /**< 记录Tcall定时器超时处理 */
+    VOS_UINT8                           aucReserve[3];
 
     VOS_UINT32                          ulSrvccFlag;            /**< 标记是否在SRVCC过程中 */
     VOS_UINT32                          ulNotReprotAllReleasedFlag;  /**< 标记不能上报ALL RELEASED事件 */
@@ -847,6 +940,9 @@ typedef struct
 
     IMSA_TIMER_STRU                     stRedialMaxTimer;       /* IMS域内重播最大时长定时器 */
     IMSA_TIMER_STRU                     stRedialIntervelTimer;  /* IMS域内重播间隔定时器 */
+
+    IMSA_TIMER_STRU                     stNormalTcallTimer;     /* 普通呼叫Tcall定时器，用于语音和视频呼叫 */
+    IMSA_TIMER_STRU                     stEmcTcallTimer;        /* 紧急呼叫Tcall定时器 */
 }IMSA_CALL_MANAGER_STRU;
 
 
@@ -865,7 +961,9 @@ typedef struct
     AT_IMSA_IMSVOPS_CAPABILITY_ENUM_UINT32          enReport;
     VOS_UINT16                          usClientId;
     VOS_UINT8                           ucOpId;
-    VOS_UINT8                           aucReserved[1];
+    /* jiaguocai 00355737 begin amend for ccwa 2015-09-07*/
+    VOS_UINT8                           enMode;
+    /* jiaguocai 00355737 end  amend for ccwa 2015-09-07*/
 
 }IMSA_AT_CONTROL_STRU;
 typedef union
@@ -898,10 +996,12 @@ typedef struct
     IMSA_NETWORK_INFO_STRU              stImsaNetworkInfo;  /**< 网络环境参数 */
     IMSA_COMMON_INFO_STRU               stImsaCommonInfo;   /**< IMSA公共信息 */
     IMSA_TIMER_STRU                     stPeriodImsSrvTryTimer;/**< 周期性尝试IMS服务定时器 */
-    IMSA_TIMER_STRU                     stPeriodImsEmcSrvTryTimer;/**< 周期性尝试紧急IMS服务定时器 */
+    /* delete PeriodImsEmcSrvTryTimer */
     IMSA_SRV_STATUS_ENUM_UINT8          enNrmSrvStatus;     /**< 普通service状态 */
     IMSA_SRV_STATUS_ENUM_UINT8          enEmcSrvStatus;     /**< 紧急service状态 */
-    VOS_UINT8                           aucReserved2[2];
+    MMA_IMSA_MODEM_POWER_STATE_ENUM_UINT8  enPowerState;    /**< Modem1开关机状态 */
+    MMA_IMSA_STOP_TYPE_ENUM_UINT32      enStopType;         /**< 关机请求的类型 */
+    VOS_UINT8                           aucReserved;
     #if 0
     IMSA_CALL_SERVICE_STATUS_ENUM_UINT32    enLastNrmCallSrvStatus;     /**< 存储上次普通呼叫服务状态 */
     IMSA_CALL_SERVICE_STATUS_ENUM_UINT32    enLastEmcCallSrvStatus;     /**< 存储上次紧急呼叫服务状态 */
@@ -919,6 +1019,10 @@ typedef struct
     IMSA_REG_PARA_INFO_STRU             stEmcRegParaInfo;          /**< 存储当前紧急注册信息 */
 
     IMSA_PCSCF_DISCOVERY_POLICY_INFO_STRU    stPcscfDiscoveryPolicyInfo;/**< 存储P-CSCF获取策略及相应的地址 */
+
+    #if (FEATURE_ON == FEATURE_PTM)
+    IMSA_REG_ADDR_PARAM_ENUM_UINT32     enAddrType; /**< 注册时使用的地址队类型 */
+    #endif
 }IMSA_CONTROL_MANAGER_STRU;
 
 /*****************************************************************************
@@ -943,10 +1047,12 @@ typedef struct
 {
     VOS_UINT32                          bitOpPrimPcscfAddr  : 1;
     VOS_UINT32                          bitOpSecPcscfAddr   : 1;
-    VOS_UINT32                          bitOpSpare          : 30;
+    VOS_UINT32                          bitOpThiPcscfAddr   : 1;
+    VOS_UINT32                          bitOpSpare          : 29;
 
     VOS_UINT8                           aucPrimPcscfAddr[IMSA_IPV4_ADDR_LEN];
     VOS_UINT8                           aucSecPcscfAddr[IMSA_IPV4_ADDR_LEN];
+    VOS_UINT8                           aucThiPcscfAddr[IMSA_IPV4_ADDR_LEN];
 } IMSA_PDP_IPV4_PCSCF_STRU;
 
 /*****************************************************************************
@@ -957,10 +1063,12 @@ typedef struct
 {
     VOS_UINT32                          bitOpPrimPcscfAddr  : 1;
     VOS_UINT32                          bitOpSecPcscfAddr   : 1;
-    VOS_UINT32                          bitOpSpare          : 30;
+    VOS_UINT32                          bitOpThiPcscfAddr   : 1;
+    VOS_UINT32                          bitOpSpare          : 29;
 
     VOS_UINT8                           aucPrimPcscfAddr[IMSA_IPV6_ADDR_LEN];
     VOS_UINT8                           aucSecPcscfAddr[IMSA_IPV6_ADDR_LEN];
+    VOS_UINT8                           aucThiPcscfAddr[IMSA_IPV6_ADDR_LEN];
 } IMSA_PDP_IPV6_PCSCF_STRU;
 
 /*****************************************************************************
@@ -989,7 +1097,7 @@ typedef struct
     VOS_UINT8                           aucIpV6Addr[IMSA_IPV6_ADDR_LEN];
 }IMSA_IP_ADDRESS_STRU;
 
-
+#if 0
 typedef struct
 {
     VOS_UINT32                          bitOpSrcIp          : 1;    /**< aucSourceIpAddr,Mask */
@@ -1043,6 +1151,61 @@ typedef struct
     /** only for CGTFTRDP */
     VOS_UINT8                           ucNwPktFilterId;                        /**< value range from 1 to 16 */
 } IMSA_PDP_TFT_STRU;
+#endif
+typedef struct
+{
+    VOS_UINT32                          bitOpRmtIpv4AddrAndMask     : 1;
+    VOS_UINT32                          bitOpRmtIpv6AddrAndMask     : 1;
+    VOS_UINT32                          bitOpProtocolId             : 1;
+    VOS_UINT32                          bitOpSingleLocalPort        : 1;
+    VOS_UINT32                          bitOpLocalPortRange         : 1;
+    VOS_UINT32                          bitOpSingleRemotePort       : 1;
+    VOS_UINT32                          bitOpRemotePortRange        : 1;
+    VOS_UINT32                          bitOpSecuParaIndex          : 1;
+    VOS_UINT32                          bitOpTypeOfService          : 1;
+    VOS_UINT32                          bitOpFlowLabelType          : 1;
+    VOS_UINT32                          bitOpSpare                  : 22;
+
+    VOS_UINT8                           ucPacketFilterId;
+    VOS_UINT8                           ucNwPacketFilterId;
+    IMSA_PF_TRANS_DIRECTION_ENUM_UINT8  enDirection;
+    VOS_UINT8                           ucPrecedence;                           /* packet filter evaluation precedence */
+
+    VOS_UINT32                          ulSecuParaIndex;                        /* SPI */
+    VOS_UINT16                          usSingleLcPort;
+    VOS_UINT16                          usLcPortHighLimit;
+    VOS_UINT16                          usLcPortLowLimit;
+    VOS_UINT16                          usSingleRmtPort;
+    VOS_UINT16                          usRmtPortHighLimit;
+    VOS_UINT16                          usRmtPortLowLimit;
+    VOS_UINT8                           ucProtocolId;                           /* 协议号 */
+    VOS_UINT8                           ucTypeOfService;                        /* TOS */
+    VOS_UINT8                           ucTypeOfServiceMask;                    /* TOS Mask */
+    VOS_UINT8                           aucReserved[1];
+
+    /* aucRmtIpv4Address[0]为IP地址高字节位
+       aucRmtIpv4Address[3]为低字节位 */
+    VOS_UINT8                           aucRmtIpv4Address[IMSA_IPV4_ADDR_LEN];
+
+    /* aucRmtIpv4Mask[0]为IP地址高字节位 ,
+       aucRmtIpv4Mask[3]为低字节位*/
+    VOS_UINT8                           aucRmtIpv4Mask[IMSA_IPV4_ADDR_LEN];
+
+    /* ucRmtIpv6Address[0]为IPv6接口标识高字节位
+       ucRmtIpv6Address[7]为IPv6接口标识低字节位 */
+    VOS_UINT8                           aucRmtIpv6Address[IMSA_IPV6_ADDR_LEN];
+
+    /* ucRmtIpv6Mask[0]为高字节位
+       ucRmtIpv6Mask[7]为低字节位*/
+    VOS_UINT8                           aucRmtIpv6Mask[IMSA_IPV6_ADDR_LEN];
+
+    VOS_UINT32                          ulFlowLabelType;                        /*FlowLabelType*/
+}IMSA_PDP_TFT_STRU;
+typedef struct
+{
+    VOS_UINT32                          ulPfNum;            /**< 承载过滤器数 */
+    IMSA_PDP_TFT_STRU                   astTftInfo[IMSA_MAX_PF_NUM];    /**< 承载过滤器信息 */
+}IMSA_PDP_TFT_INFO_STRU;
 
 typedef struct
 {
@@ -1103,8 +1266,9 @@ typedef struct
 {
     VOS_UINT32                          bitOpLinkedPdpId    : 1;
     VOS_UINT32                          bitOpPdpAddr        : 1;
+    VOS_UINT32                          bitOpTft            : 1;
     /*VOS_UINT32                          bitOpApn            : 1;*/
-    VOS_UINT32                          bitOpSpare          : 30;
+    VOS_UINT32                          bitOpSpare          : 29;
 
 
     VOS_UINT8                           ucPdpId;            /**< 承载号 */
@@ -1124,10 +1288,9 @@ typedef struct
     IMSA_PDP_IPV6_PCSCF_STRU            stPdpIpv6Pcscf;     /**< 承载IPV6 P-CSCF信息 */
 #if 0
     IMSA_PDP_UMTS_QOS_STRU              stUmtsQos;          /**< 承载UMTS QOS信息 */
-    IMSA_PDP_EPS_QOS_STRU               stEpsQos;           /**< 承载EPS QOS信息 */
-    VOS_UINT32                          ulPfNum;            /**< 承载过滤器数 */
-    IMSA_PDP_TFT_STRU                   astTftInfo[IMSA_MAX_PF_NUM];    /**< 承载过滤器信息 */
 #endif
+    IMSA_PDP_EPS_QOS_STRU               stEpsQos;           /**< 承载EPS QOS信息 */
+    IMSA_PDP_TFT_INFO_STRU              stTft;              /**< 承载TFT信息 */
 }IMSA_PDP_CNTXT_INFO_STRU;
 
 typedef struct
@@ -1140,7 +1303,8 @@ typedef struct
     VOS_UINT32                          bitOpIpv4AddrAllocType: 1;
     VOS_UINT32                          bitOpPcscfDiscovery : 1;
     VOS_UINT32                          bitOpImCnSignalFlg  : 1;
-    VOS_UINT32                          bitOpSpare          : 24;
+    VOS_UINT32                          bitOpImsSuppFlg     : 1;
+    VOS_UINT32                          bitOpSpare          : 23;
 
     VOS_UINT8                           ucCid;
     VOS_UINT8                           ucLinkdCid;
@@ -1150,6 +1314,7 @@ typedef struct
     TAF_PDP_EMC_IND_ENUM_UINT8          enEmergencyInd;
     TAF_PDP_PCSCF_DISCOVERY_ENUM_UINT8  enPcscfDiscovery;
     TAF_PDP_IM_CN_SIG_FLAG_ENUM_UINT8   enImCnSignalFlg;
+    VOS_UINT8                           ucImsSuppFlg;
     VOS_UINT8                           ucReserved;
 
     TAF_PDP_APN_STRU                    stApnInfo;
@@ -1269,6 +1434,80 @@ typedef struct
     IMSA_TIMER_STRU                     stUssdWaitAppRspTimer;
 }IMSA_USSD_MANAGER_STRU;
 
+#if (FEATURE_ON == FEATURE_PTM)
+/*****************************************************************************
+ 结构名称   :IMSA_ERRLOG_CTRL_INFO_STRU
+ 协议表格   :
+ ASN.1 描述 :
+ 结构说明   : IMSA_ERRLOG_CTRL_INFO_STRU信息
+*****************************************************************************/
+typedef struct
+{
+    VOS_UINT8                           ucErrLogCtrlFlag;   /* ERRLOG开关标识 */
+    VOS_UINT8                           ucReserved;
+    VOS_UINT16                          usAlmLevel;       /* 等级 */
+}IMSA_ERRLOG_CTRL_INFO_STRU;
+/*****************************************************************************
+ 结构名称   :IMSA_ERRLOG_BUFF_INFO_STRU
+ 协议表格   :
+ ASN.1 描述 :
+ 结构说明   : IMSA_ERRLOG_BUFF_INFO_STRU信息
+*****************************************************************************/
+typedef struct
+{
+    OM_RING_ID                          pstRingBuffer;  /* IMSA层buffer的地址 */
+    VOS_UINT32                          ulOverflowCnt;  /* Ringbuf溢出的次数 */
+}IMSA_ERRLOG_BUFF_INFO_STRU;
+/*****************************************************************************
+ 结构名称   :IMSA_ERRORLOG_MANAGER_STRU
+ 协议表格   :
+ ASN.1 描述 :
+ 结构说明   : ERROR LOG的控制信息
+*****************************************************************************/
+typedef struct
+{
+    IMSA_ERRLOG_CTRL_INFO_STRU       stCtrlInfo;
+    IMSA_ERRLOG_BUFF_INFO_STRU       stBuffInfo;
+}IMSA_ERRORLOG_MANAGER_STRU;
+#endif
+
+/* zhaochen 00308719 begin for HIFI mailbox full reset 2015-11-09 */
+/*****************************************************************************
+ 结构名称   :IMSA_HIFI_DATA_BUFFER_NODE_STRU
+ 协议表格   :
+ ASN.1 描述 :
+ 结构说明   : HIFI语音包的缓存信息
+*****************************************************************************/
+typedef struct tagIMSA_HIFI_DATA_BUFFER_NODE_STRU
+{
+    IMSA_VOICE_RX_DATA_IND_STRU               *pstRxDataInd;           /* 缓存的发送给HIFI的语音包 */
+    struct tagIMSA_HIFI_DATA_BUFFER_NODE_STRU *pstNextBufferData;      /* 链表的下一个节点 */
+}IMSA_HIFI_DATA_BUFFER_NODE_STRU;
+/*****************************************************************************
+ 结构名称   :IMSA_HIFI_DATA_MANAGER_STRU
+ 协议表格   :
+ ASN.1 描述 :
+ 结构说明   : HIFI语音包的控制信息
+*****************************************************************************/
+typedef struct
+{
+    VOS_UINT8                           ucHifiDataControlFlag;  /* 是否开启Hifi消息控制: TRUE:开启；FALSE:关闭 */
+    VOS_UINT8                           ucSentDataNum;          /* 给HIFI发送的数据包数量 */
+    VOS_UINT8                           ucBufferDataNum;        /* 本地缓存的数据包数量 */
+    VOS_UINT8                           ucHifiDataNeedAckNum;   /* 连发多少条消息后需要Hifi回复 */
+    VOS_UINT8                           ucHifiDatMaxBufferNum;  /* 最大缓存消息条数 */
+    VOS_UINT8                           ucRsv[3];               /* 保留 */
+    VOS_UINT32                          ulOpid;                 /* Opid值，用来同步消息 */
+    VOS_UINT32                          ulDataLoseNum;
+    VOS_UINT32                          ulTotalDataLoseNum;
+    VOS_UINT32                          ulDataBufferNum;
+    VOS_UINT32                          ulTotalDataBufferNum;
+
+    IMSA_HIFI_DATA_BUFFER_NODE_STRU    *pstBufferDataHead;      /* 缓存消息的链表头 */
+    IMSA_HIFI_DATA_BUFFER_NODE_STRU    *pstBufferDataTail;      /* 当前缓存消息的节点 */
+    IMSA_TIMER_STRU                     stHifiAckProtectTimer;  /* 等待HIFI回执的保护定时器 */
+}IMSA_HIFI_DATA_MANAGER_STRU;
+/* zhaochen 00308719 end for HIFI mailbox full reset 2015-11-09 */
 typedef struct
 {
     IMSA_CONTROL_MANAGER_STRU           stImsaControlManager;   /**< 控制中心管理信息 */
@@ -1278,10 +1517,22 @@ typedef struct
     IMSA_SMS_MANAGER_STRU               stImsaSmsManager;       /**< SMS控制实体*/
     IMSA_USSD_MANAGER_STRU              stImsaUssdManager;
     /*USSD/SS控制实体*/
+    #if (FEATURE_ON == FEATURE_PTM)
+    IMSA_ERRORLOG_MANAGER_STRU          stImsaErrorlogManager;  /**< ERROR LOG管理信息 */
+    #endif
+    /* zhaochen 00308719 begin for HIFI mailbox full reset 2015-11-09 */
+    IMSA_HIFI_DATA_MANAGER_STRU         stImsaHifiDataManager;  /**< HIFI语音包的控制信息*/
+    /* zhaochen 00308719 end for HIFI mailbox full reset 2015-11-09 */
 
 } IMSA_ENTITY_STRU;
 
-
+#if (FEATURE_ON == FEATURE_PTM)
+typedef struct
+{
+    TAF_PS_CAUSE_ENUM_UINT32                enCause;    /* TAF REJ CAUSE */
+    IMSA_ERR_LOG_PDNREJ_CAUSE_ENUM_UINT32   enImsaCnRejCause; /* IMSA REJ CAUSE */
+}IMSA_CN_CAUSE_TRANS_STRU;
+#endif
 
 
 
@@ -1377,6 +1628,7 @@ extern    IMSA_ENTITY_STRU      g_stImsaEntity;
 #define IMSA_GetCampedRat()                 (pgstImsaEntity->stImsaControlManager.stImsaNetworkInfo.enImsaCampedRatType)
 #define IMSA_GetVoiceDomain()               (pgstImsaEntity->stImsaControlManager.stImsaConfigPara.enVoiceDomain)
 #define IMSA_GetUeImsVoiceCap()             (pgstImsaEntity->stImsaControlManager.stImsaConfigPara.ucVoiceCallOnImsSupportFlag)
+#define IMSA_GetUeImsVideoCap()             (pgstImsaEntity->stImsaControlManager.stImsaConfigPara.ucVideoCallOnImsSupportFlag)
 #define IMSA_GetUeImsSmsCap()               (pgstImsaEntity->stImsaControlManager.stImsaConfigPara.ucSmsOnImsSupportFlag)
 #define IMSA_GetNwImsVoiceCap()             (pgstImsaEntity->stImsaControlManager.stImsaNetworkInfo.enImsaImsVoPsStatus)
 #define IMSA_GetPsServiceStatus()           (pgstImsaEntity->stImsaControlManager.stImsaNetworkInfo.enImsaPsServiceStatus)
@@ -1386,7 +1638,13 @@ extern    IMSA_ENTITY_STRU      g_stImsaEntity;
 #define IMSA_GetAtControlAddress()          (&pgstImsaEntity->stImsaControlManager.stAtControl)
 #define IMSA_GetSrvccBuffAddress()          (&pgstImsaEntity->stImsaControlManager.stSrvccBuffer)
 #define IMSA_GetImsRedialCfgAddress()       (&pgstImsaEntity->stImsaControlManager.stImsaConfigPara.stImsRedialCfg)
+#define IMSA_GetPowerState()                (pgstImsaEntity->stImsaControlManager.enPowerState)
 
+#define IMSA_SetUsimNormOpid(ucOpid)        (pgstImsaEntity->stImsaRegManager.stNormalRegEntity.ucImsaUsimNormOpid = (ucOpid))
+#define IMSA_GetUsimNormOpid()              (pgstImsaEntity->stImsaRegManager.stNormalRegEntity.ucImsaUsimNormOpid)
+/* 用OPID的第八位区分当前是紧急鉴权还是普通鉴权 */
+#define IMSA_SetUsimEmcOpid(ucOpid)         (pgstImsaEntity->stImsaRegManager.stEmcRegEntity.ucImsaUsimEmcOpid = (ucOpid | 0x80))
+#define IMSA_GetUsimEmcOpid()               (pgstImsaEntity->stImsaRegManager.stEmcRegEntity.ucImsaUsimEmcOpid)
 
 #if 0
 #define IMSA_GetLastNrmCallSrvStatus()      (pgstImsaEntity->stImsaControlManager.enLastNrmCallSrvStatus)
@@ -1412,7 +1670,37 @@ extern    IMSA_ENTITY_STRU      g_stImsaEntity;
 #define IMSA_USSD_GetEntityAddress()        (&pgstImsaEntity->stImsaUssdManager)
 
 
+/* error log 控制信息 */
+#if (FEATURE_ON == FEATURE_PTM)
+#define IMSA_GetErrorlogManagerAddress()        (&pgstImsaEntity->stImsaErrorlogManager)
+#define IMSA_GetErrorLogRingBufAddr()           (pgstImsaEntity->stImsaErrorlogManager.stBuffInfo.pstRingBuffer)
+#define IMSA_GetErrlogOverflowCnt()             (pgstImsaEntity->stImsaErrorlogManager.stBuffInfo.ulOverflowCnt)
+#define IMSA_GetErrlogCtrlFlag()                (pgstImsaEntity->stImsaErrorlogManager.stCtrlInfo.ucErrLogCtrlFlag)
+#define IMSA_GetErrlogAlmLevel()                (pgstImsaEntity->stImsaErrorlogManager.stCtrlInfo.usAlmLevel)
 
+#define IMSA_SetErrorLogRingBufAddr(pRingBuffer)        (IMSA_GetErrorLogRingBufAddr() = pRingBuffer)
+#define IMSA_SetErrlogOverflowCnt(ulOverflowCnt)        (IMSA_GetErrlogOverflowCnt() = ulOverflowCnt)
+#define IMSA_SetErrlogCtrlFlag(ucFlag)                  (IMSA_GetErrlogCtrlFlag() = ucFlag)
+#define IMSA_SetErrlogAlmLevel(usAlmLevel)              (IMSA_GetErrlogAlmLevel() = usAlmLevel)
+#endif
+
+/* zhaochen 00308719 begin for HIFI mailbox full reset 2015-11-09 */
+/* HIFI缓存消息控制信息 */
+#define IMSA_GetHifiDataManagerAddress()        (&pgstImsaEntity->stImsaHifiDataManager)
+#define IMSA_GetHifiDataBufferDataHead()        (pgstImsaEntity->stImsaHifiDataManager.pstBufferDataHead)
+#define IMSA_GetHifiDataBufferDataTail()        (pgstImsaEntity->stImsaHifiDataManager.pstBufferDataTail)
+#define IMSA_GetHifiDataBufferDataNum()         (pgstImsaEntity->stImsaHifiDataManager.ucBufferDataNum)
+#define IMSA_GetHifiDataSentDataNum()           (pgstImsaEntity->stImsaHifiDataManager.ucSentDataNum)
+#define IMSA_GetHifiDataOpid()                  (pgstImsaEntity->stImsaHifiDataManager.ulOpid)
+#define IMSA_GetHifiDataAckProtectTimer()       (pgstImsaEntity->stImsaHifiDataManager.stHifiAckProtectTimer)
+#define IMSA_GetHifiDataControlFlag()           (pgstImsaEntity->stImsaHifiDataManager.ucHifiDataControlFlag)
+#define IMSA_GetHifiDataNeedAckNum()            (pgstImsaEntity->stImsaHifiDataManager.ucHifiDataNeedAckNum)
+#define IMSA_GetHifiDataMaxBufferNum()          (pgstImsaEntity->stImsaHifiDataManager.ucHifiDatMaxBufferNum)
+#define IMSA_GetHifiDataDataLoseNum()           (pgstImsaEntity->stImsaHifiDataManager.ulDataLoseNum)
+#define IMSA_GetHifiDataTotalDataLoseNum()      (pgstImsaEntity->stImsaHifiDataManager.ulTotalDataLoseNum)
+#define IMSA_GetHifiDataDataBufferNum()         (pgstImsaEntity->stImsaHifiDataManager.ulDataBufferNum)
+#define IMSA_GetHifiDataTotalDataBufferNum()    (pgstImsaEntity->stImsaHifiDataManager.ulTotalDataBufferNum)
+/* zhaochen 00308719 end for HIFI mailbox full reset 2015-11-09 */
 /*****************************************************************************
   8 Fuction Extern
 *****************************************************************************/

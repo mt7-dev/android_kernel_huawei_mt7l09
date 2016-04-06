@@ -47,6 +47,7 @@ static void add_interleaved_area(phys_addr_t a1,
 
 static int __init ddr_die_param(char *p)
 {
+    pr_err("%s\n", __func__);
 	phys_addr_t start;
 	unsigned long size;
 
@@ -99,7 +100,7 @@ void __init add_ddr_die(phys_addr_t addr, unsigned long size)
 	if (size == SZ_1536MB || size == SZ_3072MB)
 		section_nr = 6;
 
-	pr_info("%s: addr=0x%08x, size=0x%08lx, nr = %lu\n", __func__, addr, size, section_nr);
+	pr_err("%s: addr=0x%08x, size=0x%08lx, nr = %lu\n", __func__, addr, size, section_nr);
 
 	pasr_info.die[pasr_info.nr_dies].addr = addr;
 	pasr_info.die[pasr_info.nr_dies].size = size;
@@ -123,26 +124,26 @@ static void __init pasr_print_info(struct pasr_info *info)
 {
 	int i;
 
-	pr_info("PASR information coherent\n");
+	pr_err("PASR information coherent\n");
 
 
-	pr_info("DDR Dies layout:\n");
-	pr_info("\tid - start address - end address\n");
+	pr_err("DDR Dies layout:\n");
+	pr_err("\tid - start address - end address\n");
 	for (i = 0; i < info->nr_dies; i++)
-		pr_info("\t- %d : %#08x - %#08x\n",
+		pr_err("\t- %d : %#08x - %#08x\n",
 			i, (unsigned int)info->die[i].addr,
 			(unsigned int)(info->die[i].addr
 				+ info->die[i].size - 1));
 
 	if (info->nr_int == 0) {
-		pr_info("No interleaved areas declared\n");
+		pr_err("No interleaved areas declared\n");
 		return;
 	}
 
-	pr_info("Interleaving layout:\n");
-	pr_info("\tid - start @1 - end @2 : start @2 - end @2\n");
+	pr_err("Interleaving layout:\n");
+	pr_err("\tid - start @1 - end @2 : start @2 - end @2\n");
 	for (i = 0; i < info->nr_int; i++)
-		pr_info("\t-%d - %#08x - %#08x : %#08x - %#08x\n"
+		pr_err("\t-%d - %#08x - %#08x : %#08x - %#08x\n"
 			, i
 			, (unsigned int)info->int_area[i].addr1
 			, (unsigned int)(info->int_area[i].addr1
@@ -339,15 +340,15 @@ static void __init pasr_print_map(struct pasr_map *map)
 	if (!map)
 		goto out;
 
-	pr_info("PASR map:\n");
+	pr_err("PASR map:\n");
 
 	for (i = 0; i < map->nr_dies; i++) {
 		struct pasr_die *die = &map->die[i];
 
-		pr_info("Die %d:\n", i);
+		pr_err("Die %d:\n", i);
 		for (j = 0; j < die->nr_sections; j++) {
 			struct pasr_section *s = &die->section[j];
-			pr_info("\tSection %d: @ = %#08x, Pair = %s\n"
+			pr_err("\tSection %d: @ = %#08x, Pair = %s\n"
 					, j, s->start, s->pair ? "Yes" : "No");
 		}
 	}
@@ -409,6 +410,7 @@ int __init early_pasr_setup(void)
 {
 	int ret;
 
+    pr_err("early_pasr_setup\n");
 	ret = pasr_info_sanity_check(&pasr_info);
 	if (ret) {
 		pr_err("PASR info sanity check failed (err %d)\n", ret);
@@ -427,7 +429,7 @@ int __init early_pasr_setup(void)
 
 	ret = pasr_init_core(&pasr_map);
 
-	pr_info("PASR: First stage init done.\n");
+	pr_err("PASR: First stage init done.\n");
 
 	return ret;
 }
@@ -451,7 +453,7 @@ int __init late_pasr_setup(void)
 		}
 	}
 
-	pr_info("PASR Second stage init done.\n");
+	pr_err("PASR Second stage init done.\n");
 
 	return 0;
 }

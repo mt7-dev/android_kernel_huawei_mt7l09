@@ -355,7 +355,9 @@ VOS_UINT16 g_ausGsmNvIdReadBand850[] =
 
     en_NV_Item_GSM850_SWITCH_CONFIG,
     en_NV_Item_GSM850_UNBIND_CONFIG,
-    en_NV_Item_GSM850_TX_ANT_SWITCH_GPIO                        
+    en_NV_Item_GSM850_TX_ANT_SWITCH_GPIO,
+    en_NV_Item_GSM850_SAR_BACKOFF_DPDT_SWAP,
+    en_NV_Item_EDGE850_SAR_BACKOFF_DPDT_SWAP
 
 };
 
@@ -554,7 +556,9 @@ VOS_UINT16 g_ausGsmNvIdReadBand900[] =
     en_NV_Item_GSM900_TX_CTUNE_LUT_CTRL,
     en_NV_Item_GSM900_SWITCH_CONFIG,
     en_NV_Item_GSM900_UNBIND_CONFIG,
-    en_NV_Item_GSM900_TX_ANT_SWITCH_GPIO                        
+    en_NV_Item_GSM900_TX_ANT_SWITCH_GPIO,
+    en_NV_Item_GSM900_SAR_BACKOFF_DPDT_SWAP,
+    en_NV_Item_EDGE900_SAR_BACKOFF_DPDT_SWAP
 };
 
 
@@ -752,7 +756,9 @@ VOS_UINT16 g_ausGsmNvIdReadBand1800[] =
     en_NV_Item_DCS1800_TX_CTUNE_LUT_CTRL,
     en_NV_Item_DCS1800_SWITCH_CONFIG,
     en_NV_Item_DCS1800_UNBIND_CONFIG,
-    en_NV_Item_DCS1800_TX_ANT_SWITCH_GPIO                        
+    en_NV_Item_DCS1800_TX_ANT_SWITCH_GPIO,
+    en_NV_Item_DCS1800_SAR_BACKOFF_DPDT_SWAP,
+    en_NV_Item_EDGE1800_SAR_BACKOFF_DPDT_SWAP
 };
 
 
@@ -949,7 +955,9 @@ VOS_UINT16 g_ausGsmNvIdReadBand1900[] =
     en_NV_Item_PCS1900_TX_CTUNE_LUT_CTRL,
     en_NV_Item_PCS1900_SWITCH_CONFIG,
     en_NV_Item_PCS1900_UNBIND_CONFIG,
-    en_NV_Item_PCS1900_TX_ANT_SWITCH_GPIO                        
+    en_NV_Item_PCS1900_TX_ANT_SWITCH_GPIO,
+    en_NV_Item_PCS1900_SAR_BACKOFF_DPDT_SWAP,
+    en_NV_Item_EDGE1900_SAR_BACKOFF_DPDT_SWAP
 };
 
 
@@ -1146,7 +1154,9 @@ VOS_UINT16 g_ausGsmNvIdReadBandVirtual[] =
     en_NV_Item_DCS1800_TX_CTUNE_LUT_CTRL,
     en_NV_Item_DCS1800_SWITCH_CONFIG,
     en_NV_Item_DCS1800_UNBIND_CONFIG,
-    en_NV_Item_DCS1800_TX_ANT_SWITCH_GPIO                        
+    en_NV_Item_DCS1800_TX_ANT_SWITCH_GPIO,
+    en_NV_Item_DCS1800_SAR_BACKOFF_DPDT_SWAP,
+    en_NV_Item_EDGE1800_SAR_BACKOFF_DPDT_SWAP
 };
 
 
@@ -1265,7 +1275,10 @@ VOS_UINT16 g_ausWcdmaComNvIdReadList[] =
     en_NV_Item_W_DFS_CONFIG,
     en_NV_Item_W_CS_INTRA_STEP23_PARA,
     en_NV_Item_W_QPC_REGDEFAULT,
-    en_NV_Item_W_DUAL_ANT_MEAS
+    en_NV_Item_W_DUAL_ANT_MEAS,
+    en_NV_Item_W_DUAL_ANT_DPDT_PROTECT_TIME,
+    en_NV_Item_GUMODE_CHAN_PARA,
+	en_NV_Item_W_T313_BACK_CTRL
 };
 
 
@@ -1416,8 +1429,8 @@ VOS_UINT16 g_ausWcdmaNvIdReadBand1[] =
     /* CTUNE */
     en_NV_Item_W_TX_CTUNE_LUT_CTRL_B1,
     en_NV_Item_W_SWITCH_CONFIG_B1,
-    en_NV_Item_W_UNBIND_CONFIG_B1
-
+    en_NV_Item_W_UNBIND_CONFIG_B1,
+    en_NV_Item_W_TX_SAR_BACKOFF_DPDT_SWAP_B1
 };
 
 
@@ -1569,8 +1582,8 @@ VOS_UINT16 g_ausWcdmaNvIdReadBand2[] =
     /* CTUNE */
     en_NV_Item_W_TX_CTUNE_LUT_CTRL_B2,
     en_NV_Item_W_SWITCH_CONFIG_B2,
-    en_NV_Item_W_UNBIND_CONFIG_B2
-
+    en_NV_Item_W_UNBIND_CONFIG_B2,
+    en_NV_Item_W_TX_SAR_BACKOFF_DPDT_SWAP_B2
 };
 
 
@@ -1723,8 +1736,8 @@ VOS_UINT16 g_ausWcdmaNvIdReadBand3[] =
     /* CTUNE */
     en_NV_Item_W_TX_CTUNE_LUT_CTRL_B3,
     en_NV_Item_W_SWITCH_CONFIG_B3,
-    en_NV_Item_W_UNBIND_CONFIG_B3
-
+    en_NV_Item_W_UNBIND_CONFIG_B3,
+    en_NV_Item_W_TX_SAR_BACKOFF_DPDT_SWAP_B3
 };
 
 
@@ -1877,8 +1890,8 @@ VOS_UINT16 g_ausWcdmaNvIdReadBand4[] =
     /* CTUNE */
     en_NV_Item_W_TX_CTUNE_LUT_CTRL_B4,
     en_NV_Item_W_SWITCH_CONFIG_B4,
-    en_NV_Item_W_UNBIND_CONFIG_B4
-
+    en_NV_Item_W_UNBIND_CONFIG_B4,
+    en_NV_Item_W_TX_SAR_BACKOFF_DPDT_SWAP_B4
 };
 
 
@@ -2031,8 +2044,8 @@ VOS_UINT16 g_ausWcdmaNvIdReadBand5[] =
     /* CTUNE */
     en_NV_Item_W_TX_CTUNE_LUT_CTRL_B5,
     en_NV_Item_W_SWITCH_CONFIG_B5,
-    en_NV_Item_W_UNBIND_CONFIG_B5
-
+    en_NV_Item_W_UNBIND_CONFIG_B5,
+    en_NV_Item_W_TX_SAR_BACKOFF_DPDT_SWAP_B5
 };
 
 
@@ -2186,8 +2199,8 @@ VOS_UINT16 g_ausWcdmaNvIdReadBand6[] =
     /* CTUNE */
     en_NV_Item_W_TX_CTUNE_LUT_CTRL_B6,
     en_NV_Item_W_SWITCH_CONFIG_B6,
-    en_NV_Item_W_UNBIND_CONFIG_B6
-
+    en_NV_Item_W_UNBIND_CONFIG_B6,
+    en_NV_Item_W_TX_SAR_BACKOFF_DPDT_SWAP_B6
 };
 
 
@@ -2340,8 +2353,8 @@ VOS_UINT16 g_ausWcdmaNvIdReadBand8[] =
     /* CTUNE */
     en_NV_Item_W_TX_CTUNE_LUT_CTRL_B8,
     en_NV_Item_W_SWITCH_CONFIG_B8,
-    en_NV_Item_W_UNBIND_CONFIG_B8
-
+    en_NV_Item_W_UNBIND_CONFIG_B8,
+    en_NV_Item_W_TX_SAR_BACKOFF_DPDT_SWAP_B8
 };
 
 
@@ -2493,8 +2506,8 @@ VOS_UINT16 g_ausWcdmaNvIdReadBand9[] =
     /* CTUNE */
     en_NV_Item_W_TX_CTUNE_LUT_CTRL_B9,
     en_NV_Item_W_SWITCH_CONFIG_B9,
-    en_NV_Item_W_UNBIND_CONFIG_B9
-
+    en_NV_Item_W_UNBIND_CONFIG_B9,
+    en_NV_Item_W_TX_SAR_BACKOFF_DPDT_SWAP_B9
 };
 
 
@@ -2648,8 +2661,8 @@ VOS_UINT16 g_ausWcdmaNvIdReadBand11[] =
     /* CTUNE */
     en_NV_Item_W_TX_CTUNE_LUT_CTRL_B11,
     en_NV_Item_W_SWITCH_CONFIG_B11,
-    en_NV_Item_W_UNBIND_CONFIG_B11
-
+    en_NV_Item_W_UNBIND_CONFIG_B11,
+    en_NV_Item_W_TX_SAR_BACKOFF_DPDT_SWAP_B11
 };
 
 
@@ -2803,8 +2816,8 @@ VOS_UINT16 g_ausWcdmaNvIdReadBand19[] =
     /* CTUNE */
     en_NV_Item_W_TX_CTUNE_LUT_CTRL_B19,
     en_NV_Item_W_SWITCH_CONFIG_B19,
-    en_NV_Item_W_UNBIND_CONFIG_B19
-
+    en_NV_Item_W_UNBIND_CONFIG_B19,
+    en_NV_Item_W_TX_SAR_BACKOFF_DPDT_SWAP_B19
 };
 
 

@@ -19,9 +19,9 @@ extern "C" {
 /*****************************************************************************
   2 宏定义
 *****************************************************************************/
-#define OM_ALIGNMENT                  (0x03)
+#define OM_ALIGNMENT                  (0x03U)
 
-#define OM_PRINTF_OFFSET              (2*sizeof(VOS_UINT32))
+#define OM_PRINTF_OFFSET              (2U*sizeof(VOS_UINT32))
 
 /*支持DRV和APP的最大模块数*/
 #define OM_PRINTF_MODULE_MAX_NUM      (LOG_MAX_MODULE_ID_APP - LOG_MIN_MODULE_ID_ACPU_DRV + 1)
@@ -92,13 +92,13 @@ extern LOG_LEVEL_EN                     g_astOmPrintfOutPutLev[];
   10 函数声明
 *****************************************************************************/
 /*lint -e960 */
-extern unsigned long OM_Printf(char * pcformat, ... );
-extern unsigned long OM_PrintfWithModule(unsigned long ulModuleId,
-                                   unsigned long ulLevel, char * pcformat, ... );
+extern VOS_UINT32 OM_Printf(VOS_CHAR * pcformat, ... );
+extern VOS_UINT32 OM_PrintfWithModule(VOS_UINT32 ulModuleId,
+                        VOS_UINT32 ulLevel, VOS_CHAR * pcformat, ... );
 
 /*lint +e960 */
 
-extern unsigned long OM_PrintfSetModuleIdLev(unsigned long ulModuleId, unsigned long ulLev);
+extern VOS_UINT32 OM_PrintfSetModuleIdLev(VOS_UINT32 ulModuleId, VOS_UINT32 ulLev);
 
 #if (VOS_OS_VER == VOS_LINUX)
 EXPORT_SYMBOL(OM_Printf);

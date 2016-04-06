@@ -12,12 +12,14 @@
 #include <linux/sched.h>
 #include <linux/cpumask.h>
 #include <linux/timer.h>
-#include <linux/thread_info.h>
+#include <asm/thread_info.h>
 #include <linux/kthread.h>
 #include <linux/syslog.h>
 #include <linux/errno.h>
 #include <linux/delay.h>
+/*lint -e451*/
 #include <asm/current.h>
+/*lint +e451*/
 #include <linux/string.h>
 #include <asm/traps.h>
 #include <linux/time.h>
@@ -26,11 +28,11 @@
 #include <linux/atomic.h>
 #include <linux/delay.h>
 #include <linux/notifier.h>
-#include <linux/huawei/hisi_rproc.h>
+#include <linux/hisi/hisi_rproc.h>
 #include <linux/semaphore.h>
 #include <linux/reboot.h>
 #include <linux/slab.h>
-#include <linux/log_exception.h>
+#include <huawei_platform/log/log_exception.h>
 #include <linux/timer.h>
 #include <linux/rtc.h>
 #include <linux/syscalls.h>
@@ -38,6 +40,10 @@
 #include <linux/mmc/core.h>
 #include <linux/wakelock.h>
 #include <linux/mtd/hisi_nve_interface.h>
+#include <dsm/dsm_pub.h>
+
+#include <linux/hisi/hi3xxx/global_ddr_map.h>
+
 extern int hisi_nve_direct_access_for_rdr(
 	struct hisi_nve_info_user *user_info);
 
@@ -56,9 +62,18 @@ extern int hisi_nve_direct_access_for_rdr(
 #include <linux/suspend.h>
 #include <linux/vmalloc.h>
 #include "rdr_internal.h"
+#include "drv_reset.h"
+#include <linux/hisi/hi6402_hifi_misc.h>
+#ifndef CONFIG_ARM64
+#include "../hi3630dsp/hifi_lpp.h"
+#endif
 
 #ifdef _HIFI_WD_DEBUG
 #define HIFI_WD_DEBUG
+#endif
+
+#ifdef HIFI_WD_DEBUG
+#include <drv_reset.h>
 #endif
 
 atomic_t volatile rdr_inited = ATOMIC_INIT(0);
@@ -87,7 +102,7 @@ static u32 rdr_dump_stack[RDR_DUMP_STACK_DEEP];
 	((((struct task_struct *)task_tcb)->pid & 0xffff) | \
 	((unsigned int)(((struct task_struct *)task_tcb)->real_parent->pid \
 	& 0xffff) << 16))
-
+/*lint -e750 */
 #define RDR_TIMEOF_DAY 0
 #define RDR_PRINTK_TIME 1
 
@@ -96,30 +111,62 @@ static u32 rdr_dump_stack[RDR_DUMP_STACK_DEEP];
 #define SCBBPDRXSTAT1	0x534
 #define SCBBPDRXSTAT2	0x538
 #define SCLPM3CTRL      0x510
+/*lint +e750 */
 
 #define ASP_CFG_BASE    0xE804E000
 
 #define CRG_PERI_BASE   0xFFF35000 /*need fixup*/
+/*lint -e750 */
 #define CRGPERIPHIOM3CTRL 0x1F0   /*IOM3 NMI,bit4*/
 #define CRGPERIPHPERCTRL3 0x12C   /*CP NMI,bit12*/
+/*lint +e750 */
 
 static void __iomem *rdr_sctrl_base;
 static void __iomem *rdr_aspcfg_base;
 static void __iomem *rdr_crgperi_base;
 
+#ifdef CONFIG_HUAWEI_NFF
+#define INVALID_U32      (0x89748974)
+#endif
+
 #ifdef CONFIG_HISI_REBOOT_TYPE
 extern void set_watchdog_resetflag(void);
 #endif
 
+#define NUM_STATION 4
+#define NUM_LONG 5
+#define CHANGE_BASE  10
+
+struct linux_dirent {
+          unsigned long   d_ino;
+          unsigned long   d_off;
+          unsigned short  d_reclen;
+          char            d_name[1];
+  };
+
+#ifdef CONFIG_HUAWEI_NFF
+extern void nff_log_event_subsys_err(unsigned int mod_id, unsigned int arg1,
+				unsigned int arg2, unsigned int arg3);
+extern void nff_log_event_reset(void);
+#endif
 
 #ifdef HIFI_WD_DEBUG
 #define CFG_DSP_NMI 0x3C               /*DSP NMI ,bit0-bit15*/
-#define HIFI_WTD_FLAG_BASE            (0x37DF5400)
-#define HIFI_WTD_FLAG_NMI              (HIFI_WTD_FLAG_BASE + 0x8)
 #define UCOM_HIFI_WTD_NMI_COMPLETE             (0xB5B5B5B5)
+#ifdef CONFIG_ARM64
+#define HIFI_WTD_FLAG_BASE		(0x37C75400)
+#define HIFI_WTD_FLAG_NMI		(HIFI_WTD_FLAG_BASE + 0x8)
+#define DRV_DSP_POWER_STATUS_ADDR		(0x37c02020)
+#define DRV_DSP_POWER_ON				(0x55AA55AA)
+#define DRV_DSP_POWER_OFF				(0x55FF55FF)
+
+extern bool hifi_is_power_on(void);
+#endif
 
 extern int hifireset_runcbfun (DRV_RESET_CALLCBFUN_MOMENT eparam);
-
+#ifdef CONFIG_PROC_POSTFSDATA
+extern int wait_for_postfsdata(unsigned int timeout);
+#endif
 
 static int g_cpu_state = 1;
 static DEFINE_SPINLOCK(rdr_v_hifi_mb_lock);
@@ -259,6 +306,7 @@ int rdr_nv_init(void)
 
 	pr_info("rdr:rdr nv init\n");
 	atomic_set(&rdr_nv.ready, 0);
+    atomic_set(&rdr_nv.update,0);
 	memset(&nv, 0, sizeof(nv));
 	/* write value to nv if necessary. */
 
@@ -318,13 +366,28 @@ int rdr_nv_init(void)
 	return 0;
 }
 
+void rdr_nv_update(void)
+{
+    if (atomic_read(&rdr_nv.update) == 1) {
+        pr_info("rdr:%s():rdr_nv has updated.\n", __func__);
+        return;
+    }
+    if (atomic_read(&rdr_nv.ready) != 1) {
+		pr_info("rdr:%s():GetNV Error.\n", __func__);
+		return;
+	}
+    rdr_nv_init();
+    atomic_set(&rdr_nv.update, 1);
+    return;
+}
+
 u32 rdr_nv_get_value(enum rdr_nv_e nv_option)
 {
 	u32 ret;
 
 	if (atomic_read(&rdr_nv.ready) != 1) {
 		pr_info("rdr:%s():cantGetNV,Onlysave8M\n", __func__);
-		return (nv_option == RDR_NV_RDR) ? 1 : 0;
+		return (nv_option == RDR_NV_RDR) ? (u32)1 : (u32)0;
 	}
 	switch (nv_option) {
 	case RDR_NV_RDR:
@@ -385,6 +448,12 @@ u32 rdr_nv_get_value(enum rdr_nv_e nv_option)
 	pr_info("rdr:%s():hisi nv isnt config,default not save.\n", __func__);
 	return (nv_option == RDR_NV_RDR) ? 1 : 0;
 }
+
+void rdr_nv_update(void)
+{
+	pr_info("rdr:%s():hisi nv isnt config,dont update.\n", __func__);
+	return;
+}
 #endif
 
 #define DUMP_PRINT_SIZE (0x4000)
@@ -399,7 +468,9 @@ struct field_rec_s {
 	u32 user_data;
 	u32 task_switch_queue;
 	u32 int_queue;
+#if 0  //delete by xiehongliang for seattle.
 	u32 int_list_queue;
+#endif
 	u32 task_stack;
 	u32 exc_task_stack;
 	u32 alltask_queue; /* record task command name */
@@ -437,8 +508,10 @@ int rdr_record_register(void)
 			RDR_FID_TASK_SWITCH, RDR_Q, 1024 * 4));
 	RDR_ASSERT(rdr_afreg(fr.int_queue,
 			RDR_FID_INT_SWITCH, RDR_Q, 1024 * 4));
+#if 0  //delete by xiehongliang for seattle.
 	RDR_ASSERT(rdr_afreg(fr.int_list_queue,
 			RDR_FID_INT_LIST, RDR_Q, 1024 * 4));
+#endif
 	RDR_ASSERT(rdr_afreg(fr.task_stack,
 			RDR_FID_ALLTASK_STACK, RDR_Q, 1024 * 1024));
 	RDR_ASSERT(rdr_afreg(fr.exc_task_stack,
@@ -491,7 +564,6 @@ void dump_save_printk(void)
 	return;
 }
 
-/* < DTS2013121004716 wangdedong 00204535 2013.12.10 begin */
 static volatile int rdr_not_dump_stack;
 
 int rdr_get_not_dump_stack(void)
@@ -503,29 +575,20 @@ static void rdr_set_not_dump_stack(int value)
 {
 	rdr_not_dump_stack = value;
 }
-/* DTS2013121004716 wangdedong 00204535 2013.12.10 end   > */
 
-/* < DTS2013122401935 wangdedong 00204535 2013.12.24 begin */
 atomic_t rdr_crit_dump_stack = ATOMIC_INIT(0);
 DEFINE_SPINLOCK(g_rdr_dump_stack_lock);
-/* DTS2013122401935 wangdedong 00204535 2013.12.24 end > */
-/* < DTS2013121903438 wangdedong 00204535 2013.12.19 begin */
 static u32 rdr_stack_queue_buf[RDR_DUMP_STACK_DEEP + 16];
-/* DTS2013121903438 wangdedong 00204535 2013.12.19 end > */
 static void stack_queue(u32 field, u32 *buf, u32 byte, struct task_struct *task)
 {
 	u32 i;
 	struct hisi_ringbuffer_s *q =
 			field_addr(struct hisi_ringbuffer_s, field);
-	/* < DTS2013121903438 wangdedong 00204535 2013.12.19 begin */
 	u32 *qbuf = rdr_stack_queue_buf;
-	/* DTS2013121903438 wangdedong 00204535 2013.12.19 end > */
-	/* < DTS2013122401935 wangdedong 00204535 2013.12.24 begin */
 	if (in_interrupt())
 		return;
 	rdr_spin_lock(&g_rdr_dump_stack_lock);
 	atomic_set(&rdr_crit_dump_stack, 1);
-	/* DTS2013122401935 wangdedong 00204535 2013.12.24 end > */
 
 	if (buf == NULL)
 		byte = 0;
@@ -542,13 +605,69 @@ static void stack_queue(u32 field, u32 *buf, u32 byte, struct task_struct *task)
 	for (i = 0; i < RDR_DUMP_STACK_DEEP; i++)
 		qbuf[i + byte / sizeof(u32)] = rdr_dump_stack[i];
 	hisi_ringbuffer_write(q, qbuf);
-	/* < DTS2013122401935 wangdedong 00204535 2013.12.24 begin */
 	atomic_set(&rdr_crit_dump_stack, 0);
 	rdr_spin_unlock(&g_rdr_dump_stack_lock);
-	/* DTS2013122401935 wangdedong 00204535 2013.12.24 end > */
 	return;
 }
+#ifdef CONFIG_ARM64
+void dump_save_all_task(void)
+{
+	char tmp_mem[512];
+	u32 buf[4];
+	u32 tmp_size, total_size = 0;
+	struct cpu_context *cpu_con;
+	struct task_struct *p_tid;
+	char *task_data = field_addr(char, fr.task_info);
+	u32 task_data_size = rdr_field_size(fr.task_info);
 
+	snprintf(tmp_mem, 256, "pid\tppid\tstate\tpolicy\tprio\tstackbase\tstackend\tcomm\t"
+		"x19\tx20\tx21\tx22\tx23\tx24\tx25\tx26\tx27\tx28\tfp\tsp\tpc\n");
+	tmp_size = strlen(tmp_mem);
+	strncpy(task_data, tmp_mem, tmp_size);
+	task_data += tmp_size;
+	total_size += tmp_size;
+
+	rcu_read_lock();
+	for_each_process(p_tid) {
+		task_lock(p_tid);
+		/*pr_info("============pid:%d====\n", p_tid->pid);*/
+		cpu_con = &(p_tid->thread.cpu_context);
+		snprintf(tmp_mem, 512, "%d\t%d\t%d\t%d\t%d\t0x%x\t0x%x\t%s\t"
+			"0x%lx\t0x%lx\t0x%lx\t0x%lx\t0x%lx\t0x%lx\t0x%lx\t0x%lx\t"
+			"0x%lx\t0x%lx\t0x%lx\t0x%lx\t0x%lx\n",
+			p_tid->pid, p_tid->real_parent->pid, (int)p_tid->state,
+			p_tid->policy, p_tid->prio,
+			(u32)((char *)p_tid->stack + THREAD_SIZE),
+			(u32)end_of_stack(p_tid),
+			p_tid->comm,
+			cpu_con->x19, cpu_con->x20, cpu_con->x21,
+			cpu_con->x22, cpu_con->x23, cpu_con->x24,
+			cpu_con->x25, cpu_con->x26, cpu_con->x27,
+			cpu_con->x28, cpu_con->fp, cpu_con->sp,
+			cpu_con->pc);
+		tmp_size = strlen(tmp_mem);
+		if (total_size + tmp_size >= task_data_size) {
+			*task_data = '\0';
+			task_unlock(p_tid);
+			rcu_read_unlock();
+			return;
+		}
+
+		strncpy(task_data, tmp_mem, tmp_size);
+		task_data += tmp_size;
+		total_size += tmp_size;
+
+		queue_time_in(buf);
+		buf[2] = 0x6b736174;/* task tag */
+		buf[3] = (u32)p_tid->pid;
+		stack_queue(fr.task_stack, buf, sizeof(buf), p_tid);
+		task_unlock(p_tid);
+	}
+	*task_data = '\0';
+	rcu_read_unlock();
+	return;
+}
+#else
 void dump_save_all_task(void)
 {
 	char tmp_mem[256];
@@ -604,6 +723,7 @@ void dump_save_all_task(void)
 	rcu_read_unlock();
 	return;
 }
+#endif
 
 void suspend_resume_hook(u32 old_state, u32 new_state)
 {
@@ -647,7 +767,7 @@ void dump_task_switch_hook(const void *old_tcb, void *new_tcb)
 #endif
 	hisi_ringbuffer_write(q, qbuf);
 
-	g_rdr_base->current_task = (u32)(((struct task_struct *)new_tcb)->pid);
+	g_rdr_base->current_task = (unsigned long )(((struct task_struct *)new_tcb)->pid);
 
 	/*check whether we have recorded the task name:*/
 	if (magic == (int)new_tcb)
@@ -697,8 +817,8 @@ void dump_int_switch_hook(u32 exit, u32 oldvec, u32 newvec)
 
 	return;
 }
-
-void interrupts_list_hook(u32 is_add, u32 irq, u32 irq_name)
+#if 0  //delete by xiehongliang for seattle.
+void interrupts_list_hook(u32 is_add, u32 irq, unsigned long  irq_name)
 {
 	u32 buffer[3];
 	u32 qbuf[5];
@@ -727,7 +847,7 @@ void interrupts_list_hook(u32 is_add, u32 irq, u32 irq_name)
 
 	return;
 }
-
+#endif
 static void rdr_save_global_info(u32 mod_id)
 {
 	u32 reason = (mod_id & HISI_RDR_MOD_EXCE_MASK);
@@ -741,6 +861,9 @@ static void rdr_save_global_info(u32 mod_id)
 			pbb->top_head.except_reason = (mod_id & HISI_RDR_MOD_EXCE_MASK);
 			pbb->top_head.except_core = (mod_id & RDR_MOD_NCP_MASK);
 		}
+	} else if (rdr_is_ap_reboot_cp_modid(mod_id)) {
+	    pbb->top_head.except_reason = HISI_RDR_MOD_EXCE_NORMAL;
+		pbb->top_head.except_core = RDR_MOD_CORE_CP;
 	} else
 		pr_info("rdr:reason should be filled by CP/M3,id:%x\n", mod_id);
 
@@ -773,7 +896,7 @@ static void rdr_save_base(u32 mod_id, u32 arg1, u32 arg2, char *data, u32 len)
 			else {
 				struct task_struct *t;
 				t = (struct task_struct *)g_rdr_base->current_task;
-				g_rdr_base->reboot_task = (u32)t;
+				g_rdr_base->reboot_task = (unsigned long )t;
 				if (NULL != (void *)t) {
 					memcpy(g_rdr_base->task_name, t->comm, 16);
 					stack_queue(fr.exc_task_stack, NULL, 0, t);
@@ -791,7 +914,20 @@ static void rdr_save_base(u32 mod_id, u32 arg1, u32 arg2, char *data, u32 len)
 			g_rdr_base->modid = 0x7;
 		else
 			g_rdr_base->modid = mod_id;
-	} else {
+	} else if(rdr_is_ap_reboot_cp_modid(mod_id)) {
+        g_rdr_base->reboot_int = 0xffffffff;
+        g_rdr_base->reboot_task = 0xffffffff;
+        memset(g_rdr_base->task_name, 0, sizeof(g_rdr_base->task_name));
+        if(mod_id == HISI_RDR_MOD_CP_RILD) {
+            g_rdr_base->reboot_task = 11;
+            memcpy(g_rdr_base->task_name, RDR_STR_TASKNAME_RILD, strlen(RDR_STR_TASKNAME_RILD));
+        } else if(mod_id == HISI_RDR_MOD_CP_3RD) {
+            g_rdr_base->reboot_task = 12;
+            memcpy(g_rdr_base->task_name, RDR_STR_TASKNAME_3RD_CP, strlen(RDR_STR_TASKNAME_3RD_CP));
+        }
+        g_rdr_base->modid = mod_id;
+	}
+    else {
 		g_rdr_base->reboot_task = 0xffffffff;
 		g_rdr_base->reboot_int = 0xffffffff;
 		memset(g_rdr_base->task_name, 0, sizeof(g_rdr_base->task_name));
@@ -832,7 +968,7 @@ static void rdr_system_error_enter(void)
 }
 
 /* transfer value from hisi_system_error to here.the value is current task */
-static u32 rdr_current_task;
+static unsigned long  rdr_current_task;
 
 static void dump_save_exc_task(void)
 {
@@ -986,24 +1122,79 @@ void rdr_record_resetlog(void)
 	return;
 }
 
+void rdr_save_cpinfo(struct rdr_struct_s *bb, char *timedir)
+{
+    struct rdr_a1_reserve_s *r;
+    u8 *cpinfo;
+	char reset_info[RDR_DUMP_CP_INFO_MAX_LEN] = {0};
+    char xname[RDR_FNAME_LEN] = {0};
+	int ret;
+
+    r = ((struct rdr_a1_reserve_s *)(rdr_core_addr(bb, RDR_AREA_RESERVE)));
+    cpinfo = r->cp_reserve.content.rdr_cpinfo;
+
+    if(!rdr_is_cp_modid(g_rdr_base->modid)) {
+        pr_info("rdr:reset core is not cp.\n");
+        return;
+    }
+
+    memset(xname,0,sizeof(xname));
+    snprintf(xname, RDR_FNAME_LEN-1,"%s%s/reset.log", OM_ROOT_PATH, timedir);/* [false alarm]: RDR_FNAME_LEN-1 As expected  */
+
+    /*ap reboot cp*/
+    if(rdr_is_ap_reboot_cp_modid(g_rdr_base->modid)) {
+        pr_info("rdr:ap reboot cp, ap save to reset log\n");
+        snprintf(reset_info, sizeof(reset_info)-1,"reboot_context:0x%x\n"
+        "reboot_task:0x%x\ntask_name:%s\nreboot_int:0x%x\n"
+        "modid:0x%x\narg1:0x%x\narg2:0x%x\narg3:0x%x\narg3_len:0x%x\nvec:0x%x\n",
+        g_rdr_base->reboot_context,g_rdr_base->reboot_task,g_rdr_base->task_name,
+        g_rdr_base->reboot_int,g_rdr_base->modid,g_rdr_base->arg1,
+        g_rdr_base->arg2,g_rdr_base->arg3,g_rdr_base->arg3_length,g_rdr_base->vec);
+        ret = rdr_append_file(xname, (void *)reset_info,strlen(reset_info), RDR_RESET_LOG_MAX); /*RDR_RESET_LOG*/
+		if (ret != 0) {
+			pr_err("rdr:ap save to reset log failed\n");
+		}
+        return;
+    }
+
+    /*cp info*/
+    if(*cpinfo != '\0') {
+        pr_info("rdr:save cpinfo to reset log\n");
+        ret = rdr_append_file(xname, (void *)cpinfo,RDR_DUMP_CP_INFO_MAX_LEN, RDR_RESET_LOG_MAX); /*RDR_RESET_LOG*/
+		if (ret != 0) {
+			pr_err("rdr:save cpinfo failed\n");
+		}
+    }
+    return;
+}
+
 void rdr_save_resetlog(struct rdr_struct_s *bb, char *timedir)
 {
 	struct rdr_a1_reserve_s *r;
 	u8 *resetlog;
 	char xname[RDR_FNAME_LEN] = {0};
+	int ret;
 
+    /*save reset log all the time*/
+    /*
 	if (rdr_nv_get_value(RDR_NV_RESETLOG) == 0)
 		return;
+	*/
 	r = ((struct rdr_a1_reserve_s *)(rdr_core_addr(bb, RDR_AREA_RESERVE)));
 	resetlog = r->ap_cp_share.content.resetlog;
 
 	if (*resetlog != '\0') {
 		pr_info("save reset log:%s\n", resetlog);
-		snprintf(xname, sizeof(xname),
-			"%s%s/reset.log", OM_ROOT_PATH, timedir);
-		rdr_append_file(xname, (void *)resetlog,
+		snprintf(xname, RDR_FNAME_LEN-1,
+			"%s%s/reset.log", OM_ROOT_PATH, timedir);  /* [false alarm]: RDR_FNAME_LEN-1 As expected  */
+		ret = rdr_append_file(xname, (void *)resetlog,
 			strlen(resetlog), RDR_RESET_LOG_MAX); /*RDR_RESET_LOG*/
+		if (ret != 0) {
+			pr_err("rdr:save reset log failed\n");
+		}
 	}
+
+    rdr_save_cpinfo(bb, timedir);
 
 	return;
 }
@@ -1013,9 +1204,10 @@ void rdr_save_resetlog(struct rdr_struct_s *bb, char *timedir)
 
 #define dump_save_ext_done() \
 	({g_rdr_global->app.ext_save_flag = DUMP_SAVE_SUCCESS; })
-
+/*lint -e750 */
 #define dump_save_done()\
 		({g_rdr_global->app.save_file_flag = DUMP_SAVE_FILE_END; })
+/*lint +e750 */
 
 struct rdr_field_hook_s {
 	struct list_head hook_list;
@@ -1062,10 +1254,12 @@ s32 rdr_dump_register_hook(int field_id, void *func)
 }
 EXPORT_SYMBOL_GPL(rdr_dump_register_hook);
 
+/*lint -e750 */
 #define HIFI_DIE_NOTIFY_LPM3 ((0 << 24) | (16 << 16) | (3 << 8) | (1 << 0))
 #define NOT_HIFI_LPM3_NOTIFY_LPM3 ((0 << 24) | (16 << 16) | (3 << 8) | (3 << 0))
 #define LPM3_SAVE_OK_NOTIFY_AP ((8 << 24) | (16 << 16) | (3 << 8) | (3 << 0))
 #define LPM3_PWROFF_HIFI_OK_NOTIFY_AP ((8 << 24) | (16 << 16) | (3 << 8) | (1 << 0))
+/*lint +e750 */
 
 static void rdr_notify_other_core(u32 mod_id)
 {
@@ -1092,12 +1286,11 @@ noti_is_ap:
 		pr_info("rdr:cp excep,nofify iom3(nmi),lpm3(ipc)\n");
 		/*hisi_rdr_ipc_notify_cp();*/
 		/*hisi_rdr_ipc_notify_iom3(&msg, 1);*/
+        if(rdr_is_ap_reboot_cp_modid(mod_id)) {
+            hisi_rdr_ipc_notify_cp();
+        }
 		msg = NOT_HIFI_LPM3_NOTIFY_LPM3;
 		hisi_rdr_ipc_notify_lpm3(&msg, 1);
-		/* DTS2014021600298 wangdedong 2014.2.16 begin
-		if ((mod_id & HISI_RDR_MOD_EXCE_MASK) == HISI_RDR_MOD_EXCE_WD)
-			hisi_rdr_nmi_notify_cp();
-		DTS2014021600298 wangdedong 2014.2.16 end */
 
 		//hisi_rdr_nmi_notify_iom3();
 		/*hisi_rdr_ipc_notify_asp(&msg, 1);*/ /*need fixup*/
@@ -1107,7 +1300,15 @@ noti_is_ap:
 #ifdef HIFI_WD_DEBUG
 			hifireset_runcbfun(DRV_RESET_CALLCBFUN_RESET_BEFORE);
 			reset_set_cpu_status(0, 0);
+#ifdef CONFIG_ARM64
+			if ((hifi_is_power_on())) {
+				hisi_rdr_nmi_notify_hifi();
+			} else {
+				pr_err("hifi is power off, do not send nmi. \n");
+			}
+#else
 			hisi_rdr_nmi_notify_hifi();
+#endif
 #else
 			pr_info("rdr:hifi excep,nofify lpm3(ipc)\n");
 			msg = HIFI_DIE_NOTIFY_LPM3;
@@ -1123,7 +1324,7 @@ noti_is_ap:
 		}
 
 		pr_info("rdr:iom3 excep,nofify cp(ipc)\n");
-		hisi_rdr_ipc_notify_cp();
+		/*hisi_rdr_ipc_notify_cp();*/
 		/*hisi_rdr_ipc_notify_asp(&msg, 1);*/
 		break;
 	case HISI_RDR_MOD_CORE_LPM3:
@@ -1276,6 +1477,14 @@ int rdr_is_cp_modid(u32 mod)
 	return 0;
 }
 
+int rdr_is_ap_reboot_cp_modid(u32 mod)
+{
+    if(HISI_RDR_MOD_CP_RILD == mod || HISI_RDR_MOD_CP_3RD == mod) {
+        return 1;
+    }
+    return 0;
+}
+
 int rdr_modid_is_known(u32 mod)
 {
 	if ((mod >= 0x80000000) && (mod <= 0x8fffffff)) /* ap iom3 lpm3 ... */
@@ -1288,7 +1497,8 @@ int rdr_modid_is_known(u32 mod)
 
 int rdr_need_reboot(u32 modid)
 {
-	if ((modid & HISI_RDR_MOD_CORE_MASK) == HISI_RDR_MOD_CORE_HIFI)
+	if (((modid & HISI_RDR_MOD_CORE_MASK) == HISI_RDR_MOD_CORE_HIFI)||
+		((modid & HISI_RDR_MOD_CORE_MASK) == HISI_RDR_MOD_CORE_IOM3))
 		return 0;  /*system will be have no reset when HIFI have exce*/
 	if ((modid & HISI_RDR_MOD_CORE_MASK) == HISI_RDR_MOD_CORE_AP) {
 		if ((modid & HISI_RDR_MOD_EXCE_MASK) == HISI_RDR_MOD_EXCE_PANIC)
@@ -1362,19 +1572,26 @@ void hisi_system_error(enum rdr_modid_e mod_id,
 {
 	if (1 != atomic_read(&rdr_inited))
 		return;
-	rdr_current_task = (u32)get_current();
+
+#ifdef HIFI_WD_DEBUG
+	if ((HISI_RDR_MOD_HIFI_WD == mod_id) && (0 == BSP_CPU_StateGet(0))) {
+		pr_err("hifi watchdog reentry! \n");
+		return;
+	}
+#endif
+
+	rdr_current_task = (unsigned long )get_current();
 	/* save userdata to 8m. */
 	dump_save_usr_data(data, length);
 	hisi_register_system_error(mod_id, arg1, arg2, data, length);
 	wake_lock(&rdr_wake_lock);
 	up(&rdr_sem);
-
 	return;
 }
 
 void dump_exc_hook(void *curr_task_id, int vec, const u32 *p_reg)
 {
-	u32 curr_task_pid = (u32)(((struct task_struct *)curr_task_id)->pid);
+	unsigned long  curr_task_pid = (unsigned long )(((struct task_struct *)curr_task_id)->pid);
 	static int v_exc_hook_enter;
 	size_t reg_set_size = (size_t)(ARM_REGS_NUM * 4);
 
@@ -1391,7 +1608,7 @@ void dump_exc_hook(void *curr_task_id, int vec, const u32 *p_reg)
 	memcpy(g_rdr_base->regset, (const void *)p_reg, reg_set_size);
 
 	pr_info("rdr:onlyDumpMem,dontSave,id:0x%08x\n", HISI_RDR_MOD_AP_PANIC);
-	rdr_current_task = (u32)curr_task_id;
+	rdr_current_task = (unsigned long )curr_task_id;
 	rdr_system_dump(HISI_RDR_MOD_AP_PANIC, HISI_RDR_MOD_EXCE_PANIC, 0, 0, 0);
 
 	return;
@@ -1441,7 +1658,7 @@ void rdr_warn_on_hook(void)
 EXPORT_SYMBOL(rdr_warn_on_hook);
 
 #ifdef CONFIG_DETECT_HUNG_TASK
-static void rdr_hung_task_hook(u32 tsk, u32 timeout)
+static void rdr_hung_task_hook(unsigned long tsk, unsigned long timeout)
 {
 	struct task_struct *task = (struct task_struct *)tsk;
 	u32 buf[5];
@@ -1488,20 +1705,20 @@ static void cpu_on_off_hook(u32 cpu, u32 cluster, u32 on)
 static void rdr_register_hook_func(void)
 {
 	static atomic_t rdr_reboot_hook_on = ATOMIC_INIT(0);
-#ifndef CONFIG_HISI_RDR_SWITCH
+#ifdef CONFIG_HISI_RDR_SWITCH
 	if (1 == g_dump_cfg.dump_cfg.bits.task_switch) {
 		(void)task_switch_hook_add(
 			(rdr_funcptr_2)dump_task_switch_hook);
 	}
-
 	if (1 == g_dump_cfg.dump_cfg.bits.int_switch)
 		int_switch_hook_add(dump_int_switch_hook);
 
 	atomic_set(&syscall_hook_on, 1);
 #endif
-
+#if 0  //delete by xiehongliang for seattle.
 	if (1 == g_dump_cfg.dump_cfg.bits.int_switch)
 		interrupts_list_hook_add(interrupts_list_hook);
+#endif
 	if (1 == g_dump_cfg.dump_cfg.bits.arm_exc)
 		exc_hook_add((rdr_funcptr_3)dump_exc_hook);
 
@@ -1641,6 +1858,7 @@ static int dump_need_save(struct rdr_struct_s *bb)
 #define RDR_SAVE_HIFI          (DDR_HIFI_ADDR)
 #define RDR_LPM3_SRAM96K_START 0x00020000
 
+/*lint -e750 */
 #define RDR_MODEM_SZ (DDR_MEM_SIZE - DDR_SHARED_MEM_SIZE - DDR_HIFI_SIZE-DDR_SOCP_SIZE)
 #define RDR_MODEM_SHARE_SZ  (DDR_SHARED_MEM_SIZE)
 #define RDR_SOCP_SZ         (DDR_SOCP_SIZE)
@@ -1652,6 +1870,7 @@ static int dump_need_save(struct rdr_struct_s *bb)
 
 #define HIFI_OCRAM_PHY_START	(0xE8000000)
 #define HIFI_OCRAM_SIZE			(256*1024)
+/*lint +e750 */
 
 int dump_hifi_ddr(char *timedir)
 {
@@ -1663,7 +1882,7 @@ int dump_hifi_ddr(char *timedir)
 		return 0;
 
 	/* save hifi 9M ddr mem */
-	snprintf(xname, sizeof(xname), "%s%s/hifi3.bin", OM_ROOT_PATH, timedir);
+	snprintf(xname, RDR_FNAME_LEN-1, "%s%s/hifi3.bin", OM_ROOT_PATH, timedir);  /* [false alarm]: RDR_FNAME_LEN-1 As expected  */
 	ret = rdr_loopwrite_open(xname, &fd);/*RDR_HIFI_BIN*/
 	if (ret != 0) {
 		pr_err("rdr:open %s failed\n", xname);
@@ -1702,7 +1921,7 @@ int dump_hifi_tcm(char *timedir)
 	void *start = NULL, *buf = NULL;
 	char xn[RDR_FNAME_LEN] = {0};
 
-	snprintf(xn, sizeof(xn), "%s%s/hifi3_tcm.bin", OM_ROOT_PATH, timedir);
+	snprintf(xn, sizeof(xn), "%s%s/hifi3_tcm.bin", OM_ROOT_PATH, timedir); /* [false alarm]: RDR_FNAME_LEN-1 As expected */
 	ret = rdr_loopwrite_open(xn, &fd);/*RDR_HIFI_TCM*/
 	if (ret != 0) {
 		pr_err("rdr:open %s failed\n", xn);
@@ -1744,7 +1963,7 @@ int dump_hifi_ocram(char *timedir)
 	void *start = NULL;
 	char xn[RDR_FNAME_LEN] = {0};
 
-	snprintf(xn, sizeof(xn), "%s%s/hifi3_ocram.bin", OM_ROOT_PATH, timedir);
+	snprintf(xn, sizeof(xn), "%s%s/hifi3_ocram.bin", OM_ROOT_PATH, timedir); /* [false alarm]: RDR_FNAME_LEN-1 As expected */
 	ret = rdr_loopwrite_open(xn, &fd);/*RDR_HIFI_OCRAM*/
 	if (ret != 0) {
 		pr_err("rdr:open %s failed\n", xn);
@@ -1777,12 +1996,25 @@ void rdr_save_hifi(int mod_id, char *timedir)
 	rdr_looprw_set_state(1);
 
 	ret = dump_hifi_ddr(timedir);
-	pr_info("rdr:%s():save hifi:%s\n", __func__, ret ? "fail" : "success");
+	pr_info("rdr:%s():save hifi:%s, mod_id = 0x%x, timedir = %s\n", __func__, ret ? "fail" : "success", mod_id, timedir);
 
 	/*HIFI WD ERR  save tcm and ocram data and reset hifi image*/
 	if (mod_id == HISI_RDR_MOD_HIFI_WD) {
 		/* save hifi tcm mem */
-		if (rdr_nv_get_value(RDR_NV_HIFI_TCM) == 1) {
+#ifdef CONFIG_ARM64
+		if ((rdr_nv_get_value(RDR_NV_HIFI_TCM) == 1) && (hifi_is_power_on())) {
+			ret = dump_hifi_tcm(timedir);
+			pr_info("%s:dump hifi tcm,%s\n", __func__,
+					ret ? "fail" : "success");
+		}
+		/* save hifi ocram mem: */
+		if ((rdr_nv_get_value(RDR_NV_HIFI_OCRAM) == 1) && (hifi_is_power_on())) {
+			ret = dump_hifi_ocram(timedir);
+			pr_info("rdr:%s():dump_hifi_ocram,%s\n", __func__,
+					ret ? "fail" : "success");
+		}
+#else
+        if (rdr_nv_get_value(RDR_NV_HIFI_TCM) == 1) {
 			ret = dump_hifi_tcm(timedir);
 			pr_info("%s:dump hifi tcm,%s\n", __func__,
 					ret ? "fail" : "success");
@@ -1793,11 +2025,33 @@ void rdr_save_hifi(int mod_id, char *timedir)
 			pr_info("rdr:%s():dump_hifi_ocram,%s\n", __func__,
 					ret ? "fail" : "success");
 		}
+#endif
+
 		/*reset hifi ddr bss section*/
 		ret = reset_hifi_sec();
 		pr_info("rdr:%s():reset hifi sec,%s\n", __func__,
 				ret ? "fail" : "success");
 	}
+#ifdef CONFIG_ARM64
+	/*save tcm and ocram data */
+	if (mod_id == HISI_RDR_MOD_CP_PANIC
+	    || mod_id == HISI_RDR_MOD_CP_WD
+        || mod_id == HISI_RDR_MOD_CP_NORMAL
+	    ) {
+		/* save hifi tcm mem */
+		if ((rdr_nv_get_value(RDR_NV_HIFI_TCM) == 1) && (hifi_is_power_on())) {
+			ret = dump_hifi_tcm(timedir);
+			pr_info("rdr:%s:modem reset,dump hifi tcm,%s\n", __func__,
+					ret ? "fail" : "success");
+		}
+		/* save hifi ocram mem: */
+		if ((rdr_nv_get_value(RDR_NV_HIFI_OCRAM) == 1) && (hifi_is_power_on())) {
+			ret = dump_hifi_ocram(timedir);
+			pr_info("rdr:%s():modem reset,dump_hifi_ocram,%s\n", __func__,
+					ret ? "fail" : "success");
+		}
+	}
+#endif
 
 	rdr_looprw_set_state(0); /* restore fs read/write to origin state */
 
@@ -1819,7 +2073,7 @@ int rdr_128m_modem(char *timedir)
 	/* save modem phymem: */
 	rdr_looprw_set_state(1);
 	err = 0;
-	snprintf(xname, sizeof(xname), "%s%s/modem.bin", OM_ROOT_PATH, timedir);
+	snprintf(xname, RDR_FNAME_LEN-1, "%s%s/modem.bin", OM_ROOT_PATH, timedir); /* [false alarm]: RDR_FNAME_LEN-1 As expected  */
 	ret = rdr_loopwrite_open(xname, &fd);/*RDR_MODEM_BIN*/
 	if ((ret != 0) || (fd == -1)) {
 		pr_err("rdr:open %s failed\n", xname);
@@ -1880,8 +2134,7 @@ int rdr_128m_modem_share(char *timedir)
 	if (rdr_nv_get_value(RDR_NV_MODEM_SHARE) == 0)
 		return 0;
 	/* save modem sharemem: 0x36200000 3m */
-	ret = sizeof(xname);
-	snprintf(xname, ret, "%s%s/modem_share.bin", OM_ROOT_PATH, timedir);
+	snprintf(xname, RDR_FNAME_LEN-1, "%s%s/modem_share.bin", OM_ROOT_PATH, timedir); /* [false alarm]: RDR_FNAME_LEN-1 As expected  */
 	rdr_remove_file(xname);/*RDR_MODEM_SHARE_BIN*/
 	start = ioremap(RDR_SAVE_MODEM_SHARE, RDR_MODEM_SHARE_SZ);
 	if (start == NULL) {
@@ -1992,8 +2245,8 @@ void rdr_save_sdram96k(char *time_dir)
 	pr_info("rdr:%s():enter\n", __func__);
 
 	/* save sram96k: 0xE0800000 96k */
-	snprintf(xname, sizeof(xname),
-		"%s%s/modem_sram.bin", OM_ROOT_PATH, time_dir);
+	snprintf(xname, RDR_FNAME_LEN-1,
+		"%s%s/modem_sram.bin", OM_ROOT_PATH, time_dir);/* [false alarm]: RDR_FNAME_LEN-1 As expected  */
 	rdr_remove_file(xname);/*RDR_MODEM_SRAM96K_BIN*/
 	start = ioremap(RDR_SAVE_SRAM96K_START, RDR_SRAM96K_SZ);
 	if (start == NULL) {
@@ -2114,12 +2367,12 @@ static void dump_queue_init(void)
 	/*the queue init for interrupt switch information:*/
 	hisi_ringbuffer_init(field_addr(struct hisi_ringbuffer_s,
 		fr.int_queue), rdr_field_size(fr.int_queue), 3);
-
+#if 0  //delete by xiehongliang for seattle.
 	/*init the interrupts list queue:*/
 	hisi_ringbuffer_init(field_addr(struct hisi_ringbuffer_s,
 		fr.int_list_queue),
 		rdr_field_size(fr.int_list_queue), 5);
-
+#endif
 	/*the queue init for all task info:*/
 	hisi_ringbuffer_init(field_addr(struct hisi_ringbuffer_s,
 		fr.alltask_queue),
@@ -2174,7 +2427,7 @@ void get_time_stamp(char *timestamp_buf, unsigned int len)
 	}
 	memset(&tv, 0, sizeof(struct timeval));
 	memset(&tm, 0, sizeof(struct rtc_time));
-	if (inquiry_rtc_init_ok()) {
+	if (0/*inquiry_rtc_init_ok()*/) {
 		now = current_kernel_time();
 		rtc_time_to_tm(now.tv_sec, &tm);
 	} else {
@@ -2205,10 +2458,10 @@ void rdr_archive_log(void)
 	}
 }
 
-/*20110101105748_00085.128125*/
-int rdr_is_digital(char *str, size_t len)
+int rdr_is_digital(char *string, size_t len)
 {
 	int i = 0;
+	char* str = string;
 
 	if (str == NULL)
 		return 0;
@@ -2220,6 +2473,7 @@ int rdr_is_digital(char *str, size_t len)
 				return 0;
 		}
 		i++;
+		str++;
 	}
 	if (i == len)
 		return 1;
@@ -2528,7 +2782,7 @@ void rdr_save_bin_addr(void)
 	addr[2] = RDR_SAVE_MODEM_SHARE;
 	addr[3] = RDR_SAVE_SOCP;
 	addr[4] = RDR_SAVE_HIFI;
-	addr[5] = hisi_reserved_debug_phymem;
+	addr[5] = HISI_RESERVED_DEBUG_PHYMEM_BASE;
 }
 
 #ifdef CONFIG_HISI_BALONG_MODEM
@@ -2552,15 +2806,32 @@ int rdr_modem_reset_cb(DRV_RESET_CALLCBFUN_MOMENT stage, int userdata)
 
 extern void top_tmc_disable(char *pdir);
 #ifdef HIFI_WD_DEBUG
+extern void sochifi_watchdog_send_event(void);
+#ifdef CONFIG_ARM64
+extern void notify_hifi_misc_watchdog_coming(void);
+extern struct dsm_client *dsm_audio_client;
+#endif
 static int rdr_do_hifi_reset(int mod_id)
 {
-	void *start = NULL;
+	unsigned int * hifi_power_status_addr = NULL;
 	int i = 0;
 	int ret = 0;
 	u32 msg = 0xdead;
 	char timedir[32];
+#ifdef CONFIG_ARM64
+    void *start = NULL;
+	if (!dsm_client_ocuppy(dsm_audio_client)) {
+		dsm_client_record(dsm_audio_client, "DSM_SOC_HIFI_RESET\n");
+		dsm_client_notify(dsm_audio_client, DSM_SOC_HIFI_RESET);
+	}
+
+	notify_hifi_misc_watchdog_coming();
 
 	start = ioremap(HIFI_WTD_FLAG_NMI, 4);
+	if (NULL == start ) {
+		pr_err("HIFI_WTD_FLAG_NMI ioremap failed\n");
+		return -1;
+	}
 	for (i = 0; i < 100; i++) {
 		if (readl(start) == UCOM_HIFI_WTD_NMI_COMPLETE) {
 			pr_info("hifi dsp dump ok\n");
@@ -2569,13 +2840,24 @@ static int rdr_do_hifi_reset(int mod_id)
 		msleep(20);
 	}
 	if (readl(start) != UCOM_HIFI_WTD_NMI_COMPLETE) {
-		pr_info("hifi dsp dump fail\n");
-		ret = -1;
+		pr_info("maybe hifi do not receive nmi\n");
 	}
 	iounmap(start);
+	start = NULL;
+#endif
 	rdr_get_xtime(pbb, timedir, 32);
 	rdr_save_hifi(mod_id, timedir);
+
 	pr_info("rdr:hifi excep,nofify lpm3 pwr down dsp\n");
+#ifdef CONFIG_ARM64
+	hifi_power_status_addr = ioremap(DRV_DSP_POWER_STATUS_ADDR, 0x4);
+	if (NULL == hifi_power_status_addr) {
+		pr_err("DRV_DSP_POWER_STATUS_ADDR ioremap failed\n");
+		return -1;
+	}
+	writel(DRV_DSP_POWER_OFF, hifi_power_status_addr);
+	iounmap(hifi_power_status_addr);
+#endif
 	msg = HIFI_DIE_NOTIFY_LPM3;
 	hisi_rdr_ipc_notify_lpm3(&msg, 1);
 
@@ -2589,7 +2871,7 @@ static int rdr_do_hifi_reset(int mod_id)
 		ret = -1;
 	}
 	reset_set_cpu_status(1, 0);
-	reset_mediaserver();
+	sochifi_watchdog_send_event();
 	hifireset_runcbfun(DRV_RESET_CALLCBFUN_RESET_AFTER);
 	g_rdr_global->hifi3.save_file_flag = DUMP_INIT_FLAG_WAIT;
 	return ret;
@@ -2604,6 +2886,10 @@ static int rdr_write_thread(void *arg)
 	pr_info("rdr:wait_for_fs_ready start\n");
 	while(wait_for_fs_ready() > 0);
 	pr_info("rdr:wait_for_fs_ready OK end\n");
+
+#ifdef CONFIG_HUAWEI_NFF
+	nff_log_event_reset();
+#endif
 
 	rdr_nv_init();
 	if (rdr_nv_get_value(RDR_NV_RDR) == 0)
@@ -2626,6 +2912,7 @@ static int rdr_write_thread(void *arg)
 	rdr_save_dfx(timedir);
 	rdr_upload(OM_ROOT_PATH, timedir, ecore);
 out:
+	rdr_rm_over3_file(OM_ROOT_PATH);
 	if (rdr_tmp_pbb != NULL) {
 		vfree(rdr_tmp_pbb);
 		rdr_tmp_pbb = NULL;
@@ -2666,32 +2953,162 @@ void rdr_reboot_from_error(int mod_id)
 	}
 }
 
+static int compare_log_number(char *path1, char *path2)
+{
+    int i,num1,num2;
+    char file_number[NUM_LONG+1] = {0};
+
+    if ((strlen(path1) < (NUM_STATION+NUM_LONG+1))
+            || (strlen(path2) < (NUM_STATION+NUM_LONG+1))) {
+        return -EINVAL;
+    }
+
+    for (i=0;i<NUM_LONG;i++) {
+        file_number[i]=path1[i+NUM_STATION];
+    }
+    if (kstrtoint(file_number,CHANGE_BASE, &num1))
+        return -EINVAL;
+    for (i=0;i<NUM_LONG;i++) {
+        file_number[i]=path2[i+NUM_STATION];
+    }
+    if (kstrtoint(file_number,CHANGE_BASE, &num2))
+        return -EINVAL;
+    if (num1 > num2){
+        return 1;
+    }else{
+        return 0;
+    }
+}
+static void rdr_getbalonglogfile(char *path, char *path1, char *path2)
+{
+    if(strlen(path2) == 0) {
+        snprintf(path2, RDR_FNAME_LEN, "%s", path);
+    }
+    else if (1 == compare_log_number(path , path2)){
+        snprintf(path1, RDR_FNAME_LEN, "%s", path2);
+        snprintf(path2, RDR_FNAME_LEN, "%s", path);
+    }
+    else if(strlen(path1) == 0
+        || (1 == compare_log_number(path ,path1))) {
+        snprintf(path1, RDR_FNAME_LEN, "%s", path);
+    }
+    return;
+}
+static void rdr_getfilepath2apr(char *path, char *path1, char *path2)
+{
+    int fd = -1, nread, bpos;
+    char *buf = NULL;
+    char d_type;
+    struct linux_dirent *d;
+    mm_segment_t old_fs;
+    old_fs = get_fs();
+    set_fs(KERNEL_DS);
+    fd = sys_open(path, O_RDONLY, 0755);
+    if (fd < 0) {
+        pr_err("rdr:%s(),open %s fail\n", __func__, path);
+        goto out;
+    }
+    buf = vmalloc(DUMP_BUFF_MAX_SIZE);
+    if (buf == NULL) {
+        pr_err("rdr:%s():vmalloc failed\n", __func__);
+        goto out_vfree;
+    }
+    nread = sys_getdents(fd, (struct linux_dirent *)buf, DUMP_BUFF_MAX_SIZE);
+    if (nread == -1) {
+        pr_err("rdr:%s():sys_getdents failed\n", __func__);
+        goto out_vfree;
+    }
+    else if (nread == 0) {
+        goto out_vfree;
+    }
+    for (bpos = 0; bpos < nread;) {
+        d = (struct linux_dirent *)(buf + bpos);
+        d_type = *(buf + bpos + d->d_reclen - 1);
+        if (d_type == DT_REG){
+            rdr_getbalonglogfile(d->d_name,path1,path2);
+        }
+        bpos += d->d_reclen;
+    }
+out_vfree:
+    vfree(buf);
+out:
+    if (fd >= 0)
+        sys_close(fd);
+    set_fs(old_fs);
+    return ;
+}
 //modem reset notify apr
 void rdr_reset2apr(char *path, u32 mod_id)
 {
-    char update_path[ARCH_NAME_MAX] = {0};
+    char update_path[DUMP_BUFF_MAX_SIZE] = {0};
     char local_time[RDR_TIME_LEN] = {0};
-    
+    char APR_CP_BALONGLTE_PATH_1[RDR_FNAME_LEN]={0};
+    char APR_CP_BALONGLTE_PATH_2[RDR_FNAME_LEN]={0};
     if(path == NULL) {
         pr_err("rdr:rdr_reset2apr the dump dir is null.\n");
         return;
     }
 
     //cp reset notify apr
-    if((mod_id & HISI_RDR_MOD_CORE_MASK) == HISI_RDR_MOD_CORE_CP) {
+    if(((mod_id & HISI_RDR_MOD_CORE_MASK) == HISI_RDR_MOD_CORE_CP)
+        && mod_id != HISI_RDR_MOD_CP_3RD) {
         get_time_stamp(local_time, RDR_TIME_LEN);
 
-        snprintf(update_path,ARCH_NAME_MAX,"archive -i %s -o %s_modemcrash -z zip",path,local_time);
-        
+        if (rdr_nv_get_value(RDR_NV_MODEM_MEM) == 0) {/*for commercial*/
+            snprintf(update_path,ARCH_NAME_MAX,"archive -i %setb.bin -i %sreset.log -i %srdr_modem.bin -o %s_modemcrash -z zip",
+                      path,path,path,local_time);
+        }
+        else { /*for beta*/
+            rdr_getfilepath2apr(BALONGLTE_LOG_DIR_PATH, APR_CP_BALONGLTE_PATH_1, APR_CP_BALONGLTE_PATH_2);
+            snprintf(update_path,ARCH_NAME_MAX,"archive -i %s -i %s -i %s -i %s -i %s -i %s%s -i %s%s -o %s_modemcrash -z zip",
+                      path,APR_CP_CSHELL_PATH_1,APR_CP_CSHELL_PATH_2,APR_CP_ETS_PATH_1,APR_CP_ETS_PATH_2,BALONGLTE_LOG_DIR_PATH,APR_CP_BALONGLTE_PATH_1,BALONGLTE_LOG_DIR_PATH,APR_CP_BALONGLTE_PATH_2,local_time);
+        }
         //notify logserver
-        log_to_exception("rild", update_path);
-        
-        pr_info("rdr:rdr_reset2apr send cp reset dump to apr success.\n");
+        if(log_to_exception("rild", update_path) < 0)
+            pr_err("rdr:%s(): log_to_exception err.\n", __func__);
+        else
+            pr_info("rdr:rdr_reset2apr send cp reset dump to apr success.\n");
     }
-    
+
     return;
 }
+#ifdef CONFIG_HISI_BALONG_MODEM
+void rdr_save_rdr_modem(char *time_dir)
+{
+    int ret;
+    u8 *pcpdumpmem;
+    char xname[RDR_FNAME_LEN] = {0};
+    struct rdr_area_s area_info[RDR_AREA_MAX];
+    u32 max_size = sizeof(struct rdr_top_head_s) + sizeof(struct rdr_area_s) + RDR_AREA_2;
 
+    memset(xname, 0, sizeof(xname));
+	snprintf(xname, sizeof(xname), "%s%s/rdr_modem.bin", OM_ROOT_PATH, time_dir);
+
+    //save head
+    ret = rdr_save_8m(OM_ROOT_PATH, time_dir, "rdr_modem",
+				(void *)(pbb), sizeof(struct rdr_top_head_s));
+
+    //save offset
+    if (!ret)
+    {
+        memset(area_info, 0, sizeof(area_info));
+        area_info[0].offset = sizeof(struct rdr_top_head_s) + sizeof(struct rdr_area_s);
+        area_info[0].length = RDR_AREA_2;
+        ret = rdr_append_file(xname, (void *)(area_info), sizeof(struct rdr_area_s),
+							max_size);
+    }
+
+    //save ccore
+    if(!ret)
+    {
+        pcpdumpmem = (u8 *)rdr_core_addr(pbb, RDR_CCORE);
+        ret = rdr_append_file(xname, (void *)(pcpdumpmem), RDR_AREA_2,
+							max_size);
+    }
+	if (ret != 0)
+		pr_err("rdr:save modem rdr failed\n");
+}
+#endif
 /*
  * save 8m/128m and other mem to fs before reboot. FS is ready now.
  * Dont upload file to server before reboot.
@@ -2701,12 +3118,18 @@ int rdr_save_mem2fs(u32 mod_id)
 	int ret;
 	char time_dir[32];
 	char xname[RDR_FNAME_LEN] = {0};
+
+#ifdef CONFIG_PROC_POSTFSDATA
+	//wait till fs ready
+	wait_for_postfsdata(0);
+#endif
+
 	mm_segment_t old_fs = get_fs();
 	set_fs(KERNEL_DS);
 
 	rdr_get_xtime(pbb, time_dir, 32);
-	memset(xname, 0, sizeof(xname));
-	snprintf(xname, sizeof(xname), "%s%s/", OM_ROOT_PATH, time_dir);
+	memset(xname, 0, RDR_FNAME_LEN);
+	snprintf(xname, RDR_FNAME_LEN-1, "%s%s/", OM_ROOT_PATH, time_dir);
 	pr_info("rdr:create dir %s\n", xname);
 	rdr_create_dir(xname);
 	if (rdr_nv_get_value(RDR_NV_RDR) == 1) {
@@ -2714,6 +3137,9 @@ int rdr_save_mem2fs(u32 mod_id)
 				(void *)(pbb), sizeof(struct rdr_struct_s));
 		if (ret != 0)
 			pr_err("rdr:save 8m failed\n");
+        #ifdef CONFIG_HISI_BALONG_MODEM
+        rdr_save_rdr_modem(time_dir);
+        #endif
 	}
 
 	if (mod_id == HISI_RDR_MOD_AP_PRESS8S) {
@@ -2754,52 +3180,76 @@ void rdr_system_error_process(struct rdr_system_error_param_s *p)
 	u32 length = p->len;
 	static bool reboot_later_flag = false;
 	bool list_empty_flag = false;
+	char timedir[32];
+	char file_dir[RDR_FNAME_LEN];
 
-	pr_info("rdr_system_error_process start mod_id [%08x] !!\n", mod_id);
-	if ((mod_id & HISI_RDR_MOD_EXCE_MASK) !=
-			HISI_RDR_MOD_EXCE_PANIC) {
-		show_mem(0);
-		show_stack((struct task_struct *)rdr_current_task,
-				NULL);
-	}
-
-	if (mod_id != HISI_RDR_MOD_AP_PANIC)
-		rdr_system_dump(mod_id, arg1, arg2, data, length);
-#ifdef HIFI_WD_DEBUG
-	if (mod_id == HISI_RDR_MOD_HIFI_WD) {
-		ret = rdr_do_hifi_reset(HISI_RDR_MOD_HIFI_WD);
-		if (ret != 0)
-			pr_info("%s:hifi reset error!\n", __func__);
-	}
+	if (mod_id != HISI_RDR_MOD_CP_REBOOT)
+	{
+#ifdef CONFIG_HUAWEI_NFF
+		nff_log_event_subsys_err(mod_id, arg1, arg2, INVALID_U32);
 #endif
-	if (rdr_need_save_before_reboot(mod_id)) {
-		/*
-TODO:
-1, if save before reboot, save code add here.
-2, some control tag should resume.
-		 */
-		if (mod_id == HISI_RDR_MOD_AP_PRESS8S)
-			rdr_wait_for_dump(500);/* other core save ok: */
-		else
-			rdr_wait_for_dump(5000);/* wait for other core*/
-
-		while (1) {
-			if (atomic_read(&rdr_in_suspend))
-				msleep(1000);
-			else {
-				atomic_set(&rdr_in_saving, 1);
-				break;
-			}
+		pr_info("rdr_system_error_process start mod_id [%08x] !!\n", mod_id);
+		rdr_nv_update();
+		if ((mod_id & HISI_RDR_MOD_EXCE_MASK) !=
+				HISI_RDR_MOD_EXCE_PANIC) {
+			show_mem(0);
+			show_stack((struct task_struct *)rdr_current_task,
+					NULL);
 		}
-		if (0 != rdr_wait4partition("/data/lost+found", 1)) {
-			pr_info("rdr: we dump info to p22.\n");
-			rdr_save_pbb_to_p22();
-		} else
-			rdr_save_mem2fs(mod_id);
 
-		atomic_set(&rdr_in_saving, 0);
+		if (mod_id != HISI_RDR_MOD_AP_PANIC)
+			rdr_system_dump(mod_id, arg1, arg2, data, length);
+#ifdef HIFI_WD_DEBUG
+		if (mod_id == HISI_RDR_MOD_HIFI_WD) {
+			ret = rdr_do_hifi_reset(HISI_RDR_MOD_HIFI_WD);
+			if (ret != 0)
+				pr_info("%s:hifi reset error!\n", __func__);
+		}
+#endif
+
+		rdr_get_xtime(pbb, timedir, 32);
+		memset(file_dir, 0, RDR_FNAME_LEN);
+		snprintf(file_dir, sizeof(file_dir), "%s%s/", OM_ROOT_PATH, timedir);
+#ifdef CONFIG_HI6402_HIFI_MISC
+		if (mod_id == HISI_RDR_MOD_HIFI_6402_ERR) {
+			pr_info("hi6402 watchdog coming......\n");
+			ret = hi6402_hifi_save_log(file_dir);
+			if (ret != 0)
+				pr_info("%s:hifi 6402 reset error!\n", __func__);
+		}
+#endif
+		if (rdr_need_save_before_reboot(mod_id)) {
+			/*
+		TODO:
+		1, if save before reboot, save code add here.
+		2, some control tag should resume.
+			 */
+			if (mod_id == HISI_RDR_MOD_AP_PRESS8S)
+				rdr_wait_for_dump(500);/* other core save ok: */
+			else
+				rdr_wait_for_dump(5000);/* wait for other core*/
+
+			while (1) {
+				if (atomic_read(&rdr_in_suspend))
+					msleep(1000);
+				else {
+					atomic_set(&rdr_in_saving, 1);
+					break;
+				}
+			}
+#ifdef CONFIG_PROC_POSTFSDATA
+			if (0 != wait_for_postfsdata(5)) {
+#else
+			if (0 != rdr_wait4partition("/data/lost+found", 1)) {
+#endif
+				pr_info("rdr: we dump info to p22.\n");
+				rdr_save_pbb_to_p22();
+			} else
+				rdr_save_mem2fs(mod_id);
+
+			atomic_set(&rdr_in_saving, 0);
+		}
 	}
-
 	spin_lock(&g_rdr_system_error_list_lock);
 	if (list_empty(&g_rdr_system_error_list))
 		list_empty_flag = true;
@@ -2809,14 +3259,14 @@ TODO:
 
 	ret = rdr_need_reboot(mod_id);
 	if ((list_empty_flag && reboot_later_flag) || ret) {
-		if (list_empty_flag) {
+		if (list_empty_flag || rdr_is_cp_modid(mod_id)) {
 			pr_info("we need reboot now ...\n");
 			rdr_reboot_from_error(mod_id);
-		} else {
+        } else {
 			pr_info("we need reboot later ...\n");
 			reboot_later_flag = true;
 		}
-	} else {
+    } else {
 		pr_info("we dont reboot now.\n");
 		rdr_rm_over3_file(OM_ROOT_PATH);
 	}
@@ -2912,7 +3362,7 @@ static int rdr_init_thread_body(void *arg)
 
 		spin_lock(&g_rdr_system_error_list_lock);
 		list_for_each_safe(cur, next, &g_rdr_system_error_list) {
-			p = list_entry(cur, 
+			p = list_entry(cur,
 				struct rdr_system_error_param_s, sys_err_list);
 			list_del(cur);
 			spin_unlock(&g_rdr_system_error_list_lock);
@@ -2934,7 +3384,7 @@ static int rdr_init_thread_body(void *arg)
 	} \
 	if (len) \
 		rdr_debug("area%d: phy_addr:0x%lx", i, \
-			hisi_reserved_debug_phymem + offset);\
+			HISI_RESERVED_DEBUG_PHYMEM_BASE + offset);\
 	pbb->area_info[i].offset = offset; \
 	pbb->area_info[i].length = len; \
 	offset += len; \
@@ -3010,7 +3460,7 @@ void hisi_rdr_ipc_notify_cp(void)
 #endif
 }
 
-#ifdef CONFIG_HISI_RPROC
+#ifdef CONFIG_HI3XXX_RPROC
 /* notifiers AP when LPM3 sends msgs*/
 static int hisi_rdr_lpm2ap_ipc_handler(struct notifier_block *nb,
 					unsigned long len, void *msg)
@@ -3094,19 +3544,6 @@ static void lpm3_ipc_callback(rproc_msg_t *ack_buffer,
 	g_rdr_global->m3.save_flag = DUMP_SAVE_SUCCESS;
 }
 
-int hisi_rdr_ipc_notify_lpm3(u32 *msg, unsigned long len)
-{
-	int ret = 0;
-	/*debug*/
-	unsigned long i;
-	for (i = 0; i < len; i++)
-		pr_info("rdr:[ap2lpm3 notifiy] msg[%lu] = 0x%x\n", i, msg[i]);
-	/*notify lpm3 something maybe have wrong.*/
-	ret = RPROC_ASYNC_SEND(HISI_RPROC_LPM3_FOR_RDR, msg, len,
-					ASYNC_MSG, lpm3_ipc_callback, NULL);
-	return ret;
-}
-
 int hisi_rdr_ipc_notify_iom3(u32 *msg, unsigned long len)
 {
 	int ret = 0;
@@ -3134,6 +3571,21 @@ int hisi_rdr_ipc_notify_asp(u32 *msg, unsigned long len)
 	return r;
 }
 #endif
+
+int hisi_rdr_ipc_notify_lpm3(u32 *msg, unsigned long len)
+{
+	int ret = 0;
+#ifdef CONFIG_HI3XXX_RPROC
+	/*debug*/
+	unsigned long i;
+	for (i = 0; i < len; i++)
+		pr_info("rdr:[ap2lpm3 notifiy] msg[%lu] = 0x%x\n", i, msg[i]);
+	/*notify lpm3 something maybe have wrong.*/
+	ret = RPROC_ASYNC_SEND(HISI_RPROC_LPM3_FOR_RDR, msg, len,
+					ASYNC_MSG, lpm3_ipc_callback, NULL);
+#endif
+	return ret;
+}
 
 void hisi_rdr_nmi_notify_lpm3(void)
 {
@@ -3186,7 +3638,7 @@ static int hisi_rdr_all_ipc_reg(void)
 {
 	int ret = 0;
 
-#ifdef CONFIG_HISI_RPROC
+#ifdef CONFIG_HI3XXX_RPROC
 	rdr_debug("cp ipc interface can be called");
 
 	/*ap handler the ipc msg form other slave core exclude cp.*/
@@ -3312,6 +3764,9 @@ static s32 __init rdr_init(void)
 	}
 	g_rdr_global = (struct rdr_global_internal_s *)\
 	(RDR_AREA_RESERVE_ADDR->ap_cp_share.content.rdr_global_internal);
+
+    memset(RDR_AREA_RESERVE_ADDR->cp_reserve.content.rdr_cpinfo,
+		0, sizeof(RDR_AREA_RESERVE_ADDR->cp_reserve.content.rdr_cpinfo));
 
 	wake_lock_init(&rdr_wake_lock, WAKE_LOCK_SUSPEND, "rdr-wakelock");
 

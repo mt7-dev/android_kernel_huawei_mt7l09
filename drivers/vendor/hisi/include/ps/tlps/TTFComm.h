@@ -101,7 +101,7 @@ usSn:当前期望获取其存储位置的块的块号*/
 #define TTF_BYTE2BIT(ByteLen)       (VOS_UINT32)(((VOS_UINT32)(ByteLen)) << 3)
 
 /*=============*/   /*获取结构体成员变量offset的办法*/
-#define TTF_OFFSET_OF(s, m) ((SIZE_T)&(((s *)0)->m))
+#define TTF_OFFSET_OF(s, m) ((VOS_SIZE_T)&(((s *)0)->m))
 
 #define TTF_GET_OFFSET(offset, s, m) \
 { \
@@ -244,7 +244,7 @@ usSn:当前期望获取其存储位置的块的块号*/
 #define UDP_DHCP_CLIENT_PORT            (0x4400)   /* DHCP Client的端口号*/
 
 #define TTF_L1_CACHE_SHIFT              (5)
-#define TTF_L1_CACHE_BYTES              (1 << TTF_L1_CACHE_SHIFT)
+#define TTF_L1_CACHE_BYTES              (1UL << TTF_L1_CACHE_SHIFT)
 
 
 #define TTF_SMP_CACHE_BYTES             (TTF_L1_CACHE_BYTES)		/* Linux版本发生改变时需要重新check该值 */

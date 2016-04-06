@@ -108,10 +108,17 @@ VOS_UINT32 TAF_MMA_RcvMmaSimlockStatusChangeInd_Main(
     struct MsgCB                       *pstMsg
 );
 
+#if (FEATURE_IMS == FEATURE_ON)
+VOS_UINT32 TAF_MMA_RcvTafImsSwitchSetReq_Main(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+);
 
-
-
-
+VOS_UINT32 TAF_MMA_RcvMmaImsSwitchRsltInd_Main(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+);
+#endif
 
 
 #if (VOS_OS_VER == VOS_WIN32)

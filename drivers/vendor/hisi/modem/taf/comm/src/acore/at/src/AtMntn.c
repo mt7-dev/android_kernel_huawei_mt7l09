@@ -37,9 +37,9 @@ extern "C" {
 /*****************************************************************************
     协议栈打印打点方式下的.C文件宏定义
 *****************************************************************************/
-/*lint -e767 */
+/*lint -e767 -e960*/
 #define    THIS_FILE_ID        PS_FILE_ID_AT_MNTN_C
-/*lint -e767 */
+/*lint -e767 +e960*/
 
 /*****************************************************************************
   2 宏定义
@@ -104,7 +104,7 @@ VOS_VOID AT_SetPcuiPsCallFlag(
 )
 {
     g_stAtDebugInfo.ucPcuiPsCallFlg = ucFlag;
-    g_stAtDebugInfo.usUserClientId  = usClientId;
+    g_stAtDebugInfo.usUserClientId  = AT_CLIENT_ID_APP;
 }
 
 
@@ -126,7 +126,9 @@ VOS_VOID AT_SetCtrlPsCallFlag(
 )
 {
     g_stAtDebugInfo.ucCtrlPsCallFlg     = ucFlag;
-    g_stAtDebugInfo.usCtrlUserClientId  = usClientId;
+#if (FEATURE_ON == FEATURE_VCOM_EXT)
+    g_stAtDebugInfo.usCtrlUserClientId  = AT_CLIENT_ID_APP5;
+#endif
 }
 
 
@@ -724,7 +726,7 @@ VOS_VOID AT_ShowPsFcIdState(VOS_UINT32 ulFcid)
     }
 
     vos_printf("指定FCID对应的结点是否有效                  %d\n", g_stFcIdMaptoFcPri[ulFcid].ulUsed);
-    vos_printf("指定FCID对应的结点的优先级                  %d\n", g_stFcIdMaptoFcPri[ulFcid].ulFcPri);
+    vos_printf("指定FCID对应的结点的优先级                  %d\n", g_stFcIdMaptoFcPri[ulFcid].enFcPri);
     vos_printf("指定FCID对应的结点的RABID掩码               %d\n", g_stFcIdMaptoFcPri[ulFcid].ulRabIdMask);
     vos_printf("指定FCID对应的结点的ModemId                 %d\n", g_stFcIdMaptoFcPri[ulFcid].enModemId);
     vos_printf("\r\n");
@@ -736,8 +738,8 @@ VOS_VOID AT_ShowPsFcIdState(VOS_UINT32 ulFcid)
 VOS_VOID AT_ShowResetStatsInfo(VOS_VOID)
 {
     vos_printf("模块初始化标识                              %d\n", g_stAtStatsInfo.stCCpuResetStatsInfo.ulSemInitFlg);
-    vos_printf("当前的二进制信号量                          %x\n", AT_GetResetSem());
-    vos_printf("创建的二进制信号量                          %x\n", g_stAtStatsInfo.stCCpuResetStatsInfo.ulBinarySemId);
+    vos_printf("当前的二进制信号量                          %p\n", AT_GetResetSem());
+    vos_printf("创建的二进制信号量                          %p\n", g_stAtStatsInfo.stCCpuResetStatsInfo.hBinarySemId);
     vos_printf("创建二进制信号量失败次数                    %d\n", g_stAtStatsInfo.stCCpuResetStatsInfo.ulCreateBinarySemFailNum);
     vos_printf("锁二进制信号量失败次数                      %d\n", g_stAtStatsInfo.stCCpuResetStatsInfo.ulLockBinarySemFailNum);
     vos_printf("最后一次锁二进制信号量失败原因              %x\n", g_stAtStatsInfo.stCCpuResetStatsInfo.ulLastBinarySemErrRslt);
@@ -818,6 +820,24 @@ VOS_VOID AT_ShowUsedClient(VOS_VOID)
 
 
 
+VOS_VOID AT_ShowClientCtxInfo(VOS_VOID)
+{
+    VOS_UINT8                           i;
+    AT_CLIENT_CFG_MAP_TAB_STRU         *pstCfgMapTbl;
+    AT_CLIENT_CONFIGURATION_STRU       *pstClientCfg;
+
+    vos_printf("\r\n The All Used Client Config: \r\n");
+    for (i = 0; i < AT_GET_CLIENT_CFG_TAB_LEN(); i++)
+    {
+        pstCfgMapTbl = AT_GetClientCfgMapTbl(i);
+        pstClientCfg = AT_GetClientConfig(pstCfgMapTbl->enClientId);
+        vos_printf("Client[%s] modem:%d, reportFlag:%d\r\n",
+                   pstCfgMapTbl->aucPortName,
+                   pstClientCfg->enModemId,
+                   pstClientCfg->ucReportFlg);
+    }
+}
+
 
 VOS_VOID AT_Help(VOS_VOID)
 {
@@ -843,6 +863,7 @@ VOS_VOID AT_Help(VOS_VOID)
     vos_printf("********************************************************\n");
     vos_printf("AT_ShowResetStatsInfo       显示AT复位状态信息          \n");
     vos_printf("AT_ShowAllClientState       查看端口状态信息            \n");
+    vos_printf("AT_ShowClientCtxInfo        查看Client配置的上下文信息  \n");
 
     return;
 }

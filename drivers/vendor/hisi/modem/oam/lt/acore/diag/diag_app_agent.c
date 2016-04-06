@@ -166,6 +166,8 @@ VOS_UINT32 diag_NvWrProc(VOS_UINT8* pstReq,VOS_UINT32 ulCmdId)
     return ret;
 
 }
+
+#if (FEATURE_OFF == FEATURE_MERGE_OM_CHAN)
 VOS_UINT32 diag_LogSaveProc (VOS_UINT8* pstReq , VOS_UINT32 ulCmdId)
 {
     DIAG_CMD_SET_LPD_MODE_REQ_STRU* pstLdpReq;
@@ -191,7 +193,7 @@ VOS_UINT32 diag_LogSaveProc (VOS_UINT8* pstReq , VOS_UINT32 ulCmdId)
     return ret;
 
 }
-
+#endif
 
 VOS_UINT32 g_ulCmdId;
 VOS_UINT32 diag_PsTransCnfProc(VOS_UINT8* pstCnf ,VOS_UINT32 ulLen)
@@ -404,7 +406,7 @@ VOS_UINT32 diag_BspLogProcEntry(VOS_UINT8* pstReq , VOS_UINT32 ulCmdId)
     {
         pstLogSet = (DIAG_bsp_log_swt_cfg_s *)DIAG_OFFSET_HEAD_GET_DATA(pstReq);
         data_len = pstDiagHead->ulDataSize  - sizeof(MSP_DIAG_DATA_REQ_STRU);
-        stLogSetCnf.ulRet  = DRV_LOG_LVL_SET(pstLogSet,data_len);
+        stLogSetCnf.ulRet  = ERR_MSP_SUCCESS;
         vos_printf("diag_BspLogProcEntry  stLogSetCnf.ulRet  = 0x%x\n",stLogSetCnf.ulRet );
         pstCnf = (VOS_UINT8*)&stLogSetCnf ;
         cnf_data_len = sizeof(DIAG_BSP_PRINT_LOG_SWT_CNF_STRU);
@@ -522,7 +524,9 @@ VOS_UINT32 diag_AppAgentMsgProcInit(enum VOS_INIT_PHASE_DEFINE ip)
     if (ip == VOS_IP_RESTART)
     {
         (VOS_VOID)DRV_SOCP_VOTE(SOCP_VOTE_DIAG_APP, SOCP_VOTE_FOR_SLEEP);
+#if (FEATURE_OFF == FEATURE_MERGE_OM_CHAN)
         (VOS_VOID)DRV_SOCP_VOTE(SOCP_VOTE_DIAG_DEC, SOCP_VOTE_FOR_SLEEP);
+#endif
     }
 #endif
 
@@ -610,6 +614,32 @@ VOS_VOID diag_SocpVoteMsgProc(MsgBlock* pMsgBlock)
         diag_printf("%s: 0x%x SEND MSG ERR\n", __FUNCTION__, voteReq->ulVoteId);
     }
 }
+
+VOS_VOID diag_AppAgentConnectCmdProc(DIAG_CONNECT_CMD_ENUM_U32 connCmd)
+{
+    if((g_diagSocpIsEnable != TRUE) && (DIAG_CONNECT_CMD == connCmd))
+    {
+        if(ERR_MSP_SUCCESS != DRV_SOCP_VOTE(SOCP_VOTE_DIAG_APP, SOCP_VOTE_FOR_WAKE))
+        {
+            diag_printf("%s: diag app vote fail\n", __func__);
+            return;
+        }
+
+        g_diagSocpIsEnable = TRUE;
+    }
+
+    /*断开情况由fw投票socp下电*/
+    if(DIAG_DISCONNECT_CMD == connCmd)
+    {
+#if (FEATURE_ON == FEATURE_MERGE_OM_CHAN)	
+        (VOS_VOID)DRV_SOCP_VOTE(SOCP_VOTE_DIAG_APP, SOCP_VOTE_FOR_SLEEP);
+        g_diagSocpIsEnable = FALSE;
+#endif		
+    }
+
+}
+#if (FEATURE_OFF == FEATURE_MERGE_OM_CHAN)
+
 VOS_VOID diag_PortDataProc(MsgBlock* pMsgBlock)
 {
     DIAG_DATA_MSG_STRU * pMsgTmp =NULL;
@@ -621,17 +651,6 @@ VOS_VOID diag_PortDataProc(MsgBlock* pMsgBlock)
     {
         diag_printf("%s: invalid msg id 0x%x\n", __func__, pMsgTmp->ulMsgId);
         return;
-    }
-
-    if(g_diagSocpIsEnable != TRUE)
-    {
-        if(ERR_MSP_SUCCESS != DRV_SOCP_VOTE(SOCP_VOTE_DIAG_APP, SOCP_VOTE_FOR_WAKE))
-        {
-            diag_printf("%s: diag app vote fail\n", __func__);
-            return;
-        }
-
-        g_diagSocpIsEnable = TRUE;
     }
 
     if(ERR_MSP_SUCCESS != DRV_SOCP_VOTE(SOCP_VOTE_DIAG_DEC, SOCP_VOTE_FOR_WAKE))
@@ -652,6 +671,7 @@ VOS_VOID diag_PortDataProc(MsgBlock* pMsgBlock)
 
     (VOS_VOID)DRV_SOCP_VOTE(SOCP_VOTE_DIAG_DEC, SOCP_VOTE_FOR_SLEEP);
 }
+#endif
 #endif
 
 
@@ -695,11 +715,12 @@ VOS_VOID diag_AppAgentMsgProc(MsgBlock* pMsgBlock)
         case DSP_PID_APM:
             diag_SocpVoteMsgProc(pMsgBlock);
             break;
-
+#if (FEATURE_OFF == FEATURE_MERGE_OM_CHAN)
         /*端口数据处理消息*/
         case MSP_PID_DIAG_APP_AGENT:
             diag_PortDataProc(pMsgBlock);
             break;
+#endif
 #endif
         default:
             break;

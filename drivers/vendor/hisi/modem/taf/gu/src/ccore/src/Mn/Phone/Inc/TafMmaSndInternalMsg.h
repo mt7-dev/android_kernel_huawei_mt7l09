@@ -30,23 +30,22 @@ extern "C" {
 enum TAF_MMA_INTERNAL_MSG_ID_ENUM
 {
     MMA_MMA_INTER_POWER_INIT                = 0x4000,                       /*_H2ASN_MsgChoice TAF_MMA_INTER_POWER_INIT_REQ_STRU */
-    
+
     MMA_MMA_INTER_USIM_STATUS_CHANGE_IND,                                   /*_H2ASN_MsgChoice TAF_MMA_INTER_USIM_STATUS_CHANGE_IND_STRU */
 
     MMA_MMA_PHONE_MODE_RSLT_IND,                                            /*_H2ASN_MsgChoice TAF_MMA_PHONE_MODE_RSLT_IND_STRU */
-    
+
     MMA_MMA_SIM_LOCK_STATUS_CHANGE_IND,                                     /*_H2ASN_MsgChoice TAF_MMA_SIM_LOCK_STATUS_CHANGE_IND_STRU */
+
+    MMA_MMA_IMS_SWITCH_RSLT_IND,                                            /*_H2ASN_MsgChoice TAF_MMA_IMS_SWITCH_RSLT_IND_STRU */
 
     MMA_MMA_INTER_MSG_BUTT
 };
 typedef VOS_UINT32 TAF_MMA_INTERNAL_MSG_ID_ENUM_UINT32;
-
-
-
 enum TAF_MMA_PHONE_MODE_RESULT_ENUM
 {
     TAF_MMA_PHONE_MODE_RESULT_SWITCH_ON_SUCC,
-    
+
     TAF_MMA_PHONE_MODE_RESULT_SWITCH_ON_FAIL,
 
     TAF_MMA_PHONE_MODE_RESULT_POWER_OFF_SUCC,
@@ -57,6 +56,20 @@ enum TAF_MMA_PHONE_MODE_RESULT_ENUM
 
 };
 typedef VOS_UINT8 TAF_MMA_PHONE_MODE_RESULT_ENUM_UINT8;
+
+enum TAF_MMA_IMS_SWITCH_RESULT_ENUM
+{
+    TAF_MMA_IMS_SWITCH_RESULT_ON_SUCC,
+
+    TAF_MMA_IMS_SWITCH_RESULT_ON_FAIL,
+
+    TAF_MMA_IMS_SWITCH_RESULT_OFF_SUCC,
+
+    TAF_MMA_IMS_SWITCH_RESULT_OFF_FAIL,
+
+    TAF_MMA_IMS_SWITCH_RESULT_BUTT
+};
+typedef VOS_UINT8 TAF_MMA_IMS_SWITCH_RESULT_ENUM_UINT8;
 
 /*****************************************************************************
   4 全局变量声明
@@ -96,6 +109,12 @@ typedef struct
     TAF_MMA_PHONE_MODE_RESULT_ENUM_UINT8                    enRslt;
     VOS_UINT8                                               aucRsv[3];
 }TAF_MMA_PHONE_MODE_RSLT_IND_STRU;
+typedef struct
+{
+    MSG_HEADER_STRU                                         MsgHeader;                        /* 消息头 *//*_H2ASN_Skip*/
+    TAF_MMA_IMS_SWITCH_RESULT_ENUM_UINT8                    enRslt;
+    VOS_UINT8                                               aucRsv[3];
+}TAF_MMA_IMS_SWITCH_RSLT_IND_STRU;
 
 /*****************************************************************************
   8 UNION定义
@@ -111,7 +130,7 @@ typedef struct
 typedef struct
 {
     TAF_MMA_INTERNAL_MSG_ID_ENUM_UINT32 enMsgId;
-    
+
     VOS_UINT8                           aucMsgBlock[4];
     /***************************************************************************
         _H2ASN_MsgChoice_When_Comment          TAF_MMA_INTERNAL_MSG_ID_ENUM_UINT32
@@ -150,6 +169,12 @@ VOS_VOID TAF_MMA_SndInterUsimChangeInd(VOS_VOID);
 VOS_VOID TAF_MMA_SndInterPowerInitReq(VOS_VOID);
 
 VOS_VOID TAF_MMA_SndSimlocakStatusChangeInd(VOS_VOID);
+
+#if (FEATURE_IMS == FEATURE_ON)
+VOS_VOID TAF_MMA_SndImsSwitchRsltInd(
+    TAF_MMA_IMS_SWITCH_RESULT_ENUM_UINT8                    enRslt
+);
+#endif
 
 #if (VOS_OS_VER == VOS_WIN32)
 #pragma pack()

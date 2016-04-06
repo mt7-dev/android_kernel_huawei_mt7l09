@@ -88,7 +88,7 @@ typedef VOS_UINT32          VOS_SPINLOCK;
 #define VOS_SpinUnlock( s ) ((VOS_VOID)0)
 
 /* 先禁止本地中断然后获取自旋锁 */
-#define VOS_SpinLockIntLock( s, p ) ( (p) = (VOS_UINT32)VOS_SplIMP() )
+#define VOS_SpinLockIntLock( s, p ) ( (p) = (VOS_ULONG)VOS_SplIMP() )
 
 /* 先使能本地中断然后释放自旋锁 */
 #define VOS_SpinUnlockIntUnlock( s, p ) VOS_Splx( (VOS_INT)(p) )
@@ -120,10 +120,10 @@ VOS_VOID V_IntUnlock(VOS_INT lLockKey);
 #else
 
 #define VOS_SplIMP() \
-        SRE_IntLock()
+        (VOS_INT)SRE_IntLock()
 
 #define VOS_Splx( s ) \
-        SRE_IntRestore( (s) )
+        SRE_IntRestore( (VOS_UINT32)(s) )
 
 #endif
 
@@ -140,7 +140,7 @@ typedef VOS_UINT32          VOS_SPINLOCK;
 #define VOS_SpinUnlock( s ) ((VOS_VOID)0)
 
 /* 先禁止本地中断然后获取自旋锁 */
-#define VOS_SpinLockIntLock( s, p ) ( (p) = (VOS_UINT32)VOS_SplIMP() )
+#define VOS_SpinLockIntLock( s, p ) ( (p) = (VOS_ULONG)VOS_SplIMP() )
 
 /* 先使能本地中断然后释放自旋锁 */
 #define VOS_SpinUnlockIntUnlock( s, p ) VOS_Splx( (VOS_INT)(p) )
@@ -153,7 +153,7 @@ VOS_VOID VOS_SplInit();
 
 VOS_INT32 VOS_SplIMP();
 
-VOS_VOID VOS_Splx( VOS_INT32 s );
+VOS_VOID VOS_Splx( VOS_ULONG s );
 
 /* 自旋锁类型定义 */
 typedef VOS_UINT32          VOS_SPINLOCK;
@@ -168,10 +168,10 @@ typedef VOS_UINT32          VOS_SPINLOCK;
 #define VOS_SpinUnlock( s ) ((VOS_VOID)0)
 
 /* 先禁止本地中断然后获取自旋锁 */
-#define VOS_SpinLockIntLock( s, p )  ( (p) = (VOS_UINT32)VOS_SplIMP() )
+#define VOS_SpinLockIntLock( s, p )  ( (p) = (VOS_ULONG)VOS_SplIMP() )
 
 /* 先使能本地中断然后释放自旋锁 */
-#define VOS_SpinUnlockIntUnlock( s, p ) VOS_Splx( (VOS_INT32)(p) )
+#define VOS_SpinUnlockIntUnlock( s, p ) VOS_Splx( (VOS_ULONG)(p) )
 
 /* 原子变量的定义和操作 */
 typedef struct
@@ -200,9 +200,9 @@ extern VOS_VOID intUnlock( int lockKey );
 
 #if (VOS_LINUX == VOS_OS_VER)
 
-extern VOS_INT32 VOS_SplIMP(VOS_VOID);
+extern VOS_ULONG VOS_SplIMP(VOS_VOID);
 
-extern VOS_VOID VOS_Splx( VOS_INT32 s );
+extern VOS_VOID VOS_Splx( VOS_ULONG s );
 
 /* 自旋锁类型定义 */
 typedef spinlock_t          VOS_SPINLOCK;

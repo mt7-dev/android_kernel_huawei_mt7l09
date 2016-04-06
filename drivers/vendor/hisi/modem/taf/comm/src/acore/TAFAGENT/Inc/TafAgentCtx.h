@@ -71,14 +71,14 @@ extern "C" {
 
 typedef struct
 {
-    /* 初始化标识, VOS_TRUE: 成功; VOS_FALSE: 失败 */
-    VOS_UINT32                          ulInitFlg;
-
     /* 互斥信号量，用来同步PS域同步API的互斥操作,初始值为非锁状态(0xFFFFFFFF) */
-    VOS_UINT32                          ulTafAcpuSyncSem;
+    VOS_SEM                             hTafAcpuSyncSem;
 
     /* 二进制信号量，用来等待返回结果， */
-    VOS_UINT32                          ulTafAcpuCnfSem;
+    VOS_SEM                             hTafAcpuCnfSem;
+
+    /* 初始化标识, VOS_TRUE: 成功; VOS_FALSE: 失败 */
+    VOS_UINT32                          ulInitFlg;
 
     /* 二进制信号量状态 */
     VOS_UINT32                          ulAcpuCnfSemLockedFlg;
@@ -90,8 +90,8 @@ typedef struct
 }TAFAGENT_CTX_STRU;
 typedef struct
 {
-    VOS_UINT32                          ulMutexSemId;               /* 互斥信号量ID */
-    VOS_UINT32                          ulBinarySemId;              /* 二进制信号量ID */
+    VOS_SEM                             ulMutexSemId;               /* 互斥信号量ID */
+    VOS_SEM                             ulBinarySemId;              /* 二进制信号量ID */
     VOS_UINT32                          ulCreateMutexSemFailNum;    /* 创建互斥信号量失败次数 */
     VOS_UINT32                          ulCreateBinarySemFailNum;   /* 创建二进制信号量失败次数 */
     VOS_UINT32                          ulLockMutexSemFailNum;      /* 锁互斥信号量失败次数 */
@@ -125,10 +125,10 @@ extern TAFAGENT_CTX_STRU                g_stTafAgentCtx;
 extern VOS_UINT32 Taf_Agent_InitCtx(VOS_VOID);
 
 
-extern VOS_UINT32 TAF_AGENT_GetTafAcpuSyncSem(VOS_VOID);
+extern VOS_SEM TAF_AGENT_GetTafAcpuSyncSem(VOS_VOID);
 
 
-extern VOS_UINT32 TAF_AGENT_GetTafAcpuCnfSem(VOS_VOID);
+extern VOS_SEM TAF_AGENT_GetTafAcpuCnfSem(VOS_VOID);
 
 
 extern VOS_UINT8* TAF_AGENT_GetTafAcpuCnfMsg(VOS_VOID);

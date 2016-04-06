@@ -743,51 +743,6 @@ static inline void init_brg(struct scc_channel *scc)
 	OutReg(scc->ctrl, R14, SSBR|scc->wreg[R14]);	/* DPLL source = BRG */
 	OutReg(scc->ctrl, R14, SNRZI|scc->wreg[R14]);	/* DPLL NRZI mode */
 }
-
-/*
- * Initialization according to the Z8530 manual (SGS-Thomson's version):
- *
- * 1. Modes and constants
- *
- * WR9	11000000	chip reset
- * WR4	XXXXXXXX	Tx/Rx control, async or sync mode
- * WR1	0XX00X00	select W/REQ (optional)
- * WR2	XXXXXXXX	program interrupt vector
- * WR3	XXXXXXX0	select Rx control
- * WR5	XXXX0XXX	select Tx control
- * WR6	XXXXXXXX	sync character
- * WR7	XXXXXXXX	sync character
- * WR9	000X0XXX	select interrupt control
- * WR10	XXXXXXXX	miscellaneous control (optional)
- * WR11	XXXXXXXX	clock control
- * WR12	XXXXXXXX	time constant lower byte (optional)
- * WR13	XXXXXXXX	time constant upper byte (optional)
- * WR14	XXXXXXX0	miscellaneous control
- * WR14	XXXSSSSS	commands (optional)
- *
- * 2. Enables
- *
- * WR14	000SSSS1	baud rate enable
- * WR3	SSSSSSS1	Rx enable
- * WR5	SSSS1SSS	Tx enable
- * WR0	10000000	reset Tx CRG (optional)
- * WR1	XSS00S00	DMA enable (optional)
- *
- * 3. Interrupt status
- *
- * WR15	XXXXXXXX	enable external/status
- * WR0	00010000	reset external status
- * WR0	00010000	reset external status twice
- * WR1	SSSXXSXX	enable Rx, Tx and Ext/status
- * WR9	000SXSSS	enable master interrupt enable
- *
- * 1 = set to one, 0 = reset to zero
- * X = user defined, S = same as previous init
- *
- *
- * Note that the implementation differs in some points from above scheme.
- *
- */
  
 static void init_channel(struct scc_channel *scc)
 {

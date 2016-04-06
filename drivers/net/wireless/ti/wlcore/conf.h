@@ -257,27 +257,13 @@ enum {
 	 */
 	CONF_SG_BEACON_MISS_PERCENT,
 
-	/*
-	 * Protection time of the DHCP procedure.
-	 *
-	 * Range: 0 - 100000 (ms)
-	 */
+
 	CONF_SG_DHCP_TIME,
 
-	/*
-	 * RX guard time before the beginning of a new BT voice frame during
-	 * which no new WLAN trigger frame is transmitted.
-	 *
-	 * Range: 0 - 100000 (us)
-	 */
+
 	CONF_SG_RXT,
 
-	/*
-	 * TX guard time before the beginning of a new BT voice frame during
-	 * which no new WLAN frame is transmitted.
-	 *
-	 * Range: 0 - 100000 (us)
-	 */
+
 
 	CONF_SG_TXT,
 
@@ -370,19 +356,9 @@ struct conf_rx_settings {
 	 */
 	u32 packet_detection_threshold;
 
-	/*
-	 * The longest time the STA will wait to receive traffic from the AP
-	 * after a PS-poll has been transmitted.
-	 *
-	 * Range: 0 - 200000
-	 */
+
 	u16 ps_poll_timeout;
-	/*
-	 * The longest time the STA will wait to receive traffic from the AP
-	 * after a frame has been sent from an UPSD enabled queue.
-	 *
-	 * Range: 0 - 200000
-	 */
+
 	u16 upsd_timeout;
 
 	/*

@@ -106,7 +106,10 @@ static inline unsigned long global_page_state(enum zone_stat_item item)
 	if (x < 0)
 		x = 0;
 #endif
-	return x;
+	if(x>=0)
+	    return (unsigned long)x;
+	else
+	    return 0;
 }
 
 static inline unsigned long zone_page_state(struct zone *zone,

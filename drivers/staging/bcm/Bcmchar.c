@@ -1090,7 +1090,6 @@ cntrlEnd:
 			return -EINVAL;
 		}
 
-		/* FIXME: HOST_STATS are too big for kmalloc (122048)! */
 		temp_buff = kzalloc(sizeof(struct bcm_host_stats_mibs), GFP_KERNEL);
 		if (!temp_buff)
 			return STATUS_FAILURE;

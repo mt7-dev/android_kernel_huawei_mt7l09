@@ -4,12 +4,19 @@ set -e
 ANDROID_ROOT_DIR=$1
 ANDROID_PRODUCT_NAME=$2
 ANDROID_VERSION_MODE=$3
-ANDROID_MAKE_GOALS=$4
+ANDROID_ARCH=$4
+ANDROID_MAKE_GOALS=$5
+
 
 cd ${ANDROID_ROOT_DIR}
 
 . build/envsetup.sh
-choosecombo release ${ANDROID_PRODUCT_NAME} eng normal
+
+if [ "${ANDROID_ARCH}" = "arm64" ]; then
+    choosecombo release ${ANDROID_PRODUCT_NAME} eng normal fullAP arm64
+else
+    choosecombo release ${ANDROID_PRODUCT_NAME} eng normal 
+fi
 
 if [ "${ANDROID_VERSION_MODE}" = "K3_ANDROID" ]; then
 	
@@ -21,11 +28,17 @@ if [ "${ANDROID_VERSION_MODE}" = "K3_ANDROID" ]; then
 		android_pkgs=${ANDROID_MAKE_GOALS}
 	fi
 
-	cp -rf vendor/huawei/modem/commril/* hardware/ril/libril/
-	rm hardware/ril/libril/Android.mk
-	mv hardware/ril/libril/Android.mk.ril hardware/ril/libril/Android.mk
-	cp -rf vendor/huawei/modem/commril/rild/* hardware/ril/rild/
-	rm -rf hardware/ril/libril/rild
+	if [ "${separate}" = "true" ]; then
+		echo "sprara=true"
+	else
+		if [ -d vendor/huawei/modem/commril/ ] ;then
+			cp -rf vendor/huawei/modem/commril/* hardware/ril/libril/
+			rm hardware/ril/libril/Android.mk
+			mv hardware/ril/libril/Android.mk.ril hardware/ril/libril/Android.mk
+			cp -rf vendor/huawei/modem/commril/rild/* hardware/ril/rild/
+			rm -rf hardware/ril/libril/rild
+		fi
+	fi
 
 	echo "make update-api -j 48"
 	make update-api -j 48

@@ -35,79 +35,79 @@ MAILBOX_EXTERN struct mb g_mailbox_handle = {MAILBOX_MAILCODE_INVALID};
 
 /*邮箱内部接口开始*/
 
-MAILBOX_EXTERN long mailbox_queue_write(
+MAILBOX_EXTERN int mailbox_queue_write(
                 struct mb_queue      *queue,
                 char                 *data,
-                unsigned long         size)
+                unsigned int         size)
 {
-    unsigned long SizeToBottom;
+    unsigned int SizeToBottom;
 
     /*计算写指针位置距离环形缓存尾部长度*/
-    SizeToBottom  = (queue->base + queue->length) - queue->front;
+    SizeToBottom  = (unsigned int)((queue->base + queue->length) - queue->front);
 
     /*若写指针距环形缓存尾部长度大于要写的内容长度，则直接拷贝内容，并更新写指针*/
     if (SizeToBottom > size){
         /*写入pucData到写指针处*/
-        mailbox_memcpy((void*)queue->front, (const void*)data, (long)size);
+        mailbox_memcpy((void*)queue->front, (const void*)data, size);
 
         /*更新写指针*/
         queue->front += size;
     }
     else{
         /*写入pucData前R长度到写指针处*/
-        mailbox_memcpy((void*)(queue->front), (const void*)data, (long)SizeToBottom);
- 
+        mailbox_memcpy((void*)(queue->front), (const void*)data, SizeToBottom);
+
         /*写入pucData+R到环形缓存起始处*/
-        mailbox_memcpy((void*)(queue->base),  (const void*)(data + SizeToBottom), 
-                       (long)(size - SizeToBottom));
+        mailbox_memcpy((void*)(queue->base),  (const void*)(data + SizeToBottom),
+                       (size - SizeToBottom));
 
         /*更新写指针*/
         queue->front = (queue->base + size) - SizeToBottom;
     }
 
-    return size;
+    return (int)size;
 }
-MAILBOX_GLOBAL long mailbox_queue_read(
+MAILBOX_GLOBAL int mailbox_queue_read(
                 struct mb_queue   *queue,
                 char              *buff,
-                unsigned long      size)
+                unsigned int      size)
 {
-    unsigned long             to_bottom;
+    unsigned int             to_bottom;
 
     /*计算读指针位置距离环形缓存尾部长度*/
-    to_bottom  = (queue->base + queue->length) - queue->rear;
+    to_bottom  = (unsigned int)((queue->base + queue->length) - queue->rear);
 
     /*若读指针距环形缓存尾部长度大于要写的内容长度，则直接拷贝内容，并更新读指针*/
     if (to_bottom > size) {
         /*将读指针处数据拷贝至pData处*/
-        mailbox_memcpy((void*)buff, (const void*)(queue->rear), (long)size);
+        mailbox_memcpy((void*)buff, (const void*)(queue->rear), size);
 
         /*更新读指针*/
         queue->rear += size;
-    } else { 
+    } else {
         /*将读指针处数据前若干byte拷贝到pData处*/
-        mailbox_memcpy((void*)buff, (const void*)(queue->rear), (long)to_bottom);
+        mailbox_memcpy((void*)buff, (const void*)(queue->rear), to_bottom);
 
         /*从环形缓存起始处拷贝剩余内容到pData*/
-        mailbox_memcpy((void*)(buff + to_bottom), (const void*)(queue->base),  
-                        (long)(size - to_bottom));
+        mailbox_memcpy((void*)(buff + to_bottom), (const void*)(queue->base),
+                        (size - to_bottom));
 
         /*更新读指针*/
         queue->rear = (queue->base + size) - to_bottom;
     }
 
-    return size;
+    return (int)size;
 }
-MAILBOX_LOCAL long mailbox_check_mail(struct mb_buff *mbuff, 
+MAILBOX_LOCAL int mailbox_check_mail(struct mb_buff *mbuff,
                 struct mb_mail *msg_head,
                 unsigned long data_addr)
 {
-    unsigned long          time_stamp;
-    unsigned long          seq_num;
-
+    unsigned int          time_stamp;
+    unsigned int          seq_num;
+    int          ret_val = MAILBOX_OK;
     /* 首先检查消息头保护字*/
     if (MAILBOX_MSGHEAD_NUMBER != msg_head->ulPartition) {
-        mailbox_logerro_p1(MAILBOX_CRIT_GUT_MSG_CHECK_FAIL, msg_head->ulMailCode);
+         ret_val = mailbox_logerro_p1(MAILBOX_CRIT_GUT_MSG_CHECK_FAIL, msg_head->ulMailCode);
     }
 
     seq_num = mbuff->seq_num;
@@ -115,18 +115,18 @@ MAILBOX_LOCAL long mailbox_check_mail(struct mb_buff *mbuff,
     /*若SN号不连续(去除两CPU可能出现分别下电的情况)*/
     if (MAILBOX_SEQNUM_START == msg_head->ulSeqNum) {
         /*接收者第一次接收*/
-        mailbox_logerro_p1(MAILBOX_INFO_RECEIVE_FIRST_MAIL, msg_head->ulMailCode);
+        ret_val = mailbox_logerro_p1(MAILBOX_INFO_RECEIVE_FIRST_MAIL, msg_head->ulMailCode);
     } else if ((seq_num + 1) != msg_head->ulSeqNum) {
         /*非翻转出错*/
         #ifndef _DRV_LLT_ /*windows ST 自发自收，不检查*/
-        mailbox_logerro_p1(MAILBOX_ERR_GUT_MAILBOX_SEQNUM_CHECK_FAIL, msg_head->ulMailCode);
+        ret_val = mailbox_logerro_p1(MAILBOX_ERR_GUT_MAILBOX_SEQNUM_CHECK_FAIL, msg_head->ulMailCode);
         #endif
     }
 
     mbuff->seq_num = msg_head->ulSeqNum;
 
     /*检查消息在共享内存的滞留时间*/
-    time_stamp = mailbox_get_timestamp();
+    time_stamp = (unsigned int)mailbox_get_timestamp();
 
     msg_head->ulReadSlice = time_stamp;
 
@@ -134,7 +134,7 @@ MAILBOX_LOCAL long mailbox_check_mail(struct mb_buff *mbuff,
     mailbox_record_transport(&(mbuff->mntn), msg_head->ulMailCode ,
                     msg_head->ulWriteSlice, msg_head->ulReadSlice, data_addr);
 #endif
-    return MAILBOX_OK;
+    return ret_val;
 }
 
 
@@ -149,14 +149,14 @@ MAILBOX_EXTERN struct mb *mailbox_get_mb(void)
     return MAILBOX_NULL;
 }
 MAILBOX_EXTERN struct mb_buff *mailbox_get_channel_handle(
-                struct mb *mailbox, 
-                unsigned long mailcode)
+                struct mb *mailbox,
+                unsigned int mailcode)
 {
     struct mb_link          *link_array   = MAILBOX_NULL;
     struct mb_buff                 *mbuff   = MAILBOX_NULL;
-    unsigned long            src_id        = 0;
-    unsigned long            dst_id        = 0;
-    unsigned long            carrier_id    = 0;
+    unsigned int            src_id        = 0;
+    unsigned int            dst_id        = 0;
+    unsigned int            carrier_id    = 0;
 
     src_id       = mailbox_get_src_id(mailcode);
     dst_id       = mailbox_get_dst_id(mailcode);
@@ -167,7 +167,7 @@ MAILBOX_EXTERN struct mb_buff *mailbox_get_channel_handle(
             link_array = &mailbox->send_tbl[dst_id];
         } else {
             /*无效目标号，数组越界*/
-            mailbox_logerro_p1(MAILBOX_ERR_GUT_INVALID_CHANNEL_ID, mailcode);
+            (void)mailbox_logerro_p1(MAILBOX_ERR_GUT_INVALID_CHANNEL_ID, mailcode);
             return MAILBOX_NULL;
         }
     } else if (dst_id == mailbox->local_id) {
@@ -175,7 +175,7 @@ MAILBOX_EXTERN struct mb_buff *mailbox_get_channel_handle(
             link_array = &mailbox->recv_tbl[src_id];
         } else {
             /*无效目标号，数组越界*/
-            mailbox_logerro_p1(MAILBOX_ERR_GUT_INVALID_CHANNEL_ID, mailcode);
+            (void)mailbox_logerro_p1(MAILBOX_ERR_GUT_INVALID_CHANNEL_ID, mailcode);
             return MAILBOX_NULL;
         }
     } else {
@@ -184,7 +184,7 @@ MAILBOX_EXTERN struct mb_buff *mailbox_get_channel_handle(
 
     if ((MAILBOX_NULL == link_array) || (0 == link_array->carrier_butt)) {
         /*当前两个CPU之间不存在任何邮箱通道*/
-        mailbox_logerro_p1(MAILBOX_ERR_GUT_INVALID_CPU_LINK, mailcode);
+        (void)mailbox_logerro_p1(MAILBOX_ERR_GUT_INVALID_CPU_LINK, mailcode);
         return MAILBOX_NULL;
     }
 
@@ -193,13 +193,13 @@ MAILBOX_EXTERN struct mb_buff *mailbox_get_channel_handle(
         mbuff = &link_array->channel_buff[carrier_id];
     } else {
         /*非法载体号，数组越界*/
-        mailbox_logerro_p1(MAILBOX_ERR_GUT_INVALID_CARRIER_ID, mailcode);
+        (void)mailbox_logerro_p1(MAILBOX_ERR_GUT_INVALID_CARRIER_ID, mailcode);
         return MAILBOX_NULL;
     }
 
     /*检查mail code中 use ID的合法性*/
     if (mailbox_get_use_id(mailcode) >= mailbox_get_use_id(mbuff->config->butt_id)) {
-        mailbox_logerro_p1(MAILBOX_ERR_GUT_INVALID_USER_ID, mailcode);
+        (void)mailbox_logerro_p1(MAILBOX_ERR_GUT_INVALID_USER_ID, mailcode);
 
         #ifndef _DRV_LLT_ /*PC工程允许发送非法use ID，用于测试接收通道代码分支*/
         return MAILBOX_NULL;
@@ -210,19 +210,21 @@ MAILBOX_EXTERN struct mb_buff *mailbox_get_channel_handle(
 }
 
 
-MAILBOX_LOCAL long mailbox_request_channel(
-                struct mb *mb, 
-                struct mb_buff ** mb_buf, 
-                unsigned long mailcode)
+MAILBOX_LOCAL int mailbox_request_channel(
+                struct mb *mb,
+                struct mb_buff ** mb_buf,
+                unsigned int mailcode)
 {
     struct mb_head       *head  = MAILBOX_NULL;
     struct mb_queue      *queue = MAILBOX_NULL;
     struct mb_buff       *mbuff = MAILBOX_NULL;
+    int ret_val = MAILBOX_OK;
 
     *mb_buf = MAILBOX_NULL;
     mbuff = mailbox_get_channel_handle(mb, mailcode);
     if (MAILBOX_NULL == mbuff) {
-        return MAILBOX_ERRO;
+        ret_val = (int)MAILBOX_ERRO;
+        goto request_erro;
     }
 
     /*通过判断通道保护字，检查通道有没有初始化*/
@@ -232,20 +234,21 @@ MAILBOX_LOCAL long mailbox_request_channel(
        ||(MAILBOX_PROTECT1 != head->ulProtectWord3)
        || (MAILBOX_PROTECT2 != head->ulProtectWord4)) {
         /*保护字不正确，说明邮箱未初始化，或者内存被踩，报错。*/
-        return mailbox_logerro_p1(MAILBOX_NOT_READY, mailcode);
+        ret_val = mailbox_logerro_p1(MAILBOX_NOT_READY, mailcode);
+        goto request_erro;
     }
 
     if(mailbox_get_src_id(mailcode) == mb->local_id) {
          /* 不允许在中断中发邮件*/
         if (MAILBOX_TRUE == mailbox_int_context()) {
             //TODO:接下来的开发(IFC for 低功耗)可能需要支持在中断中发送邮件，这里就需要锁中断。
-            mailbox_logerro_p1(MAILBOX_ERR_GUT_SEND_MAIL_IN_INT_CONTEXT, mailcode);
-            return MAILBOX_ERRO;
+            ret_val = mailbox_logerro_p1(MAILBOX_ERR_GUT_SEND_MAIL_IN_INT_CONTEXT, mailcode);
+            goto request_erro;
         } else {
             if (MAILBOX_OK != mailbox_mutex_lock(&mbuff->mutex)) {
                 /*非中断发送，需要资源保护，获取当前通道资源。*/
-                mailbox_logerro_p1(MAILBOX_CRIT_GUT_MUTEX_LOCK_FAILED, mailcode);
-                return MAILBOX_ERRO;
+                ret_val = mailbox_logerro_p1(MAILBOX_CRIT_GUT_MUTEX_LOCK_FAILED, mailcode);
+                goto request_erro;
             }
         }
     }
@@ -254,17 +257,22 @@ MAILBOX_LOCAL long mailbox_request_channel(
 
     /*共享内存队列，需要依据邮箱头信息对队列操作符进行填充*/
     queue = &mbuff->mail_queue;
-    queue->front = queue->base + head->ulFront * sizeof(unsigned long);
-    queue->rear  = queue->base + head->ulRear * sizeof(unsigned long);
+    queue->front = queue->base + head->ulFront * sizeof(unsigned int);
+    queue->rear  = queue->base + head->ulRear * sizeof(unsigned int);
 
     mbuff->mb = mb;
     *mb_buf = mbuff;
+
     return MAILBOX_OK;
+
+request_erro:
+    mailbox_out(("###mailbox_request_channel ERR!"RT));
+    return ret_val;
 }
-MAILBOX_LOCAL long mailbox_release_channel(struct mb *mb, 
+MAILBOX_LOCAL int mailbox_release_channel(struct mb *mb,
                 struct mb_buff *mbuff)
 {
-    unsigned long         channel_id    = mbuff->channel_id;
+    unsigned int         channel_id    = mbuff->channel_id;
 
     /*需要区分是读还是写*/
     if (mb->local_id == mailbox_get_src_id(channel_id)) {
@@ -272,7 +280,7 @@ MAILBOX_LOCAL long mailbox_release_channel(struct mb *mb,
             /*TODO:接下来的开发(IFC for 低功耗)可能需要支持在中断中发送邮件，
                这里就需要解锁中断。*/
         } else {
-            mailbox_mutex_unlock(&mbuff->mutex);      
+            mailbox_mutex_unlock(&mbuff->mutex);
         }
     }
 
@@ -280,16 +288,16 @@ MAILBOX_LOCAL long mailbox_release_channel(struct mb *mb,
 }
 
 
-MAILBOX_LOCAL long mailbox_read_mail(struct mb_buff *mbuff)
+MAILBOX_LOCAL int mailbox_read_mail(struct mb_buff *mbuff)
 {
     struct mb_mail        mail;
     struct mb_cb         *read_cb = MAILBOX_NULL;/*此邮箱通道的功能回调函数队列*/
     struct mb_queue       tmp_queue;
     struct mb_queue      *usr_queue   = MAILBOX_NULL;
     struct mb_queue      *m_queue   = MAILBOX_NULL;
-    unsigned long         use_id;
-    unsigned long         slice_start;
-    unsigned long         to_bottom;
+    unsigned int         use_id;
+    unsigned int         slice_start;
+    unsigned int         to_bottom;
     void                 *usr_handle;
     void                 *usr_data;
     void (*usr_func)(void *mbuf, void *handle, void *data);
@@ -303,7 +311,7 @@ MAILBOX_LOCAL long mailbox_read_mail(struct mb_buff *mbuff)
     tmp_queue.length = usr_queue->length;
     tmp_queue.front  = usr_queue->rear;
     tmp_queue.rear   = usr_queue->front;
-    
+
     /*读取邮件的头信息*/
     mailbox_queue_read(usr_queue, (char*)&mail, sizeof(struct mb_mail));
 
@@ -317,7 +325,7 @@ MAILBOX_LOCAL long mailbox_read_mail(struct mb_buff *mbuff)
 
     /*检查Use ID的有效性*/
     if (use_id >= mailbox_get_use_id(mbuff->config->butt_id)) {
-        mailbox_logerro_p1(MAILBOX_ERR_GUT_INVALID_USER_ID, mail.ulMailCode);
+        (void)mailbox_logerro_p1(MAILBOX_ERR_GUT_INVALID_USER_ID, mail.ulMailCode);
         goto EXIT;
     }
 
@@ -329,81 +337,82 @@ MAILBOX_LOCAL long mailbox_read_mail(struct mb_buff *mbuff)
     mailbox_mutex_unlock(&mbuff->mutex);
     if (MAILBOX_NULL != usr_func) {
         usr_queue->size = mail.ulMsgLength;
-        slice_start = mailbox_get_timestamp();
+        slice_start = (unsigned int)mailbox_get_timestamp();
         usr_func(mbuff, usr_handle , usr_data);
-            
+
         /*记录可维可测信息*/
 #ifdef MAILBOX_OPEN_MNTN
-         mailbox_record_receive(&mbuff->mntn, mbuff->channel_id, slice_start);
+         mailbox_record_receive(&mbuff->mntn, mail.ulMailCode, slice_start);
 #endif
-    } else { 
-        mailbox_logerro_p1(MAILBOX_ERR_GUT_READ_CALLBACK_NOT_FIND, mail.ulMailCode);
+    } else {
+        (void)mailbox_logerro_p1(MAILBOX_ERR_GUT_READ_CALLBACK_NOT_FIND, mail.ulMailCode);
     }
 
 EXIT:
 
     /*不管用户有没有用回调读数据，读了多少数据，邮箱队列的读指针都需要按实际
       大小偏移，以保证后面邮件读取的正确性。*/
-    to_bottom  = (m_queue->base + m_queue->length) - m_queue->rear;
+    to_bottom  = (unsigned int)((m_queue->base + m_queue->length) - m_queue->rear);
     if (to_bottom > (mail.ulMsgLength + sizeof(struct mb_mail))) {
         m_queue->rear += (mail.ulMsgLength + sizeof(struct mb_mail));
     } else {
-        m_queue->rear = m_queue->base + ((mail.ulMsgLength + 
+        m_queue->rear = m_queue->base + ((mail.ulMsgLength +
             sizeof(struct mb_mail)) - to_bottom);
     }
 
     /*读保证指针4字节对齐*/
     m_queue->rear = mailbox_align_size(m_queue->rear, MAILBOX_ALIGN);
 
-    return (mailbox_align_size(mail.ulMsgLength, MAILBOX_ALIGN) 
+    return (int)(mailbox_align_size(mail.ulMsgLength, MAILBOX_ALIGN)
             + sizeof(struct mb_mail));
 
 }
-MAILBOX_LOCAL long mailbox_receive_all_mails(struct mb_buff *mbuf)
+MAILBOX_LOCAL int mailbox_receive_all_mails(struct mb_buff *mbuf)
 {
 
     struct mb_queue      *queue;   /* 临时队列信息状态结构体 */
-    signed long           size_left;   /* 邮箱未接收消息长度 */
-    unsigned long         mail_len = 0;
+    signed int           size_left;   /* 邮箱未接收消息长度 */
+    unsigned int         mail_len = 0;
+    int          ret_val = MAILBOX_OK;
 
     queue = &(mbuf->mail_queue);
 
      /*计算邮箱中待取数据长度，单位byte, 这里的长度已由邮箱的写功能做到4byte对齐*/
     if (queue->front >= queue->rear) {
-        size_left    = (signed long)(queue->front - queue->rear);
+        size_left    = (signed int)(queue->front - queue->rear);
     } else {
-        size_left    = (signed long)( (queue->length) - ((queue->rear) 
+        size_left    = (signed int)( (queue->length) - ((queue->rear)
                        - (queue->front)) );
     }
 
     /*若待取数据长度非0，即邮箱内容非空*/
     while (size_left > 0) {
         /*每次从邮箱读取一封邮件，包括邮件头*/
-        mail_len = mailbox_read_mail(mbuf);
+        mail_len = (unsigned int)mailbox_read_mail(mbuf);
         if (0 == mail_len) {
-            mailbox_logerro_p1(MAILBOX_CRIT_GUT_READ_MAIL, mbuf->channel_id);
+            ret_val = mailbox_logerro_p1(MAILBOX_CRIT_GUT_READ_MAIL, mbuf->channel_id);
         }
         /*更新待取数据长度*/
-        size_left -= (signed long)(mail_len);
+        size_left -= (signed int)(mail_len);
     }
 
     if (size_left < 0) {
        return mailbox_logerro_p1(MAILBOX_CRIT_GUT_RECEIVE_MAIL, mbuf->channel_id);
     }
-    return MAILBOX_OK ;
+    return ret_val ;
 }
 
 
-MAILBOX_LOCAL long mailbox_read_channel(unsigned long channel_id)
+MAILBOX_LOCAL int mailbox_read_channel(unsigned int channel_id)
 {
     struct mb_buff      *mbuf  = MAILBOX_NULL;     /*邮箱操作句柄*/
     struct mb           *mb    = MAILBOX_NULL;
-    unsigned long       ret_val      = MAILBOX_OK;
+    int       ret_val      = MAILBOX_OK;
 
     mb = mailbox_get_mb();
 
     if (MAILBOX_NULL == mb) {
-        return (unsigned long)MAILBOX_ERRO;
+        return (int)MAILBOX_ERRO;
     }
 
     /*判断方向是否正确,是否为接收通道*/
@@ -431,16 +440,15 @@ MAILBOX_LOCAL long mailbox_read_channel(unsigned long channel_id)
 }
 
 
-MAILBOX_LOCAL long mailbox_init_mem(struct mb_cfg *config)
+MAILBOX_LOCAL int mailbox_init_mem(struct mb_cfg *config)
 {
     struct mb_head       *head = (struct mb_head*)config->head_addr;
     unsigned long         data_addr       = config->data_addr;
-    unsigned long         data_size       = config->data_size;
+    unsigned int         data_size       = config->data_size;
 
     /*这里也属于入参判断*/
     if ((0 == data_addr) || (MAILBOX_NULL == head) || (0 == data_size)) {
-        mailbox_logerro_p1(MAILBOX_ERR_GUT_INIT_CORESHARE_MEM, config->butt_id);
-        return MAILBOX_OK;
+        return mailbox_logerro_p1(MAILBOX_ERR_GUT_INIT_CORESHARE_MEM, config->butt_id);
     }
 
     /*初始化邮箱体*/
@@ -468,17 +476,17 @@ MAILBOX_LOCAL long mailbox_init_mem(struct mb_cfg *config)
 
     return MAILBOX_OK;
 }
-MAILBOX_LOCAL long mailbox_calculate_space(
+MAILBOX_LOCAL int mailbox_calculate_space(
                 struct mb           *mb,
                 struct mb_cfg    *config,
-                unsigned long     cpu_id)
+                unsigned int     cpu_id)
 {
     struct mb_link          *send_link    = MAILBOX_NULL;/*指向主结构体的发送通道数组基地址*/
     struct mb_link          *recev_link   = MAILBOX_NULL;/*指向主结构体的接收通道数组基地址*/
-    unsigned long            ret_val      = MAILBOX_OK;
-    unsigned long            src_id       = 0;
-    unsigned long            dst_id       = 0;
-    unsigned long            carrier_id   = 0;
+    int            ret_val      = MAILBOX_OK;
+    unsigned int            src_id       = 0;
+    unsigned int            dst_id       = 0;
+    unsigned int            carrier_id   = 0;
 
     send_link   =  mb->send_tbl;
     recev_link  =  mb->recv_tbl;
@@ -500,7 +508,7 @@ MAILBOX_LOCAL long mailbox_calculate_space(
                 }
             } else {
                 /*数组越界*/
-                ret_val = mailbox_logerro_p1(MAILBOX_ERR_GUT_INVALID_CHANNEL_ID, 
+                ret_val = mailbox_logerro_p1(MAILBOX_ERR_GUT_INVALID_CHANNEL_ID,
                                              config->butt_id);
             }
         }
@@ -516,7 +524,7 @@ MAILBOX_LOCAL long mailbox_calculate_space(
                 }
             } else {
                 /*数组越界*/
-                ret_val = mailbox_logerro_p1(MAILBOX_ERR_GUT_INVALID_CHANNEL_ID, 
+                ret_val = mailbox_logerro_p1(MAILBOX_ERR_GUT_INVALID_CHANNEL_ID,
                                              config->butt_id);
             }
         }
@@ -528,15 +536,15 @@ MAILBOX_LOCAL long mailbox_calculate_space(
 }
 
 
-MAILBOX_LOCAL long mailbox_init_all_handle(
+MAILBOX_LOCAL int mailbox_init_all_handle(
                 struct mb           *mb,
                 struct mb_cfg    *config,
-                unsigned long     cpu_id)
+                unsigned int     cpu_id)
 {
     struct mb_queue        *queue  = MAILBOX_NULL;
-    unsigned long           direct= MIALBOX_DIRECTION_INVALID; /*标记当前邮箱通道
+    unsigned int           direct= MIALBOX_DIRECTION_INVALID; /*标记当前邮箱通道
                                             是不是本核相关的有效通道*/
-    unsigned long           ret_val      = MAILBOX_OK;
+    int           ret_val      = MAILBOX_OK;
     struct mb_link         *send_link    = MAILBOX_NULL;/*指向主结构体的发送通道
                                                           数组基地址*/
     struct mb_link         *recv_link = MAILBOX_NULL;   /*指向主结构体的接收通道
@@ -544,12 +552,12 @@ MAILBOX_LOCAL long mailbox_init_all_handle(
     struct mb_buff         *mbuf_prob   = &g_mailbox_channel_handle_pool[0];
     struct mb_cb           *cb_prob  = &g_mailbox_user_cb_pool[0];
     struct mb_buff         *mbuf_cur = MAILBOX_NULL;    /*指向正在处理的邮箱通道*/
-    unsigned long           channel_sum    = 0;
-    unsigned long           use_sum    = 0;
-    unsigned long           src_id       = 0;
-    unsigned long           dst_id       = 0;
-    unsigned long           carrier_id   = 0;
-    unsigned long           use_max      = 0;
+    unsigned int           channel_sum    = 0;
+    unsigned int           use_sum    = 0;
+    unsigned int           src_id       = 0;
+    unsigned int           dst_id       = 0;
+    unsigned int           carrier_id   = 0;
+    unsigned int           use_max      = 0;
 
     send_link  =  mb->send_tbl;
     recv_link  =  mb->recv_tbl;
@@ -573,7 +581,7 @@ MAILBOX_LOCAL long mailbox_init_all_handle(
                 mbuf_prob += (send_link[dst_id].carrier_butt);
                 channel_sum  += (send_link[dst_id].carrier_butt);
                 if (channel_sum > MAILBOX_CHANNEL_NUM) {
-                    return mailbox_logerro_p1(MAILBOX_CRIT_GUT_INIT_CHANNEL_POOL_TOO_SMALL, 
+                    return mailbox_logerro_p1(MAILBOX_CRIT_GUT_INIT_CHANNEL_POOL_TOO_SMALL,
                                                 channel_sum);
                 }
             }
@@ -590,7 +598,7 @@ MAILBOX_LOCAL long mailbox_init_all_handle(
                 mbuf_prob += (recv_link[src_id].carrier_butt);
                 channel_sum  += (recv_link[src_id].carrier_butt);
                 if (channel_sum > MAILBOX_CHANNEL_NUM) {
-                    return mailbox_logerro_p1(MAILBOX_CRIT_GUT_INIT_CHANNEL_POOL_TOO_SMALL, 
+                    return mailbox_logerro_p1(MAILBOX_CRIT_GUT_INIT_CHANNEL_POOL_TOO_SMALL,
                                                 channel_sum);
                 }
             }
@@ -649,12 +657,12 @@ MAILBOX_LOCAL long mailbox_init_all_handle(
     /*检查内存池大小是否刚好,如果报错，请检查宏设置是否匹配:
       这里检查下面三个数组的空间是否适配。
         g_mailbox_global_cfg_tbl[];
-        g_mailbox_channel_handle_pool[MAILBOX_CHANNEL_NUM]; 
+        g_mailbox_channel_handle_pool[MAILBOX_CHANNEL_NUM];
         g_mailbox_user_cb_pool[MAILBOX_USER_NUM];
     */
-    if((unsigned long)MAILBOX_CHANNEL_NUM != channel_sum ) {
-        ret_val = mailbox_logerro_p1(MAILBOX_ERR_GUT_INIT_CHANNEL_POOL_TOO_LARGE, 
-                                    (MAILBOX_CHANNEL_NUM<<16) | channel_sum);
+    if((unsigned int)MAILBOX_CHANNEL_NUM != channel_sum ) {
+        ret_val = mailbox_logerro_p1(MAILBOX_ERR_GUT_INIT_CHANNEL_POOL_TOO_LARGE,
+                                    ((MAILBOX_CHANNEL_NUM<<16) | channel_sum));
     }
 
     if(MAILBOX_USER_NUM != use_sum) {
@@ -665,10 +673,10 @@ MAILBOX_LOCAL long mailbox_init_all_handle(
 }
 
 
-MAILBOX_LOCAL long mailbox_create_box(
+MAILBOX_LOCAL int mailbox_create_box(
                 struct mb          *mb,
                 struct mb_cfg   *config,
-                unsigned long    cpu_id)
+                unsigned int    cpu_id)
 {
     mb->local_id = cpu_id;
 
@@ -681,7 +689,7 @@ MAILBOX_LOCAL long mailbox_create_box(
     /*初始化每个邮箱的控制句柄*/
     return mailbox_init_all_handle(mb, config, cpu_id);
 }
-signed int mailbox_init(void)
+MAILBOX_GLOBAL int mailbox_init(void)
 {
 
     if (MAILBOX_INIT_MAGIC == g_mailbox_handle.init_flag) {
@@ -699,8 +707,8 @@ signed int mailbox_init(void)
     {
         mailbox_out(("mailbox address overflow: headbuttom valid(0x%x), config(0x%x)!\n\
           \r                          databuttom valid(0x%x), config(0x%x)!"RT,
-        (MAILBOX_MEM_BASEADDR + MAILBOX_MEM_HEAD_LEN), MAILBOX_HEAD_BOTTOM_ADDR,
-        (MAILBOX_MEM_BASEADDR + MAILBOX_MEM_LENGTH), MAILBOX_MEMORY_BOTTOM_ADDR));
+        (u32)(MAILBOX_MEM_BASEADDR + MAILBOX_MEM_HEAD_LEN),(u32)MAILBOX_HEAD_BOTTOM_ADDR,
+        (u32)(MAILBOX_MEM_BASEADDR + MAILBOX_MEM_LENGTH), (u32)MAILBOX_MEMORY_BOTTOM_ADDR));
         return mailbox_logerro_p0(MAILBOX_CRIT_GUT_MEMORY_CONFIG);
     }
 #endif
@@ -729,8 +737,8 @@ signed int mailbox_init(void)
 
 /*邮箱对外接口开始*/
 
-MAILBOX_EXTERN long mailbox_register_cb( 
-                unsigned long  mailcode,
+MAILBOX_EXTERN int mailbox_register_cb(
+                unsigned int  mailcode,
                 void (*cb)(void *mbuf, void *handle, void *data),
                 void *usr_handle,
                 void *usr_data)
@@ -738,7 +746,7 @@ MAILBOX_EXTERN long mailbox_register_cb(
     struct mb_cb           *read_cb    = MAILBOX_NULL;
     struct mb_buff         *mbuf = MAILBOX_NULL;
     struct mb              *mb     = MAILBOX_NULL;
-    unsigned long           dst_id;
+    unsigned int           dst_id;
 
     mb = &g_mailbox_handle;/*有可能在初始化过程中注册*/
 
@@ -772,16 +780,16 @@ MAILBOX_EXTERN long mailbox_register_cb(
     read_cb->data   = usr_data;
     read_cb->func = cb;
     mailbox_mutex_unlock(&mbuf->mutex);
-    
+
     return MAILBOX_OK;
 }
 
 /*初始化留给用户空间的环形fifo描述符*/
-MAILBOX_EXTERN long mailbox_init_usr_queue(struct mb_buff *mb_buf)
+MAILBOX_EXTERN int mailbox_init_usr_queue(struct mb_buff *mb_buf)
 {
-    unsigned long hsize = sizeof(struct mb_mail);
+    unsigned int hsize = sizeof(struct mb_mail);
     struct mb_queue * usrqu = &mb_buf->usr_queue;
-       
+
     /*初始化用户环形fifo,需要跳过邮箱消息头部分*/
     mailbox_memcpy((void*)usrqu, (const void*)&mb_buf->mail_queue, sizeof(struct mb_queue));
     if (hsize >  mailbox_queue_left(usrqu->rear, usrqu->front, usrqu->length)) {
@@ -791,18 +799,18 @@ MAILBOX_EXTERN long mailbox_init_usr_queue(struct mb_buff *mb_buf)
     if (hsize + usrqu->front >= usrqu->base + usrqu->length) {
         usrqu->front = usrqu->front + hsize - usrqu->length;
     } else {
-        usrqu->front =  usrqu->front + hsize;        
+        usrqu->front =  usrqu->front + hsize;
     }
     return MAILBOX_OK;
 }
 
 /*获取一个邮箱物理通道buff*/
-MAILBOX_EXTERN long mailbox_request_buff(unsigned long mailcode,  struct mb_buff** mb_buf)
+MAILBOX_EXTERN int mailbox_request_buff(unsigned int mailcode,  void* mb_buf)
 {
     struct mb        *mailbox     = MAILBOX_NULL;
-    unsigned long     ret_val       = MAILBOX_OK;
+    int     ret_val       = MAILBOX_OK;
     struct mb_buff ** mbuf  = (struct mb_buff **)mb_buf;
-        
+
     mailbox     = mailbox_get_mb();
     *mbuf = MAILBOX_NULL;
     if (MAILBOX_NULL == mailbox){
@@ -820,7 +828,7 @@ MAILBOX_EXTERN long mailbox_request_buff(unsigned long mailcode,  struct mb_buff
         (*mbuf)->mb = mailbox;
         ret_val = mailbox_init_usr_queue(*mbuf);
         if (MAILBOX_OK == ret_val) {
-            return  MAILBOX_OK; 
+            return  MAILBOX_OK;
         } else {
             mailbox_release_channel(mailbox, *mbuf);
             *mbuf = MAILBOX_NULL;
@@ -832,10 +840,10 @@ MAILBOX_EXTERN long mailbox_request_buff(unsigned long mailcode,  struct mb_buff
 }
 
 /*把用户数据填入邮箱物理通道buff*/
-MAILBOX_EXTERN long mailbox_write_buff(
+MAILBOX_EXTERN int mailbox_write_buff(
                 struct mb_queue      *queue,
                  char                *data,
-                unsigned long         size)
+                unsigned int         size)
 {
     if ((size  <= mailbox_queue_left(queue->rear, queue->front, queue->length)) &&
         (size + sizeof(struct mb_mail)  <= mailbox_queue_left(queue->rear, queue->front, queue->length))
@@ -846,32 +854,33 @@ MAILBOX_EXTERN long mailbox_write_buff(
 }
 
 /*读取邮箱物理通道数据*/
-MAILBOX_EXTERN long mailbox_read_buff(
+MAILBOX_EXTERN int mailbox_read_buff(
                 struct mb_queue      *queue,
                  char                *data,
-                unsigned long         size)
+                unsigned int         size)
 {
         return mailbox_queue_read(queue, (char*)data, size);
-} 
+}
 
 /*封信，准备发送*/
-MAILBOX_EXTERN long mailbox_sealup_buff(struct mb_buff * mb_buf , unsigned long usr_size)
+MAILBOX_EXTERN int mailbox_sealup_buff(struct mb_buff * mb_buf , unsigned int usr_size)
 {
 
-    struct mb_mail        mail;
+    struct mb_mail        mail = {0};
     struct mb_queue      *m_queue   = MAILBOX_NULL;
-    unsigned long         time_stamp;
+    unsigned int         time_stamp;
     unsigned long         mail_addr;
 
     m_queue = &mb_buf->mail_queue;
 
     /*判断是否超过单次发送最大大小*/
     if (usr_size > (mb_buf->config->single_max - sizeof(struct mb_mail) )){
-        return (unsigned long) mailbox_logerro_p2(MAILBOX_ERR_GUT_WRITE_EXCEED_MAX_SIZE,
+        return (int) mailbox_logerro_p2(MAILBOX_ERR_GUT_WRITE_EXCEED_MAX_SIZE,
             usr_size ,mb_buf->mailcode);
+    } else {
     }
 
-    time_stamp = mailbox_get_timestamp();
+    time_stamp = (unsigned int)mailbox_get_timestamp();
     /*填充消息头*/
     mail.ulPartition   =  MAILBOX_MSGHEAD_NUMBER;
     mail.ulWriteSlice  =  time_stamp;
@@ -882,7 +891,7 @@ MAILBOX_EXTERN long mailbox_sealup_buff(struct mb_buff * mb_buf , unsigned long 
     mail.ulMailCode    =  mb_buf->mailcode;
 
     if (MAILBOX_SEQNUM_START == mb_buf->seq_num) {
-        mailbox_logerro_p1(MAILBOX_INFO_SEND_FIRST_MAIL, mb_buf->mailcode);
+        (void)mailbox_logerro_p1(MAILBOX_INFO_SEND_FIRST_MAIL, mb_buf->mailcode);
     }
 
     mb_buf->seq_num++;
@@ -903,11 +912,11 @@ MAILBOX_EXTERN long mailbox_sealup_buff(struct mb_buff * mb_buf , unsigned long 
     /*准备下一封邮件写入*/
     return mailbox_init_usr_queue(mb_buf);
 }
-MAILBOX_EXTERN long mailbox_flush_buff( struct mb_buff *mbuff)
+MAILBOX_EXTERN int mailbox_flush_buff( struct mb_buff *mbuff)
 {
     struct mb_head       *head = MAILBOX_NULL;
     struct mb_queue      *queue   = MAILBOX_NULL;
-    unsigned long         channel_id    = mbuff->channel_id;
+    unsigned int         channel_id    = mbuff->channel_id;
     struct mb *mb         = mbuff->mb;
     /*把邮箱通道操作符的信息写回邮箱头。*/
     head = (struct mb_head*)mbuff->config->head_addr;
@@ -916,36 +925,36 @@ MAILBOX_EXTERN long mailbox_flush_buff( struct mb_buff *mbuff)
     /*需要区分是读还是写*/
     if (mb->local_id == mailbox_get_src_id(channel_id)) {
         /*写关闭，更新邮箱头写指针,同时释放邮箱资源*/
-        head->ulFront      = (queue->front - queue->base ) / sizeof(unsigned long) ;
-        head->ulFrontslice = mailbox_get_timestamp();
+        head->ulFront      = (unsigned int)(queue->front - queue->base ) / sizeof(unsigned int) ;
+        head->ulFrontslice = (unsigned int)mailbox_get_timestamp();
 
     } else if (mb->local_id == mailbox_get_dst_id(channel_id)) {
         /*读关闭，只更新邮箱头读指针*/
-        head->ulRear        =  (queue->rear - queue->base ) / sizeof(unsigned long);
-        head->ulRearslice   =  mailbox_get_timestamp();
+        head->ulRear        =  (unsigned int)(queue->rear - queue->base ) / sizeof(unsigned int);
+        head->ulRearslice   =  (unsigned int)mailbox_get_timestamp();
     }
-    
+
     return MAILBOX_OK;
 }
 
-MAILBOX_EXTERN long mailbox_send_buff(struct mb_buff * mbuf)
+MAILBOX_EXTERN int mailbox_send_buff(struct mb_buff * mbuf)
 {
     return mailbox_delivery(mbuf->channel_id);
 }
 
-MAILBOX_EXTERN long mailbox_release_buff(struct mb_buff * mbuf)
+MAILBOX_EXTERN int mailbox_release_buff(struct mb_buff * mbuf)
 {
     return mailbox_release_channel(mbuf->mb, mbuf);
 }
 
 MAILBOX_EXTERN long mailbox_virt_to_phy(unsigned long  virt_addr)
 {
-    return MEM_CORE_SHARE_VIRT2PHY(virt_addr);
+    return (long)MEM_CORE_SHARE_VIRT2PHY(virt_addr);
 }
 
 MAILBOX_EXTERN long mailbox_phy_to_virt(unsigned long  phy_addr)
 {
-    return MEM_CORE_SHARE_PHY2VIRT(phy_addr);
+    return (long)MEM_CORE_SHARE_PHY2VIRT(phy_addr);
 }
 
 

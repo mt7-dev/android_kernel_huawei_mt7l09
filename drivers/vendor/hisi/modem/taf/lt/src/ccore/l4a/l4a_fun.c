@@ -2492,6 +2492,64 @@ VOS_UINT32 l4a_PktManagerInd2Aps(L4A_PS_MSG_STRU* pData)
     return l4aPacket2Aps((VOS_VOID*)(&stInd),sizeof(APS_L4A_PDP_ACTIVATE_IND_STRU));
 }
 
+VOS_UINT32 l4a_PktSetupInd2Aps(L4A_PS_MSG_STRU* pData)
+{
+    APS_L4A_PDP_SETUP_IND_STRU stInd = {0};
+    APP_ESM_PDP_SETUP_IND_STRU* pstInd  = NULL;
+
+    pstInd = (APP_ESM_PDP_SETUP_IND_STRU*)(pData);
+
+    stInd.enMsgId              = ID_L4A_APS_PDP_SETUP_IND;
+    stInd.bitOpEpsQos          = pstInd->bitOpSdfQos;
+    stInd.bitOpEsmCause        = 1;
+    stInd.bitOpLinkCid         = pstInd->bitOpLinkCid;
+    stInd.ucOpId               = (VOS_UINT8)pstInd->ulOpId;
+    stInd.ucCid                = (VOS_UINT8)pstInd->ulCid;
+    stInd.ulLinkCid            = pstInd->ulLinkCid;
+    stInd.ulRabId              = pstInd->ulRabId;
+    stInd.ulEsmCause           = pstInd->ulRslt;
+    stInd.ulDedicatedBearerFlg = pstInd->enBearerType;
+
+    (VOS_VOID)VOS_MemCpy(&(stInd.stIpAddrInfo), &(pstInd->stPDNAddrInfo), sizeof(APS_L4A_PDP_ADDR_STRU));
+    (VOS_VOID)VOS_MemCpy(&(stInd.stEpsQosInfo), &(pstInd->stSdfQosInfo), sizeof(APS_L4A_EPS_QOS_STRU));
+
+    if((1 == pstInd->bitOpDnsPrim) && (APP_ESM_PDN_TYPE_IPV4 == pstInd->stDnsPrimAddrInfo.ucIpType))
+    {
+        stInd.stDnsAddrInfo.bitOpPrimDnsAddr= 1;
+        (VOS_VOID)VOS_MemCpy(stInd.stDnsAddrInfo.aucPrimDnsAddr, pstInd->stDnsPrimAddrInfo.aucIpV4Addr, APP_MAX_IPV4_ADDR_LEN);
+    }
+
+    if((1 == pstInd->bitOpDnsPrim) && (APP_ESM_PDN_TYPE_IPV6 == pstInd->stDnsPrimAddrInfo.ucIpType))
+    {
+        stInd.stIpv6DnsAddrInfo.bitOpPrimDnsAddr = 1;
+        (VOS_VOID)VOS_MemCpy(stInd.stIpv6DnsAddrInfo.aucPrimDnsAddr, pstInd->stDnsPrimAddrInfo.aucIpV6Addr, APP_MAX_IPV6_ADDR_LEN);
+    }
+
+    if((1 == pstInd->bitOpDnsSec) && (APP_ESM_PDN_TYPE_IPV4 == pstInd->stDnsSecAddrInfo.ucIpType))
+    {
+        stInd.stDnsAddrInfo.bitOpSecDnsAddr = 1;
+        (VOS_VOID)VOS_MemCpy(stInd.stDnsAddrInfo.aucSecDnsAddr, pstInd->stDnsSecAddrInfo.aucIpV4Addr, APP_MAX_IPV4_ADDR_LEN);
+    }
+
+    if((1 == pstInd->bitOpDnsSec) && (APP_ESM_PDN_TYPE_IPV6== pstInd->stDnsSecAddrInfo.ucIpType))
+    {
+        stInd.stIpv6DnsAddrInfo.bitOpSecDnsAddr = 1;
+        (VOS_VOID)VOS_MemCpy(stInd.stIpv6DnsAddrInfo.aucSecDnsAddr, pstInd->stDnsSecAddrInfo.aucIpV6Addr, APP_MAX_IPV6_ADDR_LEN);
+    }
+
+    /*stPdpActCnf.tNbnsAddrInfo暂时可以不提供*/
+
+    stInd.stGateWayAddrInfo.bitOpGateWayAddr= pstInd->bitOpGateWayAddrInfo;
+    (VOS_VOID)VOS_MemCpy(stInd.stGateWayAddrInfo.aucGateWayAddr, pstInd->stGateWayAddrInfo.aucIpV4Addr, 4*sizeof(VOS_UINT8));
+
+    stInd.stPcscfAddrInfo.bitOpPrimPcscfAddr = pstInd->bitOpPCscfPrim;
+    stInd.stPcscfAddrInfo.bitOpSecPcscfAddr  = pstInd->bitOpPCscfSec;
+    (VOS_VOID)VOS_MemCpy(stInd.stPcscfAddrInfo.aucPrimPcscfAddr, pstInd->stPCscfPrimAddrInfo.aucIpV4Addr, 4*sizeof(VOS_UINT8));
+    (VOS_VOID)VOS_MemCpy(stInd.stPcscfAddrInfo.aucSecPcscfAddr, pstInd->stPCscfSecAddrInfo.aucIpV4Addr, 4*sizeof(VOS_UINT8));
+
+    return l4aPacket2Aps((&stInd), sizeof(APS_L4A_PDP_SETUP_IND_STRU));
+}
+
 VOS_UINT32 l4a_PktDeactivateInd2Aps(L4A_PS_MSG_STRU* pData)
 {
     APS_L4A_PDP_DEACTIVATE_IND_STRU stInd = {0};
@@ -2506,6 +2564,7 @@ VOS_UINT32 l4a_PktDeactivateInd2Aps(L4A_PS_MSG_STRU* pData)
     stInd.ulEsmCause = pstInd->ulRslt;
     stInd.ulLinkCid = pstInd->ulLinkCid;
     stInd.stIpAddrInfo.enPdpType = pstInd->stPDNAddrInfo.ucIpType;
+    stInd.ulEpsbId = pstInd->ulEpsbId;
 
     VOS_MemCpy(stInd.stIpAddrInfo.aucIpv4Addr, pstInd->stPDNAddrInfo.aucIpV4Addr, APP_MAX_IPV4_ADDR_LEN*sizeof(VOS_UINT8));
     VOS_MemCpy(stInd.stIpAddrInfo.aucIpv6Addr, pstInd->stPDNAddrInfo.aucIpV6Addr, APP_MAX_IPV6_ADDR_LEN*sizeof(VOS_UINT8));
@@ -2769,8 +2828,33 @@ VOS_UINT32 APP_GetPdpManageInfo(APP_ESM_PDP_MANAGE_INFO_STRU *pstPdpManageInfo)
     return APP_SUCCESS;
 }
 
+/*****************************************************************************
+ 函 数 名  : APP_GetCidImsSuppFlag
+ 功能描述  : 获取CID对应的IMS配置
+ 输入参数  : ucCid                      - CID
+ 输出参数  : pucImsSuppFlag             - CID支持IMS配置
+ 返 回 值  : APP_FAILURE                - 函数执行异常
+             APP_SUCCESS                - 函数执行成功
+ 调用函数  :
+ 被调函数  :
 
+ 修改历史      :
+  1.日    期   : 2015年8月1日
+    作    者   : z00301431
+    修改内容   : 新生成函数
 
+*****************************************************************************/
+VOS_UINT32 APP_GetCidImsSuppFlag(VOS_UINT8 ucCid ,VOS_UINT8 *pucImsSuppFlag)
+{
+    if(NULL == pucImsSuppFlag)
+    {
+        return APP_FAILURE;
+    }
+
+    *pucImsSuppFlag = TAF_APS_GetCidImsCfgFlag(ucCid);
+
+    return APP_SUCCESS;
+}
 
 
 #ifdef __cplusplus

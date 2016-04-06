@@ -84,6 +84,7 @@ static struct snd_soc_dai_link hi3630_hi6401_dai_link[] = {
 		/* platform(k3v3:asp) device name, see in hi3630-pcm.c */
 		.platform_name	= "hi3630-fm",
 	},
+#if 1
 	{
 		/* dai link name*/
 		.name		= "hi3630_hdmi_pb",
@@ -98,6 +99,7 @@ static struct snd_soc_dai_link hi3630_hi6401_dai_link[] = {
 		/* platform(k3v3:asp) device name, see in hi3630-pcm.c */
 		.platform_name	= "hi3630-pcm-hdmi",
 	},
+#endif
 };
 
 /* Audio machine driver */

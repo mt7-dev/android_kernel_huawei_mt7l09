@@ -458,7 +458,6 @@ static int lg_tdtpe001p_tuner_set_params(struct dvb_frontend *fe)
 	// Fref * 3 = 500.000 Hz
 	// IF = 36166667
 	// IF / Fref = 217
-	//div = divide(p->frequency + 36166667, 166667);
 	div = divide(p->frequency * 3, 500000) + 217;
 	buf[0] = (div >> 8) & 0x7f;
 	buf[1] = (div >> 0) & 0xff;

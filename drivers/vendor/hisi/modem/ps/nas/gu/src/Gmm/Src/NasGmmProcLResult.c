@@ -31,6 +31,7 @@
 #endif
 #include "GmmInc.h"
 #include "NasGmmSndOm.h"
+#include "GmmCasGlobal.h"
 
 #define    THIS_FILE_ID        PS_FILE_ID_GMM_PROC_LRESULT_C
 
@@ -525,6 +526,15 @@ VOS_VOID  NAS_GMM_RcvLmmAttachResult(
             g_MmSubLyrShare.GmmShare.ucGsAssociationFlg = VOS_TRUE;
         }
 
+        /* 4.7.2.1.2 Handling of READY timer in the MS in Iu mode and S1 mode 
+           The READY timer is not applicable for Iu mode and S1 mode.
+           Upon completion of a successful GPRS attach or routing area updating 
+           procedure in Iu mode, the MS may stop the READY timer, if running.
+           Upon completion of a successful EPS attach or tracking area updating 
+           procedure, the MS may stop the READY timer, if running. */
+        Gmm_TimerStop(GMM_TIMER_T3314);
+        gstGmmCasGlobalCtrl.GmmSrvState = GMM_AGB_GPRS_STANDBY;
+
 #if ( VOS_WIN32 == VOS_OS_VER )
         NAS_GMM_SndTinTypeToMmc(NAS_MML_TIN_TYPE_GUTI);
 #endif
@@ -692,6 +702,15 @@ VOS_VOID NAS_GMM_RcvLmmTauResult(
         {
             g_MmSubLyrShare.GmmShare.ucGsAssociationFlg = VOS_TRUE;
         }
+
+        /* 4.7.2.1.2 Handling of READY timer in the MS in Iu mode and S1 mode 
+           The READY timer is not applicable for Iu mode and S1 mode.
+           Upon completion of a successful GPRS attach or routing area updating 
+           procedure in Iu mode, the MS may stop the READY timer, if running.
+           Upon completion of a successful EPS attach or tracking area updating 
+           procedure, the MS may stop the READY timer, if running. */
+        Gmm_TimerStop(GMM_TIMER_T3314);
+        gstGmmCasGlobalCtrl.GmmSrvState = GMM_AGB_GPRS_STANDBY;
     }
     else if (MMC_LMM_TAU_RSLT_ACCESS_BARED == pstLmmTauMsg->ulTauRst)
     {
@@ -1039,8 +1058,8 @@ VOS_VOID NAS_GMM_RcvMmcEmergencyNumList(
         }
 
         /* get PLMN MCC */ 
-        stEmergencyList.ulMcc  = NAS_MML_GetCsLastSuccLai()->stPlmnId.ulMcc;
-    
+        stEmergencyList.ulMcc  = NAS_MML_GetCurrCampPlmnId()->ulMcc;
+
         PS_MEM_CPY((VOS_UINT8 *)&(stEmergencyList.aucEmergencyList[0]),
                    (VOS_UINT8 *)&(pstMsg->astEmergencyNumList[0]),
                    sizeof(LMM_MMC_EMERGENCY_NUM_STRU) * (stEmergencyList.ucEmergencyNumber));
@@ -1349,24 +1368,23 @@ VOS_UINT32  NAS_GMM_MapPtmsiSignFromGUTIAndNasToken( VOS_VOID )
 }
 
 
-VOS_UINT32 NAS_GMM_CheckGmmInDeregisterState( VOS_VOID )
+VOS_UINT32 NAS_GMM_IsGutiInfoValid( VOS_VOID )
 {
-    VOS_UINT8                           ucState;
+    NAS_LMM_INFO_STRU                   stLmmInfo;
 
-    ucState         = NAS_GMM_GetGmmState();
-
-    if ( (GMM_DEREGISTERED_NORMAL_SERVICE       == ucState)
-      || (GMM_DEREGISTERED_LIMITED_SERVICE      == ucState)
-      || (GMM_DEREGISTERED_ATTACH_NEEDED        == ucState)
-      || (GMM_DEREGISTERED_ATTEMPTING_TO_ATTACH == ucState)
-      || (GMM_DEREGISTERED_NO_CELL_AVAILABLE    == ucState)
-      || (GMM_DEREGISTERED_PLMN_SEARCH          == ucState)
-      || (GMM_DEREGISTERED_NO_IMSI              == ucState) )
+    if ( VOS_FALSE ==  NAS_GMM_GetLteGutiValid())
     {
-        return VOS_OK;
+        return VOS_FALSE;
     }
 
-    return VOS_ERR;
+    /* 公共接口函数Nas_GetLteInfo获取L变量中的GUTI */
+    /* GUTI无效直接返回VOS_FALSE */
+    if ( VOS_TRUE != NAS_GMM_GetLteInfo( NAS_LMM_GUTI, &stLmmInfo ) )
+    {
+        return VOS_FALSE;
+    }
+
+    return VOS_TRUE;
 }
 
 
@@ -1394,7 +1412,9 @@ VOS_UINT32  NAS_GMM_GetGUSecContextFromEpsSecContextInHandOver(
     if ( ( LMM_GMM_SECU_INFO_RSLT_FAIL      == pstHandOverMsg->enRslt )
       || ( 0 == pstHandOverMsg->bitOpSecuCntxt ) )
     {
-        if (VOS_OK == NAS_GMM_CheckGmmInDeregisterState())
+        /* GUTI有效并且获取GUTI成功时，将NAS TOKEN置成0，GPRS CKSN置成无效值
+           否则就使用本地的，不从LTE映射 */
+        if (VOS_TRUE == NAS_GMM_IsGutiInfoValid())
         {
             PS_MEM_SET( pucNasToken, 0, LMM_GMM_NAS_TOKEN_LEN );
             NAS_MML_SetSimPsSecurityCksn(NAS_MML_CKSN_INVALID);
@@ -1461,7 +1481,9 @@ VOS_UINT32  NAS_GMM_GetGUSecContextFromEpsSecContextInReselect(
     if ( ( LMM_GMM_SECU_INFO_RSLT_FAIL      == pstReselMsg->enRslt )
       || ( 0 == pstReselMsg->bitOpSecuInfo ) )
     {
-        if (VOS_OK == NAS_GMM_CheckGmmInDeregisterState())
+        /* GUTI有效并且获取GUTI成功时，将NAS TOKEN置成0，GPRS CKSN置成无效值
+           否则就使用本地的，不从LTE映射 */
+        if (VOS_TRUE == NAS_GMM_IsGutiInfoValid())
         {
             PS_MEM_SET( pucNasToken, 0, LMM_GMM_NAS_TOKEN_LEN );
             NAS_MML_SetSimPsSecurityCksn(NAS_MML_CKSN_INVALID);

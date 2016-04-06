@@ -96,6 +96,10 @@ NAS_ACT_STRU        g_astNasMmcPreProcessActTbl[]   =
                       ID_MMA_MMC_PLMN_USER_RESEL_REQ,
                       NAS_MMC_RcvUserReselReq_PreProc),
 
+    NAS_ACT_TBL_ITEM( WUEPS_PID_MMA,
+                      ID_MMA_MMC_IMSI_REFRESH_IND,
+                      NAS_MMC_RcvMmaImsiRefreshInd_PreProc),
+
     NAS_ACT_TBL_ITEM( VOS_PID_TIMER,
                       TI_NAS_MMC_AVAILABLE_TIMER,
                       NAS_MMC_RcvTiAvailTimerExpired_PreProc),
@@ -274,6 +278,12 @@ NAS_ACT_STRU        g_astNasMmcPreProcessActTbl[]   =
 
 
 
+    /* MM发送的链接请求 */
+    NAS_ACT_TBL_ITEM( WUEPS_PID_MM,
+                      MMCMM_RR_CONN_INFO_IND,
+                      NAS_MMC_RcvMmRrConnInfoInd_PreProc),
+
+
 #if   (FEATURE_ON == FEATURE_LTE)
 
     NAS_ACT_TBL_ITEM( PS_PID_MM,
@@ -341,6 +351,11 @@ NAS_ACT_STRU        g_astNasMmcPreProcessActTbl[]   =
     NAS_ACT_TBL_ITEM( PS_PID_MM,
                       ID_LMM_MMC_EMC_PDP_STATUS_NOTIFY,
                       NAS_MMC_RcvLmmEmcPdpStatusNotify_PreProc),
+
+
+    NAS_ACT_TBL_ITEM( PS_PID_MM,
+                      ID_LMM_MMC_SIM_AUTH_FAIL_IND,
+                      NAS_MMC_RcvLmmSimAuthFailInd_PreProc),
 
 #endif
 
@@ -420,6 +435,10 @@ NAS_ACT_STRU        g_astNasMmcPreProcessActTbl[]   =
     NAS_ACT_TBL_ITEM( WUEPS_PID_MMA,
                       ID_MMA_MMC_OTHER_MODEM_INFO_NOTIFY,
                       NAS_MMC_RcvMmaOtherModemInfoNotify_PreProc),
+
+    NAS_ACT_TBL_ITEM( WUEPS_PID_MMA,
+                      ID_MMA_MMC_OTHER_MODEM_DPLMN_NPLMN_INFO_NOTIFY,
+                      NAS_MMC_RcvMmaOtherModemDplmnNplmnInfoNotify_PreProc),
 
     NAS_ACT_TBL_ITEM( WUEPS_PID_MMA,
                       ID_MMA_MMC_NCELL_INFO_NOTIFY,
@@ -506,21 +525,21 @@ NAS_ACT_STRU        g_astNasMmcPreProcessActTbl[]   =
     NAS_ACT_TBL_ITEM( UEPS_PID_GAS,
                       RRMM_SUSPEND_IND,
                       NAS_MMC_RcvRrmmSuspendInd_PreProc),
-                      
+
     NAS_ACT_TBL_ITEM( WUEPS_PID_WRR,
                       RRMM_RESUME_IND,
                       NAS_MMC_RcvRrmmResumeInd_PreProc),
-    
+
     NAS_ACT_TBL_ITEM( UEPS_PID_GAS,
                       RRMM_RESUME_IND,
                       NAS_MMC_RcvRrmmResumeInd_PreProc),
-                      
+
 #if   (FEATURE_ON == FEATURE_LTE)
-    
+
     NAS_ACT_TBL_ITEM( PS_PID_MM,
                       ID_LMM_MMC_SUSPEND_IND,
                       NAS_MMC_RcvLmmSuspendInd_PreProc ),
-    
+
     NAS_ACT_TBL_ITEM( PS_PID_MM,
                       ID_LMM_MMC_RESUME_IND,
                       NAS_MMC_RcvLmmResumeInd_PreProc ),
@@ -530,6 +549,21 @@ NAS_ACT_STRU        g_astNasMmcPreProcessActTbl[]   =
                       NAS_MMC_RcvLmmInfoChangeNotifyInd_PreProc ),
 
 #endif
+
+#if (FEATURE_ON == FEATURE_IMS)
+    NAS_ACT_TBL_ITEM( WUEPS_PID_MMA,
+                      ID_MMA_MMC_IMS_SRV_INFO_NOTIFY,
+                      NAS_MMC_RcvMmaImsSrvInfoNotify_PreProc ),
+
+    NAS_ACT_TBL_ITEM( WUEPS_PID_MMA,
+                      ID_MMA_MMC_IMS_SWITCH_STATE_IND,
+                      NAS_MMC_RcvMmaImsSwitchStateInd_PreProc ),
+
+#endif
+
+    NAS_ACT_TBL_ITEM( WUEPS_PID_MMA,
+                      ID_MMA_MMC_VOICE_DOMAIN_CHANGE_IND,
+                      NAS_MMC_RcvMmaVoiceDomainChangeInd_PreProc ),
 
 };
 

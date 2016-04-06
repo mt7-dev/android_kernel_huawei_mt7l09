@@ -39,7 +39,8 @@ PCLINT_INC_VAR += \
 	-I$(BALONG_TOPDIR)/modem/drv/ccore/drivers/om/sys_view/ \
 	-I$(BALONG_TOPDIR)/modem/drv/ccore/drivers/socp/ \
 	-I$(BALONG_TOPDIR)/modem/drv/ccore/drivers/sci/ \
-	-I$(BALONG_TOPDIR)/modem/drv/ccore/drivers/mbxhifi
+	-I$(BALONG_TOPDIR)/modem/drv/ccore/drivers/mbxhifi \
+	-I$(BALONG_TOPDIR)/modem/drv/ccore/drivers/misc
 
 
 #*******************************************************************

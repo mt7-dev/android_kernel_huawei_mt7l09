@@ -81,26 +81,39 @@ VOS_VOID  NAS_RabmSmPdpActivateIndMsg( VOS_VOID *pMsg )
                 return;
             }
 
-            /*启动Rabm.act.req.T1定时器:*/
-            if ( RABM_SUCCESS != NAS_RabmStartTimer( ( RABM_TIMER_NAME_ENUM )NsapiIndex, RABM_TIMER_PARA_ACT_REQ_T1 ) )
+            if ((RABMSM_ACT_MSG_2 == pstPdpActivateIndMsg->ulActMsgType)
+             && (VOS_TRUE == NAS_RABM_GetDataSuspendFlg()))
             {
-                /*打印出错信息---启动Rabm.act.req.T1定时器失败:*/
-                RABM_LOG1_ERROR( "NAS_RabmSmPdpActivateIndMsg:ERROR:Start Rabm.act.req.T1 Timer FAIL!: NSAPI:", (VOS_INT32)(pstPdpActivateIndMsg->ulNsapi) );
+                /*打印流程信息---状态切换:*/
+                RABM_LOG1_NORMAL( "STATE RABM_2G_NULL state CHANGE TO RABM_DATA_TRANS_STOP state: NSAPI:", (VOS_INT32)(pstPdpActivateIndMsg->ulNsapi) );
 
-                return;
+                /*将该NSAPI的状态置为RABM_DATA_TRANS_STOP:*/
+                RABM_SetGState(NsapiIndex, RABM_DATA_TRANS_STOP);
             }
-            /*打印流程信息---启动了Rabm.act.req.T1定时器:*/
-            RABM_LOG1_NORMAL( "NAS_RabmSmPdpActivateIndMsg:NORMAL:Start Rabm.act.req.T1 Timer SUCCESS: NSAPI:", (VOS_INT32)(pstPdpActivateIndMsg->ulNsapi) );
+            else
+            {
+                /*启动Rabm.act.req.T1定时器:*/
+                if ( RABM_SUCCESS != NAS_RabmStartTimer( ( RABM_TIMER_NAME_ENUM )NsapiIndex, RABM_TIMER_PARA_ACT_REQ_T1 ) )
+                {
+                    /*打印出错信息---启动Rabm.act.req.T1定时器失败:*/
+                    RABM_LOG1_ERROR( "NAS_RabmSmPdpActivateIndMsg:ERROR:Start Rabm.act.req.T1 Timer FAIL!: NSAPI:", (VOS_INT32)(pstPdpActivateIndMsg->ulNsapi) );
+
+                    return;
+                }
+                /*打印流程信息---启动了Rabm.act.req.T1定时器:*/
+                RABM_LOG1_NORMAL( "NAS_RabmSmPdpActivateIndMsg:NORMAL:Start Rabm.act.req.T1 Timer SUCCESS: NSAPI:", (VOS_INT32)(pstPdpActivateIndMsg->ulNsapi) );
+
+                /*将该NSAPI的状态置为RABM_NSAPI_OK_TRANSMODE_NO:*/
+                RABM_SetGState(NsapiIndex, RABM_NSAPI_OK_TRANSMODE_NO);
+
+                /*打印流程信息---状态切换:*/
+                RABM_LOG1_NORMAL( "STATE RABM_2G_NULL state CHANGE TO RABM_NSAPI_OK_TRANSMODE_NO state: NSAPI:", (VOS_INT32)(pstPdpActivateIndMsg->ulNsapi) );
+            }
 
             gastRabm2GEntity[NsapiIndex].stQos.ulQosLength = pstPdpActivateIndMsg->Qos.ulLength;
             PS_MEM_CPY(gastRabm2GEntity[NsapiIndex].stQos.aucQosValue,
                        pstPdpActivateIndMsg->Qos.aucQosValue,
                        NAS_RABM_MAX_QOS_LEN);
-
-            /*将该NSAPI的状态置为RABM_NSAPI_OK_TRANSMODE_NO:*/
-            RABM_SetGState(NsapiIndex, RABM_NSAPI_OK_TRANSMODE_NO);
-            /*打印流程信息---状态切换:*/
-            RABM_LOG1_NORMAL( "STATE RABM_2G_NULL state CHANGE TO RABM_NSAPI_OK_TRANSMODE_NO state: NSAPI:", (VOS_INT32)(pstPdpActivateIndMsg->ulNsapi) );
 
             /*创建RAB_MAP映射实体*/
             NAS_RABM_CreateRabMapEntity((VOS_UINT8)(pstPdpActivateIndMsg->ulNsapi),
@@ -108,12 +121,10 @@ VOS_VOID  NAS_RabmSmPdpActivateIndMsg( VOS_VOID *pMsg )
                                         (VOS_UINT8)(pstPdpActivateIndMsg->ulNsapi));
 
             /* 给CDS发送消息通知CDS QOS信息 */
-
             enQci = NAS_RABM_GetQciFromQos(gastRabm2GEntity[NsapiIndex].stQos.ulQosLength,
                                            gastRabm2GEntity[NsapiIndex].stQos.aucQosValue);
 
             NAS_RABM_SndCdsQosFcRabCreateInd(NsapiIndex + RABM_NSAPI_OFFSET, enQci);
-
             break;
         case RABM_NSAPI_OK_TRANSMODE_NO:
         case RABM_DATA_TRANS_READY:

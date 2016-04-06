@@ -501,7 +501,6 @@ int ieee80211_rtl_rx(struct ieee80211_device *ieee, struct sk_buff *skb,
 
 	frag = WLAN_GET_SEQ_FRAG(sc);
 
-//YJ,add,080828,for keep alive
 	if ((fc & IEEE80211_FCTL_TODS) != IEEE80211_FCTL_TODS) {
 		if (!memcmp(hdr->addr1, dev->dev_addr, ETH_ALEN))
 			ieee->NumRxUnicast++;
@@ -509,7 +508,6 @@ int ieee80211_rtl_rx(struct ieee80211_device *ieee, struct sk_buff *skb,
 		if (!memcmp(hdr->addr3, dev->dev_addr, ETH_ALEN))
 			ieee->NumRxUnicast++;
 	}
-//YJ,add,080828,for keep alive,end
 
 	hdrlen = ieee80211_get_hdrlen(fc);
 
@@ -848,7 +846,6 @@ static inline void ieee80211_extract_country_ie(
 		}
 
 		//
-		// 070305, rcnjko: I update country IE watch dog here because
 		// some AP (e.g. Cisco 1242) don't include country IE in their
 		// probe response frame.
 		//
@@ -902,9 +899,7 @@ inline int ieee80211_network_init(
 	network->flags = 0;
 	network->atim_window = 0;
 	network->QoS_Enable = 0;
-//by amy 080312
 	network->HighestOperaRate = 0;
-//by amy 080312
 	network->Turbo_Enable = 0;
 	network->CountryIeLen = 0;
 	memset(network->CountryIeBuf, 0, MAX_IE_LEN);
@@ -1143,9 +1138,7 @@ inline int ieee80211_network_init(
 		info_element = (struct ieee80211_info_element *)
 			&info_element->data[info_element->len];
 	}
-//by amy 080312
 	network->HighestOperaRate = hOpRate;
-//by amy 080312
 	network->mode = 0;
 	if (stats->freq == IEEE80211_52GHZ_BAND)
 		network->mode = IEEE_A;
@@ -1184,11 +1177,11 @@ static inline int is_same_network(struct ieee80211_network *src,
 	 * and the capability field (in particular IBSS and BSS) all match.
 	 * We treat all <hidden> with the same BSSID and channel
 	 * as one network */
-	return (((src->ssid_len == dst->ssid_len) || (ieee->iw_mode == IW_MODE_INFRA)) &&  //YJ,mod,080819,for hidden ap
+	return (((src->ssid_len == dst->ssid_len) || (ieee->iw_mode == IW_MODE_INFRA)) &&
 		//((src->ssid_len == dst->ssid_len) &&
 		(src->channel == dst->channel) &&
 		!memcmp(src->bssid, dst->bssid, ETH_ALEN) &&
-		(!memcmp(src->ssid, dst->ssid, src->ssid_len) || (ieee->iw_mode == IW_MODE_INFRA)) && //YJ,mod,080819,for hidden ap
+		(!memcmp(src->ssid, dst->ssid, src->ssid_len) || (ieee->iw_mode == IW_MODE_INFRA)) &&
 		//!memcmp(src->ssid, dst->ssid, src->ssid_len) &&
 		((src->capability & WLAN_CAPABILITY_IBSS) ==
 		(dst->capability & WLAN_CAPABILITY_IBSS)) &&
@@ -1225,7 +1218,6 @@ inline void update_network(struct ieee80211_network *dst,
 	dst->HighestOperaRate = src->HighestOperaRate;
 	//printk("==========>in %s: src->ssid is %s,chan is %d\n",__func__,src->ssid,src->channel);
 
-	//YJ,add,080819,for hidden ap
 	if (src->ssid_len > 0) {
 		//if(src->ssid_len == 13)
 		//	printk("=====================>>>>>>>> Dst ssid: %s Src ssid: %s\n", dst->ssid, src->ssid);
@@ -1233,7 +1225,6 @@ inline void update_network(struct ieee80211_network *dst,
 		dst->ssid_len = src->ssid_len;
 		memcpy(dst->ssid, src->ssid, src->ssid_len);
 	}
-	//YJ,add,080819,for hidden ap,end
 
 	dst->channel = src->channel;
 	dst->mode = src->mode;
@@ -1295,7 +1286,7 @@ inline void ieee80211_process_probe_response(
 	unsigned long flags;
 	short renew;
 	u8 wmm_info;
-	u8 is_beacon = (WLAN_FC_GET_STYPE(beacon->header.frame_ctl) == IEEE80211_STYPE_BEACON) ? 1 : 0;  //YJ,add,080819,for hidden ap
+	u8 is_beacon = (WLAN_FC_GET_STYPE(beacon->header.frame_ctl) == IEEE80211_STYPE_BEACON) ? 1 : 0;
 
 	memset(&network, 0, sizeof(struct ieee80211_network));
 
@@ -1386,12 +1377,10 @@ inline void ieee80211_process_probe_response(
 
 	if (is_same_network(&ieee->current_network, &network, ieee)) {
 		wmm_info = ieee->current_network.wmm_info;
-		//YJ,add,080819,for hidden ap
 		if (is_beacon == 0)
 			network.flags = (~NETWORK_EMPTY_ESSID & network.flags)|(NETWORK_EMPTY_ESSID & ieee->current_network.flags);
 		else if (ieee->state == IEEE80211_LINKED)
 			ieee->NumRxBcnInPeriod++;
-		//YJ,add,080819,for hidden ap,end
 		//printk("====>network.ssid=%s cur_ssid=%s\n", network.ssid, ieee->current_network.ssid);
 		update_network(&ieee->current_network, &network);
 	}
@@ -1450,7 +1439,6 @@ inline void ieee80211_process_probe_response(
 		 * net and call the new_net handler
 		 */
 		renew = !time_after(target->last_scanned + ieee->scan_age, jiffies);
-		//YJ,add,080819,for hidden ap
 		if (is_beacon == 0)
 			network.flags = (~NETWORK_EMPTY_ESSID & network.flags)|(NETWORK_EMPTY_ESSID & target->flags);
 		//if(strncmp(network.ssid, "linksys-c",9) == 0)
@@ -1459,7 +1447,6 @@ inline void ieee80211_process_probe_response(
 		    && (((network.ssid_len > 0) && (strncmp(target->ssid, network.ssid, network.ssid_len)))\
 		    || ((ieee->current_network.ssid_len == network.ssid_len) && (strncmp(ieee->current_network.ssid, network.ssid, network.ssid_len) == 0) && (ieee->state == IEEE80211_NOLINK))))
 			renew = 1;
-		//YJ,add,080819,for hidden ap,end
 		update_network(target, &network);
 	}
 

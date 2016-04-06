@@ -77,7 +77,7 @@ typedef  SEM_ID                 rfile_sem_id;
 typedef struct
 {
     void *      context;        /* 0x00: WRS defined context */
-    u32         magic;          /* 0x04: magic. Used in HANDLE_VERIFY() */
+    void *      magic;          /* 0x04: magic. Used in HANDLE_VERIFY() */
     u16         attributes;     /* 0x08: attribute bit set */
     s8          type;           /* 0x0a: enum windObjClassType */
     u8          contextType;    /* 0x0b: enum handleContextType */
@@ -235,7 +235,7 @@ RFILE_FILE *rfile_stdioFpCreate (void)
         fp->taskId      = (int) (taskIdSelf()); /* task id might be useful */
 #endif
 
-        fp->handle.magic        = (u32) (&fp->handle);
+        fp->handle.magic        = (void*) (&fp->handle);
         fp->handle.type         = 102;      /* stdioLib FILE    */
         fp->handle.context      = NULL;
         fp->handle.contextType  = 0;        /* handleContextTypeNone */

@@ -42,7 +42,7 @@ extern void xprintf(const char *fmt, va_list ap,
 *
 * 功能描述  : hso print function
 *
-* 输入参数  :  
+* 输入参数  :
 *
 * 输出参数  : 无
 *
@@ -50,8 +50,8 @@ extern void xprintf(const char *fmt, va_list ap,
 *****************************************************************************/
 static void om_console_xput(char ch, void *cookie)
 {
-    char*     urbTemp = (char*)cookie;  
-    
+    char*     urbTemp = (char*)cookie;
+
 	if(g_om_global_info.trace_cnt < BSP_PRINT_DATA_LEN)
     {
         urbTemp[g_om_global_info.trace_cnt] = ch;
@@ -111,7 +111,7 @@ static void om_header_packet(u8 *print_buf, u32 buf_size, u32 str_id)
 *****************************************************************************/
 void om_log_init(void)
 {
-    
+
 	g_om_global_info.om_cfg.nv_cfg.log_switch = BSP_LOG_SEND_TO_SHELL;
 	g_om_global_info.print_sn = 0;
     g_om_global_info.trace_cnt = 0;
@@ -119,7 +119,7 @@ void om_log_init(void)
 #ifdef K3V3_LPM3_HAS_MODEM_FEATURE
 
     register_modem_hook_func(om_m3_dump_save);
-    
+
 #endif
     return;
 }
@@ -161,7 +161,7 @@ void bsp_trace(bsp_log_level_e log_level, bsp_module_e mod_id, char *fmt,...)
     char    trace_end;    
 	va_list arglist;
 	u8*     p_fmt = NULL;
-	SOCP_BUFFER_RW_S    pTempBuff = {0};
+	SOCP_BUFFER_RW_STRU    pTempBuff = {0};
     bsp_trace_txt_s     *print_str;
 
     /*whatever hso is connected, print to shell first */
@@ -229,7 +229,7 @@ void bsp_trace(bsp_log_level_e log_level, bsp_module_e mod_id, char *fmt,...)
     char    trace_end;    
 	va_list arglist;
 	u8*     p_fmt = NULL;
-	SOCP_BUFFER_RW_S    pTempBuff = {0};
+	SOCP_BUFFER_RW_STRU    pTempBuff = {0};
     bsp_trace_txt_s     *print_str;
 	
 	/*打印模块ID 过滤*/
@@ -326,7 +326,7 @@ void bsp_log_bin_ind(s32 str_id, void* ind_data, u32 ind_data_size)
 
 #ifndef K3V3_LPM3_HAS_MODEM_FEATURE
     u32 u32Pktlen = 0;
-    SOCP_BUFFER_RW_S  pTempBuff = {0};
+    SOCP_BUFFER_RW_STRU  pTempBuff = {0};
     bsp_om_head_s   *om_head_str;
 
 	if((NULL == ind_data) ||(0 == ind_data_size) || (ind_data_size > BSP_IND_DATA_MAX_LEN))
@@ -348,7 +348,7 @@ void bsp_log_bin_ind(s32 str_id, void* ind_data, u32 ind_data_size)
 
             return;
         }
-        
+
         u32Pktlen = sizeof(bsp_hisi_head_s)+sizeof(bsp_socp_head_s)+sizeof(bsp_om_head_s)+ ind_data_size;
         if(u32Pktlen > BSP_PRINT_BUF_LEN)
         {
@@ -374,7 +374,7 @@ void bsp_log_bin_ind(s32 str_id, void* ind_data, u32 ind_data_size)
 
     }
 #endif
-    
+
 }
 
 
@@ -413,13 +413,13 @@ void om_m3_dump_save()
     {
         p_rdr_app_sysctrl_file = (u32 *)rdr_balong_alloc_field(M3_APP_SYSCTRL, HI_AP_SYSCTRL_REG_SIZE);
     }
-    
+
     /* app sysctrl regs */
     if(BSP_NULL == p_rdr_app_peri_crg_file)
     {
         p_rdr_app_peri_crg_file = (u32 *)rdr_balong_alloc_field(M3_APP_PERICRG, HI_LP_PERI_CRG_REG_SIZE);
     }
-    
+
      /* app PMC regs */
     if(BSP_NULL == p_rdr_app_pmc_crg_file)
     {
@@ -436,8 +436,8 @@ void om_m3_dump_save()
         ulCfgStatValue = readl(CRG_SRSTSTAT1_AP_BASE_ADDR);
         if(!(ulCfgStatValue & CRG_STAT_MODEM_RST_MASK))
         {
-           socp_memcpy(p_rdr_modem_sysctrl_file,(const u32 *)(HI_SYSCTRL_BASE_ADDR_VIRT),(HI_SYSCTRL_REG_SIZE/sizeof(u32))); 
-        } 
+           socp_memcpy(p_rdr_modem_sysctrl_file,(const u32 *)(HI_SYSCTRL_BASE_ADDR_VIRT),(HI_SYSCTRL_REG_SIZE/sizeof(u32)));
+        }
     }
 
     if(BSP_NULL != p_rdr_m3_sysctrl_file)
@@ -454,7 +454,7 @@ void om_m3_dump_save()
     {
         socp_memcpy(p_rdr_app_peri_crg_file,(const u32 *)(HI_LP_PERI_CRG_REG_ADDR),(HI_LP_PERI_CRG_REG_SIZE/sizeof(u32)));
     }
-    
+
 
     return ;
 

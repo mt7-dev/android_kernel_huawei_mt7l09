@@ -22,13 +22,13 @@
  *         if return negative, should give up it.
  *         suggestion, could call the interface several times.
  */
-#ifdef CONFIG_HISI_ADC
+#ifdef CONFIG_HI3XXX_HKADC
 extern int hisi_adc_get_value(int adc_channel);
 #else
 static inline int hisi_adc_get_value(int adc_channel)
 {
 	return -1;
 }
-#endif /* CONFIG_HISI_ADC */
+#endif /* CONFIG_HI3XXX_HKADC */
 
 #endif /* HISI_ADC_H */

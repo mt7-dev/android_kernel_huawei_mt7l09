@@ -574,13 +574,7 @@ static inline int noop_x86_32_early_logical_apicid(int cpu)
 	return BAD_APICID;
 }
 
-/*
- * Set up the logical destination ID.
- *
- * Intel recommends to set DFR, LDR and TPR before enabling
- * an APIC.  See e.g. "AP-388 82489DX User's Manual" (Intel
- * document number 292116).  So here it goes...
- */
+
 extern void default_init_apic_ldr(void);
 
 static inline int default_apic_id_registered(void)

@@ -562,9 +562,6 @@ static int twl6030ldo_list_voltage(struct regulator_dev *rdev, unsigned sel)
 	case 0:
 		return 0;
 	case 1 ... 24:
-		/* Linear mapping from 00000001 to 00011000:
-		 * Absolute voltage value = 1.0 V + 0.1 V × (sel – 00000001)
-		 */
 		return (info->min_mV + 100 * (sel - 1)) * 1000;
 	case 25 ... 30:
 		return -EINVAL;

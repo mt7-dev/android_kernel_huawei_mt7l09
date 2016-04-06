@@ -127,13 +127,7 @@ static const u8 VIA686A_REG_TEMP_HYST[]	= { 0x3a, 0x3e, 0x1e };
  */
 static inline u8 IN_TO_REG(long val, int in_num)
 {
-	/*
-	 * To avoid floating point, we multiply constants by 10 (100 for +12V).
-	 * Rounding is done (120500 is actually 133000 - 12500).
-	 * Remember that val is expressed in 0.001V/bit, which is why we divide
-	 * by an additional 10000 (100000 for +12V): 1000 for val and 10 (100)
-	 * for the constants.
-	 */
+
 	if (in_num <= 1)
 		return (u8) clamp_val((val * 21024 - 1205000) / 250000, 0, 255);
 	else if (in_num == 2)

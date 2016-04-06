@@ -43,7 +43,7 @@
 #define YAM_TXTAIL   (1 << 6) /* Tx Tail  (ms) */
 #define YAM_PERSIST  (1 << 7) /* Persist  (ms) */
 #define YAM_SLOTTIME (1 << 8) /* Slottime (ms) */
-#define YAM_BAUDRATE (1 << 9) /* Baud rate of rs232 port ->115200 */
+#define YAM_BAUDRATE (1 << 9)
 
 #define YAM_MAXBITRATE  57600
 #define YAM_MAXBAUDRATE 115200

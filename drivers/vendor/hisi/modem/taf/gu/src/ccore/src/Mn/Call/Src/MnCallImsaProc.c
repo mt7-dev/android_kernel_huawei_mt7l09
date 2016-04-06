@@ -74,7 +74,11 @@ VOS_VOID TAF_CALL_ProcImsaMsg(VOS_VOID *pMsg)
         case ID_IMSA_CALL_MSG_SYNC_IND:
             TAF_CALL_ProcImsaMsgSyncInd((IMSA_CALL_MSG_SYNC_IND_STRU *)pstImsaMsg);
             break;
-        
+
+        case ID_IMSA_CALL_CCWA_CAP_NOTIFY:
+            TAF_CALL_ProcImsaCcwaCapNtf((IMSA_CALL_CCWA_CAP_NOTIFY_STRU *)pstImsaMsg);
+            break;
+
         default:
             MN_WARN_LOG("TAF_CALL_ProcImsaMsg:Error MsgName");
             break;
@@ -85,16 +89,15 @@ VOS_VOID TAF_CALL_ProcImsaMsg(VOS_VOID *pMsg)
 
 
 
-
 VOS_VOID TAF_CALL_ProcImsaSrvccCallInfoNtf(
     CALL_IMSA_SRVCC_CALL_INFO_NOTIFY_STRU                  *pstCallInfoNtf
 )
 {
     VOS_UINT8                           ucRealCallNum;
     MNCC_ENTITY_STATUS_STRU             astEntitySta[MNCC_MAX_ENTITY_NUM];
-    
+
     /* 映射呼叫实体 */
-    TAF_CALL_CreateCallEntitiesWithImsCallInfo(pstCallInfoNtf->ucCallNum, &(pstCallInfoNtf->astCallInfo[0]));
+    TAF_CALL_CreateCallEntitiesWithImsCallInfo(pstCallInfoNtf->ucCallNum, &(pstCallInfoNtf->astCallInfo[0]), pstCallInfoNtf->ucStartedHifiFlag);
 
     /* 初始化DTMF缓存队列 */
     TAF_CALL_InitDtmfCtx();
@@ -414,7 +417,25 @@ VOS_VOID TAF_CALL_ProcImsaMsgSyncInd(IMSA_CALL_MSG_SYNC_IND_STRU *pstMsgSyncInd)
         TAF_CALL_ProcSyncServiceMsgReq((MSG_HEADER_STRU *)&(pstMsgSyncInd->astMsgArray[i]));
     }    
 }
+VOS_VOID TAF_CALL_ProcImsaCcwaCapNtf(
+    IMSA_CALL_CCWA_CAP_NOTIFY_STRU     *pstCcwaCapNtf
+)
+{
+    TAF_CALL_CCWA_CTRL_MODE_ENUM_U8     enCcwaCtrlMode;
 
+    enCcwaCtrlMode = TAF_CALL_GetCcwaCtrlMode();
+
+    /* 如果NV2340配置CCWA控制模式不是UE控制，则不处理ID_IMSA_CALL_CCWA_CAP_NOTIFY */
+    if (TAF_CALL_CCWA_CTRL_BY_IMS != enCcwaCtrlMode)
+    {
+        return;
+    }
+
+    /* 将IMS域的CCWA能力保存到全局变量 */
+    TAF_CALL_SetCcwaiFlg(pstCcwaCapNtf->ucCcwaCap);
+
+    return;
+}
 
 
 #endif

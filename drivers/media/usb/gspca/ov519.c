@@ -700,39 +700,10 @@ static const struct ov_i2c_regvals norm_3620b[] = {
 	 */
 	{ 0x13, 0xc0 },
 
-	/*
-	 * 09 COMC "Common Control C"
-	 *                  =   8 (0x08) 00001000
-	 *    COMC[7:5] "Reserved"
-	 *                  =   0 (0x00) 000.....
-	 *    COMC[4] "Sleep Mode Enable"
-	 *                  =   0 (0x00) ...0.... "Normal mode"
-	 *    COMC[3:2] "Sensor sampling reset timing selection"
-	 *                  =   2 (0x02) ....10.. "Longer reset time"
-	 *    COMC[1:0] "Output drive current select"
-	 *                  =   0 (0x00) ......00 "Weakest"
-	 */
+
 	{ 0x09, 0x08 },
 
-	/*
-	 * 0C COMD "Common Control D"
-	 *                  =   8 (0x08) 00001000
-	 *    COMD[7] "Reserved"
-	 *                  =   0 (0x00) 0.......
-	 *    COMD[6] "Swap MSB and LSB at the output port"
-	 *                  =   0 (0x00) .0...... "False"
-	 *    COMD[5:3] "Reserved"
-	 *                  =   1 (0x01) ..001...
-	 *    COMD[2] "Output Average On Off"
-	 *                  =   0 (0x00) .....0.. "Output Normal"
-	 *    COMD[1] "Sensor precharge voltage selection"
-	 *                  =   0 (0x00) ......0. "Selects internal
-	 *                                         reference precharge
-	 *                                         voltage"
-	 *    COMD[0] "Snapshot option"
-	 *                  =   0 (0x00) .......0 "Enable live video output
-	 *                                         after snapshot sequence"
-	 */
+
 	{ 0x0c, 0x08 },
 
 	/*
@@ -820,46 +791,10 @@ static const struct ov_i2c_regvals norm_3620b[] = {
 	 */
 	{ 0x14, 0xc6 },
 
-	/*
-	 * 15 COMK "Common Control K"
-	 *                  =   2 (0x02) 00000010
-	 *    COMK[7] "CHSYNC pin output swap"
-	 *                  =   0 (0x00) 0....... "CHSYNC"
-	 *    COMK[6] "HREF pin output swap"
-	 *                  =   0 (0x00) .0...... "HREF"
-	 *    COMK[5] "PCLK output selection"
-	 *                  =   0 (0x00) ..0..... "PCLK always output"
-	 *    COMK[4] "PCLK edge selection"
-	 *                  =   0 (0x00) ...0.... "Data valid on falling edge"
-	 *    COMK[3] "HREF output polarity"
-	 *                  =   0 (0x00) ....0... "positive"
-	 *    COMK[2] "Reserved"
-	 *                  =   0 (0x00) .....0..
-	 *    COMK[1] "VSYNC polarity"
-	 *                  =   1 (0x01) ......1. "negative"
-	 *    COMK[0] "HSYNC polarity"
-	 *                  =   0 (0x00) .......0 "positive"
-	 */
+
 	{ 0x15, 0x02 },
 
-	/*
-	 * 33 CHLF "Current Control"
-	 *                  =   9 (0x09) 00001001
-	 *    CHLF[7:6] "Sensor current control"
-	 *                  =   0 (0x00) 00......
-	 *    CHLF[5] "Sensor current range control"
-	 *                  =   0 (0x00) ..0..... "normal range"
-	 *    CHLF[4] "Sensor current"
-	 *                  =   0 (0x00) ...0.... "normal current"
-	 *    CHLF[3] "Sensor buffer current control"
-	 *                  =   1 (0x01) ....1... "half current"
-	 *    CHLF[2] "Column buffer current control"
-	 *                  =   0 (0x00) .....0.. "normal current"
-	 *    CHLF[1] "Analog DSP current control"
-	 *                  =   0 (0x00) ......0. "normal current"
-	 *    CHLF[1] "ADC current control"
-	 *                  =   0 (0x00) ......0. "normal current"
-	 */
+
 	{ 0x33, 0x09 },
 
 	/*
@@ -874,91 +809,34 @@ static const struct ov_i2c_regvals norm_3620b[] = {
 	 */
 	{ 0x34, 0x50 },
 
-	/*
-	 * 36 VCHG "Sensor Precharge Voltage Control"
-	 *                  =   0 (0x00) 00000000
-	 *    VCHG[7] "Reserved"
-	 *                  =   0 (0x00) 0.......
-	 *    VCHG[6:4] "Sensor precharge voltage control"
-	 *                  =   0 (0x00) .000....
-	 *    VCHG[3:0] "Sensor array common reference"
-	 *                  =   0 (0x00) ....0000
-	 */
+
 	{ 0x36, 0x00 },
 
-	/*
-	 * 37 ADC "ADC Reference Control"
-	 *                  =   4 (0x04) 00000100
-	 *    ADC[7:4] "Reserved"
-	 *                  =   0 (0x00) 0000....
-	 *    ADC[3] "ADC input signal range"
-	 *                  =   0 (0x00) ....0... "Input signal 1.0x"
-	 *    ADC[2:0] "ADC range control"
-	 *                  =   4 (0x04) .....100
-	 */
+
 	{ 0x37, 0x04 },
 
-	/*
-	 * 38 ACOM "Analog Common Ground"
-	 *                  =  82 (0x52) 01010010
-	 *    ACOM[7] "Analog gain control"
-	 *                  =   0 (0x00) 0....... "Gain 1x"
-	 *    ACOM[6] "Analog black level calibration"
-	 *                  =   1 (0x01) .1...... "On"
-	 *    ACOM[5:0] "Reserved"
-	 *                  =  18 (0x12) ..010010
-	 */
+
 	{ 0x38, 0x52 },
 
-	/*
-	 * 3A FREFA "Internal Reference Adjustment"
-	 *                  =   0 (0x00) 00000000
-	 *    FREFA[7:0] "Range"
-	 *                  =   0 (0x00) 00000000
-	 */
+
 	{ 0x3a, 0x00 },
 
-	/*
-	 * 3C FVOPT "Internal Reference Adjustment"
-	 *                  =  31 (0x1F) 00011111
-	 *    FVOPT[7:0] "Range"
-	 *                  =  31 (0x1F) 00011111
-	 */
+
 	{ 0x3c, 0x1f },
 
-	/*
-	 * 44 Undocumented  =   0 (0x00) 00000000
-	 *    44[7:0] "It's a secret"
-	 *                  =   0 (0x00) 00000000
-	 */
+
 	{ 0x44, 0x00 },
 
-	/*
-	 * 40 Undocumented  =   0 (0x00) 00000000
-	 *    40[7:0] "It's a secret"
-	 *                  =   0 (0x00) 00000000
-	 */
+
 	{ 0x40, 0x00 },
 
-	/*
-	 * 41 Undocumented  =   0 (0x00) 00000000
-	 *    41[7:0] "It's a secret"
-	 *                  =   0 (0x00) 00000000
-	 */
+
 	{ 0x41, 0x00 },
 
-	/*
-	 * 42 Undocumented  =   0 (0x00) 00000000
-	 *    42[7:0] "It's a secret"
-	 *                  =   0 (0x00) 00000000
-	 */
+
 	{ 0x42, 0x00 },
 
-	/*
-	 * 43 Undocumented  =   0 (0x00) 00000000
-	 *    43[7:0] "It's a secret"
-	 *                  =   0 (0x00) 00000000
-	 */
+
 	{ 0x43, 0x00 },
 
 	/*
@@ -975,11 +853,7 @@ static const struct ov_i2c_regvals norm_3620b[] = {
 	 */
 	{ 0x48, 0xc0 },
 
-	/*
-	 * 49 Undocumented  =  25 (0x19) 00011001
-	 *    49[7:0] "It's a secret"
-	 *                  =  25 (0x19) 00011001
-	 */
+
 	{ 0x49, 0x19 },
 
 	/*
@@ -1008,46 +882,16 @@ static const struct ov_i2c_regvals norm_3620b[] = {
 	 */
 	{ 0x35, 0x4c },
 
-	/*
-	 * 3D Undocumented  =   0 (0x00) 00000000
-	 *    3D[7:0] "It's a secret"
-	 *                  =   0 (0x00) 00000000
-	 */
+
 	{ 0x3d, 0x00 },
 
-	/*
-	 * 3E Undocumented  =   0 (0x00) 00000000
-	 *    3E[7:0] "It's a secret"
-	 *                  =   0 (0x00) 00000000
-	 */
+
 	{ 0x3e, 0x00 },
 
-	/*
-	 * 3B FREFB "Internal Reference Adjustment"
-	 *                  =  24 (0x18) 00011000
-	 *    FREFB[7:0] "Range"
-	 *                  =  24 (0x18) 00011000
-	 */
+
 	{ 0x3b, 0x18 },
 
-	/*
-	 * 33 CHLF "Current Control"
-	 *                  =  25 (0x19) 00011001
-	 *    CHLF[7:6] "Sensor current control"
-	 *                  =   0 (0x00) 00......
-	 *    CHLF[5] "Sensor current range control"
-	 *                  =   0 (0x00) ..0..... "normal range"
-	 *    CHLF[4] "Sensor current"
-	 *                  =   1 (0x01) ...1.... "double current"
-	 *    CHLF[3] "Sensor buffer current control"
-	 *                  =   1 (0x01) ....1... "half current"
-	 *    CHLF[2] "Column buffer current control"
-	 *                  =   0 (0x00) .....0.. "normal current"
-	 *    CHLF[1] "Analog DSP current control"
-	 *                  =   0 (0x00) ......0. "normal current"
-	 *    CHLF[1] "ADC current control"
-	 *                  =   0 (0x00) ......0. "normal current"
-	 */
+
 	{ 0x33, 0x19 },
 
 	/*
@@ -1062,32 +906,10 @@ static const struct ov_i2c_regvals norm_3620b[] = {
 	 */
 	{ 0x34, 0x5a },
 
-	/*
-	 * 3B FREFB "Internal Reference Adjustment"
-	 *                  =   0 (0x00) 00000000
-	 *    FREFB[7:0] "Range"
-	 *                  =   0 (0x00) 00000000
-	 */
+
 	{ 0x3b, 0x00 },
 
-	/*
-	 * 33 CHLF "Current Control"
-	 *                  =   9 (0x09) 00001001
-	 *    CHLF[7:6] "Sensor current control"
-	 *                  =   0 (0x00) 00......
-	 *    CHLF[5] "Sensor current range control"
-	 *                  =   0 (0x00) ..0..... "normal range"
-	 *    CHLF[4] "Sensor current"
-	 *                  =   0 (0x00) ...0.... "normal current"
-	 *    CHLF[3] "Sensor buffer current control"
-	 *                  =   1 (0x01) ....1... "half current"
-	 *    CHLF[2] "Column buffer current control"
-	 *                  =   0 (0x00) .....0.. "normal current"
-	 *    CHLF[1] "Analog DSP current control"
-	 *                  =   0 (0x00) ......0. "normal current"
-	 *    CHLF[1] "ADC current control"
-	 *                  =   0 (0x00) ......0. "normal current"
-	 */
+
 	{ 0x33, 0x09 },
 
 	/*
@@ -1120,12 +942,7 @@ static const struct ov_i2c_regvals norm_3620b[] = {
 	 */
 	{ 0x12, 0x40 },
 
-	/*
-	 * 17 HREFST "Horizontal window start"
-	 *                  =  31 (0x1F) 00011111
-	 *    HREFST[7:0] "Horizontal window start, 8 MSBs"
-	 *                  =  31 (0x1F) 00011111
-	 */
+
 	{ 0x17, 0x1f },
 
 	/*
@@ -1136,12 +953,7 @@ static const struct ov_i2c_regvals norm_3620b[] = {
 	 */
 	{ 0x18, 0x5f },
 
-	/*
-	 * 19 VSTRT "Vertical window start"
-	 *                  =   0 (0x00) 00000000
-	 *    VSTRT[7:0] "Vertical Window Start, 8 MSBs"
-	 *                  =   0 (0x00) 00000000
-	 */
+
 	{ 0x19, 0x00 },
 
 	/*
@@ -1152,16 +964,7 @@ static const struct ov_i2c_regvals norm_3620b[] = {
 	 */
 	{ 0x1a, 0x60 },
 
-	/*
-	 * 32 COMM "Common Control M"
-	 *                  =  18 (0x12) 00010010
-	 *    COMM[7:6] "Pixel clock divide option"
-	 *                  =   0 (0x00) 00...... "/1"
-	 *    COMM[5:3] "Horizontal window end position, 3 LSBs"
-	 *                  =   2 (0x02) ..010...
-	 *    COMM[2:0] "Horizontal window start position, 3 LSBs"
-	 *                  =   2 (0x02) .....010
-	 */
+
 	{ 0x32, 0x12 },
 
 	/*
@@ -1176,35 +979,10 @@ static const struct ov_i2c_regvals norm_3620b[] = {
 	 */
 	{ 0x03, 0x4a },
 
-	/*
-	 * 11 CLKRC "Clock Rate Control"
-	 *                  = 128 (0x80) 10000000
-	 *    CLKRC[7] "Internal frequency doublers on off seclection"
-	 *                  =   1 (0x01) 1....... "On"
-	 *    CLKRC[6] "Digital video master slave selection"
-	 *                  =   0 (0x00) .0...... "Master mode, sensor
-	 *                                         provides PCLK"
-	 *    CLKRC[5:0] "Clock divider { CLK = PCLK/(1+CLKRC[5:0]) }"
-	 *                  =   0 (0x00) ..000000
-	 */
+
 	{ 0x11, 0x80 },
 
-	/*
-	 * 12 COMH "Common Control H"
-	 *                  =   0 (0x00) 00000000
-	 *    COMH[7] "SRST"
-	 *                  =   0 (0x00) 0....... "No-op"
-	 *    COMH[6:4] "Resolution selection"
-	 *                  =   0 (0x00) .000.... "QXGA"
-	 *    COMH[3] "Master slave selection"
-	 *                  =   0 (0x00) ....0... "Master mode"
-	 *    COMH[2] "Internal B/R channel option"
-	 *                  =   0 (0x00) .....0.. "B/R use same channel"
-	 *    COMH[1] "Color bar test pattern"
-	 *                  =   0 (0x00) ......0. "Off"
-	 *    COMH[0] "Reserved"
-	 *                  =   0 (0x00) .......0
-	 */
+
 	{ 0x12, 0x00 },
 
 	/*
@@ -1225,12 +1003,7 @@ static const struct ov_i2c_regvals norm_3620b[] = {
 	 */
 	{ 0x12, 0x40 },
 
-	/*
-	 * 17 HREFST "Horizontal window start"
-	 *                  =  31 (0x1F) 00011111
-	 *    HREFST[7:0] "Horizontal window start, 8 MSBs"
-	 *                  =  31 (0x1F) 00011111
-	 */
+
 	{ 0x17, 0x1f },
 
 	/*
@@ -1241,12 +1014,7 @@ static const struct ov_i2c_regvals norm_3620b[] = {
 	 */
 	{ 0x18, 0x5f },
 
-	/*
-	 * 19 VSTRT "Vertical window start"
-	 *                  =   0 (0x00) 00000000
-	 *    VSTRT[7:0] "Vertical Window Start, 8 MSBs"
-	 *                  =   0 (0x00) 00000000
-	 */
+
 	{ 0x19, 0x00 },
 
 	/*
@@ -1257,16 +1025,7 @@ static const struct ov_i2c_regvals norm_3620b[] = {
 	 */
 	{ 0x1a, 0x60 },
 
-	/*
-	 * 32 COMM "Common Control M"
-	 *                  =  18 (0x12) 00010010
-	 *    COMM[7:6] "Pixel clock divide option"
-	 *                  =   0 (0x00) 00...... "/1"
-	 *    COMM[5:3] "Horizontal window end position, 3 LSBs"
-	 *                  =   2 (0x02) ..010...
-	 *    COMM[2:0] "Horizontal window start position, 3 LSBs"
-	 *                  =   2 (0x02) .....010
-	 */
+
 	{ 0x32, 0x12 },
 
 	/*
@@ -1299,17 +1058,7 @@ static const struct ov_i2c_regvals norm_3620b[] = {
 	 */
 	{ 0x2d, 0xd2 },
 
-	/*
-	 * 00 GAIN          =  24 (0x18) 00011000
-	 *    GAIN[7:6] "Reserved"
-	 *                  =   0 (0x00) 00......
-	 *    GAIN[5] "Double"
-	 *                  =   0 (0x00) ..0..... "False"
-	 *    GAIN[4] "Double"
-	 *                  =   1 (0x01) ...1.... "True"
-	 *    GAIN[3:0] "Range"
-	 *                  =   8 (0x08) ....1000
-	 */
+
 	{ 0x00, 0x18 },
 
 	/*
@@ -1322,12 +1071,7 @@ static const struct ov_i2c_regvals norm_3620b[] = {
 	 */
 	{ 0x01, 0xf0 },
 
-	/*
-	 * 10 AEC "Automatic Exposure Control"
-	 *                  =  10 (0x0A) 00001010
-	 *    AEC[7:0] "Automatic Exposure Control, 8 MSBs"
-	 *                  =  10 (0x0A) 00001010
-	 */
+
 	{ 0x10, 0x0a },
 
 	{ 0xe1, 0x67 },
@@ -1943,8 +1687,8 @@ static const struct ov_i2c_regvals norm_8610[] = {
 	{ 0x02, 0x80 },
 	{ 0x03, 0xc0 },
 	{ 0x04, 0x30 },
-	{ 0x05, 0x30 }, /* was 0x10, new from windrv 090403 */
-	{ 0x06, 0x70 }, /* was 0x80, new from windrv 090403 */
+	{ 0x05, 0x30 },
+	{ 0x06, 0x70 },
 	{ 0x0a, 0x86 },
 	{ 0x0b, 0xb0 },
 	{ 0x0c, 0x20 },
@@ -1955,73 +1699,72 @@ static const struct ov_i2c_regvals norm_8610[] = {
 	{ 0x14, 0x04 },
 	{ 0x15, 0x01 }, /* Lin and Win think different about UV order */
 	{ 0x16, 0x03 },
-	{ 0x17, 0x38 }, /* was 0x2f, new from windrv 090403 */
-	{ 0x18, 0xea }, /* was 0xcf, new from windrv 090403 */
-	{ 0x19, 0x02 }, /* was 0x06, new from windrv 090403 */
+	{ 0x17, 0x38 },
+	{ 0x18, 0xea },
+	{ 0x19, 0x02 },
 	{ 0x1a, 0xf5 },
 	{ 0x1b, 0x00 },
-	{ 0x20, 0xd0 }, /* was 0x90, new from windrv 090403 */
-	{ 0x23, 0xc0 }, /* was 0x00, new from windrv 090403 */
-	{ 0x24, 0x30 }, /* was 0x1d, new from windrv 090403 */
-	{ 0x25, 0x50 }, /* was 0x57, new from windrv 090403 */
+	{ 0x20, 0xd0 },
+	{ 0x23, 0xc0 },
+	{ 0x24, 0x30 },
+	{ 0x25, 0x50 },
 	{ 0x26, 0xa2 },
 	{ 0x27, 0xea },
 	{ 0x28, 0x00 },
 	{ 0x29, 0x00 },
 	{ 0x2a, 0x80 },
-	{ 0x2b, 0xc8 }, /* was 0xcc, new from windrv 090403 */
+	{ 0x2b, 0xc8 },
 	{ 0x2c, 0xac },
-	{ 0x2d, 0x45 }, /* was 0xd5, new from windrv 090403 */
+	{ 0x2d, 0x45 },
 	{ 0x2e, 0x80 },
-	{ 0x2f, 0x14 }, /* was 0x01, new from windrv 090403 */
+	{ 0x2f, 0x14 },
 	{ 0x4c, 0x00 },
-	{ 0x4d, 0x30 }, /* was 0x10, new from windrv 090403 */
-	{ 0x60, 0x02 }, /* was 0x01, new from windrv 090403 */
-	{ 0x61, 0x00 }, /* was 0x09, new from windrv 090403 */
-	{ 0x62, 0x5f }, /* was 0xd7, new from windrv 090403 */
+	{ 0x4d, 0x30 },
+	{ 0x60, 0x02 },
+	{ 0x61, 0x00 },
+	{ 0x62, 0x5f },
 	{ 0x63, 0xff },
-	{ 0x64, 0x53 }, /* new windrv 090403 says 0x57,
-			 * maybe thats wrong */
+	{ 0x64, 0x53 },
 	{ 0x65, 0x00 },
 	{ 0x66, 0x55 },
 	{ 0x67, 0xb0 },
-	{ 0x68, 0xc0 }, /* was 0xaf, new from windrv 090403 */
+	{ 0x68, 0xc0 },
 	{ 0x69, 0x02 },
 	{ 0x6a, 0x22 },
 	{ 0x6b, 0x00 },
 	{ 0x6c, 0x99 }, /* was 0x80, old windrv says 0x00, but
 			 * deleting bit7 colors the first images red */
-	{ 0x6d, 0x11 }, /* was 0x00, new from windrv 090403 */
-	{ 0x6e, 0x11 }, /* was 0x00, new from windrv 090403 */
+	{ 0x6d, 0x11 },
+	{ 0x6e, 0x11 },
 	{ 0x6f, 0x01 },
 	{ 0x70, 0x8b },
 	{ 0x71, 0x00 },
 	{ 0x72, 0x14 },
 	{ 0x73, 0x54 },
-	{ 0x74, 0x00 },/* 0x60? - was 0x00, new from windrv 090403 */
+	{ 0x74, 0x00 },
 	{ 0x75, 0x0e },
-	{ 0x76, 0x02 }, /* was 0x02, new from windrv 090403 */
+	{ 0x76, 0x02 },
 	{ 0x77, 0xff },
 	{ 0x78, 0x80 },
 	{ 0x79, 0x80 },
 	{ 0x7a, 0x80 },
-	{ 0x7b, 0x10 }, /* was 0x13, new from windrv 090403 */
+	{ 0x7b, 0x10 },
 	{ 0x7c, 0x00 },
-	{ 0x7d, 0x08 }, /* was 0x09, new from windrv 090403 */
-	{ 0x7e, 0x08 }, /* was 0xc0, new from windrv 090403 */
+	{ 0x7d, 0x08 },
+	{ 0x7e, 0x08 },
 	{ 0x7f, 0xfb },
 	{ 0x80, 0x28 },
 	{ 0x81, 0x00 },
 	{ 0x82, 0x23 },
 	{ 0x83, 0x0b },
 	{ 0x84, 0x00 },
-	{ 0x85, 0x62 }, /* was 0x61, new from windrv 090403 */
+	{ 0x85, 0x62 },
 	{ 0x86, 0xc9 },
 	{ 0x87, 0x00 },
 	{ 0x88, 0x00 },
 	{ 0x89, 0x01 },
 	{ 0x12, 0x20 },
-	{ 0x12, 0x25 }, /* was 0x24, new from windrv 090403 */
+	{ 0x12, 0x25 },
 };
 
 static unsigned char ov7670_abs_to_sm(unsigned char v)
@@ -3748,7 +3491,7 @@ static void ov519_mode_init_regs(struct sd *sd)
 		{ 0x37,	0x00 }, /* undocumented */
 		{ 0x40,	0xff }, /* I2C timeout counter */
 		{ 0x46,	0x00 }, /* I2C clock prescaler */
-		{ 0x59,	0x04 },	/* new from windrv 090403 */
+		{ 0x59,	0x04 },
 		{ 0xff,	0x00 }, /* undocumented */
 		/* windows reads 0x55 at this point, why? */
 	};
@@ -3769,7 +3512,7 @@ static void ov519_mode_init_regs(struct sd *sd)
 		{ 0x37,	0x00 }, /* undocumented */
 		{ 0x40,	0xff }, /* I2C timeout counter */
 		{ 0x46,	0x00 }, /* I2C clock prescaler */
-		{ 0x59,	0x04 },	/* new from windrv 090403 */
+		{ 0x59,	0x04 },
 		{ 0xff,	0x00 }, /* undocumented */
 		/* windows reads 0x55 at this point, why? */
 	};
@@ -3956,7 +3699,7 @@ static void mode_init_ov_sensor_regs(struct sd *sd)
 		i2c_w_mask(sd, OV7610_REG_COM_C, qvga ? (1 << 5) : 0, 1 << 5);
 		i2c_w_mask(sd, 0x13, 0x00, 0x20); /* Select 16 bit data bus */
 		i2c_w_mask(sd, 0x12, 0x04, 0x06); /* AWB: 1 Test pattern: 0 */
-		i2c_w_mask(sd, 0x2d, 0x00, 0x40); /* from windrv 090403 */
+		i2c_w_mask(sd, 0x2d, 0x00, 0x40);
 		i2c_w_mask(sd, 0x28, 0x20, 0x20); /* progressive mode on */
 		break;
 	case SEN_OV7610:

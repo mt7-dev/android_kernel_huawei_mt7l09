@@ -1154,18 +1154,6 @@ VOS_VOID NAS_ERABM_PrintRabmSendMsg
                                               usTotalLen,
                                               pstMsg->ulMsgName);
             break;
-        case PS_PID_IP  :
-            NAS_COMM_nsprintf(  pcBuff,
-                                usTotalLen,
-                                "RABM-->IP\t",
-                                &ilOutPutLenHead);
-
-            usTotalLen += (VOS_UINT16)ilOutPutLenHead;
-
-            ilOutPutLen = IP_PrintRabmIpMsg(    pcBuff,
-                                                usTotalLen,
-                                                pstMsg);
-            break;
         case UEPS_PID_CDS  :
             NAS_COMM_nsprintf(  pcBuff,
                                 usTotalLen,

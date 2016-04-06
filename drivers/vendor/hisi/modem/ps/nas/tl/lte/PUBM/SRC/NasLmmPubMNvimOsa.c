@@ -1165,7 +1165,7 @@ VOS_UINT32  NAS_LMM_EncodeSimSecContext( NAS_NVIM_CTRL_TBL *pstNvCtrlTbl )
 
 VOS_UINT32  NAS_LMM_EncodeSimPsLoc( NAS_NVIM_CTRL_TBL *pstNvCtrlTbl )
 {
-    NAS_LMM_GUTI_STRU                    stGuti;
+    NAS_LMM_GUTI_STRU                    stGuti   = {0};
     NAS_MM_TA_STRU                      stTai;
     VOS_UINT8                           *pucNvData;
     VOS_UINT8                           *pucData;

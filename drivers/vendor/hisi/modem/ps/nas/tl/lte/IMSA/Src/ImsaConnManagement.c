@@ -50,6 +50,62 @@ extern "C" {
 *****************************************************************************/
 VOS_CHAR                                g_acIpStringForSt_ipv4[IMSA_IPV4_ADDR_STRING_LEN + 1] = {0};
 VOS_CHAR                                g_acIpStringForSt_ipv6[IMSA_IPV6_ADDR_STRING_LEN + 1] = {0};
+#if (FEATURE_ON == FEATURE_PTM)
+IMSA_CN_CAUSE_TRANS_STRU                g_astImsaCnRejCauseMap[] =
+{
+    /*------------taf casue-----------------------------------imsa cause---------------------------*/
+    {TAF_PS_CAUSE_SM_NW_OPERATOR_DETERMINED_BARRING,        IMSA_ERR_LOG_PDNREJ_CAUSE_SM_NW_OPERATOR_DETERMINED_BARRING},
+    {TAF_PS_CAUSE_SM_NW_MBMS_BC_INSUFFICIENT,               IMSA_ERR_LOG_PDNREJ_CAUSE_SM_NW_MBMS_BC_INSUFFICIENT},
+    {TAF_PS_CAUSE_SM_NW_LLC_OR_SNDCP_FAILURE,               IMSA_ERR_LOG_PDNREJ_CAUSE_SM_NW_LLC_OR_SNDCP_FAILURE},
+    {TAF_PS_CAUSE_SM_NW_INSUFFICIENT_RESOURCES,             IMSA_ERR_LOG_PDNREJ_CAUSE_SM_NW_INSUFFICIENT_RESOURCES},
+    {TAF_PS_CAUSE_SM_NW_MISSING_OR_UKNOWN_APN,              IMSA_ERR_LOG_PDNREJ_CAUSE_SM_NW_MISSING_OR_UKNOWN_APN},
+    {TAF_PS_CAUSE_SM_NW_UNKNOWN_PDP_ADDR_OR_TYPE,           IMSA_ERR_LOG_PDNREJ_CAUSE_SM_NW_UNKNOWN_PDP_ADDR_OR_TYPE},
+    {TAF_PS_CAUSE_SM_NW_USER_AUTHENTICATION_FAIL,           IMSA_ERR_LOG_PDNREJ_CAUSE_SM_NW_USER_AUTHENTICATION_FAIL},
+    {TAF_PS_CAUSE_SM_NW_ACTIVATION_REJECTED_BY_GGSN,        IMSA_ERR_LOG_PDNREJ_CAUSE_SM_NW_ACTIVATION_REJECTED_BY_GGSN},
+    {TAF_PS_CAUSE_SM_NW_ACTIVATION_REJECTED_UNSPECIFIED,    IMSA_ERR_LOG_PDNREJ_CAUSE_SM_NW_ACTIVATION_REJECTED_UNSPECIFIED},
+    {TAF_PS_CAUSE_SM_NW_SERVICE_OPTION_NOT_SUPPORTED,       IMSA_ERR_LOG_PDNREJ_CAUSE_SM_NW_SERVICE_OPTION_NOT_SUPPORTED},
+    {TAF_PS_CAUSE_SM_NW_REQUESTED_SERVICE_NOT_SUBSCRIBED,   IMSA_ERR_LOG_PDNREJ_CAUSE_SM_NW_REQUESTED_SERVICE_NOT_SUBSCRIBED},
+    {TAF_PS_CAUSE_SM_NW_SERVICE_OPTION_TEMP_OUT_ORDER,      IMSA_ERR_LOG_PDNREJ_CAUSE_SM_NW_SERVICE_OPTION_TEMP_OUT_ORDER},
+    {TAF_PS_CAUSE_SM_NW_NSAPI_ALREADY_USED,                 IMSA_ERR_LOG_PDNREJ_CAUSE_SM_NW_NSAPI_ALREADY_USED},
+    {TAF_PS_CAUSE_SM_NW_REGULAR_DEACTIVATION,               IMSA_ERR_LOG_PDNREJ_CAUSE_SM_NW_REGULAR_DEACTIVATION},
+    {TAF_PS_CAUSE_SM_NW_QOS_NOT_ACCEPTED,                   IMSA_ERR_LOG_PDNREJ_CAUSE_SM_NW_QOS_NOT_ACCEPTED},
+    {TAF_PS_CAUSE_SM_NW_NETWORK_FAILURE,                    IMSA_ERR_LOG_PDNREJ_CAUSE_SM_NW_NETWORK_FAILURE},
+    {TAF_PS_CAUSE_SM_NW_REACTIVATION_REQUESTED,             IMSA_ERR_LOG_PDNREJ_CAUSE_SM_NW_REACTIVATION_REQUESTED},
+    {TAF_PS_CAUSE_SM_NW_FEATURE_NOT_SUPPORT,                IMSA_ERR_LOG_PDNREJ_CAUSE_SM_NW_FEATURE_NOT_SUPPORT},
+    {TAF_PS_CAUSE_SM_NW_SEMANTIC_ERR_IN_TFT,                IMSA_ERR_LOG_PDNREJ_CAUSE_SM_NW_SEMANTIC_ERR_IN_TFT},
+    {TAF_PS_CAUSE_SM_NW_SYNTACTIC_ERR_IN_TFT,               IMSA_ERR_LOG_PDNREJ_CAUSE_SM_NW_SYNTACTIC_ERR_IN_TFT},
+    {TAF_PS_CAUSE_SM_NW_UKNOWN_PDP_CONTEXT,                 IMSA_ERR_LOG_PDNREJ_CAUSE_SM_NW_UKNOWN_PDP_CONTEXT},
+    {TAF_PS_CAUSE_SM_NW_SEMANTIC_ERR_IN_PACKET_FILTER,      IMSA_ERR_LOG_PDNREJ_CAUSE_SM_NW_SEMANTIC_ERR_IN_PACKET_FILTER},
+    {TAF_PS_CAUSE_SM_NW_SYNCTACTIC_ERR_IN_PACKET_FILTER,    IMSA_ERR_LOG_PDNREJ_CAUSE_SM_NW_SYNCTACTIC_ERR_IN_PACKET_FILTER},
+    {TAF_PS_CAUSE_SM_NW_PDP_CONTEXT_WITHOUT_TFT_ACTIVATED,  IMSA_ERR_LOG_PDNREJ_CAUSE_SM_NW_PDP_CONTEXT_WITHOUT_TFT_ACTIVATED},
+    {TAF_PS_CAUSE_SM_NW_MULTICAST_GROUP_MEMBERHHSHIP_TIMEOUT,   IMSA_ERR_LOG_PDNREJ_CAUSE_SM_NW_MULTICAST_GROUP_MEMBERHHSHIP_TIMEOUT},
+    {TAF_PS_CAUSE_SM_NW_REQUEST_REJECTED_BCM_VIOLATION,     IMSA_ERR_LOG_PDNREJ_CAUSE_SM_NW_REQUEST_REJECTED_BCM_VIOLATION},
+    {TAF_PS_CAUSE_SM_NW_LAST_PDN_DISCONN_NOT_ALLOWED,       IMSA_ERR_LOG_PDNREJ_CAUSE_SM_NW_LAST_PDN_DISCONN_NOT_ALLOWED},
+    {TAF_PS_CAUSE_SM_NW_PDP_TYPE_IPV4_ONLY_ALLOWED,         IMSA_ERR_LOG_PDNREJ_CAUSE_SM_NW_PDP_TYPE_IPV4_ONLY_ALLOWED},
+    {TAF_PS_CAUSE_SM_NW_PDP_TYPE_IPV6_ONLY_ALLOWED,         IMSA_ERR_LOG_PDNREJ_CAUSE_SM_NW_PDP_TYPE_IPV6_ONLY_ALLOWED},
+    {TAF_PS_CAUSE_SM_NW_SINGLE_ADDR_BEARERS_ONLY_ALLOWED,   IMSA_ERR_LOG_PDNREJ_CAUSE_SM_NW_SINGLE_ADDR_BEARERS_ONLY_ALLOWED},
+    {TAF_PS_CAUSE_SM_NW_INFORMATION_NOT_RECEIVED,           IMSA_ERR_LOG_PDNREJ_CAUSE_SM_NW_INFORMATION_NOT_RECEIVED},
+    {TAF_PS_CAUSE_SM_NW_PDN_CONNECTION_DOES_NOT_EXIST,      IMSA_ERR_LOG_PDNREJ_CAUSE_SM_NW_PDN_CONNECTION_DOES_NOT_EXIST},
+    {TAF_PS_CAUSE_SM_NW_SAME_APN_MULTI_PDN_CONNECTION_NOT_ALLOWED,   IMSA_ERR_LOG_PDNREJ_CAUSE_SM_NW_SAME_APN_MULTI_PDN_CONNECTION_NOT_ALLOWED},
+    {TAF_PS_CAUSE_SM_NW_COLLISION_WITH_NW_INITIATED_REQUEST,     IMSA_ERR_LOG_PDNREJ_CAUSE_SM_NW_COLLISION_WITH_NW_INITIATED_REQUEST},
+    {TAF_PS_CAUSE_SM_NW_UNSUPPORTED_QCI_VALUE,              IMSA_ERR_LOG_PDNREJ_CAUSE_SM_NW_UNSUPPORTED_QCI_VALUE},
+    {TAF_PS_CAUSE_SM_NW_BEARER_HANDLING_NOT_SUPPORTED,      IMSA_ERR_LOG_PDNREJ_CAUSE_SM_NW_BEARER_HANDLING_NOT_SUPPORTED},
+    {TAF_PS_CAUSE_SM_NW_INVALID_TI,                         IMSA_ERR_LOG_PDNREJ_CAUSE_SM_NW_INVALID_TI},
+    {TAF_PS_CAUSE_SM_NW_SEMANTICALLY_INCORRECT_MESSAGE,     IMSA_ERR_LOG_PDNREJ_CAUSE_SM_NW_SEMANTICALLY_INCORRECT_MESSAGE},
+    {TAF_PS_CAUSE_SM_NW_INVALID_MANDATORY_INFO,             IMSA_ERR_LOG_PDNREJ_CAUSE_SM_NW_INVALID_MANDATORY_INFO},
+    {TAF_PS_CAUSE_SM_NW_MSG_TYPE_NON_EXISTENT,              IMSA_ERR_LOG_PDNREJ_CAUSE_SM_NW_MSG_TYPE_NON_EXISTENT},
+    {TAF_PS_CAUSE_SM_NW_MSG_TYPE_NOT_COMPATIBLE,            IMSA_ERR_LOG_PDNREJ_CAUSE_SM_NW_MSG_TYPE_NOT_COMPATIBLE},
+    {TAF_PS_CAUSE_SM_NW_IE_NON_EXISTENT,                    IMSA_ERR_LOG_PDNREJ_CAUSE_SM_NW_IE_NON_EXISTENT},
+    {TAF_PS_CAUSE_SM_NW_CONDITIONAL_IE_ERR,                 IMSA_ERR_LOG_PDNREJ_CAUSE_SM_NW_CONDITIONAL_IE_ERR},
+    {TAF_PS_CAUSE_SM_NW_MSG_NOT_COMPATIBLE,                 IMSA_ERR_LOG_PDNREJ_CAUSE_SM_NW_MSG_NOT_COMPATIBLE},
+    {TAF_PS_CAUSE_SM_NW_PROTOCOL_ERR_UNSPECIFIED,           IMSA_ERR_LOG_PDNREJ_CAUSE_SM_NW_PROTOCOL_ERR_UNSPECIFIED},
+    {TAF_PS_CAUSE_SM_NW_APN_RESTRICTION_INCOMPATIBLE,       IMSA_ERR_LOG_PDNREJ_CAUSE_SM_NW_APN_RESTRICTION_INCOMPATIBLE}
+
+};
+
+static VOS_UINT32   g_astImsaCnRejCauseNum
+        = sizeof(g_astImsaCnRejCauseMap)/sizeof(IMSA_CN_CAUSE_TRANS_STRU);
+#endif
 
 extern VOS_UINT32 IMSA_CONN_GetTimerLen
 (
@@ -226,6 +282,28 @@ extern VOS_VOID IMSA_CONN_ProcReEstablishConnSetupReq
     const IMSA_CONN_SETUP_REQ_STRU     *pstConnSetupReqMsg
 );
 
+extern VOS_UINT32 IMSA_CONN_FilterRegedPcscfInfo
+(
+    IMSA_CONN_TYPE_ENUM_UINT32          enConnType,
+    IMSA_PDP_CNTXT_INFO_STRU           *pstPdpContext
+);
+
+extern VOS_VOID IMSA_CONN_DeletePcscfInfo2Reg
+(
+    IMSA_CONN_TYPE_ENUM_UINT32          enConnType,
+    const IMSA_PDP_CNTXT_INFO_STRU     *pstPdpInfo
+);
+extern VOS_VOID IMSA_CONN_ConfigPcscfInfo2Reg
+(
+    IMSA_CONN_TYPE_ENUM_UINT32          enConnType,
+    const IMSA_PDP_CNTXT_INFO_STRU     *pstPdpInfo
+);
+extern VOS_VOID IMSA_CONN_DeleteOldPcscfInfoAndConfigNewPcscfInfo
+(
+    IMSA_CONN_TYPE_ENUM_UINT32          enConnType,
+    IMSA_PDP_CNTXT_INFO_STRU           *pstPdpContext,
+    IMSA_PDP_CNTXT_INFO_STRU           *pstPdpContextOld
+);
 
 /*lint -e960*/
 /*lint -e961*/
@@ -257,6 +335,15 @@ VOS_VOID IMSA_CONN_DeletePdpId2Nic(VOS_VOID)
         }
 
         IMSA_CONN_PdnInfoNicDelete(pstConnManager->astNicPdpInfoArray[i].ucPdpId);
+
+        if (IMSA_FALSE == pstConnManager->astNicPdpInfoArray[i].ucIsEmc)
+        {
+            /* 同上海范晶确认，在删除C核虚拟网卡时，通知RNIC模块，删除虚拟网卡，
+            同时给AT上报承载状态 */
+            IMSA_SndMsgRnicPdnDeactInd(pstConnManager->astNicPdpInfoArray[i].ucPdpId);
+            IMSA_SndMsgAtPdpDeactInd(pstConnManager->astNicPdpInfoArray[i].stPdpAddr.enIpType);
+        }
+
     }
 }
 
@@ -582,6 +669,50 @@ VOS_VOID IMSA_CONN_ClearConnResource
 }
 
 
+VOS_VOID IMSA_CONN_ClearConnResourceExeptMedia
+(
+    IMSA_CONN_TYPE_ENUM_UINT32          enConnType
+)
+{
+    IMSA_NORMAL_CONN_STRU              *pstNormalConn   = VOS_NULL_PTR;
+    IMSA_EMC_CONN_STRU                 *pstEmcConn      = VOS_NULL_PTR;
+
+    if (IMSA_CONN_TYPE_EMC == enConnType)
+    {
+        pstEmcConn                      = IMSA_CONN_GetEmcConnAddr();
+
+        IMSA_StopTimer(&pstEmcConn->stProtectTimer);
+        pstEmcConn->enCurReqPdnType     = IMSA_IP_TYPE_BUTT;
+        pstEmcConn->enFirstReqPdnType   = IMSA_IP_TYPE_BUTT;
+        pstEmcConn->enImsaConnStatus    = IMSA_CONN_STATUS_IDLE;
+        pstEmcConn->ucOpid              = IMSA_CONN_ILLEGAL_OPID;
+        IMSA_MEM_SET(                   &pstEmcConn->stSelSdfPara,
+                                        0x0,
+                                        sizeof(IMSA_SEL_SDF_PARA_STRU));
+
+        IMSA_MEM_SET(                   &pstEmcConn->stSipSignalPdp,
+                                        0x0,
+                                        sizeof(IMSA_PDP_CNTXT_INFO_STRU));
+    }
+    else
+    {
+        pstNormalConn = IMSA_CONN_GetNormalConnAddr();
+        IMSA_StopTimer(&pstNormalConn->stProtectTimer);
+        pstNormalConn->enCurReqPdnType  = IMSA_IP_TYPE_BUTT;
+        pstNormalConn->enFirstReqPdnType= IMSA_IP_TYPE_BUTT;
+        pstNormalConn->enImsaConnStatus = IMSA_CONN_STATUS_IDLE;
+        pstNormalConn->ucOpid           = IMSA_CONN_ILLEGAL_OPID;
+        IMSA_MEM_SET(                   &pstNormalConn->stSelSdfPara,
+                                        0x0,
+                                        sizeof(IMSA_SEL_SDF_PARA_STRU));
+        pstNormalConn->ulSipSignalPdpNum= 0;
+        IMSA_MEM_SET(                   pstNormalConn->astSipSignalPdpArray,
+                                        0x0,
+                                        sizeof(IMSA_PDP_CNTXT_INFO_STRU)*IMSA_CONN_MAX_NORMAL_SIP_SIGNAL_PDP_NUM);
+    }
+}
+
+
 VOS_UINT32 IMSA_CONN_HasActiveSipSignalPdp
 (
     IMSA_CONN_TYPE_ENUM_UINT32          enConnType
@@ -617,6 +748,95 @@ VOS_UINT32 IMSA_CONN_HasActiveSipSignalPdp
         }
     }
 }
+
+VOS_UINT32 IMSA_CONN_HasActiveVoicePdp
+(
+    VOS_VOID
+)
+{
+    IMSA_NORMAL_CONN_STRU              *pstNormalConn   = VOS_NULL_PTR;
+    VOS_UINT32                          ulSipMediaPdpNum = IMSA_NULL;
+    IMSA_ENTITY_STRU                   *pstImsaEntity = IMSA_CtxGet();
+    VOS_UINT32                          ulPfNum = IMSA_NULL;
+    VOS_UINT16                          usImsMinPort;
+    VOS_UINT16                          usImsMaxPort;
+
+    pstNormalConn = IMSA_CONN_GetNormalConnAddr();
+
+    usImsMinPort = pstImsaEntity->stImsaControlManager.stImsaConfigPara.stImsPortConfig.usImsMinPort;
+    usImsMaxPort = pstImsaEntity->stImsaControlManager.stImsaConfigPara.stImsPortConfig.usImsMaxPort;
+
+    for (ulSipMediaPdpNum = 0; ulSipMediaPdpNum < pstNormalConn->ulSipMediaPdpNum; ulSipMediaPdpNum ++)
+    {
+        for (ulPfNum = 0; ulPfNum < pstNormalConn->astSipMediaPdpArray[ulSipMediaPdpNum].stTft.ulPfNum; ulPfNum++)
+        {
+            /* 如果存在多个下行过滤器，只需要判断一个过滤器的本地端口 */
+            if ((IMSA_OP_TRUE == pstNormalConn->astSipMediaPdpArray[ulSipMediaPdpNum].stTft.astTftInfo[ulPfNum].bitOpSingleLocalPort) &&
+                (pstNormalConn->astSipMediaPdpArray[ulSipMediaPdpNum].stTft.astTftInfo[ulPfNum].usSingleLcPort >= usImsMinPort)&&
+                (pstNormalConn->astSipMediaPdpArray[ulSipMediaPdpNum].stTft.astTftInfo[ulPfNum].usSingleLcPort <= usImsMaxPort))
+            {
+                return IMSA_TRUE;
+            }
+
+            if ((IMSA_OP_TRUE == pstNormalConn->astSipMediaPdpArray[ulSipMediaPdpNum].stTft.astTftInfo[ulPfNum].bitOpLocalPortRange) &&
+                (pstNormalConn->astSipMediaPdpArray[ulSipMediaPdpNum].stTft.astTftInfo[ulPfNum].usLcPortLowLimit >= usImsMinPort) &&
+                (pstNormalConn->astSipMediaPdpArray[ulSipMediaPdpNum].stTft.astTftInfo[ulPfNum].usLcPortHighLimit <= usImsMaxPort))
+            {
+                return IMSA_TRUE;
+            }
+
+            if (IMSA_VOICE_QCI == pstNormalConn->astSipMediaPdpArray[ulSipMediaPdpNum].stEpsQos.ucQCI)
+            {
+                return IMSA_TRUE;
+            }
+        }
+    }
+    return IMSA_FALSE;
+}
+VOS_UINT32 IMSA_CONN_HasActiveVideoPdp
+(
+    VOS_VOID
+)
+{
+    IMSA_NORMAL_CONN_STRU              *pstNormalConn   = VOS_NULL_PTR;
+    VOS_UINT32                          ulSipMediaPdpNum = IMSA_NULL;
+    IMSA_ENTITY_STRU                   *pstImsaEntity = IMSA_CtxGet();
+    VOS_UINT32                          ulPfNum = IMSA_NULL;
+    VOS_UINT16                          usImsMinPort;
+    VOS_UINT16                          usImsMaxPort;
+
+    pstNormalConn = IMSA_CONN_GetNormalConnAddr();
+
+    usImsMinPort = pstImsaEntity->stImsaControlManager.stImsaConfigPara.stImsPortConfig.usImsMinPort;
+    usImsMaxPort = pstImsaEntity->stImsaControlManager.stImsaConfigPara.stImsPortConfig.usImsMaxPort;
+
+    for (ulSipMediaPdpNum = 0; ulSipMediaPdpNum < pstNormalConn->ulSipMediaPdpNum; ulSipMediaPdpNum ++)
+    {
+        for (ulPfNum = 0; ulPfNum < pstNormalConn->astSipMediaPdpArray[ulSipMediaPdpNum].stTft.ulPfNum; ulPfNum++)
+        {
+            if ((IMSA_OP_TRUE == pstNormalConn->astSipMediaPdpArray[ulSipMediaPdpNum].stTft.astTftInfo[ulPfNum].bitOpSingleLocalPort) &&
+                ((pstNormalConn->astSipMediaPdpArray[ulSipMediaPdpNum].stTft.astTftInfo[ulPfNum].usSingleLcPort < usImsMinPort)  ||
+                 (pstNormalConn->astSipMediaPdpArray[ulSipMediaPdpNum].stTft.astTftInfo[ulPfNum].usSingleLcPort > usImsMaxPort)))
+            {
+                return IMSA_TRUE;
+            }
+
+            if ((IMSA_OP_TRUE == pstNormalConn->astSipMediaPdpArray[ulSipMediaPdpNum].stTft.astTftInfo[ulPfNum].bitOpLocalPortRange) &&
+                (pstNormalConn->astSipMediaPdpArray[ulSipMediaPdpNum].stTft.astTftInfo[ulPfNum].usLcPortLowLimit < usImsMinPort) &&
+                (pstNormalConn->astSipMediaPdpArray[ulSipMediaPdpNum].stTft.astTftInfo[ulPfNum].usLcPortHighLimit > usImsMaxPort))
+            {
+                return IMSA_TRUE;
+            }
+
+            if (IMSA_VIDEO_QCI == pstNormalConn->astSipMediaPdpArray[ulSipMediaPdpNum].stEpsQos.ucQCI)
+            {
+                return IMSA_TRUE;
+            }
+        }
+    }
+    return IMSA_FALSE;
+}
+
 
 
 VOS_UINT32 IMSA_CONN_GetPdpContextByPdpId
@@ -912,8 +1132,10 @@ VOS_UINT32 IMSA_CONN_IsImsSdf
      const TAF_SDF_PARA_STRU            *pstSdfPara
 )
 {
-    if ((IMSA_OP_TRUE == pstSdfPara->bitOpImCnSignalFlg)
+    if (((IMSA_OP_TRUE == pstSdfPara->bitOpImCnSignalFlg)
        && (TAF_PDP_FOR_IM_CN_SIG_ONLY == pstSdfPara->enImCnSignalFlg))
+       ||((IMSA_OP_TRUE == pstSdfPara->bitOpImsSuppFlg)
+       && (IMSA_TRUE == pstSdfPara->ucImsSuppFlg)))
     {
         return IMSA_TRUE;
     }
@@ -1094,6 +1316,9 @@ VOS_VOID IMSA_CONN_SaveSelectedSdfPara
 
     pstSelSdfPara->bitOpImCnSignalFlg       = pstTafSdfPara->bitOpImCnSignalFlg;
     pstSelSdfPara->enImCnSignalFlg          = pstTafSdfPara->enImCnSignalFlg;
+
+    pstSelSdfPara->bitOpImsSuppFlg          = pstTafSdfPara->bitOpImsSuppFlg;
+    pstSelSdfPara->ucImsSuppFlg             = pstTafSdfPara->ucImsSuppFlg;
 }
 
 
@@ -1259,6 +1484,401 @@ VOS_VOID IMSA_CONN_ConvertIpAddress2String
 }
 
 
+
+VOS_UINT32 IMSA_CONN_FilterRegedPcscfInfo
+(
+    IMSA_CONN_TYPE_ENUM_UINT32          enConnType,
+    IMSA_PDP_CNTXT_INFO_STRU           *pstPdpContext
+)
+{
+    VOS_CHAR                            acUeAddr[IMSA_IPV6_ADDR_STRING_LEN + 1] = {0};
+    VOS_CHAR                            acRegUeAddr[IMSA_IPV6_ADDR_STRING_LEN + 1] = {0};
+    VOS_CHAR                            acRegPcscfAddr[IMSA_IPV6_ADDR_STRING_LEN + 1] = {0};
+    VOS_UINT32                          ulRslt          = IMSA_FAIL;
+
+    IMSA_IP_TYPE_ENUM_UINT8             enIpType = IMSA_IP_TYPE_BUTT;
+
+    ulRslt = IMSA_RegGetRegedPara(  (IMSA_REG_TYPE_ENUM_UINT8)enConnType,
+                                    acRegUeAddr,
+                                    acRegPcscfAddr,
+                                    &enIpType);
+
+    /* 如果未获取到注册上的参数，则直接返回不包含 */
+    if (IMSA_FAIL == ulRslt)
+    {
+        return IMSA_FALSE;
+    }
+
+    if ((IMSA_IP_TYPE_IPV4 == enIpType) || (IMSA_IP_TYPE_IPV4V6 == enIpType))
+    {
+        if (IMSA_OP_TRUE == pstPdpContext->stPdpIpv4Pcscf.bitOpPrimPcscfAddr)
+        {
+            IMSA_CONN_ConvertIpAddress2String(  IMSA_IP_TYPE_IPV4,
+                                                pstPdpContext->stPdpIpv4Pcscf.aucPrimPcscfAddr,
+                                                acUeAddr);
+            if (0 == VOS_StrCmp(acRegPcscfAddr, acUeAddr))
+            {
+                pstPdpContext->stPdpIpv4Pcscf.bitOpPrimPcscfAddr = IMSA_OP_FALSE;
+                return IMSA_TRUE;
+            }
+        }
+
+        if (IMSA_OP_TRUE == pstPdpContext->stPdpIpv4Pcscf.bitOpSecPcscfAddr)
+        {
+            IMSA_CONN_ConvertIpAddress2String(  IMSA_IP_TYPE_IPV4,
+                                                pstPdpContext->stPdpIpv4Pcscf.aucSecPcscfAddr,
+                                                acUeAddr);
+            if (0 == VOS_StrCmp(acRegPcscfAddr, acUeAddr))
+            {
+                pstPdpContext->stPdpIpv4Pcscf.bitOpSecPcscfAddr = IMSA_OP_FALSE;
+                return IMSA_TRUE;
+            }
+        }
+
+        if (IMSA_OP_TRUE == pstPdpContext->stPdpIpv4Pcscf.bitOpThiPcscfAddr)
+        {
+            IMSA_CONN_ConvertIpAddress2String(  IMSA_IP_TYPE_IPV4,
+                                                pstPdpContext->stPdpIpv4Pcscf.aucThiPcscfAddr,
+                                                acUeAddr);
+            if (0 == VOS_StrCmp(acRegPcscfAddr, acUeAddr))
+            {
+                pstPdpContext->stPdpIpv4Pcscf.bitOpThiPcscfAddr = IMSA_OP_FALSE;
+                return IMSA_TRUE;
+            }
+        }
+    }
+
+    if ((IMSA_IP_TYPE_IPV6 == enIpType) || (IMSA_IP_TYPE_IPV4V6 == enIpType))
+    {
+        if (IMSA_OP_TRUE == pstPdpContext->stPdpIpv6Pcscf.bitOpPrimPcscfAddr)
+        {
+            IMSA_CONN_ConvertIpAddress2String(  IMSA_IP_TYPE_IPV4,
+                                                pstPdpContext->stPdpIpv6Pcscf.aucPrimPcscfAddr,
+                                                acUeAddr);
+            if (0 == VOS_StrCmp(acRegPcscfAddr, acUeAddr))
+            {
+                pstPdpContext->stPdpIpv6Pcscf.bitOpPrimPcscfAddr = IMSA_OP_FALSE;
+                return IMSA_TRUE;
+            }
+        }
+
+        if (IMSA_OP_TRUE == pstPdpContext->stPdpIpv6Pcscf.bitOpSecPcscfAddr)
+        {
+            IMSA_CONN_ConvertIpAddress2String(  IMSA_IP_TYPE_IPV4,
+                                                pstPdpContext->stPdpIpv6Pcscf.aucSecPcscfAddr,
+                                                acUeAddr);
+            if (0 == VOS_StrCmp(acRegPcscfAddr, acUeAddr))
+            {
+                pstPdpContext->stPdpIpv6Pcscf.bitOpSecPcscfAddr = IMSA_OP_FALSE;
+                return IMSA_TRUE;
+            }
+        }
+
+        if (IMSA_OP_TRUE == pstPdpContext->stPdpIpv6Pcscf.bitOpThiPcscfAddr)
+        {
+            IMSA_CONN_ConvertIpAddress2String(  IMSA_IP_TYPE_IPV4,
+                                                pstPdpContext->stPdpIpv6Pcscf.aucThiPcscfAddr,
+                                                acUeAddr);
+            if (0 == VOS_StrCmp(acRegPcscfAddr, acUeAddr))
+            {
+                pstPdpContext->stPdpIpv6Pcscf.bitOpThiPcscfAddr = IMSA_OP_FALSE;
+                return IMSA_TRUE;
+            }
+        }
+    }
+
+    return IMSA_FALSE;
+}
+VOS_VOID IMSA_CONN_DeletePcscfInfo2Reg
+(
+    IMSA_CONN_TYPE_ENUM_UINT32          enConnType,
+    const IMSA_PDP_CNTXT_INFO_STRU     *pstPdpInfo
+)
+{
+    VOS_CHAR                    acUeAddr[IMSA_IPV6_ADDR_STRING_LEN + 1] = {0};
+
+    if ((IMSA_IP_TYPE_IPV4 == pstPdpInfo->stPdpAddr.enIpType)
+        || (IMSA_IP_TYPE_IPV4V6 == pstPdpInfo->stPdpAddr.enIpType))
+    {
+
+        /* 删除IPV4 P-CSCF地址 */
+        if (IMSA_OP_TRUE == pstPdpInfo->stPdpIpv4Pcscf.bitOpPrimPcscfAddr)
+        {
+            IMSA_CONN_ConvertIpAddress2String(  IMSA_IP_TYPE_IPV4,
+                                                pstPdpInfo->stPdpIpv4Pcscf.aucPrimPcscfAddr,
+                                                acUeAddr);
+
+            (VOS_VOID)IMSA_RegAddrPairMgrRmvPcscfAddr(  (IMSA_REG_TYPE_ENUM_UINT8)enConnType,
+                                                        IMSA_IP_TYPE_IPV4,
+                                                        acUeAddr);
+        }
+
+        if (IMSA_OP_TRUE == pstPdpInfo->stPdpIpv4Pcscf.bitOpSecPcscfAddr)
+        {
+            IMSA_CONN_ConvertIpAddress2String(  IMSA_IP_TYPE_IPV4,
+                                                pstPdpInfo->stPdpIpv4Pcscf.aucSecPcscfAddr,
+                                                acUeAddr);
+
+            (VOS_VOID)IMSA_RegAddrPairMgrRmvPcscfAddr(  (IMSA_REG_TYPE_ENUM_UINT8)enConnType,
+                                                        IMSA_IP_TYPE_IPV4,
+                                                        acUeAddr);
+        }
+
+        if (IMSA_OP_TRUE == pstPdpInfo->stPdpIpv4Pcscf.bitOpThiPcscfAddr)
+        {
+            IMSA_CONN_ConvertIpAddress2String(  IMSA_IP_TYPE_IPV4,
+                                                pstPdpInfo->stPdpIpv4Pcscf.aucThiPcscfAddr,
+                                                acUeAddr);
+
+            (VOS_VOID)IMSA_RegAddrPairMgrRmvPcscfAddr(  (IMSA_REG_TYPE_ENUM_UINT8)enConnType,
+                                                        IMSA_IP_TYPE_IPV4,
+                                                        acUeAddr);
+        }
+    }
+
+    if ((IMSA_IP_TYPE_IPV6 == pstPdpInfo->stPdpAddr.enIpType)
+        || (IMSA_IP_TYPE_IPV4V6 == pstPdpInfo->stPdpAddr.enIpType))
+    {
+        /* 删除IPV6 P-CSCF地址 */
+        if (IMSA_OP_TRUE == pstPdpInfo->stPdpIpv6Pcscf.bitOpPrimPcscfAddr)
+        {
+            IMSA_CONN_ConvertIpAddress2String(  IMSA_IP_TYPE_IPV6,
+                                                pstPdpInfo->stPdpIpv6Pcscf.aucPrimPcscfAddr,
+                                                acUeAddr);
+
+            (VOS_VOID)IMSA_RegAddrPairMgrRmvPcscfAddr(  (IMSA_REG_TYPE_ENUM_UINT8)enConnType,
+                                                        IMSA_IP_TYPE_IPV6,
+                                                        acUeAddr);
+        }
+
+        if (IMSA_OP_TRUE == pstPdpInfo->stPdpIpv6Pcscf.bitOpSecPcscfAddr)
+        {
+            IMSA_CONN_ConvertIpAddress2String(  IMSA_IP_TYPE_IPV6,
+                                                pstPdpInfo->stPdpIpv6Pcscf.aucSecPcscfAddr,
+                                                acUeAddr);
+
+            (VOS_VOID)IMSA_RegAddrPairMgrRmvPcscfAddr(  (IMSA_REG_TYPE_ENUM_UINT8)enConnType,
+                                                        IMSA_IP_TYPE_IPV6,
+                                                        acUeAddr);
+        }
+
+        if (IMSA_OP_TRUE == pstPdpInfo->stPdpIpv6Pcscf.bitOpThiPcscfAddr)
+        {
+            IMSA_CONN_ConvertIpAddress2String(  IMSA_IP_TYPE_IPV6,
+                                                pstPdpInfo->stPdpIpv6Pcscf.aucThiPcscfAddr,
+                                                acUeAddr);
+
+            (VOS_VOID)IMSA_RegAddrPairMgrRmvPcscfAddr(  (IMSA_REG_TYPE_ENUM_UINT8)enConnType,
+                                                        IMSA_IP_TYPE_IPV6,
+                                                        acUeAddr);
+        }
+    }
+}
+
+VOS_VOID IMSA_CONN_ConfigPcscfInfo2Reg
+(
+    IMSA_CONN_TYPE_ENUM_UINT32          enConnType,
+    const IMSA_PDP_CNTXT_INFO_STRU     *pstPdpInfo
+)
+{
+    VOS_CHAR                    acUeAddr[IMSA_IPV6_ADDR_STRING_LEN + 1] = {0};
+
+    if ((IMSA_IP_TYPE_IPV4 == pstPdpInfo->stPdpAddr.enIpType)
+        || (IMSA_IP_TYPE_IPV4V6 == pstPdpInfo->stPdpAddr.enIpType))
+    {
+        /* 配置IPV4 P-CSCF地址 */
+        if (IMSA_OP_TRUE == pstPdpInfo->stPdpIpv4Pcscf.bitOpPrimPcscfAddr)
+        {
+            IMSA_CONN_ConvertIpAddress2String(  IMSA_IP_TYPE_IPV4,
+                                                pstPdpInfo->stPdpIpv4Pcscf.aucPrimPcscfAddr,
+                                                acUeAddr);
+
+            (VOS_VOID)IMSA_RegAddrPairMgrAddPcscfAddr(  (IMSA_REG_TYPE_ENUM_UINT8)enConnType,
+                                                        IMSA_IP_TYPE_IPV4,
+                                                        IMSA_PCSCF_SRC_TYPE_PDN,
+                                                        acUeAddr);
+        }
+
+        if (IMSA_OP_TRUE == pstPdpInfo->stPdpIpv4Pcscf.bitOpSecPcscfAddr)
+        {
+            IMSA_CONN_ConvertIpAddress2String(  IMSA_IP_TYPE_IPV4,
+                                                pstPdpInfo->stPdpIpv4Pcscf.aucSecPcscfAddr,
+                                                acUeAddr);
+
+            (VOS_VOID)IMSA_RegAddrPairMgrAddPcscfAddr(  (IMSA_REG_TYPE_ENUM_UINT8)enConnType,
+                                                        IMSA_IP_TYPE_IPV4,
+                                                        IMSA_PCSCF_SRC_TYPE_PDN,
+                                                        acUeAddr);
+        }
+
+        if (IMSA_OP_TRUE == pstPdpInfo->stPdpIpv4Pcscf.bitOpThiPcscfAddr)
+        {
+            IMSA_CONN_ConvertIpAddress2String(  IMSA_IP_TYPE_IPV4,
+                                                pstPdpInfo->stPdpIpv4Pcscf.aucThiPcscfAddr,
+                                                acUeAddr);
+
+            (VOS_VOID)IMSA_RegAddrPairMgrAddPcscfAddr(  (IMSA_REG_TYPE_ENUM_UINT8)enConnType,
+                                                        IMSA_IP_TYPE_IPV4,
+                                                        IMSA_PCSCF_SRC_TYPE_PDN,
+                                                        acUeAddr);
+        }
+
+    }
+
+    if ((IMSA_IP_TYPE_IPV6 == pstPdpInfo->stPdpAddr.enIpType)
+        || (IMSA_IP_TYPE_IPV4V6 == pstPdpInfo->stPdpAddr.enIpType))
+    {
+        /* 配置IPV6 P-CSCF地址 */
+        if (IMSA_OP_TRUE == pstPdpInfo->stPdpIpv6Pcscf.bitOpPrimPcscfAddr)
+        {
+            IMSA_CONN_ConvertIpAddress2String(  IMSA_IP_TYPE_IPV6,
+                                                pstPdpInfo->stPdpIpv6Pcscf.aucPrimPcscfAddr,
+                                                acUeAddr);
+
+            (VOS_VOID)IMSA_RegAddrPairMgrAddPcscfAddr(  (IMSA_REG_TYPE_ENUM_UINT8)enConnType,
+                                                        IMSA_IP_TYPE_IPV6,
+                                                        IMSA_PCSCF_SRC_TYPE_PDN,
+                                                        acUeAddr);
+        }
+
+        if (IMSA_OP_TRUE == pstPdpInfo->stPdpIpv6Pcscf.bitOpSecPcscfAddr)
+        {
+            IMSA_CONN_ConvertIpAddress2String(  IMSA_IP_TYPE_IPV6,
+                                                pstPdpInfo->stPdpIpv6Pcscf.aucSecPcscfAddr,
+                                                acUeAddr);
+
+            (VOS_VOID)IMSA_RegAddrPairMgrAddPcscfAddr(  (IMSA_REG_TYPE_ENUM_UINT8)enConnType,
+                                                        IMSA_IP_TYPE_IPV6,
+                                                        IMSA_PCSCF_SRC_TYPE_PDN,
+                                                        acUeAddr);
+        }
+
+        if (IMSA_OP_TRUE == pstPdpInfo->stPdpIpv6Pcscf.bitOpThiPcscfAddr)
+        {
+            IMSA_CONN_ConvertIpAddress2String(  IMSA_IP_TYPE_IPV6,
+                                                pstPdpInfo->stPdpIpv6Pcscf.aucThiPcscfAddr,
+                                                acUeAddr);
+
+            (VOS_VOID)IMSA_RegAddrPairMgrAddPcscfAddr(  (IMSA_REG_TYPE_ENUM_UINT8)enConnType,
+                                                        IMSA_IP_TYPE_IPV6,
+                                                        IMSA_PCSCF_SRC_TYPE_PDN,
+                                                        acUeAddr);
+        }
+
+    }
+}
+
+
+VOS_VOID IMSA_CONN_DeleteOldPcscfInfoAndConfigNewPcscfInfo
+(
+    IMSA_CONN_TYPE_ENUM_UINT32          enConnType,
+    IMSA_PDP_CNTXT_INFO_STRU           *pstPdpContext,
+    IMSA_PDP_CNTXT_INFO_STRU           *pstPdpContextOld
+)
+{
+    IMSA_PDP_CNTXT_INFO_STRU            *pstPdpContextOldTemp = VOS_NULL_PTR;
+    IMSA_PDP_CNTXT_INFO_STRU            *pstPdpContextNewTemp = VOS_NULL_PTR;
+
+    pstPdpContextOldTemp = IMSA_MEM_ALLOC(sizeof(IMSA_PDP_CNTXT_INFO_STRU));
+    if (VOS_NULL_PTR == pstPdpContextOldTemp)
+    {
+        return;
+    }
+
+    pstPdpContextNewTemp = IMSA_MEM_ALLOC(sizeof(IMSA_PDP_CNTXT_INFO_STRU));
+    if (VOS_NULL_PTR == pstPdpContextNewTemp)
+    {
+        IMSA_MEM_FREE(pstPdpContextOldTemp);
+        return;
+    }
+
+    IMSA_MEM_SET(pstPdpContextOldTemp, 0x0, sizeof(IMSA_PDP_CNTXT_INFO_STRU));
+    IMSA_MEM_SET(pstPdpContextNewTemp, 0x0, sizeof(IMSA_PDP_CNTXT_INFO_STRU));
+
+    IMSA_MEM_CPY(pstPdpContextOldTemp, pstPdpContextOld, sizeof(IMSA_PDP_CNTXT_INFO_STRU));
+    IMSA_MEM_CPY(pstPdpContextNewTemp, pstPdpContext, sizeof(IMSA_PDP_CNTXT_INFO_STRU));
+
+    /* 从原有备份的承载信息中过滤出已注册的PCSCF地址，
+       并将未注册的PCSCF地址删除 */
+    if (IMSA_TRUE == IMSA_CONN_FilterRegedPcscfInfo(enConnType, pstPdpContextOldTemp))
+    {
+        IMSA_CONN_DeletePcscfInfo2Reg(enConnType, pstPdpContextOldTemp);
+    }
+
+    /* 从修改承载信息中过滤出和已注册的PCSCF地址相同的地址信息，
+       并将其他PCSCF地址配成地址对 */
+    if (IMSA_TRUE == IMSA_CONN_FilterRegedPcscfInfo(enConnType, pstPdpContextNewTemp))
+    {
+        IMSA_CONN_ConfigPcscfInfo2Reg(enConnType, pstPdpContextNewTemp);
+    }
+
+    IMSA_MEM_FREE(pstPdpContextOldTemp);
+    IMSA_MEM_FREE(pstPdpContextNewTemp);
+
+    return;
+}
+
+
+
+VOS_VOID IMSA_CONN_ProcPcscfInvalid
+(
+    IMSA_CONN_TYPE_ENUM_UINT32          enConnType,
+    IMSA_PDP_CNTXT_INFO_STRU           *pstPdpContext,
+    IMSA_PDP_CNTXT_INFO_STRU           *pstPdpContextOld
+)
+{
+    VOS_CHAR                            acRegUeAddr[IMSA_IPV6_ADDR_STRING_LEN + 1] = {0};
+    VOS_CHAR                            acRegPcscfAddr[IMSA_IPV6_ADDR_STRING_LEN + 1] = {0};
+    VOS_UINT32                          ulRslt   = IMSA_FAIL;
+    IMSA_IP_TYPE_ENUM_UINT8             enIpType = IMSA_IP_TYPE_BUTT;
+
+    /* 获取注册参数IP类型 */
+    ulRslt = IMSA_RegGetRegedPara(  (IMSA_REG_TYPE_ENUM_UINT8)enConnType,
+                                    acRegUeAddr,
+                                    acRegPcscfAddr,
+                                    &enIpType);
+    if (IMSA_FAIL == ulRslt)
+    {
+        return ;
+    }
+
+    if ((IMSA_IP_TYPE_IPV4V6 != pstPdpContext->stPdpAddr.enIpType) &&
+        (enIpType != pstPdpContext->stPdpAddr.enIpType))
+    {
+        IMSA_INFO_LOG("IMSA_CONN_ProcPcscfInvalid:IP TYPE NOT MATCH!");
+
+        /* 注册参数IP类型与新的承载信息IP类型不一致，只生成新的地址对
+           不需要在识别注册参数是否失效 */
+
+        /* 调用REG模块删除修改承载的IP地址和P-CSCF地址 */
+        IMSA_CONN_DeletePdpInfo2Reg(enConnType, pstPdpContextOld);
+
+        /* 给REG模块配置地址对 */
+        IMSA_CONN_ConfigPdpInfo2Reg(enConnType, pstPdpContext);
+        return ;
+    }
+
+    /* 如果这注册参数IP类型与新的承载信息IP类型一致，需要识别注册参数是否失效 */
+    if (IMSA_FALSE == IMSA_CONN_IsPdpInfoIncludeRegPara(enConnType, pstPdpContext))
+    {
+        /* 调用REG模块删除修改承载的IP地址和P-CSCF地址 */
+        IMSA_CONN_DeletePdpInfo2Reg(enConnType, pstPdpContextOld);
+
+        /* 给REG模块配置地址对 */
+        IMSA_CONN_ConfigPdpInfo2Reg(enConnType, pstPdpContext);
+
+        /* 给CONN模块发送MODIFY消息，类型为注册地址失效 */
+        IMSA_CONN_SndConnRegPcscfInvalid(enConnType);
+    }
+    else
+    {
+        /* 注册参数没有失效，将备份承载信息中非注册参数的PCSCF删除，
+           将新的承载信息中非注册参数的PCSCF配置成地址对 */
+        IMSA_CONN_DeleteOldPcscfInfoAndConfigNewPcscfInfo(enConnType, pstPdpContext, pstPdpContextOld);
+    }
+}
+
+
 VOS_VOID IMSA_CONN_ConfigPdpInfo2Reg
 (
     IMSA_CONN_TYPE_ENUM_UINT32          enConnType,
@@ -1304,6 +1924,17 @@ VOS_VOID IMSA_CONN_ConfigPdpInfo2Reg
                                                         IMSA_PCSCF_SRC_TYPE_PDN,
                                                         acUeAddr);
         }
+        if (IMSA_OP_TRUE == pstPdpInfo->stPdpIpv4Pcscf.bitOpThiPcscfAddr)
+        {
+            IMSA_CONN_ConvertIpAddress2String(  IMSA_IP_TYPE_IPV4,
+                                                pstPdpInfo->stPdpIpv4Pcscf.aucThiPcscfAddr,
+                                                acUeAddr);
+
+            (VOS_VOID)IMSA_RegAddrPairMgrAddPcscfAddr(  (IMSA_REG_TYPE_ENUM_UINT8)enConnType,
+                                                        IMSA_IP_TYPE_IPV4,
+                                                        IMSA_PCSCF_SRC_TYPE_PDN,
+                                                        acUeAddr);
+        }
     }
 
     if ((IMSA_IP_TYPE_IPV6 == pstPdpInfo->stPdpAddr.enIpType)
@@ -1338,6 +1969,17 @@ VOS_VOID IMSA_CONN_ConfigPdpInfo2Reg
         {
             IMSA_CONN_ConvertIpAddress2String(  IMSA_IP_TYPE_IPV6,
                                                 pstPdpInfo->stPdpIpv6Pcscf.aucSecPcscfAddr,
+                                                acUeAddr);
+
+            (VOS_VOID)IMSA_RegAddrPairMgrAddPcscfAddr(  (IMSA_REG_TYPE_ENUM_UINT8)enConnType,
+                                                        IMSA_IP_TYPE_IPV6,
+                                                        IMSA_PCSCF_SRC_TYPE_PDN,
+                                                        acUeAddr);
+        }
+        if (IMSA_OP_TRUE == pstPdpInfo->stPdpIpv6Pcscf.bitOpThiPcscfAddr)
+        {
+            IMSA_CONN_ConvertIpAddress2String(  IMSA_IP_TYPE_IPV6,
+                                                pstPdpInfo->stPdpIpv6Pcscf.aucThiPcscfAddr,
                                                 acUeAddr);
 
             (VOS_VOID)IMSA_RegAddrPairMgrAddPcscfAddr(  (IMSA_REG_TYPE_ENUM_UINT8)enConnType,
@@ -1391,6 +2033,20 @@ VOS_VOID IMSA_CONN_DeletePdpInfo2Reg
                                                         IMSA_IP_TYPE_IPV4,
                                                         acUeAddr);
         }
+
+        if (IMSA_OP_TRUE == pstPdpInfo->stPdpIpv4Pcscf.bitOpThiPcscfAddr)
+        {
+            IMSA_CONN_ConvertIpAddress2String(  IMSA_IP_TYPE_IPV4,
+                                                pstPdpInfo->stPdpIpv4Pcscf.aucThiPcscfAddr,
+                                                acUeAddr);
+
+            (VOS_VOID)IMSA_RegAddrPairMgrRmvPcscfAddr(  (IMSA_REG_TYPE_ENUM_UINT8)enConnType,
+                                                        IMSA_IP_TYPE_IPV4,
+                                                        acUeAddr);
+        }
+
+
+
     }
 
     if ((IMSA_IP_TYPE_IPV6 == pstPdpInfo->stPdpAddr.enIpType)
@@ -1421,6 +2077,17 @@ VOS_VOID IMSA_CONN_DeletePdpInfo2Reg
         {
             IMSA_CONN_ConvertIpAddress2String(  IMSA_IP_TYPE_IPV6,
                                                 pstPdpInfo->stPdpIpv6Pcscf.aucSecPcscfAddr,
+                                                acUeAddr);
+
+            (VOS_VOID)IMSA_RegAddrPairMgrRmvPcscfAddr(  (IMSA_REG_TYPE_ENUM_UINT8)enConnType,
+                                                        IMSA_IP_TYPE_IPV6,
+                                                        acUeAddr);
+        }
+
+        if (IMSA_OP_TRUE == pstPdpInfo->stPdpIpv6Pcscf.bitOpThiPcscfAddr)
+        {
+            IMSA_CONN_ConvertIpAddress2String(  IMSA_IP_TYPE_IPV6,
+                                                pstPdpInfo->stPdpIpv6Pcscf.aucThiPcscfAddr,
                                                 acUeAddr);
 
             (VOS_VOID)IMSA_RegAddrPairMgrRmvPcscfAddr(  (IMSA_REG_TYPE_ENUM_UINT8)enConnType,
@@ -1623,31 +2290,70 @@ VOS_VOID IMSA_CONN_SaveSipSignalPdpInfo
     case IMSA_PCSCF_DISCOVERY_POLICY_PCO:
 
         /* 通过PCO获取IPV4 P-CSCF */
-        IMSA_MEM_CPY(                   &pstPdpInfo->stPdpIpv4Pcscf,
-                                        &pstPdpActivateCnf->stPcscf,
-                                        sizeof(IMSA_PDP_IPV4_PCSCF_STRU));
+        pstPdpInfo->stPdpIpv4Pcscf.bitOpPrimPcscfAddr = pstPdpActivateCnf->stPcscf.bitOpPrimPcscfAddr;
+        pstPdpInfo->stPdpIpv4Pcscf.bitOpSecPcscfAddr = pstPdpActivateCnf->stPcscf.bitOpSecPcscfAddr;
+        pstPdpInfo->stPdpIpv4Pcscf.bitOpThiPcscfAddr = pstPdpActivateCnf->stPcscf.bitOpThiPcscfAddr;
+
+        IMSA_MEM_CPY(                   &pstPdpInfo->stPdpIpv4Pcscf.aucPrimPcscfAddr[0],
+                                        &pstPdpActivateCnf->stPcscf.aucPrimPcscfAddr[0],
+                                        TAF_IPV4_ADDR_LEN);
+
+        IMSA_MEM_CPY(                   &pstPdpInfo->stPdpIpv4Pcscf.aucSecPcscfAddr[0],
+                                        &pstPdpActivateCnf->stPcscf.aucSecPcscfAddr[0],
+                                        TAF_IPV4_ADDR_LEN);
+
+        IMSA_MEM_CPY(                   &pstPdpInfo->stPdpIpv4Pcscf.aucThiPcscfAddr[0],
+                                        &pstPdpActivateCnf->stPcscf.aucThiPcscfAddr[0],
+                                        TAF_IPV4_ADDR_LEN);
 
         /* 通过PCO获取IPV6 P-CSCF */
-        IMSA_MEM_CPY(                   &pstPdpInfo->stPdpIpv6Pcscf,
-                                        &pstPdpActivateCnf->stIpv6Pcscf,
-                                        sizeof(IMSA_PDP_IPV6_PCSCF_STRU));
+        pstPdpInfo->stPdpIpv6Pcscf.bitOpPrimPcscfAddr = pstPdpActivateCnf->stIpv6Pcscf.bitOpPrimPcscfAddr;
+        pstPdpInfo->stPdpIpv6Pcscf.bitOpSecPcscfAddr = pstPdpActivateCnf->stIpv6Pcscf.bitOpSecPcscfAddr;
+        pstPdpInfo->stPdpIpv6Pcscf.bitOpThiPcscfAddr = pstPdpActivateCnf->stIpv6Pcscf.bitOpThiPcscfAddr;
+
+        IMSA_MEM_CPY(                   &pstPdpInfo->stPdpIpv6Pcscf.aucPrimPcscfAddr[0],
+                                        &pstPdpActivateCnf->stIpv6Pcscf.aucPrimPcscfAddr[0],
+                                        TAF_IPV6_ADDR_LEN);
+
+        IMSA_MEM_CPY(                   &pstPdpInfo->stPdpIpv6Pcscf.aucSecPcscfAddr[0],
+                                        &pstPdpActivateCnf->stIpv6Pcscf.aucSecPcscfAddr[0],
+                                        TAF_IPV6_ADDR_LEN);
+
+        IMSA_MEM_CPY(                   &pstPdpInfo->stPdpIpv6Pcscf.aucThiPcscfAddr[0],
+                                        &pstPdpActivateCnf->stIpv6Pcscf.aucThiPcscfAddr[0],
+                                        TAF_IPV6_ADDR_LEN);
 
         IMSA_INFO_LOG("IMSA_CONN_SaveSipSignalPdpInfo: IMSA_PCSCF_DISCOVERY_POLICY_PCO!");
-    	break;
+        break;
     case IMSA_PCSCF_DISCOVERY_POLICY_NV:
 
         /* 通过NV配置获取IPV4 P-CSCF */
-        IMSA_MEM_CPY(                   &pstPdpInfo->stPdpIpv4Pcscf,
-                                        &pstControlManager->stPcscfDiscoveryPolicyInfo.stIpv4Pcscf,
-                                        sizeof(IMSA_PDP_IPV4_PCSCF_STRU));
+        pstPdpInfo->stPdpIpv4Pcscf.bitOpPrimPcscfAddr = pstControlManager->stPcscfDiscoveryPolicyInfo.stIpv4Pcscf.bitOpPrimPcscfAddr;
+        pstPdpInfo->stPdpIpv4Pcscf.bitOpSecPcscfAddr = pstControlManager->stPcscfDiscoveryPolicyInfo.stIpv4Pcscf.bitOpSecPcscfAddr;
+
+
+        IMSA_MEM_CPY(                   &pstPdpInfo->stPdpIpv4Pcscf.aucPrimPcscfAddr[0],
+                                        &pstControlManager->stPcscfDiscoveryPolicyInfo.stIpv4Pcscf.aucPrimPcscfAddr[0],
+                                        TAF_IPV4_ADDR_LEN);
+
+        IMSA_MEM_CPY(                   &pstPdpInfo->stPdpIpv4Pcscf.aucSecPcscfAddr[0],
+                                        &pstControlManager->stPcscfDiscoveryPolicyInfo.stIpv4Pcscf.aucSecPcscfAddr[0],
+                                        TAF_IPV4_ADDR_LEN);
 
         /* 通过NV配置获取IPV6 P-CSCF */
-        IMSA_MEM_CPY(                   &pstPdpInfo->stPdpIpv6Pcscf,
-                                        &pstControlManager->stPcscfDiscoveryPolicyInfo.stIpv6Pcscf,
-                                        sizeof(IMSA_PDP_IPV6_PCSCF_STRU));
+        pstPdpInfo->stPdpIpv6Pcscf.bitOpPrimPcscfAddr = pstControlManager->stPcscfDiscoveryPolicyInfo.stIpv6Pcscf.bitOpPrimPcscfAddr;
+        pstPdpInfo->stPdpIpv6Pcscf.bitOpSecPcscfAddr = pstControlManager->stPcscfDiscoveryPolicyInfo.stIpv6Pcscf.bitOpSecPcscfAddr;
+
+        IMSA_MEM_CPY(                   &pstPdpInfo->stPdpIpv6Pcscf.aucPrimPcscfAddr[0],
+                                        &pstControlManager->stPcscfDiscoveryPolicyInfo.stIpv6Pcscf.aucPrimPcscfAddr[0],
+                                        TAF_IPV6_ADDR_LEN);
+
+        IMSA_MEM_CPY(                   &pstPdpInfo->stPdpIpv6Pcscf.aucSecPcscfAddr[0],
+                                        &pstControlManager->stPcscfDiscoveryPolicyInfo.stIpv6Pcscf.aucSecPcscfAddr[0],
+                                        TAF_IPV6_ADDR_LEN);
 
         IMSA_INFO_LOG("IMSA_CONN_SaveSipSignalPdpInfo: IMSA_PCSCF_DISCOVERY_POLICY_NV!");
-    	break;
+        break;
     default:
         IMSA_INFO_LOG("IMSA_CONN_SaveSipSignalPdpInfo:P-CSCF policy error!");
         break;
@@ -1662,7 +2368,6 @@ VOS_VOID IMSA_CONN_SaveSipSignalPdpInfo
     IMSA_MEM_CPY(                   &pstPdpInfo->stPdpIpv6Dns,
                                     &pstPdpActivateCnf->stIpv6Dns,
                                     sizeof(IMSA_PDP_IPV6_DNS_STRU));
-
     #if 0
     /* 存储APN */
     pstPdpInfo->bitOpApn            = pstPdpActivateCnf->bitOpApn;
@@ -1674,12 +2379,12 @@ VOS_VOID IMSA_CONN_SaveSipSignalPdpInfo
     IMSA_MEM_CPY(                   &pstPdpInfo->stUmtsQos,
                                     &pstPdpActivateCnf->stUmtsQos,
                                     sizeof(IMSA_PDP_UMTS_QOS_STRU));
-
+    #endif
     /* 存储EPS QOS */
     IMSA_MEM_CPY(                   &pstPdpInfo->stEpsQos,
                                     &pstPdpActivateCnf->stEpsQos,
                                     sizeof(IMSA_PDP_EPS_QOS_STRU));
-    #endif
+
 }
 
 
@@ -1715,17 +2420,28 @@ VOS_VOID IMSA_CONN_SaveSipMediaPdpInfo
     /* 存储关联的信令承载号 */
     pstPdpInfo->bitOpLinkedPdpId    = pstPdpActivateInd->bitOpLinkdRabId;
     pstPdpInfo->ucLinkedPdpId       = pstPdpActivateInd->ucLinkdRabId;
+
+    pstPdpInfo->bitOpTft            = pstPdpActivateInd->bitOpTft;
+    IMSA_MEM_CPY(                   &pstPdpInfo->stTft,
+                                    &pstPdpActivateInd->stTft,
+                                    sizeof(IMSA_PDP_TFT_INFO_STRU));
+
+    if (IMSA_MAX_PF_NUM < pstPdpActivateInd->stTft.ulPfNum)
+    {
+        pstPdpInfo->stTft.ulPfNum = IMSA_MAX_PF_NUM;
+    }
     #if 0
     /* 存储UMTS QOS */
     IMSA_MEM_CPY(                   &pstPdpInfo->stUmtsQos,
                                     &pstPdpActivateInd->stUmtsQos,
                                     sizeof(IMSA_PDP_UMTS_QOS_STRU));
 
+    #endif
     /* 存储EPS QOS */
     IMSA_MEM_CPY(                   &pstPdpInfo->stEpsQos,
                                     &pstPdpActivateInd->stEpsQos,
                                     sizeof(IMSA_PDP_EPS_QOS_STRU));
-    #endif
+
 }
 VOS_VOID IMSA_CONN_ModifySipPdpInfo
 (
@@ -1740,11 +2456,11 @@ VOS_VOID IMSA_CONN_ModifySipPdpInfo
                         &pstPdpModifyInd->stUmtsQos,
                         sizeof(IMSA_PDP_UMTS_QOS_STRU));
 
+    #endif
     /* 存储EPS QOS */
     IMSA_MEM_CPY(       &pstPdpInfo->stEpsQos,
                         &pstPdpModifyInd->stEpsQos,
                         sizeof(IMSA_PDP_EPS_QOS_STRU));
-    #endif
     if (IMSA_CONN_SIP_PDP_TYPE_SIGNAL == enSipPdpType)
     {
         /* 存储IPV4 P-CSCF */
@@ -1767,9 +2483,118 @@ VOS_VOID IMSA_CONN_ModifySipPdpInfo
                         &pstPdpModifyInd->stIpv6Dns,
                         sizeof(IMSA_PDP_IPV6_DNS_STRU));
     }
+    else if(IMSA_CONN_SIP_PDP_TYPE_MEDIA == enSipPdpType)/* 媒体承载的情况下，更新TFT信息 */
+    {
+        pstPdpInfo->bitOpTft            = pstPdpModifyInd->bitOpTft;
+        IMSA_MEM_CPY(                   &pstPdpInfo->stTft,
+                                        &pstPdpModifyInd->stTft,
+                                        sizeof(IMSA_PDP_TFT_INFO_STRU));
+
+        if (IMSA_MAX_PF_NUM < pstPdpModifyInd->stTft.ulPfNum)
+        {
+            pstPdpInfo->stTft.ulPfNum = IMSA_MAX_PF_NUM;
+        }
+    }
+    else
+    {
+    }
 }
+VOS_UINT32 IMSA_CONN_IsVoiceMediaPdpType
+(
+    IMSA_PDP_TFT_INFO_STRU              *pstTft,
+    VOS_UINT8                           ucQCI
+)
+{
+    VOS_UINT32                          ulPfNum             = IMSA_NULL;
+    VOS_UINT16                          usImsMinPort        = IMSA_NULL;
+    VOS_UINT16                          usImsMaxPort        = IMSA_NULL;
+    IMSA_CONTROL_MANAGER_STRU          *pstControlManager   = VOS_NULL_PTR;
 
+    IMSA_INFO_LOG("IMSA_CONN_MediaPdpType is entered!");
 
+    if (VOS_NULL_PTR == pstTft)
+    {
+        return IMSA_TRUE;
+    }
+
+    /*分配空间并检验分配是否成功*/
+    pstControlManager = IMSA_GetControlManagerAddress();
+    usImsMinPort = pstControlManager->stImsaConfigPara.stImsPortConfig.usImsMinPort;
+    usImsMaxPort = pstControlManager->stImsaConfigPara.stImsPortConfig.usImsMaxPort;
+
+    /* 视频包需要走A核，所以不需要配置给CDS；通过TFT的端口信息来区分承载是否是视频承载 */
+    /* 如果承载有多个过滤器，仅需要判断一个本地端口就可以，网侧不会给一个过滤器分配C核端口，
+    另一个分配A核端口 */
+    if (0 == pstTft->ulPfNum)
+    {
+        return IMSA_TRUE;
+    }
+    for (ulPfNum = 0; ulPfNum < pstTft->ulPfNum; ulPfNum ++ )
+    {
+        if ((IMSA_OP_TRUE == pstTft->astTftInfo[ulPfNum].bitOpSingleLocalPort) &&
+            (pstTft->astTftInfo[ulPfNum].usSingleLcPort >= usImsMinPort) &&
+            (pstTft->astTftInfo[ulPfNum].usSingleLcPort <= usImsMaxPort))
+        {
+            return IMSA_TRUE;
+        }
+
+        if ((IMSA_OP_TRUE == pstTft->astTftInfo[ulPfNum].bitOpLocalPortRange) &&
+            (pstTft->astTftInfo[ulPfNum].usLcPortLowLimit >= usImsMinPort) &&
+            (pstTft->astTftInfo[ulPfNum].usLcPortHighLimit <= usImsMaxPort))
+        {
+            return IMSA_TRUE;
+        }
+
+        /* 如果不携带本地端口号，也不携带本地端口号范围，则通过QCI判断当前是不是语音承载 */
+        if (IMSA_VOICE_QCI == ucQCI)
+        {
+            return IMSA_TRUE;
+        }
+    }
+
+    return IMSA_FALSE;
+}
+#if 0
+VOS_UINT32 IMSA_CONN_CheckLocalPortRange
+(
+    IMSA_PDP_TFT_INFO_STRU              *pstTft
+)
+{
+    VOS_UINT32                          ulPfNum             = IMSA_NULL;
+    VOS_UINT16                          usImsMinPort        = IMSA_NULL;
+    VOS_UINT16                          usImsMaxPort        = IMSA_NULL;
+    IMSA_CONTROL_MANAGER_STRU          *pstControlManager   = VOS_NULL_PTR;
+
+    IMSA_INFO_LOG("IMSA_CONN_CheckLocalPortRange is entered!");
+
+    if (VOS_NULL_PTR == pstTft)
+    {
+        return IMSA_TRUE;
+    }
+
+    /*分配空间并检验分配是否成功*/
+    pstControlManager = IMSA_GetControlManagerAddress();
+    usImsMinPort = pstControlManager->stImsaConfigPara.stImsPortConfig.usImsMinPort;
+    usImsMaxPort = pstControlManager->stImsaConfigPara.stImsPortConfig.usImsMaxPort;
+
+    if (0 == pstTft->ulPfNum)
+    {
+        return IMSA_TRUE;
+    }
+
+    for (ulPfNum = 0; ulPfNum < pstTft->ulPfNum; ulPfNum ++ )
+    {
+        if ((IMSA_OP_TRUE == pstTft->astTftInfo[ulPfNum].bitOpLocalPortRange) &&
+            (pstTft->astTftInfo[ulPfNum].usLcPortLowLimit >= usImsMinPort) &&
+            (pstTft->astTftInfo[ulPfNum].usLcPortHighLimit <= usImsMaxPort))
+        {
+            return IMSA_TRUE;
+        }
+    }
+
+    return IMSA_FALSE;
+}
+#endif
 VOS_VOID IMSA_CONN_SaveIpv6Info
 (
     IMSA_PDP_CNTXT_INFO_STRU                   *pstPdpInfo,
@@ -1794,9 +2619,8 @@ VOS_VOID IMSA_CONN_SaveIpv6Info
 }
 
 
-VOS_UINT32 IMSA_CONN_IsPdpIpvxInfoIncludeRegPara
+VOS_UINT32 IMSA_CONN_IsPdpIpv4InfoIncludeRegPara
 (
-    IMSA_IP_TYPE_ENUM_UINT8                 enIpType,
     VOS_CHAR                               *pcRegUeAddr,
     VOS_CHAR                               *pcRegPcscfAddr,
     const IMSA_PDP_CNTXT_INFO_STRU         *pstPdpInfo
@@ -1805,76 +2629,132 @@ VOS_UINT32 IMSA_CONN_IsPdpIpvxInfoIncludeRegPara
     VOS_CHAR                            acPdpUeAddr[IMSA_IPV6_ADDR_STRING_LEN + 1] = {0};
     VOS_CHAR                            acPdpPcscfAddr[IMSA_IPV6_ADDR_STRING_LEN + 1] = {0};
 
-    if (IMSA_IP_TYPE_IPV4 == enIpType)
+    IMSA_CONN_ConvertIpAddress2String(  IMSA_IP_TYPE_IPV4,
+                                        pstPdpInfo->stPdpAddr.aucIpV4Addr,
+                                        acPdpUeAddr);
+
+    if (IMSA_OP_TRUE == pstPdpInfo->stPdpIpv4Pcscf.bitOpPrimPcscfAddr)
     {
         IMSA_CONN_ConvertIpAddress2String(  IMSA_IP_TYPE_IPV4,
-                                            pstPdpInfo->stPdpAddr.aucIpV4Addr,
-                                            acPdpUeAddr);
+                                            pstPdpInfo->stPdpIpv4Pcscf.aucPrimPcscfAddr,
+                                            acPdpPcscfAddr);
 
-        if (IMSA_OP_TRUE == pstPdpInfo->stPdpIpv4Pcscf.bitOpPrimPcscfAddr)
+        /* 比较地址对 */
+        if ((0 == VOS_StrCmp(pcRegUeAddr, acPdpUeAddr))
+            && (0 == VOS_StrCmp(pcRegPcscfAddr, acPdpPcscfAddr)))
         {
-            IMSA_CONN_ConvertIpAddress2String(  IMSA_IP_TYPE_IPV4,
-                                                pstPdpInfo->stPdpIpv4Pcscf.aucPrimPcscfAddr,
-                                                acPdpPcscfAddr);
-
-            /* 比较地址对 */
-            if ((0 == VOS_StrCmp(pcRegUeAddr, acPdpUeAddr))
-                && (0 == VOS_StrCmp(pcRegPcscfAddr, acPdpPcscfAddr)))
-            {
-                return IMSA_TRUE;
-            }
-        }
-
-        if (IMSA_OP_TRUE == pstPdpInfo->stPdpIpv4Pcscf.bitOpSecPcscfAddr)
-        {
-            IMSA_CONN_ConvertIpAddress2String(  IMSA_IP_TYPE_IPV4,
-                                                pstPdpInfo->stPdpIpv4Pcscf.aucSecPcscfAddr,
-                                                acPdpPcscfAddr);
-
-            /* 比较地址对 */
-            if ((0 == VOS_StrCmp(pcRegUeAddr, acPdpUeAddr))
-                && (0 == VOS_StrCmp(pcRegPcscfAddr, acPdpPcscfAddr)))
-            {
-                return IMSA_TRUE;
-            }
+            return IMSA_TRUE;
         }
     }
-    else
+
+    if (IMSA_OP_TRUE == pstPdpInfo->stPdpIpv4Pcscf.bitOpSecPcscfAddr)
     {
-        IMSA_CONN_ConvertIpAddress2String(  IMSA_IP_TYPE_IPV6,
-                                            pstPdpInfo->stPdpAddr.aucIpV6Addr,
-                                            acPdpUeAddr);
+        IMSA_CONN_ConvertIpAddress2String(  IMSA_IP_TYPE_IPV4,
+                                            pstPdpInfo->stPdpIpv4Pcscf.aucSecPcscfAddr,
+                                            acPdpPcscfAddr);
 
-        if (IMSA_OP_TRUE == pstPdpInfo->stPdpIpv6Pcscf.bitOpPrimPcscfAddr)
+        /* 比较地址对 */
+        if ((0 == VOS_StrCmp(pcRegUeAddr, acPdpUeAddr))
+            && (0 == VOS_StrCmp(pcRegPcscfAddr, acPdpPcscfAddr)))
         {
-            IMSA_CONN_ConvertIpAddress2String(  IMSA_IP_TYPE_IPV6,
-                                                pstPdpInfo->stPdpIpv6Pcscf.aucPrimPcscfAddr,
-                                                acPdpPcscfAddr);
-
-            /* 比较地址对 */
-            if ((0 == VOS_StrCmp(pcRegUeAddr, acPdpUeAddr))
-                && (0 == VOS_StrCmp(pcRegPcscfAddr, acPdpPcscfAddr)))
-            {
-                return IMSA_TRUE;
-            }
+            return IMSA_TRUE;
         }
+    }
 
-        if (IMSA_OP_TRUE == pstPdpInfo->stPdpIpv6Pcscf.bitOpSecPcscfAddr)
+    if (IMSA_OP_TRUE == pstPdpInfo->stPdpIpv4Pcscf.bitOpThiPcscfAddr)
+    {
+        IMSA_CONN_ConvertIpAddress2String(  IMSA_IP_TYPE_IPV4,
+                                            pstPdpInfo->stPdpIpv4Pcscf.aucThiPcscfAddr,
+                                            acPdpPcscfAddr);
+
+        /* 比较地址对 */
+        if ((0 == VOS_StrCmp(pcRegUeAddr, acPdpUeAddr))
+            && (0 == VOS_StrCmp(pcRegPcscfAddr, acPdpPcscfAddr)))
         {
-            IMSA_CONN_ConvertIpAddress2String(  IMSA_IP_TYPE_IPV6,
-                                                pstPdpInfo->stPdpIpv6Pcscf.aucSecPcscfAddr,
-                                                acPdpPcscfAddr);
-
-            /* 比较地址对 */
-            if ((0 == VOS_StrCmp(pcRegUeAddr, acPdpUeAddr))
-                && (0 == VOS_StrCmp(pcRegPcscfAddr, acPdpPcscfAddr)))
-            {
-                return IMSA_TRUE;
-            }
+            return IMSA_TRUE;
         }
     }
 
     return IMSA_FALSE;
+}
+VOS_UINT32 IMSA_CONN_IsPdpIpv6InfoIncludeRegPara
+(
+    VOS_CHAR                               *pcRegUeAddr,
+    VOS_CHAR                               *pcRegPcscfAddr,
+    const IMSA_PDP_CNTXT_INFO_STRU         *pstPdpInfo
+)
+{
+    VOS_CHAR                            acPdpUeAddr[IMSA_IPV6_ADDR_STRING_LEN + 1] = {0};
+    VOS_CHAR                            acPdpPcscfAddr[IMSA_IPV6_ADDR_STRING_LEN + 1] = {0};
+
+    IMSA_CONN_ConvertIpAddress2String(  IMSA_IP_TYPE_IPV6,
+                                            pstPdpInfo->stPdpAddr.aucIpV6Addr,
+                                            acPdpUeAddr);
+
+    if (IMSA_OP_TRUE == pstPdpInfo->stPdpIpv6Pcscf.bitOpPrimPcscfAddr)
+    {
+        IMSA_CONN_ConvertIpAddress2String(  IMSA_IP_TYPE_IPV6,
+                                            pstPdpInfo->stPdpIpv6Pcscf.aucPrimPcscfAddr,
+                                            acPdpPcscfAddr);
+
+        /* 比较地址对 */
+        if ((0 == VOS_StrCmp(pcRegUeAddr, acPdpUeAddr))
+            && (0 == VOS_StrCmp(pcRegPcscfAddr, acPdpPcscfAddr)))
+        {
+            return IMSA_TRUE;
+        }
+    }
+
+    if (IMSA_OP_TRUE == pstPdpInfo->stPdpIpv6Pcscf.bitOpSecPcscfAddr)
+    {
+        IMSA_CONN_ConvertIpAddress2String(  IMSA_IP_TYPE_IPV6,
+                                            pstPdpInfo->stPdpIpv6Pcscf.aucSecPcscfAddr,
+                                            acPdpPcscfAddr);
+
+        /* 比较地址对 */
+        if ((0 == VOS_StrCmp(pcRegUeAddr, acPdpUeAddr))
+            && (0 == VOS_StrCmp(pcRegPcscfAddr, acPdpPcscfAddr)))
+        {
+            return IMSA_TRUE;
+        }
+    }
+    if (IMSA_OP_TRUE == pstPdpInfo->stPdpIpv6Pcscf.bitOpThiPcscfAddr)
+    {
+        IMSA_CONN_ConvertIpAddress2String(  IMSA_IP_TYPE_IPV6,
+                                            pstPdpInfo->stPdpIpv6Pcscf.aucThiPcscfAddr,
+                                            acPdpPcscfAddr);
+
+        /* 比较地址对 */
+        if ((0 == VOS_StrCmp(pcRegUeAddr, acPdpUeAddr))
+            && (0 == VOS_StrCmp(pcRegPcscfAddr, acPdpPcscfAddr)))
+        {
+            return IMSA_TRUE;
+        }
+    }
+
+    return IMSA_FALSE;
+}
+VOS_UINT32 IMSA_CONN_IsPdpIpvxInfoIncludeRegPara
+(
+    IMSA_IP_TYPE_ENUM_UINT8                 enIpType,
+    VOS_CHAR                               *pcRegUeAddr,
+    VOS_CHAR                               *pcRegPcscfAddr,
+    const IMSA_PDP_CNTXT_INFO_STRU         *pstPdpInfo
+)
+{
+    VOS_UINT32                          ulResult = IMSA_FALSE;
+
+    if (IMSA_IP_TYPE_IPV4 == enIpType)
+    {
+        ulResult = IMSA_CONN_IsPdpIpv4InfoIncludeRegPara(pcRegUeAddr, pcRegPcscfAddr, pstPdpInfo);
+        return ulResult;
+    }
+    else
+    {
+        ulResult = IMSA_CONN_IsPdpIpv6InfoIncludeRegPara(pcRegUeAddr, pcRegPcscfAddr, pstPdpInfo);
+        return ulResult;
+    }
+
 }
 
 
@@ -1889,14 +2769,26 @@ VOS_UINT32 IMSA_CONN_IsPdpInfoIncludeRegPara
     VOS_CHAR                            acRegPcscfAddr[IMSA_IPV6_ADDR_STRING_LEN + 1] = {0};
     VOS_UINT32                          ulRslt          = IMSA_FAIL;
 
+    IMSA_IP_TYPE_ENUM_UINT8             enIpType = IMSA_IP_TYPE_BUTT;
+
     ulRslt = IMSA_RegGetRegedPara(  (IMSA_REG_TYPE_ENUM_UINT8)enConnType,
                                     acRegUeAddr,
-                                    acRegPcscfAddr);
+                                    acRegPcscfAddr,
+                                    &enIpType);
 
     /* 如果未获取到注册上的参数，则直接返回不包含 */
     if (IMSA_FAIL == ulRslt)
     {
         return IMSA_FALSE;
+    }
+
+    if (IMSA_IP_TYPE_BUTT != enIpType)
+    {
+        if ((IMSA_IP_TYPE_IPV4V6 != pstPdpInfo->stPdpAddr.enIpType) && (enIpType != pstPdpInfo->stPdpAddr.enIpType))
+        {
+            IMSA_INFO_LOG("IMSA_CONN_IsPdpInfoIncludeRegPara:IP TYPE NOT MATCH!");
+            return IMSA_FALSE;
+        }
     }
 
     if ((IMSA_IP_TYPE_IPV4 == pstPdpInfo->stPdpAddr.enIpType)
@@ -1938,10 +2830,12 @@ VOS_VOID IMSA_CONN_DeleteEmcPdpInfo
     if ((IMSA_PDP_STATE_ACTIVE == pstEmcConn->stSipSignalPdp.enPdpState)
         &&(ucCid == pstEmcConn->stSipSignalPdp.ucCid))
     {
-        /* 去激活虚拟网卡或者配置IP地址无效,配置DNS地址无效 */
-        /* lihong00150010 volte phaseiii begin */
-        /* IMSA_CONN_PdnInfoNicDelete(pstEmcConn->stSipSignalPdp.ucPdpId); */
-        /* lihong00150010 volte phaseiii end */
+        if ((IMSA_IP_TYPE_IPV6 == pstEmcConn->stSipSignalPdp.stPdpAddr.enIpType) ||
+            (IMSA_IP_TYPE_IPV4V6 == pstEmcConn->stSipSignalPdp.stPdpAddr.enIpType))
+        {
+            /* 停止等待IPV6参数定时器 */
+            IMSA_CONN_StopTimer(IMSA_CONN_TYPE_EMC, TI_IMSA_WAIT_IPV6_INFO);
+        }
 
         /* 调用REG模块删除IP地址和P-CSCF地址 */
         IMSA_CONN_DeletePdpInfo2Reg(IMSA_CONN_TYPE_EMC, &pstEmcConn->stSipSignalPdp);
@@ -1984,8 +2878,6 @@ VOS_VOID IMSA_CONN_DeleteEmcPdpInfo
 
     return ;
 }
-
-
 VOS_VOID IMSA_CONN_DeletePdpInfo
 (
     IMSA_CONN_TYPE_ENUM_UINT32              enConnType,
@@ -2016,10 +2908,12 @@ VOS_VOID IMSA_CONN_DeletePdpInfo
         if ((IMSA_PDP_STATE_ACTIVE == pstNormalConn->astSipSignalPdpArray[i].enPdpState)
             &&(ucCid == pstNormalConn->astSipSignalPdpArray[i].ucCid))
         {
-            /* 去激活虚拟网卡或者配置IP地址无效,配置DNS地址无效 */
-            /* lihong00150010 volte phaseiii begin */
-            /* IMSA_CONN_PdnInfoNicDelete(pstNormalConn->astSipSignalPdpArray[i].ucPdpId); */
-            /* lihong00150010 volte phaseiii end */
+            if ((IMSA_IP_TYPE_IPV6 == pstNormalConn->astSipSignalPdpArray[i].stPdpAddr.enIpType) ||
+                (IMSA_IP_TYPE_IPV4V6 == pstNormalConn->astSipSignalPdpArray[i].stPdpAddr.enIpType))
+            {
+                /* 停止等待IPV6参数定时器 */
+                IMSA_CONN_StopTimer(IMSA_CONN_TYPE_NORMAL, TI_IMSA_WAIT_IPV6_INFO);
+            }
 
             /* 识别注册参数是否失效 */
             if (IMSA_TRUE == IMSA_CONN_IsPdpInfoIncludeRegPara( IMSA_CONN_TYPE_NORMAL,
@@ -2079,6 +2973,8 @@ VOS_VOID IMSA_CONN_DeletePdpInfo
 
     return ;
 }
+
+
 VOS_VOID IMSA_CONN_SndConnSetupInd
 (
     IMSA_CONN_RESULT_ENUM_UINT32            enResult,
@@ -2117,9 +3013,49 @@ VOS_VOID IMSA_CONN_SndConnSetupInd
     /*调用消息发送函数 */
     IMSA_SEND_INTRA_MSG(pstConnSetupInd);
 }
+VOS_VOID IMSA_CONN_SndConnMediaSetupInd
+(
+    IMSA_CONN_RESULT_ENUM_UINT32            enResult,
+    IMSA_CONN_TYPE_ENUM_UINT32              enConnType,
+    IMSA_CONN_MEDIA_PDP_TYPE_ENUM_UINT32    enMediaPdpType
+)
+{
+    IMSA_CONN_SETUP_IND_STRU           *pstConnSetupInd  = VOS_NULL_PTR;
+
+    IMSA_INFO_LOG("IMSA_CONN_SndConnSetupInd is entered!");
+
+    /*分配空间并检验分配是否成功*/
+    pstConnSetupInd = (VOS_VOID*)IMSA_GetIntraMsgBuffAddr(sizeof(IMSA_CONN_SETUP_IND_STRU));
+
+    /*检测是否分配成功*/
+    if (VOS_NULL_PTR == pstConnSetupInd)
+    {
+        /*打印异常信息*/
+        IMSA_ERR_LOG("IMSA_CONN_SndConnSetupInd:ERROR:Alloc Msg fail!");
+        return ;
+    }
+
+    /*清空*/
+    IMSA_MEM_SET( IMSA_GET_MSG_ENTITY(pstConnSetupInd), 0, IMSA_GET_MSG_LENGTH(pstConnSetupInd));
+
+    /*填写消息头*/
+    IMSA_WRITE_INTRA_MSG_HEAD(  pstConnSetupInd,
+                                ID_IMSA_CONN_SETUP_IND,
+                                sizeof(IMSA_CONN_SETUP_IND_STRU));
+
+    /*填写响应结果*/
+    pstConnSetupInd->enResult       = enResult;
+    pstConnSetupInd->enConnType     = enConnType;
+    pstConnSetupInd->enSipPdpType   = IMSA_CONN_SIP_PDP_TYPE_MEDIA;
+    pstConnSetupInd->enMediaPdpType = enMediaPdpType;
+
+    /*调用消息发送函数 */
+    IMSA_SEND_INTRA_MSG(pstConnSetupInd);
+}
 VOS_VOID IMSA_CONN_SndConnMediaPdpModifyInd
 (
-    IMSA_CONN_TYPE_ENUM_UINT32              enConnType
+    IMSA_CONN_TYPE_ENUM_UINT32              enConnType,
+    IMSA_CONN_MEDIA_PDP_TYPE_ENUM_UINT32    enMeiadModifyType
 )
 {
     IMSA_CONN_MODIFY_IND_STRU           *pstConnModifyInd  = VOS_NULL_PTR;
@@ -2148,6 +3084,9 @@ VOS_VOID IMSA_CONN_SndConnMediaPdpModifyInd
     /*填写响应结果*/
     pstConnModifyInd->enConnType    = enConnType;
     pstConnModifyInd->enSipPdpType  = IMSA_CONN_SIP_PDP_TYPE_MEDIA;
+
+    pstConnModifyInd->bitOpMediaModifyType = IMSA_OP_TRUE;
+    pstConnModifyInd->enMediaPdpType  = enMeiadModifyType;
 
     /*调用消息发送函数 */
     IMSA_SEND_INTRA_MSG(pstConnModifyInd);
@@ -2180,8 +3119,42 @@ VOS_VOID IMSA_CONN_SndConnRegParaInvalid( VOS_VOID )
     /*填写响应结果*/
     pstConnModifyInd->enConnType            = IMSA_CONN_TYPE_NORMAL;
     pstConnModifyInd->enSipPdpType          = IMSA_CONN_SIP_PDP_TYPE_SIGNAL;
-    pstConnModifyInd->bitOpRegParaValidFlag = IMSA_OP_TRUE;
-    pstConnModifyInd->ulRegParaValidFlag    = IMSA_CONN_REG_PARA_INVALID;
+    pstConnModifyInd->bitOpModifyType       = IMSA_OP_TRUE;
+    pstConnModifyInd->enModifyType          = IMSA_CONN_MODIFY_TYPE_REG_PARA_INVALID;
+
+    /*调用消息发送函数 */
+    IMSA_SEND_INTRA_MSG(pstConnModifyInd);
+}
+VOS_VOID IMSA_CONN_SndConnRegPcscfInvalid( IMSA_CONN_TYPE_ENUM_UINT32 enConnType )
+{
+    IMSA_CONN_MODIFY_IND_STRU           *pstConnModifyInd  = VOS_NULL_PTR;
+
+    IMSA_INFO_LOG("IMSA_CONN_SndConnRegParaInvalid is entered!");
+
+    /*分配空间并检验分配是否成功*/
+    pstConnModifyInd = (VOS_VOID*)IMSA_GetIntraMsgBuffAddr(sizeof(IMSA_CONN_MODIFY_IND_STRU));
+
+    /*检测是否分配成功*/
+    if (VOS_NULL_PTR == pstConnModifyInd)
+    {
+        /*打印异常信息*/
+        IMSA_ERR_LOG("IMSA_CONN_SndConnMediaPdpModifyInd:ERROR:Alloc Msg fail!");
+        return ;
+    }
+
+    /*清空*/
+    IMSA_MEM_SET( IMSA_GET_MSG_ENTITY(pstConnModifyInd), 0, IMSA_GET_MSG_LENGTH(pstConnModifyInd));
+
+    /*填写消息头*/
+    IMSA_WRITE_INTRA_MSG_HEAD(  pstConnModifyInd,
+                                ID_IMSA_CONN_MODIFY_IND,
+                                sizeof(IMSA_CONN_MODIFY_IND_STRU));
+
+    /*填写响应结果*/
+    pstConnModifyInd->enConnType            = enConnType;
+    pstConnModifyInd->enSipPdpType          = IMSA_CONN_SIP_PDP_TYPE_SIGNAL;
+    pstConnModifyInd->bitOpModifyType       = IMSA_OP_TRUE;
+    pstConnModifyInd->enModifyType          = IMSA_CONN_MODIFY_TYPE_PCSCF_INVALID;
 
     /*调用消息发送函数 */
     IMSA_SEND_INTRA_MSG(pstConnModifyInd);
@@ -2304,9 +3277,7 @@ VOS_VOID IMSA_CONN_ProcReEstablishConnSetupReq
         出IP地址发生变化，会本地去注册，然后再重新发起注册 */
         if (IMSA_TRUE == IMSA_CONN_HasActiveSipSignalPdp(enConnType))
         {
-            IMSA_CONN_SndConnSetupInd(  IMSA_CONN_RESULT_SUCCESS,
-                                        enConnType,
-                                        IMSA_CONN_SIP_PDP_TYPE_SIGNAL);
+            IMSA_CONN_SetupConnSucc(enConnType);
 
         }
         else
@@ -2318,6 +3289,55 @@ VOS_VOID IMSA_CONN_ProcReEstablishConnSetupReq
         return;
     }
 
+    ulRslt = IMSA_CONN_FindSipSignalDialPara(   enConnType,
+                                                pstSdfQueryInfo->ulSdfNum,
+                                                pstSdfQueryInfo->astSdfPara,
+                                                &ulFoundIndex);
+
+    if (IMSA_FAIL == ulRslt)
+    {
+        /*打印不合法信息*/
+        IMSA_ERR_LOG("IMSA_CONN_ProcReEstablishConnSetupReq:ERROR: Err Para!");
+
+        IMSA_MEM_FREE(pstSdfQueryInfo);
+
+        IMSA_CONN_SndConnSetupInd(  IMSA_CONN_RESULT_FAIL_PARA_ERR,
+                                    enConnType,
+                                    IMSA_CONN_SIP_PDP_TYPE_SIGNAL);
+
+
+        return;
+    }
+
+    /* 查找拨号参数，如果是IPV4V6类型，且当前无激活承载，则直接发起链接请求 */
+    if (TAF_PDP_IPV4V6 == pstSdfQueryInfo->astSdfPara[ulFoundIndex].enPdnType)
+    {
+        if (IMSA_FALSE == IMSA_CONN_HasActiveSipSignalPdp(enConnType))
+        {
+            enIpType = IMSA_IP_TYPE_IPV4V6;
+        }
+        /* 如果是V4V6类型，且当前有其他激活的承载，则需要判断CID和备份的CID是否相同，如果相同，则
+       直接用当前的CID发起链接请求；否则，需要重新获取未使用的CID，重新发起拨号请求 */
+        else if (ucCid != pstSdfQueryInfo->astSdfPara[ulFoundIndex].ucCid)
+        {
+            /* 查找一个未激活的CID进行激活 */
+            IMSA_CONN_AssignOpid(enConnType, &ucOpid);
+
+            if (VOS_OK != TAF_PS_GetUnusedCid(PS_PID_IMSA, IMSA_CLIENT_ID, ucOpid, &ucCid))
+            {
+                IMSA_WARN_LOG("IMSA_CONN_ProcReEstablishConnSetupReq:get cid failed!");
+                IMSA_MEM_FREE(pstSdfQueryInfo);
+
+                IMSA_CONN_SndConnSetupInd(  IMSA_CONN_RESULT_FAIL_PARA_ERR,
+                                            enConnType,
+                                            IMSA_CONN_SIP_PDP_TYPE_SIGNAL);
+                return ;
+            }
+
+        }
+    }
+
+    #if 0
     /* 查找备份CID的SDF信息  */
     ulRslt = IMSA_CONN_FindSipSignalReStablishDialPara( ucCid,
                                                         pstSdfQueryInfo->ulSdfNum,
@@ -2336,8 +3356,7 @@ VOS_VOID IMSA_CONN_ProcReEstablishConnSetupReq
 
         return;
     }
-
-
+    #endif
 
     /* 将PDN类型修改为备份的PDN类型 */
     pstSdfQueryInfo->astSdfPara[ulFoundIndex].enPdnType = enIpType;
@@ -2361,9 +3380,7 @@ VOS_VOID IMSA_CONN_ProcReEstablishConnSetupReq
         出IP地址发生变化，会本地去注册，然后再重新发起注册 */
         if (IMSA_TRUE == IMSA_CONN_HasActiveSipSignalPdp(enConnType))
         {
-            IMSA_CONN_SndConnSetupInd(  IMSA_CONN_RESULT_SUCCESS,
-                                        enConnType,
-                                        IMSA_CONN_SIP_PDP_TYPE_SIGNAL);
+            IMSA_CONN_SetupConnSucc(enConnType);
 
         }
         else
@@ -2438,6 +3455,9 @@ VOS_VOID IMSA_CONN_ProcConnSetupReq
                                     enConnType,
                                     IMSA_CONN_SIP_PDP_TYPE_SIGNAL);
 
+        #if (FEATURE_ON == FEATURE_PTM)
+        IMSA_PdnRejErrRecord(IMSA_ERR_LOG_PDNREJ_CAUSE_IMSA_CONN_RELEASING);
+        #endif
         return ;
     }
 
@@ -2454,6 +3474,9 @@ VOS_VOID IMSA_CONN_ProcConnSetupReq
                                     enConnType,
                                     IMSA_CONN_SIP_PDP_TYPE_SIGNAL);
 
+        #if (FEATURE_ON == FEATURE_PTM)
+        IMSA_PdnRejErrRecord(IMSA_ERR_LOG_PDNREJ_CAUSE_IMSA_OTHERS);
+        #endif
         return;
     }
 
@@ -2470,6 +3493,10 @@ VOS_VOID IMSA_CONN_ProcConnSetupReq
         IMSA_CONN_SndConnSetupInd(  IMSA_CONN_RESULT_FAIL_OHTERS,
                                     enConnType,
                                     IMSA_CONN_SIP_PDP_TYPE_SIGNAL);
+
+        #if (FEATURE_ON == FEATURE_PTM)
+        IMSA_PdnRejErrRecord(IMSA_ERR_LOG_PDNREJ_CAUSE_IMSA_OTHERS);
+        #endif
 
         return;
     }
@@ -2489,6 +3516,10 @@ VOS_VOID IMSA_CONN_ProcConnSetupReq
         IMSA_CONN_SndConnSetupInd(  IMSA_CONN_RESULT_FAIL_PARA_ERR,
                                     enConnType,
                                     IMSA_CONN_SIP_PDP_TYPE_SIGNAL);
+
+        #if (FEATURE_ON == FEATURE_PTM)
+        IMSA_PdnRejErrRecord(IMSA_ERR_LOG_PDNREJ_CAUSE_IMSA_PARA_ERR);
+        #endif
 
         return;
     }
@@ -2518,6 +3549,10 @@ VOS_VOID IMSA_CONN_ProcConnSetupReq
         IMSA_CONN_SndConnSetupInd(  IMSA_CONN_RESULT_FAIL_OHTERS,
                                     enConnType,
                                     IMSA_CONN_SIP_PDP_TYPE_SIGNAL);
+
+        #if (FEATURE_ON == FEATURE_PTM)
+        IMSA_PdnRejErrRecord(IMSA_ERR_LOG_PDNREJ_CAUSE_IMSA_OTHERS);
+        #endif
 
         return;
     }
@@ -2556,6 +3591,11 @@ VOS_VOID IMSA_CONN_ProcConnSetupReq
         IMSA_CONN_SndConnSetupInd(  IMSA_CONN_RESULT_FAIL_OHTERS,
                                     enConnType,
                                     IMSA_CONN_SIP_PDP_TYPE_SIGNAL);
+
+        #if (FEATURE_ON == FEATURE_PTM)
+        IMSA_PdnRejErrRecord(IMSA_ERR_LOG_PDNREJ_CAUSE_IMSA_OTHERS);
+        #endif
+
     }
 
     IMSA_MEM_FREE(pstDialParaInfo);
@@ -2607,6 +3647,8 @@ VOS_VOID IMSA_CONN_RequestApsRelConn
 
             IMSA_CONN_ClearConnResource(IMSA_CONN_TYPE_EMC);
 
+            IMSA_CONN_SndCdsSetImsBearerReq();
+
             /* 通知SERVICE模块连接释放 */
             IMSA_CONN_SndConnRelInd(IMSA_CONN_TYPE_EMC, IMSA_CONN_SIP_PDP_TYPE_SIGNAL);
             return ;
@@ -2656,6 +3698,8 @@ VOS_VOID IMSA_CONN_RequestApsRelConn
         IMSA_WARN_LOG("IMSA_CONN_RequestApsRelConn:normal,CallEnd failed!");
 
         IMSA_CONN_ClearConnResource(IMSA_CONN_TYPE_NORMAL);
+
+        IMSA_CONN_SndCdsSetImsBearerReq();
 
         /* 通知SERVICE模块连接释放 */
         IMSA_CONN_SndConnRelInd(IMSA_CONN_TYPE_NORMAL, IMSA_CONN_SIP_PDP_TYPE_SIGNAL);
@@ -3042,8 +4086,6 @@ VOS_VOID IMSA_CONN_DeleteNicPdpInfoNotExistInPdpInfo(VOS_VOID)
         switch(pstConnManager->astNicPdpInfoArray[i].stPdpAddr.enIpType)
         {
         case IMSA_IP_TYPE_IPV4:
-            IMSA_INFO_LOG("IMSA_CONN_DeleteNicPdpInfoNotExistInPdpInfo: IMSA_IP_TYPE_IPV4!");
-
             if (IMSA_FALSE == IMSA_CONN_Ipv4NicPdpInfoIsExistInPdpInfo(&pstConnManager->astNicPdpInfoArray[i]))
             {
                 IMSA_INFO_LOG("IMSA_CONN_DeleteNicPdpInfoNotExistInPdpInfo: IPV4 not exist in PdpInfo!");
@@ -3053,8 +4095,6 @@ VOS_VOID IMSA_CONN_DeleteNicPdpInfoNotExistInPdpInfo(VOS_VOID)
 
             break;
         case IMSA_IP_TYPE_IPV6:
-            IMSA_INFO_LOG("IMSA_CONN_DeleteNicPdpInfoNotExistInPdpInfo: IMSA_IP_TYPE_IPV6!");
-
             if (IMSA_FALSE == IMSA_CONN_Ipv6NicPdpInfoIsExistInPdpInfo(&pstConnManager->astNicPdpInfoArray[i]))
             {
                 IMSA_INFO_LOG("IMSA_CONN_DeleteNicPdpInfoNotExistInPdpInfo: IPV6 not exist in PdpInfo!");
@@ -3064,8 +4104,6 @@ VOS_VOID IMSA_CONN_DeleteNicPdpInfoNotExistInPdpInfo(VOS_VOID)
 
             break;
         case IMSA_IP_TYPE_IPV4V6:
-            IMSA_INFO_LOG("IMSA_CONN_DeleteNicPdpInfoNotExistInPdpInfo: IMSA_IP_TYPE_IPV4V6!");
-
             if (IMSA_FALSE == IMSA_CONN_Ipv4NicPdpInfoIsExistInPdpInfo(&pstConnManager->astNicPdpInfoArray[i]) ||
                 IMSA_FALSE == IMSA_CONN_Ipv6NicPdpInfoIsExistInPdpInfo(&pstConnManager->astNicPdpInfoArray[i]))
             {
@@ -3088,6 +4126,14 @@ VOS_VOID IMSA_CONN_DeleteNicPdpInfoNotExistInPdpInfo(VOS_VOID)
             {
                 IMSA_INFO_LOG("IMSA_CONN_DeleteNicPdpInfoNotExistInPdpInfo: NIC delete pdp info!");
                 IMSA_CONN_PdnInfoNicDelete(pstConnManager->astNicPdpInfoArray[i].ucPdpId);
+
+                /* 同上海范晶确认，在删除C核虚拟网卡时，通知RNIC模块，删除虚拟网卡，
+                同时给AT上报承载状态 */
+                if (IMSA_FALSE == pstConnManager->astNicPdpInfoArray[i].ucIsEmc)
+                {
+                    IMSA_SndMsgRnicPdnDeactInd(pstConnManager->astNicPdpInfoArray[i].ucPdpId);
+                    IMSA_SndMsgAtPdpDeactInd(pstConnManager->astNicPdpInfoArray[i].stPdpAddr.enIpType);
+                }
 
                 IMSA_MEM_SET(&pstConnManager->astNicPdpInfoArray[i], 0, sizeof(IMSA_CONN_NIC_PDP_INFO_STRU ));
                 pstConnManager->astNicPdpInfoArray[i].ucIsUsed = 0;
@@ -3295,6 +4341,13 @@ VOS_VOID IMSA_CONN_ProcIPV4PdpInfoForNic(VOS_UINT8 ucIsEmc, IMSA_PDP_CNTXT_INFO_
             IMSA_CONN_SaveNicPdpInfo(ucPdpId, ucIsEmc, ulArrayIndex, pstImsaIpAddr);
 
             IMSA_CONN_ConfigPdpInfo2Bsp(pstPdpCntxtInfo);
+            /* 同上海范晶确认，在绑定C核虚拟网卡时，通知RNIC模块，绑定虚拟网卡，
+            同时给AT上报承载状态 */
+            if (VOS_FALSE == ucIsEmc)
+            {
+                IMSA_SndMsgRnicPdnActInd(pstPdpCntxtInfo);
+                IMSA_SndMsgAtPdpActInd(pstPdpCntxtInfo);
+            }
         }
         else
         {
@@ -3340,6 +4393,13 @@ VOS_VOID IMSA_CONN_ProcIPV6PdpInfoForNic(VOS_UINT8 ucIsEmc, IMSA_PDP_CNTXT_INFO_
                 IMSA_CONN_SaveNicPdpInfo(ucPdpId, ucIsEmc, ulArrayIndex, pstImsaIpAddr);
 
                 IMSA_CONN_ConfigPdpInfo2Bsp(pstPdpCntxtInfo);
+                /* 同上海范晶确认，在绑定C核虚拟网卡时，通知RNIC模块，绑定虚拟网卡，
+                同时给AT上报承载状态 */
+                if (VOS_FALSE == ucIsEmc)
+                {
+                    IMSA_SndMsgRnicPdnActInd(pstPdpCntxtInfo);
+                    IMSA_SndMsgAtPdpActInd(pstPdpCntxtInfo);
+                }
             }
             else
             {
@@ -3374,11 +4434,11 @@ VOS_VOID IMSA_CONN_ProcIPV4V6PdpInfoForNic(VOS_UINT8 ucIsEmc, IMSA_PDP_CNTXT_INF
     pstImsaIpAddr = &pstPdpCntxtInfo->stPdpAddr;
     ucPdpId       = pstPdpCntxtInfo->ucPdpId;
 
-    if (0 == IMSA_MEM_CMP(aucTemp, pstImsaIpAddr->aucIpV6Addr, IMSA_IPV6_PREFIX_LEN))
+    /* if (0 == IMSA_MEM_CMP(aucTemp, pstImsaIpAddr->aucIpV6Addr, IMSA_IPV6_PREFIX_LEN))
     {
         IMSA_INFO_LOG("IMSA_CONN_ProcIPV4V6PdpInfoForNic: IPV6 prefix is 0, !");
         return;
-    }
+    } */
 
     if ((IMSA_TRUE == IMSA_CONN_Ipv4PdpAddrIsExistInNicPdpInfo(pstImsaIpAddr)) &&
         (IMSA_TRUE == IMSA_CONN_Ipv6PdpAddrIsExistInNicPdpInfo(pstImsaIpAddr)))
@@ -3399,6 +4459,13 @@ VOS_VOID IMSA_CONN_ProcIPV4V6PdpInfoForNic(VOS_UINT8 ucIsEmc, IMSA_PDP_CNTXT_INF
         }
 
         IMSA_CONN_ConfigPdpInfo2Bsp(pstPdpCntxtInfo);
+        /* 同上海范晶确认，在绑定C核虚拟网卡时，通知RNIC模块，绑定虚拟网卡，
+        同时给AT上报承载状态 */
+        if (VOS_FALSE == ucIsEmc)
+        {
+            IMSA_SndMsgRnicPdnActInd(pstPdpCntxtInfo);
+            IMSA_SndMsgAtPdpActInd(pstPdpCntxtInfo);
+        }
     }
     else
     {
@@ -3412,6 +4479,13 @@ VOS_VOID IMSA_CONN_ProcIPV4V6PdpInfoForNic(VOS_UINT8 ucIsEmc, IMSA_PDP_CNTXT_INF
             }
 
             IMSA_CONN_ConfigPdpInfo2Bsp(pstPdpCntxtInfo);
+            /* 同上海范晶确认，在绑定C核虚拟网卡时，通知RNIC模块，绑定虚拟网卡，
+            同时给AT上报承载状态 */
+            if (VOS_FALSE == ucIsEmc)
+            {
+                IMSA_SndMsgRnicPdnActInd(pstPdpCntxtInfo);
+                IMSA_SndMsgAtPdpActInd(pstPdpCntxtInfo);
+            }
         }
         else
         {
@@ -3449,18 +4523,12 @@ VOS_VOID IMSA_CONN_AddNormalPdpInfo2NicPdpInfo(VOS_VOID)
         switch(pstNormalConn->astSipSignalPdpArray[i].stPdpAddr.enIpType)
         {
         case IMSA_IP_TYPE_IPV4:
-            IMSA_INFO_LOG("IMSA_CONN_AddNormalPdpInfo2NicPdpInfo: IMSA_IP_TYPE_IPV4!");
-
             IMSA_CONN_ProcIPV4PdpInfoForNic(0, &pstNormalConn->astSipSignalPdpArray[i]);
             break;
         case IMSA_IP_TYPE_IPV6:
-            IMSA_INFO_LOG("IMSA_CONN_AddNormalPdpInfo2NicPdpInfo: IMSA_IP_TYPE_IPV6!");
-
             IMSA_CONN_ProcIPV6PdpInfoForNic(0, &pstNormalConn->astSipSignalPdpArray[i]);
             break;
         case IMSA_IP_TYPE_IPV4V6:
-            IMSA_INFO_LOG("IMSA_CONN_AddNormalPdpInfo2NicPdpInfo: IMSA_IP_TYPE_IPV4V6!");
-
             IMSA_CONN_ProcIPV4V6PdpInfoForNic(0, &pstNormalConn->astSipSignalPdpArray[i]);
             break;
         default:
@@ -3493,18 +4561,12 @@ VOS_VOID IMSA_CONN_AddEmcPdpInfo2NicPdpInfo(VOS_VOID)
     switch(pstEmcConn->stSipSignalPdp.stPdpAddr.enIpType)
     {
     case IMSA_IP_TYPE_IPV4:
-        IMSA_INFO_LOG("IMSA_CONN_AddEmcPdpInfo2NicPdpInfo: IMSA_IP_TYPE_IPV4!");
-
         IMSA_CONN_ProcIPV4PdpInfoForNic(1, &pstEmcConn->stSipSignalPdp);
         break;
     case IMSA_IP_TYPE_IPV6:
-        IMSA_INFO_LOG("IMSA_CONN_AddEmcPdpInfo2NicPdpInfo: IMSA_IP_TYPE_IPV6!");
-
         IMSA_CONN_ProcIPV6PdpInfoForNic(1, &pstEmcConn->stSipSignalPdp);
         break;
     case IMSA_IP_TYPE_IPV4V6:
-        IMSA_INFO_LOG("IMSA_CONN_AddEmcPdpInfo2NicPdpInfo: IMSA_IP_TYPE_IPV4V6!");
-
         IMSA_CONN_ProcIPV4V6PdpInfoForNic(1, &pstEmcConn->stSipSignalPdp);
         break;
     default:
@@ -3531,11 +4593,17 @@ VOS_VOID IMSA_CONN_AddPdpInfo2NicPdpInfo(VOS_VOID)
 
     /* 识别存在于最新普通信令承载信息中，但不存在于NIC PDP INFO中的IP地址，
        添加到NIC PDP INFO中，并配置给TTF */
-    IMSA_CONN_AddNormalPdpInfo2NicPdpInfo();
+    if (IMSA_SRV_STATUS_CONNING_REG != IMSA_SRV_GetNormalSrvStatus())
+    {
+        IMSA_CONN_AddNormalPdpInfo2NicPdpInfo();
+    }
 
     /* 识别存在于最新紧急信令承载信息中，但不存在于NIC PDP INFO中的IP地址，
        添加到NIC PDP INFO中，并配置给TTF */
-    IMSA_CONN_AddEmcPdpInfo2NicPdpInfo();
+    if (IMSA_SRV_STATUS_CONNING_REG != IMSA_SRV_GetEmcSrvStatus())
+    {
+        IMSA_CONN_AddEmcPdpInfo2NicPdpInfo();
+    }
 }
 
 
@@ -3568,6 +4636,112 @@ VOS_VOID IMSA_CONN_UpdateNicPdpInfo( VOS_VOID )
     /* 将更新后的NIC PDP信息上传到HIDS上显示 */
     IMSA_CONN_PrintNicPdpInfo();
 }
+
+/*****************************************************************************
+ Function Name   : IMSA_CONN_UpdateNicPdpInfo
+ Description     : 更新存储配置给NIC的PDP信息
+ Input           : None
+ Output          : None
+ Return          : VOS_VOID
+
+ History         :
+    1.xiongxianghui00253310    2014-04-16  Draft Enact
+
+*****************************************************************************/
+VOS_VOID IMSA_CONN_SetupConnFail
+(
+    IMSA_CONN_TYPE_ENUM_UINT32          enConnType,
+    IMSA_CONN_RESULT_ENUM_UINT32        enResult,
+    TAF_PS_CAUSE_ENUM_UINT32            enCause
+)
+{
+    IMSA_ERR_LOG_PDNREJ_CAUSE_ENUM_UINT32   enPdnConnRejCause = IMSA_ERR_LOG_PDNREJ_CAUSE_BUTT;
+
+    /* 更新连接状态为IDLE */
+    IMSA_CONN_SetConnStatus(enConnType, IMSA_CONN_STATUS_IDLE);
+
+    /* 清除连接实体信息 */
+    IMSA_CONN_ClearConnResource(enConnType);
+
+    IMSA_CONN_SndConnSetupInd(  enResult,
+                                enConnType,
+                                IMSA_CONN_SIP_PDP_TYPE_SIGNAL);
+
+    #if (FEATURE_ON == FEATURE_PTM)
+    enPdnConnRejCause = IMSA_PDN_InterRejCauseProc(enResult, enCause);
+    IMSA_PdnRejErrRecord(enPdnConnRejCause);
+    #endif
+}
+#if (FEATURE_ON == FEATURE_PTM)
+
+IMSA_ERR_LOG_PDNREJ_CAUSE_ENUM_UINT32  IMSA_PDN_CnRejCauseProc
+(
+    TAF_PS_CAUSE_ENUM_UINT32 enCause
+)
+{
+    IMSA_ERR_LOG_PDNREJ_CAUSE_ENUM_UINT32   enImsaCnCause = IMSA_ERR_LOG_PDNREJ_CAUSE_BUTT;
+    VOS_UINT32 i;
+
+    for(i = 0; i < g_astImsaCnRejCauseNum; i++)
+    {
+        if(enCause == g_astImsaCnRejCauseMap[i].enCause)
+        {
+            enImsaCnCause = g_astImsaCnRejCauseMap[i].enImsaCnRejCause;
+            break;
+        }
+    }
+    if(g_astImsaCnRejCauseNum == i)
+    {
+        enImsaCnCause = IMSA_ERR_LOG_PDNREJ_CAUSE_BUTT;
+    }
+
+    return enImsaCnCause;
+}
+
+IMSA_ERR_LOG_PDNREJ_CAUSE_ENUM_UINT32  IMSA_PDN_InterRejCauseProc
+(
+    IMSA_CONN_RESULT_ENUM_UINT32    enResult,
+    TAF_PS_CAUSE_ENUM_UINT32        enCause
+)
+{
+    IMSA_ERR_LOG_PDNREJ_CAUSE_ENUM_UINT32   enImsaCnCause = IMSA_ERR_LOG_PDNREJ_CAUSE_BUTT;
+
+    switch(enResult)
+    {
+        case IMSA_CONN_RESULT_FAIL_PARA_ERR:
+            enImsaCnCause = IMSA_ERR_LOG_PDNREJ_CAUSE_IMSA_PARA_ERR;
+            break;
+
+        case IMSA_CONN_RESULT_FAIL_TIMER_EXP:
+            enImsaCnCause = IMSA_ERR_LOG_PDNREJ_CAUSE_IMSA_TIMER_EXP;
+            break;
+
+        case IMSA_CONN_RESULT_FAIL_CN_REJ:
+            enImsaCnCause = IMSA_PDN_CnRejCauseProc(enCause);
+            break;
+
+        case IMSA_CONN_RESULT_FAIL_CONN_RELEASING:
+            enImsaCnCause = IMSA_ERR_LOG_PDNREJ_CAUSE_IMSA_CONN_RELEASING;
+            break;
+
+        case IMSA_CONN_RESULT_FAIL_PDP_ACTIVATE_LIMIT:
+            enImsaCnCause = IMSA_ERR_LOG_PDNREJ_CAUSE_PDP_ACTIVATE_LIMIT;
+            break;
+
+        case IMSA_CONN_RESULT_FAIL_SAME_APN_OPERATING:
+            enImsaCnCause = IMSA_ERR_LOG_PDNREJ_CAUSE_SAME_APN_OPERATING;
+            break;
+
+        case IMSA_CONN_RESULT_FAIL_OHTERS:
+            enImsaCnCause = IMSA_ERR_LOG_PDNREJ_CAUSE_IMSA_OTHERS;
+            break;
+
+        default:
+            break;
+    }
+    return enImsaCnCause;
+}
+#endif
 
 /*lint +e961*/
 /*lint +e960*/

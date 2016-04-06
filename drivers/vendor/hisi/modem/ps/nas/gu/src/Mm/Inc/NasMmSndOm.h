@@ -32,6 +32,10 @@ enum NAS_MM_OM_MSG_ID_ENUM
     /* MM发送给OM的消息 */
     MMOM_LOG_STATE_INFO_IND                       = 0x1000,      /*_H2ASN_MsgChoice  NAS_MM_LOG_STATE_INFO_STRU */
     MMOM_LOG_AUTH_INFO_IND                        = 0x1001,      /*_H2ASN_MsgChoice  NAS_MM_LOG_AUTH_INFO_STRU */
+
+    MMOM_LOG_CTX_INFO_IND                         = 0x1002,      /*_H2ASN_MsgChoice  MMOM_LOG_CTX_INFO_STRU */
+    MMOM_LOG_AUTN_LEN_INFO_IND                    = 0x1003,      /*_H2ASN_MsgChoice  NAS_MM_LOG_AUTN_LEN_INFO_STRU */
+
     MMOM_LOG_BUTT
 };
 typedef VOS_UINT32 NAS_MM_OM_MSG_ID_ENUM_UINT32;
@@ -101,7 +105,61 @@ typedef struct
     VOS_UINT8                           ucRcvOpId;
     VOS_UINT8                           aucRsv[2];
 }NAS_MM_LOG_AUTH_INFO_STRU;
-
+typedef struct
+{
+    NAS_MML_LOCATION_UPDATE_STATUS_ENUM_UINT8      enCsUpdateStatus;   /*记录NAS_MML_GetCsUpdateStatus*/
+    VOS_UINT8                                      enCallMode;         /*记录NAS_MML_GetCallMode*/
+    NAS_MML_CSFB_SERVICE_STATUS_ENUM_UINT8         enCsfbServiceStatus;/*记录NAS_MML_GetCsfbServiceStatus*/
+    VOS_UINT8                                      ucImsVoiceAvailFlg; /*记录NAS_MML_GetImsVoiceAvailFlg*/
+    VOS_UINT8                                      ucImsVoiceInterSysLauEnableFlg; /*记录NAS_MML_GetImsVoiceInterSysLauEnableFlg*/
+    NAS_MML_TIMER_INFO_ENUM_UINT8                  enT3423Status;      /*记录NAS_MML_GetT3423Status*/
+    VOS_UINT8                                      ucCsSecurityCksn;   /*记录NAS_MML_GetSimCsSecurityCksn */
+    VOS_UINT8                                      ucStaOfRcvXXEstReqCsfb;/*记录NAS_MM_GetStaOfRcvXXEstReq_CSFB*/
+    MM_LAI_STRU                                    stAttemptUpdateLaiInfo;/*记录NAS_MM_GetAttemptUpdateLaiInfo*/
+    NAS_MML_LAI_STRU                               stCsLastSuccLai;    /*记录NAS_MML_GetCsLastSuccLai*/
+    NAS_MML_LAI_STRU                               stCurrCampLai;      /*记录NAS_MML_GetCurrCampLai*/
+}MMOM_LOG_MML_CTX_INFO_STRU;
+typedef struct
+{
+    VOS_UINT8                           ucT3213TimerStatus;        /*记录gstMmTimer[MM_TIMER_T3213].ucTimerStatus*/
+    VOS_UINT8                           ucT3211TimerStatus;        /*记录gstMmTimer[MM_TIMER_T3211].ucTimerStatus*/
+    VOS_UINT8                           ucT3212TimerStatus;        /*记录gstMmTimer[MM_TIMER_T3212].ucTimerStatus*/
+    VOS_UINT8                           ucT3242TimerStatus;        /*记录gstMmTimer[MM_TIMER_T3242].ucTimerStatus*/
+    VOS_UINT8                           ucT3243TimerStatus;        /*记录gstMmTimer[MM_TIMER_T3243].ucTimerStatus*/
+    VOS_UINT8                           aucReserved[3];
+}MMOM_LOG_MM_TIMER_INFO_STRU;
+typedef struct
+{
+    VOS_UINT8                           ucMmServiceState;                   /*记录g_MmGlobalInfo.ucMmServiceState*/
+    VOS_UINT8                           ConnCtrlInfo_SMS_RcvXXEstReq_ucFlg; /* 记录g_MmGlobalInfo.ConnCtrlInfo[MM_CONN_CTRL_SMS].RcvXXEstReq.ucFlg*/
+    VOS_UINT8                           ConnCtrlInfo_SS_RcvXXEstReq_ucFlg;  /* 记录g_MmGlobalInfo.ConnCtrlInfo[MM_CONN_CTRL_SS].RcvXXEstReq.ucFlg*/
+    VOS_UINT8                           ConnCtrlInfo_CC_RcvXXEstReq_ucFlg;  /* 记录g_MmGlobalInfo.ConnCtrlInfo[MM_CONN_CTRL_CC].RcvXXEstReq.ucFlg*/
+    VOS_UINT8                           ucLikeB;                            /*记录g_MmGlobalInfo.ucLikeB*/
+    VOS_UINT8                           MsCsInfo_ucOldRac;                  /* 记录g_MmGlobalInfo.MsCsInfo.ucOldRac*/
+    VOS_UINT16                          usRac;                              /*记录g_MmGlobalInfo.usRac*/
+    VOS_UINT8                           ucNtMod;                            /* 记录g_MmGlobalInfo.ucNtMod*/
+    VOS_UINT8                           ucNotCampONPreState;                /* 记录g_MmGlobalInfo.ucNotCampONPreState*/
+    NAS_MML_NET_RAT_TYPE_ENUM_UINT8     enPreRatType;                       /*记录g_MmGlobalInfo.enPreRatType*/
+    VOS_UINT8                           ucPreState;                         /*记录g_MmGlobalInfo.ucPreState*/
+    NAS_MM_DETACH_TYPE_ENUM_UINT32      stDetachInfo_enDetachType;          /*记录g_MmGlobalInfo.stDetachInfo.enDetachType*/
+    VOS_UINT8                           ucAttFlg;                           /*记录g_MmGlobalInfo.ucAttFlg*/
+    VOS_UINT8                           ucPowerOnFlg;                       /*记录g_MmGlobalInfo.ucPowerOnFlg*/
+    VOS_UINT8                           LuInfo_ucT3212ExpiredFlg;           /*记录g_MmGlobalInfo.LuInfo.ucT3212ExpiredFlg*/
+    VOS_UINT8                           ucReserved[1];
+}MMOM_LOG_MM_GLOBAL_INFO_STRU;
+typedef struct
+{
+    MSG_HEADER_STRU                     stMsgHeader;/* 消息头 */ /*_H2ASN_Skip*/
+    MMOM_LOG_MML_CTX_INFO_STRU          stMmlCtxInfo;
+    MMOM_LOG_MM_GLOBAL_INFO_STRU        stMmGlobalInfo;
+    MMOM_LOG_MM_TIMER_INFO_STRU         stMmTimerInfo;
+}MMOM_LOG_CTX_INFO_STRU;
+typedef struct
+{
+    MSG_HEADER_STRU                     stMsgHeader;/* 消息头 */ /*_H2ASN_Skip*/
+    VOS_UINT8                           ucLen;
+    VOS_UINT8                           aucRsv[3];
+}NAS_MM_LOG_AUTN_LEN_INFO_STRU;
 
 /*****************************************************************************
   H2ASN顶级消息结构定义

@@ -1318,10 +1318,7 @@ static int smt_set_para(struct s_smc *smc, struct smt_para *pa, int index,
 		IFSET(mib->fddiSMTStatRptPolicy = byte_val) ;
 		break ;
 	case SMT_P101F :		/* fddiSMTTrace_MaxExpiration */
-		/*
-		 * note: lower limit trace_max = 6.001773... s
-		 * NO upper limit
-		 */
+
 		if (long_val < (long)0x478bf51L)
 			goto val_error ;
 		IFSET(mib->fddiSMTTrace_MaxExpiration = long_val) ;

@@ -635,17 +635,7 @@ static u32 lcr1_brdr_value = 0x00800028;
 
 static u32 read_ahead_count = 8;
 
-/* DPCR, DMA Priority Control
- *
- * 07..05  Not used, must be 0
- * 04      BRC, bus release condition: 0=all transfers complete
- *              1=release after 1 xfer on all channels
- * 03      CCC, channel change condition: 0=every cycle
- *              1=after each channel completes all xfers
- * 02..00  PR<2..0>, priority 100=round robin
- *
- * 00000100 = 0x00
- */
+
 static unsigned char dma_priority = 0x04;
 
 // Number of bytes that can be written to shared RAM
@@ -5154,15 +5144,7 @@ static bool sca_init(SLMP_INFO *info)
 	write_reg(info, WCRM, 0);	/* wait controller mid range */
 	write_reg(info, WCRH, 0);	/* wait controller high range */
 
-	/* DPCR, DMA Priority Control
-	 *
-	 * 07..05  Not used, must be 0
-	 * 04      BRC, bus release condition: 0=all transfers complete
-	 * 03      CCC, channel change condition: 0=every cycle
-	 * 02..00  PR<2..0>, priority 100=round robin
-	 *
-	 * 00000100 = 0x04
-	 */
+
 	write_reg(info, DPCR, dma_priority);
 
 	/* DMA Master Enable, BIT7: 1=enable all channels */

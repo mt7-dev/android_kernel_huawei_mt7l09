@@ -3,6 +3,7 @@
 #
 ccflags-$(CONFIG_USB_GADGET_DEBUG) := -DDEBUG
 
+obj-$(CONFIG_MODEM_SUPPORT)      += f_modem.o
 obj-$(CONFIG_USB_GADGET)	+= udc-core.o
 obj-$(CONFIG_USB_LIBCOMPOSITE)	+= libcomposite.o
 libcomposite-y			:= usbstring.o config.o epautoconf.o
@@ -46,6 +47,8 @@ usb_f_serial-y			:= f_serial.o
 obj-$(CONFIG_USB_F_SERIAL)	+= usb_f_serial.o
 usb_f_obex-y			:= f_obex.o
 obj-$(CONFIG_USB_F_OBEX)	+= usb_f_obex.o
+usb_f_balong_acm-y		:= f_balong_acm.o balong_acm.o usb_vendor.o
+obj-$(CONFIG_USB_F_BALONG_ACM)	+= usb_f_balong_acm.o
 
 #
 # USB gadget drivers
@@ -88,4 +91,3 @@ obj-$(CONFIG_USB_G_NCM)		+= g_ncm.o
 obj-$(CONFIG_USB_G_ACM_MS)	+= g_acm_ms.o
 obj-$(CONFIG_USB_G_ANDROID)	+= g_android.o
 obj-$(CONFIG_USB_GADGET_TARGET)	+= tcm_usb_gadget.o
-obj-y += usb_vendor.o

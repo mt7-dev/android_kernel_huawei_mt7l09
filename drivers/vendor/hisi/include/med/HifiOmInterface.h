@@ -196,6 +196,44 @@ enum COMM_VOICE_PCVOICE_DATA_DIRECTION_ENUM
 typedef VOS_UINT32 COMM_VOICE_PCVOICE_DATA_DIRECTION_ENUM_UINT32;
 
 /*****************************************************************************
+ 实体名称  : HIFI_ERR_LOG_ALARM_ID_ENUM
+ 功能描述  : HIFI语音故障或告警上报ID
+*****************************************************************************/
+enum HIFI_ERR_LOG_ALARM_ID_ENUM
+{
+    HIFI_ERR_LOG_ONE_WAY_NO_SOUND     = 0x1000,
+    HIFI_ERR_LOG_VOICE_CONTROL_FAULT,
+    HIFI_ERR_LOG_VOICE_SUSPEND_SLOW,
+    HIFI_ERR_LOG_ALARM_ID_BUTT,
+};
+typedef VOS_UINT16 HIFI_ERR_LOG_ALARM_ID_ENUM_UINT16;
+
+/*****************************************************************************
+ 实体名称  : HFII_ERR_LOG_ALARM_LEVEL_ENUM
+ 功能描述  : HIFI语音故障或告警级别
+*****************************************************************************/
+enum HFII_ERR_LOG_ALARM_LEVEL_ENUM
+{
+    HIFI_ERR_LOG_ALARM_CRITICAL     = 0x01,             /* 紧急 */
+    HIFI_ERR_LOG_ALARM_MAJOR,                           /* 重要 */
+    HIFI_ERR_LOG_ALARM_MINOR,                           /* 次要 */
+    HIFI_ERR_LOG_ALARM_WARNING,                         /* 提示 */
+    HIFI_ERR_LOG_ALARM_LEVEL_BUTT,
+};
+typedef VOS_UINT16 HIFI_ERR_LOG_ALARM_LEVEL_ENUM_UINT16;
+
+/*****************************************************************************
+ 实体名称  : HIFI_ERR_LOG_ALARM_TYPE_ENUM
+ 功能描述  : HIFI语音故障或告警业务类型
+*****************************************************************************/
+enum HIFI_ERR_LOG_ALARM_TYPE_ENUM
+{
+    HIFI_ERR_LOG_ALARM_COMMUNICATION = 0x00,            /* 通信 */
+    HIFI_ERR_LOG_ALARM_TYPE_BUTT,
+};
+typedef VOS_UINT16 HIFI_ERR_LOG_ALARM_TYPE_ENUM_UINT16;
+
+/*****************************************************************************
   4 全局变量声明
 *****************************************************************************/
 

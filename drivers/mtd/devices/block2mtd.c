@@ -426,8 +426,9 @@ static int block2mtd_setup(const char *val, struct kernel_param *kp)
 #endif
 }
 
-
+/*lint -e666*/
 module_param_call(block2mtd, block2mtd_setup, NULL, NULL, 0200);
+/*lint +e666*/
 MODULE_PARM_DESC(block2mtd, "Device to use. \"block2mtd=<dev>[,<erasesize>]\"");
 
 static int __init block2mtd_init(void)

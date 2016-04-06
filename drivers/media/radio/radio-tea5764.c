@@ -230,7 +230,6 @@ static void tea5764_set_freq(struct tea5764_device *radio, int freq)
 {
 	struct tea5764_regs *r = &radio->regs;
 
-	/* formula: (freq [+ or -] 225000) / 8192 */
 	if (r->tnctrl & TEA5764_TNCTRL_HLSI)
 		r->frqset = (freq + 225000) / 8192;
 	else

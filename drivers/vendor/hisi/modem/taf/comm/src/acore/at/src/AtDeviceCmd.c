@@ -15,6 +15,9 @@
 
 #include "AtInputProc.h"
 
+#include "AtTestParaCmd.h"
+
+
 #if(FEATURE_ON == FEATURE_LTE)
 #include "LNvCommon.h"
 #include "RrcNvInterface.h"
@@ -39,7 +42,6 @@ extern "C" {
 *****************************************************************************/
 #define    THIS_FILE_ID        PS_FILE_ID_AT_DEVICECMD_C
 
-#define BAND_WIDTH_NUMS 6
 
 /*****************************************************************************
   2 全局变量定义
@@ -566,6 +568,13 @@ AT_PAR_CMD_ELEMENT_STRU g_astAtDeviceCmdTbl[] = {
     VOS_NULL_PTR,   AT_NOT_SET_TIME,
     AT_CME_INCORRECT_PARAMETERS, CMD_TBL_PIN_IS_LOCKED,
     (VOS_UINT8*)"^FPOWDET",     VOS_NULL_PTR},
+
+    {AT_CMD_NVWRSECCTRL,
+    AT_SetNvwrSecCtrlPara,  AT_SET_PARA_TIME,   AT_QryNvwrSecCtrlPara,  AT_NOT_SET_TIME,   At_CmdTestProcOK,   AT_NOT_SET_TIME,
+    VOS_NULL_PTR,   AT_NOT_SET_TIME,
+    AT_CME_INCORRECT_PARAMETERS, CMD_TBL_PIN_IS_LOCKED,
+    (VOS_UINT8*)"^NVWRSECCTRL",   (VOS_UINT8*)"(0-2),(@SecString)"},
+
 };
 
 
@@ -875,7 +884,7 @@ VOS_UINT32 AT_SetPstandbyPara(VOS_UINT8 ucIndex)
     if (VOS_TRUE == TAF_MMA_PhoneModeSetReq(WUEPS_PID_AT, gastAtClientTab[ucIndex].usClientId, 0, &stPhoneModePara))
     {
         /* 设置当前操作类型 */
-        gastAtClientTab[ucIndex].CmdCurrentOpt = AT_CMD_PSTANDBY_SET;
+        gastAtClientTab[ucIndex].CmdCurrentOpt = (AT_CMD_CURRENT_OPT_ENUM)AT_CMD_PSTANDBY_SET;
 
         return AT_WAIT_ASYNC_RETURN;    /* 返回命令处理挂起状态 */
     }
@@ -1250,7 +1259,7 @@ VOS_UINT32 AT_QryWiwepPara(VOS_UINT8 ucIndex)
         if (0 != aucWepKeyLen1[ulLoop])
         {
             /* wifikey1 */
-            PS_MEM_SET(aucWifiWepKey, 0, AT_NV_WLKEY_LEN + 1);
+            PS_MEM_SET(aucWifiWepKey, 0, (VOS_SIZE_T)(AT_NV_WLKEY_LEN + 1));
 
             PS_MEM_CPY(aucWifiWepKey,
                        pstWifiSecInfo->aucWifiWepKey1[ulLoop],
@@ -1270,7 +1279,7 @@ VOS_UINT32 AT_QryWiwepPara(VOS_UINT8 ucIndex)
         if (0 != aucWepKeyLen2[ulLoop])
         {
             /* wifikey1 */
-            PS_MEM_SET(aucWifiWepKey, 0, AT_NV_WLKEY_LEN + 1);
+            PS_MEM_SET(aucWifiWepKey, 0, (VOS_SIZE_T)(AT_NV_WLKEY_LEN + 1));
 
             PS_MEM_CPY(aucWifiWepKey,
                        pstWifiSecInfo->aucWifiWepKey2[ulLoop],
@@ -1290,7 +1299,7 @@ VOS_UINT32 AT_QryWiwepPara(VOS_UINT8 ucIndex)
         if (0 != aucWepKeyLen3[ulLoop])
         {
             /* wifikey1 */
-            PS_MEM_SET(aucWifiWepKey, 0, AT_NV_WLKEY_LEN + 1);
+            PS_MEM_SET(aucWifiWepKey, 0, (VOS_SIZE_T)(AT_NV_WLKEY_LEN + 1));
 
             PS_MEM_CPY(aucWifiWepKey,
                        pstWifiSecInfo->aucWifiWepKey3[ulLoop],
@@ -1310,7 +1319,7 @@ VOS_UINT32 AT_QryWiwepPara(VOS_UINT8 ucIndex)
         if (0 != aucWepKeyLen4[ulLoop])
         {
             /* wifikey1 */
-            PS_MEM_SET(aucWifiWepKey, 0, AT_NV_WLKEY_LEN + 1);
+            PS_MEM_SET(aucWifiWepKey, 0, (VOS_SIZE_T)(AT_NV_WLKEY_LEN + 1));
 
             PS_MEM_CPY(aucWifiWepKey,
                        pstWifiSecInfo->aucWifiWepKey4[ulLoop],
@@ -1952,7 +1961,7 @@ VOS_UINT32 AT_CloseDiagPort(VOS_VOID)
     ulPortNum--;
     for (ulLoop = ulPortPos; ulLoop < ulPortNum; ulLoop++)
     {
-        stDynamicPidType.aucRewindPortStyle[ulLoop] = stDynamicPidType.aucRewindPortStyle[ulLoop + 1];
+        stDynamicPidType.aucRewindPortStyle[ulLoop] = stDynamicPidType.aucRewindPortStyle[ulLoop + 1UL];
     }
     stDynamicPidType.aucRewindPortStyle[ulPortNum] = 0;
 
@@ -2386,9 +2395,9 @@ VOS_UINT32 AT_SetNVWritePara(VOS_UINT8 ucIndex)
 {
     VOS_UINT16                          usNvId = 0;
     VOS_UINT16                          usNvTotleLen = 0;
-    VOS_UINT16                          ulNvLen = 0;
+    VOS_UINT32                          ulNvLen = 0; /* VOS_UINT16 -> VOS_UINT32 */
     VOS_UINT8                          *pucData = VOS_NULL_PTR;
-    VOS_UINT16                          usNvNum = 0;
+    VOS_UINT32                          ulNvNum = 0; /* VOS_UINT16 -> VOS_UINT32 */
     VOS_UINT8                           au8Data[128] = {0};/* MAX_NV_NUM_PER_PARA */
     MODEM_ID_ENUM_UINT16                enModemId = MODEM_ID_0;
     VOS_UINT32                          i = 0;
@@ -2414,10 +2423,16 @@ VOS_UINT32 AT_SetNVWritePara(VOS_UINT8 ucIndex)
 
     usNvId = (VOS_UINT16)gastAtParaList[0].ulParaValue;
 
-    vos_printf("\n atSetNVWRPara usNvId = %d\n",usNvId);
+    if (VOS_TRUE != AT_IsNVWRAllowedNvId(usNvId))
+    {
+        g_ulNVWR = 10;
+        return AT_CME_OPERATION_NOT_ALLOWED;
+    }
+
+    (VOS_VOID)vos_printf("\n atSetNVWRPara usNvId = %d\n",usNvId);
 
     usNvTotleLen = (VOS_UINT16)gastAtParaList[1].ulParaValue;
-    vos_printf("\n atSetNVWRPara usNvTotleLen = %d\n",usNvTotleLen);
+    (VOS_VOID)vos_printf("\n atSetNVWRPara usNvTotleLen = %d\n",usNvTotleLen);
 
     pucData = PS_MEM_ALLOC(WUEPS_PID_AT, usNvTotleLen);
     if(VOS_NULL_PTR == pucData)
@@ -2427,9 +2442,9 @@ VOS_UINT32 AT_SetNVWritePara(VOS_UINT8 ucIndex)
     }
 
     i = 0;
-    while(0 != gastAtParaList[2 + i].usParaLen)
+    while(0 != gastAtParaList[2UL + i].usParaLen)
     {
-        ulRet = AT_NVWRGetParaInfo((AT_PARSE_PARA_TYPE_STRU*)(&(gastAtParaList[2 + i])), au8Data, (VOS_UINT32 *)&usNvNum);
+        ulRet = AT_NVWRGetParaInfo((AT_PARSE_PARA_TYPE_STRU*)(&(gastAtParaList[2UL + i])), au8Data, &ulNvNum);
 
         if(VOS_OK != ulRet)
         {
@@ -2440,7 +2455,7 @@ VOS_UINT32 AT_SetNVWritePara(VOS_UINT8 ucIndex)
 
         /* 如果参数的长度大于128，则返回失败 */
         /*MAX_NV_NUM_PER_PARA */
-        if(usNvNum > 128)
+        if(ulNvNum > 128)
         {
             PS_MEM_FREE(WUEPS_PID_AT, pucData);
             g_ulNVWR =5;
@@ -2448,16 +2463,16 @@ VOS_UINT32 AT_SetNVWritePara(VOS_UINT8 ucIndex)
         }
 
         /* 如果累加的参数个数大于总长度 */
-        if((ulNvLen+usNvNum) > usNvTotleLen)
+        if((ulNvLen+ulNvNum) > usNvTotleLen)
         {
             PS_MEM_FREE(WUEPS_PID_AT, pucData);
             g_ulNVWR =6;
             return AT_CME_INCORRECT_PARAMETERS;
         }
 
-        PS_MEM_CPY((pucData + ulNvLen), au8Data, usNvNum);
+        PS_MEM_CPY((pucData + ulNvLen), au8Data, ulNvNum);
 
-        ulNvLen += usNvNum;
+        ulNvLen += ulNvNum;
         i++;
 
         if(i >= (AT_MAX_PARA_NUMBER-2))
@@ -2682,8 +2697,197 @@ VOS_VOID At_RfFpowdetTCnfProc(PHY_AT_POWER_DET_CNF_STRU *pstMsg)
 
     return;
 }
+VOS_UINT32 AT_SetNvwrSecCtrlPara(VOS_UINT8 ucIndex)
+{
+    VOS_UINT32                          ulResult;
+    AT_MTA_NVWRSECCTRL_SET_REQ_STRU     stNvwrSecCtrl;
+    VOS_UINT16                          usLength;
+
+    /* 局部变量初始化 */
+    PS_MEM_SET(&stNvwrSecCtrl, 0x00, sizeof(stNvwrSecCtrl));
+
+    /* 参数检查 */
+    if (AT_CMD_OPT_SET_PARA_CMD != g_stATParseCmd.ucCmdOptType)
+    {
+        return AT_CME_INCORRECT_PARAMETERS;
+    }
+
+     /* 参数过多 */
+    if (gucAtParaIndex > 2)
+    {
+        return AT_TOO_MANY_PARA;
+    }
+
+    /* 检查码流参数长度 */
+    if (AT_NVWRSECCTRL_PARA_SECTYPE_LEN != gastAtParaList[0].usParaLen)
+    {
+        return AT_CME_INCORRECT_PARAMETERS;
+    }
+
+    /* 设置安全控制类型 */
+    stNvwrSecCtrl.ucSecType = (VOS_UINT8)gastAtParaList[0].ulParaValue;
+
+    /* 将字符串参数转换为码流 */
+    usLength = gastAtParaList[1].usParaLen;
+    if ( (2 == gucAtParaIndex)
+      && (AT_RSA_CIPHERTEXT_PARA_LEN == usLength) )
+    {
+        if ( (AT_SUCCESS == At_AsciiNum2HexString(gastAtParaList[1].aucPara, &usLength))
+          && (AT_RSA_CIPHERTEXT_LEN == usLength) )
+        {
+            stNvwrSecCtrl.ucSecStrFlg = VOS_TRUE;
+            PS_MEM_CPY(stNvwrSecCtrl.aucSecString, gastAtParaList[1].aucPara, AT_RSA_CIPHERTEXT_LEN);
+        }
+    }
+
+    ulResult = AT_FillAndSndAppReqMsg(gastAtClientTab[ucIndex].usClientId,
+                                      gastAtClientTab[ucIndex].opId,
+                                      ID_AT_MTA_NVWRSECCTRL_SET_REQ,
+                                      &stNvwrSecCtrl,
+                                      sizeof(stNvwrSecCtrl),
+                                      I0_UEPS_PID_MTA);
+
+    if (TAF_SUCCESS != ulResult)
+    {
+        AT_WARN_LOG("AT_SetNvwrSecCtrlPara: AT_FillAndSndAppReqMsg fail.");
+        return AT_ERROR;
+    }
+
+    /* 设置AT模块实体的状态为等待异步返回 */
+    gastAtClientTab[ucIndex].CmdCurrentOpt = AT_CMD_NVWRSECCTRL_SET;
+
+    return AT_WAIT_ASYNC_RETURN;
+}
+VOS_UINT32 AT_RcvMtaNvwrSecCtrlSetCnf( VOS_VOID *pMsg )
+{
+    AT_MTA_MSG_STRU                    *pstRcvMsg;
+    MTA_AT_RESULT_CNF_STRU             *pstResult;
+    VOS_UINT8                           ucIndex;
+    VOS_UINT32                          ulResult;
+
+    /* 初始化 */
+    pstRcvMsg       = (AT_MTA_MSG_STRU *)pMsg;
+    pstResult       = (MTA_AT_RESULT_CNF_STRU *)pstRcvMsg->aucContent;
+    ucIndex         = AT_BROADCAST_CLIENT_INDEX_MODEM_0;
+
+    /* 通过ClientId获取ucIndex */
+    if (AT_FAILURE == At_ClientIdToUserId(pstRcvMsg->stAppCtrl.usClientId, &ucIndex))
+    {
+        AT_WARN_LOG("AT_RcvMtaNvwrSecCtrlSetCnf: WARNING:AT INDEX NOT FOUND!");
+        return VOS_ERR;
+    }
+
+    if (AT_IS_BROADCAST_CLIENT_INDEX(ucIndex))
+    {
+        AT_WARN_LOG("AT_RcvMtaNvwrSecCtrlSetCnf: AT_BROADCAST_INDEX.");
+        return VOS_ERR;
+    }
+
+    /* 判断当前操作类型是否为AT_CMD_NVWRSECCTRL_SET */
+    if (AT_CMD_NVWRSECCTRL_SET != gastAtClientTab[ucIndex].CmdCurrentOpt)
+    {
+        AT_WARN_LOG("AT_RcvMtaNvwrSecCtrlSetCnf: NOT CURRENT CMD OPTION!");
+        return VOS_ERR;
+    }
+
+    /* 复位AT状态 */
+    AT_STOP_TIMER_CMD_READY(ucIndex);
+
+    /* 判断回复消息中的错误码 */
+    if (MTA_AT_RESULT_NO_ERROR == pstResult->enResult)
+    {
+        /* 成功，输出OK */
+        ulResult    = AT_OK;
+    }
+    else
+    {
+        /* 失败，输出ERROR */
+        ulResult    = AT_ERROR;
+    }
+
+    gstAtSendData.usBufLen = 0;
+
+    /* 调用At_FormatResultData发送命令结果 */
+    At_FormatResultData(ucIndex, ulResult);
+
+    return VOS_OK;
+}
+
+
+VOS_UINT32 AT_QryNvwrSecCtrlPara(VOS_UINT8 ucIndex)
+{
+    TAF_NV_NVWR_SEC_CTRL_STRU           stNvwrSecCtrlNV;
+    VOS_UINT32                          ulResult;
+
+    /* 参数初始化 */
+    ulResult = AT_ERROR;
+    PS_MEM_SET(&stNvwrSecCtrlNV, 0x00, sizeof(stNvwrSecCtrlNV));
+
+    /* 修改安全控制NV */
+    if (NV_OK == NV_ReadEx(MODEM_ID_0, en_NV_Item_NVWR_SEC_CTRL, &stNvwrSecCtrlNV, sizeof(stNvwrSecCtrlNV)))
+    {
+        ulResult = AT_OK;
+        gstAtSendData.usBufLen = (VOS_UINT16)At_sprintf(AT_CMD_MAX_LEN,
+                                                        (VOS_CHAR*)pgucAtSndCodeAddr,
+                                                        (VOS_CHAR*)pgucAtSndCodeAddr,
+                                                        "%s: %d",
+                                                        g_stParseContext[ucIndex].pstCmdElement->pszCmdName,
+                                                        stNvwrSecCtrlNV.ucSecType);
+    }
+
+    return ulResult;
+}
+
+
+VOS_BOOL AT_IsNVWRAllowedNvId(VOS_UINT16 usNvId)
+{
+    TAF_NV_NVWR_SEC_CTRL_STRU           stNvwrSecCtrlNV;
+    VOS_UINT8                           ucLoop;
+    VOS_UINT8                           ucBlackListNum;
+
+    /* 参数初始化 */
+    PS_MEM_SET(&stNvwrSecCtrlNV, 0x00, sizeof(stNvwrSecCtrlNV));
+
+    /* 读取安全控制NV */
+    if (NV_OK != NV_ReadEx(MODEM_ID_0, en_NV_Item_NVWR_SEC_CTRL, &stNvwrSecCtrlNV, sizeof(stNvwrSecCtrlNV)))
+    {
+        AT_ERR_LOG("AT_IsNVWRAllowedNvId: NV_ReadEx fail!");
+        return VOS_FALSE;
+    }
+
+    switch (stNvwrSecCtrlNV.ucSecType)
+    {
+        case AT_NVWR_SEC_TYPE_OFF:
+            return VOS_TRUE;
+
+        case AT_NVWR_SEC_TYPE_ON:
+            return VOS_FALSE;
+
+        case AT_NVWR_SEC_TYPE_BLACKLIST:
+            ucBlackListNum = (stNvwrSecCtrlNV.ucBlackListNum <= TAF_NV_BLACK_LIST_MAX_NUM) ?
+                             stNvwrSecCtrlNV.ucBlackListNum : TAF_NV_BLACK_LIST_MAX_NUM;
+            for (ucLoop = 0; ucLoop < ucBlackListNum; ucLoop++)
+            {
+                if (usNvId == stNvwrSecCtrlNV.ausBlackList[ucLoop])
+                {
+                    return VOS_FALSE;
+                }
+            }
+            return VOS_TRUE;
+
+        default:
+            AT_ERR_LOG1("AT_IsNVWRAllowedNvId: Error SecType:", stNvwrSecCtrlNV.ucSecType);
+            break;
+    }
+
+    return VOS_FALSE;
+}
+
+
+
 #ifdef __cplusplus
     #if __cplusplus
         }
     #endif
 #endif
+

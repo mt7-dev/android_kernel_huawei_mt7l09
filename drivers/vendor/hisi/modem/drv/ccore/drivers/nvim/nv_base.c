@@ -306,10 +306,10 @@ u32 bsp_nvm_flushEx(u32 off,u32 len,u32 itemid)
 }
 u32 bsp_nvm_flush(void)
 {
-
     struct nv_global_ddr_info_stru* ddr_info = (struct nv_global_ddr_info_stru*)NV_GLOBAL_INFO_ADDR;
+    struct nv_ctrl_file_info_stru* ctrl_info = (struct nv_ctrl_file_info_stru*)NV_GLOBAL_CTRL_INFO_ADDR;
 
-    return bsp_nvm_flushEx(0,ddr_info->file_len,NV_ERROR);
+    return bsp_nvm_flushEx(ctrl_info->ctrl_size,(ddr_info->file_len-ctrl_info->ctrl_size),NV_ERROR);
 }
 
 
@@ -372,7 +372,7 @@ u32 bsp_nvm_init(void)
         nv_debug(NV_FUN_NVM_INIT,1,0,0,0);
         goto nv_init_fail;
     }
-    g_nv_ctrl.shared_addr = NV_GLOBAL_INFO_ADDR;
+    g_nv_ctrl.shared_addr = (u32)NV_GLOBAL_INFO_ADDR;
     spin_lock_init(&g_nv_ctrl.spinlock);
 
     ret = nv_icc_chan_init();

@@ -114,12 +114,12 @@ VOS_VOID TAF_MMA_SndImsaSrvInfoNotify(
 
     /* set PS sim valid */
     pstSndMsg->ucPsSimValid       = VOS_TRUE;
-    
+
     if (MMA_MMC_SERVICE_STATUS_NO_IMSI == enPsServiceStatus)
     {
         pstSndMsg->ucPsSimValid       = VOS_FALSE;
     }
-    
+
     if (TAF_SDC_SYS_MODE_LTE == TAF_SDC_GetSysMode())
     {
         /* by the way, here get lte network capability information */
@@ -163,7 +163,7 @@ VOS_VOID TAF_MMA_SndImsaCampInfoChangeInd(VOS_VOID)
     }
 
     PS_MEM_SET(pstSndMsg, 0, sizeof(MMA_IMSA_CAMP_INFO_CHANGE_IND_STRU));
-    
+
     /* fill in header information */
     pstSndMsg->ulSenderCpuId      = VOS_LOCAL_CPUID;
     pstSndMsg->ulSenderPid        = WUEPS_PID_MMA;
@@ -180,17 +180,24 @@ VOS_VOID TAF_MMA_SndImsaCampInfoChangeInd(VOS_VOID)
     /* set PLMN identity */
     pstSndMsg->stPlmnId.ulMcc     = TAF_SDC_GetCurrCampPlmnId()->ulMcc;
     pstSndMsg->stPlmnId.ulMnc     = TAF_SDC_GetCurrCampPlmnId()->ulMnc;
-    
+
     /* set cell identity */
     pstSndMsg->ulCellId           = TAF_SDC_GetCurrCampCellId();
 
     if (TAF_SDC_SYS_MODE_LTE == TAF_SDC_GetSysMode())
     {
-        /* hardcode this access type to TDD EUTRAN if RAT is LTE here */
-        pstSndMsg->enAccessType   = MMA_IMSA_ACCESS_TYPE_EUTRAN_TDD;
+        if (TAF_SDC_LMM_ACCESS_TYPE_EUTRAN_TDD == TAF_SDC_GetCurrLmmAccessType())
+        {
+            pstSndMsg->enAccessType = MMA_IMSA_ACCESS_TYPE_EUTRAN_TDD;
+        }
+        else
+        {
+            pstSndMsg->enAccessType = MMA_IMSA_ACCESS_TYPE_EUTRAN_FDD;
+        }
 
         /* Get TAC */
-        pstSndMsg->usTac          = ((TAF_SDC_GetCurrCampLac() >> 8) & 0x00FF);
+        /* IMSA要求usTac的高8bit是系统消息中的Tac，低8bit是系统消息中的TacCnt */
+        pstSndMsg->usTac          = TAF_SDC_GetCurrCampLac();
     }
     else
     {
@@ -213,7 +220,7 @@ VOS_VOID TAF_MMA_SndImsaCampInfoChangeInd(VOS_VOID)
         /* Get LAC */
         pstSndMsg->usLac          = TAF_SDC_GetCurrCampLac();
     }
-    
+
     /* send message */
     ulRet = PS_SEND_MSG(WUEPS_PID_MMA, pstSndMsg);
 
@@ -224,7 +231,9 @@ VOS_VOID TAF_MMA_SndImsaCampInfoChangeInd(VOS_VOID)
 }
 
 
-VOS_VOID TAF_MMA_SndImsaStopReq(VOS_VOID)
+VOS_VOID TAF_MMA_SndImsaStopReq(
+    MMA_IMSA_STOP_TYPE_ENUM_UINT32      enStopType
+)
 {
     VOS_UINT32                          ulRet;
     MMA_IMSA_STOP_REQ_STRU             *pstMsg = VOS_NULL_PTR;
@@ -249,6 +258,7 @@ VOS_VOID TAF_MMA_SndImsaStopReq(VOS_VOID)
     pstMsg->ulSenderPid      = WUEPS_PID_MMA;
     pstMsg->ulLength         = sizeof(MMA_IMSA_STOP_REQ_STRU) - VOS_MSG_HEAD_LENGTH;
     pstMsg->ulMsgId          = ID_MMA_IMSA_STOP_REQ;
+    pstMsg->enStopType       = enStopType;
 
     /* 调用VOS发送原语 */
     ulRet = PS_SEND_MSG(WUEPS_PID_MMA, pstMsg);
@@ -258,11 +268,15 @@ VOS_VOID TAF_MMA_SndImsaStopReq(VOS_VOID)
         TAF_ERROR_LOG(WUEPS_PID_MMA, "TAF_MMA_SndImsaStopReq:ERROR:PS_SEND_MSG FAILURE!");
     }
 
+    NAS_TRACE_HIGH("Send Msg!");
+
     return;
 }
 
 
-VOS_VOID TAF_MMA_SndImsaStartReq(VOS_VOID)
+VOS_VOID TAF_MMA_SndImsaStartReq(
+    MMA_IMSA_START_TYPE_ENUM_UINT32     enStartType
+)
 {
     VOS_UINT32                          ulRet;
     MMA_IMSA_START_REQ_STRU            *pstMsg = VOS_NULL_PTR;
@@ -287,6 +301,7 @@ VOS_VOID TAF_MMA_SndImsaStartReq(VOS_VOID)
     pstMsg->ulSenderPid      = WUEPS_PID_MMA;
     pstMsg->ulLength         = sizeof(MMA_IMSA_START_REQ_STRU) - VOS_MSG_HEAD_LENGTH;
     pstMsg->ulMsgId          = ID_MMA_IMSA_START_REQ;
+    pstMsg->enStartType      = enStartType;
 
     /* 调用VOS发送原语 */
     ulRet = PS_SEND_MSG(WUEPS_PID_MMA, pstMsg);
@@ -296,8 +311,93 @@ VOS_VOID TAF_MMA_SndImsaStartReq(VOS_VOID)
         TAF_ERROR_LOG(WUEPS_PID_MMA, "TAF_MMA_SndImsaStartReq:ERROR:PS_SEND_MSG FAILURE!");
     }
 
+    NAS_TRACE_HIGH("Send Msg!");
+
     return;
 }
+
+
+VOS_VOID TAF_MMA_SndImsaVoiceDomainChangeInd(
+    MMA_IMSA_VOICE_DOMAIN_ENUM_UINT32   enVoiceDomain
+)
+{
+    MMA_IMSA_VOICE_DOMAIN_CHANGE_IND_STRU                  *pstMsg = VOS_NULL_PTR;
+    VOS_UINT32                                              ulRet;
+
+    /* 申请内存  */
+    pstMsg = (MMA_IMSA_VOICE_DOMAIN_CHANGE_IND_STRU *)PS_ALLOC_MSG(WUEPS_PID_MMA,
+                           sizeof(MMA_IMSA_VOICE_DOMAIN_CHANGE_IND_STRU) - VOS_MSG_HEAD_LENGTH);
+
+    if (VOS_NULL_PTR == pstMsg)
+    {
+        TAF_ERROR_LOG(WUEPS_PID_MMA, "TAF_MMA_SndImsaVoiceDomainChangeInd:ERROR: Memory Alloc Error for pMsg");
+
+        return;
+    }
+
+    PS_MEM_SET((VOS_INT8*)pstMsg + VOS_MSG_HEAD_LENGTH, 0,
+                     sizeof(MMA_IMSA_VOICE_DOMAIN_CHANGE_IND_STRU) - VOS_MSG_HEAD_LENGTH);
+
+    pstMsg->ulReceiverCpuId  = VOS_LOCAL_CPUID;
+    pstMsg->ulReceiverPid    = PS_PID_IMSA;
+    pstMsg->ulSenderCpuId    = VOS_LOCAL_CPUID;
+    pstMsg->ulSenderPid      = WUEPS_PID_MMA;
+    pstMsg->ulLength         = sizeof(MMA_IMSA_VOICE_DOMAIN_CHANGE_IND_STRU) - VOS_MSG_HEAD_LENGTH;
+    pstMsg->ulMsgId          = ID_MMA_IMSA_VOICE_DOMAIN_CHANGE_IND;
+
+    pstMsg->enVoiceDomain    = enVoiceDomain;
+
+    /* 调用VOS发送原语 */
+    ulRet = PS_SEND_MSG(WUEPS_PID_MMA, pstMsg);
+
+    if ( VOS_OK != ulRet )
+    {
+        TAF_ERROR_LOG(WUEPS_PID_MMA, "TAF_MMA_SndImsaVoiceDomainChangeInd:ERROR:PS_SEND_MSG FAILURE!");
+    }
+
+    NAS_TRACE_HIGH("Send Msg!");
+
+    return;
+}
+
+#if (FEATURE_MULTI_MODEM == FEATURE_ON)
+
+VOS_VOID TAF_MMA_SndImsaModem1InfoInd(
+    MMA_IMSA_MODEM_POWER_STATE_ENUM_UINT8   enModem1PowerState
+)
+{
+    MMA_IMSA_MODEM1_INFO_IND_STRU      *pstMmaSndImsaMsg = VOS_NULL_PTR;
+    VOS_UINT32                          ulRet;
+
+    /* 申请内存  */
+    pstMmaSndImsaMsg = (MMA_IMSA_MODEM1_INFO_IND_STRU *)PS_ALLOC_MSG(WUEPS_PID_MMA,
+                           sizeof(MMA_IMSA_MODEM1_INFO_IND_STRU) - VOS_MSG_HEAD_LENGTH);
+
+    if ( VOS_NULL_PTR == pstMmaSndImsaMsg )
+    {
+        NAS_ERROR_LOG(WUEPS_PID_MMA, "TAF_MMA_SndImsaModem1InfoInd: ERROR: Memory Alloc Error for pMsg");
+        return;
+    }
+
+    PS_MEM_SET((VOS_INT8*)pstMmaSndImsaMsg + VOS_MSG_HEAD_LENGTH, 0,
+                     sizeof(MMA_IMSA_MODEM1_INFO_IND_STRU) - VOS_MSG_HEAD_LENGTH);
+
+    pstMmaSndImsaMsg->ulReceiverPid = PS_PID_IMSA;
+    pstMmaSndImsaMsg->ulMsgId       = ID_MMA_IMSA_MODEM1_INFO_IND;
+    pstMmaSndImsaMsg->enPowerState  = enModem1PowerState;
+
+    /* 调用VOS发送原语 */
+    ulRet = PS_SEND_MSG( WUEPS_PID_MMA, pstMmaSndImsaMsg );
+    if ( VOS_OK != ulRet )
+    {
+        NAS_ERROR_LOG(WUEPS_PID_MMA, "TAF_MMA_SndImsaModem1InfoInd: ERROR: PS_SEND_MSG FAILURE");
+    }
+
+    return;
+
+}
+#endif
+
 #endif
 
 
@@ -312,11 +412,12 @@ VOS_UINT32 TAF_MMA_IsCGIInfoChanged(
      || (pstOldCampInfo->enSysMode       != pstNewCampInfo->enSysMode)
      || (pstOldCampInfo->usLac           != pstNewCampInfo->usLac)
      || (pstOldCampInfo->ulCellId        != pstNewCampInfo->ulCellId)
-     || (pstOldCampInfo->ucRoamFlag      != pstNewCampInfo->ucRoamFlag))
+     || (pstOldCampInfo->ucRoamFlag      != pstNewCampInfo->ucRoamFlag)
+     || (pstOldCampInfo->enLmmAccessType != pstNewCampInfo->enLmmAccessType))
     {
         return VOS_TRUE;
     }
-    
+
     return VOS_FALSE;
 }
 VOS_UINT32 TAF_MMA_IsNetworkCapInfoChanged(
@@ -346,7 +447,7 @@ VOS_UINT32 TAF_MMA_IsNetworkCapInfoChanged(
     {
         return VOS_TRUE;
     }
-    
+
     return VOS_FALSE;
 }
 

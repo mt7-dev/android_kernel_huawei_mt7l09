@@ -375,8 +375,6 @@ static struct dibx000_agc_config xc3028_agc_config = {
 	1,	/* perform_agc_softsplit */
 };
 
-/* PLL Configuration for COFDM BW_MHz = 8.000000
- * With external clock = 30.000000 */
 static struct dibx000_bandwidth_config xc3028_bw_config = {
 	60000,	/* internal */
 	30000,	/* sampling */
@@ -391,7 +389,7 @@ static struct dibx000_bandwidth_config xc3028_bw_config = {
 	1,	/* misc: ADClkSrc */
 	0,	/* misc: modulo */
 	(3 << 14) | (1 << 12) | (524 << 0), /* sad_cfg: refsel, sel, freq_15k */
-	(1 << 25) | 5816102, /* ifreq = 5.200000 MHz */
+	(1 << 25) | 5816102,
 	20452225, /* timf */
 	30000000  /* xtal_hz */
 };

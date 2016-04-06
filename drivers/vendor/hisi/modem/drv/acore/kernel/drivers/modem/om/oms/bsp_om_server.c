@@ -35,7 +35,11 @@ bsp_om_socp_coder_src_cfg_s g_bsp_om_socp_chan_info=
 {
     BSP_OM_SOCP_CHAN_INIT_FAIL,
     BSP_OM_ACPU_CODER_SRC_CHAN,
+#if (FEATURE_OFF == FEATURE_MERGE_OM_CHAN)
     SOCP_CODER_DST_LOM_IND,
+#else
+    SOCP_CODER_DST_OM_IND,
+#endif
     SOCP_DATA_TYPE_0,
     SOCP_ENCSRC_CHNMODE_LIST,
     SOCP_CHAN_PRIORITY_2 ,
@@ -69,14 +73,14 @@ bsp_om_list_debug_s  g_list_debug = {0};
 *****************************************************************************/
 u32 bsp_om_socp_chan_init(void);
 u32 bsp_om_buf_init(void);
-u32 bsp_om_socp_clean_rd_buf(u32 chan_id,SOCP_BUFFER_RW_S *rd_stru);
+u32 bsp_om_socp_clean_rd_buf(u32 chan_id,SOCP_BUFFER_RW_STRU *rd_stru);
 u32 bsp_om_clean_rd(void);
 void bsp_om_global_init(void);
-void bsp_om_get_head_from_list(u32 *pbuf,u32 *len);
+void bsp_om_get_head_from_list(void**pbuf,u32 *len);
 void bsp_om_del_head_froms_list(void);
 int bsp_om_send_task(void *);
 void bsp_log_send_set(u32 send_type);
-u32 bsp_om_free_log_buf(u32 buf_addr,u32 len);
+u32 bsp_om_free_log_buf(void* buf_addr,u32 len);
 #ifdef ENABLE_BUILD_SYSVIEW  
 void bsp_om_sysview_swt_reset(void);
 #endif
@@ -93,17 +97,17 @@ void bsp_om_sysview_swt_reset(void);
 * 返 回 值  : 物理地址
 *****************************************************************************/
 
-static INLINE u32 bsp_om_virt_phy(u32 virt_addr)
+static INLINE u32 bsp_om_virt_phy(void* virt_addr)
 {
     u32 phy_real_addr;
 
 #ifdef __KERNEL__
-    phy_real_addr =(u32) virt_to_phys((void *)virt_addr);
+    phy_real_addr = (u32)virt_to_phys(virt_addr);
 #else
-    phy_real_addr = virt_addr;
+    phy_real_addr = (u32)virt_addr;
 #endif
 
-    return phy_real_addr;
+    return (u32)phy_real_addr;
 }
 
 /*****************************************************************************
@@ -118,12 +122,12 @@ static INLINE u32 bsp_om_virt_phy(u32 virt_addr)
 * 返 回 值  : 虚拟地址
 *****************************************************************************/
 
-static INLINE u32 bsp_om_phy_virt(u32 phy_addr)
+static INLINE void* bsp_om_phy_virt(u32 phy_addr)
 {
-    u32 virt_addr;
+    void* virt_addr;
 
 #ifdef __KERNEL__
-    virt_addr = (u32)phys_to_virt(phy_addr);
+    virt_addr = phys_to_virt(phy_addr);
 #else
     virt_addr = phy_addr;
 #endif
@@ -145,7 +149,7 @@ static INLINE u32 bsp_om_phy_virt(u32 phy_addr)
 * 返 回 值  :虚拟内存地址
 *****************************************************************************/
 
-void* bsp_om_alloc(u32 size, u32 *phy_real_addr)
+void* bsp_om_alloc(u32 size, u32*phy_real_addr)
 {
     void    *virt_addr = NULL;
 
@@ -184,7 +188,7 @@ void* bsp_om_alloc(u32 size, u32 *phy_real_addr)
         return NULL;
     }
 
-    *phy_real_addr = virt_to_phys(( void *)virt_addr);
+    *(phy_real_addr) = (u32)virt_to_phys(virt_addr);
 #endif
 
     return virt_addr;
@@ -280,11 +284,11 @@ int bsp_om_buf_sem_give(void)
 
 u32 bsp_om_socp_chan_init(void)
 {
-    SOCP_CODER_SRC_CHAN_S               channle_stu = {0};
+    SOCP_CODER_SRC_CHAN_STRU               channle_stu = {0};
 
     /*编码源通道buf初始化*/
     /* 申请BD空间 */
-    g_bsp_om_socp_chan_info.bd_buf = (u32)bsp_om_alloc(BSP_OM_CODER_SRC_BDSIZE,&(g_bsp_om_socp_chan_info.bd_buf_phy));
+    g_bsp_om_socp_chan_info.bd_buf = bsp_om_alloc(BSP_OM_CODER_SRC_BDSIZE,&(g_bsp_om_socp_chan_info.bd_buf_phy));
 
     if(( 0== g_bsp_om_socp_chan_info.bd_buf)||(0 == g_bsp_om_socp_chan_info.bd_buf_phy ))
     {
@@ -293,7 +297,7 @@ u32 bsp_om_socp_chan_init(void)
     }
 
     /* 申请RD空间 */
-    g_bsp_om_socp_chan_info.rd_buf = (u32)bsp_om_alloc(BSP_OM_CODER_SRC_RDSIZE,&(g_bsp_om_socp_chan_info.rd_buf_phy));
+    g_bsp_om_socp_chan_info.rd_buf = bsp_om_alloc(BSP_OM_CODER_SRC_RDSIZE,&(g_bsp_om_socp_chan_info.rd_buf_phy));
 
     if(( 0== g_bsp_om_socp_chan_info.rd_buf)||(0 == g_bsp_om_socp_chan_info.rd_buf_phy ))
     {
@@ -371,7 +375,7 @@ void bsp_socp_chan_enable(void)
 
 u32 bsp_om_send_coder_src(u8 *send_data_virt, u32 send_len)
 {
-    SOCP_BUFFER_RW_S                 bd_buf = {0};
+    SOCP_BUFFER_RW_STRU                 bd_buf = {0};
     u32                          ulBDNum;
     SOCP_BD_DATA_STRU          bd_data = {0};
     u32                          send_data_phy = 0;
@@ -380,7 +384,7 @@ u32 bsp_om_send_coder_src(u8 *send_data_virt, u32 send_len)
     osl_sem_down(&socp_opt_sem);
 
     /*  将用户虚拟地址转换成物理地址*/
-    send_data_phy = bsp_om_virt_phy((u32)send_data_virt);
+    send_data_phy = bsp_om_virt_phy((void *)send_data_virt);
 
     if(send_data_phy == 0)
     {
@@ -409,13 +413,13 @@ u32 bsp_om_send_coder_src(u8 *send_data_virt, u32 send_len)
         goto fail;
     }
 
-    bd_data.pucData    = (u8 *)send_data_phy;
+    bd_data.pucData    = send_data_phy;
     bd_data.usMsgLen   = (BSP_U16)send_len;
     bd_data.enDataType = SOCP_BD_DATA;
 
-    memcpy((void *)bsp_om_phy_virt((u32)(bd_buf.pBuffer)),(void*)&bd_data,sizeof(SOCP_BD_DATA_STRU));
+    memcpy((void *)bsp_om_phy_virt(((uintptr_t)bd_buf.pBuffer)),(void*)&bd_data,sizeof(SOCP_BD_DATA_STRU));
     /*lint -save -e713*/
-    dma_map_single(NULL, (void*)bsp_om_phy_virt((u32)(bd_buf.pBuffer)), sizeof(SOCP_BD_DATA_STRU), DMA_TO_DEVICE);
+    dma_map_single(NULL, (void*)bsp_om_phy_virt(((uintptr_t)bd_buf.pBuffer)), sizeof(SOCP_BD_DATA_STRU), DMA_TO_DEVICE);
     dma_map_single(NULL, (void *)(send_data_virt), send_len, DMA_TO_DEVICE);
     /*lint -restore*/
     ret =  (u32)bsp_socp_write_done(g_bsp_om_socp_chan_info.en_src_chan_id, sizeof(SOCP_BD_DATA_STRU)) ;  /* 当前数据写入完毕 */
@@ -459,7 +463,7 @@ u32 bsp_om_buf_init(void)
     /* LOG BUG 不在此初始化*/
     i = BSP_OM_SOCP_BUF_TYPE;
 
-    g_bsp_om_socp_buf_info[i].start_ptr = (u32)bsp_om_alloc(g_bsp_om_socp_buf_info[i].buf_len,&(g_bsp_om_socp_buf_info[i].start_phy_ptr));
+    g_bsp_om_socp_buf_info[i].start_ptr = bsp_om_alloc(g_bsp_om_socp_buf_info[i].buf_len,(u32*)(&(g_bsp_om_socp_buf_info[i].start_phy_ptr)));
 
     if(g_bsp_om_socp_buf_info[i].start_ptr == 0)
     {
@@ -476,7 +480,7 @@ u32 bsp_om_buf_init(void)
     osl_sem_init(SEM_FULL,&om_buf_sem);
 
     /* LOG BUG 单独初始化*/
-    g_bsp_log_buf_info.start_ptr = (u32)bsp_om_alloc(BSP_OM_LOG_BUF_SIZE,&(g_bsp_log_buf_info.start_phy_ptr));
+    g_bsp_log_buf_info.start_ptr = bsp_om_alloc(BSP_OM_LOG_BUF_SIZE,(u32*)(&(g_bsp_log_buf_info.start_phy_ptr)));
 
     if(g_bsp_log_buf_info.start_ptr == 0)
     {
@@ -517,10 +521,10 @@ u32 bsp_om_buf_init(void)
 * 返 回 值  : BSP_OK 成功; 其他 失败
 *****************************************************************************/
 
-u32 bsp_om_socp_clean_rd_buf(u32 chan_id,SOCP_BUFFER_RW_S *rd_stru)
+u32 bsp_om_socp_clean_rd_buf(u32 chan_id,SOCP_BUFFER_RW_STRU *rd_stru)
 {
     u32             ret;
-    SOCP_BUFFER_RW_S    rd_buf_stru = {0};
+    SOCP_BUFFER_RW_STRU    rd_buf_stru = {0};
 
     osl_sem_down(&socp_opt_sem);
 
@@ -550,9 +554,9 @@ u32 bsp_om_socp_clean_rd_buf(u32 chan_id,SOCP_BUFFER_RW_S *rd_stru)
     if(0 != (rd_buf_stru.u32Size / sizeof(SOCP_RD_DATA_STRU)))
     {
         /*lint -save -e713*/
-        dma_map_single(NULL, (void *)bsp_om_phy_virt((u32)(rd_buf_stru.pBuffer)), rd_buf_stru.u32Size, DMA_FROM_DEVICE);
+        dma_map_single(NULL, (void *)bsp_om_phy_virt(((uintptr_t)rd_buf_stru.pBuffer)), rd_buf_stru.u32Size, DMA_FROM_DEVICE);
         /*lint -restore*/
-        rd_stru->pBuffer = (char *)bsp_om_phy_virt((u32)(rd_buf_stru.pBuffer));
+        rd_stru->pBuffer = (char *)bsp_om_phy_virt(((uintptr_t)rd_buf_stru.pBuffer));
         rd_stru->u32Size = rd_buf_stru.u32Size;
     }
     else
@@ -599,7 +603,7 @@ u32 bsp_om_clean_rd(void)
 {
     u32 i;
     u32 ret = BSP_OK;
-    SOCP_BUFFER_RW_S rd_buf = {0};
+    SOCP_BUFFER_RW_STRU rd_buf = {0};
     SOCP_RD_DATA_STRU rd_data = {0};
 
     ret = bsp_om_socp_clean_rd_buf(g_bsp_om_socp_chan_info.en_src_chan_id,&rd_buf);
@@ -611,9 +615,9 @@ u32 bsp_om_clean_rd(void)
         {
             memcpy(&rd_data,rd_buf.pBuffer,sizeof(SOCP_RD_DATA_STRU));
 
-            rd_data.pucData =(unsigned char *)bsp_om_phy_virt((u32)(rd_data.pucData));
+            rd_data.pucData =(uintptr_t)bsp_om_phy_virt(rd_data.pucData);
 
-            ret =  bsp_om_free_buf((u32)(rd_data.pucData),(u32)(rd_data.usMsgLen)&0xffff);
+            ret =  bsp_om_free_buf((void*)(uintptr_t)(rd_data.pucData),(u32)(rd_data.usMsgLen)&0xffff);
 
             if(ret != BSP_OK)
             {
@@ -648,14 +652,14 @@ u32 bsp_om_clean_rd(void)
 * 返 回 值  : NULL 申请失败；其他 内存地址
 *****************************************************************************/
 
-u32 bsp_om_get_log_buf(u32 get_buf_len)
+void* bsp_om_get_log_buf(u32 get_buf_len)
 {
     u32 i;
     unsigned long int_lock_lvl = 0;
 
     if(get_buf_len > BSP_PRINT_BUF_LEN )
     {
-        return  (u32)NULL;
+        return  NULL;
     }
 
     spin_lock_irqsave(&g_st_control_lock, int_lock_lvl);
@@ -673,7 +677,7 @@ u32 bsp_om_get_log_buf(u32 get_buf_len)
     }
     spin_unlock_irqrestore(&g_st_control_lock, int_lock_lvl);
 
-     return (u32)NULL;
+     return NULL;
 }
 
 /*****************************************************************************
@@ -689,7 +693,7 @@ u32 bsp_om_get_log_buf(u32 get_buf_len)
 * 返 回 值  : NULL 申请失败；其他 内存地址
 *****************************************************************************/
 
-u32 bsp_om_free_log_buf(u32 buf_addr,u32 len)
+u32 bsp_om_free_log_buf(void* buf_addr,u32 len)
 {
     u32 i;
     unsigned long int_lock_lvl = 0;
@@ -729,14 +733,14 @@ u32 bsp_om_free_log_buf(u32 buf_addr,u32 len)
 * 返 回 值  : NULL 申请失败；其他 内存地址
 *****************************************************************************/
 
-u32 bsp_om_get_buf(u32 buf_type,u32 get_buf_len)
+void* bsp_om_get_buf(u32 buf_type,u32 get_buf_len)
 {
     u32 free_size = 0;
-    u32 return_addr = 0;
-    u32 read_ptr = 0;
-    u32 write_ptr = 0;
+    void* return_addr = NULL;
+    void* read_ptr = NULL;
+    void* write_ptr = NULL;
     u32 buf_len = 0;
-    u32 start_ptr = 0;
+    void* start_ptr = NULL;
 
     read_ptr = g_bsp_om_socp_buf_info[buf_type].read_ptr;
     write_ptr = g_bsp_om_socp_buf_info[buf_type].write_ptr;
@@ -746,19 +750,19 @@ u32 bsp_om_get_buf(u32 buf_type,u32 get_buf_len)
     /* 申请编码源buf*/
     if(read_ptr <= write_ptr)
     {
-        free_size = buf_len - (write_ptr - start_ptr);
+        free_size = (u32)(buf_len - (((char*)write_ptr - (char*)start_ptr) & 0xFFFFFFFF));
 
         if(free_size > get_buf_len )
         {
             return_addr = write_ptr;
-            g_bsp_om_socp_buf_info[buf_type].write_ptr = write_ptr + get_buf_len;
+            g_bsp_om_socp_buf_info[buf_type].write_ptr = (void*)((char*)write_ptr + get_buf_len);
         }
         /*翻转写指针*/
         else
         {
             g_bsp_om_socp_buf_info[buf_type].last_pading_len = free_size;
 
-            free_size = read_ptr - start_ptr;
+            free_size = (u32)(((char*)read_ptr - (char*)start_ptr)& 0xFFFFFFFF );
 
             if(free_size > get_buf_len)
             {
@@ -766,33 +770,33 @@ u32 bsp_om_get_buf(u32 buf_type,u32 get_buf_len)
 
                 return_addr = start_ptr;
 
-                g_bsp_om_socp_buf_info[buf_type].write_ptr = g_bsp_om_socp_buf_info[buf_type].write_ptr + get_buf_len;
+                g_bsp_om_socp_buf_info[buf_type].write_ptr = ((char*)g_bsp_om_socp_buf_info[buf_type].write_ptr + get_buf_len);
             }
             else
             {
                 g_bsp_om_socp_buf_info[buf_type].last_pading_len = 0;
-                return_addr = 0;
+                return_addr = NULL;
             }
         }
     }
     /*读写指针翻转*/
     else
     {
-        free_size =read_ptr - write_ptr ;
+        free_size = (u32)(((char*)read_ptr - (char*)write_ptr)&0xFFFFFFFF );
 
         if(free_size > get_buf_len)
         {
             return_addr = write_ptr;
 
-            g_bsp_om_socp_buf_info[buf_type].write_ptr = write_ptr + get_buf_len;
+            g_bsp_om_socp_buf_info[buf_type].write_ptr = (char*)write_ptr + get_buf_len;
         }
         else
         {
-            return_addr = 0;
+            return_addr = NULL;
         }
     }
 
-    if(return_addr != 0)
+    if(return_addr != NULL)
     {
         g_bsp_om_socp_buf_info[buf_type].buf_size  += get_buf_len;
     }
@@ -813,15 +817,20 @@ u32 bsp_om_get_buf(u32 buf_type,u32 get_buf_len)
 * 返 回 值  : BSP_OK 释放成功;其他 释放失败
 *****************************************************************************/
 
-u32 bsp_om_free_buf(u32 buf_addr,u32 len)
+u32 bsp_om_free_buf(void* buf_addr,u32 len)
 {
     u32 buf_type = 0;
-    u32 read_ptr ,write_ptr ,buf_len , start_ptr ,last_pading_len,end_ptr = 0;
+    void* read_ptr = NULL;
+    void* write_ptr  = NULL;
+    u32 buf_len = 0;
+    void* start_ptr  = NULL;
+    u32 last_pading_len = 0;
+    void* end_ptr  = NULL;;
 
     for(buf_type = 0;buf_type < BSP_OM_BUF_NUM;buf_type++)
     {
         if((buf_addr>= g_bsp_om_socp_buf_info[buf_type].start_ptr)
-            &&( buf_addr < (g_bsp_om_socp_buf_info[buf_type].start_ptr + g_bsp_om_socp_buf_info[buf_type].buf_len)))
+            &&( (char*)buf_addr < ((char*)g_bsp_om_socp_buf_info[buf_type].start_ptr + g_bsp_om_socp_buf_info[buf_type].buf_len)))
         {
             break;
         }
@@ -844,18 +853,18 @@ u32 bsp_om_free_buf(u32 buf_addr,u32 len)
     start_ptr = g_bsp_om_socp_buf_info[buf_type].start_ptr;
     last_pading_len = g_bsp_om_socp_buf_info[buf_type].last_pading_len;
 
-    end_ptr = start_ptr + buf_len;
+    end_ptr = ((char*)start_ptr + buf_len);
 
     /*顺序申请和释放的情况*/
     if((buf_addr == read_ptr )||( buf_addr == start_ptr))
     {
         if((read_ptr + last_pading_len + len) < end_ptr)
         {
-            g_bsp_om_socp_buf_info[buf_type].read_ptr = read_ptr + len;
+            g_bsp_om_socp_buf_info[buf_type].read_ptr = (char*)read_ptr + len;
         }
-        else if((read_ptr + last_pading_len + len) >end_ptr)
+        else if(((char*)read_ptr + last_pading_len + len) >(char*)end_ptr)
         {
-            g_bsp_om_socp_buf_info[buf_type].read_ptr = start_ptr + len;
+            g_bsp_om_socp_buf_info[buf_type].read_ptr = (char*)start_ptr + len;
             g_bsp_om_socp_buf_info[buf_type].last_pading_len = 0;
         }
         else
@@ -880,7 +889,7 @@ u32 bsp_om_free_buf(u32 buf_addr,u32 len)
     /*异常buf*/
     else
     {
-        bsp_om_debug(BSP_LOG_LEVEL_ERROR, " bsp om invalid buf  0x%x, read_ptr = 0x%x,write_ptr = 0x%x",buf_addr,read_ptr,write_ptr);
+        bsp_om_debug(BSP_LOG_LEVEL_ERROR, " bsp om invalid buf  %p, read_ptr = %p,write_ptr = %p",buf_addr,read_ptr,write_ptr);
     }
 
     return BSP_OK;
@@ -955,7 +964,7 @@ void bsp_log_send_set(u32 send_type)
     g_om_global_info.om_cfg.nv_cfg.log_switch = send_type;
 }
 
-int bsp_om_into_send_list(u32 buf_addr,u32 len)
+int bsp_om_into_send_list(void* buf_addr,u32 len)
 {
     bsp_om_list_s  *ptemp = NULL;
     unsigned long int_lock_lvl = 0;
@@ -994,7 +1003,7 @@ int bsp_om_into_send_list(u32 buf_addr,u32 len)
     return BSP_OK;
 }
 
-void bsp_om_get_head_from_list(u32 *pbuf,u32 *len)
+void bsp_om_get_head_from_list(void** pbuf,u32 *len)
 {
     unsigned long int_lock_lvl = 0;
 
@@ -1046,7 +1055,7 @@ void bsp_om_del_head_froms_list(void)
 
 int bsp_om_send_task(void * para)
 {
-    u32 send_addr = 0;
+    void* send_addr = 0;
     u32 buf_len = 0;
     u32 ret;
 
@@ -1067,7 +1076,7 @@ int bsp_om_send_task(void * para)
 
             if((send_addr != 0)&&(buf_len != 0))
             {
-                ret =  bsp_om_send_coder_src((u8*)send_addr,buf_len);
+                ret =  bsp_om_send_coder_src(send_addr,buf_len);
 
                 if(ret == BSP_OK)
                 {

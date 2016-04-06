@@ -50,7 +50,6 @@ set_break_vector(int n, irqvectptr addr)
 	*jinstr = 0x0d3f;
 	*jaddr = (unsigned long)addr;
 
-	/* 00000026 <clrlop+1a> 3f0d82000000     jump  0x82 */
 }
 
 /*

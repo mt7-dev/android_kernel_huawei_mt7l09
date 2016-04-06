@@ -83,10 +83,11 @@ extern VOS_UINT32 OM_AcpuTraceMsgHook(VOS_VOID* pMsg);
 /******************************************************************************
    6 函数实现
 ******************************************************************************/
+/*lint -save -e958 */
 VOS_VOID     FC_LOG
 (
-    VOS_UINT32      ulLevel,
-    VOS_CHAR       *pcString
+    VOS_UINT32          ulLevel,
+    const VOS_CHAR     *pcString
 )
 {
     #ifdef __FC_RELEASE__
@@ -105,9 +106,9 @@ VOS_VOID     FC_LOG
 
 VOS_VOID     FC_LOG1
 (
-    VOS_UINT32      ulLevel,
-    VOS_CHAR       *pcString,
-    VOS_INT32       lPara1
+    VOS_UINT32            ulLevel,
+    const VOS_CHAR       *pcString,
+    VOS_INT32             lPara1
 )
 {
     #ifdef __FC_RELEASE__
@@ -127,10 +128,10 @@ VOS_VOID     FC_LOG1
 
 VOS_VOID     FC_LOG2
 (
-    VOS_UINT32      ulLevel,
-    VOS_CHAR       *pcString,
-    VOS_INT32       lPara1,
-    VOS_INT32       lPara2
+    VOS_UINT32            ulLevel,
+    const VOS_CHAR       *pcString,
+    VOS_INT32             lPara1,
+    VOS_INT32             lPara2
 )
 {
     #ifdef __FC_RELEASE__
@@ -150,11 +151,11 @@ VOS_VOID     FC_LOG2
 
 VOS_VOID     FC_LOG3
 (
-    VOS_UINT32      ulLevel,
-    VOS_CHAR       *pcString,
-    VOS_INT32       lPara1,
-    VOS_INT32       lPara2,
-    VOS_INT32       lPara3
+    VOS_UINT32              ulLevel,
+    const VOS_CHAR         *pcString,
+    VOS_INT32               lPara1,
+    VOS_INT32               lPara2,
+    VOS_INT32               lPara3
 )
 {
     #ifdef __FC_RELEASE__
@@ -174,12 +175,12 @@ VOS_VOID     FC_LOG3
 
 VOS_VOID     FC_LOG4
 (
-    VOS_UINT32      ulLevel,
-    VOS_CHAR       *pcString,
-    VOS_INT32       lPara1,
-    VOS_INT32       lPara2,
-    VOS_INT32       lPara3,
-    VOS_INT32       lPara4
+    VOS_UINT32          ulLevel,
+    const VOS_CHAR     *pcString,
+    VOS_INT32           lPara1,
+    VOS_INT32           lPara2,
+    VOS_INT32           lPara3,
+    VOS_INT32           lPara4
 )
 {
     #ifdef __FC_RELEASE__
@@ -249,6 +250,8 @@ VOS_VOID FC_MNTN_TracePointFcEvent
 )
 {
     FC_MNTN_POINT_FC_STRU               stMntnPointFc;
+    VOS_UINT_PTR                        PtrAddr;
+    VOS_UINT32                          *pulOctet;
 
 
     stMntnPointFc.ulSenderCpuId         = VOS_LOCAL_CPUID;
@@ -259,19 +262,44 @@ VOS_VOID FC_MNTN_TracePointFcEvent
     stMntnPointFc.enMsgName             = enMsgName;
     stMntnPointFc.ulIsFuncInvoked       = ulIsFuncInvoked;
     stMntnPointFc.ulResult              = ulResult;
-    VOS_MemCpy(&(stMntnPointFc.stFcPoint), pstFcPoint, sizeof(FC_POINT_STRU));
+
+    /* fetch FcPoint info */
+    stMntnPointFc.stFcPoint.enFcId          = pstFcPoint->enFcId;
+    stMntnPointFc.stFcPoint.enModemId       = pstFcPoint->enModemId;
+    stMntnPointFc.stFcPoint.aucRsv[0]       = 0x0U;
+    stMntnPointFc.stFcPoint.aucRsv[1]       = 0x0U;
+    stMntnPointFc.stFcPoint.aucRsv[2]       = 0x0U;
+    stMntnPointFc.stFcPoint.aucRsv[3]       = 0x0U;
+    stMntnPointFc.stFcPoint.aucRsv[4]       = 0x0U;
+    stMntnPointFc.stFcPoint.ulPolicyMask    = pstFcPoint->ulPolicyMask;
+    stMntnPointFc.stFcPoint.ulFcMask        =   pstFcPoint->ulFcMask;
+    stMntnPointFc.stFcPoint.ulParam1        =   pstFcPoint->ulParam1;
+    stMntnPointFc.stFcPoint.ulParam2        =   pstFcPoint->ulParam2;
+
+    PtrAddr                                     = (VOS_UINT_PTR)(pstFcPoint->pSetFunc);
+    stMntnPointFc.stFcPoint.aulPointSetAddr[0]  = (VOS_UINT32)(PtrAddr & (~0U));   /* Low */
+    pulOctet                                    = (VOS_UINT32 *)pstFcPoint->pSetFunc;
+    stMntnPointFc.stFcPoint.aulPointSetAddr[1]  = (VOS_UINT32)(VOS_UINT_PTR)(pulOctet + 1);    /* High */
+
+    PtrAddr                                     = (VOS_UINT_PTR)(pstFcPoint->pClrFunc);
+    stMntnPointFc.stFcPoint.aulPointClrAddr[0]  = (VOS_UINT32)(PtrAddr & (~0U));   /* Low */
+    pulOctet                                    = (VOS_UINT32 *)pstFcPoint->pClrFunc;
+    stMntnPointFc.stFcPoint.aulPointClrAddr[1]  = (VOS_UINT32)(VOS_UINT_PTR)(pulOctet + 1);    /* High */
+
+    PtrAddr                                     = (VOS_UINT_PTR)(pstFcPoint->pRstFunc);
+    stMntnPointFc.stFcPoint.aulPointRstAddr[0]  = (VOS_UINT32)(PtrAddr & (~0U));   /* Low */
+    pulOctet                                    = (VOS_UINT32 *)pstFcPoint->pRstFunc;
+    stMntnPointFc.stFcPoint.aulPointRstAddr[1]  = (VOS_UINT32)(VOS_UINT_PTR)(pulOctet + 1);    /* High */
 
     FC_MNTN_TraceEvent((VOS_VOID *)&stMntnPointFc);
 
     return;
 }
-
-
-
 VOS_UINT32  FC_MNTN_TracePolicy(FC_MNTN_EVENT_TYPE_ENUM_UINT16 enMsgName, FC_POLICY_STRU *pPolicy )
 {
     FC_MNTN_POLICY_STRU                 stFcMntnPolicy;
-
+    VOS_UINT_PTR                        PtrAddr;
+    VOS_UINT32                          *pulOctet;
 
     VOS_MemSet(&stFcMntnPolicy, 0, sizeof(FC_MNTN_POLICY_STRU));
 
@@ -282,7 +310,30 @@ VOS_UINT32  FC_MNTN_TracePolicy(FC_MNTN_EVENT_TYPE_ENUM_UINT16 enMsgName, FC_POL
     stFcMntnPolicy.ulLength         = (sizeof(FC_MNTN_POLICY_STRU) - VOS_MSG_HEAD_LENGTH);
     stFcMntnPolicy.enMsgName        = enMsgName;
 
-    VOS_MemCpy(&(stFcMntnPolicy.stPolicy), pPolicy, sizeof(FC_POLICY_STRU));
+    stFcMntnPolicy.stPolicy.enPolicyId      =   pPolicy->enPolicyId;
+    stFcMntnPolicy.stPolicy.ucPriCnt        =   pPolicy->ucPriCnt;
+    stFcMntnPolicy.stPolicy.aucRsv[0]       =   0x0U;
+    stFcMntnPolicy.stPolicy.aucRsv[1]       =   0x0U;
+    stFcMntnPolicy.stPolicy.aucRsv[2]       =   0x0U;
+    stFcMntnPolicy.stPolicy.enHighestPri    =   pPolicy->enHighestPri;
+    stFcMntnPolicy.stPolicy.enDonePri       =   pPolicy->enDonePri;
+    stFcMntnPolicy.stPolicy.enToPri         =   pPolicy->enToPri;
+    VOS_MemCpy(stFcMntnPolicy.stPolicy.astFcPri, pPolicy->astFcPri, sizeof(pPolicy->astFcPri));
+
+    PtrAddr                                     =   (VOS_UINT_PTR)(pPolicy->pAdjustForUpFunc);
+    stFcMntnPolicy.stPolicy.aulPolicyUpAddr[0]  = (VOS_UINT32)(PtrAddr & (~0U));   /* Low */
+    pulOctet                                    = (VOS_UINT32 *)(pPolicy->pAdjustForUpFunc);
+    stFcMntnPolicy.stPolicy.aulPolicyUpAddr[1]  = (VOS_UINT32)(VOS_UINT_PTR)(pulOctet + 1);    /* High */
+
+    PtrAddr                                     =   (VOS_UINT_PTR)(pPolicy->pAdjustForDownFunc);
+    stFcMntnPolicy.stPolicy.aulPolicyDownAddr[0]  = (VOS_UINT32)(PtrAddr & (~0U));   /* Low */
+    pulOctet                                    = (VOS_UINT32 *)(pPolicy->pAdjustForDownFunc);
+    stFcMntnPolicy.stPolicy.aulPolicyDownAddr[1]  = (VOS_UINT32)(VOS_UINT_PTR)(pulOctet + 1);    /* High */
+
+    PtrAddr                                     =   (VOS_UINT_PTR)(pPolicy->pPostFunc);
+    stFcMntnPolicy.stPolicy.aulPolicyPostAddr[0]  = (VOS_UINT32)(PtrAddr & (~0U));   /* Low */
+    pulOctet                                    = (VOS_UINT32 *)(pPolicy->pAdjustForDownFunc);
+    stFcMntnPolicy.stPolicy.aulPolicyPostAddr[1]  = (VOS_UINT32)(VOS_UINT_PTR)(pulOctet + 1);    /* High */
 
     FC_MNTN_TraceEvent(&stFcMntnPolicy);
 
@@ -293,7 +344,6 @@ VOS_UINT32  FC_MNTN_TracePolicy(FC_MNTN_EVENT_TYPE_ENUM_UINT16 enMsgName, FC_POL
 VOS_UINT32  FC_MNTN_TraceCpuLoad(FC_MNTN_EVENT_TYPE_ENUM_UINT16 enMsgName, VOS_UINT32  ulCpuLoad )
 {
     FC_MNTN_CPULOAD_STRU                stFcMntnCpuLoad;
-
 
     VOS_MemSet(&stFcMntnCpuLoad, 0, sizeof(FC_MNTN_CPULOAD_STRU));
 
@@ -378,7 +428,6 @@ VOS_UINT32  FC_RegPoint
 {
     VOS_UINT32                          ulResult;
 
-
     /*参数检查*/
     if ( VOS_NULL_PTR == pstFcRegPoint )
     {
@@ -438,11 +487,15 @@ VOS_UINT32  FC_RegPoint
         }
     }
 
-    if ( (VOS_NULL_PTR == pstFcRegPoint->pSetFunc)
-         || (VOS_NULL_PTR == pstFcRegPoint->pClrFunc) )
+    if (VOS_NULL_PTR == pstFcRegPoint->pSetFunc)
     {
-        FC_LOG2(PS_PRINT_ERROR, "FC_RegPoint, ERROR, Invalid Fun Ptr, pSetFunc 0x%x pClrFunc 0x%x\n",
-                (VOS_INT32)pstFcRegPoint->pSetFunc, (VOS_INT32)pstFcRegPoint->pClrFunc);
+        FC_LOG(PS_PRINT_ERROR, "FC_RegPoint, ERROR, Invalid Fun pSetFunc\n");
+        return VOS_ERR;
+    }
+
+    if (VOS_NULL_PTR == pstFcRegPoint->pClrFunc)
+    {
+        FC_LOG(PS_PRINT_ERROR, "FC_RegPoint, ERROR, Invalid Fun pClrFunc\n");
         return VOS_ERR;
     }
 
@@ -469,7 +522,7 @@ VOS_UINT32  FC_RegPoint
 *****************************************************************************/
 VOS_UINT32  FC_DeRegPoint
 (
-    FC_ID_ENUM_UINT32                   enFcId,
+    FC_ID_ENUM_UINT8                   enFcId,
     MODEM_ID_ENUM_UINT16                enModemId
 )
 {
@@ -523,9 +576,9 @@ VOS_UINT32  FC_DeRegPoint
 }
 VOS_UINT32  FC_ChangePoint
 (
-    FC_ID_ENUM_UINT32                   enFcId,
+    FC_ID_ENUM_UINT8                   enFcId,
     FC_POLICY_ID_ENUM_UINT8             enPolicyId,
-    FC_PRI_ENUM_UINT32                  enPri,
+    FC_PRI_ENUM_UINT8                  enPri,
     MODEM_ID_ENUM_UINT16                enModemId
 )
 {
@@ -580,7 +633,7 @@ VOS_UINT32  FC_ChangePoint
 
 
 
-FC_POINT_STRU *FC_POINT_Get(FC_ID_ENUM_UINT32 enFcId)
+FC_POINT_STRU *FC_POINT_Get(FC_ID_ENUM_UINT8 enFcId)
 {
     VOS_UINT32                          ulFcIdIdxLoop;
 
@@ -663,7 +716,7 @@ VOS_UINT32  FC_POINT_Add
 
     return VOS_OK;
 }
-VOS_UINT32  FC_POINT_Del(FC_ID_ENUM_UINT32 enFcId )
+VOS_UINT32  FC_POINT_Del(FC_ID_ENUM_UINT8 enFcId )
 {
     VOS_UINT32                          ulFcIdIdxLoop;
     VOS_UINT32                          ulFcShiftId;
@@ -719,7 +772,7 @@ VOS_UINT32  FC_POINT_Del(FC_ID_ENUM_UINT32 enFcId )
 FC_PRI_OPER_ENUM_UINT32 FC_POINT_SetFc
 (
     VOS_UINT32                          ulPolicyMask,
-    FC_ID_ENUM_UINT32                   enFcId
+    FC_ID_ENUM_UINT8                   enFcId
 )
 {
     FC_POINT_STRU                      *pFcPoint;
@@ -746,7 +799,6 @@ FC_PRI_OPER_ENUM_UINT32 FC_POINT_SetFc
     }
 
     pFcPoint->ulFcMask  |= ulPolicyMask;
-
 
     /* 执行流控 */
     if (PS_FALSE == ulNeedSet)
@@ -781,7 +833,7 @@ FC_PRI_OPER_ENUM_UINT32 FC_POINT_SetFc
     修改内容   : 新生成函数
 
 *****************************************************************************/
-FC_PRI_OPER_ENUM_UINT32 FC_POINT_ClrFc(VOS_UINT32 ulPolicyMask, FC_ID_ENUM_UINT32 enFcId)
+FC_PRI_OPER_ENUM_UINT32 FC_POINT_ClrFc(VOS_UINT32 ulPolicyMask, FC_ID_ENUM_UINT8 enFcId)
 {
     /*  根据ID找到流控点实例，执行实例的流控解除函数 */
     FC_POINT_STRU                      *pFcPoint;
@@ -834,7 +886,7 @@ VOS_UINT32  FC_POINT_Reg
     FC_REG_POINT_STRU                  *pstFcRegPoint
 )
 {
-    FC_PRI_ENUM_UINT32                  enPri;
+    FC_PRI_ENUM_UINT8                  enPri;
     /* add by wangrong */
     FC_PRIVATE_POLICY_ID_ENUM_UINT8     enFcPrivatePolicyId;
 
@@ -850,10 +902,6 @@ VOS_UINT32  FC_POINT_Reg
     }
 
     /* 如果该流控策略里已经存在该流控ID，直接返回 */
-#if 0
-	enPri   = FC_POLICY_GetPriWithFcId(pstFcRegPoint->enPolicyId,
-                pstFcRegPoint->enFcId);
-#endif
     /* add by wangrong */
     enPri   = FC_POLICY_GetPriWithFcId(enFcPrivatePolicyId, pstFcRegPoint->enFcId);
     /* add by wangrong */
@@ -864,12 +912,6 @@ VOS_UINT32  FC_POINT_Reg
         return VOS_ERR;
     }
 
-    /* 流控点和流控策略进行关联 */
-#if 0
-    FC_POLICY_AddPoint(pstFcRegPoint->enPolicyId,
-        pstFcRegPoint->enFcId,
-        pstFcRegPoint->enFcPri);
-#endif
     /* add by wangrong */
     FC_POLICY_AddPoint(enFcPrivatePolicyId,
         pstFcRegPoint->enFcId,
@@ -878,14 +920,16 @@ VOS_UINT32  FC_POINT_Reg
 
     return VOS_OK;
 }
-VOS_UINT32  FC_POINT_DeReg(FC_ID_ENUM_UINT32 enFcId, MODEM_ID_ENUM_UINT16  enModemId)
+
+
+
+VOS_UINT32  FC_POINT_DeReg(FC_ID_ENUM_UINT8 enFcId, MODEM_ID_ENUM_UINT16  enModemId)
 {
     FC_POINT_STRU                      *pFcPoint;
     /* add by wangrong */
     FC_PRIVATE_POLICY_ID_ENUM_UINT8     enPolicyId;
     /* add by wangrong */
     VOS_UINT32                          ulPointPolicyMask;
-
 
     /* 通过流控点ID找到流控点结构 */
     pFcPoint    = FC_POINT_Get(enFcId);
@@ -899,23 +943,8 @@ VOS_UINT32  FC_POINT_DeReg(FC_ID_ENUM_UINT32 enFcId, MODEM_ID_ENUM_UINT16  enMod
         return VOS_ERR;
     }
 
-
     /* 流控点删除，需要对相应的流控策略进行处理 */
     ulPointPolicyMask   = pFcPoint->ulPolicyMask;
-
-#if 0
-    for (enPolicyId = FC_POLICY_ID_MEM; enPolicyId < FC_POLICY_ID_BUTT; enPolicyId++)
-    {
-        if ( 0 != (FC_POLICY_MASK(enPolicyId) & ulPointPolicyMask) )
-        {
-            /* 使能检查 */
-            if ( FC_POLICY_MASK(enPolicyId) == (FC_POLICY_MASK(enPolicyId) & g_stFcCfg.ulFcEnbaleMask) )
-            {
-                FC_POLICY_DelPoint(enPolicyId, enFcId);
-            }
-        }
-    }
-#endif
 
     /* add by wangrong */
     for (enPolicyId = FC_PRIVATE_POLICY_ID_MEM_MODEM_0; enPolicyId < FC_PRIVATE_POLICY_ID_BUTT; enPolicyId++)
@@ -936,19 +965,16 @@ VOS_UINT32  FC_POINT_DeReg(FC_ID_ENUM_UINT32 enFcId, MODEM_ID_ENUM_UINT16  enMod
 
     return VOS_OK;
 }
-
-
-
 VOS_UINT32  FC_POINT_Change
 (
-    FC_ID_ENUM_UINT32                   enFcId,
+    FC_ID_ENUM_UINT8                   enFcId,
     FC_POLICY_ID_ENUM_UINT8             enPolicyId,
-    FC_PRI_ENUM_UINT32                  enNewPri,
+    FC_PRI_ENUM_UINT8                  enNewPri,
     MODEM_ID_ENUM_UINT16                enModemId
 )
 {
     FC_POINT_STRU                      *pFcPoint;
-    FC_PRI_ENUM_UINT32                  enOldPri;
+    FC_PRI_ENUM_UINT8                  enOldPri;
     FC_PRIVATE_POLICY_ID_ENUM_UINT8     enFcPrivatePolicyId;
 
 
@@ -991,31 +1017,11 @@ VOS_VOID  FC_POINT_Init( VOS_VOID )
     VOS_MemSet(&g_stFcPointMgr, 0, sizeof(FC_POINT_MGR_STRU));
 }
 
-#if 0
-
-FC_POLICY_STRU  *FC_POLICY_Get( FC_PRIVATE_POLICY_ID_ENUM_UINT8 enPolicyId )
-{
-    /* 调用者自己保证传入的enPolicyId合法 */
-    return (&g_astFcPolicy[enPolicyId]);
-}
-FC_POLICY_STRU  *FC_PRIVATE_POLICY_Get( FC_POLICY_ID_ENUM_UINT8 enPolicyId, MODEM_ID_ENUM_UINT16 enModemId )
-{
-
-    FC_PRIVATE_POLICY_ID_ENUM_UINT8     enFcPrivatePolicyId;
-
-    enFcPrivatePolicyId = g_aenPrivatePolicyTbl[enModemId][enPolicyId];
-
-    return FC_POLICY_Get(enFcPrivatePolicyId);
-}
-#endif
-
-
 
 VOS_VOID  FC_POLICY_TrimInvalidPri( FC_POLICY_STRU *pFcPolicy )
 {
     FC_PRI_STRU                        *pstPri;
-    FC_PRI_ENUM_UINT32                  enPri;
-
+    FC_PRI_ENUM_UINT8                  enPri;
 
     /* 如果当前优先级无效，则直接返回，无需降级 */
     if (FC_PRI_NULL == pFcPolicy->enDonePri)
@@ -1045,7 +1051,6 @@ FC_PRI_OPER_ENUM_UINT32 FC_POLICY_UpWithOnePri
 )
 {
     VOS_UINT32                          ulLoop;
-
 
     if (FC_MAX_POINT_NUM < pstPri->ucFcIdCnt)
     {
@@ -1088,12 +1093,10 @@ FC_PRI_OPER_ENUM_UINT32  FC_POLICY_DownWithOnePri
 }
 
 
-
-
 VOS_UINT32 FC_POLICY_Up(FC_POLICY_STRU *pPolicy)
 {
     FC_PRI_STRU                        *pstPri;
-
+    FC_PRI_ENUM_UINT8                  enPri;
 
     if (pPolicy->enDonePri >= pPolicy->enHighestPri)
     {
@@ -1102,7 +1105,8 @@ VOS_UINT32 FC_POLICY_Up(FC_POLICY_STRU *pPolicy)
 
     while (pPolicy->enDonePri < pPolicy->enHighestPri)
     {
-        pstPri   = &(pPolicy->astFcPri[pPolicy->enDonePri + 1]);
+        enPri = (FC_PRI_ENUM_UINT8)(pPolicy->enDonePri + 1);
+        pstPri   = &(pPolicy->astFcPri[enPri]);
 
         /* 当前优先级存在，执行当前流控操作 */
         if (VOS_TRUE == pstPri->ucValid)
@@ -1119,26 +1123,25 @@ VOS_UINT32 FC_POLICY_Up(FC_POLICY_STRU *pPolicy)
 
     return VOS_OK;
 }
-VOS_UINT32  FC_POLICY_UpToTargetPri(FC_POLICY_STRU *pFcPolicy, FC_PRI_ENUM_UINT32 enTargetPri )
+VOS_UINT32  FC_POLICY_UpToTargetPri(FC_POLICY_STRU *pFcPolicy, FC_PRI_ENUM_UINT8 enTargetPri )
 {
     FC_PRI_STRU                    *pstPri;
-
+    FC_PRI_ENUM_UINT8              enPri;
 
     if (enTargetPri >= FC_PRI_BUTT)
     {
         return VOS_ERR;
     }
 
-
     if (pFcPolicy->enDonePri >= enTargetPri)
     {
         return VOS_OK;
     }
 
-
     while (pFcPolicy->enDonePri < enTargetPri)
     {
-        pstPri   = &(pFcPolicy->astFcPri[pFcPolicy->enDonePri + 1]);
+        enPri   = (FC_PRI_ENUM_UINT8)(pFcPolicy->enDonePri + 1);
+        pstPri  = &(pFcPolicy->astFcPri[enPri]);
 
         /* 当前优先级存在，执行当前流控操作 */
         if (VOS_TRUE == pstPri->ucValid)
@@ -1156,7 +1159,6 @@ VOS_UINT32  FC_POLICY_UpToTargetPri(FC_POLICY_STRU *pFcPolicy, FC_PRI_ENUM_UINT3
 VOS_UINT32 FC_POLICY_Down(FC_POLICY_STRU *pFcPolicy)
 {
     FC_PRI_STRU                        *pstPri;
-
 
     if (FC_PRI_NULL == pFcPolicy->enDonePri)
     {
@@ -1188,10 +1190,9 @@ VOS_UINT32 FC_POLICY_Down(FC_POLICY_STRU *pFcPolicy)
 
 
 
-VOS_UINT32  FC_POLICY_DownToTargetPri(FC_POLICY_STRU *pFcPolicy, FC_PRI_ENUM_UINT32 enTargetPri )
+VOS_UINT32  FC_POLICY_DownToTargetPri(FC_POLICY_STRU *pFcPolicy, FC_PRI_ENUM_UINT8 enTargetPri )
 {
     FC_PRI_STRU                        *pstPri;
-
 
     if (pFcPolicy->enDonePri <= enTargetPri)
     {
@@ -1217,8 +1218,7 @@ VOS_UINT32  FC_POLICY_DownToTargetPri(FC_POLICY_STRU *pFcPolicy, FC_PRI_ENUM_UIN
 }
 VOS_VOID  FC_POLICY_UpdateHighestPri( FC_POLICY_STRU *pPolicy )
 {
-    FC_PRI_ENUM_UINT32                  enPri;
-
+    FC_PRI_ENUM_UINT8                  enPri;
 
     pPolicy->enHighestPri   = FC_PRI_NULL;
 
@@ -1238,13 +1238,12 @@ VOS_VOID  FC_POLICY_UpdateHighestPri( FC_POLICY_STRU *pPolicy )
 VOS_UINT32  FC_POLICY_AddPointForPri
 (
     FC_POLICY_STRU                     *pPolicy,
-    FC_ID_ENUM_UINT32                   enFcId,
-    FC_PRI_ENUM_UINT32                  enPointPri
+    FC_ID_ENUM_UINT8                   enFcId,
+    FC_PRI_ENUM_UINT8                  enPointPri
 )
 {
     FC_PRI_STRU                        *pFcPri;
     VOS_UINT32                          ulFcIdxLoop;
-
 
     if (FC_PRI_BUTT <= enPointPri)
     {
@@ -1293,14 +1292,13 @@ VOS_UINT32  FC_POLICY_AddPointForPri
 VOS_UINT32  FC_POLICY_DelPointForPri
 (
     FC_POLICY_STRU                     *pPolicy,
-    FC_ID_ENUM_UINT32                   enFcId,
-    FC_PRI_ENUM_UINT32                  enPointPri
+    FC_ID_ENUM_UINT8                   enFcId,
+    FC_PRI_ENUM_UINT8                  enPointPri
 )
 {
     FC_PRI_STRU                        *pFcPri;
     VOS_UINT32                          ulFcIdIdxLoop;
     VOS_UINT32                          ulFcShiftId;
-
 
     if (FC_PRI_BUTT <= enPointPri)
     {
@@ -1343,23 +1341,19 @@ VOS_UINT32  FC_POLICY_DelPointForPri
 VOS_UINT32  FC_POLICY_AddPoint
 (
     FC_PRIVATE_POLICY_ID_ENUM_UINT8     enPolicyId,
-    FC_ID_ENUM_UINT32                   enFcId,
-    FC_PRI_ENUM_UINT32                  enPointPri
+    FC_ID_ENUM_UINT8                   enFcId,
+    FC_PRI_ENUM_UINT8                  enPointPri
 )
 {
     FC_POLICY_STRU                     *pPolicy;
 
-
     pPolicy     = FC_POLICY_Get(enPolicyId);
-
 
     /* 向流控策略添加流控点 */
     FC_POLICY_AddPointForPri(pPolicy, enFcId, enPointPri);
 
-
     /* 更新该流控策略最高优先级 */
     FC_POLICY_UpdateHighestPri(pPolicy);
-
 
     /* 调整流控策略，增加流控点，按照流控门限进行重新调整 */
     if (VOS_NULL_PTR != pPolicy->pAdjustForUpFunc)
@@ -1374,7 +1368,6 @@ VOS_UINT32  FC_POLICY_AddPoint
         FC_POINT_SetFc( FC_POLICY_MASK(enPolicyId), enFcId );
     }
 
-
     /* 输出可维可测 */
     FC_MNTN_TracePolicy(ID_FC_MNTN_POLICY_ADD_POINT, pPolicy);
 
@@ -1383,24 +1376,23 @@ VOS_UINT32  FC_POLICY_AddPoint
 
 
 
-FC_PRI_ENUM_UINT32  FC_POLICY_GetPriWithFcId
+FC_PRI_ENUM_UINT8  FC_POLICY_GetPriWithFcId
 (
     FC_PRIVATE_POLICY_ID_ENUM_UINT8     enPolicyId,
-    FC_ID_ENUM_UINT32                   enFcId
+    FC_ID_ENUM_UINT8                   enFcId
 )
 {
     FC_POLICY_STRU                     *pPolicy;
     FC_PRI_STRU                        *pPri;
-    VOS_UINT32                          ulPriLoop;
+    FC_PRI_ENUM_UINT8                   enPriLoop;
     VOS_UINT32                          ulFcIdIndexLoop;
-    FC_PRI_ENUM_UINT32                  enPointPri;
-
+    FC_PRI_ENUM_UINT8                   enPointPri;
 
     pPolicy     = FC_POLICY_Get(enPolicyId);
 
-    for (ulPriLoop = FC_PRI_1; ulPriLoop < FC_PRI_BUTT; ulPriLoop++)
+    for (enPriLoop = FC_PRI_1; enPriLoop < FC_PRI_BUTT; enPriLoop++)
     {
-        pPri    = &(pPolicy->astFcPri[ulPriLoop]);
+        pPri    = &(pPolicy->astFcPri[enPriLoop]);
 
         if (FC_MAX_POINT_NUM < pPri->ucFcIdCnt)
         {
@@ -1414,7 +1406,7 @@ FC_PRI_ENUM_UINT32  FC_POLICY_GetPriWithFcId
             if (pPri->aenFcId[ulFcIdIndexLoop] == enFcId)
             {
                 /* 从该流控策略里删除该流控点 */
-                enPointPri  = ulPriLoop;
+                enPointPri  = enPriLoop;
                 return enPointPri;
             }
         }
@@ -1425,16 +1417,14 @@ FC_PRI_ENUM_UINT32  FC_POLICY_GetPriWithFcId
 VOS_UINT32  FC_POLICY_DelPoint
 (
     FC_PRIVATE_POLICY_ID_ENUM_UINT8     enPolicyId,
-    FC_ID_ENUM_UINT32                   enFcId
+    FC_ID_ENUM_UINT8                   enFcId
 )
 {
-    FC_PRI_ENUM_UINT32                  enPointPri;
+    FC_PRI_ENUM_UINT8                  enPointPri;
     FC_POLICY_STRU                     *pPolicy;
-
 
     /*================================*//* 对需要删除的流控点进行解除流控处理 */
     FC_POINT_ClrFc(FC_POLICY_MASK(enPolicyId), enFcId);
-
 
     /*================================*//* 对相关连的流控策略进行调整 */
     enPointPri  = FC_POLICY_GetPriWithFcId(enPolicyId, enFcId);
@@ -1449,13 +1439,11 @@ VOS_UINT32  FC_POLICY_DelPoint
     /* 更新该流控策略最高优先级 */
     FC_POLICY_UpdateHighestPri(pPolicy);
 
-
     /* 流控策略调整 */
     if (VOS_NULL_PTR != pPolicy->pAdjustForDownFunc)
     {
         (VOS_VOID)pPolicy->pAdjustForDownFunc(enPointPri, enFcId);
     }
-
 
     /* 输出可维可测 */
     FC_MNTN_TracePolicy(ID_FC_MNTN_POLICY_DEL_POINT, pPolicy);
@@ -1465,13 +1453,12 @@ VOS_UINT32  FC_POLICY_DelPoint
 VOS_UINT32  FC_POLICY_ChangePoint
 (
     FC_PRIVATE_POLICY_ID_ENUM_UINT8     enPolicyId,
-    FC_ID_ENUM_UINT32                   enFcId,
-    FC_PRI_ENUM_UINT32                  enPointOldPri,
-    FC_PRI_ENUM_UINT32                  enPointNewPri
+    FC_ID_ENUM_UINT8                   enFcId,
+    FC_PRI_ENUM_UINT8                  enPointOldPri,
+    FC_PRI_ENUM_UINT8                  enPointNewPri
 )
 {
     FC_POLICY_STRU                     *pPolicy;
-
 
     pPolicy = FC_POLICY_Get(enPolicyId);
 
@@ -1483,13 +1470,11 @@ VOS_UINT32  FC_POLICY_ChangePoint
     /* 更新该流控策略最高优先级 */
     FC_POLICY_UpdateHighestPri(pPolicy);
 
-
     /* 调整流控策略，更改流控点，按照流控门限进行重新调整 */
     if (VOS_NULL_PTR != pPolicy->pAdjustForUpFunc)
     {
         (VOS_VOID)pPolicy->pAdjustForUpFunc(enPointOldPri, enFcId);
     }
-
 
     /* 针对优先级的更改进行流控点状态的调整 */
     /* 如果老的优先级低于当前优先级，新的优先级高于当前优先级，则解除该流控点的流控 */
@@ -1503,7 +1488,6 @@ VOS_UINT32  FC_POLICY_ChangePoint
     {
         FC_POINT_SetFc(FC_POLICY_MASK(pPolicy->enPolicyId), enFcId);
     }
-
 
     /* 输出可维可测 */
     FC_MNTN_TracePolicy(ID_FC_MNTN_POLICY_CHANGE_POINT, pPolicy);
@@ -1520,7 +1504,6 @@ VOS_UINT32  FC_POLICY_GetPriCnt(FC_POLICY_STRU *pFcPolicy)
 VOS_UINT32  FC_POLICY_Init( VOS_VOID )
 {
     FC_POLICY_ID_ENUM_UINT8             enPolicyId;
-
 
     /*通用流控策略初始化 */
     VOS_MemSet(&g_astFcPolicy[0], 0, sizeof(FC_POLICY_STRU) * FC_PRIVATE_POLICY_ID_BUTT);
@@ -1557,7 +1540,6 @@ VOS_UINT32  FC_CFG_CheckCpuParam( FC_CFG_CPU_STRU *pstFcCfgCpu )
 VOS_UINT32  FC_CFG_CheckMemParam( FC_CFG_MEM_STRU *pstFcCfgMem )
 {
     VOS_UINT32                          ulThresholdLoop;
-
 
     if ( FC_MEM_THRESHOLD_LEV_BUTT < pstFcCfgMem->ulThresholdCnt )
     {
@@ -1707,7 +1689,6 @@ VOS_UINT32  FC_CFG_SetNvValue( FC_CFG_NV_STRU  *pstFcCfgNv )
 {
     FC_CFG_STRU         *pstFcCfg = &g_stFcCfg;
 
-
     VOS_MemSet(pstFcCfg, 0x0, sizeof(FC_CFG_STRU));
 
     pstFcCfg->ulFcEnbaleMask = pstFcCfgNv->ulFcEnbaleMask;
@@ -1741,7 +1722,6 @@ VOS_UINT32  FC_CFG_Init( VOS_VOID )
 {
     VOS_UINT32                          ulResult;
     FC_CFG_NV_STRU                      stFcCfgNv;
-
 
     VOS_MemSet(&g_stFcCfg, 0, sizeof(FC_CFG_STRU));
 
@@ -1789,7 +1769,6 @@ VOS_UINT32 FC_SndCpuMsg
     VOS_UINT32                          ulResult;
     FC_CPULOAD_IND_STRU                *pstMsg;
 
-
     pstMsg = (FC_CPULOAD_IND_STRU *)VOS_AllocMsg(UEPS_PID_FLOWCTRL, \
                                     sizeof(FC_CPULOAD_IND_STRU) - VOS_MSG_HEAD_LENGTH);
 
@@ -1828,7 +1807,6 @@ VOS_UINT32 FC_SndRegPointMsg
     VOS_UINT32                          ulResult;
     FC_REG_POINT_IND_STRU              *pstMsg;
 
-
     pstMsg = (FC_REG_POINT_IND_STRU *)VOS_AllocMsg(UEPS_PID_FLOWCTRL, \
                                       sizeof(FC_REG_POINT_IND_STRU) - VOS_MSG_HEAD_LENGTH);
 
@@ -1859,13 +1837,12 @@ VOS_UINT32 FC_SndRegPointMsg
 
 VOS_UINT32 FC_SndDeRegPointMsg
 (
-    FC_ID_ENUM_UINT32                   enFcId,
+    FC_ID_ENUM_UINT8                   enFcId,
     MODEM_ID_ENUM_UINT16                enModemId
 )
 {
     VOS_UINT32                          ulResult;
     FC_DEREG_POINT_IND_STRU            *pstMsg;
-
 
     pstMsg = (FC_DEREG_POINT_IND_STRU *)VOS_AllocMsg(UEPS_PID_FLOWCTRL, \
                                       sizeof(FC_DEREG_POINT_IND_STRU) - VOS_MSG_HEAD_LENGTH);
@@ -1896,15 +1873,14 @@ VOS_UINT32 FC_SndDeRegPointMsg
 
 VOS_UINT32 FC_SndChangePointMsg
 (
-    FC_ID_ENUM_UINT32                   enFcId,
+    FC_ID_ENUM_UINT8                   enFcId,
     FC_POLICY_ID_ENUM_UINT8             enPolicyId,
-    FC_PRI_ENUM_UINT32                  enPri,
+    FC_PRI_ENUM_UINT8                  enPri,
     MODEM_ID_ENUM_UINT16                enModemId
 )
 {
     VOS_UINT32                          ulResult;
     FC_CHANGE_POINT_IND_STRU           *pstMsg;
-
 
     pstMsg = (FC_CHANGE_POINT_IND_STRU *)VOS_AllocMsg(UEPS_PID_FLOWCTRL, \
                                          sizeof(FC_CHANGE_POINT_IND_STRU) - VOS_MSG_HEAD_LENGTH);
@@ -2078,7 +2054,7 @@ VOS_UINT32  FC_SetThreshold
 VOS_UINT32  FC_Help( VOS_VOID )
 {
     FC_PRIVATE_POLICY_ID_ENUM_UINT8     enPolicyId;
-    FC_PRI_ENUM_UINT32                  enFcPri;
+    FC_PRI_ENUM_UINT8                  enFcPri;
     FC_POLICY_STRU                     *pPolicy;
     FC_PRI_STRU                        *pPri;
     VOS_UINT32                          ulFcIdIndex;
@@ -2158,8 +2134,8 @@ VOS_UINT32  FC_Help( VOS_VOID )
         vos_printf("ulFcMask            : 0x%x\n", pFcPoint->ulFcMask);
         vos_printf("ulParam1            : 0x%x\n", pFcPoint->ulParam1);
         vos_printf("ulParam2            : 0x%x\n", pFcPoint->ulParam2);
-        vos_printf("pSetFunc            : 0x%x\n", pFcPoint->pSetFunc);
-        vos_printf("pClrFunc            : 0x%x\n", pFcPoint->pClrFunc);
+        vos_printf("pSetFunc            : %p\n", pFcPoint->pSetFunc);
+        vos_printf("pClrFunc            : %p\n", pFcPoint->pClrFunc);
     }
     vos_printf("================FC Point information end================\n");
 
@@ -2176,9 +2152,9 @@ VOS_UINT32  FC_Help( VOS_VOID )
         vos_printf("PriCnt              : %d\n", pPolicy->ucPriCnt);
         vos_printf("enHighestPri        : %d\n", pPolicy->enHighestPri);
         vos_printf("enDonePri           : %d\n", pPolicy->enDonePri);
-        vos_printf("pAdjustForUpFunc    : 0x%x\n", pPolicy->pAdjustForUpFunc);
-        vos_printf("pAdjustForDownFunc  : 0x%x\n", pPolicy->pAdjustForDownFunc);
-        vos_printf("pPostFunc           : 0x%x\n", pPolicy->pPostFunc);
+        vos_printf("pAdjustForUpFunc    : %p\n", pPolicy->pAdjustForUpFunc);
+        vos_printf("pAdjustForDownFunc  : %p\n", pPolicy->pAdjustForDownFunc);
+        vos_printf("pPostFunc           : %p\n", pPolicy->pPostFunc);
 
         for (enFcPri = FC_PRI_1; enFcPri < FC_PRI_BUTT; enFcPri++)
         {
@@ -2202,8 +2178,7 @@ VOS_UINT32  FC_Help( VOS_VOID )
 
     return VOS_OK;
 }
-
-
+/*lint -restore */
 
 #ifdef  __cplusplus
   #if  __cplusplus

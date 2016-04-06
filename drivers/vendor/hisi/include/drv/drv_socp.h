@@ -22,6 +22,7 @@ extern "C"
 #define SOCP_REAL_CHAN_ID(unique_chan_id)   (unique_chan_id & 0xFFFF)
 #define SOCP_REAL_CHAN_TYPE(unique_chan_id) (unique_chan_id>>16)
 
+#if (FEATURE_OFF == FEATURE_MERGE_OM_CHAN)
 /*编码源通道ID枚举定义*/
 enum SOCP_CODER_SRC_ENUM
 {
@@ -60,6 +61,46 @@ enum SOCP_CODER_SRC_ENUM
     SOCP_CODER_SRC_BUTT
 };
 typedef BSP_U32 SOCP_CODER_SRC_ENUM_U32;
+#else
+/*编码源通道ID枚举定义*/
+enum SOCP_CODER_SRC_ENUM
+{
+    SOCP_CODER_SRC_LOM_CNF1     = SOCP_CHAN_DEF(SOCP_CODER_SRC_CHAN,0),  /* LTE OM命令响应(A核)*/
+    SOCP_CODER_SRC_HDLCAT_CNF   = SOCP_CHAN_DEF(SOCP_CODER_SRC_CHAN,1),  /* HDLC流式AT命令响应 */
+    SOCP_CODER_SRC_LOM_IND1     = SOCP_CHAN_DEF(SOCP_CODER_SRC_CHAN,2),  /* LTE OM诊断消息 */
+    SOCP_CODER_SRC_GU_CNF1      = SOCP_CHAN_DEF(SOCP_CODER_SRC_CHAN,3),  /* GU OM诊断消息 */
+    SOCP_CODER_SRC_LOM_IND2     = SOCP_CHAN_DEF(SOCP_CODER_SRC_CHAN,4),  /* LTE OM诊断消息环形 */
+    SOCP_CODER_SRC_LOM_IND3     = SOCP_CHAN_DEF(SOCP_CODER_SRC_CHAN,5),  /* LTE OM诊断消息环形 */
+    SOCP_CODER_SRC_LOM_CNF2     = SOCP_CHAN_DEF(SOCP_CODER_SRC_CHAN,6),  /* LTE OM命令响应 */
+    SOCP_CODER_SRC_GU_CNF2      = SOCP_CHAN_DEF(SOCP_CODER_SRC_CHAN,7),  /* GU OM诊断消息 */
+    SOCP_CODER_SRC_RFU          = SOCP_CHAN_DEF(SOCP_CODER_SRC_CHAN,8),  /* 保留 */
+    SOCP_CODER_SRC_HIFI         = SOCP_CHAN_DEF(SOCP_CODER_SRC_CHAN,9),  /* GU HIFI诊断消息 */
+    SOCP_CODER_SRC_GU_IND1      = SOCP_CHAN_DEF(SOCP_CODER_SRC_CHAN,10), /* GU OM诊断消息(A核) */
+    SOCP_CODER_SRC_GU_IND2      = SOCP_CHAN_DEF(SOCP_CODER_SRC_CHAN,11), /* GU OM诊断消息(C核) */
+    SOCP_CODER_SRC_MCU1         = SOCP_CHAN_DEF(SOCP_CODER_SRC_CHAN,12), /* MCU诊断消息 */
+    SOCP_CODER_SRC_MCU2         = SOCP_CHAN_DEF(SOCP_CODER_SRC_CHAN,13), /* MCU诊断消息 */
+    SOCP_CODER_SRC_LDSP1        = SOCP_CHAN_DEF(SOCP_CODER_SRC_CHAN,14), /* LDSP诊断消息 */
+    SOCP_CODER_SRC_LDSP2        = SOCP_CHAN_DEF(SOCP_CODER_SRC_CHAN,15), /* LDSP诊断消息 */
+    SOCP_CODER_SRC_LBBP1        = SOCP_CHAN_DEF(SOCP_CODER_SRC_CHAN,16), /* LBBP诊断消息 */
+    SOCP_CODER_SRC_LBBP2        = SOCP_CHAN_DEF(SOCP_CODER_SRC_CHAN,17), /* LBBP诊断消息 */
+    SOCP_CODER_SRC_LBBP3        = SOCP_CHAN_DEF(SOCP_CODER_SRC_CHAN,18), /* LBBP诊断消息 */
+    SOCP_CODER_SRC_LBBP4        = SOCP_CHAN_DEF(SOCP_CODER_SRC_CHAN,19), /* LBBP诊断消息 */
+    SOCP_CODER_SRC_LBBP5        = SOCP_CHAN_DEF(SOCP_CODER_SRC_CHAN,20), /* LBBP诊断消息 */
+    SOCP_CODER_SRC_LBBP6        = SOCP_CHAN_DEF(SOCP_CODER_SRC_CHAN,21), /* LBBP诊断消息 */
+    SOCP_CODER_SRC_LBBP7        = SOCP_CHAN_DEF(SOCP_CODER_SRC_CHAN,22), /* LBBP诊断消息 */
+    SOCP_CODER_SRC_LBBP8        = SOCP_CHAN_DEF(SOCP_CODER_SRC_CHAN,23), /* LBBP诊断消息 */
+    SOCP_CODER_SRC_LBBP9        = SOCP_CHAN_DEF(SOCP_CODER_SRC_CHAN,24), /* LBBP诊断消息 */
+    SOCP_CODER_SRC_GUBBP1       = SOCP_CHAN_DEF(SOCP_CODER_SRC_CHAN,25), /* GUBBP诊断消息 */
+    SOCP_CODER_SRC_GUBBP2       = SOCP_CHAN_DEF(SOCP_CODER_SRC_CHAN,26), /* GUBBP诊断消息 */
+    SOCP_CODER_SRC_GUDSP1       = SOCP_CHAN_DEF(SOCP_CODER_SRC_CHAN,27), /* GUDSP诊断消息 */
+    SOCP_CODER_SRC_GUDSP2       = SOCP_CHAN_DEF(SOCP_CODER_SRC_CHAN,28), /* GUDSP诊断消息 */
+    SOCP_CODER_SRC_TDDSP1       = SOCP_CHAN_DEF(SOCP_CODER_SRC_CHAN,29), /* TDDSP诊断消息 */
+    SOCP_CODER_SRC_TDBBP1       = SOCP_CHAN_DEF(SOCP_CODER_SRC_CHAN,30), /* TDBBP诊断消息 */
+    SOCP_CODER_SRC_TDBBP2       = SOCP_CHAN_DEF(SOCP_CODER_SRC_CHAN,31), /* TDBBP诊断消息 */
+    SOCP_CODER_SRC_BUTT
+};
+typedef BSP_U32 SOCP_CODER_SRC_ENUM_U32;
+#endif
 
 /*解码源通道ID枚举定义*/
 enum SOCP_DECODER_SRC_ENUM
@@ -73,6 +114,7 @@ enum SOCP_DECODER_SRC_ENUM
 typedef BSP_U32 SOCP_DECODER_SRC_ENUM_U32;
 
 /*编码目的通道ID枚举定义*/
+#if (FEATURE_OFF == FEATURE_MERGE_OM_CHAN)
 enum SOCP_CODER_DST_ENUM
 {
     SOCP_CODER_DST_LOM_CNF       = SOCP_CHAN_DEF(SOCP_CODER_DEST_CHAN,0), /* LTE OM命令响应输出 */
@@ -84,6 +126,19 @@ enum SOCP_CODER_DST_ENUM
     SOCP_CODER_DST_RFU3          = SOCP_CHAN_DEF(SOCP_CODER_DEST_CHAN,6), /* 保留 */
     SOCP_CODER_DST_BUTT
 };
+#else
+enum SOCP_CODER_DST_ENUM
+{
+    SOCP_CODER_DST_OM_CNF        = SOCP_CHAN_DEF(SOCP_CODER_DEST_CHAN,0), /* OM命令响应输出 */
+    SOCP_CODER_DST_OM_IND        = SOCP_CHAN_DEF(SOCP_CODER_DEST_CHAN,1), /* OM命令上报输出 */
+    SOCP_CODER_DST_HDLC_AT       = SOCP_CHAN_DEF(SOCP_CODER_DEST_CHAN,2), /* 流式AT命令响应输出 */
+    SOCP_CODER_DST_RFU0          = SOCP_CHAN_DEF(SOCP_CODER_DEST_CHAN,3), /* GU OM目的通道 */
+    SOCP_CODER_DST_RFU1          = SOCP_CHAN_DEF(SOCP_CODER_DEST_CHAN,4), /* 保留 */
+    SOCP_CODER_DST_RFU2          = SOCP_CHAN_DEF(SOCP_CODER_DEST_CHAN,5), /* 保留 */
+    SOCP_CODER_DST_RFU3          = SOCP_CHAN_DEF(SOCP_CODER_DEST_CHAN,6), /* 保留 */
+    SOCP_CODER_DST_BUTT
+};
+#endif
 typedef BSP_U32 SOCP_CODER_DST_ENUM_U32;
 
 /*解码目的通道ID枚举定义*/
@@ -93,6 +148,9 @@ enum SOCP_DECODER_DST_ENUM
     SOCP_DECODER_DST_HDLC_AT    = SOCP_CHAN_DEF(SOCP_DECODER_DEST_CHAN,1),  /* HDLC编码的流式AT命令 */
     SOCP_DECODER_DST_GUOM       = SOCP_CHAN_DEF(SOCP_DECODER_DEST_CHAN,2),  /* GU OM命令 */
     SOCP_DECODER_DST_RFU        = SOCP_CHAN_DEF(SOCP_DECODER_DEST_CHAN,3),  /* 保留 */
+#if (FEATURE_ON == FEATURE_MERGE_OM_CHAN)
+    SOCP_DECODER_CBT            = SOCP_CHAN_DEF(SOCP_DECODER_DEST_CHAN,16), /* GU CBT */
+#endif
     SOCP_DECODER_DST_BUTT
 };
 typedef BSP_U32 SOCP_DECODER_DST_ENUM_U32;
@@ -129,10 +187,21 @@ enum SOCP_STATE_ENUM
 };
 typedef BSP_U32 SOCP_STATE_ENUM_UINT32;
 
+#if (FEATURE_ON == FEATURE_MERGE_OM_CHAN)
+/* 数据类型枚举值*/
+enum SCM_DATA_TYPE_ENUM
+{
+    SCM_DATA_TYPE_TL            = 0,            /* LTE OAM数据 */
+    SCM_DATA_TYPE_GU,                           /* GU OAM数据 */
+    SCM_DATA_TYPE_BUTT
+};
+#endif
+typedef BSP_U8 SOCP_DATA_TYPE_ENUM_UIN8;
+
 /*用于SOCP通道的BD数据片结构*/
 typedef struct
 {
-    BSP_U8                       *pucData;       /* 数据的指针 */
+    BSP_U32                      pucData;       /* 数据的指针 */
     BSP_U16                      usMsgLen;       /* 数据长度 */
     SOCP_BD_TYPE_ENUM_UINT16     enDataType;     /* 实际数据类型，是链表还是真实数据 */
 }SOCP_BD_DATA_STRU;
@@ -140,13 +209,13 @@ typedef struct
 /*用于SOCP通道的RD数据片结构*/
 typedef struct
 {
-    BSP_U8                      *pucData;       /*数据指针*/
+    BSP_U32                     pucData;       /*数据指针*/
     BSP_U16                     usMsgLen;       /*数据长度*/
     SOCP_BD_TYPE_ENUM_UINT16    enDataType;     /*实际数据类型，是链表还是真实数据*/
 }SOCP_RD_DATA_STRU;
 /* SCM使用数据结构，与V9同步 end */
 
-typedef enum tagSOCP_EVENT_E
+enum tagSOCP_EVENT_E
 {
     SOCP_EVENT_PKT_HEADER_ERROR         = 0x1,    /* 包头检测错误，"HISI" */
     SOCP_EVENT_OUTBUFFER_OVERFLOW       = 0x2,    /* 目的buffer上溢 */
@@ -158,87 +227,95 @@ typedef enum tagSOCP_EVENT_E
     SOCP_EVENT_HDLC_HEADER_ERROR        = 0x80,   /* 解码HDLC检测错误 */
     SOCP_EVENT_OUTBUFFER_THRESHOLD_OVERFLOW = 0x100, /* 目的buffer阈值溢出中断 */
     SOCP_EVENT_BUTT
-}SOCP_EVENT_E;
+};
+typedef BSP_U32 SOCP_EVENT_ENUM_UIN32;
 
 /* 编码源的数据结构模式 */
-typedef enum tagSOCP_ENCSRC_CHNMODE_E
+enum tagSOCP_ENCSRC_CHNMODE_E
 {
     SOCP_ENCSRC_CHNMODE_CTSPACKET       = 0,    /* 连续数据包环形缓冲区 */
     SOCP_ENCSRC_CHNMODE_FIXPACKET,              /* 固定长度数据包环形缓冲区 */
     SOCP_ENCSRC_CHNMODE_LIST,                   /* 链式环形缓冲区 */
     SOCP_ENCSRC_CHNMODE_BUTT
-}SOCP_ENCSRC_CHNMODE_E;
+};
+typedef BSP_U32 SOCP_ENCSRC_CHNMODE_ENUM_UIN32;
 
 /* 解码源的数据结构模式 */
-typedef enum tagSOCP_DECSRC_CHNMODE_E
+enum tagSOCP_DECSRC_CHNMODE_E
 {
     SOCP_DECSRC_CHNMODE_BYTES        = 0,       /* 连续字节环形缓冲区 */
     SOCP_DECSRC_CHNMODE_LIST,                   /* 链式环形缓冲区 */
     SOCP_DECSRC_CHNMODE_BUTT
-}SOCP_DECSRC_CHNMODE_E;
+};
+typedef BSP_U32 SOCP_DECSRC_CHNMODE_ENUM_UIN32;
 
 /* 超时选择及使能数据结构体SOCP_TIMEOUT_DECODE_TRF */
-typedef enum tagSOCP_TIMEOUT_EN_E
+enum tagSOCP_TIMEOUT_EN_E
 {
     SOCP_TIMEOUT_BUFOVF_DISABLE        = 0,       /* buffer溢出，不上报中断 */
     SOCP_TIMEOUT_BUFOVF_ENABLE,                   /* buffer溢出，超时计数上报中断 */
     SOCP_TIMEOUT_TRF,                             /* 传输中断超时计数 */
     SOCP_TIMEOUT_DECODE_TRF,                      /* 解码中断超时 */
     SOCP_TIMEOUT_BUTT
-}SOCP_TIMEOUT_EN_E;
+};
+typedef BSP_U32 SOCP_TIMEOUT_EN_ENUM_UIN32;
 
 /* 同一类型的通道不同优先级枚举值*/
-typedef enum tagSOCP_CHAN_PRIORITY_E
+enum tagSOCP_CHAN_PRIORITY_E
 {
     SOCP_CHAN_PRIORITY_0     = 0,               /* 最低优先级*/
     SOCP_CHAN_PRIORITY_1,                       /* 次低优先级*/
     SOCP_CHAN_PRIORITY_2,                       /* 次高优先级*/
     SOCP_CHAN_PRIORITY_3,                       /* 最高优先级*/
     SOCP_CHAN_PRIORITY_BUTT
-}SOCP_CHAN_PRIORITY_E;
+};
+typedef BSP_U32 SOCP_CHAN_PRIORITY_ENUM_UIN32;
 
 /* 数据类型枚举值*/
-typedef enum tagSOCP_DATA_TYPE_E
+enum tagSOCP_DATA_TYPE_E
 {
     SOCP_DATA_TYPE_0            = 0,            /* LTE OAM数据 */
     SOCP_DATA_TYPE_1,                           /* GU OAM数据 */
     SOCP_DATA_TYPE_2,                           /* 保留 */
     SOCP_DATA_TYPE_3,                           /* 保留 */
     SOCP_DATA_TYPE_BUTT
-}SOCP_DATA_TYPE_E;
+};
+typedef BSP_U32 SOCP_DATA_TYPE_ENUM_UIN32;
 
 
 /* BBP 数采模式，数据丢弃或覆盖 */
-typedef enum tagSOCP_BBP_DS_MODE_E
+enum tagSOCP_BBP_DS_MODE_E
 {
     SOCP_BBP_DS_MODE_DROP           = 0,        /* 数据丢弃 */
     SOCP_BBP_DS_MODE_OVERRIDE,                  /* 数据覆盖 */
     SOCP_BBP_DS_MODE_BUTT
-}SOCP_BBP_DS_MODE_E;
+};
+typedef BSP_U32 SOCP_BBP_DS_MODE_ENUM_UIN32;
 
 /* 编码源通道data type 使能位 */
-typedef enum tagSOCP_DATA_TYPE_EN_E
+enum tagSOCP_DATA_TYPE_EN_E
 {
     SOCP_DATA_TYPE_EN           = 0,        /* data type 使能，默认值 */
     SOCP_DATA_TYPE_DIS,                     /* data type 不使能 */
     SOCP_DATA_TYPE_EN_BUTT
-}SOCP_DATA_TYPE_EN_E;
+};
+typedef BSP_U32 SOCP_DATA_TYPE_EN_ENUM_UIN32;
 
 /* 编码源通道debug 使能位 */
-typedef enum tagSOCP_ENC_DEBUG_EN_E
+enum tagSOCP_ENC_DEBUG_EN_E
 {
     SOCP_ENC_DEBUG_DIS          = 0,       /* debug 不使能，默认值 */
     SOCP_ENC_DEBUG_EN,                     /* debug 使能 */
     SOCP_ENC_DEBUG_EN_BUTT
-}SOCP_ENC_DEBUG_EN_E;
+};
+typedef BSP_U32 SOCP_ENC_DEBUG_EN_ENUM_UIN32;
 
 /* 解码通路包长配置结构体 */
 typedef struct tagSOCP_DEC_PKTLGTH_S
 {
     BSP_U32             u32PktMax;         /*包长度最大值*/
     BSP_U32             u32PktMin;         /*包长度最小值*/
-}SOCP_DEC_PKTLGTH_S;
-
+}SOCP_DEC_PKTLGTH_STRU;
 
 /* 通用源通道buffer结构体定义*/
 typedef struct tagSOCP_SRC_SETBUF_S
@@ -248,7 +325,8 @@ typedef struct tagSOCP_SRC_SETBUF_S
     BSP_U32             u32RDStart;         /* RD buffer起始地址*/
     BSP_U32             u32RDEnd;           /* RD buffer结束地址*/
     BSP_U32             u32RDThreshold;     /* RD buffer数据上报阈值*/
-}SOCP_SRC_SETBUF_S;
+    BSP_U32             ulRsv;              /* reserve */
+}SOCP_SRC_SETBUF_STRU;
 
 /* 通用目的通道buffer结构体定义*/
 typedef struct tagSOCP_DST_SETBUF_S
@@ -256,52 +334,52 @@ typedef struct tagSOCP_DST_SETBUF_S
     BSP_U32             u32OutputStart;     /* 输出通道起始地址*/
     BSP_U32             u32OutputEnd;       /* 输出通道结束地址*/
     BSP_U32             u32Threshold;       /* 输出通道门限值 */
-}SOCP_DST_SETBUF_S;
+}SOCP_DST_SETBUF_STRU;
 
 /* 编码源通道结构体定义*/
 typedef struct tagSOCP_CODER_SRC_CHAN_S
 {
     BSP_U32                 u32DestChanID;      /* 目标通道ID*/
     BSP_U32                 u32BypassEn;        /* 通道bypass使能*/
-    SOCP_DATA_TYPE_E        eDataType;          /* 数据类型，指明数据封装协议，用于复用多平台*/
-    SOCP_DATA_TYPE_EN_E     eDataTypeEn;        /* 数据类型使能位*/
-    SOCP_ENC_DEBUG_EN_E     eDebugEn;           /* 调试位使能*/
-    SOCP_ENCSRC_CHNMODE_E   eMode;              /* 通道数据模式*/
-    SOCP_CHAN_PRIORITY_E    ePriority;          /* 通道优先级*/
-    SOCP_SRC_SETBUF_S       sCoderSetSrcBuf;
-}SOCP_CODER_SRC_CHAN_S;
+    SOCP_DATA_TYPE_ENUM_UIN32        eDataType;          /* 数据类型，指明数据封装协议，用于复用多平台*/
+    SOCP_DATA_TYPE_EN_ENUM_UIN32     eDataTypeEn;        /* 数据类型使能位*/
+    SOCP_ENC_DEBUG_EN_ENUM_UIN32     eDebugEn;           /* 调试位使能*/
+    SOCP_ENCSRC_CHNMODE_ENUM_UIN32   eMode;              /* 通道数据模式*/
+    SOCP_CHAN_PRIORITY_ENUM_UIN32    ePriority;          /* 通道优先级*/
+    SOCP_SRC_SETBUF_STRU       sCoderSetSrcBuf;
+}SOCP_CODER_SRC_CHAN_STRU;
 
 /* 编码目的配置结构体定义*/
 typedef struct tagSOCP_CODER_DEST_CHAN_S
 {
     BSP_U32                 u32EncDstThrh;     /* 编码目的通道阈值门限，仲裁通道时使用*/
-    SOCP_DST_SETBUF_S       sCoderSetDstBuf;
-}SOCP_CODER_DEST_CHAN_S;
+    SOCP_DST_SETBUF_STRU       sCoderSetDstBuf;
+}SOCP_CODER_DEST_CHAN_STRU;
 
 /* 解码源通道结构体定义*/
 typedef struct tagSOCP_DECODER_SRC_CHAN_S
 {
-    SOCP_DATA_TYPE_EN_E     eDataTypeEn;        /* 数据类型使能位*/
-    SOCP_DECSRC_CHNMODE_E   eMode;              /* 通道模式*/
-    SOCP_SRC_SETBUF_S       sDecoderSetSrcBuf;
-}SOCP_DECODER_SRC_CHAN_S;
+    SOCP_DATA_TYPE_EN_ENUM_UIN32     eDataTypeEn;        /* 数据类型使能位*/
+    SOCP_DECSRC_CHNMODE_ENUM_UIN32   eMode;              /* 通道模式*/
+    SOCP_SRC_SETBUF_STRU       sDecoderSetSrcBuf;
+}SOCP_DECODER_SRC_CHAN_STRU;
 
 /* 解码目的通道结构体定义*/
 typedef struct tagSOCP_DECODER_DEST_CHAN_S
 {
     BSP_U32                 u32SrcChanID;       /* 数据来源通道ID*/
-    SOCP_DATA_TYPE_E        eDataType;          /* 数据类型，指明数据封装协议，用于复用多平台*/
-    SOCP_DST_SETBUF_S       sDecoderDstSetBuf;
-}SOCP_DECODER_DEST_CHAN_S;
+    SOCP_DATA_TYPE_ENUM_UIN32        eDataType;          /* 数据类型，指明数据封装协议，用于复用多平台*/
+    SOCP_DST_SETBUF_STRU       sDecoderDstSetBuf;
+}SOCP_DECODER_DEST_CHAN_STRU;
 
 /* 通用buffer描述结构体定义*/
 typedef struct tagSOCP_BUFFER_RW_S
 {
     BSP_CHAR    *pBuffer;                        /* buffer指针*/
-    BSP_U32     u32Size;                        /* 可用buffer大小*/
     BSP_CHAR    *pRbBuffer;                      /* 回卷buffer指针*/
+    BSP_U32     u32Size;                        /* 可用buffer大小*/
     BSP_U32     u32RbSize;                      /* 回卷buffer大小*/
-}SOCP_BUFFER_RW_S;
+}SOCP_BUFFER_RW_STRU;
 
 /* 解码源通道错误计数结构体定义*/
 typedef struct tagSOCP_DECODER_ERROR_CNT_S
@@ -310,14 +388,14 @@ typedef struct tagSOCP_DECODER_ERROR_CNT_S
     BSP_U32     u32CrcCnt;                      /* CRC校验错误计数*/
     BSP_U32     u32DataTypeCnt;                 /* 解码数据类型检验错误计数*/
     BSP_U32     u32HdlcHeaderCnt;               /* 0x7E校验错误*/
-}SOCP_DECODER_ERROR_CNT_S;
+}SOCP_DECODER_ERROR_CNT_STRU;
 
 /* 编码源保留通道配置结构体 */
 typedef struct tagSOCP_ENCSRC_RSVCHN_SCOPE_S
 {
     BSP_U32                 u32RsvIDMin;        /*编码源保留通道ID最小值*/
     BSP_U32                 u32RsvIDMax;        /*编码源保留通道ID最大值*/
-}SOCP_ENCSRC_RSVCHN_SCOPE_S;
+}SOCP_ENCSRC_RSVCHN_SCOPE_STRU;
 
 /* SOCP投票组件 */
 enum SOCP_VOTE_ID_ENUM
@@ -327,7 +405,11 @@ enum SOCP_VOTE_ID_ENUM
     SOCP_VOTE_GU_DSP,       /* GU DSP */
     SOCP_VOTE_DIAG_APP,     /* DIAG APP,代表DRV APP */
     SOCP_VOTE_DIAG_COMM,    /* DIAG COMM,代表LDSP、DRV COMM */
+#if (FEATURE_OFF == FEATURE_MERGE_OM_CHAN)
     SOCP_VOTE_DIAG_DEC,     /* DIAG解码 */
+#else
+    SOCP_VOTE_DIAG_FW,
+#endif
     SOCP_VOTE_ID_BUTT
 };
 typedef unsigned int SOCP_VOTE_ID_ENUM_U32;
@@ -341,7 +423,7 @@ enum SOCP_VOTE_TYPE_ENUM
 };
 typedef unsigned int SOCP_VOTE_TYPE_ENUM_U32;
 
-typedef BSP_S32 (*socp_event_cb)(BSP_U32 u32ChanID, SOCP_EVENT_E u32Event, BSP_U32 u32Param);
+typedef BSP_S32 (*socp_event_cb)(BSP_U32 u32ChanID, SOCP_EVENT_ENUM_UIN32 u32Event, BSP_U32 u32Param);
 typedef BSP_S32 (*socp_read_cb)(BSP_U32 u32ChanID);
 typedef BSP_S32 (*socp_rd_cb)(BSP_U32 u32ChanID);
 
@@ -381,7 +463,7 @@ BSP_S32 DRV_SOCP_INIT(BSP_VOID);
  返 回 值  : SOCP_OK:编码源通道分配成功。
              SOCP_ERROR:编码源通道分配失败。
 *****************************************************************************/
-BSP_S32 DRV_SOCP_CORDER_SET_SRC_CHAN(SOCP_CODER_SRC_ENUM_U32 enSrcChanID, SOCP_CODER_SRC_CHAN_S *pSrcAttr);
+BSP_S32 DRV_SOCP_CORDER_SET_SRC_CHAN(SOCP_CODER_SRC_ENUM_U32 enSrcChanID, SOCP_CODER_SRC_CHAN_STRU *pSrcAttr);
 
 /*****************************************************************************
  函 数 名  : DRV_SOCP_CODER_SET_DEST_CHAN_ATTR
@@ -392,7 +474,7 @@ BSP_S32 DRV_SOCP_CORDER_SET_SRC_CHAN(SOCP_CODER_SRC_ENUM_U32 enSrcChanID, SOCP_C
  返 回 值  : SOCP_OK:编码目的通道设置成功。
              SOCP_ERROR:编码目的通道设置失败。
 *****************************************************************************/
-BSP_S32 DRV_SOCP_CODER_SET_DEST_CHAN_ATTR(BSP_U32 u32DestChanID, SOCP_CODER_DEST_CHAN_S *pDestAttr);
+BSP_S32 DRV_SOCP_CODER_SET_DEST_CHAN_ATTR(BSP_U32 u32DestChanID, SOCP_CODER_DEST_CHAN_STRU *pDestAttr);
 
 /*****************************************************************************
  函 数 名  : DRV_SOCP_DECODER_SET_DEST_CHAN
@@ -405,7 +487,7 @@ BSP_S32 DRV_SOCP_CODER_SET_DEST_CHAN_ATTR(BSP_U32 u32DestChanID, SOCP_CODER_DEST
  返 回 值  : SOCP_OK:解码目的通道分配成功。
              SOCP_ERROR:解码目的通道设置失败。
 *****************************************************************************/
-BSP_S32 DRV_SOCP_DECODER_SET_DEST_CHAN(SOCP_DECODER_DST_ENUM_U32 enDestChanID, SOCP_DECODER_DEST_CHAN_S *pAttr);
+BSP_S32 DRV_SOCP_DECODER_SET_DEST_CHAN(SOCP_DECODER_DST_ENUM_U32 enDestChanID, SOCP_DECODER_DEST_CHAN_STRU *pAttr);
 
 /*****************************************************************************
  函 数 名  : DRV_SOCP_DECODER_SET_SRC_CHAN_ATTR
@@ -416,7 +498,7 @@ BSP_S32 DRV_SOCP_DECODER_SET_DEST_CHAN(SOCP_DECODER_DST_ENUM_U32 enDestChanID, S
  返 回 值  : SOCP_OK:解码源通道设置成功
              SOCP_ERROR:解码源通道设置失败
 *****************************************************************************/
-BSP_S32 DRV_SOCP_DECODER_SET_SRC_CHAN_ATTR ( BSP_U32 u32SrcChanID,SOCP_DECODER_SRC_CHAN_S *pInputAttr);
+BSP_S32 DRV_SOCP_DECODER_SET_SRC_CHAN_ATTR ( BSP_U32 u32SrcChanID,SOCP_DECODER_SRC_CHAN_STRU *pInputAttr);
 
 /*****************************************************************************
  函 数 名  : DRV_SOCP_DECODER_GET_ERR_CNT
@@ -427,7 +509,7 @@ BSP_S32 DRV_SOCP_DECODER_SET_SRC_CHAN_ATTR ( BSP_U32 u32SrcChanID,SOCP_DECODER_S
  返 回 值      : SOCP_OK:返回异常计数成功
                              SOCP_ERROR:返回异常计数失败
 *****************************************************************************/
-BSP_S32 DRV_SOCP_DECODER_GET_ERR_CNT (BSP_U32 u32ChanID, SOCP_DECODER_ERROR_CNT_S *pErrCnt);
+BSP_S32 DRV_SOCP_DECODER_GET_ERR_CNT (BSP_U32 u32ChanID, SOCP_DECODER_ERROR_CNT_STRU *pErrCnt);
 
 /*****************************************************************************
  函 数 名  : DRV_SOCP_FREE_CHANNEL
@@ -492,7 +574,7 @@ BSP_S32 DRV_SOCP_STOP(BSP_U32 u32SrcChanID);
  返 回 值  : SOCP_OK:设置超时时间阈值成功。
              SOCP_ERROR:设置超时时间阈值失败
 *****************************************************************************/
-BSP_S32 DRV_SOCP_SET_TIMEOUT (SOCP_TIMEOUT_EN_E eTmOutEn, BSP_U32 u32Timeout);
+BSP_S32 DRV_SOCP_SET_TIMEOUT (SOCP_TIMEOUT_EN_ENUM_UIN32 eTmOutEn, BSP_U32 u32Timeout);
 
 /*****************************************************************************
  函 数 名  : DRV_SOCP_SET_DEC_PKT_LGTH
@@ -503,7 +585,7 @@ BSP_S32 DRV_SOCP_SET_TIMEOUT (SOCP_TIMEOUT_EN_E eTmOutEn, BSP_U32 u32Timeout);
  返 回 值  : SOCP_OK:设置成功。
              其他值:设置失败
 *****************************************************************************/
-BSP_S32 DRV_SOCP_SET_DEC_PKT_LGTH(SOCP_DEC_PKTLGTH_S *pPktlgth);
+BSP_S32 DRV_SOCP_SET_DEC_PKT_LGTH(SOCP_DEC_PKTLGTH_STRU *pPktlgth);
 
 /*****************************************************************************
  函 数 名  : DRV_SOCP_SET_DEBUG
@@ -536,7 +618,7 @@ BSP_S32 DRV_SOCP_CHAN_SOFT_RESET(BSP_U32 u32ChanID);
  返 回 值  : SOCP_OK:获取写数据buffer成功。
              SOCP_ERROR:获取写数据buffer失败
 *****************************************************************************/
-BSP_S32 DRV_SOCP_GET_WRITE_BUFF( BSP_U32 u32SrcChanID, SOCP_BUFFER_RW_S *pBuff);
+BSP_S32 DRV_SOCP_GET_WRITE_BUFF( BSP_U32 u32SrcChanID, SOCP_BUFFER_RW_STRU *pBuff);
 
 /*****************************************************************************
  函 数 名  : DRV_SOCP_WRITE_DONE
@@ -569,7 +651,7 @@ BSP_S32 DRV_SOCP_REGISTER_RD_CB(BSP_U32 u32SrcChanID, socp_rd_cb RdCB);
  返 回 值  : SOCP_OK:获取RD环形缓冲区成功
              SOCP_ERROR:获取RD环形缓冲区失败
 *****************************************************************************/
-BSP_S32 DRV_SOCP_GET_RD_BUFFER( BSP_U32 u32SrcChanID,SOCP_BUFFER_RW_S *pBuff);
+BSP_S32 DRV_SOCP_GET_RD_BUFFER( BSP_U32 u32SrcChanID,SOCP_BUFFER_RW_STRU *pBuff);
 
 /*****************************************************************************
  函 数 名  : bsp_socp_read_rd_done
@@ -602,7 +684,7 @@ BSP_S32 DRV_SOCP_REGISTER_READ_CB( BSP_U32 u32DestChanID, socp_read_cb ReadCB);
  返 回 值  : SOCP_OK:获取读数据缓冲区成功。
              SOCP_ERROR:获取读数据缓冲区成功。
 *****************************************************************************/
-BSP_S32 DRV_SOCP_GET_READ_BUFF(BSP_U32 u32DestChanID,SOCP_BUFFER_RW_S *pBuffer);
+BSP_S32 DRV_SOCP_GET_READ_BUFF(BSP_U32 u32DestChanID,SOCP_BUFFER_RW_STRU *pBuffer);
 
 /*****************************************************************************
  函 数 名  : DRV_SOCP_READ_DATA_DONE
@@ -633,12 +715,12 @@ BSP_S32 DRV_SOCP_SET_BBP_ENABLE(int bEnable);
  返 回 值      : SOCP_OK:设置成功。
                    其他值:设置失败
 *****************************************************************************/
-BSP_S32 DRV_SOCP_SET_BBP_DS_MODE(SOCP_BBP_DS_MODE_E eDsMode);
+BSP_S32 DRV_SOCP_SET_BBP_DS_MODE(SOCP_BBP_DS_MODE_ENUM_UIN32 eDsMode);
 
 /*****************************************************************************
 * 函 数 名  : DRV_SOCP_DSPCHN_START
 * 功能描述  : enable DSP channel
-* 输入参数  : 
+* 输入参数  :
 * 输出参数  : 无
 * 返 回 值  :
 *****************************************************************************/
@@ -648,7 +730,7 @@ BSP_VOID  DRV_SOCP_DSPCHN_START(BSP_VOID);
 /*****************************************************************************
 * 函 数 名  : DRV_SOCP_DSPCHN_STOP
 * 功能描述  : disable DSP channel
-* 输入参数  : 
+* 输入参数  :
 * 输出参数  : 无
 * 返 回 值  :
 *****************************************************************************/

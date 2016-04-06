@@ -418,6 +418,7 @@ int DWC_AES_CBC(uint8_t *message, uint32_t messagelen, uint8_t *key, uint32_t ke
 	tfm = crypto_alloc_blkcipher("cbc(aes)", 0, CRYPTO_ALG_ASYNC);
 	if (tfm == NULL) {
 		printk("failed to load transform for aes CBC\n");
+		WARN_ON(1);
 		return -1;
 	}
 
@@ -433,6 +434,7 @@ int DWC_AES_CBC(uint8_t *message, uint32_t messagelen, uint8_t *key, uint32_t ke
 	if (crypto_blkcipher_encrypt(&desc, &sgd, &sgs, messagelen)) {
 		crypto_free_blkcipher(tfm);
 		DWC_ERROR("AES CBC encryption failed");
+		WARN_ON(1);
 		return -1;
 	}
 

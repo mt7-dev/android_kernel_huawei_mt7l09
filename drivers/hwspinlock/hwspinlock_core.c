@@ -106,7 +106,7 @@ int __hwspin_trylock(struct hwspinlock *hwlock, int mode, unsigned long *flags)
 	 *    'scheduling while atomic' etc.)
 	 */
 	if (mode == HWLOCK_IRQSTATE)
-		ret = spin_trylock_irqsave(&hwlock->lock, *flags);
+		ret = spin_trylock_irqsave(&hwlock->lock, *flags);/*lint !e666*/
 	else if (mode == HWLOCK_IRQ)
 		ret = spin_trylock_irq(&hwlock->lock);
 	else

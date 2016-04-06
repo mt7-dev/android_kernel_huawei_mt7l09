@@ -9,7 +9,7 @@
 
 	DC21143 manual "21143 PCI/CardBus 10/100Mb/s Ethernet LAN Controller
 	Hardware Reference Manual" is currently available at :
-	http://developer.intel.com/design/network/manuals/278074.htm
+	http:
 
 	Please submit bugs to http://bugzilla.kernel.org/ .
 */

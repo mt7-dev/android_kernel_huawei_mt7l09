@@ -134,7 +134,6 @@ static int jdvbt90502_pll_set_freq(struct jdvbt90502_state *state, u32 freq)
 	deb_fe("%s: freq=%d, step=%d\n", __func__, freq,
 	       state->frontend.ops.info.frequency_stepsize);
 	/* freq -> oscilator frequency conversion. */
-	/* freq: 473,000,000 + n*6,000,000 [+ 142857 (center freq. shift)] */
 	f = freq / state->frontend.ops.info.frequency_stepsize;
 	/* add 399[1/7 MHZ] = 57MHz for the IF  */
 	f += 399;

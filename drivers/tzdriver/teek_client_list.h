@@ -303,9 +303,4 @@ static inline struct list_node* list_remove_tail(struct list_node *list)
             pos = n, n = list_entry(n->member.next, typeof(*n), member))
 #endif
 #endif
-/**
- * History: \n
- * 2013-4-12 h00211444: Create this file\n
- *
- * vi: set expandtab ts=4 sw=4 tw=80:
-*/
+

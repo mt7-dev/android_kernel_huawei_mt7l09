@@ -12,10 +12,7 @@
 #include <linux/module.h>
 #include <linux/of.h>
 
- /*
-  * Default CFG switch settings to use this driver:
-  *	SMDKV310: CFG5-1000, CFG7-111111
-  */
+
 
  /*
   * Configure audio route as :-

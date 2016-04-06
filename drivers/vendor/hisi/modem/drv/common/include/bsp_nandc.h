@@ -98,66 +98,16 @@ struct nand_spec_shared_mem
 };
 
 /* 对外接口声明 */
-/**
- * Name			:	bsp_nand_read
- * Arguments	:	@partition_name  	- partition name
- * 					@partition_offset	- offset from partition to read from
- * 					@ptr_ram_addr  	- pointer to ram addr to store the data read from flash
- * 					@length        	- number of bytes to read
- *                  @skip_len       - bad block length skipped(Byte)
- * Return		:	0				- success
- *				:   else  			- failure
- * Desciption	:	NULL
- */
-int bsp_nand_read(const char *partition_name, u32 partition_offset, void* ptr_ram_addr, u32 length, u32 *skip_len);
-
-/**
- * Name			:	bsp_nand_erase
- * Arguments	:	@partition_name  	- partition name
- * 					@partition_offset	- offset from partition to erase
- * Return		:	0 				- success
- *				:   else  			- failure
- * Desciption	:	NULL
- */
-int bsp_nand_erase(const char *partition_name, u32 partition_offset);
-
-/**
- * Name			:	bsp_nand_write
- * Arguments	:	@partition_name  	- partition name
- * 					@partition_offset	- offset from partition to write to, must be page align.
- * 					@ptr_ram_addr  	- pointer to ram addr to store the data write to flash
- * 					@length        	- number of bytes to write
- * Return		:	0 				- success
- *				:   else  			- failure
- * Description	: 	write flash
- */
-int bsp_nand_write(const char *partition_name, u32 partition_offset, void* ptr_ram_addr, u32 length);
-
-/**
- * Name			: 	bsp_nand_isbad
- * Arguments	: 	@partition_name  	- partition name
- * 					@partition_offset	- block offset from partition to check
- *
- * Return		:	0 				- good block
- *				:   1  			    - bad block
- *              :   -1              - error
- * Description	: 	check whether a block is bad
- */
-int bsp_nand_isbad(const char *partition_name, u32 partition_offset);
-
-/**
- * Name			:	bsp_nand_blk_write_nv
- * Arguments	:	@partition_name  	- partition name
- * 					@partition_offset   - offset from partition to read from, must be block aligned.
- * 					@flag        	- flag value, 1 or 0
- * Return		:	0 				- success
- *				:   else  			- failure
- * Description	: 	read nv_flag of a block
- */
-u32 bsp_nand_read_flag_nv(const char *partition_name, u32 partition_offset, unsigned char *flag);
 
 #ifdef __FASTBOOT__
-
+/****************************************************************
+函数功能: 在fastboot阶段获取分区大小
+输入参数: partition_name-分区名称
+输出参数: none
+返回参数: 分区size
+注意事项: 在fastboot阶段调用
+****************************************************************/
+unsigned int bsp_get_part_cap( const char *partition_name );
 /**
  * Name			: 	bsp_update_ptable_in_nandc
  * Arguments	: 	null
@@ -221,6 +171,76 @@ void bsp_nand_markbad(char *blockid);
  */
 void bsp_update_size_of_lastpart(struct ST_PART_TBL *new_ptable);
 
+/**
+ * Name			:	bsp_nand_read
+ * Arguments	:	@partition_name  	- partition name
+ * 					@partition_offset	- offset from partition to read from
+ * 					@ptr_ram_addr  	- pointer to ram addr to store the data read from flash
+ * 					@length        	- number of bytes to read
+ *                  @skip_len       - bad block length skipped(Byte)
+ * Return		:	0				- success
+ *				:   else  			- failure
+ * Desciption	:	NULL
+ */
+int bsp_nand_read(const char *partition_name, u32 partition_offset, void* ptr_ram_addr, u32 length, u32 *skip_len);
+
+/**
+ * Name			:	bsp_nand_erase
+ * Arguments	:	@partition_name  	- partition name
+ * 					@partition_offset	- offset from partition to erase
+ * Return		:	0 				- success
+ *				:   else  			- failure
+ * Desciption	:	NULL
+ */
+int bsp_nand_erase(const char *partition_name, u32 partition_offset);
+
+/**
+ * Name			:	bsp_nand_write
+ * Arguments	:	@partition_name  	- partition name
+ * 					@partition_offset	- offset from partition to write to, must be page align.
+ * 					@ptr_ram_addr  	- pointer to ram addr to store the data write to flash
+ * 					@length        	- number of bytes to write
+ * Return		:	0 				- success
+ *				:   else  			- failure
+ * Description	: 	write flash
+ */
+int bsp_nand_write(const char *partition_name, u32 partition_offset, void* ptr_ram_addr, u32 length);
+
+/**
+ * Name			: 	bsp_nand_isbad
+ * Arguments	: 	@partition_name  	- partition name
+ * 					@partition_offset	- block offset from partition to check
+ *
+ * Return		:	0 				- good block
+ *				:   1  			    - bad block
+ *              :   -1              - error
+ * Description	: 	check whether a block is bad
+ */
+int bsp_nand_isbad(const char *partition_name, u32 partition_offset);
+
+/**
+ * Name			:	bsp_nand_blk_write_nv
+ * Arguments	:	@partition_name  	- partition name
+ * 					@partition_offset   - offset from partition to read from, must be block aligned.
+ * 					@flag        	- flag value, 1 or 0
+ * Return		:	0 				- success
+ *				:   else  			- failure
+ * Description	: 	read nv_flag of a block
+ */
+u32 bsp_nand_read_flag_nv(const char *partition_name, u32 partition_offset, unsigned char *flag);
+
+/**
+* 作用:nandc模块提供给usbloader.c的接口，当有ecc error时可以通过fastboot.exe在pc机上dump flash的数据
+*
+* 参数:
+* @flash_addr             ---Flash地址
+* @dst_addr               ---存放数据的目的地址
+* @readsize               ---读的数据长度
+* @ecc_enable             ---ecc使能
+* 描述:主要是给在pc机上通过fastboot.exe来保存一整页的数据
+*/
+u32 nand_read_wholepage_usbloader(FSZ flash_addr, u32 dst_data, u32 read_size,unsigned int ecc_enable);
+
 #else
 
 #include <linux/mtd/mtd.h>
@@ -238,6 +258,63 @@ void bsp_update_size_of_lastpart(struct ST_PART_TBL *new_ptable);
  */
 int bsp_nand_blk_write_nv(struct mtd_info *mtd, loff_t to, size_t len, const uint8_t *buf);
 
+/**
+ * Name			:	bsp_nand_read
+ * Arguments	:	@partition_name  	- partition name
+ * 					@partition_offset	- offset from partition to read from
+ * 					@ptr_ram_addr  	- pointer to ram addr to store the data read from flash
+ * 					@length        	- number of bytes to read
+ *                  @skip_len       - bad block length skipped(Byte)
+ * Return		:	0				- success
+ *				:   else  			- failure
+ * Desciption	:	NULL
+ */
+int bsp_nand_read(const char *partition_name, loff_t partition_offset, void* ptr_ram_addr, size_t length, u32 *skip_len);
+
+/**
+ * Name			:	bsp_nand_erase
+ * Arguments	:	@partition_name  	- partition name
+ * 					@partition_offset	- offset from partition to erase
+ * Return		:	0 				- success
+ *				:   else  			- failure
+ * Desciption	:	NULL
+ */
+int bsp_nand_erase(const char *partition_name, loff_t partition_offset);
+
+/**
+ * Name			:	bsp_nand_write
+ * Arguments	:	@partition_name  	- partition name
+ * 					@partition_offset	- offset from partition to write to, must be page align.
+ * 					@ptr_ram_addr  	- pointer to ram addr to store the data write to flash
+ * 					@length        	- number of bytes to write
+ * Return		:	0 				- success
+ *				:   else  			- failure
+ * Description	: 	write flash
+ */
+int bsp_nand_write(const char *partition_name, loff_t partition_offset, void* ptr_ram_addr, size_t length);
+
+/**
+ * Name			: 	bsp_nand_isbad
+ * Arguments	: 	@partition_name  	- partition name
+ * 					@partition_offset	- block offset from partition to check
+ *
+ * Return		:	0 				- good block
+ *				:   1  			    - bad block
+ *              :   -1              - error
+ * Description	: 	check whether a block is bad
+ */
+int bsp_nand_isbad(const char *partition_name, loff_t partition_offset);
+
+/**
+ * Name			:	bsp_nand_blk_write_nv
+ * Arguments	:	@partition_name  	- partition name
+ * 					@partition_offset   - offset from partition to read from, must be block aligned.
+ * 					@flag        	- flag value, 1 or 0
+ * Return		:	0 				- success
+ *				:   else  			- failure
+ * Description	: 	read nv_flag of a block
+ */
+u32 bsp_nand_read_flag_nv(const char *partition_name, loff_t partition_offset, unsigned char *flag);
 
 #endif /* #ifdef __FASTBOOT__ */
 

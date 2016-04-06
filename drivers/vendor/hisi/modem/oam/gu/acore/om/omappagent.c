@@ -37,16 +37,21 @@ extern "C"{
   2 全局变量定义
 *****************************************************************************/
 extern MsgBlock         *g_pstOmAcpuCnfMsg;
-extern VOS_UINT32        g_ulOmAcpuCnfSem;
-extern VOS_UINT32        g_ulOmAcpuSyncSem;
+extern VOS_SEM           g_ulOmAcpuCnfSem;
+extern VOS_SEM           g_ulOmAcpuSyncSem;
 
 extern VOS_UINT32        OM_AcpuInit(VOS_VOID);
 
+#if (FEATURE_OFF == FEATURE_MERGE_OM_CHAN)
 extern VOS_VOID          Om_HsicConnectProc(VOS_VOID);
+#else
+extern VOS_VOID          PPM_HsicConnectProc(VOS_VOID);
+#endif
 
 extern VOS_UINT32        OM_AutoConfigProc(VOS_VOID);
 
 
+#if (FEATURE_OFF == FEATURE_MERGE_OM_CHAN)
 VOS_VOID OM_AcpuAgentMsgProc(MsgBlock* pMsg)
 {
     VOS_UINT16                  usPrimId;
@@ -127,6 +132,89 @@ VOS_VOID OM_AcpuAgentMsgProc(MsgBlock* pMsg)
 
     return;
 }
+#else
+VOS_VOID OM_AcpuAgentMsgProc(MsgBlock* pMsg)
+{
+    VOS_UINT16                  usPrimId;
+    OM_CBT_MSG_STRU             *pstCbtMsg;
+
+    /* 从消息前两个字节中取出原语ID */
+    usPrimId = *(VOS_UINT16*)(pMsg->aucValue);
+
+    OM_RecordInfoStart(VOS_EXC_DUMP_MEM_NUM_1, pMsg->ulSenderPid, ACPU_PID_OMAGENT, *((VOS_UINT32*)pMsg->aucValue));
+
+    /* 判断是否为CCCPU AGENT发来的回复消息 */
+    if (IS_CAGENT_CNF_MSG(usPrimId))
+    {
+        /* 判断消息是否被释放 */
+        if (VOS_NULL_PTR == g_pstOmAcpuCnfMsg)
+        {
+            /* 标记该消息不用释放 */
+            VOS_ReserveMsg(ACPU_PID_OMAGENT, pMsg);
+
+            g_pstOmAcpuCnfMsg = pMsg;
+
+            /* 释放信号量，使得调用API任务继续运行 */
+            VOS_SmV(g_ulOmAcpuCnfSem);
+        }
+
+        /* CCPU 已经OK,可以进行SD卡配置信息 */
+        if(OM_AUTOCONFIG_CNF == usPrimId)
+        {
+            OM_AutoConfigProc();
+        }
+
+        OM_RecordInfoEnd(VOS_EXC_DUMP_MEM_NUM_1);
+
+        return;
+    }
+
+    /* 否则为CCPU发来不需要回复的请求消息 */
+    if (OM_OLED_CLEAR_REQ == usPrimId)
+    {
+        OM_RecordInfoEnd(VOS_EXC_DUMP_MEM_NUM_1);
+
+        return;
+    }
+
+    if (OM_OLED_DISPLAY_REQ == usPrimId)
+    {
+        OM_RecordInfoEnd(VOS_EXC_DUMP_MEM_NUM_1);
+
+        return;
+    }
+
+    if (OM_HSIC_CONNECT_REQ == usPrimId)
+    {
+        PPM_HsicConnectProc();
+
+        OM_RecordInfoEnd(VOS_EXC_DUMP_MEM_NUM_1);
+
+        return;
+    }
+
+    if (OM_CBT_SEND_DATA_REQ == usPrimId)
+    {
+        pstCbtMsg = (OM_CBT_MSG_STRU *)pMsg;
+
+        /* C核发过来的校准数据 */
+        OM_AcpuSendDataChannel((OM_LOGIC_CHANNEL_ENUM_UINT32)OM_LOGIC_CHANNEL_CBT, (OM_RSP_PACKET_STRU *)(pstCbtMsg->aucData), pstCbtMsg->usLen);
+
+        OM_RecordInfoEnd(VOS_EXC_DUMP_MEM_NUM_1);
+
+        return;
+    }
+
+    if(OM_RECORD_DBU_INFO_REQ == usPrimId)
+    {
+        OM_AcpuLogShowToFile(VOS_FALSE);
+    }
+
+    OM_RecordInfoEnd(VOS_EXC_DUMP_MEM_NUM_1);
+
+    return;
+}
+#endif
 
 
 unsigned int MNTN_ErrorLog(char * cFileName, unsigned int ulFileId, unsigned int ulLine,

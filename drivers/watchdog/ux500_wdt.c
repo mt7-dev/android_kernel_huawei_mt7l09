@@ -24,7 +24,7 @@
 #define WATCHDOG_TIMEOUT 600 /* 10 minutes */
 
 #define WATCHDOG_MIN	0
-#define WATCHDOG_MAX28	268435  /* 28 bit resolution in ms == 268435.455 s */
+#define WATCHDOG_MAX28	268435
 #define WATCHDOG_MAX32	4294967 /* 32 bit resolution in ms == 4294967.295 s */
 
 static unsigned int timeout = WATCHDOG_TIMEOUT;

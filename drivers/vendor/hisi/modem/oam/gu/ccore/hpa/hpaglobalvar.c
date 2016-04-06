@@ -52,11 +52,8 @@ hpa_atomic_t                        g_stGDspMailBoxTransferCount;
 /* the number of G1 DSP's transfer request */
 hpa_atomic_t                        g_stGDsp1MailBoxTransferCount;
 
-/* the semaphore which be used to wake up deliver task */
-VOS_UINT32                      g_ulHpaDeliverSem;
-
 /* the semaphore which be used to wake up transfer task */
-VOS_UINT32                      g_ulHpaTransferSem;
+VOS_SEM                         g_ulHpaTransferSem;
 
 /* Record CFN */
 VOS_UCHAR                       g_ucHpaCfnRead;

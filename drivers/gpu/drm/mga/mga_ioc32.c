@@ -32,8 +32,9 @@
  */
 #include <linux/compat.h>
 
-#include <drm/drmP.h>
-#include <drm/mga_drm.h>
+#include "drmP.h"
+#include "drm.h"
+#include "mga_drm.h"
 
 typedef struct drm32_mga_init {
 	int func;

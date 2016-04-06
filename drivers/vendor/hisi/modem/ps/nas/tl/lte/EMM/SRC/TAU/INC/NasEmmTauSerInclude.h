@@ -47,6 +47,8 @@
 #include    "NasEmmDetachAppMsgProcess.h"
 #include    "NasCommPrint.h"
 #include    "NasEmmcSendMsg.h"
+#include    "LnasErrlogInterface.h"
+
 
 
 /*****************************************************************************
@@ -72,8 +74,7 @@ extern "C" {
   2 macro
 *****************************************************************************/
 /*========================= EMM全局变量的宏简写 =========================*/
-
-
+#define NAS_EMM_SER_CN_REJ_CAUSE_NULL     0
 
 /* TALIST相关操作，包括得到和保存 */
 #define NAS_EMM_TAUSER_GetGUTIAddr()        (&(g_stEmmInfo.stMmUeId.stGuti))
@@ -110,6 +111,11 @@ extern "C" {
 *****************************************************************************/
 extern VOS_VOID  NAS_EMM_SetBarInfo(NAS_EMM_BAR_PROCEDURE_ENUM_UINT32 enBarProc,
                             LRRC_LNAS_EST_RESULT_ENUM_UINT32 enBarType);
+extern VOS_UINT32 NAS_EMM_IsBarTypeMoSingal(VOS_VOID);
+extern VOS_UINT32 NAS_EMM_IsBarTypeMoCall(VOS_VOID);
+extern VOS_UINT32 NAS_EMM_IsBarTypeMt(VOS_VOID);
+extern VOS_UINT32 NAS_EMM_IsBarTypeMoCsfb(VOS_VOID);
+extern VOS_UINT32 NAS_EMM_IsBarTypeMoCallAndCsfb(VOS_VOID);
 extern VOS_UINT32  NAS_EMM_JudgeBarType( NAS_EMM_BAR_TYPE_ENUM_UINT32 enBarType);
 extern VOS_VOID  NAS_EMM_ClearBarType( LRRC_LNAS_ACCESS_GRANT_ENUM_UINT32 enBarType);
 extern VOS_UINT32  NAS_EMM_GetBarProcedure(VOS_VOID );
@@ -119,6 +125,16 @@ extern VOS_VOID  NAS_EMM_SER_SmsEstReq( VOS_VOID );
 /*for test*/
 extern VOS_UINT32  NAS_EMM_SrvBarIsTauStarted( VOS_VOID);
 extern VOS_VOID    NAS_EMM_ProcSrvBar( VOS_VOID );
+extern VOS_VOID NAS_EMM_ExtServiceErrRecord(
+        NAS_EMM_CN_CAUSE_ENUM_UINT8                 enCnRejCause,
+        EMM_OM_LMM_CSFB_FAIL_CAUSE_ENUM_UINT8       enCsfbFailCause);
+extern VOS_VOID NAS_EMM_NorServiceErrRecord(
+            VOS_VOID*                         pstNorServiceFail,
+            EMM_OM_ERRLOG_TYPE_ENUM_UINT16    enErrType);
+extern VOS_VOID NAS_EMM_SerCnRejErrRecord(
+                    NAS_EMM_CN_SER_REJ_STRU *pMsgStru,
+                    EMM_OM_LMM_CSFB_FAIL_CAUSE_ENUM_UINT8 enCsfbFailCause,
+                    EMM_OM_ERRLOG_TYPE_ENUM_UINT16   enErrlogType);
 
 /*****************************************************************************
   9 OTHERS

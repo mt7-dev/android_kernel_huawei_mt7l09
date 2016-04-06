@@ -393,9 +393,9 @@ typedef struct
     VOS_UINT8                      ucNameLen;
     VOS_UINT8                      ucNumberLen;
     SI_PB_INIT_STATE_ENUM_UINT8    enInitialState;
+    VOS_UINT32                     ulExtInfoNum;            /* 对应的EXT文件控制信息编号 */
     VOS_UINT8*                     pIndex;
     VOS_UINT8*                     pContent;
-    VOS_UINT32                     ulExtInfoNum;            /* 对应的EXT文件控制信息编号 */
 }SI_PB_CONTENT_STRU;
 
 
@@ -600,6 +600,12 @@ typedef struct
 /*Ccpu发送的同步全局变量的消息*/
 typedef struct
 {
+    VOS_UINT32                 ulIndexAddr;
+    VOS_UINT32                 ulContentAddr;
+}SI_PB_CONTENT_PTR_STRU;
+
+typedef struct
+{
     VOS_MSG_HEADER
     VOS_UINT32                  ulMsgName;          /* 消息名 */
     SI_PB_CONTROL_STRU          stPBCtrlInfo;
@@ -610,6 +616,12 @@ typedef struct
     SI_EML_CONTENT_STRU         stEMLContent;
     SI_IAP_CONTENT_STRU         stIAPContent;
     SI_PB_INIT_STATE_STRU       stPBInitState;
+
+    SI_PB_CONTENT_PTR_STRU      astPBContentAddr[SI_PB_MAX_NUMBER];
+    VOS_UINT32                  aulExtContentAddr[SI_PB_MAX_NUMBER];
+    VOS_UINT32                  aulANRContentAddr[SI_PB_ANRMAX];
+    VOS_UINT32                  ulEMLContentAddr;
+    VOS_UINT32                  ulIAPContentAddr;
 }SI_PB_UPDATEGLOBAL_IND_STRU;
 
 /*Ccpu发送的当前电话本设置的消息*/

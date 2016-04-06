@@ -32,7 +32,7 @@ extern "C" {
 #if (VOS_WIN32 == VOS_OS_VER)
 #define NDIS_ASSERT vos_assert(__FILE__, __LINE__)
 #else
-#define NDIS_ASSERT vos_assert((VOS_UINT32)__FILE__, (VOS_INT)__LINE__)
+#define NDIS_ASSERT vos_assert(THIS_FILE_ID, (VOS_INT)__LINE__)
 #endif
 
 

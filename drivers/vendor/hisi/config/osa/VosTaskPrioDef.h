@@ -65,6 +65,7 @@ extern "C" {
 
 /* Just for pclint.*/
 #define COMM_SOCK_SELFTASK_PRIO         (101)
+#define SCM_DATA_RCV_SELFTASK_PRIO      (101)
 #define COMM_PRINTF_SELFTASK_PRIO       (253)
 #endif
 
@@ -77,6 +78,7 @@ extern "C" {
 #define SOCP_ENCSRC_SELFTASK_PRIO       (73)
 #define SOCP_DECSRC_SELFTASK_PRIO       (73)
 #define COMM_SOCK_SELFTASK_PRIO         (76)
+#define SCM_DATA_RCV_SELFTASK_PRIO      (76)
 #define TTF_FLOW_CTRL_TASK_PRIO         (88)
 #define TTF_ACPULOAD_TASK_PRIO          (89)
 #define COMM_TIMER_TASK_PRIO            (90)
@@ -127,6 +129,7 @@ extern "C" {
 #define SOCP_DECSRC_SELFTASK_PRIO       (73)
 #define COMM_NOSIG_TASK_PRIO            (75)
 #define COMM_SOCK_SELFTASK_PRIO         (101)
+#define SCM_DATA_RCV_SELFTASK_PRIO      (101)
 #define TTF_MEM_RB_FREE_TASK_PRIO       (151)
 #define COMM_HPA_TASK_PRIO              (192)
 #define TTF_FLOW_CTRL_TASK_PRIO         (192)

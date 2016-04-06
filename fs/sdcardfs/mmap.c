@@ -66,13 +66,19 @@ static int sdcardfs_page_mkwrite(struct vm_area_struct *vma, struct vm_fault *vm
 	return err;
 }
 
+static ssize_t sdcardfs_direct_IO(int rw, struct kiocb *iocb, const struct iovec *iov,
+                       loff_t offset, unsigned long nr_segs)
+{
+       return 0;
+}
+
 /*
  * XXX: the default address_space_ops for sdcardfs is empty.  We cannot set
  * our inode->i_mapping->a_ops to NULL because too many code paths expect
  * the a_ops vector to be non-NULL.
  */
 const struct address_space_operations sdcardfs_aops = {
-	/* empty on purpose */
+    .direct_IO      = sdcardfs_direct_IO,
 };
 
 const struct vm_operations_struct sdcardfs_vm_ops = {

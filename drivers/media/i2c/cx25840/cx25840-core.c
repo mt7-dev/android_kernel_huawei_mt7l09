@@ -484,13 +484,6 @@ static void cx23885_initialize(struct i2c_client *client)
 
 	/* DIF in reset? */
 	cx25840_write(client, 0x398, 0);
-
-	/*
-	 * Trust the default xtal, no division
-	 * '885: 28.636363... MHz
-	 * '887: 25.000000 MHz
-	 * '888: 50.000000 MHz
-	 */
 	cx25840_write(client, 0x2, 0x76);
 
 	/* Power up all the PLL's and DLL */

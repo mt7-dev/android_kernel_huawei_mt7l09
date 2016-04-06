@@ -7,10 +7,10 @@
 #include "NVIM_Interface.h"
 #include "TafApsProcNvim.h"
 #include "TafApsDsFlowStats.h"
-
 #include "TafLog.h"
 #include "TafApsCtx.h"
 #include "TafSdcLib.h"
+
 
 #ifdef __cplusplus
 #if __cplusplus
@@ -48,8 +48,8 @@ VOS_VOID  TAF_APS_ReadDsFlowInfoFromNv(
         TAF_ERROR_LOG(WUEPS_PID_TAF, "TAF_APS_ReadDsFlowCfgFromNv(): NV_Read en_NV_Item_DSFLOW_STATS_CTRL Error");
 
         /* 流量上报和保存NV控制均置为FALSE */
-        pstApsDsFlowCtx->ucApsDsFlowSave2NvFlg  = VOS_FALSE;
-        pstApsDsFlowCtx->ucApsDsFlowSavePeriod  = TI_TAF_APS_DEFAULT_DSFLOW_WRITE_NV_LEN;
+        pstApsDsFlowCtx->ucDsFlowSave2NvFlg     = VOS_FALSE;
+        pstApsDsFlowCtx->ucDsFlowSavePeriod     = TI_TAF_APS_DEFAULT_DSFLOW_WRITE_NV_LEN;
         pstApsDsFlowCtx->ucDsFlowATRptPeriod    = TAF_APS_DSFLOW_AT_REPORT_PERIOD;
 
         /* 更新到SDC全局变量中 */
@@ -58,8 +58,8 @@ VOS_VOID  TAF_APS_ReadDsFlowInfoFromNv(
     }
 
     /* 刷新流量统计控制上下文 */
-    pstApsDsFlowCtx->ucApsDsFlowSave2NvFlg  = stApsDsflowCtrlNv.ucDsFlowStatsSave2NvCtrl;
-    pstApsDsFlowCtx->ucApsDsFlowSavePeriod  = stApsDsflowCtrlNv.ucDsFlowSavePeriod;
+    pstApsDsFlowCtx->ucDsFlowSave2NvFlg     = stApsDsflowCtrlNv.ucDsFlowStatsSave2NvCtrl;
+    pstApsDsFlowCtx->ucDsFlowSavePeriod     = stApsDsflowCtrlNv.ucDsFlowSavePeriod;
     pstApsDsFlowCtx->ucDsFlowATRptPeriod    = TAF_APS_DSFLOW_AT_REPORT_PERIOD;
 
     /* 更新到SDC全局变量中 */
@@ -67,7 +67,7 @@ VOS_VOID  TAF_APS_ReadDsFlowInfoFromNv(
 
 
     /* 保存历史流量特性使能 */
-    if ( VOS_TRUE == pstApsDsFlowCtx->ucApsDsFlowSave2NvFlg )
+    if ( VOS_TRUE == pstApsDsFlowCtx->ucDsFlowSave2NvFlg )
     {
         if (NV_OK != NV_Read (en_NV_Item_DSFLOW_REPORT,
                               &stApsDsflowNv, sizeof(TAF_APS_DSFLOW_NV_STRU)))
@@ -131,7 +131,7 @@ VOS_VOID  TAF_APS_SaveDsFlowInfoToNv( VOS_VOID )
     PS_MEM_SET(&stApsDsflowNv, 0, sizeof(TAF_APS_DSFLOW_NV_STRU));
     PS_MEM_SET(&stDsFlowQryInfo, 0, sizeof(TAF_DSFLOW_QUERY_INFO_STRU));
 
-    if (VOS_TRUE == pstApsDsFlowCtx->ucApsDsFlowSave2NvFlg)
+    if (VOS_TRUE == pstApsDsFlowCtx->ucDsFlowSave2NvFlg)
     {
 
         /* 获取历史流量信息项 */
@@ -160,9 +160,6 @@ VOS_VOID  TAF_APS_SaveDsFlowInfoToNv( VOS_VOID )
 }
 
 
-
-
-
 VOS_VOID TAF_APS_ReadPdpActLimitFlgFromNv(VOS_VOID)
 {
     TAF_APS_NVIM_PDP_ACT_LIMIT_STRU     stNvPdpActLimit;
@@ -170,7 +167,6 @@ VOS_VOID TAF_APS_ReadPdpActLimitFlgFromNv(VOS_VOID)
     VOS_UINT32                          ulLength;
 
     ulLength = 0;
-
 
     PS_MEM_SET(&stNvPdpActLimit, 0x00, sizeof(TAF_APS_NVIM_PDP_ACT_LIMIT_STRU));
 
@@ -204,7 +200,6 @@ VOS_VOID TAF_APS_ReadPdpActLimitFlgFromNv(VOS_VOID)
 
     return;
 }
-
 
 
 VOS_VOID TAF_APS_ReadDsflowRateConfigFromNv(TAF_APS_SWITCH_DDR_RATE_INFO_STRU *pstSwitchDdrInfo)
@@ -280,6 +275,33 @@ VOS_VOID TAF_APS_Recorrect_ProfileNum(
 
     return;
 }
+
+#if (FEATURE_ON == FEATURE_LTE)
+
+VOS_VOID TAF_APS_ReadPdnTeardownPolicyNV(VOS_VOID)
+{
+    TAF_NV_PDN_TEARDOWN_POLICY_STRU     stNvPdnPolicy;
+    VOS_UINT32                          ulRslt;
+
+    PS_MEM_SET(&stNvPdnPolicy, 0x00, sizeof(TAF_NV_PDN_TEARDOWN_POLICY_STRU));
+
+    ulRslt = NV_Read(en_NV_Item_PDN_TEARDOWN_POLICY,
+                &stNvPdnPolicy, sizeof(TAF_NV_PDN_TEARDOWN_POLICY_STRU));
+    if (NV_OK == ulRslt)
+    {
+        TAF_APS_SetAllowDefPdnTeardownFlg(stNvPdnPolicy.ucAllowDefPdnTeardownFlg);
+    }
+    else
+    {
+        TAF_WARNING_LOG(WUEPS_PID_TAF,
+            "TAF_APS_ReadPdnTeardownPolicyNV: Read en_NV_Item_PDN_TEARDOWN_POLICY failed!");
+    }
+
+    return;
+}
+#endif
+
+
 
 #ifdef __cplusplus
     #if __cplusplus

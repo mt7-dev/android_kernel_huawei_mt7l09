@@ -57,6 +57,8 @@ enum CALL_IMSA_MSG_TYPE_ENUM
 
     ID_IMSA_CALL_MSG_SYNC_IND,                                                   /* _H2ASN_MsgChoice IMSA_CALL_MSG_SYNC_IND_STRU */
 
+    ID_IMSA_CALL_CCWA_CAP_NOTIFY,                                                /* _H2ASN_MsgChoice IMSA_CALL_CCWA_CAP_NOTIFY_STRU */
+
     ID_CALL_IMSA_MSG_TYPE_BUTT
 };
 typedef  VOS_UINT32  CALL_IMSA_MSG_TYPE_ENUM_UINT32;
@@ -89,25 +91,28 @@ typedef struct
     MN_CLIENT_ID_T                                          clientId;
     MN_OPERATION_ID_T                                       opId;
     VOS_UINT8                                               ucCallId;
-    VOS_UINT8                                               ucTi;                      /* TI信息，保护TI FLAG和TI两项，具体格式参考上面描述 */
-    CALL_IMSA_SRVCC_CALL_STATE_ENUM_UINT8                   enCallState;               /* IMSA同步过来的IMS域下的呼叫状态 */ 
+    VOS_UINT8                                               ucTi;               /* TI信息，保护TI FLAG和TI两项，具体格式参考上面描述 */
+    CALL_IMSA_SRVCC_CALL_STATE_ENUM_UINT8                   enCallState;        /* IMSA同步过来的IMS域下的呼叫状态 */
     MN_CALL_MODE_ENUM_U8                                    enCallMode;
     MN_CALL_MPTY_STATE_ENUM_U8                              enMptyState;
     MN_CALL_DIR_ENUM_U8                                     enCallDir;
     MN_CALL_TYPE_ENUM_U8                                    enCallType;
-    VOS_UINT8                                               ucLocalAlertedFlag;        /* IMS域是否进行过本地振铃 */
-    VOS_UINT8                                               aucReserve1[1];
+    VOS_UINT8                                               ucLocalAlertedFlag; /* IMS域是否进行过本地振铃 */
+    VOS_UINT8                                               ucEConferenceFlag;  /* 用于标识通话是否是增强型多方通话: VOS_TRUE: 增强型多方通话 VOS_FALSE: 非增强型多方通话 */
     MN_CALL_BCD_NUM_STRU                                    stCallNumber;
     MN_CALL_CALLED_NUM_STRU                                 stCalledNumber;
     MN_CALL_BCD_NUM_STRU                                    stRedirectNumber;
     MN_CALL_BCD_NUM_STRU                                    stConnectNumber;
 }CALL_IMSA_SRVCC_CALL_INFO_STRU;
+
+
 typedef struct
 {
     VOS_MSG_HEADER
     VOS_UINT32                          ulMsgId;
     VOS_UINT8                           ucCallNum;
-    VOS_UINT8                           aucReserve[3];
+    VOS_UINT8                           ucStartedHifiFlag;
+    VOS_UINT8                           aucReserve[2];
     CALL_IMSA_SRVCC_CALL_INFO_STRU      astCallInfo[CALL_IMSA_MAX_ENTITY_NUM];
     TAF_CALL_DTMF_BUFF_STRU             stDtmfBuffInfo;
 }CALL_IMSA_SRVCC_CALL_INFO_NOTIFY_STRU;
@@ -154,6 +159,15 @@ typedef struct
     VOS_UINT8                           aucReserve[3];
     IMSA_CALL_MSG_UNION                 astMsgArray[IMSA_CALL_MSG_SYNC_MAX_NUM];
 }IMSA_CALL_MSG_SYNC_IND_STRU;
+
+
+typedef struct
+{
+    VOS_MSG_HEADER                                                              /* _H2ASN_Skip */
+    VOS_UINT32                          ulMsgId;                                /* _H2ASN_Skip */
+    VOS_UINT8                           ucCcwaCap;                              /* 0:不支持ccwa; 1:支持ccwa */
+    VOS_UINT8                           aucReserve[3];
+}IMSA_CALL_CCWA_CAP_NOTIFY_STRU;
 /*****************************************************************************
   4 宏定义
 *****************************************************************************/

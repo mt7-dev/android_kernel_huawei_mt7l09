@@ -17,6 +17,7 @@
 #include "LNvCommon.h"
 #include "LNasNvInterface.h"
 #include "LPsNvInterface.h"
+#include "ImsaNvInterface.h"
 #endif
 
 #include "ScInterface.h"
@@ -27,6 +28,9 @@
 /* DSDS使能NV从TTF读取 */
 #include "TtfNvInterface.h"
 #include "WasNvInterface.h"
+
+#include "NasMmcComFunc.h"
+
 #ifdef __cplusplus
 #if __cplusplus
 extern "C" {
@@ -211,7 +215,50 @@ VOS_VOID NAS_MMC_ReadChangeRegRejCauFlgNvim( VOS_VOID )
     return;
 
 }
+VOS_VOID NAS_MMC_ReadRoamingRejectNoRetryFlgNvim( VOS_VOID )
+{
+    NAS_MML_ROAMINGREJECT_NORETYR_CFG_STRU                 *pstNoRetryCfg = VOS_NULL_PTR;  
+    NAS_NVIM_ROAMINGREJECT_NORETYR_CFG_STRU                 stRoamingRejectNoRetryCfg;
+    VOS_UINT32                                              ulLength;
+    VOS_UINT32                                              i;
 
+    ulLength        = 0;
+    i               = 0;
+
+    PS_MEM_SET(&stRoamingRejectNoRetryCfg, 0, sizeof(NAS_NVIM_ROAMINGREJECT_NORETYR_CFG_STRU));
+    
+    NV_GetLength(en_NV_Item_ROAMING_REJECT_NORETRY_CFG, &ulLength);
+    if (ulLength > sizeof(NAS_NVIM_ROAMINGREJECT_NORETYR_CFG_STRU))
+    {
+        return;
+    }
+
+    pstNoRetryCfg = NAS_MML_GetRoamingRejectNoRetryCfg();
+
+    if (NV_OK != NV_Read(en_NV_Item_ROAMING_REJECT_NORETRY_CFG,
+                         &stRoamingRejectNoRetryCfg, ulLength))
+    {
+        NAS_ERROR_LOG(WUEPS_PID_MMC,
+                     "NAS_MMC_ReadRoamingRejectNoRetryFlgNvim():en_NV_Item_ROAMING_REJECT_NORETRY_CFG Error");
+
+        return;
+    }
+
+    pstNoRetryCfg->ucNoRetryRejectCauseNum = stRoamingRejectNoRetryCfg.ucNoRetryRejectCauseNum;
+
+    if (pstNoRetryCfg->ucNoRetryRejectCauseNum > NAS_MML_MAX_ROAMING_REJECT_NO_RETRY_CAUSE_NUM)
+    {
+        pstNoRetryCfg->ucNoRetryRejectCauseNum = NAS_MML_MAX_ROAMING_REJECT_NO_RETRY_CAUSE_NUM;
+    }
+
+    for (i = 0; i < pstNoRetryCfg->ucNoRetryRejectCauseNum; i++)
+    {
+        pstNoRetryCfg->aucNoRetryRejectCause[i] = stRoamingRejectNoRetryCfg.aucNoRetryRejectCause[i];
+    }
+
+    return;
+
+}
 
 VOS_VOID NAS_MMC_ReadImeisvNvim( VOS_VOID )
 {
@@ -974,6 +1021,42 @@ VOS_VOID NAS_MMC_ReadRplmnWithRatNvim(VOS_VOID)
 
     return;
 }
+
+
+
+VOS_VOID NAS_MMC_ReadNvimLastRplmnRat(
+    NAS_MML_NET_RAT_TYPE_ENUM_UINT8    *penNvimLastRplmnRat
+)
+{
+    NAS_NVIM_RPLMN_WITH_RAT_STRU        stRplmn;    
+
+    stRplmn.stGRplmn.ulMcc          = NAS_MML_INVALID_MCC;
+    stRplmn.stGRplmn.ulMnc          = NAS_MML_INVALID_MNC;
+    stRplmn.stWRplmn.ulMcc          = NAS_MML_INVALID_MCC;
+    stRplmn.stWRplmn.ulMnc          = NAS_MML_INVALID_MNC;
+    stRplmn.ucLastRplmnRat          = NAS_MML_NET_RAT_TYPE_BUTT;
+    stRplmn.ucLastRplmnRatEnableFlg = VOS_FALSE;
+
+    if(NV_OK != NV_Read (en_NV_Item_RPlmnWithRat, &stRplmn, sizeof(NAS_NVIM_RPLMN_WITH_RAT_STRU)))
+    {
+        NAS_ERROR_LOG(WUEPS_PID_MMC, "NAS_MMC_ReadNvimLastRplmnRat(): en_NV_Item_RPlmnWithRat Error");
+        return;
+    }
+
+    if ((stRplmn.ucLastRplmnRatEnableFlg != NAS_MMC_NV_ITEM_DEACTIVE)
+     && (stRplmn.ucLastRplmnRatEnableFlg != NAS_MMC_NV_ITEM_ACTIVE))
+    {
+        NAS_ERROR_LOG(WUEPS_PID_MMC, "NAS_MMC_ReadNvimLastRplmnRat(): NV parameter Error");
+        return;
+    }
+
+    *penNvimLastRplmnRat = stRplmn.ucLastRplmnRat;
+    
+    return;
+}
+
+
+
 
 VOS_VOID NAS_MMC_WriteRplmnWithRatNvim(VOS_VOID)
 {
@@ -2912,8 +2995,6 @@ VOS_VOID NAS_MMC_ReadHPlmnSearchRegardLessMccNvim(VOS_VOID)
 
     return;
 }
-
-
 VOS_UINT32 NAS_MMC_ConvertNivmActionToMmlType(
     NAS_MMC_NVIM_SINGLE_DOMAIN_REG_FAIL_ACTION_ENUM_UINT8   enNvAction,
     NAS_MML_SINGLE_DOMAIN_REG_FAIL_ACTION_ENUM_UINT8       *penMmlAction
@@ -2935,6 +3016,10 @@ VOS_UINT32 NAS_MMC_ConvertNivmActionToMmlType(
 
         case NAS_MMC_NVIM_SINGLE_DOMAIN_REG_FAIL_ACTION_LIMITED_CAMP_ON:
             *penMmlAction = NAS_MML_SINGLE_DOMAIN_REG_FAIL_ACTION_LIMITED_CAMP_ON;
+            break;
+
+        case NAS_MMC_NVIM_SINGLE_DOMAIN_ROAMING_REG_FAIL_ACTION_PLMN_SELECTION:
+            *penMmlAction = NAS_MML_SINGLE_DOMAIN_ROAMING_REG_FAIL_ACTION_PLMN_SELECTION;
             break;
 
         default:
@@ -3905,6 +3990,352 @@ VOS_VOID NAS_MMC_ReadUserCfgOPlmnInfoNvim(VOS_VOID)
 }
 
 
+ VOS_VOID  NAS_MMC_ReadDplmnNplmnInfoNvim(VOS_VOID)
+{
+    VOS_UINT32                                              ulLen;
+    NAS_MML_PLMN_ID_STRU                                    stHplmnId;
+    VOS_UINT8                                               ucHplmnType;
+    VOS_UINT8                                              *pucImsi         = VOS_NULL_PTR;
+    NAS_MMC_NVIM_CFG_DPLMN_NPLMN_INFO_STRU                 *pstNvimCfgDPlmnNPlmnInfo = VOS_NULL_PTR;
+    NAS_MMC_DPLMN_NPLMN_CFG_INFO_STRU                      *pstDPlmnNPlmnCfgInfo = VOS_NULL_PTR;
+    NAS_MMC_NVIM_CFG_DPLMN_NPLMN_FLAG_STRU                 *pstNvimCfgDPlmnNPlmnFlag = VOS_NULL_PTR;
+
+    /* 取得手机卡中IMSI的信息 */
+    pucImsi     = NAS_MML_GetSimImsi();
+
+    /* 从当前的IMSI中取出home plmn */
+    stHplmnId  = NAS_MML_GetImsiHomePlmn(pucImsi);
+
+    pstNvimCfgDPlmnNPlmnFlag = (NAS_MMC_NVIM_CFG_DPLMN_NPLMN_FLAG_STRU*)PS_MEM_ALLOC(
+                                                      WUEPS_PID_MMC,
+                                                      sizeof(NAS_MMC_NVIM_CFG_DPLMN_NPLMN_FLAG_STRU));
+    if (VOS_NULL_PTR == pstNvimCfgDPlmnNPlmnFlag)
+    {
+        return;
+    }
+
+    pstNvimCfgDPlmnNPlmnInfo = (NAS_MMC_NVIM_CFG_DPLMN_NPLMN_INFO_STRU*)PS_MEM_ALLOC(
+                                                      WUEPS_PID_MMC,
+                                                      sizeof(NAS_MMC_NVIM_CFG_DPLMN_NPLMN_INFO_STRU));
+    if (VOS_NULL_PTR == pstNvimCfgDPlmnNPlmnInfo)
+    {
+        PS_MEM_FREE(WUEPS_PID_MMC, pstNvimCfgDPlmnNPlmnFlag);
+        return;
+    }
+
+    pstDPlmnNPlmnCfgInfo = NAS_MMC_GetDPlmnNPlmnCfgInfo();
+
+    PS_MEM_SET(pstNvimCfgDPlmnNPlmnFlag, 0x00, sizeof(NAS_MMC_NVIM_CFG_DPLMN_NPLMN_FLAG_STRU));
+
+    NV_GetLength(en_NV_Item_Cfg_Dplmn_Nplmn_Flag, &ulLen);
+
+    if (ulLen > sizeof(NAS_MMC_NVIM_CFG_DPLMN_NPLMN_FLAG_STRU))
+    {
+        PS_MEM_FREE(WUEPS_PID_MMC, pstNvimCfgDPlmnNPlmnFlag);
+        PS_MEM_FREE(WUEPS_PID_MMC, pstNvimCfgDPlmnNPlmnInfo);
+        return;
+    }
+
+    if (NV_OK != NV_Read(en_NV_Item_Cfg_Dplmn_Nplmn_Flag, pstNvimCfgDPlmnNPlmnFlag, ulLen))
+    {
+        PS_MEM_FREE(WUEPS_PID_MMC, pstNvimCfgDPlmnNPlmnFlag);
+        PS_MEM_FREE(WUEPS_PID_MMC, pstNvimCfgDPlmnNPlmnInfo);
+        return;
+    }
+
+    if (VOS_TRUE == pstNvimCfgDPlmnNPlmnFlag->usCfgDplmnNplmnFlag)
+    {
+        pstDPlmnNPlmnCfgInfo->ucActiveFlg = VOS_TRUE;
+    }
+    else
+    {
+        PS_MEM_FREE(WUEPS_PID_MMC, pstNvimCfgDPlmnNPlmnFlag);
+        PS_MEM_FREE(WUEPS_PID_MMC, pstNvimCfgDPlmnNPlmnInfo);
+        return;
+    }
+
+    pstDPlmnNPlmnCfgInfo->ucCMCCHplmnNum = 0;
+    pstDPlmnNPlmnCfgInfo->ucUNICOMHplmnNum = 0;
+    pstDPlmnNPlmnCfgInfo->ucCTHplmnNum = 0;
+
+    NAS_MMC_UpdateDPlmnNPlmnFlagInfo(pstNvimCfgDPlmnNPlmnFlag);
+
+    PS_MEM_SET(pstNvimCfgDPlmnNPlmnInfo, 0x00, sizeof(NAS_MMC_NVIM_CFG_DPLMN_NPLMN_INFO_STRU));
+
+    ucHplmnType = NAS_MMC_JudegeHplmnType(&stHplmnId);
+
+    /* Modified by c00318887 for DPlmn扩容和优先接入HPLMN, 2015-5-28, begin */
+    if (NAS_MMC_HPLMN_TYPE_CMCC == ucHplmnType)
+    {
+        NV_GetLength(en_NV_Item_CMCC_Cfg_Dplmn_Nplmn_Info, &ulLen);
+
+        if (ulLen > sizeof(NAS_MMC_NVIM_CFG_DPLMN_NPLMN_INFO_STRU))
+        {
+            PS_MEM_FREE(WUEPS_PID_MMC, pstNvimCfgDPlmnNPlmnFlag);
+            PS_MEM_FREE(WUEPS_PID_MMC, pstNvimCfgDPlmnNPlmnInfo);
+            return;
+        }
+
+        /* 读NV项en_NV_Item_CMCC_Cfg_Dplmn_Nplmn_Info，失败，直接返回 */
+        if (NV_OK != NV_Read(en_NV_Item_CMCC_Cfg_Dplmn_Nplmn_Info,
+                             pstNvimCfgDPlmnNPlmnInfo, ulLen))
+        {
+            PS_MEM_FREE(WUEPS_PID_MMC, pstNvimCfgDPlmnNPlmnFlag);
+            PS_MEM_FREE(WUEPS_PID_MMC, pstNvimCfgDPlmnNPlmnInfo);
+            return;
+        }
+    }
+    else if (NAS_MMC_HPLMN_TYPE_UNICOM == ucHplmnType)
+    {
+        NV_GetLength(en_NV_Item_UNICOM_Cfg_Dplmn_Nplmn_Info, &ulLen);
+
+        if (ulLen > sizeof(NAS_MMC_NVIM_CFG_DPLMN_NPLMN_INFO_STRU))
+        {
+            PS_MEM_FREE(WUEPS_PID_MMC, pstNvimCfgDPlmnNPlmnFlag);
+            PS_MEM_FREE(WUEPS_PID_MMC, pstNvimCfgDPlmnNPlmnInfo);
+            return;
+        }
+
+        /* 读NV项en_NV_Item_UNICOM_Cfg_Dplmn_Nplmn_Info，失败，直接返回 */
+        if (NV_OK != NV_Read(en_NV_Item_UNICOM_Cfg_Dplmn_Nplmn_Info,
+                             pstNvimCfgDPlmnNPlmnInfo, ulLen))
+        {
+            PS_MEM_FREE(WUEPS_PID_MMC, pstNvimCfgDPlmnNPlmnFlag);
+            PS_MEM_FREE(WUEPS_PID_MMC, pstNvimCfgDPlmnNPlmnInfo);
+            return;
+        }
+    }
+    else if (NAS_MMC_HPLMN_TYPE_CT == ucHplmnType)
+    {
+        NV_GetLength(en_NV_Item_CT_Cfg_Dplmn_Nplmn_Info, &ulLen);
+
+        if (ulLen > sizeof(NAS_MMC_NVIM_CFG_DPLMN_NPLMN_INFO_STRU))
+        {
+            PS_MEM_FREE(WUEPS_PID_MMC, pstNvimCfgDPlmnNPlmnFlag);
+            PS_MEM_FREE(WUEPS_PID_MMC, pstNvimCfgDPlmnNPlmnInfo);
+            return;
+        }
+
+        /* 读NV项en_NV_Item_CT_Cfg_Dplmn_Nplmn_Info，失败，直接返回 */
+        if (NV_OK != NV_Read(en_NV_Item_CT_Cfg_Dplmn_Nplmn_Info,
+                             pstNvimCfgDPlmnNPlmnInfo, ulLen))
+        {
+            PS_MEM_FREE(WUEPS_PID_MMC, pstNvimCfgDPlmnNPlmnFlag);
+            PS_MEM_FREE(WUEPS_PID_MMC, pstNvimCfgDPlmnNPlmnInfo);
+            return;
+        }
+    }
+    else
+    {
+        pstDPlmnNPlmnCfgInfo->ucActiveFlg = VOS_FALSE;
+        PS_MEM_FREE(WUEPS_PID_MMC, pstNvimCfgDPlmnNPlmnFlag);
+        PS_MEM_FREE(WUEPS_PID_MMC, pstNvimCfgDPlmnNPlmnInfo);
+        return;
+    }
+    /* Modified by c00318887 for DPlmn扩容和优先接入HPLMN, 2015-5-28, end */
+    
+    pstDPlmnNPlmnCfgInfo->usDplmnListNum = 0;
+    pstDPlmnNPlmnCfgInfo->usNplmnListNum = 0;
+
+    NAS_MMC_UpdateDplmnNplmnInfo(pstNvimCfgDPlmnNPlmnInfo);
+
+    PS_MEM_FREE(WUEPS_PID_MMC, pstNvimCfgDPlmnNPlmnFlag);
+    PS_MEM_FREE(WUEPS_PID_MMC, pstNvimCfgDPlmnNPlmnInfo);
+    return;
+}
+VOS_VOID NAS_MMC_WriteDplmnNplmnToNvim(VOS_VOID)
+{
+    VOS_UINT32                                              ulLen;
+    VOS_UINT32                                              ulStep;
+    NAS_MML_PLMN_ID_STRU                                    stUserPlmn;
+    NAS_MML_SIM_FORMAT_PLMN_ID                              stNvimPlmn;
+    NAS_MML_PLMN_ID_STRU                                    stHplmnId;
+    VOS_UINT8                                               ucHplmnType;
+    VOS_UINT8                                              *pucImsi = VOS_NULL_PTR;
+    NAS_MMC_DPLMN_NPLMN_CFG_INFO_STRU                      *pstDPlmnNPlmnCfgInfo = VOS_NULL_PTR;
+    NAS_MMC_NVIM_CFG_DPLMN_NPLMN_INFO_STRU                 *pstNvimCfgDPlmnNPlmnInfo = VOS_NULL_PTR;
+
+    PS_MEM_SET(&stHplmnId, 0, sizeof(stHplmnId));
+    PS_MEM_SET(&stNvimPlmn, 0, sizeof(stNvimPlmn));
+    PS_MEM_SET(&stUserPlmn, 0, sizeof(stUserPlmn));
+    ulLen       = 0;
+    ulStep      = 0;
+    ucHplmnType = 0;
+
+    /* 取得手机卡中IMSI的信息 */
+    pucImsi    = NAS_MML_GetSimImsi();
+
+    /* 从当前的IMSI中取出home plmn */
+    stHplmnId  = NAS_MML_GetImsiHomePlmn(pucImsi);
+
+    pstDPlmnNPlmnCfgInfo = NAS_MMC_GetDPlmnNPlmnCfgInfo();
+
+    if (VOS_TRUE != pstDPlmnNPlmnCfgInfo->ucActiveFlg)
+    {
+        return;
+    }
+
+    pstNvimCfgDPlmnNPlmnInfo = (NAS_MMC_NVIM_CFG_DPLMN_NPLMN_INFO_STRU*)PS_MEM_ALLOC(
+                                   WUEPS_PID_MMC,
+                                   sizeof(NAS_MMC_NVIM_CFG_DPLMN_NPLMN_INFO_STRU));
+
+    if (VOS_NULL_PTR == pstNvimCfgDPlmnNPlmnInfo)
+    {
+        return;
+    }
+
+    PS_MEM_SET(pstNvimCfgDPlmnNPlmnInfo, 0x00, sizeof(NAS_MMC_NVIM_CFG_DPLMN_NPLMN_INFO_STRU));
+
+    if ( pstDPlmnNPlmnCfgInfo->usDplmnListNum > NAS_MMC_MAX_CFG_DPLMN_NUM )
+    {
+        pstDPlmnNPlmnCfgInfo->usDplmnListNum = NAS_MMC_MAX_CFG_DPLMN_NUM;
+    }
+
+    pstNvimCfgDPlmnNPlmnInfo->usDplmnListNum = pstDPlmnNPlmnCfgInfo->usDplmnListNum;
+
+    for ( ulStep = 0; ulStep < pstDPlmnNPlmnCfgInfo->usDplmnListNum; ulStep++ )
+    {
+        stNvimPlmn.aucSimPlmn[0] = 0;
+        stNvimPlmn.aucSimPlmn[1] = 0;
+        stNvimPlmn.aucSimPlmn[2] = 0;
+        stUserPlmn.ulMcc = pstDPlmnNPlmnCfgInfo->astDPlmnList[ulStep].stSimPlmnWithRat.stPlmnId.ulMcc;
+        stUserPlmn.ulMnc = pstDPlmnNPlmnCfgInfo->astDPlmnList[ulStep].stSimPlmnWithRat.stPlmnId.ulMnc;
+
+        NAS_MMC_ConvertNasPlmnToSimFormat(&stUserPlmn, &stNvimPlmn);
+
+        /* Modified by c00318887 for DPlmn扩容和优先接入HPLMN, 2015-5-20, begin */
+
+        pstNvimCfgDPlmnNPlmnInfo->aucDPlmnList[(ulStep * NAS_MMC_DPLMN_NPLMN_NV_INFO_LEN)]     = stNvimPlmn.aucSimPlmn[0];
+        pstNvimCfgDPlmnNPlmnInfo->aucDPlmnList[(ulStep * NAS_MMC_DPLMN_NPLMN_NV_INFO_LEN) + 1] = stNvimPlmn.aucSimPlmn[1];
+        pstNvimCfgDPlmnNPlmnInfo->aucDPlmnList[(ulStep * NAS_MMC_DPLMN_NPLMN_NV_INFO_LEN) + 2] = stNvimPlmn.aucSimPlmn[2];
+        pstNvimCfgDPlmnNPlmnInfo->aucDPlmnList[(ulStep * NAS_MMC_DPLMN_NPLMN_NV_INFO_LEN) + 3] = (VOS_UINT8)((pstDPlmnNPlmnCfgInfo->astDPlmnList[ulStep].stSimPlmnWithRat.usSimRat) >> NAS_MML_OCTET_MOVE_EIGHT_BITS);
+        pstNvimCfgDPlmnNPlmnInfo->aucDPlmnList[(ulStep * NAS_MMC_DPLMN_NPLMN_NV_INFO_LEN) + 4] = (VOS_UINT8)((pstDPlmnNPlmnCfgInfo->astDPlmnList[ulStep].stSimPlmnWithRat.usSimRat) & (0x00FF));
+
+        /* 更新注册域信息 */
+        pstNvimCfgDPlmnNPlmnInfo->aucDPlmnList[(ulStep * NAS_MMC_DPLMN_NPLMN_NV_INFO_LEN) + 5] = pstDPlmnNPlmnCfgInfo->astDPlmnList[ulStep].enRegDomain;
+
+        /* 更新类型信息 */
+        pstNvimCfgDPlmnNPlmnInfo->aucDPlmnList[(ulStep * NAS_MMC_DPLMN_NPLMN_NV_INFO_LEN) + NAS_MMC_DPLMN_NPLMN_NV_PRESETING_FLAG_INDEX] = pstDPlmnNPlmnCfgInfo->astDPlmnList[ulStep].enType;
+        
+        /* Modified by c00318887 for DPlmn扩容和优先接入HPLMN, 2015-5-20, end */
+        
+    }
+
+    if ( pstDPlmnNPlmnCfgInfo->usNplmnListNum > NAS_MMC_MAX_CFG_NPLMN_NUM )
+    {
+        pstDPlmnNPlmnCfgInfo->usNplmnListNum = NAS_MMC_MAX_CFG_NPLMN_NUM;
+    }
+
+    pstNvimCfgDPlmnNPlmnInfo->usNplmnListNum = pstDPlmnNPlmnCfgInfo->usNplmnListNum;
+
+    for ( ulStep = 0; ulStep < pstDPlmnNPlmnCfgInfo->usNplmnListNum; ulStep++ )
+    {
+        stNvimPlmn.aucSimPlmn[0]= 0;
+        stNvimPlmn.aucSimPlmn[1]= 0;
+        stNvimPlmn.aucSimPlmn[2]= 0;
+        stUserPlmn.ulMcc        = pstDPlmnNPlmnCfgInfo->astNPlmnList[ulStep].stSimPlmnWithRat.stPlmnId.ulMcc;
+        stUserPlmn.ulMnc        = pstDPlmnNPlmnCfgInfo->astNPlmnList[ulStep].stSimPlmnWithRat.stPlmnId.ulMnc;
+
+        NAS_MMC_ConvertNasPlmnToSimFormat(&stUserPlmn, &stNvimPlmn);
+
+        /* Modified by c00318887 for DPlmn扩容和优先接入HPLMN, 2015-5-20, begin */
+        pstNvimCfgDPlmnNPlmnInfo->aucNPlmnList[(ulStep * NAS_MMC_DPLMN_NPLMN_NV_INFO_LEN)]     = stNvimPlmn.aucSimPlmn[0];
+        pstNvimCfgDPlmnNPlmnInfo->aucNPlmnList[(ulStep * NAS_MMC_DPLMN_NPLMN_NV_INFO_LEN) + 1] = stNvimPlmn.aucSimPlmn[1];
+        pstNvimCfgDPlmnNPlmnInfo->aucNPlmnList[(ulStep * NAS_MMC_DPLMN_NPLMN_NV_INFO_LEN) + 2] = stNvimPlmn.aucSimPlmn[2];
+        pstNvimCfgDPlmnNPlmnInfo->aucNPlmnList[(ulStep * NAS_MMC_DPLMN_NPLMN_NV_INFO_LEN) + 3] = (VOS_UINT8)((pstDPlmnNPlmnCfgInfo->astNPlmnList[ulStep].stSimPlmnWithRat.usSimRat) >> NAS_MML_OCTET_MOVE_EIGHT_BITS);
+        pstNvimCfgDPlmnNPlmnInfo->aucNPlmnList[(ulStep * NAS_MMC_DPLMN_NPLMN_NV_INFO_LEN) + 4] = (VOS_UINT8)((pstDPlmnNPlmnCfgInfo->astNPlmnList[ulStep].stSimPlmnWithRat.usSimRat) & (0x00FF));
+
+        /* 更新注册域信息 */
+        pstNvimCfgDPlmnNPlmnInfo->aucNPlmnList[(ulStep * NAS_MMC_DPLMN_NPLMN_NV_INFO_LEN) + 5] = pstDPlmnNPlmnCfgInfo->astNPlmnList[ulStep].enRegDomain;
+
+        /* 更新类型信息 */
+        pstNvimCfgDPlmnNPlmnInfo->aucNPlmnList[(ulStep * NAS_MMC_DPLMN_NPLMN_NV_INFO_LEN) + NAS_MMC_DPLMN_NPLMN_NV_PRESETING_FLAG_INDEX] = pstDPlmnNPlmnCfgInfo->astNPlmnList[ulStep].enType;
+    
+    /* Modified by c00318887 for DPlmn扩容和优先接入HPLMN, 2015-5-20, end */
+        
+    }
+
+    ucHplmnType = NAS_MMC_JudegeHplmnType(&stHplmnId);
+
+    /* Modified by c00318887 for DPlmn扩容和优先接入HPLMN, 2015-5-28, begin */
+    if (NAS_MMC_HPLMN_TYPE_CMCC == ucHplmnType)
+    {
+        NV_GetLength(en_NV_Item_CMCC_Cfg_Dplmn_Nplmn_Info, &ulLen);
+
+        /* 写NV项en_NV_Item_CMCC_Cfg_Dplmn_Nplmn，失败，直接返回 */
+        if (NV_OK != NV_Write(en_NV_Item_CMCC_Cfg_Dplmn_Nplmn_Info,
+                              pstNvimCfgDPlmnNPlmnInfo, ulLen))
+        {
+            PS_MEM_FREE(WUEPS_PID_MMC, pstNvimCfgDPlmnNPlmnInfo);
+            return;
+        }
+    }
+
+    if (NAS_MMC_HPLMN_TYPE_UNICOM == ucHplmnType)
+    {
+        NV_GetLength(en_NV_Item_UNICOM_Cfg_Dplmn_Nplmn_Info, &ulLen);
+        /* 写NV项en_NV_Item_UNICOM_Cfg_Dplmn_Nplmn，失败，直接返回 */
+        if (NV_OK != NV_Write(en_NV_Item_UNICOM_Cfg_Dplmn_Nplmn_Info,
+                              pstNvimCfgDPlmnNPlmnInfo, ulLen))
+        {
+            PS_MEM_FREE(WUEPS_PID_MMC, pstNvimCfgDPlmnNPlmnInfo);
+            return;
+        }
+    }
+
+    if (NAS_MMC_HPLMN_TYPE_CT == ucHplmnType)
+    {
+        NV_GetLength(en_NV_Item_CT_Cfg_Dplmn_Nplmn_Info, &ulLen);
+        /* 写NV项en_NV_Item_CT_Cfg_Dplmn_Nplmn，失败，直接返回 */
+        if (NV_OK != NV_Write(en_NV_Item_CT_Cfg_Dplmn_Nplmn_Info,
+                              pstNvimCfgDPlmnNPlmnInfo, ulLen))
+        {
+            PS_MEM_FREE(WUEPS_PID_MMC, pstNvimCfgDPlmnNPlmnInfo);
+            return;
+        }
+    }
+    /* Modified by c00318887 for DPlmn扩容和优先接入HPLMN, 2015-5-28, end */
+    
+    PS_MEM_FREE(WUEPS_PID_MMC, pstNvimCfgDPlmnNPlmnInfo);
+    return;
+
+}
+NAS_MMC_HPLMN_TYPE_ENUM_UINT8 NAS_MMC_JudegeHplmnType(
+    NAS_MML_PLMN_ID_STRU               *pstHplmnId
+)
+{
+    NAS_MMC_DPLMN_NPLMN_CFG_INFO_STRU                      *pstDPlmnNPlmnCfgInfo = VOS_NULL_PTR;
+    VOS_UINT32                          i;
+
+    pstDPlmnNPlmnCfgInfo = NAS_MMC_GetDPlmnNPlmnCfgInfo();
+
+    for (i = 0; i < pstDPlmnNPlmnCfgInfo->ucCMCCHplmnNum; i++)
+    {
+        if (VOS_TRUE == NAS_MML_CompareBcchPlmnwithSimPlmn(&pstDPlmnNPlmnCfgInfo->astCMCCHplmnList[i], pstHplmnId))
+        {
+            return NAS_MMC_HPLMN_TYPE_CMCC;
+        }
+    }
+
+    for (i = 0; i < pstDPlmnNPlmnCfgInfo->ucUNICOMHplmnNum; i++)
+    {
+        if (VOS_TRUE == NAS_MML_CompareBcchPlmnwithSimPlmn(&pstDPlmnNPlmnCfgInfo->astUNICOMHplmnList[i], pstHplmnId))
+        {
+            return NAS_MMC_HPLMN_TYPE_UNICOM;
+        }
+    }
+
+    for (i = 0; i < pstDPlmnNPlmnCfgInfo->ucCTHplmnNum; i++)
+    {
+        if (VOS_TRUE == NAS_MML_CompareBcchPlmnwithSimPlmn(&pstDPlmnNPlmnCfgInfo->astCTHplmnList[i], pstHplmnId))
+        {
+            return NAS_MMC_HPLMN_TYPE_CT;
+        }
+    }
+
+    return NAS_MMC_HPLMN_TYPE_BUTT;
+}
+
 
 #if (FEATURE_ON == FEATURE_DSDS)
 
@@ -3936,6 +4367,49 @@ VOS_VOID NAS_MMC_ReadModemRfShareCfgNvim(VOS_VOID)
 }
 
 #endif
+
+VOS_VOID  NAS_MMC_ReadUmtsCodecTypeNvim(VOS_VOID)
+{
+    MN_CALL_UMTS_CODEC_TYPE_STRU        stNvimCodecType;
+    NAS_MML_CALL_UMTS_CODEC_TYPE_STRU   stCodecType; 
+
+    PS_MEM_SET(&stNvimCodecType, 0x00, sizeof(stNvimCodecType));
+    PS_MEM_SET(&stCodecType, 0x00, sizeof(stCodecType));
+
+    if ( NV_OK != NV_Read(en_NV_Item_UMTS_CODEC_TYPE,
+                          &stNvimCodecType,
+                          sizeof(stNvimCodecType)))
+    {
+        return;
+    }
+
+    stCodecType.ucCnt = stNvimCodecType.ucCnt;
+    PS_MEM_CPY(stCodecType.aucUmtsCodec, stNvimCodecType.aucUmtsCodec, sizeof(stCodecType.aucUmtsCodec));
+
+    NAS_MML_CALL_SetCallUmtsCodecType(&stCodecType);
+}
+
+
+VOS_VOID  NAS_MMC_ReadMedCodecTypeNvim(VOS_VOID)
+{
+    MN_CALL_NIMV_ITEM_CODEC_TYPE_STRU   stNvimCodecType;
+    NAS_MML_CALL_GSM_CODEC_TYPE_STRU    stCodecType;
+
+    PS_MEM_SET(&stNvimCodecType, 0x00, sizeof(stNvimCodecType));  
+    PS_MEM_SET(&stCodecType, 0x00, sizeof(stCodecType)); 
+
+    if ( NV_OK != NV_Read(en_NV_Item_MED_CODEC_TYPE,
+                          &stNvimCodecType,
+                          sizeof(stNvimCodecType)))
+    {
+        return;
+    }
+
+    stCodecType.ucCodecTypeNum = stNvimCodecType.ucCodecTypeNum;
+    PS_MEM_CPY(stCodecType.aucCodecType, stNvimCodecType.aucCodecType, sizeof(stNvimCodecType.aucCodecType));
+    
+    NAS_MML_CALL_SetCallGsmCodecType(&stCodecType);
+}
 
 VOS_VOID NAS_MMC_ReadImsVoiceMMEnableNvim(VOS_VOID)
 {
@@ -4048,7 +4522,7 @@ VOS_VOID NAS_MMC_ReadIgnoreAuthRejFlgNvim(VOS_VOID)
 
 
 
-VOS_VOID NAS_MMC_ReadHighPrioRatHplmnTimerInfoNvim( VOS_VOID  )
+VOS_VOID NAS_MMC_ReadHighPrioRatHplmnTimerCfgNvim( VOS_VOID  )
 {
     NAS_MML_HIGH_PRIO_RAT_HPLMN_TIMER_CFG_STRU       *pstHighRatHplmnTimerCfg = VOS_NULL_PTR;
     NAS_MMC_NVIM_HIGH_PRIO_RAT_HPLMN_TIMER_CFG_STRU   stHighRatHplmnTimerCfg;
@@ -4057,9 +4531,9 @@ VOS_VOID NAS_MMC_ReadHighPrioRatHplmnTimerInfoNvim( VOS_VOID  )
 
     pstHighRatHplmnTimerCfg = NAS_MML_GetHighPrioRatHplmnTimerCfg();
 
-    if (NV_OK != NV_Read (en_NV_Item_HIGH_PRIO_RAT_HPLMN_TIMER_INFO, &stHighRatHplmnTimerCfg, sizeof(stHighRatHplmnTimerCfg)))
+    if (NV_OK != NV_Read (en_NV_Item_HIGH_PRIO_RAT_HPLMN_TIMER_CFG, &stHighRatHplmnTimerCfg, sizeof(stHighRatHplmnTimerCfg)))
     {
-        NAS_WARNING_LOG(WUEPS_PID_MMC, "NAS_MMC_ReadHighPrioRatHplmnTimerInfoNvim:Read NV Failed");
+        NAS_WARNING_LOG(WUEPS_PID_MMC, "NAS_MMC_ReadHighPrioRatHplmnTimerCfgNvim:Read NV Failed");
         return;
     }
 
@@ -4068,6 +4542,7 @@ VOS_VOID NAS_MMC_ReadHighPrioRatHplmnTimerInfoNvim( VOS_VOID  )
     if (VOS_TRUE == stHighRatHplmnTimerCfg.ucActiveFLg)
     {
         pstHighRatHplmnTimerCfg->ucActiveFLg                = VOS_TRUE;
+        pstHighRatHplmnTimerCfg->ucTdThreshold              = stHighRatHplmnTimerCfg.ucTdThreshold;
         pstHighRatHplmnTimerCfg->ulFirstSearchTimeLen       = stHighRatHplmnTimerCfg.ulFirstSearchTimeLen;
         pstHighRatHplmnTimerCfg->ulNonFirstSearchTimeLen    = stHighRatHplmnTimerCfg.ulNonFirstSearchTimeLen;
         pstHighRatHplmnTimerCfg->ulFirstSearchTimeCount     = stHighRatHplmnTimerCfg.ulFirstSearchTimeCount;
@@ -4076,7 +4551,6 @@ VOS_VOID NAS_MMC_ReadHighPrioRatHplmnTimerInfoNvim( VOS_VOID  )
     
     return;
 }
-
 
 #if  (FEATURE_ON == FEATURE_LTE)
 
@@ -4108,9 +4582,49 @@ VOS_VOID NAS_MMC_ReadUltraFlashCsfbSupportFlgNvim(VOS_VOID)
 
     return;
 }
+
+
+VOS_VOID NAS_MMC_ReadSrvccSupportFlgNvim(VOS_VOID)
+{
+    IMS_NV_IMS_CAP_STRU                 stImsCap;
+    VOS_UINT8                           ucSrvccFlg;
+    NAS_MML_MS_CAPACILITY_INFO_STRU    *pstMsCapability = VOS_NULL_PTR;
+
+    pstMsCapability = NAS_MML_GetMsCapability();
+
+    PS_MEM_SET(&stImsCap, 0x00, sizeof(IMS_NV_IMS_CAP_STRU));
+
+    /* 读NV项EN_NV_ID_IMS_CAPABILITY，失败，直接返回 */
+    if (NV_OK != NV_Read(EN_NV_ID_IMS_CAPABILITY,
+                         &stImsCap, 
+                         sizeof(IMS_NV_IMS_CAP_STRU)))
+    {
+        NAS_ERROR_LOG(WUEPS_PID_MMC, "NAS_MMC_ReadSrvccSupportFlgNvim():WARNING: read EN_NV_ID_IMS_CAPABILITY Error");
+
+        return;
+    }
+
+    /* active/hold/alerting/pre alterting任一个状态支持SRVCC，就给网络报支持SRVCC */
+    ucSrvccFlg  = (stImsCap.ucSrvccOnImsSupportFlag || stImsCap.ucSrvccMidCallOnImsSupportFlag 
+                || stImsCap.ucSrvccAlertingOnImsSupportFlag || stImsCap.ucSrvccPreAlertingOnImsSupportFlag);
+
+    /* 赋值到全局变量，aucNetworkCapability中srvcc的bit位所在的位置参考3GPP 24008 */
+    if ( VOS_TRUE == ucSrvccFlg)
+    {
+        NAS_MML_SetSupportSrvccFlg(VOS_TRUE);
+        pstMsCapability->stMsNetworkCapability.aucNetworkCapability[2] |= 0x08;
+    }
+    else
+    {
+        NAS_MML_SetSupportSrvccFlg(VOS_FALSE);
+        pstMsCapability->stMsNetworkCapability.aucNetworkCapability[2] &= 0xf7;
+    }
+
+    return;
+}
+
+
 #endif
-
-
 VOS_VOID NAS_MMC_Read3GPP2UplmnNotPrefFlgNvim(VOS_VOID)
 {
     NAS_MMC_NVIM_3GPP2_UPLMN_NOT_PREF_STRU                  st3GPP2UplmnNotPref;
@@ -4137,6 +4651,235 @@ VOS_VOID NAS_MMC_Read3GPP2UplmnNotPrefFlgNvim(VOS_VOID)
         NAS_MML_Set3GPP2UplmnNotPrefFlg(VOS_FALSE);
     }
 
+    return;
+}
+
+
+VOS_VOID NAS_MMC_ReadSyscfgTriPlmnSrchCfgNvim(VOS_VOID)
+{
+    NAS_MMC_NVIM_SYSCFG_TRIGGER_PLMN_SEARCH_CFG_STRU        stSyscfgTriPlmnSrchCfg;
+    VOS_UINT32                                              ulLength;
+
+    ulLength = 0;
+    PS_MEM_SET(&stSyscfgTriPlmnSrchCfg, 0x00, sizeof(NAS_MMC_NVIM_SYSCFG_TRIGGER_PLMN_SEARCH_CFG_STRU));
+
+    /* 先获取NV的长度 */
+    NV_GetLength(en_NV_Item_Syscfg_Trigger_Plmn_Search_Cfg, &ulLength);
+
+    if (ulLength > sizeof(NAS_MMC_NVIM_SYSCFG_TRIGGER_PLMN_SEARCH_CFG_STRU))
+    {
+        NAS_ERROR_LOG(WUEPS_PID_MMC, "NAS_MMC_ReadSyscfgTriPlmnSrchCfgNvim(): en_NV_Item_Syscfg_Trigger_Plmn_Search_Cfg length Error");
+        return;
+    }
+
+    /* 读NV失败 */
+    if (NV_OK != NV_Read(en_NV_Item_Syscfg_Trigger_Plmn_Search_Cfg,
+                         &stSyscfgTriPlmnSrchCfg, ulLength))
+    {
+        NAS_ERROR_LOG(WUEPS_PID_MMC, "NAS_MMC_ReadSyscfgTriPlmnSrchCfgNvim(): en_NV_Item_Syscfg_Trigger_Plmn_Search_Cfg error");
+        return;
+    }
+
+    if (VOS_TRUE == stSyscfgTriPlmnSrchCfg.ucHighPrioRatPlmnSrchFlg)
+    {
+        NAS_MML_SetSyscfgTriHighRatSrchFlg(VOS_TRUE);
+    }
+    else
+    {
+        NAS_MML_SetSyscfgTriHighRatSrchFlg(VOS_FALSE);
+    }
+
+    return;
+}
+
+VOS_VOID NAS_MMC_ReadRelPsSignalConCfgNvim(VOS_VOID)
+{
+    NAS_MMC_NVIM_REL_PS_SIGNAL_CON_CFG_STRU                 stRelPsSigConCfg;
+
+    PS_MEM_SET(&stRelPsSigConCfg, 0x00, sizeof(NAS_MMC_NVIM_REL_PS_SIGNAL_CON_CFG_STRU));
+
+    if(NV_OK != NV_Read(en_NV_Item_REL_PS_SIGNAL_CON_CFG,
+                        (VOS_VOID *)&stRelPsSigConCfg, 
+                        sizeof(NAS_MMC_NVIM_REL_PS_SIGNAL_CON_CFG_STRU)))
+    {
+        NAS_ERROR_LOG(WUEPS_PID_MMC,
+                     "NAS_MMC_ReadRelPsSignalConCfgNvim():en_NV_Item_REL_PS_SIGNAL_CON_CFG Error");
+        return;
+    }
+
+    if(VOS_FALSE == stRelPsSigConCfg.ucRelPsSignalConFlg)
+    {
+        NAS_MML_SetRelPsSigConFlg(VOS_FALSE);
+        return;
+    }
+
+    NAS_MML_SetRelPsSigConFlg(VOS_TRUE);
+    NAS_MML_SetRelPsSigConCfg_T3340TimerLen(stRelPsSigConCfg.ulT3340Len);
+}
+
+#if  (FEATURE_ON == FEATURE_IMS)
+
+VOS_VOID NAS_MMC_ReadImsRatSupportNvim(VOS_VOID)
+{
+    VOS_UINT32                                  ulLength;
+    IMSA_NV_IMS_RAT_SUPPORT_STRU                stImsSupport;
+
+    /* IMS能力只有在FEATURE_IMS打开时，才有可能设置为开启 */
+    /* 先获取NV的长度 */
+    ulLength = 0;
+    NV_GetLength(EN_NV_ID_IMS_RAT_SUPPORT, &ulLength);
+
+    if (ulLength > sizeof(IMSA_NV_IMS_RAT_SUPPORT_STRU))
+    {
+        NAS_ERROR_LOG(WUEPS_PID_MMC, "NAS_MMC_ReadImsRatSupportNvim():WARNING: EN_NV_ID_IMS_RAT_SUPPORT length Error");
+
+        return;
+    }
+
+    /* 读NV项EN_NV_ID_IMS_RAT_SUPPORT，失败，直接返回 */
+    if (NV_OK != NV_Read(EN_NV_ID_IMS_RAT_SUPPORT,
+                         &stImsSupport, ulLength))
+    {
+
+        NAS_ERROR_LOG(WUEPS_PID_MMC, "NAS_MMC_ReadImsRatSupportNvim():WARNING: read EN_NV_ID_IMS_RAT_SUPPORT Error");
+
+        return;
+    }
+
+    /* 赋值到全局变量中 */
+    NAS_MML_SetLteImsSupportFlg(stImsSupport.ucLteImsSupportFlag);
+
+    return;
+}
+
+
+VOS_VOID NAS_MMC_ReadImsCapNvim(VOS_VOID)
+{
+    VOS_UINT32                                  ulLength;
+    IMS_NV_IMS_CAP_STRU                         stImsCapa;
+
+    /* 先获取NV的长度 */
+    ulLength = 0;
+    NV_GetLength(EN_NV_ID_IMS_CAPABILITY, &ulLength);
+
+    if (ulLength > sizeof(IMS_NV_IMS_CAP_STRU))
+    {
+        NAS_ERROR_LOG(WUEPS_PID_MMC, "NAS_MMC_ReadImsCapNvim():WARNING: EN_NV_ID_IMS_CAPABILITY length Error");
+
+        return;
+    }
+
+    /* 读NV项EN_NV_ID_IMS_CAPABILITY，失败，直接返回 */
+    if (NV_OK != NV_Read(EN_NV_ID_IMS_CAPABILITY,
+                         &stImsCapa, ulLength))
+    {
+
+        NAS_ERROR_LOG(WUEPS_PID_MMC, "NAS_MMC_ReadImsCapNvim():WARNING: read EN_NV_ID_IMS_CAPABILITY Error");
+
+        return;
+    }
+
+    /* 赋值到全局变量中 */
+    NAS_MML_SetVoiceCallOnImsSupportFlag(stImsCapa.ucVoiceCallOnImsSupportFlag);
+    NAS_MML_SetVideoCallOnImsSupportFlag(stImsCapa.ucVideoCallOnImsSupportFlag);
+    NAS_MML_SetSmsOnImsSupportFlag(stImsCapa.ucSmsOnImsSupportFlag);
+
+    return;
+}
+VOS_VOID NAS_MMC_ReadUssdOnImsNvim(VOS_VOID)
+{
+    VOS_UINT32                                  ulLength;
+    TAF_NV_IMS_USSD_SUPPORT_STRU                stUssdFlg;
+
+    /* 先获取NV的长度 */
+    ulLength = 0;
+    NV_GetLength(en_NV_Item_IMS_USSD_SUPPORT_FLG, &ulLength);
+
+    if (ulLength > sizeof(TAF_NV_IMS_USSD_SUPPORT_STRU))
+    {
+        NAS_ERROR_LOG(WUEPS_PID_MMC,
+                      "NAS_MMC_ReadUssdOnImsNvim():WARNING: en_NV_Item_IMS_USSD_SUPPORT_FLG length Error");
+
+        return;
+    }
+
+    /* 读NV项en_NV_Item_IMS_USSD_SUPPORT_FLG，失败，直接返回 */
+    if (NV_OK != NV_Read(en_NV_Item_IMS_USSD_SUPPORT_FLG,
+                         &stUssdFlg, ulLength))
+    {
+
+        NAS_ERROR_LOG(WUEPS_PID_MMC,
+                      "NAS_MMC_ReadUssdOnImsNvim():WARNING: read en_NV_Item_IMS_USSD_SUPPORT_FLG Error");
+
+        return;
+    }
+
+    /* NV项激活，更新USSD支持配置信息 */
+    NAS_MML_SetUssdOnImsSupportFlag(stUssdFlg.ucUssdOnImsSupportFlag);
+
+    return;
+}
+
+#endif
+VOS_VOID NAS_MMC_ReadRoamDisplayCfgNvim(VOS_VOID)
+{
+    NAS_MMC_NVIM_ROAM_DISPLAY_CFG_STRU          stNvimRoamDisplayCfg;;
+
+    PS_MEM_SET(&stNvimRoamDisplayCfg, 0x00, sizeof(stNvimRoamDisplayCfg));
+
+    if (NV_OK != NV_Read(en_NV_Item_Roam_Display_Cfg,
+                        (VOS_VOID *)&stNvimRoamDisplayCfg,
+                        sizeof(NAS_MMC_NVIM_ROAM_DISPLAY_CFG_STRU)))
+    {
+        NAS_ERROR_LOG(WUEPS_PID_MMC,
+                     "NAS_MMC_ReadRoamDisplayCfgNvim():en_NV_Item_Roam_Display_Cfg Error");
+        return;
+    }
+
+    if (VOS_TRUE == stNvimRoamDisplayCfg.ucHplmnInEplmnDisplayHomeFlg)
+    {
+        NAS_MML_SetHplmnInEplmnDisplayHomeFlg(VOS_TRUE);
+
+        return;
+    }
+
+    NAS_MML_SetHplmnInEplmnDisplayHomeFlg(VOS_FALSE);
+
+    return;
+}
+
+
+VOS_VOID NAS_MMC_ReadProtectMtCsfbPagingProcedureLenNvim(VOS_VOID)
+{
+    NAS_MMC_NVIM_PROTECT_MT_CSFB_PAGING_PROCEDURE_LEN_STRU  stNvimProtectMtCsfbPagingProcedureLen;;
+
+    PS_MEM_SET(&stNvimProtectMtCsfbPagingProcedureLen, 0x00, sizeof(stNvimProtectMtCsfbPagingProcedureLen));
+
+    if (NV_OK != NV_Read(en_NV_Item_Protect_Mt_Csfb_Paging_Procedure_Len,
+                        (VOS_VOID *)&stNvimProtectMtCsfbPagingProcedureLen,
+                        sizeof(NAS_MMC_NVIM_PROTECT_MT_CSFB_PAGING_PROCEDURE_LEN_STRU)))
+    {
+        NAS_ERROR_LOG(WUEPS_PID_MMC,
+                     "NAS_MMC_ReadProtectMtCsfbPagingProcedureLenNvim():en_NV_Item_Protect_Mt_Csfb_Paging_Procedure_Len Error");
+        return;
+    }
+
+    if (stNvimProtectMtCsfbPagingProcedureLen.usMtCsfbPagingProcedureLen < NAS_MML_PROTECT_MT_CSFB_PAGING_PROCEDURE_MIN_LEN)
+    {
+        NAS_MML_SetProtectMtCsfbPagingProcedureLen(NAS_MML_PROTECT_MT_CSFB_PAGING_PROCEDURE_MIN_LEN);
+
+        return;
+    }
+
+    if (stNvimProtectMtCsfbPagingProcedureLen.usMtCsfbPagingProcedureLen > NAS_MML_PROTECT_MT_CSFB_PAGING_PROCEDURE_MAX_LEN)
+    {
+        NAS_MML_SetProtectMtCsfbPagingProcedureLen(NAS_MML_PROTECT_MT_CSFB_PAGING_PROCEDURE_MAX_LEN);
+
+        return;
+    }    
+
+    NAS_MML_SetProtectMtCsfbPagingProcedureLen(stNvimProtectMtCsfbPagingProcedureLen.usMtCsfbPagingProcedureLen);
+    
     return;
 }
 

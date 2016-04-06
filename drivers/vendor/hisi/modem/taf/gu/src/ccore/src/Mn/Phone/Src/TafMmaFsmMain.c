@@ -104,7 +104,7 @@ VOS_UINT32 TAF_MMA_RcvSysCfgSetReq_Main(
     TAF_MMA_SYS_CFG_REQ_STRU           *pstRcvMsg = VOS_NULL_PTR;
     VOS_UINT16                          usClientId;
     VOS_UINT8                           ucOpId;
-    
+
     VOS_UINT8                           ucCtxIndex;
 
     pstRcvMsg = (TAF_MMA_SYS_CFG_REQ_STRU *)pstMsg;
@@ -113,7 +113,7 @@ VOS_UINT32 TAF_MMA_RcvSysCfgSetReq_Main(
     usClientId      = pstRcvMsg->stCtrl.usClientId;
     ucOpId          = pstRcvMsg->stCtrl.ucOpId;
 
-    
+
     /* 如果g_stTafMmaCtx.astMmaOperCtx里TAF_MMA_OPER_SYS_CFG_REQ类型结构正在被使用 */
     if (VOS_TRUE == TAF_MMA_IsOperTypeUsed(TAF_MMA_OPER_SYS_CFG_REQ))
     {
@@ -139,7 +139,7 @@ VOS_UINT32 TAF_MMA_RcvSysCfgSetReq_Main(
     /* 分配一个g_stTafMmaCtx.astMmaOperCtx到对应操作 */
     TAF_MMA_SetOperCtx(pstRcvMsg->stCtrl,
                        TAF_MMA_OPER_SYS_CFG_REQ, ucCtxIndex);
-    
+
 
     /* 在关机状态，SYSCFG设置时候不检测CL模式，CL模式只有在开机后生效 */
     if ( (STA_FSM_NULL == g_StatusContext.ulFsmState)
@@ -218,7 +218,7 @@ VOS_UINT32 TAF_MMA_RcvMmaSimlockStatusChangeInd_Main(
     {
         TAF_MMA_ProcPhoneStop_NotEnableStatus();
     }
-        
+
     /* 启动phone mode状态机 */
     TAF_MMA_FSM_InitSubFsm(TAF_MMA_FSM_PHONE_MODE);
 
@@ -352,8 +352,27 @@ VOS_UINT32 TAF_MMA_RcvDetachReq_Main(
 }
 
 
+#if (FEATURE_IMS == FEATURE_ON)
+VOS_UINT32 TAF_MMA_RcvTafImsSwitchSetReq_Main(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+)
+{
+    /* 启动IMS SWITCH状态机 */
+    TAF_MMA_FSM_InitSubFsm(TAF_MMA_FSM_IMS_SWITCH);
 
+    return VOS_TRUE;
+}
+VOS_UINT32 TAF_MMA_RcvMmaImsSwitchRsltInd_Main(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+)
+{
+    /* 暂时没有处理，只是为了后续的缓存处理，以后如果有需要，可以在这里添加处理 */
 
+    return VOS_TRUE;
+}
+#endif
 
 
 

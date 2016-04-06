@@ -16,15 +16,8 @@
 #include <linux/stat.h>
 #include <linux/fault-inject.h>
 
-#include <linux/scatterlist.h>
-#include <linux/mmc/mmc.h>
-
 #include <linux/mmc/card.h>
 #include <linux/mmc/host.h>
-#include <linux/genhd.h>
-
-#include <linux/uaccess.h>
-#include <linux/errno.h>
 
 #include "core.h"
 #include "mmc_ops.h"
@@ -37,13 +30,11 @@ module_param(fail_request, charp, 0);
 
 #endif /* CONFIG_FAIL_MMC_REQUEST */
 
-/* <DTS2014010906937 h00211444 20140109 begin */
 /* Enum of power state */
 enum sd_type {
     SDHC = 0,
     SDXC,
 };
-/* DTS2014010906937 h00211444 20140109 end> */
 
 /* The debugfs functions are optimized away when CONFIG_DEBUG_FS isn't set. */
 static int mmc_ios_show(struct seq_file *s, void *data)
@@ -217,7 +208,6 @@ static int mmc_clock_opt_set(void *data, u64 val)
 DEFINE_SIMPLE_ATTRIBUTE(mmc_clock_fops, mmc_clock_opt_get, mmc_clock_opt_set,
 	"%llu\n");
 
-/* <DTS2014010906937 h00211444 20140109 begin */
 static int mmc_sdxc_opt_get(void *data, u64 *val)
 {
 	struct mmc_card	*card = data;
@@ -234,7 +224,6 @@ static int mmc_sdxc_opt_get(void *data, u64 *val)
 }
 DEFINE_SIMPLE_ATTRIBUTE(mmc_sdxc_fops, mmc_sdxc_opt_get,
 			NULL, "%llu\n");
-/* DTS2014010906937 h00211444 20140109 end? */
 
 void mmc_add_host_debugfs(struct mmc_host *host)
 {
@@ -368,389 +357,84 @@ static const struct file_operations mmc_dbg_ext_csd_fops = {
 	.llseek		= default_llseek,
 };
 
-static int is_within_group(unsigned int addr, unsigned int addr_start, unsigned int size, unsigned int wp_group_size){
-	unsigned int trimed_wp_group_size;
 
-	trimed_wp_group_size = (addr_start + size) / wp_group_size * wp_group_size;
+#ifdef CONFIG_HW_MMC_TEST
+static int mmc_card_addr_open(struct inode *inode, struct file *filp)
+{
+	struct mmc_card *card = inode->i_private;
+	filp->private_data = card;
 
-	if( (addr >= addr_start) && (addr <trimed_wp_group_size ) )
-		return 0;
-	else
-		return 1;
+	return 0;
 }
 
-static int mmc_wr_prot_open(struct inode *inode, struct file *filp)
+static ssize_t mmc_card_addr_read(struct file *filp, char __user *ubuf,
+				     size_t cnt, loff_t *ppos)
+{
+    char buf[64] = {0};
+    struct mmc_card *card = filp->private_data;
+    long card_addr = (long)card;
+
+    card_addr = (long)(card_addr ^ CARD_ADDR_MAGIC);
+    snprintf(buf, sizeof(buf), "%ld", card_addr);
+
+    return simple_read_from_buffer(ubuf, cnt, ppos,
+            buf, sizeof(buf));
+}
+
+static const struct file_operations mmc_dbg_card_addr_fops = {
+	.open		= mmc_card_addr_open,
+	.read		= mmc_card_addr_read,
+    .llseek     = default_llseek,
+};
+
+static int mmc_test_st_open(struct inode *inode, struct file *filp)
 {
 	struct mmc_card *card = inode->i_private;
 
 	filp->private_data = card;
+
 	return 0;
 }
 
-static ssize_t mmc_wr_prot_read(struct file *filp, char __user *ubuf,
-		size_t cnt, loff_t *ppos)
+static ssize_t mmc_test_st_read(struct file *filp, char __user *ubuf,
+				     size_t cnt, loff_t *ppos)
 {
-#define PARTITION_NOT_PROTED 0
-#define PARTITION_PROTED 1
-
+    char buf[64] = {0};
 	struct mmc_card *card = filp->private_data;
 
-	//used for mmcrequest
-	unsigned int wp_group_size;
-	struct mmc_request mrq = {NULL};
-	struct mmc_command cmd = {0};
-	struct mmc_data data = {0};
-	struct scatterlist sg;
+	if (!card)
+		return cnt;
 
-	void *data_buf;
-	unsigned char buf[8];
-	unsigned int addr = 0;
-	unsigned int init_addr = 0;
-	char line_buf[128];
+    snprintf(buf, sizeof(buf), "%d", card->host->test_status);
 
-	int i, j, k;
-	unsigned char ch;
-	unsigned char wp_flag;
-	int len = 8;
-	unsigned int loop_count = 0;
-	unsigned int size = 0;
-	unsigned int status_prot = PARTITION_NOT_PROTED;
+    return simple_read_from_buffer(ubuf, cnt, ppos,
+            buf, sizeof(buf));
 
-	struct emmc_partition *p_emmc_partition;
-
-	pr_info("[HW]: eMMC protect driver built on %s @ %s\n", __DATE__, __TIME__);
-
-	p_emmc_partition = g_emmc_partition;
-	for(i = 0; i < MAX_EMMC_PARTITION_NUM; i++){
-		if(p_emmc_partition->flags == 0)
-			break;
-
-		if(strcmp(p_emmc_partition->name, "system")  == 0){
-			addr = (unsigned int)(p_emmc_partition->start);
-			size = (unsigned int)(p_emmc_partition->size_sectors);
-			pr_info("[HW]:%s: partitionname = %s \n", __func__, p_emmc_partition->name);
-			pr_info("[HW]:%s: partition start from = 0x%08x \n", __func__, addr);
-			pr_info("[HW]:%s: partition size = 0x%08x \n", __func__, size);
-		}
-		p_emmc_partition++;
-	}
-
-	init_addr = addr;
-#if 0
-	if(addr < 0)
-	{
-		pr_err("[HW]:%s:invalid addr = 0x%08x.", __func__, addr);
-		if(copy_to_user(ubuf, "fail", strlen("fail "))){
-			pr_info("[HW]: %s: copy to user error \n", __func__);
-			return -EFAULT;;
-		}
-		return -1;
-	}
-#endif
-	wp_group_size =(512 * 1024) * card->ext_csd.raw_hc_erase_gap_size
-		* card->ext_csd.raw_hc_erase_grp_size/512;
-
-	if(addr % wp_group_size == 0){
-
-	}else{
-		addr = (addr / wp_group_size) * wp_group_size + wp_group_size;
-		pr_info("[HW]:%s: setting start area is not muti size of wp_group_size\n", __func__);
-	}
-
-	loop_count = (init_addr + size - addr) / wp_group_size;
-
-	pr_info("[HW]:%s: EXT_CSD_HC_WP_GRP_SIZE = 0x%02x. \n", __func__, card->ext_csd.raw_hc_erase_gap_size);
-	pr_info("[HW]:%s: EXT_CSD_HC_ERASE_GRP_SIZE = 0x%02x. \n", __func__, card->ext_csd.raw_hc_erase_grp_size);
-
-	pr_info("[HW]:%s: addr = 0x%08x, wp_group_size=0x%08x, size = 0x%08x \n",__func__, addr, wp_group_size, size);
-	pr_info("[HW]:%s: loop_count = 0x%08x \n",__func__, loop_count);
-
-	/* dma onto stack is unsafe/nonportable, but callers to this
-	 * routine normally provide temporary on-stack buffers ...
-	 */
-	addr = addr - wp_group_size * 32;
-	for(k=0; k< loop_count/32 + 2; k++){
-		data_buf = kmalloc(32, GFP_KERNEL); //dma size 32
-		if (data_buf == NULL)
-			return -ENOMEM;
-
-		mrq.cmd = &cmd;
-		mrq.data = &data;
-
-		cmd.opcode = 31;
-		cmd.arg = addr;
-		cmd.flags =  MMC_RSP_R1 | MMC_CMD_ADTC;
-
-		data.blksz = len;
-		data.blocks = 1;
-		data.flags = MMC_DATA_READ;
-		data.sg = &sg;
-		data.sg_len = 1;
-
-		sg_init_one(&sg, data_buf, len);
-		mmc_set_data_timeout(&data, card);
-		mmc_claim_host(card->host);
-		mmc_wait_for_req(card->host, &mrq);
-		mmc_release_host(card->host);
-
-		memcpy(buf, data_buf, len);
-		kfree(data_buf);
-
-/*
- *		start to show the detailed read status from the response
-*/
-#if 0
-		for(i = 0; i < 8; i++){
-			pr_info("[HW]:%s: buffer = 0x%02x \n", __func__, buf[i]);
-		}
-#endif
-/*
- *		end of show the detailed read status from the response
-*/
-
-		for(i = 7; i >= 0; i--)
-		{
-			ch = buf[i];
-			for(j = 0; j < 4; j++)
-			{
-				wp_flag = ch & 0x3;
-				memset(line_buf, 0x00, sizeof(line_buf));
-				snprintf(line_buf, sizeof(line_buf), "[0x%08x~0x%08x] Write protection group is ", addr, addr + wp_group_size - 1);
-
-				switch(wp_flag)
-				{
-					case 0:
-						strncat(line_buf, "disable", strlen("disable"));
-						break;
-
-					case 1:
-						strncat(line_buf, "temporary write protection", strlen("temporary write protection"));
-						break;
-
-					case 2:
-						strncat(line_buf, "power-on write protection", strlen("power-on write protection"));
-						break;
-
-					case 3:
-						strncat(line_buf, "permanent write protection", strlen("permanent write protection"));
-						break;
-
-					default:
-						break;
-				}
-
-				pr_info("%s: %s\n", mmc_hostname(card->host), line_buf);
-
-				if( wp_flag == 1){
-					if(is_within_group(addr, init_addr, size, wp_group_size) == 0){
-						status_prot = PARTITION_PROTED;
-						// pr_info("[HW]: %s: addr = 0x%08x, init_addr = 0x%08x, size = 0x%08x, group protected \n", __func__, addr, init_addr, size);
-					}
-				}
-				addr += wp_group_size;
-				ch = ch >> 2;
-			}
-		}
-	}
-
-	pr_info("[HW]: %s: end sector = 0x%08x \n", __func__, size + init_addr);
-
-	if (cmd.error)
-	{
-		pr_err("[HW]:%s:cmd.error=%d.", __func__, cmd.error);
-		if(copy_to_user(ubuf, "fail", strlen("fail "))){
-			pr_info("[HW]: %s: copy to user error \n", __func__);
-			return -EFAULT;;
-		}
-		return cmd.error;
-	}
-
-	if (data.error)
-	{
-		pr_err("[HW]:%s:data.error=%d.", __func__, data.error);
-		if(copy_to_user(ubuf, "fail", strlen("fail "))){
-			pr_info("[HW]: %s: copy to user error \n", __func__);
-			return -EFAULT;;
-		}
-		return data.error;
-	}
-
-	switch(status_prot){
-		case PARTITION_PROTED:
-			if(copy_to_user(ubuf, "protected", strlen("protected "))){
-				pr_info("[HW]: %s: copy to user error \n", __func__);
-				return -EFAULT;;
-			}
-			pr_info("[HW]: %s: protected \n", __func__);
-		break;
-
-		case PARTITION_NOT_PROTED:
-			if(copy_to_user(ubuf, "not_protected", strlen("not_protected "))){
-				pr_info("[HW]: %s: copy to user error \n", __func__);
-				return -EFAULT;;
-			}
-			pr_info("[HW]: %s: not_protected \n", __func__);
-		break;
-
-		default:break;
-	}
-	return 0;
 }
-// extern struct partition partitions[];
-static ssize_t mmc_wr_prot_write(struct file *filp,
-		const char __user *ubuf, size_t cnt,
-		loff_t *ppos)
+
+static ssize_t mmc_test_st_write(struct file *filp,
+				      const char __user *ubuf, size_t cnt,
+				      loff_t *ppos)
 {
 	struct mmc_card *card = filp->private_data;
-	unsigned int wp_group_size;
-	unsigned int set_clear_wp, status = 0;
-	int ret, i;
-	unsigned int addr = 0;
-	unsigned int init_addr = 0;
-	unsigned int loop_count = 0;
-	unsigned int size = 0;
-	char *cmd_buffer;
+	int value;
 
-	// struct mmc_request mrq = {NULL};
-	struct mmc_command cmd = {0};
+	if (!card){
+        return cnt;
+    }
 
-	struct emmc_partition *p_emmc_partition;
+	sscanf(ubuf, "%d", &value);
+    card->host->test_status = value;
 
-	pr_info("[HW]: eMMC protect driver built on %s @ %s\n", __DATE__, __TIME__);
-
-	if( ubuf == NULL){
-		pr_info("[HW]:%s: NULL pointer \n", __func__);
-		return -1;
-	}
-
-	cmd_buffer = kmalloc(sizeof(char)*cnt, GFP_KERNEL);
-	if (cmd_buffer == NULL) {
-		return -ENOMEM;
-	}
-	memset(cmd_buffer, 0, sizeof(char)*cnt);
-
-	if(copy_from_user(cmd_buffer, ubuf, cnt)){
-		kfree(cmd_buffer);
-		return -EFAULT;
-	}
-
-	pr_info("[HW]:%s: input arg = %s, cnt = %d \n", __func__, cmd_buffer, cnt);
-
-	if(strncmp(cmd_buffer, "disable_prot", strlen("disable_prot")) == 0){
-		set_clear_wp = 0;
-	}else if(strncmp(cmd_buffer, "enable_prot", strlen("enable_prot")) == 0){
-		set_clear_wp = 1;
-	}
-	else{
-		kfree(cmd_buffer);
-		return -1;
-	}
-
-	// mrq.cmd = &cmd;
-	// mrq.data = &data;
-
-	wp_group_size =(512 * 1024) * card->ext_csd.raw_hc_erase_gap_size
-		* card->ext_csd.raw_hc_erase_grp_size / 512;
-
-	p_emmc_partition = g_emmc_partition;
-	for(i = 0; i < MAX_EMMC_PARTITION_NUM; i++){
-		if(p_emmc_partition->flags == 0)
-			break;
-		if(strcmp(p_emmc_partition->name, "system") == 0){
-			addr = (unsigned int)(p_emmc_partition->start);
-			size = (unsigned int)(p_emmc_partition->size_sectors);
-			pr_info("[HW]:%s: partitionname = %s \n", __func__, p_emmc_partition->name);
-			pr_info("[HW]:%s: partition start from = 0x%08x \n", __func__, addr);
-			pr_info("[HW]:%s: partition size = 0x%08x \n", __func__, size);
-			break;
-		}
-		p_emmc_partition++;
-	}
-
-	if(strcmp(p_emmc_partition->name, "")  == 0){
-		pr_info("[HW]:%s: can not find partition system \n", __func__);
-		kfree(cmd_buffer);
-		return -1;
-	}
-
-	pr_info("[HW]:%s: card->ext_csd.raw_hc_erase_gap_size = 0x%02x,  card->ext_csd.raw_hc_erase_grp_size = 0x%02x \n", __func__, \
-			card->ext_csd.raw_hc_erase_gap_size, card->ext_csd.raw_hc_erase_grp_size);
-
-	pr_info("[HW]:%s, size = 0x%08x, wp_group_size = 0x%08x, unit is block \n", \
-			__func__, size, wp_group_size);
-	if (wp_group_size == 0) {
-		pr_info("[HW]:%s:invalid wp_group_size=0x%08x.", __func__, wp_group_size);
-		kfree(cmd_buffer);
-		return -2;
-	}
-
-	init_addr = addr;
-
-	if(addr % wp_group_size == 0){
-
-	}else{
-		addr = (addr / wp_group_size) * wp_group_size + wp_group_size;
-		pr_info("[HW]:%s: setting start area is not muti size of wp_group_size\n", __func__);
-	}
-
-	loop_count = (init_addr + size - addr) / wp_group_size;
-
-	pr_info("[HW]:%s:prot_start_sec_addr = 0x%08x \n", __func__, addr);
-	pr_info("[HW]:%s:loop_count = %x \n", __func__, loop_count);
-
-	cmd.flags = MMC_RSP_R1B | MMC_CMD_AC;
-
-	if (set_clear_wp){
-		cmd.opcode = MMC_SET_WRITE_PROT;
-	}else{
-		cmd.opcode = MMC_CLR_WRITE_PROT;
-	}
-
-	for (i = 0; i < loop_count; i++) {
-
-		/* Sending CMD28 for each WP group size
-		   address is in sectors already */
-
-		cmd.arg = addr + (i * wp_group_size);
-		pr_info("[HW:%s:loop_count = %d, cmd.arg = 0x%08x, cmd.opcode = %d, \n", __func__, i, cmd.arg, cmd.opcode);
-
-		mmc_claim_host(card->host);
-		ret = mmc_wait_for_cmd(card->host, &cmd, 3);
-		mmc_release_host(card->host);
-
-		if (ret) {
-			pr_err("[HW]:%s:mmc_wait_for_cmd return err = %d \n", __func__, ret);
-			kfree(cmd_buffer);
-			return -3;
-		}
-
-		/* Sending CMD13 to check card status */
-		do {
-			mmc_claim_host(card->host);
-			ret = mmc_send_status(card, &status);
-			mmc_release_host(card->host);
-			if (R1_CURRENT_STATE(status) == R1_STATE_TRAN)
-				break;
-		}while ((!ret) && (R1_CURRENT_STATE(status) == R1_STATE_PRG));
-
-		if (ret) {
-			pr_err("[HW]:%s: mmc_send_status return err = %d \n", __func__, ret);
-			kfree(cmd_buffer);
-			return -4;
-		}
-	}
-
-	pr_info("[HW]: %s: end sector = 0x%08x \n", __func__, size + init_addr);
-	pr_info("[HW]: %s: size = 0x%08x \n", __func__,  size);
-	kfree(cmd_buffer);
-	return size;
+	return cnt;
 }
 
-static const struct file_operations mmc_dbg_wr_prot_fops = {
-	.open		= mmc_wr_prot_open,
-	.read		= mmc_wr_prot_read,
-	.write		= mmc_wr_prot_write,
+static const struct file_operations mmc_dbg_test_st_fops = {
+	.open		= mmc_test_st_open,
+	.read		= mmc_test_st_read,
+	.write		= mmc_test_st_write,
 };
+#endif
 
 void mmc_add_card_debugfs(struct mmc_card *card)
 {
@@ -761,13 +445,11 @@ void mmc_add_card_debugfs(struct mmc_card *card)
 	if (!host->debugfs_root)
 		return;
 
-        /* <DTS2014010906937 h00211444 20140109 begin */
         sdxc_root = debugfs_create_dir("sdxc_root", host->debugfs_root);
         if (IS_ERR(sdxc_root))
             return;
         if (!sdxc_root)
             goto err;
-        /* DTS2014010906937 h00211444 20140109 end> */
 
 	root = debugfs_create_dir(mmc_card_id(card), host->debugfs_root);
 	if (IS_ERR(root))
@@ -778,9 +460,7 @@ void mmc_add_card_debugfs(struct mmc_card *card)
 		 * create the directory. */
 		goto err;
 
-        /* <DTS2014010906937 h00211444 20140109 begin */
         card->debugfs_sdxc = sdxc_root;
-        /* DTS2014010906937 h00211444 20140109 end> */
 	card->debugfs_root = root;
 
 	if (!debugfs_create_x32("state", S_IRUSR, root, &card->state))
@@ -796,34 +476,35 @@ void mmc_add_card_debugfs(struct mmc_card *card)
 					&mmc_dbg_ext_csd_fops))
 			goto err;
 
-        /* <DTS2014010906937 h00211444 20140109 begin */
 	if (mmc_card_sd(card))
 		if (!debugfs_create_file("sdxc", S_IRUSR, sdxc_root, card,
 					&mmc_sdxc_fops))
 			goto err;
-        /* DTS2014010906937 h00211444 20140109 end> */
 
-	if (mmc_card_mmc(card))
-	if (!debugfs_create_file("wr_prot", S_IFREG|S_IRWXU|S_IRGRP|S_IROTH, root, card, &mmc_dbg_wr_prot_fops))
-		goto err;
+#ifdef CONFIG_HW_MMC_TEST
+    if (mmc_card_mmc(card))
+        if (!debugfs_create_file("card_addr", S_IRUSR, root, card,
+                    &mmc_dbg_card_addr_fops))
+            goto err;
+
+    if (mmc_card_mmc(card))
+        if (!debugfs_create_file("test_st", S_IRUSR, root, card,
+                    &mmc_dbg_test_st_fops))
+            goto err;
+#endif
 
 	return;
 
 err:
 	debugfs_remove_recursive(root);
-        /* <DTS2014010906937 h00211444 20140109 begin */
 	debugfs_remove_recursive(sdxc_root);
 	card->debugfs_root = NULL;
 	card->debugfs_sdxc = NULL;
-        /* DTS2014010906937 h00211444 20140109 end> */
 	dev_err(&card->dev, "failed to initialize debugfs\n");
 }
 
 void mmc_remove_card_debugfs(struct mmc_card *card)
 {
 	debugfs_remove_recursive(card->debugfs_root);
-	/* <DTS2014010906937 h00211444 20140109 begin */
 	debugfs_remove_recursive(card->debugfs_sdxc);
-	/* DTS2014010906937 h00211444 20140109 end> */
 }
-

@@ -23,57 +23,7 @@
 *
 *****************************************************************************/
 
-/*
- * Following is my most current (2007-07-26) understanding of how the Kingsun
- * 07D0:4100 dongle (sometimes known as the MA-660) is supposed to work. This
- * information was deduced by examining the USB traffic captured with USBSnoopy
- * from the WinXP driver. Feel free to update here as more of the dongle is
- * known.
- *
- * General: This dongle exposes one interface with two interrupt endpoints, one
- * IN and one OUT. In this regard, it is similar to what the Kingsun/Donshine
- * dongle (07c0:4200) exposes. Traffic is raw and needs to be wrapped and
- * unwrapped manually as in stir4200, kingsun-sir, and ks959-sir.
- *
- * Transmission: To transmit an IrDA frame, it is necessary to wrap it, then
- * split it into multiple segments of up to 7 bytes each, and transmit each in
- * sequence. It seems that sending a single big block (like kingsun-sir does)
- * won't work with this dongle. Each segment needs to be prefixed with a value
- * equal to (unsigned char)0xF8 + <number of bytes in segment>, inside a payload
- * of exactly 8 bytes. For example, a segment of 1 byte gets prefixed by 0xF9,
- * and one of 7 bytes gets prefixed by 0xFF. The bytes at the end of the
- * payload, not considered by the prefix, are ignored (set to 0 by this
- * implementation).
- *
- * Reception: To receive data, the driver must poll the dongle regularly (like
- * kingsun-sir.c) with interrupt URBs. If data is available, it will be returned
- * in payloads from 0 to 8 bytes long. When concatenated, these payloads form
- * a raw IrDA stream that needs to be unwrapped as in stir4200 and kingsun-sir
- *
- * Speed change: To change the speed of the dongle, the driver prepares a
- * control URB with the following as a setup packet:
- *    bRequestType    USB_DIR_OUT | USB_TYPE_CLASS | USB_RECIP_INTERFACE
- *    bRequest        0x09
- *    wValue          0x0200
- *    wIndex          0x0001
- *    wLength         0x0008 (length of the payload)
- * The payload is a 8-byte record, apparently identical to the one used in
- * drivers/usb/serial/cypress_m8.c to change speed:
- *     __u32 baudSpeed;
- *    unsigned int dataBits : 2;    // 0 - 5 bits 3 - 8 bits
- *    unsigned int : 1;
- *    unsigned int stopBits : 1;
- *    unsigned int parityEnable : 1;
- *    unsigned int parityType : 1;
- *    unsigned int : 1;
- *    unsigned int reset : 1;
- *    unsigned char reserved[3];    // set to 0
- *
- * For now only SIR speeds have been observed with this dongle. Therefore,
- * nothing is known on what changes (if any) must be done to frame wrapping /
- * unwrapping for higher than SIR speeds. This driver assumes no change is
- * necessary and announces support for all the way to 115200 bps.
- */
+
 
 #include <linux/module.h>
 #include <linux/moduleparam.h>

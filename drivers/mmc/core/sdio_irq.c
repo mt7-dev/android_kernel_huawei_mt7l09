@@ -86,7 +86,7 @@ static int sdio_irq_thread(void *_host)
 	unsigned long period, idle_period;
 	int ret;
 
-	sched_setscheduler(current, SCHED_FIFO, &param);
+	(void)sched_setscheduler(current, SCHED_FIFO, &param);
 
 	/*
 	 * We want to allow for SDIO cards to work even on non SDIO
@@ -129,7 +129,7 @@ static int sdio_irq_thread(void *_host)
 		if (ret < 0) {
 			set_current_state(TASK_INTERRUPTIBLE);
 			if (!kthread_should_stop())
-				schedule_timeout(HZ);
+				(void)schedule_timeout(HZ);
 			set_current_state(TASK_RUNNING);
 		}
 
@@ -155,7 +155,7 @@ static int sdio_irq_thread(void *_host)
 			mmc_host_clk_release(host);
 		}
 		if (!kthread_should_stop())
-			schedule_timeout(period);
+			(void)schedule_timeout(period);
 		set_current_state(TASK_RUNNING);
 	} while (!kthread_should_stop());
 

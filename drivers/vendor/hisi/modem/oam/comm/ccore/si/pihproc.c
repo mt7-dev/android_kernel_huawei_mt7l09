@@ -11,6 +11,7 @@
 #include "FileSysInterface.h"
 #include "OamXmlComm.h"
 #include "csimagent.h"
+#include "DrvInterface.h"
 
 #ifdef __cplusplus
 #if __cplusplus
@@ -43,12 +44,20 @@ VOS_UINT32                  g_aulPIHRefreshBCPid[SI_PIH_BCPID_REG_MAX] = {0};
 /*保存协议栈注册isim卡状态消息,初始化为0,避免PID初始化过程时序依赖*/
 VOS_UINT32                  g_aulPIHISIMBCPid[SI_PIH_BCPID_REG_MAX] = {0};
 
-#if (FEATURE_ON == FEATURE_VSIM)
 /*记录当前等待USIM去激活的尝试次数*/
 VOS_UINT32                  g_ulPIHDeactiveRetryCnt     = 0;
+
 HTIMER                      g_stPIHDeactiveCardTimer    = VOS_NULL_PTR;
 
+#if (FEATURE_ON == FEATURE_VSIM)
+
 SI_PIH_FWRITE_PARA_STRU     g_stPIHFileWriteGlobal;
+
+VOS_UINT8                   g_aucVsimAPNData[SI_PIH_VSIMAPN_MAX];
+
+VOS_SEM                     g_ulPIHTaskDelaySemID;
+
+HTIMER                      g_ulPIHTaskDelayTimerID = VOS_NULL_PTR;
 
 #endif  /*(FEATURE_ON == FEATURE_VSIM)*/
 
@@ -120,6 +129,11 @@ VOS_UINT32 WuepsPIHPidInit(enum VOS_INIT_PHASE_DEFINE InitPhrase)
             VOS_MemSet(&g_stPIHCSIMCtrlInfo, 0, sizeof(g_stPIHCSIMCtrlInfo));
 #if (FEATURE_ON == FEATURE_VSIM)
             VOS_MemSet(&g_stPIHFileWriteGlobal, 0, sizeof(g_stPIHFileWriteGlobal));
+
+            if(VOS_OK != VOS_SmBCreate("STD", 0, VOS_SEMA4_FIFO, &g_ulPIHTaskDelaySemID))
+            {
+                return VOS_ERR;
+            }
 #endif  /*(FEATURE_ON == FEATURE_VSIM)*/
             g_stPIHProtectCtrl.enProtectFun = SI_PIH_PROTECT_ENABLE;
 
@@ -214,7 +228,7 @@ VOS_UINT32 SI_PIH_ErrorCheck(VOS_VOID)
 VOS_VOID SI_PIH_PollTimerPro(SI_PIH_POLL_TIME_STRU *pstPIHTimer)
 {
     VOS_UINT32 ulResult = VOS_OK;
-    static VOS_UINT32 ulTimerType;
+    /* static VOS_UINT32 ulTimerType; */
 
     if(pstPIHTimer->stTimer != VOS_NULL_PTR)        /*定时器正在运行，需要先停止*/
     {
@@ -222,15 +236,8 @@ VOS_VOID SI_PIH_PollTimerPro(SI_PIH_POLL_TIME_STRU *pstPIHTimer)
 
         if(SI_PIH_TIMER_NAME_CHECKSTATUS == pstPIHTimer->ulTimerName)
         {
-            /*if(VOS_TRUE != USIMM_IsTestCard())*/
-            if(SI_PIH_POLLTIMER_DRX == ulTimerType)  
-            {
-                ulResult = SI_PIH_POLL_32K_TIMER_STOP(&pstPIHTimer->stTimer);
-            }
-            else
-            {
-                ulResult = VOS_StopRelTimer(&pstPIHTimer->stTimer);
-            }
+
+			ulResult = VOS_StopRelTimer(&pstPIHTimer->stTimer);
         }
         else
         {
@@ -244,17 +251,9 @@ VOS_VOID SI_PIH_PollTimerPro(SI_PIH_POLL_TIME_STRU *pstPIHTimer)
 
         if (SI_PIH_TIMER_NAME_CHECKSTATUS == pstPIHTimer->ulTimerName)
         {
-            if(VOS_TRUE != USIMM_IsTestCard())
-            {
-                ulResult = SI_PIH_POLL_32K_TIMER_START(&pstPIHTimer->stTimer, pstPIHTimer->ulTimeLen, pstPIHTimer->ulTimerName);
-                ulTimerType = SI_PIH_POLLTIMER_DRX;
-            }
-            else
-            {
-                ulResult = VOS_StartRelTimer(&pstPIHTimer->stTimer, MAPS_PIH_PID,
+            
+			ulResult = VOS_StartRelTimer(&pstPIHTimer->stTimer, MAPS_PIH_PID,
                                                             pstPIHTimer->ulTimeLen, pstPIHTimer->ulTimerName, 0,VOS_RELTIMER_NOLOOP, VOS_TIMER_PRECISION_0);
-                ulTimerType = SI_PIH_POLLTIMER_REL;
-            }
         }
         else
         {
@@ -670,7 +669,7 @@ VOS_UINT32 SI_PIH_ATRQryReqProc(VOS_VOID)
 
     VOS_MemSet(&stEvent, 0, sizeof(stEvent));
 
-    lResult = (VOS_INT32)DRV_USIMMSCI_GET_ATR(&ulATRLen, aucATRData, &stSCIATRInfo);
+    lResult = (VOS_INT32)DRV_USIMMSCI_GET_ATR((VOS_ULONG*)&ulATRLen, aucATRData, &stSCIATRInfo);
 
     if ((VOS_OK != lResult)||(ulATRLen > SI_ATR_MAX_LEN))
     {
@@ -697,7 +696,7 @@ VOS_VOID SI_PIH_PCSC_PowerOn(SI_PIH_PCSC_REQ_STRU *pstMsg)
     VOS_UINT8                           aucATR[USIMM_ATR_MAX_LEN];
     SCI_ATRInfo                         stSCIATRInfo;
 
-    lSCIResult = (VOS_INT32)DRV_USIMMSCI_GET_ATR(&ulATRLen, aucATR, &stSCIATRInfo);
+    lSCIResult = (VOS_INT32)DRV_USIMMSCI_GET_ATR((VOS_ULONG*)&ulATRLen, aucATR, &stSCIATRInfo);
 
     if (USIMM_SCI_SUCCESS != lSCIResult)
     {
@@ -748,7 +747,7 @@ VOS_VOID SI_PIH_PCSC_GetATR(SI_PIH_PCSC_REQ_STRU *pstMsg)
     VOS_UINT8                           aucATR[USIMM_ATR_MAX_LEN];
     SCI_ATRInfo                         stSCIATRInfo;
 
-    lSCIResult = (VOS_INT32)DRV_USIMMSCI_GET_ATR(&ulATRLen, aucATR, &stSCIATRInfo);
+    lSCIResult = (VOS_INT32)DRV_USIMMSCI_GET_ATR((VOS_ULONG*)&ulATRLen, aucATR, &stSCIATRInfo);
 
     if (USIMM_SCI_SUCCESS != lSCIResult)
     {
@@ -781,7 +780,7 @@ VOS_VOID SI_PIH_PCSC_GetClkFreq(SI_PIH_PCSC_REQ_STRU *pstMsg)
     VOS_UINT32  ulLen = 0;
     VOS_UINT32  ulResult;
 
-    ulResult = DRV_PCSC_GET_CLK_FREQ(&ulLen, aucSimClkFreq);
+    ulResult = DRV_PCSC_GET_CLK_FREQ((VOS_ULONG*)&ulLen, aucSimClkFreq);
 
     SI_PIH_PCSCDataCnf(pstMsg->ulCmdType, ulResult, ulLen, aucSimClkFreq);
 
@@ -795,7 +794,7 @@ VOS_VOID SI_PIH_PCSC_GetBaudRate(SI_PIH_PCSC_REQ_STRU *pstMsg)
     VOS_UINT32  ulLen = 0;
     VOS_UINT32  ulResult;
 
-    ulResult = DRV_PCSC_GET_BAUD_RATE(&ulLen, aucSimBaudRate);
+    ulResult = DRV_PCSC_GET_BAUD_RATE((VOS_ULONG*)&ulLen, aucSimBaudRate);
 
     SI_PIH_PCSCDataCnf(pstMsg->ulCmdType, ulResult, ulLen, aucSimBaudRate);
 
@@ -878,8 +877,391 @@ VOS_UINT32 SI_PIH_PCSCCmdHandle(SI_PIH_PCSC_REQ_STRU *pstMsg)
     return VOS_OK;
 }
 
-#if (FEATURE_ON == FEATURE_VSIM)
+/*****************************************************************************
+函 数 名  : SI_PIH_HVSSTQueryHandle
+功能描述  : AT/APP HVSST Query请求处理函数
+输入参数  : pMsg 消息内容
+输出参数  : 无
+返 回 值  : SI_UINT32 函数执行结果
+调用函数  : 无
+被调函数  : 外部接口
+History     :
+1.日    期  : 2013年03月20日
+  作    者  : zhuli
+  修改内容  : Create
+2.日    期  : 2014年10月9日
+  作    者  : zhuli
+  修改内容  : 根据青松产品要求，该接口不受宏控制
+*****************************************************************************/
+VOS_UINT32 SI_PIH_HVSSTQueryHandle(SI_PIH_MSG_HEADER_STRU *pMsg)
+{
+    SI_PIH_EVENT_INFO_STRU  stEvent;
+    VOS_BOOL                bVSimState;
+    VOS_UINT8               ucCardState;
 
+    stEvent.PIHError = TAF_ERR_NO_ERROR;  /*查询命令默认返回OK*/
+
+    bVSimState = USIMM_VsimIsActive();
+
+    USIMM_GetCardType(&ucCardState, VOS_NULL_PTR);
+
+    /*vSIM状态填充*/
+    if(VOS_TRUE == bVSimState)
+    {
+        stEvent.PIHEvent.HVSSTQueryCnf.enVSimState = SI_PIH_SIM_ENABLE;
+    }
+    else
+    {
+        stEvent.PIHEvent.HVSSTQueryCnf.enVSimState = SI_PIH_SIM_DISABLE;
+    }
+
+    /*只要不是无卡就是认为可用*/
+    if(USIMM_CARD_SERVIC_ABSENT == ucCardState)
+    {
+        stEvent.PIHEvent.HVSSTQueryCnf.enCardUse   = SI_PIH_CARD_NOUSE;
+    }
+    else
+    {
+        stEvent.PIHEvent.HVSSTQueryCnf.enCardUse   = SI_PIH_CARD_USE;
+    }
+
+    /*结果回复*/
+    return SI_PIH_EventCallBack(&stEvent);
+}
+
+/*****************************************************************************
+函 数 名  : SI_PIH_HVSSTStateCheck
+功能描述  : 判断是否需要进行激活或去激活操作的状态检测
+输入参数  : bIsHandleVSim  操作的是否是虚拟卡
+            enIsActiveCard 激活或去激活操作
+            pstEvent       返回给AT模块的事件
+输出参数  : 无
+返 回 值  : VOS_TRUE : 需要激活或去激活操作
+            VOS_FALSE: 不需要激活或去激活操作
+调用函数  : 无
+被调函数  : 外部接口
+History     :
+1.日    期  : 2013年03月20日
+  作    者  : zhuli
+  修改内容  : Create
+2.日    期  : 2014年10月9日
+  作    者  : zhuli
+  修改内容  : 根据青松产品要求，该接口不受宏控制
+*****************************************************************************/
+VOS_BOOL SI_PIH_HVSSTStateCheck(SI_PIH_HVSST_REQ_STRU *pMsg, SI_PIH_EVENT_INFO_STRU *pstEvent)
+{
+    SI_PIH_HVSST_HANDLE_STATE_ENUM_UINT8    enValue = 0;
+    VOS_UINT8                               ucCardState;
+    VOS_BOOL                                bVsimState;
+
+    if(SI_PIH_SIM_ENABLE == pMsg->stHvSSTData.enSIMSet)
+    {
+        PIH_NORMAL_LOG("SI_PIH_HVSSTStateCheck: Active Card:");
+
+        PIH_SET_BIT(enValue, BIT_ACTIVECARD);
+    }
+
+    /*判断当前的操作的是否vSIM卡*/
+    if(pMsg->stHvSSTData.ucIndex != SI_PIH_SIM_REAL_SIM1)
+    {
+        PIH_NORMAL_LOG("SI_PIH_HVSSTStateCheck: Handle VSIM Card:");
+
+        PIH_SET_BIT(enValue, BIT_HANDLEVSIM);
+    }
+
+    bVsimState = USIMM_VsimIsActive();
+
+    if(VOS_TRUE == bVsimState)
+    {
+        PIH_NORMAL_LOG("SI_PIH_HVSSTStateCheck: Vsim is Active");
+
+        PIH_SET_BIT(enValue, BIT_VSIMSTATE);
+    }
+
+    USIMM_GetCardType(&ucCardState, VOS_NULL_PTR);
+
+    if(USIMM_CARD_SERVIC_ABSENT != ucCardState)
+    {
+        PIH_NORMAL1_LOG("SI_PIH_HVSSTStateCheck: Card is Active %d", (long)ucCardState);
+
+        PIH_SET_BIT(enValue, BIT_CURCARDOK);
+    }
+
+    PIH_NORMAL1_LOG("SI_PIH_HVSSTStateCheck: HVSST Bit Map is :", (long)enValue);
+
+    /*不需要操作的返回，按照正确回复*/
+    if((SI_PIH_HVSST_DEACTIVE_RSIM_AGAIN        == enValue)
+        ||(SI_PIH_HVSST_DEACTIVE_VSIM_AGAIN     == enValue)
+        ||(SI_PIH_HVSST_ACTIVE_VSIM_AGAIN2      == enValue))
+    {
+        pstEvent->PIHError = TAF_ERR_NO_ERROR;
+
+        return VOS_FALSE;
+    }
+    /*需要操作的返回*/
+    if((SI_PIH_HVSST_DEACTIVE_RSIM     == enValue)
+        ||(SI_PIH_HVSST_DEACTIVE_VSIM       == enValue)
+        ||(SI_PIH_HVSST_ACTIVE_RSIM         == enValue)
+        ||(SI_PIH_HVSST_ACTIVE_VSIM         == enValue)
+        ||(SI_PIH_HVSST_ACTIVE_VSIM_AGAIN   == enValue)
+        ||(SI_PIH_HVSST_ACTIVE_RSIM_AGAIN2  == enValue))
+    {
+        return VOS_TRUE;
+    }
+
+    pstEvent->PIHError = TAF_ERR_PARA_ERROR;
+
+    PIH_WARNING_LOG("SI_PIH_HVSSTStateCheck: Not able to Process Command");
+
+    return VOS_FALSE;
+}
+
+/*****************************************************************************
+函 数 名  : SI_PIH_HVSSTQueryHandle
+功能描述  : AT/APP HVSST Set请求处理函数
+输入参数  : pMsg 消息内容
+输出参数  : 无
+返 回 值  : SI_UINT32 函数执行结果
+调用函数  : 无
+被调函数  : 外部接口
+History     :
+1.日    期  : 2013年03月20日
+  作    者  : zhuli
+  修改内容  : Create
+2.日    期  : 2014年10月9日
+  作    者  : zhuli
+  修改内容  : 根据青松产品要求，该接口不受宏控制
+*****************************************************************************/
+VOS_UINT32 SI_PIH_HVSSTSetHandle(SI_PIH_HVSST_REQ_STRU *pMsg)
+{
+    SI_PIH_EVENT_INFO_STRU              stEvent;
+    VOS_UINT32                          ulResult;
+    SI_PIH_SIM_STATE_ENUM_UINT8         enVSIMSet;
+
+    stEvent.PIHError = TAF_ERR_NO_ERROR; /* 先赋值成功 */
+
+    ulResult = SI_PIH_HVSSTStateCheck(pMsg, &stEvent);
+
+    /* 判断当前状态是否需要进行卡操作 */
+    if (VOS_FALSE == ulResult)
+    {
+        SI_PIH_EventCallBack(&stEvent);
+
+        PIH_NORMAL_LOG("SI_PIH_HVSSTSetHandle: No need handle this msg");
+
+        return VOS_OK;
+    }
+
+    /*需要将状态记录在NV中*/
+    if(SI_PIH_SIM_ENABLE == pMsg->stHvSSTData.enSIMSet) /*使能SIM 卡*/
+    {
+        if(pMsg->stHvSSTData.ucIndex == SI_PIH_SIM_REAL_SIM1)   /*硬卡*/
+        {
+            enVSIMSet = SI_PIH_SIM_DISABLE;
+        }
+        else
+        {
+            enVSIMSet = SI_PIH_SIM_ENABLE;
+        }
+
+        if(NV_OK != NV_WritePart(en_NV_Item_VSIM_SUPPORT_FLAG, 0, &enVSIMSet, sizeof(VOS_UINT8)))
+        {
+            stEvent.PIHError = TAF_ERR_CAPABILITY_ERROR;
+
+            SI_PIH_EventCallBack(&stEvent);
+
+            return VOS_ERR;
+        }
+    }
+
+    /*真正开始调用USIMM接口*/
+    if(SI_PIH_SIM_ENABLE == pMsg->stHvSSTData.enSIMSet)
+    {
+        PIH_NORMAL_LOG("SI_PIH_HVSSTSetHandle: Active SIM Card");
+
+        if(USIMM_API_SUCCESS != USIMM_ActiveCardReq(MAPS_PIH_PID))
+        {
+            stEvent.PIHError = TAF_ERR_ERROR;  /*赋值失败*/
+
+            PIH_WARNING_LOG("SI_PIH_HVSSTSetHandle: USIMM_ActiveCardReq Return Error");
+
+            return SI_PIH_EventCallBack(&stEvent);
+        }
+
+        if(pMsg->stHvSSTData.ucIndex == SI_PIH_SIM_REAL_SIM1)
+        {
+            g_stPIHProtectCtrl.enProtectFun = SI_PIH_PROTECT_ENABLE;    /*激活硬卡重新打开保护性复位功能*/
+        }
+    }
+    else
+    {
+        PIH_NORMAL_LOG("SI_PIH_HVSSTSetHandle: Deactive SIM Card");
+
+        if(USIMM_API_SUCCESS != USIMM_DeactiveCardReq(MAPS_PIH_PID))
+        {
+            stEvent.PIHError = TAF_ERR_ERROR;  /*赋值失败*/
+
+            PIH_WARNING_LOG("SI_PIH_HVSSTSetHandle: USIMM_DeactiveCardReq Return Error");
+
+            return SI_PIH_EventCallBack(&stEvent);
+        }
+
+        /* Modem不下电的情况下可能反复激活去激活操作，去激活前应将尝试次数置0*/
+        g_ulPIHDeactiveRetryCnt = 0;
+
+        /*USIMM_DeactiveCardReq的实现为异步过程，需要启动定时器，等待下电操作完成*/
+        VOS_StartRelTimer(&g_stPIHDeactiveCardTimer,
+                           MAPS_PIH_PID,
+                           SI_PIH_DEACTIVE_CARD_TIME,
+                           SI_PIH_TIMER_NAME_DEACTIVECARD,
+                           0,
+                           VOS_RELTIMER_NOLOOP,
+                           VOS_TIMER_PRECISION_100);
+    }
+
+    PIH_NORMAL_LOG("SI_PIH_HVSSTSetHandle: Wait USIMM Return Msg");
+
+    return VOS_OK;
+}
+VOS_UINT32 SI_PIH_DeactvieCardTimeOut(VOS_VOID)
+{
+    VOS_UINT8                   ucCardState;
+    SI_PIH_EVENT_INFO_STRU      stEvent;
+
+    ucCardState = USIMM_CARD_SERVIC_ABSENT;
+    stEvent.PIHError = TAF_ERR_NO_ERROR; /* 先赋值成功 */
+
+    /*更新当前等待去激活SIM卡的尝试次数*/
+    g_ulPIHDeactiveRetryCnt++;
+
+    /*获取当前SIM卡的状态*/
+    USIMM_GetCardType(&ucCardState, VOS_NULL_PTR);
+
+    /*若当前卡已经去激活，通知AP操作结果*/
+    if (USIMM_CARD_SERVIC_ABSENT == ucCardState)
+    {
+        /*清除 NV中保存的EF_LOCI\EF_FPLMN\EF_PSLOCI\EF_LOCIGPRS信息*/
+        SI_PIH_VsimWriteableFileClear();
+        return SI_PIH_EventCallBack(&stEvent);
+    }
+    else
+    {
+        /*若等待次数达到最大尝试次数，通知AP操作结果；否则继续下一次等待*/
+        if (g_ulPIHDeactiveRetryCnt < SI_PIH_DEACTIVE_MAX_TIME)
+        {
+            VOS_StartRelTimer(&g_stPIHDeactiveCardTimer,
+                               MAPS_PIH_PID,
+                               SI_PIH_DEACTIVE_CARD_TIME,
+                               SI_PIH_TIMER_NAME_DEACTIVECARD,
+                               0,
+                               VOS_RELTIMER_NOLOOP,
+                               VOS_TIMER_PRECISION_100);
+        }
+        else
+        {
+            /*清除 NV中保存的EF_LOCI\EF_FPLMN\EF_PSLOCI\EF_LOCIGPRS信息*/
+            SI_PIH_VsimWriteableFileClear();
+            stEvent.PIHError = TAF_ERR_TIME_OUT;
+            return SI_PIH_EventCallBack(&stEvent);
+        }
+    }
+
+    return VOS_OK;
+}
+
+/*****************************************************************************
+函 数 名  : SI_PIH_SciCfgSetHandle
+功能描述  : AT/APP SCICFG Set请求处理函数
+输入参数  : pMsg 消息内容
+输出参数  : 无
+返 回 值  : SI_UINT32 函数执行结果
+调用函数  : 无
+被调函数  : 外部接口
+History     :
+1.日    期  : 2014年10月9日
+  作    者  : zhuli
+  修改内容  : 根据青松产品要求，新增
+*****************************************************************************/
+VOS_UINT32 SI_PIH_SciCfgSetHandle(SI_PIH_SCICFG_SET_REQ_STRU *pstMsg)
+{
+    SI_PIH_EVENT_INFO_STRU              stEvent;
+    VOS_UINT32                          ulResult;
+    VOS_UINT8                           ucCardState;
+
+    USIMM_GetCardType(&ucCardState, VOS_NULL_PTR);
+
+    /*若当前卡未去激活，通知AP操作结果*/
+    if (USIMM_CARD_SERVIC_ABSENT != ucCardState)
+    {
+        PIH_ERROR_LOG("SI_PIH_SciCfgSetHandle: card is running");
+
+        stEvent.PIHError    = TAF_ERR_SIM_BUSY;
+    }
+    else
+    {
+        /*调用驱动接口*/
+        ulResult = DRV_USIMMSCI_SLOT_SWITCH((SCI_SLOT)pstMsg->enCard0Slot, (SCI_SLOT)pstMsg->enCard1Slot);
+
+        if (BSP_OK == ulResult)
+        {
+            stEvent.PIHError    = TAF_ERR_NO_ERROR;
+        }
+        else
+        {
+            PIH_ERROR1_LOG("SI_PIH_SciCfgSetHandle: DRV API Return %d", (VOS_INT32)ulResult);
+
+            stEvent.PIHError    = TAF_ERR_SIM_BUSY;
+        }
+    }
+
+    SI_PIH_EventCallBack(&stEvent);
+
+    PIH_INFO_LOG("SI_PIH_SciCfgSetHandle: Return Event");
+
+    return VOS_OK;
+}
+
+/*****************************************************************************
+函 数 名  : SI_PIH_SciCfgQueryHandle
+功能描述  : AT/APP SCICFG Query请求处理函数
+输入参数  : pMsg 消息内容
+输出参数  : 无
+返 回 值  : SI_UINT32 函数执行结果
+调用函数  : 无
+被调函数  : 外部接口
+History     :
+1.日    期  : 2014年10月9日
+  作    者  : zhuli
+  修改内容  : 根据青松产品要求，新增
+*****************************************************************************/
+VOS_UINT32 SI_PIH_SciCfgQueryHandle(SI_PIH_MSG_HEADER_STRU *pstMsg)
+{
+    SI_PIH_EVENT_INFO_STRU              stEvent;
+    VOS_UINT32                          ulResult;
+
+    /*调用驱动接口*/
+    ulResult = DRV_USIMMSCI_GET_SLOT_STATE((SCI_SLOT *)&stEvent.PIHEvent.SciCfgCnf.enCard0Slot, 
+                                           (SCI_SLOT *)&stEvent.PIHEvent.SciCfgCnf.enCard1Slot);
+
+    if (BSP_OK == ulResult)
+    {
+        stEvent.PIHError    = TAF_ERR_NO_ERROR;
+    }
+    else
+    {
+        PIH_ERROR1_LOG("SI_PIH_SciCfgQueryHandle: DRV API Return %d", (VOS_INT32)ulResult);
+
+        stEvent.PIHError    = TAF_ERR_SIM_BUSY;
+    }
+
+    SI_PIH_EventCallBack(&stEvent);
+
+    PIH_INFO_LOG("SI_PIH_SciCfgQueryHandle: Return Event");
+
+    return VOS_OK;
+}
+
+#if (FEATURE_ON == FEATURE_VSIM)
 VOS_VOID SI_PIH_VsimWriteableFileUpdate(VOS_UINT16 usFileId, VOS_UINT8 *pucFileContent)
 {
 
@@ -930,51 +1312,6 @@ VOS_VOID SI_PIH_VsimWriteableFileClear(VOS_VOID)
 }
 
 
-VOS_UINT32 SI_PIH_DeactvieCardTimeOut(VOS_VOID)
-{
-    VOS_UINT8                   ucCardState;
-    SI_PIH_EVENT_INFO_STRU      stEvent;
-
-    ucCardState = USIMM_CARD_SERVIC_ABSENT;
-    stEvent.PIHError = TAF_ERR_NO_ERROR; /* 先赋值成功 */
-
-    /*更新当前等待去激活SIM卡的尝试次数*/
-    g_ulPIHDeactiveRetryCnt++;
-
-    /*获取当前SIM卡的状态*/
-    USIMM_GetCardType(&ucCardState, VOS_NULL_PTR);
-
-    /*若当前卡已经去激活，通知AP操作结果*/
-    if (USIMM_CARD_SERVIC_ABSENT == ucCardState)
-    {
-        /*清除 NV中保存的EF_LOCI\EF_FPLMN\EF_PSLOCI\EF_LOCIGPRS信息*/
-        SI_PIH_VsimWriteableFileClear();
-        return SI_PIH_EventCallBack(&stEvent);
-    }
-    else
-    {
-        /*若等待次数达到最大尝试次数，通知AP操作结果；否则继续下一次等待*/
-        if (g_ulPIHDeactiveRetryCnt < SI_PIH_DEACTIVE_MAX_TIME)
-        {
-            VOS_StartRelTimer(&g_stPIHDeactiveCardTimer,
-                               MAPS_PIH_PID,
-                               SI_PIH_DEACTIVE_CARD_TIME,
-                               SI_PIH_TIMER_NAME_DEACTIVECARD,
-                               0,
-                               VOS_RELTIMER_NOLOOP,
-                               VOS_TIMER_PRECISION_10);
-        }
-        else
-        {
-            /*清除 NV中保存的EF_LOCI\EF_FPLMN\EF_PSLOCI\EF_LOCIGPRS信息*/
-            SI_PIH_VsimWriteableFileClear();
-            stEvent.PIHError = TAF_ERR_TIME_OUT;
-            return SI_PIH_EventCallBack(&stEvent);
-        }
-    }
-
-    return VOS_OK;
-}
 VOS_VOID SI_PIH_BcdNumToAsciiNum(VOS_UINT8 *pucAsciiNum, VOS_UINT8 *pucBcdNum, VOS_UINT8 ucBcdNumLen)
 {
     VOS_UINT8       ucTmp;
@@ -1517,248 +1854,7 @@ VOS_VOID SI_PIH_GetVSimContent(SI_PIH_CARD_CONTENT_STRU *pstCardCont)
     return;
 }
 
-/*****************************************************************************
-函 数 名  : SI_PIH_HVSSTQueryHandle
-功能描述  : AT/APP HVSST Query请求处理函数
-输入参数  : pMsg 消息内容
-输出参数  : 无
-返 回 值  : SI_UINT32 函数执行结果
-调用函数  : 无
-被调函数  : 外部接口
-History     :
-1.日    期  : 2013年03月20日
-  作    者  : zhuli
-  修改内容  : Create
-*****************************************************************************/
-VOS_UINT32 SI_PIH_HVSSTQueryHandle(SI_PIH_MSG_HEADER_STRU *pMsg)
-{
-    SI_PIH_EVENT_INFO_STRU  stEvent;
-    VOS_BOOL                bVSimState;
-    VOS_UINT8               ucCardState;
 
-    stEvent.PIHError = TAF_ERR_NO_ERROR;  /*查询命令默认返回OK*/
-
-    bVSimState = USIMM_VsimIsActive();
-
-#if defined (INSTANCE_1)
-    stEvent.PIHEvent.HVSSTQueryCnf.enSlot = SI_PIH_SIM_SLOT2;   /*使用Modem_1时，返回卡槽2*/
-#else
-    stEvent.PIHEvent.HVSSTQueryCnf.enSlot = SI_PIH_SIM_SLOT1;   /*使用Modem_0时，返回卡槽1*/
-#endif  /*end of defined (INSTANCE_1)*/
-
-    USIMM_GetCardType(&ucCardState, VOS_NULL_PTR);
-
-    /*vSIM状态填充*/
-    if(VOS_TRUE == bVSimState)
-    {
-        stEvent.PIHEvent.HVSSTQueryCnf.enVSimState = SI_PIH_SIM_ENABLE;
-    }
-    else
-    {
-        stEvent.PIHEvent.HVSSTQueryCnf.enVSimState = SI_PIH_SIM_DISABLE;
-    }
-
-    /*只要不是无卡就是认为可用*/
-    if(USIMM_CARD_SERVIC_ABSENT == ucCardState)
-    {
-        stEvent.PIHEvent.HVSSTQueryCnf.enCardUse   = SI_PIH_CARD_NOUSE;
-    }
-    else
-    {
-        stEvent.PIHEvent.HVSSTQueryCnf.enCardUse   = SI_PIH_CARD_USE;
-    }
-
-    /*结果回复*/
-    return SI_PIH_EventCallBack(&stEvent);
-}
-
-/*****************************************************************************
-函 数 名  : SI_PIH_HVSSTStateCheck
-功能描述  : 判断是否需要进行激活或去激活操作的状态检测
-输入参数  : bIsHandleVSim  操作的是否是虚拟卡
-            enIsActiveCard 激活或去激活操作
-            pstEvent       返回给AT模块的事件
-输出参数  : 无
-返 回 值  : VOS_TRUE : 需要激活或去激活操作
-            VOS_FALSE: 不需要激活或去激活操作
-调用函数  : 无
-被调函数  : 外部接口
-History     :
-1.日    期  : 2013年03月20日
-  作    者  : zhuli
-  修改内容  : Create
-*****************************************************************************/
-VOS_BOOL SI_PIH_HVSSTStateCheck(SI_PIH_HVSST_REQ_STRU *pMsg, SI_PIH_EVENT_INFO_STRU *pstEvent)
-{
-    SI_PIH_HVSST_HANDLE_STATE_ENUM_UINT8    enValue = 0;
-    VOS_UINT8                               ucCardState;
-    VOS_BOOL                                bVsimState;
-
-    if(SI_PIH_SIM_ENABLE == pMsg->stHvSSTData.enSIMSet)
-    {
-        PIH_NORMAL_LOG("SI_PIH_HVSSTStateCheck: Active Card:");
-
-        PIH_SET_BIT(enValue, BIT_ACTIVECARD);
-    }
-
-    /*判断当前的操作的是否vSIM卡*/
-    if(pMsg->stHvSSTData.ucIndex != SI_PIH_SIM_REAL_SIM1)
-    {
-        PIH_NORMAL_LOG("SI_PIH_HVSSTStateCheck: Handle VSIM Card:");
-
-        PIH_SET_BIT(enValue, BIT_HANDLEVSIM);
-    }
-
-    bVsimState = USIMM_VsimIsActive();
-
-    if(VOS_TRUE == bVsimState)
-    {
-        PIH_NORMAL_LOG("SI_PIH_HVSSTStateCheck: Vsim is Active");
-
-        PIH_SET_BIT(enValue, BIT_VSIMSTATE);
-    }
-
-    USIMM_GetCardType(&ucCardState, VOS_NULL_PTR);
-
-    if(USIMM_CARD_SERVIC_ABSENT != ucCardState)
-    {
-        PIH_NORMAL1_LOG("SI_PIH_HVSSTStateCheck: Card is Active %d", (long)ucCardState);
-
-        PIH_SET_BIT(enValue, BIT_CURCARDOK);
-    }
-
-    PIH_NORMAL1_LOG("SI_PIH_HVSSTStateCheck: HVSST Bit Map is :", (long)enValue);
-
-    /*不需要操作的返回，按照正确回复*/
-    if((SI_PIH_HVSST_DEACTIVE_RSIM_AGAIN        == enValue)
-        ||(SI_PIH_HVSST_DEACTIVE_VSIM_AGAIN     == enValue)
-        ||(SI_PIH_HVSST_ACTIVE_VSIM_AGAIN2      == enValue))
-    {
-        pstEvent->PIHError = TAF_ERR_NO_ERROR;
-
-        return VOS_FALSE;
-    }
-    /*需要操作的返回*/
-    if((SI_PIH_HVSST_DEACTIVE_RSIM     == enValue)
-        ||(SI_PIH_HVSST_DEACTIVE_VSIM       == enValue)
-        ||(SI_PIH_HVSST_ACTIVE_RSIM         == enValue)
-        ||(SI_PIH_HVSST_ACTIVE_VSIM         == enValue)
-        ||(SI_PIH_HVSST_ACTIVE_VSIM_AGAIN   == enValue)
-        ||(SI_PIH_HVSST_ACTIVE_RSIM_AGAIN2  == enValue))
-    {
-        return VOS_TRUE;
-    }
-
-    pstEvent->PIHError = TAF_ERR_PARA_ERROR;
-
-    PIH_WARNING_LOG("SI_PIH_HVSSTStateCheck: Not able to Process Command");
-
-    return VOS_FALSE;
-}
-
-/*****************************************************************************
-函 数 名  : SI_PIH_HVSSTQueryHandle
-功能描述  : AT/APP HVSST Set请求处理函数
-输入参数  : pMsg 消息内容
-输出参数  : 无
-返 回 值  : SI_UINT32 函数执行结果
-调用函数  : 无
-被调函数  : 外部接口
-History     :
-1.日    期  : 2013年03月20日
-  作    者  : zhuli
-  修改内容  : Create
-*****************************************************************************/
-VOS_UINT32 SI_PIH_HVSSTSetHandle(SI_PIH_HVSST_REQ_STRU *pMsg)
-{
-    SI_PIH_EVENT_INFO_STRU              stEvent;
-    VOS_UINT32                          ulResult;
-    SI_PIH_SIM_STATE_ENUM_UINT8         enVSIMSet;
-
-    stEvent.PIHError = TAF_ERR_NO_ERROR; /* 先赋值成功 */
-
-    ulResult = SI_PIH_HVSSTStateCheck(pMsg, &stEvent);
-
-    /* 判断当前状态是否需要进行卡操作 */
-    if (VOS_FALSE == ulResult)
-    {
-        SI_PIH_EventCallBack(&stEvent);
-
-        PIH_NORMAL_LOG("SI_PIH_HVSSTSetHandle: No need handle this msg");
-
-        return VOS_OK;
-    }
-
-    /*需要将状态记录在NV中*/
-    if(SI_PIH_SIM_ENABLE == pMsg->stHvSSTData.enSIMSet) /*使能SIM 卡*/
-    {
-        if(pMsg->stHvSSTData.ucIndex == SI_PIH_SIM_REAL_SIM1)   /*硬卡*/
-        {
-            enVSIMSet = SI_PIH_SIM_DISABLE;
-        }
-        else
-        {
-            enVSIMSet = SI_PIH_SIM_ENABLE;
-        }
-
-        if(NV_OK != NV_WritePart(en_NV_Item_VSIM_SUPPORT_FLAG, 0, &enVSIMSet, sizeof(VOS_UINT8)))
-        {
-            stEvent.PIHError = TAF_ERR_CAPABILITY_ERROR;
-
-            SI_PIH_EventCallBack(&stEvent);
-
-            return VOS_ERR;
-        }
-    }
-
-    /*真正开始调用USIMM接口*/
-    if(SI_PIH_SIM_ENABLE == pMsg->stHvSSTData.enSIMSet)
-    {
-        PIH_NORMAL_LOG("SI_PIH_HVSSTSetHandle: Active SIM Card");
-
-        if(USIMM_API_SUCCESS != USIMM_ActiveCardReq(MAPS_PIH_PID))
-        {
-            stEvent.PIHError = TAF_ERR_ERROR;  /*赋值失败*/
-
-            PIH_WARNING_LOG("SI_PIH_HVSSTSetHandle: USIMM_ActiveCardReq Return Error");
-
-            return SI_PIH_EventCallBack(&stEvent);
-        }
-
-        if(pMsg->stHvSSTData.ucIndex == SI_PIH_SIM_REAL_SIM1)
-        {
-            g_stPIHProtectCtrl.enProtectFun = SI_PIH_PROTECT_ENABLE;    /*激活硬卡重新打开保护性复位功能*/
-        }
-    }
-    else
-    {
-        PIH_NORMAL_LOG("SI_PIH_HVSSTSetHandle: Deactive SIM Card");
-
-        if(USIMM_API_SUCCESS != USIMM_DeactiveCardReq(MAPS_PIH_PID))
-        {
-            stEvent.PIHError = TAF_ERR_ERROR;  /*赋值失败*/
-
-            PIH_WARNING_LOG("SI_PIH_HVSSTSetHandle: USIMM_DeactiveCardReq Return Error");
-
-            return SI_PIH_EventCallBack(&stEvent);
-        }
-
-        /* Modem不下电的情况下可能反复激活去激活操作，去激活前应将尝试次数置0*/
-        g_ulPIHDeactiveRetryCnt = 0;
-        /*USIMM_DeactiveCardReq的实现为异步过程，需要启动定时器，等待下电操作完成*/
-        VOS_StartRelTimer(&g_stPIHDeactiveCardTimer,
-                           MAPS_PIH_PID,
-                           SI_PIH_DEACTIVE_CARD_TIME,
-                           SI_PIH_TIMER_NAME_DEACTIVECARD,
-                           0,
-                           VOS_RELTIMER_NOLOOP,
-                           VOS_TIMER_PRECISION_10);
-    }
-
-    PIH_NORMAL_LOG("SI_PIH_HVSSTSetHandle: Wait USIMM Return Msg");
-
-    return VOS_OK;
-}
 VOS_UINT32 SI_PIH_HvsDHSetHandle(VOS_UINT32 ulDataLen, VOS_UINT8 *pucData)
 {
     NVIM_VSIM_HVSDH_NV_STRU             stDhNv;
@@ -1988,7 +2084,7 @@ VOS_UINT32 SI_PIH_FwriteParaCheck(SI_PIH_FILE_WRITE_REQ_STRU *pstMsg)
 
 VOS_UINT32 SI_PIH_ATFileWriteHandle(SI_PIH_FILE_WRITE_REQ_STRU *pstMsg)
 {
-    SI_PIH_EVENT_INFO_STRU              stEvent;
+    SI_PIH_EVENT_INFO_STRU             stEvent;
     VOS_INT32                          ulResult;
     VOS_UINT8                          ucCardState;
 
@@ -2079,6 +2175,460 @@ VOS_UINT32 SI_PIH_ATFileWriteHandle(SI_PIH_FILE_WRITE_REQ_STRU *pstMsg)
     }
 
     stEvent.PIHError = TAF_ERR_NO_ERROR;
+
+    return SI_PIH_EventCallBack(&stEvent);
+}
+
+/*****************************************************************************
+函 数 名  :SI_PIH_HukEncode
+功能描述  :实现数据的HUK+AES加密
+输入参数  :无
+输出参数  :无
+返 回 值  :VOS_UINT32
+调用函数  :
+修订记录  :
+1. 日    期   : 2014年10月09日
+   作    者   : zhuli
+   修改内容   : Create
+*****************************************************************************/
+VOS_UINT32 SI_PIH_HukEncode(VOS_UINT8           *pucSrc, 
+                                    VOS_UINT32          ulSrcLen,
+                                    VOS_UINT8           *pucDst, 
+                                    VOS_UINT32          *pulDstLen)
+{
+#if (FEATURE_ON == FEATURE_SECURITY_PHONE)
+    VOS_UINT8           auckey[SI_PIH_HUK_LEN];
+    VOS_INT32           lDstLen;
+
+    if (BSP_OK != efuseReadHUK((BSP_U32 *)auckey, (sizeof(auckey)/sizeof(BSP_U32))))
+    {
+        PIH_ERROR_LOG("SI_PIH_HukEncode: Read HUK Fail");
+
+        return VOS_ERR;
+    }
+
+    lDstLen = AESEncryptS(pucSrc, (VOS_INT)ulSrcLen, auckey, SI_PIH_HUK_BITS, pucDst, VSIM_DH_AGREE_KEY);
+
+    if (VOS_NULL == lDstLen)
+    {
+        PIH_ERROR_LOG("SI_PIH_HukEncode: AESEncrypt Fail");
+
+        return VOS_ERR;
+    }
+
+    *pulDstLen = (VOS_UINT32)lDstLen;
+
+#else
+    VOS_MemCpy(pucDst, pucSrc, ulSrcLen);
+
+    *pulDstLen = (VOS_UINT32)ulSrcLen;
+#endif
+
+    return VOS_OK;
+}
+
+/*****************************************************************************
+函 数 名  :SI_PIH_HvteeDataCheck
+功能描述  :实现Share Memory 数据的检查
+输入参数  :无
+输出参数  :无
+返 回 值  :SI_PIH_HVTEE_ERROR_ENUM_UINT32
+调用函数  :
+修订记录  :
+1. 日    期   : 2014年10月09日
+   作    者   : zhuli
+   修改内容   : Create
+*****************************************************************************/
+SI_PIH_HVTEE_ERROR_ENUM_UINT32 SI_PIH_HvteeDataCheck(SI_PIH_HVTEE_DATAFLAG_ENUM_UINT32 enFlag,
+                                                                VOS_UINT32                       ulMaxLen,
+                                                                VOS_UINT8                       *pucData)
+{
+    SI_PIH_HVTEE_SHAREHEAD_STRU     *pstDataHead;
+    VOS_UINT32                      ulEndFlag;
+
+    if (VOS_NULL_PTR == pucData)    /*判断ADDR的范围*/
+    {
+        PIH_ERROR_LOG("SI_PIH_HvteeDataCheck: ADDR is Error.");
+
+        return SI_PIH_HVTEE_ADDR_ERROR;
+    }
+
+    pstDataHead = (SI_PIH_HVTEE_SHAREHEAD_STRU *)pucData;
+
+    if (pstDataHead->enFlag != enFlag)
+    {
+        PIH_ERROR_LOG("SI_PIH_HvteeDataCheck: StartFlag is Error.");
+
+        return SI_PIH_HVTEE_HEAD_ERROR;
+    }
+
+    if (pstDataHead->ulDataLen > ulMaxLen)
+    {
+        PIH_ERROR_LOG("SI_PIH_HvteeDataCheck: LEN is Error.");
+
+        return SI_PIH_HVTEE_LEN_ERROR;
+    }
+
+    VOS_MemCpy(&ulEndFlag, &pucData[sizeof(SI_PIH_HVTEE_SHAREHEAD_STRU)+pstDataHead->ulDataLen],sizeof(VOS_UINT32));
+
+    if (SI_PIH_SMEM_ENDFLAG != ulEndFlag)
+    {
+        PIH_ERROR_LOG("SI_PIH_HvteeDataCheck: End Flag is Error.");
+
+        return SI_PIH_HVTEE_END_ERROR;
+    }
+
+    return SI_PIH_HVTEE_NOERROR;
+}
+
+/*****************************************************************************
+函 数 名  :SI_PIH_HvteeApnHandle
+功能描述  :实现APN控制参数写入
+输入参数  :无
+输出参数  :无
+返 回 值  :VOS_OK
+调用函数  :
+修订记录  :
+1. 日    期   : 2014年10月09日
+   作    者   : zhuli
+   修改内容   : Create
+*****************************************************************************/
+VOS_UINT32 SI_PIH_HvteeApnHandle(VOS_VOID)
+{
+    SI_PIH_HVTEE_ERROR_ENUM_UINT32  enResult;
+    VOS_UINT8                       *pucAPNData;
+    SI_PIH_HVTEE_SHAREHEAD_STRU     *pstDataHead;
+
+    enResult = SI_PIH_HvteeDataCheck((SI_PIH_HVTEE_DATAFLAG_ENUM_UINT32)SI_PIH_HVTEE_APNSET, 
+                                        SI_PIH_APNSET_SMEM_LEN, 
+                                        (VOS_UINT8 *)SI_PIH_APNSET_SMEM_ADDR);
+
+    if (SI_PIH_HVTEE_NOERROR != enResult)
+    {
+        PIH_ERROR_LOG("SI_PIH_HvteeApnHandle: SI_PIH_HvteeDataCheck is Error.");
+
+        return enResult;
+    }
+
+    pstDataHead = (SI_PIH_HVTEE_SHAREHEAD_STRU*)SI_PIH_APNSET_SMEM_ADDR;
+
+    if (VOS_OK != VOS_TaskLock())
+    {
+        PIH_WARNING_LOG("SI_PIH_HvteeApnHandle: VOS_TaskLock Error");
+
+        return SI_PIH_HVTEE_DATA_ERROR;
+    }
+
+    VOS_MemSet(g_aucVsimAPNData, VOS_NULL, sizeof(g_aucVsimAPNData));
+
+    if (VOS_NULL == pstDataHead->ulDataLen)
+    {
+        pucAPNData = VOS_NULL_PTR;
+    }
+    else
+    {
+        pucAPNData = (VOS_UINT8*)(SI_PIH_APNSET_SMEM_ADDR+sizeof(SI_PIH_HVTEE_SHAREHEAD_STRU));
+
+        if (pucAPNData[pstDataHead->ulDataLen-1] != '\0')
+        {
+            VOS_TaskUnlock();
+
+            return SI_PIH_HVTEE_LEN_ERROR;
+        }
+
+        /*保存APN数据,字符串类型*/
+        VOS_MemCpy(g_aucVsimAPNData, pucAPNData, pstDataHead->ulDataLen);
+    }
+
+    VOS_TaskUnlock();
+
+    SI_PIH_MNTNDataHook(SI_PIH_HVTEE_DATA_HOOK, sizeof(SI_PIH_HVTEE_SHAREHEAD_STRU)+pstDataHead->ulDataLen, (VOS_UINT8*)pstDataHead);
+
+    return SI_PIH_HVTEE_NOERROR;
+}
+
+/*****************************************************************************
+函 数 名  :SI_PIH_HvteeDHHandle
+功能描述  :实现VSIM文件的写入
+输入参数  :无
+输出参数  :无
+返 回 值  :VOS_OK
+调用函数  :
+修订记录  :
+1. 日    期   : 2014年10月09日
+   作    者   : zhuli
+   修改内容   : Create
+*****************************************************************************/
+VOS_UINT32 SI_PIH_HvteeDHHandle(VOS_VOID)
+{
+    NVIM_VSIM_HVSDH_NV_STRU             stNVDHKey;
+    SI_PIH_HVTEEDHPARA_STRU             *pstDHParaData;
+    SI_PIH_HVTEE_ERROR_ENUM_UINT32      enResult;
+
+    if (NV_OK != NV_Read(en_NV_Item_VSIM_HVSDH_INFO, &stNVDHKey, sizeof(NVIM_VSIM_HVSDH_NV_STRU)))
+    {
+        USIMM_ERROR_LOG("SI_PIH_HvteeDHHandle: NV Read Key is Failed");
+
+        return SI_PIH_HVTEE_DATA_ERROR;
+    }
+
+    enResult = SI_PIH_HvteeDataCheck((SI_PIH_HVTEE_DATAFLAG_ENUM_UINT32)SI_PIH_HVTEE_DHSET, 
+                                    SI_PIH_DHPARASET_SMEM_LEN, 
+                                    (VOS_UINT8 *)SI_PIH_DHPARASET_SMEM_ADDR);
+
+    if (SI_PIH_HVTEE_NOERROR != enResult)
+    {
+        PIH_ERROR_LOG("SI_PIH_HvteeApnHandle: SI_PIH_HvteeDataCheck is Error.");
+
+        return enResult;
+    }
+
+    pstDHParaData = (SI_PIH_HVTEEDHPARA_STRU*)(SI_PIH_DHPARASET_SMEM_ADDR+sizeof(SI_PIH_HVTEE_SHAREHEAD_STRU));
+
+    if ((VOS_NULL != pstDHParaData->ulSPublicKeyLen)
+        &&(pstDHParaData->ulSPublicKeyLen <= VSIM_KEYLEN_MAX))
+    {
+        stNVDHKey.stSPublicKey.ulKeyLen = pstDHParaData->ulSPublicKeyLen;
+
+        VOS_MemCpy(stNVDHKey.stSPublicKey.aucKey, 
+                    pstDHParaData->aucSPublicKey, 
+                    pstDHParaData->ulSPublicKeyLen);
+    }
+
+    if ((VOS_NULL != pstDHParaData->ulCPublicKeyLen)
+        &&(pstDHParaData->ulCPublicKeyLen <= VSIM_KEYLEN_MAX))
+    {
+        stNVDHKey.stCPublicKey.ulKeyLen = pstDHParaData->ulCPublicKeyLen;
+
+        VOS_MemCpy(stNVDHKey.stCPublicKey.aucKey, 
+                    pstDHParaData->aucCPublicKey, 
+                    pstDHParaData->ulCPublicKeyLen);
+    }
+
+    if ((VOS_NULL != pstDHParaData->ulCPrivateKeyLen)
+        &&(pstDHParaData->ulCPrivateKeyLen <= VSIM_KEYLEN_MAX))
+    {
+        stNVDHKey.stCPrivateKey.ulKeyLen = pstDHParaData->ulCPrivateKeyLen;
+
+        if (VOS_OK != SI_PIH_HukEncode(pstDHParaData->aucCPrivateKey, 
+                                        pstDHParaData->ulCPrivateKeyLen, 
+                                        stNVDHKey.stCPrivateKey.aucKey, 
+                                        &stNVDHKey.stCPrivateKey.ulKeyLen))
+        {
+            PIH_ERROR_LOG("SI_PIH_HvteeApnHandle: SI_PIH_HukEncode is Error.");
+
+            return SI_PIH_HVTEE_ENCODE_ERROR;
+        }
+    }
+
+    if (NV_OK != NV_Write(en_NV_Item_VSIM_HVSDH_INFO, &stNVDHKey, sizeof(NVIM_VSIM_HVSDH_NV_STRU)))
+    {
+        USIMM_ERROR_LOG("SI_PIH_HvteeDHHandle: NV Write Key is Failed");
+
+        return SI_PIH_HVTEE_DATA_ERROR;
+    }
+
+    if ((VOS_NULL != pstDHParaData->ulParaPLen)||(VOS_NULL != pstDHParaData->ulParaGLen))
+    {
+        DH_ChangeDHParas(pstDHParaData->ulParaPLen, 
+                        pstDHParaData->aucParaPKey, 
+                        pstDHParaData->ulParaGLen, 
+                        pstDHParaData->aucParaGKey);
+    }
+
+    SI_PIH_MNTNDataHook(SI_PIH_HVTEE_DATA_HOOK, sizeof(SI_PIH_HVTEEDHPARA_STRU), (VOS_UINT8*)pstDHParaData);
+
+    return SI_PIH_HVTEE_NOERROR;
+}
+
+
+VOS_UINT32 SI_PIH_HvteeVSIMHandle(VOS_VOID)
+{
+    SI_PIH_HVTEE_ERROR_ENUM_UINT32      enResult;
+    VOS_UINT8                           *pucVsimData;
+    SI_PIH_HVTEE_SHAREHEAD_STRU         *pstDataHead;
+
+    enResult = SI_PIH_HvteeDataCheck((SI_PIH_HVTEE_DATAFLAG_ENUM_UINT32)SI_PIH_HVTEE_VSIMDATA, 
+                                    SI_PIH_VSIM_SMEM_LEN, 
+                                    (VOS_UINT8 *)SI_PIH_VSIM_SMEM_ADDR);
+
+    if (SI_PIH_HVTEE_NOERROR != enResult)
+    {
+        PIH_ERROR_LOG("SI_PIH_HvteeApnHandle: SI_PIH_HvteeDataCheck is Error.");
+
+        return enResult;
+    }
+
+    pstDataHead = (SI_PIH_HVTEE_SHAREHEAD_STRU *)SI_PIH_VSIM_SMEM_ADDR;
+
+    pucVsimData = (VOS_UINT8 *)(SI_PIH_VSIM_SMEM_ADDR+sizeof(SI_PIH_HVTEE_SHAREHEAD_STRU));
+
+    USIMM_SaveHvteeVsimData(pstDataHead->ulDataLen, pucVsimData);
+
+    if (VOS_NULL != pstDataHead->ulDataLen)
+    {
+        SI_PIH_MNTNDataHook(SI_PIH_HVTEE_DATA_HOOK, sizeof(SI_PIH_HVTEE_SHAREHEAD_STRU)+pstDataHead->ulDataLen, (VOS_UINT8*)pstDataHead);
+    }
+
+    return SI_PIH_HVTEE_NOERROR;
+}
+
+
+
+VOS_UINT32 SI_PIH_HvteeSetHandle(SI_PIH_HVTEE_SET_REQ_STRU *pstMsg)
+{
+    VOS_UINT32                          ulAPNResult = VOS_OK;
+    VOS_UINT32                          ulDHResult = VOS_OK;
+    VOS_UINT32                          ulVSIMResult = VOS_OK;
+    SI_PIH_EVENT_INFO_STRU              stEvent;
+
+    if (VOS_TRUE == pstMsg->stHvtee.bAPNFlag)
+    {
+        ulAPNResult = SI_PIH_HvteeApnHandle();
+    }
+
+    if (VOS_TRUE == pstMsg->stHvtee.bDHParaFlag)
+    {
+        ulDHResult = SI_PIH_HvteeDHHandle();
+    }
+
+    if (VOS_TRUE == pstMsg->stHvtee.bVSIMDataFlag)
+    {
+        ulVSIMResult = SI_PIH_HvteeVSIMHandle();
+    }
+
+    stEvent.PIHEvent.HVTEECnf.ulAPNResult   = ulAPNResult;
+    stEvent.PIHEvent.HVTEECnf.ulDHResult    = ulDHResult;
+    stEvent.PIHEvent.HVTEECnf.ulVSIMResult  = ulVSIMResult;
+
+    if ((VOS_OK == ulAPNResult)&&(VOS_OK == ulDHResult)&&(VOS_OK == ulVSIMResult))
+    {
+        stEvent.PIHError = TAF_ERR_NO_ERROR;
+    }
+    else
+    {
+        stEvent.PIHError = TAF_ERR_UNSPECIFIED_ERROR;
+    }
+
+    return SI_PIH_EventCallBack(&stEvent);
+}
+
+/*****************************************************************************
+ 函 数 名  : SI_PIH_TaskDelayTimerHandler
+ 功能描述  :
+ 输入参数  : ulParam     --- 启动定时器时所传入的ulParam
+             ulTimerName --- 定时器名字
+ 输出参数  : 无
+ 返 回 值  : VOS_VOID
+ 调用函数  :
+ 被调函数  :
+
+ 修改历史      :
+  1.日    期   :
+    作    者   :
+    修改内容   :
+
+*****************************************************************************/
+VOS_VOID SI_PIH_TaskDelayTimerHandler(VOS_UINT32 ulParam, VOS_UINT32 ulTimerName)
+{
+    VOS_SmV(g_ulPIHTaskDelaySemID);
+
+    return;
+}
+
+/*****************************************************************************
+函 数 名  :USIMM_TaskDelay
+功能描述  :
+输入参数  :
+输出参数  :
+返 回 值  :无
+修订记录  :
+1. 日    期   :
+   作    者   :
+   修改内容   :
+
+*****************************************************************************/
+VOS_VOID SI_PIH_TaskDelay(VOS_UINT32 ulTimeLen)
+{
+    if (0 == ulTimeLen)
+    {
+        return;
+    }
+
+#if(VOS_OS_VER == VOS_WIN32)    /* for PC Stub */
+    VOS_TaskDelay(ulTimeLen);
+#else
+    if(VOS_OK != VOS_StartCallBackRelTimer(&g_ulPIHTaskDelayTimerID,
+                                              MAPS_PIH_PID,
+                                              ulTimeLen,
+                                              SI_PIH_CB_TIMER_NAME_TASKDELAY,
+                                              VOS_NULL,
+                                              VOS_RELTIMER_NOLOOP,
+                                              SI_PIH_TaskDelayTimerHandler,
+                                              VOS_TIMER_PRECISION_5))
+    {
+        PIH_ERROR_LOG("SI_PIH_TaskDelay: VOS_StartCallBackRelTimer fail!");
+
+        return;
+    }
+
+    if(VOS_OK != VOS_SmP(g_ulPIHTaskDelaySemID, SI_PIH_TASKDELAY_SEM_LEN))
+    {
+        PIH_ERROR_LOG("SI_PIH_TaskDelay: VOS_SmP fail!");
+    }
+#endif
+
+    return;
+}
+VOS_UINT32 SI_PIH_HvCheckCardHandle(SI_PIH_HVCHECKCARD_REQ_STRU *pstMsg)
+{
+    SI_PIH_EVENT_INFO_STRU              stEvent;
+    VOS_INT32                           lSCIResult = VOS_ERR;
+    VOS_UINT32                          i;
+
+    if (VOS_FALSE == USIMM_VsimIsActive())
+    {
+        stEvent.PIHError = TAF_ERR_SIM_BUSY;
+
+        PIH_ERROR_LOG("SI_PIH_HvCheckCardHandle: Deactive Card Error");
+
+        return SI_PIH_EventCallBack(&stEvent);
+    }
+
+    DRV_USIMMSCI_RST(COLD_RESET);
+
+    for(i=0; i<SI_PIH_GET_SCISTATUS_MAX; i++)
+    {
+        lSCIResult = DRV_USIMMSCI_GET_CARD_STAU(); /*如果复位成功则返回成功*/
+
+        if (SCI_CARD_STATE_BUSY != lSCIResult)
+        {
+            break;
+        }
+
+        SI_PIH_TaskDelay(SI_PIH_CB_TIMER_LEN_TASKDELAY);
+    }
+
+    stEvent.PIHError = TAF_ERR_NO_ERROR;
+
+    if (SCI_CARD_STATE_READY == lSCIResult)
+    {
+        stEvent.PIHEvent.HvCheckCardCnf.enData = SI_PIH_HVCHECKCARD_CARDIN;
+    }
+    else
+    {
+        stEvent.PIHEvent.HvCheckCardCnf.enData = SI_PIH_HVCHECKCARD_ABSENT;
+    }
+
+    for(i=0; i<SI_PIH_GET_SCISTATUS_MAX; i++)
+    {
+        if(VOS_OK == DRV_USIMMSCI_DEACT())
+        {
+            break;
+        }
+
+        PIH_ERROR_LOG("SI_PIH_HvCheckCardHandle: Deactive Card Error");
+    }
 
     return SI_PIH_EventCallBack(&stEvent);
 }
@@ -2389,7 +2939,8 @@ VOS_UINT32  SI_PIH_MsgProc(PS_SI_MSG_STRU *pMsg)
     /*勾包消息避免记录错误，直接返回*/
     if ((SI_PIH_USIMREG_PID_HOOK == pMsg->ulMsgName)
         ||(SI_PIH_REFRESHREG_PID_HOOK == pMsg->ulMsgName)
-        ||(SI_PIH_ISIMREG_PID_HOOK == pMsg->ulMsgName))
+        ||(SI_PIH_ISIMREG_PID_HOOK == pMsg->ulMsgName)
+        ||(SI_PIH_HVTEE_DATA_HOOK == pMsg->ulMsgName))
     {
         return VOS_OK;
     }
@@ -2471,17 +3022,27 @@ VOS_UINT32  SI_PIH_MsgProc(PS_SI_MSG_STRU *pMsg)
             ulResult = SI_PIH_ATRQryReqProc();
             break;
 
-#if (FEATURE_VSIM == FEATURE_ON)
-        case SI_PIH_HVSST_QUERY_REQ:
-            PIH_NORMAL_LOG("SI_SIM_AppMsgProc:NORMAL:SI_PIH_HVSST_QUERY_REQ.");
-            ulResult = SI_PIH_HVSSTQueryHandle((SI_PIH_MSG_HEADER_STRU *)pMsg);
-            break;
-
         case SI_PIH_HVSST_SET_REQ:
             PIH_NORMAL_LOG("SI_SIM_AppMsgProc:NORMAL:SI_PIH_HVSST_SET_REQ.");
             ulResult = SI_PIH_HVSSTSetHandle((SI_PIH_HVSST_REQ_STRU *)pMsg);
             break;
 
+        case SI_PIH_HVSST_QUERY_REQ:
+            PIH_NORMAL_LOG("SI_SIM_AppMsgProc:NORMAL:SI_PIH_HVSST_QUERY_REQ.");
+            ulResult = SI_PIH_HVSSTQueryHandle((SI_PIH_MSG_HEADER_STRU *)pMsg);
+            break;
+
+        case SI_PIH_SCICFG_SET_REQ:
+            PIH_NORMAL_LOG("SI_SIM_AppMsgProc:NORMAL:SI_PIH_SCICFG_SET_REQ.");
+            ulResult = SI_PIH_SciCfgSetHandle((SI_PIH_SCICFG_SET_REQ_STRU *)pMsg);
+            break;
+
+        case SI_PIH_SCICFG_QUERY_REQ:
+            PIH_NORMAL_LOG("SI_SIM_AppMsgProc:NORMAL:SI_PIH_SCICFG_QUERY_REQ.");
+            ulResult = SI_PIH_SciCfgQueryHandle((SI_PIH_MSG_HEADER_STRU *)pMsg);
+            break;
+
+#if (FEATURE_VSIM == FEATURE_ON)
         case SI_PIH_HVSDH_SET_REQ:
             PIH_NORMAL_LOG("SI_SIM_AppMsgProc:NORMAL:SI_PIH_HVSDH_SET_REQ.");
             ulResult = SI_PIH_HvsDHSetHandle(((SI_PIH_HVSDH_SET_REQ_STRU*)pMsg)->ulDataLen, ((SI_PIH_HVSDH_SET_REQ_STRU*)pMsg)->aucData);
@@ -2500,6 +3061,16 @@ VOS_UINT32  SI_PIH_MsgProc(PS_SI_MSG_STRU *pMsg)
         case SI_PIH_FILE_WRITE_REQ:
             PIH_NORMAL_LOG("SI_SIM_AppMsgProc:NORMAL:SI_PIH_FILE_WRITE_REQ.");
             ulResult = SI_PIH_ATFileWriteHandle((SI_PIH_FILE_WRITE_REQ_STRU *)pMsg);
+            break;
+
+        case SI_PIH_HVTEE_SET_REQ:
+            PIH_NORMAL_LOG("SI_SIM_AppMsgProc:NORMAL:SI_PIH_HVTEE_SET_REQ.");
+            ulResult = SI_PIH_HvteeSetHandle((SI_PIH_HVTEE_SET_REQ_STRU *)pMsg);
+            break;
+
+        case SI_PIH_HVCHECKCARD_REQ:
+            PIH_NORMAL_LOG("SI_SIM_AppMsgProc:NORMAL:SI_PIH_HVCHECKCARD_REQ.");
+            ulResult = SI_PIH_HvCheckCardHandle((SI_PIH_HVCHECKCARD_REQ_STRU *)pMsg);
             break;
 #endif
 
@@ -2803,7 +3374,7 @@ VOS_UINT32 SI_PIH_ProtectReset(SI_VOID)
 
     PIH_WARNING_LOG("SI_PIH_ProtectReset: Start the Protect Reset.");
 
-    SI_PIH_POLL_32K_TIMER_STOP(&g_stPIHPollTime[SI_PIH_TIMER_NAME_CHECKSTATUS].stTimer);/*停止可能开启的定时器*/
+    VOS_StopRelTimer(&g_stPIHPollTime[SI_PIH_TIMER_NAME_CHECKSTATUS].stTimer);/*停止可能开启的定时器*/
     VOS_StopRelTimer(&g_stPIHPollTime[SI_PIH_TIMER_NAME_CHECKIMSI].stTimer);
     VOS_StopRelTimer(&g_stPIHPollTime[SI_PIH_TIMER_NAME_CALL].stTimer);
 
@@ -2865,7 +3436,7 @@ VOS_VOID SI_PIH_CardStateIndProc(PS_USIM_STATUS_IND_STRU *pstMsg)
                 g_stPIHProtectCtrl.enProtectFun = SI_PIH_PROTECT_DISABLE;
 
                 /*停止可能开启的定时器*/
-                SI_PIH_POLL_32K_TIMER_STOP(&g_stPIHPollTime[SI_PIH_TIMER_NAME_CHECKSTATUS].stTimer);
+                VOS_StopRelTimer(&g_stPIHPollTime[SI_PIH_TIMER_NAME_CHECKSTATUS].stTimer);
             }
             else
             {
@@ -3456,11 +4027,10 @@ VOS_UINT32 SI_PIH_TimerMsgProc(REL_TIMER_MSG* pstMsg)
             ulResult = USIMM_RestrictedAccessReq(MAPS_PIH_PID, 0, &stRestricAccess);
             break;
 
-#if (FEATURE_ON == FEATURE_VSIM)
         case SI_PIH_TIMER_NAME_DEACTIVECARD:
             ulResult = SI_PIH_DeactvieCardTimeOut();
             break;
-#endif
+
         default:
             PIH_WARNING_LOG("SI_PIH_TimerMsgProc:Default Unknow Timer Msg");
             break;

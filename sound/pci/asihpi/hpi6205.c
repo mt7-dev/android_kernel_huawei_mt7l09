@@ -1595,7 +1595,6 @@ static u16 boot_loader_config_emif(struct hpi_adapter_obj *pao, int dsp_index)
 
 		/* Set the EMIF */
 		/* memory map of C6205 */
-		/* 00000000-0000FFFF    16Kx32 internal program */
 		/* 00400000-00BFFFFF    CE0     2Mx32 SDRAM running @ 100MHz */
 
 		/* EMIF config */

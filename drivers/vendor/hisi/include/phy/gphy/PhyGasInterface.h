@@ -2221,6 +2221,10 @@ typedef struct
 /*****************************************************************************
   10 函数声明
 *****************************************************************************/
+/* API说明: 判断传入的接入技术模式是否为主模，如果为主模，返回1；如果不是主模， 返回0. 
+   例如: 调用UPHY_GAS_GetModuleStatus(GAS_PHY_MODE_G)，如果返回1，表示当前G模为主模
+*/
+extern VOS_UINT16  UPHY_GAS_GetModuleStatus( GAS_PHY_MODE_ENUM_UINT16 enModuleID );
 
 
 #if ((VOS_OS_VER == VOS_WIN32) || (VOS_OS_VER == VOS_NUCLEUS))

@@ -136,6 +136,16 @@ VOS_VOID TAF_MMA_WritePlmnSelectionModeNvim(VOS_UINT8 ucReselMode);
 
 VOS_VOID TAF_MMA_UpdateUeBandNvim(VOS_VOID);
 
+#if (FEATURE_ON == FEATURE_IMS)
+VOS_UINT32 TAF_MMA_UpdataVoiceDomainNv(
+    VOS_UINT32                          ulVoiceDomain
+);
+
+VOS_UINT32 TAF_MMA_UpdateLteImsSupportNv(
+    VOS_UINT8                           ucFlag
+);
+#endif
+
 
 #if (VOS_OS_VER == VOS_WIN32)
 #pragma pack()

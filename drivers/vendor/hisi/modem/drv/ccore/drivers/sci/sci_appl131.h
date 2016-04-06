@@ -45,7 +45,7 @@
  #define apERR_BUSY 3                             /* Resource is already in use */
 #endif
 
-#define BOOL    int
+#define BOOL    int 
 
 /*
  * Description:

@@ -55,26 +55,17 @@ extern "C" {
   6 函数定义
 *****************************************************************************/
 
-/*****************************************************************************
- 函 数 名  : TAF_SPM_IsValidEmerCategory
- 功能描述  : 判定是否紧急呼叫号码的类型是否合法
- 输入参数  : ucEmerCategory  - 紧急呼叫类型
- 输出参数  : 无
- 返 回 值  : VOS_TRUE  - 合法
-             VOS_FALSE - 不合法
- 调用函数  :
- 被调函数  :
 
- 修改历史      :
-  1.日    期   : 2009年12月29日
-    作    者   : 周君 40661
-    修改内容   : 新生成函数
-*****************************************************************************/
 VOS_UINT32 TAF_SPM_IsValidEmerCategory(
     VOS_UINT8                           ucEmerCategory
 )
 {
     VOS_UINT32                          ulRet;
+
+    if (ucEmerCategory > MN_CALL_EMER_CATEGORG_VAL_MAX)
+    {
+        return VOS_FALSE;
+    }
 
     if (ucEmerCategory & MN_CALL_EMER_CATEGORG_POLICE)
     {
@@ -133,7 +124,7 @@ VOS_UINT32  TAF_SPM_IsNetworkEmergencyNum(
              if (VOS_TRUE == *pulEmerCatExist)
              {
                  *pucEmerCategory = (pstMmCallEmerNumList->astEmergencyLists[i].ucCategoryValue
-                                   & (0x1F));
+                                   & MN_CALL_EMER_CATEGORG_VAL_MAX);
              }
 
              return VOS_TRUE;
@@ -195,7 +186,7 @@ VOS_UINT32  TAF_SPM_IsAppCustomEmergencyNum(
              if (VOS_TRUE == *pulEmerCatExist)
              {
                  *pucEmerCategory = (pstCustomCallEmerNumCtx->stCustomEccNumList.astCustomEccNumList[i].ucCategory
-                                   & (0x1F));
+                                   & MN_CALL_EMER_CATEGORG_VAL_MAX);
              }
 
             return VOS_TRUE;
@@ -324,7 +315,7 @@ VOS_UINT32  TAF_SPM_IsUsimEmergencyNum(
 
         if (VOS_TRUE == *pulEmcCatExist)
         {
-            *pucEmerCategory = (pstEccData->astEccRecord[i].ucESC & 0x1F);
+            *pucEmerCategory = (pstEccData->astEccRecord[i].ucESC & MN_CALL_EMER_CATEGORG_VAL_MAX);
         }
 
         PS_MEM_FREE(WUEPS_PID_TAF, pstEccData);
@@ -347,7 +338,7 @@ VOS_UINT32  TAF_SPM_IsEmergencyNum(
     VOS_UINT8                           ucEmergencyCall;
 
     ucEmergencyCall = VOS_FALSE;
-    
+
     /* 检查是否(U)SIM卡中EFECC文件中的紧急呼叫号码 */
     if (TAF_SDC_USIM_STATUS_NO_PRESENT != TAF_SDC_GetSimStatus())
     {
@@ -407,7 +398,7 @@ VOS_UINT32  TAF_SPM_IsEmergencyNum(
     {
         return VOS_TRUE;
     }
-    
+
     return VOS_FALSE;
 }
 VOS_UINT32 TAF_SPM_GetBcCallType(
@@ -725,8 +716,45 @@ VOS_VOID TAF_SPM_SendAtGetCallInfoCnf(
     return;
 
 }
-#endif
 
+
+VOS_VOID TAF_SPM_SendAtGetEconfCallInfoCnf(
+    IMSA_SPM_CALL_GET_ECONF_CALLED_INFO_CNF_STRU   *pstImsaMsg
+)
+{
+    TAF_CALL_ECONF_INFO_QRY_CNF_STRU   *pstImsaCnfMsg;
+    VOS_UINT16                          usLength;
+
+    pstImsaCnfMsg = (TAF_CALL_ECONF_INFO_QRY_CNF_STRU*)PS_MEM_ALLOC(WUEPS_PID_TAF,  sizeof(TAF_CALL_ECONF_INFO_QRY_CNF_STRU));
+    if (VOS_NULL_PTR == pstImsaCnfMsg)
+    {
+        return;
+    }
+    /* 构造一条消息，给AT回复 */
+    PS_MEM_SET((VOS_VOID *)pstImsaCnfMsg, 0x00, sizeof(TAF_CALL_ECONF_INFO_QRY_CNF_STRU));
+
+    /* 填写事件名称 */
+    pstImsaCnfMsg->enEvent            = TAF_CALL_EVT_CLCCECONF_INFO;
+    pstImsaCnfMsg->usClientId         = MN_GetRealClientId(pstImsaMsg->usClientId, WUEPS_PID_TAF);
+    pstImsaCnfMsg->ucNumOfMaxCalls    = pstImsaMsg->ucNumOfMaxCalls;
+    pstImsaCnfMsg->ucNumOfCalls       = pstImsaMsg->ucNumOfCalls;
+
+    PS_MEM_CPY(pstImsaCnfMsg->astCallInfo,
+               pstImsaMsg->astCallInfo,
+               sizeof(TAF_CALL_ECONF_INFO_PARAM_STRU) * (pstImsaMsg->ucNumOfCalls));
+
+    /* 确定消息长度 */
+    usLength = (VOS_UINT16)sizeof(TAF_CALL_ECONF_INFO_QRY_CNF_STRU);
+
+    /* 通过异步消息发送给AT */
+    MN_SendReportMsg(MN_CALLBACK_CS_CALL, (VOS_UINT8 *)pstImsaCnfMsg, usLength);
+
+    PS_MEM_FREE(WUEPS_PID_TAF, pstImsaCnfMsg);
+
+    return;
+
+}
+#endif
 
 
 VOS_VOID TAF_SPM_GetCallInfoFromFsmEntryMsg(
@@ -837,24 +865,13 @@ VOS_UINT32 TAF_SPM_IsUESupportMoCallType(
     MN_CALL_TYPE_ENUM_U8                enCallType
 )
 {
-    TAF_SPM_SERVICE_CTRL_CFG_INFO_STRU *pstServiceCtrlCfgInfo = VOS_NULL_PTR;
-
-    pstServiceCtrlCfgInfo   = TAF_SPM_GetServiceCtrlCfgInfoAddr();
-
-    /* 修改为VIDEO CALL且NV支持VT的主叫 */
-    if (MN_CALL_TYPE_VIDEO     == enCallType)
-    {
-        if ((TAF_SPM_VP_MO_ONLY    == pstServiceCtrlCfgInfo->enVpCfgState)
-         || (TAF_SPM_VP_MO_MT_BOTH == pstServiceCtrlCfgInfo->enVpCfgState))
-        {
-            return VOS_TRUE;
-        }
-
-        return VOS_FALSE;
-    }
+    /* 该处不能区分是CS域还是PS域或IMS域的VIDEO，因此CALL CTRL修改呼叫
+       类型为VIDEO时也认为呼叫类型合法,域选择结果为CS域后在CALL模块有判断，
+       故删除下面的NV判断 */
 
     if ((MN_CALL_TYPE_VOICE     == enCallType)
-     || (MN_CALL_TYPE_EMERGENCY == enCallType))
+     || (MN_CALL_TYPE_EMERGENCY == enCallType)
+     || (MN_CALL_TYPE_VIDEO     == enCallType))
     {
         return VOS_TRUE;
     }
@@ -865,6 +882,7 @@ VOS_UINT32 TAF_SPM_IsUESupportMoCallType(
 
 
 #if (FEATURE_ON == FEATURE_IMS)
+
 VOS_VOID TAF_SPM_ProcSmmaRpt(TAF_SPM_MSG_REPORT_IND_STRU  *pstMsgReportInd)
 {
     MN_MSG_EVENT_INFO_STRU             *pstMsgEventInfo = VOS_NULL_PTR;
@@ -982,6 +1000,226 @@ VOS_VOID TAF_SPM_ProcSmsRptEvent(TAF_SPM_MSG_REPORT_IND_STRU  *pstMsgReportInd)
         TAF_SPM_ProcMoSmsRpt(pstMsgReportInd);
     }
 }
+
+
+VOS_VOID TAF_SPM_SendAtEconfDialCnf(
+    MN_CLIENT_ID_T                      usClientId,
+    MN_OPERATION_ID_T                   ucOpId,
+    MN_CALL_ID_T                        ucCallId,
+    TAF_CS_CAUSE_ENUM_UINT32            enCause
+)
+{
+    TAF_CALL_ECONF_DIAL_CNF_STRU        stEconfDialCnf;
+    VOS_UINT16                          usLength;
+
+    usLength = (VOS_UINT16)sizeof(TAF_CALL_ECONF_DIAL_CNF_STRU);
+
+    PS_MEM_SET(&stEconfDialCnf, 0x00, usLength);
+
+    stEconfDialCnf.enEvent      = TAF_CALL_EVT_ECONF_DIAL_CNF;
+    stEconfDialCnf.usClientId   = usClientId;
+    stEconfDialCnf.ucOpId       = ucOpId;
+    stEconfDialCnf.ucCallId     = ucCallId;
+    stEconfDialCnf.enCause      = enCause;
+
+    MN_SendReportMsg(MN_CALLBACK_CS_CALL, (VOS_UINT8 *)&stEconfDialCnf, usLength);
+}
+
+
+VOS_VOID TAF_SPM_ParseEconfDailInfoFromMsg(
+    struct MsgCB                       *pstMsg
+)
+{
+    MN_CALL_APP_REQ_MSG_STRU                *pstAppMsg           = VOS_NULL_PTR;
+    TAF_CALL_ECONF_DIAL_REQ_STRU            *pstEconfParam       = VOS_NULL_PTR;
+    TAF_SPM_CALL_ECONF_INFO_STRU            *pstEconfInfoAddr    = VOS_NULL_PTR;
+    VOS_UINT32                               ulIndex;
+
+    pstEconfInfoAddr    = TAF_SPM_GetCallEconfInfoAddr();
+    pstAppMsg           = (MN_CALL_APP_REQ_MSG_STRU *)pstMsg;
+    pstEconfParam       = &pstAppMsg->unParm.stEconfDial;
+    PS_MEM_SET(pstEconfInfoAddr, 0x0, sizeof(TAF_SPM_CALL_ECONF_INFO_STRU));
+
+    pstEconfInfoAddr->ucCallNum     = (VOS_UINT8)((pstEconfParam->stEconfCalllist.ulCallNum > TAF_CALL_MAX_ECONF_CALLED_NUM) ?
+                                       TAF_CALL_MAX_ECONF_CALLED_NUM : pstEconfParam->stEconfCalllist.ulCallNum);
+    pstEconfInfoAddr->usClientId    = pstAppMsg->clientId;
+    pstEconfInfoAddr->ucopId        = pstAppMsg->opId;
+    pstEconfInfoAddr->enCallMode    = pstEconfParam->enCallMode;
+    pstEconfInfoAddr->enCallType    = pstEconfParam->enCallType;
+
+    /* 将电话号码存到上下文中 */
+    for (ulIndex = 0; ulIndex < pstEconfInfoAddr->ucCallNum; ulIndex++)
+    {
+        PS_MEM_CPY(&pstEconfInfoAddr->astEconfCheckInfo[ulIndex].stCalledNumber,
+                   &pstEconfParam->stEconfCalllist.astDialNumber[ulIndex],
+                   sizeof(MN_CALL_CALLED_NUM_STRU));
+
+        PS_MEM_CPY(&pstEconfInfoAddr->astEconfCheckInfo[ulIndex].stSubaddr,
+                   &pstEconfParam->stEconfCalllist.astSubaddr[ulIndex],
+                   sizeof(MN_CALL_SUBADDR_STRU));
+    }
+
+    PS_MEM_CPY(&pstEconfInfoAddr->stDataCfg,
+               &pstEconfParam->stDataCfg,
+               sizeof(pstEconfParam->stDataCfg));
+
+    return;
+}
+VOS_VOID TAF_SPM_SendEconfNotifyInd(
+    MN_OPERATION_ID_T                   ucOpId,
+    VOS_UINT8                           ucNumOfCalls,
+    TAF_CALL_ECONF_INFO_PARAM_STRU     *pstCallInfo
+)
+{
+    TAF_CALL_EVT_ECONF_NOTIFY_IND_STRU *pstEconfNotify = VOS_NULL_PTR;
+
+    /* 由于sizeof(TAF_CALL_EVT_ECONF_NOTIFY_IND_STRU)太大，采用动态内存 */
+    pstEconfNotify = (TAF_CALL_EVT_ECONF_NOTIFY_IND_STRU *)PS_MEM_ALLOC(WUEPS_PID_TAF, sizeof(TAF_CALL_EVT_ECONF_NOTIFY_IND_STRU));
+    if (VOS_NULL_PTR == pstEconfNotify)
+    {
+        return;
+    }
+
+    PS_MEM_SET(pstEconfNotify, 0, sizeof(TAF_CALL_EVT_ECONF_NOTIFY_IND_STRU));
+
+    pstEconfNotify->enEvent                 = TAF_CALL_EVT_ECONF_NOTIFY_IND;
+    pstEconfNotify->usClientId              = MN_GetRealClientId(MN_CLIENT_ID_BROADCAST, WUEPS_PID_TAF);;
+    pstEconfNotify->ucOpId                  = ucOpId;
+    pstEconfNotify->ucNumOfCalls            = ucNumOfCalls;
+
+    PS_MEM_CPY(pstEconfNotify->astCallInfo, pstCallInfo, sizeof(TAF_CALL_ECONF_INFO_PARAM_STRU) * ucNumOfCalls);
+
+    MN_SendReportMsg(MN_CALLBACK_CS_CALL, (VOS_UINT8 *)pstEconfNotify, sizeof(TAF_CALL_EVT_ECONF_NOTIFY_IND_STRU));
+
+    PS_MEM_FREE(WUEPS_PID_TAF, pstEconfNotify);
+
+    return;
+}
+VOS_VOID TAF_SPM_ReportEconfCheckRslt(VOS_VOID)
+{
+    TAF_SPM_CALL_ECONF_INFO_STRU       *pstEconfInfoAddr    = VOS_NULL_PTR;
+    TAF_CALL_ECONF_INFO_PARAM_STRU     *pstCallInfo         = VOS_NULL_PTR;
+    TAF_CALL_ECONF_INFO_PARAM_STRU     *pstTemp             = VOS_NULL_PTR;
+    VOS_UINT32                          ulIndex;
+    MN_OPERATION_ID_T                   ucOpId;
+
+    pstEconfInfoAddr    = TAF_SPM_GetCallEconfInfoAddr();
+    ucOpId              = pstEconfInfoAddr->ucopId;
+
+    pstCallInfo = (TAF_CALL_ECONF_INFO_PARAM_STRU *)PS_MEM_ALLOC(WUEPS_PID_TAF, sizeof(TAF_CALL_ECONF_INFO_PARAM_STRU) * TAF_CALL_MAX_ECONF_CALLED_NUM);
+    if (VOS_NULL_PTR == pstCallInfo)
+    {
+        return;
+    }
+
+    PS_MEM_SET(pstCallInfo, 0, sizeof(TAF_CALL_ECONF_INFO_PARAM_STRU) * TAF_CALL_MAX_ECONF_CALLED_NUM);
+
+    pstTemp = pstCallInfo;
+
+    for (ulIndex = 0; ulIndex < pstEconfInfoAddr->ucCallNum; ulIndex++)
+    {
+        pstTemp->enCause = pstEconfInfoAddr->astEconfCheckInfo[ulIndex].enCheckRslt;
+        PS_MEM_CPY(&pstTemp->stCallNumber,
+                   &pstEconfInfoAddr->astEconfCheckInfo[ulIndex].stCalledNumber,
+                   sizeof(MN_CALL_CALLED_NUM_STRU));
+        pstTemp++;
+    }
+
+    /* 给AT上报TAF_CALL_EVT_ECONF_NOTIFY_IND */
+    TAF_SPM_SendEconfNotifyInd(ucOpId, pstEconfInfoAddr->ucCallNum, pstCallInfo);
+
+    PS_MEM_FREE(WUEPS_PID_TAF, pstCallInfo);
+
+    return;
+}
+VOS_VOID TAF_SPM_RecordEconfCheckRslt(
+    VOS_UINT32                          ulIndex,
+    VOS_UINT32                          ulResult
+)
+{
+    TAF_SPM_CALL_ECONF_INFO_STRU       *pstEconfInfoAddr    = VOS_NULL_PTR;
+
+    pstEconfInfoAddr    = TAF_SPM_GetCallEconfInfoAddr();
+
+    /* ulIndex错误 */
+    if (ulIndex >= pstEconfInfoAddr->ucCallNum)
+    {
+        return;
+    }
+
+    pstEconfInfoAddr->astEconfCheckInfo[ulIndex].enCheckRslt        = ulResult;
+    pstEconfInfoAddr->astEconfCheckInfo[ulIndex].ulCheckCnfFlag     = VOS_TRUE;
+
+    return;
+}
+VOS_VOID TAF_SPM_SetEconfPreRslt(
+    TAF_CS_CAUSE_ENUM_UINT32            enCause
+)
+{
+    TAF_SPM_CALL_ECONF_INFO_STRU       *pstEconfInfoAddr    = VOS_NULL_PTR;
+    VOS_UINT32                          ulIndex;
+
+    pstEconfInfoAddr    = TAF_SPM_GetCallEconfInfoAddr();
+
+    for (ulIndex = 0; ulIndex < pstEconfInfoAddr->ucCallNum; ulIndex++)
+    {
+        TAF_SPM_RecordEconfCheckRslt(ulIndex, enCause);
+    }
+
+    return;
+}
+
+
+VOS_VOID TAF_SPM_GetEconfCheckResultSuccNum(
+    VOS_UINT32                         *pulSuccNum
+)
+{
+    TAF_SPM_CALL_ECONF_INFO_STRU       *pstEconfInfoAddr    = VOS_NULL_PTR;
+    VOS_UINT32                          ulIndex;
+
+    pstEconfInfoAddr    = TAF_SPM_GetCallEconfInfoAddr();
+
+    for (ulIndex = 0; ulIndex < pstEconfInfoAddr->ucCallNum; ulIndex++)
+    {
+        if (TAF_CS_CAUSE_SUCCESS == pstEconfInfoAddr->astEconfCheckInfo[ulIndex].enCheckRslt)
+        {
+            (*pulSuccNum)++;
+        }
+    }
+
+    return;
+
+}
+
+
+
+
+VOS_UINT32 TAF_SPM_ProcEconfCheckResult(VOS_VOID)
+{
+    TAF_SPM_CALL_ECONF_INFO_STRU       *pstEconfInfoAddr    = VOS_NULL_PTR;
+    VOS_UINT32                          ulSuccNum;
+
+    pstEconfInfoAddr    = TAF_SPM_GetCallEconfInfoAddr();
+    ulSuccNum           = 0;
+
+    TAF_SPM_GetEconfCheckResultSuccNum(&ulSuccNum);
+
+    /* 全部成功 */
+    if (pstEconfInfoAddr->ucCallNum == ulSuccNum)
+    {
+        /* 不需要给AT上报结果 */
+        return VOS_TRUE;
+    }
+    /* 部分失败或者全部失败 */
+    else
+    {
+        TAF_SPM_ReportEconfCheckRslt();
+        return VOS_FALSE;
+    }
+
+}
+
+
 #endif
 
 #ifdef __cplusplus

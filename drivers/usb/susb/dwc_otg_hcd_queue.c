@@ -7,7 +7,7 @@
  * Synopsys HS OTG Linux Software Driver and documentation (hereinafter,
  * "Software") is an Unsupported proprietary work of Synopsys, Inc. unless
  * otherwise expressly agreed to in writing between Synopsys and you.
- *
+ * 
  * The Software IS NOT an item of Licensed Software or Licensed Product under
  * any End User Software License Agreement or Agreement for Licensed Product
  * with Synopsys or any supplement thereto. You are permitted to use and
@@ -17,7 +17,7 @@
  * any information contained herein except pursuant to this license grant from
  * Synopsys. If you do not agree with this notice, including the disclaimer
  * below, then you are not authorized to use the Software.
- *
+ * 
  * THIS SOFTWARE IS BEING DISTRIBUTED BY SYNOPSYS SOLELY ON AN "AS IS" BASIS
  * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
@@ -42,7 +42,7 @@
 #include "dwc_otg_hcd.h"
 #include "dwc_otg_regs.h"
 
-/**
+/** 
  * Free each QTD in the QH's QTD-list then free the QH.  QH should already be
  * removed from a list.  QTD list should already be empty if called from URB
  * Dequeue.
@@ -56,7 +56,10 @@ void dwc_otg_hcd_qh_free(dwc_otg_hcd_t * hcd, dwc_otg_qh_t * qh)
 	dwc_irqflags_t flags = 0;
 
 	/* Free each QTD in the QTD list */
-	// changed by l00196665, must IRQSAVE!
+	if(NULL == hcd || NULL == qh){
+		DWC_ERROR("%s error: NULL pointer!\n", __func__);
+		return;
+	}
 	DWC_SPINLOCK_IRQSAVE(hcd->lock, &flags);
 	DWC_CIRCLEQ_FOREACH_SAFE(qtd, qtd_tmp, &qh->qtd_list, qtd_list_entry) {
 		DWC_CIRCLEQ_REMOVE(&qh->qtd_list, qtd, qtd_list_entry);
@@ -71,8 +74,11 @@ void dwc_otg_hcd_qh_free(dwc_otg_hcd_t * hcd, dwc_otg_qh_t * qh)
 			buf_size = 4096;
 		} else {
 			buf_size = hcd->core_if->core_params->max_transfer_size;
+			buf_size = (buf_size + dwc_max_packet(qh->maxp) - 1) & ~(dwc_max_packet(qh->maxp) - 1);
 		}
+
 		DWC_DMA_FREE(buf_size, qh->dw_align_buf, qh->dw_align_buf_dma);
+
 	}
 
 	DWC_FREE(qh);
@@ -139,19 +145,19 @@ static uint32_t calc_bus_time(int speed, int is_in, int is_isoc, int bytecount)
 		break;
 	default:
 		DWC_WARN("Unknown device speed\n");
-		retval = 0;
+		retval = -1;
 	}
 
 	return NS_TO_US(retval);
 }
 
-/**
+/** 
  * Initializes a QH structure.
  *
  * @param hcd The HCD state structure for the DWC OTG controller.
  * @param qh  The QH to init.
  * @param urb Holds the information about the device/endpoint that we need
- *	      to initialize the QH.
+ * 	      to initialize the QH. 
  */
 #define SCHEDULE_SLOP 10
 void qh_init(dwc_otg_hcd_t * hcd, dwc_otg_qh_t * qh, dwc_otg_hcd_urb_t * urb)
@@ -172,7 +178,7 @@ void qh_init(dwc_otg_hcd_t * hcd, dwc_otg_qh_t * qh, dwc_otg_hcd_urb_t * urb)
 	DWC_LIST_INIT(&qh->qh_list_entry);
 	qh->channel = NULL;
 
-	/* FS/LS Enpoint on HS Hub
+	/* FS/LS Enpoint on HS Hub 
 	 * NOT virtual root hub */
 	dev_speed = hcd->fops->speed(hcd, urb->priv);
 
@@ -285,7 +291,7 @@ void qh_init(dwc_otg_hcd_t * hcd, dwc_otg_qh_t * qh, dwc_otg_hcd_urb_t * urb)
  *
  * @param hcd The HCD state structure for the DWC OTG controller.
  * @param urb Holds the information about the device/endpoint that we need
- *	      to initialize the QH.
+ * 	      to initialize the QH.
  * @param atomic_alloc Flag to do atomic allocation if needed
  *
  * @return Returns pointer to the newly allocated QH, or NULL on error. */
@@ -305,7 +311,7 @@ dwc_otg_qh_t *dwc_otg_hcd_qh_create(dwc_otg_hcd_t * hcd,
 	qh_init(hcd, qh, urb);
 
 	if (hcd->core_if->dma_desc_enable
-	    && (dwc_otg_hcd_qh_init_ddma(hcd, qh) < 0)) {
+	    && (dwc_otg_hcd_qh_init_ddma(hcd, qh, atomic_alloc) < 0)) {
 		dwc_otg_hcd_qh_free(hcd, qh);
 		return NULL;
 	}
@@ -512,7 +518,7 @@ static void deschedule_periodic(dwc_otg_hcd_t * hcd, dwc_otg_qh_t * qh)
 	hcd->periodic_usecs -= qh->usecs;
 }
 
-/**
+/** 
  * Removes a QH from either the non-periodic or periodic schedule.  Memory is
  * not freed.
  *
@@ -559,7 +565,7 @@ void dwc_otg_hcd_qh_remove(dwc_otg_hcd_t * hcd, dwc_otg_qh_t * qh)
  */
 void dwc_otg_hcd_qh_deactivate(dwc_otg_hcd_t * hcd, dwc_otg_qh_t * qh,
 			       int sched_next_periodic_split)
-{
+{	
 	if (dwc_qh_is_non_per(qh)) {
 		dwc_otg_hcd_qh_remove(hcd, qh);
 		if (!DWC_CIRCLEQ_EMPTY(&qh->qtd_list)) {
@@ -629,11 +635,11 @@ void dwc_otg_hcd_qh_deactivate(dwc_otg_hcd_t * hcd, dwc_otg_qh_t * qh,
 	}
 }
 
-/**
- * This function allocates and initializes a QTD.
+/** 
+ * This function allocates and initializes a QTD. 
  *
  * @param urb The URB to create a QTD from.  Each URB-QTD pair will end up
- *	      pointing to each other so each pair should have a unique correlation.
+ * 	      pointing to each other so each pair should have a unique correlation.
  * @param atomic_alloc Flag to do atomic alloc if needed
  *
  * @return Returns pointer to the newly allocated QTD, or NULL on error. */
@@ -650,7 +656,7 @@ dwc_otg_qtd_t *dwc_otg_hcd_qtd_create(dwc_otg_hcd_urb_t * urb, int atomic_alloc)
 	return qtd;
 }
 
-/**
+/** 
  * Initializes a QTD structure.
  *
  * @param qtd The QTD to initialize.
@@ -697,9 +703,7 @@ int dwc_otg_hcd_qtd_add(dwc_otg_qtd_t * qtd,
 			dwc_otg_hcd_t * hcd, dwc_otg_qh_t ** qh, int atomic_alloc)
 {
 	int retval = 0;
-	//dwc_irqflags_t flags;
 
-	//dwc_otg_hcd_urb_t *urb = qtd->urb;
 
 	/*
 	 * Get the QH which holds the QTD-list to insert to. Create QH if it
@@ -708,14 +712,13 @@ int dwc_otg_hcd_qtd_add(dwc_otg_qtd_t * qtd,
 	if (*qh == NULL) {
 			retval = -1;
 			goto done;
-	}
-	//DWC_SPINLOCK_IRQSAVE(hcd->lock, &flags);
+		}
+
 	retval = dwc_otg_hcd_qh_add(hcd, *qh);
 	if (retval == 0) {
 		DWC_CIRCLEQ_INSERT_TAIL(&((*qh)->qtd_list), qtd,
 					qtd_list_entry);
 	}
-	//DWC_SPINUNLOCK_IRQRESTORE(hcd->lock, flags);
 
 done:
 

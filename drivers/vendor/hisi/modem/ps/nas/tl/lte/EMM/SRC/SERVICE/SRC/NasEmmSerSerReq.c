@@ -111,16 +111,17 @@ VOS_UINT32 NAS_EMM_MsRegSsNormalMsgRabmReestReq(VOS_UINT32  ulMsgId,
     }
     ulMsgCnt = NAS_EMM_NULL;
 
+    /*modified by jiqiang for CSFB 20140922 begin */
     /* 如果CSFB延时定时器在运行，优先考虑CSFB，PS数据业务优先级放低 ，
        (另: 即使现在发起SER，也将因当前处于释放过程中而直接失败)，
        做保护处理，此处丢弃RABM的建链请求*/
     if((NAS_LMM_TIMER_RUNNING == NAS_LMM_IsPtlTimerRunning(TI_NAS_EMM_PTL_CSFB_DELAY))
-        &&(VOS_TRUE == NAS_EMM_SER_IsCsfbProcedure())
-        &&(NAS_EMM_CONN_RELEASING == NAS_EMM_GetConnState()))
+        &&(VOS_TRUE == NAS_EMM_SER_IsCsfbProcedure()))
     {
         NAS_EMM_SER_LOG_INFO( "NAS_EMM_MsRegSsNormalMsgRabmReestReq: Msg discard, CSFB delay timer is running.");
         return NAS_LMM_MSG_HANDLED;
     }
+/*modified by jiqiang for CSFB 20140922 end */
 
 	/* lihong00150010 emergency tau&service begin */
     pstReestReq = (EMM_ERABM_REEST_REQ_STRU *)pMsgStru;
@@ -129,8 +130,6 @@ VOS_UINT32 NAS_EMM_MsRegSsNormalMsgRabmReestReq(VOS_UINT32  ulMsgId,
     return NAS_LMM_MSG_HANDLED;
 
 }
-
-
 VOS_UINT32  NAS_EMM_MsRegSsRegAttemptUpdateMmMsgRabmReestReq
 (
     VOS_UINT32                          ulMsgId,
@@ -443,9 +442,27 @@ VOS_UINT32 NAS_EMM_MsRegSsNormalMsgEsmDataReq(VOS_UINT32  ulMsgId,
         return NAS_LMM_MSG_DISCARD;
     }
 
+    #if 0
     if (VOS_TRUE == pstEsmDataReq->ulIsEmcType)
     {
         NAS_LMM_SetEmmInfoIsEmerPndEsting(VOS_TRUE);
+        /* 解决LRRC REL搜小区驻留前收到ESM紧急承载建立请求，由于空口发送失败，本地detach,发起紧急ATTACH问题
+            方案:先高优先级缓存，等到收到LRRC系统消息后处理*/
+        if(NAS_EMM_CONN_RELEASING == NAS_EMM_GetConnState())
+        {
+            return NAS_EMMC_STORE_HIGH_PRIO_MSG;
+        }
+    }
+    #endif
+
+    if(NAS_EMM_CONN_RELEASING == NAS_EMM_GetConnState())
+    {
+        if (VOS_TRUE == pstEsmDataReq->ulIsEmcType)
+        {
+            NAS_LMM_SetEmmInfoIsEmerPndEsting(VOS_TRUE);
+        }
+
+        return NAS_EMMC_STORE_HIGH_PRIO_MSG;
     }
 
     /*CONN态，转发ESM消息*/
@@ -456,16 +473,17 @@ VOS_UINT32 NAS_EMM_MsRegSsNormalMsgEsmDataReq(VOS_UINT32  ulMsgId,
         return NAS_LMM_MSG_HANDLED;
     }
 
+    /*modified by jiqiang for CSFB 20140922 begin */
     /* 如果CSFB延时定时器在运行，优先考虑CSFB，PS数据业务优先级放低 ，
        (另: 即使现在发起SER，也将因当前处于释放过程中而直接失败)，
        做保护处理，此处丢弃ESM的建链请求*/
     if((NAS_LMM_TIMER_RUNNING == NAS_LMM_IsPtlTimerRunning(TI_NAS_EMM_PTL_CSFB_DELAY))
-        &&(VOS_TRUE == NAS_EMM_SER_IsCsfbProcedure())
-        &&(NAS_EMM_CONN_RELEASING == NAS_EMM_GetConnState()))
+        &&(VOS_TRUE == NAS_EMM_SER_IsCsfbProcedure()))
     {
         NAS_EMM_SER_LOG_INFO( "NAS_EMM_MsRegSsNormalMsgEsmDataReq: Msg discard, CSFB delay timer is running.");
         return NAS_LMM_MSG_HANDLED;
     }
+/*modified by jiqiang for CSFB 20140922 end */
 
     NAS_EMM_SER_RcvEsmDataReq(pMsgStru);
 
@@ -553,9 +571,27 @@ VOS_UINT32  NAS_EMM_MsRegSsRegAttemptUpdateMmMsgEsmDataReq
         return NAS_LMM_MSG_DISCARD;
     }
 
+    #if 0
     if (VOS_TRUE == pstEsmDataReq->ulIsEmcType)
     {
         NAS_LMM_SetEmmInfoIsEmerPndEsting(VOS_TRUE);
+        /* 解决LRRC REL搜小区驻留前收到ESM紧急承载建立请求，由于空口发送失败，本地detach,发起紧急ATTACH问题
+            方案:先高优先级缓存，等到收到LRRC系统消息后处理*/
+        if(NAS_EMM_CONN_RELEASING == NAS_EMM_GetConnState())
+        {
+            return NAS_EMMC_STORE_HIGH_PRIO_MSG;
+        }
+    }
+    #endif
+
+    if(NAS_EMM_CONN_RELEASING == NAS_EMM_GetConnState())
+    {
+        if (VOS_TRUE == pstEsmDataReq->ulIsEmcType)
+        {
+            NAS_LMM_SetEmmInfoIsEmerPndEsting(VOS_TRUE);
+        }
+
+        return NAS_EMMC_STORE_HIGH_PRIO_MSG;
     }
 
     /*CONN态，转发ESM消息*/
@@ -571,9 +607,6 @@ VOS_UINT32  NAS_EMM_MsRegSsRegAttemptUpdateMmMsgEsmDataReq
 
     return NAS_LMM_MSG_HANDLED;
 }
-
-
-
 VOS_UINT32 NAS_EMM_MsTauInitMsgRabmReestReq(VOS_UINT32  ulMsgId,
                                                    VOS_VOID   *pMsgStru
                                 )
@@ -822,14 +855,15 @@ VOS_VOID    NAS_EMM_SER_RcvRrcStmsiPagingInd(VOS_VOID)
 VOS_UINT32 NAS_EMM_SER_VerifyMtCsfb( VOS_VOID )
 {
     NAS_LMM_CS_SERVICE_ENUM_UINT32      ulCsService = NAS_LMM_CS_SERVICE_BUTT;
-
+    /* MT CALL时不判断注册域:解决GU2L,L上TAU由于底层异常,导致TAU失败转到ATTEMP_TO_UPDATE_MM态时收到CS PAGING不处理问题 */
+    #if 0
     /* 判断注册域是否为CS+PS */
     if (NAS_LMM_REG_DOMAIN_CS_PS != NAS_LMM_GetEmmInfoRegDomain())
     {
         NAS_EMM_SER_LOG_NORM( "NAS_EMM_SER_VerifyMtCsfb:cs is not registered!");
         return NAS_EMM_FAIL;
     }
-
+    #endif
     /* 判断UE是否支持CSFB,如果CS SERVICE未使能，则默认支持CSFB */
     ulCsService = NAS_EMM_GetCsService();
     if ((NAS_LMM_CS_SERVICE_CSFB_SMS != ulCsService)
@@ -1307,11 +1341,15 @@ VOS_UINT32  NAS_EMM_UnableDirectlyStartMoEmergencyCsfbProc(VOS_VOID)
     switch(NAS_EMM_CUR_MAIN_STAT)
     {
         case    EMM_MS_REG_INIT:
+            /* 设置SERVICE发起原因为紧急CSFB, 用于给MMC上报SERVICE_RESULT_IND */
+            NAS_EMM_SER_SaveEmmSERStartCause(NAS_EMM_SER_START_CAUSE_MO_EMERGENCY_CSFB_REQ);
             NAS_EMM_MsRegInitSsAnyStateEmergencyCsfbProc();
             break;
 
         case    EMM_MS_TAU_INIT:
         case    EMM_MS_SER_INIT:
+            /* 设置SERVICE发起原因为紧急CSFB, 用于给MMC上报SERVICE_RESULT_IND */
+            NAS_EMM_SER_SaveEmmSERStartCause(NAS_EMM_SER_START_CAUSE_MO_EMERGENCY_CSFB_REQ);
             NAS_EMM_MsTauSerSsWaitCnCnfEmergencyCsfbProc();
             break;
 
@@ -1327,6 +1365,8 @@ VOS_UINT32  NAS_EMM_UnableDirectlyStartMoEmergencyCsfbProc(VOS_VOID)
 
         case    EMM_MS_REG:
         case    EMM_MS_DEREG_INIT:
+            /* 设置SERVICE发起原因为紧急CSFB, 用于给MMC上报SERVICE_RESULT_IND */
+            NAS_EMM_SER_SaveEmmSERStartCause(NAS_EMM_SER_START_CAUSE_MO_EMERGENCY_CSFB_REQ);
             if ((EMM_SS_REG_IMSI_DETACH_WATI_CN_DETACH_CNF == NAS_LMM_GetEmmCurFsmSS())
                 || (EMM_SS_DETACH_WAIT_CN_DETACH_CNF == NAS_LMM_GetEmmCurFsmSS()))
             {
@@ -1341,7 +1381,8 @@ VOS_UINT32  NAS_EMM_UnableDirectlyStartMoEmergencyCsfbProc(VOS_VOID)
             break;
 
         default:
-
+            /* 设置SERVICE发起原因为紧急CSFB, 用于给MMC上报SERVICE_RESULT_IND */
+            NAS_EMM_SER_SaveEmmSERStartCause(NAS_EMM_SER_START_CAUSE_MO_EMERGENCY_CSFB_REQ);
             /*向MMC发送LMM_MMC_SERVICE_RESULT_IND消息*/
             NAS_EMM_MmcSendSerResultIndOtherType(MMC_LMM_SERVICE_RSLT_FAILURE);
             NAS_EMM_RelReq(NAS_LMM_NOT_BARRED);
@@ -1377,18 +1418,64 @@ VOS_UINT32  NAS_EMM_MsRegPreProcMmNormalCsfbNotifyMsg
             NAS_EMM_MmcSendSerResultIndOtherType(MMC_LMM_SERVICE_RSLT_FAILURE);
             return NAS_EMM_SUCC;
         }
-        NAS_EMM_MmSendCsfbSerEndInd(MMC_LMM_SERVICE_RSLT_FAILURE);
+
+        NAS_EMM_MmSendCsfbSerEndInd(MM_LMM_CSFB_SERVICE_RSLT_VERIFY_CSFB_FAIL_FOR_EMM_STATE, NAS_LMM_CAUSE_NULL);
         return NAS_EMM_SUCC;
     }
     else
     {
         NAS_EMM_PUBU_LOG1_ERR("NAS_EMM_RcvMmNormalCsfbNotifyMsgProc: Sub State is err!",NAS_EMM_CUR_SUB_STAT);
 
-        NAS_EMM_MmSendCsfbSerEndInd(MM_LMM_CSFB_SERVICE_RSLT_FAILURE);
+        NAS_EMM_MmSendCsfbSerEndInd(MM_LMM_CSFB_SERVICE_RSLT_VERIFY_CSFB_FAIL_FOR_EMM_STATE, NAS_LMM_CAUSE_NULL);
 
         return NAS_EMM_SUCC;
     }
 }
+VOS_UINT32  NAS_EMM_MsRrcConnRelInitMsgMmCsfbSerStartNotifyProc
+(
+    MM_LMM_CSFB_SERVICE_TYPE_ENUM_UINT32  enCsfbSrvTyp
+)
+{
+    /* T3440定时器在运行 */
+    if(NAS_LMM_TIMER_RUNNING == NAS_LMM_IsStaTimerRunning(TI_NAS_EMM_STATE_T3440))
+    {
+        NAS_EMM_SER_LOG_WARN("NAS_EMM_MsRrcConnRelInitMsgMmCsfbSerStartNotifyProc: T3440 is running.");
+
+        /* 启动CSFB时延定时器 */
+        NAS_LMM_StartPtlTimer(TI_NAS_EMM_PTL_CSFB_DELAY);
+
+        /*设置SER触发原因值*/
+        switch (enCsfbSrvTyp)
+        {
+            case    MM_LMM_CSFB_SERVICE_MO_NORMAL:
+                NAS_EMM_SER_SaveEmmSERStartCause(NAS_EMM_SER_START_CAUSE_MO_CSFB_REQ);
+                break;
+
+            case    MM_LMM_CSFB_SERVICE_MT_NORMAL:
+                NAS_EMM_SER_SaveEmmSERStartCause(NAS_EMM_SER_START_CAUSE_MT_CSFB_REQ);
+                break;
+
+            case    MM_LMM_CSFB_SERVICE_MO_EMERGENCY:
+                NAS_EMM_SER_SaveEmmSERStartCause(NAS_EMM_SER_START_CAUSE_MO_EMERGENCY_CSFB_REQ);
+                break;
+
+            default:
+
+                NAS_EMM_SER_LOG_WARN( "NAS_EMM_MsRrcConnRelInitMsgMmCsfbSerStartNotifyProc: CSFB srv type err.");
+                break;
+        }
+
+        return NAS_LMM_MSG_HANDLED;
+
+    }
+
+    /* 3440定时器未启动，保持原处理高优先级缓存 */
+    return NAS_LMM_STORE_HIGH_PRIO_MSG;
+
+}
+
+
+
 VOS_UINT32  NAS_EMM_RcvMmNormalCsfbNotifyMsgProc
 (
     MM_LMM_CSFB_SERVICE_TYPE_ENUM_UINT32  enCsfbSrvTyp
@@ -1400,9 +1487,8 @@ VOS_UINT32  NAS_EMM_RcvMmNormalCsfbNotifyMsgProc
     /* 检测CSFB流程是否能够发起 */
     if (NAS_EMM_FAIL == NAS_EMM_SER_VerifyCsfb(enCsfbSrvTyp))
     {
-        NAS_EMM_SER_LOG_NORM( "NAS_EMM_RcvMmNormalCsfbNotifyMsgProc:cannot csfb!");
-        NAS_EMM_MmSendCsfbSerEndInd(MM_LMM_CSFB_SERVICE_RSLT_FAILURE);
-        return NAS_LMM_MSG_HANDLED;
+        /* 降圈复杂度 */
+        return NAS_EMM_SER_VerifyCsfbFailNormalCsfbNotifyMsgProc();
     }
 
     if ((MM_LMM_CSFB_SERVICE_MO_NORMAL == enCsfbSrvTyp)
@@ -1418,9 +1504,11 @@ VOS_UINT32  NAS_EMM_RcvMmNormalCsfbNotifyMsgProc
     {
         /*压栈中间状态，需要高优先级缓存，等pop出状态之后再处理*/
         case    EMM_MS_RRC_CONN_EST_INIT:
-        case    EMM_MS_RRC_CONN_REL_INIT:
             NAS_EMM_SER_LOG_NORM( "NAS_EMM_RcvMmNormalCsfbNotifyMsgProc:High priority storage!");
             return NAS_LMM_STORE_HIGH_PRIO_MSG;
+        case    EMM_MS_RRC_CONN_REL_INIT:
+            NAS_EMM_SER_LOG_NORM( "NAS_EMM_RcvMmNormalCsfbNotifyMsgProc:RRC CONN REL.");
+            return NAS_EMM_MsRrcConnRelInitMsgMmCsfbSerStartNotifyProc(enCsfbSrvTyp);
 
         /*TAU和SR流程中，鉴权过程中，恢复过程中，低优先级缓存，待进入稳态后处理，*/
         case    EMM_MS_TAU_INIT:
@@ -1430,34 +1518,8 @@ VOS_UINT32  NAS_EMM_RcvMmNormalCsfbNotifyMsgProc
             return NAS_LMM_STORE_LOW_PRIO_MSG;
 
         case    EMM_MS_SER_INIT:
-
-            /* 判断当前是MT CSFB触发的ESR流程中，且网侧再次触发MT CSFB，则重新触发ESR，定时器T3417EXT重新启动
-               如果收到了MO类型的CSFB则直接丢弃*/
-            if ((NAS_EMM_SER_START_CAUSE_MT_CSFB_REQ == NAS_EMM_SER_GetEmmSERStartCause()))
-            {
-                if (MM_LMM_CSFB_SERVICE_MT_NORMAL == enCsfbSrvTyp)
-                {
-                    /*停止定时器T3417ext*/
-                    NAS_LMM_StopStateTimer(TI_NAS_EMM_STATE_SERVICE_T3417_EXT);
-
-                    /*设置SER触发原因值*/
-                    NAS_EMM_SER_SaveEmmSERStartCause(NAS_EMM_SER_START_CAUSE_MT_CSFB_REQ);
-
-                    /* 设置UE接受CSFB */
-                    NAS_EMM_SER_SaveEmmSerCsfbRsp(NAS_EMM_CSFB_RSP_ACCEPTED_BY_UE);
-
-                    /*组合并发送MRRC_DATA_REQ(SERVICE_REQ)*/
-                    NAS_EMM_SER_SendMrrcDataReq_ExtendedServiceReq();
-
-                    /*启动定时器T3417ext*/
-                    NAS_LMM_StartStateTimer(TI_NAS_EMM_STATE_SERVICE_T3417_EXT);
-                }
-                return NAS_LMM_MSG_HANDLED;
-            }
-            else
-            {
-                return NAS_LMM_STORE_LOW_PRIO_MSG;
-            }
+                /* 降圈复杂度 */
+                return NAS_EMM_MsSerInitPreProcMmNormalCsfbNotifyMsg(enCsfbSrvTyp);
 
         /*只有REG+NORMAL_SERVICE态和REG+WAIT_ACCESS_GRANT_IND态能发起CSFB*/
         case    EMM_MS_REG:
@@ -1473,8 +1535,10 @@ VOS_UINT32  NAS_EMM_RcvMmNormalCsfbNotifyMsgProc
         default:/*其他状态为错误的状态，增加告警打印*/
             NAS_EMM_PUBU_LOG1_ERR("NAS_EMM_RcvMmNormalCsfbNotifyMsgProc: Main State is err!",NAS_EMM_CUR_MAIN_STAT);
 
+            NAS_EMM_SetCsfbProcedureFlag(PS_FALSE);
+
             /*为容错，增加对MM的回复*/
-            NAS_EMM_MmSendCsfbSerEndInd(MM_LMM_CSFB_SERVICE_RSLT_FAILURE);
+            NAS_EMM_MmSendCsfbSerEndInd(MM_LMM_CSFB_SERVICE_RSLT_FAILURE, NAS_LMM_CAUSE_NULL);
 
             return NAS_LMM_MSG_HANDLED;
     }
@@ -1490,12 +1554,12 @@ VOS_UINT32  NAS_EMM_RcvMmMoEmergencyCsfbNotifyMsgProc(VOS_VOID)
     /* L单模不能发起紧急CSFB */
     if (NAS_EMM_SUCC != NAS_EMM_CheckMutiModeSupport())
     {
-        NAS_EMM_MmSendCsfbSerEndInd(MM_LMM_CSFB_SERVICE_RSLT_FAILURE);
+        NAS_EMM_MmSendCsfbSerEndInd(MM_LMM_CSFB_SERVICE_RSLT_VERIFY_CSFB_FAIL_FOR_OTHERS, NAS_LMM_CAUSE_NULL);
         return NAS_LMM_MSG_HANDLED;
     }
 
-    /* 设置SERVICE发起原因为紧急CSFB, 用于给MMC上报SERVICE_RESULT_IND */
-    NAS_EMM_SER_SaveEmmSERStartCause(NAS_EMM_SER_START_CAUSE_MO_EMERGENCY_CSFB_REQ);
+    /* 此处置Service启动标志主要是为了当无法发起CSFB时回复MMC Service结果使用，
+       若当前主状态为Ser Init，此时置标志会导致Service流程异常 */
 
     /* 可能可以直接发起紧急CSFB流程, 根据当前所处状态进行不同处理*/
     if (NAS_EMM_SUCC == NAS_EMM_SER_VerifyCsfb(MM_LMM_CSFB_SERVICE_MO_EMERGENCY))
@@ -1532,7 +1596,6 @@ VOS_UINT32  NAS_EMM_RcvMmMoEmergencyCsfbNotifyMsgProc(VOS_VOID)
     return NAS_EMM_UnableDirectlyStartMoEmergencyCsfbProc();
 
 }
-
 VOS_UINT32  NAS_EMM_PreProcMsgMmCsfbSerStartNotify( MsgBlock * pMsg )
 {
     MM_LMM_CSFB_SERVICE_START_NOTIFY_STRU *pstCsfbSerStartNotify = VOS_NULL_PTR;
@@ -1655,6 +1718,142 @@ VOS_UINT32  NAS_EMM_MsRegSsWaitAccessGrantIndMsgMmCsfbSerStartNotify
 
     /*组合并发送MRRC_DATA_REQ(SERVICE_REQ)*/
     NAS_EMM_SER_SendMrrcDataReq_ExtendedServiceReq();
+    return NAS_LMM_MSG_HANDLED;
+}
+VOS_VOID    NAS_EMM_SER_RegAttempToUpdateMmRcvRrcCsPagingInd
+(
+    LRRC_LNAS_PAGING_UE_ID_ENUM_UINT32 enPagingUeId
+)
+{
+    NAS_EMM_SER_LOG_INFO( "NAS_EMM_SER_RegAttempToUpdateMmRcvRrcCsPagingInd is entered.");
+
+    /* 判断UE是否支持CSFB,如果CS SERVICE未使能，则默认支持CSFB */
+    if (NAS_EMM_FAIL == NAS_EMM_SER_VerifyMtCsfb())
+    {
+        NAS_EMM_SER_LOG_WARN("NAS_EMM_SER_RegAttempToUpdateMmRcvRrcCsPagingInd Can not Csfb");
+        return;
+    }
+
+    /* 给MM模块发送MM_MM_CSFB_SERVICE_PAGING_IND消息 */
+    NAS_EMM_MmSendCsfbSerPaingInd(  NAS_EMM_MT_CSFB_TYPE_CS_PAGING,
+                                    VOS_NULL_PTR,
+                                    enPagingUeId);
+    return;
+}
+
+VOS_UINT32 NAS_EMM_MsSerInitPreProcMmNormalCsfbNotifyMsg
+(
+    MM_LMM_CSFB_SERVICE_TYPE_ENUM_UINT32  enCsfbSrvTyp
+)
+{
+    /* 判断当前是MT CSFB触发的ESR流程中，且网侧再次触发MT CSFB，则重新触发ESR，定时器T3417EXT重新启动
+       如果收到了MO类型的CSFB则直接丢弃*/
+    if ((NAS_EMM_SER_START_CAUSE_MT_CSFB_REQ == NAS_EMM_SER_GetEmmSERStartCause()))
+    {
+        if (MM_LMM_CSFB_SERVICE_MT_NORMAL == enCsfbSrvTyp)
+        {
+            /*停止定时器T3417ext*/
+            NAS_LMM_StopStateTimer(TI_NAS_EMM_STATE_SERVICE_T3417_EXT);
+
+            /*设置SER触发原因值*/
+            NAS_EMM_SER_SaveEmmSERStartCause(NAS_EMM_SER_START_CAUSE_MT_CSFB_REQ);
+
+            /* 设置UE接受CSFB */
+            NAS_EMM_SER_SaveEmmSerCsfbRsp(NAS_EMM_CSFB_RSP_ACCEPTED_BY_UE);
+
+            /*组合并发送MRRC_DATA_REQ(SERVICE_REQ)*/
+            NAS_EMM_SER_SendMrrcDataReq_ExtendedServiceReq();
+
+            /*启动定时器T3417ext*/
+            NAS_LMM_StartStateTimer(TI_NAS_EMM_STATE_SERVICE_T3417_EXT);
+        }
+        return NAS_LMM_MSG_HANDLED;
+    }
+    else
+    {
+        return NAS_LMM_STORE_LOW_PRIO_MSG;
+    }
+}
+VOS_UINT32  NAS_EMM_MsRegSsAttempToUpdateMmMsgMmCsfbSerStartNotify
+(
+    VOS_UINT32                          ulMsgId,
+    VOS_VOID                           *pMsgStru
+)
+{
+    VOS_UINT32                             ulRslt                   = NAS_EMM_FAIL;
+    MM_LMM_CSFB_SERVICE_START_NOTIFY_STRU *pstCsfbSerStartNotify    = VOS_NULL_PTR;
+
+    (VOS_VOID)ulMsgId;
+
+    NAS_EMM_SER_LOG_INFO("NAS_EMM_MsRegSsAttempToUpdateMmMsgMmCsfbSerStartNotify entered.");
+
+    pstCsfbSerStartNotify = (MM_LMM_CSFB_SERVICE_START_NOTIFY_STRU *)pMsgStru;
+
+    ulRslt = NAS_EMM_SER_CHKFSMStateMsgp(EMM_MS_REG,EMM_SS_REG_ATTEMPTING_TO_UPDATE_MM,pMsgStru);
+    if ( NAS_EMM_SUCC != ulRslt )
+    {
+        NAS_EMM_SER_LOG_WARN( "NAS_EMM_MsRegSsAttempToUpdateMmMsgMmCsfbSerStartNotify ERROR !!");
+        return NAS_LMM_MSG_DISCARD;
+    }
+
+    /*如果是MO CSFB或者紧急CSFB，则直接回复失败，触发MMC选网到GU，如果当前为
+      连接态，还需要主动释放链路 */
+    if ((MM_LMM_CSFB_SERVICE_MO_NORMAL == pstCsfbSerStartNotify->enCsfbSrvType)
+        || (MM_LMM_CSFB_SERVICE_MO_EMERGENCY == pstCsfbSerStartNotify->enCsfbSrvType))
+    {
+        NAS_EMM_MmcSendSerResultIndOtherType(MMC_LMM_SERVICE_RSLT_FAILURE);
+
+        NAS_EMM_RelReq(NAS_LMM_NOT_BARRED);
+
+        return NAS_LMM_MSG_HANDLED;
+    }
+
+    NAS_EMM_SER_SaveEmmSERStartCause(NAS_EMM_SER_START_CAUSE_MT_CSFB_REQ);
+
+    /* 设置UE接受CSFB */
+    NAS_EMM_SER_SaveEmmSerCsfbRsp(NAS_EMM_CSFB_RSP_ACCEPTED_BY_UE);
+
+    /*启动定时器3417*/
+    NAS_LMM_StartStateTimer(TI_NAS_EMM_STATE_SERVICE_T3417_EXT);
+
+    /*转换EMM状态机MS_SER_INIT+SS_SER_WAIT_CN_CNF*/
+    NAS_EMM_TAUSER_FSMTranState(EMM_MS_SER_INIT, EMM_SS_SER_WAIT_CN_SER_CNF, TI_NAS_EMM_STATE_SERVICE_T3417_EXT);
+
+    /*组合并发送MRRC_DATA_REQ(SERVICE_REQ)*/
+    NAS_EMM_SER_SendMrrcDataReq_ExtendedServiceReq();
+    return NAS_LMM_MSG_HANDLED;
+}
+
+VOS_UINT32 NAS_EMM_SER_VerifyCsfbFailNormalCsfbNotifyMsgProc(VOS_VOID)
+{
+    /* 判断注册域是否为CS+PS、没有被2拒过、当前是多模且UE支持CS能力，选网到GU */
+    if ((NAS_LMM_REG_DOMAIN_CS_PS != NAS_LMM_GetEmmInfoRegDomain())
+        &&(NAS_EMM_SUCC == NAS_EMM_CheckMutiModeSupport()
+        &&(NAS_EMM_REJ_YES != NAS_LMM_GetEmmInfoRejCause2Flag()))
+        &&(NAS_EMM_YES == NAS_EMM_IsCsPsUeMode()))
+    {
+        NAS_EMM_SER_LOG_WARN( "NAS_EMM_RcvMmNormalCsfbNotifyMsgProc: REG NOT PS_CS");
+        /* REG UPDATE_MM状态下需进入状态机处理,解决REG UPDATE MM态下丢paging问题 */
+        if ((EMM_MS_REG == NAS_LMM_GetEmmCurFsmMS())
+            && (EMM_SS_REG_ATTEMPTING_TO_UPDATE_MM== NAS_LMM_GetEmmCurFsmSS()))
+        {
+            return NAS_LMM_MSG_DISCARD;
+        }
+        /* type2的TAU过程中收到CSFB回复MMC SERVICE FAIL,MMC会等待LMM释放后搜网到GU,
+            而若TAU成功,且有数据业务,网侧将不会释放UE,此时CALL将失败 */
+        if ((EMM_MS_TAU_INIT == NAS_LMM_GetEmmCurFsmMS())
+            && (EMM_SS_TAU_WAIT_CN_TAU_CNF == NAS_LMM_GetEmmCurFsmSS()))
+        {
+            NAS_EMM_SER_LOG_WARN("NAS_EMM_SER_VerifyCsfbFailNormalCsfbNotifyMsgProc: LOW Store");
+            return NAS_LMM_STORE_LOW_PRIO_MSG;
+        }
+        NAS_EMM_MmcSendSerResultIndOtherType(MMC_LMM_SERVICE_RSLT_FAILURE);
+    }
+    else
+    {
+        NAS_EMM_SER_LOG_WARN( "NAS_EMM_RcvMmNormalCsfbNotifyMsgProc:cannot csfb!");
+        NAS_EMM_MmSendCsfbSerEndInd(MM_LMM_CSFB_SERVICE_RSLT_VERIFY_CSFB_FAIL_FOR_OTHERS, NAS_LMM_CAUSE_NULL);
+    }
     return NAS_LMM_MSG_HANDLED;
 }
 

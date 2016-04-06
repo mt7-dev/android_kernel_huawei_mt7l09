@@ -1,13 +1,13 @@
 /**
- * Copyright (C) ARM Limited 2010-2013. All rights reserved.
+ * Copyright (C) ARM Limited 2010-2014. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
  * published by the Free Software Foundation.
  */
 
-#ifndef	__SENDER_H__
-#define	__SENDER_H__
+#ifndef __SENDER_H__
+#define __SENDER_H__
 
 #include <stdio.h>
 #include <pthread.h>
@@ -39,4 +39,4 @@ private:
 	Sender &operator=(const Sender &);
 };
 
-#endif 	//__SENDER_H__
+#endif //__SENDER_H__

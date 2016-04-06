@@ -418,7 +418,8 @@ typedef struct
     /*多模增加内容*/
      UINT8    ucFixAgcFlag;                                /*该频点固定AGC标识*/
      UINT8    ucReserved;                                     /*磁滞时能*/
-    UINT16   usReserved;
+     UINT8    ucLastFixAgcFlag;
+     UINT8    ucReserved3;
     /*END*/
     INT16     asInBanddB[LPHY_MAX_RX_ANTENNA_NUM];                	//平均的InBand功率统计未折到天线口，连续CA场景针对中心频点为Sum_InBand
     INT16     asInBandAntPwrdBm[LPHY_MAX_RX_ANTENNA_NUM];         	//asInBanddB 折算到天线口
@@ -664,7 +665,7 @@ typedef enum
 } AGC_FREQ_CMD_ENUM;
 typedef UINT16 AGC_FREQ_CMD_ENUM_UINT16;
 
-#define AGC_FREQ_CONFIG_NUM_MAX         (4)
+#define AGC_FREQ_CONFIG_NUM_MAX         (LPHY_FEATURE_MAX_INTER_EMU_NUM)
 typedef struct
 {
     AGC_FREQ_CMD_ENUM_UINT16            enAGCFreqCmd;							/*频点配置类型*/

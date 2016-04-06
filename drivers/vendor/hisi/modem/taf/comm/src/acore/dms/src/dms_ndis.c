@@ -1,11 +1,8 @@
 
 
-/*******************************************************************************
- PROJECT   :
- SUBSYSTEM :
- MODULE    :
- OWNER     :
-*******************************************************************************/
+/*****************************************************************************
+  1 头文件包含
+*****************************************************************************/
 
 #include "msp_errno.h"
 #include <dms.h>
@@ -13,12 +10,37 @@
 #include "vos.h"
 
 
-VOS_UINT32              g_ulNdisCfgFlag     = 0xffffffff;
+#ifdef __cplusplus
+    #if __cplusplus
+    extern "C" {
+    #endif
+#endif
+
+
+/*****************************************************************************
+    协议栈打印打点方式下的.C文件宏定义
+*****************************************************************************/
+
+/*lint -e767 -e960*/
+#define THIS_FILE_ID                    PS_FILE_ID_DMS_NDIS_C
+/*lint +e767 +e960*/
+
+
+/*****************************************************************************
+  2 全局变量定义
+*****************************************************************************/
+
+VOS_UINT32              g_ulNdisCfgFlag     = 0xffffffffU;
 USBNdisStusChgFunc      g_atConnectBrk      = NULL;
 USBNdisAtRecvFunc       g_atCmdRcv          = NULL;
 
+
 /*****************************************************************************
- 函 数 名  : dms_NcmCfg
+  3 函数实现
+*****************************************************************************/
+
+/*****************************************************************************
+ 函 数 名  : DMS_NcmOpen
  功能描述  : 打开NDIS CTRL通道
  输入参数  :
 
@@ -31,46 +53,45 @@ USBNdisAtRecvFunc       g_atCmdRcv          = NULL;
      作    者  : heliping
      修改内容  : Creat Function
 *****************************************************************************/
-
-VOS_UINT32 dms_NcmCfg(VOS_VOID)
+VOS_UINT32 DMS_NcmOpen(VOS_VOID)
 {
-    VOS_UINT32 ret = ERR_MSP_SUCCESS;
-    BSP_S32 slNcmHandle ;
-    DMS_PHY_BEAR_PROPERTY_STRU  *pstComCfg =NULL;
-    UDI_OPEN_PARAM stParam ;
+    VOS_UINT32                          ulRet = ERR_MSP_SUCCESS;
+    UDI_HANDLE                          lHandle = UDI_INVALID_HANDLE;
+    DMS_PHY_BEAR_PROPERTY_STRU         *pstPhyBearProp =NULL;
+    UDI_OPEN_PARAM                      stParam ;
 
-    pstComCfg = dmsgetPhyBearProperty();
+    pstPhyBearProp = DMS_GetPhyBearProperty(DMS_PHY_BEAR_USB_NCM);
 
-    if(pstComCfg[EN_DMS_BEARER_USB_NCM].slPortHandle != UDI_INVALID_HANDLE)
+    if (UDI_INVALID_HANDLE != pstPhyBearProp->lPortHandle)
     {
         return ERR_MSP_SUCCESS;
     }
 
     stParam.devid = UDI_NCM_CTRL_ID;
 
-    slNcmHandle = udi_open(&stParam);
-
-    if(slNcmHandle ==UDI_INVALID_HANDLE)
+    lHandle = DRV_UDI_OPEN(&stParam);
+    if (UDI_INVALID_HANDLE == lHandle)
     {
-        ret =  ERR_MSP_FAILURE;
+        ulRet =  ERR_MSP_FAILURE;
     }
     else
     {
-        pstComCfg[EN_DMS_BEARER_USB_NCM].slPortHandle = slNcmHandle;
+        pstPhyBearProp->lPortHandle = lHandle;
 
-        ret = (VOS_UINT32)udi_ioctl (slNcmHandle , NCM_IOCTL_REG_NDIS_RESP_STATUS_FUNC, dms_AtNdisWrtCB);
-        ret = ERR_MSP_SUCCESS;
+        if (VOS_OK != DRV_UDI_IOCTL(lHandle , NCM_IOCTL_REG_NDIS_RESP_STATUS_FUNC, DMS_NcmWrtCB))
+        {
+            DMS_LOG_WARNING("DMS_NcmOpen: NCM_IOCTL_REG_NDIS_RESP_STATUS_FUNC fail.\n");
+        }
     }
 
-    /*配置 NDIS CTRL 通道*/
-    Dms_NcmProcCbReg(g_atConnectBrk,(USB_NAS_AT_CMD_RECV)g_atCmdRcv);
+    /* 配置 NDIS CTRL 通道 */
+    DMS_NcmProcCbReg(g_atConnectBrk,(USB_NAS_AT_CMD_RECV)g_atCmdRcv);
 
-    return ret;
-
+    return ulRet;
 }
 
 /*****************************************************************************
- 函 数 名  : dms_NcmClose
+ 函 数 名  : DMS_NcmClose
  功能描述  : NDIS CTRL通道关闭
  输入参数  :
 
@@ -83,24 +104,28 @@ VOS_UINT32 dms_NcmCfg(VOS_VOID)
      作    者  : heliping
      修改内容  : Creat Function
 *****************************************************************************/
-
-VOS_UINT32 dms_NcmClose(VOS_VOID)
+VOS_UINT32 DMS_NcmClose(VOS_VOID)
 {
-    VOS_INT32 ret = ERR_MSP_SUCCESS;
-    DMS_PHY_BEAR_PROPERTY_STRU  *pstComCfg =NULL;
+    VOS_INT32                           lRet = ERR_MSP_SUCCESS;
+    DMS_PHY_BEAR_PROPERTY_STRU         *pstPhyBearProp = NULL;
 
-    pstComCfg = dmsgetPhyBearProperty();
+    pstPhyBearProp = DMS_GetPhyBearProperty(DMS_PHY_BEAR_USB_NCM);
 
-    ret = udi_close(pstComCfg[EN_DMS_BEARER_USB_NCM].slPortHandle);
+    if (UDI_INVALID_HANDLE == pstPhyBearProp->lPortHandle)
+    {
+        DMS_LOG_WARNING("DMS_UsbPortClose[%d]: Already close.\n", DMS_PHY_BEAR_USB_NCM);
+        return ERR_MSP_SUCCESS;
+    }
 
-    pstComCfg[EN_DMS_BEARER_USB_NCM].slPortHandle = UDI_INVALID_HANDLE;
+    lRet = DRV_UDI_CLOSE(pstPhyBearProp->lPortHandle);
 
-    return ( VOS_UINT32)ret;
+    pstPhyBearProp->lPortHandle = UDI_INVALID_HANDLE;
 
+    return (VOS_UINT32)lRet;
 }
 
 /*****************************************************************************
- 函 数 名  : dms_NcmSendData
+ 函 数 名  : DMS_NcmSendData
  功能描述  : NDIS CTRL通道数据发送接口
  输入参数  : pData: 发送buf
              ulLen: 发送长度
@@ -113,55 +138,49 @@ VOS_UINT32 dms_NcmClose(VOS_VOID)
      作    者  : heliping
      修改内容  : Creat Function
 *****************************************************************************/
-
-VOS_UINT32 dms_NcmSendData(VOS_UINT8 *pData, VOS_UINT32 ulLen)
+VOS_UINT32 DMS_NcmSendData(VOS_UINT8 *pData, VOS_UINT32 ulLen)
 {
+    VOS_INT32                           lRet = ERR_MSP_SUCCESS;
+    NCM_AT_RSP_S                        stATResponse = {0};
+    DMS_PHY_BEAR_PROPERTY_STRU         *pstPhyBearProp = DMS_GetPhyBearProperty(DMS_PHY_BEAR_USB_NCM);
+    VOS_UINT_PTR                        ptrAddr;
 
-    VOS_INT32 ret = ERR_MSP_SUCCESS;
-    NCM_AT_RSP_S stATResponse = {0};
-    DMS_PHY_BEAR_PROPERTY_STRU  *pstComCfg =NULL;
-
-    DMS_PHY_BEAR_PROPERTY_STRU* aenPhyBear = dmsgetPhyBearProperty();
+    ptrAddr = (VOS_UINT_PTR)pData;
 
     /*检查NDIS通道状态*/
-    if(aenPhyBear[EN_DMS_BEARER_USB_NCM].ucChanStat == ACM_EVT_DEV_SUSPEND)
+    if (ACM_EVT_DEV_SUSPEND == pstPhyBearProp->ucChanStat)
     {
         return ERR_MSP_FAILURE;
     }
 
-    if((pData==NULL)||(ulLen==0)||(ulLen > 2048))
+    if ((pData == NULL) || (ulLen == 0) || (ulLen > 2048))
     {
         return ERR_MSP_INVALID_PARAMETER;
     }
 
-    pstComCfg = dmsgetPhyBearProperty();
-
     stATResponse.pu8AtAnswer = pData;
     stATResponse.u32Length = ulLen;
 
-    if(UDI_INVALID_HANDLE ==pstComCfg[EN_DMS_BEARER_USB_NCM].slPortHandle)
+    if (UDI_INVALID_HANDLE ==pstPhyBearProp->lPortHandle)
     {
         return ERR_MSP_FAILURE;
     }
 
-    DMS_DEBUG_SDM_FUN(EN_SDM_DMS_NCM_SEND_TO_DRV, (VOS_UINT32)pData, ulLen, 0);
+    DMS_DBG_SDM_FUN(DMS_SDM_VCOM_WRT_NCM, (VOS_UINT32)(ptrAddr & (~0U)), ulLen, 0);
 
-    ret=udi_ioctl(pstComCfg[EN_DMS_BEARER_USB_NCM].slPortHandle, NCM_IOCTL_AT_RESPONSE, &stATResponse);
-
-
-    if(ret !=ERR_MSP_SUCCESS)
+    lRet = DRV_UDI_IOCTL(pstPhyBearProp->lPortHandle, NCM_IOCTL_AT_RESPONSE, &stATResponse);
+    if (ERR_MSP_SUCCESS != lRet)
     {
         return ERR_MSP_FAILURE;
     }
 
-    DMS_DEBUG_SDM_FUN(EN_SDM_DMS_NCM_SEND_TO_DRV_SUCC, 0, 0, 0);
+    DMS_DBG_SDM_FUN(DMS_SDM_VCOM_WRT_SUSS_NCM, 0, 0, 0);
 
     return ERR_MSP_SUCCESS;
-
 }
 
 /*****************************************************************************
- 函 数 名  : DMS_NCMStatusChangeReg
+ 函 数 名  : DMS_NcmStatusChangeReg
  功能描述  : ndis通道速率配置函数
  输入参数  : pPdpStru: 配置数据
 
@@ -174,38 +193,34 @@ VOS_UINT32 dms_NcmSendData(VOS_UINT8 *pData, VOS_UINT32 ulLen)
      作    者  : heliping
      修改内容  : Creat Function
 *****************************************************************************/
-
-VOS_INT32 DMS_NCMStatusChangeReg(NAS_PRO_STRU * pPdpStru)
+VOS_INT32 DMS_NcmStatusChangeReg(NAS_PRO_STRU * pPdpStru)
 {
-    VOS_INT32 slRet = -1;
+    DMS_PHY_BEAR_PROPERTY_STRU         *pstPhyBearProp = NULL;
+    VOS_INT32                           lRet = -1;
 
-    DMS_PHY_BEAR_PROPERTY_STRU  *pstComCfg = NULL;
+    pstPhyBearProp = DMS_GetPhyBearProperty(DMS_PHY_BEAR_USB_NCM);
 
-    pstComCfg = dmsgetPhyBearProperty();
-
-    if(NULL == pPdpStru)
+    if (NULL == pPdpStru)
     {
         return ERR_MSP_INVALID_PARAMETER;
     }
 
-    if(UDI_INVALID_HANDLE == pstComCfg[EN_DMS_BEARER_USB_NCM].slPortHandle)
+    if (UDI_INVALID_HANDLE == pstPhyBearProp->lPortHandle)
     {
-        return slRet;
+        return lRet;
     }
 
-    slRet = udi_ioctl (pstComCfg[EN_DMS_BEARER_USB_NCM].slPortHandle , NCM_IOCTL_NETWORK_CONNECTION_NOTIF, (VOS_VOID*)(&pPdpStru->enActiveSatus));
-
-    if(0 != slRet)
+    lRet = DRV_UDI_IOCTL(pstPhyBearProp->lPortHandle, NCM_IOCTL_NETWORK_CONNECTION_NOTIF, (VOS_VOID*)(&pPdpStru->enActiveSatus));
+    if (ERR_MSP_SUCCESS != lRet)
     {
-        return slRet;
+        return lRet;
     }
 
-    return slRet;
+    return lRet;
 }
 
-
 /*****************************************************************************
- 函 数 名  : DMS_NCMExtFuncReg
+ 函 数 名  : DMS_NcmExtFuncReg
  功能描述  : ndis通道回调函数注册函数封装
  输入参数  : connectBrk: 连接状态处理函数
              atCmdRcv: 数据接收回调函数
@@ -218,21 +233,20 @@ VOS_INT32 DMS_NCMStatusChangeReg(NAS_PRO_STRU * pPdpStru)
      作    者  : heliping
      修改内容  : Creat Function
 *****************************************************************************/
-
-int DMS_NCMExtFuncReg(USB_NAS_BRK connectBrk,USB_NAS_AT_CMD_RECV atCmdRcv)
+int DMS_NcmExtFuncReg(USB_NAS_BRK connectBrk,USB_NAS_AT_CMD_RECV atCmdRcv)
 {
 
     g_atConnectBrk = (USBNdisStusChgFunc )connectBrk;
     g_atCmdRcv     = (USBNdisAtRecvFunc )atCmdRcv;
 
-    Dms_NcmProcCbReg((USBNdisStusChgFunc )connectBrk,(USB_NAS_AT_CMD_RECV )atCmdRcv);
+    DMS_NcmProcCbReg((USBNdisStusChgFunc )connectBrk,(USB_NAS_AT_CMD_RECV )atCmdRcv);
 
     return ERR_MSP_SUCCESS;
 }
 
 
 /*****************************************************************************
- 函 数 名  : DMS_NCMExtFuncReg
+ 函 数 名  : DMS_NcmExtFuncReg
  功能描述  : ndis通道回调函数注册函数
  输入参数  : connectBrk: 连接状态处理函数
              atCmdRcv: 数据接收回调函数
@@ -245,61 +259,54 @@ int DMS_NCMExtFuncReg(USB_NAS_BRK connectBrk,USB_NAS_AT_CMD_RECV atCmdRcv)
      作    者  : heliping
      修改内容  : Creat Function
 *****************************************************************************/
-
-VOS_VOID Dms_NcmProcCbReg(USBNdisStusChgFunc connectBrk,USB_NAS_AT_CMD_RECV atCmdRcv)
+VOS_VOID DMS_NcmProcCbReg(USBNdisStusChgFunc connectBrk,USB_NAS_AT_CMD_RECV atCmdRcv)
 {
-    VOS_INT32 slRet = -1;
+    DMS_PHY_BEAR_PROPERTY_STRU         *pstPhyBearProp = NULL;
+    VOS_INT32                           lRet = -1;
 
-    DMS_PHY_BEAR_PROPERTY_STRU  *pstComCfg =NULL;
-
-    if((connectBrk == NULL)||(atCmdRcv  ==NULL))
+    if ((connectBrk == NULL) || (atCmdRcv == NULL))
     {
-            return ;
+        return ;
     }
 
     /*NDIS 通道没有打开或者 通道已经被配置，则直接返回*/
-    if((g_ulNdisCfgFlag == 0xffffffff)||(g_ulNdisCfgFlag == 0))
+    if ((g_ulNdisCfgFlag == 0xffffffffU)||(g_ulNdisCfgFlag == 0))
     {
         return ;
     }
 
-    pstComCfg = dmsgetPhyBearProperty();
+    pstPhyBearProp = DMS_GetPhyBearProperty(DMS_PHY_BEAR_USB_NCM);
 
-    if(UDI_INVALID_HANDLE == pstComCfg[EN_DMS_BEARER_USB_NCM].slPortHandle)
+    if (UDI_INVALID_HANDLE == pstPhyBearProp->lPortHandle)
     {
         return ;
     }
 
-    slRet = udi_ioctl (pstComCfg[EN_DMS_BEARER_USB_NCM].slPortHandle , NCM_IOCTL_REG_CONNECT_STUS_CHG_FUNC, (USBNdisStusChgFunc)(connectBrk));
-
-    if(ERR_MSP_SUCCESS != slRet)
+    lRet = DRV_UDI_IOCTL(pstPhyBearProp->lPortHandle, NCM_IOCTL_REG_CONNECT_STUS_CHG_FUNC, (USBNdisStusChgFunc)(connectBrk));
+    if (ERR_MSP_SUCCESS != lRet)
     {
         return ;
     }
 
-    slRet = udi_ioctl (pstComCfg[EN_DMS_BEARER_USB_NCM].slPortHandle , NCM_IOCTL_REG_AT_PROCESS_FUNC, (USBNdisAtRecvFunc)(atCmdRcv));
-
-    if(ERR_MSP_SUCCESS != slRet)
+    lRet = DRV_UDI_IOCTL (pstPhyBearProp->lPortHandle , NCM_IOCTL_REG_AT_PROCESS_FUNC, (USBNdisAtRecvFunc)(atCmdRcv));
+    if (ERR_MSP_SUCCESS != lRet)
     {
         return ;
     }
 
     g_ulNdisCfgFlag = 0;
-
     return ;
 }
-VOS_VOID Dms_SetNdisChanStatus(ACM_EVT_E enStatus )
+VOS_VOID DMS_SetNdisChanStatus(ACM_EVT_E enStatus)
 {
-    DMS_PHY_BEAR_PROPERTY_STRU* aenPhyBear = dmsgetPhyBearProperty();
+    DMS_PHY_BEAR_PROPERTY_STRU         *pstPhyBearProp = DMS_GetPhyBearProperty(DMS_PHY_BEAR_USB_NCM);
 
-    aenPhyBear[EN_DMS_BEARER_USB_NCM].ucChanStat = (VOS_UINT8)enStatus;
+    pstPhyBearProp->ucChanStat = (VOS_UINT8)enStatus;
+    return;
 }
 
-
-
-VOS_VOID dms_AtNdisWrtCB (char* pDoneBuff, int status)
+VOS_VOID DMS_NcmWrtCB (char* pDoneBuff, int status)
 {
-
     if (Dms_IsStaticBuf ((VOS_UINT8*)pDoneBuff))
     {
         Dms_FreeStaticBuf((VOS_UINT8*)pDoneBuff);
@@ -318,4 +325,9 @@ VOS_VOID dms_AtNdisWrtCB (char* pDoneBuff, int status)
 }
 
 
+#ifdef __cplusplus
+    #if __cplusplus
+        }
+    #endif
+#endif
 

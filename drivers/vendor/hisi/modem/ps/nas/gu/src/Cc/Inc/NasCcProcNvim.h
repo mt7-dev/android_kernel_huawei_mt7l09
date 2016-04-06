@@ -74,6 +74,10 @@ VOS_VOID NAS_CC_ReadNvimInfo(VOS_VOID);
 
 VOS_VOID  NAS_CC_ReadCcTimerLenNvim( VOS_VOID );
 
+#if (FEATURE_ON == FEATURE_PTM)
+VOS_VOID NAS_CC_ReadErrlogCtrlInfoNvim(VOS_VOID);
+#endif
+
 #if (VOS_OS_VER == VOS_WIN32)
 #pragma pack()
 #else

@@ -66,6 +66,7 @@ typedef struct
     VOS_UINT32          ulFlags;/* event mode */
     VOS_UINT32          ulFid;/* belong to a FID or not */
     pid_t               ulLinuxThreadId;/* maped Linux thread id */
+    VOS_UINT8           aucRsv[4];
 } VOS_TASK_CONTROL_BLOCK;
 
 /* the number of task's control block */
@@ -156,7 +157,7 @@ VOS_VOID VOS_TaskCtrlBlkInit(VOS_VOID)
 VOS_UINT32 VOS_TaskCtrlBlkGet(VOS_VOID)
 {
     VOS_UINT32              i;
-    VOS_UINT32              ulLockLevel;
+    VOS_ULONG               ulLockLevel;
 
     /*intLockLevel = VOS_SplIMP();*/
     VOS_SpinLockIntLock(&g_stVosTaskSpinLock, ulLockLevel);
@@ -195,7 +196,7 @@ VOS_UINT32 VOS_TaskCtrlBlkGet(VOS_VOID)
  *****************************************************************************/
 VOS_UINT32 VOS_TaskCtrlBlkFree(VOS_UINT32 Tid)
 {
-    VOS_UINT32              ulLockLevel;
+    VOS_ULONG               ulLockLevel;
 
     if( Tid < vos_TaskCtrlBlkNumber )
     {
@@ -284,6 +285,7 @@ VOS_UINT32 VOS_CreateTask( VOS_CHAR * puchName,
     VOS_UCHAR       value;
 //    VOS_UINT32      ulOsTaskPriority;
 //    VOS_UINT32      ulMode;
+    VOS_INT_PTR          lFuncAddr;
     struct task_struct  *tsk;
 
     struct sched_param  param;
@@ -293,7 +295,9 @@ VOS_UINT32 VOS_CreateTask( VOS_CHAR * puchName,
     {
 		VOS_TaskPrintCtrlBlkInfo();
 
-		DRV_SYSTEM_ERROR(OSA_ALLOC_TASK_CONTROL_ERROR, (VOS_INT)vos_TaskCtrlBlkNumber, (VOS_INT)pfnFunc, VOS_NULL_PTR, 0);
+        lFuncAddr = (VOS_INT_PTR)pfnFunc;
+
+        DRV_SYSTEM_ERROR(OSA_ALLOC_TASK_CONTROL_ERROR, (VOS_INT)vos_TaskCtrlBlkNumber, (VOS_INT)lFuncAddr, VOS_NULL_PTR, 0);
 
         VOS_SetErrorNo(VOS_ERRNO_TASK_CREATE_NOFREETCB);
         return( VOS_ERRNO_TASK_CREATE_NOFREETCB );
@@ -349,7 +353,7 @@ VOS_UINT32 VOS_CreateTask( VOS_CHAR * puchName,
     {
 		VOS_TaskPrintCtrlBlkInfo();
 
-		DRV_SYSTEM_ERROR(OSA_CREATE_TASK_ERROR, (VOS_INT)tsk, (VOS_INT)iTid, VOS_NULL_PTR, 0);
+		DRV_SYSTEM_ERROR(OSA_CREATE_TASK_ERROR, (VOS_INT)tsk->pid, (VOS_INT)iTid, VOS_NULL_PTR, 0);
 
         VOS_TaskCtrlBlkFree(iTid);
         VOS_SetErrorNo(VOS_ERRNO_TASK_CREATE_OSALCREATEFAIL);
@@ -552,7 +556,7 @@ VOS_UINT32 VOS_GetCurrentTaskID( VOS_VOID )
 {
     pid_t               ulOSID;
     int                 i;
-    VOS_UINT32          ulLockLevel;
+    VOS_ULONG           ulLockLevel;
 
     ulOSID = current->pid;
 
@@ -672,9 +676,9 @@ VOS_UINT32 VOS_RecordFIDTIDInfo( VOS_UINT32 ulFid, VOS_UINT32 ulTid )
 VOS_UINT32 VOS_EventWrite( VOS_UINT32 ulTaskID, VOS_UINT32 ulEvents )
 {
     /* the functin should be full later */
-    VOS_UINT32               ulLockLevel;
+    VOS_ULONG                ulLockLevel;
     VOS_UINT32               ulTempQueue;
-    VOS_UINT32               ulTempSem;
+    VOS_SEM                  ulTempSem;
 
     if ( VOS_OK != VOS_CheckEvent(ulTaskID) )
     {
@@ -746,8 +750,8 @@ VOS_UINT32 VOS_EventRead( VOS_UINT32 ulEvents,
     /* the functin should be full later */
     VOS_UINT32     ulTaskSelf;       /*Self task ID*/
     VOS_UINT32     ulTempQueue;
-    VOS_UINT32     ulTempSem;
-    VOS_UINT32     ulLockLevel;
+    VOS_SEM        ulTempSem;
+    VOS_ULONG      ulLockLevel;
     VOS_UINT32     ulTempEvent;
 
     ulTaskSelf = VOS_GetCurrentTaskID();

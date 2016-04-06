@@ -22,7 +22,11 @@
 #include <linux/of_irq.h>
 #include <linux/mfd/hi3630_asp_irq.h>
 
-#include <asm/mach/irq.h>
+#include <linux/irq.h>
+
+#ifndef NO_IRQ
+#define NO_IRQ	0
+#endif
 
 #define HI3630_REG_ASP_CFG_IRQ		(0x6C)
 #define HI3630_REG_ASP_CFG_IRQ_MASK	(0x68)

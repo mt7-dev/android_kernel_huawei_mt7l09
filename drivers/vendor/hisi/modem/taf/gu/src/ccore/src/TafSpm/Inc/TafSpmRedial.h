@@ -24,6 +24,12 @@ extern "C" {
   2 宏定义
 *****************************************************************************/
 
+#define TAF_SPM_IS_VIDEO_CALL(CallType)                 \
+            ((MN_CALL_TYPE_VIDEO_TX    == CallType)     \
+          || (MN_CALL_TYPE_VIDEO_RX    == CallType)     \
+          || (MN_CALL_TYPE_VIDEO       == CallType))    \
+
+
 /*****************************************************************************
   3 枚举定义
 *****************************************************************************/
@@ -80,6 +86,13 @@ VOS_VOID TAF_SPM_UpdateCallRedialBufferMsgWithCallId(
     MN_CLIENT_ID_T                      usClientId,
     MN_CALL_ID_T                        ucCallId
 );
+
+VOS_VOID TAF_SPM_UpdateCallRedialBufferMsgWithCallType(
+    MN_CLIENT_ID_T                      usClientId,
+    MN_CALL_TYPE_ENUM_U8                enDestCallType,
+    MN_CALL_EMERGENCY_CAT_STRU         *pstEmcCat
+);
+
 
 VOS_UINT8 TAF_SPM_StoreMsgIntoCallRedialBuffer(
     VOS_UINT32                          ulEventType,

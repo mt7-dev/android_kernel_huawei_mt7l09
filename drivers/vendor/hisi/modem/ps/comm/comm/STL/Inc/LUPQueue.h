@@ -56,6 +56,7 @@ typedef struct LUP_QUEUE
     VOS_UINT32          ulHead;
     VOS_UINT32          ulTail;
     VOS_UINT32          ulMaxNum;
+    VOS_UINT32          ulResv;/*为了与64位OS兼容*/
     VOS_VOID          **pBuff;
 }LUP_QUEUE_STRU;
 
@@ -89,11 +90,6 @@ extern VOS_UINT32 LUP_CreateQue(VOS_UINT32 ulPid, LUP_QUEUE_STRU **ppQue,
 extern VOS_UINT32 LUP_DestroyQue(VOS_UINT32 ulPid, LUP_QUEUE_STRU **ppQue);
 extern VOS_UINT32 LUP_EnQuetoHead(LUP_QUEUE_STRU *pstQue, VOS_VOID *pNode, VOS_VOID** ppTailNode);
 extern VOS_UINT32 LUP_QueCnt(const LUP_QUEUE_STRU *pstQue);
-extern VOS_UINT32 LUP_EnSharedQueAcpu(LUP_QUEUE_STRU *pstQue, VOS_VOID *pNode);
-extern VOS_UINT32 LUP_DeSharedQueAcpu(LUP_QUEUE_STRU *pstQue, VOS_VOID **ppNode);
-extern VOS_UINT32 LUP_CreateSharedQue(VOS_UINT32 ulPid, LUP_QUEUE_STRU **ppQue,
-                                       VOS_UINT32 ulMaxNodeNum,VOS_UINT8 *pucAddr,
-                                       VOS_UINT32 ulAddrBufLen);
 
 
 /*****************************************************************************

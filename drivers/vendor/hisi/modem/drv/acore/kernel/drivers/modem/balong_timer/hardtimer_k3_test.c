@@ -54,13 +54,13 @@ void print_count(void)
 /*测试函数接口操作timer0*/
 s32 k3_hardtimer_test_case01(void)
 {
-   u32 i=0; 
+   unsigned long i=0; 
    s32 ret = 0;
    my_timer.func =(timer_func) for_timer_test;
    my_timer.mode = TIMER_PERIOD_COUNT;
    my_timer.timeout = 32768;
    my_timer.timerId = i;
-   my_timer.para = i;
+   my_timer.para =(void*) i;
    osl_sem_init(SEM_EMPTY,&sem);
    ret = bsp_hardtimer_alloc(&my_timer);
    if (OK != ret)
@@ -83,13 +83,13 @@ s32 k3_hardtimer_test_case01(void)
 /*测试函数接口操作timer0*/
 s32 k3_hardtimer_test_case02(void)
 {
-   u32 i=4; 
+   unsigned long i=4; 
    s32 ret = 0;
    my_timer.func =(timer_func) for_timer_test;
    my_timer.mode = TIMER_PERIOD_COUNT;
    my_timer.timeout = 32768;
    my_timer.timerId = i;
-   my_timer.para = i;
+   my_timer.para =(void*) i;
    osl_sem_init(SEM_EMPTY,&sem);
    ret = bsp_hardtimer_alloc(&my_timer);
    if (OK != ret)
@@ -112,13 +112,13 @@ s32 k3_hardtimer_test_case02(void)
 /*测试函数接口操作timer0*/
 s32 k3_hardtimer_test_case03(void)
 {
-   u32 i=5; 
+   unsigned long i=5; 
    s32 ret = 0;
    my_timer.func =(timer_func) for_timer_test;
    my_timer.mode = TIMER_PERIOD_COUNT;
    my_timer.timeout = 32768;
    my_timer.timerId = i;
-   my_timer.para = i;
+   my_timer.para = (void*)i;
    osl_sem_init(SEM_EMPTY,&sem);
    ret = bsp_hardtimer_alloc(&my_timer);
    if (OK != ret)
@@ -141,13 +141,13 @@ s32 k3_hardtimer_test_case03(void)
 
 s32 k3_hardtimer_test_case04(void)
 {
-   u32 i=6; 
+   unsigned long i=6; 
    s32 ret = 0;
    my_timer.func =(timer_func) for_timer_test;
    my_timer.mode = TIMER_PERIOD_COUNT;
    my_timer.timeout = 32768;
    my_timer.timerId = i;
-   my_timer.para = i;
+   my_timer.para = (void*)i;
    osl_sem_init(SEM_EMPTY,&sem);
    ret = bsp_hardtimer_alloc(&my_timer);
    if (OK != ret)

@@ -20,7 +20,9 @@
 #include  "LNvCommon.h"
 
 
+#if (FEATURE_ON == FEATURE_PTM)
 #include "NasErrorLog.h"
+#endif
 #include  "LNasNvInterface.h"
 #ifdef  __cplusplus
   #if  __cplusplus
@@ -208,6 +210,20 @@ VOS_VOID TAF_SDC_SetCurrCampCellId(VOS_UINT32 ulCellId)
     TAF_SDC_GetSdcCtx()->stNetworkInfo.stCampPlmnInfo.ulCellId = ulCellId;
     return;
 }
+
+
+TAF_SDC_LMM_ACCESS_TYPE_ENUM_UINT8 TAF_SDC_GetCurrLmmAccessType(VOS_VOID)
+{
+    return (TAF_SDC_GetSdcCtx()->stNetworkInfo.stCampPlmnInfo.enLmmAccessType);
+}
+
+
+VOS_VOID TAF_SDC_SetCurrLmmAccessType(TAF_SDC_LMM_ACCESS_TYPE_ENUM_UINT8 enLmmAccessType)
+{
+    TAF_SDC_GetSdcCtx()->stNetworkInfo.stCampPlmnInfo.enLmmAccessType  = enLmmAccessType;
+    return;
+}
+
 
 
 TAF_SDC_SERVICE_STATUS_ENUM_UINT8 TAF_SDC_GetCsServiceStatus( VOS_VOID )
@@ -807,10 +823,14 @@ VOS_VOID TAF_SDC_InitVoiceDomain(
         return;
     }
 
-    /* 默认初始化为CS ONLY */
+    /* NV关闭时，默认初始化为CS ONLY */
     pstMsCapInfo->stImsConfigPara.enVoiceDomain = TAF_SDC_VOICE_DOMAIN_CS_ONLY;
 
 #if (FEATURE_ON == FEATURE_IMS)
+
+    /* NV打开时，默认初始化为ps preferred */
+    pstMsCapInfo->stImsConfigPara.enVoiceDomain = TAF_SDC_VOICE_DOMAIN_IMS_PS_PREFERRED;
+
     /* 先获取NV的长度 */
     ulLength = 0;
     NV_GetLength(EN_NV_ID_UE_VOICE_DOMAIN, &ulLength);
@@ -842,6 +862,8 @@ VOS_VOID TAF_SDC_InitVoiceDomain(
 
     return;
 }
+
+
 VOS_VOID TAF_SDC_InitSmsDomain(
     TAF_SDC_INIT_CTX_TYPE_ENUM_UINT8    enInitType,
     TAF_SDC_MS_CAP_INFO_STRU           *pstMsCapInfo
@@ -1024,7 +1046,7 @@ VOS_VOID TAF_SDC_InitImsRoamingCfgInfo(
 
     if (ulLength > sizeof(TAF_NV_IMS_ROAMING_SUPPORT_STRU))
     {
-        TAF_ERROR_LOG(WUEPS_PID_TAF, 
+        TAF_ERROR_LOG(WUEPS_PID_TAF,
                       "TAF_SDC_InitImsRoamingCfgInfo():WARNING: en_NV_Item_IMS_ROAMING_SUPPORT_FLG length Error");
 
         return;
@@ -1035,7 +1057,7 @@ VOS_VOID TAF_SDC_InitImsRoamingCfgInfo(
                          &stRoamingFlg, ulLength))
     {
 
-        TAF_ERROR_LOG(WUEPS_PID_TAF, 
+        TAF_ERROR_LOG(WUEPS_PID_TAF,
                       "TAF_SDC_InitImsRoamingCfgInfo():WARNING: read en_NV_Item_IMS_ROAMING_SUPPORT_FLG Error");
 
         return;
@@ -1075,7 +1097,7 @@ VOS_VOID TAF_SDC_InitImsUssdCfgInfo(
 
     if (ulLength > sizeof(TAF_NV_IMS_USSD_SUPPORT_STRU))
     {
-        TAF_ERROR_LOG(WUEPS_PID_TAF, 
+        TAF_ERROR_LOG(WUEPS_PID_TAF,
                       "TAF_SDC_InitImsUssdCfgInfo():WARNING: en_NV_Item_IMS_USSD_SUPPORT_FLG length Error");
 
         return;
@@ -1086,7 +1108,7 @@ VOS_VOID TAF_SDC_InitImsUssdCfgInfo(
                          &stUssdFlg, ulLength))
     {
 
-        TAF_ERROR_LOG(WUEPS_PID_TAF, 
+        TAF_ERROR_LOG(WUEPS_PID_TAF,
                       "TAF_SDC_InitImsUssdCfgInfo():WARNING: read en_NV_Item_IMS_USSD_SUPPORT_FLG Error");
 
         return;
@@ -1283,19 +1305,19 @@ VOS_VOID TAF_SDC_InitUeUsageSetting(VOS_VOID)
     LNAS_LMM_NV_UE_CENTER_STRU          stUeCentric;
 
     ulLength = 0;
-    
+
     NV_GetLength(EN_NV_ID_UE_CENTER, &ulLength);
 
     if (ulLength > sizeof(LNAS_LMM_NV_UE_CENTER_STRU))
-    {        
+    {
         /* set data centric same as LNAS operation */
         TAF_SDC_SetUeUsageSetting(EMM_SETTING_DATA_CENTRIC);
-        
+
         return;
     }
 
     stUeCentric.enUeCenter = EMM_USAGE_SETTING_BUTT;
-    
+
     if (NV_OK != NV_Read(EN_NV_ID_UE_CENTER,
                          &stUeCentric, ulLength))
     {
@@ -1307,7 +1329,7 @@ VOS_VOID TAF_SDC_InitUeUsageSetting(VOS_VOID)
 
     TAF_SDC_SetUeUsageSetting((TAF_SDC_UE_USAGE_SETTING_ENUM_UINT8)(stUeCentric.enUeCenter));
 
-    return;    
+    return;
 }
 
 VOS_VOID TAF_SDC_InitMsSysCfgInfo(TAF_SDC_MS_SYS_CFG_INFO_STRU *pstMsSysCfgInfo)
@@ -1319,7 +1341,7 @@ VOS_VOID TAF_SDC_InitMsSysCfgInfo(TAF_SDC_MS_SYS_CFG_INFO_STRU *pstMsSysCfgInfo)
     TAF_SDC_InitAppCfgSupportType();
 
     TAF_SDC_InitDsdaPlmnSearchEnhancedCfg();
-	
+
     TAF_SDC_InitUeUsageSetting();
 
 #if (FEATURE_ON == FEATURE_LTE)
@@ -1332,7 +1354,7 @@ VOS_VOID TAF_SDC_InitMsSysCfgInfo(TAF_SDC_MS_SYS_CFG_INFO_STRU *pstMsSysCfgInfo)
     pstMsSysCfgInfo->stPrioRatList.aenRatPrio[0]= TAF_SDC_SYS_MODE_WCDMA;
     pstMsSysCfgInfo->stPrioRatList.aenRatPrio[1]= TAF_SDC_SYS_MODE_GSM;
 #endif
-    
+
     return;
 }
 
@@ -1361,8 +1383,7 @@ VOS_VOID TAF_SDC_InitCampPlmnInfo(TAF_SDC_CAMP_PLMN_INFO_STRU *pstCampPlmnInfo)
     pstCampPlmnInfo->ulCellId       = TAF_SDC_CELLID_INVALID;
     pstCampPlmnInfo->ucRoamFlag     = VOS_FALSE;
     pstCampPlmnInfo->ucCampOnFlg    = VOS_FALSE;
-
-    PS_MEM_SET(pstCampPlmnInfo->aucReserved, 0, sizeof(pstCampPlmnInfo->aucReserved));
+    pstCampPlmnInfo->enLmmAccessType   = TAF_SDC_LMM_ACCESS_TYPE_BUTT;
 }
 
 
@@ -1389,13 +1410,13 @@ VOS_VOID TAF_SDC_InitPsDomainInfo(TAF_SDC_PS_DOMAIN_INFO_STRU *pstPsDomainInfo)
 
     /* 小区受限类型默认需要设置为不受限,否则设置为BUTT时RIL层认为受限 */
     pstPsDomainInfo->stPsAcRestriction.enCellAcType        = TAF_SDC_CELL_RESTRICTION_TYPE_NONE;
-    
+
     pstPsDomainInfo->stPsAcRestriction.ucRestrictPagingRsp = VOS_FALSE;
     pstPsDomainInfo->stPsAcRestriction.ucRestrictRegister  = VOS_FALSE;
     pstPsDomainInfo->ucSimPsRegStatus                      = VOS_FALSE;
-	
+
     TAF_SDC_SetPsAttachAllowFlg(VOS_FALSE);
-	
+
     return;
 }
 VOS_VOID TAF_SDC_InitGuNwCapInfo(
@@ -1475,7 +1496,7 @@ VOS_VOID TAF_SDC_InitCallInfo(
     /* 初始化CALL相关标志 */
     pstCallInfo->ucCsCallExistFlg                       = VOS_FALSE;
     pstCallInfo->ucImsCallExistFlg                      = VOS_FALSE;
-    
+
     /* SRVCC标志管理移到到CALL模块*/
 
     /* 初始化MM相关紧急呼号码列表 */
@@ -1498,6 +1519,21 @@ VOS_VOID TAF_SDC_InitPhoneInfo(
     PS_MEM_SET(pstPhInfo, 0, sizeof(TAF_SDC_PHONE_INFO_STRU));
 
     pstPhInfo->enPhMode = TAF_SDC_PHONE_MODE_MINI;
+
+    pstPhInfo->enImsSwitchState = TAF_SDC_IMS_SWITCH_STATE_OFF;
+}
+
+
+
+VOS_VOID TAF_SDC_InitRegReportStatus(
+    TAF_SDC_REG_REPORT_STATUS_STRU     *pstRegReportStatus
+)
+{
+    PS_MEM_SET(pstRegReportStatus, 0, sizeof(TAF_SDC_REG_REPORT_STATUS_STRU));
+
+    pstRegReportStatus->enCregType  = TAF_SDC_CREG_TYPE_BUTT;
+    pstRegReportStatus->enCgregType = TAF_SDC_CGREG_TYPE_BUTT;
+    pstRegReportStatus->enCeregType = TAF_SDC_CEREG_TYPE_BUTT;
 }
 
 
@@ -1506,7 +1542,7 @@ VOS_VOID TAF_SDC_ReadCustomEccNumListNvim(VOS_VOID)
     MN_CALL_NVIM_CUSTOM_ECC_NUM_LIST_STRU   stCustomEccNumList;
     VOS_UINT8                               i;
     TAF_SDC_CALL_INFO_STRU                 *pstCallInfo = VOS_NULL_PTR;
-    
+
     pstCallInfo = TAF_SDC_GetCallInfo();
 
 
@@ -1527,7 +1563,7 @@ VOS_VOID TAF_SDC_ReadCustomEccNumListNvim(VOS_VOID)
     }
 
 
-    /* 根据NV项的值赋值到全局变量中 */    
+    /* 根据NV项的值赋值到全局变量中 */
     pstCallInfo->stCustomCallEccNumCtx.stCustomEccNumList.ucEccNumCount
         = stCustomEccNumList.ucEccNumCount;
 
@@ -1614,6 +1650,8 @@ VOS_VOID TAF_SDC_InitCtx(
 #endif
 
     TAF_SDC_InitPhoneInfo(&pstSdcCtx->stPhoneInfo);
+
+    TAF_SDC_InitRegReportStatus(&pstSdcCtx->stRegReportStatus);
 }
 
 
@@ -2164,13 +2202,13 @@ VOS_UINT16 TAF_SDC_GetAppCfgSupportType(VOS_VOID)
 
 OM_RING_ID TAF_SDC_GetErrLogRingBufAddr(VOS_VOID)
 {
-    return g_stTafSdcCtx.stErrlogInfo.pstRingBuffer;
+    return g_stTafSdcCtx.stErrlogInfo.stBuffInfo.pstRingBuffer;
 }
 
 
 VOS_VOID TAF_SDC_SetErrLogRingBufAddr(OM_RING_ID pRingBuffer)
 {
-    g_stTafSdcCtx.stErrlogInfo.pstRingBuffer = pRingBuffer;
+    g_stTafSdcCtx.stErrlogInfo.stBuffInfo.pstRingBuffer = pRingBuffer;
 
     return;
 }
@@ -2178,13 +2216,13 @@ VOS_VOID TAF_SDC_SetErrLogRingBufAddr(OM_RING_ID pRingBuffer)
 
 VOS_UINT8 TAF_SDC_GetErrlogCtrlFlag(VOS_VOID)
 {
-    return g_stTafSdcCtx.stErrlogInfo.ucErrLogCtrlFlag;
+    return g_stTafSdcCtx.stErrlogInfo.stCtrlInfo.ucErrLogCtrlFlag;
 }
 
 
 VOS_VOID TAF_SDC_SetErrlogCtrlFlag(VOS_UINT8 ucFlag)
 {
-    g_stTafSdcCtx.stErrlogInfo.ucErrLogCtrlFlag = ucFlag;
+    g_stTafSdcCtx.stErrlogInfo.stCtrlInfo.ucErrLogCtrlFlag = ucFlag;
 
     return;
 }
@@ -2192,20 +2230,415 @@ VOS_VOID TAF_SDC_SetErrlogCtrlFlag(VOS_UINT8 ucFlag)
 
 VOS_UINT16 TAF_SDC_GetErrlogAlmLevel(VOS_VOID)
 {
-    return g_stTafSdcCtx.stErrlogInfo.usAlmLevel;
+    return g_stTafSdcCtx.stErrlogInfo.stCtrlInfo.usAlmLevel;
 }
 
 
 VOS_VOID TAF_SDC_SetErrlogAlmLevel(VOS_UINT16 usAlmLevel)
 {
-    g_stTafSdcCtx.stErrlogInfo.usAlmLevel = usAlmLevel;
+    g_stTafSdcCtx.stErrlogInfo.stCtrlInfo.usAlmLevel = usAlmLevel;
 
     return;
 }
 
 
+VOS_UINT32 TAF_SDC_GetErrlogOverflowCnt(VOS_VOID)
+{
+    return g_stTafSdcCtx.stErrlogInfo.stBuffInfo.ulOverflowCnt;
+}
+
+
+VOS_VOID TAF_SDC_SetErrlogOverflowCnt(VOS_UINT32 ulOverflowCnt)
+{
+    g_stTafSdcCtx.stErrlogInfo.stBuffInfo.ulOverflowCnt = ulOverflowCnt;
+
+    return;
+}
+
+
+VOS_UINT8 TAF_SDC_GetErrLogImsCallFailFlag(VOS_VOID)
+{
+    return TAF_SDC_GetSdcCtx()->stErrlogInfo.stImsCallFailInfo.ucImsCallFailFlag;
+}
+
+VOS_VOID TAF_SDC_SetErrLogImsCallFailFlag(
+    VOS_UINT8                           ucImsCallFailFlag
+)
+{
+    TAF_SDC_GetSdcCtx()->stErrlogInfo.stImsCallFailInfo.ucImsCallFailFlag = ucImsCallFailFlag;
+
+    return;
+}
+
+VOS_UINT32 TAF_SDC_GetErrLogImsCallFailCause(VOS_VOID)
+{
+    return TAF_SDC_GetSdcCtx()->stErrlogInfo.stImsCallFailInfo.ulImsCallFailCause;
+}
+
+VOS_VOID TAF_SDC_SetErrLogImsCallFailCause(
+    VOS_UINT32                          ulImsCallFailCause
+)
+{
+    TAF_SDC_GetSdcCtx()->stErrlogInfo.stImsCallFailInfo.ulImsCallFailCause = ulImsCallFailCause;
+
+    return;
+}
+
+
+VOS_VOID TAF_SDC_InitErrLogImsCallFailInfo(VOS_VOID)
+{
+    PS_MEM_SET(&(TAF_SDC_GetSdcCtx()->stErrlogInfo.stImsCallFailInfo),
+               0,
+               sizeof(NAS_ERR_LOG_IMS_CALL_FAIL_INFO_STRU));
+
+    return;
+}
+/* Added by zwx247453 for CHR optimize, 2015-3-13 Begin */
+
+VOS_UINT8 TAF_SDC_GetErrlogActiveRptFlag(VOS_VOID)
+{
+    return g_stTafSdcCtx.stErrlogInfo.stCtrlInfo.stErrLogRptCtrl.bitOpActiveRptFlag;
+}
+
+
+VOS_VOID TAF_SDC_SetErrlogActiveRptFlag(VOS_UINT8 ucActiveRptFlag)
+{
+    g_stTafSdcCtx.stErrlogInfo.stCtrlInfo.stErrLogRptCtrl.bitOpActiveRptFlag = (ucActiveRptFlag & 0x01);
+}
+
+
+VOS_UINT8 TAF_SDC_GetErrlogRatSwitchRptFlag(VOS_VOID)
+{
+    return g_stTafSdcCtx.stErrlogInfo.stCtrlInfo.stErrLogRptCtrl.bitOpRatSwitchRptFlag;
+}
+
+
+VOS_VOID TAF_SDC_SetErrlogRatSwitchRptFlag(VOS_UINT8 ucRatSwitchRptFlag)
+{
+    g_stTafSdcCtx.stErrlogInfo.stCtrlInfo.stErrLogRptCtrl.bitOpRatSwitchRptFlag = (ucRatSwitchRptFlag & 0x01);
+}
+
+
+VOS_UINT32 TAF_SDC_GetErrlogRatSwitchStatisticTime(VOS_VOID)
+{
+    return g_stTafSdcCtx.stErrlogInfo.stRatFrequentlySwitchInfo.ulNvStatisticTime;
+}
+
+
+VOS_VOID TAF_SDC_SetErrlogRatSwitchStatisticTime(
+    VOS_UINT32                           ulStatisticTime
+)
+{
+    g_stTafSdcCtx.stErrlogInfo.stRatFrequentlySwitchInfo.ulNvStatisticTime = ulStatisticTime;
+
+    return;
+}
+
+
+VOS_UINT32 TAF_SDC_GetErrlogRatSwitchStatisticNum(VOS_VOID)
+{
+    return g_stTafSdcCtx.stErrlogInfo.stRatFrequentlySwitchInfo.ulNvSwitchNum;
+}
+
+
+VOS_VOID TAF_SDC_SetErrlogRatSwitchStatisticNum(
+    VOS_UINT32                           ulSwitchNum
+)
+{
+    g_stTafSdcCtx.stErrlogInfo.stRatFrequentlySwitchInfo.ulNvSwitchNum = ulSwitchNum;
+
+    return;
+}
+
+/*****************************************************************************
+ 函 数 名  : TAF_SDC_GetErrLogOldRatType
+ 功能描述  : 获取最后一次模式切换类型
+ 输入参数  : VOS_VOID
+ 输出参数  : 无
+ 返 回 值  : 获取最后一次模式切换类型
+ 调用函数  :
+ 被调函数  :
+
+ 修改历史      :
+ 1.日    期   : 2015年03月13日
+   作    者   : zwx247453
+   修改内容   : 新生成函数
+*****************************************************************************/
+VOS_UINT8 TAF_SDC_GetErrLogOldRatType(VOS_VOID)
+{
+    return g_stTafSdcCtx.stErrlogInfo.stRatFrequentlySwitchInfo.ucOldRatType;
+}
+
+/*****************************************************************************
+ 函 数 名  : TAF_SDC_SetErrLogOldRatType
+ 功能描述  : 设置最后一次模式切换类型
+ 输入参数  : VOS_VOID
+ 输出参数  : 无
+ 返 回 值  :
+ 调用函数  :
+ 被调函数  :
+
+ 修改历史      :
+ 1.日    期   : 2015年03月13日
+   作    者   : zwx247453
+   修改内容   : 新生成函数
+*****************************************************************************/
+VOS_VOID TAF_SDC_SetErrLogOldRatType(VOS_UINT8 ucRatType)
+{
+    g_stTafSdcCtx.stErrlogInfo.stRatFrequentlySwitchInfo.ucOldRatType = ucRatType;
+
+    return;
+}
+
+/*****************************************************************************
+ 函 数 名  : TAF_SDC_GetRatSwitchRingBufAddr
+ 功能描述  : 获取频繁切换RING BUFFER的地址
+ 输入参数  : VOS_VOID
+ 输出参数  : 无
+ 返 回 值  : 频繁切换RING BUFFER的地址
+ 调用函数  :
+ 被调函数  :
+
+ 修改历史      :
+ 1.日    期   : 2015年03月13日
+   作    者   : zwx247453
+   修改内容   : 新生成函数
+*****************************************************************************/
+OM_RING_ID TAF_SDC_GetRatSwitchRingBufAddr(VOS_VOID)
+{
+    return g_stTafSdcCtx.stErrlogInfo.stRatFrequentlySwitchInfo.pstRingBuffer;
+}
+
+/*****************************************************************************
+ 函 数 名  : TAF_SDC_SetRatSwitchRingBufAddr
+ 功能描述  : 设置频繁切换RING BUFFER的地址
+ 输入参数  : RING BUFFER的地址
+ 输出参数  : 无
+ 返 回 值  : VOS_VOID
+ 调用函数  :
+ 被调函数  :
+
+ 修改历史      :
+ 1.日    期   : 2015年03月13日
+   作    者   : zwx247453
+   修改内容   : 新生成函数
+*****************************************************************************/
+VOS_VOID TAF_SDC_SetRatSwitchRingBufAddr(OM_RING_ID pRingBuffer)
+{
+    g_stTafSdcCtx.stErrlogInfo.stRatFrequentlySwitchInfo.pstRingBuffer = pRingBuffer;
+
+    return;
+}
+
+/*****************************************************************************
+ 函 数 名  : TAF_SDC_PutRatSwitchRingBuf
+ 功能描述  : RING BUFFER写操作
+ 输入参数  : pbuffer:需要写入的内容
+             lbytes :写入内容的长度
+ 输出参数  : 无
+ 返 回 值  : 实际写入的大小，如果BUFFER空间不够则返回0
+ 调用函数  :
+ 被调函数  :
+
+ 修改历史      :
+  1.日    期   : 2015年03月13日
+    作    者   : zwx247453
+    修改内容   : 新生成函数
+*****************************************************************************/
+VOS_UINT32 TAF_SDC_PutRatSwitchRingBuf(
+    VOS_CHAR                           *pbuffer,
+    VOS_UINT32                          ulbytes
+)
+{
+    VOS_UINT32                          ulFreeSize;
+    OM_RING_ID                          pTafRingBuffer;
+    VOS_UINT32                          ulRatRingbufferLength;
+    VOS_UINT32                          ulNvSwitchNum;
+    VOS_UINT32                          ulLength;
+
+    pTafRingBuffer = TAF_SDC_GetRatSwitchRingBufAddr();
+    if (VOS_NULL_PTR == pTafRingBuffer)
+    {
+        return 0;
+    }
+
+    ulNvSwitchNum         = TAF_SDC_GetErrlogRatSwitchStatisticNum();
+    ulRatRingbufferLength = ulNvSwitchNum * sizeof(NAS_ERR_LOG_RAT_SWITCH_RECORD_STRU);
+
+    /* 如果写入比RING BUFFER还大则不写入 */
+    if ((ulbytes > ulRatRingbufferLength)
+     || (ulbytes != sizeof(NAS_ERR_LOG_RAT_SWITCH_RECORD_STRU)))
+    {
+        return 0;
+    }
+
+    /* 获取RING BUFFER剩余空间大小 */
+    ulFreeSize = TAF_SDC_GetRatSwitchRingBufferFreeBytes();
+
+    /* 如果队列已经满了，则队列头部记录出列 */
+    if (0 == ulFreeSize)
+    {
+        ulLength = TAF_SDC_RatSwitchRingBufRemoveRecord(sizeof(NAS_ERR_LOG_RAT_SWITCH_RECORD_STRU));
+
+        if (ulLength != sizeof(NAS_ERR_LOG_RAT_SWITCH_RECORD_STRU))
+        {
+            return 0;
+        }
+    }
+
+    /* 写入RING BUFFER */
+    return (VOS_UINT32)OM_RingBufferPut(pTafRingBuffer, pbuffer, (VOS_INT)ulbytes);
+}
+
+
+VOS_UINT32 TAF_SDC_RatSwitchRingBufRemoveRecord(
+    VOS_UINT32                          ulbytes
+)
+{
+    return (VOS_UINT32)OM_RingBufferRemove(TAF_SDC_GetRatSwitchRingBufAddr(), (VOS_INT)ulbytes);
+}
+
+
+VOS_UINT32 TAF_SDC_GetRecordFromRatSwitchRingBuf(
+    VOS_CHAR                           *pbuffer,
+    VOS_UINT32                          ulbytes
+)
+{
+    return (VOS_UINT32)OM_RingBufferGetReserve(TAF_SDC_GetRatSwitchRingBufAddr(), pbuffer, (VOS_INT)ulbytes);
+}
+
+
+/*****************************************************************************
+ 函 数 名  : TAF_SDC_GetRatSwitchRingBufferFreeBytes
+ 功能描述  : RING BUFFER中有未使用空间
+ 输入参数  : VOS_VOID
+ 输出参数  : 无
+ 返 回 值  : 实际RING BUFFER中未使用空间大小
+ 调用函数  :
+ 被调函数  :
+
+ 修改历史      :
+  1.日    期   : 2015年03月13日
+    作    者   : zwx247453
+    修改内容   : 新生成函数
+*****************************************************************************/
+VOS_UINT32 TAF_SDC_GetRatSwitchRingBufferFreeBytes(VOS_VOID)
+{
+    return (VOS_UINT32)OM_RingBufferFreeBytes(TAF_SDC_GetRatSwitchRingBufAddr());
+}
+
+/*****************************************************************************
+ 函 数 名  : TAF_SDC_CleanRatSwitchRingBuf
+ 功能描述  : 清空RINGBUFFER中的数据
+ 输入参数  : VOS_VOID
+ 输出参数  : 无
+ 返 回 值  : VOS_VOID
+ 调用函数  :
+ 被调函数  :
+
+ 修改历史      :
+  1.日    期   : 2015年03月13日
+    作    者   : zwx247453
+    修改内容   : 新生成函数
+*****************************************************************************/
+VOS_VOID TAF_SDC_CleanRatSwitchRingBuf(VOS_VOID)
+{
+    OM_RingBufferFlush(TAF_SDC_GetRatSwitchRingBufAddr());
+
+    return;
+}
+
+
+VOS_VOID TAF_SDC_CreatRatSwitchRingBuf(VOS_VOID)
+{
+    VOS_CHAR                           *pbuffer;
+    OM_RING_ID                          pRatRingbuffer;
+    VOS_UINT32                          ulNvSwitchNum;                          /* NV配置的gutl切换的统计次数 */
+    VOS_INT32                           lRatRingbufferLength;
+
+    ulNvSwitchNum = TAF_SDC_GetErrlogRatSwitchStatisticNum();
+
+    if (0 == ulNvSwitchNum)
+    {
+        TAF_SDC_SetRatSwitchRingBufAddr(VOS_NULL_PTR);
+
+        return;
+    }
+
+    lRatRingbufferLength = (VOS_INT32)ulNvSwitchNum * (VOS_INT32)sizeof(NAS_ERR_LOG_RAT_SWITCH_RECORD_STRU) + 1;
+
+    pbuffer = (char *)PS_MEM_ALLOC(WUEPS_PID_TAF, (VOS_UINT32)lRatRingbufferLength);
+    if (VOS_NULL_PTR == pbuffer)
+    {
+        TAF_SDC_SetRatSwitchRingBufAddr(VOS_NULL_PTR);
+        return;
+    }
+
+    PS_MEM_SET(pbuffer, 0, (VOS_UINT32)lRatRingbufferLength);
+
+    /* 调用OM的接口，将申请的动态内存创建为RING BUFFER */
+    pRatRingbuffer = OM_RingBufferCreateEx(pbuffer, lRatRingbufferLength);
+    if (VOS_NULL_PTR == pRatRingbuffer)
+    {
+        PS_MEM_FREE(WUEPS_PID_TAF, pbuffer);
+    }
+
+    TAF_SDC_SetRatSwitchRingBufAddr(pRatRingbuffer);
+
+    return;
+}
+
+
+VOS_VOID TAF_SDC_ReadRatFrequentlySwitchChrRptCfgNvim(VOS_VOID)
+{
+    VOS_UINT32                                           ulResult;
+    VOS_UINT32                                           ulLength;
+    TAF_NV_RAT_FREQUENTLY_SWITCH_CHR_RPT_CFG_STRU        stRatFrequentlySwitchChrRptCfg;
+
+    ulLength = 0;
+    PS_MEM_SET(&stRatFrequentlySwitchChrRptCfg,
+               0x00, sizeof(TAF_NV_RAT_FREQUENTLY_SWITCH_CHR_RPT_CFG_STRU));
+
+    NV_GetLength(en_NV_Item_Rat_Frequently_Switch_Chr_Rpt_Cfg, &ulLength);
+
+    ulResult = NV_Read(en_NV_Item_Rat_Frequently_Switch_Chr_Rpt_Cfg,
+                       &stRatFrequentlySwitchChrRptCfg,
+                       ulLength);
+
+    if (NV_OK != ulResult)
+    {
+        TAF_SDC_SetErrlogRatSwitchStatisticTime(0);
+        TAF_SDC_SetErrlogRatSwitchStatisticNum(0);
+        TAF_ERROR_LOG(WUEPS_PID_TAF, "TAF_SDC_ReadRatFrequentlySwitchChrRptCfgNvim: read en_NV_Item_Rat_Frequently_Switch_Chr_Rpt_Cfg failed");
+
+        return;
+    }
+
+
+    /* 从NV读取的频繁切换限定时间大于规定的最大值 */
+    if (stRatFrequentlySwitchChrRptCfg.ulStatisticTime > NAS_ERR_LOG_MAX_RAT_SWITCH_STATISTIC_TIME)
+    {
+        stRatFrequentlySwitchChrRptCfg.ulStatisticTime = NAS_ERR_LOG_MAX_RAT_SWITCH_STATISTIC_TIME;
+    }
+
+    TAF_SDC_SetErrlogRatSwitchStatisticTime(stRatFrequentlySwitchChrRptCfg.ulStatisticTime);
+
+    /* 从NV读取的频繁切换限定次数大于规定的最大值 */
+    if (stRatFrequentlySwitchChrRptCfg.ulSwitchNum > NAS_ERR_LOG_MAX_RAT_SWITCH_RECORD_MUN)
+    {
+        stRatFrequentlySwitchChrRptCfg.ulSwitchNum = NAS_ERR_LOG_MAX_RAT_SWITCH_RECORD_MUN;
+    }
+
+    TAF_SDC_SetErrlogRatSwitchStatisticNum(stRatFrequentlySwitchChrRptCfg.ulSwitchNum);
+
+    return;
+}
+/* Added by zwx247453 for CHR optimize, 2015-3-13 End */
+
 VOS_VOID TAF_SDC_ReadErrlogCtrlInfoNvim(VOS_VOID)
 {
+    VOS_UINT8                           ucActiveRptFlag;
+    VOS_UINT8                           ucRatSwitchRptFlag;
     VOS_UINT32                          ulResult;
     VOS_UINT32                          ulLength;
     NV_ID_ERR_LOG_CTRL_INFO_STRU        stErrorLogCtrlInfo;
@@ -2222,11 +2655,21 @@ VOS_VOID TAF_SDC_ReadErrlogCtrlInfoNvim(VOS_VOID)
     {
         TAF_SDC_SetErrlogCtrlFlag(stErrorLogCtrlInfo.ucAlmStatus);
         TAF_SDC_SetErrlogAlmLevel(stErrorLogCtrlInfo.ucAlmLevel);
+
+        ucActiveRptFlag    = (stErrorLogCtrlInfo.aucReportBitMap[0] >> NAS_ERR_LOG_ACTIVE_RPT_FLAG_OFFSET) & 0x01;
+        ucRatSwitchRptFlag = (stErrorLogCtrlInfo.aucReportBitMap[1] >> NAS_ERR_LOG_RAT_SWITCH_RPT_FLAG_OFFSET) & 0x01;
+
+        TAF_SDC_SetErrlogActiveRptFlag(ucActiveRptFlag);
+        TAF_SDC_SetErrlogRatSwitchRptFlag(ucRatSwitchRptFlag);
     }
     else
     {
         TAF_SDC_SetErrlogCtrlFlag(VOS_FALSE);
         TAF_SDC_SetErrlogAlmLevel(NAS_ERR_LOG_CTRL_LEVEL_CRITICAL);
+
+        TAF_SDC_SetErrlogActiveRptFlag(VOS_FALSE);
+        TAF_SDC_SetErrlogRatSwitchRptFlag(VOS_FALSE);
+
         TAF_ERROR_LOG(WUEPS_PID_TAF, "TAF_SDC_ReadErrlogCtrlInfoNvim:read en_NV_Item_ErrLogCtrlInfo failed");
     }
 
@@ -2243,11 +2686,20 @@ VOS_VOID TAF_SDC_InitErrLogInfo(
 
     TAF_SDC_ReadErrlogCtrlInfoNvim();
 
+    TAF_SDC_ReadRatFrequentlySwitchChrRptCfgNvim();
+
+    TAF_SDC_CreatRatSwitchRingBuf();
+
+    TAF_SDC_SetErrLogOldRatType(TAF_PH_INFO_NONE_RAT);
+
+
+    TAF_SDC_InitErrLogImsCallFailInfo();
+
     /* 申请cache的动态内存 , 长度加1是因为读和写指针之间在写满时会相差一个字节 */
     pbuffer = (char *)PS_MEM_ALLOC(WUEPS_PID_TAF, TAF_SDC_RING_BUFFER_SIZE + 1);
     if (VOS_NULL_PTR == pbuffer)
     {
-        pstErrLogInfo->pstRingBuffer = VOS_NULL_PTR;
+        pstErrLogInfo->stBuffInfo.pstRingBuffer = VOS_NULL_PTR;
         TAF_ERROR_LOG(WUEPS_PID_TAF, "TAF_SDC_InitErrLogInfo: alloc fail");
         return;
     }
@@ -2260,7 +2712,9 @@ VOS_VOID TAF_SDC_InitErrLogInfo(
     }
 
     /* 保存ringbuffer指针 */
-    pstErrLogInfo->pstRingBuffer = pRingbuffer;
+    pstErrLogInfo->stBuffInfo.pstRingBuffer = pRingbuffer;
+
+    pstErrLogInfo->stBuffInfo.ulOverflowCnt = 0;
 
     return;
 
@@ -2271,6 +2725,7 @@ VOS_UINT32 TAF_SDC_PutErrLogRingBuf(
 )
 {
     VOS_UINT32                          ulFreeSize;
+    VOS_UINT32                          ulCount;
     OM_RING_ID                          pTafRingBuffer;
 
     pTafRingBuffer = TAF_SDC_GetErrLogRingBufAddr();
@@ -2288,9 +2743,13 @@ VOS_UINT32 TAF_SDC_PutErrLogRingBuf(
     /* 获取RING BUFFER剩余空间大小 */
     ulFreeSize = (VOS_UINT32)OM_RingBufferFreeBytes(pTafRingBuffer);
 
+    ulCount = TAF_SDC_GetErrlogOverflowCnt();
     /* 如果剩余空间不足写入的大小，则清空RING BUFFER */
     if (ulFreeSize < ulbytes)
     {
+        ulCount++;
+        TAF_SDC_SetErrlogOverflowCnt(ulCount);
+
         OM_RingBufferFlush(pTafRingBuffer);
     }
 
@@ -2582,6 +3041,56 @@ TAF_SDC_PHONE_MODE_ENUM_UINT8  TAF_SDC_GetCurPhoneMode(VOS_VOID)
     return (TAF_SDC_GetSdcCtx()->stPhoneInfo.enPhMode);
 }
 
+
+
+VOS_VOID  TAF_SDC_SetCurImsSwitchState(
+    TAF_SDC_IMS_SWITCH_STATE_ENUM_UINT8       enState
+)
+{
+    (TAF_SDC_GetSdcCtx()->stPhoneInfo.enImsSwitchState) = enState;
+}
+
+
+TAF_SDC_IMS_SWITCH_STATE_ENUM_UINT8  TAF_SDC_GetCurImsSwitchState(VOS_VOID)
+{
+    return (TAF_SDC_GetSdcCtx()->stPhoneInfo.enImsSwitchState);
+}
+
+
+TAF_SDC_CREG_TYPE_ENUM_UINT8  TAF_SDC_GetCregType(VOS_VOID)
+{
+    return (TAF_SDC_GetSdcCtx()->stRegReportStatus.enCregType);
+}
+
+
+VOS_VOID  TAF_SDC_SetCregType(TAF_SDC_CREG_TYPE_ENUM_UINT8 enCregType)
+{
+    TAF_SDC_GetSdcCtx()->stRegReportStatus.enCregType = enCregType;
+}
+
+
+TAF_SDC_CGREG_TYPE_ENUM_UINT8  TAF_SDC_GetCgregType(VOS_VOID)
+{
+    return (TAF_SDC_GetSdcCtx()->stRegReportStatus.enCgregType);
+}
+
+
+VOS_VOID  TAF_SDC_SetCgregType(TAF_SDC_CGREG_TYPE_ENUM_UINT8 enCgregType)
+{
+    TAF_SDC_GetSdcCtx()->stRegReportStatus.enCgregType = enCgregType;
+}
+
+
+TAF_SDC_CEREG_TYPE_ENUM_UINT8  TAF_SDC_GetCeregType(VOS_VOID)
+{
+    return (TAF_SDC_GetSdcCtx()->stRegReportStatus.enCeregType);
+}
+
+
+VOS_VOID  TAF_SDC_SetCeregType(TAF_SDC_CEREG_TYPE_ENUM_UINT8 enCeregType)
+{
+    TAF_SDC_GetSdcCtx()->stRegReportStatus.enCeregType = enCeregType;
+}
 
 
 VOS_UINT8 TAF_SDC_GetUssdOnImsSupportFlag(VOS_VOID)

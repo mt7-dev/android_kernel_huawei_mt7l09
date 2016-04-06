@@ -170,10 +170,13 @@ obj-$(CONFIG_FB_MXS)		  += mxsfb.o
 obj-$(CONFIG_FB_SSD1307)	  += ssd1307fb.o
 obj-$(CONFIG_FB_SIMPLE)           += simplefb.o
 
-obj-$(CONFIG_FB_FAKE)            += k3/
-obj-$(CONFIG_FB_K3)            += k3/
-obj-$(CONFIG_HDMI_K3)            += k3/hdmi/
+obj-$(CONFIG_FB_FAKE)            += hisi/
+obj-$(CONFIG_FB_3630)            += hisi/hi3630/
+obj-$(CONFIG_FB_3635)            += hisi/hi3630/
+obj-$(CONFIG_FB_3650)            += hisi/hi3650/
+obj-$(CONFIG_HDMI_K3)            += hisi/hdmi/
 
+obj-$(CONFIG_FB_HI6220_CLCD)     += hisi/hi6220/
 # the test framebuffer is last
 obj-$(CONFIG_FB_VIRTUAL)          += vfb.o
 

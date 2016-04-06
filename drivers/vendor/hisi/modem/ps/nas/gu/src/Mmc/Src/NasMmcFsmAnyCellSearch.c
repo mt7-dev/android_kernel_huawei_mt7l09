@@ -134,12 +134,13 @@ VOS_UINT32  NAS_MMC_RcvMmcInterPlmnSearchReq_AnyCellSearch_Init(
     NAS_MMC_SetRatPrioList_AnyCellSearch(&stRatPrioList);
 
     /* NAS代码质量提升 */
-    if (VOS_TRUE == NAS_MML_IsRrcConnExist())
+
+    if ( VOS_TRUE == NAS_MMC_IsNeedRejectAnycellSerach_AnyCellSearch() )
     {
         /* 发送搜网失败结果 */
         NAS_MMC_SndAnycellSearchRslt(NAS_MMC_ANYCELL_SEARCH_REJECT);
 
-        /* 退出状态机 */
+        /* 退状态机 */
         NAS_MMC_FSM_QuitFsmL2();
 
         return VOS_TRUE;
@@ -225,7 +226,7 @@ VOS_UINT32  NAS_MMC_RcvMmcInterAnycellSearchReq_AnyCellSearch_Init(
     NAS_MMC_INTER_ANYCELL_SEARCH_REQ_STRU                  *pstAnycellMsg = VOS_NULL_PTR;
 
     NAS_MML_SIM_STATUS_STRU                                *pstSimStatus    = VOS_NULL_PTR;
-    VOS_UINT32                                              ulRrcExistFlg;
+
 
     /* 保存入口消息 */
     NAS_MMC_SaveCurEntryMsg(ulEventType, pstMsg);
@@ -241,14 +242,13 @@ VOS_UINT32  NAS_MMC_RcvMmcInterAnycellSearchReq_AnyCellSearch_Init(
 
     /* 获取下个要搜索的网络接入技术 */
     enRat         = NAS_MMC_GetNextSearchRat_AnyCellSearch();
-    ulRrcExistFlg = NAS_MML_IsRrcConnExist();
 
-    if (VOS_TRUE == ulRrcExistFlg)
+    if ( VOS_TRUE == NAS_MMC_IsNeedRejectAnycellSerach_AnyCellSearch() )
     {
         /* 发送搜网失败结果 */
         NAS_MMC_SndAnycellSearchRslt(NAS_MMC_ANYCELL_SEARCH_REJECT);
 
-        /* 退出状态机 */
+        /* 退状态机 */
         NAS_MMC_FSM_QuitFsmL2();
 
         return VOS_TRUE;
@@ -1398,6 +1398,8 @@ VOS_UINT32 NAS_MMC_RcvLmmPlmnSrchCnf_AnyCellSearch_WaitLmmPlmnSrchCnf(
     }
     else
     {
+        NAS_MMC_SetAsAnyCampOn(VOS_TRUE);
+
         NAS_EventReport(WUEPS_PID_MMC, NAS_OM_EVENT_PLMN_SELECTION_SUCCESS,
                         VOS_NULL_PTR, NAS_OM_EVENT_NO_PARA);
 
@@ -1482,6 +1484,8 @@ VOS_UINT32 NAS_MMC_RcvMmcAbortFsmMsg_AnyCellSearch_WaitLmmPlmnSrchCnf(
     NAS_MMC_StopTimer(TI_NAS_MMC_WAIT_LMM_PLMN_SEARCH_CNF);
 
     NAS_MMC_SetAbortFlag_AnyCellSearch(VOS_TRUE);
+
+    NAS_MMC_SetAsAnyCampOn(VOS_FALSE);
 
     NAS_MMC_SndLmmPlmnSrchStopReq();
 
@@ -1818,6 +1822,8 @@ VOS_UINT32 NAS_MMC_RcvTiWaitLSysInfoExpired_AnyCellSearch_WaitLSysInfoInd(
     /* 异常打印 */
     NAS_WARNING_LOG(WUEPS_PID_MMC, "NAS_MMC_RcvTiWaitLSysInfoExpired_AnyCellSearch_WaitLSysInfoInd: Timer Expired");
 
+    NAS_MMC_SetAsAnyCampOn(VOS_FALSE);
+
     /* 如果当前需要退出状态机 */
     if (VOS_TRUE == NAS_MMC_GetAbortFlag_AnyCellSearch())
     {
@@ -2114,6 +2120,49 @@ VOS_UINT32 NAS_MMC_IsNeedSndLmmSuitableCellSelReq_AnyCellSearch(VOS_VOID)
     return VOS_FALSE;
 }
 #endif
+
+
+
+VOS_UINT32 NAS_MMC_IsNeedRejectAnycellSerach_AnyCellSearch(VOS_VOID)
+{
+    NAS_MML_CONN_STATUS_INFO_STRU      *pstConnStatus = VOS_NULL_PTR;
+    VOS_UINT32                          ulRrcConnExistFlag;
+    NAS_MML_NET_RAT_TYPE_ENUM_UINT8     enCurrRatType;
+    NAS_MML_NET_RAT_TYPE_ENUM_UINT8     enAnycellSearchRat;
+
+    pstConnStatus = NAS_MML_GetConnStatus();
+    enCurrRatType = NAS_MML_GetCurrNetRatType();    
+    ulRrcConnExistFlag   = NAS_MML_IsRrcConnExist();    
+
+    /* 当前连接不存在，不需要REJ */
+    if ( VOS_FALSE == ulRrcConnExistFlag )
+    {        
+        return VOS_FALSE;            
+    }
+
+    /* 获取下个要搜索的网络接入技术 */
+    enAnycellSearchRat = NAS_MMC_GetNextSearchRat_AnyCellSearch();
+
+    if (NAS_MML_NET_RAT_TYPE_LTE == enCurrRatType)
+    {
+        /* 当前在L下，下一个要搜索的接入技术为GU，即需要挂起L时候，即便有链路，也是可以发起ANYCELL搜网的 */
+        if (NAS_MML_NET_RAT_TYPE_LTE != enAnycellSearchRat)
+        {
+            return VOS_FALSE;
+        }
+
+        /* 在L下有链路时候，又准备在L下进行ANYCELL搜网，则直接拒绝当前的ANYCELL搜网 */
+        return VOS_TRUE;
+    }
+
+    /* 在GU下，如果当前不存在RRC链路，则可以尝试进行ANYCELL搜网,否则拒绝当前的ANYCELL搜网 */
+    if (VOS_TRUE == pstConnStatus->ucRrcStatusFlg)
+    {
+        return VOS_TRUE;
+    }
+
+    return VOS_FALSE;    
+}
 
 #ifdef __cplusplus
     #if __cplusplus

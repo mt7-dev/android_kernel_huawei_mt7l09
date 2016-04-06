@@ -14,7 +14,7 @@
 #include <linux/hw_dev_dec.h>
 #include <linux/hw_dev_array.h>
 #include <linux/of.h>
-#include <linux/hw_log.h>
+#include <huawei_platform/log/hw_log.h>
 
 #ifndef TYPEDEF_UINT8
 typedef unsigned char uint8;
@@ -142,7 +142,7 @@ static DEVICE_ATTR(rt_devcheck_flag, S_IRUGO, rt_devcheck_flag_show, NULL);
 
 
 static int  dev_dct_probe(struct platform_device *pdev){
-    int ret;
+    int ret = 0;
     int i;
     int result;
     unsigned int type = 0;
@@ -194,15 +194,15 @@ static int  dev_dct_probe(struct platform_device *pdev){
                 continue;
             }
             else if (type == BC_CHECK ){
-                boardid_devcheck_flag_long = boardid_devcheck_flag_long | (1 << hw_dec_device_array[i].devices_id);
+                boardid_devcheck_flag_long = boardid_devcheck_flag_long | (1ULL << hw_dec_device_array[i].devices_id);
 
                 if (hw_dec_device_array[i].devices_id >= DEV_I2C_START && hw_dec_device_array[i].devices_id < DEV_I2C_MAX){
-                    rt_devcheck_flag_long = rt_devcheck_flag_long | (1 << hw_dec_device_array[i].devices_id);
+                    rt_devcheck_flag_long = rt_devcheck_flag_long | (1ULL << hw_dec_device_array[i].devices_id);
                 }
             }
             else if (type == RUNNING_TEST_CHECK ){
                 if (hw_dec_device_array[i].devices_id >= DEV_I2C_START && hw_dec_device_array[i].devices_id < DEV_I2C_MAX){
-                    rt_devcheck_flag_long = rt_devcheck_flag_long | (1 << hw_dec_device_array[i].devices_id);
+                    rt_devcheck_flag_long = rt_devcheck_flag_long | (1ULL << hw_dec_device_array[i].devices_id);
                 }
             }
             else{

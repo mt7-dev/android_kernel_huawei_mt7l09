@@ -1,11 +1,4 @@
-/*
- * Normal mappings of chips in physical memory
- *
- * Copyright (C) 2003 MontaVista Software Inc.
- * Author: Jun Sun, jsun@mvista.com or jsun@junsun.net
- *
- * 031022 - [jsun] add run-time configure and partition setup
- */
+
 
 #include <linux/module.h>
 #include <linux/types.h>

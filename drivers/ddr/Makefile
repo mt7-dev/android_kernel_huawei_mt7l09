@@ -1,1 +1,0 @@
-obj-$(CONFIG_HISI_DDR) += hisi_hi3630_ddr.o

@@ -67,3 +67,15 @@ config PROC_PAGE_MONITOR
 	  /proc/pid/smaps, /proc/pid/clear_refs, /proc/pid/pagemap,
 	  /proc/kpagecount, and /proc/kpageflags. Disabling these
           interfaces will reduce the size of the kernel by approximately 4kb.
+
+config PROC_APP_INFO
+	bool "/proc/app_info support"
+	default n
+        help
+        support charge when machine power off & recovery.
+
++config PROC_POSTFSDATA
+	bool "/proc/post-fs-data support"
+	default y
+	help
+	set data ready flag to kernel.

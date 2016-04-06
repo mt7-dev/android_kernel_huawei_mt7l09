@@ -266,17 +266,6 @@ static int or51211_read_status(struct dvb_frontend* fe, fe_status_t* status)
 	return 0;
 }
 
-/* Calculate SNR estimation (scaled by 2^24)
-
-   8-VSB SNR equation from Oren datasheets
-
-   For 8-VSB:
-     SNR[dB] = 10 * log10(219037.9454 / MSE^2 )
-
-   We re-write the snr equation as:
-     SNR * 2^24 = 10*(c - 2*intlog10(MSE))
-   Where for 8-VSB, c = log10(219037.9454) * 2^24 */
-
 static u32 calculate_snr(u32 mse, u32 c)
 {
 	if (mse == 0) /* No signal */

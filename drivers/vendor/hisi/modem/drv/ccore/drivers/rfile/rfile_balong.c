@@ -105,7 +105,7 @@ s32 bsp_open(const s8 *path, s32 flags,  s32 mode)
     }
 
     pstReq->opType = EN_RFILE_OP_OPEN;
-    pstReq->pstlist = &stRfileQue.stlist;
+    pstReq->pstlist = (u32)&stRfileQue.stlist;
     pstReq->nameLen = ulNameLen;
     pstReq->mode = mode;
     pstReq->flags = flags;
@@ -146,7 +146,7 @@ s32 bsp_close(u32 fd)
     stRfileQue.ret = BSP_ERROR;
 
     stReq.opType = EN_RFILE_OP_CLOSE;
-    stReq.pstlist = &stRfileQue.stlist;
+    stReq.pstlist = (u32)&stRfileQue.stlist;
     stReq.fd = fd;
 
     stRfileQue.pData = &stReq;
@@ -186,7 +186,7 @@ static s32 rfile_write(u32 fd ,void *ptr, u32 size)
     }
 
     pstReq->opType = EN_RFILE_OP_WRITE;
-    pstReq->pstlist = &stRfileQue.stlist;
+    pstReq->pstlist = (u32)&stRfileQue.stlist;
     pstReq->fd = fd;
     pstReq->ulSize = size;
     memcpy((void*)pstReq->aucData, ptr, (s32)size);
@@ -260,7 +260,7 @@ static s32 rfile_read(u32 fd, s8 *ptr, u32 size)
     stRfileQue.stData.retlen = BSP_ERROR;
 
     stReq.opType = EN_RFILE_OP_READ;
-    stReq.pstlist = &stRfileQue.stlist;
+    stReq.pstlist = (u32)&stRfileQue.stlist;
     stReq.fd = fd;
     stReq.ulSize = size;
 
@@ -339,7 +339,7 @@ s32 bsp_lseek(u32 fd, long offset, s32 whence)
     stRfileQue.ret = BSP_ERROR;
 
     stReq.opType = EN_RFILE_OP_SEEK;
-    stReq.pstlist = &stRfileQue.stlist;
+    stReq.pstlist = (u32)&stRfileQue.stlist;
     stReq.fd = fd;
     stReq.offset = offset;
     stReq.whence = whence;
@@ -378,7 +378,7 @@ long bsp_tell(u32 fd)
     stRfileQue.ret = BSP_ERROR;
 
     stReq.opType = EN_RFILE_OP_TELL;
-    stReq.pstlist = &stRfileQue.stlist;
+    stReq.pstlist = (u32)&stRfileQue.stlist;
     stReq.fd = fd;
 
     stRfileQue.pData = &stReq;
@@ -451,7 +451,7 @@ s32 bsp_remove(const s8 *pathname)
     }
 
     pstReq->opType = EN_RFILE_OP_REMOVE;
-    pstReq->pstlist = &stRfileQue.stlist;
+    pstReq->pstlist = (u32)&stRfileQue.stlist;
     pstReq->pathLen = strlen((char*)pathname) + 1;
 
     memcpy((void*)pstReq->aucData, pathname, pstReq->pathLen);
@@ -524,7 +524,7 @@ s32 bsp_mkdir(s8 *dirName, s32 mode)
     }
 
     pstReq->opType = EN_RFILE_OP_MKDIR;
-    pstReq->pstlist = &stRfileQue.stlist;
+    pstReq->pstlist = (u32)&stRfileQue.stlist;
     pstReq->pathLen = strlen((char*)dirName) + 1;
     pstReq->mode = mode;
 
@@ -600,7 +600,7 @@ s32 bsp_rmdir(s8 *path)
     }
 
     pstReq->opType = EN_RFILE_OP_RMDIR;
-    pstReq->pstlist = &stRfileQue.stlist;
+    pstReq->pstlist = (u32)&stRfileQue.stlist;
     pstReq->pathLen = strlen((char*)path) + 1;
 
     memcpy((void*)pstReq->aucData, path, pstReq->pathLen);
@@ -674,7 +674,7 @@ s32 bsp_opendir(s8 *dirName)
     }
 
     pstReq->opType = EN_RFILE_OP_OPENDIR;
-    pstReq->pstlist = &stRfileQue.stlist;
+    pstReq->pstlist = (u32)&stRfileQue.stlist;
     pstReq->nameLen = strlen((char*)dirName) + 1;
 
     memcpy((void*)pstReq->aucData, dirName, pstReq->nameLen);
@@ -712,7 +712,7 @@ s32 rfile_readdir(u32 fd, void *dirent, u32 count)
     stRfileQue.stData.retlen = -1;
 
     stReq.opType = EN_RFILE_OP_READDIR;
-    stReq.pstlist = &stRfileQue.stlist;
+    stReq.pstlist = (u32)&stRfileQue.stlist;
     stReq.dir = fd;
     stReq.count = count;
 
@@ -795,7 +795,7 @@ s32 bsp_closedir(s32 pDir)
     stRfileQue.ret = BSP_ERROR;
 
     stReq.opType = EN_RFILE_OP_CLOSEDIR;
-    stReq.pstlist = &stRfileQue.stlist;
+    stReq.pstlist = (u32)&stRfileQue.stlist;
     stReq.dir = pDir;
 
     stRfileQue.pData = &stReq;
@@ -853,7 +853,7 @@ s32 bsp_stat(s8 *name, void *pStat)
     }
 
     pstReq->opType = EN_RFILE_OP_STAT;
-    pstReq->pstlist = &stRfileQue.stlist;
+    pstReq->pstlist = (u32)&stRfileQue.stlist;
     pstReq->ulSize = strlen((char*)name) + 1;
 
     memcpy((void*)pstReq->aucData, name, (s32)pstReq->ulSize);
@@ -933,7 +933,7 @@ s32 bsp_access(s8 *path, s32 mode)
     }
 
     pstReq->opType = EN_RFILE_OP_ACCESS;
-    pstReq->pstlist = &stRfileQue.stlist;
+    pstReq->pstlist = (u32)&stRfileQue.stlist;
     pstReq->pathlen = ulNameLen;
     pstReq->mode = mode;
 
@@ -997,7 +997,7 @@ s32 bsp_rename( const char * oldname, const char * newname )
     stRfileQue.ulLen = ulLen;
 
     pstReq->opType = EN_RFILE_OP_RENAME;
-    pstReq->pstlist = &stRfileQue.stlist;
+    pstReq->pstlist = (u32)&stRfileQue.stlist;
     pstReq->ulSize = strlen((char*)oldname) + strlen((char*)newname) + 2;
 
     memset((void*)pstReq->aucData, 0, pstReq->ulSize);
@@ -1043,7 +1043,7 @@ static s32 rfile_massread(const s8 *partition, u32 offset, u32 size, void* buf)
     }
     
     pstReq->opType = EN_RFILE_OP_MASSRD;
-    pstReq->pstlist = &stRfileQue.stlist;
+    pstReq->pstlist = (u32)&stRfileQue.stlist;
     pstReq->offset = offset;
     pstReq->size = size;
     pstReq->datalen = len;
@@ -1136,7 +1136,7 @@ static s32 rfile_masswrite(const s8 *partition, u32 offset, u32 size, void* buf)
     }
 
     pstReq->opType = EN_RFILE_OP_MASSWR;
-    pstReq->pstlist = &stRfileQue.stlist;
+    pstReq->pstlist = (u32)&stRfileQue.stlist;
     pstReq->size = size;
     pstReq->offset = offset;
     pstReq->partitionlen = strlen((char*)partition) + 1;

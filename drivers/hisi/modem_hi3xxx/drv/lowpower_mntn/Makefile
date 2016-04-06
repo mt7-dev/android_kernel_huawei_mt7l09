@@ -1,0 +1,1 @@
+obj-$(CONFIG_PWC_MNTN_ACORE)		+= lowpower_mntn_balong.o

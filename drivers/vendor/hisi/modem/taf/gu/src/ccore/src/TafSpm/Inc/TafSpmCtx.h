@@ -28,7 +28,7 @@ extern "C" {
 *****************************************************************************/
 #define TAF_SPM_MAX_MSG_BUFFER_LEN                    (1200)                    /* 缓存的最大长度 */
 #if (FEATURE_IMS == FEATURE_ON)
-/* 
+/*
  * 注: 目前每个业务类型queue最多保存一个业务请求消息，现在对于queue队列操作已支持保存多个
  *     业务请求的处理，但目前一个业务类型只对应一个timer(见TAF_SPM_TIMER_ID_ENUM_UINT32枚
  *     举定义)，如果支持同类型业务支持多个缓存, 必须增加相应定时器数目，否则程序会有问题,
@@ -111,6 +111,7 @@ enum TAF_SPM_VP_NV_CFG_STATE_ENUM
     TAF_SPM_VP_BUTT
 };
 typedef VOS_UINT8   TAF_SPM_VP_NV_CFG_STATE_ENUM_UINT8;
+
 
 
 /*****************************************************************************
@@ -287,12 +288,35 @@ typedef struct
 typedef struct
 {
     VOS_UINT8                           ucSimCallCtrlSupportFlg;            /* SIM卡中call ctrl支持标记 */
-    TAF_SPM_VP_NV_CFG_STATE_ENUM_UINT8  enVpCfgState;    
+    TAF_SPM_VP_NV_CFG_STATE_ENUM_UINT8  enVpCfgState;
     VOS_UINT8                           aucRsv[2];
 
 
     VOS_UINT32                          ulMeStatus;
 }TAF_SPM_SERVICE_CTRL_CFG_INFO_STRU;
+typedef struct
+{
+    MN_CALL_CALLED_NUM_STRU             stCalledNumber;
+    MN_CALL_SUBADDR_STRU                stSubaddr;
+    TAF_CS_CAUSE_ENUM_UINT32            enCheckRslt;                            /* 记录检查结果 */
+    VOS_UINT32                          ulCheckCnfFlag;                         /* VOS_TRUE: 已经回复过，VOS_FALSE:没有回复过 */
+}TAF_SPM_CALL_CHECK_INFO_STRU;
+
+
+typedef struct
+{
+    VOS_UINT16                              usClientId;
+    MN_OPERATION_ID_T                       ucopId;                             /* Operation ID */
+    MN_CALL_TYPE_ENUM_U8                    enCallType;                         /* call Type */
+    MN_CALL_MODE_ENUM_U8                    enCallMode;                         /* call mode */
+    VOS_UINT8                               ucCallNum;                          /* 总的电话号码个数 */
+    VOS_UINT8                               ucSendSuccNum;                      /* 发起检查成功的号码个数 */
+    VOS_UINT8                               ucRcvNum;                           /* 收到回复的检查个数 */
+    MN_CALL_CS_DATA_CFG_STRU                stDataCfg;
+    TAF_SPM_CALL_CHECK_INFO_STRU            astEconfCheckInfo[TAF_CALL_MAX_ECONF_CALLED_NUM];
+}TAF_SPM_CALL_ECONF_INFO_STRU;
+
+
 typedef struct
 {
     TAF_SPM_CLIENT_ID_ENTITY_FSM_CTX_STRU                   astEntityFsm[TAF_SPM_MAX_CLIENT_ID_ENTITY_FSM_ID_NUM];   /* 并发的client ID对应的状态机数组 */
@@ -307,9 +331,11 @@ typedef struct
 
     TAF_SPM_SERVICE_CTRL_CFG_INFO_STRU                      stServiceCtrlCfgInfo;                           /* 业务控制配置信息 */
 
-#if (FEATURE_IMS == FEATURE_ON)    
+#if (FEATURE_IMS == FEATURE_ON)
     TAF_SPM_DOMAIN_SEL_CTX_STRU                             stDomainSelCtx;                                 /* 域选择消息缓存队列 */
-#endif    
+#endif
+
+    TAF_SPM_CALL_ECONF_INFO_STRU                            stEconfInfo;
 }TAF_SPM_CONTEXT_STRU;
 typedef VOS_UINT32  (*TAF_SPM_CALL_CTRL_MODIFY_FUNC_PTR)(
     VOS_UINT32                          ulSenderPid,
@@ -588,7 +614,7 @@ VOS_UINT8 TAF_SPM_IsCallRedialBufferFull(VOS_VOID);
 
 VOS_VOID TAF_SPM_SetNumberOfCallRedialBuffer(VOS_UINT8 ucCacheMsgNum);
 
-VOS_UINT32 TAF_SPM_PutMsgIntoCallRedialBuffer(    
+VOS_UINT32 TAF_SPM_PutMsgIntoCallRedialBuffer(
     VOS_UINT32                          ulEventType,
     struct MsgCB                       *pstMsg
 );
@@ -617,6 +643,13 @@ VOS_UINT32 TAF_SPM_PutMsgIntoSmsRedialBuffer(
 TAF_SPM_ENTRY_MSG_STRU *TAF_SPM_GetSpecificedIndexFromSmsRedialBuffer(VOS_UINT8 ucIndex);
 
 VOS_VOID TAF_SPM_FreeSpecificedIndexSmsRedialBuffer(VOS_UINT8 ucIndex);
+
+TAF_SPM_CALL_ECONF_INFO_STRU* TAF_SPM_GetCallEconfInfoAddr(VOS_VOID);
+
+VOS_VOID TAF_SPM_InitEconfInfo(VOS_VOID);
+
+VOS_UINT32 TAF_SPM_GetEventTypeFromCurrEntityFsmEntryMsg(VOS_VOID);
+
 
 #endif
 

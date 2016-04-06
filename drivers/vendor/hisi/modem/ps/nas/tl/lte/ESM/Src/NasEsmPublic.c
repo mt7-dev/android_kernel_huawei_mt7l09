@@ -290,25 +290,6 @@ NAS_COMM_PRINT_LIST_STRU g_astEsmAppMsgIdArray[] =
     {   ID_APP_ESM_PDP_MANAGER_RSP             ,
             "MSG:  ID_APP_ESM_PDP_MANAGER_RSP                         ",
         VOS_NULL_PTR},
-    /* xiongxianghui00253310 add msgId for errlog 2013-11-30 begin*/
-    #if (FEATURE_PTM == FEATURE_ON)
-    {   ID_OM_ERR_LOG_CTRL_IND              ,
-            "MSG:  ID_OM_ERR_LOG_CTRL_IND                           ",
-        VOS_NULL_PTR},
-    {   ID_OM_ERR_LOG_REPORT_REQ             ,
-            "MSG:  ID_OM_ERR_LOG_REPORT_REQ                         ",
-        VOS_NULL_PTR},
-    {   ID_OM_ERR_LOG_REPORT_CNF             ,
-            "MSG:  ID_OM_ERR_LOG_REPORT_CNF                         ",
-        VOS_NULL_PTR},
-    {   ID_OM_FTM_CTRL_IND                   ,
-            "MSG:  ID_OM_FTM_CTRL_IND                               ",
-        VOS_NULL_PTR},
-    {   ID_OM_FTM_REPROT_IND                   ,
-            "MSG:  ID_OM_FTM_REPROT_IND                             ",
-        VOS_NULL_PTR},
-    #endif
-    /* xiongxianghui00253310 add msgId for errlog 2013-11-30 end */
 };
 
 NAS_COMM_PRINT_MSG_LIST_STRU g_astEsmStateTimerArray[] =
@@ -614,6 +595,24 @@ VOS_VOID NAS_ESM_AssignOpId(VOS_UINT32         *pulOpId)
     }
 
     NAS_ESM_SetCurMaxOpIdValue(*pulOpId);
+}
+VOS_VOID NAS_ESM_AssignErabmSessionId(VOS_UINT8         *pucOpId)
+{
+    VOS_UINT8                         ucOpId = NAS_ESM_NULL;
+
+    /*获取当前最大OpId*/
+    ucOpId = NAS_ESM_GetErabmSessionIdValue();
+
+    /*如果还未到最大值，直接加1*/
+    if( ucOpId < NAS_ESM_PTI_MAX_VALUE )
+    {
+        (*pucOpId) = ucOpId + 1;
+    }
+    else/*如果已经是最大值，从初值开始分配*/
+    {
+        (*pucOpId) = NAS_ESM_MIN_OPID_VALUE + 1;
+    }
+    NAS_ESM_SetErabmSessionIdValue(*pucOpId);
 }
 VOS_VOID NAS_ESM_AssignPTI(VOS_UINT32         *pulPti)
 {
@@ -3696,17 +3695,6 @@ VOS_VOID NAS_ESM_PrintEsmSendMsg
             break;
         #endif
         /* xiongxianghui00253310 add ACPU_PID_OM for errlog 2013-11-30 end   */
-        case PS_PID_IP  :
-            NAS_COMM_nsprintf(  pcBuff,
-                                usTotalLen,
-                                "ESM-->IP\t",
-                                &ilOutPutLenHead);
-            usTotalLen += (VOS_UINT16)ilOutPutLenHead;
-
-            ilOutPutLen = IP_PrintEsmIpMsg( pcBuff,
-                                            usTotalLen,
-                                            pstMsg);
-            break;
         case WUEPS_PID_TAF:
             NAS_COMM_nsprintf(  pcBuff,
                                 usTotalLen,

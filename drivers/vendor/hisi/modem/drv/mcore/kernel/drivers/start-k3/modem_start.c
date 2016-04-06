@@ -47,7 +47,7 @@ __ao_func void modem_subsys_init(void)
 	/*writel(0x0, HI_SYSCTRL_BASE_ADDR + HI_SEC_CTRL0_OFFSET);*/
 	tmp = readl(HI_SYSCTRL_BASE_ADDR + HI_SEC_CTRL0_OFFSET);
 	tmp = tmp & ~((u32)0x1 << 9);  /*nsec-read ok*/
-	writel(tmp, HI_SYSCTRL_BASE_ADDR + HI_SEC_CTRL0_OFFSET)
+	writel(tmp, HI_SYSCTRL_BASE_ADDR + HI_SEC_CTRL0_OFFSET);
 }
 
 /* a9 bbe bbp */
@@ -61,13 +61,13 @@ __ao_func void mdm_a9pll_init(void)
     tmp |= 0x00600000;
     writel(tmp, HI_SYSCTRL_BASE_ADDR + HI_CRG_A9PLL_CFG1_OFFSET);
     writel(0x00A04505, HI_SYSCTRL_BASE_ADDR + HI_CRG_A9PLL_CFG0_OFFSET);
-
+#ifndef BSP_CONFIG_BOARD_SFT
     do
 	{
 		tmp = readl(HI_SYSCTRL_BASE_ADDR + HI_CRG_A9PLL_CFG0_OFFSET);
 		tmp = (tmp >> 26) & 0x1;
 	}while(!tmp);
-
+#endif
     tmp = readl(HI_SYSCTRL_BASE_ADDR + HI_CRG_A9PLL_CFG1_OFFSET);
     tmp |= (0x1<<26);
     writel(tmp, HI_SYSCTRL_BASE_ADDR + HI_CRG_A9PLL_CFG1_OFFSET);
@@ -98,13 +98,13 @@ __ao_func void mdm_bbppll_init(void)
     tmp &= 0xFFFFFFFC;
     tmp |= 0x1;
     writel(tmp, HI_SYSCTRL_BASE_ADDR + HI_CRG_BBPPLL_CFG0_OFFSET);
-
+#ifndef BSP_CONFIG_BOARD_SFT
     do
     {
         tmp = readl(HI_SYSCTRL_BASE_ADDR + HI_CRG_BBPPLL_CFG0_OFFSET);
         tmp = (tmp >> 26) & 0x1;
     }while(!tmp);
-
+#endif
     tmp = readl(HI_SYSCTRL_BASE_ADDR + HI_CRG_BBPPLL_CFG1_OFFSET);
     tmp |= (0x1<<26);
     writel(tmp, HI_SYSCTRL_BASE_ADDR + HI_CRG_BBPPLL_CFG1_OFFSET);
@@ -112,17 +112,20 @@ __ao_func void mdm_bbppll_init(void)
 
 void startup_modem(void)
 {
+#ifndef BSP_CONFIG_BOARD_SFT
     u32 tmp = 0;
+#endif
 
     /* 1 2 mtcmos power up and wait for complete */
     writel(0x1<<1, HI_SYSCTRL_BASE_ADDR + HI_PWR_CTRL6_OFFSET);
+#ifndef BSP_CONFIG_BOARD_SFT
 
     do
 	{
 		tmp = readl(HI_SYSCTRL_BASE_ADDR + HI_PWR_STAT1_OFFSET);
 		tmp = (tmp >> 1) & 0x1;
 	}while(!tmp);
-
+#endif
     mdm_a9pll_init();
 
     mdm_bbepll_init();

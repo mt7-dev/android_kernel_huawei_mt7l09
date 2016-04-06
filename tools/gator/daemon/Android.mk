@@ -1,30 +1,55 @@
 LOCAL_PATH := $(call my-dir)
+
+# Don't use this file if GATOR_DAEMON_PATH is set and we're not under that path
+ifneq ($(and $(GATOR_DAEMON_PATH),$(filter $(patsubst %/,%,$(GATOR_DAEMON_PATH))/%,$(LOCAL_PATH)/)),)
+
 include $(CLEAR_VARS)
 
-XML_H := $(shell cd $(LOCAL_PATH) && make events_xml.h configuration_xml.h)
-
-LOCAL_CFLAGS += -Wall -O3 -mthumb-interwork -fno-exceptions -DETCDIR=\"/etc\" -Ilibsensors
+XML_H := $(shell cd $(LOCAL_PATH) && make events_xml.h defaults_xml.h)
 
 LOCAL_SRC_FILES := \
+	AnnotateListener.cpp \
 	Buffer.cpp \
+	CCNDriver.cpp \
+	CPUFreqDriver.cpp \
 	CapturedXML.cpp \
 	Child.cpp \
-	Collector.cpp \
+	Command.cpp \
 	ConfigurationXML.cpp \
+	DiskIODriver.cpp \
 	Driver.cpp \
+	DriverSource.cpp \
+	DynBuf.cpp \
 	EventsXML.cpp \
+	ExternalSource.cpp \
+	FSDriver.cpp \
 	Fifo.cpp \
-	Hwmon.cpp \
+	FtraceDriver.cpp \
+	FtraceSource.cpp \
+	HwmonDriver.cpp \
 	KMod.cpp \
 	LocalCapture.cpp \
 	Logging.cpp \
 	main.cpp \
+	MaliVideoDriver.cpp \
+	MemInfoDriver.cpp\
+	Monitor.cpp \
+	NetDriver.cpp \
 	OlySocket.cpp \
 	OlyUtility.cpp \
+	PerfBuffer.cpp \
+	PerfDriver.cpp \
+	PerfGroup.cpp \
+	PerfSource.cpp \
+	Proc.cpp \
 	Sender.cpp \
 	SessionData.cpp \
 	SessionXML.cpp \
+	Setup.cpp \
+	Source.cpp \
 	StreamlineSetup.cpp \
+	UEvent.cpp \
+	UserSpaceSource.cpp \
 	libsensors/access.c \
 	libsensors/conf-lex.c \
 	libsensors/conf-parse.c \
@@ -44,10 +69,14 @@ LOCAL_SRC_FILES := \
 	mxml/mxml-set.c \
 	mxml/mxml-string.c
 
-LOCAL_C_INCLUDES := $(LOCAL_PATH) 
+LOCAL_CFLAGS += -Wall -O3 -fno-exceptions -pthread -DETCDIR=\"/etc\" -Ilibsensors -fPIE
+LOCAL_LDFLAGS += -fPIE -pie
+
+LOCAL_C_INCLUDES := $(LOCAL_PATH)
 
 LOCAL_MODULE := gatord
 LOCAL_MODULE_TAGS := optional
 
-# Comment to fix build/core/base_rules.mk:154: *** out/target/product/hwmt7_l09/obj/KERNEL_OBJ/source/tools/gator/daemon: MODULE.TARGET.EXECUTABLES.gatord already defined by kernel/huawei/hwmt7_l09/tools/gator/daemon.  Stop.
-##include $(BUILD_EXECUTABLE)
+include $(BUILD_EXECUTABLE)
+
+endif

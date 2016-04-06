@@ -3,8 +3,20 @@ include $(BALONG_TOPDIR)/build/scripts/make_base.mk
 # Packet Tool Configuration
 PACK_HEAD_TOOL          :=$(BALONG_TOPDIR)/build/tools/utility/postlink/packHead/packHead.py
 USBLOADER_TOOL          :=$(BALONG_TOPDIR)/build/tools/utility/postlink/merge/merge.py
-K3V3_VRL_TOOL_PATH      :=$(BALONG_TOPDIR)/../thirdparty/tools/vrl_creater_for_k3v3
-SEC_VRL_TOOL_PATH       :=$(OBB_PRODUCT_DELIVERY_DIR)/obj/vrl/vrl_creater_for_k3v3
+ifneq ($(strip $(CFG_VRL_TOOL)),)
+VRL_TOOL_NAME           :=$(CFG_VRL_TOOL)
+
+ifneq ($(wildcard $(BALONG_TOPDIR)/../thirdparty/hisi/$(VRL_TOOL_NAME)),)
+K3V3_VRL_TOOL_PATH      :=$(BALONG_TOPDIR)/../thirdparty/hisi/$(VRL_TOOL_NAME)
+else
+K3V3_VRL_TOOL_PATH      :=$(BALONG_TOPDIR)/../thirdparty/$(VRL_TOOL_NAME)
+endif
+
+else
+VRL_TOOL_NAME           :=vrl_creater_for_k3v3
+K3V3_VRL_TOOL_PATH      :=$(BALONG_TOPDIR)/../thirdparty/hisi/$(VRL_TOOL_NAME)
+endif
+SEC_VRL_TOOL_PATH       :=$(OBB_PRODUCT_DELIVERY_DIR)/obj/vrl/$(VRL_TOOL_NAME)
 VRL_XLOADER_TBL         :=$(BALONG_TOPDIR)/build/tools/vrl_creater_for_k3v3_xloader/xloader.tbl
 VRL_RAW_XLOADER_FILE    :=$(OBB_ANDROID_DIR)/out/target/product/$(CFG_OS_ANDROID_PRODUCT_NAME)/xloader.img
 VRL_ENC_XLOADER_FILE    :=$(OBB_PRODUCT_DELIVERY_DIR)/image/sec_xloader.img
@@ -33,11 +45,18 @@ endif
 acore_pkgs:sec_tool
 #K3V3和v7r2差异
 ifeq ($(strip $(CFG_OS_ANDROID_USE_K3V3_KERNEL)),YES)
-	$(Q)-cp -fp $(VRL_RAW_XLOADER_FILE) $(SEC_VRL_TOOL_PATH)/
-	$(Q) cd $(SEC_VRL_TOOL_PATH) && ./make_xloader.sh
 	$(Q)-cp -fp $(OBB_ANDROID_DIR)/out/target/product/$(CFG_OS_ANDROID_PRODUCT_NAME)/*.img        $(OBB_PRODUCT_DELIVERY_DIR)/image/
 	$(Q)-cp -fp $(BALONG_TOPDIR)/build/tools/idt/*.xml        $(OBB_PRODUCT_DELIVERY_DIR)/image/
+	$(Q)-cp -fp $(OBB_ANDROID_DIR)/out/target/product/$(CFG_OS_ANDROID_PRODUCT_NAME)/bl31.bin       $(OBB_PRODUCT_DELIVERY_DIR)/image/
+	$(Q)-cp -fp $(OBB_ANDROID_DIR)/out/target/product/$(CFG_OS_ANDROID_PRODUCT_NAME)/bl31.elf       $(OBB_PRODUCT_DELIVERY_DIR)/lib/
 
+	$(Q)-cp -fp $(BALONG_TOPDIR)/modem/drv/common/scripts/burn_hi3630.bat        $(OBB_PRODUCT_DELIVERY_DIR)/image/
+	$(Q)-cp -fp $(BALONG_TOPDIR)/modem/drv/common/scripts/burn_sec_hi3630.bat        $(OBB_PRODUCT_DELIVERY_DIR)/image/
+
+	$(Q)-cp -fp $(OBB_ANDROID_DIR)/out/target/product/$(CFG_OS_ANDROID_PRODUCT_NAME)/*.elf       $(OBB_PRODUCT_DELIVERY_DIR)/lib/
+	$(Q)-cp -fp $(OBB_ANDROID_DIR)/out/target/product/$(CFG_OS_ANDROID_PRODUCT_NAME)/obj/LPM3_OBJ/lpm3.elf       $(OBB_PRODUCT_DELIVERY_DIR)/lib/
+	$(Q)-cp -fp $(OBB_ANDROID_DIR)/out/target/product/$(CFG_OS_ANDROID_PRODUCT_NAME)/*.out       $(OBB_PRODUCT_DELIVERY_DIR)/lib/	
+	$(Q)-cp -fp $(OBB_ANDROID_DIR)/out/target/product/$(CFG_OS_ANDROID_PRODUCT_NAME)/*.map       $(OBB_PRODUCT_DELIVERY_DIR)/lib/		
 else
 #对镜像包头进行处理
 ifeq ($(CFG_BSP_ENBALE_PACK_IMAGE),YES)
@@ -51,6 +70,7 @@ endif
 	$(Q)-cp -fp $(OBB_ANDROID_DIR)/out/host/windows-x86/obj/EXECUTABLES/fastboot_intermediates/fastboot.exe $(OBB_PRODUCT_DELIVERY_DIR)/lib/fastboot.exe
 endif
 	$(Q)-cp -f  $(BALONG_TOPDIR)/modem/drv/common/scripts/burn_$(CFG_PLATFORM).bat $(OBB_PRODUCT_DELIVERY_DIR)/image/burn.bat
+	$(Q)-cp -f  $(BALONG_TOPDIR)/modem/drv/common/scripts/burn_hi3635.bat $(OBB_PRODUCT_DELIVERY_DIR)/image/burn_hi3635.bat
 	$(Q)-cp -f  $(BALONG_TOPDIR)/modem/drv/common/scripts/burn_sec_$(CFG_PLATFORM).bat $(OBB_PRODUCT_DELIVERY_DIR)/image/burn_sec.bat
 	$(Q)-cp -fp $(OBB_ANDROID_DIR)/out/target/product/$(CFG_OS_ANDROID_PRODUCT_NAME)/recovery.img $(OBB_PRODUCT_DELIVERY_DIR)/image/recovery.img
 	$(Q)-cp -fp $(OBB_ANDROID_DIR)/out/target/product/$(CFG_OS_ANDROID_PRODUCT_NAME)/obj/EXECUTABLES/fastboot.img_intermediates/fastboot.img $(OBB_PRODUCT_DELIVERY_DIR)/image/fastboot.img
@@ -87,7 +107,7 @@ endif
 
 ifeq ($(strip $(CFG_OS_ANDROID_USE_K3V3_KERNEL)),YES)
 	$(Q)-cp -f $(OBB_PRODUCT_DELIVERY_DIR)/image/balong_modem.bin $(SEC_VRL_TOOL_PATH)/balong_modem.bin
-	$(Q)cd $(SEC_VRL_TOOL_PATH) && ./make_modem.sh
+	$(Q)chmod 777 $(SEC_VRL_TOOL_PATH) -R && cd $(SEC_VRL_TOOL_PATH) && ./make_modem.sh
 	$(Q)-mv -f $(SEC_VRL_TOOL_PATH)/sec_balong_modem.bin $(OBB_PRODUCT_DELIVERY_DIR)/image/sec_balong_modem.bin
 	$(Q)-rm -rf $(SEC_VRL_TOOL_PATH)/balong_modem.bin
 endif

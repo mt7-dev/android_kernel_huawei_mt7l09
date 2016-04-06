@@ -112,9 +112,9 @@ do { if(rt_global_debug_component & component) \
 #define COMP_DIG				BIT14	// For DIG, 2006.09.25, by rcnjko.
 #define COMP_PHY				BIT15
 #define COMP_CH					BIT16	//channel setting debug
-#define COMP_TXAGC				BIT17	// For Tx power, 060928, by rcnjko.
-#define COMP_HIPWR				BIT18	// For High Power Mechanism, 060928, by rcnjko.
-#define COMP_HALDM				BIT19	// For HW Dynamic Mechanism, 061010, by rcnjko.
+#define COMP_TXAGC				BIT17
+#define COMP_HIPWR				BIT18
+#define COMP_HALDM				BIT19
 #define COMP_SEC			        BIT20	// Event handling
 #define COMP_LED				BIT21	// For LED.
 #define COMP_RF					BIT22	// For RF.
@@ -481,7 +481,6 @@ typedef struct _rt_firmware{
 	u16               firmware_buf_size;
 }rt_firmware, *prt_firmware;
 
-//+by amy 080507
 #define MAX_RECEIVE_BUFFER_SIZE	9100	// Add this to 9100 bytes to receive A-MSDU from RT-AP
 
 typedef struct _rt_firmware_info_819xUsb{
@@ -707,7 +706,6 @@ typedef struct Stats {
 #define HAL_PRIME_CHNL_OFFSET_LOWER			1
 #define HAL_PRIME_CHNL_OFFSET_UPPER			2
 
-//+by amy 080507
 
 typedef struct	ChnlAccessSetting {
 	u16 SIFS_Timer;
@@ -1056,10 +1054,8 @@ typedef struct r8192_priv {
 	bool				brfpath_rxenable[4];
 	//RF set related
 	bool				SetRFPowerStateInProgress;
-//+by amy 080507
 	struct timer_list watch_dog_timer;
 
-//+by amy 080515 for dynamic mechenism
 	//Add by amy Tx Power Control for Near/Far Range 2008/05/15
 	bool	bdynamic_txpower;  //bDynamicTxPower
 	bool	bDynamicTxHighPower;  // Tx high power state
@@ -1098,7 +1094,6 @@ typedef struct r8192_priv {
 	//For Backup Initial Gain
 	init_gain initgain_backup;
 	u8 DefaultInitialGain[4];
-	// For EDCA Turbo mode, Added by amy 080515.
 	bool		bis_any_nonbepkts;
 	bool		bcurrent_turbo_EDCA;
 	bool		bis_cur_rdlstate;
@@ -1112,7 +1107,6 @@ typedef struct r8192_priv {
 	u8	framesync;
 	u32	framesyncC34;
 	u8	framesyncMonitor;
-		//Added by amy 080516  for RX related
 	u16	nrxAMPDU_size;
 	u8	nrxAMPDU_aggr_num;
 
@@ -1144,7 +1138,6 @@ typedef struct r8192_priv {
 
 	u16		SifsTime;
 
-	//define work item by amy 080526
 
 	struct delayed_work update_beacon_wq;
 	struct delayed_work watch_dog_wq;

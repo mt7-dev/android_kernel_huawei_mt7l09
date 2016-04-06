@@ -44,10 +44,12 @@ void __list_del_msp(struct msp_list_header * prev,
  * @entry: the element to delete from the list.
  * Note: msp_list_empty on entry does not return true after this, the entry is in an undefined state.
  */
+/*lint -e818 Info -- Pointer parameter 'entry' (line 47) could be declared as pointing to const*/
 void msp_list_del(struct msp_list_header *entry)
 {
     __list_del_msp(entry->prev, entry->next);
 }
+/*lint +e818*/
 
 
 

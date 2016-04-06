@@ -41,7 +41,7 @@ typedef struct
     int ret;
     u32 buf[EFUSE_MAX_ALLOW_SIZE];
 }EFUSE_DATA_STRU;
-
+#ifdef CONFIG_EFUSE
 /*****************************************************************************
 * 函 数 名  : bsp_efuse_read
 *
@@ -74,7 +74,18 @@ int bsp_efuse_read(u32* pBuf, const u32 group, const u32 num);
 *
 *****************************************************************************/
 int bsp_efuse_write( u32 *pBuf, const u32 group, const u32 len);
+#else
+static inline int bsp_efuse_read(u32* pBuf, const u32 group, const u32 num)
+{
+    return 0;
+}
 
+ static inline int bsp_efuse_write( u32 *pBuf, const u32 group, const u32 len)
+{
+    return 0;
+}
+
+#endif
 /*****************************************************************************
 * 函 数 名  : bsp_efuse_show
 *

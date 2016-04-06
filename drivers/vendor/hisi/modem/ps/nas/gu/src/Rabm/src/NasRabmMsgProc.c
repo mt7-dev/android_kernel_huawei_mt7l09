@@ -796,6 +796,7 @@ VOS_VOID NAS_RABM_ClearRabReestFlg(VOS_VOID)
     if (VOS_TRUE == NAS_RABM_GetRabRsestTimerFlg())
     {
         RABM_TimerStop(0);
+        NAS_RabmStopTimer(RABM_TIMER_NAME_COMMON, RABM_TIMER_RESEND_EST_REQ);
         NAS_RABM_ClearRabRsestTimerFlg();
     }
 

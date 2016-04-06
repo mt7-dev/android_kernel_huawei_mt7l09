@@ -25,22 +25,7 @@ static int timer_irq;
 module_param_named(irq, timer_irq, int, 0644);
 MODULE_PARM_DESC(irq, "Which IRQ to use for the clock source MFGPT ticks.");
 
-/*
- * We are using the 32.768kHz input clock - it's the only one that has the
- * ranges we find desirable.  The following table lists the suitable
- * divisors and the associated Hz, minimum interval and the maximum interval:
- *
- *  Divisor   Hz      Min Delta (s)  Max Delta (s)
- *   1        32768   .00048828125      2.000
- *   2        16384   .0009765625       4.000
- *   4         8192   .001953125        8.000
- *   8         4096   .00390625        16.000
- *   16        2048   .0078125         32.000
- *   32        1024   .015625          64.000
- *   64         512   .03125          128.000
- *  128         256   .0625           256.000
- *  256         128   .125            512.000
- */
+
 
 static unsigned int cs5535_tick_mode = CLOCK_EVT_MODE_SHUTDOWN;
 static struct cs5535_mfgpt_timer *cs5535_event_clock;

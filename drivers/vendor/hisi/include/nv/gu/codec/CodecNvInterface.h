@@ -493,7 +493,10 @@ typedef struct
 typedef struct
 {
     VOS_UINT16                 uhwAjbEnable;                                     /* 是否使能AJB,0/1:否/是 */
-    VOS_UINT16                 auhwReserve[15];
+    VOS_UINT16                 uhwInitBuf;                                       /* 初始深度,单位ms	*/
+    VOS_UINT16                 uhwAjbMinBuf;                                     /* 最小深度,单位ms */
+    VOS_UINT16                 uhwAjbMaxBuf;                                     /* 最大深度,单位ms */
+    VOS_UINT16                 auhwReserve[12];                                  /* auhwReserve[0]表示AJB调整模式:0-时延最优; 1-Mos最优 */
 } VOICE_JB_NV_STRU;
 
 /*****************************************************************************

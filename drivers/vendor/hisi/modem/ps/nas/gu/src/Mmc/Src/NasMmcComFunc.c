@@ -6,6 +6,9 @@
 #include "pslog.h"
 #include "om.h"
 #include "PsTypeDef.h"
+
+#include "NasMntn.h"
+
 #include "NasMmlCtx.h"
 #include "NasMmlLib.h"
 #include "NasMmcSndGuAs.h"
@@ -33,6 +36,7 @@
 #include "MmaMmcInterface.h"
 
 #include "NasUsimmApi.h"
+#include "NasMmcFsmMainTbl.h"
 
 #ifdef __cplusplus
 #if __cplusplus
@@ -801,6 +805,253 @@ VOS_UINT32 NAS_MMC_IsPlmnWithRatInPlmnList (
 
     return VOS_FALSE;
 }
+VOS_VOID NAS_MMC_ConvertPlmnId2NasFormat(
+    NAS_MML_PLMN_ID_STRU               *pstPlmnId,
+    VOS_UINT8                           ucPlmnMncNum
+)
+{
+    VOS_UINT8                           i;
+    VOS_UINT8                           aucTmp[4];
+    VOS_UINT32                          ulMcc;
+    VOS_UINT32                          ulMnc;
+
+    PS_MEM_SET(aucTmp, 0, sizeof(aucTmp));
+    ulMcc = 0;
+    ulMnc = 0;
+
+    ulMcc            = pstPlmnId->ulMcc;
+    pstPlmnId->ulMcc = 0;
+
+    for ( i = 0 ; i < 3 ; i++ )
+    {
+        aucTmp[i]     = ulMcc & 0x0f;
+        ulMcc         >>=  4;
+    }
+
+    pstPlmnId->ulMcc  =  aucTmp[2]
+                     |((VOS_UINT32)aucTmp[1] << 8)
+                     |((VOS_UINT32)aucTmp[0] << 16);
+
+    /*更新MNC前，清空变量*/
+    PS_MEM_SET(aucTmp, 0, sizeof(aucTmp));
+
+    ulMnc           = pstPlmnId->ulMnc;
+    pstPlmnId->ulMnc  = 0;
+
+    for ( i = 0 ; i < 3 ; i++ )
+    {
+        aucTmp[i]     = ulMnc & 0x0f;
+        ulMnc         >>=  4;
+    }
+
+    if(NAS_MML_MNC_LENGTH_TWO_BYTES_IN_IMSI == ucPlmnMncNum)
+    {
+        pstPlmnId->ulMnc =  aucTmp[1]
+                         |((VOS_UINT32)aucTmp[0] << 8)
+                         |0x0f0000;
+    }
+    else
+    {
+        pstPlmnId->ulMnc =   aucTmp[2]
+                     |((VOS_UINT32)aucTmp[1] << 8)
+                     |((VOS_UINT32)aucTmp[0] << 16);
+    }
+
+    return;
+}
+VOS_VOID NAS_MMC_UpdateDplmnNplmnInfo(
+    NAS_MMC_NVIM_CFG_DPLMN_NPLMN_INFO_STRU                 *pstNvimCfgDPlmnNPlmnInfo
+)
+{
+    VOS_UINT32                                              ulStep;
+    NAS_MML_PLMN_ID_STRU                                    stTempPlmn;
+    NAS_MML_SIM_FORMAT_PLMN_ID                              stNvimPlmn;
+    VOS_UINT16                                              usSimRat;
+    NAS_MMC_REG_DOMAIN_ENUM_UINT8                           enRegDomain;
+    NAS_MMC_DPLMN_NPLMN_CFG_INFO_STRU                      *pstDPlmnNPlmnCfgInfo = VOS_NULL_PTR;
+
+    /* Modified by c00318887 for DPlmn扩容和优先接入HPLMN, 2015-5-20, begin */
+    NAS_MMC_DPLMN_NPLMN_SETTING_TYPE_ENUM_UINT8             enType;
+    /* Modified by c00318887 for DPlmn扩容和优先接入HPLMN, 2015-5-20, end */
+
+    pstDPlmnNPlmnCfgInfo     = NAS_MMC_GetDPlmnNPlmnCfgInfo();
+    enRegDomain              = NAS_MMC_REG_DOMAIN_BUTT;
+    PS_MEM_SET(&stTempPlmn, 0, sizeof(stTempPlmn));
+    PS_MEM_SET(&stNvimPlmn, 0, sizeof(stNvimPlmn));
+
+    /* 将NV中的DPLMN保存到内存中,需要防止数组越界 */
+    if ( pstNvimCfgDPlmnNPlmnInfo->usDplmnListNum > NAS_MMC_MAX_CFG_DPLMN_NUM )
+    {
+        pstNvimCfgDPlmnNPlmnInfo->usDplmnListNum = NAS_MMC_MAX_CFG_DPLMN_NUM;
+    }
+
+    for ( ulStep = 0; ulStep < pstNvimCfgDPlmnNPlmnInfo->usDplmnListNum; ulStep++ )
+    {
+        /* Modified by c00318887 for DPlmn扩容和优先接入HPLMN, 2015-5-20, begin */
+        PS_MEM_CPY(stNvimPlmn.aucSimPlmn,
+            pstNvimCfgDPlmnNPlmnInfo->aucDPlmnList + (ulStep * (NAS_MMC_DPLMN_NPLMN_NV_INFO_LEN)), NAS_MML_SIM_PLMN_ID_LEN);
+
+        /* 转换PLMN ID为MMC内部的格式并存储 */
+        NAS_MMC_ConvertSimPlmnToNasPLMN(&stNvimPlmn, &stTempPlmn);
+
+        /* 存储PLMN对应的RAT */
+        usSimRat    = (VOS_UINT16)(pstNvimCfgDPlmnNPlmnInfo->aucDPlmnList[(ulStep * NAS_MMC_DPLMN_NPLMN_NV_INFO_LEN) + NAS_MML_PLMN_WITH_RAT_FIRST_RAT_OFFSET] << NAS_MML_OCTET_MOVE_EIGHT_BITS)
+                                | pstNvimCfgDPlmnNPlmnInfo->aucDPlmnList[(ulStep * NAS_MMC_DPLMN_NPLMN_NV_INFO_LEN) + NAS_MML_PLMN_WITH_RAT_SECOND_RAT_OFFSET];
+
+        enRegDomain = (VOS_UINT8)(pstNvimCfgDPlmnNPlmnInfo->aucDPlmnList[(ulStep * NAS_MMC_DPLMN_NPLMN_NV_INFO_LEN) + NAS_MML_PLMN_WITH_RAT_UNIT_LEN]);
+
+        enType      = (VOS_UINT8)(pstNvimCfgDPlmnNPlmnInfo->aucDPlmnList[(ulStep * NAS_MMC_DPLMN_NPLMN_NV_INFO_LEN) + NAS_MMC_DPLMN_NPLMN_NV_PRESETING_FLAG_INDEX]);
+        /* Modified by c00318887 for DPlmn扩容和优先接入HPLMN, 2015-5-20, end */
+
+        /* 若是需要添加的DPLMN已经存在，不需要重复添加 */
+        if (VOS_TRUE == NAS_MMC_IsPlmnIdWithSimRatInSimPlmnWithRegDomainList(&stTempPlmn, usSimRat, pstDPlmnNPlmnCfgInfo->usDplmnListNum, pstDPlmnNPlmnCfgInfo->astDPlmnList))
+        {
+            continue;
+        }
+
+        if ((VOS_TRUE == NAS_MML_IsPlmnIdValid(&stTempPlmn))
+         && (NAS_MML_INVALID_SIM_RAT != usSimRat))
+        {
+            pstDPlmnNPlmnCfgInfo->astDPlmnList[pstDPlmnNPlmnCfgInfo->usDplmnListNum].stSimPlmnWithRat.stPlmnId = stTempPlmn;
+            pstDPlmnNPlmnCfgInfo->astDPlmnList[pstDPlmnNPlmnCfgInfo->usDplmnListNum].stSimPlmnWithRat.usSimRat = usSimRat;
+            pstDPlmnNPlmnCfgInfo->astDPlmnList[pstDPlmnNPlmnCfgInfo->usDplmnListNum].enRegDomain               = enRegDomain;
+
+            /* Modified by c00318887 for DPlmn扩容和优先接入HPLMN, 2015-5-20, begin */
+            pstDPlmnNPlmnCfgInfo->astDPlmnList[pstDPlmnNPlmnCfgInfo->usDplmnListNum].enType                    = enType;
+            /* Modified by c00318887 for DPlmn扩容和优先接入HPLMN, 2015-5-20, end */
+            
+            pstDPlmnNPlmnCfgInfo->usDplmnListNum++;
+        }
+    }
+
+    /* 将NV中的NPLMN保存到内存中,需要防止数组越界 */
+    if ( pstNvimCfgDPlmnNPlmnInfo->usNplmnListNum > NAS_MMC_MAX_CFG_NPLMN_NUM )
+    {
+        pstNvimCfgDPlmnNPlmnInfo->usNplmnListNum = NAS_MMC_MAX_CFG_NPLMN_NUM;
+    }
+
+    for ( ulStep = 0; ulStep < pstNvimCfgDPlmnNPlmnInfo->usNplmnListNum; ulStep++ )
+    {
+        /* Modified by c00318887 for DPlmn扩容和优先接入HPLMN, 2015-5-20, begin */
+        PS_MEM_CPY(stNvimPlmn.aucSimPlmn, pstNvimCfgDPlmnNPlmnInfo->aucNPlmnList + (ulStep * NAS_MMC_DPLMN_NPLMN_NV_INFO_LEN), NAS_MML_SIM_PLMN_ID_LEN);
+
+        /* 转换PLMN ID为MMC内部的格式并存储 */
+        NAS_MMC_ConvertSimPlmnToNasPLMN(&stNvimPlmn, &stTempPlmn);
+
+        /* 存储PLMN对应的RAT */
+        usSimRat = (VOS_UINT16)(pstNvimCfgDPlmnNPlmnInfo->aucNPlmnList[(ulStep * NAS_MMC_DPLMN_NPLMN_NV_INFO_LEN) + NAS_MML_PLMN_WITH_RAT_FIRST_RAT_OFFSET] << NAS_MML_OCTET_MOVE_EIGHT_BITS)
+                     | pstNvimCfgDPlmnNPlmnInfo->aucNPlmnList[(ulStep * NAS_MMC_DPLMN_NPLMN_NV_INFO_LEN) + NAS_MML_PLMN_WITH_RAT_SECOND_RAT_OFFSET];
+
+        enRegDomain = (VOS_UINT8)(pstNvimCfgDPlmnNPlmnInfo->aucNPlmnList[(ulStep * NAS_MMC_DPLMN_NPLMN_NV_INFO_LEN) + NAS_MML_PLMN_WITH_RAT_UNIT_LEN]);
+
+        enType      = (VOS_UINT8)(pstNvimCfgDPlmnNPlmnInfo->aucNPlmnList[(ulStep * NAS_MMC_DPLMN_NPLMN_NV_INFO_LEN) + NAS_MMC_DPLMN_NPLMN_NV_PRESETING_FLAG_INDEX]);
+        /* Modified by c00318887 for DPlmn扩容和优先接入HPLMN, 2015-5-20, end */
+
+        /* 若是需要添加的NPLMN已经存在，不需要重复添加 */
+        if (VOS_TRUE == NAS_MMC_IsPlmnIdWithSimRatInSimPlmnWithRegDomainList(&stTempPlmn, usSimRat, pstDPlmnNPlmnCfgInfo->usNplmnListNum, pstDPlmnNPlmnCfgInfo->astNPlmnList))
+        {
+            continue;
+        }
+
+        if ((VOS_TRUE == NAS_MML_IsPlmnIdValid(&stTempPlmn))
+         && (NAS_MML_INVALID_SIM_RAT != usSimRat))
+        {
+            pstDPlmnNPlmnCfgInfo->astNPlmnList[pstDPlmnNPlmnCfgInfo->usNplmnListNum].stSimPlmnWithRat.stPlmnId = stTempPlmn;
+            pstDPlmnNPlmnCfgInfo->astNPlmnList[pstDPlmnNPlmnCfgInfo->usNplmnListNum].stSimPlmnWithRat.usSimRat = usSimRat;
+            pstDPlmnNPlmnCfgInfo->astNPlmnList[pstDPlmnNPlmnCfgInfo->usNplmnListNum].enRegDomain = enRegDomain;
+
+            /* Modified by c00318887 for DPlmn扩容和优先接入HPLMN, 2015-5-20, begin */
+            pstDPlmnNPlmnCfgInfo->astNPlmnList[pstDPlmnNPlmnCfgInfo->usNplmnListNum].enType                    = enType;
+            /* Modified by c00318887 for DPlmn扩容和优先接入HPLMN, 2015-5-20, end */
+
+            pstDPlmnNPlmnCfgInfo->usNplmnListNum++;
+        }
+    }
+
+    return;
+}
+
+
+VOS_VOID NAS_MMC_UpdateDPlmnNPlmnFlagInfo(
+    NAS_MMC_NVIM_CFG_DPLMN_NPLMN_FLAG_STRU                 *pstNvimCfgDPlmnNPlmnFlagInfo
+)
+{
+
+    VOS_UINT32                                              ulStep;
+    NAS_MML_PLMN_ID_STRU                                    stTempPlmn;
+    NAS_MML_SIM_FORMAT_PLMN_ID                              stNvimPlmn;
+    NAS_MMC_DPLMN_NPLMN_CFG_INFO_STRU                      *pstDPlmnNPlmnCfgInfo = VOS_NULL_PTR;
+
+    pstDPlmnNPlmnCfgInfo     = NAS_MMC_GetDPlmnNPlmnCfgInfo();
+    PS_MEM_SET(&stTempPlmn, 0, sizeof(stTempPlmn));
+    PS_MEM_SET(&stNvimPlmn, 0, sizeof(stNvimPlmn));
+
+    /* 将NV中的CMCC HPLMN保存到内存中,需要防止数组越界 */
+    if ( pstNvimCfgDPlmnNPlmnFlagInfo->ucCMCCHplmnNum > NAS_MMC_MAX_CFG_HPLMN_NUM )
+    {
+        pstNvimCfgDPlmnNPlmnFlagInfo->ucCMCCHplmnNum = NAS_MMC_MAX_CFG_HPLMN_NUM;
+    }
+
+    for ( ulStep = 0; ulStep < pstNvimCfgDPlmnNPlmnFlagInfo->ucCMCCHplmnNum; ulStep++ )
+    {
+        PS_MEM_CPY(stNvimPlmn.aucSimPlmn,
+            pstNvimCfgDPlmnNPlmnFlagInfo->aucCMCCHplmnList+ (ulStep * NAS_MML_SIM_PLMN_ID_LEN), NAS_MML_SIM_PLMN_ID_LEN);
+
+        /* 转换PLMN ID为MMC内部的格式并存储 */
+        NAS_MMC_ConvertSimPlmnToNasPLMN(&stNvimPlmn, &stTempPlmn);
+
+        if (VOS_TRUE == NAS_MML_IsPlmnIdValid(&stTempPlmn))
+        {
+            pstDPlmnNPlmnCfgInfo->astCMCCHplmnList[pstDPlmnNPlmnCfgInfo->ucCMCCHplmnNum] = stTempPlmn;
+            pstDPlmnNPlmnCfgInfo->ucCMCCHplmnNum++;
+        }
+    }
+
+    /* 将NV中的UNICOM HPLMN保存到内存中,需要防止数组越界 */
+    if ( pstNvimCfgDPlmnNPlmnFlagInfo->ucUNICOMHplmnNum > NAS_MMC_MAX_CFG_HPLMN_NUM )
+    {
+        pstNvimCfgDPlmnNPlmnFlagInfo->ucUNICOMHplmnNum = NAS_MMC_MAX_CFG_HPLMN_NUM;
+    }
+
+    for ( ulStep = 0; ulStep < pstNvimCfgDPlmnNPlmnFlagInfo->ucUNICOMHplmnNum; ulStep++ )
+    {
+        PS_MEM_CPY(stNvimPlmn.aucSimPlmn,
+            pstNvimCfgDPlmnNPlmnFlagInfo->aucUNICOMHplmnList+ (ulStep * NAS_MML_SIM_PLMN_ID_LEN), NAS_MML_SIM_PLMN_ID_LEN);
+
+        /* 转换PLMN ID为MMC内部的格式并存储 */
+        NAS_MMC_ConvertSimPlmnToNasPLMN(&stNvimPlmn, &stTempPlmn);
+
+        if (VOS_TRUE == NAS_MML_IsPlmnIdValid(&stTempPlmn))
+        {
+            pstDPlmnNPlmnCfgInfo->astUNICOMHplmnList[pstDPlmnNPlmnCfgInfo->ucUNICOMHplmnNum] = stTempPlmn;
+            pstDPlmnNPlmnCfgInfo->ucUNICOMHplmnNum++;
+        }
+    }
+
+    /* 将NV中的CT HPLMN保存到内存中,需要防止数组越界 */
+    if ( pstNvimCfgDPlmnNPlmnFlagInfo->ucCTHplmnNum> NAS_MMC_MAX_CFG_HPLMN_NUM )
+    {
+        pstNvimCfgDPlmnNPlmnFlagInfo->ucCTHplmnNum = NAS_MMC_MAX_CFG_HPLMN_NUM;
+    }
+
+    for ( ulStep = 0; ulStep < pstNvimCfgDPlmnNPlmnFlagInfo->ucCTHplmnNum; ulStep++ )
+    {
+        PS_MEM_CPY(stNvimPlmn.aucSimPlmn,
+            pstNvimCfgDPlmnNPlmnFlagInfo->aucCTHplmnList+ (ulStep * NAS_MML_SIM_PLMN_ID_LEN), NAS_MML_SIM_PLMN_ID_LEN);
+
+        /* 转换PLMN ID为MMC内部的格式并存储 */
+        NAS_MMC_ConvertSimPlmnToNasPLMN(&stNvimPlmn, &stTempPlmn);
+
+        if (VOS_TRUE == NAS_MML_IsPlmnIdValid(&stTempPlmn))
+        {
+            pstDPlmnNPlmnCfgInfo->astCTHplmnList[pstDPlmnNPlmnCfgInfo->ucCTHplmnNum] = stTempPlmn;
+            pstDPlmnNPlmnCfgInfo->ucCTHplmnNum++;
+        }
+    }
+}
+
+
+
 VOS_VOID  NAS_MMC_DelDuplicatedPlmnWithRatInPlmnList (
     NAS_MMC_PLMN_SELECTION_LIST_INFO_STRU                  *pstPlmnSelectionListInfo
 )
@@ -868,16 +1119,16 @@ VOS_UINT32 NAS_MMC_GetCurrentLaiForbbidenTypeForUserSpecPlmnSrch(VOS_VOID)
 {
     NAS_MML_LAI_STRU                                       *pstCurrentLai     = VOS_NULL_PTR;
     NAS_MML_FORBIDPLMN_ROAMING_LAS_INFO_STRU               *pstForbRoamLaInfo = VOS_NULL_PTR;
-    NAS_MML_PLMN_ID_STRU                                   *pstForbGprsPlmn   = VOS_NULL_PTR; 
+    NAS_MML_PLMN_ID_STRU                                   *pstForbGprsPlmn   = VOS_NULL_PTR;
     NAS_MMC_FSM_EXTRA_CTX_UNION                            *punParentFsmCtx   = VOS_NULL_PTR;
     NAS_MMC_FSM_ID_ENUM_UINT32                              enParentFsmId;
     VOS_UINT32                                              ulPlmnLaType;
     VOS_UINT32                                              ulRlst;
 
-    ulPlmnLaType      = NAS_MML_PLMN_FORBID_NULL;    
+    ulPlmnLaType      = NAS_MML_PLMN_FORBID_NULL;
     pstCurrentLai     = NAS_MML_GetCurrCampLai();
     enParentFsmId     = NAS_MMC_GetParentFsmId();
-    punParentFsmCtx   = NAS_MMC_GetParentFsmCtx(); 
+    punParentFsmCtx   = NAS_MMC_GetParentFsmCtx();
 
     /* 如果当前状态机是PLMN SELECTION */
     if (NAS_MMC_FSM_PLMN_SELECTION == NAS_MMC_GetCurrFsmId())
@@ -898,7 +1149,7 @@ VOS_UINT32 NAS_MMC_GetCurrentLaiForbbidenTypeForUserSpecPlmnSrch(VOS_VOID)
         /* 当前父状态机不是选网状态机，或者当前的父状态机的上下文内容为空，直接异常返回 */
         return ulPlmnLaType;
     }
-    
+
     /* 是否在 ForbLA消息中 */
     ulRlst =  NAS_MML_IsLaiInDestLaiList(pstCurrentLai,
                                         pstForbRoamLaInfo->ucForbRoamLaNum,
@@ -1232,7 +1483,7 @@ VOS_VOID NAS_MMC_ConvertNasRatToRrcFormat(
             NAS_ERROR_LOG(WUEPS_PID_MMC, "NAS_MMC_ConvertRrcRatToNasFormat,Unexpected Nas rat!");
 
             *penRrcRat = RRC_NAS_RAT_TYPE_BUTT;
-            
+
             break;
     }
 
@@ -1419,7 +1670,7 @@ VOS_UINT32 NAS_MMC_IsNeedDisableUtran_RcvGasSysInfo (VOS_VOID)
     {
         return VOS_FALSE;
     }
-    
+
     if (NAS_MML_RAT_CAPABILITY_STATUS_REENABLE != NAS_MML_GetUtranForbiddenStatusFlg())
     {
         return VOS_FALSE;
@@ -1445,7 +1696,7 @@ VOS_VOID NAS_MMC_RcvGasSysInfoSetUtranCapabilityStatus (VOS_VOID)
         NAS_MML_SetUtranForbiddenStatusFlg(NAS_MML_RAT_CAPABILITY_STATUS_DISABLE);
         NAS_MMC_SndAsRatCapabilityStatusChangeInfo();
     }
-    
+
 }
 
 
@@ -1549,7 +1800,7 @@ VOS_UINT32 NAS_MMC_UpdateNetworkInfo_GasSysInfo(
 
     /* 更新当前网络的 CS/PS域的分组域阻塞情况 */
     NAS_MMC_UpdateCsPsRestriction_GasSysInfo(pstGrrSysInfo, NAS_MML_GetNetworkInfo());
-    OM_DelDrxTimerWakeSrc(VOS_GetModemIDFromPid(WUEPS_PID_MMC));    
+    OM_DelDrxTimerWakeSrc(VOS_GetModemIDFromPid(WUEPS_PID_MMC));
     NAS_MMC_SndDrxTimerInfo(VOS_FALSE);
     return VOS_TRUE;
 }
@@ -1593,9 +1844,12 @@ VOS_UINT32  NAS_MMC_UpdateNetworkInfo_WasSysInfo(
     /* 更新 rac信息和PS域支持信息 */
     if (0 == pstWrrSysInfo->ucPsInfoSize)
     {
-        pstNetWorkInfo->stPsDomainInfo.ucPsSupportFlg = VOS_FALSE;
+        if (RRC_NAS_SYS_INFO_TYPE_SYS == pstWrrSysInfo->enSysInfoType)
+        {
+            pstNetWorkInfo->stPsDomainInfo.ucPsSupportFlg = VOS_FALSE;
 
-        pstNetWorkInfo->stCampPlmnInfo.ucRac = NAS_MML_RAC_INVALID;
+            pstNetWorkInfo->stCampPlmnInfo.ucRac = NAS_MML_RAC_INVALID;
+        }
     }
     else
     {
@@ -1639,7 +1893,7 @@ VOS_UINT32  NAS_MMC_UpdateNetworkInfo_WasSysInfo(
 
 	 NAS_MMC_UpdateCsPsRestriction_WasInfo(pstWrrSysInfo, pstNetWorkInfo);
 
-    OM_DelDrxTimerWakeSrc(VOS_GetModemIDFromPid(WUEPS_PID_MMC));    
+    OM_DelDrxTimerWakeSrc(VOS_GetModemIDFromPid(WUEPS_PID_MMC));
     NAS_MMC_SndDrxTimerInfo(VOS_FALSE);
     return VOS_TRUE;
 }
@@ -1700,8 +1954,8 @@ VOS_UINT32 NAS_MMC_UpdateNetworkInfo_LmmSysInfo(
 
     /* 更新当前的系统GsmBand信息，W,L 驻留 Band为0 */
     pstBandInfo = NAS_MML_GetCurrBandInfo();
-	pstBandInfo->unWcdmaBand.ulBand      = 0;
-	pstBandInfo->unGsmBand.ulBand        = 0;
+    pstBandInfo->unWcdmaBand.ulBand      = 0;
+    pstBandInfo->unGsmBand.ulBand        = 0;
     pstBandInfo->stLteBand.aulLteBand[0] = pstLmmSysInfoMsg->stLteSysInfo.stLteBand.aulLteBand[0];
     pstBandInfo->stLteBand.aulLteBand[1] = pstLmmSysInfoMsg->stLteSysInfo.stLteBand.aulLteBand[1];
 
@@ -1714,15 +1968,19 @@ VOS_UINT32 NAS_MMC_UpdateNetworkInfo_LmmSysInfo(
     pstCurCampInfo->stLai.aucLac[1]      = pstLmmSysInfoMsg->stLteSysInfo.stTac.ucTacCnt;
     pstCurCampInfo->ucRac                = NAS_MML_RAC_INVALID;
 
+    pstCurCampInfo->enLmmAccessType      = pstLmmSysInfoMsg->stLteSysInfo.enAccessType;
+
 
     pstCurCampInfo->stLai.enCampPlmnNetRat = NAS_MML_NET_RAT_TYPE_LTE;
 
-    OM_DelDrxTimerWakeSrc(VOS_GetModemIDFromPid(WUEPS_PID_MMC));    
+    OM_DelDrxTimerWakeSrc(VOS_GetModemIDFromPid(WUEPS_PID_MMC));
     NAS_MMC_SndDrxTimerInfo(VOS_FALSE);
 
     return VOS_TRUE;
 }
 #endif
+
+
 VOS_UINT32  NAS_MMC_GetDomainRegStatusInRegInfoList(
     NAS_MML_PLMN_ID_STRU               *pstPlmnId,
     NAS_MML_NET_RAT_TYPE_ENUM_UINT8     enCurNetRatType,
@@ -1894,9 +2152,9 @@ VOS_UINT32 NAS_MMC_IsNeedDisableLte_SysCfg(VOS_VOID)
     VOS_UINT8                                               ucSimPsRegStatus;
     VOS_UINT8                                               ucSimCsRegStatus;
     VOS_UINT32                                              ulRatForbiddenFlg;
-    
+
     ulRatForbiddenFlg   = NAS_MML_IsRatInForbiddenList(NAS_MML_NET_RAT_TYPE_LTE);
-    
+
     /* 根据协议所述，在满足如下条件下，需要disable LTE：
     (1)SYSCFG设置当前接入技术为LW,LG,LWG
     (2)PS域卡无效或者PS域不允许attach或SIM卡
@@ -1939,7 +2197,7 @@ VOS_UINT32 NAS_MMC_IsNeedDisableLte_SysCfg(VOS_VOID)
     if (NAS_MML_SIM_TYPE_SIM == NAS_MML_GetSimType())
     {
         return VOS_TRUE;
-    }    
+    }
 
     /* CS不允许注册或CS卡无效 */
     if ((VOS_FALSE == NAS_MML_GetCsAttachAllowFlg())
@@ -2026,7 +2284,7 @@ VOS_UINT32 NAS_MMC_IsNeedDisableLte_ModeChange(VOS_VOID)
     {
         return VOS_TRUE;
     }
-    
+
     /* CS卡无效 */
     if (VOS_FALSE == ucSimCsRegStatus)
     {
@@ -2307,7 +2565,7 @@ VOS_UINT32 NAS_MMC_IsNeedDisableLte_AttachCs(VOS_VOID)
     {
         return VOS_TRUE;
     }
-    
+
     /* CS卡无效 */
     if (VOS_FALSE == ucSimCsRegStatus)
     {
@@ -2320,7 +2578,7 @@ VOS_UINT32 NAS_MMC_IsNeedDisableLte_AttachCs(VOS_VOID)
     {
         return VOS_FALSE;
     }
-    
+
 
     if (NAS_MML_MS_MODE_PS_CS != NAS_MML_GetMsMode())
     {
@@ -2423,11 +2681,11 @@ VOS_UINT32 NAS_MMC_IsNeedDisableLte_AttachCsPs(VOS_VOID)
         return VOS_FALSE;
     }
 
-    if (NAS_MML_SIM_TYPE_SIM == enSimType)    
+    if (NAS_MML_SIM_TYPE_SIM == enSimType)
     {
         return VOS_TRUE;
     }
-    
+
     /* CS卡无效 */
     if (VOS_FALSE == ucSimCsRegStatus)
     {
@@ -2439,7 +2697,7 @@ VOS_UINT32 NAS_MMC_IsNeedDisableLte_AttachCsPs(VOS_VOID)
     {
         return VOS_FALSE;
     }
-    
+
 
     return VOS_TRUE;
 }
@@ -2535,7 +2793,7 @@ VOS_UINT32 NAS_MMC_IsNeedEnableLte_DetachCsPs(VOS_VOID)
     if (VOS_TRUE == NAS_MML_GetCsAttachAllowFlg())
     {
         return VOS_FALSE;
-    }   
+    }
 
     return VOS_TRUE;
 }
@@ -2595,6 +2853,166 @@ VOS_UINT32 NAS_MMC_IsNeedEnableLteRoam(
          && (VOS_TRUE == ulDisableLte))
         {
            return VOS_TRUE;
+        }
+    }
+
+    return VOS_FALSE;
+}
+VOS_UINT32 NAS_MMC_IsNeedEnableLte_ImsSwitchOnOrNotCsOnly(VOS_VOID)
+{
+    NAS_MML_LTE_CAPABILITY_STATUS_ENUM_UINT32               enLteCapabilityStatus;
+    NAS_MML_SIM_TYPE_ENUM_UINT8                             enSimType;           /* SIM卡类型,USIM或SIM卡*/
+
+    /* 在满足如下条件后，MMC需要重新enable LTE：
+    (1)NV没有配置禁止LTE模
+    (2)已经Disable LTE
+    (3)USIM卡,或者SIM卡L单模
+    (4)PS卡有效,且允许注册
+    (5)Disable LTE的原因值为LTE下voice unavailable
+    (6)UE支持IMS
+    (7)voice domain不为cs only
+
+    这个地方和DS文档不同，因为此时无法知道之前在LTE下是注册成功导致的Disable LTE
+    还是两个域都失败5次导致的Disable LTE
+    对于LTE下联合注册两个域都失败的情况，这个地方也会Enable LTE，如果后续到LTE下仍然失败，再Disable LTE */
+
+    /* 获取LTE的使能状态 */
+    enLteCapabilityStatus  = NAS_MML_GetLteCapabilityStatus();
+
+    /* 如果开机时已经根据en_NV_Item_Rat_Forbidden_List_Accord_Imsi_Config的配置禁止了LTE，则返回VOS_FALSE */
+    if (NAS_MML_RAT_CAPABILITY_STATUS_DISABLE == NAS_MML_GetLteForbiddenStatusFlg())
+    {
+        return VOS_FALSE;
+    }
+
+
+    /* 如果之前未disable LTE,也不需要enable LTE */
+    if ((NAS_MML_LTE_CAPABILITY_STATUS_DISABLE_UNNOTIFY_AS != enLteCapabilityStatus)
+     && (NAS_MML_LTE_CAPABILITY_STATUS_DISABLE_NOTIFIED_AS != enLteCapabilityStatus))
+    {
+        return VOS_FALSE;
+    }
+
+    /* UE不支持ims */
+    if (VOS_FALSE == NAS_MML_IsUeSupportIms())
+    {
+        return VOS_FALSE;
+    }
+
+    /* voice domain为cs only */
+    if (NAS_MML_CS_VOICE_ONLY == NAS_MML_GetVoiceDomainPreference())
+    {
+        return VOS_FALSE;
+    }
+
+    /* SIM卡类型且不为L单模不需要enable LTE */
+    enSimType = NAS_MML_GetSimType();
+    if ((VOS_TRUE               != NAS_MML_IsLteOnlyMode(NAS_MML_GetMsPrioRatList()))
+     && (NAS_MML_SIM_TYPE_SIM   == enSimType))
+    {
+        return VOS_FALSE;
+    }
+
+    /* PS卡无效 */
+    if (VOS_FALSE == NAS_MML_GetSimPsRegStatus())
+    {
+        return VOS_FALSE;
+    }
+
+    /* PS卡不允许注册 */
+    if (VOS_FALSE == NAS_MML_GetPsAttachAllowFlg())
+    {
+        return VOS_FALSE;
+    }
+
+    /* Disable LTE的原因值为LTE下语音不可用 */
+    if (MMC_LMM_DISABLE_LTE_REASON_LTE_VOICE_NOT_AVAILABLE == NAS_MML_GetDisableLteReason())
+    {
+       return VOS_TRUE;
+    }
+
+    return VOS_FALSE;
+}
+VOS_UINT32 NAS_MMC_IsNeedDisableLte_CsOnly(VOS_VOID)
+{
+    NAS_MMC_REG_RSLT_CTX_STRU                              *pstRegRsltCtx = VOS_NULL_PTR;
+    VOS_UINT32                                              ulIsNeedDisableL;
+    NAS_MML_REG_FAIL_CAUSE_ENUM_UINT16                      enPsRegCause;
+    NAS_MML_REG_FAIL_CAUSE_ENUM_UINT16                      enCsRegCause;
+    NAS_MMC_SERVICE_ENUM_UINT8                              enPsServiceStatus;
+    NAS_MMC_SERVICE_ENUM_UINT8                              enCsServiceStatus;
+    NAS_MMC_FSM_ID_ENUM_UINT32                              enFsmId;
+    VOS_UINT32                                              ulFsmState;
+
+    enFsmId             = NAS_MMC_GetCurrFsmId();
+    ulFsmState          = NAS_MMC_GetFsmTopState();
+    pstRegRsltCtx       = NAS_MMC_GetRegRsltCtxAddr();
+
+    enPsRegCause        = NAS_MML_REG_FAIL_CAUSE_NULL;
+    enCsRegCause        = NAS_MML_REG_FAIL_CAUSE_NULL;
+
+    /* 如果已经disable 不需要再disable LTE */
+    if (NAS_MML_LTE_CAPABILITY_STATUS_DISABLE_NOTIFIED_AS == NAS_MML_GetLteCapabilityStatus())
+    {
+        return VOS_FALSE;
+    }
+
+    /* 当前主模不是LTE或者不是在ON PLMN状态，先不进行Disable LTE，
+       因为这个时候LTE可能还未注册或业务过程中，additional update IE不准确或者不知道LTE下的注册被拒原因值
+       voice domain变化也会触发LTE的TAU，等LTE的TAU结果上报时再进行判断 */
+    if ( (NAS_MML_NET_RAT_TYPE_LTE != NAS_MML_GetCurrNetRatType())
+      || (NAS_MMC_L1_STA_ON_PLMN != ulFsmState)
+      || (NAS_MMC_FSM_L1_MAIN != enFsmId) )
+    {
+        return VOS_FALSE;
+    }
+
+    enCsServiceStatus = NAS_MMC_GetCsServiceStatus();
+    enPsServiceStatus = NAS_MMC_GetPsServiceStatus();
+
+    /* 获取之前注册失败的原因值 */
+    NAS_MMC_GetDomainRegStatusInRegInfoList(NAS_MML_GetCurrCampPlmnId(),
+                                            NAS_MML_NET_RAT_TYPE_LTE,
+                                            &enCsRegCause,
+                                            &enPsRegCause);
+
+    /* cs only时，其实就是ims不可用，下面的处理和NAS_MMC_IsNeedDisableLte_ImsVoiceNotAvail相似 */
+
+    /* CS+EPS 都成功 */
+    if ((NAS_MMC_NORMAL_SERVICE == enCsServiceStatus)
+     && (NAS_MMC_NORMAL_SERVICE == enPsServiceStatus)
+     && (NAS_MML_REG_FAIL_CAUSE_NULL == enCsRegCause)
+     && (NAS_MML_REG_FAIL_CAUSE_NULL == enPsRegCause))
+    {
+        ulIsNeedDisableL = NAS_MMC_IsNeedDisableL_CombinedRegRsltSucc();
+
+        return ulIsNeedDisableL;
+    }
+
+    if ((NAS_MMC_NORMAL_SERVICE == enPsServiceStatus)
+     && (NAS_MML_REG_FAIL_CAUSE_NULL == enPsRegCause))
+    {
+
+        /* EPS单域注册成功 */
+        if (VOS_TRUE == pstRegRsltCtx->ucIsLteRegTypeEpsOnly)
+        {
+            ulIsNeedDisableL = NAS_MMC_IsNeedDisableL_EpsOnlyRegSucc();
+
+            return ulIsNeedDisableL;
+        }
+
+        /* EPS ONLY成功,CS被拒18,CS被拒16,17,22,other cause,EPS尝试次数达到5次 */
+        if (NAS_MML_REG_FAIL_CAUSE_IMSI_UNKNOWN_IN_HLR != enCsRegCause)
+        {
+            ulIsNeedDisableL = NAS_MMC_IsNeedDisableL_CombinedRegRsltOnlyEpsSucc(enCsRegCause);
+
+            if ((NAS_MML_MAX_PS_REG_FAIL_CNT == NAS_MMC_GetRegRsltAttemptCounter(NAS_MMC_GetRegRsltType()))
+              && (VOS_TRUE == ulIsNeedDisableL))
+            {
+                NAS_MMC_StartTimer(TI_NAS_MMC_WAIT_ENABLE_LTE_TIMER, NAS_MML_GetCsPsMode1EnableLteTimerLen());
+            }
+
+            return ulIsNeedDisableL;
         }
     }
 
@@ -2715,6 +3133,28 @@ VOS_VOID NAS_MMC_SortPlmnSearchListSpecRatPrioLowest(
 
             if ( enSpecRatType == pstPlmnSelectionListInfo->astPlmnSelectionList[i].astPlmnRatInfo[j].enRatType )
             {
+
+                /* 拷贝一份当前处理的网络信息到现有的数组列表的后面 */
+                PS_MEM_CPY(&(pstPlmnSelectionListInfo->astPlmnSelectionList[pstPlmnSelectionListInfo->usSearchPlmnNum]),
+                           &(pstPlmnSelectionListInfo->astPlmnSelectionList[i]),
+                           sizeof(NAS_MMC_PLMN_SELECTION_PLMN_INFO_STRU));
+
+                /* 将最后一个网络的接入技术个数设置为1个，且接入技术类型为用户所要设置的接入技术 */
+                pstPlmnSelectionListInfo->astPlmnSelectionList[pstPlmnSelectionListInfo->usSearchPlmnNum].ucRatNum = 1;
+                pstPlmnSelectionListInfo->astPlmnSelectionList[pstPlmnSelectionListInfo->usSearchPlmnNum].astPlmnRatInfo[0].enRatType = enSpecRatType;
+
+                pstPlmnSelectionListInfo->astPlmnSelectionList[pstPlmnSelectionListInfo->usSearchPlmnNum].astPlmnRatInfo[0].enNetStatus
+                    = pstPlmnSelectionListInfo->astPlmnSelectionList[i].astPlmnRatInfo[j].enNetStatus;
+                pstPlmnSelectionListInfo->astPlmnSelectionList[pstPlmnSelectionListInfo->usSearchPlmnNum].astPlmnRatInfo[0].enQuality
+                    = pstPlmnSelectionListInfo->astPlmnSelectionList[i].astPlmnRatInfo[j].enQuality;
+                pstPlmnSelectionListInfo->astPlmnSelectionList[pstPlmnSelectionListInfo->usSearchPlmnNum].astPlmnRatInfo[0].lRscp
+                    = pstPlmnSelectionListInfo->astPlmnSelectionList[i].astPlmnRatInfo[j].lRscp;
+                pstPlmnSelectionListInfo->astPlmnSelectionList[pstPlmnSelectionListInfo->usSearchPlmnNum].astPlmnRatInfo[0].ucReserve
+                    = 0;
+
+                /* 选网数组列表中的网络个数增加了1个 */
+                pstPlmnSelectionListInfo->usSearchPlmnNum++;
+
                 /* 将当前处理的网络的要移动的接入技术设置为无效值，若当前网络的接入技术不是最后一个，
                        则需要将后面的接入技术移到前面去 */
                 pstPlmnSelectionListInfo->astPlmnSelectionList[i].astPlmnRatInfo[j].enRatType = NAS_MML_NET_RAT_TYPE_BUTT;
@@ -2728,22 +3168,6 @@ VOS_VOID NAS_MMC_SortPlmnSearchListSpecRatPrioLowest(
                 /* 当前处理网络的接入技术减少一个 */
                 pstPlmnSelectionListInfo->astPlmnSelectionList[i].ucRatNum--;
 
-                /* 拷贝一份当前处理的网络信息到现有的数组列表的后面 */
-                PS_MEM_CPY(&(pstPlmnSelectionListInfo->astPlmnSelectionList[pstPlmnSelectionListInfo->usSearchPlmnNum]),
-                           &(pstPlmnSelectionListInfo->astPlmnSelectionList[i]),
-                           sizeof(NAS_MMC_PLMN_SELECTION_PLMN_INFO_STRU));
-
-                /* 将最后一个网络的接入技术个数设置为1个，且接入技术类型为用户所要设置的接入技术 */
-                pstPlmnSelectionListInfo->astPlmnSelectionList[pstPlmnSelectionListInfo->usSearchPlmnNum].astPlmnRatInfo[0].enRatType = enSpecRatType;
-                pstPlmnSelectionListInfo->astPlmnSelectionList[pstPlmnSelectionListInfo->usSearchPlmnNum].ucRatNum = 1;
-
-                pstPlmnSelectionListInfo->astPlmnSelectionList[pstPlmnSelectionListInfo->usSearchPlmnNum].astPlmnRatInfo[0].enNetStatus = NAS_MMC_NET_STATUS_NO_SEARCHED;
-                pstPlmnSelectionListInfo->astPlmnSelectionList[pstPlmnSelectionListInfo->usSearchPlmnNum].astPlmnRatInfo[0].enQuality   = NAS_MMC_NET_QUALITY_UNKNOWN;
-                pstPlmnSelectionListInfo->astPlmnSelectionList[pstPlmnSelectionListInfo->usSearchPlmnNum].astPlmnRatInfo[0].lRscp       = NAS_MML_UTRA_RSCP_UNVALID;
-                pstPlmnSelectionListInfo->astPlmnSelectionList[pstPlmnSelectionListInfo->usSearchPlmnNum].astPlmnRatInfo[0].ucReserve   = 0;
-
-                /* 选网数组列表中的网络个数增加了1个 */
-                pstPlmnSelectionListInfo->usSearchPlmnNum++;
 
                 /* 找到了指定接入技术的网络，则退出当层循环，处理下一个网络 */
                 break;
@@ -2776,6 +3200,8 @@ VOS_VOID NAS_MMC_SortPlmnSearchListSpecRatPrioLowest(
         i++;
     }
 }
+
+
 VOS_UINT32 NAS_MMC_IsRejectedBySpecCause(
     NAS_MMC_REG_DOMAIN_ENUM_UINT8       enDomain,
     NAS_MML_REG_FAIL_CAUSE_ENUM_UINT16  enCause
@@ -3295,7 +3721,7 @@ VOS_VOID NAS_MMC_ClearNoRfInfo(VOS_VOID)
     if ( VOS_FALSE == NAS_MMC_GetPlmnSrchNoRfFlg() )
     {
         return;
-    } 
+    }
 
     /* 清除NO RF标记 */
     NAS_MMC_SetPlmnSrchNoRfFlg(VOS_FALSE);
@@ -3306,8 +3732,8 @@ VOS_VOID NAS_MMC_ClearNoRfInfo(VOS_VOID)
         NAS_MMC_InitPlmnSelectionList(NAS_MMC_PLMN_SEARCH_SCENE_HIGH_PRIO_PLMN_SEARCH,
                                       VOS_NULL_PTR,
                                       NAS_MMC_GetHighPrioPlmnList());
-    }    
-    
+    }
+
     return;
 }
 
@@ -3336,12 +3762,12 @@ VOS_VOID  NAS_MMC_RcvGuSysInfoIndSetLteRoamAbility(
                 NAS_MMC_SndLmmDisableLteNotify(MMC_LMM_DISABLE_LTE_REASON_LTE_ROAMING_NOT_ALLOWED);
 
             }
-        
+
         }
 
         /* 更新disable LTE能力标记 */
         NAS_MML_SetDisableLteRoamFlg(VOS_TRUE);
-        
+
         if (NAS_MML_RAT_CAPABILITY_STATUS_DISABLE == NAS_MML_GetLteForbiddenStatusFlg())
         {
             NAS_MML_SetDisableLteReason(MMC_LMM_DISABLE_LTE_REASON_IMSI_IN_FORBIDDEN_LIST);
@@ -3385,11 +3811,11 @@ VOS_UINT32 NAS_MMC_IsInterNationalRoamingSearchRPLMN(
     VOS_UINT32                          ulMcc
 )
 {
-    VOS_UINT32                          *aulComparedMcc ; 
+    VOS_UINT32                          *aulComparedMcc ;
 
-    aulComparedMcc = NAS_MML_GetNationalMCCList(); 
+    aulComparedMcc = NAS_MML_GetNationalMCCList();
 
-    if( VOS_TRUE == NAS_MML_GetRoamRplmnSearchFlg() ) 
+    if( VOS_TRUE == NAS_MML_GetRoamRplmnSearchFlg() )
     {
         if (VOS_TRUE == NAS_MML_IsMccInDestMccList(ulMcc, NAS_MML_MAX_NATIONAL_MCC_NUM, aulComparedMcc))
         {
@@ -3460,9 +3886,9 @@ VOS_VOID  NAS_MMC_RcvGuSysInfoIndSetLteAbility(
     }
 
     ucDisableLTEOnBandFlg = NAS_MCC_IsNeedDisableLteWBand( ulBand);
-    
+
     /* 是否需要禁止LTE漫游 */
-    if ( (VOS_TRUE == NAS_MMC_IsNeedDisableLteRoam(ulSysInfoMcc)) 
+    if ( (VOS_TRUE == NAS_MMC_IsNeedDisableLteRoam(ulSysInfoMcc))
 	|| (VOS_TRUE == ucDisableLTEOnBandFlg) )
     {
         /* 已经通知disable LTE则不需要再通知它 */
@@ -3485,7 +3911,7 @@ VOS_VOID  NAS_MMC_RcvGuSysInfoIndSetLteAbility(
     }
 
     /* 是否需要允许LTE漫游 */
-    if ( (VOS_TRUE == NAS_MMC_IsNeedEnableLteRoam(ulSysInfoMcc)) 
+    if ( (VOS_TRUE == NAS_MMC_IsNeedEnableLteRoam(ulSysInfoMcc))
 		&& (VOS_FALSE == ucDisableLTEOnBandFlg) )
     {
         /* 当前LTE能力恢复可用或者为默认值 */
@@ -3692,6 +4118,80 @@ VOS_UINT32 NAS_MMC_IsDisableLteNeedLocalReleaseEpsConn(VOS_VOID)
 #endif
 
 
+VOS_UINT32 NAS_MMC_IsPlmnMccSameWithRplmn(
+    VOS_UINT32                          ulMcc
+)
+{
+    NAS_MML_PLMN_RAT_PRIO_STRU         *pstPrioRatList = VOS_NULL_PTR;
+    NAS_MML_RPLMN_CFG_INFO_STRU        *pstRPlmnCfg  = VOS_NULL_PTR;
+    NAS_MML_PLMN_ID_STRU                stRPlmnId;
+    VOS_UINT32                          i;
+
+    PS_MEM_SET(&stRPlmnId, 0, sizeof(stRPlmnId));
+    i = 0;
+
+    pstPrioRatList = NAS_MML_GetMsPrioRatList();
+
+    /* 获取RPLMN配置信息 */
+    pstRPlmnCfg = NAS_MML_GetRplmnCfg();
+
+    /* 与所有支持接入技术的rplmn的mcc比较,因为多rplmn特性开启时，gul的rplmn可能会不同,
+       如果多rplmn特性关闭，则只跟当前接入技术rplmn mcc比较，因为即使是单rplmn场景，也存在gu下rplmn和lte下不同的场景*/
+    if (VOS_FALSE == pstRPlmnCfg->ucMultiRATRplmnFlg)
+    {
+        if (VOS_FALSE == NAS_MMC_GetRPlmn_PlmnSelectionStrategy(NAS_MML_GetLastRplmnRat(), &stRPlmnId))
+        {
+            /* rplmn不存在返回false*/
+            return VOS_FALSE;
+        }
+
+        if (VOS_TRUE == NAS_MML_ComparePlmnMcc(ulMcc, stRPlmnId.ulMcc))
+        {
+            return VOS_TRUE;
+        }
+
+        return VOS_FALSE;
+    }
+
+    /* 多rplmn特性开启 */
+    for (i = 0; i < pstPrioRatList->ucRatNum; i++)
+    {
+        if (VOS_FALSE == NAS_MMC_GetRPlmn_PlmnSelectionStrategy(pstPrioRatList->aucRatPrio[i], &stRPlmnId))
+        {
+            continue;
+        }
+
+        if (VOS_TRUE == NAS_MML_ComparePlmnMcc(ulMcc, stRPlmnId.ulMcc))
+        {
+            return VOS_TRUE;
+        }
+    }
+
+    return VOS_FALSE;
+}
+
+
+VOS_UINT32 NAS_MMC_IsPlmnMccSameWithHplmn(
+    VOS_UINT32                          ulMcc
+)
+{
+    NAS_MML_SIM_EHPLMN_INFO_STRU       *pstEHPlmnInfo = VOS_NULL_PTR;
+    VOS_UINT32                          i;
+
+    /* 获取EHPLMN */
+    pstEHPlmnInfo = NAS_MML_GetSimEhplmnList();
+
+    for (i = 0; i < pstEHPlmnInfo->ucEhPlmnNum; i++)
+    {
+        if (VOS_TRUE == NAS_MML_ComparePlmnMcc(ulMcc,
+                             pstEHPlmnInfo->astEhPlmnInfo[i].stPlmnId.ulMcc))
+        {
+            return VOS_TRUE;
+        }
+    }
+
+    return VOS_FALSE;
+}
 VOS_VOID  NAS_MMC_GetMccListInRrcPlmnIdList(
     VOS_UINT32                         *pulMccNum,
     VOS_UINT32                         *pulMccList,
@@ -3858,6 +4358,21 @@ VOS_VOID NAS_MMC_AddPlmnListIntoSimEhplmnInfo(
 
     return ;
 }
+VOS_UINT32  NAS_MMC_IsCurrentWcdmaMode(VOS_VOID)
+{
+    NAS_MML_NET_RAT_TYPE_ENUM_UINT8     enRatType;
+
+    enRatType       = NAS_MML_GetCurrNetRatType();
+
+    if ((NAS_UTRANCTRL_UTRAN_MODE_FDD   == NAS_UTRANCTRL_GetCurrUtranMode())
+     && (NAS_MML_NET_RAT_TYPE_WCDMA     == enRatType))
+    {
+        return VOS_TRUE;
+    }
+
+    /* 其他情况返回VOS_FALSE */
+    return VOS_FALSE;
+}
 VOS_UINT32  NAS_MMC_IsCurrentTdscdmaMode(VOS_VOID)
 {
     NAS_MML_NET_RAT_TYPE_ENUM_UINT8     enRatType;
@@ -3940,7 +4455,7 @@ VOS_VOID  NAS_MMC_DelForbInfo_LmmAttRsltSucc(
 VOS_UINT32 NAS_MMC_IsLmmAttachCnfTriggerPlmnSrch(
     LMM_MMC_ATTACH_CNF_STRU            *pstLmmAttachCnf
 )
-{    
+{
     if ( NAS_MMC_TIMER_STATUS_RUNING == NAS_MMC_GetTimerStatus(TI_NAS_MMC_AVAILABLE_TIMER) )
     {
         return VOS_FALSE;
@@ -3961,18 +4476,18 @@ VOS_UINT32 NAS_MMC_IsLmmAttachCnfTriggerPlmnSrch(
     switch ( pstLmmAttachCnf->ulAttachRslt)
     {
         /* 尝试触发搜网 */
-        case MMC_LMM_ATT_RSLT_FAILURE :            
+        case MMC_LMM_ATT_RSLT_FAILURE :
         case MMC_LMM_ATT_RSLT_FORBID_PLMN :
         case MMC_LMM_ATT_RSLT_FORBID_PLMN_FOR_GPRS :
         case MMC_LMM_ATT_RSLT_FORBID_TA_FOR_ROAMING :
         case MMC_LMM_ATT_RSLT_FORBID_TA_FOR_RPOS :
-            
-            return VOS_TRUE;          
-       
+
+            return VOS_TRUE;
+
         default:
-            return VOS_FALSE;            
+            return VOS_FALSE;
     }
-    
+
 }
 
 #endif
@@ -4241,14 +4756,23 @@ VOS_VOID  NAS_MMC_UpdateRegStateAnyCellSearchSucc(VOS_VOID)
 }
 VOS_VOID  NAS_MMC_UpdateCsRegStateCsRegSucc(VOS_VOID)
 {
-    if (VOS_TRUE == NAS_MMC_IsRoam())
-    {
-        NAS_MMC_ChangeCsRegState(NAS_MML_REG_REGISTERED_ROAM);
-    }
-    else
+    VOS_UINT8                           ucHplmnInEplmnDisplayHomeFlg;
+    VOS_UINT32                          ulIsHplmnInEplmnList;
+
+    ucHplmnInEplmnDisplayHomeFlg = NAS_MML_GetHplmnInEplmnDisplayHomeFlg();
+    ulIsHplmnInEplmnList         = NAS_MML_IsHplmnInEplmnList();
+
+    if ((VOS_FALSE == NAS_MMC_IsRoam())
+     || ((VOS_TRUE == ucHplmnInEplmnDisplayHomeFlg)
+      && (VOS_TRUE == ulIsHplmnInEplmnList)))
     {
         NAS_MMC_ChangeCsRegState(NAS_MML_REG_REGISTERED_HOME_NETWORK);
     }
+    else
+    {
+        NAS_MMC_ChangeCsRegState(NAS_MML_REG_REGISTERED_ROAM);
+    }
+
 
     return;
 }
@@ -4256,13 +4780,21 @@ VOS_VOID  NAS_MMC_UpdateCsRegStateCsRegSucc(VOS_VOID)
 
 VOS_VOID  NAS_MMC_UpdatePsRegStatePsRegSucc(VOS_VOID)
 {
-    if (VOS_TRUE == NAS_MMC_IsRoam())
+    VOS_UINT8                           ucHplmnInEplmnDisplayHomeFlg;
+    VOS_UINT32                          ulIsHplmnInEplmnList;
+
+    ucHplmnInEplmnDisplayHomeFlg = NAS_MML_GetHplmnInEplmnDisplayHomeFlg();
+    ulIsHplmnInEplmnList         = NAS_MML_IsHplmnInEplmnList();
+
+    if ((VOS_FALSE == NAS_MMC_IsRoam())
+     || ((VOS_TRUE == ucHplmnInEplmnDisplayHomeFlg)
+      && (VOS_TRUE == ulIsHplmnInEplmnList)))
     {
-        NAS_MMC_ChangePsRegState(NAS_MML_REG_REGISTERED_ROAM);
+        NAS_MMC_ChangePsRegState(NAS_MML_REG_REGISTERED_HOME_NETWORK);
     }
     else
     {
-        NAS_MMC_ChangePsRegState(NAS_MML_REG_REGISTERED_HOME_NETWORK);
+        NAS_MMC_ChangePsRegState(NAS_MML_REG_REGISTERED_ROAM);
     }
 
     return;
@@ -4760,6 +5292,8 @@ VOS_VOID NAS_MMC_CsRegErrRecord(MMMMC_CS_REG_RESULT_IND_STRU *pstCsRegRstInd)
 
     PS_MEM_CPY(&stCsRegRstEvent.stOldLai, &pstCsRegRstInd->stOldLai, sizeof(MM_LAI_STRU));
 
+    NAS_MNTN_OutputPositionInfo(&stCsRegRstEvent.stPositionInfo);
+
     /*
        将异常信息写入Buffer中
        实际写入的字符数与需要写入的不等则打印异常
@@ -4824,6 +5358,8 @@ VOS_VOID NAS_MMC_PsRegErrRecord(GMMMMC_PS_REG_RESULT_IND_STRU *pstPsRegRstInd)
     stPsRegRstEvent.ulRegCounter      = pstPsRegRstInd->ulRegCounter;
     stPsRegRstEvent.ulServiceStatus   = pstPsRegRstInd->ulServiceStatus;
 
+    NAS_MNTN_OutputPositionInfo(&stPsRegRstEvent.stPositionInfo);
+
     /*
        将异常信息写入Buffer中
        实际写入的字符数与需要写入的不等则打印异常
@@ -4841,6 +5377,206 @@ VOS_VOID NAS_MMC_PsRegErrRecord(GMMMMC_PS_REG_RESULT_IND_STRU *pstPsRegRstInd)
     return;
 }
 
+
+VOS_VOID NAS_MMC_PsServiceRegErrRecord(
+    GMMMMC_SERVICE_REQUEST_RESULT_IND_STRU                 *pstServiceRsltInd
+)
+{
+    NAS_ERR_LOG_PS_SRV_REG_RESULT_EVENT_STRU                stPsSrvRegRstEvent;
+    VOS_UINT32                                              ulIsLogRecord;
+    VOS_UINT32                                              ulRegFailFlag;
+    VOS_UINT32                                              ulLength;
+    VOS_UINT32                                              ulResult;
+    VOS_UINT16                                              usLevel;
+
+    /* 查询对应Alarm Id是否需要记录异常信息 */
+    usLevel       = NAS_GetErrLogAlmLevel(NAS_ERR_LOG_ALM_PS_SRV_REG_FAIL);
+    ulIsLogRecord = NAS_MML_IsErrLogNeedRecord(usLevel);
+
+    /* 判断对应的异常原因值是否需要记录 */
+    ulRegFailFlag = NAS_MML_RegFailCauseNeedRecord(pstServiceRsltInd->enRegFailCause);
+
+    /* 模块异常不需要记录或异常原因值不需要记录时，不保存异常信息 */
+    if ((VOS_FALSE == ulIsLogRecord)
+     || (VOS_FALSE == ulRegFailFlag))
+    {
+        return;
+    }
+
+    ulLength = sizeof(NAS_ERR_LOG_PS_SRV_REG_RESULT_EVENT_STRU);
+
+    /* 填充PS注册失败异常信息 */
+    PS_MEM_SET(&stPsSrvRegRstEvent, 0x00, ulLength);
+
+    NAS_COMM_BULID_ERRLOG_HEADER_INFO(&stPsSrvRegRstEvent.stHeader,
+                                      VOS_GetModemIDFromPid(WUEPS_PID_MMC),
+                                      NAS_ERR_LOG_ALM_PS_SRV_REG_FAIL,
+                                      usLevel,
+                                      VOS_GetSlice(),
+                                      (ulLength - sizeof(OM_ERR_LOG_HEADER_STRU)));
+
+    stPsSrvRegRstEvent.enActionResult = pstServiceRsltInd->enActionResult;
+    stPsSrvRegRstEvent.enRegFailCause = pstServiceRsltInd->enRegFailCause;
+    stPsSrvRegRstEvent.ulServiceSts   = pstServiceRsltInd->ulServiceSts;
+
+    NAS_MNTN_OutputPositionInfo(&stPsSrvRegRstEvent.stPositionInfo);
+    /*
+       将异常信息写入Buffer中
+       实际写入的字符数与需要写入的不等则打印异常
+     */
+    ulResult = NAS_MML_PutErrLogRingBuf((VOS_CHAR *)&stPsSrvRegRstEvent, ulLength);
+    if (ulResult != ulLength)
+    {
+        NAS_ERROR_LOG(WUEPS_PID_MMC, "NAS_MMC_PsServiceRegErrRecord(): Push buffer error.");
+    }
+
+    NAS_COM_MntnPutRingbuf(NAS_ERR_LOG_ALM_PS_SRV_REG_FAIL,
+                           WUEPS_PID_MMC,
+                           (VOS_UINT8 *)&stPsSrvRegRstEvent,
+                           sizeof(stPsSrvRegRstEvent));
+    return;
+}
+
+/* Added by zwx247453 for CHR optimize, 2015-3-13 Begin */
+/*****************************************************************************
+ 函 数 名  : NAS_MMC_CmServiceRejErrRecord
+ 功能描述  : 记录Cm Service 被拒异常事件
+ 输入参数  : VOS_UINT32                              ulCause,
+             VOS_UINT32                              ulServiceStatus
+ 输出参数  : 无
+ 返 回 值  : VOS_VOID
+ 调用函数  :
+ 被调函数  :
+
+ 修改历史      :
+  1.日    期   : 2015年03月13日
+    作    者   : zwx247453
+    修改内容   : 新生成函数
+*****************************************************************************/
+VOS_VOID NAS_MMC_CmServiceRejErrRecord(
+    VOS_UINT32                                              ulCause,
+    VOS_UINT32                                              ulServiceStatus
+)
+{
+    NAS_ERR_LOG_CM_SRV_REJ_IND_EVENT_STRU                   stCmSrvRejIndEvent;
+    VOS_UINT32                                              ulIsLogNeedRecord;
+    VOS_UINT32                                              ulLength;
+    VOS_UINT32                                              ulResult;
+    VOS_UINT16                                              usLevel;
+
+    /* 查询对应Alarm Id是否需要记录异常信息 */
+    usLevel           = NAS_GetErrLogAlmLevel(NAS_ERR_LOG_ALM_CM_SRV_REJ_IND);
+    ulIsLogNeedRecord = NAS_MML_IsErrLogNeedRecord(usLevel);
+
+    /* 模块异常不需要记录或异常原因值不需要记录时，不保存异常信息 */
+    if (VOS_FALSE == ulIsLogNeedRecord)
+    {
+        return;
+    }
+
+    ulLength = sizeof(NAS_ERR_LOG_CM_SRV_REJ_IND_EVENT_STRU);
+
+    /* 填充Cm服务被拒异常信息 */
+    PS_MEM_SET(&stCmSrvRejIndEvent, 0x00, ulLength);
+
+    NAS_COMM_BULID_ERRLOG_HEADER_INFO(&stCmSrvRejIndEvent.stHeader,
+                                      VOS_GetModemIDFromPid(WUEPS_PID_MMC),
+                                      NAS_ERR_LOG_ALM_CM_SRV_REJ_IND,
+                                      usLevel,
+                                      VOS_GetSlice(),
+                                      (ulLength - sizeof(OM_ERR_LOG_HEADER_STRU)));
+
+    stCmSrvRejIndEvent.ulCause         = ulCause;
+    stCmSrvRejIndEvent.ulServiceStatus = ulServiceStatus;
+
+    NAS_MNTN_OutputPositionInfo(&stCmSrvRejIndEvent.stPositionInfo);
+
+    /*
+       将异常信息写入Buffer中
+       实际写入的字符数与需要写入的不等则打印异常
+     */
+    ulResult = NAS_MML_PutErrLogRingBuf((VOS_CHAR *)&stCmSrvRejIndEvent, ulLength);
+    if (ulResult != ulLength)
+    {
+        NAS_ERROR_LOG(WUEPS_PID_MMC, "NAS_MMC_CmServiceRejErrRecord(): Push buffer error.");
+    }
+
+    NAS_COM_MntnPutRingbuf(NAS_ERR_LOG_ALM_CM_SRV_REJ_IND,
+                           WUEPS_PID_MMC,
+                           (VOS_UINT8 *)&stCmSrvRejIndEvent,
+                           sizeof(stCmSrvRejIndEvent));
+    return;
+}
+
+/*****************************************************************************
+ 函 数 名  : NAS_MMC_MoDetachIndRecord
+ 功能描述  : 记录MO Detach指示事件
+ 功能描述  : 记录主动Detach指示事件
+ 输入参数  : VOS_UINT32                              ulDetachType
+ 输出参数  : 无
+ 返 回 值  : VOS_VOID
+ 调用函数  :
+ 被调函数  :
+
+ 修改历史      :
+  1.日    期   : 2015年03月13日
+    作    者   : zwx247453
+    修改内容   : 新生成函数
+*****************************************************************************/
+VOS_VOID NAS_MMC_MoDetachIndRecord(
+    VOS_UINT32                              ulDetachType
+)
+{
+    NAS_ERR_LOG_MO_DETACH_IND_EVENT_STRU                    stMoDetachIndEvent;
+    VOS_UINT32                                              ulIsLogNeedRecord;
+    VOS_UINT32                                              ulLength;
+    VOS_UINT32                                              ulResult;
+    VOS_UINT16                                              usLevel;
+
+    /* 查询对应Alarm Id是否需要记录异常信息 */
+    usLevel           = NAS_GetErrLogAlmLevel(NAS_ERR_LOG_ALM_MO_DETACH_IND);
+    ulIsLogNeedRecord = NAS_MML_IsErrLogNeedRecord(usLevel);
+
+    /* 模块异常不需要记录或异常原因值不需要记录时，不保存异常信息 */
+    if (VOS_FALSE == ulIsLogNeedRecord)
+    {
+        return;
+    }
+
+    ulLength = sizeof(NAS_ERR_LOG_MO_DETACH_IND_EVENT_STRU);
+
+    /* 填充本地DETACH异常信息 */
+    PS_MEM_SET(&stMoDetachIndEvent, 0x00, ulLength);
+
+    NAS_COMM_BULID_ERRLOG_HEADER_INFO(&stMoDetachIndEvent.stHeader,
+                                      VOS_GetModemIDFromPid(WUEPS_PID_MMC),
+                                      NAS_ERR_LOG_ALM_MO_DETACH_IND,
+                                      usLevel,
+                                      VOS_GetSlice(),
+                                      (ulLength - sizeof(OM_ERR_LOG_HEADER_STRU)));
+
+    NAS_MNTN_OutputPositionInfo(&stMoDetachIndEvent.stPositionInfo);
+
+    stMoDetachIndEvent.enDetachType         = ulDetachType;
+
+    /*
+       将异常信息写入Buffer中
+       实际写入的字符数与需要写入的不等则打印异常
+     */
+    ulResult = NAS_MML_PutErrLogRingBuf((VOS_CHAR *)&stMoDetachIndEvent, ulLength);
+    if (ulResult != ulLength)
+    {
+        NAS_ERROR_LOG(WUEPS_PID_MMC, "NAS_MMC_MoDetachIndRecord(): Push buffer error.");
+    }
+
+    NAS_COM_MntnPutRingbuf(NAS_ERR_LOG_ALM_MO_DETACH_IND,
+                           WUEPS_PID_MMC,
+                           (VOS_UINT8 *)&stMoDetachIndEvent,
+                           sizeof(stMoDetachIndEvent));
+
+    return;
+}
+/* Added by zwx247453 for CHR optimize, 2015-3-13 End */
 #endif
 
 
@@ -5050,7 +5786,7 @@ VOS_UINT32 NAS_MMC_IsNeedDisableLte_ImsVoiceNotAvail(VOS_VOID)
         {
             ulIsNeedDisableL = NAS_MMC_IsNeedDisableL_EpsOnlyRegSucc();
 
-            return ulIsNeedDisableL; 
+            return ulIsNeedDisableL;
         }
 
         /* EPS ONLY成功,CS被拒18,CS被拒16,17,22,other cause,EPS尝试次数达到5次 */
@@ -5072,13 +5808,11 @@ VOS_UINT32 NAS_MMC_IsNeedDisableLte_ImsVoiceNotAvail(VOS_VOID)
 }
 
 #endif
-
-
 VOS_UINT32 NAS_MMC_IsNeedStartHighPrioRatHPlmnTimer(VOS_VOID)
 {
     NAS_MML_PLMN_RAT_PRIO_STRU         *pstPlmnRatList       = VOS_NULL_PTR;
     NAS_MML_CAMP_PLMN_INFO_STRU        *pstCurrCampPlmnInfo  = VOS_NULL_PTR;
-    
+
     if (VOS_FALSE == NAS_MMC_IsHighPrioRatHplmnSearchVaild())
     {
         return VOS_FALSE;
@@ -5088,7 +5822,7 @@ VOS_UINT32 NAS_MMC_IsNeedStartHighPrioRatHPlmnTimer(VOS_VOID)
     {
         return VOS_FALSE;
     }
-  
+
     /* 获取MML中保存的当前MS支持的接入模式和接入优先级 */
     pstPlmnRatList = NAS_MML_GetMsPrioRatList();
 
@@ -5123,7 +5857,7 @@ VOS_UINT32 NAS_MMC_IsHighPrioRatHplmnSearchVaild( VOS_VOID )
     if (VOS_FALSE == NAS_MML_GetHighPrioRatHplmnTimerActiveFlg())
     {
         return VOS_FALSE;
-    }   
+    }
 
     /* 手动模式下返回无效 */
     if (NAS_MMC_PLMN_SELECTION_MODE_MANUAL == NAS_MMC_GetPlmnSelectionMode())
@@ -5139,7 +5873,7 @@ VOS_UINT32 NAS_MMC_IsHighPrioRatHplmnSearchVaild( VOS_VOID )
     /* HPLMN TIMER LEN定时器时长无效 */
     if ((0 != pstHighRatHplmnTimerCfg->ulFirstSearchTimeLen)
      && (0 != pstHighRatHplmnTimerCfg->ulNonFirstSearchTimeLen)
-     && (0 != pstHighRatHplmnTimerCfg->ulRetrySearchTimeLen)) 
+     && (0 != pstHighRatHplmnTimerCfg->ulRetrySearchTimeLen))
     {
         /* 返回有效 */
         return VOS_TRUE;
@@ -5151,7 +5885,7 @@ VOS_UINT32 NAS_MMC_IsCampOnHighestPrioRatHplmn(VOS_VOID)
 {
     NAS_MML_PLMN_RAT_PRIO_STRU         *pstPlmnRatList       = VOS_NULL_PTR;
     NAS_MML_CAMP_PLMN_INFO_STRU        *pstCurrCampPlmnInfo  = VOS_NULL_PTR;
-    
+
     /* 获取MML中保存的当前MS支持的接入模式和接入优先级 */
     pstPlmnRatList = NAS_MML_GetMsPrioRatList();
 
@@ -5177,6 +5911,31 @@ VOS_UINT32 NAS_MMC_IsCampOnHighestPrioRatHplmn(VOS_VOID)
 
     return VOS_TRUE;
 }
+VOS_VOID NAS_MMC_UpdateHighPrioRatHPlmnTimerTdCount(VOS_VOID)
+{
+    VOS_UINT8                                               ucCurrHighRatHplmnTdCount;
+    VOS_UINT8                                               ucHighRatHplmnTdThreshold;
+
+    if (VOS_FALSE == NAS_MMC_IsCurrentTdscdmaMode())
+    {
+        return;
+    }
+
+    ucCurrHighRatHplmnTdCount = NAS_MMC_GetTdHighRatSearchCount();
+    ucHighRatHplmnTdThreshold = NAS_MML_GetHighPrioRatHplmnTimerTdThreshold();
+
+    if (ucCurrHighRatHplmnTdCount >= ucHighRatHplmnTdThreshold)
+    {
+        NAS_MMC_InitTdHighRatSearchCount();
+    }
+
+    NAS_MMC_AddTdHighRatSearchCount();
+
+    return;
+
+}
+
+
 MMC_MMA_PLMN_PRIORITY_CLASS_ENUM_UINT8 NAS_MMC_GetPlmnPrioClass(
     NAS_MML_PLMN_ID_STRU               *pstPlmnId
 )
@@ -5387,6 +6146,460 @@ VOS_UINT32  NAS_MMC_IsSorTriggerAdditionalLau(VOS_VOID)
 
     /* 否则返回需要触发ADDITIONAL LAU */
     return VOS_TRUE;
+}
+
+
+/* Modified by c00318887 for DPlmn扩容和优先接入HPLMN, 2015-5-18, begin */
+
+
+/*****************************************************************************
+ 函 数 名  : NAS_MMC_GetIndexOfFirstSelfLearningTypeElement
+ 功能描述  : 获取 DplmnList 中最后一个类型是预置类型的plmn的下标
+ 输入参数  : 
+             pulDestPlmnNum    - DPLMN/NPLMN list个数
+             pstDestPlmnIdList - DPLMN/NPLMN list指针
+ 输出参数  : 无
+ 返 回 值  : ulIndex -- 数组下标
+ 调用函数  :
+ 被调函数  :
+
+ 修改历史      :
+ 1.日    期   : 2015年5月18日
+   作    者   : c00318887
+   修改内容   : for DPlmn扩容和优先接入HPLMN  
+*****************************************************************************/
+VOS_UINT32  NAS_MMC_GetIndexOfFirstSelfLearningTypeElement(
+    VOS_UINT16                                             *pulFirstPosition,
+    VOS_UINT16                                              ulDestPlmnNum,
+    NAS_MMC_SIM_PLMN_WITH_REG_DOMAIN_STRU                  *pstDestPlmnIdList
+)
+{
+    VOS_UINT32                    ulLoop  = 0;
+    
+    for (ulLoop = 0; ulLoop < ulDestPlmnNum; ulLoop++)
+    {
+        if (NAS_MMC_DPLMN_NPLMN_SELF_LEARING_TYPE == pstDestPlmnIdList[ulLoop].enType)
+        {
+            break;
+        }
+    }
+
+    /* 有自学习类型 */
+    if (ulLoop < ulDestPlmnNum)
+    {
+        *pulFirstPosition = (VOS_UINT16)ulLoop;
+        return VOS_TRUE;
+    }
+
+    /* 没有自学习类型 数组没满 */
+    if (NAS_MMC_MAX_CFG_DPLMN_NUM - 1 >= ulDestPlmnNum)
+    {
+        *pulFirstPosition = ulDestPlmnNum;
+        return VOS_TRUE;
+    }
+    
+    /* 没有自学习类型, 数组满  */
+    *pulFirstPosition = NAS_MMC_MAX_CFG_DPLMN_NUM;
+    return VOS_FALSE;
+}
+/* Modified by c00318887 for DPlmn扩容和优先接入HPLMN, 2015-5-21, end */
+
+
+VOS_VOID  NAS_MMC_UpdateDPlmnNPlmnList(
+    NAS_MML_PLMN_ID_STRU                                   *pstCurrPlmn,
+    NAS_MML_NET_RAT_TYPE_ENUM_UINT8                         enNetType,
+    NAS_MMC_REG_DOMAIN_ENUM_UINT8                           enRegDomain,
+    VOS_UINT16                                             *pulDestPlmnNum,
+    NAS_MMC_SIM_PLMN_WITH_REG_DOMAIN_STRU                  *pstDestPlmnIdList
+)
+ {
+    VOS_UINT32                                              i;
+    NAS_MMC_DPLMN_NPLMN_CFG_INFO_STRU                      *pstDPlmnNPlmnCfgInfo = VOS_NULL_PTR;
+    VOS_UINT16                                              usSimRat;
+
+    /* Modified by c00318887 for DPlmn扩容和优先接入HPLMN, 2015-5-21, begin */
+    VOS_UINT16                                              usIndex;
+    /* Modified by c00318887 for DPlmn扩容和优先接入HPLMN, 2015-5-21, end */
+    
+    pstDPlmnNPlmnCfgInfo  = NAS_MMC_GetDPlmnNPlmnCfgInfo();
+    usSimRat              = NAS_MML_INVALID_SIM_RAT;
+    enRegDomain           = NAS_MMC_REG_DOMAIN_NONE;
+
+    if (VOS_TRUE != pstDPlmnNPlmnCfgInfo->ucActiveFlg)
+    {
+        return;
+    }
+
+    /* Modified by c00318887 for DPlmn扩容和优先接入HPLMN, 2015-5-25, begin */
+    if (NAS_MMC_MAX_CFG_DPLMN_NUM < *pulDestPlmnNum )
+    {
+        return;
+    }
+    /* Modified by c00318887 for DPlmn扩容和优先接入HPLMN, 2015-5-25, end */
+
+    usSimRat = NAS_MMC_ConvertNetRatToSimRat(enNetType);
+
+    for (i = 0; i < *pulDestPlmnNum; i++)
+    {
+        if (VOS_TRUE == NAS_MML_CompareBcchPlmnwithSimPlmn(pstCurrPlmn, &(pstDestPlmnIdList[i].stSimPlmnWithRat.stPlmnId)))
+        {
+            /* 如果PLMN相同，RAT也相同则不更新 */
+            if ((usSimRat & pstDestPlmnIdList[i].stSimPlmnWithRat.usSimRat) == usSimRat)
+            {
+                return;
+            }
+            /*如果PLMN相同，RAT不同 */
+            else 
+            {   
+                /* 是自学习类型,则仅更新RAT */
+                /* Modified by c00318887 for DPlmn扩容和优先接入HPLMN, 2015-5-21, begin */
+                if (NAS_MMC_DPLMN_NPLMN_SELF_LEARING_TYPE == pstDestPlmnIdList[i].enType)
+                {
+                    pstDestPlmnIdList[i].stSimPlmnWithRat.usSimRat = usSimRat | pstDestPlmnIdList[i].stSimPlmnWithRat.usSimRat;
+                    return;
+                }
+                /* Modified by c00318887 for DPlmn扩容和优先接入HPLMN, 2015-5-21, end */
+            }
+        }
+    }
+
+    /* Modified by c00318887 for DPlmn扩容和优先接入HPLMN, 2015-5-21, begin */
+    if (VOS_FALSE == NAS_MMC_GetIndexOfFirstSelfLearningTypeElement(&usIndex, *pulDestPlmnNum, pstDestPlmnIdList))
+    {
+        return;
+    }
+
+    /* 添加新记录 */
+    if (*pulDestPlmnNum < NAS_MMC_MAX_CFG_DPLMN_NUM )
+    {
+        PS_MEM_MOVE(&pstDestPlmnIdList[usIndex + 1], &pstDestPlmnIdList[usIndex],
+                               (*pulDestPlmnNum - usIndex) * sizeof(NAS_MMC_SIM_PLMN_WITH_REG_DOMAIN_STRU));
+
+        pstDestPlmnIdList[usIndex].stSimPlmnWithRat.stPlmnId.ulMcc    = pstCurrPlmn->ulMcc;
+        pstDestPlmnIdList[usIndex].stSimPlmnWithRat.stPlmnId.ulMnc    = pstCurrPlmn->ulMnc;
+        pstDestPlmnIdList[usIndex].stSimPlmnWithRat.usSimRat          = usSimRat;
+        pstDestPlmnIdList[usIndex].enRegDomain                        = enRegDomain;
+        pstDestPlmnIdList[usIndex].enType                             = NAS_MMC_DPLMN_NPLMN_SELF_LEARING_TYPE;        
+        (*pulDestPlmnNum)++;
+    }
+    else
+    {
+        PS_MEM_MOVE(&pstDestPlmnIdList[usIndex + 1], &pstDestPlmnIdList[usIndex],
+                               (NAS_MMC_MAX_CFG_DPLMN_NUM - usIndex - 1) * sizeof(NAS_MMC_SIM_PLMN_WITH_REG_DOMAIN_STRU));
+
+        pstDestPlmnIdList[usIndex].stSimPlmnWithRat.stPlmnId.ulMcc    = pstCurrPlmn->ulMcc;
+        pstDestPlmnIdList[usIndex].stSimPlmnWithRat.stPlmnId.ulMnc    = pstCurrPlmn->ulMnc;
+        pstDestPlmnIdList[usIndex].stSimPlmnWithRat.usSimRat          = usSimRat;
+        pstDestPlmnIdList[usIndex].enRegDomain                        = enRegDomain;
+        pstDestPlmnIdList[usIndex].enType                             = NAS_MMC_DPLMN_NPLMN_SELF_LEARING_TYPE;        
+    }
+    /* Modified by c00318887 for DPlmn扩容和优先接入HPLMN, 2015-5-21, end */
+
+    return;
+}
+
+VOS_VOID  NAS_MMC_DeleteDPlmnNPlmnList(
+    NAS_MML_PLMN_ID_STRU                   *pstCurrPlmn,
+    NAS_MML_NET_RAT_TYPE_ENUM_UINT8     enNetType,
+    NAS_MMC_REG_DOMAIN_ENUM_UINT8       enRegDomain,
+    VOS_UINT16                                             *pulDestPlmnNum,
+    NAS_MMC_SIM_PLMN_WITH_REG_DOMAIN_STRU                  *pstDestPlmnIdList
+)
+{
+    VOS_UINT32                                              i;
+    NAS_MMC_DPLMN_NPLMN_CFG_INFO_STRU                      *pstDPlmnNPlmnCfgInfo = VOS_NULL_PTR;
+    VOS_UINT16                                              usSimRat;
+    VOS_UINT16                                              usTmpSimRat;
+
+    pstDPlmnNPlmnCfgInfo     = NAS_MMC_GetDPlmnNPlmnCfgInfo();
+    usSimRat                 = NAS_MML_INVALID_SIM_RAT;
+    usTmpSimRat              = NAS_MML_INVALID_SIM_RAT;
+
+    usSimRat = NAS_MMC_ConvertNetRatToSimRat(enNetType);
+
+    if (VOS_TRUE != pstDPlmnNPlmnCfgInfo->ucActiveFlg)
+    {
+        return;
+    }
+
+    for (i = 0; i < *pulDestPlmnNum;)
+    {
+        if ( (VOS_TRUE == NAS_MML_CompareBcchPlmnwithSimPlmn(pstCurrPlmn, &(pstDestPlmnIdList[i].stSimPlmnWithRat.stPlmnId)))
+            /* Modified by c00318887 for DPlmn扩容和优先接入HPLMN, 2015-5-21, begin */
+          && (NAS_MMC_DPLMN_NPLMN_SELF_LEARING_TYPE == pstDestPlmnIdList[i].enType)
+            /* Modified by c00318887 for DPlmn扩容和优先接入HPLMN, 2015-5-21, end */
+           )
+        {
+            usTmpSimRat = pstDestPlmnIdList[i].stSimPlmnWithRat.usSimRat & ~usSimRat;
+
+            /*如果PLMN相同，RAT也完全相同则删除这条记录*/
+            if(usSimRat == pstDestPlmnIdList[i].stSimPlmnWithRat.usSimRat)
+            {
+                if (i < NAS_MMC_MAX_CFG_DPLMN_NUM - 1)
+                {
+                    PS_MEM_MOVE(&pstDestPlmnIdList[i], &pstDestPlmnIdList[ i + 1 ],
+                            ((*pulDestPlmnNum - i) - 1 ) * sizeof(NAS_MMC_SIM_PLMN_WITH_REG_DOMAIN_STRU));
+                }
+
+                (*pulDestPlmnNum)--;
+
+                if ( i > 0 )
+                {
+                    i--;
+                }
+                else
+                {
+                    continue;
+                }
+            }
+            /*如果PLMN相同，RAT仅是RAT集合中一个则删除这种制式*/
+            else if((usSimRat & pstDestPlmnIdList[i].stSimPlmnWithRat.usSimRat) == usSimRat)
+            {
+                pstDestPlmnIdList[i].stSimPlmnWithRat.usSimRat = usTmpSimRat;
+            }
+            else
+            {
+
+            }
+
+        }
+
+        i++;
+    }
+    return;
+}
+
+VOS_UINT16  NAS_MMC_ConvertNetRatToSimRat(
+    NAS_MML_NET_RAT_TYPE_ENUM_UINT8     enPlmnNetRat
+)
+{
+    VOS_UINT16                          usSimRat;
+
+    usSimRat = NAS_MML_INVALID_SIM_RAT;
+
+    if (NAS_MML_NET_RAT_TYPE_LTE == enPlmnNetRat)
+    {
+        usSimRat = NAS_MML_SIM_RAT_E_UTRN;
+    }
+    else if (NAS_MML_NET_RAT_TYPE_WCDMA == enPlmnNetRat)
+    {
+        usSimRat = NAS_MML_SIM_RAT_UTRN;
+    }
+    else if (NAS_MML_NET_RAT_TYPE_GSM == enPlmnNetRat)
+    {
+        usSimRat = NAS_MML_SIM_RAT_GSM;
+    }
+    else
+    {
+        usSimRat = NAS_MML_INVALID_SIM_RAT;
+    }
+
+    return usSimRat;
+
+}
+
+
+VOS_UINT32 NAS_MMC_IsBcchPlmnIdWithRatInDestSimPlmnList (
+    NAS_MML_PLMN_WITH_RAT_STRU         *pstBcchPlmnIdWithRat,
+    VOS_UINT16                          usSimPlmnWithRatNum,
+    NAS_MML_SIM_PLMN_WITH_RAT_STRU     *pstSimPlmnWithRatList
+)
+{
+    VOS_UINT32                          i;
+    VOS_UINT16                          usBcchPlmnSimRat;
+
+    usBcchPlmnSimRat = NAS_MMC_ConvertNetRatToSimRat(pstBcchPlmnIdWithRat->enRat);
+
+    for ( i = 0; i < usSimPlmnWithRatNum; i++ )
+    {
+        if ( (VOS_TRUE == NAS_MML_CompareBcchPlmnwithSimPlmn(&pstBcchPlmnIdWithRat->stPlmnId,
+                                                            &pstSimPlmnWithRatList[i].stPlmnId))
+          && (usBcchPlmnSimRat == (pstSimPlmnWithRatList[i].usSimRat & usBcchPlmnSimRat)))
+        {
+            return VOS_TRUE;
+        }
+    }
+
+    return VOS_FALSE;
+}
+
+
+VOS_UINT32 NAS_MMC_ComparePlmnIdWithRatWithUplmn (
+    NAS_MML_PLMN_WITH_RAT_STRU         *pstPlmnIdWithRat
+)
+{
+    NAS_MML_SIM_USERPLMN_INFO_STRU     *pstUserPlmnList = VOS_NULL_PTR;
+    NAS_MML_SIM_OPERPLMN_INFO_STRU     *pstOperPlmnList = VOS_NULL_PTR;
+    NAS_MML_SIM_SELPLMN_INFO_STRU      *pstSelPlmnList  = VOS_NULL_PTR;
+
+    /* 获取UOPLMN */
+    pstUserPlmnList = NAS_MML_GetSimUserPlmnList();
+    pstOperPlmnList = NAS_MML_GetSimOperPlmnList();
+
+    /* UPLMN个数不为0或者OPLMN个数不为0 */
+    if ((pstUserPlmnList->ucUserPlmnNum > 0)
+     || (pstOperPlmnList->usOperPlmnNum > 0))
+    {
+        if (VOS_TRUE == NAS_MMC_IsBcchPlmnIdWithRatInDestSimPlmnList(pstPlmnIdWithRat,
+                                                      pstUserPlmnList->ucUserPlmnNum,
+                                                      pstUserPlmnList->astUserPlmnInfo))
+        {
+            return VOS_TRUE;
+        }
+    }
+    else /* 表示(U)SIM卡中不存在UPLMN、OPLMN，使用PLMN Sel文件 */
+    {
+        pstSelPlmnList = NAS_MML_GetSimSelPlmnList();
+
+        if (VOS_TRUE == NAS_MML_IsBcchPlmnIdInDestSimPlmnList(&pstPlmnIdWithRat->stPlmnId,
+                                                      pstSelPlmnList->ucSelPlmnNum,
+                                                      pstSelPlmnList->astPlmnId))
+        {
+            return VOS_TRUE;
+        }
+    }
+
+    return VOS_FALSE;
+}
+VOS_UINT32 NAS_MMC_ComparePlmnIdWithRatWithOplmn (
+    NAS_MML_PLMN_WITH_RAT_STRU         *pstPlmnIdWithRat
+)
+{
+    NAS_MML_SIM_USERPLMN_INFO_STRU     *pstUserPlmnList = VOS_NULL_PTR;
+    NAS_MML_SIM_OPERPLMN_INFO_STRU     *pstOperPlmnList = VOS_NULL_PTR;
+    NAS_MML_SIM_SELPLMN_INFO_STRU      *pstSelPlmnList  = VOS_NULL_PTR;
+
+    /* 获取UOPLMN */
+    pstUserPlmnList = NAS_MML_GetSimUserPlmnList();
+    pstOperPlmnList = NAS_MML_GetSimOperPlmnList();
+
+    /* UPLMN个数不为0或者OPLMN个数不为0 */
+    if ((pstUserPlmnList->ucUserPlmnNum > 0)
+     || (pstOperPlmnList->usOperPlmnNum > 0))
+    {
+        if (VOS_TRUE == NAS_MMC_IsBcchPlmnIdWithRatInDestSimPlmnList(pstPlmnIdWithRat,
+                                                      pstOperPlmnList->usOperPlmnNum,
+                                                      pstOperPlmnList->astOperPlmnInfo))
+        {
+            return VOS_TRUE;
+        }
+    }
+    else /* 表示(U)SIM卡中不存在UPLMN、OPLMN，使用PLMN Sel文件 */
+    {
+        pstSelPlmnList = NAS_MML_GetSimSelPlmnList();
+
+        if (VOS_TRUE == NAS_MML_IsBcchPlmnIdInDestSimPlmnList(&pstPlmnIdWithRat->stPlmnId,
+                                                      pstSelPlmnList->ucSelPlmnNum,
+                                                      pstSelPlmnList->astPlmnId))
+        {
+            return VOS_TRUE;
+        }
+    }
+
+    return VOS_FALSE;
+}
+VOS_UINT32 NAS_MMC_IsPlmnIdWithSimRatInSimPlmnWithRegDomainList(
+    NAS_MML_PLMN_ID_STRU                                   *pstPlmnId,
+    VOS_UINT16                                              usSimRat,
+    VOS_UINT32                                              ulDestPlmnNum,
+    NAS_MMC_SIM_PLMN_WITH_REG_DOMAIN_STRU                  *pstDestPlmnIdList
+)
+{
+    VOS_UINT32                          i;
+
+    for (i = 0; i < ulDestPlmnNum; i++)
+    {
+        if ((VOS_TRUE  == NAS_MML_CompareBcchPlmnwithSimPlmn(pstPlmnId, &(pstDestPlmnIdList[i].stSimPlmnWithRat.stPlmnId)))
+         && ((usSimRat & pstDestPlmnIdList[i].stSimPlmnWithRat.usSimRat)  == usSimRat))
+        {
+            return VOS_TRUE;
+        }
+    }
+
+    return VOS_FALSE;
+}
+
+NAS_MML_NET_RAT_TYPE_ENUM_UINT8  NAS_MMC_ConvertSimRatToNetRat(
+    VOS_UINT16                          usSimRat
+)
+{
+    NAS_MML_PLMN_RAT_PRIO_STRU         *pstRatPrio = VOS_NULL_PTR;
+    VOS_UINT16                          usConvertedSimRat;
+    VOS_UINT32                          i;
+
+    pstRatPrio = NAS_MML_GetMsPrioRatList();
+
+    for (i = 0; i < pstRatPrio->ucRatNum; i++)
+    {
+        usConvertedSimRat = NAS_MMC_ConvertNetRatToSimRat(pstRatPrio->aucRatPrio[i]);
+
+        if (usConvertedSimRat == (usConvertedSimRat & usSimRat))
+        {
+            return pstRatPrio->aucRatPrio[i];
+        }
+    }
+
+    return NAS_MML_NET_RAT_TYPE_BUTT;
+}
+
+
+VOS_UINT32 NAS_MMC_IsPlmnIdWithRatInSimPlmnWithRegDomainList(
+    NAS_MML_PLMN_WITH_RAT_STRU                             *pstSrcPlmnId,
+    VOS_UINT32                                              ulDestPlmnNum,
+    NAS_MMC_SIM_PLMN_WITH_REG_DOMAIN_STRU                  *pstDestPlmnIdList
+)
+{
+    VOS_UINT32                          i;
+    VOS_UINT16                          usSrcPlmnSimRat;
+
+    for ( i = 0; i < ulDestPlmnNum; i++ )
+    {
+        usSrcPlmnSimRat = NAS_MMC_ConvertNetRatToSimRat(pstSrcPlmnId->enRat);
+
+        if ((VOS_TRUE  == NAS_MML_CompareBcchPlmnwithSimPlmn(&(pstSrcPlmnId->stPlmnId), &(pstDestPlmnIdList[i].stSimPlmnWithRat.stPlmnId)))
+         && (usSrcPlmnSimRat == (usSrcPlmnSimRat & pstDestPlmnIdList[i].stSimPlmnWithRat.usSimRat)))
+        {
+            return VOS_TRUE;
+        }
+    }
+
+    return VOS_FALSE;
+}
+
+
+
+
+
+
+
+VOS_UINT32 NAS_MMC_IsEnableLteTriggerPlmnSearch_ImsSwitchOnOrNotCsOnly(VOS_VOID)
+{
+    NAS_MML_PLMN_RAT_PRIO_STRU         *pstPrioRatList = VOS_NULL_PTR;
+    NAS_MMC_FSM_ID_ENUM_UINT32          enFsmId;
+
+    pstPrioRatList      = NAS_MML_GetMsPrioRatList();
+    enFsmId             = NAS_MMC_GetCurrFsmId();
+
+    /* 最高接入技术优先级不是LTE，不需要搜网 */
+    if ((NAS_MML_NET_RAT_TYPE_LTE != pstPrioRatList->aucRatPrio[0]))
+    {
+        return VOS_FALSE;
+    }
+
+    /* 如果CS业务存在不需要搜网 */
+    if (VOS_TRUE == NAS_MML_GetCsServiceExistFlg())
+    {
+        return VOS_FALSE;
+    }
+
+    /* ON PLMN状态机时需要搜网 */
+    if ((NAS_MMC_L1_STA_ON_PLMN == NAS_MMC_GetFsmTopState())
+     && (NAS_MMC_FSM_L1_MAIN == enFsmId))
+    {
+        return VOS_TRUE;
+    }
+
+    return VOS_FALSE;
 }
 
 #ifdef __cplusplus

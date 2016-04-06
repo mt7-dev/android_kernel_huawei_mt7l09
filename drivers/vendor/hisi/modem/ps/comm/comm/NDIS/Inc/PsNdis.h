@@ -466,7 +466,7 @@ typedef struct
     IPV4_ADDR_ITEM_UN    unNmIpInfo;     /*NetMask,源于NAS配置*/
     VOS_UINT8            aucUeMacAddr[ETH_MAC_ADDR_LEN];
     VOS_UINT8            aucMacFrmHdr[ETH_MAC_HEADER_LEN]; /*完整以太帧头，便于组包*/
-    NDIS_ARP_PERIOD_TIMER_STRU  stArpPeriodTimer;
+    NDIS_ARP_PERIOD_TIMER_STRU  stArpPeriodTimer; /*为了同64位操作系统兼容，保持在8字节对齐位置*/
 
     /*DHCP Server Info*/
     VOS_UINT32           ulIpAssignStatus;
@@ -568,28 +568,6 @@ extern VOS_UINT32 Ndis_ChkRabIdValid(VOS_UINT8 ucRabId);
 extern NDIS_ENTITY_STRU* NDIS_GetEntityByRabId(VOS_UINT8 ucExRabId);
 extern NDIS_ENTITY_STRU* NDIS_AllocEntity(VOS_VOID);
 extern VOS_VOID Ndis_StopARPTimer(NDIS_ARP_PERIOD_TIMER_STRU *pstArpPeriodTimer);
-
-extern VOS_VOID NDIS_OM_LOG1( const VOS_CHAR   *pcFileName, VOS_UINT32  ulLineNum,
-                                VOS_UINT32  ulModuleId,       VOS_UINT32 ulLevel,
-                                const VOS_CHAR    *pcString,  VOS_INT32  lPara1);
-
-extern VOS_VOID NDIS_OM_LOG( const VOS_CHAR  *pcFileName,  VOS_UINT32  ulLineNum,
-                           VOS_UINT32      ulModuleId,   VOS_UINT32 ulLevel,
-                           const VOS_CHAR  *pcString );
-
-extern VOS_VOID NDIS_OM_LOG2( const VOS_CHAR   *pcFileName, VOS_UINT32  ulLineNum,
-                            VOS_UINT32 ulModuleId,        VOS_UINT32 ulLevel,
-                            const VOS_CHAR   *pcString,   VOS_INT32  lPara1,
-                            VOS_INT32  lPara2);
-extern VOS_VOID NDIS_OM_LOG3( const VOS_CHAR  *pcFileName,  VOS_UINT32  ulLineNum,
-                            VOS_UINT32 ulModuleId,        VOS_UINT32 ulLevel,
-                            const VOS_CHAR   *pcString,   VOS_INT32  lPara1,
-                            VOS_INT32  lPara2,            VOS_INT32  lPara3);
-extern VOS_VOID NDIS_OM_LOG4( const VOS_CHAR   *pcFileName, VOS_UINT32  ulLineNum,
-                            VOS_UINT32 ulModuleId,        VOS_UINT32 ulLevel,
-                            const VOS_CHAR   *pcString,   VOS_INT32  lPara1,
-                            VOS_INT32  lPara2,            VOS_INT32  lPara3,
-                            VOS_INT32  lPara4);
 
 extern VOS_UINT32 Ndis_MsgHook (const VOS_UINT8 *pucData,VOS_UINT32 ulLength,
      AT_NDIS_MSG_TYPE_ENUM_UINT32 enMsgId);

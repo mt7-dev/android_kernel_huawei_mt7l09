@@ -105,15 +105,7 @@ static struct usb_driver mcs_driver = {
 	.id_table = mcs_table,
 };
 
-/* speed flag selection by direct addressing.
-addr = (speed >> 8) & 0x0f
 
-0x1   57600	 0x2  115200	 0x4 1152000	 0x5    9600
-0x6   38400	 0x9    2400	 0xa  576000	 0xb   19200
-
-4Mbps (or 2400) must be checked separately. Since it also has
-to be programmed in a different manner that is not a big problem.
-*/
 static __u16 mcs_speed_set[16] = { 0,
 	MCS_SPEED_57600,
 	MCS_SPEED_115200,

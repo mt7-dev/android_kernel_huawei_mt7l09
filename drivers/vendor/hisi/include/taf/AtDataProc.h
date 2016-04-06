@@ -65,15 +65,15 @@ extern "C" {
 #define VOS_NTOHS(x)    (x)
 #define VOS_HTONS(x)    (x)
 #else
-#define VOS_NTOHL(x)    ((((x) & 0x000000ff) << 24) | \
-             (((x) & 0x0000ff00) <<  8) | \
-             (((x) & 0x00ff0000) >>  8) | \
-             (((x) & 0xff000000) >> 24))
+#define VOS_NTOHL(x)    ((((x) & 0x000000ffU) << 24) | \
+             (((x) & 0x0000ff00U) <<  8) | \
+             (((x) & 0x00ff0000U) >>  8) | \
+             (((x) & 0xff000000U) >> 24))
 
-#define VOS_HTONL(x)    ((((x) & 0x000000ff) << 24) | \
-             (((x) & 0x0000ff00) <<  8) | \
-             (((x) & 0x00ff0000) >>  8) | \
-             (((x) & 0xff000000) >> 24))
+#define VOS_HTONL(x)    ((((x) & 0x000000ffU) << 24) | \
+             (((x) & 0x0000ff00U) <<  8) | \
+             (((x) & 0x00ff0000U) >>  8) | \
+             (((x) & 0xff000000U) >> 24))
 
 #define VOS_NTOHS(x)    ((((x) & 0x00ff) << 8) | \
              (((x) & 0xff00) >> 8))
@@ -88,9 +88,6 @@ extern "C" {
 #define AT_PPP_CODE_REQ                 (1)
 #define AT_PPP_CODE_ACK                 (2)
 #define AT_PPP_DEF_ID                   (1)
-
-#define AT_AP_PPP_CODE_CHALLENGE        (1)
-#define AT_AP_PPP_CODE_RESPONSE         (2)
 
 #define AT_AP_PPP_CODE_CHALLENGE        (1)
 #define AT_AP_PPP_CODE_RESPONSE         (2)
@@ -190,9 +187,6 @@ extern "C" {
 
 #define AT_GetNdisConnParaAddr()                (&g_stAtNdisConnPara)
 
-#define AT_NDIS_IPV4_ADDR_LENGTH         (4)
-#define AT_NDIS_IPV6_ADDR_LENGTH         (16)
-#define AT_NDIS_MAX_PREFIX_NUM_IN_RA     (6)
 #define AT_APS_IP6_ADDR_PREFIX_BYTE_LEN  (8)
 
 #define AT_MAC_LEN                       (6)
@@ -457,6 +451,7 @@ typedef struct
     VOS_UINT8                           ucRabID;                                /* Rab ID*/
     VOS_UINT8                           ucCid;                                  /* CID*/
     AT_PDP_STATE_ENUM_U8                enState;                                /* State*/
+    VOS_UINT8                           aucReserved[3];
     VOS_UINT32                          ulFlowCtrlState;                        /* Flow Ctrl State ; 1: flow ctrl ,0: no flow ctrl*/
     VOS_UINT32                          ulSpeed;                                /* Um Speed*/
 
@@ -571,15 +566,16 @@ typedef struct
     VOS_UINT8   aucAPN[TAF_MAX_APN_LEN+1];                                      /* AT命令中输入的APN */
     VOS_UINT8   aucUsername[TAF_MAX_GW_AUTH_USERNAME_LEN+1];                    /* username指针*/
     VOS_UINT8   aucPassword[TAF_MAX_GW_AUTH_PASSWORD_LEN+1];                    /* password指针*/
+    VOS_UINT8   ucReserved;
     VOS_UINT16  usAuthType;
 } AT_NDISCONN_PARA_STRU;
 typedef struct
 {
     VOS_UINT32                          ulUsed;   /* 指定FCID对应的结点是否有效，VOS_TRUE:有效，VOS_FALSE:无效 */
-    FC_PRI_ENUM_UINT32                  ulFcPri;
     VOS_UINT32                          ulRabIdMask;
     MODEM_ID_ENUM_UINT16                enModemId;
-    VOS_UINT8                           aucReserve[2];                          /* 保留 */
+    FC_PRI_ENUM_UINT8                   enFcPri;
+    VOS_UINT8                           aucReserve[1];                          /* 保留 */
 } AT_FCID_MAP_STRU;
 
 
@@ -626,10 +622,9 @@ typedef struct
 
 typedef struct
 {
-    FC_ID_ENUM_UINT32                   enFcId;
     MODEM_ID_ENUM_UINT16                enModemId;
+    FC_ID_ENUM_UINT8                    enFcId;
     VOS_UINT8                           ucUsrCid;
-    VOS_UINT8                           ucRsv;
 }AT_PS_RMNET_ID_TAB;
 
 /*****************************************************************************
@@ -683,10 +678,6 @@ typedef struct
 extern VOS_UINT32                       g_ulLcStartTime;
 
 extern AT_PDP_ENTITY_STRU               g_stAtNdisDhcpPara;
-
-extern AT_DIAL_PARAM_STRU               gstAtNdisAddParam;
-
-extern TAF_PDP_TYPE_ENUM_UINT8          g_enAtNdisActPdpType;
 
 extern TAF_PDP_TYPE_ENUM_UINT8          g_enAtFirstNdisActPdpType;
 
@@ -1064,6 +1055,16 @@ VOS_UINT32 AT_ConvertIpv6AddrToCompressedStr(
     VOS_UINT8                           ucTokensNum
 );
 
+VOS_UINT32 AT_GetLanAddr32(
+  VOS_UINT8                            *pucAddr
+);
+TAF_UINT32 AT_DHCPGetIPMask(
+    TAF_UINT32                          ulIpAddrHL
+);
+VOS_UINT32 AT_DHCPGetGateWay(
+    VOS_UINT32                          ulIpAddrHL,
+    VOS_UINT32                          ulMaskHL
+);
 
 /*****************************************************************************
  函 数 名  : AT_CalcIpHdrCRC16
@@ -1249,19 +1250,6 @@ AT_PDP_STATE_ENUM_U8 AT_NdisGetState(
     VOS_UINT8                           ucCid
 );
 
-
-/*****************************************************************************
- 函 数 名  : AT_NdisGetState
- 功能描述  : 获取NDIS状态，激活态/非激活态
- 输入参数  : ucPdpType --- PDP类型
- 输出参数  : 无
- 返 回 值  : AT_PDP_STATE_ENUM_U8 当前状态 激活态/非激活态
- 调用函数  :
- 被调函数  :
-*****************************************************************************/
-AT_PDP_STATE_ENUM_U8 AT_NdisGetState(
-    VOS_UINT8                           ucPdpType
-);
 
 /*****************************************************************************
  函 数 名  : AT_NdisCheckPdpIdleState
@@ -1985,7 +1973,7 @@ VOS_UINT32 AT_AppClearFlowCtrl(
 /*****************************************************************************
  函 数 名  : AT_AppRegFCPoint
  功能描述  : 注册路由端口流控点
- 输入参数  : FC_ID_ENUM_UINT32                   ulFcId
+ 输入参数  : FC_ID_ENUM_UINT8                    enFcId
              TAF_PS_CALL_PDP_ACTIVATE_CNF_STRU  *pstEvent
  输出参数  : 无
  返 回 值  : VOS_UINT32
@@ -1993,7 +1981,7 @@ VOS_UINT32 AT_AppClearFlowCtrl(
  被调函数  :
 *****************************************************************************/
 VOS_UINT32 AT_AppRegFCPoint(
-    FC_ID_ENUM_UINT32                   ulFcId,
+    FC_ID_ENUM_UINT8                    enFcId,
     TAF_PS_CALL_PDP_ACTIVATE_CNF_STRU  *pstEvent,
     VOS_UINT8                           ucRmNetId
 );
@@ -2002,7 +1990,7 @@ VOS_UINT32 AT_AppRegFCPoint(
 /*****************************************************************************
  函 数 名  : AT_AppDeRegFCPoint
  功能描述  : 去注册路由设备流控点
- 输入参数  : FC_ID_ENUM_UINT32                   enFcId,
+ 输入参数  : FC_ID_ENUM_UINT8                      enFcId,
              TAF_PS_CALL_PDP_DEACTIVATE_CNF_STRU  *pstEvent
  输出参数  : 无
  返 回 值  : VOS_OK     - 去注册流控点成功
@@ -2011,7 +1999,7 @@ VOS_UINT32 AT_AppRegFCPoint(
  被调函数  :
 *****************************************************************************/
 VOS_UINT32 AT_AppDeRegFCPoint(
-    FC_ID_ENUM_UINT32                   enFcId,
+    FC_ID_ENUM_UINT8                     enFcId,
     TAF_PS_CALL_PDP_DEACTIVATE_CNF_STRU *pstEvent
 );
 
@@ -2133,7 +2121,7 @@ extern VOS_UINT32 AT_DeRegModemPsDataFCPoint(
  函 数 名  : AT_RegModemPsDataFCPoint
  功能描述  : 注册Modem端口流控点。
  输入参数  : TAF_PS_CALL_PDP_DEACTIVATE_CNF_STRU  *pstEvent
-             FC_ID_ENUM_UINT32                   ulFcId
+             FC_ID_ENUM_UINT8                      enFcId
  输出参数  : 无
  返 回 值  : VOS_UINT32
  调用函数  :
@@ -2142,14 +2130,14 @@ extern VOS_UINT32 AT_DeRegModemPsDataFCPoint(
 extern VOS_UINT32 AT_RegModemPsDataFCPoint(
     VOS_UINT8                           ucIndex,
     TAF_PS_CALL_PDP_ACTIVATE_CNF_STRU  *pstEvent,
-    FC_ID_ENUM_UINT32                   ulFcId
+    FC_ID_ENUM_UINT8                    enFcId
 );
 
 #if( FEATURE_ON == FEATURE_CSD )
 /*****************************************************************************
  函 数 名  : AT_RegModemVideoPhoneFCPoint
  功能描述  : 注册Modem端口CST流控点。
- 输入参数  : FC_ID_ENUM_UINT32                   ulFcId
+ 输入参数  : FC_ID_ENUM_UINT8                    enFcId
  输出参数  : 无
  返 回 值  : VOS_UINT32
  调用函数  :
@@ -2157,7 +2145,7 @@ extern VOS_UINT32 AT_RegModemPsDataFCPoint(
 *****************************************************************************/
 VOS_UINT32 AT_RegModemVideoPhoneFCPoint(
     VOS_UINT8                           ucIndex,
-    FC_ID_ENUM_UINT32                   ulFcId
+    FC_ID_ENUM_UINT8                    enFcId
 );
 
 /*****************************************************************************
@@ -2196,7 +2184,7 @@ VOS_VOID  AT_ProcNdisDeRegFCPoint(
 *****************************************************************************/
 extern VOS_UINT32 AT_RegNdisFCPoint(
     TAF_PS_CALL_PDP_ACTIVATE_CNF_STRU  *pstEvent,
-    FC_ID_ENUM_UINT32                   ulFcId,
+    FC_ID_ENUM_UINT8                    enFcId,
     MODEM_ID_ENUM_UINT16                enModemId
 );
 
@@ -2298,18 +2286,17 @@ extern VOS_VOID AT_NdisIpv4v6ActCnfProc(
 );
 #endif
 
-extern VOS_UINT32 OM_AcpuTraceMsgHook(VOS_VOID* pMsg);
 
 /*****************************************************************************
  函 数 名  : AT_GetFCPriFromQos
  功能描述  : Qos转化为FC优先级
  输入参数  : TAF_UMTS_QOS_STRU                  *pstUmtsQos
  输出参数  : 无
- 返 回 值  : FC_PRI_ENUM_UINT32
+ 返 回 值  : FC_PRI_ENUM_UINT8
  调用函数  :
  被调函数  :
 *****************************************************************************/
-extern FC_PRI_ENUM_UINT32 AT_GetFCPriFromQos(
+extern FC_PRI_ENUM_UINT8 AT_GetFCPriFromQos(
     TAF_UMTS_QOS_STRU                  *pstUmtsQos
 );
 
@@ -2346,7 +2333,7 @@ extern VOS_VOID AT_GetPdpContextFromAtDialParam(
 /*****************************************************************************
  函 数 名  : AT_GetFcPriFromMap
  功能描述  : 获取指定FC ID的FC PRI
- 输入参数  : FC_ID_ENUM_UINT32                  enFcId,
+ 输入参数  : FC_ID_ENUM_UINT8                   enFcId,
              AT_FCID_MAP_STRU                  *pstFcIdMap
  输出参数  : 无
  返 回 值  : VOS_UINT32
@@ -2354,7 +2341,7 @@ extern VOS_VOID AT_GetPdpContextFromAtDialParam(
  被调函数  :
 *****************************************************************************/
 extern VOS_UINT32 AT_GetFcPriFromMap(
-    FC_ID_ENUM_UINT32                  enFcId,
+    FC_ID_ENUM_UINT8                   enFcId,
     AT_FCID_MAP_STRU                  *pstFcIdMap
 );
 
@@ -2362,7 +2349,7 @@ extern VOS_UINT32 AT_GetFcPriFromMap(
 
 VOS_VOID AT_NotifyFcWhenPdpModify(
     TAF_PS_CALL_PDP_MODIFY_CNF_STRU    *pstEvent,
-    FC_ID_ENUM_UINT32                   enFcId
+    FC_ID_ENUM_UINT8                    enFcId
 );
 
 #if 0
@@ -2488,8 +2475,8 @@ VOS_UINT32 AT_UsbEthDeviceAccumTuneCB(
  函 数 名  : AT_ChangeFCPoint
  功能描述  : 更改流控点优先级。
  输入参数  : TAF_PS_CALL_PDP_ACTIVATE_CNF_STRU   *pstEvent,
-             FC_PRI_ENUM_UINT32                   enFCPri,
-             FC_ID_ENUM_UINT32                    ulFcId
+             FC_PRI_ENUM_UINT8                    enFCPri,
+             FC_ID_ENUM_UINT8                     enFcId
  输出参数  : 无
  返 回 值  : VOS_UINT32
  调用函数  :
@@ -2497,8 +2484,8 @@ VOS_UINT32 AT_UsbEthDeviceAccumTuneCB(
 *****************************************************************************/
 extern VOS_UINT32 AT_ChangeFCPoint(
     TAF_CTRL_STRU                       *pstCtrl,
-    FC_PRI_ENUM_UINT32                   enFCPri,
-    FC_ID_ENUM_UINT32                    ulFcId
+    FC_PRI_ENUM_UINT8                    enFCPri,
+    FC_ID_ENUM_UINT8                     enFcId
 );
 
 extern VOS_UINT32 AT_EnableHsicFlowCtl(
@@ -2856,11 +2843,6 @@ VOS_VOID AT_PS_FreeCallEntity(
     VOS_UINT8                           ucCallId
 );
 
-VOS_UINT32 AT_PS_IsLinkDown(
-    VOS_UINT16                          usClientId,
-    VOS_UINT8                           ucCallId
-);
-
 VOS_UINT32 AT_PS_ValidateDialParam(VOS_UINT8 ucIndex);
 
 VOS_VOID AT_PS_ParseUsrInfo(
@@ -2896,11 +2878,6 @@ extern VOS_UINT32 AT_CheckApnFormat(
     VOS_UINT16                          usApnLen
 );
 
-#if (FEATURE_ON == FEATURE_IPV6)
-extern VOS_UINT32 AT_CheckIpv6Capability(
-    VOS_UINT8                           ucPdpType
-);
-#endif
 
 VOS_VOID AT_PS_AssignCallIdToCid(
     VOS_UINT16                          usClientId,
@@ -3210,9 +3187,9 @@ VOS_UINT32 AT_PS_IsLinkDown(
  功能描述  : 获取RNIC网卡的FCID
  输入参数  : VOS_UINT32                          ulRmNetId
  输出参数  : 无
- 返 回 值  : FC_ID_ENUM_UINT32
+ 返 回 值  : FC_ID_ENUM_UINT8
 *****************************************************************************/
-FC_ID_ENUM_UINT32 AT_PS_GetFcIdFromRnicByRmNetId(
+FC_ID_ENUM_UINT8 AT_PS_GetFcIdFromRnicByRmNetId(
     VOS_UINT32                          ulRmNetId
 );
 
@@ -3221,9 +3198,9 @@ FC_ID_ENUM_UINT32 AT_PS_GetFcIdFromRnicByRmNetId(
  功能描述  : 通过DIPC通道ID获得FCID
  输入参数  : UDI_DEVICE_ID                       enDataChannelId
  输出参数  : 无
- 返 回 值  : FC_ID_ENUM_UINT32
+ 返 回 值  : FC_ID_ENUM_UINT8
 *****************************************************************************/
-FC_ID_ENUM_UINT32 AT_PS_GetFcIdByUdiDeviceId(
+FC_ID_ENUM_UINT8 AT_PS_GetFcIdByUdiDeviceId(
     UDI_DEVICE_ID                       enDataChannelId
 );
 

@@ -55,8 +55,6 @@ extern "C" {
 #define nv_taskdelay(n)  taskDelay(n)
 
 #undef printf
-#define printf(fmt,...)     bsp_trace(BSP_LOG_LEVEL_ERROR,BSP_MODU_NV,fmt,##__VA_ARGS__)
-
 
 #endif
 #define nv_flush_cache(ptr, size) mb()
@@ -170,7 +168,7 @@ struct nv_global_ctrl_info_stru
     spinlock_t spinlock;
     struct task_struct *task_id;
     u32 icc_core_type;
-    u32 shared_addr;
+    void * shared_addr;
     u32 icc_cb_count;
     u32 task_proc_count;
     struct list_head stList;

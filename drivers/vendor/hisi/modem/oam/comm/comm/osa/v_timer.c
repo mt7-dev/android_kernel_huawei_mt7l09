@@ -92,6 +92,7 @@ typedef struct VOS_TIMER_CONTROL_STRU
     VOS_PID         Pid;/* who allocate the timer */
     VOS_UINT32      Name;/* timer's name */
     VOS_UINT32      Para;/* timer's paremate */
+    VOS_UINT8       aucRsv[4];
     REL_TIMER_FUNC  CallBackFunc;/* timer's callback function */
     HTIMER          *phTm;/* user's pointer which point the real timer room */
     VOS_UINT32      TimeOutValueInMilliSeconds;
@@ -172,7 +173,7 @@ VOS_SPINLOCK             g_stVosTimerSpinLock;
 VOS_TIMER_SOC_TIMER_INFO_STRU g_st26MSocTimerInfo;
 
 /* the semaphore will be given when 26M's interrupt occures */
-VOS_UINT32                    g_ulVos26MSem;
+VOS_SEM                       g_ulVos26MSem;
 
 /*record start value */
 VOS_UINT32                    g_ulVos26MStartValue = ELAPESD_TIME_INVAILD;
@@ -301,7 +302,7 @@ VOS_VOID VOS_TimerCtrlBlkInit(VOS_VOID)
     vos_TimerIdleCtrlBlk = vos_TimerCtrlBlk;
     vos_TimerCtrlBlkBegin = (VOS_VOID *)vos_TimerCtrlBlk;
     vos_TimerCtrlBlkEnd
-        = (VOS_VOID*)( (VOS_UINT32)(vos_TimerCtrlBlk)
+        = (VOS_VOID*)( (VOS_UINT_PTR)(vos_TimerCtrlBlk)
               + vos_TimerCtrlBlkNumber * sizeof(VOS_TIMER_CONTROL_BLOCK) );
 
     for(i=0; i<vos_TimerCtrlBlkNumber-1; i++)
@@ -409,8 +410,8 @@ VOS_UINT32 VOS_TimerCtrlBlkFree(VOS_TIMER_CONTROL_BLOCK *Ptr, VOS_UINT8 ucTag )
 {
     /*int             intLockLevel;*/
 
-    if ( (VOS_UINT32)Ptr < (VOS_UINT32)vos_TimerCtrlBlkBegin
-        || (VOS_UINT32)Ptr > (VOS_UINT32)vos_TimerCtrlBlkEnd )
+    if ( (VOS_UINT_PTR)Ptr < (VOS_UINT_PTR)vos_TimerCtrlBlkBegin
+        || (VOS_UINT_PTR)Ptr > (VOS_UINT_PTR)vos_TimerCtrlBlkEnd )
     {
         return VOS_ERR;
     }
@@ -454,12 +455,13 @@ VOS_VOID VOS_TimerTaskFunc( VOS_UINT32 Para0, VOS_UINT32 Para1,
     /* the timer head control which expire */
     VOS_TIMER_CONTROL_BLOCK     *vos_Timer_expire_head_Ptr = VOS_NULL_PTR;
     VOS_TIMER_CONTROL_BLOCK     *vos_Timer_expire_tail_Ptr = VOS_NULL_PTR;
-    VOS_UINT32                   ulLockLevel;
+    VOS_ULONG                    ulLockLevel;
     REL_TIMER_MSG               *pstExpireMsg;
     VOS_UINT32                   ulTempCount;
 #if (VOS_YES == VOS_26M_TIMER_ENABLE_SOC_TIMER)    
     VOS_UINT32                   ulElapsedCycles;
 #endif
+    VOS_UINT_PTR                 TempValue;
 
     vos_CPU_TICK.ulHigh = 0;
     vos_CPU_TICK.ulLow = 0;
@@ -595,9 +597,10 @@ VOS_VOID VOS_TimerTaskFunc( VOS_UINT32 Para0, VOS_UINT32 Para1,
                     }
                 }
 
+                TempValue = (VOS_UINT_PTR)(vos_Timer_expire_head_Ptr->CallBackFunc);
 
                 /* CallBackFunc需要用32位传入，所以和name互换位置保证数据不丢失 */
-                OM_RecordInfoStart(VOS_EXC_DUMP_MEM_NUM_4, (VOS_UINT32)(vos_Timer_expire_head_Ptr->Pid), vos_Timer_expire_head_Ptr->Name, (VOS_UINT32)(vos_Timer_expire_head_Ptr->CallBackFunc));
+                OM_RecordInfoStart(VOS_EXC_DUMP_MEM_NUM_4, (VOS_UINT32)(vos_Timer_expire_head_Ptr->Pid), vos_Timer_expire_head_Ptr->Name, (VOS_UINT32)TempValue);
 
                 if ( VOS_NULL_PTR == vos_Timer_expire_head_Ptr->CallBackFunc )
                 {
@@ -611,10 +614,13 @@ VOS_VOID VOS_TimerTaskFunc( VOS_UINT32 Para0, VOS_UINT32 Para1,
                         pstExpireMsg->ulPara = vos_Timer_expire_head_Ptr->Para;
 
 #if (VOS_YES == VOS_TIMER_CHECK)
+                        TempValue            = (VOS_UINT_PTR)(vos_Timer_expire_head_Ptr->ulAllocTick);
                         pstExpireMsg->pNext
-                            = (struct REL_TIMER_MSG_STRU *)(vos_Timer_expire_head_Ptr->ulAllocTick);
+                            = (struct REL_TIMER_MSG_STRU *)TempValue;
+
+                        TempValue            = (VOS_UINT_PTR)VOS_GetSlice();
                         pstExpireMsg->pPrev
-                            = (struct REL_TIMER_MSG_STRU *)VOS_GetSlice();
+                            = (struct REL_TIMER_MSG_STRU *)TempValue;
 #endif
 
                         if(VOS_OK != VOS_SendMsg( DOPRA_PID_TIMER,
@@ -932,7 +938,7 @@ VOS_UINT32 V_Start26MRelTimer( HTIMER *phTm, VOS_PID Pid, VOS_UINT32 ulLength,
 {
     VOS_TIMER_CONTROL_BLOCK  *Timer;
     VOS_UINT32               TimerId;
-    VOS_UINT32               ulLockLevel;
+    VOS_ULONG                ulLockLevel;
 
     /* stop the timer if exists */
     /*intLockLevel = VOS_SplIMP();*/
@@ -1054,6 +1060,11 @@ VOS_VOID Del_Timer_From_List( VOS_TIMER_CONTROL_BLOCK  *Timer)
         {
             Timer->next->TimeOutValueInTicks -= VOS_Get26MHardTimerElapsedTime();
 
+            if(0 == Timer->next->TimeOutValueInTicks)
+            {
+                Timer->next->TimeOutValueInTicks += 1;
+            }
+
             VOS_Start26MHardTimer(Timer->next->TimeOutValueInTicks);
         }
 #endif        
@@ -1132,7 +1143,7 @@ VOS_UINT32 V_Stop26MRelTimer( HTIMER *phTm, VOS_UINT32 ulFileID, VOS_INT32 lLine
  *****************************************************************************/
 VOS_UINT32 V_StopRelTimer( HTIMER *phTm, VOS_UINT32 ulFileID, VOS_INT32 usLineNo )
 {
-    VOS_UINT32               ulLockLevel;
+    VOS_ULONG                ulLockLevel;
     VOS_UINT32               ulReturn;
     VOS_TIMER_OM_EVENT_STRU  stTimerEvent;
 
@@ -1178,7 +1189,7 @@ VOS_UINT32 V_RestartRelTimer( HTIMER *phTm, VOS_UINT32 ulFileID,
 {
     VOS_UINT32               TimerId;
     VOS_TIMER_CONTROL_BLOCK  *Timer;
-    VOS_UINT32               ulLockLevel;
+    VOS_ULONG                ulLockLevel;
     VOS_UINT32               ulReturn;
     VOS_TIMER_OM_EVENT_STRU  stTimerEvent;
 
@@ -1279,7 +1290,7 @@ VOS_UINT32 V_GetRelTmRemainTime( HTIMER * phTm, VOS_UINT32 * pulTick,
     VOS_UINT32                  remain_value = 0;
     VOS_TIMER_CONTROL_BLOCK     *head_Ptr;
     VOS_TIMER_CONTROL_BLOCK     *temp_Ptr;
-    VOS_UINT32                  ulLockLevel;
+    VOS_ULONG                   ulLockLevel;
     VOS_UINT32                  ulTempTick;/* this should be del */
 
     if( VOS_NULL_PTR == phTm )
@@ -1388,8 +1399,8 @@ VOS_BOOL VOS_Is26MTimer( HTIMER *phTm )
 
     /*intLockLevel = VOS_SplIMP();*/
 
-    if ( ((VOS_UINT32)*phTm >= (VOS_UINT32)vos_TimerCtrlBlkBegin)
-        && ((VOS_UINT32)*phTm < (VOS_UINT32)vos_TimerCtrlBlkEnd) )
+    if ( ((VOS_UINT_PTR)*phTm >= (VOS_UINT_PTR)vos_TimerCtrlBlkBegin)
+        && ((VOS_UINT_PTR)*phTm < (VOS_UINT_PTR)vos_TimerCtrlBlkEnd) )
     {
         /*VOS_Splx(intLockLevel);*/
 
@@ -1718,7 +1729,7 @@ VOS_UINT32 VOS_GetTick( VOS_VOID )
 
 #endif
 
-#if ( (VOS_WIN32 == VOS_OS_VER) || ( VOS_LINUX == VOS_OS_VER ) )
+#if (VOS_WIN32 == VOS_OS_VER)
 #ifndef DMT
 VOS_UINT32 VOS_GetTick( VOS_VOID )
 {
@@ -1726,6 +1737,14 @@ VOS_UINT32 VOS_GetTick( VOS_VOID )
 }
 #endif /* DMT */
 #endif
+
+#if ( VOS_LINUX == VOS_OS_VER )
+VOS_UINT32 VOS_GetTick( VOS_VOID )
+{
+    return (VOS_UINT32)jiffies;
+}
+#endif
+
 
 #if (VOS_NUCLEUS == VOS_OS_VER)
 
@@ -2250,7 +2269,7 @@ VOS_UINT32 V_Start26MCallBackRelTimer( HTIMER *phTm, VOS_PID Pid,
 {
     VOS_TIMER_CONTROL_BLOCK  *Timer;
     VOS_UINT32               TimerId;
-    VOS_UINT32               ulLockLevel;
+    VOS_ULONG                ulLockLevel;
 
     /* stop the timer if exists */
     /*intLockLevel = VOS_SplIMP();*/
@@ -2630,7 +2649,7 @@ VOS_BOOL VOS_CalcTimerInfo(VOS_VOID)
  *****************************************************************************/
 VOS_VOID VOS_ShowUsed26MTimerInfo( VOS_VOID )
 {
-    VOS_UINT32                   ulLockLevel;
+    VOS_ULONG                    ulLockLevel;
     VOS_TIMER_CONTROL_BLOCK     *pstTimer;
 
     LogPrint("# VOS_ShowUsed26MTimerInfo:");
@@ -2678,7 +2697,7 @@ VOS_VOID VOS_MagnifyTimerLength(VOS_UINT32 ulRatio )
  *****************************************************************************/
 VOS_VOID VOS_TimerDump(VOS_INT lModId, VOS_UINT32 ulFileID, VOS_UINT32 ulLineNo)
 {
-    VOS_UINT32                ulLockLevel;
+    VOS_ULONG                 ulLockLevel;
     VOS_UINT32               *pulDumpBuffer;
     VOS_TIMER_CONTROL_BLOCK  *pstTimer;
 

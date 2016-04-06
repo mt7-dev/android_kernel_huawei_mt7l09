@@ -28,7 +28,7 @@ AS			:= $(SOURCEANALYZER) $(CCACHE) $(TENSILICA_TOOLS)/XtensaTools/bin/xt-xcc
 AR			:= $(SOURCEANALYZER) $(TENSILICA_TOOLS)/XtensaTools/bin/xt-ar 
 LD			:= $(SOURCEANALYZER) $(TENSILICA_TOOLS)/XtensaTools/bin/xt-xc++ 
 SIZE		:= $(TENSILICA_TOOLS)/XtensaTools/bin/xt-size
-ASC_TO_BIN_TOOL := $(BALONG_TOPDIR)/build/tools/utility/tools/asc_to_bin.exe
+ASC_TO_BIN_TOOL := $(BALONG_TOPDIR)/build/tools/utility/tools/asc2bin.py
 
 CC_FLAGS	:= -c -OPT:space_flix=1 -Os -fno-zero-initialized-in-bss -fcommon -fmessage-length=0 -ffunction-sections -DPROC_$(CFG_XTENSA_CORE) -DCONFIG_$(CFG_XTENSA_CORE) \
 				-DTENSILICA_PLATFORM -DLPS_RTT --xtensa-system=$(subst \,/,$(CFG_XTENSA_SYSTEM)) --xtensa-core=$(CFG_XTENSA_CORE) --xtensa-params= 
@@ -168,27 +168,22 @@ endif
 	@echo $(OBC_LOCAL_MOUDLE_NAME)  Code Size Info: >> "$(CODE_SIZE_FILE)"
 	@-$(SIZE) -t $(LOCAL_LIBRARY)               >> "$(CODE_SIZE_FILE)"
 
-# image file BIN & NM
-do_post_build : $(LOCAL_IMAGE_FILE)
-	@echo - do [$@]
-
-$(LOCAL_IMAGE_FILE) : $(LOCAL_LIBRARY) | do_post_build_before
-	$(Q)echo [BIN] $@
 	$(Q)xt-nm --format=posix $(LOCAL_LIBRARY) > $(LOCAL_MAP_FILE)
 	$(Q)xt-objdump -D $(LOCAL_LIBRARY)    > "$(LOCAL_DUMP_FILE)" && xt-objdump -h $(LOCAL_LIBRARY)
-	#$(Q)xt-objcopy -R .debug_aranges $(LOCAL_LIBRARY)
-	#$(Q)xt-objcopy -R .debug_abbrev $(LOCAL_LIBRARY)
-	#$(Q)xt-objcopy -R .debug_pubnames $(LOCAL_LIBRARY)
-	#$(Q)xt-objcopy -R .debug_info $(LOCAL_LIBRARY)
-	#$(Q)xt-objcopy -R .debug_line $(LOCAL_LIBRARY)
-	#$(Q)xt-objcopy -R .xtensa.info $(LOCAL_LIBRARY)
-	#$(Q)xt-objcopy -R .xt.lit $(LOCAL_LIBRARY)
-	#$(Q)xt-objcopy -R .xt.prop $(LOCAL_LIBRARY)
-	$(Q)xt-objcopy -R .debug_aranges -R .debug_abbrev -R .debug_pubnames -R .debug_info -R .debug_line -R .xtensa.info -R .xt.lit -R .xt.prop -R .comment $(LOCAL_LIBRARY)
-	$(Q)xt-dumpelf $(DTCM_FLAGS) $(LOCAL_LIBRARY) > $(LOCAL_OBJ_PATH)/$(OBC_LOCAL_MOUDLE_NAME)_dtcm.dram0.tmp
-	wine $(ASC_TO_BIN_TOOL) $(LOCAL_OBJ_PATH)/$(OBC_LOCAL_MOUDLE_NAME)_dtcm.dram0.tmp $(LOCAL_MOUDLE_DTCM_NAME)
+	$(Q)xt-objcopy -R .xtensa.info -R .xt.lit -R .xt.prop -R .comment $(LOCAL_LIBRARY)
+#	$(Q)xt-objcopy -R .debug_aranges -R .debug_abbrev -R .debug_pubnames -R .debug_info -R .debug_line -R .xtensa.info -R .xt.lit -R .xt.prop -R .comment $(LOCAL_LIBRARY)
+	
+# image file BIN & NM
+do_post_build : $(LOCAL_MOUDLE_ITCM_NAME) $(LOCAL_MOUDLE_DTCM_NAME)
+	@echo - do [$@]
+
+$(LOCAL_MOUDLE_ITCM_NAME) : $(LOCAL_LIBRARY) | do_post_build_before
 	$(Q)xt-dumpelf $(ITCM_FLAGS) $(LOCAL_LIBRARY) > $(LOCAL_OBJ_PATH)/$(OBC_LOCAL_MOUDLE_NAME)_itcm.iram0.tmp
-	wine $(ASC_TO_BIN_TOOL) $(LOCAL_OBJ_PATH)/$(OBC_LOCAL_MOUDLE_NAME)_itcm.iram0.tmp $(LOCAL_MOUDLE_ITCM_NAME)
+	$(ASC_TO_BIN_TOOL) $(LOCAL_OBJ_PATH)/$(OBC_LOCAL_MOUDLE_NAME)_itcm.iram0.tmp $(LOCAL_MOUDLE_ITCM_NAME)
+
+$(LOCAL_MOUDLE_DTCM_NAME) : $(LOCAL_LIBRARY) | do_post_build_before
+	$(Q)xt-dumpelf $(DTCM_FLAGS) $(LOCAL_LIBRARY) > $(LOCAL_OBJ_PATH)/$(OBC_LOCAL_MOUDLE_NAME)_dtcm.dram0.tmp
+	$(ASC_TO_BIN_TOOL) $(LOCAL_OBJ_PATH)/$(OBC_LOCAL_MOUDLE_NAME)_dtcm.dram0.tmp $(LOCAL_MOUDLE_DTCM_NAME)
 
 
 # Clean up 

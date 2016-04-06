@@ -40,6 +40,10 @@ struct v4l2_ioctl_ops {
 					      struct v4l2_fmtdesc *f);
 	int (*vidioc_enum_fmt_vid_out_mplane)(struct file *file, void *fh,
 					      struct v4l2_fmtdesc *f);
+    /*linux kernel3.10 update, 20140303, begin*/
+	int (*vidioc_enum_fmt_type_private)(struct file *file, void *fh,
+					    struct v4l2_fmtdesc *f);
+    /*linux kernel3.10 update, 20140303, end*/
 
 	/* VIDIOC_G_FMT handlers */
 	int (*vidioc_g_fmt_vid_cap)    (struct file *file, void *fh,
@@ -62,6 +66,12 @@ struct v4l2_ioctl_ops {
 					   struct v4l2_format *f);
 	int (*vidioc_g_fmt_vid_out_mplane)(struct file *file, void *fh,
 					   struct v4l2_format *f);
+    /*linux kernel3.10 update, balong need this interface, 20140303, begin*/
+    /* [media] v4l2-core: deprecate V4L2_BUF_TYPE_PRIVATE. The decisions to 
+       deprecate this was taken during the 2012 Media Workshop.20120917 */
+	int (*vidioc_g_fmt_type_private)(struct file *file, void *fh,
+				       struct v4l2_format *fmt);
+    /*linux kernel3.10 update, balong need this interface, 20140303, end*/
 
 	/* VIDIOC_S_FMT handlers */
 	int (*vidioc_s_fmt_vid_cap)    (struct file *file, void *fh,
@@ -84,6 +94,10 @@ struct v4l2_ioctl_ops {
 					   struct v4l2_format *f);
 	int (*vidioc_s_fmt_vid_out_mplane)(struct file *file, void *fh,
 					   struct v4l2_format *f);
+    /*linux kernel3.10 update, 20140303, begin*/
+	int (*vidioc_s_fmt_type_private)(struct file *file, void *fh,
+					struct v4l2_format *f);
+    /*linux kernel3.10 update, 20140303, end*/
 
 	/* VIDIOC_TRY_FMT handlers */
 	int (*vidioc_try_fmt_vid_cap)    (struct file *file, void *fh,
@@ -106,6 +120,10 @@ struct v4l2_ioctl_ops {
 					     struct v4l2_format *f);
 	int (*vidioc_try_fmt_vid_out_mplane)(struct file *file, void *fh,
 					     struct v4l2_format *f);
+    /*linux kernel3.10 update, 20140303, begin*/
+	int (*vidioc_try_fmt_type_private)(struct file *file, void *fh,
+					  struct v4l2_format *f);
+    /*linux kernel3.10 update, 20140303, end*/
 
 	/* Buffer handlers */
 	int (*vidioc_reqbufs) (struct file *file, void *fh, struct v4l2_requestbuffers *b);

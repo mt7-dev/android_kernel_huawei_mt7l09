@@ -18,7 +18,7 @@ comment "DX CC-P coherent dma ops"
 
 config DX_DISABLE_COHERENT_DMA_OPS
 	bool "DX CC-P coherent dma ops"
-	default y
+	default n
 	help
 	  DX CC-P coherent dma ops
 

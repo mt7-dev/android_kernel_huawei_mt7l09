@@ -147,33 +147,39 @@ static unsigned int bsp_bbp_get_twmtcmos_status(void)
     unsigned int ret	= 0;
 	unsigned int temp	= 0;
 	u32 board_type = bsp_version_get_board_chip_type();
-
+#ifdef ENABLE_BUILD_OM
 	/*add log*/
 	TdsIntLogCnt++;
 	if (TdsIntLogCnt >=BBP_INT_COUNT)
 		TdsIntLogCnt = 0;
 	TdsIntSliceLog[TdsIntLogCnt] = bsp_get_slice_value();
-
+#endif
 	if(HW_VER_K3V3_FPGA == board_type || HW_VER_PRODUCT_P531_FPGA == board_type){
+	#ifdef ENABLE_BUILD_OM
 		TdsIntRegLog[TdsIntLogCnt]= 0x5a5a5a5a;
+	#endif
 		return 1;
 	}
 	else{
              ret = get_hi_pwr_stat4_twbbp_mtcmos_ctrl();
+			 #ifdef ENABLE_BUILD_OM
 			 TdsIntRegLog[TdsIntLogCnt]= ret;
-
+			 #endif
 			 temp = get_hi_pwr_stat1_twbbp_mtcmos_rdy();
              ret &= temp;
+			 #ifdef ENABLE_BUILD_OM
 			 TdsIntRegLog[TdsIntLogCnt]|= temp<<8;
-			 
+			 #endif
              temp = bsp_bbp_pwrctrl_tdsbbp_clk_getstatus();
 			 ret &= temp;
+			 #ifdef ENABLE_BUILD_OM
 			 TdsIntRegLog[TdsIntLogCnt]|= temp<<16;
-
+			#endif
              temp = get_hi_pwr_stat1_twbbp_mtcmos_rdy();
 			 ret &= temp;
+			 #ifdef ENABLE_BUILD_OM
 			 TdsIntRegLog[TdsIntLogCnt]|= temp<<24;
-
+			#endif
 		    return ret;
 	}
 }
@@ -1600,7 +1606,7 @@ void bbp_wakeup_int_clear(PWC_COMM_MODE_E mode)
 * 输 出 : void
 * 返 回 : bbp睡眠剩余时间，单位为32.768KHz时钟计数
 *****************************************************************************/
-static u32 bbp_get_wakeup_time(PWC_COMM_MODE_E mode)
+u32 bbp_get_wakeup_time(PWC_COMM_MODE_E mode)
 {
 
 	u32 sleep_t = 0;/*一共睡多长时间*/
@@ -2222,7 +2228,9 @@ int bbp_int_init(void)
 	int ret 	= BSP_OK;
 	u32 chip_ver= 0;
 #ifdef BSP_CONFIG_HI3630
+#ifdef ENABLE_BUILD_OM
 	u8 *buf_temp =NULL;
+#endif
 #endif
     bbp_print_info("bbp_int_init begin\n",0,1,2,3,4,5);
 
@@ -2272,11 +2280,13 @@ int bbp_int_init(void)
 			;
 	}
 #ifdef BSP_CONFIG_HI3630
+#ifdef ENABLE_BUILD_OM
     buf_temp       = bsp_dump_register_field((u32)DUMP_SAVE_MOD_RUN_TRACE, DUMP_EXT_RUN_TRACE_SIZE);
 	memset(buf_temp,0,DUMP_EXT_RUN_TRACE_SIZE);
 	
 	TdsIntRegLog   = (u32 *)buf_temp;
 	TdsIntSliceLog = (u32 *)(buf_temp + DUMP_EXT_RUN_TRACE_SIZE/2);
+#endif
 #endif
 	bbp_print_error("bbp_int_init OK\n",0,1,2,3,4,5);
     return ret;

@@ -119,6 +119,9 @@ extern unsigned long bitmap_find_next_zero_area(unsigned long *map,
 					 unsigned long start,
 					 unsigned int nr,
 					 unsigned long align_mask);
+extern unsigned long bitmap_find_last_zero_area(const unsigned long *map,
+					 unsigned long size,
+					 unsigned int nr);
 
 extern int bitmap_scnprintf(char *buf, unsigned int len,
 			const unsigned long *src, int nbits);

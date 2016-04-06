@@ -16,6 +16,7 @@ OBC_LOCAL_INC_DIR += \
     $(BALONG_SRC_PATH)/include/drv \
     $(BALONG_SRC_PATH)/include/drv/MODULE_H \
     $(BALONG_SRC_PATH)/include/nv/gu/codec \
+	$(BALONG_SRC_PATH)/include/nv/gu/oam \
     $(BALONG_SRC_PATH)/include/med \
     $(BALONG_SRC_PATH)/include/oam/gu/log \
     $(BALONG_SRC_PATH)/include/oam/comm/om \

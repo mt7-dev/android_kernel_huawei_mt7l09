@@ -48,9 +48,22 @@ extern "C" {
 #define NAS_MMC_MAX_USER_CFG_EHPLMN_NUM                     (6)                 /* 用户配置的EHplmn的个数 */
 #define NAS_MMC_MAX_BLACK_LOCK_PLMN_WITH_RAT_NUM            (8)                 /* 禁止接入技术的PLMN ID的最大个数 */
 
+#define NAS_MMC_CMCC_PLMN_LIST                              (4)
+#define NAS_MMC_UNICOM_PLMN_LIST                            (3)
+#define NAS_MMC_CT_PLMN_LIST                                (2)
+
 /*****************************************************************************
   3 枚举定义
 *****************************************************************************/
+enum NAS_MMC_HPLMN_TYPE_ENUM
+{
+    NAS_MMC_HPLMN_TYPE_CMCC                     = 0,            /*中国移动*/
+    NAS_MMC_HPLMN_TYPE_UNICOM                   = 1,            /* 中国联通 */
+    NAS_MMC_HPLMN_TYPE_CT                       = 2,            /* 中国电信*/
+    NAS_MMC_HPLMN_TYPE_BUTT
+};
+typedef VOS_UINT8 NAS_MMC_HPLMN_TYPE_ENUM_UINT8;
+
 
 /*****************************************************************************
   4 全局变量声明
@@ -91,6 +104,7 @@ VOS_VOID NAS_MMC_ReadChangeRegRejCauFlgNvim( VOS_VOID );
 NAS_MML_CHANGE_REG_REJ_CAUSE_TYPE_ENUM_UINT8 NAS_MMC_ConvertNvimChangeRegRejTypeToMmlType( 
     NAS_NVIM_CHANGE_REG_REJ_CAUSE_TYPE_ENUM_UINT8           enNvimType
 );
+VOS_VOID NAS_MMC_ReadRoamingRejectNoRetryFlgNvim( VOS_VOID );
 VOS_VOID NAS_MMC_ReadSupported3GppReleaseNvim(VOS_VOID);
 VOS_VOID NAS_MMC_ReadClassMark1Nvim(VOS_VOID);
 VOS_VOID NAS_MMC_ReadClassMark2Nvim(VOS_VOID);
@@ -102,6 +116,9 @@ VOS_VOID NAS_MMC_UpdateNetworkCapabilityGeaValue(VOS_VOID);
 VOS_VOID NAS_MMC_ReadUseSingleRplmnFlagNvim(VOS_VOID);
 
 VOS_VOID NAS_MMC_ReadRplmnWithRatNvim(VOS_VOID);
+VOS_VOID NAS_MMC_ReadNvimLastRplmnRat(
+    NAS_MML_NET_RAT_TYPE_ENUM_UINT8    *penNvimLastRplmnRat
+);
 
 VOS_VOID NAS_MMC_WriteRplmnWithRatNvim(VOS_VOID);
 
@@ -284,6 +301,9 @@ VOS_VOID NAS_MMC_ReadModemRfShareCfgNvim(VOS_VOID);
 
 #endif
 
+VOS_VOID NAS_MMC_ReadUmtsCodecTypeNvim(VOS_VOID);
+VOS_VOID NAS_MMC_ReadMedCodecTypeNvim(VOS_VOID);
+
 
 VOS_VOID NAS_MMC_ReadWgRfMainBandNvim( VOS_VOID );
 
@@ -296,14 +316,35 @@ VOS_VOID NAS_MMC_ReadLteDisabledUseLteInfoFlagNvim(VOS_VOID);
 VOS_VOID NAS_MMC_ReadCsOnlyDataServiceSupportNvim( VOS_VOID );
 
 VOS_VOID NAS_MMC_ReadIgnoreAuthRejFlgNvim(VOS_VOID);
-VOS_VOID NAS_MMC_ReadHighPrioRatHplmnTimerInfoNvim( VOS_VOID  );
+VOS_VOID NAS_MMC_ReadHighPrioRatHplmnTimerCfgNvim( VOS_VOID  );
 VOS_VOID NAS_MMC_ReadSBMCustomDualIMSIConfigNvim(VOS_VOID);
 VOS_VOID NAS_MMC_ReadRPLMNConfigNvim(VOS_VOID);
 #if  (FEATURE_ON == FEATURE_LTE)
 VOS_VOID NAS_MMC_ReadUltraFlashCsfbSupportFlgNvim(VOS_VOID);
+VOS_VOID NAS_MMC_ReadSrvccSupportFlgNvim(VOS_VOID);
 #endif
 
 VOS_VOID NAS_MMC_Read3GPP2UplmnNotPrefFlgNvim(VOS_VOID);
+
+VOS_VOID NAS_MMC_ReadSyscfgTriPlmnSrchCfgNvim(VOS_VOID);
+VOS_VOID  NAS_MMC_ReadDplmnNplmnInfoNvim(VOS_VOID);
+NAS_MMC_HPLMN_TYPE_ENUM_UINT8 NAS_MMC_JudegeHplmnType(
+    NAS_MML_PLMN_ID_STRU               *pstHplmnId
+);
+VOS_VOID NAS_MMC_WriteDplmnNplmnToNvim(VOS_VOID);
+
+extern VOS_VOID NAS_MMC_ReadRelPsSignalConCfgNvim(VOS_VOID);
+
+#if  (FEATURE_ON == FEATURE_IMS)
+VOS_VOID NAS_MMC_ReadImsRatSupportNvim(VOS_VOID);
+VOS_VOID NAS_MMC_ReadImsCapNvim(VOS_VOID);
+VOS_VOID NAS_MMC_ReadUssdOnImsNvim(VOS_VOID);
+#endif
+
+VOS_VOID NAS_MMC_ReadRoamDisplayCfgNvim(VOS_VOID);
+
+VOS_VOID NAS_MMC_ReadProtectMtCsfbPagingProcedureLenNvim(VOS_VOID);
+
 
 #if (VOS_OS_VER == VOS_WIN32)
 #pragma pack()

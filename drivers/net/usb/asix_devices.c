@@ -915,20 +915,13 @@ static const struct driver_info ax88178_info = {
 	.status = asix_status,
 	.link_reset = ax88178_link_reset,
 	.reset = ax88178_reset,
-	.flags = FLAG_ETHER | FLAG_FRAMING_AX | FLAG_LINK_INTR,
+	.flags = FLAG_ETHER | FLAG_FRAMING_AX | FLAG_LINK_INTR |
+		 FLAG_MULTI_PACKET,
 	.rx_fixup = asix_rx_fixup_common,
 	.tx_fixup = asix_tx_fixup,
 };
 
-/*
- * USBLINK 20F9 "USB 2.0 LAN" USB ethernet adapter, typically found in
- * no-name packaging.
- * USB device strings are:
- *   1: Manufacturer: USBLINK
- *   2: Product: HG20F9 USB2.0
- *   3: Serial: 000003
- * Appears to be compatible with Asix 88772B.
- */
+
 static const struct driver_info hg20f9_info = {
 	.description = "HG20F9 USB 2.0 Ethernet",
 	.bind = ax88772_bind,

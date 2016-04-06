@@ -39,7 +39,7 @@ extern "C" {
 #ifdef _DRV_LLT_
 #define mailbox_out(p)                             (printf p)
 #else
-#define mailbox_out(p)                             (bsp_trace(BSP_LOG_LEVEL_ERROR, BSP_MODU_HIFIMBX, (void*)p)
+#define mailbox_out(p)                             (bsp_trace(BSP_LOG_LEVEL_ERROR, BSP_MODU_HIFIMBX, (void*)p))
 #endif
 /*定义宏控制是否打印行数*/
 #define _MAILBOX_LINE_                              __LINE__

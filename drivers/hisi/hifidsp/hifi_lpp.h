@@ -1,3 +1,12 @@
+/*
+ * hifi misc driver.
+ *
+ * Copyright (c) 2013 Hisilicon Technologies CO., Ltd.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
+ */
 
 #ifndef __HIFI_LPP_H__
 #define __HIFI_LPP_H__
@@ -13,6 +22,7 @@ extern "C" {
 #ifndef OK
 #define OK			 0
 #endif
+
 #define ERROR		(-1)
 #define BUSY		(-2)
 #define NOMEM		(-3)
@@ -21,39 +31,46 @@ extern "C" {
 /* IOCTL入参和出参的SIZE限制 */
 #define SIZE_LIMIT_PARAM		(256)
 
+#ifdef PLATFORM_HI3XXX
 /* HIFI专用区 */
 /* |0x37700000~~~~~~~~|0x37c00000~~~~~|0x37c02000~~~~~|0x37c20000~~~~~~|0x37c60000~~~|0x37c75000~~~~~|0x37c75400~~~~~|0x37c75410~~~~~|0x37c80000~~~~~~~~~| */
-/* |~~~~~Code run 5M~~|~~~socp 8K~~~~~|~~reserv1 120K~|~~~~~OCRAM 256K~|~~~~TCM 84K~~|~~~SEC HEAD 1K~|~WTD FLAG 16B~~|~~reserv2 43K~~|~~Code backup 3.5M~| */
-/* |~~~~~~~~no sec~~~~|~~~~~~~no sec~~|~~~~~~~no sec~~|~~~~~~~nosec~~~~|~~~~~~nosec~~|~~~~~~~~nosec~~|~~~~~~~~nosec~~|~~~~~~~no sec~~|~~~~~~~~~sec~~~~~~~| */
+/* |~~~~~Code run 5M~~|~~~socp 8K~~~~~|~~reserv1 120K~|~~~~~OCRAM 256K~|~~~~TCM 84K~~|~~~SEC HEAD 1K~|~WTD FLAG 16B~~|~~reserv2 43K~~|~~Music data 3.5M~~| */
+/* |~~~~~~~~no sec~~~~|~~~~~~~no sec~~|~~~~~~~no sec~~|~~~~~~~nosec~~~~|~~~~~~nosec~~|~~~~~~~~nosec~~|~~~~~~~~nosec~~|~~~~~~~no sec~~|~~~~~~no sec~~~~~~~| */
 /* |0x37bfffff~~~~~~~~|0x37c01fff~~~~~|0x37c1ffff~~~~~|0x37c5ffff~~~~~~|0x37c74fff~~~|0x37c753ff~~~~~|0x37c7540f~~~~~|0x37c7ffff~~~~~|0x37ffffff~~~~~~~~~| */
 
-/* |~~0x2D600000 ~ 0x2DBFFFFF~~| */
-/* |~~~Music data 6M~~~~~~~~~~~| */
-/* |~~~~~no sec~~~~~~~~~~~~~~~~| */
+/* |~~0x2D600000 ~ 0x2DAFFFFF~~|~~0x2DB00000 ~ 0x2DBFFFFF~~| */
+/* |~~~Code backup 5M~~~~~~~~~~|~~~~~~~~Pcm data 1M~~~~~~~~| */
+/* |~~~~~~~~sec~~~~~~~~~~~~~~~~|~~~~~~~~~no sec~~~~~~~~~~~~| */
 
 #define HIFI_RUN_SIZE					(0x500000)
-#define HIFI_MUSIC_DATA_SIZE			(0x600000)
+#define HIFI_MUSIC_DATA_SIZE			(0x380000)
+#define HIFI_PCM_DATA_SIZE              (0x100000)
 #define HIFI_SOCP_SIZE					(0x2000)
-#define HIFI_RESERVE1_SIZE				(0x1e000)
+#define HIFI_RESERVE1_SIZE				(0x1E000)
 #define HIFI_IMAGE_OCRAMBAK_SIZE		(0x40000)
 #define HIFI_IMAGE_TCMBAK_SIZE			(0x15000)
-#define HIFI_RESERVE2_SIZE				(0xb000)
-#define HIFI_IMAGE_SIZE 				(0x380000)
+#define HIFI_RESERVE2_SIZE				(0xABF0)
+#define HIFI_IMAGE_SIZE 				(0x500000)
 #define HIFI_SIZE						(0x900000)
+#define HIFI_SEC_HEAD_SIZE				(0x400)
+#define HIFI_WTD_FLAG_SIZE				(0x10)
 
 #define HIFI_BASE_ADDR					(0x37700000)
 #define HIFI_RUN_LOCATION				(HIFI_BASE_ADDR)											/*Code run*/
-#define HIFI_MUSIC_DATA_LOCATION		(0x2D600000)												/*Music Data*/
+#define HIFI_SYS_MEM_ADDR				(HIFI_BASE_ADDR)
 #define HIFI_SOCP_LOCATION				(HIFI_RUN_LOCATION + HIFI_RUN_SIZE) 						/*SOCP*/
 #define HIFI_RESERVE1_LOCATION			(HIFI_SOCP_LOCATION + HIFI_SOCP_SIZE)						/*reserv1*/
 #define HIFI_IMAGE_OCRAMBAK_LOCATION	(HIFI_RESERVE1_LOCATION + HIFI_RESERVE1_SIZE)				/*OCRAM*/
 #define HIFI_IMAGE_TCMBAK_LOCATION		(HIFI_IMAGE_OCRAMBAK_LOCATION + HIFI_IMAGE_OCRAMBAK_SIZE)	/*TCM*/
-#define HIFI_RESERVE2_LOCATION			(HIFI_IMAGE_TCMBAK_LOCATION + HIFI_IMAGE_TCMBAK_SIZE)		/*reserv2*/
-#define HIFI_IMAGE_LOCATION 			(HIFI_RESERVE2_LOCATION + HIFI_RESERVE2_SIZE)				/*Code backup*/
+#define HIFI_SEC_HEAD_BACKUP			(HIFI_IMAGE_TCMBAK_LOCATION + HIFI_IMAGE_TCMBAK_SIZE)		/*SEC HEAD backup*/
+#define HIFI_WTD_FLAG_BASE				(HIFI_SEC_HEAD_BACKUP + HIFI_SEC_HEAD_SIZE)					/*Watchdog flag*/
+#define HIFI_RESERVE2_LOCATION			(HIFI_WTD_FLAG_BASE + HIFI_WTD_FLAG_SIZE)					/*reserv2*/
+#define HIFI_MUSIC_DATA_LOCATION 		(HIFI_RESERVE2_LOCATION + HIFI_RESERVE2_SIZE)				/*Code backup*/
 
-#define HIFI_OFFSET_MUSIC_DATA			(HIFI_RUN_SIZE)
-#define HIFI_OFFSET_IMG 				(HIFI_SIZE - HIFI_IMAGE_SIZE)
-#define HIFI_OFFSET_RUN 				(0x0)
+#define HIFI_IMAGE_LOCATION             (0x2D600000)                                                /*Music Data*/
+#define HIFI_PCM_PLAY_BUFF_LOCATION     (HIFI_IMAGE_LOCATION + HIFI_IMAGE_SIZE)                     /*Pcm Data*/
+
+#define HIFI_WTD_FLAG_NMI			    (HIFI_WTD_FLAG_BASE + 0x8)
 
 #if 1 /*hifi define*/
 #define DRV_HIFI_DDR_BASE_ADDR			(HIFI_BASE_ADDR)
@@ -64,19 +81,38 @@ extern "C" {
 #define DRV_DSP_EXCEPTION_NO			(DRV_DSP_UART_TO_MEM_CUR_ADDR + 4)
 #define DRV_DSP_IDLE_COUNT_ADDR			(DRV_DSP_EXCEPTION_NO + 4)
 #define DRV_DSP_LOADED_INDICATE			(DRV_DSP_IDLE_COUNT_ADDR + 4)
-#define DRV_DSP_KILLME_ADDR 			(DRV_DSP_LOADED_INDICATE + 4) /*only for debug, 0x37d82018*/
+#define DRV_DSP_KILLME_ADDR 			(DRV_DSP_LOADED_INDICATE + 4)
 #define DRV_DSP_WRITE_MEM_PRINT_ADDR	(DRV_DSP_KILLME_ADDR + 4)
+#define DRV_DSP_POWER_STATUS_ADDR		(DRV_DSP_WRITE_MEM_PRINT_ADDR + 4)
+#define DRV_DSP_DTS_HPX_PARM_ADDR		(DRV_DSP_POWER_STATUS_ADDR + 4)/*for dts hpx param*/
+#define DRV_DSP_DTS_HPX_PARM_SIZE		(70*1024)
+#define DRV_DSP_POWER_ON				(0x55AA55AA)
+#define DRV_DSP_POWER_OFF				(0x55FF55FF)
 #define DRV_DSP_KILLME_VALUE			(0xA5A55A5A)
 #endif
+
+#define HIFI_OCRAM_BASE_ADDR			(0xE8000000)
+#define HIFI_TCM_BASE_ADDR				(0xE8058000)
+
+#define DRV_DSP_STACK_TO_MEM_SIZE		(0x1000)
+#define DRV_DSP_STACK_TO_MEM			(HIFI_BASE_ADDR+HIFI_RUN_SIZE-DRV_DSP_STACK_TO_MEM_SIZE)
 
 #define DRV_DSP_UART_TO_MEM 			(0x3FE80000)
 #define DRV_DSP_UART_TO_MEM_SIZE		(512*1024)
 #define DRV_DSP_UART_TO_MEM_RESERVE_SIZE (10*1024)
 
 #define HIFI_SIZE_MUSIC_DATA			(HIFI_MUSIC_DATA_SIZE)
-#define SIZE_PARAM_PRIV 				(200 * 1024)
+#define SIZE_PARAM_PRIV 				(202 * 1024)
 
 #define SYS_TIME_STAMP_REG				(0xFFF0A534)
+#endif
+
+#ifdef PLATFORM_HI6XXX
+#define OFFSET_HIFI_PRIV		(0x00300000)
+#define HIFI_MUSIC_DATA_SIZE	(0x100000) /* LowPowerPlayer.cpp:MEM_BUFF_SIZE */
+#define HIFI_PRIV_ADDR			(HIFI_SYS_MEM_ADDR + OFFSET_HIFI_PRIV)
+#define SIZE_PARAM_PRIV 		(202 * 1024)
+#endif
 
 /* 接收HIFI消息，前部cmd_id占用的字节数 */
 #define SIZE_CMD_ID 	   (8)
@@ -91,27 +127,6 @@ extern "C" {
 /*****************************************************************************
   3 枚举定义
 *****************************************************************************/
-typedef enum {
-	HIFI_CLOSE,
-	HIFI_OPENED,
-}HIFI_STATUS;
-
-typedef enum {
-	DUMP_DSP_LOG,
-	DUMP_DSP_BIN
-}DUMP_DSP_TYPE;
-
-typedef enum {
-	DSP_NORMAL,
-	DSP_PANIC
-}DSP_ERROR_TYPE;
-
-typedef enum {
-	NORMAL_LOG = 0,
-	NORMAL_BIN,
-	PANIC_LOG,
-	PANIC_BIN
-}DUMP_DSP_INDEX;
 
 typedef enum HIFI_MSG_ID_ {
 
@@ -120,6 +135,12 @@ typedef enum HIFI_MSG_ID_ {
 	ID_AP_AUDIO_SET_DTS_DEV_CMD			= 0xDD38,
 	ID_AP_AUDIO_SET_DTS_GEQ_CMD			= 0xDD39,
 	ID_AP_AUDIO_SET_DTS_GEQ_ENABLE_CMD	= 0xDD3B,
+
+	/*HPX command id from ap*/
+	ID_AP_AUDIO_CMD_PARAM_SYNC_CMD      = 0xDD3C,           /* AP通知Hifi 开始更新HPX参数*/
+	ID_AP_AUDIO_CMD_PARAM_SYNC_CNF      = 0xDD3D,           /* HIFI通知AP 同步完成*/
+	ID_AP_AUDIO_CMD_PARAM_FINISH_CMD    = 0xDD3E,           /* AP通知Hifi 已经更新完成HPX参数*/
+	ID_AP_AUDIO_CMD_PARAM_FINISH_CNF    = 0xDD3F,           /* HIFI通知AP 参数更新完成*/
 
 	/* Voice Record */
 	ID_AP_HIFI_VOICE_RECORD_START_CMD	= 0xDD40,
@@ -151,7 +172,7 @@ typedef enum HIFI_MSG_ID_ {
 	ID_AP_AUDIO_PLAY_SEEK_REQ			= 0xDD63,/* AP seek Hifi audio player到某一位置request命令 */
 	ID_AUDIO_AP_PLAY_SEEK_CNF			= 0xDD64,/* Hifi回复AP seek结果confirm命令 */
 	ID_AP_AUDIO_PLAY_SET_VOL_CMD		= 0xDD70,/* AP设置音量命令 */
-
+	ID_AP_AUDIO_RECORD_PCM_HOOK_CMD		= 0xDD7A,/* AP 通知HIFI开始抓取PCM数据 */
 	/* enhance msgid between ap and hifi */
 	ID_AP_HIFI_ENHANCE_START_REQ		= 0xDD81,
 	ID_HIFI_AP_ENHANCE_START_CNF		= 0xDD82,
@@ -163,7 +184,28 @@ typedef enum HIFI_MSG_ID_ {
 	/* audio enhance msgid between ap and hifi */
 	ID_AP_AUDIO_ENHANCE_SET_DEVICE_IND	= 0xDD91,
 	ID_AP_AUDIO_MLIB_SET_PARA_IND		= 0xDD92,
+	ID_AP_AUDIO_CMD_SET_SOURCE_CMD		= 0xDD95,
+	ID_AP_AUDIO_CMD_SET_DEVICE_CMD		= 0xDD96,
+	ID_AP_AUDIO_CMD_SET_MODE_CMD		= 0xDD97,
+
+	/* for 3mic */
+	ID_AUDIO_AP_FADE_OUT_REQ			= 0xDDC0,
+	ID_AP_AUDIO_FADE_OUT_IND			= 0xDDC1,
+
+	ID_AP_AUDIO_ROUTING_COMPLETE_REQ	= 0xDDE5,/*AP 通知HIFI 3Mic/4Mic 通路已建立，同时关闭Codec DP 时钟*/
+	ID_AUDIO_AP_DP_CLK_EN_IND			= 0xDDE7,/*HIFI 通知A核打开或关闭Codec DP时钟 */
+	ID_AP_AUDIO_DP_CLK_STATE_IND		= 0xDDE8,/*A核通知HIFI ，Codec DP时钟状态( 打开或关闭) */
+	ID_AUDIO_AP_OM_DUMP_CMD 			= 0xDDE9,/* HIFI 通知A核dump日志*/
+
+	/*for hifi panic debug*/
+	ID_AP_AUDIO_OM_HIFI_RESET_CMD		= 0xDDD0,/*AP 通知HIFI 复位*/
 } HIFI_MSG_ID;
+
+typedef enum HI6402_DP_CLK_STATE_ {
+	HI6402_DP_CLK_OFF = 0x0,
+	HI6402_DP_CLK_ON = 0x1,
+} HI6402_DP_CLK_STATE;
+
 
 /*处理hifi回复消息，记录cmd_id和数据*/
 typedef struct {
@@ -184,58 +226,26 @@ struct misc_recmsg_param {
 	unsigned short	playStatus;
 };
 
-struct temp_hifi_cmd{
-	unsigned short	msgID;
-	unsigned short	value;
+struct common_hifi_cmd{
+	unsigned short msg_id;
+	unsigned short reserve;
+	unsigned int   value;
 };
 
-struct hifi_dsp_dump_info{
-	DSP_ERROR_TYPE error_type;
-	DUMP_DSP_TYPE dump_type;
-	char* file_name;
-	char* data_addr;
-	unsigned int data_len;
+struct dp_clk_request {
+	struct list_head dp_clk_node;
+	struct common_hifi_cmd dp_clk_msg;
 };
 
-#ifndef LOG_TAG
-#define LOG_TAG "hifi_misc "
+#ifdef PLATFORM_HI3XXX
+int hifi_send_msg(unsigned int mailcode, void *data, unsigned int length);
+void hifi_get_log_signal(void);
+void hifi_release_log_signal(void);
+void sochifi_watchdog_send_event(void);
+void notify_hifi_misc_watchdog_coming(void);
+int hifi_misc_sync_msg(void * cmd_in, unsigned int cmd_in_size, void * cmd_out, unsigned int cmd_out_size);
+int hifi_misc_send_hifi_msg_async(struct common_hifi_cmd* cmd);
 #endif
-
-extern struct hifi_misc_priv g_misc_data;
-
-#define logd(fmt, ...) \
-do {\
-	if (g_misc_data.debug_level >= 3) {\
-		printk(LOG_TAG"[D][%u]:%s:%d: "fmt, (unsigned int)readl(g_misc_data.dsp_time_stamp), __FUNCTION__, __LINE__, ##__VA_ARGS__);\
-	}\
-} while(0);
-
-#define logi(fmt, ...) \
-do {\
-	if (g_misc_data.debug_level >= 2) {\
-		printk(LOG_TAG"[I][%u]:%s:%d: "fmt, (unsigned int)readl(g_misc_data.dsp_time_stamp), __FUNCTION__, __LINE__, ##__VA_ARGS__);\
-	}\
-} while(0);
-
-
-#define logw(fmt, ...) \
-do {\
-	if (g_misc_data.debug_level >= 1) {\
-		printk(LOG_TAG"[W][%u]:%s:%d: "fmt, (unsigned int)readl(g_misc_data.dsp_time_stamp), __FUNCTION__, __LINE__, ##__VA_ARGS__);\
-	}\
-} while(0);
-
-#define loge(fmt, ...) \
-do {\
-	if (g_misc_data.debug_level >= 0) {\
-		printk(LOG_TAG"[E][%u]:%s:%d: "fmt, (unsigned int)readl(g_misc_data.dsp_time_stamp), __FUNCTION__, __LINE__, ##__VA_ARGS__);\
-	}\
-} while(0);
-
-#define IN_FUNCTION   logd("begin.\n");
-#define OUT_FUNCTION  logd("end.\n");
-
-extern void hifi_dump_panic_log(void);
 
 #ifdef __cplusplus
 #if __cplusplus

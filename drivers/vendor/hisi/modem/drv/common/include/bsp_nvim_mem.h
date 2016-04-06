@@ -25,14 +25,14 @@ extern "C" {
 
 
 
-#define NV_GLOBAL_START_ADDR         SHM_MEM_NV_ADDR
-#define NV_GLOBAL_END_ADDR           SHM_MEM_NV_ADDR + SHM_MEM_NV_SIZE
+#define NV_GLOBAL_START_ADDR        (void*) ((unsigned long)SHM_MEM_NV_ADDR)
+#define NV_GLOBAL_END_ADDR           (void*)((unsigned long)SHM_MEM_NV_ADDR + SHM_MEM_NV_SIZE)
 
 /*reg global info*/
-#define NV_GLOBAL_INFO_ADDR         NV_GLOBAL_START_ADDR
+#define NV_GLOBAL_INFO_ADDR         (void*)((unsigned long)NV_GLOBAL_START_ADDR)
 #define NV_GLOBAL_INFO_SIZE         0x400               /*1 K*/
 
-#define NV_GLOBAL_CTRL_INFO_ADDR    (NV_GLOBAL_INFO_ADDR+NV_GLOBAL_INFO_SIZE)
+#define NV_GLOBAL_CTRL_INFO_ADDR   (void*) ((unsigned long)NV_GLOBAL_INFO_ADDR+NV_GLOBAL_INFO_SIZE)
 
 
 #ifdef __cplusplus

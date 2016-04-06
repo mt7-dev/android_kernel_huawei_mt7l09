@@ -160,10 +160,7 @@ int atari_midi_console_wait_key(struct console *co)
  */
 static void __init atari_init_mfp_port(int cflag)
 {
-	/*
-	 * timer values for 1200...115200 bps; > 38400 select 110, 134, or 150
-	 * bps, resp., and work only correct if there's a RSVE or RSSPEED
-	 */
+
 	static int baud_table[9] = { 16, 11, 8, 4, 2, 1, 175, 143, 128 };
 	int baud = cflag & CBAUD;
 	int parity = (cflag & PARENB) ? ((cflag & PARODD) ? 0x04 : 0x06) : 0;
@@ -268,13 +265,11 @@ static void __init atari_init_midi_port(int cflag)
 	int parity = (cflag & PARENB) ? ((cflag & PARODD) ? 0x0c : 0x08) : 0x04;
 	int div;
 
-	/* 4800 selects 7812.5, 115200 selects 500000, all other (incl. 9600 as
-	 * default) the standard MIDI speed 31250. */
 	if (cflag & CBAUDEX)
 		baud += B38400;
 	if (baud == B4800)
 		div = ACIA_DIV64;	/* really 7812.5 bps */
-	else if (baud == B38400+2 /* 115200 */)
+	else if (baud == B38400+2)
 		div = ACIA_DIV1;	/* really 500 kbps (does that work??) */
 	else
 		div = ACIA_DIV16;	/* 31250 bps, standard for MIDI */

@@ -133,6 +133,7 @@ extern "C" {
 
 #define PS_WUE_MAX_DL_TFC_NUM                   (128)   /* 协议值 maxTFC 1024  */
 #define PS_WUE_MAX_UL_TFC_NUM                   (128)   /* 协议值 maxTFC 1024  */
+#define PS_WUE_MAX_TFC_NUM                      (128)   /* 协议值 maxTFC 1024  */
 
 #define PS_WUE_MAX_REF_E_TFCI_NUM               (8)     /* 协议值 8 E_DPDCH_Reference_E_TFCIList */
 #define PS_WUE_MAX_TFC_SUB_NUM                  (128)   /* 协议值 maxTFCsub 1024  */

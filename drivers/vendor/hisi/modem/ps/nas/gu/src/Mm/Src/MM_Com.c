@@ -7,6 +7,7 @@
 #include "NasNvInterface.h"
 #include "TafNvInterface.h"
 
+#include "MmCmInterface.h"
 #ifdef __cplusplus
 #if __cplusplus
 extern "C" {
@@ -21,6 +22,83 @@ extern MM_TIMER_ST  gstMmTimerSuspend;
 *****************************************************************************/
 #define    THIS_FILE_ID        PS_FILE_ID_MM_COM_C
 
+/*****************************************************************************
+   2 变量定义
+*****************************************************************************/
+RRC_TO_MMCC_REL_CAUSE_STRU g_astRrcToMmCcRelCause[] =
+{
+    {RRC_REL_CAUSE_RR_NORM_EVENT             ,  NAS_MMCM_REL_CAUSE_RR_REL_NORMAL_EVENT},
+    {RRC_REL_CAUSE_RR_UNSPEC                 ,  NAS_MMCM_REL_CAUSE_RR_REL_NORMAL_UNSPECIFIED},
+    {RRC_REL_CAUSE_RR_PRE_EMPT_REL           ,  NAS_MMCM_REL_CAUSE_RR_REL_PREEMPTIVE_RELEASE},
+    {RRC_REL_CAUSE_RR_CONGEST                ,  NAS_MMCM_REL_CAUSE_RR_REL_CONGESTION},
+    {RRC_REL_CAUSE_RR_RE_EST_REJ             ,  NAS_MMCM_REL_CAUSE_RR_REL_REEST_REJ},
+    {RRC_REL_CAUSE_RR_DRIECT_SIGN_CONN_EST   ,  NAS_MMCM_REL_CAUSE_RR_REL_DIRECTED_SIGNAL_CONN_REEST},
+    {RRC_REL_CAUSE_RR_USER_INACT             ,  NAS_MMCM_REL_CAUSE_RR_REL_USER_INACTIVE},
+    {RRC_REL_CAUSE_UTRAN_RELEASE             ,  NAS_MMCM_REL_CAUSE_RR_REL_UTRAN_RELEASE},
+    {RRC_REL_CAUSE_NAS_REL_SUCCESS           ,  NAS_MMCM_REL_CAUSE_RR_REL_NAS_REL_REQ},
+    {RRC_REL_CAUSE_NAS_REL_ABSENT            ,  NAS_MMCM_REL_CAUSE_RR_REL_NAS_REL_REQ},
+    {RRC_REL_CAUSE_NAS_ABORT                 ,  NAS_MMCM_REL_CAUSE_RR_REL_NAS_REL_REQ},
+    {RRC_REL_CAUSE_NAS_STOP_SETUP            ,  NAS_MMCM_REL_CAUSE_RR_REL_NAS_REL_REQ},
+    {RRC_REL_CAUSE_CONN_FAIL                 ,  NAS_MMCM_REL_CAUSE_RR_REL_CONN_FAIL},
+    {RRC_REL_CAUSE_NAS_DATA_ABSENT           ,  NAS_MMCM_REL_CAUSE_RR_REL_NAS_DATA_ABSENT},
+    {RRC_REL_CAUSE_RRC_ERROR                 ,  NAS_MMCM_REL_CAUSE_RR_REL_RRC_ERROR},
+    {RRC_REL_CAUSE_RL_FAILURE                ,  NAS_MMCM_REL_CAUSE_RR_REL_RL_FAILURE},
+    {RRC_REL_CAUSE_GAS_TIMEOUT               ,  NAS_MMCM_REL_CAUSE_RR_REL_NORMAL_UNSPECIFIED},
+    {RRC_REL_CAUSE_OTHER_REASON              ,  NAS_MMCM_REL_CAUSE_RR_REL_OTHER_REASON},
+    {RRC_REL_CAUSE_RLC_ERROR                 ,  NAS_MMCM_REL_CAUSE_RR_REL_RLC_ERR_OR},
+    {RRC_REL_CAUSE_CELL_UPDATE_FAIL          ,  NAS_MMCM_REL_CAUSE_RR_REL_CELL_UP_DATE_FAIL},
+    {RRC_REL_CAUSE_T314_EXPIRED              ,  NAS_MMCM_REL_CAUSE_RR_REL_T314_EXPIRED},
+    {RRC_REL_CAUSE_W_RL_FAIL                 ,  NAS_MMCM_REL_CAUSE_RR_REL_W_RL_FAIL},
+
+    {RRC_REL_CAUSE_G_RL_FAIL                 ,  NAS_MMCM_REL_CAUSE_RR_REL_G_RL_FAIL},
+};
+
+EST_RSLT_TO_MMCC_REL_CAUSE_STRU g_astEstRsltToMmCcRelCause[] =
+{
+    {RRC_EST_SUCCESS                            ,   (VOS_UINT32)NAS_MMCM_REL_CAUSE_BUTT},
+    {RRC_EST_PRESENT                            ,   (VOS_UINT32)NAS_MMCM_REL_CAUSE_BUTT},
+    {RRC_EST_ESTING                             ,   (VOS_UINT32)NAS_MMCM_REL_CAUSE_BUTT},
+    {RRC_EST_DELING                             ,   (VOS_UINT32)NAS_MMCM_REL_CAUSE_BUTT},
+    {RRC_EST_RJ_CONGEST                         ,   NAS_MMCM_REL_CAUSE_RR_CONN_FAIL_CONGESTION},
+    {RRC_EST_RJ_UNSPEC                          ,   NAS_MMCM_REL_CAUSE_RR_CONN_FAIL_UNSPECIFIED},
+    {RRC_EST_ACCESS_BARRED                      ,   NAS_MMCM_REL_CAUSE_RR_CONN_FAIL_ACCESS_BAR},
+    {RRC_EST_EST_CONN_FAIL                      ,   NAS_MMCM_REL_CAUSE_RR_CONN_FAIL_EST_CONN_FAIL},
+    {RRC_EST_RJ_INTER_RAT                       ,   NAS_MMCM_REL_CAUSE_RR_CONN_FAIL_RJ_INTER_RAT},
+    {RRC_EST_IMMEDIATE_ASSIGN_REJECT            ,   NAS_MMCM_REL_CAUSE_RR_CONN_FAIL_IMMEDIATE_ASSIGN_REJECT},
+    {RRC_EST_RANDOM_ACCESS_REJECT               ,   NAS_MMCM_REL_CAUSE_RR_CONN_FAIL_RANDOM_ACCESS_REJECT},
+    {RRC_EST_PAGING_ACCESS_BARRED               ,   (VOS_UINT32)NAS_MMCM_REL_CAUSE_BUTT},
+    {RRC_EST_REGISTER_ACCESS_BARRED             ,   (VOS_UINT32)NAS_MMCM_REL_CAUSE_BUTT},
+    {RRC_EST_OTHER_ACCESS_BARRED                ,   NAS_MMCM_REL_CAUSE_RR_CONN_FAIL_ACCESS_BAR},
+    {RRC_EST_RJ_T3122_RUNNING                   ,   NAS_MMCM_REL_CAUSE_RR_CONN_FAIL_T3122_RUNING},
+    {RRC_EST_RJ_SNW                             ,   NAS_MMCM_REL_CAUSE_RR_CONN_FAIL_LOW_LEVEL_SEARCHING_NETWORK},
+    {RRC_EST_RANDOM_ACCESS_REJECT_NO_VALID_INFO ,   NAS_MMCM_REL_CAUSE_RR_CONN_FAIL_NO_VALID_INFO},
+    {RRC_EST_RJ_RA_FAIL                         ,   NAS_MMCM_REL_CAUSE_RR_CONN_FAIL_RANDOM_ACCESS_SEND_FAIL},
+    {RRC_EST_RJ_NOT_ALLOW                       ,   NAS_MMCM_REL_CAUSE_RR_CONN_FAIL_UE_NOT_ALLOW},
+    {RRC_EST_RJ_TIME_OUT                        ,   NAS_MMCM_REL_CAUSE_RR_CONN_FAIL_TIME_OUT},
+    {RRC_EST_RJ_RA_RESOURCE_FAIL                ,   NAS_MMCM_REL_CAUSE_RR_CONN_FAIL_NO_RANDOM_ACCESS_RESOURCE},
+    {RRC_EST_RJ_IMMEDIATE_ASSIGN_INVALID        ,   NAS_MMCM_REL_CAUSE_RR_CONN_FAIL_INVALID_IMMEDIATE_ASSIGNED_MSG},
+    {RRC_EST_RJ_ACTIVE_PHISICAL_CHANNEL_FAIL    ,   NAS_MMCM_REL_CAUSE_RR_CONN_FAIL_ACTIVE_PHYSICAL_CHANNEL_FAIL},
+    {RRC_EST_RJ_AIRMSG_DECODE_ERR               ,   NAS_MMCM_REL_CAUSE_RR_CONN_FAIL_AIR_MSG_DECODE_ERROR},
+    {RRC_EST_RJ_CURR_PROTOCOL_NOT_SUPPORT       ,   NAS_MMCM_REL_CAUSE_RR_CONN_FAIL_CURRENT_PROTOCOL_NOT_SUPPORT},
+    {RRC_EST_RJ_INVALID_UE_STATE                ,   NAS_MMCM_REL_CAUSE_RR_CONN_FAIL_INVALID_UE_STATE},
+    {RRC_EST_RJ_CELL_BAR                        ,   NAS_MMCM_REL_CAUSE_RR_CONN_FAIL_CELL_BARRED},
+    {RRC_EST_RJ_FASTRETURN_LTE                  ,   NAS_MMCM_REL_CAUSE_RR_CONN_FAIL_FAST_RETURN_TO_LTE},
+    {RRC_EST_RJ_RA_FAIL_NO_VALID_INFO           ,   NAS_MMCM_REL_CAUSE_RR_CONN_FAIL_RA_FAIL_NO_VALID_INFO},
+};
+
+CSFB_RSLT_TO_MMCC_REL_CAUSE_STRU g_astCsfbRsltToMmCcRelCause[] =
+{
+    {MM_LMM_CSFB_SERVICE_RSLT_FAILURE                           ,NAS_MMCM_REL_CAUSE_CSFB_LMM_FAIL_LMM_LOCAL_FAIL},
+    {MM_LMM_CSFB_SERVICE_RSLT_AUTH_REJ                          ,NAS_MMCM_REL_CAUSE_CSFB_LMM_FAIL_AUTH_REJ},
+    {MM_LMM_CSFB_SERVICE_RSLT_T3417EXT_TIME_OUT                 ,NAS_MMCM_REL_CAUSE_CSFB_LMM_FAIL_T3417_TIME_OUT},
+    {MM_LMM_CSFB_SERVICE_RSLT_MMC_DETACH_FAIL                   ,NAS_MMCM_REL_CAUSE_CSFB_LMM_FAIL_APP_DETACH_SERVICE},
+    {MM_LMM_CSFB_SERVICE_RSLT_CN_DETACH_FAIL                    ,NAS_MMCM_REL_CAUSE_CSFB_LMM_FAIL_CN_DETACH_SERVICE},
+    {MM_LMM_CSFB_SERVICE_RSLT_VERIFY_CSFB_FAIL_FOR_OTHERS       ,NAS_MMCM_REL_CAUSE_CSFB_LMM_FAIL_FOR_OTHERS},
+    {MM_LMM_CSFB_SERVICE_RSLT_VERIFY_CSFB_FAIL_FOR_EMM_STATE    ,NAS_MMCM_REL_CAUSE_CSFB_LMM_FAIL_FOR_EMM_STATE},
+    {MM_LMM_CSFB_SERVICE_RSLT_TAU_COLLISION_RSLT_SMS_ONLY       ,NAS_MMCM_REL_CAUSE_CSFB_LMM_FAIL_SMS_ONLY},
+    {MM_LMM_CSFB_SERVICE_RSLT_TAU_COLLISION_RSLT_PS_ONLY        ,NAS_MMCM_REL_CAUSE_CSFB_LMM_FAIL_PS_ONLY},
+    {MM_LMM_CSFB_SERVICE_RSLT_TAU_COLLISION_RSLT_ABNORMAL       ,NAS_MMCM_REL_CAUSE_CSFB_LMM_FAIL_TAU_COLL_ABNORMAL},
+};
 
 
 VOS_VOID Mm_ComNasInfoSav (
@@ -167,7 +245,9 @@ VOS_VOID Mm_ComSvcStaJudge(VOS_UINT8 ucSvcStatus)
 
 
 
-VOS_VOID Mm_ComRelAllMmConn(VOS_UINT32 ulRelCause)
+VOS_VOID Mm_ComRelAllMmConn(
+    NAS_MMCM_REL_CAUSE_ENUM_UINT32      enMmCcRelCause
+)
 {
     VOS_UINT8                                               i;
 
@@ -180,53 +260,53 @@ VOS_VOID Mm_ComRelAllMmConn(VOS_UINT32 ulRelCause)
             aucMMConnExtFlg[0] & (0x01 << i) ) )
         {
             /* 存在CC建立的MM连接                       */
-            Mm_SndCcRelInd(i, ulRelCause);
+            Mm_SndCcRelInd(i, enMmCcRelCause);
         }
         if ( 0 != (g_MmGlobalInfo.ConnCtrlInfo[MM_CONN_CTRL_CC].
             aucMMConnExtFlg[1] & (0x01 << i) ) )
         {
             /* 存在CC建立的MM连接                       */
-            Mm_SndCcRelInd(i + 8, ulRelCause);
+            Mm_SndCcRelInd(i + 8, enMmCcRelCause);
         }
         if ( 0 != (g_MmGlobalInfo.ConnCtrlInfo[MM_CONN_CTRL_CC].
             aucMMConnReestFlg[0] & (0x01 << i) ) )
         {
             /* 存在CC重建立的MM连接                     */
-            Mm_SndCcRelInd(i, ulRelCause);
+            Mm_SndCcRelInd(i, enMmCcRelCause);
         }
         if ( 0 != (g_MmGlobalInfo.ConnCtrlInfo[MM_CONN_CTRL_CC].
             aucMMConnReestFlg[1] & (0x01 << i) ) )
         {
             /* 存在CC重建立的MM连接                     */
-            Mm_SndCcRelInd(i + 8, ulRelCause);
+            Mm_SndCcRelInd(i + 8, enMmCcRelCause);
         }
         if ( 0 != (g_MmGlobalInfo.ConnCtrlInfo[MM_CONN_CTRL_SS].
             aucMMConnExtFlg[0] & (0x01 << i) ) )
         {                                                                       /* 存在SS建立的MM连接                       */
-            Mm_SndSsRelInd(i, ulRelCause);
+            Mm_SndSsRelInd(i, enMmCcRelCause);
         }
         if ( 0 != (g_MmGlobalInfo.ConnCtrlInfo[MM_CONN_CTRL_SS].
             aucMMConnExtFlg[1] & (0x01 << i) ) )
         {                                                                       /* 存在SS建立的MM连接                       */
-            Mm_SndSsRelInd(i + 8, ulRelCause);
+            Mm_SndSsRelInd(i + 8, enMmCcRelCause);
         }
         if ( 0 != (g_MmGlobalInfo.ConnCtrlInfo[MM_CONN_CTRL_SMS].
             aucMMConnExtFlg[0] & (0x01 << i) ) )
         {                                                                       /* 存在SMS建立的MM连接                      */
-            Mm_SndSmsRelInd(i , ulRelCause );
+            Mm_SndSmsRelInd(i , enMmCcRelCause );
         }
         if ( 0 != (g_MmGlobalInfo.ConnCtrlInfo[MM_CONN_CTRL_SMS].
             aucMMConnExtFlg[1] & (0x01 << i) ) )
         {                                                                       /* 存在SMS建立的MM连接                      */
-            Mm_SndSmsRelInd(i + 8, ulRelCause );
+            Mm_SndSmsRelInd(i + 8, enMmCcRelCause );
         }
     }
 
-    
+
     if ( NO_MM_CONN_ESTING != g_MmGlobalInfo.ConnCtrlInfo[MM_CONN_CTRL_CC].ucMMConnEstingTI )
     {
         Mm_SndCcRelInd(g_MmGlobalInfo.ConnCtrlInfo[MM_CONN_CTRL_CC].ucMMConnEstingTI,
-                       ulRelCause);
+                       enMmCcRelCause);
 
 
         g_MmGlobalInfo.ConnCtrlInfo[MM_CONN_CTRL_CC].RcvXXEstReq.ucFlg = MM_FALSE;
@@ -235,21 +315,21 @@ VOS_VOID Mm_ComRelAllMmConn(VOS_UINT32 ulRelCause)
     if ( MM_TRUE == g_MmGlobalInfo.ConnCtrlInfo[MM_CONN_CTRL_CC].RcvXXEstReq.ucFlg )
     {
         Mm_SndCcRelInd(g_MmGlobalInfo.ConnCtrlInfo[MM_CONN_CTRL_CC].RcvXXEstReq.ulTransactionId,
-                       ulRelCause);
+                       enMmCcRelCause);
         g_MmGlobalInfo.ConnCtrlInfo[MM_CONN_CTRL_CC].RcvXXEstReq.ucFlg = MM_FALSE;
     }
 
     if ( NO_MM_CONN_ESTING != g_MmGlobalInfo.ConnCtrlInfo[MM_CONN_CTRL_SS].ucMMConnEstingTI )
     {
-        Mm_SndSsRelInd(g_MmGlobalInfo.ConnCtrlInfo[MM_CONN_CTRL_SS].ucMMConnEstingTI, 
-                        ulRelCause);
+        Mm_SndSsRelInd(g_MmGlobalInfo.ConnCtrlInfo[MM_CONN_CTRL_SS].ucMMConnEstingTI,
+                        enMmCcRelCause);
         g_MmGlobalInfo.ConnCtrlInfo[MM_CONN_CTRL_SS].RcvXXEstReq.ucFlg = MM_FALSE;
     }
 
     if ( MM_TRUE == g_MmGlobalInfo.ConnCtrlInfo[MM_CONN_CTRL_SS].RcvXXEstReq.ucFlg )
     {
-        Mm_SndSsRelInd(g_MmGlobalInfo.ConnCtrlInfo[MM_CONN_CTRL_SS].RcvXXEstReq.ulTransactionId, 
-                        ulRelCause);
+        Mm_SndSsRelInd(g_MmGlobalInfo.ConnCtrlInfo[MM_CONN_CTRL_SS].RcvXXEstReq.ulTransactionId,
+                        enMmCcRelCause);
         g_MmGlobalInfo.ConnCtrlInfo[MM_CONN_CTRL_SS].RcvXXEstReq.ucFlg = MM_FALSE;
     }
 
@@ -258,14 +338,14 @@ VOS_VOID Mm_ComRelAllMmConn(VOS_UINT32 ulRelCause)
     if ( NO_MM_CONN_ESTING != g_MmGlobalInfo.ConnCtrlInfo[MM_CONN_CTRL_SMS].ucMMConnEstingTI )
     {
         Mm_SndSmsRelInd(g_MmGlobalInfo.ConnCtrlInfo[MM_CONN_CTRL_SMS].ucMMConnEstingTI,
-                        ulRelCause);
+                        enMmCcRelCause);
         g_MmGlobalInfo.ConnCtrlInfo[MM_CONN_CTRL_SMS].RcvXXEstReq.ucFlg = MM_FALSE;
     }
 
     if ( MM_TRUE == g_MmGlobalInfo.ConnCtrlInfo[MM_CONN_CTRL_SMS].RcvXXEstReq.ucFlg )
     {
         Mm_SndSmsRelInd(g_MmGlobalInfo.ConnCtrlInfo[MM_CONN_CTRL_SMS].RcvXXEstReq.ulTransactionId,
-                        ulRelCause);
+                        enMmCcRelCause);
         g_MmGlobalInfo.ConnCtrlInfo[MM_CONN_CTRL_SMS].RcvXXEstReq.ucFlg = MM_FALSE;
     }
 
@@ -291,13 +371,20 @@ VOS_VOID Mm_ComRelAllMmConn(VOS_UINT32 ulRelCause)
 
     NAS_MML_SetRelCauseCsfbHighPrioFlg(VOS_FALSE);
 
+    /* Added by zwx247453 for CHR optimize, 2015-3-13, begin */
+#if (FEATURE_ON == FEATURE_PTM)
+    /* 处理记录CSFB MT异常 */
+    NAS_MM_ProcCsfbMtFailRecord();
+#endif
+    /* Added by zwx247453 for CHR optimize, 2015-3-13, end */
+
     NAS_MML_SetCsfbServiceStatus(NAS_MML_CSFB_SERVICE_STATUS_NOT_EXIST);
 
     NAS_MML_SetCsEmergencyServiceFlg(VOS_FALSE);
 }
 
 VOS_VOID Mm_ComRelAllMmConnExcEmergencyCall(
-    NAS_MMCM_REL_CAUSE_ENUM_UINT32      enMmccRelCause
+    NAS_MMCM_REL_CAUSE_ENUM_UINT32      enMmCcRelCause
 )
 {
     VOS_UINT8               i;
@@ -312,7 +399,7 @@ VOS_VOID Mm_ComRelAllMmConnExcEmergencyCall(
             ucEstingCallTypeFlg))
         {
             /* 存在CC重建立的MM连接 */
-            Mm_SndCcRelInd(i, NAS_MMCM_REL_CAUSE_MM_REJ_OTHER_CAUSES);
+            Mm_SndCcRelInd(i, enMmCcRelCause);
         }
         /* 以下判断仅针对只支持一个CC呼叫的情况，当支持多个CC呼叫功能时，
            并不能判断哪一个呼叫是紧急呼 */
@@ -322,7 +409,7 @@ VOS_VOID Mm_ComRelAllMmConnExcEmergencyCall(
             ucEstingCallTypeFlg))
         {
             /* 存在CC建立的MM连接并且不是紧急呼         */
-            Mm_SndCcRelInd(i + 8, NAS_MMCM_REL_CAUSE_MM_REJ_OTHER_CAUSES);
+            Mm_SndCcRelInd(i + 8, enMmCcRelCause);
         }
         /* 以下判断仅针对只支持一个CC呼叫的情况，当支持多个CC呼叫功能时，
            并不能判断哪一个呼叫是紧急呼 */
@@ -332,7 +419,7 @@ VOS_VOID Mm_ComRelAllMmConnExcEmergencyCall(
             ucEstingCallTypeFlg))
         {
             /* 存在CC重建立的MM连接                     */
-            Mm_SndCcRelInd(i, NAS_MMCM_REL_CAUSE_MM_REJ_OTHER_CAUSES);
+            Mm_SndCcRelInd(i, enMmCcRelCause);
         }
         /* 以下判断仅针对只支持一个CC呼叫的情况，当支持多个CC呼叫功能时，
            并不能判断哪一个呼叫是紧急呼 */
@@ -342,27 +429,27 @@ VOS_VOID Mm_ComRelAllMmConnExcEmergencyCall(
             ucEstingCallTypeFlg))
         {
             /* 存在CC重建立的MM连接                     */
-            Mm_SndCcRelInd(i + 8, NAS_MMCM_REL_CAUSE_MM_REJ_OTHER_CAUSES);
+            Mm_SndCcRelInd(i + 8, enMmCcRelCause);
         }
         if (0 != (g_MmGlobalInfo.ConnCtrlInfo[MM_CONN_CTRL_SS].
             aucMMConnExtFlg[0] & (0x01 << i)))
         {                                                                       /* 存在SS建立的MM连接                       */
-            Mm_SndSsRelInd(i, NAS_MMCM_REL_CAUSE_MM_REJ_OTHER_CAUSES);
+            Mm_SndSsRelInd(i, enMmCcRelCause);
         }
         if (0 != (g_MmGlobalInfo.ConnCtrlInfo[MM_CONN_CTRL_SS].
             aucMMConnExtFlg[1] & (0x01 << i)))
         {                                                                       /* 存在SS建立的MM连接                       */
-            Mm_SndSsRelInd(i + 8, NAS_MMCM_REL_CAUSE_MM_REJ_OTHER_CAUSES);
+            Mm_SndSsRelInd(i + 8, enMmCcRelCause);
         }
         if (0 != (g_MmGlobalInfo.ConnCtrlInfo[MM_CONN_CTRL_SMS].
             aucMMConnExtFlg[0] & (0x01 << i)))
         {                                                                       /* 存在SMS建立的MM连接                      */
-            Mm_SndSmsRelInd(i , NAS_MMCM_REL_CAUSE_MM_REJ_OTHER_CAUSES);
+            Mm_SndSmsRelInd(i , enMmCcRelCause);
         }
         if (0 != (g_MmGlobalInfo.ConnCtrlInfo[MM_CONN_CTRL_SMS].
             aucMMConnExtFlg[1] & (0x01 << i)))
         {                                                                       /* 存在SMS建立的MM连接                      */
-            Mm_SndSmsRelInd(i + 8, NAS_MMCM_REL_CAUSE_MM_REJ_OTHER_CAUSES);
+            Mm_SndSmsRelInd(i + 8, enMmCcRelCause);
         }
     }
     /* 以下判断仅针对只支持一个CC呼叫的情况，当支持多个CC呼叫功能时，
@@ -375,20 +462,20 @@ VOS_VOID Mm_ComRelAllMmConnExcEmergencyCall(
         /* 正在建立MM连接且不是紧急呼的MM连接       */
         Mm_SndCcRelInd(g_MmGlobalInfo.ConnCtrlInfo[MM_CONN_CTRL_CC].
                        ucMMConnEstingTI,
-                       NAS_MMCM_REL_CAUSE_MM_REJ_OTHER_CAUSES);
+                       enMmCcRelCause);
     }
     if (NO_MM_CONN_ESTING !=
         g_MmGlobalInfo.ConnCtrlInfo[MM_CONN_CTRL_SS].ucMMConnEstingTI)
     {
         Mm_SndSsRelInd(g_MmGlobalInfo.ConnCtrlInfo[MM_CONN_CTRL_SS].
-                       ucMMConnEstingTI, NAS_MMCM_REL_CAUSE_MM_REJ_OTHER_CAUSES);
+                       ucMMConnEstingTI, enMmCcRelCause);
     }
     if (NO_MM_CONN_ESTING !=
         g_MmGlobalInfo.ConnCtrlInfo[MM_CONN_CTRL_SMS].ucMMConnEstingTI)
     {
         Mm_SndSmsRelInd(g_MmGlobalInfo.ConnCtrlInfo[MM_CONN_CTRL_SMS].
                         ucMMConnEstingTI,
-                        NAS_MMCM_REL_CAUSE_MM_REJ_OTHER_CAUSES);
+                        enMmCcRelCause);
     }
     /* 以下判断仅针对只支持一个CC呼叫的情况，当支持多个CC呼叫功能时，
        并不能判断哪一个呼叫是紧急呼 */
@@ -400,7 +487,7 @@ VOS_VOID Mm_ComRelAllMmConnExcEmergencyCall(
         /* 有缓存的MM连接建立请求                   */
         Mm_SndCcRelInd(g_MmGlobalInfo.ConnCtrlInfo[MM_CONN_CTRL_CC].
                        RcvXXEstReq.ulTransactionId,
-                       NAS_MMCM_REL_CAUSE_MM_REJ_OTHER_CAUSES);                       /* 指示缓存的MM连接建立失败                 */
+                       enMmCcRelCause);                       /* 指示缓存的MM连接建立失败                 */
 
         g_MmGlobalInfo.ConnCtrlInfo[MM_CONN_CTRL_CC].RcvXXEstReq.ucFlg
             = MM_FALSE;                                                         /* 清除缓存标志                             */
@@ -410,7 +497,7 @@ VOS_VOID Mm_ComRelAllMmConnExcEmergencyCall(
     {                                                                           /* 有缓存的MM连接建立请求                   */
         Mm_SndSmsRelInd(g_MmGlobalInfo.ConnCtrlInfo[MM_CONN_CTRL_SMS].
                         RcvXXEstReq.ulTransactionId,
-                        NAS_MMCM_REL_CAUSE_MM_REJ_OTHER_CAUSES);                        /* 指示缓存的MM连接建立失败                 */
+                        enMmCcRelCause);                        /* 指示缓存的MM连接建立失败                 */
         g_MmGlobalInfo.ConnCtrlInfo[MM_CONN_CTRL_SMS].RcvXXEstReq.ucFlg
             = MM_FALSE;                                                         /* 清除缓存标志                             */
     }
@@ -418,7 +505,7 @@ VOS_VOID Mm_ComRelAllMmConnExcEmergencyCall(
         g_MmGlobalInfo.ConnCtrlInfo[MM_CONN_CTRL_SS].RcvXXEstReq.ucFlg)
     {                                                                           /* 有缓存的MM连接建立请求                   */
         Mm_SndSsRelInd(g_MmGlobalInfo.ConnCtrlInfo[MM_CONN_CTRL_SS].
-                       RcvXXEstReq.ulTransactionId, NAS_MMCM_REL_CAUSE_MM_REJ_OTHER_CAUSES);
+                       RcvXXEstReq.ulTransactionId, enMmCcRelCause);
 
         /* 指示缓存的MM连接建立失败                 */
         g_MmGlobalInfo.ConnCtrlInfo[MM_CONN_CTRL_SS].RcvXXEstReq.ucFlg
@@ -473,11 +560,11 @@ VOS_VOID Mm_ComRejectCause11(VOS_UINT8 ucType)
     if (NAS_MML_REG_FAIL_CAUSE_LA_NOT_ALLOW == g_MmGlobalInfo.usCauseVal)
     {
         /* 注册被12拒绝不用尝试呼叫重发 */
-        Mm_ComRelAllMmConn(NAS_MMCM_REL_CAUSE_MM_REJ_OTHER_CAUSES);
+        Mm_ComRelAllMmConn(NAS_MMCM_REL_CAUSE_MM_INTER_ERR_FORB_LA);
     }
     else
     {
-        Mm_ComRelAllMmConn(NAS_MMCM_REL_CAUSE_MM_LIMIT_SERVICE);
+        Mm_ComRelAllMmConn(NAS_MMCM_REL_CAUSE_MM_INTER_ERR_FORB_OTHER);
     }
 
     g_MmGlobalInfo.ucMmServiceState = MM_LIMITED_SERVICE;                       /* 设置服务状态                             */
@@ -552,93 +639,6 @@ VOS_VOID Mm_ComRejectCause11(VOS_UINT8 ucType)
     }
 }
 
-VOS_VOID Mm_ComRejectCause12(VOS_UINT8 ucType)
-{
-    /* Added by libin 05-03-22 begin: NAS_IT_BUG_017 */
-    VOS_UINT8                               ucOldUpdateSts;
-    VOS_UINT8                               ucTempUpdateSts;
-    MM_LAI_STRU                         OldLai;
-    MM_LAI_STRU                         TempLai;
-    /* Added by libin 05-03-22 end */
-
-    Mm_ComRelAllMmConn(NAS_MMCM_REL_CAUSE_MM_REJ_OTHER_CAUSES);
-
-    g_MmGlobalInfo.ucMmServiceState = MM_LIMITED_SERVICE;                       /* 设置服务状态                             */
-    /*WUEPS_TRACE( MM_LOG_LEVEL_6,                                              */
-    /*" \nMM:MmServiceState is MM_LIMITED_SERVICE \r " );                       */
-    PS_LOG(WUEPS_PID_MM, VOS_NULL, PS_PRINT_INFO, "Mm_ComRejectCause12:INFO: MmServiceState is MM_LIMITED_SERVICE");
-    /* Modified by libin 05-03-22 begin: NAS_IT_BUG_017 */
-    ucOldUpdateSts = NAS_MML_GetCsUpdateStatus();
-    PS_MEM_CPY( &OldLai,
-                 &g_MmGlobalInfo.MsCsInfo.OldLai,
-                 sizeof( MM_LAI_STRU ));
-
-    NAS_MML_SetCsUpdateStatus(NAS_MML_LOCATION_UPDATE_STATUS_LOCATION_AREA_NOT_ALLOWED);                  /* 设置更新状态                             */
-
-    switch(ucType)
-    {
-    case MM_ATTACH:
-    case MM_RAU:
-    case MM_NET_DETACH:
-    case MM_SERVICE_REQ:
-        Mm_ComNasInfoSav(
-                        MM_STATUS_DETACHED,
-                        MM_CKSN_INVALID
-                        );                                                      /* 设置MM信息                               */
-        Mm_ComDelLai();                                                         /* 删除LAI                                  */
-        g_MmGlobalInfo.MsCsInfo.MobileId.ucMsIdFlg &= ~MM_MS_ID_TMSI_PRESENT;
-
-        NAS_MML_InitUeIdTmsiInvalid();
-
-        Mm_SndAgentUsimUpdateFileReq(MM_READ_LOCA_INFO_FILE_ID);                /* 更新SIM卡更新状态                        */
-
-        /* Mm_SndAgentUsimUpdateFileReq(MM_READ_CKIK_FILE_ID);*/                     /* 更新SIM卡更新状态                        */
-        if (NAS_MML_SIM_TYPE_SIM == NAS_MML_GetSimType())
-        {
-            Mm_SndAgentUsimUpdateFileReq(MM_READ_KC_FILE_ID);                     /* 更新SIM卡更新状态                        */
-        }
-        else
-        {
-            Mm_SndAgentUsimUpdateFileReq(MM_READ_CKIK_FILE_ID);                     /* 更新SIM卡更新状态                        */
-        }
-        break;
-    default:
-        PS_LOG(WUEPS_PID_MM, VOS_NULL, PS_PRINT_WARNING, "Mm_ComRejectCause12:WARNING: Type Abnormal");
-        break;
-    }
-    ucTempUpdateSts = NAS_MML_GetCsUpdateStatus();
-    PS_MEM_CPY( &TempLai,
-                 &g_MmGlobalInfo.MsCsInfo.OldLai,
-                 sizeof( MM_LAI_STRU ));
-    NAS_MML_SetCsUpdateStatus(ucOldUpdateSts);
-    PS_MEM_CPY( &g_MmGlobalInfo.MsCsInfo.OldLai,
-                 &OldLai,
-                 sizeof( MM_LAI_STRU ));
-    NAS_MML_SetCsUpdateStatus(ucTempUpdateSts);
-    PS_MEM_CPY( &g_MmGlobalInfo.MsCsInfo.OldLai,
-                 &TempLai,
-                 sizeof( MM_LAI_STRU ));
-    /* Modified by libin 05-03-22 end */
-    if ( MM_CS_SIG_CONN_PRESENT == g_MmGlobalInfo.ucCsSigConnFlg )
-    {
-        Mm_SndRrRelReq(RRC_CELL_UNBARRED);                                      /* 向RRC发送RRMM_REL_REQ(CS域)              */
-        g_MmGlobalInfo.ucStaAfterWaitForNwkCmd =
-                                                MM_IDLE_LIMITED_SERVICE;        /* 设置释放RR连接时候进入的状态             */
-        Mm_TimerStart(MM_TIMER_T3240);
-        Mm_ComSetMmState(WAIT_FOR_NETWORK_COMMAND);
-        /*WUEPS_TRACE( MM_LOG_LEVEL_1,                                          */
-        /*" \nMM:STATUS is  WAIT_FOR_NETWORK_COMMAND\r " );                     */
-        PS_LOG(WUEPS_PID_MM, VOS_NULL, PS_PRINT_NORMAL, "Mm_ComRejectCause12:NORMAL: STATUS is WAIT_FOR_NETWORK_COMMAND");
-    }
-    else
-    {
-        Mm_ComSetMmState(MM_IDLE_LIMITED_SERVICE);
-        /*WUEPS_TRACE( MM_LOG_LEVEL_1,                                          */
-        /*" \nMM:STATUS is  MM_IDLE_LIMITED_SERVICE\r " );                      */
-        PS_LOG(WUEPS_PID_MM, VOS_NULL, PS_PRINT_NORMAL, "Mm_ComRejectCause12:NORMAL: STATUS is MM_IDLE_LIMITED_SERVICE");
-    }
-}
-
 
 
 VOS_VOID Mm_ComRejectCause13(VOS_UINT8 ucType)
@@ -650,7 +650,7 @@ VOS_VOID Mm_ComRejectCause13(VOS_UINT8 ucType)
     MM_LAI_STRU                         TempLai;
     /* Added by libin 05-03-22 end */
 
-    Mm_ComRelAllMmConn(NAS_MMCM_REL_CAUSE_MM_LIMIT_SERVICE);
+    Mm_ComRelAllMmConn(NAS_MMCM_REL_CAUSE_MM_INTER_ERR_FORB_OTHER);
 
     g_MmGlobalInfo.ucMmServiceState = MM_LIMITED_SERVICE;                       /* 设置服务状态                             */
     /*WUEPS_TRACE( MM_LOG_LEVEL_6,                                              */
@@ -773,7 +773,7 @@ VOS_VOID Mm_ComRejectCause15(VOS_UINT8 ucType)
     MM_LAI_STRU                         TempLai;
     /* Added by libin 05-03-22 end */
 
-    Mm_ComRelAllMmConn(NAS_MMCM_REL_CAUSE_MM_LIMIT_SERVICE);
+    Mm_ComRelAllMmConn(NAS_MMCM_REL_CAUSE_MM_INTER_ERR_FORB_OTHER);
 
     g_MmGlobalInfo.ucMmServiceState = MM_LIMITED_SERVICE;                       /* 设置服务状态                             */
     /*WUEPS_TRACE( MM_LOG_LEVEL_6,                                              */
@@ -894,7 +894,7 @@ VOS_VOID Mm_ComAuthenRcvAuthenRej()
     Mm_TimerStop(MM_TIMER_T3210);
     Mm_TimerStop(MM_TIMER_T3230);
 
-    Mm_ComRelAllMmConnExcEmergencyCall(NAS_MMCM_REL_CAUSE_MM_REJ_OTHER_CAUSES);
+    Mm_ComRelAllMmConnExcEmergencyCall(NAS_MMCM_REL_CAUSE_RR_REL_AUTH_REJ);
 
     Mm_ComSaveProcAndCauseVal(MM_AUTH_FAIL_PROC, NAS_MML_REG_FAIL_CAUSE_NULL);            /* 记录流程和原因值                         */
     g_MmGlobalInfo.ucMmServiceState = MM_NO_IMSI;                               /* 设置服务状态                             */
@@ -923,7 +923,7 @@ VOS_VOID Mm_ComAuthenRcvAuthenRej()
         Mm_SndAgentUsimUpdateFileReq(MM_READ_CKIK_FILE_ID);                     /* 更新SIM卡更新状态                        */
 
         /* DCM MM-18-01-22 要求更新CS:4F20文件，PS更新4F52文件 */
-        ulRet = NAS_USIMMAPI_IsServiceAvailable(NAS_USIM_SVR_GSM_ACCESS_IN_USIM);        
+        ulRet = NAS_USIMMAPI_IsServiceAvailable(NAS_USIM_SVR_GSM_ACCESS_IN_USIM);
 
         if (PS_USIM_SERVICE_AVAILIABLE == ulRet)
         {
@@ -1090,7 +1090,7 @@ VOS_VOID Mm_ComAbortCause6()
     MM_LAI_STRU                         TempLai;
     /* Added by libin 05-03-22 end */
 
-    Mm_ComRelAllMmConnExcEmergencyCall(NAS_MMCM_REL_CAUSE_MM_REJ_OTHER_CAUSES);
+    Mm_ComRelAllMmConnExcEmergencyCall(NAS_MMCM_REL_CAUSE_CM_SRV_REJ_ILLEGAL_ME);
 
     Mm_ComSaveProcAndCauseVal(MM_MM_NET_ABORT, NAS_MML_REG_FAIL_CAUSE_ILLEGAL_ME);        /* 记录流程和原因值                         */
     g_MmGlobalInfo.ucMmServiceState = MM_NO_IMSI;                               /* 设置服务状态                             */
@@ -1148,7 +1148,7 @@ VOS_VOID Mm_ComAbortCause6()
 
 VOS_VOID Mm_ComAbortCause17()
 {
-    Mm_ComRelAllMmConn(NAS_MMCM_REL_CAUSE_MM_WRONG_STATE);
+    Mm_ComRelAllMmConn(NAS_MMCM_REL_CAUSE_CM_SRV_REJ_NETWORK_FAILURE);
 
     Mm_ComSaveProcAndCauseVal(MM_MM_NET_ABORT, NAS_MML_REG_FAIL_CAUSE_NETWORK_FAILURE);   /* 记录流程和原因值                         */
     g_MmGlobalInfo.ucStaAfterWaitForNwkCmd = MM_IDLE_NORMAL_SERVICE;            /* 设置释放RR连接时候进入的状态             */
@@ -1347,7 +1347,7 @@ VOS_VOID Mm_ComAuthenRcvAuthenReq()
                 g_MmMsgAuthReq.MmIeRAND.aucRandValue,
                 16 * sizeof(VOS_UINT8)
                 );
-    NAS_MML_SetSimCsSecurityCksn(g_MmMsgAuthReq.MmIeCKSN.ucCksn);
+
     if ( MM_IE_AUTN_PRESENT == g_MmMsgAuthReq.ucAutnFlg )
     {                                                                           /* AUTN存在的场合                           */
         g_MmGlobalInfo.AuthenCtrlInfo.ucAutnLen
@@ -1434,6 +1434,9 @@ VOS_VOID Mm_ComAuthenRcvAuthenReq()
                                   g_MmGlobalInfo.AuthenCtrlInfo.aucExtRes, 12);
                         /* Modified by 张志勇 2004.10.25 end */
                     }
+
+                    NAS_MML_SetSimCsSecurityCksn(g_MmMsgAuthReq.MmIeCKSN.ucCksn);
+
                     Mm_ComMsgAuthRspSnd(&Msg);                                  /* 发送AUTHENTICATION RESPONSE(RES)         */
                 }
                 else
@@ -1519,7 +1522,7 @@ VOS_VOID Mm_ComAuthenRcvUsimCnfSuccess()
         Mm_SndAgentUsimUpdateFileReq(MM_READ_CKIK_FILE_ID);
 
         /* DCM MM-18-01-22 要求更新CS:4F20文件，PS更新4F52文件 */
-        ulRet = NAS_USIMMAPI_IsServiceAvailable(NAS_USIM_SVR_GSM_ACCESS_IN_USIM);        
+        ulRet = NAS_USIMMAPI_IsServiceAvailable(NAS_USIM_SVR_GSM_ACCESS_IN_USIM);
 
         if (PS_USIM_SERVICE_AVAILIABLE == ulRet)
         {
@@ -1785,7 +1788,7 @@ VOS_VOID Mm_ComRejectCause4()
 
 VOS_VOID Mm_ComRejectCause6()
 {
-    Mm_ComRelAllMmConn(NAS_MMCM_REL_CAUSE_MM_REJ_OTHER_CAUSES);
+    Mm_ComRelAllMmConn(NAS_MMCM_REL_CAUSE_CM_SRV_REJ_ILLEGAL_ME);
 
     Mm_ComSetMmState(WAIT_FOR_NETWORK_COMMAND);
     g_MmGlobalInfo.ucMmServiceState = MM_NO_IMSI;                               /* 设置服务状态                             */
@@ -1862,21 +1865,21 @@ VOS_VOID Mm_T3230Expire(
 
             /* CC要求建立的MM连接                       */
             Mm_SndCcRelInd( g_MmGlobalInfo.ConnCtrlInfo[MM_CONN_CTRL_CC].
-                ucMMConnEstingTI, NAS_MMCM_REL_CAUSE_MM_TIMER_T3230_EXP);            /* 通知CC,MM连接建立失败                    */
+                ucMMConnEstingTI, NAS_MMCM_REL_CAUSE_MM_INTER_ERR_T3230_TIMER_OUT);            /* 通知CC,MM连接建立失败                    */
 
             g_MmGlobalInfo.ConnCtrlInfo[MM_CONN_CTRL_CC].ucMMConnEstingTI
                 = NO_MM_CONN_ESTING;                                            /* 清除正在建立MM连接的标志                 */
             break;
         case MM_IE_PD_NON_CALL_RLT_SS_MSG:                                      /* SS要求建立的MM连接                       */
             Mm_SndSsRelInd(g_MmGlobalInfo.ConnCtrlInfo[MM_CONN_CTRL_SS].ucMMConnEstingTI,
-                           NAS_MMCM_REL_CAUSE_MM_TIMER_T3230_EXP);
+                           NAS_MMCM_REL_CAUSE_MM_INTER_ERR_T3230_TIMER_OUT);
 
             g_MmGlobalInfo.ConnCtrlInfo[MM_CONN_CTRL_SS].ucMMConnEstingTI
                 = NO_MM_CONN_ESTING;                                            /* 清除正在建立MM连接的标志                 */
             break;
         case MM_IE_PD_SMS_MSG:                                                  /* SMS要求建立的MM连接                      */
             Mm_SndSmsRelInd( g_MmGlobalInfo.ConnCtrlInfo[MM_CONN_CTRL_SMS].
-                ucMMConnEstingTI, NAS_MMCM_REL_CAUSE_MM_TIMER_T3230_EXP);              /* 通知SMS,MM连接建立失败                   */
+                ucMMConnEstingTI, NAS_MMCM_REL_CAUSE_MM_INTER_ERR_T3230_TIMER_OUT);              /* 通知SMS,MM连接建立失败                   */
 
             g_MmGlobalInfo.ConnCtrlInfo[MM_CONN_CTRL_SMS].ucMMConnEstingTI
                 = NO_MM_CONN_ESTING;                                            /* 清除正在建立MM连接的标志                 */
@@ -1926,7 +1929,7 @@ VOS_VOID Mm_T3230Expire(
                 & ( 0x01 << i ) ) )
             {
                 /* 该TI的MM连接失效                         */
-                Mm_SndCcRelInd( i, NAS_MMCM_REL_CAUSE_MM_TIMER_T3230_EXP);           /* 通知CC,MM连接建立失败                    */
+                Mm_SndCcRelInd( i, NAS_MMCM_REL_CAUSE_MM_INTER_ERR_T3230_TIMER_OUT);           /* 通知CC,MM连接建立失败                    */
             }
             if ( MM_CONST_NUM_0 !=
             ( g_MmGlobalInfo.ConnCtrlInfo[MM_CONN_CTRL_CC].aucMMConnExtFlg[1]
@@ -1934,7 +1937,7 @@ VOS_VOID Mm_T3230Expire(
             {
                 /* 该TI的MM连接失效                         */
                 Mm_SndCcRelInd( ( i + 8 ),
-                    NAS_MMCM_REL_CAUSE_MM_TIMER_T3230_EXP);                          /* 通知CC,MM连接建立失败                    */
+                    NAS_MMCM_REL_CAUSE_MM_INTER_ERR_T3230_TIMER_OUT);                          /* 通知CC,MM连接建立失败                    */
             }
         }
         g_MmGlobalInfo.ConnCtrlInfo[MM_CONN_CTRL_CC].aucMMConnExtFlg[0] = 0;    /* 清除标志位                               */
@@ -2050,7 +2053,7 @@ VOS_VOID Mm_ComCheckDelayMmConn_MM_IDLE_NORMAL_SERVICE_SS_EST_Exist(VOS_VOID)
         ulTransactionId ) )
     {                                                               /* TI不合法                                 */
         Mm_SndSsRelInd(g_MmGlobalInfo.ConnCtrlInfo[MM_CONN_CTRL_SS].RcvXXEstReq.ulTransactionId,
-                       NAS_MMCM_REL_CAUSE_MM_REJ_OTHER_CAUSES);
+                       NAS_MMCM_REL_CAUSE_MM_INTER_ERR_TI_INVALID);
     }
     else
     {
@@ -2104,7 +2107,7 @@ VOS_VOID Mm_ComCheckDelayMmConn_MM_IDLE_NORMAL_SERVICE_SMS_EST_Exist(VOS_VOID)
         Mm_SndSmsRelInd( g_MmGlobalInfo.
             ConnCtrlInfo[MM_CONN_CTRL_SMS].RcvXXEstReq.
             ulTransactionId,
-            NAS_MMCM_REL_CAUSE_MM_REJ_OTHER_CAUSES);                        /* 通知SMS建立失败                          */
+            NAS_MMCM_REL_CAUSE_MM_INTER_ERR_TI_INVALID);                        /* 通知SMS建立失败                          */
     }
     else
     {                                                               /* TI合法                                   */
@@ -2256,7 +2259,7 @@ VOS_VOID Mm_ComCheckDelayMmConn_MM_IDLE_ATTEMPTING_TO_UPDATE(VOS_UINT8   ucLUFlg
         {
             /* 是正常呼叫                               */
             Mm_SndCcRelInd( g_MmGlobalInfo.ConnCtrlInfo[MM_CONN_CTRL_CC].RcvXXEstReq.ulTransactionId,
-                NAS_MMCM_REL_CAUSE_MM_LIMIT_SERVICE);                      /* 通知CC指定建立的MM连接建立失败           */
+                NAS_MMCM_REL_CAUSE_MM_INTER_ERR_ATTEMPTING_TO_UPDATE);                      /* 通知CC指定建立的MM连接建立失败           */
 
             if ( MM_FALSE == ucLUFlg )
             {
@@ -2269,14 +2272,14 @@ VOS_VOID Mm_ComCheckDelayMmConn_MM_IDLE_ATTEMPTING_TO_UPDATE(VOS_UINT8   ucLUFlg
     g_MmGlobalInfo.ConnCtrlInfo[MM_CONN_CTRL_SS].RcvXXEstReq.ucFlg )
     {
         Mm_SndSsRelInd(g_MmGlobalInfo.ConnCtrlInfo[MM_CONN_CTRL_SS].RcvXXEstReq.ulTransactionId,
-                       NAS_MMCM_REL_CAUSE_MM_LIMIT_SERVICE);
+                       NAS_MMCM_REL_CAUSE_MM_INTER_ERR_ATTEMPTING_TO_UPDATE);
     }
     else if ( MM_TRUE ==
     g_MmGlobalInfo.ConnCtrlInfo[MM_CONN_CTRL_SMS].RcvXXEstReq.ucFlg )
     {
         Mm_SndSmsRelInd( g_MmGlobalInfo.ConnCtrlInfo[MM_CONN_CTRL_SMS].
                 RcvXXEstReq.ulTransactionId,
-                NAS_MMCM_REL_CAUSE_MM_LIMIT_SERVICE);                        /* 通知SMS建立失败                          */
+                NAS_MMCM_REL_CAUSE_MM_INTER_ERR_ATTEMPTING_TO_UPDATE);                        /* 通知SMS建立失败                          */
     }
     else if (MM_PAGING_PLMNSRCH_TRUE == g_MmSubLyrShare.MmShare.ucPagingPlmnSrch)
     {
@@ -2332,7 +2335,7 @@ VOS_VOID Mm_ComCheckDelayMmConn_MM_CONNECTION_ACTIVE_CC_EST_Exist(VOS_VOID)
         Mm_SndCcRelInd( g_MmGlobalInfo.
             ConnCtrlInfo[MM_CONN_CTRL_CC].RcvXXEstReq.
             ulTransactionId,
-            NAS_MMCM_REL_CAUSE_MM_REJ_OTHER_CAUSES);                      /* 通知CC指定建立的MM连接建立失败           */
+            NAS_MMCM_REL_CAUSE_MM_INTER_ERR_CC_CONN_REQ_EXIST);                      /* 通知CC指定建立的MM连接建立失败           */
     }
     else
     {                                                               /* 要求建立的MM连接不存在                   */
@@ -2393,7 +2396,7 @@ VOS_VOID Mm_ComCheckDelayMmConn_MM_CONNECTION_ACTIVE_SS_EST_Exist(VOS_VOID)
 
         /* 通知SS指定建立的MM连接建立失败           */
         Mm_SndSsRelInd(g_MmGlobalInfo.ConnCtrlInfo[MM_CONN_CTRL_SS].RcvXXEstReq.ulTransactionId,
-                       NAS_MMCM_REL_CAUSE_MM_REJ_OTHER_CAUSES);
+                       NAS_MMCM_REL_CAUSE_MM_INTER_ERR_TI_INVALID);
     }
     else if (MM_CONST_NUM_0 !=
             ( (g_MmGlobalInfo.ConnCtrlInfo[MM_CONN_CTRL_SS].aucMMConnExtFlg[1])
@@ -2452,7 +2455,7 @@ VOS_VOID Mm_ComCheckDelayMmConn_MM_CONNECTION_ACTIVE_SMS_EST_Exist(VOS_VOID)
         /* 通知SMS指定建立的MM连接建立失败           */
         Mm_SndSmsRelInd(g_MmGlobalInfo.ConnCtrlInfo[MM_CONN_CTRL_SMS]
                     .RcvXXEstReq.ulTransactionId,
-                    NAS_MMCM_REL_CAUSE_MM_REJ_OTHER_CAUSES);
+                    NAS_MMCM_REL_CAUSE_MM_INTER_ERR_TI_INVALID);
     }
     else if (MM_CONST_NUM_0 !=
             ( (g_MmGlobalInfo.ConnCtrlInfo[MM_CONN_CTRL_SMS].aucMMConnExtFlg[1])
@@ -2529,121 +2532,151 @@ VOS_VOID Mm_ComCheckDelayMmConn_MM_CONNECTION_ACTIVE(VOS_VOID)
 
     return;
 }
-VOS_VOID Mm_ComCheckDelayMmConn_Other_State_Handling(VOS_UINT8   ucLUFlg)
+VOS_VOID Mm_ComCheckDelayMmConn_OtherStateHandling_CC(
+    VOS_UINT8                           ucLUFlg
+)
 {
     MM_MSG_CM_SVC_REQ_STRU      CmSvcReq;                                       /* 要发送的CM SERVICE REQ消息               */
     VOS_UINT16                  usMsgSize = 0;                                  /* 消息长度,以字节为单位                    */
     VOS_UINT8                  *pucCmSvcReq = 0;                                /* 要发送的CM SERVICE REQ消息指针           */
 
+    if ( MMCC_EMERGENCY_CALL ==
+        g_MmGlobalInfo.ConnCtrlInfo[MM_CONN_CTRL_CC].
+        RcvXXEstReq.ulCallType )
+    {                                                               /* 是紧急呼叫                               */
+        g_MmCcEstReq.ulCallType           = g_MmGlobalInfo.
+            ConnCtrlInfo[MM_CONN_CTRL_CC].RcvXXEstReq.ulCallType;   /* 设置呼叫类型                             */
+        g_MmCcEstReq.ulTransactionId      = g_MmGlobalInfo.
+            ConnCtrlInfo[MM_CONN_CTRL_CC].RcvXXEstReq.
+            ulTransactionId;                                        /* 设置呼叫TI                               */
+        g_MmGlobalInfo.ucStaOfRcvXXEstReq = g_MmGlobalInfo.ucState; /* 记录收到建立请求时的状态                 */
+        Mm_ComFillInCMSncReq(MM_IE_CM_SVC_TYPE_EMG_CALL_EST,
+            MM_FALSE, &CmSvcReq);                                   /* 填充CM SERVICE REQUEST结构体             */
+        g_MmGlobalInfo.ConnCtrlInfo[MM_CONN_CTRL_CC].
+            ucEstingCallTypeFlg = MM_TRUE;                          /* 紧急呼叫                                 */
+        pucCmSvcReq =
+            Mm_ComMsgCmSvcReqOfRrEstReq( &CmSvcReq, &usMsgSize );   /* 填充CM SERVICE REQUEST 消息              */
+        if ( VOS_NULL_PTR == pucCmSvcReq )
+        {                                                           /* 消息制作失败                             */
+            PS_LOG(WUEPS_PID_MM, VOS_NULL, PS_PRINT_WARNING, "Mm_ComCheckDelayMmConn:WARNING: MAKE MSG CM SERVICE REQUEST ERROR!");
+            return;                                                 /* 返回                                     */
+        }
+        else
+        {                                                           /* 消息制作成功                             */
+            if ( MM_TRUE == ucLUFlg )
+            {                                                       /* 是LU后调用该函数                         */
+                Mm_SndMmcCmSvcInd(MM_CS_SERV_EXIST);                /* 通知MMC，CS域的业务已经启动              */
+                NAS_MM_SndGmmCsConnectInd(MMGMM_CS_CONNECT_ESTING);
+            }
+            Mm_SndRrEstReq( RRC_EST_CAUSE_EMERGENCY_CALL, MM_FALSE,
+                usMsgSize, pucCmSvcReq );                           /* 发送消息                                 */
+            Mm_TimerStart(MM_TIMER_PROTECT_SIGNALLING);             /* 启动保护TIMER                            */
+            g_MmGlobalInfo.ConnCtrlInfo[MM_CONN_CTRL_CC].
+                ucMMConnEstingTI =
+                (VOS_UINT8)g_MmGlobalInfo.ConnCtrlInfo[MM_CONN_CTRL_CC].
+                RcvXXEstReq.ulTransactionId;                        /* 记录正在建立的MM连接                     */
+            g_MmGlobalInfo.ucMMConnEstingPD = MM_IE_PD_CALL_CONTROL;/* 记录正在建立的MM连接的PD                 */
+            g_MmGlobalInfo.ucPreState   = g_MmGlobalInfo.ucState;   /* 记录迁移之前的状态                       */
+            Mm_ComSetMmState(WAIT_FOR_RR_CONNECTION_MM_CONNECTION);
+            PS_LOG(WUEPS_PID_MM, VOS_NULL, PS_PRINT_NORMAL, "Mm_ComCheckDelayMmConn:NORMAL: STATUS is WAIT_FOR_RR_CONNECTION_MM_CONNECTION");
+        }
+    }
+    else
+    {
+        if ( MM_IDLE_NO_IMSI == g_MmGlobalInfo.ucState )
+        {
+            /* 是正常呼叫                               */
+            Mm_SndCcRelInd( g_MmGlobalInfo.ConnCtrlInfo[MM_CONN_CTRL_CC].RcvXXEstReq.ulTransactionId,
+                NAS_MMCM_REL_CAUSE_MM_INTER_ERR_CS_SIM_INVALID);                      /* 通知CC指定建立的MM连接建立失败           */
+        }
+        else if ((MM_IDLE_LIMITED_SERVICE == g_MmGlobalInfo.ucState)
+              && (NAS_MML_REG_FAIL_CAUSE_LA_NOT_ALLOW != g_MmGlobalInfo.usCauseVal))
+        {
+            /* 不是由于被拒原因值12引起的限制服务状态可以尝试呼叫重发*/
+            Mm_SndCcRelInd(g_MmGlobalInfo.ConnCtrlInfo[MM_CONN_CTRL_CC].RcvXXEstReq.ulTransactionId,
+                NAS_MMCM_REL_CAUSE_MM_INTER_ERR_OUT_OF_COVERAGE);
+        }
+        else if (NAS_MML_REG_FAIL_CAUSE_LA_NOT_ALLOW == g_MmGlobalInfo.usCauseVal)
+        {
+            Mm_SndCcRelInd(g_MmGlobalInfo.ConnCtrlInfo[MM_CONN_CTRL_CC].RcvXXEstReq.ulTransactionId,
+                NAS_MMCM_REL_CAUSE_MM_INTER_ERR_FORB_LA);
+        }
+        else
+        {
+            Mm_SndCcRelInd( g_MmGlobalInfo.ConnCtrlInfo[MM_CONN_CTRL_CC].RcvXXEstReq.ulTransactionId,
+                      NAS_MMCM_REL_CAUSE_MM_INTER_ERR_CS_ACCESS_BAR);                      /* 通知CC指定建立的MM连接建立失败           */
+        }
+
+        if ( MM_FALSE == ucLUFlg )
+        {
+            Mm_SndMmcCmSvcInd(MM_CS_SERV_NOT_EXIST);                /* 通知MMC，CS域的业务已经停止              */
+            NAS_MM_SndGmmCsConnectInd(MMGMM_CS_CONNECT_NOT_EXIST);
+        }
+    }
+}
+VOS_VOID Mm_ComCheckDelayMmConn_OtherStateHandling_SS(VOS_VOID)
+{
+    if ((MM_IDLE_LIMITED_SERVICE == g_MmGlobalInfo.ucState)
+          && (NAS_MML_REG_FAIL_CAUSE_LA_NOT_ALLOW != g_MmGlobalInfo.usCauseVal))
+    {
+        /* 不是由于被拒原因值12引起的限制服务状态可以尝试ss重发 */
+        Mm_SndSsRelInd(g_MmGlobalInfo.ConnCtrlInfo[MM_CONN_CTRL_SS].RcvXXEstReq.ulTransactionId,
+                       NAS_MMCM_REL_CAUSE_MM_INTER_ERR_OUT_OF_COVERAGE);
+    }
+    else if (NAS_MML_REG_FAIL_CAUSE_LA_NOT_ALLOW == g_MmGlobalInfo.usCauseVal)
+    {
+        Mm_SndSsRelInd(g_MmGlobalInfo.ConnCtrlInfo[MM_CONN_CTRL_SS].RcvXXEstReq.ulTransactionId,
+            NAS_MMCM_REL_CAUSE_MM_INTER_ERR_FORB_LA);
+    }
+    else
+    {
+        Mm_SndSsRelInd(g_MmGlobalInfo.ConnCtrlInfo[MM_CONN_CTRL_SS].RcvXXEstReq.ulTransactionId,
+                       NAS_MMCM_REL_CAUSE_MM_INTER_ERR_CS_ACCESS_BAR);
+    }
+
+}
+VOS_VOID Mm_ComCheckDelayMmConn_OtherStateHandling_SMS(VOS_VOID)
+{
+    if ((MM_IDLE_LIMITED_SERVICE == g_MmGlobalInfo.ucState)
+          && (NAS_MML_REG_FAIL_CAUSE_LA_NOT_ALLOW != g_MmGlobalInfo.usCauseVal))
+    {
+        /* 不是由于被拒原因值12引起的限制服务状态可以尝试ss重发 */
+        Mm_SndSmsRelInd( g_MmGlobalInfo.ConnCtrlInfo[MM_CONN_CTRL_SMS].RcvXXEstReq.ulTransactionId,
+                       NAS_MMCM_REL_CAUSE_MM_INTER_ERR_OUT_OF_COVERAGE);
+    }
+    else if (NAS_MML_REG_FAIL_CAUSE_LA_NOT_ALLOW == g_MmGlobalInfo.usCauseVal)
+    {
+        Mm_SndSmsRelInd(g_MmGlobalInfo.ConnCtrlInfo[MM_CONN_CTRL_SMS].RcvXXEstReq.ulTransactionId,
+            NAS_MMCM_REL_CAUSE_MM_INTER_ERR_FORB_LA);
+    }
+    else
+    {
+        Mm_SndSmsRelInd(g_MmGlobalInfo.ConnCtrlInfo[MM_CONN_CTRL_SMS].RcvXXEstReq.ulTransactionId,
+                       NAS_MMCM_REL_CAUSE_MM_INTER_ERR_CS_ACCESS_BAR);
+    }
+
+}
+
+
+VOS_VOID Mm_ComCheckDelayMmConn_Other_State_Handling(VOS_UINT8   ucLUFlg)
+{
     RRMM_PAGING_IND_STRU        stWPagingMsg;
     GRRMM_PAGING_IND_ST         stGPagingMsg;
 
     if ( MM_TRUE ==
         g_MmGlobalInfo.ConnCtrlInfo[MM_CONN_CTRL_CC].RcvXXEstReq.ucFlg )
-    {                                                                   /* 由等待的CC触发的需要建立的MM连接         */
-        if ( MMCC_EMERGENCY_CALL ==
-            g_MmGlobalInfo.ConnCtrlInfo[MM_CONN_CTRL_CC].
-            RcvXXEstReq.ulCallType )
-        {                                                               /* 是紧急呼叫                               */
-            g_MmCcEstReq.ulCallType           = g_MmGlobalInfo.
-                ConnCtrlInfo[MM_CONN_CTRL_CC].RcvXXEstReq.ulCallType;   /* 设置呼叫类型                             */
-            g_MmCcEstReq.ulTransactionId      = g_MmGlobalInfo.
-                ConnCtrlInfo[MM_CONN_CTRL_CC].RcvXXEstReq.
-                ulTransactionId;                                        /* 设置呼叫TI                               */
-            g_MmGlobalInfo.ucStaOfRcvXXEstReq = g_MmGlobalInfo.ucState; /* 记录收到建立请求时的状态                 */
-            Mm_ComFillInCMSncReq(MM_IE_CM_SVC_TYPE_EMG_CALL_EST,
-                MM_FALSE, &CmSvcReq);                                   /* 填充CM SERVICE REQUEST结构体             */
-            g_MmGlobalInfo.ConnCtrlInfo[MM_CONN_CTRL_CC].
-                ucEstingCallTypeFlg = MM_TRUE;                          /* 紧急呼叫                                 */
-            pucCmSvcReq =
-                Mm_ComMsgCmSvcReqOfRrEstReq( &CmSvcReq, &usMsgSize );   /* 填充CM SERVICE REQUEST 消息              */
-            if ( VOS_NULL_PTR == pucCmSvcReq )
-            {                                                           /* 消息制作失败                             */
-                PS_LOG(WUEPS_PID_MM, VOS_NULL, PS_PRINT_WARNING, "Mm_ComCheckDelayMmConn:WARNING: MAKE MSG CM SERVICE REQUEST ERROR!");
-                return;                                                 /* 返回                                     */
-            }
-            else
-            {                                                           /* 消息制作成功                             */
-                if ( MM_TRUE == ucLUFlg )
-                {                                                       /* 是LU后调用该函数                         */
-                    Mm_SndMmcCmSvcInd(MM_CS_SERV_EXIST);                /* 通知MMC，CS域的业务已经启动              */
-                    NAS_MM_SndGmmCsConnectInd(MMGMM_CS_CONNECT_ESTING);
-                }
-                Mm_SndRrEstReq( RRC_EST_CAUSE_EMERGENCY_CALL, MM_FALSE,
-                    usMsgSize, pucCmSvcReq );                           /* 发送消息                                 */
-                Mm_TimerStart(MM_TIMER_PROTECT_SIGNALLING);             /* 启动保护TIMER                            */
-                g_MmGlobalInfo.ConnCtrlInfo[MM_CONN_CTRL_CC].
-                    ucMMConnEstingTI =
-                    (VOS_UINT8)g_MmGlobalInfo.ConnCtrlInfo[MM_CONN_CTRL_CC].
-                    RcvXXEstReq.ulTransactionId;                        /* 记录正在建立的MM连接                     */
-                g_MmGlobalInfo.ucMMConnEstingPD = MM_IE_PD_CALL_CONTROL;/* 记录正在建立的MM连接的PD                 */
-                g_MmGlobalInfo.ucPreState   = g_MmGlobalInfo.ucState;   /* 记录迁移之前的状态                       */
-                Mm_ComSetMmState(WAIT_FOR_RR_CONNECTION_MM_CONNECTION);
-                PS_LOG(WUEPS_PID_MM, VOS_NULL, PS_PRINT_NORMAL, "Mm_ComCheckDelayMmConn:NORMAL: STATUS is WAIT_FOR_RR_CONNECTION_MM_CONNECTION");
-            }
-        }
-        else
-        {
-            if ( MM_IDLE_NO_IMSI == g_MmGlobalInfo.ucState )
-            {
-                /* 是正常呼叫                               */
-                Mm_SndCcRelInd( g_MmGlobalInfo.ConnCtrlInfo[MM_CONN_CTRL_CC].RcvXXEstReq.ulTransactionId,
-                    NAS_MMCM_REL_CAUSE_MM_REJ_OTHER_CAUSES);                      /* 通知CC指定建立的MM连接建立失败           */
-            }
-            else if ((MM_IDLE_LIMITED_SERVICE == g_MmGlobalInfo.ucState)
-                  && (NAS_MML_REG_FAIL_CAUSE_LA_NOT_ALLOW != g_MmGlobalInfo.usCauseVal))
-            {
-                /* 不是由于被拒原因值12引起的限制服务状态可以尝试呼叫重发*/
-                Mm_SndCcRelInd(g_MmGlobalInfo.ConnCtrlInfo[MM_CONN_CTRL_CC].RcvXXEstReq.ulTransactionId,
-                    NAS_MMCM_REL_CAUSE_MM_LIMIT_SERVICE);
-            }
-            else
-            {
-                Mm_SndCcRelInd( g_MmGlobalInfo.ConnCtrlInfo[MM_CONN_CTRL_CC].RcvXXEstReq.ulTransactionId,
-                          NAS_MMCM_REL_CAUSE_MM_REJ_OTHER_CAUSES);                      /* 通知CC指定建立的MM连接建立失败           */
-
-            }
-
-            if ( MM_FALSE == ucLUFlg )
-            {
-                Mm_SndMmcCmSvcInd(MM_CS_SERV_NOT_EXIST);                /* 通知MMC，CS域的业务已经停止              */
-                NAS_MM_SndGmmCsConnectInd(MMGMM_CS_CONNECT_NOT_EXIST);
-            }
-        }
+    {
+        Mm_ComCheckDelayMmConn_OtherStateHandling_CC(ucLUFlg);
     }
     else if ( MM_TRUE ==
     g_MmGlobalInfo.ConnCtrlInfo[MM_CONN_CTRL_SS].RcvXXEstReq.ucFlg )
     {
-        if ((MM_IDLE_LIMITED_SERVICE == g_MmGlobalInfo.ucState)
-              && (NAS_MML_REG_FAIL_CAUSE_LA_NOT_ALLOW != g_MmGlobalInfo.usCauseVal))
-        {
-            /* 不是由于被拒原因值12引起的限制服务状态可以尝试ss重发 */
-            Mm_SndSsRelInd(g_MmGlobalInfo.ConnCtrlInfo[MM_CONN_CTRL_SS].RcvXXEstReq.ulTransactionId,
-                           NAS_MMCM_REL_CAUSE_MM_LIMIT_SERVICE);
-        }
-        else
-        {
-            Mm_SndSsRelInd(g_MmGlobalInfo.ConnCtrlInfo[MM_CONN_CTRL_SS].RcvXXEstReq.ulTransactionId,
-                           NAS_MMCM_REL_CAUSE_MM_REJ_OTHER_CAUSES);
-        }
-
+        Mm_ComCheckDelayMmConn_OtherStateHandling_SS();
     }
     else if ( MM_TRUE ==
     g_MmGlobalInfo.ConnCtrlInfo[MM_CONN_CTRL_SMS].RcvXXEstReq.ucFlg )
     {
-        if ((MM_IDLE_LIMITED_SERVICE == g_MmGlobalInfo.ucState)
-              && (NAS_MML_REG_FAIL_CAUSE_LA_NOT_ALLOW != g_MmGlobalInfo.usCauseVal))
-        {
-            /* 不是由于被拒原因值12引起的限制服务状态可以尝试ss重发 */
-            Mm_SndSmsRelInd( g_MmGlobalInfo.ConnCtrlInfo[MM_CONN_CTRL_SMS].RcvXXEstReq.ulTransactionId,
-                           NAS_MMCM_REL_CAUSE_MM_LIMIT_SERVICE);
-        }
-        else
-        {
-            Mm_SndSmsRelInd( g_MmGlobalInfo.ConnCtrlInfo[MM_CONN_CTRL_SMS].RcvXXEstReq.ulTransactionId,
-                           NAS_MMCM_REL_CAUSE_MM_REJ_OTHER_CAUSES);
-        }
-
+        Mm_ComCheckDelayMmConn_OtherStateHandling_SMS();
     }
     else if (MM_PAGING_PLMNSRCH_TRUE == g_MmSubLyrShare.MmShare.ucPagingPlmnSrch)
     {
@@ -2686,7 +2719,7 @@ VOS_VOID Mm_ComCheckDelayMmConn(
     {
         /* TI不合法                                 */
         Mm_SndCcRelInd(g_MmCcEstReq.ulTransactionId,
-            NAS_MMCM_REL_CAUSE_MM_REJ_OTHER_CAUSES);        /* 通知CC建立失败                           */
+            NAS_MMCM_REL_CAUSE_MM_INTER_ERR_TI_INVALID);        /* 通知CC建立失败                           */
     }
     else
     {                                                                           /* TI合法                                   */
@@ -2980,7 +3013,7 @@ VOS_VOID Mm_ComLuOnly()
             {
                 /* TI不合法, 通知CC建立失败 */
                 Mm_SndCcRelInd( g_MmGlobalInfo.ConnCtrlInfo[MM_CONN_CTRL_CC].
-                    RcvXXEstReq.ulTransactionId, NAS_MMCM_REL_CAUSE_MM_REJ_OTHER_CAUSES);
+                    RcvXXEstReq.ulTransactionId, NAS_MMCM_REL_CAUSE_MM_INTER_ERR_TI_INVALID);
 
                 g_MmGlobalInfo.ConnCtrlInfo[MM_CONN_CTRL_CC].RcvXXEstReq.ucFlg =
                     MM_FALSE;                                                   /* 设置没有缓存的MM连接                     */
@@ -3002,7 +3035,7 @@ VOS_VOID Mm_ComLuOnly()
             else
             {                                                                   /* TI不合法                                 */
                 Mm_SndSsRelInd(g_MmGlobalInfo.ConnCtrlInfo[MM_CONN_CTRL_SS].RcvXXEstReq.ulTransactionId,
-                               NAS_MMCM_REL_CAUSE_MM_REJ_OTHER_CAUSES);
+                               NAS_MMCM_REL_CAUSE_MM_INTER_ERR_TI_INVALID);
 
                 g_MmGlobalInfo.ConnCtrlInfo[MM_CONN_CTRL_SS].RcvXXEstReq.ucFlg =
                     MM_FALSE;                                                   /* 设置没有缓存的MM连接                     */
@@ -3025,7 +3058,7 @@ VOS_VOID Mm_ComLuOnly()
             {                                                                   /* TI不合法                                 */
                 Mm_SndSmsRelInd( g_MmGlobalInfo.ConnCtrlInfo[MM_CONN_CTRL_SMS].
                     RcvXXEstReq.ulTransactionId,
-                    NAS_MMCM_REL_CAUSE_MM_REJ_OTHER_CAUSES);                            /* 通知CC建立失败                           */
+                    NAS_MMCM_REL_CAUSE_MM_INTER_ERR_TI_INVALID);                            /* 通知CC建立失败                           */
 
                 g_MmGlobalInfo.ConnCtrlInfo[MM_CONN_CTRL_SMS].RcvXXEstReq.
                     ucFlg = MM_FALSE;                                           /* 设置没有缓存的MM连接                     */
@@ -3066,7 +3099,7 @@ VOS_VOID Mm_ComLuOnly()
 
         /* 发起LAU时候清除ATTEMPT UPDATE LAI信息 */
         NAS_MM_InitLaiInfo(NAS_MM_GetAttemptUpdateLaiInfo());
-        
+
         Mm_ComMsgLuReqSndOfEstReq(&Msg);                                        /* 发送消息                                 */
         NAS_MM_SndGmmCsConnectInd(MMGMM_CS_CONNECT_ESTING);
         Mm_TimerStart(MM_TIMER_PROTECT_SIGNALLING);                             /* 启动保护TIMER                            */
@@ -3165,7 +3198,7 @@ VOS_VOID Mm_ComInit ()
         /* 将定时器修改为非循环定时器 */
         gstMmTimer[i].ucMode        = VOS_RELTIMER_NOLOOP;
     }
-    
+
     /* 初始化TIMER的时长 */
     gstMmTimer[MM_TIMER_T3210].ulTimerLen = MM_TIMER_T3210_VALUE;
     gstMmTimer[MM_TIMER_T3211].ulTimerLen = MM_TIMER_T3211_VALUE;
@@ -3201,6 +3234,8 @@ VOS_VOID Mm_ComInit ()
 
     gstMmTimer[MM_TIMER_WAIT_GET_HO_SECU_INFO_CNF].ulTimerLen = MM_TIMER_WAIT_GET_HO_SECU_INFO_CNF_LEN_VALUE;
 
+    gstMmTimer[MM_TIMER_PROTECT_MT_CSFB_PAGING_PROCEDURE].ulTimerLen = (VOS_UINT32)(NAS_MML_GetProtectMtCsfbPagingProcedureLen() * 1000);
+
     g_MmSubLyrShare.MmShare.ucCsAttachState = MM_STATUS_DETACHED;
 
 
@@ -3224,9 +3259,13 @@ VOS_VOID Mm_ComInit ()
 
     g_MmGlobalInfo.ucLauAcceptContainDiffNbLaiFlg  = VOS_FALSE;
 
+    NAS_MM_SetEstCnfResult(RRC_NAS_EST_RESULT_BUTT);
+
 #if (FEATURE_ON == FEATURE_IMS)
     NAS_MM_SetSrvccFlg(VOS_FALSE);
-#endif    
+
+    NAS_MM_SetRcvSrvccCallInfoFlg(VOS_FALSE);
+#endif
 
     NAS_MM_InitLaiInfo(NAS_MM_GetAttemptUpdateLaiInfo());
 
@@ -3507,9 +3546,9 @@ VOS_VOID Mm_ComLuCauseHandle(VOS_UINT16 usCause)
 
 
                 /* 在U2状态，保存当前的LAI信息 */
-                PS_MEM_CPY(NAS_MM_GetAttemptUpdateLaiInfo(), 
-                           &g_MmGlobalInfo.MsCsInfo.CurLai, sizeof(MM_LAI_STRU));            
-            
+                PS_MEM_CPY(NAS_MM_GetAttemptUpdateLaiInfo(),
+                           &g_MmGlobalInfo.MsCsInfo.CurLai, sizeof(MM_LAI_STRU));
+
                 Mm_ComToU2Handle();
                 Mm_TimerStart(MM_TIMER_T3211);                                  /* 启动T3211                                */
             }
@@ -3535,17 +3574,17 @@ VOS_VOID Mm_ComLuCauseHandle(VOS_UINT16 usCause)
 
 
             /* 在U2状态，保存当前的LAI信息 */
-            PS_MEM_CPY(NAS_MM_GetAttemptUpdateLaiInfo(), 
-                       &g_MmGlobalInfo.MsCsInfo.CurLai, sizeof(MM_LAI_STRU));            
-            
+            PS_MEM_CPY(NAS_MM_GetAttemptUpdateLaiInfo(),
+                       &g_MmGlobalInfo.MsCsInfo.CurLai, sizeof(MM_LAI_STRU));
+
             Mm_ComToU2Handle();
 
 
-            
-            /* SOR特性由MMC触发MM发起LAU */            
+
+            /* SOR特性由MMC触发MM发起LAU */
             Mm_TimerStart(MM_TIMER_T3212);
-            
-                
+
+
 
             /*A32D10964==>*/
             if (MM_DETACH_NEED_DELAY == g_MmGlobalInfo.ucDetachType)
@@ -4058,7 +4097,7 @@ VOS_VOID Mm_ComGmmSrCauseHandle(VOS_UINT16 usCause)
              && ((MM_IDLE_NORMAL_SERVICE == g_MmGlobalInfo.ucState)
                 || ((MM_IDLE_ATTEMPTING_TO_UPDATE == g_MmGlobalInfo.ucState)
                    && (MM_TIMER_STOP == gstMmTimer[MM_TIMER_T3211].ucTimerStatus))))
-               
+
             {
                 g_MmGlobalInfo.ucLikeB = MM_TRUE;                               /* 设置类似B模式                            */
                 /*WUEPS_TRACE( MM_LOG_LEVEL_6, " \nMM:MmLikeB is MM_TRUE \r " );*/
@@ -4683,7 +4722,8 @@ VOS_VOID    Mm_ComSysInfoHandleWithLaiNoChange(VOS_UINT8     ucUserSpecificSearc
             /* 由于发起LAU的时候停止了T3212，因此如果T3212没有运行，表示前面已经发起过 */
             else if ((MM_TIMER_STOP == gstMmTimer[MM_TIMER_T3211].ucTimerStatus)
                   && (MM_TIMER_STOP == gstMmTimer[MM_TIMER_T3212].ucTimerStatus)
-                  && (0x0 != gstMmTimer[MM_TIMER_T3212].ulTimerLen))
+                  && (0x0 != gstMmTimer[MM_TIMER_T3212].ulTimerLen)
+                  && (MM_TIMER_STOP == gstMmTimer[MM_TIMER_T3213].ucTimerStatus))
             {
                 NAS_MM_ProcBufferedEmgCallOrLau_RcvSysinfo(ulLaiChangeFlag, MM_IE_LUT_NORMAL_LU);
             }
@@ -4715,12 +4755,12 @@ VOS_VOID    Mm_ComSysInfoHandleWithLaiNoChange(VOS_UINT8     ucUserSpecificSearc
     else if ( (1 == ucUserSpecificSearchFlg)                        /* 用户发起的指定搜网，且当前不在U1，即使位置区不变，也发起注册 */
             ||(MM_TRUE == g_MmGlobalInfo.ucPowerOnFlg))             /* 刚开机，位置区不变，也发起注册 */
     {
-        /* 搜网状态，在手动搜网时候，则清除ATTMPTCNT */            
+        /* 搜网状态，在手动搜网时候，则清除ATTMPTCNT */
         if ( MM_IDLE_PLMN_SEARCH == g_MmGlobalInfo.ucState )
         {
             g_MmGlobalInfo.LuInfo.ucLuAttmptCnt = 0;
         }
-        
+
         NAS_MM_ProcBufferedEmgCallOrLau_RcvSysinfo(ulLaiChangeFlag, MM_IE_LUT_NORMAL_LU);
     }
     else
@@ -4738,8 +4778,8 @@ VOS_VOID    Mm_ComSysInfoHandleWithLaiNoChange(VOS_UINT8     ucUserSpecificSearc
         {
             Mm_ComSetMmState(MM_IDLE_ATTEMPTING_TO_UPDATE);
 
-            
-            /* 如果T3212在运行且T3211不在运行，则通知MMC当前T3212在运行,否则继续等待T3211超时注册处理 */    
+
+            /* 如果T3212在运行且T3211不在运行，则通知MMC当前T3212在运行,否则继续等待T3211超时注册处理 */
             if ( (MM_TIMER_STOP     == gstMmTimer[MM_TIMER_T3211].ucTimerStatus)
               && (MM_TIMER_RUNNING  == gstMmTimer[MM_TIMER_T3212].ucTimerStatus) )
             {
@@ -4767,7 +4807,7 @@ VOS_VOID    Mm_ComSysInfoHandleWithLaiNoChange(VOS_UINT8     ucUserSpecificSearc
 
 VOS_VOID Mm_ComRcvSysHandle(VOS_UINT8     ucUserSpecificSearchFlg)
 {
-    
+
     VOS_UINT32                          ulLaiChangeFlag;
 
     ulLaiChangeFlag =  Mm_ComLaiJudge();
@@ -4806,7 +4846,7 @@ VOS_VOID Mm_ComRcvSysHandle(VOS_UINT8     ucUserSpecificSearchFlg)
             if (MM_IDLE_PLMN_SEARCH == g_MmGlobalInfo.ucState)
             {
                 if (NAS_MML_LOCATION_UPDATE_STATUS_NOT_UPDATED == NAS_MML_GetCsUpdateStatus())
-                { 
+                {
                     /* 如果在NOT UPDATE时候，当前LAI不再ATTEMPT LAI中，则发起LAU */
                     if (VOS_FALSE == NAS_MM_IsSameLaiInfo(NAS_MM_GetAttemptUpdateLaiInfo(),
                                                            &g_MmGlobalInfo.MsCsInfo.CurLai))
@@ -4825,7 +4865,7 @@ VOS_VOID Mm_ComRcvSysHandle(VOS_UINT8     ucUserSpecificSearchFlg)
                 }
                 else
                 {
-                }                
+                }
             }
 
             if ( g_MmGlobalInfo.ucNtMod == g_MmGlobalInfo.ucNewNtMod )
@@ -4842,7 +4882,7 @@ VOS_VOID Mm_ComRcvSysHandle(VOS_UINT8     ucUserSpecificSearchFlg)
                         Mm_ComSysInfoHandleWithLaiNoChange(ucUserSpecificSearchFlg);
                     }
                 }
-                else if (NAS_MML_LOCATION_UPDATE_STATUS_NOT_UPDATED == NAS_MML_GetCsUpdateStatus()) 
+                else if (NAS_MML_LOCATION_UPDATE_STATUS_NOT_UPDATED == NAS_MML_GetCsUpdateStatus())
                 {
                     /* 如果在NOT UPDATE时候，当前LAI不再ATTEMPT LAI中，则发起LAU */
                     if (VOS_FALSE == NAS_MM_IsSameLaiInfo(NAS_MM_GetAttemptUpdateLaiInfo(),
@@ -4853,7 +4893,7 @@ VOS_VOID Mm_ComRcvSysHandle(VOS_UINT8     ucUserSpecificSearchFlg)
                     else
                     {
                         /* LA 没发生改变 */
-                        Mm_ComSysInfoHandleWithLaiNoChange(ucUserSpecificSearchFlg);                        
+                        Mm_ComSysInfoHandleWithLaiNoChange(ucUserSpecificSearchFlg);
                     }
                 }
                 else
@@ -5055,7 +5095,7 @@ VOS_VOID Mm_ComFollowOnProc(
     {
         /* 有等待的CC要求建立的MM连接,TI不合法      */
         Mm_SndCcRelInd(g_MmCcEstReq.ulTransactionId,
-            NAS_MMCM_REL_CAUSE_MM_REJ_OTHER_CAUSES);   /* 通知CC建立失败  */
+            NAS_MMCM_REL_CAUSE_MM_INTER_ERR_TI_INVALID);   /* 通知CC建立失败  */
 
         g_MmGlobalInfo.ConnCtrlInfo[MM_CONN_CTRL_CC].RcvXXEstReq.ucFlg = MM_FALSE;  /* 清除存在缓存的MM连接建立请求的标志       */
 
@@ -5074,18 +5114,18 @@ VOS_VOID Mm_ComFollowOnProc(
                     ucCmSvsType = MM_IE_CM_SVC_TYPE_SS_ACT;
                     ucPdType    = MM_IE_PD_NON_CALL_RLT_SS_MSG;
                 }
-                else if ( MM_CONN_CTRL_SMS == i )    
+                else if ( MM_CONN_CTRL_SMS == i )
                 {
                     ucCmSvsType = MM_IE_CM_SVC_TYPE_SMS;
-                    ucPdType    = MM_IE_PD_SMS_MSG;   
+                    ucPdType    = MM_IE_PD_SMS_MSG;
                 }
                 else
                 {
                     /* 非SS/SMS消息，则异常处理 */
                     break;
                 }
-                
-                                    
+
+
                 g_MmGlobalInfo.ucStaOfRcvXXEstReq = MM_IDLE_NORMAL_SERVICE;         /* 记录收到建立请求时的状态                 */
                 Mm_ComFillInCMSncReq(ucCmSvsType,
                     MM_FALSE, &CmSvcReq);                                           /* 填充CM SERVICE REQUEST结构体             */
@@ -5101,7 +5141,7 @@ VOS_VOID Mm_ComFollowOnProc(
 
                 /* 清除存在缓存的MM连接建立请求的标志 */
                 g_MmGlobalInfo.ConnCtrlInfo[i].RcvXXEstReq.ucFlg = MM_FALSE;
-                
+
                 /* 处理CM 缓存结束 */
                 return;
             }
@@ -5110,23 +5150,23 @@ VOS_VOID Mm_ComFollowOnProc(
             if ( MM_CONN_CTRL_SS == i )
             {
                 Mm_SndSsRelInd(g_MmGlobalInfo.ConnCtrlInfo[i].RcvXXEstReq.ulTransactionId,
-                               NAS_MMCM_REL_CAUSE_MM_REJ_OTHER_CAUSES);
+                               NAS_MMCM_REL_CAUSE_MM_INTER_ERR_TI_INVALID);
             }
             else if ( MM_CONN_CTRL_SMS == i )
             {
                 Mm_SndSmsRelInd( g_MmGlobalInfo.ConnCtrlInfo[i].
                     RcvXXEstReq.ulTransactionId,
-                    NAS_MMCM_REL_CAUSE_MM_REJ_OTHER_CAUSES);                        /* 通知SMS建立失败                          */
+                    NAS_MMCM_REL_CAUSE_MM_INTER_ERR_TI_INVALID);                        /* 通知SMS建立失败                          */
             }
             else
             {
             }
-            
+
             /* 清除存在缓存的MM连接建立请求的标志 */
             g_MmGlobalInfo.ConnCtrlInfo[i].RcvXXEstReq.ucFlg = MM_FALSE;
-            
+
         }
-        
+
     }
 
     /* 如果当前没有缓存或者缓存的消息TI非法，则进行状态迁移 */
@@ -5382,7 +5422,7 @@ VOS_VOID Mm_ComProcCauseProcess_Handling_MM_MM_CONN_PROC(VOS_VOID)
             /* 释放当前连接 */
             Mm_TimerStop(MM_TIMER_PROTECT_SIGNALLING);
 
-            Mm_ComRelAllMmConn(NAS_MMCM_REL_CAUSE_MM_REJ_OTHER_CAUSES);
+            Mm_ComRelAllMmConn(NAS_MMCM_REL_CAUSE_MM_INTER_ERR_CS_SIM_INVALID);
 
             /* 转到连接建立前的状态 */
             Mm_ComSetMmState(g_MmGlobalInfo.ucStaOfRcvXXEstReq);
@@ -5675,9 +5715,9 @@ VOS_VOID Mm_TimerResume( VOS_UINT8   ucTimerId )
         {
             if ( MM_TIMER_PAUSE == gstMmTimer[i].ucTimerStatus )
             {
-                
 
-                
+
+
 
                 if( VOS_OK != Mm_StartRelTimer(
                                            &gstMmTimer[i].hTimer,     /* 存放TIMER ID的地址                       */
@@ -5699,11 +5739,11 @@ VOS_VOID Mm_TimerResume( VOS_UINT8   ucTimerId )
     {
         if ( MM_TIMER_PAUSE == gstMmTimer[ucTimerId].ucTimerStatus)
         {                                                                       /* 该timer已经启动                          */
-            
 
 
-            
-            
+
+
+
 
             if ( VOS_OK != Mm_StartRelTimer(
                                            &gstMmTimer[ucTimerId].hTimer,     /* 存放TIMER ID的地址                       */
@@ -6025,7 +6065,7 @@ VOS_VOID Mm_ComAuthMsRej()
     Mm_TimerStop(MM_TIMER_T3214);
     Mm_TimerStop(MM_TIMER_T3216);
 
-    Mm_ComRelAllMmConn(NAS_MMCM_REL_CAUSE_MM_REJ_OTHER_CAUSES);
+    Mm_ComRelAllMmConn(NAS_MMCM_REL_CAUSE_MM_INTER_ERR_CS_SIM_INVALID);
 
 
     Mm_SndRrRelReq(RRC_CELL_BARRED);
@@ -6109,14 +6149,14 @@ VOS_VOID Mm_Com_UsimAuthenticationCnfChgFormat(
     pstTELECnf = &(pUsimMsg->cnfdata.stTELECnf);
 
     /* UMTS AUTH SUCCESS or GSM AUTH SUCCESS */
-    if ((USIMM_AUTH_UMTS_SUCCESS == pUsimMsg->enResult) 
+    if ((USIMM_AUTH_UMTS_SUCCESS == pUsimMsg->enResult)
      || (USIMM_AUTH_GSM_SUCCESS == pUsimMsg->enResult))
     {
         NAS_EventReport(WUEPS_PID_MM, NAS_OM_EVENT_AUTH_SUCCESS,
                         VOS_NULL_PTR, NAS_OM_EVENT_NO_PARA);
 
         g_AgentUsimAuthCnf.ucCheckRst = AGENT_AUTH_RST_SUCCESS;
-        
+
         pPointer = pstTELECnf->aucAuthRes;
 
         if (pPointer[0] <= 4)
@@ -6163,7 +6203,7 @@ VOS_VOID Mm_Com_UsimAuthenticationCnfChgFormat(
             g_AgentUsimAuthCnf.ucKcLength = 0;
         }
         else /* 鉴权结果包含 KC, 读取 KC 值 */
-        {    
+        {
             for (i=0; i<8; i++)
             {
                 /* skip the first length byte */
@@ -6178,8 +6218,8 @@ VOS_VOID Mm_Com_UsimAuthenticationCnfChgFormat(
         {
             /* skip the first length byte */
             g_AgentUsimAuthCnf.aucCipheringKey[i] = pstTELECnf->aucCK[i+1];
-            
-            /* skip the first length byte */        
+
+            /* skip the first length byte */
             g_AgentUsimAuthCnf.aucIntegrityKey[i] = pstTELECnf->aucIK[i+1];
         }
     }
@@ -6193,9 +6233,9 @@ VOS_VOID Mm_Com_UsimAuthenticationCnfChgFormat(
     else if (USIMM_AUTH_SYNC_FAILURE == pUsimMsg->enResult)
     {
         g_AgentUsimAuthCnf.ucFailParaLength = 14;
-        
+
         pPointer = pstTELECnf->aucAuts;
-        if ( pstTELECnf->aucAuts[0] > 14 )        
+        if ( pstTELECnf->aucAuts[0] > 14 )
         {
             for ( i = 0; i < g_AgentUsimAuthCnf.ucFailParaLength; i++)
             {
@@ -6216,7 +6256,7 @@ VOS_VOID Mm_Com_UsimAuthenticationCnfChgFormat(
                 }
             }
         }
-        
+
         g_AgentUsimAuthCnf.ucCheckRst = AGENT_AUTH_RST_FAILURE;
         g_AgentUsimAuthCnf.ucFailureCause = AGENT_AUTH_FAIL_SQN;
         ucCause = NAS_OM_MM_CAUSE_SYNCH_FAILURE;
@@ -6303,7 +6343,7 @@ VOS_VOID Mm_ComNetModeChange()
 
         }
     }
-    else
+    else if (NAS_MML_LOCATION_UPDATE_STATUS_NOT_UPDATED == NAS_MML_GetCsUpdateStatus())
     {
         if ((g_MmGlobalInfo.MsCsInfo.ucOldRac == NAS_MML_GetCurrCampRac())
          && (g_MmGlobalInfo.MsCsInfo.OldLai.PlmnId.ulMcc == g_MmGlobalInfo.MsCsInfo.CurLai.PlmnId.ulMcc)
@@ -6323,6 +6363,9 @@ VOS_VOID Mm_ComNetModeChange()
 
 
         }
+    }
+    else
+    {
     }
 
     if (MM_TRUE == ucProcessLu)
@@ -6541,7 +6584,11 @@ MMCC_CHANNEL_MODE_ENUM_U32 MM_ComGetChanMode(NAS_RR_CHANNEL_MODE_ENUM_U8 enChanM
 VOS_VOID Mm_ComSetMmState(VOS_UINT32 ulState)
 {
     NAS_MML_NET_RAT_TYPE_ENUM_UINT8     enCurrentNetRatType;
+    
+    VOS_UINT32                          ulRet;
+    VOS_UINT32                          ulRcvPid;
 
+    ulRet   = VOS_ERR;
     enCurrentNetRatType = NAS_MML_GetCurrNetRatType();
 
     if (( VOS_FALSE == NAS_MML_GetCsAttachAllowFlg())
@@ -6581,6 +6628,18 @@ VOS_VOID Mm_ComSetMmState(VOS_UINT32 ulState)
                 Mm_SndMmcSvcStaInd();
             }
 
+            break;
+
+        case MM_CONNECTION_ACTIVE:
+            /* 停止定时器 */
+            Mm_TimerStop(MM_TIMER_PROTECT_MT_CSFB_PAGING_PROCEDURE);
+
+            /* 通知接入层TRANSACTION状态 */
+            ulRet = NAS_MM_GetRrcPidFromCurrRatType(&ulRcvPid);
+            if (VOS_OK == ulRet)
+            {
+                NAS_MM_SndRrcTransactionStatusNotify(ulRcvPid, RRMM_TRANSACTION_CONNECTION_EST_SUCC);
+            }
             break;
 
         default:
@@ -6836,9 +6895,11 @@ VOS_UINT8 NAS_MM_RetryCurrentProcedureCheck(
             && (g_MmGlobalInfo.ucProc
                     == g_MmGlobalInfo.stMmLinkCtrl.ucCurrentProc))
         {
-            if (  (RRC_REL_CAUSE_RR_NORM_EVENT == ulRelCause)
-                ||(RRC_REL_CAUSE_RR_DRIECT_SIGN_CONN_EST == ulRelCause)
-                ||(RRC_REL_CAUSE_RR_USER_INACT == ulRelCause))
+            if ( (RRC_REL_CAUSE_RR_NORM_EVENT           == ulRelCause)
+              || (RRC_REL_CAUSE_RR_DRIECT_SIGN_CONN_EST == ulRelCause)
+              || (RRC_REL_CAUSE_RR_USER_INACT           == ulRelCause)
+              || (RRC_REL_CAUSE_CELL_UPDATE_FAIL        == ulRelCause)
+              || (RRC_REL_CAUSE_T314_EXPIRED            == ulRelCause) )
             {
                 ucRst = VOS_TRUE;
             }
@@ -6850,6 +6911,38 @@ VOS_UINT8 NAS_MM_RetryCurrentProcedureCheck(
 
     return ucRst;
 }
+VOS_UINT8 NAS_MM_IsRrRelCauseNeedRetryLau(
+    RRC_REL_CAUSE_ENUM_UINT32           ulRelCause
+)
+{
+    VOS_UINT8                           ucRst;
+
+    ucRst = VOS_FALSE;  /* [false alarm]:ucRst作为初始化值 */
+
+    switch ( ulRelCause )
+    {
+        case RRC_REL_CAUSE_RR_UNSPEC :
+        case RRC_REL_CAUSE_NAS_DATA_ABSENT :
+        case RRC_REL_CAUSE_RRC_ERROR :
+        case RRC_REL_CAUSE_RL_FAILURE :
+        case RRC_REL_CAUSE_OTHER_REASON :
+        case RRC_REL_CAUSE_RLC_ERROR:
+        case RRC_REL_CAUSE_W_RL_FAIL:
+
+        case RRC_REL_CAUSE_G_RL_FAIL:
+
+            ucRst = VOS_FALSE;
+            break;
+
+        default:
+            ucRst = VOS_TRUE;
+            break;
+    }
+
+    return ucRst;
+}
+
+
 VOS_VOID NAS_MM_RetryMmConnectionProc(
     VOS_UINT8                           ucMMConnEstingPD
 )
@@ -7147,7 +7240,7 @@ VOS_VOID NAS_MM_ClearConnCtrlInfo(VOS_UINT8 ucMMConnEstingPD)
     }
 
     NAS_MM_UpdateCsServiceBufferStatusFlg();
-    
+
     return;
 }
 
@@ -7184,8 +7277,10 @@ VOS_VOID NAS_MM_ProcEstCnfSuccessCauseAtState12(VOS_VOID)
     VOS_UINT8                           ucSupportCsServiceFlg;                  /* 是否支持cs语音业务包括普通语音和vp业务，VOS_TRUE:支持cs语音业务；VOS_FALSE:不支持cs语音业务*/
 
     ulIsTestCard          = NAS_USIMMAPI_IsTestCard();
-    ucSupportCsServiceFlg = NAS_MML_GetSupportCsServiceFLg();    
-    
+    ucSupportCsServiceFlg = NAS_MML_GetSupportCsServiceFLg();
+
+    NAS_MML_SetCsServiceConnStatusFlg(VOS_TRUE);
+
     g_MmGlobalInfo.ucPreState   = g_MmGlobalInfo.ucState;
 
     if ( (NO_MM_CONN_ESTING != g_MmGlobalInfo.ConnCtrlInfo[MM_CONN_CTRL_CC].ucMMConnEstingTI)
@@ -7207,17 +7302,19 @@ VOS_VOID NAS_MM_ProcEstCnfSuccessCauseAtState12(VOS_VOID)
         Mm_ComSetMmState(WAIT_FOR_NETWORK_COMMAND);
         NAS_NORMAL_LOG(WUEPS_PID_MM, "NAS_MM_ProcEstCnfSuccessCauseAtState12:NORMAL: STATUS is  WAIT_FOR_NETWORK_COMMAND");
 
+        NAS_MM_SetCsfbMtLauFlg(VOS_FALSE);
+
         if ( (VOS_TRUE  == ulIsTestCard)
           && (VOS_FALSE == ucSupportCsServiceFlg) )
         {
             gstMmTimer[MM_TIMER_T3240].ulTimerLen = MM_TIMER_MAX_VALUE;
             Mm_TimerStart( MM_TIMER_T3240 );
-            gstMmTimer[MM_TIMER_T3240].ulTimerLen = MM_TIMER_T3240_VALUE;            
+            gstMmTimer[MM_TIMER_T3240].ulTimerLen = MM_TIMER_T3240_VALUE;
         }
         else
         {
             /*A32D12629==>在此期间可能发起频率重定义，时间为50秒，因此增加定时器长度*/
-            gstMmTimer[MM_TIMER_T3240].ulTimerLen += 50000;            
+            gstMmTimer[MM_TIMER_T3240].ulTimerLen += 50000;
             Mm_TimerStart( MM_TIMER_T3240 );
             gstMmTimer[MM_TIMER_T3240].ulTimerLen -= 50000;
         }
@@ -7235,19 +7332,15 @@ VOS_VOID NAS_MM_InformCmLayerEstFail(
     RRC_NAS_EST_RESULT_ENUM_UINT32      ulResult
 )
 {
+    NAS_MMCM_REL_CAUSE_ENUM_UINT32      enMmCcRelCause;
+
+    enMmCcRelCause  = NAS_MM_ConvertEstCnfRsltToMmCcRelCause(ulResult);
+
     if ( NO_MM_CONN_ESTING != g_MmGlobalInfo.ConnCtrlInfo[MM_CONN_CTRL_CC].ucMMConnEstingTI )
     {
         /* CC发起的RR连接的建立, 通知CC建立失败             */
-        if (VOS_TRUE == NAS_MM_IsAbleRecover_EstCnfFailResult(ulResult))
-        {
-            Mm_SndCcRelInd(g_MmGlobalInfo.ConnCtrlInfo[MM_CONN_CTRL_CC].ucMMConnEstingTI,
-                           NAS_MMCM_REL_CAUSE_AS_REJ_LOW_LEVEL_FAIL);
-        }
-        else
-        {
-            Mm_SndCcRelInd(g_MmGlobalInfo.ConnCtrlInfo[MM_CONN_CTRL_CC].ucMMConnEstingTI,
-                       NAS_MMCM_REL_CAUSE_AS_REJ_OTHER_CAUSES);
-        }
+        Mm_SndCcRelInd(g_MmGlobalInfo.ConnCtrlInfo[MM_CONN_CTRL_CC].ucMMConnEstingTI,
+                        enMmCcRelCause);
 
         g_MmGlobalInfo.ConnCtrlInfo[MM_CONN_CTRL_CC].ucMMConnEstingTI = NO_MM_CONN_ESTING;
     }
@@ -7255,16 +7348,8 @@ VOS_VOID NAS_MM_InformCmLayerEstFail(
         g_MmGlobalInfo.ConnCtrlInfo[MM_CONN_CTRL_SS].ucMMConnEstingTI )
     {
         /* SS发起的RR连接的建立 ，通知SS,MM连接建立失败      */
-        if (VOS_TRUE == NAS_MM_IsAbleRecover_EstCnfFailResult(ulResult))
-        {
-            Mm_SndSsRelInd(g_MmGlobalInfo.ConnCtrlInfo[MM_CONN_CTRL_SS].ucMMConnEstingTI,
-                           NAS_MMCM_REL_CAUSE_AS_REJ_LOW_LEVEL_FAIL);
-        }
-        else
-        {
-            Mm_SndSsRelInd(g_MmGlobalInfo.ConnCtrlInfo[MM_CONN_CTRL_SS].ucMMConnEstingTI,
-                           NAS_MMCM_REL_CAUSE_AS_REJ_OTHER_CAUSES);
-        }
+        Mm_SndSsRelInd(g_MmGlobalInfo.ConnCtrlInfo[MM_CONN_CTRL_SS].ucMMConnEstingTI,
+                       enMmCcRelCause);
 
         g_MmGlobalInfo.ConnCtrlInfo[MM_CONN_CTRL_SS].ucMMConnEstingTI = NO_MM_CONN_ESTING;
     }
@@ -7272,16 +7357,8 @@ VOS_VOID NAS_MM_InformCmLayerEstFail(
         g_MmGlobalInfo.ConnCtrlInfo[MM_CONN_CTRL_SMS].ucMMConnEstingTI )
     {
         /* SMS发起的RR连接的建立 ,通知SMS,MM连接建立失败      */
-        if (VOS_TRUE == NAS_MM_IsAbleRecover_EstCnfFailResult(ulResult))
-        {
-            Mm_SndSmsRelInd(g_MmGlobalInfo.ConnCtrlInfo[MM_CONN_CTRL_SMS].ucMMConnEstingTI,
-                           NAS_MMCM_REL_CAUSE_AS_REJ_LOW_LEVEL_FAIL);
-        }
-        else
-        {
-            Mm_SndSmsRelInd(g_MmGlobalInfo.ConnCtrlInfo[MM_CONN_CTRL_SMS].ucMMConnEstingTI,
-                           NAS_MMCM_REL_CAUSE_AS_REJ_OTHER_CAUSES);
-        }
+        Mm_SndSmsRelInd(g_MmGlobalInfo.ConnCtrlInfo[MM_CONN_CTRL_SMS].ucMMConnEstingTI,
+                       enMmCcRelCause);
 
         g_MmGlobalInfo.ConnCtrlInfo[MM_CONN_CTRL_SMS].ucMMConnEstingTI = NO_MM_CONN_ESTING;
     }
@@ -7300,6 +7377,7 @@ VOS_VOID NAS_MM_ProcEstCnfOtherFailCauseAtState12(
 )
 {
     VOS_UINT8               ucTiValidFlg;
+    NAS_MMCM_REL_CAUSE_ENUM_UINT32      enMmCcRelCause;
 
     NAS_MM_InformCmLayerEstFail(ulResult);
 
@@ -7308,16 +7386,15 @@ VOS_VOID NAS_MM_ProcEstCnfOtherFailCauseAtState12(
     NAS_NORMAL_LOG1(WUEPS_PID_MM, "NAS_MM_ProcEstCnfOtherFailCauseAtState12:NORMAL: ucState = ",
                     g_MmGlobalInfo.ucState);
 
+    enMmCcRelCause  = NAS_MM_ConvertEstCnfRsltToMmCcRelCause(ulResult);
+
     /* 因为函数Mm_ComChkLu有是否当前在连接态的判断,所以在连接建立失败时,
        不能直接调用此函数,而要调用NAS_MM_CheckLuAfterCsConnectRelease进行处理 */
     if ( MM_FALSE == NAS_MM_ProcessLuAfterCsConnectNotExist() )
     {
-        if ((MM_TRUE == g_MmGlobalInfo.ConnCtrlInfo[MM_CONN_CTRL_CC]
-                      .RcvXXEstReq.ucFlg)
-            ||(MM_TRUE == g_MmGlobalInfo.ConnCtrlInfo[MM_CONN_CTRL_SS]
-                      .RcvXXEstReq.ucFlg)
-            ||(MM_TRUE == g_MmGlobalInfo.ConnCtrlInfo[MM_CONN_CTRL_SMS]
-                      .RcvXXEstReq.ucFlg))
+        if ((MM_TRUE == g_MmGlobalInfo.ConnCtrlInfo[MM_CONN_CTRL_CC].RcvXXEstReq.ucFlg)
+         || (MM_TRUE == g_MmGlobalInfo.ConnCtrlInfo[MM_CONN_CTRL_SS].RcvXXEstReq.ucFlg)
+         || (MM_TRUE == g_MmGlobalInfo.ConnCtrlInfo[MM_CONN_CTRL_SMS].RcvXXEstReq.ucFlg))
         {
             ucTiValidFlg = Mm_ComTiChk();
             if ( MM_FALSE == ucTiValidFlg )
@@ -7334,6 +7411,8 @@ VOS_VOID NAS_MM_ProcEstCnfOtherFailCauseAtState12(
         {
             Mm_SndMmcRrConnInfInd( MMC_MM_RR_CONN_ABSENT );             /* RR连接不存在                             */
             NAS_MM_SndGmmCsConnectInd(MMGMM_CS_CONNECT_NOT_EXIST);
+
+            /* 删除CHR错误的记录点CS PAGING FAIL */
         }
         Mm_ComCheckDelayMmConn( MM_FALSE );
 
@@ -7341,58 +7420,31 @@ VOS_VOID NAS_MM_ProcEstCnfOtherFailCauseAtState12(
     }
     else
     {
-        if ( MM_TRUE ==
-        g_MmGlobalInfo.ConnCtrlInfo[MM_CONN_CTRL_CC].RcvXXEstReq.ucFlg )
+        if (MM_TRUE == g_MmGlobalInfo.ConnCtrlInfo[MM_CONN_CTRL_CC].RcvXXEstReq.ucFlg)
         {                                                               /* 有等待的CC触发的需要建立的MM连接         */
-            g_MmGlobalInfo.ConnCtrlInfo[MM_CONN_CTRL_CC].
-                        RcvXXEstReq.ucFlg = MM_FALSE;
+            g_MmGlobalInfo.ConnCtrlInfo[MM_CONN_CTRL_CC].RcvXXEstReq.ucFlg = MM_FALSE;
 
-            if (VOS_TRUE == NAS_MM_IsAbleRecover_EstCnfFailResult(ulResult))
-            {
-                Mm_SndCcRelInd(g_MmGlobalInfo.ConnCtrlInfo[MM_CONN_CTRL_CC].ucMMConnEstingTI,
-                               NAS_MMCM_REL_CAUSE_AS_REJ_LOW_LEVEL_FAIL);
-            }
-            else
-            {
-                Mm_SndCcRelInd(g_MmGlobalInfo.ConnCtrlInfo[MM_CONN_CTRL_CC].ucMMConnEstingTI,
-                               NAS_MMCM_REL_CAUSE_AS_REJ_OTHER_CAUSES);
-            }
+            Mm_SndCcRelInd(g_MmGlobalInfo.ConnCtrlInfo[MM_CONN_CTRL_CC].ucMMConnEstingTI,
+                           enMmCcRelCause);
         }
-        if ( MM_TRUE ==
-                g_MmGlobalInfo.ConnCtrlInfo[MM_CONN_CTRL_SMS].
-                                        RcvXXEstReq.ucFlg )
+        else if (MM_TRUE == g_MmGlobalInfo.ConnCtrlInfo[MM_CONN_CTRL_SMS].RcvXXEstReq.ucFlg)
         {                                                               /* 有等待的CC触发的需要建立的MM连接         */
-            g_MmGlobalInfo.ConnCtrlInfo[MM_CONN_CTRL_SMS].
-                                    RcvXXEstReq.ucFlg = MM_FALSE;
+            g_MmGlobalInfo.ConnCtrlInfo[MM_CONN_CTRL_SMS].RcvXXEstReq.ucFlg = MM_FALSE;
 
-            if (VOS_TRUE == NAS_MM_IsAbleRecover_EstCnfFailResult(ulResult))
-            {
-                Mm_SndSmsRelInd(g_MmGlobalInfo.ConnCtrlInfo[MM_CONN_CTRL_SMS].RcvXXEstReq.ulTransactionId,
-                               NAS_MMCM_REL_CAUSE_AS_REJ_LOW_LEVEL_FAIL);
-            }
-            else
-            {
-                Mm_SndSmsRelInd(g_MmGlobalInfo.ConnCtrlInfo[MM_CONN_CTRL_SMS].RcvXXEstReq.ulTransactionId,
-                               NAS_MMCM_REL_CAUSE_AS_REJ_OTHER_CAUSES);
-            }
+            Mm_SndSmsRelInd(g_MmGlobalInfo.ConnCtrlInfo[MM_CONN_CTRL_SMS].RcvXXEstReq.ulTransactionId,
+                           enMmCcRelCause);
         }
-        if ( MM_TRUE ==
-            g_MmGlobalInfo.ConnCtrlInfo[MM_CONN_CTRL_SS].
-                                    RcvXXEstReq.ucFlg )
+        else if (MM_TRUE == g_MmGlobalInfo.ConnCtrlInfo[MM_CONN_CTRL_SS].RcvXXEstReq.ucFlg)
         {                                                               /* 有等待的CC触发的需要建立的MM连接         */
-            g_MmGlobalInfo.ConnCtrlInfo[MM_CONN_CTRL_SS].
-                                    RcvXXEstReq.ucFlg = MM_FALSE;
+            g_MmGlobalInfo.ConnCtrlInfo[MM_CONN_CTRL_SS].RcvXXEstReq.ucFlg = MM_FALSE;
 
-            if (VOS_TRUE == NAS_MM_IsAbleRecover_EstCnfFailResult(ulResult))
-            {
-                Mm_SndSsRelInd(g_MmGlobalInfo.ConnCtrlInfo[MM_CONN_CTRL_SS].RcvXXEstReq.ulTransactionId,
-                               NAS_MMCM_REL_CAUSE_AS_REJ_LOW_LEVEL_FAIL);
-            }
-            else
-            {
-                Mm_SndSsRelInd(g_MmGlobalInfo.ConnCtrlInfo[MM_CONN_CTRL_SS].RcvXXEstReq.ulTransactionId,
-                               NAS_MMCM_REL_CAUSE_AS_REJ_OTHER_CAUSES);
-            }
+            Mm_SndSsRelInd(g_MmGlobalInfo.ConnCtrlInfo[MM_CONN_CTRL_SS].RcvXXEstReq.ulTransactionId,
+                           enMmCcRelCause);
+        }
+        else
+        {
+            /* 删除CHR错误的记录点CS PAGING FAIL */
+            ;
         }
     }
 
@@ -7417,10 +7469,23 @@ VOS_VOID NAS_MM_ProcEstCnfCauseAtState12(
         case RRC_EST_RJ_CONGEST:                                                /* RRC Connection Reject: Congestion        */
         case RRC_EST_RJ_UNSPEC:                                                 /* RRC Connection Reject: Unspecified       */
         case RRC_EST_EST_CONN_FAIL:                                             /* RR connection establish failure          */
-        case RRC_EST_RJ_T3122_RUNNING:    
+        case RRC_EST_RJ_NOT_ALLOW:
+        case RRC_EST_RJ_TIME_OUT:
+        case RRC_EST_RJ_RA_RESOURCE_FAIL:
+        case RRC_EST_RJ_IMMEDIATE_ASSIGN_INVALID:
+        case RRC_EST_RJ_ACTIVE_PHISICAL_CHANNEL_FAIL:
+        case RRC_EST_RJ_AIRMSG_DECODE_ERR:
+        case RRC_EST_RJ_FASTRETURN_LTE:
+        case RRC_EST_RJ_CURR_PROTOCOL_NOT_SUPPORT:
+        case RRC_EST_RJ_SNW:
+        case RRC_EST_RJ_T3122_RUNNING:
         case RRC_EST_RJ_INTER_RAT:
         case RRC_EST_IMMEDIATE_ASSIGN_REJECT:
         case RRC_EST_RANDOM_ACCESS_REJECT:
+        case RRC_EST_RJ_RA_FAIL:
+        case RRC_EST_RJ_RA_FAIL_NO_VALID_INFO:
+
+        case RRC_EST_RANDOM_ACCESS_REJECT_NO_VALID_INFO:
 
             NAS_MM_ProcEstCnfOtherFailCauseAtState12(ulResult);
 
@@ -7437,6 +7502,7 @@ VOS_VOID NAS_MM_ProcEstCnfCauseAtState12(
             NAS_MM_ProcEstCnfOtherFailCauseAtState12(ulResult);
             break;
         case RRC_EST_ACCESS_BARRED:
+        case RRC_EST_RJ_CELL_BAR:
             /* 非紧急呼叫才设置限制注册和寻呼标记 */
             if (MMCC_EMERGENCY_CALL !=  g_MmCcEstReq.ulCallType)
             {
@@ -8612,7 +8678,7 @@ VOS_UINT32  NAS_MM_IsLauNeededLaiNoChange_LInterSys(VOS_VOID)
       || (NAS_MML_LTE_SUPPORT_CSFB_AND_SMS_OVER_SGS == enLteCsServiceCfg)))
     {
         return VOS_TRUE;
-    } 
+    }
 
     /**
      * 新增场景：如果UE支持IMS（读取Nv且语音优选域不是CS ONLY)
@@ -8621,20 +8687,20 @@ VOS_UINT32  NAS_MM_IsLauNeededLaiNoChange_LInterSys(VOS_VOID)
      */
     /**
      * VDF的标书要求支持IMS voice的终端在从L异系统变换到GU后，无条件进行一次LAU,原文如下：
-     * The LTE terminal supporting Voice over IMS (GSMA IR.92), 
-     * shall always issue a Location Update following a RAT change. 
-     * With terminal in IDLE mode a LAU is performed. 
-     * If a call is initiated under CS network, 
+     * The LTE terminal supporting Voice over IMS (GSMA IR.92),
+     * shall always issue a Location Update following a RAT change.
+     * With terminal in IDLE mode a LAU is performed.
+     * If a call is initiated under CS network,
      * all the procedures currently in use today shall be applicable.
-     * For example, when a terminal that initially registers on 2G roams into LTE coverage, 
-     * then roams back into 2G under the same LAC that it previously registered, 
+     * For example, when a terminal that initially registers on 2G roams into LTE coverage,
+     * then roams back into 2G under the same LAC that it previously registered,
      * will it always send a LU towards the MSC.
      */
 
     ucLauForceFlg = NAS_MML_GetImsVoiceInterSysLauEnableFlg();
     ucImsVoiceAvailFlg = NAS_MML_GetImsVoiceAvailFlg();
 
-    if ((VOS_TRUE == ucLauForceFlg) 
+    if ((VOS_TRUE == ucLauForceFlg)
      && (VOS_TRUE == ucImsVoiceAvailFlg))
     {
         return VOS_TRUE;
@@ -9097,18 +9163,18 @@ VOS_UINT32  NAS_MM_IsAbleRecover_EstCnfFailResult(
     RRC_NAS_EST_RESULT_ENUM_UINT32      enEstResult
 )
 {
+    /* RRC_EST_RJ_CELL_BAR不可恢复 */
     if ((RRC_EST_IMMEDIATE_ASSIGN_REJECT == enEstResult)
      || (RRC_EST_ACCESS_BARRED           == enEstResult)
      || (RRC_EST_OTHER_ACCESS_BARRED     == enEstResult)
-     || (RRC_EST_RJ_T3122_RUNNING        == enEstResult))
+     || (RRC_EST_RJ_T3122_RUNNING        == enEstResult)
+     || (RRC_EST_RJ_CELL_BAR             == enEstResult))
     {
         return VOS_FALSE;
     }
 
     return VOS_TRUE;
 }
-
-
 VOS_UINT32  NAS_MM_IsNeedCmServiceRetry_RelIndResult(
     RRC_REL_CAUSE_ENUM_UINT32           enRelCause
 )
@@ -9175,8 +9241,8 @@ VOS_VOID NAS_MM_ProcConnFailLauAttmptCntLess4_RcvRelInd(
 
 
             /* 在U2状态，保存当前的LAI信息 */
-            PS_MEM_CPY(NAS_MM_GetAttemptUpdateLaiInfo(), 
-                       &g_MmGlobalInfo.MsCsInfo.CurLai, sizeof(MM_LAI_STRU));            
+            PS_MEM_CPY(NAS_MM_GetAttemptUpdateLaiInfo(),
+                       &g_MmGlobalInfo.MsCsInfo.CurLai, sizeof(MM_LAI_STRU));
 
             Mm_ComToU2Handle();                                             /* 进U2的公共处理                           */
 
@@ -9215,28 +9281,25 @@ VOS_VOID NAS_MM_ProcConnFailLauAttmptCntLess4_RcvRelInd(
     }
 
 }
-
-
-
 VOS_VOID NAS_MM_ProcCsForbidenFlg_RcvSysInfoInd(
     VOS_UINT32                          ulCurFobidnFlg
 )
 {
-    VOS_UINT32                          ulCause;    
-    
+    VOS_UINT32                          ulCause;
+
     if (MMCMM_FORBIDDEN_PLMN == (MMCMM_FORBIDDEN_PLMN & ulCurFobidnFlg))
-    {        
+    {
         ulCause = NAS_MML_REG_FAIL_CAUSE_FORBIDDEN_PLMN;
-    }    
+    }
     else if (MMCMM_FORBIDDEN_LA_FOR_REG_PRVS_SVS == (MMCMM_FORBIDDEN_LA_FOR_REG_PRVS_SVS & ulCurFobidnFlg))
     {
         /* 对MMCMM_FORBIDDEN_LA_FOR_REG_PRVS_SVS的处理时，需要通知MMC的CAUSE值 */
         ulCause = NAS_MML_REG_FAIL_CAUSE_FORBIDDEN_LA_FOR_REG_PRVS_SVS;
-        
+
         if (MM_WAIT_CS_DETACH == (g_MmGlobalInfo.stDetachInfo.enDetachType & MM_WAIT_CS_DETACH))
         {
             NAS_MM_SndMmcDetachCnf(MMC_MM_LIMITED_SERVICE);
-            
+
             /* 清除等待标志 */
             g_MmGlobalInfo.stDetachInfo.enDetachType = MM_WAIT_NULL_DETACH;
         }
@@ -9255,9 +9318,9 @@ VOS_VOID NAS_MM_ProcCsForbidenFlg_RcvSysInfoInd(
     NAS_MM_SndMmcCsRegResultInd(MM_MMC_LU_PROC_FALSE,
                                 MM_MMC_LU_RESULT_FAILURE,
                                 ulCause);
-    
+
     NAS_MM_SndGmmLuResultInd(MMGMM_LU_FAILURE,
-                             NAS_MML_REG_FAIL_CAUSE_NULL);        
+                             NAS_MML_REG_FAIL_CAUSE_NULL);
 
     return;
 }
@@ -9301,12 +9364,12 @@ VOS_VOID NAS_MM_SndMmcRrConn_RcvRelInd(VOS_VOID)
 
 VOS_VOID NAS_MM_LocalDetach_MmInterRatChange(VOS_VOID)
 {
-    Mm_TimerStop(MM_TIMER_STOP_ALL);  
+    Mm_TimerStop(MM_TIMER_STOP_ALL);
 
     /* 通知GMM当前CS域已本地DETACH超时处理 */
     NAS_MM_SndGmmCsLocalDetachInd();
 
-    Mm_ComRelAllMmConn(NAS_MMCM_REL_CAUSE_MM_REJ_OTHER_CAUSES);
+    Mm_ComRelAllMmConn(NAS_MMCM_REL_CAUSE_MM_INTER_ERR_CS_DETACH);
 
     NAS_MML_SetCsAttachAllowFlg(VOS_FALSE);
     Mm_ComNasInfoSav(MM_STATUS_DETACHED,
@@ -9371,7 +9434,7 @@ VOS_VOID NAS_MM_LocalDetach_MmNoImsi(VOS_VOID)
     /* 通知GMM当前CS域已本地DETACH超时处理 */
     NAS_MM_SndGmmCsLocalDetachInd();
 
-    Mm_ComRelAllMmConn(NAS_MMCM_REL_CAUSE_MM_REJ_OTHER_CAUSES);
+    Mm_ComRelAllMmConn(NAS_MMCM_REL_CAUSE_MM_INTER_ERR_CS_DETACH);
 
     NAS_MML_SetCsAttachAllowFlg(VOS_FALSE);
 
@@ -9406,20 +9469,20 @@ VOS_VOID NAS_MM_LocalDetach_MmNoImsi(VOS_VOID)
     return;
 }
 VOS_VOID NAS_MM_RcvMmTimerProtectCsDetachExpired(VOS_VOID)
-{ 
+{
     NAS_MM_LocalDetach();
-    
+
     return;
-    
+
 }
 
 
 VOS_VOID NAS_MM_LocalDetach(VOS_VOID)
-{   
+{
     NAS_MML_CONN_STATUS_INFO_STRU      *pstConnStatus = VOS_NULL_PTR;
     VOS_UINT32                          ulMmState;
-    
-    pstConnStatus = NAS_MML_GetConnStatus();    
+
+    pstConnStatus = NAS_MML_GetConnStatus();
     ulMmState     = Mm_GetState();
 
     /* 本地状态处理 */
@@ -9452,7 +9515,7 @@ VOS_VOID NAS_MM_LocalDetach(VOS_VOID)
     /* 通知GMM当前CS域已本地DETACH超时处理 */
     NAS_MM_SndGmmCsLocalDetachInd();
 
-    Mm_ComRelAllMmConn(NAS_MMCM_REL_CAUSE_MM_REJ_OTHER_CAUSES);
+    Mm_ComRelAllMmConn(NAS_MMCM_REL_CAUSE_MM_INTER_ERR_CS_DETACH);
 
     NAS_MML_SetCsAttachAllowFlg(VOS_FALSE);
 
@@ -9467,7 +9530,7 @@ VOS_VOID NAS_MM_LocalDetach(VOS_VOID)
     if (MM_WAIT_CS_DETACH== (g_MmGlobalInfo.stDetachInfo.enDetachType & MM_WAIT_CS_DETACH))
     {
         NAS_MM_SndMmcDetachCnf(MM_DETACHED);
-        
+
         /* 清除等待标志 */
         g_MmGlobalInfo.stDetachInfo.enDetachType = MM_WAIT_NULL_DETACH;
     }
@@ -9484,7 +9547,7 @@ VOS_VOID NAS_MM_LocalDetach(VOS_VOID)
     }
 
     return;
-    
+
 }
 
 
@@ -9516,7 +9579,7 @@ VOS_VOID NAS_MM_StartDetachProtectingTimer(
         NAS_WARNING_LOG(WUEPS_PID_MM, "NAS_MM_StartDetachProtectingTimer:WARN:TIMER HAS BEEN STARTED ALREADY");
         Mm_TimerStop(MM_TIMER_PROTECT_CS_DETACH);
     }
-    
+
     /* 设置MM的CS域Detach保护定时器时长 */
     gstMmTimer[MM_TIMER_PROTECT_CS_DETACH].ulTimerLen = ulDetachTimerVal;
 
@@ -9534,9 +9597,9 @@ VOS_VOID NAS_MM_RcvRrMmEstCnf_ExistCsDetachBuffer(
 {
     MM_MSG_IMSI_DETACH_IND_STRU         stMsg;
 
-    Mm_TimerStop(MM_TIMER_PROTECT_SIGNALLING); 
+    Mm_TimerStop(MM_TIMER_PROTECT_SIGNALLING);
 
-    Mm_ComRelAllMmConn(NAS_MMCM_REL_CAUSE_MM_REJ_OTHER_CAUSES);
+    Mm_ComRelAllMmConn(NAS_MMCM_REL_CAUSE_MM_INTER_ERR_CS_DETACH);
 
     /* 如果当前建链成功，且有缓存用户发起的IMSI detach请求，则直接发起去注册 */
     if ( (RRC_EST_SUCCESS == pRrcEstCnf->ulResult)
@@ -9544,15 +9607,15 @@ VOS_VOID NAS_MM_RcvRrMmEstCnf_ExistCsDetachBuffer(
     {
 
         /* 设置DETACH类型，否则在收到REL时候，不回复MMC的DETACH CNF */
-        g_MmGlobalInfo.ucDetachType = MM_DETACH_CS_NORMAL; 
-        
+        g_MmGlobalInfo.ucDetachType = MM_DETACH_CS_NORMAL;
+
         g_MmGlobalInfo.LuInfo.ucImmAccRejLuAttmptCnt = 0;
         g_MmGlobalInfo.ucCsSigConnFlg = MM_CS_SIG_CONN_PRESENT;             /* 设置信令连接已存在                       */
         Mm_SndMmcRrConnInfInd(MMC_MM_RR_CONN_ESTED);                        /* RR连接建立成功                           */
-        
+
         /* 填写消息,发送IMSI detach消息 */
         NAS_MM_FillMobileID(&(stMsg.MmIeMobileId.MobileID));
-        Mm_ComMsgImsiDetachIniSndOfDataReq(&stMsg);                         
+        Mm_ComMsgImsiDetachIniSndOfDataReq(&stMsg);
         Mm_TimerStart(MM_TIMER_T3220);                                      /* 启动T3220                                */
         Mm_ComSetMmState(IMSI_DETACH_INITIATED);
         return;
@@ -9560,9 +9623,9 @@ VOS_VOID NAS_MM_RcvRrMmEstCnf_ExistCsDetachBuffer(
 
     /* MM进行本地DETACH */
     NAS_MM_LocalDetach();
-    
+
     return;
-    
+
 }
 VOS_UINT32 NAS_MM_IsNeedGmmProcUserDetach(VOS_VOID)
 {
@@ -9580,8 +9643,8 @@ VOS_UINT32 NAS_MM_IsNeedGmmProcUserDetach(VOS_VOID)
     pstNetWorkInfo    =  NAS_MML_GetNetworkInfo();
 
     ulRet             = VOS_FALSE;
-    
-    
+
+
     /* 非网络模式I下，不用GMM处理用户发起的detach */
     if ( NAS_MML_NET_MODE_I != pstCampInfo->enNetworkMode )
     {
@@ -9628,10 +9691,10 @@ VOS_UINT32 NAS_MM_IsNeedGmmProcUserDetach(VOS_VOID)
     {
         return VOS_FALSE;
     }
-   
-    /* 否则用户发起的CS域的DETACH，可由GMM进行处理 */    
+
+    /* 否则用户发起的CS域的DETACH，可由GMM进行处理 */
     return VOS_TRUE;
-    
+
 }
 
 
@@ -9644,7 +9707,7 @@ VOS_UINT32 NAS_MM_IsEmergencyCallEndTrigLau(VOS_VOID)
     VOS_UINT8                           ucRestrictRegister;                     /*是否限制注册 */
 
     NAS_MML_CAMP_PLMN_INFO_STRU        *pstCampInfo         = VOS_NULL_PTR;
-    NAS_MML_CONN_STATUS_INFO_STRU      *pstConnStatus       = VOS_NULL_PTR; 
+    NAS_MML_CONN_STATUS_INFO_STRU      *pstConnStatus       = VOS_NULL_PTR;
 
     pstConnStatus         = NAS_MML_GetConnStatus();
     pstCampInfo           = NAS_MML_GetCurrCampPlmnInfo();
@@ -9670,9 +9733,9 @@ VOS_UINT32 NAS_MM_IsEmergencyCallEndTrigLau(VOS_VOID)
         return VOS_TRUE;
     }
 
-    
+
     return VOS_FALSE;
-    
+
 }
 
 
@@ -9680,21 +9743,15 @@ VOS_UINT32 NAS_MM_RelEstingMmConn(
     RRC_REL_CAUSE_ENUM_UINT32           ulRelCause
 )
 {
+        NAS_MMCM_REL_CAUSE_ENUM_UINT32      enMmCcRelCause;
+
+        enMmCcRelCause  = NAS_MM_ConvertRrcRelCauseToMmCcRelCause(ulRelCause);
+
     if ( NO_MM_CONN_ESTING !=
         g_MmGlobalInfo.ConnCtrlInfo[MM_CONN_CTRL_CC].ucMMConnEstingTI )
     {
-        if (VOS_TRUE == NAS_MM_IsNeedCmServiceRetry_RelIndResult(ulRelCause))
-        {
-            /* 是CC正在建立的MM连接                     */
-            Mm_SndCcRelInd(g_MmGlobalInfo.ConnCtrlInfo[MM_CONN_CTRL_CC].ucMMConnEstingTI,
-                           NAS_MMCM_REL_CAUSE_AS_REJ_LOW_LEVEL_FAIL);            /* 通知CC,MM连接建立失败                    */
-        }
-        else
-        {
-            /* 是CC正在建立的MM连接                     */
-            Mm_SndCcRelInd(g_MmGlobalInfo.ConnCtrlInfo[MM_CONN_CTRL_CC].ucMMConnEstingTI,
-                           NAS_MMCM_REL_CAUSE_AS_REJ_OTHER_CAUSES);
-        }
+        Mm_SndCcRelInd(g_MmGlobalInfo.ConnCtrlInfo[MM_CONN_CTRL_CC].ucMMConnEstingTI,
+                       enMmCcRelCause);            /* 通知CC,MM连接建立失败                    */
 
 
         g_MmGlobalInfo.ConnCtrlInfo[MM_CONN_CTRL_CC].ucMMConnEstingTI =
@@ -9704,16 +9761,9 @@ VOS_UINT32 NAS_MM_RelEstingMmConn(
     if ( NO_MM_CONN_ESTING !=
         g_MmGlobalInfo.ConnCtrlInfo[MM_CONN_CTRL_SS].ucMMConnEstingTI )
     {                                                                   /* 是SS正在建立的MM连接                     */
-        if (VOS_TRUE == NAS_MM_IsNeedCmServiceRetry_RelIndResult(ulRelCause))
-        {
-            Mm_SndSsRelInd( g_MmGlobalInfo.ConnCtrlInfo[MM_CONN_CTRL_SS].ucMMConnEstingTI,
-                            NAS_MMCM_REL_CAUSE_AS_REJ_LOW_LEVEL_FAIL);
-        }
-        else
-        {
-            Mm_SndSsRelInd( g_MmGlobalInfo.ConnCtrlInfo[MM_CONN_CTRL_SS].ucMMConnEstingTI,
-                            NAS_MMCM_REL_CAUSE_AS_REJ_OTHER_CAUSES);                                          /* 通知SS,MM连接建立失败                    */
-        }
+        Mm_SndSsRelInd( g_MmGlobalInfo.ConnCtrlInfo[MM_CONN_CTRL_SS].ucMMConnEstingTI,
+                        enMmCcRelCause);
+
 
         g_MmGlobalInfo.ConnCtrlInfo[MM_CONN_CTRL_SS].ucMMConnEstingTI =
             NO_MM_CONN_ESTING;                                          /* 清除正在建立的MM连接的标志               */
@@ -9722,16 +9772,9 @@ VOS_UINT32 NAS_MM_RelEstingMmConn(
     if ( NO_MM_CONN_ESTING !=
         g_MmGlobalInfo.ConnCtrlInfo[MM_CONN_CTRL_SMS].ucMMConnEstingTI )
     {                                                                   /* 是SMS正在建立的MM连接                    */
-        if (VOS_TRUE == NAS_MM_IsNeedCmServiceRetry_RelIndResult(ulRelCause))
-        {
-            Mm_SndSmsRelInd( g_MmGlobalInfo.ConnCtrlInfo[MM_CONN_CTRL_SMS].ucMMConnEstingTI,
-                            NAS_MMCM_REL_CAUSE_AS_REJ_LOW_LEVEL_FAIL);
-        }
-        else
-        {
-            Mm_SndSmsRelInd( g_MmGlobalInfo.ConnCtrlInfo[MM_CONN_CTRL_SMS].ucMMConnEstingTI,
-                            NAS_MMCM_REL_CAUSE_AS_REJ_OTHER_CAUSES);                                          /* 通知SS,MM连接建立失败                    */
-        }
+        Mm_SndSmsRelInd( g_MmGlobalInfo.ConnCtrlInfo[MM_CONN_CTRL_SMS].ucMMConnEstingTI,
+                        enMmCcRelCause);                                          /* 通知SS,MM连接建立失败                    */
+
 
         g_MmGlobalInfo.ConnCtrlInfo[MM_CONN_CTRL_SMS].ucMMConnEstingTI =
             NO_MM_CONN_ESTING;                                          /* 清除正在建立的MM连接的标志               */
@@ -9740,9 +9783,9 @@ VOS_UINT32 NAS_MM_RelEstingMmConn(
     return VOS_TRUE;
 
 }
-
-
-VOS_UINT32 NAS_MM_RelBufferedServiceEstReq(VOS_VOID)
+VOS_UINT32 NAS_MM_RelBufferedServiceEstReq(
+    NAS_MMCM_REL_CAUSE_ENUM_UINT32      enMmCcRelCause
+)
 {
     if ( MM_TRUE ==
         g_MmGlobalInfo.ConnCtrlInfo[MM_CONN_CTRL_CC].RcvXXEstReq.ucFlg )
@@ -9752,7 +9795,7 @@ VOS_UINT32 NAS_MM_RelBufferedServiceEstReq(VOS_VOID)
             = MM_FALSE;
 
         Mm_SndCcRelInd(g_MmGlobalInfo.ConnCtrlInfo[MM_CONN_CTRL_CC].RcvXXEstReq.ulTransactionId,
-             NAS_MMCM_REL_CAUSE_AS_REJ_OTHER_CAUSES);                          /* 通知CC建立失败                           */
+             enMmCcRelCause);                          /* 通知CC建立失败                           */
     }
     if ( MM_TRUE ==
             g_MmGlobalInfo.ConnCtrlInfo[MM_CONN_CTRL_SMS].
@@ -9763,7 +9806,7 @@ VOS_UINT32 NAS_MM_RelBufferedServiceEstReq(VOS_VOID)
         Mm_SndSmsRelInd(
             g_MmGlobalInfo.ConnCtrlInfo[MM_CONN_CTRL_SMS]
             .RcvXXEstReq.ulTransactionId,
-            NAS_MMCM_REL_CAUSE_AS_REJ_OTHER_CAUSES);
+            enMmCcRelCause);
     }
     if ( MM_TRUE ==
         g_MmGlobalInfo.ConnCtrlInfo[MM_CONN_CTRL_SS].
@@ -9773,16 +9816,12 @@ VOS_UINT32 NAS_MM_RelBufferedServiceEstReq(VOS_VOID)
                                 RcvXXEstReq.ucFlg = MM_FALSE;
 
         Mm_SndSsRelInd(g_MmGlobalInfo.ConnCtrlInfo[MM_CONN_CTRL_SS].RcvXXEstReq.ulTransactionId,
-                       NAS_MMCM_REL_CAUSE_AS_REJ_OTHER_CAUSES);
+                       enMmCcRelCause);
     }
 
     return VOS_TRUE;
 
 }
-
-
-
-
 VOS_UINT32 NAS_MM_NotifyBufferedServiceRRConnNotExist(VOS_VOID)
 {
     VOS_UINT8                           ucTiValidFlg;
@@ -9889,15 +9928,15 @@ VOS_VOID NAS_MM_RestartT3240_WaitForNetworkCommand(VOS_VOID)
     NAS_MML_CONN_STATUS_INFO_STRU      *pstConnStatus       = VOS_NULL_PTR;
     VOS_UINT32                          ulIsTestCard;
     VOS_UINT8                           ucSupportCsServiceFlg;                  /* 是否支持cs语音业务包括普通语音和vp业务，VOS_TRUE:支持cs语音业务；VOS_FALSE:不支持cs语音业务*/
-    VOS_UINT8                           ucCsServiceConnStatusFlg;   
+    VOS_UINT8                           ucCsServiceConnStatusFlg;
 
     pstConnStatus            = NAS_MML_GetConnStatus();
     ulIsTestCard             = NAS_USIMMAPI_IsTestCard();
     ucSupportCsServiceFlg    = NAS_MML_GetSupportCsServiceFLg();
     ucCsServiceConnStatusFlg = pstConnStatus->ucCsServiceConnStatusFlg;
 
-    /* 停T3240 */    
-    Mm_TimerStop( MM_TIMER_T3240 );                                             
+    /* 停T3240 */
+    Mm_TimerStop( MM_TIMER_T3240 );
 
     /* 当前测试卡，当前设置为不支持CS业务，当前有CS业务，则设置T3240最大值 */
     if ( (VOS_TRUE  == ulIsTestCard)
@@ -9906,7 +9945,7 @@ VOS_VOID NAS_MM_RestartT3240_WaitForNetworkCommand(VOS_VOID)
     {
         gstMmTimer[MM_TIMER_T3240].ulTimerLen = MM_TIMER_MAX_VALUE;
         Mm_TimerStart( MM_TIMER_T3240 );
-        gstMmTimer[MM_TIMER_T3240].ulTimerLen = MM_TIMER_T3240_VALUE;            
+        gstMmTimer[MM_TIMER_T3240].ulTimerLen = MM_TIMER_T3240_VALUE;
     }
     else
     {
@@ -9933,9 +9972,9 @@ VOS_VOID NAS_MM_ResumeMmStateToPreState_LocationUpdatingPending(VOS_VOID)
     if ( VOS_FALSE == NAS_MML_GetCsAttachAllowFlg() )
     {
         Mm_ComSetMmState(MM_IDLE_LIMITED_SERVICE);
-        
+
         return;
-    } 
+    }
 
     /* 当前禁止注册的状态迁移 */
     if ( (MMCMM_NO_FORBIDDEN            != g_MmGlobalInfo.MsCsInfo.ulCurFobidnFlg)
@@ -9946,12 +9985,12 @@ VOS_VOID NAS_MM_ResumeMmStateToPreState_LocationUpdatingPending(VOS_VOID)
         return;
     }
 
-    /* CS域受限的状态迁移 */    
+    /* CS域受限的状态迁移 */
     if ( VOS_TRUE == NAS_MML_GetCsRestrictRegisterFlg() )
     {
         Mm_ComSetMmState(MM_IDLE_LOCATION_UPDATE_NEEDED);
-        
-        return;        
+
+        return;
     }
 
     /* MM先前是MM_IDLE_NORMAL_SERVICE状态，则更新当前状态为MM_IDLE_NORMAL_SERVICE */
@@ -9980,17 +10019,17 @@ VOS_UINT32 NAS_MM_EndBufferedCSServiceExceptEmergencyCall_ImmediateAssignReject(
     if ( (MM_TRUE == g_MmGlobalInfo.ConnCtrlInfo[MM_CONN_CTRL_CC].RcvXXEstReq.ucFlg)
       && (MMCC_MO_NORMAL_CALL == g_MmGlobalInfo.ConnCtrlInfo[MM_CONN_CTRL_CC].RcvXXEstReq.ulCallType) )
     {
-        Mm_SndCcRelInd(g_MmCcEstReq.ulTransactionId, NAS_MMCM_REL_CAUSE_AS_REJ_OTHER_CAUSES);
+        Mm_SndCcRelInd(g_MmCcEstReq.ulTransactionId, NAS_MMCM_REL_CAUSE_RR_CONN_FAIL_IMMEDIATE_ASSIGN_REJECT);
     }
 
     if (MM_TRUE == g_MmGlobalInfo.ConnCtrlInfo[MM_CONN_CTRL_SS].RcvXXEstReq.ucFlg)
     {
-        Mm_SndSsRelInd(g_MmSsEstReq.ulTi, NAS_MMCM_REL_CAUSE_AS_REJ_OTHER_CAUSES);
+        Mm_SndSsRelInd(g_MmSsEstReq.ulTi, NAS_MMCM_REL_CAUSE_RR_CONN_FAIL_IMMEDIATE_ASSIGN_REJECT);
     }
 
     if (MM_TRUE == g_MmGlobalInfo.ConnCtrlInfo[MM_CONN_CTRL_SMS].RcvXXEstReq.ucFlg)
     {
-        Mm_SndSmsRelInd(g_MmSmsEstReq.ulTi, NAS_MMCM_REL_CAUSE_AS_REJ_OTHER_CAUSES);
+        Mm_SndSmsRelInd(g_MmSmsEstReq.ulTi, NAS_MMCM_REL_CAUSE_RR_CONN_FAIL_IMMEDIATE_ASSIGN_REJECT);
     }
 
     /* 通知MMC，CS域的业务已经停止 */
@@ -10027,15 +10066,15 @@ VOS_UINT32  NAS_MM_ProcessLuAfterCsConnectNotExist_NetModeI( VOS_VOID )
                     MM_LIMITED_SERVICE;                             /* 设置服务状态                             */
                 PS_LOG(WUEPS_PID_MM, VOS_NULL, PS_PRINT_INFO, "NAS_MM_CheckLuAfterCsConnectNotExist:INFO: MmServiceState is MM_LIMITED_SERVICE");
                 Mm_ComSetMmState(MM_IDLE_LIMITED_SERVICE);
-    
+
                 NAS_MM_SndMmcCsRegResultInd(MM_MMC_LU_PROC_FALSE,
                                             MM_MMC_LU_RESULT_FAILURE,
                                             NAS_MML_REG_FAIL_CAUSE_FORBIDDEN_PLMN);
                 NAS_MM_SndGmmLuResultInd(MMGMM_LU_FAILURE,
                                          NAS_MML_REG_FAIL_CAUSE_PLMN_NOT_ALLOW);
-    
-    
-    
+
+
+
                 PS_LOG(WUEPS_PID_MM, VOS_NULL, PS_PRINT_NORMAL, "NAS_MM_CheckLuAfterCsConnectNotExist:NORMAL: STATUS is MM_IDLE_LIMITED_SERVICE");
             }
             else if ( MMCMM_FORBIDDEN_LA_FOR_REG_PRVS_SVS
@@ -10051,7 +10090,7 @@ VOS_UINT32  NAS_MM_ProcessLuAfterCsConnectNotExist_NetModeI( VOS_VOID )
                              &g_MmGlobalInfo.MsCsInfo.OldLai,
                              sizeof( MM_LAI_STRU ));
                 Mm_ComLuCauseHandle(NAS_MML_REG_FAIL_CAUSE_LA_NOT_ALLOW);
-    
+
                 ucTempUpdateSts = NAS_MML_GetCsUpdateStatus();
                 PS_MEM_CPY( &TempLai,
                              &g_MmGlobalInfo.MsCsInfo.OldLai,
@@ -10060,8 +10099,8 @@ VOS_UINT32  NAS_MM_ProcessLuAfterCsConnectNotExist_NetModeI( VOS_VOID )
                 PS_MEM_CPY( &g_MmGlobalInfo.MsCsInfo.OldLai,
                              &OldLai,
                              sizeof( MM_LAI_STRU ));
-    
-    
+
+
                 NAS_MM_SndMmcCsRegResultInd(MM_MMC_LU_PROC_FALSE,
                                             MM_MMC_LU_RESULT_FAILURE,
                                             NAS_MML_REG_FAIL_CAUSE_FORBIDDEN_LA_FOR_REG_PRVS_SVS);
@@ -10082,7 +10121,7 @@ VOS_UINT32  NAS_MM_ProcessLuAfterCsConnectNotExist_NetModeI( VOS_VOID )
                              &g_MmGlobalInfo.MsCsInfo.OldLai,
                              sizeof( MM_LAI_STRU ));
                 Mm_ComLuCauseHandle(NAS_MML_REG_FAIL_CAUSE_ROAM_NOT_ALLOW);
-    
+
                 ucTempUpdateSts = NAS_MML_GetCsUpdateStatus();
                 PS_MEM_CPY( &TempLai,
                              &g_MmGlobalInfo.MsCsInfo.OldLai,
@@ -10091,8 +10130,8 @@ VOS_UINT32  NAS_MM_ProcessLuAfterCsConnectNotExist_NetModeI( VOS_VOID )
                 PS_MEM_CPY( &g_MmGlobalInfo.MsCsInfo.OldLai,
                              &OldLai,
                              sizeof( MM_LAI_STRU ));
-    
-    
+
+
                 NAS_MM_SndMmcCsRegResultInd(MM_MMC_LU_PROC_FALSE,
                                             MM_MMC_LU_RESULT_FAILURE,
                                             NAS_MML_REG_FAIL_CAUSE_FORBIDDEN_LA_FOR_ROAM);
@@ -10216,14 +10255,14 @@ VOS_UINT32  NAS_MM_ProcessLuAfterCsConnectNotExist_OhterNetMode( VOS_VOID )
 
     return ucRet;
 }
-VOS_UINT32  NAS_MM_ProcessLuAfterCsConnectNotExist_T3212Expire( 
+VOS_UINT32  NAS_MM_ProcessLuAfterCsConnectNotExist_T3212Expire(
     VOS_UINT8                           ucPsRestrictionFlg
 )
 {
     VOS_UINT8                           ucRet;
-    
+
     ucRet = MM_FALSE;
-    
+
     switch ( g_MmGlobalInfo.ucState )
     {
     case MM_IDLE_NORMAL_SERVICE:
@@ -10259,7 +10298,7 @@ VOS_UINT32  NAS_MM_ProcessLuAfterCsConnectNotExist_RrcExist( VOS_VOID )
 
     ucRet = MM_FALSE;
     ucFlg = MM_FALSE;
-    
+
     g_MmGlobalInfo.ucConnRcvSysFlg = MM_FALSE;
 
     g_MmGlobalInfo.ucLauAcceptContainDiffNbLaiFlg = VOS_FALSE;
@@ -10336,7 +10375,7 @@ VOS_UINT8 NAS_MM_ProcessLuAfterCsConnectNotExist(VOS_VOID)
 
     if (VOS_TRUE == NAS_MM_IsNeedLauCsSigRel())
     {
-        ucRet = (VOS_UINT8)NAS_MM_ProcessLuAfterCsConnectNotExist_RrcExist(); 
+        ucRet = (VOS_UINT8)NAS_MM_ProcessLuAfterCsConnectNotExist_RrcExist();
     }
     else if ( MM_TRUE == g_MmGlobalInfo.LuInfo.ucT3212ExpiredFlg )
     {
@@ -10385,6 +10424,84 @@ VOS_VOID  NAS_MM_LogAuthInfo(
 
 
 
+VOS_VOID  NAS_MM_LogMmCtxInfo(VOS_VOID)
+{
+    MMOM_LOG_CTX_INFO_STRU             *pstMsg = VOS_NULL_PTR;
+
+    pstMsg = (MMOM_LOG_CTX_INFO_STRU*)PS_MEM_ALLOC(WUEPS_PID_MM,
+                                         sizeof(MMOM_LOG_CTX_INFO_STRU));
+
+    if (VOS_NULL_PTR == pstMsg)
+    {
+        NAS_ERROR_LOG(WUEPS_PID_MM, "NAS_MM_LogMmCtxInfo:ERROR:Alloc Mem Fail.");
+        return;
+    }
+
+    PS_MEM_SET(pstMsg, 0x00, sizeof(MMOM_LOG_CTX_INFO_STRU));
+
+    pstMsg->stMsgHeader.ulSenderCpuId   = VOS_LOCAL_CPUID;
+    pstMsg->stMsgHeader.ulReceiverCpuId = VOS_LOCAL_CPUID;
+    pstMsg->stMsgHeader.ulSenderPid     = WUEPS_PID_MM;
+    pstMsg->stMsgHeader.ulReceiverPid   = WUEPS_PID_MM;
+    pstMsg->stMsgHeader.ulLength        = sizeof(MMOM_LOG_CTX_INFO_STRU) - VOS_MSG_HEAD_LENGTH;
+    pstMsg->stMsgHeader.ulMsgName       = MMOM_LOG_CTX_INFO_IND;
+
+    pstMsg->stMmGlobalInfo.ConnCtrlInfo_CC_RcvXXEstReq_ucFlg  = g_MmGlobalInfo.ConnCtrlInfo[MM_CONN_CTRL_CC].RcvXXEstReq.ucFlg;
+    pstMsg->stMmGlobalInfo.ConnCtrlInfo_SMS_RcvXXEstReq_ucFlg = g_MmGlobalInfo.ConnCtrlInfo[MM_CONN_CTRL_SMS].RcvXXEstReq.ucFlg;
+    pstMsg->stMmGlobalInfo.ConnCtrlInfo_SS_RcvXXEstReq_ucFlg  = g_MmGlobalInfo.ConnCtrlInfo[MM_CONN_CTRL_SS].RcvXXEstReq.ucFlg;
+    pstMsg->stMmGlobalInfo.enPreRatType                       = g_MmGlobalInfo.enPreRatType;
+    pstMsg->stMmGlobalInfo.LuInfo_ucT3212ExpiredFlg           = g_MmGlobalInfo.LuInfo.ucT3212ExpiredFlg;
+    pstMsg->stMmGlobalInfo.MsCsInfo_ucOldRac                  = g_MmGlobalInfo.MsCsInfo.ucOldRac;
+    pstMsg->stMmGlobalInfo.stDetachInfo_enDetachType          = g_MmGlobalInfo.stDetachInfo.enDetachType;
+    pstMsg->stMmGlobalInfo.ucAttFlg                           = g_MmGlobalInfo.ucAttFlg;
+    pstMsg->stMmGlobalInfo.ucLikeB                            = g_MmGlobalInfo.ucLikeB;
+    pstMsg->stMmGlobalInfo.ucMmServiceState                   = g_MmGlobalInfo.ucMmServiceState;
+    pstMsg->stMmGlobalInfo.ucNotCampONPreState                = g_MmGlobalInfo.ucNotCampONPreState;
+    pstMsg->stMmGlobalInfo.ucNtMod                            = g_MmGlobalInfo.ucNtMod;
+    pstMsg->stMmGlobalInfo.ucPowerOnFlg                       = g_MmGlobalInfo.ucPowerOnFlg;
+    pstMsg->stMmGlobalInfo.ucPreState                         = g_MmGlobalInfo.ucPreState;
+    pstMsg->stMmGlobalInfo.usRac                              = g_MmGlobalInfo.usRac;
+
+
+    pstMsg->stMmlCtxInfo.enCallMode                           = 2;
+
+    pstMsg->stMmlCtxInfo.enCsfbServiceStatus                  = NAS_MML_GetCsfbServiceStatus();
+    pstMsg->stMmlCtxInfo.enCsUpdateStatus                     = NAS_MML_GetCsUpdateStatus();
+    pstMsg->stMmlCtxInfo.enT3423Status                        = NAS_MML_GetT3423Status();
+    PS_MEM_CPY(&pstMsg->stMmlCtxInfo.stAttemptUpdateLaiInfo, NAS_MM_GetAttemptUpdateLaiInfo(), sizeof(pstMsg->stMmlCtxInfo.stAttemptUpdateLaiInfo));
+    PS_MEM_CPY(&pstMsg->stMmlCtxInfo.stCsLastSuccLai, NAS_MML_GetCsLastSuccLai(), sizeof(pstMsg->stMmlCtxInfo.stCsLastSuccLai));
+    PS_MEM_CPY(&pstMsg->stMmlCtxInfo.stCurrCampLai, NAS_MML_GetCurrCampLai(), sizeof(pstMsg->stMmlCtxInfo.stCurrCampLai));
+    pstMsg->stMmlCtxInfo.ucCsSecurityCksn                     = NAS_MML_GetSimCsSecurityCksn();
+    pstMsg->stMmlCtxInfo.ucImsVoiceAvailFlg                   = NAS_MML_GetImsVoiceAvailFlg();
+    pstMsg->stMmlCtxInfo.ucImsVoiceInterSysLauEnableFlg       = NAS_MML_GetImsVoiceInterSysLauEnableFlg();
+    pstMsg->stMmlCtxInfo.ucStaOfRcvXXEstReqCsfb               = NAS_MM_GetStaOfRcvXXEstReq_CSFB();
+
+    pstMsg->stMmTimerInfo.ucT3211TimerStatus                  = gstMmTimer[MM_TIMER_T3211].ucTimerStatus;
+    pstMsg->stMmTimerInfo.ucT3212TimerStatus                  = gstMmTimer[MM_TIMER_T3212].ucTimerStatus;
+    pstMsg->stMmTimerInfo.ucT3213TimerStatus                  = gstMmTimer[MM_TIMER_T3213].ucTimerStatus;
+    pstMsg->stMmTimerInfo.ucT3242TimerStatus                  = 0;
+    pstMsg->stMmTimerInfo.ucT3243TimerStatus                  = 0;
+
+    OM_TraceMsgHook(pstMsg);
+
+    PS_MEM_FREE(WUEPS_PID_MM, pstMsg);
+
+    return;
+}
+
+
+RRC_NAS_EST_RESULT_ENUM_UINT32 NAS_MM_GetEstCnfResult(VOS_VOID)
+{
+    return g_MmGlobalInfo.enEstCnfResult;
+}
+
+
+VOS_VOID NAS_MM_SetEstCnfResult(RRC_NAS_EST_RESULT_ENUM_UINT32 enEstCnfResult)
+{
+    g_MmGlobalInfo.enEstCnfResult = enEstCnfResult;
+}
+
+
 VOS_VOID  NAS_MM_ClearAuthInfo(VOS_VOID)
 {
     g_MmGlobalInfo.AuthenCtrlInfo.ucAuthenAttmptCnt = 0;
@@ -10412,32 +10529,82 @@ VOS_VOID  NAS_MM_ClearAuthInfo(VOS_VOID)
 }
 
 
-#if (FEATURE_ON == FEATURE_LTE)  
+
+VOS_VOID NAS_MM_RcvProtectingMtCsfbPagingProcedureExpired(VOS_VOID)
+{
+    VOS_UINT32                          ulRet;
+    VOS_UINT32                          ulRcvPid;
+    NAS_MML_NET_RAT_TYPE_ENUM_UINT8     enCurrNetRatType;
+
+    ulRet            = VOS_ERR;
+    enCurrNetRatType = NAS_MML_GetCurrNetRatType();
+
+    NAS_MM_SetCsfbMtLauFlg(VOS_FALSE);
+
+    if (MM_INTER_RAT_CHANGE == Mm_GetState())
+    {
+        if ( (NAS_MML_CSFB_SERVICE_STATUS_MT_EXIST == NAS_MML_GetCsfbServiceStatus())
+          && (NAS_MML_NET_RAT_TYPE_LTE             == enCurrNetRatType) )
+        {
+            NAS_MML_SetCsfbServiceStatus(NAS_MML_CSFB_SERVICE_STATUS_NOT_EXIST);
+
+            /* 通知L CSFB 流程终止 */
+            NAS_MM_SndLmmCsfbServiceAbortNotify();
+        }
+    }
+
+    /* 通知接入层TRANSACTION状态 */
+    ulRet = NAS_MM_GetRrcPidFromCurrRatType(&ulRcvPid);
+    if (VOS_OK == ulRet)
+    {
+        NAS_MM_SndRrcTransactionStatusNotify(ulRcvPid, RRMM_TRANSACTION_FAIL);
+    }
+
+    return;
+}
+
+
+
+#if (FEATURE_ON == FEATURE_LTE)
 
 VOS_VOID NAS_MM_RcvMmTimerGetHoSecuInfoCnfExpired(VOS_VOID)
-{ 
+{
     if ((NAS_MML_NET_RAT_TYPE_LTE == NAS_MML_GetCurrNetRatType())
      && (MM_INTER_RAT_CHANGE      == g_MmGlobalInfo.ucState))
     {
         /* 向MMC回复挂起rsp */
-        NAS_MM_SndMmcSuspendRsp();        
+        NAS_MM_SndMmcSuspendRsp();
     }
-   
-    return;    
+
+    return;
 }
 VOS_UINT8 NAS_MM_GetSrvccFlg(VOS_VOID)
-{ 
-    return g_MmGlobalInfo.ucSrvccFlg;    
+{
+    return g_MmGlobalInfo.ucSrvccFlg;
 }
 
 
 VOS_VOID NAS_MM_SetSrvccFlg(
     VOS_UINT8                           ucFlg
 )
-{ 
-    g_MmGlobalInfo.ucSrvccFlg = ucFlg;    
+{
+    g_MmGlobalInfo.ucSrvccFlg = ucFlg;
 }
 
+
+
+VOS_UINT8 NAS_MM_GetRcvSrvccCallInfoFlg(VOS_VOID)
+{
+    return g_MmGlobalInfo.ucRcvSrvccCallInfoFlg;
+}
+
+
+VOS_VOID NAS_MM_SetRcvSrvccCallInfoFlg(
+    VOS_UINT8                           ucFlg
+)
+{
+    g_MmGlobalInfo.ucRcvSrvccCallInfoFlg = ucFlg;
+}
 
 
 VOS_VOID NAS_MM_ConvertToLmmSrvccStatus(
@@ -10467,6 +10634,23 @@ VOS_VOID NAS_MM_ConvertToLmmSrvccStatus(
 #endif
 
 
+VOS_UINT8 NAS_MM_GetCsfbMtLauFlg(VOS_VOID)
+{
+    return g_MmGlobalInfo.LuInfo.ucCsfbMtLauFlg;
+}
+
+
+VOS_VOID NAS_MM_SetCsfbMtLauFlg(
+    VOS_UINT8                           ucFlg
+)
+{
+    g_MmGlobalInfo.LuInfo.ucCsfbMtLauFlg = ucFlg;
+}
+
+
+
+
+
 
 VOS_UINT32 Mm_IsMultiSrvCollisionAllow(NAS_MM_CONN_CTRL_ENUM_UINT8  ucMmConnCtrl)
 {
@@ -10476,9 +10660,9 @@ VOS_UINT32 Mm_IsMultiSrvCollisionAllow(NAS_MM_CONN_CTRL_ENUM_UINT8  ucMmConnCtrl
     {
         /* 当前有一个被叫业务正在进行 */
         if (MM_MT_PAGING == g_MmGlobalInfo.ucPagingType)
-        {        
+        {
             if (NAS_MML_NET_RAT_TYPE_GSM == NAS_MML_GetCurrNetRatType())
-            {            
+            {
                 /* 当前网络如果为GSM，拒绝当前的MO呼叫业务请求，原因: GSM业务请求在业务链接建立阶段，
                  * 无法知道当前的业务类型
                  */
@@ -10496,7 +10680,7 @@ VOS_UINT32 Mm_IsMultiSrvCollisionAllow(NAS_MM_CONN_CTRL_ENUM_UINT8  ucMmConnCtrl
                 {
                     /* 如果当前MO业务请求为呼叫业务且MT业务请求也是呼叫，拒绝当前的MO业务 */
                     return VOS_FALSE;
-                }               
+                }
                 else
                 {
                     /* 其他场景,允许当前业务发起 */
@@ -10506,8 +10690,8 @@ VOS_UINT32 Mm_IsMultiSrvCollisionAllow(NAS_MM_CONN_CTRL_ENUM_UINT8  ucMmConnCtrl
         }
 
         /* 下面是为了规避多个MO业务请求同时到来时的处理流程
-         * 
-         * 注: 未来高版本，可以考虑根据T3246定时器方式来处理(Ref: section 4.5.1.1/4.5.1.2 
+         *
+         * 注: 未来高版本，可以考虑根据T3246定时器方式来处理(Ref: section 4.5.1.1/4.5.1.2
          *     in 24.008 version 10.6.1)
          */
         if (WAIT_FOR_NETWORK_COMMAND != g_MmGlobalInfo.ucState)
@@ -10515,13 +10699,13 @@ VOS_UINT32 Mm_IsMultiSrvCollisionAllow(NAS_MM_CONN_CTRL_ENUM_UINT8  ucMmConnCtrl
             if ((MM_IE_PD_NON_CALL_RLT_SS_MSG == g_MmGlobalInfo.ucMMConnEstingPD)
              && (MM_CONN_CTRL_CC              == ucMmConnCtrl))
             {
-                /* 当前一个MO SS业务请求正在建立，如果收到呼叫业务请求，拒绝当前呼叫业务请求 */        
+                /* 当前一个MO SS业务请求正在建立，如果收到呼叫业务请求，拒绝当前呼叫业务请求 */
                 return VOS_FALSE;
             }
             else if ((MM_IE_PD_CALL_CONTROL   == g_MmGlobalInfo.ucMMConnEstingPD)
                   && (MM_CONN_CTRL_SS         == ucMmConnCtrl))
             {
-                /* 当前一个MO 呼叫业务请求正在建立，如果收到补充业务请求，拒绝当前补充业务请求 */              
+                /* 当前一个MO 呼叫业务请求正在建立，如果收到补充业务请求，拒绝当前补充业务请求 */
                 return VOS_FALSE;
             }
             else
@@ -10530,7 +10714,7 @@ VOS_UINT32 Mm_IsMultiSrvCollisionAllow(NAS_MM_CONN_CTRL_ENUM_UINT8  ucMmConnCtrl
             }
         }
     }
-    
+
     return VOS_TRUE;
 }
 
@@ -10550,7 +10734,7 @@ VOS_VOID NAS_MM_InitLaiInfo(
     pstLai->PlmnId.ulMcc = NAS_MML_INVALID_MCC;
     pstLai->PlmnId.ulMnc = NAS_MML_INVALID_MNC;
     pstLai->ulLac        = MM_INVALID_LAI;
-    
+
     return;
 }
 
@@ -10569,13 +10753,13 @@ VOS_UINT32 NAS_MM_IsSameLaiInfo(
     {
         return VOS_FALSE;
     }
-    
+
     if ( pstCurrLai->ulLac != pstOldLai->ulLac)
     {
         return VOS_FALSE;
     }
-   
-    
+
+
     return VOS_TRUE;
 }
 
@@ -10585,7 +10769,7 @@ VOS_UINT32 NAS_MM_IsSameLaiInfo(
 VOS_VOID NAS_MM_LocationUpdateAttemptCounter(
     VOS_UINT32                          ulMmCause
 )
-{    NAS_MML_LOCATION_UPDATE_STATUS_ENUM_UINT8  enCsUpdateStatus;    
+{    NAS_MML_LOCATION_UPDATE_STATUS_ENUM_UINT8  enCsUpdateStatus;
     VOS_UINT8                                   ucOldUpdateSts;
     VOS_UINT8                                   ucTempUpdateSts;
     MM_LAI_STRU                                 OldLai;
@@ -10621,7 +10805,7 @@ VOS_VOID NAS_MM_LocationUpdateAttemptCounter(
         else
         {
             g_MmGlobalInfo.ucMmServiceState = MM_ATTEMPTING_TO_UPDATE;
-            
+
             ucOldUpdateSts = NAS_MML_GetCsUpdateStatus();
 
             PS_MEM_CPY(&OldLai,
@@ -10630,8 +10814,8 @@ VOS_VOID NAS_MM_LocationUpdateAttemptCounter(
 
 
             /* 在U2状态，保存当前的LAI信息 */
-            PS_MEM_CPY(NAS_MM_GetAttemptUpdateLaiInfo(), 
-                       &g_MmGlobalInfo.MsCsInfo.CurLai, sizeof(MM_LAI_STRU));            
+            PS_MEM_CPY(NAS_MM_GetAttemptUpdateLaiInfo(),
+                       &g_MmGlobalInfo.MsCsInfo.CurLai, sizeof(MM_LAI_STRU));
 
             Mm_ComToU2Handle();                                                 /* 进U2的公共处理                           */
 
@@ -10674,9 +10858,9 @@ VOS_VOID NAS_MM_LocationUpdateAttemptCounter(
 
 
         /* 在U2状态，保存当前的LAI信息 */
-        PS_MEM_CPY(NAS_MM_GetAttemptUpdateLaiInfo(), 
-                   &g_MmGlobalInfo.MsCsInfo.CurLai, sizeof(MM_LAI_STRU));            
-            
+        PS_MEM_CPY(NAS_MM_GetAttemptUpdateLaiInfo(),
+                   &g_MmGlobalInfo.MsCsInfo.CurLai, sizeof(MM_LAI_STRU));
+
         Mm_ComToU2Handle();                                                     /* 进U2的公共处理                           */
         ucTempUpdateSts = NAS_MML_GetCsUpdateStatus();
         PS_MEM_CPY(&TempLai,
@@ -10708,7 +10892,7 @@ VOS_VOID NAS_MM_LocationUpdateAttemptCounter(
 VOS_VOID NAS_MM_UpdateLauRetryFlg_RcvRelInd(
     RRMM_REL_IND_STRU                  *pRrcRelInd
 )
-{   
+{
     NAS_MML_LOCATION_UPDATE_STATUS_ENUM_UINT8   enCsUpdateStatus;
 
     enCsUpdateStatus    = NAS_MML_GetCsUpdateStatus();
@@ -10719,15 +10903,11 @@ VOS_VOID NAS_MM_UpdateLauRetryFlg_RcvRelInd(
         if ( (MM_FALSE == Mm_ComLaiJudge())
          &&  (NAS_MML_LOCATION_UPDATE_STATUS_UPDATED == enCsUpdateStatus))
         {
-            g_MmGlobalInfo.LuInfo.ucRetryFlg = MM_FALSE;         
+            g_MmGlobalInfo.LuInfo.ucRetryFlg = MM_FALSE;
         }
         else
         {
-            if ((RRC_REL_CAUSE_RR_UNSPEC == pRrcRelInd->ulRelCause)
-                || (RRC_REL_CAUSE_NAS_DATA_ABSENT == pRrcRelInd->ulRelCause)
-                || (RRC_REL_CAUSE_RRC_ERROR == pRrcRelInd->ulRelCause)
-                || (RRC_REL_CAUSE_RL_FAILURE == pRrcRelInd->ulRelCause)
-                || (RRC_REL_CAUSE_OTHER_REASON == pRrcRelInd->ulRelCause))
+            if (VOS_FALSE == NAS_MM_IsRrRelCauseNeedRetryLau(pRrcRelInd->ulRelCause))
             {
                 g_MmGlobalInfo.LuInfo.ucRetryFlg = MM_FALSE;
             }
@@ -10739,11 +10919,7 @@ VOS_VOID NAS_MM_UpdateLauRetryFlg_RcvRelInd(
     }
     else
     {
-        if ((RRC_REL_CAUSE_RR_UNSPEC == pRrcRelInd->ulRelCause)
-            || (RRC_REL_CAUSE_NAS_DATA_ABSENT == pRrcRelInd->ulRelCause)
-            || (RRC_REL_CAUSE_RRC_ERROR == pRrcRelInd->ulRelCause)
-            || (RRC_REL_CAUSE_RL_FAILURE == pRrcRelInd->ulRelCause)
-            || (RRC_REL_CAUSE_OTHER_REASON == pRrcRelInd->ulRelCause))
+        if (VOS_FALSE == NAS_MM_IsRrRelCauseNeedRetryLau(pRrcRelInd->ulRelCause))
         {
             g_MmGlobalInfo.LuInfo.ucRetryFlg = MM_FALSE;
         }
@@ -10753,9 +10929,263 @@ VOS_VOID NAS_MM_UpdateLauRetryFlg_RcvRelInd(
         }
     }
 }
+VOS_VOID  NAS_MM_LogAutnLenInfo(
+    VOS_UINT8                           ucLen
+)
+{
+    NAS_MM_LOG_AUTN_LEN_INFO_STRU         *pstMsg = VOS_NULL_PTR;
+
+    pstMsg = (NAS_MM_LOG_AUTN_LEN_INFO_STRU*)PS_MEM_ALLOC(WUEPS_PID_MM,
+                                         sizeof(NAS_MM_LOG_AUTN_LEN_INFO_STRU));
+
+    if (VOS_NULL_PTR == pstMsg)
+    {
+        NAS_ERROR_LOG(WUEPS_PID_MM, "NAS_MM_LogAuthInfo:ERROR:Alloc Mem Fail.");
+        return;
+    }
+
+    PS_MEM_SET(pstMsg, 0x00, sizeof(NAS_MM_LOG_AUTN_LEN_INFO_STRU));
+
+    pstMsg->stMsgHeader.ulSenderCpuId   = VOS_LOCAL_CPUID;
+    pstMsg->stMsgHeader.ulReceiverCpuId = VOS_LOCAL_CPUID;
+    pstMsg->stMsgHeader.ulSenderPid     = WUEPS_PID_MM;
+    pstMsg->stMsgHeader.ulReceiverPid   = WUEPS_PID_MM;
+    pstMsg->stMsgHeader.ulLength        = sizeof(NAS_MM_LOG_AUTN_LEN_INFO_STRU) - VOS_MSG_HEAD_LENGTH;
+    pstMsg->stMsgHeader.ulMsgName       = MMOM_LOG_AUTN_LEN_INFO_IND;
+    pstMsg->ucLen                       = ucLen;
+
+    OM_TraceMsgHook(pstMsg);
+
+    PS_MEM_FREE(WUEPS_PID_MM, pstMsg);
+
+    return;
+}
 
 
+NAS_MMCM_REL_CAUSE_ENUM_UINT32 NAS_MM_ConvertRrcRelCauseToMmCcRelCause(
+    RRC_REL_CAUSE_ENUM_UINT32           enRrcRelCause
+)
+{
+    NAS_MMCM_REL_CAUSE_ENUM_UINT32      enRelCause;
+    VOS_UINT32                          i;
 
+    enRelCause  = NAS_MMCM_REL_CAUSE_RR_REL_OTHER_REASON;
+
+    for (i = 0; i < (sizeof(g_astRrcToMmCcRelCause) / sizeof(g_astRrcToMmCcRelCause[0])); i++)
+    {
+        if (enRrcRelCause == g_astRrcToMmCcRelCause[i].enRrcRelCause)
+        {
+            enRelCause = g_astRrcToMmCcRelCause[i].enMmCcRelCause;
+        }
+    }
+
+    return enRelCause;
+}
+
+
+NAS_MMCM_REL_CAUSE_ENUM_UINT32 NAS_MM_ConvertEstCnfRsltToMmCcRelCause(
+    RRC_NAS_EST_RESULT_ENUM_UINT32     enEstCnfRslt
+)
+{
+    NAS_MMCM_REL_CAUSE_ENUM_UINT32      enRelCause;
+    VOS_UINT32                          i;
+
+    enRelCause  = NAS_MMCM_REL_CAUSE_RR_REL_OTHER_REASON;
+
+    for (i = 0; i < (sizeof(g_astEstRsltToMmCcRelCause) / sizeof(g_astEstRsltToMmCcRelCause[0])); i++)
+    {
+        if (enEstCnfRslt == g_astEstRsltToMmCcRelCause[i].enEstRslt)
+        {
+            enRelCause = g_astEstRsltToMmCcRelCause[i].enMmCcRelCause;
+        }
+    }
+
+    return enRelCause;
+}
+
+
+NAS_MMCM_REL_CAUSE_ENUM_UINT32 NAS_MM_ConvertCsfbSrvRsltToMmCcRelCause(
+    LMM_MM_CSFB_SERVICE_END_IND_STRU   *pstCsfbEndInd
+)
+{
+    NAS_MMCM_REL_CAUSE_ENUM_UINT32      enRelCause;
+    VOS_UINT32                          i;
+
+    enRelCause  = (VOS_UINT32)NAS_MMCM_REL_CAUSE_BUTT;
+
+    /* CSFB service rej */
+    if (MM_LMM_CSFB_SERVICE_RSLT_CN_REJ == pstCsfbEndInd->enCsfbSrvRslt)
+    {
+        enRelCause  = (pstCsfbEndInd->ulCnCause) + NAS_MMCM_REL_CAUSE_CSFB_SRV_REJ_BEGIN;
+    }
+    /* 以下为CSFB LMM Error */
+    else
+    {
+        for (i = 0; i < (sizeof(g_astCsfbRsltToMmCcRelCause) / sizeof(g_astCsfbRsltToMmCcRelCause[0])); i++)
+        {
+            if (pstCsfbEndInd->enCsfbSrvRslt    == g_astCsfbRsltToMmCcRelCause[i].enCsfbRslt)
+            {
+                enRelCause = g_astCsfbRsltToMmCcRelCause[i].enMmCcRelCause;
+            }
+        }
+    }
+
+    return enRelCause;
+}
+
+
+VOS_UINT32 NAS_MM_IsGsmOnlyEstCnfRslt(
+    RRC_NAS_EST_RESULT_ENUM_UINT32      ulResult
+)
+{
+    if ((RRC_EST_RANDOM_ACCESS_REJECT == ulResult)
+     || (RRC_EST_RANDOM_ACCESS_REJECT_NO_VALID_INFO == ulResult)
+     || (RRC_EST_RJ_RA_FAIL == ulResult)
+     || (RRC_EST_RJ_RA_FAIL_NO_VALID_INFO == ulResult))
+    {
+        return VOS_TRUE;
+    }
+    else
+    {
+        return VOS_FALSE;
+    }
+}
+#if (FEATURE_ON == FEATURE_PTM)
+
+VOS_VOID NAS_MM_RecordCsPagingFail_WaitForRrConnection(
+    RRC_NAS_EST_RESULT_ENUM_UINT32      ulResult
+)
+{
+    /* 建链结果是RRC_EST_SUCCESS或者RRC_EST_PRESENT，不需要记录 */
+    if ((RRC_EST_SUCCESS == ulResult)
+     || (RRC_EST_PRESENT == ulResult))
+    {
+        return;
+    }
+
+    if (VOS_TRUE == NAS_MML_GetErrLogEstCnfCsfbMtFailRecordFlag())
+    {
+        return;
+    }
+
+
+    if ((MM_FALSE == g_MmGlobalInfo.ConnCtrlInfo[MM_CONN_CTRL_CC].RcvXXEstReq.ucFlg)
+     && (MM_FALSE == g_MmGlobalInfo.ConnCtrlInfo[MM_CONN_CTRL_SS].RcvXXEstReq.ucFlg)
+     && (MM_FALSE == g_MmGlobalInfo.ConnCtrlInfo[MM_CONN_CTRL_SMS].RcvXXEstReq.ucFlg))
+    {
+        /* CS PAGING链路建立失败的异常记录 */
+        NAS_MM_CsPagingFailRecord(NAS_ERR_LOG_CS_PAGING_CAUSE_EST_FAIL);
+    }
+
+    return;
+}
+
+
+VOS_VOID NAS_MM_ProcCsfbMtFailRecord(VOS_VOID)
+{
+    if (NAS_MML_CSFB_SERVICE_STATUS_MT_EXIST  == NAS_MML_GetCsfbServiceStatus())
+    {
+        /* 记录CSFB MT异常 */
+        NAS_MM_CsfbMtFailRecord();
+
+        /* 清除CSFB MT的状态 */
+        NAS_MML_SetErrLogCsfbMtState(NAS_ERR_LOG_CSFB_MT_STATE_NULL);
+
+        if (VOS_TRUE == NAS_MML_GetErrLogWaitForRrConnRcvEstCnfFlag())
+        {
+            NAS_MML_SetErrLogEstCnfCsfbMtFailRecordFlag(VOS_TRUE);
+        }
+    }
+
+    return;
+}
+
+/*****************************************************************************
+ 函 数 名  : NAS_MM_ParseErrLogCsPagingInfo
+ 功能描述  : 将上层传递过来的参数存储全局变量
+ 输入参数  : VOS_VOID            *pRcvMsg
+ 输出参数  : 无
+ 返 回 值  : VOS_VOID
+ 调用函数  :
+ 被调函数  :
+
+ 修改历史     :
+ 1.日    期   : 2015年03月13日
+   作    者   : zwx247453
+   修改内容   : 新生成函数
+*****************************************************************************/
+VOS_VOID NAS_MM_ParseErrLogCsPagingInfo(
+    VOS_VOID                           *pRcvMsg
+)
+{
+    RRMM_PAGING_IND_STRU               *pstWPagingMsg = VOS_NULL_PTR;
+    GRRMM_PAGING_IND_ST                *pstGPagingMsg = VOS_NULL_PTR;
+    NAS_MML_NET_RAT_TYPE_ENUM_UINT8     enRatType;
+
+    if (VOS_NULL_PTR == pRcvMsg)
+    {
+        NAS_ERROR_LOG(WUEPS_PID_MM, "NAS_MM_ParseErrLogCsPagingInfo(): parameter is NULL pointer.");
+        return;
+    }
+
+    enRatType = NAS_MML_GetCurrNetRatType();
+
+    if (NAS_MML_NET_RAT_TYPE_GSM == enRatType)
+    {
+        pstGPagingMsg = (GRRMM_PAGING_IND_ST *)pRcvMsg;
+
+        NAS_MML_SetErrLogGMsIdType(pstGPagingMsg->ucMSIDType);
+        NAS_MML_SetErrLogGPagingType(pstGPagingMsg->ucPagingType);
+    }
+    else if (NAS_MML_NET_RAT_TYPE_WCDMA == enRatType)
+    {
+        pstWPagingMsg = (RRMM_PAGING_IND_STRU *)pRcvMsg;
+
+        NAS_MML_SetErrLogWCnDomainId(pstWPagingMsg->ulCnDomainId);
+        NAS_MML_SetErrLogWPagingType(pstWPagingMsg->ulPagingType);
+        NAS_MML_SetErrLogWPagingCause(pstWPagingMsg->ulPagingCause);
+        NAS_MML_SetErrLogWPagingUeId(pstWPagingMsg->ulPagingUeId);
+    }
+    else
+    {
+        ;
+    }
+
+    return;
+}
+
+#endif
+
+
+VOS_UINT32 NAS_MM_GetRrcPidFromCurrRatType(
+    VOS_UINT32                         *pulPid
+)
+{
+    VOS_UINT32                          ulRet;
+    NAS_MML_NET_RAT_TYPE_ENUM_UINT8     enCurrNetRatType;
+
+    /* 初始化 */
+    enCurrNetRatType = NAS_MML_GetCurrNetRatType();
+
+    switch(enCurrNetRatType)
+    {
+        case NAS_MML_NET_RAT_TYPE_GSM:
+            *pulPid = UEPS_PID_GAS;
+            ulRet   = VOS_OK;
+            break;
+
+        case NAS_MML_NET_RAT_TYPE_WCDMA:
+            *pulPid = WUEPS_PID_WRR;
+            ulRet   = VOS_OK;
+            break;
+
+        default:
+            ulRet   = VOS_ERR;
+            break;
+    }
+
+    return ulRet;
+}
 #ifdef __cplusplus
 #if __cplusplus
 }

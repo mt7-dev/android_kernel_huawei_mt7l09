@@ -949,27 +949,7 @@
 #define CsrWifiNmeWpsConfigSetCfmSend(dst__, status__) \
     CsrWifiNmeWpsConfigSetCfmSendTo(dst__, CSR_WIFI_NME_IFACEQUEUE, status__)
 
-/*******************************************************************************
 
-  NAME
-    CsrWifiNmeWpsReqSend
-
-  DESCRIPTION
-    Requests the NME to look for WPS enabled APs and attempt to perform WPS
-    to determine the appropriate security credentials to connect to the AP.
-    If the PIN == '00000000' then 'push button mode' is indicated, otherwise
-    the PIN has to match that of the AP. 4 digit pin is passed by sending the
-    pin digits in pin[0]..pin[3] and rest of the contents filled with '-'.
-
-  PARAMETERS
-    queue        - Message Source Task Queue (Cfm's will be sent to this Queue)
-    interfaceTag - Interface Identifier; unique identifier of an interface
-    pin          - PIN value.
-    ssid         - Service Set identifier
-    bssid        - ID of Basic Service Set for which a WPS connection attempt is
-                   being made.
-
-*******************************************************************************/
 #define CsrWifiNmeWpsReqCreate(msg__, dst__, src__, interfaceTag__, pin__, ssid__, bssid__) \
     msg__ = kmalloc(sizeof(CsrWifiNmeWpsReq), GFP_KERNEL); \
     CsrWifiFsmEventInit(&msg__->common, CSR_WIFI_NME_PRIM, CSR_WIFI_NME_WPS_REQ, dst__, src__); \

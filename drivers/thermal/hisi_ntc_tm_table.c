@@ -45,12 +45,16 @@
 
 #define PRORATE_OF_INIT	1000 /*in order to resolve divisor less than zero*/
 #define multiple				100
+/*line -emacro(750,*)*/
+/*lint -e750*/
 #define R1003				1500/*ohm*/
 #define R1006				27400/*ohm*/
 #define  RT1008				150000/*ohm*/
 #define AVDD				15/*add to both of  hot resistance's voltage *  10 */
 #define BITNUM				4096
 #define CURRENT				1/*I * 10 */
+/*lint +e750*/
+/*line +emacro(750,*)*/
 #define NCP_GENERAL1_NUM	34
 #define NCP_GENERAL2_NUM	34
 
@@ -69,7 +73,7 @@ static int hi3630_volt_to_temp_general1[NCP_GENERAL1_NUM][2] = {
 	{33190, 50}, {40900, 45}, {50680, 40}, {63180, 35}, {79230, 30},
 	{100000, 25}, {127000, 20}, {162500, 15}, {209400, 10}, {271800, 5},
 	{355600, 0}, {469100, -5}, {624100, -10}, {837800, -15}, {1135000, -20},
-	{1554000, -25}, {2149000, -30}, {3005000, -35}, {4251000, -40}, 
+	{1554000, -25}, {2149000, -30}, {3005000, -35}, {4251000, -40},
 };
 
 /*hi3630 IC 2 temperature from -40 to 125*/
@@ -80,7 +84,7 @@ static int hi3630_volt_to_temp_general2[NCP_GENERAL2_NUM][2] = {
 	{33190, 50}, {40900, 45}, {50680, 40}, {63180, 35}, {79230, 30},
 	{100000, 25}, {127000, 20}, {162500, 15}, {209400, 10}, {271800, 5},
 	{355600, 0}, {469100, -5}, {624100, -10}, {837800, -15}, {1135000, -20},
-	{1554000, -25}, {2149000, -30}, {3005000, -35}, {4251000, -40}, 
+	{1554000, -25}, {2149000, -30}, {3005000, -35}, {4251000, -40},
 };
 
 /****************************************************
@@ -117,7 +121,9 @@ static int change_volt_to_temp(int iResistance, int index_min, int index_max, in
 		pr_err("ADC channel is not exist!\n\r");
 		break;
 	}
-
+        if((resistance_max - resistance_min) == 0) {
+            return 25;
+        }
 	prorate =  ((resistance_max - iResistance) * PRORATE_OF_INIT) / (resistance_max - resistance_min);
 	itemper = ((temper_bottom - temper_top) * prorate) / PRORATE_OF_INIT + temper_top;
 	return itemper;

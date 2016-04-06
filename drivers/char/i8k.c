@@ -286,13 +286,7 @@ static int i8k_get_temp(int sensor)
 	temp = regs.eax & 0xff;
 
 #ifdef I8K_TEMPERATURE_BUG
-	/*
-	 * Sometimes the temperature sensor returns 0x99, which is out of range.
-	 * In this case we return (once) the previous cached value. For example:
-	 # 1003655137 00000058 00005a4b
-	 # 1003655138 00000099 00003a80 <--- 0x99 = 153 degrees
-	 # 1003655139 00000054 00005c52
-	 */
+
 	if (temp > I8K_MAX_TEMP) {
 		temp = prev;
 		prev = I8K_MAX_TEMP;

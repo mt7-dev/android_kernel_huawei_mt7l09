@@ -34,9 +34,7 @@
 #if !defined(__DWC_CIL_H__)
 #define __DWC_CIL_H__
 
-#include <linux/workqueue.h>
-#include <linux/mutex.h>
-
+#include <linux/spinlock.h>
 #include "dwc_list.h"
 #include "dwc_otg_dbg.h"
 #include "dwc_otg_regs.h"
@@ -672,8 +670,8 @@ typedef struct dwc_otg_core_params {
 	int32_t ic_usb_cap;
 
 	/** AHB Threshold Ratio
-	 * 2'b00 AHB Threshold =	MAC Threshold
-	 * 2'b01 AHB Threshold = 1/2	MAC Threshold
+	 * 2'b00 AHB Threshold = 	MAC Threshold
+	 * 2'b01 AHB Threshold = 1/2 	MAC Threshold
 	 * 2'b10 AHB Threshold = 1/4	MAC Threshold
 	 * 2'b11 AHB Threshold = 1/8	MAC Threshold
 	 */
@@ -919,17 +917,10 @@ struct dwc_otg_core_if {
 	uint32_t tx_msk;
 
 	/** Workqueue object used for handling several interrupts */
-	// changed by l00196665, for id change
-#if 0
 	dwc_workq_t *wq_otg;
-#else
-	struct delayed_work id_change_work;
-	struct mutex id_change_mutex;
-#endif
 
 	/** Timer object used for handling "Wakeup Detected" Interrupt */
-	struct timer_list wkp_timer;
-
+	dwc_timer_t *wkp_timer;
 	/** This arrays used for debug purposes for DEV OUT NAK enhancement */
 	uint32_t start_doeptsiz_val[MAX_EPS_CHANNELS];
 	ep_xfer_info_t ep_xfer_info[MAX_EPS_CHANNELS];
@@ -1009,6 +1000,13 @@ struct dwc_otg_core_if {
 
 };
 
+struct ep_dma_desc {
+    dwc_dma_t dma_desc_addr;
+	dwc_otg_dev_dma_desc_t *desc_addr;
+};
+
+extern struct ep_dma_desc g_dma_desc[MAX_EPS_CHANNELS][2];
+
 #ifdef DEBUG
 /*
  * This function is called when transfer is timed out.
@@ -1025,14 +1023,9 @@ extern void ep_xfer_timeout(void *ptr);
  * The following functions are functions for works
  * using during handling some interrupts
  */
-// changed by l00196665, for id change
-#if 0
 extern void w_conn_id_status_change(void *p);
-#else
-extern void w_conn_id_status_change(struct work_struct *work);
-#endif
 
-extern void w_wakeup_detected(unsigned long data);
+extern void w_wakeup_detected(void *p);
 
 /** Saves global register values into system memory. */
 extern int dwc_otg_save_global_regs(dwc_otg_core_if_t * core_if);
@@ -1173,7 +1166,7 @@ extern void dwc_otg_read_packet(dwc_otg_core_if_t * core_if,
 
 extern void dwc_otg_flush_tx_fifo(dwc_otg_core_if_t * _core_if, const int _num);
 extern void dwc_otg_flush_rx_fifo(dwc_otg_core_if_t * _core_if);
-extern void dwc_otg_core_reset(dwc_otg_core_if_t * _core_if);
+extern int dwc_otg_core_reset(dwc_otg_core_if_t * _core_if);
 
 /**
  * This function returns the Core Interrupt register.

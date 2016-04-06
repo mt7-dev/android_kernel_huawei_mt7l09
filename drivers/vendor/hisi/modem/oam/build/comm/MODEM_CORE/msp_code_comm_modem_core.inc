@@ -36,6 +36,7 @@ vob_include_dirs :=   $(WIND_BASE)/target/h \
 					  $(PRJ_INCLUDE_DIR)\oam\comm\dms \
 					  $(PRJ_INCLUDE_DIR)\oam\comm\nvim \
                       $(PRJ_INCLUDE_DIR)\oam\comm\cbpa \
+					  $(PRJ_INCLUDE_DIR)\oam\comm\cpm \
 					  $(PRJ_INCLUDE_DIR)\oam\gu\log \
 					  $(PRJ_INCLUDE_DIR)\oam\gu\om \
 					  $(PRJ_INCLUDE_DIR)\oam\gu\nvim \
@@ -72,6 +73,13 @@ vob_include_dirs :=   $(WIND_BASE)/target/h \
 					  $(MSP_INC_DIR)\gu\ccore\sc \
 					  $(MSP_INC_DIR)\gu\ccore\sleep \
 					  $(MSP_INC_DIR)\gu\comm\om \
+					  
+ifeq ($(CFG_FEATURE_MERGE_OM_CHAN),FEATURE_ON)
+vob_include_dirs += \
+					$(MSP_INC_DIR)\comm\comm\ppm \
+					$(MSP_INC_DIR)\gu\acore\cbtcpm \
+					$(MSP_INC_DIR)\gu\acore\cbtppm					
+endif					  
 
 ifneq ($(CFG_RAT_MODE),RAT_GU)
 vob_include_dirs += \

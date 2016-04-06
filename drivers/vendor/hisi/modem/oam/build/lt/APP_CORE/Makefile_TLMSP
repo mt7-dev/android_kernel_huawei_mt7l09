@@ -1,0 +1,159 @@
+-include $(BALONG_TOPDIR)/config/product/$(OBB_PRODUCT_NAME)/config/balong_product_config.mk
+
+OAMDIR = ..
+
+EXTRA_CFLAGS += -Iarch/arm/mach-balong/include/mach 
+EXTRA_CFLAGS += -Iarch/arm/mach-balongv7r2/include/mach 
+EXTRA_CFLAGS += -Iinclude/linux 
+EXTRA_CFLAGS += -I$(BALONG_TOPDIR)/config/product/$(OBB_PRODUCT_NAME)/config/ 
+EXTRA_CFLAGS += -I$(BALONG_TOPDIR)/config/product/$(OBB_PRODUCT_NAME)/include_gu/ 
+EXTRA_CFLAGS += -I$(BALONG_TOPDIR)/config/product/$(OBB_PRODUCT_NAME)/ 
+EXTRA_CFLAGS += -I$(BALONG_TOPDIR)/config/product/include/$(CFG_GU_PLATFORM_NEW)/ 
+EXTRA_CFLAGS += -I$(BALONG_TOPDIR)/config/nvim/include/gu/ 
+EXTRA_CFLAGS += -I$(BALONG_TOPDIR)/config/nvim/include/lt/tlps 
+EXTRA_CFLAGS += -I$(BALONG_TOPDIR)/include/ps/tlps 
+EXTRA_CFLAGS += -I$(BALONG_TOPDIR)/include/app 
+EXTRA_CFLAGS += -I$(BALONG_TOPDIR)/include/drv/ 
+EXTRA_CFLAGS += -I$(BALONG_TOPDIR)/include/nv/tl/drv/ 
+EXTRA_CFLAGS += -I$(BALONG_TOPDIR)/include/nv/tl/oam/ 
+EXTRA_CFLAGS += -I$(BALONG_TOPDIR)/include/nv/tl/lps 
+EXTRA_CFLAGS += -I$(BALONG_TOPDIR)/include/med/ 
+EXTRA_CFLAGS += -I$(BALONG_TOPDIR)/include/oam/gu/log 
+EXTRA_CFLAGS += -I$(BALONG_TOPDIR)/include/oam/gu/om 
+EXTRA_CFLAGS += -I$(BALONG_TOPDIR)/include/oam/gu/nvim 
+EXTRA_CFLAGS += -I$(BALONG_TOPDIR)/include/oam/lt/msp 
+EXTRA_CFLAGS += -I$(BALONG_TOPDIR)/include/oam/lt/diag 
+EXTRA_CFLAGS += -I$(BALONG_TOPDIR)/include/oam/comm/errno 
+EXTRA_CFLAGS += -I$(BALONG_TOPDIR)/include/oam/comm/nvim 
+EXTRA_CFLAGS += -I$(BALONG_TOPDIR)/include/oam/comm/om 
+EXTRA_CFLAGS += -I$(BALONG_TOPDIR)/include/oam/comm/osa 
+EXTRA_CFLAGS += -I$(BALONG_TOPDIR)/include/oam/comm/scm 
+EXTRA_CFLAGS += -I$(BALONG_TOPDIR)/include/oam/comm/si 
+EXTRA_CFLAGS += -I$(BALONG_TOPDIR)/include/oam/comm/usimm 
+EXTRA_CFLAGS += -I$(BALONG_TOPDIR)/include/oam/comm/socp 
+EXTRA_CFLAGS += -I$(BALONG_TOPDIR)/include/phy/gphy 
+EXTRA_CFLAGS += -I$(BALONG_TOPDIR)/include/phy/wphy 
+EXTRA_CFLAGS += -I$(BALONG_TOPDIR)/include/phy/lphy 
+EXTRA_CFLAGS += -I$(BALONG_TOPDIR)/include/ps/gups 
+EXTRA_CFLAGS += -I$(BALONG_TOPDIR)/include/ps/nas 
+EXTRA_CFLAGS += -I$(BALONG_TOPDIR)/include/taf 
+EXTRA_CFLAGS += -I$(BALONG_TOPDIR)/include/tools 
+EXTRA_CFLAGS += -I$(BALONG_TOPDIR)/config/log 
+EXTRA_CFLAGS += -I$(BALONG_TOPDIR)/config/osa 
+EXTRA_CFLAGS += -I$(BALONG_TOPDIR)/config/nvim/include/tl/tlps
+EXTRA_CFLAGS += -I$(BALONG_TOPDIR)/modem/oam/inc/comm/comm/si/ 
+EXTRA_CFLAGS += -I$(BALONG_TOPDIR)/modem/oam/inc/comm/ccore/om/ 
+EXTRA_CFLAGS += -I$(BALONG_TOPDIR)/modem/oam/inc/lt/comm/list/ 
+EXTRA_CFLAGS += -I$(BALONG_TOPDIR)/modem/oam/inc/lt/acore/diag/ 
+EXTRA_CFLAGS += -I$(BALONG_TOPDIR)/modem/oam/inc/lt/comm/cfg/ 
+EXTRA_CFLAGS += -I$(BALONG_TOPDIR)/modem/oam/inc/lt/comm/diag/ 
+EXTRA_CFLAGS += -I$(BALONG_TOPDIR)/modem/oam/inc/lt/comm/drx/ 
+EXTRA_CFLAGS += -I$(BALONG_TOPDIR)/modem/oam/inc/lt/comm/type/ 
+EXTRA_CFLAGS += -I$(BALONG_TOPDIR)/modem/oam/inc/gu/acore/om/ 
+EXTRA_CFLAGS += -I$(BALONG_TOPDIR)/modem/taf/comm/src/acore/at/inc/ 
+EXTRA_CFLAGS += -I$(BALONG_TOPDIR)/modem/taf/lt/inc/acore/at/ 
+EXTRA_CFLAGS += -I$(BALONG_TOPDIR)/include/oam/comm/cpm 
+EXTRA_CFLAGS += -I$(BALONG_TOPDIR)/include/nv/gu/oam 
+EXTRA_CFLAGS += -I$(BALONG_TOPDIR)/include/nv/gu/codec 
+EXTRA_CFLAGS += -I$(BALONG_TOPDIR)/include/nv/gu/drv 
+EXTRA_CFLAGS += -I$(BALONG_TOPDIR)/include/nv/gu/gas 
+EXTRA_CFLAGS += -I$(BALONG_TOPDIR)/include/nv/gu/nas 
+EXTRA_CFLAGS += -I$(BALONG_TOPDIR)/include/nv/gu/phy 
+EXTRA_CFLAGS += -I$(BALONG_TOPDIR)/include/nv/gu/tool 
+EXTRA_CFLAGS += -I$(BALONG_TOPDIR)/include/nv/gu/ttf 
+EXTRA_CFLAGS += -I$(BALONG_TOPDIR)/include/nv/gu/was 
+EXTRA_CFLAGS += -I$(BALONG_TOPDIR)/include/oam/gu/hpa 
+EXTRA_CFLAGS += -I$(BALONG_TOPDIR)/platform/$(CFG_PLATFORM) 
+EXTRA_CFLAGS += -I$(BALONG_TOPDIR)/platform/$(CFG_PLATFORM)/soc 
+EXTRA_CFLAGS += -I$(BALONG_TOPDIR)/modem/oam/inc/comm/ccore/dh 
+EXTRA_CFLAGS += -I$(BALONG_TOPDIR)/modem/oam/inc/comm/ccore/xml 
+EXTRA_CFLAGS += -I$(BALONG_TOPDIR)/modem/oam/inc/comm/comm/nvim 
+EXTRA_CFLAGS += -I$(BALONG_TOPDIR)/modem/oam/inc/comm/ccore/usimm 
+EXTRA_CFLAGS += -I$(BALONG_TOPDIR)/modem/oam/inc/comm/comm/ppm 
+EXTRA_CFLAGS += -I$(BALONG_TOPDIR)/modem/oam/inc/gu/ccore/hpa 
+EXTRA_CFLAGS += -I$(BALONG_TOPDIR)/modem/oam/inc/gu/ccore/nvim 
+EXTRA_CFLAGS += -I$(BALONG_TOPDIR)/modem/oam/inc/gu/ccore/om 
+EXTRA_CFLAGS += -I$(BALONG_TOPDIR)/modem/oam/inc/gu/ccore/pstool 
+EXTRA_CFLAGS += -I$(BALONG_TOPDIR)/modem/oam/inc/gu/ccore/sc 
+EXTRA_CFLAGS += -I$(BALONG_TOPDIR)/modem/oam/inc/gu/ccore/sleep 
+EXTRA_CFLAGS += -I$(BALONG_TOPDIR)/modem/oam/inc/gu/comm/om 
+EXTRA_CFLAGS += -I$(BALONG_TOPDIR)/modem/taf/inc/ 
+EXTRA_CFLAGS += -I$(BALONG_TOPDIR)/modem/taf/comm/src/acore/tafapi/inc 
+EXTRA_CFLAGS += -I$(BALONG_TOPDIR)/modem/taf/comm/src/mcore/TAF/Lib/Inc/ 
+EXTRA_CFLAGS += -I$(BALONG_TOPDIR)/modem/taf/comm/src/acore/TAFAGENT/Inc/ 
+EXTRA_CFLAGS += -I$(BALONG_TOPDIR)/modem/taf/comm/src/acore/APPVCOM/Inc/ 
+
+ifneq ($(CFG_RAT_MODE),RAT_GU)
+EXTRA_CFLAGS += -I$(BALONG_TOPDIR)/include/oam/lt/msp
+endif
+
+#±àÒëºê
+EXTRA_CFLAGS += $(MSP_SDM_MACRO) $(MSP_PRODUCT_CFG)
+EXTRA_CFLAGS += -fsigned-char -DVOS_LINUX=4 -DOSA_CPU_ACPU=1 -DVOS_OS_VER=VOS_LINUX -DVOS_OSA_CPU=OSA_CPU_ACPU -DPRODUCT_CFG_MULTIMODE_LTE -D__LOG_RELEASE__ 
+#Defined in top shell script(Comm Definition)
+EXTRA_CFLAGS += $(INCLUDE_FLAG) $(DRV_INCLUDE_FLAG) $(ASM_INCLUDE_FLAG) $(PLATFORM_FLAG)
+EXTRA_CFLAGS += $(INCLUDE_COMM_DIR_FLAG) $(INCLUDE_OWN_DIR_FLAG) $(CC_INC_DIRS) -Wno-pointer-to-int-cast
+
+
+#Ô´ÎÄ¼þ
+tlmsp-objs += $(OAMDIR)/lt/comm/diag/diag_api.o 
+tlmsp-objs += $(OAMDIR)/lt/comm/diag/diag_test.o 
+tlmsp-objs += $(OAMDIR)/lt/comm/diag/diag_common.o 
+tlmsp-objs += $(OAMDIR)/lt/comm/diag/diag_buf_ctrl.o 
+tlmsp-objs += $(OAMDIR)/lt/comm/diag/diag_cfg.o 
+tlmsp-objs += $(OAMDIR)/lt/comm/diag/diag_debug.o 
+tlmsp-objs += $(OAMDIR)/lt/acore/diag/diag_fw.o 
+tlmsp-objs += $(OAMDIR)/lt/acore/diag/diag_app_agent.o 
+tlmsp-objs += $(OAMDIR)/lt/comm/diag/diag_fs_proc.o
+tlmsp-objs += $(OAMDIR)/lt/comm/list/blist.o 
+tlmsp-objs += $(OAMDIR)/lt/comm/drx/drx_msp_api.o
+tlmsp-objs += $(OAMDIR)/lt/comm/drx/drx_msp_test.o
+ifeq ($(CFG_FEATURE_MERGE_OM_CHAN),FEATURE_OFF)
+	tlmsp-objs += $(OAMDIR)/lt/acore/diag/diag_vcom.o
+	tlmsp-objs += $(OAMDIR)/lt/acore/diag/diag_usb.o
+	tlmsp-objs += $(OAMDIR)/lt/acore/diag/diag_port.o
+	tlmsp-objs += $(OAMDIR)/lt/acore/diag/diag_sd.o
+	tlmsp-objs += $(OAMDIR)/lt/acore/diag/diag_tcp.o
+	tlmsp-objs += $(OAMDIR)/lt/acore/diag/diag_hisc.o 
+endif	
+
+
+tlmsp-objs += $(OAMDIR)/comm/acore/osa/linux_sem.o 
+tlmsp-objs += $(OAMDIR)/comm/acore/osa/linux_task.o 
+tlmsp-objs += $(OAMDIR)/comm/acore/si/PcscProc.o
+tlmsp-objs += $(OAMDIR)/comm/comm/osa/v_blkmem.o 
+tlmsp-objs += $(OAMDIR)/comm/comm/osa/v_int.o
+tlmsp-objs += $(OAMDIR)/comm/comm/osa/rtc_timer.o 
+tlmsp-objs += $(OAMDIR)/comm/comm/osa/v_queue.o
+tlmsp-objs += $(OAMDIR)/comm/comm/osa/v_timer.o 
+tlmsp-objs += $(OAMDIR)/comm/comm/osa/v_msg.o
+tlmsp-objs += $(OAMDIR)/comm/comm/osa/v_lib.o 
+tlmsp-objs += $(OAMDIR)/comm/comm/osa/vos_Id.o 
+tlmsp-objs += $(OAMDIR)/comm/comm/osa/vos_main.o 
+tlmsp-objs += $(OAMDIR)/comm/comm/osa/vos_outside.o 
+tlmsp-objs += $(OAMDIR)/comm/comm/osa/watchdog.o
+tlmsp-objs += $(OAMDIR)/comm/comm/osa/v_nsprintf.o 
+tlmsp-objs += $(OAMDIR)/comm/comm/osa/v_sprintf.o
+tlmsp-objs += $(OAMDIR)/comm/comm/si/pbapi.o
+tlmsp-objs += $(OAMDIR)/comm/comm/si/pbmsg.o 
+tlmsp-objs += $(OAMDIR)/comm/comm/si/pbdata.o 
+tlmsp-objs += $(OAMDIR)/comm/comm/si/stkapi.o 
+tlmsp-objs += $(OAMDIR)/comm/comm/si/pihapi.o 
+tlmsp-objs += $(OAMDIR)/comm/comm/scm/SCMProc.o 
+
+ifeq ($(CFG_FEATURE_MERGE_OM_CHAN), FEATURE_ON)
+tlmsp-objs += $(OAMDIR)/comm/acore/cpm/cpm.o
+tlmsp-objs += $(OAMDIR)/comm/acore/ppm/OmCommonPpm.o 
+tlmsp-objs += $(OAMDIR)/comm/acore/ppm/OmFsPpm.o
+tlmsp-objs += $(OAMDIR)/comm/acore/ppm/OmHsicPpm.o 
+tlmsp-objs += $(OAMDIR)/comm/acore/ppm/OmSdPpm.o
+tlmsp-objs += $(OAMDIR)/comm/acore/ppm/OmSocketPpm.o 
+tlmsp-objs += $(OAMDIR)/comm/acore/ppm/OmUsbPpm.o
+tlmsp-objs += $(OAMDIR)/comm/acore/ppm/OmVcomPpm.o 
+tlmsp-objs += $(OAMDIR)/comm/comm/scm/SCMSoftDecode.o
+endif
+	
+
+obj-y  += tlmsp.o
+
+

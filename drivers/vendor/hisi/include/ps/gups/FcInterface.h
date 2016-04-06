@@ -66,7 +66,7 @@ enum FC_PRI_ENUM
     FC_PRI_9,
     FC_PRI_BUTT
 };
-typedef VOS_UINT32  FC_PRI_ENUM_UINT32;
+typedef VOS_UINT8  FC_PRI_ENUM_UINT8;
 
 
 /*====================================*/ /* 流控点定义 */
@@ -114,7 +114,7 @@ enum FC_ID_ENUM
     FC_ID_UL_RATE_11_FOR_TMP,
     FC_ID_BUTT
 };
-typedef VOS_UINT32  FC_ID_ENUM_UINT32;
+typedef VOS_UINT8  FC_ID_ENUM_UINT8;
 
 
 /*====================================*/ /* 内存流控使用的优先级 */
@@ -153,11 +153,11 @@ typedef VOS_UINT32 (*FC_RST_FUNC)(VOS_UINT32 ulParam1, VOS_UINT32 ulParam2);
 
 typedef struct
 {
-    FC_POLICY_ID_ENUM_UINT8             enPolicyId; /* 该流控点影响到的流控策略 */
-    VOS_UINT8                           aucRsv[1];
     MODEM_ID_ENUM_UINT16                enModemId;  /* _H2ASN_Replace VOS_UINT16  enModemId; */
-    FC_ID_ENUM_UINT32                   enFcId;
-    FC_PRI_ENUM_UINT32                  enFcPri;    /* 该流控点在该流控策略里的优先级 */
+    FC_POLICY_ID_ENUM_UINT8             enPolicyId; /* 该流控点影响到的流控策略 */
+    FC_ID_ENUM_UINT8                    enFcId;
+    FC_PRI_ENUM_UINT8                   enFcPri;    /* 该流控点在该流控策略里的优先级 */
+    VOS_UINT8                           aucRsv[3];
     VOS_UINT32                          ulParam1;   /* 保留给流控点使用，调用流控和解除流控函数时，作为函数入参 */
     VOS_UINT32                          ulParam2;   /* 保留给流控点使用，调用流控和解除流控函数时，作为函数入参 */
     FC_SET_FUNC                         pSetFunc;   /* 流控函数 */  /* _H2ASN_Replace VOS_UINT32  pSetFunc; */
@@ -192,20 +192,20 @@ extern VOS_UINT32  FC_RegPoint
 
 extern VOS_UINT32  FC_DeRegPoint
 (
-    FC_ID_ENUM_UINT32                   enFcId,
+    FC_ID_ENUM_UINT8                    enFcId,
     MODEM_ID_ENUM_UINT16                enModemId
 );
 
 extern VOS_UINT32  FC_ChangePoint
 (
-    FC_ID_ENUM_UINT32                   enFcId,
+    FC_ID_ENUM_UINT8                    enFcId,
     FC_POLICY_ID_ENUM_UINT8             enPolicyId,
-    FC_PRI_ENUM_UINT32                  enPri,
+    FC_PRI_ENUM_UINT8                   enPri,
     MODEM_ID_ENUM_UINT16                enModemId
 );
 
 extern VOS_VOID FC_ChannelMapCreate (
-    FC_ID_ENUM_UINT32                   enFcId,
+    FC_ID_ENUM_UINT8                    enFcId,
     VOS_UINT8                           ucRabId,
     MODEM_ID_ENUM_UINT16                enModemId
 );

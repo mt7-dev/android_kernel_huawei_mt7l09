@@ -73,8 +73,8 @@ ASN.1描述 : 无
 *****************************************************************************/
 typedef struct
 {
-    unsigned char                       ucInitFlg;          /* 初始化标记 */
-    unsigned char                       ucRcv[3];           /* 保留位 */
+    VOS_UINT8                           ucInitFlg;          /* 初始化标记 */
+    VOS_UINT8                           ucRcv[3];           /* 保留位 */
 } TTF_MEMCTRL_ADDR_COMM_STRU;
 
 
@@ -86,9 +86,9 @@ ASN.1描述 : 无
 *****************************************************************************/
 typedef struct
 {
-    unsigned long                       ulAttribute;        /* TTF内存地址类型属性 */
-    unsigned long                       ulLen;              /* TTF内存地址类型占用的长度 */
-    unsigned long                       ulOffsetBaseLen;    /* TTF内存地址类型基于基地址偏移的长度 */
+    VOS_UINT32                          ulAttribute;        /* TTF内存地址类型属性 */
+    VOS_UINT32                          ulLen;              /* TTF内存地址类型占用的长度 */
+    VOS_UINT32                          ulOffsetBaseLen;    /* TTF内存地址类型基于基地址偏移的长度 */
 } TTF_MEMCTRL_ADDR_TYPE_STRU;
 
 

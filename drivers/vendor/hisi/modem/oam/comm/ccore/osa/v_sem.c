@@ -196,7 +196,7 @@ VOS_UINT32 VOS_SemCtrlBlkFree( SEM_CONTROL_BLOCK *Sem_Address )
 VOS_UINT32 VOS_SmCCreate( VOS_CHAR   acSmName[4],
                           VOS_UINT32 ulSmInit,
                           VOS_UINT32 ulFlags,
-                          VOS_UINT32 *pulSmID )
+                          VOS_SEM *pulSmID )
 {
     int                    i;
     SEM_CONTROL_BLOCK      *iSemId;
@@ -242,7 +242,7 @@ VOS_UINT32 VOS_SmCCreate( VOS_CHAR   acSmName[4],
     }
     else
     {
-        *pulSmID = (VOS_UINT32)iSemId;
+        *pulSmID = (VOS_SEM)iSemId;
 
         if ( VOS_NULL_PTR != acSmName )
         {
@@ -284,7 +284,7 @@ VOS_UINT32 VOS_SmCCreate( VOS_CHAR   acSmName[4],
  *****************************************************************************/
 VOS_UINT32 VOS_SmMCreate( VOS_CHAR   Sm_Name[4],
                           VOS_UINT32 Flags,
-                          VOS_UINT32 *Sm_ID )
+                          VOS_SEM *Sm_ID )
 {
     return( VOS_SmCCreate( Sm_Name, 0xFFFFFFFF, Flags, Sm_ID ));
 }
@@ -301,7 +301,7 @@ VOS_UINT32 VOS_SmMCreate( VOS_CHAR   Sm_Name[4],
 VOS_UINT32 VOS_SmCreate( VOS_CHAR Sm_Name[4],
                          VOS_UINT32 Sm_Init,
                          VOS_UINT32 Flags,
-                         VOS_UINT32 * Sm_ID )
+                         VOS_SEM * Sm_ID )
 {
     return( VOS_SmCCreate( Sm_Name, Sm_Init, Flags, Sm_ID ));
 }
@@ -318,7 +318,7 @@ VOS_UINT32 VOS_SmCreate( VOS_CHAR Sm_Name[4],
 VOS_UINT32 VOS_SmBCreate( VOS_CHAR Sm_Name[4],
                           VOS_UINT32 Sm_Init,
                           VOS_UINT32 Flags,
-                          VOS_UINT32 * Sm_ID )
+                          VOS_SEM * Sm_ID )
 {
     int                    i;
     SEM_CONTROL_BLOCK      *iSemId;
@@ -362,7 +362,7 @@ VOS_UINT32 VOS_SmBCreate( VOS_CHAR Sm_Name[4],
     }
     else
     {
-        *Sm_ID = (VOS_UINT32)iSemId;
+        *Sm_ID = (VOS_SEM)iSemId;
 
         if ( VOS_NULL_PTR != Sm_Name )
         {
@@ -392,7 +392,7 @@ VOS_UINT32 VOS_SmBCreate( VOS_CHAR Sm_Name[4],
  Input      : ulSmID -- ID of semaphore
  Return     : VOS_OK on success and errno on failure
  *****************************************************************************/
-VOS_UINT32 VOS_SmDelete( VOS_UINT32 Sm_ID )
+VOS_UINT32 VOS_SmDelete( VOS_SEM Sm_ID )
 {
     SEM_CONTROL_BLOCK *temp_Ptr;
 
@@ -431,7 +431,7 @@ VOS_UINT32 VOS_SmDelete( VOS_UINT32 Sm_ID )
               ulTimeOutInMillSec -- the time to wait(0 for ever)
  Return     : VOS_OK on success and errno on failure
  *****************************************************************************/
-VOS_UINT32 VOS_SmP( VOS_UINT32 Sm_ID, VOS_UINT32 ulTimeOutInMillSec )
+VOS_UINT32 VOS_SmP( VOS_SEM Sm_ID, VOS_UINT32 ulTimeOutInMillSec )
 {
     SEM_CONTROL_BLOCK  *temp_Ptr;
     int                iTimeOut;
@@ -481,7 +481,7 @@ VOS_UINT32 VOS_SmP( VOS_UINT32 Sm_ID, VOS_UINT32 ulTimeOutInMillSec )
  Input      : ulSmID -- id of semaphore
  Return     : VOS_OK on success and errno on failure
  *****************************************************************************/
-VOS_UINT32 VOS_SmV( VOS_UINT32 Sm_ID )
+VOS_UINT32 VOS_SmV( VOS_SEM Sm_ID )
 {
     SEM_CONTROL_BLOCK  *temp_Ptr;
 
@@ -523,7 +523,7 @@ VOS_UINT32 VOS_SmV( VOS_UINT32 Sm_ID )
  Input      : ulSmID -- ID of semaphore
  Return     : VOS_OK on success and errno on failure
  *****************************************************************************/
-VOS_UINT32 VOS_Sm_AsyP( VOS_UINT32 Sm_ID )
+VOS_UINT32 VOS_Sm_AsyP( VOS_SEM Sm_ID )
 {
     return(VOS_SmP( Sm_ID, 1 ));
 }

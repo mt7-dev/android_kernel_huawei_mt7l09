@@ -434,7 +434,10 @@ VOS_VOID GMM_RcvGasSysInfoInd(VOS_VOID *pMsg)
 
     pstConnStatus       = NAS_MML_GetConnStatus();
 
-    Gmm_TimerStop(GMM_TIMER_CS_CONN_NOT_EXIST_WAIT_SYSINFO);
+    NAS_GMM_LogGmmCtxInfo();
+
+    /* 停HO等待系统消息定时器 */
+    Gmm_TimerStop(GMM_TIMER_HO_WAIT_SYSINFO);
 
     /* 如果CS正在建立连接或者连接已经建立成功 */
     pSysInfo           = (MMCGMM_GSM_SYS_INFO_IND_ST *)pMsg;
@@ -1034,12 +1037,10 @@ VOS_VOID GMM_CasCellS9E49(VOS_VOID *pRcvMsg)
             Gmm_RoutingAreaUpdateInitiate(GMM_PERIODC_UPDATING);
         }
     }
-#if (FEATURE_ON == FEATURE_LTE)
-    else if (g_GmmGlobalCtrl.UeInfo.ucMsRadioCapSupportLteFromAs != g_GmmGlobalCtrl.UeInfo.ucMsRadioCapSupportLteFromRegReq)
+    else if (VOS_TRUE == NAS_GMM_IsUeInfoChangeTriggerRau())
     {
         Gmm_RoutingAreaUpdateInitiate(GMM_UPDATING_TYPE_INVALID);
     }
-#endif
     else if ((VOS_TRUE == NAS_MML_GetCsAttachAllowFlg())
           && (GMM_TRUE == g_GmmRauCtrl.ucCsSpringRauFlg)
           && (GMM_NET_MODE_I == g_GmmGlobalCtrl.ucNetMod)
@@ -1270,12 +1271,11 @@ VOS_VOID GMM_CasCellS10E49(VOS_VOID *pRcvMsg)
                 Gmm_RoutingAreaUpdateInitiate(GMM_UPDATING_TYPE_INVALID);
             }
             /* attahc或rau中携带的ms radio capability是否支持L能力与接入层上报的ms radio capabitlity是否支持L能力不一致需要触发Rau*/
-#if (FEATURE_ON == FEATURE_LTE)
-            else if (g_GmmGlobalCtrl.UeInfo.ucMsRadioCapSupportLteFromAs != g_GmmGlobalCtrl.UeInfo.ucMsRadioCapSupportLteFromRegReq)
+            else if (VOS_TRUE == NAS_GMM_IsUeInfoChangeTriggerRau())
             {
                 Gmm_RoutingAreaUpdateInitiate(GMM_UPDATING_TYPE_INVALID);
             }
-#endif
+
             else
             {
                 if ((VOS_TRUE == NAS_MML_GetPsAttachAllowFlg())
@@ -1718,11 +1718,11 @@ VOS_VOID NAS_GMM_EnterCovery(VOS_VOID *pRcvMsg)
         NAS_GMM_RcvLmmTimerInfoNotify_RegNmlServ();
     }
 
-    /*attahc或rau中携带的ms radio capability是否支持L能力与接入层上报的ms radio capabitlity是否支持L能力不一致需要触发Rau*/
-    else if (g_GmmGlobalCtrl.UeInfo.ucMsRadioCapSupportLteFromAs != g_GmmGlobalCtrl.UeInfo.ucMsRadioCapSupportLteFromRegReq)
+    else if (VOS_TRUE == NAS_GMM_IsUeInfoChangeTriggerRau())
     {
         Gmm_RoutingAreaUpdateInitiate(GMM_UPDATING_TYPE_INVALID);
     }
+
 #endif
     else if ((GMM_TRUE == Gmm_Compare_Rai(&g_GmmGlobalCtrl.SysInfo.Rai, &stGmmRai))
           && (GMM_FALSE == ucRaiChgFlg) && (GMM_FALSE == ucDrxLengthChgFlg)
@@ -1766,7 +1766,6 @@ VOS_VOID NAS_GMM_EnterCovery(VOS_VOID *pRcvMsg)
 
     return;
 }
-
 VOS_VOID GMM_CasCellS18E49(VOS_VOID *pRcvMsg)
 {
     MMCGMM_GSM_SYS_INFO_IND_ST *pSysInfo;
@@ -1965,6 +1964,7 @@ VOS_VOID GMM_CasCellS19E49(VOS_VOID *pRcvMsg)
 
     return;
 }
+
 VOS_VOID NAS_GMM_CheckBufferDetach(VOS_VOID)
 {
 	VOS_VOID                           *pMsg;
@@ -2160,7 +2160,7 @@ VOS_VOID GMM_RcvGasSysInfoInd_SuspWaitSys(VOS_VOID *pRcvMsg)
         {
             NAS_GMM_RcvLmmTimerInfoNotify_RegNmlServ();
         }
-        else if (g_GmmGlobalCtrl.UeInfo.ucMsRadioCapSupportLteFromAs != g_GmmGlobalCtrl.UeInfo.ucMsRadioCapSupportLteFromRegReq)
+        else if (VOS_TRUE == NAS_GMM_IsUeInfoChangeTriggerRau())
         {
             Gmm_RoutingAreaUpdateInitiate(GMM_UPDATING_TYPE_INVALID);
         }
@@ -2466,8 +2466,25 @@ VOS_VOID GMM_RcvGasGprsResumeInd( VOS_VOID *pRcvMsg )
     if ((GRR_GMM_GPRS_RESUME_SUCCESS == pstGprsResumeMsg->ucResult)
         && (VOS_FALSE == g_GmmGlobalCtrl.ucInterRatFlg))
     {
-        /*只存在于非异系统改变过程中*/
-        Gmm_ComStaChg(gstGmmSuspendCtrl.ucPreState);
+
+        /* 在W下电话切换到GSM后，还回结束后，GMM状态迁移到GMM_TC_ACTIVE状态，导致没有处理系统消息 */
+        if (GMM_TC_ACTIVE ==  gstGmmSuspendCtrl.ucPreState)
+        {
+            if (GMM_STATUS_ATTACHED == g_MmSubLyrShare.GmmShare.ucAttachSta)
+            {
+                Gmm_ComStaChg(GMM_REGISTERED_NORMAL_SERVICE);
+            }
+            else
+            {
+                Gmm_ComStaChg(GMM_DEREGISTERED_NORMAL_SERVICE);
+            }            
+        }
+        else
+        {
+            /*只存在于非异系统改变过程中*/
+            Gmm_ComStaChg(gstGmmSuspendCtrl.ucPreState);
+        }
+        
 
         GMM_ResumeTimer(GMM_TIMER_RESUME);
 
@@ -2492,6 +2509,8 @@ VOS_VOID GMM_RcvGasGprsResumeInd( VOS_VOID *pRcvMsg )
 
     return;
 }
+
+
 VOS_VOID GMM_RcvCellReselectInd( VOS_VOID *pRcvMsg )
 {
     RRMM_CELL_RESELECT_IND_ST *pstCellReselMsg;
@@ -2504,6 +2523,16 @@ VOS_VOID GMM_RcvCellReselectInd( VOS_VOID *pRcvMsg )
     {
         return;
     }
+
+    if(RRMM_CELL_RESEL_START == pstCellReselMsg->ucCellReselProc)
+    {
+        gstGmmCasGlobalCtrl.ucCellReselFlg = VOS_TRUE;
+    }
+    else
+    {
+        gstGmmCasGlobalCtrl.ucCellReselFlg = VOS_FALSE;
+    }
+
     if(VOS_FALSE == NAS_MML_GetPsAttachAllowFlg())
     {
         return;
@@ -2512,7 +2541,6 @@ VOS_VOID GMM_RcvCellReselectInd( VOS_VOID *pRcvMsg )
     {
         return;
     }
-
 
     /*
     当开始重选时，GMM需要通知LLC挂起用户面数据，并清除LLC的信令面数据
@@ -2528,8 +2556,6 @@ VOS_VOID GMM_RcvCellReselectInd( VOS_VOID *pRcvMsg )
 
             gstGmmCasGlobalCtrl.ucSuspendLlcCause |= GMM_SUSPEND_LLC_FOR_CELL_RESEL;
         }
-
-        gstGmmCasGlobalCtrl.ucCellReselFlg    = VOS_TRUE;
     }
     else
     {
@@ -2541,9 +2567,8 @@ VOS_VOID GMM_RcvCellReselectInd( VOS_VOID *pRcvMsg )
         {
             Gmm_SndLlcAbortReq(LL_GMM_CLEAR_DATA_TYPE_TRIG);
         }
-
-        gstGmmCasGlobalCtrl.ucCellReselFlg = VOS_FALSE;
     }
+
 
     return;
 }

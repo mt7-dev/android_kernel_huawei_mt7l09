@@ -1097,7 +1097,7 @@ TAF_PH_OPERATOR_NAME_TBL_STRU gastNetworkNameTbl[] =
     /* 46002和46007  原来在MMC模块转换为46000,现修改为不进行特殊转换 */                                                 
     { {0x460,0x002}, 2, {0, 0, 0}, "CMCC","CHINA  MOBILE"},                                                                           
     { {0x460,0x007}, 2, {0, 0, 0}, "CMCC","CHINA  MOBILE"}, /*{ {0x460,0x007},"HTW07","HUAWEI TEST W07"},*/                           
-    { {0x460,0x009}, 2, {0, 0, 0}, "HTW09","HUAWEI TEST W09"},                                                                        
+    { {0x460,0x009}, 2, {0, 0, 0}, "UNICOM","CHN-UNICOM"},     
                                                                                                                            
     /**************  Taiwan  ***************/                                                                              
     { {0x466,0x001}, 2, {0, 0, 0}, "FET","Far EasTone"},                                                                              

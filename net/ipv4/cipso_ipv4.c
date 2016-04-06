@@ -116,17 +116,7 @@ int cipso_v4_rbm_strictvalid = 1;
  * be omitted. */
 #define CIPSO_V4_TAG_RNG_CAT_MAX      8
 
-/* Base length of the local tag (non-standard tag).
- *  Tag definition (may change between kernel versions)
- *
- * 0          8          16         24         32
- * +----------+----------+----------+----------+
- * | 10000000 | 00000110 | 32-bit secid value  |
- * +----------+----------+----------+----------+
- * | in (host byte order)|
- * +----------+----------+
- *
- */
+
 #define CIPSO_V4_TAG_LOC_BLEN         6
 
 /*

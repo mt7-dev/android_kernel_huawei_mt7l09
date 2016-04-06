@@ -1228,7 +1228,7 @@ VOS_VOID SI_STK_SMSCallBackFunc(MN_CLIENT_ID_T      clientId,
                                     MN_MSG_EVENT_ENUM_U32    enEventType,
                                     MN_MSG_EVENT_INFO_STRU   *pstEvent)
 {
-    VOS_UINT8                           aucRpError[]={0x00, NO_SPECIFIC_CAUSE_CAN_BE_GIVEN};
+    VOS_UINT8                           aucRpError[]={SMS_RP_ERROR, 0 , NO_SPECIFIC_CAUSE_CAN_BE_GIVEN};
     VOS_UINT8                           aucRspNet[2] = {NETWORK_CURRENTLY_UNABLE_TO_PROCESS_COMMAND,
                                                         NO_SPECIFIC_CAUSE_CAN_BE_GIVEN_BY_NETWORK};
 
@@ -1255,7 +1255,7 @@ VOS_VOID SI_STK_SMSCallBackFunc(MN_CLIENT_ID_T      clientId,
     /* ÍøÂç²à»Ø¸´RP ERROR */
     else if (TAF_MSG_ERROR_RP_ERROR_BEGIN == (pstEvent->u.stSubmitRptInfo.enErrorCode & TAF_MSG_ERROR_RP_ERROR_BEGIN))
     {
-        aucRpError[0] = (VOS_UINT8)(pstEvent->u.stSubmitRptInfo.enErrorCode & 0x7F);
+        aucRpError[1] = (VOS_UINT8)(pstEvent->u.stSubmitRptInfo.enErrorCode & 0x7F);
 
         SI_STKSimpleResponseData(&gstUsatCmdDecode.CmdDetail, sizeof(aucRpError), aucRpError);
 

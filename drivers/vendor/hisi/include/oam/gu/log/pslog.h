@@ -122,47 +122,47 @@ extern "C"{
 *****************************************************************************/
 /* BBIT版本提供的外部接口 */
 #ifdef __LOG_BBIT__
-extern void OM_Log(char             *cFileName,  unsigned long      ulLineNum,
-                   LOG_MODULE_ID_EN  enModuleId, LOG_SUBMOD_ID_EN   enSubModId,
-                   LOG_LEVEL_EN      enLevel,    char              *pcString);
-extern void OM_Log1(char             *cFileName,  unsigned long      ulLineNum,
+extern VOS_VOID OM_Log(VOS_CHAR  *cFileName,  VOS_UINT32         ulLineNum,
+                   LOG_MODULE_ID_EN  enModuleId, LOG_SUBMOD_ID_EN    enSubModId,
+                   LOG_LEVEL_EN      enLevel,    VOS_CHAR           *pcString);
+extern VOS_VOID OM_Log1(VOS_CHAR *cFileName,  VOS_UINT32         ulLineNum,
                     LOG_MODULE_ID_EN  enModuleId, LOG_SUBMOD_ID_EN   enSubModId,
-                    LOG_LEVEL_EN      enLevel,    char              *pcString,
-                    long              lPara1);
-extern void OM_Log2(char             *cFileName,  unsigned long      ulLineNum,
+                    LOG_LEVEL_EN      enLevel,    VOS_CHAR          *pcString,
+                    VOS_INT32         lPara1);
+extern VOS_VOID OM_Log2(VOS_CHAR *cFileName,  VOS_UINT32         ulLineNum,
                     LOG_MODULE_ID_EN  enModuleId, LOG_SUBMOD_ID_EN   enSubModId,
-                    LOG_LEVEL_EN      enLevel,    char              *pcString,
-                    long              lPara1,     long               lPara2);
-extern void OM_Log3(char             *cFileName,  unsigned long      ulLineNum,
+                    LOG_LEVEL_EN      enLevel,    VOS_CHAR          *pcString,
+                    VOS_INT32         lPara1,     VOS_INT32          lPara2);
+extern VOS_VOID OM_Log3(VOS_CHAR *cFileName,  VOS_UINT32         ulLineNum,
                     LOG_MODULE_ID_EN  enModuleId, LOG_SUBMOD_ID_EN   enSubModId,
-                    LOG_LEVEL_EN      enLevel,    char              *pcString,
-                    long              lPara1,     long               lPara2,
-                    long              lPara3);
-extern void OM_Log4(char             *cFileName,  unsigned long      ulLineNum,
+                    LOG_LEVEL_EN      enLevel,    VOS_CHAR          *pcString,
+                    VOS_INT32         lPara1,     VOS_INT32          lPara2,
+                    VOS_INT32         lPara3);
+extern VOS_VOID OM_Log4(VOS_CHAR *cFileName,  VOS_UINT32         ulLineNum,
                     LOG_MODULE_ID_EN  enModuleId, LOG_SUBMOD_ID_EN   enSubModId,
-                    LOG_LEVEL_EN      enLevel,    char              *pcString,
-                    long              lPara1,     long               lPara2,
-                    long              lPara3,     long               lPara4);
+                    LOG_LEVEL_EN      enLevel,    VOS_CHAR          *pcString,
+                    VOS_INT32         lPara1,     VOS_INT32          lPara2,
+                    VOS_INT32         lPara3,     VOS_INT32          lPara4);
 #endif
 
 /* Release版本提供的外部接口 */
 #ifdef __LOG_RELEASE__
-extern void OM_LogId(LOG_MODULE_ID_EN  enModuleId, LOG_SUBMOD_ID_EN  enSubModId,
-                     LOG_LEVEL_EN      enLevel,    unsigned long     ulLogId);
-extern void OM_LogId1(LOG_MODULE_ID_EN  enModuleId, LOG_SUBMOD_ID_EN  enSubModId,
-                      LOG_LEVEL_EN      enLevel,    unsigned long     ulLogId,
-                      long              lPara1);
-extern void OM_LogId2(LOG_MODULE_ID_EN  enModuleId, LOG_SUBMOD_ID_EN  enSubModId,
-                      LOG_LEVEL_EN      enLevel,    unsigned long     ulLogId,
-                      long              lPara1,     long              lPara2);
-extern void OM_LogId3(LOG_MODULE_ID_EN  enModuleId, LOG_SUBMOD_ID_EN  enSubModId,
-                      LOG_LEVEL_EN      enLevel,    unsigned long     ulLogId,
-                      long              lPara1,     long              lPara2,
-                      long              lPara3);
-extern void OM_LogId4(LOG_MODULE_ID_EN  enModuleId, LOG_SUBMOD_ID_EN  enSubModId,
-                      LOG_LEVEL_EN      enLevel,    unsigned long     ulLogId,
-                      long              lPara1,     long              lPara2,
-                      long              lPara3,     long              lPara4);
+extern VOS_VOID OM_LogId(LOG_MODULE_ID_EN  enModuleId, LOG_SUBMOD_ID_EN  enSubModId,
+                     LOG_LEVEL_EN       enLevel,    VOS_UINT32     ulLogId);
+extern VOS_VOID OM_LogId1(LOG_MODULE_ID_EN  enModuleId, LOG_SUBMOD_ID_EN  enSubModId,
+                      LOG_LEVEL_EN      enLevel,    VOS_UINT32     ulLogId,
+                      VOS_INT32              lPara1);
+extern VOS_VOID OM_LogId2(LOG_MODULE_ID_EN  enModuleId, LOG_SUBMOD_ID_EN  enSubModId,
+                      LOG_LEVEL_EN      enLevel,    VOS_UINT32     ulLogId,
+                      VOS_INT32              lPara1,     VOS_INT32              lPara2);
+extern VOS_VOID OM_LogId3(LOG_MODULE_ID_EN  enModuleId, LOG_SUBMOD_ID_EN  enSubModId,
+                      LOG_LEVEL_EN      enLevel,    VOS_UINT32     ulLogId,
+                      VOS_INT32              lPara1,     VOS_INT32              lPara2,
+                      VOS_INT32              lPara3);
+extern VOS_VOID OM_LogId4(LOG_MODULE_ID_EN  enModuleId, LOG_SUBMOD_ID_EN  enSubModId,
+                      LOG_LEVEL_EN      enLevel,    VOS_UINT32     ulLogId,
+                      VOS_INT32              lPara1,     VOS_INT32              lPara2,
+                      VOS_INT32              lPara3,     VOS_INT32              lPara4);
 #endif
 
 
@@ -270,7 +270,7 @@ extern void OM_LogId4(LOG_MODULE_ID_EN  enModuleId, LOG_SUBMOD_ID_EN  enSubModId
             PsLogId(THIS_FILE_ID, __LINE__), Para1, Para2, Para3, Para4)
 #endif
 
-unsigned long LOG_GetTick(void);
+VOS_UINT32 LOG_GetTick(VOS_VOID);
 
 #ifdef __cplusplus
 #if __cplusplus

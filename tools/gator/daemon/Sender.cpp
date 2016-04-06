@@ -1,19 +1,18 @@
 /**
- * Copyright (C) ARM Limited 2010-2013. All rights reserved.
+ * Copyright (C) ARM Limited 2010-2014. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
  * published by the Free Software Foundation.
  */
 
-#include <string.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <sys/types.h>
-#include <arpa/inet.h>
-#include <stdlib.h>
-#include <unistd.h>
 #include "Sender.h"
+
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+
+#include "Buffer.h"
 #include "Logging.h"
 #include "OlySocket.h"
 #include "SessionData.h"
@@ -49,9 +48,12 @@ Sender::Sender(OlySocket* socket) {
 }
 
 Sender::~Sender() {
-	delete mDataSocket;
-	mDataSocket = NULL;
-	if (mDataFile) {
+	// Just close it as the client socket is on the stack
+	if (mDataSocket != NULL) {
+		mDataSocket->closeSocket();
+		mDataSocket = NULL;
+	}
+	if (mDataFile != NULL) {
 		fclose(mDataFile);
 	}
 }
@@ -63,16 +65,11 @@ void Sender::createDataFile(char* apcDir) {
 
 	mDataFileName = (char*)malloc(strlen(apcDir) + 12);
 	sprintf(mDataFileName, "%s/0000000000", apcDir);
-	mDataFile = fopen(mDataFileName, "wb");
+	mDataFile = fopen_cloexec(mDataFileName, "wb");
 	if (!mDataFile) {
 		logg->logError(__FILE__, __LINE__, "Failed to open binary file: %s", mDataFileName);
 		handleException();
 	}
-}
-
-template<typename T>
-inline T min(const T a, const T b) {
-	return (a < b ? a : b);
 }
 
 void Sender::writeData(const char* data, int length, int type) {
@@ -95,10 +92,7 @@ void Sender::writeData(const char* data, int length, int type) {
 			// type and length already added by the Collector for apc data
 			unsigned char header[5];
 			header[0] = type;
-			header[1] = (length >> 0) & 0xff;
-			header[2] = (length >> 8) & 0xff;
-			header[3] = (length >> 16) & 0xff;
-			header[4] = (length >> 24) & 0xff;
+			Buffer::writeLEInt(header + 1, length);
 			mDataSocket->send((char*)&header, sizeof(header));
 		}
 
@@ -106,7 +100,7 @@ void Sender::writeData(const char* data, int length, int type) {
 		const int chunkSize = 100*1000 * alarmDuration / 8;
 		int pos = 0;
 		while (true) {
-			mDataSocket->send((char*)data + pos, min(length - pos, chunkSize));
+			mDataSocket->send((const char*)data + pos, min(length - pos, chunkSize));
 			pos += chunkSize;
 			if (pos >= length) {
 				break;

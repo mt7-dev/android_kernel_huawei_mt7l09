@@ -12,6 +12,9 @@
 #ifndef __TAFNVINTERFACE_H__
 #define __TAFNVINTERFACE_H__
 
+#include "vos.h"
+#include "product_config.h"
+
 #ifdef __cplusplus
 #if __cplusplus
 extern "C" {
@@ -182,8 +185,6 @@ extern "C" {
 
 #define TAF_AT_NVIM_CLIENT_CONFIG_LEN                       (64)
 
-#define TAF_CBA_NVIM_MAX_CBMID_RANGE_NUM                    (100)               /* 用户最多可输入的消息ID范围个数，在接受模式下还要受到CBMIR文件大小限制 */
-
 #define TAF_NVIM_CBA_MAX_LABEL_NUM                          (16)
 
 #define MTA_BODY_SAR_WBAND_MAX_NUM                          (5)
@@ -191,6 +192,9 @@ extern "C" {
 
 #define MTC_RF_LCD_MIPICLK_MAX_NUM                          (8)                 /* MIPICLK最大个数 */
 #define MTC_RF_LCD_MIPICLK_FREQ_MAX_NUM                     (8)                 /* 每个MIPICLK影响的最大频率个数 */
+
+#define TAF_NV_BLACK_LIST_MAX_NUM                           (51)
+
 
 typedef VOS_UINT8  MN_CALL_STATE_ENUM_UINT8;
 
@@ -292,6 +296,61 @@ enum MTC_PS_TRANSFER_ENUM
 typedef VOS_UINT8 MTC_PS_TRANSFER_ENUM_UINT8;
 
 
+enum TAF_NV_CLIENT_CFG_ENUM
+{
+    TAF_NV_CLIENT_CFG_PCUI              = 0,
+    TAF_NV_CLIENT_CFG_CTRL              = 1,
+    TAF_NV_CLIENT_CFG_MODEM             = 2,
+    TAF_NV_CLIENT_CFG_NDIS              = 3,
+    TAF_NV_CLIENT_CFG_UART              = 4,
+    TAF_NV_CLIENT_CFG_SOCK              = 5,
+    TAF_NV_CLIENT_CFG_APPSOCK           = 6,
+    TAF_NV_CLIENT_CFG_HSIC1             = 7,
+    TAF_NV_CLIENT_CFG_HSIC2             = 8,
+    TAF_NV_CLIENT_CFG_HSIC3             = 9,
+    TAF_NV_CLIENT_CFG_HSIC4             = 10,
+    TAF_NV_CLIENT_CFG_MUX1              = 11,
+    TAF_NV_CLIENT_CFG_MUX2              = 12,
+    TAF_NV_CLIENT_CFG_MUX3              = 13,
+    TAF_NV_CLIENT_CFG_MUX4              = 14,
+    TAF_NV_CLIENT_CFG_MUX5              = 15,
+    TAF_NV_CLIENT_CFG_MUX6              = 16,
+    TAF_NV_CLIENT_CFG_MUX7              = 17,
+    TAF_NV_CLIENT_CFG_MUX8              = 18,
+    TAF_NV_CLIENT_CFG_APP               = 19,
+    TAF_NV_CLIENT_CFG_APP1              = 20,
+    TAF_NV_CLIENT_CFG_APP2              = 21,
+    TAF_NV_CLIENT_CFG_APP3              = 22,
+    TAF_NV_CLIENT_CFG_APP4              = 23,
+    TAF_NV_CLIENT_CFG_APP5              = 24,
+    TAF_NV_CLIENT_CFG_APP6              = 25,
+    TAF_NV_CLIENT_CFG_APP7              = 26,
+    TAF_NV_CLIENT_CFG_APP8              = 27,
+    TAF_NV_CLIENT_CFG_APP9              = 28,
+    TAF_NV_CLIENT_CFG_APP10             = 29,
+    TAF_NV_CLIENT_CFG_APP11             = 30,
+    TAF_NV_CLIENT_CFG_APP12             = 31,
+    TAF_NV_CLIENT_CFG_APP13             = 32,
+    TAF_NV_CLIENT_CFG_APP14             = 33,
+    TAF_NV_CLIENT_CFG_APP15             = 34,
+    TAF_NV_CLIENT_CFG_APP16             = 35,
+    TAF_NV_CLIENT_CFG_APP17             = 36,
+    TAF_NV_CLIENT_CFG_APP18             = 37,
+    TAF_NV_CLIENT_CFG_APP19             = 38,
+    TAF_NV_CLIENT_CFG_APP20             = 39,
+    TAF_NV_CLIENT_CFG_APP21             = 40,
+    TAF_NV_CLIENT_CFG_APP22             = 41,
+    TAF_NV_CLIENT_CFG_APP23             = 42,
+    TAF_NV_CLIENT_CFG_APP24             = 43,
+    TAF_NV_CLIENT_CFG_APP25             = 44,
+    TAF_NV_CLIENT_CFG_APP26             = 45,
+    TAF_NV_CLIENT_CFG_HSIC_MODEM        = 46,
+    TAF_NV_CLIENT_CFG_HSUART            = 47,
+
+    TAF_NV_CLIENT_CFG_MAX               = TAF_AT_NVIM_CLIENT_CONFIG_LEN
+};
+typedef VOS_UINT16 TAF_NV_CLIENT_CFG_ENUM_UINT16;
+
 enum TAF_FLASH_DIRECTORY_TYPE_ENUM
 {
 
@@ -310,6 +369,14 @@ enum TAF_FLASH_DIRECTORY_TYPE_ENUM
     TAF_FLASH_DIRECTORY_TYPE_BUTT
 };
 typedef VOS_UINT8 TAF_FLASH_DIRECTORY_TYPE_ENUM_UINT16;
+enum TAF_CALL_CCWA_CTRL_MODE_ENUM
+{
+    TAF_CALL_CCWA_CTRL_BY_3GPP          = 0,
+    TAF_CALL_CCWA_CTRL_BY_IMS           = 1,
+
+    TAF_CALL_CCWA_CTRL_MODE_BUTT
+};
+typedef VOS_UINT8   TAF_CALL_CCWA_CTRL_MODE_ENUM_U8;
 
 
 /*****************************************************************************
@@ -929,7 +996,10 @@ typedef struct
 typedef struct
 {
     VOS_UINT8                           ucGetCsmpParaFromUsimSupportFlg;        /*从(U)SIM卡中读取CSMP参数*/
-    VOS_UINT8                           ucReserved;                             /* 保留*/
+
+    VOS_UINT8                           ucGetScAddrIgnoreScIndication; /* 0x6f42文件中sc indication指示不存在短信中心号码时，如果短信中心号码合法是否读取，
+                                                                       VOS_FALSE:sc indication指示短信中心号码不存在则不读取短信中心号码；
+                                                                       VOS_TRUE: sc indication指示短信中心号码不存在读取短信中心号码 */
 }MN_MSG_GET_CSMP_PARA_FROM_USIM_SUPPORT_FLG_STRU;
 
 typedef struct
@@ -1390,6 +1460,9 @@ typedef struct
     /* 位操作 :0不激活；1:激活
     bit0：中移动双待下B39/B3干扰冲突策略
     bit1：Notch Bypass特性开关
+    bit2: NarrowBand Dcs 控制(V9 not support)
+    bit3: B39/B3 干扰冲突策略2(G射频优先模式)
+    bit4: RES 使能开关，1表示支持RSE特性，0表示不支持RSE特性
     */
     VOS_UINT8                          ucSolutionMask;
     VOS_UINT8                          aucAdditonCfg[3];
@@ -1543,6 +1616,43 @@ typedef struct
 } MTC_NVIM_RF_LCD_CFG_STRU;
 typedef struct
 {
+    /* VOS_TRUE:激活，ata异步上报ok，发送connect后即上报ok，不等网络connect ack；
+       VOS_FALSE:未激活,ata同步上报，发送connect后等收到网络connect ack后再上报ok */
+    VOS_UINT8                           ucAtaReportOkAsyncFlag;
+    VOS_UINT8                           aucReserved1[3];
+}TAF_CALL_NVIM_ATA_REPORT_OK_ASYNC_CFG_STRU;
+
+
+
+typedef struct
+{
+    VOS_UINT32                          ulWaterLevel1;                          /* 水线界别1 */
+    VOS_UINT32                          ulWaterLevel2;                          /* 水线界别2 */
+    VOS_UINT32                          ulWaterLevel3;                          /* 水线界别3 */
+    VOS_UINT32                          ulWaterLevel4;                          /* 水线界别4,预留 */
+} ADS_UL_WATER_MARK_LEVEL_STRU;
+
+
+typedef struct
+{
+    VOS_UINT32                          ulThreshold1;                           /* 赞包门限1 */
+    VOS_UINT32                          ulThreshold2;                           /* 赞包门限2 */
+    VOS_UINT32                          ulThreshold3;                           /* 赞包门限3 */
+    VOS_UINT32                          ulThreshold4;                           /* 赞包门限4 */
+} ADS_UL_THRESHOLD_LEVEL_STRU;
+
+
+typedef struct
+{
+    VOS_UINT32                          ulActiveFlag;                           /* 使能标识: 0表示去使能,1表示使能 */
+    VOS_UINT32                          ulProtectTmrExpCnt;                     /* 保护定时器超时计数时长 */
+    ADS_UL_WATER_MARK_LEVEL_STRU        stWaterMarkLevel;
+    ADS_UL_THRESHOLD_LEVEL_STRU         stThresholdLevel;
+    VOS_UINT32                          aulReserved[6];
+} ADS_NV_DYNAMIC_THRESHOLD_STRU;
+
+typedef struct
+{
     VOS_UINT8                           ucMode;                                 /* JAM设置的模式，0:关闭, 1:打开 */
     VOS_UINT8                           ucMethod;                               /* JAM检测使用的方案，1:方案1；2:方案2,目前只支持2 */
     VOS_UINT8                           ucFreqNum;                              /* 检测需要达到的频点个数，取值范围:[0,255] */
@@ -1552,6 +1662,70 @@ typedef struct
     VOS_UINT8                           aucRsv[2];
 }NV_NAS_JAM_DETECT_CFG_STRU;
 
+
+
+typedef struct
+{
+    VOS_UINT32                          ulDebugLevel;                           /* VCOM DEBUG级别:ERR,NORMAL,INFO,DEBUG */
+    VOS_UINT32                          ulAppVcomPortIdMask;                    /* VCOM端口ID掩码 */
+    VOS_UINT32                          ulReserved[4];                          /* 预留 */
+} TAF_NV_PORT_DEBUG_CFG_STRU;
+typedef struct
+{
+    VOS_UINT8                           ucAllowDefPdnTeardownFlg;
+    VOS_UINT8                           ucReserved1;
+    VOS_UINT8                           ucReserved2;
+    VOS_UINT8                           ucReserved3;
+
+} TAF_NV_PDN_TEARDOWN_POLICY_STRU;
+
+
+typedef struct
+{
+    VOS_UINT32                          ulStatisticTime;                        /* 统计时间，单位为秒 */
+    VOS_UINT32                          ulSwitchNum;                            /* gutl频繁切换的次数 */
+} TAF_NV_RAT_FREQUENTLY_SWITCH_CHR_RPT_CFG_STRU;
+
+
+typedef struct
+{
+    /* 此NV 用来设置呼叫等待的控制模式，ulCcwaCtrlMode为0，则呼叫等待由3gpp网络控制；
+       ulCcwaCtrlMode为1，则呼叫等待由UE控制，用于VOLTE的网络。
+      （在VoLTE的网络上，AP配置CCWA支持时，IMS并没有和网络交互，VoLTE的电话的CCWA由UE控制）。 */
+    TAF_CALL_CCWA_CTRL_MODE_ENUM_U8     enCcwaCtrlMode;
+    VOS_UINT8                           ucReserved0;
+    VOS_UINT8                           ucReserved1;
+    VOS_UINT8                           ucReserved2;
+} TAF_CALL_NVIM_CCWA_CTRL_MODE_STRU;
+
+
+typedef struct
+{
+    VOS_UINT8                           ucSecType;
+    VOS_UINT8                           ucBlackListNum;
+    VOS_UINT16                          ausBlackList[TAF_NV_BLACK_LIST_MAX_NUM];
+} TAF_NV_NVWR_SEC_CTRL_STRU;
+
+
+
+
+/* Added by w00316404 for Add Get Modem Log, 2015-10-17, Begin */
+/*****************************************************************************
+ 结构名称  : TAF_NV_PRINT_MODEM_LOG_TYPE_STRU
+ 结构说明  : 控制是否输出modem log的类型
+
+  1.日    期   : 2015年10月17日
+    作    者   : w00316404
+    修改内容   : 新增结构
+*****************************************************************************/
+typedef struct
+{
+    VOS_UINT8                           ucPrintModemLogType;                    /* 0:输出modem log，1:不输出modem log，default:0 */
+    VOS_UINT8                           ucReserved0;
+    VOS_UINT8                           ucReserved1;
+    VOS_UINT8                           ucReserved2;
+} TAF_NV_PRINT_MODEM_LOG_TYPE_STRU;
+/* Added by w00316404 for Add Get Modem Log, 2015-10-17, End */
 #ifdef __cplusplus
     #if __cplusplus
         }
@@ -1559,4 +1733,3 @@ typedef struct
 #endif
 
 #endif /* end of NasNvInterface.h */
-

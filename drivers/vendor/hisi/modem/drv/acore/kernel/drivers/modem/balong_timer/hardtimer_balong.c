@@ -12,7 +12,7 @@
 struct timer_ctrl
 {
    timer_func routine;                    /*中断处理函数    */
-   int arg;                               /*中断处理函数参数*/
+   void *arg;                             /*中断处理函数参数*/
    u32 addr;                              /*timer的基地址   */
    u32 interrupt_num;                     /*timer的中断号   */
    u32 clk;                               /*timer的时钟频率 */
@@ -164,7 +164,7 @@ s32 bsp_hardtimer_alloc(struct bsp_hardtimer_control  *timer_ctrl)
 	intLev = hard_timer_control[timer_ctrl->timerId].interrupt_num;
 	timerAddr = hard_timer_control[timer_ctrl->timerId].addr;
 	hard_timer_control[timer_ctrl->timerId].routine = timer_ctrl->func;
-	hard_timer_control[timer_ctrl->timerId].arg =(int)timer_ctrl->para;
+	hard_timer_control[timer_ctrl->timerId].arg = timer_ctrl->para;
 	spin_lock_irqsave(&hard_timer_control[timer_ctrl->timerId].lock,flags);
 	(void)bsp_hardtimer_disable_noirq(timer_ctrl->timerId);
 	bsp_hardtimer_load_value(timer_ctrl->timerId,timer_ctrl->timeout);

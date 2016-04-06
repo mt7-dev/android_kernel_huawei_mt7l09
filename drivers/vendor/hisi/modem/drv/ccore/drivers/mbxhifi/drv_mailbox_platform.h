@@ -102,43 +102,43 @@ enum MAILBOX_DELAY_SCENE_E
   10 函数声明
 *****************************************************************************/
 /*邮箱内部文件之间调用的接口*/
-extern MAILBOX_EXTERN void  mailbox_assert(unsigned long ErroNo);
+extern MAILBOX_EXTERN void  mailbox_assert(unsigned int ErroNo);
 
-extern MAILBOX_EXTERN long mailbox_mutex_lock(void **mutexId);
+extern MAILBOX_EXTERN int mailbox_mutex_lock(void **mutexId);
 
 extern MAILBOX_EXTERN void mailbox_mutex_unlock(void **mutexId);
 
-extern MAILBOX_EXTERN long mailbox_int_context(void);
+extern MAILBOX_EXTERN int mailbox_int_context(void);
 
-extern MAILBOX_EXTERN long mailbox_get_timestamp(void);
+extern MAILBOX_EXTERN int mailbox_get_timestamp(void);
 
-extern MAILBOX_EXTERN long mailbox_process_register(
-                unsigned long channel_id, 
-                 long (*cb)(unsigned long channel_id),
+extern MAILBOX_EXTERN int mailbox_process_register(
+                unsigned int channel_id, 
+                 int (*cb)(unsigned int channel_id),
                  void *priv);
 
-extern MAILBOX_EXTERN long mailbox_channel_register(
-                unsigned long ChannelID, 
-                unsigned long IntNum,
-                unsigned long DstID,
-                unsigned long Direct,
+extern MAILBOX_EXTERN int mailbox_channel_register(
+                unsigned int ChannelID, 
+                unsigned int IntNum,
+                unsigned int DstID,
+                unsigned int Direct,
                 void   **mutex);
 
-extern MAILBOX_EXTERN void *mailbox_memcpy(void *dst, const void *src, long size);
+extern MAILBOX_EXTERN void *mailbox_memcpy(void *dst, const void *src, unsigned int size);
 
-extern MAILBOX_EXTERN void *mailbox_memset(void * m, long c, unsigned long size);
+extern MAILBOX_EXTERN void *mailbox_memset(void * m, int c, unsigned int size);
 
-extern MAILBOX_EXTERN long mailbox_delivery(unsigned long channel_id);
+extern MAILBOX_EXTERN int mailbox_delivery(unsigned int channel_id);
 
-extern MAILBOX_EXTERN long mailbox_init_platform(void);
+extern MAILBOX_EXTERN int mailbox_init_platform(void);
 
-extern MAILBOX_EXTERN long mailbox_scene_delay(
-                unsigned long scene_id, 
-                unsigned long *try_times);
-                
+extern MAILBOX_EXTERN int mailbox_scene_delay(
+                unsigned int scene_id,
+                int *try_times);
+
 extern MAILBOX_EXTERN void *mailbox_init_completion(void);
 
-extern MAILBOX_EXTERN long mailbox_wait_completion(void **mutexId, unsigned long timeout);
+extern MAILBOX_EXTERN int mailbox_wait_completion(void **mutexId, unsigned int timeout);
 
 extern MAILBOX_EXTERN void mailbox_complete(void **wait_id);
 

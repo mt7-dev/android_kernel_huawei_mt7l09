@@ -176,6 +176,7 @@ typedef struct RNIC_DL_DATA_STATS
     VOS_UINT32                          ulDLPeriodRcvPkts;                      /* 下行收到数据包个数,统计一个拨号断开定时器周期内收到的个数，超时后清空 */
     VOS_UINT32                          ulDLPeriodRcvBytes;                     /* 一个流量统计周期内收到的byte数 */
     VOS_UINT32                          ulDLTotalRcvBytes;                      /* 下行收到数据包byte数，PDP激活后开始统计，PDP去激活后清空 */
+    VOS_UINT8                           aucReserved[4];
 }RNIC_DL_DATA_STATS_STRU;
 typedef struct RNIC_UL_DATA_STATS
 {
@@ -268,10 +269,12 @@ typedef struct
 typedef struct
 {
     RNIC_RM_NET_ID_ENUM_UINT8           aucRmNetId[RNIC_RAB_ID_MAX_NUM];        /* RABID对应的网卡ID */
+    VOS_UINT8                           aucReserved[5];
 }RNIC_RABID_INFO_STAU;
 typedef struct
 {
     RNIC_RM_NET_ID_ENUM_UINT8           aucRmNetId[RNIC_PDN_ID_MAX_NUM];        /* PDNID对应的网卡ID */
+    VOS_UINT8                           aucReserved[4];
 }RNIC_PDNID_INFO_STAU;
 typedef struct
 {
@@ -285,7 +288,7 @@ typedef struct
     MODEM_ID_ENUM_UINT16                enModemId;                              /* 网卡归属哪个modem */
 
     RNIC_MODEM_TYPE_ENUM_UINT8          enModemType;                            /* 记录当前网卡连接的是内置modem和还是外接modem */
-    VOS_UINT8                           ucReserved[3];
+    VOS_UINT8                           ucReserved[7];
 
     /* 保存系统分配的Netcard私有数据虚存地址 */
     RNIC_NETCARD_DEV_INFO_STRU         *pstNetDevInfo;                          /* 网卡设备信息 */
@@ -308,7 +311,7 @@ typedef struct
 
     VOS_UINT32                          ulSetTimer4WakeFlg;                     /* 是否设置Timer4唤醒标志 */
 
-    VOS_UINT32                          ulResetSem;                             /* 二进制信号量，用于复位处理  */
+    VOS_SEM                             hResetSem;                              /* 二进制信号量，用于复位处理  */
 
 }RNIC_CTX_STRU;
 /*****************************************************************************
@@ -398,7 +401,7 @@ VOS_VOID RNIC_ResetDialMode(
     RNIC_DIAL_MODE_STRU                *pstDialMode
 );
 VOS_VOID RNIC_InitResetSem(VOS_VOID);
-VOS_UINT32 RNIC_GetResetSem(VOS_VOID);
+VOS_SEM RNIC_GetResetSem(VOS_VOID);
 
 #if (VOS_OS_VER == VOS_WIN32)
 #pragma pack()

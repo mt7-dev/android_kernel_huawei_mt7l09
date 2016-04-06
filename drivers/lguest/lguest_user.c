@@ -42,7 +42,7 @@ bool send_notify_to_eventfd(struct lg_cpu *cpu)
 	 * cpu->lg->eventfds before cpu->lg->eventfds is set.  Sounds crazy,
 	 * but Alpha allows this!  Paul McKenney points out that a really
 	 * aggressive compiler could have the same effect:
-	 *   http://lists.ozlabs.org/pipermail/lguest/2009-July/001560.html
+	 *   http:
 	 *
 	 * So play safe, use rcu_dereference to get the rcu-protected pointer:
 	 */

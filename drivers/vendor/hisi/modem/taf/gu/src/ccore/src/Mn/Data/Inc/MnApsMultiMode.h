@@ -806,40 +806,11 @@ VOS_UINT32 TAF_APS_FindSutiablePdpForPppDial_LteMode(
     VOS_UINT32                         *pulErrCode
 );
 
-/*****************************************************************************
- 函 数 名  : TAF_APS_SndPdpActivateInd
- 功能描述  : 上报ID_EVT_TAF_PS_CALL_PDP_ACTIVATE_IND
- 输入参数  : ucPdpId        -实体ID
- 输出参数  : 无
- 返 回 值  : VOS_VOID
-*****************************************************************************/
-VOS_VOID TAF_APS_SndPdpActivateInd(
-    VOS_UINT8                           ucPdpId,
-    VOS_UINT8                           ucCid
-);
-
 #if (FEATURE_ON == FEATURE_IMS)
-/*****************************************************************************
- 函 数 名  : TAF_APS_ProcImsBearerInfoIndOptActivate
- 功能描述  : 上报ID_EVT_TAF_PS_CALL_PDP_ACTIVATE_IND
- 输入参数  : pstPdpEntity           - PDP实体
-             pstEpsBearerInfoInd    - BEARER INFO
- 输出参数  : 无
- 返 回 值  : VOS_VOID
-
-*****************************************************************************/
-VOS_VOID TAF_APS_ProcImsBearerInfoIndOptActivate(
-    APS_PDP_CONTEXT_ENTITY_ST          *pstPdpEntity,
-    SM_ESM_EPS_BEARER_INFO_IND_STRU   *pstEpsBearerInfoInd
+VOS_VOID TAF_APS_ProcImsDedicateBearer(
+    APS_PDP_CONTEXT_ENTITY_ST          *pstPdpEntity
 );
 
-/*****************************************************************************
- 函 数 名  : TAF_APS_SndImsaSrvccCancelNotify
- 功能描述  : APS发送消息给IMSA通知SRVCC CANCEL
- 输入参数  : enNotificationIndicator
- 输出参数  : 无
- 返 回 值  : VOS_VOID
-*****************************************************************************/
 VOS_VOID TAF_APS_SndImsaSrvccCancelNotify(
     TAF_SRVCC_CANCEL_NOTIFY_ENUM_UINT32   enNotificationIndicator
 );

@@ -206,6 +206,8 @@ extern VOS_VOID     NAS_EMM_SendRrcClearBuffNotify(VOS_VOID);
 extern  VOS_VOID    NAS_EMM_ProcAttachConnFailOtherCause( VOS_VOID );
 extern VOS_UINT32 NAS_EMM_SndAttachCmpFailProc(VOS_VOID* pMsg,VOS_UINT32 *pulIsDelBuff);
 extern VOS_UINT32 NAS_EMM_SndAttachCmpSuccProc(VOS_VOID* pMsg);
+extern VOS_VOID  NAS_EMM_MsRegInitSsWtCnAttCnfProcMsgRrcRelInd(VOS_UINT32 ulCause);
+
 /*****************************************************************************
   9 OTHERS
 *****************************************************************************/

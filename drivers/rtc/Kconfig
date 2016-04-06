@@ -208,16 +208,6 @@ config RTC_DRV_LP8788
 	help
 	  Say Y to enable support for the LP8788 RTC/ALARM driver.
 
-config RTC_DRV_HI6421
-	tristate "Hisilicon Hi6421 RTC"
-	depends on MFD_HI6421_PMIC
-	help
-	  If you say yes here you get support for Hisilicon Hi6421 PMIC
-	  RTC functions. If an interrupt is associated with the device,
-	  the alarm functionality is supported.
-
-	  This driver can also be built as a module. If so, the module
-	  will be called rtc-hi6421.
 
 config RTC_DRV_MAX6900
 	tristate "Maxim MAX6900"
@@ -966,8 +956,8 @@ config RTC_DRV_PL031
 	  To compile this driver as a module, choose M here: the
 	  module will be called rtc-pl031.
 
-config RTC_DRV_HI3630_PMU
-	tristate "HI3630 PMU RTC"
+config RTC_DRV_HI3635_PMU
+	tristate "HI3635 PMU RTC"
 	depends on RTC_DRV_PL031
 	default n
 	help
@@ -1268,5 +1258,24 @@ config RTC_DRV_HID_SENSOR_TIME
 	  If this driver is compiled as a module, it will be named
 	  rtc-hid-sensor-time.
 
+config RTC_DRV_HI655X
+	tristate "Hisilicon Hi655x"
+	help
+	  If you say yes here you get support for the
+	  Hisilicon hi655x RTC chip.
+
+	  This driver can also be built as a module. If so, the module
+	  will be called rtc-hi655x.
+
+config RTC_DRV_HI6421V300
+	tristate "Hisilicon Hi6421 RTC"
+	depends on HI3XXX_HI6421V300_PMIC
+	help
+	  If you say yes here you get support for Hisilicon Hi6421 PMIC
+	  RTC functions. If an interrupt is associated with the device,
+	  the alarm functionality is supported.
+
+	  This driver can also be built as a module. If so, the module
+	  will be called rtc-hi6421.
 
 endif # RTC_CLASS

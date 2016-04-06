@@ -57,9 +57,10 @@ extern VOS_VOID IMSA_SRV_RatFormatTransform
 extern VOS_UINT32 IMSA_SRV_IsCurRatSupportIms( VOS_VOID );
 extern VOS_UINT32 IMSA_SRV_IsCurRatSupportEms( VOS_VOID );
 extern VOS_UINT32 IMSA_SRV_IsNrmSrvIsimParaSatisfied( VOS_VOID );
-extern VOS_UINT32 IMSA_SRV_IsNrmSrvConditonSatisfied( VOS_VOID );
+extern IMSA_NRM_SRV_CON_SAT_STATUE_ENMUM_UINT32 IMSA_SRV_IsNrmSrvConditonSatisfied( VOS_VOID );
 extern VOS_UINT32 IMSA_SRV_IsMakeEmcCallInNrmSrvSatisfied( VOS_VOID );
 extern VOS_UINT32 IMSA_SRV_IsEmcSrvConditonSatisfied( VOS_VOID );
+/*extern VOS_VOID IMSA_CMCCDeregProc();*/
 extern IMSA_NORMAL_REG_STATUS_ENUM_UINT32 IMSA_SRV_GetRegStatusFromSrvStatus
 (
     IMSA_SRV_STATUS_ENUM_UINT8          enSrvStatus
@@ -181,6 +182,9 @@ VOS_VOID IMSA_CONTROL_InitConfigPara( VOS_VOID )
     pstImsaConfigPara->ucUeRelMediaPdpFLag          = VOS_FALSE;
     pstImsaConfigPara->ucImsLocDeregSigPdpRelFlag   = VOS_TRUE;
     pstImsaConfigPara->enVoiceDomain                = IMSA_VOICE_DOMAIN_IMS_PS_PREFERRED;
+    pstImsaConfigPara->stCMCCCustomReq.ucCMCCCustomDeregFlag        = VOS_FALSE;
+    pstImsaConfigPara->stCMCCCustomReq.ucCMCCCustomTcallFlag        = VOS_FALSE;
+    pstImsaConfigPara->stCMCCCustomReq.ucCMCCCustomTqosFlag         = VOS_FALSE;
 }
 
 
@@ -195,6 +199,7 @@ VOS_VOID IMSA_CONTROL_InitNetworkInfo( VOS_VOID )
     pstImsaNetworkInfo->enImsaEmsStatus         = IMSA_EMS_STAUTS_BUTT;
     pstImsaNetworkInfo->enImsaPsServiceStatus   = IMSA_PS_SERVICE_STATUS_NO_SERVICE;
     pstImsaNetworkInfo->ucImsaRoamingFlg        = VOS_FALSE;
+    pstImsaNetworkInfo->ucServiceChangeIndAfterCampInfoChangeIndFlg = VOS_FALSE;
 }
 
 
@@ -233,12 +238,7 @@ VOS_VOID IMSA_CONTROL_Init( VOS_VOID )
     pstImsaControlManager->stPeriodImsSrvTryTimer.ulTimerLen= TI_IMSA_PERIOD_IMS_SRV_TRY_TIMER_LEN;
     pstImsaControlManager->stPeriodImsSrvTryTimer.usPara    = (VOS_UINT16)IMSA_SRV_TYPE_NORMAL;
 
-    /* 初始化周期性尝试紧急IMS服务定时器 */
-    pstImsaControlManager->stPeriodImsEmcSrvTryTimer.phTimer   = VOS_NULL_PTR;
-    pstImsaControlManager->stPeriodImsEmcSrvTryTimer.usName    = TI_IMSA_PERIOD_TRY_IMS_EMC_SRV;
-    pstImsaControlManager->stPeriodImsEmcSrvTryTimer.ucMode    = VOS_RELTIMER_NOLOOP;
-    pstImsaControlManager->stPeriodImsEmcSrvTryTimer.ulTimerLen= TI_IMSA_PERIOD_IMS_EMC_SRV_TRY_TIMER_LEN;
-    pstImsaControlManager->stPeriodImsEmcSrvTryTimer.usPara    = (VOS_UINT16)IMSA_SRV_TYPE_EMC;
+    /* delete PeriodImsEmcSrvTryTimer */
 
     pstImsaControlManager->enNrmSrvStatus   = IMSA_SRV_STATUS_IDLE_DEREG;
     pstImsaControlManager->enEmcSrvStatus   = IMSA_SRV_STATUS_IDLE_DEREG;
@@ -266,7 +266,7 @@ VOS_VOID IMSA_CONTROL_ClearResource( VOS_VOID )
     IMSA_SRV_SetServcieStatus(IMSA_SRV_TYPE_EMC, IMSA_SRV_STATUS_IDLE_DEREG);
 
     pstImsaControlManager->enImsaStatus                 = IMSA_STATUS_NULL;
-
+    pstImsaControlManager->enStopType                   = MMA_IMSA_STOP_TYPE_BUTT;
     /* 停止保护定时器 */
     IMSA_StopTimer(&pstImsaControlManager->stProtectTimer);
     pstImsaControlManager->stProtectTimer.phTimer       = VOS_NULL_PTR;
@@ -285,13 +285,7 @@ VOS_VOID IMSA_CONTROL_ClearResource( VOS_VOID )
     pstImsaControlManager->stPeriodImsSrvTryTimer.ulTimerLen= TI_IMSA_PERIOD_IMS_SRV_TRY_TIMER_LEN;
     pstImsaControlManager->stPeriodImsSrvTryTimer.usPara    = (VOS_UINT16)IMSA_SRV_TYPE_NORMAL;
 
-    /* 初始化周期性尝试紧急IMS服务定时器 */
-    IMSA_StopTimer(&pstImsaControlManager->stPeriodImsEmcSrvTryTimer);
-    pstImsaControlManager->stPeriodImsEmcSrvTryTimer.phTimer   = VOS_NULL_PTR;
-    pstImsaControlManager->stPeriodImsEmcSrvTryTimer.usName    = TI_IMSA_PERIOD_TRY_IMS_EMC_SRV;
-    pstImsaControlManager->stPeriodImsEmcSrvTryTimer.ucMode    = VOS_RELTIMER_NOLOOP;
-    pstImsaControlManager->stPeriodImsEmcSrvTryTimer.ulTimerLen= TI_IMSA_PERIOD_IMS_EMC_SRV_TRY_TIMER_LEN;
-    pstImsaControlManager->stPeriodImsEmcSrvTryTimer.usPara    = (VOS_UINT16)IMSA_SRV_TYPE_EMC;
+    /* delete PeriodImsEmcSrvTryTimer */
 
     pstImsaControlManager->enNrmSrvStatus   = IMSA_SRV_STATUS_IDLE_DEREG;
     pstImsaControlManager->enEmcSrvStatus   = IMSA_SRV_STATUS_IDLE_DEREG;
@@ -463,43 +457,51 @@ VOS_UINT32 IMSA_SRV_IsNrmSrvIsimParaSatisfied( VOS_VOID )
 
     return IMSA_TRUE;
 }
-VOS_UINT32 IMSA_SRV_IsNrmSrvConditonSatisfied( VOS_VOID )
+IMSA_NRM_SRV_CON_SAT_STATUE_ENMUM_UINT32 IMSA_SRV_IsNrmSrvConditonSatisfied( VOS_VOID )
 {
     /* 当前接入技术支持IMS特性 */
     if (IMSA_FALSE == IMSA_SRV_IsCurRatSupportIms())
     {
         IMSA_INFO_LOG("IMSA_SRV_IsNrmSrvConditonSatisfied:cur rat not support ims!");
-        return IMSA_FALSE;
+        return IMSA_NRM_SRV_CON_SAT_STATUE_FAIL_RAT_NOT_SUPPORT;
     }
 
-    /* IMS语音和短信都不支持，则返回条件不满足 */
-    if ((VOS_FALSE == IMSA_GetUeImsSmsCap())
-        && ((IMSA_VOICE_DOMAIN_CS_ONLY == IMSA_GetVoiceDomain())
+    /* IMS语音不支持，则返回条件不满足 */
+    if ((IMSA_VOICE_DOMAIN_CS_ONLY == IMSA_GetVoiceDomain())
             || (VOS_FALSE == IMSA_GetUeImsVoiceCap())
-            || (IMSA_IMS_VOPS_STATUS_NOT_SUPPORT == IMSA_GetNwImsVoiceCap())))
+            || (IMSA_IMS_VOPS_STATUS_NOT_SUPPORT == IMSA_GetNwImsVoiceCap()))
     {
         IMSA_INFO_LOG("IMSA_SRV_IsNrmSrvConditonSatisfied:voice and sms not support!");
-        return IMSA_FALSE;
+        return IMSA_NRM_SRV_CON_SAT_STATUE_FAIL_VOICE_NOT_SUPPORT;
     }
 
     /* PS域服务状态为正常服务 */
     if (IMSA_PS_SERVICE_STATUS_NORMAL_SERVICE != IMSA_GetPsServiceStatus())
     {
         IMSA_INFO_LOG("IMSA_SRV_IsNrmSrvConditonSatisfied:Ps service not normal!");
-        return IMSA_FALSE;
+        return IMSA_NRM_SRV_CON_SAT_STATUE_FAIL_OTHERS;
     }
+
+
+    /* 如果是在漫游网络下，且UE设置为不支持漫游网络下的注册，则直接退出，并且通知MMA VOICE不可用 */
+    if ((VOS_TRUE == IMSA_GetNetInfoAddress()->ucImsaRoamingFlg) &&
+        (VOS_TRUE == IMSA_GetConfigParaAddress()->ucRoamingImsNotSupportFlag))
+    {
+        IMSA_INFO_LOG("IMSA_SRV_IsNrmSrvConditonSatisfied:Roaming and not support !");
+        return IMSA_NRM_SRV_CON_SAT_STATUE_FAIL_ROAM_NOT_SUPPORT;
+    }
+
 
     /* 卡状态为有效可用，且IMPI、IMPU，DOMAIN参数有效 */
     if (IMSA_TRUE != IMSA_SRV_IsNrmSrvIsimParaSatisfied())
     {
         IMSA_INFO_LOG("IMSA_SRV_IsNrmSrvConditonSatisfied:ISIM PARA not satisfied!");
-        return IMSA_FALSE;
+        return IMSA_NRM_SRV_CON_SAT_STATUE_FAIL_USIM_NOT_SUPPORT;
     }
 
-    return IMSA_TRUE;
+
+    return IMSA_NRM_SRV_CON_SAT_STATUE_SUCC;
 }
-
-
 VOS_UINT32 IMSA_SRV_IsMakeEmcCallInNrmSrvSatisfied( VOS_VOID )
 {
     IMSA_NETWORK_INFO_STRU             *pstImsaNwInfo       = VOS_NULL_PTR;
@@ -727,9 +729,14 @@ VOS_VOID IMSA_SRV_SndConnSetupReq
         return ;
     }
 
-    /* 关闭周期性尝试IMS服务定时器 */
     pstControlMagnaer  = IMSA_GetControlManagerAddress();
-    IMSA_StopTimer(&pstControlMagnaer->stPeriodImsSrvTryTimer);
+    /* 如果要建立的是普通连接，则停止周期性尝试IMS服务定时器 */
+    if (IMSA_CONN_TYPE_NORMAL == enConnType)
+    {
+        IMSA_StopTimer(&pstControlMagnaer->stPeriodImsSrvTryTimer);
+    }
+    /* delete PeriodImsEmcSrvTryTimer */
+
 
     /*清空*/
     IMSA_MEM_SET( IMSA_GET_MSG_ENTITY(pstConnSetupReq), 0, IMSA_GET_MSG_LENGTH(pstConnSetupReq));
@@ -746,8 +753,6 @@ VOS_VOID IMSA_SRV_SndConnSetupReq
     /*调用消息发送函数 */
     IMSA_SEND_INTRA_MSG(pstConnSetupReq);
 }
-
-
 VOS_VOID IMSA_SRV_SndConnRelReq
 (
     IMSA_CONN_TYPE_ENUM_UINT32              enConnType,
@@ -808,7 +813,14 @@ VOS_VOID IMSA_SRV_SndRegRegReq
 
     /* 关闭周期性尝试IMS服务定时器 */
     pstControlMagnaer  = IMSA_GetControlManagerAddress();
-    IMSA_StopTimer(&pstControlMagnaer->stPeriodImsSrvTryTimer);
+
+    if (IMSA_REG_TYPE_NORMAL == enRegType)
+    {
+        IMSA_StopTimer(&pstControlMagnaer->stPeriodImsSrvTryTimer);
+    }
+
+    /* delete PeriodImsEmcSrvTryTimer */
+
 
     /*清空*/
     IMSA_MEM_SET( IMSA_GET_MSG_ENTITY(pstRegRegReq), 0, IMSA_GET_MSG_LENGTH(pstRegRegReq));
@@ -825,8 +837,6 @@ VOS_VOID IMSA_SRV_SndRegRegReq
     /*调用消息发送函数 */
     IMSA_SEND_INTRA_MSG(pstRegRegReq);
 }
-
-
 VOS_VOID IMSA_SRV_SndNrmCallSrvStatusInd
 (
     IMSA_CALL_SERVICE_STATUS_ENUM_UINT32       enCallSrvStatus,
@@ -1107,7 +1117,7 @@ VOS_VOID IMSA_SRV_ProcConnSetupIndSucc
     if (IMSA_CONN_SIP_PDP_TYPE_MEDIA == pstConnSetupIndMsg->enSipPdpType)
     {
         /* 通知CALL模块服务已经具备 */
-        IMSA_ProcCallResourceIsReady(pstConnSetupIndMsg->enConnType);
+        IMSA_ProcCallResourceIsReady(pstConnSetupIndMsg->enConnType, pstConnSetupIndMsg->enMediaPdpType);
         return ;
     }
 
@@ -1342,6 +1352,15 @@ VOS_VOID IMSA_SRV_ProcRegRegIndFail
 
             IMSA_SRV_SndRegRegReq(pstRegRegIndMsg->enRegType, IMSA_REG_ADDR_PARAM_NEXT);
             break;
+        case IMSA_RESULT_ACTION_REG_LOCAL_DEREG:
+            IMSA_SRV_SetServcieStatus((IMSA_SRV_TYPE_ENUM_UINT8)pstRegRegIndMsg->enRegType,
+                                       IMSA_SRV_STATUS_CONN_DEREG);
+
+            /* 切离CONN&REG态，因此通知CALL呼叫服务进入无服务状态 */
+            IMSA_SRV_SndCallSrvStatusInd((IMSA_SRV_TYPE_ENUM_UINT8)pstRegRegIndMsg->enRegType,
+                                          IMSA_CALL_SERVICE_STATUS_NO_SERVICE,
+                                          IMSA_CALL_NO_SRV_CAUSE_SIP_PDP_ERR);
+            break;
         default:
 
             IMSA_INFO_LOG("IMSA_SRV_ProcConnSetupIndFail:illegal result action!");
@@ -1363,9 +1382,6 @@ VOS_VOID IMSA_SRV_ProcRegRegIndFail
             break;
     }
 }
-
-
-
 VOS_VOID IMSA_SRV_ProcRegRegIndMsg
 (
     const IMSA_REG_REG_IND_STRU        *pstRegRegIndMsg
@@ -1422,26 +1438,17 @@ VOS_VOID IMSA_SRV_RegConningStateProcRegDeregIndMsg
     /* 紧急注册 */
     if (IMSA_REG_TYPE_EMC == enRegType)
     {
-        if (VOS_TRUE == IMSA_IsTimerRunning(&pstImsaControlManager->stPeriodImsEmcSrvTryTimer))
-        {
-            IMSA_StopTimer(&pstImsaControlManager->stPeriodImsEmcSrvTryTimer);
-            IMSA_SRV_SetServcieStatus(  IMSA_SRV_TYPE_EMC,
-                                        IMSA_SRV_STATUS_IDLE_DEREG);
-        }
-        else
-        {
-            IMSA_SRV_SndRegDeregReq(IMSA_REG_TYPE_EMC, IMSA_DEREG_LOCAL);
+        /* delete PeriodImsEmcSrvTryTimer */
+        IMSA_SRV_SndRegDeregReq(IMSA_REG_TYPE_EMC, IMSA_DEREG_LOCAL);
 
-            IMSA_SRV_SetServcieStatus(  IMSA_SRV_TYPE_EMC,
-                                        IMSA_SRV_STATUS_CONNING_DEREG);
-        }
+        IMSA_SRV_SetServcieStatus(  IMSA_SRV_TYPE_EMC,
+                                    IMSA_SRV_STATUS_CONNING_DEREG);
+
         IMSA_SndImsMsgServiceSuspendOrResumeSrvInfo(IMSA_IMS_INPUT_SERVICE_REASON_RESUME_EMC_SRV);
 
         return;
     }
 }
-
-
 VOS_VOID IMSA_SRV_ProcRegDeregIndMsg
 (
     const IMSA_REG_DEREG_IND_STRU      *pstRegDeregIndMsg
@@ -1460,6 +1467,10 @@ VOS_VOID IMSA_SRV_ProcRegDeregIndMsg
 
         IMSA_SRV_SetServcieStatus(  (IMSA_SRV_TYPE_ENUM_UINT8)pstRegDeregIndMsg->enRegType,
                                     IMSA_SRV_STATUS_RELEASING_DEREG);
+
+        IMSA_SRV_SndCallSrvStatusInd((IMSA_SRV_TYPE_ENUM_UINT8)pstRegDeregIndMsg->enRegType,
+                                              IMSA_CALL_SERVICE_STATUS_NO_SERVICE,
+                                              IMSA_CALL_NO_SRV_CAUSE_REG_ERR);
 
         return ;
     }
@@ -1537,6 +1548,16 @@ VOS_VOID IMSA_SRV_ProcRegDeregIndMsg
                                               IMSA_CALL_NO_SRV_CAUSE_REG_ERR);
 
                 break;
+            case IMSA_RESULT_ACTION_REG_LOCAL_DEREG:
+                IMSA_SRV_SetServcieStatus(  (IMSA_SRV_TYPE_ENUM_UINT8)pstRegDeregIndMsg->enRegType,
+                                            IMSA_SRV_STATUS_CONN_DEREG);
+
+                /* 切离CONN&REG态，因此通知CALL呼叫服务进入无服务状态 */
+                IMSA_SRV_SndCallSrvStatusInd((IMSA_SRV_TYPE_ENUM_UINT8)pstRegDeregIndMsg->enRegType,
+                                              IMSA_CALL_SERVICE_STATUS_NO_SERVICE,
+                                              IMSA_CALL_NO_SRV_CAUSE_SIP_PDP_ERR);
+
+                break;
             default:
 
                 IMSA_INFO_LOG("IMSA_SRV_ProcRegDeregIndMsg:illegal result action!");
@@ -1559,6 +1580,8 @@ VOS_VOID IMSA_SRV_ProcRegDeregIndMsg
 
     return ;
 }
+
+
 VOS_VOID IMSA_SRV_ProcConnSetupIndMsg
 (
     const IMSA_CONN_SETUP_IND_STRU     *pstConnSetupIndMsg
@@ -1599,13 +1622,15 @@ VOS_VOID IMSA_SRV_ProcEmcConnRelIndMsg
     /* 紧急注册状态，收到网侧发送的释放SIP紧急承载后的处理 */
     if (IMSA_SRV_STATUS_CONN_REG == IMSA_SRV_GetEmcSrvStatus())
     {
-        /* 需要进行PDN重建，需要通知IMS不允许发包 */
-        IMSA_SndImsMsgServiceSuspendOrResumeSrvInfo(IMSA_IMS_INPUT_SERVICE_REASON_SUSPEND_EMC_SRV);
+        /* delete PeriodImsEmcSrvTryTimer */
+        IMSA_SRV_SetServcieStatus(IMSA_SRV_TYPE_EMC, IMSA_SRV_STATUS_IDLE_DEREG);
 
-        IMSA_SRV_SetServcieStatus(IMSA_SRV_TYPE_EMC, IMSA_SRV_STATUS_CONNING_REG);
+        /* 通知IMSA本地去注册 */
+        IMSA_SRV_SndRegDeregReq(IMSA_REG_TYPE_EMC, IMSA_DEREG_LOCAL);
 
-        /* 启动周期性尝试IMS服务定时器 */
-        IMSA_StartTimer(&pstControlMagnaer->stPeriodImsEmcSrvTryTimer);
+        /* 通知CALL模块紧急呼叫服务进入无服务状态，促使CALL模块清除缓存的紧急呼 */
+        IMSA_SRV_SndEmcCallSrvStatusInd(IMSA_CALL_SERVICE_STATUS_NO_SERVICE,
+                                        IMSA_CALL_NO_SRV_CAUSE_SIP_PDP_ERR);
 
         return;
     }
@@ -1671,6 +1696,10 @@ VOS_VOID IMSA_SRV_ProcNormalConnSigalBearerRelIndMsg( VOS_VOID )
         /* 启动周期性尝试IMS服务定时器 */
         IMSA_StartTimer(&pstControlMagnaer->stPeriodImsSrvTryTimer);
 
+        /* 通知CALL模块普通呼叫服务进入无服务状态 */
+        IMSA_SRV_SndNrmCallSrvStatusInd(IMSA_CALL_SERVICE_STATUS_NO_SERVICE,
+                                        IMSA_CALL_NO_SRV_CAUSE_SIP_PDP_ERR);
+
         return ;
     }
 
@@ -1685,6 +1714,9 @@ VOS_VOID IMSA_SRV_ProcNormalConnSigalBearerRelIndMsg( VOS_VOID )
             IMSA_SRV_SndRegDeregReq(IMSA_REG_TYPE_NORMAL, IMSA_DEREG_LOCAL);
 
             IMSA_SRV_SetServcieStatus(IMSA_SRV_TYPE_NORMAL, IMSA_SRV_STATUS_IDLE_DEREG);
+
+            /* 启动周期性尝试IMS服务定时器 */
+            IMSA_StartTimer(&pstControlMagnaer->stPeriodImsSrvTryTimer);
         }
         return;
     }
@@ -1787,93 +1819,126 @@ VOS_VOID IMSA_SRV_ProcNormalConnSignalBearerModifyIndMsg
 
     IMSA_INFO_LOG("IMSA_SRV_ProcNormalConnSignalBearerModifyIndMsg is entered!");
 
-    /* 如果紧急连接，则直接退出 */
-    if (IMSA_CONN_TYPE_EMC == pstConnModifyIndMsg->enConnType)
-    {
-        IMSA_WARN_LOG("IMSA_SRV_ProcNormalConnSignalBearerModifyIndMsg:emc sigal pdp modify not supported!");
-
-        return ;
-    }
-
     /* 如果不是注册参数无效，则直接退出 */
-    if ((IMSA_OP_TRUE != pstConnModifyIndMsg->bitOpRegParaValidFlag)
-        || (IMSA_CONN_REG_PARA_INVALID != pstConnModifyIndMsg->ulRegParaValidFlag))
+    if (IMSA_OP_TRUE != pstConnModifyIndMsg->bitOpModifyType)
     {
         IMSA_INFO_LOG("IMSA_SRV_ProcNormalConnSignalBearerModifyIndMsg:normal,not reg para invalid!");
 
         return ;
     }
 
-    pstControlMagnaer  = IMSA_GetControlManagerAddress();
-
-    /* 如果在CONN&REGIN或者GCONN&REG态，则请求REG模块本地去注册，
-       请求CONN模块释放连接，状态转到RELEASING&DEREG态，启动周期性尝试IMS
-       服务定时器 */
-    if (IMSA_SRV_STATUS_CONN_REGING == IMSA_SRV_GetNormalSrvStatus())
+    /* 如果紧急连接，且注册P-CSCF地址失效，则重新发起注册；否则直接退出  */
+    if (IMSA_CONN_TYPE_EMC == pstConnModifyIndMsg->enConnType)
     {
-        IMSA_INFO_LOG("IMSA_SRV_ProcNormalConnSignalBearerModifyIndMsg:conn&reging!");
+        if (IMSA_CONN_MODIFY_TYPE_PCSCF_INVALID == pstConnModifyIndMsg->enModifyType)
+        {
+            /* 需要判断注册状态 */
+            if ((IMSA_SRV_STATUS_CONN_REG == IMSA_SRV_GetEmcSrvStatus()) ||
+                (IMSA_SRV_STATUS_CONN_REGING == IMSA_SRV_GetEmcSrvStatus()))
+            {
+                IMSA_SRV_SetServcieStatus(IMSA_REG_TYPE_EMC, IMSA_SRV_STATUS_CONN_REGING);
+                IMSA_SRV_SndRegDeregReq(IMSA_REG_TYPE_EMC, IMSA_DEREG_LOCAL);
+                IMSA_SRV_SndRegRegReq(IMSA_REG_TYPE_EMC, IMSA_REG_ADDR_PARAM_NEW);
+            }
 
-        IMSA_SRV_SndRegDeregReq(IMSA_REG_TYPE_NORMAL, IMSA_DEREG_LOCAL);
-
-        IMSA_SRV_SndConnRelReq(IMSA_CONN_TYPE_NORMAL, IMSA_CONN_SIP_PDP_TYPE_SIGNAL);
-
-        IMSA_SRV_SetServcieStatus(IMSA_SRV_TYPE_NORMAL, IMSA_SRV_STATUS_RELEASING_DEREG);
-
-        /* 由于已经进行本地去注册，无需通知CALL模块呼叫服务状态进入无服务，
-           否则本地去注册流程和释放CALL流程同时进行，容易出问题 */
-
-        /* 启动周期性尝试IMS服务定时器 */
-        IMSA_StartTimer(&pstControlMagnaer->stPeriodImsSrvTryTimer);
+        }
+        IMSA_WARN_LOG("IMSA_SRV_ProcNormalConnSignalBearerModifyIndMsg:emc sigal pdp modify not supported!");
 
         return ;
     }
 
-    if (IMSA_SRV_STATUS_CONN_REG == IMSA_SRV_GetNormalSrvStatus())
+
+
+    /* 注册参数失效 */
+    if (IMSA_CONN_MODIFY_TYPE_REG_PARA_INVALID == pstConnModifyIndMsg->enModifyType)
     {
-        IMSA_INFO_LOG("IMSA_SRV_ProcNormalConnSignalBearerModifyIndMsg:conn&reg!");
 
-        /* 需要通知IMS不允许发包 */
-        IMSA_SndImsMsgServiceSuspendOrResumeSrvInfo(IMSA_IMS_INPUT_SERVICE_REASON_SUSPEND_NRM_SRV);
+        pstControlMagnaer  = IMSA_GetControlManagerAddress();
 
-        IMSA_SRV_SetServcieStatus(IMSA_SRV_TYPE_NORMAL, IMSA_SRV_STATUS_CONNING_REG);
+        /* 如果在CONN&REGIN或者GCONN&REG态，则请求REG模块本地去注册，
+           请求CONN模块释放连接，状态转到RELEASING&DEREG态，启动周期性尝试IMS
+           服务定时器 */
+        if (IMSA_SRV_STATUS_CONN_REGING == IMSA_SRV_GetNormalSrvStatus())
+        {
+            IMSA_INFO_LOG("IMSA_SRV_ProcNormalConnSignalBearerModifyIndMsg:conn&reging!");
 
-        /* 启动周期性尝试IMS服务定时器 */
-        IMSA_StartTimer(&pstControlMagnaer->stPeriodImsSrvTryTimer);
+            IMSA_SRV_SndRegDeregReq(IMSA_REG_TYPE_NORMAL, IMSA_DEREG_LOCAL);
 
-        return;
+            IMSA_SRV_SndConnRelReq(IMSA_CONN_TYPE_NORMAL, IMSA_CONN_SIP_PDP_TYPE_SIGNAL);
+
+            IMSA_SRV_SetServcieStatus(IMSA_SRV_TYPE_NORMAL, IMSA_SRV_STATUS_RELEASING_DEREG);
+
+            /* 由于已经进行本地去注册，无需通知CALL模块呼叫服务状态进入无服务，
+               否则本地去注册流程和释放CALL流程同时进行，容易出问题 */
+
+            /* 启动周期性尝试IMS服务定时器 */
+            IMSA_StartTimer(&pstControlMagnaer->stPeriodImsSrvTryTimer);
+
+            return ;
+        }
+
+        if (IMSA_SRV_STATUS_CONN_REG == IMSA_SRV_GetNormalSrvStatus())
+        {
+            IMSA_INFO_LOG("IMSA_SRV_ProcNormalConnSignalBearerModifyIndMsg:conn&reg!");
+
+            /* 需要通知IMS不允许发包 */
+            IMSA_SndImsMsgServiceSuspendOrResumeSrvInfo(IMSA_IMS_INPUT_SERVICE_REASON_SUSPEND_NRM_SRV);
+
+            IMSA_SRV_SetServcieStatus(IMSA_SRV_TYPE_NORMAL, IMSA_SRV_STATUS_CONNING_REG);
+
+            /* 启动周期性尝试IMS服务定时器 */
+            IMSA_StartTimer(&pstControlMagnaer->stPeriodImsSrvTryTimer);
+
+            return;
+        }
+
+        /* 如果在CONN&DEREGING态，则请求REG模块本地去注册，请求CONN模块释放连接，
+           状态转到RELEASING&DEREG态 */
+        if (IMSA_SRV_STATUS_CONN_DEREGING == IMSA_SRV_GetNormalSrvStatus())
+        {
+            IMSA_INFO_LOG("IMSA_SRV_ProcNormalConnSignalBearerModifyIndMsg:conn&dereging!");
+
+            IMSA_SRV_SndRegDeregReq(IMSA_REG_TYPE_NORMAL, IMSA_DEREG_LOCAL);
+
+            IMSA_SRV_SndConnRelReq(IMSA_CONN_TYPE_NORMAL, IMSA_CONN_SIP_PDP_TYPE_SIGNAL);
+
+            IMSA_SRV_SetServcieStatus(IMSA_SRV_TYPE_NORMAL, IMSA_SRV_STATUS_RELEASING_DEREG);
+
+            return ;
+        }
+
+        /* 如果在CONN&DEREG态，则请求CONN模块释放连接，状态转到RELEASING&DEREG态,
+           启动周期性尝试IMS服务定时器 */
+        if (IMSA_SRV_STATUS_CONN_DEREG == IMSA_SRV_GetNormalSrvStatus())
+        {
+            IMSA_INFO_LOG("IMSA_SRV_ProcNormalConnSignalBearerModifyIndMsg:conn&dereging!");
+
+            IMSA_SRV_SndConnRelReq(IMSA_CONN_TYPE_NORMAL, IMSA_CONN_SIP_PDP_TYPE_SIGNAL);
+
+            IMSA_SRV_SetServcieStatus(IMSA_SRV_TYPE_NORMAL, IMSA_SRV_STATUS_RELEASING_DEREG);
+
+            /* 启动周期性尝试IMS服务定时器 */
+            IMSA_StartTimer(&pstControlMagnaer->stPeriodImsSrvTryTimer);
+
+            return ;
+        }
     }
-
-    /* 如果在CONN&DEREGING态，则请求REG模块本地去注册，请求CONN模块释放连接，
-       状态转到RELEASING&DEREG态 */
-    if (IMSA_SRV_STATUS_CONN_DEREGING == IMSA_SRV_GetNormalSrvStatus())
+    else /* P-CSCF地址失效 */
     {
-        IMSA_INFO_LOG("IMSA_SRV_ProcNormalConnSignalBearerModifyIndMsg:conn&dereging!");
+        if ((IMSA_SRV_STATUS_CONN_REG == IMSA_SRV_GetNormalSrvStatus()) ||
+            (IMSA_SRV_STATUS_CONN_REGING == IMSA_SRV_GetNormalSrvStatus()))
+        {
+            IMSA_SRV_SetServcieStatus(IMSA_SRV_TYPE_NORMAL, IMSA_SRV_STATUS_CONN_REGING);
+            IMSA_SRV_SndRegDeregReq(IMSA_SRV_TYPE_NORMAL, IMSA_DEREG_LOCAL);
+            IMSA_SRV_SndRegRegReq(IMSA_SRV_TYPE_NORMAL, IMSA_REG_ADDR_PARAM_NEW);
 
-        IMSA_SRV_SndRegDeregReq(IMSA_REG_TYPE_NORMAL, IMSA_DEREG_LOCAL);
-
-        IMSA_SRV_SndConnRelReq(IMSA_CONN_TYPE_NORMAL, IMSA_CONN_SIP_PDP_TYPE_SIGNAL);
-
-        IMSA_SRV_SetServcieStatus(IMSA_SRV_TYPE_NORMAL, IMSA_SRV_STATUS_RELEASING_DEREG);
-
-        return ;
-    }
-
-    /* 如果在CONN&DEREG态，则请求CONN模块释放连接，状态转到RELEASING&DEREG态,
-       启动周期性尝试IMS服务定时器 */
-    if (IMSA_SRV_STATUS_CONN_DEREG == IMSA_SRV_GetNormalSrvStatus())
-    {
-        IMSA_INFO_LOG("IMSA_SRV_ProcNormalConnSignalBearerModifyIndMsg:conn&dereging!");
-
-        IMSA_SRV_SndConnRelReq(IMSA_CONN_TYPE_NORMAL, IMSA_CONN_SIP_PDP_TYPE_SIGNAL);
-
-        IMSA_SRV_SetServcieStatus(IMSA_SRV_TYPE_NORMAL, IMSA_SRV_STATUS_RELEASING_DEREG);
-
-        /* 启动周期性尝试IMS服务定时器 */
-        IMSA_StartTimer(&pstControlMagnaer->stPeriodImsSrvTryTimer);
-
-        return ;
+            return;
+        }
     }
 }
+
+
+
 VOS_VOID IMSA_SRV_ProcConnModifyIndMsg
 (
     const IMSA_CONN_MODIFY_IND_STRU    *pstConnModifyIndMsg
@@ -1881,10 +1946,10 @@ VOS_VOID IMSA_SRV_ProcConnModifyIndMsg
 {
     IMSA_INFO_LOG("IMSA_SRV_ProcConnModifyIndMsg is entered!");
 
-    /* 如果是媒体承载修改，则通过CALL模块资源具备 */
+    /* 如果是媒体承载修改，不需要再通知CALL模块 */
     if (IMSA_CONN_SIP_PDP_TYPE_MEDIA == pstConnModifyIndMsg->enSipPdpType)
     {
-        IMSA_ProcCallResourceIsReady(pstConnModifyIndMsg->enConnType);
+        IMSA_INFO_LOG("IMSA_SRV_ProcConnModifyIndMsg:no need notify CallModule!");
     }
     else
     {
@@ -1902,7 +1967,7 @@ VOS_VOID IMSA_SRV_ProcCallRsltActionIndMsg
     {
         case IMSA_RESULT_ACTION_REG_WITH_FIRST_ADDR_PAIR:
 
-            if (IMSA_CALL_TYPE_NORMAL == pstCallRsltActionIndMsg->enCallType)
+            if (IMSA_CALL_TYPE_EMC != pstCallRsltActionIndMsg->enCallType)
             {
                 IMSA_WARN_LOG("IMSA_SRV_ProcCallRsltActionIndMsg:normal srv,first addr pair can not happen!");
                 return ;
@@ -1922,7 +1987,7 @@ VOS_VOID IMSA_SRV_ProcCallRsltActionIndMsg
             break;
         case IMSA_RESULT_ACTION_REG_WITH_NEXT_ADDR_PAIR:
 
-            if (IMSA_CALL_TYPE_NORMAL == pstCallRsltActionIndMsg->enCallType)
+            if (IMSA_CALL_TYPE_EMC != pstCallRsltActionIndMsg->enCallType)
             {
                 IMSA_WARN_LOG("IMSA_SRV_ProcCallRsltActionIndMsg:normal srv,next addr pair can not happen!");
                 return ;
@@ -2078,6 +2143,15 @@ VOS_VOID IMSA_SRV_UpdateRat
         return ;
     }
 
+    /* lihong00150010 hifi sync begin */
+    /* 从GU变换到L，且当前有呼叫存在，且通知LRRC开启HIFI同步 */
+    if ((enCampedRatTypeTmp == IMSA_CAMPED_RAT_TYPE_EUTRAN)
+        && (VOS_TRUE == IMSA_IsCallConnExist()))
+    {
+        IMSA_SndLRrcHifiSyncSwtichInd(IMSA_TRUE);
+    }
+    /* lihong00150010 hifi sync end */
+
     pstNwInfo->enImsaCampedRatType = enCampedRatTypeTmp;
 
     /*异系统变换后需要停止BACK-OFF定时器*/
@@ -2126,9 +2200,8 @@ VOS_VOID IMSA_SRV_UpdateImsVoPsStatus
 
         IMSA_SndMsgAtCirepiInd(enImsVoPsInd);
 
-        IMSA_ConfigNetCapInfo2Ims();
     }
-
+    IMSA_ConfigNetCapInfo2Ims();
     #if 0
     /* 如果接入技术未变更或者变更的目的接入技术支持IMS，但网侧指示不支持IMS VOICE，
        指示IMSA CALL子模块无服务，原因值填为网侧不支持IMS VOICE； */
@@ -2164,6 +2237,120 @@ VOS_VOID IMSA_SRV_UpdateEmsStatus
 }
 
 
+VOS_VOID IMSA_SRV_ProcSrvChgIndWhenRoamNotSatisfied(VOS_VOID)
+{
+    IMSA_SRV_STATUS_ENUM_UINT8          enNrmSrvStatus      = IMSA_SRV_STATUS_BUTT;
+
+    enNrmSrvStatus = IMSA_SRV_GetNormalSrvStatus();
+
+    /* 如果当前有电话存在，则需要等电话结束后，才能发起去注册 */
+    if (VOS_TRUE == IMSA_IsImsExist())
+    {
+        return;
+    }
+
+    /* 根据当前服务状态进行不同处理 */
+    switch (enNrmSrvStatus)
+    {
+        case IMSA_SRV_STATUS_IDLE_DEREG:
+
+            /* 通知MMA IMS VOICE  不可用 */
+            /* 其他几种场景不满足IMS注册条件时，MMA自己能够识别，直接认为IMS voice不可用， 不需要IMSA
+            通知；但是漫游网络下，且不支持IMS注册，MMA是无法识别的，所以需要IMSA主动通知一下 */
+            IMSA_SndMmaMsgImsVoiceCapNotify(MMA_IMSA_IMS_VOICE_CAP_UNAVAILABLE);
+
+            break;
+
+        case IMSA_SRV_STATUS_CONN_REGING:
+
+            IMSA_SRV_SndRegDeregReq(IMSA_REG_TYPE_NORMAL, IMSA_DEREG_NOT_LOCAL);
+            IMSA_SRV_SetServcieStatus(IMSA_SRV_TYPE_NORMAL, IMSA_SRV_STATUS_CONN_DEREGING);
+            break;
+
+        case IMSA_SRV_STATUS_CONNING_DEREG:
+        case IMSA_SRV_STATUS_CONN_DEREG:
+
+            IMSA_SRV_SndConnRelReq(IMSA_SRV_TYPE_NORMAL, IMSA_CONN_SIP_PDP_TYPE_SIGNAL);
+            IMSA_SRV_SetServcieStatus(IMSA_SRV_TYPE_NORMAL, IMSA_SRV_STATUS_RELEASING_DEREG);
+            break;
+
+        case IMSA_SRV_STATUS_CONNING_REG:
+            /* 需要通知IMS允许其发包，通知发起本地注册 */
+            IMSA_SndImsMsgServiceSuspendOrResumeSrvInfo(IMSA_IMS_INPUT_SERVICE_REASON_RESUME_NRM_SRV);
+            IMSA_SRV_SndRegDeregReq(IMSA_REG_TYPE_NORMAL, IMSA_DEREG_LOCAL);
+            IMSA_SRV_SetServcieStatus(IMSA_SRV_TYPE_NORMAL, IMSA_SRV_STATUS_IDLE_DEREG);
+            break;
+
+        case IMSA_SRV_STATUS_CONN_REG:
+            IMSA_SRV_SndRegDeregReq(IMSA_REG_TYPE_NORMAL, IMSA_DEREG_NOT_LOCAL);
+            IMSA_SRV_SetServcieStatus(IMSA_SRV_TYPE_NORMAL, IMSA_SRV_STATUS_CONN_DEREGING);
+            break;
+
+        default:
+            break;
+    }
+
+}
+
+
+/* Modify by zhaochen 00308719 2015-08-18 for volte, begin */
+
+VOS_VOID IMSA_SRV_ProcWhenRoamNotSatisfied(VOS_VOID)
+{
+    IMSA_SRV_STATUS_ENUM_UINT8          enNrmSrvStatus      = IMSA_SRV_STATUS_BUTT;
+
+    enNrmSrvStatus = IMSA_SRV_GetNormalSrvStatus();
+
+    /* 如果当前有IMS业务存在，则需要等业务结束后，才能发起去注册 */
+    if (VOS_TRUE == IMSA_IsImsExist())
+    {
+        return;
+    }
+    /* 或当前正在等待SERVICE_CHANGE_IND，则在收到SERVICE_CHANGE_IND之后再做处理 */
+    if (VOS_TRUE == IMSA_GetNetInfoAddress()->ucServiceChangeIndAfterCampInfoChangeIndFlg)
+    {
+        return;
+    }
+    /* 如果当前普通服务支持漫游，则不处理 */
+    if (IMSA_NRM_SRV_CON_SAT_STATUE_FAIL_ROAM_NOT_SUPPORT != IMSA_SRV_IsNrmSrvConditonSatisfied())
+    {
+        return;
+    }
+    /* 根据当前服务状态进行不同处理 */
+    switch (enNrmSrvStatus)
+    {
+        case IMSA_SRV_STATUS_CONN_REGING:
+
+            IMSA_SRV_SndRegDeregReq(IMSA_REG_TYPE_NORMAL, IMSA_DEREG_NOT_LOCAL);
+            IMSA_SRV_SetServcieStatus(IMSA_SRV_TYPE_NORMAL, IMSA_SRV_STATUS_CONN_DEREGING);
+            break;
+
+        case IMSA_SRV_STATUS_CONNING_DEREG:
+        case IMSA_SRV_STATUS_CONN_DEREG:
+
+            IMSA_SRV_SndConnRelReq(IMSA_SRV_TYPE_NORMAL, IMSA_CONN_SIP_PDP_TYPE_SIGNAL);
+            IMSA_SRV_SetServcieStatus(IMSA_SRV_TYPE_NORMAL, IMSA_SRV_STATUS_RELEASING_DEREG);
+            break;
+
+        case IMSA_SRV_STATUS_CONNING_REG:
+            /* 需要通知IMS允许其发包，通知发起本地注册 */
+            IMSA_SndImsMsgServiceSuspendOrResumeSrvInfo(IMSA_IMS_INPUT_SERVICE_REASON_RESUME_NRM_SRV);
+            IMSA_SRV_SndRegDeregReq(IMSA_REG_TYPE_NORMAL, IMSA_DEREG_LOCAL);
+            IMSA_SRV_SetServcieStatus(IMSA_SRV_TYPE_NORMAL, IMSA_SRV_STATUS_IDLE_DEREG);
+            break;
+
+        case IMSA_SRV_STATUS_CONN_REG:
+            IMSA_SRV_SndRegDeregReq(IMSA_REG_TYPE_NORMAL, IMSA_DEREG_NOT_LOCAL);
+            IMSA_SRV_SetServcieStatus(IMSA_SRV_TYPE_NORMAL, IMSA_SRV_STATUS_CONN_DEREGING);
+            break;
+
+        default:
+            break;
+    }
+
+}
+/* Modify by zhaochen 00308719 2015-08-18 for volte, end */
+
 
 VOS_VOID IMSA_SRV_ProcServiceChangeInd
 (
@@ -2183,6 +2370,8 @@ VOS_VOID IMSA_SRV_ProcServiceChangeInd
     pstControlMagnaer                       = IMSA_GetControlManagerAddress();
 
     pstNwInfo->enImsaPsServiceStatus        = pstServiceChangeInd->enPsServiceStatus;
+    /* 无论之前的等待SERVICE_CHANGE_IND标志是什么，收到SERVICE_CHANGE_IND后都将其置为FALSE */
+    pstNwInfo->ucServiceChangeIndAfterCampInfoChangeIndFlg    = VOS_FALSE;
 
     pstControlMagnaer->ucImsaUsimStatus     = pstServiceChangeInd->ucPsSimValid;
     #if 0
@@ -2202,15 +2391,33 @@ VOS_VOID IMSA_SRV_ProcServiceChangeInd
         IMSA_SRV_UpdateEmsStatus(pstServiceChangeInd->enEmsInd);
     }
 
-    /* 清除SRVCC标识，需要在START时标记，SRVCC失败或者CANCEL时清除 */
-    IMSA_CallSetSrvccFlag(IMSA_FALSE);
+    /* 由于代码调整，该标志无需再在收到SERVICE_CHANGE_IND时清除，转移到SRVCC成功时清除 */
 
-    /* 判断获取普通IMS服务的条件是否具备,如果不具备，则直接退出 */
-    if (IMSA_TRUE != IMSA_SRV_IsNrmSrvConditonSatisfied())
+    switch(IMSA_SRV_IsNrmSrvConditonSatisfied())
     {
-        IMSA_INFO_LOG("IMSA_SRV_ProcServiceChangeInd:Normal service condition not satisfied!");
-        IMSA_SndMmaMsgImsVoiceCapNotify(MMA_IMSA_IMS_VOICE_CAP_UNAVAILABLE);
-        return ;
+        case IMSA_NRM_SRV_CON_SAT_STATUE_FAIL_RAT_NOT_SUPPORT:
+            IMSA_CMCCDeregProc();
+            return;
+
+        case IMSA_NRM_SRV_CON_SAT_STATUE_FAIL_USIM_NOT_SUPPORT:
+            /* 其他几种场景不满足IMS注册条件时，MMA自己能够识别，直接认为IMS voice不可用， 不需要IMSA
+            通知；但是卡无效的场景，MMA是无法识别的，所以需要IMSA主动通知一下 */
+            IMSA_SndMmaMsgImsVoiceCapNotify(MMA_IMSA_IMS_VOICE_CAP_UNAVAILABLE);
+            return;
+
+        case IMSA_NRM_SRV_CON_SAT_STATUE_FAIL_ROAM_NOT_SUPPORT:
+            /* 需要根据当前的服务状态，判断是直接通知VOICE不可用，还是发起去注册 */
+            IMSA_SRV_ProcSrvChgIndWhenRoamNotSatisfied();
+            return;
+        case IMSA_NRM_SRV_CON_SAT_STATUE_FAIL_VOICE_NOT_SUPPORT:
+            /* 中移动定制需求，如果IMS语音不支持，则发起去注册 */
+            IMSA_CMCCDeregProc();
+            return;
+        case IMSA_NRM_SRV_CON_SAT_STATUE_FAIL_OTHERS:
+            /* IMS语音不支持或者PS域服务状态不为NORMAL SERVICE时，无特殊处理 */
+            return;
+        default:
+            break;
     }
 
     enNrmSrvStatus = IMSA_SRV_GetNormalSrvStatus();
@@ -2240,6 +2447,20 @@ VOS_VOID IMSA_SRV_ProcServiceChangeInd
                导致的去注册过程中，IMS特性重新设为支持，则需要在去注册动作完成后，
                重新再注册，而不释放连接 */
             IMSA_SndMmaMsgImsVoiceCapNotify(MMA_IMSA_IMS_VOICE_CAP_UNAVAILABLE);
+
+            /* zhaochen 00308719 begin for IMS Dereg for too long 2015-09-14 */
+            IMSA_SRV_SetServcieStatus(  IMSA_SRV_TYPE_NORMAL,
+                                        IMSA_SRV_STATUS_CONN_REGING);
+
+            IMSA_SRV_SndRegDeregReq(    IMSA_REG_TYPE_NORMAL,
+                                        IMSA_DEREG_LOCAL);
+
+            IMSA_SRV_SndRegRegReq(      IMSA_REG_TYPE_NORMAL,
+                                        IMSA_REG_ADDR_PARAM_NEW);
+
+            /* IMSA_StartTimer(&pstControlMagnaer->stPeriodImsSrvTryTimer); */
+            /* zhaochen 00308719 end for IMS Dereg for too long 2015-09-14 */
+
             break;
 
         case IMSA_SRV_STATUS_CONN_DEREG:
@@ -2252,7 +2473,8 @@ VOS_VOID IMSA_SRV_ProcServiceChangeInd
             break;
         case IMSA_SRV_STATUS_CONNING_DEREG:
         case IMSA_SRV_STATUS_CONN_REGING:
-            /*这两个状态等注册完成后上报IMS voice能力*/
+        case IMSA_SRV_STATUS_CONNING_REG:
+            /*这三个状态等注册完成后上报IMS voice能力*/
             break;
         default:
             /*IMSA不发起注册，需上报IMS voice能力*/
@@ -2268,6 +2490,8 @@ VOS_VOID IMSA_SRV_ProcServiceChangeInd
             break;
     }
 }
+
+
 VOS_VOID IMSA_SRV_ProcCampInfoChangeInd
 (
     const MMA_IMSA_CAMP_INFO_CHANGE_IND_STRU     *pstCampInfoChangeInd
@@ -2276,6 +2500,9 @@ VOS_VOID IMSA_SRV_ProcCampInfoChangeInd
     IMSA_NETWORK_INFO_STRU             *pstNwInfo           = VOS_NULL_PTR;
 
     IMSA_INFO_LOG("IMSA_SRV_ProcRoamingChangeInd is entered!");
+    /* 收到CAPM_INFO_CHANGE_IND后，需要将等待SERVICE_CHANGE_IND标志位置为TRUE，
+       后续处理漫游去注册需求时，需要判断是否已经收到了SERVICE_CHANGE_IND */
+    IMSA_GetNetInfoAddress()->ucServiceChangeIndAfterCampInfoChangeIndFlg     = VOS_TRUE;
 
     /* 存储SERVICE CHANGE IND消息中携带的参数 */
     pstNwInfo                       = IMSA_GetNetInfoAddress();
@@ -2293,7 +2520,31 @@ VOS_VOID IMSA_SRV_ProcCampInfoChangeInd
     IMSA_ConfigCgi2Ims();
 }
 
+VOS_VOID IMSA_SRV_ProcModem1InfoInd
+(
+    const MMA_IMSA_MODEM1_INFO_IND_STRU          *pstModem1InfoInd
+)
+{
+    IMSA_INFO_LOG1("IMSA_SRV_ProcModem1InfoInd is entered!", pstModem1InfoInd->enPowerState);
 
+    IMSA_GetPowerState() = pstModem1InfoInd->enPowerState;
+}
+
+
+VOS_VOID IMSA_SRV_ProcVoiceDomainChangeInd
+(
+    const MMA_IMSA_VOICE_DOMAIN_CHANGE_IND_STRU     *pstVoiceDomainChangeInd
+)
+{
+    IMSA_CONTROL_MANAGER_STRU      *pstControlManager;
+
+    IMSA_INFO_LOG("IMSA_SRV_ProcVoiceDomainChangeInd is entered!");
+
+    pstControlManager = IMSA_GetControlManagerAddress();
+
+    /* 存储VOICE DOMAIN CHANGE IND消息中携带的参数 */
+    pstControlManager->stImsaConfigPara.enVoiceDomain = (IMSA_VOICE_DOMAIN_ENUM_UINT32)pstVoiceDomainChangeInd->enVoiceDomain;
+}
 VOS_VOID IMSA_SRV_ProcDeregReq
 (
     IMSA_SRV_DEREG_CAUSE_ENUM_UINT32    enDeregCause
@@ -2364,8 +2615,7 @@ VOS_VOID IMSA_SRV_ProcDeregReq
     return ;
 }
 
-
-VOS_UINT32 IMSA_StartImsNormalService( VOS_VOID )
+VOS_UINT32 IMSA_StartImsNormalService( IMSA_CALL_TYPE_ENUM_UINT8 enCallType)
 {
     if (IMSA_SRV_STATUS_CONN_REG != IMSA_SRV_GetNormalSrvStatus())
     {
@@ -2373,8 +2623,11 @@ VOS_UINT32 IMSA_StartImsNormalService( VOS_VOID )
     }
 
     if ((IMSA_VOICE_DOMAIN_CS_ONLY == IMSA_GetVoiceDomain())
-        || (VOS_FALSE == IMSA_GetUeImsVoiceCap())
-        || (IMSA_IMS_VOPS_STATUS_NOT_SUPPORT == IMSA_GetNwImsVoiceCap()))
+        || (IMSA_IMS_VOPS_STATUS_NOT_SUPPORT == IMSA_GetNwImsVoiceCap())
+        || ((IMSA_CALL_TYPE_VOICE == enCallType)
+            && (VOS_FALSE == IMSA_GetUeImsVoiceCap()))
+        || ((IMSA_CALL_TYPE_VIDEO== enCallType)
+            && (VOS_FALSE == IMSA_GetUeImsVideoCap())))
     {
         return IMSA_START_SRV_RESULT_CANNOT_MAKE_CALL;
     }
@@ -2501,7 +2754,7 @@ VOS_VOID IMSA_ProcTimerMsgPeriodTryImsSrvExp(const VOS_VOID *pRcvMsg )
             IMSA_INFO_LOG("IMSA_ProcTimerMsgPeriodTryImsSrvExp:idle&dereg!");
 
             /* 如果重新获取IMS普通服务的条件具备，则发起普通连接建立 */
-            if (IMSA_TRUE == IMSA_SRV_IsNrmSrvConditonSatisfied())
+            if (IMSA_NRM_SRV_CON_SAT_STATUE_SUCC == IMSA_SRV_IsNrmSrvConditonSatisfied())
             {
                 /* 请求连接模块建立连接，将状态转到IMSA_SERVICE_STATUS_CONNING_DEREG */
                 IMSA_SRV_SndConnSetupReq(   IMSA_FALSE,
@@ -2516,7 +2769,7 @@ VOS_VOID IMSA_ProcTimerMsgPeriodTryImsSrvExp(const VOS_VOID *pRcvMsg )
             IMSA_INFO_LOG("IMSA_ProcTimerMsgPeriodTryImsSrvExp:conn&dereg!");
 
             /* 如果重新获取IMS普通服务的条件具备，则发起普通注册请求 */
-            if (IMSA_TRUE == IMSA_SRV_IsNrmSrvConditonSatisfied())
+            if (IMSA_NRM_SRV_CON_SAT_STATUE_SUCC == IMSA_SRV_IsNrmSrvConditonSatisfied())
             {
                 /* 请求注册模块发起注册，将状态转到IMSA_SERVICE_STATUS_CONN_REGING */
                 IMSA_SRV_SndRegRegReq(      IMSA_REG_TYPE_NORMAL,
@@ -2530,7 +2783,7 @@ VOS_VOID IMSA_ProcTimerMsgPeriodTryImsSrvExp(const VOS_VOID *pRcvMsg )
 
             IMSA_INFO_LOG("IMSA_ProcTimerMsgPeriodTryImsSrvExp:conning&reg!");
             /* 如果重新获取IMS普通服务的条件具备，则发起普通注册请求 */
-            if (IMSA_TRUE == IMSA_SRV_IsNrmSrvConditonSatisfied())
+            if (IMSA_NRM_SRV_CON_SAT_STATUE_SUCC == IMSA_SRV_IsNrmSrvConditonSatisfied())
             {
                 /* 请求连接模块建立连接 */
                 IMSA_SRV_SndConnSetupReq(   IMSA_TRUE,
@@ -2551,40 +2804,8 @@ VOS_VOID IMSA_ProcTimerMsgPeriodTryImsSrvExp(const VOS_VOID *pRcvMsg )
     }
 }
 
-VOS_VOID IMSA_ProcTimerMsgPeriodTryImsEmcSrvExp(const VOS_VOID *pRcvMsg )
-{
-    (void)pRcvMsg;
+/* delete PeriodImsEmcSrvTryTimer */
 
-    IMSA_INFO_LOG("IMSA_ProcTimerMsgPeriodTryImsEmcSrvExp is entered!");
-
-    switch (IMSA_SRV_GetEmcSrvStatus())
-    {
-
-        case IMSA_SRV_STATUS_CONNING_REG:
-
-            IMSA_INFO_LOG("IMSA_ProcTimerMsgPeriodTryImsEmcSrvExp:conn&reging!");
-            /* 如果重新获取IMS紧急服务的条件具备，则发起紧急注册请求 */
-            if (IMSA_TRUE == IMSA_SRV_IsReestablishEmcPdnConditonSatisfied())
-            {
-                /* 请求连接模块建立连接 */
-                IMSA_SRV_SndConnSetupReq(   IMSA_TRUE,
-                                            IMSA_CONN_TYPE_EMC);
-            }
-            else
-            {
-                /* 切离CONNING+REG态时，IMSA需要通知IMS允许发包 */
-                IMSA_SndImsMsgServiceSuspendOrResumeSrvInfo(IMSA_IMS_INPUT_SERVICE_REASON_RESUME_EMC_SRV);
-
-                IMSA_SRV_SndRegDeregReq(IMSA_REG_TYPE_EMC, IMSA_DEREG_LOCAL);
-                IMSA_SRV_SetServcieStatus(IMSA_REG_TYPE_EMC, IMSA_SRV_STATUS_IDLE_DEREG);
-            }
-
-            break;
-        default:
-            IMSA_INFO_LOG("IMSA_ProcTimerMsgPeriodTryImsEmcSrvExp:other states!");
-            break;
-    }
-}
 VOS_UINT32  IMSA_AddSubscription
 (
     VOS_UINT32                          ulPid,
@@ -2783,6 +3004,135 @@ VOS_UINT32 IMSA_SRV_IsConningRegState(VOS_UINT8 ucIsEmc)
     }
 
     return IMSA_TRUE;
+}
+
+
+VOS_VOID IMSA_CMCCDeregProc(VOS_VOID)
+{
+    if (VOS_FALSE == IMSA_GetConfigParaAddress()->stCMCCCustomReq.ucCMCCCustomDeregFlag)
+    {
+        IMSA_INFO_LOG("CMCC Custom Dereg Flag is false.");
+        return;
+    }
+
+    if (MMA_IMSA_IMS_VOPS_SUPPORT == IMSA_GetNetInfoAddress()->enImsaImsVoPsStatus)
+    {
+        IMSA_INFO_LOG("VoPS support.");
+        return;
+    }
+
+    if(VOS_TRUE == IMSA_IsImsExist())
+    {
+        IMSA_INFO_LOG("IMS call/sms/ss running. will dereg later.");
+        return;
+    }
+
+    IMSA_INFO_LOG1("IMSA_CMCCDeregProc: Service status: ", IMSA_SRV_GetNormalSrvStatus());
+    switch(IMSA_SRV_GetNormalSrvStatus())
+    {
+        case IMSA_SRV_STATUS_CONN_REGING:
+        case IMSA_SRV_STATUS_CONN_REG:
+            IMSA_SRV_SndRegDeregReq(IMSA_REG_TYPE_NORMAL, IMSA_DEREG_NOT_LOCAL);
+            IMSA_SRV_SetServcieStatus(IMSA_SRV_TYPE_NORMAL, IMSA_SRV_STATUS_CONN_DEREGING);
+            break;
+        case IMSA_SRV_STATUS_CONNING_DEREG:
+        case IMSA_SRV_STATUS_CONN_DEREG:
+            IMSA_SRV_SndConnRelReq(IMSA_SRV_TYPE_NORMAL, IMSA_CONN_SIP_PDP_TYPE_SIGNAL);
+            IMSA_SRV_SetServcieStatus(IMSA_SRV_TYPE_NORMAL, IMSA_SRV_STATUS_RELEASING_DEREG);
+            break;
+
+        case IMSA_SRV_STATUS_CONNING_REG:
+            /* 需要通知IMS允许其发包，通知发起本地注册 */
+            IMSA_SndImsMsgServiceSuspendOrResumeSrvInfo(IMSA_IMS_INPUT_SERVICE_REASON_RESUME_NRM_SRV);
+            IMSA_SRV_SndRegDeregReq(IMSA_REG_TYPE_NORMAL, IMSA_DEREG_LOCAL);
+            IMSA_SRV_SetServcieStatus(IMSA_SRV_TYPE_NORMAL, IMSA_SRV_STATUS_IDLE_DEREG);
+            break;
+        case IMSA_SRV_STATUS_IDLE_DEREG:
+            break;
+        default:
+            break;
+    }
+}
+
+/*****************************************************************************
+ Function Name   : IMSA_CommonDeregProc
+ Description     : 漫游和中移动定制需求通用去注册流程
+ Input           : VOS_VOID
+ Output          : VOS_VOID
+ Return          : VOS_VOID
+
+ History         :
+    1.zhaochen 00308719    2015-08-26  Draft Enact
+
+*****************************************************************************/
+VOS_VOID IMSA_CommonDeregProc(VOS_VOID)
+{
+
+    IMSA_CMCCDeregProc();
+    IMSA_SRV_ProcWhenRoamNotSatisfied();
+
+    return;
+}
+
+
+VOS_UINT32 IMSA_IsImsEmcServiceEstablishSucc(VOS_VOID)
+{
+    VOS_UINT32    ulResult = IMSA_FALSE;
+
+    IMSA_INFO_LOG("IMSA_IsStopImsEmcService is enter!");
+
+    if ((IMSA_SRV_STATUS_CONNING_DEREG == IMSA_SRV_GetEmcSrvStatus()) ||
+        (IMSA_SRV_STATUS_CONN_REGING == IMSA_SRV_GetEmcSrvStatus()))
+    {
+        ulResult = IMSA_FALSE;
+    }
+    else if (IMSA_SRV_STATUS_CONN_REG == IMSA_SRV_GetEmcSrvStatus())
+    {
+        ulResult = IMSA_TRUE;
+    }
+    else
+    {
+        IMSA_INFO_LOG("IMSA_IsStopImsEmcService:other status!");
+    }
+
+
+    return ulResult;
+}
+
+
+VOS_VOID IMSA_StopImsEmcService(VOS_VOID)
+{
+    IMSA_INFO_LOG("IMSA_StopImsEmcService is enter!");
+
+    switch(IMSA_SRV_GetEmcSrvStatus())
+    {
+        case IMSA_SRV_STATUS_CONNING_DEREG:
+            IMSA_INFO_LOG("IMSA_SRV_ProcEmcTcallTimerExp:CONNING_DEREG!");
+
+            IMSA_SRV_SndConnRelReq(IMSA_CONN_TYPE_EMC,
+                                   IMSA_CONN_SIP_PDP_TYPE_SIGNAL);
+
+            /* 状态转到RELEASE+DEREG态，通知CALL紧急服务不具备 */
+            IMSA_SRV_SetServcieStatus(IMSA_SRV_TYPE_EMC,
+                                      IMSA_SRV_STATUS_RELEASING_DEREG);
+
+            /* 通知CALL模块紧急呼叫服务进入无服务状态，促使CALL模块清除缓存的紧急呼 */
+            IMSA_SRV_SndEmcCallSrvStatusInd(IMSA_CALL_SERVICE_STATUS_NO_SERVICE,
+                                            IMSA_CALL_NO_SRV_CAUSE_SIP_PDP_ERR);
+
+            break;
+        case IMSA_SRV_STATUS_CONN_REGING:
+            IMSA_INFO_LOG("IMSA_SRV_ProcEmcTcallTimerExp:CONN_REGING!");
+
+            /* 需要本地去注册 */
+            IMSA_SRV_SndRegDeregReq(IMSA_REG_TYPE_EMC, IMSA_DEREG_LOCAL);
+            IMSA_SRV_SetServcieStatus(IMSA_SRV_TYPE_EMC, IMSA_SRV_STATUS_CONN_DEREGING);
+            break;
+        default:
+            IMSA_INFO_LOG("IMSA_StopImsEmcService:other status!");
+            break;
+    }
+
 }
 
 /*lint +e961*/

@@ -2,6 +2,7 @@
 #ifndef __DRV_MAILBOX_CFG_H__
 #define __DRV_MAILBOX_CFG_H__
 
+#define DRV_MAILBOX_FOR_HIFI_BUGFIX
 /*****************************************************************************
   1 其他头文件包含
 *****************************************************************************/
@@ -111,9 +112,9 @@ enum MAILBOX_GAP_FOR_SI_PARSE {MAILBOX_GAP_FOR_SI_BUTT};
 
 /* 邮编起始编号宏定义 */
 #define MAILBOX_MAILCODE_CHANNEL(src, dst, channel) \
-    ( ((unsigned long)(src) << MAILBOX_ID_SRC_CPU_OFFSET) \
-    | ((unsigned long)(dst) << MAILBOX_ID_DST_CPU_OFFSET) \
-    | ((unsigned long)(channel) << MAILBOX_ID_CHANNEL_OFFSET) )
+    ( ((unsigned int)(src) << MAILBOX_ID_SRC_CPU_OFFSET) \
+    | ((unsigned int)(dst) << MAILBOX_ID_DST_CPU_OFFSET) \
+    | ((unsigned int)(channel) << MAILBOX_ID_CHANNEL_OFFSET) )
 
 #define MAILBOX_CPUID(cpu)   MAILBOX_CPUID_##cpu
 
@@ -351,15 +352,15 @@ enum MAILBOX_MAILCODE_ENUM
 *****************************************************************************/
 typedef struct mb_head
 {
-    unsigned long       ulProtectWord1;     /*保护字 0x55AA55AA*/
-    unsigned long       ulProtectWord2;     /*保护字 0x5A5A5A5A*/
-    unsigned long       ulFront;            /*队列待写单元距离队列(不含保护字)头的长度，单位32bit */
-    unsigned long       ulRear;             /*队列待读单元距离队列(不含保护字)头的长度，单位32bit */
-    unsigned long       ulFrontslice;       /*更新邮箱环形队列的头指针系统时间*/
-    unsigned long       ulRearslice;        /*更新邮箱环形队列的尾指针系统时间*/
+    unsigned int       ulProtectWord1;     /*保护字 0x55AA55AA*/
+    unsigned int       ulProtectWord2;     /*保护字 0x5A5A5A5A*/
+    unsigned int       ulFront;            /*队列待写单元距离队列(不含保护字)头的长度，单位32bit */
+    unsigned int       ulRear;             /*队列待读单元距离队列(不含保护字)头的长度，单位32bit */
+    unsigned int       ulFrontslice;       /*更新邮箱环形队列的头指针系统时间*/
+    unsigned int       ulRearslice;        /*更新邮箱环形队列的尾指针系统时间*/
     unsigned short      ausReserve[4];      /*保留*/
-    unsigned long       ulProtectWord3;     /*保护字 0x55AA55AA*/
-    unsigned long       ulProtectWord4;     /*保护字 0x5A5A5A5A*/
+    unsigned int       ulProtectWord3;     /*保护字 0x55AA55AA*/
+    unsigned int       ulProtectWord4;     /*保护字 0x5A5A5A5A*/
 } MAILBOX_HEAD_STRU;
 
 /* 邮箱头占用空间总长度定义*/
@@ -466,7 +467,7 @@ enum MAILBOX_QUEUE_ADDR_ENUM
 /*共享内存中的保护字定义*/
 #define MAILBOX_PROTECT1                (0x55AA55AA)    /* 邮箱保护字1，用于邮箱头及邮箱, 同时表示邮箱刚初始化没有接收过数据*/
 #define MAILBOX_PROTECT2                (0x5A5A5A5A)    /* 邮箱保护字2，用于邮箱头及邮箱 */
-#define MAILBOX_PROTECT_LEN             (sizeof(long))  /* 邮箱保护字长度，单位byte，邮箱头及邮箱头、尾均有两个这样的保护字 */
+#define MAILBOX_PROTECT_LEN             (sizeof(int))  /* 邮箱保护字长度，单位byte，邮箱头及邮箱头、尾均有两个这样的保护字 */
 #define MAILBOX_MSGHEAD_NUMBER          (0xA5A5A5A5)    /* 跨核消息消息分隔字 */
 
 #define MAILBOX_DATA_BASE_PROTECT_NUM         (2)    /* 邮箱通道共享内存数据区以首地址开始的保护字个数*/
@@ -581,14 +582,14 @@ enum MAILBOX_MAILSIZE_MAX_ENUM
 *****************************************************************************/
 typedef struct mb_mail
 {
-    unsigned long       ulPartition;    /*消息分隔字 0xA5A5A5A5*/
-    unsigned long       ulWriteSlice;   /*消息写入系统时间信息 */
-    unsigned long       ulReadSlice;    /*消息读出系统时间信息 */
-    unsigned long       ulSeqNum;       /*消息序列号 */
-    unsigned long       ulPriority;     /*消息优先级：紧急、普通, 废弃*/
-    unsigned long       ulMailCode;     /*邮编*/
-    unsigned long       ausReserve[2];  /*保留*/
-    unsigned long       ulMsgLength;    /*自ulMsgLength字段(不含本身)往后的消息长度*/
+    unsigned int       ulPartition;    /*消息分隔字 0xA5A5A5A5*/
+    unsigned int       ulWriteSlice;   /*消息写入系统时间信息 */
+    unsigned int       ulReadSlice;    /*消息读出系统时间信息 */
+    unsigned int       ulSeqNum;       /*消息序列号 */
+    unsigned int       ulPriority;     /*消息优先级：紧急、普通, 废弃*/
+    unsigned int       ulMailCode;     /*邮编*/
+    unsigned int       ausReserve[2];  /*保留*/
+    unsigned int       ulMsgLength;    /*自ulMsgLength字段(不含本身)往后的消息长度*/
 } MAILBOX_MSG_HEADER;
 
 /************************************************************************
@@ -614,14 +615,14 @@ typedef struct
 *****************************************************************************/
 typedef struct
 {
-    unsigned long uwProtectWord;                /*0x5a5a5a5a*/
-    unsigned long uwHifi2AarmMailBoxLen;        /* hifi到Aarm跨核邮箱长度 */
-    unsigned long uwAarm2HifiMailBoxLen;        /* Aarm到hifi跨核邮箱长度 */
-    unsigned long uwHifiAarmHeadAddr;
-    unsigned long uwHifiAarmBodyAddr;
-    unsigned long uwAarmHifiHeadAddr;
-    unsigned long uwAarmHifiBodyAddr;
-    unsigned long uwReserved[2];
+    unsigned int uwProtectWord;                /*0x5a5a5a5a*/
+    unsigned int uwHifi2AarmMailBoxLen;        /* hifi到Aarm跨核邮箱长度 */
+    unsigned int uwAarm2HifiMailBoxLen;        /* Aarm到hifi跨核邮箱长度 */
+    unsigned int uwHifiAarmHeadAddr;
+    unsigned int uwHifiAarmBodyAddr;
+    unsigned int uwAarmHifiHeadAddr;
+    unsigned int uwAarmHifiBodyAddr;
+    unsigned int uwReserved[2];
 }AARM_HIFI_MAILBOX_STRU;
 
 /*****************************************************************************
@@ -632,14 +633,14 @@ typedef struct
 *****************************************************************************/
 typedef struct
 {
-    unsigned long uwProtectWord;                /*0x5a5a5a5a*/
-    unsigned long uwHifi2CarmMailBoxLen;        /* hifi到Carm跨核邮箱长度 */
-    unsigned long uwCarm2HifiMailBoxLen;        /* Carm到hifi跨核邮箱长度 */
-    unsigned long uwHifiCarmHeadAddr;
-    unsigned long uwHifiCarmBodyAddr;
-    unsigned long uwCarmHifiHeadAddr;
-    unsigned long uwCarmHifiBodyAddr;
-    unsigned long uwReserved[2];
+    unsigned int uwProtectWord;                /*0x5a5a5a5a*/
+    unsigned int uwHifi2CarmMailBoxLen;        /* hifi到Carm跨核邮箱长度 */
+    unsigned int uwCarm2HifiMailBoxLen;        /* Carm到hifi跨核邮箱长度 */
+    unsigned int uwHifiCarmHeadAddr;
+    unsigned int uwHifiCarmBodyAddr;
+    unsigned int uwCarmHifiHeadAddr;
+    unsigned int uwCarmHifiBodyAddr;
+    unsigned int uwReserved[2];
 }CARM_HIFI_MAILBOX_STRU;
 
 /*****************************************************************************
@@ -650,12 +651,12 @@ typedef struct
 *****************************************************************************/
 typedef struct
 {
-    unsigned long uwProtectWord;            /*0x5a5a5a5a*/
+    unsigned int uwProtectWord;            /*0x5a5a5a5a*/
     CARM_HIFI_MAILBOX_STRU stCarmHifiMB;    /*CARM和HIFI的邮箱共享区定义*/
     AARM_HIFI_MAILBOX_STRU stAarmHifiMB;    /*AARM和HIFI的邮箱共享区定义*/
-    unsigned long uwNvBaseAddrPhy;          /*DDR上NV备份区首地址的物理地址*/
-    unsigned long uwNvBaseAddrVirt;         /*DDR上NV备份区首地址的ARM虚拟地址*/
-    unsigned long uwReserved[2];
+    unsigned int uwNvBaseAddrPhy;          /*DDR上NV备份区首地址的物理地址*/
+    unsigned int uwNvBaseAddrVirt;         /*DDR上NV备份区首地址的ARM虚拟地址*/
+    unsigned int uwReserved[2];
 }CARM_HIFI_DYN_ADDR_SHARE_STRU;
 
 /*****************************************************************************
@@ -680,25 +681,25 @@ typedef struct
 typedef void (*mb_msg_cb)(
                 void                   *user_handle,
                 void                   *mail_handle,
-                unsigned long           mail_len);
+                unsigned int           mail_len);
 
 
-unsigned long DRV_MAILBOX_SENDMAIL(
-                unsigned long           MailCode,
+unsigned int DRV_MAILBOX_SENDMAIL(
+                unsigned int           MailCode,
                 void                   *pData,
-                unsigned long           Length);
+                unsigned int           Length);
 
 
-unsigned long DRV_MAILBOX_REGISTERRECVFUNC(
-                unsigned long           MailCode,
+unsigned int DRV_MAILBOX_REGISTERRECVFUNC(
+                unsigned int           MailCode,
                 mb_msg_cb               pFun,
                 void                   *UserHandle);
 
 
-unsigned long DRV_MAILBOX_READMAILDATA(
+unsigned int DRV_MAILBOX_READMAILDATA(
                 void                   *MailHandle,
                 unsigned char          *pData,
-                unsigned long          *pSize);
+                unsigned int           *pSize);
 
 /*****************************************************************************
  函 数 名  : drv_hifi_fill_mb_info
@@ -715,7 +716,7 @@ unsigned long DRV_MAILBOX_READMAILDATA(
     修改内容   : 新生成函数
 
 *****************************************************************************/
-void drv_hifi_fill_mb_info(unsigned int addr);
+void drv_hifi_fill_mb_info(unsigned int* addr);
 
 
 

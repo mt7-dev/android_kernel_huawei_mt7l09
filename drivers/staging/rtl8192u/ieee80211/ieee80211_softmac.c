@@ -1126,7 +1126,6 @@ inline struct sk_buff *ieee80211_association_req(struct ieee80211_network *beaco
 		osCcxAironetIE.Length = sizeof(CcxAironetBuf);
 		//
 		// Ref. CCX test plan v3.61, 3.2.3.1 step 13.
-		// We want to make the device type as "4500-client". 060926, by CCW.
 		//
 		memcpy(osCcxAironetIE.Octet, AironetIeOui, sizeof(AironetIeOui));
 
@@ -1474,7 +1473,6 @@ inline void ieee80211_softmac_new_net(struct ieee80211_device *ieee, struct ieee
 				if (ieee->iw_mode == IW_MODE_INFRA){
 					/* Join the network for the first time */
 					ieee->AsocRetryCount = 0;
-					//for HT by amy 080514
 					if((ieee->current_network.qos_data.supported == 1) &&
 					  // (ieee->pHTInfo->bEnableHT && ieee->current_network.bssht.bdSupportHT))
 					   ieee->current_network.bssht.bdSupportHT)

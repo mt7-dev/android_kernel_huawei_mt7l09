@@ -73,6 +73,9 @@ extern "C" {
 #define LMM_MMC_EMERGENCY_NUM_MAX_LEN            (46)
 #define LMM_MMC_EMERGENCY_NUM_LIST_MAX_RECORDS   (16)
 
+#define LMM_MMC_MAX_SEARCHED_TAI_NUM            (16)
+
+
 /*****************************************************************************
   3 Massage Declare
 *****************************************************************************/
@@ -118,6 +121,8 @@ enum    MMC_LMM_MSG_ID_ENUM
 
     ID_MMC_LMM_IMS_VOICE_CAP_CHANGE_NOTIFY = (PS_MSG_ID_MMC_TO_LMM_BASE+0x1D),     /* _H2ASN_MsgChoice MMC_LMM_IMS_VOICE_CAP_CHANGE_NOTIFY_STRU*/
 
+    ID_MMC_LMM_VOICE_DOMAIN_CHANGE_IND  = (PS_MSG_ID_MMC_TO_LMM_BASE+0x22),     /* _H2ASN_MsgChoice MMC_LMM_VOICE_DOMAIN_CHANGE_IND_STRU*/
+    ID_MMC_LMM_CS_CONN_STATUS_NOTIFY    = (PS_MSG_ID_MMC_TO_LMM_BASE+0x23),     /* _H2ASN_MsgChoice MMC_LMM_CS_CONN_STATUS_NOTIFY_STRU*/
     /* LMM发送给MMC的消息原语*/
     ID_LMM_MMC_START_CNF                = (PS_MSG_ID_LMM_TO_MMC_BASE+0x01),     /* _H2ASN_MsgChoice LMM_MMC_START_CNF_STRU */
     ID_LMM_MMC_STOP_CNF                 = (PS_MSG_ID_LMM_TO_MMC_BASE+0x02),     /* _H2ASN_MsgChoice LMM_MMC_STOP_CNF_STRU */
@@ -155,6 +160,9 @@ enum    MMC_LMM_MSG_ID_ENUM
 /* lihong00150010 ims end */
     ID_LMM_MMC_SUSPEND_INFO_CHANGE_NOTIFY  = (PS_MSG_ID_LMM_TO_MMC_BASE+0x20),      /* _H2ASN_MsgChoice LMM_MMC_SUSPEND_INFO_CHANGE_NOTIFY_STRU */
     ID_LMM_MMC_INFO_CHANGE_NOTIFY        = (PS_MSG_ID_LMM_TO_MMC_BASE+0x21),    /* _H2ASN_MsgChoice LMM_MMC_INFO_CHANGE_NOTIFY_STRU*/
+    ID_LMM_MMC_SIM_AUTH_FAIL_IND           =  (PS_MSG_ID_LMM_TO_MMC_BASE+0x22),  /* _H2ASN_MsgChoice LMM_MMC_SIM_AUTH_FAIL_IND_STRU */
+    ID_LMM_MMC_SEARCHED_PLMN_INFO_IND    = (PS_MSG_ID_LMM_TO_MMC_BASE+0x23),  /* _H2ASN_MsgChoice LMM_MMC_SEARCHED_PLMN_INFO_IND_STRU*/
+
     ID_MMC_LMM_MSG_ID_ENUM_BUTT
 };
 typedef VOS_UINT32 MMC_LMM_MSG_ID_ENUM_UINT32;
@@ -1138,6 +1146,72 @@ enum LMM_MMC_LTE_CS_CAPBILITY_ENUM
 };
 typedef VOS_UINT32 LMM_MMC_LTE_CS_CAPBILITY_ENUM_UINT32;
 
+/*****************************************************************************
+ 结构名称: MMC_LMM_ACCESS_TYPE_ENUM
+ 协议表格:
+ ASN.1 描述:
+ 结构说明:
+*****************************************************************************/
+enum MMC_LMM_ACCESS_TYPE_ENUM
+{
+    MMC_LMM_ACCESS_TYPE_EUTRAN_TDD      = 0,
+    MMC_LMM_ACCESS_TYPE_EUTRAN_FDD         ,
+    MMC_LMM_ACCESS_TYPE_BUTT
+};
+typedef VOS_UINT8  MMC_LMM_ACCESS_TYPE_ENUM_UINT8;
+
+
+/*****************************************************************************
+ 结构名称: LMM_MMC_SIM_AUTH_FAIL_ENUM
+ 协议表格:
+ ASN.1 描述:
+ 结构说明: 卡鉴权失败原因值LMM通知MMC接口 20141103add
+*****************************************************************************/
+enum LMM_MMC_SIM_AUTH_FAIL_ENUM
+{
+    LMM_MMC_SIM_AUTH_FAIL_NULL                      = 0,
+    LMM_MMC_SIM_AUTH_FAIL_MAC_FAILURE               = 1,
+    LMM_MMC_SIM_AUTH_FAIL_SYNC_FAILURE              = 2,
+    LMM_MMC_SIM_AUTH_FAIL_OTHER                     = 3,
+    LMM_MMC_SIM_AUTH_FAIL_BUTT
+};
+typedef VOS_UINT16  LMM_MMC_SIM_AUTH_FAIL_ENUM_UINT16;
+
+/*****************************************************************************
+ 结构名称: LMM_MMC_SRV_DOMAIN_ENUM
+ 协议表格:
+ ASN.1 描述:
+ 结构说明: 卡鉴权失败服务域LMM通知MMC接口 20141103add
+*****************************************************************************/
+enum LMM_MMC_SRV_DOMAIN_ENUM
+{
+    LMM_MMC_SRV_DOMAIN_CS                           = 1,
+    LMM_MMC_SRV_DOMAIN_PS                           = 2,
+    LMM_MMC_SRV_DOMAIN_CS_PS                        = 3,
+    LMM_MMC_SRV_DOMAIN_BUTT
+};
+typedef VOS_UINT8  LMM_MMC_SRV_DOMAIN_ENUM_UINT8;
+
+
+enum MMC_LMM_VOICE_DOMAIN_ENUM
+{
+    MMC_LMM_VOICE_DOMAIN_CS_ONLY            = 0,    /* CS voice only */
+    MMC_LMM_VOICE_DOMAIN_IMS_PS_ONLY        = 1,    /* IMS PS voice only */
+    MMC_LMM_VOICE_DOMAIN_CS_PREFERRED       = 2,    /* CS vocie preferred, IMS PS voice as secondary */
+    MMC_LMM_VOICE_DOMAIN_IMS_PS_PREFERRED   = 3,    /* IMS PS voice preferred, CS vocie as secondary */
+
+    MMC_LMM_VOICE_DOMAIN_BUTT
+};
+typedef VOS_UINT8  MMC_LMM_VOICE_DOMAIN_ENUM_UINT32;
+
+
+enum MMC_LMM_IMS_SWITCH_STATE_ENUM
+{
+    MMC_LMM_IMS_SWITCH_STATE_OFF                     = 0,    /* ims off */
+    MMC_LMM_IMS_SWITCH_STATE_ON                      = 1,    /* ims on */
+    MMC_LMM_IMS_SWITCH_STATE_BUTT
+};
+typedef VOS_UINT8  MMC_LMM_IMS_SWITCH_STATE_ENUM_UINT8;
 
 /*****************************************************************************
   5 STRUCT
@@ -1294,7 +1368,7 @@ typedef struct
     /*Modify by sunbing 49683 for CL multimode 2014-01-09 begin*/
     VOS_UINT16                          usArfcn;                                /* 驻留频点信息 */
     VOS_UINT8                           ucBandWidth;                            /* 带宽信息 */
-    VOS_UINT8                           ucRsv;
+    MMC_LMM_ACCESS_TYPE_ENUM_UINT8      enAccessType;                           /* 接入类型:TDD/FDD */
     /*Modify by sunbing 49683 for CL multimode 2014-01-09 end*/
 }MMC_LMM_SYS_INFO_STRU;
 
@@ -2609,6 +2683,24 @@ typedef struct
     MMC_LMM_MSG_ID_ENUM_UINT32                ulMsgId;            /*_H2ASN_Skip*/
     VOS_UINT32                                ulOpId;
 } MMC_LMM_ENABLE_LTE_NOTIFY_STRU;
+
+/*****************************************************************************
+ 结构名称: MMC_LMM_CS_CONN_STATUS_NOTIFY_STRU
+ 协议表格:
+ ASN.1 描述:
+ 结构说明:ID_MM_LMM_CONN_STATUS_NOTIFY_STRU
+*****************************************************************************/
+typedef struct
+{
+    VOS_MSG_HEADER                                          /*_H2ASN_Skip*/
+    MMC_LMM_MSG_ID_ENUM_UINT32          ulMsgId;            /*_H2ASN_Skip*/
+    VOS_UINT32                          ulOpId;
+    VOS_UINT8                           ucCsRrConnStatusFlg;                    /* CS域RR连接是否存在,VOS_FALSE:不存在,VOS_TRUE:存在 */
+    VOS_UINT8                           ucCsEmergencyConnStatusFlg;             /* 紧急呼叫链路是否存在,VOS_TRUE:存在，VOS_FALSE不存在 */
+    VOS_UINT8                           aucReserved[2];
+} MMC_LMM_CS_CONN_STATUS_NOTIFY_STRU;
+
+
 /*****************************************************************************
  结构名    : MMC_LMM_SUSPEND_REL_REQ_STRU
  协议表格  :
@@ -2829,6 +2921,52 @@ typedef struct
     LMM_MMC_NW_EMC_BS_ENUM_UINT32           enNwEmcBS;
     LMM_MMC_LTE_CS_CAPBILITY_ENUM_UINT32    enLteCsCap ;
 } LMM_MMC_INFO_CHANGE_NOTIFY_STRU;
+
+/*****************************************************************************
+ 结构名    : LMM_MMC_SIM_AUTH_FAIL_IND_STRU
+ 协议表格  :
+ ASN.1描述 :
+ 结构说明  : 卡鉴权失败LMM通知MMC接口 20141103add
+*****************************************************************************/
+typedef struct
+{
+    VOS_MSG_HEADER
+    MMC_LMM_MSG_ID_ENUM_UINT32              ulMsgId;
+
+    LMM_MMC_SIM_AUTH_FAIL_ENUM_UINT16       enSimAuthFailValue;  /*卡鉴权失败返回的失败原因值*/
+    LMM_MMC_SRV_DOMAIN_ENUM_UINT8           enSrvDomain;         /*服务域*/
+    VOS_UINT8                               ucRsv;
+} LMM_MMC_SIM_AUTH_FAIL_IND_STRU;
+
+/*****************************************************************************
+ 结构名    : LMM_MMC_SEARCHED_PLMN_INFO_IND_STRU
+ 协议表格  :
+ ASN.1描述 :
+ 结构说明  :
+*****************************************************************************/
+typedef struct
+{
+    VOS_MSG_HEADER                                              /*_H2ASN_Skip*/
+    MMC_LMM_MSG_ID_ENUM_UINT32              ulMsgId;            /*_H2ASN_Skip*/
+    VOS_UINT32                              ulTaiNum;           /*LRRC上报TAI个数*/
+    NAS_LMM_TAI_STRU                        stTaiList[LMM_MMC_MAX_SEARCHED_TAI_NUM];    /*LRRC上报TAI列表*/
+} LMM_MMC_SEARCHED_PLMN_INFO_IND_STRU;
+
+
+
+typedef struct
+{
+    VOS_MSG_HEADER                                                              /*_H2ASN_Skip*/
+    MMC_LMM_MSG_ID_ENUM_UINT32              ulMsgId;                            /*_H2ASN_Skip*/
+    MMC_LMM_IMS_SWITCH_STATE_ENUM_UINT8     enImsSwitch;                        /* IMS能力开关,1:打开,0:关闭 */
+    VOS_UINT8                               aucReserved[3];
+} MMC_LMM_IMS_SWITCH_STATE_IND_STRU;
+typedef struct
+{
+    VOS_MSG_HEADER                                                              /*_H2ASN_Skip*/
+    MMC_LMM_MSG_ID_ENUM_UINT32              ulMsgId;                            /*_H2ASN_Skip*/
+    MMC_LMM_VOICE_DOMAIN_ENUM_UINT32        enVoiceDomain;                      /* 语音优选域 */
+} MMC_LMM_VOICE_DOMAIN_CHANGE_IND_STRU;
 
 
 /*****************************************************************************

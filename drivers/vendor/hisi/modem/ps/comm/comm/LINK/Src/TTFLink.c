@@ -34,6 +34,7 @@
 /******************************************************************************
    4 全局变量定义
 ******************************************************************************/
+VOS_SPINLOCK             g_stTtfLinkSpinLock;
 
 
 /******************************************************************************
@@ -417,16 +418,15 @@ VOS_UINT32 TTF_LinkStick(VOS_UINT32 ulPid, TTF_LINK_ST *pLink1,
 }
 VOS_UINT32 TTF_LinkSafeInsertTail(VOS_UINT32 ulPid, TTF_LINK_ST * pLink, TTF_NODE_ST *pInsert, VOS_UINT32 *pulNonEmptyEvent)
 {
-    VOS_INT32       lLockKey;
-
+    VOS_ULONG       ulLockLevel = 0UL;
 
     *pulNonEmptyEvent    = PS_FALSE;
 
-    lLockKey    = VOS_SplIMP();
+    VOS_SpinLockIntLock(&g_stTtfLinkSpinLock, ulLockLevel);
 
     if ( (VOS_NULL_PTR == pLink) || (VOS_NULL_PTR == pInsert) )
     {
-        VOS_Splx(lLockKey);
+        VOS_SpinUnlockIntUnlock(&g_stTtfLinkSpinLock, ulLockLevel);
         PS_LOG(ulPid, 0, PS_PRINT_WARNING, "Warning: pLink Or pInsert is Null!");
         return PS_FAIL;
     }
@@ -435,7 +435,7 @@ VOS_UINT32 TTF_LinkSafeInsertTail(VOS_UINT32 ulPid, TTF_LINK_ST * pLink, TTF_NOD
     /*检查节点pInsert是否在链表pLink中*/
     if ( PS_TRUE == TTF_LinkCheckNodeInLink(ulPid, pLink, pInsert) )
     {
-        VOS_Splx(lLockKey);
+        VOS_SpinUnlockIntUnlock(&g_stTtfLinkSpinLock, ulLockLevel);
         PS_LOG(ulPid, 0, PS_PRINT_WARNING, "Warning: pInsert has Existed in pLink!");
         return PS_FAIL;
     }
@@ -454,7 +454,7 @@ VOS_UINT32 TTF_LinkSafeInsertTail(VOS_UINT32 ulPid, TTF_LINK_ST * pLink, TTF_NOD
 
     pLink->ulCnt++;
 
-    VOS_Splx(lLockKey);
+    VOS_SpinUnlockIntUnlock(&g_stTtfLinkSpinLock, ulLockLevel);
 
     return PS_SUCC;
 } /* TTF_LinkSafeInsertTail */
@@ -464,23 +464,22 @@ VOS_UINT32 TTF_LinkSafeInsertTail(VOS_UINT32 ulPid, TTF_LINK_ST * pLink, TTF_NOD
 TTF_NODE_ST* TTF_LinkSafeRemoveHead(VOS_UINT32 ulPid, TTF_LINK_ST * pLink, VOS_UINT32 *pulRemainCnt)
 {
     TTF_NODE_ST    *pNode;
-    VOS_INT32       lLockKey;
+    VOS_ULONG       ulLockLevel = 0UL;
 
-
-    lLockKey    = VOS_SplIMP();
+    VOS_SpinLockIntLock(&g_stTtfLinkSpinLock, ulLockLevel);
 
     *pulRemainCnt   = 0;
 
     if (VOS_NULL_PTR == pLink)
     {
-        VOS_Splx(lLockKey);
+        VOS_SpinUnlockIntUnlock(&g_stTtfLinkSpinLock, ulLockLevel);
         PS_LOG(ulPid, 0, PS_PRINT_WARNING, "Warning: pLink is Null!");
         return VOS_NULL_PTR;
     }
 
     if (0 == pLink->ulCnt)
     {
-        VOS_Splx(lLockKey);
+        VOS_SpinUnlockIntUnlock(&g_stTtfLinkSpinLock, ulLockLevel);
         PS_LOG(ulPid, 0, PS_PRINT_INFO, "Warning: pLink Cnt is 0!");
         return VOS_NULL_PTR;
     }
@@ -489,7 +488,7 @@ TTF_NODE_ST* TTF_LinkSafeRemoveHead(VOS_UINT32 ulPid, TTF_LINK_ST * pLink, VOS_U
     if ( pLink->stHead.pNext == &pLink->stHead )
     {
         pLink->ulCnt = 0;
-        VOS_Splx(lLockKey);
+        VOS_SpinUnlockIntUnlock(&g_stTtfLinkSpinLock, ulLockLevel);
         PS_LOG1(ulPid, 0, PS_PRINT_WARNING, "Warning: pLink is null, but Cnt is <1>!", (VOS_INT32)pLink->ulCnt);
         return VOS_NULL_PTR;
     }
@@ -505,10 +504,9 @@ TTF_NODE_ST* TTF_LinkSafeRemoveHead(VOS_UINT32 ulPid, TTF_LINK_ST * pLink, VOS_U
     /* 获取队列里剩余元素个数 */
     *pulRemainCnt   = pLink->ulCnt;
 
-    VOS_Splx(lLockKey);
+    VOS_SpinUnlockIntUnlock(&g_stTtfLinkSpinLock, ulLockLevel);
 
     return pNode;
-
 } /* TTF_LinkSafeRemoveHead */
 
 #ifndef _lint

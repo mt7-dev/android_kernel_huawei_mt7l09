@@ -8,6 +8,8 @@
 #include  "vos.h"
 #include  "PsTypeDef.h"
 
+#include "NasUtranCtrlInterface.h"
+
 #ifdef __cplusplus
 #if __cplusplus
 extern "C" {
@@ -33,6 +35,9 @@ enum NAS_GMM_OM_MSG_ID_ENUM
     GMMOM_LOG_STATE_INFO_IND                       = 0x1000,      /*_H2ASN_MsgChoice  NAS_GMM_LOG_STATE_INFO_STRU */
     GMMOM_LOG_AUTH_INFO_IND                        = 0x1001,      /*_H2ASN_MsgChoice  NAS_GMM_LOG_AUTH_INFO_STRU */
     GMMOM_LOG_RADIAO_ACCESS_CAP                    = 0x1002,      /*_H2ASN_MsgChoice  NAS_GMM_LOG_GAS_RADIO_ACCESS_CAP_STRU */
+
+    GMMOM_LOG_CTX_INFO_IND                         = 0x1003,      /*_H2ASN_MsgChoice  GMMOM_LOG_CTX_INFO_STRU */
+    GMMOM_LOG_AUTN_LEN_INFO_IND                    = 0x1004,      /*_H2ASN_MsgChoice  NAS_GMM_LOG_AUTN_LEN_INFO_IND_STRU */
     GMMOM_LOG_BUTT
 };
 typedef VOS_UINT32 NAS_GMM_OM_MSG_ID_ENUM_UINT32;
@@ -101,6 +106,109 @@ typedef struct
     NAS_GMM_STATE_ID_ENUM_UINT8         enGmmState;
     VOS_UINT8                           aucRsv3[3];
 }NAS_GMM_LOG_STATE_INFO_STRU;
+typedef struct
+{
+    VOS_UINT8                           ucT3312ExpiredFlg; /* 记录g_GmmRauCtrl.ucT3312ExpiredFlg T3312定时器是否超时标识 */
+    VOS_UINT8                           ucT3311ExpiredFlg; /* 记录g_GmmRauCtrl.ucT3311ExpiredFlg T3311是否超时标识 */
+    VOS_UINT8                           aucReserved[2];
+}GMMOM_LOG_GMM_RAU_CTRL_INFO_STRU;
+
+
+
+typedef struct
+{
+    VOS_UINT8                               ucCnfMask;     /* 记录g_GmmReqCnfMng.ucCnfMask*/
+    VOS_UINT8                               aucReserved[3];
+}GMMOM_LOG_GMM_REQ_CNF_MNG_INFO_STRU;
+typedef struct
+{
+    VOS_UINT8                               ucRetrySrForRelCtrlFlg;     /* 记录g_GmmServiceCtrl.ucRetrySrForRelCtrlFlg*/
+    VOS_UINT8                               aucReserved[3];
+}GMMOM_LOG_GMM_SERVICE_CTRL_INFO_STRU;
+typedef struct
+{
+    VOS_UINT32                               ulTimerRunMask;     /* 记录g_GmmTimerMng.ulTimerRunMask*/
+}GMMOM_LOG_GMM_TIMER_MNG_INFO_STRU;
+typedef struct
+{
+    VOS_UINT8                           ucPreRat;     /* 记录gstGmmSuspendCtrl.ucPreRat切换时接入技术 */
+    VOS_UINT8                           ucT3312State; /* 记录gstGmmSuspendCtrl.ucT3312State T3312定时器运行状态 */
+    VOS_UINT8                           ucNetModeChange; /*记录gstGmmSuspendCtrl.ucNetModeChange 异系统改变时网络模式改变的类型 */
+    VOS_UINT8                           ucPreSrvState;   /* 记录gstGmmSuspendCtrl.ucPreSrvState*/
+}GMMOM_LOG_GMM_SUSPEND_CTRL_INFO_STRU;
+
+
+typedef struct
+{
+    VOS_UINT8                                               ucSpecProc;              /* 记录g_GmmGlobalCtrl.ucSpecProc当前gmm的专有流程 */
+    VOS_UINT8                                               UeInfo_UeId_ucUeIdMask;  /* 记录g_GmmGlobalCtrl.UeInfo.UeId.ucUeIdMask UeId存在标识 */
+    VOS_UINT8                                               CsInfo_ucCsTransFlg;     /* 记录g_GmmGlobalCtrl.CsInfo.ucCsTransFlg CS域是否通信中标志*/
+    VOS_UINT8                                               ucSigConFlg;             /* 记录g_GmmGlobalCtrl.ucSigConFlg*/
+    VOS_UINT8                                               ucRaiChgRelFlg;          /* 记录g_GmmGlobalCtrl.ucRaiChgRelFlg*/
+    VOS_UINT8                                               SysInfo_ucNetMod;        /* 记录g_GmmGlobalCtrl.SysInfo.ucNetMod*/
+    VOS_UINT8                                               ucCvrgAreaLostFlg;       /* 记录g_GmmGlobalCtrl.ucCvrgAreaLostFlg*/
+    VOS_UINT8                                               ucDetachType;            /* 记录g_GmmGlobalCtrl.stDetachInfo.enDetachType*/
+    VOS_UINT8                                               ucRelCause;              /*记录g_GmmGlobalCtrl.ucRelCause*/
+    VOS_UINT8                                               ucSpecProcInCsTrans;     /*记录g_GmmGlobalCtrl.ucSpecProcInCsTrans*/
+    VOS_UINT8                                               SysInfo_ucCellChgFlg;    /*记录g_GmmGlobalCtrl.SysInfo.ucCellChgFlg*/
+    VOS_UINT8                                               UeInfo_ucMsRadioCapSupportLteFromAs; /*记录g_GmmGlobalCtrl.UeInfo.ucMsRadioCapSupportLteFromAs*/
+    GMM_RAI_STRU                                            SysInfo_Rai;             /* 记录g_GmmGlobalCtrl.SysInfo.Rai*/
+    VOS_UINT8                                               UeInfo_ucMsRadioCapSupportLteFromRegReq; /*记录g_GmmGlobalCtrl.UeInfo.enVoiceDomainFromRegReq*/
+    NAS_MML_VOICE_DOMAIN_PREFERENCE_ENUM_UINT8              UeInfo_enVoiceDomainFromRegRq;
+}GMMOM_LOG_GMM_GLOBAL_CTRL_INFO_STRU;
+
+
+typedef struct
+{
+    VOS_UINT8                           ucRetryAttachForRelCtrlFlg;     /* 记录GmmAttachCtrl.ucRetryAttachForRelCtrlFlg Attach流程被异常释放，需要在收到系统消息后重新发起 */
+    VOS_UINT8                           ucRetryFlg;                     /*记录g_GmmAttachCtrl.ucRetryFlg*/
+    VOS_UINT8                           ucAttachAttmptCnt;              /*记录g_GmmAttachCtrl.ucAttachAttmptCnt*/
+    VOS_UINT8                           ucReserved;
+}GMMOM_LOG_GMM_ATTACH_CTRL_INFO_STRU;
+typedef struct
+{
+    VOS_UINT8               ucLastDataSender;            /*记录gstGmmCasGlobalCtrl.ucLastDataSender*/
+    VOS_UINT8               ucSuspendLlcCause;           /*记录gstGmmCasGlobalCtrl.ucSuspendLlcCause*/
+    VOS_UINT8               ucTlliAssignFlg;             /*记录gstGmmCasGlobalCtrl.ucTlliAssignFlg*/
+    VOS_UINT8               ucReserved;
+}GMMOM_LOG_GMM_CAS_GLOBAL_CTRL_INFO_STRU;
+typedef struct
+{
+    NAS_MML_TIN_TYPE_ENUM_UINT8              enTinType;     /* 记录NAS_MML_GetTinType TIN类型 */
+    VOS_UINT8                                ucT3423State;  /* 记录NAS_MML_GetT3423Status T3423定时器运行状态 */
+    VOS_UINT8                                ucPsRegStatus; /* 记录NAS_MML_GetSimPsRegStatus PS域的SIM卡注册信息*/
+    VOS_UINT8                                ucWSysInfoDrxLen; /*记录NAS_MML_GetWSysInfoDrxLen*/
+    NAS_MML_RAI_STRU                         stPsLastSuccRai;  /*记录NAS_MML_GetPsLastSuccRai*/
+    NAS_MML_ROUTING_UPDATE_STATUS_ENUM_UINT8 enPsUpdateStatus; /*记录NAS_MML_GetPsUpdateStatus*/
+    VOS_UINT8                                ucPsServiceBufferStatusFlg; /*记录NAS_MML_GetPsServiceBufferStatusFlg*/
+    NAS_MML_MS_MODE_ENUM_UINT8               enMsMode;         /*记录NAS_MML_GetMsMode*/
+    VOS_UINT8                                ucIsTmsiValid;    /*记录NAS_MML_IsTmsiValid*/
+    NAS_MML_PS_BEARER_CONTEXT_STRU           astPsBearerContext[NAS_MML_MAX_PS_BEARER_NUM];  /* 记录NAS_MML_GetPsBearerCtx */
+    NAS_UTRANCTRL_UTRAN_MODE_ENUM_UINT8      enCurrUtranMode;  /*记录NAS_UTRANCTRL_GetCurrUtranMode*/
+    VOS_UINT8                                aucReserved[3];
+}GMMOM_LOG_MML_CTX_INFO_STRU;
+typedef struct
+{
+    VOS_UINT8               GmmShare_ucGsAssociationFlg;            /*记录g_MmSubLyrShare.GmmShare.ucGsAssociationFlg*/
+    VOS_UINT8               aucReserved[3];
+}GMMOM_LOG_MM_SUB_LYR_SHARE_INFO_STRU;
+typedef struct
+{
+    MSG_HEADER_STRU                          stMsgHeader;/* 消息头 */ /*_H2ASN_Skip*/
+
+    GMMOM_LOG_GMM_SUSPEND_CTRL_INFO_STRU     stGmmSuspendCtrlInfo;
+    GMMOM_LOG_GMM_RAU_CTRL_INFO_STRU         stGmmRauCtrlInfo;
+    GMMOM_LOG_GMM_GLOBAL_CTRL_INFO_STRU      stGmmGlobalCtrlInfo;
+    GMMOM_LOG_GMM_CAS_GLOBAL_CTRL_INFO_STRU  stGmmGasGlobalCtrlInfo;
+    GMMOM_LOG_GMM_REQ_CNF_MNG_INFO_STRU      stGmmReqCnfMngInfo;
+    GMMOM_LOG_GMM_SERVICE_CTRL_INFO_STRU     stGmmServiceCtrlInfo;
+    GMMOM_LOG_GMM_TIMER_MNG_INFO_STRU        stGmmTimerMngInfo;
+    GMMOM_LOG_MML_CTX_INFO_STRU              stMmlCtxInfo;
+    GMMOM_LOG_MM_SUB_LYR_SHARE_INFO_STRU     stMmSubLyrShareInfo;
+}GMMOM_LOG_CTX_INFO_STRU;
+
+
+
 
 /*****************************************************************************
  结构名    : NAS_GMM_LOG_GAS_RADIO_ACCESS_CAP_STRU
@@ -129,7 +237,12 @@ typedef struct
     VOS_UINT8                           ucRcvOpId;
     VOS_UINT8                           aucRsv[2];
 }NAS_GMM_LOG_AUTH_INFO_STRU;
-
+typedef struct
+{
+    MSG_HEADER_STRU                     stMsgHeader;/* 消息头 */ /*_H2ASN_Skip*/
+    VOS_UINT8                           ucLen;
+    VOS_UINT8                           aucRsv[3];
+}NAS_GMM_LOG_AUTN_LEN_INFO_STRU;
 
 /*****************************************************************************
   H2ASN顶级消息结构定义
@@ -167,6 +280,8 @@ typedef struct
 extern VOS_VOID  NAS_GMM_LogGmmStateInfo(
     VOS_UINT8                           ucGmmState
 );
+
+extern VOS_VOID  NAS_GMM_LogGmmCtxInfo(VOS_VOID);
 
 extern VOS_VOID NAS_GMM_LogGasGmmRadioAccessCapability(
     VOS_UINT32                          ulRst,

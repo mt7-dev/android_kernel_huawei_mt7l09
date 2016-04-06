@@ -57,7 +57,7 @@ extern "C" {
 extern VOS_MSG_HOOK_FUNC                vos_MsgHook;
 #endif
 
-#define MSG_SEND_SIZE    ( sizeof(VOS_UINT32) )
+#define MSG_SEND_SIZE    ( sizeof(VOS_UINT_PTR) )
 
 #if (VOS_DEBUG == VOS_DOPRA_VER)
 
@@ -81,29 +81,29 @@ VOS_CHAR    g_aucDumpMsgInfo[DUMP_MSG_INFO_LEN];
 #ifdef VOS_OSA_SINGLE_ARM
 
 VOS_SENDMSG_FUNCLIST_ST g_astVOSSendMsgProcTable[VOS_SUPPORT_CPU_NUM_MAX]={
-                                                    {VOS_CPU_ID_1_PID_BUTT, V_SendLocalMsg,V_SendLocalUrgentMsg},/* Send Local Msg */
-                                                    {VOS_CPU_ID_1_PID_BUTT, V_SendLocalMsg,V_SendLocalUrgentMsg},/* Send Local Msg */
-                                                    {VOS_CPU_ID_1_PID_BUTT, V_SendLocalMsg,V_SendLocalUrgentMsg},/* Send Msg to DSP */
-                                                    {VOS_CPU_ID_1_PID_BUTT, V_SendLocalMsg,V_SendLocalUrgentMsg},/* Send Msg to HIFI */
-                                                    {VOS_CPU_ID_1_PID_BUTT, V_SendLocalMsg,V_SendLocalUrgentMsg}};/* Send Msg to MCU */
+                                                    {VOS_CPU_ID_1_PID_BUTT, 0, V_SendLocalMsg,V_SendLocalUrgentMsg},/* Send Local Msg */
+                                                    {VOS_CPU_ID_1_PID_BUTT, 0, V_SendLocalMsg,V_SendLocalUrgentMsg},/* Send Local Msg */
+                                                    {VOS_CPU_ID_1_PID_BUTT, 0, V_SendLocalMsg,V_SendLocalUrgentMsg},/* Send Msg to DSP */
+                                                    {VOS_CPU_ID_1_PID_BUTT, 0, V_SendLocalMsg,V_SendLocalUrgentMsg},/* Send Msg to HIFI */
+                                                    {VOS_CPU_ID_1_PID_BUTT, 0, V_SendLocalMsg,V_SendLocalUrgentMsg}};/* Send Msg to MCU */
 #else
 
 #if (OSA_CPU_CCPU == VOS_OSA_CPU)
 VOS_SENDMSG_FUNCLIST_ST g_astVOSSendMsgProcTable[VOS_SUPPORT_CPU_NUM_MAX]={
-                            {VOS_CPU_ID_0_PID_BUTT, V_SendLocalMsg,     V_SendLocalUrgentMsg},  /* Send Local Msg */
-                            {VOS_CPU_ID_1_PID_BUTT, V_SendMsgByICC,     V_SendMsgByICC},        /* Send Msg to Other ARM */
-                            {VOS_CPU_ID_2_PID_BUTT, VOS_NULL_PTR,       VOS_NULL_PTR},          /* Send Msg to DSP */
-                            {VOS_CPU_ID_3_PID_BUTT, VOS_SendHIFIMsg,    VOS_SendHIFIUrgentMsg}, /* Send Msg to HIFI */
-                            {VOS_CPU_ID_4_PID_BUTT, VOS_SendMCUMsg,     VOS_SendMCUUrgentMsg}}; /* Send Msg to MCU */
+                            {VOS_CPU_ID_0_PID_BUTT, 0, V_SendLocalMsg,     V_SendLocalUrgentMsg},  /* Send Local Msg */
+                            {VOS_CPU_ID_1_PID_BUTT, 0, V_SendMsgByICC,     V_SendMsgByICC},        /* Send Msg to Other ARM */
+                            {VOS_CPU_ID_2_PID_BUTT, 0, VOS_NULL_PTR,       VOS_NULL_PTR},          /* Send Msg to DSP */
+                            {VOS_CPU_ID_3_PID_BUTT, 0, VOS_SendHIFIMsg,    VOS_SendHIFIUrgentMsg}, /* Send Msg to HIFI */
+                            {VOS_CPU_ID_4_PID_BUTT, 0, VOS_SendMCUMsg,     VOS_SendMCUUrgentMsg}}; /* Send Msg to MCU */
 #endif
 
 #if (OSA_CPU_ACPU == VOS_OSA_CPU)
 VOS_SENDMSG_FUNCLIST_ST g_astVOSSendMsgProcTable[VOS_SUPPORT_CPU_NUM_MAX]={
-                            {VOS_CPU_ID_0_PID_BUTT, V_SendMsgByICC,     V_SendMsgByICC},        /*Send Msg to Other ARM*/
-                            {VOS_CPU_ID_1_PID_BUTT, V_SendLocalMsg,     V_SendLocalUrgentMsg},  /*Send Local Msg*/
-                            {VOS_CPU_ID_2_PID_BUTT, VOS_NULL_PTR,       VOS_NULL_PTR},          /*Send Msg to ZSP, RSV*/
-                            {VOS_CPU_ID_3_PID_BUTT, VOS_SendHIFIMsg,    VOS_SendHIFIUrgentMsg}, /*Send Msg to HIFI*/
-                            {VOS_CPU_ID_4_PID_BUTT, VOS_SendMCUMsg,     VOS_SendMCUUrgentMsg}}; /*Send Msg to MCU*/
+                            {VOS_CPU_ID_0_PID_BUTT, 0, V_SendMsgByICC,     V_SendMsgByICC},        /*Send Msg to Other ARM*/
+                            {VOS_CPU_ID_1_PID_BUTT, 0, V_SendLocalMsg,     V_SendLocalUrgentMsg},  /*Send Local Msg*/
+                            {VOS_CPU_ID_2_PID_BUTT, 0, VOS_NULL_PTR,       VOS_NULL_PTR},          /*Send Msg to ZSP, RSV*/
+                            {VOS_CPU_ID_3_PID_BUTT, 0, VOS_SendHIFIMsg,    VOS_SendHIFIUrgentMsg}, /*Send Msg to HIFI*/
+                            {VOS_CPU_ID_4_PID_BUTT, 0, VOS_SendMCUMsg,     VOS_SendMCUUrgentMsg}}; /*Send Msg to MCU*/
 #endif
 
 #endif
@@ -212,7 +212,7 @@ VOS_VOID VOS_DRVMB_OSAMsg_CB(VOS_VOID *pUserPara, VOS_VOID *pMailHandle, VOS_UIN
     MsgBlock                           *pstMsgCtrlBlk;
     VOS_UINT32                         ulMailboxLen = ulLen;
     VOS_UINT32                         ulMailCode;
-
+    VOS_UINT_PTR                       TempValue;
     if(0 == g_HifiStatus)
     {
         return ;
@@ -224,7 +224,9 @@ VOS_VOID VOS_DRVMB_OSAMsg_CB(VOS_VOID *pUserPara, VOS_VOID *pMailHandle, VOS_UIN
 
         VOS_SetErrorNo(VOS_ERRNO_MSG_MB_DATALENISNULL);
 
-        DRV_SYSTEM_ERROR(VOS_ERRNO_MSG_MB_DATALENISNULL, (VOS_INT)ulLen, (VOS_INT)pUserPara,
+        TempValue = (VOS_UINT_PTR)pUserPara;
+
+        DRV_SYSTEM_ERROR(VOS_ERRNO_MSG_MB_DATALENISNULL, (VOS_INT)ulLen, (VOS_INT)TempValue,
                             VOS_NULL_PTR, 0);
 
         return ;
@@ -247,7 +249,8 @@ VOS_VOID VOS_DRVMB_OSAMsg_CB(VOS_VOID *pUserPara, VOS_VOID *pMailHandle, VOS_UIN
 
     VOS_ModifyMsgInfo((VOS_VOID *)pstMsgCtrlBlk, pstMsgCtrlBlk->ulSenderPid);
 
-    ulMailCode = (VOS_UINT32)pUserPara;
+    TempValue  = (VOS_UINT_PTR)pUserPara;
+    ulMailCode = (VOS_UINT32)TempValue;
 
     if ( VOS_MAIL_BOX_MSG_NORMAL_BUTT < ulMailCode )/*urgend msg*/
     {
@@ -571,7 +574,7 @@ MsgBlock * V_AllocMsg(VOS_PID Pid, VOS_UINT32 ulLength,
 
     pMsgBlkHead->ulFlag = VOS_MSG_HEAD_FLAG;
 
-    MsgBlock_Ptr = (MsgBlock*)( (VOS_UINT32)pMsgBlkHead
+    MsgBlock_Ptr = (MsgBlock*)( (VOS_UINT_PTR)pMsgBlkHead
                         + VOS_MSG_BLK_HEAD_LEN );
     MsgBlock_Ptr->ulSenderCpuId = VOS_LOCAL_CPUID;
     MsgBlock_Ptr->ulSenderPid   = Pid;
@@ -627,7 +630,7 @@ MsgBlock * VOS_AllocTimerMsg(VOS_PID Pid, VOS_UINT32 ulLength )
 
     pMsgBlkHead->ulFlag     = VOS_MSG_HEAD_FLAG;
 
-    MsgBlock_Ptr = (MsgBlock*)( (VOS_UINT32)pMsgBlkHead
+    MsgBlock_Ptr = (MsgBlock*)( (VOS_UINT_PTR)pMsgBlkHead
                         + VOS_MSG_BLK_HEAD_LEN );
 
     MsgBlock_Ptr->ulSenderCpuId   = VOS_LOCAL_CPUID;
@@ -653,8 +656,8 @@ VOS_UINT32 V_FreeMsg(VOS_PID Pid, VOS_VOID **ppMsg,
 {
     VOS_VOID            *pMsgBlkHead;
     MSG_BLOCK_HEAD      *pstMSG;
-    VOS_UINT32          ulBlockAdd;
-    VOS_UINT32          ulCtrlkAdd;
+    VOS_UINT_PTR         ulBlockAdd;
+    VOS_UINT_PTR         ulCtrlkAdd;
 
 #if ( VOS_YES == VOS_CHECK_PARA)
     if(Pid >= VOS_PID_BUTT)
@@ -679,7 +682,7 @@ VOS_UINT32 V_FreeMsg(VOS_PID Pid, VOS_VOID **ppMsg,
     }
 #endif
 
-    pMsgBlkHead = (VOS_VOID*)( (VOS_UINT32)(*ppMsg)
+    pMsgBlkHead = (VOS_VOID*)( (VOS_UINT_PTR)(*ppMsg)
                          - VOS_MSG_BLK_HEAD_LEN );
 
     if ( VOS_OK != VOS_MemCheck( pMsgBlkHead, &ulBlockAdd, &ulCtrlkAdd,
@@ -723,8 +726,8 @@ VOS_UINT32 V_ReserveMsg(VOS_PID Pid, MsgBlock * pMsg,
                             VOS_UINT32 ulFileID, VOS_INT32 usLineNo )
 {
     MSG_BLOCK_HEAD      *MSG_BLOCK_Ptr;
-    VOS_UINT32          ulBlockAdd;
-    VOS_UINT32          ulCtrlkAdd;
+    VOS_UINT_PTR         ulBlockAdd;
+    VOS_UINT_PTR         ulCtrlkAdd;
 
     if(Pid >= VOS_PID_BUTT)
     {
@@ -738,7 +741,7 @@ VOS_UINT32 V_ReserveMsg(VOS_PID Pid, MsgBlock * pMsg,
         return(VOS_ERRNO_MSG_FREE_INPUTPIDINVALID);
     }
 
-    MSG_BLOCK_Ptr = (MSG_BLOCK_HEAD*)( (VOS_UINT32)pMsg
+    MSG_BLOCK_Ptr = (MSG_BLOCK_HEAD*)( (VOS_UINT_PTR)pMsg
                          - VOS_MSG_BLK_HEAD_LEN );
 
     if ( VOS_OK != VOS_MemCheck( (VOS_VOID *)MSG_BLOCK_Ptr, &ulBlockAdd,
@@ -770,8 +773,8 @@ VOS_UINT32 V_UnreserveMsg( VOS_PID Pid, MsgBlock * pMsg,
                             VOS_UINT32 ulFileID, VOS_INT32 usLineNo )
 {
     MSG_BLOCK_HEAD      *MSG_BLOCK_Ptr;
-    VOS_UINT32          ulBlockAdd;
-    VOS_UINT32          ulCtrlkAdd;
+    VOS_UINT_PTR         ulBlockAdd;
+    VOS_UINT_PTR         ulCtrlkAdd;
 
     if(Pid >= VOS_PID_BUTT)
     {
@@ -785,7 +788,7 @@ VOS_UINT32 V_UnreserveMsg( VOS_PID Pid, MsgBlock * pMsg,
         return(VOS_ERRNO_MSG_FREE_INPUTPIDINVALID);
     }
 
-    MSG_BLOCK_Ptr = (MSG_BLOCK_HEAD*)( (VOS_UINT32)pMsg
+    MSG_BLOCK_Ptr = (MSG_BLOCK_HEAD*)( (VOS_UINT_PTR)pMsg
                          - VOS_MSG_BLK_HEAD_LEN );
 
     if ( VOS_OK != VOS_MemCheck( (VOS_VOID *)MSG_BLOCK_Ptr, &ulBlockAdd,
@@ -841,8 +844,8 @@ VOS_UINT32 V_FreeReservedMsg(VOS_PID Pid, VOS_VOID ** ppMsg,
 {
     VOS_VOID            *pMsgBlkHead;
     MSG_BLOCK_HEAD      *pstMSG;
-    VOS_UINT32          ulBlockAdd;
-    VOS_UINT32          ulCtrlkAdd;
+    VOS_UINT_PTR         ulBlockAdd;
+    VOS_UINT_PTR         ulCtrlkAdd;
 
     if(Pid >= VOS_PID_BUTT)
     {
@@ -865,7 +868,7 @@ VOS_UINT32 V_FreeReservedMsg(VOS_PID Pid, VOS_VOID ** ppMsg,
         return(VOS_ERRNO_MSG_FREE_INPUTPIDINVALID);
     }
 
-    pMsgBlkHead = (VOS_VOID*)( (VOS_UINT32)(*ppMsg)
+    pMsgBlkHead = (VOS_VOID*)( (VOS_UINT_PTR)(*ppMsg)
                          - VOS_MSG_BLK_HEAD_LEN );
 
     if ( VOS_OK != VOS_MemCheck( pMsgBlkHead, &ulBlockAdd, &ulCtrlkAdd,
@@ -1016,8 +1019,8 @@ VOS_UINT32 V_SendLocalMsg(VOS_PID Pid, VOS_VOID **ppMsg,
     VOS_UINT32          ulFid;
     VOS_UINT32          ulQid;
     VOS_VOID            *pActualMsg;
-    VOS_UINT32          ulBlockAdd;
-    VOS_UINT32          ulCtrlkAdd;
+    VOS_UINT_PTR        ulBlockAdd;
+    VOS_UINT_PTR        ulCtrlkAdd;
     VOS_DUMP_MSG_STRU   *pstDumpMsgInfo;
     VOS_UINT32          ulTaskTcb;
 
@@ -1071,7 +1074,7 @@ VOS_UINT32 V_SendLocalMsg(VOS_PID Pid, VOS_VOID **ppMsg,
 
     ulQid            = vos_FidCtrlBlk[ulFid].Qid;
 
-    pActualMsg = (VOS_VOID *)((VOS_UINT32)(*ppMsg) - VOS_MSG_BLK_HEAD_LEN);
+    pActualMsg = (VOS_VOID *)((VOS_UINT_PTR)(*ppMsg) - VOS_MSG_BLK_HEAD_LEN);
 
     if ( VOS_OK != VOS_MemCheck( pActualMsg, &ulBlockAdd, &ulCtrlkAdd,
                                 ulFileID, lLineNo ) )
@@ -1136,10 +1139,10 @@ VOS_UINT32 V_SendLocalMsg(VOS_PID Pid, VOS_VOID **ppMsg,
 VOS_VOID VOS_ModifyMsgInfo(VOS_VOID *pMsg, VOS_PID Pid)
 {
     VOS_VOID            *pActualMsg;
-    VOS_UINT32          ulBlockAdd;
-    VOS_UINT32          ulCtrlkAdd;
+    VOS_UINT_PTR         ulBlockAdd;
+    VOS_UINT_PTR         ulCtrlkAdd;
 
-    pActualMsg = (VOS_VOID *)((VOS_UINT32)(pMsg) - VOS_MSG_BLK_HEAD_LEN);
+    pActualMsg = (VOS_VOID *)((VOS_UINT_PTR)(pMsg) - VOS_MSG_BLK_HEAD_LEN);
 
     if ( VOS_OK != VOS_MemCheck( pActualMsg, &ulBlockAdd, &ulCtrlkAdd, 0, 0 ) )
     {
@@ -1383,8 +1386,8 @@ VOS_UINT32 V_SendLocalUrgentMsg(VOS_PID Pid, VOS_VOID ** ppMsg,
     int                 ulFid;
     VOS_UINT32          ulQid;
     VOS_VOID            *pActualMsg;
-    VOS_UINT32          ulBlockAdd;
-    VOS_UINT32          ulCtrlkAdd;
+    VOS_UINT_PTR        ulBlockAdd;
+    VOS_UINT_PTR        ulCtrlkAdd;
     VOS_UINT32          ulTaskTcb;
     VOS_DUMP_MSG_STRU   *pstDumpMsgInfo;
 
@@ -1422,7 +1425,7 @@ VOS_UINT32 V_SendLocalUrgentMsg(VOS_PID Pid, VOS_VOID ** ppMsg,
     ulFid            = vos_PidRecords[ulPid-VOS_PID_DOPRAEND].Fid;
     ulQid            = vos_FidCtrlBlk[ulFid].Qid;
 
-    pActualMsg = (VOS_VOID *)((VOS_UINT32)(*ppMsg) - VOS_MSG_BLK_HEAD_LEN);
+    pActualMsg = (VOS_VOID *)((VOS_UINT_PTR)(*ppMsg) - VOS_MSG_BLK_HEAD_LEN);
 
     if ( VOS_OK != VOS_MemCheck( pActualMsg, &ulBlockAdd, &ulCtrlkAdd,
                                     ulFileID, lLineNo ) )
@@ -1540,8 +1543,8 @@ VOS_UINT32 V_PostMsg(VOS_PID Pid, VOS_VOID * pMsg,
 {
     VOS_UINT32          ulReceiverPid;
     VOS_UINT32          ulReceiverCpuId;
-    VOS_UINT32          ulBlockAdd;
-    VOS_UINT32          ulCtrlkAdd;
+    VOS_UINT_PTR        ulBlockAdd;
+    VOS_UINT_PTR        ulCtrlkAdd;
     VOS_VOID            *pActualMsg;
 
     if( VOS_NULL_PTR == pMsg )
@@ -1565,7 +1568,7 @@ VOS_UINT32 V_PostMsg(VOS_PID Pid, VOS_VOID * pMsg,
         return VOS_ERRNO_MSG_POST_RECVPIDINVALID;
     }
 
-    pActualMsg = (VOS_VOID *)((VOS_UINT32)pMsg - VOS_MSG_BLK_HEAD_LEN);
+    pActualMsg = (VOS_VOID *)((VOS_UINT_PTR)pMsg - VOS_MSG_BLK_HEAD_LEN);
 
     if ( VOS_OK != VOS_MemCheck( pActualMsg, &ulBlockAdd, &ulCtrlkAdd,
         ulFileID, usLineNo ) )
@@ -1587,7 +1590,7 @@ VOS_UINT32 V_PostMsg(VOS_PID Pid, VOS_VOID * pMsg,
  Return     : void
  Other      :
  *****************************************************************************/
-VOS_UINT32 VOS_GetMsgName(VOS_UINT32 ulAddrress)
+VOS_UINT32 VOS_GetMsgName(VOS_UINT_PTR ulAddrress)
 {
     MsgBlock *pstMsgBlock = (MsgBlock*)( ulAddrress + VOS_MSG_BLK_HEAD_LEN ); /* [false alarm]: ÆÁ±ÎFortify´íÎó */
 

@@ -194,6 +194,31 @@ typedef struct
     dump_global_internal_t  internal_info;
 }dump_global_info_t;
 
+typedef struct
+{
+    u32 reboot_context;     /*0x00  */
+    u32 reboot_task;        /*0x04  */
+    u8  taskName[16];       /*0x08  */
+    u32 reboot_int;         /*0x18  */
+
+    u32 modId;              /*0x1c  */
+    u32 arg1;               /*0x20  */
+    u32 arg2;               /*0x24  */
+    u32 arg3;               /*0x28  */
+    u32 arg3_length;        /*0x2c  */
+
+    u32 vec;                /*0x30  */
+    u32 cpsr;               /*0x34  */
+    u32 regSet[17];         /*0x38  */
+
+    u32 current_task;       /*0x7c */
+    u32 current_int;        /*0x80 */
+
+    u32 cpu_usage;          /*0x84 */
+    u32 mem_free;           /*0x88 */
+    u32 axi_dlock_reg[3];   /*0x8C --- AXI×ÜÏß¹ÒËÀ¼Ä´æÆ÷£¬0x624,0x628,0x658*/
+}dump_global_base_info_t;
+
 #ifdef BSP_CONFIG_HI3630
 typedef struct _dump_top_head_s {
 	u32 magic;
@@ -280,7 +305,7 @@ void bsp_dump_trace_stop(void);
 void int_lock_hook_add(func_void in_func,func_void out_func);
 void bsp_dump_init_task_name(void);
 #ifdef BSP_CONFIG_HI3630
-u32  bsp_dump_get_buffer_addr(dump_save_modid_t mod_id);
+char*  bsp_dump_get_buffer_addr(dump_save_modid_t mod_id);
 #endif
 #else
 
@@ -301,10 +326,10 @@ static s32 inline bsp_dump_register_hook(dump_save_modid_t mod_id, dump_save_hoo
 
 static s32 inline bsp_dump_get_buffer(dump_save_modid_t mod_id, char** buffer, u32* length)
 {
-    return 0;
+    return BSP_ERROR;
 }
 
-static u8* bsp_dump_register_field(u32 mod_id, u32 length)
+static inline u8* bsp_dump_register_field(u32 mod_id, u32 length)
 {
     return BSP_NULL;
 }
@@ -352,7 +377,7 @@ static void inline bsp_dump_init_task_name(void)
 }
 
 #ifdef BSP_CONFIG_HI3630
-static u32 inline bsp_dump_get_buffer_addr(dump_save_modid_t mod_id)
+static inline char* bsp_dump_get_buffer_addr(dump_save_modid_t mod_id)
 {
     return 0;
 }

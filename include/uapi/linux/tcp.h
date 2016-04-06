@@ -112,6 +112,10 @@ enum {
 #define TCP_FASTOPEN		23	/* Enable FastOpen on listeners */
 #define TCP_TIMESTAMP		24
 
+#ifdef CONFIG_HUAWEI_BASTET
+#define TCP_RECONN		26
+#endif
+
 struct tcp_repair_opt {
 	__u32	opt_code;
 	__u32	opt_val;

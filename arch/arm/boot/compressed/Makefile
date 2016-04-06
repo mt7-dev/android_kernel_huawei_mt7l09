@@ -4,6 +4,10 @@
 # create a compressed vmlinuz image from the original vmlinux
 #
 
+subdir-ccflags-y               += -I$(BALONG_TOPDIR)/config/product/$(OBB_PRODUCT_NAME)/config
+subdir-ccflags-y               += -I$(BALONG_TOPDIR)/ap/platform/$(CFG_PLATFORM)/
+subdir-ccflags-y               += -I$(BALONG_TOPDIR)/ap/platform/$(CFG_PLATFORM)/soc/
+
 OBJS		=
 
 # Ensure that MMCIF loader code appears early in the image
@@ -36,6 +40,8 @@ CFLAGS_string.o	:= -Os
 ifeq ($(CONFIG_ARM_VIRT_EXT),y)
 OBJS		+= hyp-stub.o
 endif
+
+GCOV_PROFILE		:= n
 
 #
 # Architecture dependencies

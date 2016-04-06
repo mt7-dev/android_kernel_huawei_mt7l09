@@ -9,16 +9,29 @@
 #ifndef __NVE_H
 #define __NVE_H
 
-#define TEST_NV_IN_KERNEL       0
+#include "hisi_partition.h"
+
+#define TEST_NV_IN_KERNEL       1
 
 #define NVE_PARTITION_SIZE      (128 * 1024)
 #define NVE_PARTITION_NUMBER    7
 #define NV_NAME_LENGTH          8
 #define NVE_NV_DATA_SIZE        104
 #define NVE_INVALID_NVM         0xFFFFFFFF
+#define NVE_PARTITION_COUNT	8
+
+#ifdef CONFIG_ARCH_HI6XXX
+#define NVE_HEADER_NAME         "Hisi-K3v200-NV-Partition"   /* ReliableData area */
+#define NV_DEVICE_NAME          BLK_MTD_NVME
+#elif defined (CONFIG_ARCH_HI3630)
 #define NVE_HEADER_NAME         "Hisi-NV-Partition"   /* ReliableData area */
 #define NV_DEVICE_NAME          "block2mtd: /dev/block/mmcblk0p6"
+#elif defined (CONFIG_HISI_3635)
+#define NVE_HEADER_NAME         "Hisi-NV-Partition"   /* ReliableData area */
+#define NV_DEVICE_NAME          "block2mtd: /dev/block/mmcblk0p7"
+#endif
 
+#define NV_INFO_LEN  1024
 /*
  *In case accidently power-off happened when NV
  * is writing,we put the partition_header at the

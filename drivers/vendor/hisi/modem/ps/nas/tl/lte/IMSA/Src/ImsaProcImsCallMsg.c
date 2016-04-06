@@ -72,7 +72,7 @@ extern VOS_VOID IMSA_CallEntitySaveErrorInfo
 );
 extern VOS_VOID  IMSA_CallRcvImsStartDtmfError( VOS_VOID );
 extern VOS_UINT32 IMSA_CallProcImsMsgError(const IMSA_IMS_OUTPUT_CALL_EVENT_STRU *pstOutputCallEvent);
-extern VOS_UINT32 IMSA_CallProcImsMsgIncoming(IMSA_IMS_OUTPUT_CALL_EVENT_STRU *pstOutputCallEvent);
+extern VOS_UINT32 IMSA_CallProcImsMsgIncoming(const IMSA_IMS_OUTPUT_CALL_EVENT_STRU *pstOutputCallEvent);
 extern VOS_UINT32 IMSA_CallEntityProcErrorInfo380ForNormal
 (
     IMSA_CALL_ENTITY_STRU *pstCallEntity,
@@ -80,7 +80,7 @@ extern VOS_UINT32 IMSA_CallEntityProcErrorInfo380ForNormal
 );
 extern VOS_UINT32 IMSA_CallEntityProcErrorInfo380ForEmc
 (
-    const IMSA_CALL_ENTITY_STRU        *pstCallEntity,
+    IMSA_CALL_ENTITY_STRU        *pstCallEntity,
     const IMSA_IMS_CALL_ERROR_STRU     *pstImsError
 );
 extern VOS_UINT32 IMSA_CallEntityProcErrorInfo380
@@ -116,7 +116,7 @@ extern VOS_UINT32 IMSA_CallProcImsMsgDisconnect(const IMSA_IMS_OUTPUT_CALL_EVENT
 extern VOS_UINT32 IMSA_CallProcImsMsgWaiting(const IMSA_IMS_OUTPUT_CALL_EVENT_STRU *pstOutputCallEvent);
 extern VOS_UINT32 IMSA_CallProcImsMsgCallEarlyMedia(const IMSA_IMS_OUTPUT_CALL_EVENT_STRU *pstOutputCallEvent);
 extern VOS_UINT32 IMSA_CallProcImsMsgInitializing(const IMSA_IMS_OUTPUT_CALL_EVENT_STRU *pstOutputCallEvent);
-extern VOS_VOID IMSA_CallProcImsMsgSrvccCallList(IMSA_IMS_OUTPUT_CALL_EVENT_STRU *pstOutputCallEvent);
+extern VOS_UINT32 IMSA_CallProcImsMsgSrvccCallList(const IMSA_IMS_OUTPUT_CALL_EVENT_STRU *pstOutputCallEvent);
 extern VOS_UINT32 IMSA_CallProcImsMsgEmergencyInd(const IMSA_IMS_OUTPUT_CALL_EVENT_STRU *pstOutputCallEvent);
 extern VOS_UINT32 IMSA_CallIsProccessCallSwap(VOS_VOID);
 extern VOS_UINT32 IMSA_CallIsAllCallOnHold(const IMSA_IMS_OUTPUT_CALL_EVENT_STRU *pstOutputCallEvent);
@@ -134,6 +134,29 @@ extern IMSA_CALL_STATUS_ENUM_UINT8 IMSA_CallImsState2ImsaState
 );
 extern VOS_UINT32 IMSA_CallAllStateWillBeHeld(VOS_UINT32 ulWillChangedId);
 
+extern VOS_UINT32 IMSA_CallProcImsMsgEconfNotifyInd(const IMSA_IMS_OUTPUT_CALL_EVENT_STRU *pstOutputCallEvent);
+extern VOS_UINT32 IMSA_CallProcImsMsgMtBegin(const IMSA_IMS_OUTPUT_CALL_EVENT_STRU *pstOutputCallEvent);
+
+IMSA_IMS_CALL_MSG_ACT_STRU g_stImsaImsCallMsgActTbl[] =
+{
+    {IMSA_IMS_OUTPUT_CALL_REASON_OK,                    IMSA_CallProcImsMsgOk},
+    {IMSA_IMS_OUTPUT_CALL_REASON_ERROR,                 IMSA_CallProcImsMsgError},
+    {IMSA_IMS_OUTPUT_CALL_REASON_CALL_LIST,             IMSA_CallProcImsMsgCallList},
+    {IMSA_IMS_OUTPUT_CALL_REASON_DISCONNECT_EVENT,      IMSA_CallProcImsMsgDisconnect},
+    {IMSA_IMS_OUTPUT_CALL_REASON_INCOMING_EVENT,        IMSA_CallProcImsMsgIncoming},
+    {IMSA_IMS_OUTPUT_CALL_REASON_WAITING_EVENT,         IMSA_CallProcImsMsgWaiting},
+    {IMSA_IMS_OUTPUT_CALL_REASON_INITIALIZING_EVENT,    IMSA_CallProcImsMsgInitializing},
+    {IMSA_IMS_OUTPUT_CALL_REASON_SRVCC_CALL_LIST,       IMSA_CallProcImsMsgSrvccCallList},
+    {IMSA_IMS_OUTPUT_CALL_REASON_EMERGENCY_INDICATION,  IMSA_CallProcImsMsgEmergencyInd},
+    {IMSA_IMS_OUTPUT_CALL_REASON_MODIFY_IND,            IMSA_CallProcImsMsgModifyStatusInd},
+    {IMSA_IMS_OUTPUT_CALL_REASON_MODIFY_BEGIN,          IMSA_CallProcImsMsgModifyStatusBegin},
+    {IMSA_IMS_OUTPUT_CALL_REASON_MODIFY_END,            IMSA_CallProcImsMsgModifyStatusEnd},
+    {IMSA_IMS_OUTPUT_CALL_REASON_ECONF_NOTIFY_IND,      IMSA_CallProcImsMsgEconfNotifyInd},
+    {IMSA_IMS_OUTPUT_CALL_REASON_MT_BEGIN_EVENT,        IMSA_CallProcImsMsgMtBegin}
+};
+VOS_UINT32        g_ulImsaImsCallMsgActTblLen = sizeof(g_stImsaImsCallMsgActTbl)
+                                                / sizeof(IMSA_IMS_CALL_MSG_ACT_STRU);
+
 /*****************************************************************************
   3 Function
 *****************************************************************************/
@@ -144,7 +167,7 @@ VOS_VOID IMSA_CallEntityUpdateByCallSummary(IMSA_CALL_ENTITY_STRU *pstCallEntity
 {
 
     /* 更新呼叫Id */
-    pstCallEntity->ucId = (VOS_UINT8)pstCallSummary->ulCallIndex;
+    pstCallEntity->ucImscallId = (VOS_UINT8)pstCallSummary->ulCallIndex;
 
     /* 更新呼叫方向 */
     if (IMSA_IMS_CALL_DIR_MOBILE_ORIGINATED == pstCallSummary->enCallDirection)
@@ -155,6 +178,9 @@ VOS_VOID IMSA_CallEntityUpdateByCallSummary(IMSA_CALL_ENTITY_STRU *pstCallEntity
     {
         pstCallEntity->enDir = MN_CALL_DIR_MT;
     }
+
+    /* 更新呼叫类型 */
+    pstCallEntity->enType = (IMSA_CALL_TYPE_ENUM_UINT8)pstCallSummary->enCallMode;
 
     /* 更新呼叫方式 */
     /**
@@ -167,9 +193,16 @@ VOS_VOID IMSA_CallEntityUpdateByCallSummary(IMSA_CALL_ENTITY_STRU *pstCallEntity
     {
         pstCallEntity->enMpty = MN_CALL_NOT_IN_MPTY;
     }
+    else if (IMSA_IMS_CALL_CONFERENCE == pstCallSummary->enMultiParty)
+    {
+        pstCallEntity->enMpty = MN_CALL_IN_MPTY;
+        pstCallEntity->ucIsEconfFlag = IMSA_FALSE;
+    }
     else
     {
         pstCallEntity->enMpty = MN_CALL_IN_MPTY;
+        /* 更新增强多方通话的标识 */
+        pstCallEntity->ucIsEconfFlag = IMSA_TRUE;
     }
 
     /* 更新主叫号码或者被叫号码 */
@@ -189,6 +222,8 @@ VOS_VOID IMSA_CallEntityUpdateByCallSummary(IMSA_CALL_ENTITY_STRU *pstCallEntity
         }
     }
 }
+
+
 VOS_VOID IMSA_CallDtmfInfoInit(VOS_VOID)
 {
     VOS_UINT8                          ucIndex = 0;
@@ -565,11 +600,183 @@ VOS_VOID  IMSA_CallRcvImsStopDtmfOk( VOS_VOID )
 
     return;
 }
-VOS_UINT32 IMSA_CallProcImsMsgOk(const IMSA_IMS_OUTPUT_CALL_EVENT_STRU *pstOutputCallEvent)
+VOS_VOID IMSA_CallProcImsMsgOKOrERRORToSpmSupsCmreq
+(
+    VOS_VOID
+)
+{
+    IMSA_CALL_MANAGER_STRU             *pstCallCtx      = IMSA_CallCtxGet();
+    IMSA_CALL_ENTITY_STRU              *pstCallEntity   = VOS_NULL_PTR;
+    VOS_UINT8                           i = 0;
+    TAF_CS_CAUSE_ENUM_UINT32            enSpmErr = TAF_CS_CAUSE_BUTT;
+    VOS_UINT8                           ucRedialCallIndex   = IMSA_NULL;
+
+    /* 如果SPM下发的是REL_ALL的挂断命令，如果存在IMS未上报过DIALING状态的呼叫实体，需要IMSA
+        自己释放，因为IMS上报INVILED状态时，会携带callid，但是IMSA并不认识该callid，导致找不到呼叫实体*/
+    if (MN_CALL_SUPS_CMD_REL_ALL_CALL == pstCallCtx->stSpmMsg.stParam.stSupsParam.enCallSupsCmd)
+    {
+        for (i = 0; i < IMSA_CALL_MAX_NUM; i++)
+        {
+            if ((VOS_TRUE == pstCallCtx->astCallEntity[i].bitOpIsUsed) &&
+                (IMSA_CALL_INVALID_ID == pstCallCtx->astCallEntity[i].ucImscallId))
+            {
+
+                 /* 如果请求释放的CALL ID跟重拨CALL ID一致，则直接回复成功，并打断重播流程 */
+                if (VOS_TRUE == IMSA_IsTimerRunning(&pstCallCtx->stRedialIntervelTimer))
+                {
+                    ucRedialCallIndex   = (VOS_UINT8)pstCallCtx->stRedialIntervelTimer.usPara;
+                    if (ucRedialCallIndex < IMSA_CALL_MAX_NUM)
+                    {
+                        pstCallEntity = &pstCallCtx->astCallEntity[ucRedialCallIndex];
+                        IMSA_CallInterruptRedial(pstCallEntity);
+                    }
+                }
+                /*  如果请求释放的CALL ID和正在紧急重注册的CALL ID一致，则通知SPM RELEASE 事件 */
+                else if (IMSA_TRUE == pstCallCtx->ucRetryEmcRegFlag)
+                {
+                    pstCallEntity = &pstCallCtx->astCallEntity[pstCallCtx->ucCallEntityIndex];
+
+
+                    /* 将IMS错误原因值转化为SPM错误原因值 */
+                    /* 修改函数入参 */
+                    enSpmErr = IMSA_CallTransImsErr2SpmErr(&pstCallEntity->stImsError.stErrorCode);
+
+                    pstCallEntity->ucSpmcallId = pstCallCtx->ucId;
+
+                    IMSA_CallReleaseCallCommonProc(pstCallEntity, enSpmErr);
+
+                    /* 清除保存的重注册标识等参数 */
+                    pstCallCtx->ucRetryEmcRegFlag = IMSA_FALSE;
+                    pstCallCtx->ucId = IMSA_NULL;
+                    pstCallCtx->ucCallEntityIndex = IMSA_NULL;
+
+                }
+                else
+                {
+
+                    IMSA_CallUpdateDiscCallDir( pstCallCtx->astCallEntity[i].ucSpmcallId, IMSA_TRUE);
+
+                    IMSA_CallReleaseCallCommonProc(&(pstCallCtx->astCallEntity[i]), TAF_CS_CAUSE_SUCCESS);
+                }
+
+            }
+        }
+    }
+    return;
+}
+VOS_UINT32 IMSA_CallProcImsMsgOKWhenFindOpidSucc
+(
+    const IMSA_IMS_OUTPUT_CALL_EVENT_STRU  *pstOutputCallEvent
+)
 {
     VOS_UINT32                          ulResult        = VOS_FALSE;
     IMSA_CALL_MANAGER_STRU             *pstCallCtx      = IMSA_CallCtxGet();
     IMSA_CALL_ENTITY_STRU              *pstCallEntity   = VOS_NULL_PTR;
+
+    (VOS_VOID)pstOutputCallEvent;
+
+    /* 根据不同命令回复SPM */
+    switch (pstCallCtx->stSpmMsg.ulSpmMsgId)
+    {
+    case ID_SPM_IMSA_CALL_ORIG_REQ:
+
+        IMSA_INFO_LOG1("IMSA_CallProcImsMsgOKWhenFindOpidSucc: pstCallCtx->ucRetryEmcRegFlag = ",pstCallCtx->ucRetryEmcRegFlag);
+
+        /* 如果是重播时回复的OK，则不报给SPM */
+        if ((VOS_TRUE == IMSA_IsTimerRunning(&pstCallCtx->stRedialMaxTimer))
+            && (pstCallCtx->stRedialMaxTimer.usPara < IMSA_CALL_MAX_NUM))
+        {
+            pstCallEntity = &pstCallCtx->astCallEntity[pstCallCtx->stRedialMaxTimer.usPara];
+            if (pstCallEntity->ucRedialTimes > 0)
+            {
+                break;
+            }
+        }
+
+        if (IMSA_TRUE == pstCallCtx->ucRetryEmcRegFlag)
+        {
+            IMSA_INFO_LOG("IMSA_CallProcImsMsgOKWhenFindOpidSucc: pstCallCtx->ucRetryEmcRegFlag is false");
+            /* 如果是紧急呼叫收到#380，重新发起紧急呼叫时，收到OK,不需要报给SPM */
+            pstCallCtx->ucRetryEmcRegFlag = IMSA_FALSE;
+            pstCallCtx->ucId = IMSA_NULL;
+            pstCallCtx->ucCallEntityIndex = IMSA_NULL;
+            break;
+        }
+
+        /* IMSA在收到SPM的ORIG_REQ消息的时候，已经回复过ORIG_CNF消息，所以在收到IMS的REASON_OK后，不需要再回复 */
+        #if 0
+        /* 因为SPM 在ORIG REQ里的CALL ID为0，而IMSA在分配CALL实体也将CALL ID默认
+           初始化为无效CALL ID，即0；因此在IMSA_CallSendSpmEvtAndCallInfo函数中
+           就能够查找到CALL实体，从而能够正确填写CALL TYPE；在回复ORIG CNF时，
+           目前SPM只需要IMSA填写正确的CALL TYPE */
+        IMSA_INFO_LOG("IMSA_CallProcImsMsgOKWhenFindOpidSucc: send orig cnf begin ");
+        ulResult = IMSA_CallSendSpmOrigCnfMsg(pstCallCtx->stSpmMsg.usClientId,
+                                              pstCallCtx->stSpmMsg.ulOpId,
+                                              pstCallCtx->stSpmMsg.ulCallId,
+                                              TAF_CS_CAUSE_SUCCESS);
+        IMSA_INFO_LOG("IMSA_CallProcImsMsgOKWhenFindOpidSucc: send orig cnf end ");
+        IMSA_INFO_LOG1("IMSA_CallProcImsMsgOKWhenFindOpidSucc: pstCallCtx->ucRetryEmcRegFlag = ",pstCallCtx->ucRetryEmcRegFlag);
+        #endif
+        break;
+    case ID_SPM_IMSA_CALL_SUPS_CMD_REQ:
+        ulResult = IMSA_CallSendSpmSupsResultMsg(pstCallCtx->stSpmMsg.usClientId,
+                                              pstCallCtx->stSpmMsg.ulOpId,
+                                              pstCallCtx->stSpmMsg.ulCallId,
+                                              MN_CALL_SS_RES_SUCCESS);
+
+        IMSA_CallProcImsMsgOKOrERRORToSpmSupsCmreq();
+        break;
+    case ID_SPM_IMSA_CALL_GET_CALL_INFO_REQ:
+        IMSA_INFO_LOG("IMSA_CallProcImsMsgOk: this command has handled by IMSA");
+        break;
+    case ID_SPM_IMSA_CALL_GET_CUDR_REQ:
+        IMSA_INFO_LOG("IMSA_CallProcImsMsgOk: this command is not supported by IMSA");
+        break;
+    /* xiongxianghui00253310 add for conference 20140210 begin */
+    case ID_SPM_IMSA_CALL_INVITE_NEW_PTPT_REQ:
+        ulResult = IMSA_CallSendSpmInviteNewPtptCnfMsg(pstCallCtx->stSpmMsg.usClientId,
+                                                       pstCallCtx->stSpmMsg.ulOpId,
+                                                       pstCallCtx->stSpmMsg.ulCallId,
+                                                       TAF_CS_CAUSE_SUCCESS);
+        break;
+    /* xiongxianghui00253310 add for conference 20140210 end */
+
+    case ID_SPM_IMSA_CALL_MODIFY_REQ:
+        ulResult = IMSA_CallSendSpmModifyCnfMsg(pstCallCtx->stSpmMsg.usClientId,
+                                               pstCallCtx->stSpmMsg.ulOpId,
+                                               pstCallCtx->stSpmMsg.ulCallId,
+                                               TAF_CS_CAUSE_SUCCESS);
+        break;
+    case ID_SPM_IMSA_CALL_ANSWER_REMOTE_MODIFY_REQ:
+        ulResult = IMSA_CallSendSpmAnswerRemoteModifyCnfMsg(pstCallCtx->stSpmMsg.usClientId,
+                                                           pstCallCtx->stSpmMsg.ulOpId,
+                                                           pstCallCtx->stSpmMsg.ulCallId,
+                                                           TAF_CS_CAUSE_SUCCESS);
+        break;
+    case ID_SPM_IMSA_CALL_ECONF_DIAL_REQ:
+        IMSA_INFO_LOG("IMSA_CallProcImsMsgOk: ID_SPM_IMSA_CALL_ECONF_DIAL_REQ command processed by IMSA");
+        break;
+    case ID_SPM_IMSA_CALL_ECONF_ADD_USERS_REQ:
+        IMSA_CallSendSpmEconfAddUserCnfMsg(pstCallCtx->stSpmMsg.usClientId,
+                                           pstCallCtx->stSpmMsg.ulOpId,
+                                           TAF_CS_CAUSE_SUCCESS);
+        break;
+    default:
+        ulResult = VOS_FALSE;
+        IMSA_ERR_LOG1("IMSA_CallProcImsMsgOk: invalid call request", pstCallCtx->stSpmMsg.ulSpmMsgId);
+        break;
+    }
+
+    /* 清除缓存命令 */
+    IMSA_CallImsMsgClear();
+    IMSA_CallSpmMsgClear();
+
+    return ulResult;
+}
+VOS_UINT32 IMSA_CallProcImsMsgOk(const IMSA_IMS_OUTPUT_CALL_EVENT_STRU *pstOutputCallEvent)
+{
+    VOS_UINT32                          ulResult        = VOS_FALSE;
+    IMSA_CALL_MANAGER_STRU             *pstCallCtx      = IMSA_CallCtxGet();
 
 
     /* 如果REASON OK对应的opid检查失败，则丢弃该消息 */
@@ -598,60 +805,8 @@ VOS_UINT32 IMSA_CallProcImsMsgOk(const IMSA_IMS_OUTPUT_CALL_EVENT_STRU *pstOutpu
     IMSA_StopTimer(&pstCallCtx->stProctectTimer);
 
     /* 根据不同命令回复SPM */
-    switch (pstCallCtx->stSpmMsg.ulSpmMsgId)
-    {
-    case ID_SPM_IMSA_CALL_ORIG_REQ:
+    return IMSA_CallProcImsMsgOKWhenFindOpidSucc(pstOutputCallEvent);
 
-        /* 如果是重播时回复的OK，则不报给SPM */
-        if ((VOS_TRUE == IMSA_IsTimerRunning(&pstCallCtx->stRedialMaxTimer))
-            && (pstCallCtx->stRedialMaxTimer.usPara < IMSA_CALL_MAX_NUM))
-        {
-            pstCallEntity = &pstCallCtx->astCallEntity[pstCallCtx->stRedialMaxTimer.usPara];
-            if (pstCallEntity->ucRedialTimes > 0)
-            {
-                break;
-            }
-        }
-
-        /* 因为SPM 在ORIG REQ里的CALL ID为0，而IMSA在分配CALL实体也将CALL ID默认
-           初始化为无效CALL ID，即0；因此在IMSA_CallSendSpmEvtAndCallInfo函数中
-           就能够查找到CALL实体，从而能够正确填写CALL TYPE；在回复ORIG CNF时，
-           目前SPM只需要IMSA填写正确的CALL TYPE */
-        ulResult = IMSA_CallSendSpmOrigCnfMsg(pstCallCtx->stSpmMsg.usClientId,
-                                              pstCallCtx->stSpmMsg.ulOpId,
-                                              pstCallCtx->stSpmMsg.ulCallId,
-                                              TAF_CS_CAUSE_SUCCESS);
-        break;
-    case ID_SPM_IMSA_CALL_SUPS_CMD_REQ:
-        ulResult = IMSA_CallSendSpmSupsResultMsg(pstCallCtx->stSpmMsg.usClientId,
-                                              pstCallCtx->stSpmMsg.ulOpId,
-                                              pstCallCtx->stSpmMsg.ulCallId,
-                                              MN_CALL_SS_RES_SUCCESS);
-        break;
-    case ID_SPM_IMSA_CALL_GET_CALL_INFO_REQ:
-        IMSA_INFO_LOG("IMSA_CallProcImsMsgOk: this command has handled by IMSA");
-        break;
-    case ID_SPM_IMSA_CALL_GET_CUDR_REQ:
-        IMSA_INFO_LOG("IMSA_CallProcImsMsgOk: this command is not supported by IMSA");
-        break;
-    /* xiongxianghui00253310 add for conference 20140210 begin */
-    case ID_SPM_IMSA_CALL_INVITE_NEW_PTPT_REQ:
-        ulResult = IMSA_CallSendSpmInviteNewPtptCnfMsg(pstCallCtx->stSpmMsg.usClientId,
-                                                       pstCallCtx->stSpmMsg.ulOpId,
-                                                       pstCallCtx->stSpmMsg.ulCallId,
-                                                       TAF_CS_CAUSE_SUCCESS);
-        break;
-    /* xiongxianghui00253310 add for conference 20140210 end */
-    default:
-        ulResult = VOS_FALSE;
-        IMSA_ERR_LOG1("IMSA_CallProcImsMsgOk: invalid call request", pstCallCtx->stSpmMsg.ulSpmMsgId);
-    }
-
-    /* 清除缓存命令 */
-    IMSA_CallImsMsgClear();
-    IMSA_CallSpmMsgClear();
-
-    return ulResult;
 }
 VOS_VOID IMSA_CallEntitySaveErrorInfo
 (
@@ -757,6 +912,82 @@ VOS_VOID  IMSA_CallRcvImsStartDtmfError( VOS_VOID )
 
     return;
 }
+VOS_VOID  IMSA_CallRcvImsOrigReqError
+(
+    const IMSA_IMS_OUTPUT_CALL_EVENT_STRU  *pstOutputCallEvent
+)
+{
+    IMSA_CALL_MANAGER_STRU             *pstCallCtx      = IMSA_CallCtxGet();
+    IMSA_CALL_ENTITY_STRU              *pstCallEntity   = VOS_NULL_PTR;
+    /* xiongxianghui00253310 add for conference 20140210 begin */
+    TAF_CS_CAUSE_ENUM_UINT32            enSpmErr        = IMSA_NULL;
+    /* xiongxianghui00253310 add for conference 20140210 end */
+    VOS_UINT16                          usRedialCallIndex = IMSA_NULL;
+
+    /* 如果是重播时回复的ERROR，则打断重播流程 */
+    if (VOS_TRUE == IMSA_IsTimerRunning(&pstCallCtx->stRedialMaxTimer))
+    {
+        usRedialCallIndex   = pstCallCtx->stRedialMaxTimer.usPara;
+        if (usRedialCallIndex < IMSA_CALL_MAX_NUM)
+        {
+            pstCallEntity = &pstCallCtx->astCallEntity[usRedialCallIndex];
+            if (pstCallEntity->ucRedialTimes > 0)
+            {
+                #if (FEATURE_ON == FEATURE_PTM)
+                IMSA_CallErrRecord(pstCallEntity->stImsError.stErrorCode.usSipStatusCode, pstCallEntity);
+                #endif
+                IMSA_INFO_LOG("IMSA_CallProcImsMsgError:redial orig error");
+                IMSA_CallEntitySaveErrorInfo(pstCallEntity, pstOutputCallEvent);
+                IMSA_CallInterruptRedial(pstCallEntity);
+                return;
+            }
+        }
+    }
+    if(IMSA_TRUE == pstCallCtx->ucRetryEmcRegFlag)
+    {
+        /* 如果是紧急呼叫收到#380，重新发起紧急呼叫时，收到ERROR，需要给SPM发送release事件 */
+        pstCallEntity = &pstCallCtx->astCallEntity[pstCallCtx->ucCallEntityIndex];
+
+        IMSA_CallEntitySaveErrorInfo(pstCallEntity, pstOutputCallEvent);
+        #if (FEATURE_ON == FEATURE_PTM)
+        IMSA_CallErrRecord(pstCallEntity->stImsError.stErrorCode.usSipStatusCode, pstCallEntity);
+        #endif
+        /* 修改函数入参 */
+        enSpmErr = IMSA_CallTransImsErr2SpmErr(&pstCallEntity->stImsError.stErrorCode);
+
+        pstCallEntity->ucSpmcallId = pstCallCtx->ucId;
+        IMSA_CallReleaseCallCommonProc(pstCallEntity, enSpmErr);
+
+        pstCallCtx->ucRetryEmcRegFlag = IMSA_FALSE;
+        pstCallCtx->ucId = IMSA_NULL;
+        pstCallCtx->ucCallEntityIndex = IMSA_NULL;
+        return;
+    }
+
+    /* 由于在收到SPM的ORIG_REQ消息时，已经给SPM回复过ORIG_CNF事件，同时上报过ORIG，所以再收到IMS上报的ERROR时，
+    需要给SPM发送RELEASE事件 */
+    pstCallEntity = IMSA_CallEntityGetUsedByImsCallId(IMSA_CALL_INVALID_ID);
+    if (VOS_NULL_PTR != pstCallEntity)
+    {
+        #if (FEATURE_ON == FEATURE_PTM)
+        IMSA_CallErrRecord(pstCallEntity->stImsError.stErrorCode.usSipStatusCode, pstCallEntity);
+        #endif
+        IMSA_CallReleaseCallCommonProc(pstCallEntity, TAF_CS_CAUSE_SUCCESS);
+    }
+    #if 0
+    (VOS_VOID)IMSA_CallSendSpmOrigCnfMsg(pstCallCtx->stSpmMsg.usClientId,
+                                          pstCallCtx->stSpmMsg.ulOpId,
+                                          pstCallCtx->stSpmMsg.ulCallId,
+                                          TAF_CS_CAUSE_IMSA_ERROR);
+
+    pstCallEntity = IMSA_CallEntityGetUsedByCallId(IMSA_CALL_INVALID_ID);
+    if (VOS_NULL_PTR != pstCallEntity)
+    {
+        IMSA_CallEntityFree(pstCallEntity);
+    }
+    #endif
+    return;
+}
 
 /* lihong00150010 2014-04-21 降全复杂度 begin */
 
@@ -772,7 +1003,6 @@ VOS_UINT32 IMSA_CallProcImsMsgErrorWhenFindOpidSucc
     /* xiongxianghui00253310 add for conference 20140210 begin */
     TAF_CS_CAUSE_ENUM_UINT32            enSpmErr        = IMSA_NULL;
     /* xiongxianghui00253310 add for conference 20140210 end */
-    VOS_UINT16                          usRedialCallIndex = IMSA_NULL;
 
     if (IMSA_CALL_FIND_SUCC_DTMF == ulFindOpidResult)
     {
@@ -796,35 +1026,19 @@ VOS_UINT32 IMSA_CallProcImsMsgErrorWhenFindOpidSucc
     switch (pstCallCtx->stSpmMsg.ulSpmMsgId)
     {
     case ID_SPM_IMSA_CALL_ORIG_REQ:
-
-        /* 如果是重播时回复的ERROR，则打断重播流程 */
-        if (VOS_TRUE == IMSA_IsTimerRunning(&pstCallCtx->stRedialMaxTimer))
+        if (VOS_TRUE == IMSA_IsTimerRunning(&pstCallCtx->stNormalTcallTimer))
         {
-            usRedialCallIndex   = pstCallCtx->stRedialMaxTimer.usPara;
-            if (usRedialCallIndex < IMSA_CALL_MAX_NUM)
-            {
-                pstCallEntity = &pstCallCtx->astCallEntity[usRedialCallIndex];
-                if (pstCallEntity->ucRedialTimes > 0)
-                {
-                    IMSA_INFO_LOG("IMSA_CallProcImsMsgError:redial orig error");
-                    IMSA_CallEntitySaveErrorInfo(pstCallEntity, pstOutputCallEvent);
-                    IMSA_CallInterruptRedial(pstCallEntity);
-                    break;
-                }
-            }
+            IMSA_StopTimer(&pstCallCtx->stNormalTcallTimer);
+        }
+        if (VOS_TRUE == IMSA_IsTimerRunning(&pstCallCtx->stEmcTcallTimer))
+        {
+            IMSA_StopTimer(&pstCallCtx->stEmcTcallTimer);
         }
 
-        ulResult = IMSA_CallSendSpmOrigCnfMsg(pstCallCtx->stSpmMsg.usClientId,
-                                              pstCallCtx->stSpmMsg.ulOpId,
-                                              pstCallCtx->stSpmMsg.ulCallId,
-                                              TAF_CS_CAUSE_IMSA_ERROR);
-
-        pstCallEntity = IMSA_CallEntityGetUsedByCallId(IMSA_CALL_INVALID_ID);
-        if (VOS_NULL_PTR != pstCallEntity)
-        {
-            IMSA_CallEntityFree(pstCallEntity);
-        }
-
+        IMSA_CallRcvImsOrigReqError(pstOutputCallEvent);
+        #if (FEATURE_ON == FEATURE_PTM)
+        IMSA_CallErrRecord(IMSA_ERR_LOG_CALL_FAIL_REASON_REMOTE, VOS_NULL_PTR);
+        #endif
         break;
 
     case ID_SPM_IMSA_CALL_SUPS_CMD_REQ:
@@ -832,22 +1046,59 @@ VOS_UINT32 IMSA_CallProcImsMsgErrorWhenFindOpidSucc
                                               pstCallCtx->stSpmMsg.ulOpId,
                                               pstCallCtx->stSpmMsg.ulCallId,
                                               MN_CALL_SS_RES_FAIL);
+        IMSA_CallProcImsMsgOKOrERRORToSpmSupsCmreq();
+
         break;
     /* xiongxianghui00253310 add for conference 20140210 begin */
     case ID_SPM_IMSA_CALL_INVITE_NEW_PTPT_REQ:
-        enSpmErr = IMSA_CallTransImsErr2SpmErr(pstOutputCallEvent->stCallError.stErrorCode.usSipStatusCode);
+        /* 修改函数入参 */
+        enSpmErr = IMSA_CallTransImsErr2SpmErr(&pstOutputCallEvent->stCallError.stErrorCode);
+
         ulResult = IMSA_CallSendSpmInviteNewPtptCnfMsg(pstCallCtx->stSpmMsg.usClientId,
                                                        pstCallCtx->stSpmMsg.ulOpId,
                                                        pstCallCtx->stSpmMsg.ulCallId,
                                                        enSpmErr);
 
-        pstCallEntity = IMSA_CallEntityGetUsedByCallId(IMSA_CALL_INVALID_ID);
+        pstCallEntity = IMSA_CallEntityGetUsedByImsCallId(IMSA_CALL_INVALID_ID);
         if (VOS_NULL_PTR != pstCallEntity)
         {
             IMSA_CallEntityFree(pstCallEntity);
         }
         break;
     /* xiongxianghui00253310 add for conference 20140210 end */
+    case ID_SPM_IMSA_CALL_MODIFY_REQ:
+        /* 修改函数入参 */
+        enSpmErr = IMSA_CallTransImsErr2SpmErr(&pstOutputCallEvent->stCallError.stErrorCode);
+
+        ulResult = IMSA_CallSendSpmModifyCnfMsg(pstCallCtx->stSpmMsg.usClientId,
+                                               pstCallCtx->stSpmMsg.ulOpId,
+                                               pstCallCtx->stSpmMsg.ulCallId,
+                                               enSpmErr);
+        break;
+    case ID_SPM_IMSA_CALL_ANSWER_REMOTE_MODIFY_REQ:
+        /* 修改函数入参 */
+        enSpmErr = IMSA_CallTransImsErr2SpmErr(&pstOutputCallEvent->stCallError.stErrorCode);
+
+        ulResult = IMSA_CallSendSpmAnswerRemoteModifyCnfMsg(pstCallCtx->stSpmMsg.usClientId,
+                                                           pstCallCtx->stSpmMsg.ulOpId,
+                                                           pstCallCtx->stSpmMsg.ulCallId,
+                                                           enSpmErr);
+        break;
+    case ID_SPM_IMSA_CALL_ECONF_DIAL_REQ:
+        pstCallEntity = IMSA_CallEntityGetUsedByImsCallId(IMSA_CALL_INVALID_ID);
+        if (VOS_NULL_PTR != pstCallEntity)
+        {
+            IMSA_CallReleaseCallCommonProc(pstCallEntity, TAF_CS_CAUSE_SUCCESS);
+        }
+
+        break;
+    case ID_SPM_IMSA_CALL_ECONF_ADD_USERS_REQ:
+        /* 修改函数入参 */
+        enSpmErr = IMSA_CallTransImsErr2SpmErr(&pstOutputCallEvent->stCallError.stErrorCode);
+        ulResult = IMSA_CallSendSpmEconfAddUserCnfMsg(pstCallCtx->stSpmMsg.usClientId,
+                                                       pstCallCtx->stSpmMsg.ulOpId,
+                                                       enSpmErr);
+        break;
     default:
         ulResult = VOS_FALSE;
         IMSA_ERR_LOG1("IMSA_CallProcImsMsgError: invalid call request", pstCallCtx->stSpmMsg.ulSpmMsgId);
@@ -859,6 +1110,8 @@ VOS_UINT32 IMSA_CallProcImsMsgErrorWhenFindOpidSucc
 
     return ulResult;
 }
+
+
 VOS_UINT32 IMSA_CallProcImsMsgError(const IMSA_IMS_OUTPUT_CALL_EVENT_STRU *pstOutputCallEvent)
 {
     IMSA_CALL_ENTITY_STRU              *pstCallEntity   = VOS_NULL_PTR;
@@ -877,7 +1130,7 @@ VOS_UINT32 IMSA_CallProcImsMsgError(const IMSA_IMS_OUTPUT_CALL_EVENT_STRU *pstOu
          * 2. 之所以找不到csmid，是因为在之前收到的REASON OK中已经将保存的csmid清除
          * 3. 这里将ErrorInfo保存到每个呼叫实体考虑当有多个呼叫同时发生错误时可以正确处理，
          */
-        pstCallEntity = IMSA_CallEntityGetUsedByCallId(ulCallId);
+        pstCallEntity = IMSA_CallEntityGetUsedByImsCallId(ulCallId);
         if (VOS_NULL_PTR != pstCallEntity)
         {
             IMSA_CallEntitySaveErrorInfo(pstCallEntity, pstOutputCallEvent);
@@ -894,7 +1147,7 @@ VOS_UINT32 IMSA_CallProcImsMsgError(const IMSA_IMS_OUTPUT_CALL_EVENT_STRU *pstOu
 }
 /* lihong00150010 2014-04-21 降全复杂度 end */
 
-VOS_UINT32 IMSA_CallProcImsMsgIncoming(IMSA_IMS_OUTPUT_CALL_EVENT_STRU *pstOutputCallEvent)
+VOS_UINT32 IMSA_CallProcImsMsgIncoming(const IMSA_IMS_OUTPUT_CALL_EVENT_STRU *pstOutputCallEvent)
 {
     IMSA_NORM_LOG("IMSA_CallProcImsMsgIncoming: enterd");
 #if 0
@@ -916,32 +1169,172 @@ VOS_UINT32 IMSA_CallProcImsMsgIncoming(IMSA_IMS_OUTPUT_CALL_EVENT_STRU *pstOutpu
 }
 
 
+VOS_UINT32 IMSA_CallIsNormal380Call2EmergencyCall(const IMSA_IMS_EMERGENCY_TYPE_ENUM_UINT8 EmcSubType)
+{
+    if(IMSA_IMS_EMERGENCY_SUB_TYPE_AMBULANCE <= EmcSubType
+        && IMSA_IMS_EMERGENCY_SUB_TYPE_MOUNTAIN >= EmcSubType)
+    {
+        IMSA_INFO_LOG1("Normal Call switch to known Emc call, Type: ", EmcSubType);
+        return VOS_TRUE;
+    }
+
+    if(IMSA_IMS_EMERGENCY_SUB_TYPE_EXTENSION == EmcSubType
+        && IMSA_EMS_STAUTS_SUPPORT == IMSA_GetNetInfoAddress()->enImsaEmsStatus)
+    {
+        IMSA_INFO_LOG("Normal Call switch to unknown Emc call.");
+        return VOS_TRUE;
+    }
+
+    if(IMSA_IMS_EMERGENCY_SUB_TYPE_GENERIC == EmcSubType)
+    {
+        IMSA_INFO_LOG("Normal Call switch to generic Emc call.");
+        return VOS_TRUE;
+    }
+
+    if(IMSA_IMS_EMERGENCY_SUB_TYPE_NONE == EmcSubType
+        && IMSA_EMS_STAUTS_SUPPORT == IMSA_GetNetInfoAddress()->enImsaEmsStatus)
+    {
+        IMSA_INFO_LOG("Normal Call switch to Emc call.");
+        return VOS_TRUE;
+    }
+
+    return VOS_FALSE;
+}
+
+
+VOS_VOID IMSA_CallSetSpmEmergencyCat(const IMSA_IMS_EMERGENCY_TYPE_ENUM_UINT8 EmcSubType, MN_CALL_EMERGENCY_CAT_STRU* pstEmergencyCat)
+{
+    pstEmergencyCat->bExist = VOS_FALSE;
+
+    if(IMSA_IMS_EMERGENCY_SUB_TYPE_AMBULANCE <= EmcSubType
+        && IMSA_IMS_EMERGENCY_SUB_TYPE_MOUNTAIN >= EmcSubType)
+    {
+        pstEmergencyCat->bExist = VOS_TRUE;
+        pstEmergencyCat->ucEmergencyCat = IMSA_CallEmcSubType2SPMEmcCat(EmcSubType);
+    }
+}
+
 VOS_UINT32 IMSA_CallEntityProcErrorInfo380ForNormal(IMSA_CALL_ENTITY_STRU *pstCallEntity, const IMSA_IMS_CALL_ERROR_STRU *pstImsError)
 {
-    (VOS_VOID)pstCallEntity;
-    (VOS_VOID)pstImsError;
+    IMSA_CALL_MANAGER_STRU             *pstCallCtx = IMSA_CallCtxGet();
+    VOS_UINT32                          ulCheckRet      = 0;
+    IMSA_EMC_CALL_TYPE_ENUM_UINT32      enEmcType       = IMSA_EMC_CALL_TYPE_BUTT;
+    TAF_CS_CAUSE_ENUM_UINT32            enSpmErr        = IMSA_NULL;
+    SPM_IMSA_CALL_ORIG_REQ_STRU         stCallOrigReq       = {0};
+    VOS_UINT32                          ulResult            = VOS_FALSE;
 
-    /**
-     * 如果普通呼叫收到380响应，如果alternative-service的type类型是emergency，则发起紧急注册
-     *
-     * 解法一：由IMSA内不能缓存并实现第二次呼叫的发起
-     * 理论上这里是MO呼叫时才去发起，而在呼叫实体也只有MO时才保存SPM下发的呼叫发起命令
-     * 所以这里再将该参数保存到呼叫管理上下文的缓存区，这样在收到紧急服务可用的通知时，
-     * 可以再一次发起该呼叫(不过这里需要更改呼叫类型??)
-     *
-     * 解法二: IMSA以特定的呼叫结果返回给SPM(如TAF_CS_CAUSE_IMSA_RETRY_VIA_IMS_EMC)，由SPM来触发第二次呼叫
-     * 这样似乎更合理干净一些，但需要和GU商量接口；
-     *     - 这种解法的另外一个考虑就是，把这种场景看成重播，而重播是放在SPM实现
-     *     - SPM已经有通过CS域重播的机制，再加一种通过IMS域紧急呼叫的方式重播，修改应该只是复用现有的机制
-     */
+    /* 如果网侧指示UE重新发起紧急注册，且UE支持紧急呼叫，则先通知SPM呼叫类型变更，然后发起初始紧急注册；
+    如果UE不支持紧急呼叫，则先通知SPM呼叫类型变更，然后通知SPM release事件 */
+    if ((IMSA_IMS_3GPP_TYPE_ACTION_EMERGENCY_REG == pstImsError->stErrorCode.usIms3gppAction)||
+        (IMSA_IMS_3GPP_TYPE_ACTION_EMERGENCY == pstImsError->stErrorCode.usIms3gppAction))
+    {
+        if(IMSA_CallIsNormal380Call2EmergencyCall(pstImsError->stErrorCode.ucEmergencyType))
+        {
+            pstCallEntity->stSpmMsg.stParam.stOrigParam.enCallType = MN_CALL_TYPE_EMERGENCY;
+            pstCallEntity->enType = IMSA_CALL_TYPE_EMC;
 
-    /* 目前先按解决二处理 */
+            /* 填写SPM紧急呼叫类型*/
+            IMSA_CallSetSpmEmergencyCat(pstImsError->stErrorCode.ucEmergencyType, &(pstCallEntity->stSpmMsg.stParam.stOrigParam.stEmergencyCat));
+
+            /* 通知SPM呼叫类型变更 */
+            (VOS_VOID)IMSA_CallSendSpmCallTypeChangeInfoIndMsg(pstCallEntity->stSpmMsg.usClientId,
+                                                               pstCallEntity->stSpmMsg.ulOpId,
+                                                               pstCallEntity->ucSpmcallId,
+                                                               MN_CALL_TYPE_VOICE,
+                                                               MN_CALL_TYPE_EMERGENCY,
+                                                               pstImsError->stErrorCode.ucEmergencyType);
+        }
+
+        if(IMSA_EMS_STAUTS_SUPPORT != IMSA_GetNetInfoAddress()->enImsaEmsStatus)
+        {
+            ulCheckRet = IMSA_CALL_AVAILABILITY_CHECK_RESULT_REJECT;
+        }
+        else
+        {
+            /* 进行呼叫可用性检查 */
+            ulCheckRet = IMSA_CallAvailabilityCheck(pstCallEntity->stSpmMsg.stParam.stOrigParam.enCallType, &enEmcType);
+        }
+
+        switch (ulCheckRet)
+        {
+        /* 在普通服务上发起紧急呼叫 */
+        case IMSA_CALL_AVAILABILITY_CHECK_RESULT_CONTINUE:
+
+            /* 给IMS发送DIAL消息 */
+            /* 取存储的ORIG REQ信息，再次发起呼叫建立请求 */
+            stCallOrigReq.ulMsgId       = ID_SPM_IMSA_CALL_ORIG_REQ;
+            stCallOrigReq.usClientId      = pstCallEntity->stSpmMsg.usClientId;
+            stCallOrigReq.ucOpId          = (MN_OPERATION_ID_T)pstCallEntity->stSpmMsg.ulOpId;
+            stCallOrigReq.stOrig        = pstCallEntity->stSpmMsg.stParam.stOrigParam;
+            ulResult = IMSA_CallSendImsMsgDial(IMSA_CALL_INVALID_ID, &stCallOrigReq);
+            if (VOS_TRUE == ulResult)
+            {
+                /* 启动保护定时器 */
+                IMSA_StartTimer(&pstCallCtx->stProctectTimer);
+
+                IMSA_MEM_CPY(   &pstCallCtx->stSpmMsg,
+                                &pstCallEntity->stSpmMsg,
+                                sizeof(IMSA_CALL_SPM_MSG_STRU));
+
+                /* 保存呼叫实体ID和call ID，如果IMS收到DIAL消息后，直接回复ERROR，则IMSA需要使用原call id，
+                给SPM发送release事件 */
+                pstCallCtx->ucRetryEmcRegFlag = IMSA_TRUE;
+                pstCallCtx->ucCallEntityIndex = pstCallEntity->ucCallEntityIndex;
+                pstCallCtx->ucId = pstCallEntity->ucSpmcallId;
+
+                /* 清除CALL ID，否则紧急注册成功，发起紧急呼叫后，IMS上报DAILING状态查找CALL实体时会查找不到;
+                   而且该路电话对于IMS不可见，因此IMS可能将该CALL ID重新分配给INCOMING
+                   CALL */
+                pstCallEntity->ucImscallId = IMSA_CALL_INVALID_ID;
+
+                /* 清除CALL状态，否则IMSA收到IMS上报的DIALING状态后，不会通知SPM */
+                pstCallEntity->enStatus = IMSA_CALL_STATUS_IDLE;
+            }
+            else
+            {
+                /* 将IMS错误原因值转化为SPM错误原因值 */
+                /* 修改函数入参 */
+                enSpmErr = IMSA_CallTransImsErr2SpmErr(&pstCallEntity->stImsError.stErrorCode);
+
+                IMSA_CallReleaseCallCommonProc(pstCallEntity, enSpmErr);
+            }
+            break;
+
+        /* 首先发起紧急注册流程 */
+        case IMSA_CALL_AVAILABILITY_CHECK_RESULT_CACHED:
+
+            /* 记录重新发起紧急注册的标识，保存呼叫实体ID和call ID */
+            pstCallCtx->ucRetryEmcRegFlag = IMSA_TRUE;
+            pstCallCtx->ucCallEntityIndex = pstCallEntity->ucCallEntityIndex;
+            pstCallCtx->ucId = pstCallEntity->ucSpmcallId;
+
+            /* 清除CALL ID，否则紧急注册成功，发起紧急呼叫后，IMS上报DAILING状态查找CALL实体时会查找不到;
+               而且该路电话对于IMS不可见，因此IMS可能将该CALL ID重新分配给INCOMING
+               CALL */
+            pstCallEntity->ucImscallId = IMSA_CALL_INVALID_ID;
+
+            /* 清除CALL状态，否则IMSA收到IMS上报的DIALING状态后，不会通知SPM */
+            pstCallEntity->enStatus = IMSA_CALL_STATUS_IDLE;
+
+            break;
+        /* 呼叫被拒绝，通知SPM release事件 */
+        default:
+            /* 将IMS错误原因值转化为SPM错误原因值 */
+            /* 修改函数入参 */
+            enSpmErr = IMSA_CallTransImsErr2SpmErr(&pstCallEntity->stImsError.stErrorCode);
+
+            IMSA_CallReleaseCallCommonProc(pstCallEntity, enSpmErr);
+
+            break;
+        }
+        return VOS_FALSE;
+    }
 
     return VOS_TRUE;
 }
 VOS_UINT32 IMSA_CallEntityProcErrorInfo380ForEmc
 (
-    const IMSA_CALL_ENTITY_STRU        *pstCallEntity,
+    IMSA_CALL_ENTITY_STRU        *pstCallEntity,
     const IMSA_IMS_CALL_ERROR_STRU     *pstImsError
 )
 {
@@ -954,11 +1347,18 @@ VOS_UINT32 IMSA_CallEntityProcErrorInfo380ForEmc
             /* 根据Action的值来处理 */
             if (IMSA_IMS_3GPP_TYPE_ACTION_EMERGENCY_REG == pstImsError->stErrorCode.usIms3gppAction)
             {
-                /* 由于CALL MANAGER中的缓存SPM消息在收到OK时就清除了，所以这里需要
-                   将CALL实体中缓存的SPM消息拷贝至CALL MANAGER中 */
-                IMSA_MEM_CPY(   &pstCallCtx->stSpmMsg,
-                                &pstCallEntity->stSpmMsg,
-                                sizeof(IMSA_CALL_SPM_MSG_STRU));
+                /* 记录重新发起紧急注册的标识，保存呼叫实体ID和call ID */
+                pstCallCtx->ucRetryEmcRegFlag = IMSA_TRUE;
+                pstCallCtx->ucCallEntityIndex = pstCallEntity->ucCallEntityIndex;
+                pstCallCtx->ucId = pstCallEntity->ucSpmcallId;
+
+                /* 清除CALL ID，否则紧急注册成功，发起紧急呼叫后，IMS上报DAILING状态查找CALL实体时会查找不到;
+                   而且该路电话对于IMS不可见，因此IMS可能将该CALL ID重新分配给INCOMING
+                   CALL */
+                pstCallEntity->ucImscallId = IMSA_CALL_INVALID_ID;
+
+                /* 清除CALL状态，否则IMSA收到IMS上报的DIALING状态后，不会通知SPM */
+                pstCallEntity->enStatus = IMSA_CALL_STATUS_IDLE;
 
                 /* 通知主控模块进行紧急注册 */
                 (VOS_VOID)IMSA_CallSendIntraResultAction(IMSA_CALL_TYPE_EMC, IMSA_RESULT_ACTION_REG_WITH_FIRST_ADDR_PAIR);
@@ -973,11 +1373,18 @@ VOS_UINT32 IMSA_CallEntityProcErrorInfo380ForEmc
             if ((VOS_FALSE == pstCallEntity->bitOpRetryCsCall)
                 && (IMSA_IMS_3GPP_TYPE_ACTION_EMERGENCY_REG == pstImsError->stErrorCode.usIms3gppAction))
             {
-                /* 由于CALL MANAGER中的缓存SPM消息在收到OK时就清除了，所以这里需要
-                   将CALL实体中缓存的SPM消息拷贝至CALL MANAGER中 */
-                IMSA_MEM_CPY(   &pstCallCtx->stSpmMsg,
-                                &pstCallEntity->stSpmMsg,
-                                sizeof(IMSA_CALL_SPM_MSG_STRU));
+                /* 记录重新发起紧急注册的标识，保存呼叫实体ID和call ID */
+                pstCallCtx->ucRetryEmcRegFlag = IMSA_TRUE;
+                pstCallCtx->ucCallEntityIndex = pstCallEntity->ucCallEntityIndex;
+                pstCallCtx->ucId = pstCallEntity->ucSpmcallId;
+
+                /* 清除CALL ID，否则紧急注册成功，发起紧急呼叫后，IMS上报DAILING状态查找CALL实体时会查找不到;
+                   而且该路电话对于IMS不可见，因此IMS可能将该CALL ID重新分配给INCOMING
+                   CALL */
+                pstCallEntity->ucImscallId = IMSA_CALL_INVALID_ID;
+
+                /* 清除CALL状态，否则IMSA收到IMS上报的DIALING状态后，不会通知SPM */
+                pstCallEntity->enStatus = IMSA_CALL_STATUS_IDLE;
 
                 /* 通知主控模块尝试使用下一组参数进行注册 */
                 (VOS_VOID)IMSA_CallSendIntraResultAction(pstCallEntity->enType, IMSA_RESULT_ACTION_REG_WITH_NEXT_ADDR_PAIR);
@@ -995,15 +1402,16 @@ VOS_UINT32 IMSA_CallEntityProcErrorInfo380ForEmc
 
     return VOS_TRUE;
 }
-
-
 VOS_UINT32 IMSA_CallEntityProcErrorInfo380(IMSA_CALL_ENTITY_STRU *pstCallEntity, const IMSA_IMS_CALL_ERROR_STRU *pstImsError)
 {
     VOS_UINT32 ulResult = VOS_TRUE;
 
     switch (pstCallEntity->enType)
     {
-    case IMSA_CALL_TYPE_NORMAL:
+    case IMSA_CALL_TYPE_VOICE:
+    case IMSA_CALL_TYPE_VIDEO:
+    case IMSA_CALL_TYPE_VIDEO_RX:
+    case IMSA_CALL_TYPE_VIDEO_TX:
         ulResult = IMSA_CallEntityProcErrorInfo380ForNormal(pstCallEntity, pstImsError);
         break;
     case IMSA_CALL_TYPE_EMC:
@@ -1078,33 +1486,56 @@ VOS_UINT32 IMSA_CallEntityProcErrorInfo(IMSA_CALL_ENTITY_STRU *pstCallEntity, co
 }
 TAF_CS_CAUSE_ENUM_UINT32 IMSA_CallTransImsErr2SpmErr
 (
-    VOS_UINT16                          usImsErr
+    const IMSA_IMS_OUTPUT_ERROR_STRU              *pstErrorCode
 )
 {
-    TAF_CS_CAUSE_ENUM_UINT32            enSpmErr = TAF_CS_CAUSE_BUTT;
+    TAF_CS_CAUSE_ENUM_UINT32            enSpmErr = (TAF_CS_CAUSE_ENUM_UINT32)TAF_CS_CAUSE_BUTT;
 
-    IMSA_INFO_LOG1("IMSA_CallTransImsErr2SpmErr: ims error code:", usImsErr);
+    IMSA_INFO_LOG1("IMSA_CallTransImsErr2SpmErr: ims error code:", pstErrorCode->usSipStatusCode);
 
-    if ((usImsErr < 300) || (usImsErr > 699))
+    /* 0-99原因值按以前实现转换为IMSA ERROR, 不判断子原因值 */
+    if (IMSA_IMS_INT_ERROR_CODE_STRM_RTP_BREAK > pstErrorCode->usSipStatusCode)
     {
         enSpmErr = TAF_CS_CAUSE_IMSA_ERROR;
-
         return enSpmErr;
     }
 
-    enSpmErr = usImsErr + TAF_CS_CAUSE_IMS_BEGIN;
-
-    if (enSpmErr >= TAF_CS_CAUSE_IMSA_BEGIN)
+    /* STRM_RTP_BREAK(通话过程中无语音包)原因上层需要知道不能转, 不需判断子原因值 */
+    if (IMSA_IMS_INT_ERROR_CODE_STRM_RTP_BREAK == pstErrorCode->usSipStatusCode)
     {
-        IMSA_ERR_LOG("IMSA_CallTransImsErr2SpmErr:ims err is not illegal");
-        enSpmErr = TAF_CS_CAUSE_IMS_FORBIDDEN;
+        enSpmErr = TAF_CS_CAUSE_IMSA_STRM_RTP_BREAK;
+        return enSpmErr;
     }
 
+    /* 其他IMS内部原因值处理 */
+    if ((pstErrorCode->usSipStatusCode < 300) || (pstErrorCode->usSipStatusCode > 699))
+    {
+        if (IMSA_IMS_CALL_FAIL_DETAIL_REASON_NULL == pstErrorCode->enCallFailDetailReason)
+        {
+            /* 若没有携带子原因值, 则表示需要重播, IMSA把IMS内部原因值转为TAF_CS_CAUSE_IMSA_RETRY_VIA_CS */
+            enSpmErr = TAF_CS_CAUSE_IMSA_RETRY_VIA_CS;
+        }
+        else
+        {
+            /* 若携带子原因值, 则表示不需要重播, IMSA把IMS内部原因值转为TAF_CS_CAUSE_IMSA_IMS_ERROR */
+            enSpmErr = TAF_CS_CAUSE_IMSA_IMS_ERROR;
+        }
+        return enSpmErr;
+    }
+
+    /* SIP原因值处理 */
+    if (IMSA_IMS_CALL_FAIL_DETAIL_REASON_NULL == pstErrorCode->enCallFailDetailReason)
+    {
+        /* 若没有携带子原因值, 则表示由上层NV判断是否需要重播, IMSA把IMS内部原因值透给上层 */
+        enSpmErr = pstErrorCode->usSipStatusCode + TAF_CS_CAUSE_IMS_BEGIN;
+    }
+    else
+    {
+        /* 若没有携带子原因值, 则表示不需要重播, IMSA把IMS内部原因值转为TAF_CS_CAUSE_IMS_OTHERS */
+        enSpmErr = TAF_CS_CAUSE_IMS_OTHERS;
+    }
     return enSpmErr;
 }
-
-
-
 VOS_VOID IMSA_CallReleaseCallCommonProc
 (
     IMSA_CALL_ENTITY_STRU              *pstCallEntity,
@@ -1113,13 +1544,34 @@ VOS_VOID IMSA_CallReleaseCallCommonProc
 {
     IMSA_CALL_MANAGER_STRU             *pstCallCtx  = IMSA_CallCtxGet();
     VOS_UINT32                          i           = IMSA_NULL;
+    IMSA_MT_STATUS_REPORT_STRU         *pstMtReport = VOS_NULL_PTR;
 
     /* 如果此CALL是未上报过INCOMING事件给SPM的MT CALL（即IsUsed为TRUE，
        但状态为IDLE，方向为MT），则不需要上报releasd事件 */
-    if ((IMSA_CALL_STATUS_IDLE == pstCallEntity->enStatus)
+    if ((IMSA_CALL_STATUS_IDLE == pstCallEntity->enStatus || IMSA_CALL_STATUS_DIALING == pstCallEntity->enStatus)
         && (MN_CALL_DIR_MT == pstCallEntity->enDir))
     {
-        IMSA_INFO_LOG("IMSA_CallReleaseCallCommonProc:MT,IDLE");
+        IMSA_INFO_LOG1("IMSA_CallReleaseCallCommonProc:MT, status: ", pstCallEntity->enStatus);
+        /* report AT that we missed this call. */
+        pstMtReport = (IMSA_MT_STATUS_REPORT_STRU*)IMSA_MEM_ALLOC(sizeof(IMSA_MT_STATUS_REPORT_STRU));
+        if(VOS_NULL_PTR == pstMtReport)
+        {
+            IMSA_ERR_LOG("IMSA_CallReleaseCallCommonProc: alloc memory failure.");
+            IMSA_CallEntityFree(pstCallEntity);
+            return;
+        }
+        IMSA_MEM_SET(pstMtReport, 0, sizeof(IMSA_MT_STATUS_REPORT_STRU));
+
+        if(IMSA_FALSE != pstCallEntity->bitOpErrorInfo)
+        {
+            /* 修改函数入参 */
+            pstMtReport->ulCauseCode = IMSA_CallTransImsErr2SpmErr(&pstCallEntity->stImsError.stErrorCode);
+        }
+        pstMtReport->enMtStatus = IMSA_MT_CALL_STATUS_LOST_ABNORMALLY;
+        IMSA_UtilStrNCpy(pstMtReport->acNumber, pstCallEntity->stCallNumber.aucNumber, IMSA_CALL_NUMBER_MAX_NUM);
+        IMSA_SndMsgAtMtStatusInd(pstMtReport);
+
+        IMSA_MEM_FREE(pstMtReport);
         IMSA_CallEntityFree(pstCallEntity);
 
         return ;
@@ -1130,7 +1582,13 @@ VOS_VOID IMSA_CallReleaseCallCommonProc
     {
         IMSA_INFO_LOG("IMSA_CallReleaseCallCommonProc:Call transfered to CS.");
         IMSA_CallEntityFree(pstCallEntity);
+        if (IMSA_CallEntityGetUsedCount() == 0)
+        {
+            IMSA_CallSetNotReportAllReleasedFlag(IMSA_FALSE);
 
+            /* 不存在CALL实体, 通知LRRC VOLTE电话结束 */
+            IMSA_SndRrcVolteStatusNotify(IMSA_LRRC_VOLTE_STATUS_END);
+        }
         return;
     }
 
@@ -1156,20 +1614,12 @@ VOS_VOID IMSA_CallReleaseCallCommonProc
 
     if (IMSA_CALL_MAX_NUM == i)
     {
+        /* 不存在CALL实体, 通知LRRC VOLTE电话结束 */
+        IMSA_SndRrcVolteStatusNotify(IMSA_LRRC_VOLTE_STATUS_END);
+
         (VOS_VOID)IMSA_CallSendSpmAllReleasedEvt();
     }
 }
-
-/*****************************************************************************
- Function Name  : IMSA_CallClearLocalAlertInfo
- Description    : 启动HIFI后，清除本地振铃信息
- Input          : VOS_VOID
- Output         : VOS_VOID
- Return Value   : VOS_VOID
-
- History        :
-      1.sunbing 49683      2013-10-11  Draft Enact
-*****************************************************************************/
 VOS_VOID IMSA_CallClearLocalAlertInfo(VOS_VOID )
 {
     VOS_UINT32 i = 0;
@@ -1178,17 +1628,15 @@ VOS_VOID IMSA_CallClearLocalAlertInfo(VOS_VOID )
     for (i = 0; i < IMSA_CALL_MAX_NUM; i++)
     {
         if ((VOS_TRUE == pstCallCtx->astCallEntity[i].bitOpIsUsed) &&
-            (VOS_FALSE== pstCallCtx->astCallEntity[i].bitOpEarlyMedia))
+            (VOS_TRUE== pstCallCtx->astCallEntity[i].bitOpLocalAlerting))
         {
             IMSA_INFO_LOG("IMSA_CallClearLocalAlertInfo: Clear Local Alert Info!");
 
-            pstCallCtx->astCallEntity[i].bitOpEarlyMedia = VOS_TRUE;
+            pstCallCtx->astCallEntity[i].bitOpLocalAlerting = VOS_FALSE;
         }
     }
 
 }
-
-
 VOS_UINT32 IMSA_CallIsNeedCsRedialSrvccSucc
 (
     const IMSA_CALL_ENTITY_STRU        *pstCallEntity
@@ -1213,7 +1661,39 @@ VOS_UINT32 IMSA_CallIsNeedCsRedialSrvccSucc
     return IMSA_TRUE;
 }
 
+IMSA_CALL_CALL_REASON_RESOURCE_RESULT_ENUM_UINT8 IMSA_CallIsResourceReady
+(
+    IMSA_CALL_ENTITY_STRU              *pstCallEntity
+)
+{
+    IMSA_CALL_MANAGER_STRU             *pstCallCtx = IMSA_CallCtxGet();
 
+    /* 根据call类型，判断所需要的资源是否已经预留成功 */
+    /* 不论哪种类型的call都需要语音类型的承载。 只要语音承载不存在，资源预留结果肯定为失败。*/
+    if (IMSA_FALSE == pstCallCtx->ucVoiceBearExistFlag)
+    {
+        return IMSA_CALL_CALL_REASON_RESOURCE_FAILED;
+    }
+
+    if ((IMSA_CALL_TYPE_VOICE == pstCallEntity->enType)
+        || ((IMSA_TRUE == pstCallCtx->ucVideoBearExistFlag) && (IMSA_CALL_TYPE_VIDEO == pstCallEntity->enType))
+        || (IMSA_CALL_TYPE_EMC == pstCallEntity->enType))
+    {
+        return IMSA_CALL_CALL_REASON_RESOURCE_READY;
+    }
+
+    /* 如果是MO 视频电话，判断是否语音预留成功 */
+    if ((IMSA_CALL_TYPE_VIDEO == pstCallEntity->enType) && (MN_CALL_DIR_MO == pstCallEntity->enDir))
+    {
+        if ((IMSA_TRUE == pstCallCtx->ucVoiceBearExistFlag) && (IMSA_FALSE == pstCallCtx->ucVideoBearExistFlag))
+        {
+            return IMSA_CALL_CALL_REASON_RESOURCE_ONLY_VOICE;
+        }
+    }
+
+
+    return IMSA_CALL_CALL_REASON_RESOURCE_FAILED;
+}
 VOS_UINT32 IMSA_CallFindCauseInRedialCauseList
 (
     VOS_UINT16                          usSipStatusCode
@@ -1310,6 +1790,91 @@ VOS_UINT32 IMSA_CallIsNeedRedial
     return IMSA_TRUE;
 }
 
+VOS_VOID IMSA_CallProcImsMsgDisconnectNoErrInfo
+(
+    IMSA_CALL_ENTITY_STRU              *pstCallEntity
+)
+{
+    TAF_CS_CAUSE_ENUM_UINT32            enSpmErr        = IMSA_NULL;
+    IMSA_CALL_MANAGER_STRU             *pstCallCtx      = IMSA_CallCtxGet();
+
+     /* 如果是SRVCC成功，且是MO CALL，且当前转该为DIALING或TRYING，
+       则将原因值填为SRVCC_SUCC，由SPM决定是否到CS域重播 */
+    if (IMSA_TRUE == IMSA_CallIsNeedCsRedialSrvccSucc(pstCallEntity))
+    {
+        enSpmErr = TAF_CS_CAUSE_IMSA_SRVCC_SUCC;
+    }
+    else if(VOS_TRUE == IMSA_GetConfigParaAddress()->stCMCCCustomReq.ucCMCCCustomTcallFlag
+            && VOS_TRUE == pstCallCtx->ucIsTcallTimeOutProc)
+    {
+        /*CMCC Tcall timer expires, delegate SPM to retry over CS domian.*/
+        IMSA_INFO_LOG("Tcall time out, retry over CS.");
+        /* 如果是视频呼叫，需要通知SPM呼叫类型转换为VOICE，去CS域重拨 */
+        if (IMSA_CALL_TYPE_VIDEO == pstCallEntity->enType)
+        {
+            (VOS_VOID)IMSA_CallSendSpmCallTypeChangeInfoIndMsg(pstCallEntity->usClientId,
+                                                                pstCallEntity->ulOpId,
+                                                                pstCallEntity->ucSpmcallId,
+                                                                pstCallEntity->enType,
+                                                                MN_CALL_TYPE_VOICE,
+                                                                IMSA_IMS_EMERGENCY_SUB_TYPE_NONE);
+            pstCallEntity->enType = IMSA_CALL_TYPE_VOICE;
+        }
+
+        enSpmErr = TAF_CS_CAUSE_IMSA_CMCC_TCALL_TIMEOUT;
+        pstCallCtx->ucIsTcallTimeOutProc = VOS_FALSE;
+
+        #if (FEATURE_ON == FEATURE_PTM)
+        IMSA_CallErrRecord( IMSA_ERR_LOG_CALL_FAIL_REASON_TCALL_TIMEOUT, pstCallEntity);
+        #endif
+
+    }
+    else if( (VOS_TRUE == IMSA_GetConfigParaAddress()->stCMCCCustomReq.ucCMCCCustomTqosFlag)
+            && (IMSA_TRUE == pstCallEntity->ucTqosExpFlag)
+            && (MN_CALL_DIR_MO == pstCallEntity->enDir))
+    {
+        /* 如果是视频呼叫，需要通知SPM呼叫类型转换为VOICE，去CS域重拨 */
+        if (IMSA_CALL_TYPE_VIDEO == pstCallEntity->enType)
+        {
+            (VOS_VOID)IMSA_CallSendSpmCallTypeChangeInfoIndMsg(pstCallEntity->usClientId,
+                                                               pstCallEntity->ulOpId,
+                                                               pstCallEntity->ucSpmcallId,
+                                                               pstCallEntity->enType,
+                                                               MN_CALL_TYPE_VOICE,
+                                                               IMSA_IMS_EMERGENCY_SUB_TYPE_NONE);
+
+            pstCallEntity->enType = IMSA_CALL_TYPE_VOICE;
+        }
+        /*CMCC Tqos timer expires, delegate SPM to retry over CS domian.*/
+        IMSA_INFO_LOG("Tqos time out, retry over CS.");
+        enSpmErr = TAF_CS_CAUSE_IMSA_CMCC_TQOS_TIMEOUT;
+
+        /* ESR与ACK网侧同时收到，导致失败。正确方案是SIP消息处理完后SDK应通知IMSA，
+           然后触发CSFB，但由于SDK架构比较复杂，SDK不想修改。最后经刘继武裁决，
+           规避方案是当IMSA收到DISCONNECT后要延迟1秒，之后触发CSFB。虽影响用户体验
+           但认为可以接受 */
+        (VOS_VOID)TLPS_TaskDelay(1000);
+
+        #if (FEATURE_ON == FEATURE_PTM)
+        IMSA_CallErrRecord( IMSA_ERR_LOG_CALL_FAIL_REASON_TQOS_TIMEOUT, pstCallEntity);
+        #endif
+
+    }
+    else
+    {
+        enSpmErr = TAF_CS_CAUSE_SUCCESS;
+    }
+
+    IMSA_CallReleaseCallCommonProc(pstCallEntity, enSpmErr);
+
+    if (IMSA_CallEntityGetUsedCount() == 0)
+    {
+        IMSA_SrvccSuccBuffProc();
+    }
+
+    return;
+}
+
 
 VOS_UINT32 IMSA_CallProcImsMsgDisconnect
 (
@@ -1322,7 +1887,7 @@ VOS_UINT32 IMSA_CallProcImsMsgDisconnect
     IMSA_CALL_MANAGER_STRU             *pstCallCtx      = IMSA_CallCtxGet();
     IMSA_IMS_REDIAL_CFG_STRU           *pstImsRedialCfg = VOS_NULL_PTR;
 
-    pstCallEntity = IMSA_CallEntityGetUsedByCallId((VOS_UINT32)pstOutputCallEvent->stCallReport.astCalls[0].ulCallIndex);
+    pstCallEntity = IMSA_CallEntityGetUsedByImsCallId((VOS_UINT32)pstOutputCallEvent->stCallReport.astCalls[0].ulCallIndex);
     if (VOS_NULL_PTR == pstCallEntity)
     {
         IMSA_ERR_LOG1("IMSA_CallProcImsMsgDisconnect: not found call entity ",
@@ -1344,8 +1909,8 @@ VOS_UINT32 IMSA_CallProcImsMsgDisconnect
         }
 
         /* 判定是否需要重播 */
-        if (IMSA_TRUE == IMSA_CallIsNeedRedial( pstCallEntity,
-                                                pstCallEntity->stImsError.stErrorCode.usSipStatusCode))
+        if ((IMSA_TRUE == IMSA_CallIsNeedRedial( pstCallEntity, pstCallEntity->stImsError.stErrorCode.usSipStatusCode))&&
+            (VOS_TRUE == IMSA_IsCurrentAccessTypeSupportIms()))
         {
             IMSA_INFO_LOG("IMSA_CallProcImsMsgDisconnect:redial!");
 
@@ -1354,7 +1919,7 @@ VOS_UINT32 IMSA_CallProcImsMsgDisconnect
 
             /* 索引和CALL ID都得放到para中，第8位放索引，高8位放CALL ID；
                记录CALL ID信息，为了防止在间隔定时器启动时，用户下释放这个CALL的动作 */
-            pstCallCtx->stRedialIntervelTimer.usPara = pstCallEntity->ucId << IMSA_MOVEMENT_8;
+            pstCallCtx->stRedialIntervelTimer.usPara = pstCallEntity->ucSpmcallId << IMSA_MOVEMENT_8;
             pstCallCtx->stRedialIntervelTimer.usPara |= pstCallEntity->ucCallEntityIndex;
             IMSA_StartTimer(&pstCallCtx->stRedialIntervelTimer);
 
@@ -1365,13 +1930,31 @@ VOS_UINT32 IMSA_CallProcImsMsgDisconnect
                但这里清除了CALL ID，则需要在打断重播流程时，即在IMSA_CallInterruptRedial
                函数中重新将间隔定时器中记录的CALLID写回CALL实体中，才能保证上报
                RELEASD事件时填写的CALL ID正确 */
-            pstCallEntity->ucId = IMSA_CALL_INVALID_ID;
-
+            /* 由于重拨过程中，spmcallid并未发生变化，所以不需要在保存callid */
+            pstCallEntity->ucImscallId = IMSA_CALL_INVALID_ID;
             return VOS_TRUE;
         }
 
+        #if (FEATURE_ON == FEATURE_PTM)
+        IMSA_CallErrRecord(pstCallEntity->stImsError.stErrorCode.usSipStatusCode, pstCallEntity);
+        #endif
+
+        if ((IMSA_CALL_TYPE_VIDEO == pstCallEntity->enType)
+            && (MN_CALL_DIR_MO == pstCallEntity->enDir))
+        {
+            (VOS_VOID)IMSA_CallSendSpmCallTypeChangeInfoIndMsg(pstCallEntity->usClientId,
+                                                               pstCallEntity->ulOpId,
+                                                               pstCallEntity->ucSpmcallId,
+                                                               pstCallEntity->enType,
+                                                               MN_CALL_TYPE_VOICE,
+                                                               IMSA_IMS_EMERGENCY_SUB_TYPE_NONE);
+
+            pstCallEntity->enType = IMSA_CALL_TYPE_VOICE;
+        }
+
         /* 将IMS错误原因值转化为SPM错误原因值 */
-        enSpmErr = IMSA_CallTransImsErr2SpmErr(pstCallEntity->stImsError.stErrorCode.usSipStatusCode);
+        /* 修改函数入参 */
+        enSpmErr = IMSA_CallTransImsErr2SpmErr(&pstCallEntity->stImsError.stErrorCode);
 
         IMSA_CallReleaseCallCommonProc(pstCallEntity, enSpmErr);
 
@@ -1382,23 +1965,7 @@ VOS_UINT32 IMSA_CallProcImsMsgDisconnect
     }
     else
     {
-        /* 如果是SRVCC成功，且是MO CALL，且当前转该为DIALING或TRYING，
-           则将原因值填为SRVCC_SUCC，由SPM决定是否到CS域重播 */
-        if (IMSA_TRUE == IMSA_CallIsNeedCsRedialSrvccSucc(pstCallEntity))
-        {
-            enSpmErr = TAF_CS_CAUSE_IMSA_SRVCC_SUCC;
-        }
-        else
-        {
-            enSpmErr = TAF_CS_CAUSE_SUCCESS;
-        }
-
-        IMSA_CallReleaseCallCommonProc(pstCallEntity, enSpmErr);
-
-        if (IMSA_CallEntityGetUsedCount() == 0)
-        {
-            IMSA_SrvccSuccBuffProc();
-        }
+        IMSA_CallProcImsMsgDisconnectNoErrInfo(pstCallEntity);
     }
 
     /* 清除DTMF信息 */
@@ -1407,8 +1974,13 @@ VOS_UINT32 IMSA_CallProcImsMsgDisconnect
         IMSA_CallClearDtmfInfo(TAF_CS_CAUSE_CALL_RELEASE);
     }
 
+    /* zhaochen 00308719 begin for VoLTE 2015-08-25 */
+    IMSA_CommonDeregProc();
+    /* zhaochen 00308719 end for VoLTE 2015-08-25 */
     return VOS_TRUE;
 }
+
+
 VOS_UINT32 IMSA_CallProcImsMsgWaiting(const IMSA_IMS_OUTPUT_CALL_EVENT_STRU *pstOutputCallEvent)
 {
 #if 0
@@ -1426,24 +1998,6 @@ VOS_UINT32 IMSA_CallProcImsMsgWaiting(const IMSA_IMS_OUTPUT_CALL_EVENT_STRU *pst
 }
 
 
-VOS_UINT32 IMSA_CallProcImsMsgCallEarlyMedia(const IMSA_IMS_OUTPUT_CALL_EVENT_STRU *pstOutputCallEvent)
-{
-    IMSA_CALL_ENTITY_STRU *pstCallEntity = VOS_NULL_PTR;
-
-
-    pstCallEntity = IMSA_CallEntityGetUsedByCallId((VOS_UINT32)pstOutputCallEvent->stCallReport.astCalls[0].ulCallIndex);
-    if (pstCallEntity)
-    {
-        pstCallEntity->bitOpEarlyMedia = IMSA_OP_TRUE;
-    }
-    else
-    {
-        IMSA_ERR_LOG1("IMSA_CallProcImsMsgCallEarlyMedia: not found call entity ",
-            pstOutputCallEvent->stCallReport.astCalls[0].ulCallIndex);
-    }
-
-    return VOS_TRUE;
-}
 
 
 VOS_UINT32 IMSA_CallProcImsMsgInitializing(const IMSA_IMS_OUTPUT_CALL_EVENT_STRU *pstOutputCallEvent)
@@ -1453,34 +2007,55 @@ VOS_UINT32 IMSA_CallProcImsMsgInitializing(const IMSA_IMS_OUTPUT_CALL_EVENT_STRU
     VOS_UINT32                          ulResult = VOS_FALSE;
     IMSA_CALL_ENTITY_STRU              *pstRedailCallEntity = VOS_NULL_PTR;
     VOS_UINT8                           ucRedialCallIndex   = IMSA_NULL;
+    IMSA_CALL_TYPE_ENUM_UINT8           enCallType = IMSA_CALL_TYPE_BUTT;
 
 
-    pstCallEntity = IMSA_CallEntityGetUsedByCallId((VOS_UINT32)pstOutputCallEvent->stCallReport.astCalls[0].ulCallIndex);
+    pstCallEntity = IMSA_CallEntityGetUsedByImsCallId((VOS_UINT32)pstOutputCallEvent->stCallReport.astCalls[0].ulCallIndex);
 
     /* 如果找到对应的呼叫实体，则是MO呼叫的INITIALIZING事件 */
     if (pstCallEntity)
     {
         pstCallEntity->ulResRspOpId = pstOutputCallEvent->ulOpId;
 
+        /* 备份原来的呼叫类型 */
+        enCallType = pstCallEntity->enType;
+
         /* 暂不实现承载修改场景下的precondition流程，只要是媒体承载存在就认为
            资源已具备，用于解决媒体承载建立比ims流程快的场景 */
-        if (((IMSA_TRUE == pstCallCtx->ulIsMediaPdpReady) && (IMSA_CALL_TYPE_NORMAL == pstCallEntity->enType))
-            || ((IMSA_TRUE == pstCallCtx->ulIsEmcMediaPdpReady) && (IMSA_CALL_TYPE_EMC == pstCallEntity->enType)))
+        /* 更新呼叫实体 */
+        IMSA_CallEntityUpdateByCallSummary(pstCallEntity, &(pstOutputCallEvent->stCallReport.astCalls[0]));
+
+        /* 如果呼叫类型改变，需要通知SPM */
+        if (enCallType != pstCallEntity->enType)
+        {
+            (VOS_VOID)IMSA_CallSendSpmCallTypeChangeInfoIndMsg(pstCallEntity->usClientId,
+                                                               pstCallEntity->ulOpId,
+                                                               pstCallEntity->ucSpmcallId,
+                                                               (MN_CALL_TYPE_ENUM_U8)enCallType,
+                                                               (MN_CALL_TYPE_ENUM_U8)pstCallEntity->enType,
+                                                               IMSA_IMS_EMERGENCY_SUB_TYPE_NONE);
+        }
+
+        if (IMSA_CALL_CALL_REASON_RESOURCE_READY == IMSA_CallIsResourceReady(pstCallEntity))
         {
             IMSA_INFO_LOG("IMSA_CallProcImsMsgInitializing:call already exist,resource already!");
 
-            (VOS_VOID)IMSA_CallSendImsMsgResRsp(pstCallEntity->ucId,
+            (VOS_VOID)IMSA_CallSendImsMsgResRsp(pstCallEntity->ucImscallId,
                                                 pstCallEntity->ulResRspOpId,
-                                                VOS_TRUE);
+                                                IMSA_CALL_CALL_REASON_RESOURCE_READY);
         }
         else
         {
             IMSA_INFO_LOG("IMSA_CallProcImsMsgInitializing:call already exist,wati for resource!");
 
             /* 设置呼叫对应的资源标志位 */
-            pstCallEntity->bitOpResReady = IMSA_FALSE;
+            pstCallEntity->bitOpNeedSendResResult = IMSA_TRUE;
 
             /* 刷新等待资源建立定时器 */
+            if(VOS_TRUE == IMSA_GetConfigParaAddress()->stCMCCCustomReq.ucCMCCCustomTqosFlag)
+            {
+                pstCallCtx->stResReadyTimer.ulTimerLen = IMSA_GetConfigParaAddress()->stCMCCCustomReq.ulTqosTimerLen;
+            }
             IMSA_RegTimerRefresh(&pstCallCtx->stResReadyTimer, pstCallEntity->ucCallEntityIndex);
         }
 
@@ -1489,6 +2064,15 @@ VOS_UINT32 IMSA_CallProcImsMsgInitializing(const IMSA_IMS_OUTPUT_CALL_EVENT_STRU
     /* 如果找不到对应的呼叫实体，则是MT呼叫的INITIALIZING事件 */
     else
     {
+        /* 多方会议请求资源预留，上报的CallID IMSA不感知，直接下发资源预留结果 */
+        if (IMSA_IMS_CALL_CONFERENCE == pstOutputCallEvent->stCallReport.astCalls[0].enMultiParty)
+        {
+            IMSA_INFO_LOG("IMSA_CallProcImsMsgInitializing:mpty+precondition!");
+            (VOS_VOID)IMSA_CallSendImsMsgResRsp(pstOutputCallEvent->stCallReport.astCalls[0].ulCallIndex,
+                                                pstOutputCallEvent->ulOpId,
+                                                IMSA_CALL_CALL_REASON_RESOURCE_READY);
+            return VOS_TRUE;
+        }
         pstCallEntity = IMSA_CallEntityAlloc();
         if (pstCallEntity)
         {
@@ -1506,29 +2090,32 @@ VOS_UINT32 IMSA_CallProcImsMsgInitializing(const IMSA_IMS_OUTPUT_CALL_EVENT_STRU
             /* 更新呼叫实体 */
             IMSA_CallEntityUpdateByCallSummary(pstCallEntity, &(pstOutputCallEvent->stCallReport.astCalls[0]));
 
-            pstCallEntity->ucId = (VOS_UINT8)pstOutputCallEvent->stCallReport.astCalls[0].ulCallIndex;
+            pstCallEntity->ucImscallId = (VOS_UINT8)pstOutputCallEvent->stCallReport.astCalls[0].ulCallIndex;
             pstCallEntity->ulResRspOpId = pstOutputCallEvent->ulOpId;
+            pstCallEntity->enStatus = IMSA_CALL_STATUS_IDLE;
 
-            /* 只要是媒体承载存在就认为资源已具备，用于解决媒体承载建立比ims流程快的场景 */
-            if (IMSA_TRUE == pstCallCtx->ulIsMediaPdpReady)
+            if (IMSA_CALL_CALL_REASON_RESOURCE_READY == IMSA_CallIsResourceReady(pstCallEntity))
             {
                 IMSA_INFO_LOG("IMSA_CallProcImsMsgInitializing:call not exist,resource already!");
 
-                (VOS_VOID)IMSA_CallSendImsMsgResRsp(pstCallEntity->ucId,
+                (VOS_VOID)IMSA_CallSendImsMsgResRsp(pstCallEntity->ucImscallId,
                                                     pstCallEntity->ulResRspOpId,
-                                                    VOS_TRUE);
+                                                    IMSA_CALL_CALL_REASON_RESOURCE_READY);
             }
             else
             {
                 IMSA_INFO_LOG("IMSA_CallProcImsMsgInitializing:call not exist,wait for resource!");
 
                 /* 设置呼叫对应的资源标志位 */
-                pstCallEntity->bitOpResReady = IMSA_FALSE;
+                pstCallEntity->bitOpNeedSendResResult = IMSA_TRUE;
 
                 /* 刷新等待资源建立定时器 */
+                if(VOS_TRUE == IMSA_GetConfigParaAddress()->stCMCCCustomReq.ucCMCCCustomTqosFlag)
+                {
+                    pstCallCtx->stResReadyTimer.ulTimerLen = IMSA_GetConfigParaAddress()->stCMCCCustomReq.ulTqosTimerLen;
+                }
                 IMSA_RegTimerRefresh(&pstCallCtx->stResReadyTimer, pstCallEntity->ucCallEntityIndex);
             }
-
             ulResult = VOS_TRUE;
         }
         else
@@ -1652,14 +2239,17 @@ VOS_UINT32 CALL_IMSA_GetSrvccCallInfo(VOS_UINT8* pucCallNum,
         pstSrvccCallInfo = &stImsSrvccCallList.astCallInfo[ucCount];
 
         /*根据call id找到呼叫实体*/
-        pstCallEntity = IMSA_CallEntityGetUsedByCallId(pstSrvccCallInfo->ulCallIndex);
+        pstCallEntity = IMSA_CallEntityGetUsedByImsCallId(pstSrvccCallInfo->ulCallIndex);
         if(VOS_NULL_PTR == pstCallEntity)
         {
             IMSA_ERR_LOG("CALL_IMSA_GetSrvccCallInfo: Call info err.");
             continue;
         }
 
+        pstTmpCallInfo->ucCallId    = pstCallEntity->ucSpmcallId;
+        #if 0
         pstTmpCallInfo->ucCallId    = (VOS_UINT8)pstSrvccCallInfo->ulCallIndex;
+        #endif
         pstTmpCallInfo->enCallState = \
               IMSA_CallImsSrvccState2TafCallState(pstSrvccCallInfo->enCallState);
         pstTmpCallInfo->ucTi        = pstSrvccCallInfo->ucTi;
@@ -1672,6 +2262,7 @@ VOS_UINT32 CALL_IMSA_GetSrvccCallInfo(VOS_UINT8* pucCallNum,
         pstTmpCallInfo->opId        = (VOS_UINT8)pstCallEntity->ulOpId;
         pstTmpCallInfo->enCallDir   = pstCallEntity->enDir;
         pstTmpCallInfo->enMptyState = pstCallEntity->enMpty;
+        pstTmpCallInfo->ucEConferenceFlag = pstCallEntity->ucIsEconfFlag;
         pstTmpCallInfo->enCallMode  = pstCallEntity->enMode;
 
         if(IMSA_CALL_TYPE_EMC == pstCallEntity->enType)
@@ -1684,7 +2275,8 @@ VOS_UINT32 CALL_IMSA_GetSrvccCallInfo(VOS_UINT8* pucCallNum,
         }
 
         /*没有EarlyMedia标示，说明HIFI没有启动，或者没有网络振铃，需要本地振铃*/
-        if(VOS_FALSE== pstCallEntity->bitOpEarlyMedia)
+
+        if(VOS_TRUE == pstCallEntity->bitOpLocalAlerting)
         {
             pstTmpCallInfo->ucLocalAlertedFlag = VOS_TRUE;
         }
@@ -1716,21 +2308,24 @@ VOS_UINT32 CALL_IMSA_GetSrvccCallInfo(VOS_UINT8* pucCallNum,
  History        :
       1.sunbing 49683     2013-10-11  Draft Enact
 *****************************************************************************/
-VOS_VOID IMSA_CallProcImsMsgSrvccCallList(IMSA_IMS_OUTPUT_CALL_EVENT_STRU *pstOutputCallEvent)
+VOS_UINT32 IMSA_CallProcImsMsgSrvccCallList(const IMSA_IMS_OUTPUT_CALL_EVENT_STRU *pstOutputCallEvent)
 {
     VOS_UINT8                               ucCount;
+    VOS_UINT32                              ulCallNum;
     IMSA_CALL_ENTITY_STRU                  *pstCallEntity     = VOS_NULL_PTR;
     IMSA_IMS_SRVCC_CALL_INFO_STRU          *pstSrvccCallInfo  = VOS_NULL_PTR;
     CALL_IMSA_SRVCC_CALL_INFO_NOTIFY_STRU  *pstCallInfoNotify = VOS_NULL_PTR;
+    IMSA_CALL_ECONF_SUMMARY_STRU           *pEconfSummary = VOS_NULL_PTR;
+
+
 
     IMSA_INFO_LOG("IMSA_CallProcImsMsgSrvccCallList is entered!");
 
-    if((pstOutputCallEvent->stSrvccCallList.ulCallNum > IMSA_IMS_EVENT_MAX_CALL_LIST_SIZE)
-       ||(pstOutputCallEvent->stSrvccCallList.ulCallNum == 0))
+    ulCallNum = pstOutputCallEvent->stSrvccCallList.ulCallNum;
+
+    if(pstOutputCallEvent->stSrvccCallList.ulCallNum > IMSA_IMS_EVENT_MAX_CALL_LIST_SIZE)
     {
-        IMSA_ERR_LOG1("IMSA_CallProcImsMsgSrvccCallList: Error Call Num. ",
-            pstOutputCallEvent->stSrvccCallList.ulCallNum);
-        return;
+        ulCallNum = IMSA_IMS_EVENT_MAX_CALL_LIST_SIZE;
     }
 
     pstCallInfoNotify = (VOS_VOID*)IMSA_ALLOC_MSG(sizeof(CALL_IMSA_SRVCC_CALL_INFO_NOTIFY_STRU));
@@ -1738,27 +2333,32 @@ VOS_VOID IMSA_CallProcImsMsgSrvccCallList(IMSA_IMS_OUTPUT_CALL_EVENT_STRU *pstOu
     if (VOS_NULL_PTR == pstCallInfoNotify)
     {
         IMSA_ERR_LOG("IMSA_CallProcImsMsgSrvccCallList: alloc memory fail");
-        return ;
+        return VOS_TRUE;
     }
 
     IMSA_MEM_SET(IMSA_GET_MSG_ENTITY(pstCallInfoNotify), 0, IMSA_GET_MSG_LENGTH(pstCallInfoNotify));
 
-    pstCallInfoNotify->ucCallNum = (VOS_UINT8)pstOutputCallEvent->stSrvccCallList.ulCallNum;
+    pstCallInfoNotify->ucCallNum = (VOS_UINT8)ulCallNum;
+
+    pstCallInfoNotify->ucStartedHifiFlag = pstOutputCallEvent->stSrvccCallList.ucHifiStatus;
 
     /*循环处理转到CS域的call信息*/
-    for(ucCount = 0; ucCount < pstOutputCallEvent->stSrvccCallList.ulCallNum; ucCount++)
+    for(ucCount = 0; ucCount < ulCallNum; ucCount++)
     {
-        pstSrvccCallInfo = &pstOutputCallEvent->stSrvccCallList.astCallInfo[ucCount];
+        pstSrvccCallInfo = (IMSA_IMS_SRVCC_CALL_INFO_STRU *)&pstOutputCallEvent->stSrvccCallList.astCallInfo[ucCount];
 
         /*根据call id找到呼叫实体*/
-        pstCallEntity = IMSA_CallEntityGetUsedByCallId(pstSrvccCallInfo->ulCallIndex);
+        pstCallEntity = IMSA_CallEntityGetUsedByImsCallId(pstSrvccCallInfo->ulCallIndex);
         if(VOS_NULL_PTR == pstCallEntity)
         {
             IMSA_ERR_LOG("IMSA_CallProcImsMsgSrvccCallList: Call info err.");
             continue;
         }
 
+        pstCallInfoNotify->astCallInfo[ucCount].ucCallId    = pstCallEntity->ucSpmcallId;
+        #if 0
         pstCallInfoNotify->astCallInfo[ucCount].ucCallId    = (VOS_UINT8)pstSrvccCallInfo->ulCallIndex;
+        #endif
         pstCallInfoNotify->astCallInfo[ucCount].enCallState = \
               IMSA_CallImsSrvccState2TafCallState(pstSrvccCallInfo->enCallState);
         pstCallInfoNotify->astCallInfo[ucCount].ucTi        = pstSrvccCallInfo->ucTi;
@@ -1771,7 +2371,9 @@ VOS_VOID IMSA_CallProcImsMsgSrvccCallList(IMSA_IMS_OUTPUT_CALL_EVENT_STRU *pstOu
         pstCallInfoNotify->astCallInfo[ucCount].opId        = (VOS_UINT8)pstCallEntity->ulOpId;
         pstCallInfoNotify->astCallInfo[ucCount].enCallDir   = pstCallEntity->enDir;
         pstCallInfoNotify->astCallInfo[ucCount].enMptyState = pstCallEntity->enMpty;
+        pstCallInfoNotify->astCallInfo[ucCount].ucEConferenceFlag = pstCallEntity->ucIsEconfFlag;
         pstCallInfoNotify->astCallInfo[ucCount].enCallMode  = pstCallEntity->enMode;
+
 
         if(IMSA_CALL_TYPE_EMC == pstCallEntity->enType)
         {
@@ -1782,27 +2384,57 @@ VOS_VOID IMSA_CallProcImsMsgSrvccCallList(IMSA_IMS_OUTPUT_CALL_EVENT_STRU *pstOu
             pstCallInfoNotify->astCallInfo[ucCount].enCallType = MN_CALL_TYPE_VOICE;
         }
 
+
         /*没有EarlyMedia标示，说明HIFI没有启动，或者没有网络振铃，需要本地振铃*/
-        if(VOS_FALSE== pstCallEntity->bitOpEarlyMedia)
+        if(VOS_TRUE == pstCallEntity->bitOpLocalAlerting)
         {
             pstCallInfoNotify->astCallInfo[ucCount].ucLocalAlertedFlag = VOS_TRUE;
         }
 
-        /* 更新主叫号码 */
-        IMSA_CallCallNumberImsa2CS(&pstCallEntity->stCallNumber, \
-                                   &pstCallInfoNotify->astCallInfo[ucCount].stCallNumber);
+        /* 如果是普通的通话，直接填被叫号码等，如果是增强型类型的，需要通过IMS上报的被叫号码从
+        被叫列表中查找对应的存储信息 */
+        if (VOS_FALSE == pstCallEntity->ucIsEconfFlag)
+        {
+            /* 更新主叫号码 */
+            IMSA_CallCallNumberImsa2CS(&pstCallEntity->stCallNumber, \
+                                       &pstCallInfoNotify->astCallInfo[ucCount].stCallNumber);
 
-        /* 更新被叫号码 */
-        IMSA_CallCalledNumberImsa2CS(&pstCallEntity->stCalledNumber, \
-                                   &pstCallInfoNotify->astCallInfo[ucCount].stCalledNumber);
+            /* 更新被叫号码 */
+            IMSA_CallCalledNumberImsa2CS(&pstCallEntity->stCalledNumber, \
+                                       &pstCallInfoNotify->astCallInfo[ucCount].stCalledNumber);
 
-        /* 更新连接号码 */
-        IMSA_CallCallNumberImsa2CS(&pstCallEntity->stConnectNumber, \
-                                   &pstCallInfoNotify->astCallInfo[ucCount].stConnectNumber);
+            /* 更新连接号码 */
+            IMSA_CallCallNumberImsa2CS(&pstCallEntity->stConnectNumber, \
+                                       &pstCallInfoNotify->astCallInfo[ucCount].stConnectNumber);
 
-        /* 更新转移号码 */
-        IMSA_CallCallNumberImsa2CS(&pstCallEntity->stRedirectNumber, \
-                                   &pstCallInfoNotify->astCallInfo[ucCount].stRedirectNumber);
+            /* 更新转移号码 */
+            IMSA_CallCallNumberImsa2CS(&pstCallEntity->stRedirectNumber, \
+                                       &pstCallInfoNotify->astCallInfo[ucCount].stRedirectNumber);
+        }
+        else
+        {
+            pEconfSummary = IMSA_EconfCalledGetUsedByCalledNum(pstCallEntity,
+                                                                (VOS_CHAR *)pstSrvccCallInfo->acNumber);
+            if (VOS_NULL_PTR != pEconfSummary)
+            {
+                /* 更新主叫号码 */
+                IMSA_CallCallNumberImsa2CS(&pEconfSummary->stCallNumber, \
+                                           &pstCallInfoNotify->astCallInfo[ucCount].stCallNumber);
+
+                /* 更新被叫号码 */
+                IMSA_CallCalledNumberImsa2CS(&pEconfSummary->stCalledNumber, \
+                                           &pstCallInfoNotify->astCallInfo[ucCount].stCalledNumber);
+
+                /* 更新连接号码 */
+                IMSA_CallCallNumberImsa2CS(&pEconfSummary->stConnectNumber, \
+                                           &pstCallInfoNotify->astCallInfo[ucCount].stConnectNumber);
+
+                /* 更新转移号码 */
+                IMSA_CallCallNumberImsa2CS(&pEconfSummary->stRedirectNumber, \
+                                           &pstCallInfoNotify->astCallInfo[ucCount].stRedirectNumber);
+
+            }
+        }
     }
 
     /* 赋值DTMF缓存 */
@@ -1827,15 +2459,13 @@ VOS_VOID IMSA_CallProcImsMsgSrvccCallList(IMSA_IMS_OUTPUT_CALL_EVENT_STRU *pstOu
     /* 调用消息发送函数 */
     IMSA_SND_MSG(pstCallInfoNotify);
 
+    return VOS_TRUE;
 }
-
-
 VOS_UINT32 IMSA_CallProcImsMsgEmergencyInd(const IMSA_IMS_OUTPUT_CALL_EVENT_STRU *pstOutputCallEvent)
 {
     IMSA_CALL_ENTITY_STRU *pstCallEntity = VOS_NULL_PTR;
 
-
-    pstCallEntity = IMSA_CallEntityGetUsedByCallId((VOS_UINT32)pstOutputCallEvent->stCallReport.astCalls[0].ulCallIndex);
+    pstCallEntity = IMSA_CallEntityGetUsedByImsCallId((VOS_UINT32)pstOutputCallEvent->stCallReport.astCalls[0].ulCallIndex);
     if (pstCallEntity)
     {
         pstCallEntity->enType = IMSA_CALL_TYPE_EMC;
@@ -1846,6 +2476,301 @@ VOS_UINT32 IMSA_CallProcImsMsgEmergencyInd(const IMSA_IMS_OUTPUT_CALL_EVENT_STRU
             pstOutputCallEvent->stCallReport.astCalls[0].ulCallIndex);
     }
 
+    return VOS_TRUE;
+}
+
+VOS_UINT32 IMSA_CallProcImsMsgModifyStatusInd(const IMSA_IMS_OUTPUT_CALL_EVENT_STRU *pstOutputCallEvent)
+{
+    IMSA_SPM_CALL_MODIFY_STATUS_IND_STRU  *pstModifyStatusInd = VOS_NULL_PTR;
+    IMSA_CALL_ENTITY_STRU                 *pstCallEntity = VOS_NULL_PTR;
+
+    IMSA_INFO_LOG("IMSA_CallProcImsMsgModifyStatusInd is entered!");
+
+    pstCallEntity = IMSA_CallEntityGetUsedByImsCallId((VOS_UINT32)pstOutputCallEvent->stCallModify.ulCallIndex);
+
+    if (VOS_NULL_PTR == pstCallEntity)
+    {
+        IMSA_ERR_LOG1("IMSA_CallProcImsMsgModifyStatusInd: not found call entity ",
+            pstOutputCallEvent->stCallModify.ulCallIndex);
+        return VOS_FALSE;
+    }
+
+    pstModifyStatusInd = (VOS_VOID*)IMSA_ALLOC_MSG(sizeof(IMSA_SPM_CALL_MODIFY_STATUS_IND_STRU));
+
+    if (VOS_NULL_PTR == pstModifyStatusInd)
+    {
+        IMSA_ERR_LOG("IMSA_CallProcImsMsgModifyStatusInd: alloc memory fail");
+        return VOS_FALSE;
+    }
+
+    IMSA_MEM_SET(IMSA_GET_MSG_ENTITY(pstModifyStatusInd), 0, IMSA_GET_MSG_LENGTH(pstModifyStatusInd));
+
+    pstModifyStatusInd->callId = pstCallEntity->ucSpmcallId;
+    #if 0
+    pstModifyStatusInd->callId = pstOutputCallEvent->stCallModify.ulCallIndex;
+    #endif
+    pstModifyStatusInd->enVoiceDomain = TAF_CALL_VOICE_DOMAIN_IMS;
+    pstModifyStatusInd->usClientId = MN_CLIENT_ALL;
+    pstModifyStatusInd->ucOpId = 0;
+
+    pstModifyStatusInd->enModifyStatus = SPM_IMSA_CALL_MODIFY_REMOTE_USER_REQUIRE_TO_MODIFY;
+
+    pstModifyStatusInd->enCurrCallType = pstOutputCallEvent->stCallModify.enSrcCallMode;
+    pstModifyStatusInd->enExpectCallType = pstOutputCallEvent->stCallModify.enDstCallMode;
+
+    /* 填写消息头 */
+    IMSA_WRITE_CALL_MSG_HEAD(pstModifyStatusInd, ID_IMSA_SPM_CALL_MODIFY_STATUS_IND);
+
+    /* 调用消息发送函数 */
+    IMSA_SND_MSG(pstModifyStatusInd);
+
+    return VOS_TRUE;
+}
+
+
+VOS_UINT32 IMSA_CallProcImsMsgModifyStatusBegin(const IMSA_IMS_OUTPUT_CALL_EVENT_STRU *pstOutputCallEvent)
+{
+    IMSA_SPM_CALL_MODIFY_STATUS_IND_STRU  *pstModifyStatusInd = VOS_NULL_PTR;
+    IMSA_CALL_ENTITY_STRU                 *pstCallEntity = VOS_NULL_PTR;
+
+    IMSA_INFO_LOG("IMSA_CallProcImsMsgModifyStatusBegin is entered!");
+
+    pstCallEntity = IMSA_CallEntityGetUsedByImsCallId((VOS_UINT32)pstOutputCallEvent->stCallModify.ulCallIndex);
+
+    if (VOS_NULL_PTR == pstCallEntity)
+    {
+        IMSA_ERR_LOG1("IMSA_CallProcImsMsgModifyStatusInd: not found call entity ",
+            pstOutputCallEvent->stCallModify.ulCallIndex);
+        return VOS_FALSE;
+    }
+
+    pstModifyStatusInd = (VOS_VOID*)IMSA_ALLOC_MSG(sizeof(IMSA_SPM_CALL_MODIFY_STATUS_IND_STRU));
+
+    if (VOS_NULL_PTR == pstModifyStatusInd)
+    {
+        IMSA_ERR_LOG("IMSA_CallProcImsMsgModifyStatusBegin: alloc memory fail");
+        return VOS_FALSE;
+    }
+
+    IMSA_MEM_SET(IMSA_GET_MSG_ENTITY(pstModifyStatusInd), 0, IMSA_GET_MSG_LENGTH(pstModifyStatusInd));
+
+    pstModifyStatusInd->callId = pstCallEntity->ucSpmcallId;
+    #if 0
+    pstModifyStatusInd->callId = pstOutputCallEvent->stCallModify.ulCallIndex;
+    #endif
+    pstModifyStatusInd->enVoiceDomain = TAF_CALL_VOICE_DOMAIN_IMS;
+    pstModifyStatusInd->usClientId = MN_CLIENT_ALL;
+    pstModifyStatusInd->ucOpId = 0;
+
+    pstModifyStatusInd->enModifyStatus = SPM_IMSA_CALL_MODIFY_PROC_BEGIN;
+
+    pstModifyStatusInd->enCurrCallType = pstOutputCallEvent->stCallModify.enSrcCallMode;
+    pstModifyStatusInd->enExpectCallType = pstOutputCallEvent->stCallModify.enDstCallMode;
+
+    /* 填写消息头 */
+    IMSA_WRITE_CALL_MSG_HEAD(pstModifyStatusInd, ID_IMSA_SPM_CALL_MODIFY_STATUS_IND);
+
+    /* 调用消息发送函数 */
+    IMSA_SND_MSG(pstModifyStatusInd);
+
+    return VOS_TRUE;
+}
+
+VOS_UINT32 IMSA_CallProcImsMsgModifyStatusEnd(const IMSA_IMS_OUTPUT_CALL_EVENT_STRU *pstOutputCallEvent)
+{
+    IMSA_SPM_CALL_MODIFY_STATUS_IND_STRU  *pstModifyStatusInd = VOS_NULL_PTR;
+    TAF_CS_CAUSE_ENUM_UINT32                enSpmErr        = IMSA_NULL;
+    IMSA_CALL_ENTITY_STRU                 *pstCallEntity = VOS_NULL_PTR;
+
+    IMSA_INFO_LOG("IMSA_CallProcImsMsgModifyStatusEnd is entered!");
+
+    pstCallEntity = IMSA_CallEntityGetUsedByImsCallId((VOS_UINT32)pstOutputCallEvent->stCallModify.ulCallIndex);
+
+    if (VOS_NULL_PTR == pstCallEntity)
+    {
+        IMSA_ERR_LOG1("IMSA_CallProcImsMsgModifyStatusInd: not found call entity ",
+            pstOutputCallEvent->stCallModify.ulCallIndex);
+        return VOS_FALSE;
+    }
+
+
+    pstModifyStatusInd = (VOS_VOID*)IMSA_ALLOC_MSG(sizeof(IMSA_SPM_CALL_MODIFY_STATUS_IND_STRU));
+
+    if (VOS_NULL_PTR == pstModifyStatusInd)
+    {
+        IMSA_ERR_LOG("IMSA_CallProcImsMsgModifyStatusEnd: alloc memory fail");
+        return VOS_FALSE;
+    }
+
+    IMSA_MEM_SET(IMSA_GET_MSG_ENTITY(pstModifyStatusInd), 0, IMSA_GET_MSG_LENGTH(pstModifyStatusInd));
+
+    pstModifyStatusInd->callId = pstCallEntity->ucSpmcallId;
+    #if 0
+    pstModifyStatusInd->callId = pstOutputCallEvent->stCallModify.ulCallIndex;
+    #endif
+    pstModifyStatusInd->enVoiceDomain = TAF_CALL_VOICE_DOMAIN_IMS;
+    pstModifyStatusInd->usClientId = MN_CLIENT_ALL;
+    pstModifyStatusInd->ucOpId = 0;
+
+    pstModifyStatusInd->enModifyStatus = SPM_IMSA_CALL_MODIFY_PROC_END;
+
+    if(IMSA_SUCC == pstOutputCallEvent->stCallModify.ucResult)
+    {
+        pstModifyStatusInd->enCause = TAF_CS_CAUSE_SUCCESS;
+    }
+    else
+    {
+        /* 修改函数入参 */
+        enSpmErr = IMSA_CallTransImsErr2SpmErr(&pstOutputCallEvent->stCallModify.stErrorCode);
+
+        pstModifyStatusInd->enCause = enSpmErr;
+    }
+    pstModifyStatusInd->enCurrCallType = pstOutputCallEvent->stCallModify.enSrcCallMode;
+    pstModifyStatusInd->enExpectCallType = pstOutputCallEvent->stCallModify.enDstCallMode;
+
+    /* 填写消息头 */
+    IMSA_WRITE_CALL_MSG_HEAD(pstModifyStatusInd, ID_IMSA_SPM_CALL_MODIFY_STATUS_IND);
+
+    /* 调用消息发送函数 */
+    IMSA_SND_MSG(pstModifyStatusInd);
+
+    return VOS_TRUE;
+}
+VOS_UINT32 IMSA_CallProcImsMsgEconfNotifyInd(const IMSA_IMS_OUTPUT_CALL_EVENT_STRU *pstOutputCallEvent)
+{
+    IMSA_CALL_ENTITY_STRU                   *pstCallEntity = VOS_NULL_PTR;
+    IMSA_CALL_ECONF_SUMMARY_STRU            *pEconfSummary = VOS_NULL_PTR;
+    VOS_UINT8                               i = 0;
+    VOS_UINT8                               ucSendNotifyFlag = VOS_FALSE;
+
+    IMSA_INFO_LOG("IMSA_CallProcImsMsgEconfNotifyInd is entered!");
+
+    pstCallEntity = IMSA_CallEntityGetUsedByImsCallId((VOS_UINT32)pstOutputCallEvent->stEconfNotifyInd.ulCallConfId);
+
+    if (VOS_NULL_PTR == pstCallEntity)
+    {
+        IMSA_ERR_LOG1("IMSA_CallProcImsMsgEconfNotifyInd: not found call entity ",
+            pstOutputCallEvent->stEconfNotifyInd.ulCallConfId);
+        return VOS_FALSE;
+    }
+
+    /* 如果允许的最大个数 不同，则是IMS第一次上报notify，IMSA需要通知SPM */
+    if (pstOutputCallEvent->stEconfNotifyInd.ucMaxUserNum != pstCallEntity->ucMaxUserNum)
+    {
+         ucSendNotifyFlag = VOS_TRUE;
+         /* 更新允许的最大个数 */
+        pstCallEntity->ucMaxUserNum = pstOutputCallEvent->stEconfNotifyInd.ucMaxUserNum;
+    }
+
+    /* 如果与会者个数发生变化，需要通知SPM */
+    if (pstCallEntity->ucCurUserNum != pstOutputCallEvent->stEconfNotifyInd.ucCurUserNum)
+    {
+        ucSendNotifyFlag = VOS_TRUE;
+
+        /* 更新当前用户个数 */
+        pstCallEntity->ucCurUserNum = pstOutputCallEvent->stEconfNotifyInd.ucCurUserNum;
+    }
+
+    /* 更新呼叫实体 */
+    for (i = 0; i < pstOutputCallEvent->stEconfNotifyInd.ucCurUserNum; i ++)
+    {
+        pEconfSummary = IMSA_EconfCalledGetUsedByCalledNum(pstCallEntity, (VOS_CHAR *)pstOutputCallEvent->stEconfNotifyInd.astCalls[i].acNumber);
+
+        /* 如果IMS上报的与会者不在列表中，则需要将被叫号码添加到呼叫实体中,增强型多方通话和普通通话合并时，IMS会多报一个用户上来 */
+        if (VOS_NULL_PTR == pEconfSummary)
+        {
+            continue;
+        }
+
+        /* 更新被叫号码 */
+        IMSA_CallEntityUpdateCalledNumberByAscii((VOS_CHAR *)pstOutputCallEvent->stEconfNotifyInd.astCalls[i].acNumber,
+                                                &pEconfSummary->stCalledNumber);
+
+        /* 更新连接号码 */
+        IMSA_CallEntityUpdateCallNumberByAscii((VOS_CHAR *)pstOutputCallEvent->stEconfNotifyInd.astCalls[i].acConnectNumber,
+                                                &pEconfSummary->stConnectNumber);
+
+        /* 更新状态 */
+        if (pEconfSummary->enCallState != pstOutputCallEvent->stEconfNotifyInd.astCalls[i].enCallState )
+        {
+            ucSendNotifyFlag = VOS_TRUE;
+            pEconfSummary->enCallState = pstOutputCallEvent->stEconfNotifyInd.astCalls[i].enCallState;
+
+        }
+
+        /* 更新display name */
+        IMSA_MEM_CPY(   pEconfSummary->acAlpha,
+                            pstOutputCallEvent->stEconfNotifyInd.astCalls[i].acAlpha,
+                            (IMSA_IMS_ALPHA_STRING_SZ+1));
+
+        /* 更新错误码 */
+        if (IMSA_OP_TRUE == pstOutputCallEvent->stEconfNotifyInd.astCalls[i].bitOpError)
+        {
+            pEconfSummary->bitOpErrorInfo = IMSA_OP_TRUE;
+            IMSA_MEM_CPY(   &pEconfSummary->stErrorCode,
+                            &pstOutputCallEvent->stEconfNotifyInd.astCalls[i].stErrorCode,
+                            sizeof(IMSA_IMS_OUTPUT_ERROR_STRU));
+        }
+        else
+        {
+            pEconfSummary->bitOpErrorInfo = IMSA_OP_FALSE;
+        }
+
+    }
+
+    /* 如果有与会者的状态发生变化，需要通知SPM */
+    if (VOS_TRUE == ucSendNotifyFlag)
+    {
+        IMSA_CallSendSpmEconfNotifyInd(pstCallEntity);
+    }
+
+    return VOS_TRUE;
+}
+
+
+/*****************************************************************************
+ Function Name  : IMSA_CallProcImsMsgMtBegin
+ Description    : 被叫INVITE事件的处理
+ Input          : pstOutputCallEvent      IMS呼叫事件
+ Output         : VOS_VOID
+ Return Value   : 处理结果
+
+ History        :
+      1.mengchao 0077840   2015-03-18  Draft Enact
+*****************************************************************************/
+VOS_UINT32 IMSA_CallProcImsMsgMtBegin(const IMSA_IMS_OUTPUT_CALL_EVENT_STRU *pstOutputCallEvent)
+{
+    IMSA_MT_STATUS_REPORT_STRU         *pstMtReport = VOS_NULL_PTR;
+
+    IMSA_INFO_LOG("received invite msg.");
+
+    //check call event.
+    if(1 != pstOutputCallEvent->stCallReport.ulNumCalls)
+    {
+        IMSA_ERR_LOG1("IMSA_CallProcImsMsgMtBegin: invalid number of calls. ", pstOutputCallEvent->stCallReport.ulNumCalls);
+        return VOS_FALSE;
+    }
+
+    if(IMSA_IMS_CALL_DIR_MOBILE_TERMINATED != pstOutputCallEvent->stCallReport.astCalls[0].enCallDirection)
+    {
+        IMSA_ERR_LOG1("IMSA_CallProcImsMsgMtBegin: invalid call direction. ", pstOutputCallEvent->stCallReport.astCalls[0].enCallDirection);
+        return VOS_FALSE;
+    }
+
+    pstMtReport = (IMSA_MT_STATUS_REPORT_STRU*)IMSA_MEM_ALLOC(sizeof(IMSA_MT_STATUS_REPORT_STRU));
+    if(VOS_NULL_PTR == pstMtReport)
+    {
+        IMSA_ERR_LOG("IMSA_CallProcImsMsgMtBegin: alloc memory fail.");
+        return VOS_FALSE;
+    }
+    IMSA_MEM_SET(pstMtReport, 0, sizeof(IMSA_MT_STATUS_REPORT_STRU));
+    pstMtReport->enMtStatus = IMSA_MT_CALL_STATUS_INVITE_RECEIVED;
+    IMSA_UtilStrNCpy(pstMtReport->acNumber, pstOutputCallEvent->stCallReport.astCalls[0].acNumber, IMSA_CALL_NUMBER_MAX_NUM);
+
+    //send msg to AT
+    IMSA_SndMsgAtMtStatusInd(pstMtReport);
+
+    IMSA_MEM_FREE(pstMtReport);
     return VOS_TRUE;
 }
 
@@ -1945,6 +2870,35 @@ IMSA_CALL_STATUS_ENUM_UINT8 IMSA_CallImsState2ImsaState(IMSA_IMS_CALL_STATE_ENUM
 }
 
 
+TAF_CALL_ECONF_STATE_ENUM_U8 IMSA_EconfImsState2CsState(IMSA_IMS_ECONF_CALLER_STATE_ENUM_UINT8 enImsState)
+{
+    TAF_CALL_ECONF_STATE_ENUM_U8 enNewState = TAF_CALL_ECONF_STATE_DISCONNECTED;
+
+    switch (enImsState)
+    {
+    case IMSA_IMS_ECONF_CALLER_STATE_BOOK:
+    case IMSA_IMS_ECONF_CALLER_STATE_PREDIALING:
+        enNewState = TAF_CALL_ECONF_STATE_PREDIALING;
+        break;
+    case IMSA_IMS_ECONF_CALLER_STATE_DIALING:
+        enNewState = TAF_CALL_ECONF_STATE_DIALING;
+        break;
+    case IMSA_IMS_ECONF_CALLER_STATE_HOLD:
+        enNewState = TAF_CALL_ECONF_STATE_ONHOLD;
+        break;
+    case IMSA_IMS_ECONF_CALLER_STATE_AVTIVE:
+        enNewState = TAF_CALL_ECONF_STATE_CONNECTED;
+        break;
+    case IMSA_IMS_ECONF_CALLER_STATE_DISCONNECT:
+        enNewState = TAF_CALL_ECONF_STATE_DISCONNECTED;
+        break;
+    default:
+        IMSA_ERR_LOG1("IMSA_CallImsState2ImsaState: invalid mapping state", enImsState);
+    }
+
+    return enNewState;
+}
+
 
 VOS_UINT32 IMSA_CallProcImsStateActive(IMSA_CALL_ENTITY_STRU *pstCallEntity, const IMSA_IMS_CALL_SUMMARY_STRU *pstCallSummary)
 {
@@ -2006,7 +2960,7 @@ VOS_UINT32 IMSA_CallProcImsStateActive(IMSA_CALL_ENTITY_STRU *pstCallEntity, con
         /* 如果原状态是HELD，则通知SPM Retrieve事件 */
         if (enPreStatus == IMSA_CALL_STATUS_HELD)
         {
-            (VOS_VOID)IMSA_CallSendSpmStateEvt( pstCallEntity->ucId,
+            (VOS_VOID)IMSA_CallSendSpmStateEvt( pstCallEntity->ucSpmcallId,
                                                 pstCallEntity->usClientId,
                                                 pstCallEntity->ulOpId,
                                                 MN_CALL_EVT_RETRIEVE);
@@ -2014,11 +2968,19 @@ VOS_UINT32 IMSA_CallProcImsStateActive(IMSA_CALL_ENTITY_STRU *pstCallEntity, con
         /* 如果状态发生变化，且原状态不是Active，则通知SPM CONNECT事件 */
         else
         {
-            (VOS_VOID)IMSA_CallSendSpmStateEvt( pstCallEntity->ucId,
+            (VOS_VOID)IMSA_CallSendSpmStateEvt( pstCallEntity->ucSpmcallId,
                                                 pstCallEntity->usClientId,
                                                 pstCallEntity->ulOpId,
                                                 MN_CALL_EVT_CONNECT);
         }
+
+        /* 由于Alerting不是必须的消息, 所以网侧可能不下发Alerting, 若之前没有通知过LRRC Start,
+           此时需要通知LRRC Start, LRRC收到该消息后,当信号质量不好时将提前上报A2/B2事件, 触发网侧提前下发Srvcc */
+        if (VOS_FALSE == g_ulImsaNotifyRrcVoLteCallStartFlag)
+        {
+            IMSA_SndRrcVolteStatusNotify(IMSA_LRRC_VOLTE_STATUS_START);
+        }
+
     }
     /* xiongxianghui00253310 modify for conference 20140220 begin */
     else
@@ -2028,7 +2990,19 @@ VOS_UINT32 IMSA_CallProcImsStateActive(IMSA_CALL_ENTITY_STRU *pstCallEntity, con
         {
             IMSA_CallEntityUpdateByCallSummary(pstCallEntity, pstCallSummary);
 
-            (VOS_VOID)IMSA_CallSendSpmStateEvt( pstCallEntity->ucId,
+            (VOS_VOID)IMSA_CallSendSpmStateEvt( pstCallEntity->ucSpmcallId,
+                                                pstCallEntity->usClientId,
+                                                pstCallEntity->ulOpId,
+                                                MN_CALL_EVT_CONNECT);
+
+            IMSA_INFO_LOG1("IMSA_CallProcImsStateActive: MptyState2", pstCallEntity->enMpty);
+        }
+        /* 语音切视频时，如果切换成功，需要更新call类型 */
+        if (pstCallSummary->enCallMode != pstCallEntity->enType)
+        {
+            IMSA_CallEntityUpdateByCallSummary(pstCallEntity, pstCallSummary);
+
+            (VOS_VOID)IMSA_CallSendSpmStateEvt( pstCallEntity->ucSpmcallId,
                                                 pstCallEntity->usClientId,
                                                 pstCallEntity->ulOpId,
                                                 MN_CALL_EVT_CONNECT);
@@ -2103,8 +3077,7 @@ VOS_UINT32 IMSA_CallProcImsStateHeld(IMSA_CALL_ENTITY_STRU *pstCallEntity, const
     {
         /* 更新呼叫状态 */
         pstCallEntity->enStatus = enNewStatus;
-
-        (VOS_VOID)IMSA_CallSendSpmStateEvt( pstCallEntity->ucId,
+        (VOS_VOID)IMSA_CallSendSpmStateEvt( pstCallEntity->ucSpmcallId,
                                             pstCallEntity->usClientId,
                                             pstCallEntity->ulOpId,
                                             MN_CALL_EVT_HOLD);
@@ -2132,6 +3105,13 @@ VOS_UINT32 IMSA_CallProcImsStateTrying(IMSA_CALL_ENTITY_STRU *pstCallEntity, con
         return VOS_FALSE;
     }
 
+    if (VOS_TRUE == IMSA_GetConfigParaAddress()->stCMCCCustomReq.ucCMCCCustomTcallFlag
+        && VOS_TRUE == IMSA_CallCtxGet()->ucIsTcallTimeOutProc)
+    {
+        IMSA_INFO_LOG("Filter trying msg while Tcall time out.");
+        return VOS_FALSE;
+    }
+
     enPreStatus = pstCallEntity->enStatus;
     enNewStatus = IMSA_CallImsState2ImsaState(pstCallSummary->enCallState, enPreStatus);
 
@@ -2142,10 +3122,21 @@ VOS_UINT32 IMSA_CallProcImsStateTrying(IMSA_CALL_ENTITY_STRU *pstCallEntity, con
         pstCallEntity->enStatus = enNewStatus;
 
         /* 通知SPM */
-        (VOS_VOID)IMSA_CallSendSpmStateEvt( pstCallEntity->ucId,
+        (VOS_VOID)IMSA_CallSendSpmStateEvt( pstCallEntity->ucSpmcallId,
                                             pstCallEntity->usClientId,
                                             pstCallEntity->ulOpId,
                                             MN_CALL_EVT_CALL_PROC);
+        if(VOS_TRUE == IMSA_GetConfigParaAddress()->stCMCCCustomReq.ucCMCCCustomTcallFlag)
+        {
+            if( VOS_TRUE == IMSA_IsTimerRunning(&(IMSA_CallCtxGet()->stNormalTcallTimer)))
+            {
+                IMSA_StopTimer(&(IMSA_CallCtxGet()->stNormalTcallTimer));
+            }
+            if (VOS_TRUE == IMSA_IsTimerRunning(&(IMSA_CallCtxGet()->stEmcTcallTimer)))
+            {
+                IMSA_StopTimer(&(IMSA_CallCtxGet()->stEmcTcallTimer));
+            }
+        }
     }
 
     return VOS_TRUE;
@@ -2174,19 +3165,31 @@ VOS_UINT32 IMSA_CallProcImsStateDialing(IMSA_CALL_ENTITY_STRU *pstCallEntity, co
             pstCallEntity->enStatus = enNewStatus;
 
             /* 通知SPM */
-            (VOS_VOID)IMSA_CallSendSpmStateEvt( pstCallEntity->ucId,
+            (VOS_VOID)IMSA_CallSendSpmStateEvt( pstCallEntity->ucSpmcallId,
                                                 pstCallEntity->usClientId,
                                                 pstCallEntity->ulOpId,
                                                 MN_CALL_EVT_ORIG);
+            if(VOS_TRUE == IMSA_GetConfigParaAddress()->stCMCCCustomReq.ucCMCCCustomTcallFlag
+               && VOS_TRUE == IMSA_CallCtxGet()->ucIsTcallTimeOutProc)
+            {
+                IMSA_INFO_LOG1("IMSA_CallProcImsStateDialing: Hang up call id: ", pstCallEntity->ucImscallId);
+                (VOS_VOID)IMSA_CallImsCmdRel(pstCallEntity->ucImscallId);
+                return VOS_TRUE;
+            }
         }
     }
     else
     {
+        /* MO CALL,IMSA将DIAL消息发给IMS，在收到IMS上报DIALING状态前，用户主动挂断电话，所以在收到IMS上报的DIAL状态后，需要
+        通知IMS释放call */
+        (VOS_VOID)IMSA_CallImsCmdRel(pstCallSummary->ulCallIndex);
         IMSA_ERR_LOG1("IMSA_CallProcImsStateDialing: not found call ", pstCallSummary->ulCallIndex);
     }
 
     return VOS_TRUE;
 }
+
+
 VOS_UINT32 IMSA_CallProcImsStateAlerting(IMSA_CALL_ENTITY_STRU *pstCallEntity, const IMSA_IMS_CALL_SUMMARY_STRU *pstCallSummary)
 {
     IMSA_CALL_STATUS_ENUM_UINT8         enPreStatus = IMSA_CALL_STATUS_BUTT;
@@ -2222,14 +3225,33 @@ VOS_UINT32 IMSA_CallProcImsStateAlerting(IMSA_CALL_ENTITY_STRU *pstCallEntity, c
     enPreStatus = pstCallEntity->enStatus;
     enNewStatus = IMSA_CallImsState2ImsaState(pstCallSummary->enCallState, enPreStatus);
 
-    /* 如果原状态和新状态不一致，则通知SPM ALERT事件 */
-    if (enPreStatus != enNewStatus)
+    /* 中移动定制 */
+    /* 如果呼叫类型发生变化，则通知SPM，并更新呼叫实体 */
+    if (pstCallEntity->enType != pstCallSummary->enCallMode)
     {
+
+
+        (VOS_VOID)IMSA_CallSendSpmCallTypeChangeInfoIndMsg(pstCallEntity->usClientId,
+                                                           pstCallEntity->ulOpId,
+                                                           pstCallEntity->ucSpmcallId,
+                                                           (MN_CALL_TYPE_ENUM_U8)pstCallEntity->enType,
+                                                           (MN_CALL_TYPE_ENUM_U8)pstCallSummary->enCallMode,
+                                                           IMSA_IMS_EMERGENCY_SUB_TYPE_NONE);
+
+        pstCallEntity->enType = pstCallSummary->enCallMode;
+    }
+
+    /* 如果原状态和新状态不一致，或者振铃方式发生变化，则通知SPM ALERT事件 */
+    if ((enPreStatus != enNewStatus) || (pstCallEntity->bitOpLocalAlerting != pstCallSummary->ucIsLocalAlertingFlag))
+    {
+        /* 更新网络振铃标识 */
+        pstCallEntity->bitOpLocalAlerting = pstCallSummary->ucIsLocalAlertingFlag;
+
         /* 更新呼叫状态 */
         pstCallEntity->enStatus = enNewStatus;
 
         /* 通知是否本地振铃 */
-        if (VOS_FALSE == pstCallEntity->bitOpEarlyMedia)
+        if (VOS_TRUE == pstCallEntity->bitOpLocalAlerting)
         {
             IMSA_CallSendSpmLocalAlertingInd(MN_CLIENT_ID_BROADCAST, VOS_TRUE);
         }
@@ -2242,10 +3264,18 @@ VOS_UINT32 IMSA_CallProcImsStateAlerting(IMSA_CALL_ENTITY_STRU *pstCallEntity, c
         /* lihong00150010 上报网络放音导致AT修改CODEC类型问题 end */
 
         /* 通知SPM */
-        (VOS_VOID)IMSA_CallSendSpmStateEvt( pstCallEntity->ucId,
+        (VOS_VOID)IMSA_CallSendSpmStateEvt( pstCallEntity->ucSpmcallId,
                                             pstCallEntity->usClientId,
                                             pstCallEntity->ulOpId,
                                             MN_CALL_EVT_ALERTING);
+
+        /* 若之前没有通知过LRRC Start, 此时需要通知LRRC Start, LRRC收到该消息后,
+           当信号质量不好时将提前上报A2/B2事件, 触发网侧提前下发Srvcc, 为了防止出
+           现振铃前的Srvcc增多, 所以在Alering时通知LRRC Start */
+        if (VOS_FALSE == g_ulImsaNotifyRrcVoLteCallStartFlag)
+        {
+            IMSA_SndRrcVolteStatusNotify(IMSA_LRRC_VOLTE_STATUS_START);
+        }
     }
 
     return VOS_TRUE;
@@ -2261,7 +3291,14 @@ VOS_UINT32 IMSA_CallProcImsStateIncoming(IMSA_CALL_ENTITY_STRU *pstCallEntity, c
     IMSA_CALL_ENTITY_STRU              *pstRedailCallEntity = VOS_NULL_PTR;
     VOS_UINT8                           ucRedialCallIndex   = IMSA_NULL;
     IMSA_CALL_MANAGER_STRU             *pstCallCtx          = IMSA_CallCtxGet();
+    TAF_CS_CAUSE_ENUM_UINT32            enSpmErr    = IMSA_NULL;
 
+    /* 被叫统一在Incoming处理里通知LRRC VoLTE Call Start, LRRC收到该消息后,
+        当信号质量不好时将提前上报A2/B2事件 */
+    if (VOS_FALSE == g_ulImsaNotifyRrcVoLteCallStartFlag)
+    {
+        IMSA_SndRrcVolteStatusNotify(IMSA_LRRC_VOLTE_STATUS_START);
+    }
 
     /* 如果能够找到呼叫实体，则认为之前在收到了INITIALIZING EVENT，在那里分配了呼叫实体 */
     if (pstCallEntity)
@@ -2274,7 +3311,7 @@ VOS_UINT32 IMSA_CallProcImsStateIncoming(IMSA_CALL_ENTITY_STRU *pstCallEntity, c
             pstCallEntity->enStatus = enNewStatus;
 
             /* 通知SPM */
-            (VOS_VOID)IMSA_CallSendSpmStateEvt( pstCallEntity->ucId,
+            (VOS_VOID)IMSA_CallSendSpmStateEvt( pstCallEntity->ucSpmcallId,
                                                 pstCallEntity->usClientId,
                                                 pstCallEntity->ulOpId,
                                                 MN_CALL_EVT_INCOMING);
@@ -2294,6 +3331,23 @@ VOS_UINT32 IMSA_CallProcImsStateIncoming(IMSA_CALL_ENTITY_STRU *pstCallEntity, c
             }
         }
 
+        /* 如果存在紧急重注册流程，需要通知Spm release事件 */
+        if(IMSA_TRUE == pstCallCtx->ucRetryEmcRegFlag)
+        {
+            /* 如果是紧急呼叫收到#380，重新发起紧急呼叫时，收到ERROR，需要给SPM发送release事件 */
+            pstCallEntity = &pstCallCtx->astCallEntity[pstCallCtx->ucCallEntityIndex];
+
+            /* 修改函数入参 */
+            enSpmErr = IMSA_CallTransImsErr2SpmErr(&pstCallEntity->stImsError.stErrorCode);
+
+            pstCallEntity->ucSpmcallId = pstCallCtx->ucId;
+            IMSA_CallReleaseCallCommonProc(pstCallEntity, enSpmErr);
+
+            pstCallCtx->ucRetryEmcRegFlag = IMSA_FALSE;
+            pstCallCtx->ucId = IMSA_NULL;
+            pstCallCtx->ucCallEntityIndex = IMSA_NULL;
+        }
+
         pstCallEntity = IMSA_CallEntityAlloc();
         if (pstCallEntity)
         {
@@ -2305,7 +3359,7 @@ VOS_UINT32 IMSA_CallProcImsStateIncoming(IMSA_CALL_ENTITY_STRU *pstCallEntity, c
 
 
             /* 通知SPM */
-            (VOS_VOID)IMSA_CallSendSpmStateEvt( pstCallEntity->ucId,
+            (VOS_VOID)IMSA_CallSendSpmStateEvt( pstCallEntity->ucSpmcallId,
                                                 pstCallEntity->usClientId,
                                                 pstCallEntity->ulOpId,
                                                 MN_CALL_EVT_INCOMING);
@@ -2321,6 +3375,8 @@ VOS_UINT32 IMSA_CallProcImsStateIncoming(IMSA_CALL_ENTITY_STRU *pstCallEntity, c
 
     return ulResult;
 }
+
+
 VOS_UINT32 IMSA_CallProcImsStateWaiting(IMSA_CALL_ENTITY_STRU *pstCallEntity, const IMSA_IMS_CALL_SUMMARY_STRU *pstCallSummary)
 {
     return IMSA_CallProcImsStateIncoming(pstCallEntity, pstCallSummary);
@@ -2422,11 +3478,11 @@ VOS_UINT32 IMSA_CallProcImsMsgCallList(const IMSA_IMS_OUTPUT_CALL_EVENT_STRU *ps
         {
             if (IMSA_IMS_CALL_STATE_DIALING == pstOutputCallEvent->stCallReport.astCalls[i].enCallState)
             {
-                pstCallEntity = IMSA_CallEntityGetUsedByCallId(IMSA_CALL_INVALID_ID);
+                pstCallEntity = IMSA_CallEntityGetUsedByImsCallId(IMSA_CALL_INVALID_ID);
             }
             else
             {
-                pstCallEntity = IMSA_CallEntityGetUsedByCallId((VOS_UINT32)pstOutputCallEvent->stCallReport.astCalls[i].ulCallIndex);
+                pstCallEntity = IMSA_CallEntityGetUsedByImsCallId((VOS_UINT32)pstOutputCallEvent->stCallReport.astCalls[i].ulCallIndex);
             }
             ulResult = IMSA_CallProcImsState(pstCallEntity, &pstOutputCallEvent->stCallReport.astCalls[i]);
         }
@@ -2435,10 +3491,10 @@ VOS_UINT32 IMSA_CallProcImsMsgCallList(const IMSA_IMS_OUTPUT_CALL_EVENT_STRU *ps
     /* 只有在发生补充业务的呼叫实体存在，才需要上报 */
     if (VOS_TRUE == pstOutputCallEvent->bitOpSupsrvInfo)
     {
-        pstCallEntity = IMSA_CallEntityGetUsedByCallId((VOS_UINT32)pstOutputCallEvent->stSupsrvInfo.ulCallIndex);
+        pstCallEntity = IMSA_CallEntityGetUsedByImsCallId((VOS_UINT32)pstOutputCallEvent->stSupsrvInfo.ulCallIndex);
         if (VOS_NULL_PTR != pstCallEntity)
         {
-            IMSA_CallProcImsSupsrvInfo(&pstOutputCallEvent->stSupsrvInfo);
+            IMSA_CallProcImsSupsrvInfo(&pstOutputCallEvent->stSupsrvInfo, pstCallEntity->ucSpmcallId);
         }
     }
 
@@ -2500,7 +3556,11 @@ MN_CALL_SS_NOTIFY_CODE_ENUM_U8 IMSA_CallImsSupsrvInfo2TafSupsrvInfo
 }
 
 
-VOS_VOID IMSA_CallProcImsSupsrvInfo(const IMSA_IMS_CALL_SUPSRV_INFO_STRU  *pstSupsrvInfo)
+VOS_VOID IMSA_CallProcImsSupsrvInfo
+(
+    const IMSA_IMS_CALL_SUPSRV_INFO_STRU  *pstSupsrvInfo,
+    VOS_UINT32                             ulCallId
+)
 {
     MN_CALL_SS_NOTIFY_CODE_ENUM_U8  enMnSupsrvNotification = 0;
 
@@ -2514,7 +3574,7 @@ VOS_VOID IMSA_CallProcImsSupsrvInfo(const IMSA_IMS_CALL_SUPSRV_INFO_STRU  *pstSu
         /* 同GU确认，CLIENT ID填为广播，OPID 填为0 */
         (VOS_VOID)IMSA_CallSendSpmSsNotifyEvt(MN_CLIENT_ALL,
                                               0,
-                                              pstSupsrvInfo->ulCallIndex,
+                                              ulCallId,
                                               MN_CALL_EVT_SS_NOTIFY,
                                               TAF_CS_CAUSE_SUCCESS,
                                               enMnSupsrvNotification);
@@ -2536,6 +3596,8 @@ VOS_VOID IMSA_CallProcImsSupsrvInfo(const IMSA_IMS_CALL_SUPSRV_INFO_STRU  *pstSu
 VOS_VOID IMSA_ImsMsgCallEvent(VOS_VOID *pCallEvent)
 {
     IMSA_IMS_OUTPUT_CALL_EVENT_STRU      *pstOutCall;
+    VOS_UINT32                          ulIndex = 0;
+    IMSA_IMS_CALL_MSG_ACTION_FUN        pfActionFun;
 
     pstOutCall = (IMSA_IMS_OUTPUT_CALL_EVENT_STRU *)pCallEvent;
 
@@ -2547,49 +3609,21 @@ VOS_VOID IMSA_ImsMsgCallEvent(VOS_VOID *pCallEvent)
 
     IMSA_INFO_LOG1("IMSA_ImsMsgCallEvent: ", pstOutCall->enOutputCallReason);
 
-    /*通过CSMID查找对应的IMSA此前发送的消息*/
-    switch (pstOutCall->enOutputCallReason)
+    for (ulIndex = 0; ulIndex < g_ulImsaImsCallMsgActTblLen; ulIndex++)
     {
-        /**
-         * TODO: 需要考虑呼叫对应的REASON OK和ERROR和SMS对应的REASON OK如何区分处理
-         */
-        case IMSA_IMS_OUTPUT_CALL_REASON_OK:
-            (VOS_VOID)IMSA_CallProcImsMsgOk(pstOutCall);
-            break;
-        case IMSA_IMS_OUTPUT_CALL_REASON_ERROR:
-            (VOS_VOID)IMSA_CallProcImsMsgError(pstOutCall);
-            break;
-        case IMSA_IMS_OUTPUT_CALL_REASON_CALL_LIST:
-            (VOS_VOID)IMSA_CallProcImsMsgCallList(pstOutCall);
-            break;
-        case IMSA_IMS_OUTPUT_CALL_REASON_DISCONNECT_EVENT:
-            (VOS_VOID)IMSA_CallProcImsMsgDisconnect(pstOutCall);
-            break;
-        case IMSA_IMS_OUTPUT_CALL_REASON_INCOMING_EVENT:
-            (VOS_VOID)IMSA_CallProcImsMsgIncoming(pstOutCall);
-            break;
-        case IMSA_IMS_OUTPUT_CALL_REASON_WAITING_EVENT:
-            (VOS_VOID)IMSA_CallProcImsMsgWaiting(pstOutCall);
-            break;
-        case IMSA_IMS_OUTPUT_CALL_REASON_EARLY_MEDIA:
-            (VOS_VOID)IMSA_CallProcImsMsgCallEarlyMedia(pstOutCall);
-            break;
-        case IMSA_IMS_OUTPUT_CALL_REASON_INITIALIZING_EVENT:
-            (VOS_VOID)IMSA_CallProcImsMsgInitializing(pstOutCall);
-            break;
-        case IMSA_IMS_OUTPUT_CALL_REASON_SRVCC_CALL_LIST:
-            IMSA_CallProcImsMsgSrvccCallList(pstOutCall);
-            break;
-        case IMSA_IMS_OUTPUT_CALL_REASON_EMERGENCY_INDICATION:
-            (VOS_VOID)IMSA_CallProcImsMsgEmergencyInd(pstOutCall);
-            break;
+        /* 通过MSG ID查找处理函数 */
+        if(pstOutCall->enOutputCallReason == g_stImsaImsCallMsgActTbl[ulIndex].enOutputCallReason)
+        {
+            pfActionFun = g_stImsaImsCallMsgActTbl[ulIndex].pfActionFun;
 
-        case IMSA_IMS_OUTPUT_CALL_REASON_EXTRA_INFO:
-            IMSA_INFO_LOG1("IMSA_ImsMsgCallEvent: these reasons SHOULD not occurs", pstOutCall->enOutputCallReason);
-            break;
-        default:
-            IMSA_ERR_LOG1("IMSA_ImsMsgCallEvent: invalid call reason", pstOutCall->enOutputCallReason);
+            /* 有处理函数 */
+            if (VOS_NULL_PTR != pfActionFun)
+            {
+                (VOS_VOID)(pfActionFun)(pstOutCall);
+            }
+        }
     }
+
 }
 /*lint +e961*/
 /*lint +e960*/

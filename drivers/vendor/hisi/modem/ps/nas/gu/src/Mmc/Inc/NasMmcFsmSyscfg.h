@@ -203,6 +203,10 @@ NAS_MML_NET_RAT_TYPE_ENUM_UINT8 NAS_MMC_GetDestModeRat_SysCfg(
 );
 
 
+VOS_UINT32  NAS_MMC_IsHighPrioRatSrchNeed_SysCfg(
+    MMA_MMC_SYS_CFG_SET_REQ_STRU        *pstSysCfgSetParm
+);
+
 #if (VOS_OS_VER == VOS_WIN32)
 #pragma pack()
 #else

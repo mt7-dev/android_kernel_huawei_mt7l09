@@ -120,8 +120,8 @@ typedef struct
 {
     VOS_MSG_HEADER                                      /* _H2ASN_Skip */
     FC_MSG_TYPE_ENUM_UINT16             usMsgName;      /* _H2ASN_Skip */
-    VOS_UINT8                           aucRsv[2];
-    FC_ID_ENUM_UINT32                   enFcId;
+    FC_ID_ENUM_UINT8                    enFcId;
+    VOS_UINT8                           aucRsv[1];
 }FC_SET_POINT_FLOWCTRL_IND_STRU;
 
 
@@ -129,8 +129,8 @@ typedef struct
 {
     VOS_MSG_HEADER                                      /* _H2ASN_Skip */
     FC_MSG_TYPE_ENUM_UINT16             usMsgName;      /* _H2ASN_Skip */
-    VOS_UINT8                           aucRsv[2];
-    FC_ID_ENUM_UINT32                   enFcId;
+    FC_ID_ENUM_UINT8                    enFcId;
+    VOS_UINT8                           aucRsv[1];
 }FC_STOP_POINT_FLOWCTRL_IND_STRU;
 
 
@@ -148,7 +148,8 @@ typedef struct
     VOS_MSG_HEADER                                      /* _H2ASN_Skip */
     FC_MSG_TYPE_ENUM_UINT16             usMsgName;      /* _H2ASN_Skip */
     MODEM_ID_ENUM_UINT16                enModemId;      /* _H2ASN_Replace VOS_UINT16  enModemId; */
-    FC_ID_ENUM_UINT32                   enFcId;
+    FC_ID_ENUM_UINT8                    enFcId;
+    VOS_UINT8                           aucRsv[7];
 }FC_DEREG_POINT_IND_STRU;
 
 typedef struct
@@ -156,10 +157,10 @@ typedef struct
     VOS_MSG_HEADER                                      /* _H2ASN_Skip */
     FC_MSG_TYPE_ENUM_UINT16             usMsgName;      /* _H2ASN_Skip */
     MODEM_ID_ENUM_UINT16                enModemId;      /* _H2ASN_Replace VOS_UINT16  enModemId; */
-    FC_ID_ENUM_UINT32                   enFcId;
+    FC_ID_ENUM_UINT8                    enFcId;
     FC_POLICY_ID_ENUM_UINT8             enPolicyId;
-    VOS_UINT8                           aucRsv2[3];
-    FC_PRI_ENUM_UINT32                  enPri;
+    FC_PRI_ENUM_UINT8                   enPri;
+    VOS_UINT8                           aucRsv[5];
 }FC_CHANGE_POINT_IND_STRU;
 
 
@@ -168,29 +169,18 @@ typedef struct
     VOS_MSG_HEADER                                      /* _H2ASN_Skip */
     FC_MSG_TYPE_ENUM_UINT16             usMsgName;      /* _H2ASN_Skip */
     MODEM_ID_ENUM_UINT16                enModemId;      /* _H2ASN_Replace VOS_UINT16  enModemId; */
-    FC_ID_ENUM_UINT32                   enFcId;
+    FC_ID_ENUM_UINT8                    enFcId;
     VOS_UINT8                           ucRabId;
-    VOS_UINT8                           aucRsv2[3];
+    VOS_UINT8                           aucRsv[6];
 } FC_ADD_RAB_FCID_MAP_IND_STRU;
 
-#if 0
-typedef struct
-{
-    VOS_MSG_HEADER                                      /* _H2ASN_Skip */
-    FC_MSG_TYPE_ENUM_UINT16             usMsgName;      /* _H2ASN_Skip */
-    VOS_UINT8                           ucRabId;
-    VOS_UINT8                           aucRsv[1];
-    MODEM_ID_ENUM_UINT16                enModemId;
-    VOS_UINT8                           aucRsv2[2];
-} FC_DEL_RAB_FCID_MAP_IND_STRU;
-#endif
 typedef struct
 {
     VOS_MSG_HEADER                                      /* _H2ASN_Skip */
     FC_MSG_TYPE_ENUM_UINT16             usMsgName;      /* _H2ASN_Skip */
     MODEM_ID_ENUM_UINT16                enModemId;      /* _H2ASN_Replace VOS_UINT16  enModemId; */
     VOS_UINT8                           ucRabId;
-    VOS_UINT8                           aucRsv[3];
+    VOS_UINT8                           aucRsv[7];
 } FC_DEL_RAB_FCID_MAP_IND_STRU;
 
 typedef struct
@@ -198,7 +188,8 @@ typedef struct
     VOS_MSG_HEADER                                      /* _H2ASN_Skip */
     FC_MSG_TYPE_ENUM_UINT16             usMsgName;      /* _H2ASN_Skip */
     VOS_UINT16                          usMemFreeCnt;
-    FC_PRI_ENUM_UINT32                  enTargetPri;
+    FC_PRI_ENUM_UINT8                   enTargetPri;
+    VOS_UINT8                           aucRsv[7];
 } FC_MEM_UP_TO_TARGET_PRI_IND_STRU;
 
 
@@ -207,7 +198,8 @@ typedef struct
     VOS_MSG_HEADER                                      /* _H2ASN_Skip */
     FC_MSG_TYPE_ENUM_UINT16             usMsgName;      /* _H2ASN_Skip */
     VOS_UINT16                          usMemFreeCnt;
-    FC_PRI_ENUM_UINT32                  enTargetPri;
+    FC_PRI_ENUM_UINT8                   enTargetPri;
+    VOS_UINT8                           aucRsv[7];
 } FC_MEM_DOWN_TO_TARGET_PRI_IND_STRU;
 
 /*****************************************************************************

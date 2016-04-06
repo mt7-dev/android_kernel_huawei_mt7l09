@@ -63,7 +63,7 @@ extern "C" {
 #define  RNIC_DBG_NETID_DL_DISCARD_NUM(n, index)       (g_astRnicStats[index].ulDlNetIdDiscardNum += (n))
 
 #define RNIC_DBG_SET_SEM_INIT_FLAG(flag)               (g_astRnicStats[0].ulSemInitFlg = (flag))
-#define RNIC_DBG_SAVE_BINARY_SEM_ID(sem_id)            (g_astRnicStats[0].ulBinarySemId = (sem_id))
+#define RNIC_DBG_SAVE_BINARY_SEM_ID(sem_id)            (g_astRnicStats[0].hBinarySemId = (sem_id))
 #define RNIC_DBG_CREATE_BINARY_SEM_FAIL_NUM(n)         (g_astRnicStats[0].ulCreateBinarySemFailNum += (n))
 #define RNIC_DBG_LOCK_BINARY_SEM_FAIL_NUM(n)           (g_astRnicStats[0].ulLockBinarySemFailNum += (n))
 #define RNIC_DBG_SAVE_LAST_BIN_SEM_ERR_RSLT(rslt)      (g_astRnicStats[0].ulLastBinarySemErrRslt = (rslt))
@@ -135,8 +135,9 @@ typedef struct
     VOS_UINT32              ulDlNetIdDiscardNum;                                /* RNIC网卡ID错误丢掉下行数据包的个数 */
 
     /* 复位信号量信息 */
+    VOS_SEM                 hBinarySemId;                                       /* 二进制信号量ID */
+
     VOS_UINT32              ulSemInitFlg;                                       /* 初始化标识, VOS_TRUE: 成功; VOS_FALSE: 失败 */
-    VOS_UINT32              ulBinarySemId;                                      /* 二进制信号量ID */
     VOS_UINT32              ulCreateBinarySemFailNum;                           /* 创建二进制信号量失败次数 */
     VOS_UINT32              ulLockBinarySemFailNum;                             /* 锁二进制信号量失败次数 */
     VOS_UINT32              ulLastBinarySemErrRslt;                             /* 最后一次锁二进制信号量失败结果 */

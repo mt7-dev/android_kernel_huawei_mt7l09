@@ -16,9 +16,9 @@ extern "C" {
 /*****************************************************************************
     协议栈打印打点方式下的.C文件宏定义
 *****************************************************************************/
-/*lint -e767*/
+/*lint -e767 -e960*/
 #define    THIS_FILE_ID                 PS_FILE_ID_AT_CTX_C
-/*lint +e767*/
+/*lint +e767 +e960*/
 
 /*****************************************************************************
   2 全局变量定义
@@ -132,6 +132,65 @@ AT_SS_CUSTOMIZE_PARA_STRU               g_stAtSsCustomizePara;
 
 AT_TRACE_MSGID_TAB_STRU                 g_stAtTraceMsgIdTab[AT_CLIENT_ID_BUTT];
 
+AT_CLIENT_CFG_MAP_TAB_STRU              g_astAtClientCfgMapTbl[] =
+{
+    AT_CLIENT_CFG_ELEMENT(PCUI),
+    AT_CLIENT_CFG_ELEMENT(CTRL),
+    AT_CLIENT_CFG_ELEMENT(MODEM),
+    AT_CLIENT_CFG_ELEMENT(NDIS),
+    AT_CLIENT_CFG_ELEMENT(UART),
+#if (FEATURE_ON == FEATURE_AT_HSUART)
+    AT_CLIENT_CFG_ELEMENT(HSUART),
+#endif
+    AT_CLIENT_CFG_ELEMENT(SOCK),
+    AT_CLIENT_CFG_ELEMENT(APPSOCK),
+#if (FEATURE_ON == FEATURE_AT_HSIC)
+    AT_CLIENT_CFG_ELEMENT(HSIC1),
+    AT_CLIENT_CFG_ELEMENT(HSIC2),
+    AT_CLIENT_CFG_ELEMENT(HSIC3),
+    AT_CLIENT_CFG_ELEMENT(HSIC4),
+    AT_CLIENT_CFG_ELEMENT(HSIC_MODEM),
+    AT_CLIENT_CFG_ELEMENT(MUX1),
+    AT_CLIENT_CFG_ELEMENT(MUX2),
+    AT_CLIENT_CFG_ELEMENT(MUX3),
+    AT_CLIENT_CFG_ELEMENT(MUX4),
+    AT_CLIENT_CFG_ELEMENT(MUX5),
+    AT_CLIENT_CFG_ELEMENT(MUX6),
+    AT_CLIENT_CFG_ELEMENT(MUX7),
+    AT_CLIENT_CFG_ELEMENT(MUX8),
+#endif
+    AT_CLIENT_CFG_ELEMENT(APP),
+    AT_CLIENT_CFG_ELEMENT(APP1),
+#if (FEATURE_ON == FEATURE_VCOM_EXT)
+    AT_CLIENT_CFG_ELEMENT(APP2),
+    AT_CLIENT_CFG_ELEMENT(APP3),
+    AT_CLIENT_CFG_ELEMENT(APP4),
+    AT_CLIENT_CFG_ELEMENT(APP5),
+    AT_CLIENT_CFG_ELEMENT(APP6),
+    AT_CLIENT_CFG_ELEMENT(APP7),
+    AT_CLIENT_CFG_ELEMENT(APP8),
+    AT_CLIENT_CFG_ELEMENT(APP9),
+    AT_CLIENT_CFG_ELEMENT(APP10),
+    AT_CLIENT_CFG_ELEMENT(APP11),
+    AT_CLIENT_CFG_ELEMENT(APP12),
+    AT_CLIENT_CFG_ELEMENT(APP13),
+    AT_CLIENT_CFG_ELEMENT(APP14),
+    AT_CLIENT_CFG_ELEMENT(APP15),
+    AT_CLIENT_CFG_ELEMENT(APP16),
+    AT_CLIENT_CFG_ELEMENT(APP17),
+    AT_CLIENT_CFG_ELEMENT(APP18),
+    AT_CLIENT_CFG_ELEMENT(APP19),
+    AT_CLIENT_CFG_ELEMENT(APP20),
+    AT_CLIENT_CFG_ELEMENT(APP21),
+    AT_CLIENT_CFG_ELEMENT(APP22),
+    AT_CLIENT_CFG_ELEMENT(APP23),
+    AT_CLIENT_CFG_ELEMENT(APP24),
+    AT_CLIENT_CFG_ELEMENT(APP25),
+    AT_CLIENT_CFG_ELEMENT(APP26),
+#endif
+};
+
+const VOS_UINT8                         g_ucAtClientCfgMapTabLen = AT_ARRAY_SIZE(g_astAtClientCfgMapTbl);
 
 /*****************************************************************************
   3 函数实现
@@ -194,6 +253,7 @@ VOS_VOID AT_InitCommPsCtx(VOS_VOID)
 VOS_VOID AT_InitModemCcCtx(MODEM_ID_ENUM_UINT16 enModemId)
 {
     AT_MODEM_CC_CTX_STRU               *pstCcCtx = VOS_NULL_PTR;
+    VOS_UINT8                           i;
 
     pstCcCtx = AT_GetModemCcCtxAddrFromModemId(enModemId);
 
@@ -202,6 +262,14 @@ VOS_VOID AT_InitModemCcCtx(MODEM_ID_ENUM_UINT16 enModemId)
 
     /* 语音自动应答参数初始化 */
     PS_MEM_SET(&(pstCcCtx->stS0TimeInfo), 0, sizeof(pstCcCtx->stS0TimeInfo));
+
+    PS_MEM_SET(&(pstCcCtx->stEconfInfo), 0, sizeof(pstCcCtx->stEconfInfo));
+
+    for (i = 0; i < TAF_CALL_MAX_ECONF_CALLED_NUM; i++)
+    {
+        pstCcCtx->stEconfInfo.astCallInfo[i].enCallState = TAF_CALL_ECONF_STATE_BUTT;
+        pstCcCtx->stEconfInfo.astCallInfo[i].enCause     = TAF_CS_CAUSE_SUCCESS;
+    }
 
 
     return;
@@ -264,23 +332,23 @@ VOS_VOID AT_InitModemSmsCtx(MODEM_ID_ENUM_UINT16 enModemId)
     pstSmsCtx->stCgsmsSendDomain.enSendDomain = MN_MSG_SEND_DOMAIN_CS_PREFERRED;
 
     /* 文本短信相关参数初始化 */
-    /* 
-    27005 3 Text Mode 3.1 Parameter Definitions  
+    /*
+    27005 3 Text Mode 3.1 Parameter Definitions
     Message Data Parameters
-    <fo> depending on the command or result code: first octet of 3GPP TS 23.040 
-    [3] SMS-DELIVER, SMS-SUBMIT (default 17), SMS-STATUS-REPORT, or SMS-COMMAND 
+    <fo> depending on the command or result code: first octet of 3GPP TS 23.040
+    [3] SMS-DELIVER, SMS-SUBMIT (default 17), SMS-STATUS-REPORT, or SMS-COMMAND
     (default 2) in integer format
     <vp> depending on SMS-SUBMIT <fo> setting: 3GPP TS 23.040 [3] TP-Validity-
-    Period either in integer format (default 167), in time-string format (refer 
-    <dt>), or if EVPF is supported, in enhanced format (hexadecimal coded string 
+    Period either in integer format (default 167), in time-string format (refer
+    <dt>), or if EVPF is supported, in enhanced format (hexadecimal coded string
     with double quotes)
     */
     PS_MEM_SET(&(pstSmsCtx->stCscaCsmpInfo), 0, sizeof(pstSmsCtx->stCscaCsmpInfo));
     pstSmsCtx->stCscaCsmpInfo.stParmInUsim.ucParmInd = 0xff;
-    pstSmsCtx->stCscaCsmpInfo.stVp.enValidPeriod     = 
+    pstSmsCtx->stCscaCsmpInfo.stVp.enValidPeriod     =
     MN_MSG_VALID_PERIOD_RELATIVE;
     pstSmsCtx->stCscaCsmpInfo.stVp.u.ucOtherTime     = AT_CSMP_SUBMIT_VP_DEFAULT_VALUE;
-    
+
     /* 短信及状态报告读，删除，写，发送或接收存储介质初始化 */
     pstSmsCtx->stCpmsInfo.stRcvPath.enStaRptMemStore = MN_MSG_MEM_STORE_SIM;
     pstSmsCtx->stCpmsInfo.stRcvPath.enSmMemStore     = MN_MSG_MEM_STORE_SIM;
@@ -432,11 +500,11 @@ VOS_VOID AT_InitResetCtx(VOS_VOID)
 
     pstResetCtx = AT_GetResetCtxAddr();
 
-    pstResetCtx->ulResetSem     = 0;
+    pstResetCtx->hResetSem     = VOS_NULL_PTR;
     pstResetCtx->ulResetingFlag = VOS_FALSE;
 
     /* 分配二进制信号量 */
-    if (VOS_OK != VOS_SmBCreate( "AT", 0, VOS_SEMA4_FIFO, &pstResetCtx->ulResetSem))
+    if (VOS_OK != VOS_SmBCreate( "AT", 0, VOS_SEMA4_FIFO, &pstResetCtx->hResetSem))
     {
         vos_printf("Create AT acpu cnf sem failed!\r\n");
         AT_DBG_SET_SEM_INIT_FLAG(VOS_FALSE);
@@ -446,7 +514,7 @@ VOS_VOID AT_InitResetCtx(VOS_VOID)
     }
     else
     {
-        AT_DBG_SAVE_BINARY_SEM_ID(pstResetCtx->ulResetSem);
+        AT_DBG_SAVE_BINARY_SEM_ID(pstResetCtx->hResetSem);
     }
 
     AT_DBG_SET_SEM_INIT_FLAG(VOS_TRUE);
@@ -1018,9 +1086,9 @@ VOS_UINT32 AT_GetSsCustomizePara(AT_SS_CUSTOMIZE_TYPE_UINT8 enSsCustomizeType)
 }
 
 
-VOS_UINT32 AT_GetResetSem(VOS_VOID)
+VOS_SEM AT_GetResetSem(VOS_VOID)
 {
-    return g_stAtResetCtx.ulResetSem;
+    return g_stAtResetCtx.hResetSem;
 }
 
 
@@ -1143,7 +1211,7 @@ VOS_VOID AT_InitModemMtCtx(
 VOS_VOID AT_SetModemState(MODEM_ID_ENUM_UINT16 enModemId)
 {
     AT_MODEM_MT_INFO_CTX_STRU          *pstMtInfoCtx = VOS_NULL_PTR;
-    VOS_UINT32                          ulLoop;
+    VOS_UINT16                          usLoop;
 
     /* 越界保护 */
     if (enModemId >= MODEM_ID_BUTT)
@@ -1155,9 +1223,9 @@ VOS_VOID AT_SetModemState(MODEM_ID_ENUM_UINT16 enModemId)
     pstMtInfoCtx = AT_GetModemMtInfoCtxAddrFromModemId(enModemId);
     pstMtInfoCtx->ulRcvPSInitFlag = 1;
 
-    for (ulLoop = 0; ulLoop < MODEM_ID_BUTT; ulLoop++)
+    for (usLoop = 0; usLoop < MODEM_ID_BUTT; usLoop++)
     {
-        pstMtInfoCtx = AT_GetModemMtInfoCtxAddrFromModemId(ulLoop);
+        pstMtInfoCtx = AT_GetModemMtInfoCtxAddrFromModemId(usLoop);
 
         /* 如果autstart为0但是未收到psinit，则表示还有需要开机的modem没有上报启动成功 */
         if ((0 == pstMtInfoCtx->ulAutoStartFlag)
@@ -1167,7 +1235,7 @@ VOS_VOID AT_SetModemState(MODEM_ID_ENUM_UINT16 enModemId)
         }
     }
 
-    if (ulLoop >= MODEM_ID_BUTT)
+    if (usLoop >= MODEM_ID_BUTT)
     {
         /* 所有需要启动的modem都收到成功的PSINIT后才设置设备节点 */
         DRV_MODEM_STATE_SET(VOS_TRUE);
@@ -1292,7 +1360,7 @@ VOS_VOID AT_AddUsedClientId2Tab(VOS_UINT16 usClientId)
 VOS_VOID AT_RmUsedClientIdFromTab(VOS_UINT16 usClientId)
 {
     AT_PORT_BUFF_CFG_STRU              *pstPortBuffCfg = VOS_NULL_PTR;
-    VOS_UINT32                          ucIndex;
+    VOS_UINT32                          ulIndex;
 
     pstPortBuffCfg = AT_GetPortBuffCfgInfo();
 
@@ -1302,36 +1370,47 @@ VOS_VOID AT_RmUsedClientIdFromTab(VOS_UINT16 usClientId)
     }
 
     /* 循环查找是否已经记录过 */
-    for (ucIndex = 0; ucIndex < pstPortBuffCfg->ucNum; ucIndex++)
+    for (ulIndex = 0; ulIndex < pstPortBuffCfg->ucNum; ulIndex++)
     {
-        if (usClientId == pstPortBuffCfg->ulUsedClientID[ucIndex])
+        if (usClientId == pstPortBuffCfg->ulUsedClientID[ulIndex])
         {
             break;
         }
     }
 
     /* 如果没有记录过则直接退出 */
-    if (ucIndex == pstPortBuffCfg->ucNum)
+    if (ulIndex == pstPortBuffCfg->ucNum)
     {
         return;
     }
 
     /* 如果找到就删除对应的client */
-    if (ucIndex == pstPortBuffCfg->ucNum - 1)
+    if (ulIndex == pstPortBuffCfg->ucNum - 1)
     {
         pstPortBuffCfg->ucNum--;
-        pstPortBuffCfg->ulUsedClientID[ucIndex] = VOS_NULL_DWORD;
+        pstPortBuffCfg->ulUsedClientID[ulIndex] = VOS_NULL_DWORD;
 
     }
     else
     {
-        pstPortBuffCfg->ulUsedClientID[ucIndex] =
+        pstPortBuffCfg->ulUsedClientID[ulIndex] =
                     pstPortBuffCfg->ulUsedClientID[pstPortBuffCfg->ucNum - 1];
         pstPortBuffCfg->ulUsedClientID[pstPortBuffCfg->ucNum - 1] = VOS_NULL_DWORD;
         pstPortBuffCfg->ucNum--;
     }
 }
+AT_CLIENT_CONFIGURATION_STRU* AT_GetClientConfig(
+    AT_CLIENT_ID_ENUM_UINT16            enClientId
+)
+{
+    return &(AT_GetClientCtxAddr(enClientId)->stClientConfiguration);
+}
 
+
+AT_CLIENT_CFG_MAP_TAB_STRU* AT_GetClientCfgMapTbl(VOS_UINT8 ucIndex)
+{
+    return &(g_astAtClientCfgMapTbl[ucIndex]);
+}
 
 
 

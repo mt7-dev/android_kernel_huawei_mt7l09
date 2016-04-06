@@ -1,5 +1,5 @@
 /**
- * Copyright (C) ARM Limited 2010-2013. All rights reserved.
+ * Copyright (C) ARM Limited 2010-2014. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -9,9 +9,6 @@
 #include "Fifo.h"
 
 #include <stdlib.h>
-#ifdef WIN32
-#define valloc malloc
-#endif
 
 #include "Logging.h"
 
@@ -23,7 +20,7 @@ Fifo::Fifo(int singleBufferSize, int bufferSize, sem_t* readerSem) {
   mWrapThreshold = bufferSize;
   mSingleBufferSize = singleBufferSize;
   mReaderSem = readerSem;
-  mBuffer = (char*)valloc(bufferSize + singleBufferSize);
+  mBuffer = (char*)malloc(bufferSize + singleBufferSize);
   mEnd = false;
 
   if (mBuffer == NULL) {

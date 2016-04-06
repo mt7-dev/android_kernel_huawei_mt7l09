@@ -52,9 +52,9 @@ struct iio_dummy_accel_calibscale {
 };
 
 static const struct iio_dummy_accel_calibscale dummy_scales[] = {
-	{ 0, 100, 0x8 }, /* 0.000100 */
-	{ 0, 133, 0x7 }, /* 0.000133 */
-	{ 733, 13, 0x9 }, /* 733.000013 */
+	{ 0, 100, 0x8 },
+	{ 0, 133, 0x7 },
+	{ 733, 13, 0x9 },
 };
 
 /*
@@ -250,7 +250,6 @@ static int iio_dummy_read_raw(struct iio_dev *indio_dev,
 	case IIO_CHAN_INFO_SCALE:
 		switch (chan->differential) {
 		case 0:
-			/* only single ended adc -> 0.001333 */
 			*val = 0;
 			*val2 = 1333;
 			ret = IIO_VAL_INT_PLUS_MICRO;

@@ -74,8 +74,8 @@ extern VOS_VOID IMSA_USSD_ClearResource(VOS_VOID);
 extern VOS_VOID IMSA_USSD_ProcTimerMsgWaitNetRsp(const VOS_VOID *pRcvMsg);
 extern VOS_VOID IMSA_USSD_ProcTimerMsgWaitAppRsp(const VOS_VOID *pRcvMsg);
 
-extern VOS_VOID IMSA_SsProcSpmMsgProcessUssdReq(const SPM_IMSA_PROCESS_USSD_REQ_STRU *pstUssdReq);
-extern VOS_VOID IMSA_SsProcSpmMsgReleaseReq(const SPM_IMSA_RELEASE_REQ_STRU *pstUssdRelReq);
+extern VOS_UINT32 IMSA_SsProcSpmMsgProcessUssdReq(VOS_VOID *pMsg);
+extern VOS_UINT32 IMSA_SsProcSpmMsgReleaseReq(VOS_VOID *pMsg);
 
 extern VOS_VOID IMSA_USSD_SndImsUssdReqMsg
 (

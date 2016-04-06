@@ -66,6 +66,10 @@ const IMSA_CONN_PS_EVT_FUNC_TBL_STRU    g_astImsaConnPsEvtFuncTbl[] =
 
 const VOS_UINT32 g_ulImsaConnPsEvtFuncTblSize  = sizeof(g_astImsaConnPsEvtFuncTbl) / sizeof(g_astImsaConnPsEvtFuncTbl[0]);
 
+extern VOS_VOID IMSA_CONN_WaitForIpv4PDPActiveCNF
+(
+    IMSA_CONN_TYPE_ENUM_UINT32          enConnType
+);
 
 extern VOS_VOID IMSA_CONN_WaitForIpv6InfoProc
 (
@@ -104,11 +108,13 @@ extern VOS_VOID IMSA_CONN_ProcActRejCurReqIpv4v6
 );
 extern VOS_VOID IMSA_CONN_ProcActRejCurReqIpv4
 (
-    IMSA_CONN_TYPE_ENUM_UINT32                  enConnType
+    IMSA_CONN_TYPE_ENUM_UINT32                  enConnType,
+    const TAF_PS_CALL_PDP_ACTIVATE_REJ_STRU    *pstPdpActivateRej
 );
 extern VOS_VOID IMSA_CONN_ProcActRejCurReqIpv6
 (
-    IMSA_CONN_TYPE_ENUM_UINT32          enConnType
+    IMSA_CONN_TYPE_ENUM_UINT32          enConnType,
+    const TAF_PS_CALL_PDP_ACTIVATE_REJ_STRU    *pstPdpActivateRej
 );
 
 extern VOS_UINT32 IMSA_CONN_MatchIPV4V6FallBackCause
@@ -162,6 +168,50 @@ VOS_VOID IMSA_CONN_ProcTafPsEvt
     }
 
     return;
+}
+
+/*****************************************************************************
+ Function Name  : IMSA_CONN_WaitForIpv4PDPActiveCNF
+ Description    : 等待APS进一步上报IPV4类型的承载建立成功消息
+ Input          : enConnType-------------连接类型
+ Output         : VOS_VOID
+ Return Value   : VOS_VOID
+
+ History        :
+      1.zhaochen 00308719      2015-05-08  Draft Enact
+*****************************************************************************/
+VOS_VOID IMSA_CONN_WaitForIpv4PDPActiveCNF
+(
+    IMSA_CONN_TYPE_ENUM_UINT32          enConnType
+)
+{
+    IMSA_NORMAL_CONN_STRU              *pstNormalConn   = VOS_NULL_PTR;
+    IMSA_IP_ADDRESS_STRU               *pstPdpIpAddr    = VOS_NULL_PTR;
+    VOS_UINT32                          i               = IMSA_NULL;
+    VOS_UINT8                           aucTemp[IMSA_IPV4_ADDR_LEN] = {0};
+
+    /* 获取IPV4的PDP参数，如果存在则通知SERVICE模块连接建立成功 */
+    if (IMSA_CONN_TYPE_NORMAL == enConnType)
+    {
+        pstNormalConn                   = IMSA_CONN_GetNormalConnAddr();
+        for (i = 0; i < pstNormalConn->ulSipSignalPdpNum; i++)
+        {
+            pstPdpIpAddr = &pstNormalConn->astSipSignalPdpArray[i].stPdpAddr;
+            if (((IMSA_IP_TYPE_IPV4 == pstPdpIpAddr->enIpType)
+                    || (IMSA_IP_TYPE_IPV4V6 == pstPdpIpAddr->enIpType))
+                && (0 != IMSA_MEM_CMP(aucTemp, pstPdpIpAddr->aucIpV4Addr, IMSA_IPV4_ADDR_LEN)))
+            {
+                /* 通知SERVICE模块连接建立成功 */
+                IMSA_CONN_SetupConnSucc(enConnType);
+                return ;
+            }
+        }
+    }
+    else
+    {
+        /* 紧急的场景不可能会出现两个紧急承载的情况，所以对紧急的场景不处理 */
+    }
+
 }
 VOS_VOID IMSA_CONN_WaitForIpv6InfoProc
 (
@@ -481,7 +531,7 @@ VOS_VOID  IMSA_CONN_ProcIpv4ActCnf
             break;
 
         /* 这里是PDP激活回退功能实现 */
-        case TAF_PDP_IPV4V6:
+        case IMSA_IP_TYPE_IPV4V6:
             IMSA_CONN_ProcActCnfBack(pstPdpActivateCnf);
             break;
 
@@ -608,7 +658,7 @@ VOS_VOID IMSA_CONN_ProcActRejCurReqIpv4v6
         {
             IMSA_WARN_LOG("IMSA_CONN_ProcActRejCurReqIpv4v6:unknown pdp addr or type,IMSA_CONN_SipSignalPdpActOrig failed!");
 
-            IMSA_CONN_SetupConnFail(enConnType, IMSA_CONN_RESULT_FAIL_CN_REJ);
+            IMSA_CONN_SetupConnFail(enConnType, IMSA_CONN_RESULT_FAIL_CN_REJ,pstPdpActivateRej->enCause);
 
             return ;
         }
@@ -620,7 +670,7 @@ VOS_VOID IMSA_CONN_ProcActRejCurReqIpv4v6
     {
         IMSA_WARN_LOG("IMSA_CONN_ProcActRejCurReqIpv4v6:ipv4v6");
 
-        IMSA_CONN_SetupConnFail(enConnType, IMSA_CONN_RESULT_FAIL_CN_REJ);
+        IMSA_CONN_SetupConnFail(enConnType, IMSA_CONN_RESULT_FAIL_CN_REJ,pstPdpActivateRej->enCause);
         return ;
     }
 
@@ -629,7 +679,7 @@ VOS_VOID IMSA_CONN_ProcActRejCurReqIpv4v6
     {
         IMSA_WARN_LOG("IMSA_CONN_ProcActRejCurReqIpv4v6:Causeex is not sigle addr bearers only allowed!");
 
-        IMSA_CONN_SetupConnFail(enConnType, IMSA_CONN_RESULT_FAIL_CN_REJ);
+        IMSA_CONN_SetupConnFail(enConnType, IMSA_CONN_RESULT_FAIL_CN_REJ,pstPdpActivateRej->enCause);
         return ;
     }
 
@@ -641,7 +691,7 @@ VOS_VOID IMSA_CONN_ProcActRejCurReqIpv4v6
         {
             IMSA_WARN_LOG("IMSA_CONN_ProcActRejCurReqIpv4v6:qos not accepted,ipv4,IMSA_CONN_SipSignalPdpActOrig failed!");
 
-            IMSA_CONN_SetupConnFail(enConnType, IMSA_CONN_RESULT_FAIL_CN_REJ);
+            IMSA_CONN_SetupConnFail(enConnType, IMSA_CONN_RESULT_FAIL_CN_REJ,pstPdpActivateRej->enCause);
             return ;
         }
 
@@ -655,7 +705,7 @@ VOS_VOID IMSA_CONN_ProcActRejCurReqIpv4v6
         {
             IMSA_WARN_LOG("IMSA_CONN_ProcActRejCurReqIpv4v6:qos not accepted,ipv6,IMSA_CONN_SipSignalPdpActOrig failed!");
 
-            IMSA_CONN_SetupConnFail(enConnType, IMSA_CONN_RESULT_FAIL_CN_REJ);
+            IMSA_CONN_SetupConnFail(enConnType, IMSA_CONN_RESULT_FAIL_CN_REJ,pstPdpActivateRej->enCause);
             return ;
         }
 
@@ -670,7 +720,8 @@ VOS_VOID IMSA_CONN_ProcActRejCurReqIpv4v6
 
 VOS_VOID IMSA_CONN_ProcActRejCurReqIpv4
 (
-    IMSA_CONN_TYPE_ENUM_UINT32                  enConnType
+    IMSA_CONN_TYPE_ENUM_UINT32                  enConnType,
+    const TAF_PS_CALL_PDP_ACTIVATE_REJ_STRU    *pstPdpActivateRej
 )
 {
     VOS_UINT32                          ulResult            = IMSA_FAIL;
@@ -696,13 +747,14 @@ VOS_VOID IMSA_CONN_ProcActRejCurReqIpv4
     {
         IMSA_WARN_LOG("IMSA_CONN_ProcActRejCurReqIpv4:IMSA_CONN_SipSignalPdpActOrig failed!");
 
-        IMSA_CONN_SetupConnFail(enConnType, IMSA_CONN_RESULT_FAIL_CN_REJ);
+        IMSA_CONN_SetupConnFail(enConnType, IMSA_CONN_RESULT_FAIL_CN_REJ,pstPdpActivateRej->enCause);
         return ;
     }
 }
 VOS_VOID IMSA_CONN_ProcActRejCurReqIpv6
 (
-    IMSA_CONN_TYPE_ENUM_UINT32          enConnType
+    IMSA_CONN_TYPE_ENUM_UINT32          enConnType,
+    const TAF_PS_CALL_PDP_ACTIVATE_REJ_STRU    *pstPdpActivateRej
 )
 {
     if (IMSA_PDP_STATE_ACTIVE == IMSA_CONN_GetSipSignalPdpState(enConnType, IMSA_IP_TYPE_IPV4))
@@ -716,7 +768,7 @@ VOS_VOID IMSA_CONN_ProcActRejCurReqIpv6
     {
         IMSA_WARN_LOG("IMSA_CONN_ProcActRejCurReqIpv6:ipv4 not active,ipv6 rej!");
 
-        IMSA_CONN_SetupConnFail(enConnType, IMSA_CONN_RESULT_FAIL_CN_REJ);
+        IMSA_CONN_SetupConnFail(enConnType, IMSA_CONN_RESULT_FAIL_CN_REJ,pstPdpActivateRej->enCause);
         return ;
     }
 }
@@ -764,6 +816,24 @@ VOS_UINT32 IMSA_CONN_ProcTafPsEvtPdpActivateCnf
     if (IMSA_OP_TRUE == pstPdpActivateCnf->bitOpLinkdRabId)
     {
         IMSA_WARN_LOG("IMSA_CONN_ProcTafPsCallEvtPdpActivateCnf:Illegal Bearer Type!");
+        return IMSA_FAIL;
+    }
+
+    /* ActivateCnf消息中需要判断是否携带PCSCF地址，如果没有携带PCSCF地址
+       并且携带的原因值不是#52，则将释放连接并通知SERVICE模块连接建立失败 */
+    if ((TAF_PS_CAUSE_SM_NW_SINGLE_ADDR_BEARERS_ONLY_ALLOWED != pstPdpActivateCnf->enCause) &&
+        (IMSA_OP_TRUE != pstPdpActivateCnf->stPcscf.bitOpPrimPcscfAddr) &&
+        (IMSA_OP_TRUE != pstPdpActivateCnf->stIpv6Pcscf.bitOpPrimPcscfAddr))
+    {
+        /* 停止IMS拨号定时器 */
+        IMSA_CONN_StopTimer(enConnType, TI_IMSA_SIP_SIGAL_PDP_ORIG);
+
+        /* 请求APS释放连接 */
+        IMSA_CONN_RequestApsRelConn(enConnType);
+
+        /* 通知SERVICE模块连接建立失败 */
+        IMSA_CONN_SetupConnFail(enConnType, IMSA_CONN_RESULT_FAIL_PARA_ERR, (TAF_PS_CAUSE_ENUM_UINT32)TAF_PS_CAUSE_BUTT);
+
         return IMSA_FAIL;
     }
 
@@ -874,12 +944,10 @@ VOS_UINT32 IMSA_CONN_ProcTafPsEvtPdpActivateRej
     {
         if (IMSA_TRUE == IMSA_CONN_HasActiveSipSignalPdp(enConnType))
         {
-            IMSA_CONN_SndConnSetupInd(  IMSA_CONN_RESULT_SUCCESS,
-                                        enConnType,
-                                        IMSA_CONN_SIP_PDP_TYPE_SIGNAL);
+            IMSA_CONN_SetupConnSucc(enConnType);
             return IMSA_SUCC;
         }
-        IMSA_CONN_SetupConnFail(enConnType, IMSA_CONN_RESULT_FAIL_CN_REJ);
+        IMSA_CONN_SetupConnFail(enConnType, IMSA_CONN_RESULT_FAIL_CN_REJ, pstPdpActivateRej->enCause);
 
         return IMSA_SUCC;
     }
@@ -891,11 +959,11 @@ VOS_UINT32 IMSA_CONN_ProcTafPsEvtPdpActivateRej
     }
     else if (IMSA_IP_TYPE_IPV4 == enCurReqPdnType)
     {
-        IMSA_CONN_ProcActRejCurReqIpv4(enConnType);
+        IMSA_CONN_ProcActRejCurReqIpv4(enConnType, pstPdpActivateRej);
     }
     else
     {
-        IMSA_CONN_ProcActRejCurReqIpv6(enConnType);
+        IMSA_CONN_ProcActRejCurReqIpv6(enConnType, pstPdpActivateRej);
     }
 
     return IMSA_SUCC;
@@ -976,16 +1044,30 @@ VOS_UINT32 IMSA_CONN_ProcTafPsEvtPdpActivateInd
     /* 存储SIP媒体承载信息 */
     IMSA_CONN_SaveSipMediaPdpInfo(enConnType, pstPdpActivateInd);
 
-    /* 通知SERVICE模块媒体承载建立成功 */
-    IMSA_CONN_SndConnSetupInd(  IMSA_CONN_RESULT_SUCCESS,
-                                enConnType,
-                                IMSA_CONN_SIP_PDP_TYPE_MEDIA);
+    if (IMSA_TRUE == IMSA_CONN_IsVoiceMediaPdpType((IMSA_PDP_TFT_INFO_STRU *)&pstPdpActivateInd->stTft,
+                                                    pstPdpActivateInd->stEpsQos.ucQCI))
+    {
 
-    /* 给CDS配置下行过滤承载 */
+        /* 通知SERVICE模块媒体承载建立成功 */
+        IMSA_CONN_SndConnMediaSetupInd(IMSA_CONN_RESULT_SUCCESS,
+                                        enConnType,
+                                        IMSA_CONN_MEDIA_PDP_TYPE_VOICE);
+    }
+    else
+    {
+        /* 通知SERVICE模块媒体承载建立成功 */
+        IMSA_CONN_SndConnMediaSetupInd(IMSA_CONN_RESULT_SUCCESS,
+                                        enConnType,
+                                        IMSA_CONN_MEDIA_PDP_TYPE_VIDEO);
+    }
+
+    /* 音频和视频承载配给CDS */
     IMSA_CONN_SndCdsSetImsBearerReq();
 
     return IMSA_SUCC;
 }
+
+
 VOS_UINT32 IMSA_CONN_ProcTafPsEvtPdpModifyInd
 (
     VOS_VOID                           *pEvtInfo
@@ -995,6 +1077,7 @@ VOS_UINT32 IMSA_CONN_ProcTafPsEvtPdpModifyInd
     IMSA_CONN_TYPE_ENUM_UINT32          enConnType          = IMSA_CONN_TYPE_BUTT;
     IMSA_CONN_SIP_PDP_TYPE_ENUM_UINT32  enSipPdpType        = IMSA_CONN_SIP_PDP_TYPE_BUTT;
     IMSA_PDP_CNTXT_INFO_STRU           *pstPdpContext       = VOS_NULL_PTR;
+    IMSA_PDP_CNTXT_INFO_STRU           *pstPdpContextOld    = VOS_NULL_PTR;
 
     IMSA_INFO_LOG("IMSA_CONN_ProcTafPsEvtPdpModifyInd is entered!");
 
@@ -1034,14 +1117,43 @@ VOS_UINT32 IMSA_CONN_ProcTafPsEvtPdpModifyInd
         return IMSA_FAIL;
     }
 
+    pstPdpContextOld = IMSA_MEM_ALLOC(sizeof(IMSA_PDP_CNTXT_INFO_STRU));
+
+    if(VOS_NULL_PTR == pstPdpContextOld)
+    {
+        return IMSA_FAIL;
+    }
+    /* 备份原有的承载信息 */
+    IMSA_MEM_CPY(pstPdpContextOld, pstPdpContext, sizeof(IMSA_PDP_CNTXT_INFO_STRU));
+
     /* 修改SIP承载信息 */
     IMSA_CONN_ModifySipPdpInfo(enSipPdpType, pstPdpContext, pstPdpModifyInd);
 
-    /* 如果是媒体承载，则通知SERVICE媒体承载修改 */
+    /* 如果修改的承载中携带P-CSCF地址,判断当前注册地址是否失效 */
+    if (((IMSA_OP_TRUE == pstPdpModifyInd->stPcscf.bitOpPrimPcscfAddr) ||
+         (IMSA_OP_TRUE == pstPdpModifyInd->stIpv6Pcscf.bitOpPrimPcscfAddr)))
+    {
+        IMSA_CONN_ProcPcscfInvalid(enConnType,pstPdpContext,pstPdpContextOld);
+    }
+
     if (IMSA_CONN_SIP_PDP_TYPE_MEDIA == enSipPdpType)
     {
-        IMSA_CONN_SndConnMediaPdpModifyInd(enConnType);
+        if (IMSA_TRUE == IMSA_CONN_IsVoiceMediaPdpType(&pstPdpContext->stTft, pstPdpModifyInd->stEpsQos.ucQCI))
+        {
+
+            /* 通知SERVICE模块媒体承载建立成功 */
+            IMSA_CONN_SndConnMediaPdpModifyInd(enConnType, IMSA_CONN_MEDIA_PDP_TYPE_VOICE);
+            /* 给CDS配置下行过滤承载 */
+            IMSA_CONN_SndCdsSetImsBearerReq();
+        }
+        else
+        {
+            /* 通知SERVICE模块媒体承载建立成功 */
+            IMSA_CONN_SndConnMediaPdpModifyInd(enConnType, IMSA_CONN_MEDIA_PDP_TYPE_VIDEO);
+        }
     }
+
+    IMSA_MEM_FREE(pstPdpContextOld);
 
     return IMSA_SUCC;
 }
@@ -1109,7 +1221,7 @@ VOS_UINT32 IMSA_CONN_ProcTafPsEvtPdpDeactivateCnf
     }
     else
     {
-        IMSA_CONN_ClearConnResource(enConnType);
+        IMSA_CONN_ClearConnResourceExeptMedia(enConnType);
 
         /* 通知SERVICE模块连接释放 */
         IMSA_CONN_SndConnRelInd(enConnType, IMSA_CONN_SIP_PDP_TYPE_SIGNAL);
@@ -1157,9 +1269,13 @@ VOS_UINT32 IMSA_CONN_ProcTafPsEvtPdpDeactivateInd
         enConnType      = IMSA_CONN_TYPE_NORMAL;
     }
      /* 删除承载信息前，备份释放承载的类型和CID */
-    IMSA_RegSaveRegedPara((IMSA_REG_TYPE_ENUM_UINT8)enConnType,
+    if (IMSA_SRV_STATUS_CONN_REG == IMSA_SRV_GetEmcSrvStatus() ||
+        IMSA_SRV_STATUS_CONN_REG == IMSA_SRV_GetNormalSrvStatus())
+    {
+        IMSA_RegSaveRegedPara((IMSA_REG_TYPE_ENUM_UINT8)enConnType,
                             pstPdpDeactivateInd->ucCid,
                             pstPdpDeactivateInd->enPdpType);
+    }
 
     /* 删除承载信息 */
     IMSA_CONN_DeletePdpInfo(enConnType, pstPdpDeactivateInd->ucCid, &ulRegParaValidFlag);
@@ -1182,10 +1298,23 @@ VOS_UINT32 IMSA_CONN_ProcTafPsEvtPdpDeactivateInd
 
         /* 清除连接资源 */
         /* IMSA_CONN_ClearConnResource(enConnType); */
-        IMSA_CONN_SetConnStatus(IMSA_CONN_TYPE_EMC, IMSA_CONN_STATUS_IDLE);
+        /*IMSA_CONN_SetConnStatus(IMSA_CONN_TYPE_EMC, IMSA_CONN_STATUS_IDLE);*/
+        /* IMSA_CONN_ClearConnResourceExeptMedia(enConnType); */
 
-        /* 通知SERVICE模块连接释放 */
-        IMSA_CONN_SndConnRelInd(enConnType, IMSA_CONN_SIP_PDP_TYPE_SIGNAL);
+        /* IMSA_CONN_SndConnRelInd(enConnType, IMSA_CONN_SIP_PDP_TYPE_SIGNAL); */
+        if (IMSA_CONN_STATUS_CONNING == IMSA_CONN_GetEmcConnStatus())
+        {
+            /* 通知SERVICE模块建立失败 */
+            IMSA_CONN_SetupConnFail(  enConnType,
+                                      IMSA_CONN_RESULT_FAIL_TIMER_EXP,
+                                      (TAF_PS_CAUSE_ENUM_UINT32)TAF_PS_CAUSE_BUTT);
+        }
+        else
+        {
+            /* 通知SERVICE模块连接释放 */
+            IMSA_CONN_ClearConnResourceExeptMedia(enConnType);
+            IMSA_CONN_SndConnRelInd(enConnType, IMSA_CONN_SIP_PDP_TYPE_SIGNAL);
+        }
 
         return IMSA_SUCC;
     }
@@ -1202,6 +1331,32 @@ VOS_UINT32 IMSA_CONN_ProcTafPsEvtPdpDeactivateInd
     if (IMSA_CONN_STATUS_CONNING == IMSA_CONN_GetNormalConnStatus())
     {
         IMSA_INFO_LOG("IMSA_CONN_ProcTafPsEvtPdpDeactivateInd:normal,conning");
+        /* 停止等待IPV6参数定时器 */
+        /* IMSA_CONN_StopTimer(enConnType, TI_IMSA_WAIT_IPV6_INFO);
+        IMSA_CONN_ClearConnResourceExeptMedia(enConnType);
+        IMSA_CONN_SndConnRelInd(enConnType, IMSA_CONN_SIP_PDP_TYPE_SIGNAL); */
+
+        if (IMSA_TRUE == IMSA_CONN_HasActiveSipSignalPdp(enConnType))
+        {
+            /* 两个信令承载，IPV4激活成功，IPV6等待前缀。如果去激活IPV4，
+               等待IPV6前缀定时器在运行，则继续等待IPV6前缀；如果去激活IPV6，
+               则发送建立成功 */
+            if (IMSA_TRUE == IMSA_IsTimerRunning(IMSA_CONN_GetNormalConnProtectTimerAddr()))
+            {
+                IMSA_CONN_WaitForIpv6InfoProc(enConnType);
+            }
+            else
+            {
+                IMSA_CONN_SetupConnSucc(IMSA_CONN_TYPE_NORMAL);
+            }
+        }
+        else
+        {
+            /* 一个信令承载，IPV4或IPV6，在建立过程中被去激活，则发送建立失败 */
+            IMSA_CONN_SetupConnFail(  enConnType,
+                                      IMSA_CONN_RESULT_FAIL_TIMER_EXP,
+                                      (TAF_PS_CAUSE_ENUM_UINT32)TAF_PS_CAUSE_BUTT);
+        }
 
         return IMSA_SUCC;
     }
@@ -1216,7 +1371,7 @@ VOS_UINT32 IMSA_CONN_ProcTafPsEvtPdpDeactivateInd
             IMSA_CONN_StopTimer(enConnType, TI_IMSA_SIP_SIGAL_PDP_END);
 
             /* 清除连接资源 */
-            IMSA_CONN_ClearConnResource(enConnType);
+            IMSA_CONN_ClearConnResourceExeptMedia(enConnType);
 
             /* 通知SERVICE模块连接释放 */
             IMSA_CONN_SndConnRelInd(enConnType, IMSA_CONN_SIP_PDP_TYPE_SIGNAL);
@@ -1231,7 +1386,8 @@ VOS_UINT32 IMSA_CONN_ProcTafPsEvtPdpDeactivateInd
 
         /* 清除连接资源 */
         /* IMSA_CONN_ClearConnResource(enConnType); */
-        IMSA_CONN_SetConnStatus(IMSA_CONN_TYPE_NORMAL, IMSA_CONN_STATUS_IDLE);
+        /*IMSA_CONN_SetConnStatus(IMSA_CONN_TYPE_NORMAL, IMSA_CONN_STATUS_IDLE);*/
+        IMSA_CONN_ClearConnResourceExeptMedia(enConnType);
 
         /* 通知SERVICE模块连接释放 */
         IMSA_CONN_SndConnRelInd(enConnType, IMSA_CONN_SIP_PDP_TYPE_SIGNAL);
@@ -1345,7 +1501,7 @@ VOS_UINT32 IMSA_CONN_ProcTafPsEvtPdpIpv6InfoInd
                                                     acUeAddr);
 
             /* 给底软配置IPv6地址和IPv6 DNS地址 */
-            IMSA_CONN_ConfigPdpIPv6Info2Bsp(pstPdpContext);
+            /* IMSA_CONN_ConfigPdpIPv6Info2Bsp(pstPdpContext); */
         }
         /* lihong00150010 ims end 2013-01-08 防止网侧重播路由公告 */
 
@@ -1373,7 +1529,7 @@ VOS_UINT32 IMSA_CONN_ProcTafPsEvtPdpIpv6InfoInd
                                                     acUeAddr);
 
             /* 给底软配置IPv6地址和IPv6 DNS地址 */
-            IMSA_CONN_ConfigPdpIPv6Info2Bsp(pstPdpContext);
+            /* IMSA_CONN_ConfigPdpIPv6Info2Bsp(pstPdpContext); */
         }
         /* lihong00150010 ims end 2013-01-08 防止网侧重播路由公告 */
 
@@ -1384,6 +1540,11 @@ VOS_UINT32 IMSA_CONN_ProcTafPsEvtPdpIpv6InfoInd
             /* 通知SERIVCE连接建立成功 */
             IMSA_CONN_SetupConnSucc(enConnType);
         }
+        /*等待IPV4的SIP信令承载建立，如果已经建立完成，则通知SERVICE模块连接建立成功*/
+        else
+        {
+            IMSA_CONN_WaitForIpv4PDPActiveCNF(enConnType);
+        }
 
         /* 停止等待IPV6参数定时器 */
         IMSA_CONN_StopTimer(enConnType, TI_IMSA_WAIT_IPV6_INFO);
@@ -1393,8 +1554,6 @@ VOS_UINT32 IMSA_CONN_ProcTafPsEvtPdpIpv6InfoInd
 
     return IMSA_FAIL;
 }
-
-
 VOS_UINT32 IMSA_CONN_ProcTafPsEvtCallOrigCnf
 (
     VOS_VOID                           *pEvtInfo
@@ -1447,15 +1606,15 @@ VOS_UINT32 IMSA_CONN_ProcTafPsEvtCallOrigCnf
            则结果值填为FAIL_PDP_ACTIVATE_LIMIT，否则填为FAIL_PARA_ERR */
     if (TAF_PS_CAUSE_PDP_ACTIVATE_LIMIT == pstCallOrigCnf->enCause)
     {
-        IMSA_CONN_SetupConnFail(enConnType, IMSA_CONN_RESULT_FAIL_PDP_ACTIVATE_LIMIT);
+        IMSA_CONN_SetupConnFail(enConnType, IMSA_CONN_RESULT_FAIL_PDP_ACTIVATE_LIMIT, (TAF_PS_CAUSE_ENUM_UINT32)TAF_PS_CAUSE_BUTT);
     }
     else if (TAF_PS_CAUSE_OPERATION_CONFLICT == pstCallOrigCnf->enCause)
     {
-        IMSA_CONN_SetupConnFail(enConnType, IMSA_CONN_RESULT_FAIL_SAME_APN_OPERATING);
+        IMSA_CONN_SetupConnFail(enConnType, IMSA_CONN_RESULT_FAIL_SAME_APN_OPERATING, (TAF_PS_CAUSE_ENUM_UINT32)TAF_PS_CAUSE_BUTT);
     }
     else
     {
-        IMSA_CONN_SetupConnFail(enConnType, IMSA_CONN_RESULT_FAIL_PARA_ERR);
+        IMSA_CONN_SetupConnFail(enConnType, IMSA_CONN_RESULT_FAIL_PARA_ERR, (TAF_PS_CAUSE_ENUM_UINT32)TAF_PS_CAUSE_BUTT);
     }
 
     return IMSA_SUCC;
@@ -1591,7 +1750,8 @@ VOS_VOID IMSA_CONN_ProcTimerMsgSipSignalPdpOrigExp
     {
         IMSA_INFO_LOG("IMSA_CONN_ProcTimerMsgSipSignalPdpOrigExp:EMC,conning!");
 
-        IMSA_CONN_SetupConnFail(enConnType, IMSA_CONN_RESULT_FAIL_TIMER_EXP);
+        IMSA_CONN_SetupConnFail(enConnType, IMSA_CONN_RESULT_FAIL_TIMER_EXP, (TAF_PS_CAUSE_ENUM_UINT32)TAF_PS_CAUSE_BUTT);
+
         return ;
     }
 
@@ -1604,7 +1764,7 @@ VOS_VOID IMSA_CONN_ProcTimerMsgSipSignalPdpOrigExp
     }
     else
     {
-        IMSA_CONN_SetupConnFail(enConnType, IMSA_CONN_RESULT_FAIL_TIMER_EXP);
+        IMSA_CONN_SetupConnFail(enConnType, IMSA_CONN_RESULT_FAIL_TIMER_EXP, (TAF_PS_CAUSE_ENUM_UINT32)TAF_PS_CAUSE_BUTT);
     }
 
     return ;
@@ -1665,7 +1825,7 @@ VOS_VOID IMSA_CONN_ProcTimerMsgSipSignalPdpEndExp
     }
     else
     {
-        IMSA_CONN_ClearConnResource(enConnType);
+        IMSA_CONN_ClearConnResourceExeptMedia(enConnType);
 
         /* 通知SERVICE模块连接释放 */
         IMSA_CONN_SndConnRelInd(enConnType, IMSA_CONN_SIP_PDP_TYPE_SIGNAL);
@@ -1704,6 +1864,16 @@ VOS_VOID IMSA_CONN_ProcTimerMsgWaitIpv6InfoExp
         IMSA_WARN_LOG("IMSA_CONN_ProcTimerMsgSipSignalPdpEndExp:IPV4 OR IPV4V6 PDP!");
 
         IMSA_CONN_SetupConnSucc(enConnType);
+    }
+    else
+    {
+        if (IMSA_TRUE == IMSA_CONN_HasActiveSipSignalPdp(enConnType))
+        {
+            /* 请求APS释放连接 */
+            IMSA_CONN_RequestApsRelConn(enConnType);
+        }
+
+        IMSA_CONN_SetupConnFail(enConnType, IMSA_CONN_RESULT_FAIL_TIMER_EXP, (TAF_PS_CAUSE_ENUM_UINT32)TAF_PS_CAUSE_BUTT);
     }
 
     return ;

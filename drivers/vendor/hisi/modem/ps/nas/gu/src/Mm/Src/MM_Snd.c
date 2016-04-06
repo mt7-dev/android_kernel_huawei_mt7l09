@@ -39,9 +39,9 @@ VOS_VOID MM_ReportM2NOtaMsg(VOS_UINT32 ulSize, VOS_UINT8 *pData)
         return;
     }
 
-    
+
     if ( ( MM_IE_PD_MM_MSG != (pData[0] & 0x0f))
-      && ( MM_IE_MSG_TYPE_PAGING_RSP != (pData[1]))) 
+      && ( MM_IE_MSG_TYPE_PAGING_RSP != (pData[1])))
     {
         return;
     }
@@ -602,6 +602,11 @@ VOS_VOID Mm_SndCcRelInd(
     pCcRelInd->ulTransactionId = ulTransactionId;                               /* 设置消息参数                             */
     pCcRelInd->ulRelCause = ulRelCause;
 
+    if (ulTransactionId == g_MmGlobalInfo.ConnCtrlInfo[MM_CONN_CTRL_CC].ucMMConnEstingTI)
+    {
+        g_MmGlobalInfo.ConnCtrlInfo[MM_CONN_CTRL_CC].ucMMConnEstingTI = NO_MM_CONN_ESTING;
+    }
+
     ulRst = PS_SEND_MSG(WUEPS_PID_MM, pCcRelInd);
     if (VOS_OK!=ulRst)
     {
@@ -816,20 +821,10 @@ VOS_VOID Mm_SndCcReestCnf(
     return;
 }
 
-/*******************************************************************************
-  Module:   Mm_SndCcErrInd
-  Function: 向CC发送MMCC_ERR_IND的处理
-  Input:    VOS_UINT32 ulTransactionId
-  Output:
-  NOTE:
-  Return:   VOS_VOID
-  History:
-      1.  张志勇     2003.12.11  新版做成
-*******************************************************************************/
-
 VOS_VOID Mm_SndCcErrInd(
-                    VOS_UINT32 ulTransactionId
-                    )
+    VOS_UINT32 ulTransactionId,
+    NAS_MMCM_REL_CAUSE_ENUM_UINT32      enCause
+)
 {
     MMCC_ERR_IND_STRU                   *pCcErrInd;                             /* 定义原语类型指针                         */
     VOS_UINT32                           ulRst;
@@ -848,6 +843,7 @@ VOS_VOID Mm_SndCcErrInd(
     pCcErrInd->MsgHeader.ulMsgName      = MMCC_ERR_IND;                         /* 消息名称                                 */
 
     pCcErrInd->ulTransactionId = ulTransactionId;                               /* 设置消息参数                             */
+    pCcErrInd->enCause         = enCause;                                       /* 设置原因值                            */
 
     ulRst = PS_SEND_MSG(WUEPS_PID_MM, pCcErrInd);
     if( VOS_OK != ulRst)
@@ -857,8 +853,6 @@ VOS_VOID Mm_SndCcErrInd(
     }
     return;
 }
-
-
 VOS_VOID Mm_SndCcEmergencyNumberList(NAS_MML_EMERGENCY_NUM_LIST_STRU *pEmergencyList)
 {
     MMCC_EMERGENCY_LIST_STRU            *pEmcNumLst = VOS_NULL;                            /* 定义原语类型指针                         */
@@ -914,7 +908,7 @@ VOS_VOID Mm_SndCcEmergencyNumberList(NAS_MML_EMERGENCY_NUM_LIST_STRU *pEmergency
 #if (FEATURE_ON == FEATURE_IMS)
 
 VOS_VOID NAS_MM_SndCcSrvccStatusInd(
-    NAS_MMCC_SRVCC_STATUS_ENUM_UINT32   enSrvccSta      
+    NAS_MMCC_SRVCC_STATUS_ENUM_UINT32   enSrvccSta
 )
 {
     MMCC_SRVCC_STATUS_IND_STRU         *pstSrvccStaInd = VOS_NULL_PTR;
@@ -929,11 +923,11 @@ VOS_VOID NAS_MM_SndCcSrvccStatusInd(
         PS_LOG(WUEPS_PID_MM, VOS_NULL, PS_PRINT_ERROR, "NAS_MM_SndCcSrvccStatusInd:ERROR:MALLOC ERROR!");
         return;                                                                 /* 返回                                     */
     }
-    
+
     pstSrvccStaInd->stMsgHeader.ulReceiverCpuId = VOS_LOCAL_CPUID;
     pstSrvccStaInd->stMsgHeader.ulReceiverPid   = WUEPS_PID_CC;
     pstSrvccStaInd->stMsgHeader.ulMsgName       = MMCC_SRVCC_STATUS_IND;               /* 消息名称                                */
-    pstSrvccStaInd->enSrvccStatus               = enSrvccSta;   
+    pstSrvccStaInd->enSrvccStatus               = enSrvccSta;
 
     ulRst = PS_SEND_MSG(WUEPS_PID_MM, pstSrvccStaInd);
 
@@ -1000,7 +994,7 @@ VOS_VOID Mm_SndRrEstReq(
     VOS_UINT32                          ulOpId;
     IDNNS_STRU                          IdnnsInfo;
     VOS_UINT32                          ulRst;
-    
+
     /* 删除根据EPLMN来进行TMSI的有效性判断,恢复跟协议保持一致 */
 
 #if (FEATURE_ON == FEATURE_LTE)
@@ -1360,7 +1354,7 @@ VOS_VOID NAS_MM_WriteCkIkInCard(VOS_VOID)
     VOS_UINT8                           *pucFileContent = VOS_NULL_PTR;
     VOS_UINT16                          usSn = 0;
     USIMM_SET_FILE_INFO_STRU            stSetFileInfo;
-    
+
     pucFileContent = (VOS_UINT8*)MM_MEM_ALLOC(
                                          VOS_MEMPOOL_INDEX_MM,
                                          MM_SIM_FILE_LEN_CKIK,
@@ -1381,9 +1375,9 @@ VOS_VOID NAS_MM_WriteCkIkInCard(VOS_VOID)
 
     usLength = MM_SIM_FILE_LEN_CKIK;
 
-    NAS_COMM_BUILD_USIM_SET_FILE_INFO(&stSetFileInfo, 
-                                    USIMM_UNLIMIT_APP, 
-                                    MM_READ_CKIK_FILE_ID, 
+    NAS_COMM_BUILD_USIM_SET_FILE_INFO(&stSetFileInfo,
+                                    USIMM_UNLIMIT_APP,
+                                    MM_READ_CKIK_FILE_ID,
                                     0,
                                     (VOS_UINT8)usLength,
                                     pucFileContent);
@@ -1401,7 +1395,7 @@ VOS_VOID NAS_MM_WriteKCInCard(VOS_VOID)
     VOS_UINT8                           *pucFileContent = VOS_NULL_PTR;
     VOS_UINT16                          usSn = 0;
     USIMM_SET_FILE_INFO_STRU            stSetFileInfo;
-    
+
     pucFileContent = (VOS_UINT8*)MM_MEM_ALLOC(
                                          VOS_MEMPOOL_INDEX_MM,
                                          MM_SIM_FILE_LEN_CKIK,
@@ -1485,10 +1479,10 @@ VOS_VOID NAS_MM_WriteLocaInCard(VOS_VOID)
     pucFileContent[usSn++] = NAS_MML_GetCsUpdateStatus();
 
     usLength = MM_SIM_FILE_LEN_LOCA_INFO;
-    
-    NAS_COMM_BUILD_USIM_SET_FILE_INFO(&stSetFileInfo, 
-                                    USIMM_UNLIMIT_APP, 
-                                    MM_READ_LOCA_INFO_FILE_ID, 
+
+    NAS_COMM_BUILD_USIM_SET_FILE_INFO(&stSetFileInfo,
+                                    USIMM_UNLIMIT_APP,
+                                    MM_READ_LOCA_INFO_FILE_ID,
                                     0,
                                     (VOS_UINT8)usLength,
                                     pucFileContent);
@@ -1561,6 +1555,245 @@ VOS_VOID NAS_MM_SndAcpuOmChangeTmsi(VOS_VOID)
     {
         PS_LOG(WUEPS_PID_MM, VOS_NULL, PS_PRINT_ERROR, "NAS_MM_SndAcpuOmTmsi:ERROR: SEND MSG FIAL.");
     }
+
+    return;
+}
+
+
+VOS_VOID NAS_MM_SndAcpuOmFaultErrLogInd(
+    VOS_VOID                           *pData,
+    VOS_UINT32                          ulDataLen
+)
+{
+    OM_FAULT_ERR_LOG_IND_STRU          *pstFaultRptInd = VOS_NULL_PTR;
+    VOS_UINT32                          ulMsgLen;
+    VOS_UINT32                          ulContentAddr;
+
+    /* 申请消息结构内存 */
+    /*lint -e961*/
+    ulMsgLen     = sizeof(OM_FAULT_ERR_LOG_IND_STRU) - VOS_MSG_HEAD_LENGTH - 4 + ulDataLen;
+    /*lint +e961*/
+    pstFaultRptInd = (OM_FAULT_ERR_LOG_IND_STRU*)PS_ALLOC_MSG(WUEPS_PID_MM, ulMsgLen);
+    if (VOS_NULL_PTR == pstFaultRptInd)
+    {
+        PS_LOG(WUEPS_PID_MM, VOS_NULL, PS_PRINT_ERROR, "NAS_MM_SndAcpuOmFaultErrLogInd:ERROR: Alloc msg fail.");
+        return;
+    }
+
+    /* 构造消息结构体 */
+    pstFaultRptInd->ulReceiverCpuId   = VOS_LOCAL_CPUID;
+    pstFaultRptInd->ulSenderCpuId     = VOS_LOCAL_CPUID;
+    pstFaultRptInd->ulReceiverPid     = ACPU_PID_OM;
+    pstFaultRptInd->ulSenderPid       = WUEPS_PID_MM;
+    pstFaultRptInd->ulMsgName         = ID_OM_FAULT_ERR_LOG_IND;
+    pstFaultRptInd->ulMsgType         = OM_ERR_LOG_MSG_FAULT_REPORT;
+    pstFaultRptInd->ulMsgSN           = 0;
+    pstFaultRptInd->ulRptlen          = ulDataLen;
+
+    ulContentAddr                     = (VOS_UINT32)pstFaultRptInd->aucContent;
+    PS_MEM_CPY((VOS_UINT8 *)ulContentAddr, pData, ulDataLen);
+
+    /* 发送消息到ACPU OM模块 */
+    if (VOS_OK != PS_SEND_MSG(WUEPS_PID_MM, pstFaultRptInd))
+    {
+        PS_LOG(WUEPS_PID_MM, VOS_NULL, PS_PRINT_ERROR, "NAS_MM_SndAcpuOmFaultErrLogInd:ERROR: SEND MSG FIAL.");
+    }
+
+    return;
+}
+VOS_VOID NAS_MM_CsPagingFailRecord(
+    NAS_ERR_LOG_CS_PAGING_CAUSE_ENUM_U32    enCause
+)
+{
+    NAS_ERR_LOG_CS_PAGING_FAIL_EVENT_STRU   stCsPagingFailEvt;
+    VOS_UINT32                              ulLength;
+    VOS_UINT16                              usLevel;
+    VOS_UINT32                              ulIsLogRecord;
+    VOS_UINT32                              ulResult;
+
+    /* 查询对应Alarm Id是否需要记录异常信息 */
+    usLevel       = NAS_GetErrLogAlmLevel(NAS_ERR_LOG_ALM_CS_PAGING_FAIL);
+    ulIsLogRecord = NAS_MML_IsErrLogNeedRecord(usLevel);
+
+    /* 模块异常不需要记录或异常原因值不需要记录时，不保存异常信息 */
+    if (VOS_FALSE == ulIsLogRecord)
+    {
+        return;
+    }
+
+    ulLength = sizeof(NAS_ERR_LOG_CS_PAGING_FAIL_EVENT_STRU);
+
+    /* 填充CS PAGING失败异常信息 */
+    PS_MEM_SET(&stCsPagingFailEvt, 0x00, ulLength);
+
+    NAS_COMM_BULID_ERRLOG_HEADER_INFO(&stCsPagingFailEvt.stHeader,
+                                      VOS_GetModemIDFromPid(WUEPS_PID_MM),
+                                      NAS_ERR_LOG_ALM_CS_PAGING_FAIL,
+                                      usLevel,
+                                      VOS_GetSlice(),
+                                      (ulLength - sizeof(OM_ERR_LOG_HEADER_STRU)));
+
+    /* 获取当前位置信息 */
+    NAS_MNTN_OutputPositionInfo(&stCsPagingFailEvt.stPositionInfo);
+
+    /* 填写错误原因值 */
+    stCsPagingFailEvt.enCause = enCause;
+
+    /* Added by zwx247453 for CHR optimize, 2015-03-13 begin */
+    if (NAS_MML_NET_RAT_TYPE_GSM == NAS_MML_GetCurrNetRatType())
+    {
+        stCsPagingFailEvt.ucGMsIdType    = NAS_MML_GetErrLogGMsIdType();
+        stCsPagingFailEvt.ucGPagingType  = NAS_MML_GetErrLogGPagingType();
+    }
+    else
+    {
+        stCsPagingFailEvt.ulWCnDomainId  = NAS_MML_GetErrLogWCnDomainId();
+        stCsPagingFailEvt.ulWPagingType  = NAS_MML_GetErrLogWPagingType();
+        stCsPagingFailEvt.ulWPagingCause = NAS_MML_GetErrLogWPagingCause();
+        stCsPagingFailEvt.ulWPagingUeId  = NAS_MML_GetErrLogWPagingUeId();
+    }
+
+    NAS_MML_InitErrLogPagingInfo();
+    /* Added by zwx247453 for CHR optimize, 2015-03-13 end */
+
+    /* 将CS PAGING失败信息发送给ACPU OM模块 */
+    NAS_MM_SndAcpuOmFaultErrLogInd(&stCsPagingFailEvt, ulLength);
+
+    /*
+       将异常信息写入Buffer中
+       实际写入的字符数与需要写入的不等则打印异常
+     */
+    ulResult = NAS_MML_PutErrLogRingBuf((VOS_CHAR *)&stCsPagingFailEvt, ulLength);
+    if (ulResult != ulLength)
+    {
+        NAS_ERROR_LOG(WUEPS_PID_MM, "NAS_MM_SndAcpuOmCsPagingFailInd(): Push buffer error.");
+    }
+
+    /* 可维可测勾包 */
+    NAS_COM_MntnPutRingbuf(NAS_ERR_LOG_ALM_CS_PAGING_FAIL,
+                           WUEPS_PID_MM,
+                           (VOS_UINT8 *)&stCsPagingFailEvt,
+                           sizeof(stCsPagingFailEvt));
+
+    return;
+}
+VOS_VOID NAS_MM_CsfbMtFailRecord(VOS_VOID)
+{
+    NAS_ERR_LOG_CSFB_MT_CALL_FAIL_EVENT_STRU    stCsfbMtFailEvt;
+    VOS_UINT32                                  ulLength;
+    VOS_UINT16                                  usLevel;
+    VOS_UINT32                                  ulIsLogRecord;
+    VOS_UINT32                                  ulResult;
+    NAS_ERR_LOG_CSFB_MT_STATE_ENUM_U32          enState;
+
+    /* 查询对应Alarm Id是否需要记录异常信息 */
+    usLevel       = NAS_GetErrLogAlmLevel(NAS_ERR_LOG_ALM_CSFB_MT_CALL_FAIL);
+    ulIsLogRecord = NAS_MML_IsErrLogNeedRecord(usLevel);
+    enState       = NAS_MML_GetErrLogCsfbMtState();
+
+    /* 模块异常不需要记录
+       或CSFB MT状态为业务消息已经接收到时，不保存异常信息 */
+    if ((VOS_FALSE == ulIsLogRecord)
+     || (NAS_ERR_LOG_CSFB_MT_STATE_RCV_SERVICE_REQ == enState))
+    {
+        return;
+    }
+
+    ulLength = sizeof(NAS_ERR_LOG_CSFB_MT_CALL_FAIL_EVENT_STRU);
+
+    /* 填充CS PAGING失败异常信息 */
+    PS_MEM_SET(&stCsfbMtFailEvt, 0x00, ulLength);
+
+    NAS_COMM_BULID_ERRLOG_HEADER_INFO(&stCsfbMtFailEvt.stHeader,
+                                      VOS_GetModemIDFromPid(WUEPS_PID_MM),
+                                      NAS_ERR_LOG_ALM_CSFB_MT_CALL_FAIL,
+                                      usLevel,
+                                      VOS_GetSlice(),
+                                      (ulLength - sizeof(OM_ERR_LOG_HEADER_STRU)));
+
+    /* 获取当前位置信息 */
+    NAS_MNTN_OutputPositionInfo(&stCsfbMtFailEvt.stPositionInfo);
+
+    /* 填写错误原因值 */
+    stCsfbMtFailEvt.enState = enState;
+
+    /* 将CSFB MT失败信息发送给ACPU OM模块 */
+    NAS_MM_SndAcpuOmFaultErrLogInd(&stCsfbMtFailEvt, ulLength);
+
+    /*
+       将异常信息写入Buffer中
+       实际写入的字符数与需要写入的不等则打印异常
+     */
+    ulResult = NAS_MML_PutErrLogRingBuf((VOS_CHAR *)&stCsfbMtFailEvt, ulLength);
+    if (ulResult != ulLength)
+    {
+        NAS_ERROR_LOG(WUEPS_PID_MM, "NAS_MM_SndAcpuOmCsPagingFailInd(): Push buffer error.");
+    }
+
+    /* 可维可测勾包 */
+    NAS_COM_MntnPutRingbuf(NAS_ERR_LOG_ALM_CSFB_MT_CALL_FAIL,
+                           WUEPS_PID_MM,
+                           (VOS_UINT8 *)&stCsfbMtFailEvt,
+                           sizeof(stCsfbMtFailEvt));
+
+    return;
+
+}
+VOS_VOID NAS_MM_SrvccFailRecord(
+    NAS_ERR_LOG_SRVCC_FAIL_CAUSE_ENUM_UINT8                 enSrvccFailCause
+)
+{
+    NAS_ERR_LOG_SRVCC_FAIL_STRU             stSrvccFail;
+    VOS_UINT32                              ulLength;
+    VOS_UINT16                              usLevel;
+    VOS_UINT32                              ulIsLogRecord;
+    VOS_UINT32                              ulResult;
+
+    /* 查询对应Alarm Id是否需要记录异常信息 */
+    usLevel       = NAS_GetErrLogAlmLevel(NAS_ERR_LOG_ALM_SRVCC_FAIL_INFO);
+    ulIsLogRecord = NAS_MML_IsErrLogNeedRecord(usLevel);
+
+    /* 模块异常不需要记录或异常原因值不需要记录时，不保存异常信息 */
+    if (VOS_FALSE == ulIsLogRecord)
+    {
+        return;
+    }
+
+    ulLength = sizeof(NAS_ERR_LOG_SRVCC_FAIL_STRU);
+
+    /* 填充过程信息 */
+    PS_MEM_SET(&stSrvccFail, 0x00, ulLength);
+
+    NAS_COMM_BULID_ERRLOG_HEADER_INFO(&stSrvccFail.stHeader,
+                                      VOS_GetModemIDFromPid(WUEPS_PID_MM),
+                                      NAS_ERR_LOG_ALM_SRVCC_FAIL_INFO,
+                                      usLevel,
+                                      VOS_GetSlice(),
+                                      (ulLength - sizeof(OM_ERR_LOG_HEADER_STRU)));
+
+    /* 获取当前位置信息 */
+    NAS_MNTN_OutputPositionInfo(&stSrvccFail.stPositionInfo);
+
+    stSrvccFail.enSrvccFailCause = enSrvccFailCause;
+
+
+    NAS_MM_SndAcpuOmFaultErrLogInd(&stSrvccFail, ulLength);
+
+    /*
+       将异常信息写入Buffer中
+       实际写入的字符数与需要写入的不等则打印异常
+     */
+    ulResult = NAS_MML_PutErrLogRingBuf((VOS_CHAR *)&stSrvccFail, ulLength);
+    if (ulResult != ulLength)
+    {
+        NAS_ERROR_LOG(WUEPS_PID_MM, "NAS_MM_SrvccFailRecord(): Push buffer error.");
+    }
+
+    /* 可维可测勾包 */
+    NAS_COM_MntnPutRingbuf(NAS_ERR_LOG_ALM_SRVCC_FAIL_INFO,
+                           WUEPS_PID_MM,
+                           (VOS_UINT8 *)&stSrvccFail,
+                           sizeof(stSrvccFail));
 
     return;
 }
@@ -1647,6 +1880,13 @@ VOS_VOID Mm_SndAgentUsimUpdateFileReq( VOS_UINT16 usEfId )
         NAS_USIMMAPI_SetFileReq(WUEPS_PID_MM, 0, &stSetFileInfo);
         break;
     case MM_READ_LOCA_INFO_FILE_ID:
+        /* IMSI Refresh, 不更新卡文件，直接返回 */
+        if (VOS_TRUE == NAS_MML_GetImsiRefreshStatus())
+        {
+            NAS_LOG(WUEPS_PID_MM, MM_ORIGIN, PS_PRINT_INFO,
+                     "Mm_SndAgentUsimUpdateFileReq: IMSI Refresh, do not write EFLOCI file" );
+            return;
+        }
 
         pucFileContent = (VOS_UINT8*)MM_MEM_ALLOC(
                                              VOS_MEMPOOL_INDEX_MM,
@@ -1744,9 +1984,6 @@ VOS_VOID Mm_SndAgentUsimUpdateFileReq( VOS_UINT16 usEfId )
     return;
 }
 
-
-
-
 VOS_VOID Mm_SndAgentUsimAuthenReq()
 {
     /* Added by libin 05-03-19 begin: NAS_IT_BUG_013 */
@@ -1836,6 +2073,10 @@ VOS_VOID NAS_MM_SndMmcDetachCnf(VOS_UINT8 ucServiceStatus)
     NAS_MML_SetCsAttachAllowFlg( VOS_FALSE );
 
     Mm_TimerStop(MM_TIMER_PROTECT_CS_DETACH);
+
+    /* Added by zwx247453 for CHR optimize ,2015-3-13 begin */
+    pMmcDetachCnf->ulDetachType             = g_MmGlobalInfo.stDetachInfo.enDetachType;
+    /* Added by zwx247453 for CHR optimize ,2015-3-13 end */
 
     /* 内部消息的发送 */
     NAS_MML_SndInternalMsg(pMmcDetachCnf);
@@ -2213,6 +2454,11 @@ VOS_VOID Mm_SndSsRelInd(
 
     pSsRelInd->enMmssRelCause = enMmssRelCause;
 
+    if (ulTransactionId == g_MmGlobalInfo.ConnCtrlInfo[MM_CONN_CTRL_SS].ucMMConnEstingTI)
+    {
+        g_MmGlobalInfo.ConnCtrlInfo[MM_CONN_CTRL_SS].ucMMConnEstingTI = NO_MM_CONN_ESTING;
+    }
+
     ulRst = PS_SEND_MSG(WUEPS_PID_MM, pSsRelInd);
     if( VOS_OK != ulRst)
     {
@@ -2420,6 +2666,11 @@ VOS_VOID Mm_SndSmsRelInd(
 
     pSmsRelInd->ulTi        = ulTransactionId;                                  /* 设置消息参数                             */
     pSmsRelInd->ulRelCause  = ulRelCause;                                       /* 设置释放原因                             */
+
+    if (ulTransactionId == g_MmGlobalInfo.ConnCtrlInfo[MM_CONN_CTRL_SMS].ucMMConnEstingTI)
+    {
+        g_MmGlobalInfo.ConnCtrlInfo[MM_CONN_CTRL_SMS].ucMMConnEstingTI = NO_MM_CONN_ESTING;
+    }
 
     ulRst = PS_SEND_MSG(WUEPS_PID_MM, pSmsRelInd);
     if( VOS_OK != ulRst)
@@ -3289,7 +3540,7 @@ VOS_VOID NAS_MM_SndMmcSuspendRsp(VOS_VOID)
 
     /* 申请消息内存分配 */
     pstucMmMsg      = (MMCMM_SUSPEND_RSP_ST *)NAS_MML_GetIntMsgSendBuf(sizeof(MMCMM_SUSPEND_RSP_ST));
-    
+
     if (VOS_NULL_PTR == pstucMmMsg)
     {
         NAS_ERROR_LOG(WUEPS_PID_MM, "NAS_MM_SndMmcSuspendRsp,ERROR:ALLOC BUFFER WRONG!");
@@ -3308,6 +3559,49 @@ VOS_VOID NAS_MM_SndMmcSuspendRsp(VOS_VOID)
 
     return;
 }
+
+
+
+VOS_VOID NAS_MM_SndRrcTransactionStatusNotify(
+    VOS_UINT32                          ulRcvPid,
+    RRMM_TRANSACTION_STATUS_ENUM_UINT8  enTranStatus
+)
+{
+    RRMM_TRANSACTION_STATUS_NOTIFY_STRU    *pstTranStatus = VOS_NULL_PTR;
+    VOS_UINT32                              ulLength;
+
+    ulLength = sizeof(RRMM_TRANSACTION_STATUS_NOTIFY_STRU) - VOS_MSG_HEAD_LENGTH;
+
+    pstTranStatus = (RRMM_TRANSACTION_STATUS_NOTIFY_STRU *)PS_ALLOC_MSG(WUEPS_PID_MM, ulLength);
+
+    if (VOS_NULL_PTR == pstTranStatus)
+    {
+        NAS_ERROR_LOG(WUEPS_PID_MM, "NAS_MM_SndRrcTransactionStatusNotify,ERROR:ALLOC MSG ERR!");
+
+        return;
+    }
+
+    /* 初始化 */
+    PS_MEM_SET((VOS_UINT8 *)pstTranStatus + VOS_MSG_HEAD_LENGTH, 0x0, ulLength);
+
+    pstTranStatus->stMsgHeader.ulReceiverPid    = ulRcvPid;
+    pstTranStatus->stMsgHeader.ulReceiverCpuId  = VOS_LOCAL_CPUID;
+    pstTranStatus->stMsgHeader.ulSenderCpuId    = VOS_LOCAL_CPUID;
+    pstTranStatus->stMsgHeader.ulSenderPid      = WUEPS_PID_MM;
+    pstTranStatus->stMsgHeader.ulLength         = ulLength;
+    pstTranStatus->stMsgHeader.ulMsgName        = RRMM_TRANSACTION_STATUS_NOTIFY;
+    pstTranStatus->enTransActionStatus          = enTranStatus;
+
+    if (VOS_OK != NAS_UTRANCTRL_SndAsMsg( WUEPS_PID_MM, (struct MsgCB **)&pstTranStatus ))
+    {
+        NAS_ERROR_LOG(WUEPS_PID_MM, "NAS_MM_SndRrcTransactionStatusNotify,ERROR:SEND MSG ERR!");
+    }
+
+    return ;
+
+}
+
+
 
 #ifdef  __cplusplus
   #if  __cplusplus

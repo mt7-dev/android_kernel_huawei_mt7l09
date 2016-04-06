@@ -20,7 +20,7 @@ struct image_head
     char reserved[128 - 16 - 32 - sizeof(unsigned int) * 6];
 };
 
-int bsp_sec_check(unsigned int image_addr, unsigned int image_length);
+int bsp_sec_check(void *image_addr, unsigned int image_length);
 
 
 #ifdef __cplusplus

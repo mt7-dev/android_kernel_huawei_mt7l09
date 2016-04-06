@@ -15,7 +15,7 @@ int uart_core_send(UART_CONSUMER_ID uPortNo, unsigned char * pDataBuffer, unsign
 	return 0;
 
 }
-int bsp_dual_modem_init(void)
+int dual_modem_init(void)
 {
 	return 0;
 }

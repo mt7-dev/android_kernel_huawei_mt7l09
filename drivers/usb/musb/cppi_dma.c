@@ -16,27 +16,7 @@
 #include "cppi_dma.h"
 
 
-/* CPPI DMA status 7-mar-2006:
- *
- * - See musb_{host,gadget}.c for more info
- *
- * - Correct RX DMA generally forces the engine into irq-per-packet mode,
- *   which can easily saturate the CPU under non-mass-storage loads.
- *
- * NOTES 24-aug-2006 (2.6.18-rc4):
- *
- * - peripheral RXDMA wedged in a test with packets of length 512/512/1.
- *   evidently after the 1 byte packet was received and acked, the queue
- *   of BDs got garbaged so it wouldn't empty the fifo.  (rxcsr 0x2003,
- *   and RX DMA0: 4 left, 80000000 8feff880, 8feff860 8feff860; 8f321401
- *   004001ff 00000001 .. 8feff860)  Host was just getting NAKed on tx
- *   of its next (512 byte) packet.  IRQ issues?
- *
- * REVISIT:  the "transfer DMA" glue between CPPI and USB fifos will
- * evidently also directly update the RX and TX CSRs ... so audit all
- * host and peripheral side DMA code to avoid CSR access after DMA has
- * been started.
- */
+
 
 /* REVISIT now we can avoid preallocating these descriptors; or
  * more simply, switch to a global freelist not per-channel ones.

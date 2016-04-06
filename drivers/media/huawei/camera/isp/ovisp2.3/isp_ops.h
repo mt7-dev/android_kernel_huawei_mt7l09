@@ -17,12 +17,12 @@
 #include <linux/wait.h>
 #include <linux/spinlock.h>
 #include <linux/ion.h>
-#include <linux/hisi_ion.h>
+#include <linux/hisi/hisi_ion.h>
 #include <linux/regulator/consumer.h>
 #include <linux/regulator/driver.h>
 #include <linux/regulator/machine.h>
 #include <linux/workqueue.h>
-#include "hwisp_intf.h"
+#include "../hwisp_intf.h"
 
 /*************************** isp register macro definition *****************************/
 #define REG_ISP_TOP4				(0x65004) /* ISP work mode; Combine Mode (HDR) */
@@ -104,6 +104,8 @@
 #define REG_SHIFT_CMD_DONE					(6)
 #define ISP_COMMAND_DONE_INT					(1 << REG_SHIFT_CMD_DONE)
 
+#define REG_FW_VISION							(0x3357e)
+
 #define REG_FW_AE_INT_TYPE(pipe)				(0x33596 + FW_REG_OFFSET * (pipe))
 #define REG_FW_CMD_DONE_TYPE					(0x33597)
 #define COMMAND_FINISHED					(0x63910)
@@ -134,12 +136,16 @@
 #define REG_SHIFT_PIPE0_EOF_IDI		6
 #define REG_SHIFT_PIPE1_SOF_IDI		0
 #define REG_SHIFT_PIPE1_EOF_IDI		1
+#define REG_SHIFT_PIPE0_VSYNC_IDI   4
+#define REG_SHIFT_PIPE1_VSYNC_IDI   7
 
 /* Irq enable bit. */
 #define ISP_PIPE0_SOF_IDI				(1 << REG_SHIFT_PIPE0_SOF_IDI)
 #define ISP_PIPE0_EOF_IDI				(1 << REG_SHIFT_PIPE0_EOF_IDI)
 #define ISP_PIPE1_SOF_IDI				(1 << REG_SHIFT_PIPE1_SOF_IDI)
 #define ISP_PIPE1_EOF_IDI				(1 << REG_SHIFT_PIPE1_EOF_IDI)
+#define ISP_PIPE0_VSYNC_IDI				(1 << REG_SHIFT_PIPE0_VSYNC_IDI)
+#define ISP_PIPE1_VSYNC_IDI				(1 << REG_SHIFT_PIPE1_VSYNC_IDI)
 
 #define INT_ISP_MAC1_START0		(1<<0)
 #define INT_ISP_MAC1_DONE0			(1<<1)
@@ -190,6 +196,8 @@
 #define SHIFT_BIT_1							(1 << 1)
 #define SHIFT_BIT_2							(1 << 2)
 #define SHIFT_BIT_4							(1 << 4)
+
+#define G_GAIN_BASE							(0x80)
 
 #define VC_IDI_SIZE							(0x63c40)
 #define VC_IDI_LINES						(0x63c42)
@@ -275,24 +283,22 @@ typedef struct _isp_hw_data{
 	wait_queue_head_t poll_queue_head;
 	bool poll_start;
 
-	u32 viraddr;
-	u32 phyaddr;
+	void __iomem * viraddr;
+	phys_addr_t phyaddr;
 	u32 mem_size;
 	u32 irq_no;
 
 	/* meta data */
-	u32 meta_viraddr;
-	u32 meta_phyaddr;
+	u8 *meta_viraddr;
+	dma_addr_t meta_phyaddr;
 	bool meta_running;
-	struct work_struct meta_data_work;
+	u32 meta_attach_port;
+	struct timeval meta_attach_timeval;
 	u8 meta_data_raw_buf[META_DATA_RAW_SIZE];
 	meta_data_t meta_data;
 
 	struct irq_reg_t irq_val;
 	bool irq_query_flag;
-	struct clk *isp_sclk;
-	struct clk *ispmipi_clk;
-	struct clk *isp_mclk;
 	struct regulator_bulk_data inter_ldo;
 	/* pinctrl */
 	struct pinctrl *isp_pinctrl;
@@ -358,17 +364,28 @@ enum {
 	META_CTRL_ENABLE = 1,
 };
 
+enum {
+	ISP_DEBUG_META_DATA      = (1U<<0),
+	ISP_DEBUG_META_DATA_RAW  = (1U<<1),
+	ISP_DEBUG_PDAF_DATA      = (1U<<2),
+};
+
 int hw_isp_init(struct device *pdev);
 int hw_isp_deinit(struct device *pdev);
 int hw_isp_poweron(void);
 int hw_isp_poweroff(void);
-void hw_isp_meta_data_ctrl(int ctrl);
 unsigned int hw_poll_irq(struct file * filp, struct poll_table_struct *wait);
 void hw_query_irq(struct irq_reg_t *irq_info);
-u32 hw_get_isp_base_addr(void);
+phys_addr_t hw_get_isp_base_addr(void);
 u32 hw_get_isp_mem_size(void);
 int hw_setup_eof_tasklet(struct sensor_t *sensor, struct expo_gain_seq *me_seq);
 int hw_destory_eof_tasklet(void);
+
+void hw_isp_setup_port(int port);
+void hw_isp_clear_port(int port);
+
+void meta_data_ctrl(int ctrl, uint32_t attach_port);
+int  meta_data_buf_prepare(struct device *pdev);
 
 /* ISP mac registers */
 typedef enum {
@@ -476,6 +493,12 @@ typedef enum {
 #define ISP_LENS_ONLINE_BR_OUTPUT_ADDR(x) 	(COMMAND_SET_BASE + 0x200 + 0x1a + 0x80 * (x))
 #define ISP_LENS_PROFILE_OUTPUT_ADDR(x)		(COMMAND_SET_BASE + 0x200 + 0x1c + 0x80 * (x))
 
+#define REG_MAC_FORCE_OVERFLOW(mac) (REG_MAC_BASE(mac) + 0x31)
+
+#define ISP_PORT_START  (1<<3)
+#define ISP_PORT_DROP   (1<<2)
+#define ISP_PORT_DONE   (1<<1)
+#define ISP_PORT_OVERFLOW   (1<<0)
 
 /* ISP mmu control address*/
 #define REG_MMU_BASE(mac) \
@@ -531,25 +554,25 @@ typedef enum {
 /* cmd_set and capture_cmd register operation */
 #define CMD_SET_ISP_IN_FMT_SIZE(fmt, width, height) \
 	do { \
-		SETREG16(ISP_INPUT_TYPE, fmt);    \
-		SETREG16(ISP_INPUT_WIDTH, width);  \
-		SETREG16(ISP_INPUT_HEIGHT, height); \
+		ISP_SETREG16(ISP_INPUT_TYPE, fmt);    \
+		ISP_SETREG16(ISP_INPUT_WIDTH, width);  \
+		ISP_SETREG16(ISP_INPUT_HEIGHT, height); \
 	} while (0)
 
 #define CMD_SET_OUTPORT_PARAMS(index, type, width, height, mem_width, mem_width_uv) \
 	do { \
-		SETREG16(ISP_OUT_TYPE(index), type);    \
-		SETREG16(ISP_OUT_WIDTH(index), width);  \
-		SETREG16(ISP_OUT_HEIGHT(index), height); \
-		SETREG16(ISP_OUT_MEM_WIDTH(index), mem_width);  \
-		SETREG16(ISP_OUT_MEM_WIDTH_UV(index), mem_width_uv); \
+		ISP_SETREG16(ISP_OUT_TYPE(index), type);    \
+		ISP_SETREG16(ISP_OUT_WIDTH(index), width);  \
+		ISP_SETREG16(ISP_OUT_HEIGHT(index), height); \
+		ISP_SETREG16(ISP_OUT_MEM_WIDTH(index), mem_width);  \
+		ISP_SETREG16(ISP_OUT_MEM_WIDTH_UV(index), mem_width_uv); \
 	} while (0)
 
 #define CMD_SET_READPORT_PARAMS(width, height, mem_width) \
 	do { \
-		SETREG16(ISP_READBACK_WIDTH, width);  \
-		SETREG16(ISP_READBACK_HEIGHT, height); \
-		SETREG16(ISP_READBACK_MEM_WIDTH, mem_width);  \
+		ISP_SETREG16(ISP_READBACK_WIDTH, width);  \
+		ISP_SETREG16(ISP_READBACK_HEIGHT, height); \
+		ISP_SETREG16(ISP_READBACK_MEM_WIDTH, mem_width);  \
 	} while (0)	
 
 hwisp_buf_t* ovisp23_get_buf_from_readyq(isp_port_e port);
@@ -561,5 +584,7 @@ void ovisp23_notify_sof( uint32_t id);
 int isp_cmd_update_buffer_cmd(isp_port_e port);
 hwisp_stream_t* ovisp23_get_stream(isp_port_e port);
 int isp_reprocess_cmdset(struct reprocess_param_list *reprocess_params);
+int hw_alloc_firmware_memory(void);
+void hw_free_firmware_memory(void);
 
 #endif /*_ISP_OPS_H_ */

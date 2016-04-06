@@ -91,6 +91,9 @@ extern VOS_UINT32  NAS_EMMC_RcvRrcNotCampOnInd(MsgBlock *pMsg);
 extern VOS_UINT32  NAS_EMMC_RcvMmcCellSelectionReq(  MsgBlock *pMsg );
 extern VOS_UINT32 NAS_LMM_PreProcMmcLteSysInfoInd(MsgBlock *pMsg );
 
+extern VOS_UINT32  NAS_EMMC_RcvRrcSearchPlmnInfoInd(MsgBlock *pMsg);
+
+
 /*****************************************************************************
 9 OTHERS
 *****************************************************************************/

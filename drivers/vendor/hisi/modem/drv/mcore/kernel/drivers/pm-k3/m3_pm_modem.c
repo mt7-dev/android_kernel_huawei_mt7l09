@@ -54,19 +54,19 @@ void IntCcoreHandler(void)
     irq =  get_irq();
     if(((irq-16) == M3_LTE_ARM_WAKEUP_INT)||((irq-16) == M3_TDS_DRX_ARM_WAKEUP_INT))
     {
-        if(readl(SHM_TIMESTAMP_ADDR) == 0x12345678)
+        if(readl((u32)SHM_TIMESTAMP_ADDR) == 0x12345678)
         {
-            writel(1, SHM_TIMESTAMP_ADDR);
-            writel(*(u32*)(TICKMARK_BASE + 0x0), SHM_TIMESTAMP_ADDR + 0x10);
-            writel(*(u32*)(TICKMARK_BASE + 0x4), SHM_TIMESTAMP_ADDR + 0x14);
-            writel(*(u32*)(TICKMARK_BASE + 0x8), SHM_TIMESTAMP_ADDR + 0x18);
-            writel(*(u32*)(TICKMARK_BASE + 0xC), SHM_TIMESTAMP_ADDR + 0x1c);
-            writel(*(u32*)(PWR_TCM_MODEM_RESUME_ADDR + 0x10), SHM_TIMESTAMP_ADDR + 0x20);
-            writel(*(u32*)(PWR_TCM_MODEM_RESUME_ADDR + 0x14), SHM_TIMESTAMP_ADDR + 0x24);
-            writel(*(u32*)(PWR_TCM_MODEM_RESUME_ADDR + 0x30), SHM_TIMESTAMP_ADDR + 0x28);
-            writel(*(u32*)(PWR_TCM_MODEM_RESUME_ADDR + 0x34), SHM_TIMESTAMP_ADDR + 0x2C);
-            writel(*(u32*)(PWR_TCM_MODEM_RESUME_ADDR + 0x38), SHM_TIMESTAMP_ADDR + 0x30);
-            writel(bsp_get_slice_value(), SHM_TIMESTAMP_ADDR + 0x34);
+            writel(1, (u32)SHM_TIMESTAMP_ADDR);
+            writel(*(u32*)(TICKMARK_BASE + 0x0), (u32)SHM_TIMESTAMP_ADDR + 0x10);
+            writel(*(u32*)(TICKMARK_BASE + 0x4), (u32)SHM_TIMESTAMP_ADDR + 0x14);
+            writel(*(u32*)(TICKMARK_BASE + 0x8), (u32)SHM_TIMESTAMP_ADDR + 0x18);
+            writel(*(u32*)(TICKMARK_BASE + 0xC), (u32)SHM_TIMESTAMP_ADDR + 0x1c);
+            writel(*(u32*)(PWR_TCM_MODEM_RESUME_ADDR + 0x10), (u32)SHM_TIMESTAMP_ADDR + 0x20);
+            writel(*(u32*)(PWR_TCM_MODEM_RESUME_ADDR + 0x14), (u32)SHM_TIMESTAMP_ADDR + 0x24);
+            writel(*(u32*)(PWR_TCM_MODEM_RESUME_ADDR + 0x30), (u32)SHM_TIMESTAMP_ADDR + 0x28);
+            writel(*(u32*)(PWR_TCM_MODEM_RESUME_ADDR + 0x34), (u32)SHM_TIMESTAMP_ADDR + 0x2C);
+            writel(*(u32*)(PWR_TCM_MODEM_RESUME_ADDR + 0x38), (u32)SHM_TIMESTAMP_ADDR + 0x30);
+            writel(bsp_get_slice_value(), (u32)SHM_TIMESTAMP_ADDR + 0x34);
         }
     }
 	pm_modem_up();

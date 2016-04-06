@@ -35,11 +35,11 @@ extern "C" {
 #define MAILBOX_INIT_MAGIC                          (0x87654312)
 
 /*a按p字节对齐*/
-#define MAILBOX_ALIGN                                sizeof(unsigned long)
+#define MAILBOX_ALIGN                                sizeof(unsigned int)
 #define mailbox_align_size(a,p)                     (((a)+((p)-1)) & ~((p)-1))
 
 /*写物理地址*/
-#define mailbox_write_reg(Addr, Value)                  (*((volatile unsigned long *)(Addr)) = Value)
+#define mailbox_write_reg(Addr, Value)                  (*((volatile unsigned int *)(Addr)) = Value)
 
 /* 定义CPU个数 */
 #define MAILBOX_CPU_NUM                             (MAILBOX_CPUID_BUTT)
@@ -49,30 +49,30 @@ extern "C" {
 
 /* 定义user id的上限值 */
 #define MAILBOX_USER_BUTT(src, dst, channel)    \
-    ((unsigned long)MAILBOX_MAILCODE_ITEM_END(src, dst, channel) & 0xff)
+    ((unsigned int)MAILBOX_MAILCODE_ITEM_END(src, dst, channel) & 0xff)
 
 /*定义数据结构 struct mb_cfg 中的元素*/
 #define MAILBOX_CHANNEL_COMPOSE(src, dst, ch)                   \
     /*channel*/                                                 \
-    {(unsigned long)MAILBOX_MAILCODE_ITEM_END(src, dst, ch),    \
+    {(unsigned int)MAILBOX_MAILCODE_ITEM_END(src, dst, ch),    \
     /*DataSize*/                                                \
-    (unsigned long)MAILBOX_QUEUE_SIZE(src, dst, ch),            \
+    (unsigned int)MAILBOX_QUEUE_SIZE(src, dst, ch),            \
     /*SingleMax*/                                               \
-    (unsigned long)MAILBOX_MAILSIZE_MAX(src, dst, ch),          \
+    (unsigned int)MAILBOX_MAILSIZE_MAX(src, dst, ch),          \
     /*HeadAddr*/                                                \
     (unsigned long)MEM_CORE_SHARE_PHY2VIRT(MAILBOX_HEAD_ADDR(src, dst, ch)), \
     /*DataAddr*/                                                \
     (unsigned long)MEM_CORE_SHARE_PHY2VIRT(MAILBOX_QUEUE_ADDR(src, dst, ch)),\
     /*IPC INT NUMBER*/                                          \
-    (unsigned long)MAILBOX_IPC_INT_NUM(src, dst, ch)}
+    (unsigned int)MAILBOX_IPC_INT_NUM(src, dst, ch)}
 
 
 #define MAILBOX_USER_QUEUE(mbuf)   (&((struct mb_buff *)(mbuf))->usr_queue)
 
 /*计算邮箱剩余空间，为了防止队列头尾重叠去除了4byte空间未使用，单位byte*/
 #define mailbox_queue_left(Rear, Front, Length) \
-           (((Rear) > (Front)) ? ((Rear) - (Front) - sizeof(unsigned long)): \
-           ((Length) - ((Front) - (Rear)) - sizeof(unsigned long)))
+           (((Rear) > (Front)) ? ((Rear) - (Front) - sizeof(unsigned int)): \
+           ((Length) - ((Front) - (Rear)) - sizeof(unsigned int)))
 
 /*****************************************************************************
   3 枚举定义
@@ -95,10 +95,10 @@ extern "C" {
 typedef struct mb_queue
 {
     unsigned long               base;            /* 队列基地址       */
-    unsigned long               length;          /* 队列总长度，单位byte */
+    unsigned int               length;          /* 队列总长度，单位byte */
     unsigned long               front;           /* 队列写指针, 绝对地址，in   */
     unsigned long               rear;            /* 队列读指针, 绝对地址，out  */
-    unsigned long               size;        /* 此队列单次读取的长度, 用于应用层回调通知读取函数*/
+    unsigned int               size;        /* 此队列单次读取的长度, 用于应用层回调通知读取函数*/
 }mailbox_queue_stru ;
 
 /*****************************************************************************
@@ -130,12 +130,12 @@ struct mb_cb
 *****************************************************************************/
 typedef struct mb_cfg
 {
-    unsigned long               butt_id;     /*邮箱ID的结束号，包含最大当前邮箱的最大ID信息  */
-    unsigned long               data_size;   /*邮箱数据大小*/
-    unsigned long               single_max;  /*单次邮件发送最大大小*/
+    unsigned int               butt_id;     /*邮箱ID的结束号，包含最大当前邮箱的最大ID信息  */
+    unsigned int               data_size;   /*邮箱数据大小*/
+    unsigned int               single_max;  /*单次邮件发送最大大小*/
     unsigned long               head_addr;   /*邮箱头内存地址  */
     unsigned long               data_addr;   /*邮箱数据内存地址*/
-    unsigned long               int_src;     /*邮箱物理通道ID对应的核间中断资源号*/
+    unsigned int               int_src;     /*邮箱物理通道ID对应的核间中断资源号*/
 }MAILBOX_CHANNEL_CFG_STRU;
 
 /*****************************************************************************
@@ -143,13 +143,13 @@ typedef struct mb_cfg
 *****************************************************************************/
 struct mb_buff
 {
-    unsigned long               channel_id;  /*邮箱通道ID，由邮箱两个核之间的链路，链路方向，和物理通道号三者确定*/
-    unsigned long               mailcode;    /*邮件ID，由邮箱两个核之间的链路，链路方向，物理通道号，和应用号四个方面确定*/
-    unsigned long               seq_num;     /*邮箱消息序列号(SN号)记录全局变量*/
+    unsigned int               channel_id;  /*邮箱通道ID，由邮箱两个核之间的链路，链路方向，和物理通道号三者确定*/
+    unsigned int               mailcode;    /*邮件ID，由邮箱两个核之间的链路，链路方向，物理通道号，和应用号四个方面确定*/
+    unsigned int               seq_num;     /*邮箱消息序列号(SN号)记录全局变量*/
     void                       *mutex;       /*互斥机制，防止多个线程同时发送数据到相同邮箱*/
     struct mb                  *mb;
     struct mb_cb               *read_cb;    /*此邮箱通道的功能回调函数队列*/
-    struct mb_cfg              *config;     /*此邮箱的共享内存通道信息*/
+    struct mb_cfg      *config;             /*此邮箱的共享内存通道信息*/
 #ifdef MAILBOX_OPEN_MNTN
     struct mb_mntn              mntn;       /*此邮箱通道的可维可测数据*/
 #endif
@@ -162,7 +162,7 @@ struct mb_buff
 *****************************************************************************/
 typedef struct mb_link
 {
-    unsigned long          carrier_butt;    /*当前CPU连接有多少个邮箱通道*/
+    unsigned int          carrier_butt;    /*当前CPU连接有多少个邮箱通道*/
     struct mb_buff        *channel_buff;    /*此邮箱的控制资源集合*/
 }MAILBOX_LINK_STRU ;
 
@@ -171,9 +171,9 @@ typedef struct mb_link
 *****************************************************************************/
 typedef struct mb
 {
-    unsigned long               local_id;                           /*当前CPU的ID*/
-    unsigned long               init_flag;                          /*初始化标志*/
-    unsigned long               log_prob;                           /*指向下一条错误记录*/
+    unsigned int               local_id;                           /*当前CPU的ID*/
+    unsigned int               init_flag;                          /*初始化标志*/
+    unsigned int               log_prob;                           /*指向下一条错误记录*/
     struct mb_log               log_array[MAILBOX_ERRO_ARRAY_NUM];  /*记录最近的几次错误信息*/
     struct mb_link              send_tbl[MAILBOX_CPUID_BUTT];       /*邮箱发送通道控制资源列表*/
     struct mb_link              recv_tbl[MAILBOX_CPUID_BUTT];       /*邮箱接收通道控制资源列表*/
@@ -207,33 +207,33 @@ extern MAILBOX_EXTERN struct mb g_mailbox_handle;
 *****************************************************************************/
 MAILBOX_EXTERN struct mb *mailbox_get_mb(void);
 
-MAILBOX_EXTERN struct mb_buff *mailbox_get_channel_handle(struct mb *mb, unsigned long mailcode);
+MAILBOX_EXTERN struct mb_buff *mailbox_get_channel_handle(struct mb *mb, unsigned int mailcode);
 
-MAILBOX_EXTERN long mailbox_register_cb( 
-                unsigned long  mail_code,
+MAILBOX_EXTERN int mailbox_register_cb(
+                unsigned int  mail_code,
                 void (*cb)(void *mbuf, void *handle, void *data),
                 void *usr_handle,
                 void *usr_data);
-                
-MAILBOX_EXTERN  long mailbox_request_buff(unsigned long mailcode,  struct mb_buff ** mbuf);
 
-MAILBOX_EXTERN long mailbox_sealup_buff(struct mb_buff * mb_buf , unsigned long usr_size);
+MAILBOX_EXTERN  int mailbox_request_buff(unsigned int mailcode,  void * mbuf);
 
-MAILBOX_EXTERN long mailbox_flush_buff( struct mb_buff *mbuff);
+MAILBOX_EXTERN int mailbox_sealup_buff(struct mb_buff * mb_buf , unsigned int usr_size);
 
-MAILBOX_EXTERN long mailbox_send_buff(struct mb_buff * mb_buf);
+MAILBOX_EXTERN int mailbox_flush_buff( struct mb_buff *mbuff);
 
-MAILBOX_EXTERN long mailbox_release_buff(struct mb_buff * mb_buf);
+MAILBOX_EXTERN int mailbox_send_buff(struct mb_buff * mb_buf);
 
-MAILBOX_EXTERN  long mailbox_write_buff(
+MAILBOX_EXTERN int mailbox_release_buff(struct mb_buff * mb_buf);
+
+MAILBOX_EXTERN  int mailbox_write_buff(
                 struct mb_queue      *queue,
                  char                *data,
-                unsigned long         size);
+                unsigned int         size);
 
-MAILBOX_EXTERN long mailbox_read_buff(
+MAILBOX_EXTERN int mailbox_read_buff(
                 struct mb_queue      *queue,
                  char                *data,
-                unsigned long         size);
+                unsigned int         size);
 
 MAILBOX_EXTERN long mailbox_virt_to_phy(unsigned long  virt_addr);
 

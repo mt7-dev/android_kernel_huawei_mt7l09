@@ -393,8 +393,8 @@ typedef struct MsgCB                    NAS_EMM_MSG_STRU;
 #define NAS_LMM_GetEmmInfoMmcAttachReason()                ((NAS_LMM_GetEmmInfoAddr())->enMmcAttachReason )
 #define NAS_LMM_SetEmmInfoMmcAttachReason(enMmcAttachReason)                (NAS_LMM_GetEmmInfoMmcAttachReason() = (enMmcAttachReason))
 
-
-
+#define NAS_LMM_GetEmmInfoLtePowerOffFlag()            ((NAS_LMM_GetEmmInfoAddr())-> ucLtePowerOffFlag)
+#define NAS_LMM_SetEmmInfoLtePowerOffFlag(ucLtePowerOffFlag)  ((NAS_LMM_GetEmmInfoLtePowerOffFlag()) = (ucLtePowerOffFlag))
 
 /* 获取 (NAS_LMM_PUB_INFO_STRU)g_stEmmInfo.
         (NAS_LMM_UEID_STRU)stMmUeId 的各项成员的地址 */
@@ -491,6 +491,15 @@ typedef struct MsgCB                    NAS_EMM_MSG_STRU;
 #define NAS_LMM_SetEmmInfoLauOrComRauFlag(LauOrComRauFlag)      (NAS_LMM_GetEmmInfoLauOrComRauFlag() = (LauOrComRauFlag))
 #define NAS_LMM_GetEmmInfoSrvccFlag()                     ((NAS_LMM_GetEmmInfoTriggerTauFlagAddr())->enSrvccFlag)
 #define NAS_LMM_SetEmmInfoSrvccFlag(enSrvccFlag)      (NAS_LMM_GetEmmInfoSrvccFlag() = (enSrvccFlag))
+
+#define NAS_LMM_GetEmmInfoLaiChangeFlag()                     ((NAS_LMM_GetEmmInfoTriggerTauFlagAddr())->ucLaiChangeFlag)
+#define NAS_LMM_SetEmmInfoLaiChangeFlag(ucLaiChangeFlag)      (NAS_LMM_GetEmmInfoLaiChangeFlag() = (ucLaiChangeFlag))
+
+#define NAS_LMM_GetEmmInfoCsEmcConneExitFlag()                     ((NAS_LMM_GetEmmInfoTriggerTauFlagAddr())->ucEmcConnExitFlag)
+#define NAS_LMM_SetEmmInfoCsEmcConneExitFlag(ucEmcConnExitFlag)      (NAS_LMM_GetEmmInfoCsEmcConneExitFlag() = (ucEmcConnExitFlag))
+
+
+
 #define NAS_LMM_GetEmmInfoFirstTauFlag()               ((NAS_LMM_GetEmmInfoAddr())->enFirstTauFlag)
 #define NAS_LMM_SetEmmInfoFirstTauFlag(FirstTauFlag)   (((NAS_LMM_GetEmmInfoAddr())->enFirstTauFlag) = (FirstTauFlag))
 
@@ -527,6 +536,11 @@ typedef struct MsgCB                    NAS_EMM_MSG_STRU;
             (((NAS_LMM_GetEmmInfoTriggerTauFlagAddr())->enStatusChange) = (StatusChange))
 
 /*leili moidfy for isr end*/
+
+#define NAS_EMM_GetVoiceDomainChange()         ((NAS_LMM_GetEmmInfoTriggerTauFlagAddr())->ulVoiceDomainChange)
+#define NAS_EMM_SetVoiceDomainChange(ulVoiceDomainChange) (NAS_EMM_GetVoiceDomainChange() = (ulVoiceDomainChange))
+
+
 /* UE radio access capbility change flag */
 #define NAS_LMM_GetEmmInfoSyscfgCtrlAddr()           (&((NAS_LMM_GetEmmInfoAddr())->stSyscfgCtrl))
 #define NAS_LMM_SetEmmInfoSyscfgCtrl(SyscfgFlag)      ((NAS_LMM_GetEmmInfoSyscfgCtrlAddr())->enSyscfgFlag = (SyscfgFlag))
@@ -661,6 +675,10 @@ typedef struct MsgCB                    NAS_EMM_MSG_STRU;
 
 #define NAS_EMM_GetSuspendRelCause()     (NAS_LMM_GetEmmInfoAddr()->ulSuspendRelCause)  /* 停止挂起流程的原因 */
 #define NAS_EMM_SetSuspendRelCause(cause)     (NAS_EMM_GetSuspendRelCause() = cause)    /* 停止挂起流程的原因 */
+
+#define NAS_EMM_GetCsfbProcedureFlag()            (g_ulCsfbProcedureFlag)
+#define NAS_EMM_SetCsfbProcedureFlag(flag)        (NAS_EMM_GetCsfbProcedureFlag() = flag)
+
 
 /*****************************************************************************
   3 Massage Declare
@@ -917,6 +935,8 @@ extern  VOS_UINT32                              g_ulAutoAttFlag;
 extern  VOS_UINT32                              g_ulCsAutoAttFlag;
 
 extern OM_EMM_STATE_INFO_STRU                   g_stEmmOmInfo;
+
+extern VOS_UINT32  g_ulCsfbProcedureFlag;
 
 
 /*****************************************************************************
@@ -1381,6 +1401,15 @@ extern VOS_UINT32  NAS_EMM_IsEnterRegLimitService( VOS_VOID );
 extern VOS_VOID NAS_EMM_TranStateRegNormalServiceOrRegLimitService(VOS_VOID);
 /* lihong00150010 emergency tau&service end */
 extern VOS_UINT32  NAS_LMM_IsRegisteredInHplmn(VOS_VOID);
+extern VOS_UINT32 NAS_EMM_IsNeedIgnoreHplmnAuthRej(VOS_VOID);
+extern VOS_VOID NAS_EMM_ResetHplmnAuthRejCout(VOS_VOID);
+extern VOS_VOID NAS_LMM_LogUsimServiceInfo
+(
+   VOS_UINT32     enServiceType,
+   VOS_UINT32     ulRslt
+);
+extern VOS_VOID NAS_EMM_LocalDetachErrRecord(
+        EMM_ERR_LOG_LOCAL_DETACH_TYPE_ENUM_UINT16       enLocalDetType);
 /*****************************************************************************
   9 OTHERS
 *****************************************************************************/

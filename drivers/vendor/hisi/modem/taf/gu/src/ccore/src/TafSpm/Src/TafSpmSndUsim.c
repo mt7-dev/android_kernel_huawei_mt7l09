@@ -22,7 +22,6 @@
 
 #include "NasCcIe.h"
 #include "MnCallBcProc.h"
-#include "MnCallApi.h"
 #include "TafSpmComFunc.h"
 
 #ifdef __cplusplus
@@ -665,8 +664,11 @@ VOS_UINT32 TAF_SPM_SendPbCallFdnCheckReq(
     struct MsgCB                       *pstMsg
 )
 {
+#if (FEATURE_ON == FEATURE_IMS)
+    VOS_UINT32                          ulEventType;
+#endif
     PS_PB_FDN_NUM_STRU                  stFdnInfo;
-    MN_CALL_CALLED_NUM_STRU             stDialNumber; 
+    MN_CALL_CALLED_NUM_STRU             stDialNumber;
     MN_CALL_TYPE_ENUM_U8                enCallType;
     MN_CALL_MODE_ENUM_U8                enCallMode;
     MN_CALL_CS_DATA_CFG_STRU            stDataCfg;
@@ -676,9 +678,22 @@ VOS_UINT32 TAF_SPM_SendPbCallFdnCheckReq(
     PS_MEM_SET(&stDataCfg, 0x00, sizeof(stDataCfg));
     PS_MEM_SET(&stDialNumber, 0x00, sizeof(stDialNumber));
 
+#if (FEATURE_ON == FEATURE_IMS)
+    ulEventType         = TAF_SPM_GetEventTypeFromCurrEntityFsmEntryMsg();
+#endif
+
+    /* 由于增强型多方通话已经解析过了，这里不再需要解析  */
+#if (FEATURE_ON == FEATURE_IMS)
+    if (ulEventType == TAF_BuildEventType(WUEPS_PID_AT, TAF_CALL_APP_ECONF_DIAL_REQ))
+    {
+        return TAF_SPM_SendUsimEconfFdnReq(usClientId, pstMsg);
+    }
+#endif
+
     /* 获取呼叫发起请求主动的stDialNumber */
     TAF_SPM_GetCallInfoFromFsmEntryMsg(&stDialNumber, &enCallType, &enCallMode, &stDataCfg);
-    
+
+
     stFdnInfo.ulNum1Len = stDialNumber.ucNumLen <= MN_CALL_MAX_BCD_NUM_LEN ?
                           stDialNumber.ucNumLen : MN_CALL_MAX_BCD_NUM_LEN;
 
@@ -693,27 +708,27 @@ VOS_UINT32 TAF_SPM_SendPbCallFdnCheckReq(
 
     return VOS_TRUE;
 }
+
+
 VOS_UINT32  TAF_SPM_SendUsimCallEnvelopeReq(
-    VOS_UINT16                          usClientId,
-    struct MsgCB                       *pstMsg
+    MN_CALL_CALLED_NUM_STRU            *pstCalledNumber,
+    MN_CALL_CS_DATA_CFG_INFO_STRU      *pstDataCfgInfo,
+    VOS_UINT32                          ulSendPara,
+    MN_CALL_TYPE_ENUM_U8                enCallType,
+    MN_CALL_MODE_ENUM_U8                enCallMode
 )
 {
     VOS_UINT8                           aucLI[MN_MO_CTRL_LAI_LEN];
     VOS_UINT8                           aucStkBcdNum[MN_CALL_MAX_CALLED_BCD_NUM_LEN + 1];
     SI_STK_ENVELOPE_STRU                stEnvelopeMsg;
-    MN_CALL_CALLED_NUM_STRU             stCalledNumber; 
     NAS_CC_IE_BC_STRU                   stBc1;
     NAS_CC_IE_BC_STRU                   stBc2;
     MN_CALL_REP_IND_ENUM_U8             enBcRepeatInd;
-    MN_CALL_CS_DATA_CFG_INFO_STRU       stDataCfgInfo;
     VOS_UINT32                          ulNumOfBc;
-    MN_CALL_TYPE_ENUM_U8                enCallType;
-    MN_CALL_MODE_ENUM_U8                enCallMode;
+
 
     PS_MEM_SET(&stEnvelopeMsg, 0, sizeof(SI_STK_ENVELOPE_STRU));
-    PS_MEM_SET(&stDataCfgInfo, 0x00, sizeof(stDataCfgInfo));
-    PS_MEM_SET(&stCalledNumber, 0x0, sizeof(stCalledNumber));
-    
+
     stEnvelopeMsg.EnvelopeType    = SI_STK_ENVELOPE_CALLCRTL;
     stEnvelopeMsg.DeviceId.ucSDId = SI_STK_DEV_TERMINAL;
     stEnvelopeMsg.DeviceId.ucDDId = SI_STK_DEV_UICC;
@@ -723,12 +738,9 @@ VOS_UINT32  TAF_SPM_SendUsimCallEnvelopeReq(
     PS_MEM_SET(&stBc1, 0, sizeof(NAS_CC_IE_BC_STRU));
     PS_MEM_SET(&stBc2, 0, sizeof(NAS_CC_IE_BC_STRU));
 
-    /* 根据入口消息获取呼叫类型和呼叫模式,被叫号码 */
-    TAF_SPM_GetCallInfoFromFsmEntryMsg(&stCalledNumber, &enCallType, &enCallMode, (MN_CALL_CS_DATA_CFG_STRU *)&stDataCfgInfo);
-
     ulNumOfBc = MN_CALL_BuildBcOfSetup(enCallType,
                                        enCallMode,
-                                       &stDataCfgInfo,
+                                       pstDataCfgInfo,
                                        &stBc1,
                                        &stBc2);
 
@@ -736,7 +748,7 @@ VOS_UINT32  TAF_SPM_SendUsimCallEnvelopeReq(
     {
         return VOS_FALSE;
     }
-    
+
     if (TAF_CALL_MAX_BC_NUM == ulNumOfBc)
     {
         /* 有两个BC的情况下，repeat indicator设为alternate */
@@ -747,7 +759,7 @@ VOS_UINT32  TAF_SPM_SendUsimCallEnvelopeReq(
         /* 此处需要参考24.008 10.5.4.22 中的定义确认 */
         enBcRepeatInd = MN_CALL_REP_IND_NULL;
     }
-    
+
     stEnvelopeMsg.uEnvelope.CallCtrl.OP_Capability1          = VOS_TRUE;
     stEnvelopeMsg.uEnvelope.CallCtrl.Capability1.ulLen       = stBc1.LastOctOffset;
     stEnvelopeMsg.uEnvelope.CallCtrl.Capability1.pucCCP      = (VOS_UINT8 *)&stBc1.Octet3;
@@ -763,13 +775,13 @@ VOS_UINT32  TAF_SPM_SendUsimCallEnvelopeReq(
 
     stEnvelopeMsg.uEnvelope.CallCtrl.OP_SepcialData          = VOS_TRUE;
     stEnvelopeMsg.uEnvelope.CallCtrl.SpecialData.ucTag       = SI_CC_ADDRESS_TAG;
-    stEnvelopeMsg.uEnvelope.CallCtrl.SpecialData.ucLen       = stCalledNumber.ucNumLen
-                                                             + sizeof(stCalledNumber.enNumType);
+    stEnvelopeMsg.uEnvelope.CallCtrl.SpecialData.ucLen       = pstCalledNumber->ucNumLen
+                                                             + sizeof(MN_CALL_NUM_TYPE_ENUM_U8);
     PS_MEM_SET(aucStkBcdNum, 0, sizeof(aucStkBcdNum));
-    aucStkBcdNum[0]                                          = stCalledNumber.enNumType;
-    PS_MEM_CPY(&aucStkBcdNum[sizeof(stCalledNumber.enNumType)],
-               stCalledNumber.aucBcdNum,
-               stCalledNumber.ucNumLen);
+    aucStkBcdNum[0]                                          = pstCalledNumber->enNumType;
+    PS_MEM_CPY(&aucStkBcdNum[sizeof(pstCalledNumber->enNumType)],
+               pstCalledNumber->aucBcdNum,
+               pstCalledNumber->ucNumLen);
 
     stEnvelopeMsg.uEnvelope.CallCtrl.SpecialData.pValue      = aucStkBcdNum;
 
@@ -777,13 +789,175 @@ VOS_UINT32  TAF_SPM_SendUsimCallEnvelopeReq(
     stEnvelopeMsg.uEnvelope.CallCtrl.LocInfo.pucATSLI        = aucLI;
     TAF_SDC_GetCurrentLai(aucLI, &stEnvelopeMsg.uEnvelope.CallCtrl.LocInfo.ulLen);
 
-    if (VOS_OK != NAS_STKAPI_EnvelopeDownload(WUEPS_PID_TAF, usClientId, &stEnvelopeMsg))
+    if (VOS_OK != NAS_STKAPI_EnvelopeDownload(WUEPS_PID_TAF, ulSendPara, &stEnvelopeMsg))
     {
         TAF_WARNING_LOG(WUEPS_PID_TAF, "TAF_SPM_SendUsimCallEnvelopeReq: Usim Returns Error.");
         return VOS_FALSE;
     }
 
     return VOS_TRUE;
+}
+
+#if (FEATURE_ON == FEATURE_IMS)
+VOS_UINT32  TAF_SPM_SendUsimEconfEnvelopeReq(
+    VOS_UINT16                          usClientId,
+    struct MsgCB                       *pstMsg
+)
+{
+    TAF_SPM_CALL_ECONF_INFO_STRU       *pstEconfInfoAddr    = VOS_NULL_PTR;
+    MN_CALL_CS_DATA_CFG_INFO_STRU       stDataCfgInfo;
+    MN_CALL_CALLED_NUM_STRU             stCalledNumber;
+    VOS_UINT32                          ulRet;
+    VOS_UINT8                           ucIndex;
+    MN_CALL_TYPE_ENUM_U8                enCallType;
+    MN_CALL_MODE_ENUM_U8                enCallMode;
+    VOS_UINT32                          ulSendPara;
+
+    PS_MEM_SET(&stCalledNumber, 0x0, sizeof(stCalledNumber));
+    PS_MEM_SET(&stDataCfgInfo, 0x0, sizeof(MN_CALL_CS_DATA_CFG_INFO_STRU));
+    pstEconfInfoAddr    = TAF_SPM_GetCallEconfInfoAddr();
+
+    pstEconfInfoAddr->ucSendSuccNum = 0;
+    pstEconfInfoAddr->ucRcvNum      = 0;
+    enCallType                      = pstEconfInfoAddr->enCallType;
+    enCallMode                      = pstEconfInfoAddr->enCallMode;
+    PS_MEM_CPY(&stDataCfgInfo, &pstEconfInfoAddr->stDataCfg, sizeof(stDataCfgInfo));
+
+    for (ucIndex = 0; ucIndex < pstEconfInfoAddr->ucCallNum; ucIndex++)
+    {
+        PS_MEM_CPY(&stCalledNumber,
+               &pstEconfInfoAddr->astEconfCheckInfo[ucIndex].stCalledNumber,
+               sizeof(MN_CALL_CALLED_NUM_STRU));
+
+        pstEconfInfoAddr->astEconfCheckInfo[ucIndex].ulCheckCnfFlag = VOS_FALSE;
+
+        /* 增强型多方通话情况下，高16位为表示第几个电话号码，低16位为ClinedId */
+        ulSendPara = TAF_SPM_ECONF_SET_SEND_PARA(ucIndex, usClientId);
+
+        ulRet = TAF_SPM_SendUsimCallEnvelopeReq(&stCalledNumber,
+                                                &stDataCfgInfo,
+                                                ulSendPara,
+                                                enCallType,
+                                                enCallMode);
+        if (VOS_FALSE == ulRet)
+        {
+            /* 记录为失败 */
+            TAF_SPM_RecordEconfCheckRslt(ucIndex, TAF_CS_CAUSE_CALL_CTRL_INVALID_PARAMETER);
+        }
+        else
+        {
+            pstEconfInfoAddr->ucSendSuccNum++;
+        }
+    }
+
+    /* 全部发送失败，则退出 */
+    if (0 == pstEconfInfoAddr->ucSendSuccNum)
+    {
+        /* 上报结果 */
+        TAF_SPM_ReportEconfCheckRslt();
+        return VOS_FALSE;
+    }
+
+    return VOS_TRUE;
+
+}
+
+
+VOS_UINT32  TAF_SPM_SendUsimEconfFdnReq(
+    VOS_UINT16                          usClientId,
+    struct MsgCB                       *pstMsg
+)
+{
+    TAF_SPM_CALL_ECONF_INFO_STRU       *pstEconfInfoAddr    = VOS_NULL_PTR;
+    MN_CALL_CALLED_NUM_STRU            *pstCalledNumber     = VOS_NULL_PTR;
+    PS_PB_FDN_NUM_STRU                  stFdnInfo;
+    VOS_UINT32                          ulRet;
+    VOS_UINT8                           ucIndex;
+    VOS_UINT32                          ulSendPara;
+
+    PS_MEM_SET(&stFdnInfo, 0x0, sizeof(stFdnInfo));
+    pstEconfInfoAddr    = TAF_SPM_GetCallEconfInfoAddr();
+
+    pstEconfInfoAddr->ucSendSuccNum = 0;
+    pstEconfInfoAddr->ucRcvNum      = 0;
+    for (ucIndex = 0; ucIndex < pstEconfInfoAddr->ucCallNum; ucIndex++)
+    {
+        pstEconfInfoAddr->astEconfCheckInfo[ucIndex].ulCheckCnfFlag = VOS_FALSE;
+
+        pstCalledNumber = &pstEconfInfoAddr->astEconfCheckInfo[ucIndex].stCalledNumber;
+
+        stFdnInfo.ulNum1Len = pstCalledNumber->ucNumLen <= MN_CALL_MAX_BCD_NUM_LEN ?
+                          pstCalledNumber->ucNumLen : MN_CALL_MAX_BCD_NUM_LEN;
+
+        PS_MEM_CPY(stFdnInfo.aucNum1, pstCalledNumber->aucBcdNum, stFdnInfo.ulNum1Len);
+
+        /* 增强型多方通话情况下，高16位为表示第几个电话号码，低16位为ClinedId */
+        ulSendPara = TAF_SPM_ECONF_SET_SEND_PARA(ucIndex, usClientId);
+
+        ulRet = NAS_PBAPI_FdnNumCheck(WUEPS_PID_TAF, 0, ulSendPara, &stFdnInfo);
+        if (VOS_OK != ulRet)
+        {
+            /* 记录为失败 */
+            TAF_SPM_RecordEconfCheckRslt(ucIndex, TAF_CS_CAUSE_FDN_CHECK_FAILURE);
+        }
+        else
+        {
+            pstEconfInfoAddr->ucSendSuccNum++;
+        }
+    }
+
+    /* 全部发送失败，则退出 */
+    if (0 == pstEconfInfoAddr->ucSendSuccNum)
+    {
+        /* 上报结果 */
+        TAF_SPM_ReportEconfCheckRslt();
+        return VOS_FALSE;
+    }
+
+    return VOS_TRUE;
+
+}
+#endif
+
+
+VOS_UINT32  TAF_SPM_SendUsimCallEnvelopeReq_Call(
+    VOS_UINT16                          usClientId,
+    struct MsgCB                       *pstMsg
+)
+{
+    MN_CALL_CS_DATA_CFG_INFO_STRU       stDataCfgInfo;
+    MN_CALL_CALLED_NUM_STRU             stCalledNumber;
+#if (FEATURE_ON == FEATURE_IMS)
+    VOS_UINT32                          ulEventType;
+#endif
+    MN_CALL_TYPE_ENUM_U8                enCallType;
+    MN_CALL_MODE_ENUM_U8                enCallMode;
+
+    PS_MEM_SET(&stCalledNumber, 0x0, sizeof(stCalledNumber));
+    PS_MEM_SET(&stDataCfgInfo, 0x0, sizeof(MN_CALL_CS_DATA_CFG_INFO_STRU));
+#if (FEATURE_ON == FEATURE_IMS)
+    ulEventType         = TAF_SPM_GetEventTypeFromCurrEntityFsmEntryMsg();
+#endif
+
+    /* 由于增强型多方通话已经解析过了，这里不再需要解析  */
+#if (FEATURE_ON == FEATURE_IMS)
+    if (ulEventType == TAF_BuildEventType(WUEPS_PID_AT, TAF_CALL_APP_ECONF_DIAL_REQ))
+    {
+        return TAF_SPM_SendUsimEconfEnvelopeReq(usClientId, pstMsg);
+    }
+    else
+#endif
+    {
+        /* 从消息中获取电话号码相关信息 */
+        TAF_SPM_GetCallInfoFromFsmEntryMsg(&stCalledNumber, &enCallType, &enCallMode, (MN_CALL_CS_DATA_CFG_STRU *)&stDataCfgInfo);
+
+        /* 发起检查 */
+        return TAF_SPM_SendUsimCallEnvelopeReq(&stCalledNumber,
+                                               &stDataCfgInfo,
+                                               usClientId,
+                                               enCallType,
+                                               enCallMode);
+    }
 }
 
 

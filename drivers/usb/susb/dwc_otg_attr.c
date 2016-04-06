@@ -214,32 +214,39 @@
 
  <tr>
  <td> rem_wakeup_pwrdn </td>
- <td> On read, shows the status core - hibernated or not. On write, initiates
+ <td> On read, shows the status core - hibernated or not. On write, initiates 
  a remote wakeup of the device from Hibernation. </td>
  <td> Read/Write</td>
  </tr>
 
  <tr>
  <td> mode_ch_tim_en </td>
- <td> This bit is used to enable or disable the host core to wait for 200 PHY
+ <td> This bit is used to enable or disable the host core to wait for 200 PHY 
  clock cycles at the end of Resume to change the opmode signal to the PHY to 00
  after Suspend or LPM. </td>
  <td> Read/Write</td>
  </tr>
-
+ 
  <tr>
  <td> fr_interval </td>
- <td> On read, shows the value of HFIR Frame Interval. On write, dynamically
+ <td> On read, shows the value of HFIR Frame Interval. On write, dynamically 
  reload HFIR register during runtime. The application can write a value to this
- register only after the Port Enable bit of the Host Port Control and Status
+ register only after the Port Enable bit of the Host Port Control and Status 
  register (HPRT.PrtEnaPort) has been set </td>
  <td> Read/Write</td>
  </tr>
-
+ 
  <tr>
  <td> disconnect_us </td>
  <td> On read, shows the status of disconnect_device_us. On write, sets disconnect_us
  which causes soft disconnect for 100us. Applicable only for device mode of operation.</td>
+ <td> Read/Write</td>
+ </tr>
+
+  <tr>
+ <td> connect_us </td>
+ <td> On read, shows the status of connect_device_us. On write, sets connect_us
+ which causes soft connect for 100us. Applicable only for device mode of operation.</td>
  <td> Read/Write</td>
  </tr>
 
@@ -446,7 +453,7 @@ static ssize_t regoffset_show(struct device *_dev,
 }
 
 /**
- * Set the register offset for the next Register Access		Read/Write
+ * Set the register offset for the next Register Access 	Read/Write
  */
 static ssize_t regoffset_store(struct device *_dev,
 			       struct device_attribute *attr,
@@ -473,7 +480,7 @@ static ssize_t regoffset_store(struct device *_dev,
 	return count;
 }
 
-DEVICE_ATTR(regoffset, S_IRUGO | S_IWUSR, regoffset_show, regoffset_store);
+DEVICE_ATTR(regoffset, (S_IRUGO | S_IWUSR), regoffset_show, regoffset_store);
 
 /**
  * Show the value of the register at the offset in the reg_offset
@@ -538,7 +545,7 @@ static ssize_t regvalue_store(struct device *_dev,
 	return count;
 }
 
-DEVICE_ATTR(regvalue, S_IRUGO | S_IWUSR, regvalue_show, regvalue_store);
+DEVICE_ATTR(regvalue, (S_IRUGO | S_IWUSR), regvalue_show, regvalue_store);
 
 /*
  * Attributes
@@ -874,11 +881,11 @@ static ssize_t remote_wakeup_store(struct device *_dev,
 	return count;
 }
 
-DEVICE_ATTR(remote_wakeup, S_IRUGO | S_IWUSR, remote_wakeup_show,
+DEVICE_ATTR(remote_wakeup, (S_IRUGO | S_IWUSR), remote_wakeup_show,
 	    remote_wakeup_store);
 
 /**
- * Show the whether core is hibernated or not.
+ * Show the whether core is hibernated or not. 					
  */
 static ssize_t rem_wakeup_pwrdn_show(struct device *_dev,
 				     struct device_attribute *attr, char *buf)
@@ -921,7 +928,7 @@ static ssize_t rem_wakeup_pwrdn_store(struct device *_dev,
 	return count;
 }
 
-DEVICE_ATTR(rem_wakeup_pwrdn, S_IRUGO | S_IWUSR, rem_wakeup_pwrdn_show,
+DEVICE_ATTR(rem_wakeup_pwrdn, (S_IRUGO | S_IWUSR), rem_wakeup_pwrdn_show,
 	    rem_wakeup_pwrdn_store);
 
 static ssize_t disconnect_us(struct device *_dev,
@@ -947,6 +954,29 @@ static ssize_t disconnect_us(struct device *_dev,
 
 DEVICE_ATTR(disconnect_us, S_IWUSR, 0, disconnect_us);
 
+static ssize_t connect_us(struct device *_dev,
+			     struct device_attribute *attr,
+			     const char *buf, size_t count)
+{
+
+#ifndef DWC_HOST_ONLY
+#ifdef LM_INTERFACE
+	struct lm_device *lm_dev = container_of(_dev, struct lm_device, dev);
+	dwc_otg_device_t *otg_dev = lm_get_drvdata(lm_dev);
+#elif defined(PCI_INTERFACE)
+	dwc_otg_device_t *otg_dev = dev_get_drvdata(_dev);
+#endif
+	uint32_t val = simple_strtoul(buf, NULL, 16);
+	DWC_PRINTF("The Passed value is %04x\n", val);
+
+	dwc_otg_pcd_connect_us(otg_dev->pcd, 50);
+
+#endif /* DWC_HOST_ONLY */
+	return count;
+}
+
+DEVICE_ATTR(connect_us, S_IWUSR, 0, connect_us);
+
 /**
  * Dump global registers and either host or device registers (depending on the
  * current mode of the core).
@@ -966,7 +996,6 @@ static ssize_t regdump_show(struct device *_dev,
 		dwc_otg_dump_host_registers(otg_dev->core_if);
 	} else {
 		dwc_otg_dump_dev_registers(otg_dev->core_if);
-
 	}
 	return sprintf(buf, "Register Dump\n");
 }
@@ -1043,7 +1072,7 @@ DEVICE_ATTR(hcd_frrem, S_IRUGO, hcd_frrem_show, 0);
  * output shows the number of times the register is read).
  */
 #define RW_REG_COUNT 10000000
-#define MSEC_PER_JIFFIE 1000/HZ
+#define MSEC_PER_JIFFIE (1000/HZ)
 static ssize_t rd_reg_test_show(struct device *_dev,
 				struct device_attribute *attr, char *buf)
 {
@@ -1254,6 +1283,7 @@ void dwc_otg_attr_create(
 	error = device_create_file(&dev->dev, &dev_attr_remote_wakeup);
 	error = device_create_file(&dev->dev, &dev_attr_rem_wakeup_pwrdn);
 	error = device_create_file(&dev->dev, &dev_attr_disconnect_us);
+	error = device_create_file(&dev->dev, &dev_attr_connect_us);
 	error = device_create_file(&dev->dev, &dev_attr_regdump);
 	error = device_create_file(&dev->dev, &dev_attr_spramdump);
 	error = device_create_file(&dev->dev, &dev_attr_hcddump);
@@ -1306,6 +1336,7 @@ void dwc_otg_attr_remove(
 	device_remove_file(&dev->dev, &dev_attr_remote_wakeup);
 	device_remove_file(&dev->dev, &dev_attr_rem_wakeup_pwrdn);
 	device_remove_file(&dev->dev, &dev_attr_disconnect_us);
+	device_remove_file(&dev->dev, &dev_attr_connect_us);
 	device_remove_file(&dev->dev, &dev_attr_regdump);
 	device_remove_file(&dev->dev, &dev_attr_spramdump);
 	device_remove_file(&dev->dev, &dev_attr_hcddump);

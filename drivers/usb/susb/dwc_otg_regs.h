@@ -64,7 +64,7 @@
  */
 
 /****************************************************************************/
-/** DWC_otg Core registers .
+/** DWC_otg Core registers . 
  * The dwc_otg_core_global_regs structure defines the size
  * and relative field offsets for the Core Global registers.
  */
@@ -380,7 +380,7 @@ typedef union grstctl_data {
 		 * to clear.
 		 */
 		unsigned rxfflsh:1;
-		/** TxFIFO Flush (TxFFlsh) (Device and Host).
+		/** TxFIFO Flush (TxFFlsh) (Device and Host). 
 		 *
 		 * This bit is used to selectively flush a single or
 		 * all transmit FIFOs. The application must first
@@ -566,7 +566,7 @@ typedef union host_grxsts_data {
 
 /**
  * This union represents the bit fields in the FIFO Size Registers (HPTXFSIZ,
- * GNPTXFSIZ, DPTXFSIZn, DIEPTXFn). Read the register into the <i>d32</i> element
+ * GNPTXFSIZ, DPTXFSIZn, DIEPTXFn). Read the register into the <i>d32</i> element 
  * then read out the bits using the <i>b</i>it elements.
  */
 typedef union fifosize_data {
@@ -673,7 +673,7 @@ typedef union gpvndctl_data {
 } gpvndctl_data_t;
 
 /**
- * This union represents the bit fields in the General Purpose
+ * This union represents the bit fields in the General Purpose 
  * Input/Output Register (GGPIO).
  * Read the register into the <i>d32</i> element then read out the
  * bits using the <i>b</i>it elements.
@@ -894,10 +894,10 @@ typedef union glpmctl_data {
 		 * LPM transaction.
 		 * In Device mode the response of the core to
 		 * LPM transaction received is reflected in these two bits.
-			- 0x0 : ERROR (No handshake response)
+		 	- 0x0 : ERROR (No handshake response)
 			- 0x1 : STALL
 			- 0x2 : NYET
-			- 0x3 : ACK
+			- 0x3 : ACK			
 		 */
 		unsigned lpm_resp:2;
 		/** Port Sleep Status (SlpSts) (Device and Host)
@@ -959,7 +959,7 @@ typedef union adpctl_data {
 	/** register bits */
 	struct {
 		/** Probe Discharge (PRB_DSCHG)
-		 *  These bits set the times for TADP_DSCHG.
+		 *  These bits set the times for TADP_DSCHG. 
 		 *  These bits are defined as follows:
 		 *  2'b00 - 4 msec
 		 *  2'b01 - 8 msec
@@ -986,8 +986,8 @@ typedef union adpctl_data {
 		 *  2'b11  -  Reserved
 		 */
 		unsigned prb_per:2;
-		/** These bits capture the latest time it took for VBUS to ramp from
-		 *  VADP_SINK to VADP_PRB.
+		/** These bits capture the latest time it took for VBUS to ramp from 
+		 *  VADP_SINK to VADP_PRB. 
 		 *  0x000  -  1 cycles
 		 *  0x001  -  2 cycles
 		 *  0x002  -  3 cycles
@@ -1009,7 +1009,7 @@ typedef union adpctl_data {
 		/** ADP Reset (ADPRes)
 		 *  When set, ADP controller is reset.
 		 *  This bit is valid only if OTG_Ver = 1'b1.
-		 */
+ 		 */
 		unsigned adpres:1;
 		/** ADP Enable (ADPEn)
 		 *  When set, the core performs either ADP probing or sensing
@@ -1025,7 +1025,7 @@ typedef union adpctl_data {
 		unsigned adp_prb_int:1;
 		/**
 		 *  ADP Sense Interrupt (ADP_SNS_INT)
-		 *  When this bit is set, it means that the VBUS voltage is greater than
+		 *  When this bit is set, it means that the VBUS voltage is greater than 
 		 *  VADP_SNS value or VADP_SNS is reached.
 		 *  This bit is valid only if OTG_Ver = 1'b1.
 		 */
@@ -1055,7 +1055,7 @@ typedef union adpctl_data {
 		 */
 		unsigned adp_tmout_int_msk:1;
 		/** Access Request
-		 * 2'b00 - Read/Write Valid (updated by the core)
+		 * 2'b00 - Read/Write Valid (updated by the core) 
 		 * 2'b01 - Read
 		 * 2'b00 - Write
 		 * 2'b00 - Reserved
@@ -1514,7 +1514,7 @@ typedef struct dwc_otg_dev_out_ep_regs {
 	/** Device OUT Endpoint DMA Address Register. <i>Offset:B00h
 	 * + (ep_num * 20h) + 14h</i> */
 	volatile uint32_t doepdma;
-	/** Reserved. <i>Offset:B00h +	 * (ep_num * 20h) + 18h</i> */
+	/** Reserved. <i>Offset:B00h + 	 * (ep_num * 20h) + 18h</i> */
 	uint32_t unused;
 	/** Device OUT Endpoint DMA Buffer Register. <i>Offset:B00h
 	 * + (ep_num * 20h) + 1Ch</i> */
@@ -1802,14 +1802,12 @@ typedef struct dwc_otg_dev_if {
 	uint8_t num_in_eps;		 /**< Number # of Tx EP range: 0-15 exept ep0 */
 	uint8_t num_out_eps;		 /**< Number # of Rx EP range: 0-15 exept ep 0*/
 
-/* removed by l00196665, These parametres are useless */
-#if 0
 	/** Size of periodic FIFOs (Bytes) */
 	uint16_t perio_tx_fifo_size[MAX_PERIO_FIFOS];
 
 	/** Size of Tx FIFOs (Bytes) */
 	uint16_t tx_fifo_size[MAX_TX_FIFOS];
-#endif
+
 	/** Thresholding enable flags and length varaiables **/
 	uint16_t rx_thr_en;
 	uint16_t iso_tx_thr_en;
@@ -1913,7 +1911,7 @@ typedef union hcfg_data {
 
 /**
  * This union represents the bit fields in the Host Frame Remaing/Number
- * Register.
+ * Register. 
  */
 typedef union hfir_data {
 	/** raw register data */
@@ -1929,7 +1927,7 @@ typedef union hfir_data {
 
 /**
  * This union represents the bit fields in the Host Frame Remaing/Number
- * Register.
+ * Register. 
  */
 typedef union hfnum_data {
 	/** raw register data */
@@ -2001,7 +1999,7 @@ typedef union hprt0_data {
 
 /**
  * This union represents the bit fields in the Host All Interrupt
- * Register.
+ * Register. 
  */
 typedef union haint_data {
 	/** raw register data */
@@ -2035,7 +2033,7 @@ typedef union haint_data {
 
 /**
  * This union represents the bit fields in the Host All Interrupt
- * Register.
+ * Register. 
  */
 typedef union haintmsk_data {
 	/** raw register data */
@@ -2169,7 +2167,7 @@ typedef union hcsplt_data {
 
 /**
  * This union represents the bit fields in the Host All Interrupt
- * Register.
+ * Register. 
  */
 typedef union hcint_data {
 	/** raw register data */
@@ -2306,7 +2304,7 @@ typedef union hctsiz_data {
 } hctsiz_data_t;
 
 /**
- * This union represents the bit fields in the Host DMA Address
+ * This union represents the bit fields in the Host DMA Address 
  * Register used in Descriptor DMA mode.
  */
 typedef union hcdma_data {

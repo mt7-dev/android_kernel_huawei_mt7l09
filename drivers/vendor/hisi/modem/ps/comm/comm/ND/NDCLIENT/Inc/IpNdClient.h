@@ -216,8 +216,8 @@ typedef struct
 {
     VOS_UINT8                           ucEpsbId;       /*DSDA修改后，高2bit代表ModemId，低6bit代表EPSID*/
     VOS_UINT8                           ucflag;
+    VOS_UINT8                           aucReserve1[2];
     IP_ICMPV6_TYPE_ENUM_UINT32          enMsgType;
-    VOS_UINT8                           aucReserve1[1];
 
     VOS_UINT8                           aucInterfaceId[ND_IPV6_IF_LEN];
     VOS_UINT8                           aucRouterIpAddr[IP_IPV6_ADDR_LEN];

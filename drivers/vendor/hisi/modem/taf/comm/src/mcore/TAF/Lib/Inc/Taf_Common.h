@@ -68,9 +68,6 @@ extern "C" {
 
 
 
-VOS_VOID    Taf_Printf(VOS_CHAR *pucFileName, VOS_UINT32 ulLine, VOS_UINT8 ucModule,
-                   VOS_UINT8 ucPrintLevel, VOS_CHAR *pucStr, ...);
-
 #define TAF_PRINT(  Module,  PrintLevel,  Str)     \
            PS_LOG(Module, 0, PrintLevel, Str)
 

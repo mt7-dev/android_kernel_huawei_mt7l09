@@ -59,7 +59,7 @@ VOS_VOID  NAS_CC_SendConnectAck(
 *****************************************************************************/
 VOS_VOID  NAS_CC_SendDisconnect(
     VOS_UINT8                           ucTi,
-    NAS_CC_CAUSE_VALUE_ENUM_U8          enCauseVal
+    NAS_CC_CAUSE_VALUE_ENUM_U32         enCauseVal
 );
 
 
@@ -83,9 +83,9 @@ VOS_VOID  NAS_CC_SendDisconnect(
 VOS_VOID  NAS_CC_SendRelease(
     VOS_UINT8                           ucTi,
     VOS_BOOL                            bCausePresent,
-    NAS_CC_CAUSE_VALUE_ENUM_U8          enCauseVal,
+    NAS_CC_CAUSE_VALUE_ENUM_U32         enCauseVal,
     VOS_BOOL                            bCause2Present,
-    NAS_CC_CAUSE_VALUE_ENUM_U8          enCause2Val
+    NAS_CC_CAUSE_VALUE_ENUM_U32         enCause2Val
 );
 
 
@@ -109,7 +109,7 @@ VOS_VOID  NAS_CC_SendRelease(
 VOS_VOID  NAS_CC_SendReleaseComplete(
     VOS_UINT8                           ucTi,
     VOS_BOOL                            bCausePresent,
-    NAS_CC_CAUSE_VALUE_ENUM_U8          enCauseVal
+    NAS_CC_CAUSE_VALUE_ENUM_U32         enCauseVal
 );
 
 
@@ -173,7 +173,7 @@ VOS_VOID  NAS_CC_SendStopDtmf(
 *****************************************************************************/
 VOS_VOID  NAS_CC_SendStatus(
     VOS_UINT8                           ucTi,
-    NAS_CC_CAUSE_VALUE_ENUM_U8          enCauseVal
+    NAS_CC_CAUSE_VALUE_ENUM_U32         enCauseVal
 );
 
 /*****************************************************************************
@@ -192,7 +192,7 @@ VOS_VOID  NAS_CC_SendStatus(
 
 *****************************************************************************/
 VOS_VOID  NAS_CC_FillCauseIe(
-    NAS_CC_CAUSE_VALUE_ENUM_U8          enCauseVal,
+    NAS_CC_CAUSE_VALUE_ENUM_U32          enCauseVal,
     NAS_CC_IE_CAUSE_STRU                *pstCauseIe
 );
 

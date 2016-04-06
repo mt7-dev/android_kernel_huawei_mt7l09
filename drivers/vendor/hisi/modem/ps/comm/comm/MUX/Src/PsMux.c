@@ -1,8 +1,14 @@
 
 
+/*lint -e767*/
+#define    THIS_FILE_ID        PS_FILE_ID_PSMUX_C
+/*lint +e767*/
+
 /*****************************************************************************
   1 头文件包含
 *****************************************************************************/
+#include "product_config.h"
+#if (FEATURE_ON == FEATURE_AT_HSIC)
 #include    "PsTypeDef.h"
 #include    "PsMux.h"
 #include    "PsCommonDef.h"
@@ -11,10 +17,6 @@
 #include    "OmApp.h"
 #include    "NVIM_Interface.h"
 
-
-/*lint -e767*/
-#define    THIS_FILE_ID        PS_FILE_ID_PSMUX_C
-/*lint +e767*/
 
 /*****************************************************************************
   2 全局变量定义
@@ -558,8 +560,14 @@ VOS_UINT32 MUX_DlciUlAcmGetDataBuf(UDI_HANDLE slUdiHsicAcmHdl, VOS_UINT8 **ppucB
 {
     ACM_WR_ASYNC_INFO                   stCtlParam;
     VOS_INT32                           lResult;
+    VOS_CHAR *                          pucBuffAddr;
 
-    stCtlParam.pBuffer  = VOS_NULL_PTR;
+	#ifndef FEATURE_USB_ZERO_COPY
+    pucBuffAddr = stCtlParam.pBuffer  = VOS_NULL_PTR;
+	#else
+	pucBuffAddr = stCtlParam.pVirAddr = VOS_NULL_PTR;
+    stCtlParam.pPhyAddr = VOS_NULL_PTR;
+	#endif
 
     /* 获取底软上行数据buffer */
     lResult= DRV_UDI_IOCTL(slUdiHsicAcmHdl, ACM_IOCTL_GET_RD_BUFF, &stCtlParam);
@@ -572,14 +580,14 @@ VOS_UINT32 MUX_DlciUlAcmGetDataBuf(UDI_HANDLE slUdiHsicAcmHdl, VOS_UINT8 **ppucB
         return VOS_ERR;
     }
 
-    if (VOS_NULL_PTR == stCtlParam.pBuffer)
+    if (VOS_NULL_PTR == pucBuffAddr)
     {
         MUX_PrintLog(PS_PID_APP_MUX, 0, PS_PRINT_WARNING,
             "MUX, MUX_DlciUlAcmGetDataBuf, WARNING, Data buffer is NULL!\r\n");
         return VOS_ERR;
     }
 
-    *ppucBuf    = (VOS_UINT8 *)stCtlParam.pBuffer;
+    *ppucBuf    = (VOS_UINT8 *)pucBuffAddr;
     *usDataLen  = (VOS_UINT16)stCtlParam.u32Size;
 
     return VOS_OK;
@@ -654,7 +662,12 @@ VOS_UINT32 MUX_DlciUlHsicFreeDataBuf(
 
 
     /* 填写需要释放的内存指针 */
+	#ifndef FEATURE_USB_ZERO_COPY
     stCtlParam.pBuffer  = (VOS_CHAR*)pucBuf;
+    #else
+    stCtlParam.pVirAddr = (VOS_CHAR*)pucBuf;
+    stCtlParam.pPhyAddr = VOS_NULL_PTR;
+    #endif
     stCtlParam.u32Size  = usLen;
     stCtlParam.pDrvPriv = VOS_NULL_PTR;
 
@@ -693,7 +706,12 @@ VOS_UINT32 MUX_DlciDlUsbAcmWriteData(UDI_HANDLE slUdiHandle, VOS_UINT8 *pucBuf, 
 
 
     /* 待写入数据内存地址 */
+    #ifndef FEATURE_USB_ZERO_COPY
     stCtlParam.pBuffer                  = (VOS_CHAR*)pucBuf;
+    #else
+    stCtlParam.pVirAddr                 = (VOS_CHAR*)pucBuf;
+    stCtlParam.pPhyAddr                 = VOS_NULL_PTR;
+    #endif
     stCtlParam.u32Size                  = usDataLen;
     stCtlParam.pDrvPriv                 = VOS_NULL_PTR;
 
@@ -1139,6 +1157,43 @@ VOS_VOID MUX_SetLogFlag( VOS_UINT32  ulFlag )
 
     return;
 }
+
+#else   /* for feature */
+
+/*****************************************************************************
+  1 头文件包含
+*****************************************************************************/
+#include    "PsMux.h"
+
+/*****************************************************************************
+  3 函数实现
+*****************************************************************************/
+
+VOS_UINT32 MUX_DlciDlDataSend (AT_MUX_DLCI_TYPE_ENUM_UINT8 enDlci, VOS_UINT8* pData, VOS_UINT16 usDataLen)
+{
+    return VOS_OK;
+}
+
+
+VOS_UINT32 MUX_AtRgstUlPortCallBack (AT_MUX_DLCI_TYPE_ENUM_UINT8 enDlci, RCV_UL_DLCI_DATA_FUNC pFunc)
+{
+    return VOS_OK;
+}
+
+
+VOS_UINT32 MUX_Pid_InitFunc( enum VOS_INIT_PHASE_DEFINE ip )
+{
+    return VOS_OK;
+}
+
+
+VOS_UINT32 MUX_AtMsgProc( const MsgBlock *pMsgBlock )
+{
+    return VOS_OK;
+}
+
+
+#endif  /* end for feature */
 
 #ifdef __cplusplus
     #if __cplusplus

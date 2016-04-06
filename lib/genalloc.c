@@ -160,6 +160,7 @@ struct gen_pool *gen_pool_create(int min_alloc_order, int nid)
 		INIT_LIST_HEAD(&pool->chunks);
 		pool->min_alloc_order = min_alloc_order;
 		pool->algo = gen_pool_first_fit;
+		pool->algo_last = gen_pool_last_fit;
 		pool->data = NULL;
 	}
 	return pool;
@@ -313,6 +314,60 @@ retry:
 EXPORT_SYMBOL(gen_pool_alloc);
 
 /**
+ * gen_pool_last_alloc - allocate special memory from the pool
+ * @pool: pool to allocate from
+ * @size: number of bytes to allocate from the pool
+ *
+ * Allocate the requested number of bytes from the specified pool.
+ * Uses the pool allocation function (with first-fit algorithm by default).
+ * Can not be used in NMI handler on architectures without
+ * NMI-safe cmpxchg implementation.
+ */
+unsigned long gen_pool_last_alloc(struct gen_pool *pool, size_t size)
+{
+	struct gen_pool_chunk *chunk;
+	unsigned long addr = 0;
+	int order = pool->min_alloc_order;
+	int nbits, start_bit = 0, end_bit, remain;
+
+#ifndef CONFIG_ARCH_HAVE_NMI_SAFE_CMPXCHG
+	BUG_ON(in_nmi());
+#endif
+
+	if (size == 0)
+		return 0;
+
+	nbits = (size + (1UL << order) - 1) >> order;
+	rcu_read_lock();
+	list_for_each_entry_rcu(chunk, &pool->chunks, next_chunk) {
+		if (size > atomic_read(&chunk->avail))
+			continue;
+
+		end_bit = chunk_size(chunk) >> order;
+retry:
+		start_bit = pool->algo_last(chunk->bits, end_bit, start_bit, nbits,
+				pool->data);
+		if (start_bit == end_bit)
+			continue;
+		remain = bitmap_set_ll(chunk->bits, start_bit, nbits);
+		if (remain) {
+			remain = bitmap_clear_ll(chunk->bits, start_bit,
+						 nbits - remain);
+			BUG_ON(remain);
+			goto retry;
+		}
+
+		addr = chunk->start_addr + ((unsigned long)start_bit << order);
+		size = nbits << order;
+		atomic_sub(size, &chunk->avail);
+		break;
+	}
+	rcu_read_unlock();
+	return addr;
+}
+EXPORT_SYMBOL(gen_pool_last_alloc);
+
+/**
  * gen_pool_free - free allocated special memory back to the pool
  * @pool: pool to free to
  * @addr: starting address of memory to free back to pool
@@ -372,6 +427,35 @@ void gen_pool_for_each_chunk(struct gen_pool *pool,
 	rcu_read_unlock();
 }
 EXPORT_SYMBOL(gen_pool_for_each_chunk);
+
+/**
+ * addr_in_gen_pool - checks if an address falls within the range of a pool
+ * @pool:	the generic memory pool
+ * @start:	start address
+ * @size:	size of the region
+ *
+ * Check if the range of addresses falls within the specified pool. Returns
+ * true if the entire range is contained in the pool and false otherwise.
+ */
+bool addr_in_gen_pool(struct gen_pool *pool, unsigned long start,
+			size_t size)
+{
+	bool found = false;
+	unsigned long end = start + size - 1;
+	struct gen_pool_chunk *chunk;
+
+	rcu_read_lock();
+	list_for_each_entry_rcu(chunk, &(pool)->chunks, next_chunk) {
+		if (start >= chunk->start_addr && start <= chunk->end_addr) {
+			if (end <= chunk->end_addr) {
+				found = true;
+				break;
+			}
+		}
+	}
+	rcu_read_unlock();
+	return found;
+}
 
 /**
  * gen_pool_avail - get available free space of the pool
@@ -450,6 +534,42 @@ unsigned long gen_pool_first_fit(unsigned long *map, unsigned long size,
 	return bitmap_find_next_zero_area(map, size, start, nr, 0);
 }
 EXPORT_SYMBOL(gen_pool_first_fit);
+
+/**
+ * gen_pool_last_fit - find the first available region
+ * of memory matching the size requirement (no alignment constraint)
+ * @map: The address to base the search on
+ * @size: The bitmap size in bits
+ * @start: The bitnumber to start searching at
+ * @nr: The number of zeroed bits we're looking for
+ * @data: additional data - unused
+ */
+unsigned long gen_pool_last_fit(unsigned long *map, unsigned long size,
+                unsigned long start, unsigned int nr, void *data)
+{
+        return bitmap_find_last_zero_area(map, size, nr);
+}
+EXPORT_SYMBOL(gen_pool_last_fit);
+
+/**
+ * gen_pool_first_fit_order_align - find the first available region
+ * of memory matching the size requirement. The region will be aligned
+ * to the order of the size specified.
+ * @map: The address to base the search on
+ * @size: The bitmap size in bits
+ * @start: The bitnumber to start searching at
+ * @nr: The number of zeroed bits we're looking for
+ * @data: additional data - unused
+ */
+unsigned long gen_pool_first_fit_order_align(unsigned long *map,
+               unsigned long size, unsigned long start,
+               unsigned int nr, void *data)
+{
+       unsigned long align_mask = roundup_pow_of_two(nr) - 1;
+
+       return bitmap_find_next_zero_area(map, size, start, nr, align_mask);
+}
+EXPORT_SYMBOL(gen_pool_first_fit_order_align);
 
 /**
  * gen_pool_best_fit - find the best fitting region of memory

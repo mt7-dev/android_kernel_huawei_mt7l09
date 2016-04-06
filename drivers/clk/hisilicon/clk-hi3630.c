@@ -33,7 +33,7 @@
 #include <linux/of_device.h>
 #include <linux/slab.h>
 #include <linux/clk.h>
-#include <linux/huawei/mailbox.h>
+#include <linux/hisi/hisi_mailbox.h>
 
 #include "hisi-clk-mailbox.h"
 
@@ -226,7 +226,7 @@ static void hi3630_clkgate_disable(struct clk_hw *hw)
 #endif
 }
 
-#ifdef CONFIG_HI3630_CLK_DEBUG
+#ifdef CONFIG_HISI_CLK_DEBUG
 
 static int hi3630_clkgate_is_enabled(struct clk_hw *hw)
 {
@@ -270,7 +270,7 @@ static void __iomem *hi3630_clkgate_get_reg(struct clk_hw *hw)
 static struct clk_ops hi3630_clkgate_ops = {
 	.enable		= hi3630_clkgate_enable,
 	.disable	= hi3630_clkgate_disable,
-#ifdef CONFIG_HI3630_CLK_DEBUG
+#ifdef CONFIG_HISI_CLK_DEBUG
 	.is_enabled = hi3630_clkgate_is_enabled,
 	.get_reg  = hi3630_clkgate_get_reg,
 #endif
@@ -926,7 +926,7 @@ static int hi3630_clkdiv_set_rate(struct clk_hw *hw, unsigned long rate,
 	return 0;
 }
 
-#ifdef CONFIG_HI3630_CLK_DEBUG
+#ifdef CONFIG_HISI_CLK_DEBUG
 static int hi3630_divreg_check(struct clk_hw *hw)
 {
 	unsigned long rate;
@@ -964,7 +964,7 @@ static struct clk_ops hi3630_clkdiv_ops = {
 	.recalc_rate = hi3630_clkdiv_recalc_rate,
 	.round_rate = hi3630_clkdiv_round_rate,
 	.set_rate = hi3630_clkdiv_set_rate,
-#ifdef CONFIG_HI3630_CLK_DEBUG
+#ifdef CONFIG_HISI_CLK_DEBUG
 	.check_divreg = hi3630_divreg_check,
 	.get_reg = hi3630_clkdiv_get_reg,
 #endif

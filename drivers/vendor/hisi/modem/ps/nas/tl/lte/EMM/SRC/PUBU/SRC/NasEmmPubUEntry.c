@@ -340,11 +340,14 @@ VOS_UINT32  NAS_EMM_PreProcMsgEmmInfo( NAS_EMM_CN_MSG_STRU_UNION  * pCnMsg )
 {
     NAS_EMM_INFO_STRU                   *pstEmmInfo;
     NAS_EMM_CN_EMM_INFO_STRU            *pstTmpRcvMsg       = NAS_EMM_NULL_PTR;
+    VOS_UINT8                           ucCount = 0;
 
     NAS_LMM_PUBM_LOG_NORM("NAS_EMM_PreProcMsgEmmInfo enter!");
 
     pstTmpRcvMsg               = (NAS_EMM_CN_EMM_INFO_STRU*)pCnMsg;
     pstEmmInfo                 = NAS_LMM_GetEmmInfoNasEmmInfoListAddr();
+
+    NAS_LMM_MEM_SET(pstEmmInfo, 0, sizeof(NAS_EMM_INFO_STRU));
 
     /* 上报网络时间和网络名称，只要能收到，就可以上报给AT，对流程没有影响，可以不做限制；
     而且未注册时，网络也不会有下行消息下发*/
@@ -354,6 +357,7 @@ VOS_UINT32  NAS_EMM_PreProcMsgEmmInfo( NAS_EMM_CN_MSG_STRU_UNION  * pCnMsg )
         NAS_LMM_MEM_CPY(                   pstEmmInfo->aucOperatorNameLong,
                                            pstTmpRcvMsg->aucOperatorNameLong,
                                            MMC_LMM_MAX_OPER_LONG_NAME_LEN);
+        ucCount++;
     }
 
     if(NAS_EMM_BIT_SLCT == pstTmpRcvMsg->bitOpShortName)
@@ -362,6 +366,7 @@ VOS_UINT32  NAS_EMM_PreProcMsgEmmInfo( NAS_EMM_CN_MSG_STRU_UNION  * pCnMsg )
         NAS_LMM_MEM_CPY(                   pstEmmInfo->aucOperatorNameShort,
                                            pstTmpRcvMsg->aucOperatorNameShort,
                                            MMC_LMM_MAX_OPER_SHORT_NAME_LEN);
+        ucCount++;
     }
 
     if(NAS_EMM_BIT_SLCT == pstTmpRcvMsg->bitOpLocTimeZone)
@@ -370,6 +375,7 @@ VOS_UINT32  NAS_EMM_PreProcMsgEmmInfo( NAS_EMM_CN_MSG_STRU_UNION  * pCnMsg )
         NAS_LMM_MEM_CPY(                   &(pstEmmInfo->stLocTimeZone),
                                            &(pstTmpRcvMsg->stLocTimeZone),
                                            sizeof(NAS_EMM_CN_TIMEZONE_STRU));
+        ucCount++;
     }
 
     if(NAS_EMM_BIT_SLCT == pstTmpRcvMsg->bitOpUniTimeLocTimeZone)
@@ -378,6 +384,7 @@ VOS_UINT32  NAS_EMM_PreProcMsgEmmInfo( NAS_EMM_CN_MSG_STRU_UNION  * pCnMsg )
         NAS_LMM_MEM_CPY(                   &(pstEmmInfo->stTimeZoneAndTime),
                                            &(pstTmpRcvMsg->stTimeZoneAndTime),
                                            sizeof(NAS_EMM_CN_TIMEZONE_UNITIME_STRU));
+        ucCount++;
     }
 
     if(NAS_EMM_BIT_SLCT == pstTmpRcvMsg->bitOpDaylightTime)
@@ -386,10 +393,12 @@ VOS_UINT32  NAS_EMM_PreProcMsgEmmInfo( NAS_EMM_CN_MSG_STRU_UNION  * pCnMsg )
         NAS_LMM_MEM_CPY(                   &(pstEmmInfo->enDaylightSavingTime),
                                            &(pstTmpRcvMsg->enDaylightSavingTime),
                                            sizeof(NAS_LMM_DAYLIGHT_SAVE_TIME_ENUM_UINT8));
+        ucCount++;
     }
-
-    NAS_EMM_SendMmcEmmInfoInd(pstEmmInfo);
-
+    if(0 != ucCount)
+    {
+        NAS_EMM_SendMmcEmmInfoInd(pstEmmInfo);
+    }
     return NAS_LMM_MSG_HANDLED;
 }
 /*lint +e826 */
@@ -511,6 +520,10 @@ VOS_UINT32  NAS_EMM_PreProcMsgCsSerNotification
                 /* 发送EXTENDED SERVICE REQ消息，通知网侧CSFB不能发起 */
                 NAS_EMM_SER_SendMrrcDataReq_ExtendedServiceReq();
                 break;
+
+        case    NAS_LMM_PUB_COMP_EMMSTATE(EMM_MS_REG_INIT,EMM_SS_ATTACH_WAIT_RRC_DATA_CNF):
+
+                return NAS_LMM_STORE_LOW_PRIO_MSG;
 
         default :
 
@@ -650,6 +663,11 @@ VOS_UINT32  NAS_LMM_PreProcMmcDisableReq( MsgBlock  *pMsg )
     NAS_EMM_SetEpsContextStatusChange(NAS_EMM_EPS_BEARER_STATUS_NOCHANGE);
     NAS_LMM_SetEmmInfoTriggerTauSysChange(NAS_EMM_NO);
 
+    /* 清除VOICE DOMAIN发生变化的标识 */
+    NAS_EMM_SetVoiceDomainChange(NAS_EMM_NO);
+    NAS_LMM_SetEmmInfoLaiChangeFlag(VOS_FALSE);
+    NAS_LMM_SetEmmInfoCsEmcConneExitFlag(VOS_FALSE);
+    /* 清除异系统变换触发和类型记录信息 */
     /* 清除异系统变换触发和类型记录信息 */
     NAS_EMM_ClearResumeInfo();
 
@@ -670,6 +688,20 @@ VOS_UINT32  NAS_LMM_PreProcMmcDisableReq( MsgBlock  *pMsg )
     }
 
     NAS_EMM_ClrAllUlDataReqBufferMsg();
+
+
+    /*参考协议24301，5.5.3.3.4.2，  5.5.3.3.4.3，
+      5.5.1.3.4.2，当前设置位语音中心&IMS不可用， 如果
+      TAU 5次都是eps only成功，此时会disable LTE，此时
+      需要停止定时器3402，否则回到L的时候不会立即发起TAU
+    */
+    /*NAS_LMM_StopPtlTimer(TI_NAS_EMM_PTL_T3402);*/
+    /* 如果之前TAU或ATTACH结果为EPS ONLY且原因值为16/17/22，并且UE操作模式为CSPS1，
+    而启动的3402定时器，则需要将该定时器停掉 */
+    if (VOS_TRUE == NAS_LMM_IsNeedStop3402Timer())
+    {
+        NAS_LMM_StopPtlTimer(TI_NAS_EMM_PTL_T3402);
+    }
 
     return NAS_LMM_MSG_HANDLED;
 }
@@ -858,6 +890,10 @@ VOS_UINT32  NAS_EMM_PreProcMsgT3412Exp(MsgBlock *          pMsg )
 
     /*向MMC发送本地LMM_MMC_DETACH_IND消息*/
     NAS_EMM_MmcSendDetIndLocal( MMC_LMM_L_LOCAL_DETACH_OTHERS);
+
+    #if (FEATURE_PTM == FEATURE_ON)
+    NAS_EMM_LocalDetachErrRecord(EMM_ERR_LOG_LOCAL_DETACH_TYPE_OTHER);
+    #endif
 
     return NAS_LMM_MSG_HANDLED;
 }

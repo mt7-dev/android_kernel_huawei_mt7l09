@@ -10,6 +10,10 @@
 
 #include "helper.h"
 
+#ifdef CONFIG_ARCH_HI6XXX
+#include <linux/hisi/pm/pwrctrl_multi_memcfg.h>
+#endif
+
 enum pasr_state {
 	PASR_REFRESH,
 	PASR_NO_REFRESH,
@@ -26,19 +30,23 @@ void pasr_update_mask(struct pasr_section *section, enum pasr_state state)
 	struct pasr_die *die = section->die;
 	phys_addr_t addr = section->start - die->start;
 	u8 bit = addr / die->section_size;
-
+    unsigned int old_mem_reg = die->mem_reg;
+    //printk(KERN_ERR"%s:%d: rank: %d; section->start:0x%x; section->size:0x%x state: %s;\n", __func__, __LINE__, die->cookie, section->start, die->section_size, state == PASR_REFRESH ? "PASR_REFRESH":"PASR_NO_REFRESH");
 	if (state == PASR_REFRESH)
-		die->mem_reg &= ~(1 << bit);
+		die->mem_reg &= ~(1 << bit);    /* need refresh */
 	else
-		die->mem_reg |= (1 << bit);
+		die->mem_reg |= (1 << bit);     /* no need refresh, that means we can throw away the data of this segment */
 
+    //printk(KERN_ERR"die: 0x%x; die->mem_reg: 0x%x -> 0x%x\n", die, old_mem_reg, die->mem_reg);
 	//pr_debug("%s(): %s refresh section 0x%08x. Die%d mem_reg = 0x%08x\n"
 			//, __func__, state == PASR_REFRESH ? "Start" : "Stop"
 			//, section->start, die->idx, die->mem_reg);
 	//pr_debug("%s(): bit = %d\n", __func__, bit);
-
 	if (die->apply_mask)
+    {
+        //printk(KERN_ERR"%s:%d: now apply_mask, %d, %d\n", __func__, __LINE__, die->mem_reg, die->cookie);
 		die->apply_mask(&die->mem_reg, die->cookie);
+    }
 
 	return;
 }
@@ -50,13 +58,13 @@ void pasr_put(phys_addr_t paddr, unsigned long size)
 	unsigned long flags = 0;
 
 	if (!pasr.map) {
-		WARN_ONCE(1, KERN_INFO"%s(): Map not initialized.\n"
+		/*WARN_ONCE(1, KERN_INFO"%s(): Map not initialized.\n"
 			"\tCommand line parameters missing or incorrect\n"
-			, __func__);
+			, __func__);*/
 		goto out;
 	}
 
-	//pr_debug("%s: paddr=0x%08x, size=0x%08lx\n", __func__, paddr, size);
+	//pr_err("%s: paddr=0x%08x, size=0x%08lx\n", __func__, paddr, size);
 
 	do {
 		s = pasr_addr2section(pasr.map, paddr);
@@ -100,9 +108,9 @@ void pasr_get(phys_addr_t paddr, unsigned long size)
 	struct pasr_section *s;
 
 	if (!pasr.map) {
-		WARN_ONCE(1, KERN_INFO"%s(): Map not initialized.\n"
+		/*WARN_ONCE(1, KERN_INFO"%s(): Map not initialized.\n"
 			"\tCommand line parameters missing or incorrect\n"
-			, __func__);
+			, __func__);*/
 		return;
 	}
 
@@ -159,7 +167,8 @@ int pasr_register_mask_function(phys_addr_t addr, void *function, void *cookie)
 
 	die->cookie = cookie;
 	die->apply_mask = function;
-
+    printk(KERN_ERR"%s:%d: die: 0x%x; addr: 0x%x; die->cookie: %d; die->mem_reg: 0x%x\n", 
+            __func__, __LINE__, die, addr, die->cookie, die->mem_reg);
 	die->apply_mask(&die->mem_reg, die->cookie);
 
 	return 0;

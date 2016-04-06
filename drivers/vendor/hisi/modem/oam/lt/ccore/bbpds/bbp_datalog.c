@@ -649,7 +649,7 @@ VOS_BOOL bbp_AgentGetSleepFlag(VOS_VOID)
 VOS_UINT32 bbp_DataLogInitGlobal( VOS_VOID )
 {
     VOS_UINT32 ret = ERR_MSP_SUCCESS;
-	ret = VOS_SmBCreate( "BBP_DATA_SAMPLE", 0, VOS_SEMA4_FIFO, (VOS_UINT32*)&g_ulDataSampleIndSem);
+	ret = VOS_SmBCreate( "BBP_DATA_SAMPLE", 0, VOS_SEMA4_FIFO, &g_ulDataSampleIndSem);
     return ret;
 }
 

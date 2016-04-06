@@ -714,6 +714,10 @@ static void *iface_stat_fmt_proc_start(struct seq_file *m, loff_t *pos)
 	 * This lock will prevent iface_stat_update() from changing active,
 	 * and in turn prevent an interface from unregistering itself.
 	 */
+#ifdef CONFIG_HUAWEI_BASTET
+	bastet_wait_traffic_flow();
+#endif
+
 	spin_lock_bh(&iface_stat_list_lock);
 
 	if (unlikely(module_passive))
@@ -1373,6 +1377,49 @@ unlock:
 	spin_unlock_bh(&iface_entry->tag_stat_list_lock);
 }
 
+#ifdef CONFIG_HUAWEI_BASTET
+void bastet_update_if_tag_stat(const char *ifname, uid_t uid,
+					const struct sock *sk, enum ifs_tx_rx direction,
+					int proto, int bytes)
+{
+	if (NULL == ifname) {
+		pr_err("bastet_update_if_tag_stat ifname error\n");
+		return;
+	}
+
+	if_tag_stat_update(ifname, uid, sk, direction, proto, bytes);
+}
+
+int bastet_update_total_bytes(const char *dev_name, int proto,
+				unsigned long tx_bytes, unsigned long rx_bytes)
+{
+	int cnt_set = 0;
+	struct data_counters *cnts = NULL;
+	struct iface_stat *entry = NULL;
+
+	spin_lock_bh(&iface_stat_list_lock);
+	entry = get_iface_entry(dev_name);
+	if (entry == NULL) {
+		spin_unlock_bh(&iface_stat_list_lock);
+		return -EINVAL;
+	}
+
+	cnts = &entry->totals_via_skb;
+	cnts->bpc[cnt_set][IFS_TX][proto].bytes += tx_bytes;
+	cnts->bpc[cnt_set][IFS_RX][proto].bytes += rx_bytes;
+
+	entry->totals_via_dev[IFS_TX].bytes += tx_bytes;
+	entry->totals_via_dev[IFS_RX].bytes += rx_bytes;
+
+	entry->last_known[IFS_TX].bytes += tx_bytes;
+	entry->last_known[IFS_RX].bytes += rx_bytes;
+
+	spin_unlock_bh(&iface_stat_list_lock);
+
+	return 0;
+}
+#endif
+
 static int iface_netdev_event_handler(struct notifier_block *nb,
 				      unsigned long event, void *ptr) {
 	struct net_device *dev = ptr;
@@ -1488,7 +1535,7 @@ static int proc_iface_stat_fmt_open(struct inode *inode, struct file *file)
 	if (!s)
 		return -ENOMEM;
 
-	s->fmt = (long)PDE_DATA(inode);
+	s->fmt = (uintptr_t)PDE_DATA(inode);
 	return 0;
 }
 
@@ -1658,6 +1705,7 @@ static bool qtaguid_mt(const struct sk_buff *skb, struct xt_action_param *par)
 	struct sock *sk;
 	uid_t sock_uid;
 	bool res;
+	bool set_sk_callback_lock = false;
 
 	if (unlikely(module_passive))
 		return (info->match ^ info->invert) == 0;
@@ -1715,6 +1763,8 @@ static bool qtaguid_mt(const struct sk_buff *skb, struct xt_action_param *par)
 	MT_DEBUG("qtaguid[%d]: sk=%p got_sock=%d fam=%d proto=%d\n",
 		 par->hooknum, sk, got_sock, par->family, ipx_proto(skb, par));
 	if (sk != NULL) {
+		set_sk_callback_lock = true;
+		read_lock_bh(&sk->sk_callback_lock);
 		MT_DEBUG("qtaguid[%d]: sk=%p->sk_socket=%p->file=%p\n",
 			par->hooknum, sk, sk->sk_socket,
 			sk->sk_socket ? sk->sk_socket->file : (void *)-1LL);
@@ -1794,6 +1844,8 @@ static bool qtaguid_mt(const struct sk_buff *skb, struct xt_action_param *par)
 put_sock_ret_res:
 	if (got_sock)
 		xt_socket_put_sk(sk);
+	if (set_sk_callback_lock)
+		read_unlock_bh(&sk->sk_callback_lock);
 ret_res:
 	MT_DEBUG("qtaguid[%d]: left %d\n", par->hooknum, res);
 	return res;
@@ -1950,18 +2002,18 @@ static int qtaguid_ctrl_proc_show(struct seq_file *m, void *v)
 			   "match_found_no_sk_in_ct=%llu "
 			   "match_no_sk=%llu "
 			   "match_no_sk_file=%llu\n",
-			   atomic64_read(&qtu_events.sockets_tagged),
-			   atomic64_read(&qtu_events.sockets_untagged),
-			   atomic64_read(&qtu_events.counter_set_changes),
-			   atomic64_read(&qtu_events.delete_cmds),
-			   atomic64_read(&qtu_events.iface_events),
-			   atomic64_read(&qtu_events.match_calls),
-			   atomic64_read(&qtu_events.match_calls_prepost),
-			   atomic64_read(&qtu_events.match_found_sk),
-			   atomic64_read(&qtu_events.match_found_sk_in_ct),
-			   atomic64_read(&qtu_events.match_found_no_sk_in_ct),
-			   atomic64_read(&qtu_events.match_no_sk),
-			   atomic64_read(&qtu_events.match_no_sk_file));
+			   (u64)atomic64_read(&qtu_events.sockets_tagged),
+			   (u64)atomic64_read(&qtu_events.sockets_untagged),
+			   (u64)atomic64_read(&qtu_events.counter_set_changes),
+			   (u64)atomic64_read(&qtu_events.delete_cmds),
+			   (u64)atomic64_read(&qtu_events.iface_events),
+			   (u64)atomic64_read(&qtu_events.match_calls),
+			   (u64)atomic64_read(&qtu_events.match_calls_prepost),
+			   (u64)atomic64_read(&qtu_events.match_found_sk),
+			   (u64)atomic64_read(&qtu_events.match_found_sk_in_ct),
+			   (u64)atomic64_read(&qtu_events.match_found_no_sk_in_ct),
+			   (u64)atomic64_read(&qtu_events.match_no_sk),
+			   (u64)atomic64_read(&qtu_events.match_no_sk_file));
 
 		/* Count the following as part of the last item_index */
 		prdebug_full_state(0, "proc ctrl");
@@ -2440,10 +2492,10 @@ err:
 	return res;
 }
 
-static int qtaguid_ctrl_parse(const char *input, int count)
+static ssize_t qtaguid_ctrl_parse(const char *input, size_t count)
 {
 	char cmd;
-	int res;
+	ssize_t res;
 
 	CT_DEBUG("qtaguid: ctrl(%s): pid=%u tgid=%u uid=%u\n",
 		 input, current->pid, current->tgid, current_fsuid());
@@ -2474,7 +2526,7 @@ static int qtaguid_ctrl_parse(const char *input, int count)
 	if (!res)
 		res = count;
 err:
-	CT_DEBUG("qtaguid: ctrl(%s): res=%d\n", input, res);
+	CT_DEBUG("qtaguid: ctrl(%s): res=%zd\n", input, res);
 	return res;
 }
 
@@ -2648,6 +2700,10 @@ static void *qtaguid_stats_proc_start(struct seq_file *m, loff_t *pos)
 {
 	struct proc_print_info *ppi = m->private;
 	struct tag_stat *ts_entry = NULL;
+
+#ifdef CONFIG_HUAWEI_BASTET
+	bastet_wait_traffic_flow();
+#endif
 
 	spin_lock_bh(&iface_stat_list_lock);
 

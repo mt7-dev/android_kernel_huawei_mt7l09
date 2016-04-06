@@ -1091,7 +1091,7 @@ static int savagefb_decode_var(struct fb_var_screeninfo   *var,
 	} else {
 		common_calc_clock(par->MCLK, 1, 1, 31, 0, 3, 135000, 270000,
 				   &reg->SR11, &reg->SR10);
-		/*      reg->SR10 = 80; // MCLK == 286000 */
+		/*      reg->SR10 = 80;
 		/*      reg->SR11 = 125; */
 	}
 

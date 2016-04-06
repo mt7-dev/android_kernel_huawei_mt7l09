@@ -217,7 +217,7 @@ VOS_VOID HPA_2GFrameClockIsr(MODEM_ID_ENUM_UINT16 enModemID)
     {
         return;
     }
-
+/*
     if (PWRCTRL_COMM_OFF == DRV_PWRCTRL_PWRSTATUSGET((PWC_COMM_MODE_E)VOS_RATMODE_GSM, PWC_COMM_MODULE_BBP_DRX, (PWC_COMM_MODEM_E)enModemID))
     {
         VOS_ProtectionReboot(DRX_REPORT_BBP_POWERDOWN_ERROR, PS_FILE_ID_HPA_ISR_C, __LINE__,
@@ -225,6 +225,10 @@ VOS_VOID HPA_2GFrameClockIsr(MODEM_ID_ENUM_UINT16 enModemID)
 
         return;
     }
+*/
+    /*lint -e662 -e661*/
+    DRV_VICINT_DISABLE(g_aulGBBPIntNO[enModemID]);
+    /*lint +e662 +e661*/
 
 #if defined (CHIP_BB_6620CS)
     if (MODEM_ID_0 == enModemID)
@@ -315,10 +319,6 @@ VOS_VOID HPA_2GFrameClockIsr(MODEM_ID_ENUM_UINT16 enModemID)
             ;
         }
     }
-
-    /*lint -e662 -e661*/
-    DRV_VICINT_DISABLE(g_aulGBBPIntNO[enModemID]);
-    /*lint +e662 +e661*/
 
     if( 0 != ( OAM_GBBP_FRAME_INT_BIT & ulBbpStatus ) )
     {

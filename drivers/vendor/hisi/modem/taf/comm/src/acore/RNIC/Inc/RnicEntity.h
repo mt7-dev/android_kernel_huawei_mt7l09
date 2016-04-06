@@ -102,6 +102,9 @@ enum RNIC_RESULT_TYPE_ENUM
 
     RNIC_ADDR_INVALID   = 22,                                                   /* 无法分配地址 */
     RNIC_OUT_RANGE      = 23,                                                   /* 不在有效范围内 */
+    RNIC_PKT_TYPE_INVAL = 24,                                                   /* 无效ip类型 */
+    RNIC_ADDMAC_FAIL    = 25,                                                   /* 添加mac头失败 */
+    RNIC_RX_PKT_FAIL    = 26,                                                   /* 调用内核接口接收数据失败 */
     RNIC_ERROR          = 0xff,                                                 /* RNIC返回失败 */
     RNIC_BUTT
 };
@@ -129,26 +132,28 @@ typedef VOS_INT32 RNIC_RESULT_TYPE_ENUM_INT32;
 
 typedef struct
 {
-    VOS_UINT8                 ucEtherDhost[RNIC_ETHER_ADDR_LEN];                  /* destination ethernet address */
-    VOS_UINT8                 ucEtherShost[RNIC_ETHER_ADDR_LEN];                  /* source ethernet address */
-    VOS_UINT16                usEtherType;                                       /* packet type ID */
+    VOS_UINT8                           ucEtherDhost[RNIC_ETHER_ADDR_LEN];      /* destination ethernet address */
+    VOS_UINT8                           ucEtherShost[RNIC_ETHER_ADDR_LEN];      /* source ethernet address */
+    VOS_UINT16                          usEtherType;                            /* packet type ID */
+    VOS_UINT8                           aucReserved[2];
 }RNIC_ETH_HEADER_STRU;
 typedef struct
 {
-    RNIC_RM_NET_ID_ENUM_UINT8           enRmNetId;                              /* 网卡ID */
-    MODEM_ID_ENUM_UINT16                enModemId;                              /* Modem Id */
-    VOS_CHAR                           *pucRnicNetCardName;                     /* 网卡名称 */
+    const VOS_CHAR                     *pucRnicNetCardName;                     /* 网卡名称 */
     RNIC_ETH_HEADER_STRU                stIpv4Ethhead;                          /* IPV4以太网头 */
     RNIC_ETH_HEADER_STRU                stIpv6Ethhead;                          /* IPV6以太网头 */
+    MODEM_ID_ENUM_UINT16                enModemId;                              /* Modem Id */
+    RNIC_RM_NET_ID_ENUM_UINT8           enRmNetId;                              /* 网卡ID */
+    VOS_UINT8                           aucReserved[5];
 }RNIC_NETCARD_ELEMENT_TAB_STRU;
 typedef struct
 {
     struct net_device_stats             stStats;                                /* Linxu内核标准的网卡统计信息结构 */
-    struct net_device                  *pstNetDev;                            /* 用于记录Linux内核分配的网卡虚地址 */
+    struct net_device                  *pstNetDev;                              /* 用于记录Linux内核分配的网卡虚地址 */
+    VOS_CHAR                           *pcDevName;                              /* 用于记录Linux内核分配的网卡名称 */
     RNIC_NETCARD_STATUS_ENUM_UINT8      enStatus;                               /* 网卡是否打开标志 */
     RNIC_RM_NET_ID_ENUM_UINT8           enRmNetId;                              /* 设备对应的网卡ID */
-    VOS_UINT8                           aucRsv[2];                              /* 保留 */
-    VOS_CHAR                           *pcDevName;                              /* 用于记录Linux内核分配的网卡名称 */
+    VOS_UINT8                           aucRsv[6];                              /* 保留 */
 }RNIC_NETCARD_DEV_INFO_STRU;
 
 /*****************************************************************************

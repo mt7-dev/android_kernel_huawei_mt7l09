@@ -146,6 +146,18 @@ VOS_UINT8 NAS_Gmm_FillPtmsiSignatureIeForSnd(
     VOS_UINT8                          *pucAddr
 );
 
+VOS_VOID GMM_Fill_IE_ClassMark2(
+    VOS_UINT8                          *pClassMark2                             /* 填写ClassMark2 IE的首地址   */
+);
+VOS_UINT8 GMM_Fill_IE_FDD_ClassMark3(
+    VOS_UINT8                          *pClassMark3                             /* 填写ClassMark3 IE的首地址   */
+);
+VOS_UINT8 GMM_Fill_IE_TDD_ClassMark3(
+    VOS_UINT8                          *pClassMark3                             /* 填写ClassMark3 IE的首地址   */
+);
+VOS_UINT8  GMM_CALL_FillIeSupCodecList(
+    VOS_UINT8                          *pstCodecList                            /* 填写support codec IE的首地址   */
+);
 
 extern VOS_VOID NAS_GMM_SndAttachReq(VOS_VOID);
 
@@ -272,7 +284,7 @@ extern VOS_VOID  Gmm_RcvAgentUsimAuthenticationCnf(VOS_VOID *);
 
 /* Modified by wjf for USIM-Interface-Change 20050202 begin */
 /* extern VOS_VOID  Gmm_Com_RcvAgentUsimAuthenticationCnf(AGENT_USIM_AUTHENTICATION_CNF_STRU *); */
-extern VOS_VOID  Gmm_Com_RcvAgentUsimAuthenticationCnf(USIMM_AUTH_CNF_STRU *); 
+extern VOS_VOID  Gmm_Com_RcvAgentUsimAuthenticationCnf(USIMM_AUTH_CNF_STRU *);
 /* Modified by wjf for USIM-Interface-Change 20050202 end   */
 
 extern VOS_VOID  Gmm_RcvPtmsiReallocationCommandMsg(NAS_MSG_FOR_PCLINT_STRU *);
@@ -662,6 +674,9 @@ extern VOS_VOID Gmm_RcvRrmmSecurityInd_SuspendWaitSysinfo(
     RRMM_SECURITY_IND_STRU              *pStSecurityInd
 );
 
+VOS_VOID NAS_GMM_RcvRabmRabSetupInd(
+    GMMRABM_RAB_SETUP_IND_STRU         *pstRabSetupIndMsg
+);
 extern VOS_VOID  Gmm_RcvServiceAcceptMsg(NAS_MSG_FOR_PCLINT_STRU *);
 extern VOS_VOID  Gmm_RcvServiceRejectMsg(NAS_MSG_FOR_PCLINT_STRU *);
 extern VOS_VOID  Gmm_ServiceReqRejectCasue3(VOS_UINT8);
@@ -1345,6 +1360,37 @@ VOS_VOID NAS_Gmm_ClearPendingPdpStatus(VOS_VOID);
 VOS_VOID  NAS_GMM_ClearAuthInfo(VOS_VOID);
 
 VOS_VOID  NAS_GMM_SndWasInfoChangeReq(VOS_UINT32 ulMask);
+
+VOS_UINT32  NAS_GMM_IsNeedProcRelInd(
+    RRMM_REL_IND_STRU       *pstRrRelInd
+);
+
+#if (FEATURE_ON == FEATURE_PTM)
+VOS_VOID NAS_GMM_NwDetachIndRecord(
+    VOS_UINT8                           ucDetachType,
+    VOS_UINT8                           ucGmmCause,
+    VOS_UINT8                           ucForceToStandby
+);
+#endif
+
+extern VOS_UINT8 NAS_GMM_IsEnableRelPsSigCon(VOS_VOID);
+extern VOS_UINT32 NAS_GMM_GetRelPsSigConCfg_T3340TimerLen(VOS_VOID);
+VOS_VOID NAS_GMM_RcvMmcResumeInd_Handover(
+    MMCGMM_RESUME_IND_ST               *pstResumeIndMsg
+);
+VOS_VOID NAS_GMM_TimerHoWaitSysinfoExpired(VOS_VOID);
+
+VOS_VOID  NAS_GMM_RcvMmcVoiceDomainChangeNotify(
+    struct MsgCB                       *pRcvMsg
+);
+VOS_VOID NAS_GMM_TimerDelayVoiceDomainTrigRauExpired(VOS_VOID);
+VOS_UINT32 NAS_GMM_IsUeInfoChangeTriggerRau(VOS_VOID);
+
+
+
+VOS_VOID  NAS_GMM_LogAutnLenInfo(
+    VOS_UINT8                           ucLen
+);
 
 #ifdef __cplusplus
 #if __cplusplus

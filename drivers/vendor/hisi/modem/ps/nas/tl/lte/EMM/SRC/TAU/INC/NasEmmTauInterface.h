@@ -47,7 +47,7 @@ enum    NAS_EMM_TAU_START_CAUSE_ENUM
     /* lihong00150010 emergency tau&service begin */
     NAS_EMM_TAU_START_CAUSE_ESM_EMC_PDN_REQ         ,
     /* lihong00150010 emergency tau&service end */
-
+    NAS_EMM_TAU_START_CAUSE_VOICE_DOMAIN_CHANGE     ,
     NAS_EMM_TAU_START_CAUSE_BUTT
 };
 typedef VOS_UINT8   NAS_EMM_TAU_START_CAUSE_ENUM_UINT8;
@@ -338,6 +338,10 @@ extern VOS_VOID  NAS_EMM_MmcSendTauActionResultIndOthertype
     const VOS_VOID  *pvTauRslt
 );
 extern VOS_VOID  NAS_EMM_MsRegSsNmlSrvProcMsgRrcRelInd( VOS_UINT32 ulCause );
+extern VOS_VOID  NAS_EMM_MsRegSsRegAttemptUpdateMmProcMsgRrcRelInd
+(
+    VOS_UINT32                          ulCause
+);
 
 extern VOS_VOID   NAS_EMM_TAU_IsUplinkPending( VOS_VOID );
 extern VOS_VOID    NAS_EMM_RegBarCommProc( VOS_VOID );

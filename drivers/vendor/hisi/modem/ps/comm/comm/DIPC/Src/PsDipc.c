@@ -6,16 +6,18 @@ extern "C" {
 #endif
 #endif
 
-/*****************************************************************************
-  1 头文件包含
-*****************************************************************************/
-#include    "PsTypeDef.h"
-#include    "PsDipc.h"
-#include    "PsCommonDef.h"
-
 /*lint -e767*/
 #define    THIS_FILE_ID        PS_FILE_ID_PSDIPC_C
 /*lint +e767*/
+
+/*****************************************************************************
+  1 头文件包含
+*****************************************************************************/
+#include "product_config.h"
+#if (FEATURE_ON == FEATURE_AT_HSIC)
+#include    "PsTypeDef.h"
+#include    "PsDipc.h"
+#include    "PsCommonDef.h"
 
 /*****************************************************************************
   2 全局变量定义
@@ -170,7 +172,7 @@ VOS_VOID DIPC_ClearDataQ(VOS_VOID)
     }
 
     return;
-} 
+}
 
 
 VOS_UINT32  DIPC_EnqueueData(IMM_ZC_STRU *pstImmZc)
@@ -202,7 +204,7 @@ VOS_UINT32  DIPC_EnqueueData(IMM_ZC_STRU *pstImmZc)
             /* 发送消息通知失败，需要清空整个队列 */
             DIPC_ClearDataQ();
             DIPC_PrintLog(PS_PID_APP_DIPC, 0, PS_PRINT_WARNING,
-                "DIPC, DIPC_EnqueueData, WARNING, DIPC_Snd1stDataNotify fail!\r\n");            
+                "DIPC, DIPC_EnqueueData, WARNING, DIPC_Snd1stDataNotify fail!\r\n");
             return PS_FAIL;
        }
     }
@@ -215,7 +217,7 @@ VOS_UINT32  DIPC_EnqueueData(IMM_ZC_STRU *pstImmZc)
 
 VOS_VOID DIPC_DEV_HsicAcmFreeDlDataCB(IMM_ZC_STRU *pstBuf)
 {
-    IMM_ZcFree(pstBuf);    
+    IMM_ZcFree(pstBuf);
     return;
 }
 
@@ -224,9 +226,9 @@ VOS_VOID DIPC_DEV_HsicAcmFreeDlDataCB(IMM_ZC_STRU *pstBuf)
 VOS_UINT32 DIPC_DEV_AcmOpenDevice(DEV_INFO_STRU *pstDevInfo)
 {
     UDI_OPEN_PARAM                      stParam;
-    
+
     stParam.devid   = pstDevInfo->enUdiDevId;
-    pstDevInfo->slUdiHsicHdl = DRV_UDI_OPEN(&stParam);    
+    pstDevInfo->slUdiHsicHdl = DRV_UDI_OPEN(&stParam);
 
     if (UDI_INVALID_HANDLE == pstDevInfo->slUdiHsicHdl)
     {
@@ -259,9 +261,9 @@ VOS_UINT32 DIPC_DEV_AcmOpenDevice(DEV_INFO_STRU *pstDevInfo)
 VOS_UINT32 DIPC_DEV_NcmOpenDevice(DEV_INFO_STRU *pstDevInfo)
 {
     UDI_OPEN_PARAM                      stParam;
-    
+
     stParam.devid   = pstDevInfo->enUdiDevId;
-    pstDevInfo->slUdiHsicHdl = DRV_UDI_OPEN(&stParam);    
+    pstDevInfo->slUdiHsicHdl = DRV_UDI_OPEN(&stParam);
 
     if (UDI_INVALID_HANDLE == pstDevInfo->slUdiHsicHdl)
     {
@@ -276,15 +278,21 @@ VOS_UINT32 DIPC_DEV_NcmOpenDevice(DEV_INFO_STRU *pstDevInfo)
         DIPC_PrintLog(PS_PID_APP_DIPC, 0, PS_PRINT_ERROR,"DIPC_DEV_NcmOpenDevice, regist RxFunc fail!");
         return PS_FAIL;
     }
-    
+
     return PS_SUCC;
 }
 VOS_UINT32 DIPC_DEV_AcmGetUlDataBuf(UDI_HANDLE slUdiHsicAcmHdl, IMM_ZC_STRU **ppstBuf)
 {
     ACM_WR_ASYNC_INFO                   stCtlParam;
     VOS_INT32                           lResult;
+    VOS_CHAR *                          pucBuffAddr;
 
-    stCtlParam.pBuffer  = VOS_NULL_PTR;
+    #ifndef FEATURE_USB_ZERO_COPY
+    pucBuffAddr = stCtlParam.pBuffer  = VOS_NULL_PTR;
+	#else
+	pucBuffAddr = stCtlParam.pVirAddr = VOS_NULL_PTR;
+    stCtlParam.pPhyAddr = VOS_NULL_PTR;
+	#endif
 
     /* 获取底软上行数据buffer */
     lResult= DRV_UDI_IOCTL(slUdiHsicAcmHdl, ACM_IOCTL_GET_RD_BUFF, &stCtlParam);
@@ -296,31 +304,31 @@ VOS_UINT32 DIPC_DEV_AcmGetUlDataBuf(UDI_HANDLE slUdiHsicAcmHdl, IMM_ZC_STRU **pp
         return PS_FAIL;
     }
 
-    if (VOS_NULL_PTR == stCtlParam.pBuffer)
+    if (VOS_NULL_PTR == pucBuffAddr)
     {
         DIPC_PrintLog(PS_PID_APP_DIPC, 0, PS_PRINT_WARNING,
             "DIPC, DIPC_DEV_AcmGetUlDataBuf, WARNING, Data buffer is NULL!\r\n");
         return PS_FAIL;
     }
 
-    *ppstBuf = (IMM_ZC_STRU *)stCtlParam.pBuffer;
-    
+    *ppstBuf = (IMM_ZC_STRU *)pucBuffAddr;
+
     return PS_SUCC;
 }
 VOS_UINT32 DIPC_DEV_UsbAcmReadUlData(DIPC_DEV_ID_ENUM_UINT32 enDeviceId)
 {
     UDI_HANDLE                          slUdiHandle;
     IMM_ZC_STRU                        *pstBuf;
-    
-    slUdiHandle = DIPC_DRV_GetDevHandleByDevId(enDeviceId);    
+
+    slUdiHandle = DIPC_DRV_GetDevHandleByDevId(enDeviceId);
     if (UDI_INVALID_HANDLE == slUdiHandle)
     {
         g_stDipcStaticInfo.astDipcDevStaticInfo[enDeviceId].ulGetDataFailNums++;
         DIPC_PrintLog1(PS_PID_APP_DIPC, 0, PS_PRINT_WARNING,
-            "DIPC, DIPC_DEV_UsbAcmReadUlData, can not get the slUdiHandle,ulDeviceId <1>", 
+            "DIPC, DIPC_DEV_UsbAcmReadUlData, can not get the slUdiHandle,ulDeviceId <1>",
             (VOS_INT32)enDeviceId);
         return PS_FAIL;
-    }   
+    }
 
     /* 底软现有接口，如果不取出数据会影响下一个数据的接收 */
     if (PS_SUCC != DIPC_DEV_AcmGetUlDataBuf(slUdiHandle, &pstBuf))
@@ -333,7 +341,7 @@ VOS_UINT32 DIPC_DEV_UsbAcmReadUlData(DIPC_DEV_ID_ENUM_UINT32 enDeviceId)
 
     g_stDipcStaticInfo.astDipcDevStaticInfo[enDeviceId].ulSuccGetUlPacketNums++;
 
-    return DIPC_DEV_UlDataProc(enDeviceId, pstBuf);    
+    return DIPC_DEV_UlDataProc(enDeviceId, pstBuf);
 }
 VOS_UINT32 DIPC_DEV_UsbAcm1ReadUlData( VOS_VOID)
 {
@@ -366,7 +374,12 @@ VOS_UINT32 DIPC_DEV_UsbAcmWriteData(UDI_HANDLE slUdiHandle, IMM_ZC_STRU *pstBuf)
 
 
     /* 待写入数据内存地址 */
+    #ifndef FEATURE_USB_ZERO_COPY
     stCtlParam.pBuffer                  = (VOS_CHAR*)pstBuf;
+    #else
+    stCtlParam.pVirAddr                 = (VOS_CHAR*)pstBuf;
+    stCtlParam.pPhyAddr                 = VOS_NULL_PTR;
+    #endif
     stCtlParam.u32Size                  = 0;
     stCtlParam.pDrvPriv                 = VOS_NULL_PTR;
 
@@ -393,15 +406,15 @@ VOS_UINT32 DIPC_DEV_UsbNcm0ReadUlData(UDI_HANDLE ulhandle, VOS_VOID *pPktNode)
     IMM_ZC_STRU            *pstImmZcData = (IMM_ZC_STRU*)pPktNode;  /*ImmZc和sk_buff完全一致，直接强转*/
 
 
-    slUdiHandle = DIPC_DRV_GetDevHandleByDevId(DIPC_DEV_ID1);    
+    slUdiHandle = DIPC_DRV_GetDevHandleByDevId(DIPC_DEV_ID1);
     if (UDI_INVALID_HANDLE == slUdiHandle)
     {
         g_stDipcStaticInfo.astDipcDevStaticInfo[DIPC_DEV_ID1].ulGetDataFailNums++;
         DIPC_PrintLog(PS_PID_APP_DIPC, 0, PS_PRINT_WARNING,
             "DIPC, DIPC_UsbNcm0ReadUlData, can not get the slUdiHandle, DIPC_DEV_ID1.");
-        IMM_ZcFree(pstImmZcData);            
+        IMM_ZcFree(pstImmZcData);
         return PS_FAIL;
-    }   
+    }
 
     if (ulhandle != slUdiHandle)
     {
@@ -409,7 +422,7 @@ VOS_UINT32 DIPC_DEV_UsbNcm0ReadUlData(UDI_HANDLE ulhandle, VOS_VOID *pPktNode)
         DIPC_PrintLog2(PS_PID_APP_DIPC, 0, PS_PRINT_WARNING,
             "DIPC, DIPC_UsbNcm0ReadUlData, Drv Handle <1> is not same as DevID1 Handle <2>.",
             ulhandle, slUdiHandle);
-        IMM_ZcFree(pstImmZcData);                        
+        IMM_ZcFree(pstImmZcData);
         return PS_FAIL;
     }
 
@@ -424,15 +437,15 @@ VOS_UINT32 DIPC_DEV_UsbNcm1ReadUlData(UDI_HANDLE ulhandle, VOS_VOID *pPktNode)
     IMM_ZC_STRU            *pstImmZcData = (IMM_ZC_STRU*)pPktNode;  /*ImmZc和sk_buff完全一致，直接强转*/
 
 
-    slUdiHandle = DIPC_DRV_GetDevHandleByDevId(DIPC_DEV_ID2);    
+    slUdiHandle = DIPC_DRV_GetDevHandleByDevId(DIPC_DEV_ID2);
     if (UDI_INVALID_HANDLE == slUdiHandle)
     {
         g_stDipcStaticInfo.astDipcDevStaticInfo[DIPC_DEV_ID2].ulGetDataFailNums++;
         DIPC_PrintLog(PS_PID_APP_DIPC, 0, PS_PRINT_WARNING,
             "DIPC, DIPC_UsbNcm1ReadUlData, can not get the slUdiHandle, DIPC_DEV_ID2.");
-        IMM_ZcFree(pstImmZcData);            
+        IMM_ZcFree(pstImmZcData);
         return PS_FAIL;
-    }   
+    }
 
     if (ulhandle != slUdiHandle)
     {
@@ -440,7 +453,7 @@ VOS_UINT32 DIPC_DEV_UsbNcm1ReadUlData(UDI_HANDLE ulhandle, VOS_VOID *pPktNode)
         DIPC_PrintLog2(PS_PID_APP_DIPC, 0, PS_PRINT_WARNING,
             "DIPC, DIPC_UsbNcm1ReadUlData, Drv Handle <1> is not same as DevID2 Handle <2>.",
             ulhandle, slUdiHandle);
-        IMM_ZcFree(pstImmZcData);                        
+        IMM_ZcFree(pstImmZcData);
         return PS_FAIL;
     }
 
@@ -455,15 +468,15 @@ VOS_UINT32 DIPC_DEV_UsbNcm2ReadUlData(UDI_HANDLE ulhandle, VOS_VOID *pPktNode)
     IMM_ZC_STRU            *pstImmZcData = (IMM_ZC_STRU*)pPktNode;  /*ImmZc和sk_buff完全一致，直接强转*/
 
 
-    slUdiHandle = DIPC_DRV_GetDevHandleByDevId(DIPC_DEV_ID3);    
+    slUdiHandle = DIPC_DRV_GetDevHandleByDevId(DIPC_DEV_ID3);
     if (UDI_INVALID_HANDLE == slUdiHandle)
     {
         g_stDipcStaticInfo.astDipcDevStaticInfo[DIPC_DEV_ID3].ulGetDataFailNums++;
         DIPC_PrintLog(PS_PID_APP_DIPC, 0, PS_PRINT_WARNING,
             "DIPC, DIPC_UsbNcm2ReadUlData, can not get the slUdiHandle, DIPC_DEV_ID3.");
-        IMM_ZcFree(pstImmZcData);            
+        IMM_ZcFree(pstImmZcData);
         return PS_FAIL;
-    }   
+    }
 
     if (ulhandle != slUdiHandle)
     {
@@ -471,7 +484,7 @@ VOS_UINT32 DIPC_DEV_UsbNcm2ReadUlData(UDI_HANDLE ulhandle, VOS_VOID *pPktNode)
         DIPC_PrintLog2(PS_PID_APP_DIPC, 0, PS_PRINT_WARNING,
             "DIPC, DIPC_UsbNcm2ReadUlData, Drv Handle <1> is not same as DevID3 Handle <2>.",
             ulhandle, slUdiHandle);
-        IMM_ZcFree(pstImmZcData);                        
+        IMM_ZcFree(pstImmZcData);
         return PS_FAIL;
     }
 
@@ -495,7 +508,7 @@ VOS_UINT32 DIPC_DEV_UsbNcmWriteData(UDI_HANDLE slUdiHandle, IMM_ZC_STRU *pstBuf)
     {
         DIPC_PrintLog1(PS_PID_APP_DIPC, 0, PS_PRINT_WARNING,
             "DIPC_DEV_UsbNcmWriteData, Error, Write data failed with code <1>!",
-            ulResult);                       
+            ulResult);
         return PS_FAIL;
     }
 
@@ -514,7 +527,7 @@ VOS_UINT32 DIPC_DEV_UsbWriteData(DIPC_DEV_ID_ENUM_UINT32 enDipcDevId, IMM_ZC_STR
     {
         return PS_FAIL;
     }
-    
+
     return pstDevInfo->pTxFunc(pstDevInfo->slUdiHsicHdl, pstBuf);
 }
 
@@ -523,7 +536,7 @@ VOS_UINT32 DIPC_DEV_UsbWriteData(DIPC_DEV_ID_ENUM_UINT32 enDipcDevId, IMM_ZC_STR
 VOS_UINT32 DIPC_DEV_PortInit( VOS_VOID )
 {
     DIPC_DEV_ID_ENUM_UINT32         enDipcDevId;
-    DEV_INFO_STRU                  *pstDevInfo;   
+    DEV_INFO_STRU                  *pstDevInfo;
 
 
     /*  产品不支持HSIC特性，直接初始化成功 */
@@ -533,7 +546,7 @@ VOS_UINT32 DIPC_DEV_PortInit( VOS_VOID )
     }
 
     if (BSP_MODULE_SUPPORT == DRV_USB_HSIC_SUPPORT_NCM())
-    {   
+    {
         g_astDevInfo[DIPC_DEV_ID1].enUdiDevId           = UDI_NCM_HSIC_NCM0_ID;
         g_astDevInfo[DIPC_DEV_ID1].pRxFunc.pNcmRxFunc   = DIPC_DEV_UsbNcm0ReadUlData;
         g_astDevInfo[DIPC_DEV_ID1].pTxFunc              = DIPC_DEV_UsbNcmWriteData;
@@ -567,12 +580,12 @@ VOS_UINT32 DIPC_DEV_PortInit( VOS_VOID )
 
         g_astDevInfo[DIPC_DEV_ID2].enUdiDevId           = UDI_ACM_HSIC_ACM3_ID;
         g_astDevInfo[DIPC_DEV_ID2].pRxFunc.pAcmRxFunc   = DIPC_DEV_UsbAcm3ReadUlData;
-        g_astDevInfo[DIPC_DEV_ID2].pTxFunc              = DIPC_DEV_UsbAcmWriteData;        
+        g_astDevInfo[DIPC_DEV_ID2].pTxFunc              = DIPC_DEV_UsbAcmWriteData;
 
         g_astDevInfo[DIPC_DEV_ID3].enUdiDevId           = UDI_ACM_HSIC_ACM5_ID;
-        g_astDevInfo[DIPC_DEV_ID3].pRxFunc.pAcmRxFunc   = DIPC_DEV_UsbAcm5ReadUlData;   
-        g_astDevInfo[DIPC_DEV_ID3].pTxFunc              = DIPC_DEV_UsbAcmWriteData;        
-            
+        g_astDevInfo[DIPC_DEV_ID3].pRxFunc.pAcmRxFunc   = DIPC_DEV_UsbAcm5ReadUlData;
+        g_astDevInfo[DIPC_DEV_ID3].pTxFunc              = DIPC_DEV_UsbAcmWriteData;
+
         for(enDipcDevId = 0; enDipcDevId < DIPC_DEV_NUM; enDipcDevId++)
         {
             pstDevInfo = &g_astDevInfo[enDipcDevId];
@@ -594,7 +607,7 @@ VOS_VOID DIPC_DEV_AddNewIpTypeService(DIPC_DEV_ID_ENUM_UINT32 enDevId,
 {
     DEV_SERVICE_INFO_STRU          *pstDevServiceInfo;
 
-    pstDevServiceInfo = &g_astDevService[enDevId];    
+    pstDevServiceInfo = &g_astDevService[enDevId];
 
     pstDevServiceInfo->apstServiceInfo[enDipcServiceType] = pstServiceInfo;
     DIPC_SET_SERVICE_REG(pstDevServiceInfo->ulServiceMask, enDipcServiceType);
@@ -610,7 +623,7 @@ VOS_UINT32 DIPC_DEV_DelIpTypeService(DIPC_DEV_ID_ENUM_UINT32 enDevId,
 {
     DEV_SERVICE_INFO_STRU          *pstDevServiceInfo;
 
-    pstDevServiceInfo = &g_astDevService[enDevId];    
+    pstDevServiceInfo = &g_astDevService[enDevId];
     pstDevServiceInfo->apstServiceInfo[enDipcServiceType] = VOS_NULL_PTR;
     DIPC_CLR_SERVICE_REG(pstDevServiceInfo->ulServiceMask, enDipcServiceType);
     pstDevServiceInfo->ulServiceCnt--;
@@ -624,14 +637,14 @@ DIPC_DEV_ID_ENUM_UINT32 DIPC_DEV_GetDevIdByUdiId(UDI_DEVICE_ID enUdiDevId)
 {
     DIPC_DEV_ID_ENUM_UINT32             enDevId;
 
-    if ((UDI_ACM_HSIC_ACM1_ID != enUdiDevId) 
-        && (UDI_ACM_HSIC_ACM3_ID != enUdiDevId) 
+    if ((UDI_ACM_HSIC_ACM1_ID != enUdiDevId)
+        && (UDI_ACM_HSIC_ACM3_ID != enUdiDevId)
         && (UDI_ACM_HSIC_ACM5_ID != enUdiDevId)
         && (UDI_NCM_HSIC_NCM0_ID != enUdiDevId)
         && (UDI_NCM_HSIC_NCM1_ID != enUdiDevId)
-        && (UDI_NCM_HSIC_NCM2_ID != enUdiDevId))    
+        && (UDI_NCM_HSIC_NCM2_ID != enUdiDevId))
     {
-        return DIPC_DEV_BUTT;        
+        return DIPC_DEV_BUTT;
     }
 
     for (enDevId = DIPC_DEV_ID1; enDevId < DIPC_DEV_BUTT; enDevId++)
@@ -652,9 +665,9 @@ UDI_HANDLE DIPC_DRV_GetDevHandleByDevId(DIPC_DEV_ID_ENUM_UINT32 enDevId)
     if (DIPC_DEV_BUTT <= enDevId)
     {
         DIPC_PrintLog1(PS_PID_APP_DIPC, 0, PS_PRINT_WARNING,
-            "DIPC, DIPC_DRV_GetDevHandleByDevId, enDevId <1> exceed the range.\n", 
+            "DIPC, DIPC_DRV_GetDevHandleByDevId, enDevId <1> exceed the range.\n",
             (VOS_INT32)enDevId);
-        return INVALID_RABID_VALUE;        
+        return INVALID_RABID_VALUE;
     }
 
     return g_astDevInfo[enDevId].slUdiHsicHdl;
@@ -662,24 +675,24 @@ UDI_HANDLE DIPC_DRV_GetDevHandleByDevId(DIPC_DEV_ID_ENUM_UINT32 enDevId)
 
 
 VOS_UINT32 DIPC_DEV_CheckUdiDevIdPara(UDI_DEVICE_ID enUdiDevId)
-{    
+{
     if (BSP_MODULE_SUPPORT == DRV_USB_HSIC_SUPPORT_NCM())
     {
         if ((UDI_NCM_HSIC_NCM0_ID != enUdiDevId)
             && (UDI_NCM_HSIC_NCM1_ID != enUdiDevId)
             && (UDI_NCM_HSIC_NCM2_ID != enUdiDevId))
-        {        
-            return VOS_ERR;        
+        {
+            return VOS_ERR;
         }
-        
+
     }
     else
     {
-        if ((UDI_ACM_HSIC_ACM1_ID != enUdiDevId) 
-            && (UDI_ACM_HSIC_ACM3_ID != enUdiDevId) 
-            && (UDI_ACM_HSIC_ACM5_ID != enUdiDevId))    
+        if ((UDI_ACM_HSIC_ACM1_ID != enUdiDevId)
+            && (UDI_ACM_HSIC_ACM3_ID != enUdiDevId)
+            && (UDI_ACM_HSIC_ACM5_ID != enUdiDevId))
         {
-            return VOS_ERR;        
+            return VOS_ERR;
         }
     }
 
@@ -698,7 +711,7 @@ VOS_UINT32 DIPC_DEV_UlDataProc(DIPC_DEV_ID_ENUM_UINT32 enDeviceId, IMM_ZC_STRU *
 
     usApp = DIPC_SET_APP(ID_DIPC_UL_DATA, enDeviceId);
 
-    IMM_ZcSetUserApp(pstBuf, usApp);  
+    IMM_ZcSetUserApp(pstBuf, usApp);
 
     return DIPC_EnqueueData(pstBuf);
 }
@@ -708,7 +721,7 @@ SERVICE_INFO_STRU* DIPC_MGR_RegNewService(SERVICE_INFO_STRU *pstServInputInfo)
     VOS_UINT8           ucServiceNo;
 
     if (SERVICE_MAX_NUM <= g_stTotalServiceInfo.ulServiceNum)
-    {        
+    {
         DIPC_PrintLog(PS_PID_APP_DIPC, 0, PS_PRINT_WARNING,
             "DIPC, DIPC_MGR_RegNewService, WARNING, Service is FULL!\r\n");
         return VOS_NULL_PTR;
@@ -739,9 +752,9 @@ SERVICE_INFO_STRU* DIPC_MGR_RegNewService(SERVICE_INFO_STRU *pstServInputInfo)
     pstGetServInfo->pDlMatchFunc    = pstServInputInfo->pDlMatchFunc;
     pstGetServInfo->pUlCallFunc     = pstServInputInfo->pUlCallFunc;
     pstGetServInfo->pDlCallFunc     = pstServInputInfo->pDlCallFunc;
-    
+
     DIPC_SET_SERVICE_STRU_REG(g_stTotalServiceInfo.ulServiceMask, ucServiceNo);
-    g_stTotalServiceInfo.ulServiceNum ++;    
+    g_stTotalServiceInfo.ulServiceNum ++;
 
     return pstGetServInfo;
 }
@@ -751,8 +764,8 @@ SERVICE_INFO_STRU* DIPC_MGR_RegNewService(SERVICE_INFO_STRU *pstServInputInfo)
 VOS_VOID DIPC_MGR_DeregService(SERVICE_INFO_STRU *pstServiceInfo)
 {
     DIPC_CLR_SERVICE_STRU_REG(g_stTotalServiceInfo.ulServiceMask, pstServiceInfo->ucServiceIndex);
-    g_stTotalServiceInfo.ulServiceNum --;    
-    
+    g_stTotalServiceInfo.ulServiceNum --;
+
     pstServiceInfo->ucServiceIndex  = 0;
     pstServiceInfo->ucRabId         = 0;
     pstServiceInfo->enDipcDevId     = DIPC_DEV_BUTT;
@@ -779,56 +792,56 @@ VOS_UINT32 DIPC_MGR_UlDataProc(DIPC_DEV_ID_ENUM_UINT32 enDeviceId, IMM_ZC_STRU *
     for (enServiceType = 0; enServiceType < DIPC_SERVICE_TYPE_MAX_NUM; enServiceType++)
     {
         if (PS_TRUE == DIPC_GET_SERVICE_REG(pstDevServiceInfo->ulServiceMask, enServiceType))
-        {            
+        {
             pstServInfo = pstDevServiceInfo->apstServiceInfo[enServiceType];
 
             /* 因为上行数据需要根据数据内容确定Rab Id，所以需要进行Match操作，下行不需要 */
             if (VOS_NULL_PTR == pstServInfo->pUlMatchFunc)
             {
                 DIPC_PrintLog2(PS_PID_APP_DIPC, 0, PS_PRINT_WARNING,
-                    "DIPC, DIPC_MGR_UlDataProc, pUlMatchFunc is NULL,enServiceType <1>, enDeviceId<2>", 
+                    "DIPC, DIPC_MGR_UlDataProc, pUlMatchFunc is NULL,enServiceType <1>, enDeviceId<2>",
                     (VOS_INT32)enServiceType, (VOS_INT32)enDeviceId);
-                IMM_ZcFree(pstBuf);  
+                IMM_ZcFree(pstBuf);
                 return PS_FAIL;
             }
-            
+
             if (PS_SUCC == pstServInfo->pUlMatchFunc(pstBuf))
-            {  
+            {
                 if (VOS_NULL_PTR == pstServInfo->pUlCallFunc)
                 {
                     DIPC_PrintLog2(PS_PID_APP_DIPC, 0, PS_PRINT_WARNING,
-                        "DIPC, DIPC_MGR_UlDataProc, pUlCallFunc is NULL,enServiceType <1>, enDeviceId<2>", 
+                        "DIPC, DIPC_MGR_UlDataProc, pUlCallFunc is NULL,enServiceType <1>, enDeviceId<2>",
                         (VOS_INT32)enServiceType, (VOS_INT32)enDeviceId);
-                    IMM_ZcFree(pstBuf);  
+                    IMM_ZcFree(pstBuf);
                     return PS_FAIL;
                 }
-            
+
                 if (VOS_OK != pstServInfo->pUlCallFunc(pstBuf, pstServInfo->ucRabId))
-                {    
+                {
                     DIPC_PrintLog2(PS_PID_APP_DIPC, 0, PS_PRINT_WARNING,
-                        "DIPC, DIPC_MGR_UlDataProc, call pUlFunc return fail,ulDeviceId <1>, ucRabID", 
+                        "DIPC, DIPC_MGR_UlDataProc, call pUlFunc return fail,ulDeviceId <1>, ucRabID",
                         (VOS_INT32)enDeviceId, (VOS_INT32)pstServInfo->ucRabId);
-                    IMM_ZcFree(pstBuf);                    
+                    IMM_ZcFree(pstBuf);
                     g_stDipcStaticInfo.astDipcDevStaticInfo[enDeviceId].ulFailSendUlPacketNums++;
                     return PS_FAIL;
-                }             
-                
+                }
+
                 /* 成功接收，则退出并记录 */
                 g_stDipcStaticInfo.astDipcDevStaticInfo[enDeviceId].ulSuccSendUlPacketNums++;
                 return PS_SUCC;
-            }                  
+            }
         }
     }
 
     /* 该设备上没有找到对应的服务，释放数据 */
-    IMM_ZcFree(pstBuf);  
+    IMM_ZcFree(pstBuf);
     g_stDipcStaticInfo.astDipcDevStaticInfo[enDeviceId].ulFailMatchUlPacketNums++;
     return PS_FAIL;
 }
 VOS_UINT32 DIPC_MGR_IpV4Match(IMM_ZC_STRU *pstImmZcData)
 {
-    VOS_UINT8                          *pucIpData;   
-    DIPC_IPHDR_STRU                    *pstIpPkt;    
+    VOS_UINT8                          *pucIpData;
+    DIPC_IPHDR_STRU                    *pstIpPkt;
 
     pucIpData = IMM_ZcGetDataPtr(pstImmZcData);
     pstIpPkt = (DIPC_IPHDR_STRU *)pucIpData;
@@ -845,9 +858,9 @@ VOS_UINT32 DIPC_MGR_IpV4Match(IMM_ZC_STRU *pstImmZcData)
 
 VOS_UINT32 DIPC_MGR_IpV6Match(IMM_ZC_STRU *pstImmZcData)
 {
-    VOS_UINT8                          *pucIpData;   
+    VOS_UINT8                          *pucIpData;
     DIPC_IPHDR_STRU                    *pstIpPkt;
-    
+
     pucIpData = IMM_ZcGetDataPtr(pstImmZcData);
     pstIpPkt = (DIPC_IPHDR_STRU *)pucIpData;
 
@@ -866,7 +879,7 @@ VOS_UINT32 DIPC_MGR_AddNewIpService(VOS_UINT8 ucRabId,
     DIPC_SERV_ULDATA_MATCHFUNC pServiceUlDataMatchFunc,     DIPC_SERV_DLDATA_MATCHFUNC pServiceDlDataMatchFunc)
 {
     SERVICE_INFO_STRU               stServiceInfo;  /* 带有准备注册的服务的全部信息的结构 */
-    SERVICE_INFO_STRU              *pstServiceInfo; /* 注册后的返回服务结构指针 */    
+    SERVICE_INFO_STRU              *pstServiceInfo; /* 注册后的返回服务结构指针 */
 
     stServiceInfo.ucRabId       = ucRabId;
     stServiceInfo.enDipcDevId   = enDevId;
@@ -882,11 +895,11 @@ VOS_UINT32 DIPC_MGR_AddNewIpService(VOS_UINT8 ucRabId,
         return PS_FAIL;
     }
 
-    /* 注册服务和设备之间的映射关系，供上行接收时使用 */                
+    /* 注册服务和设备之间的映射关系，供上行接收时使用 */
     DIPC_DEV_AddNewIpTypeService(enDevId, enDipcServiceType, pstServiceInfo);
-    
-    /* 注册服务和Rab之间的映射关系，供上行接收时使用 */                
-    DIPC_MGR_AddNewIpTypeService(ucRabId, enDipcServiceType, pstServiceInfo);    
+
+    /* 注册服务和Rab之间的映射关系，供上行接收时使用 */
+    DIPC_MGR_AddNewIpTypeService(ucRabId, enDipcServiceType, pstServiceInfo);
 
     return PS_SUCC;
 }
@@ -900,11 +913,11 @@ VOS_UINT32 DIPC_MGR_DelIpVService(VOS_UINT8 ucRabId, DIPC_SERVICE_TYPE_ENUM_UINT
     {
         return PS_FAIL;
     }
-    
-    /* 删除Rab和服务之间的映射关系，供上行接收时使用 */                
+
+    /* 删除Rab和服务之间的映射关系，供上行接收时使用 */
     DIPC_MGR_DelIpTypeService(pstServiceInfo->ucRabId, enDipcServiceType);
-    
-    /* 去注册服务和设备之间的映射关系，供上行接收时使用 */                
+
+    /* 去注册服务和设备之间的映射关系，供上行接收时使用 */
     DIPC_DEV_DelIpTypeService(pstServiceInfo->enDipcDevId, enDipcServiceType);
 
     /* 去注册服务 */
@@ -917,20 +930,20 @@ VOS_UINT32 DIPC_MGR_DelIpVService(VOS_UINT8 ucRabId, DIPC_SERVICE_TYPE_ENUM_UINT
 
 VOS_UINT32 DIPC_MGR_AddNewService(DIPC_DEV_ID_ENUM_UINT32 enDevId,
     VOS_UINT8 ucRabId, DIPC_SERVICE_TYPE_ENUM_UINT32 enDipcServiceType)
-{   
-    VOS_UINT32              ulRsult;    
-    
+{
+    VOS_UINT32              ulRsult;
+
     switch (enDipcServiceType)
     {
         case DIPC_SERVICE_TYPE_IPV4:
-            ulRsult = DIPC_MGR_AddNewIpService(ucRabId, enDevId, 
+            ulRsult = DIPC_MGR_AddNewIpService(ucRabId, enDevId,
                 DIPC_SERVICE_TYPE_IPV4, DIPC_MGR_IpV4Match, DIPC_MGR_IpV4Match);
             break;
 
         case DIPC_SERVICE_TYPE_IPV6:
-            ulRsult = DIPC_MGR_AddNewIpService(ucRabId, enDevId, 
+            ulRsult = DIPC_MGR_AddNewIpService(ucRabId, enDevId,
                 DIPC_SERVICE_TYPE_IPV6, DIPC_MGR_IpV6Match, DIPC_MGR_IpV6Match);
-            break;          
+            break;
 
         default:
             /* 和NAS确定DIPC_BEARER_TYPE_IPV4V6类型的消息NAS会分为一次IPV4和一次IPV6发送过来 */
@@ -938,14 +951,14 @@ VOS_UINT32 DIPC_MGR_AddNewService(DIPC_DEV_ID_ENUM_UINT32 enDevId,
             break;
     }
 
-    return ulRsult;   
+    return ulRsult;
 }
 VOS_UINT32 DIPC_MGR_DlAdsDataRcv(VOS_UINT8 ucRabId, IMM_ZC_STRU *pData)
 {
     RAB_SERVICE_INFO_STRU              *pstRabServiceInfo;
     DIPC_SERVICE_TYPE_ENUM_UINT32       enServiceType;
     SERVICE_INFO_STRU                  *pstServInfo;
-    
+
     DIPC_TraceDlData(ucRabId, pData);
 
     pstRabServiceInfo = &g_astRabService[ucRabId];
@@ -957,54 +970,54 @@ VOS_UINT32 DIPC_MGR_DlAdsDataRcv(VOS_UINT8 ucRabId, IMM_ZC_STRU *pData)
             pstServInfo = pstRabServiceInfo->apstServiceInfo[enServiceType];
 
             if (PS_SUCC == pstServInfo->pDlMatchFunc(pData))
-            {            
+            {
                 if (VOS_OK != pstServInfo->pDlCallFunc(pstServInfo->enDipcDevId, pData))
-                {    
+                {
                     DIPC_PrintLog2(PS_PID_APP_DIPC, 0, PS_PRINT_WARNING,
-                        "DIPC, DIPC_MGR_DlAdsDataRcv, call pDlFunc return fail,ulDeviceId <1>, ucRabID", 
+                        "DIPC, DIPC_MGR_DlAdsDataRcv, call pDlFunc return fail,ulDeviceId <1>, ucRabID",
                         (VOS_INT32)pstServInfo->enDipcDevId, (VOS_INT32)pstServInfo->ucRabId);
-                    IMM_ZcFree(pData);                    
+                    IMM_ZcFree(pData);
                     g_stDipcStaticInfo.astDipcDevStaticInfo[pstServInfo->enDipcDevId].ulFailSendDlPacketNums++;
                     return PS_FAIL;
-                }             
-                
+                }
+
                 /* 成功接收，则退出并记录 */
                 g_stDipcStaticInfo.astDipcDevStaticInfo[pstServInfo->enDipcDevId].ulSuccSendDlPacketNums++;
                 return PS_SUCC;
-            }                  
+            }
         }
     }
 
     /* 该设备上没有找到对应的服务，释放数据 */
     g_stDipcStaticInfo.ulFailMatchDlPacketNums++;
-    IMM_ZcFree(pData);  
+    IMM_ZcFree(pData);
     return PS_FAIL;
 }
 
 
 
-SERVICE_INFO_STRU* DIPC_MGR_GetServiceByRabId(VOS_UINT8 ucRabId, 
+SERVICE_INFO_STRU* DIPC_MGR_GetServiceByRabId(VOS_UINT8 ucRabId,
     DIPC_SERVICE_TYPE_ENUM_UINT32 enDipcServiceType)
 {
     RAB_SERVICE_INFO_STRU          *pstRabServiceInfo;
 
-    pstRabServiceInfo = &g_astRabService[ucRabId]; 
+    pstRabServiceInfo = &g_astRabService[ucRabId];
 
     /* 如果对应的服务类型没有注册，则报错 */
     if (PS_TRUE != DIPC_GET_SERVICE_REG(pstRabServiceInfo->ulServiceMask, enDipcServiceType))
-    {    
+    {
         DIPC_PrintLog(PS_PID_APP_DIPC, 0, PS_PRINT_WARNING,
             "DIPC, DIPC_MGR_GetServiceByRabId, no service.\n");
         return VOS_NULL_PTR;
-    }        
+    }
 
     /* 如果掩码说明服务注册了但是没有对应的服务结构，说明内部维护错误 */
     if (VOS_NULL_PTR == pstRabServiceInfo->apstServiceInfo[enDipcServiceType])
-    {    
+    {
         DIPC_PrintLog(PS_PID_APP_DIPC, 0, PS_PRINT_WARNING,
             "DIPC, DIPC_MGR_GetServiceByRabId, no service but with mask.\n");
         return VOS_NULL_PTR;
-    }    
+    }
 
     return pstRabServiceInfo->apstServiceInfo[enDipcServiceType];
 }
@@ -1015,7 +1028,7 @@ VOS_VOID DIPC_MGR_AddNewIpTypeService(VOS_UINT8 ucRabId,
 {
     RAB_SERVICE_INFO_STRU          *pstRabServiceInfo;
 
-    pstRabServiceInfo = &g_astRabService[ucRabId];    
+    pstRabServiceInfo = &g_astRabService[ucRabId];
 
     pstRabServiceInfo->apstServiceInfo[enDipcServiceType] = pstServiceInfo;
     DIPC_SET_SERVICE_REG(pstRabServiceInfo->ulServiceMask, enDipcServiceType);
@@ -1031,7 +1044,7 @@ VOS_VOID DIPC_MGR_DelIpTypeService(VOS_UINT8 ucRabId,
 {
     RAB_SERVICE_INFO_STRU          *pstRabServiceInfo;
 
-    pstRabServiceInfo = &g_astRabService[ucRabId]; 
+    pstRabServiceInfo = &g_astRabService[ucRabId];
 
     pstRabServiceInfo->apstServiceInfo[enDipcServiceType] = VOS_NULL_PTR;
     DIPC_CLR_SERVICE_REG(pstRabServiceInfo->ulServiceMask, enDipcServiceType);
@@ -1045,7 +1058,7 @@ VOS_VOID DIPC_MGR_DelIpTypeService(VOS_UINT8 ucRabId,
 DIPC_DEV_ID_ENUM_UINT32 DIPC_GetDevIdByRabId(VOS_UINT8 ucRabId)
 {
     RAB_SERVICE_INFO_STRU              *pstRabServiceInfo;
-    DIPC_SERVICE_TYPE_ENUM_UINT32       enServiceNum; 
+    DIPC_SERVICE_TYPE_ENUM_UINT32       enServiceNum;
     SERVICE_INFO_STRU                  *pstServInfo = VOS_NULL_PTR;
 
     pstRabServiceInfo = &g_astRabService[ucRabId];
@@ -1063,7 +1076,7 @@ DIPC_DEV_ID_ENUM_UINT32 DIPC_GetDevIdByRabId(VOS_UINT8 ucRabId)
     {
         return (pstServInfo->enDipcDevId);
     }
-    
+
     return  DIPC_DEV_BUTT;
 }
 
@@ -1077,15 +1090,15 @@ UDI_HANDLE DIPC_GetDevHandleByRabId(VOS_UINT8 ucRabId)
     {
         DIPC_PrintLog1(PS_PID_APP_DIPC, 0, PS_PRINT_WARNING,
             "DIPC, DIPC_GetDevHandleByRabId, ucRabId <1> exceed the range.\n", ucRabId);
-        return UDI_INVALID_HANDLE;        
+        return UDI_INVALID_HANDLE;
     }
-    
+
     enDipcDevId  = DIPC_GetDevIdByRabId(ucRabId);
 
-	if (DIPC_DEV_BUTT == enDipcDevId)
-	{
-		return UDI_INVALID_HANDLE;
-	}
+    if (DIPC_DEV_BUTT == enDipcDevId)
+    {
+        return UDI_INVALID_HANDLE;
+    }
 
     return g_astDevInfo[enDipcDevId].slUdiHsicHdl;
 }
@@ -1094,7 +1107,7 @@ UDI_HANDLE DIPC_GetDevHandleByRabId(VOS_UINT8 ucRabId)
 VOS_UINT32 DIPC_CheckRelation(AT_DIPC_PDP_ACT_STRU *pstAtDipcPdpActMsg)
 {
     RAB_SERVICE_INFO_STRU              *pstRabServiceInfo;
-    DIPC_SERVICE_TYPE_ENUM_UINT32       enServiceNum; 
+    DIPC_SERVICE_TYPE_ENUM_UINT32       enServiceNum;
     SERVICE_INFO_STRU                  *pstServInfo = VOS_NULL_PTR;
     UDI_DEVICE_ID                       enUdiDevId;
     DIPC_SERVICE_TYPE_ENUM_UINT32       enDipcServiceType;
@@ -1114,19 +1127,19 @@ VOS_UINT32 DIPC_CheckRelation(AT_DIPC_PDP_ACT_STRU *pstAtDipcPdpActMsg)
     {
         DIPC_PrintLog1(PS_PID_APP_DIPC, 0, PS_PRINT_WARNING,
             "DIPC, DIPC_CheckRelation, Rab <1> Service is wrong.", pstAtDipcPdpActMsg->ucRabId);
-        return VOS_ERR;            
+        return VOS_ERR;
     }
 
     /* 如果该Rab上已经有对应类型的服务，认为为错误 */
     if (PS_TRUE == DIPC_GET_SERVICE_REG(pstRabServiceInfo->ulServiceMask, enDipcServiceType))
     {
         DIPC_PrintLog2(PS_PID_APP_DIPC, 0, PS_PRINT_WARNING,
-            "DIPC, DIPC_CheckRelation, Rab <1> type<2> is already reg.", 
+            "DIPC, DIPC_CheckRelation, Rab <1> type<2> is already reg.",
             pstAtDipcPdpActMsg->ucRabId, pstAtDipcPdpActMsg->enBearerType);
         return VOS_ERR;
     }
 
-    
+
     for (enServiceNum = 0; enServiceNum < DIPC_SERVICE_TYPE_MAX_NUM; enServiceNum++)
     {
         if (PS_TRUE == DIPC_GET_SERVICE_REG(pstRabServiceInfo->ulServiceMask, enServiceNum))
@@ -1148,21 +1161,21 @@ VOS_UINT32 DIPC_CheckRelation(AT_DIPC_PDP_ACT_STRU *pstAtDipcPdpActMsg)
     if (pstAtDipcPdpActMsg->enUdiDevId != enUdiDevId)
     {
         DIPC_PrintLog2(PS_PID_APP_DIPC, 0, PS_PRINT_WARNING,
-            "DIPC, DIPC_CheckRelation, pstAtDipcPdpActMsg->enUdiDevId <1> not with enUdiDevId <2>.", 
+            "DIPC, DIPC_CheckRelation, pstAtDipcPdpActMsg->enUdiDevId <1> not with enUdiDevId <2>.",
             pstAtDipcPdpActMsg->enUdiDevId, enUdiDevId);
-        return VOS_ERR;        
+        return VOS_ERR;
     }
-    
+
     /* 如果该设备上已经有对应类型的服务，认为为错误 */
     pstDevServiceInfo = &(g_astDevService[pstServInfo->enDipcDevId]);
     if (PS_TRUE == DIPC_GET_SERVICE_REG(pstDevServiceInfo->ulServiceMask, enDipcServiceType))
     {
         DIPC_PrintLog2(PS_PID_APP_DIPC, 0, PS_PRINT_WARNING,
-            "DIPC, DIPC_CheckRelation, Dev <1> type<2> is already reg.", 
+            "DIPC, DIPC_CheckRelation, Dev <1> type<2> is already reg.",
             pstAtDipcPdpActMsg->enUdiDevId, pstAtDipcPdpActMsg->enBearerType);
         return VOS_ERR;
     }
-    
+
     return VOS_OK;
 }
 
@@ -1174,29 +1187,29 @@ VOS_UINT32 DIPC_CheckPdpActPara(AT_DIPC_PDP_ACT_STRU *pstAtDipcPdpActMsg)
         DIPC_PrintLog1(PS_PID_APP_DIPC, 0, PS_PRINT_WARNING,
             "DIPC, DIPC_CheckPdpActPara, Rab Id exceed the range!\n",
             pstAtDipcPdpActMsg->ucRabId);
-        return VOS_ERR;        
-    }    
+        return VOS_ERR;
+    }
 
     /* 和NAS协商如果一个RabId上既有IPV4又有IPV6，需要分2次下发，DIPC_BEARER_TYPE_IPV4V6保留是给NAS内部使用 */
     if (DIPC_BEARER_TYPE_IPV4V6 <= pstAtDipcPdpActMsg->enBearerType)
     {
         DIPC_PrintLog1(PS_PID_APP_DIPC, 0, PS_PRINT_WARNING,
-            "DIPC, DIPC_CheckPdpActPara, pstAtDipcPdpActMsg->enBearerType <1> exceed the ranger.", 
+            "DIPC, DIPC_CheckPdpActPara, pstAtDipcPdpActMsg->enBearerType <1> exceed the ranger.",
             pstAtDipcPdpActMsg->enBearerType);
-        return VOS_ERR;        
+        return VOS_ERR;
     }
-    
+
     if (VOS_OK != DIPC_DEV_CheckUdiDevIdPara(pstAtDipcPdpActMsg->enUdiDevId))
     {
         DIPC_PrintLog1(PS_PID_APP_DIPC, 0, PS_PRINT_WARNING,
-            "DIPC, DIPC_CheckPdpActPara, pstAtDipcPdpActMsg->enUdiDevId <1> exceed the ranger.", 
+            "DIPC, DIPC_CheckPdpActPara, pstAtDipcPdpActMsg->enUdiDevId <1> exceed the ranger.",
             pstAtDipcPdpActMsg->enUdiDevId);
-        return VOS_ERR;        
+        return VOS_ERR;
     }
 
     if (VOS_OK != DIPC_CheckRelation(pstAtDipcPdpActMsg))
     {
-        return VOS_ERR;      
+        return VOS_ERR;
     }
 
     return VOS_OK;
@@ -1207,7 +1220,7 @@ VOS_VOID DIPC_RcvAtPdpActIndProc(AT_DIPC_PDP_ACT_STRU *pstAtDipcPdpActMsg)
     DIPC_DEV_ID_ENUM_UINT32             enDevId;
 
     if (VOS_OK != DIPC_CheckPdpActPara(pstAtDipcPdpActMsg))
-    {    
+    {
         DIPC_PrintLog(PS_PID_APP_DIPC, 0, PS_PRINT_WARNING,
             "DIPC, DIPC_RcvAtPdpActIndProc, receive error message.\n");
         return;
@@ -1220,10 +1233,10 @@ VOS_VOID DIPC_RcvAtPdpActIndProc(AT_DIPC_PDP_ACT_STRU *pstAtDipcPdpActMsg)
         DIPC_PrintLog(PS_PID_APP_DIPC, 0, PS_PRINT_WARNING,
             "DIPC, DIPC_RcvAtPdpActIndProc, can not find the device.\n");
         return;
-    }   
+    }
 
     /* 在DIPC内部注册一个新的服务 */
-    ulRslt = DIPC_MGR_AddNewService(enDevId, pstAtDipcPdpActMsg->ucRabId, 
+    ulRslt = DIPC_MGR_AddNewService(enDevId, pstAtDipcPdpActMsg->ucRabId,
         DIPC_GET_SERVICE_TYPE_BY_BEARER_TYPE(pstAtDipcPdpActMsg->enBearerType));
 
     if (PS_SUCC != ulRslt)
@@ -1236,7 +1249,7 @@ VOS_VOID DIPC_RcvAtPdpActIndProc(AT_DIPC_PDP_ACT_STRU *pstAtDipcPdpActMsg)
     {
         DIPC_PrintLog(PS_PID_APP_DIPC, 0, PS_PRINT_WARNING,
             "DIPC_RcvAtPdpActIndProc, call ADS_DL_RegDlDataCallback fail!\n");
-        DIPC_MappingInfoTrace(ID_DIPC_REG_ADS_DL_DATA_CALLBACK_FAIL);           
+        DIPC_MappingInfoTrace(ID_DIPC_REG_ADS_DL_DATA_CALLBACK_FAIL);
         return;
     }
 
@@ -1251,19 +1264,19 @@ VOS_UINT32 DIPC_CheckPdpRelPara(AT_DIPC_PDP_DEACT_STRU *pstAtDipcPdpDeactMsg)
         DIPC_PrintLog1(PS_PID_APP_DIPC, 0, PS_PRINT_WARNING,
             "DIPC, DIPC_CheckPdpRelPara, Rab Id exceed the range!\n"
             , pstAtDipcPdpDeactMsg->ucRabId);
-        return VOS_ERR;        
+        return VOS_ERR;
     }
-    
+
     if (DIPC_BEARER_TYPE_IPV4V6 <= pstAtDipcPdpDeactMsg->enBearerType)
     {
         DIPC_PrintLog1(PS_PID_APP_DIPC, 0, PS_PRINT_WARNING,
-            "DIPC, DIPC_CheckPdpRelPara, pstAtDipcPdpDeactMsg->enBearerType <1> exceed the ranger.", 
+            "DIPC, DIPC_CheckPdpRelPara, pstAtDipcPdpDeactMsg->enBearerType <1> exceed the ranger.",
             pstAtDipcPdpDeactMsg->enBearerType);
-        return VOS_ERR;        
+        return VOS_ERR;
     }
-        
+
     /* 如果对应的Rab Id没有注册服务 */
-    if (VOS_NULL_PTR == DIPC_MGR_GetServiceByRabId(pstAtDipcPdpDeactMsg->ucRabId, 
+    if (VOS_NULL_PTR == DIPC_MGR_GetServiceByRabId(pstAtDipcPdpDeactMsg->ucRabId,
         DIPC_GET_SERVICE_TYPE_BY_BEARER_TYPE(pstAtDipcPdpDeactMsg->enBearerType)))
     {
         DIPC_PrintLog1(PS_PID_APP_DIPC, 0, PS_PRINT_WARNING,
@@ -1279,14 +1292,14 @@ VOS_VOID DIPC_RcvAtPdpRelIndProc(AT_DIPC_PDP_DEACT_STRU *pstAtDipcPdpDeactMsg)
     VOS_UINT32              ulRslt;
 
     if (VOS_OK != DIPC_CheckPdpRelPara(pstAtDipcPdpDeactMsg))
-    {    
+    {
         DIPC_PrintLog(PS_PID_APP_DIPC, 0, PS_PRINT_WARNING,
             "DIPC, DIPC_RcvAtPdpRelIndProc, receive error message.\n");
         return;
     }
 
     ulRslt = DIPC_MGR_DelIpVService(pstAtDipcPdpDeactMsg->ucRabId, DIPC_GET_SERVICE_TYPE_BY_BEARER_TYPE(pstAtDipcPdpDeactMsg->enBearerType));
-    
+
     if (PS_SUCC != ulRslt)
     {
         DIPC_MappingInfoTrace(ID_DIPC_DEL_MAPPING_INFO_FAIL);
@@ -1297,7 +1310,7 @@ VOS_VOID DIPC_RcvAtPdpRelIndProc(AT_DIPC_PDP_DEACT_STRU *pstAtDipcPdpDeactMsg)
     {
         DIPC_PrintLog(PS_PID_APP_DIPC, 0, PS_PRINT_WARNING,
             "DIPC_RcvAtPdpRelIndProc, call ADS_DL_RegDlDataCallback fail!\n");
-        DIPC_MappingInfoTrace(ID_DIPC_DEREG_ADS_DL_DATA_CALLBACK_FAIL);               
+        DIPC_MappingInfoTrace(ID_DIPC_DEREG_ADS_DL_DATA_CALLBACK_FAIL);
         return;
     }
 
@@ -1308,7 +1321,7 @@ VOS_VOID DIPC_RcvAtPdpRelIndProc(AT_DIPC_PDP_DEACT_STRU *pstAtDipcPdpDeactMsg)
 
 
 
-VOS_UINT32 DIPC_DlAdsDataRcv(VOS_UINT8 ucRabId, IMM_ZC_STRU *pData, 
+VOS_UINT32 DIPC_DlAdsDataRcv(VOS_UINT8 ucRabId, IMM_ZC_STRU *pData,
     ADS_PKT_TYPE_ENUM_UINT8 enPktType)
 {
     VOS_UINT16  usApp;      /* 使用skb_buff结构中已有字段传递上下行和参数信息 */
@@ -1325,7 +1338,7 @@ VOS_UINT32 DIPC_DlAdsDataRcv(VOS_UINT8 ucRabId, IMM_ZC_STRU *pData,
 
     usApp = DIPC_SET_APP(ID_DIPC_DL_DATA, ucRabId);
 
-    IMM_ZcSetUserApp(pData, usApp);  
+    IMM_ZcSetUserApp(pData, usApp);
 
     return DIPC_EnqueueData(pData);
 }
@@ -1365,13 +1378,13 @@ VOS_VOID  DIPC_ProcDataNotify(VOS_VOID)
             case ID_DIPC_DL_DATA:
                 DIPC_MGR_DlAdsDataRcv(DIPC_GET_PARA(usApp),pstMem);
                 break;
-            
+
             default:
                 IMM_ZcFree(pstMem);
                 DIPC_PrintLog1(PS_PID_APP_DIPC, 0, PS_PRINT_WARNING,
                     "DIPC_ProcDataNotify, WARNING, ucDir %d is Abnormal!", ucDir);
                 break;
-        }        
+        }
     } /* for (;;) */
 } /* DIPC_ProcDataNotify */
 
@@ -1410,9 +1423,9 @@ VOS_UINT32 DIPC_AtMsgProc( const MsgBlock *pMsgBlock )
         {
             DIPC_PrintLog2(PS_PID_APP_DIPC, 0, PS_PRINT_WARNING,
                 "DIPC, DIPC_AtMsgProc, received msg ulSenderPid<1> , ulMsgType <2>",
-                (VOS_INT32)pstHsicCtrlMsg->ulSenderPid, 
+                (VOS_INT32)pstHsicCtrlMsg->ulSenderPid,
                 (VOS_INT32)pstHsicCtrlMsg->ulMsgType);
-            return VOS_ERR;                
+            return VOS_ERR;
         }
     }
     else
@@ -1444,7 +1457,7 @@ VOS_VOID DIPC_DataQInit(VOS_VOID)
 
 
 VOS_UINT32 DIPC_Init( VOS_VOID )
-{        
+{
     VOS_UINT8                       ucRabId;
     VOS_UINT32                      ulServiceId;
     SERVICE_INFO_STRU              *pstServiceInfo;
@@ -1546,7 +1559,7 @@ VOS_VOID DIPC_TraceUlData(DIPC_DEV_ID_ENUM_UINT32 ulDeviceId, IMM_ZC_STRU *pstDa
     {
         return;
     }
-    
+
     pstDataNode = pstData;
 
     while(VOS_NULL_PTR != pstDataNode)
@@ -1614,7 +1627,7 @@ VOS_VOID DIPC_TraceDlData(VOS_UINT8 ucRabId, IMM_ZC_STRU *pstData)
 VOS_VOID DIPC_MappingInfoTrace(DIPC_TRACE_MSG_TYPE_ENUM_UINT32 enDipcTraceMsgType)
 {
     DIPC_DEV_SUITE_INFO_MSG                 stDevTotalInfo;
-    DIPC_DEV_INFO_STRU                     *pstDipcDevSingleInfo;    
+    DIPC_DEV_INFO_STRU                     *pstDipcDevSingleInfo;
     DIPC_DEV_ID_ENUM_UINT32                 enDeviceId;
     DIPC_SERVICE_TYPE_ENUM_UINT32           enDipcServiceType;
     SERVICE_INFO_STRU                      *pstServInfo;
@@ -1630,8 +1643,8 @@ VOS_VOID DIPC_MappingInfoTrace(DIPC_TRACE_MSG_TYPE_ENUM_UINT32 enDipcTraceMsgTyp
     {
         pstDipcDevSingleInfo  = &(stDevTotalInfo.astDipcDevData[enDeviceId]);
 
-        for (enDipcServiceType = DIPC_SERVICE_TYPE_IPV4; 
-            enDipcServiceType < DIPC_SERVICE_TYPE_BUTT; 
+        for (enDipcServiceType = DIPC_SERVICE_TYPE_IPV4;
+            enDipcServiceType < DIPC_SERVICE_TYPE_BUTT;
             enDipcServiceType++)
         {
             pstDipcDevSingleInfo->enServiceType = enDipcServiceType;
@@ -1647,7 +1660,7 @@ VOS_VOID DIPC_MappingInfoTrace(DIPC_TRACE_MSG_TYPE_ENUM_UINT32 enDipcTraceMsgTyp
             }
         }
     }
-    
+
     OM_AcpuTraceMsgHook(&stDevTotalInfo);
 
     return;
@@ -1684,19 +1697,19 @@ VOS_VOID DIPC_ShowStat( VOS_VOID )
 
     for(enDipcDevId = 0; enDipcDevId < DIPC_DEV_NUM; enDipcDevId++)
     {
-        vos_printf("DIPC Ul Get Fail Nums = %u\r\n", 
+        vos_printf("DIPC Ul Get Fail Nums = %u\r\n",
             g_stDipcStaticInfo.astDipcDevStaticInfo[enDipcDevId].ulGetDataFailNums);
-        vos_printf("DIPC Ul Succ Get PacketNum = %u\r\n", 
+        vos_printf("DIPC Ul Succ Get PacketNum = %u\r\n",
             g_stDipcStaticInfo.astDipcDevStaticInfo[enDipcDevId].ulSuccGetUlPacketNums);
-        vos_printf("DIPC Ul FailSend PacketNum = %u\r\n", 
+        vos_printf("DIPC Ul FailSend PacketNum = %u\r\n",
             g_stDipcStaticInfo.astDipcDevStaticInfo[enDipcDevId].ulFailSendUlPacketNums);
-        vos_printf("DIPC Ul SuccSend PacketNum = %u\r\n", 
+        vos_printf("DIPC Ul SuccSend PacketNum = %u\r\n",
             g_stDipcStaticInfo.astDipcDevStaticInfo[enDipcDevId].ulSuccSendUlPacketNums);
-        vos_printf("DIPC Ul FailMatch PacketNum = %u\r\n", 
+        vos_printf("DIPC Ul FailMatch PacketNum = %u\r\n",
             g_stDipcStaticInfo.astDipcDevStaticInfo[enDipcDevId].ulFailMatchUlPacketNums);
-        vos_printf("DIPC Dl FailSend PacketNum = %u\r\n", 
+        vos_printf("DIPC Dl FailSend PacketNum = %u\r\n",
             g_stDipcStaticInfo.astDipcDevStaticInfo[enDipcDevId].ulFailSendDlPacketNums);
-        vos_printf("DIPC Dl SuccSend PacketNum = %u\r\n", 
+        vos_printf("DIPC Dl SuccSend PacketNum = %u\r\n",
             g_stDipcStaticInfo.astDipcDevStaticInfo[enDipcDevId].ulSuccSendDlPacketNums);
         vos_printf("\r\n");
     }
@@ -1729,7 +1742,7 @@ VOS_VOID DIPC_ShowMappingInfo( VOS_VOID )
         }
         vos_printf("enDeviceId = %d,end\r\n", enDeviceId);
     }
-    
+
     return;
 }
 
@@ -1752,8 +1765,43 @@ VOS_VOID DIPC_SetLogFlag( VOS_UINT32  ulFlag )
 }
 
 
+#else   /* for feature */
+
+/*****************************************************************************
+  1 头文件包含
+*****************************************************************************/
+#include    "PsTypeDef.h"
+#include    "PsDipc.h"
+#include    "DrvInterface.h"
+
+/*****************************************************************************
+  3 函数实现
+*****************************************************************************/
+
+UDI_HANDLE DIPC_GetDevHandleByRabId(VOS_UINT8 ucRabId)
+{
+    return UDI_INVALID_HANDLE;
+}
+
+
+VOS_UINT32 DIPC_Pid_InitFunc( enum VOS_INIT_PHASE_DEFINE ip )
+{
+    return PS_SUCC;
+}
+
+
+VOS_UINT32 DIPC_AtMsgProc( const MsgBlock *pMsgBlock )
+{
+    return VOS_OK;
+}
+
+
+#endif    /* end for feature */
+
 #ifdef __cplusplus
     #if __cplusplus
         }
     #endif
 #endif
+
+

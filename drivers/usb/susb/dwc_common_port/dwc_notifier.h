@@ -74,7 +74,7 @@ typedef void (*dwc_notifier_callback_t)(void *object, char *notification, void *
 					void *notification_data, void *user_data);
 
 /** Brings up the notification manager. */
-extern int dwc_alloc_notification_manager(void *mem_ctx, void *wkq_ctx);
+extern int dwc_alloc_notification_manager(const void *mem_ctx, const void *wkq_ctx);
 /** Brings down the notification manager. */
 extern void dwc_free_notification_manager(void);
 
@@ -102,7 +102,7 @@ extern int dwc_add_observer(void *observer, void *object, char *notification,
 
 /** Removes the specified observer from all notifications that it is currently
  * observing. */
-extern int dwc_remove_observer(void *observer);
+extern int dwc_remove_observer(const void *observer);
 
 /** This function triggers a Notification.  It should be called by the
  * observable module, or any module or library which the observable module
@@ -113,7 +113,7 @@ extern int dwc_remove_observer(void *observer);
  * dwc_notify can be called from interrupt context if needed.
  *
  */
-void dwc_notify(dwc_notifier_t *notifier, char *notification, void *notification_data);
+void dwc_notify(const dwc_notifier_t *notifier, char *notification, void *notification_data);
 
 #ifdef __cplusplus
 }

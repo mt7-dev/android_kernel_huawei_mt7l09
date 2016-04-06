@@ -48,6 +48,9 @@ VOS_UINT32 IMSA_RegFsmProcRegisteringUserDereg(IMSA_REG_ENTITY_STRU *pstEntity, 
 
 VOS_UINT32 IMSA_RegFsmProcRegisteredImsRegFailure(IMSA_REG_ENTITY_STRU *pstEntity, VOS_UINT32 ulEvt, VOS_VOID* pData);
 VOS_UINT32 IMSA_RegFsmProcRegisteredUserDereg(IMSA_REG_ENTITY_STRU *pstEntity, VOS_UINT32 ulEvt, VOS_VOID* pData);
+/* zhaochen 00308719 begin for IMS Dereg for too long 2015-09-14 */
+VOS_UINT32 IMSA_RegFsmProcDeregingUserDereg(IMSA_REG_ENTITY_STRU *pstEntity, VOS_UINT32 ulEvt, VOS_VOID* pData);
+/* zhaochen 00308719 end for IMS Dereg for too long 2015-09-14 */
 
 VOS_UINT32 IMSA_RegFsmProcDeregingImsRegFailure(IMSA_REG_ENTITY_STRU *pstEntity, VOS_UINT32 ulEvt, VOS_VOID* pData);
 VOS_UINT32 IMSA_RegFsmProcDeregingProtectTimeout(IMSA_REG_ENTITY_STRU *pstEntity, VOS_UINT32 ulEvt, VOS_VOID* pData);
@@ -60,12 +63,17 @@ VOS_UINT32 IMSA_RegFsmProcPendingProtectTimeout(IMSA_REG_ENTITY_STRU *pstEntity,
 VOS_UINT32 IMSA_RegFsmProcPendingUserReg(IMSA_REG_ENTITY_STRU *pstEntity, VOS_UINT32 ulEvt, VOS_VOID* pData);
 VOS_UINT32 IMSA_RegFsmProcPendingUserDereg(IMSA_REG_ENTITY_STRU *pstEntity, VOS_UINT32 ulEvt, VOS_VOID* pData);
 VOS_UINT32 IMSA_RegFsmProcPendingImsRegFailure(IMSA_REG_ENTITY_STRU *pstEntity, VOS_UINT32 ulEvt, VOS_VOID* pData);
+/*
 VOS_UINT32 IMSA_RegFsmProcPendingImsRegSuccess(IMSA_REG_ENTITY_STRU *pstEntity, VOS_UINT32 ulEvt, VOS_VOID* pData);
-
+*/
 VOS_UINT32 IMSA_RegFsmProcRollingBackProtectTimeout(IMSA_REG_ENTITY_STRU *pstEntity, VOS_UINT32 ulEvt, VOS_VOID* pData);
 VOS_UINT32 IMSA_RegFsmProcRollingBackImsRegFailure(IMSA_REG_ENTITY_STRU *pstEntity, VOS_UINT32 ulEvt, VOS_VOID* pData);
 VOS_UINT32 IMSA_RegFsmProcRollingBackUserReg(IMSA_REG_ENTITY_STRU *pstEntity, VOS_UINT32 ulEvt, VOS_VOID* pData);
 VOS_UINT32 IMSA_RegFsmProcRollingBackUserDereg(IMSA_REG_ENTITY_STRU *pstEntity, VOS_UINT32 ulEvt, VOS_VOID* pData);
+VOS_VOID IMSA_RegResetPeriodTryImsRegTimes
+(
+    IMSA_REG_TYPE_ENUM_UINT8            enRegType
+);
 
 IMSA_FSM_PROC IMSA_FsmGetProcItem(VOS_UINT32 ulState, VOS_UINT32 ulEvt);
 VOS_UINT32 IMSA_FsmRun(IMSA_REG_ENTITY_STRU *pstEntity, VOS_UINT32 ulEvt, VOS_VOID *pData);
@@ -137,6 +145,12 @@ VOS_VOID IMSA_RegFsmProcRegisteringImsRegFailure305
 (
     IMSA_REG_ENTITY_STRU               *pstEntity
 );
+
+VOS_VOID IMSA_RegFsmProcRegisteringImsRegFailureTimerfOut
+(
+    IMSA_REG_ENTITY_STRU               *pstEntity
+);
+
 VOS_VOID IMSA_RegWaitForRetryCommonProc
 (
     IMSA_REG_ENTITY_STRU               *pstEntity,
@@ -197,6 +211,9 @@ IMSA_REG_FSM_ITEM_STRU g_stImsaRegFsmTable[] =
     {IMSA_REG_STATUS_DEREGING,     IMSA_REG_EVT_IMS_REG_FAILURE,  IMSA_RegFsmProcDeregingImsRegFailure},
     {IMSA_REG_STATUS_DEREGING,     IMSA_REG_EVT_TIMEOUT_PROTECT,  IMSA_RegFsmProcDeregingProtectTimeout},
     {IMSA_REG_STATUS_DEREGING,     IMSA_REG_EVT_USER_REG_REQ,     IMSA_RegFsmProcDeregingUserReg},
+    /* zhaochen 00308719 begin for IMS Dereg for too long 2015-09-14 */
+    {IMSA_REG_STATUS_DEREGING,     IMSA_REG_EVT_USER_DEREG_REQ,   IMSA_RegFsmProcDeregingUserDereg},
+    /* zhaochen 00308719 end for IMS Dereg for too long 2015-09-14 */
 
     {IMSA_REG_STATUS_WAIT_RETRY,   IMSA_REG_EVT_TIMEOUT_RETRY,    IMSA_RegFsmProcWaitRetryTimeout},
     {IMSA_REG_STATUS_WAIT_RETRY,   IMSA_REG_EVT_USER_DEREG_REQ,   IMSA_RegFsmProcWaitRetryUserDereg},
@@ -211,6 +228,7 @@ IMSA_REG_FSM_ITEM_STRU g_stImsaRegFsmTable[] =
     {IMSA_REG_STATUS_ROLLING_BACK, IMSA_REG_EVT_IMS_REG_FAILURE,  IMSA_RegFsmProcRollingBackImsRegFailure},
     {IMSA_REG_STATUS_ROLLING_BACK, IMSA_REG_EVT_USER_REG_REQ,     IMSA_RegFsmProcRollingBackUserReg},
     {IMSA_REG_STATUS_ROLLING_BACK, IMSA_REG_EVT_USER_DEREG_REQ,   IMSA_RegFsmProcRollingBackUserDereg},
+
 };
 
 
@@ -219,9 +237,6 @@ VOS_VOID IMSA_RegAddrPairMgrDeinit(const IMSA_REG_ADDR_PAIR_MGR_STRU *pstPairMgr
 VOS_UINT32 IMSA_RegAddrPairMgrGetNextUnused(IMSA_REG_TYPE_ENUM_UINT8 ulRegType,
                                             VOS_CHAR *pacUeIp,
                                             VOS_CHAR *pacPcscfIp);
-VOS_UINT32 IMSA_RegAddrPairMgrGetCurrent(IMSA_REG_TYPE_ENUM_UINT8 ulRegType,
-                                         VOS_CHAR  *pacUeAddr,
-                                         VOS_CHAR  *pacPcscfAddr);
 IMSA_REG_ADDR_PAIR_STRU* IMSA_RegAddrPairListGetNextUnused(IMSA_REG_ADDR_PAIR_STRU *pstList);
 IMSA_REG_ADDR_PAIR_STRU* IMSA_RegAddrPairMgrGetFirst(IMSA_REG_TYPE_ENUM_UINT8 ulRegType);
 
@@ -269,6 +284,23 @@ VOS_UINT32 IMSA_FsmRun(IMSA_REG_ENTITY_STRU *pstEntity, VOS_UINT32 ulEvt, VOS_VO
 
     return VOS_FALSE;
 }
+
+
+VOS_VOID IMSA_RegResetPeriodTryImsRegTimes
+(
+    IMSA_REG_TYPE_ENUM_UINT8            enRegType
+)
+{
+    IMSA_REG_ENTITY_STRU               *pstRegEntity = VOS_NULL_PTR;
+
+    if (IMSA_REG_TYPE_NORMAL == enRegType)
+    {
+        pstRegEntity = IMSA_RegEntityGetByType(enRegType);
+
+        pstRegEntity->ucTryRegTimes = 0;
+    }
+}
+
 
 
 VOS_VOID IMSA_RegResetRetryTimes
@@ -668,8 +700,13 @@ VOS_UINT32 IMSA_RegGetAddrByParamType(IMSA_REG_TYPE_ENUM_UINT8 enRegType,
 {
     VOS_UINT32 ulResult = VOS_TRUE;
     IMSA_REG_ADDR_PAIR_STRU *pstAddrPair = VOS_NULL_PTR;
+    IMSA_CONTROL_MANAGER_STRU          *pstControlMagnaer   = VOS_NULL_PTR;
 
     IMSA_INFO_LOG1("IMSA_RegGetAddrByParamType is entered!", enParamType);
+
+    pstControlMagnaer                       = IMSA_GetControlManagerAddress();
+
+    pstControlMagnaer->enAddrType = enParamType;
 
     switch (enParamType)
     {
@@ -727,13 +764,33 @@ VOS_UINT32 IMSA_RegFsmProcIdleReqReq(IMSA_REG_ENTITY_STRU *pstEntity, VOS_UINT32
 
     (VOS_VOID)ulEvt;
 
+    /* 如果当前接入类型不支持IMS，不再发起注册 */
+    if (VOS_TRUE != IMSA_IsCurrentAccessTypeSupportIms())
+    {
+        if (VOS_TRUE == IMSA_GetConfigParaAddress()->stCMCCCustomReq.ucCMCCCustomDeregFlag)
+        {
+            (VOS_VOID)IMSA_RegSendIntraMsgRegInd(   pstEntity->enRegType,
+                                                    IMSA_REG_RESULT_FAIL,
+                                                    IMSA_RESULT_ACTION_REG_LOCAL_DEREG);
+        }
+        else
+        {
+            (VOS_VOID)IMSA_RegSendIntraMsgRegInd(   pstEntity->enRegType,
+                                                    IMSA_REG_RESULT_FAIL,
+                                                    IMSA_RESULT_ACTION_NULL);
+        }
+        return VOS_FALSE;
+    }
+
     pstRegReq = (IMSA_REG_REG_REQ_STRU *)pData;
 
     /* 根据注册请求参数获取一个地址对，如果失败则回复用户注册失败 */
     if (VOS_FALSE == IMSA_RegGetAddrByParamType(pstEntity->enRegType, pstRegReq->enAddrType, aucUeAddr, aucPcscfAddr))
     {
         (VOS_VOID)IMSA_RegSendIntraMsgRegInd(pstEntity->enRegType, IMSA_REG_RESULT_FAIL_NO_ADDR_PAIR, IMSA_RESULT_ACTION_NULL);
-
+        #if (FEATURE_ON == FEATURE_PTM)
+        IMSA_RegErrRecord(IMSA_ERR_LOG_REG_FAIL_REASON_NO_ADDR_PAIR);
+        #endif
         return VOS_FALSE;
     }
 
@@ -744,6 +801,10 @@ VOS_UINT32 IMSA_RegFsmProcIdleReqReq(IMSA_REG_ENTITY_STRU *pstEntity, VOS_UINT32
     if (VOS_FALSE == ulResult)
     {
         (VOS_VOID)IMSA_RegSendIntraMsgRegInd(pstEntity->enRegType, IMSA_REG_RESULT_FAIL, IMSA_RESULT_ACTION_NULL);
+
+        #if (FEATURE_ON == FEATURE_PTM)
+        IMSA_RegErrRecord(IMSA_ERR_LOG_REG_FAIL_REASON_TRANSPORT);
+        #endif
         return VOS_FALSE;
     }
 
@@ -755,8 +816,6 @@ VOS_UINT32 IMSA_RegFsmProcIdleReqReq(IMSA_REG_ENTITY_STRU *pstEntity, VOS_UINT32
 
     return VOS_TRUE;
 }
-
-
 VOS_UINT32 IMSA_RegFsmProcRegisteringImsRegSuccess(IMSA_REG_ENTITY_STRU *pstEntity, VOS_UINT32 ulEvt, VOS_VOID* pData)
 {
     IMSA_INFO_LOG("IMSA_RegFsmProcRegisteringImsRegSuccess is entered!");
@@ -776,10 +835,11 @@ VOS_UINT32 IMSA_RegFsmProcRegisteringImsRegSuccess(IMSA_REG_ENTITY_STRU *pstEnti
     /* 清0重试次数 */
     IMSA_RegResetRetryTimes(pstEntity->enRegType);
 
+    /* 清0周期尝试IMS注册次数 */
+    IMSA_RegResetPeriodTryImsRegTimes(pstEntity->enRegType);
+
     return VOS_TRUE;
 }
-
-
 VOS_UINT32 IMSA_RegParseImsError
 (
     const IMSA_IMS_OUTPUT_SERVICE_EVENT_STRU  *pstOutputService,
@@ -887,6 +947,89 @@ VOS_UINT32 IMSA_RegCalculateRegFailureRetryIntervelTime
         return (1000 * ulRetryDelayTime);
     }
 }
+
+
+
+VOS_VOID IMSA_RegFsmProcRegisteringImsRegFailureTimerfOut
+(
+    IMSA_REG_ENTITY_STRU               *pstEntity
+)
+{
+    VOS_UINT32                          ulResult                                = VOS_FALSE;
+    VOS_CHAR                            aucUeAddr[IMSA_IPV6_ADDR_STRING_LEN+1]    = {0};
+    VOS_CHAR                            aucPcscfAddr[IMSA_IPV6_ADDR_STRING_LEN+1] = {0};
+
+    IMSA_INFO_LOG("IMSA_RegFsmProcRegisteringImsRegFailureTimerfOut is entered!");
+
+    /* 停止保护定时器 */
+    IMSA_RegTimerStop(&pstEntity->stProtectTimer);
+
+    /* 获取下一个注册地址对，如果失败则回复用户注册失败 */
+    if (VOS_FALSE == IMSA_RegGetAddrByParamType(    pstEntity->enRegType,
+                                                    IMSA_REG_ADDR_PARAM_NEXT,
+                                                    aucUeAddr,
+                                                    aucPcscfAddr))
+    {
+        if (IMSA_REG_TYPE_EMC == pstEntity->enRegType)
+        {
+            /* 状态切换 */
+            IMSA_REG_FSM_STATE_TRANS(pstEntity, IMSA_REG_STATUS_NOT_REGISTER);
+
+            (VOS_VOID)IMSA_RegSendIntraMsgRegInd(   pstEntity->enRegType,
+                                                IMSA_REG_RESULT_FAIL_REMOTE,
+                                                IMSA_RESULT_ACTION_NULL);
+
+            return;
+        }
+
+        /*普通注册，且尝试次数未超过最大次数，则启动周期尝试IMS注册定时器*/
+        if (pstEntity->ucTryRegTimes < IMSA_PRIOD_TRY_REG_MAX_TIMES)
+        {
+            IMSA_RegTimerStart(&pstEntity->stPeriodTryRegTimer, pstEntity->enRegType);
+
+            /* 状态切换 */
+            /* IMSA_REG_FSM_STATE_TRANS(pstEntity, IMSA_REG_STATUS_WAIT_PERIOD_TRY); */
+            IMSA_REG_FSM_STATE_TRANS(pstEntity, IMSA_REG_STATUS_WAIT_RETRY);
+
+            pstEntity->ucTryRegTimes++;
+        }
+        else
+        {
+            pstEntity->ucTryRegTimes = 0;
+
+            /* 状态切换 */
+            IMSA_REG_FSM_STATE_TRANS(pstEntity, IMSA_REG_STATUS_NOT_REGISTER);
+
+            (VOS_VOID)IMSA_RegSendIntraMsgRegInd(   pstEntity->enRegType,
+                                                IMSA_REG_RESULT_FAIL_REMOTE,
+                                                IMSA_RESULT_ACTION_NULL);
+        }
+
+        return;
+    }
+
+    IMSA_CONN_UpdateNicPdpInfo();
+
+    /* 发送注册命令，触发IMS Stack开始进行注册 */
+    ulResult = IMSA_RegSendImsMsgReg(pstEntity->enRegType, aucUeAddr, aucPcscfAddr);
+    if (VOS_FALSE == ulResult)
+    {
+        (VOS_VOID)IMSA_RegSendIntraMsgRegInd(   pstEntity->enRegType,
+                                                IMSA_REG_RESULT_FAIL_REMOTE,
+                                                IMSA_RESULT_ACTION_NULL);
+        return;
+    }
+
+    /* 启动保护定时器 */
+    IMSA_RegTimerStart(&pstEntity->stProtectTimer, pstEntity->enRegType);
+
+    /* 状态切换 */
+    IMSA_REG_FSM_STATE_TRANS(pstEntity, IMSA_REG_STATUS_REGISTERING);
+
+    return;
+}
+
+
 
 
 VOS_VOID IMSA_RegFsmProcRegisteringImsRegFailure305
@@ -1019,8 +1162,36 @@ VOS_UINT32 IMSA_RegFsmProcRegisteringImsRegFailure
 
     (VOS_VOID)ulEvt;
 
+
+    #if (FEATURE_ON == FEATURE_PTM)
+    IMSA_RegErrRecord(IMSA_ERR_LOG_REG_FAIL_REASON_REMOTE);
+    #endif
+
     /* 尝试次数加1 */
     pstEntity->ulRetryTimes++;
+
+    /* 目前G/W不支持IMS，IMSA不再获取下一个地址发起注册 */
+    if (VOS_TRUE != IMSA_IsCurrentAccessTypeSupportIms())
+    {
+        IMSA_RegTimerStop(&pstEntity->stProtectTimer);
+
+        IMSA_REG_FSM_STATE_TRANS(pstEntity, IMSA_REG_STATUS_NOT_REGISTER);
+
+        if (VOS_TRUE == IMSA_GetConfigParaAddress()->stCMCCCustomReq.ucCMCCCustomDeregFlag)
+        {
+            (VOS_VOID)IMSA_RegSendIntraMsgRegInd(   pstEntity->enRegType,
+                                                    IMSA_REG_RESULT_FAIL_REMOTE,
+                                                    IMSA_RESULT_ACTION_REG_LOCAL_DEREG);
+        }
+        else
+        {
+            (VOS_VOID)IMSA_RegSendIntraMsgRegInd(   pstEntity->enRegType,
+                                                    IMSA_REG_RESULT_FAIL_REMOTE,
+                                                    IMSA_RESULT_ACTION_NULL);
+        }
+
+        return VOS_TRUE;
+    }
 
     if (VOS_NULL_PTR == pData)
     {
@@ -1033,10 +1204,13 @@ VOS_UINT32 IMSA_RegFsmProcRegisteringImsRegFailure
 
     switch (pstImsErrorInfo->usSipStatusCode)
     {
-        case IMSA_SIP_NW_ERROR_CAUSE_USE_PROXY:
         case IMSA_IMS_INT_ERROR_CODE_TIMERF_OUT:
+            IMSA_RegFsmProcRegisteringImsRegFailureTimerfOut(pstEntity);
+            break;
+        case IMSA_SIP_NW_ERROR_CAUSE_USE_PROXY:
+        /* case IMSA_IMS_INT_ERROR_CODE_TIMERF_OUT: */
         case IMSA_SIP_NW_ERROR_CAUSE_UNAUTHORIZED:
-
+        case IMSA_IMS_INT_ERROR_CODE_REGISTER_TIMER_OUT:
             IMSA_RegFsmProcRegisteringImsRegFailure305(pstEntity);
             break;
         case IMSA_SIP_NW_ERROR_CAUSE_REQUEST_TIMEOUT:
@@ -1114,6 +1288,21 @@ VOS_UINT32 IMSA_RegFsmProcRegisteringImsRegFailure
                如果NV配置的尝试次数为0，则进行无限次尝试；
                如果NV配置的尝试次数不为0，则进行有效次尝试，当尝试超出有效次时，
                则变换参数后再次发起注册 */
+            if (IMSA_REG_TYPE_EMC == pstEntity->enRegType)
+            {
+                /* 停止保护定时器 */
+                IMSA_RegTimerStop(&pstEntity->stProtectTimer);
+
+                /* 状态切换 */
+                IMSA_REG_FSM_STATE_TRANS(pstEntity, IMSA_REG_STATUS_NOT_REGISTER);
+
+                /* 通知SERVICE紧急注册失败 */
+                (VOS_VOID)IMSA_RegSendIntraMsgRegInd(   pstEntity->enRegType,
+                                                        IMSA_REG_RESULT_FAIL_REMOTE,
+                                                        IMSA_RESULT_ACTION_NULL);
+
+                return VOS_TRUE;
+            }
             if (0 == pstImsaRegManager->ulSaveRetryTimes)
             {
                 IMSA_INFO_LOG("IMSA_RegFsmProcRegisteringImsRegFailure: retry limitless times!");
@@ -1142,6 +1331,38 @@ VOS_UINT32 IMSA_RegFsmProcRegisteringImsRegFailure
 
     return VOS_TRUE;
 }
+VOS_VOID IMSA_RegProcNwNotifyMsgByEvent
+(
+    IMSA_REG_ENTITY_STRU               *pstEntity,
+    VOS_VOID                           *pData
+)
+{
+    IMSA_IMS_OUTPUT_ERROR_STRU         *pstImsErrorInfo = VOS_NULL_PTR;
+
+    pstImsErrorInfo = (IMSA_IMS_OUTPUT_ERROR_STRU*)pData;
+
+    IMSA_INFO_LOG1("IMSA_RegProcNwNotifyMsgByEvent:", pstImsErrorInfo->ucServerNtyEvent);
+
+    switch (pstImsErrorInfo->ucServerNtyEvent)
+    {
+        case IMSA_IMS_SERVICE_NOTIFY_EVENT_DEACTED:
+            IMSA_RegWaitForRetryCommonProc( pstEntity,
+                                            pstImsErrorInfo->ulRetryAfter,
+                                            IMSA_TRUE);
+            break;
+        case IMSA_IMS_SERVICE_NOTIFY_EVENT_REJED:
+        case IMSA_IMS_SERVICE_NOTIFY_EVENT_UNREGED:
+            (VOS_VOID)IMSA_RegSendIntraMsgDeregInd( pstEntity->enRegType,
+                                                IMSA_REG_RESULT_FAIL,
+                                                IMSA_RESULT_ACTION_NULL);
+            break;
+        default:
+            (VOS_VOID)IMSA_RegSendIntraMsgDeregInd( pstEntity->enRegType,
+                                                IMSA_REG_RESULT_FAIL,
+                                                IMSA_RESULT_ACTION_NULL);
+            break;
+    }
+}
 
 
 VOS_UINT32 IMSA_RegFsmProcRegisteredImsRegFailure
@@ -1154,7 +1375,8 @@ VOS_UINT32 IMSA_RegFsmProcRegisteredImsRegFailure
     IMSA_IMS_OUTPUT_ERROR_STRU         *pstImsErrorInfo = VOS_NULL_PTR;
 
     IMSA_REG_MANAGER_STRU              *pstImsaRegManager   = IMSA_RegCtxGet();
-
+    VOS_CHAR                            aucUeAddr[IMSA_IPV6_ADDR_STRING_LEN+1]    = {0};
+    VOS_CHAR                            aucPcscfAddr[IMSA_IPV6_ADDR_STRING_LEN+1] = {0};
     IMSA_INFO_LOG("IMSA_RegFsmProcRegisteredImsRegFailure is entered!");
 
     (VOS_VOID)ulEvt;
@@ -1164,6 +1386,24 @@ VOS_UINT32 IMSA_RegFsmProcRegisteredImsRegFailure
 
     /* 切换状态 */
     IMSA_REG_FSM_STATE_TRANS(pstEntity, IMSA_REG_STATUS_NOT_REGISTER);
+
+    /* 目前G/W不支持IMS，IMSA不再获取下一个地址发起注册 */
+    if (VOS_TRUE != IMSA_IsCurrentAccessTypeSupportIms())
+    {
+        if  (VOS_TRUE == IMSA_GetConfigParaAddress()->stCMCCCustomReq.ucCMCCCustomDeregFlag)
+        {
+            (VOS_VOID)IMSA_RegSendIntraMsgDeregInd( pstEntity->enRegType,
+                                                    IMSA_REG_RESULT_FAIL,
+                                                    IMSA_RESULT_ACTION_REG_LOCAL_DEREG);
+        }
+        else
+        {
+            (VOS_VOID)IMSA_RegSendIntraMsgDeregInd( pstEntity->enRegType,
+                                                    IMSA_REG_RESULT_FAIL,
+                                                    IMSA_RESULT_ACTION_NULL);
+        }
+        return VOS_TRUE;
+    }
 
     /* IMS紧急重新注册异常后，无需再发起IMS紧急初始注册，直接进行IMS紧急信令
        承载释放，因为紧急呼已经被释放了 */
@@ -1191,8 +1431,37 @@ VOS_UINT32 IMSA_RegFsmProcRegisteredImsRegFailure
 
     switch (pstImsErrorInfo->usSipStatusCode)
     {
-        case IMSA_SIP_NW_ERROR_CAUSE_USE_PROXY:
         case IMSA_IMS_INT_ERROR_CODE_TIMERF_OUT:
+            if (VOS_FALSE == IMSA_RegGetAddrByParamType( pstEntity->enRegType,
+                                                         IMSA_REG_ADDR_PARAM_NEXT,
+                                                         aucUeAddr,
+                                                         aucPcscfAddr))
+            {
+                (VOS_VOID)IMSA_RegSendIntraMsgDeregInd( pstEntity->enRegType,
+                                                        IMSA_REG_RESULT_FAIL,
+                                                        IMSA_RESULT_ACTION_REG_WITH_CURRENT_ADDR_PAIR);
+            }
+            else
+            {
+                (VOS_VOID)IMSA_RegSendIntraMsgDeregInd( pstEntity->enRegType,
+                                                        IMSA_REG_RESULT_FAIL,
+                                                        IMSA_RESULT_ACTION_REG_WITH_NEXT_ADDR_PAIR);
+
+                IMSA_CONN_UpdateNicPdpInfo();
+
+                /* 向D2 IMS发送注册消息 */
+                (VOS_VOID)IMSA_RegSendImsMsgReg(pstEntity->enRegType, aucUeAddr, aucPcscfAddr);
+
+                /* 启动保护定时器 */
+                IMSA_RegTimerStart(&pstEntity->stProtectTimer, pstEntity->enRegType);
+
+                /* 状态切换 */
+                IMSA_REG_FSM_STATE_TRANS(pstEntity, IMSA_REG_STATUS_REGISTERING);
+            }
+
+            break;
+        case IMSA_SIP_NW_ERROR_CAUSE_USE_PROXY:
+        /* case IMSA_IMS_INT_ERROR_CODE_TIMERF_OUT: */
 
             /* 通知SERVICE使用下一组参数继续尝试注册 */
             (VOS_VOID)IMSA_RegSendIntraMsgDeregInd( pstEntity->enRegType,
@@ -1205,12 +1474,13 @@ VOS_UINT32 IMSA_RegFsmProcRegisteredImsRegFailure
         case IMSA_SIP_NW_ERROR_CAUSE_SERVER_TIMEOUT:
         case IMSA_SIP_NW_ERROR_CAUSE_BUSY_EVERYWHERE:
         case IMSA_SIP_NW_ERROR_CAUSE_SERVICE_UNAVAILABLE:
-
             IMSA_RegWaitForRetryCommonProc( pstEntity,
                                             pstImsErrorInfo->ulRetryAfter,
                                             IMSA_TRUE);
             break;
-
+        case IMSA_IMS_INT_ERROR_CODE_NOTIFY_DEREGISTER:
+            IMSA_RegProcNwNotifyMsgByEvent(pstEntity, pData);
+            break;
         case IMSA_IMS_INT_ERROR_CODE_TCP_ERROR:
         case IMSA_IMS_INT_ERROR_CODE_IPSEC_ERROR:
 
@@ -1277,6 +1547,10 @@ VOS_UINT32 IMSA_RegFsmProcRegisteringProtectTimeout(IMSA_REG_ENTITY_STRU *pstEnt
     /* 状态切换 */
     IMSA_REG_FSM_STATE_TRANS(pstEntity, IMSA_REG_STATUS_ROLLING_BACK);
 
+    #if (FEATURE_ON == FEATURE_PTM)
+    IMSA_RegErrRecord(IMSA_ERR_LOG_REG_FAIL_REASON_TIMEOUT);
+    #endif
+
     return VOS_TRUE;
 }
 VOS_UINT32 IMSA_RegFsmProcRegisteringUserDereg(IMSA_REG_ENTITY_STRU *pstEntity, VOS_UINT32 ulEvt, VOS_VOID* pData)
@@ -1326,6 +1600,36 @@ VOS_UINT32 IMSA_RegFsmProcRegisteredUserDereg(IMSA_REG_ENTITY_STRU *pstEntity, V
 
     return VOS_TRUE;
 }
+
+
+/* zhaochen 00308719 begin for IMS Dereg for too long 2015-09-14 */
+
+VOS_UINT32 IMSA_RegFsmProcDeregingUserDereg(IMSA_REG_ENTITY_STRU *pstEntity, VOS_UINT32 ulEvt, VOS_VOID* pData)
+{
+    IMSA_REG_DEREG_REQ_STRU *pstDeregReq = VOS_NULL_PTR;
+
+    IMSA_INFO_LOG("IMSA_RegFsmProcDeregingUserDereg is entered!");
+
+    (VOS_VOID)ulEvt;
+
+    pstDeregReq = (IMSA_REG_DEREG_REQ_STRU *)pData;
+
+    /* 停止保护定时器 */
+    IMSA_RegTimerStop(&pstEntity->stProtectTimer);
+
+    /* 去注册D2 IMS */
+    IMSA_RegSendImsMsgDereg(pstEntity->enRegType,pstDeregReq->ulLocalFlag);
+
+    /* 启动保护定时器 */
+    IMSA_RegTimerStart(&pstEntity->stProtectTimer, pstEntity->enRegType);
+
+    return VOS_TRUE;
+}
+/* zhaochen 00308719 end for IMS Dereg for too long 2015-09-14 */
+
+
+
+
 VOS_UINT32 IMSA_RegFsmProcDeregingImsRegFailure(IMSA_REG_ENTITY_STRU *pstEntity, VOS_UINT32 ulEvt, VOS_VOID* pData)
 {
     IMSA_INFO_LOG("IMSA_RegFsmProcDeregingImsRegFailure is entered!");
@@ -1402,6 +1706,26 @@ VOS_UINT32 IMSA_RegFsmProcWaitRetryTimeout(IMSA_REG_ENTITY_STRU *pstEntity, VOS_
 
     (VOS_VOID)ulEvt;
     (VOS_VOID)pData;
+
+    /* 如果当前接入类型不支持IMS，不再发起注册 */
+    if (VOS_TRUE != IMSA_IsCurrentAccessTypeSupportIms())
+    {
+        IMSA_REG_FSM_STATE_TRANS(pstEntity, IMSA_REG_STATUS_NOT_REGISTER);
+
+        if (VOS_TRUE == IMSA_GetConfigParaAddress()->stCMCCCustomReq.ucCMCCCustomDeregFlag)
+        {
+            (VOS_VOID)IMSA_RegSendIntraMsgRegInd(   pstEntity->enRegType,
+                                                    IMSA_REG_RESULT_FAIL,
+                                                    IMSA_RESULT_ACTION_REG_LOCAL_DEREG);
+        }
+        else
+        {
+            (VOS_VOID)IMSA_RegSendIntraMsgRegInd(   pstEntity->enRegType,
+                                                    IMSA_REG_RESULT_FAIL,
+                                                    IMSA_RESULT_ACTION_NULL);
+        }
+        return VOS_TRUE;
+    }
 
     if (VOS_TRUE == IMSA_RegGetAddrByParamType( pstEntity->enRegType,
                                                 IMSA_REG_ADDR_PARAM_SAME,
@@ -1528,6 +1852,8 @@ VOS_UINT32 IMSA_RegFsmProcPendingImsRegFailure(IMSA_REG_ENTITY_STRU *pstEntity, 
     if (IMSA_REG_STATUS_NOT_REGISTER == pstEntity->enExceptedStatus)
     {
         (VOS_VOID)IMSA_RegSendIntraMsgDeregInd(pstEntity->enRegType, IMSA_REG_RESULT_SUCCESS, IMSA_RESULT_ACTION_NULL);
+        /* 状态切换 */
+        IMSA_REG_FSM_STATE_TRANS(pstEntity, IMSA_REG_STATUS_NOT_REGISTER);
     }
     /* 如果期望状态是注册，则发起注册 */
     else if (IMSA_REG_STATUS_REGISTERED == pstEntity->enExceptedStatus)
@@ -1538,6 +1864,9 @@ VOS_UINT32 IMSA_RegFsmProcPendingImsRegFailure(IMSA_REG_ENTITY_STRU *pstEntity, 
             IMSA_CONN_UpdateNicPdpInfo();
 
             (VOS_VOID)IMSA_RegSendImsMsgReg(pstEntity->enRegType, aucUeAddr, aucPcscfAddr);
+
+            /* 启动保护定时器 */
+            IMSA_RegTimerStart(&pstEntity->stProtectTimer, pstEntity->enRegType);
 
             /* 状态切换 */
             IMSA_REG_FSM_STATE_TRANS(pstEntity, IMSA_REG_STATUS_REGISTERING);
@@ -1675,12 +2004,37 @@ VOS_UINT32 IMSA_RegFsmProcRollingBackImsRegFailure(IMSA_REG_ENTITY_STRU *pstEnti
             break;
         }
     case IMSA_REG_STATUS_REGISTERED:
+        IMSA_RegTimerStop(&pstEntity->stProtectTimer);
+
+        /* 如果当前接入类型不支持IMS，不再发起注册 */
+        if (VOS_TRUE != IMSA_IsCurrentAccessTypeSupportIms())
+        {
+            IMSA_REG_FSM_STATE_TRANS(pstEntity, IMSA_REG_STATUS_NOT_REGISTER);
+
+            if (VOS_TRUE == IMSA_GetConfigParaAddress()->stCMCCCustomReq.ucCMCCCustomDeregFlag)
+            {
+                (VOS_VOID)IMSA_RegSendIntraMsgRegInd(   pstEntity->enRegType,
+                                                        IMSA_REG_RESULT_FAIL,
+                                                        IMSA_RESULT_ACTION_REG_LOCAL_DEREG);
+            }
+            else
+            {
+                (VOS_VOID)IMSA_RegSendIntraMsgRegInd(   pstEntity->enRegType,
+                                                        IMSA_REG_RESULT_FAIL,
+                                                        IMSA_RESULT_ACTION_NULL);
+            }
+            return VOS_TRUE;
+        }
+
         /* 如果期望状态是注册，则根据保存的注册参数选取一组地址对进行注册 */
         if (VOS_TRUE == IMSA_RegGetAddrByParamType(pstEntity->enRegType, pstEntity->enPendingRegParam, aucUeAddr, aucPcscfAddr))
         {
             IMSA_CONN_UpdateNicPdpInfo();
 
             (VOS_VOID)IMSA_RegSendImsMsgReg(pstEntity->enRegType, aucUeAddr, aucPcscfAddr);
+
+            /* 启动保护定时器 */
+            IMSA_RegTimerStart(&pstEntity->stProtectTimer, pstEntity->enRegType);
 
             /* 状态切换 */
             IMSA_REG_FSM_STATE_TRANS(pstEntity, IMSA_REG_STATUS_REGISTERING);
@@ -1807,9 +2161,6 @@ VOS_UINT32 IMSA_RegProcImsMsgState(const IMSA_IMS_OUTPUT_SERVICE_EVENT_STRU  *ps
     switch (pstOutputService->enServeState)
     {
     case IMSA_IMS_SERVICE_STATE_INACTIVE:
-        ulResult = IMSA_FsmRun(pstRegEntity, IMSA_REG_EVT_IMS_REG_FAILURE, VOS_NULL_PTR);
-        break;
-
     case IMSA_IMS_SERVICE_STATE_FAILED:
     case IMSA_IMS_SERVICE_STATE_UNKNOWN:
 
@@ -1867,7 +2218,6 @@ VOS_VOID IMSA_RegProcTimeoutRetry(const VOS_VOID *pTimerMsg)
 
     (VOS_VOID)IMSA_FsmRun(pstRegEntity, IMSA_REG_EVT_TIMEOUT_RETRY, VOS_NULL_PTR);
 }
-
 
 
 
@@ -2501,7 +2851,8 @@ VOS_UINT32 IMSA_RegGetRegedPara
 (
     IMSA_REG_TYPE_ENUM_UINT8            ulRegType,
     VOS_CHAR                           *pacUeAddr,
-    VOS_CHAR                           *pacPcscfAddr
+    VOS_CHAR                           *pacPcscfAddr,
+    IMSA_IP_TYPE_ENUM_UINT8            *penIptype
 )
 {
     IMSA_REG_ENTITY_STRU               *pstRegEntity = VOS_NULL_PTR;
@@ -2509,7 +2860,7 @@ VOS_UINT32 IMSA_RegGetRegedPara
     IMSA_INFO_LOG("IMSA_RegGetRegedPara is entered!");
 
     if ((VOS_NULL_PTR == pacUeAddr) || (VOS_NULL_PTR == pacPcscfAddr)
-        || (ulRegType >= IMSA_REG_TYPE_BUTT))
+        || (ulRegType >= IMSA_REG_TYPE_BUTT) || (VOS_NULL_PTR == penIptype))
     {
         IMSA_ERR_LOG("IMSA_RegGetRegedPara:Input Para Illegal");
 
@@ -2518,7 +2869,8 @@ VOS_UINT32 IMSA_RegGetRegedPara
 
     pstRegEntity = IMSA_RegEntityGetByType(ulRegType);
 
-    if (IMSA_REG_STATUS_REGISTERED != pstRegEntity->enStatus)
+    if ((IMSA_REG_STATUS_REGISTERED != pstRegEntity->enStatus) &&
+        (IMSA_REG_STATUS_REGISTERING != pstRegEntity->enStatus))
     {
         return IMSA_FAIL;
     }
@@ -2532,6 +2884,8 @@ VOS_UINT32 IMSA_RegGetRegedPara
     }
     else
     {
+        *penIptype = pstRegEntity->stPairMgrCtx.pstCurrent->enIpType;
+
         return IMSA_SUCC;
     }
 }
@@ -2549,6 +2903,8 @@ VOS_VOID IMSA_RegSaveRegedPara
     VOS_CHAR                                acRegUeAddr[IMSA_IPV6_ADDR_STRING_LEN + 1] = {0};
     VOS_CHAR                                acRegPcscfAddr[IMSA_IPV6_ADDR_STRING_LEN + 1] = {0};
 
+    IMSA_IP_TYPE_ENUM_UINT8                 enIpType = IMSA_IP_TYPE_BUTT;
+
     IMSA_INFO_LOG("IMSA_RegSaveRegedPara is entered!");
 
     pstImsaControlManager = IMSA_GetControlManagerAddress();
@@ -2557,7 +2913,8 @@ VOS_VOID IMSA_RegSaveRegedPara
     {
         ulRslt = IMSA_RegGetRegedPara(  ulRegType,
                                         acRegUeAddr,
-                                        acRegPcscfAddr);
+                                        acRegPcscfAddr,
+                                        &enIpType);
 
         /* 如果能获取到注册的参数，则在删除承载信息前进行备份  */
         if (IMSA_FAIL != ulRslt)
@@ -2581,7 +2938,8 @@ VOS_VOID IMSA_RegSaveRegedPara
     {
         ulRslt = IMSA_RegGetRegedPara(  ulRegType,
                                         acRegUeAddr,
-                                        acRegPcscfAddr);
+                                        acRegPcscfAddr,
+                                        &enIpType);
 
         /* 如果能获取到注册的参数，则在删除承载信息前进行备份  */
         if (IMSA_FAIL != ulRslt)
@@ -2616,6 +2974,10 @@ VOS_VOID IMSA_RegEntityInit(IMSA_REG_ENTITY_STRU *pstRegEntity)
     pstRegEntity->stRetryTimer.ucMode = VOS_RELTIMER_NOLOOP;
     pstRegEntity->stRetryTimer.ulTimerLen = IMSA_REG_TIMER_LEN_RETRY;
 
+    pstRegEntity->stPeriodTryRegTimer.usName = TI_IMSA_REG_PERIOD_TRY;
+    pstRegEntity->stPeriodTryRegTimer.ucMode = VOS_RELTIMER_NOLOOP;
+    pstRegEntity->stPeriodTryRegTimer.ulTimerLen = IMSA_REG_TIMER_LEN_PERIOD_TRY_REG;
+
     IMSA_RegAddrPairMgrInit(&pstRegEntity->stPairMgrCtx);
 }
 
@@ -2632,6 +2994,11 @@ VOS_VOID IMSA_RegEntityDeinit(IMSA_REG_ENTITY_STRU *pstRegEntity)
     if (IMSA_IsTimerRunning(&pstRegEntity->stRetryTimer))
     {
         IMSA_RegTimerStop(&pstRegEntity->stRetryTimer);
+    }
+
+    if (IMSA_IsTimerRunning(&pstRegEntity->stPeriodTryRegTimer))
+    {
+        IMSA_RegTimerStop(&pstRegEntity->stPeriodTryRegTimer);
     }
 
     IMSA_RegAddrPairMgrDeinit(&pstRegEntity->stPairMgrCtx);
@@ -2760,6 +3127,194 @@ VOS_VOID IMSA_RegPrintEmcRegState( VOS_VOID )
             break;
     }
 }
+#if (FEATURE_ON == FEATURE_PTM)
+
+VOS_VOID IMSA_SndRegErrLogInfo
+(
+    IMSA_ERR_LOG_REG_FAIL_STRU  stImsRegRstEvent
+)
+{
+    IMSA_REG_ERROR_LOG_INFO_STRU  *pstMsg = VOS_NULL_PTR;
+
+    IMSA_NORM_LOG("IMSA_SndRegErrLogInfo:ENTER.");
+
+    pstMsg = (VOS_VOID*)IMSA_ALLOC_MSG(sizeof(IMSA_REG_ERROR_LOG_INFO_STRU));
+    if (VOS_NULL_PTR == pstMsg)
+    {
+        IMSA_ERR_LOG("IMSA_SndRegErrLogInfo:ERROR:Alloc Mem Fail.");
+        return;
+    }
+
+    IMSA_MEM_SET(IMSA_GET_MSG_ENTITY(pstMsg), 0, \
+                                IMSA_GET_MSG_LENGTH(pstMsg));
+
+    IMSA_WRITE_OM_MSG_HEAD( pstMsg,
+                            ID_IMSA_OM_REG_ERROR_LOG_IND);
+
+    IMSA_MEM_CPY(&pstMsg->stImsaRegErrlog, &stImsRegRstEvent, sizeof(IMSA_ERR_LOG_REG_FAIL_STRU));
+
+
+#if(VOS_WIN32 == VOS_OS_VER)
+    /*PC测试，将消息发送出去，用于ST验证*/
+    IMSA_SND_MSG(pstMsg);
+
+#else
+    /*消息勾到HSO上*/
+    (VOS_VOID)LTE_MsgHook(pstMsg);
+
+    /*释放消息空间*/
+    IMSA_FREE_MSG(pstMsg);
+
+#endif
+
+    return;
+}
+VOS_VOID IMSA_PdnRejErrRecord
+(
+    IMSA_ERR_LOG_PDNREJ_CAUSE_ENUM_UINT32   enPdnConnRejCause
+)
+{
+    IMSA_ERR_LOG_REG_FAIL_STRU                              stImsRegRstEvent;
+    VOS_UINT32                                              ulIsLogRecord;
+    VOS_UINT32                                              ulLength;
+    VOS_UINT32                                              ulResult;
+    VOS_UINT16                                              usLevel;
+    IMSA_CONTROL_MANAGER_STRU          *pstControlMagnaer   = VOS_NULL_PTR;
+
+
+    /* 查询对应Alarm Id是否需要记录异常信息 */
+    usLevel       = IMSA_GetErrLogAlmLevel(IMSA_ERR_LOG_ALM_REG_FAIL_EVENT);
+    ulIsLogRecord = IMSA_IsErrLogNeedRecord(usLevel);
+    pstControlMagnaer                       = IMSA_GetControlManagerAddress();
+
+    /* 模块异常不需要记录时，不保存异常信息 */
+    if (VOS_FALSE == ulIsLogRecord)
+    {
+        return;
+    }
+
+    ulLength = sizeof(IMSA_ERR_LOG_REG_FAIL_STRU);
+
+    /* 填充CS注册失败异常信息 */
+    PS_MEM_SET(&stImsRegRstEvent, 0x00, ulLength);
+
+    IMSA_WRITE_ERRLOG_HEADER_INFO(&stImsRegRstEvent.stHeader,
+                                  VOS_GetModemIDFromPid(PS_PID_IMSA),
+                                  IMSA_ERR_LOG_ALM_REG_FAIL_EVENT,
+                                  usLevel,
+                                  VOS_GetSlice(),
+                                  (ulLength - sizeof(OM_ERR_LOG_HEADER_STRU)));
+
+    /* 枚举值需要转换 */
+    stImsRegRstEvent.enRegisterReason       = IMSA_ERR_LOG_REGISTER_REASON_BUTT;
+    stImsRegRstEvent.enRegFailReason        = IMSA_ERR_LOG_REG_FAIL_REASON_BUTT;
+    stImsRegRstEvent.enVopsStatus           = IMSA_VoPsState2ErrlogVoPsState(IMSA_GetNwImsVoiceCap());
+    stImsRegRstEvent.enPdnConnRejCause      = enPdnConnRejCause;
+    stImsRegRstEvent.enPdnConnStatus        = IMSA_ConnState2ErrlogConnState(IMSA_CONN_GetNormalConnStatus());
+    stImsRegRstEvent.enPsServiceStatus      = IMSA_PsSerStates2ErrlogPsStates(IMSA_GetPsServiceStatus());
+
+    if (VOS_FALSE == pstControlMagnaer->ucImsaUsimStatus)
+    {
+        stImsRegRstEvent.enUsimStatus = IMSA_USIM_STATUS_UNAVAILABLE;
+    }
+    else
+    {
+        stImsRegRstEvent.enUsimStatus = IMSA_USIM_STATUS_AVAILABLE;
+    }
+
+    /* 勾包到HIDS */
+    IMSA_SndRegErrLogInfo(stImsRegRstEvent);
+
+    /*
+       将异常信息写入Buffer中
+       实际写入的字符数与需要写入的不等则打印异常
+     */
+    ulResult = IMSA_PutErrLogRingBuf((VOS_CHAR *)&stImsRegRstEvent, ulLength);
+    if (ulResult != ulLength)
+    {
+        IMSA_ERR_LOG("IMSA_RegErrRecord: Push buffer error.");
+    }
+
+    return;
+}
+
+VOS_VOID IMSA_RegErrRecord
+(
+    IMSA_ERR_LOG_REG_FAIL_REASON_ENUM_UINT8 enRegFailReason
+)
+{
+    IMSA_ERR_LOG_REG_FAIL_STRU                              stImsRegRstEvent;
+    VOS_UINT32                                              ulIsLogRecord;
+    VOS_UINT32                                              ulLength;
+    VOS_UINT32                                              ulResult;
+    VOS_UINT16                                              usLevel;
+    IMSA_CONTROL_MANAGER_STRU          *pstControlMagnaer   = VOS_NULL_PTR;
+    VOS_CHAR                            aucUeAddr[IMSA_IPV6_ADDR_STRING_LEN+1] = {0};
+    VOS_CHAR                            aucPcscfAddr[IMSA_IPV6_ADDR_STRING_LEN+1] = {0};
+
+
+    /* 查询对应Alarm Id是否需要记录异常信息 */
+    usLevel       = IMSA_GetErrLogAlmLevel(IMSA_ERR_LOG_ALM_REG_FAIL_EVENT);
+    ulIsLogRecord = IMSA_IsErrLogNeedRecord(usLevel);
+    pstControlMagnaer                       = IMSA_GetControlManagerAddress();
+
+    /* 模块异常不需要记录时，不保存异常信息 */
+    if (VOS_FALSE == ulIsLogRecord)
+    {
+        return;
+    }
+
+    ulLength = sizeof(IMSA_ERR_LOG_REG_FAIL_STRU);
+
+    /* 填充CS注册失败异常信息 */
+    IMSA_MEM_SET(&stImsRegRstEvent, 0x00, ulLength);
+
+    IMSA_WRITE_ERRLOG_HEADER_INFO(&stImsRegRstEvent.stHeader,
+                                  VOS_GetModemIDFromPid(PS_PID_IMSA),
+                                  IMSA_ERR_LOG_ALM_REG_FAIL_EVENT,
+                                  usLevel,
+                                  VOS_GetSlice(),
+                                  (ulLength - sizeof(OM_ERR_LOG_HEADER_STRU)));
+
+    /* 枚举值需要转换 */
+    stImsRegRstEvent.enRegisterReason       = IMSA_RegAddrType2ErrlogRegReason(pstControlMagnaer->enAddrType);
+    stImsRegRstEvent.enRegFailReason        = enRegFailReason;
+    stImsRegRstEvent.enVopsStatus           = IMSA_VoPsState2ErrlogVoPsState(IMSA_GetNwImsVoiceCap());
+    stImsRegRstEvent.enPdnConnRejCause      = IMSA_ERR_LOG_PDNREJ_CAUSE_BUTT;
+    stImsRegRstEvent.enPdnConnStatus        = IMSA_ConnState2ErrlogConnState(IMSA_CONN_GetNormalConnStatus());
+    stImsRegRstEvent.enPsServiceStatus      = IMSA_PsSerStates2ErrlogPsStates(IMSA_GetPsServiceStatus());
+
+    if (VOS_FALSE == pstControlMagnaer->ucImsaUsimStatus)
+    {
+        stImsRegRstEvent.enUsimStatus = IMSA_USIM_STATUS_UNAVAILABLE;
+    }
+    else
+    {
+        stImsRegRstEvent.enUsimStatus = IMSA_USIM_STATUS_AVAILABLE;
+    }
+
+    if (VOS_TRUE == IMSA_RegAddrPairMgrGetCurrent(IMSA_REG_TYPE_NORMAL, aucUeAddr, aucPcscfAddr))
+    {
+        IMSA_MEM_CPY(stImsRegRstEvent.aucPcscfAddr,
+                     aucPcscfAddr,
+                     IMSA_IPV6_ADDR_STRING_LEN+1);
+    }
+    /* HIDS勾包 */
+    IMSA_SndRegErrLogInfo(stImsRegRstEvent);
+
+    /*
+       将异常信息写入Buffer中
+       实际写入的字符数与需要写入的不等则打印异常
+     */
+    ulResult = IMSA_PutErrLogRingBuf((VOS_CHAR *)&stImsRegRstEvent, ulLength);
+    if (ulResult != ulLength)
+    {
+        IMSA_ERR_LOG("IMSA_RegErrRecord: Push buffer error.");
+    }
+
+    return;
+}
+#endif
 /*lint +e961*/
 /*lint +e960*/
 

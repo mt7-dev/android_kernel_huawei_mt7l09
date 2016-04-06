@@ -554,15 +554,6 @@ static int powernow_verify(struct cpufreq_policy *policy)
 {
 	return cpufreq_frequency_table_verify(policy, powernow_table);
 }
-
-/*
- * We use the fact that the bus frequency is somehow
- * a multiple of 100000/3 khz, then we compute sgtc according
- * to this multiple.
- * That way, we match more how AMD thinks all of that work.
- * We will then get the same kind of behaviour already tested under
- * the "well-known" other OS.
- */
 static int __cpuinit fixup_sgtc(void)
 {
 	unsigned int sgtc;

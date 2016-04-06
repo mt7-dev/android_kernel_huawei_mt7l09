@@ -5,10 +5,11 @@
 
 
 /*****************************************************************************
-  1 其他头文件包含
+  1 脝盲脣没脥路脦脛录镁掳眉潞卢
 *****************************************************************************/
 #include    "vos.h"
 #include    "NasEsmPublic.h"
+#include    "LnasErrlogInterface.h"
 
 /*****************************************************************************
   1.1 Cplusplus Announce
@@ -19,7 +20,7 @@ extern "C" {
 #endif
 #endif
 /*****************************************************************************
-  #pragma pack(*)    设置字节对齐方式
+  #pragma pack(*)    脡猫脰脙脳脰陆脷露脭脝毛路陆脢陆
 *****************************************************************************/
 #if (VOS_OS_VER != VOS_WIN32)
 #pragma pack(4)
@@ -30,10 +31,21 @@ extern "C" {
 /*****************************************************************************
   2 macro
 *****************************************************************************/
-#define ESM_MAX_SND_MSG_LEN              (256)               /*空口消息占用的最大空间*/
-#define ESM_MIN_SND_MSG_LEN              (4)                 /*空口消息占用的最小空间*/
-#define ESM_MAX_MSG_CONTAINER_CNTNTS_LEN (1024)              /*ESM message container contents最大长度*/
+#define ESM_MAX_SND_MSG_LEN              (256)               /*驴脮驴脷脧没脧垄脮录脫脙碌脛脳卯麓贸驴脮录盲*/
+#define ESM_MIN_SND_MSG_LEN              (4)                 /*驴脮驴脷脧没脧垄脮录脫脙碌脛脳卯脨隆驴脮录盲*/
+#define ESM_MAX_MSG_CONTAINER_CNTNTS_LEN (1024)              /*ESM message container contents脳卯麓贸鲁陇露脠*/
 
+#define NAS_ESM_COMM_BULID_ERRLOG_HEADER_INFO(pstHeader, ModemId, AlmId, AlmLevel, ulSlice, ulLength) \
+{ \
+    (pstHeader)->ulMsgModuleId     = OM_ERR_LOG_MOUDLE_ID_LMM; \
+    (pstHeader)->usModemId         = ModemId; \
+    (pstHeader)->usAlmId           = AlmId; \
+    (pstHeader)->usAlmLevel        = AlmLevel; \
+    (pstHeader)->usAlmType         = EMM_OM_ERRLOG_ALM_TYPE_COMMUNICATION; \
+    (pstHeader)->ulAlmLowSlice     = ulSlice; \
+    (pstHeader)->ulAlmHighSlice    = 0; \
+    (pstHeader)->ulAlmLength       = ulLength; \
+}
 
 /*****************************************************************************
   3 Massage Declare
@@ -50,6 +62,12 @@ extern "C" {
 /*****************************************************************************
   5 STRUCT
 *****************************************************************************/
+
+typedef struct
+{
+    NAS_ESM_CAUSE_ENUM_UINT8            ulEsmCnCasue;
+    ESM_OM_ERRLOG_ID_ENUM_UINT16        ulEsmErrId;
+}NAS_ESM_CN_CAUSE_TRANS_STRU;
 
 
 /*****************************************************************************
@@ -125,6 +143,23 @@ extern VOS_VOID NAS_ESM_ReestablishAttachBearer( VOS_VOID );
 
 extern VOS_VOID NAS_ESM_SndEsmEmmClrEsmProcResNtyMsg(VOS_UINT32 ulOpId, VOS_UINT8 ucIsEmcPdnType);
 
+#if (FEATURE_ON == FEATURE_PTM)
+extern VOS_VOID  NAS_ESM_PdnConFailRecord(
+        const EMM_ESM_INTRA_DATA_IND_STRU   *pstEmmEsmDataInd,
+        ESM_OM_ERRLOG_TIMEOUT_ENUM_UINT16   enErrEsmTimeOut);
+extern VOS_VOID  NAS_ESM_PdnDisconFailRecord(
+        const EMM_ESM_INTRA_DATA_IND_STRU   *pstEmmEsmDataInd,
+        ESM_OM_ERRLOG_TIMEOUT_ENUM_UINT16   enErrEsmTimeOut);
+extern VOS_VOID  NAS_ESM_ResModFailRecord(
+        const EMM_ESM_INTRA_DATA_IND_STRU   *pstEmmEsmDataInd,
+        ESM_OM_ERRLOG_TIMEOUT_ENUM_UINT16   enErrEsmTimeOut);
+extern VOS_VOID  NAS_ESM_ResAllocFailRecord(
+        const EMM_ESM_INTRA_DATA_IND_STRU   *pstEmmEsmDataInd,
+        ESM_OM_ERRLOG_TIMEOUT_ENUM_UINT16   enErrEsmTimeOut);
+extern VOS_VOID NAS_ESM_SndEsmErrlogToEmm(
+                 VOS_VOID     *pstEsmErrRslt,  VOS_UINT32   ulEsmErrLength);
+extern ESM_OM_ERRLOG_ID_ENUM_UINT16  NAS_ESM_CnCauseProc(VOS_UINT8 ucCnCause);
+#endif
 
 
 /*****************************************************************************

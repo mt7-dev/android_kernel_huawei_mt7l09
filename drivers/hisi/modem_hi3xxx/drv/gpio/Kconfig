@@ -1,0 +1,15 @@
+#
+# GPIO infrastructure and drivers
+#
+
+config GPIO_BALONG
+	tristate "Hisi Balong GPIO support"
+	depends on GPIOLIB
+	help
+	  Support for the Hisi balongv7r2 SoC GPIOs.
+	  
+config GPIO_EXPANDER_BALONG
+	tristate "Hisi Balong GPIO I2C expander"
+	# depends on nothing, just a device register.
+	help
+	  Support for the Hisi balong I2C To GPIO trans.

@@ -92,7 +92,7 @@ extern void pm_vote(u32 vote, u32 flag);
 
 /**************************************************************/
 /* sram debug addr */
-#define PWR_SRAM_DEBUG_ADDR         SRAM_MCU_RESERVE_ADDR
+#define PWR_SRAM_DEBUG_ADDR         (unsigned )(SRAM_MCU_RESERVE_ADDR)
 #define PWR_SRAM_DEBUG_SIZE         SRAM_MCU_RESERVE_SIZE
 
 #define PWR_SRAM_TIMER0            (PWR_SRAM_DEBUG_ADDR)

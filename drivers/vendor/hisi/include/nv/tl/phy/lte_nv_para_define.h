@@ -1041,6 +1041,13 @@ typedef struct
 	UINT16 usTestModeInd;                     /*降SAR测试模式指示*/
 	INT16  sReducedPwr[9];                    /*降SAR回退功率*/
 }NV_ANT_SAR_STRU;
+
+typedef struct
+{
+    INT16  sDpdtReducedPwr[9];                    /*DPDT降SAR回退功率*/
+    INT16  Rsv;                                   /*保留项*/
+}NV_DPDT_ANT_SAR_STRU;
+
 typedef struct
 {
     INT16  sDivLossComp;
@@ -1103,6 +1110,7 @@ typedef struct
     INT16  asAptPaLowCmp[UL_APT_VBIAS_NUM];              /*APT PA增益补偿*/
 	/*NV_TX_CMP_RSV_STRU   stTxCmpRsv;*/
 	NV_ANT_SAR_STRU   stAntSarPwr;
+    NV_DPDT_ANT_SAR_STRU  stDpdtAntSarPwr;
     LTE_TX_DIVERSITY_LOSS_COMP stDivComp;
 
 	NV_PA_POWER_DIFFERENCE        stPaPowerDiff;
@@ -1190,6 +1198,8 @@ typedef struct
     NV_RFIC_REG_CONFIG_STRU stRfCfg[MAX_RF_INIT_REG_NUM];
 }NV_FE_RFIC_INIT_STRU;
 
+typedef NV_FE_RFIC_INIT_STRU NV_FE_RFIC_S_INIT_STRU;
+
 typedef struct
 {
     UINT8 ucDebugEn;
@@ -1228,8 +1238,8 @@ typedef struct
 {
     UINT32 ulDpdt0Default;
     UINT32 ulDpdt0SwitchMap;
-    UINT32 ulDpdt1Default;
-    UINT32 ulDpdt1SwitchMap;
+    UINT32 ulDpdtPreT1;
+    UINT32 ulDpdtPostT2;
 }NV_PBAND_TAS_CFG;
 
 typedef struct
@@ -1297,6 +1307,22 @@ typedef struct
 {
     NV_PBAND_MIPI_PARA_STRU     stPBandMipiPara[MAX_PCC_BAND_NUM];
 }NV_FE_PBAND_MIPI_INFO_STRU;
+
+
+typedef struct
+{
+    LPHY_MIPIDEV_CMD_STRU      stPccAddedMipiAntSelRx;                   /*PCC 额外补充一条接收天线开关mipi配置*/
+    LPHY_MIPIDEV_CMD_STRU      stPccAddedMipiAntSelTx;                   /*PCC 额外补充一条发射天线开关mipi配置*/
+    LPHY_MIPIDEV_CMD_STRU      stSccAddedMipiAntSelRx[MAX_SCC_BAND_NUM]; /*每个SCC 额外补充一条接收天线开关mipi配置*/
+}NV_BAND_MIPI_ADDED_STRU;
+
+
+typedef struct
+{
+    NV_BAND_MIPI_ADDED_STRU stBandMipiAdded[MAX_PCC_BAND_NUM];
+}NV_FE_MIPI_ADDED_STRU;
+
+
 
 typedef struct
 {
@@ -1373,6 +1399,12 @@ typedef struct
 	LPHY_MIPIDEV_CMD_STRU  stNotchMipiCfg[NOTCH_MIPI_MAX];
 }NV_FE_NOTCH_INFO_STRU;
 
+typedef struct
+{
+    UINT16 usCh0ExtTcxoValidFlg;
+    UINT16 usCh1ExtTcxoValidFlg;
+}NV_EXT_TCXO_STATE_STRU;
+
 /* Begin: Added by luzhejun, 2014-03-17 PN:LTE_WIFI*/
 typedef struct
 {
@@ -1420,7 +1452,8 @@ typedef struct
     NV_BT_CMP_SWITCH_STRU stBtCmpSwitch;
 
 	NV_DSP_CONFIG_TIME_STRU      stRFECfgTime;      /*DSP相关配置时间移入NV项中*/
-
+    NV_EXT_TCXO_STATE_STRU              stExtTcxoInfo;
+    NV_FE_RFIC_S_INIT_STRU              stFeRfsInitInfo;
     NV_FE_NOTCH_INFO_STRU               stNotchInfo;   /*notch config*/
     NV_FE_BASIC_INFO_STRU               stFeBasicInfo;
     NV_FE_RFIC_INIT_STRU                stFeRfInitInfo;
@@ -1428,6 +1461,7 @@ typedef struct
     NV_FE_PBAND_INFO_STRU               stPBandCfg;
     NV_FE_SBAND_INFO_STRU               stSBandCfg;
     NV_FE_PBAND_MIPI_INFO_STRU          stPBandMipiCfg;
+    NV_FE_MIPI_ADDED_STRU               stAddedMipiCfg;
     NV_FE_CA_TUNER_INFO_STRU            stCaTunerCfg;
 
     NV_PHY_FUNC_VERIFY_STUB_STRU       stPhyFuncDebugPara;

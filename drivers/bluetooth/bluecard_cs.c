@@ -87,7 +87,6 @@ static void bluecard_release(struct pcmcia_device *link);
 static void bluecard_detach(struct pcmcia_device *p_dev);
 
 
-/* Default baud rate: 57600, 115200, 230400 or 460800 */
 #define DEFAULT_BAUD_RATE  230400
 
 

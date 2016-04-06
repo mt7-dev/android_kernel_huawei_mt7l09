@@ -568,6 +568,7 @@ VOS_VOID NAS_ESM_SetEpsBearPcoIpv4Item
                             pstEpsbCntxtInfo->stPcoInfo.astIpv4Pcscf[0].aucIpV4Addr,
                             APP_MAX_IPV4_ADDR_LEN);
         pstEpsBearInfoInd->stPcoIpv4Item.bitOpSecPcscf = NAS_ESM_OP_FALSE;
+        pstEpsBearInfoInd->stPcoIpv4Item.bitOpThiPcscf = NAS_ESM_OP_FALSE;
     }
 
     if (pstEpsbCntxtInfo->stPcoInfo.ucIpv4PcscfNum == 2)
@@ -580,6 +581,25 @@ VOS_VOID NAS_ESM_SetEpsBearPcoIpv4Item
         pstEpsBearInfoInd->stPcoIpv4Item.bitOpSecPcscf = NAS_ESM_OP_TRUE;
         NAS_ESM_MEM_CPY(    pstEpsBearInfoInd->stPcoIpv4Item.aucSecPcscf,
                             pstEpsbCntxtInfo->stPcoInfo.astIpv4Pcscf[1].aucIpV4Addr,
+                            APP_MAX_IPV4_ADDR_LEN);
+        pstEpsBearInfoInd->stPcoIpv4Item.bitOpThiPcscf = NAS_ESM_OP_FALSE;
+    }
+
+    if (pstEpsbCntxtInfo->stPcoInfo.ucIpv4PcscfNum == 3)
+    {
+        pstEpsBearInfoInd->bitOpPcoIpv4Item = NAS_ESM_OP_TRUE;
+        pstEpsBearInfoInd->stPcoIpv4Item.bitOpPriPcscf = NAS_ESM_OP_TRUE;
+        NAS_ESM_MEM_CPY(    pstEpsBearInfoInd->stPcoIpv4Item.aucPriPcscf,
+                            pstEpsbCntxtInfo->stPcoInfo.astIpv4Pcscf[0].aucIpV4Addr,
+                            APP_MAX_IPV4_ADDR_LEN);
+        pstEpsBearInfoInd->stPcoIpv4Item.bitOpSecPcscf = NAS_ESM_OP_TRUE;
+        NAS_ESM_MEM_CPY(    pstEpsBearInfoInd->stPcoIpv4Item.aucSecPcscf,
+                            pstEpsbCntxtInfo->stPcoInfo.astIpv4Pcscf[1].aucIpV4Addr,
+                            APP_MAX_IPV4_ADDR_LEN);
+
+        pstEpsBearInfoInd->stPcoIpv4Item.bitOpThiPcscf = NAS_ESM_OP_TRUE;
+        NAS_ESM_MEM_CPY(    pstEpsBearInfoInd->stPcoIpv4Item.aucThiPcscf,
+                            pstEpsbCntxtInfo->stPcoInfo.astIpv4Pcscf[2].aucIpV4Addr,
                             APP_MAX_IPV4_ADDR_LEN);
     }
 
@@ -656,6 +676,23 @@ VOS_VOID NAS_ESM_SetEpsBearPcoIpv6Item
         pstEpsBearInfoInd->stPcoIpv6Item.bitOpSecPcscf = NAS_ESM_OP_TRUE;
         NAS_ESM_MEM_CPY(    pstEpsBearInfoInd->stPcoIpv6Item.aucSecPcscf,
                             pstEpsbCntxtInfo->stPcoInfo.astIpv6Pcscf[1].aucIpV6Addr,
+                            APP_MAX_IPV6_ADDR_LEN);
+    }
+    if (pstEpsbCntxtInfo->stPcoInfo.ucIpv6PcscfNum == 3)
+    {
+        pstEpsBearInfoInd->bitOpPcoIpv6Item = NAS_ESM_OP_TRUE;
+        pstEpsBearInfoInd->stPcoIpv6Item.bitOpPriPcscf = NAS_ESM_OP_TRUE;
+        NAS_ESM_MEM_CPY(    pstEpsBearInfoInd->stPcoIpv6Item.aucPriPcscf,
+                            pstEpsbCntxtInfo->stPcoInfo.astIpv6Pcscf[0].aucIpV6Addr,
+                            APP_MAX_IPV6_ADDR_LEN);
+        pstEpsBearInfoInd->stPcoIpv6Item.bitOpSecPcscf = NAS_ESM_OP_TRUE;
+        NAS_ESM_MEM_CPY(    pstEpsBearInfoInd->stPcoIpv6Item.aucSecPcscf,
+                            pstEpsbCntxtInfo->stPcoInfo.astIpv6Pcscf[1].aucIpV6Addr,
+                            APP_MAX_IPV6_ADDR_LEN);
+
+        pstEpsBearInfoInd->stPcoIpv6Item.bitOpThiPcscf = NAS_ESM_OP_TRUE;
+        NAS_ESM_MEM_CPY(    pstEpsBearInfoInd->stPcoIpv6Item.aucThiPcscf,
+                            pstEpsbCntxtInfo->stPcoInfo.astIpv6Pcscf[2].aucIpV6Addr,
                             APP_MAX_IPV6_ADDR_LEN);
     }
 

@@ -25,7 +25,7 @@ extern "C" {
 /*****************************************************************************
   2 Declare the Global Variable
 *****************************************************************************/
-
+VOS_UINT32    g_ulIntraHoIgnoreForbidTaFlag = PS_FALSE;
 
 
 
@@ -127,6 +127,7 @@ VOS_UINT32 NAS_EMM_MsRegSsNormalMsgSysinfo(VOS_UINT32  ulMsgId,
 {
     VOS_UINT32                          ulRslt          = NAS_EMM_FAIL;
     EMMC_EMM_SYS_INFO_IND_STRU         *pstsysinfo      = NAS_EMM_NULL_PTR;
+    EMMC_EMM_FORBIDDEN_INFO_ENUM_UINT32  ulForbiddenInfo = EMMC_EMM_NO_FORBIDDEN;
 
     pstsysinfo                          = (EMMC_EMM_SYS_INFO_IND_STRU*)pMsgStru;
 
@@ -144,10 +145,27 @@ VOS_UINT32 NAS_EMM_MsRegSsNormalMsgSysinfo(VOS_UINT32  ulMsgId,
         NAS_EMM_TAU_LOG_WARN("NAS_EMM_MsRegSsNormalMsgSysinfo:ERROR !!");
         return NAS_LMM_MSG_DISCARD;
     }
+    /* 定制系统内切换到被禁小区,忽略被禁:当存在L小区A和B(属于俩TA)
+        UE在小区B上驻留，由于MME某些异常,给UE下发原因值#15，但MME未将
+        TA放入被禁列表中(未真被禁，只是临时被禁)，当UE收到#15原因值,
+        主动释重新驻留在A小区，之后网侧让UE切换到B小区，而切换时LRRC
+        不会判断小区是否被禁，LMM收到系统消息后，由B小区上收到过#15原
+        因值,LMM主动释放进入限制服务态，LRRC释放后在小区A上驻留，从而导致乒乓切换 */
+    ulForbiddenInfo = pstsysinfo->ulForbiddenInfo;
+    if(NAS_EMM_YES == NAS_EMM_IsIntraHoIgnoreForbSysInfo())
+    {
+        /* 忽略FORBIDDEN TA FOR ROAMING,由于被#15原因值拒后,驻留的TA将放入FORBIDDEN TA LIST里,并从TAILIST里删除，所以后续发起TAU */
+        if(EMMC_EMM_FORBIDDEN_TA_FOR_ROAMING == pstsysinfo->ulForbiddenInfo)
+        {
+            NAS_EMM_PUBU_LOG1_INFO("NAS_EMM_MsRegSsNormalMsgSysinfo Ignore ForbTaForRoaming:forbiddenInfo = ",
+                               pstsysinfo->ulForbiddenInfo);
+            ulForbiddenInfo = EMMC_EMM_NO_FORBIDDEN;
+        }
+    }
     /* lihong00150010 emergency tau&service begin */
     /*根据禁止信息判断是否处理当前的系统消息*/
     if ((NAS_LMM_REG_STATUS_NORM_REGED == NAS_LMM_GetEmmInfoRegStatus())
-        && ((EMMC_EMM_NO_FORBIDDEN != pstsysinfo->ulForbiddenInfo)
+        && ((EMMC_EMM_NO_FORBIDDEN != ulForbiddenInfo)
             || (EMMC_EMM_CELL_STATUS_ANYCELL == pstsysinfo->ulCellStatus)))
     {
         NAS_EMM_SetTauTypeNoProcedure();
@@ -209,6 +227,7 @@ VOS_UINT32  NAS_EMM_MsRegSsRegAttemptUpdateMmMsgSysinfo
 {
     VOS_UINT32                          ulRslt          = NAS_EMM_FAIL;
     EMMC_EMM_SYS_INFO_IND_STRU         *pstsysinfo      = NAS_EMM_NULL_PTR;
+    EMMC_EMM_FORBIDDEN_INFO_ENUM_UINT32  ulForbiddenInfo = EMMC_EMM_NO_FORBIDDEN;
 
     pstsysinfo                          = (EMMC_EMM_SYS_INFO_IND_STRU*)pMsgStru;
 
@@ -228,10 +247,27 @@ VOS_UINT32  NAS_EMM_MsRegSsRegAttemptUpdateMmMsgSysinfo
         NAS_EMM_TAU_LOG_WARN("NAS_EMM_MsRegSsRegAttemptUpdateMmMsgSysinfo:ERROR !!");
         return NAS_LMM_MSG_DISCARD;
     }
+    /* 定制系统内切换到被禁小区,忽略被禁:当存在L小区A和B(属于俩TA)
+        UE在小区B上驻留，由于MME某些异常,给UE下发原因值#15，但MME未将
+        TA放入被禁列表中(未真被禁，只是临时被禁)，当UE收到#15原因值,
+        主动释重新驻留在A小区，之后网侧让UE切换到B小区，而切换时LRRC
+        不会判断小区是否被禁，LMM收到系统消息后，由B小区上收到过#15原
+        因值,LMM主动释放进入限制服务态，LRRC释放后在小区A上驻留，从而导致乒乓切换 */
+    ulForbiddenInfo = pstsysinfo->ulForbiddenInfo;
+    if(NAS_EMM_YES == NAS_EMM_IsIntraHoIgnoreForbSysInfo())
+    {
+        /* 忽略FORBIDDEN TA FOR ROAMING,由于被#15原因值拒后,驻留的TA将放入FORBIDDEN TA LIST里,并从TAILIST里删除，所以后续发起TAU */
+        if(EMMC_EMM_FORBIDDEN_TA_FOR_ROAMING == pstsysinfo->ulForbiddenInfo)
+        {
+            NAS_EMM_PUBU_LOG1_INFO("NAS_EMM_MsRegSsNormalMsgSysinfo Ignore ForbTaForRoaming:forbiddenInfo = ",
+                               pstsysinfo->ulForbiddenInfo);
+            ulForbiddenInfo = EMMC_EMM_NO_FORBIDDEN;
+        }
+    }
     /* lihong00150010 emergency tau&service begin */
     /*根据禁止信息判断是否处理当前的系统消息*/
     if ((NAS_LMM_REG_STATUS_NORM_REGED == NAS_LMM_GetEmmInfoRegStatus())
-        && ((EMMC_EMM_NO_FORBIDDEN != pstsysinfo->ulForbiddenInfo)
+        && ((EMMC_EMM_NO_FORBIDDEN != ulForbiddenInfo)
             || (EMMC_EMM_CELL_STATUS_ANYCELL == pstsysinfo->ulCellStatus)))
     {
         /*NAS_LMM_SetEmmInfoUpdateMmFlag(NAS_EMM_UPDATE_MM_FLAG_VALID);*/
@@ -312,6 +348,65 @@ VOS_VOID  NAS_EMM_MsRegSsNmlSrvProcMsgRrcRelInd( VOS_UINT32 ulCause )
     }
 
     return;
+}
+
+/*****************************************************************************
+ Function Name   : NAS_EMM_MsRegSsRegAttemptUpdateMmProcMsgRrcRelInd
+ Description     : 处理RRC_REL_IND消息
+ Input           : None
+ Output          : None
+ Return          : VOS_UINT32
+
+ History         :
+    1.lihong00150010    2014-09-03  Draft Enact
+*****************************************************************************/
+VOS_VOID  NAS_EMM_MsRegSsRegAttemptUpdateMmProcMsgRrcRelInd
+(
+    VOS_UINT32                          ulCause
+)
+{
+    /*发送内部消息 INTRA_CONN2IDLE_REQ,更新连接状态*/
+    NAS_EMM_CommProcConn2Ilde();
+
+    /* 根据RRC携带的释放原因值做不同处理*/
+    switch(ulCause)
+    {
+        case LRRC_LNAS_REL_CAUSE_LOAD_BALANCE_REQ:
+
+            /* 记录UPDATE_MM标识 */
+            /*NAS_LMM_SetEmmInfoUpdateMmFlag(NAS_EMM_UPDATE_MM_FLAG_VALID);*/
+            /*NAS_EMM_TAU_SaveEmmTAUStartCause(NAS_EMM_TAU_START_CAUSE_RRC_REL_LOAD_BALANCE);*/
+            NAS_EMM_TAU_SaveEmmTAUStartCause(NAS_EMM_TAU_START_CAUSE_OTHERS);
+            NAS_LMM_SetEmmInfoTriggerTauRrcRel(NAS_EMM_TRIGGER_TAU_RRC_REL_LOAD_BALANCE);
+            /*
+            NAS_EMM_TAUSER_FSMTranState(    EMM_MS_REG,
+                                            EMM_SS_REG_PLMN_SEARCH,
+                                            TI_NAS_EMM_STATE_NO_TIMER);
+            */
+            break;
+
+        case LRRC_LNAS_REL_CAUSE_CONN_FAIL:
+
+            /* 记录UPDATE_MM标识 */
+            /* NAS_LMM_SetEmmInfoUpdateMmFlag(NAS_EMM_UPDATE_MM_FLAG_VALID);*/
+            /*NAS_EMM_TAU_SaveEmmTAUStartCause(NAS_EMM_TAU_START_CAUSE_RRC_REL_CONN_FAILURE);*/
+            NAS_EMM_TAU_SaveEmmTAUStartCause(NAS_EMM_TAU_START_CAUSE_OTHERS);
+            NAS_LMM_SetEmmInfoTriggerTauRrcRel(NAS_EMM_TRIGGER_TAU_RRC_REL_CONN_FAILURE);
+            /*
+            NAS_EMM_TAUSER_FSMTranState(   EMM_MS_REG,
+                                           EMM_SS_REG_PLMN_SEARCH,
+                                           TI_NAS_EMM_STATE_NO_TIMER);
+            */
+            break;
+
+        default:
+            /* 其他原因不会导致TAU，不处理 */;
+            NAS_EMM_TAU_LOG1_INFO("NAS_EMM_MsRegSsRegAttemptUpdateMmProcMsgRrcRelInd: ulCause = ", ulCause);
+            break;
+
+    }
+
+    return ;
 }
 VOS_UINT32  NAS_EMM_MsRegSsNmlSrvMsgAuthFail(
                                                     VOS_UINT32 ulMsgId,
@@ -444,49 +539,12 @@ VOS_UINT32  NAS_EMM_MsRegSsRegAttemptUpdateMmMsgRrcRelInd
 
     NAS_EMM_TAU_LOG_NORM("NAS_EMM_MsRegSsRegAttemptUpdateMmMsgRrcRelInd is entered.");
 
-    /*发送内部消息 INTRA_CONN2IDLE_REQ,更新连接状态*/
-    NAS_EMM_CommProcConn2Ilde();
-
-    /* 根据RRC携带的释放原因值做不同处理*/
-    switch(pMsgRrcRelInd->enRelCause)
-    {
-        case LRRC_LNAS_REL_CAUSE_LOAD_BALANCE_REQ:
-
-            /* 记录UPDATE_MM标识 */
-            /*NAS_LMM_SetEmmInfoUpdateMmFlag(NAS_EMM_UPDATE_MM_FLAG_VALID);*/
-            /*NAS_EMM_TAU_SaveEmmTAUStartCause(NAS_EMM_TAU_START_CAUSE_RRC_REL_LOAD_BALANCE);*/
-            NAS_EMM_TAU_SaveEmmTAUStartCause(NAS_EMM_TAU_START_CAUSE_OTHERS);
-            NAS_LMM_SetEmmInfoTriggerTauRrcRel(NAS_EMM_TRIGGER_TAU_RRC_REL_LOAD_BALANCE);
-            /*
-            NAS_EMM_TAUSER_FSMTranState(    EMM_MS_REG,
-                                            EMM_SS_REG_PLMN_SEARCH,
-                                            TI_NAS_EMM_STATE_NO_TIMER);
-            */
-            break;
-
-        case LRRC_LNAS_REL_CAUSE_CONN_FAIL:
-
-            /* 记录UPDATE_MM标识 */
-            /* NAS_LMM_SetEmmInfoUpdateMmFlag(NAS_EMM_UPDATE_MM_FLAG_VALID);*/
-            /*NAS_EMM_TAU_SaveEmmTAUStartCause(NAS_EMM_TAU_START_CAUSE_RRC_REL_CONN_FAILURE);*/
-            NAS_EMM_TAU_SaveEmmTAUStartCause(NAS_EMM_TAU_START_CAUSE_OTHERS);
-            NAS_LMM_SetEmmInfoTriggerTauRrcRel(NAS_EMM_TRIGGER_TAU_RRC_REL_CONN_FAILURE);
-            /*
-            NAS_EMM_TAUSER_FSMTranState(   EMM_MS_REG,
-                                           EMM_SS_REG_PLMN_SEARCH,
-                                           TI_NAS_EMM_STATE_NO_TIMER);
-            */
-            break;
-
-        default:
-            /* 其他原因不会导致TAU，不处理 */;
-            NAS_EMM_TAU_LOG1_INFO("NAS_EMM_MsRegSsRegAttemptUpdateMmMsgRrcRelInd: ulCause = ", pMsgRrcRelInd->enRelCause);
-            break;
-
-    }
+    NAS_EMM_MsRegSsRegAttemptUpdateMmProcMsgRrcRelInd(pMsgRrcRelInd->enRelCause);
 
     return NAS_LMM_MSG_HANDLED;
 }
+
+
 VOS_UINT32 NAS_EMM_MsRegSsNormalMsgT3411Exp(VOS_UINT32  ulMsgId,
                                                    VOS_VOID   *pMsgStru )
 {
@@ -687,9 +745,10 @@ VOS_UINT32 NAS_EMM_MsRegSsAtpUpdataMsgSysinfo(VOS_UINT32  ulMsgId,
     VOS_UINT32                          ulRslt            = NAS_EMM_FAIL;
     EMMC_EMM_SYS_INFO_IND_STRU         *pstsysinfo        = NAS_EMM_NULL_PTR;
     NAS_MM_TA_STRU                     *pstLastAttmpRegTa = NAS_EMM_NULL_PTR;
-    NAS_MM_TA_STRU                      stCurTa           = {0};
+    NAS_MM_TA_STRU                      stCurTa;
     NAS_LMM_PTL_TI_ENUM_UINT16          enPtlTimerId    = NAS_LMM_PTL_TI_BUTT;
 
+    PS_MEM_SET(&stCurTa, 0, sizeof(NAS_MM_TA_STRU));
     /* 获取当前TA和上次尝试注册的TA信息 */
     NAS_EMM_GetCurrentTa(&stCurTa);
     pstLastAttmpRegTa                   = NAS_LMM_GetEmmInfoNetInfoLastAttmpRegTaAddr();
@@ -873,6 +932,13 @@ VOS_UINT32 NAS_EMM_MsRegSsSomeStateMsgEsmDataReq
         return  NAS_LMM_MSG_DISCARD;
     }
 
+    /* 解决LRRC REL搜小区驻留前收到ESM紧急承载建立请求，由于空口发送失败，本地detach,发起紧急ATTACH问题
+        方案:先高优先级缓存，等到收到LRRC系统消息后处理*/
+    if((EMM_SS_REG_ATTEMPTING_TO_UPDATE == NAS_LMM_GetEmmCurFsmSS())&&(NAS_EMM_CONN_RELEASING == NAS_EMM_GetConnState()))
+    {
+        return NAS_EMMC_STORE_HIGH_PRIO_MSG;
+    }
+
     NAS_LMM_SetEmmInfoIsEmerPndEsting(VOS_TRUE);
 
     /* 缓存紧急类型的ESM消息 */
@@ -886,7 +952,6 @@ VOS_UINT32 NAS_EMM_MsRegSsSomeStateMsgEsmDataReq
     return NAS_LMM_MSG_HANDLED;
 }
 /* lihong00150010 emergency tau&service end */
-
 
 VOS_UINT32 NAS_EMM_MsRegSsLimitSRMsgSysinfo(VOS_UINT32  ulMsgId,
                                                    VOS_VOID   *pMsgStru )
@@ -1031,8 +1096,6 @@ VOS_UINT32 NAS_EMM_MsRegSsNocellMsgSysinfo(VOS_UINT32  ulMsgId,
     return NAS_LMM_MSG_HANDLED;
 }
 /* lihong00150010 emergency tau&service begin */
-
-
 
 VOS_VOID NAS_EMM_MsRegSsNormalCsfbDelayProc(VOS_VOID)
 {
@@ -1559,7 +1622,7 @@ VOS_UINT32 NAS_EMM_MsDeRegInitSsWaitCNDetachCnfMsgSysinfo(VOS_UINT32  ulMsgId,
     VOS_UINT32                          ulTaRslt    = NAS_EMM_FAIL;
     EMMC_EMM_SYS_INFO_IND_STRU          *pstsysinfo  = NAS_EMM_NULL_PTR;
     NAS_LMM_NETWORK_INFO_STRU           *pMmNetInfo  = NAS_EMM_NULL_PTR;
-
+    EMMC_EMM_FORBIDDEN_INFO_ENUM_UINT32  ulForbiddenInfo = EMMC_EMM_NO_FORBIDDEN;
     (VOS_VOID)ulMsgId;
     NAS_EMM_TAU_LOG_NORM("Nas_Emm_MsDeRegInitSsWaitCNDetachCnfMsgSysinfo entered.");
 
@@ -1591,20 +1654,40 @@ VOS_UINT32 NAS_EMM_MsDeRegInitSsWaitCNDetachCnfMsgSysinfo(VOS_UINT32  ulMsgId,
 
              /* 通知APP_DETACH_IND(APP_MM_DETACH_ENTITY_ME)*/
              NAS_EMM_MmcSendDetIndLocal(MMC_LMM_L_LOCAL_DETACH_OTHERS);
+
+            #if (FEATURE_PTM == FEATURE_ON)
+            NAS_EMM_LocalDetachErrRecord(EMM_ERR_LOG_LOCAL_DETACH_TYPE_OTHER);
+            #endif
              NAS_EMM_ClearAppMsgPara();
 
              NAS_EMM_RelReq(                 NAS_LMM_NOT_BARRED);
          }
          return NAS_LMM_MSG_HANDLED;
     }
-
+    /* 定制系统内切换到被禁小区,忽略被禁:当存在L小区A和B(属于俩TA)
+        UE在小区B上驻留，由于MME某些异常,给UE下发原因值#15，但MME未将
+        TA放入被禁列表中(未真被禁，只是临时被禁)，当UE收到#15原因值,
+        主动释重新驻留在A小区，之后网侧让UE切换到B小区，而切换时LRRC
+        不会判断小区是否被禁，LMM收到系统消息后，由B小区上收到过#15原
+        因值,LMM主动释放进入限制服务态，LRRC释放后在小区A上驻留，从而导致乒乓切换 */
+    ulForbiddenInfo = pstsysinfo->ulForbiddenInfo;
+    if(NAS_EMM_YES == NAS_EMM_IsIntraHoIgnoreForbSysInfo())
+    {
+        /* 忽略FORBIDDEN TA FOR ROAMING,由于被#15原因值拒后,驻留的TA将放入FORBIDDEN TA LIST里,并从TAILIST里删除，所以后续发起TAU */
+        if(EMMC_EMM_FORBIDDEN_TA_FOR_ROAMING == pstsysinfo->ulForbiddenInfo)
+        {
+            NAS_EMM_PUBU_LOG1_INFO("NAS_EMM_MsRegSsNormalMsgSysinfo Ignore ForbTaForRoaming:forbiddenInfo = ",
+                               pstsysinfo->ulForbiddenInfo);
+            ulForbiddenInfo = EMMC_EMM_NO_FORBIDDEN;
+        }
+    }
     /* 获取系统消息 + 当前网络信息*/
     pstsysinfo                          = (EMMC_EMM_SYS_INFO_IND_STRU*)pMsgStru;
     pMmNetInfo                          = NAS_LMM_GetEmmInfoNetInfoAddr();
 	/* lihong00150010 emergency tau&service begin */
     /* 如果系统消息被禁，则释放连接,本地完成DETACH,进入Dereg.Limite_Service*/
     if ((NAS_LMM_REG_STATUS_NORM_REGED == NAS_LMM_GetEmmInfoRegStatus())
-        && ((EMMC_EMM_NO_FORBIDDEN != pstsysinfo->ulForbiddenInfo)
+        && ((EMMC_EMM_NO_FORBIDDEN != ulForbiddenInfo)
             || (EMMC_EMM_CELL_STATUS_ANYCELL == pstsysinfo->ulCellStatus)))
     {/* lihong00150010 emergency tau&service end */
         NAS_EMM_TAU_LOG_WARN("NAS_EMM_MsDeRegInitSsWaitCNDetachCnfMsgSysinfo: Cell Forb.");
@@ -1668,6 +1751,7 @@ VOS_UINT32 NAS_EMM_MsRegImsiDetachWtCnDetCnfMsgSysinfo
     VOS_UINT32                          ulTaRslt    = NAS_EMM_FAIL;
     EMMC_EMM_SYS_INFO_IND_STRU          *pstsysinfo  = NAS_EMM_NULL_PTR;
     NAS_LMM_NETWORK_INFO_STRU           *pMmNetInfo  = NAS_EMM_NULL_PTR;
+    EMMC_EMM_FORBIDDEN_INFO_ENUM_UINT32  ulForbiddenInfo = EMMC_EMM_NO_FORBIDDEN;
 
     (VOS_VOID)ulMsgId;
     NAS_EMM_TAU_LOG_NORM("NAS_EMM_MsRegImsiDetachWtCnDetCnfMsgSysinfo entered.");
@@ -1684,6 +1768,23 @@ VOS_UINT32 NAS_EMM_MsRegImsiDetachWtCnDetCnfMsgSysinfo
 
     /* 判断TA是否在TA List中*/
     ulTaRslt = NAS_EMM_TAU_IsCurrentTAInTaList();
+    /* 定制系统内切换到被禁小区,忽略被禁:当存在L小区A和B(属于俩TA)
+        UE在小区B上驻留，由于MME某些异常,给UE下发原因值#15，但MME未将
+        TA放入被禁列表中(未真被禁，只是临时被禁)，当UE收到#15原因值,
+        主动释重新驻留在A小区，之后网侧让UE切换到B小区，而切换时LRRC
+        不会判断小区是否被禁，LMM收到系统消息后，由B小区上收到过#15原
+        因值,LMM主动释放进入限制服务态，LRRC释放后在小区A上驻留，从而导致乒乓切换 */
+    ulForbiddenInfo = pstsysinfo->ulForbiddenInfo;
+    if(NAS_EMM_YES == NAS_EMM_IsIntraHoIgnoreForbSysInfo())
+    {
+        /* 忽略FORBIDDEN TA FOR ROAMING,由于被#15原因值拒后,驻留的TA将放入FORBIDDEN TA LIST里,并从TAILIST里删除，所以后续发起TAU */
+        if(EMMC_EMM_FORBIDDEN_TA_FOR_ROAMING == pstsysinfo->ulForbiddenInfo)
+        {
+            NAS_EMM_PUBU_LOG1_INFO("NAS_EMM_MsRegSsNormalMsgSysinfo Ignore ForbTaForRoaming:forbiddenInfo = ",
+                               pstsysinfo->ulForbiddenInfo);
+            ulForbiddenInfo = EMMC_EMM_NO_FORBIDDEN;
+        }
+    }
 
     /* 获取系统消息 + 当前网络信息*/
     pstsysinfo                          = (EMMC_EMM_SYS_INFO_IND_STRU*)pMsgStru;
@@ -1691,7 +1792,7 @@ VOS_UINT32 NAS_EMM_MsRegImsiDetachWtCnDetCnfMsgSysinfo
 	/* lihong00150010 emergency tau&service begin */
     /* 如果系统消息被禁，则释放连接,本地完成DETACH,进入Dereg.Limite_Service*/
     if ((NAS_LMM_REG_STATUS_NORM_REGED == NAS_LMM_GetEmmInfoRegStatus())
-        && ((EMMC_EMM_NO_FORBIDDEN != pstsysinfo->ulForbiddenInfo)
+        && ((EMMC_EMM_NO_FORBIDDEN != ulForbiddenInfo)
             || (EMMC_EMM_CELL_STATUS_ANYCELL == pstsysinfo->ulCellStatus)))
     {/* lihong00150010 emergency tau&service end */
         NAS_EMM_TAU_LOG_WARN("NAS_EMM_MsRegImsiDetachWtCnDetCnfMsgSysinfo: Cell Forb.");
@@ -2075,7 +2176,7 @@ VOS_UINT32 NAS_EMM_MsSerInitSsWaitCNCnfMsgSysinfo(VOS_UINT32  ulMsgId,
 
     VOS_UINT32                          ulRslt       = NAS_EMM_FAIL;
     EMMC_EMM_SYS_INFO_IND_STRU         *pstsysinfo   = NAS_EMM_NULL_PTR;
-
+    EMMC_EMM_FORBIDDEN_INFO_ENUM_UINT32  ulForbiddenInfo = EMMC_EMM_NO_FORBIDDEN;
     (VOS_VOID)ulMsgId;
     NAS_EMM_TAU_LOG_INFO("NAS_EMM_MsSerInitSsWaitCNCnfMsgSysinfo entered.");
 
@@ -2090,8 +2191,25 @@ VOS_UINT32 NAS_EMM_MsSerInitSsWaitCNCnfMsgSysinfo(VOS_UINT32  ulMsgId,
     /* 获取系统消息*/
     pstsysinfo                          = (EMMC_EMM_SYS_INFO_IND_STRU*)pMsgStru;
 
+    /* 定制系统内切换到被禁小区,忽略被禁:当存在L小区A和B(属于俩TA)
+        UE在小区B上驻留，由于MME某些异常,给UE下发原因值#15，但MME未将
+        TA放入被禁列表中(未真被禁，只是临时被禁)，当UE收到#15原因值,
+        主动释重新驻留在A小区，之后网侧让UE切换到B小区，而切换时LRRC
+        不会判断小区是否被禁，LMM收到系统消息后，由B小区上收到过#15原
+        因值,LMM主动释放进入限制服务态，LRRC释放后在小区A上驻留，从而导致乒乓切换 */
+    ulForbiddenInfo = pstsysinfo->ulForbiddenInfo;
+    if(NAS_EMM_YES == NAS_EMM_IsIntraHoIgnoreForbSysInfo())
+    {
+        /* 忽略FORBIDDEN TA FOR ROAMING,由于被#15原因值拒后,驻留的TA将放入FORBIDDEN TA LIST里,并从TAILIST里删除，所以后续发起TAU */
+        if(EMMC_EMM_FORBIDDEN_TA_FOR_ROAMING == pstsysinfo->ulForbiddenInfo)
+        {
+            NAS_EMM_PUBU_LOG1_INFO("NAS_EMM_MsRegSsNormalMsgSysinfo Ignore ForbTaForRoaming:forbiddenInfo = ",
+                               pstsysinfo->ulForbiddenInfo);
+            ulForbiddenInfo = EMMC_EMM_NO_FORBIDDEN;
+        }
+    }
     /* 如果系统消息被禁，终止SER流程，释放连接*/
-    if ((EMMC_EMM_NO_FORBIDDEN != pstsysinfo->ulForbiddenInfo)
+    if ((EMMC_EMM_NO_FORBIDDEN != ulForbiddenInfo)
             || (EMMC_EMM_CELL_STATUS_ANYCELL == pstsysinfo->ulCellStatus))
     {
         NAS_EMM_TAU_LOG_WARN("NAS_EMM_MsSerInitSsWaitCNCnfMsgSysinfo:CELL FORB.");
@@ -2458,14 +2576,27 @@ VOS_UINT32  NAS_LMM_PreProcIntraTauReq
 )
 {
     NAS_LMM_INTRA_TAU_REQ_STRU         *pEmmIntraTauReq = VOS_NULL_PTR;
+    VOS_UINT32                          ulCurEmmStat;
 
     NAS_EMM_TAU_LOG_INFO("NAS_LMM_PreProcIntraTauReq is enter!");
 
     pEmmIntraTauReq                     = (VOS_VOID*)pMsg;
+    ulCurEmmStat = NAS_LMM_PUB_COMP_EMMSTATE(NAS_EMM_CUR_MAIN_STAT,
+                                            NAS_EMM_CUR_SUB_STAT);
 
-    if (EMM_MS_RRC_CONN_REL_INIT == NAS_LMM_GetEmmCurFsmMS())
+    /*
+    改动背景: 异系统TAU被bar，解bar之后发起TAU的时候存在连续发
+    两次TAU的场景，第一次TAU发起原因: CSFB到G做过LAU，回到L然后
+    设置为ps only，然后在reg-update_mm状态的时候发起内部TAU，
+    在预处理的时候会发TAU. 第二次TAU发起原因:TAU被bar之后，收到
+    解bar之后需要立即发起TAU。
+    如何改动: 发起第二次TAU的时候发起建链的时候，高优先级缓存
+    该内部TAU消息，等到稳态的时候再发。
+    */
+    if (EMM_MS_RRC_CONN_REL_INIT == NAS_LMM_GetEmmCurFsmMS() ||
+        EMM_MS_RRC_CONN_EST_INIT == NAS_LMM_GetEmmCurFsmMS())
     {
-        NAS_EMM_TAU_LOG_INFO("NAS_LMM_PreProcIntraTauReq: EMM_MS_RRC_CONN_REL_INIT is high priority store");
+        NAS_EMM_TAU_LOG_INFO("NAS_LMM_PreProcIntraTauReq: REL_INIT or EST_INIT is high priority store");
         return NAS_LMM_STORE_HIGH_PRIO_MSG;
     }
 
@@ -2475,9 +2606,11 @@ VOS_UINT32  NAS_LMM_PreProcIntraTauReq
         return NAS_LMM_MSG_HANDLED;
     }
 
-
     /* 预处理中只处理UPDATE_MM类型的内部TAU */
-    if (NAS_LMM_INTRA_TAU_TYPE_UPDATE_MM == pEmmIntraTauReq->enIntraTauType)
+    /*只有在reg+normal_service以及reg+attempt_updata_mm的时候才发送TAU*/
+    if ((NAS_LMM_INTRA_TAU_TYPE_UPDATE_MM == pEmmIntraTauReq->enIntraTauType) &&
+         ((ulCurEmmStat == NAS_LMM_PUB_COMP_EMMSTATE(EMM_MS_REG, EMM_SS_REG_NORMAL_SERVICE)) ||
+          (ulCurEmmStat == NAS_LMM_PUB_COMP_EMMSTATE(EMM_MS_REG, EMM_SS_REG_ATTEMPTING_TO_UPDATE_MM))))
     {
         /* 清除UPDATE_MM标识 */
         /*NAS_LMM_SetEmmInfoUpdateMmFlag(NAS_EMM_UPDATE_MM_FLAG_INVALID);*/
@@ -2518,7 +2651,6 @@ VOS_UINT32  NAS_LMM_PreProcIntraTauReq
 
     return NAS_LMM_MSG_DISCARD;
 }
-
 VOS_UINT32  NAS_LMM_SendMmcUtranModeCnf(VOS_VOID)
 {
     LMM_MMC_UTRAN_MODE_CNF_STRU  *pstLmmUtranModCnf = NAS_EMM_NULL_PTR;
@@ -2751,6 +2883,18 @@ VOS_UINT32  NAS_LMM_PreProcRrcUtranModeCnf( MsgBlock  *pMsg )
     return NAS_LMM_MSG_HANDLED;
 }
 
+
+VOS_UINT32 NAS_EMM_IsIntraHoIgnoreForbSysInfo(VOS_VOID)
+{
+    /* 非测试卡,NV开关打开且当前连接状态为连接态时忽略被禁 */
+    if((PS_TRUE == g_ulIntraHoIgnoreForbidTaFlag)
+        &&(PS_SUCC != LPS_OM_IsTestMode())
+        &&(NAS_EMM_CONN_DATA == NAS_EMM_GetConnState()))
+    {
+        return NAS_EMM_YES;
+    }
+    return NAS_EMM_NO;
+}
 
 #ifdef __cplusplus
     #if __cplusplus

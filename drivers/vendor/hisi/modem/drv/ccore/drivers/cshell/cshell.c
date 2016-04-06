@@ -493,7 +493,6 @@ void cshell_io_send(void)
 			if(wr_len < 0) /* 发送失败 */
 			{
 				++g_cshell_dbg.send_fail_cnt;
-				cshell_print_error("icc send error\n");
 				break;
 			}
 			else if(wr_len < (s32)len_send2icc) /* icc通道不顺畅,暂时退出发送 */
@@ -659,7 +658,7 @@ int cshell_init(void)
     }
 
 	/* 改变CSHELL 到USB  虚拟串口*/
-	if(readl(SHM_MEM_CHSELL_FLAG_ADDR) == PRT_FLAG_EN_MAGIC_M)
+	if(readl((u32)SHM_MEM_CHSELL_FLAG_ADDR) == PRT_FLAG_EN_MAGIC_M)
 		ret = cshell_direction(CSHELL_MODE_USB);
 	else
 		ret = cshell_direction(CSHELL_MODE_UART);

@@ -1,26 +1,4 @@
-/*
- *  Hisilicon K3 SOC camera driver source file
- *
- *  Copyright (C) Huawei Technology Co., Ltd.
- *
- * Author:	  h00145353
- * Email:	  alan.hefeng@huawei.com
- * Date:	  2013-12-11
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
- */
+
 
 
 #include <linux/compiler.h>
@@ -34,7 +12,6 @@
 #include <linux/types.h>
 #include <linux/videodev2.h>
 #include <media/huawei/camera.h>
-#include <media/huawei/extisp_cfg.h>
 #include <media/v4l2-event.h>
 #include <media/v4l2-fh.h>
 #include <media/v4l2-subdev.h>
@@ -55,6 +32,7 @@ typedef struct _tag_hwextisp
 
     hwcam_data_table_t*                         cfg;
     struct ion_handle*                          cfg_hdl;
+    hwextisp_notify_intf_t                         notify;
 } hwextisp_t;
 
 #define SD2ExtISP(sd) container_of(sd, hwextisp_t, subdev)
@@ -62,14 +40,14 @@ typedef struct _tag_hwextisp
 static long
 hwextisp_subdev_config(
         hwextisp_t* s,
-        hwcam_config_data_t* data);
+        hwextisp_config_data_t* data);
 
 static int hwextisp_v4l2_open(
         struct v4l2_subdev* sd,
         struct v4l2_subdev_fh* fh)
 {
     hwextisp_t* s = SD2ExtISP(sd);
-    HWCAM_CFG_INFO("instance(0x%p). \n", s);
+    HWCAM_CFG_INFO("instance(0x%p)", s);
     return 0;
 }
 
@@ -80,21 +58,20 @@ hwextisp_v4l2_close(
 {
     struct ion_handle* hdl = NULL;
     hwextisp_t* s = SD2ExtISP(sd);
-
-    hwcam_config_data_t edata;
+    hwextisp_config_data_t edata;
     hwcam_data_table_t* cfg = NULL;
+
+    HWCAM_CFG_INFO("instance(0x%p)", s);
     edata.cfgtype = HWCAM_EXTISP_POWEROFF;
     hwextisp_subdev_config(s, &edata);
-    HWCAM_CFG_INFO("extisp close");
 
     swap(s->cfg_hdl, hdl);
     swap(s->cfg, cfg);
     if (hdl) {
-        HWCAM_CFG_ERR("release extisp driver data table! \n");
+        HWCAM_CFG_ERR("release extisp driver data table!");
         hwcam_cfgdev_release_data_table(hdl);
     }
 
-    HWCAM_CFG_INFO("instance(0x%p). \n", s);
     return 0;
 }
 
@@ -161,7 +138,7 @@ hwextisp_subdev_unmount_buf(
 static long
 hwextisp_subdev_config(
         hwextisp_t* s,
-        hwcam_config_data_t* data)
+        hwextisp_config_data_t* data)
 {
     long rc = -EINVAL;
     static bool hwextisp_power_on = false;
@@ -183,7 +160,10 @@ hwextisp_subdev_config(
         }
         break;
     case HWCAM_EXTISP_LOADFW:
-         rc = s->hw->vtbl->load_firmware(s->hw);
+         rc = s->hw->vtbl->load_firmware(s->hw, data);
+        break;
+case HWCAM_EXTISP_MATCHID:
+         rc = s->hw->vtbl->matchid(s->hw, data);
         break;
     default:
         HWCAM_CFG_ERR("invalid cfgtype(%d)! \n", data->cfgtype);
@@ -211,7 +191,7 @@ hwextisp_subdev_ioctl(
     case HWCAM_V4L2_IOCTL_UNMOUNT_BUF:
         rc = hwextisp_subdev_unmount_buf(s, arg);
         break;
-    case HWCAM_V4L2_IOCTL_CONFIG:
+    case HWEXTISP_IOCTL_CONFIG:
         rc = hwextisp_subdev_config(s, arg);
         break;
     default:
@@ -247,6 +227,74 @@ hwextisp_power(
 	return 0;
 }
 
+#define NotifytoHwextisp(i) container_of(i, hwextisp_t, notify)
+
+static void hwextisp_notify_cmd_finish(hwextisp_notify_intf_t* i, hwextisp_event_t* extisp_ev)
+{
+	hwextisp_t *extisp = NULL;
+	struct v4l2_event ev;
+	struct video_device *vdev = NULL;
+	hwextisp_event_t* req = (hwextisp_event_t*)ev.u.data;
+
+	extisp = NotifytoHwextisp(i);
+	vdev = extisp->subdev.devnode;
+
+	ev.type = HWEXTISP_V4L2_EVENT_TYPE;
+	ev.id = HWEXTISP_HIGH_PRIO_EVENT;
+
+	req->kind = extisp_ev->kind;
+	req->data.cmd_finish.cmd = extisp_ev->data.cmd_finish.cmd;
+	req->data.cmd_finish.result = extisp_ev->data.cmd_finish.result;
+
+	v4l2_event_queue(vdev, &ev);
+}
+
+static void hwextisp_notify_error(hwextisp_notify_intf_t* i, hwextisp_event_t* extisp_ev)
+{
+	hwextisp_t *extisp = NULL;
+	struct v4l2_event ev;
+	struct video_device *vdev = NULL;
+	hwextisp_event_t* req = (hwextisp_event_t*)ev.u.data;
+
+	extisp = NotifytoHwextisp(i);
+	vdev = extisp->subdev.devnode;
+
+	ev.type = HWEXTISP_V4L2_EVENT_TYPE;
+	ev.id = HWEXTISP_HIGH_PRIO_EVENT;
+
+	req->kind = extisp_ev->kind;
+	req->data.error.id = extisp_ev->data.error.id;
+
+	v4l2_event_queue(vdev, &ev);
+}
+
+static void hwextisp_notify_dump(hwextisp_notify_intf_t* i, hwextisp_event_t* extisp_ev)
+{
+	hwextisp_t *extisp = NULL;
+	struct v4l2_event ev;
+	struct video_device *vdev = NULL;
+	hwextisp_event_t* req = (hwextisp_event_t*)ev.u.data;
+
+	extisp = NotifytoHwextisp(i);
+	vdev = extisp->subdev.devnode;
+
+	ev.type = HWEXTISP_V4L2_EVENT_TYPE;
+	ev.id = HWEXTISP_HIGH_PRIO_EVENT;
+
+	req->kind = extisp_ev->kind;
+	req->data.dump.type = extisp_ev->data.dump.type;
+
+	v4l2_event_queue(vdev, &ev);
+}
+
+
+static hwextisp_notify_vtbl_t s_notify_hwextisp =
+{
+    .cmd_finish = hwextisp_notify_cmd_finish,
+    .error         = hwextisp_notify_error,
+    .dump        = hwextisp_notify_dump,
+};
+
 static struct v4l2_subdev_core_ops
 s_hwextisp_subdev_core_ops =
 {
@@ -264,7 +312,8 @@ s_hwextisp_subdev_ops =
 
 int32_t
 hwextisp_register(
-        struct platform_device* pdev, const hwextisp_intf_t* i)
+        struct platform_device* pdev, const hwextisp_intf_t* i,
+        hwextisp_notify_intf_t** notify)
 {
 	int rc = 0;
     struct v4l2_subdev* subdev = NULL;
@@ -294,6 +343,9 @@ hwextisp_register(
     subdev->devnode->lock = &extisp->lock;
     extisp->hw = pdev->dev.driver->of_match_table->data;
     extisp->pdev = pdev;
+
+    extisp->notify.vtbl = &s_notify_hwextisp;
+    *notify = &(extisp->notify);
 
     if (i->vtbl->mini_isp_get_dt_data)
         rc = i->vtbl->mini_isp_get_dt_data(i, pdev->dev.of_node);

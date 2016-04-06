@@ -144,7 +144,7 @@ static void mt352_calc_input_freq(struct mt352_state* state,
 				  unsigned char *buf)
 {
 	int adc_clock = 20480; /* 20.480000 MHz */
-	int if2       = 36167; /* 36.166667 MHz */
+	int if2       = 36167;
 	int ife,value;
 
 	if (state->config.adc_clock)

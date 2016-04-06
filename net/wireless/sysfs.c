@@ -83,7 +83,6 @@ static int wiphy_uevent(struct device *dev, struct kobj_uevent_env *env)
 	return 0;
 }
 
-#if 0 //cause phone can not sleep
 static void cfg80211_leave_all(struct cfg80211_registered_device *rdev)
 {
 	struct wireless_dev *wdev;
@@ -91,7 +90,6 @@ static void cfg80211_leave_all(struct cfg80211_registered_device *rdev)
 	list_for_each_entry(wdev, &rdev->wdev_list, list)
 		cfg80211_leave(rdev, wdev);
 }
-#endif
 
 static int wiphy_suspend(struct device *dev, pm_message_t state)
 {
@@ -102,10 +100,17 @@ static int wiphy_suspend(struct device *dev, pm_message_t state)
 
 	rtnl_lock();
 	if (rdev->wiphy.registered) {
+        //cause phone can not sleep
+        #if 0
+		if (!rdev->wowlan)
+			cfg80211_leave_all(rdev);
+        #endif
 		if (rdev->ops->suspend)
 			ret = rdev_suspend(rdev, rdev->wowlan);
 		if (ret == 1) {
 			/* Driver refuse to configure wowlan */
+                        //cause phone can not sleep
+			//cfg80211_leave_all(rdev);
 			ret = rdev_suspend(rdev, NULL);
 		}
 	}

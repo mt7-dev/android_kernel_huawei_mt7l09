@@ -190,6 +190,7 @@ typedef struct
     u32 ullabellength;                 /* pcNodeLabel 缓冲区长度    */
     u32 ullabelendlength;              /* pcNodeLabelEnd 缓冲区长度 */
     u32 ulvaluelength;                 /* pcNodeValue 缓冲区长度    */
+	u32 reserved;
     s8*  pcnodelabel;                   /* 节点标签                  */
     s8*  pcnodelabelend;                /* 结尾独立标签              */
     s8*  pcnodevalue;                   /* 节点值                    */

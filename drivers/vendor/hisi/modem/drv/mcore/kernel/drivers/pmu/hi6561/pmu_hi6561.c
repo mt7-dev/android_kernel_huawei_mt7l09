@@ -12,10 +12,11 @@
 /* Modification  : Create file */
 /******************************************************************************/
 #include <osl_common.h>
+#include <drv_nv_id.h>
+#include <drv_nv_def.h>
+#include <bsp_om.h>
 #include <bsp_hardtimer.h>
 #include <bsp_nvim.h>
-/*#include <bsp_mipi.h>*/
-#include <drv_nv_id.h>
 #include <hisi_lpm3.h>
 #include <pmu_hi6561.h>
 
@@ -35,8 +36,6 @@ static HI6561_VLTGS_ATTR hi6561_volt_attr[PMU_HI6561_POWER_ID_BUTT]={
 	{HI6561_ONOFF1_OFFSET,HI6561_EN_BUCK1_INIT_BIT},
 	{HI6561_ONOFF1_OFFSET,HI6561_EN_BUCK2_INIT_BIT}
 };
-
-
 static int pmu_hi6561_reg_read(u8 reg_addr,u8 *data,HI6561_ID_ENUM chip_id)
 {
 	u8 reg_data=0xff;
@@ -206,32 +205,7 @@ int pmu_hi6561_power_on(HI6561_POWER_ID power_id ,HI6561_ID_ENUM chip_id)
 }
 #endif
 
-/* NV_ID_MSP_SW_VER_FLAG                = 36, */
-/* 原来的定义为NV_SW_VER_FLAG_STRU,在msp_nv_def.h里，但是直接包含这个头文件编译不过，此处自定义一份 */
-typedef struct
-{
-    unsigned long                              NV_SW_VER_Flag;    /*[0,1]*/
-}NV_SW_VER_FLAG_STRU_FORPASTAR;
-
-/* 用户表示当前是否是产线版本。0 - 产线版本；1 - 正式版本 */
-NV_SW_VER_FLAG_STRU_FORPASTAR ver_flag;
-
-void pastar_init(void)
-{
-    u32 ret = 0;
-
-    ver_flag.NV_SW_VER_Flag = 1;/* 默认为正式版本 */
-
-	ret = bsp_nvm_read((u32)NV_ID_DRV_VER_FLAG,(u8 *)&ver_flag,(u32)sizeof(NV_SW_VER_FLAG_STRU_FORPASTAR));
-	if(NV_OK != ret)
-	{
-		printk("nv 36 read failed, ret %d!\n", ret);
-        return;
-	}
-
-    return;
-}
-
+__ao_data u32 g_vio_always_on = 0;
 /*此函数用于使能pastar */
 void pastar_resume_early(void)
 {
@@ -240,8 +214,9 @@ void pastar_resume_early(void)
 
 	/*判断pastar是否关闭过smart star LVS5*/
 	if(*debug_mask_pastar & 0x1){
-
+        if(!g_vio_always_on){
 		LSW_ENABLE(LSW53);
+        }
 		
 		/*记录smart star LVS5使能的时刻点*/
 		*time_stamp = bsp_get_slice_value();
@@ -253,13 +228,24 @@ void pastar_suspend_late(void)
 {
     u32 *ps_switch = (u32 *)(SRAM_PASTAR_DPM_INFO + PASTAR_DPM_SWITCH_OFFSET);
 	if(!(*ps_switch)){        
-        if(1 == ver_flag.NV_SW_VER_Flag)   /* 正式版本，关闭LVS5 */
-        {
             /* 根据nv36确定是否要关闭.产线版本不关，防止漏电；正式版本要关 */
+		if(!g_vio_always_on){
     		LSW_DISABLE(LSW53);
-        }
+		}
 	}
 
 	return;
 }
 
+void bsp_pastar_init(void)
+{
+    int ret = 0;
+    if(get_modem_init_flag() == MODEM_ALREADY_INIT_MAGIC){
+        return ;
+	}
+	ret |= (int)bsp_nvm_read((u32)NV_ID_DRV_FEM_VIO_ALWAYS_ON,(u8 *)&g_vio_always_on,(u32)sizeof(DRV_FEM_VIO_ALWAYS_ON));
+	if(NV_OK != ret){
+		bsp_trace(BSP_LOG_LEVEL_ERROR, BSP_MODU_MIPI, "pastar init fail\r\n");
+	}
+	return ;
+}

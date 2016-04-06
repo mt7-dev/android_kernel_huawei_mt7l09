@@ -9,12 +9,6 @@
 #include <linux/binfmts.h>
 #include <linux/threads.h>
 
-#if defined(CONFIG_SCHEDSTATS)
-#define pcount_from_ts(T) (T->sched_info.pcount)
-#else
-#define pcount_from_ts(T) (0)
-#endif /* CONFIG_SCHEDSTATS */
-
 TRACE_EVENT(sched_task_queued,
 
 	TP_PROTO(struct task_struct *t, unsigned int cpuinfo),
@@ -31,7 +25,7 @@ TRACE_EVENT(sched_task_queued,
 	TP_fast_assign(
 		memcpy(__entry->comm, t->comm, TASK_COMM_LEN);
 		__entry->pid = t->pid;
-		__entry->pcount = pcount_from_ts(t);
+		__entry->pcount = t->sched_info.pcount;
 		__entry->cpuinfo = cpuinfo;
 	),
 
@@ -56,7 +50,7 @@ TRACE_EVENT(sched_task_dequeued,
 	TP_fast_assign(
 		memcpy(__entry->comm, t->comm, TASK_COMM_LEN);
 		__entry->pid = t->pid;
-		__entry->pcount = pcount_from_ts(t);
+		__entry->pcount = t->sched_info.pcount;
 		__entry->cpuinfo = cpuinfo;
 	),
 
@@ -76,20 +70,18 @@ TRACE_EVENT(sched_task_arrive,
 		__field(pid_t, pid)
 		__field(unsigned long, pcount)
 		__field(unsigned int, cpuinfo)
-		__field(long, state)
 	),
 
 	TP_fast_assign(
 		memcpy(__entry->comm, t->comm, TASK_COMM_LEN);
 		__entry->pid = t->pid;
-		__entry->pcount = pcount_from_ts(t);
+		__entry->pcount = t->sched_info.pcount;
 		__entry->cpuinfo = cpuinfo;
-		__entry->state = t->state;
 	),
 
-	TP_printk("%u %lu %d %s %ld",
+	TP_printk("%u %lu %d %s",
 		  __entry->cpuinfo, __entry->pcount, __entry->pid,
-		  __entry->comm, __entry->state)
+		  __entry->comm)
 );
 
 TRACE_EVENT(sched_task_depart,
@@ -109,7 +101,7 @@ TRACE_EVENT(sched_task_depart,
 	TP_fast_assign(
 		memcpy(__entry->comm, t->comm, TASK_COMM_LEN);
 		__entry->pid = t->pid;
-		__entry->pcount = pcount_from_ts(t);
+		__entry->pcount = t->sched_info.pcount;
 		__entry->cpuinfo = cpuinfo;
 		__entry->state = t->state;
 	),

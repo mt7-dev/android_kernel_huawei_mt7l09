@@ -147,6 +147,9 @@ extern  MMC_LMM_MO_DETACH_TYPE_ENUM_UINT32 NAS_EMM_GetSwitchOffDetachType( VOS_V
 extern VOS_UINT32 NAS_EMM_SndDetachReqFailProc(VOS_VOID* pMsg,VOS_UINT32 *pulIsDelBuff);
 
 extern VOS_UINT32 NAS_EMM_SndMtDetachAccFailProc(VOS_VOID* pMsg,VOS_UINT32 *pulIsDelBuff);
+extern VOS_VOID NAS_EMM_LocalDetachErrRecord(
+        EMM_ERR_LOG_LOCAL_DETACH_TYPE_ENUM_UINT16       enLocalDetType);
+
 /*****************************************************************************
   9 OTHERS
 *****************************************************************************/

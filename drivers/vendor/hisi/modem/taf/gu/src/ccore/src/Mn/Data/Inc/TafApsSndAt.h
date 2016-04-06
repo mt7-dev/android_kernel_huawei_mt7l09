@@ -185,6 +185,35 @@ VOS_UINT32  TAF_APS_SndSetPdprofInfoCnf(
 );
 #endif
 
+VOS_UINT32  TAF_APS_SndSetApDsFlowRptCfgCnf(
+    TAF_CTRL_STRU                      *pstCtrl,
+    TAF_PS_CAUSE_ENUM_UINT32            enCause
+);
+
+VOS_UINT32  TAF_APS_SndGetApDsFlowRptCfgCnf(
+    TAF_CTRL_STRU                      *pstCtrl,
+    TAF_PS_CAUSE_ENUM_UINT32            enCause,
+    TAF_APDSFLOW_RPT_CFG_STRU          *pstRptCfg
+);
+
+VOS_UINT32  TAF_APS_SndApDsFlowRptInd(
+    TAF_CTRL_STRU                      *pstCtrl,
+    TAF_APDSFLOW_REPORT_STRU           *pstRptInfo
+);
+
+VOS_UINT32  TAF_APS_SndSetDsFlowNvWriteCfgCnf(
+    TAF_CTRL_STRU                      *pstCtrl,
+    TAF_PS_CAUSE_ENUM_UINT32            enCause
+);
+
+VOS_UINT32  TAF_APS_SndGetDsFlowNvWriteCfgCnf(
+    TAF_CTRL_STRU                      *pstCtrl,
+    TAF_PS_CAUSE_ENUM_UINT32            enCause,
+    TAF_DSFLOW_NV_WRITE_CFG_STRU       *pstWriteNvCfg
+);
+
+
+
 #if (VOS_OS_VER == VOS_WIN32)
 #pragma pack()
 #else

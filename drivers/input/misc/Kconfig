@@ -93,14 +93,13 @@ config INPUT_BMA150
 	  To compile this driver as a module, choose M here: the
 	  module will be called bma150.
 
-config INPUT_HI6421_ONKEY
-	tristate "Hisilicon Hi6421 PMIC ONKEY support"
-	depends on MFD_HI6421_PMIC
+config HISI_POWERKEY
+	tristate "Hisilicon PMIC ONKEY support"
 	help
-	  Say Y to enable support for Hi6421 PMIC ONKEY.
+	  Say Y to enable support for PMIC ONKEY.
 
 	  To compile this driver as a module, choose M here: the
-	  module will be called hisi_hi6421_powerkey.
+	  module will be called hisi_powerkey.
 
 config INPUT_PCSPKR
 	tristate "PC Speaker support"
@@ -661,5 +660,14 @@ config INPUT_XEN_KBDDEV_FRONTEND
 
 	  To compile this driver as a module, choose M here: the
 	  module will be called xen-kbdfront.
+config HI655X_VIBRATOR
+        tristate "Android timed vibrator V8 driver"
+        depends on ANDROID_TIMED_OUTPUT
+        default n
+		
+config HI6421_VIBRATOR
+	bool "Android timed vibrator K3 driver"
+	depends on ANDROID_TIMED_OUTPUT
+	default n
 
 endif

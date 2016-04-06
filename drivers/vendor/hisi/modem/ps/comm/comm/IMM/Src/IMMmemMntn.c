@@ -1,21 +1,5 @@
 
 
-
-
-/*****************************************************************************
-  1 头文件包含
-*****************************************************************************/
-#include "product_config.h"
-#include "IMMmemMntn.h"
-#include "om.h"
-#include "OmApp.h"
-#include "IMMmemRB.h"
-#include "skbuff.h"
-#include "PsCommonDef.h"
-
-#include <asm/atomic.h>
-
-
 #ifdef __cplusplus
 #if __cplusplus
 extern "C" {
@@ -29,8 +13,21 @@ extern "C" {
 /*lint -e767*/
 #define THIS_FILE_ID                     PS_FILE_ID_IMM_MNTN_C
 /*lint +e767*/
+
+#include "ImmInterface.h"
 #if (FEATURE_ON == FEATURE_SKB_EXP)
 
+
+/*****************************************************************************
+  1 头文件包含
+*****************************************************************************/
+#include "IMMmemMntn.h"
+#include "om.h"
+#include "OmApp.h"
+#include "IMMmemRB.h"
+#include "skbuff.h"
+#include "PsCommonDef.h"
+#include <asm/atomic.h>
 
 const VOS_UINT8             g_ulImmBlkMemCheck = 1;             /* 控制是否跟踪IMM BLK MEM */
 

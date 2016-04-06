@@ -1614,7 +1614,6 @@ static inline void ieee80211_extract_country_ie(
 		}
 
 		//
-		// 070305, rcnjko: I update country IE watch dog here because
 		// some AP (e.g. Cisco 1242) don't include country IE in their
 		// probe response frame.
 		//
@@ -2598,7 +2597,6 @@ static inline void ieee80211_process_probe_response(
 		 * net and call the new_net handler
 		 */
 		renew = !time_after(target->last_scanned + ieee->scan_age, jiffies);
-		//YJ,add,080819,for hidden ap
 		if(is_beacon(beacon->header.frame_ctl) == 0)
 			network.flags = (~NETWORK_EMPTY_ESSID & network.flags)|(NETWORK_EMPTY_ESSID & target->flags);
 		//if(strncmp(network.ssid, "linksys-c",9) == 0)
@@ -2607,7 +2605,6 @@ static inline void ieee80211_process_probe_response(
 		    && (((network.ssid_len > 0) && (strncmp(target->ssid, network.ssid, network.ssid_len)))\
 		    ||((ieee->current_network.ssid_len == network.ssid_len)&&(strncmp(ieee->current_network.ssid, network.ssid, network.ssid_len) == 0)&&(ieee->state == IEEE80211_NOLINK))))
 			renew = 1;
-		//YJ,add,080819,for hidden ap,end
 
 		update_network(target, &network);
 		if(renew && (ieee->softmac_features & IEEE_SOFTMAC_ASSOCIATE))

@@ -35,7 +35,7 @@
  * @max_time: Maximum time this wakeup source has been continuously active.
  * @last_time: Monotonic clock when the wakeup source's was touched last time.
  * @prevent_sleep_time: Total time this source has been preventing autosleep.
- * @screen_off_time: Total time off the screen this source has been preventing autosleep.
+ * @screen_off_time: Total time off the screen this source has been preventing autosleep. 
  * @event_count: Number of signaled wakeup events.
  * @active_count: Number of times the wakeup sorce was activated.
  * @relax_count: Number of times the wakeup sorce was deactivated.
@@ -44,6 +44,7 @@
  * @active: Status of the wakeup source.
  * @has_timeout: The wakeup source has been activated with a timeout.
  */
+
 struct wakeup_source {
 	const char 		*name;
 	struct list_head	entry;
@@ -55,7 +56,9 @@ struct wakeup_source {
 	ktime_t last_time;
 	ktime_t start_prevent_time;
 	ktime_t prevent_sleep_time;
-	ktime_t screen_off_time;
+#if 1//def CONFIG_HUAWEI_KERNEL  
+      ktime_t screen_off_time;  
+#endif  
 	unsigned long		event_count;
 	unsigned long		active_count;
 	unsigned long		relax_count;

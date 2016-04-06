@@ -40,6 +40,8 @@ extern "C" {
 *****************************************************************************/
 enum    NAS_EMM_SER_START_CAUSE_ENUM
 {
+    NAS_EMM_SER_START_CAUSE_NULL            = 0,
+
     NAS_EMM_SER_START_CAUSE_RRC_PAGING      = 1,
     NAS_EMM_SER_START_CAUSE_RABM_REEST      = 2,
     NAS_EMM_SER_START_CAUSE_ESM_DATA_REQ    = 3,
@@ -241,6 +243,11 @@ extern VOS_UINT32  NAS_EMM_MsRegSsWaitAccessGrantIndMsgMmCsfbSerStartNotify
     VOS_UINT32                          ulMsgId,
     VOS_VOID                           *pMsgStru
 );
+extern VOS_UINT32  NAS_EMM_MsRrcConnRelInitMsgMmCsfbSerStartNotifyProc
+(
+    MM_LMM_CSFB_SERVICE_TYPE_ENUM_UINT32  enCsfbSrvTyp
+);
+
 /*****************************************************************************
   9 OTHERS
 *****************************************************************************/

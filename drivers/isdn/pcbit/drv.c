@@ -9,13 +9,7 @@
  * the GNU General Public License, incorporated herein by reference.
  */
 
-/*
- *	Fixes:
- *
- *	Nuno Grilo	<l38486@alfa.ist.utl.pt>
- *      fixed msn_list NULL pointer dereference.
- *
- */
+
 
 #include <linux/module.h>
 

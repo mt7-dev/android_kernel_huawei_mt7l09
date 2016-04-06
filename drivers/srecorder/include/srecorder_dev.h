@@ -1,18 +1,4 @@
-/**
-    @copyright: Huawei Technologies Co., Ltd. 2012-2013. All rights reserved.
-    
-    @file: srecorder_dev.h
-    
-    @brief: 
-    
-    @version: 1.0 
-    
-    @author: QiDechun ID: 216641
-    
-    @date: 2013-01-30
-    
-    @history:
-*/
+
 
 #ifndef SRECORDER_DEV_H
 #define SRECORDER_DEV_H

@@ -66,7 +66,7 @@ extern "C"
 /* 统计计数器 end */
 /* AXI monitor寄存器偏移地址定义 end */
 
-#define AXI_MON_BACK_ADDR               (SHM_MEM_M3_MNTN_ADDR + 32*1024)
+#define AXI_MON_BACK_ADDR               (unsigned)((unsigned)SHM_MEM_M3_MNTN_ADDR + 32*1024)
 #define AXI_MON_BACK_SIZE               (2*1024)
 /**************************************************************************
                                数据结构定义

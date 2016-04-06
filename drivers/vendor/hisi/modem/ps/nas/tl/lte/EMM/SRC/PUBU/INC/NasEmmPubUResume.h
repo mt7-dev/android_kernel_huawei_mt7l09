@@ -10,6 +10,8 @@
 #include    "vos.h"
 #include    "LRrcLNasInterface.h"
 #include    "NasEmmcEmmInterface.h"
+#include    "LnasErrlogInterface.h"
+
 
 
 /*****************************************************************************
@@ -119,6 +121,8 @@ extern VOS_UINT32  NAS_EMM_MsResumeSsRrcOriWaitSysInfoIndMsgMmcDetachReq
     VOS_UINT32  ulMsgId,
     VOS_VOID   *pMsgStru
 );
+extern VOS_VOID NAS_EMM_MsResumeSsRrcOriWaitSysInfoIndMsgWtSysInfoTimerExpHoProc(VOS_VOID);
+
 extern VOS_UINT32   NAS_EMM_MsResumeSsRrcOriWaitSysInfoIndMsgSysInfoInd(
                                         VOS_UINT32  ulMsgId,
                                   const VOS_VOID   *pMsgStru  );
@@ -150,6 +154,17 @@ extern VOS_UINT32   NAS_EMM_NoCellSuspendMsgMmcPlmnReq( VOS_VOID );
 extern VOS_VOID     NAS_EMM_NoImsiSuspendMsgMmcPlmnReq( VOS_VOID );
 extern VOS_VOID     NAS_EMM_SendLrcResumeRsp( VOS_VOID);
 extern VOS_VOID     NAS_EMM_MmcRsmGetSecuPara( VOS_VOID );
+extern VOS_UINT32 NAS_EMM_IsG2LAndGmmSuspendWithCsPsUeMode
+(
+    NAS_LMM_RSM_SYS_CHNG_DIR_ENUM_UINT32    enRsmDir
+);
+
+extern VOS_UINT32  NAS_LMM_PreProcMmcCsConnStatusNotify(MsgBlock *    pMsg );
+extern VOS_UINT32 NAS_EMM_IsLauOrComRauOrSrvccHappenedWithCsPsUeMode(VOS_VOID);
+
+extern VOS_UINT32 NAS_EMM_IsEmcCsfbHappenedAndLaiChangWithCsPsUeMode(VOS_VOID);
+extern VOS_UINT32 NAS_EMM_IsG2LIsrActAndP4ConditionSatisfied(NAS_LMM_RSM_SYS_CHNG_DIR_ENUM_UINT32    enRsmDir );
+
 /*extern VOS_VOID     NAS_EMM_ReverseFail(VOS_VOID  );*/
 extern VOS_VOID  NAS_EMM_ProcSysWhenRsmGu2LRegReselect( VOS_VOID );
 extern VOS_VOID  NAS_EMM_ProcSysWhenRsmGu2LRegRedirect( VOS_VOID );
@@ -204,6 +219,12 @@ extern VOS_UINT32 NAS_EMM_ProcSysCommonCheckTauFlag( VOS_VOID );
 extern VOS_VOID  NAS_EMM_GU2LResumeStateChngAsPlmnInd(VOS_VOID);
 extern VOS_VOID  NAS_EMM_RegForbidSysInfoProc( EMMC_EMM_FORBIDDEN_INFO_ENUM_UINT32  ulForbiddenInfo);
 extern VOS_VOID  NAS_EMM_GU2LNoEpsBearProc(VOS_VOID);
+
+extern VOS_VOID NAS_EMM_RatErrRecord(EMM_OM_ERRLOG_RAT_ENUM_UINT16           enRatType);
+
+extern VOS_VOID NAS_EMM_LocalDetachErrRecord(
+        EMM_ERR_LOG_LOCAL_DETACH_TYPE_ENUM_UINT16       enLocalDetType);
+extern VOS_UINT32  NAS_LMM_PreProcMmcImsVoiceDomainChangeInd(MsgBlock *    pMsg );
 /*****************************************************************************
   9 OTHERS
 *****************************************************************************/

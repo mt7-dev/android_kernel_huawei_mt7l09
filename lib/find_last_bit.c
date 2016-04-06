@@ -15,6 +15,41 @@
 #include <asm/types.h>
 #include <asm/byteorder.h>
 
+unsigned long find_last_zero_bit(const unsigned long *addr, unsigned long size)
+{
+	unsigned long words;
+	unsigned long tmp;
+	unsigned long mask;
+
+	/* Start at final word. */
+	words = size / BITS_PER_LONG;
+
+	/* Partial final word? */
+	if (size & (BITS_PER_LONG-1)) {
+		mask = (~0UL >> (BITS_PER_LONG - (size & (BITS_PER_LONG-1))));
+		tmp = (addr[words] & mask);
+		if (tmp < mask) {
+			mask = (~0UL <<  (size & (BITS_PER_LONG-1)));
+			tmp |= mask;
+			goto found;
+		}
+	}
+
+	mask = (~0UL);
+	while (words) {
+		tmp = addr[--words];
+		if (tmp < mask) {
+found:
+			return words * BITS_PER_LONG + __fls(~tmp);
+		}
+	}
+
+	/* Not found */
+	return size;
+}
+EXPORT_SYMBOL(find_last_zero_bit);
+
+
 #ifndef find_last_bit
 
 unsigned long find_last_bit(const unsigned long *addr, unsigned long size)

@@ -18,7 +18,7 @@
 #include <linux/kthread.h>
 #include <linux/sched.h>
 
-static inline s32  osl_task_init(char* name, u32 priority, u32 size, void* entry, void *para, u32* task_id)
+static inline s32  osl_task_init(char* name, u32 priority, u32 size, void* entry, void *para, void** task_id)
 {
 	struct task_struct* tsk;
 	struct sched_param	sch_para;
@@ -36,7 +36,7 @@ static inline s32  osl_task_init(char* name, u32 priority, u32 size, void* entry
 		printk("create kthread %s sched_setscheduler failed!", name);
 		return ERROR;
 	}
-	*task_id =(u32)tsk;
+	*task_id =(void*)tsk;
 
 	return OK;
 }

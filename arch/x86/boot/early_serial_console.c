@@ -58,12 +58,7 @@ static void parse_earlyprintk(void)
 		if (arg[pos] == ',')
 			pos++;
 
-		/*
-		 * make sure we have
-		 *	"serial,0x3f8,115200"
-		 *	"serial,ttyS0,115200"
-		 *	"ttyS0,115200"
-		 */
+
 		if (pos == 7 && !strncmp(arg + pos, "0x", 2)) {
 			port = simple_strtoull(arg + pos, &e, 16);
 			if (port == 0 || arg + pos == e)

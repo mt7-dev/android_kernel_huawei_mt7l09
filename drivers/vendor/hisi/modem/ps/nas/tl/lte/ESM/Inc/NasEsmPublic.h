@@ -139,7 +139,7 @@ extern "C" {
 
 #define NAS_ESM_MSGID_OFFSET            (2)
 
-#define NAS_ESM_MAX_PCSCF_NUM           (2)
+#define NAS_ESM_MAX_PCSCF_NUM           (3)
 #define NAS_ESM_MAX_DNS_SERVER_NUM      (2)
 #define NAS_ESM_MAX_NBNS_NUM            (2)
 #define NAS_ESM_PCO_OFF                 (0)
@@ -1173,6 +1173,9 @@ typedef struct
     VOS_UINT32                          ulCurMaxOpId;       /* 当前已使用的OpId的最大值 */
     VOS_UINT32                          ulCurPdnConNum;     /*当前PDN连接数量*/
 
+    VOS_UINT8                           ucEsmErabmSessionId;     /* ESM通知REABM ACT_IND消息时使用 */
+    VOS_UINT8                           aucRsv[3];
+
     /* 本地存储的所有SDF参数  */
     NAS_ESM_SDF_PARA_STRU               astSdfPara[NAS_ESM_MAX_CID_NUM];
 
@@ -1397,6 +1400,10 @@ extern NAS_ESM_ENTITY_STRU                                 *pg_stNasEsmEntity;
 #define NAS_ESM_GetCurMaxOpIdValue()   ((NAS_ESM_Entity())->ulCurMaxOpId)
 #define NAS_ESM_SetCurMaxOpIdValue(ulOpId)\
                   ((NAS_ESM_Entity())->ulCurMaxOpId = (ulOpId))
+
+#define NAS_ESM_GetErabmSessionIdValue()      ((NAS_ESM_Entity())->ucEsmErabmSessionId)
+#define NAS_ESM_SetErabmSessionIdValue(ucId)\
+                   ((NAS_ESM_Entity())->ucEsmErabmSessionId = (ucId))
 
 #define NAS_ESM_GetCurMaxPTIValue()     ((NAS_ESM_Entity())->ucCurMaxPTI)
 #define NAS_ESM_SetCurMaxPTIValue(ucPti) ((NAS_ESM_Entity())->ucCurMaxPTI = (ucPti))
@@ -1832,6 +1839,7 @@ extern VOS_VOID NAS_LMM_LogPdpManageInfo
     VOS_UINT32  ulRslt
 );
 /*PC REPLAY MODIFY BY LEILI END*/
+extern VOS_VOID NAS_ESM_AssignErabmSessionId(VOS_UINT8         *pucOpId);
 /*****************************************************************************
   9 OTHERS
 *****************************************************************************/

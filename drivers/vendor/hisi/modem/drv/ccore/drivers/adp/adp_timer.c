@@ -376,6 +376,12 @@ void adp_timer_init(void)
 		hardtimer_print_error("TIMER_CCPU_DRX_TIMER_ID request_irq failed\n");
 		return;
 	}
+    ret = request_irq(adp_timer_ctrl[TIMER_DSP_SWITCH_DELAY_ID].int_num, (irq_handler_t)adp_timer_handler,0," ccpu dsp awitch",(void*)TIMER_DSP_SWITCH_DELAY_ID);
+	if(ret)
+	{
+		hardtimer_print_error("TIMER_DSP_SWITCH_DELAY_ID request_irq failed\n");
+		return;
+	}
 	#ifndef K3_TIMER_FEATURE
 	ret = request_irq(adp_timer_ctrl[TIMER_CCPU_DRX2_STABLE_ID].int_num, (irq_handler_t)adp_timer_handler,0," ccpu drx1",(void*)TIMER_CCPU_DRX2_STABLE_ID);
 	if(ret)

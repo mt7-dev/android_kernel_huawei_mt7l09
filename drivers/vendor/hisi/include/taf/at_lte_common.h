@@ -113,7 +113,6 @@ typedef struct
  */
 }AT_ERROR_CODE_TABLE_STRU;
 
-
 typedef struct{
     VOS_UINT32 ulMsgId;
     PFN_AT_FW_MSG_PROC   pfnCnfMsgProc;
@@ -215,6 +214,11 @@ extern VOS_UINT32 atIsmcoexCnfProc(VOS_VOID *pMsgBlock);
 
 extern VOS_UINT32 AT_SetRadverPara(VOS_UINT8 ucIndex);
 extern VOS_UINT32 atSetRadverCnfProc(VOS_VOID *pMsgBlock);
+
+
+
+extern VOS_UINT32 atQryFPllStatusPara(VOS_UINT8 ucClientId);
+extern VOS_UINT32 atQryFPllStatusParaCnfProc(VOS_UINT8 ucClientId, VOS_VOID *pMsgBlock);
 
 #ifdef __cplusplus
 }

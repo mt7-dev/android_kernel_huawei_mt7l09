@@ -35,30 +35,30 @@ struct softtimer_ctrl
     unsigned char timer_id_alloc[SOFTTIMER_MAX_NUM];              /*最多支持40个softtimer在链表中,用于分配软timerId  */
     struct list_head timer_list_head;
     u32 softtimer_start_value;                         /*记录每次物理timer计数起始值                     */
-    u32 hard_timer_id_addr;                            /*软timer使用的物理timer地址                     */
     u32 hard_timer_id;                                 /*软timer使用的物理timer id                      */
      /*lint -save -e43*/
     spinlock_t  timer_list_lock;                       /*互斥访问软timer链表                            */
     osl_sem_id soft_timer_sem;                         /*硬timer中断信号量                              */
-    SOFTTIMER_TASK_ID softtimer_task;                  /*记录创建的任务                                 */
+    struct task_struct* softtimer_task;                /*记录创建的任务                                 */
     u32 clk;                                           /*所使用物理timer的时钟频率                       */
 };
 
 static struct softtimer_ctrl timer_control[2];         /*timer_control[0] wake, timer_control[1] normal*/
 
-static void start_hard_timer(u32 wake_type,u32 ulvalue )
+static void start_hard_timer(struct softtimer_ctrl *ptimer_control, u32 ulvalue )
 {
-    timer_control[wake_type].softtimer_start_value = ulvalue;
-    bsp_hardtimer_disable(timer_control[wake_type].hard_timer_id);
-    bsp_hardtimer_load_value(timer_control[wake_type].hard_timer_id,ulvalue);
-    bsp_hardtimer_enable(timer_control[wake_type].hard_timer_id);
+    ptimer_control->softtimer_start_value = ulvalue;
+    bsp_hardtimer_disable(ptimer_control->hard_timer_id);
+    bsp_hardtimer_load_value(ptimer_control->hard_timer_id,ulvalue);
+    bsp_hardtimer_enable(ptimer_control->hard_timer_id);
 }
 
-static void stop_hard_timer(u32 wake_type,u32 timer_id)
+static void stop_hard_timer(struct softtimer_ctrl *ptimer_control)
 {
-    bsp_hardtimer_disable(timer_id);
-    timer_control[wake_type].softtimer_start_value = ELAPESD_TIME_INVAILD;
+    bsp_hardtimer_disable(ptimer_control->hard_timer_id);
+    ptimer_control->softtimer_start_value = ELAPESD_TIME_INVAILD;
 }
+
 static u32 hard_timer_elapsed_time(u32 wake_type)
 {
     u32 ulTempValue = 0;
@@ -138,10 +138,11 @@ void bsp_softtimer_add(struct softtimer_list * timer)
 	     }
 	 }
 	 timer->is_running = TIMER_TRUE;
-	 start_hard_timer(timer->wake_type,timer->timeout);
+	 start_hard_timer(&timer_control[timer->wake_type], timer->timeout);
     }
     spin_unlock_irqrestore(&(timer_control[timer->wake_type].timer_list_lock),flags);
 }
+
 s32 bsp_softtimer_delete(struct softtimer_list * timer)
 {
     struct softtimer_list * p=NULL;
@@ -172,7 +173,7 @@ s32 bsp_softtimer_delete(struct softtimer_list * timer)
             list_del_init(&(timer->entry));
 			p=list_first_entry(&(timer_control[timer->wake_type].timer_list_head),struct softtimer_list,entry);
 			p->timeout += timer->timeout - hard_timer_elapsed_time((u32)timer->wake_type);
-			start_hard_timer(p->wake_type,p->timeout);
+			start_hard_timer(&timer_control[p->wake_type], p->timeout);
 			p->is_running = TIMER_TRUE;
         }
 	 /*如果删除的是中间节点*/
@@ -186,7 +187,7 @@ s32 bsp_softtimer_delete(struct softtimer_list * timer)
     }
     if (list_empty(&(timer_control[timer->wake_type].timer_list_head)))/*如果删除完事后链表为空，则停止计数*/
     {
-        stop_hard_timer(timer->wake_type,timer_control[timer->wake_type].hard_timer_id);
+        stop_hard_timer(&timer_control[timer->wake_type]);
     }
     spin_unlock_irqrestore(&(timer_control[timer->wake_type].timer_list_lock),flags);
     return OK;
@@ -232,6 +233,8 @@ s32 bsp_softtimer_create(struct softtimer_list *sft_info)
 		bsp_trace(BSP_LOG_LEVEL_ERROR,BSP_MODU_SOFTTIMER,"wake type is error\n");
 		return ERROR;
 	}
+	if(sft_info->init_flags==TIMER_INIT_FLAG)
+		return ERROR;
       /*lint -restore +e685*/  
     INIT_LIST_HEAD(&(sft_info->entry));
     sft_info->is_running = TIMER_FALSE;
@@ -293,82 +296,76 @@ s32 bsp_softtimer_free(struct softtimer_list *p)
 	 timer_control[p->wake_type].timer_id_alloc[p->timer_id] = 0;
 	 return OK;   
 }
-static void expire_node_handler(struct list_head *head_ptr)
-{
-	struct softtimer_list *p=NULL;
-	while(!list_empty(head_ptr))
-	{
-		p = list_first_entry(head_ptr,struct softtimer_list,entry);
-		list_del_init(&p->entry);
-		if(p->func)
-		{
-			p->func(p->para);
-		}
-	}
-	return;
-}
 
 
 
 int  softtimer_task_func(void* data)
 {
-	u32  timer_id = (u32) data;
+	struct softtimer_ctrl *ptimer_control;
 	struct softtimer_list     *p = NULL;
-	struct list_head ready_for_handle;
 	unsigned long flags;
+	softtimer_func func =NULL;
+	u32 para = 0;
+
+	ptimer_control = (struct softtimer_ctrl *)data;
 	/* coverity[no_escape] */
 	for( ; ; )
 	{
 		/* coverity[sleep] */
-		osl_sem_down(&(timer_control[timer_id].soft_timer_sem));
+		osl_sem_down(&ptimer_control->soft_timer_sem);
 		 /* coverity[lock_acquire] */
-		spin_lock_irqsave(&(timer_control[timer_id].timer_list_lock),flags);
-		timer_control[timer_id].softtimer_start_value = ELAPESD_TIME_INVAILD;
-		if (!list_empty(&(timer_control[timer_id].timer_list_head)))
+		spin_lock_irqsave(&ptimer_control->timer_list_lock,flags);
+		ptimer_control->softtimer_start_value = ELAPESD_TIME_INVAILD;
+		if (!list_empty(&ptimer_control->timer_list_head))
 		{
-			p = list_first_entry(&(timer_control[timer_id].timer_list_head),struct softtimer_list,entry);
+			p = list_first_entry(&ptimer_control->timer_list_head,struct softtimer_list,entry);
 			if(p->is_running == TIMER_TRUE)
 			{
-				INIT_LIST_HEAD(&ready_for_handle);
 				list_del_init(&p->entry);
 				p->is_running = TIMER_FALSE;
-				list_add_tail(&p->entry,&ready_for_handle);
-				while(!list_empty(&(timer_control[timer_id].timer_list_head)))
+				func = p->func;
+				para = p->para;
+				spin_unlock_irqrestore(&ptimer_control->timer_list_lock,flags); 
+				func(para);
+				spin_lock_irqsave(&ptimer_control->timer_list_lock,flags);
+				while(!list_empty(&ptimer_control->timer_list_head))
 				{
-					p=list_first_entry(&(timer_control[timer_id].timer_list_head),struct softtimer_list,entry);
+					p=list_first_entry(&ptimer_control->timer_list_head,struct softtimer_list,entry);
 					if(0==p->timeout)
 					{
 						list_del_init(&p->entry);
-						list_add_tail(&p->entry,&ready_for_handle);
+						p->is_running = TIMER_FALSE;
+						func = p->func;
+						para = p->para;
+						spin_unlock_irqrestore(&ptimer_control->timer_list_lock,flags); 
+						func(para);
+						spin_lock_irqsave(&ptimer_control->timer_list_lock,flags);
 					}
 					else
 						break;
 				}
-				if (!list_empty(&(timer_control[timer_id].timer_list_head)))/*如果还有未超时定时器*/
+				if (!list_empty(&ptimer_control->timer_list_head))/*如果还有未超时定时器*/
 				{
-					p=list_first_entry(&(timer_control[timer_id].timer_list_head),struct softtimer_list,entry);
+					p=list_first_entry(&ptimer_control->timer_list_head,struct softtimer_list,entry);
 					p->is_running = TIMER_TRUE;
-					start_hard_timer(timer_id,p->timeout);
+					start_hard_timer(ptimer_control, p->timeout);
 				}
 				else 
 				{  
-					stop_hard_timer(timer_id,timer_control[timer_id].hard_timer_id);
+					stop_hard_timer(ptimer_control);
 				}
-				spin_unlock_irqrestore(&(timer_control[timer_id].timer_list_lock),flags); 
-				expire_node_handler(&ready_for_handle);
 			}
 			else  if (p->is_running == TIMER_FALSE)
 			{
 				p->is_running = TIMER_TRUE;
-				start_hard_timer(timer_id,p->timeout);
-				spin_unlock_irqrestore(&(timer_control[timer_id].timer_list_lock),flags); 
+				start_hard_timer(ptimer_control, p->timeout);
 			}
 		}
 		else
 		{
-			stop_hard_timer(timer_id,timer_control[timer_id].hard_timer_id);
-			spin_unlock_irqrestore(&(timer_control[timer_id].timer_list_lock),flags); 
+			stop_hard_timer(ptimer_control);
 		}
+		spin_unlock_irqrestore(&ptimer_control->timer_list_lock,flags); 
 	} 
 	/*lint -save -e527*/ 
 	return 0;
@@ -378,18 +375,20 @@ int  softtimer_task_func(void* data)
 
 OSL_IRQ_FUNC(static irqreturn_t,softtimer_interrupt_call_back,irq,dev)
 {    
-	u32  timer_id = (u32) dev;
-    u32 readValue = 0;    
-    /*1、读取硬件定时器的中断状态
-	 2、如果有中断，则清中断，同时释放信号量
-   */
-    readValue = bsp_hardtimer_int_status(timer_control[timer_id].hard_timer_id);
-    if (0 != readValue)
-    {
-        bsp_hardtimer_int_clear(timer_control[timer_id].hard_timer_id);
-        osl_sem_up(&(timer_control[timer_id].soft_timer_sem));
-    }
-    return IRQ_HANDLED;
+	struct softtimer_ctrl *ptimer_control;
+	u32 readValue = 0;    
+	/*1、读取硬件定时器的中断状态
+	  2、如果有中断，则清中断，同时释放信号量
+	 */
+
+	ptimer_control = dev;
+	readValue = bsp_hardtimer_int_status(ptimer_control->hard_timer_id);
+	if (0 != readValue)
+	{
+		bsp_hardtimer_int_clear(ptimer_control->hard_timer_id);
+		osl_sem_up(&ptimer_control->soft_timer_sem);
+	}
+	return IRQ_HANDLED;
 }
 
 
@@ -399,10 +398,11 @@ int  bsp_softtimer_init(void)
     u32 array_size=0 ;
     /* coverity[var_decl] */
     struct bsp_hardtimer_control timer_ctrl ;
+    struct sched_param	sch_para;
     INIT_LIST_HEAD(&(timer_control[SOFTTIMER_WAKE].timer_list_head));
     INIT_LIST_HEAD(&(timer_control[SOFTTIMER_NOWAKE].timer_list_head));
-    timer_control[SOFTTIMER_NOWAKE].hard_timer_id_addr = ST_NORMAL_HARDTIMER_ADDR;
-    timer_control[SOFTTIMER_WAKE].hard_timer_id_addr     = ST_WAKE_HARDTIMER_ADDR;
+    /*timer_control[SOFTTIMER_NOWAKE].hard_timer_id_addr = ST_NORMAL_HARDTIMER_ADDR;*/
+    /*timer_control[SOFTTIMER_WAKE].hard_timer_id_addr     = ST_WAKE_HARDTIMER_ADDR;*/
     timer_control[SOFTTIMER_NOWAKE].hard_timer_id      = ST_NORMAL_HARDTIMER_ID;
     timer_control[SOFTTIMER_WAKE].hard_timer_id          = ST_WAKE_HARDTIMER_ID;
     timer_control[SOFTTIMER_NOWAKE].clk                = NOWAKE_TIMER_CLK;
@@ -420,13 +420,19 @@ int  bsp_softtimer_init(void)
     timer_ctrl.mode=TIMER_ONCE_COUNT;
     if (OK==check_timer_type((u32)SOFTTIMER_WAKE))
     {
-        if(ERROR == osl_task_init("softtimer_wake", TIMER_TASK_WAKE_PRI, TIMER_TASK_STK_SIZE ,(void *)softtimer_task_func, (void*)SOFTTIMER_WAKE,
-			&timer_control[SOFTTIMER_WAKE].softtimer_task))
-        {
-            bsp_trace(BSP_LOG_LEVEL_ERROR,BSP_MODU_SOFTTIMER,"softtimer_wake task create failed\n");
-            return ERROR;
-        }
-        timer_ctrl.para=SOFTTIMER_WAKE;
+	sch_para.sched_priority = TIMER_TASK_NOWAKE_PRI;
+	timer_control[SOFTTIMER_WAKE].softtimer_task =  kthread_run((void *)softtimer_task_func, &timer_control[SOFTTIMER_WAKE], "softtimer_wake");
+	if (IS_ERR(timer_control[SOFTTIMER_WAKE].softtimer_task))
+	{
+		printk("create kthread softtimer_wake failed!\n");
+		return ERROR;
+	}
+	if (OK != sched_setscheduler(timer_control[SOFTTIMER_WAKE].softtimer_task, SCHED_FIFO, &sch_para))
+	{
+		printk("create kthread softtimer_wake sched_setscheduler failed!");
+		return ERROR;
+	}
+        timer_ctrl.para = &timer_control[SOFTTIMER_WAKE];
         timer_ctrl.timerId =ST_WAKE_HARDTIMER_ID;
         ret =bsp_hardtimer_alloc(&timer_ctrl);
         if (ret)
@@ -437,13 +443,19 @@ int  bsp_softtimer_init(void)
     }
      if (OK==check_timer_type((u32)SOFTTIMER_NOWAKE))
      {
-         if(ERROR == osl_task_init("softtimer_nowake", TIMER_TASK_NOWAKE_PRI, TIMER_TASK_STK_SIZE ,(void *)softtimer_task_func, (void*)SOFTTIMER_NOWAKE,
-			&timer_control[SOFTTIMER_NOWAKE].softtimer_task))
-            {
-                bsp_trace(BSP_LOG_LEVEL_ERROR,BSP_MODU_SOFTTIMER,"softtimer_normal task create failed\n");
-                return ERROR;
-            }
-        timer_ctrl.para=SOFTTIMER_NOWAKE;
+	sch_para.sched_priority = TIMER_TASK_NOWAKE_PRI;
+	timer_control[SOFTTIMER_NOWAKE].softtimer_task =  kthread_run((void *)softtimer_task_func, &timer_control[SOFTTIMER_NOWAKE], "softtimer_nowake");
+	if (IS_ERR(timer_control[SOFTTIMER_NOWAKE].softtimer_task))
+	{
+		printk("create kthread softtimer_nowake failed!\n");
+		return ERROR;
+	}
+	if (OK != sched_setscheduler(timer_control[SOFTTIMER_NOWAKE].softtimer_task, SCHED_FIFO, &sch_para))
+	{
+		printk("create kthread softtimer_nowake sched_setscheduler failed!");
+		return ERROR;
+	}
+        timer_ctrl.para = &timer_control[SOFTTIMER_NOWAKE];
         timer_ctrl.timerId =ST_NORMAL_HARDTIMER_ID;
 	/* coverity[uninit_use_in_call] */
          ret =bsp_hardtimer_alloc(&timer_ctrl);

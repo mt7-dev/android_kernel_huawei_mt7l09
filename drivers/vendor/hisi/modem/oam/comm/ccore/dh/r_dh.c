@@ -16,6 +16,21 @@ unsigned char prime[MAX_DH_BITS]
 unsigned char generator[]= {0x02};
 
 
+void DH_ChangeDHParas(unsigned int ParaPLen, unsigned char *ParaP, unsigned int ParaGLen, unsigned char *ParaG)
+{
+    if ((ParaP != NULL)&&(ParaPLen != 0))
+    {
+        memcpy(prime, ParaP, sizeof(prime));
+    }
+
+    if ((ParaG != NULL)&&(ParaGLen != 0))
+    {
+        memcpy(generator, ParaG, sizeof(generator));
+    }
+
+    return;
+}
+
 void DH_FillFixParams(DH_KEY *params)
 {
     params->generatorLen = sizeof(generator);

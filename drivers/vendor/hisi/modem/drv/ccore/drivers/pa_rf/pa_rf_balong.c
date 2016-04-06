@@ -981,7 +981,7 @@ s32 DRV_MODEM_APT_DISABLE(PWC_COMM_MODEM_E modem_id, PWC_COMM_MODE_E mode_id)
 *****************************************************************************/
 s32 DRV_MODEM_APT_STATUS_GET(PWC_COMM_MODEM_E modem_id, PWC_COMM_MODE_E mode_id)
 {
-    return pmu_parf_ops.drv_modem_apt_status_get(modem_id, modem_id);
+    return pmu_parf_ops.drv_modem_apt_status_get(modem_id, mode_id);
 }
 
 /*****************************************************************************

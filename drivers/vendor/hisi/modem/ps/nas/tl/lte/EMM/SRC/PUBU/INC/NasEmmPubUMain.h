@@ -77,6 +77,12 @@ VOS_VOID    NAS_EMM_MtSetMobilInfo(     NAS_EMM_MSG_STRU   *pMsg );
 extern VOS_VOID*  LRRC_LNAS_GetMmInfo( LRRC_LNAS_INFO_TYPE_ENUM_UINT32  enInfoType );
 
 extern VOS_UINT32 NAS_EMM_ReadAccClassMask( VOS_VOID );
+extern VOS_UINT32 NAS_LMM_GetLteGutiInfo
+(
+    NAS_LMM_INFO_STRU             *pstLmmInfo,
+    const NAS_LMM_UEID_STRU             *pstMmUeId
+);
+
 
 extern LRRC_NAS_UEID_STRU                       gstRrcNasUeId;
 /*****************************************************************************

@@ -187,18 +187,32 @@ config EXYNOS_IOMMU_DEBUG
 
 	  Say N unless you need kernel log message for IOMMU debugging
 
-# hisi k3v300 IOMMU support
-config K3V300_IOMMU
-	bool "K3V300 IOMMU Support"
-	select IOMMU_API
-	help
-		K3V300 IOMMU Support.
+# Hisilicon IOMMU support
 
-config K3V300_IOMMU_TEST
-	bool "K3V300 IOMMU test"
-	depends on K3V300_IOMMU
+config HISI_IODOMAIN_API
+	bool
+	
+config HI3XXX_IOMMU
+	bool "Hisilicon Hi3xxx IOMMU Support"
+	select IOMMU_API
+	select HISI_IODOMAIN_API
 	help
-		K3V300 IOMMU test.
+	  Hisilicon IOMMU Support.
+	  
+config HISI_IOMMU_TEST
+	bool "Hisilicon IOMMU test"
+	depends on HI3XXX_IOMMU
+	help
+	  Hisilicon IOMMU test.
+  
+config HI6XXX_IOMMU
+	bool "Hisilicon Hi6xxx IOMMU Support"
+	select IOMMU_API
+	select HISI_IODOMAIN_API
+	help
+	  Hisilicon IOMMU Support.
+	  
+
 
 config SHMOBILE_IPMMU
 	bool

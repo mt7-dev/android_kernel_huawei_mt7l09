@@ -79,7 +79,7 @@ extern void flash_erase_all(void);
 
 struct ST_PART_TBL * ptable_get_part_no_head(void)
 {
-    return (struct ST_PART_TBL *)(SHM_MEM_PTABLE_ADDR + \
+    return (struct ST_PART_TBL *)((unsigned)SHM_MEM_PTABLE_ADDR + \
              PTABLE_HEAD_SIZE) ;
 }
 
@@ -263,7 +263,6 @@ unsigned int is_usb_burn_trapflag(void)
 
 int usb_burn_trap(void)
 {
-    unsigned int flag = 0;
     unsigned int offset = 0;
     boot_img_hdr *hdr;
     unsigned n;
@@ -403,11 +402,13 @@ int bsp_sec_idio_check(unsigned int dataAddr, unsigned int dataLen, KEY_STRUCT *
     return 0;
 }
 
-int bsp_sec_check(unsigned int image_addr, unsigned int image_length)
+int bsp_sec_check(void* image_addr, unsigned int image_length)
 {
     tOcrShareData *share_date = (tOcrShareData *)SRAM_SEC_SHARE;
 
-    unsigned int oem_ca_addr, oem_ca_idio_addr, image_idio_addr;
+    void* oem_ca_addr;
+    void* oem_ca_idio_addr;
+    void* image_idio_addr;
 
     /* if not boot from chip or the sec check is disabled, return */
     if ((1 != share_date->bSecEn) || (1 != share_date->bRootCaInited))
@@ -560,7 +561,7 @@ int boot_rtx_cm3_from_flash(void)
     /* sec check */
     if ((1 == share_date->bSecEn) && (1 == share_date->bRootCaInited))
     {
-        if (bsp_sec_check(head.load_addr, head.image_length))
+        if (bsp_sec_check((void*)head.load_addr, head.image_length))
         {
             cprintf("SEC CHECK ERROR\n");
             return -1;
@@ -616,7 +617,7 @@ int boot_linux_from_flash(void)
             return -1;
         }
 
-        if (bsp_sec_check(head.load_addr, head.image_length))
+        if (bsp_sec_check((void*)head.load_addr, head.image_length))
         {
             cprintf("SEC CHECK ERROR\n");
             return -1;

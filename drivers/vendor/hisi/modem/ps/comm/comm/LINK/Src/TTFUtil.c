@@ -311,7 +311,7 @@ VOS_VOID TTF_Write32RegByBit(VOS_UINT32 ulRegAddr, VOS_UINT8 ucStartBit, VOS_UIN
     }
 
     /*read original value*/
-    ulOrgValue = *(VOS_UINT32 *)(ulRegAddr);
+    ulOrgValue = (VOS_UINT32)(*((VOS_UINT32 *)(VOS_UINT_PTR)(ulRegAddr)));
 
     /*to get the mask form startBit to endbit*/
     ulDataMask  = 0xFFFFFFFF;
@@ -330,7 +330,7 @@ VOS_VOID TTF_Write32RegByBit(VOS_UINT32 ulRegAddr, VOS_UINT8 ucStartBit, VOS_UIN
     /*set value to reg*/
     ulSetValue |= ulOrgValue;
 
-    *(VOS_UINT32 *)(ulRegAddr) = ulSetValue;
+    *((VOS_UINT32 *)(VOS_UINT_PTR)(ulRegAddr)) = ulSetValue;
 }/* TTF_Write32RegByBit */
 
 
@@ -359,7 +359,7 @@ VOS_UINT32 TTF_Read32RegByBit(VOS_UINT32 ulRegAddr, VOS_UINT8 ucStartBit, VOS_UI
     }
 
     /*read original value*/
-    ulOrgValue = *(VOS_UINT32 *)(ulRegAddr);
+    ulOrgValue = (VOS_UINT32)(*((VOS_UINT32 *)(VOS_UINT_PTR)(ulRegAddr)));
 
     /*to get the mask form startBit to endbit*/
     ulOrgMask  = 0xFFFFFFFF;
@@ -719,7 +719,7 @@ VOS_VOID TTF_RingBufWrite(VOS_UINT32 ulPid, VOS_UINT32 ulDstRingBufBaseAddr, VOS
     }
 
     usBufLeftLen    = usModLen - usOffset;
-    pucDst          = (VOS_UINT8 *)(ulDstRingBufBaseAddr + usOffset);
+    pucDst          = (VOS_UINT8 *)((VOS_UINT_PTR)(ulDstRingBufBaseAddr + usOffset));
 
     if (usBufLeftLen >= usDataLen)
     {
@@ -728,7 +728,7 @@ VOS_VOID TTF_RingBufWrite(VOS_UINT32 ulPid, VOS_UINT32 ulDstRingBufBaseAddr, VOS
     else
     {
         DRV_RT_MEMCPY(pucDst, pucSrcData, usBufLeftLen);
-        DRV_RT_MEMCPY((VOS_UINT8 *)ulDstRingBufBaseAddr, pucSrcData + usBufLeftLen,
+        DRV_RT_MEMCPY((VOS_UINT8 *)(VOS_UINT_PTR)ulDstRingBufBaseAddr, (VOS_UINT8 *)(VOS_UINT_PTR)pucSrcData + usBufLeftLen,
             usDataLen - usBufLeftLen);
     }
 
@@ -764,15 +764,15 @@ VOS_VOID TTF_RingBufRead
     }
 
     usLeft = usModLen - usOffset;
-    pucSrc = (VOS_UINT8 *)ulSrcRingBufBaseAddr + usOffset;
+    pucSrc = (VOS_UINT8 *)(VOS_UINT_PTR)(ulSrcRingBufBaseAddr + usOffset);
 
 
     if (usDataLen > usLeft)
     {
 
         DRV_RT_MEMCPY( pucDstData, pucSrc, usLeft);
-        DRV_RT_MEMCPY(( pucDstData + usLeft),
-                      (VOS_UINT8 *)ulSrcRingBufBaseAddr,
+        DRV_RT_MEMCPY((VOS_UINT8 *)( pucDstData + usLeft),
+                      (VOS_UINT8 *)(VOS_UINT_PTR)ulSrcRingBufBaseAddr,
                       (usDataLen - usLeft));
     }
     else

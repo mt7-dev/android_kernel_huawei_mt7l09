@@ -144,6 +144,11 @@ typedef struct
 *****************************************************************************/
 VOS_VOID MTC_RcvMmaRatModeInd(VOS_VOID *pMsg);
 
+VOS_VOID MTC_SndMmaOtherModemDplmnNplmnInfoNotify(
+    MODEM_ID_ENUM_UINT16                enModemId,
+    MODEM_ID_ENUM_UINT16                enOtherModemId
+);
+
 VOS_VOID MTC_RcvMmaPowerStateInd(VOS_VOID *pMsg);
 
 VOS_VOID MTC_RcvTafCsSrvInfoInd(VOS_VOID *pMsg);
@@ -155,8 +160,11 @@ VOS_VOID MTC_RcvMmaCurrCampPlmnInfoInd(VOS_VOID *pMsg);
 VOS_VOID MTC_SndMmaOtherModemInfoNotify(
     MODEM_ID_ENUM_UINT16                enModemId,
     MTC_MMA_PLMN_ID_STRU               *pstPlmnId,
-    MTC_MMA_EPLMN_INFO_STRU            *pstEplmnInfo
+    MTC_MMA_EPLMN_INFO_STRU            *pstEplmnInfo,
+    MTC_MODEM_POWER_STATE_ENUM_UINT8    enOtherModemPowerState
 );
+
+VOS_VOID MTC_RcvMmaImsaStateInd(VOS_VOID *pMsg);
 
 VOS_VOID MTC_RcvMmaEplmnInfoInd(VOS_VOID *pMsg);
 

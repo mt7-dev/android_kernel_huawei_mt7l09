@@ -156,7 +156,7 @@ typedef vos_u_quad_t (*ccfntype)(const VOS_CHAR *, VOS_CHAR **, VOS_INT);
 
 VOS_PRINT_HOOK VOS_HookPrint( VOS_PRINT_HOOK newHook );
 
-VOS_INT32  vos_printf( VOS_CHAR * format, ... );
+VOS_INT32  vos_printf( const VOS_CHAR * format, ... );
 
 VOS_VOID vos_assert( VOS_UINT32 ulFileID, VOS_INT LineNo);
 

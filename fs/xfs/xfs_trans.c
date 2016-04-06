@@ -77,24 +77,7 @@ xfs_calc_buf_res(
 	return nbufs * (size + xfs_buf_log_overhead());
 }
 
-/*
- * Various log reservation values.
- *
- * These are based on the size of the file system block because that is what
- * most transactions manipulate.  Each adds in an additional 128 bytes per
- * item logged to try to account for the overhead of the transaction mechanism.
- *
- * Note:  Most of the reservations underestimate the number of allocation
- * groups into which they could free extents in the xfs_bmap_finish() call.
- * This is because the number in the worst case is quite high and quite
- * unusual.  In order to fix this we need to change xfs_bmap_finish() to free
- * extents in only a single AG at a time.  This will require changes to the
- * EFI code as well, however, so that the EFI for the extents not freed is
- * logged again in each transaction.  See SGI PV #261917.
- *
- * Reservation functions here avoid a huge stack in xfs_trans_init due to
- * register overflow from temporaries in the calculations.
- */
+
 
 
 /*
@@ -1100,6 +1083,7 @@ xfs_trans_apply_sb_deltas(
 		whole = 1;
 	}
 
+	xfs_trans_buf_set_type(tp, bp, XFS_BLFT_SB_BUF);
 	if (whole)
 		/*
 		 * Log the whole thing, the fields are noncontiguous.

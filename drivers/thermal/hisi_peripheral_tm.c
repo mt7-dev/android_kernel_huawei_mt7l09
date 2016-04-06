@@ -36,13 +36,13 @@ static unsigned int hand_chg_temperature_flag = 0;
 static unsigned int input_temperature = 25;
 
 enum hisi_peripheral_temp_chanel {
-	DETECT_AP_CHANEL = 0,
+	DETECT_SYSTEM_H_CHANEL = 0,
 	DETECT_SIM_CHANEL,
-	DETECT_COLD_ZONE_CHANEL,
+	DETECT_SYSTEM_L_CHANEL,
 	DETECT_FLASH_LED_CHANEL,
 	DETECT_CHARGER_CHANEL,
-	DETECT_PA0_CHANEL,
-	DETECT_PA1_CHANEL,
+	DETECT_PA_0_CHANEL,
+	DETECT_PA_1_CHANEL,
 	DETECT_DCXO0_CHANEL,
 	DETECT_DCXO1_CHANEL,
 	DETECT_BOARD0_CHANEL,
@@ -52,13 +52,13 @@ enum hisi_peripheral_temp_chanel {
 };
 
 char *hisi_peripheral_chanel[] = {
-	[DETECT_AP_CHANEL]		= "ap",
+	[DETECT_SYSTEM_H_CHANEL]		= "system_h",
 	[DETECT_SIM_CHANEL]		= "sim",
-	[DETECT_COLD_ZONE_CHANEL]	= "cold_zone",
+	[DETECT_SYSTEM_L_CHANEL]	= "system_l",
 	[DETECT_FLASH_LED_CHANEL]		= "flash_led",
 	[DETECT_CHARGER_CHANEL]	= "charger",
-	[DETECT_PA0_CHANEL]		= "pa0",
-	[DETECT_PA1_CHANEL]		= "pa1",
+	[DETECT_PA_0_CHANEL]		= "pa_0",
+	[DETECT_PA_1_CHANEL]		= "pa_1",
 	[DETECT_DCXO0_CHANEL]		= "dcxo0",
 	[DETECT_DCXO1_CHANEL]		= "dcxo1",
 	[DETECT_BOARD0_CHANEL]		= "board0",
@@ -66,6 +66,7 @@ char *hisi_peripheral_chanel[] = {
 	[DETECT_BOARD2_CHANEL]		= "board2",
 	[DETECT_BOARD3_CHANEL]		= "board3",
 };
+
 #define TSENSOR_USED_NUM		5
 #define TSENSOR_BUFFER_LENGTH		40
 extern int hisi_peripheral_get_temp(struct periph_tsens_tm_device_sensor *chip, unsigned long *temp);
@@ -130,7 +131,7 @@ static int get_equipment_tree_data(struct platform_device *pdev, int sensor_num)
         }
 
 	/*get detect equipment thermal HKADC chanel, name and state*/
-	for (i = DETECT_AP_CHANEL, j = DETECT_AP_CHANEL; i < sensor_num; i++, j++) {
+	for (i = 0, j = 0; i < sensor_num; i++, j++) {
 		memset(temp_buffer, 0, TSENSOR_BUFFER_LENGTH);
 		sprintf(temp_buffer, "hisi,detect_%s_tm_chanel", hisi_peripheral_chanel[i]);
 		rc = of_property_read_u32(of_node, temp_buffer, &equipment_chanel_value);
@@ -186,7 +187,7 @@ kmalloc_fail:
 read_name_fail:
 read_state_fail:
 read_chanel_fail:
-	for (i = DETECT_AP_CHANEL; i < j; i++) {
+	for (i = 0; i < j; i++) {
 		kfree(gtm_dev->sensor[i].ntc_name);
 	}
 	kfree(temp_buffer);
@@ -259,10 +260,10 @@ static ssize_t hisi_show_input_temperature(struct device_driver *driver, char *b
     return sprintf(buf, "%lu\n", val);
 }
 
-static DRIVER_ATTR(hand_chg_temperature_flag, S_IWUSR | S_IRUGO,
+static DRIVER_ATTR(hand_chg_temperature_flag, (S_IWUSR | S_IRUGO),
                   hisi_show_hand_chg_temperature_flag,
                   hisi_set_hand_chg_temperature_flag);
-static DRIVER_ATTR(input_temperature, S_IWUSR | S_IRUGO,
+static DRIVER_ATTR(input_temperature, (S_IWUSR | S_IRUGO),
                   hisi_show_input_temperature,
                   hisi_set_input_temperature);
 static struct platform_driver hisi_peripheral_tm_driver;
@@ -273,6 +274,7 @@ static int hisi_peripheral_tm_probe(struct platform_device *pdev)
 	char name[18];
 	int i, flag;
 	int retval = 0;
+	char *temp_buffer1;
 
 	if (pdev->dev.of_node) {
 		rc = get_periph_tm_device_tree_data(pdev);
@@ -295,11 +297,17 @@ static int hisi_peripheral_tm_probe(struct platform_device *pdev)
            printk("failed to create sysfs entry(input_temperature): %d\n", retval);
            return -1;
        }
-
-	for (i = DETECT_AP_CHANEL, flag = DETECT_AP_CHANEL; i < (gtm_dev->tsens_num_sensor + DETECT_AP_CHANEL); i++) {
+	temp_buffer1 = (char *)kmalloc(TSENSOR_BUFFER_LENGTH * sizeof(char), GFP_KERNEL);
+	if (!temp_buffer1) {
+                pr_err("%s:Failed to alloc memory for temp buffer!\n", __func__);
+                return -ENOMEM;
+	}
+	for (i = 0, flag = 0; i < (gtm_dev->tsens_num_sensor + 0); i++) {
 		if (gtm_dev->sensor[i].state == 0)
 			continue;
-		snprintf(name, sizeof(name), "tsens%d_tz_sensor", (i + TSENSOR_USED_NUM));
+		memset(temp_buffer1, 0, TSENSOR_BUFFER_LENGTH);
+		sprintf(temp_buffer1, "%s", hisi_peripheral_chanel[i]);
+		snprintf(name, sizeof(name), temp_buffer1, (i + TSENSOR_USED_NUM));
 		gtm_dev->sensor[i].mode = THERMAL_DEVICE_ENABLED;
 		gtm_dev->sensor[i].sensor_num = (i + TSENSOR_USED_NUM);
 		gtm_dev->sensor[i].tz_dev = thermal_zone_device_register(name,
@@ -313,10 +321,12 @@ static int hisi_peripheral_tm_probe(struct platform_device *pdev)
 		}
 	}
 
+	kfree(temp_buffer1);
+	temp_buffer1 = NULL;
 	platform_set_drvdata(pdev, gtm_dev);
 	return 0;
 fail:
-	for (i = DETECT_AP_CHANEL; i < flag; i++) {
+	for (i = 0; i < flag; i++) {
 		thermal_zone_device_unregister(gtm_dev->sensor[i].tz_dev);
 	}
 	return rc;
@@ -329,7 +339,7 @@ static int hisi_peripheral_tm_remove(struct platform_device *pdev)
 
 	if (chip) {
 		platform_set_drvdata(pdev, NULL);
-		for (i = DETECT_AP_CHANEL; i < (gtm_dev->tsens_num_sensor + DETECT_AP_CHANEL); i++) {
+		for (i = 0; i < (gtm_dev->tsens_num_sensor + 0); i++) {
 			kfree(gtm_dev->sensor[i].ntc_name);
 			thermal_zone_device_unregister(gtm_dev->sensor[i].tz_dev);
 		}

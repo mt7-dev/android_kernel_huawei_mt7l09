@@ -7,6 +7,9 @@
   1 其他头文件包含
 *****************************************************************************/
 #include  "vos.h"
+#include  "AtTypeDef.h"
+#include  "AtCtx.h"
+#include  "AcpuReset.h"
 #include  "TafDrvAgent.h"
 #include  "AtMtaInterface.h"
 #include  "AtInternalMsg.h"
@@ -37,7 +40,6 @@ extern "C" {
   4 全局变量声明
 *****************************************************************************/
 
-extern TAF_UINT8                        gaucAtStgi[7];
 
 extern VOS_INT8                         g_acATE5DissdPwd[AT_DISSD_PWD_LEN+1];
 
@@ -268,7 +270,6 @@ VOS_UINT32 AT_RcvDrvAgentChipTempQryRsp(VOS_VOID *pMsg);
 
 VOS_UINT32 AT_RcvDrvAgentAntStateIndRsp(VOS_VOID *pMsg);
 
-VOS_UINT8* AT_GetSystemAppConfigAddr(VOS_VOID);
 
 VOS_VOID  AT_ReadSystemAppConfigNV(VOS_VOID);
 
@@ -435,6 +436,33 @@ VOS_UINT32 AT_RcvMmaDetachCnf(
 );
 
 
+
+/* Added by zwx247453 for VOLTE SWITCH, 2015-02-02, Begin */
+#if (FEATURE_ON == FEATURE_IMS)
+VOS_UINT32 AT_RcvMmaImsSwitchSetCnf(
+    VOS_VOID                           *pMsg
+);
+
+VOS_UINT32 AT_RcvMmaImsSwitchQryCnf(
+    VOS_VOID                           *pMsg
+);
+VOS_UINT32 AT_RcvMmaVoiceDomainSetCnf(
+    VOS_VOID                           *pMsg
+);
+
+VOS_UINT32 AT_VoiceDomainTransToOutputValue(
+    TAF_MMA_VOICE_DOMAIN_ENUM_UINT32    enVoiceDoman,
+    VOS_UINT32                         *pulValue
+);
+
+VOS_UINT32 AT_RcvMmaVoiceDomainQryCnf(
+    VOS_VOID                           *pMsg
+);
+#endif
+/* Added by zwx247453 for VOLTE SWITCH, 2015-02-02, End */
+
+VOS_UINT32 AT_SetLogEnablePara(VOS_UINT8 ucIndex);
+VOS_UINT32 AT_QryLogEnable(VOS_UINT8 ucIndex);
 
 #if (VOS_OS_VER == VOS_WIN32)
 #pragma pack()

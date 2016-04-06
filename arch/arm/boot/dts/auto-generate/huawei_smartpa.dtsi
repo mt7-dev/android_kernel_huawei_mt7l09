@@ -1,0 +1,16 @@
+/{
+    amba {
+        i2c1: i2c@FDF0A000 {
+            tfa9887:tfa9887@34 {
+                compatible = "hisilicon,tfa9887";
+                reg = <0x34>;
+                status = "disabled";
+            };
+        };
+    };
+};
+
+
+
+
+

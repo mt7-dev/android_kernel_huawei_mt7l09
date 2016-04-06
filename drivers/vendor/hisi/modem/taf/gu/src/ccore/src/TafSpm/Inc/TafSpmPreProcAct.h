@@ -149,6 +149,11 @@ VOS_UINT32 TAF_SPM_RcvMsgReportInd_PreProc(
     struct MsgCB                       *pstMsg
 );
 
+VOS_UINT32 TAF_SPM_RcvMsgCheckRsltInd_PreProc(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+);
+
 VOS_UINT32 TAF_SPM_RcvImsaCallOrigCnf_PreProc(
     struct MsgCB                       *pstMsg
 );
@@ -255,6 +260,12 @@ VOS_UINT32 TAF_SPM_RcvMmaImsVoiceCapInd_PreProc(
     struct MsgCB                       *pstMsg
 );
 
+
+VOS_UINT32 TAF_SPM_RcvImsaCallTypeChangeInfoInd_PreProc(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+);
+
 VOS_UINT32 TAF_SPM_RcvCcSrvReqProtectTimerExpired_PreProc(
     VOS_UINT32                          ulEventType,
     struct MsgCB                       *pstMsg
@@ -277,6 +288,59 @@ VOS_UINT32 TAF_SPM_RcvImsaCallInviteNewPtptCnf_PreProc(
     VOS_UINT32                          ulEventType,
     struct MsgCB                       *pstMsg
 );
+
+VOS_UINT32 TAF_SPM_RcvAppCallModifyReq_PreProc(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+);
+VOS_UINT32 TAF_SPM_RcvAppCallAnswerRemoteModifyReq_PreProc(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+);
+VOS_UINT32 TAF_SPM_RcvImsaCallModifyCnf_PreProc(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+);
+VOS_UINT32 TAF_SPM_RcvImsaCallAnswerRemoteModifyCnf_PreProc(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+);
+VOS_UINT32 TAF_SPM_RcvImsaCallModifyStatusInd_PreProc(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+);
+
+VOS_UINT32 TAF_SPM_RcvAppEconfDialReq_PreProc(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+);
+
+VOS_UINT32 TAF_SPM_RcvImsaEconfDialCnf_PreProc(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+);
+
+VOS_UINT32 TAF_SPM_RcvImsaEconfAddUsersCnf_PreProc(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+);
+
+VOS_UINT32 TAF_SPM_RcvImsaEconfNotifyInd_PreProc(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+);
+
+VOS_UINT32 TAF_SPM_RcvImsaGetEconfInfoCnf_PreProc(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+);
+
+VOS_UINT32 TAF_SPM_RcvAppGetEconfInfoReq_PreProc(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+);
+
+
 #endif
 
 VOS_UINT32 TAF_SPM_RcvMmaPowerOffInd_PreProc(
@@ -287,13 +351,14 @@ VOS_UINT32 TAF_SPM_RcvMmaPowerOffInd_PreProc(
 VOS_UINT32 TAF_SPM_IsSsServiceReqAllowed_PreProc(
     VOS_UINT32                          ulEventType,
     struct MsgCB                       *pstMsg,
-    TAF_PH_ERR_CODE                    *penCause
+    TAF_ERROR_CODE_ENUM_UINT32         *penCause
 );
 VOS_UINT32 TAF_SPM_IsSmsServiceReqAllowed_PreProc(
     VOS_UINT32                          ulEventType,
     struct MsgCB                       *pstMsg,
     VOS_UINT32                         *pulCause
 );
+
 
 #if (VOS_OS_VER == VOS_WIN32)
 #pragma pack()

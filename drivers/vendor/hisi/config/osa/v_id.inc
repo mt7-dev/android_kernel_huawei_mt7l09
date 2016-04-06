@@ -139,7 +139,7 @@ BEGIN_DECLARE_PID_BELONG_TO_FID()
 #if (FEATURE_ON == FEATURE_UE_MODE_TDS)
 /* TDS begin */
     ON_DECLARE(HL1_PID_SNDCMD,                  HL1_FID_SNDCMD,         VOS_PRIORITY_NULL)
-    ON_DECLARE(TPS_PID_RLC    ,                 TPS_FID_RLC  ,          VOS_PRIORITY_NULL)
+    ON_DECLARE(TPS_PID_RLC    ,                 TPS_FID_MAC  ,          VOS_PRIORITY_NULL)
     ON_DECLARE(TPS_PID_MAC  ,                   TPS_FID_MAC ,           VOS_PRIORITY_NULL)
     ON_DECLARE(TPS_PID_PDC     ,                TPS_FID_PDC ,           VOS_PRIORITY_NULL)
 /* TDS begin */

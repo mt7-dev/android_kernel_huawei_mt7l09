@@ -2,9 +2,9 @@
 #include <osl_types.h>
 #include <osl_irq.h>
 
-BSP_S32 BSP_INT_Connect(VOIDFUNCPTR * vector,VOIDFUNCPTR routine, BSP_S32 parameter)
+BSP_S32 BSP_INT_Connect(int vector,VOIDFUNCPTR routine, void* parameter)
 {
-    return request_irq((u32)vector,(irq_handler_t) routine, 0, "other", (void*)parameter);
+    return request_irq(vector,(irq_handler_t) routine, 0, "other", parameter);
 }
 BSP_S32 BSP_INT_Disable (BSP_S32 s32Lvl)
 {

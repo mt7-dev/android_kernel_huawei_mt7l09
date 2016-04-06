@@ -23,8 +23,6 @@
 #include "bsp_icc.h"
 #include "efuse_balong.h"
 
-
-#ifdef CONFIG_EFUSE
 static int is_efuse_init = 0;
 static osl_sem_id efuse_sem_id;
 static osl_sem_id efuse_queue_sem_id;
@@ -222,23 +220,4 @@ void bsp_efuse_show(void)
     }
 
 }
-
-#else
-
-int efuse_init(void)
-{
-    return 0;
-}
-
-int bsp_efuse_read(u32* pBuf, const u32 group, const u32 num)
-{
-    return 0;
-}
-
-int bsp_efuse_write( u32 *pBuf, const u32 group, const u32 len)
-{
-    return 0;
-}
-
-#endif
 

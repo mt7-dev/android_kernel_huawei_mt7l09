@@ -298,8 +298,8 @@ VOS_UINT32 At_SendDomainProtoToNvim(
     修改内容   : 新生成函数
 
 *****************************************************************************/
-TAF_UINT32 At_ParseCsmpFo(
-    TAF_UINT8                           *pucFo
+VOS_UINT32 At_ParseCsmpFo(
+    VOS_UINT8                           *pucFo
 )
 {
     TAF_UINT32                          ulRet;
@@ -556,7 +556,7 @@ VOS_UINT32  AT_SetRelativeValidPeriod(
 }
 
 
-TAF_UINT32 At_ParseCsmpVp(
+VOS_UINT32 At_ParseCsmpVp(
     VOS_UINT8                           ucIndex,
     MN_MSG_VALID_PERIOD_STRU           *pstVp
 )

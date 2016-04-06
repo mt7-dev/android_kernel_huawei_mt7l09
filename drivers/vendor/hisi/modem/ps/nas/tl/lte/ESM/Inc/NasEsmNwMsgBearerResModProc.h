@@ -271,6 +271,11 @@ extern VOS_VOID  NAS_ESM_SaveNwModDediEpsbReplacePf
     const  NAS_ESM_NW_MSG_STRU          *pstMsgIE,
     VOS_UINT32                           ulStateTblIndex
 );
+extern VOS_VOID  NAS_ESM_SaveNwModDediEpsbCreatPf
+(
+    const  NAS_ESM_NW_MSG_STRU          *pstMsgIE,
+    VOS_UINT32                           ulStateTblIndex
+);
 extern VOS_VOID  NAS_ESM_SaveNwModDediEpsbDeletePf
 (
     const  NAS_ESM_NW_MSG_STRU          *pstMsgIE,

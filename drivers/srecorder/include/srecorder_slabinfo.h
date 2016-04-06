@@ -1,18 +1,4 @@
-/**
-    @copyright: Huawei Technologies Co., Ltd. 2012-2012. All rights reserved.
-    
-    @file: srecorder_slabinfo.h
-    
-    @brief: 
-    
-    @version: 1.0 
-    
-    @author: QiDechun ID: 216641
-    
-    @date: 2012-06-30
-    
-    @history:
-*/
+
 
 #ifndef SRECORDER_SLABINFO_H
 #define SRECORDER_SLABINFO_H

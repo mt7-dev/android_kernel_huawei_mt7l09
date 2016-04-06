@@ -17,9 +17,9 @@ extern "C" {
 /*****************************************************************************
     协议栈打印打点方式下的.C文件宏定义
 *****************************************************************************/
-/*lint -e767*/
+/*lint -e767 -e960*/
 #define    THIS_FILE_ID                 PS_FILE_ID_AT_CMD_PACKET_PROC_C
-/*lint +e767*/
+/*lint +e767 +e960*/
 
 /*****************************************************************************
   2 全局变量定义
@@ -728,6 +728,12 @@ VOS_UINT32 AT_PS_ReportDhcpv6(TAF_UINT8 ucIndex)
     if (AT_PDP_STATE_ACTED != pstCallEntity->enIpv6State)
     {
         AT_WARN_LOG("AT_PS_ReportDhcpv6: PDP is not actived.");
+        return AT_ERROR;
+    }
+
+    if (VOS_TRUE != pstCallEntity->stIpv6RaInfo.bitOpPrefixAddr)
+    {
+        AT_WARN_LOG("AT_PS_ReportDhcpv6: Prefix address is not received.");
         return AT_ERROR;
     }
 
@@ -1754,7 +1760,7 @@ VOS_UINT32 At_SetApThroughputPara(
     /* 初始化消息 */
     PS_MEM_SET((VOS_CHAR*)pstMsg + VOS_MSG_HEAD_LENGTH,
                0x00,
-               sizeof(AT_RNIC_DSFLOW_IND_STRU) - VOS_MSG_HEAD_LENGTH);
+               (VOS_SIZE_T)(sizeof(AT_RNIC_DSFLOW_IND_STRU) - VOS_MSG_HEAD_LENGTH));
 
     /* 填写消息头 */
     pstMsg->ulReceiverCpuId = VOS_LOCAL_CPUID;
@@ -1794,7 +1800,7 @@ VOS_UINT32 At_QryApThroughputPara(
     /* 初始化消息 */
     PS_MEM_SET((VOS_CHAR*)pstMsg + VOS_MSG_HEAD_LENGTH,
                0x00,
-               sizeof(AT_RNIC_DSFLOW_IND_STRU) - VOS_MSG_HEAD_LENGTH);
+               (VOS_SIZE_T)(sizeof(AT_RNIC_DSFLOW_IND_STRU) - VOS_MSG_HEAD_LENGTH));
 
     /* 填写消息头 */
     pstMsg->ulReceiverCpuId = VOS_LOCAL_CPUID;
@@ -1858,6 +1864,237 @@ VOS_UINT32 AT_SetApEndPppPara(VOS_UINT8 ucIndex)
 #else
     return AT_ERROR;
 #endif
+}
+VOS_UINT32 AT_SetApDsFlowRptCfgPara(VOS_UINT8 ucIndex)
+{
+    TAF_APDSFLOW_RPT_CFG_STRU           stRptCfg;
+
+    /* 参数检查 */
+    if (AT_CMD_OPT_SET_PARA_CMD != g_stATParseCmd.ucCmdOptType)
+    {
+        return AT_CME_INCORRECT_PARAMETERS;
+    }
+
+    /* 命令参数个数检查 */
+    if ((gucAtParaIndex < 1) || (gucAtParaIndex > 4))
+    {
+        return AT_CME_INCORRECT_PARAMETERS;
+    }
+
+    /* AT^APDSFLOWRPTCFG=, */
+    if (0 == gastAtParaList[0].usParaLen)
+    {
+        return AT_CME_INCORRECT_PARAMETERS;
+    }
+
+    /* 设置<enable> */
+    stRptCfg.ulRptEnabled = gastAtParaList[0].ulParaValue;
+
+    if (VOS_TRUE == stRptCfg.ulRptEnabled)
+    {
+        /* AT^APDSFLOWRPTCFG=1 */
+        if (1 == gucAtParaIndex)
+        {
+            return AT_CME_INCORRECT_PARAMETERS;
+        }
+
+        /* AT^APDSFLOWRPTCFG=1, */
+        if (0 == gastAtParaList[1].usParaLen)
+        {
+            return AT_CME_INCORRECT_PARAMETERS;
+        }
+
+        /* AT^APDSFLOWRPTCFG=1,<threshold> */
+        stRptCfg.ulFluxThreshold = gastAtParaList[1].ulParaValue;
+
+        /* AT^APDSFLOWRPTCFG=1,0 */
+        if (0 == stRptCfg.ulFluxThreshold)
+        {
+            return AT_CME_INCORRECT_PARAMETERS;
+        }
+    }
+    else
+    {
+        /* AT^APDSFLOWRPTCFG=0 */
+        stRptCfg.ulFluxThreshold = 0;
+    }
+
+    /* 执行命令操作 */
+    if (VOS_OK != TAF_PS_SetApDsFlowRptCfg(WUEPS_PID_AT,
+                                           gastAtClientTab[ucIndex].usClientId,
+                                           0,
+                                           &stRptCfg))
+    {
+        return AT_ERROR;
+    }
+
+    /* 设置当前操作类型 */
+    gastAtClientTab[ucIndex].CmdCurrentOpt = AT_CMD_APDSFLOWRPTCFG_SET;
+
+    /* 返回命令处理挂起状态 */
+    return AT_WAIT_ASYNC_RETURN;
+}
+
+
+VOS_UINT32 AT_QryApDsFlowRptCfgPara(VOS_UINT8 ucIndex)
+{
+    /* 执行命令操作 */
+    if (VOS_OK != TAF_PS_GetApDsFlowRptCfg(WUEPS_PID_AT,
+                                           gastAtClientTab[ucIndex].usClientId,
+                                           0))
+    {
+        return AT_ERROR;
+    }
+
+    /* 设置当前操作类型 */
+    gastAtClientTab[ucIndex].CmdCurrentOpt = AT_CMD_APDSFLOWRPTCFG_QRY;
+
+    /* 返回命令处理挂起状态 */
+    return AT_WAIT_ASYNC_RETURN;
+}
+VOS_UINT32 AT_SetDsFlowNvWriteCfgPara(VOS_UINT8 ucIndex)
+{
+    TAF_DSFLOW_NV_WRITE_CFG_STRU        stWriteNvCfg;
+
+    PS_MEM_SET(&stWriteNvCfg, 0x00, sizeof(TAF_DSFLOW_NV_WRITE_CFG_STRU));
+
+    /* 参数检查 */
+    if (AT_CMD_OPT_SET_PARA_CMD != g_stATParseCmd.ucCmdOptType)
+    {
+        return AT_CME_INCORRECT_PARAMETERS;
+    }
+
+    /* 命令参数个数检查 */
+    if (gucAtParaIndex > 2)
+    {
+        return AT_CME_INCORRECT_PARAMETERS;
+    }
+
+    /* AT^DSFLOWNVWRCFG= */
+    if (0 == gucAtParaIndex)
+    {
+        return AT_CME_INCORRECT_PARAMETERS;
+    }
+
+    /* AT^DSFLOWNVWRCFG=,<interval> */
+    if (0 == gastAtParaList[0].usParaLen)
+    {
+        return AT_CME_INCORRECT_PARAMETERS;
+    }
+
+    /* 获取<enable> */
+    stWriteNvCfg.ucEnabled          = (VOS_UINT8)gastAtParaList[0].ulParaValue;
+
+    /* 获取<interval> */
+    if (gucAtParaIndex > 1)
+    {
+        if (0 != gastAtParaList[1].usParaLen)
+        {
+            /* AT^DSFLOWNVWRCFG=<enable>,<interval> */
+            stWriteNvCfg.ucInterval = (VOS_UINT8)gastAtParaList[1].ulParaValue;
+        }
+        else
+        {
+            /* AT^DSFLOWNVWRCFG=<enable>, */
+            return AT_CME_INCORRECT_PARAMETERS;
+        }
+    }
+    else
+    {
+        /* AT^DSFLOWNVWRCFG=<enable> */
+        stWriteNvCfg.ucInterval     = TAF_DEFAULT_DSFLOW_NV_WR_INTERVAL;
+    }
+
+    /* AT^DSFLOWNVWRCFG=1,0 */
+    if ((VOS_TRUE == stWriteNvCfg.ucEnabled) && (0 == stWriteNvCfg.ucInterval))
+    {
+        return AT_CME_INCORRECT_PARAMETERS;
+    }
+
+    /* 执行命令操作 */
+    if (VOS_OK != TAF_PS_SetDsFlowNvWriteCfg(WUEPS_PID_AT,
+                                             gastAtClientTab[ucIndex].usClientId,
+                                             0,
+                                             &stWriteNvCfg))
+    {
+        return AT_ERROR;
+    }
+
+    /* 设置当前操作类型 */
+    gastAtClientTab[ucIndex].CmdCurrentOpt = AT_CMD_DSFLOWNVWRCFG_SET;
+
+    /* 返回命令处理挂起状态 */
+    return AT_WAIT_ASYNC_RETURN;
+}
+VOS_UINT32 AT_QryDsFlowNvWriteCfgPara(VOS_UINT8 ucIndex)
+{
+    /* 执行命令操作 */
+    if (VOS_OK != TAF_PS_GetDsFlowNvWriteCfg(WUEPS_PID_AT,
+                                             gastAtClientTab[ucIndex].usClientId,
+                                             0))
+    {
+        return AT_ERROR;
+    }
+
+    /* 设置当前操作类型 */
+    gastAtClientTab[ucIndex].CmdCurrentOpt = AT_CMD_DSFLOWNVWRCFG_QRY;
+
+    /* 返回命令处理挂起状态 */
+    return AT_WAIT_ASYNC_RETURN;
+}
+
+/*****************************************************************************
+ 函 数 名  : AT_SetImsPdpCfg
+ 功能描述  : ^IMSPNDPCFG
+ 输入参数  : ucIndex --- 端口索引
+ 输出参数  : 无
+ 返 回 值  : AT_XXX  --- ATC返回码
+ 调用函数  :
+ 被调函数  :
+
+ 修改历史      :
+  1.日    期   : 2015年7月29日
+    作    者   : z00301431
+    修改内容   : 新生成函数
+
+*****************************************************************************/
+VOS_UINT32 AT_SetImsPdpCfg(VOS_UINT8 ucIndex)
+{
+    TAF_IMS_PDP_CFG_STRU                stImsPdpCfg;
+
+    /* 参数过多 */
+    if (gucAtParaIndex != 2)
+    {
+        return AT_CME_INCORRECT_PARAMETERS;
+    }
+
+    /* 参数检查 */
+    if ((0 == gastAtParaList[0].usParaLen)
+     || (0 == gastAtParaList[1].usParaLen))
+    {
+        return AT_CME_INCORRECT_PARAMETERS;
+    }
+
+    PS_MEM_SET(&stImsPdpCfg, 0, sizeof(stImsPdpCfg));
+
+    /* 参数赋值 */
+    stImsPdpCfg.ucCid           = (VOS_UINT8)gastAtParaList[0].ulParaValue;
+    stImsPdpCfg.ucImsFlag       = (VOS_UINT8)gastAtParaList[1].ulParaValue;
+
+    /* 发送跨核消息 */
+    if ( VOS_OK != TAF_PS_SetImsPdpCfg(WUEPS_PID_AT,
+                                       gastAtClientTab[ucIndex].usClientId,
+                                       0,
+                                       &stImsPdpCfg) )
+    {
+        return AT_ERROR;
+    }
+
+    /* 设置当前操作类型 */
+    gastAtClientTab[ucIndex].CmdCurrentOpt = AT_CMD_IMSPDPCFG_SET;
+
+    /* 返回命令处理挂起状态 */
+    return AT_WAIT_ASYNC_RETURN;
 }
 
 #ifdef  __cplusplus

@@ -169,25 +169,7 @@ enum {
 #define RESTRICT_TO_RANGE(v, mi, ma) \
 	{ if (((int)v) < (mi)) (v) = (mi); else if ((v) > (ma)) (v) = (ma); }
 
-/*
- * We use macros to do YUV -> RGB conversion because this is
- * very important for speed and totally unimportant for size.
- *
- * YUV -> RGB Conversion
- * ---------------------
- *
- * B = 1.164*(Y-16)		    + 2.018*(V-128)
- * G = 1.164*(Y-16) - 0.813*(U-128) - 0.391*(V-128)
- * R = 1.164*(Y-16) + 1.596*(U-128)
- *
- * If you fancy integer arithmetics (as you should), hear this:
- *
- * 65536*B = 76284*(Y-16)		  + 132252*(V-128)
- * 65536*G = 76284*(Y-16) -  53281*(U-128) -  25625*(V-128)
- * 65536*R = 76284*(Y-16) + 104595*(U-128)
- *
- * Make sure the output values are within [0..255] range.
- */
+
 #define LIMIT_RGB(x) (((x) < 0) ? 0 : (((x) > 255) ? 255 : (x)))
 #define YUV_TO_RGB_BY_THE_BOOK(my, mu, mv, mr, mg, mb) { \
 	int mm_y, mm_yc, mm_u, mm_v, mm_r, mm_g, mm_b; \

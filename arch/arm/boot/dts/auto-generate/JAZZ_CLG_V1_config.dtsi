@@ -8,16 +8,14 @@
  */
 
 
-/include/ "huawei_ext_modem.dtsi"
 /include/ "hisi_sim_hotplug.dtsi"
-
 /include/ "JAZZ_ULG_V1_config.dtsi"
-/include/ "hisi_3630_pin_JAZZ_CLG_V1.dtsi"
-/include/ "hisi_3630_modem_JAZZ_CLG_V1.dtsi"
+/include/ "huawei_ext_modem.dtsi"
+
 / {
+	hisi,boardid = <9 6 0 7>;
+	hisi,boardname = "JAZZ_CLG_V1";
 	board_info: board_info {
-		hisi,boardid = <6 0 7>;
-		hisi,boardname = "Jazz_CL+G_V1";
 		hisi,modem_id = <0x3fbe4000>;
 		hw,public;
 	};
@@ -29,7 +27,8 @@
 		i2c1: i2c@FDF0A000 {
 			pn547_nfc:nfc@28 {
 					  nfc_nxp_name = "Jazz_CLG_V1_libnfc-nxp.conf";
-					  hw,public="nfc_nxp_name";
+					  nfc_card_num = <0x2>;
+					  hw,public="nfc_nxp_name","nfc_card_num";
 			};
 		};
 		spi1: spi@fdf08000 {
@@ -63,16 +62,25 @@
 	viacbp82d_cbp_spi:viacbp82d_cbp_spi {
 		status = "ok";
 	};
+	viacbp82d_flashless_boot_dl_uart:viacbp82d_flashless_boot_dl_uart {
+		status = "ok";
+	};
 	bcm_wifi {
-		wifi_nvram_name = "nvram4334_hw_jazz_clg.txt";
-		wifi_fw_name = "fw_bcm4334_hw.bin";
+		wifi_nvram_name = "/vendor/firmware/nvram4334_hw_jazz_clg.txt";
+		wifi_fw_name = "/vendor/firmware/fw_bcm4334_hw_dualband.bin";
+		wifi_fw_ap_name = "/vendor/firmware/fw_bcm4334_apsta_hw_dualband.bin";
+		wifi_fw_test_name = "/vendor/firmware/fw_bcm4334_test_hw_apsta_dualband.bin";
+		udp_board;
+		ic_type= "bcm4334";
 		status = "ok";
 	};
 	sim0 {
 		status = "ok";
+		set_gpio="disabled";
 	};
 	sim1 {
 		status = "ok";
+		set_gpio="disabled";
 	};
 	audio_hal_config {
 		aud_para = "JAZZ_CLG";

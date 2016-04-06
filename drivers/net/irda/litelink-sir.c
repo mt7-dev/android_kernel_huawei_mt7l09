@@ -115,9 +115,7 @@ static int litelink_change_speed(struct sir_dev *dev, unsigned speed)
 
 	IRDA_DEBUG(2, "%s()\n", __func__);
 
-	/* dongle already reset by irda-thread - current speed (dongle and
-	 * port) is the default speed (115200 for litelink!)
-	 */
+
 
 	/* Cycle through avaiable baudrates until we reach the correct one */
 	for (i = 0; baud_rates[i] != speed; i++) {
@@ -181,7 +179,6 @@ static int litelink_reset(struct sir_dev *dev)
 	/* Sleep a minimum of 15 us */
 	udelay(MIN_DELAY);
 
-	/* This dongles speed defaults to 115200 bps */
 	dev->speed = 115200;
 
 	return 0;

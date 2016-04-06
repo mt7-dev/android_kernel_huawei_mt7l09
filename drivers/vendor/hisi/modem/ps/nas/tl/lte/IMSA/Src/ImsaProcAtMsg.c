@@ -7,6 +7,7 @@
 #include    "ImsaEntity.h"
 #include    "ImsaPublic.h"
 #include    "ImsaServiceManagement.h"
+#include    "ImsaConnManagement.h"
 #include    "ImsaImsAdaption.h"
 
 /*lint -e767*/
@@ -418,6 +419,10 @@ VOS_VOID IMSA_ProcMsgCcwaiSetReq(const AT_IMSA_CCWAI_SET_REQ_STRU *pstCcwaiSetRe
     pstImsaAtControl->usClientId = pstCcwaiSetReq->usClientId;
     pstImsaAtControl->ucOpId = pstCcwaiSetReq->ucOpId;
 
+    /*jiaguocai 00355737 begin for ccwa 2015-09-07*/
+    pstImsaAtControl->enMode = pstCcwaiSetReq->enMode;
+    /*jiaguocai 00355737 end for ccwa 2015-09-07*/
+
     /* 给IMSA发送查询命令 */
     IMSA_SendImsCcwaiSetReq(pstCcwaiSetReq->enMode);
 
@@ -552,6 +557,143 @@ VOS_VOID IMSA_SndMsgAtCirepQryCnf
 }
 /*lint +e961*/
 /*lint +e960*/
+
+VOS_VOID IMSA_SndMsgAtPdpActInd (const IMSA_PDP_CNTXT_INFO_STRU     *pstPdpInfo)
+{
+    IMSA_AT_VT_PDP_ACTIVATE_IND_STRU    *pstPdpActInd;
+    VOS_UINT8                           aucTemp[IMSA_IPV6_PREFIX_LEN]   = {0};
+
+
+    /*分配消息空间*/
+    pstPdpActInd = (VOS_VOID*)IMSA_ALLOC_MSG(sizeof(IMSA_AT_VT_PDP_ACTIVATE_IND_STRU));
+
+    /*检测是否分配成功*/
+    if (VOS_NULL_PTR == pstPdpActInd)
+    {
+        /*打印异常信息*/
+        IMSA_ERR_LOG("IMSA_SndMsgAtPdpActInd:ERROR:Alloc Msg fail!");
+        return ;
+    }
+
+    IMSA_MEM_SET( IMSA_GET_MSG_ENTITY(pstPdpActInd), 0, IMSA_GET_MSG_LENGTH(pstPdpActInd));
+
+    IMSA_WRITE_AT_MSG_MSG_HEAD(pstPdpActInd,ID_IMSA_AT_VT_PDP_ACTIVATE_IND);
+
+
+    /*填写消息内容*/
+    pstPdpActInd->ucOpId = 0;
+    pstPdpActInd->usClientId = 0x3fff;
+
+    pstPdpActInd->stPdpAddr.enPdpType = pstPdpInfo->stPdpAddr.enIpType;
+
+    if ((IMSA_IP_TYPE_IPV4 == pstPdpInfo->stPdpAddr.enIpType)
+        || (IMSA_IP_TYPE_IPV4V6 == pstPdpInfo->stPdpAddr.enIpType))
+    {
+        /* 配置IPV4地址 */
+        IMSA_MEM_CPY(   pstPdpActInd->stPdpAddr.aucIpv4Addr,
+                        pstPdpInfo->stPdpAddr.aucIpV4Addr,
+                        IMSA_IPV4_ADDR_LEN);
+
+        /* 配置IPV4 DNS地址 */
+        pstPdpActInd->stIpv4Dns.bitOpPrimDnsAddr = pstPdpInfo->stPdpIpv4Dns.bitOpPriDns;
+        IMSA_MEM_CPY(   pstPdpActInd->stIpv4Dns.aucPrimDnsAddr,
+                        pstPdpInfo->stPdpIpv4Dns.aucPriDns,
+                        IMSA_IPV4_ADDR_LEN);
+
+        pstPdpActInd->stIpv4Dns.bitOpSecDnsAddr = pstPdpInfo->stPdpIpv4Dns.bitOpSecDns;
+        IMSA_MEM_CPY(   pstPdpActInd->stIpv4Dns.aucSecDnsAddr,
+                        pstPdpInfo->stPdpIpv4Dns.aucSecDns,
+                        IMSA_IPV4_ADDR_LEN);
+    }
+
+    if ((IMSA_IP_TYPE_IPV6 == pstPdpInfo->stPdpAddr.enIpType)
+        || (IMSA_IP_TYPE_IPV4V6 == pstPdpInfo->stPdpAddr.enIpType))
+    {
+        if (0 != IMSA_MEM_CMP(aucTemp, pstPdpInfo->stPdpAddr.aucIpV6Addr, IMSA_IPV6_PREFIX_LEN))
+        {
+            /* 配置IPV6地址 */
+            IMSA_MEM_CPY(   pstPdpActInd->stPdpAddr.aucIpv6Addr,
+                            pstPdpInfo->stPdpAddr.aucIpV6Addr,
+                            IMSA_IPV6_ADDR_LEN);
+
+            /* 配置IPV6 DNS地址 */
+            pstPdpActInd->stIpv6Dns.bitOpPrimDnsAddr = pstPdpInfo->stPdpIpv6Dns.bitOpPriDns;
+            IMSA_MEM_CPY(   pstPdpActInd->stIpv6Dns.aucPrimDnsAddr,
+                            pstPdpInfo->stPdpIpv6Dns.aucPriDns,
+                            IMSA_IPV6_ADDR_LEN);
+
+            pstPdpActInd->stIpv6Dns.bitOpSecDnsAddr = pstPdpInfo->stPdpIpv6Dns.bitOpSecDns;
+            IMSA_MEM_CPY(   pstPdpActInd->stIpv6Dns.aucSecDnsAddr,
+                            pstPdpInfo->stPdpIpv6Dns.aucSecDns,
+                            IMSA_IPV6_ADDR_LEN);
+        }
+    }
+
+
+    /*调用消息发送函数 */
+    IMSA_SND_MSG(pstPdpActInd);
+    return;
+}
+VOS_VOID IMSA_SndMsgAtPdpDeactInd (TAF_PDP_TYPE_ENUM_UINT8             enPdpType)
+{
+    IMSA_AT_VT_PDP_DEACTIVATE_IND_STRU    *pstPdpDeactInd;
+    VOS_UINT8                           aucTemp[IMSA_IPV6_PREFIX_LEN]   = {0};
+
+
+    /*分配消息空间*/
+    pstPdpDeactInd = (VOS_VOID*)IMSA_ALLOC_MSG(sizeof(IMSA_AT_VT_PDP_DEACTIVATE_IND_STRU));
+
+    /*检测是否分配成功*/
+    if (VOS_NULL_PTR == pstPdpDeactInd)
+    {
+        /*打印异常信息*/
+        IMSA_ERR_LOG("IMSA_SndMsgAtPdpDeactInd:ERROR:Alloc Msg fail!");
+        return ;
+    }
+
+    IMSA_MEM_SET( IMSA_GET_MSG_ENTITY(pstPdpDeactInd), 0, IMSA_GET_MSG_LENGTH(pstPdpDeactInd));
+
+    IMSA_WRITE_AT_MSG_MSG_HEAD(pstPdpDeactInd,ID_IMSA_AT_VT_PDP_DEACTIVATE_IND);
+
+
+    /*填写消息内容*/
+    pstPdpDeactInd->ucOpId = 0;
+    pstPdpDeactInd->usClientId = 0x3fff;
+
+    pstPdpDeactInd->enPdpType = enPdpType;
+
+
+
+    /*调用消息发送函数 */
+    IMSA_SND_MSG(pstPdpDeactInd);
+    return;
+}
+VOS_VOID IMSA_SndMsgAtMtStatusInd(const IMSA_MT_STATUS_REPORT_STRU    *pstMtReport)
+{
+    IMSA_AT_MT_STATES_IND_STRU        *pstMtStatusInd = VOS_NULL_PTR;
+
+    pstMtStatusInd = (VOS_VOID*)IMSA_ALLOC_MSG(sizeof(IMSA_AT_MT_STATES_IND_STRU));
+
+    if (VOS_NULL_PTR == pstMtStatusInd)
+    {
+        IMSA_ERR_LOG("IMSA_SndMsgAtMtStatusInd:ERROR:Alloc Msg fail!");
+        return ;
+    }
+
+    IMSA_MEM_SET( IMSA_GET_MSG_ENTITY(pstMtStatusInd), 0, IMSA_GET_MSG_LENGTH(pstMtStatusInd));
+
+    IMSA_WRITE_AT_MSG_MSG_HEAD(pstMtStatusInd, ID_IMSA_AT_MT_STATES_IND);
+
+    pstMtStatusInd->ucOpId = 0;
+    pstMtStatusInd->usClientId = 0x3fff;
+    pstMtStatusInd->ulCauseCode = pstMtReport->ulCauseCode;
+    pstMtStatusInd->ucMtStatus = pstMtReport->enMtStatus;
+    IMSA_UtilStrNCpy(pstMtStatusInd->aucAsciiCallNum, pstMtReport->acNumber, IMSA_CALL_NUMBER_MAX_NUM);
+
+    /*调用消息发送函数 */
+    IMSA_SND_MSG(pstMtStatusInd);
+}
+
 #endif
 
 #ifdef __cplusplus

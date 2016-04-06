@@ -16,6 +16,8 @@
 #include "TafMmaMntn.h"
 #include "TafOamInterface.h"
 
+#include "TafMmaFsmImsSwitchTbl.h"
+
 #ifdef __cplusplus
 #if __cplusplus
 extern "C" {
@@ -224,6 +226,13 @@ VOS_VOID  TAF_MMA_LoadSubFsm(
             pstCurFsm->pstFsmDesc               = TAF_MMA_GetPhoneModeFsmDescAddr();
             break;
 
+#if (FEATURE_IMS == FEATURE_ON)
+        case TAF_MMA_FSM_IMS_SWITCH :
+            pstCurFsm->ulState                  = TAF_MMA_IMS_SWITCH_STA_INIT;
+            pstCurFsm->pstFsmDesc               = TAF_MMA_GetImsSwitchFsmDescAddr();
+            break;
+#endif
+
         default:
             TAF_ERROR_LOG(WUEPS_PID_MMA, "TAF_MMA_LoadSubFsm:Invalid Fsm Id");
             return;
@@ -231,7 +240,10 @@ VOS_VOID  TAF_MMA_LoadSubFsm(
 
 
     /*执行初始化sub状态机的函数*/
-    pstCurFsm->pstFsmDesc->pfInitHandle();
+    if (VOS_NULL_PTR != pstCurFsm->pstFsmDesc->pfInitHandle)
+    {
+        pstCurFsm->pstFsmDesc->pfInitHandle();
+    }
 }
 VOS_VOID TAF_MMA_FSM_InitSubFsm(
     TAF_MMA_FSM_ID_ENUM_UINT32          enFsmId
@@ -266,17 +278,20 @@ VOS_VOID TAF_MMA_FSM_QuitSubFsm( VOS_VOID )
     pstCurFsm                           = TAF_MMA_GetCurFsmAddr();
 
     /* QUIT时清空当前sub状态机的CTX */
-    pstCurFsm->pstFsmDesc->pfInitHandle();
+    if (VOS_NULL_PTR != pstCurFsm->pstFsmDesc->pfInitHandle)
+    {
+        pstCurFsm->pstFsmDesc->pfInitHandle();
+    }
 
     /*  打印压栈前的main和sub状态 */
     TAF_MMA_LogFsmInfo();
-    
+
     /* 状态机出栈操作 */
     TAF_MMA_FSM_PopFsm();
 
     /*  打印当前的main和sub状态 */
     TAF_MMA_LogFsmInfo();
-    
+
     return;
 }
 
@@ -323,17 +338,17 @@ VOS_UINT32  TAF_MMA_IsNeedCacheMsg(
 )
 {
     VOS_UINT32                          ulIndex;
-    
+
     switch (ulEventType)
     {
         /* 当前卡状态指示消息的缓存只需要缓存一条 */
         case TAF_BuildEventType(WUEPS_PID_MMA, MMA_MMA_INTER_USIM_STATUS_CHANGE_IND):
-        
+
             if (VOS_TRUE == TAF_MMA_IsExistCacheMsg(TAF_BuildEventType(WUEPS_PID_MMA, MMA_MMA_INTER_USIM_STATUS_CHANGE_IND), &ulIndex))
             {
                 return VOS_FALSE;
             }
-            
+
             break;
 
         default:
@@ -370,7 +385,7 @@ VOS_VOID  TAF_MMA_SaveCacheMsgInMsgQueue(
     if (VOS_FALSE == TAF_MMA_IsNeedCacheMsg(ulEventType, pstMsg))
     {
         TAF_ERROR_LOG(WUEPS_PID_MMA, "TAF_MMA_SaveCacheMsgInMsgQueue:already exist msg");
-        
+
         return;
     }
 
@@ -381,7 +396,7 @@ VOS_VOID  TAF_MMA_SaveCacheMsgInMsgQueue(
     pstMsgQueue->ucCacheMsgNum++;
 
     TAF_MMA_LogBufferQueueMsg(VOS_FALSE);
-    
+
     TAF_INFO_LOG1(WUEPS_PID_MMA, "TAF_MMA_SaveCacheMsgInMsgQueue:Cache Num", pstMsgQueue->ucCacheMsgNum);
 
     return;
@@ -441,7 +456,7 @@ VOS_UINT32  TAF_MMA_ClearCacheMsg(
 VOS_VOID  TAF_MMA_InitFsmCtx_PhoneMode(VOS_VOID)
 {
     TAF_MMA_SetCurPhoneErrorCode_PhoneMode(TAF_ERR_NO_ERROR);
-    
+
     return;
 }
 
@@ -512,7 +527,7 @@ VOS_VOID  TAF_MMA_InitMaintainInfo(
     TAF_MMA_MAINTAIN_CTX_STRU          *pstMaintainInfo
 )
 {
-    pstMaintainInfo->ucMmaLogInfoFlag   = VOS_TRUE;
+    pstMaintainInfo->ucMmaLogInfoFlag   = VOS_FALSE;
 }
 
 
@@ -686,7 +701,7 @@ VOS_UINT32  TAF_MMA_GetAutoSwitchOnFlg(VOS_VOID)
 
 
 VOS_VOID  TAF_MMA_SetCurPhoneErrorCode_PhoneMode(
-    VOS_UINT16                          usErrorCode
+    TAF_ERROR_CODE_ENUM_UINT32          enErrorCode
 )
 {
     /* 如果当前状态机不是PHONE MODE, 异常打印 */
@@ -696,17 +711,16 @@ VOS_VOID  TAF_MMA_SetCurPhoneErrorCode_PhoneMode(
         return;
     }
 
-    TAF_MMA_GetMmaCtxAddr()->stCurFsm.unFsmCtx.stPhoneModeCtx.usPhoneError = usErrorCode;
+    TAF_MMA_GetMmaCtxAddr()->stCurFsm.unFsmCtx.stPhoneModeCtx.enPhoneError = enErrorCode;
 }
-VOS_UINT16  TAF_MMA_GetCurPhoneErrorCode_PhoneMode(VOS_VOID)
+TAF_ERROR_CODE_ENUM_UINT32  TAF_MMA_GetCurPhoneErrorCode_PhoneMode(VOS_VOID)
 {
     /* 如果当前状态机不是PHONE MODE, 异常打印 */
     if (TAF_MMA_FSM_PHONE_MODE != TAF_MMA_GetCurrFsmId())
     {
         TAF_ERROR_LOG(WUEPS_PID_MMA, "TAF_MMA_GetCurPhoneErrorCode_PhoneMode,ERROR:FsmId Error");
     }
-
-    return (TAF_MMA_GetMmaCtxAddr()->stCurFsm.unFsmCtx.stPhoneModeCtx.usPhoneError);
+    return (TAF_MMA_GetMmaCtxAddr()->stCurFsm.unFsmCtx.stPhoneModeCtx.enPhoneError);
 }
 TAF_MMA_TIMER_CTX_STRU*  TAF_MMA_GetTimerCtxAddr( VOS_VOID )
 {

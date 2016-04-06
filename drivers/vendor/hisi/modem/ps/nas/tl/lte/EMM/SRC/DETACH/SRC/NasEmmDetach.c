@@ -98,6 +98,10 @@ VOS_VOID  NAS_EMM_SendDetRslt(MMC_LMM_DETACH_RSLT_ENUM_UINT32 ulAppRslt  )
     else
     {
         NAS_EMM_MmcSendDetIndLocal(MMC_LMM_L_LOCAL_DETACH_OTHERS);
+
+        #if (FEATURE_PTM == FEATURE_ON)
+        NAS_EMM_LocalDetachErrRecord(EMM_ERR_LOG_LOCAL_DETACH_TYPE_OTHER);
+        #endif
     }
 }
 /*****************************************************************************
@@ -440,7 +444,7 @@ VOS_VOID NAS_EMM_RrcRelCauseCnDetachSrcClrAttemptToAtt(VOS_VOID)
     NAS_EMM_ClearRegInfo(NAS_EMM_NOT_DELETE_RPLMN);
 
     /*and shall start timer T3402. */
-    NAS_LMM_StartPtlTimer(TI_NAS_EMM_PTL_T3402);
+    NAS_LMM_Start3402Timer(NAS_LMM_TIMER_161722Atmpt5CSPS1_FALSE);
 
     /*clear Attach Attempt Counter*/
     /*NAS_EMM_GLO_AD_GetAttAtmpCnt()      = 0;*/
@@ -571,78 +575,6 @@ VOS_VOID  NAS_EMM_MsDrgInitSsWtCnDetCnfProcMsgRrcRelInd( VOS_UINT32 ulCause)
 
     return;
 }
-
-VOS_UINT32  NAS_EMM_MsDrgInitSsWtCnDetCnfMsgAuthFail(
-                                                VOS_UINT32  ulMsgId,
-                                                VOS_VOID   *pMsgStru)
-{
-
-    NAS_EMM_INTRA_AUTH_FAIL_STRU        *pMsgAuthFail   = (NAS_EMM_INTRA_AUTH_FAIL_STRU *)pMsgStru;
-    VOS_UINT32                          ulCause;
-
-    (VOS_VOID)(ulMsgId);
-    NAS_EMM_DETACH_LOG_INFO("NAS_EMM_MsDrgInitSsWtCnDetCnfMsgAuthFail is entered.");
-
-    /*获得原因值*/
-    ulCause                                             =   pMsgAuthFail->ulCause;
-
-    /*依据原因值处理*/
-    if(NAS_EMM_AUTH_REJ_INTRA_CAUSE_NORMAL              ==  ulCause)
-    {
-        NAS_EMM_ProcDetachAuthRej(                          ulCause);
-    }
-    else
-    {
-        NAS_EMM_MsDrgInitSsWtCnDetCnfProcMsgRrcRelInd(      ulCause);
-    }
-
-    return   NAS_LMM_MSG_HANDLED;
-}
-
-/*****************************************************************************
- Function Name   : NAS_EMM_MsRegImsiDetachWtCnDetCnfMsgAuthFail
- Description     : 主状态EMM_MS_REG+子状态EMM_SS_REG_IMSI_DETACH_WATI_CN_DETACH_CNF下收到AUTH FAIL消息
-                   在AUTH过程中,收到RRC_REL_IND或CN_AUTH_REJ,AUTH模块都会转发AUTH FAIL
-                   所以在收到AUTH_FAIL时会处理RRC_REL_IND或CN_AUTH_REJ两种消息
- Input           : None
- Output          : None
- Return          : VOS_UINT32
-
- History         :
-    1.lihong00150010      2011-09-28  Draft Enact
-
-*****************************************************************************/
-VOS_UINT32  NAS_EMM_MsRegImsiDetachWtCnDetCnfMsgAuthFail
-(
-    VOS_UINT32                          ulMsgId,
-    const VOS_VOID                     *pMsgStru
-)
-{
-
-    NAS_EMM_INTRA_AUTH_FAIL_STRU        *pMsgAuthFail   = (NAS_EMM_INTRA_AUTH_FAIL_STRU *)pMsgStru;
-    VOS_UINT32                          ulCause;
-
-    NAS_EMM_DETACH_LOG2_INFO("NAS_EMM_MsRegImsiDetachWtCnDetCnfMsgAuthFail is entered",
-                                                ulMsgId,
-                                                pMsgStru);
-
-    /*获得原因值*/
-    ulCause = pMsgAuthFail->ulCause;
-
-    /*依据原因值处理*/
-    if(NAS_EMM_AUTH_REJ_INTRA_CAUSE_NORMAL ==  ulCause)
-    {
-        NAS_EMM_ProcDetachAuthRej(ulCause);
-    }
-    else
-    {
-        NAS_EMM_ProcMsRegImsiDetachInitMsgRrcRelInd(ulCause);
-    }
-
-    return   NAS_LMM_MSG_HANDLED;
-}
-
-
 
 VOS_UINT32  NAS_EMM_MsDrgInitSsWtCnDetCnfMsgRrcRelInd(
                                                 VOS_UINT32  ulMsgId,

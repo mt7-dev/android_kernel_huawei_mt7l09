@@ -244,11 +244,11 @@ enum APS_L4A_MSG_ID_ENUM
     ID_L4A_APS_PPP_DIAL_CNF             = 0x101E,                               /* _H2ASN_MsgChoice APS_L4A_PPP_DIAL_CNF_STRU */
     ID_L4A_APS_PS_CALL_END_CNF          = 0x101F,                               /* _H2ASN_MsgChoice APS_L4A_PS_CALL_END_CNF_STRU */
 
+    ID_L4A_APS_PDP_SETUP_IND            = 0x1020,                               /* _H2ASN_MsgChoice APS_L4A_PDP_SETUP_IND_STRU */
+
     ID_APS_L4A_MSG_BUTT
 };
 typedef VOS_UINT32 APS_L4A_MSG_ID_ENUM_UINT32;
-
-
 enum APS_L4A_PDP_TYPE_ENUM
 {
     APS_L4A_PDP_IPV4                            = 0x01,                         /* IPV4类型 */
@@ -549,7 +549,7 @@ typedef struct
     VOS_UINT8                           aucRsv2[3];
     VOS_UINT8                           aucUserName[APS_L4A_MAX_USERNAME_LEN];
     VOS_UINT8                           ucPwdLen;
-    VOS_UINT8                           aucRsv3[3];
+    VOS_UINT8                           aucRsv3[1];
     VOS_UINT8                           aucPwd[APS_L4A_MAX_PASSWORD_LEN];
 }APS_L4A_GW_AUTH_INFO_STRU;
 typedef struct
@@ -849,8 +849,10 @@ typedef struct
     VOS_UINT32                          ulLinkCid;                              /* Linked CID */
     APS_L4A_PDP_ADDR_STRU               stIpAddrInfo;                           /* IP地址    */
     VOS_UINT32                          ulEsmCause;                             /* ESM Cause  */
-
+    VOS_UINT32                          ulEpsbId;
 } APS_L4A_PDP_DEACTIVATE_IND_STRU;
+
+typedef APS_L4A_PDP_ACTIVATE_CNF_STRU APS_L4A_PDP_SETUP_IND_STRU;
 
 
 typedef struct
@@ -1025,10 +1027,9 @@ typedef struct
     VOS_UINT32                          ulSecuParaIndex;
     VOS_UINT8                           ucTypeOfService;                        /* value range from 0 to 255 */
     VOS_UINT8                           ucTypeOfServiceMask;                    /* value range from 0 to 255 */
-    VOS_UINT32                          ulFlowLable;                            /* value range is from 00000 to FFFFF */
     APS_L4A_TFT_FILTER_ENUM_UINT8       enTftFilterDirection;
     VOS_UINT8                           ucNwPktFilterId;                        /* value range from 1 to 16 */
-
+    VOS_UINT32                          ulFlowLable;                            /* value range is from 00000 to FFFFF */
 } APS_L4A_PDP_TFT_EXT_STRU;
 typedef struct
 {
@@ -1445,8 +1446,8 @@ typedef struct
     VOS_UINT32                          bitOpEmergencyInd       : 1;
     VOS_UINT32                          bitOpPcscfDiscovery     : 1;
     VOS_UINT32                          bitOpImsCnSignalFlag    : 1;
-    VOS_UINT32                          bitOpSpare              : 23;
-
+    VOS_UINT32                          bitImsSuppFlag          : 1;
+    VOS_UINT32                          bitOpSpare              : 22;
 
     APS_L4A_PDP_TYPE_ENUM_UINT8         enPdnType;
     APS_L4A_IPV4_ADDR_ALLOC_TYPE_ENUM_UINT8 enIpv4AddrAllocType;
@@ -1455,7 +1456,8 @@ typedef struct
     APS_L4A_EMC_IND_ENUM_UINT8          enEmergencyInd;
     APS_L4A_PCSCF_DISCOVERY_ENUM_UINT8  enPcscfDiscovery;
     APS_L4A_IMS_CN_SIG_FLAG_ENUM_UINT8  enImsCnSignalFlag;
-    VOS_UINT8                           aucReserved[2];
+    VOS_UINT8                           enImsSuppFlag;
+    VOS_UINT8                           aucReserved[1];
 
     VOS_UINT32                          ulCid;                                  /* 承载上下文ID */
     VOS_UINT32                          ulLinkdCid;                             /* 关联CID */
@@ -1729,6 +1731,19 @@ extern VOS_UINT32 TAF_APS_GetCidSdfParaInfo(
     VOS_UINT8                           ucCid,
     APS_L4A_SDF_PARA_STRU              *pstSdfParaInfo
 );
+
+/*****************************************************************************
+ 函 数 名  : TAF_APS_GetCidImsCfgFlag
+ 功能描述  : 获取CID对应的IMS配置
+ 输入参数  : ucCid                      - CID
+ 输出参数  : 无
+ 返 回 值  : VOS_TRUE                   - CID支持IMS
+             VOS_FALSE                  - CID不支持IMS
+ 调用函数  :
+ 被调函数  :
+*****************************************************************************/
+extern VOS_UINT8 TAF_APS_GetCidImsCfgFlag(VOS_UINT8 ucCid);
+
 
 /*****************************************************************************
  函 数 名  : TAF_APS_GetPdpManageInfo

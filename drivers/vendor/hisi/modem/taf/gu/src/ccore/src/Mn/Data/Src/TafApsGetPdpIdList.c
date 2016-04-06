@@ -66,6 +66,7 @@ TAF_APS_GET_FSM_PDPID_LIST_STRU gastApsGetPdpIdList[] =
     {TAF_BuildEventType(MSP_L4_L4A_PID, ID_L4A_APS_PDP_DEACTIVATE_CNF),         TAF_APS_GetPdpIdListWithL4aDeactivateCnf},
     {TAF_BuildEventType(MSP_L4_L4A_PID, ID_L4A_APS_PDP_DEACTIVATE_REJ),         TAF_APS_GetPdpIdListWithL4aDeactivateRej},
     {TAF_BuildEventType(MSP_L4_L4A_PID, ID_L4A_APS_PDP_DEACTIVATE_IND),         TAF_APS_GetPdpIdListWithL4aDeactivateInd},
+    {TAF_BuildEventType(MSP_L4_L4A_PID, ID_L4A_APS_PDP_SETUP_IND),              TAF_APS_GetPdpIdListWithL4aSetupInd},
     {TAF_BuildEventType(MSP_L4_L4A_PID, ID_L4A_APS_SET_NDISCONN_CNF),           TAF_APS_GetPdpIdListWithL4aSetNdisConnCnf},
     {TAF_BuildEventType(MSP_L4_L4A_PID, ID_L4A_APS_SET_CGANS_CNF),              TAF_APS_GetPdpIdListWithL4aSetCgansCnf},
     {TAF_BuildEventType(MSP_L4_L4A_PID, ID_L4A_APS_PPP_DIAL_CNF),               TAF_APS_GetPdpIdListWithL4aPppDialCnf},
@@ -624,11 +625,60 @@ VOS_VOID TAF_APS_GetPdpIdListWithL4aDeactivateInd(
 
     pstL4aDeactivateInd = (APS_L4A_PDP_DEACTIVATE_IND_STRU*)pstMsg;
 
-    /* 从消息中 中所带的Cid来查找对应的PDP ID */
-    pstPdpIdList->aucPdpId[0] = TAF_APS_GetPdpIdByCid(pstL4aDeactivateInd->ucCid);
-    pstPdpIdList->ucPdpNum = 1;
+    if (VOS_TRUE == pstL4aDeactivateInd->bitOpLinkCid)
+    {
+        /* 从消息中所带的Cid来查找对应的PDP ID */
+        pstPdpIdList->aucPdpId[0] = TAF_APS_GetPdpIdByCid(pstL4aDeactivateInd->ucCid);
+        pstPdpIdList->ucPdpNum = 1;
+    }
+    else
+    {
+        /* 从消息中所带的EpsbId来查找对应的PDP ID */
+        pstPdpIdList->aucPdpId[0] = TAF_APS_GetPdpIdByEpsbId(pstL4aDeactivateInd->ulEpsbId);
+        pstPdpIdList->ucPdpNum = 1;
+    }
+}
+
+/*****************************************************************************
+ 函 数 名  : TAF_APS_GetPdpIdListWithL4aSetupInd
+ 功能描述  : 获取当前L4A 上报的PDP SETUP IND所对应需要操作的PDP列表
+ 输入参数  : pstMsg:传入的消息
+ 输出参数  : pstPdpIdList - PDP操作列表
+ 返 回 值  : VOS_UINT32
+ 调用函数  :
+ 被调函数  :
+
+ 修改历史      :
+  1.日    期   : 2015年11月19日
+    作    者   : w00316404
+    修改内容   : 新生成函数
+
+*****************************************************************************/
+VOS_VOID TAF_APS_GetPdpIdListWithL4aSetupInd(
+    struct MsgCB                       *pstMsg,
+    TAF_APS_PDPID_LIST_STRU            *pstPdpIdList
+)
+{
+    APS_L4A_PDP_SETUP_IND_STRU         *pstPdpSetupInd;
+
+    pstPdpSetupInd = (APS_L4A_PDP_SETUP_IND_STRU*)pstMsg;
+
+    if (VOS_TRUE == pstPdpSetupInd->bitOpLinkCid)
+    {
+        /* 从消息中所带的Cid来查找对应的PDP ID */
+        pstPdpIdList->aucPdpId[0]   = TAF_APS_GetPdpIdByCid(pstPdpSetupInd->ucCid);
+        pstPdpIdList->ucPdpNum      = 1;
+    }
+    else
+    {
+        /* 从消息中所带的RabId来查找对应的PDP ID */
+        pstPdpIdList->aucPdpId[0]   = TAF_APS_GetPdpIdByEpsbId(pstPdpSetupInd->ulRabId);
+        pstPdpIdList->ucPdpNum      = 1;
+    }
 
 }
+
+
 VOS_VOID TAF_APS_GetPdpIdListWithL4aSetNdisConnCnf(
     struct MsgCB                       *pstMsg,
     TAF_APS_PDPID_LIST_STRU            *pstPdpIdList
@@ -656,11 +706,18 @@ VOS_VOID TAF_APS_GetPdpIdListWithEsmSmEpsBearerInfoInd(
     /* 前面预处理已经处理，这里不可能出现CID是不可能是异常的 */
     ucCid = TAF_APS_GetCidFromLteBitCid(pstBearerInfo->ulBitCid);
 
-
-    /* 从消息中 中所带的Cid来查找对应的PDP ID，预处理中已经检查, ucCid一定有值 */
-    pstPdpIdList->aucPdpId[0] = TAF_APS_GetPdpIdByCid(ucCid);
-    pstPdpIdList->ucPdpNum = 1;
-
+    if (SM_ESM_PDP_OPT_ACTIVATE == pstBearerInfo->enPdpOption)
+    {
+        /* 从消息中所带的Cid来查找对应的PDP ID，预处理中已经检查, ucCid一定有值 */
+        pstPdpIdList->aucPdpId[0] = TAF_APS_GetPdpIdByCid(ucCid);
+        pstPdpIdList->ucPdpNum = 1;
+    }
+    else
+    {
+        /* 从消息中所带的EpsbId来查找对应的PDP ID */
+        pstPdpIdList->aucPdpId[0] = TAF_APS_GetPdpIdByEpsbId(pstBearerInfo->ulEpsbId);
+        pstPdpIdList->ucPdpNum = 1;
+    }
 }
 
 

@@ -120,7 +120,7 @@ struct dw_i2c_dev {
 	struct pinctrl          *pinctrl;
 	int                     pinctrl_flag;
 	resource_size_t         mapbase;
-#ifdef CONFIG_I2C_DESIGNWARE_HI3630
+#ifdef CONFIG_I2C_DESIGNWARE_HI3XXX
 	u32                     delay_off;
 	int                     gpio_scl;
 	int                     gpio_sda;
@@ -147,4 +147,4 @@ extern u32 i2c_dw_read_comp_param(struct dw_i2c_dev *dev);
 extern int devm_pinctrl_state_select(struct dw_i2c_dev *dev,const char *name);
 extern void i2c_dw_dma_probe(struct dw_i2c_dev *dev);
 extern void i2c_dw_dma_remove(struct dw_i2c_dev *dev);
-extern void i2c_print_controller_reg(struct dw_i2c_dev *dev);
+/* extern void i2c_print_controller_reg(struct dw_i2c_dev *dev); */

@@ -25,12 +25,21 @@
 #include "ImsaImsInterface.h"
 #include "MnClient.h"
 #include "NasCommPrint.h"
+/* jiaguocai 00355737 begin for ccwa notify  2015-09-07 */
+#include "ImsaProcSpmMsg.h"
+/* jiaguocai 00355737 end for ccwa notify 2015-09-07 */
+
 /* modify by jiqiang 2014.03.25 pclint fix error begin */
 #include "ImsaProcImsUssdMsg.h"
 /* modify by jiqiang 2014.03.25 pclint fix error end */
 
 #include "ImsaProcAtMsg.h"
 #include "ImsaRegManagement.h"
+
+/* lihong00150010 hifi sync begin */
+#include "ImsaLrrcInterface.h"
+/* lihong00150010 hifi sync end */
+
 /*lint -e767*/
 #define    THIS_FILE_ID    PS_FILE_ID_IMSAIMSADAPTION_C
 /*lint +e767*/
@@ -134,6 +143,81 @@ VOS_VOID IMSA_ProcHifiMsgTxDataInd
     IMSA_Send2ImsTxVoiceData(&stTxPara,pstTxDataInd->ausData);
 }
 
+/*****************************************************************************
+ Function Name  : IMSA_ProcHifiMsgRxDataAck()
+ Description    : 处理HIFI回复ack的函数
+ Input          : VOS_VOID
+ Output         : VOS_VOID
+ Return Value   : VOS_VOID
+
+ History        :
+      1.zhaochen 00308719      2015-11-25  Draft Enact
+*****************************************************************************/
+VOS_VOID IMSA_ProcHifiMsgRxDataAck
+(
+    const VOICE_IMSA_RX_DATA_ACK_STRU  *pstRxDataAck
+)
+{
+    VOS_UINT8                           i;
+    IMSA_HIFI_DATA_BUFFER_NODE_STRU    *pstTempNode = VOS_NULL_PTR;
+
+    /* 如果opid不匹配，则忽略此消息 */
+    if (pstRxDataAck->ulOpid != IMSA_GetHifiDataOpid())
+    {
+        IMSA_ERR_LOG("IMSA_ProcHifiMsgRxDataAck:ERROR:Opid not match.");
+        return;
+    }
+
+    /* 停止ack保护定时器 */
+    IMSVA_StopTimer(&IMSA_GetHifiDataAckProtectTimer());
+
+    /* 发包个数清0 */
+    IMSA_GetHifiDataSentDataNum() = 0;
+
+    /* 发送NV配置的条数的 缓存的消息 */
+    for (i = 0 ; i < IMSA_GetHifiDataNeedAckNum() ; i ++)
+    {
+        /* 如果缓存队列没有消息，则直接返回 */
+        if ((0 == IMSA_GetHifiDataBufferDataNum()) || (VOS_NULL_PTR == IMSA_GetHifiDataBufferDataHead()))
+        {
+            IMSA_GetHifiDataBufferDataNum() = 0;
+            /* 释放链表 */
+            while (VOS_NULL_PTR != IMSA_GetHifiDataBufferDataHead())
+            {
+                /* 释放节点 */
+                pstTempNode = IMSA_GetHifiDataBufferDataHead()->pstNextBufferData;
+#if(VOS_WIN32 == VOS_OS_VER)
+                /*PC测试，需要调用MemFree来释放内存*/
+                IMSA_MEM_FREE(IMSA_GetHifiDataBufferDataHead()->pstRxDataInd);
+#else
+                IMSA_FREE_MSG(IMSA_GetHifiDataBufferDataHead()->pstRxDataInd);
+#endif
+                IMSA_MEM_FREE(IMSA_GetHifiDataBufferDataHead());
+                IMSA_GetHifiDataBufferDataHead() = pstTempNode;
+            }
+            IMSA_GetHifiDataBufferDataHead()     = VOS_NULL_PTR;
+            IMSA_GetHifiDataBufferDataTail()     = VOS_NULL_PTR;
+            return;
+        }
+
+        IMSA_GetHifiDataSentDataNum() ++;
+
+        /* 如果缓存消息达到5条，则需要将回复标志置为TRUE */
+        if(IMSA_GetHifiDataNeedAckNum() > IMSA_GetHifiDataSentDataNum())
+        {
+            IMSA_SendOneBufferData(VOS_FALSE);
+        }
+        else
+        {
+            IMSA_SendOneBufferData(VOS_TRUE);
+
+            /* 启动ack保护定时器 */
+            IMSVA_StartTimer(&IMSA_GetHifiDataAckProtectTimer());
+        }
+    }
+    return;
+}
+
 
 VOS_VOID IMSVA_ProcHifiMsg(const VOS_VOID *pRcvMsg )
 {
@@ -149,9 +233,49 @@ VOS_VOID IMSVA_ProcHifiMsg(const VOS_VOID *pRcvMsg )
             IMSA_ProcHifiMsgTxDataInd((VOICE_IMSA_TX_DATA_IND_STRU*)pRcvMsg);
             break;
 
+        default:
+
+            /*打印异常信息*/
+            IMSA_WARN_LOG("IMSVA_ProcHifiMsg:Msg Id is err!");
+            break;
+    }
+}
+
+/*****************************************************************************
+ Function Name  : IMSVA_ProcHifiRtMsg()
+ Description    : IMSVA处理VOICE_RT发送的消息的处理函数
+ Input          : VOS_VOID *pRcvMsg
+ Output         : VOS_VOID
+ Return Value   : VOS_VOID
+
+ History        :
+      1.zhaochen 00308719      2015-11-25  Draft Enact
+*****************************************************************************/
+VOS_VOID IMSVA_ProcHifiRtMsg(const VOS_VOID *pRcvMsg )
+{
+    /* 定义消息头指针*/
+    PS_MSG_HEADER_STRU          *pHeader = VOS_NULL_PTR;
+    VOS_INT32                    intLockLevel;
+
+    /* 获取消息头指针*/
+    pHeader = (PS_MSG_HEADER_STRU *) pRcvMsg;
+
+    switch(pHeader->ulMsgName)
+    {
         case ID_VOICE_IMSA_CFG_CNF:
 
             IMSA_INFO_LOG1("IMSA_VOICE_CFG_CNF,result=",((VOICE_IMSA_CFG_CNF_STRU*)pRcvMsg)->ulResult);
+            break;
+
+        case ID_VOICE_IMSA_RX_DATA_ACK:
+
+            /* 任务加锁 */
+            intLockLevel = VOS_SplIMP();
+
+            IMSA_ProcHifiMsgRxDataAck((VOICE_IMSA_RX_DATA_ACK_STRU*)pRcvMsg);
+
+            /* 任务解锁 */
+            VOS_Splx(intLockLevel);
             break;
 
         default:
@@ -161,6 +285,46 @@ VOS_VOID IMSVA_ProcHifiMsg(const VOS_VOID *pRcvMsg )
             break;
     }
 }
+
+/* zhaochen 00308719 begin for HIFI mailbox full reset 2015-11-09 */
+/*****************************************************************************
+ Function Name  : IMSVA_TimerMsgDistr()
+ Description    : TIMER消息分发函数
+ Input          : VOS_VOID *pRcvMsg
+ Output         : VOS_VOID
+ Return Value   : VOS_VOID
+
+ History        :
+      1.zhaochen 00308719      2015-11-13  Draft Enact
+*****************************************************************************/
+VOS_VOID IMSVA_TimerMsgDistr(const REL_TIMER_MSG *pRcvMsg )
+{
+    IMSA_TIMER_ID_ENUM_UINT16           enTimerName;
+
+    enTimerName = (VOS_UINT16)PS_GET_REL_TIMER_NAME(pRcvMsg);
+
+    /* 目前只处理HIFI回复 */
+    if ( TI_IMSA_HIFI_ACK_PROTECT == enTimerName )
+    {
+        IMSA_ProcTimerMsgHifiAckProtect(pRcvMsg);
+    }
+
+    else
+    {
+        /*lint -e961*/
+        IMSA_ERR_LOG1("IMSVA_TimerMsgDistr: Unexpected event received! <enTimerName>",
+            enTimerName);
+        /*lint +e961*/
+
+    }
+
+    return;
+
+}
+/* zhaochen 00308719 end for HIFI mailbox full reset 2015-11-09 */
+
+
+
 VOS_VOID IMSA_Snd2ImsaCallMsg
 (
     const IMSA_IMS_OUTPUT_CALL_EVENT_STRU      *pstOutputCallEvent
@@ -449,7 +613,7 @@ unsigned int IMSA_Send2ImsaMsg(void *pstOutputEvent)
     return VOS_OK;
 
 }
-VOS_VOID IMSA_SndHifiCfgReq( unsigned long ulTransTime )
+VOS_VOID IMSA_SndHifiCfgReq( unsigned long ulTransTime, unsigned long ulSendBitrate )
 {
     IMSA_VOICE_CFG_REQ_STRU                 *pstImsaCfgReq = VOS_NULL_PTR;
 
@@ -473,6 +637,8 @@ VOS_VOID IMSA_SndHifiCfgReq( unsigned long ulTransTime )
     pstImsaCfgReq->usMsgId          = ID_IMSA_VOICE_CFG_REQ;
 
     pstImsaCfgReq->ulTransTime      = ulTransTime;
+
+    pstImsaCfgReq->ulSendBitrate    = ulSendBitrate;
 
     /* 调用消息发送函数 */
     IMSA_SND_MSG(pstImsaCfgReq);
@@ -766,14 +932,126 @@ VOS_VOID IMSA_SndSpmCloseCodecChannel(VOS_VOID)
     #endif
 }
 
+/* lihong00150010 hifi sync begin */
+
+VOS_VOID IMSA_SndLRrcHifiSyncSwtichInd
+(
+    VOS_UINT8                           ucHifiSyncEnalbed
+)
+{
+    IMSA_LRRC_HIFI_SYNC_SWITCH_IND_STRU    *pstRrcHifiSyncSwtichInd = VOS_NULL_PTR;
+
+    /* 申请DOPRA消息 */
+    pstRrcHifiSyncSwtichInd = (VOS_VOID *) IMSA_ALLOC_MSG(sizeof(IMSA_LRRC_HIFI_SYNC_SWITCH_IND_STRU));
+    if(VOS_NULL_PTR == pstRrcHifiSyncSwtichInd)
+    {
+        /* 打印异常，ERROR_LEVEL */
+        IMSA_INFO_LOG("IMSA_SndLRrcHifiSyncSwtichInd: MSG ALLOC ERROR!!!");
+        return;
+    }
+
+    IMSA_INFO_LOG2("IMSA_SndLRrcHifiSyncSwtichInd: ucHifiSyncEnalbed = , ucPowerState = ",
+                   ucHifiSyncEnalbed, IMSA_GetPowerState());
+
+    /* 设置为0 */
+    IMSA_MEM_SET(pstRrcHifiSyncSwtichInd,0,sizeof(IMSA_LRRC_HIFI_SYNC_SWITCH_IND_STRU));
+
+    /*填写消息头*/
+    IMSA_WRITE_LRRC_MSG_HEAD(pstRrcHifiSyncSwtichInd,ID_IMSA_LRRC_HIFI_SYNC_SWITCH_IND,
+                             sizeof(IMSA_LRRC_HIFI_SYNC_SWITCH_IND_STRU));
+
+    /* 填充消息体 */
+    pstRrcHifiSyncSwtichInd->ucHifiSyncEnabled  = ucHifiSyncEnalbed;
+    pstRrcHifiSyncSwtichInd->ucPowerState = IMSA_GetPowerState();
+
+    /* 发送DOPRA消息 */
+    IMSA_SND_MSG(pstRrcHifiSyncSwtichInd);
+
+    return;
+}
+
+/* zhaochen 00308719 begin for HIFI mailbox full reset 2015-11-09 */
+/*****************************************************************************
+ 函 数 名  : IMSA_SndHifiDataInfo
+ 功能描述  : 将IMSA的控制的HIFI消息的丢包和缓存情况 信息勾到HIDS
+ 输入参数  : VOS_VOID
+ 输出参数  : 无
+ 返 回 值  :
+ 调用函数  :
+ 被调函数  :
+
+ 修改历史      :
+  1.日    期   : 2015年11月13日
+    作    者   : z00308719
+    修改内容   : 新生成函数
+
+*****************************************************************************/
+VOS_VOID IMSA_SndHifiDataInfo(VOS_VOID)
+{
+    IMSA_HIFI_DATA_INFO_IND_STRU       *pstMsg = VOS_NULL_PTR;
+
+    IMSA_NORM_LOG("IMSA_SndHifiDataInfo:ENTER.");
+
+    pstMsg = (VOS_VOID*)IMSA_ALLOC_MSG(sizeof(IMSA_HIFI_DATA_INFO_IND_STRU));
+    if (VOS_NULL_PTR == pstMsg)
+    {
+        IMSA_ERR_LOG("IMSA_SndHifiDataInfo:ERROR:Alloc Mem Fail.");
+        return;
+    }
+
+    IMSA_MEM_SET(IMSA_GET_MSG_ENTITY(pstMsg), 0, \
+                                IMSA_GET_MSG_LENGTH(pstMsg));
+
+    /*填写消息头*/
+    IMSA_WRITE_INTRA_MSG_HEAD(  pstMsg,
+                                ID_IMSA_HIFI_DATA_INFO_IND,
+                                sizeof(IMSA_HIFI_DATA_INFO_IND_STRU));
+
+    pstMsg->ulDataLoseNum        = IMSA_GetHifiDataDataLoseNum();
+    pstMsg->ulTotalDataLoseNum   = IMSA_GetHifiDataTotalDataLoseNum();
+    pstMsg->ulDataBufferNum      = IMSA_GetHifiDataDataBufferNum();
+    pstMsg->ulTotalDataBufferNum = IMSA_GetHifiDataTotalDataBufferNum();
+
+#if(VOS_WIN32 == VOS_OS_VER)
+    /*PC测试，将消息发送出去，用于ST验证*/
+    IMSA_SND_MSG(pstMsg);
+
+#else
+    /*消息勾到HSO上*/
+    (VOS_VOID)LTE_MsgHook(pstMsg);
+
+    /*释放消息空间*/
+    IMSA_FREE_MSG(pstMsg);
+
+#endif
+
+    return;
+}
+/* zhaochen 00308719 end for HIFI mailbox full reset 2015-11-09 */
 
 unsigned int IMSA_StartVoiceDsp
 (
     IMSA_VOICE_CODEC_ENUM_UINT16    enCodecType,
-    unsigned long                   ulPacketTime
+    unsigned long                   ulPacketTime,
+    unsigned long                   ulSendBitrate
 )
 {
+    VOS_INT32                           intLockLevel;
+
     IMSA_INFO_LOG("IMSA_StartVoiceDsp:the function is entered!");
+    /* zhaochen 00308719 begin for HIFI mailbox full reset 2015-11-09 */
+    /* 任务加锁 */
+    intLockLevel = VOS_SplIMP();
+
+    /*清除本地的缓存*/
+    IMSA_ClearHifiData();
+
+    /* 停止ack保护定时器 */
+    IMSVA_StopTimer(&IMSA_GetHifiDataAckProtectTimer());
+
+    /* 任务解锁 */
+    VOS_Splx(intLockLevel);
+    /* zhaochen 00308719 end for HIFI mailbox full reset 2015-11-09 */
 
     /*通知VC，启动HIFI*/
     IMSA_SndVcStartHifiMsg(enCodecType);
@@ -788,7 +1066,11 @@ unsigned int IMSA_StartVoiceDsp
     IMSA_CallClearLocalAlertInfo();
 
     /* 通知HIFI，配置交互周期 */
-    IMSA_SndHifiCfgReq(ulPacketTime);
+    IMSA_SndHifiCfgReq(ulPacketTime, ulSendBitrate);
+
+    /* lihong00150010 hifi sync begin */
+    IMSA_SndLRrcHifiSyncSwtichInd(IMSA_TRUE);
+    /* lihong00150010 hifi sync end */
 
     return VOS_OK;
 }
@@ -806,13 +1088,35 @@ unsigned int IMSA_StartVoiceDsp
 *****************************************************************************/
 unsigned int IMSA_StopVoiceDsp(void)
 {
+    VOS_INT32                                    intLockLevel;
     IMSA_INFO_LOG("IMSA_StopVoiceDsp:the function is entered!");
+
+    /* zhaochen 00308719 begin for HIFI mailbox full reset 2015-11-09 */
+    /* 可维可测 */
+    IMSA_SndHifiDataInfo();
+
+    /* 任务加锁 */
+    intLockLevel = VOS_SplIMP();
+
+    /*清除本地的缓存*/
+    IMSA_ClearHifiData();
+
+    /* 停止ack保护定时器 */
+    IMSVA_StopTimer(&IMSA_GetHifiDataAckProtectTimer());
+
+    /* 任务解锁 */
+    VOS_Splx(intLockLevel);
+    /* zhaochen 00308719 end for HIFI mailbox full reset 2015-11-09 */
 
     /*通知VC，停止HIFI*/
     IMSA_SndVcStopHifiMsg();
 
     /*停止codec通道*/
     /* IMSA_SndSpmCloseCodecChannel(); */
+
+    /* lihong00150010 hifi sync begin */
+    IMSA_SndLRrcHifiSyncSwtichInd(IMSA_FALSE);
+    /* lihong00150010 hifi sync end */
 
     return VOS_OK;
 }
@@ -831,6 +1135,7 @@ unsigned int IMSA_Send2HifiRxVoiceData(const IMSA_RX_VOICE_PARA_STRU *pstVoicePa
                                                const unsigned short *pusData)
 {
     IMSA_VOICE_RX_DATA_IND_STRU                 *pstRxDataInd;
+    VOS_INT32                                    intLockLevel;
 
     if((VOS_NULL_PTR == pstVoicePara)
         ||(VOS_NULL_PTR == pusData))
@@ -839,6 +1144,8 @@ unsigned int IMSA_Send2HifiRxVoiceData(const IMSA_RX_VOICE_PARA_STRU *pstVoicePa
         IMSA_ERR_LOG("IMSA_Send2HifiRxVoiceData:ERROR Input Para!");
         return VOS_ERR;
     }
+
+    /* zhaochen 00308719 begin for HIFI mailbox full reset 2015-11-09 */
 
     /*分配空间并检验分配是否成功*/
     pstRxDataInd = (VOS_VOID*)IMSA_ALLOC_MSG(sizeof(IMSA_VOICE_RX_DATA_IND_STRU));
@@ -850,6 +1157,7 @@ unsigned int IMSA_Send2HifiRxVoiceData(const IMSA_RX_VOICE_PARA_STRU *pstVoicePa
        return VOS_ERR;
     }
 
+    /* 组装消息 */
     pstRxDataInd->ulSenderCpuId    = VOS_LOCAL_CPUID;
     pstRxDataInd->ulSenderPid      = PS_PID_IMSVA;
 
@@ -868,10 +1176,56 @@ unsigned int IMSA_Send2HifiRxVoiceData(const IMSA_RX_VOICE_PARA_STRU *pstVoicePa
     pstRxDataInd->usSN             = pstVoicePara->usSN;
     pstRxDataInd->ulTS             = pstVoicePara->ulTS;
     pstRxDataInd->ulSSRC           = pstVoicePara->ulSsrc;
+
+    /* zhaochen 00308719 begin for HIFI mailbox full reset 2015-11-09 */
+    pstRxDataInd->ulNeedAckFlag    = VOS_FALSE;
+    pstRxDataInd->ulOpid           = 0;
+    /* zhaochen 00308719 end for HIFI mailbox full reset 2015-11-09 */
+
     IMSA_MEM_CPY(pstRxDataInd->ausData, pusData, IMSA_CODEC_MAX_DATA_LEN*sizeof(unsigned short));
 
-    /* 调用消息发送函数 */
+    /* 如果NV没有打开，则不进行处理，按照原流程直接发包 */
+    if (VOS_FALSE == IMSA_GetHifiDataControlFlag())
+    {
+        /* 调用消息发送函数，HIFI邮箱满的情况下，该消息发送失败，会丢弃该消息不会造成整机复位 */
+        IMSA_SND_MSG(pstRxDataInd);
+        return VOS_OK;
+    }
+
+    /* 如果发送过的消息的数量为设置的条数，说明HIFI之前还没有回复，此时缓存 */
+    /* 任务加锁 */
+    intLockLevel = VOS_SplIMP();
+    if (IMSA_GetHifiDataNeedAckNum() <= IMSA_GetHifiDataSentDataNum())
+    {
+        /* 缓存函数 */
+        IMSA_AddDataToBuffer(pstRxDataInd);
+
+        /* 任务解锁 */
+        VOS_Splx(intLockLevel);
+        return VOS_OK;
+    }
+
+    /* 发送消息数量+1 */
+    IMSA_GetHifiDataSentDataNum() ++;
+
+    /* 如果发送的消息数量到达设置的条数，则需要HIFI回复 */
+    if (IMSA_GetHifiDataNeedAckNum() <= IMSA_GetHifiDataSentDataNum())
+    {
+        pstRxDataInd->ulNeedAckFlag = VOS_TRUE;
+
+        /* 启动ack保护定时器 */
+        IMSVA_StartTimer(&IMSA_GetHifiDataAckProtectTimer());
+    }
+
+    /* 生成OPID */
+    IMSA_GetHifiDataOpid() ++;
+    pstRxDataInd->ulOpid           = IMSA_GetHifiDataOpid();
+
     IMSA_SND_MSG(pstRxDataInd);
+
+    /* 任务解锁 */
+    VOS_Splx(intLockLevel);
+    /* zhaochen 00308719 end for HIFI mailbox full reset 2015-11-09 */
 
     return VOS_OK;
 }
@@ -1441,12 +1795,22 @@ VOS_VOID IMSA_ProcImsMsgQryVolteImpuCnf(const IMSA_IMS_OUTPUT_PARA_EVENT_STRU *p
 VOS_VOID IMSA_ProcImsMsgCcwaiSetCnf(const IMSA_IMS_OUTPUT_PARA_EVENT_STRU *pstOutPara)
 {
     VOS_UINT32                          ulResult = VOS_ERR;
+    /*jiaguocai 00355737 begin for ccwa 2015-09-07*/
+    IMSA_AT_CONTROL_STRU                *pstImsaAtControl;
+
+    pstImsaAtControl = IMSA_GetAtControlAddress();
+    /*jaiguocai 00355737 end for ccwa 2015-09-07*/
 
     IMSA_INFO_LOG("IMSA_ProcImsMsgCcwaiSetCnf is entered!");
 
     if (IMSA_IMS_OUTPUT_PARA_REASON_SET_OK == pstOutPara->enOutputParaReason)
     {
         ulResult = VOS_OK;
+
+        /*jiaguocai 00355737 begin for ccwa 2015-09-07*/
+        /*向TAF发送ccwa配置信息*/
+        IMSA_CallSendCcwaCapInfo(pstImsaAtControl->enMode);
+        /*jiaguocai 00355737 end for ccwa 2015-09-07*/
     }
 
     IMSA_SndMsgAtCcwaiSetCnf(ulResult);
@@ -1711,6 +2075,378 @@ unsigned int IMSA_ImsStopTimer(unsigned int  ulTimerName)
     return VOS_OK;
 
 }
+
+/*****************************************************************************
+ Function Name  : IMSVA_StartTimer()
+ Description    : IMSVA调用，用于启动定时器
+ Input          : pstTimerPara 定时器参数存放地址(内存由调用者释放)
+ Output         : VOS_VOID
+ Return Value   : VOS_VOID
+
+ History        :
+      1.zhaochen 00308719      2015-11-16  Draft Enact
+*****************************************************************************/
+VOS_VOID IMSVA_StartTimer(IMSA_TIMER_STRU *pstTimer)
+{
+    if(pstTimer == VOS_NULL_PTR)
+    {
+        return;
+    }
+
+    /*判断定时器是否打开，已打开则关闭*/
+    if(VOS_NULL_PTR != pstTimer->phTimer)
+    {
+        /*关闭失败，则报警返回*/
+        if (VOS_OK != PS_STOP_REL_TIMER(&(pstTimer->phTimer)))
+        {
+            /*打印异常信息*/
+            IMSA_WARN_LOG("IMSVA_StartTimer:WARN: stop reltimer error!");
+            return;
+        }
+
+        /*打印异常信息*/
+        IMSA_WARN_LOG1("(TimerType) Timer not close!",pstTimer->usName);
+    }
+
+    if (pstTimer->ulTimerLen == 0)
+    {
+        /*打印异常信息*/
+        IMSA_ERR_LOG("IMSVA_StopTimer:ERROR: start unreasonable reltimer.");
+        return;
+    }
+
+    /*设定定时器NAME，打开失败则报警返回*/
+    if (VOS_OK !=\
+            PS_START_REL_TIMER(&(pstTimer->phTimer),PS_PID_IMSVA,\
+                                pstTimer->ulTimerLen,(VOS_UINT32)pstTimer->usName,\
+                                pstTimer->usPara,pstTimer->ucMode))
+    {
+          /*打印异常信息*/
+          IMSA_WARN_LOG("IMSVA_StartTimer:WARN: start reltimer error!");
+          return;
+    }
+
+}
+
+/*****************************************************************************
+ Function Name  : IMSVA_StopTimer()
+ Description    : IMSVA调用，用于停止定时器
+ Input          : pstTimerPara 定时器参数存放地址(内存由调用者释放)
+ Output         : VOS_VOID
+ Return Value   : VOS_VOID
+
+ History        :
+      1.zhaochen 00308719      2015-11-16  Draft Enact
+*****************************************************************************/
+VOS_VOID IMSVA_StopTimer(IMSA_TIMER_STRU *pstTimer)
+{
+    if(pstTimer == VOS_NULL_PTR)
+    {
+        return;
+    }
+
+    /*判断定时器是否打开，已打开则关闭*/
+    if(VOS_NULL_PTR != pstTimer->phTimer)
+    {
+        /*关闭失败，则报警返回*/
+        if (VOS_OK != PS_STOP_REL_TIMER(&(pstTimer->phTimer)))
+        {
+            /*打印异常信息*/
+            IMSA_WARN_LOG("IMSA_StopTimer:WARN: stop reltimer error!");
+            return;
+        }
+
+        pstTimer->phTimer = VOS_NULL_PTR;
+
+        IMSA_INFO_LOG1("(TimerType) Timer closed!",pstTimer->usName);
+    }
+
+}
+
+
+/* zhaochen 00308719 begin for HIFI mailbox full reset 2015-11-09 */
+/*****************************************************************************
+ Function Name  : IMSA_ImsAdaption_Init()
+ Description    : 初始化接口相关的函数
+ Input          : VOS_VOID
+ Output         : VOS_VOID
+ Return Value   : VOS_VOID
+
+ History        :
+      1.zhaochen 00308719      2015-11-09  Draft Enact
+*****************************************************************************/
+VOS_VOID IMSA_ImsAdaption_Init(VOS_VOID)
+{
+    IMSA_HIFI_DATA_MANAGER_STRU        *pstHifiDataManager;
+    pstHifiDataManager = IMSA_GetHifiDataManagerAddress();
+    IMSA_ClearHifiData();
+
+    /*设置定时器长度，名称等*/
+    pstHifiDataManager->stHifiAckProtectTimer.usName     = TI_IMSA_HIFI_ACK_PROTECT;
+    pstHifiDataManager->stHifiAckProtectTimer.ulTimerLen = IMSA_HIFI_ACK_PROTECT_LENGTH;
+    pstHifiDataManager->stHifiAckProtectTimer.ucMode     = 0;
+    pstHifiDataManager->ulTotalDataLoseNum               = 0;
+    pstHifiDataManager->ulTotalDataBufferNum             = 0;
+}
+
+/*****************************************************************************
+ Function Name  : IMSA_ClearHifiData()
+ Description    : 清除HIFI控制函数
+ Input          : VOS_VOID
+ Output         : VOS_VOID
+ Return Value   : VOS_VOID
+
+ History        :
+      1.zhaochen 00308719      2015-11-09  Draft Enact
+*****************************************************************************/
+VOS_VOID IMSA_ClearHifiData(VOS_VOID)
+{
+    /* IMSA需要控制给HIFI发消息的速度，防止复位。 */
+    IMSA_HIFI_DATA_MANAGER_STRU        *pstHifiDataManager;
+    IMSA_HIFI_DATA_BUFFER_NODE_STRU    *pstTempNode = VOS_NULL_PTR;
+    pstHifiDataManager = IMSA_GetHifiDataManagerAddress();
+
+    /* 释放链表 */
+    while (VOS_NULL_PTR != pstHifiDataManager->pstBufferDataHead)
+    {
+        /* 释放节点 */
+        pstTempNode = pstHifiDataManager->pstBufferDataHead->pstNextBufferData;
+    #if(VOS_WIN32 == VOS_OS_VER)
+        /*PC测试，需要调用MemFree来释放内存*/
+        IMSA_MEM_FREE(pstHifiDataManager->pstBufferDataHead->pstRxDataInd);
+    #else
+        IMSA_FREE_MSG(pstHifiDataManager->pstBufferDataHead->pstRxDataInd);
+    #endif
+        IMSA_MEM_FREE(pstHifiDataManager->pstBufferDataHead);
+        pstHifiDataManager->pstBufferDataHead = pstTempNode;
+    }
+
+    pstHifiDataManager->pstBufferDataHead     = VOS_NULL_PTR;
+    pstHifiDataManager->pstBufferDataTail     = VOS_NULL_PTR;
+    pstHifiDataManager->ucBufferDataNum       = 0;
+    pstHifiDataManager->ucSentDataNum         = 0;
+    pstHifiDataManager->ulOpid                = 0;
+    pstHifiDataManager->ulDataLoseNum         = 0;
+    pstHifiDataManager->ulDataBufferNum       = 0;
+
+}
+
+/*****************************************************************************
+ Function Name  : IMSA_ImsAdaption_Init()
+ Description    : 初始化接口相关的函数
+ Input          : VOS_VOID
+ Output         : VOS_VOID
+ Return Value   : VOS_VOID
+
+ History        :
+      1.zhaochen 00308719      2015-11-09  Draft Enact
+*****************************************************************************/
+VOS_VOID IMSA_ImsAdaption_ClearResource(VOS_VOID)
+{
+    /* 清除缓存数据 */
+    IMSA_ClearHifiData();
+
+    /*停止定时器*/
+    IMSVA_StopTimer(&IMSA_GetHifiDataAckProtectTimer());
+}
+
+/*****************************************************************************
+ Function Name  : IMSA_AddDataToBuffer()
+ Description    : 将消息添加到缓存链表中
+ Input          : VOS_VOID
+ Output         : VOS_VOID
+ Return Value   : VOS_VOID
+
+ History        :
+      1.zhaochen 00308719      2015-11-09  Draft Enact
+*****************************************************************************/
+VOS_VOID IMSA_AddDataToBuffer(IMSA_VOICE_RX_DATA_IND_STRU *pstRxDataInd)
+{
+    IMSA_HIFI_DATA_BUFFER_NODE_STRU    *pstTempNode;
+    IMSA_HIFI_DATA_BUFFER_NODE_STRU    *pstTempNode2;
+
+    /*分配空间并检验分配是否成功*/
+    /* 申请链表节点内存 */
+    pstTempNode = (VOS_VOID*)IMSA_MEM_ALLOC(sizeof(IMSA_HIFI_DATA_BUFFER_NODE_STRU));
+    if ( VOS_NULL_PTR == pstTempNode )
+    {
+        /*打印异常信息*/
+        IMSA_ERR_LOG("IMSA_AddDataToBuffer:ERROR:Alloc Msg fail!");
+        return;
+    }
+    pstTempNode->pstRxDataInd      = pstRxDataInd;
+    pstTempNode->pstNextBufferData = VOS_NULL_PTR;
+
+    /* 可维可测 */
+    IMSA_GetHifiDataDataBufferNum() ++;
+    IMSA_GetHifiDataTotalDataBufferNum() ++;
+
+    /* 如果链表还为空，则初始化链表，将消息存进链表头结点，当前节点指针和头结点指针相同 */
+    if (0 == IMSA_GetHifiDataBufferDataNum() || VOS_NULL_PTR == IMSA_GetHifiDataBufferDataHead())
+    {
+        IMSA_GetHifiDataBufferDataNum() = 0;
+
+        /* 释放链表 */
+        while (VOS_NULL_PTR != IMSA_GetHifiDataBufferDataHead())
+        {
+            /* 释放节点 */
+            pstTempNode2 = IMSA_GetHifiDataBufferDataHead()->pstNextBufferData;
+#if(VOS_WIN32 == VOS_OS_VER)
+            /*PC测试，需要调用MemFree来释放内存*/
+            IMSA_MEM_FREE(IMSA_GetHifiDataBufferDataHead()->pstRxDataInd);
+#else
+            IMSA_FREE_MSG(IMSA_GetHifiDataBufferDataHead()->pstRxDataInd);
+#endif
+            IMSA_MEM_FREE(IMSA_GetHifiDataBufferDataHead());
+            IMSA_GetHifiDataBufferDataHead() = pstTempNode2;
+        }
+        IMSA_GetHifiDataBufferDataHead()     = VOS_NULL_PTR;
+        IMSA_GetHifiDataBufferDataTail()     = pstTempNode;
+
+        /* 由于是初始化链表，头结点和尾节点是同一个节点 */
+        IMSA_GetHifiDataBufferDataHead() = IMSA_GetHifiDataBufferDataTail();
+
+        /* 节点个数+1 */
+        IMSA_GetHifiDataBufferDataNum()++;
+        return;
+    }
+
+    /* 将消息添加到链表的最后 */
+    /* 取下一个节点的地址，作为新的当前节点地址 */
+    IMSA_GetHifiDataBufferDataTail()->pstNextBufferData = pstTempNode;
+    IMSA_GetHifiDataBufferDataTail() = IMSA_GetHifiDataBufferDataTail()->pstNextBufferData;
+
+
+    /* 节点个数+1 */
+    IMSA_GetHifiDataBufferDataNum()++;
+
+    /* 如果链表满了，则删除头结点，将第二个节点作为头结点 */
+    while (IMSA_GetHifiDataMaxBufferNum() < IMSA_GetHifiDataBufferDataNum())
+    {
+        /* 可维可测 */
+        IMSA_GetHifiDataDataLoseNum() ++;
+        IMSA_GetHifiDataTotalDataLoseNum() ++;
+
+        /* 释放掉头结点的内存 */
+        pstTempNode = IMSA_GetHifiDataBufferDataHead()->pstNextBufferData;
+#if(VOS_WIN32 == VOS_OS_VER)
+        /*PC测试，需要调用MemFree来释放内存*/
+        IMSA_MEM_FREE(IMSA_GetHifiDataBufferDataHead()->pstRxDataInd);
+#else
+        IMSA_FREE_MSG(IMSA_GetHifiDataBufferDataHead()->pstRxDataInd);
+#endif
+
+        IMSA_MEM_FREE(IMSA_GetHifiDataBufferDataHead());
+
+        /* 将第二个节点作为新的头结点 */
+        IMSA_GetHifiDataBufferDataHead() = pstTempNode;
+        IMSA_GetHifiDataBufferDataNum() --;
+    }
+
+    return;
+}
+
+/*****************************************************************************
+ Function Name  : IMSA_SendOneBufferData()
+ Description    : 从缓存链表中取出一条发送出去
+ Input          : ucNeedAckFlag 需要HIFI回复的标志
+ Output         : VOS_VOID
+ Return Value   : VOS_VOID
+
+ History        :
+      1.zhaochen 00308719      2015-11-09  Draft Enact
+*****************************************************************************/
+VOS_VOID IMSA_SendOneBufferData(VOS_UINT8 ulNeedAckFlag)
+{
+    IMSA_HIFI_DATA_BUFFER_NODE_STRU    *pstTempNode;
+    IMSA_VOICE_RX_DATA_IND_STRU        *pstRxDataInd;
+
+    pstRxDataInd = IMSA_GetHifiDataBufferDataHead()->pstRxDataInd;
+    pstRxDataInd->ulNeedAckFlag = ulNeedAckFlag;
+
+    /* 生成OPID */
+    IMSA_GetHifiDataOpid() ++;
+    pstRxDataInd->ulOpid           = IMSA_GetHifiDataOpid();
+
+    /* 发送消息 */
+    IMSA_SND_MSG(pstRxDataInd);
+
+    /* 释放掉头结点的内存 */
+    pstTempNode = IMSA_GetHifiDataBufferDataHead()->pstNextBufferData;
+    IMSA_MEM_FREE(IMSA_GetHifiDataBufferDataHead());
+
+    /* 将第二个节点作为新的头结点 */
+    IMSA_GetHifiDataBufferDataHead() = pstTempNode;
+
+    /* 节点个数-1 */
+    IMSA_GetHifiDataBufferDataNum()--;
+
+    return;
+}
+
+/*****************************************************************************
+ Function Name  : IMSA_ProcTimerMsgHifiAckProtect()
+ Description    : 处理HIFI回执保护定时器超时的函数
+ Input          : VOS_VOID
+ Output         : VOS_VOID
+ Return Value   : VOS_VOID
+
+ History        :
+      1.zhaochen 00308719      2015-11-09  Draft Enact
+*****************************************************************************/
+VOS_VOID IMSA_ProcTimerMsgHifiAckProtect(const VOS_VOID *pRcvMsg)
+{
+    VOS_INT32                           intLockLevel;
+    IMSA_HIFI_DATA_BUFFER_NODE_STRU    *pstTempNode = VOS_NULL_PTR;
+
+    /* 任务加锁 */
+    intLockLevel = VOS_SplIMP();
+
+    /* 如果当前没有缓存的消息，则将发包个数-1 */
+    if (0 == IMSA_GetHifiDataBufferDataNum() || VOS_NULL_PTR == IMSA_GetHifiDataBufferDataHead())
+    {
+        IMSA_GetHifiDataBufferDataNum() = 0;
+        /* 释放链表 */
+        while (VOS_NULL_PTR != IMSA_GetHifiDataBufferDataHead())
+        {
+            /* 释放节点 */
+            pstTempNode = IMSA_GetHifiDataBufferDataHead()->pstNextBufferData;
+#if(VOS_WIN32 == VOS_OS_VER)
+            /*PC测试，需要调用MemFree来释放内存*/
+            IMSA_MEM_FREE(IMSA_GetHifiDataBufferDataHead()->pstRxDataInd);
+#else
+            IMSA_FREE_MSG(IMSA_GetHifiDataBufferDataHead()->pstRxDataInd);
+#endif
+            IMSA_MEM_FREE(IMSA_GetHifiDataBufferDataHead());
+            IMSA_GetHifiDataBufferDataHead() = pstTempNode;
+        }
+
+        IMSA_GetHifiDataBufferDataHead()     = VOS_NULL_PTR;
+        IMSA_GetHifiDataBufferDataTail()     = VOS_NULL_PTR;
+
+        /* 防止翻转 */
+        if (IMSA_GetHifiDataNeedAckNum() <= IMSA_GetHifiDataSentDataNum())
+        {
+            IMSA_GetHifiDataSentDataNum() --;
+        }
+
+        /* 任务解锁 */
+        VOS_Splx(intLockLevel);
+        return;
+    }
+
+    /* 如果当前有缓存的消息，则将缓存链表中头结点的消息发出，启动定时器 */
+    IMSA_SendOneBufferData(VOS_TRUE);
+
+    /* 任务解锁 */
+    VOS_Splx(intLockLevel);
+
+    /* 启动ack保护定时器 */
+    IMSVA_StartTimer(&IMSA_GetHifiDataAckProtectTimer());
+    return;
+}
+/* zhaochen 00308719 end for HIFI mailbox full reset 2015-11-09 */
+
 /*lint +e961*/
 /*lint +e960*/
 

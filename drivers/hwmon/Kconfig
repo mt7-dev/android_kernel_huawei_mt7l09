@@ -951,7 +951,7 @@ config SENSORS_NCT6775
 
 config SENSORS_NTC_THERMISTOR
 	tristate "NTC thermistor support"
-	depends on (!OF && !IIO) || (OF && IIO)
+	depends on !OF || IIO=n || IIO
 	help
 	  This driver supports NTC thermistors sensor reading and its
 	  interpretation. The driver can also monitor the temperature and
@@ -1564,3 +1564,8 @@ config SENSORS_ATK0110
 endif # ACPI
 
 endif # HWMON
+
+config HI6XXX_THERMAL
+	bool "Thermal Drivers"
+	help
+	  Uses for hi6xxx SoC.

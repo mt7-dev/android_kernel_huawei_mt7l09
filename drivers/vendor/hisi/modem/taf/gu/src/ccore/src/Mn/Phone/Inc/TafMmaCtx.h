@@ -52,10 +52,11 @@ enum TAF_MMA_MSG_CACHE_PRIO_ENUM
 typedef VOS_UINT32 TAF_MMA_MSG_CACHE_PRIO_ENUM_UINT8;
 enum TAF_MMA_FSM_ID_ENUM
 {
-    TAF_MMA_FSM_MAIN                                            =0X00,
+    TAF_MMA_FSM_MAIN                                            = 0X00,
 
-    TAF_MMA_FSM_PHONE_MODE                                      =0X01,
+    TAF_MMA_FSM_PHONE_MODE                                      = 0X01,
 
+    TAF_MMA_FSM_IMS_SWITCH                                      = 0X02,
 
     TAF_MMA_FSM_BUTT
 
@@ -120,14 +121,11 @@ typedef struct
 
 typedef struct
 {
-    VOS_UINT16                          usPhoneError;       /* 开关机的错误原因值 */
-
-    VOS_UINT8                           aucReserve[2];
+    TAF_ERROR_CODE_ENUM_UINT32          enPhoneError;       /* 开关机的错误原因值 */
 }TAF_MMA_FSM_PHONE_MODE_CTX_STRU;
 typedef union
 {
     TAF_MMA_FSM_PHONE_MODE_CTX_STRU                         stPhoneModeCtx;
-
 }TAF_MMA_FSM_EXTRA_CTX_UNION;
 
 
@@ -307,7 +305,6 @@ VOS_UINT32  TAF_MMA_ClearCacheMsg(
 
 VOS_VOID  TAF_MMA_InitFsmCtx_PhoneMode(VOS_VOID);
 
-
 TAF_MMA_FSM_ID_ENUM_UINT32 TAF_MMA_GetCurrFsmId(VOS_VOID);
 
 TAF_MMA_MSG_QUEUE_STRU* TAF_MMA_GetCachMsgBufferAddr(VOS_VOID);
@@ -380,10 +377,10 @@ VOS_UINT32  TAF_MMA_GetAutoSwitchOnFlg(VOS_VOID);
 TAF_MMA_TIMER_CTX_STRU*  TAF_MMA_GetTimerCtxAddr( VOS_VOID );
 
 VOS_VOID  TAF_MMA_SetCurPhoneErrorCode_PhoneMode(
-    VOS_UINT16                          usErrorCode
+    TAF_ERROR_CODE_ENUM_UINT32          enErrorCode
 );
 
-VOS_UINT16  TAF_MMA_GetCurPhoneErrorCode_PhoneMode(VOS_VOID);
+TAF_ERROR_CODE_ENUM_UINT32  TAF_MMA_GetCurPhoneErrorCode_PhoneMode(VOS_VOID);
 VOS_UINT8  TAF_MMA_GetMmaLogInfoFlag( VOS_VOID );
 
 VOS_VOID TAF_MMA_SetNetworkCapabilityInfo(

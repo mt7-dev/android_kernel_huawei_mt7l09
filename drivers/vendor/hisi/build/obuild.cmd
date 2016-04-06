@@ -1,3 +1,5 @@
 product=hi3630_udp
-acore-oam_ps
--j8
+pkg_kirin920L
+core=ccore
+publish=true
+transfer=false

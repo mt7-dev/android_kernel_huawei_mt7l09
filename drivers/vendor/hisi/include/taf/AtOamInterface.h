@@ -136,7 +136,6 @@ typedef struct
   10 º¯ÊýÉùÃ÷
 *****************************************************************************/
 
-extern VOS_INT32 At_sprintf(VOS_INT32 MaxLength,VOS_CHAR *headaddr,VOS_CHAR *curraddr,const VOS_CHAR *fmt,...);
 extern VOS_UINT32 MMA_VerifyOperatorLockPwd(VOS_UINT8 *pucPwd);
 extern VOS_UINT8 MMA_GetCurrentPhoneMode(VOS_VOID);
 extern VOS_UINT32 MN_MSG_Decode_UsimMsg(

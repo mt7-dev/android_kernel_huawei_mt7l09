@@ -55,6 +55,6 @@ obj-$(CONFIG_VMWARE_VMCI)	+= vmw_vmci/
 obj-$(CONFIG_HISI_LOG)		+= hilog/
 obj-$(CONFIG_LATTICE_ECP3_CONFIG)	+= lattice-ecp3-config.o
 obj-$(CONFIG_SRAM)		+= sram.o
+obj-$(CONFIG_UID_CPUTIME) += uid_cputime.o
 obj-$(CONFIG_APANIC_MMC)	+= apanic_mmc.o
-
-obj-$(CONFIG_HISI_6421_SPK)	+= hisi_6421_spk/
+obj-$(CONFIG_DRV2605)	+= drv2605/

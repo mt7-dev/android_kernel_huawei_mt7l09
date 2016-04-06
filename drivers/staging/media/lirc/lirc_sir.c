@@ -818,7 +818,6 @@ static int init_hardware(void)
 
 	/* 7N1 */
 	Ser2UTCR0 = UTCR0_1StpBit|UTCR0_7BitData;
-	/* 115200 */
 	Ser2UTCR1 = 0;
 	Ser2UTCR2 = 1;
 	/* use HPSIR, 1.6 usec pulses */
@@ -886,7 +885,6 @@ static int init_hardware(void)
 	/* Set DLAB 1. */
 	soutp(UART_LCR, sinp(UART_LCR) | UART_LCR_DLAB);
 
-	/* Set divisor to 1 => 115200 Baud */
 	soutp(UART_DLM, 0);
 	soutp(UART_DLL, 1);
 
@@ -898,10 +896,8 @@ static int init_hardware(void)
 	outb(0, io + UART_MCR);
 	outb(0, io + UART_IER);
 	/* init UART */
-	/* set DLAB, speed = 115200 */
 	outb(UART_LCR_DLAB | UART_LCR_WLEN7, io + UART_LCR);
 	outb(1, io + UART_DLL); outb(0, io + UART_DLM);
-	/* 7N1+start = 9 bits at 115200 ~ 3 bits at 44000 */
 	outb(UART_LCR_WLEN7, io + UART_LCR);
 	/* FIFO operation */
 	outb(UART_FCR_ENABLE_FIFO, io + UART_FCR);
@@ -1116,7 +1112,6 @@ static void init_act200(void)
 	/* Set DLAB 1. */
 	soutp(UART_LCR, UART_LCR_DLAB | UART_LCR_WLEN7);
 
-	/* Set divisor to 1 => 115200 Baud */
 	soutp(UART_DLM, 0);
 	soutp(UART_DLL, 1);
 
@@ -1157,11 +1152,6 @@ void init_act220(void)
 
 	/* back to normal (still 9600) */
 	soutp(UART_MCR, UART_MCR_DTR|UART_MCR_RTS|UART_MCR_OUT2);
-
-	/*
-	 * send RTS pulses until we reach 115200
-	 * i hope this is really the same for act220l/act220l+
-	 */
 	for (i = 0; i < 3; i++) {
 		udelay(10);
 		/* set RTS low for 10 us */
@@ -1177,7 +1167,6 @@ void init_act220(void)
 	/* Set DLAB 1. */
 	soutp(UART_LCR, UART_LCR_DLAB | UART_LCR_WLEN7);
 
-	/* Set divisor to 1 => 115200 Baud */
 	soutp(UART_DLM, 0);
 	soutp(UART_DLL, 1);
 

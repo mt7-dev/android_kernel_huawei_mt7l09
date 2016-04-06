@@ -1,10 +1,8 @@
 
+#include "bsp_dump.h"
+#include "bsp_hardtimer.h"
 #include "dual_modem.h"
 #include "gpio_balong.h"
-//#include "hi_syssc.h"
-#include "bsp_pm.h"
-#include "drv_pm.h"
-#include "bsp_hardtimer.h"
 
 #ifdef CONFIG_CCORE_PM
 #include "bsp_dpm.h"
@@ -44,7 +42,7 @@ struct dual_modem_info g_dual_modem_init_info=
 	}
 	
 };
-
+struct dm_dump_info	*g_dm_dump_info = NULL;
 /*****************************************************************************
  函 数 名  : recv_lpm3_msg_icc_cb
  功能描述  : 由lpm3核转发的唤醒消息 or 唤醒v3 modem时得到的确认消息 
@@ -62,15 +60,25 @@ static s32 recv_lpm3_msg_icc_cb(u32 chan_id, u32 len, void* context)
 	{
 		return ERROR;
 	}
+
+	if(g_dual_modem_ctrl.dual_modem_init_flag != UART_SWITCH_ENABLE)
+	{
+		dm_print_err(" recv_lpm3_msg_icc_cb g_dual_modem_ctrl.dual_modem_init_flag != UART_SWITCH_ENABLE return OK\n");
+		return OK;
+	}
+	
 	/* via modem唤醒balong mode	*/
 	if(flag == VIA_WAKEUP_BALONG)
 	{
-		g_dual_modem_ctrl.via_wakeup_balong_cnt++;
-		
 		/*重置300ms定时器，投反对睡眠票*/
 		wake_lock(&g_dual_modem_ctrl.wakelock);	
-		bsp_softtimer_delete(&g_dual_modem_ctrl.sleep_timer);
-		bsp_softtimer_add(&g_dual_modem_ctrl.sleep_timer);
+		dual_modem_restart_timer(&g_dual_modem_ctrl.sleep_timer);
+
+		g_dm_dump_info->via_wakeup_balong_cnt++;
+		if(g_dual_modem_ctrl.dual_modem_log_flag == 1)
+		{
+			dm_debug_print("WakeupBalongcnt %d\n",g_dm_dump_info->via_wakeup_balong_cnt);
+		}
 	}
 	/* lpm3 发过来的uart5 初始化消息 */
 	if(flag == LPm3_UART5_IQR_ENABLE)
@@ -102,7 +110,7 @@ void dual_modem_uart_channel_init(UART_HW_DESC* uart_hw_desc)
 	/*uart禁能*/
     writel(UART_DISABLE, (u32)(uart_hw_desc)->base_addr + UART_REGOFFSET_CR);	
     /*设置FIFO水线深度1/8-FIFO*/
-    writel(UART_IFLS_DEF_SET, (u32)(uart_hw_desc)->base_addr + UART_REGOFFSET_IFLS);
+    writel(UART_IFLS_RX_DEF_ONETWO, (u32)(uart_hw_desc)->base_addr + UART_REGOFFSET_IFLS);
     /*清除所有中断*/
     writel(UART_IER_IRQ_CLR,(u32)(uart_hw_desc)->base_addr+ UART_REGOFFSET_ICR);
     /* 设置串行通讯的波特率*/
@@ -116,119 +124,6 @@ void dual_modem_uart_channel_init(UART_HW_DESC* uart_hw_desc)
 	writel(UART_TX_ENABLE |UART_RX_ENABLE |UART_ENABLE,(u32)(uart_hw_desc)->base_addr + UART_REGOFFSET_CR);
 	
     intUnlock(key);
-}
-/*****************************************************************************
- 函 数 名  : dual_modem_uart_port_init
- 功能描述  : 创建接收任务，使能串口中断，配置串口波特率
- 输入参数  : UART_PORT *uart_port
- 输出参数  : 0 成功，-1失败
- 返 回 值  : s32
-*****************************************************************************/
-s32 dual_modem_uart_port_init(UART_PORT *uart_port)
-{
-	u8 flag = 0;
-	DUAL_MODEM_RECV_STR *Hsuart_RecvStr = NULL;
-		
-	Hsuart_RecvStr = &g_dual_modem_ctrl.HSUART_RECV;
-	flag = LPm3_UART5_IQR_ENABLE;	
-	if(NULL == uart_port)
-    {
-        dm_print_err("uart_port is null\n");
-        return ERROR;
-    }
-
-    if(NULL == uart_port->hw_desc)
-    {
-        dm_print_err("uart_hw_desc is null\n");
-        return ERROR;
-    }
-	
-	memset((void*)&g_dual_modem_ctrl.HSUART_RECV,0,sizeof(g_dual_modem_ctrl.HSUART_RECV)); 
-	osl_sem_init(0,&g_dual_modem_ctrl.wait_reply_mutex);
-	osl_sem_init(0,&Hsuart_RecvStr->recv_mutex);
-   	uart_port->send_mutex= semMCreate(SEM_Q_PRIORITY |SEM_DELETE_SAFE| SEM_INVERSION_SAFE);
-
-	/* 设置波特率 */
-	dual_modem_uart_channel_init(uart_port->hw_desc);
-	
-	if(OK != osl_task_init("utlrecv",DUAL_MODEM_TASK_PRO,DUAL_MODEM_TASK_STK,(void *)dual_modem_uart_recv_task,(UART_PORT *)uart_port,&Hsuart_RecvStr->recv_task_id))
-    {
-        dm_print_err("OSAL_TaskCreate utlrecv err\n");
-        return  ERROR;
-    }
-
-	(void)intConnect((VOIDFUNCPTR*)uart_port->hw_desc->irq_num,dual_modem_uart_irq_handler,(int)uart_port);
-	(void)intEnable(uart_port->hw_desc->irq_num);
-
-	/* 通知lpm3 初始化uart5	*/	
-	bsp_icc_send((u32)ICC_CPU_MCU,(ICC_CHN_MCORE_CCORE << 16)|MCORE_CCORE_FUNC_UART,&flag,sizeof(flag));	
-
-    return OK;
-}
-/*****************************************************************************
- 函 数 名  : bsp_dual_modem_init
- 功能描述  : K3 modem uart相关初始化
- 输入参数  : void
- 输出参数  : -1:失败，0:成功
- 返 回 值  : int
-****************************************************************************/
-int bsp_dual_modem_init(void)
-{	
-	int ret = ERROR;
-
-	DRV_DUAL_MODEM_STR dual_modem_nv;
- 	unsigned int  retVal = 0;
-	
-	memset((void*)&g_dual_modem_ctrl.uart_port,0,sizeof(g_dual_modem_ctrl.uart_port)); 			//初始化串口属性
-	memset((void*)&dual_modem_nv,0,sizeof(DRV_DUAL_MODEM_STR));
-
-	retVal =bsp_nvm_read(NV_ID_DRV_DUAL_MODEM,(u8 *)&dual_modem_nv,sizeof(DRV_DUAL_MODEM_STR));
-    if (retVal != OK)
-    {
-        dm_print_err("read NV_ID_DRV_UART_FLAG NV ERROR: %d \n",NV_ID_DRV_DUAL_MODEM);
-        return ERROR;
-    }
-	
-	if(UART_SWITCH_ENABLE == dual_modem_nv.enUartEnableCfg)
-    {
-		g_dual_modem_ctrl.uart_port[MUART1_ID].hw_desc = &g_dual_modem_init_info.uart_port_hw_desc;
-        g_dual_modem_ctrl.uart_port[MUART1_ID].port_id = MUART1_ID;
-        g_dual_modem_ctrl.uart_port[MUART1_ID].ops = &muart2_ops;						      //发送回调函数
-		
-		/* uart5时钟分频比控制寄存器 */
-	   	writel(GT_CLK_UARTL_OPEN , HI_LP_PERI_CRG_REG_ADDR + PERI_CRG_CLKDIV19_REG);
-		/* 打开 uart5 时钟 */
-		writel(GT_CLK_UART5_ENABLE , HI_LP_PERI_CRG_REG_ADDR + PERI_CRG_PEREN2_REG);
-		/* 配置外设软复位撤离寄存器*/
-		writel(GT_RST_UART5_ENABLE , HI_LP_PERI_CRG_REG_ADDR + PERI_CRG_PERRSTDIS2_REG);
-#ifdef CONFIG_CCORE_PM
-	   if(bsp_device_pm_add(&dual_modem_device))
-	   {
-		   dm_print_err("dual_modem_device add erro\n");
-		   return ERROR;
-	   }
-#endif
-		ret = dual_modem_wakeup_init(dual_modem_nv);
-		if(ret !=OK)
-		{
-			dm_print_err("dual modem wakeup init failed!\n");
-			return ERROR;
-		}
-		/* 注册ICC读写回调 */
-		if(OK != bsp_icc_event_register((ICC_CHN_MCORE_CCORE << 16)|MCORE_CCORE_FUNC_UART,recv_lpm3_msg_icc_cb , NULL, NULL, NULL))
-    	{
-			dm_print_err("register icc callback fail!\n");
-			return ERROR;
-    	}
-		
-		ret = dual_modem_uart_port_init(&g_dual_modem_ctrl.uart_port[MUART1_ID]);
-		if(ret !=OK)
-		{
-			dm_print_err("dual modem uart port init failed!\n");
-			return ERROR;
-		}       
-    }
-    return OK;
 }
 /*****************************************************************************
  函 数 名  : uart_core_recv_handler_register
@@ -252,8 +147,9 @@ int uart_core_recv_handler_register(UART_CONSUMER_ID uPortNo, pUARTRecv pCallbac
         dm_print_err("uPortNo %d port IS NULL\n",uPortNo);
         return ERROR;
     }
-	cur_port->recv_register_cnt++;
     cur_port->recv_callback = pCallback;
+	
+    g_dm_dump_info->recv_register_cnt++;
     return OK;
 }
 
@@ -268,7 +164,7 @@ int uart_core_recv_handler_register(UART_CONSUMER_ID uPortNo, pUARTRecv pCallbac
 *****************************************************************************/
 int dual_modem_send_bytes(UART_PORT* uart_port,BSP_U8* pbuf,BSP_U32 size)
 {
-	u8 * pu8Buffer;
+	u8 * pu8Buffer = NULL;
 	u32  regval = 0;
 	UART_HW_DESC* uart_hw_desc = NULL;
 	
@@ -288,15 +184,45 @@ int dual_modem_send_bytes(UART_PORT* uart_port,BSP_U8* pbuf,BSP_U32 size)
 
 	uart_hw_desc = uart_port->hw_desc;
     osl_sem_down(&uart_port->send_mutex);	
-	uart_port->send_mutex_cnt++;
-	uart_port->tx_cur_size = size;
-	uart_port->tx_total_size += size;
+	
+	g_dm_dump_info->send_mutex_cnt++;
+	g_dm_dump_info->tx_cur_size = size;
+	g_dm_dump_info->tx_total_size += size;
+
+	g_dm_dump_info->send_time_stamp = BSP_GetSliceValue();
+	if(g_dm_dump_info->tx_cur_offset + 4 > DUAL_DUMP_TX_BUFF_SIZE)
+	{
+		g_dm_dump_info->tx_cur_offset = 0;
+	}
+	*(g_dm_dump_info->tx_dump_addr + g_dm_dump_info->tx_cur_offset) = (u8)((g_dm_dump_info->send_time_stamp & 0xff000000) >> 24);
+	g_dm_dump_info->tx_cur_offset ++;
+
+	*(g_dm_dump_info->tx_dump_addr + g_dm_dump_info->tx_cur_offset) = (u8)((g_dm_dump_info->send_time_stamp & 0x00ff0000) >> 16);
+	g_dm_dump_info->tx_cur_offset ++;
+
+	*(g_dm_dump_info->tx_dump_addr + g_dm_dump_info->tx_cur_offset) = (u8)((g_dm_dump_info->send_time_stamp & 0x0000ff00) >> 8);
+	g_dm_dump_info->tx_cur_offset ++;
+
+	*(g_dm_dump_info->tx_dump_addr + g_dm_dump_info->tx_cur_offset) = (u8)(g_dm_dump_info->send_time_stamp  & 0x000000ff);
+	g_dm_dump_info->tx_cur_offset ++;
+
+	if(g_dual_modem_ctrl.dual_modem_log_flag == 1)
+	{	
+		dm_debug_print("TxCurSize %d,TxTotalSize %d\n",g_dm_dump_info->tx_cur_size,g_dm_dump_info->tx_total_size);
+		dm_print_info(pu8Buffer ,size);
+	}
 	while(size)
 	{
 		regval = readl(uart_hw_desc->base_addr+ UART_REGOFFSET_FR);
 		if (0 == (regval & UART_FR_TX_FIFO_FULL))
     	{
 			writel(*pu8Buffer, uart_hw_desc->base_addr + UART_REGOFF_THR);
+			*(g_dm_dump_info->tx_dump_addr + g_dm_dump_info->tx_cur_offset) = *pu8Buffer;
+			g_dm_dump_info->tx_cur_offset++;
+			if(g_dm_dump_info->tx_cur_offset > DUAL_DUMP_TX_BUFF_SIZE)
+			{
+				g_dm_dump_info->tx_cur_offset = 0;
+			}
 			pu8Buffer++;
 			size--;
       	}
@@ -319,7 +245,20 @@ int uart_core_send(UART_CONSUMER_ID uPortNo, unsigned char * pDataBuffer, unsign
 {
     int ret = ERROR;
 	UART_PORT* cur_port = &g_dual_modem_ctrl.uart_port[uPortNo];
-    
+	
+
+	if(UART_SWITCH_ENABLE != g_dual_modem_ctrl.dual_modem_init_flag)
+	{
+		dm_print_err("dual modem not init\n");
+		return ERROR;
+	}
+	
+	g_dm_dump_info->cbpa_send_cnt++;
+	if(g_dual_modem_ctrl.dual_modem_log_flag == 1)
+	{
+    	dm_debug_print("CbpaSendCnt %d\n",g_dm_dump_info->cbpa_send_cnt);
+	}
+	
 	if(CBP_UART_PORT_ID != uPortNo)
     {
         dm_print_err("uPortNo %d  port not find\n", uPortNo);
@@ -352,32 +291,27 @@ int uart_core_send(UART_CONSUMER_ID uPortNo, unsigned char * pDataBuffer, unsign
 		if(OK != wakeup_via_modem())
 		{
             dm_print_err("wakeup err\n");
-			bsp_softtimer_delete(&g_dual_modem_ctrl.sleep_timer);
-			bsp_softtimer_add(&g_dual_modem_ctrl.sleep_timer);
+			dual_modem_restart_timer(&g_dual_modem_ctrl.sleep_timer);
 		    return ERROR;
 		}
-		udelay(CBP_WAKEUP_DELAY_TIME_MS);
+		osl_sem_downtimeout(&g_dual_modem_ctrl.wait_reply_mutex ,CBP_WAKEUP_DELAY_TIME_MS);
 	}
     bsp_softtimer_delete(&g_dual_modem_ctrl.hold_wake_timer);
 
-	cur_port->cbpa_send_count++;
 	ret = cur_port->ops->send(cur_port,pDataBuffer,uslength);
     if(OK != ret)
     {
         dm_print_err("uart tx layer err\n");
-		bsp_softtimer_delete(&g_dual_modem_ctrl.sleep_timer);
-		bsp_softtimer_add(&g_dual_modem_ctrl.sleep_timer);
+		dual_modem_restart_timer(&g_dual_modem_ctrl.sleep_timer);
 		g_dual_modem_ctrl.wakeup_3rdmodem_flag = DO_WAKEUP_3RD;
 		return ERROR;
 	}
     /*重置定时器，300ms不睡眠*/
-	bsp_softtimer_delete(&g_dual_modem_ctrl.sleep_timer);
-	bsp_softtimer_add(&g_dual_modem_ctrl.sleep_timer);
+	dual_modem_restart_timer(&g_dual_modem_ctrl.sleep_timer);
 	
 	/*重置定时器，240ms内不用唤醒对方*/
 	g_dual_modem_ctrl.wakeup_3rdmodem_flag = NOT_WAKEUP_V3;
-	bsp_softtimer_delete(&g_dual_modem_ctrl.hold_wake_timer);
-	bsp_softtimer_add(&g_dual_modem_ctrl.hold_wake_timer);
+	dual_modem_restart_timer(&g_dual_modem_ctrl.hold_wake_timer);
     return OK;
 }
 
@@ -388,30 +322,38 @@ int uart_core_send(UART_CONSUMER_ID uPortNo, unsigned char * pDataBuffer, unsign
  输出参数  : 无
  返 回 值  : void
 *****************************************************************************/
-void dual_modem_uart_irq_handler(u32 uart_port_addr)
+static irqreturn_t dual_modem_uart_irq_handler(int uart_port_addr,void *dev)
 {
 	u8  ulData = 0;
     u32 regval = ERROR;
 	u32 ret = ERROR;
+	u32 maxrecvcnt = 0;
 	UART_PORT *uart_port = NULL;
     UART_HW_DESC* uart_hw_desc = NULL;
 
     if(0 == uart_port_addr)
     {
         dm_print_err("uart_port_addr is null\n", uart_port_addr);
-        return;
+        return IRQ_NONE;
     }
+	maxrecvcnt = UART_RECV_BUF_SIZE;
 	uart_port = (UART_PORT *)uart_port_addr;
-	uart_port->irq_cnt++;
 	uart_hw_desc = uart_port->hw_desc;
 	
 	DUAL_MODEM_RECV_STR *Hsuart_RecvStr = NULL;
 	
 	Hsuart_RecvStr = &g_dual_modem_ctrl.HSUART_RECV;
 
+	g_dm_dump_info->recv_time_stamp = BSP_GetSliceValue();
+
+	g_dm_dump_info->irq_cnt++;
+	if(g_dual_modem_ctrl.dual_modem_log_flag == 1)
+	{
+		dm_debug_print("IrqCnt %d\n",g_dm_dump_info->irq_cnt);
+	}
 	regval = readl(uart_hw_desc->base_addr+ UART_REGOFFSET_MIS);
 	regval &= UART_IRQ_MARK;
-	while(0 != (regval & (UART_ARMIP_REV_VALID | UART_ARMIP_REV_TIMEOUT)))
+	while((0 != maxrecvcnt--) && (0 != (regval & (UART_ARMIP_REV_VALID | UART_ARMIP_REV_TIMEOUT))))
 	{
 		writel(UART_RX_IRQ_CLEAR | UART_TIMEOUT_IRQ_CLEAR,uart_hw_desc->base_addr + UART_REGOFFSET_ICR);
 		regval = readl(uart_hw_desc->base_addr + UART_REGOFFSET_FR);		
@@ -421,20 +363,34 @@ void dual_modem_uart_irq_handler(u32 uart_port_addr)
 			ret = DualModem_InQue(Hsuart_RecvStr, ulData);
 		    if(ret != OK)
 		    {
-		         dm_print_err("\r\nbuffer full\r\n");
-		         break;
+		         dm_print_err("pstQue is null\n");
+		         return IRQ_NONE;
 		    }		
 			regval = readl(uart_hw_desc->base_addr + UART_REGOFFSET_FR);	 				
 		 }		
 		regval = readl(uart_hw_desc->base_addr + UART_REGOFFSET_MIS);
 		regval &= UART_IRQ_MARK;
 	}
+	if(0 == maxrecvcnt)
+    {
+        dm_print_err("write buffer full\n"); 
+        return IRQ_NONE;
+    }
 	if(ret == OK)
 	{
+		/*停止300ms不睡眠定时器*/
+		bsp_softtimer_delete(&g_dual_modem_ctrl.sleep_timer);
+		wake_lock(&g_dual_modem_ctrl.wakelock);
+
 		osl_sem_up(&Hsuart_RecvStr->recv_mutex);
-		uart_port->irq_SemGive_cnt++;
+		g_dm_dump_info->irq_SemGive_cnt++;
+		if(g_dual_modem_ctrl.dual_modem_log_flag == 1)
+		{
+			dm_debug_print("IrqSemGiveCnt %d\n",g_dm_dump_info->irq_SemGive_cnt);
+		}
 	}
 	writel(IPC_MBX19_INT_CLEAR , HI_IPC_S_REGBASE_ADDR + IPC_MBX_ICLR_REG_SETTOFF);
+	return IRQ_HANDLED;
 }
 	
 /*****************************************************************************
@@ -464,52 +420,132 @@ void dual_modem_uart_recv_task(UART_PORT *uart_port_addr)
    	while(1)
     {
 		osl_sem_down(&Hsuart_RecvStr->recv_mutex);
-		uart_port->rtask_SemTake_cnt++;
+		g_dm_dump_info->rtask_SemTake_cnt++;
+		if(g_dual_modem_ctrl.dual_modem_log_flag == 1)
+		{
+			dm_debug_print("RtaskSemTakecnt %d\n",g_dm_dump_info->rtask_SemTake_cnt);
+		}
 		ulwrite = Hsuart_RecvStr->ulWrite;
 		bsp_softtimer_delete(&g_dual_modem_ctrl.sleep_timer);
-	    bsp_softtimer_delete(&g_dual_modem_ctrl.hold_wake_timer);
+
         /*重置定时器，240ms内不用唤醒对方*/
-	    bsp_softtimer_add(&g_dual_modem_ctrl.hold_wake_timer);
+		dual_modem_restart_timer(&g_dual_modem_ctrl.hold_wake_timer);
 		g_dual_modem_ctrl.wakeup_3rdmodem_flag = NOT_WAKEUP_V3;
         if(NULL != uart_port->recv_callback)
 		{
 			if(Hsuart_RecvStr->ulRead  == ulwrite)
         	{
-				//dm_print_err("buf is null \n");
+                 /*重置定时器，300ms不睡眠*/
+                dual_modem_restart_timer(&g_dual_modem_ctrl.sleep_timer);
+		  //dm_print_err("buf is null \n");
                 continue;
         	}
 			if(Hsuart_RecvStr->ulRead < ulwrite)
 			{
 				this_size = ulwrite - Hsuart_RecvStr->ulRead;
         		ret = uart_port->recv_callback(CBP_UART_PORT_ID,(Hsuart_RecvStr->ucData + Hsuart_RecvStr->ulRead),this_size);			
-				uart_port->rx_total_size += this_size;
+				if((g_dm_dump_info->rx_cur_offset + this_size + 4) > DUAL_DUMP_RX_BUFF_SIZE)
+				{
+					g_dm_dump_info->rx_cur_offset = 0;
+				}
+
+				*(g_dm_dump_info->rx_dump_addr + g_dm_dump_info->rx_cur_offset) = (u8)((g_dm_dump_info->recv_time_stamp & 0xff000000) >> 24);
+				g_dm_dump_info->rx_cur_offset ++;
+
+				*(g_dm_dump_info->rx_dump_addr + g_dm_dump_info->rx_cur_offset) = (u8)((g_dm_dump_info->recv_time_stamp & 0x00ff0000) >> 16);
+				g_dm_dump_info->rx_cur_offset ++;
+
+				*(g_dm_dump_info->rx_dump_addr + g_dm_dump_info->rx_cur_offset) = (u8)((g_dm_dump_info->recv_time_stamp & 0x0000ff00) >> 8);
+				g_dm_dump_info->rx_cur_offset ++;
+
+				*(g_dm_dump_info->rx_dump_addr + g_dm_dump_info->rx_cur_offset) = (u8)(g_dm_dump_info->recv_time_stamp  & 0x000000ff);
+				g_dm_dump_info->rx_cur_offset ++;
+
+				memcpy((g_dm_dump_info->rx_dump_addr + g_dm_dump_info->rx_cur_offset) ,(Hsuart_RecvStr->ucData + Hsuart_RecvStr->ulRead), this_size);
+				g_dm_dump_info->rx_cur_offset += this_size;
+				
+				g_dm_dump_info->rx_cur_size = this_size;
+				g_dm_dump_info->rx_total_size += this_size;
+				if(g_dual_modem_ctrl.dual_modem_log_flag == 1)
+				{
+					dm_debug_print("RecvCurSize %d\n",this_size);				
+					dm_print_info((Hsuart_RecvStr->ucData + Hsuart_RecvStr->ulRead),this_size);
+				}
 			}
 			else 
 			{
 				this_size = UART_RECV_BUF_SIZE - Hsuart_RecvStr->ulRead;
 				ret = uart_port->recv_callback(CBP_UART_PORT_ID,(Hsuart_RecvStr->ucData + Hsuart_RecvStr->ulRead),this_size);			
-				uart_port->rx_total_size += this_size;
+
+				if((g_dm_dump_info->rx_cur_offset + this_size + 4) > DUAL_DUMP_RX_BUFF_SIZE)
+				{
+					g_dm_dump_info->rx_cur_offset = 0;
+				}
+
+				*(g_dm_dump_info->rx_dump_addr + g_dm_dump_info->rx_cur_offset) = (u8)((g_dm_dump_info->recv_time_stamp & 0xff000000) >> 24);
+				g_dm_dump_info->rx_cur_offset ++;
+
+				*(g_dm_dump_info->rx_dump_addr + g_dm_dump_info->rx_cur_offset) = (u8)((g_dm_dump_info->recv_time_stamp & 0x00ff0000) >> 16);
+				g_dm_dump_info->rx_cur_offset ++;
+
+				*(g_dm_dump_info->rx_dump_addr + g_dm_dump_info->rx_cur_offset) = (u8)((g_dm_dump_info->recv_time_stamp & 0x0000ff00) >> 8);
+				g_dm_dump_info->rx_cur_offset ++;
+
+				*(g_dm_dump_info->rx_dump_addr + g_dm_dump_info->rx_cur_offset) = (u8)(g_dm_dump_info->recv_time_stamp  & 0x000000ff);
+				g_dm_dump_info->rx_cur_offset ++;
+
+				memcpy((g_dm_dump_info->rx_dump_addr + g_dm_dump_info->rx_cur_offset) ,(Hsuart_RecvStr->ucData + Hsuart_RecvStr->ulRead), this_size);
+				g_dm_dump_info->rx_cur_offset += this_size;
+				
+				g_dm_dump_info->rx_cur_size = this_size + ulwrite;
+				g_dm_dump_info->rx_total_size += this_size;	
+
+				if(g_dual_modem_ctrl.dual_modem_log_flag == 1)
+				{
+					dm_debug_print("RecvCurSize %d\n",g_dm_dump_info->rx_cur_size);
+					dm_print_info((Hsuart_RecvStr->ucData + Hsuart_RecvStr->ulRead),this_size);
+				}
 				
 				this_size = ulwrite;
 				ret = uart_port->recv_callback(CBP_UART_PORT_ID,Hsuart_RecvStr->ucData,this_size);	
-				uart_port->rx_total_size += this_size;
+
+				if((g_dm_dump_info->rx_cur_offset + this_size + 4) > DUAL_DUMP_RX_BUFF_SIZE)
+				{
+					g_dm_dump_info->rx_cur_offset = 0;
+				}
+
+				*(g_dm_dump_info->rx_dump_addr + g_dm_dump_info->rx_cur_offset) = (u8)((g_dm_dump_info->recv_time_stamp & 0xff000000) >> 24);
+				g_dm_dump_info->rx_cur_offset ++;
+
+				*(g_dm_dump_info->rx_dump_addr + g_dm_dump_info->rx_cur_offset) = (u8)((g_dm_dump_info->recv_time_stamp & 0x00ff0000) >> 16);
+				g_dm_dump_info->rx_cur_offset ++;
+
+				*(g_dm_dump_info->rx_dump_addr + g_dm_dump_info->rx_cur_offset) = (u8)((g_dm_dump_info->recv_time_stamp & 0x0000ff00) >> 8);
+				g_dm_dump_info->rx_cur_offset ++;
+
+				*(g_dm_dump_info->rx_dump_addr + g_dm_dump_info->rx_cur_offset) = (u8)(g_dm_dump_info->recv_time_stamp  & 0x000000ff);
+				g_dm_dump_info->rx_cur_offset ++;
+
+				memcpy((g_dm_dump_info->rx_dump_addr + g_dm_dump_info->rx_cur_offset) ,Hsuart_RecvStr->ucData , this_size);
+				g_dm_dump_info->rx_cur_offset += this_size;
+				
+				g_dm_dump_info->rx_total_size += this_size;
+
+				if(g_dual_modem_ctrl.dual_modem_log_flag == 1)
+				{
+					dm_print_info(Hsuart_RecvStr->ucData,this_size);
+				}
 			}
 			Hsuart_RecvStr->ulRead = ulwrite;
 		}
 		else 
 		{
 			dm_print_err("callback is null\n");
-			uart_port->callback_fail_cnt++;
-			memset((void*)&Hsuart_RecvStr->ucData,0,sizeof(Hsuart_RecvStr->ucData)); 			
-			Hsuart_RecvStr->ulRead = 0;
-			Hsuart_RecvStr->ulWrite =0;
-			Hsuart_RecvStr->ulTotalNum = 0;
-			Hsuart_RecvStr->ulRead = 0;
+			g_dm_dump_info->callback_fail_cnt++;
+			Hsuart_RecvStr->ulRead = ulwrite;
 		}
         /*重置定时器，300ms不睡眠*/
-	    bsp_softtimer_delete(&g_dual_modem_ctrl.sleep_timer);
-	    bsp_softtimer_add(&g_dual_modem_ctrl.sleep_timer);
-
+		dual_modem_restart_timer(&g_dual_modem_ctrl.sleep_timer);
     }
 }
 /*****************************************************************************
@@ -523,16 +559,22 @@ void dual_modem_uart_recv_task(UART_PORT *uart_port_addr)
 s32 wakeup_via_modem(void)
 {
 	s32 ret = ERROR;
-	u8 cbp_wakeup_string[CBP_WAKEUP_STRING_SIZE];//唤醒CPB特殊字符串0x7e7e7e
-
-	g_dual_modem_ctrl.send_wakeup_count++;
-    
-    memset((void*)cbp_wakeup_string,0x07e,CBP_WAKEUP_STRING_SIZE);
-	ret = dual_modem_send_bytes(&g_dual_modem_ctrl.uart_port[MUART1_ID],cbp_wakeup_string,CBP_WAKEUP_STRING_SIZE);
-    if(ERROR == ret)
-    {
-        dm_print_err("send wakeup string fail\n");
-        return ERROR;
+	u32 i = 0;
+	u8 cbp_wakeup_string[] = {0x00,0x7e,0x7e,0x7e};//唤醒CPB特殊字符串0x7e7e7e
+	for(i = 0;i < 3;i++)
+	{
+		ret = dual_modem_send_bytes(&g_dual_modem_ctrl.uart_port[MUART1_ID],cbp_wakeup_string,sizeof(cbp_wakeup_string));
+    	if(ERROR == ret)
+    	{
+        	dm_print_err("send wakeup string fail\n");
+        	return ERROR;
+    	}
+	    osl_sem_downtimeout(&g_dual_modem_ctrl.wait_reply_mutex, CBP_WAKEUP_DELAY_TIME_MS);
+		g_dm_dump_info->balong_wakeup_via_cnt++;
+		if(g_dual_modem_ctrl.dual_modem_log_flag == 1)
+		{
+    		dm_debug_print("WakeupViaCnt %d\n",g_dm_dump_info->balong_wakeup_via_cnt);
+    	}
     }
 	return OK;
 }
@@ -550,7 +592,7 @@ int DualModem_InQue(DUAL_MODEM_RECV_STR *pstQue, UINT8 ucData)
 
     if(NULL == pstQue)
     {
-		dm_print_err("pstQue is null.....\n");
+		dm_print_err("pstQue is null\n");
 		return ERROR;
     }
 	
@@ -559,6 +601,18 @@ int DualModem_InQue(DUAL_MODEM_RECV_STR *pstQue, UINT8 ucData)
     ulTail = ((ulTail+1) ==  UART_RECV_BUF_SIZE) ? 0 : (ulTail+1);
     pstQue->ulWrite = ulTail;
     return OK;
+}
+/*****************************************************************************
+ 函 数 名  : modem_wakeup_delay_overhandler
+ 功能描述  : 300ms超时后投睡眠票
+ 输入参数  : BSP_U32 uart_port_addr
+ 输出参数  : 无
+ 返 回 值  : void
+*****************************************************************************/
+void dual_modem_restart_timer(struct softtimer_list * softtimer)
+{
+	bsp_softtimer_delete(softtimer);
+	bsp_softtimer_add(softtimer);
 }
 
 /*****************************************************************************
@@ -571,7 +625,7 @@ int DualModem_InQue(DUAL_MODEM_RECV_STR *pstQue, UINT8 ucData)
 void modem_sleeptimer_overhandler(u32 temp)
 {
 	temp = temp;
-	g_dual_modem_ctrl.modem_sleeptimer_cnt++;
+	g_dm_dump_info->modem_sleeptimer_cnt++;
 	g_dual_modem_ctrl.wakeup_3rdmodem_flag = DO_WAKEUP_3RD;
 	bsp_softtimer_delete(&g_dual_modem_ctrl.hold_wake_timer);
 	wake_unlock(&g_dual_modem_ctrl.wakelock);
@@ -617,25 +671,237 @@ int dual_modem_wakeup_init(DRV_DUAL_MODEM_STR DualModemNv)
 	/*初始化定时器，240ms内不用唤醒对方*/
 	if(OK !=bsp_softtimer_create(T1_timer))
 	{
-		dm_print_err("softtimer create fail!\n");
+		dm_print_err("T1_timer create fail!\n");
 		goto T1timerfail;
 	}
 	/*初始化定时器，300ms不睡眠*/
 	if(OK !=bsp_softtimer_create(T2_timer))
 	{
-		dm_print_err("softtimer create fail!\n");
+		dm_print_err("T2_timer create fail!\n");
 		goto T2timerfail;
 	}
-
 	return OK;
 	
 T2timerfail:
-	bsp_softtimer_free(T2_timer);
-T1timerfail:
 	bsp_softtimer_free(T1_timer);
+T1timerfail:
 	return ERROR;	
 }
 
+/*****************************************************************************
+ 函 数 名 : dual_modem_dump_hook
+ 功能描述 : 系统复位前调用函数，保存信息
+ 输入参数 : 无
+ 输出参数 : 
+ 返 回 值 : 
+*****************************************************************************/
+void dual_modem_dump_hook(void)
+{
+	if(NULL != g_dm_dump_info)
+	{
+		g_dm_dump_info->uart_reg_val[0]= readl(HI_UART5_REGBASE_ADDR + UART_REGOFFSET_FR);
+		g_dm_dump_info->uart_reg_val[1] = readl(HI_UART5_REGBASE_ADDR + UART_REGOFFSET_IBRD);
+		g_dm_dump_info->uart_reg_val[2] = readl(HI_UART5_REGBASE_ADDR + UART_REGOFFSET_LCR_H);
+		g_dm_dump_info->uart_reg_val[3] = readl(HI_UART5_REGBASE_ADDR + UART_REGOFFSET_CR);
+		g_dm_dump_info->uart_reg_val[4] = readl(HI_UART5_REGBASE_ADDR + UART_REGOFFSET_IFLS);
+		g_dm_dump_info->uart_reg_val[5] = readl(HI_UART5_REGBASE_ADDR + UART_REGOFFSET_IMSC);
+		g_dm_dump_info->uart_reg_val[6] = readl(HI_UART5_REGBASE_ADDR + UART_REGOFFSET_MIS);
+	}
+	return;
+}
+
+/*****************************************************************************
+ 函 数 名 : dual_modem_dump_init
+ 功能描述 : dump 初始化
+ 输入参数 : 无
+ 输出参数 : 
+ 返 回 值 : 
+*****************************************************************************/
+s32 dual_modem_dump_init(void)
+{
+	u8 *dump_addr = NULL;
+
+	if(OK != bsp_dump_register_hook(DUMP_EXT_DUAL_MODEM_SIZE , (dump_save_hook)dual_modem_dump_hook))
+	{
+		dm_print_err("dump hook fail");
+		return ERROR;
+	}
+	
+	dump_addr = bsp_dump_register_field((u32)DUMP_SAVE_MOD_DUAL_MODEM , DUMP_EXT_DUAL_MODEM_SIZE);
+	if(dump_addr == NULL)
+	{
+		dm_print_err("dual modem dump no buffer\n");
+		return ERROR;
+	}
+	dm_print_err("dual modem dump addr 0x%x\n",(u32)dump_addr);
+    memset(dump_addr ,0 ,DUMP_EXT_DUAL_MODEM_SIZE);
+	g_dm_dump_info = (struct dm_dump_info *)dump_addr;
+	g_dm_dump_info->rx_dump_addr = (u8 *)(dump_addr + DUAL_DUMP_COUNT_SIZE);
+	g_dm_dump_info->tx_dump_addr = (u8 *)(g_dm_dump_info->rx_dump_addr + DUAL_DUMP_RX_BUFF_SIZE);
+	return OK;
+}
+/*****************************************************************************
+ 函 数 名  : dual_modem_uart_port_init
+ 功能描述  : 创建接收任务，使能串口中断，配置串口波特率
+ 输入参数  : UART_PORT *uart_port
+ 输出参数  : 0 成功，-1失败
+ 返 回 值  : s32
+*****************************************************************************/
+s32 dual_modem_uart_port_init(UART_PORT *uart_port)
+{
+	u8 flag = 0;
+	DUAL_MODEM_RECV_STR *Hsuart_RecvStr = NULL;
+		
+	Hsuart_RecvStr = &g_dual_modem_ctrl.HSUART_RECV;
+	flag = LPm3_UART5_IQR_ENABLE;	
+	if(NULL == uart_port)
+    {
+        dm_print_err("uart_port is null\n");
+        return ERROR;
+    }
+
+    if(NULL == uart_port->hw_desc)
+    {
+        dm_print_err("uart_hw_desc is null\n");
+        return ERROR;
+    }
+	
+	memset((void*)&g_dual_modem_ctrl.HSUART_RECV,0,sizeof(g_dual_modem_ctrl.HSUART_RECV)); 
+	osl_sem_init(0,&g_dual_modem_ctrl.wait_reply_mutex);
+	osl_sem_init(0,&Hsuart_RecvStr->recv_mutex);
+   	uart_port->send_mutex= semMCreate(SEM_Q_PRIORITY |SEM_DELETE_SAFE| SEM_INVERSION_SAFE);
+
+	/* 设置波特率 */
+	dual_modem_uart_channel_init(uart_port->hw_desc);
+	
+	if(OK != osl_task_init("utlrecv",DUAL_MODEM_TASK_PRO,DUAL_MODEM_TASK_STK,(void *)dual_modem_uart_recv_task,(UART_PORT *)uart_port,&Hsuart_RecvStr->recv_task_id))
+    {
+        dm_print_err("OSAL_TaskCreate utlrecv err\n");
+        return  ERROR;
+    }
+
+	request_irq(uart_port->hw_desc->irq_num, (irq_handler_t)dual_modem_uart_irq_handler, 0 , "dual modem irq", uart_port);
+	/* 通知lpm3 初始化uart5	*/	
+	bsp_icc_send((u32)ICC_CPU_MCU,(ICC_CHN_MCORE_CCORE << 16)|MCORE_CCORE_FUNC_UART,&flag,sizeof(flag));	
+
+    return OK;
+}
+/*****************************************************************************
+ 函 数 名  : bsp_dual_modem_init
+ 功能描述  : K3 modem uart相关初始化
+ 输入参数  : void
+ 输出参数  : -1:失败，0:成功
+ 返 回 值  : int
+****************************************************************************/
+s32 dual_modem_init(void)
+{
+	int ret = ERROR;
+
+	DRV_DUAL_MODEM_STR dual_modem_nv;
+ 	unsigned int  retVal = 0;
+	DRV_DM_UART5_STR dm_init_nv;
+	
+	memset((void*)&g_dual_modem_ctrl.uart_port,0,sizeof(g_dual_modem_ctrl.uart_port)); 			//初始化串口属性
+	memset((void*)&dual_modem_nv,0,sizeof(DRV_DUAL_MODEM_STR));
+
+	retVal =bsp_nvm_read(NV_ID_DRV_DUAL_MODEM,(u8 *)&dual_modem_nv,sizeof(DRV_DUAL_MODEM_STR));
+    if (retVal != OK)
+    {
+        dm_print_err("read NV_ID_DRV_UART_FLAG NV ERROR: %d \n",NV_ID_DRV_DUAL_MODEM);
+        return ERROR;
+    }
+	
+	if(UART_SWITCH_ENABLE == dual_modem_nv.enUartEnableCfg)
+    {
+		memset((void *)&dm_init_nv ,0 ,sizeof(DRV_DM_UART5_STR));
+		ret = bsp_nvm_read(NV_ID_DRV_DM_UART5_CFG, (u8 *)&dm_init_nv, sizeof(DRV_DM_UART5_STR));
+		if(ret != OK)
+		{
+			dm_print_err("read dm_uart5_irq_nv NV ERROR: %d \n",NV_ID_DRV_DM_UART5_CFG);
+			dm_init_nv.enUart5IrqCfg = 0;
+			dm_init_nv.dmInitCfg = 0;
+		}
+		
+		ret = dual_modem_wakeup_init(dual_modem_nv);
+		if(ret !=OK)
+		{
+			dm_print_err("dual modem wakeup init failed!\n");
+			return ERROR;
+		}
+		if(OK != dual_modem_dump_init())
+		{
+			dm_print_err("dual_modem_dump_init fail!\n");
+			return ERROR;
+    	}
+		
+		/* 注册ICC读写回调 */
+		if(OK != bsp_icc_event_register((ICC_CHN_MCORE_CCORE << 16)|MCORE_CCORE_FUNC_UART,recv_lpm3_msg_icc_cb , NULL, NULL, NULL))
+    	{
+			dm_print_err("register icc callback fail!\n");
+			return ERROR;
+    	}
+		
+		if(UART_SWITCH_DISABLE == dm_init_nv.dmInitCfg)
+		{
+			if(OK != bsp_dual_modem_init())
+			{
+				dm_print_err("uart init fail!\n");
+				return ERROR;	
+			}
+		}
+    }
+    return OK;
+}
+s32 bsp_dual_modem_init(void)
+{	
+	int ret = ERROR;
+
+	DRV_DUAL_MODEM_STR dual_modem_nv;
+ 	unsigned int  retVal = 0;
+	memset((void*)&dual_modem_nv,0,sizeof(DRV_DUAL_MODEM_STR));
+
+	retVal =bsp_nvm_read(NV_ID_DRV_DUAL_MODEM,(u8 *)&dual_modem_nv,sizeof(DRV_DUAL_MODEM_STR));
+    if (retVal != OK)
+    {
+        dm_print_err("read NV_ID_DRV_UART_FLAG NV ERROR: %d \n",NV_ID_DRV_DUAL_MODEM);
+        return ERROR;
+    }
+	
+	if(UART_SWITCH_ENABLE == dual_modem_nv.enUartEnableCfg)
+    {
+		g_dual_modem_ctrl.uart_port[MUART1_ID].hw_desc = &g_dual_modem_init_info.uart_port_hw_desc;
+        g_dual_modem_ctrl.uart_port[MUART1_ID].port_id = MUART1_ID;
+        g_dual_modem_ctrl.uart_port[MUART1_ID].ops = &muart2_ops;						      //发送回调函数
+		
+		if(UART_SWITCH_ENABLE == dual_modem_nv.enUartlogEnableCfg)
+		{
+			g_dual_modem_ctrl.dual_modem_log_flag = 1;	
+			bsp_mod_level_set(BSP_MODU_DUAL_MODEM ,BSP_LOG_LEVEL_DEBUG);
+		}
+		/* uart5时钟分频比控制寄存器 */
+	   	writel(GT_CLK_UARTL_OPEN , HI_LP_PERI_CRG_REG_ADDR + PERI_CRG_CLKDIV19_REG);
+		/* 打开 uart5 时钟 */
+		writel(GT_CLK_UART5_ENABLE , HI_LP_PERI_CRG_REG_ADDR + PERI_CRG_PEREN2_REG);
+		/* 配置外设软复位撤离寄存器*/
+		writel(GT_RST_UART5_ENABLE , HI_LP_PERI_CRG_REG_ADDR + PERI_CRG_PERRSTDIS2_REG);
+	
+		ret = dual_modem_uart_port_init(&g_dual_modem_ctrl.uart_port[MUART1_ID]);
+		if(ret !=OK)
+		{
+			dm_print_err("dual modem uart port init failed!\n");
+			return ERROR;;			
+		}     
+#ifdef CONFIG_CCORE_PM
+	   if(bsp_device_pm_add(&dual_modem_device))
+	   {
+		   dm_print_err("dual_modem_device add erro\n");
+		   return ERROR;
+	   }
+#endif			
+		g_dual_modem_ctrl.dual_modem_init_flag = UART_SWITCH_ENABLE;		
+    }
+    return OK;
+}
 
 /*****************************************************************************
 * 函 数 名  :  dual_uart_suspend
@@ -649,10 +915,10 @@ s32 dual_uart_suspend(struct dpm_device *dev)
 {
 	UART_PORT *uart_port = NULL;
 	uart_port = &g_dual_modem_ctrl.uart_port[MUART1_ID];
-	(void)intDisable((int)(uart_port->hw_desc->irq_num));
 	writel(GT_CLK_UART5_DISABLE , HI_LP_PERI_CRG_REG_ADDR + PERI_CRG_PEREN2_REG);
 	writel(GT_CLK_UARTL_CLOSS , HI_LP_PERI_CRG_REG_ADDR + PERI_CRG_CLKDIV19_REG);
-	g_dual_modem_ctrl.uart_port[MUART1_ID].suspend_cnt++;
+	if(NULL != g_dm_dump_info)
+		g_dm_dump_info->suspend_cnt++;
 	return 0;
 }
 
@@ -677,9 +943,8 @@ s32 dual_uart_resume(struct dpm_device *dev)
 	/* 配置外设软复位撤离寄存器*/
 	writel(GT_RST_UART5_ENABLE , HI_LP_PERI_CRG_REG_ADDR + PERI_CRG_PERRSTDIS2_REG);
 	dual_modem_uart_channel_init(uart_port->hw_desc);
-
-	(void)intEnable ((int)(uart_port->hw_desc->irq_num));
-	g_dual_modem_ctrl.uart_port[MUART1_ID].resume_cnt++;
+	if(NULL != g_dm_dump_info)
+		g_dm_dump_info->resume_cnt++;
 	return 0;
 }
 
@@ -696,30 +961,64 @@ s32 dual_uart_resume(struct dpm_device *dev)
 *****************************************************************************/
 void uart_driver_info(void)
 {	
-    dm_print_err("recv_register_cnt    %d\n",g_dual_modem_ctrl.uart_port[MUART1_ID].recv_register_cnt);
-	dm_print_err("irq_cnt    %d\n",g_dual_modem_ctrl.uart_port[MUART1_ID].irq_cnt);
-	dm_print_err("irq_SemGive_cnt    %d\n",g_dual_modem_ctrl.uart_port[MUART1_ID].irq_SemGive_cnt);
-    dm_print_err("rtask_SemTake_cnt    %d\n",g_dual_modem_ctrl.uart_port[MUART1_ID].rtask_SemTake_cnt);
+	if(g_dm_dump_info != NULL)
+	{
+		dm_print_err("recv_register_cnt    %d\n",g_dm_dump_info->recv_register_cnt);
+		dm_print_err("irq_cnt    %d\n",g_dm_dump_info->irq_cnt);
+		dm_print_err("irq_SemGive_cnt    %d\n",g_dm_dump_info->irq_SemGive_cnt);
+	    dm_print_err("rtask_SemTake_cnt    %d\n",g_dm_dump_info->rtask_SemTake_cnt);
 	
-	dm_print_err("cbpa_send_count    %d\n",g_dual_modem_ctrl.uart_port[MUART1_ID].cbpa_send_count);
-	dm_print_err("tx_cur_size    %d\n",g_dual_modem_ctrl.uart_port[MUART1_ID].tx_cur_size);
-	dm_print_err("tx_total_size    %d\n",g_dual_modem_ctrl.uart_port[MUART1_ID].tx_total_size);
-	dm_print_err("send_mutex    %d\n",g_dual_modem_ctrl.uart_port[MUART1_ID].send_mutex_cnt);
+		dm_print_err("cbpa_send_count    %d\n",g_dm_dump_info->cbpa_send_cnt);
+		dm_print_err("tx_cur_size    %d\n",g_dm_dump_info->tx_cur_size);
+		dm_print_err("tx_total_size    %d\n",g_dm_dump_info->tx_total_size);
+		dm_print_err("send_mutex    %d\n",g_dm_dump_info->send_mutex_cnt);
 
-	dm_print_err("rx_total_size    %d\n",g_dual_modem_ctrl.uart_port[MUART1_ID].rx_total_size);
-	dm_print_err("suspend_cnt    %d\n",g_dual_modem_ctrl.uart_port[MUART1_ID].suspend_cnt);
-    dm_print_err("resume_cnt    %d\n",g_dual_modem_ctrl.uart_port[MUART1_ID].resume_cnt);
-    dm_print_err("HSUART_RECV.ulRead    %d\n",g_dual_modem_ctrl.HSUART_RECV.ulRead);
-	dm_print_err("HSUART_RECV.ulWrite    %d\n",g_dual_modem_ctrl.HSUART_RECV.ulWrite);
+		dm_print_err("rx_total_size    %d\n",g_dm_dump_info->rx_total_size);
+		dm_print_err("suspend_cnt    %d\n",g_dm_dump_info->suspend_cnt);
+	    dm_print_err("resume_cnt    %d\n",g_dm_dump_info->resume_cnt);
 
-	dm_print_err("via_wakeup_balong_cnt    %d\n",g_dual_modem_ctrl.via_wakeup_balong_cnt);
-	dm_print_err("send_wakeup_count	   %d\n",g_dual_modem_ctrl.send_wakeup_count);
-	dm_print_err("modem_sleeptimer_cnt	  %d\n",g_dual_modem_ctrl.modem_sleeptimer_cnt);
+		dm_print_err("via_wakeup_balong_cnt    %d\n",g_dm_dump_info->via_wakeup_balong_cnt);
+		dm_print_err("balong_wakeup_via_cnt	   %d\n",g_dm_dump_info->balong_wakeup_via_cnt);
+		dm_print_err("modem_sleeptimer_cnt	  %d\n",g_dm_dump_info->modem_sleeptimer_cnt);
 	
-	dm_print_err("callback_fail_cnt    %d\n",g_dual_modem_ctrl.uart_port[MUART1_ID].callback_fail_cnt);
+		dm_print_err("callback_fail_cnt    %d\n",g_dm_dump_info->callback_fail_cnt);
 	t_read_reg();
+	}
+	else 
+	{
+		dm_print_err("dump addr is null");
+	}
 }
 
+int dm_print_info(unsigned char *pData, unsigned int ulLength)
+{
+	char dm_debug_buff[256];
+	char *p_buff = dm_debug_buff;
+	u8 *pdatabuff = pData;
+	s32 ret = 0;
+	u32 i = 0;
+	u32 datalen = ulLength;
+	dm_debug_buff[0] = 0;
+	for(i = 0;i < ulLength; i++)
+    {
+		ret = snprintf(p_buff, sizeof(dm_debug_buff)-(p_buff - dm_debug_buff + 1), "%x ", *pdatabuff);
+		if (ret <= 0)
+		{
+			dm_debug_print("dm_print_info error, code:%d \n",ret);
+			return ERROR;
+		}
+		p_buff += ret;
+		pdatabuff++;
+		datalen--;
+	    if(((sizeof(dm_debug_buff)-(p_buff - dm_debug_buff + 1)) < 3) || (datalen == 0))
+		{
+			*(p_buff) = '\0';
+			dm_debug_print("%s\n" ,dm_debug_buff);
+			p_buff = dm_debug_buff;
+		}
+	}
+    return OK;
+}
 void t_read_reg(void)
 {
 	u32 regval[7] = {0};
@@ -730,33 +1029,31 @@ void t_read_reg(void)
 	regval[3] = readl(HI_UART5_REGBASE_ADDR + 0x30);
 	regval[4] = readl(HI_UART5_REGBASE_ADDR + 0x34);
 	regval[5] = readl(HI_UART5_REGBASE_ADDR + 0x38);
-	regval[6] = readl(HI_UART5_REGBASE_ADDR +0x00);
+	regval[6] = readl(HI_UART5_REGBASE_ADDR + 0x40);
 	dm_print_err("UARTFR VALUE 0x%x\n", regval[0]);
 	dm_print_err("UARTIBRD  VALUE 0x%x\n", regval[1]);
 	dm_print_err("UARTLCR_H  VALUE 0x%x\n", regval[2]);
 	dm_print_err("UARTCR  VALUE 0x%x\n", regval[3]);
 	dm_print_err("UARTIFLS  VALUE 0x%x\n", regval[4]);
 	dm_print_err("UARTIMSC  VALUE 0x%x\n", regval[5]);
-	dm_print_err("UARTIMSC  VALUE 0x%x\n", regval[6]);
+	dm_print_err("UARTMIC  VALUE 0x%x\n", regval[6]);
 }
 /******************test***************/
 
 #if 1
 u32 send_task;
-void ut_send(void)
+void ut_send(u32 lenth)
 {
-    int i = 0;
+    u32 i = 0;
     int ret = ERROR;
-    unsigned char dual_modem_buf[100];
+    unsigned char dual_modem_buf[1024];
 	
-	for(i = 0;i<100;i++)
+	for(i = 0; i < lenth; i++)
     {
         dual_modem_buf[i]=i;
     }
 
-    ret = uart_core_send(CBP_UART_PORT_ID,dual_modem_buf,100);
-	if(ret == OK)
-		dm_print_err("SEND SUCCESS!\n");
+    ret = uart_core_send(CBP_UART_PORT_ID,dual_modem_buf,lenth);
 }
 
 void t_send(void)
@@ -767,22 +1064,15 @@ void t_send(void)
     }
 }
 
-int t_recv_handler(UART_CONSUMER_ID uPortNo,unsigned char *pData, unsigned int ulLength)
+int tt_recv_handler(UART_CONSUMER_ID uPortNo,unsigned char *pData, unsigned int ulLength)
 {
-    u32 i = 0;
-
-	for(i = 0; i < ulLength ; i++)
-    {
-        dm_print_err("%x \n",*pData);
-		pData++;  
-    } 
-    return OK;
+	return 0;
 }
 
 void t_recv_reg(void)
 {
  	
-	(int)uart_core_recv_handler_register(CBP_UART_PORT_ID,t_recv_handler);
+	(int)uart_core_recv_handler_register(CBP_UART_PORT_ID,tt_recv_handler);
 }
 
 void t_write_reg(void)
@@ -827,7 +1117,10 @@ void clear_recv_num(void)
 {
 	g_dual_modem_ctrl.HSUART_RECV.ulTotalNum =0;
 }
-
+void t_dbg(void)
+{
+   system_error(0, 0, 0, NULL, 0);
+}
 
 #endif
 

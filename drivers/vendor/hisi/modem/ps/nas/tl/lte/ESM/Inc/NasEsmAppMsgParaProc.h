@@ -214,6 +214,14 @@ extern VOS_VOID NAS_ESM_GetActPdpInfo
 
 /* niuxiufan DT end */
 
+extern VOS_UINT32  NAS_ESM_CheckAppGwAuthInfoOperation
+(
+    VOS_UINT32                          ulCid,
+    APP_ESM_PARA_SET_ENUM_UINT32        enSetType,
+    APP_ESM_GW_AUTH_INFO_STRU           stGwAuthInfo
+);
+
+
 /*****************************************************************************
   9 OTHERS
 *****************************************************************************/

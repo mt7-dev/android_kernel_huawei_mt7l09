@@ -90,7 +90,7 @@ void wdt_timer_event(u32 agrv)
 {
 	if (BSP_FALSE == hi6930_wdt_ident.enable)
 	{
-		wdt_err("wdt nv enabled??\n");
+		wdt_err("wdt nv enabled\n");
 		return;
 	}
 	bsp_softtimer_add(&hi6930_wdt_ident.wdt_timer_list);
@@ -105,7 +105,7 @@ static int hi6930_wdt_start(void)
     retValue = (s32)bsp_nvm_read(NV_ID_DRV_WDT_INIT_PARAM, (u8*)&wdt_nv_param, sizeof(DRV_WDT_INIT_PARA_STRU));
     if (NV_OK != retValue)
     {
-        wdt_err("read nv failed use default value\n");
+        wdt_err("wdt nv fail\n");
 		wdt_nv_param.wdt_enable = 0;
 		wdt_nv_param.wdt_timeout = 30;
 		wdt_nv_param.wdt_suspend_timerout = 120;
@@ -123,7 +123,7 @@ static int hi6930_wdt_start(void)
 	retValue= bsp_softtimer_create(&hi6930_wdt_ident.wdt_timer_list);
 	if (retValue)
     	{
-		printk("bsp_softtimer_create failed\n");
+		printk("wdt timer create err\n");
 		return WDT_ERROR;
     	}
 	
@@ -131,7 +131,7 @@ static int hi6930_wdt_start(void)
 	retValue = (s32)(WDT_DEF_CLK_FREQ * hi6930_wdt_ident.wdt_timeout);/*lint !e713*/
     if (BSP_FALSE == hi6930_wdt_ident.enable)
     {
-		printk("nv enabled? %d\n", hi6930_wdt_ident.enable);
+		printk("nv enabled %d\n", hi6930_wdt_ident.enable);
 		return WDT_OK;
     }
     bsp_softtimer_add(&hi6930_wdt_ident.wdt_timer_list);
@@ -186,7 +186,7 @@ static u32 hi6930_wdt_get_timeleft(void)
 static irqreturn_t  hi6930_wdt_irq(int irqno, void*param)
 {
     (void)disable_irq(M3_WDT_INT);
-	printk("mcore wdt irq \n");
+	printk("m wdt irq \n");
 	if(g_wdt_ctrl.wdt_cb)
 	{
 		g_wdt_ctrl.wdt_cb(MCORE_WDT_TIMEOUT);
@@ -201,7 +201,7 @@ static irqreturn_t  hi6930_acore_wdt_irq(int irqno, void*param)
 {
 	/*clear timer3 interrupt*/
 	readl(HI_TIMER_03_REGBASE_ADDR_VIRT + HI_TIMER_EOI_OFFSET);
-	printk("acore irq\n");
+	printk("a irq\n");
 	if (0 == acore_wdt_flag)
 	{
 		acore_wdt_flag++;
@@ -252,15 +252,15 @@ s32 hi6930_wdt_init(void)
 
     ret = request_irq(M3_WDT_INT, hi6930_wdt_irq, 0, "wdt mcore irq", NULL);
     if (ret != 0) {
-        printk("failed to install mcore irq (%d)\n", ret);
+        printk("install mcore irq(%d)\n", ret);
     }
     ret = request_irq(M3_TIMER3_INT, hi6930_acore_wdt_irq, 0, "wdt acore irq", NULL);
     if (ret != 0) {
-        printk("failed to install acore irq (%d)\n", ret);
+        printk("install acore irq(%d)\n", ret);
     }
     ret = request_irq(M3_TIMER4_INT, hi6930_ccore_wdt_irq, 0, "wdt ccore irq", NULL);
     if (ret != 0) {
-        printk("failed to install ccore irq (%d)\n", ret);
+        printk("install ccore irq(%d)\n", ret);
     }
     bsp_wdt_start();
     printk("wdt init ok\n");
@@ -291,7 +291,7 @@ s32 bsp_wdt_get_timeleft(u32 *timeleft)
 {
 	if(WDT_NULL == timeleft)
 	{
-		printk("timeleft is NULL\n");
+		printk("timeleft NULL\n");
 		return WDT_ERROR;
 	}
     *timeleft = hi6930_wdt_get_timeleft();
@@ -308,7 +308,7 @@ signed int bsp_wdt_register_hook(void *hook)
 {
     if(NULL == hook)
     {
-    	printk("hook is NULL\n");
+    	printk("hook NULL\n");
        return WDT_ERROR;
     }
 
@@ -427,14 +427,12 @@ void bsp_wdt_print_debug(void)
 {
     unsigned int timeleft = 0;
     bsp_wdt_get_timeleft(&timeleft);
-    printk("*******************wdt debug  start*******************\n");
-    printk("timeleft: %d\n", timeleft);
-    printk("cur_timeout: %d\n", current_timeout);
+    printk("wdt timeleft:%d\n", timeleft);
+    printk("cur_timeout:%d\n", current_timeout);
     timeleft = readl(HI_WDT_BASE_ADDR_VIRT + HI_WDG_CONTROL_OFFSET);
-    printk("ctr_reg: 0x%x\n", timeleft);
+    printk("ctr_reg:0x%x\n", timeleft);
     timeleft = readl(HI_WDT_BASE_ADDR_VIRT + HI_WDG_VALUE_OFFSET);
-    printk("wdt_value: 0x%x\n", timeleft);
-    printk("*******************wdt debug  end*******************\n"); 
+    printk("wdt_value:0x%x\n", timeleft);
 }
 
 #elif defined(CONFIG_HI3630_CCORE_WDT)
@@ -495,7 +493,7 @@ s32 hi6930_wdt_init(void)
 	    retValue = bsp_nvm_read(NV_ID_DRV_WDT_INIT_PARAM, (u8*)&wdt_nv_param, sizeof(DRV_WDT_INIT_PARA_STRU));
 	    if (NV_OK != retValue)
 	    {
-	       printk("read nv failed use default value\n");
+	       printk("wdt nv err\n");
 			wdt_nv_param.wdt_enable = 0;
 			wdt_nv_param.wdt_timeout = 30;
 	    }

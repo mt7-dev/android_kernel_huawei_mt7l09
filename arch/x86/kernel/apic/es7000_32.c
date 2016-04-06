@@ -457,14 +457,6 @@ static unsigned long calculate_ldr(int cpu)
 
 	return SET_APIC_LOGICAL_ID(id);
 }
-
-/*
- * Set up the logical destination ID.
- *
- * Intel recommends to set DFR, LdR and TPR before enabling
- * an APIC.  See e.g. "AP-388 82489DX User's Manual" (Intel
- * document number 292116).  So here it goes...
- */
 static void es7000_init_apic_ldr_cluster(void)
 {
 	unsigned long val;

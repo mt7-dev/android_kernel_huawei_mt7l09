@@ -146,8 +146,8 @@ static struct inode *sdcardfs_iget(struct super_block *sb,
 		init_special_inode(inode, lower_inode->i_mode,
 				   lower_inode->i_rdev);
 
-	/* all well, copy inode attributes */
-	fsstack_copy_attr_all(inode, lower_inode);
+	/* all well, copy inode attributes, don't need to hold i_mutex here */
+	sdcardfs_copy_inode_attr(inode, lower_inode);
 	fsstack_copy_inode_size(inode, lower_inode);
 
 	fix_derived_permission(inode);
@@ -171,7 +171,7 @@ int sdcardfs_interpose(struct dentry *dentry, struct super_block *sb,
 	struct inode *inode;
 	struct inode *lower_inode;
 	struct super_block *lower_sb;
-
+    struct sdcardfs_inode_info *info;
 	lower_inode = lower_path->dentry->d_inode;
 	lower_sb = sdcardfs_lower_super(sb);
 
@@ -192,9 +192,17 @@ int sdcardfs_interpose(struct dentry *dentry, struct super_block *sb,
 		err = PTR_ERR(inode);
 		goto out;
 	}
-
+   info = SDCARDFS_I(inode);
+        if (!strcmp(dentry->d_name.name, "ApkScript"))
+            printk(KERN_ERR "dj_interpose_apk lower_inode->i_mode=%o, inode->i_mode=%o, info->d_mode=%o, dentry.name: %s\n",lower_inode->i_mode, inode->i_mode, info->d_mode, dentry->d_name.name);
+        if (!strcmp(dentry->d_name.name, "ShellScript"))
+            printk(KERN_ERR "dj_interpose_shell lower_inode->i_mode=%o, inode->i_mode=%o, info->d_mode=%o, dentry.name: %s\n",lower_inode->i_mode, inode->i_mode, info->d_mode, dentry->d_name.name);
 	d_add(dentry, inode);
 	update_derived_permission(dentry);
+        if (!strcmp(dentry->d_name.name, "ApkScript"))
+            printk(KERN_ERR "dj_interpose_apk2 lower_inode->i_mode=%o, inode->i_mode=%o, info->d_mode=%o, dentry.name %s\n",lower_inode->i_mode, inode->i_mode, info->d_mode, dentry->d_name.name);
+        if (!strcmp(dentry->d_name.name, "ShellScript"))
+            printk(KERN_ERR "dj_interpose_shell2 lower_inode->i_mode=%o, inode->i_mode=%o, info->d_mode=%o, dentry.name %s\n",lower_inode->i_mode, inode->i_mode, info->d_mode, dentry->d_name.name);
 out:
 	return err;
 }
@@ -305,15 +313,7 @@ setup_lower:
 	 * the VFS will continue the process of making this negative dentry
 	 * into a positive one.
 	 */
-/*
-	if (nd) {
-		if (nd->flags & (LOOKUP_CREATE|LOOKUP_RENAME_TARGET))
-			err = 0;
-	} else
-		err = 0;
-*/
-        if (flags & (LOOKUP_CREATE|LOOKUP_RENAME_TARGET))
-            err = 0;
+	err = 0;
 
 out:
 	return ERR_PTR(err);

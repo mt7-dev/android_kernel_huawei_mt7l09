@@ -149,9 +149,9 @@ OBC_LOCAL_SRC_FILE += \
 	$(BSP_DIR)/drivers/efuse/efuse_balong.c
 endif
 
-OBC_LOCAL_SRC_TEST_FILE += \
-	$(BSP_DIR)/drivers/efuse/efuse_balong_test.c \
-	$(BSP_DIR)/drivers/efuse/efuse_rfile_test.c
+#OBC_LOCAL_SRC_TEST_FILE += \
+#	$(BSP_DIR)/drivers/efuse/efuse_balong_test.c \
+#	$(BSP_DIR)/drivers/efuse/efuse_rfile_test.c
 
 #rtc
 ifeq ($(strip $(CFG_CONFIG_BALONG_RTC)),YES)
@@ -264,15 +264,15 @@ OBC_LOCAL_SRC_FILE += \
 	$(BSP_DIR)/drivers/balong_timer/hardtimer_balong.c \
 	$(BSP_DIR)/drivers/balong_timer/softtimer_balong.c
 
-OBC_LOCAL_SRC_TEST_FILE += \
-	$(BSP_DIR)/drivers/balong_timer/hardtimer_balong_test.c \
-	$(BSP_DIR)/drivers/balong_timer/softtimer_balong_test.c
+#OBC_LOCAL_SRC_TEST_FILE += \
+#	$(BSP_DIR)/drivers/balong_timer/hardtimer_balong_test.c \
+#	$(BSP_DIR)/drivers/balong_timer/softtimer_balong_test.c
 
 ifeq ($(strip $(CFG_K3_TIMER_FEATURE)),YES)
 	OBC_LOCAL_SRC_FILE += \
 	$(BSP_DIR)/drivers/balong_timer/hardtimer_k3.c
-	OBC_LOCAL_SRC_TEST_FILE += \
-	$(BSP_DIR)/drivers/balong_timer/hardtimer_k3_test.c
+#	OBC_LOCAL_SRC_TEST_FILE += \
+#	$(BSP_DIR)/drivers/balong_timer/hardtimer_k3_test.c
 endif
 endif
 
@@ -471,8 +471,8 @@ OBC_LOCAL_SRC_FILE += \
 ifeq ($(strip $(CFG_CONFIG_BBP_INT)),YES)
 OBC_LOCAL_SRC_FILE += \
 	$(BSP_DIR)/drivers/bbp/bbp_balong.c
-OBC_LOCAL_SRC_TEST_FILE += \
-	$(BSP_DIR)/drivers/bbp/bbp_balong_test.c
+#OBC_LOCAL_SRC_TEST_FILE += \
+#	$(BSP_DIR)/drivers/bbp/bbp_balong_test.c
 endif
 
 #modem memrepair
@@ -730,7 +730,8 @@ OBC_LOCAL_SRC_FILE += \
 	$(BSP_DIR)/drivers/adp/adp_pm.c\
 	$(BSP_DIR)/drivers/adp/adp_usb.c \
 	$(BSP_DIR)/drivers/adp/adp_reset.c \
-	$(BSP_DIR)/drivers/adp/adp_cshell.c
+	$(BSP_DIR)/drivers/adp/adp_cshell.c \
+	$(BSP_DIR)/drivers/adp/adp_misc.c
 #	$(BSP_DIR)/drivers/adp/adp_mem_balong.c\
 
 
@@ -939,6 +940,9 @@ ifeq ($(strip $(CFG_CONFIG_DUAL_MODEM)),YES)
 OBC_LOCAL_INC_DIR +=  \
 	$(BSP_DIR)/drivers/dual_modem
 endif
+#misc
+OBC_LOCAL_SRC_FILE += \
+	$(BSP_DIR)/drivers/misc/sc_balong.c \
 
 # os
 OBC_LOCAL_INC_DIR += \

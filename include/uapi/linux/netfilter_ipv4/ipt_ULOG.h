@@ -18,10 +18,6 @@
 #define ULOG_PREFIX_LEN	32
 
 #define ULOG_MAX_QLEN	50
-/* Why 50? Well... there is a limit imposed by the slab cache 131000
- * bytes. So the multipart netlink-message has to be < 131000 bytes.
- * Assuming a standard ethernet-mtu of 1500, we could define this up
- * to 80... but even 50 seems to be big enough. */
 
 /* private data structure for each rule with a ULOG target */
 struct ipt_ulog_info {

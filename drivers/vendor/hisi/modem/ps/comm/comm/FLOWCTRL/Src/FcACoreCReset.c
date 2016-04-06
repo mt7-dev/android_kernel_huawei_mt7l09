@@ -22,6 +22,9 @@
 /*****************************************************************************
   1 头文件包含
 *****************************************************************************/
+#include "product_config.h"
+#if(FEATURE_ON == FEATURE_ACPU_FC_POINT_REG)
+
 #include "Fc.h"
 #include "FcInterface.h"
 #include "FcIntraMsg.h"
@@ -43,9 +46,7 @@ extern "C" {
 /*****************************************************************************
   2 全局变量定义
 *****************************************************************************/
-VOS_UINT32      g_ulFcACoreCResetDoneSem;    /* FcACore完成回调事务信号量 */
-
-
+VOS_SEM         g_ulFcACoreCResetDoneSem;    /* FcACore完成回调事务信号量 */
 
 /*****************************************************************************
   3 函数实现
@@ -245,3 +246,4 @@ VOS_VOID FC_ACORE_CResetRcvStartRsp(VOID)
     #endif
 #endif
 
+#endif

@@ -28,14 +28,7 @@
 #define RBD_DATA_PREFIX        "rbd_data."
 #define RBD_ID_PREFIX          "rbd_id."
 
-/*
- * For format version 1, rbd image 'foo' consists of objects
- *   foo.rbd		- image metadata
- *   rb.<idhi>.<idlo>.00000000
- *   rb.<idhi>.<idlo>.00000001
- *   ...		- data
- * There is no notion of a persistent image id in rbd format 1.
- */
+
 
 #define RBD_SUFFIX		".rbd"
 

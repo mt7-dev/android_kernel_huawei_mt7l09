@@ -19,6 +19,6 @@
 #define     wrpgpr_op        0x0e	/*  01110  */
 
 /*  COP0 opcodes (only if COP0 and CO=1):  */
-#define     wait_op               0x20	/*  100000  */
+#define     wait_op               0x20
 
 #endif /* __KVM_MIPS_OPCODE_H__ */

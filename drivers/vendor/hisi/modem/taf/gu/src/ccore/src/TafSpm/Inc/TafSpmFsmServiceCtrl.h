@@ -236,11 +236,6 @@ VOS_UINT32  TAF_SPM_SendPbSsFdnCheckReq(
     struct MsgCB                       *pstMsg
 );
 
-VOS_UINT32  TAF_SPM_SendUsimCallEnvelopeReq(
-    VOS_UINT16                          usClientId,
-    struct MsgCB                       *pstMsg
-);
-
 VOS_UINT32  TAF_SPM_SendUsimUssdEnvelopeReq(
     VOS_UINT16                          usClientId,
     struct MsgCB                       *pstMsg
@@ -254,7 +249,8 @@ VOS_UINT32  TAF_SPM_SendUsimSsEnvelopeReq(
 VOS_VOID TAF_SPM_ProcCallCtrlRsltAllowModify_CALL(
     SI_STK_ENVELOPE_RSP_STRU                               *pstCallCtrlRsp,
     TAF_SPM_SERVICE_CTRL_RESULT_ENUM_UINT32                *penRslt,
-    VOS_UINT32                                             *pulCause
+    VOS_UINT32                                             *pulCause,
+    VOS_UINT32                                              ulIndex
 );
 
 VOS_UINT32 TAF_SPM_IsCallCtrlModifyBeyondCapability_CALL(
@@ -267,8 +263,25 @@ VOS_UINT32 TAF_SPM_IsCallCtrlModifyBeyondCapability_CALL(
 VOS_VOID TAF_SPM_ModifyCallEntryMsgByCallCtrlMsg(
     SI_STK_CALLCTRL_RSP_STRU           *pstCallCtrlRsp,
     MN_CALL_TYPE_ENUM_U8                enCallType,
-    MN_CALL_EMERGENCY_CAT_STRU         *pstEmergencyCall
+    MN_CALL_EMERGENCY_CAT_STRU         *pstEmergencyCall,
+    VOS_UINT32                          ulIndex
 );
+
+VOS_UINT32 TAF_SPM_ProcFdnCheckResult(
+    VOS_UINT32                          ulRslt,
+    VOS_UINT16                          usClientId,
+    TAF_SPM_ENTRY_MSG_STRU             *pstEntryMsg
+);
+
+
+VOS_UINT32 TAF_SPM_ProcEconfCallCtrlCheckResult(
+    VOS_UINT32                          enRslt,
+    VOS_UINT16                          usClientId,
+    TAF_SPM_ENTRY_MSG_STRU             *pstEntryMsg
+);
+
+
+
 #if (VOS_OS_VER == VOS_WIN32)
 #pragma pack()
 #else

@@ -405,17 +405,16 @@ VOS_UINT32  TTF_NodeMemLeakCheck(VOS_VOID)
 
     return PS_FALSE;
 }
-
-VOS_UINT32 TTF_GetCipherMemSection(VOS_UINT32 *pulBaseAddr)
+VOS_UINT32 TTF_GetCipherMemSection(VOS_UINT_PTR *pulBaseAddr)
 {
     BSP_DDR_SECT_QUERY   stQuery;
     BSP_DDR_SECT_INFO    stInfo;
-    VOS_UINT32           ulBaseAddr;
+    VOS_UINT_PTR         ulBaseAddr;
 
     stQuery.enSectType = BSP_DDR_SECT_TYPE_TTF;
     DRV_GET_FIX_DDR_ADDR(&stQuery, &stInfo);
 
-    ulBaseAddr = stInfo.ulSectPhysAddr;
+    ulBaseAddr = (VOS_UINT_PTR)stInfo.pSectPhysAddr;
 
     *pulBaseAddr = TTF_UL_CIPHER_PARA_NODE_ADDR(ulBaseAddr);
 
@@ -423,17 +422,19 @@ VOS_UINT32 TTF_GetCipherMemSection(VOS_UINT32 *pulBaseAddr)
 }
 
 
-VOS_UINT32 TTF_GetTTFMemSection(VOS_UINT32 *pulBaseAddr, VOS_UINT32 *pulLength)
+VOS_UINT32 TTF_GetTTFMemSection(VOS_UINT_PTR *pulBaseAddr, VOS_UINT32 *pulLength)
 {
-    BSP_DDR_SECT_QUERY             stQuery;
-    BSP_DDR_SECT_INFO              stInfo;
-    VOS_UINT32                     ulBaseAddr;
+    BSP_DDR_SECT_QUERY              stQuery;
+    BSP_DDR_SECT_INFO               stInfo;
+    VOS_UINT_PTR                    ulBaseAddr;
 
     stQuery.enSectType = BSP_DDR_SECT_TYPE_TTF;
     DRV_GET_FIX_DDR_ADDR(&stQuery, &stInfo);
 
-    ulBaseAddr   = stInfo.ulSectPhysAddr;
+    ulBaseAddr   = (VOS_UINT_PTR)stInfo.pSectPhysAddr;
+
     *pulBaseAddr = TTF_MEM_POOL_BASE_ADDR(ulBaseAddr);
+
     *pulLength   = (stInfo.ulSectSize - TTF_MEMCTRL_GetOffsetBaseLen(TTF_MEMCTRL_CCORE_POOL_ADDR_TYPE));
 
     return PS_SUCC;
@@ -3717,9 +3718,9 @@ VOS_VOID TTF_MemSetDefaultNvCfg(TTF_MEM_SOLUTION_CFG_NV_STRU *pstTtfMemSolution)
     pstTtfMemSolution->astTtfMemPoolCfgInfo[TTF_MEM_POOL_ID_DL_PDU].ausBlkSize[TTF_MEM_POOL_BLK_INDEX_1] = 700;
     pstTtfMemSolution->astTtfMemPoolCfgInfo[TTF_MEM_POOL_ID_DL_PDU].ausBlkCnt[TTF_MEM_POOL_BLK_INDEX_1]  = 824;
     pstTtfMemSolution->astTtfMemPoolCfgInfo[TTF_MEM_POOL_ID_DL_PDU].ausBlkSize[TTF_MEM_POOL_BLK_INDEX_2] = 1560;
-    pstTtfMemSolution->astTtfMemPoolCfgInfo[TTF_MEM_POOL_ID_DL_PDU].ausBlkCnt[TTF_MEM_POOL_BLK_INDEX_2]  = 1860;
-    pstTtfMemSolution->astTtfMemPoolCfgInfo[TTF_MEM_POOL_ID_DL_PDU].ausBlkSize[TTF_MEM_POOL_BLK_INDEX_3] = 1628;
-    pstTtfMemSolution->astTtfMemPoolCfgInfo[TTF_MEM_POOL_ID_DL_PDU].ausBlkCnt[TTF_MEM_POOL_BLK_INDEX_3]  = 20;
+    pstTtfMemSolution->astTtfMemPoolCfgInfo[TTF_MEM_POOL_ID_DL_PDU].ausBlkCnt[TTF_MEM_POOL_BLK_INDEX_2]  = 1800;
+    pstTtfMemSolution->astTtfMemPoolCfgInfo[TTF_MEM_POOL_ID_DL_PDU].ausBlkSize[TTF_MEM_POOL_BLK_INDEX_3] = 8200;
+    pstTtfMemSolution->astTtfMemPoolCfgInfo[TTF_MEM_POOL_ID_DL_PDU].ausBlkCnt[TTF_MEM_POOL_BLK_INDEX_3]  = 15;
 
     /*UL DATA*/
     pstTtfMemSolution->astTtfMemPoolCfgInfo[TTF_MEM_POOL_ID_UL_DATA].ucClusterCnt  = 4;
@@ -3728,8 +3729,8 @@ VOS_VOID TTF_MemSetDefaultNvCfg(TTF_MEM_SOLUTION_CFG_NV_STRU *pstTtfMemSolution)
     pstTtfMemSolution->astTtfMemPoolCfgInfo[TTF_MEM_POOL_ID_UL_DATA].ausBlkSize[TTF_MEM_POOL_BLK_INDEX_1] = 628;
     pstTtfMemSolution->astTtfMemPoolCfgInfo[TTF_MEM_POOL_ID_UL_DATA].ausBlkCnt[TTF_MEM_POOL_BLK_INDEX_1]  = 1748;
     pstTtfMemSolution->astTtfMemPoolCfgInfo[TTF_MEM_POOL_ID_UL_DATA].ausBlkSize[TTF_MEM_POOL_BLK_INDEX_2] = 1652;
-    pstTtfMemSolution->astTtfMemPoolCfgInfo[TTF_MEM_POOL_ID_UL_DATA].ausBlkCnt[TTF_MEM_POOL_BLK_INDEX_2]  = 300;
-    pstTtfMemSolution->astTtfMemPoolCfgInfo[TTF_MEM_POOL_ID_UL_DATA].ausBlkSize[TTF_MEM_POOL_BLK_INDEX_3] = 3700;
+    pstTtfMemSolution->astTtfMemPoolCfgInfo[TTF_MEM_POOL_ID_UL_DATA].ausBlkCnt[TTF_MEM_POOL_BLK_INDEX_2]  = 270;
+    pstTtfMemSolution->astTtfMemPoolCfgInfo[TTF_MEM_POOL_ID_UL_DATA].ausBlkSize[TTF_MEM_POOL_BLK_INDEX_3] = 8200;
     pstTtfMemSolution->astTtfMemPoolCfgInfo[TTF_MEM_POOL_ID_UL_DATA].ausBlkCnt[TTF_MEM_POOL_BLK_INDEX_3]  = 10;
 
     /*UL EXT*/
@@ -4030,7 +4031,7 @@ VOS_VOID TTF_MemFreeShowMntnInfo( VOS_VOID )
 VOS_UINT32 TTF_MemBlkInit(VOS_VOID)
 {
     VOS_UINT32                          ulRet;
-    VOS_UINT32                          ulBaseAddr;
+    VOS_UINT_PTR                        ulBaseAddr;
     VOS_UINT8                          *pucBaseAddr;
     VOS_UINT32                          ulTtfMemPoolLength;
     VOS_UINT8                           ucLoop;
@@ -4108,10 +4109,12 @@ VOS_VOID TTF_MNTN_ErrlogTtfMemAllocFail(VOS_UINT32 ulPid, VOS_UINT8 ucPoolId, VO
     VOS_UINT16                              usMemRptCnt;
     MODEM_ID_ENUM_UINT16                    enModemId;
 
-
-
     ucAlmLev    = TTF_ERR_LOG_GET_ALM_LEV(TTF_ERR_LOG_ALM_ID_TTF_MEM_FAIL);
     enModemId   = VOS_GetModemIDFromPid(ulPid);
+    if (enModemId >= MODEM_ID_BUTT)
+    {
+        return;
+    }
 
     if (!TTF_ERR_LOG_NEED_RPT_LEV(enModemId, ucAlmLev))
     {

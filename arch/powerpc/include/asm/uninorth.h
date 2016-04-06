@@ -19,7 +19,7 @@
 /* Not U3 */
 #define UNI_N_ADDR_SELECT		0x48
 #define UNI_N_ADDR_COARSE_MASK		0xffff0000	/* 256Mb regions at *0000000 */
-#define UNI_N_ADDR_FINE_MASK		0x0000ffff	/*  16Mb regions at f*000000 */
+#define UNI_N_ADDR_FINE_MASK		0x0000ffff
 
 /* AGP registers */
 /* Not U3 */

@@ -416,7 +416,7 @@ BSP_S32 BSP_HwGetHwVersion (char* pFullHwVersion, BSP_U32 ulLength)
  输出参数  : Platform_info:芯片的版本号
  返 回 值  : void
 *****************************************************************************/
-static void bsp_version_get_platform_info(unsigned long *platform_info)
+static void bsp_version_get_platform_info(unsigned int *platform_info)
 {
 	/*board FPGA*/
 	u32 product_type = 0xff;
@@ -443,10 +443,10 @@ static void bsp_version_get_platform_info(unsigned long *platform_info)
  输出参数  : u32PlatformInfo:芯片的版本号
  返 回 值  : void
 *****************************************************************************/
-void DRV_GET_PLATFORM_INFO(unsigned long *u32PlatformInfo)
+void DRV_GET_PLATFORM_INFO(unsigned int *u32PlatformInfo)
 {
 	static bool b_geted=false;
-	static unsigned long platform_info = 0xffffffff;
+	static unsigned int platform_info = 0xffffffff;
 
 	if(!b_geted){
 		b_geted=true;
@@ -549,7 +549,7 @@ BSP_U32 BSP_MNTN_ProductTypeGet(void)
  输出参数  : 无。
  返 回 值  : 无。
 *****************************************************************************/
-int BSP_MNTN_GetHwGpioInfo(unsigned char *pGpioInfo, unsigned long usLength )
+int BSP_MNTN_GetHwGpioInfo(unsigned char *pGpioInfo, unsigned int usLength )
 {
 	///*lint -save -e438 -e830*/
 	//pGpioInfo = pGpioInfo;

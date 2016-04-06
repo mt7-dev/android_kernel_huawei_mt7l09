@@ -17,6 +17,7 @@
   #endif
 #endif
 
+/*lint -e958*/
 
 /*****************************************************************************
   2 常量定义
@@ -33,11 +34,11 @@
 
 /* 通用补充业务操作码映射表: 第一列补充业务操作码对应的MMI字符串，第二列补充业务操作码 */
 MN_MMI_SS_OP_Tbl_STRU                   g_astTafMmiOporationTypeTbl[] = {
-                                                    {"**", TAF_MMI_REGISTER_SS},
-                                                    {"*",  TAF_MMI_ACTIVATE_SS},
-                                                    {"#",  TAF_MMI_DEACTIVATE_SS},
-                                                    {"*#", TAF_MMI_INTERROGATE_SS},
-                                                    {"##", TAF_MMI_ERASE_SS},
+                                                    {"**", TAF_MMI_REGISTER_SS,    {0, 0, 0, 0, 0, 0, 0}},
+                                                    {"*",  TAF_MMI_ACTIVATE_SS,    {0, 0, 0, 0, 0, 0, 0}},
+                                                    {"#",  TAF_MMI_DEACTIVATE_SS,  {0, 0, 0, 0, 0, 0, 0}},
+                                                    {"*#", TAF_MMI_INTERROGATE_SS, {0, 0, 0, 0, 0, 0, 0}},
+                                                    {"##", TAF_MMI_ERASE_SS,       {0, 0, 0, 0, 0, 0, 0}},
                                                   };
 
 /*****************************************************************************
@@ -52,79 +53,81 @@ MN_MMI_SS_OP_Tbl_STRU                   g_astTafMmiOporationTypeTbl[] = {
 MN_MMI_SC_TABLE_STRU     f_stMmiScInfo[] =
 
 {
-    {"",         TAF_ALL_SS_CODE},
-    {"30",       TAF_CLIP_SS_CODE},
-    {"31",       TAF_CLIR_SS_CODE},
-    {"76",       TAF_COLP_SS_CODE},
-    {"77",       TAF_COLR_SS_CODE},
-    {"21",       TAF_CFU_SS_CODE},
-    {"67",       TAF_CFB_SS_CODE},
-    {"61",       TAF_CFNRY_SS_CODE},
-    {"62",       TAF_CFNRC_SS_CODE},
-    {"002",      TAF_ALL_FORWARDING_SS_CODE},
-    {"004",      TAF_ALL_COND_FORWARDING_SS_CODE},
-    {"43",       TAF_CW_SS_CODE},
-    {"37",       TAF_CCBS_A_SS_CODE},
-    {"33",       TAF_BAOC_SS_CODE},
-    {"331",      TAF_BOIC_SS_CODE},
-    {"332",      TAF_BOICEXHC_SS_CODE},
-    {"35",       TAF_BAIC_SS_CODE},
-    {"351",      TAF_BICROAM_SS_CODE},
-    {"330",      TAF_ALL_BARRING_SS_CODE},
-    {"333",      TAF_BARRING_OF_OUTGOING_CALLS_SS_CODE},
-    {"353",      TAF_BARRING_OF_INCOMING_CALLS_SS_CODE}
+    {"",         TAF_ALL_SS_CODE,                       {0, 0, 0, 0, 0, 0, 0}},
+    {"30",       TAF_CLIP_SS_CODE,                      {0, 0, 0, 0, 0, 0, 0}},
+    {"31",       TAF_CLIR_SS_CODE,                      {0, 0, 0, 0, 0, 0, 0}},
+    {"76",       TAF_COLP_SS_CODE,                      {0, 0, 0, 0, 0, 0, 0}},
+    {"77",       TAF_COLR_SS_CODE,                      {0, 0, 0, 0, 0, 0, 0}},
+    {"21",       TAF_CFU_SS_CODE,                       {0, 0, 0, 0, 0, 0, 0}},
+    {"67",       TAF_CFB_SS_CODE,                       {0, 0, 0, 0, 0, 0, 0}},
+    {"61",       TAF_CFNRY_SS_CODE,                     {0, 0, 0, 0, 0, 0, 0}},
+    {"62",       TAF_CFNRC_SS_CODE,                     {0, 0, 0, 0, 0, 0, 0}},
+    {"002",      TAF_ALL_FORWARDING_SS_CODE,            {0, 0, 0, 0, 0, 0, 0}},
+    {"004",      TAF_ALL_COND_FORWARDING_SS_CODE,       {0, 0, 0, 0, 0, 0, 0}},
+    {"43",       TAF_CW_SS_CODE,                        {0, 0, 0, 0, 0, 0, 0}},
+    {"37",       TAF_CCBS_A_SS_CODE,                    {0, 0, 0, 0, 0, 0, 0}},
+    {"33",       TAF_BAOC_SS_CODE,                      {0, 0, 0, 0, 0, 0, 0}},
+    {"331",      TAF_BOIC_SS_CODE,                      {0, 0, 0, 0, 0, 0, 0}},
+    {"332",      TAF_BOICEXHC_SS_CODE,                  {0, 0, 0, 0, 0, 0, 0}},
+    {"35",       TAF_BAIC_SS_CODE,                      {0, 0, 0, 0, 0, 0, 0}},
+    {"351",      TAF_BICROAM_SS_CODE,                   {0, 0, 0, 0, 0, 0, 0}},
+    {"330",      TAF_ALL_BARRING_SS_CODE,               {0, 0, 0, 0, 0, 0, 0}},
+    {"333",      TAF_BARRING_OF_OUTGOING_CALLS_SS_CODE, {0, 0, 0, 0, 0, 0, 0}},
+    {"353",      TAF_BARRING_OF_INCOMING_CALLS_SS_CODE, {0, 0, 0, 0, 0, 0, 0}}
 };
 
 
 
 MN_MMI_BS_TABLE_STRU  f_stMmiBSInfo[] =
 {
- {"10",     TAF_ALL_TELESERVICES_TSCODE,                    TAF_SS_TELE_SERVICE},
- {"11",     TAF_ALL_SPEECH_TRANSMISSION_SERVICES_TSCODE,    TAF_SS_TELE_SERVICE},
- {"12",     TAF_ALL_DATA_TELESERVICES_TSCODE,               TAF_SS_TELE_SERVICE},
- {"13",     TAF_ALL_FACSIMILE_TRANSMISSION_SERVICES_TSCODE, TAF_SS_TELE_SERVICE},
- {"16",     TAF_ALL_SMS_SERVICES_TSCODE,                    TAF_SS_TELE_SERVICE},
- {"19",     TAF_ALL_TELESERVICES_EXEPTSMS_TSCODE,           TAF_SS_TELE_SERVICE},
- {"20",     TAF_ALL_BEARERSERVICES_BSCODE,                  TAF_SS_BEARER_SERVICE},
- {"21",     TAF_ALL_ASYNCHRONOUS_SERVICES_BSCODE,           TAF_SS_BEARER_SERVICE},
- {"22",     TAF_ALL_SYNCHRONOUS_SERVICES_BSCODE,            TAF_SS_BEARER_SERVICE},
- {"24",     TAF_ALL_DATA_CIRCUIT_SYNCHRONOUS_BSCODE,        TAF_SS_BEARER_SERVICE},
- {"25",     TAF_ALL_DATA_CIRCUIT_ASYNCHRONOUS_BSCODE,       TAF_SS_BEARER_SERVICE},
- {"50",     TAF_ALL_PLMN_SPECIFICTS_TSCODE,                 TAF_SS_TELE_SERVICE},
- {"51",     TAF_PLMN_SPECIFICTS_1_TSCODE,                   TAF_SS_TELE_SERVICE},
- {"52",     TAF_PLMN_SPECIFICTS_2_TSCODE,                   TAF_SS_TELE_SERVICE},
- {"53",     TAF_PLMN_SPECIFICTS_3_TSCODE,                   TAF_SS_TELE_SERVICE},
- {"54",     TAF_PLMN_SPECIFICTS_4_TSCODE,                   TAF_SS_TELE_SERVICE},
- {"55",     TAF_PLMN_SPECIFICTS_5_TSCODE,                   TAF_SS_TELE_SERVICE},
- {"56",     TAF_PLMN_SPECIFICTS_6_TSCODE,                   TAF_SS_TELE_SERVICE},
- {"57",     TAF_PLMN_SPECIFICTS_7_TSCODE,                   TAF_SS_TELE_SERVICE},
- {"58",     TAF_PLMN_SPECIFICTS_8_TSCODE,                   TAF_SS_TELE_SERVICE},
- {"59",     TAF_PLMN_SPECIFICTS_9_TSCODE,                   TAF_SS_TELE_SERVICE},
- {"60",     TAF_PLMN_SPECIFICTS_A_TSCODE,                   TAF_SS_TELE_SERVICE},
- {"61",     TAF_PLMN_SPECIFICTS_B_TSCODE,                   TAF_SS_TELE_SERVICE},
- {"62",     TAF_PLMN_SPECIFICTS_C_TSCODE,                   TAF_SS_TELE_SERVICE},
- {"63",     TAF_PLMN_SPECIFICTS_D_TSCODE,                   TAF_SS_TELE_SERVICE},
- {"64",     TAF_PLMN_SPECIFICTS_E_TSCODE,                   TAF_SS_TELE_SERVICE},
- {"65",     TAF_PLMN_SPECIFICTS_F_TSCODE,                   TAF_SS_TELE_SERVICE},
- {"70",     TAF_ALL_PLMN_SPECIFICBS_BSCODE,                 TAF_SS_BEARER_SERVICE},
- {"71",     TAF_PLMN_SPECIFICBS_1_BSCODE,                   TAF_SS_BEARER_SERVICE},
- {"72",     TAF_PLMN_SPECIFICBS_2_BSCODE,                   TAF_SS_BEARER_SERVICE},
- {"73",     TAF_PLMN_SPECIFICBS_3_BSCODE,                   TAF_SS_BEARER_SERVICE},
- {"74",     TAF_PLMN_SPECIFICBS_4_BSCODE,                   TAF_SS_BEARER_SERVICE},
- {"75",     TAF_PLMN_SPECIFICBS_5_BSCODE,                   TAF_SS_BEARER_SERVICE},
- {"76",     TAF_PLMN_SPECIFICBS_6_BSCODE,                   TAF_SS_BEARER_SERVICE},
- {"77",     TAF_PLMN_SPECIFICBS_7_BSCODE,                   TAF_SS_BEARER_SERVICE},
- {"78",     TAF_PLMN_SPECIFICBS_8_BSCODE,                   TAF_SS_BEARER_SERVICE},
- {"79",     TAF_PLMN_SPECIFICBS_9_BSCODE,                   TAF_SS_BEARER_SERVICE},
- {"80",     TAF_PLMN_SPECIFICBS_A_BSCODE,                   TAF_SS_BEARER_SERVICE},
- {"81",     TAF_PLMN_SPECIFICBS_B_BSCODE,                   TAF_SS_BEARER_SERVICE},
- {"82",     TAF_PLMN_SPECIFICBS_C_BSCODE,                   TAF_SS_BEARER_SERVICE},
- {"83",     TAF_PLMN_SPECIFICBS_D_BSCODE,                   TAF_SS_BEARER_SERVICE},
- {"84",     TAF_PLMN_SPECIFICBS_E_BSCODE,                   TAF_SS_BEARER_SERVICE},
- {"85",     TAF_PLMN_SPECIFICBS_F_BSCODE,                   TAF_SS_BEARER_SERVICE}
+ {"10",     TAF_ALL_TELESERVICES_TSCODE,                    TAF_SS_TELE_SERVICE,   {0, 0, 0, 0, 0, 0}},
+ {"11",     TAF_ALL_SPEECH_TRANSMISSION_SERVICES_TSCODE,    TAF_SS_TELE_SERVICE,   {0, 0, 0, 0, 0, 0}},
+ {"12",     TAF_ALL_DATA_TELESERVICES_TSCODE,               TAF_SS_TELE_SERVICE,   {0, 0, 0, 0, 0, 0}},
+ {"13",     TAF_ALL_FACSIMILE_TRANSMISSION_SERVICES_TSCODE, TAF_SS_TELE_SERVICE,   {0, 0, 0, 0, 0, 0}},
+ {"16",     TAF_ALL_SMS_SERVICES_TSCODE,                    TAF_SS_TELE_SERVICE,   {0, 0, 0, 0, 0, 0}},
+ {"19",     TAF_ALL_TELESERVICES_EXEPTSMS_TSCODE,           TAF_SS_TELE_SERVICE,   {0, 0, 0, 0, 0, 0}},
+ {"20",     TAF_ALL_BEARERSERVICES_BSCODE,                  TAF_SS_BEARER_SERVICE, {0, 0, 0, 0, 0, 0}},
+ {"21",     TAF_ALL_ASYNCHRONOUS_SERVICES_BSCODE,           TAF_SS_BEARER_SERVICE, {0, 0, 0, 0, 0, 0}},
+ {"22",     TAF_ALL_SYNCHRONOUS_SERVICES_BSCODE,            TAF_SS_BEARER_SERVICE, {0, 0, 0, 0, 0, 0}},
+ {"24",     TAF_ALL_DATA_CIRCUIT_SYNCHRONOUS_BSCODE,        TAF_SS_BEARER_SERVICE, {0, 0, 0, 0, 0, 0}},
+ {"25",     TAF_ALL_DATA_CIRCUIT_ASYNCHRONOUS_BSCODE,       TAF_SS_BEARER_SERVICE, {0, 0, 0, 0, 0, 0}},
+ {"50",     TAF_ALL_PLMN_SPECIFICTS_TSCODE,                 TAF_SS_TELE_SERVICE,   {0, 0, 0, 0, 0, 0}},
+ {"51",     TAF_PLMN_SPECIFICTS_1_TSCODE,                   TAF_SS_TELE_SERVICE,   {0, 0, 0, 0, 0, 0}},
+ {"52",     TAF_PLMN_SPECIFICTS_2_TSCODE,                   TAF_SS_TELE_SERVICE,   {0, 0, 0, 0, 0, 0}},
+ {"53",     TAF_PLMN_SPECIFICTS_3_TSCODE,                   TAF_SS_TELE_SERVICE,   {0, 0, 0, 0, 0, 0}},
+ {"54",     TAF_PLMN_SPECIFICTS_4_TSCODE,                   TAF_SS_TELE_SERVICE,   {0, 0, 0, 0, 0, 0}},
+ {"55",     TAF_PLMN_SPECIFICTS_5_TSCODE,                   TAF_SS_TELE_SERVICE,   {0, 0, 0, 0, 0, 0}},
+ {"56",     TAF_PLMN_SPECIFICTS_6_TSCODE,                   TAF_SS_TELE_SERVICE,   {0, 0, 0, 0, 0, 0}},
+ {"57",     TAF_PLMN_SPECIFICTS_7_TSCODE,                   TAF_SS_TELE_SERVICE,   {0, 0, 0, 0, 0, 0}},
+ {"58",     TAF_PLMN_SPECIFICTS_8_TSCODE,                   TAF_SS_TELE_SERVICE,   {0, 0, 0, 0, 0, 0}},
+ {"59",     TAF_PLMN_SPECIFICTS_9_TSCODE,                   TAF_SS_TELE_SERVICE,   {0, 0, 0, 0, 0, 0}},
+ {"60",     TAF_PLMN_SPECIFICTS_A_TSCODE,                   TAF_SS_TELE_SERVICE,   {0, 0, 0, 0, 0, 0}},
+ {"61",     TAF_PLMN_SPECIFICTS_B_TSCODE,                   TAF_SS_TELE_SERVICE,   {0, 0, 0, 0, 0, 0}},
+ {"62",     TAF_PLMN_SPECIFICTS_C_TSCODE,                   TAF_SS_TELE_SERVICE,   {0, 0, 0, 0, 0, 0}},
+ {"63",     TAF_PLMN_SPECIFICTS_D_TSCODE,                   TAF_SS_TELE_SERVICE,   {0, 0, 0, 0, 0, 0}},
+ {"64",     TAF_PLMN_SPECIFICTS_E_TSCODE,                   TAF_SS_TELE_SERVICE,   {0, 0, 0, 0, 0, 0}},
+ {"65",     TAF_PLMN_SPECIFICTS_F_TSCODE,                   TAF_SS_TELE_SERVICE,   {0, 0, 0, 0, 0, 0}},
+ {"70",     TAF_ALL_PLMN_SPECIFICBS_BSCODE,                 TAF_SS_BEARER_SERVICE, {0, 0, 0, 0, 0, 0}},
+ {"71",     TAF_PLMN_SPECIFICBS_1_BSCODE,                   TAF_SS_BEARER_SERVICE, {0, 0, 0, 0, 0, 0}},
+ {"72",     TAF_PLMN_SPECIFICBS_2_BSCODE,                   TAF_SS_BEARER_SERVICE, {0, 0, 0, 0, 0, 0}},
+ {"73",     TAF_PLMN_SPECIFICBS_3_BSCODE,                   TAF_SS_BEARER_SERVICE, {0, 0, 0, 0, 0, 0}},
+ {"74",     TAF_PLMN_SPECIFICBS_4_BSCODE,                   TAF_SS_BEARER_SERVICE, {0, 0, 0, 0, 0, 0}},
+ {"75",     TAF_PLMN_SPECIFICBS_5_BSCODE,                   TAF_SS_BEARER_SERVICE, {0, 0, 0, 0, 0, 0}},
+ {"76",     TAF_PLMN_SPECIFICBS_6_BSCODE,                   TAF_SS_BEARER_SERVICE, {0, 0, 0, 0, 0, 0}},
+ {"77",     TAF_PLMN_SPECIFICBS_7_BSCODE,                   TAF_SS_BEARER_SERVICE, {0, 0, 0, 0, 0, 0}},
+ {"78",     TAF_PLMN_SPECIFICBS_8_BSCODE,                   TAF_SS_BEARER_SERVICE, {0, 0, 0, 0, 0, 0}},
+ {"79",     TAF_PLMN_SPECIFICBS_9_BSCODE,                   TAF_SS_BEARER_SERVICE, {0, 0, 0, 0, 0, 0}},
+ {"80",     TAF_PLMN_SPECIFICBS_A_BSCODE,                   TAF_SS_BEARER_SERVICE, {0, 0, 0, 0, 0, 0}},
+ {"81",     TAF_PLMN_SPECIFICBS_B_BSCODE,                   TAF_SS_BEARER_SERVICE, {0, 0, 0, 0, 0, 0}},
+ {"82",     TAF_PLMN_SPECIFICBS_C_BSCODE,                   TAF_SS_BEARER_SERVICE, {0, 0, 0, 0, 0, 0}},
+ {"83",     TAF_PLMN_SPECIFICBS_D_BSCODE,                   TAF_SS_BEARER_SERVICE, {0, 0, 0, 0, 0, 0}},
+ {"84",     TAF_PLMN_SPECIFICBS_E_BSCODE,                   TAF_SS_BEARER_SERVICE, {0, 0, 0, 0, 0, 0}},
+ {"85",     TAF_PLMN_SPECIFICBS_F_BSCODE,                   TAF_SS_BEARER_SERVICE, {0, 0, 0, 0, 0, 0}}
 };
 
 MN_CALL_CLIR_CFG_ENUM_U8  f_enClirOperate = MN_CALL_CLIR_AS_SUBS;
+
+/*lint -save -e958 */
 
 /*****************************************************************************
   6 函数实现
@@ -231,7 +234,7 @@ LOCAL VOS_UINT32 MMI_Max(const VOS_UINT32 ulNumbera, const VOS_UINT32 ulNumberb)
 }
 
 
-LOCAL VOS_BOOL MMI_DecodeScAndSi(
+VOS_BOOL MMI_DecodeScAndSi(
     VOS_CHAR                            *pInMmiStr,
     MN_MMI_OPERATION_PARAM_STRU         *pMmiOpParam,
     MN_MMI_SC_SI_PARA_STRU              *pstScSiPara,
@@ -318,11 +321,11 @@ LOCAL  VOS_BOOL MMI_JudgePinOperation(
     VOS_UINT16                          i = 0;
     MN_MMI_SC_SI_PARA_STRU              stScSiPara;
     MN_MMI_STR_OPERATION_Tbl_STRU       stMmiPinStrOpTbl[] = {
-                                                              {"**042*", TAF_MMI_CHANGE_PIN2},
-                                                              {"**04*",  TAF_MMI_CHANGE_PIN},
-                                                              {"**052*", TAF_MMI_UNBLOCK_PIN2},
-                                                              {"**05*",  TAF_MMI_UNBLOCK_PIN},
-                                                              {VOS_NULL_PTR, TAF_MMI_NULL_OPERATION}
+                                                              {"**042*", TAF_MMI_CHANGE_PIN2,  {0, 0, 0, 0, 0, 0, 0}},
+                                                              {"**04*",  TAF_MMI_CHANGE_PIN,   {0, 0, 0, 0, 0, 0, 0}},
+                                                              {"**052*", TAF_MMI_UNBLOCK_PIN2, {0, 0, 0, 0, 0, 0, 0}},
+                                                              {"**05*",  TAF_MMI_UNBLOCK_PIN,  {0, 0, 0, 0, 0, 0, 0}},
+                                                              {VOS_NULL_PTR, TAF_MMI_NULL_OPERATION, {0, 0, 0, 0, 0, 0, 0}}
                                                              };
 
     *pulErrCode = MN_ERR_NO_ERROR;
@@ -407,9 +410,9 @@ LOCAL  VOS_BOOL MMI_JudgePwdOperation(
     VOS_UINT16                          i = 0;
     MN_MMI_SC_SI_PARA_STRU              stScSiPara;
     MN_MMI_STR_OPERATION_Tbl_STRU       stMmiPwdStrOpTbl[] = {
-                                                              {"**03*", TAF_MMI_REGISTER_PASSWD},
-                                                              {"*03*",  TAF_MMI_REGISTER_PASSWD},
-                                                              {VOS_NULL_PTR, TAF_MMI_NULL_OPERATION}
+                                                              {"**03*", TAF_MMI_REGISTER_PASSWD, {0, 0, 0, 0, 0, 0, 0}},
+                                                              {"*03*",  TAF_MMI_REGISTER_PASSWD, {0, 0, 0, 0, 0, 0, 0}},
+                                                              {VOS_NULL_PTR, TAF_MMI_NULL_OPERATION, {0, 0, 0, 0, 0, 0, 0}}
                                                              };
 
     *pulErrCode = MN_ERR_NO_ERROR;
@@ -502,9 +505,9 @@ LOCAL  VOS_BOOL MMI_JudgeTmpModeClirOp(
 {
     VOS_UINT16                          i = 0;
     MN_MMI_STR_OPERATION_Tbl_STRU       stMmiLiStrOpTbl[]={
-                                                            {"*31#", TAF_MMI_SUPPRESS_CLIR},
-                                                            {"#31#", TAF_MMI_INVOKE_CLIR},
-                                                            {VOS_NULL_PTR, TAF_MMI_NULL_OPERATION}
+                                                            {"*31#", TAF_MMI_SUPPRESS_CLIR, {0, 0, 0, 0, 0, 0, 0}},
+                                                            {"#31#", TAF_MMI_INVOKE_CLIR, {0, 0, 0, 0, 0, 0, 0}},
+                                                            {VOS_NULL_PTR, TAF_MMI_NULL_OPERATION, {0, 0, 0, 0, 0, 0, 0}}
                                                           };
     while (VOS_NULL_PTR != stMmiLiStrOpTbl[i].pString)
     {
@@ -543,7 +546,7 @@ LOCAL  VOS_BOOL MMI_JudgeImeiOperation(
 }
 
 
-LOCAL  VOS_BOOL MMI_JudgeUssdOperation(
+ VOS_BOOL MMI_JudgeUssdOperation(
     VOS_CHAR                            *pcMmiStr
 )
 {
@@ -566,7 +569,7 @@ LOCAL  VOS_BOOL MMI_JudgeUssdOperation(
 }
 
 
-LOCAL VOS_UINT32 MMI_TransMmiSsCodeToNetSsCode(
+VOS_UINT32 MMI_TransMmiSsCodeToNetSsCode(
     MN_MMI_SC_SI_PARA_STRU              *pstScSiPara,
     VOS_UINT8                           *pucNetSsCode
 )
@@ -645,7 +648,7 @@ LOCAL VOS_UINT32 MMI_TransMmiBsCodeToNetBsCode(
 
     /* BS Code 的转换完成 */
 }
-LOCAL VOS_UINT32 MMI_FillInRegisterSSPara(
+VOS_UINT32 MMI_FillInRegisterSSPara(
     MN_MMI_SC_SI_PARA_STRU              *pstScSiPara,
     MN_MMI_OPERATION_PARAM_STRU         *pMmiOpParam,
     VOS_UINT8                           ucNetSsCode
@@ -735,7 +738,7 @@ LOCAL VOS_UINT32 MMI_FillInRegisterSSPara(
 
     return MN_ERR_NO_ERROR;
 }
-LOCAL VOS_UINT32 MMI_FillInEraseSSPara(
+VOS_UINT32 MMI_FillInEraseSSPara(
     MN_MMI_SC_SI_PARA_STRU              *pstScSiPara,
     MN_MMI_OPERATION_PARAM_STRU         *pstMmiOpParam,
     VOS_UINT8                           ucNetSsCode
@@ -796,7 +799,7 @@ LOCAL VOS_UINT32 MMI_FillInEraseSSPara(
 
     return MN_ERR_NO_ERROR;
 }
-LOCAL VOS_UINT32 MMI_FillInActivateSSPara(
+VOS_UINT32 MMI_FillInActivateSSPara(
     MN_MMI_SC_SI_PARA_STRU             *pstScSiPara,
     MN_MMI_OPERATION_PARAM_STRU        *pMmiOpParam,
     VOS_UINT8                           ucNetSsCode
@@ -913,7 +916,7 @@ LOCAL VOS_UINT32 MMI_FillInDeactivateCCBSPara(
 }
 
 
-LOCAL VOS_UINT32 MMI_FillInDeactivateSSPara(
+VOS_UINT32 MMI_FillInDeactivateSSPara(
     MN_MMI_SC_SI_PARA_STRU              *pstScSiPara,
     MN_MMI_OPERATION_PARAM_STRU         *pMmiOpParam,
     VOS_UINT8                           ucNetSsCode
@@ -982,7 +985,7 @@ LOCAL VOS_UINT32 MMI_FillInDeactivateSSPara(
 
     return MN_ERR_NO_ERROR;
 }
-LOCAL VOS_UINT32 MMI_FillInInterrogateSSPara(
+VOS_UINT32 MMI_FillInInterrogateSSPara(
     MN_MMI_SC_SI_PARA_STRU              *pstScSiPara,
     MN_MMI_OPERATION_PARAM_STRU         *pstMmiOpParam,
     VOS_UINT8                           ucNetSsCode
@@ -1041,7 +1044,7 @@ LOCAL VOS_UINT32 MMI_FillInInterrogateSSPara(
     return MN_ERR_NO_ERROR;
 
 }
-LOCAL VOS_UINT32 MMI_FillInProcessUssdReqPara(
+VOS_UINT32 MMI_FillInProcessUssdReqPara(
     VOS_CHAR                            *pcInMmiStr,
     VOS_CHAR                            **ppcOutRestMmiStr,
     MN_MMI_OPERATION_PARAM_STRU         *pstMmiOpParam
@@ -1123,6 +1126,8 @@ LOCAL VOS_UINT32 MMI_FillInCallOrigPara(
     pstMmiOpParam->MmiOperationType = TAF_MMI_CALL_ORIG;
     pstMmiOpParam->MnCallOrig.enCallType = MN_CALL_TYPE_VOICE;
 
+    pstMmiOpParam->MnCallOrig.enVoiceDomain = TAF_CALL_VOICE_DOMAIN_AUTO;
+
     pstMmiOpParam->MnCallOrig.enClirCfg = f_enClirOperate;
     pstMmiOpParam->MnCallOrig.stCugCfg.bEnable = VOS_FALSE;
     pstMmiOpParam->MnCallOrig.enCallMode = MN_CALL_MODE_SINGLE;
@@ -1133,7 +1138,7 @@ LOCAL VOS_UINT32 MMI_FillInCallOrigPara(
 }
 
 
-LOCAL  VOS_VOID MMI_JudgeMmiOperationType(
+ VOS_VOID MMI_JudgeMmiOperationType(
     VOS_CHAR                            *pInMmiStr,
     MN_MMI_OPERATION_PARAM_STRU         *pMmiOpParam,
     MN_MMI_SC_SI_PARA_STRU              *pstScSiPara,
@@ -1188,7 +1193,7 @@ LOCAL  VOS_VOID MMI_JudgeMmiOperationType(
 }
 
 
-LOCAL  VOS_BOOL MMI_MatchSsOpTbl(
+ VOS_BOOL MMI_MatchSsOpTbl(
     VOS_CHAR                            *pInMmiStr,
     MN_MMI_OPERATION_PARAM_STRU         *pMmiOpParam,
     MN_MMI_SC_SI_PARA_STRU              *pstScSiPara,
@@ -1231,7 +1236,7 @@ LOCAL  VOS_BOOL MMI_MatchSsOpTbl(
     return VOS_TRUE;
 
 }
-LOCAL  VOS_BOOL MMI_JudgeSsOperation(
+ VOS_BOOL MMI_JudgeSsOperation(
     VOS_CHAR                            *pInMmiStr,
     VOS_CHAR                            **ppOutRestMmiStr,
     MN_MMI_OPERATION_PARAM_STRU         *pMmiOpParam,
@@ -1302,34 +1307,34 @@ LOCAL VOS_BOOL MMI_JudgeChldOperation(
 {
     VOS_UINT16                          i = 0;
     MN_MMI_CHLD_OP_Tbl_STRU             stChldOpTbl[] = {
-                                                         {"0",           MN_CALL_SUPS_CMD_REL_HELD_OR_UDUB},
-                                                         {"1",           MN_CALL_SUPS_CMD_REL_ACT_ACPT_OTH},
-                                                         {"10",          MN_CALL_SUPS_CMD_REL_CALL_X},
-                                                         {"11",          MN_CALL_SUPS_CMD_REL_CALL_X},
-                                                         {"12",          MN_CALL_SUPS_CMD_REL_CALL_X},
-                                                         {"13",          MN_CALL_SUPS_CMD_REL_CALL_X},
-                                                         {"14",          MN_CALL_SUPS_CMD_REL_CALL_X},
-                                                         {"15",          MN_CALL_SUPS_CMD_REL_CALL_X},
-                                                         {"16",          MN_CALL_SUPS_CMD_REL_CALL_X},
-                                                         {"17",          MN_CALL_SUPS_CMD_REL_CALL_X},
-                                                         {"18",          MN_CALL_SUPS_CMD_REL_CALL_X},
-                                                         {"19",          MN_CALL_SUPS_CMD_REL_CALL_X},
-                                                         {"2",           MN_CALL_SUPS_CMD_HOLD_ACT_ACPT_OTH},
-                                                         {"20",          MN_CALL_SUPS_CMD_HOLD_ALL_EXCPT_X},
-                                                         {"21",          MN_CALL_SUPS_CMD_HOLD_ALL_EXCPT_X},
-                                                         {"22",          MN_CALL_SUPS_CMD_HOLD_ALL_EXCPT_X},
-                                                         {"23",          MN_CALL_SUPS_CMD_HOLD_ALL_EXCPT_X},
-                                                         {"24",          MN_CALL_SUPS_CMD_HOLD_ALL_EXCPT_X},
-                                                         {"25",          MN_CALL_SUPS_CMD_HOLD_ALL_EXCPT_X},
-                                                         {"26",          MN_CALL_SUPS_CMD_HOLD_ALL_EXCPT_X},
-                                                         {"27",          MN_CALL_SUPS_CMD_HOLD_ALL_EXCPT_X},
-                                                         {"28",          MN_CALL_SUPS_CMD_HOLD_ALL_EXCPT_X},
-                                                         {"29",          MN_CALL_SUPS_CMD_HOLD_ALL_EXCPT_X},
-                                                         {"3",           MN_CALL_SUPS_CMD_BUILD_MPTY},
-                                                         {"4",           MN_CALL_SUPS_CMD_ECT},
-                                                         {"4*",          MN_CALL_SUPS_CMD_DEFLECT_CALL},
-                                                         {"5",           MN_CALL_SUPS_CMD_ACT_CCBS},
-                                                         {VOS_NULL_PTR,  0}
+                                                         {"0",           MN_CALL_SUPS_CMD_REL_HELD_OR_UDUB,  {0, 0, 0, 0, 0, 0, 0}},
+                                                         {"1",           MN_CALL_SUPS_CMD_REL_ACT_ACPT_OTH,  {0, 0, 0, 0, 0, 0, 0}},
+                                                         {"10",          MN_CALL_SUPS_CMD_REL_CALL_X,        {0, 0, 0, 0, 0, 0, 0}},
+                                                         {"11",          MN_CALL_SUPS_CMD_REL_CALL_X,        {0, 0, 0, 0, 0, 0, 0}},
+                                                         {"12",          MN_CALL_SUPS_CMD_REL_CALL_X,        {0, 0, 0, 0, 0, 0, 0}},
+                                                         {"13",          MN_CALL_SUPS_CMD_REL_CALL_X,        {0, 0, 0, 0, 0, 0, 0}},
+                                                         {"14",          MN_CALL_SUPS_CMD_REL_CALL_X,        {0, 0, 0, 0, 0, 0, 0}},
+                                                         {"15",          MN_CALL_SUPS_CMD_REL_CALL_X,        {0, 0, 0, 0, 0, 0, 0}},
+                                                         {"16",          MN_CALL_SUPS_CMD_REL_CALL_X,        {0, 0, 0, 0, 0, 0, 0}},
+                                                         {"17",          MN_CALL_SUPS_CMD_REL_CALL_X,        {0, 0, 0, 0, 0, 0, 0}},
+                                                         {"18",          MN_CALL_SUPS_CMD_REL_CALL_X,        {0, 0, 0, 0, 0, 0, 0}},
+                                                         {"19",          MN_CALL_SUPS_CMD_REL_CALL_X,        {0, 0, 0, 0, 0, 0, 0}},
+                                                         {"2",           MN_CALL_SUPS_CMD_HOLD_ACT_ACPT_OTH, {0, 0, 0, 0, 0, 0, 0}},
+                                                         {"20",          MN_CALL_SUPS_CMD_HOLD_ALL_EXCPT_X,  {0, 0, 0, 0, 0, 0, 0}},
+                                                         {"21",          MN_CALL_SUPS_CMD_HOLD_ALL_EXCPT_X,  {0, 0, 0, 0, 0, 0, 0}},
+                                                         {"22",          MN_CALL_SUPS_CMD_HOLD_ALL_EXCPT_X,  {0, 0, 0, 0, 0, 0, 0}},
+                                                         {"23",          MN_CALL_SUPS_CMD_HOLD_ALL_EXCPT_X,  {0, 0, 0, 0, 0, 0, 0}},
+                                                         {"24",          MN_CALL_SUPS_CMD_HOLD_ALL_EXCPT_X,  {0, 0, 0, 0, 0, 0, 0}},
+                                                         {"25",          MN_CALL_SUPS_CMD_HOLD_ALL_EXCPT_X,  {0, 0, 0, 0, 0, 0, 0}},
+                                                         {"26",          MN_CALL_SUPS_CMD_HOLD_ALL_EXCPT_X,  {0, 0, 0, 0, 0, 0, 0}},
+                                                         {"27",          MN_CALL_SUPS_CMD_HOLD_ALL_EXCPT_X,  {0, 0, 0, 0, 0, 0, 0}},
+                                                         {"28",          MN_CALL_SUPS_CMD_HOLD_ALL_EXCPT_X,  {0, 0, 0, 0, 0, 0, 0}},
+                                                         {"29",          MN_CALL_SUPS_CMD_HOLD_ALL_EXCPT_X,  {0, 0, 0, 0, 0, 0, 0}},
+                                                         {"3",           MN_CALL_SUPS_CMD_BUILD_MPTY,        {0, 0, 0, 0, 0, 0, 0}},
+                                                         {"4",           MN_CALL_SUPS_CMD_ECT,               {0, 0, 0, 0, 0, 0, 0}},
+                                                         {"4*",          MN_CALL_SUPS_CMD_DEFLECT_CALL,      {0, 0, 0, 0, 0, 0, 0}},
+                                                         {"5",           MN_CALL_SUPS_CMD_ACT_CCBS,          {0, 0, 0, 0, 0, 0, 0}},
+                                                         {VOS_NULL_PTR,  0,                                 {0, 0, 0, 0, 0, 0, 0}}
                                                         };
 
     *pulErrCode = MN_ERR_NO_ERROR;

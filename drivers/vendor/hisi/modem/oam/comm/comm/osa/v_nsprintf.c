@@ -47,7 +47,7 @@ extern "C" {
  *****************************************************************************/
 VOS_INT32 ANSI_nvsprintf(VOS_CHAR *out_buf, VOS_UINT32 ulStrLen, const VOS_CHAR *fmt0, va_list argp)
 {
-    VOS_UINT32 		ulLong;          	
+    VOS_UINT_PTR    ulLong;
     VOS_INT			lBase;        			
     VOS_INT 		lDprec;        			
     VOS_INT 		lFieldSize;        		
@@ -261,7 +261,7 @@ rflag: switch (*++pucFmt) {
             lBase = 8;
             goto nosign;
         case 'p':
-            ulLong = (VOS_UINT32)va_arg(argp, VOS_VOID *);
+            ulLong = (VOS_UINT_PTR)va_arg(argp, VOS_VOID *);
             lBase = 16;
             goto nosign;
         case 's':
@@ -574,7 +574,7 @@ extern void zprint(char *str);
  Output     : None
  Return     : VOS_OK on success and VOS_ERROR on error
  *****************************************************************************/
-VOS_INT32 vos_printf( VOS_CHAR * format, ... )
+VOS_INT32 vos_printf( const VOS_CHAR * format, ... )
 {
     VOS_INT32  rc;
     VOS_UINT32 ulReturn = VOS_OK;

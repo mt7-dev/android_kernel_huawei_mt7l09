@@ -8,11 +8,9 @@
 #include "Fc.h"
 #include "FcInterface.h"
 #include "FcIntraMsg.h"
-#include "PsTypeDef.h"
 #include "pslog.h"
 #include "PsCommonDef.h"
 #include "PsLib.h"
-#include "TTFTaskPriority.h"
 #include "OmApi.h"
 #include "R_ITF_FlowCtrl.h"
 #include "FcMacInterface.h"
@@ -42,8 +40,8 @@ FC_CPU_CTRL_STRU                        g_stFcCpuCCtrl;
 FC_TRACE_CPULOAD_STRU                   g_stFcTraceCpuLoad  =
 {
     FC_CCPU_TRACE_CPULOAD_TIMELEN,
-    VOS_NULL_PTR,
-    0
+    0,
+    VOS_NULL_PTR
 };
 
 
@@ -184,19 +182,18 @@ VOS_UINT32 FC_UL_InitFcPoints
 {
     FC_REG_POINT_STRU                   stFcRegPoint;
     VOS_UINT32                          ulRateLoop;
-    FC_PRI_ENUM_UINT32                  enPri = FC_PRI_LOWEST;
     VOS_UINT16                          usCurrRate;
     VOS_UINT16                          usPrevRate = FC_HSUPA_RATE_MAX_KBPS;
-    VOS_UINT32                          ulFcId;
-
+    FC_ID_ENUM_UINT8                    enFcId;
+    FC_PRI_ENUM_UINT8                   enPri = FC_PRI_LOWEST;
 
     if (FC_POLICY_ID_CPU_C == enPolicyId)
     {
-        ulFcId = FC_ID_UL_RATE_1_FOR_CPU;
+        enFcId = FC_ID_UL_RATE_1_FOR_CPU;
     }
     else if (FC_POLICY_ID_TMP == enPolicyId)
     {
-        ulFcId = FC_ID_UL_RATE_1_FOR_TMP;
+        enFcId = FC_ID_UL_RATE_1_FOR_TMP;
     }
     /* 目前，只针对CCPU和TMP提供了按档位控速率功能，其他函数不能使用 */
     else
@@ -215,8 +212,8 @@ VOS_UINT32 FC_UL_InitFcPoints
 
         stFcRegPoint.enPolicyId = enPolicyId;
         stFcRegPoint.enFcPri    = enPri;
-        stFcRegPoint.enFcId     = ulFcId;
-		stFcRegPoint.enModemId  = MODEM_ID_0;
+        stFcRegPoint.enFcId     = enFcId;
+        stFcRegPoint.enModemId  = MODEM_ID_0;
 
         /* 解流控时将数率限制设为上一档 */
         stFcRegPoint.ulParam1   = (((VOS_UINT32)usCurrRate) << 16) | (((VOS_UINT32)usPrevRate) & FC_DOWN_RATE_LIMIT_MASK);
@@ -227,7 +224,7 @@ VOS_UINT32 FC_UL_InitFcPoints
 
         FC_POINT_Reg(&stFcRegPoint);
 
-        ulFcId++;
+        enFcId++;
 
         if ( FC_PRI_HIGHEST == enPri )
         {
@@ -747,7 +744,7 @@ VOS_VOID FC_CCORE_RcvTimerExpireMsg(REL_TIMER_MSG *pTimerMsg)
                                           VOS_RELTIMER_NOLOOP, VOS_TIMER_NO_PRECISION);
             if (VOS_OK != ulResult)
             {
-                FC_LOG2(PS_PRINT_ERROR, "FC_Init, ERROR, Fail to Start Timer! ulResult = 0x%x, ulTraceCpuLoadTimerLen = %d!\n", (VOS_INT32)ulResult, (VOS_INT32)g_stFcTraceCpuLoad.ulTraceCpuLoadTimerLen);
+                FC_LOG2(PS_PRINT_ERROR, "FC_Init, ERROR, Fail to Start Timer! ulResult = %d, ulTraceCpuLoadTimerLen = %d\n", (VOS_INT32)ulResult, (VOS_INT32)g_stFcTraceCpuLoad.ulTraceCpuLoadTimerLen);
                 return;
             }
 

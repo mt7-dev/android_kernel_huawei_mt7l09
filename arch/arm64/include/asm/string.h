@@ -22,6 +22,12 @@ extern char *strrchr(const char *, int c);
 #define __HAVE_ARCH_STRCHR
 extern char *strchr(const char *, int c);
 
+#define __HAVE_ARCH_STRLEN
+extern __kernel_size_t strlen(const char *);
+
+#define __HAVE_ARCH_STRNLEN
+extern __kernel_size_t strnlen(const char *, __kernel_size_t);
+
 #define __HAVE_ARCH_MEMCPY
 extern void *memcpy(void *, const void *, __kernel_size_t);
 
@@ -33,5 +39,8 @@ extern void *memchr(const void *, int, __kernel_size_t);
 
 #define __HAVE_ARCH_MEMSET
 extern void *memset(void *, int, __kernel_size_t);
+
+#define __HAVE_ARCH_MEMCMP
+extern int memcmp(const void *, const void *, size_t);
 
 #endif

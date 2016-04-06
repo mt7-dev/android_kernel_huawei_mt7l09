@@ -74,7 +74,20 @@ enum CALL_VC_CHANNEL_RATE_ENUM
     CALL_VC_CHANNEL_RATE_BUFF                                                   /* invalid value */
 };
 typedef VOS_UINT8  CALL_VC_CHANNEL_RATE_ENUM_U8;
+enum APP_VC_OPEN_CHANNEL_FAIL_CAUSE_ENUM
+{
+    APP_VC_OPEN_CHANNEL_CAUSE_SUCC                = 0,                          /* 成功 */
+    APP_VC_OPEN_CHANNEL_FAIL_CAUSE_STARTED,                                     /* HIFI已经启动 */
+    APP_VC_OPEN_CHANNEL_FAIL_CAUSE_PORT_CFG_FAIL,                               /* 端口配置失败 */
+    APP_VC_OPEN_CHANNEL_FAIL_CAUSE_SET_DEVICE_FAIL,                             /* 设置Device失败 */
+    APP_VC_OPEN_CHANNEL_FAIL_CAUSE_SET_START_FAIL,                              /* start失败 */
+    APP_VC_OPEN_CHANNEL_FAIL_CAUSE_SET_VOLUME_FAIL,                             /* 设置音量失败 */
+    APP_VC_OPEN_CHANNEL_FAIL_CAUSE_SAMPLE_RATE_FAIL,                            /* 速率采样失败 */
+    APP_VC_OPEN_CHANNEL_FAIL_CAUSE_TI_START_EXPIRED,                            /* start保护定时器超时 */
 
+    APP_VC_OPEN_CHANNEL_FAIL_CAUSE_BUTT
+};
+typedef VOS_UINT32  APP_VC_OPEN_CHANNEL_FAIL_CAUSE_ENUM_UINT32;
 typedef struct
 {
     CALL_VC_RADIO_MODE_ENUM_U8          enMode;                                 /*GSM|WCDMA*/
@@ -105,9 +118,10 @@ typedef struct
 
 typedef struct
 {
-    VOS_MSG_HEADER
-    CALL_VC_MSG_ID_ENUM_U16             enMsgName;                              /* 原语类型 */
-
+    VOS_MSG_HEADER                                                              /* _H2ASN_Skip */
+    CALL_VC_MSG_ID_ENUM_U16                     enMsgName;                              /* _H2ASN_Skip *//* 原语类型 */
+    VOS_UINT8                                   aucReserve[2];                              /* 保留 */
+    APP_VC_OPEN_CHANNEL_FAIL_CAUSE_ENUM_UINT32  enCause;
 }VC_CALL_MSG_STRU;
 
 

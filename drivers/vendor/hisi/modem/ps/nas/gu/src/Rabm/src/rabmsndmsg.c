@@ -1515,6 +1515,35 @@ VOS_VOID RABM_SndGmmRabRelInd( VOS_VOID )
 }
 
 
+VOS_VOID NAS_RABM_SndGmmRbSetupInd(VOS_VOID)
+{
+    GMMRABM_RAB_SETUP_IND_STRU         *pstMsg = VOS_NULL_PTR;
+
+    pstMsg = (GMMRABM_RAB_SETUP_IND_STRU *)
+                PS_ALLOC_MSG(WUEPS_PID_RABM, sizeof(GMMRABM_RAB_SETUP_IND_STRU) - VOS_MSG_HEAD_LENGTH);
+
+    if (VOS_NULL_PTR == pstMsg)
+    {
+        PS_LOG(WUEPS_PID_RABM, VOS_NULL, PS_PRINT_ERROR, "NAS_RABM_SndGmmRbSetupInd:ERROR:Alloc msg fail!");
+        return;
+    }
+
+    pstMsg->MsgHeader.ulSenderCpuId = VOS_LOCAL_CPUID;
+    pstMsg->MsgHeader.ulSenderPid = WUEPS_PID_RABM;
+    pstMsg->MsgHeader.ulReceiverCpuId = VOS_LOCAL_CPUID;
+    pstMsg->MsgHeader.ulReceiverPid   = WUEPS_PID_GMM;
+    pstMsg->MsgHeader.ulMsgName       = ID_RABM_GMM_RAB_SETUP_IND;
+    pstMsg->MsgHeader.ulLength        = sizeof(GMMRABM_RAB_SETUP_IND_STRU) - VOS_MSG_HEAD_LENGTH;
+
+    if (VOS_OK != PS_SEND_MSG(WUEPS_PID_RABM, pstMsg))
+    {
+        NAS_WARNING_LOG(WUEPS_PID_RABM, "NAS_RABM_SndGmmRbSetupInd():WARNING:SEND MSG FIAL");
+    }
+
+    return;
+}
+
+
 VOS_UINT32 NAS_RABM_SendApsSysChgInd(
     VOS_UINT32                          ulMsgId
 )
@@ -1776,6 +1805,10 @@ VOS_VOID  NAS_RABM_SndOmFastdormStatus(VOS_VOID)
     pstMsg->stFastDormCtx.enFastDormOperationType = NAS_RABM_GetFastDormOperationType();
     pstMsg->stFastDormCtx.ulUserDefNoFluxCnt      = NAS_RABM_GetFastDormUserDefNoFluxCntValue();
     pstMsg->stFastDormCtx.ulCurrNoFluxCnt         = NAS_RABM_GetFastDormCurrNoFluxCntValue();
+
+    pstMsg->stFastDormCtx.ulDlDataCnt             = NAS_RABM_GetFastDormDlDataCnt();
+    pstMsg->stFastDormCtx.ulUlDataCnt             = NAS_RABM_GetFastDormUlDataCnt();
+    pstMsg->stFastDormCtx.ulRelRrcExecFlg         = NAS_RABM_GET_FD_REL_RRC_EXEC_FLG();
 
     OM_TraceMsgHook(pstMsg);
 

@@ -499,7 +499,7 @@ void axi_get_idle_buf(ring_idle_buf_t * idle_buf, ring_buf_info_t * ring_buf)
 *****************************************************************************/
 s32 axi_socp_src_chan_init(void)
 {
-    SOCP_CODER_SRC_CHAN_S socp_chan;
+    SOCP_CODER_SRC_CHAN_STRU socp_chan;
     u8 * bd_addr = NULL;
     u8 * rd_addr = NULL;
 
@@ -521,8 +521,11 @@ s32 axi_socp_src_chan_init(void)
         bsp_trace(BSP_LOG_LEVEL_ERROR, BSP_MODU_AMON, "%s: alloc RD buffer fail\n", __FUNCTION__);
         return BSP_ERROR;
     }
-
+#if (FEATURE_OFF == FEATURE_MERGE_OM_CHAN)
     socp_chan.u32DestChanID = SOCP_CODER_DST_LOM_IND;    /*  目标通道ID */
+#else
+    socp_chan.u32DestChanID = SOCP_CODER_DST_OM_IND;    /*  目标通道ID */
+#endif
     socp_chan.eDataType     = SOCP_DATA_TYPE_2;          /*  数据类型，指明数据封装协议，用于复用多平台 */
     socp_chan.eMode         = SOCP_ENCSRC_CHNMODE_LIST;  /*  通道数据模式 */
     socp_chan.ePriority     = SOCP_CHAN_PRIORITY_3;      /*  通道优先级 */
@@ -579,7 +582,7 @@ s32 axi_gen_bd_packet(ring_data_buf_t * data_buf, u32 * tran_len)
     u32 data_len = 0;
     u32 addr;
     u32 addr_tmp;
-    SOCP_BUFFER_RW_S  wr_buf  = {0};
+    SOCP_BUFFER_RW_STRU  wr_buf  = {0};
     SOCP_BD_DATA_STRU bd_data = {0};
 
     /* 获取SOCP BD buffer */
@@ -614,7 +617,7 @@ s32 axi_gen_bd_packet(ring_data_buf_t * data_buf, u32 * tran_len)
     {
         memset(&bd_data, 0x0, sizeof(SOCP_BD_DATA_STRU));
         /* BD包需要填写物理地址 */
-        bd_data.pucData    = data_buf->p_buf_1 + AXI_SOCP_PACKET_SIZE * i;
+        bd_data.pucData    = (u32)(data_buf->p_buf_1 + AXI_SOCP_PACKET_SIZE * i);
 
         /* 缓存回卷处，计算包的长度 */
         if((u32)(AXI_SOCP_PACKET_SIZE * (i+1)) > data_buf->size_1)
@@ -667,7 +670,7 @@ s32 axi_gen_bd_packet(ring_data_buf_t * data_buf, u32 * tran_len)
 s32 axi_data_buf_update(ring_buf_info_t * ring_buf)
 {
     ring_data_buf_t data_buf = {0};
-    SOCP_BUFFER_RW_S socp_buf;
+    SOCP_BUFFER_RW_STRU socp_buf;
     u32 tran_len;
 
     /* 清RD */

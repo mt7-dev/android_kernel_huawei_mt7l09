@@ -7,7 +7,7 @@
 #include  "NasEmmcPublic.h"
 #include  "NasEmmcSendMsg.h"
 #include  "NasLmmPubMOm.h"
-
+#include  "NasLmmPubMTimer.h"
 /*lint -e767*/
 #define    THIS_FILE_ID        PS_FILE_ID_NASEMMCPUBLIC_C
 /*lint +e767*/
@@ -283,7 +283,7 @@ VOS_UINT32 NAS_LMM_IsCellStatusNormal
 
 VOS_VOID  NAS_EMMC_ProcessMmcLteSysInfoInd
 (
-    MMC_LMM_SYS_INFO_STRU        *pstLteInfoIndMsg,
+    const MMC_LMM_SYS_INFO_STRU        *pstLteInfoIndMsg,
     EMMC_EMM_CHANGE_INFO_ENUM_UINT32   *pulChangeInfo,
     EMMC_EMM_CELL_STATUS_ENUM_UINT32   *penCellStatus,
     EMMC_EMM_FORBIDDEN_INFO_ENUM_UINT32 *penForbdInfo
@@ -331,19 +331,6 @@ VOS_VOID  NAS_EMMC_ProcessMmcLteSysInfoInd
         ulChangeInfo                    = EMMC_EMM_NO_CHANGE;
     }
 
-    #if 0
-    /*初始化低质量Plmn List*/
-    stPlmnList.ulLowPlmnNum = 0;
-
-    /*构造高质量Plmn List*/
-    stPlmnList.ulHighPlmnNum = pstRrcInfoIndMsg->stSpecPlmnIdList.ulSuitPlmnNum;
-    NAS_LMM_MEM_CPY((VOS_VOID *)stPlmnList.astHighPlmnList,
-               (const VOS_VOID *)pstRrcInfoIndMsg->stSpecPlmnIdList.astSuitPlmnList,
-               stPlmnList.ulHighPlmnNum * sizeof(NAS_MMC_PLMN_ID_STRU));
-
-    /*将RRC上报系统消息中的PLMN添加至Available Plmn List*/
-    NAS_MMC_UpdateAvailablePlmnList(NAS_MMC_GetAutoMode(), &stPlmnList);
-    #endif
 
     NAS_LMM_PlmnCpy(&pstAreaInfo->stPlmnId,
             (NAS_MM_PLMN_ID_STRU *)&pstLteInfoIndMsg->stSpecPlmnIdList.astSuitPlmnList[0]);
@@ -353,6 +340,7 @@ VOS_VOID  NAS_EMMC_ProcessMmcLteSysInfoInd
     pstAreaInfo->stTac.ucTacCnt         = pstLteInfoIndMsg->stTac.ucTacCnt;
 
     pstAreaInfo->ulCellId               = pstLteInfoIndMsg->ulCellId;
+
     /* lihong00150010 emergency tau&service begin */
     /* 获取禁止信息 */
     if (NAS_EMMC_USER_SPEC_PLMN_YES == NAS_EMMC_GetUserSpecPlmnFlag())
@@ -366,41 +354,8 @@ VOS_VOID  NAS_EMMC_ProcessMmcLteSysInfoInd
 
     pstAreaInfo->ulForbiddenInfo = enForbdInfo;
 
-    /*此修改保证了cell status状态不被重写， 不然可能会导致anycell搜到可用
-    的网络的时候，emm 状态还是受限服务态*/
-    NAS_EMM_GetCurrentTa(&stTa);
-
-    NAS_LMM_EMMC_LOG1_NORM("NAS_EMMC_ProcessMmcLteSysInfoInd:cellstauts = ",
-                            pstLteInfoIndMsg->enCellStatusInd);
-
-    if (LRRC_LNAS_CELL_STATUS_NORMAL == pstLteInfoIndMsg->enCellStatusInd)
-    {
-
-        enCellStatus = EMMC_EMM_CELL_STATUS_NORMAL;
-    }
-    else if (LRRC_LNAS_CELL_STATUS_ANYCELL== pstLteInfoIndMsg->enCellStatusInd)
-    {
-        /*当前PLMN允许注册（MML API函数），USIM卡存在、USIM卡有效、且SIM卡类型为USIM、TA不被禁*/
-        /* lihong00150010 emergency tau&service begin */
-        if (VOS_TRUE == NAS_LMM_IsCellStatusNormal( &pstLteInfoIndMsg->stSpecPlmnIdList.astSuitPlmnList[0],
-                                                    &stTa))
-        {
-            NAS_LMM_EMMC_LOG_NORM("NAS_EMMC_ProcessMmcLteSysInfoInd: anycell search find avaiable cell,cellStatus: NORMAL");
-            enCellStatus = EMMC_EMM_CELL_STATUS_NORMAL;
-        }
-        else
-        {
-            NAS_LMM_EMMC_LOG_NORM("NAS_EMMC_ProcessMmcLteSysInfoInd: anycell search don't find avaiable cell, cellStatus: ANYCELL");
-            enCellStatus = EMMC_EMM_CELL_STATUS_ANYCELL;
-        }
-        /* lihong00150010 emergency tau&service end */
-    }
-    else
-    {
-        NAS_LMM_EMMC_LOG_WARN("NAS_LMM_PreProcMmcLteSysInfoInd:cellstauts is err! ");
-        enCellStatus = EMMC_EMM_CELL_STATUS_BUTT;
-    }
-    pstAreaInfo->ulCellStatus = enCellStatus;
+    pstAreaInfo->ulCellStatus = pstLteInfoIndMsg->enCellStatusInd;
+    enCellStatus              = pstLteInfoIndMsg->enCellStatusInd;
 
 	/* lihong00150010 emergency tau&service end */
     NAS_LMM_MEM_CPY(    pstNetInfo->aulLteBand,
@@ -414,6 +369,8 @@ VOS_VOID  NAS_EMMC_ProcessMmcLteSysInfoInd
     pstNetInfo->bitOpLteBand            = NAS_EMMC_BIT_SLCT;
 
     /* 当前TA仍在拒绝原因12的TA内，记录标记，便于服务状态上报 */
+    NAS_EMM_GetCurrentTa(&stTa);
+
     if(NAS_LMM_MATCH_SUCCESS==
                 NAS_LMM_TaMatchTaList(&stTa,
                 NAS_LMM_GetEmmInfoNetInfoForbTaForRposAddr()))
@@ -427,8 +384,6 @@ VOS_VOID  NAS_EMMC_ProcessMmcLteSysInfoInd
     *penCellStatus                      = enCellStatus;
 	/* lihong00150010 emergency tau&service end */
 }
-
-
 VOS_VOID NAS_EMMC_DeleteForbTa
 (
     const NAS_MM_TA_STRU               *pstTa,
@@ -501,12 +456,20 @@ VOS_VOID  NAS_EMMC_UpdateForbTaList( VOS_VOID )
             }
         }
     }
-
+    /* 当FORB TA LIST为空时,停止Forb定时器 */
+    if((NAS_LMM_TIMER_RUNNING == NAS_LMM_IsStaTimerRunning(TI_NAS_EMM_STATE_DEL_FORB_TA_PROID))
+        &&(0 == pstForbTaListForRoaming->ulTaNum)
+        &&(0 == pstForbTaListForRpos->ulTaNum))
+    {
+        NAS_LMM_StopStateTimer(TI_NAS_EMM_STATE_DEL_FORB_TA_PROID);
+    }
     NAS_LMM_EMMC_LOG1_INFO("NAS_EMMC_UpdateForbTaList:ForbTA for RPOS NUM: New :",
                            pstForbTaListForRpos->ulTaNum);
 
     return;
 }
+
+
 VOS_VOID  NAS_EMMC_DeleteCurrentAreaCellId( VOS_VOID )
 {
     NAS_MM_NETWORK_ID_STRU              *pstAreaInfo;

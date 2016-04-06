@@ -67,7 +67,6 @@
 
 #define sCrcLng         4
 #define sAckCtsLng	112		// bits in ACK and CTS frames
-//+by amy 080312
 #define RATE_ADAPTIVE_TIMER_PERIOD	300
 
 typedef enum _WIRELESS_MODE {
@@ -178,7 +177,6 @@ typedef struct buffer
 	dma_addr_t dma;
 } buffer;
 
-//YJ,modified,080828
 typedef struct Stats
 {
 	unsigned long txrdu;
@@ -239,7 +237,6 @@ typedef struct _link_detect_t
 	bool				bBusyTraffic;    //when it is set to 1, UI cann't scan at will.
 }link_detect_t, *plink_detect_t;
 
-//YJ,modified,080828,end
 
 //by amy for led
 //================================================================================
@@ -370,7 +367,7 @@ typedef struct r8180_priv
 	short promisc;
 	/*stats*/
 	struct Stats stats;
-	struct _link_detect_t link_detect;  //YJ,add,080828
+	struct _link_detect_t link_detect;
 	struct iw_statistics wstats;
 
 	/*RX stuff*/
@@ -486,8 +483,8 @@ typedef struct r8180_priv
 	u8   RFProgType;
 	bool bLeisurePs;
 	RT_PS_MODE dot11PowerSaveMode;
-	//u32 NumRxOkInPeriod;   //YJ,del,080828
-	//u32 NumTxOkInPeriod;   //YJ,del,080828
+	//u32 NumRxOkInPeriod;
+	//u32 NumTxOkInPeriod;
 	u8   TxPollingTimes;
 
 	bool	bApBufOurFrame;// TRUE if AP buffer our unicast data , we will keep eAwake until receive data or timeout.
@@ -509,7 +506,7 @@ typedef struct r8180_priv
 	long Stats_SignalQuality;
 	long RecvSignalPower; // in dBm.
 	long Stats_RecvSignalPower;
-	u8	 LastRxPktAntenna;	// +by amy 080312 Antenna which received the lasted packet. 0: Aux, 1:Main. Added by Roger, 2008.01.25.
+	u8	 LastRxPktAntenna;
 	u32 AdRxOkCnt;
 	long AdRxSignalStrength;
 	u8 CurrAntennaIndex;			// Index to current Antenna (both Tx and Rx).
@@ -523,7 +520,6 @@ typedef struct r8180_priv
 	long AdRxSsBeforeSwitched;		// Rx signal strength before we switched antenna.
 	struct timer_list SwAntennaDiversityTimer;
 //by amy for antenna
-//{by amy 080312
 //
 	// Crystal calibration.
 	// Added by Roger, 2007.12.11.
@@ -541,7 +537,7 @@ typedef struct r8180_priv
 	// Dynamic Initial Gain Adjustment Mechanism. Added by Bruce, 2007-02-14.
 	//
 	bool				bDigMechanism; // TRUE if DIG is enabled, FALSE ow.
-	bool				bRegHighPowerMechanism; // For High Power Mechanism. 061010, by rcnjko.
+	bool				bRegHighPowerMechanism;
 	u32					FalseAlarmRegValue;
 	u8					RegDigOfdmFaUpTh; // Upper threshold of OFDM false alarm, which is used in DIG.
 	u8					DIG_NumberFallbackVote;
@@ -560,7 +556,6 @@ typedef struct r8180_priv
 	u8			CurCCKRSSI;
 	bool        bCurCCKPkt;
 	//
-	// High Power Mechanism. Added by amy, 080312.
 	//
 	bool					bToUpdateTxPwr;
 	long					UndecoratedSmoothedSS;
@@ -579,8 +574,8 @@ typedef struct r8180_priv
 	bool   bEnhanceTxPwr;
 	bool   bUpdateARFR;
 	int	   ForcedDataRate; // Force Data Rate. 0: Auto, 0x02: 1M ~ 0x6C: 54M.)
-	u32     NumTxUnicast; //YJ,add,080828,for keep alive
-	u8      keepAliveLevel; //YJ,add,080828,for KeepAlive
+	u32     NumTxUnicast;
+	u8      keepAliveLevel;
 	unsigned long 	NumTxOkTotal;
 	u16                                 LastRetryCnt;
         u16                                     LastRetryRate;
@@ -603,7 +598,6 @@ typedef struct r8180_priv
 
         u8                  CurrentOperaRate;
 //by amy for rate adaptive
-//by amy 080312}
 //	short wq_hurryup;
 //	struct workqueue_struct *workqueue;
 	struct work_struct reset_wq;

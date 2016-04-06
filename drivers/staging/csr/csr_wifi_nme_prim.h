@@ -1059,27 +1059,7 @@ typedef struct
     CsrWifiNmeProfileIdentity profileIdentity;
 } CsrWifiNmeProfileConnectReq;
 
-/*******************************************************************************
 
-  NAME
-    CsrWifiNmeWpsReq
-
-  DESCRIPTION
-    Requests the NME to look for WPS enabled APs and attempt to perform WPS
-    to determine the appropriate security credentials to connect to the AP.
-    If the PIN == '00000000' then 'push button mode' is indicated, otherwise
-    the PIN has to match that of the AP. 4 digit pin is passed by sending the
-    pin digits in pin[0]..pin[3] and rest of the contents filled with '-'.
-
-  MEMBERS
-    common       - Common header for use with the CsrWifiFsm Module
-    interfaceTag - Interface Identifier; unique identifier of an interface
-    pin          - PIN value.
-    ssid         - Service Set identifier
-    bssid        - ID of Basic Service Set for which a WPS connection attempt is
-                   being made.
-
-*******************************************************************************/
 typedef struct
 {
     CsrWifiFsmEvent   common;

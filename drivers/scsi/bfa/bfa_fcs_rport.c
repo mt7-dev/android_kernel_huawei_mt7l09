@@ -2561,14 +2561,7 @@ bfa_fcs_rport_update(struct bfa_fcs_rport_s *rport, struct fc_logi_s *plogi)
 
 	bfa_trc(port->fcs, be16_to_cpu(plogi->csp.bbcred));
 	bfa_trc(port->fcs, port->fabric->bb_credit);
-	/*
-	 * Direct Attach P2P mode :
-	 * This is to handle a bug (233476) in IBM targets in Direct Attach
-	 *  Mode. Basically, in FLOGI Accept the target would have
-	 * erroneously set the BB Credit to the value used in the FLOGI
-	 * sent by the HBA. It uses the correct value (its own BB credit)
-	 * in PLOGI.
-	 */
+
 	if ((!bfa_fcs_fabric_is_switched(port->fabric))	 &&
 		(be16_to_cpu(plogi->csp.bbcred) < port->fabric->bb_credit)) {
 

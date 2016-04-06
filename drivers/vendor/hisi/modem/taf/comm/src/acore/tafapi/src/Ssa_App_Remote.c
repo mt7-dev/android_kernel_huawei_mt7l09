@@ -54,9 +54,12 @@ TAF_UINT32 TAF_EraseSSReq ( MN_CLIENT_ID_T              ClientId,
 }
 
 
-TAF_UINT32 TAF_ActivateSSReq ( MN_CLIENT_ID_T               ClientId,
-                                       MN_OPERATION_ID_T           OpId,
-                                       TAF_SS_ACTIVATESS_REQ_STRU  *pPara)
+TAF_UINT32 TAF_ActivateSSReq(
+    MN_CLIENT_ID_T                      ClientId,
+    MN_OPERATION_ID_T                   OpId,
+    TAF_SS_ACTIVATESS_REQ_STRU         *pPara
+
+)
 {
     return MN_FillAndSndAppReqMsg( ClientId,
                                    OpId,

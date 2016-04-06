@@ -122,7 +122,6 @@ extern int dibusb_power_ctrl(struct dvb_usb_device *, int);
 extern int dibusb2_0_power_ctrl(struct dvb_usb_device *, int);
 
 #define DEFAULT_RC_INTERVAL 150
-//#define DEFAULT_RC_INTERVAL 100000
 
 extern struct rc_map_table rc_map_dibusb_table[];
 extern int dibusb_rc_query(struct dvb_usb_device *, u32 *, int *);

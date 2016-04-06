@@ -19,6 +19,7 @@ MSP_INC_DIRS := \
 	$(BALONG_TOPDIR)/include/oam/comm/usimm \
 	$(BALONG_TOPDIR)/include/oam/comm/errno \
 	$(BALONG_TOPDIR)/include/oam/comm/nvim \
+	$(BALONG_TOPDIR)/include/oam/comm/cpm \
 	$(BALONG_TOPDIR)/include/oam/gu/log \
 	$(BALONG_TOPDIR)/include/oam/gu/om \
 	$(BALONG_TOPDIR)/include/nv/gu/oam \
@@ -32,6 +33,7 @@ MSP_INC_DIRS := \
 	$(BALONG_TOPDIR)/include/nv/gu/was \
 	$(BALONG_TOPDIR)/include/oam/gu/nvim \
 	$(BALONG_TOPDIR)/include/oam/gu/hpa \
+	$(BALONG_TOPDIR)/include/oam/comm/cpm \
 	$(BALONG_TOPDIR)/include/phy/gphy \
 	$(BALONG_TOPDIR)/include/phy/wphy \
 	$(BALONG_TOPDIR)/include/ps/gups \
@@ -54,6 +56,7 @@ MSP_INC_DIRS += \
 	$(BALONG_TOPDIR)/modem/oam/inc/comm/comm/si \
 	$(BALONG_TOPDIR)/modem/oam/inc/comm/comm/nvim \
 	$(BALONG_TOPDIR)/modem/oam/inc/comm/ccore/usimm \
+	$(BALONG_TOPDIR)/modem/oam/inc/comm/comm/ppm \
 	$(BALONG_TOPDIR)/modem/oam/inc/gu/acore/om \
 	$(BALONG_TOPDIR)/modem/oam/inc/gu/ccore/hpa \
 	$(BALONG_TOPDIR)/modem/oam/inc/gu/ccore/nvim \

@@ -43,8 +43,10 @@ enum ion_heap_type {
 	ION_HEAP_TYPE_DMA,
 	ION_HEAP_TYPE_DMA_POOL,
 	ION_HEAP_TYPE_CPUDRAW,
+    ION_HEAP_TYPE_IOMMU,
 	ION_HEAP_TYPE_CUSTOM, /* must be last so device specific heaps always
 				 are at the end of this enum */
+	ION_HEAP_TYPE_RESERVED,
 	ION_NUM_HEAPS = 16,
 };
 
@@ -54,6 +56,8 @@ enum ion_heap_type {
 #define ION_HEAP_TYPE_DMA_MASK		(1 << ION_HEAP_TYPE_DMA)
 #define ION_HEAP_TYPE_DMA_POOL_MASK	(1 << ION_HEAP_TYPE_DMA_POOL)
 #define ION_HEAP_CPUDRAW_MASK		(1 << ION_HEAP_TYPE_CPUDRAW)
+#define ION_HEAP_TYPE_IOMMU_MASK	(1 << ION_HEAP_TYPE_IOMMU)
+
 
 #define ION_NUM_HEAP_IDS		sizeof(unsigned int) * 8
 
@@ -69,6 +73,8 @@ enum ion_heap_type {
 					   at mmap time, if this is set
 					   caches must be managed manually */
 #define ION_FLAG_NOT_ZERO_BUFFER 4      /* do not zero buffer*/
+
+#define ION_FLAG_ALLOC_FROM_LAST 0x80000000
 
 /**
  * DOC: Ion Userspace API
@@ -206,6 +212,7 @@ struct ion_custom_data {
  *
  * Provided by userspace as an argument to the ioctl
  */
+struct iommu_map_format;
 struct ion_map_iommu_data {
 	ion_user_handle_t handle;
 	struct iommu_map_format format;

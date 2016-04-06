@@ -1,39 +1,4 @@
-/* -*- mode: c; c-basic-offset: 8; -*-
- * vim: noexpandtab sw=8 ts=8 sts=0:
- *
- * configfs_macros.h - extends macros for configfs
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public
- * License as published by the Free Software Foundation; either
- * version 2 of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- * General Public License for more details.
- *
- * You should have received a copy of the GNU General Public
- * License along with this program; if not, write to the
- * Free Software Foundation, Inc., 59 Temple Place - Suite 330,
- * Boston, MA 021110-1307, USA.
- *
- * Based on sysfs:
- * 	sysfs is Copyright (C) 2001, 2002, 2003 Patrick Mochel
- *
- * Based on kobject.h:
- *      Copyright (c) 2002-2003	Patrick Mochel
- *      Copyright (c) 2002-2003	Open Source Development Labs
- *
- * configfs Copyright (C) 2005 Oracle.  All rights reserved.
- *
- * Added CONFIGFS_EATTR() macros from original configfs.h macros
- * Copright (C) 2008-2009 Nicholas A. Bellinger <nab@linux-iscsi.org>
- *
- * Please read Documentation/filesystems/configfs/configfs.txt before using
- * the configfs interface, ESPECIALLY the parts about reference counts and
- * item destructors.
- */
+
 
 #ifndef _CONFIGFS_MACROS_H_
 #define _CONFIGFS_MACROS_H_

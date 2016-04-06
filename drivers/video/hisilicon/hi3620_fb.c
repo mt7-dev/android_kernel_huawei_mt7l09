@@ -68,7 +68,7 @@ static int find_best_pix_fmt(struct fb_var_screeninfo *var)
 		/* RGB565/RGBA5551/RGBX5551 */
 		if (match_fmt_555(var)) {
 			if (var->transp.length == 1)
-				return IMG_PIXEL_FORMAT_ARGB1555;
+				return IMG_PIXEL_FORMAT_ARGB1555; 
 			else if (var->transp.length == 0)
 				return IMG_PIXEL_FORMAT_RGB555;
 		} else if (match_fmt_565(var))
@@ -559,7 +559,7 @@ static int hi3620_init_mode(struct device_node *np, struct fb_info *fb)
 			ret = -EINVAL;
 			goto out;
 		}
-
+		
 		set_pix_fmt(info, pix_fmt);
 		fb_videomode_to_var(var, fb_vm);
 		var->xres_virtual = fb_vm->xres;
@@ -733,7 +733,7 @@ static int hi3620_fb_probe(struct platform_device *pdev)
 
 	/* clear IRQ status & enable IRQ */
 	writel_relaxed(0, info->reg_base + EDC_INTS);
-	/* enable interrupts of  bus error */
+	/* enable interrupts of  bus error */ 
 	writel_relaxed(0x2ff, info->reg_base + EDC_INTE);
 	writel_relaxed(0x4, info->reg_base + LDI_INT_EN);	/* disable front porch int for debugging */
 	writel_relaxed(0x3fff, info->reg_base + LDI_INT_CLR);

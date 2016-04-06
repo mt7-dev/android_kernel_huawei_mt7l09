@@ -186,6 +186,15 @@ VOS_UINT32 NAS_SMS_ResendPsRpReport(VOS_VOID);
 
 
 
+VOS_VOID  SMS_GetPsConcatenateFlagFromNV(VOS_VOID);
+
+VOS_VOID SMS_SetSmsPsConcatenateFlag(
+    NAS_SMS_PS_CONCATENATE_ENUM_UINT8 enFlag
+);
+
+NAS_SMS_PS_CONCATENATE_ENUM_UINT8 SMS_GetSmsPsConcatenateFlag(VOS_VOID);
+
+
 #if ((VOS_OS_VER == VOS_WIN32) || (VOS_OS_VER == VOS_NUCLEUS))
 #pragma pack()
 #else

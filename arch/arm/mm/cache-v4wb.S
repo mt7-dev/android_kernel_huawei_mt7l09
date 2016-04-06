@@ -29,20 +29,7 @@
 # error Unknown cache size
 #endif
 
-/*
- * This is the size at which it becomes more efficient to
- * clean the whole cache, rather than using the individual
- * cache line maintenance instructions.
- *
- *  Size  Clean (ticks) Dirty (ticks)
- *   4096   21  20  21    53  55  54
- *   8192   40  41  40   106 100 102
- *  16384   77  77  76   140 140 138
- *  32768  150 149 150   214 216 212 <---
- *  65536  296 297 296   351 358 361
- * 131072  591 591 591   656 657 651
- *  Whole  132 136 132   221 217 207 <---
- */
+
 #define CACHE_DLIMIT	(CACHE_DSIZE * 4)
 
 	.data

@@ -6,6 +6,7 @@
 #include "ATCmdProc.h"
 #include "AtCheckFunc.h"
 #include "AtParseCmd.h"
+#include "at_common.h"
 
 
 #ifdef  __cplusplus

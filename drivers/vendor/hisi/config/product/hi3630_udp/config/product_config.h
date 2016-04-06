@@ -1,4 +1,4 @@
-/* MD5: 461e5fc40113ab6ce186b863a83b52f5*/
+/* MD5: 62ed926125eb35867943fee0c6e5c211*/
 #if !defined(__PRODUCT_CONFIG_H__)
 #define __PRODUCT_CONFIG_H__
 
@@ -35,13 +35,24 @@
 #endif 
 
 #ifndef PRODUCT_DLOAD_SOFTWARE_VER		
-#define PRODUCT_DLOAD_SOFTWARE_VER		 "21.180.00.00.031" 
+#define PRODUCT_DLOAD_SOFTWARE_VER		 "21.150.00.00.030" 
 #endif 
 
 #ifndef FEATURE_OBJ_CMP 				
 #endif 
 
 #ifndef FEATURE_OBJ_DUMP				
+#endif 
+
+#ifndef CONFIG_VERSION_STUB
+#endif 
+
+#ifndef HW_VERSION_STUB
+#define HW_VERSION_STUB 0x3f000606 
+#endif 
+
+#ifndef CONFIG_VER_MASK
+#define CONFIG_VER_MASK 0x3f000000 
 #endif 
 
 #ifndef USE_USBLOADER_MERGE 			
@@ -86,6 +97,10 @@
 
 #ifndef OS_ANDROID_PRODUCT_NAME
 #define OS_ANDROID_PRODUCT_NAME $(HW_PRODUCT) 
+#endif 
+
+#ifndef AP_CHIP_NAME
+#define AP_CHIP_NAME hi3630 
 #endif 
 
 #ifndef OS_ANDROID_SYNC_FILE_LIST
@@ -161,7 +176,7 @@
 #endif 
 
 #ifndef LPHY_PRV_DTCM_BASE		
-#define LPHY_PRV_DTCM_BASE		 0xe27c0000 
+#define LPHY_PRV_DTCM_BASE		 0xe27c2000 
 #endif 
 
 #ifndef LPHY_PRV_ITCM_BASE		
@@ -177,7 +192,7 @@
 #endif 
 
 #ifndef LPHY_PUB_DTCM_SIZE		
-#define LPHY_PUB_DTCM_SIZE		 0x40000 
+#define LPHY_PUB_DTCM_SIZE		 0x42000 
 #endif 
 
 #ifndef LPHY_PUB_ITCM_SIZE		
@@ -185,7 +200,7 @@
 #endif 
 
 #ifndef LPHY_PRV_DTCM_SIZE		
-#define LPHY_PRV_DTCM_SIZE		 0x40000 
+#define LPHY_PRV_DTCM_SIZE		 0x3E000 
 #endif 
 
 #ifndef LPHY_PRV_ITCM_SIZE		
@@ -248,6 +263,10 @@
 
 #ifndef BSP_CONFIG_K3V3_ASIC
 #define BSP_CONFIG_K3V3_ASIC 
+#endif 
+
+#ifndef HI3630_FASTBOOT_MODEM
+#define HI3630_FASTBOOT_MODEM 
 #endif 
 
 #ifndef BSP_CONFIG_HI3630
@@ -433,8 +452,16 @@
 #define FEATURE_UPGRADE_TL 
 #endif 
 
+#ifndef FEATURE_USB_ZERO_COPY
+#define FEATURE_USB_ZERO_COPY 
+#endif 
+
 #ifndef FEATURE_TLPHY_MAILBOX
 #define FEATURE_TLPHY_MAILBOX 
+#endif 
+
+#ifndef CONFIG_MAILBOX_TYPE
+#define CONFIG_MAILBOX_TYPE 
 #endif 
 
 #ifndef CONFIG_PASTAR
@@ -633,7 +660,6 @@
 #endif 
 
 #ifndef CONFIG_HIFI_RESET
-#define CONFIG_HIFI_RESET 
 #endif 
 
 #ifndef MCORE_TEXT_START_ADDR
@@ -881,6 +907,10 @@
 
 #ifndef FEATURE_WCBS
 #define FEATURE_WCBS FEATURE_ON 
+#endif 
+
+#ifndef FEATURE_MERGE_OM_CHAN						
+#define FEATURE_MERGE_OM_CHAN						 FEATURE_ON 
 #endif 
 
 #ifndef FEATURE_AP
@@ -1199,8 +1229,12 @@
 #define NAS_FEATURE_SMS_FLASH_SMSEXIST FEATURE_ON 
 #endif 
 
+#ifndef FEATURE_RMNET_CUSTOM
+#define FEATURE_RMNET_CUSTOM FEATURE_OFF 
+#endif 
+
 #ifndef FEATURE_AT_HSIC
-#define FEATURE_AT_HSIC FEATURE_ON 
+#define FEATURE_AT_HSIC FEATURE_OFF 
 #endif 
 
 #ifndef GAS_PTL_VER_PRE_R99
@@ -1427,6 +1461,10 @@
 #define FEATURE_VSIM FEATURE_ON 
 #endif 
 
+#ifndef FEATURE_SECURITY_PHONE
+#define FEATURE_SECURITY_PHONE FEATURE_OFF 
+#endif 
+
 #ifndef FEATURE_VOICE_UP
 #define FEATURE_VOICE_UP FEATURE_OFF 
 #endif 
@@ -1456,7 +1494,11 @@
 #endif 
 
 #ifndef FEATURE_HISOCKET				
-#define FEATURE_HISOCKET				 FEATURE_ON 
+#define FEATURE_HISOCKET				 FEATURE_OFF 
+#endif 
+
+#ifndef FEATURE_DFS_SYNC
+#define FEATURE_DFS_SYNC FEATURE_OFF 
 #endif 
 
 #ifdef OBC_IMAGE_MODEM

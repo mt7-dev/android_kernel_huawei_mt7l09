@@ -64,7 +64,7 @@ void sysview_trace_packet(u8 *trace_buf,u32 buf_size,bsp_sysview_type_e data_typ
     PACKET_BSP_SOCP_HEAD(trace_buf);;
 
     bsp_om_header = (bsp_om_head_s*)(trace_buf + sizeof(bsp_socp_head_s));
-    sysview_info_header = (BSP_SYS_VIEW_HEADER_STRU *)(trace_buf + sizeof(bsp_socp_head_s) + sizeof(bsp_om_head_s));
+    sysview_info_header = (BSP_SYS_VIEW_HEADER_STRU *)((char*)trace_buf + sizeof(bsp_socp_head_s) + sizeof(bsp_om_head_s));
 
     bsp_om_header->data_size        =buf_size - sizeof(bsp_socp_head_s)- sizeof(bsp_om_head_s);
     /*lint -save -e648*/

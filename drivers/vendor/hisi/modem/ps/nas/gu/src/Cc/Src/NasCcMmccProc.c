@@ -161,7 +161,7 @@ VOS_VOID NAS_CC_LocalAbortDtmf(
     NAS_CC_ENTITY_ID_T                  entityId
 )
 {
-    NAS_CC_CAUSE_VALUE_ENUM_U8          enCause;
+    NAS_CC_CAUSE_VALUE_ENUM_U32         enCause;
     NAS_CC_DTMF_STATE_ENUM              enDtmfState;
 
     /* 如果当前存在DTMF过程，需要通知MN DTMF的结果 */
@@ -196,49 +196,20 @@ VOS_VOID NAS_CC_LocalAbortDtmf(
 
 VOS_VOID NAS_CC_ConvertMmccRelCauseToMnccCause(
     NAS_MMCM_REL_CAUSE_ENUM_UINT32      enMmccRelCause,
-    NAS_CC_CAUSE_VALUE_ENUM_U8         *penCcCause
+    NAS_CC_CAUSE_VALUE_ENUM_U32        *penCcCause
 )
 {
-    NAS_CC_CAUSE_VALUE_ENUM_U8          enCcCause;
 
-    switch (enMmccRelCause)
-    {
-        case NAS_MMCM_REL_CAUSE_AS_REJ_LOW_LEVEL_FAIL:
-            enCcCause = NAS_CC_CAUSE_AS_REJ_LOW_LEVEL_FAIL;
-            break;
-
-        case NAS_MMCM_REL_CAUSE_AS_REJ_OTHER_CAUSES:
-            enCcCause = NAS_CC_CAUSE_AS_REJ_OTHER_CAUSES;
-            break;
-
-        case NAS_MMCM_REL_CAUSE_MM_WRONG_STATE:
-            enCcCause = NAS_CC_CAUSE_MM_WRONG_STATE;
-            break;
-
-        case NAS_MMCM_REL_CAUSE_MM_NO_SERVICE:
-            enCcCause = NAS_CC_CAUSE_MM_NO_SERVICE;
-            break;
-
-        case NAS_MMCM_REL_CAUSE_MM_LIMIT_SERVICE:
-            enCcCause = NAS_CC_CAUSE_MM_LIMIT_SERVICE;
-            break;
-
-        case NAS_MMCM_REL_CAUSE_MM_TIMER_T3230_EXP:
-            enCcCause = NAS_CC_CAUSE_MM_TIMER_T3230_EXP;
-            break;
-
-        case NAS_MMCM_REL_CAUSE_MM_REJ_OTHER_CAUSES:
-            enCcCause = NAS_CC_CAUSE_MM_REJ_OTHER_CAUSES;
-            break;
-
-        default:
-             enCcCause = NAS_CC_CAUSE_MM_REJ_OTHER_CAUSES;
-             NAS_CC_INFO_LOG("NAS_CC_ConvertMmccRelCauseToMnccCause: invalid cause");
-             break;
-    }
+    *penCcCause = enMmccRelCause;
 
 
-    *penCcCause = enCcCause;
+
+
+
+
+
+
+
 
     return;
 }
@@ -250,13 +221,22 @@ VOS_VOID  NAS_CC_ProcMmccRelInd(
     const VOS_VOID                      *pMsg
 )
 {
-    MMCC_REL_IND_STRU * pstRelInd = (MMCC_REL_IND_STRU *)pMsg;
-    VOS_UINT8  ucTi = (VOS_UINT8)(pstRelInd->ulTransactionId ^ 0x08);
+    MMCC_REL_IND_STRU                  *pstRelInd;
+    VOS_UINT8                           ucTi;
     NAS_CC_CALL_STATE_ENUM_U8           enCallState;
 
-    NAS_CC_CAUSE_VALUE_ENUM_U8          enCcCause;
+    NAS_CC_CAUSE_VALUE_ENUM_U32         enCcCause;
 
-    NAS_CC_ENTITY_ID_T entityId = NAS_CC_GetEntityByTi(ucTi);
+    NAS_CC_ENTITY_ID_T                  entityId;
+
+    pstRelInd   = (MMCC_REL_IND_STRU *)pMsg;
+    ucTi        = (VOS_UINT8)(pstRelInd->ulTransactionId ^ 0x08);
+    /* 这个地方加一个显示转换，避免以后修改代码两边错误原因值偏移不一致 */
+    NAS_CC_ConvertMmccRelCauseToMnccCause((NAS_MMCM_REL_CAUSE_ENUM_UINT32)pstRelInd->ulRelCause,
+                                          &enCcCause);
+
+
+    entityId = NAS_CC_GetEntityByTi(ucTi);
     NAS_CC_ASSERT(entityId != NAS_CC_INVALID_ENTITY_ID);
 
     enCallState = NAS_CC_GetCallState(entityId);
@@ -271,9 +251,9 @@ VOS_VOID  NAS_CC_ProcMmccRelInd(
 
         NAS_CC_StopLocalAlertInd();
 
-        /* 将NAS_MMCM_REL_CAUSE_ENUM_UINT32转换为NAS_CC_CAUSE_VALUE_ENUM_U8中对应原因值 */
-        NAS_CC_ConvertMmccRelCauseToMnccCause((NAS_MMCM_REL_CAUSE_ENUM_UINT32)pstRelInd->ulRelCause,
-                                              &enCcCause);
+        /* 将NAS_MMCM_REL_CAUSE_ENUM_UINT32转换为NAS_CC_CAUSE_VALUE_ENUM_U32中对应原因值 */
+        /* 删除NAS_CC_ConvertMmccRelCauseToMnccCause((NAS_MMCM_REL_CAUSE_ENUM_UINT32)pstRelInd->ulRelCause,
+                                              &enCcCause);*/
 
         NAS_CC_StopAllTimer(entityId);
 
@@ -291,6 +271,9 @@ VOS_VOID  NAS_CC_ProcMmccRelInd(
         NAS_CC_INFO_LOG("NAS_CC_ProcMmccRelInd: Bad state.");
     }
 }
+
+
+
 VOS_VOID  NAS_CC_ProcMmccDataInd(
     const VOS_VOID                      *pMsg
 )
@@ -309,8 +292,9 @@ VOS_VOID  NAS_CC_ProcMmccSyncInd(
     const VOS_VOID                      *pMsg
 )
 {
-    VOS_UINT8                  i;
-    VOS_UINT32                 ulResult;
+    VOS_UINT8                   i;
+    VOS_UINT32                  ulResult;
+    MMCC_SYNC_IND_STRU         *pstSyncInd  = VOS_NULL_PTR;
 
     for(i = 0; i < NAS_CC_MAX_ENTITY_NUM; i++)
     {
@@ -322,20 +306,32 @@ VOS_VOID  NAS_CC_ProcMmccSyncInd(
             }
         }
     }
+
+    pstSyncInd  = (MMCC_SYNC_IND_STRU *)pMsg;
     if(i == NAS_CC_MAX_ENTITY_NUM)
     {
         NAS_CC_WARN_LOG("NAS_CC_ProcMmccSyncInd no call is active");
+
+        /* 只对不是rab release的sync ind进行缓存，否则在外场测试时发现有可能会挂断被叫 */
+        if (MMCC_WCDMA_RAB_RELEASED != pstSyncInd->enSyncReason)
+        {
+            NAS_CC_SaveCacheMsg(NAS_BuildEventType(WUEPS_PID_MM, MMCC_SYNC_IND), (VOS_VOID *)pMsg);
+        }
+
         return;
     }
 
     /* NAS_CC_SetTchStatus */
-    ulResult = NAS_CC_SetTchStatus((MMCC_SYNC_IND_STRU *)pMsg, i);
+    ulResult = NAS_CC_SetTchStatus(pstSyncInd, i);
     if(VOS_ERR == ulResult)
     {
         NAS_CC_WARN_LOG("NAS_CC_ProcMmccSyncInd parameters are wrong");
         return;
     }
 }
+
+
+
 VOS_VOID  NAS_CC_ProcMmccReestCnf(
     const VOS_VOID                      *pMsg
 )
@@ -394,7 +390,7 @@ VOS_VOID  NAS_CC_ProcMmccErrInd(
 
     NAS_CC_ENTITY_ID_T entityId = NAS_CC_GetEntityByTi(ucTi);
 
-    NAS_CC_CAUSE_VALUE_ENUM_U8          enCcCause;
+    NAS_CC_CAUSE_VALUE_ENUM_U32         enCcCause;
 
     NAS_CC_ASSERT(entityId != NAS_CC_INVALID_ENTITY_ID);
 
@@ -423,7 +419,7 @@ VOS_VOID  NAS_CC_ProcMmccErrInd(
 
         NAS_CC_StopLocalAlertInd();
 
-        enCcCause = NAS_CC_CAUSE_CNM_OTHER_REJ_CAUSES;
+        NAS_CC_ConvertMmccRelCauseToMnccCause(pstErrInd->enCause, &enCcCause);
         NAS_CC_SendMnccMsg(entityId, MNCC_REJ_IND, &enCcCause, sizeof(enCcCause));
 
         NAS_CC_StopAllTimer(entityId);
@@ -555,11 +551,11 @@ VOS_VOID  NAS_CC_ProcSrvccSucc(VOS_VOID)
     for (i = 0; i < NAS_CC_MAX_ENTITY_NUM; i++)
     {
         ucTi = NAS_CC_GetEntityTi(i);
-        
+
         entityId = NAS_CC_GetEntityByTi(ucTi);
-        
+
         NAS_CC_GetBcParams(entityId, NAS_CC_BC_PARAM_1, &stParams);
-        
+
         NAS_CC_AttachUserConn(entityId, stParams.enItc);
     }
 
@@ -582,22 +578,22 @@ VOS_VOID  NAS_CC_ProcMmccSrvccStatusInd(
             break;
 
         case NAS_MMCC_SRVCC_STATUS_FAIL:
-        
+
             /* 销毁IMSA同步过来的CC实体信息 */
             NAS_CC_DeleteAllEntities();
 
             /* 清除TCH信道信息 */
             NAS_CC_SetTchAvailValue(VOS_FALSE);
-            
+
             enSrvccSta = NAS_MNCC_SRVCC_STATUS_FAIL;
             break;
 
         case NAS_MMCC_SRVCC_STATUS_SUCCESS:
-   
+
             enSrvccSta = NAS_MNCC_SRVCC_STATUS_SUCCESS;
-   
+
             NAS_CC_ProcSrvccSucc();
-            
+
             break;
 
         default:
@@ -608,7 +604,7 @@ VOS_VOID  NAS_CC_ProcMmccSrvccStatusInd(
 
     /* 通知CALL模块SRVCC过程状态消息 */
     NAS_CC_SendMnccSrvccStatusIndMsg(enSrvccSta);
-    
+
     return;
 }
 #endif

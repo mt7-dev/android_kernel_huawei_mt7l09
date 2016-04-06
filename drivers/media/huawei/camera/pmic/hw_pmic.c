@@ -176,7 +176,7 @@ int32_t hisi_pmic_i2c_probe(struct i2c_client *client,
 	}
 
 	pmic_ctrl = (struct hisi_pmic_ctrl_t *)id->driver_data;
-	pmic_ctrl->pmic_i2c_client->client = client;
+	pmic_ctrl->pmic_i2c_client->client = client;/*[false alarm]:pmic_ctrl is not alarm*/
 	pmic_ctrl->dev = &client->dev;
 	pmic_ctrl->pmic_i2c_client->i2c_func_tbl = &hisi_pmic_i2c_func_tbl;
 
@@ -231,7 +231,7 @@ int32_t hisi_pmic_i2c_probe(struct i2c_client *client,
 
 #ifdef CONFIG_HUAWEI_HW_DEV_DCT
 	/* detect current device successful, set the flag as present */
-	set_hw_dev_flag(DEV_I2C_CAMERA_PMU);
+	//set_hw_dev_flag(DEV_I2C_CAMERA_PMU);
 #endif
 	hisi_set_pmic_ctrl(pmic_ctrl);
 	return rc;

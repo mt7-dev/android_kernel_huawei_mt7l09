@@ -51,8 +51,10 @@ extern "C" {
 
 #endif
 #define nv_flush_cache(p,n)   cache_sync()
+#define bsp_trace( log_level, mod_id,fmt,...) (printf( "<%s> "fmt"\n", __FUNCTION__, ##__VA_ARGS__))
 
 extern struct nv_global_ctrl_info_stru g_nv_ctrl;
+
 #define nv_printf(fmt, ...) \
     bsp_trace(BSP_LOG_LEVEL_ERROR,BSP_MODU_NV,"[nv]: <%s> line = %d  "fmt, __FUNCTION__,__LINE__, ##__VA_ARGS__)
 #define nv_warn_printf(fmt, ...) \

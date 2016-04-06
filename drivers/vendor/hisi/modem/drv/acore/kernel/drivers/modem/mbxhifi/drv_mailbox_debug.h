@@ -44,21 +44,21 @@ extern "C" {
 
 /*邮箱调试打印接口*/
 #if (MAILBOX_LOG_LEVEL == MAILBOX_LOG_NONE)
-#define mailbox_logerro_p0(ErrorId)                 (unsigned long)(ErrorId)
+#define mailbox_logerro_p0(ErrorId)                 (unsigned int)(ErrorId)
 
-#define mailbox_logerro_p1(ErrorId, Param)          (unsigned long)(ErrorId)
+#define mailbox_logerro_p1(ErrorId, Param)          (unsigned int)(ErrorId)
 
-#define mailbox_logerro_p2(ErrorId, Param1,Param2)  (unsigned long)(ErrorId)
+#define mailbox_logerro_p2(ErrorId, Param1,Param2)  (unsigned int)(ErrorId)
 
 #else
-#define mailbox_logerro_p0(ErrorId)                 mailbox_log_erro((unsigned long)ErrorId, (unsigned long)0,(unsigned long)0,\
-                                                    (unsigned long)_MAILBOX_LINE_, (char*)_MAILBOX_FILE_)
+#define mailbox_logerro_p0(ErrorId)                 mailbox_log_erro((unsigned int)ErrorId, (unsigned int)0,(unsigned int)0,\
+                                                    (unsigned int)_MAILBOX_LINE_, (char*)_MAILBOX_FILE_)
 
-#define mailbox_logerro_p1(ErrorId, Param)          mailbox_log_erro((unsigned long)ErrorId, (unsigned long)Param,(unsigned long)0, \
-                                                    (unsigned long)_MAILBOX_LINE_, (char*)_MAILBOX_FILE_)
+#define mailbox_logerro_p1(ErrorId, Param)          mailbox_log_erro((unsigned int)ErrorId, (unsigned long)Param,(unsigned long)0, \
+                                                    (unsigned int)_MAILBOX_LINE_, (char*)_MAILBOX_FILE_)
 
-#define mailbox_logerro_p2(ErrorId, Param1,Param2)  mailbox_log_erro((unsigned long)ErrorId, (unsigned long)Param1,Param2, \
-                                                    (unsigned long)_MAILBOX_LINE_, (char*)_MAILBOX_FILE_)
+#define mailbox_logerro_p2(ErrorId, Param1,Param2)  mailbox_log_erro((unsigned int)ErrorId, (unsigned long)Param1,Param2, \
+                                                    (unsigned int)_MAILBOX_LINE_, (char*)_MAILBOX_FILE_)
 #endif
 
 /*致命错误开始*/ /*需要复位系统的错误:邮箱内部错误*/
@@ -167,10 +167,10 @@ extern "C" {
 struct  mb_st_msg
 {
 
-    unsigned long protect;                       /*消息保护字 MAILBOX_BOARDST_USER_PROTECT1*/
-    unsigned long length;                        /*测试的消息长度*/
-    unsigned long back_code;              /*用于返回消息内容的通道号*/
-    unsigned long test_id;                        /*测试过程消息号: TM_MAILBOX_TEST_ID_E定义*/
+    unsigned int protect;                       /*消息保护字 MAILBOX_BOARDST_USER_PROTECT1*/
+    unsigned int length;                        /*测试的消息长度*/
+    unsigned int back_code;              /*用于返回消息内容的通道号*/
+    unsigned int test_id;                        /*测试过程消息号: TM_MAILBOX_TEST_ID_E定义*/
 };
 
 /*****************************************************************************
@@ -198,10 +198,10 @@ enum MAILBOX_BOARDST_TEST_ID_E
 *****************************************************************************/
 struct mb_log
 {
-    unsigned long erro_num;
+    unsigned int erro_num;
     unsigned long param1;
     unsigned long param2;
-    unsigned long line;
+    unsigned int line;
     const char*   file;
 };
 
@@ -210,8 +210,8 @@ struct mb_log
 ****************************************************************************/
 typedef struct
 {
-    unsigned long               send_slice;         /*发送的时间戳*/
-    unsigned long               recv_slice;         /*接收的时间戳*/
+    unsigned int               send_slice;         /*发送的时间戳*/
+    unsigned int               recv_slice;         /*接收的时间戳*/
     unsigned long               mail_addr;         /*邮件数据地址*/
     unsigned short              use_id;
     unsigned short              reserved;
@@ -222,23 +222,23 @@ typedef struct
 *****************************************************************************/
 struct mb_slice
 {
-    unsigned long               total;       /*邮件累计传递时间,计算从一个点发送到另外一个响应点的时间*/
-    unsigned long               start;       /*保存单次统计的发送点时间*/
-    unsigned long               max;         /*邮件最大传递时间，计算从一个点发送到另外一个响应点的时间**/
-    unsigned long               code;       /*邮件最大传递使用号*/
-    unsigned long               overflow;    /*处理总时间计数是否溢出*/
+    unsigned int               total;       /*邮件累计传递时间,计算从一个点发送到另外一个响应点的时间*/
+    unsigned int               start;       /*保存单次统计的发送点时间*/
+    unsigned int               max;         /*邮件最大传递时间，计算从一个点发送到另外一个响应点的时间**/
+    unsigned int               code;       /*邮件最大传递使用号*/
+    unsigned int               overflow;    /*处理总时间计数是否溢出*/
 };
 
 struct mb_mntn
 {
-    unsigned long               peak_traffic_left;       /*通道剩余空间的最低值，用于统计邮箱数据峰值*/
+    unsigned int               peak_traffic_left;       /*通道剩余空间的最低值，用于统计邮箱数据峰值*/
 
     struct mb_slice             trans;                   /*统计邮件传递时间，从发送核发送，到接接收核调用回调之前*/   
     struct mb_slice             deal;                    /*统计邮件处理时间，统计用户的邮件处理时长*/   
     struct mb_slice             sche;                    /*统计邮件任务调度等待时间，统计从中断到任务调度的时间*/   
   
     /*以下是邮件发送(接收)轨迹记录*/
-    unsigned long               track_prob;             /*指向TrackArray中下一次记录*/
+    unsigned int               track_prob;             /*指向TrackArray中下一次记录*/
     MAILBOX_TRACK_STRU          track_array[MAILBOX_RECORD_USEID_NUM];/*记录最近处理的MAILBOX_LATEST_USEID_NUM个use id 传送信息*/
     struct mb_buff             *mbuff;                  
 };
@@ -258,36 +258,36 @@ struct mb_mntn
 /*****************************************************************************
   10 函数声明
 *****************************************************************************/
-extern MAILBOX_EXTERN long mailbox_log_erro(
+extern MAILBOX_EXTERN int mailbox_log_erro(
                 unsigned int   err_no,
-                unsigned int   param1,
-                unsigned int   param2,
-                unsigned long   line_no,
+                unsigned long   param1,
+                unsigned long   param2,
+                unsigned int   line_no,
                 char*           file_name);
 
 MAILBOX_EXTERN void mailbox_record_send(
                 struct mb_mntn* mntn,                
-                unsigned long mailcode, 
-                unsigned long time_stamp,
+                unsigned int mailcode, 
+                unsigned int time_stamp,
                 unsigned long mail_addr);
 
 
 MAILBOX_EXTERN void mailbox_record_transport(
                 struct mb_mntn* mntn, 
-                unsigned long mailcode, 
-                unsigned long write_slice,
-                unsigned long read_slice,
+                unsigned int mailcode, 
+                unsigned int write_slice,
+                unsigned int read_slice,
                 unsigned long mail_addr);
 
 
 MAILBOX_EXTERN void mailbox_record_receive(
                 struct mb_mntn* mntn,                
-                unsigned long mailcode, 
-                unsigned long slice_start);
+                unsigned int mailcode, 
+                unsigned int slice_start);
 
-MAILBOX_EXTERN long mailbox_show(
-                unsigned long    channel,
-                unsigned long    show_all);
+MAILBOX_EXTERN int mailbox_show(
+                unsigned int    channel,
+                unsigned int    show_all);
 
 MAILBOX_EXTERN void mailbox_record_sche_send(void *priv);
 

@@ -126,7 +126,7 @@ VOS_VOID  TAF_CALL_DeRegRelCallSsKeyEvent(
         else
         {
             ulLoop++;
-        }      
+        }
     }
 
 }
@@ -324,6 +324,7 @@ VOS_VOID   MN_CALL_ResetAllCalls(MN_CALL_POWER_STATE_ENUM_U8 enPowerState)
     VOS_UINT32                          i;
 
     MN_CALL_MSG_BUFF_STRU              *pstMsgBuff = VOS_NULL_PTR;
+    TAF_CS_CAUSE_ENUM_UINT32            enCause;
 
     pstMsgBuff = MN_CALL_GetBufferedMsg();
 
@@ -355,20 +356,23 @@ VOS_VOID   MN_CALL_ResetAllCalls(MN_CALL_POWER_STATE_ENUM_U8 enPowerState)
                     MN_CALL_StopTimer(MN_CALL_TID_WAIT_CALL_REDAIL_INTERVAL);
                 }
 
-                MN_CALL_ReportErrIndEvent(MN_CLIENT_ALL,
-                                          0,
-                                          TAF_CS_CAUSE_UNKNOWN,
-                                          f_astCallMgmtEntities[i].stCallInfo.callId);
+#if (FEATURE_ON == FEATURE_PTM)
+                /* 记录CS呼叫异常log */
+                MN_CALL_CsCallErrRecord(f_astCallMgmtEntities[i].stCallInfo.callId, TAF_CS_CAUSE_POWER_OFF);
+#endif
+
+                /* 电话挂断时勾出相应的事件，第三个参数不能是空指针，第四个参数不能是0，否则事件报不上去 */
+                enCause = TAF_CS_CAUSE_POWER_OFF;
 
                 if(MN_CALL_DIR_MO == f_astCallMgmtEntities[i].stCallInfo.enCallDir)
                 {
                     NAS_EventReport(WUEPS_PID_TAF, NAS_OM_EVENT_CC_MO_DISCONNECT,
-                                    VOS_NULL_PTR, NAS_OM_EVENT_NO_PARA);
+                                    &enCause, sizeof(TAF_CS_CAUSE_ENUM_UINT32));
                 }
                 else
                 {
                     NAS_EventReport(WUEPS_PID_TAF, NAS_OM_EVENT_CC_MT_DISCONNECT,
-                                    VOS_NULL_PTR, NAS_OM_EVENT_NO_PARA);
+                                    &enCause, sizeof(TAF_CS_CAUSE_ENUM_UINT32));
                 }
             }
         }
@@ -380,7 +384,7 @@ VOS_VOID   MN_CALL_ResetAllCalls(MN_CALL_POWER_STATE_ENUM_U8 enPowerState)
         MN_CALL_ReportEvent(f_astCallMgmtEntities[0].stCallInfo.callId,
                             MN_CALL_EVT_ALL_RELEASED);
         TAF_SDC_SetCsCallExistFlg(VOS_FALSE);
-        
+
 #if (FEATURE_MULTI_MODEM == FEATURE_ON)
         /* 给MTC模块上报当前CS域业务状态 */
         TAF_SendMtcCsSrvInfoInd();
@@ -416,20 +420,7 @@ VOS_VOID   MN_CALL_ResetAllCalls(MN_CALL_POWER_STATE_ENUM_U8 enPowerState)
 }
 
 
-/*****************************************************************************
- 函 数 名  : MN_CALL_AllocCallId
- 功能描述  : 分配对应的Call Id
- 输入参数  : pCallId  - 需要分配的呼叫ID
- 输出参数  : 无
- 返 回 值  : 无
- 调用函数  :
- 被调函数  :
 
- 修改历史      :
-  1.日    期   : 2007年9月20日
-    作    者   : 丁庆 49431
-    修改内容   : 新生成函数
-*****************************************************************************/
 VOS_UINT32 MN_CALL_AllocCallId(
     MN_CALL_ID_T                        *pCallId
 )
@@ -446,6 +437,9 @@ VOS_UINT32 MN_CALL_AllocCallId(
             *pCallId = (VOS_UINT8)i + 1;
             f_astCallMgmtEntities[i].bUsed = VOS_TRUE;
             f_astCallMgmtEntities[i].stCallInfo.enCallState = MN_CALL_S_IDLE;
+
+            f_astCallMgmtEntities[i].stCallInfo.enCallSubState = TAF_CALL_SUB_STATE_NULL;
+
             VOS_TaskUnlock();
             return  VOS_OK;
         }
@@ -475,6 +469,8 @@ VOS_VOID   MN_CALL_FreeCallId(
     f_astCallMgmtEntities[callId - 1].stCallInfo.enCallState = MN_CALL_S_IDLE;
     f_astCallMgmtEntities[callId - 1].stCallInfo.clientId = MN_CLIENT_ALL;
 
+    /* 清除呼叫子状态为null */
+    TAF_CALL_SetCallSubState(callId, TAF_CALL_SUB_STATE_NULL);
     VOS_TaskUnlock();
 
     /*遍历所有呼叫控制实体*/
@@ -498,6 +494,9 @@ VOS_VOID   MN_CALL_FreeCallId(
 #endif
     }
 }
+
+
+
 VOS_BOOL   MN_CALL_IsAllowToMakeNewCall(
     MN_CALL_ID_T                        callId,
     MN_CALL_DIR_ENUM_U8                 enCallDir
@@ -620,8 +619,6 @@ VOS_VOID  MN_CALL_CreateMoCallEntity(
 
     return;
 }
-
-
 VOS_UINT32 MN_CALL_GetSpecificCallInfo(
     MN_CALL_ID_T                        CallId,
     MN_CALL_MGMT_STRU                  *pstCallInfo
@@ -963,6 +960,12 @@ VOS_VOID  MN_CALL_ReportEvent(
         if ((MN_CALL_EVT_INCOMING == enEventType)
           &&(MN_CALL_TYPE_VOICE == f_astCallMgmtEntities[callId - 1].stCallInfo.enCallType))
         {
+
+#if (FEATURE_ON == FEATURE_PTM)
+            /* setup消息按协议检查失败的异常记录 */
+            MN_CALL_CsMtCallFailRecord(NAS_ERR_LOG_CS_MT_CALL_CAUSE_CALL_STATE_CTRL_NOT_SUPPORT);
+#endif
+
             return;
         }
 
@@ -989,9 +992,6 @@ VOS_VOID  MN_CALL_ReportEvent(
                        enEventType,
                        &f_astCallMgmtEntities[callId - 1].stCallInfo);
 }
-
-
-
 VOS_VOID  MN_CALL_UpdateClientId(
     MN_CALL_ID_T                        callId,
     MN_CLIENT_ID_T                      clientId
@@ -1277,7 +1277,7 @@ VOS_VOID  MN_CALL_UpdateSsNotify(
 
 VOS_VOID  MN_CALL_UpdateCcCause(
     MN_CALL_ID_T                        callId,
-    MN_CALL_CC_CAUSE_ENUM_U8            enCcCause
+    NAS_CC_CAUSE_VALUE_ENUM_U32         enCcCause
 )
 {
 
@@ -1355,6 +1355,34 @@ VOS_VOID  MN_CALL_UpdateTi(
 }
 
 
+VOS_UINT8 TAF_CALL_GetSrvccLocalAlertedFlagByCallId(
+    MN_CALL_ID_T                        callId
+)
+{
+    if ( (callId == 0) || ( callId > MN_CALL_MAX_NUM ) )
+    {
+        TAF_ERROR_LOG(WUEPS_PID_TAF, "MN_CALL_GetCallState: callId error!");
+        return VOS_FALSE;
+    }
+
+    return f_astCallMgmtEntities[callId - 1].ucSrvccLocalAlertedFlag;
+}
+
+
+VOS_VOID TAF_CALL_SetSrvccLocalAlertedFlagByCallId(
+    MN_CALL_ID_T                        callId,
+    VOS_UINT8                           ucSrvccLocalAlertedFlag
+)
+{
+    if ( (callId == 0) || ( callId > MN_CALL_MAX_NUM ) )
+    {
+        TAF_ERROR_LOG(WUEPS_PID_TAF, "MN_CALL_GetCallState: callId error!");
+        return;
+    }
+
+    f_astCallMgmtEntities[callId - 1].ucSrvccLocalAlertedFlag = ucSrvccLocalAlertedFlag;
+}
+
 
 VOS_VOID  MN_CALL_GetCallState(
     MN_CALL_ID_T                        callId,
@@ -1372,6 +1400,35 @@ VOS_VOID  MN_CALL_GetCallState(
 
     *penCallState = f_astCallMgmtEntities[callId - 1].stCallInfo.enCallState;
     *penMptyState = f_astCallMgmtEntities[callId - 1].stCallInfo.enMptyState;
+}
+
+
+TAF_CALL_SUB_STATE_ENUM_UINT8 TAF_CALL_GetCallSubState(
+    MN_CALL_ID_T                        callId
+)
+{
+    if ( (callId == 0) || ( callId > MN_CALL_MAX_NUM ) )
+    {
+        TAF_ERROR_LOG(WUEPS_PID_TAF, "TAF_CALL_GetCallSubState: callId error!");
+        return TAF_CALL_SUB_STATE_NULL;
+    }
+
+    return f_astCallMgmtEntities[callId - 1].stCallInfo.enCallSubState;
+}
+
+
+VOS_VOID TAF_CALL_SetCallSubState(
+    MN_CALL_ID_T                        callId,
+    TAF_CALL_SUB_STATE_ENUM_UINT8       enCallSubState
+)
+{
+    if ( (callId == 0) || ( callId > MN_CALL_MAX_NUM ) )
+    {
+        TAF_ERROR_LOG(WUEPS_PID_TAF, "TAF_CALL_SetCallSubState: callId error!");
+        return;
+    }
+
+    f_astCallMgmtEntities[callId - 1].stCallInfo.enCallSubState = enCallSubState;
 }
 
 /*****************************************************************************
@@ -1693,6 +1750,17 @@ VOS_VOID  MN_CALL_UpdateCallSupsProgress(
             MN_CALL_GetCallsByState(MN_CALL_S_WAITING, &ulNumOfCalls, aCallIds);
             if (0 != ulNumOfCalls)
             {
+                /* 处理HOLD_CNF或REL事件后续接听另一路电话，需要去注册另一个事件 */
+                if (MN_CALL_SS_PROG_EVT_HOLD_CNF == enEvt)
+                {
+                    MN_CALL_DeRegSsKeyEvent(callId, MN_CALL_SS_PROG_EVT_REL);
+                }
+
+                if (MN_CALL_SS_PROG_EVT_REL == enEvt)
+                {
+                    MN_CALL_DeRegSsKeyEvent(callId, MN_CALL_SS_PROG_EVT_HOLD_CNF);
+                }
+
                 MN_INFO_LOG2("MN_CALL_UpdateCallSupsProgress: accept other: waiting, NumOfCalls, callId",(VOS_INT32)ulNumOfCalls, aCallIds[0]);
                 /*有正在等待的呼叫, 接听该呼叫*/
                 MN_CALL_CallAnswerReqProc(f_stCallSupsCmdMgmt.clientId,
@@ -2751,7 +2819,7 @@ VOS_VOID  MN_CALL_GetCdur(
 
             return;
         }
-    }    
+    }
     else
     {
         /* 不在通话状态或通话保持状态 输出AT_ERROR */
@@ -2786,6 +2854,9 @@ VOS_VOID  MN_CALL_GetCdur(
 
     return;
 }
+
+
+
 VOS_UINT32 MN_CALL_RcvTafAgentGetCallInfo(VOS_VOID)
 {
     TAFAGERNT_MN_GET_CALL_INFO_CNF_STRU                    *pstCnf;
@@ -2808,9 +2879,9 @@ VOS_UINT32 MN_CALL_RcvTafAgentGetCallInfo(VOS_VOID)
          && (MN_CALL_S_IDLE != f_astCallMgmtEntities[i].stCallInfo.enCallState))
 
         {
-            pstCnf->stCallInfo[i].callId       = f_astCallMgmtEntities[i].stCallInfo.callId;
-            pstCnf->stCallInfo[i].enCallType   = f_astCallMgmtEntities[i].stCallInfo.enCallType;
-            pstCnf->stCallInfo[i].enCallState  = f_astCallMgmtEntities[i].stCallInfo.enCallState;
+            pstCnf->stCallInfo[pstCnf->ucNumOfCalls].callId       = f_astCallMgmtEntities[i].stCallInfo.callId;
+            pstCnf->stCallInfo[pstCnf->ucNumOfCalls].enCallType   = f_astCallMgmtEntities[i].stCallInfo.enCallType;
+            pstCnf->stCallInfo[pstCnf->ucNumOfCalls].enCallState  = f_astCallMgmtEntities[i].stCallInfo.enCallState;
 
             (pstCnf->ucNumOfCalls)++;
         }
@@ -2890,7 +2961,7 @@ VOS_VOID  MN_CALL_CreateStkMoCallEntity(
 
     /* 支持被叫子地址 */
     if ( ( pstStkCallOrig->stSubAddr.ucLen > 0)
-       && (pstStkCallOrig->stSubAddr.ucLen < MN_CALL_MAX_SUBADDR_INFO_LEN)) 
+       && (pstStkCallOrig->stSubAddr.ucLen < MN_CALL_MAX_SUBADDR_INFO_LEN))
     {
         f_astCallMgmtEntities[callId - 1].stCallInfo.stCalledSubAddr.IsExist = VOS_TRUE;
         f_astCallMgmtEntities[callId - 1].stCallInfo.stCalledSubAddr.LastOctOffset  = pstStkCallOrig->stSubAddr.ucLen;
@@ -2900,7 +2971,7 @@ VOS_VOID  MN_CALL_CreateStkMoCallEntity(
                    (pstStkCallOrig->stSubAddr.ucLen - 1));
     }
 
-    
+
 
     /* 将CallInfo中的转移号码和连接号码中的长度字段都设置为0 */
     f_astCallMgmtEntities[callId - 1].stCallInfo.stRedirectNumber.ucNumLen = 0;
@@ -2928,6 +2999,8 @@ VOS_VOID  MN_CALL_CreateStkMoCallEntity(
 
     return;
 }
+
+
 VOS_VOID MN_CALL_GetCallReleaseFlag(
     VOS_UINT8                           ucCallId,
     VOS_BOOL                           *pbReleaseFlag
@@ -3166,7 +3239,7 @@ VOS_UINT32 MN_CALL_GetNetDiscEventInfo(
              /*Cause信息来源于DISCONNECT, RELEASE or RELEASE COMPLETE消息，如果消息中没有Cause信息，则不包含这个信息，如果呼叫释放时无线链路超时导致，需要携带Cause信息字段，长度填0。*/
              pstDiscEventCause->ucLength     = 0;
              pstDiscEventCause->ucExistFlg   = VOS_TRUE;
-             
+
             *pucCallId                      = pstMsg->ucCallId;
             return MN_ERR_NO_ERROR;
 
@@ -3514,7 +3587,7 @@ VOS_UINT32 MN_CALL_AllowSupsOperation(VOS_VOID)
 
 VOS_UINT32 MN_CALL_IsNeedCallRedial(
     MN_CALL_ID_T                        ucCallId,
-    NAS_CC_CAUSE_VALUE_ENUM_U8          enCause
+    NAS_CC_CAUSE_VALUE_ENUM_U32         enCause
 )
 {
     MN_CALL_STATE_ENUM_U8               enCallState;
@@ -3548,10 +3621,7 @@ VOS_UINT32 MN_CALL_IsNeedCallRedial(
      && (MN_CALL_S_DIALING == enCallState)
      && (VOS_TRUE == ulCallRedialSupportFlg))
     {
-        if ((enCause >= NAS_CC_CAUSE_AS_REJ_LOW_LEVEL_FAIL)
-         && (enCause != NAS_CC_CAUSE_CNM_OTHER_REJ_CAUSES)
-         && (enCause != NAS_CC_CAUSE_MM_REJ_OTHER_CAUSES)
-         && (enCause != NAS_CC_CAUSE_AS_REJ_OTHER_CAUSES)
+        if ((VOS_TRUE == TAF_CALL_IsCallRedialCause(enCause))
          && (ulCallRedialPeriodRemainLen > ulCallRedialIntervalLen))
         {
             /* 主叫且呼叫处于dialing状态且支持呼叫重发且原因值满足重建条件且剩余时间大于重建间隔时长 */
@@ -4055,7 +4125,7 @@ VOS_VOID TAF_CALL_PreProcRelAllCall(VOS_VOID)
     callId                                              = f_stCallSupsCmdMgmt.astKeyEvts[0].callId;
     f_astCallMgmtEntities[callId].stCallInfo.enSsResult = MN_CALL_SS_RES_SUCCESS;
     MN_CALL_ReportEvent(callId, MN_CALL_EVT_SS_CMD_RSLT);
-    
+
     /* 清除呼叫相关补充业务注册信息 */
     MN_CALL_ClearSsKeyEvent();
     f_stCallSupsCmdMgmt.bInProgress = VOS_FALSE;
@@ -4165,6 +4235,10 @@ VOS_VOID TAF_CALL_SendSupsCmdCnf(
 
     }
 
+    if (TAF_CALL_SUB_STATE_INCOMING_WAIT_CONNECT_ACK == TAF_CALL_GetCallSubState(callId))
+    {
+        stCallInfo.ucAtaReportOkAsyncFlag = TAF_CALL_GetAtaReportOkAsyncFlag();
+    }
 
     /* 对所有注册了CS域呼叫事件回调函数的Client调用回调函数 */
     MN_SendClientEvent(clientId,
@@ -4181,7 +4255,7 @@ MN_CALL_STATE_ENUM_U8 TAF_CALL_ConvertImsaCallStateToMnCallState(
 )
 {
     MN_CALL_STATE_ENUM_U8               enCallSta;
-    
+
     switch (enImsaCallSta)
     {
         case CALL_IMSA_SRVCC_CALL_ALERTING:
@@ -4209,7 +4283,7 @@ MN_CALL_STATE_ENUM_U8 TAF_CALL_ConvertImsaCallStateToMnCallState(
             break;
 
         case CALL_IMSA_SRVCC_CALL_DIALING:
-        default:        
+        default:
             enCallSta = MN_CALL_S_BUTT;
             break;
     }
@@ -4219,7 +4293,7 @@ MN_CALL_STATE_ENUM_U8 TAF_CALL_ConvertImsaCallStateToMnCallState(
 
 
 VOS_UINT8 TAF_CALL_CallStateIsLegal(
-    CALL_IMSA_SRVCC_CALL_STATE_ENUM_UINT8                   enCallState         
+    CALL_IMSA_SRVCC_CALL_STATE_ENUM_UINT8                   enCallState
 )
 {
     VOS_UINT8                           ucRst;
@@ -4230,15 +4304,15 @@ VOS_UINT8 TAF_CALL_CallStateIsLegal(
         case CALL_IMSA_SRVCC_CALL_INCOMING:
         case CALL_IMSA_SRVCC_CALL_WAITING:
         case CALL_IMSA_SRVCC_CALL_ALERTING:
-        case CALL_IMSA_SRVCC_CALL_ACTVING:        
+        case CALL_IMSA_SRVCC_CALL_ACTVING:
             ucRst = VOS_TRUE;
             break;
 
-        
+
         case CALL_IMSA_SRVCC_CALL_DIALING:
         default:
             ucRst = VOS_FALSE;
-            break;      
+            break;
     }
 
     return ucRst;
@@ -4248,7 +4322,7 @@ VOS_UINT8 TAF_CALL_CallStateIsLegal(
 VOS_UINT8 TAF_CALL_IsDtmfAllowedInCurrentState(VOS_VOID)
 {
     VOS_UINT8                           ucLoop;
-    
+
     /* 遍历呼叫实体，找出已Attach的呼叫ID */
     for (ucLoop = 0; ucLoop < MN_CALL_MAX_NUM; ucLoop++)
     {
@@ -4273,9 +4347,9 @@ VOS_VOID TAF_CALL_ProcSrvccDtmfBuffInfo(TAF_CALL_DTMF_BUFF_STRU *pstDtmfBuffInfo
     VOS_UINT8                           i;
     TAF_CALL_DTMF_INFO_STRU             stDtmfInfo;
 
-    if ((0                              == pstDtmfBuffInfo->ucNum) 
+    if ((0                              == pstDtmfBuffInfo->ucNum)
      || (IMSA_CALL_DTMF_REQ_MSG_MAX_NUM < pstDtmfBuffInfo->ucNum))
-    {       
+    {
         return;
     }
 
@@ -4286,69 +4360,101 @@ VOS_VOID TAF_CALL_ProcSrvccDtmfBuffInfo(TAF_CALL_DTMF_BUFF_STRU *pstDtmfBuffInfo
     }
 
     PS_MEM_SET(&stDtmfInfo, 0, sizeof(TAF_CALL_DTMF_INFO_STRU));
-    
+
     /* 保存DTMF请求信息 */
     for (i = 0; i < pstDtmfBuffInfo->ucNum; i++)
-    {   
+    {
         stDtmfInfo.CallId      = pstDtmfBuffInfo->astDtmf[i].CallId;
         stDtmfInfo.cKey        = pstDtmfBuffInfo->astDtmf[i].cKey;
         stDtmfInfo.opId        = pstDtmfBuffInfo->astDtmf[i].opId;
         stDtmfInfo.usClientId  = pstDtmfBuffInfo->astDtmf[i].usClientId;
         stDtmfInfo.usOffLength = pstDtmfBuffInfo->astDtmf[i].usOffLength;
         stDtmfInfo.usOnLength  = pstDtmfBuffInfo->astDtmf[i].usOnLength;
-        
+
         if (TAF_CS_CAUSE_DTMF_BUF_FULL == TAF_CALL_SaveDtmfInfo(&stDtmfInfo))
         {
             MN_ERR_LOG("TAF_CALL_ProcSrvccDtmfBuffInfo: DTMF buffer is full!");
             break;
         }
-    }   
+    }
 }
 
 
 VOS_VOID TAF_CALL_CreateCallEntitiesWithImsCallInfo(
     VOS_UINT8                           ucSrvccCallNum,
-    CALL_IMSA_SRVCC_CALL_INFO_STRU     *pstSrvccCallInfo 
+    CALL_IMSA_SRVCC_CALL_INFO_STRU     *pstSrvccCallInfo,
+    VOS_UINT8                           ucStartedHifiFlag
 )
 {
-    VOS_UINT8                                               i;
-    VOS_UINT8                                               ucTi;
-    VOS_UINT8                                               ucIndex;
-    VOS_UINT8                                               ucCallNum;
-    VOS_UINT8                                               ucCallStateValid;
+    VOS_UINT8                           i;
+    VOS_UINT8                           ucTi;
+    VOS_UINT8                           ucIndex;
+    VOS_UINT8                           ucCallNum;
+    VOS_UINT8                           ucCallStateValid;
+    VOS_UINT8                           ucCallId;
 
     ucCallNum      =  ucSrvccCallNum;
-    
+
     /* 边界检查，避免数组越界 */
     if (ucCallNum > CALL_IMSA_MAX_ENTITY_NUM)
     {
         ucCallNum = CALL_IMSA_MAX_ENTITY_NUM;
     }
-    
+
     /* 初始化呼叫实体 */
     for(i = 0; i < MN_CALL_MAX_NUM; i++)
     {
         MN_CALL_DeleteCallEntity(i);
     }
 
-    MN_CALL_SetChannelOpenFlg(VOS_FALSE);
-    
+    /* SRVCC同步呼叫信息时，会指示hifi是否已经打开，nas不再根据呼叫状态和local alerting标志判断 */
+    MN_CALL_SetChannelOpenFlg(ucStartedHifiFlag);
+
     ucIndex = 0;
-    
+
     for (i = 0; i < ucCallNum; i++)
     {
-        ucCallStateValid = TAF_CALL_CallStateIsLegal(pstSrvccCallInfo[i].enCallState);
-        
-        /* 非法CALL ID或非法CALL状态直接丢弃 */
-        if ((0               == pstSrvccCallInfo[i].ucCallId) 
-         || (MN_CALL_MAX_NUM <  pstSrvccCallInfo[i].ucCallId)
-         || (VOS_FALSE       == ucCallStateValid))
+        /* 按照24007协议,只需要取imsa通过过来的TI的5到8bit作为CC的TI值,既是TI FLAG+TI VALUE */
+        ucTi = pstSrvccCallInfo[i].ucTi >> 4;
+        ucTi &= 0x0F;
+
+        /* 有普通呼叫是不可以发起增强型多方通话，不存在CALLID为1的普通呼叫，CALLID为2的增强型多方通话
+           增强型多方通话hold后，可以再发起一路普通呼叫，也可以增强型多方通话active普通呼叫hold
+           CALLID对应关系如下:
+           增强型多方话CALLID值为1，普通呼叫的CALLID为2
+           TI对应关系如下:
+           active的增强型多方话TI值为0,2,3,4,5 ，hold  的普通呼叫的TI为1
+           hold  的增强型多方话TI值为1,2,3,4,5 ，active的普通呼叫的TI为0
+
+           如果是多路普通呼叫，就直接根据使用同步过来的CALLID
+         */
+        if (VOS_TRUE == pstSrvccCallInfo[i].ucEConferenceFlag)
+        {
+            /* 为保证CallId不会有重复，TI值是唯一的，CallId通过Ti Value加1来分配即可 */
+            /* bit7为Ti Flag, bit0-bit7为Ti Value */
+            ucCallId = (ucTi & 0x07) + 1;
+
+            /* 如果CALLID为2，需要将CALLID转为1 */
+            if ((CALL_IMSA_SRVCC_CALL_HELD == pstSrvccCallInfo[i].enCallState)
+             && (2 == ucCallId))
+            {
+                ucCallId = 1;
+            }
+        }
+        else
+        {
+            ucCallId = pstSrvccCallInfo[i].ucCallId;
+        }
+
+        /* 非法CALL ID直接丢弃 */
+        if ((0               == ucCallId)
+         || (MN_CALL_MAX_NUM <  ucCallId))
         {
            continue;
         }
 
         /* call ID减1为呼叫实体数组下标 */
-        ucIndex         = pstSrvccCallInfo[i].ucCallId - 1;
+        ucIndex         = ucCallId - 1;
 
         /* call id合法时，更新实体信息 */
         if (VOS_TRUE == f_astCallMgmtEntities[ucIndex].bUsed)
@@ -4359,22 +4465,33 @@ VOS_VOID TAF_CALL_CreateCallEntitiesWithImsCallInfo(
 
         f_astCallMgmtEntities[ucIndex].bUsed = VOS_TRUE;
 
-        /* 按照24007协议,只需要取imsa通过过来的TI的5到8bit作为CC的TI值,既是TI FLAG+TI VALUE */
-        ucTi = pstSrvccCallInfo[i].ucTi >>4;
-        ucTi &= 0x0F;
         f_astCallMgmtEntities[ucIndex].ulTi  = ucTi;
-        
+
         f_astCallMgmtEntities[ucIndex].stCallInfo.clientId    = pstSrvccCallInfo[i].clientId;
         f_astCallMgmtEntities[ucIndex].stCallInfo.opId        = pstSrvccCallInfo[i].opId;
-        f_astCallMgmtEntities[ucIndex].stCallInfo.callId      = pstSrvccCallInfo[i].ucCallId;
+        f_astCallMgmtEntities[ucIndex].stCallInfo.callId      = ucCallId;
         f_astCallMgmtEntities[ucIndex].stCallInfo.enCallType  = pstSrvccCallInfo[i].enCallType;
         f_astCallMgmtEntities[ucIndex].stCallInfo.enCallMode  = pstSrvccCallInfo[i].enCallMode;
         f_astCallMgmtEntities[ucIndex].stCallInfo.enCallDir   = pstSrvccCallInfo[i].enCallDir;
-           
+
         f_astCallMgmtEntities[ucIndex].stCallInfo.enCallState = TAF_CALL_ConvertImsaCallStateToMnCallState(pstSrvccCallInfo[i].enCallState);
-        f_astCallMgmtEntities[ucIndex].stCallInfo.enMptyState = pstSrvccCallInfo[i].enMptyState; 
-        
+        f_astCallMgmtEntities[ucIndex].stCallInfo.enMptyState = pstSrvccCallInfo[i].enMptyState;
+
         f_astCallMgmtEntities[ucIndex].stCallInfo.enVoiceDomain = TAF_CALL_VOICE_DOMAIN_3GPP;
+
+        /* 发生SRVCC后，IMSA不会带PI和NoCliCause的值给GU,
+           在MT的时候，将这两个值显示的赋值成ALLOWED和BUTT.
+         */
+        if (MN_CALL_DIR_MT == pstSrvccCallInfo[i].enCallDir)
+        {
+            f_astCallMgmtEntities[ucIndex].stCallInfo.enCallingPI   = MN_CALL_PRESENTATION_ALLOWED;
+            f_astCallMgmtEntities[ucIndex].stCallInfo.enNoCliCause  = MN_CALL_NO_CLI_BUTT;
+
+            if (0 == pstSrvccCallInfo[i].stCallNumber.ucNumLen)
+            {
+                f_astCallMgmtEntities[ucIndex].stCallInfo.enNoCliCause = MN_CALL_NO_CLI_USR_REJ;
+            }
+        }
 
         PS_MEM_CPY(&(f_astCallMgmtEntities[ucIndex].stCallInfo.stCalledNumber),
                    &(pstSrvccCallInfo[i].stCalledNumber),
@@ -4387,24 +4504,35 @@ VOS_VOID TAF_CALL_CreateCallEntitiesWithImsCallInfo(
         PS_MEM_CPY(&(f_astCallMgmtEntities[ucIndex].stCallInfo.stRedirectNumber),
                    &(pstSrvccCallInfo[i].stRedirectNumber),
                    sizeof(MN_CALL_BCD_NUM_STRU));
-                  
+
         PS_MEM_CPY(&(f_astCallMgmtEntities[ucIndex].stCallInfo.stConnectNumber),
                    &(pstSrvccCallInfo[i].stConnectNumber),
                    sizeof(MN_CALL_BCD_NUM_STRU));
 
-        /* 通过ucLocalAlertedFlag与呼叫状态标记判断是否打开声码器:
-           avtive状态:声码器肯定打开
-           call received状态:声码器肯定未打开
-           call delivered状态：根据call info中是否处于本地震铃过程中，如果不是则打开否则未打开 */
-        if ((CALL_IMSA_SRVCC_CALL_ACTIVE    == pstSrvccCallInfo[i].enCallState)
-         || (CALL_IMSA_SRVCC_CALL_HELD      == pstSrvccCallInfo[i].enCallState)
-         || ((CALL_IMSA_SRVCC_CALL_ALERTING == pstSrvccCallInfo[i].enCallState)
-          && (VOS_FALSE                     == pstSrvccCallInfo[i].ucLocalAlertedFlag)))
+        /* 判断通话状态，若是DIALING, 则直接挂断电话 */
+        ucCallStateValid    = TAF_CALL_CallStateIsLegal(pstSrvccCallInfo[i].enCallState);
+        if (VOS_FALSE == ucCallStateValid)
         {
-            MN_CALL_SetChannelOpenFlg(VOS_TRUE);
-        }        
-    } 
+            if (VOS_TRUE == pstSrvccCallInfo[i].ucEConferenceFlag)
+            {
+                /* 直接挂断这路电话 */
+                MN_CALL_ReportEvent(ucCallId, MN_CALL_EVT_RELEASED);
+
+                MN_CALL_DeleteCallEntity(ucIndex + 1);
+            }
+            else
+            {
+                MN_CALL_DeleteCallEntity(ucIndex + 1);
+            }
+
+            continue;
+        }
+
+        f_astCallMgmtEntities[ucIndex].ucSrvccLocalAlertedFlag = pstSrvccCallInfo[i].ucLocalAlertedFlag;
+    }
+
 }
+
 #endif
 
 
@@ -4415,8 +4543,193 @@ MN_CALL_MGMT_STRU *TAF_CALL_GetCallEntityAddr(VOS_VOID)
 
 /* 删除获取呼叫实体数目 */
 
+VOS_UINT32 TAF_CALL_IsCallRedialCause_CmSrvRej(
+    NAS_CC_CAUSE_VALUE_ENUM_U32         enCause
+)
+{
+    /* cm service rej原因值是network failure时需要重拨，其他原因值不需要重拨 */
+    if (NAS_CC_CAUSE_CM_SRV_REJ_NETWORK_FAILURE == enCause)
+    {
+        return VOS_TRUE;
+    }
+
+    return VOS_FALSE;
+}
+VOS_UINT32 TAF_CALL_IsCallRedialCause_CsfbSrvRej(
+    NAS_CC_CAUSE_VALUE_ENUM_U32         enCause
+)
+{
+    /* CSFB失败不需要重拨，与NAS_MM_EndCsfbFlow中原来填的是other cause保持一致 */
+
+    return VOS_FALSE;
+}
+VOS_UINT32 TAF_CALL_IsCallRedialCause_RrConnFail(
+    NAS_CC_CAUSE_VALUE_ENUM_U32         enCause
+)
+{
+    if ((NAS_CC_CAUSE_RR_CONN_FAIL_ACCESS_BAR                       == enCause)
+     || (NAS_CC_CAUSE_RR_CONN_FAIL_CURRENT_PROTOCOL_NOT_SUPPORT     == enCause)
+     || (NAS_CC_CAUSE_RR_CONN_FAIL_INVALID_UE_STATE                 == enCause)
+     || (NAS_CC_CAUSE_RR_CONN_FAIL_CELL_BARRED                      == enCause))
+    {
+        return VOS_FALSE;
+    }
+    else
+    {
+        return VOS_TRUE;
+    }
+}
+VOS_UINT32 TAF_CALL_IsCallRedialCause_RrRel(
+    NAS_CC_CAUSE_VALUE_ENUM_U32         enCause
+)
+{
+    /* NAS_CC_CAUSE_RR_REL_AUTH_REJ
+       NAS_CC_CAUSE_RR_REL_RL_FAILURE
+       NAS_CC_CAUSE_RR_REL_NAS_REL_REQ不需要重拨 */
+    if ( (NAS_CC_CAUSE_RR_REL_AUTH_REJ    == enCause)
+      || (NAS_CC_CAUSE_RR_REL_RL_FAILURE  == enCause)
+      || (NAS_CC_CAUSE_RR_REL_NAS_REL_REQ == enCause) )
+    {
+        return VOS_FALSE;
+    }
+    else
+    {
+        return VOS_TRUE;
+    }
+}
 
 
+VOS_UINT32 TAF_CALL_IsCallRedialCause_CsfbLmmFail(
+    NAS_CC_CAUSE_VALUE_ENUM_U32         enCause
+)
+{
+    /* CSFB失败不需要重拨，与NAS_MM_EndCsfbFlow中原来填的是other cause保持一致 */
+
+    return VOS_FALSE;
+}
+VOS_UINT32 TAF_CALL_IsCallRedialCause_MmInterErr(
+    NAS_CC_CAUSE_VALUE_ENUM_U32         enCause
+)
+{
+    /* NAS_CC_CAUSE_MM_INTER_ERR_RESUME_TO_GU_FAIL是GU报resume_ind时ucCsResumeResult为fail, GU接入层异常，没必要再重拨
+       NAS_CC_CAUSE_MM_INTER_ERR_BACK_TO_LTE是CSFB异系统失败重回LTE, MMC会去GU下搜网，需要重拨
+       NAS_CC_CAUSE_MM_INTER_ERR_SND_SAPI3_FAIL NAS_CC_CAUSE_MM_INTER_ERR_EST_SAPI3_FAIL是短信的错误，报到CALL认为异常，不重拨
+       NAS_CC_CAUSE_MM_INTER_ERR_ECALL_INACTIVE 不需要重拨
+       NAS_CC_CAUSE_MM_INTER_ERR_WAIT_EST_CNF_TIME_OUT 不需要重拨 */
+
+    switch (enCause)
+    {
+        case NAS_CC_CAUSE_MM_INTER_ERR_FORB_LA:
+        case NAS_CC_CAUSE_MM_INTER_ERR_CS_ACCESS_BAR:
+        case NAS_CC_CAUSE_MM_INTER_ERR_CS_DETACH:
+        case NAS_CC_CAUSE_MM_INTER_ERR_CS_SIM_INVALID:
+        case NAS_CC_CAUSE_MM_INTER_ERR_NOT_SUPPORT_CS_CALL_S1_MODE_ONLY:
+        case NAS_CC_CAUSE_MM_INTER_ERR_RESUME_TO_GU_FAIL:
+        case NAS_CC_CAUSE_MM_INTER_ERR_TI_INVALID:
+        case NAS_CC_CAUSE_MM_INTER_ERR_WAIT_EST_CNF_TIME_OUT:
+        case NAS_CC_CAUSE_MM_INTER_ERR_CC_CONN_REQ_EXIST:
+        case NAS_CC_CAUSE_MM_INTER_ERR_UE_INVALID_STATE:
+        case NAS_CC_CAUSE_MM_INTER_ERR_WAIT_CC_REEST_TIME_OUT:
+        case NAS_CC_CAUSE_MM_INTER_ERR_SND_SAPI3_FAIL:
+        case NAS_CC_CAUSE_MM_INTER_ERR_EST_SAPI3_FAIL:
+        case NAS_CC_CAUSE_MM_INTER_ERR_ECALL_INACTIVE:
+        case NAS_CC_CAUSE_MM_INTER_ERR_REEST_FAIL:
+        case NAS_CC_CAUSE_MM_INTER_ERR_CC_REL_REQ:
+        case NAS_CC_CAUSE_MM_INTER_ERR_LTE_LIMITED_SERVICE:
+
+            return VOS_FALSE;
+
+        default:
+            return VOS_TRUE;
+    }
+}
+
+
+VOS_UINT32 TAF_CALL_IsCallRedialCause_CcInterErr(
+    NAS_CC_CAUSE_VALUE_ENUM_U32         enCause
+)
+{
+    if ((NAS_CC_CAUSE_CC_INTER_ERR_T335_TIME_OUT        == enCause)
+     || (NAS_CC_CAUSE_CC_INTER_ERR_WAIT_RAB_TIME_OUT    == enCause))
+    {
+        return VOS_FALSE;
+    }
+    else
+    {
+        return VOS_TRUE;
+    }
+}
+
+
+VOS_UINT32 TAF_CALL_IsCallRedialCause(
+    NAS_CC_CAUSE_VALUE_ENUM_U32         enCause
+)
+{
+    VOS_UINT32                          ulRslt;
+
+    ulRslt  = VOS_TRUE;
+
+    /* cm service reject */
+    if ((enCause >= NAS_CC_CAUSE_CM_SRV_REJ_BEGIN)
+     && (enCause <= NAS_CC_CAUSE_CM_SRV_REJ_END))
+    {
+        ulRslt = TAF_CALL_IsCallRedialCause_CmSrvRej(enCause);
+    }
+
+    /* CSFB Service reject */
+    else if ((enCause >= NAS_CC_CAUSE_CSFB_SRV_REJ_BEGIN)
+          && (enCause <= NAS_CC_CAUSE_CSFB_SRV_REJ_END))
+    {
+        ulRslt = TAF_CALL_IsCallRedialCause_CsfbSrvRej(enCause);
+    }
+
+    /* est_cnf失败，与NAS_MM_IsAbleRecover_EstCnfFailResult的处理逻辑保持一致 */
+    else if ((enCause >= NAS_CC_CAUSE_RR_CONN_FAIL_BEGIN)
+          && (enCause <= NAS_CC_CAUSE_RR_CONN_FAIL_END))
+    {
+        ulRslt = TAF_CALL_IsCallRedialCause_RrConnFail(enCause);
+
+    }
+
+    /* rel_ind, 除了鉴权被拒，其他原因值与NAS_MM_IsNeedCmServiceRetry_RelIndResult的处理逻辑保持一致 */
+    else if ((enCause >= NAS_CC_CAUSE_RR_REL_BEGIN)
+          && (enCause <= NAS_CC_CAUSE_RR_REL_END))
+    {
+        ulRslt = TAF_CALL_IsCallRedialCause_RrRel(enCause);
+    }
+
+    /* 除了鉴权被拒，其他原因值暂时定为都需要重拨 */
+    else if ((enCause >= NAS_CC_CAUSE_CSFB_LMM_FAIL_BEGIN)
+          && (enCause <= NAS_CC_CAUSE_CSFB_LMM_FAIL_END))
+    {
+        ulRslt = TAF_CALL_IsCallRedialCause_CsfbLmmFail(enCause);
+    }
+
+    /* MM INTER ERR */
+    else if ((enCause >= NAS_CC_CAUSE_MM_INTER_ERR_BEGIN)
+          && (enCause <= NAS_CC_CAUSE_MM_INTER_ERR_END))
+    {
+        ulRslt = TAF_CALL_IsCallRedialCause_MmInterErr(enCause);
+    }
+
+    /* T335超时,等待RAB超时不需要重拨 */
+    else if ((enCause >= NAS_CC_CAUSE_CC_INTER_ERR_BEGIN)
+          && (enCause <= NAS_CC_CAUSE_CC_INTER_ERR_END))
+    {
+        ulRslt = TAF_CALL_IsCallRedialCause_CcInterErr(enCause);
+    }
+    else
+    {
+        /* 网络挂断，call内部错误，vc错误，不需要重拨 */
+        ulRslt  = VOS_FALSE;
+    }
+
+    return ulRslt;
+}
+
+
+
+/*lint -restore */
 #ifdef __cplusplus
 #if __cplusplus
 }

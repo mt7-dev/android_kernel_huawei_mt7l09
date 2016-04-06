@@ -41,6 +41,7 @@
 #include "dwc_otg_core_if.h"
 #include "dwc_list.h"
 #include "dwc_otg_cil.h"
+#include "dwc_otg_driver.h"
 
 /**
  * @file
@@ -245,8 +246,8 @@ typedef struct dwc_otg_qtd {
 	/** Number of DMA descriptors for this QTD */
 	uint8_t n_desc;
 
-	/**
-	 * Last activated frame(packet) index.
+	/** 
+	 * Last activated frame(packet) index. 
 	 * Used in Descriptor DMA mode only.
 	 */
 	uint16_t isoc_frame_index_last;
@@ -327,8 +328,8 @@ typedef struct dwc_otg_qh {
 
 	/** @} */
 
-	/**
-	 * Used instead of original buffer if
+	/** 
+	 * Used instead of original buffer if 
 	 * it(physical address) is not dword-aligned.
 	 */
 	uint8_t *dw_align_buf;
@@ -346,9 +347,9 @@ typedef struct dwc_otg_qh {
 	/** Descriptor List physical address. */
 	dwc_dma_t desc_list_dma;
 
-	/**
+	/** 
 	 * Xfer Bytes array.
-	 * Each element corresponds to a descriptor and indicates
+	 * Each element corresponds to a descriptor and indicates 
 	 * original XferSize size value for the descriptor.
 	 */
 	uint32_t *n_bytes;
@@ -526,9 +527,6 @@ struct dwc_otg_hcd {
 	/* Tasket to do a reset */
 	dwc_tasklet_t *reset_tasklet;
 
-	/* For hcd_start_fnc */
-	struct delayed_work hcd_start_work;
-
 	/*  */
 	dwc_spinlock_t *lock;
 
@@ -544,6 +542,15 @@ struct dwc_otg_hcd {
 
 	/** Frame List DMA address */
 	dma_addr_t frame_list_dma;
+
+	/** For otg host suspend/resume */
+	struct wake_lock dwc_otg_hcd_wake_lock;
+	struct timer_list dwc_sr_timer;
+	unsigned long busy_time_stamp;
+#define DWC_SR_WAIT_SECONDS 30
+#define DWC_SR_UPDATE_SECONDS 20
+
+
 
 #ifdef DEBUG
 	uint32_t frrem_samples;
@@ -667,14 +674,14 @@ static inline void dwc_otg_hcd_qtd_remove(dwc_otg_hcd_t * hcd,
 	DWC_CIRCLEQ_REMOVE(&qh->qtd_list, qtd, qtd_list_entry);
 }
 
-/** Remove and free a QTD
-  * Need to disable IRQ and hold hcd lock while calling this function out of
+/** Remove and free a QTD 
+  * Need to disable IRQ and hold hcd lock while calling this function out of 
   * interrupt servicing chain */
 static inline void dwc_otg_hcd_qtd_remove_and_free(dwc_otg_hcd_t * hcd,
 						   dwc_otg_qtd_t * qtd,
 						   dwc_otg_qh_t * qh)
 {
-	qtd->urb = NULL;
+    qtd->urb = NULL;
 	dwc_otg_hcd_qtd_remove(hcd, qtd, qh);
 	dwc_otg_hcd_qtd_free(qtd);
 }
@@ -690,7 +697,7 @@ extern void dwc_otg_hcd_complete_xfer_ddma(dwc_otg_hcd_t * hcd,
 					   dwc_otg_hc_regs_t * hc_regs,
 					   dwc_otg_halt_status_e halt_status);
 
-extern int dwc_otg_hcd_qh_init_ddma(dwc_otg_hcd_t * hcd, dwc_otg_qh_t * qh);
+extern int dwc_otg_hcd_qh_init_ddma(dwc_otg_hcd_t * hcd, dwc_otg_qh_t * qh, int atomic_alloc);
 extern void dwc_otg_hcd_qh_free_ddma(dwc_otg_hcd_t * hcd, dwc_otg_qh_t * qh);
 
 /** @} */

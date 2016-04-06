@@ -51,8 +51,13 @@ extern "C" {
 #define APP_MAX_APN_LEN                                     99
 #define APP_ESM_MAX_EPSB_NUM                                (11)                /*最大承载数*/
 #define APP_ESM_MAX_ACCESS_NUM_LEN                          32
-#define APP_ESM_MAX_USER_NAME_LEN                           32
-#define APP_ESM_MAX_PASSWORD_LEN                            32
+/* 产品线at手册规定AT^AUTHDATA用户名和密码长度最大为127 */
+#define APP_ESM_MAX_USER_NAME_LEN                           127
+#define APP_ESM_MAX_PASSWORD_LEN                            127
+/* PCO消息最大长度为253，若用户名和密码为127时将超过PCO消息最大长度，GU在AUTH编码时允许用户名和密码最大长度为99,根据GU此处最大值设为99 */
+#define APP_ESM_MAX_USER_NAME_ENCODE_LEN                    99
+#define APP_ESM_MAX_PASSWORD_ENCODE_LEN                     99
+
 
 #define APP_ESM_MAX_SDF_PF_NUM                              16
 
@@ -859,10 +864,10 @@ typedef struct
     VOS_UINT8                           aucRsv1[2];
     VOS_UINT8                           auAccessNum[APP_ESM_MAX_ACCESS_NUM_LEN];/*此参数保留，暂时不使用*/
     VOS_UINT8                           ucUserNameLen;
-    VOS_UINT8                           aucRsv2[3];
+    VOS_UINT8                           aucRsv2[2];
     VOS_UINT8                           aucUserName[APP_ESM_MAX_USER_NAME_LEN];
     VOS_UINT8                           ucPwdLen;
-    VOS_UINT8                           aucRsv3[3];
+    VOS_UINT8                           aucRsv3[2];
     VOS_UINT8                           aucPwd[APP_ESM_MAX_PASSWORD_LEN];
 }APP_ESM_GW_AUTH_INFO_STRU;
 
@@ -1557,6 +1562,9 @@ typedef struct
     VOS_UINT32                          ulLinkCid;
     APP_ESM_IP_ADDR_STRU                stPDNAddrInfo;
 
+    /* 给APP上报RELEASE IND时(RELEASE CNF不填);    */
+    VOS_UINT32                          ulEpsbId;
+
 }APP_ESM_PDP_RELEASE_CNF_STRU;
 
 typedef APP_ESM_PDP_RELEASE_CNF_STRU APP_ESM_PDP_RELEASE_IND_STRU;
@@ -1851,7 +1859,11 @@ extern VOS_UINT32 APP_GetPdpManageInfo
 (
     APP_ESM_PDP_MANAGE_INFO_STRU  *pstPdpManageInfo
 );
-
+extern VOS_UINT32 APP_GetCidImsSuppFlag
+(
+    VOS_UINT8                           ucCid,
+    VOS_UINT8                          *pucImsSuppFlag
+);
 
 
 /*****************************************************************************

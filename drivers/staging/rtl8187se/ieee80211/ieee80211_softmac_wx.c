@@ -297,9 +297,7 @@ void ieee80211_wx_sync_scan_wq(struct work_struct *work)
 	if (ieee->iw_mode == IW_MODE_ADHOC || ieee->iw_mode == IW_MODE_MASTER)
 		ieee80211_start_send_beacons(ieee);
 
-	//YJ,add,080828, In prevent of lossing ping packet during scanning
 	//ieee80211_sta_ps_send_null_frame(ieee, false);
-	//YJ,add,080828,end
 
 	up(&ieee->wx_sem);
 
@@ -316,10 +314,8 @@ int ieee80211_wx_set_scan(struct ieee80211_device *ieee, struct iw_request_info 
 		ret = -1;
 		goto out;
 	}
-	//YJ,add,080828
 	//In prevent of lossing ping packet during scanning
 	//ieee80211_sta_ps_send_null_frame(ieee, true);
-	//YJ,add,080828,end
 
 	if (ieee->state == IEEE80211_LINKED) {
 		queue_work(ieee->wq, &ieee->wx_sync_scan_wq);
@@ -366,20 +362,16 @@ int ieee80211_wx_set_essid(struct ieee80211_device *ieee,
 	spin_lock_irqsave(&ieee->lock, flags);
 
 	if (wrqu->essid.flags && wrqu->essid.length) {
-//YJ,modified,080819
 		len = (wrqu->essid.length < IW_ESSID_MAX_SIZE) ? (wrqu->essid.length) : IW_ESSID_MAX_SIZE;
-		memset(ieee->current_network.ssid, 0, ieee->current_network.ssid_len); //YJ,add,080819
+		memset(ieee->current_network.ssid, 0, ieee->current_network.ssid_len);
 		strncpy(ieee->current_network.ssid, extra, len);
 		ieee->current_network.ssid_len = len;
 		ieee->ssid_set = 1;
-//YJ,modified,080819,end
 
-		//YJ,add,080819,for hidden ap
 		if (len == 0) {
 			memset(ieee->current_network.bssid, 0, ETH_ALEN);
 			ieee->current_network.capability = 0;
 		}
-		//YJ,add,080819,for hidden ap,end
 	} else {
 		ieee->ssid_set = 0;
 		ieee->current_network.ssid[0] = '\0';

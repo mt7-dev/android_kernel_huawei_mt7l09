@@ -10,6 +10,8 @@
 #include "TafAppSsa.h"
 #include "UsimPsInterface.h"
 
+#include "MnCallApi.h"
+
 #ifdef __cplusplus
 #if __cplusplus
 extern "C" {
@@ -114,10 +116,32 @@ VOS_UINT32 TAF_SPM_SendPbCallFdnCheckReq(
     struct MsgCB                       *pstMsg
 );
 
-VOS_UINT32  TAF_SPM_SendUsimCallEnvelopeReq(
+VOS_UINT32  TAF_SPM_SendUsimCallEnvelopeReq_Call(
     VOS_UINT16                          usClientId,
     struct MsgCB                       *pstMsg
 );
+
+
+VOS_UINT32  TAF_SPM_SendUsimCallEnvelopeReq(
+    MN_CALL_CALLED_NUM_STRU            *pstCalledNumber,
+    MN_CALL_CS_DATA_CFG_INFO_STRU      *pstDataCfgInfo,
+    VOS_UINT32                          ulSendPara,
+    MN_CALL_TYPE_ENUM_U8                enCallType,
+    MN_CALL_MODE_ENUM_U8                enCallMode
+);
+
+#if (FEATURE_ON == FEATURE_IMS)
+VOS_UINT32  TAF_SPM_SendUsimEconfEnvelopeReq(
+    VOS_UINT16                          usClientId,
+    struct MsgCB                       *pstMsg
+);
+
+VOS_UINT32  TAF_SPM_SendUsimEconfFdnReq(
+    VOS_UINT16                          usClientId,
+    struct MsgCB                       *pstMsg
+);
+#endif
+
 
 
 #if (VOS_OS_VER == VOS_WIN32)

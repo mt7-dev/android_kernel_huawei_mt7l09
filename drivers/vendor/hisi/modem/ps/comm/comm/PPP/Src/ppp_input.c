@@ -1,11 +1,12 @@
 
-
 #ifdef  __cplusplus
   #if  __cplusplus
-  extern "C"{
+       extern "C"{
   #endif
 #endif
 
+#include "product_config.h"
+#if(FEATURE_ON == FEATURE_PPP)
 /******************************************************************************
    1 头文件包含
 ******************************************************************************/
@@ -30,7 +31,6 @@
 *****************************************************************************/
 #define    THIS_FILE_ID        PS_FILE_ID_PPP_INPUT_C
 
-#if(FEATURE_ON == FEATURE_PPP)
 /******************************************************************************
    2 外部函数变量声明
 ******************************************************************************/
@@ -978,15 +978,16 @@ VOS_VOID Ppp_RcvConfigInfoReqMntnInfo(VOS_UINT16  usPppID, PPP_REQ_CONFIG_INFO_S
     return;
 }
 
-
 #else
 
-VOS_UINT32 PPP_PushPacketEvent(VOS_UINT8 ucRabId, PPP_ZC_STRU *pstData, ADS_PKT_TYPE_ENUM_UINT8 enPktType)
-{
-    PPP_MemFree(pstData);
-    return PS_SUCC;
-}
+/*****************************************************************************
+  1 头文件包含
+*****************************************************************************/
+#include "ppp_public.h"
 
+/*****************************************************************************
+  3 函数实现
+*****************************************************************************/
 
 
 VOS_UINT32 PPP_PullPacketEvent(VOS_UINT16 usPppId, PPP_ZC_STRU *pstImmZc)
@@ -995,51 +996,10 @@ VOS_UINT32 PPP_PullPacketEvent(VOS_UINT16 usPppId, PPP_ZC_STRU *pstImmZc)
 }
 
 
-/*****************************************************************************
- 函 数 名  : PPP_PppPushPacketDataMsg
- 功能描述  : DART工程发送钩取PPP数据消息的函数
- 输出参数  : usPppId - PPP ID
-             pData - 发送到DART工程的PPP数据
-             usDataLen - PPP数据的长度, 单位: 字节
- 返 回 值  : 无
- 调用函数  :
- 被调函数  :
-
- 修改历史      :
-  1.日    期   : 2009-12-8
-    作    者   : liukai
-    修改内容   : Created
-
-*****************************************************************************/
-VOS_VOID PPP_PppPushPacketDataMsg(VOS_UINT16  usPppId,
-                                  VOS_UINT8  *pData,
-                                  VOS_UINT16  usDataLen)
-{
-    return;
-}
-
-
-
 VOS_UINT32 PPP_PullRawDataEvent(VOS_UINT16 usPppId, PPP_ZC_STRU *pstImmZc)
 {
     return PS_SUCC;
 }
-
-
-
-VOS_UINT32 PPP_PushRawDataEvent(VOS_UINT8 ucRabId, PPP_ZC_STRU *pstData, ADS_PKT_TYPE_ENUM_UINT8 enPktType)
-{
-    PPP_MemFree(pstData);
-    return PS_SUCC;
-}
-
-
-
-VOS_VOID Ppp_RcvConfigInfoIndMntnInfo(VOS_UINT16  usPppID, AT_PPP_IND_CONFIG_INFO_STRU *ptrIndConfigInfo)
-{
-    return;
-}
-
 
 #endif /* #if(FEATURE_ON == FEATURE_PPP) */
 

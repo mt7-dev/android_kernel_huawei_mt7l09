@@ -538,6 +538,21 @@ VOS_VOID SSA_RelCompleteIndDefaultProc(
     {
         pstSsEvent->SsEvent = TAF_SS_EVT_PROCESS_USS_REQ_CNF;
     }
+    else if ( (TAF_SS_EVT_REGISTERSS_CNF == pstSsEvent->SsEvent)
+           || (TAF_SS_EVT_ERASESS_CNF == pstSsEvent->SsEvent)
+           || (TAF_SS_EVT_ACTIVATESS_CNF == pstSsEvent->SsEvent)
+           || (TAF_SS_EVT_DEACTIVATESS_CNF == pstSsEvent->SsEvent) )
+    {
+        if ( (VOS_TRUE == pstSsEvent->OP_Cause)
+          && (SS_CAUSE_NORMAL_CALL_CLEARING == pstSsEvent->Cause) )
+        {
+            /* 对于以上携带了错误原因值16的SS事件，无需替换事件类型 */
+        }
+        else
+        {
+            pstSsEvent->SsEvent = TAF_SS_EVT_ERROR;
+        }
+    }
     else
     {
         pstSsEvent->SsEvent = TAF_SS_EVT_ERROR;
@@ -548,6 +563,8 @@ VOS_VOID SSA_RelCompleteIndDefaultProc(
     SSA_TiFree(gucCurrentTi);
 
 }
+
+
 VOS_UINT32 SSA_RelCompleteIndProc(ST_SSP_MSG  *pMsg)
 {
     VOS_UINT32                                   ulRslt = SSA_SUCCESS;
@@ -669,8 +686,6 @@ VOS_UINT32 SSA_RelCompleteIndProc(ST_SSP_MSG  *pMsg)
     return ulRslt;
 
 }
-
-
 VOS_VOID TAF_SSA_RcvSsCsConnInd(ST_SSP_MSG  *pstMsg)
 {
     SSA_SS_CS_CONN_IND_STRU            *pstCsConnIndMsg = VOS_NULL_PTR;
@@ -695,6 +710,168 @@ VOS_VOID TAF_SSA_RcvSsCsConnInd(ST_SSP_MSG  *pstMsg)
 }
 
 
+VOS_UINT32 SSA_IsSsRetryCause_CmSrvRej(
+    SSA_SS_REL_CAUSE_ENUM_UINT32        enCause
+)
+{
+    /* cm service rej原因值是network failure时需要重拨，其他原因值不需要重拨 */
+    if (SSA_SS_REL_CAUSE_CM_SRV_REJ_NETWORK_FAILURE == enCause)
+    {
+        return VOS_TRUE;
+    }
+
+    return VOS_FALSE;
+}
+VOS_UINT32 SSA_IsSsRetryCause_CsfbSrvRej(
+    SSA_SS_REL_CAUSE_ENUM_UINT32        enCause
+)
+{
+    /* CSFB失败不需要重拨，与NAS_MM_EndCsfbFlow中原来填的是other cause保持一致 */
+
+    return VOS_FALSE;
+}
+VOS_UINT32 SSA_IsSsRetryCause_RrConnFail(
+    SSA_SS_REL_CAUSE_ENUM_UINT32        enCause
+)
+{
+    if ((SSA_SS_REL_CAUSE_RR_CONN_FAIL_IMMEDIATE_ASSIGN_REJECT          == enCause)
+     || (SSA_SS_REL_CAUSE_RR_CONN_FAIL_ACCESS_BAR                       == enCause)
+     || (SSA_SS_REL_CAUSE_RR_CONN_FAIL_T3122_RUNING                     == enCause)
+     || (SSA_SS_REL_CAUSE_RR_CONN_FAIL_CURRENT_PROTOCOL_NOT_SUPPORT     == enCause)
+     || (SSA_SS_REL_CAUSE_RR_CONN_FAIL_INVALID_UE_STATE                 == enCause)
+     || (SSA_SS_REL_CAUSE_RR_CONN_FAIL_CELL_BARRED                      == enCause))
+    {
+        return VOS_FALSE;
+    }
+    else
+    {
+        return VOS_TRUE;
+    }
+}
+
+
+VOS_UINT32 SSA_IsSsRetryCause_RrRel(
+    SSA_SS_REL_CAUSE_ENUM_UINT32        enCause
+)
+{
+    if ( (SSA_SS_REL_CAUSE_RR_REL_AUTH_REJ    == enCause)
+      || (SSA_SS_REL_CAUSE_RR_REL_RL_FAILURE  == enCause)
+      || (SSA_SS_REL_CAUSE_RR_REL_NAS_REL_REQ == enCause) )
+    {
+        return VOS_FALSE;
+    }
+    else
+    {
+        return VOS_TRUE;
+    }
+}
+
+
+VOS_UINT32 SSA_IsSsRetryCause_CsfbLmmFail(
+    SSA_SS_REL_CAUSE_ENUM_UINT32        enCause
+)
+{
+    /* CSFB失败不需要重拨，与NAS_MM_EndCsfbFlow中原来填的是other cause保持一致 */
+
+    return VOS_FALSE;
+}
+VOS_UINT32 SSA_IsSsRetryCause_MmInterErr(
+    SSA_SS_REL_CAUSE_ENUM_UINT32        enCause
+)
+{
+    /* SSA_SS_REL_CAUSE_MM_INTER_ERR_RESUME_TO_GU_FAIL是GU报resume_ind时ucCsResumeResult为fail, GU接入层异常，没必要再重拨
+       SSA_SS_REL_CAUSE_MM_INTER_ERR_BACK_TO_LTE是CSFB异系统失败重回LTE, MMC会去GU下搜网，需要重拨
+       SSA_SS_REL_CAUSE_MM_INTER_ERR_SND_SAPI3_FAIL SSA_SS_REL_CAUSE_MM_INTER_ERR_EST_SAPI3_FAIL是短信的失败原因值，
+       如果报到SS这儿认为是异常，不需要重拨
+       SSA_SS_REL_CAUSE_MM_INTER_ERR_ECALL_INACTIVE 不需要重拨 */
+
+    switch (enCause)
+    {
+        case SSA_SS_REL_CAUSE_MM_INTER_ERR_FORB_LA:
+        case SSA_SS_REL_CAUSE_MM_INTER_ERR_CS_ACCESS_BAR:
+        case SSA_SS_REL_CAUSE_MM_INTER_ERR_CS_DETACH:
+        case SSA_SS_REL_CAUSE_MM_INTER_ERR_CS_SIM_INVALID:
+        case SSA_SS_REL_CAUSE_MM_INTER_ERR_NOT_SUPPORT_CS_CALL_S1_MODE_ONLY:
+        case SSA_SS_REL_CAUSE_MM_INTER_ERR_RESUME_TO_GU_FAIL:
+        case SSA_SS_REL_CAUSE_MM_INTER_ERR_TI_INVALID:
+        case SSA_SS_REL_CAUSE_MM_INTER_ERR_WAIT_EST_CNF_TIME_OUT:
+        case SSA_SS_REL_CAUSE_MM_INTER_ERR_CC_CONN_REQ_EXIST:
+        case SSA_SS_REL_CAUSE_MM_INTER_ERR_UE_INVALID_STATE:
+        case SSA_SS_REL_CAUSE_MM_INTER_ERR_WAIT_CC_REEST_TIME_OUT:
+        case SSA_SS_REL_CAUSE_MM_INTER_ERR_SND_SAPI3_FAIL:
+        case SSA_SS_REL_CAUSE_MM_INTER_ERR_EST_SAPI3_FAIL:
+        case SSA_SS_REL_CAUSE_MM_INTER_ERR_ECALL_INACTIVE:
+        case SSA_SS_REL_CAUSE_MM_INTER_ERR_REEST_FAIL:
+        case SSA_SS_REL_CAUSE_MM_INTER_ERR_CC_REL_REQ:
+        case SSA_SS_REL_CAUSE_MM_INTER_ERR_LTE_LIMITED_SERVICE:
+
+            return VOS_FALSE;
+
+        default:
+            return VOS_TRUE;
+    }
+}
+
+
+VOS_UINT32 SSA_IsSsRetryCause(
+    SSA_SS_REL_CAUSE_ENUM_UINT32        enCause
+)
+{
+    VOS_UINT32                          ulRslt;
+
+    ulRslt  = VOS_TRUE;
+
+    /* cm service reject */
+    if ((enCause >= SSA_SS_REL_CAUSE_CM_SRV_REJ_BEGIN)
+     && (enCause <= SSA_SS_REL_CAUSE_CM_SRV_REJ_END))
+    {
+        ulRslt = SSA_IsSsRetryCause_CmSrvRej(enCause);
+    }
+
+    /* CSFB Service reject */
+    else if ((enCause >= SSA_SS_REL_CAUSE_CSFB_SRV_REJ_BEGIN)
+          && (enCause <= SSA_SS_REL_CAUSE_CSFB_SRV_REJ_END))
+    {
+        ulRslt = SSA_IsSsRetryCause_CsfbSrvRej(enCause);
+    }
+
+    /* est_cnf失败，与NAS_MM_IsAbleRecover_EstCnfFailResult的处理逻辑保持一致 */
+    else if ((enCause >= SSA_SS_REL_CAUSE_RR_CONN_FAIL_BEGIN)
+          && (enCause <= SSA_SS_REL_CAUSE_RR_CONN_FAIL_END))
+    {
+        ulRslt = SSA_IsSsRetryCause_RrConnFail(enCause);
+
+    }
+
+    /* rel_ind, 除了鉴权被拒，其他原因值与NAS_MM_IsNeedCmServiceRetry_RelIndResult的处理逻辑保持一致 */
+    else if ((enCause >= SSA_SS_REL_CAUSE_RR_REL_BEGIN)
+          && (enCause <= SSA_SS_REL_CAUSE_RR_REL_END))
+    {
+        ulRslt = SSA_IsSsRetryCause_RrRel(enCause);
+    }
+
+    /* 除了鉴权被拒，其他原因值暂时定为都需要重拨 */
+    else if ((enCause >= SSA_SS_REL_CAUSE_CSFB_LMM_FAIL_BEGIN)
+          && (enCause <= SSA_SS_REL_CAUSE_CSFB_LMM_FAIL_END))
+    {
+        ulRslt = SSA_IsSsRetryCause_CsfbLmmFail(enCause);
+    }
+
+    /* MM INTER ERR */
+    else if ((enCause >= SSA_SS_REL_CAUSE_MM_INTER_ERR_BEGIN)
+          && (enCause <= SSA_SS_REL_CAUSE_MM_INTER_ERR_END))
+    {
+        ulRslt = SSA_IsSsRetryCause_MmInterErr(enCause);
+    }
+
+    else
+    {
+        /* 其他情况不需要重拨 */
+        ulRslt  = VOS_FALSE;
+    }
+
+    return ulRslt;
+}
 VOS_UINT32 TAF_SSA_IsNeedSsRetry(
     VOS_UINT8                           ucTi,
     SSA_SS_REL_CAUSE_ENUM_UINT32        enRelCause
@@ -703,6 +880,7 @@ VOS_UINT32 TAF_SSA_IsNeedSsRetry(
     VOS_UINT32                          ulSsRetryPeriodRemainLen;
     VOS_UINT32                          ulSsRetryIntervalLen;
     VOS_UINT32                          ulSsRetrySupportFlg;
+    VOS_UINT32                          ulIsSsRetryCause;
 
     ulSsRetryPeriodRemainLen = 0;
     ulSsRetrySupportFlg      = TAF_SSA_GetSsRetrySupportFlg();
@@ -713,10 +891,11 @@ VOS_UINT32 TAF_SSA_IsNeedSsRetry(
         ulSsRetryPeriodRemainLen = TAF_SSA_GetTimerRemainLen(TI_TAF_SSA_RETRY_PERIOD_TIMER, ucTi);
     }
 
+    ulIsSsRetryCause    = SSA_IsSsRetryCause(enRelCause);
+
     if ((VOS_TRUE == ulSsRetrySupportFlg)
      && (TAF_SSA_STATE_CONN_PENDING == gastSsaStatetable[ucTi].enSsaState)
-     && (enRelCause != SSA_SS_REL_CAUSE_MM_REJ_OTHER_CAUSES)
-     && (enRelCause != SSA_SS_REL_CAUSE_AS_REJ_OTHER_CAUSES)
+     && (VOS_TRUE == ulIsSsRetryCause)
      && (ulSsRetryPeriodRemainLen > ulSsRetryIntervalLen))
     {
         /* 满足重发条件:

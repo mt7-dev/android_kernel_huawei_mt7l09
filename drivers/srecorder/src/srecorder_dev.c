@@ -1,18 +1,4 @@
-/**
-    @copyright: Huawei Technologies Co., Ltd. 2012-2013. All rights reserved.
 
-    @file: srecorder_dev.c
-
-    @brief:  Register a char device to dump log
-
-    @version: 1.0 
-
-    @author: QiDechun ID: 216641
-
-    @date: 2013-01-30
-
-    @history:
-*/
 
 /*----includes-----------------------------------------------------------------------*/
 
@@ -430,7 +416,8 @@ static inline void srecorder_log_read_clean(void)
 static int srecorder_log_read_monitor(void *arg)
 {
     current->flags |= PF_NOFREEZE;
-    msleep(SRECORDER_TIMER_EXPIRE_PERIOD * 60000); /* 5 minitues */
+    msleep((unsigned int)SRECORDER_TIMER_EXPIRE_PERIOD 
+        * (unsigned int)60000); /* 5 minitues */
     spin_lock(&s_read_log_lock);
     srecorder_log_read_clean();
     spin_unlock(&s_read_log_lock);
@@ -472,13 +459,11 @@ int srecorder_init_dev(srecorder_module_init_params_t *pinit_params)
     }
     
     /* this kernel thread will monitor if user will dump the log in time or not */
-    /* DTS2013032201270 qidechun 2013-03-22 begin */
 #if (LINUX_VERSION_CODE < KERNEL_VERSION(3, 4, 0))
     kernel_thread(srecorder_log_read_monitor, NULL, CLONE_FS | CLONE_SIGHAND);
 #else
     kthread_run(srecorder_log_read_monitor, NULL, "srecorder_log_read_monitor");
 #endif
-    /* DTS2013032201270 qidechun 2013-03-22 end */
     
     return ret;
 }

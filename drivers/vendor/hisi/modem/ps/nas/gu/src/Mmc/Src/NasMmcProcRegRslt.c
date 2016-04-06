@@ -30,6 +30,8 @@
 
 #include "NasUsimmApi.h"
 
+#include "NasMmcPlmnSelectionStrategy.h"
+
 #ifdef __cplusplus
 #if __cplusplus
 extern "C" {
@@ -1375,7 +1377,7 @@ NAS_MMC_ADDITIONAL_ACTION_ENUM_UINT8 NAS_MMC_ProcCsRegFailCause417T3212Running(V
     NAS_MMC_FSM_ID_ENUM_UINT32                              enFsmId;
     NAS_MMC_ADDITIONAL_ACTION_ENUM_UINT8                    enCsAdditionalAction;
     NAS_MMC_ADDITIONAL_ACTION_ENUM_UINT8                    enPsAdditionalAction;
-    NAS_MMC_ADDITIONAL_ACTION_ENUM_UINT8                    enPrioAdditionalAction;    
+    NAS_MMC_ADDITIONAL_ACTION_ENUM_UINT8                    enPrioAdditionalAction;
     VOS_UINT8                                               ucSingleDomainSrchFlag;
 
     enFsmId                = NAS_MMC_GetCurrFsmId();
@@ -1408,14 +1410,14 @@ NAS_MMC_ADDITIONAL_ACTION_ENUM_UINT8 NAS_MMC_ProcCsRegFailCause417T3212Running(V
             enCsAdditionalAction = NAS_MMC_ADDITIONAL_ACTION_OPTIONAL_PLMN_SELECTION;
         }
     }
-    
+
     enPrioAdditionalAction = NAS_MMC_GetPrioAddtionalAction(enCsAdditionalAction, enPsAdditionalAction);
     if (VOS_FALSE == NAS_MMC_IsAdditionalActionTrigerPlmnSrch(enPrioAdditionalAction))
     {
         NAS_MMC_ChangeCsRegState(NAS_MML_REG_NOT_REGISTERED_NOT_SEARCH);
     }
 
-    return enCsAdditionalAction;    
+    return enCsAdditionalAction;
 }
 
 
@@ -1503,7 +1505,7 @@ NAS_MMC_ADDITIONAL_ACTION_ENUM_UINT8 NAS_MMC_ProcCsRegFailCause17AttemptCounterM
     VOS_UINT8                                               ucRegFailMaxCnt;
     VOS_UINT32                                              ulAttemptCnt;
 
-    ucRegFailMaxCnt = NAS_MML_MAX_CS_REG_FAIL_CNT;    
+    ucRegFailMaxCnt = NAS_MML_MAX_CS_REG_FAIL_CNT;
 
     /* 若roaming broker特性开启，则使用ROAMING BROKER保存的失败个数，当此特性
        未打开时，使用的值为NAS_MML_MAX_CS_REG_FAIL_CNT */
@@ -1535,7 +1537,7 @@ NAS_MMC_ADDITIONAL_ACTION_ENUM_UINT8 NAS_MMC_ProcCsRegFailCause17AttemptCounterM
         {
             enAction = NAS_MMC_ADDITIONAL_ACTION_LIMITED_CAMP_ON;
         }
-        
+
         /* 如果SOR特性定制打开，当前COUNTER达到最大次数，则设置additional LAU信息 */
         else if ( ulAttemptCnt == ucRegFailMaxCnt )
         {
@@ -1544,8 +1546,8 @@ NAS_MMC_ADDITIONAL_ACTION_ENUM_UINT8 NAS_MMC_ProcCsRegFailCause17AttemptCounterM
 
             enAction = NAS_MMC_ADDITIONAL_ACTION_PLMN_SELECTION;
         }
-        else    
-        {         
+        else
+        {
             if (NAS_MMC_TIMER_STATUS_RUNING == NAS_MMC_GetTimerStatus(TI_NAS_MMC_AVAILABLE_TIMER))
             {
                 enAction = NAS_MMC_ADDITIONAL_ACTION_LIMITED_CAMP_ON;
@@ -1553,8 +1555,8 @@ NAS_MMC_ADDITIONAL_ACTION_ENUM_UINT8 NAS_MMC_ProcCsRegFailCause17AttemptCounterM
             else
             {
                 enAction = NAS_MMC_ADDITIONAL_ACTION_PLMN_SELECTION;
-            }          
-                
+            }
+
         }
     }
 
@@ -1584,7 +1586,9 @@ NAS_MMC_ADDITIONAL_ACTION_ENUM_UINT8 NAS_MMC_ProcCsRegFailAttemptCounterLessThan
     NAS_MML_PLMN_WITH_RAT_STRU                             *pstUserSpecPlmn     = VOS_NULL_PTR;
     VOS_UINT32                                              ulInEplmnListFlag;
     VOS_UINT32                                              ulUserSpecPlmnFlag;
-    VOS_UINT32                                              ulLaiNoChangeFlag;
+
+    VOS_UINT32                                              ulPlmnNoChangeFlag;
+
     NAS_MML_PLMN_ID_STRU                                   *pstCurPlmnId        = VOS_NULL_PTR;
 
     NAS_MML_REG_STATUS_ENUM_UINT8                           enCsRegStatus;
@@ -1594,12 +1598,12 @@ NAS_MMC_ADDITIONAL_ACTION_ENUM_UINT8 NAS_MMC_ProcCsRegFailAttemptCounterLessThan
     /* 默认设置当前继续等待注册结果 */
     enAction      = NAS_MMC_ADDITIONAL_ACTION_WAIT_REG_ATTEMPT;
 
-    ulLaiNoChangeFlag = NAS_MML_IsLaiInDestLaiList( NAS_MML_GetCurrCampLai(),
-                                                    0x01,
-                                                    NAS_MML_GetCsLastSuccLai() );
+    ulPlmnNoChangeFlag = NAS_MML_CompareBcchPlmnwithSimPlmn(NAS_MML_GetCurrCampPlmnId(),
+                                                  NAS_MML_GetCsLastSuccPlmnId());
 
-    /* 如果当前的LAI发生改变，则更新当前为限制服务状态 */
-    if ( VOS_FALSE == ulLaiNoChangeFlag )
+    /* 如果当前的PLMN发生改变，则更新当前为限制服务状态 */
+    if ((NAS_MMC_NORMAL_SERVICE != NAS_MMC_GetCurrCsService())
+     || (VOS_FALSE == ulPlmnNoChangeFlag))
     {
         /* 更新服务状态 */
         NAS_MMC_SetCsServiceStatus(NAS_MMC_LIMITED_SERVICE);
@@ -2867,22 +2871,22 @@ NAS_MMC_ADDITIONAL_ACTION_ENUM_UINT8 NAS_MMC_ProcPsRegFailCause409ServingCellDom
 
 
     enAction = NAS_MMC_ADDITIONAL_ACTION_OPTIONAL_PLMN_SELECTION;
-    
+
     /* SOR打开手动模式搜网时候，返回LIMIT CAMP ON */
     if (VOS_TRUE == NAS_MML_GetCsRejSearchSupportFlg())
     {
         if (NAS_MMC_PLMN_SELECTION_MODE_MANUAL == NAS_MMC_GetPlmnSelectionMode())
         {
             enAction = NAS_MMC_ADDITIONAL_ACTION_LIMITED_CAMP_ON;
-        }        
-    }   
+        }
+    }
 
     /* 获取CS addition,并与NAS_MMC_ADDITIONAL_ACTION_OPTIONAL_PLMN_SELECTION比较，
        如果不需要发起搜网则更新PS注册状态为NAS_MML_REG_NOT_REGISTERED_NOT_SEARCH */
     enPrioAdditionalAction = NAS_MMC_GetCsAdditionalAction();
 
     enPrioAdditionalAction = NAS_MMC_GetPrioAddtionalAction(enAction, enPrioAdditionalAction);
-    
+
     if (VOS_FALSE == NAS_MMC_IsAdditionalActionTrigerPlmnSrch(enPrioAdditionalAction))
     {
         NAS_MMC_ChangePsRegState(NAS_MML_REG_NOT_REGISTERED_NOT_SEARCH);
@@ -2922,7 +2926,7 @@ NAS_MMC_ADDITIONAL_ACTION_ENUM_UINT8 NAS_MMC_ProcPsRegFailAttemptCounterMaxTimes
     NAS_MMC_ADDITIONAL_ACTION_ENUM_UINT8                    enPrioAdditionalAction;
 
     NAS_MMC_PLMN_SELECTION_MODE_ENUM_UINT8                  enSelectionMode;
-    
+
     enSelectionMode = NAS_MMC_GetPlmnSelectionMode();
 
     /* 更新服务状态 */
@@ -2936,14 +2940,14 @@ NAS_MMC_ADDITIONAL_ACTION_ENUM_UINT8 NAS_MMC_ProcPsRegFailAttemptCounterMaxTimes
 
 
     enAction = NAS_MMC_ADDITIONAL_ACTION_OPTIONAL_PLMN_SELECTION;
-    
+
     /* SOR打开手动模式搜网时候，返回LIMIT CAMP ON */
     if ( (VOS_TRUE == NAS_MML_GetCsRejSearchSupportFlg())
       && (NAS_MMC_PLMN_SELECTION_MODE_MANUAL == enSelectionMode) )
     {
-        enAction = NAS_MMC_ADDITIONAL_ACTION_LIMITED_CAMP_ON;       
+        enAction = NAS_MMC_ADDITIONAL_ACTION_LIMITED_CAMP_ON;
     }
-    /* 最大次数失败被拒是否立即触发搜网，DT单域搜网定制打开时搜网; 不打开时，等待PS的注册结果 */    
+    /* 最大次数失败被拒是否立即触发搜网，DT单域搜网定制打开时搜网; 不打开时，等待PS的注册结果 */
     else if (VOS_TRUE == ucSingleDomainSrchFlag)
     {
         enAction = NAS_MMC_ADDITIONAL_ACTION_PLMN_SELECTION;
@@ -2972,10 +2976,10 @@ NAS_MMC_ADDITIONAL_ACTION_ENUM_UINT8 NAS_MMC_ProcPsRegFailAttemptCounterLessThan
     VOS_UINT32                                              ulInEplmnListFlag;
     VOS_UINT32                                              ulUserSpecPlmnFlag;
     NAS_MML_PLMN_ID_STRU                                   *pstCurPlmnId        = VOS_NULL_PTR;
-    VOS_UINT32                                              ulLaiNoChangeFlag;
+
+    VOS_UINT32                                              ulPlmnNoChangeFlag;
 
 
-    NAS_MML_CAMP_PLMN_INFO_STRU        *pstCurCampInfo   = VOS_NULL_PTR;
     NAS_MML_RAI_STRU                   *pstPsLastSuccRai = VOS_NULL_PTR;
 
     NAS_MML_REG_STATUS_ENUM_UINT8       enPsRegStatus;
@@ -2985,16 +2989,15 @@ NAS_MMC_ADDITIONAL_ACTION_ENUM_UINT8 NAS_MMC_ProcPsRegFailAttemptCounterLessThan
     /* 默认设置当前继续等待注册结果 */
     enAction = NAS_MMC_ADDITIONAL_ACTION_WAIT_REG_ATTEMPT;
 
-    pstCurCampInfo   = NAS_MML_GetCurrCampPlmnInfo();
+
     pstPsLastSuccRai = NAS_MML_GetPsLastSuccRai();
 
-    ulLaiNoChangeFlag = NAS_MML_IsLaiInDestLaiList( NAS_MML_GetCurrCampLai(),
-                                                   0x01,
-                                                   &(pstPsLastSuccRai->stLai) );
+    ulPlmnNoChangeFlag = NAS_MML_CompareBcchPlmnwithSimPlmn(NAS_MML_GetCurrCampPlmnId(),
+                                                  &(pstPsLastSuccRai->stLai.stPlmnId));
 
-    /* 如果当前的RAI发生改变，则更新当前的为限制服务状态 */
-    if ( ( VOS_FALSE             == ulLaiNoChangeFlag )
-      || ( pstCurCampInfo->ucRac != pstPsLastSuccRai->ucRac ) )
+    /* 如果当前的PLMN发生改变，则更新当前为限制服务状态 */
+    if ((NAS_MMC_NORMAL_SERVICE != NAS_MMC_GetCurrPsService())
+     || (VOS_FALSE == ulPlmnNoChangeFlag) )
     {
         /* 更新服务状态 */
         NAS_MMC_SetPsServiceStatus(NAS_MMC_LIMITED_SERVICE);
@@ -3493,7 +3496,7 @@ NAS_MMC_ADDITIONAL_ACTION_ENUM_UINT8 NAS_MMC_ProcCombinedEpsRegOnlyEpsSuccCause1
         NAS_MMC_ChangeCsRegState(NAS_MML_REG_NOT_REGISTERED_NOT_SEARCH);
 
     return NAS_MMC_ADDITIONAL_ACTION_LIMITED_CAMP_ON;
-    
+
 }
 NAS_MMC_ADDITIONAL_ACTION_ENUM_UINT8 NAS_MMC_ProcCombinedEpsRegOnlyEpsSuccCause2ImsiUnknownInHss(VOS_VOID)
 {
@@ -3517,6 +3520,14 @@ VOS_VOID NAS_MMC_ProcCombinedEpsRegFailCause257AccessBarrd(
     NAS_MMC_ADDITIONAL_ACTION_ENUM_UINT8                    *penCsRegAdditionalAction
 )
 {
+    NAS_MMC_FSM_ID_ENUM_UINT32                              enFsmId;
+
+    enFsmId         = NAS_MMC_GetCurrFsmId();
+
+    if (NAS_FSM_BUTT <= enFsmId)
+    {
+        NAS_ERROR_LOG(WUEPS_PID_MMC, "ERROR:FsmId Error");
+    }
      /* 更新服务状态 */
     NAS_MMC_SetCsServiceStatus(NAS_MMC_LIMITED_SERVICE);
 
@@ -3532,19 +3543,34 @@ VOS_VOID NAS_MMC_ProcCombinedEpsRegFailCause257AccessBarrd(
     NAS_MMC_ChangeCsRegState(NAS_MML_REG_NOT_REGISTERED_NOT_SEARCH);
 
     /*特性开关打开且非HPLMN/RPLMN接入禁止时需要触发PLMN搜网*/
+
     if (VOS_TRUE == NAS_MMC_IsAccBarPlmnSearch())
     {
         *penPsRegAdditionalAction = NAS_MMC_ADDITIONAL_ACTION_OPTIONAL_PLMN_SELECTION;
         *penCsRegAdditionalAction = NAS_MMC_ADDITIONAL_ACTION_OPTIONAL_PLMN_SELECTION;
-    }
-    else
-    {
-        *penPsRegAdditionalAction = NAS_MMC_ADDITIONAL_ACTION_ACCESS_BARRED;
 
-        *penCsRegAdditionalAction = NAS_MMC_ADDITIONAL_ACTION_ACCESS_BARRED;
+        return;
     }
+
+    /* 当前CL互操作时如果ACCEESBARRED,则继续等待注册结果，否则后续解BAR,L发起注册，VIA无法配合 */
+    if ( (NAS_MMC_REG_CONTROL_BY_3GPP2_CBP  == NAS_MMC_GetRegCtrl())
+      && (NAS_MMC_FSM_PLMN_SELECTION        == enFsmId) )
+    {
+        *penPsRegAdditionalAction = NAS_MMC_ADDITIONAL_ACTION_WAIT_REG_ATTEMPT;
+        *penCsRegAdditionalAction = NAS_MMC_ADDITIONAL_ACTION_WAIT_REG_ATTEMPT;
+
+        return;
+    }
+
+    *penPsRegAdditionalAction = NAS_MMC_ADDITIONAL_ACTION_ACCESS_BARRED;
+    *penCsRegAdditionalAction = NAS_MMC_ADDITIONAL_ACTION_ACCESS_BARRED;
+
+    return;
+
 
 }
+
+
 VOS_VOID NAS_MMC_ProcCombinedEpsRegFailCause256AuthRej(
     NAS_MMC_ADDITIONAL_ACTION_ENUM_UINT8                    *penPsRegAdditionalAction,
     NAS_MMC_ADDITIONAL_ACTION_ENUM_UINT8                    *penCsRegAdditionalAction
@@ -3788,8 +3814,6 @@ VOS_VOID NAS_MMC_ProcCombinedEpsRegFailCauseMoDetach(
     NAS_MMC_ADDITIONAL_ACTION_ENUM_UINT8                    *penCsRegAdditionalAction
 )
 {
-    VOS_UINT8                           ucCsAttachAllowFlg;
-
     NAS_MMC_SetCsServiceStatus(NAS_MMC_LIMITED_SERVICE);
 
     /* 更新服务状态 */
@@ -3800,20 +3824,17 @@ VOS_VOID NAS_MMC_ProcCombinedEpsRegFailCauseMoDetach(
 
     *penPsRegAdditionalAction = NAS_MMC_ADDITIONAL_ACTION_LIMITED_CAMP_ON;
 
-    /* 如果仅仅是Detach ps，CS卡有效需要搜网，否则限制驻留 */
-    ucCsAttachAllowFlg = NAS_MML_GetCsAttachAllowFlg();
-    if ((VOS_TRUE == NAS_MML_GetSimCsRegStatus())
-     && (VOS_TRUE == ucCsAttachAllowFlg))
-    {
-        *penCsRegAdditionalAction = NAS_MMC_ADDITIONAL_ACTION_OPTIONAL_PLMN_SELECTION;
-    }
-    else
-    {
-        *penCsRegAdditionalAction = NAS_MMC_ADDITIONAL_ACTION_LIMITED_CAMP_ON;
-    }
+    /* attach/tau过程中用户detach,LMM会给MMC回MO_DETACH_FAILURE,
+       MMC收到该attach/tau结果会触发搜网，搜网前要求主动释放链接，导致detach_req发不上去
+       所以此处修改为限制驻留 */
+    *penCsRegAdditionalAction = NAS_MMC_ADDITIONAL_ACTION_LIMITED_CAMP_ON;
+
 
     return;
 }
+
+
+
 VOS_VOID NAS_MMC_ProcCombinedEpsRegFailCauseMtDetach(
     NAS_MMC_ADDITIONAL_ACTION_ENUM_UINT8                    *penPsRegAdditionalAction,
     NAS_MMC_ADDITIONAL_ACTION_ENUM_UINT8                    *penCsRegAdditionalAction
@@ -3852,7 +3873,7 @@ VOS_VOID NAS_MMC_ProcCombinedEpsRegFailCauseT3402Running(
 
     /* 通知TAF当前的服务状态 */
     NAS_MMC_SndMmaServiceStatusInd(MMA_MMC_SRVDOMAIN_CS_PS, MMA_MMC_SERVICE_STATUS_LIMITED_SERVICE);
-    
+
     /* 当前在ONPLMN时，AVAILABLE定时器未启动,则MMC需要发起搜网*/
     if ( NAS_MMC_FSM_L1_MAIN   == enFsmId)
     {
@@ -4103,6 +4124,15 @@ NAS_MMC_ADDITIONAL_ACTION_ENUM_UINT8 NAS_MMC_ProcEpsAttachRegFailCause257AccessB
 {
     VOS_UINT8                           ucSimCsRegStatus;
 
+    NAS_MMC_FSM_ID_ENUM_UINT32          enFsmId;
+
+    enFsmId         = NAS_MMC_GetCurrFsmId();
+
+    if (NAS_FSM_BUTT <= enFsmId)
+    {
+        NAS_ERROR_LOG(WUEPS_PID_MMC, "ERROR:FsmId Error");
+    }
+
     /* 更新服务状态 */
     NAS_MMC_SetPsServiceStatus(NAS_MMC_LIMITED_SERVICE);
 
@@ -4122,12 +4152,18 @@ NAS_MMC_ADDITIONAL_ACTION_ENUM_UINT8 NAS_MMC_ProcEpsAttachRegFailCause257AccessB
     {
         return NAS_MMC_ADDITIONAL_ACTION_OPTIONAL_PLMN_SELECTION;
     }
-    else
-    {
-        return NAS_MMC_ADDITIONAL_ACTION_ACCESS_BARRED;
-    }
-}
 
+
+    /* 当前CL互操作时如果ACCEESBARRED,则继续等待注册结果，否则后续解BAR,L发起注册，VIA无法配合 */
+    if ( (NAS_MMC_REG_CONTROL_BY_3GPP2_CBP  == NAS_MMC_GetRegCtrl())
+      && (NAS_MMC_FSM_PLMN_SELECTION        == enFsmId) )
+    {
+        return NAS_MMC_ADDITIONAL_ACTION_WAIT_REG_ATTEMPT;
+    }
+
+    return NAS_MMC_ADDITIONAL_ACTION_ACCESS_BARRED;
+
+}
 NAS_MMC_ADDITIONAL_ACTION_ENUM_UINT8 NAS_MMC_ProcEpsAttachRegFailCause301TimerTimeOut(VOS_VOID)
 {
     NAS_MMC_ADDITIONAL_ACTION_ENUM_UINT8                    enAction;
@@ -4307,7 +4343,10 @@ NAS_MMC_ADDITIONAL_ACTION_ENUM_UINT8 NAS_MMC_ProcEpsAttachRegFailCauseEpsBearerE
      /* 通知TAF当前的服务状态 */
      NAS_MMC_SndMmaServiceStatusInd(MMA_MMC_SRVDOMAIN_PS, MMA_MMC_SERVICE_STATUS_LIMITED_SERVICE);
 
-     return NAS_MMC_ADDITIONAL_ACTION_OPTIONAL_PLMN_SELECTION;
+    /* attach过程中用户detach,LMM会给MMC回MO_DETACH_FAILURE,
+       MMC收到该attach结果会触发搜网，搜网前要求主动释放链接，导致detach_req发不上去
+       所以此处修改为限制驻留 */
+     return NAS_MMC_ADDITIONAL_ACTION_LIMITED_CAMP_ON;
  }
 
 
@@ -4362,11 +4401,11 @@ NAS_MMC_ADDITIONAL_ACTION_ENUM_UINT8 NAS_MMC_ProcEpsTauRegFailCause3IllegalMs(VO
     NAS_MMC_SetCsServiceStatus(NAS_MMC_LIMITED_SERVICE);
     NAS_MMC_SetPsServiceStatus(NAS_MMC_LIMITED_SERVICE);
 
-    /* 先更新全局变量,便于发送消息时获取到的全局变量是最新的 */    
+    /* 先更新全局变量,便于发送消息时获取到的全局变量是最新的 */
     /* 设置cs ps卡状态为无效 */
     NAS_MML_SetSimCsRegStatus(VOS_FALSE);
     NAS_MML_SetSimPsRegStatus(VOS_FALSE);
-    
+
     /* 通知TAF当前的服务状态 */
     NAS_MMC_SndMmaServiceStatusInd(MMA_MMC_SRVDOMAIN_CS_PS, MMA_MMC_SERVICE_STATUS_NO_IMSI);
 
@@ -4603,6 +4642,15 @@ NAS_MMC_ADDITIONAL_ACTION_ENUM_UINT8 NAS_MMC_ProcEpsTauRegFailCause257AccessBarr
 {
     VOS_UINT8                           ucSimCsRegStatus;
 
+    NAS_MMC_FSM_ID_ENUM_UINT32                              enFsmId;
+
+    enFsmId         = NAS_MMC_GetCurrFsmId();
+
+    if (NAS_FSM_BUTT <= enFsmId)
+    {
+        NAS_ERROR_LOG(WUEPS_PID_MMC, "ERROR:FsmId Error");
+    }
+
     /* 更新服务状态 */
     NAS_MMC_SetPsServiceStatus(NAS_MMC_LIMITED_SERVICE);
 
@@ -4622,14 +4670,17 @@ NAS_MMC_ADDITIONAL_ACTION_ENUM_UINT8 NAS_MMC_ProcEpsTauRegFailCause257AccessBarr
     {
         return NAS_MMC_ADDITIONAL_ACTION_OPTIONAL_PLMN_SELECTION;
     }
-    else
+
+    /* 当前CL互操作时如果ACCEESBARRED,则继续等待注册结果，否则后续解BAR,L发起注册，VIA无法配合 */
+    if ( (NAS_MMC_REG_CONTROL_BY_3GPP2_CBP  == NAS_MMC_GetRegCtrl())
+      && (NAS_MMC_FSM_PLMN_SELECTION        == enFsmId) )
     {
-        return NAS_MMC_ADDITIONAL_ACTION_ACCESS_BARRED;
+        return NAS_MMC_ADDITIONAL_ACTION_WAIT_REG_ATTEMPT;
     }
+
+    return NAS_MMC_ADDITIONAL_ACTION_ACCESS_BARRED;
+
 }
-
-
-
 NAS_MMC_ADDITIONAL_ACTION_ENUM_UINT8 NAS_MMC_ProcEpsTauRegFailCause301TimerTimeOut(VOS_VOID)
 {
     NAS_MMC_ADDITIONAL_ACTION_ENUM_UINT8                    enAction;
@@ -4694,10 +4745,6 @@ NAS_MMC_ADDITIONAL_ACTION_ENUM_UINT8 NAS_MMC_ProcEpsTauRegFailCause401OtherCause
 
     return enAction;
 }
-
-
-
-
 NAS_MMC_ADDITIONAL_ACTION_ENUM_UINT8 NAS_MMC_ProcEpsTauRegFailCause403ForbiddenPlmn(VOS_VOID)
 {
     return NAS_MMC_ProcEpsAttachRegFailCause403ForbiddenPlmn();
@@ -4791,6 +4838,9 @@ NAS_MMC_ADDITIONAL_ACTION_ENUM_UINT8 NAS_MMC_ProcEpsTauRegFailCause406ForbiddenP
 
     return enAdditionalAction;
 }
+
+
+
 NAS_MMC_ADDITIONAL_ACTION_ENUM_UINT8 NAS_MMC_ProcEpsTauRegFailCauseMoDetach(VOS_VOID)
 {
     /* 更新服务状态 */
@@ -4799,7 +4849,14 @@ NAS_MMC_ADDITIONAL_ACTION_ENUM_UINT8 NAS_MMC_ProcEpsTauRegFailCauseMoDetach(VOS_
     /* 通知TAF当前的服务状态 */
     NAS_MMC_SndMmaServiceStatusInd(MMA_MMC_SRVDOMAIN_PS, MMA_MMC_SERVICE_STATUS_LIMITED_SERVICE);
 
-    return NAS_MMC_ADDITIONAL_ACTION_OPTIONAL_PLMN_SELECTION;
+    /* TAU过程中用户detach,LMM会给MMC回MO_DETACH_FAILURE,
+       MMC收到该TAU结果会触发搜网，搜网前要求主动释放链接，导致detach_req发不上去
+       所以此处修改为限制驻留 */
+    /* 3GPP 24301 Selection 5.5.3.2.6 Abnormal cases in the UE
+    m)  Mobile originated detach required
+        The tracking area updating procedure shall be aborted, and the UE initiated detach procedure shall be performed.
+    */
+    return NAS_MMC_ADDITIONAL_ACTION_LIMITED_CAMP_ON;
 }
 
 
@@ -4854,7 +4911,7 @@ VOS_VOID NAS_MMC_ProcEpsDetachCause2ImsiUnknowInHss(
 
     /* 设置cs卡状态为无效 */
     NAS_MML_SetSimCsRegStatus(VOS_FALSE);
-    
+
     /* 通知TAF当前的服务状态 */
     NAS_MMC_SndMmaServiceStatusInd(MMA_MMC_SRVDOMAIN_CS, MMA_MMC_SERVICE_STATUS_NO_IMSI);
 
@@ -5335,7 +5392,7 @@ NAS_MMC_ADDITIONAL_ACTION_ENUM_UINT8 NAS_MMC_ProcEpsServiceRequestFailCause25Not
 }
 NAS_MMC_ADDITIONAL_ACTION_ENUM_UINT8 NAS_MMC_ProcEpsServiceRequestFailCause39CsDomainTempNotAvailable(VOS_VOID)
 {
-    
+
     return NAS_MMC_ADDITIONAL_ACTION_LIMITED_CAMP_ON;
 }
 
@@ -5345,9 +5402,9 @@ NAS_MMC_ADDITIONAL_ACTION_ENUM_UINT8 NAS_MMC_ProcEpsServiceRequestFailCause40NoE
     NAS_MML_MS_3GPP_REL_STRU           *pstMs3GppRel = VOS_NULL_PTR;
 
     pstMs3GppRel = NAS_MML_GetMs3GppRel();
-    /* 版本为R10版本及以后版本，当前原因值是#40将原因值转定义成#10，见协议3GPP 
+    /* 版本为R10版本及以后版本，当前原因值是#40将原因值转定义成#10，见协议3GPP
     24.301 5.5.3.3.5 */
-    if (NAS_MML_3GPP_REL_R9 >= pstMs3GppRel->enLteNasRelease)    
+    if (NAS_MML_3GPP_REL_R9 >= pstMs3GppRel->enLteNasRelease)
     {
         return NAS_MMC_ADDITIONAL_ACTION_LIMITED_CAMP_ON;
     }
@@ -5381,13 +5438,13 @@ NAS_MMC_ADDITIONAL_ACTION_ENUM_UINT8 NAS_MMC_ProcCsRegFail(
     /* 保存注册结果消息 */
     NAS_MMC_SaveRegRsltCtx(enRegRsltType, pstCsRegRsltInd);
 
-        
+
     /* AT^REJINFO主动上报，将REJINFO上报给MMA 非联合注册的时候才上报 */
     if (VOS_FALSE == pstCsRegRsltInd->ucIsComBined)
     {
         NAS_MMC_SndMmaRegResultInd(MMA_MMC_SRVDOMAIN_CS, VOS_FALSE, pstCsRegRsltInd->enRegFailCause);
     }
-    
+
 
 #if (FEATURE_ON == FEATURE_PTM)
     /* 记录CS注册失败异常log */
@@ -5440,7 +5497,7 @@ NAS_MMC_ADDITIONAL_ACTION_ENUM_UINT8 NAS_MMC_ProcPsRegFail(
     /* 保存注册结果消息 */
     NAS_MMC_SaveRegRsltCtx(enRegRsltType, pstPsRegRsltInd);
 
-    
+
     /* AT^REJINFO主动上报，将REJINFO上报给MMA */
     if (GMM_MMC_REG_DOMAIN_PS_CS == pstPsRegRsltInd->enRsltDomain)
     {
@@ -5450,7 +5507,7 @@ NAS_MMC_ADDITIONAL_ACTION_ENUM_UINT8 NAS_MMC_ProcPsRegFail(
     {
         NAS_MMC_SndMmaRegResultInd(MMA_MMC_SRVDOMAIN_PS, VOS_FALSE, pstPsRegRsltInd->enRegFailCause);
     }
-    
+
 
 #if (FEATURE_ON == FEATURE_PTM)
     /* 记录PS注册失败异常log */
@@ -5500,6 +5557,11 @@ NAS_MMC_ADDITIONAL_ACTION_ENUM_UINT8 NAS_MMC_ProcPsServiceRegFail(
     /* 保存注册结果消息 */
     NAS_MMC_SaveRegRsltCtx(GMM_MMC_PS_SERVICE_RESULT_IND, pstServiceRsltInd);
 
+#if (FEATURE_ON == FEATURE_PTM)
+    /* 记录PS注册失败异常log */
+    NAS_MMC_PsServiceRegErrRecord(pstServiceRsltInd);
+#endif
+
     ulTblSize = sizeof(gastMmcProcPsRegFailCause)/sizeof(gastMmcProcPsRegFailCause[0]);
 
     /*在PS注册原因表gastMmcProcPsRegFailCause中，查找对应的处理函数*/
@@ -5528,8 +5590,6 @@ NAS_MMC_ADDITIONAL_ACTION_ENUM_UINT8 NAS_MMC_ProcPsServiceRegFail(
     return enAction;
 
 }
-
-
 NAS_MMC_ADDITIONAL_ACTION_ENUM_UINT8 NAS_MMC_ProcGmmNetworkDetachInd(
     MMCGMM_NETWORK_DETACH_IND_STRU     *pstDetachMsg
 )
@@ -5600,8 +5660,8 @@ NAS_MMC_ADDITIONAL_ACTION_ENUM_UINT8 NAS_MMC_ProcGmmNetworkDetachInd(
     {
         return NAS_MMC_ADDITIONAL_ACTION_BUTT;
     }
-    
-    else 
+
+    else
     {
         /* 获取CS addition,并与NAS_MMC_ADDITIONAL_ACTION_WAIT_REG_ATTEMPT比较，
            如果不需要发起搜网则更新PS注册状态为NAS_MML_REG_NOT_REGISTERED_NOT_SEARCH */
@@ -5818,6 +5878,9 @@ VOS_VOID NAS_MMC_ProcCombinedAttachEpsRegFail(
     NAS_MML_REG_FAIL_CAUSE_ENUM_UINT16                      enPsRegRsltCause;
     NAS_MML_REG_FAIL_CAUSE_ENUM_UINT16                      enCsRegRsltCause;
 
+    NAS_MMC_DPLMN_NPLMN_CFG_INFO_STRU                      *pstDPlmnNPlmnCfgInfo = VOS_NULL_PTR;
+    pstDPlmnNPlmnCfgInfo  = NAS_MMC_GetDPlmnNPlmnCfgInfo();
+
     /* 保存注册结果消息 */
     NAS_MMC_SaveRegRsltCtx(enRegRsltType, pstLmmAttachIndMsg);
 
@@ -5825,7 +5888,7 @@ VOS_VOID NAS_MMC_ProcCombinedAttachEpsRegFail(
     NAS_MMC_ConverLmmCombinedAttachRsltToMMLCause(pstLmmAttachIndMsg,
                                           &enPsRegRsltCause, &enCsRegRsltCause);
 
-    NAS_MMC_SndMmaRegResultInd(MMA_MMC_SRVDOMAIN_CS_PS, VOS_FALSE, enPsRegRsltCause);    
+    NAS_MMC_SndMmaRegResultInd(MMA_MMC_SRVDOMAIN_CS_PS, VOS_FALSE, enPsRegRsltCause);
 
     ulTblSize = sizeof(gastMmcProcCombinedAttachEpsRegFailCause)/sizeof(gastMmcProcCombinedAttachEpsRegFailCause[0]);
 
@@ -5857,33 +5920,22 @@ VOS_VOID NAS_MMC_ProcCombinedAttachEpsRegFail(
     {
         NAS_MMC_UpdatePlmnRegInfoList(NAS_MML_GetCurrCampPlmnId(), NAS_MMC_REG_DOMAIN_EPS, enPsRegRsltCause);
         NAS_MMC_UpdatePlmnRegInfoList(NAS_MML_GetCurrCampPlmnId(), NAS_MMC_REG_DOMAIN_CS, enPsRegRsltCause);
-    }
 
-    return;
-
-}
-VOS_VOID NAS_MMC_ProcCombinedTauEpsRegFail(
-    NAS_MMC_REG_RSLT_TYPE_ENUM_UINT8                        enRegRsltType,
-    LMM_MMC_TAU_RESULT_IND_STRU                            *pstLmmTauIndMsg,
-    NAS_MMC_ADDITIONAL_ACTION_ENUM_UINT8                   *penPsRegAdditionalAction,
-    NAS_MMC_ADDITIONAL_ACTION_ENUM_UINT8                   *penCsRegAdditionalAction
-)
-{
-    VOS_UINT32                                              i;
-    VOS_UINT32                                              ulTblSize;
-    NAS_MMC_PROC_COMBINED_EPS_REG_FAIL_FUNC_PTR             pRegFailProcFunc = VOS_NULL_PTR;
-
-    NAS_MML_REG_FAIL_CAUSE_ENUM_UINT16                      enPsRegRsltCause;
-    NAS_MML_REG_FAIL_CAUSE_ENUM_UINT16                      enCsRegRsltCause;
-
-    /* 保存注册结果消息 */
+        /* 更新DPLMN NPLMN列表 */
+        if (VOS_TRUE == NAS_MMC_IsRoam())
+        {
+            NAS_MMC_UpdateDPlmnNPlmnList(NAS_MML_GetCurrCampPlmnId(),NAS_MML_GetCurrNetRatType(), NAS_MMC_REG_DOMAIN_PS_CS,&pstDPlmnNPlmnCfgInfo->usNplmnListNum,pstDPlmnNPlmnCfgInfo->astNPlmnList);
+            NAS_MMC_DeleteDPlmnNPlmnList(NAS_MML_GetCurrCampPlmnId(),NAS_MML_GetCurrNetRatType(), NAS_MMC_REG_DOMAIN_PS_CS,&pstDPlmnNPlmnCfgInfo->usDplmnListNum,pstDPlmnNPlmnCfgInfo->astDPlmnList);
+            NAS_MMC_WriteDplmnNplmnToNvim();
+            NAS_MMC_LogDplmnNplmnList();
+        }
     NAS_MMC_SaveRegRsltCtx(enRegRsltType, pstLmmTauIndMsg);
 
     /* 从联合注册结果消息中取得拒绝原因值 */
     NAS_MMC_ConverLmmCombinedTauRsltToMMLCause(pstLmmTauIndMsg,
                                           &enPsRegRsltCause, &enCsRegRsltCause);
 
-    NAS_MMC_SndMmaRegResultInd(MMA_MMC_SRVDOMAIN_CS_PS, VOS_FALSE, enPsRegRsltCause);    
+    NAS_MMC_SndMmaRegResultInd(MMA_MMC_SRVDOMAIN_CS_PS, VOS_FALSE, enPsRegRsltCause);
 
     ulTblSize = sizeof(gastMmcProcCombinedTauEpsRegFailCause)/sizeof(gastMmcProcCombinedTauEpsRegFailCause[0]);
 
@@ -5915,11 +5967,23 @@ VOS_VOID NAS_MMC_ProcCombinedTauEpsRegFail(
     {
         NAS_MMC_UpdatePlmnRegInfoList(NAS_MML_GetCurrCampPlmnId(), NAS_MMC_REG_DOMAIN_EPS, enPsRegRsltCause);
         NAS_MMC_UpdatePlmnRegInfoList(NAS_MML_GetCurrCampPlmnId(), NAS_MMC_REG_DOMAIN_CS, enPsRegRsltCause);
+
+        /* 更新DPLMN NPLMN列表 */
+        if (VOS_TRUE == NAS_MMC_IsRoam())
+        {
+            NAS_MMC_UpdateDPlmnNPlmnList(NAS_MML_GetCurrCampPlmnId(),NAS_MML_GetCurrNetRatType(), NAS_MMC_REG_DOMAIN_PS_CS,&pstDPlmnNPlmnCfgInfo->usNplmnListNum,pstDPlmnNPlmnCfgInfo->astNPlmnList);
+            NAS_MMC_DeleteDPlmnNPlmnList(NAS_MML_GetCurrCampPlmnId(),NAS_MML_GetCurrNetRatType(), NAS_MMC_REG_DOMAIN_PS_CS,&pstDPlmnNPlmnCfgInfo->usDplmnListNum,pstDPlmnNPlmnCfgInfo->astDPlmnList);
+            NAS_MMC_WriteDplmnNplmnToNvim();
+            NAS_MMC_LogDplmnNplmnList();
+        }
     }
 
     return;
 
 }
+
+
+
 VOS_VOID NAS_MMC_ProcCombinedEpsRegOnlyEpsSucc(
     VOS_UINT16                                              usCause,
     VOS_UINT32                                              ulAttemptCnt,
@@ -5929,6 +5993,9 @@ VOS_VOID NAS_MMC_ProcCombinedEpsRegOnlyEpsSucc(
     VOS_UINT32                                              i;
     VOS_UINT32                                              ulTblSize;
     NAS_MMC_PROC_REG_FAIL_FUNC_PTR                          pRegFailProcFunc = VOS_NULL_PTR;
+
+    NAS_MMC_DPLMN_NPLMN_CFG_INFO_STRU                      *pstDPlmnNPlmnCfgInfo = VOS_NULL_PTR;
+    pstDPlmnNPlmnCfgInfo  = NAS_MMC_GetDPlmnNPlmnCfgInfo();
 
     ulTblSize = sizeof(gastMmcProcCombinedEpsRegOnlyEpsSuccCause)/sizeof(gastMmcProcCombinedEpsRegOnlyEpsSuccCause[0]);
 
@@ -5960,12 +6027,21 @@ VOS_VOID NAS_MMC_ProcCombinedEpsRegOnlyEpsSucc(
     if (VOS_TRUE == NAS_MML_IsNetworkRegFailCause(usCause))
     {
         NAS_MMC_UpdatePlmnRegInfoList(NAS_MML_GetCurrCampPlmnId(), NAS_MMC_REG_DOMAIN_CS, usCause);
+
+        /* 更新DPLMN NPLMN列表 */
+        if (VOS_TRUE == NAS_MMC_IsRoam())
+        {
+            NAS_MMC_UpdateDPlmnNPlmnList(NAS_MML_GetCurrCampPlmnId(),NAS_MML_GetCurrNetRatType(), NAS_MMC_REG_DOMAIN_CS,&pstDPlmnNPlmnCfgInfo->usNplmnListNum,pstDPlmnNPlmnCfgInfo->astNPlmnList);
+            NAS_MMC_DeleteDPlmnNPlmnList(NAS_MML_GetCurrCampPlmnId(),NAS_MML_GetCurrNetRatType(), NAS_MMC_REG_DOMAIN_CS,&pstDPlmnNPlmnCfgInfo->usDplmnListNum,pstDPlmnNPlmnCfgInfo->astDPlmnList);
+            NAS_MMC_WriteDplmnNplmnToNvim();
+
+            NAS_MMC_LogDplmnNplmnList();
+        }
     }
 
     return;
 
 }
-
 
 
 NAS_MMC_ADDITIONAL_ACTION_ENUM_UINT8 NAS_MMC_ProcEpsRegFailCauseAbnormalCause(
@@ -5997,6 +6073,9 @@ NAS_MMC_ADDITIONAL_ACTION_ENUM_UINT8 NAS_MMC_ProcEpsRegFailCauseAbnormalCause(
 
     return enAction;
 }
+
+
+
 VOS_VOID NAS_MMC_ProcEpsRegFailAttemptCouterLessThanMaxTimes(
     NAS_MMC_ADDITIONAL_ACTION_ENUM_UINT8                   *penPsRegAdditionalAction
 )
@@ -6229,7 +6308,7 @@ VOS_VOID NAS_MMC_ProcLmmDetachInd(
 
             NAS_MMC_ProcEpsDetachCause(LMM_MMC_DETACH_IND, pstDetachMsg,
                                        penCsAddition, penPsAddition);
-            
+
             /* 清除紧急PDN连接标志,暂不用通知EPLMN因为各状态收到detach结果的时候需要通知EPLMN */
             NAS_MML_SetEmcPdpStatusFlg(VOS_FALSE);
 
@@ -6246,7 +6325,7 @@ VOS_VOID NAS_MMC_ProcLmmDetachInd(
 
             *penPsAddition = NAS_MMC_ADDITIONAL_ACTION_WAIT_REG_ATTEMPT;
 
-            
+
             /* 清除紧急PDN连接标志,暂不用通知EPLMN因为各状态收到detach结果的时候需要通知EPLMN */
             NAS_MML_SetEmcPdpStatusFlg(VOS_FALSE);
 
@@ -6329,6 +6408,11 @@ NAS_MMC_ADDITIONAL_ACTION_ENUM_UINT8 NAS_MMC_ProcLmmServiceRsltInd(
     if( VOS_TRUE == NAS_MML_IsCsfbServiceStatusExist() )
     {
         enAction = NAS_MMC_ADDITIONAL_ACTION_PLMN_SELECTION ;
+
+        /* 接收到LMM的Service Result指示需要搜网时,记录异常状态为CSFB MT触发搜网 */
+#if (FEATURE_ON == FEATURE_PTM)
+        NAS_MML_SetErrLogCsfbMtState(NAS_ERR_LOG_CSFB_MT_STATE_TRAG_NW_SEARCH_FOR_RCV_LMM_SRV_RST);
+#endif
     }
 
     return enAction;
@@ -6349,7 +6433,7 @@ VOS_VOID  NAS_MMC_ProcLmmCombinedTauResultInd_TauRsltEpsOnlySucc(
 
     NAS_MMC_SaveRegRsltCtx(LMM_MMC_TAU_RESULT_IND, pstLmmTauIndMsg);
 
-    /* AT^REJINFO主动上报，将REJINFO上报给MMA */    
+    /* AT^REJINFO主动上报，将REJINFO上报给MMA */
     NAS_MMC_SndMmaRegResultInd(MMA_MMC_SRVDOMAIN_PS, VOS_TRUE, NAS_MML_REG_FAIL_CAUSE_NULL);
     NAS_MMC_SndMmaRegResultInd(MMA_MMC_SRVDOMAIN_CS, VOS_FALSE, enCsRegRsltCause);
 
@@ -6389,6 +6473,9 @@ VOS_VOID  NAS_MMC_ProcLmmCombinedTauResultInd_TauRsltCsEpsSucc(
     MMC_LMM_PLMN_ID_STRU               *pstLmmEquPlmnList = VOS_NULL_PTR;
     NAS_MML_EQUPLMN_INFO_STRU           stLEplmnInfo;
 
+    NAS_MMC_DPLMN_NPLMN_CFG_INFO_STRU                      *pstDPlmnNPlmnCfgInfo = VOS_NULL_PTR;
+    pstDPlmnNPlmnCfgInfo  = NAS_MMC_GetDPlmnNPlmnCfgInfo();
+
     NAS_MMC_SaveRegRsltCtx(LMM_MMC_TAU_RESULT_IND, pstLmmTauIndMsg);
 
      *penPsAddition = NAS_MMC_ADDITIONAL_ACTION_NORMAL_CAMP_ON;
@@ -6398,8 +6485,30 @@ VOS_VOID  NAS_MMC_ProcLmmCombinedTauResultInd_TauRsltCsEpsSucc(
      NAS_MMC_UpdatePlmnRegInfoList(NAS_MML_GetCurrCampPlmnId(), NAS_MMC_REG_DOMAIN_EPS, NAS_MML_REG_FAIL_CAUSE_NULL);
      NAS_MMC_UpdatePlmnRegInfoList(NAS_MML_GetCurrCampPlmnId(), NAS_MMC_REG_DOMAIN_CS, NAS_MML_REG_FAIL_CAUSE_NULL);
 
-     /* 上报服务状态 */
-     NAS_MMC_SetPsServiceStatus(NAS_MMC_NORMAL_SERVICE);
+    /* 更新DPLMN NPLMN列表 */
+    if (VOS_TRUE == NAS_MMC_IsRoam())
+    {
+        NAS_MMC_UpdateDPlmnNPlmnList(NAS_MML_GetCurrCampPlmnId(),NAS_MML_GetCurrNetRatType(), NAS_MMC_REG_DOMAIN_PS_CS,&pstDPlmnNPlmnCfgInfo->usDplmnListNum,pstDPlmnNPlmnCfgInfo->astDPlmnList);
+        NAS_MMC_DeleteDPlmnNPlmnList(NAS_MML_GetCurrCampPlmnId(),NAS_MML_GetCurrNetRatType(), NAS_MMC_REG_DOMAIN_PS_CS,&pstDPlmnNPlmnCfgInfo->usNplmnListNum,pstDPlmnNPlmnCfgInfo->astNPlmnList);
+        NAS_MMC_WriteDplmnNplmnToNvim();
+        NAS_MMC_LogDplmnNplmnList();
+    }
+	
+    /* 更新EPLMN,联合注册成功或EPS only成功网侧均可能带EPLMN */
+    if ( VOS_TRUE == pstLmmTauIndMsg->bitOpEplmn)
+    {
+        ulEquPlmnNum        = pstLmmTauIndMsg->stEplmnList.ulPlmnNum;
+        pstLmmEquPlmnList   = pstLmmTauIndMsg->stEplmnList.astEplmnList;
+
+        /* 将LMM的PLMN ID格式转换为GU的格式 */
+        NAS_MMC_ConvertLmmPlmnToGUNasPlmn(ulEquPlmnNum, pstLmmEquPlmnList, (stLEplmnInfo.astEquPlmnAddr));
+        NAS_MML_SaveEquPlmnList(ulEquPlmnNum, stLEplmnInfo.astEquPlmnAddr);
+
+        NAS_MMC_WriteEplmnNvim();
+    }
+    
+    /* 上报服务状态 */
+    NAS_MMC_SetPsServiceStatus(NAS_MMC_NORMAL_SERVICE);
 
      /* TAU成功并且带LAI时，需要删除ForbPlmn,ForbLa,ForbGprs等信息 */
      if (VOS_TRUE == pstLmmTauIndMsg->bitOpLai)
@@ -6418,30 +6527,16 @@ VOS_VOID  NAS_MMC_ProcLmmCombinedTauResultInd_TauRsltCsEpsSucc(
     NAS_MMC_SetCsServiceStatus(NAS_MMC_NORMAL_SERVICE);
 
     NAS_MMC_SndMmaServiceStatusInd(MMA_MMC_SRVDOMAIN_CS_PS, MMA_MMC_SERVICE_STATUS_NORMAL_SERVICE);
-    
+
     NAS_MMC_SndMmaRegResultInd(MMA_MMC_SRVDOMAIN_CS_PS, VOS_TRUE, NAS_MML_REG_FAIL_CAUSE_NULL);
 
 
     NAS_MMC_UpdateCsRegStateCsRegSucc();
 
-    /* 更新EPLMN,联合注册成功或EPS only成功网侧均可能带EPLMN */
-    if ( VOS_TRUE == pstLmmTauIndMsg->bitOpEplmn)
-    {
-        ulEquPlmnNum        = pstLmmTauIndMsg->stEplmnList.ulPlmnNum;
-        pstLmmEquPlmnList   = pstLmmTauIndMsg->stEplmnList.astEplmnList;
-
-        /* 将LMM的PLMN ID格式转换为GU的格式 */
-        NAS_MMC_ConvertLmmPlmnToGUNasPlmn(ulEquPlmnNum, pstLmmEquPlmnList, (stLEplmnInfo.astEquPlmnAddr));
-        NAS_MML_SaveEquPlmnList(ulEquPlmnNum, stLEplmnInfo.astEquPlmnAddr);
-
-        NAS_MMC_WriteEplmnNvim();
-    }
 
     NAS_MMC_UpdateGURegRlstRPlmnIdInNV();
 
 }
-
-
 VOS_VOID  NAS_MMC_ProcLmmCombinedAttachInd_AttRsltCsEpsSucc(
     LMM_MMC_ATTACH_IND_STRU                                *pstLmmAttachIndMsg,
     NAS_MMC_ADDITIONAL_ACTION_ENUM_UINT8                   *penCsAddition,
@@ -6452,6 +6547,9 @@ VOS_VOID  NAS_MMC_ProcLmmCombinedAttachInd_AttRsltCsEpsSucc(
     MMC_LMM_PLMN_ID_STRU               *pstLmmEquPlmnList = VOS_NULL_PTR;
     NAS_MML_EQUPLMN_INFO_STRU           stLEplmnInfo;
 
+    NAS_MMC_DPLMN_NPLMN_CFG_INFO_STRU                      *pstDPlmnNPlmnCfgInfo = VOS_NULL_PTR;
+    pstDPlmnNPlmnCfgInfo  = NAS_MMC_GetDPlmnNPlmnCfgInfo();
+
     NAS_MMC_SaveRegRsltCtx(LMM_MMC_ATTACH_IND, pstLmmAttachIndMsg);
 
     *penPsAddition = NAS_MMC_ADDITIONAL_ACTION_NORMAL_CAMP_ON;
@@ -6460,8 +6558,8 @@ VOS_VOID  NAS_MMC_ProcLmmCombinedAttachInd_AttRsltCsEpsSucc(
     NAS_MMC_SetPsServiceStatus(NAS_MMC_NORMAL_SERVICE);
     NAS_MMC_SetCsServiceStatus(NAS_MMC_NORMAL_SERVICE);
 
-    
-    
+
+
     if (VOS_TRUE == pstLmmAttachIndMsg->bitOpLai)
     {
         /* 注册成功并且ATTACH_IND消息中带LAI时，需要删除ForbPlmn,ForbLa,ForbGprs等信息 */
@@ -6476,16 +6574,17 @@ VOS_VOID  NAS_MMC_ProcLmmCombinedAttachInd_AttRsltCsEpsSucc(
     *penCsAddition = NAS_MMC_ADDITIONAL_ACTION_NORMAL_CAMP_ON;
 
     NAS_MMC_SndMmaServiceStatusInd(MMA_MMC_SRVDOMAIN_CS_PS, MMA_MMC_SERVICE_STATUS_NORMAL_SERVICE);
-    
-    
 
-    NAS_MMC_UpdateCsRegStateCsRegSucc();
 
-    /* 根据注册结果更新注册信息表 */
-    NAS_MMC_UpdatePlmnRegInfoList(NAS_MML_GetCurrCampPlmnId(), NAS_MMC_REG_DOMAIN_EPS, NAS_MML_REG_FAIL_CAUSE_NULL);
-    NAS_MMC_UpdatePlmnRegInfoList(NAS_MML_GetCurrCampPlmnId(), NAS_MMC_REG_DOMAIN_CS, NAS_MML_REG_FAIL_CAUSE_NULL);
 
-    NAS_MMC_SndMmaRegResultInd(MMA_MMC_SRVDOMAIN_CS_PS, VOS_TRUE, NAS_MML_REG_FAIL_CAUSE_NULL);
+    /* 更新DPLMN NPLMN列表 */
+    if (VOS_TRUE == NAS_MMC_IsRoam())
+    {
+        NAS_MMC_UpdateDPlmnNPlmnList(NAS_MML_GetCurrCampPlmnId(),NAS_MML_GetCurrNetRatType(), NAS_MMC_REG_DOMAIN_PS_CS,&pstDPlmnNPlmnCfgInfo->usDplmnListNum,pstDPlmnNPlmnCfgInfo->astDPlmnList);
+        NAS_MMC_DeleteDPlmnNPlmnList(NAS_MML_GetCurrCampPlmnId(),NAS_MML_GetCurrNetRatType(), NAS_MMC_REG_DOMAIN_PS_CS,&pstDPlmnNPlmnCfgInfo->usNplmnListNum,pstDPlmnNPlmnCfgInfo->astNPlmnList);
+        NAS_MMC_WriteDplmnNplmnToNvim();
+        NAS_MMC_LogDplmnNplmnList();
+    }
 
     /* 更新EPLMN，联合注册成功或EPS only成功网侧均可能带EPLMN */
     if ( VOS_TRUE == pstLmmAttachIndMsg->bitOpEplmn)
@@ -6499,12 +6598,19 @@ VOS_VOID  NAS_MMC_ProcLmmCombinedAttachInd_AttRsltCsEpsSucc(
 
         NAS_MMC_WriteEplmnNvim();
     }
+	
+    NAS_MMC_UpdateCsRegStateCsRegSucc();
+
+    /* 根据注册结果更新注册信息表 */
+    NAS_MMC_UpdatePlmnRegInfoList(NAS_MML_GetCurrCampPlmnId(), NAS_MMC_REG_DOMAIN_EPS, NAS_MML_REG_FAIL_CAUSE_NULL);
+    NAS_MMC_UpdatePlmnRegInfoList(NAS_MML_GetCurrCampPlmnId(), NAS_MMC_REG_DOMAIN_CS, NAS_MML_REG_FAIL_CAUSE_NULL);
+
+    NAS_MMC_SndMmaRegResultInd(MMA_MMC_SRVDOMAIN_CS_PS, VOS_TRUE, NAS_MML_REG_FAIL_CAUSE_NULL);
+
 
     NAS_MMC_UpdateGURegRlstRPlmnIdInNV();
     return;
 }
-
-
 VOS_VOID  NAS_MMC_ProcLmmCombinedAttachInd_AttRsltEpsOnlySucc(
     LMM_MMC_ATTACH_IND_STRU                                *pstLmmAttachIndMsg,
     NAS_MML_REG_FAIL_CAUSE_ENUM_UINT16                      enCsRegRsltCause,
@@ -6609,7 +6715,7 @@ VOS_VOID NAS_MMC_ProcLmmCombinedTauResultInd_TauRsltSucc(
 {
     if (VOS_TRUE == pstLmmTauIndMsg->bitOpCnRst)
     {
-        /* CS+PS的周期性TAU时,不论是否携带CS CAUSE值,都认为联合注册成功 */ 
+        /* CS+PS的周期性TAU时,不论是否携带CS CAUSE值,都认为联合注册成功 */
         if ((MMC_LMM_COMBINED_TA_LA_UPDATED == pstLmmTauIndMsg->ulCnRst)
          || (MMC_LMM_COMBINED_TA_LA_UPDATED_ISR_ACTIVATED == pstLmmTauIndMsg->ulCnRst)
          || (MMC_LMM_CS_PS_PERIODIC_UPDATING == pstLmmTauIndMsg->ulReqType))
@@ -7939,7 +8045,7 @@ VOS_UINT32  NAS_MMC_IsNeedEnableLte_MmAbortInd(
     {
         return VOS_FALSE;
     }
-    
+
 
     /* Mm Abort原因值#6，需要enable LTE */
     if (NAS_MML_REG_FAIL_CAUSE_ILLEGAL_ME == enAbortCause)
@@ -8079,18 +8185,18 @@ VOS_VOID NAS_MMC_ProcEmcPdpRelease_DetachPs( VOS_VOID )
     VOS_UINT8                           ucEmcPdpStatusFlg;
 
     /* 协议描述如下:
-        1.if there is no PDN connection for emergency bearer services established, 
-        the UE shall remove from the list any PLMN code that is already in the list of "forbidden PLMNs" 
-        or in the list of "forbidden PLMNs for GPRS service". 
-        If there is a PDN connection for emergency bearer services established, 
-        the UE shall remove from the list of equivalent PLMNs any PLMN code present in the list of forbidden PLMNs 
+        1.if there is no PDN connection for emergency bearer services established,
+        the UE shall remove from the list any PLMN code that is already in the list of "forbidden PLMNs"
+        or in the list of "forbidden PLMNs for GPRS service".
+        If there is a PDN connection for emergency bearer services established,
+        the UE shall remove from the list of equivalent PLMNs any PLMN code present in the list of forbidden PLMNs
         or in the list of "forbidden PLMNs for GPRS service" when the PDN connection for emergency bearer services is released.
 
-        2.if the attach procedure is not for emergency bearer services, 
-        the UE shall remove from the list any PLMN code that is already in the list of "forbidden PLMNs" 
+        2.if the attach procedure is not for emergency bearer services,
+        the UE shall remove from the list any PLMN code that is already in the list of "forbidden PLMNs"
         or in the list of "forbidden PLMNs for GPRS service".
-    
-        3.The UE shall delete the stored list if the USIM is removed 
+
+        3.The UE shall delete the stored list if the USIM is removed
         or when the UE attached for emergency bearer services enters the state EMM-DEREGISTERED.
     */
 
@@ -8102,7 +8208,7 @@ VOS_VOID NAS_MMC_ProcEmcPdpRelease_DetachPs( VOS_VOID )
         /* 清除紧急PDN连接标志 */
         NAS_MML_SetEmcPdpStatusFlg(VOS_FALSE);
 
-        
+
         /* 卡不存在时，不需要发送EPLMN;卡存在时，给LMM发送EPLMN通知，删除Forb Plmn */
         if (VOS_TRUE == NAS_MML_GetSimPresentStatus())
         {
@@ -8110,7 +8216,7 @@ VOS_VOID NAS_MMC_ProcEmcPdpRelease_DetachPs( VOS_VOID )
             PS_MEM_CPY(&stSndEquPlmnInfo, pstEquPlmnInfo, sizeof(NAS_MML_EQUPLMN_INFO_STRU));
             NAS_MMC_BuildSndLmmEquPlmnInfo(&stSndEquPlmnInfo);
             NAS_MMC_SndLmmEquPlmnReq(&stSndEquPlmnInfo);
-        
+
             NAS_MMC_SndOmEquPlmn();
         }
     }
@@ -8141,7 +8247,7 @@ VOS_UINT32 NAS_MMC_IsNeedSndEplmn_LmmDetachCnf(
             {
                 ulRst = VOS_TRUE;
             }
-            
+
             break;
 
         default:
@@ -8210,9 +8316,9 @@ VOS_VOID    NAS_MMC_ConverGmmActionTypeToMml(
 
             *penProcType = NAS_MML_PROC_COMBINED_ATTACH;
             break;
-        
+
         case GMM_MMC_ACTION_PERIODC_RAU:
-            
+
             *penProcType = NAS_MML_PROC_PERIODC_RAU;
             break;
 
@@ -8262,6 +8368,16 @@ NAS_MMC_ADDITIONAL_ACTION_ENUM_UINT8    NAS_MMC_GetSingleDomainFailAction(
                 case NAS_MML_SINGLE_DOMAIN_REG_FAIL_ACTION_LIMITED_CAMP_ON:
                      return NAS_MMC_ADDITIONAL_ACTION_LIMITED_CAMP_ON;
 
+                case NAS_MML_SINGLE_DOMAIN_ROAMING_REG_FAIL_ACTION_PLMN_SELECTION:
+
+                     /* 在漫游网络上则发起搜网，否则按原有流程处理 */
+                     if ( VOS_TRUE == NAS_MMC_IsRoam() )
+                     {
+                         return NAS_MMC_ADDITIONAL_ACTION_PLMN_SELECTION;
+                     }
+
+                     return NAS_MMC_ADDITIONAL_ACTION_BUTT;
+
                 default:
                      return NAS_MMC_ADDITIONAL_ACTION_BUTT;
             }
@@ -8270,19 +8386,16 @@ NAS_MMC_ADDITIONAL_ACTION_ENUM_UINT8    NAS_MMC_GetSingleDomainFailAction(
 
     return NAS_MMC_ADDITIONAL_ACTION_BUTT;
 }
-
-
-
 VOS_UINT32 NAS_MMC_IsCurrPlmnInEplmnList(VOS_VOID)
 {
     VOS_UINT32                          i;
     NAS_MML_PLMN_ID_STRU               *pstCurplmn   =  VOS_NULL_PTR;
     NAS_MML_EQUPLMN_INFO_STRU          *pstEplmnList =  VOS_NULL_PTR;
-    
+
     i            = 0;
     pstCurplmn   = NAS_MML_GetCurrCampPlmnId();
     pstEplmnList = NAS_MML_GetEquPlmnList();
-    
+
     if ((VOS_FALSE == NAS_MML_GetEplmnValidFlg())
      || (0         == pstEplmnList->ucEquPlmnNum))
     {
@@ -8299,7 +8412,7 @@ VOS_UINT32 NAS_MMC_IsCurrPlmnInEplmnList(VOS_VOID)
     }
 
     return VOS_FALSE;
-    
+
 }
 
 

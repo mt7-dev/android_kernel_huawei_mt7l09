@@ -11,6 +11,7 @@
  *
  */
 
+#ifdef CONFIG_ARM
 #ifndef CONFIG_ARM_UNWIND
 #include <linux/linkage.h>
 #include <asm/assembler.h>
@@ -157,5 +158,6 @@ ENDPROC(srecorder_c_backtrace)
 .Ldsi:		.word	0xe92dd800 >> 10	@ stmfd sp!, {... fp, ip, lr, pc}
 		.word	0xe92d0000 >> 10	@ stmfd sp!, {}
 
+#endif
 #endif
 #endif

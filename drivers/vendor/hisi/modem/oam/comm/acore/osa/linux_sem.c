@@ -46,6 +46,7 @@ extern "C"{
 typedef struct SEM_CONTROL_STRU
 {
     int                       Flag;/* control block's state */
+    VOS_UINT8                 aucRsv[4];
     struct SEM_CONTROL_STRU   *SemId;/* the ID return to User */
     int                       SemType;/* type of SEM */
     int                       SemFlags;
@@ -112,7 +113,7 @@ VOS_VOID VOS_SemCtrlBlkInit(VOS_VOID)
 SEM_CONTROL_BLOCK *VOS_SemCtrlBlkGet(VOS_VOID)
 {
     VOS_UINT32      i;
-    VOS_UINT32      ulLockLevel;
+    VOS_ULONG       ulLockLevel;
 
     /*intLockLevel = VOS_SplIMP();*/
     VOS_SpinLockIntLock(&g_stVosSemSpinLock, ulLockLevel);
@@ -158,7 +159,7 @@ SEM_CONTROL_BLOCK *VOS_SemCtrlBlkGet(VOS_VOID)
  *****************************************************************************/
 VOS_UINT32 VOS_SemCtrlBlkFree( SEM_CONTROL_BLOCK *Sem_Address )
 {
-    VOS_UINT32      ulLockLevel;
+    VOS_ULONG       ulLockLevel;
 
     if( Sem_Address == Sem_Address->SemId )
     {
@@ -199,7 +200,7 @@ VOS_UINT32 VOS_SemCtrlBlkFree( SEM_CONTROL_BLOCK *Sem_Address )
 VOS_UINT32 VOS_SmCCreate( VOS_CHAR   acSmName[4],
                           VOS_UINT32 ulSmInit,
                           VOS_UINT32 ulFlags,
-                          VOS_UINT32 *pulSmID )
+                          VOS_SEM   *pSmID )
 {
     int                    i;
     SEM_CONTROL_BLOCK      *iSemId;
@@ -212,7 +213,7 @@ VOS_UINT32 VOS_SmCCreate( VOS_CHAR   acSmName[4],
         return(VOS_ERRNO_SEMA4_CCREATE_OBJTFULL);
     }
 
-    *pulSmID = (VOS_UINT32)iSemId;
+    *pSmID = (VOS_SEM)iSemId;
 
     if( 0xFFFFFFFF == ulSmInit )
     {
@@ -260,7 +261,7 @@ VOS_UINT32 VOS_SmCCreate( VOS_CHAR   acSmName[4],
  *****************************************************************************/
 VOS_UINT32 VOS_SmMCreate( VOS_CHAR   Sm_Name[4],
                           VOS_UINT32 Flags,
-                          VOS_UINT32 *Sm_ID )
+                          VOS_SEM *Sm_ID )
 {
     return( VOS_SmCCreate( Sm_Name, 0xFFFFFFFF, Flags, Sm_ID ));
 }
@@ -277,7 +278,7 @@ VOS_UINT32 VOS_SmMCreate( VOS_CHAR   Sm_Name[4],
 VOS_UINT32 VOS_SmCreate( VOS_CHAR Sm_Name[4],
                          VOS_UINT32 Sm_Init,
                          VOS_UINT32 Flags,
-                         VOS_UINT32 * Sm_ID )
+                         VOS_SEM * Sm_ID )
 {
     return( VOS_SmCCreate( Sm_Name, Sm_Init, Flags, Sm_ID ));
 }
@@ -294,7 +295,7 @@ VOS_UINT32 VOS_SmCreate( VOS_CHAR Sm_Name[4],
 VOS_UINT32 VOS_SmBCreate( VOS_CHAR Sm_Name[4],
                           VOS_UINT32 Sm_Init,
                           VOS_UINT32 Flags,
-                          VOS_UINT32 * Sm_ID )
+                          VOS_SEM * Sm_ID )
 {
     int                    i;
     SEM_CONTROL_BLOCK      *iSemId;
@@ -323,7 +324,7 @@ VOS_UINT32 VOS_SmBCreate( VOS_CHAR Sm_Name[4],
 
     init_waitqueue_head(&(iSemId->wait));
     
-    *Sm_ID = (VOS_UINT32)iSemId;
+    *Sm_ID = (VOS_SEM)iSemId;
 
     if ( VOS_NULL_PTR != Sm_Name )
     {
@@ -351,7 +352,7 @@ VOS_UINT32 VOS_SmBCreate( VOS_CHAR Sm_Name[4],
  Input      : ulSmID -- ID of semaphore
  Return     : VOS_OK on success and errno on failure
  *****************************************************************************/
-VOS_UINT32 VOS_SmDelete( VOS_UINT32 Sm_ID )
+VOS_UINT32 VOS_SmDelete( VOS_SEM Sm_ID )
 {
     SEM_CONTROL_BLOCK *temp_Ptr;
 
@@ -387,7 +388,7 @@ VOS_UINT32 VOS_SemDown(SEM_CONTROL_BLOCK *pSemCB, VOS_UINT32 timeOutInMillSec)
 {
     struct task_struct *tsk = current;
     VOS_UINT32         timeintick;
-    VOS_UINT32         flags;
+    VOS_ULONG          flags;
     VOS_UINT32         ulRetValue = VOS_OK;
     VOS_INT            sleepers;
 
@@ -464,10 +465,10 @@ VOS_UINT32 VOS_SemDown(SEM_CONTROL_BLOCK *pSemCB, VOS_UINT32 timeOutInMillSec)
               ulTimeOutInMillSec -- the time to wait(0 for ever)
  Return     : VOS_OK on success and errno on failure
  *****************************************************************************/
-VOS_UINT32 VOS_SmP( VOS_UINT32 Sm_ID, VOS_UINT32 ulTimeOutInMillSec )
+VOS_UINT32 VOS_SmP( VOS_SEM Sm_ID, VOS_UINT32 ulTimeOutInMillSec )
 {
     SEM_CONTROL_BLOCK  *temp_Ptr;
-    VOS_UINT32         ulFlags;
+    VOS_ULONG           ulFlags;
 
 
     temp_Ptr = (SEM_CONTROL_BLOCK *)Sm_ID;
@@ -506,10 +507,10 @@ VOS_UINT32 VOS_SmP( VOS_UINT32 Sm_ID, VOS_UINT32 ulTimeOutInMillSec )
  Input      : ulSmID -- id of semaphore
  Return     : VOS_OK on success and errno on failure
  *****************************************************************************/
-VOS_UINT32 VOS_SmV( VOS_UINT32 Sm_ID )
+VOS_UINT32 VOS_SmV( VOS_SEM Sm_ID )
 {
     SEM_CONTROL_BLOCK  *temp_Ptr;
-    VOS_UINT32         ulFlags;
+    VOS_ULONG           ulFlags;
 
     temp_Ptr = (SEM_CONTROL_BLOCK *)Sm_ID;
 
@@ -554,7 +555,7 @@ VOS_UINT32 VOS_SmV( VOS_UINT32 Sm_ID )
  Input      : ulSmID -- ID of semaphore
  Return     : VOS_OK on success and errno on failure
  *****************************************************************************/
-VOS_UINT32 VOS_Sm_AsyP( VOS_UINT32 Sm_ID )
+VOS_UINT32 VOS_Sm_AsyP( VOS_SEM Sm_ID )
 {
     return(VOS_SmP( Sm_ID, 1 ));
 }

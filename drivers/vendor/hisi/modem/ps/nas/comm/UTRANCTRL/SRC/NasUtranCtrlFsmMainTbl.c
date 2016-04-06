@@ -77,7 +77,16 @@ NAS_ACT_STRU        g_astNasUtranCtrlMainProcessActTbl[]   =
     NAS_ACT_TBL_ITEM( WUEPS_PID_MMA,
                       ID_MMA_MMC_PLMN_SPECIAL_REQ,
                       NAS_UTRANCTRL_RcvPlmnSpecialReq_Main),
-					  
+
+
+    NAS_ACT_TBL_ITEM( WUEPS_PID_MMA,
+                      ID_MMA_MMC_PLMN_SEARCH_REQ,
+                      NAS_UTRANCTRL_RcvPlmnSearchReq_Main),
+
+    NAS_ACT_TBL_ITEM( WUEPS_PID_MMA,
+                      ID_MMA_MMC_ACQ_REQ,
+                      NAS_UTRANCTRL_RcvMmaAcqReq_Main),
+
 
     /* 收到Was的开机回复消息 */
     NAS_ACT_TBL_ITEM( WUEPS_PID_WRR,
@@ -145,12 +154,21 @@ NAS_ACT_STRU        g_astNasUtranCtrlMainProcessActTbl[]   =
                       RRMM_PLMN_SEARCH_CNF,
                       NAS_UTRANCTRL_RcvWasPlmnSrchCnf_Main),
 
+    NAS_ACT_TBL_ITEM( WUEPS_PID_MMC,
+                     MMCMMC_INTER_ABORT_UTRAN_CTRL_PLMN_SEARCH_REQ,
+                     NAS_UTRANCTRL_RcvInterAbortUtranCtrlPlmnSearchReq_Main),
+
 
     /* 收到MMC发送的跳过搜网W消息 */
     NAS_ACT_TBL_ITEM( WUEPS_PID_MMC,
                       MMCMMC_INTER_SKIP_SEARCH_W_IND,
                       NAS_UTRANCTRL_RcvMmcInterSkipSearchWasIndMsg_Main),
                       
+
+    /* 收到MMC发送的跳过搜网TDS消息 */
+    NAS_ACT_TBL_ITEM( WUEPS_PID_MMC,
+                      MMCMMC_INTER_SKIP_SEARCH_TDS_IND,
+                      NAS_UTRANCTRL_RcvMmcInterSkipSearchTdsIndMsg_Main),
 
     /* 收到WAS的搜网回复超时消息 */
     NAS_ACT_TBL_ITEM( VOS_PID_TIMER,
@@ -218,6 +236,8 @@ NAS_STA_STRU        g_astNasUtranCtrlMainProcessFsmTbl[]   =
     NAS_STA_TBL_ITEM( NAS_UTRANCTRL_MAIN_STA_INIT,
                       g_astNasUtranCtrlMainProcessActTbl )
 };
+
+
 VOS_UINT32 NAS_UTRANCTRL_GetMainProcessStaTblSize( VOS_VOID  )
 {
     return (sizeof(g_astNasUtranCtrlMainProcessFsmTbl)/sizeof(NAS_STA_STRU));

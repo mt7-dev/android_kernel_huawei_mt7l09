@@ -519,7 +519,6 @@ config SDH_BFIN_MISSING_CMD_PULLUP_WORKAROUND
 
 config MMC_DW
 	tristate "Synopsys DesignWare Memory Card Interface"
-	depends on ARM
 	help
 	  This selects support for the Synopsys DesignWare Mobile Storage IP
 	  block, this provides host support for SD and MMC interfaces, in both
@@ -562,9 +561,28 @@ config MMC_DW_HISILICON
 	select MMC_DW_PLTFM
 	select MMC_DW_IDMAC
 	help
-	  This selects support for Samsung Exynos SoC specific extensions to the
+	  This selects support for Hisilicon SoC specific extensions to the
+	  Synopsys DesignWare Memory Card Interface driver. DONOT select this.
+
+config MMC_DW_HI3XXX
+	tristate "Hisilicon specific extensions for Synopsys DW Memory Card Interface"
+	depends on MMC_DW && (ARCH_HI3XXX || ARCH_HI3630)
+	select MMC_DW_PLTFM
+	select MMC_DW_IDMAC
+	default y
+	help
+	  This selects support for Hisilicon SoC specific extensions to the
 	  Synopsys DesignWare Memory Card Interface driver. Select this option
-	  for platforms based on Exynos4 and Exynos5 SoC's.
+	  for platforms based on Kirin 9 serial SoC's.
+
+config MMC_DW_HI6XXX
+	tristate "Hisilicon specific extensions for Synopsys DW Memory Card Interface"
+	depends on MMC_DW && ARCH_HI6XXX
+	default y
+	help
+	  This selects support for Hisilicon SoC specific extensions to the
+	  Synopsys DesignWare Memory Card Interface driver. Select this option
+	  for platforms based on Kirin 6 serial SoC's.
 
 config MMC_DW_PCI
 	tristate "Synopsys Designware MCI support on PCI bus"

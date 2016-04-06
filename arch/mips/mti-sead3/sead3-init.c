@@ -71,23 +71,7 @@ static void __init mips_nmi_setup(void)
 	 */
 	memcpy(base, (&except_vec_nmi - 1), 0x80);
 
-	/*
-	 * This is a hack. We do not know if the boot loader was built with
-	 * microMIPS instructions or not. If it was not, the NMI exception
-	 * code at 0x80000a80 will be taken in MIPS32 mode. The hand coded
-	 * assembly below forces us into microMIPS mode if we are a pure
-	 * microMIPS kernel. The assembly instructions are:
-	 *
-	 *  3C1A8000   lui       k0,0x8000
-	 *  375A0381   ori       k0,k0,0x381
-	 *  03400008   jr        k0
-	 *  00000000   nop
-	 *
-	 * The mode switch occurs by jumping to the unaligned exception
-	 * vector address at 0x80000381 which would have been 0x80000380
-	 * in MIPS32 mode. The jump to the unaligned address transitions
-	 * us into microMIPS mode.
-	 */
+
 	if (!cpu_has_veic) {
 		void *base2 = (void *)(CAC_BASE + 0xa80);
 		*((unsigned int *)base2) = 0x3c1a8000;

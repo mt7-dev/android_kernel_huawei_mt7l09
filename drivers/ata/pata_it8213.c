@@ -80,10 +80,7 @@ static void it8213_set_piomode (struct ata_port *ap, struct ata_device *adev)
 	u16 master_data;
 	int control = 0;
 
-	/*
-	 *	See Intel Document 298600-004 for the timing programing rules
-	 *	for PIIX/ICH. The 8213 is a clone so very similar
-	 */
+
 
 	static const	 /* ISP  RTC */
 	u8 timings[][2]	= { { 0, 0 },

@@ -308,7 +308,7 @@ static int adis16136_read_raw(struct iio_dev *indio_dev,
 			return IIO_VAL_FRACTIONAL;
 		case IIO_TEMP:
 			*val = 10;
-			*val2 = 697000; /* 0.010697 degree Celsius */
+			*val2 = 697000;
 			return IIO_VAL_INT_PLUS_MICRO;
 		default:
 			return -EINVAL;

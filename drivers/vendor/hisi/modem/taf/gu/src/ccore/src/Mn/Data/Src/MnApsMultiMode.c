@@ -548,6 +548,8 @@ VOS_VOID MN_APS_ProcEsmBearerInfoIndOptDeactivate(
     SM_ESM_EPS_BEARER_INFO_IND_STRU    *pstEpsBearerInfoInd
 )
 {
+    pstPdpEntity->PdpNsapiFlag = VOS_FALSE;
+
     if (VOS_TRUE == pstPdpEntity->bitOpTransId)
     {
         /* 向SM发送ID_MN_SM_BEARER_DEACTIVATE_IND消息, 同步PDP信息 */
@@ -697,6 +699,15 @@ VOS_VOID MN_APS_UpdatePdpPcoIpv4ItemFromEpsBearer(
                        pstEpsBearerInfoInd->stPcoIpv4Item.aucSecPcscf,
                        SM_ESM_IPV4_ADDR_LEN);
         }
+
+        if (VOS_TRUE == pstEpsBearerInfoInd->stPcoIpv4Item.bitOpThiPcscf)
+        {
+            pstPdpEntity->stPdpPcscf.bitOpThiPcscfAddr  = VOS_TRUE;
+            PS_MEM_CPY(pstPdpEntity->stPdpPcscf.aucThiPcscfAddr,
+                       pstEpsBearerInfoInd->stPcoIpv4Item.aucThiPcscf,
+                       SM_ESM_IPV4_ADDR_LEN);
+        }
+
     }
 }
 
@@ -738,6 +749,14 @@ VOS_VOID MN_APS_UpdatePdpPcoIpv6ItemFromEpsBearer(
             pstPdpEntity->stPdpIpv6Pcscf.bitOpSecPcscfAddr  = VOS_TRUE;
             PS_MEM_CPY(pstPdpEntity->stPdpIpv6Pcscf.aucSecPcscfAddr,
                        pstEpsBearerInfoInd->stPcoIpv6Item.aucSecPcscf,
+                       SM_ESM_IPV6_ADDR_LEN);
+        }
+
+        if (VOS_TRUE == pstEpsBearerInfoInd->stPcoIpv6Item.bitOpThiPcscf)
+        {
+            pstPdpEntity->stPdpIpv6Pcscf.bitOpThiPcscfAddr  = VOS_TRUE;
+            PS_MEM_CPY(pstPdpEntity->stPdpIpv6Pcscf.aucThiPcscfAddr,
+                       pstEpsBearerInfoInd->stPcoIpv6Item.aucThiPcscf,
                        SM_ESM_IPV6_ADDR_LEN);
         }
     }
@@ -1060,10 +1079,7 @@ VOS_UINT32 TAF_APS_FindSutiablePdpForPppDial_LteMode(
 
 #if (FEATURE_ON == FEATURE_IMS)
 
-VOS_VOID TAF_APS_ProcImsBearerInfoIndOptActivate(
-    APS_PDP_CONTEXT_ENTITY_ST          *pstPdpEntity,
-    SM_ESM_EPS_BEARER_INFO_IND_STRU    *pstEpsBearerInfoInd
-)
+VOS_VOID TAF_APS_ProcImsDedicateBearer(APS_PDP_CONTEXT_ENTITY_ST *pstPdpEntity)
 {
     VOS_UINT8                           ucPriPdpId;
     VOS_UINT8                           ucPriCid;
@@ -1071,12 +1087,12 @@ VOS_VOID TAF_APS_ProcImsBearerInfoIndOptActivate(
     VOS_UINT8                           ucSecCid;
 
     /* 判断PDP上下文信息中的linkedEspId与IMS信令承载中的RABID是否一致 */
-    if (VOS_TRUE == pstEpsBearerInfoInd->bitOpLinkedEpsbId)
+    if (APS_PDP_ACT_SEC == pstPdpEntity->ActType)
     {
-        if (VOS_TRUE == TAF_APS_CheckImsBearerByRabId(pstEpsBearerInfoInd->ulLinkedEpsbId))
+        if (VOS_TRUE == TAF_APS_CheckImsBearerByRabId(pstPdpEntity->ucLinkedNsapi))
         {
             /* 获取主PDP的实体ID */
-            ucPriPdpId = TAF_APS_GetPdpIdByNsapi((VOS_UINT8)pstEpsBearerInfoInd->ulLinkedEpsbId);
+            ucPriPdpId = TAF_APS_GetPdpIdByNsapi(pstPdpEntity->ucLinkedNsapi);
             ucPriCid = 0;
             TAF_APS_GetImsBearerCid(ucPriPdpId, &ucPriCid);
 

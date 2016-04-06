@@ -76,30 +76,7 @@
  * marginally better) is:
  */
 
-/*
- * encoding is "visualised" as
- * __little endian__ bitstream, least significant bit first (left most)
- *
- * this particular encoding is chosen so that the prefix code
- * starts as unary encoding the level, then modified so that
- * 10 levels can be described in 8bit, with minimal overhead
- * for the smaller levels.
- *
- * Number of data bits follow fibonacci sequence, with the exception of the
- * last level (+1 data bit, so it makes 64bit total).  The only worse code when
- * encoding bit polarity runlength is 1 plain bits => 2 code bits.
-prefix    data bits                                    max val  Nº data bits
-0 x                                                         0x2            1
-10 x                                                        0x4            1
-110 xx                                                      0x8            2
-1110 xxx                                                   0x10            3
-11110 xxx xx                                               0x30            5
-111110 xx xxxxxx                                          0x130            8
-11111100  xxxxxxxx xxxxx                                 0x2130           13
-11111110  xxxxxxxx xxxxxxxx xxxxx                      0x202130           21
-11111101  xxxxxxxx xxxxxxxx xxxxxxxx  xxxxxxxx xx   0x400202130           34
-11111111  xxxxxxxx xxxxxxxx xxxxxxxx  xxxxxxxx xxxxxxxx xxxxxxxx xxxxxxxx 56
- * maximum encodable value: 0x100000400202130 == 2**56 + some */
+
 
 /* compression "table":
  transmitted   x                                0.29

@@ -518,10 +518,6 @@ NAS_COMM_PRINT_MSG_LIST_STRU g_astMmIntraMsgIdArray[] =
     {   ID_NAS_LMM_INTRA_TAU_REQ                             ,
             "MSG:  ID_NAS_LMM_INTRA_TAU_REQ                         "},
 
-    /*=================== AUTH内部消息 ============================*/
-    {   ID_NAS_LMM_INTRA_AUTH_FAIL                           ,
-            "MSG:  ID_NAS_LMM_INTRA_AUTH_FAIL                       "},
-
     {   ID_NAS_LMM_INTRA_DATA_IND                            ,
             "MSG:  ID_NAS_LMM_INTRA_DATA_IND                        "},
 
@@ -645,12 +641,12 @@ NAS_COMM_PRINT_MSG_LIST_STRU g_astMmAppMsgIdArray[] =
             "MSG:  ID_APP_MM_REG_STAT_IND                          "},
     /* xiongxianghui00253310 add msgId for errlog 2013-11-30 begin*/
     #if (FEATURE_PTM == FEATURE_ON)
-    {   ID_OM_ERR_LOG_CTRL_IND         ,
-            "MSG:  ID_OM_ERR_LOG_CTRL_IND                          "},
-    {   ID_OM_ERR_LOG_REPORT_REQ       ,
-            "MSG:  ID_OM_ERR_LOG_REPORT_REQ                        "},
-    {   ID_OM_ERR_LOG_REPORT_CNF       ,
-            "MSG:  ID_OM_ERR_LOG_REPORT_CNF                        "},
+    {   ID_OM_LNAS_ERR_LOG_CTRL_IND         ,
+            "MSG:  ID_OM_LNAS_ERR_LOG_CTRL_IND                     "},
+    {   ID_OM_LNAS_ERR_LOG_REPORT_REQ       ,
+            "MSG:  ID_OM_LNAS_ERR_LOG_REPORT_REQ                   "},
+    {   ID_LNAS_OM_ERR_LOG_REPORT_CNF       ,
+            "MSG:  ID_LNAS_OM_ERR_LOG_REPORT_CNF                   "},
     {   ID_OM_FTM_CTRL_IND             ,
             "MSG:  ID_OM_FTM_CTRL_IND                              "},
     {   ID_OM_FTM_REPROT_IND           ,
@@ -786,6 +782,8 @@ NAS_COMM_PRINT_MSG_LIST_STRU g_astMmMmcMsgIdArray[] =
     /*xiongxianghui00253310 add for st end */
     {   ID_LMM_MMC_INFO_CHANGE_NOTIFY,
             "MSG:  ID_LMM_MMC_INFO_CHANGE_NOTIFY              "},
+    {   ID_LMM_MMC_SIM_AUTH_FAIL_IND,
+            "MSG:  ID_LMM_MMC_SIM_AUTH_FAIL_IND              "},
 };
 
 /* GMM-MM 消息打印数组 */
@@ -970,7 +968,7 @@ VOS_VOID    NAS_LMM_PrintFsmStateStack(
     VOS_UINT32                          ulLoop;
     NAS_LMM_FSM_STATE_STACK_STRU         *pstFsmStateStack;
     VOS_UINT8                           ucStackDepth;
-    VOS_INT32                           ilOutPutLen;
+    VOS_INT32                           ilOutPutLen        = 0;
     VOS_UINT16                          usTotalLen         = 0;
 
     /* delay begin */
@@ -2606,7 +2604,7 @@ VOS_INT32   NAS_LMM_PUBM_PrintData(
                     LRRC_LNAS_MSG_STRU                        *pstMsg )
 {
     VOS_UINT16                          usTotalLen          = usOffset;
-    VOS_INT32                           ilOutPutLen;
+    VOS_INT32                           ilOutPutLen         = 0;
     VOS_UINT16                          usLoop;
 /*    VOS_UINT16                          usLineNo            = 1;*/
     VOS_UINT32                          usDataLen           = pstMsg->ulNasMsgSize;

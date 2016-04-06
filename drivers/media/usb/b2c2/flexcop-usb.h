@@ -58,13 +58,11 @@ typedef enum {
 	USB_FUNC_I2C_REPEATWRITE = 0x04,
 	USB_FUNC_GET_DESCRIPTOR  = 0x05,
 	USB_FUNC_I2C_REPEATREAD  = 0x06,
-	/* DKT 020208 - add this to support special case of DiSEqC */
 	USB_FUNC_I2C_CHECKWRITE  = 0x07,
 	USB_FUNC_I2C_CHECKRESULT = 0x08,
 } flexcop_usb_i2c_function_t;
 
-/* function definition for UTILITY request 0x12
- * DKT 020304 - new utility function */
+
 typedef enum {
 	UTILITY_SET_FILTER          = 0x01,
 	UTILITY_DATA_ENABLE         = 0x02,
@@ -78,7 +76,6 @@ typedef enum {
 	UTILITY_DATA_RESET          = 0x0A,
 	UTILITY_GET_DATA_STATUS     = 0x10,
 	UTILITY_GET_V8_REG          = 0x11,
-	/* DKT 020326 - add function for v1.14 */
 	UTILITY_SRAM_WRITE          = 0x12,
 	UTILITY_SRAM_READ           = 0x13,
 	UTILITY_SRAM_TESTFILL       = 0x14,

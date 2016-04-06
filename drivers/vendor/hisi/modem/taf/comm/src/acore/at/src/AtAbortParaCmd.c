@@ -15,9 +15,9 @@ extern "C" {
 /*****************************************************************************
     协议栈打印打点方式下的.C文件宏定义
 *****************************************************************************/
-/*lint -e767 */
+/*lint -e767 -e960*/
 #define    THIS_FILE_ID        PS_FILE_ID_AT_ABORTPARACMD_C
-/*lint +e767 */
+/*lint +e767 +e960*/
 
 /*****************************************************************************
   2 全局变量定义
@@ -40,7 +40,7 @@ VOS_UINT32 At_AbortCopsPara(
         {
             /* 停止列表搜AT的保护定时器 */
             AT_StopRelTimer(ucIndex, &gastAtClientTab[ucIndex].hTimer);
-            
+
             /* 更新当前操作类型 */
             gastAtClientTab[ucIndex].CmdCurrentOpt = AT_CMD_COPS_ABORT_PLMN_LIST;
 

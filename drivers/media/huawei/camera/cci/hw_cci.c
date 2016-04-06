@@ -24,8 +24,8 @@ static inline int get_i2c_bus_mutex(int bus_mutex)
 	int rc = 0;
 
 	while (count < ISP_I2C_POLL_MAX_COUNT) {
-		if ((GETREG8(bus_mutex) & SCCB_MASTER_LOCK) != SCCB_MASTER_LOCK) {
-			SETREG8(bus_mutex, SCCB_MASTER_LOCK);
+		if ((ISP_GETREG8(bus_mutex) & SCCB_MASTER_LOCK) != SCCB_MASTER_LOCK) {
+			ISP_SETREG8(bus_mutex, SCCB_MASTER_LOCK);
 			break;
 		}
 		udelay(ISP_I2C_POLL_INTERVAL);
@@ -43,7 +43,7 @@ static inline int get_i2c_bus_mutex(int bus_mutex)
 
 static inline void free_i2c_bus_mutex(int bus_mutex)
 {
-	SETREG8(bus_mutex, SCCB_MASTER_UNLOCK);
+	ISP_SETREG8(bus_mutex, SCCB_MASTER_UNLOCK);
 }
 
 static inline int wait_i2c_bus_idle(u32 reg_status)
@@ -51,7 +51,7 @@ static inline int wait_i2c_bus_idle(u32 reg_status)
 	int count = 0;
 
 	while (count < ISP_I2C_POLL_MAX_COUNT) {
-		if ((GETREG8(reg_status) & SCCB_MASTER_BUSY) != SCCB_MASTER_BUSY)
+		if ((ISP_GETREG8(reg_status) & SCCB_MASTER_BUSY) != SCCB_MASTER_BUSY)
 			break;
 		udelay(ISP_I2C_POLL_INTERVAL);
 		count++;
@@ -67,13 +67,13 @@ void hw_isp_config_i2c(i2c_t *i2c_info)
 	cam_notice("%s i2c speed %d", __func__, i2c_info->speed);
 
 	if (i2c_info->index == I2C_PRIMARY) {
-		SETREG8(REG_SCCB_MAST1_SPEED, i2c_info->speed);
-		SETREG8(REG_SCCB_MAST1_SLAVE_ID, i2c_info->addr);
-		SETREG8(REG_SCCB_FIRMWARE1_ID, i2c_info->addr);
+		ISP_SETREG8(REG_SCCB_MAST1_SPEED, i2c_info->speed);
+		ISP_SETREG8(REG_SCCB_MAST1_SLAVE_ID, i2c_info->addr);
+		ISP_SETREG8(REG_SCCB_FIRMWARE1_ID, i2c_info->addr);
 	} else {
-		SETREG8(REG_SCCB_MAST2_SPEED, i2c_info->speed);
-		SETREG8(REG_SCCB_MAST2_SLAVE_ID, i2c_info->addr);
-		SETREG8(REG_SCCB_FIRMWARE2_ID, i2c_info->addr);
+		ISP_SETREG8(REG_SCCB_MAST2_SPEED, i2c_info->speed);
+		ISP_SETREG8(REG_SCCB_MAST2_SLAVE_ID, i2c_info->addr);
+		ISP_SETREG8(REG_SCCB_FIRMWARE2_ID, i2c_info->addr);
 	}
 }
 
@@ -87,6 +87,11 @@ int hw_isp_read_sensor_byte(i2c_t *i2c_info, u16 reg, u16 *val)
 	volatile int val_h, val_l;
 	volatile int device_id, firmware_id;
 	u8 byte_ctrl = 0;
+
+	if (reg > MAX_SENSOR_REG_VALUE) {
+		cam_err("%s: sensor reg value(%u) out of bounds", __func__, reg);
+		return -EINVAL;
+	}
 
 	if (i2c_info->index == I2C_PRIMARY) {
 		reg_device_id = REG_SCCB_MAST1_SLAVE_ID;
@@ -126,64 +131,64 @@ int hw_isp_read_sensor_byte(i2c_t *i2c_info, u16 reg, u16 *val)
 	spin_lock_irqsave(&i2c_lock, flags);
 
 	/* backup i2c id in isp reg */
-	firmware_id = GETREG8(reg_firmware_id);
-	device_id = GETREG8(reg_device_id);
+	firmware_id = ISP_GETREG8(reg_firmware_id);
+	device_id = ISP_GETREG8(reg_device_id);
 
 	if (I2C_8BIT == i2c_info->val_bits) {
-		SETREG8(reg_value_len, byte_ctrl);
-		SETREG8(reg_device_id, i2c_info->addr);
-		SETREG8(reg_firmware_id, i2c_info->addr);
-		SETREG8(reg_reg_h, reg >> 8 & 0xff);
-		SETREG8(reg_reg_l, reg & 0xff);
-		SETREG8(reg_cmd, 0x33);
+		ISP_SETREG8(reg_value_len, byte_ctrl);
+		ISP_SETREG8(reg_device_id, i2c_info->addr);
+		ISP_SETREG8(reg_firmware_id, i2c_info->addr);
+		ISP_SETREG8(reg_reg_h, reg >> 8 & 0xff);
+		ISP_SETREG8(reg_reg_l, reg & 0xff);
+		ISP_SETREG8(reg_cmd, 0x33);
 		if (wait_i2c_bus_idle(reg_status)) {
 			cam_err("%s, line %d: I2c wait idle timeout!", __func__, __LINE__);
 			goto error_out1;
 		}
 
-		SETREG8(reg_cmd, 0xf9);
+		ISP_SETREG8(reg_cmd, 0xf9);
 		if (wait_i2c_bus_idle(reg_status)) {
 			cam_err("%s, line %d: I2c wait idle timeout!", __func__, __LINE__);
 			goto error_out1;
 		}
 
-		*(u8 *)val = GETREG8(reg_value_l);
+		*(u8 *)val = ISP_GETREG8(reg_value_l);
 	} else {
 		byte_ctrl |= MASK_16BIT_DATA_ENABLE;
-		SETREG8(reg_value_len, byte_ctrl);
-		SETREG8(reg_device_id, i2c_info->addr);
-		SETREG8(reg_firmware_id, i2c_info->addr);
-		SETREG8(reg_reg_h, reg >> 8 & 0xff);
-		SETREG8(reg_reg_l, reg & 0xff);
-		SETREG8(reg_cmd, 0x33);
+		ISP_SETREG8(reg_value_len, byte_ctrl);
+		ISP_SETREG8(reg_device_id, i2c_info->addr);
+		ISP_SETREG8(reg_firmware_id, i2c_info->addr);
+		ISP_SETREG8(reg_reg_h, reg >> 8 & 0xff);
+		ISP_SETREG8(reg_reg_l, reg & 0xff);
+		ISP_SETREG8(reg_cmd, 0x33);
 		if (wait_i2c_bus_idle(reg_status)) {
 			cam_err("%s, line %d: I2c wait idle timeout!", __func__, __LINE__);
 			goto error_out1;
 		}
 
-		SETREG8(reg_value_len, byte_ctrl & ~MASK_16BIT_DATA_ENABLE);
-		SETREG8(reg_cmd, 0x59);
+		ISP_SETREG8(reg_value_len, byte_ctrl & ~MASK_16BIT_DATA_ENABLE);
+		ISP_SETREG8(reg_cmd, 0x59);
 
 		if (wait_i2c_bus_idle(reg_status)) {
 			cam_err("%s, line %d: I2c wait idle timeout!", __func__, __LINE__);
 			goto error_out1;
 		}
 
-		val_h = GETREG8(reg_value_l);
+		val_h = ISP_GETREG8(reg_value_l);
 
-		SETREG8(reg_cmd, 0xa8);
+		ISP_SETREG8(reg_cmd, 0xa8);
 		if (wait_i2c_bus_idle(reg_status)) {
 			cam_err("%s, line %d: I2c wait idle timeout!", __func__, __LINE__);
 			goto error_out1;
 		}
-		val_l = GETREG8(reg_value_l);
+		val_l = ISP_GETREG8(reg_value_l);
 
 		*val = (val_h << 8) | val_l;
 	}
 
 	/* restore i2c id to isp reg */
-	SETREG8(reg_firmware_id, firmware_id);
-	SETREG8(reg_device_id, device_id);
+	ISP_SETREG8(reg_firmware_id, firmware_id);
+	ISP_SETREG8(reg_device_id, device_id);
 
 	spin_unlock_irqrestore(&i2c_lock, flags);
 	free_i2c_bus_mutex(reg_bus_mutex);
@@ -204,6 +209,11 @@ int hw_isp_write_sensor_byte(i2c_t *i2c_info, u16 reg, u16 val, u8 mask)
 	int reg_value_h, reg_value_l, reg_value_len, reg_bus_mutex;
 	u16 old_val = 0;
 	u8 byte_ctrl = 0;
+
+	if (reg > MAX_SENSOR_REG_VALUE) {
+		cam_err("%s: sensor reg value(%u) out of bounds", __func__, reg);
+		return -EINVAL;
+	}
 
 	if (i2c_info->index == I2C_PRIMARY) {
 		reg_device_id = REG_SCCB_MAST1_SLAVE_ID;
@@ -250,21 +260,21 @@ int hw_isp_write_sensor_byte(i2c_t *i2c_info, u16 reg, u16 val, u8 mask)
 
 	spin_lock_irqsave(&i2c_lock, flags);
 
-	SETREG8(reg_device_id, i2c_info->addr);
-	SETREG8(reg_firmware_id, i2c_info->addr);
-	SETREG8(reg_reg_h, (reg >> 8) & 0xff);
-	SETREG8(reg_reg_l, reg & 0xff);
+	ISP_SETREG8(reg_device_id, i2c_info->addr);
+	ISP_SETREG8(reg_firmware_id, i2c_info->addr);
+	ISP_SETREG8(reg_reg_h, (reg >> 8) & 0xff);
+	ISP_SETREG8(reg_reg_l, reg & 0xff);
 
 	if (I2C_8BIT == i2c_info->val_bits) {
-		SETREG8(reg_value_l, val);
-		SETREG8(reg_value_len, byte_ctrl);
+		ISP_SETREG8(reg_value_l, val);
+		ISP_SETREG8(reg_value_len, byte_ctrl);
 	} else {
 		byte_ctrl |= MASK_16BIT_DATA_ENABLE;
-		SETREG8(reg_value_h, (val >> 8) & 0xff);
-		SETREG8(reg_value_l, val & 0xff);
-		SETREG8(reg_value_len, byte_ctrl);
+		ISP_SETREG8(reg_value_h, (val >> 8) & 0xff);
+		ISP_SETREG8(reg_value_l, val & 0xff);
+		ISP_SETREG8(reg_value_len, byte_ctrl);
 	}
-	SETREG8(reg_cmd, 0x37);
+	ISP_SETREG8(reg_cmd, 0x37);
 	if (wait_i2c_bus_idle(reg_status)) {
 		cam_err("%s, line %d: I2c wait idle timeout!", __func__, __LINE__);
 		goto error_out1;
@@ -289,19 +299,41 @@ error_out2:
 
 int hw_isp_write_sensor_seq(i2c_t *i2c_info, const struct sensor_i2c_reg *buf, u32 size)
 {
-	int i;
-	int rc = 0;
-	/* use AP write mode */
-	for (i = 0; i < size; i++) {
-		rc = hw_isp_write_sensor_byte(i2c_info, buf[i].subaddr, buf[i].value, buf[i].mask);
-		if (rc < 0) {
-			cam_err("%s  write sensor seq error, i=%d, subaddr=0x%x, value=0x%x, mask=0x%x.",
-				__func__, i, buf[i].subaddr, buf[i].value, buf[i].mask);
-			return rc;
-		}
-	}
+    int i;
+    int rc = 0;
+    i2c_t t_i2c_info;
 
-	return 0;
+    memcpy(&t_i2c_info, i2c_info, sizeof(i2c_t));
+
+    /* use AP write mode */
+    for (i = 0; i < size; i++) {
+        if (0xFF == buf[i].subaddr || 0xFFFF == buf[i].subaddr)
+        {
+            cam_info("%s entered here to sleep %d ms", __func__, buf[i].value);
+            msleep(buf[i].value);
+            continue;
+        }
+        if (1 == buf[i].size)
+        {
+            t_i2c_info.val_bits = I2C_8BIT;
+        }
+        else if (2 == buf[i].size)
+        {
+            t_i2c_info.val_bits = I2C_16BIT;
+        }
+        else
+        {
+        }
+
+        rc = hw_isp_write_sensor_byte(&t_i2c_info, buf[i].subaddr, buf[i].value, buf[i].mask);
+        if (rc < 0) {
+            cam_err("%s  write sensor seq error, i=%d, subaddr=0x%x, value=0x%x, mask=0x%x.",
+            __func__, i, buf[i].subaddr, buf[i].value, buf[i].mask);
+            return rc;
+        }
+    }
+
+    return 0;
 }
 
  int hw_isp_write_vcm(u8 i2c_addr, u16 reg, u16 val, i2c_length length)
@@ -319,43 +351,43 @@ int hw_isp_write_sensor_seq(i2c_t *i2c_info, const struct sensor_i2c_reg *buf, u
 		cam_err("%s, line %d: I2c wait idle timeout!", __func__, __LINE__);
 		goto error_out2;
 	}
-	original_config = GETREG8(REG_SCCB_MAST1_2BYTE_CONTROL);
+	original_config = ISP_GETREG8(REG_SCCB_MAST1_2BYTE_CONTROL);
 	spin_lock_irqsave(&i2c_lock, flags);
 
 	if (I2C_16BIT == length) {
 		if (0 == reg) {
 			/*enable 16bit data,disable 16bit address*/
-			SETREG8(REG_SCCB_MAST1_2BYTE_CONTROL, 0x02);
+			ISP_SETREG8(REG_SCCB_MAST1_2BYTE_CONTROL, 0x02);
 		} else {
 			/*enable 16bit data,enable 16bit address*/
-			SETREG8(REG_SCCB_MAST1_2BYTE_CONTROL, 0x03);
+			ISP_SETREG8(REG_SCCB_MAST1_2BYTE_CONTROL, 0x03);
 		}
 	} else {
 		/*disable 16bit data,disable 16bit address*/
-		SETREG8(REG_SCCB_MAST1_2BYTE_CONTROL, 0x00);
+		ISP_SETREG8(REG_SCCB_MAST1_2BYTE_CONTROL, 0x00);
 	}
-	SETREG8(REG_SCCB_MAST1_SLAVE_ID, i2c_addr);
+	ISP_SETREG8(REG_SCCB_MAST1_SLAVE_ID, i2c_addr);
 	/*input address*/
 	if (0 != reg) {
 		if (I2C_16BIT == length) {
-			SETREG8(REG_SCCB_MAST1_ADDRESS_H, (reg >> 8) & 0xff);
+			ISP_SETREG8(REG_SCCB_MAST1_ADDRESS_H, (reg >> 8) & 0xff);
 		}
-		SETREG8(REG_SCCB_MAST1_ADDRESS_L, reg & 0xff);
+		ISP_SETREG8(REG_SCCB_MAST1_ADDRESS_L, reg & 0xff);
 	}
 	/*input data*/
 	if (I2C_16BIT == length) {
-		SETREG16(REG_SCCB_MAST1_OUTPUT_DATA_H, val);
+		ISP_SETREG16(REG_SCCB_MAST1_OUTPUT_DATA_H, val);
 	} else {
-		SETREG8(REG_SCCB_MAST1_OUTPUT_DATA_L, val);
+		ISP_SETREG8(REG_SCCB_MAST1_OUTPUT_DATA_L, val);
 	}
 
 	if (0 != reg) {
-		SETREG8(REG_SCCB_MAST1_COMMAND, 0x37);
+		ISP_SETREG8(REG_SCCB_MAST1_COMMAND, 0x37);
 	} else {
 		/*no address case*/
-		SETREG8(REG_SCCB_MAST1_COMMAND, 0x35);
+		ISP_SETREG8(REG_SCCB_MAST1_COMMAND, 0x35);
 	}
-	SETREG8(REG_SCCB_MAST1_2BYTE_CONTROL, original_config);
+	ISP_SETREG8(REG_SCCB_MAST1_2BYTE_CONTROL, original_config);
 	if (wait_i2c_bus_idle(REG_SCCB_MAST1_STATUS)) {
 		cam_err("%s, line %d: I2c wait idle timeout!", __func__, __LINE__);
 		goto error_out1;

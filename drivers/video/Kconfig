@@ -21,7 +21,7 @@ source "drivers/gpu/vga/Kconfig"
 
 source "drivers/gpu/drm/Kconfig"
 
-source "drivers/gpu/host1x/Kconfig"
+source "drivers/gpu/stub/Kconfig"
 
 config VGASTATE
        tristate
@@ -42,7 +42,7 @@ config HDMI
 config HDMI_K3
         bool "K3 HDMI support"
         depends on ARCH_HISI
-        default y
+        default n
 config HDCP_ENABLE_K3
         bool "HDCP enable in K3 HDMI module"
         depends on HDMI_K3
@@ -183,6 +183,10 @@ config FB_SYS_IMAGEBLIT
 	  Include the sys_imageblit function for generic software image
 	  blitting. This is used by drivers that don't provide their own
 	  (accelerated) version and the framebuffer is in system RAM.
+
+config BACKLIGHT_10000
+	bool "lcd backlight level"
+	default n
 
 menuconfig FB_FOREIGN_ENDIAN
 	bool "Framebuffer foreign endianness support"
@@ -2486,6 +2490,45 @@ config FB_HYPERV
 	help
 	  This framebuffer driver supports Microsoft Hyper-V Synthetic Video.
 
+config LCD_FHD_OTM1902B
+        tristate "JDI_OTM1902B 1080P LCD support"
+        help
+          JDI 1080P LCD support, please choose it.
+config LCD_JDI_OTM1282B
+        tristate "JDI_OTM1282B 720p LCD support"
+        help
+          JDI 720p LCD support, please choose it.
+
+config LCD_TM_NT35521
+        tristate "TM_NT35521 720p LCD support"
+        help
+          TM 720p LCD support, please choose it.
+		  
+config LCD_BOE_NT35521
+        tristate "BOE_NT35521 720p LCD support"
+        help
+          BOE 720p LCD support, please choose it.
+	  
+config LCD_CMI_NT35521
+        tristate "CMI_NT35521 720p LCD support"
+        help
+          CMI 720p LCD support, please choose it.
+
+config LCD_YASSY_HX8394
+        tristate "YASSY_HX8394 720p LCD support"
+        help
+          YASSY 720p LCD support, please choose it.
+
+config LCD_CMI_OTM1282B
+        tristate "CMI_OTM1282B 720p LCD support"
+        help
+          JDI 720p LCD support, please choose it.
+          
+
+config LCD_JDI_LPM070W425C
+        tristate "JDI_LPM070W425C 1200*1920 LCD support"
+        help
+          JDI LPM070W425C LCD support, please choose it.
 config FB_SIMPLE
 	bool "Simple framebuffer support"
 	depends on (FB = y) && OF
@@ -2504,49 +2547,47 @@ config FB_SIMPLE
 	  future.
 
 config FB_FAKE
-	tristate "K3 Framebuffer Fake support"
-	depends on FB && ARM && ARM_AMBA && ARCH_HISI
+	tristate "HISI Framebuffer Fake support"
+	depends on FB
 	select FB_CFB_FILLRECT
 	select FB_CFB_COPYAREA
 	select FB_CFB_IMAGEBLIT
 	help
-	  This framebuffer driver supports K3 FB Fake.
+	  This framebuffer driver supports HISI FB Fake.
 
-config FB_K3
-	tristate "K3 Framebuffer support"
-	depends on FB && ARM && ARM_AMBA && ARCH_HISI
+config FB_3630
+	tristate "HISI 3630 Framebuffer support"
+	depends on FB
 	select FB_CFB_FILLRECT
 	select FB_CFB_COPYAREA
 	select FB_CFB_IMAGEBLIT
 	help
-	  This framebuffer driver supports K3 FB.
-config K3_FB_HEAP_CARVEOUT_USED
-	bool "k3 framebuffer use carveout memory"
-	depends on FB_K3
-	default n
+	  This framebuffer driver supports HISI3630 FB.
+
+config FB_3635
+	tristate "HISI 3635 Framebuffer support"
+	depends on FB
+	select FB_CFB_FILLRECT
+	select FB_CFB_COPYAREA
+	select FB_CFB_IMAGEBLIT
 	help
-	  Say y if you want k3 framebuffer use carveout memory.
+	  This framebuffer driver supports HISI3635 FB.
+
+config FB_3650
+	tristate "HISI 3650 Framebuffer support"
+	depends on FB
+	select FB_CFB_FILLRECT
+	select FB_CFB_COPYAREA
+	select FB_CFB_IMAGEBLIT
+	help
+	  This framebuffer driver supports HISI3650 FB.
 
 config FASTBOOT_DISP_ENABLE
-	tristate "K3 fastboot display enable support"
-	depends on FB && ARM && ARM_AMBA && ARCH_HISI
+	tristate "HISI fastboot display enable support"
+	depends on FB
 	help
 	  Display system have already initialized in fastboot.
 
-config LCD_CHECK_REG
-	bool "Support register check fuction for LCD"
-	depends on FB_K3
-	default n
-
-config LCD_MIPI_DETECT
-	bool "Support mipi detect fuction for LCD"
-	depends on FB_K3
-	default n
-
-config LCD_GRAM_CHECKSUM
-	bool "Support gram checksum fuction for LCD"
-	depends on FB_K3
-	default n
 
 source "drivers/video/omap/Kconfig"
 source "drivers/video/omap2/Kconfig"
@@ -2600,4 +2641,27 @@ config REPORT_VSYNC
 	tristate "report vsync support on K3 platform"
 	help
 	report vsync support on K3 platform.
+
+config FB_HI6220_CLCD
+    tristate "BALONG  HI6220 ARM LCD support"
+	depends on FB && (ARM||ARM64) && ARM_AMBA 
+	select FB_CFB_FILLRECT
+	select FB_CFB_COPYAREA
+	select FB_CFB_IMAGEBLIT
+	help
+	  This framebuffer device driver is for the ARM PrimeCell PL110
+	  Colour LCD controller.  ARM PrimeCells provide the building
+	  blocks for System on a Chip devices.
+
+	  If you want to compile this as a module (=code which can be
+	  inserted into and removed from the running kernel), say M
+	  here and read <file:Documentation/kbuild/modules.txt>.  The module
+	  will be called amba-clcd.
+	  
+config HISI_HI6210_IOMMU
+    tristate "support media MMU"
+    default n
+    ---help---
+      This is the media MMU base on hi6210
+
 endmenu

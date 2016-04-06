@@ -333,24 +333,12 @@ VOS_UINT32 GMM_BufferMsgResume(VOS_VOID)
     return GMM_TRUE;                    /* 结束返回 */
 }
 
-/*****************************************************************************
- Prototype      : GMM_BufferMsgDump
- Description    : 缓存消息队列中的消息清空
-                  HSS 4100 V200R001 新增
- Input          :
- Output         :
- Return Value   :
- Calls          :
- Called By      :
 
- History        :
-  1.Date        : 2005-08-25
-    Author      : Roger Leo
-    Modification: Created function
-*****************************************************************************/
 VOS_UINT32 GMM_BufferMsgDump(VOS_VOID)
 {
     VOS_UINT32  ulIndex;
+
+    MSG_HEADER_STRU                     *pNasMsgHeader = VOS_NULL_PTR;
 
     /* 判断是否存在缓存消息 */
     if ( 0 == gstGmmCasMsgBuf.ucBufMsgTotal )
@@ -368,6 +356,15 @@ VOS_UINT32 GMM_BufferMsgDump(VOS_VOID)
          == gstGmmCasMsgBuf.aucBufMsgFlg[ulIndex])
         {
             continue;
+        }
+
+
+        /* 在释放缓存时候，给SM回复结果，否则SM模块一直等待此结果至定时器超时 */
+        pNasMsgHeader = (MSG_HEADER_STRU *)gstGmmCasMsgBuf.apBufMsg[ulIndex];        
+        if ((WUEPS_PID_SM           == pNasMsgHeader->ulSenderPid)
+         && (GMMSM_ESTABLISH_REQ    == pNasMsgHeader->ulMsgName))
+        {
+            Gmm_SndSmEstablishCnf(GMM_SM_EST_FAILURE, GMM_SM_CAUSE_UNKNOWN);           
         }
 
         /* 释放消息指针内容 */
@@ -817,6 +814,15 @@ VOS_VOID GMM_RcvMmcResumeInd(VOS_VOID* pRcvMsg)
         g_GmmGlobalCtrl.ucSigConFlg = GMM_TRUE;
     }
 
+    /* L->GU,CS handover重新获取重定向的安全上下文 */
+    if ((VOS_FALSE                   == pResumeIndMsg->ucPsSigExistFlg)
+     && (MMC_SUSPEND_CAUSE_HANDOVER  == gstGmmSuspendCtrl.ucSuspendCause)
+     && (NAS_MML_NET_RAT_TYPE_LTE    != enCurrNetType)
+     && (NAS_MML_NET_RAT_TYPE_LTE    == gstGmmSuspendCtrl.ucPreRat))
+    {
+        gstGmmSuspendCtrl.ucGetLteSecContext = VOS_FALSE;
+    }
+
 
     /* GMM向mmc发送resume rsp */
     NAS_GMM_SndMmcResumeRsp();
@@ -827,6 +833,9 @@ VOS_VOID GMM_RcvMmcResumeInd(VOS_VOID* pRcvMsg)
         GMM_LOG_WARN("GMM_RcvMmcResumeInd:Receive MMCGMM_RESUME_IND in abnormal State.");
         return;
     }
+
+
+    NAS_GMM_RcvMmcResumeInd_Handover(pResumeIndMsg);
 
     if (MMC_SUSPEND_CAUSE_CELLCHANGE_FALLBACK == gstGmmSuspendCtrl.ucSuspendCause )
     {
@@ -955,6 +964,10 @@ VOS_VOID GMM_RcvMmcResumeInd(VOS_VOID* pRcvMsg)
 
         /* T3340不需要恢复 */
         gstGmmSuspendCtrl.ulTimerRunMask &= ~(VOS_UINT32)(GMM_TIMER_T3340_FLG);
+
+        /* T3319不需要恢复,24008协议规定只有w下使用 */
+        gstGmmSuspendCtrl.ulTimerRunMask &= ~(VOS_UINT32)(GMM_TIMER_T3319_FLG);
+
 
         /*如果PS域有短消息待发送，则通知SMS模块发送失败*/
         if (GMM_TRUE == g_GmmServiceCtrl.ucSmsFlg)
@@ -1227,8 +1240,37 @@ VOS_VOID NAS_GMM_ProcBufferSmMsg_ResumeSuccess()
         Gmm_MemFree(pstBuffMsg);
     }
 }
+VOS_VOID NAS_GMM_RcvMmcResumeInd_Handover(
+    MMCGMM_RESUME_IND_ST               *pstResumeIndMsg
+)
+{
+    NAS_MML_NET_RAT_TYPE_ENUM_UINT8     enCurrNetType;
+
+    enCurrNetType   = NAS_MML_GetCurrNetRatType();
+
+    /* 不是HO流程不在该函数中处理 */
+    if (MMC_SUSPEND_CAUSE_HANDOVER != gstGmmSuspendCtrl.ucSuspendCause )
+    {
+        return;
+    }
+
+    /* L到GU的HO或GU之间的HO流程，启定时器，时长可NV配置 */
+    /* GU到L的HO,和李洪确认，如果有系统消息会先做TAU；如果没有系统消息会等链路释放重新驻留再做TAU，TAU之后上报TAU结果和服务状态 */
+    if ( (enCurrNetType != gstGmmSuspendCtrl.ucPreRat)
+      && (enCurrNetType != NAS_MML_NET_RAT_TYPE_LTE) )
+    {
+        /* 先停再启 */
+        Gmm_TimerStop(GMM_TIMER_HO_WAIT_SYSINFO);
+        
+        Gmm_TimerStart(GMM_TIMER_HO_WAIT_SYSINFO);
+    }
+
+    return;    
+}
+
 
 #if (FEATURE_ON == FEATURE_LTE)
+
 VOS_VOID NAS_GMM_ProcResumeToLTE(VOS_VOID)
 {
     RRMM_REL_IND_STRU                    stRrMmRelIndMsg;

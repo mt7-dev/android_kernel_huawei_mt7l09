@@ -87,6 +87,21 @@ extern "C" {
 #define CMMCA_CMD_SET_PDN_TAB_REQ_LEN                       (sizeof(CMMCA_MMC_RAT_CMD_ID_ENUM_UINT16) \
                                                             + sizeof(CMMCA_MMC_RAT_ID_ENUM_UINT8)\
                                                             + (CMMCA_SET_PDN_TAB_REQ_APN_MAX_LEN + sizeof(VOS_UINT8) + sizeof(CMMCA_PDN_REQUEST_TYPE_ENUM_UINT8)) * (CMMCA_SUPPORTED_PDN_NUM_MAX))
+#define CMMCA_CMD_SET_PND_PCO_AUTH_RSP_LEN                  (4)
+
+#define CMMCA_RAT_AUTH_MAX_MODEL_NAME_LEN                   (72)
+
+#define CMMCA_RAT_AUTH_MAX_USER_NAME_LEN                    (72)
+
+#define CMMCA_RAT_AUTH_MAX_PASSWORD_LEN                     (16)
+
+#define CMMCA_CMD_SET_PDN_PCO_AUTH_REQ_LEN                  (sizeof(CMMCA_MMC_RAT_CMD_ID_ENUM_UINT16) \
+                                                            + sizeof(CMMCA_MMC_RAT_ID_ENUM_UINT8) \
+                                                            + sizeof(VOS_UINT8) + sizeof(VOS_UINT8)\
+                                                            + (sizeof(VOS_UINT8) * CMMCA_RAT_AUTH_MAX_MODEL_NAME_LEN) \
+                                                            + (sizeof(VOS_UINT8) * CMMCA_RAT_AUTH_MAX_USER_NAME_LEN) \
+                                                            + sizeof(VOS_UINT8) \
+                                                            + (sizeof(VOS_UINT8) * CMMCA_RAT_AUTH_MAX_PASSWORD_LEN))
 
 #define CMMCA_CMD_SET_PDN_TAB_RSP_LEN                       (4)
 
@@ -98,6 +113,9 @@ extern "C" {
 #define CMMCA_CMD_BEAR_DISC_RSP_LEN                         (6)
 
 #define CMMCA_CMD_BEAR_DISC_IND_LEN                         (5)
+
+#define CMMCA_CMD_RAT_BEAR_DETACH_REQ_LEN                   (3)
+#define CMMCA_CMD_RAT_BEAR_DETACH_RSP_LEN                   (4)
 /* PKT 相关的CMD码流长度定义 End */
 
 
@@ -226,6 +244,21 @@ enum CMMCA_RAT_MMC_PDN_TAB_SET_RESULT_ENUM
 typedef VOS_UINT8 CMMCA_RAT_MMC_PDN_TAB_SET_RESULT_ENUM_UINT8;
 
 
+enum CMMCA_SET_PDN_PCO_AUTH_RESULT_ENUM
+{
+    /* 0 = success
+       1 = fail
+     */
+    CMMCA_SET_PDN_PCO_AUTH_RESULT_SUCC  = 0,
+    CMMCA_SET_PDN_PCO_AUTH_RESULT_FAIL,
+
+    CMMCA_SET_PDN_PCO_AUTH_RESULT_BUTT
+};
+
+typedef VOS_UINT8 CMMCA_SET_PDN_PCO_AUTH_RESULT_ENUM_UINT8;
+
+
+
 enum CMMCA_RAT_MMC_BEAR_CONN_RESULT_ENUM
 {
     /* 0 = success
@@ -328,11 +361,10 @@ enum CMMCA_RAT_NOTIFY_CAUSE_ENUM
     CMMCA_RAT_NOTIFY_CAUSE_ACQED,             /* LTE camps on a new system. */
     CMMCA_RAT_NOTIFY_CAUSE_SUSPEND,           /* network or internal RAT case where no activity allowed on RAT until RAT_RESUME or power cycle*/
     CMMCA_RAT_NOTIFY_CAUSE_RESUME,            /* Exit RAT suspend state*/
+    CMMCA_RAT_NOTIFY_CAUSE_PS_DEREGED = 0x20, /* LTE report detached from network */
     CMMCA_RAT_NOTIFY_CAUSE_BUTT
 };
 typedef VOS_UINT8 CMMCA_RAT_NOTIFY_CAUSE_ENUM_UINT8;
-
-
 enum CMMCA_RAT_CPST_ENUM
 {
     CMMCA_RAT_CPST_SYSLOST = 0, /* LTE loses system. */
@@ -394,6 +426,9 @@ enum CMMCA_RAT_MMC_STATUS_ENUM
     CMMCA_RAT_MMC_STATUS_PS_REG_FAIL,      /* PS registration failed on the system */
     CMMCA_RAT_MMC_STATUS_PS_SESSION_FAIL,  /* PS session could not be opened on the system */
     CMMCA_RAT_MMC_STATUS_FAIL,             /* Failure due to other unknown reasons */
+    CMMCA_RAT_MMC_STATUS_CMD_INVALID,
+    CMMCA_RAT_MMC_STATUS_CHG_HRPD_SUCCESS,
+
     CMMCA_RAT_MMC_STATUS_BUTT
 } ;
 typedef VOS_UINT8 CMMCA_RAT_MMC_STATUS_ENUM_UINT8;
@@ -488,6 +523,44 @@ enum CMMCA_MMC_NO_SERV_RSP_RESULT_ENUM
     CMMCA_MMC_NO_SERV_RSP_BUTT
 };
 typedef VOS_UINT8 CMMCA_MMC_NO_SERV_RSP_RESULT_ENUM_UINT8;
+
+
+enum CMMCA_MMC_BEAR_DETACH_RSP_RESULT_ENUM
+{
+    CMMCA_MMC_BEAR_DETACH_RSP_FAIL,
+    CMMCA_MMC_BEAR_DETACH_RSP_SUCC,
+
+    CMMCA_MMC_BEAR_DETACH_RSP_BUTT
+};
+typedef VOS_UINT8 CMMCA_MMC_BEAR_DETACH_RSP_RESULT_ENUM_UINT8;
+
+
+enum CMMCA_IRAT_SYSTEM_CHG_RESULT_ENUM
+{
+    CMMCA_IRAT_SYSTEM_CHG_SUCCESS,
+    CMMCA_IRAT_SYSTEM_CHG_ACQ_FAIL,
+    CMMCA_IRAT_SYSTEM_CHG_PS_REG_FAIL,
+    CMMCA_IRAT_SYSTEM_CHG_PS_SESSION_FAIL,
+    CMMCA_IRAT_SYSTEM_CHG_FAIL,
+    CMMCA_IRAT_SYSTEM_CHG_CMD_INVALID,
+    CMMCA_IRAT_SYSTEM_CHG_HRPD_SUCCESS,
+
+    CMMCA_IRAT_SYSTEM_CHG_RESULT_BUTT
+};
+
+typedef VOS_UINT8  CMMCA_IRAT_SYSTEM_CHG_RESULT_ENUM_UINT8;
+
+
+enum CMMCA_RAT_AUTH_MODE_ENUM
+{
+    CMMCA_RAT_AUTH_MODE_NONE    = 0,
+    CMMCA_RAT_AUTH_MODE_PAP,
+    CMMCA_RAT_AUTH_MODE_CHAP,
+
+    CMMCA_RAT_AUTH_MODE_BUTT
+};
+typedef VOS_UINT8 CMMCA_MMC_RAT_AUTH_MODE_ENUM_UINT8;
+
 
 #endif
 
@@ -893,6 +966,26 @@ typedef struct
     VOS_UINT8                           ucBearerId;                             /* 0xf0|RabId */
     VOS_UINT8                           aucReserved1[2];
 }CMMCA_RAT_MMC_BEAR_DISC_IND_STRU;
+typedef struct
+{
+    CMMCA_MMC_RAT_ID_ENUM_UINT8         enRatId;
+    VOS_UINT8                           aucReserved[3];
+}CMMCA_MMC_RAT_BEAR_DETACH_REQ_STRU;
+
+
+typedef struct
+{
+    CMMCA_MMC_RAT_ID_ENUM_UINT8         enRatId;
+    VOS_UINT8                           ucStatus;
+    VOS_UINT8                           aucReserved[2];
+}CMMCA_RAT_MMC_BEAR_DETACH_RSP_STRU;
+
+
+typedef struct
+{
+    CMMCA_IRAT_SYSTEM_CHG_RESULT_ENUM_UINT8       enResult;
+}CMMCA_MMC_RAT_IRAT_SYSTEM_CHG_RSP_STRU;
+
 #endif
 
 /*****************************************************************************
@@ -1115,6 +1208,34 @@ VOS_UINT32 CMMCA_ParseOtherRatInfoInd(
     VOS_UINT16                          usParamBlklength,
     VOS_UINT8                          *pucParamBlk,
     CMMCA_OTHER_RAT_INFO_IND_STRU      *pstOtherRatInfoInd
+);
+
+VOS_UINT32 CMMCA_ParseBearDetachReq(
+    VOS_UINT16                          usParamBlklength,
+    VOS_UINT8                          *pucParamBlk,
+    CMMCA_MMC_RAT_BEAR_DETACH_REQ_STRU *pstBearDetachReq
+);
+
+VOS_UINT32 CMMCA_PackBearDetachRsp(
+    CMMCA_RAT_MMC_BEAR_DETACH_RSP_STRU *pstBearDetachRsp,
+    VOS_UINT16                          usParamBlklength,
+    VOS_UINT8                          *pucParamBlk
+);
+VOS_UINT32 CMMCA_PackSetPdnPcoAuthRsp(
+    CMMCA_SET_PDN_PCO_AUTH_RESULT_ENUM_UINT8        enRslt,
+    VOS_UINT16                                      usParamBlklength,
+    VOS_UINT8                                      *pucParamBlk
+);
+
+VOS_UINT32 CMMCA_ConvertCdmaSetPdnPcoAuthModeToTaf(
+    CMMCA_MMC_RAT_AUTH_MODE_ENUM_UINT8  enAuthMode,
+    TAF_PDP_AUTH_TYPE_ENUM_UINT8       *penTafMode
+);
+
+VOS_UINT32 CMMCA_ParseSetPdnPcoAuthReq(
+    VOS_UINT16                          usParamBlklength,
+    VOS_UINT8                          *pucParamBlk,
+    TAF_AUTHDATA_EXT_STRU              *pstTafAuthDataExt
 );
 
 #endif

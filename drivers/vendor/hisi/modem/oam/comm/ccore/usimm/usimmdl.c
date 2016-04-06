@@ -172,8 +172,15 @@ VOS_UINT32 USIMM_DLResetCard(VOS_UINT32 ulResetType, VOS_INT32 *plVoltageSwitchR
         USIMM_ERROR_LOG("USIMM_DLResetCard: USIMM Could Not Find Any SIM Card!");
 
         gastUSIMMCardAppInfo[USIMM_UICC_USIM].enCardType = USIMM_CARD_NOCARD;
-
-        DRV_USIMMSCI_RECORD_DATA_SAVE();
+        
+        if (USIMM_RESET_CARD == ulResetType)
+        {   
+            DRV_USIMMSCI_RECORD_DATA_SAVE(SCI_LOG_RESET_FAIL);
+        }
+        else
+        {
+            DRV_USIMMSCI_RECORD_DATA_SAVE(SCI_LOG_VOL_SWITCH_FAIL);
+        }
 
         return VOS_ERR;
     }

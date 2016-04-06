@@ -54,7 +54,7 @@ SI_STK_IMSICHG_MATCH_STRU               gstSTKIMSIMatch; /* NV项读出的IMSI切换匹
 
 SI_STK_ENVELOPE_CMD_STRU                gstSTKEnvelopeCmd; /* 缓存Envelope命令 */
 
-VOS_UINT32                              gulSTKApiSmId       = VOS_NULL_LONG; /*互斥操作*/
+VOS_SEM                                 gulSTKApiSmId       = VOS_NULL_LONG; /*互斥操作*/
 
 VOS_UINT16                              gusSTKSMSIndEnable;/* SEND SMS主动命令上报控制 */
 

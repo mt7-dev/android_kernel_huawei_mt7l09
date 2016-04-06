@@ -25,6 +25,10 @@ extern "C" {
                                                                                    此处按最小的MODEM限制
                                                                                 */
 
+#define AT_CMD_ECONF_DIAL_MAX_PARA_NUM          (11)
+#define AT_CMD_ECONF_DIAL_MIN_PARA_NUM          (7)
+
+
 /*******************************************************************************
  结构名    : AT_DATE_STRU
  协议表格  :
@@ -43,7 +47,7 @@ typedef struct
     TAF_UINT32                          ulSecond;
 }AT_DATE_STRU;
 
-typedef enum AT_RRETURN_CODE_ENUM
+enum AT_RRETURN_CODE_ENUM
 {
     AT_SUCCESS = 0,
     AT_FAILURE,
@@ -170,6 +174,13 @@ typedef enum AT_RRETURN_CODE_ENUM
     AT_CME_LINK_CID_INVALID,
     AT_CME_NO_SUCH_ELEMENT,
     AT_CME_MISSING_RESOURCE,
+
+    /* Added by zwx247453 for VOLTE SWITCH, 2015-02-02, Begin */
+    AT_CME_IMS_NOT_SUPPORT,
+    AT_CME_IMS_SERVICE_EXIST,
+    AT_CME_IMS_VOICE_DOMAIN_PS_ONLY,
+    AT_CME_IMS_STACK_TIMEOUT,
+    /* Added by zwx247453 for VOLTE SWITCH, 2015-02-02, End */
 
     AT_CME_ERROR_ENUM_END,                   /* CME ERROR 结束 */
 
@@ -355,7 +366,9 @@ typedef enum AT_RRETURN_CODE_ENUM
     AT_ABORT,
 
     AT_RRETURN_CODE_BUTT                   /* CME ERROR 结束 */
-}AT_RRETURN_CODE_ENUM;
+};
+
+typedef VOS_UINT32 AT_RRETURN_CODE_ENUM_UINT32;
 
 
 
@@ -393,6 +406,7 @@ typedef struct
 {
     VOS_UINT32 ulParaValue;
     VOS_UINT8  aucPara[AT_PARA_MAX_LEN + 1];     /* 用来放置解析出的参数字符串 */
+    VOS_UINT8  aucReserved[1];
     VOS_UINT16 usParaLen;                        /* 用来标识参数字符串长度 */
 }AT_PARSE_PARA_TYPE_STRU;
 
@@ -407,7 +421,7 @@ typedef VOS_UINT32 (*pAtChkFuncType)(AT_PARSE_PARA_TYPE_STRU *pPara);
 #define AT_MAX_LEN_COMBINE_CMD      545  /* 一条组合命令最多包含545个字符(refer to Q) */
 
 #define AT_DIE_SN_LEN                  (20) /* DIE SN 16进制 20字节长度 */
-#define AT_CHIP_SN_LEN                 (8)  /* CHIP SN 16进制 8字节长度 */
+#define AT_CHIP_SN_LEN                 (4)  /* CHIP SN 16进制 8字节长度 */
 
 typedef struct
 {
@@ -422,9 +436,10 @@ typedef struct{
 
 
 typedef struct{
-    VOS_UINT16 usTotalNum;
-    VOS_UINT16 usProcNum;
-    HI_LIST_S stCombineCmdList;     /* AT_FW_COMBINE_CMD_NODE_STRU */
+    VOS_UINT16                          usTotalNum;
+    VOS_UINT16                          usProcNum;
+    VOS_UINT8                           aucReserved[4];
+    HI_LIST_S                           stCombineCmdList;                       /* AT_FW_COMBINE_CMD_NODE_STRU */
 }AT_FW_COMBINE_CMD_INFO_STRU;
 
 typedef struct
@@ -435,8 +450,9 @@ typedef struct
 
 typedef struct
 {
-    VOS_UINT8  aucCmdName[AT_CMD_NAME_LEN + 1];     /* 用来放置解析出的命令名原字符串 */
-    VOS_UINT16 usCmdNameLen;                    /* 用来标识参数字符串长度 */
+    VOS_UINT8                           aucCmdName[AT_CMD_NAME_LEN + 1];        /* 用来放置解析出的命令名原字符串 */
+    VOS_UINT8                           aucReserved[3];
+    VOS_UINT16                          usCmdNameLen;                           /* 用来标识参数字符串长度 */
 }AT_PARSE_CMD_NAME_TYPE_STRU;
 
 typedef struct
@@ -452,6 +468,7 @@ typedef struct
 
     AT_CMD_OPT_TYPE     ucCmdOptType;
     AT_CMD_FORMAT_TYPE  ucCmdFmtType;
+    VOS_UINT8                           aucReserved[2];
 }AT_PARSECMD_STRU;
 
 
@@ -473,7 +490,7 @@ typedef VOS_UINT32 (*PFN_AT_FW_MSG_PROC)(VOS_UINT8 ucClientId, VOS_VOID *pMsgBlo
 
 #define CMD_TBL_LIMITED_NULL        (0x00000000)    /* 最常用的,受E5 PIN码限制的命令 */
 
-#define CMD_TBL_NO_LIMITED          CMD_TBL_E5_IS_LOCKED|CMD_TBL_PIN_IS_LOCKED    /* 无任何限制的命令 */
+#define CMD_TBL_NO_LIMITED          (CMD_TBL_E5_IS_LOCKED|CMD_TBL_PIN_IS_LOCKED)    /* 无任何限制的命令 */
 
 /* E5形态下与Stick形态下CLAC不显示的命令不相同的有:
    E5:
@@ -703,12 +720,12 @@ typedef struct
 
 typedef struct tagAT_PAR_CMDTBL_LIST_STRU
 {
-    VOS_UINT16 usCmdNum;
-    VOS_UINT16 usReserved;
-    AT_PAR_CMD_ELEMENT_STRU* pstCmdElement;
-    HI_LIST_S stCmdTblList;
+    VOS_UINT16                          usCmdNum;
+    VOS_UINT16                          usReserved;
+    VOS_UINT8                           aucReserved[4];
+    AT_PAR_CMD_ELEMENT_STRU*            pstCmdElement;
+    HI_LIST_S                           stCmdTblList;
 } AT_PAR_CMDTBL_LIST_STRU;
-
 
 typedef struct
 {
@@ -748,30 +765,6 @@ extern AT_PARSECMD_STRU                     g_stATParseCmd;
 extern AT_PARSE_CONTEXT_STRU                g_stParseContext[AT_MAX_CLIENT_NUM];
 extern AT_PARSE_PARA_TYPE_STRU              gastAtParaList[AT_MAX_PARA_NUMBER];
 extern TAF_UINT8                            gucAtParaIndex;
-extern TAF_UINT8                            gucAtParaNumRangeIndex;
-extern AT_PARA_NUM_RANGE_STRU               gastAtParaNumRange[AT_PARA_MAX_NUM];
-extern TAF_UINT8                            gucAtParaStrRangeIndex;
-extern TAF_UINT8                            gaucAtParaStrRange[AT_PARA_MAX_NUM][AT_PARA_SCALE_MAX_LEN + 1];
-extern TAF_UINT8                            gucAtParaCheckIndex;
-
-#define At_UpChar(Char)                 ((('a' <= (Char)) && ((Char) <= 'z'))?((Char) - 0x20):(Char))
-
-#ifndef __AT_DISABLE_OM__
-#include "om.h"
-#define AT_INFO_LOG(String)            PS_LOG(WUEPS_PID_AT, 0, PS_PRINT_INFO, String)
-#define AT_NORM_LOG(String)            PS_LOG(WUEPS_PID_AT, 0, PS_PRINT_NORMAL, String)
-#define AT_NORM_LOG1(String,Para1)     PS_LOG1(WUEPS_PID_AT, 0, PS_PRINT_NORMAL, String, (TAF_INT32)Para1)
-#define AT_WARN_LOG(String)            PS_LOG(WUEPS_PID_AT, 0, PS_PRINT_WARNING, String)
-#define AT_WARN_LOG1(String,Para1)     PS_LOG1(WUEPS_PID_AT, 0, PS_PRINT_WARNING, String, (TAF_INT32)Para1)
-#define AT_ERR_LOG(String)             PS_LOG(WUEPS_PID_AT, 0, PS_PRINT_ERROR, String)
-#define AT_LOG1(String, Para1)         PS_LOG1(WUEPS_PID_AT, 0, PS_PRINT_INFO, String, (TAF_INT32)Para1)
-#else
-#define AT_INFO_LOG(String)
-#define AT_NORM_LOG(String)
-#define AT_WARN_LOG(String)
-#define AT_ERR_LOG(String)
-#define AT_LOG1(String, Para1)
-#endif
 
 
 /* 框架核心接口 */
@@ -808,10 +801,6 @@ extern VOS_VOID At_ResetCombinCmdInfo(HI_LIST_S* pstCombList);
 extern VOS_VOID At_ResetCombinParseInfo(VOS_UINT8 ucIndex);
 
 extern VOS_UINT32 At_CombineCmdProc(VOS_UINT8 ucClientId);
-
-extern VOS_UINT32 At_CmdTestProcOK(VOS_UINT8 ucIndex);
-
-extern VOS_UINT32 At_CmdTestProcERROR(VOS_UINT8 ucIndex);
 
 extern VOS_VOID At_ParseInit(VOS_VOID);
 

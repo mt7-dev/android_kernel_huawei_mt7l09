@@ -16,7 +16,7 @@ extern "C" {
 VOS_UINT32                          gulUSIMMAPIMessageNum = 0;
 
 /*互斥操作*/
-VOS_UINT32                          gulUSIMMApiSmId       = VOS_NULL_LONG;
+VOS_SEM                             gulUSIMMApiSmId       = VOS_NULL_LONG;
 
 /*当前的快速开机状态*/
 VOS_UINT32                          gulUSIMMOpenSpeed     = 0;
@@ -80,7 +80,7 @@ USIMM_CARD_INIT_INFO_LOG_STRU       g_stUSIMMInitInfo;
 HTIMER                              g_ulUSIMMGetCardStatTimerID = VOS_NULL_PTR;
 
 /* 获取卡状态时所起的callback定时器所使用的信号量 */
-VOS_UINT32                          g_ulUSIMMGetCardStatSemID;
+VOS_SEM                             g_ulUSIMMGetCardStatSemID;
 
 /* 指示支持T=1还是T=0 */
 USIMM_DL_T_MODE_ENUM_UINT32         g_enUSIMMTMode = USIMM_DL_T_MODE_T0;
@@ -101,9 +101,13 @@ NV_ID_ERR_LOG_CTRL_INFO_STRU        g_stErrLogCtrlInfo;
 HTIMER                              g_ulUSIMMTaskDelayTimerID = VOS_NULL_PTR;
 
 /* TaskDelay时所起的callback定时器所使用的信号量 */
-VOS_UINT32                          g_ulUSIMMTaskDelaySemID;
+VOS_SEM                             g_ulUSIMMTaskDelaySemID;
 
 USIMM_CARD_VERSIONTYPE_STRU         g_stUSIMMCardVersionType;
+
+#if (FEATURE_VSIM == FEATURE_ON)
+VOS_UINT8                           *g_pucUSIMMVsimData = VOS_NULL_PTR;
+#endif
 
 
 USIMM_FEATURE_CFG_STRU              g_stUsimmFeatureCfg;

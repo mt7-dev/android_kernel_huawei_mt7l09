@@ -736,7 +736,7 @@ VOS_VOID GmmMsgProc(
     }
 #endif
 
-    
+
     NAS_GMM_LogGmmStateInfo(g_GmmGlobalCtrl.ucState);
 
     switch (gucGmmInitState)
@@ -1133,16 +1133,7 @@ VOS_VOID Gmm_MsgDistribute_From_RRCF(
     return;
 }
 
-/***********************************************************************
- *  MODULE   : Gmm_MsgDistribute_From_RABM
- *  FUNCTION : Gmm_MsgDistribute函数降复杂度: RABM消息的处理
- *  INPUT    : VOS_VOID
- *  OUTPUT   : VOS_VOID
- *  RETURN   : VOS_UINT8 ucEventID
- *  NOTE     :
- *  HISTORY  :
-     1.  欧阳飞   2009.06.11  新版作成
- ************************************************************************/
+
 VOS_VOID Gmm_MsgDistribute_From_RABM(
                        VOS_VOID *pRcvMsg                                        /* 接收消息使用的头地址定义                 */
                        )
@@ -1161,6 +1152,10 @@ VOS_VOID Gmm_MsgDistribute_From_RABM(
         break;
     case ID_RABM_GMM_RAB_REL_IND:
         Gmm_RcvRabRelInd();                                                 /* RAB释放指示接收处理                      */
+        break;
+
+    case ID_RABM_GMM_RAB_SETUP_IND:
+        NAS_GMM_RcvRabmRabSetupInd((GMMRABM_RAB_SETUP_IND_STRU *)pRcvMsg);
         break;
 
     default:
@@ -1285,6 +1280,10 @@ VOS_VOID Gmm_MsgDistribute_From_MMC(
 
     case MMCGMM_EMERGENCY_NUM_LIST_IND:
         NAS_GMM_RcvMmcEmergencyNumList((struct MsgCB*)pRcvMsg);
+        break;
+
+    case MMCGMM_VOICE_DOMAIN_CHANGE_NOTIFY:
+        NAS_GMM_RcvMmcVoiceDomainChangeNotify((struct MsgCB*)pRcvMsg);
         break;
 #endif
 
@@ -1511,7 +1510,7 @@ VOS_VOID NAS_GMM_RcvLmmReselSecInfoCnf(
     NAS_GMM_GetGUSecContextFromEpsSecContextInReselect((struct MsgCB *)pstMsg);
 
     enCurrRat   = NAS_MML_GetCurrNetRatType();
-    
+
     /* 从L模获取映射的安全上下文之后，通知GU模 */
     if (NAS_MML_NET_RAT_TYPE_WCDMA  == enCurrRat)
     {
@@ -1525,28 +1524,35 @@ VOS_VOID NAS_GMM_RcvLmmReselSecInfoCnf(
     {
     }
 
-    if (NAS_GMM_SPEC_PROC_RAU == NAS_GMM_GetSpecProcNeedSecInfo())
+    /* 从L模获取安全上下文后，如果当前状态不是ATTACH_INIT或RAU_INIT，不发attach/rau req
+       对应场景为:LTE限制服务，启available timer,重选到GU过程中available timer超时触发搜网，
+       GMM状态更新为PLMN_SRCH,搜网与RAU流程冲突 */
+    if ( (GMM_REGISTERED_INITIATED == g_GmmGlobalCtrl.ucState)
+      || (GMM_ROUTING_AREA_UPDATING_INITIATED == g_GmmGlobalCtrl.ucState) )
     {
-        Gmm_SndRoutingAreaUpdateReq(NAS_GMM_GetRauUpdateType());
-    }
-    else
-    {
-        Gmm_SndAttachReq();
+        if (NAS_GMM_SPEC_PROC_RAU == NAS_GMM_GetSpecProcNeedSecInfo())
+        {
+            Gmm_SndRoutingAreaUpdateReq(NAS_GMM_GetRauUpdateType());
+        }
+        else
+        {
+            Gmm_SndAttachReq();
+        }
+
+        /* 需要获取安全上下文时,挂起前的接入技术延迟更新 */
+        gstGmmSuspendCtrl.ucPreRat = enCurrRat;
     }
 
     NAS_GMM_SetLmmSecInfoFlg(VOS_FALSE);
 
     g_GmmInterRatCellReselect = 0;
 
-    /* 需要获取安全上下文时,挂起前的接入技术延迟更新 */
-    gstGmmSuspendCtrl.ucPreRat = enCurrRat;
 
     gstGmmSuspendCtrl.ucGetLteSecContext = VOS_TRUE;
 
     NAS_GMM_SetSpecProcNeedSecInfo(NAS_GMM_SPEC_PROC_BUTT);
 
 }
-
 VOS_VOID NAS_GMM_RcvLmmHoSecInfoCnf(
     VOS_VOID                            *pRcvMsg
 )
@@ -1861,10 +1867,13 @@ VOS_VOID Gmm_ComVariantInit(VOS_VOID)
     /* 初始化为没有收到网侧detach消息 */
     g_GmmGlobalCtrl.ucRcvNetDetachFlg = VOS_FALSE;
 
+    g_GmmGlobalCtrl.ucIsNeedStartT3340PdpExist = VOS_FALSE;
+
 #if (FEATURE_ON == FEATURE_LTE)
     /* 默认支持L能力 */
     g_GmmGlobalCtrl.UeInfo.ucMsRadioCapSupportLteFromAs     = (VOS_UINT8)NAS_MML_IsSupportLteCapability();
     g_GmmGlobalCtrl.UeInfo.ucMsRadioCapSupportLteFromRegReq = (VOS_UINT8)NAS_MML_IsSupportLteCapability();
+    g_GmmGlobalCtrl.UeInfo.enVoiceDomainFromRegReq          = NAS_MML_GetVoiceDomainPreference();
 #endif
 
     /* 给RAC赋初始值 */
@@ -1934,12 +1943,16 @@ VOS_VOID Gmm_TaskInit(VOS_VOID)
 
     g_GmmTimerMng.aTimerInf[GMM_TIMER_T3323].ulTimerVal = GMM_TIMER_T3323_VALUE;
 
-    g_GmmTimerMng.aTimerInf[GMM_TIMER_CS_CONN_NOT_EXIST_WAIT_SYSINFO].ulTimerVal = GMM_TIMER_WAIT_SYSINFO_VALUE;
+
+    /* GMM HO到GU后等系统消息的时长 */
+    g_GmmTimerMng.aTimerInf[GMM_TIMER_HO_WAIT_SYSINFO].ulTimerVal = GMM_TIMER_WAIT_SYSINFO_VALUE;
 
     g_GmmTimerMng.aTimerInf[GMM_TIMER_DELAY_RADIO_CAPA_TRIGED_RAU].ulTimerVal = GMM_TIMER_DELAY_RADIO_CAPA_TRIGED_RAU_VALUE;
 
 
     g_GmmTimerMng.aTimerInf[GMM_TIMER_WAIT_AS_MS_RADIO_CAPA_INFO].ulTimerVal = GMM_TIMER_WAIT_AS_MS_RADIO_CAPA_INFO_VALUE;
+
+    g_GmmTimerMng.aTimerInf[GMM_TIMER_DELAY_VOICE_DOMAIN_TRIG_RAU].ulTimerVal = GMM_TIMER_DELAY_VOICE_DOMAIN_TRIG_RAU_VALUE;
 
     for (i = 0; i < GMM_TIMER_NUM; i++)
     {
@@ -1968,6 +1981,8 @@ VOS_VOID Gmm_TaskInit(VOS_VOID)
 
     return;
 }
+
+
 MMCGMM_DETACH_REQ_STRU* NAS_GMM_MakeDetachMsg( VOS_UINT32  ulDetachCause )
 {
 
@@ -1995,6 +2010,7 @@ MMCGMM_DETACH_REQ_STRU* NAS_GMM_MakeDetachMsg( VOS_UINT32  ulDetachCause )
     return pSndMsg;
 
 }
+
 VOS_VOID NAS_GMM_RcvSmPdpModifyInd(VOS_VOID *pRcvMsg)
 {
 #if (FEATURE_LTE == FEATURE_ON)
@@ -2640,18 +2656,18 @@ VOS_UINT32 GMM_ComCheckIntegrityProtection(VOS_UINT8 *pucMsgContent,
     {
         return GMM_TRUE;
     }
-    
+
     /* 完整性检查仅适用于UMTS网络 */
 
-    
+
     /* 完整性检查仅适用于UMTS网络 */
     if (NAS_MML_NET_RAT_TYPE_WCDMA != NAS_MML_GetCurrNetRatType())
     {
         return GMM_TRUE;
     }
-    
+
     if (VOS_FALSE == NAS_UTRANCTRL_IsUtranPsSmcNeeded())
-    
+
     {
         return GMM_TRUE;
     }
@@ -2991,8 +3007,8 @@ VOS_VOID NAS_GMM_RcvMmcRelReq_RegInit()
         Gmm_TimerStop(GMM_TIMER_PROTECT);
         g_GmmReqCnfMng.ucCnfMask &= ~GMM_AGENT_USIM_AUTHENTICATION_CNF_FLG;
     }
-    
-    
+
+
     /* 收到MMC的rel req,认为注册失败，增加注册失败的处理，与RauInit状态时收到rel_ind的处理类似 */
     g_GmmGlobalCtrl.MsgHold.ucHandleRauFlg  = GMM_FALSE;                        /* 清除标志                                 */
     g_GmmGlobalCtrl.MsgHold.ucInitiateLuFlg = GMM_FALSE;                        /* 清除标志                                 */
@@ -3078,13 +3094,13 @@ VOS_VOID NAS_GMM_RcvMmcRelReq_DeregInit()
 
 VOS_VOID NAS_GMM_RcvMmcRelReq_RauInit()
 {
-    
+
     /* 停止路由区过程中的相关定时器 */
     Gmm_TimerStop(GMM_TIMER_PROTECT_FOR_SIGNALING);
     Gmm_TimerStop(GMM_TIMER_T3330);
     Gmm_TimerStop(GMM_TIMER_T3318);
     Gmm_TimerStop(GMM_TIMER_T3320);
-    
+
     /* 收到MMC的rel req,认为注册失败，增加注册失败的处理，与RauInit状态时收到rel_ind的处理类似 */
 
     /* 完整性保护标志置为DEACTIVE */
@@ -3105,15 +3121,15 @@ VOS_VOID NAS_GMM_RcvMmcRelReq_RauInit()
     {
         g_GmmReqCnfMng.ucCnfMask &= ~GMM_RRC_RRMM_EST_CNF_FLG;                  /* 清等待响应标志                           */
     }
-        
-    Gmm_RoutingAreaUpdateAttemptCounter(NAS_MML_REG_FAIL_CAUSE_RR_CONN_ABORT);         /* 调用RAU attempt counter的处理            */    
+
+    Gmm_RoutingAreaUpdateAttemptCounter(NAS_MML_REG_FAIL_CAUSE_RR_CONN_ABORT);         /* 调用RAU attempt counter的处理            */
 
     /* free之前保存的系统消息 */
     NAS_GMM_FreeGsmSysInfo();
-    
+
     NAS_GMM_FreeWasSysInfo();
 
-    
+
     if (GMM_RAU_FOR_NORMAL != gstGmmSuspendCtrl.ucRauCause)
     {
         GMM_RauFailureInterSys();
@@ -4512,6 +4528,8 @@ VOS_VOID Gmm_RcvRrmmEstCnf(
         g_GmmGlobalCtrl.ucRelCause = RR_REL_CAUSE_CONGESTION;
         break;
     case RRC_EST_RJ_UNSPEC:
+    case RRC_EST_RJ_AIRMSG_DECODE_ERR:
+    case RRC_EST_RJ_CURR_PROTOCOL_NOT_SUPPORT:
         g_GmmGlobalCtrl.ucRelCause = RR_REL_CASUE_UNSPECIFIED;
         break;
     case RRC_EST_OTHER_ACCESS_BARRED:
@@ -4519,8 +4537,19 @@ VOS_VOID Gmm_RcvRrmmEstCnf(
                     RR_REL_CAUSE_ACCESS_BARRED_CAUSE_ACCESS_CLASS_CONTROL;
         break;
     case RRC_EST_EST_CONN_FAIL:
+    case RRC_EST_RJ_NOT_ALLOW:
+    case RRC_EST_RJ_TIME_OUT:
+    case RRC_EST_RJ_RA_RESOURCE_FAIL:
+    case RRC_EST_RJ_IMMEDIATE_ASSIGN_INVALID:
+    case RRC_EST_RJ_ACTIVE_PHISICAL_CHANNEL_FAIL:
+    case RRC_EST_RJ_FASTRETURN_LTE:
         g_GmmGlobalCtrl.ucRelCause = RR_REL_CAUSE_RR_CONNECTION_FAILURE;
         break;
+
+    case RRC_EST_RJ_SNW:
+        g_GmmGlobalCtrl.ucRelCause = RR_REL_CAUSE_RRC_SNW;
+        break;
+
     default:
         PS_LOG(WUEPS_PID_GMM, VOS_NULL, PS_PRINT_INFO, "Gmm_RcvRrmmEstCnf:INFO: The result item of RRMM_EST_CNF Msg is SUCCESS");
         break;
@@ -4578,6 +4607,9 @@ VOS_VOID Gmm_RcvRrmmEstCnf(
         }
 
         NAS_MML_SetPsSigConnStatusFlg(VOS_FALSE);
+
+        g_GmmGlobalCtrl.MsgHold.ucHandleRauFlg = GMM_FALSE;
+        g_GmmGlobalCtrl.MsgHold.ucInitiateLuFlg = GMM_FALSE;
     }
 
 
@@ -5106,14 +5138,19 @@ VOS_VOID Gmm_RcvRrmmRelInd(
 
     pRrRelInd = (RRMM_REL_IND_STRU *)pMsg;                                      /* 初始化指针                               */
 
-    if (RRC_NAS_PS_DOMAIN != pRrRelInd->ulCnDomainId)
-    {                                                                           /* 判断是PS域信息,否                        */
-        PS_LOG(WUEPS_PID_GMM, VOS_NULL, PS_PRINT_WARNING, "Gmm_RcvRrmmRelInd:WARNING: RRMM_REL_IND is not PS domain");
+    /* 如果不是PS域的，GMM丢弃不处理 */
+    /* 如果是在以下几个状态等待est_cnf，并且rel cause为RRC_REL_CAUSE_NAS_DATA_ABSENT，丢弃不处理:
+        GMM_REGISTERED_INITIATED:
+        GMM_DEREGISTERED_INITIATED:
+        GMM_ROUTING_AREA_UPDATING_INITIATED:
+        GMM_SERVICE_REQUEST_INITIATED:
+        GMM_REGISTERED_IMSI_DETACH_INITIATED:
+    */
+    if (VOS_FALSE == NAS_GMM_IsNeedProcRelInd(pRrRelInd))
+    {
         return;
     }
 
-    PS_LOG(WUEPS_PID_GMM, VOS_NULL, PS_PRINT_INFO, "Gmm_RcvRrmmRelInd:INFO: Integrity protect is ended");
-    GMM_PrintState();
 
     g_MmSubLyrShare.GmmShare.ucPsIntegrityProtect =
                                     NAS_MML_RRC_INTEGRITY_PROTECT_DEACTIVE;
@@ -5131,6 +5168,7 @@ VOS_VOID Gmm_RcvRrmmRelInd(
         (g_GmmReqCnfMng.ucCnfMask & GMM_RRC_RRMM_EST_CNF_FLG))
     {
         g_GmmReqCnfMng.ucCnfMask &= ~GMM_RRC_RRMM_EST_CNF_FLG;                  /* 清等待响应标志                           */
+        Gmm_TimerStop(GMM_TIMER_PROTECT_FOR_SIGNALING);
     }
 
     /* 如果缓存有关机事件在收到REL_IND时需要处理 */
@@ -5151,6 +5189,8 @@ VOS_VOID Gmm_RcvRrmmRelInd(
     switch(pRrRelInd->ulRelCause)
     {
     case RRC_REL_CAUSE_RR_NORM_EVENT:
+    case RRC_REL_CAUSE_CELL_UPDATE_FAIL:
+    case RRC_REL_CAUSE_T315_EXPIRED:
         g_GmmGlobalCtrl.ucRelCause = RR_REL_CAUSE_NORMAL_EVENT;
         break;
     case RRC_REL_CAUSE_RR_UNSPEC:
@@ -5603,8 +5643,10 @@ VOS_VOID Gmm_RcvRrmmRelInd_RauInit(
     /* RAU过程中收到SM请求，被缓存，如果RAU失败，判断当前是否有SM缓存请求，有则给SM发送REL消息 */
     if ((GMM_FALSE == GMM_IsCasGsmMode())
      && (GMM_MSG_HOLD_FOR_SM ==(g_GmmGlobalCtrl.MsgHold.ulMsgHoldMsk & GMM_MSG_HOLD_FOR_SM))
-     && (  (RRC_REL_CAUSE_RR_NORM_EVENT == pRrRelInd->ulRelCause)
-        || (RRC_REL_CAUSE_RR_USER_INACT == pRrRelInd->ulRelCause)))
+     && (  (RRC_REL_CAUSE_RR_NORM_EVENT     == pRrRelInd->ulRelCause)
+        || (RRC_REL_CAUSE_RR_USER_INACT     == pRrRelInd->ulRelCause)
+        || (RRC_REL_CAUSE_CELL_UPDATE_FAIL  == pRrRelInd->ulRelCause)
+        || (RRC_REL_CAUSE_T315_EXPIRED      == pRrRelInd->ulRelCause) ))
     {
         Gmm_SndSmRelInd();
     }
@@ -5688,7 +5730,10 @@ VOS_VOID Gmm_RcvRrmmRelInd_ServReqInit(
         return;
     }
 
-    if (((RRC_REL_CAUSE_RR_NORM_EVENT == pRrRelInd->ulRelCause) || (RRC_REL_CAUSE_RR_USER_INACT == pRrRelInd->ulRelCause))
+    if (((RRC_REL_CAUSE_RR_NORM_EVENT       == pRrRelInd->ulRelCause)
+      || (RRC_REL_CAUSE_RR_USER_INACT       == pRrRelInd->ulRelCause)
+      || (RRC_REL_CAUSE_CELL_UPDATE_FAIL    == pRrRelInd->ulRelCause)
+      || (RRC_REL_CAUSE_T315_EXPIRED        == pRrRelInd->ulRelCause))
      && (GMM_SERVICE_REQUEST_PAGING_RSP != g_GmmGlobalCtrl.ucSpecProc)
      && (VOS_FALSE == ulIsTestCardFlg)
      && (VOS_FALSE == ucDellRejectEnableFlg))
@@ -5786,10 +5831,15 @@ VOS_VOID Gmm_RcvRrmmRelInd_RegNmlServ(
     /* 开机注册过程中，收到SM的激活请求，注册成功后，立即在原链路上将激活请求发给
         网侧，链路被释放，此时需要通知SM链路释放消息,以重新发起 */
     if ((GMM_FALSE == GMM_IsCasGsmMode())
-     && (  (RRC_REL_CAUSE_RR_NORM_EVENT == pRrRelInd->ulRelCause)
-        || (RRC_REL_CAUSE_RR_USER_INACT == pRrRelInd->ulRelCause))
+     && (  (RRC_REL_CAUSE_RR_NORM_EVENT     == pRrRelInd->ulRelCause)
+        || (RRC_REL_CAUSE_RR_USER_INACT     == pRrRelInd->ulRelCause)
+        || (RRC_REL_CAUSE_CELL_UPDATE_FAIL  == pRrRelInd->ulRelCause)
+        || (RRC_REL_CAUSE_T315_EXPIRED      == pRrRelInd->ulRelCause))
      && (GMM_SERVICE_REQUEST_PAGING_RSP != g_GmmGlobalCtrl.ucSpecProc)
-     && (VOS_FALSE == ulIsTestCardFlg))
+     && (VOS_FALSE == ulIsTestCardFlg)
+     && (GMM_MSG_HOLD_FOR_SM
+            != (g_GmmGlobalCtrl.MsgHold.ulMsgHoldMsk &
+                                        GMM_MSG_HOLD_FOR_SM)))
     {
         Gmm_SndSmRelInd();
     }
@@ -5982,7 +6032,7 @@ VOS_VOID NAS_GMM_ProcRauHoldProcedure_RcvCoverLost(VOS_VOID)
         case GMM_SERVICE_REQUEST_DATA_CONN:
             Gmm_SndRabmReestablishCnf(GMM_RABM_SERVICEREQ_FAILURE);             /* 通知RABM结果                             */
             break;
-            
+
         case GMM_DETACH_COMBINED:
 
             if (GMM_WAIT_NULL_DETACH != g_GmmGlobalCtrl.stDetachInfo.enDetachType)
@@ -5999,9 +6049,9 @@ VOS_VOID NAS_GMM_ProcRauHoldProcedure_RcvCoverLost(VOS_VOID)
                 NAS_GMM_SndMmcMmDetachInfo();
             }
             break;
-            
+
         case GMM_DETACH_NORMAL:
-        case GMM_DETACH_NORMAL_NETMODE_CHANGE:  
+        case GMM_DETACH_NORMAL_NETMODE_CHANGE:
             if (GMM_WAIT_NULL_DETACH != g_GmmGlobalCtrl.stDetachInfo.enDetachType)
             {
                 if (GMM_WAIT_PS_DETACH == (g_GmmGlobalCtrl.stDetachInfo.enDetachType & GMM_WAIT_PS_DETACH))
@@ -6021,7 +6071,7 @@ VOS_VOID NAS_GMM_ProcRauHoldProcedure_RcvCoverLost(VOS_VOID)
                 NAS_GMM_SndMmGprsDetachComplete();
             }
             break;
-            
+
         case GMM_DETACH_WITH_IMSI:
 
             if (GMM_WAIT_NULL_DETACH != g_GmmGlobalCtrl.stDetachInfo.enDetachType)
@@ -6029,11 +6079,11 @@ VOS_VOID NAS_GMM_ProcRauHoldProcedure_RcvCoverLost(VOS_VOID)
                 NAS_GMM_SndMmcMmDetachInfo();
             }
             break;
-            
+
         default:
             break;
     }
-    
+
     g_GmmGlobalCtrl.ucFollowOnFlg  = GMM_FALSE;                                 /* 清除followon标志                         */
     NAS_MML_SetPsServiceBufferStatusFlg(VOS_FALSE);
 
@@ -6199,6 +6249,8 @@ VOS_VOID Gmm_RcvCoverLost_SuspendWaitForSys()
 {
     Gmm_TimerStop(GMM_TIMER_SUSPENDED);
 
+    Gmm_TimerStop(GMM_TIMER_HO_WAIT_SYSINFO);
+
     g_GmmRauCtrl.ucNpduCnt = 0x0;
     if (NAS_MML_NET_RAT_TYPE_WCDMA == NAS_MML_GetCurrNetRatType())
     {
@@ -6241,8 +6293,8 @@ VOS_VOID Gmm_RcvSmDataReq(
         NAS_GMM_ProcSmDataReq_RAUInit(pMsg);
         break;
     case GMM_SERVICE_REQUEST_INITIATED:
-        if ((GMM_SERVICE_REQUEST_DATA_CONN == g_GmmGlobalCtrl.ucSpecProc)
-            || (GMM_SERVICE_REQUEST_DATA_IDLE == g_GmmGlobalCtrl.ucSpecProc))
+
+        if (GMM_SERVICE_REQUEST_DATA_CONN == g_GmmGlobalCtrl.ucSpecProc)
         {
             if (GMM_TRUE == g_GmmGlobalCtrl.ucSigConFlg)
             {
@@ -6348,6 +6400,13 @@ VOS_VOID NAS_GMM_RcvSmDataReq_SuspendWaitForSysinfo(
         NAS_MML_SetPsServiceBufferStatusFlg(VOS_TRUE);
 
         g_GmmGlobalCtrl.ucSpecProcHold = GMM_SERVICE_REQUEST_SIGNALLING;
+
+
+        /* 如果等系统消息定时器在运行，则不下发RAU */
+        if (NAS_GMM_TIMER_HO_WAIT_SYSINFO_FLG == (NAS_GMM_TIMER_HO_WAIT_SYSINFO_FLG & g_GmmTimerMng.ulTimerRunMask))
+        {
+            return;
+        }
 
         Gmm_RoutingAreaUpdateInitiate(GMM_UPDATING_TYPE_INVALID);
     }
@@ -6522,6 +6581,23 @@ VOS_UINT8 NAS_GMM_GetGmmSmDataReqMsgType(NAS_MSG_STRU *pstMsg)
 }
 
 
+VOS_UINT8 NAS_GMM_IsNeedSndSmDataReqMsg_T3340Running(
+    GMMSM_DATA_REQ_MSGTYPE_ENUM_UINT32                      enMsgType
+)
+{
+    if ((SM_STATUS == enMsgType)
+     || (SM_MOD_PDP_CONTEXT_ACC_M2N == enMsgType)
+     || (SM_DEACT_PDP_CONTEXT_ACC == enMsgType))
+    {
+        return VOS_TRUE;
+    }
+
+    return VOS_FALSE;
+
+}
+
+
+
 
 VOS_VOID Gmm_RcvSmDataReq_RegNmlServ(
                                  VOS_VOID       *pMsg                           /* 指向原语的指针                           */
@@ -6533,7 +6609,7 @@ VOS_VOID Gmm_RcvSmDataReq_RegNmlServ(
     NAS_MML_NET_RAT_TYPE_ENUM_UINT8     enCurRat;
 
     VOS_UINT8                           ucIsUtranSmcNeeded;
-    
+
     ucIsUtranSmcNeeded = NAS_UTRANCTRL_IsUtranPsSmcNeeded();
 
     enCurRat  = NAS_MML_GetCurrNetRatType();
@@ -6569,14 +6645,14 @@ VOS_VOID Gmm_RcvSmDataReq_RegNmlServ(
 
         /* FDD/TDD收到完整性保护或者TDD下不需要完整性保护，也可以发起业务 */
         else if ( ( (VOS_TRUE                              == ucIsUtranSmcNeeded)
-                  && (NAS_MML_RRC_INTEGRITY_PROTECT_ACTIVE == g_MmSubLyrShare.GmmShare.ucPsIntegrityProtect) ) 
+                  && (NAS_MML_RRC_INTEGRITY_PROTECT_ACTIVE == g_MmSubLyrShare.GmmShare.ucPsIntegrityProtect) )
                || ( (NAS_MML_NET_RAT_TYPE_WCDMA            == enCurRat)
                  && (VOS_FALSE                             == ucIsUtranSmcNeeded) ) )
-        
+
         {
             /*判断T3340 是否运行 */
-            if ((GMM_TIMER_T3340_FLG == (g_GmmTimerMng.ulTimerRunMask & GMM_TIMER_T3340_FLG))
-             && (SM_STATUS != ucMsgType))
+            if ((VOS_FALSE == NAS_GMM_IsNeedSndSmDataReqMsg_T3340Running(ucMsgType))
+             && (GMM_TIMER_T3340_FLG == (g_GmmTimerMng.ulTimerRunMask & GMM_TIMER_T3340_FLG)))
             {
                 Gmm_BufferSmDataReq(pMsg);
             }
@@ -7456,11 +7532,12 @@ VOS_VOID Gmm_RcvMmcSysInfoInd_RegNmlServ(
     }
 
     /* GMM_REGISTERED_PLMN_SEARCH状态单独提取出一个函数处理 */
-    
-    else if (g_GmmGlobalCtrl.UeInfo.ucMsRadioCapSupportLteFromAs != g_GmmGlobalCtrl.UeInfo.ucMsRadioCapSupportLteFromRegReq)
+
+    else if (VOS_TRUE == NAS_GMM_IsUeInfoChangeTriggerRau())
     {
         Gmm_RoutingAreaUpdateInitiate(GMM_UPDATING_TYPE_INVALID);
     }
+
 #endif
     else if (VOS_TRUE == g_GmmServiceCtrl.ucRetrySrForRelCtrlFlg)
     {
@@ -7567,7 +7644,7 @@ VOS_VOID Gmm_RcvMmcSysInfoInd_RegNmlServ(
             }
         }
     }
-    
+
     /* GMM_REGISTERED_PLMN_SEARCH状态单独提取出一个函数处理 */
 
     else
@@ -7754,9 +7831,9 @@ VOS_VOID NAS_GMM_RcvMmcSysInfoInd_RegPlmnSrch(
         {
             return;
         }
-        
+
         Gmm_RoutingAreaUpdateInitiate(GMM_UPDATING_TYPE_INVALID);
-        
+
         g_GmmGlobalCtrl.ucSpecProcInCsTrans = GMM_NULL_PROCEDURE;
     }
 #if (FEATURE_ON == FEATURE_LTE)
@@ -7770,10 +7847,11 @@ VOS_VOID NAS_GMM_RcvMmcSysInfoInd_RegPlmnSrch(
         NAS_GMM_IsrActiveRaiNoChg_InterSys();
     }
 
-    else if (g_GmmGlobalCtrl.UeInfo.ucMsRadioCapSupportLteFromAs != g_GmmGlobalCtrl.UeInfo.ucMsRadioCapSupportLteFromRegReq)
+    else if (VOS_TRUE == NAS_GMM_IsUeInfoChangeTriggerRau())
     {
         Gmm_RoutingAreaUpdateInitiate(GMM_UPDATING_TYPE_INVALID);
     }
+
 #endif
     else if (VOS_TRUE == g_GmmServiceCtrl.ucRetrySrForRelCtrlFlg)
     {
@@ -7842,7 +7920,7 @@ VOS_VOID NAS_GMM_RcvMmcSysInfoInd_RegPlmnSrch(
             }
             else if (GMM_TRUE == g_GmmRauCtrl.ucT3311ExpiredFlg)
             {
-                Gmm_RoutingAreaUpdateInitiate(GMM_PERIODC_UPDATING);
+                Gmm_RoutingAreaUpdateInitiate(GMM_UPDATING_TYPE_INVALID);
                 g_GmmGlobalCtrl.ucSpecProcInCsTrans = GMM_NULL_PROCEDURE;
             }
             /* <==A32D12438 */
@@ -7876,7 +7954,7 @@ VOS_VOID NAS_GMM_RcvMmcSysInfoInd_RegPlmnSrch(
         {
             Gmm_RoutingAreaUpdateInitiate(GMM_PERIODC_UPDATING);
         }
-        
+
         /* T3311未超时按如下流程处理 */
         else if (GMM_FALSE == g_GmmRauCtrl.ucT3311ExpiredFlg)
         {
@@ -7988,14 +8066,14 @@ VOS_VOID NAS_GMM_RcvMmcSysInfoInd_RegPlmnSrch(
         }
         /* T3311超时在REGISTERED_PLMN_SRCH状态需要发起RAU */
         else if (GMM_TRUE == g_GmmRauCtrl.ucT3311ExpiredFlg)
-        {   
+        {
             Gmm_RoutingAreaUpdateInitiate(GMM_UPDATING_TYPE_INVALID);
         }
         else
         {
         }
     }
-   
+
     g_GmmGlobalCtrl.enServReq = GMM_SERVICE_REQ_NONE;
 
     return;                                                                     /* 返回                                     */
@@ -8059,11 +8137,11 @@ VOS_VOID Gmm_RcvMmcSysInfoInd_RegUpdtNeed(
     {
         NAS_GMM_RcvLmmTimerInfoNotify_RegLimitServ();
     }
-
-    else if (g_GmmGlobalCtrl.UeInfo.ucMsRadioCapSupportLteFromAs != g_GmmGlobalCtrl.UeInfo.ucMsRadioCapSupportLteFromRegReq)
+    else if (VOS_TRUE == NAS_GMM_IsUeInfoChangeTriggerRau())
     {
         Gmm_RoutingAreaUpdateInitiate(GMM_UPDATING_TYPE_INVALID);
     }
+
 #endif
     else
     {                                                                           /* 小区改变                                 */
@@ -8316,7 +8394,7 @@ VOS_VOID Gmm_RcvMmcSysInfoInd_RegNoCell(
 
                 /* T3311超时在REGISTERED_PLMN_SRCH状态需要发起RAU */
                 if (GMM_TRUE == g_GmmRauCtrl.ucT3311ExpiredFlg)
-                {   
+                {
                     Gmm_RoutingAreaUpdateInitiate(GMM_UPDATING_TYPE_INVALID);
                 }
                 else
@@ -8761,11 +8839,11 @@ VOS_VOID Gmm_RcvMmcSysInfoInd_SuspWaitSys(VOS_VOID* pRcvMsg,VOS_UINT8 ucRaiChgFl
         {
             NAS_GMM_RcvLmmTimerInfoNotify_RegNmlServ();
         }
-
-        else if (g_GmmGlobalCtrl.UeInfo.ucMsRadioCapSupportLteFromAs != g_GmmGlobalCtrl.UeInfo.ucMsRadioCapSupportLteFromRegReq)
+        else if (VOS_TRUE == NAS_GMM_IsUeInfoChangeTriggerRau())
         {
             Gmm_RoutingAreaUpdateInitiate(GMM_UPDATING_TYPE_INVALID);
         }
+
 #endif
         else
         {
@@ -9040,7 +9118,7 @@ VOS_VOID NAS_GMM_RcvMmCsConnectInd(
 
     if (MMGMM_CS_CONNECT_ESTING == pstMmCmServiceInd->enCsConnectStatus)
     {
-        
+
     }
     else if (MMGMM_CS_CONNECT_EXIST == pstMmCmServiceInd->enCsConnectStatus)
     {
@@ -9713,15 +9791,15 @@ VOS_VOID Gmm_RcvMmcSysInfoInd_State_Distribute(
         break;
     case GMM_REGISTERED_NORMAL_SERVICE:
     case GMM_REGISTERED_ATTEMPTING_TO_UPDATE_MM:
-    
+
         Gmm_RcvMmcSysInfoInd_RegNmlServ(pRcvMsg,
                                         ucRaiChgFlg,
                                         ucDrxLengthChgFlg,
                                         ucLaiChgFlg);
         break;
-                                        
+
     case GMM_REGISTERED_PLMN_SEARCH:
-    
+
         NAS_GMM_RcvMmcSysInfoInd_RegPlmnSrch(pRcvMsg,
                                         ucRaiChgFlg,
                                         ucDrxLengthChgFlg,
@@ -9797,6 +9875,8 @@ VOS_VOID Gmm_RcvMmcSysInfoInd(
     enCurRat = NAS_MML_GetCurrNetRatType();
     pSysInfoInd = (MMCGMM_SYS_INFO_IND_STRU *)pRcvMsg;                          /* 得到原语指针                             */
 
+    NAS_GMM_LogGmmCtxInfo();
+
     Gmm_SndSmSysInfoInd(MMCGMM_SGSN_RELEASE99_ONWARDS);
 
     /* 收到W模系统消息, 指示RABM当前系统模式, 并恢复RABM */
@@ -9805,7 +9885,8 @@ VOS_VOID Gmm_RcvMmcSysInfoInd(
                                 VOS_FALSE,
                                 VOS_TRUE);
 
-    Gmm_TimerStop(GMM_TIMER_CS_CONN_NOT_EXIST_WAIT_SYSINFO);
+    /* 停HO等待系统消息定时器 */
+    Gmm_TimerStop(GMM_TIMER_HO_WAIT_SYSINFO);
 
     g_GmmGlobalCtrl.ucRaiChgRelFlg = GMM_FALSE;
 
@@ -11447,7 +11528,7 @@ VOS_VOID GRM_Inform_Gmm()
         {
             Gmm_TimerStop(GMM_TIMER_T3314);
             Gmm_TimerStart(GMM_TIMER_T3314);
-            
+
             return;
         }
     }
@@ -11542,6 +11623,15 @@ VOS_VOID Gmm_RcvLLCInform( VOS_VOID *pMsg )
         {
             if (GMM_AGB_GPRS_READY != gstGmmCasGlobalCtrl.GmmSrvState)
             {
+                /* 下面启动T3314，停止T3312 */
+                if ( GMM_TIMER_T3312_FLG == (GMM_TIMER_T3312_FLG & g_GmmTimerMng.ulTimerRunMask) )
+                {
+                    Gmm_TimerStop(GMM_TIMER_T3312);
+
+#if (FEATURE_LTE == FEATURE_ON)
+                     NAS_GMM_SndLmmTimerInfoNotify(GMM_TIMER_T3312, GMM_LMM_TIMER_STOP);
+#endif
+                }
                 gstGmmCasGlobalCtrl.GmmSrvState = GMM_AGB_GPRS_READY;
 
 #if (FEATURE_LTE == FEATURE_ON)
@@ -11570,7 +11660,7 @@ VOS_VOID Gmm_RcvLLCInform( VOS_VOID *pMsg )
             {                                                                           /* 该timer已经启动                          */
                if(VOS_NULL_PTR != g_GmmTimerMng.aTimerInf[GMM_TIMER_T3314].hTimer)
                {
-                   
+
                    Gmm_TimerStop(GMM_TIMER_T3314);
                    Gmm_TimerStart(GMM_TIMER_T3314);
                }
@@ -11591,6 +11681,16 @@ VOS_VOID Gmm_RcvLLCInform( VOS_VOID *pMsg )
         }
         if (GMM_AGB_GPRS_READY != gstGmmCasGlobalCtrl.GmmSrvState)
         {
+
+            /* 下面启动T3314，停止T3312 */
+            if ( GMM_TIMER_T3312_FLG == (GMM_TIMER_T3312_FLG & g_GmmTimerMng.ulTimerRunMask) )
+            {
+                Gmm_TimerStop(GMM_TIMER_T3312);
+
+#if (FEATURE_LTE == FEATURE_ON)
+                 NAS_GMM_SndLmmTimerInfoNotify(GMM_TIMER_T3312, GMM_LMM_TIMER_STOP);
+#endif
+            }
             gstGmmCasGlobalCtrl.GmmSrvState = GMM_AGB_GPRS_READY;
 
 #if (FEATURE_LTE == FEATURE_ON)
@@ -11847,7 +11947,15 @@ VOS_VOID Gmm_ComCnfHandle(VOS_VOID)
     if ((GMM_SERVICE_REQUEST_DATA_IDLE   == g_GmmGlobalCtrl.ucSpecProc)
         || (GMM_SERVICE_REQUEST_DATA_CONN == g_GmmGlobalCtrl.ucSpecProc))
     {                                                                           /* 当前流程为SR_DATA                        */
-        Gmm_SndRabmReestablishCnf(GMM_RABM_SERVICEREQ_FAILURE);                 /* 通知RABM结果                             */
+        if (RR_REL_CAUSE_RRC_SNW == g_GmmGlobalCtrl.ucRelCause)
+        {
+            g_GmmGlobalCtrl.ucRelCause = RR_REL_CAUSE_NORMAL_EVENT;
+            Gmm_SndRabmReestablishCnf(GMM_RABM_SERVICEREQ_OOS);                 /* 通知RABM结果                             */
+        }
+        else
+        {
+            Gmm_SndRabmReestablishCnf(GMM_RABM_SERVICEREQ_FAILURE);                 /* 通知RABM结果                             */
+        }
     }
 
 
@@ -11927,6 +12035,7 @@ VOS_VOID Gmm_ComCnfHandle(VOS_VOID)
 
     }
 }
+
 VOS_UINT32 Gmm_GetState()
 {
     return g_GmmGlobalCtrl.ucState;
@@ -13538,6 +13647,122 @@ VOS_VOID  NAS_GMM_ClearAuthInfo(VOS_VOID)
 }
 
 
+
+VOS_UINT32  NAS_GMM_IsNeedProcRelInd(
+    RRMM_REL_IND_STRU       *pstRrRelInd
+)
+{
+
+    /* 如果不是PS域,GMM不需要处理 */
+    if (RRC_NAS_PS_DOMAIN != pstRrRelInd->ulCnDomainId)
+    {
+        return VOS_FALSE;
+    }
+
+
+    /* 如果是在以下几个状态等待est_cnf，并且rel cause为RRC_REL_CAUSE_NAS_DATA_ABSENT，丢弃不处理:
+        GMM_REGISTERED_INITIATED:
+        GMM_DEREGISTERED_INITIATED:
+        GMM_ROUTING_AREA_UPDATING_INITIATED:
+        GMM_SERVICE_REQUEST_INITIATED:
+        GMM_REGISTERED_IMSI_DETACH_INITIATED:
+    */
+
+    /* 如果GMM没在等接入层的est_cnf，需要继续处理 */
+    if (GMM_RRC_RRMM_EST_CNF_FLG !=
+        (g_GmmReqCnfMng.ucCnfMask & GMM_RRC_RRMM_EST_CNF_FLG))
+    {
+        return VOS_TRUE;
+    }
+
+    /* 如果rel cause不是RRC_REL_CAUSE_NAS_DATA_ABSENT，需要继续处理 */
+    if (RRC_REL_CAUSE_NAS_DATA_ABSENT != pstRrRelInd->ulRelCause)
+    {
+        return VOS_TRUE;
+    }
+
+    /* 状态不是init状态，需要继续处理 */
+    if ( (GMM_REGISTERED_INITIATED != g_GmmGlobalCtrl.ucState)
+      && (GMM_DEREGISTERED_INITIATED != g_GmmGlobalCtrl.ucState)
+      && (GMM_ROUTING_AREA_UPDATING_INITIATED != g_GmmGlobalCtrl.ucState)
+      && (GMM_SERVICE_REQUEST_INITIATED != g_GmmGlobalCtrl.ucState)
+      && (GMM_REGISTERED_IMSI_DETACH_INITIATED != g_GmmGlobalCtrl.ucState) )
+    {
+        return VOS_TRUE;
+    }
+
+    return VOS_FALSE;
+}
+
+
+
+#if (FEATURE_ON == FEATURE_LTE)
+VOS_VOID  NAS_GMM_RcvMmcVoiceDomainChangeNotify(
+    struct MsgCB                       *pRcvMsg
+)
+{
+    /* 相关协议章节:
+    3GPP 24008:
+    4.7.5.1 Normal and periodic routing area updating procedure
+
+    The normal routing area updating procedure is initiated:
+    ......
+    -    when the UE's usage setting or the voice domain preference for E-UTRAN change in the MS;
+    ......
+    */
+
+    NAS_MML_CONN_STATUS_INFO_STRU      *pstConnStatus = VOS_NULL_PTR;
+
+    pstConnStatus   = NAS_MML_GetConnStatus();
+
+    /* voice domain和上次发起注册时的相同，不需要再做RAU */
+    if (g_GmmGlobalCtrl.UeInfo.enVoiceDomainFromRegReq == NAS_MML_GetVoiceDomainPreference())
+    {
+        return;
+    }
+
+    /* 当前已经运行时，重新启动 */
+    if (VOS_TRUE == NAS_GMM_QryTimerStatus(GMM_TIMER_DELAY_VOICE_DOMAIN_TRIG_RAU))
+    {
+        Gmm_TimerStop(GMM_TIMER_DELAY_VOICE_DOMAIN_TRIG_RAU);
+        Gmm_TimerStart(GMM_TIMER_DELAY_VOICE_DOMAIN_TRIG_RAU);
+        return;
+    }
+
+    /* 如果存在CS业务则直接返回 */
+    if (VOS_TRUE == pstConnStatus->ucCsServiceConnStatusFlg)
+    {
+        return;
+    }
+
+    /* 如果正在发起CS业务则启动定时器，业务发起失败依靠定时器触发RAU，
+       业务发起成功定时器超时时会直接返回 */
+    if ((VOS_TRUE == NAS_MML_GetCsServiceBufferStatusFlg())
+     && (VOS_TRUE == pstConnStatus->ucCsSigConnStatusFlg))
+    {
+        Gmm_TimerStart(GMM_TIMER_DELAY_VOICE_DOMAIN_TRIG_RAU);
+
+        return;
+    }
+
+    if ((GMM_REGISTERED_NORMAL_SERVICE == g_GmmGlobalCtrl.ucState)
+     || (GMM_REGISTERED_ATTEMPTING_TO_UPDATE_MM == g_GmmGlobalCtrl.ucState))
+    {
+        Gmm_RoutingAreaUpdateInitiate(GMM_UPDATING_TYPE_INVALID);
+        return;
+    }
+
+    if ((GMM_ROUTING_AREA_UPDATING_INITIATED == g_GmmGlobalCtrl.ucState)
+     || (GMM_SERVICE_REQUEST_INITIATED == g_GmmGlobalCtrl.ucState)
+     || (GMM_REGISTERED_INITIATED == g_GmmGlobalCtrl.ucState)
+     || (GMM_REGISTERED_IMSI_DETACH_INITIATED == g_GmmGlobalCtrl.ucState))
+    {
+        Gmm_TimerStart(GMM_TIMER_DELAY_VOICE_DOMAIN_TRIG_RAU);
+    }
+
+    return;
+}
+#endif
 
 #ifdef  __cplusplus
   #if  __cplusplus

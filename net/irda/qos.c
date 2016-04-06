@@ -117,7 +117,7 @@ static __u32 max_line_capacities[10][4] = {
 	{    800,      0,      0,     0 }, /*    19200 bps */
 	{   1600,      0,      0,     0 }, /*    38400 bps */
 	{   2360,      0,      0,     0 }, /*    57600 bps */
-	{   4800,   2400,    960,   480 }, /*   115200 bps */
+	{   4800,   2400,    960,   480 },
 	{  28800,  11520,   5760,  2880 }, /*   576000 bps */
 	{  57600,  28800,  11520,  5760 }, /*  1152000 bps */
 	{ 200000, 100000,  40000, 20000 }, /*  4000000 bps */
@@ -362,11 +362,6 @@ static void irlap_adjust_qos_settings(struct qos_info *qos)
 		sysctl_min_tx_turn_time = index_value(i, min_turn_times);
 		qos->min_turn_time.value = sysctl_min_tx_turn_time;
 	}
-
-	/*
-	 * Not allowed to use a max turn time less than 500 ms if the baudrate
-	 * is less than 115200
-	 */
 	if ((qos->baud_rate.value < 115200) &&
 	    (qos->max_turn_time.value < 500))
 	{

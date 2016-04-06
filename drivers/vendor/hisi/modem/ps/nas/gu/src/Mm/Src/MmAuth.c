@@ -39,7 +39,6 @@ VOS_VOID MM_GsmAuthProc()
                16 * sizeof(VOS_UINT8)
                );
 
-    NAS_MML_SetSimCsSecurityCksn(g_MmMsgAuthReq.MmIeCKSN.ucCksn);
 
     /* 初始化 Msg 变量 */
     PS_MEM_SET(&stMsg, 0, sizeof(MM_MSG_AUTHENTICATION_RSP_STRU));
@@ -64,6 +63,8 @@ VOS_VOID MM_GsmAuthProc()
                 /* 直接将上次的 SRES 发送到网络侧 */
                 PS_MEM_CPY(stMsg.MmIeAuthRspPara.aucSgnfcntRES,
                     g_MmGlobalInfo.AuthenCtrlInfo.aucRes, 4);
+
+                NAS_MML_SetSimCsSecurityCksn(g_MmMsgAuthReq.MmIeCKSN.ucCksn);
 
                 /* 发送AUTHENTICATION RESPONSE */
                 Mm_ComMsgAuthRspSnd(&stMsg);
@@ -253,6 +254,8 @@ VOS_UINT8 MM_RcvGsmAuthenticationCnf(VOS_VOID* pMsg)
         /* 将 IK、CK 存储到全局变量中 */
         NAS_MML_SetSimCsSecurityUmtsCk(g_AgentUsimAuthCnf.aucCipheringKey);
         NAS_MML_SetSimCsSecurityUmtsIk(g_AgentUsimAuthCnf.aucIntegrityKey);
+
+        NAS_MML_SetSimCsSecurityCksn(g_MmMsgAuthReq.MmIeCKSN.ucCksn);
 
     }
 

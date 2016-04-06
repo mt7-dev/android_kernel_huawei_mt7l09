@@ -51,6 +51,15 @@ config OF_GPIO
 	def_bool y
 	depends on OF
 
+config GPIO_LOGIC
+	bool "GPIO logic name support"
+	depends on OF_GPIO
+	help
+	  This option enables support for GPIO logic name with which
+	  you can get the gpio number.The logic name is defined in
+	  the DTS and you can map it to a single gpio with the function
+	  of of_get_gpio_by_prop.
+
 config GPIO_ACPI
 	def_bool y
 	depends on ACPI
@@ -192,10 +201,16 @@ config GPIO_MXS
 
 config GPIO_PL061
 	bool "PrimeCell PL061 GPIO support"
-	depends on ARM && ARM_AMBA
+	depends on ARM_AMBA
 	select GENERIC_IRQ_CHIP
 	help
 	  Say yes here to support the PrimeCell PL061 GPIO device
+
+config GPIO_HI6402
+	bool "Hi6402 GPIO support"
+	depends on MFD_HI6402_IRQ
+	help
+	  Say yes here to support the Hi6402 GPIO device
 
 config GPIO_RECOURCE0_LOCK
 	tristate "GPIO RESOURCE LOCK"

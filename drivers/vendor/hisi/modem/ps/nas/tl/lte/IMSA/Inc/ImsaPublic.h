@@ -14,7 +14,7 @@
 #include "LPsOm.h"
 #include "ImsaImsEvent.h"
 #include "ImsParm.h"
-
+#include "ImsaLrrcInterface.h"
 
 /*****************************************************************************
   1.1 Cplusplus Announce
@@ -67,6 +67,7 @@ extern VOS_CHAR                         g_acImsaPrintBuf[IMSA_PRINT_BUFF_LEN];
 #define IMSA_AUTH_TYPE_DIGIST            (1)
 #define IMSA_AUTH_TYPE_AKA_IPSEC         (2)
 
+#define IMSA_USIM_MAX_OPID              (0x7F)
 
 #ifdef PS_ITT_PC_TEST
 #define IMSA_INFO_LOG(String) \
@@ -255,7 +256,37 @@ extern VOS_VOID IMSA_Send_Intra_Msg(VOS_VOID* pIntraMsg);
                     (pstMsg)->ulReceiverCpuId = VOS_LOCAL_CPUID;\
                     (pstMsg)->ulReceiverPid = WUEPS_PID_TAF;
 
+#define IMSA_WRITE_RNIC_MSG_HEAD(pstMsg, ulMsgID)\
+                    (pstMsg)->ulMsgId   = (ulMsgID);\
+                    (pstMsg)->ulSenderCpuId = VOS_LOCAL_CPUID;\
+                    (pstMsg)->ulSenderPid = PS_PID_IMSA;\
+                    (pstMsg)->ulReceiverCpuId = VOS_LOCAL_CPUID;\
+                    (pstMsg)->ulReceiverPid = ACPU_PID_RNIC;
 
+/*封装写LRRC消息头的宏*/
+#define IMSA_WRITE_LRRC_MSG_HEAD(pstMsg, ulMsgID,ulLen)\
+                    (pstMsg)->stMsgHeader.ulMsgName   = (ulMsgID);\
+                    (pstMsg)->stMsgHeader.ulSenderCpuId = VOS_LOCAL_CPUID;\
+                    (pstMsg)->stMsgHeader.ulSenderPid = PS_PID_IMSA;\
+                    (pstMsg)->stMsgHeader.ulReceiverCpuId = VOS_LOCAL_CPUID;\
+                    (pstMsg)->stMsgHeader.ulReceiverPid = PS_PID_ERRC;\
+                    (pstMsg)->stMsgHeader.ulLength      = (ulLen - VOS_MSG_HEAD_LENGTH);
+#define IMSA_WRITE_ERRLOG_HEADER_INFO(pstHeader, ModemId, AlmId, AlmLevel, ulSlice, ulLength) \
+                    (pstHeader)->ulMsgModuleId     = OM_ERR_LOG_MOUDLE_ID_IMSA; \
+                    (pstHeader)->usModemId         = ModemId; \
+                    (pstHeader)->usAlmId           = AlmId; \
+                    (pstHeader)->usAlmLevel        = AlmLevel; \
+                    (pstHeader)->usAlmType         = IMSA_ERR_LOG_ALARM_TYPE_COMMUNICATION; \
+                    (pstHeader)->usAlmLowSlice     = ulSlice; \
+                    (pstHeader)->usAlmHighSlice    = 0; \
+                    (pstHeader)->ulAlmLength       = ulLength;
+
+#define IMSA_WRITE_OM_MSG_HEAD(pstMsg, ulMsgID)\
+                    (pstMsg)->ulMsgId   = (ulMsgID);\
+                    (pstMsg)->ulSenderCpuId = VOS_LOCAL_CPUID;\
+                    (pstMsg)->ulSenderPid = PS_PID_IMSA;\
+                    (pstMsg)->ulReceiverCpuId = VOS_LOCAL_CPUID;\
+                    (pstMsg)->ulReceiverPid = ACPU_PID_OM;
 /*****************************************************************************
   3 Massage Declare
 *****************************************************************************/
@@ -275,7 +306,7 @@ enum IMSA_TIMER_ID_ENUM
 {
     TI_IMSA_START_OR_STOP               = 0x0000,           /* 开关机定时器 */
     TI_IMSA_PERIOD_TRY_IMS_SRV          = 0x0001,           /* 周期性尝试IMS服务定时器 */
-    TI_IMSA_PERIOD_TRY_IMS_EMC_SRV          = 0x0002,           /* 周期性尝试紧急IMS服务定时器 */
+    /* delete PeriodImsEmcSrvTryTimer */
 
     TI_IMSA_SIP_SIGAL_PDP_ORIG          = 0x0100,           /* SIP信令承载拨号定时器 */
     TI_IMSA_SIP_SIGAL_PDP_END           = 0x0101,           /* SIP信令承载去拨号定时器 */
@@ -283,14 +314,15 @@ enum IMSA_TIMER_ID_ENUM
 
     TI_IMSA_REG_PROTECT                 = 0x0200,           /* 注册模块的保护定时器 */
     TI_IMSA_REG_RETRY                   = 0x0201,           /* 注册模块的重试定时器 */
-
+    TI_IMSA_REG_PERIOD_TRY              = 0x0202,           /* 注册模块的周期尝试IMS注册定时器 */
     TI_IMSA_CALL_PROTECT                = 0x0300,           /* 呼叫模块的保护定时器 */
     TI_IMSA_CALL_RES_READY              = 0x0301,           /* 呼叫模块等待资源预留结果定时器 */
     TI_IMSA_CALL_DTMF_DURATION          = 0x0302,           /* 呼叫模块dtmf持续时长定时器 */
     TI_IMSA_CALL_DTMF_PROTECT           = 0x0303,           /* 呼叫模块dtmf保护定时器 */
     TI_IMSA_CALL_REDIAL_MAX_TIME        = 0x0304,           /* 呼叫模块重播最大时长定时器 */
     TI_IMSA_CALL_REDIAL_INTERVEL        = 0x0305,           /* 呼叫模块重播间隔定时器 */
-
+    TI_IMSA_CALL_NORMAL_TCALL           = 0x0306,           /* NORMAL Tcall定时器*/
+    TI_IMSA_CALL_EMC_TCALL              = 0x0307,           /* EMC Tcall定时器 */
     TI_IMSA_SMS_TR1M                    = 0x0400,           /* 短信TR1M定时器 */
     TI_IMSA_SMS_TR2M                    = 0x0401,           /* 短信TR2M定时器 */
     TI_IMSA_SMS_TRAM                    = 0x0402,           /* 短信TRAM定时器 */
@@ -300,6 +332,8 @@ enum IMSA_TIMER_ID_ENUM
 
     TI_IMSA_USSD_WAIT_NET_RSP           = 0x0600,           /*USSD等待网侧响应定时器*/
     TI_IMSA_USSD_WAIT_APP_RSP           = 0x0601,           /*USSD等待上层响应定时器*/
+
+    TI_IMSA_HIFI_ACK_PROTECT            = 0x0701,           /*HIFI数据包回执保护定时器*/
 
     IMSA_TIMER_ID_BUTT
 };
@@ -350,6 +384,14 @@ typedef VOS_UINT32 IMSA_SIP_NW_ERROR_CAUSE_ENUM_UINT32;
 /*****************************************************************************
   5 STRUCT
 *****************************************************************************/
+#if (FEATURE_ON == FEATURE_PTM)
+
+typedef struct
+{
+    IMSA_ERR_LOG_ALM_ID_ENUM_UINT16         enAlmID;        /* 异常模块ID */
+    VOS_UINT16                              usLogLevel;     /* 上报log等级 */
+}IMSA_ERR_LOG_ALM_LEVEL_STRU;
+#endif
 
 typedef struct
 {
@@ -378,6 +420,7 @@ typedef struct
 /*****************************************************************************
   7 Extern Global Variable
 *****************************************************************************/
+extern VOS_UINT32   g_ulImsaNotifyRrcVoLteCallStartFlag;
 
 /*****************************************************************************
   8 Fuction Extern
@@ -397,10 +440,16 @@ extern VOS_VOID IMSA_GetRemainTimeLen
 extern VOS_UINT32 IMSA_AllocImsOpId(VOS_VOID);
 extern VOS_VOID   IMSA_ResetImsOpId(VOS_VOID);
 extern VOS_UINT32 IMSA_GetImsOpId(VOS_VOID);
+extern VOS_VOID IMSA_SaveRcvImsNormOpid(VOS_UINT32 ulImsOpid);
 
-extern VOS_VOID IMSA_SaveRcvImsOpid(VOS_UINT32 ulImsOpid);
+extern VOS_UINT32 IMSA_GetRcvImsNormOpid(VOS_VOID);
 
-extern VOS_UINT32 IMSA_GetRcvImsOpid(VOS_VOID);
+extern VOS_VOID IMSA_SaveRcvImsEmcOpid(VOS_UINT32 ulImsOpid);
+
+extern VOS_UINT32 IMSA_GetRcvImsEmcOpid(VOS_VOID);
+extern VOS_UINT8 IMSA_AllocUsimOpId(VOS_VOID);
+extern VOS_VOID IMSA_ResetUsimOpId(VOS_VOID);
+extern VOS_UINT8 IMSA_GetUsimOpId(VOS_VOID);
 
 extern VOS_VOID IMSA_ProcIsimStatusInd(const VOS_VOID *pRcvMsg);
 extern VOS_VOID IMSA_ProcIsimRefreshInd(const VOS_VOID *pRcvMsg);
@@ -535,6 +584,9 @@ extern VOS_VOID IMSA_ConfigCodeInfo2Ims( VOS_VOID );
 extern VOS_VOID IMSA_ConfigSsConfInfo2Ims( VOS_VOID );
 extern VOS_VOID IMSA_ConfigSecurityInfo2Ims( VOS_VOID );
 
+extern VOS_VOID IMSA_ConfigMediaParmInfo2Ims( VOS_VOID );
+
+
 extern VOS_VOID IMSA_ConfigSipPort2Ims( VOS_VOID );
 extern VOS_VOID IMSA_ConverterSipPort2Ims
 (
@@ -552,6 +604,50 @@ extern VOS_UINT32 IMSA_IsRegParaAvailable
     VOS_CHAR                        *pacUeAddr,
     VOS_CHAR                        *pacPcscfAddr
 );
+
+extern VOS_UINT32 IMSA_IsImsExist(VOS_VOID);
+
+extern VOS_UINT32 IMSA_IsCurrentAccessTypeSupportIms(VOS_VOID);
+
+#if (FEATURE_ON == FEATURE_PTM)
+
+extern VOS_VOID IMSA_InitErrLogInfo(VOS_VOID);
+extern IMSA_ERR_LOG_CALL_STATUS_ENUM_UINT8 IMSA_CallImsaState2ErrlogState(IMSA_CALL_STATUS_ENUM_UINT8 enImsaState);
+extern VOS_UINT16 IMSA_GetErrLogAlmLevel(IMSA_ERR_LOG_ALM_ID_ENUM_UINT16 enAlmId);
+
+extern VOS_UINT32 IMSA_IsErrLogNeedRecord(VOS_UINT16 usLevel);
+
+extern VOS_UINT32 IMSA_GetErrLogRingBufContent
+(
+    VOS_CHAR                           *pbuffer,
+    VOS_UINT32                          ulbytes
+);
+extern VOS_UINT32 IMSA_GetErrLogRingBufferUseBytes(VOS_VOID);
+extern VOS_VOID IMSA_CleanErrLogRingBuf(VOS_VOID);
+extern VOS_UINT32 IMSA_PutErrLogRingBuf
+(
+    VOS_CHAR                           *pbuffer,
+    VOS_UINT32                          ulbytes
+);
+extern IMSA_ERR_LOG_PS_SERVICE_STATUS_ENUM_UINT8 IMSA_PsSerStates2ErrlogPsStates
+(
+    IMSA_PS_SERVICE_STATUS_ENUM_UINT8 enImsaPsStates
+);
+extern IMSA_ERR_LOG_PDN_CONN_STATUS_ENUM_UINT8 IMSA_ConnState2ErrlogConnState(IMSA_CONN_STATUS_ENUM_UINT8 enImsaConnState);
+extern IMSA_ERR_LOG_VOPS_STATUS_ENUM_UINT8 IMSA_VoPsState2ErrlogVoPsState(IMSA_IMS_VOPS_STATUS_ENUM_UINT8 enImsaImsVoPsStatus);
+extern IMSA_ERR_LOG_MPTY_STATE_ENUM_UINT8 IMSA_CallImsaMpty2ErrlogMpty(MN_CALL_MPTY_STATE_ENUM_UINT8 enImsaMpty);
+extern IMSA_ERR_LOG_REG_STATUS_ENUM_UINT8 IMSA_RegState2ErrlogState(IMSA_REG_STAUTS_ENUM_UINT8 enImsaRegState);
+extern IMSA_ERR_LOG_REGISTER_REASON_ENUM_UINT8 IMSA_RegAddrType2ErrlogRegReason(IMSA_REG_ADDR_PARAM_ENUM_UINT32 enImsaRegAddr);
+
+extern VOS_VOID IMSA_ConverterErrlogCtrlInfo2Ims
+(
+    IMSA_IMS_INPUT_EVENT_STRU                   *pstImsaImsInputEvt
+);
+extern VOS_VOID IMSA_ConfigErrlogCtrlInfo2Ims( VOS_VOID );
+
+#endif
+extern VOS_VOID IMSA_SndRrcVolteStatusNotify(IMSA_LRRC_VOLTE_STATUS_ENUM_UINT8  enVolteStatus);
+
 /*****************************************************************************
   9 OTHERS
 *****************************************************************************/

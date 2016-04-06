@@ -40,7 +40,6 @@
 
 struct efuse_data{
 	struct regulator_bulk_data regu_burning;
-	struct mutex	lock;
 };
 
 static struct efuse_data g_efuse_data;
@@ -90,7 +89,7 @@ static void __iomem *EFC_BASE = NULL;
 
 #define EFUSEC_APB_PGM_DISABLE_MASK	(1<<0)
 
-#define EFUSE_OP_TIMEOUT_COUNT	0x20
+#define EFUSE_OP_TIMEOUT_COUNT	0x10
 #define EFUSE_OP_TIMEOUT		50
 
 #define SCPERCTRL0(r)			(r+0x200)
@@ -109,7 +108,7 @@ static void __iomem *EFC_BASE = NULL;
 *  (EFUSEC_COUNT<<2)*Trefclk>120ns,11us<PGM_COUNT*Trefclk+EFUSEC_COUNT*Trefclk<13us,
 *  其中EFUSEC_COUNT>=3
 */
-#define EFUSE_COUNT_CFG     5
+#define EFUSE_COUNT_CFG     20
 #define PGM_COUNT_CFG       0x500
 
 static inline void efusec_enable_clk(void)
@@ -229,7 +228,7 @@ int bsp_efuse_write(const unsigned int* buf,
 	unsigned int loop_count = EFUSE_OP_TIMEOUT_COUNT;
 	unsigned int read_buf[64] = {0};
 
-	pr_info("%s Enter.(NO TZDRIVER)\n", __func__);
+	pr_info("%s enter.(NO TZDRIVER)\n", __func__);
 
 	/* 入参判断 */
 	if (NULL == curr_value) {
@@ -245,9 +244,6 @@ int bsp_efuse_write(const unsigned int* buf,
 		"size: %d, group: %d\n", size, group_index);
 		return ERROR;
 	}
-
-	/* efuse加锁 */
-	mutex_lock(&g_efuse_data.lock);
 
 	/* 使能软件通路 */
 	writel(SYS_EFUSE_SOFT_SEL, SCEFUSECTRL(SCTRL_BASE));
@@ -286,9 +282,9 @@ int bsp_efuse_write(const unsigned int* buf,
 	writel((readl(EFUSEC_CFG(EFC_BASE)) | EFUSEC_PRE_PG),  EFUSEC_CFG(EFC_BASE));
 	loop_count = EFUSE_OP_TIMEOUT_COUNT;
 	while (0 == (readl(EFUSEC_STATUS(EFC_BASE)) & EFUSEC_PGENAB_STATUS_MASK)) {
-		pr_warning("(Prefire)Current pgenab status is not finished.\n");
+		pr_warning("Current pgenab status is not finished.\n");
 		if (0 == loop_count--) {
-			pr_err("(Prefire)time out, current pgenab status is not finished.\n");
+			pr_err("time out, current pgenab status is not finished.\n");
 			result = ERROR_PRE_WRITE;
 			goto end2;
 		}
@@ -325,7 +321,7 @@ int bsp_efuse_write(const unsigned int* buf,
 			}
 			udelay(EFUSE_OP_TIMEOUT);
 		}
-		pr_info("group:%d, write:0x%x, time:%d us! (count %d/%d)\n", group_index, *curr_value, 500+EFUSE_OP_TIMEOUT*(EFUSE_OP_TIMEOUT_COUNT-loop_count), loop_count, EFUSE_OP_TIMEOUT_COUNT);
+
 		pr_debug("Current pg status is finished, then write next group.\n");
 
 		/* 烧写下一组 */
@@ -338,28 +334,23 @@ end2:
 
 	/* 修改efuse默认的仲裁为AIB */
 	writel(readl(EFUSEC_CFG(EFC_BASE)) & (~EFUSEC_APB_SIG_SEL), EFUSEC_CFG(EFC_BASE));
-
 end1:
-	/* 给eFuse控制器下电 */
-	efuse_power_down();
-
-	/* efuse解锁 */
-	mutex_unlock(&g_efuse_data.lock);
-
-	/* 将修改的内容更新到efuse镜像中 */
-	if (OK != bsp_efuse_read(read_buf, group, size)) {
-		pr_err("bsp_efuse_read(after write) failed!\n" );
-	}
-
-	/* 配置remap为1, 之后的读数据是从eFuse镜像中获得 */
-	writel(SCPERCTRL0_REMAP_EN, SCPERCTRL0((SCTRL_BASE)));
 
 	if (OK != result) {
-		pr_err("bsp_efuse_write failed!\n" );
 		display_regtable();
 	}
 
-	pr_info("%s Exit.(NO TZDRIVER)\n", __func__);
+	result = bsp_efuse_read(read_buf, group, size);
+
+	if (OK != result) {
+		pr_err("bsp_efuse_read failed!\n" );
+	}
+
+	/* 配置remap为1, 读数据是从eFuse镜像中获得 */
+	writel(SCPERCTRL0_REMAP_EN, SCPERCTRL0((SCTRL_BASE)));
+
+	/* 给eFuse控制器下电 */
+	efuse_power_down();
 
 	return result;
 }
@@ -387,7 +378,7 @@ int bsp_efuse_read(unsigned int* buf,
 	unsigned int count = 0;
 	unsigned int loop_count = EFUSE_OP_TIMEOUT_COUNT;
 
-	pr_info("%s Enter.(NO TZDRIVER)\n", __func__);
+	pr_info("%s Enter.((NO TZDRIVER))", __func__);
 
 	/* 入参判断 */
 	if (NULL == buf) {
@@ -403,9 +394,6 @@ int bsp_efuse_read(unsigned int* buf,
 		return ERROR;
 	}
 
-	/* efuse加锁 */
-	mutex_lock(&g_efuse_data.lock);
-
 	/* 使能软件通路 */
 	writel(SYS_EFUSE_SOFT_SEL, SCEFUSECTRL(SCTRL_BASE));
 
@@ -418,6 +406,7 @@ int bsp_efuse_read(unsigned int* buf,
 		result = ERROR_EXIT_PD;
 		goto end1;
 	}
+
 
 	/* 选择efuse信号为apb操作efuse */
 	writel(readl(EFUSEC_CFG(EFC_BASE)) | EFUSEC_APB_SIG_SEL, EFUSEC_CFG(EFC_BASE));
@@ -444,7 +433,6 @@ int bsp_efuse_read(unsigned int* buf,
 			}
 			udelay(EFUSE_OP_TIMEOUT);
 		}
-		pr_info("group:%d, read time:%d us!(count %d/%d)\n", group + count, 10+EFUSE_OP_TIMEOUT*(EFUSE_OP_TIMEOUT_COUNT-loop_count), loop_count, EFUSE_OP_TIMEOUT_COUNT);
 		pr_debug("Current efc read operation is finished, then read next group.\n");
 
 		/* 读取数据 */
@@ -456,15 +444,9 @@ end2:
 	writel(readl(EFUSEC_CFG(EFC_BASE)) & (~EFUSEC_APB_SIG_SEL), EFUSEC_CFG(EFC_BASE));
 end1:
 
-	/* efuse解锁 */
-	mutex_unlock(&g_efuse_data.lock);
-
 	if (OK != result) {
 		display_regtable();
 	}
-
-	pr_info("%s Exit.(NO TZDRIVER)\n", __func__);
-
 	return result;
 }
 EXPORT_SYMBOL_GPL(bsp_efuse_read);
@@ -507,10 +489,6 @@ int bsp_efuse_write(const unsigned int* buf,
 		return ERROR;
 	}
 
-	pr_info("%s Enter.(WHIT TZDRIVER)\n", __func__);
-
-	mutex_lock(&g_efuse_data.lock);
-
 	result = TEEK_InitializeContext(
 			               NULL,
 			               &context);
@@ -538,7 +516,6 @@ int bsp_efuse_write(const unsigned int* buf,
 	}
 	TEEC_Info("succeed to open session.\n");
 
-	memset(&operation, 0, sizeof(operation));
 	operation.started = 1;
 	operation.paramTypes = TEEC_PARAM_TYPES(
 						TEEC_VALUE_INPUT,
@@ -568,10 +545,6 @@ int bsp_efuse_write(const unsigned int* buf,
 error2:
 	TEEK_FinalizeContext(&context);
 error1:
-
-	mutex_unlock(&g_efuse_data.lock);
-
-	pr_info("%s Exit.(WHIT TZDRIVER)\n", __func__);
 	return result;
 }
 EXPORT_SYMBOL_GPL(bsp_efuse_write);
@@ -616,10 +589,6 @@ int bsp_efuse_read(unsigned int* buf,
 		return ERROR;
 	}
 
-	pr_info("%s Enter.(WHIT TZDRIVER)\n", __func__);
-
-	mutex_lock(&g_efuse_data.lock);
-
 	result = TEEK_InitializeContext(
 					NULL,
 					&context);
@@ -647,7 +616,6 @@ int bsp_efuse_read(unsigned int* buf,
 	}
 	TEEC_Info("succeed to open session.\n");
 
-	memset(&operation, 0, sizeof(operation));
 	operation.started = 1;
 	operation.paramTypes = TEEC_PARAM_TYPES(
 						TEEC_VALUE_INPUT,
@@ -678,365 +646,55 @@ int bsp_efuse_read(unsigned int* buf,
 error2:
 	TEEK_FinalizeContext(&context);
 error1:
-	mutex_unlock(&g_efuse_data.lock);
-
-	pr_info("%s Exit.(WHIT TZDRIVER)\n", __func__);
-
 	return result;
 }
 EXPORT_SYMBOL_GPL(bsp_efuse_read);
 #endif
 
-int efuse_test(void);
-int efuse_test01(int group, u32 efuse_write);
-int efuse_test02(void);
-int efuse_test03(int group);
-int efuse_test04(int loop);
-
-#define	HISI_EFUSE_TEST01		0x3000
-#define	HISI_EFUSE_TEST02		0x3001
-#define	HISI_EFUSE_TEST03		0x3002
-#define	HISI_EFUSE_TEST04		0x3003
-#define	HISI_EFUSE_QTEST		0x3004
-
-/******************************************************************************
-Function:	efuse_test
-Description:	eFuse模块读、写快速测试，方便在adb shell中通过ecall调用
-Procedure:
-		1、选取一组efuse
-		2、依次写入整数2^n-1(n为1至32)，并读取校对
-		3、如果目标efuse组已经有数据，则校对时做按位或处理
-		4、如果目标efuse组原来的数据为0xffffffff，则efuse_test会提示无法测试写入功能
-Remark:
-		1、efuse写入后将无法恢复!!!
-		2、不能将2022、2023、2024 bit配置为1,防止使HUK、SCP及DFT认证密码等数据APB不可读；
-		3、不能将2016bit配置为1，防止APB和AIB不能烧写；
-		4、不能烧写第27组(Reserved)
-Return:		OK:测试成功  ERROR码:测试失败
-******************************************************************************/
 int efuse_test(void)
 {
-	const u32 base = 0xffffffff;
-	const int group = 57;
-	u32 value = 0;
-	u32 read_org = 0;
-	u32 read = 0;
-	int pos;
-	int ret = 0;
+	u32 efuse_buf[64] = {0};
+	u32 efuse_write[64] = {0};
+	u32 i;
+	uint8_t *p_efuse_write = (uint8_t *)(efuse_write);
 
-	pr_info("[%s] efuse(group:%d) quick test begin!\n", __func__, group);
+	memset((void *)p_efuse_write, 0x5a, 2*4);
 
-	if ((group < 0) || (group >= EFUSEC_GROUP_MAX_COUNT)) {
-		pr_err("[%s]:Group %d is error! (Expected 0 to %d)\n", __func__, group, EFUSEC_GROUP_MAX_COUNT-1);
-		ret = -1;
-		goto fail_test;
-	}
-
-	if (OK != bsp_efuse_read(&read_org, group, 1)) {
-		pr_err("[%s]:bsp_efuse_read orgdata failed!\n", __func__);
-		ret = -1;
-		goto fail_test;
-	} else {
-		if (0xffffffff == read_org) {
-			pr_info("[%s] Warnning:Org value of group %d is 0xffffffff, so efuse_test connot verify bsp_efuse_write function!\n", __func__, group);
-		} else {
-			pr_info("[%s]:Org value of group %d is 0x%x!\n", __func__, group, read_org);
+	if (OK == bsp_efuse_read(efuse_buf, 36, 2)) {
+		pr_info("read efuse before write!\n");
+		for(i = 0; i < 2; i++) {
+			pr_info("efuse_buf[%d]=%x\n", i, efuse_buf[i]);
 		}
 	}
+	else {
+		pr_err("Failed to read efuse.\n");
+	}
 
-	for (pos = 1; pos <= 32; pos++) {
-		/* prepare write data */
-		value = ~(base<<pos);
-		/* pr_info("Write Group:%d, Value:0x%x\n", group, value); */
 
-		if (OK != bsp_efuse_write(&value, group, 1)) {
-			pr_err("[%s] Group %d bsp_efuse_write 0x%x failed!\n", __func__, group, value);
-			ret = -1;
-			goto fail_test;
-		}
+	if (OK == bsp_efuse_write(efuse_write, 36, 2)) {
+		pr_info("efuse write : efuse_write[0]=%x,efuse_write[1]=%x\n",
+						efuse_write[0], efuse_write[1]);
+	}
+	else {
+		pr_err("Failed to write efuse.\n");
+	}
 
-		if (OK != bsp_efuse_read(&read, group, 1)) {
-			pr_err("[%s]: Group %d bsp_efuse_read after write failed!\n", __func__, group);
-			ret = -1;
-			goto fail_test;
-		}
-
-		if ((value | read_org) != read) {
-			pr_err("[%s]:Group %d Verify Fialed!(org_data:0x%x, write:0x%x, read:0x%x)\n", __func__, group, read_org, value, read);
-			ret = -1;
-			goto fail_test;
-		} else {
-			pr_info("[%s]:Group %d W/R 0x%x Test Passed!\n", __func__, group, value);
+	if (OK == bsp_efuse_read(efuse_buf, 36, 2)) {
+		pr_info("read efuse after write!\n");
+		for(i = 0; i < 2; i++) {
+			pr_info("efuse_buf[%d]=%x\n", i, efuse_buf[i]);
 		}
 	}
-
-	if (0xffffffff == read_org) {
-		pr_info("[%s] efuse quick test finished! efuse_read function passed, but cannot verify efuse_write function!\n", __func__);
-	} else {
-		pr_info("[%s] efuse quick test passed!\n", __func__);
+	else {
+		pr_err("Failed to read efuse.\n");
 	}
 
-	return ret;
-
-fail_test:
-	pr_info("[%s] efuse quick test failed!\n", __func__);
-
-	return ret;
-}
-
-/******************************************************************************
-Function:	efuse_test01
-Description:	eFuse单组读写测试
-Procedure:
-		1、选取一组efuse，读取数据为data1
-		2、将指定数据data2写入该组
-		3、读取该组数据为data3
-		4、校对data3是否等于data1|data2
-Parameter:
-		group:读写测试efuse组
-		efuse_write:写入数据
-Remark:
-		1、efuse写入后将无法恢复!!!
-		2、不能将2022、2023、2024 bit配置为1,防止使HUK、SCP及DFT认证密码等数据APB不可读；
-		3、不能将2016bit配置为1，防止APB和AIB不能烧写；
-		4、不能烧写第27组(Reserved)
-Return:		OK:测试成功  ERROR码:测试失败
-******************************************************************************/
-int efuse_test01(int group, u32 efuse_write)
-{
-	u32 efuse_read1;
-	u32 efuse_read2;
-	int ret = 0;
-
-	pr_info("[%s] Efuse W/R TEST begin. Group:%d, WriteData:0x%x.\n", __func__, group, efuse_write);
-
-	if (OK == bsp_efuse_read(&efuse_read1, group, 1)) {
-		pr_info("[%s]efuse_read1: 0x%x.\n", __func__, efuse_read1);
-	} else {
-		pr_err("[%s]Failed to read group %d before writting!\n", __func__, group);
-		ret = -1;
-		goto fail_test01;
-	}
-
-	if (OK == bsp_efuse_write(&efuse_write, group, 1)) {
-		pr_info("[%s]efuse write:0x%x.\n", __func__, efuse_write);
-	} else {
-		pr_err("[%s]Failed to write group %d.\n", __func__, group);
-		ret = -1;
-		goto fail_test01;
-	}
-
-	if (OK == bsp_efuse_read(&efuse_read2, group, 1)) {
-		pr_info("[%s]efuse_read2: 0x%x.\n", __func__, efuse_read2);
-	} else {
-		pr_err("[%s]Failed to read group %d after writting!\n", __func__, group);
-		ret = -1;
-		goto fail_test01;
-	}
-
-	if (efuse_read2 != (efuse_read1 | efuse_write)){
-		pr_err("[%s] Group %d verify Failed!(org:0x%x,write0x%x,read0x%x)\n",\
-			__func__, group, efuse_read1, efuse_write, efuse_read2);
-		ret = -1;
-		goto fail_test01;
-	}
-
-	pr_info("[%s] Efuse W/R TEST Success!\n", __func__);
-
-	return ret;
-
-fail_test01:
-	pr_err("[%s] Efuse W/R TEST Failed!\n", __func__);
-	return ret;
-}
-
-/******************************************************************************
-Function:	efuse_test02
-Description:	eFuse 整体读写测试
-Procedure:
-		1、按照eFuse烧写流程烧group(0~26)，烧写值分别取0xAAAAAAAA;
-		2、按照eFuse烧写流程烧group 27，烧写值取0x00000000；
-		3、按照eFuse烧写流程烧group(28~62)，烧写值分别取0xAAAAAAAA;
-		4、按照eFuse烧写流程烧group 63，烧写值取0x00000000；
-		5、烧写完成后按照eFuse读流程回读数据，查看回读数据是否和烧写数据是否一致；
-
-Remark:
-		1、efuse写入后将无法恢复!!!
-		2、不能将2022、2023、2024 bit配置为1,防止使HUK、SCP及DFT认证密码等数据APB不可读；
-		3、不能将2016bit配置为1，防止APB和AIB不能烧写；
-		4、不能烧写第27组(Reserved)
-Return:		OK:测试成功  ERROR码:测试失败
-******************************************************************************/
-int efuse_test02(void)
-{
-	const u32 TEST_VALUE = 0xAAAAAAAA;
-	const u32 GROUP_27_VALUE = 0x00000000;
-	const u32 GROUP_63_VALUE = 0x00000000;
-
-	u32 uiGroupWrBuf[EFUSEC_GROUP_MAX_COUNT] = {0};
-	u32 uiGroupRdBuf[EFUSEC_GROUP_MAX_COUNT] = {0};
-	int i = 0;
-
-	pr_info("[%s] Efuse Integrate Test Begin!\n", __func__);
-
-	if (OK != bsp_efuse_read(uiGroupWrBuf, 0, EFUSEC_GROUP_MAX_COUNT)) {
-		pr_err("[%s]:First bsp_efuse_read failed!\n", __func__);
+	pr_debug("efuse_buf[1]=%x,efuse_buf[2]=%x\n", efuse_buf[1], efuse_buf[2]);
+	if (memcmp((void *)(efuse_write), (void *)(efuse_buf), 4)) {
+		pr_err("efuse_test failed.\n");
 		return ERROR;
 	}
-
-	pr_info("[%s]efuse read 1:\n", __func__);
-	for (i = 0; i < EFUSEC_GROUP_MAX_COUNT; i++) {
-		pr_info("%d:0x%x\n", i, uiGroupWrBuf[i]);
-	}
-
-	for (i = 0; i < EFUSEC_GROUP_MAX_COUNT; i++) {
-		uiGroupWrBuf[i] |= TEST_VALUE;
-	}
-	uiGroupWrBuf[27] = GROUP_27_VALUE;
-	uiGroupWrBuf[63] = GROUP_63_VALUE;
-
-	pr_info("efuse set:\n");
-	for (i = 0; i < EFUSEC_GROUP_MAX_COUNT; i++) {
-		pr_info("%d:0x%x\n", i, uiGroupWrBuf[i]);
-	}
-/*
-	if (OK != bsp_efuse_write(uiGroupWrBuf, 0, EFUSEC_GROUP_MAX_COUNT)) {
-		pr_err("[%s]:bsp_efuse_write failed!\n", __func__);
-		return ERROR;
-	}
-*/
-	if (OK != bsp_efuse_read(uiGroupRdBuf, 0, EFUSEC_GROUP_MAX_COUNT)) {
-		pr_err("[%s]:Second bsp_efuse_read failed!\n", __func__);
-		return ERROR;
-	}
-
-	pr_info("efuse read 2:\n");
-	for (i=0; i<EFUSEC_GROUP_MAX_COUNT; i++) {
-		pr_info("%d:0x%x\n", i, uiGroupRdBuf[i]);
-	}
-
-	if (0 == memcmp(uiGroupWrBuf, uiGroupRdBuf, sizeof(u32)*EFUSEC_GROUP_MAX_COUNT)) {
-		pr_info("[%s] Efuse Integrate Test Success!\n", __func__);
-		return OK;
-	} else {
-		pr_info("[%s] Efuse Integrate Test Failed!\n", __func__);
-		return ERROR;
-	}
-}
-
-/******************************************************************************
-Function:	efuse_test03
-Description:	eFuse 单组读写压力测试
-Procedure:
-		1、选取一组非零efuse
-		2、依次写入整数2^n-1(n为1至32)，并读取校对
-		3、该测试能够覆盖efuse写入数据时的所有情况
-Remark:
-		1、efuse写入后将无法恢复!!!
-		2、不能将2022、2023、2024 bit配置为1,防止使HUK、SCP及DFT认证密码等数据APB不可读；
-		3、不能将2016bit配置为1，防止APB和AIB不能烧写；
-		4、不能烧写第27组(Reserved)
-Return:		OK:测试成功  ERROR码:测试失败
-******************************************************************************/
-int efuse_test03(int group)
-{
-	const u32 base = 0xffffffff;
-	u32 value = 0;
-	u32 read = 0;
-	int pos;
-	int ret = 0;
-
-	pr_info("[%s] Efuse(group:%d) W/R Pressure TEST Begin!\n", __func__, group);
-
-	if (group < 0 || group >= EFUSEC_GROUP_MAX_COUNT) {
-		pr_err("[%s]:Group %d is error! (Expected 0 to %d)\n", __func__, group, EFUSEC_GROUP_MAX_COUNT-1);
-		ret = -1;
-		goto fail_verify_group;
-	}
-
-	if (OK != bsp_efuse_read(&read, group, 1)) {
-		pr_err("[%s]:bsp_efuse_read failed!\n", __func__);
-		ret = -1;
-		goto fail_verify_orgdata;
-	} else {
-		if(read != 0) {
-			pr_err("[%s]:Value of group %d is not zero but 0x%x!\n", __func__, group, read);
-			ret = -1;
-			goto fail_verify_orgdata;
-		}
-	}
-
-	for (pos = 1; pos <= 32; pos++) {
-		/* prepare write data */
-		value = ~(base<<pos);
-		/* pr_info("[%s]:Write Group:%d, Value:0x%x\n", __func__, group, value); */
-
-		if (OK != bsp_efuse_write(&value, group, 1)) {
-			pr_err("[%s]:bsp_efuse_write failed!(group:%d, vaule:0x%x)\n", __func__, group, value);
-			ret = -1;
-			goto fail_test;
-		}
-
-		if (OK != bsp_efuse_read(&read, group, 1)) {
-			pr_err("[%s]:bsp_efuse_read failed!(group:%d)\n", __func__, group);
-			ret = -1;
-			goto fail_test;
-		}
-
-		if (value != read) {
-			pr_err("[%s]:Verify Group %d Fialed! Write:0x%x,Read:0x%x\n", __func__, group, value, read);
-			ret = -1;
-			goto fail_test;
-		} else {
-			pr_err("[%s]:Group %d R/W 0x%x Pass!\n", __func__, group, value);
-		}
-	}
-
-	pr_info("[%s] Efuse(group:%d) W/R Pressure TEST Success!\n", __func__, group);
-
-	return ret;
-
-fail_test:
-fail_verify_orgdata:
-fail_verify_group:
-	pr_info("[%s] Efuse(group:%d) W/R Pressure TEST Failed!\n", __func__, group);
-	return ret;
-}
-
-/******************************************************************************
-Function:	efuse_test04
-Description:	eFuse 整体读写压力测试
-Procedure:
-		1、按照eFuse烧写流程烧group(0~26)，烧写值分别取0xAAAAAAAA;
-		2、按照eFuse烧写流程烧group 27，烧写值取0x00000000；
-		3、按照eFuse烧写流程烧group(28~62)，烧写值分别取0xAAAAAAAA;
-		4、按照eFuse烧写流程烧group 63，烧写值取0x00000000；
-		5、烧写完成后按照eFuse读流程回读数据，查看回读数据是否和烧写数据是否一致；
-		6、循环执行1至5步骤
-
-Remark:
-		1、efuse写入后将无法恢复!!!
-		2、不能将2022、2023、2024 bit配置为1,防止使HUK、SCP及DFT认证密码等数据APB不可读；
-		3、不能将2016bit配置为1，防止APB和AIB不能烧写；
-		4、不能烧写第27组(Reserved)
-Return:		OK:测试成功  ERROR码:测试失败
-******************************************************************************/
-int efuse_test04(int loop)
-{
-	int i=0;
-
-	pr_info("[%s] Efuse Integrate Pressure Test Begin!\n", __func__);
-
-	for (i=0; i<loop; i++) {
-		if (OK == efuse_test02()) {
-			pr_info("[%s] %d%% Finished!\n", __func__, (i+1)*100/loop);
-		} else {
-			pr_info("[%s] Efuse Integrate Pressure Test Failed! %d%% Finished!\n", __func__, i*100/loop);
-			return ERROR;
-		}
-	}
-
-	pr_info("[%s] Efuse Integrate Pressure Test Passed!\n", __func__);
+	pr_info("efuse_test ok.\n");
 	return OK;
 }
 
@@ -1052,8 +710,6 @@ static long efusec_ioctl(struct file *file, u_int cmd, u_long arg)
 	int ret = OK;
 	void __user *argp = (void __user *)arg;
 	unsigned char efuse_read_buf[256] = {0};
-
-	u32 test_data[2];
 
 	switch (cmd) {
 	case HISI_EFUSE_READ_CHIPID:
@@ -1080,66 +736,8 @@ static long efusec_ioctl(struct file *file, u_int cmd, u_long arg)
 			ret = -EFAULT;
 
 		break;
-	case HISI_EFUSE_TEST01:
-		if (copy_from_user(test_data, argp, 8)) {
-			ret = -EFAULT;
-			break;
-		}
-		pr_debug("group(test_data[0]):%d, write_value(test_data[1]):%d\n", test_data[0], test_data[1]);
-
-		ret = efuse_test01(test_data[0], test_data[1]);
-		if (ret) {
-			pr_err("[%s]:efuse_test01 failed!\n", __func__);
-		} else {
-			pr_info("[%s]:efuse_test01 passed!\n", __func__);
-		}
-		break;
-	case HISI_EFUSE_TEST02:
-		ret = efuse_test02();
-		if (ret) {
-			pr_err("[%s]:efuse_test02 failed!\n", __func__);
-		} else {
-			pr_info("[%s]:efuse_test02 passed!\n", __func__);
-		}
-		break;
-	case HISI_EFUSE_TEST03:
-		if (copy_from_user(test_data, argp, 4)) {
-			ret = -EFAULT;
-			break;
-		}
-		pr_debug("group(test_data[0]):%d\n", test_data[0]);
-
-		ret = efuse_test03(test_data[0]);
-		if (ret) {
-			pr_err("[%s]:efuse_test03 failed!\n", __func__);
-		} else {
-			pr_info("[%s]:efuse_test03 passed!\n", __func__);
-		}
-		break;
-	case HISI_EFUSE_TEST04:
-		if (copy_from_user(test_data, argp, 4)) {
-			ret = -EFAULT;
-			break;
-		}
-		pr_debug("loop count(test_data[0]):%d\n", test_data[0]);
-
-		ret = efuse_test04(test_data[0]);
-		if (ret) {
-			pr_err("[%s]:efuse_test04 failed!\n", __func__);
-		} else {
-			pr_info("[%s]:efuse_test04 passed!\n", __func__);
-		}
-		break;
-	case HISI_EFUSE_QTEST:
-		ret = efuse_test();
-		if (ret) {
-			pr_err("[%s]:efuse_test failed!\n", __func__);
-		} else {
-			pr_info("[%s]:efuse_test passed!\n", __func__);
-		}
-		break;
 	default:
-		pr_err("[EFUSE][%s] Unknow command:%d!\n", __func__, cmd);
+		pr_err("[EFUSE][%s] Unknow command!\n", __func__);
 		ret = -ENOTTY;
 		break;
 	}
@@ -1198,26 +796,25 @@ static int __init hisi_efusec_init(void)
 		goto error1;
 	}
 
-	pdevice = device_create(efuse_class, NULL, MKDEV(major,0), NULL, EFUSE_DEV_NAME);
-	if (IS_ERR(pdevice)) {
+	pdevice = device_create(efuse_class,NULL,MKDEV(major,0),NULL,EFUSE_DEV_NAME);
+	if (IS_ERR(pdevice)){
 		ret = -EFAULT;
 		pr_err("hisi efuse: device_create error.\n");
 		goto error2;
 	}
-	pr_info("efuse init\n");
+	pr_info("efuse init");
 
 	pdevice->of_node = np;
 	g_efuse_data.regu_burning.supply = "efuse-burning";
 
 	ret = regulator_bulk_get(pdevice , 1, &g_efuse_data.regu_burning);
 	if (ret) {
-		dev_err(pdevice, "couldn't get efuse-burning regulator %d\n\r", ret);
+		dev_err(pdevice, "couldn't get efuse-burning regulator %d\n\r",ret);
 		goto error3;
-	} else {
+	}
+	else {
 		pr_info("get efuse-burning regulator success!\n");
 	}
-
-	mutex_init(&g_efuse_data.lock);
 
 	return ret;
 error3:
@@ -1231,7 +828,7 @@ error1:
 	return ret;
 }
 
-rootfs_initcall(hisi_efusec_init);
+late_initcall(hisi_efusec_init);
 
 MODULE_DESCRIPTION("Hisilicon efusec driver");
 MODULE_AUTHOR("chenya99@huawei.com");

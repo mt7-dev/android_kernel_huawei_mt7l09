@@ -856,7 +856,8 @@ VOS_VOID  NAS_EMM_MmSendCsfbSerPaingInd
 }
 VOS_VOID  NAS_EMM_MmSendCsfbSerEndInd
 (
-    MM_LMM_CSFB_SERVICE_RSLT_ENUM_UINT32     enCsfbSrvRslt
+    MM_LMM_CSFB_SERVICE_RSLT_ENUM_UINT32     enCsfbSrvRslt,
+    NAS_EMM_CN_CAUSE_ENUM_UINT8              ucEMMCnCause
 )
 {
     LMM_MM_CSFB_SERVICE_END_IND_STRU   *pstMmCsfbSerEndInd = VOS_NULL_PTR;
@@ -891,6 +892,8 @@ VOS_VOID  NAS_EMM_MmSendCsfbSerEndInd
     pstMmCsfbSerEndInd->ulOpId     = NAS_EMM_OPID_MM;
 
     pstMmCsfbSerEndInd->enCsfbSrvRslt = enCsfbSrvRslt;
+
+    pstMmCsfbSerEndInd->ulCnCause = ucEMMCnCause;
 
     /* 发送DOPRA消息 */
     NAS_LMM_SendLmmMmcMsg((VOS_VOID*)pstMmCsfbSerEndInd);
@@ -968,6 +971,10 @@ VOS_VOID  NAS_EMM_EmcPndReqSerAbnormalCommProc
 
     /*向MMC发送本地LMM_MMC_DETACH_IND消息*/
     NAS_EMM_MmcSendDetIndLocal( MMC_LMM_L_LOCAL_DETACH_OTHERS);
+
+    #if (FEATURE_PTM == FEATURE_ON)
+    NAS_EMM_LocalDetachErrRecord(EMM_ERR_LOG_LOCAL_DETACH_TYPE_OTHER);
+    #endif
 
     /* 记录ATTACH触发原因值 */
     NAS_EMM_GLO_AD_GetAttCau() = EMM_ATTACH_CAUSE_ESM_ATTACH_FOR_INIT_EMC_BERER;

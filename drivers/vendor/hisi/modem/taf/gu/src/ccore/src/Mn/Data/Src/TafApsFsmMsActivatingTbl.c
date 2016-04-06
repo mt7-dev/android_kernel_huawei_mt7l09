@@ -200,6 +200,13 @@ TAF_ACT_STRU   g_astTafApsMsActivatingSubStaWaitSmActivateCnfSuspendActTbl[]   =
     TAF_ACT_TBL_ITEM(VOS_PID_TIMER,
                      TI_TAF_APS_MS_ACTIVATING,
                      TAF_APS_RcvTiMsActivatingExpired_MsActivating_WaitSmActivateCnfSuspend),
+
+    TAF_ACT_TBL_ITEM(WUEPS_PID_SM,
+                     ID_SMREG_PDP_ACTIVATE_CNF,
+                     TAF_APS_RcvSmPdpActCnf_MsActivating_WaitSmActivateCnfSuspend),
+    TAF_ACT_TBL_ITEM(WUEPS_PID_TAF,
+                     ID_MSG_TAF_PS_APS_INTERNAL_PDP_DEACTIVATE_REQ,
+                     TAF_APS_RcvApsInterPdpDeactivateReq_MsActivating_WaitSmActivateCnfSuspend),
 };
 
 /* TAF_APS_MS_ACTIVATING_SUBSTA_WAIT_SNDCP_ACTIVATE_RSP¶¯×÷±í */
@@ -300,6 +307,10 @@ TAF_ACT_STRU   g_astTafApsMsActivatingSubStaWaitSndcpActivateRspSuspendActTbl[] 
     TAF_ACT_TBL_ITEM(VOS_PID_TIMER,
                      TI_TAF_APS_MS_ACTIVATING,
                      TAF_APS_RcvTiMsActivatingExpired_MsActivating_WaitSndcpActivateRspSuspend),
+
+    TAF_ACT_TBL_ITEM(UEPS_PID_SN,
+                     APS_SN_ACT_RSP_MSG_TYPE,
+                     TAF_APS_RcvSndcpActivateRsp_MsActivating_WaitSndcpActivateRspSuspend),
 };
 
 #if (FEATURE_ON == FEATURE_LTE)

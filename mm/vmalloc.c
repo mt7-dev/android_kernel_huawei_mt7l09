@@ -31,6 +31,9 @@
 #include <asm/uaccess.h>
 #include <asm/tlbflush.h>
 #include <asm/shmparam.h>
+#ifdef CONFIG_SRECORDER
+#include <linux/srecorder.h>
+#endif
 
 struct vfree_deferred {
 	struct llist_head list;
@@ -282,7 +285,6 @@ static unsigned long cached_align;
 
 static unsigned long vmap_area_pcpu_hole;
 
-/* DTS2013031107868 qidechun 2013-03-11 begin */ 
 #ifdef CONFIG_DUMP_SYS_INFO
 unsigned long get_vmap_area_lock(void)
 {
@@ -296,7 +298,6 @@ unsigned long get_vmap_area_list(void)
 }
 EXPORT_SYMBOL(get_vmap_area_list);
 #endif
-/* DTS2013031107868 qidechun 2013-03-11 end */ 
 
 static struct vmap_area *__find_vmap_area(unsigned long addr)
 {
@@ -404,12 +405,12 @@ nocache:
 		addr = ALIGN(first->va_end, align);
 		if (addr < vstart)
 			goto nocache;
-		if (addr + size < addr)
+                if ((addr + size < addr) || (addr < first->va_end))
 			goto overflow;
 
 	} else {
 		addr = ALIGN(vstart, align);
-		if (addr + size < addr)
+                if ((addr + size < addr) || (addr < vstart))
 			goto overflow;
 
 		n = vmap_area_root.rb_node;
@@ -436,7 +437,7 @@ nocache:
 		if (addr + cached_hole_size < first->va_start)
 			cached_hole_size = first->va_start - addr;
 		addr = ALIGN(first->va_end, align);
-		if (addr + size < addr)
+                if ((addr + size < addr) || (addr < first->va_end))
 			goto overflow;
 
 		if (list_is_last(&first->list, &vmap_area_list))
@@ -453,11 +454,23 @@ found:
 	va->va_start = addr;
 	va->va_end = addr + size;
 	va->flags = 0;
+
+	va->tid = current->pid;
+	strncpy(va->thread_name, current->comm, sizeof(va->thread_name));
+	va->thread_name[sizeof(va->thread_name) - 1] = 0;
+
+	va->tgid = current->tgid;
+	va->process_name[0] = 0;
+	if (current->group_leader) {
+		strncpy(va->process_name, current->group_leader->comm, sizeof(va->process_name));
+		va->process_name[sizeof(va->process_name) - 1] = 0;
+	}
+
 	__insert_vmap_area(va);
 	free_vmap_cache = &va->rb_node;
 	spin_unlock(&vmap_area_lock);
 
-	BUG_ON(va->va_start & (align-1));
+      BUG_ON(va->va_start & (align-1));
 	BUG_ON(va->va_start < vstart);
 	BUG_ON(va->va_end > vend);
 
@@ -926,7 +939,6 @@ static void *vb_alloc(unsigned long size, gfp_t gfp_mask)
 	struct vmap_block *vb;
 	unsigned long addr = 0;
 	unsigned int order;
-	int purge = 0;
 
 	BUG_ON(size & ~PAGE_MASK);
 	BUG_ON(size > PAGE_SIZE*VMAP_MAX_ALLOC);
@@ -950,17 +962,7 @@ again:
 		if (vb->free < 1UL << order)
 			goto next;
 
-		i = bitmap_find_free_region(vb->alloc_map,
-						VMAP_BBMAP_BITS, order);
-
-		if (i < 0) {
-			if (vb->free + vb->dirty == VMAP_BBMAP_BITS) {
-				/* fragmented and no outstanding allocations */
-				BUG_ON(vb->dirty != VMAP_BBMAP_BITS);
-				purge = 1;
-			}
-			goto next;
-		}
+		i = VMAP_BBMAP_BITS - vb->free;
 		addr = vb->va->va_start + (i << PAGE_SHIFT);
 		BUG_ON(addr_to_vb_idx(addr) !=
 				addr_to_vb_idx(vb->va->va_start));
@@ -975,9 +977,6 @@ again:
 next:
 		spin_unlock(&vb->lock);
 	}
-
-	if (purge)
-		purge_fragmented_blocks_thiscpu();
 
 	put_cpu_var(vmap_block_queue);
 	rcu_read_unlock();
@@ -1526,7 +1525,7 @@ static void __vunmap(const void *addr, int deallocate_pages)
 	kfree(area);
 	return;
 }
- 
+
 /**
  *	vfree  -  release memory allocated by vmalloc()
  *	@addr:		memory base address
@@ -1540,7 +1539,7 @@ static void __vunmap(const void *addr, int deallocate_pages)
  *	conventions for vfree() arch-depenedent would be a really bad idea)
  *
  *	NOTE: assumes that the object at *addr has a size >= sizeof(llist_node)
- *	
+ *
  */
 void vfree(const void *addr)
 {
@@ -1570,60 +1569,12 @@ EXPORT_SYMBOL(vfree);
  */
 void vunmap(const void *addr)
 {
-	BUG_ON(in_interrupt());
+	/*BUG_ON(in_interrupt());*/
 	might_sleep();
 	if (addr)
 		__vunmap(addr, 0);
 }
 EXPORT_SYMBOL(vunmap);
-
-#ifdef CONFIG_HISI_RDR
-#include <linux/syscalls.h>
-#include <linux/uaccess.h>
-#include <linux/unistd.h>
-void rdr_vm_tracer(unsigned long size)
-{
-	char c[32], x[32];
-	int i, fd, cnt = 1, j;
-	mm_segment_t old_fs;
-	pr_info("rdr:vmalloc %luM bytes failed, info:\n", size / SZ_1M);
-	old_fs = get_fs();
-	set_fs(KERNEL_DS);
-	fd = sys_open("/proc/vmallocinfo", O_RDONLY, 0);
-	if (fd < 0) {
-		pr_err("rdr:open vmalloc failed\n");
-		set_fs(old_fs);
-		return;
-	}
-	while (cnt > 0) {
-		memset(c, 0, sizeof(c));
-		cnt = sys_read(fd, c, 32);
-		if (cnt == 0) {
-			pr_info("\nrdr:read vmallocinfo end\n");
-			sys_close(fd);
-			set_fs(old_fs);
-			return;
-		}
-		memset(x, 0, sizeof(x));
-		i = 0;
-		j = 0;
-		while (i < (sizeof(c) - 3)) {
-			if ((c[i] == 0x68) && (c[i + 1] == 0x32) &&
-			(c[i + 2] == 0xd2) && (c[i + 3] == 0xc0)) {
-				i += 4;
-				continue;
-			} else {
-				x[j] = c[i];
-				i++;
-				j++;
-			}
-		}
-		printk(KERN_INFO "%s", x);
-	}
-	sys_close(fd);
-	set_fs(old_fs);
-}
-#endif
 
 /**
  *	vmap  -  map an array of pages into virtually contiguous space
@@ -1643,24 +1594,19 @@ void *vmap(struct page **pages, unsigned int count,
 	might_sleep();
 
 	if (count > totalram_pages)
-		goto out;
+		return NULL;
 
 	area = get_vm_area_caller((count << PAGE_SHIFT), flags,
 					__builtin_return_address(0));
 	if (!area)
-		goto out;
+		return NULL;
 
 	if (map_vm_area(area, prot, &pages)) {
 		vunmap(area->addr);
-		goto out;
+		return NULL;
 	}
 
 	return area->addr;
-out:
-#ifdef CONFIG_HISI_RDR
-	rdr_vm_tracer(count * PAGE_SIZE);
-#endif
-	return NULL;
 }
 EXPORT_SYMBOL(vmap);
 
@@ -1829,14 +1775,8 @@ static inline void *__vmalloc_node_flags(unsigned long size,
  */
 void *vmalloc(unsigned long size)
 {
-	void *p = __vmalloc_node_flags(size, NUMA_NO_NODE,
+	return __vmalloc_node_flags(size, NUMA_NO_NODE,
 				    GFP_KERNEL | __GFP_HIGHMEM);
-#ifdef CONFIG_HISI_RDR
-	if (p == NULL)
-		rdr_vm_tracer(size);
-#endif
-
-	return p;
 }
 EXPORT_SYMBOL(vmalloc);
 
@@ -2692,9 +2632,11 @@ static int s_show(struct seq_file *m, void *p)
 		return 0;
 
 	if (!(va->flags & VM_VM_AREA)) {
-		seq_printf(m, "0x%pK-0x%pK %7ld vm_map_ram\n",
+		seq_printf(m, "0x%pK-0x%pK %7ld vm_map_ram",
 			(void *)va->va_start, (void *)va->va_end,
 					va->va_end - va->va_start);
+		seq_printf(m, " (tid=%d name=%s pid=%d name=%s)", va->tid, va->thread_name, va->tgid, va->process_name);
+		seq_putc(m, '\n');
 		return 0;
 	}
 
@@ -2726,6 +2668,8 @@ static int s_show(struct seq_file *m, void *p)
 
 	if (v->flags & VM_VPAGES)
 		seq_printf(m, " vpages");
+
+	seq_printf(m, " (tid=%d name=%s pid=%d name=%s)", va->tid, va->thread_name, va->tgid, va->process_name);
 
 	show_numa_info(m, v);
 	seq_putc(m, '\n');
@@ -2772,7 +2716,7 @@ static int __init proc_vmalloc_init(void)
 }
 module_init(proc_vmalloc_init);
 
-void get_vmalloc_info(struct vmalloc_info *vmi)
+void get_vmalloc_info_filtered(struct vmalloc_info *vmi, unsigned long flags)
 {
 	struct vmap_area *va;
 	unsigned long free_area_size;
@@ -2804,6 +2748,9 @@ void get_vmalloc_info(struct vmalloc_info *vmi)
 		if (va->flags & (VM_LAZY_FREE | VM_LAZY_FREEING))
 			continue;
 
+		if (flags != 0xFFFFFFFFUL && (!(va->flags & VM_VM_AREA) || va->vm->flags != flags))
+			continue; // largest_chunk will be useless when filtering with flags
+
 		vmi->used += (va->va_end - va->va_start);
 
 		free_area_size = addr - prev_end;
@@ -2818,6 +2765,11 @@ void get_vmalloc_info(struct vmalloc_info *vmi)
 
 out:
 	spin_unlock(&vmap_area_lock);
+}
+
+void get_vmalloc_info(struct vmalloc_info *vmi)
+{
+	get_vmalloc_info_filtered(vmi, 0xFFFFFFFFUL);
 }
 #endif
 

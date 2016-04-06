@@ -47,9 +47,9 @@
 #define logi(fmt, ...)
 #endif
 
-#define logw(fmt, ...) pr_warn(LOG_TAG"[W]:%s:%d: "fmt, __FUNCTION__, __LINE__, ##__VA_ARGS__)
+#define logw(fmt, ...) pr_warn(LOG_TAG"[W]:%s:%d: "fmt, __FUNCTION__, __LINE__, ##__VA_ARGS__);
 
-#define loge(fmt, ...) pr_err(LOG_TAG"[E]:%s:%d: "fmt, __FUNCTION__, __LINE__, ##__VA_ARGS__)
+#define loge(fmt, ...) pr_err(LOG_TAG"[E]:%s:%d: "fmt, __FUNCTION__, __LINE__, ##__VA_ARGS__);
 
 #define IN_FUNCTION   logd("in\n");
 #define OUT_FUNCTION  logd("out\n");

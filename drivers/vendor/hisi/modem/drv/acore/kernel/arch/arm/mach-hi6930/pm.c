@@ -282,6 +282,7 @@ static int __init balong_pm_init(void)
     u32 ret;
     NV_ID_DRV_ENUM nv_id;
     u32 pm_code_begin,pm_code_size;
+    
     nv_id = NV_ID_DRV_NV_PWC_SWITCH;
     ret = bsp_nvm_read(nv_id, (u8 *)(&g_nv_pwc_switch), sizeof(ST_PWC_SWITCH_STRU));
     if(ret!=0)
@@ -325,6 +326,7 @@ static int __init balong_pm_init(void)
 void debug_balong_pm_init(void)
 {
     u32 pm_code_begin,pm_code_size;
+    
     pm_ctrl_info.deepsleep_nv = 1;
 
     pm_asm_gic_flag = pm_ctrl_info.gic_flag; /* flag for pm_asm_sleep.s */

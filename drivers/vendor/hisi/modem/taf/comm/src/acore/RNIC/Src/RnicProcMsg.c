@@ -17,6 +17,9 @@
 #include "RnicDebug.h"
 
 #include "AcpuReset.h"
+
+#include "ImsaRnicInterface.h"
+
 #if (FEATURE_ON == FEATURE_CL_INTERWORK)
 #include "SdioInterface.h"
 #endif
@@ -1093,7 +1096,143 @@ VOS_UINT32 RNIC_RcvCcpuResetStartInd(
     return VOS_OK;
 }
 
+#if (FEATURE_ON == FEATURE_IMS)
 
+VOS_UINT32 RNIC_RcvImsaPdnActInd(
+    MsgBlock                           *pstMsg
+)
+{
+    IMSA_RNIC_PDN_ACT_IND_STRU         *pstRcvInd;
+    RNIC_PDP_CTX_STRU                  *pstPdpAddr;
+    RNIC_SPEC_CTX_STRU                 *pstSpecNetCardCtx;
+    VOS_UINT8                           ucRabid;
+    VOS_UINT8                           ucRmNetId;
+
+    pstRcvInd                           = (IMSA_RNIC_PDN_ACT_IND_STRU *)pstMsg;
+
+    /* 指定一张专门的网卡用于VT视频数据传输 */
+    ucRmNetId                           = RNIC_RM_NET_ID_VT;
+
+    /* 获取PDP上下文地址 */
+    pstPdpAddr                          = RNIC_GetPdpCtxAddr(ucRmNetId);
+    pstSpecNetCardCtx                   = RNIC_GetSpecNetCardCtxAddr(ucRmNetId);
+    ucRabid                             = RNIC_RAB_ID_INVALID;
+
+    /* 根据modem id和网卡id，填充Rabid */
+    if (VOS_OK != RNIC_BuildRabIdByModemId(pstSpecNetCardCtx->enModemId,
+                                           pstRcvInd->stPdnInfo.ucRabId,
+                                           &ucRabid))
+    {
+        RNIC_INFO_LOG1(ACPU_PID_RNIC, "RNIC_RcvImsaPdnActInd, modemId:%d", pstSpecNetCardCtx->enModemId);
+        return VOS_ERR;
+    }
+
+    /* 存储RABID对应的网卡ID */
+    if (VOS_OK != RNIC_SaveNetIdByRabId(pstSpecNetCardCtx->enModemId,
+                                        pstRcvInd->stPdnInfo.ucRabId,
+                                        ucRmNetId))
+    {
+        RNIC_INFO_LOG1(ACPU_PID_RNIC, "RNIC_RcvImsaPdnActInd, RabId:%d", pstRcvInd->stPdnInfo.ucRabId);
+        return VOS_ERR;
+    }
+
+    pstSpecNetCardCtx->enModemType        = RNIC_MODEM_TYPE_INSIDE;
+
+    /* 更新PDP上下文信息 */
+
+    /* IPV4激活 */
+    if (VOS_TRUE == pstRcvInd->stPdnInfo.bitOpIpv4PdnInfo)
+    {
+        pstPdpAddr->stIpv4PdpInfo.enRegStatus = RNIC_PDP_REG_STATUS_ACTIVE;
+        pstPdpAddr->stIpv4PdpInfo.ucRabId     = pstRcvInd->stPdnInfo.ucRabId;
+    }
+
+    /* IPV6激活 */
+    if (VOS_TRUE == pstRcvInd->stPdnInfo.bitOpIpv6PdnInfo)
+    {
+        pstPdpAddr->stIpv6PdpInfo.enRegStatus = RNIC_PDP_REG_STATUS_ACTIVE;
+        pstPdpAddr->stIpv6PdpInfo.ucRabId     = pstRcvInd->stPdnInfo.ucRabId;
+    }
+
+    /* IPV4V6激活 */
+    if (VOS_TRUE == (pstRcvInd->stPdnInfo.bitOpIpv4PdnInfo & pstRcvInd->stPdnInfo.bitOpIpv6PdnInfo))
+    {
+        pstPdpAddr->stIpv4v6PdpInfo.enRegStatus = RNIC_PDP_REG_STATUS_ACTIVE;
+        pstPdpAddr->stIpv4v6PdpInfo.ucRabId     = pstRcvInd->stPdnInfo.ucRabId;
+    }
+
+    /* 注册下行发送函数，ADS调用注册的函数发送下行数据 */
+    ADS_DL_RegDlDataCallback(ucRabid, (RCV_DL_DATA_FUNC)RNIC_RcvAdsDlData);
+
+    return VOS_OK;
+}
+VOS_UINT32 RNIC_RcvImsaPdnDeactInd(
+    MsgBlock                           *pstMsg
+)
+{
+    IMSA_RNIC_PDN_DEACT_IND_STRU       *pstRcvInd;
+    RNIC_PDP_CTX_STRU                  *pstPdpCtxAddr;
+    RNIC_UL_CTX_STRU                   *pstUlCtxAddr;
+    RNIC_DL_CTX_STRU                   *pstDlCtxAddr;
+    RNIC_SPEC_CTX_STRU                 *pstSpecNetCardCtx;
+    VOS_UINT8                           ucRmNetId;
+
+    pstRcvInd                           = (IMSA_RNIC_PDN_DEACT_IND_STRU *)pstMsg;
+
+    /* 指定一张专门的网卡用于VT视频数据传输 */
+    ucRmNetId                           = RNIC_RM_NET_ID_VT;
+
+    /* 获取PDP上下文地址 */
+    pstPdpCtxAddr                       = RNIC_GetPdpCtxAddr(ucRmNetId);
+    pstSpecNetCardCtx                   = RNIC_GetSpecNetCardCtxAddr(ucRmNetId);
+
+    /* 获取上下行上下文地址 */
+    pstUlCtxAddr                        = RNIC_GetUlCtxAddr(ucRmNetId);
+    pstDlCtxAddr                        = RNIC_GetDlCtxAddr(ucRmNetId);
+
+    /* 如果是IPV4 PDP去激活 */
+    if ((pstPdpCtxAddr->stIpv4PdpInfo.ucRabId == pstRcvInd->ucRabId)
+     && (RNIC_PDP_REG_STATUS_ACTIVE == pstPdpCtxAddr->stIpv4PdpInfo.enRegStatus))
+    {
+        /* 清空IPV4 PDP上下文信息 */
+        RNIC_InitIpv4PdpCtx(&pstPdpCtxAddr->stIpv4PdpInfo);
+    }
+
+    if ((pstPdpCtxAddr->stIpv6PdpInfo.ucRabId == pstRcvInd->ucRabId)
+     && (RNIC_PDP_REG_STATUS_ACTIVE == pstPdpCtxAddr->stIpv6PdpInfo.enRegStatus))
+    {
+        /* 清空IPV6 PDP上下文信息 */
+        RNIC_InitIpv6PdpCtx(&pstPdpCtxAddr->stIpv6PdpInfo);
+    }
+
+    if ((pstPdpCtxAddr->stIpv4v6PdpInfo.ucRabId == pstRcvInd->ucRabId)
+     && (RNIC_PDP_REG_STATUS_ACTIVE == pstPdpCtxAddr->stIpv4v6PdpInfo.enRegStatus))
+    {
+        /* 清空IPV4V6 PDP上下文信息 */
+        RNIC_InitIpv4v6PdpCtx(&pstPdpCtxAddr->stIpv4v6PdpInfo, ucRmNetId);
+    }
+
+    /* 该网卡上面PDP都去激活的时候，清空该网卡的上下文信息 */
+    if ((RNIC_PDP_REG_STATUS_ACTIVE != pstPdpCtxAddr->stIpv4PdpInfo.enRegStatus)
+     && (RNIC_PDP_REG_STATUS_ACTIVE != pstPdpCtxAddr->stIpv6PdpInfo.enRegStatus)
+     && (RNIC_PDP_REG_STATUS_ACTIVE != pstPdpCtxAddr->stIpv4v6PdpInfo.enRegStatus))
+    {
+        RNIC_InitUlCtx(pstUlCtxAddr);
+        RNIC_InitDlCtx(pstDlCtxAddr);
+        pstSpecNetCardCtx->enModemType = RNIC_MODEM_TYPE_INSIDE;
+    }
+
+    /* 清除RABID对应的网卡ID */
+    if (VOS_OK != RNIC_SaveNetIdByRabId(pstSpecNetCardCtx->enModemId,
+                                        pstRcvInd->ucRabId,
+                                        RNIC_RM_NET_ID_BUTT))
+    {
+        return VOS_ERR;
+    }
+
+    return VOS_OK;
+}
+#endif
 VOS_VOID RNIC_ProcInsideModemIpv4ActInd(
     RNIC_RMNET_CONFIG_REQ_STRU         *pstPdpStatusInd
 )
@@ -1895,6 +2034,34 @@ VOS_UINT32 RNIC_RcvRnicMsg(MsgBlock *pstMsg)
 
     return VOS_OK;
 }
+
+#if (FEATURE_ON == FEATURE_IMS)
+VOS_UINT32 RNIC_RcvImsaMsg(MsgBlock *pstMsg)
+{
+    MSG_HEADER_STRU                    *pstMsgHeader;
+
+    pstMsgHeader = (MSG_HEADER_STRU *)pstMsg;
+
+    switch(pstMsgHeader->ulMsgName)
+    {
+        case ID_IMSA_RNIC_PDN_ACT_IND:
+            RNIC_RcvImsaPdnActInd(pstMsg);
+            break;
+
+        case ID_IMSA_RNIC_PDN_DEACT_IND:
+            RNIC_RcvImsaPdnDeactInd(pstMsg);
+            break;
+
+        default:
+            RNIC_NORMAL_LOG1(ACPU_PID_RNIC, "RNIC_RcvImsaMsg: rcv error msg id %d\r\n", pstMsgHeader->ulMsgName);
+            break;
+    }
+
+    return VOS_OK;
+}
+#endif
+
+
 VOS_UINT32 RNIC_ProcMsg (MsgBlock *pstMsg)
 {
     if (VOS_NULL_PTR == pstMsg)
@@ -1924,6 +2091,13 @@ VOS_UINT32 RNIC_ProcMsg (MsgBlock *pstMsg)
             RNIC_RcvRnicMsg(pstMsg);
             break;
 
+#if (FEATURE_ON == FEATURE_IMS)
+        case PS_PID_IMSA:
+
+            /* 接收IMSA的消息*/
+            RNIC_RcvImsaMsg(pstMsg);
+            break;
+#endif
 
         default:
             RNIC_INFO_LOG1(ACPU_PID_RNIC, "RNIC_ProcMsg:SendPid", pstMsg->ulSenderPid);
@@ -1932,8 +2106,6 @@ VOS_UINT32 RNIC_ProcMsg (MsgBlock *pstMsg)
 
     return VOS_OK;
 }
-
-
 VOS_UINT32 RNIC_SndRnicRmnetConfigReq(
     RNIC_RMNET_CONFIG_STRU             *pstConfigInfo
 )

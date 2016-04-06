@@ -9,7 +9,7 @@ typedef irqreturn_t return_type;
 s32 adp_test_case01(void);
 s32 adp_test_case02(void);
 void print_count(void);
-int func(int para);
+static int func(int para);
 
 #ifndef OK
 #define OK 0
@@ -53,7 +53,7 @@ s32 k3_hardtimer_test_case01(void)
    my_timer.mode = TIMER_PERIOD_COUNT;
    my_timer.timeout = 32768;
    my_timer.timerId = i;
-   my_timer.para = i;
+   my_timer.para = (void*)i;
    osl_sem_init(SEM_EMPTY,&sem);
    ret = bsp_hardtimer_alloc_k3(&my_timer);
    if (OK != ret)
@@ -82,7 +82,7 @@ s32 k3_hardtimer_test_case02(void)
    my_timer.mode = TIMER_PERIOD_COUNT;
    my_timer.timeout = 32768;
    my_timer.timerId = i;
-   my_timer.para = i;
+   my_timer.para = (void*)i;
    osl_sem_init(SEM_EMPTY,&sem);
    ret = bsp_hardtimer_alloc_k3(&my_timer);
    if (OK != ret)
@@ -110,7 +110,7 @@ s32 k3_hardtimer_test_case03(void)
    my_timer.mode = TIMER_PERIOD_COUNT;
    my_timer.timeout = 32768;
    my_timer.timerId = i;
-   my_timer.para = i;
+   my_timer.para = (void*)i;
    osl_sem_init(SEM_EMPTY,&sem);
    ret = bsp_hardtimer_alloc_k3(&my_timer);
    if (OK != ret)
@@ -138,7 +138,7 @@ s32 k3_hardtimer_test_case04(void)
    my_timer.mode = TIMER_PERIOD_COUNT;
    my_timer.timeout = 32768;
    my_timer.timerId = i;
-   my_timer.para = i;
+   my_timer.para = (void*)i;
    osl_sem_init(SEM_EMPTY,&sem);
    ret = bsp_hardtimer_alloc_k3(&my_timer);
    if (OK != ret)
@@ -166,7 +166,7 @@ s32 k3_hardtimer_test_case05(void)
    my_timer.mode = TIMER_PERIOD_COUNT;
    my_timer.timeout = 32768;
    my_timer.timerId = i;
-   my_timer.para = i;
+   my_timer.para = (void*)i;
    osl_sem_init(SEM_EMPTY,&sem);
    ret = bsp_hardtimer_alloc_k3(&my_timer);
    if (OK != ret)
@@ -194,7 +194,7 @@ s32 k3_hardtimer_test_case06(void)
    my_timer.mode = TIMER_PERIOD_COUNT;
    my_timer.timeout = 32768;
    my_timer.timerId = i;
-   my_timer.para = i;
+   my_timer.para = (void*)i;
    osl_sem_init(SEM_EMPTY,&sem);
    ret = bsp_hardtimer_alloc_k3(&my_timer);
    if (OK != ret)
@@ -222,7 +222,7 @@ s32 k3_hardtimer_test_case07(void)
    my_timer.mode = TIMER_PERIOD_COUNT;
    my_timer.timeout = 32768;
    my_timer.timerId = i;
-   my_timer.para = i;
+   my_timer.para = (void*)i;
    osl_sem_init(SEM_EMPTY,&sem);
    ret = bsp_hardtimer_alloc_k3(&my_timer);
    if (OK != ret)
@@ -250,7 +250,7 @@ s32 k3_hardtimer_test_case08(void)
    my_timer.mode = TIMER_PERIOD_COUNT;
    my_timer.timeout = 32768;
    my_timer.timerId = i;
-   my_timer.para = i;
+   my_timer.para = (void*)i;
    osl_sem_init(SEM_EMPTY,&sem);
    ret = bsp_hardtimer_alloc_k3(&my_timer);
    if (OK != ret)
@@ -270,6 +270,10 @@ s32 k3_hardtimer_test_case08(void)
    osl_sema_delete(&sem);
    return OK;
 }
+static int func(int para){
+	osl_sem_up(&sem);
+	return 0;
+	}
 
 void hardtimer_test_k3(void)
 {

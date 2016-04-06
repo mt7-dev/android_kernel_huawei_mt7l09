@@ -38,20 +38,23 @@ VOS_VOID  MN_MSG_ReadCsmpParaFromUsimSupportFlgNvim( VOS_VOID )
     VOS_UINT32                                             ulLength;
 
     ulLength                                                        = 0;
-    
+
 
     stGetCsmpParaFromUsimSupportFlg.ucGetCsmpParaFromUsimSupportFlg = MN_MSG_NV_ITEM_DEACTIVE;
-    stGetCsmpParaFromUsimSupportFlg.ucReserved                      = 0;
-    
+    stGetCsmpParaFromUsimSupportFlg.ucGetScAddrIgnoreScIndication   = MN_MSG_NV_ITEM_DEACTIVE;
+
 
     pstMsCfgInfo = MN_MSG_GetCustomCfgInfo();
-    
-    NV_GetLength(en_NV_Item_NVIM_GET_CSMP_PARA_FROM_USIM_SUPPORT_FLG, &ulLength);	
+
+    /* 全局变量默认关闭 */
+    pstMsCfgInfo->ucGetScAddrIgnoreScIndication = MN_MSG_NV_ITEM_DEACTIVE;
+
+    NV_GetLength(en_NV_Item_NVIM_GET_CSMP_PARA_FROM_USIM_SUPPORT_FLG, &ulLength);
     if (ulLength > sizeof(MN_MSG_GET_CSMP_PARA_FROM_USIM_SUPPORT_FLG_STRU))
     {
         return;
     }
-    
+
     if (NV_OK != NV_Read(en_NV_Item_NVIM_GET_CSMP_PARA_FROM_USIM_SUPPORT_FLG,
                          &stGetCsmpParaFromUsimSupportFlg, ulLength))
     {
@@ -60,6 +63,10 @@ VOS_VOID  MN_MSG_ReadCsmpParaFromUsimSupportFlgNvim( VOS_VOID )
         return;
     }
 
+    if (MN_MSG_NV_ITEM_ACTIVE == stGetCsmpParaFromUsimSupportFlg.ucGetScAddrIgnoreScIndication)
+    {
+        pstMsCfgInfo->ucGetScAddrIgnoreScIndication = stGetCsmpParaFromUsimSupportFlg.ucGetScAddrIgnoreScIndication;
+    }
 
     if ((MN_MSG_NV_ITEM_ACTIVE != stGetCsmpParaFromUsimSupportFlg.ucGetCsmpParaFromUsimSupportFlg)
      && (MN_MSG_NV_ITEM_DEACTIVE != stGetCsmpParaFromUsimSupportFlg.ucGetCsmpParaFromUsimSupportFlg))
@@ -71,10 +78,9 @@ VOS_VOID  MN_MSG_ReadCsmpParaFromUsimSupportFlgNvim( VOS_VOID )
 
     pstMsCfgInfo->ucGetCsmpParaFromUsimSupportFlg = stGetCsmpParaFromUsimSupportFlg.ucGetCsmpParaFromUsimSupportFlg;
 
+
     return;
 }
-
-
 VOS_VOID  MN_MSG_ReadSmsPpDownloadSupportFlgNvim( VOS_VOID )
 {
     MN_MSG_SMS_PP_DOWNLOAD_SUPPORT_FLG_STRU        stSmsPpDownlodSupportFlg;
@@ -297,8 +303,6 @@ VOS_VOID  MN_MSG_ReadPsOnlyCsServiceSupportFlgNvim( VOS_VOID )
 
     return;
 }
-
-
 VOS_VOID  MN_MSG_ReadClosePathFlgNvim( VOS_VOID )
 {
     VOS_UINT8                                      aucCustomizeChgRcvPath[2];

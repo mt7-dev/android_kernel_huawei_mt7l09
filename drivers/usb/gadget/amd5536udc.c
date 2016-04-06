@@ -1724,7 +1724,6 @@ static void udc_timer_function(unsigned long v)
 			 * set_rde=0 (RDE is set in udc_queue())
 			 */
 			set_rde++;
-			/* debug: lhadmot_timer_start = 221070 */
 			udc_timer.expires = jiffies + HZ*UDC_RDE_TIMER_SECONDS;
 			if (!stop_timer)
 				add_timer(&udc_timer);

@@ -903,17 +903,6 @@ serial_hsu_set_termios(struct uart_port *port, struct ktermios *termios,
 		cval |= UART_LCR_PARITY;
 	if (!(termios->c_cflag & PARODD))
 		cval |= UART_LCR_EPAR;
-
-	/*
-	 * The base clk is 50Mhz, and the baud rate come from:
-	 *	baud = 50M * MUL / (DIV * PS * DLAB)
-	 *
-	 * For those basic low baud rate we can get the direct
-	 * scalar from 2746800, like 115200 = 2746800/24. For those
-	 * higher baud rate, we handle them case by case, mainly by
-	 * adjusting the MUL/PS registers, and DIV register is kept
-	 * as default value 0x3d09 to make things simple
-	 */
 	baud = uart_get_baud_rate(port, termios, old, 0, 4000000);
 
 	quot = 1;

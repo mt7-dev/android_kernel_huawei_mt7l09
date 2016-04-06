@@ -239,6 +239,31 @@ VOS_UINT32 TAF_MTA_Ac2sl(
     *plRtn = lTotal * lSign;
     return VOS_OK;
 }
+VOS_UINT32 TAF_MTA_AcNums2DecNums(
+    VOS_UINT8                          *pucAsciiNum,
+    VOS_UINT8                          *pucDecNum,
+    VOS_UINT32                          ulLen
+)
+{
+    VOS_UINT32                          ulIndex         = 0;
+
+    /* 参数指针由调用者保证不为NULL, 该处不做判断 */
+
+    for (ulIndex = 0; ulIndex < ulLen; ulIndex++)
+    {
+        /* 判断是否是数字 */
+        if ( ('0' <= pucAsciiNum[ulIndex]) && ('9' >= pucAsciiNum[ulIndex]) )
+        {
+            pucDecNum[ulIndex] = pucAsciiNum[ulIndex] - '0';
+        }
+        else
+        {
+            return VOS_ERR;
+        }
+    }
+
+    return VOS_OK;
+}
 
 
 #ifdef __cplusplus

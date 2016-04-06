@@ -88,7 +88,7 @@ config ARM_EXYNOS4_BUS_DEVFREQ
 	  To operate with optimal voltages, ASV support is required
 	  (CONFIG_EXYNOS_ASV).
 
-config HISI_DDR_DEVFREQ
+config HI6XXX_DDR_DEVFREQ
 	bool "Hisilicon ddr devfreq support"
 	depends on PM_DEVFREQ && PM_OPP
 	select DEVFREQ_GOV_PM_QOS
@@ -96,9 +96,24 @@ config HISI_DDR_DEVFREQ
 	help
 	  Scale ddr freqency down threshold for HISI K3V3 platform.
 
-config HISI_DDR_DEVFREQ_DEBUGFS
+config HI6XXX_DDR_DEVFREQ_DEBUGFS
 	bool "Hisilicon ddr devfreq debugfs"
-	depends on HISI_DDR_DEVFREQ && DEBUG_FS
+	depends on HI6XXX_DDR_DEVFREQ && DEBUG_FS
+	default n
+	help
+	  This is a testing driver for HISI ddr devfreq function.
+
+config HI3XXX_DDR_DEVFREQ
+	bool "Hisilicon ddr devfreq support"
+	depends on PM_DEVFREQ && PM_OPP
+	select DEVFREQ_GOV_PM_QOS
+	default n
+	help
+	  Scale ddr freqency down threshold for HI3XXX platform.
+
+config HI3XXX_DDR_DEVFREQ_DEBUGFS
+	bool "Hisilicon ddr devfreq debugfs"
+	depends on HI3XXX_DDR_DEVFREQ && DEBUG_FS
 	default n
 	help
 	  This is a testing driver for HISI ddr devfreq function.

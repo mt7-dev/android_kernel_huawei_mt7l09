@@ -765,12 +765,13 @@ NAS_EMM_SECU_UNPROT_RSLT_ENUM_UINT32 NAS_EMM_CurNotExistNewNotExistMsgSmc
 
     pstSmcMsg = (LRRC_LNAS_MSG_STRU *)pulRrcNasMsg;
 
-    /* 如果不是启用EIA0，则直接退出 */
+    /* 如果不是启用EIA0，则直接回复smc rej原因值24 */
     /*lint -e416 -e415*/
     ucSmcEia =  pstSmcMsg->aucNasMsg[NAS_EMM_SECU_SMC_ALG_POSE] & NAS_EMM_LOW_3_BITS_F;
     /*lint +e416 +e415*/
     if (NAS_EMM_SECU_ALG_EIA0 != ucSmcEia)
     {
+        NAS_EMM_SecuSendSmcRej(NAS_EMM_SMC_REJ_UNSPECIFIED);
         return NAS_EMM_SECU_UNPROT_FAIL;
     }
 

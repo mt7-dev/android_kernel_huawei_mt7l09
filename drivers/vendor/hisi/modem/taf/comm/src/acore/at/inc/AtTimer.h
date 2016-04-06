@@ -40,7 +40,7 @@ enum AT_TIMER_STATUS_ENUM
 
     AT_TIMER_STATUS_BUTT
 };
-typedef VOS_UINT8 AT_TIMER_STATUS_ENUM_UINT32;
+typedef VOS_UINT32 AT_TIMER_STATUS_ENUM_UINT32;
 
 
 /*****************************************************************************
@@ -95,6 +95,13 @@ VOS_UINT32 At_StartTimer(
     VOS_UINT8                           ucIndex
 );
 
+VOS_UINT32 AT_StartRelTimer(
+    HTIMER                             *phTm,
+    VOS_UINT32                          ulLength,
+    VOS_UINT32                          ulName,
+    VOS_UINT32                          ulParam,
+    VOS_UINT8                           ucMode
+);
 
 
 #ifdef __cplusplus

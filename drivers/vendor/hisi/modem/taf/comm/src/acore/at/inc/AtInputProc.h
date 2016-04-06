@@ -12,6 +12,11 @@
 #include "ATCmdProc.h"
 #include "product_config.h"
 
+#if (FEATURE_OFF == FEATURE_MERGE_OM_CHAN)
+#include "omsock.h"
+#else
+#include "TafOamInterface.h"
+#endif
 
 #ifdef __cplusplus
 #if __cplusplus
@@ -53,7 +58,7 @@ extern "C" {
 
 /* 来电RI管脚电平控制定时器参数 */
 #define AT_SET_VOICE_RI_TMR_PARAM(ulTmrParam, ucIndex, ucCallId)\
-            (ulTmrParam) = ((ucCallId) << 8) | (ucIndex)
+            ((ulTmrParam) = ((ucCallId) << 8) | (ucIndex))
 
 /* 从来电RI管脚电平控制定时器超时消息中获取CALLID */
 #define AT_GET_VOICE_RI_CALLID_FROM_TMR_PARAM(ulTmrParam)\
@@ -70,7 +75,7 @@ extern "C" {
 
 /* 新短信RI管脚电平控制定时器参数 */
 #define AT_SET_SMS_RI_TMR_PARAM(ulTmrParam, ucIndex)\
-            (ulTmrParam) = (ucIndex)
+            ((ulTmrParam) = (ucIndex))
 
 /* 从新短信RI管脚电平控制定时器超时消息中获取端口ID */
 #define AT_GET_SMS_RI_CLIENTID_FROM_TMR_PARAM(ulTmrParam)\
@@ -127,22 +132,25 @@ typedef struct
                                                                 UDI_ACM_HSIC_ACM2_ID
                                                                 UDI_ACM_HSIC_ACM4_ID */
 
-    UDI_HANDLE                      lHdlId;           /* HSIC AT的ACM通道句柄 */
+
+    AT_HSIC_REPORT_TYPE_ENUM_UINT32 enRptType;        /* 指定HSIC AT通道是否允许AT命令主动上报，
+                                                                与^APRPTPORTSEL命令配套使用，上电时默认为AT_HSIC_REPORT_ON*/
 
     VOS_VOID                       *pReadDataCB;      /* 注册给底软的接口，用于获取底软发送给协议栈的AT码流 */
 
     VOS_VOID                       *pFreeDlDataCB;    /* 注册给底软的接口，用于底软释放协议栈发送给底软的数据内存 */
 
-    AT_CLIENT_TAB_INDEX_UINT8       ucAtClientTabIdx; /* HSIC所使用的gastAtClientTab的index索引 */
+    UDI_HANDLE                      lHdlId;           /* HSIC AT的ACM通道句柄 */
 
     AT_CLIENT_ID_ENUM_UINT16        enAtClientId;     /* HSIC AT通道所对应的AT CLIENT ID*/
+
+    AT_CLIENT_TAB_INDEX_UINT8       ucAtClientTabIdx; /* HSIC所使用的gastAtClientTab的index索引 */
 
     AT_USER_TYPE                    ucHsicUser;       /* HSIC AT通道所对应的AT USER type */
 
     AT_PORT_NO                      ucHsicPort;       /* HSIC AT通道所对应的AT PORT NO */
 
-    AT_HSIC_REPORT_TYPE_ENUM_UINT32 enRptType;        /* 指定HSIC AT通道是否允许AT命令主动上报，
-                                                                与^APRPTPORTSEL命令配套使用，上电时默认为AT_HSIC_REPORT_ON*/
+    VOS_UINT8                       aucReserved[7];
 }AT_HSIC_CONTEXT_STRU;
 
 
@@ -255,7 +263,9 @@ extern VOS_UINT32  AT_PppDataModeRcvModemMsc(
            VOS_UINT8                           ucIndex,
            AT_DCE_MSC_STRU                     *pMscStru
        );
+#if (FEATURE_OFF == FEATURE_MERGE_OM_CHAN)
 extern CPM_FUNC AT_QuerySndFunc(AT_PHY_PORT_ENUM_UINT32 ulPhyPort);
+#endif
 extern VOS_INT AT_RcvFromAppCom(
            VOS_UINT8                           ucVcomId,
            VOS_UINT8                          *pData,
@@ -285,10 +295,18 @@ extern VOS_VOID AT_RcvMuxCmdStream_PreProc(
            VOS_UINT16                          usLen
        );
 extern TAF_UINT32 At_SendCmdMsg (TAF_UINT8 ucIndex,TAF_UINT8* pData, TAF_UINT16 usLen,TAF_UINT8 ucType);
+#if (FEATURE_OFF == FEATURE_MERGE_OM_CHAN)
 extern VOS_UINT32 AT_SendCtrlDataFromOm(
            VOS_UINT8                          *pData,
            VOS_UINT32                          ulLength
        );
+#else
+extern VOS_UINT32 AT_SendCtrlDataFromOm(
+    VOS_UINT8                          *pucVirAddr,
+    VOS_UINT8                          *pucPhyAddr,
+    VOS_UINT32                          ulLength
+       );	
+#endif	      
 extern VOS_UINT32 AT_SendDataToModem(
     VOS_UINT8                           ucIndex,
     VOS_UINT8                          *pucDataBuf,
@@ -310,14 +328,18 @@ extern VOS_UINT32 AT_SendMuxSelResultData(
            VOS_UINT8                          *pData,
            VOS_UINT16                          usLen
        );
+#if (FEATURE_OFF == FEATURE_MERGE_OM_CHAN)
 extern VOS_UINT32 AT_SendPcuiDataFromOm(
            VOS_UINT8                          *pData,
            VOS_UINT32                          ulLength
        );
-extern VOS_UINT32 AT_SendZcDataToModem(
-        VOS_UINT16                          usPppId,
-        IMM_ZC_STRU                        *pstDataBuf
-);
+#else	   
+extern VOS_UINT32 AT_SendPcuiDataFromOm(
+    VOS_UINT8                          *pucVirAddr,
+    VOS_UINT8                          *pucPhyAddr,
+    VOS_UINT32                          ulLength
+       );
+#endif	   
 extern VOS_UINT32 AT_SendCsdZcDataToModem(
     VOS_UINT8                           ucIndex,
     IMM_ZC_STRU                        *pstDataBuf
@@ -424,10 +446,18 @@ VOS_UINT32 AT_UART_SendDlData(
     VOS_UINT8                          *pucData,
     VOS_UINT16                          usLen
 );
+#if (FEATURE_OFF == FEATURE_MERGE_OM_CHAN)
 VOS_UINT32 AT_UART_SendRawDataFromOm(
     VOS_UINT8                          *pucData,
     VOS_UINT32                          ulLen
 );
+#else
+VOS_UINT32 AT_UART_SendRawDataFromOm(
+    VOS_UINT8                          *pucVirAddr,
+    VOS_UINT8                          *pucPhyAddr,
+    VOS_UINT32                          ulLen
+);
+#endif
 VOS_VOID AT_UART_UlDataReadCB(VOS_VOID);
 VOS_VOID AT_UART_InitLink(VOS_UINT8 ucIndex);
 VOS_VOID AT_UART_InitPort(VOS_VOID);
@@ -492,11 +522,18 @@ VOS_UINT32 AT_HSUART_StopFlowCtrl(
     VOS_UINT32                          ulParam1,
     VOS_UINT32                          ulParam2
 );
-
+#if (FEATURE_OFF == FEATURE_MERGE_OM_CHAN)
 VOS_UINT32 AT_HSUART_SendRawDataFromOm(
     VOS_UINT8                          *pucData,
     VOS_UINT32                          ulLen
 );
+#else
+VOS_UINT32 AT_HSUART_SendRawDataFromOm(
+    VOS_UINT8                          *pucVirAddr,
+    VOS_UINT8                          *pucPhyAddr,
+    VOS_UINT32                          ulLen
+);
+#endif
 
 VOS_VOID AT_HSUART_UlDataReadCB( VOS_VOID );
 VOS_VOID AT_HSUART_MscReadCB(AT_DCE_MSC_STRU *pstDceMsc);
@@ -546,8 +583,10 @@ VOS_VOID AT_VoiceRingOff(VOS_UINT8 ucCallId);
 VOS_VOID AT_VoiceStartRingTe(VOS_UINT8 ucCallId);
 VOS_VOID AT_VoiceStopRingTe(VOS_UINT8 ucCallId);
 VOS_VOID AT_RcvTiVoiceRiExpired(REL_TIMER_MSG *pstTmrMsg);
-VOS_VOID AT_ProcFormatResultMsc(VOS_UINT8 ucIndex, VOS_UINT32 ulReturnCode);
 #endif
+
+VOS_VOID AT_ProcFormatResultMsc(VOS_UINT8 ucIndex, VOS_UINT32 ulReturnCode);
+
 
 #if (FEATURE_ON == FEATURE_AT_HSIC)
 extern VOS_VOID AT_HsicFourFreeDlDataBuf(VOS_UINT8 *pucBuf);

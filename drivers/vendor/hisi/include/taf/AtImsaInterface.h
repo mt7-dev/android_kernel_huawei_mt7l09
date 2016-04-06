@@ -9,7 +9,7 @@
 #include "vos.h"
 #include "TafTypeDef.h"
 
-
+#include "TafApsApi.h"
 
 #ifdef __cplusplus
 #if __cplusplus
@@ -21,6 +21,7 @@ extern "C" {
 #pragma pack(4)
 
 #define AT_IMSA_IMPU_MAX_LENGTH     (128)
+#define AT_IMSA_CALL_ASCII_NUM_MAX_LENGTH     (40)        /* equals IMSA_MAX_CALL_NUMBER_LENGTH */
 
 /*****************************************************************************
   2 枚举定义
@@ -53,9 +54,16 @@ enum AT_IMSA_MSG_TYPE_ENUM
     ID_IMSA_AT_CIREPH_IND,                                                      /* _H2ASN_MsgChoice IMSA_AT_CIREPH_IND_STRU */
     ID_IMSA_AT_CIREPI_IND,                                                      /* _H2ASN_MsgChoice IMSA_AT_CIREPI_IND_STRU */
 
+    ID_IMSA_AT_VT_PDP_ACTIVATE_IND,                                             /* _H2ASN_MsgChoice IMSA_AT_VT_PDP_ACTIVATE_IND_STRU */
+    ID_IMSA_AT_VT_PDP_DEACTIVATE_IND,                                           /* _H2ASN_MsgChoice IMSA_AT_VT_PDP_DEACTIVATE_IND_STRU */
+
+    ID_IMSA_AT_MT_STATES_IND,                                                   /* _H2ASN_MsgChoice IMSA_AT_MT_STATES_IND_STRU */
     ID_AT_IMSA_MSG_BUTT
 };
 typedef  VOS_UINT32  AT_IMSA_MSG_TYPE_ENUM_UINT32;
+
+
+
 enum AT_IMSA_IMS_REG_STATE_REPORT_ENUM
 {
     AT_IMSA_IMS_REG_STATE_DISABLE_REPORT        = 0,
@@ -74,7 +82,7 @@ enum AT_IMSA_CCWAI_MODE_ENUM
 
     AT_IMSA_CCWAI_MODE_BUTT
 };
-typedef  VOS_UINT32 AT_IMSA_CCWAI_MODE_ENUM_UINT8;
+typedef  VOS_UINT8 AT_IMSA_CCWAI_MODE_ENUM_UINT8;
 
 
 
@@ -280,23 +288,43 @@ typedef struct
 } IMSA_AT_CIREPI_IND_STRU;
 
 
-/* ASN解析结构 */
+
 typedef struct
 {
-    VOS_UINT32                          ulMsgId;                                /*_H2ASN_MsgChoice_Export AT_IMSA_MSG_TYPE_ENUM_UINT32 */
-    VOS_UINT8                           aucMsg[4];
-    /***************************************************************************
-        _H2ASN_MsgChoice_When_Comment          AT_IMSA_MSG_TYPE_ENUM_UINT32
-    ****************************************************************************/
-}AT_IMSA_INTERFACE_MSG_DATA;
-/*_H2ASN_Length UINT32*/
+    VOS_MSG_HEADER                                             /* _H2ASN_Skip */
+    VOS_UINT32                          ulMsgId;               /* _H2ASN_Skip */
+    VOS_UINT16                          usClientId;
+    VOS_UINT8                           ucOpId;
+    VOS_UINT8                           aucReserved[1];
+    TAF_PDP_ADDR_STRU                   stPdpAddr;
+    TAF_PDP_DNS_STRU                    stIpv4Dns;
+    TAF_PDP_IPV6_DNS_STRU               stIpv6Dns;
+} IMSA_AT_VT_PDP_ACTIVATE_IND_STRU;
+
+
+
+typedef struct
+{
+    VOS_MSG_HEADER                                             /* _H2ASN_Skip */
+    VOS_UINT32                          ulMsgId;               /* _H2ASN_Skip */
+    VOS_UINT16                          usClientId;
+    VOS_UINT8                           ucOpId;
+    TAF_PDP_TYPE_ENUM_UINT8             enPdpType;
+} IMSA_AT_VT_PDP_DEACTIVATE_IND_STRU;
 
 
 typedef struct
 {
-    VOS_MSG_HEADER
-    AT_IMSA_INTERFACE_MSG_DATA           stMsgData;
-} AtImsaInterface_MSG;
+    VOS_MSG_HEADER                                          /* _H2ASN_Skip */
+    VOS_UINT32                          ulMsgId;            /* _H2ASN_Skip */
+    VOS_UINT16                          usClientId;
+    VOS_UINT8                           ucOpId;
+    VOS_UINT8                           aucReserved[1];
+    VOS_UINT32                          ulCauseCode;
+    VOS_UINT8                           ucMtStatus;
+    VOS_UINT8                           aucRsv[3];
+    VOS_UINT8                           aucAsciiCallNum[AT_IMSA_CALL_ASCII_NUM_MAX_LENGTH];
+} IMSA_AT_MT_STATES_IND_STRU;
 
 /*****************************************************************************
   4 宏定义
@@ -312,6 +340,26 @@ typedef struct
   6 接口函数声明
 *****************************************************************************/
 
+/*****************************************************************************
+  7 OTHERS定义
+*****************************************************************************/
+
+/* ASN解析结构 */
+typedef struct
+{
+    VOS_UINT32                          ulMsgId;                                /*_H2ASN_MsgChoice_Export AT_IMSA_MSG_TYPE_ENUM_UINT32 */
+    VOS_UINT8                           aucMsg[4];
+    /***************************************************************************
+        _H2ASN_MsgChoice_When_Comment          AT_IMSA_MSG_TYPE_ENUM_UINT32
+    ****************************************************************************/
+}AT_IMSA_INTERFACE_MSG_DATA;
+/*_H2ASN_Length UINT32*/
+
+typedef struct
+{
+    VOS_MSG_HEADER
+    AT_IMSA_INTERFACE_MSG_DATA           stMsgData;
+} AtImsaInterface_MSG;
 
 
 #if ((VOS_OS_VER == VOS_WIN32) || (VOS_OS_VER == VOS_NUCLEUS))

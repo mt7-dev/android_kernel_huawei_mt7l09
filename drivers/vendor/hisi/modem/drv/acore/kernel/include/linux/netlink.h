@@ -27,6 +27,7 @@
 #define NETLINK_RDMA		20
 #define NETLINK_CRYPTO		21	/* Crypto layer */
 
+#define NETLINK_HW_LOGCAT   29
 #define NETLINK_DEVICE_EVENT	30
 
 #define NETLINK_USER_WIFI_EVENT	 31

@@ -48,12 +48,6 @@ void smc_set_timing(struct smc_config *config,
 	config->nwe_pulse	= 0;
 	config->read_cycle	= 0;
 	config->write_cycle	= 0;
-
-	/*
-	 * cycles = x / T = x * f
-	 *   = ((x * 1000000000) * ((f * 65536) / 1000000000)) / 65536
-	 *   = ((x * 1000000000) * (((f / 10000) * 65536) / 100000)) / 65536
-	 */
 	mul = (clk_get_rate(hsmc->mck) / 10000) << 16;
 	mul /= 100000;
 

@@ -33,54 +33,7 @@ ESM_FTM_INFO_MANAGE_STRU             g_astEsmFtmInfoManage;
 ESM_DATABASE_INFO_STRU               g_astEsmInfo;
 /* xiongxianghui00253310 modify for ftmerrlog end   */
 
-/*lifuxin00253982 modify for error log start*/
-ESM_ERRLOG_INFO_MANAGE_STRU          g_astEsmErrlogInfoManage;
-NAS_ESM_CN_CAUSE_TRANS_STRU          g_astEsmErrlogErrNoMap[] =
-{
-    /*------------casue-----------------------------------error id---------------------------*/
-    {NAS_ESM_CAUSE_OPERATOR_DETERMINE_BARRING,      LNAS_ESM_CAUSE_OPERATOR_DETERMINE_BARRING},
-    {NAS_ESM_CAUSE_INSUFFICIENT_RESOURCES,          LNAS_ESM_CAUSE_INSUFFICIENT_RESOURCES},
-    {NAS_ESM_CAUSE_UNKNOWN_OR_MISSING_APN,          LNAS_ESM_CAUSE_UNKNOWN_OR_MISSING_APN},
-    {NAS_ESM_CAUSE_UNKNOWN_PDN_TYPE,                LNAS_ESM_CAUSE_UNKNOWN_PDN_TYPE},
-    {NAS_ESM_CAUSE_USER_AUTH_FAIL,                  LNAS_ESM_CAUSE_USER_AUTH_FAIL},
-    {NAS_ESM_CAUSE_REQ_REJ_BY_SGW_OR_PGW,           LNAS_ESM_CAUSE_REQ_REJ_BY_SGW_OR_PGW},
-    {NAS_ESM_CAUSE_REQ_REJ_UNSPECITY,               LNAS_ESM_CAUSE_REQ_REJ_UNSPECITY},
-    {NAS_ESM_CAUSE_SERVICE_OPTION_NOT_SUPPORT,      LNAS_ESM_CAUSE_SERVICE_OPTION_NOT_SUPPORT},
-    {NAS_ESM_CAUSE_REQ_SERVICE_NOT_SUBSCRIBED,      LNAS_ESM_CAUSE_REQ_SERVICE_NOT_SUBSCRIBED},
-    {NAS_ESM_CAUSE_SERVICE_OPTION_TEMP_OUT_ORDER,   LNAS_ESM_CAUSE_SERVICE_OPTION_TEMP_OUT_ORDER},
-    {NAS_ESM_CAUSE_PTI_ALREADY_IN_USED,             LNAS_ESM_CAUSE_PTI_ALREADY_IN_USED},
-    {NAS_ESM_CAUSE_REGULAR_DEACTIVATION,            LNAS_ESM_CAUSE_REGULAR_DEACTIVATION},
-    {NAS_ESM_CAUSE_EPS_QOS_NOT_ACCEPT,              LNAS_ESM_CAUSE_EPS_QOS_NOT_ACCEPT},
-    {NAS_ESM_CAUSE_NETWORK_FAILURE,                 LNAS_ESM_CAUSE_NETWORK_FAILURE},
-    {NAS_ESM_CAUSE_SYNTACTIC_ERR_IN_TFT,            LNAS_ESM_CAUSE_SYNTACTIC_ERR_IN_TFT},
-    {NAS_ESM_CAUSE_SEMANTIC_ERR_IN_PACKET_FILTER,   LNAS_ESM_CAUSE_SEMANTIC_ERR_IN_PACKET_FILTER},
-    {NAS_ESM_CAUSE_SYNCTACTIC_ERR_IN_PACKET_FILTER, LNAS_ESM_CAUSE_SYNCTACTIC_ERR_IN_PACKET_FILTER},
-    {NAS_ESM_CAUSE_BEARER_WITHOUT_TFT_ACT,          LNAS_ESM_CAUSE_BEARER_WITHOUT_TFT_ACT},
-    {NAS_ESM_CAUSE_PTI_MISMATCH,                    LNAS_ESM_CAUSE_PTI_MISMATCH},
-    {NAS_ESM_CAUSE_LAST_PDN_DISCONN_NOT_ALLOWED,    LNAS_ESM_CAUSE_LAST_PDN_DISCONN_NOT_ALLOWED},
-    {NAS_ESM_CAUSE_PDNTYPE_IPV4_ONLY_ALLOWED,       LNAS_ESM_CAUSE_PDNTYPE_IPV4_ONLY_ALLOWED},
-    {NAS_ESM_CAUSE_PDNTYPE_IPV6_ONLY_ALLOWED,       LNAS_ESM_CAUSE_PDNTYPE_IPV6_ONLY_ALLOWED},
-    {NAS_ESM_CAUSE_SINGLE_ADDR_BEARER_ONLY_ALLOWED, LNAS_ESM_CAUSE_SINGLE_ADDR_BEARER_ONLY_ALLOWED},
-    {NAS_ESM_CAUSE_ESM_INFORMATION_NOT_RECEIVED,    LNAS_ESM_CAUSE_ESM_INFORMATION_NOT_RECEIVED},
-    {NAS_ESM_CAUSE_PDN_CONNECTION_DOES_NOT_EXIST,   LNAS_ESM_CAUSE_PDN_CONNECTION_DOES_NOT_EXIST},
-    {NAS_ESM_CAUSE_SAME_APN_MULTI_PDN_CONNECTION_NOT_ALLOWED, LNAS_ESM_CAUSE_SAME_APN_MULTI_PDN_CONNECTION_NOT_ALLOWED},
-    {NAS_ESM_CAUSE_COLLISION_WITH_NETWORK_INITIATED_REQUEST,  LNAS_ESM_CAUSE_COLLISION_WITH_NETWORK_INITIATED_REQUEST},
-    {NAS_ESM_CAUSE_UNSUPPORTED_QCI_VALUE,           LNAS_ESM_CAUSE_UNSUPPORTED_QCI_VALUE},
-    {NAS_ESM_CAUSE_INVALID_PTI_VALUE,               LNAS_ESM_CAUSE_INVALID_PTI_VALUE},
-    {NAS_ESM_CAUSE_SEMANTICALLY_INCORRECT_MESSAGE,  LNAS_ESM_CAUSE_SEMANTICALLY_INCORRECT_MESSAGE},
-    {NAS_ESM_CAUSE_INVALID_MANDATORY_INFORMATION,   LNAS_ESM_CAUSE_INVALID_MANDATORY_INFORMATION},
-    {NAS_ESM_CAUSE_MESSAGE_TYPE_NON_EXIST_OR_NOT_IMPLEMENTED, LNAS_ESM_CAUSE_MESSAGE_TYPE_NON_EXIST_OR_NOT_IMPLEMENTED},
-    {NAS_ESM_CAUSE_MESSAGE_TYPE_NOT_COMPATIBLE_WITH_PROT_STA, LNAS_ESM_CAUSE_MESSAGE_TYPE_NOT_COMPATIBLE_WITH_PROT_STA},
-    {NAS_ESM_CAUSE_INFO_ELEMENT_NON_EXIST_OR_NOT_IMPLEMENTED, LNAS_ESM_CAUSE_INFO_ELEMENT_NON_EXIST_OR_NOT_IMPLEMENTED},
-    {NAS_ESM_CAUSE_CONDITIONAL_IE_ERROR,            LNAS_ESM_CAUSE_CONDITIONAL_IE_ERROR},
-    {NAS_ESM_CAUSE_MESSAGE_NOT_COMPATIBLE_WITH_PROT_STA,      LNAS_ESM_CAUSE_MESSAGE_NOT_COMPATIBLE_WITH_PROT_STA},
-    {NAS_ESM_CAUSE_PROTOCOL_ERROR,                  LNAS_ESM_CAUSE_PROTOCOL_ERROR},
-    {NAS_ESM_CAUSE_APN_RESTRICTION_VAL_INCOMPATIBLE_WITH_ACT_BEARER, LNAS_ESM_CAUSE_APN_RESTRICTION_VAL_INCOMPATIBLE_WITH_ACT_BEARER},
-};
 
-static VOS_UINT32   g_astEsmErrlogErrNum
-        = sizeof(g_astEsmErrlogErrNoMap)/sizeof(NAS_ESM_CN_CAUSE_TRANS_STRU);
-/*lifuxin00253982 modify for error log end*/
 
 VOS_UINT32               g_ulRptPdpStatus = APP_ESM_DT_REPORT_STATUS_CLOSE;
 VOS_UINT32               g_ulNasEsmOmMsgHookFlag = 0;
@@ -373,12 +326,6 @@ VOS_VOID NAS_ESM_OmMsgDistrForAcpuPidOm( VOS_VOID *pRcvMsg )
     case ID_OM_FTM_CTRL_IND:
         ulRst = NAS_ESM_RevOmFtmCtrlMsg(pRcvMsg);
         break;
-    case ID_OM_ERR_LOG_CTRL_IND:
-        ulRst = NAS_ESM_RevOmErrlogCtrlMsg(pRcvMsg);
-        break;
-    case ID_OM_ERR_LOG_REPORT_REQ:
-        ulRst = NAS_ESM_RevOmReadErrlogReq(pRcvMsg);
-        break;
     default:
         /* 打印异常信息 */
         NAS_ESM_WARN_LOG("NAS_ESM_OmMsgDistr:WARNING:OM->ESM Message name non-existent!");
@@ -532,262 +479,23 @@ VOS_VOID     NAS_ESM_SendOmFtmMsg(VOS_VOID)
 
 }
 
-
-VOS_VOID NAS_ESM_ErrlogInfoInit(VOS_VOID)
-{
-    VOS_UINT32                         ulRslt;
-    NV_ID_ERR_LOG_CTRL_INFO_STRU       stNvErrlogCtrl;
-
-    NAS_ESM_INFO_LOG("NAS_ESM_ErrlogInfoInit.");
-
-    NAS_ESM_MEM_SET(&stNvErrlogCtrl, 0, sizeof(NV_ID_ERR_LOG_CTRL_INFO_STRU));
-    NAS_ESM_MEM_SET(NAS_ESM_GetErrlogManageAddr(), 0, sizeof(ESM_ERRLOG_INFO_MANAGE_STRU));
-    /*lint -e718*/
-    /*lint -e516*/
-    /*lint -e732*/
-    /*lint -e830*/
-    ulRslt = LPs_NvimItem_Read(en_NV_Item_ErrLogCtrlInfo, &stNvErrlogCtrl, sizeof(NV_ID_ERR_LOG_CTRL_INFO_STRU));
-    /*lint +e830*/
-    /*lint +e732*/
-    /*lint +e516*/
-    /*lint +e718*/
-    if(ERR_MSP_SUCCESS != ulRslt)
-    {
-        NAS_ESM_GetErrlogActionFlag() = NAS_ESM_ERRLOG_ACTION_FLAG_CLOSE;
-        NAS_ESM_GetErrlogAlmLevel() = NAS_ESM_ERRLOG_LEVEL_CRITICAL;
-        return;
-    }
-
-    if(1 == stNvErrlogCtrl.ucAlmStatus)
-    {
-        NAS_ESM_GetErrlogActionFlag() = NAS_ESM_ERRLOG_ACTION_FLAG_OPEN;
-        NAS_ESM_GetErrlogAlmLevel() = stNvErrlogCtrl.ucAlmLevel;
-    }
-    else
-    {
-        NAS_ESM_GetErrlogActionFlag() = NAS_ESM_ERRLOG_ACTION_FLAG_CLOSE;
-        NAS_ESM_GetErrlogAlmLevel() = NAS_ESM_ERRLOG_LEVEL_CRITICAL;
-    }
-
-    return;
-}
-
-VOS_UINT32 NAS_ESM_RevOmErrlogCtrlMsg(MsgBlock   *pMsgStru)
-{
-    OM_ERROR_LOG_CTRL_IND_STRU  *pstOmErrlogCtlInfo;
-
-    NAS_ESM_INFO_LOG("NAS_LMM_RevOmErrlogCtrlMsg!");
-
-    if (VOS_NULL_PTR == pMsgStru)
-    {
-        NAS_ESM_WARN_LOG("NAS_ESM_RevOmErrlogCtrlMsg, input point is null!");
-
-        return NAS_ESM_MSG_DISCARD;
-    }
-
-    pstOmErrlogCtlInfo = (OM_ERROR_LOG_CTRL_IND_STRU *)(VOS_VOID *)pMsgStru;
-
-    if(1 == pstOmErrlogCtlInfo->ucAlmStatus)
-    {
-        /*设置商用Errlog功能打开*/
-        NAS_ESM_SetErrlogActionFlag(NAS_ESM_ERRLOG_ACTION_FLAG_OPEN);
-        NAS_ESM_SetErrlogAlmLevel(pstOmErrlogCtlInfo->ucAlmLevel);
-    }
-    else
-    {
-        /*设置商用Errlog功能关闭*/
-        NAS_ESM_MEM_SET(NAS_ESM_GetErrlogManageAddr(), 0, sizeof(ESM_ERRLOG_INFO_MANAGE_STRU));
-        NAS_ESM_SetErrlogActionFlag(NAS_ESM_ERRLOG_ACTION_FLAG_CLOSE);
-    }
-
-    return NAS_ESM_MSG_HANDLED;
-}
-
- VOS_UINT32   NAS_ESM_RevOmReadErrlogReq(const MsgBlock   *pMsgStru)
- {
-    VOS_UINT8  ucErrIndex = 0;
-
-    NAS_ESM_INFO_LOG("NAS_ESM_RevOmReadErrlogReq is enterd!");
-
-    /* 入参判断 */
-    if (VOS_NULL_PTR == pMsgStru)
-    {
-        NAS_ESM_INFO_LOG("NAS_ESM_RevOmReadErrlogReq, input point is null");
-
-        return NAS_ESM_MSG_DISCARD;
-    }
-
-    /*发送error log信息到OM*/
-    NAS_ESM_SendOmErrlogCnf();
-
-    /*上报之后将error log buffer清空*/
-    for(ucErrIndex = 0; ucErrIndex < NAS_ESM_ERRLOG_MAX_NUM; ucErrIndex++)
-    {
-        NAS_ESM_MEM_SET(&NAS_ESM_GetErrlogInfo(ucErrIndex), 0, sizeof(ESM_ERR_INFO_DETAIL_STRU));
-    }
-
-    NAS_ESM_GetErrlogAmount() = 0;
-    NAS_ESM_GetErrlogNextNullPos() = 0;
-
-    return NAS_ESM_MSG_HANDLED;
- }
-VOS_VOID     NAS_ESM_SendOmErrlogCnf(VOS_VOID)
-{
-    ESM_OM_ERR_LOG_REPORT_CNF_STRU *pErrLogMsg;
-    VOS_UINT8  ucErrIndex = 0;
-
-    NAS_ESM_INFO_LOG1("NAS_ESM_SendOmErrlogCnf: ActionFlag = ", NAS_ESM_GetErrlogActionFlag());
-
-
-    /*申请消息内存*/
-    pErrLogMsg = (VOS_VOID *)NAS_ESM_ALLOC_MSG(sizeof(ESM_OM_ERR_LOG_REPORT_CNF_STRU));
-
-    /*判断申请结果，若失败打印错误并退出*/
-    if (VOS_NULL_PTR == pErrLogMsg)
-    {
-        /*打印错误*/
-        NAS_ESM_INFO_LOG("NAS_ESM_SendOmErrlogCnf: MSG ALLOC ERR!");
-        return;
-    }
-
-    NAS_ESM_MEM_SET(pErrLogMsg, 0, sizeof(ESM_OM_ERR_LOG_REPORT_CNF_STRU));
-
-    /*构造ID_EMM_ESM_PDN_CON_IND消息*/
-    /*填充消息头*/
-    NAS_ESM_COMP_OM_MSG_HEADER(         pErrLogMsg,
-                                        (sizeof(ESM_OM_ERR_LOG_REPORT_CNF_STRU)-
-                                         NAS_ESM_LEN_VOS_MSG_HEADER));
-
-    /*填充消息ID*/
-    pErrLogMsg->ulMsgName                  = ID_OM_ERR_LOG_REPORT_CNF;
-
-    /*填充消息内容*/
-    pErrLogMsg->ulMsgType                  = OM_ERR_LOG_MSG_ERR_REPORT;
-    pErrLogMsg->ulMsgSN                    = NAS_ESM_GetErrlogMsgSN();
-    NAS_ESM_GetErrlogMsgSN()++;
-
-    if((NAS_ESM_ERRLOG_ACTION_FLAG_OPEN != NAS_ESM_GetErrlogActionFlag())
-        ||(0 == NAS_ESM_GetErrlogAmount()))
-    {
-        pErrLogMsg->ulRptlen = 0;
-    }
-    else
-    {
-        pErrLogMsg->ulRptlen = sizeof(ESM_OM_ERR_LOG_INFO_STRU);
-    }
-
-    pErrLogMsg->stEsmErrlogInfo.ulMsgModuleID = OM_ERR_LOG_MOUDLE_ID_ESM;
-    pErrLogMsg->stEsmErrlogInfo.usModemId = 0;
-    pErrLogMsg->stEsmErrlogInfo.usALMLevel = NAS_ESM_GetErrlogAlmLevel();
-    pErrLogMsg->stEsmErrlogInfo.usALMType = NAS_ESM_GetErrlogAlmType();
-
-    pErrLogMsg->stEsmErrlogInfo.ulAlmLowSlice = NAS_ESM_GetErrlogAlmLowSlice();
-    pErrLogMsg->stEsmErrlogInfo.ulAlmHighSlice = NAS_ESM_GetErrlogAlmHighSlice();
-
-    pErrLogMsg->stEsmErrlogInfo.ulAlmLength = sizeof(ESM_ALM_INFO_STRU);
-
-    pErrLogMsg->stEsmErrlogInfo.stAlmInfo.ulErrlogNum = NAS_ESM_GetErrlogAmount();
-
-    for(ucErrIndex = 0; ucErrIndex < NAS_ESM_GetErrlogAmount(); ucErrIndex++)
-    {
-        pErrLogMsg->stEsmErrlogInfo.stAlmInfo.stEsmErrInfoDetail[ucErrIndex].usErrLogID =
-            NAS_ESM_GetErrlogInfo(ucErrIndex).usErrLogID;
-    }
-
-    /*向OM模块发送状态变化消息*/
-    NAS_ESM_SND_MSG( pErrLogMsg);
-
-    return;
-}
-
-
-VOS_VOID NAS_ESM_ErrlogInfoProc(VOS_UINT8 ucCnCause)
-{
-    VOS_UINT64                          ulCurTime;
-    ESM_ERR_INFO_DETAIL_STRU            stErrlogInfo;
-
-    NAS_ESM_INFO_LOG("NAS_ESM_ErrlogInfoProc!");
-
-    if (NAS_ESM_ERRLOG_ACTION_FLAG_OPEN != NAS_ESM_GetErrlogActionFlag())
-    {
-        NAS_ESM_INFO_LOG("NAS_ESM_GetErrlogActionFlag() = NAS_ESM_ERRLOG_ACTION_FLAG_CLOSE!");
-
-        return;
-    }
-    (VOS_VOID)BSP_BBPGetCurTime(&ulCurTime);
-    NAS_ESM_GetErrlogAlmLowSlice() = ulCurTime & 0xffffffff;
-    NAS_ESM_GetErrlogAlmHighSlice() = 0;
-
-    stErrlogInfo.usErrLogID = NAS_ESM_CnCauseProc(ucCnCause);
-
-    NAS_ESM_MEM_CPY(&NAS_ESM_GetErrlogInfo(NAS_ESM_GetErrlogNextNullPos()),
-                    &stErrlogInfo,
-                    sizeof(ESM_ERR_INFO_DETAIL_STRU));
-
-    if(NAS_ESM_GetErrlogAmount() < NAS_ESM_ERRLOG_MAX_NUM)
-    {
-        /* 存储的商用Errlog个数小于NAS_ESM_ERRLOG_MAX_NUM */
-
-        NAS_ESM_GetErrlogNextNullPos()++;
-
-        NAS_ESM_GetErrlogAmount()++;
-
-        if(NAS_ESM_GetErrlogAmount() >= NAS_ESM_ERRLOG_MAX_NUM)
-        {
-            NAS_ESM_GetErrlogNextNullPos() = 0;
-        }
-    }
-    else
-    {
-        /* 存储的商用Errlog个数等于NAS_ESM_ERRLOG_MAX_NUM */
-
-        NAS_ESM_GetErrlogNextNullPos()++;
-
-        if(NAS_ESM_GetErrlogNextNullPos() >= NAS_ESM_ERRLOG_MAX_NUM)
-        {
-            NAS_ESM_GetErrlogNextNullPos() = 0;
-        }
-    }
-
-    return;
-}
-
-
-
-LNAS_OM_ERRLOG_ID_ENUM_UINT16  NAS_ESM_CnCauseProc(VOS_UINT8 ucCnCause)
-{
-    LNAS_OM_ERRLOG_ID_ENUM_UINT16   ulErrId = 0;
-    VOS_UINT32 i;
-
-    NAS_ESM_INFO_LOG("NAS_ESM_CnCauseProc!");
-
-    for(i = 0; i < g_astEsmErrlogErrNum; i++)
-    {
-        if(ucCnCause == g_astEsmErrlogErrNoMap[i].ulCauseId)
-        {
-            ulErrId = g_astEsmErrlogErrNoMap[i].ulErrorlogID;
-            break;
-        }
-    }
-    if(g_astEsmErrlogErrNum == i)
-    {
-            ulErrId = LNAS_OM_ERRLOG_ID_CN_CAUSE_OTHERS;
-    }
-
-    return ulErrId;
-}
-
-/* xiongxianghui00253310 add for errlog 20131101 end  */
 /*lint +e961*/
 /*lint +e960*/
 
 VOS_VOID NAS_ESM_ReportActPdpInfo( VOS_VOID)
 {
     APP_ESM_INQ_PDP_INFO_IND_STRU    *pAppIndMsg;
-    NAS_OM_ACT_PDP_INFO_STRU          stActPdpInfo;
+    NAS_OM_ACT_PDP_INFO_STRU          *pstActPdpInfo = (VOS_VOID*)NAS_ESM_MEM_ALLOC(sizeof(NAS_OM_ACT_PDP_INFO_STRU));
+
+    if (VOS_NULL_PTR == pstActPdpInfo)
+    {
+        NAS_ESM_ERR_LOG("NAS_ESM_ReportActPdpInfo: mem alloc fail!.");
+        return;
+    }
 
     if (APP_ESM_DT_REPORT_STATUS_CLOSE == g_ulRptPdpStatus)
     {
+        NAS_ESM_MEM_FREE(pstActPdpInfo);
         return;
     }
 
@@ -799,11 +507,12 @@ VOS_VOID NAS_ESM_ReportActPdpInfo( VOS_VOID)
     {
         /*打印异常信息*/
         NAS_ESM_ERR_LOG("NAS_ESM_AppReportActPdpInfo:ERROR:ESM->APP ,Memory Alloc FAIL!");
+        NAS_ESM_MEM_FREE(pstActPdpInfo);
         return;
     }
 
     /*清空*/
-    NAS_ESM_MEM_SET( &stActPdpInfo, 0, sizeof(NAS_OM_ACT_PDP_INFO_STRU));
+    NAS_ESM_MEM_SET( pstActPdpInfo, 0, sizeof(NAS_OM_ACT_PDP_INFO_STRU));
 
 
     /*填写消息头*/
@@ -815,13 +524,13 @@ VOS_VOID NAS_ESM_ReportActPdpInfo( VOS_VOID)
     pAppIndMsg->ulOpId = DIAG_CMD_EMM_APP_PDP_INFO_IND;
 
     /*获取激活承载的信息 */
-    NAS_ESM_GetActPdpInfo(&stActPdpInfo);
+    NAS_ESM_GetActPdpInfo(pstActPdpInfo);
 
     NAS_ESM_MEM_CPY(&pAppIndMsg->stActPdpInfo,
-                    &stActPdpInfo,
+                    pstActPdpInfo,
                     sizeof(NAS_OM_ACT_PDP_INFO_STRU));
 
-    NAS_ESM_MEM_CPY(&g_stEsmDtInfo.stActPdpInfo,&stActPdpInfo,sizeof(NAS_OM_ACT_PDP_INFO_STRU));
+    NAS_ESM_MEM_CPY(&g_stEsmDtInfo.stActPdpInfo,pstActPdpInfo,sizeof(NAS_OM_ACT_PDP_INFO_STRU));
 
 #if (VOS_OS_VER != VOS_WIN32)
     if (1 == g_ulNasEsmOmMsgHookFlag)
@@ -831,6 +540,8 @@ VOS_VOID NAS_ESM_ReportActPdpInfo( VOS_VOID)
 #endif
     /*调用消息发送函数 */
     NAS_ESM_SND_MSG(pAppIndMsg);
+    NAS_ESM_MEM_FREE(pstActPdpInfo);
+
 }
 
 

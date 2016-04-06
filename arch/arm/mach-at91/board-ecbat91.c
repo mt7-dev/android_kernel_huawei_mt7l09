@@ -96,7 +96,7 @@ static struct mtd_partition __initdata my_flash0_partitions[] =
 		.offset	= MTDPART_OFS_NXTBLK,
 		.size	= 1534 * 1056,
 	},
-	{	/* 190200 - jffs2 root filesystem */
+	{
 		.name	= "Filesystem",
 		.offset	= MTDPART_OFS_NXTBLK,
 		.size	= MTDPART_SIZ_FULL,	/* 26 sectors */

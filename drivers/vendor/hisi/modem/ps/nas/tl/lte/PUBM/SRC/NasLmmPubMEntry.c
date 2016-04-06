@@ -37,6 +37,11 @@ static  VOS_UINT32  NAS_LMM_PreProcMsgEsmEstReq     ( MsgBlock *        pMsg );
 static  VOS_UINT32  NAS_LMM_PreProcIntraConn2IdleReq( MsgBlock *        pMsg );
 static  VOS_UINT32  NAS_EMM_PreProcMsgEsmBearStatusReq( MsgBlock *     pMsg );
 static  VOS_UINT32  NAS_EMM_PreProcMsgRrcErrInd( MsgBlock *            pMsg );
+static VOS_UINT32  NAS_LMM_PreProcRrcRelCnf(    MsgBlock *          pMsg );
+#if (FEATURE_PTM == FEATURE_ON)
+VOS_UINT32 NAS_LMM_PreProcMsgEsmSaveErrlogInd(MsgBlock *     pMsg);
+VOS_VOID  LNAS_InitErrLogGloInfo(LNAS_ERRLOG_GLO_INFO_STRU *pstErrlogGloInfo);
+#endif
 
 
 
@@ -66,6 +71,7 @@ NAS_LMM_COMM_ACT_STRU               g_astMmPreProcMap[] =
     /*========== RRC_MM_MSG ==========*/
     {ID_LRRC_LMM_ERR_IND,                          PS_PID_ERRC,             NAS_EMM_PreProcMsgRrcErrInd},
     {ID_LRRC_LMM_REL_IND,                          PS_PID_ERRC,             NAS_LMM_PreProcRrcRelInd},
+    {ID_LRRC_LMM_REL_CNF,                          PS_PID_ERRC,             NAS_LMM_PreProcRrcRelCnf},
     {ID_LRRC_LMM_SYS_CFG_CNF,                      PS_PID_ERRC,             NAS_LMM_PreProcRrcSysCfgCnf},
     {ID_LRRC_LMM_UTRAN_MODE_CNF,                   PS_PID_ERRC,             NAS_LMM_PreProcRrcUtranModeCnf},
     {ID_LRRC_LMM_DATA_CNF,                         PS_PID_ERRC,             NAS_LMM_PreProcRrcDataCnf},
@@ -73,6 +79,7 @@ NAS_LMM_COMM_ACT_STRU               g_astMmPreProcMap[] =
     {ID_LRRC_LMM_SUSPEND_REL_CNF,                  PS_PID_ERRC,             NAS_EMM_PreProcMsgRrcSuspendRelCnf},
 
     {ID_LRRC_LMM_SUSPEND_INFO_CHANGE_IND,          PS_PID_ERRC,             NAS_EMM_PreProcMsgRrcSuspendInfoChangeInd },
+    {ID_LRRC_LMM_PAGING_IND,                       PS_PID_ERRC,             NAS_EMM_PreProcMsgRrcPagingInd},
 
     /*========== MM_INTRA_MSG =========*/
     {ID_NAS_LMM_INTRA_EMMC_EMM_SYS_INFO_IND,        PS_PID_MM,              NAS_LMM_PreProcIntraSystemInfoInd},
@@ -128,6 +135,8 @@ NAS_LMM_COMM_ACT_STRU               g_astMmPreProcMap[] =
 
     {ID_MMC_LMM_IMS_VOICE_CAP_CHANGE_NOTIFY,       WUEPS_PID_MMC,           NAS_LMM_PreProcMmcImsVoiceCapChangeNotify},
 
+    {ID_MMC_LMM_VOICE_DOMAIN_CHANGE_IND,           WUEPS_PID_MMC,           NAS_LMM_PreProcMmcImsVoiceDomainChangeInd},
+    {ID_MMC_LMM_CS_CONN_STATUS_NOTIFY,              WUEPS_PID_MMC,           NAS_LMM_PreProcMmcCsConnStatusNotify},
     /*========== SUSPEND =========*/
     {ID_MMC_LMM_SUSPEND_REQ,                       WUEPS_PID_MMC,           NAS_EMM_PreProcMsgMmcSuspendReq},
     {ID_LRRC_LMM_SUSPEND_IND,                      PS_PID_ERRC,             NAS_EMM_PreProcMsgRrcSuspendInd},
@@ -157,8 +166,9 @@ NAS_LMM_COMM_ACT_STRU               g_astMmPreProcMap[] =
     /*========== OM ==============*/
     #if (FEATURE_PTM == FEATURE_ON)
     {ID_OM_FTM_CTRL_IND,                           ACPU_PID_OM,             NAS_LMM_RevOmFtmCtrlMsg},
-    {ID_OM_ERR_LOG_CTRL_IND,                       ACPU_PID_OM,             NAS_LMM_RevOmErrlogCtrlMsg},
-    {ID_OM_ERR_LOG_REPORT_REQ,                     ACPU_PID_OM,             NAS_LMM_RevOmReadErrlogReq},
+    {ID_OM_LNAS_ERR_LOG_CTRL_IND,                  ACPU_PID_OM,             NAS_LMM_RevOmErrlogCtrlMsg},
+    {ID_OM_LNAS_ERR_LOG_REPORT_REQ,                ACPU_PID_OM,             NAS_LMM_RevOmReadErrlogReq},
+    {ID_EMM_ESM_SAVE_ERRLOG_IND,                   PS_PID_ESM,              NAS_LMM_PreProcMsgEsmSaveErrlogInd},
     #endif
     /* xiongxianghui00253310 modify for ftmerrlog end   */
     {ID_MMC_LMM_OTHER_MODEM_INFO_NOTIFY,          WUEPS_PID_MMC,           NAS_LMM_RevMmcModemInfoReq},
@@ -365,9 +375,6 @@ VOS_UINT32 NAS_LMM_Entry(MsgBlock *pMsg)
     VOS_UINT32                          ulRst;
     NAS_EMM_EVENT_TYPE_ENUM_UINT32      ulEt;
 
-    /*保存在临终遗言中,用于系统异常时分析 */
-    NAS_LMM_SaveRevMsgInfo(pMsg);
-
     /*如果是空口消息则解保护，其他消息不处理*/
     ulRst = NAS_EMM_SecuUnProtect(pMsg);
     if(NAS_EMM_NOT_GO_INTO_EMM_FSM == ulRst)
@@ -383,6 +390,8 @@ VOS_UINT32 NAS_LMM_Entry(MsgBlock *pMsg)
         NAS_LMM_PUBM_LOG_WARN("NAS_LMM_Entry: WARN, Get Event Type ERR !!");
         return  ulRst;
     }
+    /* 保存消息队列,用于复位分析 */
+    NAS_EMM_SaveRecvMsgList((VOS_VOID *)pMsg);
 
     /* 进入MMC和EMM状态机处理 */
     ulRst = NAS_LMM_MsgHandle(pMsg, ulEt);
@@ -712,7 +721,13 @@ static VOS_UINT32  NAS_LMM_PreProcRrcRelInd(    MsgBlock *          pMsg )
     LRRC_LMM_REL_IND_STRU              *pLrrcRelInd;
 
     pLrrcRelInd = (LRRC_LMM_REL_IND_STRU*)pMsg;
-
+    /* 由LRRC释放时关闭CIPHER时钟转移到LMM释放时关闭:解决由于任务优先级低，当LMM在使用CIPHER的时候，
+        任务抢占，LRRC把CIPHER时钟关闭，导致LMM DATA ABORT问题 */
+    #if (VOS_OS_VER != VOS_WIN32)
+    /*低功耗方案为了省功耗，在LTE模LNAS收到LRRC释放的时候调底软接口关掉 cipher 时钟以及投票是否关pll，
+     协议栈只看到这一个接口，版本共分支由底软在此接口内部进行封装*/
+    (VOS_VOID)BSP_CIPHER_Disable();
+    #endif
     NAS_LMM_StopStateTimer(TI_NAS_EMM_WAIT_RRC_DATA_CNF);
 
     /* 如果释放原因值是CSFB高优先级，需记录到MML供GU NAS使用，此标识由GU负责清除 */
@@ -766,8 +781,29 @@ static VOS_UINT32  NAS_LMM_PreProcRrcRelInd(    MsgBlock *          pMsg )
     NAS_LMM_PUBM_LOG1_INFO("NAS_LMM_PreProcRrcRelInd: ulRet = ", ulRet);
     return(ulRet);
 }
+/*****************************************************************************
+ Function Name   : NAS_LMM_PreProcRrcRelInd
+ Description     : RRC_REL_CNF消息的预处理函数
+ Input           : MsgBlock
+ Output          : None
+ Return          : VOS_UINT32
 
+ History         :
+    1.leixiantiao      2015-5-5  Draft Enact
 
+*****************************************************************************/
+static VOS_UINT32  NAS_LMM_PreProcRrcRelCnf(    MsgBlock *          pMsg )
+{
+    /* 由LRRC释放时关闭CIPHER时钟转移到LMM释放时关闭:解决由于任务优先级低，当LMM在使用CIPHER的时候，
+        任务抢占，LRRC把CIPHER时钟关闭，导致LMM DATA ABORT问题 */
+    #if (VOS_OS_VER != VOS_WIN32)
+    /*低功耗方案为了省功耗，在LTE模LNAS收到LRRC释放的时候调底软接口关掉 cipher 时钟以及投票是否关pll，
+     协议栈只看到这一个接口，版本共分支由底软在此接口内部进行封装*/
+    (VOS_VOID)BSP_CIPHER_Disable();
+    #endif
+
+    return NAS_LMM_MSG_DISCARD;
+}
 
 VOS_UINT32  NAS_LMM_PreProcMmcRelReq( MsgBlock *          pMsg )
 {
@@ -1325,6 +1361,15 @@ VOS_UINT32  NAS_EMM_PreProcMsgCsfbDelayTimerExp( MsgBlock *          pMsg )
     /* 给MMC上报SERVICE失败触发搜网去GU */
     NAS_EMM_MmcSendSerResultIndOtherType(MMC_LMM_SERVICE_RSLT_FAILURE);
 
+    NAS_EMM_RelReq(NAS_LMM_NOT_BARRED);
+
+    #if (FEATURE_PTM == FEATURE_ON)
+    if (VOS_TRUE == NAS_EMM_SER_IsCsfbProcedure())
+    {
+        NAS_EMM_ExtServiceErrRecord(EMM_OM_ERRLOG_CN_CAUSE_NULL, EMM_OM_LMM_CSFB_FAIL_CAUSE_DELAY_TIMER_EXP);
+    }
+    #endif
+
     return NAS_LMM_MSG_HANDLED;
 }
 VOS_UINT32  NAS_LMM_MsgPreProcess(       MsgBlock *          pMsg)
@@ -1732,11 +1777,7 @@ VOS_VOID  NAS_LMM_MsRegSsAnyLocalDetStateTrans(VOS_VOID)
 {
     NAS_LMM_PUBM_LOG_INFO("NAS_LMM_MsRegSsAnyLocalDetStateTrans is entered.");
 
-    if(EMM_MS_REG != NAS_LMM_GetEmmCurFsmMS())
-    {
-        NAS_LMM_PUBM_LOG_INFO("NAS_LMM_MsRegSsAnyLocalDetStateTrans: MS state is not REG.");
-        return;
-    }
+/* sunjitan delete protect for ESM承载数目为0的本地DETACH使用 */
 
     switch(NAS_LMM_GetEmmCurFsmSS())
     {
@@ -1774,8 +1815,6 @@ VOS_VOID  NAS_LMM_MsRegSsAnyLocalDetStateTrans(VOS_VOID)
 
     return;
 }
-
-
 VOS_UINT32  NAS_LMM_SvlteOrLcPsLocalDetachProc
 (
     const MMC_LMM_DETACH_REQ_STRU            *pstAppDetReq
@@ -1911,10 +1950,61 @@ VOS_UINT32 NAS_LMM_ProcDetReqWithReseaonNon3gppAttach
     return NAS_LMM_SvlteOrLcPsLocalDetachProc(pstAppDetReq);
 
 }
-VOS_UINT32  NAS_LMM_PreProcAppDetReq(MsgBlock  * pMsg)
+
+VOS_UINT32  NAS_LMM_ProcAppDetReq
+(
+    const MMC_LMM_DETACH_REQ_STRU            *pstAppDetReq
+)
 {
     VOS_UINT32                          ulRet = NAS_LMM_MSG_DISCARD;
     VOS_UINT32                          ulCurEmmStat;
+
+    /*获取EMM当前状态*/
+    ulCurEmmStat = NAS_LMM_PUB_COMP_EMMSTATE(NAS_EMM_CUR_MAIN_STAT, NAS_EMM_CUR_SUB_STAT);
+
+    switch(ulCurEmmStat)
+    {
+        /*直接回复APP去注册成功,状态不转换*/
+        case    NAS_LMM_PUB_COMP_EMMSTATE(EMM_MS_DEREG, EMM_SS_DEREG_NORMAL_SERVICE):
+        case    NAS_LMM_PUB_COMP_EMMSTATE(EMM_MS_DEREG, EMM_SS_DEREG_NO_IMSI):
+
+                NAS_EMM_SaveAppMsgPara(pstAppDetReq->ulMsgId, pstAppDetReq->ulOpId);
+                NAS_EMM_AppSendDetCnf(MMC_LMM_DETACH_RSLT_SUCCESS);
+                ulRet = NAS_LMM_MSG_HANDLED;
+                break;
+
+        /*丢弃APP去注册请求消息*/
+        case    NAS_LMM_PUB_COMP_EMMSTATE(EMM_MS_DEREG_INIT, EMM_SS_DETACH_WAIT_CN_DETACH_CNF):
+
+                NAS_LMM_PUBM_LOG_NORM("NAS_LMM_PreProcAppDetReq: ESM or RABM ERROR, discard it.");
+                NAS_EMM_SaveAppMsgPara(pstAppDetReq->ulMsgId, pstAppDetReq->ulOpId);
+                ulRet = NAS_LMM_MSG_HANDLED;
+                break;
+
+        /*建链过程中或者链路释放过程中，高优先级缓存*/
+        case    NAS_LMM_PUB_COMP_EMMSTATE(EMM_MS_RRC_CONN_REL_INIT,EMM_SS_RRC_CONN_WAIT_REL_CNF):
+        case    NAS_LMM_PUB_COMP_EMMSTATE(EMM_MS_RRC_CONN_EST_INIT,EMM_SS_RRC_CONN_WAIT_EST_CNF):
+
+                NAS_EMM_SaveAppMsgPara(pstAppDetReq->ulMsgId, pstAppDetReq->ulOpId);
+                ulRet = NAS_LMM_STORE_HIGH_PRIO_MSG;
+                break;
+
+        /*在AUTH_INIT+WAIT_CN_AUTH_CNF过程中，低优先级缓存 */
+        case    NAS_LMM_PUB_COMP_EMMSTATE(EMM_MS_AUTH_INIT, EMM_SS_AUTH_WAIT_CN_AUTH):
+
+                NAS_EMM_SaveAppMsgPara(pstAppDetReq->ulMsgId, pstAppDetReq->ulOpId);
+                ulRet = NAS_LMM_STORE_LOW_PRIO_MSG;
+                break;
+
+        default:
+                ulRet = NAS_LMM_MSG_DISCARD;
+                break;
+    }
+    return ulRet;
+}
+VOS_UINT32  NAS_LMM_PreProcAppDetReq(MsgBlock  * pMsg)
+{
+    VOS_UINT32                          ulRet = NAS_LMM_MSG_DISCARD;
     MMC_LMM_DETACH_REQ_STRU             *pstAppDetReq = VOS_NULL_PTR;
 
     NAS_LMM_PUBM_LOG_INFO("NAS_LMM_PreProcAppDetReq: enter.");
@@ -1991,49 +2081,7 @@ VOS_UINT32  NAS_LMM_PreProcAppDetReq(MsgBlock  * pMsg)
         NAS_EMM_SaveAppMsgPara(pstAppDetReq->ulMsgId, pstAppDetReq->ulOpId);
         return NAS_LMM_MsSuspendOrResumePreProcAppDetReq(pstAppDetReq);
     }
-
-    /*获取EMM当前状态*/
-    ulCurEmmStat = NAS_LMM_PUB_COMP_EMMSTATE(NAS_EMM_CUR_MAIN_STAT, NAS_EMM_CUR_SUB_STAT);
-
-    switch(ulCurEmmStat)
-    {
-        /*直接回复APP去注册成功,状态不转换*/
-        case    NAS_LMM_PUB_COMP_EMMSTATE(EMM_MS_DEREG, EMM_SS_DEREG_NORMAL_SERVICE):
-        case    NAS_LMM_PUB_COMP_EMMSTATE(EMM_MS_DEREG, EMM_SS_DEREG_NO_IMSI):
-
-                NAS_EMM_SaveAppMsgPara(pstAppDetReq->ulMsgId, pstAppDetReq->ulOpId);
-                NAS_EMM_AppSendDetCnf(MMC_LMM_DETACH_RSLT_SUCCESS);
-                ulRet = NAS_LMM_MSG_HANDLED;
-                break;
-
-        /*丢弃APP去注册请求消息*/
-        case    NAS_LMM_PUB_COMP_EMMSTATE(EMM_MS_DEREG_INIT, EMM_SS_DETACH_WAIT_CN_DETACH_CNF):
-
-                NAS_LMM_PUBM_LOG_NORM("NAS_LMM_PreProcAppDetReq: ESM or RABM ERROR, discard it.");
-                NAS_EMM_SaveAppMsgPara(pstAppDetReq->ulMsgId, pstAppDetReq->ulOpId);
-                ulRet = NAS_LMM_MSG_HANDLED;
-                break;
-
-        /*建链过程中或者链路释放过程中，高优先级缓存*/
-        case    NAS_LMM_PUB_COMP_EMMSTATE(EMM_MS_RRC_CONN_REL_INIT,EMM_SS_RRC_CONN_WAIT_REL_CNF):
-        case    NAS_LMM_PUB_COMP_EMMSTATE(EMM_MS_RRC_CONN_EST_INIT,EMM_SS_RRC_CONN_WAIT_EST_CNF):
-
-                NAS_EMM_SaveAppMsgPara(pstAppDetReq->ulMsgId, pstAppDetReq->ulOpId);
-                ulRet = NAS_LMM_STORE_HIGH_PRIO_MSG;
-                break;
-
-        /*在AUTH_INIT+WAIT_CN_AUTH_CNF过程中，低优先级缓存 */
-        case    NAS_LMM_PUB_COMP_EMMSTATE(EMM_MS_AUTH_INIT, EMM_SS_AUTH_WAIT_CN_AUTH):
-
-                NAS_EMM_SaveAppMsgPara(pstAppDetReq->ulMsgId, pstAppDetReq->ulOpId);
-                ulRet = NAS_LMM_STORE_LOW_PRIO_MSG;
-                break;
-
-        default:
-                ulRet = NAS_LMM_MSG_DISCARD;
-                break;
-    }
-
+    ulRet = NAS_LMM_ProcAppDetReq(pstAppDetReq);
     return ulRet;
 
 }
@@ -2212,7 +2260,18 @@ VOS_UINT32  NAS_EMM_JudgeStableState(   VOS_VOID)
         {
             return  NAS_LMM_STATE_IS_UNSTABLE;
         }
-
+        /* 解决NORMAL_SERVICE、UPDATE和UPDATE_MM态下LRRC REL搜小区驻留前收到ESM紧急承载建立请求，由于空口发送失败，
+           本地detach,发起紧急ATTACH问题
+           方案:这三个子状态下，且当前Conn State为Release过程中，收到ESM紧急承载建立请求，先高优先级缓存，
+           等到收到LRRC系统消息后处理(收到系统消息后CONN State会转到idle态)*/
+        if((NAS_EMM_CONN_RELEASING == NAS_EMM_GetConnState())
+            /*&&(VOS_TRUE == NAS_LMM_GetEmmInfoIsEmerPndEsting())*/
+            &&((EMM_SS_REG_NORMAL_SERVICE == NAS_LMM_GetEmmCurFsmSS())
+                ||(EMM_SS_REG_ATTEMPTING_TO_UPDATE == NAS_LMM_GetEmmCurFsmSS())
+                ||(EMM_SS_REG_ATTEMPTING_TO_UPDATE_MM == NAS_LMM_GetEmmCurFsmSS())))
+         {
+            return  NAS_LMM_STATE_IS_TRANSIENT;
+         }
         return  NAS_LMM_STATE_IS_STABLE;
     }
     else if ((EMM_MS_RRC_CONN_EST_INIT == NAS_LMM_GetEmmCurFsmMS())
@@ -2227,11 +2286,6 @@ VOS_UINT32  NAS_EMM_JudgeStableState(   VOS_VOID)
         return  NAS_LMM_STATE_IS_UNSTABLE;
     }
 }
-
-
-
-
-
 VOS_VOID  NAS_LMM_PUBM_Init_FidInit( VOS_VOID )
 {
 
@@ -2281,7 +2335,8 @@ VOS_VOID  NAS_LMM_PUBM_Init_FidInit( VOS_VOID )
     /* xiongxianghui00253310 modify for ftmerrlog begin */
     #if (FEATURE_PTM == FEATURE_ON)
     NAS_LMM_FtmInfoInit();
-    NAS_LMM_ErrlogInfoInit();
+    /*全局信息放在pid初始化的时候执行，执行一次，后面不再重复*/
+    LNAS_InitErrLogGloInfo(NAS_EMM_GetErrlogGloInfoAddr());
     #endif
     /* xiongxianghui00253310 modify for ftmerrlog end   */
 
@@ -2294,6 +2349,9 @@ VOS_VOID  NAS_LMM_PUBM_Init_FidInit( VOS_VOID )
     #endif
     return;
 }
+
+
+
 VOS_VOID  NAS_LMM_PUBM_Init( VOS_VOID )
 {
     NAS_LMM_PUBM_LOG_NORM("NAS_LMM_PUBM_Init                  START INIT...");
@@ -2718,6 +2776,9 @@ VOS_UINT32  NAS_LMM_PreProcMsgUsimStatusInd( MsgBlock  *pMsg )
                     NAS_EMM_PUB_SendEsmStatusInd(       EMM_ESM_ATTACH_STATUS_DETACHED);
                     /* 通知APP_DETACH_IND(APP_MM_DETACH_ENTITY_ME)*/
                     NAS_EMM_MmcSendDetIndLocal(MMC_LMM_L_LOCAL_DETACH_OTHERS);
+                    #if (FEATURE_PTM == FEATURE_ON)
+                    NAS_EMM_LocalDetachErrRecord(EMM_ERR_LOG_LOCAL_DETACH_TYPE_OTHER);
+                    #endif
                     NAS_EMM_ClearAppMsgPara();
                     NAS_EMM_ProcLocalNoUsim();
                     ulRslt = NAS_LMM_MSG_HANDLED;
@@ -2977,8 +3038,8 @@ VOS_VOID    NAS_LMM_DeregReleaseResource(VOS_VOID)
 
     NAS_LMM_PUBM_LOG_NORM("NAS_LMM_DeregReleaseResource: enter.");
 
-    /* 停止所有EMM状态定时器*/
-    NAS_LMM_StopAllEmmStateTimer();
+    /* 关闭当前EMM的除Del Forb Ta Proid之外的状态定时器, Del Forb Ta Proid只能在关机时停止*/
+    NAS_LMM_StopAllStateTimerExceptDelForbTaProidTimer();
 
     /* 停止所有EMM协议定时器*/
     NAS_LMM_StopAllEmmPtlTimer();
@@ -3047,6 +3108,10 @@ VOS_UINT32  NAS_LMM_MsRegSsWaitAccessGrantIndMsgUsimStausInd(VOS_VOID)
 
     /* 通知APP_DETACH_IND(APP_MM_DETACH_ENTITY_ME)*/
     NAS_EMM_MmcSendDetIndLocal(MMC_LMM_L_LOCAL_DETACH_OTHERS);
+
+    #if (FEATURE_PTM == FEATURE_ON)
+    NAS_EMM_LocalDetachErrRecord(EMM_ERR_LOG_LOCAL_DETACH_TYPE_OTHER);
+    #endif
     NAS_EMM_ClearAppMsgPara();
 
     NAS_EMM_ProcLocalNoUsim();
@@ -3062,6 +3127,10 @@ VOS_UINT32  NAS_LMM_MsRegInitSsAttachWaitEsmPdnRspMsgUsimStausInd( VOS_VOID )
 
     /* 通知APP_DETACH_IND(APP_MM_DETACH_ENTITY_ME)*/
     NAS_EMM_MmcSendDetIndLocal(MMC_LMM_L_LOCAL_DETACH_OTHERS);
+
+    #if (FEATURE_PTM == FEATURE_ON)
+    NAS_EMM_LocalDetachErrRecord(EMM_ERR_LOG_LOCAL_DETACH_TYPE_OTHER);
+    #endif
     NAS_EMM_ClearAppMsgPara();
 
     NAS_EMM_ProcLocalNoUsim();
@@ -3096,6 +3165,10 @@ VOS_UINT32  NAS_LMM_MsResumeSsResumeRrcOriWaitSysInfoIndMsgUsimStausInd( VOS_VOI
 
     /* 通知APP_DETACH_IND(APP_MM_DETACH_ENTITY_ME)*/
     NAS_EMM_MmcSendDetIndLocal(MMC_LMM_L_LOCAL_DETACH_OTHERS);
+
+    #if (FEATURE_PTM == FEATURE_ON)
+    NAS_EMM_LocalDetachErrRecord(EMM_ERR_LOG_LOCAL_DETACH_TYPE_OTHER);
+    #endif
     NAS_EMM_ClearAppMsgPara();
 
     NAS_EMM_ProcLocalNoUsim();
@@ -3148,6 +3221,10 @@ VOS_UINT32  NAS_LMM_MsAnyStateSsWaitRrcRelIndMsgUsimStausInd(  )
 
     /* 通知APP_DETACH_IND(APP_MM_DETACH_ENTITY_ME)*/
     NAS_EMM_MmcSendDetIndLocal(MMC_LMM_L_LOCAL_DETACH_OTHERS);
+
+    #if (FEATURE_PTM == FEATURE_ON)
+    NAS_EMM_LocalDetachErrRecord(EMM_ERR_LOG_LOCAL_DETACH_TYPE_OTHER);
+    #endif
     NAS_EMM_ClearAppMsgPara();
 
     NAS_EMM_ProcLocalNoUsim();
@@ -3591,6 +3668,10 @@ VOS_UINT32  NAS_LMM_PreProcRrcDataCnf( MsgBlock  *pMsg )
             }
             else
             {
+                #if (FEATURE_PTM == FEATURE_ON)
+                NAS_EMM_ProcErrlogEstCnfOrDataCnfFail((VOS_VOID*)pRrcDataCnf, EMM_OM_ERRLOG_TYPE_DATA_CNF_FAIL);
+                #endif
+
                 /* 发送失败的处理 */
                 pFailActFun = gstEmmMrrcSendMsgResultActTbl[ulIndex].pfFailActionFun;
 
@@ -3788,6 +3869,79 @@ VOS_UINT32 NAS_LMM_RevMmcModemInfoReq(MsgBlock *  pMsg)
 }
 
 /*lint +e960*/
+
+VOS_UINT32 NAS_EMM_PreProcMsgRrcPagingInd(MsgBlock  *pstMsg)
+{
+    NAS_LMM_MAIN_STATE_ENUM_UINT16       enMainState;
+    LRRC_LMM_PAGING_IND_STRU             *pMsgRrcPagingInd = NAS_EMM_NULL_PTR;
+    NAS_LMM_PUBM_LOG_NORM("NAS_EMM_PreProcMsgRrcPagingInd is entered.");
+
+    /* 入参检查 */
+    if ( NAS_EMM_NULL_PTR == pstMsg)
+    {
+        NAS_LMM_PUBM_LOG_ERR("NAS_EMM_PreProcMsgRrcPagingInd:input ptr null!");
+        return  NAS_LMM_MSG_HANDLED;
+    }
+    enMainState = NAS_LMM_GetEmmCurFsmMS();
+    pMsgRrcPagingInd = (LRRC_LMM_PAGING_IND_STRU *)(VOS_VOID *)pstMsg;
+
+    /* TAU和SER过程中收到CS PAGING时低优先级缓存，待TAU和SER流程结束后处理,其他状态按原处理进入状态机处理 */
+    if(LRRC_LNAS_PAGING_TYPE1 == pMsgRrcPagingInd->enPagingType)
+    {
+        if((EMM_MS_TAU_INIT == enMainState) || (EMM_MS_SER_INIT == enMainState) || (EMM_MS_RRC_CONN_EST_INIT == enMainState))
+        {
+            NAS_LMM_PUBM_LOG_NORM("NAS_EMM_PreProcMsgRrcPagingInd LOW_PRIO_MSG.");
+            return NAS_LMM_STORE_LOW_PRIO_MSG;
+        }
+    }
+    return NAS_LMM_MSG_DISCARD;
+}
+
+#if (FEATURE_PTM == FEATURE_ON)
+NAS_LMM_ERRLOG_ACT_STRU  gstEmmErrlogActTbl[]=
+{
+    {EMM_MS_REG_INIT,               NAS_EMM_AttachErrRecord},
+    {EMM_MS_TAU_INIT,               NAS_EMM_TAUErrRecord},
+    {EMM_MS_SER_INIT,               NAS_EMM_NorServiceErrRecord}
+};
+VOS_UINT32        g_ulEmmErrlogActTblLen = sizeof(gstEmmErrlogActTbl)
+                                                / sizeof(NAS_LMM_ERRLOG_ACT_STRU);
+
+VOS_VOID NAS_EMM_ProcErrlogEstCnfOrDataCnfFail(
+                 VOS_VOID*                         pstEmmProcessFail,
+                 EMM_OM_ERRLOG_TYPE_ENUM_UINT16    enErrType)
+{
+    VOS_UINT32                          ulLoop;
+    VOS_UINT16                          usCurState;
+    NAS_LMM_ERRLOG_ACT_FUN              pActFun;
+
+    NAS_LMM_PUBM_LOG_INFO("NAS_EMM_ProcErrlogEstCnfOrDataCnfFail!!");
+
+    usCurState = NAS_EMM_CUR_MAIN_STAT;
+    if((EMM_MS_REG_INIT != usCurState)
+      && (EMM_MS_TAU_INIT != usCurState)
+      && (EMM_MS_SER_INIT != usCurState))
+    {
+        return;
+    }
+
+    /*根据当前主状态去找对应的errlog处理函数*/
+    for(ulLoop = 0; ulLoop < g_ulEmmErrlogActTblLen; ulLoop++)
+    {
+        if(gstEmmErrlogActTbl[ulLoop].enCurState == usCurState)
+        {
+            pActFun = gstEmmErrlogActTbl[ulLoop].pfErrlogFun;
+            if(VOS_NULL_PTR != pActFun)
+            {
+                (VOS_VOID)pActFun(pstEmmProcessFail, enErrType);
+            }
+            break;
+        }
+    }
+
+    return;
+}
+#endif
 #ifdef __cplusplus
     #if __cplusplus
         }

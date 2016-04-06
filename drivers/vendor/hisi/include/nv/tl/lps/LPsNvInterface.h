@@ -89,6 +89,8 @@ ERR_MSP_NVIM_NOT_SUPPORT_WRITE       2007           系统模式不允许修改该项
 /* PS功能开关组,是否支持安全激活场景下处理明文拒绝NAS消息标识 */
 #define LPS_NV_GET_NAS_PLAIN_REJ_MSG_FLAG_BIT  (0x00001000)
 
+/* PS功能开关组,规避兰州CSFB中兴核心网BUG的NV开关标识 */
+#define LPS_NV_GET_NAS_CSFB_TAU_TYPE2_FLAG_BIT  (0x00002000)
 
 /* PS功能开关组,是否支持软件KDF算法位域 */
 #define LPS_NV_GET_HARD_KDF_BIT         ( 0x00000010 )
@@ -195,8 +197,13 @@ ERR_MSP_NVIM_NOT_SUPPORT_WRITE       2007           系统模式不允许修改该项
 #define LPS_NV_RRC_BACKTOLTE_REDRECTFAIL_BIT        (0x00000800)
 #define LPS_NV_L2_CACELLINFO_REPORT_BIT          (0x00002000)                  /*CA SCELL状态信息上报*/
 
+#define LPS_NV_GET_INTRA_HO_IGNORE_FORBID_TA_BIT    (0x00008000)                /* 本系统切换不判断被禁TA开关 */
 #define LPS_NV_GET_SSC_SUPPORT_BIT                (0x00000001)
 #define LPS_NV_GET_ADRX_SUPPORT_BIT               (0x00000002)
+#define LPS_NV_GET_PTMSI_TAU_ACTIVE_FLAG_SUPPORT_BIT (0x00000020)
+/* niuxiufan rrc release modify begin */
+#define LPS_NV_GET_NOT_TRY_FAKE_CELL_FLAG_BIT     (0x00000004)
+/* niuxiufan rrc release modify end */
 
 /*TDS DSP 自检地址*/
 #define ADDR_SELF_ADJUST_PARA       (0x1300F840)
@@ -241,6 +248,11 @@ ERR_MSP_NVIM_NOT_SUPPORT_WRITE       2007           系统模式不允许修改该项
 /*CELLUPDATE MODEFIED BEGIN*/
 #define TPS_NV_OP_Cellupdate_stub_BIT            ( 0x00000001 )
 /*CELLUPDATE MODEFIED END*/
+/* Cell-Reselection optimazation in CELL-FACH when Srx/SNR are lower than the thresholds*/
+#define TPS_NV_CELL_RESEL_FOR_CELLFACH_GET_BIT      ( 0x00002000 )
+#define TPS_NV_SMC_STUB_BIT                 ( 0x00000400 )
+
+#define TPS_NV_CS_TL_MEAS_EVA_CLOSE_BIT                 ( 0x00000800 )
 
 #define TPS_NV_OP_NEWKEY_GET_BIT            ( 0x00000008 )
 
@@ -276,6 +288,9 @@ ERR_MSP_NVIM_NOT_SUPPORT_WRITE       2007           系统模式不允许修改该项
 /*TG 重选优化end*/
 
 #define TPS_NV_GCF_RRM_STUB_BIT         (0x00000080)
+/* niuxiufan taiwan modify begin */
+#define LRRC_IRAT_REDIR_NOT_BANDSCAN_BIT (0x00000008)
+/* niuxiufan taiwan modify end */
 
 /* LTE PS Transfer begin */
 #define LRRC_MTC_THRESHOLD_MIN_VALUE      (0)
@@ -414,6 +429,7 @@ enum PS_NV_INDEX_ENUM
     NV_IDX_RX_NOBLK_AGC_SCC_FREQ_COMP_ANT2,
     NV_IDX_RX_BLK_AGC_SCC_FREQ_COMP_ANT1,
     NV_IDX_RX_BLK_AGC_SCC_FREQ_COMP_ANT2,
+    NV_IDX_DPDT_ANT_SAR,
     EN_IDX_NV_ID_FTM_CAND_CELL_LIST,
 
     PS_NV_IDX_BUTT
@@ -592,6 +608,61 @@ typedef struct
     VOS_UINT32  bitFlag32                   :1;
 }LPS_NV_LONG_BIT_STRU;
 /*****************************************************************************
+ 结构名    : LPS_NV_TL_L2_PARA_STRU
+ 协议表格  :
+ ASN.1描述 :
+ 结构说明  : L2功能相关的开关的结构体
+*****************************************************************************/
+typedef struct
+{
+    /* 配置RLC 上行组包个数限制 ，NV默认为45*/
+    VOS_UINT32                          ulRlcUlSduLimit;
+
+    LPS_NV_LONG_BIT_STRU                stL2Flag;
+
+    /************************stL2Flag各个BIT含义***************************
+     bitFlag01: 设置抓取L2 MAC PDU中的参数 g_ulIfForwardToPc, 默认为关
+     bitFlag02: 设置抓取L2 MAC PDU中的参数 g_ulCapPusch, 默认为关
+     bitFlag03: 设置抓取L2 MAC PDU中的参数 g_ulCapPdsch, 默认为关
+     bitFlag04: 设置抓取L2 MAC PDU中的参数 g_ulCapPdcp, 默认为关
+     bitFlag05: 设置抓取L2 MAC PDU中的参数 g_ulTcpDebugFlg, 默认为关
+     bitFlag06: 设置抓取L2 MAC PDU中的参数 g_ulTcpDlFlg, 默认为关
+     bitFlag07: 设置抓取L2 MAC PDU中的参数 g_g_ulTcpUlFlg, 默认为关
+     bitFlag08: 设置抓取L2 MAC PDU中的参数 g_ulTcpCtrlPduFlg, 默认为关
+     bitFlag09:
+     bitFlag10:
+     bitFlag11:
+     bitFlag12:
+     bitFlag13:
+     bitFlag14:
+     bitFlag15:
+     bitFlag16:
+     bitFlag17:
+     bitFlag18:
+     bitFlag19:
+     bitFlag20:
+     bitFlag21:
+     bitFlag22:
+     bitFlag23:
+     bitFlag24:
+     bitFlag25:
+     bitFlag26:
+     bitFlag27:
+     bitFlag28:
+     bitFlag29:
+     bitFlag30:
+     bitFlag31:
+     bitFlag32:
+    ****************************************************************************/
+
+    LPS_NV_LONG_BIT_STRU                stL2Flag1;
+
+    /*预留*/
+    /*数组中的第一个元素为规避罗德仪器不响应IPV6前缀问题，使用NV控制的全局变量，IPV6前缀默认UE只发1次*/
+    VOS_UINT32                          ulRev[32];
+
+}LPS_NV_TL_L2_PARA_STRU;
+/*****************************************************************************
  结构名    : LPS_SWITCH_PARA_STRU
  协议表格  :
  ASN.1描述 :
@@ -712,7 +783,7 @@ typedef struct
      bitFlag13:
      bitFlag14: LTE CA小区状态信息上报-缺省值:0;0:关;1:开
      bitFlag15:
-     bitFlag16:
+     bitFlag16: LTE模内切换NAS忽略被禁TA,缺省值:0; 0:关; 1:开
      bitFlag17:
      bitFlag18:
      bitFlag19:
@@ -934,6 +1005,9 @@ typedef struct
      bitFlag12:
      bitFlag13:
      bitFlag14:
+     bitFlag14:CS FACH重选优化开关，开启时如果服务小区能量低于门限值则重选，高于门限不重选
+              平台缺省值为1
+              0:功能关闭 1:功能打开
      bitFlag15:
      bitFlag16:
      bitFlag17:
@@ -1719,24 +1793,62 @@ typedef struct
  结构名    : LTE_RRC_THRESHOLD_STRU
  协议表格  :
  ASN.1描述 :
+        ulCdrxPeriod:使用Balong基线值
+        lGeranBasiclag: 使用Balong基线值
+        lGeranBasiStartThres:使用Balong基线值
+        ulCdrxFilterSwitch:使用Balong基线值
+        ulAbandinFristItraMeasFlg:丢弃第一次异系统测量结果，0:不丢弃。1:丢弃。Balong基线默认值:0.
+        ulTdsT315Len:  T315定时器长度，单位秒。Balong基线默认值为0，产线需要自行设置，建议值 5.
+        ulHrpdIdleMeasIndInterTime:hrpd上报空闲态测量Ind的时间间隔，单位毫秒.Balong基线默认值:200.
+        ulHrpdConnMeasIndInterTime:hrpd上报连接态测量Ind的时间间隔，单位毫秒.Balong基线默认值:200.
+        ultimerLrrcWaitCdmaCnfLen:等待hrpd重选、重定向结果IND定时器时长,单位毫秒.Balong基线默认值:30000.
+        ulTReselectUtran: 自定义3G重选定时器长度.单位:秒。Balong基线默认值为0，产线需要自行设置，建议值 60.
+        ulTReselectGsm: 自定义2G重选定时器长度.单位:秒。Balong基线默认值为0，产线需要自行设置，建议值 50.
  结构说明  : LTE RRC 阈值
 *****************************************************************************/
 /* begin:Abandon Frist Itra Meas Result */
 typedef struct
 {
     VOS_UINT32          ulCdrxPeriod;
-    VOS_INT32           lGeranBasiclag   ;
-    VOS_INT32           lGeranBasiStartThres   ;
+    VOS_INT32           lGeranBasiclag;
+    VOS_INT32           lGeranBasiStartThres;
     VOS_UINT32          ulCdrxFilterSwitch;
     VOS_UINT32          ulAbandinFristItraMeasFlg;
     VOS_UINT32          ulTdsT315Len;
-    /*aulRsv[0]:hrpd上报空闲态测量Ind的时间间隔，单位毫秒*/
-    /*aulRsv[1]:hrpd上报连接态测量Ind的时间间隔，单位毫秒*/
-    VOS_UINT32          aulRsv[26]   ;
+    VOS_UINT32          ulHrpdIdleMeasIndInterTime;
+    VOS_UINT32          ulHrpdConnMeasIndInterTime;
+    VOS_UINT32          ultimerLrrcWaitCdmaCnfLen;
+    VOS_UINT32          ulTReselectUtran;
+    VOS_UINT32          ulTReselectGsm;
+    /* mod for FreqSearchEnhance begin */
+    VOS_UINT32          ulFreqSearchEnhanceFlag;
+    VOS_UINT32          ulFreqSearchEnhanceSrchCnt;
+    VOS_UINT32          ulFreqSearchEnhanceSrchThres;
+    /* mod for FreqSearchEnhance end */
+    VOS_UINT32          aulRsv1;
+    VOS_UINT32          aulRsv2;
+    VOS_UINT32          aulRsv3;
+    VOS_UINT32          aulRsv4;
+    VOS_INT32           lDelfaultqQualMin;/*SIB1中不含qQualMin时，使用一个默认值判断是否起同频测量*/
+    VOS_UINT32          aulRsv5;
+    VOS_UINT32          aulRsv6;
+    VOS_UINT32          aulRsv7;
+    VOS_UINT32          aulRsv8;
+    VOS_UINT32          aulRsv9;
+    VOS_UINT32          aulRsv10;
+    VOS_UINT32          aulRsv11;
+    VOS_UINT32          aulRsv12;
+    VOS_UINT32          aulRsv13;
+    VOS_UINT32          aulRsv14;
+    VOS_UINT32          aulRsv15;
+    VOS_UINT32          aulRsv16;
+    VOS_UINT32          aulRsv17;
 }LTE_RRC_THRESHOLD_STRU;
 extern VOS_UINT32   g_ulAbandinFristItraMeasFlg;
 /* end:Abandon Frist Itra Meas Result */
 
+extern VOS_UINT8    g_ucTReselectUtran;
+extern VOS_UINT8    g_ucTReselectGsm;
 
 #define         MAX_IRAT_TDS_UE_CAPABILITY_LENGHT           (100)
 typedef struct
@@ -1762,6 +1874,36 @@ typedef struct
     VOS_UINT8          aucRsv[2];
     VOS_UINT8          aucBandInd[8];
 }LTE_RRC_EXTBANDINFO_STRU;
+
+/*****************************************************************************
+ 结构名    : LRRC_NV_EXT_BAND_LIST_STRU
+ 协议表格  :
+ ASN.1描述 :
+ 结构说明  : 在不同带宽下的分段频段NV结构
+*****************************************************************************/
+typedef struct
+{
+    VOS_UINT16                          usBandInd;      /* 基本的BAND 号*/
+    VOS_UINT16                          usScellBandInd;      /* Scell的BAND 号*/
+
+	/* Band内候补带宽频段信息 */
+    LRRC_NV_SUPPORT_BAND_LIST_STRU      astBandInfoWithBandWidth[6];/*RRC_BAND_WIDTH_BUTT*/
+}LRRC_NV_EXT_BAND_LIST_STRU;
+
+/*****************************************************************************
+ 结构名    : LTE_RRC_EXTBANDINFO_WITH_BANDWIDTH_STRU
+ 协议表格  :
+ ASN.1描述 :
+ 结构说明  : UE支持的频段在不同带宽下的分段频段NV结构
+*****************************************************************************/
+typedef struct
+{
+    VOS_UINT8          ucActive;
+    VOS_UINT8          ucScellEnable;
+    VOS_UINT16         usBandCount;
+    LRRC_NV_EXT_BAND_LIST_STRU          stCandBandsInfo[8]; /*支持最多8个频定制分频*/
+}LTE_RRC_EXTBANDINFO_WITH_BANDWIDTH_STRU;
+
 /*****************************************************************************
   6 UNION
 *****************************************************************************/
@@ -1794,6 +1936,8 @@ extern VOS_UINT32  g_ulSmcControl;
 
 /* DCM定制需求，GU到L的切换不考虑被禁TA的开关 */
 extern VOS_UINT32  g_ulHoIgnoreForbidTaFlag;
+/* 定制需求，模内切换不考虑被禁TA的开关 1:打开 0:关闭 默认关闭 */
+extern VOS_UINT32    g_ulIntraHoIgnoreForbidTaFlag;
 
 /*外场测试桩代码开关 0:关闭  1:打开.默认为关闭*/
 extern VOS_UINT32 g_ulFieldTestSwitch;
@@ -1923,6 +2067,12 @@ extern VOS_UINT32                              gul_CmasRptBeforeAuthSwitch;
 
 extern VOS_UINT32 g_ulSscSupportFlag;
 extern VOS_UINT32 g_ulAdrxSupportFlag;
+/* niuxiufan taiwan modify begin */
+extern VOS_UINT32 g_ulRedirNotBandScanFlg;
+/* niuxiufan taiwan modify end */
+/* niuxiufan rrc release modify begin */
+extern VOS_UINT32 g_ulNotTryFakeCellFlg;
+/* niuxiufan rrc release modify end */
 /*****************************************************************************
   8 Fuction Extern
 *****************************************************************************/

@@ -1,18 +1,4 @@
-/**
-    @copyright: Huawei Technologies Co., Ltd. 2012-2013. All rights reserved.
-    
-    @file: srecorder_modem_log.c
-    
-    @brief: 导出modem死机堆栈和运行日志。
-    
-    @version: 1.0 
-    
-    @author: QiDechun ID: 216641
-    
-    @date: 2013-01-18
-    
-    @history:
-*/
+
 
 /*----includes-----------------------------------------------------------------------*/
 
@@ -26,15 +12,13 @@
 #include <linux/fs.h>
 #include <linux/file.h>
 #include <asm/uaccess.h>
-/* DTS2012101502012 wupeng 20121015 begin */
 #include <linux/ctype.h>
-/* DTS2012101502012 wupeng 20121015 end */
 #include <linux/cpufreq.h>
-/* DTS2012110206142 wupeng-qidechun 20121105 begin */
 #include <asm/sizes.h>
-/* DTS2012110206142 wupeng-qidechun 20121105 end */
 
+#ifdef CONFIG_ARM
 #include <asm/cpu.h>
+#endif
 
 #include "../include/srecorder_kernel_symbols.h"
 #include "../include/srecorder_modem_log.h"
@@ -51,19 +35,16 @@
 
 /*----local macroes------------------------------------------------------------------*/
 
-/* DTS2012101502012 wupeng 20121015 begin */
 #define SZ_DIAG_ERR_MSG 0xC8
 #define ID_DIAG_ERR_MSG SMEM_DIAG_ERR_MESSAGE
 #define SMD_HEAP_SIZE 512
 #define BASE_ADDR_MASK 0xfffffffc
 
 #define MODEM_CRASH_LOG_MAX_LENGTH (0x20000) /* 128KB */
-/* DTS2012101502012 wupeng 20121015 end */
 
 
 /*----local prototypes----------------------------------------------------------------*/
 
-/* DTS2012101502012 wupeng 20121015 begin */
 struct smem_proc_comm
 {
     unsigned command;
@@ -102,7 +83,6 @@ struct smem_area
     unsigned size;
     void __iomem *virt_addr;
 };
-/* DTS2012101502012 wupeng 20121015 end */
 
 
 /*----local variables------------------------------------------------------------------*/
@@ -113,7 +93,6 @@ struct smem_area
 
 /*----local function prototypes---------------------------------------------------------*/
 
-/* DTS2012101502012 wupeng 20121015 begin */
 static void *srecorder_smem_range_check(void *base, unsigned offset);
 static void *srecorder_smem_get_entry(unsigned id, unsigned *size);
 static void *srecorder_smem_find(unsigned id, unsigned size_in);
@@ -122,12 +101,10 @@ static void srecorder_do_delay(volatile unsigned long loop_times);
 #endif
 static int srecorder_debug_modem_err(srecorder_reserved_mem_info_t *pmem_info);
 static int srecorder_debug_modem_err_f3(srecorder_reserved_mem_info_t *pmem_info);
-/* DTS2012101502012 wupeng 20121015 end */
 
 
 /*----function definitions--------------------------------------------------------------*/
 
-/* DTS2012101502012 wupeng 20121015 begin */
 static void *srecorder_smem_range_check(void *base, unsigned offset)
 {
     int i = 0;
@@ -271,9 +248,7 @@ static int srecorder_debug_modem_err(srecorder_reserved_mem_info_t *pmem_info)
     int i = 0;
     int bytes_read = 0;
 
-    /* DTS2012110206142 wupeng-qidechun 20121105 begin */
     int max = MIN(MODEM_CRASH_LOG_MAX_LENGTH, pmem_info->bytes_left - (DMESG_MAX_LENGTH + SZ_1K));
-    /* DTS2012110206142 wupeng-qidechun 20121105 end */
 
     x = srecorder_smem_find(ID_DIAG_ERR_MSG, SZ_DIAG_ERR_MSG);
     if (NULL != x) 
@@ -295,15 +270,12 @@ static int srecorder_debug_modem_err(srecorder_reserved_mem_info_t *pmem_info)
         i += bytes_read;
     }
     
-    /* DTS2012110206142 wupeng-qidechun 20121105 begin */
     /* 删除此处3行 */
-    /* DTS2012110206142 wupeng-qidechun 20121105 end */
     
     return i;
 }
 
 
-/* DTS2012110206142 wupeng-qidechun 20121105 begin */
 /* 修正此函数的实现 */
 static int srecorder_debug_modem_err_f3(srecorder_reserved_mem_info_t *pmem_info)
 {
@@ -348,8 +320,6 @@ static int srecorder_debug_modem_err_f3(srecorder_reserved_mem_info_t *pmem_info
    
     return i;
 }
-/* DTS2012110206142 wupeng-qidechun 20121105 end */
-/* DTS2012101502012 wupeng 20121015 end */
 
 /**
     @function: int srecorder_get_modem_log(srecorder_reserved_mem_info_for_log_t *pmem_info)
@@ -365,13 +335,11 @@ int srecorder_get_modem_log(srecorder_reserved_mem_info_t *pmem_info)
 {
     psrecorder_info_header_t pinfo_header = NULL;
     
-    /* DTS2012101502012 wupeng 20121015 begin */
     if (unlikely(NULL == pmem_info))
     {
         SRECORDER_PRINTK("File [%s] line [%d] invalid param or kernel symbol addr!\n", __FILE__, __LINE__);
         return -1;
     }
-    /* DTS2012101502012 wupeng 20121015 end */
 
     if (srecorder_log_has_been_dumped(MODEM_ERR_BIT7))
     {
@@ -383,7 +351,6 @@ int srecorder_get_modem_log(srecorder_reserved_mem_info_t *pmem_info)
         SRECORDER_PRINTK("modem err f3 has been dumped successfully!\n");
     }
     
-    /* DTS2012101502012 wupeng 20121015 begin */
     if (pmem_info->dump_modem_crash_log_only)
     {
 #if defined(CONFIG_DUMP_MODEM_LOG_BY_FIQ)
@@ -431,7 +398,6 @@ int srecorder_get_modem_log(srecorder_reserved_mem_info_t *pmem_info)
 #else
 #endif
     }
-    /* DTS2012101502012 wupeng 20121015 end */
     
     return 0;
 }

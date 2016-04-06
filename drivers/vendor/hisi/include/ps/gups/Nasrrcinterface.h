@@ -136,7 +136,10 @@ enum NAS_RRC_MSG_TYPE_ENUM
     RRMM_SERVICE_ABORT_NOTIFY        = 0x0078,  /* _H2ASN_MsgChoice RRMM_SERVICE_ABORT_NOTIFY_STRU */
 
     RRMM_GMM_PROC_NOTIFY               = 0x007A,   /* _H2ASN_MsgChoice RRMM_GMM_PROC_NOTIFY_STRU */
-    RRMM_GMM_PROC_ANS                  = 0X007C,   /* _H2ASN_MsgChoice RRMM_GMM_PROC_RSP_STRU */
+    RRMM_GMM_PROC_ANS                  = 0X007C,   /* _H2ASN_MsgChoice RRMM_GMM_PROC_ANS_STRU */
+
+    RRMM_TRANSACTION_STATUS_NOTIFY     = 0x0088,   /* _H2ASN_MsgChoice RRMM_TRANSACTION_STATUS_NOTIFY_STRU */
+
     /* AS发给MM的原语 */
     RRMM_PLMN_SEARCH_CNF                = 0x0001,   /* _H2ASN_MsgChoice RRMM_PLMN_SEARCH_CNF_STRU */
     RRMM_PLMN_LIST_IND                  = 0x0003,   /* _H2ASN_MsgChoice RRMM_PLMN_LIST_IND_STRU */
@@ -215,7 +218,10 @@ enum NAS_RRC_MSG_TYPE_ENUM
     RRMM_NET_SCAN_STOP_CNF              = 0x0093,   /* _H2ASN_MsgChoice RRMM_NET_SCAN_STOP_CNF_STRU */
 
     RRMM_NCELL_MONITOR_IND              = 0x0095,   /* _H2ASN_MsgChoice RRC_NAS_NCELL_MONITOR_IND_STRU */
-    RRMM_GMM_PROC_ENQ                   = 0x0097,   /* _H2ASN_MsgChoice RRMM_GMM_PROC_IND_STRU */
+    RRMM_GMM_PROC_ENQ                   = 0x0097,   /* _H2ASN_MsgChoice RRMM_GMM_PROC_ENQ_STRU */
+
+    RRMM_SEARCHED_PLMN_INFO_IND         = 0x0099  , /* _H2ASN_MsgChoice RRMM_SEARCHED_PLMN_INFO_IND_STRU */
+                                                    /*搜网过程中搜索到PLMN的信息上报*/
 
     NAS_RRC_MSG_TYPE_BUTT               = 0xFFFF
 };
@@ -482,6 +488,23 @@ enum RRC_NAS_EST_RESULT_ENUM
 
     RRC_EST_RJ_T3122_RUNNING            = 14,               /* G下立即指派被拒启动T3122，在T3122运行期间回复建联请求 */
 
+    RRC_EST_RJ_SNW                       = 16,               /* AS搜网状态RRC回复建链失败 */
+
+    RRC_EST_RANDOM_ACCESS_REJECT_NO_VALID_INFO        = 17,   /* 仅G下使用，未同步完成邻区 */
+
+    RRC_EST_RJ_RA_FAIL                      = 18,           /* GAS发起RA达到最大次数，GPHY一直没有回复发送成功, */
+    RRC_EST_RJ_NOT_ALLOW                    = 19,           /* MM层发起的建立连接请求不允许,例如收到立即指派，保护定时器期间不允许再次发起接入 */
+    RRC_EST_RJ_TIME_OUT                     = 20,           /* 建立CS连接过程中的模块间的保护定时器超时,GAS,TDRRC都会使用 */
+    RRC_EST_RJ_RA_RESOURCE_FAIL             = 21,           /* 申请随机接入资源失败; */
+    RRC_EST_RJ_IMMEDIATE_ASSIGN_INVALID     = 22,           /* 收到的立即指派非法 */
+    RRC_EST_RJ_ACTIVE_PHISICAL_CHANNEL_FAIL = 23,           /* 信道指派过程中激活物理信道失败*/
+    RRC_EST_RJ_AIRMSG_DECODE_ERR            = 24,           /* 空口消息解码错误 */
+    RRC_EST_RJ_CURR_PROTOCOL_NOT_SUPPORT    = 25,           /* 当前未驻留 */
+    RRC_EST_RJ_INVALID_UE_STATE             = 26,           /* 错误的UE状态  */
+    RRC_EST_RJ_CELL_BAR                     = 27,           /* 小区被bar */
+    RRC_EST_RJ_FASTRETURN_LTE               = 28,           /* FASTRETRUN_LTE */
+    RRC_EST_RJ_RA_FAIL_NO_VALID_INFO        = 29,           /* 仅G下使用,GAS发起RA达到最大次数，GPHY一直没有回复发送成功,未同步完成邻区 */
+
     RRC_NAS_EST_RESULT_BUTT
 };
 typedef VOS_UINT32 RRC_NAS_EST_RESULT_ENUM_UINT32;
@@ -561,6 +584,14 @@ enum RRC_REL_CAUSE_ENUM
     RRC_REL_CAUSE_RL_FAILURE                    = 15,       /* Radio Link Failure                       */
     RRC_REL_CAUSE_GAS_TIMEOUT                   = 16,       /* GAS 新增，超时引起 RR 连接释放           */
     RRC_REL_CAUSE_OTHER_REASON                  = 17,       /* 其它原因                                 */
+    RRC_REL_CAUSE_RLC_ERROR                     = 19,       /* RLC不可恢复错误 */
+    RRC_REL_CAUSE_CELL_UPDATE_FAIL              = 20,       /* CELL Update失败,TD使用 */
+    RRC_REL_CAUSE_T314_EXPIRED                  = 21,       /* CS域链路存在，连接态下失步搜网失败，T314超时 */
+    RRC_REL_CAUSE_T315_EXPIRED                  = 22,       /* PS域链路存在，连接态下失步搜网失败，T315超时 */
+    RRC_REL_CAUSE_W_RL_FAIL                     = 23,       /* 仅W下使用，Radio link失败，不触发呼叫重建 */
+
+    RRC_REL_CAUSE_G_RL_FAIL                     = 24,       /* 仅G下使用，Radio link失败，不触发呼叫重建 */
+
 
     RRC_REL_CAUSE_BUTT
 };
@@ -1445,6 +1476,20 @@ enum RRC_NAS_SYS_SUBMODE_ENUM
 };
 typedef VOS_UINT8  RRC_NAS_SYS_SUBMODE_ENUM_UINT8;
 
+/*****************************************************************************
+ 枚举名    : RRC_NAS_SYS_INFO_TYPE_ENUM
+ 协议表格  :
+ ASN.1描述 :
+ 枚举说明  : sys info 的类型
+*****************************************************************************/
+enum RRC_NAS_SYS_INFO_TYPE_ENUM
+{
+    RRC_NAS_SYS_INFO_TYPE_OTA                 = 0,                /* 当前是ota */
+    RRC_NAS_SYS_INFO_TYPE_SYS                 = 1,                /* 当前是系统消息 */
+    RRC_NAS_SYS_INFO_TYPE_BUTT
+};
+typedef VOS_UINT8  RRC_NAS_SYS_INFO_TYPE_ENUM_UINT8;
+
 
 enum RRC_NAS_LTE_CAPABILITY_STATUS_ENUM
 {
@@ -1547,6 +1592,42 @@ enum NAS_GAS_MS_CAP_TYPE_ENUM
     NAS_GAS_MS_CAP_TYPE_BUTT
 };
 typedef VOS_UINT8 NAS_GAS_MS_CAP_TYPE_ENUM_UINT8;
+enum NAS_LAU_TYPE_ENUM
+{
+    NAS_LAU_TYPE_NORMAL_LAU             = 0,
+    NAS_LAU_TYPE_PERIOD_LAU,
+    NAS_LAU_TYPE_IMSI_ATTACH,
+
+    NAS_LAU_TYPE_BUTT
+
+};
+typedef VOS_UINT8 NAS_LAU_TYPE_ENUM_UINT8;
+
+
+enum NAS_ADDITION_UPDATE_PARA_ENUM
+{
+    NAS_ADDITION_UPDATE_PARA_NONE       = 0,
+    NAS_ADDITION_UPDATE_PARA_MO,
+    NAS_ADDITION_UPDATE_PARA_MT,
+    NAS_ADDITION_UPDATE_PARA_MO_MT,
+
+    NAS_ADDITION_UPDATE_PARA_BUTT
+
+};
+typedef VOS_UINT8 NAS_ADDITION_UPDATE_PARA_ENUM_UINT8;
+
+
+enum RRMM_TRANSACTION_STATUS_ENUM
+{
+    RRMM_TRANSACTION_CONNECTION_EST_SUCC       = 0,
+    RRMM_TRANSACTION_FAIL,
+
+    RRMM_TRANSACTION_BUTT
+
+};
+typedef VOS_UINT8 RRMM_TRANSACTION_STATUS_ENUM_UINT8;
+
+
 
 /*****************************************************************************
   4 全局变量声明
@@ -1599,7 +1680,8 @@ typedef struct
     RRC_FORB_LA_STRU                    aForbLaList[RRC_MAX_FORBLA_NUM];        /* 禁止注册区列表                           */
 
     RRMM_NCELL_INFO_STRU                stNcellInfo;
-
+    PS_BOOL_ENUM_UINT8                  enCsfbFlg;          /* 本次搜网流程是否CSFB发起的 */
+    VOS_UINT8                           aucReserve[3];
 }RRMM_PLMN_SEARCH_REQ_STRU;
 
 /* 7.1.2 消息 RRMM_PLMN_SEARCH_CNF 的结构体 */
@@ -1996,6 +2078,9 @@ typedef struct
     VOS_UINT32                          bitOpCellId     : 1;
     VOS_UINT32                          bitSpare        : 28;
 
+    RRC_NAS_SYS_INFO_TYPE_ENUM_UINT8    enSysInfoType;
+    VOS_UINT8                           aucReserve[3];
+
     RRC_PLMN_ID_STRU                    PlmnId;             /* 本小区PLMN ID              */
 
     VOS_UINT32                          ulCsDrxLength;      /* CS域DRX长度系数 */
@@ -2183,7 +2268,7 @@ typedef struct
     VOS_UINT32                          bitOpDrxLength  : 1;
     VOS_UINT32                          bitOpTmsiLai    : 1;
     VOS_UINT32                          bitOpPTmsiRai   : 1;
-    VOS_UINT32                          bitDelKey       : 1;    
+    VOS_UINT32                          bitDelKey       : 1;
     VOS_UINT32                          bitOpIdleMappedLSecurity    : 1;
     VOS_UINT32                          bitSpare        : 25;
 
@@ -3442,6 +3527,27 @@ typedef struct
     VOS_UINT8                           aucReserved[3];
 } RRC_NAS_NCELL_MONITOR_IND_STRU;
 
+typedef struct
+{
+    RRC_PLMN_ID_STRU                stPlmnId;
+    RRC_NAS_RAT_TYPE_ENUM_UINT32    ulRat;    /* 支持的接入技术 */
+    VOS_UINT16                      usLac;    /* 位置区信息,如果没有位置信息，填0xffff*/
+    VOS_UINT16                      usReserved;
+}RRMM_PLMN_RAT_WITH_LAC_STRU;
+typedef struct
+{
+    MSG_HEADER_STRU                     stMsgHeader;          /* 消息头    */   /*_H2ASN_Skip*/
+    VOS_UINT32                          ulAvailPlmnNum;       /* 上报PLMN个数 */
+
+    /* 上报plmn 接入技术和位置区信息 */
+    RRMM_PLMN_RAT_WITH_LAC_STRU         astPlmnWithLacList[NAS_RRC_MAX_AVAILPLMN_NUM];
+}RRMM_SEARCHED_PLMN_INFO_IND_STRU;
+typedef struct
+{
+    MSG_HEADER_STRU                     stMsgHeader;                            /* 消息头  */    /*_H2ASN_Skip*/
+    RRMM_TRANSACTION_STATUS_ENUM_UINT8  enTransActionStatus;
+    VOS_UINT8                           aucRsv[3];                              /* 保留 */
+}RRMM_TRANSACTION_STATUS_NOTIFY_STRU;
 
 
 /*****************************************************************************
@@ -3690,18 +3796,28 @@ extern VOS_UINT32 GASGCOM_GetDisplayRate(PPP_DIAL_RATE_DISPLAY_ENUM_UINT32 *penR
 extern VOS_VOID GASGCOM_UpdateCustomizeNv(VOS_VOID);
 
 #if (FEATURE_ON == FEATURE_LTE)
-/* API约束1: 禁止LTE FDD NV项必须是打开的， 
+/* API约束1: 禁止LTE FDD NV项必须是打开的，
    API约束2: 必须给G模发过开机
    API约束3: G模是从模
    不满足其中的任何一个条件，都属于无效调用
 */
-extern VOS_UINT32 GASGCOM_GetMsCapability(RRC_PLMN_ID_STRU *pstPlmn, 
-                                               NAS_GAS_MS_CAP_TYPE_ENUM_UINT8 enCapType, 
-                                               VOS_UINT16 usSize, 
+extern VOS_UINT32 GASGCOM_GetMsCapability(RRC_PLMN_ID_STRU *pstPlmn,
+                                               NAS_GAS_MS_CAP_TYPE_ENUM_UINT8 enCapType,
+                                               VOS_UINT16 usSize,
                                                VOS_UINT8 *pucData);
 #endif
 
 extern VOS_UINT32  TAF_IsNormalSrvStatus(VOS_VOID);
+
+
+extern VOS_UINT32 NAS_MM_GetLauRequestInfo(
+    NAS_MSG_STRU                           *pstLauReqMsg,
+    NAS_LAU_TYPE_ENUM_UINT8                *penLauType,
+    VOS_UINT8                              *pucFollowOnFlg,
+    NAS_ADDITION_UPDATE_PARA_ENUM_UINT8    *penAdditionUpdatePara
+);
+
+
 #if ((VOS_OS_VER == VOS_WIN32) || (VOS_OS_VER == VOS_NUCLEUS))
 #pragma pack()
 #else

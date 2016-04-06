@@ -9,8 +9,11 @@
 #include "gpio_balong.h"
 
 /*#define CCORE_GPIO_IRQ_ENABLE*/
-
+#ifndef HI_K3_GPIO
 #define GPIO_TEST_NUM                          (GPIO_0_13)      /*GPIO_0_13*/
+#else
+#define GPIO_TEST_NUM                          179
+#endif
 #define GPIO_TEST_BASEADDR                     (HI_GPIO0_REGBASE_ADDR)
 #define GPIO_BANK_BITS                         (0)
 #define GPIO_PIN_BITS                          (13)
@@ -139,7 +142,7 @@ int test_bsp_gpio_set_value(void)
 		logMsg("Test_bsp_gpio_set_value is fail!!\n",0,0,0,0,0,0);
 		return GPIO_ERROR;
 	}
-	
+
 	bsp_gpio_set_value(GPIO_TEST_NUM,1);
 	if(0 == gpio_reg_get_bits(GPIO_TEST_BASEADDR,HI_GPIO_SWPORT_DR_OFFSET,GPIO_PIN_BITS))
 	{
@@ -148,7 +151,7 @@ int test_bsp_gpio_set_value(void)
 	}
 
 	logMsg("Test_bsp_gpio_set_value is passed!!\n",0,0,0,0,0,0);
-	
+
     return GPIO_OK;
 
 }
@@ -164,7 +167,7 @@ int test_bsp_gpio_direction_get(void)
 		logMsg("Test_bsp_gpio_direction_get is fail!!\n",0,0,0,0,0,0);
 		return GPIO_ERROR;
 	}
-	
+
 	gpio_reg_set_bits(GPIO_TEST_BASEADDR,HI_GPIO_SWPORT_DDR_OFFSET,GPIO_PIN_BITS,1,1);
 	if(0 == bsp_gpio_direction_get(GPIO_TEST_NUM))
 	{
@@ -213,7 +216,7 @@ int test_bsp_gpio_set_function(void)
 		logMsg("Test_bsp_gpio_set_function is fail!!\n",0,0,0,0,0,0);
 		return GPIO_ERROR;
 	}
-    
+
 	bsp_gpio_set_function(GPIO_TEST_NUM,GPIO_NORMAL);
 
 	if(GPIO_INTERRUPT == gpio_reg_get_bits(GPIO_TEST_BASEADDR,HI_GPIO_INTEN_OFFSET,GPIO_PIN_BITS))
@@ -221,7 +224,7 @@ int test_bsp_gpio_set_function(void)
 		logMsg("Test_bsp_gpio_set_function is fail!!\n",0,0,0,0,0,0);
 		return GPIO_ERROR;
 	}
-    
+
 	logMsg("Test_bsp_gpio_set_function is passed!!\n",0,0,0,0,0,0);
     return GPIO_OK;
 }
@@ -288,7 +291,7 @@ int test_bsp_gpio_int_trigger_set(void)
 	{
 		logMsg("Test_bsp_gpio_int_trigger_set is fail!!\n",0,0,0,0,0,0);
 		return GPIO_ERROR;
-	}	
+	}
 
 	bsp_gpio_int_trigger_set(GPIO_TEST_NUM,5);
 	if(0 != gpio_reg_get_bits(GPIO_TEST_BASEADDR,HI_GPIO_INTTYPE_LEVEL_OFFSET,GPIO_PIN_BITS)
@@ -301,7 +304,7 @@ int test_bsp_gpio_int_trigger_set(void)
 	logMsg("Test_bsp_gpio_int_trigger_set is passed!!\n",0,0,0,0,0,0);
 
     return GPIO_OK;
-    
+
 }
 #else
 int test_bsp_gpio_direction_input(void)
@@ -330,7 +333,7 @@ int test_bsp_gpio_get_value(void)
 }
 
 int test_bsp_gpio_set_value(void)
-{	
+{
     return GPIO_OK;
 }
 
@@ -381,7 +384,7 @@ int test_bsp_gpio_raw_int_state_get(void)
 int test_bsp_gpio_int_trigger_set(void)
 {
     return GPIO_OK;
-    
+
 }
 
 int test_bsp_gpio_suspend(void)
@@ -399,7 +402,7 @@ int test_bsp_gpio_init(void)
     return GPIO_OK;
 }
 
-int test_bsp_gpio_direction_get_init(void) 
+int test_bsp_gpio_direction_get_init(void)
 {
     return GPIO_OK;
 }
@@ -424,7 +427,7 @@ int test_gpio_get_value_init(void)
     return GPIO_OK;
 }
 
-int test_bsp_gpio_direction_get_invalid_num(void) 
+int test_bsp_gpio_direction_get_invalid_num(void)
 {
     bsp_gpio_direction_get(GPIO_INVALID_NUM);
     return GPIO_OK;
@@ -497,7 +500,7 @@ void bsp_gpio_test(void)
     test_bsp_gpio_direction_output_init();
     test_bsp_gpio_set_value_init();
     test_gpio_get_value_init();
-    
+
 	test_bsp_gpio_init();
 
     test_gpio_llt();
@@ -513,7 +516,7 @@ void bsp_gpio_test(void)
 
     test_bsp_gpio_suspend();
     test_bsp_gpio_resume();
-    
+
 	test_bsp_gpio_direction_output();
     test_bsp_gpio_output_get_value();
 	test_bsp_gpio_set_value();

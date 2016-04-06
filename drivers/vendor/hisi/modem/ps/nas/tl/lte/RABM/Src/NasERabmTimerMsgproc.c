@@ -39,8 +39,8 @@ VOS_VOID NAS_ERABM_WaitEpsbActTimerExpire( NAS_ERABM_TIMER_NAME_ENUM_UINT8 enTim
 
     if (NAS_ERABM_WAIT_EPSB_ACT_MSG == NAS_ERABM_GetWaitEpsbActSign())
     {
-        /* 向ESM发承载状态消息 */
-        NAS_ERABM_InformEsmBearerStatus();
+        /* 向ESM发承载状态消息,主动发送时，消息的SessionId填为0，不需要匹配  */
+        NAS_ERABM_InformEsmBearerStatus(0);
 
         /*清除等待EPS承载激活标识*/
         NAS_ERABM_SetWaitEpsBActSign(NAS_ERABM_NOT_WAIT_EPSB_ACT_MSG);

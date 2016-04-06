@@ -9,6 +9,7 @@
 #include "vos.h"
 #include "PsTypeDef.h"
 
+#include "NasNvInterface.h"
 
 #ifdef __cplusplus
 #if __cplusplus
@@ -33,11 +34,15 @@ enum MTC_MMA_MSG_ID_ENUM
 {
     /* 消息名称 */                         /* 消息ID */                         /* 备注 */
     /* MTC --> MMA */
-    ID_MTC_MMA_OTHER_MODEM_INFO_NOTIFY = 0x0001,                                /* _H2ASN_MsgChoice MTC_MMA_OTHER_MODEM_INFO_NOTIFY_STRU */
+    ID_MTC_MMA_OTHER_MODEM_INFO_NOTIFY  = 0x0001,                               /* _H2ASN_MsgChoice MTC_MMA_OTHER_MODEM_INFO_NOTIFY_STRU */
 
-    ID_MTC_MMA_NCELL_INFO_IND           = 0x0003,                          /* _H2ASN_MsgChoice MTC_MMA_NCELL_INFO_IND_STRU */
-	
-    ID_MTC_MMA_PS_TRANSFER_IND         = 0x0005,
+    ID_MTC_MMA_NCELL_INFO_IND           = 0x0003,                               /* _H2ASN_MsgChoice MTC_MMA_NCELL_INFO_IND_STRU */
+
+    ID_MTC_MMA_PS_TRANSFER_IND          = 0x0005,                               /* _H2ASN_MsgChoice MTC_MMA_PS_TRANSFER_IND_STRU */
+
+    ID_MTC_MMA_OTHER_MODEM_DPLMN_NPLMN_INFO_NOTIFY = 0x000b,                     /* _H2ASN_MsgChoice MTC_MMA_OTHER_MODEM_DPLMN_NPLMN_INFO_NOTIFY_STRU */
+
+
     /* MMA --> MTC */
     ID_MMA_MTC_POWER_STATE_IND          = 0x0002,                               /* _H2ASN_MsgChoice MMA_MTC_POWER_STATE_IND_STRU */
     ID_MMA_MTC_RAT_MODE_IND             = 0x0004,                               /* _H2ASN_MsgChoice MMA_MTC_RAT_MODE_IND_STRU */
@@ -47,11 +52,13 @@ enum MTC_MMA_MSG_ID_ENUM
     ID_MMA_MTC_EPLMN_INFO_IND           = 0x0008,                               /* _H2ASN_MsgChoice MMA_MTC_EPLMN_INFO_IND_STRU*/
 
     ID_MMA_MTC_REG_STATUS_IND           = 0x000a,                               /* _H2ASN_MsgChoice MMA_MTC_REG_STATUS_IND_STRU */
+
+    ID_MMA_MTC_IMSA_STATE_IND           = 0x000c,                               /* _H2ASN_MsgChoice MMA_MTC_IMSA_STATE_IND_STRU */
+
+
     ID_MMA_MTC_MSG_ID_BUTT
 };
 typedef VOS_UINT32  MTC_MMA_MSG_ID_ENUM_UINT32;
-
-
 enum MTC_MODEM_POWER_STATE_ENUM
 {
     MTC_MODEM_POWER_OFF                 = 0x00,
@@ -113,16 +120,28 @@ typedef struct
     VOS_UINT32                   bitOpCurrCampPlmnId:1;
 
     VOS_UINT32                   bitOpEplmnInfo:1;
-    VOS_UINT32                   bitSpare:30;
+    VOS_UINT32                   bitOpOtherModemPowerState:1;
+    VOS_UINT32                   bitSpare:29;
 
     MTC_MMA_PLMN_ID_STRU         stCurrCampPlmnId;                              /* 用于填写当前驻留小区的PLMN，如果丢网或者关机等非驻留状态，统一填写全0xff */
 
     MTC_MMA_EPLMN_INFO_STRU      stEplmnInfo;
 
+    MTC_MODEM_POWER_STATE_ENUM_UINT8    enOtherModemPowerState;
+    VOS_UINT8                           aucReserved[3];
+
 } MTC_MMA_OTHER_MODEM_INFO_NOTIFY_STRU;
 
 
 
+typedef struct
+{
+    MSG_HEADER_STRU                                        stMsgHeader;                                   /*_H2ASN_Skip*/
+
+    NAS_MMC_NVIM_CFG_DPLMN_NPLMN_INFO_STRU                 stCmccDplmnNplmnInfo;
+    NAS_MMC_NVIM_CFG_DPLMN_NPLMN_INFO_STRU                 stUnicomDplmnNplmnInfo;
+    NAS_MMC_NVIM_CFG_DPLMN_NPLMN_INFO_STRU                 stCtDplmnNplmnInfo;
+}MTC_MMA_OTHER_MODEM_DPLMN_NPLMN_INFO_NOTIFY_STRU;
 typedef struct
 {
     MSG_HEADER_STRU                     stMsgHeader;                            /*_H2ASN_Skip*/
@@ -139,6 +158,14 @@ typedef struct
     MTC_MODEM_POWER_STATE_ENUM_UINT8    enPowerState;                           /* 当前开关机状态 */
     VOS_UINT8                           aucReserved[3];
 } MMA_MTC_POWER_STATE_IND_STRU;
+
+
+typedef struct
+{
+    MSG_HEADER_STRU                     stMsgHeader;                            /*_H2ASN_Skip*/
+    MTC_MODEM_POWER_STATE_ENUM_UINT8    enPowerState;                           /* IMSA开关机状态 */
+    VOS_UINT8                           aucReserved[3];
+} MMA_MTC_IMSA_STATE_IND_STRU;
 
 
 typedef struct

@@ -19,13 +19,13 @@
 #include "TafApsSndAt.h"
 #include "TafApsSndInternalMsg.h"
 #include "TafApsSndRabm.h"
+#include "TafApsSndSm.h"
 #if (FEATURE_ON == FEATURE_LTE)
 #include "SmEsmInterface.h"
 #include "MnApsMultiMode.h"
 #include "ApsL4aInterface.h"
 #include "TafApsSndL4a.h"
 #endif
-
 #include "ApsNdInterface.h"
 #include "TafApsSndNd.h"
 #include "TafApsComFunc.h"
@@ -225,11 +225,6 @@ VOS_UINT32 TAF_APS_RcvEsmSmEpsBearerInfoInd_Inactive(
             TAF_APS_SndInterAttachBearerActivateInd();
         }
 
-#if (FEATURE_ON == FEATURE_IMS)
-        /* 处理IMS专有承载 */
-        TAF_APS_ProcImsBearerInfoIndOptActivate(pstPdpEntity, pstBearerInfo);
-#endif
-
 #if (FEATURE_ON == FEATURE_IPV6)
         /* 如果地址类型是IPv6, 需要同步给ND Client */
         if ( (MMC_APS_RAT_TYPE_NULL != enCurrRatType)
@@ -254,6 +249,8 @@ VOS_UINT32 TAF_APS_RcvEsmSmEpsBearerInfoInd_Inactive(
     return VOS_TRUE;
 }
 #endif
+
+
 VOS_UINT32 TAF_APS_RcvMmcServiceStatusInd_Inactive(
     VOS_UINT32                          ulEventType,
     struct MsgCB                       *pstMsg
@@ -316,6 +313,8 @@ VOS_UINT32 TAF_APS_RcvAtSetPdpContextStateReq_Active(
                                          TAF_PS_CAUSE_SUCCESS);
         }
 
+        TAF_APS_SetCallRemainTmrLen(ucCidValue, 0);
+
         /* 上报ID_EVT_TAF_PS_CALL_PDP_ACTIVATE_CNF事件 */
         TAF_APS_SndPdpActivateCnf(ucPdpId, ucCidValue);
 
@@ -376,6 +375,8 @@ VOS_UINT32 TAF_APS_RcvAtPsPppDialOrigReq_Active(
                                   TAF_PS_CAUSE_SUCCESS);
     }
 
+    TAF_APS_SetCallRemainTmrLen(pstPppDialOrigReq->stPppDialParaInfo.ucCid, 0);
+
     /* 上报ID_EVT_TAF_PS_CALL_PDP_ACTIVATE_CNF事件 */
     TAF_APS_SndPdpActivateCnf(ucPdpId, pstPppDialOrigReq->stPppDialParaInfo.ucCid);
 
@@ -422,6 +423,8 @@ VOS_UINT32 TAF_APS_RcvAtPsCallOrigReq_Active(
                                pstCallOrigReq->stDialParaInfo.ucCid,
                                TAF_PS_CAUSE_SUCCESS);
     }
+
+    TAF_APS_SetCallRemainTmrLen(pstCallOrigReq->stDialParaInfo.ucCid, 0);
 
     /* 上报ID_EVT_TAF_PS_CALL_PDP_ACTIVATE_CNF事件 */
     TAF_APS_SndPdpActivateCnf(ucPdpId, pstCallOrigReq->stDialParaInfo.ucCid);
@@ -712,10 +715,16 @@ VOS_UINT32 TAF_APS_RcvL4aPdpDeactivateInd_Active(
     TAF_APS_StopDsFlowStats(pstPdpEntity->ucNsapi);
 
     /* 如果不是默认承载，则上报，默认承载不上报 */
-    if (TAF_APS_DEFAULT_CID != pstL4aPdpDeactivateInd->ucCid)
+    if (TAF_APS_DEFAULT_CID != pstPdpEntity->stClientInfo.ucCid)
     {
         /* 上报ID_EVT_TAF_PS_CALL_PDP_DEACTIVATE_IND事件上报 */
         TAF_APS_SndPdpDeActivateInd(ucPdpId, TAF_APS_MapL4aCause(pstL4aPdpDeactivateInd->ulEsmCause));
+    }
+
+    /* 如果SNDCP已经激活, 释放SNDCP资源 */
+    if (APS_SNDCP_ACT == pstPdpEntity->PdpProcTrack.ucSNDCPActOrNot)
+    {
+        Aps_ReleaseSndcpResource(ucPdpId);
     }
 
     /* 释放APS资源 */
@@ -727,6 +736,44 @@ VOS_UINT32 TAF_APS_RcvL4aPdpDeactivateInd_Active(
     return VOS_TRUE;
 }
 
+/*****************************************************************************
+ 函 数 名  : TAF_APS_RcvL4aPdpSetupInd_Active
+ 功能描述  : 收到ID_L4A_APS_PDP_SETUP_IND消息的处理
+ 输入参数  : ulEventType: 消息类型
+             pstMsg     : ID_L4A_APS_PDP_SETUP_IND消息
+ 输出参数  : 无
+ 返 回 值  : VOS_FALSE  : 处理消息失败
+             VOS_TRUE   : 处理消息成功
+ 调用函数  :
+ 被调函数  :
+
+ 修改历史      :
+  1.日    期   : 2015年11月19日
+    作    者   : w00316404
+    修改内容   : 新生成函数
+
+*****************************************************************************/
+VOS_UINT32 TAF_APS_RcvL4aPdpSetupInd_Active(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+)
+{
+    APS_PDP_CONTEXT_ENTITY_ST          *pstPdpEntity;
+    VOS_UINT8                           ucPdpId;
+
+    ucPdpId      = TAF_APS_GetCurrFsmEntityPdpId();
+    pstPdpEntity = TAF_APS_GetPdpEntInfoAddr(ucPdpId);
+
+#if (FEATURE_ON == FEATURE_IMS)
+    /* 处理IMS专有承载 */
+    TAF_APS_ProcImsDedicateBearer(pstPdpEntity);
+#endif
+
+    /* 激活成功，启动流量统计 */
+    TAF_APS_StartDsFlowStats(pstPdpEntity->ucNsapi);
+
+    return VOS_TRUE;
+}
 
 
 VOS_UINT32 TAF_APS_RcvEsmSmEpsBearerInfoInd_Active(
@@ -931,6 +978,12 @@ VOS_UINT32 TAF_APS_RcvApsLocalPdpDeactivateInd_Active(
     MN_APS_SndEsmPdpInfoInd(pstPdpEntity, SM_ESM_PDP_OPT_DEACTIVATE);
 #endif
 
+    /* 向SM发送本地去激活请求 */
+    if (VOS_TRUE == pstPdpEntity->bitOpTransId)
+    {
+        TAF_APS_SndSmPdpLocalDeactivateReq(ucPdpId);
+    }
+
 #if (FEATURE_ON == FEATURE_IPV6)
     /* 如果是缺省承载且地址类型是IPv6, 需要同步给ND Client */
     if ( (TAF_APS_CheckPrimaryPdp(ucPdpId))
@@ -945,6 +998,7 @@ VOS_UINT32 TAF_APS_RcvApsLocalPdpDeactivateInd_Active(
     {
         Aps_ReleaseSndcpResource(ucPdpId);
     }
+
     /* 上报ID_EVT_TAF_PS_CALL_PDP_DEACTIVATE_IND事件 */
     TAF_APS_SndPdpDeActivateInd(ucPdpId, TAF_APS_MapSmCause(pstLocalMsg->enCause));
 
@@ -959,6 +1013,8 @@ VOS_UINT32 TAF_APS_RcvApsLocalPdpDeactivateInd_Active(
 
     return VOS_TRUE;
 }
+
+
 VOS_UINT32 TAF_APS_RcvMmcServiceStatusInd_Active(
     VOS_UINT32                          ulEventType,
     struct MsgCB                       *pstMsg

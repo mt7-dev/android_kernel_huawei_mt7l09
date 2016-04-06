@@ -98,16 +98,16 @@ u32 bsp_log_module_cfg_set(bsp_log_swt_cfg_s *log_swt_stru ,u32 data_len);
 
 void bsp_log_level_reset(void);
 
-u32 bsp_om_free_buf(u32 buf_addr,u32 len);
-u32 bsp_om_get_buf(u32 buf_type,u32 free_buf_len);
-u32 bsp_om_get_log_buf(u32 get_buf_len);
+u32 bsp_om_free_buf(void* buf_addr,u32 len);
+void* bsp_om_get_buf(u32 buf_type,u32 free_buf_len);
+void* bsp_om_get_log_buf(u32 get_buf_len);
 
 u32 bsp_om_send_coder_src(u8 *send_data_virt, u32 send_len);
 
 int bsp_om_start_timer(u32 timer_len,void *func,u32 para,struct softtimer_list *timer);
 int bsp_om_stop_timer(struct softtimer_list *timer);
 
-int bsp_om_into_send_list(u32 buf_addr,u32 len);
+int bsp_om_into_send_list(void* buf_addr,u32 len);
 
 int bsp_om_buf_sem_take(void);
 int bsp_om_buf_sem_give(void);

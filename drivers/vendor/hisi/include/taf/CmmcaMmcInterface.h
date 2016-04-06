@@ -46,19 +46,6 @@ extern "C" {
   3 枚举定义
 *****************************************************************************/
 
-enum CMMCA_IRAT_SYSTEM_CHG_RESULT_ENUM
-{
-    CMMCA_IRAT_SYSTEM_CHG_SUCCESS,
-    CMMCA_IRAT_SYSTEM_CHG_ACQ_FAIL,
-    CMMCA_IRAT_SYSTEM_CHG_PS_REG_FAIL,
-    CMMCA_IRAT_SYSTEM_CHG_PS_SESSION_FAIL,
-    CMMCA_IRAT_SYSTEM_CHG_FAIL,
-
-    CMMCA_IRAT_SYSTEM_CHG_RESULT_BUTT
-};
-
-typedef VOS_UINT8  CMMCA_IRAT_SYSTEM_CHG_RESULT_ENUM_UINT8;
-
 
 enum CMMCA_MMC_MSG_TYPE_ENUM
 {
@@ -89,12 +76,6 @@ typedef VOS_UINT32  CMMCA_MMC_MSG_TYPE_ENUM_UINT32;
 /*****************************************************************************
   7 STRUCT定义
 *****************************************************************************/
-
-typedef struct
-{
-    CMMCA_IRAT_SYSTEM_CHG_RESULT_ENUM_UINT8       enResult;
-}CMMCA_MMC_RAT_IRAT_SYSTEM_CHG_RSP_STRU;
-
 
 
 typedef struct

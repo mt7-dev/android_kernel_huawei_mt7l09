@@ -72,6 +72,9 @@ extern "C" {
 #define NAS_EMM_GetNasDtRptCtrlItem(ulIndex)   (&(gastNasDtRptCtrlTbl[ulIndex]))
 
 /* niuxiufan DT end */
+#define LNAS_RING_BUFFER_SIZE        (1024)
+
+
 
 extern VOS_UINT32                  g_NasEmmOmInfoIndFlag;
 
@@ -214,19 +217,16 @@ extern VOS_UINT32                  g_NasEmmOmInfoIndFlag;
 #define NAS_EMM_GetFtmInfoCnRej()           (NAS_EMM_GetFtmInfoManageAddr()->enEmmCnRejCause)
 #define NAS_EMM_SetFtmOmManageFtmActionFlag(Flag)  (NAS_EMM_GetFtmInfoActionFlag() = Flag)
 
-#define NAS_EMM_GetErrlogManageAddr()       (&(g_astEmmErrlogInfoManage))
-#define NAS_EMM_GetErrlogActionFlag()       (NAS_EMM_GetErrlogManageAddr()->ulActionFlag)
-#define NAS_EMM_SetErrlogActionFlag(Flag)   (NAS_EMM_GetErrlogActionFlag() = Flag)
-#define NAS_EMM_GetErrlogMsgSN()            (NAS_EMM_GetErrlogManageAddr()->ulMsgSN)
-#define NAS_EMM_GetErrlogAlmLevel()         (NAS_EMM_GetErrlogManageAddr()->usALMLevel)
-#define NAS_EMM_SetErrlogAlmLevel(usLevel)  (NAS_EMM_GetErrlogAlmLevel() = usLevel)
-#define NAS_EMM_GetErrlogAlmType()          (NAS_EMM_GetErrlogManageAddr()->usALMType)
-#define NAS_EMM_GetErrlogAlmLowSlice()      (NAS_EMM_GetErrlogManageAddr()->ulAlmLowSlice)
-#define NAS_EMM_GetErrlogAlmHighSlice()     (NAS_EMM_GetErrlogManageAddr()->ulAlmHighSlice)
-#define NAS_EMM_GetErrlogAmount()           (NAS_EMM_GetErrlogManageAddr()->ulErrLogAmount)
-#define NAS_EMM_GetErrlogNextNullPos()      (NAS_EMM_GetErrlogManageAddr()->ulNextNullPos)
-#define NAS_EMM_GetErrlogInfo(ulIndex)      (NAS_EMM_GetErrlogManageAddr()->stLmmErrInfoDetail[ulIndex])
-#define NAS_EMM_GetErrlogMsgQueueAddr()     (&(NAS_EMM_GetErrlogManageAddr()->stMsgQueueInfo))
+#define NAS_EMM_GetErrlogGloInfoAddr()                  (&stErrlogGloInfo)
+#define NAS_EMM_GetErrlogCtrlInfo()                     (&(NAS_EMM_GetErrlogGloInfoAddr()->stCtrlInfo))
+#define NAS_EMM_GetErrlogBufferInfo()                   (&(NAS_EMM_GetErrlogGloInfoAddr()->stBuffInfo))
+#define NAS_EMM_GetErrlogCtrlInfoCtrlFlag()             (NAS_EMM_GetErrlogCtrlInfo()->ucErrLogCtrlFlag)
+#define NAS_EMM_SetErrlogCtrlInfoCtrlFlag(ucFlag)       (NAS_EMM_GetErrlogCtrlInfoCtrlFlag() = ucFlag)
+#define NAS_EMM_GetErrlogCtrlInfoALMLevel()             (NAS_EMM_GetErrlogCtrlInfo()->usAlmLevel)
+#define NAS_EMM_SetErrlogCtrlInfoALMLevel(usLevel)      (NAS_EMM_GetErrlogCtrlInfoALMLevel() = usLevel)
+#define NAS_EMM_GetErrlogBufferInfoRingBuffer()         (NAS_EMM_GetErrlogBufferInfo()->pstRingBuffer)
+#define NAS_EMM_GetErrlogBufferInfoOverflowCnt()        (NAS_EMM_GetErrlogBufferInfo()->ulOverflowCnt)
+#define NAS_EMM_SetErrlogBufferInfoOverflowCnt(ulCnt)   (NAS_EMM_GetErrlogBufferInfoOverflowCnt() = ulCnt)
 
 #define NAS_EMM_ERRLOG_MAX_NUM              (4)
 
@@ -242,6 +242,18 @@ extern VOS_UINT32                  g_NasEmmOmInfoIndFlag;
 
 /* xiongxianghui00253310 modify for ftmerrlog end   */
 
+#define NAS_EMM_COMM_BULID_ERRLOG_HEADER_INFO(pstHeader, ModemId, AlmId, AlmLevel, ulSlice, ulLength) \
+{ \
+    (pstHeader)->ulMsgModuleId     = OM_ERR_LOG_MOUDLE_ID_LMM; \
+    (pstHeader)->usModemId         = ModemId; \
+    (pstHeader)->usAlmId           = AlmId; \
+    (pstHeader)->usAlmLevel        = AlmLevel; \
+    (pstHeader)->usAlmType         = EMM_OM_ERRLOG_ALM_TYPE_COMMUNICATION; \
+    (pstHeader)->ulAlmLowSlice     = ulSlice; \
+    (pstHeader)->ulAlmHighSlice    = 0; \
+    (pstHeader)->ulAlmLength       = ulLength; \
+}
+#define LNAS_EXC_MAX_SAVE_MSG_NUM          50
 
 /*****************************************************************************
   3 Massage Declare
@@ -750,12 +762,41 @@ typedef struct
 
 }EMM_FTM_INFO_MANAGE_STRU;
 
+
+typedef struct
+{
+    VOS_UINT8                           ucErrLogCtrlFlag;                       /* ERRLOG打开标识 */
+    VOS_UINT8                           ucReserved;
+    VOS_UINT16                          usAlmLevel;                             /* 故障告警级别 */
+} LNAS_ERRLOG_CTRL_INFO_STRU;
+
+
+typedef struct
+{
+    OM_RING_ID                          pstRingBuffer;                          /* LNAS层的共享缓存 */
+    VOS_UINT32                          ulOverflowCnt;                          /* Ringbuf溢出的次数 */
+}LNAS_ERRLOG_BUFF_INFO_STRU;
+
+
+typedef struct
+{
+    LNAS_ERRLOG_CTRL_INFO_STRU       stCtrlInfo;
+    LNAS_ERRLOG_BUFF_INFO_STRU       stBuffInfo;
+ }LNAS_ERRLOG_GLO_INFO_STRU;
+
+
+typedef struct
+{
+    LNAS_OM_ERRLOG_ALM_ID_ENUM_UINT16       enAlmID;        /* 异常模块ID */
+    VOS_UINT16                              usLogLevel;     /* 上报log等级 */
+}LNAS_ERRLOG_ALM_LEVEL_STRU;
+
+
 typedef struct
 {
     NAS_MM_CN_CAUSE_ENUM_UINT8            ulCauseId;    /*cause ID*/
-    LNAS_OM_ERRLOG_ID_ENUM_UINT16         ulErrorlogID; /*error id*/
+    EMM_OM_ERRLOG_CN_CAUSE_ENUM_UINT16    ulErrorlogID; /*error id*/
 }NAS_LMM_CN_CAUSE_TRANS_STRU;
-
 /*****************************************************************************
  结构名    : NAS_LMM_RECIVE_MSG_STRU
  结构说明  : LMM 入口消息的信息
@@ -782,29 +823,6 @@ typedef struct
     NAS_LMM_RECIVE_MSG_STRU            astReciveMsgInfo[NAS_SAVE_RECEIVE_MSG_INFO_NUM];
 } NAS_LMM_MSG_SAVE_INFO_STRU;
 
-typedef struct
-{
-    VOS_UINT32                             ulActionFlag;
-    VOS_UINT32                             ulMsgSN;
-     /* ERR LOG上报级别,每个模块的每个级别对应一个ERR LOG缓存数组
-    故障&告警级别
-    Warning： 0x04代表提示，
-    Minor：   0x03代表次要
-    Major：   0x02答标重要
-    Critical：0x01代表紧急    */
-    NAS_EMM_ERRLOG_LEVEL_ENUM_UINT16       usALMLevel;
-    NAS_EMM_ERRLOG_TYPE_ENUM_UINT16        usALMType;
-    /* EMM最新ERR LOG发生的时间戳 */
-    VOS_UINT32                             ulAlmLowSlice;/*时间戳*/
-    VOS_UINT32                             ulAlmHighSlice;
-
-    VOS_UINT32                             ulErrLogAmount;
-    VOS_UINT32                             ulNextNullPos;
-    LMM_ERR_INFO_DETAIL_STRU               stLmmErrInfoDetail[NAS_EMM_ERRLOG_MAX_NUM];
-    NAS_LMM_MSG_SAVE_INFO_STRU             stMsgQueueInfo;
-}EMM_ERRLOG_INFO_MANAGE_STRU;
-
-/* xiongxianghui00253310 modify for ftmerrlog end  */
 
 /*MM模块需上报路测的信息，后续上报新内容也需在此添加*/
 typedef struct
@@ -813,7 +831,69 @@ typedef struct
     NAS_OM_IMSI_INFO_STRU                    stImsi;           /*IMSI信息 */
     NAS_OM_EMM_STATE_STRU                    stEmmState;        /*EMM状态信息 */
 }APP_MM_DT_STRU;
+/*****************************************************************************
+ 结构名    : LNAS_EXC_LOG_STRU
+ 协议表格  :
+ ASN.1描述 :
+ 结构说明  : 复位时保存的NAS信息
+*****************************************************************************/
+typedef struct
+{
+    NAS_LMM_FSM_STATE_STRU              astCurFsm[NAS_LMM_PARALLEL_FSM_BUTT];   /* 状态机*//*主状态 */
+    NAS_EMM_RRC_CONN_STATE_ENUM_UINT8   ucRrcConnState; /* 当前RRC连接是否存在 */
+    VOS_UINT8                           aucRsv[3];
+    NAS_LMM_CUR_LTE_STATE_ENUM_UINT32   ulCurLteState; /* 主从摸*/
+}LNAS_EXC_LOG_STRU;
+/*****************************************************************************
+ 结构名    : LNAS_EXC_MSG_MNTN_STRU
+ 协议表格  :
+ ASN.1描述 :
+ 结构说明  : 保存LMM收到的消息队列(50条),用于分析复位问题
+*****************************************************************************/
+typedef struct
+{
+    VOS_UINT32                          ulNextIndex;
+    TLPS_EXC_MSG_ELEMENT_STRU           astMsgList[LNAS_EXC_MAX_SAVE_MSG_NUM];
+}LNAS_EXC_MSG_MNTN_STRU;
+/*****************************************************************************
+/*****************************************************************************
+ 结构名    : LNAS_EXC_PRE_STATE_STRU
+ 协议表格  :
+ ASN.1描述 :
+ 结构说明  : 保存转状态之前的EMM状态,用于复位分析
+*****************************************************************************/
+typedef struct
+{
+    NAS_LMM_MAIN_STATE_ENUM_UINT16      enPreMainState;        /* 前主状态 */
+    NAS_LMM_SUB_STATE_ENUM_UINT16       enPreSubState;         /* 前子状态 */
+    VOS_UINT32                          ulTimeStamp;           /* 时间戳*/
+}LNAS_EXC_PRE_STATE_STRU;
+/*****************************************************************************
+ 结构名    : LNAS_EXC_LOG_INFO_STRU
+ 协议表格  :
+ ASN.1描述 :
+ 结构说明  : 保存LMM 复位可维可测信息
+*****************************************************************************/
+typedef struct
+{
+    LNAS_EXC_MSG_MNTN_STRU              stLNasMsgList;
+    LNAS_EXC_PRE_STATE_STRU             stLNasPreState;
+}LNAS_EXC_LOG_INFO_STRU;
+/* Add by y00307272 for IMSI REFRESH PORTECT,2015-11-18,Begin */
+/*****************************************************************************
+ 结构名    : NAS_EMM_IMSI_REFRESH_STATUS_STRU
+ 协议表格  :
+ ASN.1描述 :
+ 结构说明  : EMM可维可测，勾出当前状态
+*****************************************************************************/
+typedef struct
+{
+    MSG_HEADER_STRU                      stMsgHeader;
+    VOS_UINT8                            ucImsiRefreshStatusFlag;
+    VOS_UINT8                            aucRsv[3];
+}NAS_EMM_IMSI_REFRESH_STATUS_STRU;
 
+/* Add by y00307272 for IMSI REFRESH PORTECT,2015-11-18,End */
 /*****************************************************************************
   6 UNION
 *****************************************************************************/
@@ -832,9 +912,10 @@ extern APP_MS_CLASSMARK_STRU        g_aucMsClassMark;
 /* xiongxianghui00253310 modify for ftmerrlog begin */
 extern EMM_FTM_INFO_MANAGE_STRU              g_astEmmFtmInfoManage;
 extern EMM_DATABASE_INFO_STRU                g_astEmmInfo;
-extern EMM_ERRLOG_INFO_MANAGE_STRU           g_astEmmErrlogInfoManage;
-
 /* xiongxianghui00253310 modify for ftmerrlog end   */
+
+extern LNAS_ERRLOG_GLO_INFO_STRU  stErrlogGloInfo;
+
 
 
 
@@ -920,16 +1001,9 @@ extern VOS_UINT32   NAS_LMM_CompareEmmDatabaseInfo(VOS_VOID);
 extern VOS_VOID     NAS_LMM_UpdateEmmDatabaseInfo(VOS_VOID);
 extern VOS_VOID     NAS_LMM_SendOmFtmMsg(VOS_VOID);
 
-extern VOS_VOID     NAS_LMM_ErrlogInfoInit(VOS_VOID);
-extern VOS_UINT32   NAS_LMM_RevOmErrlogCtrlMsg(MsgBlock   *pMsgStru);
-extern VOS_UINT32   NAS_LMM_RevOmReadErrlogReq(const MsgBlock   *pMsgStru);
-extern VOS_VOID     NAS_LMM_SendOmErrlogCnf(VOS_VOID);
-extern VOS_VOID     NAS_LMM_ErrlogInfoProc(VOS_UINT8 ucCnCause);
-extern LNAS_OM_ERRLOG_ID_ENUM_UINT16  NAS_LMM_CnCauseProc(NAS_EMM_CN_CAUSE_ENUM_UINT8 ucCnCause);
 extern VOS_VOID NAS_LMM_SaveRevMsgInfo(MsgBlock *pMsg);
-extern VOS_VOID NAS_LMM_ExportRevMsgQueque2ExcLog(VOS_UINT32* pulExcLogAddr, VOS_UINT32 ulSaveSize);
+extern VOS_UINT32 NAS_LMM_ExportEmmInfoExcLog(VOS_UINT32* pulExcLogAddr, VOS_UINT32 *pulLeftSpace);
 
-/* xiongxianghui00253310 modify for ftmerrlog end   */
 
 /* niuxiufan DT begin */
 extern VOS_VOID  NAS_LMM_PubmDaInqGuti(MsgBlock *pMsg);
@@ -940,7 +1014,60 @@ extern VOS_VOID  NAS_LMM_PubmIndImsi(VOS_VOID);
 extern VOS_VOID  NAS_LMM_PubmIndEmmState(VOS_VOID);
 /* niuxiufan DT end */
 
+extern VOS_VOID NAS_LMM_DtJudgeifNeedRpt(VOS_VOID);
+extern VOS_UINT32 NAS_LMM_DtCompareGuti(VOS_VOID);
+extern VOS_UINT32 NAS_LMM_DtCompareImsi(VOS_VOID);
+extern VOS_UINT32 NAS_LMM_DtCompareEmmState(VOS_VOID);
+extern VOS_VOID NAS_LMM_DtJudgeifNeedRpt(VOS_VOID);
+extern NAS_LMM_OM_ACTION_FUN  NAS_LMM_OmCommFindFun
+(
+    const NAS_LMM_OM_ACT_STRU           *aucActMap,
+    VOS_UINT32                          ulMapElementNum,
+    VOS_UINT32                          ulMsgId
+);
+extern VOS_VOID  NAS_LMM_ReadImsaNvImsCapability( VOS_UINT8 *pucSmsOverIms, VOS_UINT8 *pucSrvcc);
 
+
+extern VOS_UINT32 NAS_LMM_RevOmErrlogCtrlMsg(MsgBlock   *pMsgStru);
+
+
+extern VOS_UINT32 NAS_EMM_GetErrLogRingBufUseBytes(VOS_VOID);
+extern VOS_UINT32 NAS_EMM_GetErrLogRingBufContent(
+    VOS_CHAR                           *pbuffer,
+    VOS_UINT32                          ulbytes
+);
+extern VOS_VOID NAS_EMM_CleanErrLogRingBuf(VOS_VOID);
+extern VOS_UINT16 NAS_EMM_GetErrLogAlmLevel(LNAS_OM_ERRLOG_ALM_ID_ENUM_UINT16 enAlmId);
+extern VOS_VOID NAS_EMM_SndAcpuOmErrLogReportCnf(
+ VOS_CHAR                           *pbuffer,
+ VOS_UINT32                          ulBufUseLen
+);
+extern VOS_UINT32   NAS_LMM_RevOmReadErrlogReq(MsgBlock   *pMsgStru);
+extern VOS_UINT32 NAS_EMM_IsErrLogNeedRecord(VOS_UINT16 usLevel);
+extern EMM_OM_ERRLOG_CN_CAUSE_ENUM_UINT16  NAS_LMM_CnCauseProc(NAS_EMM_CN_CAUSE_ENUM_UINT8 ucCnCause);
+extern VOS_UINT32 NAS_EMM_PutErrLogRingBuf(
+    VOS_CHAR                           *pbuffer,
+    VOS_UINT32                          ulbytes
+);
+extern VOS_VOID NAS_EMM_PrintErrlogHeader(LNAS_OM_ERR_LOG_HEADER_STRU *pstHeader);
+extern VOS_VOID NAS_EMM_AttachErrRecord(
+         VOS_VOID*                         pstAttachFail,
+         EMM_OM_ERRLOG_TYPE_ENUM_UINT16    enErrType);
+extern VOS_VOID NAS_EMM_TAUErrRecord(
+         VOS_VOID*                         pstTAUFail,
+         EMM_OM_ERRLOG_TYPE_ENUM_UINT16    enErrType);
+extern   VOS_VOID NAS_LMM_RevNvCtrl(VOS_VOID);
+extern VOS_UINT32 NAS_LMM_ExportEmmInfoExcLog(VOS_UINT32* pulExcLogAddr, VOS_UINT32 *pulLeftSpace);
+extern VOS_VOID NAS_EMM_LocalDetachErrRecord(
+        EMM_ERR_LOG_LOCAL_DETACH_TYPE_ENUM_UINT16       enLocalDetType);
+extern VOS_VOID NAS_EMM_AuthCnFailErrRecord(
+        EMM_OM_ERRLOG_AUTH_FAIL_ENUM_UINT16       enErrAuthFail);
+extern VOS_VOID NAS_EMM_SaveRecvMsgList(VOS_VOID *pMsg);
+extern VOS_VOID NAS_EMM_SavePreEmmState(VOS_VOID);
+extern VOS_UINT32 NAS_EMM_ExportMsgInfoExcLog(VOS_UINT8* pulExcLogAddr, VOS_UINT32 *pulLeftSize);
+/* Add by y00307272 for IMSI REFRESH PORTECT,2015-11-18,Begin */
+extern VOS_VOID  NAS_LMM_SndOmImsiRefreshStatus(VOS_UINT8   ucImsiRefreshStatusFlag);
+/* Add by y00307272 for IMSI REFRESH PORTECT,2015-11-18,End */
 /*****************************************************************************
   9 OTHERS
 *****************************************************************************/

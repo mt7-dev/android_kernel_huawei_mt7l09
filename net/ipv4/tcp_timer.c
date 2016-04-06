@@ -22,6 +22,10 @@
 #include <linux/gfp.h>
 #include <net/tcp.h>
 
+#ifdef CONFIG_HW_WIFIPRO
+#include "wifipro_tcp_monitor.h"
+#endif
+
 int sysctl_tcp_syn_retries __read_mostly = TCP_SYN_RETRIES;
 int sysctl_tcp_synack_retries __read_mostly = TCP_SYNACK_RETRIES;
 int sysctl_tcp_keepalive_time __read_mostly = TCP_KEEPALIVE_TIME;
@@ -447,6 +451,12 @@ void tcp_retransmit_timer(struct sock *sk)
 	 */
 	icsk->icsk_backoff++;
 	icsk->icsk_retransmits++;
+
+#ifdef CONFIG_HW_WIFIPRO
+	if(is_wifipro_on){
+	    wifipro_handle_retrans(sk, icsk);
+	}
+#endif
 
 out_reset_timer:
 	/* If stream is thin, use linear timeouts. Since 'icsk_backoff' is

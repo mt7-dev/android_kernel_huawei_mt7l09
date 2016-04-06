@@ -32,6 +32,7 @@
 #include "TafMmaProcNvim.h"
 #include "TafMmaMntn.h"
 #include "TafMmaFsmPhoneMode.h"
+#include "TafMmaComFunc.h"
 
 #ifdef __cplusplus
 #if __cplusplus
@@ -212,6 +213,8 @@ VOS_UINT32 TAF_MMA_SetMiniMode_PreProc(
 {
     TAF_PH_OP_MODE_CNF_STRU             stPhMode;
 
+    PS_MEM_SET(&stPhMode, 0x00, sizeof(stPhMode));
+
     stPhMode.CmdType    = TAF_PH_CMD_SET;
     stPhMode.PhMode     = ucSetMode;
 
@@ -243,6 +246,8 @@ VOS_UINT32 TAF_MMA_SetRfOffMode_PreProc(
 {
     TAF_PH_OP_MODE_CNF_STRU             stPhMode;
 
+    PS_MEM_SET(&stPhMode, 0x00, sizeof(stPhMode));
+
     stPhMode.CmdType    = TAF_PH_CMD_SET;
     stPhMode.PhMode     = ucSetMode;
 
@@ -269,6 +274,8 @@ VOS_UINT32 TAF_MMA_SetFtMode_PreProc(
 )
 {
     TAF_PH_OP_MODE_CNF_STRU             stPhMode;
+
+    PS_MEM_SET(&stPhMode, 0x00, sizeof(stPhMode));
 
     stPhMode.CmdType    = TAF_PH_CMD_SET;
     stPhMode.PhMode     = ucSetMode;
@@ -297,6 +304,8 @@ VOS_UINT32 TAF_MMA_SetVdfMiniMode_PreProc(
 {
     TAF_PH_OP_MODE_CNF_STRU             stPhMode;
 
+    PS_MEM_SET(&stPhMode, 0x00, sizeof(stPhMode));
+
     stPhMode.CmdType    = TAF_PH_CMD_SET;
     stPhMode.PhMode     = ucSetMode;
 
@@ -323,6 +332,8 @@ VOS_UINT32 TAF_MMA_SetLowPowerMode_PreProc(
 )
 {
     TAF_PH_OP_MODE_CNF_STRU             stPhMode;
+
+    PS_MEM_SET(&stPhMode, 0x00, sizeof(stPhMode));
 
     stPhMode.CmdType    = TAF_PH_CMD_SET;
     stPhMode.PhMode     = ucSetMode;
@@ -351,6 +362,8 @@ VOS_UINT32 TAF_MMA_SetResetMode_PreProc(
 {
     TAF_PH_OP_MODE_CNF_STRU             stPhMode;
     VOS_UINT32                          ulRet;
+
+    PS_MEM_SET(&stPhMode, 0x00, sizeof(stPhMode));
 
     stPhMode.CmdType    = TAF_PH_CMD_SET;
     stPhMode.PhMode     = ucSetMode;
@@ -385,6 +398,8 @@ VOS_UINT32 TAF_MMA_SetFullMode_PreProc(
 )
 {
     TAF_PH_OP_MODE_CNF_STRU             stPhMode;
+
+    PS_MEM_SET(&stPhMode, 0x00, sizeof(stPhMode));
 
     /* 当前已经处于在线模式，直接上报成功 */
     if (ucSetMode == TAF_SDC_GetCurPhoneMode())
@@ -421,6 +436,8 @@ VOS_UINT32 TAF_MMA_SetPowerOffMode_PreProc(
 #if (FEATURE_ON == FEATURE_POWER_ON_OFF)
     VOS_UINT32                          ulRslt;
 #endif
+
+    PS_MEM_SET(&stPhMode, 0x00, sizeof(stPhMode));
 
     usAppCfgSupportType     = TAF_SDC_GetAppCfgSupportType();
     stPhMode.CmdType        = TAF_PH_CMD_SET;
@@ -571,6 +588,8 @@ VOS_UINT32 TAF_MMA_ProcOmPhoneModeSetReq_PreProc(
     MN_APP_REQ_MSG_STRU                *pstRcvMsg       = VOS_NULL_PTR;
     TAF_PH_OP_MODE_STRU                *pstPhModeSet    = VOS_NULL_PTR;
 
+    PS_MEM_SET(&stPhMode, 0x00, sizeof(stPhMode));
+
     pstRcvMsg       = (MN_APP_REQ_MSG_STRU *)pstMsg;
     pstPhModeSet    = (TAF_PH_OP_MODE_STRU*)pstRcvMsg->aucContent;
 
@@ -634,6 +653,8 @@ VOS_UINT32 TAF_MMA_ProcPhoneModeSet_PreProc(
 {
     TAF_PH_OP_MODE_CNF_STRU             stPhMode;
     VOS_UINT32                          ulRet;
+
+    PS_MEM_SET(&stPhMode, 0x00, sizeof(stPhMode));
 
     ulRet = VOS_TRUE;
 
@@ -710,6 +731,8 @@ VOS_UINT32 TAF_MMA_ProcTafPhoneModeSetReq_PreProc(
     TAF_PH_MODE                         ucCurrPhMode;
     TAF_MMA_PHONE_MODE_SET_REQ_STRU    *pstRcvMsg       = VOS_NULL_PTR;
 
+    PS_MEM_SET(&stPhMode, 0x00, sizeof(stPhMode));
+
     pstRcvMsg       = (TAF_MMA_PHONE_MODE_SET_REQ_STRU *)pstMsg;
 
     usClientId      = pstRcvMsg->stCtrl.usClientId;
@@ -723,10 +746,7 @@ VOS_UINT32 TAF_MMA_ProcTafPhoneModeSetReq_PreProc(
     {
         TAF_MMA_ReadLcCtrlNvim();
 
-        if (VOS_TRUE == TAF_MMA_GetMmaLogInfoFlag())
-        {
-            TAF_MMA_ShowCLConfigInfo();
-        }
+        /* 删除打印，防止在开机时候释放CPU导致睡眠，后续流程异常 */
     }
 
     /* 模式设置状态机在运行则直接进入后处理缓存 */
@@ -784,10 +804,6 @@ VOS_UINT32 TAF_MMA_ProcTafPhoneModeSetReq_PreProc(
 
     return ulRet;
 }
-
-
-
-
 VOS_UINT32 TAF_MMA_RcvOmPhoneModeSetReq_PreProc(
     VOS_UINT32                          ulEventType,
     struct MsgCB                       *pstMsg
@@ -797,6 +813,8 @@ VOS_UINT32 TAF_MMA_RcvOmPhoneModeSetReq_PreProc(
     TAF_PH_OP_MODE_STRU                *pstPhModeSet    = VOS_NULL_PTR;
     TAF_PH_OP_MODE_CNF_STRU             stPhModeCnf;
     VOS_UINT32                          ulRet;
+
+    PS_MEM_SET(&stPhModeCnf, 0x00, sizeof(stPhModeCnf));
 
     pstRcvMsg       = (MN_APP_REQ_MSG_STRU *)pstMsg;
     pstPhModeSet    = (TAF_PH_OP_MODE_STRU *)pstRcvMsg->aucContent;
@@ -847,6 +865,8 @@ VOS_UINT32 TAF_MMA_RcvPhoneModeQuery_PreProc(
     TAF_PH_OP_MODE_CNF_STRU             stPhModeCnf;
 
     pstRcvMsg       = (MN_APP_REQ_MSG_STRU *)pstMsg;
+
+    PS_MEM_SET(&stPhModeCnf, 0x00, sizeof(stPhModeCnf));
 
     /* 上报事件命令类型填写 */
     stPhModeCnf.CmdType = TAF_PH_CMD_QUERY;
@@ -921,6 +941,8 @@ VOS_UINT32 TAF_MMA_RcvPihUsimStatusInd_PreProc(
 
     ulUsimStaChg    = TAF_MMA_IsUsimStatusChanged(pstUsimMsg->enCardStatus);
     ulImsiChg       = TAF_MMA_IsImsiChanged(pstUsimMsg);
+
+    TAF_MMA_ProcImsiRefresh(pstUsimMsg->enCardStatus, ulImsiChg);
 
     if (VOS_TRUE == ulImsiChg)
     {
@@ -1142,18 +1164,18 @@ VOS_UINT32 TAF_MMA_RcvMmcNetworkCapabilityInfoInd_PreProc(
     {
         /* update infomaton to the corresponding global variable according to RAT */
         TAF_MMA_SetNetworkCapabilityInfo(TAF_SDC_GetSysMode(), &stNewNwCapInfo);
+    }
 
 #if (FEATURE_IMS == FEATURE_ON)
-        if (VOS_TRUE == TAF_SDC_GetImsSupportFlag())
-        {
-            /* 通知SPM网络能力变更，触发SPM处理缓存的消息，消息中不带当前的网络能力，由SPM取SDC全局变量中的 */
-            TAF_MMA_SndSpmNetworkCapabilityChangeNotify();
+    if (VOS_TRUE == TAF_SDC_GetImsSupportFlag())
+    {
+        /* 通知SPM网络能力变更，触发SPM处理缓存的消息，消息中不带当前的网络能力，由SPM取SDC全局变量中的 */
+        TAF_MMA_SndSpmNetworkCapabilityChangeNotify();
 
-            /* send service infomation change indcation */
-            TAF_MMA_SndImsaSrvInfoNotify((MMA_MMC_SERVICE_STATUS_ENUM_UINT32)TAF_SDC_GetPsServiceStatus());
-        }
-#endif
+        /* send service infomation change indication */
+        TAF_MMA_SndImsaSrvInfoNotify((MMA_MMC_SERVICE_STATUS_ENUM_UINT32)TAF_SDC_GetPsServiceStatus());
     }
+#endif
 
 
     return VOS_TRUE;
@@ -1494,21 +1516,20 @@ VOS_UINT32 TAF_MMA_RcvMmcRegResultInd_PreProc(
 
 
 #if (FEATURE_ON == FEATURE_IMS)
-
 VOS_UINT32 TAF_MMA_RcvImsaImsVoiceCapNtf_PreProc(
     VOS_UINT32                          ulEventType,
     struct MsgCB                       *pstMsg
 )
 {
     IMSA_MMA_IMS_VOICE_CAP_NOTIFY_STRU *pstImsVoiceCap = VOS_NULL_PTR;
+    VOS_UINT8                           ucOldImsVoiceCap;
+    VOS_UINT8                           ucNewImsVoiceCap;
+
+    ucOldImsVoiceCap = TAF_SDC_GetImsVoiceAvailFlg();
 
     pstImsVoiceCap = (IMSA_MMA_IMS_VOICE_CAP_NOTIFY_STRU *)pstMsg;
 
-    /* 当前如果等待IMS是否可用定时器在运行则处理该消息;否则直接忽略该消息 */
-    if (TAF_MMA_TIMER_STATUS_RUNING != TAF_MMA_GetTimerStatus(TI_TAF_MMA_WAIT_IMSA_IMS_VOICE_CAP_NOTIFY))
-    {
-        return VOS_TRUE;
-    }
+
 
     /* 停止等待IMSA的IMS voice是否可用消息定时器 */
     TAF_MMA_StopTimer(TI_TAF_MMA_WAIT_IMSA_IMS_VOICE_CAP_NOTIFY);
@@ -1526,11 +1547,17 @@ VOS_UINT32 TAF_MMA_RcvImsaImsVoiceCapNtf_PreProc(
     /* 通知MMC当前IMS voice是否可用 */
     TAF_MMA_SndMmcImsVoiceCapInd(TAF_SDC_GetImsVoiceAvailFlg());
 
-    /* 通知SPM当前IMS VOICE是否可用 */
-    TAF_MMA_SndSpmImsVoiceCapInd(TAF_SDC_GetImsVoiceAvailFlg());
+    ucNewImsVoiceCap = TAF_SDC_GetImsVoiceAvailFlg();
+    if (ucOldImsVoiceCap != ucNewImsVoiceCap)
+    {
+        /* 通知SPM当前IMS VOICE是否可用 */
+        TAF_MMA_SndSpmImsVoiceCapInd(TAF_SDC_GetImsVoiceAvailFlg());
+    }
 
     return VOS_TRUE;
 }
+
+
 VOS_UINT32 TAF_MMA_RcvTiWaitImsaImsVoiceCapNtfExpired_PreProc(
     VOS_UINT32                          ulEventType,
     struct MsgCB                       *pstMsg
@@ -1641,8 +1668,35 @@ VOS_UINT32 TAF_MMA_RcvMmcServRejInd_PreProc(
     MN_PH_SendMsg(stTafServRejInfo.ClientId,(VOS_UINT8*)&stTafServRejInfo,sizeof(TAF_PH_REG_REJ_INFO_STRU));
     return VOS_TRUE;
 }
+VOS_UINT32 TAF_MMA_RcvMmcAttachCnf_PreProc(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+)
+{
+    MMC_MMA_ATTACH_CNF_STRU            *pstAttachCnf = VOS_NULL_PTR;
 
+    pstAttachCnf = (MMC_MMA_ATTACH_CNF_STRU*)pstMsg;
 
+    if (MMA_MMC_SRVDOMAIN_CS == pstAttachCnf->enCnDomainId)
+    {
+        TAF_SDC_SetCsAttachAllowFlg(VOS_TRUE);
+    }
+    else if (MMA_MMC_SRVDOMAIN_PS == pstAttachCnf->enCnDomainId)
+    {
+        TAF_SDC_SetPsAttachAllowFlg(VOS_TRUE);
+    }
+    else if (MMA_MMC_SRVDOMAIN_CS_PS == pstAttachCnf->enCnDomainId)
+    {
+        TAF_SDC_SetCsAttachAllowFlg(VOS_TRUE);
+        TAF_SDC_SetPsAttachAllowFlg(VOS_TRUE);
+    }
+    else
+    {
+    }
+
+    /* 进状态机处理 */
+    return VOS_FALSE;
+}
 VOS_UINT32 TAF_MMA_RcvMmcDetachInd_PreProc(
     VOS_UINT32                          ulEventType,
     struct MsgCB                       *pstMsg
@@ -1970,11 +2024,33 @@ VOS_UINT32 TAF_MMA_RcvMtcOtherModemInfoNotify_PreProc(
     struct MsgCB                       *pstMsg
 )
 {
+    MTC_MMA_OTHER_MODEM_INFO_NOTIFY_STRU   *pstMtcMmaOtherModemInfo = VOS_NULL_PTR;
+
+    pstMtcMmaOtherModemInfo = (MTC_MMA_OTHER_MODEM_INFO_NOTIFY_STRU *)pstMsg;
+
+    if (VOS_TRUE == pstMtcMmaOtherModemInfo->bitOpOtherModemPowerState)
+    {
+        TAF_MMA_SndImsaModem1InfoInd(
+            (MMA_IMSA_MODEM_POWER_STATE_ENUM_UINT8)pstMtcMmaOtherModemInfo->enOtherModemPowerState);
+        return VOS_TRUE;
+    }
+
     /* 转发给mmc */
     TAF_MMA_SndMmcOtherModemInfoNotify(pstMsg);
 
     return VOS_TRUE;
 }
+VOS_UINT32 TAF_MMA_RcvMtcOtherModemDplmnNplmnInfoNotify_PreProc(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+)
+{
+    /* 转发给mmc */
+    TAF_MMA_SndMmcOtherModemDplmnNplmnInfoNotify(pstMsg);
+
+    return VOS_TRUE;
+}
+
 #endif
 VOS_UINT32 TAF_MMA_RcvMmcEplmnInfoInd_PreProc(
     VOS_UINT32                          ulEventType,
@@ -2504,6 +2580,304 @@ VOS_UINT32 TAF_MMA_RcvTiWaitMmcPowerSaveExpired_PreProc(
 
 }
 
+
+
+#if (FEATURE_ON == FEATURE_IMS)
+VOS_UINT32 TAF_MMA_RcvTafImsSrvInfoNotify_PreProc(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+)
+{
+    TAF_MMA_IMS_SRV_INFO_NOTIFY_STRU              *pstRcvMsg = VOS_NULL_PTR;
+
+    pstRcvMsg   = (TAF_MMA_IMS_SRV_INFO_NOTIFY_STRU *)pstMsg;
+
+    TAF_MMA_SndMmcImsSrvInfoNotify(pstRcvMsg->ucImsCallFlg);
+
+    return VOS_TRUE;
+
+}
+
+
+VOS_UINT32 TAF_MMA_ProcImsSwitchOff_PreProc(
+    TAF_MMA_IMS_SWITCH_SET_REQ_STRU     *pstImsSwitchSet
+)
+{
+    TAF_SDC_IMS_SWITCH_STATE_ENUM_UINT8 enLastState;
+    VOS_UINT32                          ulPhoneMode;
+
+    enLastState      = TAF_SDC_GetCurImsSwitchState();
+    ulPhoneMode      = TAF_SDC_GetCurPhoneMode();
+
+    /* 如果当前处于IMS业务过程中，不允许关闭IMS业务 */
+    if (VOS_TRUE == TAF_SDC_IsImsSrvExist())
+    {
+        /* 给上层回复失败 */
+        TAF_MMA_SndImsSwitchSetCnf(&pstImsSwitchSet->stCtrl,
+                                   TAF_MMA_APP_OPER_RESULT_REJECT,
+                                   TAF_ERR_IMS_SERVICE_EXIST);
+
+        return VOS_TRUE;
+    }
+
+    /* 如果语音优选域设置成了PS_ONLY，不允许关闭IMS业务 */
+    if (TAF_SDC_VOICE_DOMAIN_IMS_PS_ONLY == TAF_SDC_GetVoiceDomain())
+    {
+        /* 给上层回复失败 */
+        TAF_MMA_SndImsSwitchSetCnf(&pstImsSwitchSet->stCtrl,
+                                   TAF_MMA_APP_OPER_RESULT_REJECT,
+                                   TAF_ERR_IMS_VOICE_DOMAIN_PS_ONLY);
+
+        return VOS_TRUE;
+    }
+
+    /* 更新IMS业务能力变量和NV */
+    if (VOS_TRUE != TAF_MMA_UpdateLteImsSupportFlag(VOS_FALSE))
+    {
+        /* 给上层回复失败 */
+        TAF_MMA_SndImsSwitchSetCnf(&pstImsSwitchSet->stCtrl,
+                                   TAF_MMA_APP_OPER_RESULT_FAILURE,
+                                   TAF_ERR_UNSPECIFIED_ERROR);
+        return VOS_TRUE;
+    }
+
+    /* 当前IMS协议栈已经关闭或者处于飞行模式状态，
+       则不需要给IMSA发关闭请求，只更新NV即可 */
+    if ((TAF_SDC_IMS_SWITCH_STATE_OFF == enLastState)
+     || (TAF_PH_MODE_FULL != ulPhoneMode))
+    {
+        /* 给上层回复成功 */
+        TAF_MMA_SndImsSwitchSetCnf(&pstImsSwitchSet->stCtrl,
+                                   TAF_MMA_APP_OPER_RESULT_SUCCESS,
+                                   TAF_ERR_NO_ERROR);
+
+        return VOS_TRUE;
+    }
+
+    return VOS_FALSE;
+}
+VOS_UINT32 TAF_MMA_ProcImsSwitchOn_PreProc(
+    TAF_MMA_IMS_SWITCH_SET_REQ_STRU     *pstImsSwitchSet
+)
+{
+    TAF_SDC_IMS_SWITCH_STATE_ENUM_UINT8 enLastState;
+    VOS_UINT32                          ulPhoneMode;
+
+    enLastState      = TAF_SDC_GetCurImsSwitchState();
+    ulPhoneMode      = TAF_SDC_GetCurPhoneMode();
+
+    /* 更新NV放在给IMSA发送start req的前面，IMSA收到start req会读NV项，需要用最新的NV值 */
+    if (VOS_TRUE != TAF_MMA_UpdateLteImsSupportFlag(VOS_TRUE))
+    {
+        /* 给上层回复失败 */
+        TAF_MMA_SndImsSwitchSetCnf(&pstImsSwitchSet->stCtrl,
+                                   TAF_MMA_APP_OPER_RESULT_FAILURE,
+                                   TAF_ERR_UNSPECIFIED_ERROR);
+
+        return VOS_TRUE;
+    }
+
+    /* 当前IMS协议栈已经开启或者处于飞行模式状态，
+       则不需要给IMSA发启动请求，只更新NV即可  */
+    if ((TAF_SDC_IMS_SWITCH_STATE_ON == enLastState)
+     || (TAF_PH_MODE_FULL != ulPhoneMode))
+    {
+        /* 给上层回复成功 */
+        TAF_MMA_SndImsSwitchSetCnf(&pstImsSwitchSet->stCtrl,
+                                   TAF_MMA_APP_OPER_RESULT_SUCCESS,
+                                   TAF_ERR_NO_ERROR);
+
+        return VOS_TRUE;
+    }
+
+    return VOS_FALSE;
+}
+VOS_UINT32 TAF_MMA_IsRefreshTrigger_PreProc(VOS_VOID)
+{
+    TAF_MMA_AUTO_PLMN_SEL_USER_ENUM_UINT8 enAutoPlmnSelUser;
+    TAF_MMA_SYSCFG_USER_ENUM_UINT8        enSyscfgUser;
+
+    enAutoPlmnSelUser = TAF_MMA_GetAutoPlmnSelUser();
+    enSyscfgUser      = TAF_MMA_GetSyscfgUser();
+
+    /* refresh触发的自动搜网 */
+    if ((STA_FSM_PLMN_RESEL == g_StatusContext.ulFsmState)
+     && (TAF_MMA_AUTO_PLMN_SEL_USER_USIM_REFRESH == enAutoPlmnSelUser))
+    {
+        return VOS_TRUE;
+    }
+
+    /* refresh触发的SYSCFG*/
+    if ((STA_FSM_SYS_CFG_SET == g_StatusContext.ulFsmState)
+     && (TAF_MMA_SYSCFG_USER_USIM_REFRESH == enSyscfgUser))
+    {
+        return VOS_TRUE;
+    }
+
+    return VOS_FALSE;
+}
+
+
+VOS_UINT32 TAF_MMA_RcvTafImsSwitchSetReq_PreProc(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+)
+{
+    TAF_MMA_IMS_SWITCH_SET_REQ_STRU    *pstSetReq   = VOS_NULL_PTR;
+    VOS_UINT32                          ulResult;
+
+    ulResult   = VOS_TRUE;
+    pstSetReq  = (TAF_MMA_IMS_SWITCH_SET_REQ_STRU *)pstMsg;
+
+    /* 如果当前有其他AT的请求在处理，则直接给上层回复失败，
+       卡触发的请求可以设置IMS开关，但结果回复的时候需要缓存 */
+    if ((STA_FSM_ENABLE != g_StatusContext.ulFsmState)
+     && (STA_FSM_NULL   != g_StatusContext.ulFsmState)
+     && (STA_FSM_STOP   != g_StatusContext.ulFsmState))
+    {
+        /* 不是卡触发的，即由AT触发的请求 */
+        if (VOS_FALSE == TAF_MMA_IsRefreshTrigger_PreProc())
+        {
+            /* 给上层回复失败 */
+            TAF_MMA_SndImsSwitchSetCnf(&pstSetReq->stCtrl,
+                                       TAF_MMA_APP_OPER_RESULT_FAILURE,
+                                       TAF_ERR_UNSPECIFIED_ERROR);
+
+            return VOS_TRUE;
+        }
+    }
+
+    /* 关闭IMS业务 */
+    if (TAF_MMA_IMS_SWITCH_SET_POWER_OFF == pstSetReq->enImsSwitch)
+    {
+        ulResult = TAF_MMA_ProcImsSwitchOff_PreProc(pstSetReq);
+    }
+    else
+    {
+        ulResult = TAF_MMA_ProcImsSwitchOn_PreProc(pstSetReq);
+    }
+
+    return ulResult;
+}
+VOS_UINT32 TAF_MMA_RcvTafImsSwitchQryReq_PreProc(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+)
+{
+    TAF_MMA_IMS_SWITCH_QRY_REQ_STRU    *pstSetReq = VOS_NULL_PTR;
+    TAF_SDC_IMS_SWITCH_STATE_ENUM_UINT8 enImsSwitchState;
+
+    pstSetReq = (TAF_MMA_IMS_SWITCH_QRY_REQ_STRU *)pstMsg;
+
+    if (VOS_TRUE != TAF_SDC_GetImsSupportFlag())
+    {
+        enImsSwitchState = TAF_SDC_IMS_SWITCH_STATE_OFF;
+    }
+    else
+    {
+        enImsSwitchState = TAF_SDC_IMS_SWITCH_STATE_ON;
+    }
+
+    TAF_MMA_SndImsSwitchQryCnf(&pstSetReq->stCtrl, (VOS_UINT8)enImsSwitchState);
+
+    return VOS_TRUE;
+}
+
+
+VOS_UINT32 TAF_MMA_RcvTafVoiceDomainSetReq_PreProc(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+)
+{
+    TAF_MMA_VOICE_DOMAIN_SET_REQ_STRU  *pstSetReq;
+    VOS_UINT8                           ucImsVoiceFlag;
+    VOS_UINT32                          ulImsSupportFlag;
+    TAF_SDC_VOICE_DOMAIN_ENUM_UINT32    enVoiceDomain;
+
+    pstSetReq           = (TAF_MMA_VOICE_DOMAIN_SET_REQ_STRU *)pstMsg;
+    ucImsVoiceFlag      = TAF_SDC_GetVoiceCallOnImsSupportFlag();
+    ulImsSupportFlag    = TAF_SDC_GetImsSupportFlag();
+    enVoiceDomain       = TAF_SDC_GetVoiceDomain();
+
+    /* IMS语音业务功能关闭或者IMS能力不支持的情况下，不允许设置PS_ONLY */
+    if ((VOS_FALSE == ucImsVoiceFlag)
+     || (VOS_FALSE == ulImsSupportFlag))
+    {
+        if (TAF_MMA_VOICE_DOMAIN_IMS_PS_ONLY == pstSetReq->enVoiceDomain)
+        {
+            /* 给APP回复设置失败 */
+            TAF_MMA_SndVoiceDomainSetCnf(&pstSetReq->stCtrl,
+                                         TAF_MMA_APP_OPER_RESULT_REJECT,
+                                         TAF_ERR_IMS_NOT_SUPPORT);
+
+            return VOS_TRUE;
+        }
+    }
+
+    /* IMS语音业务过程中，不允许设置CS_ONLY */
+    if (VOS_TRUE == TAF_SDC_GetImsCallExistFlg())
+    {
+        if (TAF_MMA_VOICE_DOMAIN_CS_ONLY == pstSetReq->enVoiceDomain)
+        {
+            /* 给APP回复设置失败 */
+            TAF_MMA_SndVoiceDomainSetCnf(&pstSetReq->stCtrl,
+                                         TAF_MMA_APP_OPER_RESULT_REJECT,
+                                         TAF_ERR_IMS_SERVICE_EXIST);
+
+            return VOS_TRUE;
+        }
+    }
+
+    /* 优选域设置有发生变化，则通知MMC */
+    if (enVoiceDomain != pstSetReq->enVoiceDomain)
+    {
+        /* 在飞行模式下面不给MMC发送UE能力，只更新上下文和NV */
+        if (TAF_PH_MODE_FULL == TAF_SDC_GetCurPhoneMode())
+        {
+            /* 通知MMC变化后的VOICE DOMAIN值 */
+            TAF_MMA_SndMmcVoiceDomainChangeInd((MMA_MMC_VOICE_DOMAIN_ENUM_UINT32)pstSetReq->enVoiceDomain);
+
+            /* 通知IMSA变化后的VOICE DOMAIN值 */
+            TAF_MMA_SndImsaVoiceDomainChangeInd((MMA_IMSA_VOICE_DOMAIN_ENUM_UINT32)pstSetReq->enVoiceDomain);
+        }
+
+        /* 更新语音优选域的上下文和NV */
+        if (VOS_TRUE != TAF_MMA_UpdataVoiceDomain((TAF_SDC_VOICE_DOMAIN_ENUM_UINT32)pstSetReq->enVoiceDomain))
+        {
+            TAF_MMA_SndVoiceDomainSetCnf(&pstSetReq->stCtrl,
+                                         TAF_MMA_APP_OPER_RESULT_FAILURE,
+                                         TAF_ERR_UNSPECIFIED_ERROR);
+            return VOS_TRUE;
+        }
+
+    }
+
+    /* 给APP回复设置成功 */
+    TAF_MMA_SndVoiceDomainSetCnf(&pstSetReq->stCtrl,
+                                 TAF_MMA_APP_OPER_RESULT_SUCCESS,
+                                 TAF_ERR_NO_ERROR);
+
+    return VOS_TRUE;
+}
+
+
+VOS_UINT32 TAF_MMA_RcvTafVoiceDomainQryReq_PreProc(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+)
+{
+    TAF_MMA_VOICE_DOMAIN_QRY_REQ_STRU  *pstSetReq;
+    TAF_SDC_VOICE_DOMAIN_ENUM_UINT32    enVoiceDomain;
+
+    pstSetReq       = (TAF_MMA_VOICE_DOMAIN_QRY_REQ_STRU *)pstMsg;
+    enVoiceDomain   = TAF_SDC_GetVoiceDomain();
+
+    TAF_MMA_SndVoiceDomainQryCnf(&pstSetReq->stCtrl,
+                                 (TAF_MMA_VOICE_DOMAIN_ENUM_UINT32)enVoiceDomain);
+
+    return VOS_TRUE;
+}
+#endif
 #ifdef __cplusplus
     #if __cplusplus
         }

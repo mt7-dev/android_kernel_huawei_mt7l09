@@ -178,7 +178,7 @@ static inline void writel(u32 data, volatile void __iomem *addr)
 #define __raw_readl readl
 
 /*
- * http://comments.gmane.org/gmane.linux.ports.arm.kernel/117626
+ * http:
  */
 
 #define readb_relaxed __raw_readb

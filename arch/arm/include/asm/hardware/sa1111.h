@@ -71,18 +71,7 @@
 #define SKCR_OPPC	(1<<9)
 #define SKCR_PLLTSTEN	(1<<10)
 #define SKCR_USBIOTSTEN	(1<<11)
-/*
- * Don't believe the specs!  Take them, throw them outside.  Leave them
- * there for a week.  Spit on them.  Walk on them.  Stamp on them.
- * Pour gasoline over them and finally burn them.  Now think about coding.
- *  - The October 1999 errata (278260-007) says its bit 13, 1 to enable.
- *  - The Feb 2001 errata (278260-010) says that the previous errata
- *    (278260-009) is wrong, and its bit actually 12, fixed in spec
- *    278242-003.
- *  - The SA1111 manual (278242) says bit 12, but 0 to enable.
- *  - Reality is bit 13, 1 to enable.
- *      -- rmk
- */
+
 #define SKCR_OE_EN	(1<<13)
 
 #define SMCR_DTIM	(1<<0)

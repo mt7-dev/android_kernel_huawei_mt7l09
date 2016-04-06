@@ -106,6 +106,10 @@ VOS_UINT32 TAF_APS_RcvL4aPdpDeactivateInd_Active(
    VOS_UINT32                          ulEventType,
    struct MsgCB                       *pstMsg
 );
+VOS_UINT32 TAF_APS_RcvL4aPdpSetupInd_Active(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+);
 VOS_UINT32 TAF_APS_RcvEsmSmEpsBearerInfoInd_Active(
     VOS_UINT32                          ulEventType,
     struct MsgCB                       *pstMsg

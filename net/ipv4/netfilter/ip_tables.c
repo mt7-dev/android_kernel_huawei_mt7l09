@@ -31,6 +31,10 @@
 #include <net/netfilter/nf_log.h>
 #include "../../netfilter/xt_repldata.h"
 
+#ifdef CONFIG_HUAWEI_BASTET
+#include <huawei_platform/power/bastet/bastet.h>
+#endif
+
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Netfilter Core Team <coreteam@netfilter.org>");
 MODULE_DESCRIPTION("IPv4 packet filter");
@@ -1179,6 +1183,10 @@ __do_replace(struct net *net, const char *name, unsigned int valid_hooks,
 	struct xt_counters *counters;
 	void *loc_cpu_old_entry;
 	struct ipt_entry *iter;
+#ifdef CONFIG_HUAWEI_BASTET
+	unsigned char *buf = NULL;
+	int buf_len = 0;
+#endif
 
 	ret = 0;
 	counters = vzalloc(num_counters * sizeof(struct xt_counters));
@@ -1193,6 +1201,10 @@ __do_replace(struct net *net, const char *name, unsigned int valid_hooks,
 		ret = t ? PTR_ERR(t) : -ENOENT;
 		goto free_newinfo_counters_untrans;
 	}
+
+#ifdef CONFIG_HUAWEI_BASTET
+	buf = bastet_save_uid_info(name, newinfo, &buf_len);
+#endif
 
 	/* You lied! */
 	if (valid_hooks != t->valid_hooks) {
@@ -1226,10 +1238,15 @@ __do_replace(struct net *net, const char *name, unsigned int valid_hooks,
 
 	xt_free_table_info(oldinfo);
 	if (copy_to_user(counters_ptr, counters,
-			 sizeof(struct xt_counters) * num_counters) != 0)
-		ret = -EFAULT;
+			 sizeof(struct xt_counters) * num_counters) != 0) {
+		/* Silent error, can't fail, new table is already in place */
+		net_warn_ratelimited("iptables: counters copy to user failed while replacing table\n");
+	}
 	vfree(counters);
 	xt_table_unlock(t);
+#ifdef CONFIG_HUAWEI_BASTET
+	bastet_indicate_uid_info(buf, buf_len);
+#endif
 	return ret;
 
  put_module:
@@ -1238,6 +1255,9 @@ __do_replace(struct net *net, const char *name, unsigned int valid_hooks,
  free_newinfo_counters_untrans:
 	vfree(counters);
  out:
+#ifdef CONFIG_HUAWEI_BASTET
+	bastet_indicate_uid_info(buf, buf_len);
+#endif
 	return ret;
 }
 

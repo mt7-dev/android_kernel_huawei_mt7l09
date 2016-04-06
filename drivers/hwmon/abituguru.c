@@ -149,7 +149,6 @@
 #define ABIT_UGURU_STATUS_READY			0x09 /* Ready to be written */
 
 /* Constants */
-/* in (Volt) sensors go up to 3494 mV, temp to 255000 millidegrees Celsius */
 static const int abituguru_bank1_max_value[2] = { 3494, 255000 };
 /*
  * Min / Max allowed values for sensor2 (fan) alarm threshold, these values

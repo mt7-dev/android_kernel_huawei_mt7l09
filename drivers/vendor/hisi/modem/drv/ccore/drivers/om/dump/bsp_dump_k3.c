@@ -143,6 +143,7 @@ void dump_int_handle(s32 param);
 s32  dump_config_init(void);
 void dump_map_init(void);
 void dump_global_info_init(void);
+void dump_save_cpinfo(s32 len);
 void dump_base_info_init(void);
 void dump_queue_t_init(void);
 void dump_wait_save(void);
@@ -1640,8 +1641,12 @@ void dump_save_base_info(u32 mod_id, u32 arg1, u32 arg2, char *data, u32 length)
 
 void dump_save_log(void)
 {
+	int log_len = 0;
     memset((void*)DUMP_PRINT_ADDR, 0, DUMP_PRINT_SIZE);/* [false alarm]:屏蔽Fortify错误 */
-    (void)dmesg_save((char*)DUMP_PRINT_ADDR, DUMP_PRINT_SIZE);
+    log_len = dmesg_save((char*)DUMP_PRINT_ADDR, DUMP_PRINT_SIZE);
+
+    /*共享cp的摘要信息*/
+    dump_save_cpinfo(log_len);
 }
 
 /*lint -save -e123 -e715 */
@@ -2280,7 +2285,7 @@ s32 dump_init(void)
         return BSP_ERROR;
     }
 
-    dump_wait_save();
+    /* dump_wait_save();  不再等待AP同步 */
 
     /*初始化任务和中断*/
     ret = dump_task_init();
@@ -2327,6 +2332,44 @@ s32 bsp_dump_init(void)
     (void)taskSpawn("tDumpInit", 100, 0, 0x1000, (FUNCPTR)dump_init, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
 
     return BSP_OK;
+}
+
+void dump_save_cpinfo(s32 log_len)
+{
+    char *cpinfo = NULL;
+    int baseinfo_len = 0;
+    int len = 0;
+    char *task_stack = NULL;
+
+    memset((void*)DUMP_CP_RESERVE_CPINFO_ADDR, 0, DUMP_CP_RESERVE_CPINFO_SIZE);
+
+    cpinfo = (char *)DUMP_CP_RESERVE_CPINFO_ADDR;
+
+    /*save baseinfo*/
+    baseinfo_len = snprintf(cpinfo, DUMP_CP_RESERVE_CPINFO_SIZE-1,"reboot_context:0x%x\n"
+        "reboot_task:0x%x\ntask_name:%s\nreboot_int:0x%x\n"
+        "modid:0x%x\narg1:0x%x\narg2:0x%x\narg3:0x%x\narg3_len:0x%x\nvec:0x%x\ntask stack:\n",
+        g_dump_base_info->reboot_context,g_dump_base_info->reboot_task,g_dump_base_info->taskName,
+        g_dump_base_info->reboot_int,g_dump_base_info->modId,g_dump_base_info->arg1,
+        g_dump_base_info->arg2,g_dump_base_info->arg3,g_dump_base_info->arg3_length,g_dump_base_info->vec);
+
+    len = DUMP_CP_RESERVE_CPINFO_SIZE - baseinfo_len - 1;
+    if(len <= 0)
+    {
+        return;
+    }
+    /*task stack*/
+    if(DUMP_PRINT_SIZE < len)
+    {
+        task_stack = (char *)DUMP_PRINT_ADDR;
+        len = DUMP_PRINT_SIZE;
+    }
+    else
+    {
+        task_stack = (char *)(DUMP_PRINT_ADDR + (log_len - len));
+    }
+    memcpy((void*)(cpinfo + baseinfo_len), (void *)task_stack, (size_t )len);
+    return;
 }
 
 void system_error (u32 mod_id, u32 arg1, u32 arg2, char *data, u32 length)
@@ -2408,7 +2451,7 @@ s32 bsp_dump_register_hook(dump_save_modid_t mod_id, dump_save_hook func)
 }
 
 /* 根据mod_id获取对应的buffer地址，失败返回0 */
-u32 bsp_dump_get_buffer_addr(dump_save_modid_t mod_id)
+char* bsp_dump_get_buffer_addr(dump_save_modid_t mod_id)
 {
     u32 addr = 0;
     dump_save_t * top_head = (dump_save_t *)DUMP_TOP_HEAD_ADDR;
@@ -2455,7 +2498,7 @@ u32 bsp_dump_get_buffer_addr(dump_save_modid_t mod_id)
         }
     }
 
-    return addr;
+    return (char*)addr;
 }
 
 /* 注册区域 */

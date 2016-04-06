@@ -5,6 +5,7 @@
 *****************************************************************************/
 #include  "MnMsgInclude.h"
 
+#include "MnMsgSendSpm.h"
 
 #ifdef  __cplusplus
   #if  __cplusplus
@@ -431,9 +432,14 @@ LOCAL VOS_VOID MSG_WaitFdnCheckTimeout(
     /* 销毁等待FDN检查结果的MO实体或缓存 */
     MN_MSG_DestroySpecificMoEntity(bBufferEntity, ulIndex);
 
+    /* 通知SPM检查结果 */
+    TAF_MSG_SendSpmMsgCheckResultInd(stMoEntity.clientId, stMoEntity.opId,TAF_MSG_ERROR_FDN_CHECK_TIMEROUT);
+
     return;
 
 }
+
+
 VOS_VOID  MN_MSG_InitAllTimers(VOS_VOID)
 {
     VOS_UINT32                          i;
@@ -535,6 +541,32 @@ VOS_VOID MN_MSG_StopTimer(
 }
 
 
+VOS_VOID  MN_MSG_StopAllRunningTimer(VOS_VOID)
+{
+    VOS_UINT32                          i;
+
+    for (i = 0; i < (MN_MSG_TID_MAX - MN_TIMER_CLASS_MSG); i++)
+    {
+        if ( (VOS_NULL_PTR      != f_astMsgTimerHandle[i].hTimer)
+          && (MN_MSG_TID_MAX    != f_astMsgTimerHandle[i].enTimerId) )
+        {
+             /* 停止VOS定时器 */
+            if (VOS_OK == NAS_StopRelTimer(WUEPS_PID_TAF,
+                                 f_astMsgTimerHandle[i].enTimerId,
+                                 &f_astMsgTimerHandle[i].hTimer))
+            {
+                f_astMsgTimerHandle[i].hTimer    = VOS_NULL_PTR;
+                f_astMsgTimerHandle[i].enTimerId = MN_MSG_TID_MAX;
+            }
+            else
+            {
+                MN_WARN_LOG("MN_MSG_StopAllRunningTimer: NAS_StopRelTimer failed.");
+            }
+        }
+    }
+
+    return;
+}
 VOS_UINT32  MN_MSG_IsTimerStarting(
     MN_MSG_TIMER_ID_ENUM_U32            enTimerId
 )
@@ -763,6 +795,9 @@ LOCAL VOS_VOID  MSG_WaitSmsMoControlCheckTimeout(
 
     /* 销毁等待SMS MO CONTROL检查结果的MO实体或缓存 */
     MN_MSG_DestroySpecificMoEntity(bBufferEntity, ulIndex);
+
+    /* 通知SPM检查结果 */
+    TAF_MSG_SendSpmMsgCheckResultInd(stMoEntity.clientId, stMoEntity.opId,TAF_MSG_ERROR_CTRL_CHECK_TIMEOUT);
 
     return;
 

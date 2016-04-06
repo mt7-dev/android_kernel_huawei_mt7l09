@@ -255,8 +255,9 @@ VOS_UINT32  NAS_MML_MsgProc(
     struct MsgCB                        *pRcvMsg
 )
 {
-    NAS_MML_INTERNAL_MSG_BUF_STRU      *pstNextMsg  = VOS_NULL_PTR;
-    pNasMmPIdMsgProc                    pMsgProc    = VOS_NULL_PTR;
+    NAS_MML_INTERNAL_MSG_BUF_STRU      *pstNextMsg   = VOS_NULL_PTR;
+    pNasMmPIdMsgProc                    pMsgProc     = VOS_NULL_PTR;
+    MSG_HEADER_STRU                    *pstMsgHeader = VOS_NULL_PTR;
 #ifndef __PS_WIN32_RECUR__
     VOS_UINT32                          ulIsSndOmPcRecurMsgValid;
 #endif
@@ -292,6 +293,15 @@ VOS_UINT32  NAS_MML_MsgProc(
 
     while (VOS_NULL_PTR != pstNextMsg)
     {
+#if (FEATURE_ON == FEATURE_LTE)
+        if (PS_PID_MM == pstNextMsg->ulSenderPid)
+        {
+            pstMsgHeader = (MSG_HEADER_STRU *)pstNextMsg;
+            NAS_MML_AddLogEventState((VOS_UINT16)pstMsgHeader->ulSenderPid,
+                                     (VOS_UINT16)pstMsgHeader->ulReceiverPid,
+                                     (VOS_UINT16)pstMsgHeader->ulMsgName);
+        }
+#endif
 
         pMsgProc = NAS_MML_FindPidMsgProc(pstNextMsg->ulReceiverPid);
 
@@ -354,6 +364,7 @@ VOS_UINT32  NAS_MML_FidMsgProc(
     struct MsgCB                        *pRcvMsg
 )
 {
+    MSG_HEADER_STRU                    *pstMsgHeader = VOS_NULL_PTR;
     struct MsgCB                       *pstDestMsg;
     VOS_UINT32                          ulRslt;
 
@@ -366,6 +377,11 @@ VOS_UINT32  NAS_MML_FidMsgProc(
         NAS_ERROR_LOG(WUEPS_PID_MMC, "NAS_MML_FidMsgProc:Empty Msg");
         return VOS_ERR;
     }
+
+    pstMsgHeader = (MSG_HEADER_STRU *)pRcvMsg;
+    NAS_MML_AddLogEventState((VOS_UINT16)pstMsgHeader->ulSenderPid,
+                             (VOS_UINT16)pstMsgHeader->ulReceiverPid,
+                             (VOS_UINT16)pstMsgHeader->ulMsgName);
 
     /* 将当前消息进入UTRANCTRL模块进行处理 */
     ulRslt = NAS_UTRANCTRL_MsgProc(pRcvMsg, &pstDestMsg);
@@ -381,6 +397,8 @@ VOS_UINT32  NAS_MML_FidMsgProc(
 
     /* 处理UTRANCTRL模块缓存的消息 */
     NAS_UTRANCTRL_ProcBufferMsg();
+
+    NAS_MML_UpdateExitTime();
         
     return VOS_OK;
 }

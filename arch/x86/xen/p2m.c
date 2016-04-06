@@ -1,152 +1,4 @@
-/*
- * Xen leaves the responsibility for maintaining p2m mappings to the
- * guests themselves, but it must also access and update the p2m array
- * during suspend/resume when all the pages are reallocated.
- *
- * The p2m table is logically a flat array, but we implement it as a
- * three-level tree to allow the address space to be sparse.
- *
- *                               Xen
- *                                |
- *     p2m_top              p2m_top_mfn
- *       /  \                   /   \
- * p2m_mid p2m_mid	p2m_mid_mfn p2m_mid_mfn
- *    / \      / \         /           /
- *  p2m p2m p2m p2m p2m p2m p2m ...
- *
- * The p2m_mid_mfn pages are mapped by p2m_top_mfn_p.
- *
- * The p2m_top and p2m_top_mfn levels are limited to 1 page, so the
- * maximum representable pseudo-physical address space is:
- *  P2M_TOP_PER_PAGE * P2M_MID_PER_PAGE * P2M_PER_PAGE pages
- *
- * P2M_PER_PAGE depends on the architecture, as a mfn is always
- * unsigned long (8 bytes on 64-bit, 4 bytes on 32), leading to
- * 512 and 1024 entries respectively.
- *
- * In short, these structures contain the Machine Frame Number (MFN) of the PFN.
- *
- * However not all entries are filled with MFNs. Specifically for all other
- * leaf entries, or for the top  root, or middle one, for which there is a void
- * entry, we assume it is  "missing". So (for example)
- *  pfn_to_mfn(0x90909090)=INVALID_P2M_ENTRY.
- *
- * We also have the possibility of setting 1-1 mappings on certain regions, so
- * that:
- *  pfn_to_mfn(0xc0000)=0xc0000
- *
- * The benefit of this is, that we can assume for non-RAM regions (think
- * PCI BARs, or ACPI spaces), we can create mappings easily b/c we
- * get the PFN value to match the MFN.
- *
- * For this to work efficiently we have one new page p2m_identity and
- * allocate (via reserved_brk) any other pages we need to cover the sides
- * (1GB or 4MB boundary violations). All entries in p2m_identity are set to
- * INVALID_P2M_ENTRY type (Xen toolstack only recognizes that and MFNs,
- * no other fancy value).
- *
- * On lookup we spot that the entry points to p2m_identity and return the
- * identity value instead of dereferencing and returning INVALID_P2M_ENTRY.
- * If the entry points to an allocated page, we just proceed as before and
- * return the PFN.  If the PFN has IDENTITY_FRAME_BIT set we unmask that in
- * appropriate functions (pfn_to_mfn).
- *
- * The reason for having the IDENTITY_FRAME_BIT instead of just returning the
- * PFN is that we could find ourselves where pfn_to_mfn(pfn)==pfn for a
- * non-identity pfn. To protect ourselves against we elect to set (and get) the
- * IDENTITY_FRAME_BIT on all identity mapped PFNs.
- *
- * This simplistic diagram is used to explain the more subtle piece of code.
- * There is also a digram of the P2M at the end that can help.
- * Imagine your E820 looking as so:
- *
- *                    1GB                                           2GB
- * /-------------------+---------\/----\         /----------\    /---+-----\
- * | System RAM        | Sys RAM ||ACPI|         | reserved |    | Sys RAM |
- * \-------------------+---------/\----/         \----------/    \---+-----/
- *                               ^- 1029MB                       ^- 2001MB
- *
- * [1029MB = 263424 (0x40500), 2001MB = 512256 (0x7D100),
- *  2048MB = 524288 (0x80000)]
- *
- * And dom0_mem=max:3GB,1GB is passed in to the guest, meaning memory past 1GB
- * is actually not present (would have to kick the balloon driver to put it in).
- *
- * When we are told to set the PFNs for identity mapping (see patch: "xen/setup:
- * Set identity mapping for non-RAM E820 and E820 gaps.") we pass in the start
- * of the PFN and the end PFN (263424 and 512256 respectively). The first step
- * is to reserve_brk a top leaf page if the p2m[1] is missing. The top leaf page
- * covers 512^2 of page estate (1GB) and in case the start or end PFN is not
- * aligned on 512^2*PAGE_SIZE (1GB) we loop on aligned 1GB PFNs from start pfn
- * to end pfn.  We reserve_brk top leaf pages if they are missing (means they
- * point to p2m_mid_missing).
- *
- * With the E820 example above, 263424 is not 1GB aligned so we allocate a
- * reserve_brk page which will cover the PFNs estate from 0x40000 to 0x80000.
- * Each entry in the allocate page is "missing" (points to p2m_missing).
- *
- * Next stage is to determine if we need to do a more granular boundary check
- * on the 4MB (or 2MB depending on architecture) off the start and end pfn's.
- * We check if the start pfn and end pfn violate that boundary check, and if
- * so reserve_brk a middle (p2m[x][y]) leaf page. This way we have a much finer
- * granularity of setting which PFNs are missing and which ones are identity.
- * In our example 263424 and 512256 both fail the check so we reserve_brk two
- * pages. Populate them with INVALID_P2M_ENTRY (so they both have "missing"
- * values) and assign them to p2m[1][2] and p2m[1][488] respectively.
- *
- * At this point we would at minimum reserve_brk one page, but could be up to
- * three. Each call to set_phys_range_identity has at maximum a three page
- * cost. If we were to query the P2M at this stage, all those entries from
- * start PFN through end PFN (so 1029MB -> 2001MB) would return
- * INVALID_P2M_ENTRY ("missing").
- *
- * The next step is to walk from the start pfn to the end pfn setting
- * the IDENTITY_FRAME_BIT on each PFN. This is done in set_phys_range_identity.
- * If we find that the middle leaf is pointing to p2m_missing we can swap it
- * over to p2m_identity - this way covering 4MB (or 2MB) PFN space.  At this
- * point we do not need to worry about boundary aligment (so no need to
- * reserve_brk a middle page, figure out which PFNs are "missing" and which
- * ones are identity), as that has been done earlier.  If we find that the
- * middle leaf is not occupied by p2m_identity or p2m_missing, we dereference
- * that page (which covers 512 PFNs) and set the appropriate PFN with
- * IDENTITY_FRAME_BIT. In our example 263424 and 512256 end up there, and we
- * set from p2m[1][2][256->511] and p2m[1][488][0->256] with
- * IDENTITY_FRAME_BIT set.
- *
- * All other regions that are void (or not filled) either point to p2m_missing
- * (considered missing) or have the default value of INVALID_P2M_ENTRY (also
- * considered missing). In our case, p2m[1][2][0->255] and p2m[1][488][257->511]
- * contain the INVALID_P2M_ENTRY value and are considered "missing."
- *
- * This is what the p2m ends up looking (for the E820 above) with this
- * fabulous drawing:
- *
- *    p2m         /--------------\
- *  /-----\       | &mfn_list[0],|                           /-----------------\
- *  |  0  |------>| &mfn_list[1],|    /---------------\      | ~0, ~0, ..      |
- *  |-----|       |  ..., ~0, ~0 |    | ~0, ~0, [x]---+----->| IDENTITY [@256] |
- *  |  1  |---\   \--------------/    | [p2m_identity]+\     | IDENTITY [@257] |
- *  |-----|    \                      | [p2m_identity]+\\    | ....            |
- *  |  2  |--\  \-------------------->|  ...          | \\   \----------------/
- *  |-----|   \                       \---------------/  \\
- *  |  3  |\   \                                          \\  p2m_identity
- *  |-----| \   \-------------------->/---------------\   /-----------------\
- *  | ..  +->+                        | [p2m_identity]+-->| ~0, ~0, ~0, ... |
- *  \-----/ /                         | [p2m_identity]+-->| ..., ~0         |
- *         / /---------------\        | ....          |   \-----------------/
- *        /  | IDENTITY[@0]  |      /-+-[x], ~0, ~0.. |
- *       /   | IDENTITY[@256]|<----/  \---------------/
- *      /    | ~0, ~0, ....  |
- *     |     \---------------/
- *     |
- *   p2m_mid_missing           p2m_missing
- * /-----------------\     /------------\
- * | [p2m_missing]   +---->| ~0, ~0, ~0 |
- * | [p2m_missing]   +---->| ..., ~0    |
- * \-----------------/     \------------/
- *
- * where ~0 is INVALID_P2M_ENTRY. IDENTITY is (PFN | IDENTITY_BIT)
- */
+
 
 #include <linux/init.h>
 #include <linux/module.h>
@@ -878,7 +730,6 @@ int m2p_add_override(unsigned long mfn, struct page *page,
 	unsigned long uninitialized_var(address);
 	unsigned level;
 	pte_t *ptep = NULL;
-	int ret = 0;
 
 	pfn = page_to_pfn(page);
 	if (!PageHighMem(page)) {
@@ -925,8 +776,8 @@ int m2p_add_override(unsigned long mfn, struct page *page,
 	 * frontend pages while they are being shared with the backend,
 	 * because mfn_to_pfn (that ends up being called by GUPF) will
 	 * return the backend pfn rather than the frontend pfn. */
-	ret = __get_user(pfn, &machine_to_phys_mapping[mfn]);
-	if (ret == 0 && get_phys_to_machine(pfn) == mfn)
+	pfn = mfn_to_pfn_no_overrides(mfn);
+	if (get_phys_to_machine(pfn) == mfn)
 		set_phys_to_machine(pfn, FOREIGN_FRAME(mfn));
 
 	return 0;
@@ -941,7 +792,6 @@ int m2p_remove_override(struct page *page,
 	unsigned long uninitialized_var(address);
 	unsigned level;
 	pte_t *ptep = NULL;
-	int ret = 0;
 
 	pfn = page_to_pfn(page);
 	mfn = get_phys_to_machine(pfn);
@@ -1019,8 +869,8 @@ int m2p_remove_override(struct page *page,
 	 * the original pfn causes mfn_to_pfn(mfn) to return the frontend
 	 * pfn again. */
 	mfn &= ~FOREIGN_FRAME_BIT;
-	ret = __get_user(pfn, &machine_to_phys_mapping[mfn]);
-	if (ret == 0 && get_phys_to_machine(pfn) == FOREIGN_FRAME(mfn) &&
+	pfn = mfn_to_pfn_no_overrides(mfn);
+	if (get_phys_to_machine(pfn) == FOREIGN_FRAME(mfn) &&
 			m2p_find_override(mfn) == NULL)
 		set_phys_to_machine(pfn, mfn);
 

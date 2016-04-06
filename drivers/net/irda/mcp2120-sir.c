@@ -134,7 +134,6 @@ static int mcp2120_change_speed(struct sir_dev *dev, unsigned speed)
 			break;
 		case 115200:
                         control[0] = MCP2120_115200;
-                        //printk("mcp2120 115200\n");
 			break;
 		}
 		control[1] = MCP2120_COMMIT;

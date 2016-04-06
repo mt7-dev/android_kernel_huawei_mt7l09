@@ -100,10 +100,14 @@ enum ICC_RECV_FUNC_ID{
 	RFILE_RECV_FUNC_ID_MAX,
 
     NV_RECV_FUNC_AC = 0,
+    /* yangzhi for sc file backup and restore begin: */
+    NV_RECV_FUNC_SC = 1,
+    /* yangzhi for sc file backup and restore End */
 	/* 若要在ICC_CHN_NV物理通道上定义子通道,请在该注释行之前定义 */
 	NV_RECV_FUNC_ID_MAX,
 
 	GUOM0_TEST1 = 0,
+	GUOM0_FUNC_ID_VT_AC,
 	/* 若要在ICC_CHN_GUOM0物理通道上定义子通道,请在该注释行之前定义 */
 	GUOM0_RECV_FUNC_ID_MAX,
 
@@ -216,7 +220,7 @@ s32 bsp_icc_send(u32 cpuid,u32 channel_id,u8 *buffer,u32 data_len);
 *             4) 该接口不能在icc回调中使用，会引起死锁和icc任务延迟的严重后果
 
 *****************************************************************************/
-s32 bsp_icc_send_sync(u32 cpuid,u32 channel_id,u8 * data,u32 data_len,s32 timeout);
+s32 bsp_icc_send_sync(u32 cpuid,u32 channel_id,u8 * data,u32 data_len,long timeout);
 
 /*****************************************************************************
 * 函 数 名  : bsp_icc_read

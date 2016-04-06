@@ -6,7 +6,6 @@
  *  publishhed by the Free Software Foundation.
  */
 
-/include/ "hisi_3630_gpio.dtsi"
 / {
 	balong_power:balong_power {
 		compatible = "huawei,balong_ext_power";
@@ -26,6 +25,7 @@
 		via_pwr_en = <&gpio14 2 0>;	      // modem power enable,    114
 		via_rst_mdm = <&gpio14 1 0>;	      // reset modem,           113
 		via_reset_ind = <&gpio23 3 0>;	      // modem reset notice AP, 187
+		via_reset_ind_connect_to_codec = <0x0>;	        //reset_indication is connected to hi6402 codec?
 		via_sim_switch = <&gpio15 4 0>;       // sim switch,            124
 		via_backup = <&gpio3 5 0>;            // ap notify via produce ramdump 29
 
@@ -48,5 +48,8 @@
 		compatible = "rnic_adapter_interface_dev";
 		status = "disabled";
 	};
-
+	viacbp82d_flashless_boot_dl_uart:viacbp82d_flashless_boot_dl_uart {
+		uart_port = "0";
+		status = "disabled";
+	};
 };

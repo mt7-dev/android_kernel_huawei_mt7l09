@@ -126,10 +126,10 @@ struct clk_ops {
 	int		(*enable)(struct clk_hw *hw);
 	void		(*disable)(struct clk_hw *hw);
 	int		(*is_enabled)(struct clk_hw *hw);
-#ifdef CONFIG_HI3630_CLK_DEBUG
+#ifdef CONFIG_HISI_CLK_DEBUG
 	int		(*check_selreg)(struct clk_hw *hw);
 	int		(*check_divreg)(struct clk_hw *hw);
-	void __iomem * (*get_reg)(struct clk_hw *hw);
+	void __iomem *(*get_reg)(struct clk_hw *hw);
 #endif
 	void		(*disable_unused)(struct clk_hw *hw);
 	unsigned long	(*recalc_rate)(struct clk_hw *hw,
@@ -275,6 +275,8 @@ struct clk_div_table {
  *	Some hardware implementations gracefully handle this case and allow a
  *	zero divisor by not modifying their input clock
  *	(divide by one / bypass).
+ * CLK_DIVIDER_ROUND_CLOSEST - Makes the best calculated divider to be rounded
+ *	to the closest integer instead of the up one.
  */
 struct clk_divider {
 	struct clk_hw	hw;
@@ -289,6 +291,7 @@ struct clk_divider {
 #define CLK_DIVIDER_ONE_BASED		BIT(0)
 #define CLK_DIVIDER_POWER_OF_TWO	BIT(1)
 #define CLK_DIVIDER_ALLOW_ZERO		BIT(2)
+#define CLK_DIVIDER_ROUND_CLOSEST	BIT(4)
 
 extern const struct clk_ops clk_divider_ops;
 struct clk *clk_register_divider(struct device *dev, const char *name,
@@ -459,6 +462,7 @@ struct clk_onecell_data {
 	unsigned int clk_num;
 };
 struct clk *of_clk_src_onecell_get(struct of_phandle_args *clkspec, void *data);
+int of_clk_get_parent_count(struct device_node *np);
 const char *of_clk_get_parent_name(struct device_node *np, int index);
 
 void of_clk_init(const struct of_device_id *matches);

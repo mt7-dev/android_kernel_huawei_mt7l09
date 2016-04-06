@@ -59,9 +59,9 @@ typedef VOS_UINT8   NAS_GMM_CTRL_STATUS_ENUM_UINT8;
 /*******************   TIMER的宏定义   ***************************************/
 /*****************************************************************************/
 /* GMM TIMER 总数，增减TIMER时请同步更新 */
-/* 增加CS/PS域DETACH流程保护定时器 */
-#define     GMM_TIMER_NUM                               (31)                      /* GMM共使用Timer个数 */
 
+/* 增加CS/PS域DETACH流程保护定时器 */
+#define     GMM_TIMER_NUM                               (32)                      /* GMM共使用Timer个数 */
 
 #define     GMM_TIMER_T3314_CNT                         88                      /* READY TIMER默认间隔次数，默认总长为44s */
 
@@ -91,7 +91,7 @@ typedef VOS_UINT8   NAS_GMM_CTRL_STATUS_ENUM_UINT8;
 
 #define     NAS_GMM_TIMER_T3323_FLG             (0x00000001 << GMM_TIMER_T3323) /* T3323定时器运行标志 */
 
-#define     NAS_GMM_TIMER_WAIT_SYSINFO_FLG      (0x00000001 << GMM_TIMER_CS_CONN_NOT_EXIST_WAIT_SYSINFO)
+#define     NAS_GMM_TIMER_HO_WAIT_SYSINFO_FLG   (0x00000001 << GMM_TIMER_HO_WAIT_SYSINFO)
 
 /*****************************************************************************/
 /*******************   TIMER时长的宏定义   ***********************************/
@@ -141,13 +141,15 @@ typedef VOS_UINT8   NAS_GMM_CTRL_STATUS_ENUM_UINT8;
 
 #define     GMM_TIMER_T3323_VALUE                               (3240000)       /* 默认54分钟 */
 
-#define     GMM_TIMER_WAIT_SYSINFO_VALUE                        (2000)          /* 默认2秒钟 */
+#define     GMM_TIMER_WAIT_SYSINFO_VALUE                        (10000)          /* 默认10秒钟 */
 
 
 #define     GMM_TIMER_DELAY_RADIO_CAPA_TRIGED_RAU_VALUE         (1*1000)                  /* RadioCapa修改后的延迟时间，定时器超时后检查是否触发RAU */
 
 
 #define     GMM_TIMER_WAIT_AS_MS_RADIO_CAPA_INFO_VALUE         (1*1000)         /*定时器超时触发rau或attach*/
+
+#define     GMM_TIMER_DELAY_VOICE_DOMAIN_TRIG_RAU_VALUE         (1*1000)         /*voice daomain变化时暂时无法做RAU的等待时长，定时器超时触发RAU */
 
 /* Detach Timer 最大超时次数 */
 #define     GMM_MAX_DETACH_CNT_WHEN_POWER_OFF               8
@@ -324,6 +326,10 @@ typedef VOS_UINT8   NAS_GMM_CTRL_STATUS_ENUM_UINT8;
 #define GMM_IEI_TMSI_STATUS                             0x9-                    /* IEI : TMSI status (此宏不使用)           */
 #define GMM_IEI_TMSI_STATUS_NO_VALID                    0x90                    /* IEI : TMSI status + TMSI flag : FALSE    */
 #define GMM_IEI_TMSI_STATUS_VALID                       0x91                    /* IEI : TMSI status + TMSI flag : TRUE     */
+
+#define GMM_IEI_CLASSMARK2                              0X11
+#define GMM_IEI_CLASSMARK3                              0X20
+#define GMM_IEI_SUPPORTED_CODEC_LIST                    0x40
 
 /* NETWORK TO MS */
 
@@ -667,6 +673,9 @@ typedef VOS_UINT8   NAS_GMM_CTRL_STATUS_ENUM_UINT8;
 #define     GMM_MSG_LEN_TLV_VOICE_DOMAIN_PREFERANCE_AND_UE_USAGE_SETTING_LEN    (3)
 #define     GMM_MSG_LEN_V_VOICE_DOMAIN_PREFERANCE_AND_UE_USAGE_SETTING_LEN      (1)
 
+#define     GMM_MSG_LEN_CLASSMARK2                              (5)
+
+#define     GMM_IE_AUTN_MAX_LEN                                   (16)
 
 /*****************************************************************************
   5 全局变量声明

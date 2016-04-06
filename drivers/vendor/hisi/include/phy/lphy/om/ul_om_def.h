@@ -674,7 +674,8 @@ typedef   struct
     UINT16  usAckChSel;
     UINT16  usRiChSel;
     UINT16  usCqiChSel;
-    UINT16  usRevd;
+    //UINT16  usRevd;
+    LPHY_CA_CC_ENUM_UINT16  enCCIndx;
 
 }UL_CUR_UCI_STRU;
 

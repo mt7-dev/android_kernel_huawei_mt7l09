@@ -102,10 +102,17 @@ enum SI_PIH_EVENT_ENUM
     SI_PIH_EVENT_URSM_CNF           = 23,       /* ^URSM设置命令返回        */
     SI_PIH_EVENT_CARDTYPE_QUERY_CNF = 24,
 
+    SI_PIH_EVENT_SCICFG_SET_CNF     = 25,
+    SI_PIH_EVENT_SCICFG_QUERY_CNF   = 26,
+    SI_PIH_EVENT_HVTEE_SET_CNF      = 27,
+    SI_PIH_EVENT_TEETIMEOUT_IND     = 28,
+    SI_PIH_EVENT_HVCHECKCARD_CNF      = 29,
+
     /*从500开始作为PIH内部可维可测消息的勾包*/
     SI_PIH_USIMREG_PID_HOOK         = 500,
     SI_PIH_REFRESHREG_PID_HOOK      = 501,
     SI_PIH_ISIMREG_PID_HOOK         = 502,
+    SI_PIH_HVTEE_DATA_HOOK          = 503,
 
     SI_PIH_EVENT_BUTT
 };
@@ -162,14 +169,6 @@ enum SI_PIH_SIM_INDEX_ENUM
     SI_PIH_SIM_INDEX_BUTT
 };
 typedef VOS_UINT8 SI_PIH_SIM_INDEX_ENUM_UINT8;
-
-enum SI_PIH_SIM_SLOT_ENUM
-{
-    SI_PIH_SIM_SLOT1                = 1,
-    SI_PIH_SIM_SLOT2                = 2,
-    SI_PIH_SIM_SLOT_BUTT
-};
-typedef VOS_UINT8 SI_PIH_SIM_SLOT_ENUM_UINT8;
 
 enum SI_PIH_SIM_STATE_ENUM
 {
@@ -253,6 +252,34 @@ enum SI_PIH_POLLTIMER_ENUM
 };
 typedef VOS_UINT32 SI_PIH_POLLTIMER_ENUM_UINT32;
 
+enum SI_PIH_CARD_SLOT_ENUM
+{
+    SI_PIH_CARD_SLOT_0      = SCI_ID_0,
+    SI_PIH_CARD_SLOT_1      = SCI_ID_1,
+    SI_PIH_CARD_SLOT_BUTT
+};
+typedef VOS_UINT32  SI_PIH_CARD_SLOT_ENUM_UINT32;
+
+enum SI_PIH_HVTEE_ERROR_ENUM
+{
+    SI_PIH_HVTEE_NOERROR    = VOS_OK,
+    SI_PIH_HVTEE_ADDR_ERROR,
+    SI_PIH_HVTEE_HEAD_ERROR,
+    SI_PIH_HVTEE_END_ERROR,
+    SI_PIH_HVTEE_DATA_ERROR,
+    SI_PIH_HVTEE_LEN_ERROR,
+    SI_PIH_HVTEE_ENCODE_ERROR,
+    SI_PIH_HVTEE_ERROR_BUTT
+};
+typedef VOS_UINT32  SI_PIH_HVTEE_ERROR_ENUM_UINT32;
+
+enum SI_PIH_HVCHECKCARD_STATUS_ENUM
+{
+    SI_PIH_HVCHECKCARD_CARDIN   = 0,
+    SI_PIH_HVCHECKCARD_ABSENT   = 1,
+    SI_PIH_HVCHECKCARD_BUTT
+};
+typedef VOS_UINT32  SI_PIH_HVCHECKCARD_STATUS_ENUM_UINT32;
 
 /*****************************************************************************
   4 数据结构定义
@@ -270,6 +297,7 @@ typedef struct
 typedef struct
 {
     SI_UINT32                           ulAIDLen;                               /* AID的长度 */
+    SI_UINT32                           ulRsv;
     SI_UINT8                           *pucADFName;                             /* 保存ADF的名字 */
 }SI_PIH_CCHO_COMMAND_STRU;
 
@@ -346,10 +374,9 @@ typedef struct
 
 typedef struct
 {
-    SI_PIH_SIM_SLOT_ENUM_UINT8          enSlot;         /*卡槽*/
     SI_PIH_SIM_STATE_ENUM_UINT8         enVSimState;    /*vSIM卡状态，和硬卡状态互斥*/
     SI_PIH_CARD_USE_ENUM_UINT8          enCardUse;      /*卡能否使用*/
-    VOS_UINT8                           ucRsv;
+    VOS_UINT8                           aucRsv[2];
 }SI_PIH_EVENT_HVSST_QUERY_CNF_STRU;
 
 typedef struct
@@ -400,6 +427,7 @@ typedef struct
     VOS_UINT8                       aucCK[17];          /*Len+Data*/
     VOS_UINT8                       aucAuts[15];        /*Len+Data*/
     VOS_UINT8                       aucAuthRes[17];     /*Len+Data*/
+    VOS_UINT8                       aucRsv[2];
 }SI_PIH_UICCAKA_DATA_STRU;
 
 typedef struct
@@ -429,6 +457,7 @@ typedef struct
 typedef struct
 {
     VOS_UINT32                          ulDataLen;
+    VOS_UINT32                          ulRsv;
     VOS_UINT8                           *pucData;
 }SI_PIH_U8LV_DATA_STRU;
 
@@ -439,6 +468,7 @@ typedef struct
     VOS_UINT32                          ulRef;
     VOS_UINT32                          ulTotalNum;
     VOS_UINT32                          ulIndex;
+    VOS_UINT32                          ulRsv;
     SI_PIH_U8LV_DATA_STRU               stFileData;
 }SI_PIH_FILEWRITE_DATA_STRU;
 
@@ -475,10 +505,12 @@ typedef struct
     SI_PIH_ACCESSTYPE_ENUM_UINT8        enCmdType;
     VOS_UINT8                           ucRecordNum;
     VOS_UINT16                          usEfId;
+    VOS_UINT32                          ulRsv;
     VOS_UINT32                          ulDataLen;
     VOS_UINT8                           aucCommand[USIMM_T0_APDU_MAX_LEN];
     VOS_UINT16                          usPathLen;
     VOS_UINT16                          ausPath[USIMM_MAX_PATH_LEN];
+    VOS_UINT16                          usRsv;
 }SI_PIH_ACCESSFILE_STRU;
 
 typedef struct
@@ -488,6 +520,40 @@ typedef struct
     VOS_UINT8                           ucHasGModule;
     VOS_UINT8                           ucRfu;
 } SI_PIH_EVENT_CARDTYPE_QUERY_CNF_STRU;
+
+typedef struct
+{
+    VOS_BOOL                            bAPNFlag;
+    VOS_BOOL                            bDHParaFlag;
+    VOS_BOOL                            bVSIMDataFlag;
+    VOS_UINT32                          ulRfu;
+}SI_PIH_HVTEE_SET_STRU;
+
+typedef struct
+{
+    SI_PIH_CARD_SLOT_ENUM_UINT32        enCard0Slot;
+    SI_PIH_CARD_SLOT_ENUM_UINT32        enCard1Slot;
+}SI_PIH_SCICFG_QUERY_CNF_STRU;
+
+typedef struct
+{
+    VOS_UINT32                          ulAPNResult;
+    VOS_UINT32                          ulDHResult;
+    VOS_UINT32                          ulVSIMResult;
+    VOS_UINT32                          ulRsv;
+}SI_PIH_HVTEE_SET_CNF_STRU;
+
+typedef struct
+{
+    VOS_UINT32                          ulData;
+    VOS_UINT32                          ulRsv;
+}SI_PIH_TEETIMEOUT_IND_STRU;
+
+typedef struct
+{
+    SI_PIH_HVCHECKCARD_STATUS_ENUM_UINT32   enData;
+}SI_PIH_HVCHECKCARD_CNF_STRU;
+
 
 /*****************************************************************************
   5 回调函数数据结构定义
@@ -516,6 +582,10 @@ typedef struct
         SI_PIH_UICCAUTH_CNF_STRU                            UiccAuthCnf;
         SI_PIH_UICCACCESSFILE_CNF_STRU                      UiccAcsFileCnf;
         SI_PIH_EVENT_CARDTYPE_QUERY_CNF_STRU                CardTypeCnf;
+        SI_PIH_SCICFG_QUERY_CNF_STRU                        SciCfgCnf;
+        SI_PIH_HVTEE_SET_CNF_STRU                           HVTEECnf;
+        SI_PIH_TEETIMEOUT_IND_STRU                          TEETimeOut;
+        SI_PIH_HVCHECKCARD_CNF_STRU                         HvCheckCardCnf;
     }PIHEvent;
 }SI_PIH_EVENT_INFO_STRU;
 
@@ -570,6 +640,16 @@ extern VOS_UINT32 PIH_RegISIMCardIndMsg(VOS_UINT32 ulReceiverPID);
 
 extern VOS_UINT32 SI_PIH_CardTypeQuery(MN_CLIENT_ID_T ClientId, MN_OPERATION_ID_T OpId);
 
+extern VOS_UINT32 SI_PIH_SciCfgSet (MN_CLIENT_ID_T ClientId, MN_OPERATION_ID_T OpId, SI_PIH_CARD_SLOT_ENUM_UINT32 enCard0Slot, SI_PIH_CARD_SLOT_ENUM_UINT32 enCard1Slot);
+
+extern VOS_UINT32 SI_PIH_SciCfgQuery (MN_CLIENT_ID_T  ClientId, MN_OPERATION_ID_T OpId);
+
+extern VOS_UINT32 SI_PIH_HvteeSet (MN_CLIENT_ID_T ClientId, MN_OPERATION_ID_T OpId, SI_PIH_HVTEE_SET_STRU *pstHvtee);
+
+extern VOS_UINT32 SI_PIH_HvCheckCardQuery(MN_CLIENT_ID_T ClientId, MN_OPERATION_ID_T OpId);
+
+extern VOS_VOID SI_PIH_AcpuInit(VOS_VOID);
+
 /*单编译接口的声明*/
 
 extern VOS_UINT32 PIH_RegUsimCardStatusIndMsg_Instance(
@@ -600,6 +680,24 @@ extern VOS_UINT32 SI_PIH_AccessUICCFileReq(MN_CLIENT_ID_T       ClientId,
                                     MN_OPERATION_ID_T               OpId,
                                     SI_PIH_ACCESSFILE_STRU          *pstData);
 
+extern VOS_VOID PIH_GetVsimAPN(VOS_UINT32 ulApnMax, VOS_UINT8 *pucApnData, VOS_UINT8 *pucApnLen);
+
+/*外部接口*/
+#if (FEATURE_ON == FEATURE_VSIM)
+typedef struct
+{
+    unsigned int    time_type;  /*Timer Type*/
+    unsigned int    time_id;    /*Timer ID*/
+    unsigned int    rev1;
+    unsigned int    rev2;
+}TEEC_TIMER_PROPERTY_STRU;
+
+extern int TC_NS_RegisterServiceCallbackFunc(char *uuid, void *func, void *private_data);
+
+extern int efuseReadHUK(BSP_U32 *pBuf, BSP_U32 len);
+
+extern VOS_VOID SI_PIH_TEETimeOutCB (TEEC_TIMER_PROPERTY_STRU *pstTimerData);
+#endif
 
 #if ((TAF_OS_VER == TAF_WIN32) || (TAF_OS_VER == TAF_NUCLEUS))
 #pragma pack()

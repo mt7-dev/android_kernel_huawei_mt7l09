@@ -84,20 +84,27 @@ extern "C" {
 extern VOS_UINT32 At_Base16Decode(VOS_CHAR *pcData, VOS_UINT32 ulDataLen, VOS_UINT8* pucDst);
 extern VOS_UINT16 At_Hex2Base16(VOS_UINT32 MaxLength,VOS_CHAR *headaddr,VOS_CHAR *pucDst,VOS_UINT8 *pucSrc,VOS_UINT16 usSrcLen);
 
+extern VOS_UINT32 At_SetHvsstPara(VOS_UINT8 ucIndex);
+extern VOS_UINT32 At_QryHvsstPara(VOS_UINT8 ucIndex);
+extern VOS_UINT32 At_TestHvsstPara(VOS_UINT8 ucIndex);
+extern VOS_UINT32 At_SetSciChgPara(VOS_UINT8 ucIndex);
+extern VOS_UINT32 At_QrySciChgPara(VOS_UINT8 ucIndex);
+extern VOS_UINT32 At_TestSciChgPara(VOS_UINT8 ucIndex);
+
 #if (FEATURE_ON == FEATURE_VSIM)
 extern VOS_UINT32 At_SetHvsDHPara(VOS_UINT8 ucIndex);
 extern VOS_UINT32 At_QryHvsDHPara(VOS_UINT8 ucIndex);
 extern VOS_UINT32 At_TestHvsDHPara(VOS_UINT8 ucIndex);
 extern VOS_UINT32 At_QryHvsContPara(VOS_UINT8 ucIndex);
-extern VOS_UINT32 At_SetHvsstPara(VOS_UINT8 ucIndex);
-extern VOS_UINT32 At_QryHvsstPara(VOS_UINT8 ucIndex);
-extern VOS_UINT32 At_TestHvsstPara(VOS_UINT8 ucIndex);
 extern VOS_UINT32 At_DealRSFWVsim(VOS_UINT8 ucIndex);
 extern VOS_UINT32 At_SetHvpDHPara(VOS_UINT8 ucIndex);
 extern VOS_UINT32 At_TestHvpDHPara(VOS_UINT8 ucIndex);
 extern VOS_UINT16 At_HvsstQueryCnf(SI_PIH_EVENT_INFO_STRU *pstEvent);
 extern VOS_UINT16 At_HvsContQueryCnf(SI_PIH_EVENT_INFO_STRU *pstEvent);
 extern VOS_UINT16 AT_HvsDHQueryCnf(SI_PIH_EVENT_INFO_STRU *pstEvent);
+extern VOS_UINT32 At_SetHvteePara(VOS_UINT8 ucIndex);
+extern VOS_UINT32 At_TestHvteePara(VOS_UINT8 ucIndex);
+extern VOS_UINT32 At_QryHvCheckCardPara(VOS_UINT8 ucIndex);
 #endif
 
 extern VOS_UINT16 AT_UiccAuthCnf(TAF_UINT8 ucIndex,SI_PIH_EVENT_INFO_STRU *pstEvent);

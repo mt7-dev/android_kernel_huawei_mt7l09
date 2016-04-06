@@ -18,9 +18,9 @@
 #define S1D_DEVICENAME			"s1d13xxxfb"
 
 /* S1DREG_REV_CODE register = prod_id (6 bits) + revision (2 bits) */
-#define S1D13505_PROD_ID		0x3	/* 000011 */
-#define S1D13506_PROD_ID		0x4	/* 000100 */
-#define S1D13806_PROD_ID		0x7	/* 000111 */
+#define S1D13505_PROD_ID		0x3
+#define S1D13506_PROD_ID		0x4
+#define S1D13806_PROD_ID		0x7
 
 /* register definitions (tested on s1d13896) */
 #define S1DREG_REV_CODE			0x0000	/* Prod + Rev Code Register */

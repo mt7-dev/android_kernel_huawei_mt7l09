@@ -1,23 +1,4 @@
-/*
- * Header file for sonic.c
- *
- * (C) Waldorf Electronics, Germany
- * Written by Andreas Busse
- *
- * NOTE: most of the structure definitions here are endian dependent.
- * If you want to use this driver on big endian machines, the data
- * and pad structure members must be exchanged. Also, the structures
- * need to be changed accordingly to the bus size.
- *
- * 981229 MSch:	did just that for the 68k Mac port (32 bit, big endian)
- *
- * 990611 David Huggins-Daines <dhd@debian.org>: This machine abstraction
- * does not cope with 16-bit bus sizes very well.  Therefore I have
- * rewritten it with ugly macros and evil inlines.
- *
- * 050625 Finn Thain: introduced more 32-bit cards and dhd's support
- *        for 16-bit cards (from the mac68k project).
- */
+
 
 #ifndef SONIC_H
 #define SONIC_H

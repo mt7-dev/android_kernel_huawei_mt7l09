@@ -26,7 +26,6 @@ endif
 #
 #	Enable processor type. Ordering of these is important - we want to
 #	use the minimum processor type of the range we support. The logic
-#	for 680x0 will only allow use of the -m68060 or -m68040 if no other
 #	680x0 type is specified - and no option is specified for 68030 or
 #	68020. The other m68k/ColdFire types always specify some type of
 #	compiler cpu type flag.

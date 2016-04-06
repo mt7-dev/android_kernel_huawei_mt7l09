@@ -522,20 +522,6 @@ static int c67x00_claim_frame_bw(struct c67x00_hcd *c67x00, struct urb *urb,
 	struct c67x00_urb_priv *urbp = urb->hcpriv;
 	int bit_time;
 
-	/* According to the C67x00 BIOS user manual, page 3-18,19, the
-	 * following calculations provide the full speed bit times for
-	 * a transaction.
-	 *
-	 * FS(in)	= 112.5 +  9.36*BC + HOST_DELAY
-	 * FS(in,iso)	=  90.5 +  9.36*BC + HOST_DELAY
-	 * FS(out)	= 112.5 +  9.36*BC + HOST_DELAY
-	 * FS(out,iso)	=  78.4 +  9.36*BC + HOST_DELAY
-	 * LS(in)	= 802.4 + 75.78*BC + HOST_DELAY
-	 * LS(out)	= 802.6 + 74.67*BC + HOST_DELAY
-	 *
-	 * HOST_DELAY == 106 for the c67200 and c67300.
-	 */
-
 	/* make calculations in 1/100 bit times to maintain resolution */
 	if (urbp->ep_data->dev->speed == USB_SPEED_LOW) {
 		/* Low speed pipe */

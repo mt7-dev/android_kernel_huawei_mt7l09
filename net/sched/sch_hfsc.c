@@ -356,31 +356,7 @@ cftree_update(struct hfsc_class *cl)
 	cftree_insert(cl);
 }
 
-/*
- * service curve support functions
- *
- *  external service curve parameters
- *	m: bps
- *	d: us
- *  internal service curve parameters
- *	sm: (bytes/psched_us) << SM_SHIFT
- *	ism: (psched_us/byte) << ISM_SHIFT
- *	dx: psched_us
- *
- * The clock source resolution with ktime and PSCHED_SHIFT 10 is 1.024us.
- *
- * sm and ism are scaled in order to keep effective digits.
- * SM_SHIFT and ISM_SHIFT are selected to keep at least 4 effective
- * digits in decimal using the following table.
- *
- *  bits/sec      100Kbps     1Mbps     10Mbps     100Mbps    1Gbps
- *  ------------+-------------------------------------------------------
- *  bytes/1.024us 12.8e-3    128e-3     1280e-3    12800e-3   128000e-3
- *
- *  1.024us/byte  78.125     7.8125     0.78125    0.078125   0.0078125
- *
- * So, for PSCHED_SHIFT 10 we need: SM_SHIFT 20, ISM_SHIFT 18.
- */
+
 #define	SM_SHIFT	(30 - PSCHED_SHIFT)
 #define	ISM_SHIFT	(8 + PSCHED_SHIFT)
 

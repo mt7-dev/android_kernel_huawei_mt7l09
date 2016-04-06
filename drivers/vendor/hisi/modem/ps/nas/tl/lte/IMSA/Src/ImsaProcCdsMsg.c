@@ -106,10 +106,21 @@ VOS_VOID IMSA_CONN_SndCdsSetImsBearerReq( VOS_VOID )
         }
     }
 
+    /* 视频包走A核，所以保存的视频承载不需要配置给CDS */
     for (i = 0; i < pstNormalConn->ulSipMediaPdpNum; i++)
     {
-       if (IMSA_PDP_STATE_ACTIVE           == pstNormalConn->astSipMediaPdpArray[i].enPdpState)
+        if (IMSA_PDP_STATE_ACTIVE == pstNormalConn->astSipMediaPdpArray[i].enPdpState)
         {
+            /* if (IMSA_TRUE == IMSA_CONN_IsVoiceMediaPdpType(&pstNormalConn->astSipMediaPdpArray[i].stTft,
+                                                            pstNormalConn->astSipMediaPdpArray[i].stEpsQos.ucQCI))
+            {
+                pstCdsImsBearer                 = &pstSetImsBearerReq->astImsBearerArray[pstSetImsBearerReq->ulImsBearerNum];
+                pstCdsImsBearer->ucEpsbId       = pstNormalConn->astSipMediaPdpArray[i].ucPdpId;
+                pstCdsImsBearer->enBearerType   = IMSA_CDS_IMS_BEARER_TYPE_MEDIA;
+
+                pstSetImsBearerReq->ulImsBearerNum++;
+            } */
+
             pstCdsImsBearer                 = &pstSetImsBearerReq->astImsBearerArray[pstSetImsBearerReq->ulImsBearerNum];
             pstCdsImsBearer->ucEpsbId       = pstNormalConn->astSipMediaPdpArray[i].ucPdpId;
             pstCdsImsBearer->enBearerType   = IMSA_CDS_IMS_BEARER_TYPE_MEDIA;
@@ -146,17 +157,9 @@ VOS_VOID IMSA_CdsMsgDistr(const VOS_VOID *pRcvMsg )
 {
     /* 定义消息头指针*/
     PS_MSG_HEADER_STRU          *pHeader = VOS_NULL_PTR;
-    IMSA_CONTROL_MANAGER_STRU   *pstControlManager = IMSA_GetControlManagerAddress();
 
     /* 获取消息头指针*/
     pHeader = (PS_MSG_HEADER_STRU *) pRcvMsg;
-
-    /* 关机过程中收到CDS发送的消息，直接丢弃 */
-    if(IMSA_STATUS_STOPING == pstControlManager->enImsaStatus)
-    {
-        IMSA_WARN_LOG("IMSA_CdsMsgDistr: Status is Stoping!");
-        return;
-    }
 
     switch(pHeader->ulMsgName)
     {

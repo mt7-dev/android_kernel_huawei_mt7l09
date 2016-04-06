@@ -215,12 +215,16 @@ static void dapm_reset(struct snd_soc_card *card)
 	}
 }
 
-static int soc_widget_read(struct snd_soc_dapm_widget *w, int reg)
+static int soc_widget_read(struct snd_soc_dapm_widget *w, int reg,
+		unsigned int *value)
 {
-	if (w->codec)
-		return snd_soc_read(w->codec, reg);
-	else if (w->platform)
-		return snd_soc_platform_read(w->platform, reg);
+	if (w->codec) {
+		*value = snd_soc_read(w->codec, reg);
+		return 0;
+	}else if (w->platform) {
+		*value = snd_soc_platform_read(w->platform, reg);
+		return 0;
+	}
 
 	dev_err(w->dapm->dev, "ASoC: no valid widget read method\n");
 	return -1;
@@ -267,13 +271,12 @@ static int soc_widget_update_bits_locked(struct snd_soc_dapm_widget *w,
 			return ret;
 	} else {
 		soc_widget_lock(w);
-		ret = soc_widget_read(w, reg);
+		ret = soc_widget_read(w, reg, &old);
 		if (ret < 0) {
 			soc_widget_unlock(w);
 			return ret;
 		}
 
-		old = ret;
 		new = (old & ~mask) | (value & mask);
 		change = old != new;
 		if (change) {
@@ -349,7 +352,7 @@ static void dapm_set_path_status(struct snd_soc_dapm_widget *w,
 		unsigned int mask = (1 << fls(max)) - 1;
 		unsigned int invert = mc->invert;
 
-		val = soc_widget_read(w, reg);
+		soc_widget_read(w, reg, &val);
 		val = (val >> shift) & mask;
 		if (invert)
 			val = max - val;
@@ -362,7 +365,7 @@ static void dapm_set_path_status(struct snd_soc_dapm_widget *w,
 			w->kcontrol_news[i].private_value;
 		int val, item;
 
-		val = soc_widget_read(w, e->reg);
+		soc_widget_read(w, e->reg, &val);
 		item = (val >> e->shift_l) & e->mask;
 
 		p->connect = 0;
@@ -392,7 +395,7 @@ static void dapm_set_path_status(struct snd_soc_dapm_widget *w,
 			w->kcontrol_news[i].private_value;
 		int val, item;
 
-		val = soc_widget_read(w, e->reg);
+		soc_widget_read(w, e->reg, &val);
 		val = (val >> e->shift_l) & e->mask;
 		for (item = 0; item < e->max; item++) {
 			if (val == e->values[item])
@@ -2173,30 +2176,6 @@ static int snd_soc_dapm_set_pin(struct snd_soc_dapm_context *dapm,
 }
 
 /**
- * snd_soc_dapm_sync_unlocked - scan and power dapm paths
- * @dapm: DAPM context
- *
- * Walks all dapm audio paths and powers widgets according to their
- * stream or path usage.
- *
- * Requires external locking.
- *
- * Returns 0 for success.
- */
-int snd_soc_dapm_sync_unlocked(struct snd_soc_dapm_context *dapm)
-{
-	/*
-	 * Suppress early reports (eg, jacks syncing their state) to avoid
-	 * silly DAPM runs during card startup.
-	 */
-	if (!dapm->card || !dapm->card->instantiated)
-		return 0;
-
-	return dapm_power_widgets(dapm, SND_SOC_DAPM_STREAM_NOP);
-}
-EXPORT_SYMBOL_GPL(snd_soc_dapm_sync_unlocked);
-
-/**
  * snd_soc_dapm_sync - scan and power dapm paths
  * @dapm: DAPM context
  *
@@ -2209,8 +2188,15 @@ int snd_soc_dapm_sync(struct snd_soc_dapm_context *dapm)
 {
 	int ret;
 
+	/*
+	 * Suppress early reports (eg, jacks syncing their state) to avoid
+	 * silly DAPM runs during card startup.
+	 */
+	if (!dapm->card || !dapm->card->instantiated)
+		return 0;
+
 	mutex_lock_nested(&dapm->card->dapm_mutex, SND_SOC_DAPM_CLASS_RUNTIME);
-	ret = snd_soc_dapm_sync_unlocked(dapm);
+	ret = dapm_power_widgets(dapm, SND_SOC_DAPM_STREAM_NOP);
 	mutex_unlock(&dapm->card->dapm_mutex);
 	return ret;
 }
@@ -2619,7 +2605,7 @@ int snd_soc_dapm_new_widgets(struct snd_soc_dapm_context *dapm)
 
 		/* Read the initial power state from the device */
 		if (w->reg >= 0) {
-			val = soc_widget_read(w, w->reg);
+			soc_widget_read(w, w->reg, &val);
 			val &= 1 << w->shift;
 			if (w->invert)
 				val = !val;

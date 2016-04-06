@@ -158,8 +158,8 @@ int bsp_hifi_restore(void)
     {
         for (length = 0; length < section_info->sec_addr_info[i].sec_length; length += 4)
         {
-            flag = readl(section_info->sec_addr_info[i].sec_source_addr + length);
-            writel(flag, section_info->sec_addr_info[i].sec_dest_addr + length);
+            flag = readl((unsigned)section_info->sec_addr_info[i].sec_source_addr + length);
+            writel(flag, (unsigned)section_info->sec_addr_info[i].sec_dest_addr + length);
         }
     }
 

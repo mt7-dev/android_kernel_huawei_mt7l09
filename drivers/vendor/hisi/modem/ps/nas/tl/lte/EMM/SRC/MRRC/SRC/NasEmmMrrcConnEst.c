@@ -61,7 +61,7 @@ NAS_LMM_SEND_MSG_RESULT_ACT_STRU  gstEmmMrrcSendMsgResultActTbl[]=
     {NAS_EMM_NAS_UPLINK_NAS_TRANSPORT,      NAS_EMM_SndSmsdataFailProc,             VOS_NULL_PTR},
     {NAS_EMM_MSG_GUTI_CMP,                  NAS_EMM_SndCommonProcedureMsgFailProc,  VOS_NULL_PTR},
     {NAS_EMM_MSG_SERVICE_REQ,               NAS_EMM_SndServiceReqFailProc,          VOS_NULL_PTR},
-    {NAS_EMM_MSG_EXTENDED_SERVICE_REQ,      NAS_EMM_SndExtendedServiceReqFailProc,  VOS_NULL_PTR},
+    {NAS_EMM_MSG_EXTENDED_SERVICE_REQ,      NAS_EMM_SndExtendedServiceReqFailProc,  NAS_EMM_SndExtendedServiceReqSuccProc},
     {NAS_EMM_MSG_ESM,                       NAS_EMM_SndEsmMsgFailProc,              VOS_NULL_PTR}
 };
 VOS_UINT32        g_ulSendMsgResultActTblLen = sizeof(gstEmmMrrcSendMsgResultActTbl)
@@ -193,7 +193,7 @@ VOS_VOID  NAS_EMM_SndUplinkNasMsg
 {
     NAS_EMM_MRRC_DATA_REQ_STRU         *pstMrrcDataRqMsg = NAS_EMM_NULL_PTR;
     VOS_UINT32                          ulMmRrcOpId = NAS_LMM_RRC_OPID_NOT_VAILID;
-	
+
 #if(VOS_WIN32 == VOS_OS_VER)
     #ifdef PS_ITT_PC_TEST_NAS_ST
     VOS_UINT32                          ulRslt = VOS_FALSE;
@@ -320,6 +320,7 @@ VOS_UINT32  NAS_EMM_MsRrcConnEstInitSsWaitRrcConnMsgRrcMmEstCnf
 {
     LRRC_LMM_EST_CNF_STRU                *pstEstCnfMsg;
     VOS_UINT32                          ulResult;
+    VOS_UINT32                          ulStaAtStackTop = NAS_EMM_NULL;
 
     NAS_EMM_GIM_NORMAL_LOG("NAS_EMM_MsRrcConnEstInitSsWaitRrcConnMsgRrcMmEstCnf is entered.");
 
@@ -335,6 +336,25 @@ VOS_UINT32  NAS_EMM_MsRrcConnEstInitSsWaitRrcConnMsgRrcMmEstCnf
     /*检查建链是否成功*/
     pstEstCnfMsg = (LRRC_LMM_EST_CNF_STRU *)pMsgStru;
     ulResult = pstEstCnfMsg->enResult;
+
+    /*问题背景:主叫走CSFB流程被用户快速挂断电话，此时走CSFB回退流程，
+    回退到L的时候，由于TA在TALIST里面，所以不会发起TAU跟网侧交互，但是
+    此时核心网PS域已经开始往2/3G迁移，这样会导致被叫不通，或者收不到短信
+    改动:增加标识维护识别上面的这种场景，在回到L的时候保证发起TAU*/
+    /*建链成功一定会把ESR发送到网侧，CONN FAIL ESR可能发送成功，在这种两种
+      场景下设置标志，其他的原因值，ESR没有发送到网络侧，不需要记录*/
+    ulStaAtStackTop = NAS_LMM_FSM_GetStaAtStackTop(NAS_LMM_PARALLEL_FSM_EMM);
+    if((ulStaAtStackTop == NAS_LMM_PUB_COMP_EMMSTATE(EMM_MS_SER_INIT, EMM_SS_SER_WAIT_CN_SER_CNF))
+      && ((LRRC_EST_SUCCESS == ulResult)
+      || (LRRC_EST_EST_CONN_FAIL == ulResult))
+      && (PS_TRUE == NAS_EMM_SER_IsCsfbProcedure())
+      /*add by lifuxin for extra TAU issue 2015-06-18 start*/
+      /*有可能在释放过程中打电话，这种情况需要过滤*/
+      && (NAS_EMM_CONN_RELEASING != NAS_EMM_GetConnState()))
+        /*add by lifuxin for extra TAU issue 2015-06-18 end*/
+    {
+        NAS_EMM_SetCsfbProcedureFlag(PS_TRUE);
+    }
 
     switch (ulResult)
     {
@@ -371,6 +391,9 @@ VOS_UINT32  NAS_EMM_MsRrcConnEstInitSsWaitRrcConnMsgRrcMmEstCnf
             NAS_EMM_FSM_PopState();
 
             NAS_EMM_SecuCurrentContextUpNasCountBack();
+            #if (FEATURE_PTM == FEATURE_ON)
+            NAS_EMM_ProcErrlogEstCnfOrDataCnfFail((VOS_VOID*)pstEstCnfMsg, EMM_OM_ERRLOG_TYPE_EST_CNF_FAIL);
+            #endif
 
             /*发MRRC_CONNECT_FAIL_IND*/
             NAS_EMM_MrrcConnectFailInd(ulResult);
@@ -580,8 +603,10 @@ VOS_VOID  NAS_EMM_FillEstInfo(
     NAS_LMM_NETWORK_INFO_STRU           *pMmNetInfo = VOS_NULL_PTR;
     NAS_MM_TA_STRU                      stCurTa;
     NAS_MM_TA_LIST_STRU                 stTaiList;
-    NAS_LMM_GUTI_STRU                    stMappedGuti = {0};
+    NAS_LMM_GUTI_STRU                    stMappedGuti;
     VOS_UINT32                          ulRslt;
+
+    PS_MEM_SET(&stMappedGuti, 0, sizeof(NAS_LMM_GUTI_STRU));
 
     /*获取 UE 标识*/
     pstMmUeId                           = NAS_LMM_GetEmmInfoUeidAddr();
@@ -872,6 +897,7 @@ VOS_VOID  NAS_EMM_ClrDataReqBufferMsg
     NAS_EMM_MRRC_MGMT_DATA_STRU         *pEmmMrrcMgmtData = NAS_EMM_NULL_PTR;
     VOS_UINT32                          ulIndex;
     VOS_UINT32                          ulRrcMmDataReqMsgLen;
+    VOS_UINT32                          ulLogIndex;
 
     NAS_EMM_PUBU_LOG1_INFO(      "NAS_EMM_ClrDataReqBufferMsg,g_ulSaveMsgNum =",
                             g_ulSaveMsgNum);
@@ -906,20 +932,22 @@ VOS_VOID  NAS_EMM_ClrDataReqBufferMsg
 
             g_ulSaveMsgNum--;
 
+
             NAS_EMM_PUBU_LOG1_INFO(      "NAS_EMM_ClrDataReqBufferMsg,g_ulSaveMsgNum =",
                                     g_ulSaveMsgNum);
 
-            for (ulIndex = 0; ulIndex < g_ulSaveMsgNum; ulIndex++)
+            for (ulLogIndex = 0; ulLogIndex < g_ulSaveMsgNum; ulLogIndex++)
             {
                 NAS_EMM_PUBU_LOG1_INFO("NAS_EMM_ClrDataReqBufferMsg,g_stEmmMrrcMgmtData[].enLastMsgId =",
-                                       g_stEmmMrrcMgmtData[ulIndex].enLastMsgId);
+                                       g_stEmmMrrcMgmtData[ulLogIndex].enLastMsgId);
 
                 NAS_EMM_PUBU_LOG1_INFO("NAS_EMM_ClrDataReqBufferMsg,g_stEmmMrrcMgmtData[].ulMmRrcOpId =",
-                                       g_stEmmMrrcMgmtData[ulIndex].ulMmRrcOpId);
+                                       g_stEmmMrrcMgmtData[ulLogIndex].ulMmRrcOpId);
 
                 NAS_EMM_PUBU_LOG1_INFO("NAS_EMM_ClrDataReqBufferMsg,g_stEmmMrrcMgmtData[].ulHoWaitSysInfoFlag =",
-                                       g_stEmmMrrcMgmtData[ulIndex].ulHoWaitSysInfoFlag);
+                                       g_stEmmMrrcMgmtData[ulLogIndex].ulHoWaitSysInfoFlag);
             }
+
 
             return;
         }

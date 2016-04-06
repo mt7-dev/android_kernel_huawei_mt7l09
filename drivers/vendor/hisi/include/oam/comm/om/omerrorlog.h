@@ -51,8 +51,11 @@ extern "C" {
 #define     ID_OM_FTM_REQUIRE_IND           (0x9006)
 #define     ID_OM_FTM_REQUIRE_CNF           (0x9007)
 
-/* 接收媒体组上报消息，透传给AP，AP启动媒体Log搬迁 */
-#define     ID_OM_AUDIO_ERR_LOG_IND         (0x9009)
+/* 平台检测故障主动上报消息名称 */
+#define     ID_OM_FAULT_ERR_LOG_IND         (0x9009) /* haojian 提议该处以后可能不止媒体组，还有其他组，所有改名 */
+
+/* 平台检测告警主动上报消息名称 */
+#define     ID_OM_ALARM_ERR_LOG_IND         (0x900A)
 
 #define     OM_MAX_FAULT_ID                 (40)         /* 故障场景编号数量 */
 #define     OM_MAX_MODULE_ID                (32)         /* 最多模块数量 */
@@ -64,6 +67,10 @@ extern "C" {
 /* Error Log 上报定时器 */
 #define OM_ERRLOG_TIMER_LENTH               (5000)
 
+/* Send Log Tool MSG Type*/
+#define OM_ERRLOG_SEND_MSG                  (0x0000DDDD)
+#define OM_ERRLOG_RCV_MSG                   (0x0000EEEE)
+#define OM_APP_ERRLOG_HOOK_IND              (0xBBFF)
 /*****************************************************************************
   3 枚举定义
 *****************************************************************************/
@@ -77,8 +84,11 @@ enum OM_ERR_LOG_MSG_TYPE_ENUM
     OM_ERR_LOG_MSG_RESULT         = 0x06, /* 上报Result */
     OM_ERR_LOG_MSG_FTM_REQ        = 0x07, /* 工程模式命令 */
     OM_ERR_LOG_MSG_FTM_CNF        = 0x08, /* 工程模式响应 */
-    OM_AUDIO_ERR_LOG_MSG_REPORT   = 0x09, /* AUDIO组件ErrLog上报 */
-    
+
+    OM_ERR_LOG_MSG_FAULT_REPORT   = 0x09, /* 平台检测故障主动上报 */
+
+    OM_ERR_LOG_MSG_ALARM_REPORT   = 0x0A, /* 平台检测告警主动上报 */
+
     OM_ERR_LOG_MSG_TYPE_BUTT
 };
 typedef VOS_UINT32    OM_ERR_LOG_MSG_TYPE_ENUM_UINT32;
@@ -87,10 +97,16 @@ typedef VOS_UINT32    OM_ERR_LOG_MSG_TYPE_ENUM_UINT32;
 enum OM_ERR_LOG_MOUDLE_ID_ENUM
 {
     OM_ERR_LOG_MOUDLE_ID_GUNAS  = 0x020001,   /* GU NAS */
+    OM_ERR_LOG_MOUDLE_ID_GNAS   = 0x020011,   /* G NAS */       
+    OM_ERR_LOG_MOUDLE_ID_UNAS   = 0x020021,   /* U NAS */
     OM_ERR_LOG_MOUDLE_ID_GAS    = 0x020002,   /* GAS */
     OM_ERR_LOG_MOUDLE_ID_WAS    = 0x020003,   /* WAS */
     OM_ERR_LOG_MOUDLE_ID_GUL2   = 0x020004,   /* GUL2 */
+    OM_ERR_LOG_MOUDLE_ID_GL2    = 0x020014,   /* GL2 */
+    OM_ERR_LOG_MOUDLE_ID_UL2    = 0x020024,   /* UL2 */
     OM_ERR_LOG_MOUDLE_ID_GUPHY  = 0x020005,   /* GUPHY */
+    OM_ERR_LOG_MOUDLE_ID_GPHY   = 0x020015,   /* GPHY */
+    OM_ERR_LOG_MOUDLE_ID_UPHY   = 0x020025,   /* UPHY */
     OM_ERR_LOG_MOUDLE_ID_USIMM  = 0x020006,   /* USIMM */
     OM_ERR_LOG_MOUDLE_ID_DRV_SCI= 0x020007,   /* SCI DRV */
     OM_ERR_LOG_MOUDLE_ID_HIFI   = 0x020008,   /* HIFI */
@@ -281,6 +297,8 @@ typedef struct
     VOS_UINT16                          usModemID;
     VOS_UINT16                          usRev;
     VOS_UINT32                          ulReportStatus; /* result */    
+    VOS_UINT32                          ulTrigLowSlice; /* 记录触发上报请求时的时间戳 */
+    VOS_UINT32                          ulTrigHighSlice;
 }OM_APP_REPORT_STATUS_STRU;
 
 /* ERRLOG 上报开关 OM->各组 */
@@ -343,6 +361,17 @@ typedef struct
     VOS_UINT8                           aucContent[4]; /* 工程模式上报的内容 */
 }OM_FTM_REPROT_IND_STRU;
 
+/* 各组件故障主动上报内容 各组件 -> OM*/
+typedef struct
+{
+    VOS_MSG_HEADER
+    VOS_UINT32                          ulMsgName;
+    VOS_UINT32                          ulMsgType;
+    VOS_UINT32                          ulMsgSN;
+    VOS_UINT32                          ulRptlen;      /* 故障主动上报的内容长度,如果ulRptlen为0,aucContent内容长度也为0 */
+    VOS_UINT8                           aucContent[4]; /* 故障主动上报的内容 */
+}OM_FAULT_ERR_LOG_IND_STRU;
+
 /* OM收到各组Error Log上报内容 */
 typedef struct
 {
@@ -357,6 +386,18 @@ typedef struct
     OM_ERR_LOG_MOUDLE_ID_ENUM_UINT32    enProjectModule;   /* 设备号 */
     pFuncOMGetData                      pSendUlAtFunc;     /* 各组件注册 接收数据函数 */  
 }OM_REGISTER_PROJECT_CTX_STRU;
+typedef struct
+{
+    VOS_UINT8           ucFuncType;
+    VOS_UINT8           ucCpuId;
+    VOS_UINT16          usLength;
+    VOS_UINT32          ulSn;           /*Sequence Number for Trace, Event, OTA msg.*/
+    VOS_UINT32          ulTimeStamp;    /*CPU time coming from ARM.*/
+    VOS_UINT16          usPrimId;
+    VOS_UINT16          usToolId;
+    VOS_UINT32          ulDateType;
+    VOS_UINT8           aucValue[4];
+}OM_ERRLOG_TRANS_MSG_STRU;
 
 /*****************************************************************************
   8 UNION定义

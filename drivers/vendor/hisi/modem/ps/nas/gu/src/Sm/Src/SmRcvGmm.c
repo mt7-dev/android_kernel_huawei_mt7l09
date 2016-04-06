@@ -1423,11 +1423,11 @@ VOS_VOID SM_RcvGmmSmEstabishCnf(
                     NAS_SM_ProcTafPdpDeActiveReq((SMREG_PDP_DEACTIVATE_REQ_STRU *)pHoldMsg);
                     break;
                 default:
-                    SM_Free(g_SmEntity.aHoldMsg[i].pHoldRcvMsg);                /* 释放保留消息                             */
-
                     PS_LOG(WUEPS_PID_SM, VOS_NULL, PS_PRINT_WARNING, "SM_RcvGmmSmEstabishCnf:WARNING:SM: Message type non-existent!");
                    break;
                 }
+
+                SM_Free(g_SmEntity.aHoldMsg[i].pHoldRcvMsg);                    /* 释放保留消息                             */
                 g_SmEntity.aHoldMsg[i].pHoldRcvMsg = SM_NULL;                   /* 清除缓存消息：                           */
             }
             else if (SM_NULL != g_SmEntity.aPdpCntxtList[i].pHoldSndMsg)

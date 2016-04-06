@@ -481,11 +481,18 @@ config LEDS_BLINKM
 
 comment "LED Triggers"
 source "drivers/leds/trigger/Kconfig"
-config HI6421_LED
+config LEDS_HI6421
 	bool "LEDS_HISI_6421 Trigger"
 	depends on LEDS_TRIGGERS && LEDS_TRIGGER_TIMER
 	help
 	  This allows LEDs to be controlled by hisi leds activity.
 	  If unsure, say n.
 
+config LEDS_HI655X
+	bool "LEDS_HI655x Trigger"
+	depends on LEDS_TRIGGERS && LEDS_TRIGGER_TIMER
+	default n
+	help
+	  This allows LEDs to be controlled by hi655x leds activity.
+	  If unsure, say n.
 endif # NEW_LEDS

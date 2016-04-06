@@ -1,0 +1,63 @@
+-include $(BALONG_TOPDIR)/config/product/$(OBB_PRODUCT_NAME)/config/balong_product_config.mk
+ 
+PSDIR = ..
+
+
+EXTRA_CFLAGS += -Iarch/arm/mach-balong/include/mach 
+EXTRA_CFLAGS += -Iinclude/linux 
+
+EXTRA_CFLAGS += -I$(BALONG_TOPDIR)/config/nvim/include/gu 
+EXTRA_CFLAGS += -I$(BALONG_TOPDIR)/config/nvim/include/tl/tlps 
+EXTRA_CFLAGS += -I$(BALONG_TOPDIR)/config/log 
+EXTRA_CFLAGS += -I$(BALONG_TOPDIR)/config/osa 
+EXTRA_CFLAGS += -I$(BALONG_TOPDIR)/include/ps/tlps 
+EXTRA_CFLAGS += -I$(BALONG_TOPDIR)/include/app 
+EXTRA_CFLAGS += -I$(BALONG_TOPDIR)/include/drv 
+EXTRA_CFLAGS += -I$(BALONG_TOPDIR)/include/med 
+EXTRA_CFLAGS += -I$(BALONG_TOPDIR)/include/oam/lt/diag 
+EXTRA_CFLAGS += -I$(BALONG_TOPDIR)/include/oam/lt/msp  
+EXTRA_CFLAGS += -I$(BALONG_TOPDIR)/include/oam/mux 
+EXTRA_CFLAGS += -I$(BALONG_TOPDIR)/include/oam/comm/om 
+EXTRA_CFLAGS += -I$(BALONG_TOPDIR)/include/oam/comm/osa 
+EXTRA_CFLAGS += -I$(BALONG_TOPDIR)/include/oam/gu/nvim 
+EXTRA_CFLAGS += -I$(BALONG_TOPDIR)/include/oam/comm/nvim 
+EXTRA_CFLAGS += -I$(BALONG_TOPDIR)/include/oam/comm/usimm 
+EXTRA_CFLAGS += -I$(BALONG_TOPDIR)/include/phy/gphy 
+EXTRA_CFLAGS += -I$(BALONG_TOPDIR)/include/phy/wphy 
+EXTRA_CFLAGS += -I$(BALONG_TOPDIR)/include/nv/tl/lps 
+EXTRA_CFLAGS += -I$(BALONG_TOPDIR)/include/nv/tl/phy 
+EXTRA_CFLAGS += -I$(BALONG_TOPDIR)/include/nv/gu/nas 
+EXTRA_CFLAGS += -I$(BALONG_TOPDIR)/include/ps/gups 
+EXTRA_CFLAGS += -I$(BALONG_TOPDIR)/include/ps/tlps 
+EXTRA_CFLAGS += -I$(BALONG_TOPDIR)/include/ps/nas 
+EXTRA_CFLAGS += -I$(BALONG_TOPDIR)/include/taf 
+EXTRA_CFLAGS += -I$(BALONG_TOPDIR)/include/tools 
+EXTRA_CFLAGS += -I$(BALONG_TOPDIR)/platform/$(CFG_GU_PLATFORM_NEW)/
+EXTRA_CFLAGS += -I$(BALONG_TOPDIR)/platform/$(CFG_GU_PLATFORM_NEW)/soc
+EXTRA_CFLAGS += -I$(BALONG_TOPDIR)/$(CFG_GU_FEATURE_CONFIG_PATH)/
+EXTRA_CFLAGS += -I$(BALONG_TOPDIR)/config/product/define/$(OBB_PRODUCT_NAME)/config/ 
+EXTRA_CFLAGS += -I$(BALONG_TOPDIR)/config/product/define/$(OBB_PRODUCT_NAME)/ 
+
+EXTRA_CFLAGS += -I$(BALONG_TOPDIR)/modem/ps/comm/comm/LINK/Inc
+EXTRA_CFLAGS += -I$(BALONG_TOPDIR)/modem/ps/comm/comm/STL/Inc
+EXTRA_CFLAGS += -I$(BALONG_TOPDIR)/modem/ps/comm/comm/MEM/Inc
+EXTRA_CFLAGS += -I$(BALONG_TOPDIR)/modem/ps/comm/comm/NDIS/Inc
+EXTRA_CFLAGS += -I$(BALONG_TOPDIR)/modem/ps/comm/comm/PPP/Inc
+EXTRA_CFLAGS += -I$(BALONG_TOPDIR)/modem/ps/comm/comm/ND/IPCOMM/Inc
+EXTRA_CFLAGS += -I$(BALONG_TOPDIR)/modem/ps/comm/comm/ND/NDSERVER/Inc 
+
+# User definition
+EXTRA_CFLAGS += -fsigned-char -DVOS_LINUX=4 -DOSA_CPU_ACPU=1 -DVOS_OS_VER=VOS_LINUX -DVOS_OSA_CPU=OSA_CPU_ACPU -D__LOG_RELEASE__ -DBSP_CORE_APP -DGU_MODE -DMSP_SUPPORT_USB_VCOM1 -DMSP_SUPPORT_USB_VCOM2 -DVOS_DOPRA_VER=2 -DNDIS_RELEASE -DBALONG_PHY_V200=2 -DBALONG_PHY_V300=3 -DBALONG_PHY_VER=BALONG_PHY_V300 -DBALONG_CHIP_V200=2 -DBALONG_CHIP_V300=3 -DBALONG_CHIP_V500=4 -DBALONG_CHIP_VER=BALONG_CHIP_V500 -DVERSION_V7R1_C010 -DMSP_GUNAS_AT_UNITE -DVERSION_V3R2
+
+tlps-objs += $(PSDIR)/comm/comm/STL/Src/LUPQueue.o
+tlps-objs += $(PSDIR)/comm/comm/NDIS/Src/PsNdis.o
+tlps-objs += $(PSDIR)/comm/comm/NDIS/Src/Ipv4DhcpServer.o
+tlps-objs += $(PSDIR)/comm/comm/ND/NDSERVER/Src/IpNdServer.o
+tlps-objs += $(PSDIR)/comm/comm/ND/IPCOMM/Src/IpComm.o
+
+
+
+obj-y  := tlps.o
+
+
+

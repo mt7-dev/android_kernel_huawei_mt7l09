@@ -14,7 +14,7 @@ typedef enum tagDEBUG_LEVEL_E{
     HI_MAX
 }DEBUG_LEVEL_E;
 
-extern unsigned int g_debug_level;
+extern long g_debug_level;
 
 #define HIS_IMAGE_TRACE_LOG           (g_debug_level)
 #define hi_trace(level, format, args...) do { \

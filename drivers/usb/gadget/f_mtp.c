@@ -30,6 +30,7 @@
 #include <linux/file.h>
 #include <linux/device.h>
 #include <linux/miscdevice.h>
+#include <linux/compat.h>
 
 #include <linux/usb.h>
 #include <linux/usb_usual.h>
@@ -360,7 +361,6 @@ static void mtp_complete_in(struct usb_ep *ep, struct usb_request *req)
 {
 	struct mtp_dev *dev = _mtp_dev;
 
-	/* moified by l00196665, according to K3V2 */
 	if (req->status != 0 && dev->state != STATE_CANCELED)
 		dev->state = STATE_ERROR;
 
@@ -374,7 +374,6 @@ static void mtp_complete_out(struct usb_ep *ep, struct usb_request *req)
 	struct mtp_dev *dev = _mtp_dev;
 
 	dev->rx_done = 1;
-	/* moified by l00196665, according to K3V2 */
 	if (req->status != 0 && dev->state != STATE_CANCELED)
 		dev->state = STATE_ERROR;
 
@@ -385,7 +384,6 @@ static void mtp_complete_intr(struct usb_ep *ep, struct usb_request *req)
 {
 	struct mtp_dev *dev = _mtp_dev;
 
-	/* moified by l00196665, according to K3V2 */
 	if (req->status != 0 && dev->state != STATE_CANCELED)
 		dev->state = STATE_ERROR;
 
@@ -469,10 +467,11 @@ static ssize_t mtp_read(struct file *fp, char __user *buf,
 	struct mtp_dev *dev = fp->private_data;
 	struct usb_composite_dev *cdev = dev->cdev;
 	struct usb_request *req;
-	int r = count, xfer;
+	ssize_t r = count;
+	unsigned xfer;
 	int ret = 0;
 
-	DBG(cdev, "mtp_read(%d)\n", count);
+	DBG(cdev, "mtp_read(%zu)\n", count);
 
 	if (count > MTP_BULK_BUFFER_SIZE)
 		return -EINVAL;
@@ -536,7 +535,7 @@ done:
 		dev->state = STATE_READY;
 	spin_unlock_irq(&dev->lock);
 
-	DBG(cdev, "mtp_read returning %d\n", r);
+	DBG(cdev, "mtp_read returning %zd\n", r);
 	return r;
 }
 
@@ -546,11 +545,12 @@ static ssize_t mtp_write(struct file *fp, const char __user *buf,
 	struct mtp_dev *dev = fp->private_data;
 	struct usb_composite_dev *cdev = dev->cdev;
 	struct usb_request *req = 0;
-	int r = count, xfer;
+	ssize_t r = count;
+	unsigned xfer;
 	int sendZLP = 0;
 	int ret;
 
-	DBG(cdev, "mtp_write(%d)\n", count);
+	DBG(cdev, "mtp_write(%zu)\n", count);
 
 	spin_lock_irq(&dev->lock);
 	if (dev->state == STATE_CANCELED) {
@@ -627,7 +627,7 @@ static ssize_t mtp_write(struct file *fp, const char __user *buf,
 		dev->state = STATE_READY;
 	spin_unlock_irq(&dev->lock);
 
-	DBG(cdev, "mtp_write returning %d\n", r);
+	DBG(cdev, "mtp_write returning %zd\n", r);
 	return r;
 }
 
@@ -826,7 +826,7 @@ static int mtp_send_event(struct mtp_dev *dev, struct mtp_event *event)
 	int ret;
 	int length = event->length;
 
-	DBG(dev->cdev, "mtp_send_event(%d)\n", event->length);
+	DBG(dev->cdev, "mtp_send_event(%zu)\n", event->length);
 
 	if (length < 0 || length > INTR_BUFFER_SIZE)
 		return -EINVAL;
@@ -954,6 +954,69 @@ out:
 	return ret;
 }
 
+#ifdef CONFIG_COMPAT
+struct compat_mtp_event {
+	compat_size_t		length;
+	compat_ulong_t		data; /* size of ulong is 32bits in arm32, euqals to void* */
+};
+
+#define COMPAT_MTP_SEND_EVENT _IOW('M', 3, struct compat_mtp_event)
+
+static int compat_get_mtp_event_data(
+			struct compat_mtp_event __user *data32,
+			struct mtp_event __user *data)
+{
+	compat_size_t length;
+	compat_ulong_t arg;
+	int err;
+
+	err = get_user(length, &data32->length);
+	err |= put_user(length, &data->length);
+	err |= get_user(arg, &data32->data);
+	err |= put_user(arg, &data->data);
+
+	return err;
+}
+
+long compat_mtp_ioctl(struct file *fp, unsigned int code, unsigned long value)
+{
+
+	int ret;
+
+	switch (code) {
+	case MTP_SEND_FILE:
+	case MTP_RECEIVE_FILE:
+	case MTP_SEND_FILE_WITH_HEADER:
+		return fp->f_op->unlocked_ioctl(fp, code, (unsigned long)value);
+	case COMPAT_MTP_SEND_EVENT:
+	{
+		struct compat_mtp_event __user *data32;
+		struct mtp_event  __user *data;
+		int err;
+
+		data32 = compat_ptr(value);
+		data = compat_alloc_user_space(sizeof(*data));
+		if (data == NULL)
+			return -EFAULT;
+
+		err = compat_get_mtp_event_data(data32, data);
+		if (err)
+			return err;
+		ret = fp->f_op->unlocked_ioctl(fp, MTP_SEND_EVENT,
+							(unsigned long)data);
+		return ret ? ret : err;
+	}
+	default:
+	{
+		return fp->f_op->unlocked_ioctl(fp, code, (unsigned long)value);
+	}
+	}
+
+}
+#else
+#define compat_mtp_ioctl NULL
+#endif
+
 static int mtp_open(struct inode *ip, struct file *fp)
 {
 	printk(KERN_INFO "mtp_open\n");
@@ -982,6 +1045,7 @@ static const struct file_operations mtp_fops = {
 	.read = mtp_read,
 	.write = mtp_write,
 	.unlocked_ioctl = mtp_ioctl,
+	.compat_ioctl = compat_mtp_ioctl,
 	.open = mtp_open,
 	.release = mtp_release,
 };
@@ -1099,6 +1163,7 @@ mtp_function_bind(struct usb_configuration *c, struct usb_function *f)
 	if (id < 0)
 		return id;
 	mtp_interface_desc.bInterfaceNumber = id;
+	ptp_interface_desc.bInterfaceNumber = id;
 
 	/* allocate endpoints */
 	ret = mtp_create_bulk_endpoints(dev, &mtp_fullspeed_in_desc,
@@ -1127,7 +1192,6 @@ mtp_function_unbind(struct usb_configuration *c, struct usb_function *f)
 	struct usb_request *req;
 	int i;
 
-	/* added by l00196665, according to K3V2 DTS2012062106405 */
 	flush_workqueue(dev->wq);
 
 	while ((req = mtp_req_get(dev, &dev->tx_idle)))

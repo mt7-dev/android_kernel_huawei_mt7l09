@@ -14,10 +14,7 @@
 #define BATTERY_LOW_WARNING      0xA1
 #define BATTERY_LOW_SHUTDOWN     0xA2
 
-#define CURRENT_OFFSET    (10)
-#define HIGH_LEVEL_CAPACITY_STAY_THRESH  (1)
-#define MID_LEVEL_CAPACITY_STAY_THRESH   (3)
-#define LOW_LEVEL_CAPACITY_STAY_THRESH   (6)
+#define BATTERY_MOVE 0xB0
 
 #define BATTERY_CAPACITY_FULL     (100)
 #define BATTERY_MONITOR_INTERVAL  (10)
@@ -48,7 +45,26 @@
 #define ERROR_UFCAPCITY_DEBOUNCE_OTHER  (0x8000)
 
 #define IMPOSSIBLE_IAVG            (9999)
-#define RECHG_PROTECT_THRESHOLD    (150)
+
+/* State-of-Charge-Threshold 1 bit */
+#define BQ_FLAG_SOC1             (1<<2)
+/* State-of-Charge-Threshold Final bit */
+#define BQ_FLAG_SOCF             (1<<1)
+#define BQ_FLAG_LOCK       		 (BQ_FLAG_SOC1 | BQ_FLAG_SOCF)
+
+
+#define BAT_VOL_3200    (3200)
+#define BAT_VOL_3500    (3500)
+#define BAT_VOL_3550    (3550)
+#define BAT_VOL_3600    (3600)
+#define BAT_VOL_3700    (3700)
+#define BAT_VOL_3800    (3800)
+#define BAT_VOL_3850    (3850)
+#define BAT_VOL_3900    (3900)
+#define BAT_VOL_3950    (3950)
+#define BAT_VOL_4000    (4000)
+#define BAT_VOL_4200    (4200)
+#define BAT_VOL_4250    (4250)
 
 enum plugin_status {
     /* no charger plugin */
@@ -58,6 +74,14 @@ enum plugin_status {
    /* plugin ac charger */
    PLUGIN_AC_CHARGER,
 };
+
+
+typedef enum{
+    BAT_BOARD_SFT  = 0,
+    BAT_BOARD_UDP  = 1,
+    BAT_BOARD_ASIC = 2,
+    BAT_BOARD_MAX
+}battery_board_type_en;
 
 int bq_register_notifier(struct notifier_block *nb,
                 unsigned int events);

@@ -2080,7 +2080,6 @@ static int usbvision_set_dram_settings(struct usb_usbvision *usbvision)
 		value[5] = 0xe0;
 		value[6] = 0x71;
 		value[7] = 0xff;
-		/* UR:  0x0E200-0x3FFFF = 204288 Words (1 Word = 2 Byte) */
 		/* FDL: 0x00000-0x0E099 =  57498 Words */
 		/* VDW: 0x0E3FF-0x3FFFF */
 	} else {

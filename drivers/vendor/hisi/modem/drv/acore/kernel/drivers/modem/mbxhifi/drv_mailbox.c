@@ -38,36 +38,36 @@ extern "C" {
 /*****************************************************************************
   2 函数声明
 *****************************************************************************/
-unsigned long mailbox_send_msg(
-                unsigned long            mailcode,
+unsigned int mailbox_send_msg(
+                unsigned int            mailcode,
                 void                    *data,
-                unsigned long            length);
+                unsigned int            length);
 
-unsigned long mailbox_reg_msg_cb(
-                unsigned long             mailcode,
+unsigned int mailbox_reg_msg_cb(
+                unsigned int             mailcode,
                 mb_msg_cb                 func,
                 void                     *data);
 
-unsigned long mailbox_read_msg_data(
+unsigned int mailbox_read_msg_data(
                 void                   *mail_handle,
                  char                  *buff,
-                unsigned long          *size);
+                unsigned int          *size);
 /*****************************************************************************
   3 函数实现
 *****************************************************************************/
 
 
-unsigned long DRV_MAILBOX_SENDMAIL(
-                unsigned long           MailCode,
+unsigned int DRV_MAILBOX_SENDMAIL(
+                unsigned int           MailCode,
                 void                   *pData,
-                unsigned long           Length)
+                unsigned int           Length)
 {
     return mailbox_send_msg(MailCode, pData, Length);
 }
 
 
-unsigned long DRV_MAILBOX_REGISTERRECVFUNC(
-                unsigned long           MailCode,
+unsigned int DRV_MAILBOX_REGISTERRECVFUNC(
+                unsigned int           MailCode,
                 mb_msg_cb               pFun,
                 void                   *UserHandle)
 {
@@ -75,10 +75,10 @@ unsigned long DRV_MAILBOX_REGISTERRECVFUNC(
 }
 
 
-unsigned long DRV_MAILBOX_READMAILDATA(
+unsigned int DRV_MAILBOX_READMAILDATA(
                 void                   *MailHandle,
                 unsigned char          *pData,
-                unsigned long          *pSize)
+                unsigned int          *pSize)
 {
     return mailbox_read_msg_data(MailHandle, (char *)pData, pSize);
 }
@@ -88,7 +88,7 @@ unsigned long DRV_MAILBOX_READMAILDATA(
  函 数 名  : drv_hifi_fill_mb_info
  功能描述  : 邮箱信息设置接口
  输入参数  : addr 段信息地址(由HIFI加载模块传入)
- 输出参数  : 
+ 输出参数  :
  返 回 值  : void
  调用函数  : V9R1中在fastboot中调用，V7R2中与DSP一起加载调用
  被调函数  :
@@ -99,12 +99,12 @@ unsigned long DRV_MAILBOX_READMAILDATA(
     修改内容   : 新生成函数
 
 *****************************************************************************/
-void drv_hifi_fill_mb_info(unsigned int addr)
+void drv_hifi_fill_mb_info(unsigned int* addr)
 {
     CARM_HIFI_DYN_ADDR_SHARE_STRU *pdata;
 
     pdata = (CARM_HIFI_DYN_ADDR_SHARE_STRU*)addr;
-    
+
     pdata->stCarmHifiMB.uwHifi2CarmMailBoxLen   = MAILBOX_QUEUE_SIZE(HIFI, CCPU, MSG);
     pdata->stCarmHifiMB.uwCarm2HifiMailBoxLen   = MAILBOX_QUEUE_SIZE(CCPU, HIFI, MSG);
     pdata->stCarmHifiMB.uwHifiCarmHeadAddr      = HIFI_MBX_OFFSET + MAILBOX_HEAD_ADDR(HIFI, CCPU, MSG);
@@ -120,27 +120,27 @@ void drv_hifi_fill_mb_info(unsigned int addr)
     pdata->stAarmHifiMB.uwAarmHifiHeadAddr      = HIFI_MBX_OFFSET + MAILBOX_HEAD_ADDR(ACPU, HIFI, MSG);
     pdata->stAarmHifiMB.uwAarmHifiBodyAddr      = HIFI_MBX_OFFSET + MAILBOX_QUEUE_ADDR(ACPU, HIFI, MSG);
     pdata->stAarmHifiMB.uwProtectWord           = HIFI_MB_ADDR_PROTECT;
-    
+
     pdata->uwNvBaseAddrPhy = HIFI_MBX_OFFSET + SHD_DDR_V2P(NV_GLOBAL_CTRL_INFO_ADDR);
-    pdata->uwNvBaseAddrVirt = HIFI_MBX_OFFSET + NV_GLOBAL_CTRL_INFO_ADDR;
-    
+    pdata->uwNvBaseAddrVirt = (u32)(HIFI_MBX_OFFSET + (u32)NV_GLOBAL_CTRL_INFO_ADDR);
+
     pdata->uwProtectWord = HIFI_MB_ADDR_PROTECT;
-    
+
     return ;
 }
 #else
 
-unsigned long DRV_MAILBOX_SENDMAIL(
-                unsigned long           MailCode,
+unsigned int DRV_MAILBOX_SENDMAIL(
+                unsigned int           MailCode,
                 void                   *pData,
-                unsigned long           Length)
+                unsigned int           Length)
 {
     return MAILBOX_OK;
 }
 
 
-unsigned long DRV_MAILBOX_REGISTERRECVFUNC(
-                unsigned long           MailCode,
+unsigned int DRV_MAILBOX_REGISTERRECVFUNC(
+                unsigned int           MailCode,
                 mb_msg_cb               pFun,
                 void                   *UserHandle)
 {
@@ -148,10 +148,10 @@ unsigned long DRV_MAILBOX_REGISTERRECVFUNC(
 }
 
 
-unsigned long DRV_MAILBOX_READMAILDATA(
+unsigned int DRV_MAILBOX_READMAILDATA(
                 void                   *MailHandle,
                 unsigned char          *pData,
-                unsigned long          *pSize)
+                unsigned int           *pSize)
 {
     *pSize = 0;
     return MAILBOX_OK;
@@ -160,7 +160,7 @@ unsigned long DRV_MAILBOX_READMAILDATA(
  函 数 名  : drv_hifi_fill_mb_info
  功能描述  : 邮箱信息设置接口
  输入参数  : addr 段信息地址(由HIFI加载模块传入)
- 输出参数  : 
+ 输出参数  :
  返 回 值  : void
  调用函数  : V9R1中在fastboot中调用，V7R2中与DSP一起加载调用
  被调函数  :
@@ -171,7 +171,7 @@ unsigned long DRV_MAILBOX_READMAILDATA(
     修改内容   : 新生成函数
 
 *****************************************************************************/
-void drv_hifi_fill_mb_info(unsigned int addr)
+void drv_hifi_fill_mb_info(unsigned int* addr)
 {
     return ;
 }

@@ -40,12 +40,7 @@ struct work_struct efuse_work;
 
 EFUSE_DATA_STRU efuse_msg ;
 
-int efuse_debug_flag = 1;
-
-void efuse_debug_flag_ctrl(int flag)
-{
-    efuse_debug_flag = flag;
-}
+int efuse_debug_flag = 0;
 
 void bsp_efuse_show(void)
 {
@@ -121,7 +116,7 @@ void efuse_handle_work(struct work_struct *work)
     length = bsp_icc_send(ICC_CPU_MODEM, channel_id, (unsigned char*)msg, sizeof(EFUSE_DATA_STRU));
     if(length != (int)sizeof(EFUSE_DATA_STRU))
     {
-        efuse_print_error("send len(%x) != expected len(%x).\n", length, sizeof(EFUSE_DATA_STRU));
+        efuse_print_error("send len(%x) != expected len(%lu).\n", length, (unsigned long)sizeof(EFUSE_DATA_STRU));
         return;
     }
 
@@ -136,7 +131,7 @@ void bsp_efuse_data_receive(void)
 	length = bsp_icc_read(channel_id, (u8*)&efuse_msg, sizeof(EFUSE_DATA_STRU));
 	if(length != (int)sizeof(EFUSE_DATA_STRU))
 	{
-		efuse_print_error("read len(%x) != expected len(%x).\n", length, sizeof(EFUSE_DATA_STRU));
+		efuse_print_error("read len(%x) != expected len(%lu).\n", length, (unsigned long)sizeof(EFUSE_DATA_STRU));
 		return;
 	}
     

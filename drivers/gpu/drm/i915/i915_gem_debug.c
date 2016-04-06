@@ -25,8 +25,9 @@
  *
  */
 
-#include <drm/drmP.h>
-#include <drm/i915_drm.h>
+#include "drmP.h"
+#include "drm.h"
+#include "i915_drm.h"
 #include "i915_drv.h"
 
 #if WATCH_LISTS
@@ -71,7 +72,7 @@ i915_verify_lists(struct drm_device *dev)
 			break;
 		} else if (!obj->active ||
 			   (obj->base.write_domain & I915_GEM_GPU_DOMAINS) == 0 ||
-			   list_empty(&obj->gpu_write_list)) {
+			   list_empty(&obj->gpu_write_list)){
 			DRM_ERROR("invalid flushing %p (a %d w %x gwl %d)\n",
 				  obj,
 				  obj->active,
@@ -113,6 +114,22 @@ i915_verify_lists(struct drm_device *dev)
 		}
 	}
 
+	list_for_each_entry(obj, &dev_priv->mm.pinned_list, list) {
+		if (obj->base.dev != dev ||
+		    !atomic_read(&obj->base.refcount.refcount)) {
+			DRM_ERROR("freed pinned %p\n", obj);
+			err++;
+			break;
+		} else if (!obj->pin_count || obj->active ||
+			   (obj->base.write_domain & I915_GEM_GPU_DOMAINS)) {
+			DRM_ERROR("invalid pinned %p (p %d a %d w %x)\n",
+				  obj,
+				  obj->pin_count, obj->active,
+				  obj->base.write_domain);
+			err++;
+		}
+	}
+
 	return warned = err;
 }
 #endif /* WATCH_INACTIVE */
@@ -131,8 +148,7 @@ i915_gem_object_check_coherency(struct drm_i915_gem_object *obj, int handle)
 		 __func__, obj, obj->gtt_offset, handle,
 		 obj->size / 1024);
 
-	gtt_mapping = ioremap(dev_priv->mm.gtt_base_addr + obj->gtt_offset,
-			      obj->base.size);
+	gtt_mapping = ioremap(dev->agp->base + obj->gtt_offset, obj->base.size);
 	if (gtt_mapping == NULL) {
 		DRM_ERROR("failed to map GTT space\n");
 		return;
@@ -141,7 +157,7 @@ i915_gem_object_check_coherency(struct drm_i915_gem_object *obj, int handle)
 	for (page = 0; page < obj->size / PAGE_SIZE; page++) {
 		int i;
 
-		backing_map = kmap_atomic(obj->pages[page]);
+		backing_map = kmap_atomic(obj->pages[page], KM_USER0);
 
 		if (backing_map == NULL) {
 			DRM_ERROR("failed to map backing page\n");
@@ -165,13 +181,13 @@ i915_gem_object_check_coherency(struct drm_i915_gem_object *obj, int handle)
 				}
 			}
 		}
-		kunmap_atomic(backing_map);
+		kunmap_atomic(backing_map, KM_USER0);
 		backing_map = NULL;
 	}
 
  out:
 	if (backing_map != NULL)
-		kunmap_atomic(backing_map);
+		kunmap_atomic(backing_map, KM_USER0);
 	iounmap(gtt_mapping);
 
 	/* give syslog time to catch up */

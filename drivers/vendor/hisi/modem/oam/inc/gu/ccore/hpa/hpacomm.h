@@ -43,16 +43,16 @@ extern "C"{
 *****************************************************************************/
 typedef struct
 {
-    VOS_UINT32          ulAHBBaseAddr;
-    VOS_UINT32          ulWBBPBaseAddr;
-    VOS_UINT32          ulWBBPDRXBaseAddr;
-    VOS_UINT32          ulGBBPBaseAddr;
-    VOS_UINT32          ulGBBPDRXBaseAddr;
-    VOS_UINT32          ulSYSCTRLBaseAddr;
-    VOS_UINT32          ulHIFIAXIBaseAddr;
-    VOS_UINT32          ulDSPTempBaseAddr;
-    VOS_UINT32          ulGBBP1BaseAddr;
-    VOS_UINT32          ulGBBP1DRXBaseAddr;
+    VOS_UINT_PTR          ulAHBBaseAddr;
+    VOS_UINT_PTR          ulWBBPBaseAddr;
+    VOS_UINT_PTR          ulWBBPDRXBaseAddr;
+    VOS_UINT_PTR          ulGBBPBaseAddr;
+    VOS_UINT_PTR          ulGBBPDRXBaseAddr;
+    VOS_UINT_PTR          ulSYSCTRLBaseAddr;
+    VOS_UINT_PTR          ulHIFIAXIBaseAddr;
+    VOS_UINT_PTR          ulDSPTempBaseAddr;
+    VOS_UINT_PTR          ulGBBP1BaseAddr;
+    VOS_UINT_PTR          ulGBBP1DRXBaseAddr;
 }PLATFORM_SYSADDR_STRU;
 
 /*****************************************************************************

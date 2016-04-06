@@ -389,6 +389,9 @@ const struct v4l2_file_operations v4l2_subdev_fops = {
 	.owner = THIS_MODULE,
 	.open = subdev_open,
 	.unlocked_ioctl = subdev_ioctl,
+#ifdef CONFIG_COMPAT
+	.compat_ioctl32 = subdev_ioctl,
+#endif
 	.release = subdev_close,
 	.poll = subdev_poll,
 };

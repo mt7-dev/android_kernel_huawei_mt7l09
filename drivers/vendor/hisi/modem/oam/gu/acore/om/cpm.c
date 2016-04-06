@@ -260,10 +260,12 @@ VOS_UINT32 CPM_InitPhyPort(VOS_VOID)
 
     GU_OamPortInit();
 
+#if ((VOS_OS_VER == VOS_WIN32) || (FEATURE_HISOCKET == FEATURE_ON))
     if (VOS_OK != Sock_PortInit())
     {
         return VOS_ERR;
     }
+#endif
 
     return VOS_OK;
 }

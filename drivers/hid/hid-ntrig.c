@@ -859,7 +859,6 @@ not_claimed_input:
 	return 1;
 }
 
-/* DTS2014032809799 suhao 2014-05-09 begin */
 static int ntrig_input_configured(struct hid_device *hid,
 		struct hid_input *hidinput)
 
@@ -893,7 +892,6 @@ static int ntrig_input_configured(struct hid_device *hid,
 	}
     return 0;
 }
-/* DTS2014032809799 suhao 2014-05-09 end */
 
 static int ntrig_probe(struct hid_device *hdev, const struct hid_device_id *id)
 {

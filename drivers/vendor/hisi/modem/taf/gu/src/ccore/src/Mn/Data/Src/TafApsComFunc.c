@@ -16,12 +16,9 @@
 #include "TafApsFsmMainTbl.h"
 #include "TafApsComFunc.h"
 #include "MnApsComm.h"
-
-
 #include "NasComm.h"
 #include "TafSdcCtx.h"
 #include "TafSdcLib.h"
-
 #include "MnApsMultiMode.h"
 
 
@@ -87,7 +84,7 @@ TAF_APS_SM_ERR_CODE_MAP_STRU            g_astTafApsSmErrCodeMapTbl[] =
     { TAF_PS_CAUSE_SM_NW_COLLISION_WITH_NW_INITIATED_REQUEST,   SM_TAF_CAUSE_SM_NW_COLLISION_WITH_NW_INITIATED_REQUEST  },
     { TAF_PS_CAUSE_SM_NW_BEARER_HANDLING_NOT_SUPPORTED,     SM_TAF_CAUSE_SM_NW_BEARER_HANDLING_NOT_SUPPORTED        },
     { TAF_PS_CAUSE_SM_NW_INVALID_TI,                        SM_TAF_CAUSE_SM_NW_INVALID_TI                           },
-    { TAF_PS_CAUSE_SM_NW_SEMANTICALLY_INCORRECT_MESSAGE,    SM_TAF_CAUSE_SM_NW_SEMANTICALLY_INCORRECT_MESSAGE             },
+    { TAF_PS_CAUSE_SM_NW_SEMANTICALLY_INCORRECT_MESSAGE,    SM_TAF_CAUSE_SM_NW_SEMANTICALLY_INCORRECT_MESSAGE       },
     { TAF_PS_CAUSE_SM_NW_INVALID_MANDATORY_INFO,            SM_TAF_CAUSE_SM_NW_INVALID_MANDATORY_INFO               },
     { TAF_PS_CAUSE_SM_NW_MSG_TYPE_NON_EXISTENT,             SM_TAF_CAUSE_SM_NW_MSG_TYPE_NON_EXISTENT                },
     { TAF_PS_CAUSE_SM_NW_MSG_TYPE_NOT_COMPATIBLE,           SM_TAF_CAUSE_SM_NW_MSG_TYPE_NOT_COMPATIBLE              },
@@ -197,8 +194,6 @@ TAF_APS_L4A_ERR_CODE_MAP_STRU           g_astTafApsL4aErrCodeMapTbl[] =
     { TAF_PS_CAUSE_SM_NW_APN_RESTRICTION_INCOMPATIBLE,       APS_L4A_ERR_SM_NW_APN_RESTRICTION_INCOMPATIBLE_WITH_ACT_EPS_BEARER }
 };
 #endif
-
-
 
 
 /******************************************************************************
@@ -449,6 +444,28 @@ VOS_UINT8   TAF_APS_GetPdpIdByCid(
     }
     return TAF_APS_INVALID_PDPID;
 }
+VOS_UINT8 TAF_APS_GetPdpIdByEpsbId(VOS_UINT32 ulEpsbId)
+{
+    VOS_UINT8                           i;
+
+    if (!APS_JUDGE_NSAPI_VALID(ulEpsbId))
+    {
+        return TAF_APS_INVALID_PDPID;
+    }
+
+    for (i = 0; i < TAF_APS_MAX_PDPID; i++)
+    {
+        if ( (VOS_TRUE == g_PdpEntity[i].ulUsedFlg)
+          && (ulEpsbId == g_PdpEntity[i].ucNsapi) )
+        {
+            return i;
+        }
+    }
+
+    return TAF_APS_INVALID_PDPID;
+}
+
+
 VOS_UINT32   TAF_APS_GetPdpEntModuleId(
     VOS_UINT8                           ucPdpId,
     VOS_UINT8                           ucCid
@@ -555,6 +572,7 @@ VOS_UINT8  TAF_APS_GetPdpIdByDefaultCid (VOS_VOID)
     {
         /* 如果当前的CID相同， */
         if ( ( VOS_TRUE == g_PdpEntity[i].ulUsedFlg )
+          && ( VOS_TRUE == g_PdpEntity[i].PdpNsapiFlag )
           && ( TAF_APS_DEFAULT_CID == g_PdpEntity[i].stClientInfo.ucCid ))
         {
             return i;
@@ -752,7 +770,6 @@ VOS_VOID TAF_APS_GetImsBearerCid (
     }
     return;
 }
-
 #endif
 
 
@@ -934,7 +951,6 @@ VOS_UINT32  TAF_APS_GetActivedCid(VOS_UINT8 * pucActivedCid)
 
     return VOS_OK;
 }
-
 
 
 TAF_APS_USER_CONN_STATUS_ENUM_UINT8 TAF_APS_GetUserConnStatus(VOS_VOID)
@@ -1315,7 +1331,8 @@ VOS_VOID TAF_APS_PsCallFailErrRecord(TAF_PS_CAUSE_ENUM_UINT32 enCause)
     stPsCallFailEvent.stApsFsmInfo.ucPdpId           = pstCurPdpEntityFsmCtx->ucPdpId;
 
     /* 获取当前位置信息 */
-    NAS_MMC_OutputPositionInfo(&stPsCallFailEvent.stPositionInfo);
+    NAS_MNTN_OutputPositionInfo(&stPsCallFailEvent.stPositionInfo);
+
     /* 获取当前Usim信息 */
     NAS_MMA_OutputUsimInfo(&stPsCallFailEvent.stUsimInfo);
 
@@ -1394,6 +1411,7 @@ VOS_UINT32 TAF_APS_MatchCallWithAllBearer(
     VOS_UINT8                          *pucPdpEntApnValue = VOS_NULL_PTR;
     VOS_UINT8                          *pucUsrApnValue = VOS_NULL_PTR;
     VOS_UINT8                           aucApn[APS_MAX_LENGTH_OF_APN];
+    VOS_UINT32                          ulState;
     VOS_UINT8                           ucPdpEntApnLen;
     VOS_UINT8                           ucUsrApnLen;
     VOS_UINT8                           ucPdpId;
@@ -1419,6 +1437,15 @@ VOS_UINT32 TAF_APS_MatchCallWithAllBearer(
     for (ucPdpId = 0; ucPdpId < TAF_APS_MAX_PDPID; ucPdpId++)
     {
         if (VOS_TRUE != TAF_APS_IsPdpIdValid(ucPdpId))
+        {
+            continue;
+        }
+
+        ulState = TAF_APS_GetPdpIdMainFsmState(ucPdpId);
+        if ( ((TAF_APS_STA_ACTIVE == ulState)
+           || (TAF_APS_STA_MS_MODIFYING == ulState)
+           || (TAF_APS_STA_MS_DEACTIVATING == ulState))
+          && (VOS_TRUE != g_PdpEntity[ucPdpId].PdpNsapiFlag) )
         {
             continue;
         }
@@ -1501,6 +1528,27 @@ VOS_VOID TAF_APS_SetPdpEntAddrType(
     }
 }
 
+
+VOS_UINT32 TAF_APS_IsAnyBearerExist(VOS_VOID)
+{
+    APS_PDP_CONTEXT_ENTITY_ST          *pstPdpEntity;
+    VOS_UINT8                           ucPdpId;
+
+    for (ucPdpId = 0; ucPdpId < TAF_APS_MAX_PDPID; ucPdpId++)
+    {
+        pstPdpEntity = TAF_APS_GetPdpEntInfoAddr(ucPdpId);
+
+        if ( (VOS_TRUE == pstPdpEntity->ulUsedFlg)
+          && (VOS_TRUE == pstPdpEntity->PdpNsapiFlag)
+          && (APS_JUDGE_NSAPI_VALID(pstPdpEntity->ucNsapi)) )
+        {
+            return VOS_TRUE;
+        }
+    }
+
+    return VOS_FALSE;
+}
+
 #if (FEATURE_ON == FEATURE_LTE)
 
 VOS_UINT32 TAF_APS_IsAttachBearerExist(VOS_VOID)
@@ -1520,20 +1568,68 @@ VOS_UINT32 TAF_APS_IsAttachBearerExist(VOS_VOID)
 
     return VOS_FALSE;
 }
-#endif
 
 
-VOS_UINT32 TAF_APS_IsAnyBearerExist(VOS_VOID)
+VOS_UINT32 TAF_APS_IsPdnCntxtValid(TAF_APS_PDN_CONTEXT_STRU *pstPdnCntxt)
 {
-    APS_PDP_CONTEXT_ENTITY_ST          *pstPdpEntity;
+    VOS_UINT32                          ulRslt;
+
+    ulRslt = VOS_FALSE;
+
+    if (VOS_NULL_PTR == pstPdnCntxt)
+    {
+        return ulRslt;
+    }
+
+    if (VOS_TRUE == pstPdnCntxt->ulUsedFlg)
+    {
+        ulRslt = VOS_TRUE;
+    }
+
+    return ulRslt;
+}
+
+
+VOS_UINT32 TAF_APS_IsPdnCntxtDefault(TAF_APS_PDN_CONTEXT_STRU *pstPdnCntxt)
+{
+    if (VOS_FALSE == TAF_APS_IsPdnCntxtValid(pstPdnCntxt))
+    {
+        return VOS_FALSE;
+    }
+
+    return pstPdnCntxt->ucDefaultBearerFlag;
+}
+
+
+VOS_UINT32 TAF_APS_IsAnyOtherNormalPdnActive(TAF_APS_PDN_CONTEXT_STRU *pstPdnCntxt)
+{
+    TAF_APS_PDN_CONTEXT_STRU           *pstLocalPdnCntx = VOS_NULL_PTR;
+    TAF_APS_STA_ENUM_UINT32             enState;
     VOS_UINT8                           ucPdpId;
 
     for (ucPdpId = 0; ucPdpId < TAF_APS_MAX_PDPID; ucPdpId++)
     {
-        pstPdpEntity = TAF_APS_GetPdpEntInfoAddr(ucPdpId);
+        pstLocalPdnCntx = TAF_APS_GetPdpEntInfoAddr(ucPdpId);
 
-        if ( (VOS_TRUE == pstPdpEntity->ulUsedFlg)
-          && (APS_JUDGE_NSAPI_VALID(pstPdpEntity->ucNsapi)) )
+        /* 过滤相同PDN连接上下文 */
+        if (pstLocalPdnCntx == pstPdnCntxt)
+        {
+            continue;
+        }
+
+        /* 过滤无效PDN连接上下文 */
+        if (VOS_FALSE == TAF_APS_IsPdnCntxtValid(pstLocalPdnCntx))
+        {
+            continue;
+        }
+
+        /* 过滤紧急PDN连接上下文, 先预留 */
+
+
+        /* 检查PDN连接是否处于激活状态 */
+        enState = TAF_APS_GetPdpIdMainFsmState(ucPdpId);
+        if ( ((TAF_APS_STA_ACTIVE == enState) || (TAF_APS_STA_MS_MODIFYING == enState))
+          && (APS_PDP_ACT_PRI == pstLocalPdnCntx->ActType) )
         {
             return VOS_TRUE;
         }
@@ -1541,6 +1637,44 @@ VOS_UINT32 TAF_APS_IsAnyBearerExist(VOS_VOID)
 
     return VOS_FALSE;
 }
+
+VOS_UINT32 TAF_APS_IsPdnCntxtTeardownAllowed(TAF_APS_PDN_CONTEXT_STRU *pstPdnCntxt)
+{
+    TAF_APS_PDN_TEARDOWN_POLICY_STRU   *pstPdnTeardownPolicy = VOS_NULL_PTR;
+    VOS_UINT32                          ulTeardown;
+
+    pstPdnTeardownPolicy = TAF_APS_GetPdnTeardownPolicy();
+    ulTeardown           = VOS_FALSE;
+
+    /* 专用承载不适用该策略 */
+    if (APS_PDP_ACT_PRI != pstPdnCntxt->ActType)
+    {
+        return VOS_TRUE;
+    }
+
+    /* 缺省承载断开策略 */
+    if (VOS_TRUE == TAF_APS_IsPdnCntxtDefault(pstPdnCntxt))
+    {
+        if (VOS_TRUE == pstPdnTeardownPolicy->ucAllowDefPdnTeardownFlg)
+        {
+            if (VOS_TRUE == TAF_APS_IsAnyOtherNormalPdnActive(pstPdnCntxt))
+            {
+                ulTeardown = VOS_TRUE;
+            }
+        }
+    }
+    else
+    {
+        /*
+         * 非缺省PDN连接, 默认允许断开, 无需判断当前是否有其他PDN连接存在
+         * 注: 后续这里可以考虑增加允许断开的定制条件
+         */
+        ulTeardown = VOS_TRUE;
+    }
+
+    return ulTeardown;
+}
+#endif
 
 
 VOS_UINT8 TAF_APS_GetAttachAllowFlg(VOS_VOID)
@@ -1566,6 +1700,8 @@ VOS_VOID TAF_APS_GenMatchParamByCidInfo(
 
     /* APN信息 */
     PS_MEM_CPY(&pstMatchParam->stApn, &pstPdpTblInfo->CidTab.stApn, sizeof(TAF_PDP_APN_STRU));
+
+    PIH_GetVsimAPN(TAF_MAX_APN_LEN, pstMatchParam->stApn.aucValue, &pstMatchParam->stApn.ucLength);
 
     return;
 }
@@ -1597,6 +1733,7 @@ VOS_VOID TAF_APS_GenMatchParamByDailInfo(
     {
         pstMatchParam->stApn.ucLength = (VOS_UINT8)VOS_StrLen((VOS_CHAR *)pstDialParaInfo->aucApn);
         PS_MEM_CPY(pstMatchParam->stApn.aucValue, pstDialParaInfo->aucApn, TAF_MAX_APN_LEN);
+        PIH_GetVsimAPN(TAF_MAX_APN_LEN, pstMatchParam->stApn.aucValue, &pstMatchParam->stApn.ucLength);
     }
     else
     {

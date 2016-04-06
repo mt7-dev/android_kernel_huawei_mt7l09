@@ -43,12 +43,6 @@ typedef unsigned char     uint8_t;
 typedef signed char       int8_t;
 /**
  * @ingroup TEEC_COMMON_DATA
- * 数据长度类型定义
- */
-typedef uint32_t	size_t;
-
-/**
- * @ingroup TEEC_COMMON_DATA
  * 布尔类型定义
  */
 #ifndef bool
@@ -109,7 +103,7 @@ typedef struct {
  * 描述客户端应用与安全世界之间建立的链接环境
  */
 typedef struct {
-    uint32_t fd;  /**< 文件描述符  */
+    void *dev;
     uint8_t *ta_path;
     struct list_node session_list;  /**< 会话链表  */
     struct list_node shrd_mem_list;  /**< 共享内存链表  */
@@ -214,9 +208,3 @@ typedef struct {
 } TEEC_Operation;
 
 #endif
-/**
- * History: \n
- * 2013-4-12 h00211444: Create this file\n
- *
- * vi: set expandtab ts=4 sw=4 tw=80:
-*/

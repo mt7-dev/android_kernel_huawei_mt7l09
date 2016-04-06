@@ -742,6 +742,37 @@ ERRO:
     return ret;
 }
 
+/****************************************************************
+函数功能: 在fastboot阶段获取分区大小
+输入参数: partition_name-分区名称
+输出参数: none
+返回参数: 分区size
+注意事项: 在fastboot阶段调用
+****************************************************************/
+unsigned int bsp_get_part_cap( const char *partition_name )
+{
+    unsigned int ret_size = 0;
+    struct ST_PART_TBL * ptable = ( void* )( 0 );
+
+    if ( ( void* )( 0 ) == partition_name )
+    {
+        cprintf( "fastboot: nv dload partition_name is NULL!\n" );
+        goto ERRO;
+    }
+
+    ptable = find_partition_by_name(partition_name);
+    if(!ptable)
+    {
+        cprintf( "fastboot: nv dload get ptable fail!\n" );
+        goto ERRO;
+    }
+
+    ret_size = ptable->capacity;
+    cprintf( "fastboot: nv dload cap is 0x%x.\n", ret_size );
+
+ERRO:
+    return ret_size;
+}
 
 /**
 * 作用:nandc模块按分区名的使能ECC功能的读数据操作,注意此函数的读操作不能读OOB数据

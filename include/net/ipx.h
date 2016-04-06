@@ -1,13 +1,6 @@
 #ifndef _NET_INET_IPX_H_
 #define _NET_INET_IPX_H_
-/*
- *	The following information is in its entirety obtained from:
- *
- *	Novell 'IPX Router Specification' Version 1.10 
- *		Part No. 107-000029-001
- *
- *	Which is available from ftp.novell.com
- */
+
 
 #include <linux/netdevice.h>
 #include <net/datalink.h>

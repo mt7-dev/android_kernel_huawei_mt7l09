@@ -12,11 +12,16 @@
 
 #ifndef _HW_CSI_H
 #define _HW_CSI_H
-#include "../platform/k3v3/platform_cfg.h"
+#include "../platform/k3v3plus/platform_cfg.h"
+#include <linux/irq.h>
+
+typedef irqreturn_t (*csi_irq_handle)(int irq, void *dev_id);
+
 struct csi_hw_info
 {
 	u32 csi_base_offset[CSI_INDEX_CNT];
 	u32 csi_irq[CSI_INDEX_CNT];
+	csi_irq_handle irq_pfn[CSI_INDEX_CNT];
 	struct clk* phyclk[CSI_INDEX_CNT];
 	u32 dsi_csi_used;
 };
@@ -31,5 +36,5 @@ struct hw_csi_pad
 };
 
 extern struct hw_csi_pad hw_csi_pad;
-
+void hisi_csi_clear_dmd_counter(void);
 #endif

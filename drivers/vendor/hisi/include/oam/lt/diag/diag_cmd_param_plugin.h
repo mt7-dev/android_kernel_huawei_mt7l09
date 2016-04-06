@@ -671,12 +671,23 @@ typedef struct
 
 typedef struct
 {
+    VOS_UINT32  ulDrxControlFlag:1; /*DRX部分*/
+    VOS_UINT32  ulPortFlag      :1; /*Port flag 0:old,1:new*/
+    VOS_UINT32  ulReserved      :30;
+}DIAG_CONTROLFLAG_STRU;
+
+typedef struct
+{
     VOS_UINT32 ulRc; /* 结果码*/
     VOS_CHAR szImei[16];
     DIAG_CMD_UE_SOFT_VERSION_STRU stUeSoftVersion;
     DIAG_CMD_UE_BUILD_VER_STRU stBuildVersion;
     VOS_UINT32 ulChipBaseAddr;
-    VOS_UINT32 ulDrxControlFlag;/* B135新增，标示低功耗特性版本: 1:低功耗版本；0：正常版本；0xFFFFFFFF:MSP读取NV项失败，HSO会认为连接不成功并给出提示，要求重新进行连接*/
+    union
+    {
+        VOS_UINT32              UintValue;
+        DIAG_CONTROLFLAG_STRU   CtrlFlag;
+    } diag_cfg;               /* B135新增，标示低功耗特性版本: 1:低功耗版本；0：正常版本；0xFFFFFFFF:MSP读取NV项失败，HSO会认为连接不成功并给出提示，要求重新进行连接*/
     VOS_UINT32 ulLpdMode;
     NV_ITEM_AGENT_FLAG_STRU stAgentFlag;
 } DIAG_CMD_HOST_CONNECT_CNF_STRU;

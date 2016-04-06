@@ -1,18 +1,4 @@
-/*
- * Copyright (C) 2000 Hewlett-Packard Co
- * Copyright (C) 2000 David Mosberger-Tang <davidm@hpl.hp.com>
- *
- * 32-bit integer division.
- *
- * This code is based on the application note entitled "Divide, Square Root
- * and Remainder Algorithms for the IA-64 Architecture".  This document
- * is available as Intel document number 248725-002 or via the web at
- * http://developer.intel.com/software/opensource/numerics/
- *
- * For more details on the theory behind these algorithms, see "IA-64
- * and Elementary Functions" by Peter Markstein; HP Professional Books
- * (http://www.hp.com/go/retailbooks/)
- */
+
 
 #include <asm/asmmacro.h>
 

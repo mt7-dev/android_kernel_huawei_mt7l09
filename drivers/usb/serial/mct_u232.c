@@ -154,9 +154,6 @@ static int mct_u232_calculate_baud_rate(struct usb_serial *serial,
 			return 0x08;
 		}
 	} else {
-		/* FIXME: Can we use any divider - should we do
-		   divider = 115200/value;
-		   real baud = 115200/divider */
 		switch (value) {
 		case 300: break;
 		case 600: break;

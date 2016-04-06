@@ -1,18 +1,4 @@
-/**
-    @copyright: Huawei Technologies Co., Ltd. 2012-2012. All rights reserved.
-    
-    @file: srecorder_save_log.c
-    
-    @brief: 定义保存定位信息的方式，保存成文件仅供测试用
-    
-    @version: 1.0 
-    
-    @author: QiDechun ID: 216641
-    
-    @date: 2012-06-22
-    
-    @history:
-*/
+
 
 /*----includes-----------------------------------------------------------------------*/
 
@@ -48,11 +34,9 @@ static srecorder_header_info_type_description_t s_srecorder_head_info[] =
     {ALL_PS_INFO_BIT4, ALL_PS_INFO_KEYWORD},
     {CURRENT_PS_BACKTRACE_BIT5, CURRENT_PS_BACKTRACE_KEYWORD},
     {SLABINFO_BIT6, SLABINFO_KEYWORD},
-    /* DTS2012101502012 wupeng 20121015 begin */
     {MODEM_ERR_BIT7, MODEM_ERR_KEYWORD},
     {MODEM_ERR_F3_BIT8, MODEM_ERR_F3_KEYWORD},
 	{LOGCAT_BIT9, LOGCAT_KEYWORD},
-    /* DTS2012101502012 wupeng 20121015 end */
 };
 
 
@@ -104,9 +88,7 @@ int srecorder_write_info_header(srecorder_reserved_mem_info_t *pmem_info,
     psrecorder_info_header_t *pinfo_header)
 {
     int bytes_read = 0;
-/* DTS2012110206142 wupeng-qidechun 20121105 begin */
 /* 删除此处定义 */
-/* DTS2012110206142 wupeng-qidechun 20121105 end */
 #ifndef CONFIG_SRECORDER_DUMP_LOG_TO_STORAGECARD
     int info_header_size = sizeof(srecorder_info_header_t);
 #endif
@@ -120,7 +102,6 @@ int srecorder_write_info_header(srecorder_reserved_mem_info_t *pmem_info,
 
 #ifndef CONFIG_SRECORDER_DUMP_LOG_TO_STORAGECARD
     /*把校验信息的头部结构留出来*/
-    /* DTS2012110206142 wupeng-qidechun 20121105 begin */
     /* 删除此处 */
     if ((pmem_info->bytes_read + info_header_size) > pmem_info->mem_size)
     {
@@ -135,7 +116,6 @@ int srecorder_write_info_header(srecorder_reserved_mem_info_t *pmem_info,
 #endif
 
     pmem_info->bytes_per_type = 0;
-    /* DTS2012110206142 wupeng-qidechun 20121105 end */
 
     bytes_read = SRECORDER_SNPRINTF(pmem_info->start_addr + pmem_info->bytes_read, pmem_info->bytes_left, 
         "%s\n", s_srecorder_head_info[type].desciprion);
@@ -167,7 +147,7 @@ int srecorder_validate_info_header(srecorder_info_header_t *pheader, unsigned lo
         return -1;
     }
        
-    pheader->data_len = data_len;
+    pheader->data_len = data_len;/* [false alarm]:pheader have protect  */
     buf[0] = (unsigned long)pheader->type;
     buf[1] = (unsigned long)pheader->data_len;
     pheader->crc32 = srecorder_get_crc32((unsigned char *)buf, sizeof(buf));

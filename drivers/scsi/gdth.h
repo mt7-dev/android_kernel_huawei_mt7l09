@@ -270,8 +270,8 @@
 #define S_CACHE_RESERV  -24                     /* cache: reserv. conflict */   
 
 /* timeout values */
-#define INIT_RETRIES    100000                  /* 100000 * 1ms = 100s */
-#define INIT_TIMEOUT    100000                  /* 100000 * 1ms = 100s */
+#define INIT_RETRIES    100000
+#define INIT_TIMEOUT    100000
 #define POLL_TIMEOUT    10000                   /* 10000 * 1ms = 10s */
 
 /* priorities */

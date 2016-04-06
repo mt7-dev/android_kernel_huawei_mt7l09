@@ -73,39 +73,6 @@ extern void set_panic_resetflag(void);
  *
  *	This function never returns.
  */
-#define DILEID_SIZE	48
-#define ATESN_SIZE 	16
-char die_id[DILEID_SIZE] = {0};
-char ate_sn[ATESN_SIZE] = {0};
-
-static int __init read_die_id(char *p)
-{
-	if (NULL == p) {
-		printk(KERN_ERR "read die id failed.\n");
-		return 0;
-	}
-
-	strncpy(die_id, p, DILEID_SIZE);
-	die_id[DILEID_SIZE -1] = '\0';
-	printk(KERN_EMERG "DIEID=%s\n", die_id);
-	return 1;
-}
-early_param("DIEID", read_die_id);
-
-static int __init read_ate_info(char *p)
-{
-	if (NULL == p) {
-		printk(KERN_ERR "read ate info failed.\n");
-		return 0;
-	}
-
-	strncpy(ate_sn, p, ATESN_SIZE);
-	ate_sn[ATESN_SIZE - 1] = '\0';
-	printk(KERN_EMERG "ATESN=%s\n", ate_sn);
-	return 1;
-}
-early_param("ATESN", read_ate_info);
-
 void panic(const char *fmt, ...)
 {
 	static DEFINE_SPINLOCK(panic_lock);
@@ -140,7 +107,6 @@ void panic(const char *fmt, ...)
 	va_start(args, fmt);
 	vsnprintf(buf, sizeof(buf), fmt, args);
 	va_end(args);
-	printk(KERN_EMERG "DIEID=%s, ATESN=%s\n", die_id, ate_sn);
 	printk(KERN_EMERG "Kernel panic - not syncing: %s\n",buf);
 #ifdef CONFIG_DEBUG_BUGVERBOSE
 	/*

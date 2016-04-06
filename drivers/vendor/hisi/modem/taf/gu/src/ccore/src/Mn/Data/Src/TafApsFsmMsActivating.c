@@ -291,6 +291,7 @@ VOS_UINT32 TAF_APS_RcvAtPsCallOrigReq_MsActivating_Init(
 
 #if (FEATURE_ON == FEATURE_LTE)
         case MMC_APS_RAT_TYPE_LTE:
+            TAF_APS_SetPdpEntAddrType(ucPdpId, pstCallOrigReq->stDialParaInfo.enPdpType);
             TAF_APS_SetCurrPdpEntityMainFsmState(TAF_APS_STA_MS_ACTIVATING);
             TAF_APS_RcvAtPsCallOrigReq_MsActivating_LteMode();
             break;
@@ -1526,6 +1527,142 @@ VOS_UINT32 TAF_APS_RcvTiMsActivatingExpired_MsActivating_WaitSmActivateCnfSuspen
 
     return VOS_TRUE;
 }
+VOS_UINT32 TAF_APS_RcvSmPdpActCnf_MsActivating_WaitSmActivateCnfSuspend(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+)
+{
+    VOS_UINT32                          ulRet;
+    VOS_UINT8                           ucPdpId;
+    MMC_APS_RAT_TYPE_ENUM_UINT32        enCurrRatTypeSuspend;
+    APS_ACTCNF_PARA_ST                  stParam;
+    #if ((FEATURE_ON == FEATURE_LTE)||(FEATURE_ON == FEATURE_IPV6))
+    APS_PDP_CONTEXT_ENTITY_ST          *pstPdpEntity;
+    #endif
+    SMREG_PDP_ACTIVATE_CNF_STRU        *pstSmPdpActivateCnf;
+
+    PS_MEM_SET(&stParam, 0x00, sizeof(stParam));
+
+    /* 初始化, 获取消息内容 */
+    pstSmPdpActivateCnf         = (SMREG_PDP_ACTIVATE_CNF_STRU *)pstMsg;
+    ucPdpId                     = TAF_APS_GetCurrFsmEntityPdpId();
+    enCurrRatTypeSuspend        = TAF_APS_GET_RAT_TYPE_IN_SUSPEND();
+    #if ((FEATURE_ON == FEATURE_LTE)||(FEATURE_ON == FEATURE_IPV6))
+    pstPdpEntity        = TAF_APS_GetPdpEntInfoAddr(ucPdpId);
+    #endif
+
+    /* 停止激活流程定时器 */
+    TAF_APS_StopTimer(TI_TAF_APS_MS_ACTIVATING,
+                      ucPdpId);
+
+    /* 检查输入的参数 */
+    ulRet = Aps_PdpActCnfParaCheck(pstSmPdpActivateCnf, &stParam);
+    if (APS_PARA_VALID != ulRet)
+    {
+        if (APS_PDPTYPE_INVALID == ulRet)
+        {
+            /* 上报激活失败 */
+            TAF_APS_SndPdpActivateRej(ucPdpId, TAF_PS_CAUSE_SM_NW_SERVICE_OPTION_TEMP_OUT_ORDER);
+
+            /* 发送内部消息, 去激活PDP */
+            TAF_APS_SndInterPdpDeactivateReq(ucPdpId, SM_TAF_CAUSE_SM_NW_SERVICE_OPTION_TEMP_OUT_ORDER);
+        }
+        else
+        {
+            /* 上报激活失败 */
+            TAF_APS_SndPdpActivateRej(ucPdpId, TAF_PS_CAUSE_SM_NW_PROTOCOL_ERR_UNSPECIFIED);
+
+            /* 发送内部消息, 去激活PDP */
+            TAF_APS_SndInterPdpDeactivateReq(ucPdpId, SM_TAF_CAUSE_SM_NW_PROTOCOL_ERR_UNSPECIFIED);
+        }
+
+        return VOS_TRUE;
+    }
+
+    /* 检查QOS是否满足MIN要求 */
+    if (APS_PARA_VALID  == Aps_CheckQosSatisify(ucPdpId, &stParam.PdpQos))
+    {
+        /* 满足MINQOS */
+        Aps_PdpActCnfQosSatisfy(ucPdpId, &stParam, pstSmPdpActivateCnf);
+
+#if (FEATURE_ON == FEATURE_LTE)
+        /* 同步PDP信息至ESM */
+        MN_APS_SndEsmPdpInfoInd(pstPdpEntity, SM_ESM_PDP_OPT_ACTIVATE);
+#endif
+
+#if (FEATURE_ON == FEATURE_IPV6)
+        /* 如果地址类型是IPv6, 需要同步给ND Client */
+        if (TAF_APS_CheckPdpAddrTypeIpv6(ucPdpId))
+        {
+            TAF_APS_SndNdPdpActInd(pstPdpEntity->ucNsapi,
+                                   pstPdpEntity->PdpAddr.aucIpV6Addr);
+
+            pstPdpEntity->ulNdClientActiveFlg = VOS_TRUE;
+        }
+#endif
+
+        switch (enCurrRatTypeSuspend)
+        {
+            case MMC_APS_RAT_TYPE_GSM:
+                /* 子状态迁移至TAF_APS_MS_ACTIVATING_SUBSTA_WAIT_SNDCP_ACTIVATE_RSP_SUSPEND */
+                TAF_APS_SetCurrPdpEntitySubFsmState(TAF_APS_MS_ACTIVATING_SUBSTA_WAIT_SNDCP_ACTIVATE_RSP_SUSPEND);
+                break;
+
+            case MMC_APS_RAT_TYPE_WCDMA:
+                /* 激活成功，启动流量统计 */
+                TAF_APS_StartDsFlowStats(pstSmPdpActivateCnf->ucNsapi);
+
+                /* 如果当前APS实体的PDP类型为IPv4, 需要配置IPF */
+                if (TAF_APS_CheckPdpAddrTypeIpv4(ucPdpId))
+                {
+                    /* 配置IP过滤器 */
+                    TAF_APS_IpfConfigUlFilter(ucPdpId);
+                }
+
+                /* 主状态迁移至TAF_APS_STA_ACTIVE, 退出子状态状态机 */
+                TAF_APS_SetCurrPdpEntityMainFsmState(TAF_APS_STA_ACTIVE);
+                TAF_APS_QuitCurrSubFsm();
+                break;
+
+            default:
+                TAF_WARNING_LOG(WUEPS_PID_TAF,
+                    "TAF_APS_RcvSmPdpActCnf_MsActivating_WaitSmActivateCnf: Wrong RAT type!");
+                break;
+        }
+    }
+    else
+    {
+        /* 不满足MINQOS */
+        TAF_APS_SndPdpActivateRej(ucPdpId, TAF_PS_CAUSE_SM_NW_QOS_NOT_ACCEPTED);
+
+        /* 发送内部消息, 去激活PDP */
+        TAF_APS_SndInterPdpDeactivateReq(ucPdpId, SM_TAF_CAUSE_SM_NW_QOS_NOT_ACCEPTED);
+    }
+
+    return VOS_TRUE;
+}
+
+
+VOS_UINT32 TAF_APS_RcvApsInterPdpDeactivateReq_MsActivating_WaitSmActivateCnfSuspend(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+)
+{
+    /*---------------------------------------------------------
+       加载TAF_APS_STA_MS_DEACTIVATING状态机
+       加载后子状态切换为TAF_APS_MS_DEACTIVATING_SUBSTA_INIT
+
+       在TAF_APS_MS_DEACTIVATING_SUBSTA_INIT子状态中
+       处理ID_APS_APS_INTERNAL_PDP_DEACTIVATE_REQ消息
+    ---------------------------------------------------------*/
+    TAF_APS_InitSubFsm(TAF_APS_FSM_MS_DEACTIVATING,
+                       TAF_APS_GetMsDeactivatingFsmDescAddr(),
+                       TAF_APS_MS_DEACTIVATING_SUBSTA_INIT);
+
+    return VOS_TRUE;
+}
+
+
 VOS_UINT32 TAF_APS_RcvAtSetPdpContextStateReq_MsActivating_WaitSndcpActivateRsp(
     VOS_UINT32                          ulEventType,
     struct MsgCB                       *pstMsg
@@ -2263,8 +2400,72 @@ VOS_UINT32 TAF_APS_RcvTiMsActivatingExpired_MsActivating_WaitSndcpActivateRspSus
     TAF_APS_SndInterPdpDeactivateReq(ucPdpId, SM_TAF_CAUSE_SM_MAX_TIME_OUT);
     return VOS_TRUE;
 }
+VOS_UINT32 TAF_APS_RcvSndcpActivateRsp_MsActivating_WaitSndcpActivateRspSuspend(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+)
+{
+    VOS_UINT32                          ulResult;
+    VOS_UINT8                           ucPdpId;
+    APS_PDP_CONTEXT_ENTITY_ST          *pstPdpEntity;
+    APS_SNDCP_ACTIVATE_RSP_ST          *pstSnActivateRsp;
+
+    /* 初始化, 获取消息内容 */
+    ulResult                            = VOS_OK;
+    pstSnActivateRsp                    = &((APS_SNDCP_ACTIVATE_RSP_MSG*)pstMsg)->ApsSnActRsp;
+    ucPdpId                             = TAF_APS_GetCurrFsmEntityPdpId();
+    pstPdpEntity                        = TAF_APS_GetPdpEntInfoAddr(ucPdpId);
+
+    /* 停止激活流程定时器 */
+    TAF_APS_StopTimer(TI_TAF_APS_MS_ACTIVATING,
+                      ucPdpId);
+
+    /* 检查消息参数 */
+    ulResult = Aps_SnMsgModSnActRspParaCheck(pstSnActivateRsp);
+    if (APS_PARA_VALID != ulResult)
+    {
+        TAF_WARNING_LOG(WUEPS_PID_TAF,
+            "TAF_APS_RcvSndcpActivateRsp_MsActivating_WaitSndcpActivateRsp: Check para failed!");
+
+        /* 上报激活失败 */
+        TAF_APS_SndPdpActivateRej(ucPdpId, TAF_PS_CAUSE_SM_NW_PROTOCOL_ERR_UNSPECIFIED);
+
+        /* 发送内部消息, 触发PDP去激活流程 */
+        TAF_APS_SndInterPdpDeactivateReq(ucPdpId, SM_TAF_CAUSE_SM_NW_PROTOCOL_ERR_UNSPECIFIED);
+
+        return VOS_TRUE;
+    }
+
+    /* 收到SN_ACT_RSP后修改APS实体参数, 包括XID参数, TRANSMODE */
+    Aps_SnActRspChngEntity(pstSnActivateRsp, ucPdpId);
+
+    /* 设置RABM的传输模式 */
+    TAF_APS_SndRabmSetTransModeMsg(pstSnActivateRsp->ucNsapi,
+                                   pstPdpEntity->GprsPara.TransMode);
+
+    /* 如果当前APS实体的PDP类型为IPv4, 需要配置IPF, 目前只支持Primary PDP */
+    if ( (TAF_APS_CheckPrimaryPdp(ucPdpId))
+      && (TAF_APS_CheckPdpAddrTypeIpv4(ucPdpId)) )
+    {
+        /* 配置IP过滤器 */
+        TAF_APS_IpfConfigUlFilter(ucPdpId);
+    }
+
+    /* 激活成功，启动流量统计 */
+    TAF_APS_StartDsFlowStats(pstSnActivateRsp->ucNsapi);
+
+    /* 上报ID_EVT_TAF_PS_CALL_PDP_ACTIVATE_CNF事件 */
+    TAF_APS_SndPdpActivateCnf(ucPdpId, TAF_APS_GetPdpEntCurrCid(ucPdpId));
+
+    /* 主状态迁移至TAF_APS_STA_ACTIVE, 退出子状态机 */
+    TAF_APS_SetCurrPdpEntityMainFsmState(TAF_APS_STA_ACTIVE);
+    TAF_APS_QuitCurrSubFsm();
+
+    return VOS_TRUE;
+}
 
 #if (FEATURE_ON == FEATURE_LTE)
+
 VOS_UINT32 TAF_APS_RcvAtSetPdpContextStateReq_MsActivating_WaitL4aActivateCnf(
     VOS_UINT32                          ulEventType,
     struct MsgCB                       *pstMsg

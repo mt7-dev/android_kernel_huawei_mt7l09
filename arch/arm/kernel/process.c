@@ -41,6 +41,12 @@
 #include <asm/stacktrace.h>
 #include <asm/mach/time.h>
 
+#ifdef CONFIG_SRECORDER
+#ifdef CONFIG_POWERCOLLAPSE
+#include <linux/srecorder.h>
+#endif
+#endif /* CONFIG_SRECORDER */
+
 #ifdef CONFIG_CC_STACKPROTECTOR
 #include <linux/stackprotector.h>
 unsigned long __stack_chk_guard __read_mostly;
@@ -294,6 +300,14 @@ void machine_power_off(void)
  */
 void machine_restart(char *cmd)
 {
+	printk("add dump_stack at machine_restart for debug.cmd is %s\n", cmd);
+	dump_stack();
+#ifdef CONFIG_SRECORDER
+#ifdef CONFIG_POWERCOLLAPSE
+	srecorder_write_reserved_mem_header(true, true, INVALID_SRECORDER_MAGIC_NUM, 0);
+#endif
+#endif /* CONFIG_SRECORDER */
+
 	/* Disable interrupts first */
 	local_fiq_disable();
 	local_irq_disable();

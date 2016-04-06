@@ -652,9 +652,24 @@ extern void __DWC_FREE(void *mem_ctx, void *addr);
 #define DWC_FREE(_addr_) __DWC_FREE(NULL, _addr_)
 
 # ifdef DWC_LINUX
+#ifdef CONFIG_ARM64
+#ifdef CONFIG_HI3635_USB
+#include "../dwc_otg_hi3635.h"
+extern struct otg_dev * otg_dev_p;
+#define DWC_DMA_ALLOC(_size_,_dma_) __DWC_DMA_ALLOC(&(otg_dev_p->lm_dev->dev), _size_, _dma_)
+#define DWC_DMA_ALLOC_ATOMIC(_size_,_dma_) __DWC_DMA_ALLOC_ATOMIC(&(otg_dev_p->lm_dev->dev), _size_,_dma_)
+#define DWC_DMA_FREE(_size_,_virt_,_dma_) __DWC_DMA_FREE(&(otg_dev_p->lm_dev->dev), _size_, _virt_, _dma_)
+#else
+extern struct hiusb_info *g_hiusb_info;
+#define DWC_DMA_ALLOC(_size_,_dma_) __DWC_DMA_ALLOC(&g_hiusb_info->lm_dev->dev, _size_, _dma_)
+#define DWC_DMA_ALLOC_ATOMIC(_size_,_dma_) __DWC_DMA_ALLOC_ATOMIC(&g_hiusb_info->lm_dev->dev, _size_,_dma_)
+#define DWC_DMA_FREE(_size_,_virt_,_dma_) __DWC_DMA_FREE(&g_hiusb_info->lm_dev->dev, _size_, _virt_, _dma_)
+#endif
+#else
 #define DWC_DMA_ALLOC(_size_,_dma_) __DWC_DMA_ALLOC(NULL, _size_, _dma_)
 #define DWC_DMA_ALLOC_ATOMIC(_size_,_dma_) __DWC_DMA_ALLOC_ATOMIC(NULL, _size_,_dma_)
 #define DWC_DMA_FREE(_size_,_virt_,_dma_) __DWC_DMA_FREE(NULL, _size_, _virt_, _dma_)
+#endif
 # endif
 
 # if defined(DWC_FREEBSD) || defined(DWC_NETBSD)
@@ -1044,6 +1059,7 @@ extern void DWC_SPINUNLOCK_IRQRESTORE(dwc_spinlock_t *lock, dwc_irqflags_t flags
  * @param lock Pointer to the spinlock.
  */
 extern void DWC_SPINLOCK(dwc_spinlock_t *lock);
+#define dwc_spinlock DWC_SPINLOCK
 
 /** Releases the lock.
  *

@@ -171,10 +171,7 @@ E1000_PARAM(RxAbsIntDelay, "Receive Absolute Interrupt Delay");
 #define MAX_RXABSDELAY            0xFFFF
 #define MIN_RXABSDELAY                 0
 
-/* Interrupt Throttle Rate (interrupts/sec)
- *
- * Valid Range: 100-100000 (0=off, 1=dynamic, 3=dynamic conservative)
- */
+
 E1000_PARAM(InterruptThrottleRate, "Interrupt Throttling Rate");
 #define DEFAULT_ITR                    3
 #define MAX_ITR                   100000

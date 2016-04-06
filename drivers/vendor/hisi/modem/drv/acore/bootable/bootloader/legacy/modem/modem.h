@@ -10,6 +10,39 @@
 #define ARRAY_SIZE(a) (sizeof(a)/(sizeof((a)[0])))
 #endif
 
+/* MUTI */
+/*--------------*-- 256KB
+ *    TDS-I     *
+ *--------------*-- 256KB
+ *    TDS-D     *
+ *--------------*-- 256KB
+ *    LTE-I     *
+ *--------------*-- 256KB
+ *    LTE-D     *
+ *--------------*-- 260KB
+ *    PUB-I     *
+ *--------------*-- 252KB
+ *    PUB-D     *
+ *--------------*-- BBE_TCM_ADDR
+ */
+#define LPHY_BBE16_PUB_DTCM_LOAD_ADDR (LPHY_PUB_DTCM_BASE)
+#define LPHY_BBE16_PUB_DTCM_LOAD_SIZE (LPHY_PUB_DTCM_SIZE)
+#define LPHY_BBE16_MOD_DTCM_LOAD_ADDR (LPHY_PRV_DTCM_BASE)
+#define LPHY_BBE16_MOD_DTCM_LOAD_SIZE (LPHY_PRV_DTCM_SIZE)
+
+#define LPHY_BBE16_PUB_ITCM_LOAD_ADDR (LPHY_PUB_ITCM_BASE)
+#define LPHY_BBE16_PUB_ITCM_LOAD_SIZE (LPHY_PUB_ITCM_SIZE)
+#define LPHY_BBE16_MOD_ITCM_LOAD_ADDR (LPHY_PRV_ITCM_BASE)
+#define LPHY_BBE16_MOD_ITCM_LOAD_SIZE (LPHY_PRV_ITCM_SIZE)
+
+
+#define LPHY_BBE16_MUTI_IMAGE_SIZE (LPHY_BBE16_PUB_DTCM_LOAD_SIZE + \
+                                    LPHY_BBE16_PUB_ITCM_LOAD_SIZE + \
+                                    (LPHY_BBE16_MOD_DTCM_LOAD_SIZE * 2) + \
+                                    (LPHY_BBE16_MOD_ITCM_LOAD_SIZE * 2))
+
+
+
 #define PERI_CTRL11			(REG_BASE_PCTRL + 0xC18)
 #define CRG_SRSTDIS1		(HI_SYSCTRL_BASE_ADDR + 0x64)
 #define MDMA9_PD_SRST_DIS	(0x1 << 15)

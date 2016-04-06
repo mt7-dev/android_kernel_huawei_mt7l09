@@ -5,9 +5,14 @@
 extern "C" {
 #endif
 #endif
-
+#include <product_config.h>
 /*lint -save -e537*/
+#ifdef HI3630_FASTBOOT_MODEM
 #include <flash.h>
+#else
+#include <partition_ops.h>
+#include <emmc_ops.h>
+#endif
 #include "nv_balong.h"
 #include "nv_xml_dec.h"
 /*lint -restore +e537*/
@@ -68,9 +73,28 @@ u32 bsp_nand_read(const char *partition_name, u32 partition_offset, void* ptr_ra
     static u8* block_data = NULL;
     u32 len;
     u32 byte;
+#ifndef HI3630_FASTBOOT_MODEM
+	/* yangzhi 2014-07-26*/
+	struct emmc_operators *emmc_ops = NULL;
+	struct partition_operators *part_ops = NULL;
 
+	emmc_ops = get_operators(EMMC_MODULE_NAME_STR);
+	if(!emmc_ops){
+		cprintf("can not get emmc_ops!\n");
+		return 4;
+	}
+	part_ops = get_operators(PARTITION_MODULE_NAME_STR);
+	if(!part_ops){
+		cprintf("can not get part_ops!\n");
+		return 4;
+	}
+#endif
 	//lint --e{605}
+	#ifndef HI3630_FASTBOOT_MODEM
+	p = part_ops->find_ptn(partition_name);
+	#else
     p = find_ptn(partition_name);
+	#endif
     if(p == NULL)
     {
         cprintf("ERROR: bsp_nand_read can't find partition %s\n", partition_name);
@@ -90,9 +114,17 @@ u32 bsp_nand_read(const char *partition_name, u32 partition_offset, void* ptr_ra
 
 
     byte = EMMC_BLOCK_SIZE;
+#ifdef HI3630_FASTBOOT_MODEM
     ret = flash_read(p,sec_off,block_data,&byte);
     if(ret)
         return (u32)ret;
+#else
+if (emmc_ops->emmc_read(p, sec_off, (void *)block_data, &byte))
+	{
+		cprintf("emmc read modem fail\n");
+		return 5;
+	}
+#endif
     len = EMMC_BLOCK_SIZE - block_off;/*读取的数据在当前块中的长度*/
 
     if(len >= length)
@@ -114,13 +146,19 @@ u32 bsp_nand_read(const char *partition_name, u32 partition_offset, void* ptr_ra
         {
             /*每次读取需要的数据长度*/
             len = (length >= EMMC_BLOCK_SIZE) ? EMMC_BLOCK_SIZE :length;
-
+#ifdef HI3630_FASTBOOT_MODEM
             ret = flash_read(p,sec_off,block_data,&byte);
             if(ret){
                 cprintf("%s %d, sec_off :0x%x\n",__func__,__LINE__,sec_off);
                 return (u32)ret;
             }
-
+#else
+			if (emmc_ops->emmc_read(p, sec_off, (void *)block_data, &byte))
+			{
+				cprintf("%s %d, sec_off :0x%x\n",__func__,__LINE__,sec_off);
+				return 6;
+			}
+#endif
             /*拷贝需要的长度数据到缓冲区中*/
             memcpy(temp_ram_addr, block_data,(s32)len);
 

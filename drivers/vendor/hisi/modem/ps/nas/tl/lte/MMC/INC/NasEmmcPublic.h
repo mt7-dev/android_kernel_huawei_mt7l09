@@ -164,7 +164,7 @@ extern VOS_VOID NAS_EMMC_GetCurrentForbInfo
 /* lihong00150010 emergency tau&service begin */
 extern VOS_VOID  NAS_EMMC_ProcessMmcLteSysInfoInd
 (
-    MMC_LMM_SYS_INFO_STRU        *pstLteInfoIndMsg,
+    const MMC_LMM_SYS_INFO_STRU        *pstLteInfoIndMsg,
     EMMC_EMM_CHANGE_INFO_ENUM_UINT32   *pulChangeInfo,
     EMMC_EMM_CELL_STATUS_ENUM_UINT32   *penCellStatus,
     EMMC_EMM_FORBIDDEN_INFO_ENUM_UINT32 *penForbdInfo

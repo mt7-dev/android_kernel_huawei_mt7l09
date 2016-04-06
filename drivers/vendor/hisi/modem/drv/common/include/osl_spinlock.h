@@ -40,7 +40,7 @@ static __inline__ void spin_unlock(spinlock_t *lock)
 #define spin_lock_irqsave(__specific_lock, __specific_flags)				\
 do { \
 		local_irq_save(__specific_flags); \
-		if(!intContext()) \
+		if(!intContext() && !(__specific_flags&I_BIT)) \
 			(void)taskLock(); \
 		spin_lock(__specific_lock); \
 	} while (0)
@@ -48,9 +48,9 @@ do { \
 static __inline__ void spin_unlock_irqrestore(spinlock_t *lock, unsigned long flags)
 {
 	raw_spin_unlock(&lock->rlock);
-	if(!intContext()) 
-		(void)taskUnlock(); 
 	local_irq_restore(flags);
+	if(!intContext() && !(flags&I_BIT)) 
+		(void)taskUnlock(); 
 	
 }
 

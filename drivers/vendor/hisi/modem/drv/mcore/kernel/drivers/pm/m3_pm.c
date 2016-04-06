@@ -230,20 +230,20 @@ static irqreturn_t IntCcoreHandler(int irq, void* data)
 	{
 		printk("IntCcoreHandler irq = %d\n", get_irq());
 	}
-    tmp = readl(SHM_TIMESTAMP_ADDR);
+    tmp = readl((unsigned)SHM_TIMESTAMP_ADDR);
     if(tmp == 1)
     {
-        writel(*(u32*)(PWR_SRAM_TIMER0), SHM_TIMESTAMP_ADDR + 0x10);
-        writel(*(u32*)(PWR_SRAM_TIMER1), SHM_TIMESTAMP_ADDR + 0x14);
-        writel(*(u32*)(PWR_SRAM_TIMER2), SHM_TIMESTAMP_ADDR + 0x18);
-        writel(*(u32*)(PWR_SRAM_TIMER3), SHM_TIMESTAMP_ADDR + 0x1C);
-        writel(*(u32*)(PWR_SRAM_TIMER4), SHM_TIMESTAMP_ADDR + 0x20);
-        writel(*(u32*)(PWR_SRAM_TIMER5), SHM_TIMESTAMP_ADDR + 0x24);
-        writel(*(u32*)(PWR_SRAM_TIMER6), SHM_TIMESTAMP_ADDR + 0x28);
-        writel(*(u32*)(PWR_SRAM_TIMER7), SHM_TIMESTAMP_ADDR + 0x2C);
-        writel(*(u32*)(PWR_SRAM_TIMER8), SHM_TIMESTAMP_ADDR + 0x30);
-        writel(*(u32*)(PWR_SRAM_TIMER9), SHM_TIMESTAMP_ADDR + 0x34);
-        writel(bsp_get_slice_value(), SHM_TIMESTAMP_ADDR + 0x38);
+        writel(*(u32*)(PWR_SRAM_TIMER0), (unsigned)SHM_TIMESTAMP_ADDR + 0x10);
+        writel(*(u32*)(PWR_SRAM_TIMER1), (unsigned)SHM_TIMESTAMP_ADDR + 0x14);
+        writel(*(u32*)(PWR_SRAM_TIMER2), (unsigned)SHM_TIMESTAMP_ADDR + 0x18);
+        writel(*(u32*)(PWR_SRAM_TIMER3), (unsigned)SHM_TIMESTAMP_ADDR + 0x1C);
+        writel(*(u32*)(PWR_SRAM_TIMER4), (unsigned)SHM_TIMESTAMP_ADDR + 0x20);
+        writel(*(u32*)(PWR_SRAM_TIMER5), (unsigned)SHM_TIMESTAMP_ADDR + 0x24);
+        writel(*(u32*)(PWR_SRAM_TIMER6), (unsigned)SHM_TIMESTAMP_ADDR + 0x28);
+        writel(*(u32*)(PWR_SRAM_TIMER7), (unsigned)SHM_TIMESTAMP_ADDR + 0x2C);
+        writel(*(u32*)(PWR_SRAM_TIMER8), (unsigned)SHM_TIMESTAMP_ADDR + 0x30);
+        writel(*(u32*)(PWR_SRAM_TIMER9), (unsigned)SHM_TIMESTAMP_ADDR + 0x34);
+        writel(bsp_get_slice_value(), (unsigned)SHM_TIMESTAMP_ADDR + 0x38);
     }
 
 	smail = osMailCAlloc(pm_mail, 0);

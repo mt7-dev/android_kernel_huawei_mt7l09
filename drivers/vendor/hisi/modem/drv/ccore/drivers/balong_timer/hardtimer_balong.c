@@ -13,7 +13,7 @@
 struct timer_ctrl
 {
    timer_func routine;                    /*中断处理函数    */
-   u32 arg;                               /*中断处理函数参数*/
+   void* arg;                               /*中断处理函数参数*/
    u32 addr;                              /*timer的基地址   */
    u32 interrupt_num;                     /*timer的中断号   */
    u32 clk;                               /*timer的时钟频率 */
@@ -308,7 +308,7 @@ s32 bsp_hardtimer_free(u32 timer_id)
 	u32 intLev = 0;/* [false alarm]:误报 */
 	(void)bsp_hardtimer_disable(timer_id);
 	intLev = hard_timer_control[timer_id].interrupt_num;
-	osl_free_irq(intLev,hard_timer_control[timer_id].routine,hard_timer_control[timer_id].arg);/*lint !e64*//*lint !e119*/
+	osl_free_irq(intLev,hard_timer_control[timer_id].routine,(int)hard_timer_control[timer_id].arg);/*lint !e64*//*lint !e119*/
 	hard_timer_control[timer_id].routine = NULL;
 	hard_timer_control[timer_id].arg = 0;
 	return OK;

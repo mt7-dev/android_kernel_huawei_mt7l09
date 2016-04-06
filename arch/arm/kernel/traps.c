@@ -34,6 +34,7 @@
 #include <asm/unwind.h>
 #include <asm/tls.h>
 #include <asm/system_misc.h>
+#include <asm/opcodes.h>
 
 static const char *handler[]= {
 	"prefetch abort",
@@ -229,10 +230,8 @@ void dump_backtrace_entry_for_rdr(unsigned long where,
 		unsigned long from, unsigned long frame)
 {
 #ifdef CONFIG_DETECT_HUNG_TASK
-	/* < DTS2013120902611 wangdedong 00204535 2013.12.9 begin */
 	if (hw_hung_task_hook != NULL)
 		hw_hung_task_hook(where, from);
-	/* DTS2013120902611 wangdedong 00204535 2013.12.9 end > */
 #endif
 }
 
@@ -318,10 +317,6 @@ void exc_hook_delete(void)
 #define S_ISA " ARM"
 #endif
 
-static arch_spinlock_t die_lock = __ARCH_SPIN_LOCK_UNLOCKED;
-static int die_owner = -1;
-static unsigned int die_nest_count;
-
 static int __die(const char *str, int err, struct pt_regs *regs)
 {
 	struct task_struct *tsk = current;
@@ -337,12 +332,7 @@ static int __die(const char *str, int err, struct pt_regs *regs)
 		return 1;
 
 	print_modules();
-	if (die_nest_count < 4) {
-		__show_regs(regs);
-	} else {
-		printk(KERN_EMERG "die nest stopped ....");
-	}
-
+	__show_regs(regs);
 	printk(KERN_EMERG "Process %.*s (pid: %d, stack limit = 0x%p)\n",
 		TASK_COMM_LEN, tsk->comm, task_pid_nr(tsk), end_of_stack(tsk));
 
@@ -355,6 +345,10 @@ static int __die(const char *str, int err, struct pt_regs *regs)
 
 	return 0;
 }
+
+static arch_spinlock_t die_lock = __ARCH_SPIN_LOCK_UNLOCKED;
+static int die_owner = -1;
+static unsigned int die_nest_count;
 
 static unsigned long oops_begin(void)
 {
@@ -445,15 +439,17 @@ void arm_notify_die(const char *str, struct pt_regs *regs,
 int is_valid_bugaddr(unsigned long pc)
 {
 #ifdef CONFIG_THUMB2_KERNEL
-	unsigned short bkpt;
+	u16 bkpt;
+	u16 insn = __opcode_to_mem_thumb16(BUG_INSTR_VALUE);
 #else
-	unsigned long bkpt;
+	u32 bkpt;
+	u32 insn = __opcode_to_mem_arm(BUG_INSTR_VALUE);
 #endif
 
 	if (probe_kernel_address((unsigned *)pc, bkpt))
 		return 0;
 
-	return bkpt == BUG_INSTR_VALUE;
+	return bkpt == insn;
 }
 
 #endif
@@ -506,25 +502,28 @@ asmlinkage void __exception do_undefinstr(struct pt_regs *regs)
 	if (processor_mode(regs) == SVC_MODE) {
 #ifdef CONFIG_THUMB2_KERNEL
 		if (thumb_mode(regs)) {
-			instr = ((u16 *)pc)[0];
+			instr = __mem_to_opcode_thumb16(((u16 *)pc)[0]);
 			if (is_wide_instruction(instr)) {
-				instr <<= 16;
-				instr |= ((u16 *)pc)[1];
+				u16 inst2;
+				inst2 = __mem_to_opcode_thumb16(((u16 *)pc)[1]);
+				instr = __opcode_thumb32_compose(instr, inst2);
 			}
 		} else
 #endif
-			instr = *(u32 *) pc;
+			instr = __mem_to_opcode_arm(*(u32 *) pc);
 	} else if (thumb_mode(regs)) {
 		if (get_user(instr, (u16 __user *)pc))
 			goto die_sig;
+		instr = __mem_to_opcode_thumb16(instr);
 		if (is_wide_instruction(instr)) {
 			unsigned int instr2;
 			if (get_user(instr2, (u16 __user *)pc+1))
 				goto die_sig;
-			instr <<= 16;
-			instr |= instr2;
+			instr2 = __mem_to_opcode_thumb16(instr2);
+			instr = __opcode_thumb32_compose(instr, instr2);
 		}
 	} else if (get_user(instr, (u32 __user *)pc)) {
+		instr = __mem_to_opcode_arm(instr);
 		goto die_sig;
 	}
 

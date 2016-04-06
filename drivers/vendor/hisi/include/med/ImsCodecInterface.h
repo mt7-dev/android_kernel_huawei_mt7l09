@@ -36,7 +36,7 @@ extern "C" {
 /*****************************************************************************
   2 宏定义
 *****************************************************************************/
-#define IMSA_CODEC_MAX_DATA_LEN                     (160)           /* 单位，16 bit */
+#define IMSA_CODEC_MAX_DATA_LEN                     (32)           /* 单位，16 bit */
 
 /*
 IMSA_TX_DATA_STRU结构含义如下
@@ -44,11 +44,11 @@ usFrameType     --上行本帧的FrameType
 ausData         --IF1协议中的A、B、C子流，ABC紧密排列，Byte对齐
 */
 #define IMSA_TX_DATA_STRU                                                       \
-    unsigned short                      usMsgId;                                \
-    unsigned short                      usReserve;                              \
-    CODEC_AMR_TYPE_TX_ENUM_UINT16       usStatus;                               \
-    unsigned short                      usFrameType;                            \
-    unsigned short                      ausData[IMSA_CODEC_MAX_DATA_LEN];
+    VOS_UINT16                      usMsgId;    /* 原语类型 */ /*_H2ASN_Skip*/\
+    VOS_UINT16                      usReserve;  /* 保留字   */                            \
+    CODEC_AMR_TYPE_TX_ENUM_UINT16   usStatus;   /* AMR声码器类型  */                            \
+    VOS_UINT16                      usFrameType; /* 帧类型   */                           \
+    VOS_UINT16                      ausData[IMSA_CODEC_MAX_DATA_LEN];
 
 /*****************************************************************************
   3 枚举定义
@@ -59,6 +59,9 @@ enum IMSA_VOICE_MSG_ID_ENUM
     /*====== VOICE->IMSA ======*/
     ID_VOICE_IMSA_TX_DATA_IND                       = 0x49A8,                   /* IMS上行语音编码结果 */           /* _H2ASN_MsgChoice VOICE_IMSA_TX_DATA_IND_STRU */
     ID_VOICE_IMSA_CFG_CNF                           = 0x49A9,                   /* 设置HIFI上行的交互周期结果 */    /* _H2ASN_MsgChoice VOICE_IMSA_CFG_CNF_STRU */
+    /* zhaochen 00308719 begin for HIFI mailbox full reset 2015-11-09 */
+    ID_VOICE_IMSA_RX_DATA_ACK                       = 0x49AA,                   /* 回复RX_DATA处理结果 */           /* _H2ASN_MsgChoice VOICE_IMSA_RX_DATA_ACK_STRU */
+    /* zhaochen 00308719 end for HIFI mailbox full reset 2015-11-09 */
 
     /*====== IMSA->VOICE ======*/
     ID_IMSA_VOICE_RX_DATA_IND                       = 0x94A8,                   /* IMS下行语音数据 */               /* _H2ASN_MsgChoice IMSA_VOICE_RX_DATA_IND_STRU */
@@ -66,7 +69,7 @@ enum IMSA_VOICE_MSG_ID_ENUM
 
     IMSA_VOICE_MSG_ID_BUTT
 };
-typedef unsigned short IMSA_VOICE_MSG_ID_ENUM_UINT16;
+typedef VOS_UINT16 IMSA_VOICE_MSG_ID_ENUM_UINT16;
 
 enum IMSA_VOICE_ERRORFLAG_ENUM
 {
@@ -74,7 +77,7 @@ enum IMSA_VOICE_ERRORFLAG_ENUM
     IMSA_VOICE_ERROR,                                                           /* Jitter Buffer没有数据 */
     IMSA_VOICE_ERRORFLAG_BUTT
 };
-typedef unsigned short IMSA_VOICE_ERRORFLAG_ENUM_UINT16;
+typedef VOS_UINT16 IMSA_VOICE_ERRORFLAG_ENUM_UINT16;
 
 enum IMSA_VOICE_CFG_ENUM
 {
@@ -82,7 +85,7 @@ enum IMSA_VOICE_CFG_ENUM
     IMSA_VOICE_CFG_FAIL,                            /* 设置失败 */
     IMSA_VOICE_CFG_BUTT
 };
-typedef unsigned long IMSA_VOICE_CFG_ENUM_UINT32;
+typedef VOS_UINT32 IMSA_VOICE_CFG_ENUM_UINT32;
 
 
 
@@ -101,20 +104,35 @@ typedef unsigned long IMSA_VOICE_CFG_ENUM_UINT32;
 *****************************************************************************/
 typedef struct
 {
-    VOS_MSG_HEADER
-    unsigned short                      usMsgId;                                /* 0x94A8*/ /*_H2ASN_Skip*/
-    unsigned short                      usSN;                                   /* 包序列号 */
-    unsigned long                       ulTS;                                   /* 包时间戳 */
+    VOS_MSG_HEADER																/*_H2ASN_Skip*/
+    VOS_UINT16                          usMsgId;                                /* 0x94A8*/ /*_H2ASN_Skip*/
+    VOS_UINT16                          usSN;                                   /* 包序列号 */
+    VOS_UINT32                          ulTS;                                   /* 包时间戳 */
     CODEC_ENUM_UINT16                   usCodecType;                            /* 声码器类型 */
     CODEC_DTX_ENUM_UINT16               usDtxEnable;                            /* 上行编码的DTX */
-    unsigned short                      usRateMode;                             /* 上行编码的RateMode */
+    VOS_UINT16                          usRateMode;                             /* 上行编码的RateMode */
     IMSA_VOICE_ERRORFLAG_ENUM_UINT16    usErrorFlag;                            /* Buffer没数据时的ErrorFlag */
-    unsigned short                      usFrameType;                            /* 下行本帧的FrameType */
-    unsigned short                      usQualityIdx;                           /* Quality indification */
-    unsigned short                      ausData[IMSA_CODEC_MAX_DATA_LEN];       /* IF1协议中的A、B、C子流，ABC紧密排列，Byte对齐 */
-    unsigned long                       ulSSRC;                                 /* SSRC信息 */
-    unsigned long                       ulReserve;                              /* 保留字   */
+    VOS_UINT16                          usFrameType;                            /* 下行本帧的FrameType */
+    VOS_UINT16                          usQualityIdx;                           /* Quality indification */
+    VOS_UINT16                          ausData[IMSA_CODEC_MAX_DATA_LEN];       /* IF1协议中的A、B、C子流，ABC紧密排列，Byte对齐 */
+    VOS_UINT32                          ulSSRC;                                 /* SSRC信息 */
+    /* zhaochen 00308719 begin for HIFI mailbox full reset 2015-11-09 */
+    VOS_UINT32                          ulNeedAckFlag;                          /* 是否需要HIFI回复标志 */
+    VOS_UINT32                          ulOpid;                                 /* Opid号，用来同步消息 */
+    /* zhaochen 00308719 end for HIFI mailbox full reset 2015-11-09 */
 }IMSA_VOICE_RX_DATA_IND_STRU;
+
+/*****************************************************************************
+ 实体名称  : VOICE_IMSA_RX_DATA_ACK_STRU
+ 功能描述  : 需要HIFI回复ack,HIFI的回复结构体
+*****************************************************************************/
+typedef struct
+{
+    VOS_MSG_HEADER                                                              /*_H2ASN_Skip*/
+    VOS_UINT16                          usMsgId;                                /* 0x94AA*/ /*_H2ASN_Skip*/
+    VOS_UINT16                          usReserved;
+    VOS_UINT32                          ulOpid;                                 /* Opid号，用来同步消息 */
+}VOICE_IMSA_RX_DATA_ACK_STRU;
 
 /*****************************************************************************
  实体名称  : VOICE_IMSA_TX_DATA_IND_STRU
@@ -122,7 +140,7 @@ typedef struct
 *****************************************************************************/
 typedef struct
 {
-    VOS_MSG_HEADER
+    VOS_MSG_HEADER																/*_H2ASN_Skip*/
     IMSA_TX_DATA_STRU
 }VOICE_IMSA_TX_DATA_IND_STRU;
 
@@ -132,10 +150,11 @@ typedef struct
 *****************************************************************************/
 typedef struct
 {
-    VOS_MSG_HEADER
-    unsigned short                          usMsgId;                            /* 0x94a9 */ /*_H2ASN_Skip*/
-    unsigned short                          usReserve;
-    unsigned long                           ulTransTime;                        /* 上行和IMSA的交互周期 */
+    VOS_MSG_HEADER																/*_H2ASN_Skip*/
+    VOS_UINT16                          usMsgId;                                /* 0x94a9 */ /*_H2ASN_Skip*/
+    VOS_UINT16                          usReserve;
+    VOS_UINT32                          ulTransTime;                            /* 上行和IMSA的交互周期 */
+    VOS_UINT32                          ulSendBitrate;
 }IMSA_VOICE_CFG_REQ_STRU;
 
 /*****************************************************************************
@@ -145,9 +164,9 @@ typedef struct
 
 typedef struct
 {
-    VOS_MSG_HEADER
-    unsigned short                          usMsgId;                            /* 0x49a9 */ /*_H2ASN_Skip*/
-    unsigned short                          usReserve;
+    VOS_MSG_HEADER																/*_H2ASN_Skip*/
+    VOS_UINT16                              usMsgId;                            /* 0x49a9 */ /*_H2ASN_Skip*/
+    VOS_UINT16                              usReserve;
     IMSA_VOICE_CFG_ENUM_UINT32              ulResult;                           /* 执行结果 */
 }VOICE_IMSA_CFG_CNF_STRU;
 
@@ -166,7 +185,34 @@ typedef struct
 /*****************************************************************************
   8 OTHERS定义
 *****************************************************************************/
+#if 0                                                                           /* _H2ASN_Skip */
 
+/*****************************************************************************
+  H2ASN顶级消息结构定义
+*****************************************************************************/
+/* 需要更改相应的ASN编码,去掉L方式,仅保留V方式 */
+typedef struct
+{
+    IMSA_VOICE_MSG_ID_ENUM_UINT16          enMsgID;                              /* _H2ASN_MsgChoice_Export IMSA_VOICE_MSG_ID_ENUM_UINT16 */
+
+    VOS_UINT8                           aucMsgBlock[2];
+    /***************************************************************************
+        _H2ASN_MsgChoice_When_Comment          IMSA_VOICE_MSG_ID_ENUM_UINT16
+    ****************************************************************************/
+}VOICE_IMSA_TRACE_MSG_DATA;
+
+/* 协议消息结构*/
+typedef struct
+{
+    VOS_UINT32 uwSenderCpuId;
+    VOS_UINT32 uwSenderPid;
+    VOS_UINT32 uwReceiverCpuId;
+    VOS_UINT32 uwReceiverPid;
+    VOS_UINT32 uwLength;
+    VOICE_IMSA_TRACE_MSG_DATA              stMsgData;
+}VoiceImsaTrace_MSG;
+
+#endif    																		/* _H2ASN_Skip */
 /*****************************************************************************
   9 全局变量声明
 *****************************************************************************/

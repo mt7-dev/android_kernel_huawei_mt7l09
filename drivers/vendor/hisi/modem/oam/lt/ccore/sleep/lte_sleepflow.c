@@ -1461,6 +1461,83 @@ VOS_BOOL LSLEEP_RttIsSleep(VOS_VOID)
     return VOS_FALSE;
 }
 
+
+typedef struct
+{
+    VOS_UINT32      ulMspPowerup;
+    VOS_UINT32      ulDspTcmResume;
+    VOS_UINT32      ulInterval;
+    
+    VOS_UINT32      ulPtrWake;
+    VOS_UINT32      ulPtrTimer;
+    
+    VOS_UINT32      ulSwitchLen[100];
+    VOS_UINT32      ulDelay[100];
+    VOS_UINT32      ulSliceWakeup[100];
+
+    VOS_UINT32      ulSliceTimeout[100];
+}TL_SLEEP_SWITCH_TIME_STRU;
+
+TL_SLEEP_SWITCH_TIME_STRU g_stSleepSwitch = {0};
+
+
+VOS_VOID TLSLEEP_Show(VOS_VOID)
+{
+    VOS_UINT32 i,j;
+    
+    vos_printf("ulMspPowerup %d, ulDspTcmResume %d, ulInterval %d.\n", g_stSleepSwitch.ulMspPowerup, g_stSleepSwitch.ulDspTcmResume, g_stSleepSwitch.ulInterval);
+
+    for(i = 0; i < 25; i++)
+    {
+        for(j = 0; j < 4; j++)
+        {
+            vos_printf("ulSwitchLen %d, ulDelay %d | ", g_stSleepSwitch.ulSwitchLen[4*i+j], g_stSleepSwitch.ulDelay[4*i+j]);
+        }
+        vos_printf("\n");
+    }
+
+    for(i = 0; i < 10; i++)
+    {
+        for(j = 0; j < 10; j++)
+        {
+            vos_printf("ulSliceWakeup 0x%x, ulSliceTimeout 0x%x | ", g_stSleepSwitch.ulSliceWakeup[10*i+j], g_stSleepSwitch.ulSliceTimeout[10*i+j]);
+        }
+        vos_printf("\n");
+    }
+
+}
+
+VOS_INT TLSLEEP_TimerIsr(VOS_INT lPara)
+{
+    char *pcRecordType = "Awake Isr";
+    VOS_INT power_lock = 0;
+
+    (VOS_VOID)DRV_TIMER_STOP((VOS_UINT32)lPara);
+
+    g_stSleepSwitch.ulSliceTimeout[g_stSleepSwitch.ulPtrTimer] = VOS_GetSlice();
+    g_stSleepSwitch.ulPtrTimer = (g_stSleepSwitch.ulPtrTimer+1)%100;
+
+    power_lock = VOS_SplIMP();
+
+    if(read_power_status_bit(MSP_PWR_WAKEUP)||read_power_status_bit(MSP_PWR_FORCE_AWAKE)
+      ||read_power_status_bit(MSP_PWR_SYSTEM_RUN)|| read_power_status_bit(MSP_PWR_WAIT_RESUMER))
+    {
+        VOS_Splx(power_lock);
+        TLSLEEP_StateRecord(DRX_INVALID_WAKEUP_INT);
+        return ERR_MSP_SUCCESS;
+    }
+    TLSLEEP_DbgTimeRecord(TLSLEEP_AWAKEISR_0);
+    TLSLEEP_StateRecord(DRX_WAKEUP_INT);
+    TLSLEEP_TimeRecord(pcRecordType);
+
+    set_power_status_bit(MSP_PWR_WAKEUP);
+    VOS_SmV(g_msp_pwrctrl.task_sem);
+
+    TLSLEEP_DbgTimeRecord(TLSLEEP_AWAKEISR_1);
+    VOS_Splx(power_lock);
+    return ERR_MSP_SUCCESS;
+}
+
 /*****************************************************************************
  函 数 名  : LSLEEP_AwakeIsr
  功能描述  : 初始化
@@ -1473,9 +1550,52 @@ VOS_INT TLSLEEP_AwakeIsr(VOS_INT enMode)
 {
     char *pcRecordType = "Awake Isr";
     VOS_INT power_lock = 0;
+    VOS_UINT32 ulSwitchLen;
+    VOS_UINT32 ulDelay;
 
     /*清BBP唤醒中断*/
     DRV_BBPWAKE_INT_CLEAR((PWC_COMM_MODE_E)enMode);
+
+    ulSwitchLen = DRV_BBP_GET_WAKEUP_TIME(enMode);
+    
+    g_stSleepSwitch.ulDelay[g_stSleepSwitch.ulPtrWake] = 0xffffffff;
+
+    if((0xffffffff != ulSwitchLen)
+        && (0 != g_msp_pwrctrl.SleepDrxResumeTime.ulMspPowerup)
+        && (0 != g_msp_pwrctrl.SleepDrxResumeTime.ulDspTcmResume)
+        && (0 != g_msp_pwrctrl.SleepDrxResumeTime.ulInterval))
+    {
+        if(POWER_SAVING_DEEP_SLEEP == g_msp_pwrctrl.dsp_sleep_flag)
+        {
+            ulDelay = (g_msp_pwrctrl.SleepDrxResumeTime.ulMspPowerup + g_msp_pwrctrl.SleepDrxResumeTime.ulDspTcmResume + g_msp_pwrctrl.SleepDrxResumeTime.ulInterval);
+        }
+        else
+        {
+            ulDelay = (g_msp_pwrctrl.SleepDrxResumeTime.ulInterval);
+        }
+        
+        if((ulSwitchLen > ulDelay) && ((ulSwitchLen - ulDelay) > 32))
+        {
+            ulDelay = ulSwitchLen - ulDelay;
+
+            g_stSleepSwitch.ulDelay[g_stSleepSwitch.ulPtrWake] = ulDelay;
+            
+            if ( VOS_OK == DRV_TIMER_START(TIMER_DSP_SWITCH_DELAY_ID, (FUNCPTR_1)TLSLEEP_TimerIsr, TIMER_DSP_SWITCH_DELAY_ID, ulDelay, TIMER_ONCE_COUNT,TIMER_UNIT_NONE) )
+            {
+                g_stSleepSwitch.ulSliceWakeup[g_stSleepSwitch.ulPtrWake] = VOS_GetSlice();
+                g_stSleepSwitch.ulSwitchLen[g_stSleepSwitch.ulPtrWake] = ulSwitchLen;
+                g_stSleepSwitch.ulPtrWake = (g_stSleepSwitch.ulPtrWake+1)%100;
+
+                /*投票不能进入睡眠*/
+                DRV_PWRCTRL_SLEEPVOTE_LOCK(PWRCTRL_SLEEP_TLPS);
+                return ERR_MSP_SUCCESS;
+            }
+        }
+    }
+    
+    g_stSleepSwitch.ulSliceWakeup[g_stSleepSwitch.ulPtrWake] = VOS_GetSlice();
+    g_stSleepSwitch.ulSwitchLen[g_stSleepSwitch.ulPtrWake] = ulSwitchLen;
+    g_stSleepSwitch.ulPtrWake = (g_stSleepSwitch.ulPtrWake+1)%100;
 
     power_lock = VOS_SplIMP();
 
@@ -1656,10 +1776,20 @@ VOS_UINT32 TLSLEEP_Init(VOS_VOID)
     if(NVM_Read(NV_ID_MSP_TL_DRX_RESUME_TIME, &g_msp_pwrctrl.SleepDrxResumeTime, sizeof(NV_TL_DRX_RESUME_TIME_STRU)))
     {
         g_msp_pwrctrl.SleepDrxResumeTime.ulTcxoRsmTime = 3000;
+        g_msp_pwrctrl.SleepDrxResumeTime.ulMspPowerup = 0;
+        g_msp_pwrctrl.SleepDrxResumeTime.ulDspTcmResume = 0;
+        g_msp_pwrctrl.SleepDrxResumeTime.ulInterval = 0;
         /* coverity[lock_acqire] */
         msp_set_error_bit(status_flag, MSP_READ_NV_FAIL);
         mspsleep_print_error("Read NV: 0x%x Data Fail.", NV_ID_MSP_TL_DRX_RESUME_TIME);
     }
+    else
+    {
+        g_stSleepSwitch.ulMspPowerup = g_msp_pwrctrl.SleepDrxResumeTime.ulMspPowerup;
+        g_stSleepSwitch.ulDspTcmResume = g_msp_pwrctrl.SleepDrxResumeTime.ulDspTcmResume;
+        g_stSleepSwitch.ulInterval = g_msp_pwrctrl.SleepDrxResumeTime.ulInterval;
+    }
+    
     if(NVM_Read(NV_ID_MSP_TLMODE_CHAN_PARA_STRU, g_msp_pwrctrl.nv_tlmode_chan_para, 2*sizeof(NV_TLMODE_BASIC_PARA_STRU)))
     {
         /* coverity[lock_acqire] */
@@ -1706,6 +1836,7 @@ VOS_UINT32 TLSLEEP_Init(VOS_VOID)
     DRV_BBPWAKE_INT_DISABLE(PWC_COMM_MODE_TDS);
 	lte_int_num = DRV_GET_INT_NO(BSP_INT_TYPE_LBBP_AWAKE);
 	tds_int_num = DRV_GET_INT_NO(BSP_INT_TYPE_TBBP_AWAKE);
+    
 #ifdef MSP_IN_V9R1
     ret =  DRV_VICINT_CONNECT((VOIDFUNCPTR*)lte_int_num, (VOIDFUNCPTR)TLSLEEP_AwakeIsr, (VOS_INT)PWC_COMM_MODE_LTE);
     ret += DRV_VICINT_CONNECT((VOIDFUNCPTR*)tds_int_num, (VOIDFUNCPTR)TLSLEEP_AwakeIsr, (VOS_INT)PWC_COMM_MODE_TDS);

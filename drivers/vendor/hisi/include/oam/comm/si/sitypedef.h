@@ -42,15 +42,15 @@ typedef unsigned char       SI_UINT8;
 typedef signed   short      SI_INT16;
 typedef unsigned short      SI_UINT16;
 
-typedef signed   long       SI_INT32;
-typedef unsigned long       SI_UINT32;
+typedef signed   int        SI_INT32;
+typedef unsigned int        SI_UINT32;
 
 typedef char                SI_CHAR;
 typedef unsigned char       SI_UCHAR;
 
 typedef void                SI_VOID;
 
-typedef unsigned long       SI_BOOL;
+typedef unsigned int        SI_BOOL;
 
 #define  SI_NULL_PTR                   0L                    /* null pointer */
 

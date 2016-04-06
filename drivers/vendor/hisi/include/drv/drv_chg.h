@@ -106,7 +106,7 @@ extern int DRV_CHG_GET_CHARGING_STATUS(void);
  输出参数  :无
  返回值：    无
 *****************************************************************************/
-extern void DRV_CHG_STATE_SET(unsigned long ulState);
+extern void DRV_CHG_STATE_SET(unsigned int ulState);
 
 /*****************************************************************************
  函 数 名  : BSP_CHG_StateGet

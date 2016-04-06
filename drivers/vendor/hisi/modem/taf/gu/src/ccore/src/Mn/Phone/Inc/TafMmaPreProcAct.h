@@ -183,11 +183,11 @@ VOS_UINT32 TAF_MMA_RcvMmcRegResultInd_PreProc(
 );
 
 
-TAF_PH_RAT_TYPE_ENUM_UINT8 TAF_MMA_ConvertSdcRatToAppRatType( 
+TAF_PH_RAT_TYPE_ENUM_UINT8 TAF_MMA_ConvertSdcRatToAppRatType(
                         TAF_SDC_SYS_MODE_ENUM_UINT8 enSdcRatType
                         );
 
-TAF_PH_SERVICE_DOMAIN TAF_MMA_ConvertMmcDomainToMmaDomainType( 
+TAF_PH_SERVICE_DOMAIN TAF_MMA_ConvertMmcDomainToMmaDomainType(
                         MMA_MMC_SRVDOMAIN_ENUM_UINT32 enMmcDomainType
                         );
 
@@ -232,6 +232,12 @@ VOS_UINT32 TAF_MMA_RcvMmcCsServiceConnStatusInd_PreProc(
 );
 
 
+VOS_UINT32 TAF_MMA_RcvMmcAttachCnf_PreProc(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+);
+
+
 VOS_UINT32 TAF_MMA_RcvMmcServRejInd_PreProc(
     VOS_UINT32                          ulEventType,
     struct MsgCB                       *pstMsg
@@ -256,6 +262,11 @@ VOS_UINT32 TAF_MMA_RcvMmcAbortNetScanCnf_PreProc(
 #if (FEATURE_MULTI_MODEM == FEATURE_ON)
 
 VOS_UINT32 TAF_MMA_RcvMtcOtherModemInfoNotify_PreProc(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+);
+
+VOS_UINT32 TAF_MMA_RcvMtcOtherModemDplmnNplmnInfoNotify_PreProc(
     VOS_UINT32                          ulEventType,
     struct MsgCB                       *pstMsg
 );
@@ -323,6 +334,41 @@ VOS_UINT32 TAF_MMA_RcvMmcPowerSaveCnf_PreProc(
     struct MsgCB                       *pstMsg
 );
 
+
+#if (FEATURE_ON == FEATURE_IMS)
+VOS_UINT32 TAF_MMA_RcvTafImsSrvInfoNotify_PreProc(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+);
+
+VOS_UINT32 TAF_MMA_ProcImsSwitchOff_PreProc(
+    TAF_MMA_IMS_SWITCH_SET_REQ_STRU     *pstImsSwitchSet
+);
+VOS_UINT32 TAF_MMA_ProcImsSwitchOn_PreProc(
+    TAF_MMA_IMS_SWITCH_SET_REQ_STRU     *pstImsSwitchSet
+);
+VOS_UINT32 TAF_MMA_IsRefreshTrigger_PreProc(VOS_VOID);
+VOS_UINT32 TAF_MMA_RcvTafImsSwitchSetReq_PreProc(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+);
+
+VOS_UINT32 TAF_MMA_RcvTafImsSwitchQryReq_PreProc(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+);
+VOS_UINT32 TAF_MMA_RcvTafVoiceDomainSetReq_PreProc(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+);
+
+VOS_UINT32 TAF_MMA_RcvTafVoiceDomainQryReq_PreProc(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+);
+
+
+#endif
 
 #if (VOS_OS_VER == VOS_WIN32)
 #pragma pack()

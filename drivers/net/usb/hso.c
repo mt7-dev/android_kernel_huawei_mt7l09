@@ -1099,7 +1099,6 @@ static void hso_init_termios(struct ktermios *termios)
 
 	termios->c_cflag |= CS8;	/* character size 8 bits */
 
-	/* baud rate 115200 */
 	tty_termios_encode_baud_rate(termios, 115200, 115200);
 }
 
@@ -1128,7 +1127,6 @@ static void _hso_serial_set_termios(struct tty_struct *tty,
 
 	tty->termios.c_cflag |= CS8;	/* character size 8 bits */
 
-	/* baud rate 115200 */
 	tty_encode_baud_rate(tty, 115200, 115200);
 }
 

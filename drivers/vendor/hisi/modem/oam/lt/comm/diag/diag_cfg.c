@@ -379,6 +379,7 @@ VOS_UINT32 diag_CfgSetMsgSwt(DIAG_CMD_LOG_CAT_CFG_REQ_STRU *pstCatCfgReq,VOS_UIN
             {
                 pstItemCfg->ulSwt = enSwitch;
                 ulRst = ERR_MSP_SUCCESS;
+                break;
             }
         }
         if(i >= g_stMsgCfg.ulCfgCnt)
@@ -553,9 +554,11 @@ VOS_UINT32 diag_ConnProcEntry(VOS_UINT8* pstReq , VOS_UINT32 ulCmdId)
         case DIAG_CMD_GET_TIMESTAMP_INIT_VALUE:
             ret = diag_GetTimeStampInitValue(pstReq,ulCmdId);
             break;
+#if (FEATURE_OFF == FEATURE_MERGE_OM_CHAN)
         case DIAG_CMD_SET_LOG_MODE:
             ret = diag_LogSaveProc(pstReq,ulCmdId);
             break;
+#endif
 #endif
         default:
             ret = ERR_MSP_INVALID_PARAMETER;
@@ -620,21 +623,36 @@ VOS_UINT32 diag_ConnProc(VOS_UINT8* pstReq,VOS_UINT32 ulCmdId)
     }
 
     /*和HIDS确认此处不再使用,打桩处理即可*/
-    stCnf.ulDrxControlFlag = 0;
+    stCnf.diag_cfg.CtrlFlag.ulDrxControlFlag = 0;
     /*lint -save -e40*/
+#if (FEATURE_ON == FEATURE_MERGE_OM_CHAN)
+    stCnf.diag_cfg.CtrlFlag.ulPortFlag = 1;
+#endif
 
 	ulCnfRst |= diag_SendMsg(diag_GetAgentPid(),PS_PID_MM,ID_MSG_DIAG_CMD_REPLAY_TO_PS,(VOS_UINT8*)&stReplay,\
 					sizeof(DIAG_CMD_REPLAY_SET_REQ_STRU));
     /*lint -restore  +e40*/
+#if (FEATURE_OFF == FEATURE_MERGE_OM_CHAN)
     /*获取当前存取模式*/
     stCnf.ulLpdMode = diag_GetLogSendType();
+#endif
 
     /*处理结果*/
     stCnf.ulRc = ulCnfRst;
 
+#if(FEATURE_SOCP_ON_DEMAND == FEATURE_ON)
+    diag_AppAgentConnectCmdProc(DIAG_CONNECT_CMD);
+#endif
     /*组包给FW回复*/
     ret = diag_AgentCnfFun((VOS_UINT8*)&stCnf,ulCmdId,sizeof(DIAG_CMD_HOST_CONNECT_CNF_STRU));
 #else
+
+#if(FEATURE_SOCP_ON_DEMAND == FEATURE_ON)
+    /*lint -save -e718 -e746*/
+    /*工具连接*/
+    diag_AgentConnectCmdProc(DIAG_CONNECT_CMD);
+    /*lint -restore*/
+#endif
 /*lint -save -e18*/
 	diag_EnableSocpChan();
 /*lint -restore +e18*/
@@ -643,14 +661,6 @@ VOS_UINT32 diag_ConnProc(VOS_UINT8* pstReq,VOS_UINT32 ulCmdId)
     DRV_OM_SET_HSO_CONN_FLAG(1);
 #endif
 
-#if(FEATURE_SOCP_ON_DEMAND == FEATURE_ON)
-#if((VOS_OS_VER == VOS_VXWORKS) || (VOS_OS_VER == VOS_RTOSCK))
-    /*lint -save -e718 -e746*/
-    /*工具连接*/
-    diag_AgentConnectCmdProc(DIAG_CONNECT_CMD);
-    /*lint -restore*/
-#endif
-#endif
     return ret;
 }
 
@@ -683,6 +693,8 @@ VOS_UINT32 diag_DisConnProc(VOS_UINT8* pstReq,VOS_UINT32 ulCmdId)
     /*工具断开连接*/
 #if((VOS_OS_VER == VOS_VXWORKS) || (VOS_OS_VER == VOS_RTOSCK))
     diag_AgentConnectCmdProc(DIAG_DISCONNECT_CMD);
+#else
+    diag_AppAgentConnectCmdProc(DIAG_DISCONNECT_CMD);
 #endif
 #endif
     return ulRst;

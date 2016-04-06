@@ -75,7 +75,7 @@
 #define     MMCGMM_GSM_FORBIDDEN_LA_FOR_ROAM            0x0004                    /* 在forbidden LA for roaming上             */
 #define     MMCGMM_GSM_FORBIDDEN_LA_FOR_REG_PRVS_SVS    0x0008                    /* 在forbidden LA for regional provision of service上 */
 
-#define     MMC_GMM_EMERGENCY_NUM_MAX_LEN               LMM_MMC_EMERGENCY_NUM_MAX_LEN  
+#define     MMC_GMM_EMERGENCY_NUM_MAX_LEN               LMM_MMC_EMERGENCY_NUM_MAX_LEN
 #define     MMC_GMM_EMERGENCY_NUM_LIST_MAX_RECORDS      LMM_MMC_EMERGENCY_NUM_LIST_MAX_RECORDS /* 紧急呼最大值 */
 
 /*****************************************************************************
@@ -98,6 +98,8 @@ enum MMC_GMM_MSG_TYPE_ENUM
     MMCGMM_ATTACH_REQ                           = 16,   /* _H2ASN_MsgChoice MMCGMM_ATTACH_REQ_STRU */
     MMCGMM_MODE_CHANGE_REQ                      = 18,   /* _H2ASN_MsgChoice MMCGMM_MODE_CHANGE_REQ_STRU */
 
+    MMCGMM_EMERGENCY_NUM_LIST_IND               = 20,   /* _H2ASN_MsgChoice MMCGMM_EMERGENCY_NUM_LIST_IND */
+
     /* BEGIN: Added by liuyang, id:48197, 2005/11/1 */
     MMCGMM_SUSPEND_IND                          = 22,   /* _H2ASN_MsgChoice MMCGMM_SUSPEND_IND_ST */
     MMCGMM_RESUME_IND                           = 24,   /* _H2ASN_MsgChoice MMCGMM_RESUME_IND_ST */
@@ -106,8 +108,6 @@ enum MMC_GMM_MSG_TYPE_ENUM
     /* END:   Added by liuyang, id:48197, 2005/11/1 */
 
     MMCGMM_LTE_SYS_INFO_IND                     = 30,   /* _H2ASN_MsgChoice MMC_GMM_LTE_SYS_INFO_IND_STRU */
-
-    MMCGMM_EMERGENCY_NUM_LIST_IND               = 47,   /* _H2ASN_MsgChoice MMCGMM_EMERGENCY_NUM_LIST_IND */
 
     /* MMC发给MM LMM的注册结果 */
     MMCGMM_LMM_ATTACH_IND                       = 32,   /* _H2ASN_MsgChoice MMCGMM_LMM_ATTACH_IND_STRU */
@@ -119,9 +119,14 @@ enum MMC_GMM_MSG_TYPE_ENUM
     MMCGMM_LMM_LOCAL_DETACH_IND                 = 42,   /* _H2ASN_MsgChoice MMMCGMM_LMM_LOCAL_DETACH_IND_STRU */
 
     MMCGMM_LMM_STATUS_IND                       = 44,   /* _H2ASN_MsgChoice MMCGMM_LMM_STATUS_IND_STRU */
-    MMCGMM_W_AC_INFO_CHANGE_IND                 = 45,
+    MMCGMM_W_AC_INFO_CHANGE_IND                 = 46,   /* _H2ASN_MsgChoice MMCGMM_W_AC_INFO_CHANGE_IND_STRU */
 
-    MMCGMM_LMM_TIMER_STATE_NOTIFY               = 46, /* _H2ASN_MsgChoice MMCGMM_LMM_TIMER_INFO_NOTIFY_STRU */
+    MMCGMM_LMM_TIMER_STATE_NOTIFY               = 48, /* _H2ASN_MsgChoice MMCGMM_LMM_TIMER_STATE_NOTIFY_STRU */
+
+    MMCGMM_VOICE_DOMAIN_CHANGE_NOTIFY           = 50,   /* _H2ASN_MsgChoice MMCGMM_VOICE_DOMAIN_CHANGE_NOTIFY_STRU */
+
+    /* MMC发给GMM的消息ID用偶数 */
+
     /* GMM发送给MMC的原语 */
     MMCGMM_INFO_IND                             = 1,    /* _H2ASN_MsgChoice MMCGMM_INFO_IND_STRU */
     MMCGMM_PDP_STATUS_IND                       = 3,    /* _H2ASN_MsgChoice MMCGMM_PDP_STATUS_IND_STRU */
@@ -146,8 +151,10 @@ enum MMC_GMM_MSG_TYPE_ENUM
 
     GMMMMC_CIPHER_INFO_IND                      = 39,   /* _H2ASN_MsgChoice MMC_GMM_CIPHER_INFO_IND_STRU */
     MMCGMM_SIM_AUTH_FAIL_IND                    = 41,  /* _H2ASN_MsgChoice MMCGMM_SIM_AUTH_FAIL_IND_STRU */
-	
+
     GMMMMC_NETWORK_CAPABILITY_INFO_IND          = 43,   /* _H2ASN_MsgChoice GMMMMC_NETWORK_CAPABILITY_INFO_IND */
+
+    /* GMM发给MMC的消息ID用奇数 */
 
     MMCGMM_MSG_TYPE_BUTT
 };
@@ -260,7 +267,7 @@ enum GMM_MMC_LTE_CS_CAPBILITY_ENUM
     GMM_MMC_LTE_CS_CAPBILITY_CSFB_NOT_PREFER   = 1,
     GMM_MMC_LTE_CS_CAPBILITY_SMS_ONLY          = 2,
     GMM_MMC_LTE_CS_CAPBILITY_NOT_SUPPORTED     = 3,
-    
+
     GMM_MMC_LTE_CS_CAPBILITY_BUTT
 };
 typedef VOS_UINT8 GMM_MMC_LTE_CS_CAPBILITY_ENUM_UINT8;
@@ -348,7 +355,7 @@ typedef struct
     VOS_UINT8               ucCsResumeResult;                                   /* CS域切换结果 */
     VOS_UINT8               ucPsResumeResult;                                   /* PS域切换结果 */
     VOS_UINT8               ucResumeOrigen;                                     /* 消息发起方，RRMM_ORIGEN_GSM:GSM，RRMM_ORIGEN_WCDMA:WCDMA */
-    VOS_UINT8               ucPsSigExistFlg;                                    /* CS信令连接存在标记 */    
+    VOS_UINT8               ucPsSigExistFlg;                                    /* CS信令连接存在标记 */
 }MMCGMM_RESUME_IND_ST;
 
 /* MMCGMM_SUSPEND_RSP的消息结构 */
@@ -437,7 +444,7 @@ typedef struct
 
 typedef struct
 {
-    MSG_HEADER_STRU                        MsgHeader;          /* _H2ASN_Skip */     
+    MSG_HEADER_STRU                        MsgHeader;          /* _H2ASN_Skip */
     NAS_MML_NW_IMS_VOICE_CAP_ENUM_UINT8    enNwImsVoCap;
     GMM_MMC_NW_EMC_BS_CAP_ENUM_UINT8       enNwEmcBsCap;
     GMM_MMC_LTE_CS_CAPBILITY_ENUM_UINT8    enLteCsCap;
@@ -601,6 +608,13 @@ typedef struct
 } MMCGMM_MODE_CHANGE_REQ_STRU;
 
 
+
+typedef struct
+{
+    MSG_HEADER_STRU                             MsgHeader;                      /* 消息头                                    */ /*_H2ASN_Skip*/
+} MMCGMM_VOICE_DOMAIN_CHANGE_NOTIFY_STRU;
+
+
 /* 消息 MMCGMM_GSM_SYS_INFO_IND 结构体 */
 typedef struct
 {
@@ -626,7 +640,7 @@ typedef struct
 
     MMCGMM_SGSN_REL_VER_ENUM_U8    ucSgsnRelease;       /* [0-1] 0 SGSN is Release '98 or older
                                                               1 SGSN is Release '99 onwards */
-    RRC_NAS_RESTRICTION_UN              unAcInfo;            
+    RRC_NAS_RESTRICTION_UN              unAcInfo;
     VOS_UINT32                      ulUserSrchFlg;
 
 
@@ -712,9 +726,9 @@ typedef struct
     VOS_UINT8                               ucOpEmcNumList;
 
     VOS_UINT8                               ucEmergencyNumAmount;
-    
+
     VOS_UINT8                               aucReserved[2];
-    
+
     MMC_GMM_EMERGENCY_NUM_STRU              astEmergencyNumList[MMC_GMM_EMERGENCY_NUM_LIST_MAX_RECORDS];
 } MMCGMM_EMERGENCY_NUM_LIST_IND_STRU;
 #endif

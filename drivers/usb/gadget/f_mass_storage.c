@@ -219,8 +219,7 @@
 #include <linux/usb/composite.h>
 
 #include "gadget_chips.h"
-#include <linux/huawei/usb/hw_rwswitch.h>
-
+#include <chipset_common/hwusb/hw_usb_rwswitch.h>
 
 /*------------------------------------------------------------------------*/
 
@@ -352,6 +351,69 @@ struct fsg_dev {
 	struct usb_ep		*bulk_in;
 	struct usb_ep		*bulk_out;
 };
+
+/* usbsdms_read_toc_data1 rsp packet */
+static u8 usbsdms_read_toc_data1[] =
+{
+    0x00,0x0A,0x01,0x01,
+    0x00,0x14,0x01,0x00,0x00,0x00,0x02,0x00
+};
+
+/* usbsdms_read_toc_data1_format0000 rsp packet */
+static  u8 usbsdms_read_toc_data1_format0000[] =
+{
+    0x00,0x12,0x01,0x01,
+    0x00,0x14,0x01,0x00,0x00,0x00,0x00,0x00,
+    0x00,0x14,0xAA,0x00,0x00,0x00,0xFF,0xFF /* the last four bytes:32MB */
+};
+
+/* usbsdms_read_toc_data1_format0001 rsp packet */
+static u8 usbsdms_read_toc_data1_format0001[] =
+{
+    0x00,0x0A,0x01,0x01,
+    0x00,0x14,0x01,0x00,0x00,0x00,0x00,0x00
+};
+
+/* usbsdms_read_toc_data2 rsp packet */
+static u8 usbsdms_read_toc_data2[] =
+{
+    0x00,0x2e,0x01,0x01,
+    0x01,0x14,0x00,0xa0,0x00,0x00,0x00,0x00,0x01,0x00,0x00,
+    0x01,0x14,0x00,0xa1,0x00,0x00,0x00,0x00,0x01,0x00,0x00,
+    0x01,0x14,0x00,0xa2,0x00,0x00,0x00,0x00,0x06,0x00,0x3c,
+                                         /* ^ CDROM size from this byte */
+    0x01,0x14,0x00,0x01,0x00,0x00,0x00,0x00,0x00,0x02,0x00
+};
+
+/* usbsdms_read_toc_data3 rsp packet */
+static u8 usbsdms_read_toc_data3[] =
+{
+    0x00,0x12,0x01,0x01,
+    0x00,0x14,0x01,0x00,0x00,0x00,0x02,0x00,
+    0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00
+};
+
+/* READ_TOC command structure */
+typedef struct _usbsdms_read_toc_cmd_type
+{
+   u8  op_code;
+   u8  msf;             /* bit1 is MSF, 0: address format is LBA form
+                                        1: address format is MSF form */
+   u8  format;          /* bit3~bit0,   MSF Field   Track/Session Number
+                           0000b:       Valid       Valid as a Track Number
+                           0001b:       Valid       Ignored by Drive
+                           0010b:       Ignored     Valid as a Session Number
+                           0011b~0101b: Ignored     Ignored by Drive
+                           0110b~1111b: Reserved
+                        */
+   u8  reserved1;
+   u8  reserved2;
+   u8  reserved3;
+   u8  session_num;     /* a specific session or a track */
+   u8  allocation_length_msb;
+   u8  allocation_length_lsb;
+   u8  control;
+} usbsdms_read_toc_cmd_type;
 
 static inline int __fsg_is_set(struct fsg_common *common,
 			       const char *func, unsigned line)
@@ -1210,31 +1272,106 @@ static int do_read_header(struct fsg_common *common, struct fsg_buffhd *bh)
 	return 8;
 }
 
+/* ------------------------------------------------------------
+ * function      : static int do_read_toc(struct fsg_dev *fsg, struct fsg_buffhd *bh)
+ * description   : response for command READ TOC
+ * input         : struct fsg_dev *fsg, struct fsg_buffhd *bh
+ * output        : none
+ * return        : response data length
+ * -------------------------------------------------------------
+ */
 static int do_read_toc(struct fsg_common *common, struct fsg_buffhd *bh)
 {
-	struct fsg_lun	*curlun = common->curlun;
-	int		msf = common->cmnd[1] & 0x02;
-	int		start_track = common->cmnd[6];
-	u8		*buf = (u8 *)bh->buf;
+    u8    *buf = (u8 *) bh->buf;
+    usbsdms_read_toc_cmd_type *read_toc_cmd = NULL;
+    unsigned long response_length = 0;
+    u8 *response_ptr = NULL;
 
-	if ((common->cmnd[1] & ~0x02) != 0 ||	/* Mask away MSF */
-			start_track > 1) {
-		curlun->sense_data = SS_INVALID_FIELD_IN_CDB;
-		return -EINVAL;
-	}
+    read_toc_cmd = (usbsdms_read_toc_cmd_type *)common->cmnd;
 
-	memset(buf, 0, 20);
-	buf[1] = (20-2);		/* TOC data length */
-	buf[2] = 1;			/* First track number */
-	buf[3] = 1;			/* Last track number */
-	buf[5] = 0x16;			/* Data track, copying allowed */
-	buf[6] = 0x01;			/* Only track is number 1 */
-	store_cdrom_address(&buf[8], msf, 0);
+    /* When TIME is set to one, the address fields in some returned
+     * data formats shall be in TIME form.
+	 * 2 is time form mask.
+     */
+    if ( 2 == read_toc_cmd->msf )
+    {
+        response_ptr = usbsdms_read_toc_data2;
+        response_length = sizeof(usbsdms_read_toc_data2);
+    }
+    else if(0 != read_toc_cmd->allocation_length_msb)
+    {
+        response_ptr = usbsdms_read_toc_data3;
+        response_length = sizeof(usbsdms_read_toc_data3);
+    }
+    else
+    {
+        /* When TIME is set to zero, the address fields in some returned
+         * data formats shall be in LBA form.
+         */
+        if(0 == read_toc_cmd->format)
+        {
+            /* 0 is mean to valid as a Track Number */
+            response_ptr = usbsdms_read_toc_data1_format0000;
+            response_length = sizeof(usbsdms_read_toc_data1_format0000);
+        }
+        else if(1 == read_toc_cmd->format)
+        {
+            /* 1 is mean to ignored by Logical Unit */
+            response_ptr = usbsdms_read_toc_data1_format0001;
+            response_length = sizeof(usbsdms_read_toc_data1_format0001);
+        }
+        else
+        {
+            /* Valid as a Session Number */
+            response_ptr = usbsdms_read_toc_data1;
+            response_length = sizeof(usbsdms_read_toc_data1);
+        }
+    }
 
-	buf[13] = 0x16;			/* Lead-out track is data */
-	buf[14] = 0xAA;			/* Lead-out track number */
-	store_cdrom_address(&buf[16], msf, curlun->num_sectors);
-	return 20;
+    memcpy(buf, response_ptr, response_length);
+
+    if(response_length < common->data_size_from_cmnd)
+    {
+        common->data_size_from_cmnd =response_length;
+    }
+
+    common->data_size = common->data_size_from_cmnd;
+
+    common->residue = common->usb_amount_left = common->data_size;
+
+    return response_length;
+}
+
+/*
+ * fsg_close_all_file: close all stored file in each lun
+ * @common: struct fsg_common *common
+ * Return value: void
+ * Side effect : none
+ */
+static void fsg_close_all_file(struct fsg_common *common)
+{
+    printk("PYL: %s %d \n", __FUNCTION__,__LINE__);
+    down_write(&common->filesem);
+    if (likely(common->luns)) {
+        struct fsg_lun *lun = common->luns;
+        unsigned i = common->nluns;
+
+        /* In error recovery nluns may be zero. */
+        for (; i; --i, ++lun) {
+	     if (1 == lun->cdrom)
+	     {
+                fsg_lun_close(lun);
+                lun->unit_attention_data = SS_MEDIUM_NOT_PRESENT;
+            /* clear the cdrom flag when we switch the usb ports mode
+             * 0 - the lun is cdrom; 1 - the lun is udisk
+             * the cdrom flag is used in fsg_lun_open() to get the blksize
+             */
+                lun->cdrom = 0;
+	     }
+        }
+    }
+    /* protect the luns rw_semaphore */
+    up_write(&common->filesem);
 }
 
 static int do_mode_sense(struct fsg_common *common, struct fsg_buffhd *bh)
@@ -1981,7 +2118,7 @@ static int do_scsi_command(struct fsg_common *common)
 		common->data_size_from_cmnd =
 			get_unaligned_be16(&common->cmnd[7]);
 		reply = check_command(common, 10, DATA_DIR_TO_HOST,
-				      (7<<6) | (1<<1), 1,
+				      (3<<1) | (7<<7), 1,
 				      "READ TOC");
 		if (reply == 0)
 			reply = do_read_toc(common, bh);
@@ -2085,14 +2222,14 @@ static int do_scsi_command(struct fsg_common *common)
 			memset(cmnd,0,sizeof(cmnd));
 			cmnd[0] = SC_REWIND_11;
 			cmnd[1] = 0x06;
-		        if(0 == memcmp(common->cmnd, cmnd, sizeof(cmnd))){
-		             usb_port_switch_request(INDEX_ENDUSER_SWITCH);//enduser pnp switch such as pc modem
-		        }
+			if (0 == memcmp(common->cmnd, cmnd, sizeof(cmnd))) {
+				hw_usb_port_switch_request(INDEX_ENDUSER_SWITCH);//enduser pnp switch such as pc modem
+			}
 			cmnd[9] = 0x11;
-			if(0 == memcmp(common->cmnd, cmnd, sizeof(cmnd))){
-		             usb_port_switch_request(INDEX_FACTORY_REWORK);//manufactory rework
-		        }
-	        }
+			if (0 == memcmp(common->cmnd, cmnd, sizeof(cmnd))) {
+				hw_usb_port_switch_request(INDEX_FACTORY_REWORK);//manufactory rework
+			}
+		}
 		break;
 
 	/*
@@ -2367,9 +2504,9 @@ static int fsg_set_alt(struct usb_function *f, unsigned intf, unsigned alt)
 
 static void fsg_disable(struct usb_function *f)
 {
-	struct fsg_dev *fsg = fsg_from_func(f);
-	fsg->common->new_fsg = NULL;
-	raise_exception(fsg->common, FSG_STATE_CONFIG_CHANGE);
+    struct fsg_dev *fsg = fsg_from_func(f);
+    fsg->common->new_fsg = NULL;
+    raise_exception(fsg->common, FSG_STATE_CONFIG_CHANGE);
 }
 
 
@@ -2903,7 +3040,7 @@ static void fsg_unbind(struct usb_configuration *c, struct usb_function *f)
 		fsg->common->new_fsg = NULL;
 		raise_exception(fsg->common, FSG_STATE_CONFIG_CHANGE);
 		/* FIXME: make interruptible or killable somehow? */
-		wait_event(common->fsg_wait, common->fsg != fsg);
+		wait_event_timeout(common->fsg_wait, common->fsg != fsg, 3 * HZ);
 	}
 
 	fsg_common_put(common);
@@ -2963,7 +3100,7 @@ static int fsg_bind(struct usb_configuration *c, struct usb_function *f)
 			fsg_ss_function);
 	if (ret)
 		goto autoconf_fail;
-
+    printk(KERN_INFO "mass_storage IN/%s OUT/%s\n",fsg->bulk_in->name, fsg->bulk_out->name);
 	return 0;
 
 autoconf_fail:
@@ -3007,10 +3144,13 @@ static int fsg_bind_config(struct usb_composite_dev *cdev,
 	 */
 
 	rc = usb_add_function(c, &fsg->function);
-	if (unlikely(rc))
+	if (unlikely(rc)){
 		kfree(fsg);
+		pr_err("%s: failed %d\n", __func__, rc);
+	}
 	else
 		fsg_common_get(fsg->common);
+	pr_info("%s: return %d\n", __func__, rc);
 	return rc;
 }
 
@@ -3071,8 +3211,7 @@ fsg_config_from_params(struct fsg_config *cfg,
 	for (i = 0, lun = cfg->luns; i < cfg->nluns; ++i, ++lun) {
 		lun->ro = !!params->ro[i];
 		lun->cdrom = !!params->cdrom[i];
-		lun->removable = /* Removable by default */
-			params->removable_count <= i || params->removable[i];
+		lun->removable = !!params->removable[i];
 		lun->filename =
 			params->file_count > i && params->file[i][0]
 			? params->file[i]
@@ -3080,7 +3219,7 @@ fsg_config_from_params(struct fsg_config *cfg,
 	}
 
 	/* Let MSF use defaults */
-        cfg->vendor_name =0;
+	cfg->vendor_name = 0;
 	cfg->product_name = 0;
 
 	cfg->ops = NULL;

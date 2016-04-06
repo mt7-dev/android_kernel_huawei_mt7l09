@@ -182,7 +182,7 @@ VOS_VOID  NAS_ERABM_RbSetupReqProc( VOS_UINT32 ulRbNum )
     }
 }
 #endif
-VOS_VOID  NAS_ERABM_InformEsmBearerStatus( VOS_VOID )
+VOS_VOID  NAS_ERABM_InformEsmBearerStatus( VOS_UINT8 uclOpid )
 {
     VOS_UINT32                          ulRbNumWithRb  = NAS_ERABM_NULL;
     VOS_UINT32                          ulActEpsbNum   = NAS_ERABM_NULL;
@@ -209,7 +209,7 @@ VOS_VOID  NAS_ERABM_InformEsmBearerStatus( VOS_VOID )
     /*只有在存在EPS承载的场景下，才需要通知ESM*/
     if(ulActEpsbNum > 0)
     {
-        NAS_ERABM_SndRabmEsmBearerStatusReq(aulEpsIdWithRb,ulRbNumWithRb);
+        NAS_ERABM_SndRabmEsmBearerStatusReq(aulEpsIdWithRb,ulRbNumWithRb,uclOpid);
     }
 }
 VOS_VOID  NAS_ERABM_RcvRabmRrcRabInd(const LRRC_LRABM_RAB_IND_STRU *pRcvMsg )
@@ -732,8 +732,8 @@ VOS_VOID  NAS_ERABM_RrcRabIndSetupSuccProc( VOS_VOID )
     }
     else
     {
-        /* 向ESM发承载状态消息 */
-        NAS_ERABM_InformEsmBearerStatus();
+        /* 向ESM发承载状态消息,主动发送时，消息的SessionId填为0，不需要匹配  */
+        NAS_ERABM_InformEsmBearerStatus(0);
     }
 }
 
@@ -767,16 +767,16 @@ VOS_VOID  NAS_ERABM_RrcRabIndSetupFailProc
        发送NAS_ERABM_InformEsmBearerStatus */
     if (PS_TRUE == enIsRecRelease)
     {
-        /* 向ESM发承载状态消息 */
-        NAS_ERABM_InformEsmBearerStatus();
+        /* 向ESM发承载状态消息,主动发送时，消息的SessionId填为0，不需要匹配  */
+        NAS_ERABM_InformEsmBearerStatus(0);
     }
 
     /* SERVICE和ATTACH过程中的所有DRB建立失败，不发送NAS_ERABM_InformEsmBearerStatus
        消息，只有专有承载激活的DRB建立失败需要发送NAS_ERABM_InformEsmBearerStatus */
     if(NAS_ERABM_SUCCESS != NAS_ERABM_IsAllActtiveBearerWithoutDrb())
     {
-        /* 向ESM发承载状态消息 */
-        NAS_ERABM_InformEsmBearerStatus();
+        /* 向ESM发承载状态消息,主动发送时，消息的SessionId填为0，不需要匹配  */
+        NAS_ERABM_InformEsmBearerStatus(0);
     }
 }
 
@@ -821,8 +821,8 @@ VOS_VOID  NAS_ERABM_RrcRabIndResultProc
 
         if (NAS_ERABM_TIMER_STATE_RUNNING != NAS_ERABM_IsTimerRunning(NAS_ERABM_WAIT_EPSB_ACT_TIMER))
         {
-            /* 向ESM发承载状态消息 */
-            NAS_ERABM_InformEsmBearerStatus();
+            /* 向ESM发承载状态消息,主动发送时，消息的SessionId填为0，不需要匹配  */
+            NAS_ERABM_InformEsmBearerStatus(0);
         }
 
         return ;

@@ -40,89 +40,40 @@
 /* there are only 4 bit for reboot_type;
  * U can use the reserved number to add the new command*/
 enum {
-	REBOOT_BOOTLOADER_CMDNUM = 1,	/*1*/
-	REBOOT_RECOVERY_CMDNUM,		/*2*/
-	REBOOT_RESETFACTORY_CMDNUM,	/*3*/
-	REBOOT_RESETUSER_CMDNUM,	/*4*/
-	REBOOT_SDUPDATE_CMDNUM,		/*5*/
-	REBOOT_PANIC_CMDNUM,		/*6*/
-	REBOOT_RESIZE_CMDNUM,		/*7*/
-	REBOOT_RES_1,			/*8*/
-	REBOOT_USBUPDATE_CMDNUM,	/*9*/
-	REBOOT_CUST_CMDNUM,			/*10*/
-	REBOOT_USERSDUPDATE_CMDNUM,			/*11*/
-	REBOOT_OEM_RTC_CMDNUM,		/*12*/
+	REBOOT_BOOTLOADER_CMDNUM = 1,   /*1*/
+	REBOOT_RECOVERY_CMDNUM,         /*2*/
+	REBOOT_RESETFACTORY_CMDNUM,     /*3*/
+	REBOOT_RESETUSER_CMDNUM,        /*4*/
+	REBOOT_SDUPDATE_CMDNUM,         /*5*/
+	REBOOT_PANIC_CMDNUM,            /*6*/
+	REBOOT_RESIZE_CMDNUM,           /*7*/
+	REBOOT_RES_1,                   /*8*/
+	REBOOT_USBUPDATE_CMDNUM,        /*9*/
+	REBOOT_CUST_CMDNUM,             /*10*/
+	REBOOT_USERSDUPDATE_CMDNUM,     /*11*/
+	REBOOT_OEM_RTC_CMDNUM,          /*12*/
 	/*be careful: the define of cold reboot is different from k3v2*/
-	REBOOT_COLDBOOT_CMDNUM,		/*13*/
-	REBOOT_MOUNTFAIL_CMDNUM,		/*14*/
+	REBOOT_COLDBOOT_CMDNUM,         /*13*/
+	REBOOT_MOUNTFAIL_CMDNUM,        /*14*/
 	/*be careful: this is the new one in k3v3*/
-	REBOOT_WATCHDOG_CMDNUM,		/*15*/
+	REBOOT_WATCHDOG_CMDNUM,         /*15*/
 };
 
-#define REBOOT_COLDBOOT_STR		"coldboot"
-#define REBOOT_BOOTLOADER_STR		"bootloader"
-#define REBOOT_RECOVERY_STR		"recovery"
-#define REBOOT_RESETUSER_STR		"resetuser"
-#define REBOOT_RESETFACTORY_STR		"resetfactory"
-#define REBOOT_SDUPDATE_STR		"sdupdate"
-#define REBOOT_USBUPDATE_STR		"usbupdate"
-#define REBOOT_PANIC_STR		"panic"
-#define REBOOT_RESIZE_STR		"resize"
-#define REBOOT_WATCHDOG_STR		"watchdog"
-#define REBOOT_CUST_STR		"cust"
-#define REBOOT_USERSDUPDATE_STR		"usersdupdate"
+#define REBOOT_COLDBOOT_STR         "coldboot"
+#define REBOOT_BOOTLOADER_STR       "bootloader"
+#define REBOOT_RECOVERY_STR         "recovery"
+#define REBOOT_RESETUSER_STR        "resetuser"
+#define REBOOT_RESETFACTORY_STR     "resetfactory"
+#define REBOOT_SDUPDATE_STR         "sdupdate"
+#define REBOOT_USBUPDATE_STR        "usbupdate"
+#define REBOOT_PANIC_STR            "panic"
+#define REBOOT_RESIZE_STR           "resize"
+#define REBOOT_WATCHDOG_STR         "watchdog"
+#define REBOOT_CUST_STR             "cust"
+#define REBOOT_USERSDUPDATE_STR     "usersdupdate"
 #define REBOOT_OEM_RTC_STR		"oem_rtc"
 #define REBOOT_MOUNTFAIL_STR	"mountfail"
 #endif
-
-/************************ reserved memory ************************/
-#ifdef CONFIG_K3_FB_HEAP_CARVEOUT_USED
-/*----------------------------------------------------------------------
-|-----------------------------------------------------------------------|
-| Channel A (128M)      | 0x28000000 ~ 0x2D5FFFFF |  86M | unused       |
-|                       | 0x2D600000 ~ 0x2DBFFFFF |   6M | HIFI         |
-|                       | 0x2DC00000 ~ 0x2DDFFFFF |   2M | AUDIO        |
-|                       | 0x2DE00000 ~ 0x2E000000 |   2M | IOM3         |
-|                       | 0x2E000000 ~ 0x2FFFFFFF |  32M | SEC OS       |
-|-----------------------------------------------------------------------|
-| Channel B (128M)      | 0x30000000 ~ 0x30CFFFFF |  13M | ?????        |
-|                       | 0x30D00000 ~ 0x361FFFFF |  85M | MODEM        |
-|                       | 0x36200000 ~ 0x36600000 |   4M | MODEM SHARE  |
-|                       | 0x36600000 ~ 0x37700000 |  17M | MODEM SOCP   |
-|                       | 0x37700000 ~ 0x37FFFFFF |   9M | HIFI         |
-|-----------------------------------------------------------------------|
-| Dual Channel (118M)   | 0x38000000 ~ 0x3F5FFFFF | 118M | GRALLOC      |
-|                       | 0x3F600000 ~ 0x3F7FFFFF |   2M | IOMMU PTLB   |
-|                       | 0x3F800000 ~ 0x3FFF7FFF |  ~8M | RDR DEBUG    |
-|                       | 0x3FFF8000 ~ 0x3FFFFFFF |  32K | DDR TRAINING |
-------------------------------------------------------------------------*/
-#define HISI_RESERVE_MEM_1_START 0x28000000
-#define HISI_RESERVE_MEM_1_SIZE (0x38000000 - HISI_RESERVE_MEM_1_START)
-
-#define HISI_RESERVE_MEM_2_START 0x38000000
-#define HISI_RESERVE_MEM_2_SIZE (0x40000000 - HISI_RESERVE_MEM_2_START)
-
-unsigned long hisi_reserved_cpu_draw_phymem = 0;
-unsigned long hisi_reserved_cpu_draw_phymem_size = 0;
-
-unsigned long hisi_reserved_graphic_phymem = HISI_RESERVE_MEM_2_START;
-unsigned long hisi_reserved_graphic_phymem_size = (0x3F600000 - HISI_RESERVE_MEM_2_START);
-
-unsigned long hisi_reserved_misc_phymem = 0;
-unsigned long hisi_reserved_misc_phymem_size = 0;
-
-unsigned long hisi_reserved_smmu_phymem = 0x3F600000;
-unsigned long hisi_reserved_debug_phymem = 0x3F800000;
-
-unsigned long hisi_total_reserved_memory_size = HISI_RESERVE_MEM_1_SIZE
-		+ HISI_RESERVE_MEM_2_SIZE - (0x40000000 - 0x3F600000);
-unsigned long hisi_unused_reserved_memory_size = 0x2D600000 - HISI_RESERVE_MEM_1_START
-		+ (0x30D00000 - 0x30000000);
-/* used = total - unused - gralloc */
-unsigned long hisi_used_reserved_memory_size = HISI_RESERVE_MEM_1_SIZE
-		- (0x2D600000 - HISI_RESERVE_MEM_1_START) - (0x30D00000 - 0x30000000);
-
-#else /* !CONFIG_K3_FB_HEAP_CARVEOUT_USED */
 
 /*----------------------------------------------------------------------
 |-----------------------------------------------------------------------|
@@ -172,7 +123,6 @@ unsigned long hisi_used_reserved_memory_size = HISI_RESERVE_MEM_1_SIZE
 		- (0x29600000 - HISI_RESERVE_MEM_1_START) - (0x30D00000 - 0x30000000)
 		- (0x3A000000 - 0x38000000) - (0x2D600000 - 0x29600000);
 
-#endif /* CONFIG_K3_FB_HEAP_CARVEOUT_USED */
 
 EXPORT_SYMBOL(hisi_reserved_graphic_phymem);
 EXPORT_SYMBOL(hisi_reserved_graphic_phymem_size);
@@ -181,7 +131,6 @@ EXPORT_SYMBOL(hisi_reserved_debug_phymem);
 EXPORT_SYMBOL(hisi_total_reserved_memory_size);
 EXPORT_SYMBOL(hisi_used_reserved_memory_size);
 EXPORT_SYMBOL(hisi_unused_reserved_memory_size);
-
 /* be careful: the strings of reset type  should be the same as defined in fastboot*/
 #define RESETMODE_FLAG_ABNORMAL (1)
 #define RESETMODE_FLAG_NORMAL	(0)
@@ -292,17 +241,6 @@ static void __init hisi_timer_init(void)
 	clocksource_of_init();
 }
 
-static void hisi_reserve(void)
-{
-	printk("reserved memory start at 0x%x, which size is 0x%x\n",
-			HISI_RESERVE_MEM_1_START, HISI_RESERVE_MEM_1_SIZE);
-	memblock_remove(HISI_RESERVE_MEM_1_START, HISI_RESERVE_MEM_1_SIZE);
-
-	printk("reserved memory start at 0x%x, which size is 0x%x\n",
-			HISI_RESERVE_MEM_2_START, HISI_RESERVE_MEM_2_SIZE);
-	memblock_remove(HISI_RESERVE_MEM_2_START, HISI_RESERVE_MEM_2_SIZE);
-}
-
 static void __init hisi_init(void)
 {
 	of_platform_populate(NULL, of_default_bus_match_table, NULL, NULL);
@@ -391,95 +329,33 @@ static int get_sysctrl_addr(void)
 {
 	struct device_node *np;
 
-	if (sysctrl_addr == NULL) {
-		np = of_find_compatible_node(NULL, NULL, "hisilicon,sysctrl");
-		if (!np) {
-			printk(KERN_ERR "get sysctrl_addr error !\n");
-			return -1;
-		}
-		sysctrl_addr = of_iomap(np, 0);
-		if (sysctrl_addr == NULL) {
-			printk(KERN_ERR "get sysctrl_addr  error !\n");
-			return -1;
-		}
-	}
+	if (sysctrl_addr)
+		return 0;
 
+	np = of_find_compatible_node(NULL, NULL, "hisilicon,sysctrl");
+	if (!np) {
+		printk(KERN_ERR "get sysctrl_addr error, find node fail !\n");
+		return -1;
+	}
+	sysctrl_addr = of_iomap(np, 0);
+	if (sysctrl_addr == NULL) {
+		printk(KERN_ERR "get sysctrl_addr error, ioremap fail !\n");
+		return -1;
+	}
+	
 	printk("get_sysctrl_addr ok\n");
 	return 0;
-}
-
-int regulator_irq2_state = 0;
-#define HEX_STRING_MAX (16)
-int get_str_len(char *str)
-{
-	int count = 0;
-	char *p = str;
-
-	while ((*p != ',') && (*p != '\0'))     {
-		count++;
-		p++;
-	}
-
-	return count;
-}
-
-static int __init early_parse_regulator_state_cmdline(char *p)
-{
-	char tmpbuf[HEX_STRING_MAX + 1];
-	char *endptr = NULL;
-	int str_len = 0;
-
-	memset(tmpbuf, 0, HEX_STRING_MAX + 1);
-
-	str_len = get_str_len(p);
-	memcpy(tmpbuf, p, str_len);
-	tmpbuf[str_len] = '\0';
-	regulator_irq2_state = simple_strtoull(tmpbuf, &endptr, 16);
-
-	printk(KERN_INFO "regulator_irq2_state = 0x%x.\n", regulator_irq2_state);
-
-	return 0;
-}
-early_param("regulator_state", early_parse_regulator_state_cmdline);
-
-static void get_phone_fall_off_info(void)
-{
-	unsigned int reboot_state, reboot_state1, reboot_state2;
-
-	if (PMU_IRQ_BOI_R == (regulator_irq2_state & PMU_IRQ_BOI_R)) {
-		printk("[SMPL reboot]:addr[0x%x]=value[0x%x]\n",  PMU_REG_IRQ2, regulator_irq2_state);
-	} else {
-		printk("[Normal boot]:addr[0x%x]=value[0x%x]\n",  PMU_REG_IRQ2, regulator_irq2_state);
-	}
-
-	reboot_state = readl(pmu_addr + PMU_REBOOT_STATE_ADDR);
-	reboot_state1 = reboot_state & PMU_REBOOT_STATE_MASK;
-	if (!reboot_state1) {
-		reboot_state2 = reboot_state | PMU_REBOOT_STATE_MASK;
-		writel(reboot_state2, (pmu_addr + PMU_REBOOT_STATE_ADDR));
-		printk("[BAT_LOST]:addr[0x%x]=value[0x%x]\n",  PMU_REBOOT_STATE_ADDR, reboot_state1);
-	} else {
-		printk("[BAT_Still_KEPT]:addr[0x%x]=value[0x%x]\n",  PMU_REBOOT_STATE_ADDR, reboot_state1);
-	}
-
-	return;
 }
 
 static __init int k3v3_get_resource(void)
 {
 	get_pmu_addr();
+
 	get_sysctrl_addr();
 
 	return 0;
 }
-late_initcall(k3v3_get_resource);
-
-static __init int k3v3_get_reboot_info(void)
-{
-	get_phone_fall_off_info();
-	return 0;
-}
-late_initcall_sync(k3v3_get_reboot_info);
+early_initcall(k3v3_get_resource);
 
 void set_panic_resetflag(void)
 {
@@ -510,15 +386,16 @@ static unsigned int get_reboot_id(const char *cmd)
 	/* case: warm boot */
 	if (cmd) {
 		cmd_id = (find_cmd_num(cmd));
-	} else {
-		/* otherwise cold boot */
-		if (is_panic_reboot() != 0) {
-			cmd_id = find_cmd_num(REBOOT_PANIC_STR);
-		} else if (is_watchdog_reboot() != 0) {
-			cmd_id = find_cmd_num(REBOOT_WATCHDOG_STR);
-		}else {
-			cmd_id = find_cmd_num(REBOOT_COLDBOOT_STR);
-		}
+		return cmd_id;
+	} 
+	
+	/* otherwise cold boot */
+	if (is_panic_reboot() != 0) {
+		cmd_id = find_cmd_num(REBOOT_PANIC_STR);
+	} else if (is_watchdog_reboot() != 0) {
+		cmd_id = find_cmd_num(REBOOT_WATCHDOG_STR);
+	}else {
+		cmd_id = find_cmd_num(REBOOT_COLDBOOT_STR);
 	}
 
 	return cmd_id;
@@ -536,7 +413,7 @@ NOTIFY: can't use spin_lock,get resource function,printk in hisi_restart.
 */
 #if defined(CONFIG_ARM_PSCI) && defined(CONFIG_SECURE_EXTENSION)
 
-void hisi_restart(char mode, const char *cmd)
+static void hisi_restart(char mode, const char *cmd)
 {
 	unsigned int cmd_id = 13;
 
@@ -567,7 +444,7 @@ void hisi_restart(char mode, const char *cmd)
 
 #else
 
-void hisi_restart(char mode, const char *cmd)
+static void hisi_restart(char mode, const char *cmd)
 {
 #ifdef CONFIG_HISI_REBOOT_TYPE
 	unsigned int cmd_id;
@@ -604,6 +481,8 @@ void hisi_restart(char mode, const char *cmd)
 				writel(0xdeadbeef, (sysctrl_addr + REG_SYSCTRL_SCSYSSTAT));
 		}
 	}
+	/*never here*/
+
 	return;
 
 #else
@@ -621,17 +500,82 @@ static const char *hisi_compat[] __initdata = {
 	NULL,
 };
 
-#ifdef CONFIG_HIDE_PRODUCT_INFO
-DT_MACHINE_START(HS_DT, "unknown")
-#else
 DT_MACHINE_START(HS_DT, "hi3630")
-#endif
-	.dt_compat	= hisi_compat,
-	.smp_init       = smp_init_ops(hisi_smp_init_ops),
-	.map_io		= debug_ll_io_init,
-	.init_irq		= irqchip_init,
-	.init_time	= hisi_timer_init,
-	.init_machine	= hisi_init,
-	.restart	= hisi_restart,
-	.reserve		= hisi_reserve,
+	.dt_compat = hisi_compat,
+	.smp_init = smp_init_ops(hisi_smp_init_ops),
+	.map_io = debug_ll_io_init,
+	.init_irq = irqchip_init,
+	.init_time = hisi_timer_init,
+	.init_machine = hisi_init,
+	.restart = hisi_restart,
 MACHINE_END
+
+static int __init early_parse_storage_cmdline(char *p)
+{
+	phys_addr_t size;
+	phys_addr_t start;
+	char *endp;
+
+	start = 0x80000000;
+	size  = memparse(p, &endp);
+	if (*endp == '@')
+		start = memparse(endp + 1, NULL);
+
+	arm_add_memory(start, size);
+
+	return 0;
+}
+early_param("mem_append", early_parse_storage_cmdline);
+
+static int regulator_irq_state = 0;
+#define HEX_STRING_MAX (16)
+
+static int __init early_parse_regulator_state_cmdline(char *p)
+{
+	char tmpbuf[HEX_STRING_MAX + 1];
+	char *endptr = NULL;
+	int str_len = 0;
+
+	memset(tmpbuf, 0, HEX_STRING_MAX + 1);
+
+	str_len = strlen(p);
+	memcpy(tmpbuf, p, str_len);
+	tmpbuf[str_len] = '\0';
+	regulator_irq_state = simple_strtoull(tmpbuf, &endptr, 16);
+
+	printk(KERN_INFO "regulator_irq2_state = 0x%x.\n", regulator_irq_state);
+
+	return 0;
+}
+early_param("regulator_state", early_parse_regulator_state_cmdline);
+
+static void __init hi3630_get_fall_off_info(void)
+{
+	unsigned int reboot_state, reboot_state1, reboot_state2;
+
+	if (PMU_IRQ_BOI_R == (regulator_irq_state & PMU_IRQ_BOI_R)) {
+		printk("[SMPL reboot]:addr[0x%x]=value[0x%x]\n",  PMU_REG_IRQ2, regulator_irq_state);
+	} else {
+		printk("[Normal boot]:addr[0x%x]=value[0x%x]\n",  PMU_REG_IRQ2, regulator_irq_state);
+	}
+
+	reboot_state = readl(pmu_addr + PMU_REBOOT_STATE_ADDR);
+	reboot_state1 = reboot_state & PMU_REBOOT_STATE_MASK;
+	if (!reboot_state1) {
+		reboot_state2 = reboot_state | PMU_REBOOT_STATE_MASK;
+		writel(reboot_state2, (pmu_addr + PMU_REBOOT_STATE_ADDR));
+		printk("[BAT_LOST]:addr[0x%x]=value[0x%x]\n",  PMU_REBOOT_STATE_ADDR, reboot_state1);
+	} else {
+		printk("[BAT_Still_KEPT]:addr[0x%x]=value[0x%x]\n",  PMU_REBOOT_STATE_ADDR, reboot_state1);
+	}
+
+	return;
+}
+
+static int __init hi3630_get_reboot_info(void)
+{
+	hi3630_get_fall_off_info();
+	return 0;
+}
+late_initcall_sync(hi3630_get_reboot_info);
+

@@ -125,13 +125,7 @@ struct sigstack {
 #define _SV_RESET     4u    /* Set handler to SIG_DFL upon taken signal */
 #define _SV_IGNCHILD  8u    /* Do not send SIGCHLD */
 
-/*
- * sa_flags values: SA_STACK is not currently supported, but will allow the
- * usage of signal stacks by using the (now obsolete) sa_restorer field in
- * the sigaction structure as a stack pointer. This is now possible due to
- * the changes in signal handling. LBT 010493.
- * SA_RESTART flag to get restarting signals (which were the default long ago)
- */
+
 #define SA_NOCLDSTOP	_SV_IGNCHILD
 #define SA_STACK	_SV_SSTACK
 #define SA_ONSTACK	_SV_SSTACK

@@ -151,7 +151,7 @@ static void stv0297_set_symbolrate(struct stv0297_state *state, u32 srate)
 {
 	long tmp;
 
-	tmp = 131072L * srate;	/* 131072 = 2^17  */
+	tmp = 131072L * srate;
 	tmp = tmp / (STV0297_CLOCK_KHZ / 4);	/* 1/4 = 2^-2 */
 	tmp = tmp * 8192L;	/* 8192 = 2^13 */
 
@@ -165,7 +165,7 @@ static void stv0297_set_sweeprate(struct stv0297_state *state, short fshift, lon
 {
 	long tmp;
 
-	tmp = (long) fshift *262144L;	/* 262144 = 2*18 */
+	tmp = (long) fshift *262144L;
 	tmp /= symrate;
 	tmp *= 1024;		/* 1024 = 2*10   */
 

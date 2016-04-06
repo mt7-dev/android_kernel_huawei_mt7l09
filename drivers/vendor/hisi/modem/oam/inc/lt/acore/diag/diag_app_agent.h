@@ -16,6 +16,7 @@ extern "C" {
 #include  "vos.h"
 #include  "DrvInterface.h"
 #include  "diag_cmd_param_plugin.h"
+#include  "diag_common.h"
 
 #include  "msp_nvim.h"
 
@@ -106,6 +107,7 @@ extern VOS_UINT32 diag_BspSysviewProcEntry(VOS_UINT8* pstReq , VOS_UINT32 ulCmdI
 extern VOS_UINT32 diag_BspProcEntry(VOS_UINT8* pstReq , VOS_UINT32 ulCmdId);
 extern VOS_UINT32 diag_BspUtraceProcEntry (VOS_UINT8* pstReq , VOS_UINT32 ulCmdId);
 extern VOS_INT diag_ResetCcoreCB(DRV_RESET_CALLCBFUN_MOMENT enParam, int userdata);
+extern VOS_VOID diag_AppAgentConnectCmdProc(DIAG_CONNECT_CMD_ENUM_U32 connCmd);
 
 #if (VOS_OS_VER == VOS_WIN32)
 #pragma pack()

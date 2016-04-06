@@ -52,6 +52,8 @@
 
 #include "MmaMmcInterface.h"
 
+#include "NasMmcProcSuspend.h"
+
 #ifdef __cplusplus
 #if __cplusplus
 extern "C" {
@@ -106,6 +108,19 @@ VOS_UINT32 NAS_MMC_RcvSwitchOnRslt_NULL(
 }
 
 
+
+VOS_UINT32 NAS_MMC_RcvPowerOffReq_NULL(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+)
+{
+    NAS_WARNING_LOG(WUEPS_PID_MMC, "NAS_MMC_RcvPowerOffReq_NULL:rcv power off req in NULL state");
+
+    /* 已经为关机状态，直接回复MMA成功 */
+    NAS_Mmc_SndMmaPowerOffCnf();
+
+    return VOS_TRUE;
+}
 VOS_UINT32 NAS_MMC_RcvPowerOffReq_L1Main(
     VOS_UINT32                          ulEventType,
     struct MsgCB                       *pstMsg
@@ -333,25 +348,29 @@ VOS_UINT32 NAS_MMC_RcvSysCfgRslt_TrigSrvStaPlmnSrch_OnPlmn(VOS_VOID)
     }
 
 
-    ulCsServiceExistFlg = NAS_MML_GetCsServiceExistFlg();
-    if ( (VOS_FALSE == NAS_MML_IsCurrentRatHighestRat())
-      && (VOS_FALSE == ulCsServiceExistFlg))
+    if ( VOS_TRUE == NAS_MML_GetSyscfgTriHighRatSrchFlg() )
     {
-        if ( VOS_TRUE == NAS_MMC_IsNormalServiceStatus() )
+        ulCsServiceExistFlg = NAS_MML_GetCsServiceExistFlg();
+        if ( (VOS_FALSE == NAS_MML_IsCurrentRatHighestRat())
+          && (VOS_FALSE == ulCsServiceExistFlg) )
         {
-            /* SYSCFG设置后需要搜网，更新为限制服务状态并上报 */
-            NAS_MMC_SetCsServiceStatus(NAS_MMC_LIMITED_SERVICE);
-            NAS_MMC_SetPsServiceStatus(NAS_MMC_LIMITED_SERVICE);
-            NAS_MMC_SndMmaServiceStatusInd(MMA_MMC_SRVDOMAIN_CS_PS, MMA_MMC_SERVICE_STATUS_LIMITED_SERVICE);
+            if ( VOS_TRUE == NAS_MMC_IsNormalServiceStatus() )
+            {
+                /* SYSCFG设置后需要搜网，更新为限制服务状态并上报 */
+                NAS_MMC_SetCsServiceStatus(NAS_MMC_LIMITED_SERVICE);
+                NAS_MMC_SetPsServiceStatus(NAS_MMC_LIMITED_SERVICE);
+                NAS_MMC_SndMmaServiceStatusInd(MMA_MMC_SRVDOMAIN_CS_PS, MMA_MMC_SERVICE_STATUS_LIMITED_SERVICE);
+                NAS_MMC_UpdateRegStateSpecPlmnSearch();
+            }
+
+            /* 迁移到Intial状态 */
+            NAS_MMC_FSM_SetCurrState(NAS_MMC_L1_STA_INITIAL);
+
+            /* 构造并发送内部搜网信息:场景SYSCFG */
+            NAS_MMC_SndInterPlmnSearchReq(NAS_MMC_PLMN_SEARCH_SCENE_SYSCFG_SET, VOS_NULL_PTR, 0);
+
+            return VOS_TRUE;
         }
-
-        /* 迁移到Intial状态 */
-        NAS_MMC_FSM_SetCurrState(NAS_MMC_L1_STA_INITIAL);
-
-        /* 构造并发送内部搜网信息:场景SYSCFG */
-        NAS_MMC_SndInterPlmnSearchReq(NAS_MMC_PLMN_SEARCH_SCENE_SYSCFG_SET_HIGH_PRIO_RAT, VOS_NULL_PTR, 0);
-
-        return VOS_TRUE;
     }
 
     return VOS_FALSE;
@@ -391,9 +410,7 @@ VOS_VOID  NAS_MMC_ProcSyscfgRsltPlmnSrch_OnPlmn(VOS_VOID)
         NAS_MMC_SetCsServiceStatus(NAS_MMC_LIMITED_SERVICE);
         NAS_MMC_SetPsServiceStatus(NAS_MMC_LIMITED_SERVICE);
         NAS_MMC_SndMmaServiceStatusInd(MMA_MMC_SRVDOMAIN_NOT_REG_PLMN_SEARCHING, MMA_MMC_SERVICE_STATUS_LIMITED_SERVICE);
-    }
-
-    /* 构造并发送内部搜网信息:场景SYSCFG */
+        NAS_MMC_UpdateRegStateSpecPlmnSearch();
     NAS_MMC_SndInterPlmnSearchReq(NAS_MMC_PLMN_SEARCH_SCENE_SYSCFG_SET, VOS_NULL_PTR, 0);
 }
 
@@ -474,16 +491,13 @@ VOS_UINT32  NAS_MMC_RcvSyscfgRsltCnf_L1Main(
         if (VOS_TRUE == NAS_MMC_StartTimer(TI_NAS_MMC_HIGH_PRIO_RAT_HPLMN_TIMER, NAS_MMC_GetHighPrioRatHplmnTimerLen()))
         {
             NAS_MMC_AddCurHighPrioRatHplmnTimerFirstSearchCount_L1Main();
+            NAS_MMC_UpdateHighPrioRatHPlmnTimerTdCount();
         }
     }
-    
+
 
     return VOS_TRUE;
 }
-
-
-
-
 VOS_UINT32  NAS_MMC_RcvTafPlmnListReq_L1Main(
     VOS_UINT32                          ulEventType,
     struct MsgCB                       *pstMsg
@@ -652,6 +666,7 @@ VOS_UINT32  NAS_MMC_RcvMmcPlmnListRsltCnf_L1Main(
         if (VOS_TRUE == NAS_MMC_StartTimer(TI_NAS_MMC_HIGH_PRIO_RAT_HPLMN_TIMER, NAS_MMC_GetHighPrioRatHplmnTimerLen()))
         {
             NAS_MMC_AddCurHighPrioRatHplmnTimerFirstSearchCount_L1Main();
+            NAS_MMC_UpdateHighPrioRatHPlmnTimerTdCount();
         }
     }
 
@@ -844,8 +859,16 @@ VOS_UINT32  NAS_MMC_RcvMmcAnycellSearchRslt_Initial(
 
     pstAnycellRslt = (NAS_MMCMMC_ANYCELL_SEARCH_RSLT_STRU *)pstMsg;
 
-    if ( NAS_MMC_ANYCELL_SEARCH_REJECT == pstAnycellRslt->enResult )
+    if (NAS_MMC_ANYCELL_SEARCH_REJECT == pstAnycellRslt->enResult)
     {
+        NAS_MMC_FSM_SetCurrState(NAS_MMC_L1_STA_ON_PLMN);
+
+        if ( VOS_TRUE == NAS_MMC_StartTimer(TI_NAS_MMC_AVAILABLE_TIMER, NAS_MMC_GetNextAvailableTimerValue()) )
+        {
+            /* 递增 availble timer当前启动的次数或ncell搜网次数 */
+            NAS_MMC_AddAvailableTimerCount_OnPlmn();
+        }
+
         return VOS_TRUE;
     }
 
@@ -866,7 +889,7 @@ VOS_UINT32  NAS_MMC_RcvMmcAnycellSearchRslt_Initial(
                 NAS_MMC_AddAvailableTimerCount_OnPlmn();
             }
         }
-        
+
         /* 不需要启动available 定时器的情况和只启动一次的情况,更新注册状态 */
         NAS_MMC_UpdateRegStateAnyCellSearchSucc();
 
@@ -973,6 +996,7 @@ VOS_VOID NAS_MMC_RcvMmcPlmnSelectionRsltSucc_Initial(VOS_VOID)
         if (VOS_TRUE == NAS_MMC_StartTimer(TI_NAS_MMC_HIGH_PRIO_RAT_HPLMN_TIMER, NAS_MMC_GetHighPrioRatHplmnTimerLen()))
         {
             NAS_MMC_AddCurHighPrioRatHplmnTimerFirstSearchCount_L1Main();
+            NAS_MMC_UpdateHighPrioRatHPlmnTimerTdCount();
         }
     }
     /* 当前正常服务时，Available Timer启动次数清零 */
@@ -1220,6 +1244,16 @@ VOS_UINT32  NAS_MMC_RcvAreaLostInd_Initial(
     return VOS_TRUE;
 
 }
+VOS_UINT32 NAS_MMC_RcvSuspendInd_Initial(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+)
+{
+    /* 直接回复失败 */
+    NAS_MMC_SndSuspendRsp(NAS_MML_GetCurrNetRatType(), RRC_NAS_SUSPEND_FAILURE);
+
+    return VOS_TRUE;
+}
 VOS_UINT32  NAS_MMC_RcvMmcInterPlmnListReq_OnPlmn(
     VOS_UINT32                          ulEventType,
     struct MsgCB                        *pstMsg
@@ -1315,13 +1349,13 @@ VOS_UINT32  NAS_MMC_RcvMmPlmnSearchInd_OnPlmn(
 
             /* 触发ANYCELL搜网,构造需要anycell搜的接入技术为GU,优先顺序按照syscfg设置 */
             NAS_MMC_BuildCoverageRatPrioListEmgCall_L1Main(pstPrioRatList, &stAnycellSrchRatList);
-            
+
             NAS_MMC_FSM_SetCurrState(NAS_MMC_L1_STA_INITIAL);
             NAS_MMC_SndInterAnyCellSearchReq(&stAnycellSrchRatList);
-            
+
             return VOS_TRUE;
         }
-    
+
         NAS_MMC_FSM_SetCurrState(NAS_MMC_L1_STA_INITIAL);
 
         NAS_MMC_SndInterPlmnSearchReq(NAS_MMC_PLMN_SEARCH_SCENE_CSFB_SERVIEC_REJ, VOS_NULL_PTR, 0);
@@ -1685,7 +1719,7 @@ VOS_UINT32  NAS_MMC_RcvTiAvailTimerExpired_L1Main(
     NAS_MML_AVAIL_TIMER_CFG_STRU       *pstAvailTimerCfg = VOS_NULL_PTR;
     VOS_UINT32                          ulCount;
     VOS_UINT8                           ucIsCampSamePlmn;
-    NAS_MML_PLMN_ID_STRU               *pstCampPlmnId;    
+    NAS_MML_PLMN_ID_STRU               *pstCampPlmnId;
     NAS_MML_PLMN_ID_STRU               *pstOtherPlmnId;
     VOS_UINT8                           ucSvlteSupportFlg;
     VOS_UINT8                           ucLcEnableFlg;
@@ -1706,7 +1740,7 @@ VOS_UINT32  NAS_MMC_RcvTiAvailTimerExpired_L1Main(
         ucIsCampSamePlmn = VOS_TRUE;
     }
 
-    
+
     /* 是否需要触发指定搜网 */
     if (VOS_FALSE == NAS_MMC_IsAvailTimerExpiredTriggerPlmnSearch_L1Main())
     {
@@ -1793,7 +1827,7 @@ VOS_UINT32  NAS_MMC_RcvRrmPsStatusInd_L1Main(
         return VOS_TRUE;
     }
 
-    /* 如果存在NO RF标记信息，则触发搜网  */    
+    /* 如果存在NO RF标记信息，则触发搜网  */
     NAS_MMC_FSM_SetCurrState(NAS_MMC_L1_STA_INITIAL);
 
     /* 构造搜网消息 */
@@ -2009,7 +2043,7 @@ VOS_UINT32  NAS_MMC_RcvAreaLostInd_OnPlmn(
     RRMM_AREA_LOST_IND_STRU                                *pstAreaLostInd = VOS_NULL_PTR;
 
     VOS_UINT8                           ucNoRfFlg;
-        
+
     ucNoRfFlg    = NAS_MMC_GetPlmnSrchNoRfFlg();
 
     pstAreaLostInd = (RRMM_AREA_LOST_IND_STRU*)pstMsg;
@@ -2113,13 +2147,13 @@ VOS_UINT32  NAS_MMC_RcvAreaLostInd_OnPlmn(
                 if(VOS_TRUE == NAS_MMC_IsInterNationalRoamingSearchRPLMN(NAS_MMC_GetLastCampedPlmnid()->ulMcc))
                 {
                     NAS_MMC_SndInterPlmnSearchReq(NAS_MMC_PLMN_SEARCH_SCENE_AREA_LOST_ROAMING_CFG, VOS_NULL_PTR, 0);
-                    
+
                 }
                 else
                 {
                     NAS_MMC_SndInterPlmnSearchReq(NAS_MMC_PLMN_SEARCH_SCENE_AREA_LOST, VOS_NULL_PTR, 0);
                 }
-                
+
             }
 
         }
@@ -2209,7 +2243,7 @@ VOS_UINT32 NAS_MMC_RcvMmcMmcSuspendRslt_OnPlmn(
             {
                 NAS_MMC_SndInterPlmnSearchReq(NAS_MMC_PLMN_SEARCH_SCENE_AREA_LOST, &(pstSuspendRslt->astPlmnSearchInfo[0]), NAS_MML_MAX_RAT_NUM);
             }
-            
+
         }
     }
 
@@ -2414,6 +2448,7 @@ VOS_UINT32 NAS_MMC_RcvPsRegResultInd_OnPlmn(
             if (VOS_TRUE == NAS_MMC_StartTimer(TI_NAS_MMC_HIGH_PRIO_RAT_HPLMN_TIMER, NAS_MMC_GetHighPrioRatHplmnTimerLen()))
             {
                 NAS_MMC_AddCurHighPrioRatHplmnTimerFirstSearchCount_L1Main();
+                NAS_MMC_UpdateHighPrioRatHPlmnTimerTdCount();
             }
         }
 
@@ -2430,7 +2465,7 @@ VOS_UINT32 NAS_MMC_RcvPsRegResultInd_OnPlmn(
                 NAS_MMC_StopTimer(TI_NAS_MMC_AVAILABLE_TIMER);
             }
         }
-        
+
 
         return VOS_TRUE;
     }
@@ -2510,6 +2545,7 @@ VOS_UINT32 NAS_MMC_RcvCsRegResultInd_OnPlmn(
             if (VOS_TRUE == NAS_MMC_StartTimer(TI_NAS_MMC_HIGH_PRIO_RAT_HPLMN_TIMER, NAS_MMC_GetHighPrioRatHplmnTimerLen()))
             {
                 NAS_MMC_AddCurHighPrioRatHplmnTimerFirstSearchCount_L1Main();
+                NAS_MMC_UpdateHighPrioRatHPlmnTimerTdCount();
             }
         }
 
@@ -2926,6 +2962,7 @@ VOS_UINT32 NAS_MMC_RcvLmmMmcAttachInd_OnPlmn(
             if (VOS_TRUE == NAS_MMC_StartTimer(TI_NAS_MMC_HIGH_PRIO_RAT_HPLMN_TIMER, NAS_MMC_GetHighPrioRatHplmnTimerLen()))
             {
                 NAS_MMC_AddCurHighPrioRatHplmnTimerFirstSearchCount_L1Main();
+                NAS_MMC_UpdateHighPrioRatHPlmnTimerTdCount();
             }
         }
 
@@ -2933,7 +2970,7 @@ VOS_UINT32 NAS_MMC_RcvLmmMmcAttachInd_OnPlmn(
         /* 正常服务则停止available定时器 */
         if ( VOS_TRUE == NAS_MMC_IsPsNormalService())
         {
-            
+
             /* 不需要周期性搜索GU网络, 才停止available定时器 */
             if ( VOS_FALSE == NAS_MMC_IsCsPsMode1NeedPeriodSearchGU() )
             {
@@ -3027,14 +3064,15 @@ VOS_UINT32 NAS_MMC_RcvLmmMmcTauResultInd_OnPlmn(
             if (VOS_TRUE == NAS_MMC_StartTimer(TI_NAS_MMC_HIGH_PRIO_RAT_HPLMN_TIMER, NAS_MMC_GetHighPrioRatHplmnTimerLen()))
             {
                 NAS_MMC_AddCurHighPrioRatHplmnTimerFirstSearchCount_L1Main();
-            }       
+                NAS_MMC_UpdateHighPrioRatHPlmnTimerTdCount();
+            }
         }
 
 
         /* 正常服务则停止available定时器 */
         if ( VOS_TRUE == NAS_MMC_IsPsNormalService())
         {
-            
+
             /* 不需要周期性搜索GU网络, 才停止available定时器 */
             if ( VOS_FALSE == NAS_MMC_IsCsPsMode1NeedPeriodSearchGU() )
             {
@@ -3130,7 +3168,7 @@ VOS_UINT32 NAS_MMC_RcvLmmMmcDetachInd_OnPlmn(
         /* 正常服务则停止available定时器 */
         if ( VOS_TRUE == NAS_MMC_IsNormalServiceStatus())
         {
-            
+
             /* 不需要周期性搜索GU网络, 才停止available定时器 */
             if ( VOS_FALSE == NAS_MMC_IsCsPsMode1NeedPeriodSearchGU() )
             {
@@ -3197,7 +3235,7 @@ VOS_UINT32 NAS_MMC_RcvLmmMmcServiceRsltInd_OnPlmn(
         /* 正常服务则停止available定时器 */
         if ( VOS_TRUE == NAS_MMC_IsNormalServiceStatus())
         {
-            
+
             /* 不需要周期性搜索GU网络, 才停止available定时器 */
             if ( VOS_FALSE == NAS_MMC_IsCsPsMode1NeedPeriodSearchGU() )
             {
@@ -3318,7 +3356,7 @@ VOS_UINT32  NAS_MMC_RcvLmmAttachCnf_L1Main(
     /* 卡有效发起内部指定搜网 */
     NAS_MMC_SndInterPlmnSearchReq(NAS_MMC_PLMN_SEARCH_SCENE_AVAILABLE_TIMER_EXPIRED, VOS_NULL_PTR, 0);
 
-    
+
     return VOS_TRUE;
 }
 VOS_UINT32  NAS_MMC_RcvLmmServiceResultInd_Initial(
@@ -3378,7 +3416,7 @@ VOS_UINT32 NAS_MMC_RcvTiTryingHighPrioPlmnSearchExpired_OnPlmn(
 )
 {
     NAS_MMC_ClearNoRfInfo();
-    
+
     /* 启动BG搜索状态机 */
     NAS_MMC_FSM_InitFsmL2(NAS_MMC_FSM_BG_PLMN_SEARCH);
 
@@ -3667,7 +3705,7 @@ VOS_UINT32 NAS_MMC_IsLRegFailTriggerInterPlmnList_L1Main(VOS_VOID)
         {
             return VOS_FALSE;
         }
-        
+
         return VOS_TRUE;
     }
 
@@ -3748,7 +3786,7 @@ VOS_UINT32 NAS_MMC_IsGURegFailTriggerInterPlmnList_L1Main(VOS_VOID)
         {
             return VOS_FALSE;
         }
-        
+
         return VOS_TRUE;
     }
 
@@ -3761,12 +3799,12 @@ VOS_UINT32 NAS_MMC_IsAvailTimerExpiredTriggerPlmnSearch_L1Main(VOS_VOID)
     VOS_UINT32                          ulUsimStatusValid;
 
     ulUsimStatusValid   = NAS_MML_IsUsimStausValid();
-    
+
     /* OnPLmn卡无效不需要搜网 */
     if ((NAS_MMC_AS_CELL_CAMP_ON == NAS_MMC_GetAsCellCampOn())
      && (VOS_FALSE == ulUsimStatusValid))
     {
-        return VOS_FALSE;   
+        return VOS_FALSE;
     }
 
     /* 当前处在非正常服务状态发起搜网 */
@@ -3957,7 +3995,7 @@ VOS_UINT32 NAS_MMC_PerformPlmnSearch_L1Main(VOS_VOID)
      && (VOS_TRUE == ulSingleDomainPlmnListFlg))
     {
         ulSingleDomainPlmnListFlg =  VOS_FALSE;
-    }        
+    }
 
     if ((NAS_MMC_ADDITIONAL_ACTION_CSPS_ANYCELL == enAdditionalAction)
      || (NAS_MMC_ADDITIONAL_ACTION_SINGLE_DOMAIN_ANYCELL == enAdditionalAction))
@@ -4015,7 +4053,7 @@ VOS_VOID NAS_MMC_PerformBufferedPlmnSearch_L1Main(VOS_VOID)
     VOS_UINT32                          ulSpecPlmnSearchFlg;
     VOS_UINT32                          ulIsNeedPlmnSearch;
     VOS_UINT32                          ulIsNeedInterPlmnList;
-    NAS_MMC_PLMN_SEARCH_SCENE_ENUM_UINT32   enPlmnSearchScene; 
+    NAS_MMC_PLMN_SEARCH_SCENE_ENUM_UINT32   enPlmnSearchScene;
 
     /* 如果注册失败不需要发起搜网,则判断是否有缓存的搜网标志 */
     if (VOS_FALSE == NAS_MMC_GetBufferedPlmnSearchFlg())
@@ -4042,7 +4080,7 @@ VOS_VOID NAS_MMC_PerformBufferedPlmnSearch_L1Main(VOS_VOID)
     }
     else
     {
-        
+
         /* 当前非正常服务或在指定搜网状态或disable LTE时才处理缓存的指定搜网 */
         if ((VOS_FALSE                              == NAS_MMC_IsNormalServiceStatus())
          || (NAS_MMC_PLMN_SEARCH_SCENE_DISABLE_LTE  == enPlmnSearchScene)
@@ -4275,6 +4313,9 @@ VOS_VOID NAS_MMC_ProcCsRegRslt_L1Main(
     NAS_MMC_GU_ACTION_RSLT_INFO_STRU                        stActionRslt;
 #endif
 
+    NAS_MMC_DPLMN_NPLMN_CFG_INFO_STRU                      *pstDPlmnNPlmnCfgInfo = VOS_NULL_PTR;
+    pstDPlmnNPlmnCfgInfo  = NAS_MMC_GetDPlmnNPlmnCfgInfo();
+
     /* 将MM的服务状态转换为MMC 的*/
     enService = NAS_MMC_ConverMmStatusToMmc(NAS_MMC_REG_DOMAIN_CS,
                                         (NAS_MM_COM_SERVICE_STATUS_ENUM_UINT8)pstCsRegRsltInd->ulServiceStatus);
@@ -4289,6 +4330,14 @@ VOS_VOID NAS_MMC_ProcCsRegRslt_L1Main(
         /* 根据注册结果更新注册信息表 */
         NAS_MMC_UpdatePlmnRegInfoList(NAS_MML_GetCurrCampPlmnId(), NAS_MMC_REG_DOMAIN_CS, NAS_MML_REG_FAIL_CAUSE_NULL);
 
+        /* 更新DPLMN NPLMN列表 */
+        if (VOS_TRUE == NAS_MMC_IsRoam())
+        {
+            NAS_MMC_UpdateDPlmnNPlmnList(NAS_MML_GetCurrCampPlmnId(),NAS_MML_GetCurrNetRatType(), NAS_MMC_REG_DOMAIN_CS,&pstDPlmnNPlmnCfgInfo->usDplmnListNum,pstDPlmnNPlmnCfgInfo->astDPlmnList);
+            NAS_MMC_DeleteDPlmnNPlmnList(NAS_MML_GetCurrCampPlmnId(),NAS_MML_GetCurrNetRatType(), NAS_MMC_REG_DOMAIN_CS,&pstDPlmnNPlmnCfgInfo->usNplmnListNum,pstDPlmnNPlmnCfgInfo->astNPlmnList);
+            NAS_MMC_WriteDplmnNplmnToNvim();
+            NAS_MMC_LogDplmnNplmnList();
+        }
         /* 对Hplmn的Rej Lai信息的清除 */
         NAS_MMC_ClearHplmnRejDomainInfo(NAS_MML_GetCurrCampPlmnId(), NAS_MMC_REG_DOMAIN_CS);
 
@@ -4331,6 +4380,16 @@ VOS_VOID NAS_MMC_ProcCsRegRslt_L1Main(
         {
             /* 只在跟网测真实发生交互的时候才更新注册信息表 */
             NAS_MMC_UpdatePlmnRegInfoList(NAS_MML_GetCurrCampPlmnId(), NAS_MMC_REG_DOMAIN_CS, pstCsRegRsltInd->enRegFailCause);
+
+            /* 更新DPLMN NPLMN列表 */
+            if (VOS_TRUE == NAS_MMC_IsRoam())
+            {
+                NAS_MMC_UpdateDPlmnNPlmnList(NAS_MML_GetCurrCampPlmnId(),NAS_MML_GetCurrNetRatType(), NAS_MMC_REG_DOMAIN_CS,&pstDPlmnNPlmnCfgInfo->usNplmnListNum,pstDPlmnNPlmnCfgInfo->astNPlmnList);
+                NAS_MMC_DeleteDPlmnNPlmnList(NAS_MML_GetCurrCampPlmnId(),NAS_MML_GetCurrNetRatType(), NAS_MMC_REG_DOMAIN_CS,&pstDPlmnNPlmnCfgInfo->usDplmnListNum,pstDPlmnNPlmnCfgInfo->astDPlmnList);
+                NAS_MMC_WriteDplmnNplmnToNvim();
+                NAS_MMC_LogDplmnNplmnList();
+            }
+
         }
 
         NAS_MMC_UpdateUserSpecPlmnRegisterStatusWhenRegFail(pstCsRegRsltInd->enRegFailCause);
@@ -4591,13 +4650,13 @@ VOS_VOID  NAS_MMC_ProcLmmEpsOnlyTauResultInd_OnPlmn(
 
         /* 如果CS允许注册而且CS卡有效则更改CS注册状态为NAS_MML_REG_NOT_REGISTERED_NOT_SEARCH */
         ucSimCsRegStatus = NAS_MML_GetSimCsRegStatus();
-        
+
         if ((VOS_TRUE == NAS_MML_GetCsAttachAllowFlg())
          && (VOS_TRUE == ucSimCsRegStatus))
         {
             NAS_MMC_ChangeCsRegState(NAS_MML_REG_NOT_REGISTERED_NOT_SEARCH);
         }
-        
+
         /* 更新EPLMN */
         if ( VOS_TRUE == pstLmmTauIndMsg->bitOpEplmn)
         {
@@ -4730,7 +4789,7 @@ VOS_VOID  NAS_MMC_ProcLmmCombinedAttachInd_OnPlmn(
                 NAS_MMC_SetCsServiceStatus(NAS_MMC_LIMITED_SERVICE);
 
                 NAS_MMC_SndMmaServiceStatusInd(MMA_MMC_SRVDOMAIN_CS_PS, MMA_MMC_SERVICE_STATUS_LIMITED_SERVICE);
-                                
+
                 NAS_MMC_SndMmaRegResultInd(MMA_MMC_SRVDOMAIN_CS_PS, VOS_FALSE, NAS_MML_REG_FAIL_CAUSE_OTHER_CAUSE);
             }
             else
@@ -4892,7 +4951,7 @@ VOS_VOID    NAS_MMC_ProcCoverageLost_L1Main(VOS_VOID)
     MMA_MMC_SCELL_MEAS_REPORT_TYPE_UN   unMeasReportType;
 
     VOS_UINT8                           ucNoRfFlg;
-        
+
     ucNoRfFlg               = NAS_MMC_GetPlmnSrchNoRfFlg();
 
     pstCampCellInfo         = NAS_MML_GetCampCellInfo();
@@ -4964,9 +5023,12 @@ VOS_VOID    NAS_MMC_ProcOutOfService_L1Main(
     NAS_MMC_AS_CELL_CAMP_ON_ENUM_UINT8  enCampOnFlg;
 
     VOS_UINT8                           ucNoRfFlg;
-        
+
+    NAS_MMC_REG_CONTROL_ENUM_UINT8      enRegCtrl;
+
+    enRegCtrl  = NAS_MMC_GetRegCtrl();
     ucNoRfFlg    = NAS_MMC_GetPlmnSrchNoRfFlg();
-    
+
     enCampOnFlg  = NAS_MMC_GetAsCellCampOn();
 
     PS_MEM_SET(&stAnycellSrchRatList, 0x00, sizeof(stAnycellSrchRatList));
@@ -4984,7 +5046,8 @@ VOS_VOID    NAS_MMC_ProcOutOfService_L1Main(
     if ( (VOS_TRUE == NAS_MML_IsUsimStausValid())
        &&(NAS_MML_PLMN_FORBID_NULL  == ulPlmnLaType)
        &&(VOS_TRUE                  == pstPlmnSelectionRslt->ulCampFlg)
-       &&(NAS_MMC_AS_CELL_CAMP_ON   == enCampOnFlg))
+       &&(NAS_MMC_AS_CELL_CAMP_ON   == enCampOnFlg)
+       &&(NAS_MMC_REG_CONTROL_BY_3GPP2_CBP != enRegCtrl))
     {
 #if   (FEATURE_ON == FEATURE_LTE)
         /* 需要disalbe lte,同时不驻留在LTE下面 */
@@ -5006,7 +5069,7 @@ VOS_VOID    NAS_MMC_ProcOutOfService_L1Main(
 
 
             /* 搜网失败为NO RF，则不增加COUNTER,防止后续搜网速度减慢 */
-            if ( (VOS_TRUE  == NAS_MMC_StartTimer(TI_NAS_MMC_AVAILABLE_TIMER, NAS_MMC_GetNextAvailableTimerValue())) 
+            if ( (VOS_TRUE  == NAS_MMC_StartTimer(TI_NAS_MMC_AVAILABLE_TIMER, NAS_MMC_GetNextAvailableTimerValue()))
                && (VOS_FALSE == ucNoRfFlg) )
             {
                 /* 递增 availble timer当前启动的次数或ncell搜网次数 */
@@ -5239,7 +5302,7 @@ VOS_UINT32  NAS_MMC_RcvBgPlmnSearchRsltCnf_OnPlmn(
     VOS_UINT8                                               ucPsAttachAllowFlag;
     NAS_MMC_TIMER_STATUS_ENUM_U8                            enAvailableTimerStatus;
 
-    
+
     VOS_UINT32                                              ulSpecPlmnSearchFlg;
 
     /* 当前处在正常服务状态且未进行过搜网，则丢弃该消息，否则发起搜网 */
@@ -5270,7 +5333,12 @@ VOS_UINT32  NAS_MMC_RcvBgPlmnSearchRsltCnf_OnPlmn(
     }
 #endif
     NAS_MMC_StartHighPrioPlmnSearchTimer_BgSearch_OnPlmn(pstBgPlmnSearchRsltCnfMsg);
-    
+
+    if (VOS_TRUE == NAS_MMC_IsCampOnHighestPrioRatHplmn())
+    {
+        NAS_MMC_InitTdHighRatSearchCount();
+    }
+
     NAS_MMC_NotifyModeChange(NAS_MML_GetCurrNetRatType(),
                              NAS_MML_GetSimPsRegStatus());
 
@@ -5692,7 +5760,7 @@ VOS_UINT32  NAS_MMC_IsSingleDomainRegFailNeedPlmnSrch(
     /* 原因值初始化为BUT,默认不搜网 */
     enCsCause   = NAS_MML_REG_FAIL_CAUSE_BUTT;
     enPsCause   = NAS_MML_REG_FAIL_CAUSE_BUTT;
-    
+
     enCsService = NAS_MMC_GetCsServiceStatus();
     enPsService = NAS_MMC_GetPsServiceStatus();
 
@@ -5701,7 +5769,7 @@ VOS_UINT32  NAS_MMC_IsSingleDomainRegFailNeedPlmnSrch(
                                              &enCsCause,
                                              &enPsCause );
 
-    
+
     /* SOR定制打开时候，CS注册失败#17，需要发起LIST搜网 */
     if ((VOS_TRUE                               == NAS_MML_GetCsRejSearchSupportFlg())
      && (MMA_MMC_SRVDOMAIN_CS                   == enRegFailDomain)
@@ -5738,9 +5806,9 @@ VOS_UINT32 NAS_MMC_RcvMmaImsVoiceCapInd_OnPlmn(
 #if (FEATURE_ON == FEATURE_LTE)
 
     /* 进入ON PLMN的场景都是需要Disable L模的 */
-    
+
     NAS_MMC_FSM_SetCurrState(NAS_MMC_L1_STA_INITIAL);
-    
+
     /* 发起内部搜网 */
     NAS_MMC_SndInterPlmnSearchReq(NAS_MMC_PLMN_SEARCH_SCENE_DISABLE_LTE, VOS_NULL_PTR, 0);
 
@@ -5749,6 +5817,39 @@ VOS_UINT32 NAS_MMC_RcvMmaImsVoiceCapInd_OnPlmn(
     return VOS_TRUE;
 }
 
+
+
+#if (FEATURE_ON == FEATURE_IMS)
+
+VOS_UINT32 NAS_MMC_RcvMmaImsSwitchStateInd_OnPlmn(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+)
+{
+    /* 启动选网状态机进行网络获取和注册 */
+    NAS_MMC_FSM_SetCurrState(NAS_MMC_L1_STA_INITIAL);
+    
+    /* enable lte后需要触发搜网，发送内部搜网消息 */
+    NAS_MMC_SndInterPlmnSearchReq(NAS_MMC_PLMN_SEARCH_SCENE_ENABLE_LTE_PLMN_SEARCH, VOS_NULL_PTR, 0);
+
+    return VOS_TRUE;
+}
+#endif
+
+
+VOS_UINT32 NAS_MMC_RcvMmaVoiceDomainChangeInd_OnPlmn(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+)
+{
+    /* 启动选网状态机进行网络获取和注册 */
+    NAS_MMC_FSM_SetCurrState(NAS_MMC_L1_STA_INITIAL);
+    
+    /* enable lte后需要触发搜网，发送内部搜网消息 */
+    NAS_MMC_SndInterPlmnSearchReq(NAS_MMC_PLMN_SEARCH_SCENE_ENABLE_LTE_PLMN_SEARCH, VOS_NULL_PTR, 0);
+
+    return VOS_TRUE;
+}
 
 
 VOS_VOID  NAS_MMC_StartHighPrioPlmnSearchTimer_BgSearch_OnPlmn(
@@ -5768,12 +5869,13 @@ VOS_VOID  NAS_MMC_StartHighPrioPlmnSearchTimer_BgSearch_OnPlmn(
         {
            ulHplmnTimerLen = NAS_MMC_GetHighPrioRatHplmnTimerRetryLen();
         }
-    
+
         if (VOS_TRUE == NAS_MMC_StartTimer(TI_NAS_MMC_HIGH_PRIO_RAT_HPLMN_TIMER, ulHplmnTimerLen))
         {
             if (VOS_TRUE == pstBgPlmnSearchRsltCnfMsg->ulSearchCompleted)
             {
                 NAS_MMC_AddCurHighPrioRatHplmnTimerFirstSearchCount_L1Main();
+                NAS_MMC_UpdateHighPrioRatHPlmnTimerTdCount();
             }
         }
 
@@ -5827,10 +5929,10 @@ VOS_VOID  NAS_MMC_StartHighPrioPlmnSearchTimer_BgSearch_OnPlmn(
 
                 /* 将HPLMN启动类型设置为非首次启动 */
                 NAS_MMC_SetFirstStartHPlmnTimerFlg(VOS_FALSE);
-            }            
+            }
         }
     }
-    
+
     return;
 }
 VOS_UINT32 NAS_MMC_IsRegReqTriggerPlmnSrch_L1Main(

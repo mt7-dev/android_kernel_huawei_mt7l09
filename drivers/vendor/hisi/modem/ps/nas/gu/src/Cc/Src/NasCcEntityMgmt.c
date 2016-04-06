@@ -233,7 +233,7 @@ VOS_UINT32  NAS_CC_CreateEntity(
 VOS_VOID  NAS_CC_DeleteAllEntities(VOS_VOID)
 {
     VOS_UINT8                           i;
-    
+
     for (i = 0; i < NAS_CC_MAX_ENTITY_NUM; i++)
     {
         if (VOS_TRUE == f_astCcEntities[i].bUsed)
@@ -256,6 +256,11 @@ VOS_VOID  NAS_CC_DeleteEntity(
         NAS_ERROR_LOG(WUEPS_PID_CC, "NAS_CC_DeleteEntity: entityId wrong.");
         return;
     }
+
+    NAS_CC_StopAllTimer(entityId);
+    NAS_CC_DetachUserConn(entityId);
+    NAS_CC_LocalAbortDtmf(entityId);
+    NAS_CC_FlushDTMFBuff(entityId);
 
     f_astCcEntities[entityId].enCallState = NAS_CC_CALL_STATE_U0;
     f_astCcEntities[entityId].enHoldAuxState = NAS_CC_HOLD_AUX_S_IDLE;
@@ -468,6 +473,11 @@ VOS_VOID  NAS_CC_ChangeCallState(
     switch(enState)
     {
     case NAS_CC_CALL_STATE_U0:
+        if (VOS_TRUE == NAS_CC_IsLastCallEntityID(entityId))
+        {
+            NAS_CC_ClearAllCacheMsg();
+        }
+
         NAS_CC_DeleteEntity(entityId);
         break;
 
@@ -1253,7 +1263,7 @@ VOS_VOID  NAS_CC_QueueDtmfReq(
     VOS_UINT8                           ucKey
 )
 {
-    NAS_CC_CAUSE_VALUE_ENUM_U8          enCause;
+    NAS_CC_CAUSE_VALUE_ENUM_U32         enCause;
     NAS_CC_DTMF_Q_STATE_ENUM            enstate;
     NAS_CC_DTMF_REQ_RECORD_STRU        *pstCurrRecord;
 
@@ -1626,8 +1636,8 @@ VOS_VOID NAS_CC_FlushDTMFBuff(
     NAS_CC_ENTITY_ID_T                  entityId
 )
 {
-    NAS_CC_DTMF_REQ_RECORD_STRU             stDtmfReq;
-    NAS_CC_CAUSE_VALUE_ENUM_U8          enCause;
+    NAS_CC_DTMF_REQ_RECORD_STRU         stDtmfReq;
+    NAS_CC_CAUSE_VALUE_ENUM_U32         enCause;
     VOS_UINT8                           i;
 
     /* 初始化 */
@@ -1908,7 +1918,7 @@ VOS_VOID NAS_CC_ProcSsSwitchSingleCallRetrieveFail(VOS_VOID)
 {
     NAS_CC_ENTITY_ID_T                  ulEntityID;
     NAS_CC_MPTY_AUX_STATE_ENUM_U8       enMptyState;
-    NAS_CC_CAUSE_VALUE_ENUM_U8          enCause;
+    NAS_CC_CAUSE_VALUE_ENUM_U32         enCause;
     NAS_CC_MSG_FACILITY_MT_STRU        *pstMsg          = VOS_NULL_PTR;
     VOS_UINT8                           ucInvokeId;
 
@@ -2034,7 +2044,7 @@ VOS_VOID NAS_CC_ProcSsSwitchSingleCallHoldFail(VOS_VOID)
 {
     NAS_CC_ENTITY_ID_T                  ulEntityID;
     NAS_CC_MPTY_AUX_STATE_ENUM_U8       enMptyState;
-    NAS_CC_CAUSE_VALUE_ENUM_U8          enCause;
+    NAS_CC_CAUSE_VALUE_ENUM_U32         enCause;
     NAS_CC_MSG_FACILITY_MT_STRU        *pstMsg          = VOS_NULL_PTR;
     VOS_UINT8                           ucInvokeId;
 
@@ -2208,8 +2218,8 @@ VOS_VOID NAS_CC_ProcSsSwitchMultiCallFail(VOS_VOID)
     NAS_CC_ENTITY_ID_T                  ulRetrieveEntityID;
     NAS_CC_MPTY_AUX_STATE_ENUM_U8       enHoldMptyState;
     NAS_CC_MPTY_AUX_STATE_ENUM_U8       enRetrieveMptyState;
-    NAS_CC_CAUSE_VALUE_ENUM_U8          enHoldCause;
-    NAS_CC_CAUSE_VALUE_ENUM_U8          enRetrieveCause;
+    NAS_CC_CAUSE_VALUE_ENUM_U32         enHoldCause;
+    NAS_CC_CAUSE_VALUE_ENUM_U32         enRetrieveCause;
     NAS_CC_SS_SWITCH_STATE_ENUM_UINT8   enHoldState;
     NAS_CC_SS_SWITCH_STATE_ENUM_UINT8   enRetrieveState;
     NAS_CC_MSG_FACILITY_MT_STRU        *pstMsg          = VOS_NULL_PTR;
@@ -2536,31 +2546,31 @@ VOS_VOID  NAS_CC_CreateCcEntityWithCallEntityInfo(
             f_astCcEntities[entityId].ucTi           = pstSrvccCallInfoNtf->astEntityStatus[i].ucTi;
             f_astCcEntities[entityId].enHoldAuxState = pstSrvccCallInfoNtf->astEntityStatus[i].enHoldAuxState;
             f_astCcEntities[entityId].enMptyAuxState = pstSrvccCallInfoNtf->astEntityStatus[i].enMptyAuxState;
-      
+
             /* 更新BC信息 */
             stBcParams.enItc = pstSrvccCallInfoNtf->astEntityStatus[i].stBC1.Octet3.InfoTransCap;
             NAS_CC_UpdateBcParams(entityId, NAS_CC_BC_PARAM_1, &stBcParams);
-            
+
             if (pstSrvccCallInfoNtf->astEntityStatus[i].stBC2.IsExist)
             {
                 stBcParams.enItc = pstSrvccCallInfoNtf->astEntityStatus[i].stBC2.Octet3.InfoTransCap;
                 NAS_CC_UpdateBcParams(entityId, NAS_CC_BC_PARAM_2, &stBcParams);
             }
-        }        
-    }  
+        }
+    }
 }
 #endif
 
 
 VOS_VOID  NAS_CC_GetEntityTiInfo(
     VOS_UINT8                          *pucTiNum,
-    VOS_UINT8                          *pucTi 
+    VOS_UINT8                          *pucTi
 )
 {
     VOS_UINT8                           i;
 
     *pucTiNum = 0;
-    
+
     /* 寻找未使用的CC实体 */
     for (i =0; i <NAS_CC_MAX_ENTITY_NUM; i++)
     {
@@ -2574,6 +2584,160 @@ VOS_VOID  NAS_CC_GetEntityTiInfo(
 }
 
 
+#if (FEATURE_ON == FEATURE_PTM)
+VOS_VOID NAS_CC_SndAcpuOmErrLogRptCnf(
+    VOS_CHAR                           *pbuffer,
+    VOS_UINT32                          ulBufUseLen
+)
+{
+    OM_ERR_LOG_REPORT_CNF_STRU         *pstQryCnf = VOS_NULL_PTR;
+    VOS_UINT32                          ulMsgLen;
+
+    /* 上报的消息总长度 */
+    ulMsgLen  = ((sizeof(OM_ERR_LOG_REPORT_CNF_STRU) - VOS_MSG_HEAD_LENGTH) - 4) + ulBufUseLen;
+
+    /* 消息空间申请 */
+    pstQryCnf = (OM_ERR_LOG_REPORT_CNF_STRU *)PS_ALLOC_MSG(WUEPS_PID_CC, ulMsgLen);
+    if (VOS_NULL_PTR == pstQryCnf)
+    {
+        NAS_CC_ERR_LOG("NAS_CC_SndAcpuOmErrLogRptCnf: alloc msg fail!");
+        return;
+    }
+
+    pstQryCnf->ulReceiverCpuId  = VOS_LOCAL_CPUID;
+    pstQryCnf->ulSenderCpuId    = VOS_LOCAL_CPUID;
+    pstQryCnf->ulReceiverPid    = ACPU_PID_OM;
+    pstQryCnf->ulSenderPid      = WUEPS_PID_CC;
+    pstQryCnf->ulMsgName        = ID_OM_ERR_LOG_REPORT_CNF;
+    pstQryCnf->ulMsgType        = OM_ERR_LOG_MSG_ERR_REPORT;
+    pstQryCnf->ulMsgSN          = 0;
+    pstQryCnf->ulRptlen         = ulBufUseLen;
+
+    /* buffer不为空时，len也是不会为空的 */
+    if (VOS_NULL_PTR != pbuffer)
+    {
+        PS_MEM_CPY(pstQryCnf->aucContent, pbuffer, ulBufUseLen);
+    }
+
+    if (VOS_OK != PS_SEND_MSG(WUEPS_PID_CC, pstQryCnf))
+    {
+        NAS_CC_ERR_LOG("NAS_CC_SndAcpuOmErrLogRptCnf: SEND MSG FAIL");
+    }
+
+    return;
+
+}
+VOS_VOID NAS_CC_RcvAcpuOmErrLogRptReq(
+    const VOS_VOID                           *pMsg
+)
+{
+    VOS_CHAR                           *pbuffer   = VOS_NULL_PTR;
+    VOS_UINT32                          ulBufUseLen;
+    VOS_UINT32                          ulRealLen;
+    VOS_UINT32                          ulTotalLen;
+    NAS_ERR_LOG_MNTN_EVENT_STRU         stNasErrLogMntnEvent;
+
+    /* 查询一下RING BUFFER中有多少数据，以便分配内存 */
+    ulBufUseLen = NAS_CC_GetErrLogRingBufferUseBytes();
+    ulTotalLen = ulBufUseLen + sizeof(NAS_ERR_LOG_MNTN_EVENT_STRU);
+
+    pbuffer = (VOS_CHAR *)PS_MEM_ALLOC(WUEPS_PID_CC, ulTotalLen);
+    if (VOS_NULL_PTR == pbuffer)
+    {
+        /* 发送ID_OM_ERR_LOG_REPORT_CNF内容为空的消息给OM */
+        NAS_CC_SndAcpuOmErrLogRptCnf(VOS_NULL_PTR, 0);
+        return;
+    }
+
+    PS_MEM_SET(pbuffer, 0, ulTotalLen);
+
+    /* 获取RING BUFFER的内容 */
+    ulRealLen = NAS_CC_GetErrLogRingBufContent(pbuffer, ulBufUseLen);
+    if (ulRealLen != ulBufUseLen)
+    {
+        /* 发送ID_OM_ERR_LOG_REPORT_CNF内容为空的消息给OM */
+        NAS_CC_SndAcpuOmErrLogRptCnf(VOS_NULL_PTR, 0);
+        PS_MEM_FREE(WUEPS_PID_CC, pbuffer);
+        return;
+    }
+
+    /* 将缓冲区溢出次数信息追加在RingBuf后面 */
+    NAS_COMM_BULID_ERRLOG_HEADER_INFO(&stNasErrLogMntnEvent.stHeader,
+                                      VOS_GetModemIDFromPid(WUEPS_PID_CC),
+                                      NAS_ERR_LOG_ALM_MNTN,
+                                      NAS_GetErrLogAlmLevel(NAS_ERR_LOG_ALM_MNTN),
+                                      VOS_GetSlice(),
+                                      (sizeof(NAS_ERR_LOG_MNTN_EVENT_STRU) - sizeof(OM_ERR_LOG_HEADER_STRU)));
+
+    stNasErrLogMntnEvent.ulCount = NAS_CC_GetErrlogOverflowCnt();
+
+    PS_MEM_CPY(pbuffer + ulBufUseLen, &stNasErrLogMntnEvent, sizeof(stNasErrLogMntnEvent));
+
+    /* 获取完了后需要将RINGBUFFER清空 */
+    NAS_CC_CleanErrLogRingBuf();
+
+    /* 重置溢出计数 */
+    NAS_CC_SetErrlogOverflowCnt(0);
+
+    /* 可维可测BUF溢出的勾包 */
+    NAS_COM_MntnPutRingbuf(NAS_ERR_LOG_ALM_MNTN,
+                           WUEPS_PID_CC,
+                           (VOS_UINT8 *)&stNasErrLogMntnEvent,
+                           sizeof(stNasErrLogMntnEvent));
+
+    /* 发送ID_OM_ERR_LOG_REPORT_CNF消息给ACPU OM */
+    NAS_CC_SndAcpuOmErrLogRptCnf(pbuffer, ulTotalLen);
+
+    PS_MEM_FREE(WUEPS_PID_CC, pbuffer);
+
+    return;
+}
+VOS_VOID NAS_CC_RcvAcpuOmErrLogCtrlInd(
+    const VOS_VOID                           *pMsg
+)
+{
+    OM_ERROR_LOG_CTRL_IND_STRU         *pstRcvMsg = VOS_NULL_PTR;
+
+    pstRcvMsg = (OM_ERROR_LOG_CTRL_IND_STRU*)pMsg;
+
+    /* 更新ERRLOG控制标识 */
+    if ((VOS_FALSE == pstRcvMsg->ucAlmStatus)
+     || (VOS_TRUE  == pstRcvMsg->ucAlmStatus))
+    {
+        NAS_CC_SetErrlogCtrlFlag(pstRcvMsg->ucAlmStatus);
+    }
+
+    if ((pstRcvMsg->ucAlmLevel >= NAS_ERR_LOG_CTRL_LEVEL_CRITICAL)
+     && (pstRcvMsg->ucAlmLevel <= NAS_ERR_LOG_CTRL_LEVEL_WARNING))
+    {
+        NAS_CC_SetErrlogAlmLevel(pstRcvMsg->ucAlmLevel);
+    }
+
+    return;
+}
+VOS_VOID NAS_CC_RcvAcpuOmMsg(
+    const VOS_VOID                     *pMsg
+)
+{
+    MSG_HEADER_STRU                    *pMsgHeader = (MSG_HEADER_STRU *)pMsg;
+
+    switch(pMsgHeader->ulMsgName)
+    {
+        case ID_OM_ERR_LOG_CTRL_IND:
+            NAS_CC_RcvAcpuOmErrLogCtrlInd(pMsg);
+            break;
+
+        case ID_OM_ERR_LOG_REPORT_REQ:
+            NAS_CC_RcvAcpuOmErrLogRptReq(pMsg);
+            break;
+
+        default:
+            break;
+    }
+
+    return;
+}
+#endif
 #ifdef __cplusplus
 #if __cplusplus
 }

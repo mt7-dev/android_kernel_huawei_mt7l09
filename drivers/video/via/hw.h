@@ -310,7 +310,6 @@
 #define LCD_POWER_SEQ_TD1               50000
 /* 0 us */
 #define LCD_POWER_SEQ_TD2               0
-/* 210 ms = 210000 us */
 #define LCD_POWER_SEQ_TD3               210000
 /* 2^10 * (1/14.31818M) = 71.475 us (K400.revA) */
 #define CLE266_POWER_SEQ_UNIT           71

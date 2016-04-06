@@ -58,12 +58,10 @@ struct funnel_drvdata {
 	struct coresight_device	*csdev;
 	struct clk		*clk_at;
 	struct clk		*clk_dbg;
-	struct regulator_bulk_data *top_cssys_regu;
 	uint32_t		priority;
 	bool			status;
 };
 
-#if 0
 static int funnel_enable_clock(struct funnel_drvdata *drvdata)
 {
 	int ret = 0;
@@ -88,7 +86,6 @@ static void funnel_disable_clock(struct funnel_drvdata *drvdata)
 	clk_disable_unprepare(drvdata->clk_at);
 	clk_disable_unprepare(drvdata->clk_dbg);
 }
-#endif
 
 static void __funnel_enable(struct funnel_drvdata *drvdata, int port)
 {
@@ -100,8 +97,8 @@ static void __funnel_enable(struct funnel_drvdata *drvdata, int port)
 	functl &= ~FUNNEL_HOLDTIME_MASK;
 	functl |= FUNNEL_HOLDTIME;
 	functl |= (1 << port);
-	funnel_writel(drvdata, functl, FUNNEL_FUNCTL);
-	/*funnel_writel(drvdata, 0x31f, FUNNEL_FUNCTL);*/
+	/*funnel_writel(drvdata, functl, FUNNEL_FUNCTL);*/
+	funnel_writel(drvdata, 0x31f, FUNNEL_FUNCTL);
 
 	funnel_writel(drvdata, drvdata->priority, FUNNEL_PRICTL);
 
@@ -120,17 +117,10 @@ static int funnel_enable(struct coresight_device *csdev, int inport,
 	struct funnel_drvdata *drvdata = dev_get_drvdata(csdev->dev.parent);
 
 	int ret;
-#if 1
-	ret = regulator_bulk_enable(1, drvdata->top_cssys_regu);
-	if (ret) {
-		printk("failed to enable regulators %d\n", ret);
-		return ret;
-	}
-#else
+
 	ret = funnel_enable_clock(drvdata);
 	if (ret)
 		return ret;
-#endif
 
 	__funnel_enable(drvdata, inport);
 
@@ -157,14 +147,8 @@ static void funnel_disable(struct coresight_device *csdev, int inport,
 	struct funnel_drvdata *drvdata = dev_get_drvdata(csdev->dev.parent);
 
 	__funnel_disable(drvdata, inport);
-#if 1
-	if (regulator_is_enabled(drvdata->top_cssys_regu->consumer)) {
-		//regulator_bulk_disable(1, drvdata->top_cssys_regu);
-	}
 
-#else
 	funnel_disable_clock(drvdata);
-#endif
 
 	dev_info(drvdata->dev, "FUNNEL inport %d disabled\n", inport);
 }
@@ -224,24 +208,20 @@ static int funnel_probe(struct platform_device *pdev)
 	struct funnel_drvdata *drvdata = NULL;
 	struct resource *res = NULL;
 	struct coresight_desc *desc = NULL;
+	int ret = 0;
 
 	if (pdev->dev.of_node) {
 		pdata = of_get_coresight_platform_data(dev, pdev->dev.of_node);
 		if (IS_ERR(pdata)) {
-			dev_err(&pdev->dev, "of_get_coresight_platform_data error!\n");
+			dev_err(drvdata->dev, "of_get_coresight_platform_data error!\n");
 			return PTR_ERR(pdata);
 		}
 		pdev->dev.platform_data = pdata;
 	}
 
-	if (!pdata) {
-		dev_err(&pdev->dev, "coresight pdata is NULL\n");
-		return -ENODEV;
-	}
-
 	drvdata = devm_kzalloc(dev, sizeof(*drvdata), GFP_KERNEL);
 	if (!drvdata) {
-		dev_err(&pdev->dev, "coresight kzalloc error!\n");
+		dev_err(drvdata->dev, "coresight kzalloc error!\n");
 		return -ENOMEM;
 	}
 	drvdata->dev = &pdev->dev;
@@ -260,9 +240,7 @@ static int funnel_probe(struct platform_device *pdev)
 	}
 
 	drvdata->status = false;
-#if 1
-	drvdata->top_cssys_regu = &pdata->top_cssys_regu;
-#else
+
 	drvdata->clk_at= devm_clk_get(dev, pdata->clock_at);
 	if (IS_ERR(drvdata->clk_at)) {
 		dev_err(drvdata->dev, "coresight get clock error!\n");
@@ -288,7 +266,6 @@ static int funnel_probe(struct platform_device *pdev)
 		dev_err(drvdata->dev, "coresight set clock rate error!\n");
 		return -ENODEV;
 	}
-#endif
 
 	desc = devm_kzalloc(dev, sizeof(*desc), GFP_KERNEL);
 	if (!desc) {

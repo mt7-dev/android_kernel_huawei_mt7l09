@@ -520,7 +520,7 @@ static int saa7127_set_output_type(struct v4l2_subdev *sd, int output)
 		if (state->ident == V4L2_IDENT_SAA7129)
 			state->reg_2d = 0x20;	/* CVBS only */
 		else
-			state->reg_2d = 0x08;	/* 00001000 CVBS only, RGB DAC's off (high impedance mode) */
+			state->reg_2d = 0x08;
 		state->reg_3a = 0x13;	/* by default switch YUV to RGB-matrix on */
 		break;
 
@@ -534,12 +534,12 @@ static int saa7127_set_output_type(struct v4l2_subdev *sd, int output)
 
 	case SAA7127_OUTPUT_TYPE_YUV_V:
 		state->reg_2d = 0x4f;	/* reg 2D = 01001111, all DAC's on, RGB + VBS */
-		state->reg_3a = 0x0b;	/* reg 3A = 00001011, bypass RGB-matrix */
+		state->reg_3a = 0x0b;
 		break;
 
 	case SAA7127_OUTPUT_TYPE_YUV_C:
-		state->reg_2d = 0x0f;	/* reg 2D = 00001111, all DAC's on, RGB + CVBS */
-		state->reg_3a = 0x0b;	/* reg 3A = 00001011, bypass RGB-matrix */
+		state->reg_2d = 0x0f;
+		state->reg_3a = 0x0b;
 		break;
 
 	case SAA7127_OUTPUT_TYPE_BOTH:

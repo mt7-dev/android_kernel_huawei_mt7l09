@@ -36,9 +36,8 @@
 #include <linux/vmalloc.h>
 #include <linux/slab.h>
 #include <linux/log2.h>
-#include <linux/export.h>
 #include <asm/shmparam.h>
-#include <drm/drmP.h>
+#include "drmP.h"
 
 static struct drm_map_list *drm_find_matching_map(struct drm_device *dev,
 						  struct drm_local_map *map)
@@ -641,6 +640,8 @@ int drm_addbufs_agp(struct drm_device * dev, struct drm_buf_desc * request)
 
 	if (order < DRM_MIN_ORDER || order > DRM_MAX_ORDER)
 		return -EINVAL;
+	if (dev->queue_count)
+		return -EBUSY;	/* Not while in use */
 
 	/* Make sure buffers are located in AGP memory that we own */
 	valid = 0;
@@ -702,6 +703,7 @@ int drm_addbufs_agp(struct drm_device * dev, struct drm_buf_desc * request)
 		buf->next = NULL;
 		buf->waiting = 0;
 		buf->pending = 0;
+		init_waitqueue_head(&buf->dma_wait);
 		buf->file_priv = NULL;
 
 		buf->dev_priv_size = dev->driver->dev_priv_size;
@@ -793,11 +795,13 @@ int drm_addbufs_pci(struct drm_device * dev, struct drm_buf_desc * request)
 	order = drm_order(request->size);
 	size = 1 << order;
 
-	DRM_DEBUG("count=%d, size=%d (%d), order=%d\n",
-		  request->count, request->size, size, order);
+	DRM_DEBUG("count=%d, size=%d (%d), order=%d, queue_count=%d\n",
+		  request->count, request->size, size, order, dev->queue_count);
 
 	if (order < DRM_MIN_ORDER || order > DRM_MAX_ORDER)
 		return -EINVAL;
+	if (dev->queue_count)
+		return -EBUSY;	/* Not while in use */
 
 	alignment = (request->flags & _DRM_PAGE_ALIGN)
 	    ? PAGE_ALIGN(size) : size;
@@ -899,6 +903,7 @@ int drm_addbufs_pci(struct drm_device * dev, struct drm_buf_desc * request)
 			buf->next = NULL;
 			buf->waiting = 0;
 			buf->pending = 0;
+			init_waitqueue_head(&buf->dma_wait);
 			buf->file_priv = NULL;
 
 			buf->dev_priv_size = dev->driver->dev_priv_size;
@@ -1013,6 +1018,8 @@ static int drm_addbufs_sg(struct drm_device * dev, struct drm_buf_desc * request
 
 	if (order < DRM_MIN_ORDER || order > DRM_MAX_ORDER)
 		return -EINVAL;
+	if (dev->queue_count)
+		return -EBUSY;	/* Not while in use */
 
 	spin_lock(&dev->count_lock);
 	if (dev->buf_use) {
@@ -1063,6 +1070,7 @@ static int drm_addbufs_sg(struct drm_device * dev, struct drm_buf_desc * request
 		buf->next = NULL;
 		buf->waiting = 0;
 		buf->pending = 0;
+		init_waitqueue_head(&buf->dma_wait);
 		buf->file_priv = NULL;
 
 		buf->dev_priv_size = dev->driver->dev_priv_size;
@@ -1168,6 +1176,8 @@ static int drm_addbufs_fb(struct drm_device * dev, struct drm_buf_desc * request
 
 	if (order < DRM_MIN_ORDER || order > DRM_MAX_ORDER)
 		return -EINVAL;
+	if (dev->queue_count)
+		return -EBUSY;	/* Not while in use */
 
 	spin_lock(&dev->count_lock);
 	if (dev->buf_use) {
@@ -1217,6 +1227,7 @@ static int drm_addbufs_fb(struct drm_device * dev, struct drm_buf_desc * request
 		buf->next = NULL;
 		buf->waiting = 0;
 		buf->pending = 0;
+		init_waitqueue_head(&buf->dma_wait);
 		buf->file_priv = NULL;
 
 		buf->dev_priv_size = dev->driver->dev_priv_size;
@@ -1498,8 +1509,8 @@ int drm_freebufs(struct drm_device *dev, void *data,
  * \param arg pointer to a drm_buf_map structure.
  * \return zero on success or a negative number on failure.
  *
- * Maps the AGP, SG or PCI buffer region with vm_mmap(), and copies information
- * about each buffer into user space. For PCI buffers, it calls vm_mmap() with
+ * Maps the AGP, SG or PCI buffer region with do_mmap(), and copies information
+ * about each buffer into user space. For PCI buffers, it calls do_mmap() with
  * offset equal to 0, which drm_mmap() interpretes as PCI buffers and calls
  * drm_mmap_dma().
  */
@@ -1541,14 +1552,18 @@ int drm_mapbufs(struct drm_device *dev, void *data,
 				retcode = -EINVAL;
 				goto done;
 			}
-			virtual = vm_mmap(file_priv->filp, 0, map->size,
+			down_write(&current->mm->mmap_sem);
+			virtual = do_mmap(file_priv->filp, 0, map->size,
 					  PROT_READ | PROT_WRITE,
 					  MAP_SHARED,
 					  token);
+			up_write(&current->mm->mmap_sem);
 		} else {
-			virtual = vm_mmap(file_priv->filp, 0, dma->byte_count,
+			down_write(&current->mm->mmap_sem);
+			virtual = do_mmap(file_priv->filp, 0, dma->byte_count,
 					  PROT_READ | PROT_WRITE,
 					  MAP_SHARED, 0);
+			up_write(&current->mm->mmap_sem);
 		}
 		if (virtual > -1024UL) {
 			/* Real error */

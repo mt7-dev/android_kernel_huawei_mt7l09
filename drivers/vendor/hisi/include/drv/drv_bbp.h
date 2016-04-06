@@ -268,6 +268,17 @@ BSP_U16 BSP_LPS_GetTa(void);
 *****************************************************************************/
 BSP_S32 BSP_BBPIntTimerSwitchStatus(BSP_BOOL *pbStat);
 #define DRV_BBP_INT_TIMER_SWITCH_STATUS(pbStat) BSP_BBPIntTimerSwitchStatus(pbStat)
+/*****************************************************************************
+* 函 数 : BSP_BBP_GET_WAKEUP_TIME
+* 功 能 : 获取dsp唤醒时间
+* 输 入 : void
+* 输 出 : void
+* 返 回 :
+* 说 明 :
+*****************************************************************************/
+BSP_U32 BSP_BBP_GET_WAKEUP_TIME(PWC_COMM_MODE_E mode);
+#define DRV_BBP_GET_WAKEUP_TIME(mode) BSP_BBP_GET_WAKEUP_TIME(mode)
+
 
 #endif
 

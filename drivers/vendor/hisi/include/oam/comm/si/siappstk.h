@@ -1959,8 +1959,8 @@ typedef struct
 *****************************************************************************/
 typedef struct
 {
-    SI_UINT8                            ucDataType;
     SI_UINT16                           usDataLen;
+    SI_UINT8                            ucDataType;
     SI_UINT8                            ucRsv;
     SI_UINT8                            aucData[SI_STK_DATA_MAX_LEN];
 }SI_STK_CTRL_DATA_STRU;
@@ -2107,6 +2107,7 @@ typedef struct
         SI_STK_DISPLAY_MM_MESSAGE_STRU         DspMMMsg;
         SI_STK_CC_IND_STRU                     STKCcIndInfo;
         SI_STK_SMS_PP_DL_DATA_INFO_STRU        SmsPpDlDataInfo;
+        SI_UINT8                               aucPadding[115*8];
     }CmdStru;
 
     SI_STK_COMMAND_DETAILS_STRU     CmdDetail;

@@ -123,6 +123,8 @@ VOS_VOID  NAS_CC_MsgRoute(
     struct MsgCB* pMsg
 );
 
+VOS_UINT32 NAS_CC_ProcessSpecTypeBufferMsg(VOS_UINT32 ulEventType);
+
 /*****************************************************************************
  函 数 名  : Ss_TaskEntry_T
  功能描述  : SS PID的消息入口，在此进行消息的分发

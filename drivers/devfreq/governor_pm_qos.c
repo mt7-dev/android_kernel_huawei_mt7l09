@@ -48,7 +48,7 @@ show_bd_utilization(struct device *dev,
 
 static ssize_t
 store_bd_utilization(struct device *dev, struct device_attribute *attr,
-						const char *buf, size_t count)
+			const char *buf, size_t count)
 {
 	struct devfreq *devfreq = to_devfreq(dev);
 	struct devfreq_pm_qos_data *data;
@@ -119,10 +119,10 @@ static DEFINE_MUTEX(devfreq_pm_qos_mutex);
 static int devfreq_pm_qos_func(struct devfreq *df, unsigned long *freq)
 {
 	struct devfreq_pm_qos_data *data = df->data;
-	int megabytes_per_sec;
+	unsigned long megabytes_per_sec;
 	unsigned long mhz;
-	int ul_max = (int)(ULONG_MAX / 1000 / 1000 / \
-		100 * data->bytes_per_sec_per_hz * data->bd_utilization);
+	unsigned long ul_max = (ULONG_MAX / 1000 / 1000 / \
+			100 * data->bytes_per_sec_per_hz * data->bd_utilization);
 
 	megabytes_per_sec = pm_qos_request(data->pm_qos_class);
 	if ((megabytes_per_sec > 0) && (megabytes_per_sec < ul_max)) {

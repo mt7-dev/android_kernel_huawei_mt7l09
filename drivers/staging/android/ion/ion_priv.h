@@ -131,11 +131,11 @@ struct ion_heap_ops {
 	void (*unmap_kernel) (struct ion_heap *heap, struct ion_buffer *buffer);
 	int (*map_user) (struct ion_heap *mapper, struct ion_buffer *buffer,
 			 struct vm_area_struct *vma);
-	int (*shrink)(struct ion_heap *heap, gfp_t gfp_mask, int nr_to_scan);
 	int (*map_iommu)(struct ion_buffer *buffer,
 			struct ion_iommu_map *map_data);
 	void (*unmap_iommu)(struct ion_iommu_map *map_data);
 	void (*buffer_zero)(struct ion_buffer *buffer);
+	int (*shrink)(struct ion_heap *heap, gfp_t gfp_mask, int nr_to_scan);
 };
 
 /**
@@ -193,8 +193,12 @@ struct ion_heap {
 	spinlock_t free_lock;
 	wait_queue_head_t waitqueue;
 	struct task_struct *task;
+
 	int (*debug_show)(struct ion_heap *heap, struct seq_file *, void *);
+#if defined(CONFIG_ARCH_HI3630)
 	__kernel_ulong_t (*free_memory)(struct ion_heap *heap);
+#endif
+
 };
 
 /**

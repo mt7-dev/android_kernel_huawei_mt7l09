@@ -881,26 +881,7 @@ VOS_VOID  NAS_ESM_AppNdisconnMsgProc( VOS_VOID *pRcvMsg )
     */
     NAS_ESM_GetAppNdisconnInfo(pRcvMsg);
 
-#if 0
-    /* 设置承载类型 */
-    ulRslt = NAS_ESM_AppCgdcontOrNdisConnSetBearType(pAppMsg->ulCid,
-                                           pAppMsg->enSetType,
-                                           pAppMsg->enBearCidType,
-                                           NAS_ESM_OP_FALSE,
-                                           0);
-    if (APP_SUCCESS != ulRslt)
-    {
-        /*封装结构体pstEsmAppCnfMsg*/
-        stEsmAppCnfMsg.bitOpErrorCode = NAS_ESM_OP_TRUE;
-        stEsmAppCnfMsg.ulErrorCode = ulRslt;
 
-        /*ESM 向APP返回ID_APP_ESM_NDISCONN_CNF消息，通告建立失败*/
-        /*lint -e433*/
-        NAS_ESM_SndEsmAppNdisConnCnfMsg(&stEsmAppCnfMsg);
-        /*lint +e433*/
-        return ;
-    }
-#endif
     if (NAS_ESM_OP_TRUE == pAppMsg->bitOpApn)
     {
         ulRslt = NAS_ESM_AppCgdcontOrNdisConnSetApn(pAppMsg->ulCid,
@@ -1078,7 +1059,6 @@ VOS_VOID  NAS_ESM_AppNdisconnMsgProc( VOS_VOID *pRcvMsg )
     NAS_ESM_SendNdisConnReq(pstStateAddr->enBearerCntxtType,pRcvMsg);
 }
 /* lihong00150010 ims end */
-
 
 VOS_VOID NAS_ESM_DefltDetMsgAppNidsConnReq(const VOS_VOID *pRcvMsg )
 {
@@ -1768,13 +1748,14 @@ VOS_UINT32 NAS_ESM_IsEpsQosChanged
     const NAS_ESM_RES_MOD_ENCODE_INFO_STRU   *pstResModEncodeInfo
 )
 {
-    NAS_ESM_CONTEXT_LTE_QOS_STRU        stEpsQoSInfo        = { NAS_ESM_NULL };
+    NAS_ESM_CONTEXT_LTE_QOS_STRU        stEpsQoSInfo;
     VOS_UINT8                           aucQos1[NAS_ESM_MAX_EPS_QOS_BYTE] = { NAS_ESM_NULL };
     VOS_UINT8                           aucQos2[NAS_ESM_MAX_EPS_QOS_BYTE] = { NAS_ESM_NULL };
     VOS_UINT32                          ulQosLen1           = NAS_ESM_NULL;
     VOS_UINT32                          ulQosLen2           = NAS_ESM_NULL;
     NAS_ESM_EPSB_CNTXT_INFO_STRU       *pstEpsbCntxtInfo    = VOS_NULL_PTR;
 
+    PS_MEM_SET(&stEpsQoSInfo, 0, sizeof(NAS_ESM_CONTEXT_LTE_QOS_STRU));
     /* 获取修改后的承载QOS */
     if (NAS_ESM_SUCCESS != NAS_ESM_GetEpsQosAfterMod(*pstResModEncodeInfo,&stEpsQoSInfo))
     {
@@ -2942,6 +2923,8 @@ VOS_VOID NAS_ESM_SndEsmAppSdfRelIndMsg
         pSmAppRelInd->bitOpLinkCid = NAS_ESM_OP_FALSE;
     }
 
+    pSmAppRelInd->ulEpsbId = ulEpsbId;
+
     /*调用消息发送函数 */
     NAS_ESM_SND_MSG(pSmAppRelInd);
 
@@ -3622,17 +3605,29 @@ VOS_UINT32  NAS_ESM_DtComparePdpInfo( VOS_VOID )
 {
     VOS_UINT32                          ulRst = NAS_ESM_SUCCESS;
 
-    NAS_OM_ACT_PDP_INFO_STRU   stActPdpInfo = {0};
+    NAS_OM_ACT_PDP_INFO_STRU   *pstActPdpInfo = (VOS_VOID *) NAS_ESM_MEM_ALLOC(sizeof(NAS_OM_ACT_PDP_INFO_STRU));
+
+    if (VOS_NULL_PTR == pstActPdpInfo)
+    {
+        NAS_ESM_ERR_LOG("NAS_ESM_DtComparePdpInfo: mem alloc fail!.");
+        return NAS_ESM_FAILURE;
+    }
+
+    NAS_ESM_MEM_SET(pstActPdpInfo, 0, sizeof(NAS_OM_ACT_PDP_INFO_STRU));
 
     /*获取激活承载的信息*/
-    NAS_ESM_GetActPdpInfo(&stActPdpInfo);
+    NAS_ESM_GetActPdpInfo(pstActPdpInfo);
 
     /*比较激活承载信息是否变化*/
-    if( 0 != NAS_ESM_MEM_CMP(&g_stEsmDtInfo.stActPdpInfo,&stActPdpInfo,sizeof(NAS_OM_ACT_PDP_INFO_STRU)))
+    if( 0 != NAS_ESM_MEM_CMP(&g_stEsmDtInfo.stActPdpInfo,pstActPdpInfo,sizeof(NAS_OM_ACT_PDP_INFO_STRU)))
     {
         ulRst = NAS_ESM_FAILURE;
     }
+
+    NAS_ESM_MEM_FREE(pstActPdpInfo);
+
     return ulRst;
+
 }
 
 

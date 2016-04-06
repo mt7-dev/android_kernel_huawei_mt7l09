@@ -1723,6 +1723,7 @@ typedef enum
                   PS_FILE_ID_MN_CALL_PROC_NIVM_C,
                   PS_FILE_ID_NAS_CC_CTX_C,
                   PS_FILE_ID_NAS_CC_PROC_NIVM_C,
+                  PS_FILE_ID_NAS_CC_COMMON_C,
                   PS_FILE_ID_MN_MSG_CTX_C,
                   PS_FILE_ID_MN_MSG_PROC_NIVM_C,
                   PS_FILE_ID_APP_VC_CTX_C,
@@ -1920,6 +1921,17 @@ typedef enum
                   PS_FILE_ID_GASGCOMCBUILDMSGLTE_C,
                   PS_FILE_ID_GASGRRPREPROCESS_C,
                   PS_FILE_ID_SCM_PROC_C,
+                  PS_FILE_ID_SCM_SOFT_DECODE_C,
+                  PS_FILE_ID_CBT_SCM_SOFT_DECODE_C,
+                  PS_FILE_ID_CBT_PPM_C,
+                  PS_FILE_ID_CBT_CPM_C,
+                  PS_FILE_ID_OM_USB_PPM_C,
+                  PS_FILE_ID_OM_VCOM_PPM_C,
+                  PS_FILE_ID_OM_HSIC_PPM_C,
+                  PS_FILE_ID_OM_SD_PPM_C,
+                  PS_FILE_ID_OM_FS_PPM_C,
+                  PS_FILE_ID_OM_COMMON_PPM_C,
+                  PS_FILE_ID_OM_SOCKET_PPM_C,
                   PS_FILE_ID_OM_BUF_MMNGR_C,
                   PS_FILE_ID_ACPU_OMOPERATOR_C,
                   PS_FILE_ID_SOCP_STUB_C,
@@ -2034,6 +2046,10 @@ typedef enum
                   PS_FILE_ID_MMA_NETWORKNAME_TBL_C,
                   PS_FILE_ID_TAF_STD_LIB_C,
                   PS_FILE_ID_DMS_CORE_C,
+                  PS_FILE_ID_DMS_ACM_AT_RX_C,
+                  PS_FILE_ID_DMS_ACM_AT_TX_C,
+                  PS_FILE_ID_DMS_NDIS_C,
+                  PS_FILE_ID_DMS_DEBUG_C,
                   PS_FILE_ID_NAS_USIMMAPI_C,
                   PS_FILE_ID_NAS_USIMM_API_MNTN_C,
                   PS_FILE_ID_USIMM_INSTANCE_API_C,
@@ -2054,6 +2070,10 @@ typedef enum
                   PS_FILE_ID_TAF_MMA_MNTN_C,
                   PS_FILE_ID_TAF_MMA_MSG_PRIO_COMPARE_C,
                   PS_FILE_ID_TAF_MMA_TIMERMGMT_C,
+                  PS_FILE_ID_TAF_MMA_FSM_IMS_SWITCH_C,
+                  PS_FILE_ID_TAF_MMA_FSM_IMS_SWITCH_TBL_C,
+                  PS_FILE_ID_TAF_MMA_COM_FUNC_C,
+
 
                   PS_FILE_ID_TAF_MMA_SND_APP_C,
 
@@ -2118,9 +2138,10 @@ typedef enum
                   PS_FILE_ID_IMSAPROCATMSG_C,
                   PS_FILE_ID_IMSAPROCIMSUSSDMSG_C,
                   PS_FILE_ID_IMSAPROCUSSDMSG_C,
-
+	          PS_FILE_ID_IMSAPROCRNICMSG_C,
                   PS_FILE_ID_GAS_RRL2FSMHANDOVERL2G_C,
                   PS_FILE_ID_IMS_NIC_C,
+                  PS_FILE_ID_IMSAPROCOMMSG_C,
                   PS_FILE_ID_IPS_MNTN_CCORE_C,
 
                   PS_FILE_ID_CBPACOMMAGENT_C,
@@ -2141,6 +2162,12 @@ typedef enum
                   PS_FILE_ID_L_RRCITFCMMCATRANSMSG_C,
                   PS_FILE_ID_L_RRCCDMAMSGPROC_C,
                   /* end; 2014-03-05 CL MULT add */
+                  PS_FILE_ID_NAS_MNTN_C,
+                  /* Added by w0014666 for CALL DROP CHR, 2015-01-19, begin */
+                  PS_FILE_ID_GAS_INTER_HO_ERRLOG_C,
+                  /* Added by w0014666 for CALL DROP CHR, 2015-01-19, end */
+
+                  PS_FILE_ID_GAS_MNTN_L2G_C,
 
                   PS_FILE_ID_BUTT
 
@@ -2343,7 +2370,6 @@ typedef enum
 /* 4106  */      CODEC_FILE_ID_VOICE_PROC_C,
 /* 4107  */      PS_FILE_ID_OM_COMMRX_C,
 /* 4108  */      PS_FILE_ID_PS_LOG_APP_C,
-/* 4109  */      LMSP_FILE_ID_DMS_ACM_AT_TX_C,
                  MED_FILE_ID_BUTT
 }MED_FILE_ID_DEFINE_ENUM;
 
@@ -2400,7 +2426,7 @@ typedef enum
 
 
 /* Ä£¿éIDºÅ */
-typedef unsigned long LOG_MODULE_ID_EN;
+typedef unsigned int LOG_MODULE_ID_EN;
 
 typedef enum
 {

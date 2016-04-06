@@ -116,15 +116,15 @@ typedef struct { volatile unsigned int counter; } hpa_atomic_t;
 
 extern hpa_atomic_t                 g_stDspMailBoxCount;
 
-extern VOS_UINT32                   g_ulHpaDeliverSem;
+extern VOS_SEM                      g_ulHpaDeliverSem;
 
 extern hpa_atomic_t                 g_stDspMailBoxTransferCount;
 extern hpa_atomic_t                 g_stGDspMailBoxTransferCount;
 extern hpa_atomic_t                 g_stGDsp1MailBoxTransferCount;
 
-extern VOS_UINT32                   g_ulHpaTransferSem;
+extern VOS_SEM                      g_ulHpaTransferSem;
 
-extern VOS_UINT32                   g_ulHpaLoadHifiSem;
+extern VOS_SEM                      g_ulHpaLoadHifiSem;
 
 extern VOS_UCHAR                    g_ucHpaCfnRead;
 extern VOS_UINT16                   g_usHpaSfnRead;

@@ -140,6 +140,9 @@ enum LRRC_GRR_MSG_TYPE_ENUM
     ID_GRR_LRRC_BG_SEARCH_RESUME_REQ       = (GRR_LRRC_MSG_HDR + 0x22),         /* _H2ASN_MsgChoice GRR_LRRC_BG_SEARCH_RESUME_REQ_STRU */
 
 
+    ID_GRR_LRRC_FR_INFO_REQ                    = (GRR_LRRC_MSG_HDR + 0x2b),     /* _H2ASN_MsgChoice GRR_LRRC_FR_INFO_REQ_STRU */
+    ID_LRRC_GRR_FR_INFO_CNF                    = (LRRC_GRR_MSG_HDR + 0x29),     /* _H2ASN_MsgChoice LRRC_GRR_FR_INFO_CNF_STRU */
+
     ID_LRRC_GRR_MSG_TYPE_BUTT
 
 };
@@ -853,6 +856,13 @@ typedef struct
     VOS_UINT8                                               aucPlmnId[3];
     VOS_UINT8                                               aucReserved[1];
 
+    LRRC_GURRC_REDIR_SAVED_EUTRA_INFO_STRU                  stRedirEutraInfo;
+
+    /* begin：add for chr */
+    VOS_UINT32                                              ulHoBeginTimeStampHigh;
+    VOS_UINT32                                              ulHoBeginTimeStampLow;
+    /* end：add for chr */
+
     VOS_UINT32                                              ulHoDatalen;
 
     /* 编码后PS HANDOVER COMMAND 或者HANDOVER COMMAND 数据 */
@@ -1209,6 +1219,30 @@ typedef struct
     LRRC_GRR_MSG_DATA                                       stMsgData;
 }LRrcGrrInterface_MSG;
 
+/*****************************************************************************
+ 结构名    : GRR_LRRC_FR_INFO_REQ_STRU
+ 协议表格  :
+ ASN.1描述 :
+ 结构说明  : GRRC指示LRRC获取LTE自主FR频点
+*****************************************************************************/
+typedef struct
+{
+    VOS_MSG_HEADER                                               /*_H2ASN_Skip*/
+    LRRC_GRR_MSG_TYPE_ENUM_UINT32            enMsgId;            /*_H2ASN_Skip*/
+}GRR_LRRC_FR_INFO_REQ_STRU;
+
+/*****************************************************************************
+ 结构名    : LRRC_GRR_FR_INFO_CNF_STRU
+ 协议表格  :
+ ASN.1描述 :
+ 结构说明  : LRRC指示GRRC获取LTE自主FR频点的结果
+*****************************************************************************/
+typedef struct
+{
+    VOS_MSG_HEADER                                               /*_H2ASN_Skip*/
+    LRRC_GRR_MSG_TYPE_ENUM_UINT32            enMsgId;            /*_H2ASN_Skip*/
+    LRRC_GURRC_REDIR_SAVED_EUTRA_INFO_STRU    stRedirEutraInfo;
+}LRRC_GRR_FR_INFO_CNF_STRU;
 
 /*****************************************************************************
   6 UNION

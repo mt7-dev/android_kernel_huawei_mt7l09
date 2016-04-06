@@ -1,18 +1,4 @@
-/**
-    @copyright: Huawei Technologies Co., Ltd. 2012-2012. All rights reserved.
 
-    @file: srecorder_snprintf.c
-
-    @brief: 定义SRecorder的格式化输出模块
-
-    @version: 1.0 
-
-    @author: QiDechun ID: 216641
-
-    @date: 2013-01-18
-
-    @history:
-*/
 
 /*----includes-----------------------------------------------------------------------*/
 
@@ -25,9 +11,7 @@
 #include <linux/kallsyms.h>
 #include <linux/uaccess.h>
 #include <linux/ioport.h>
-/* DTS2012110206142 wupeng-qidechun 20121105 begin */
 #include <linux/highmem.h>
-/* DTS2012110206142 wupeng-qidechun 20121105 end */
 
 #include <linux/version.h>
 #include <net/addrconf.h>
@@ -74,7 +58,7 @@ int srecorder_snprintf(char *buf, size_t size, const char *fmt, ...)
     int i = 0;
 
     va_start(args, fmt);
-    i = vsnprintf(buf, size, fmt, args);
+    i = vscnprintf(buf, size, fmt, args);
     va_end(args);
 
     return i;

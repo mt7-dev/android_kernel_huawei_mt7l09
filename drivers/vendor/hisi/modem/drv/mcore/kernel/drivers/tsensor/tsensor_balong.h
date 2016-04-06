@@ -1,0 +1,1 @@
+../../../../acore/bootable/bootloader/legacy/arch_balongv7r2/tsensor_balong.h

@@ -235,8 +235,9 @@ typedef struct
 /* 原语MMCC_ERR_IND的结构体 */
 typedef struct
 {
-    MSG_HEADER_STRU         MsgHeader;                                          /* 消息头                                   */
-    VOS_UINT32                   ulTransactionId;                                    /* TI                                       */
+    MSG_HEADER_STRU                     MsgHeader;                              /* 消息头 */
+    VOS_UINT32                          ulTransactionId;                        /* TI */
+    NAS_MMCM_REL_CAUSE_ENUM_UINT32      enCause;                                /* 原因值 */
 }MMCC_ERR_IND_STRU;
 
 /* 原语MMCC_PROMPT_IND的结构体 */
@@ -273,19 +274,21 @@ typedef struct
     VOS_UINT8                           aucReserved[3];
     MMCC_EMERGENCY_CONTENT_STRU         astEmergencyLists[MMCC_EMERGENCY_NUMBER_LISTS_MAX_NUMBER];
 }MMCC_EMERGENCY_LIST_STRU;
+
+
 enum NAS_MMCC_SRVCC_STATUS_ENUM
 {
-    NAS_MMCC_SRVCC_STATUS_START        = 0,     /* SRVCC开始 */                          
-    NAS_MMCC_SRVCC_STATUS_SUCCESS      = 1,     /* SRVCC成功 */                          
-    NAS_MMCC_SRVCC_STATUS_FAIL         = 2,     /* SRVCC失败 */                          
+    NAS_MMCC_SRVCC_STATUS_START        = 0,     /* SRVCC开始 */
+    NAS_MMCC_SRVCC_STATUS_SUCCESS      = 1,     /* SRVCC成功 */
+    NAS_MMCC_SRVCC_STATUS_FAIL         = 2,     /* SRVCC失败 */
     NAS_MMCC_SRVCC_STATUS_BUTT
 };
 typedef VOS_UINT32  NAS_MMCC_SRVCC_STATUS_ENUM_UINT32;
 typedef struct
 {
-    MSG_HEADER_STRU                     stMsgHeader;          /* _H2ASN_Skip */     
-    NAS_MMCC_SRVCC_STATUS_ENUM_UINT32   enSrvccStatus; 
-    VOS_UINT8                           aucReserve1[4];    /*预留*/        
+    MSG_HEADER_STRU                     stMsgHeader;          /* _H2ASN_Skip */
+    NAS_MMCC_SRVCC_STATUS_ENUM_UINT32   enSrvccStatus;
+    VOS_UINT8                           aucReserve1[4];    /*预留*/
 }MMCC_SRVCC_STATUS_IND_STRU;
 
 
@@ -296,7 +299,7 @@ typedef struct
 {
     MSG_HEADER_STRU                     stMsgHeader;          /* _H2ASN_Skip */
     VOS_UINT8                           ucTiNum;
-    VOS_UINT8                           aucTransactionId[NAS_MM_MAX_CC_CONNECTION_NUM];     
+    VOS_UINT8                           aucTransactionId[NAS_MM_MAX_CC_CONNECTION_NUM];
 }MMCC_SRVCC_CALL_INFO_NOTIFY_STRU;
 
 

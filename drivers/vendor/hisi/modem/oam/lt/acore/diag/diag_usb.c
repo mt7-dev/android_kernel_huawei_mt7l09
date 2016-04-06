@@ -33,7 +33,7 @@ VOS_VOID diag_UsbAppRdCB(VOS_VOID)
     diag_PortRdCB(EN_DIAG_USB_BEARER_DIAG_APP);
 }
 
-#ifdef FEATURE_UPGRADE_TL
+#ifndef FEATURE_USB_ZERO_COPY
 VOS_VOID diag_UsbCtrlWrtCB (VOS_CHAR* pDoneBuff,VOS_INT s32DoneSize)
 #else
 VOS_VOID diag_UsbCtrlWrtCB (VOS_CHAR* pDoneBuff, VOS_CHAR* phyAddr,VOS_INT s32DoneSize)
@@ -43,7 +43,7 @@ VOS_VOID diag_UsbCtrlWrtCB (VOS_CHAR* pDoneBuff, VOS_CHAR* phyAddr,VOS_INT s32Do
 }
 
 
-#ifdef FEATURE_UPGRADE_TL
+#ifndef FEATURE_USB_ZERO_COPY
 VOS_VOID diag_UsbAppWrtCB (VOS_CHAR* pDoneBuff, VOS_INT s32DoneSize)
 #else
 VOS_VOID diag_UsbAppWrtCB (VOS_CHAR* pDoneBuff,VOS_CHAR* phyAddr, VOS_INT s32DoneSize)

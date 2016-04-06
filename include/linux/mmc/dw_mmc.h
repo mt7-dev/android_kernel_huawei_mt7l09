@@ -16,6 +16,13 @@
 
 #include <linux/scatterlist.h>
 #include <linux/mmc/core.h>
+#ifdef CONFIG_ARCH_HI6XXX
+#include <linux/pwrctrl_power_state_manager.h>
+#endif
+
+#ifdef CONFIG_HUAWEI_EMMC_DSM
+#include <linux/mmc/dsm_emmc.h>
+#endif
 
 #define MAX_MCI_SLOTS	2
 #define TUNING_INIT_CONFIG_NUM 7
@@ -131,6 +138,7 @@ struct dw_mci {
 	struct mmc_request	*mrq;
 	struct mmc_command	*cmd;
 	struct mmc_data		*data;
+	unsigned int 		prev_blksz;
 	struct mmc_command	stop;
 	bool			stop_snd;
 
@@ -139,7 +147,8 @@ struct dw_mci {
 	/* DMA interface members*/
 	int			use_dma;
 	int			using_dma;
-
+    int         saved_tuning_phase;
+    int         tuning_result_flag;
 	dma_addr_t		sg_dma;
 	void			*sg_cpu;
 	const struct dw_mci_dma_ops	*dma_ops;
@@ -149,7 +158,9 @@ struct dw_mci {
 	struct dw_mci_dma_data	*dma_data;
 #endif
 	unsigned int		desc_sz;
-
+#ifdef CONFIG_ARCH_HI6XXX
+       unsigned int           emmc_pwr_status_id;
+#endif 
 	u32			cmd_status;
 	u32			data_status;
 	u32			stop_cmdr;
@@ -194,14 +205,20 @@ struct dw_mci {
 
 	/* S/W reset timer */
 	struct timer_list       timer;
+#ifdef CONFIG_HUAWEI_EMMC_DSM
+	struct timer_list       rw_to_timer;
+	struct work_struct   dmd_work;
+	u32 para;
+	u32			dmd_cmd_status;
+#endif
 
 	/* pinctrl handles */
 	struct pinctrl		*pinctrl;
 	struct pinctrl_state	*pins_default;
 	struct pinctrl_state	*pins_idle;
 
-	struct regulator	*vmmc;	/* Power regulator */
-	struct regulator	*vqmmc;	/* Signaling regulator (vccq) */
+	struct regulator	*vmmc;	 /* Power regulator */
+	struct regulator	*vqmmc;	 /* Signaling regulator (vccq) */
 	unsigned long		irq_flags; /* IRQ flags */
 	int			irq;
 
@@ -221,7 +238,16 @@ struct dw_mci {
 #define DWMMC_SDIO_ID		2
 	int						hw_mmc_id;					/* Hardware mmc id */
 	int						sd_reinit;
+#ifdef CONFIG_ARCH_HI6XXX
+	int                     sd_reinit_times;
+#endif
 
+    /*适配修改新增 begin*/
+	u32           		    clock;		      /* Current clock (MHz) */
+	u32          		    clock_to_restore; /* Saved clock for dynamic clock gating (MHz) */
+	bool                    tuning_done;
+	bool					tuning_needed;	  /* tuning move start flag */
+    /*适配修改新增 end  */
 };
 
 /* DMA ops for Internal/External DMAC interface */

@@ -184,6 +184,8 @@ VOS_UINT8 NAS_MM_RcvLmmHoSecuInfoCnf(
 );
 
 
+VOS_VOID NAS_MM_ProcBufferedCsfbService(VOS_VOID);
+
 #if (VOS_OS_VER == VOS_WIN32)
 #pragma pack()
 #else

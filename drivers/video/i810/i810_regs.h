@@ -11,20 +11,7 @@
  */
 
 
-/*
- * Intel 810 Chipset Family PRM 15 3.1 
- * GC Register Memory Address Map 
- *
- * Based on:
- * Intel (R) 810 Chipset Family 
- * Programmer s Reference Manual 
- * November 1999 
- * Revision 1.0 
- * Order Number: 298026-001 R
- *
- * All GC registers are memory-mapped. In addition, the VGA and extended VGA registers 
- * are I/O mapped. 
- */
+
  
 #ifndef __I810_REGS_H__
 #define __I810_REGS_H__

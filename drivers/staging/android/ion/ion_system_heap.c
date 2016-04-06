@@ -23,17 +23,20 @@
 #include <linux/seq_file.h>
 #include <linux/slab.h>
 #include <linux/vmalloc.h>
+#include <linux/hisi/hisi-iommu.h>
+#include <linux/sizes.h>
 #include "ion.h"
 #include "ion_priv.h"
 
 static gfp_t high_order_gfp_flags = (GFP_HIGHUSER | __GFP_NOWARN |
 				     __GFP_NORETRY) & ~__GFP_WAIT;
 static gfp_t low_order_gfp_flags  = (GFP_HIGHUSER | __GFP_NOWARN);
-static const unsigned int orders[] = {8, 4, 0};
+static unsigned int orders[] = {8, 4, 0};
 static const int num_orders = ARRAY_SIZE(orders);
 static int order_to_index(unsigned int order)
 {
 	int i;
+
 	for (i = 0; i < num_orders; i++)
 		if (order == orders[i])
 			return i;
@@ -70,17 +73,20 @@ static struct page *alloc_buffer_page(struct ion_system_heap *heap,
 	} else {
 		gfp_t gfp_flags = low_order_gfp_flags;
 
-		if (order > 4)
+		if (order >= 4)
 			gfp_flags = high_order_gfp_flags;
 		page = alloc_pages(gfp_flags, order);
 		if (!page) {
-			pr_err("%s: alloc_pages failed, order: %ld!\n",
+			pr_err("%s: Out of mem, alloc_pages failed, order: %ld!\n",
 					 __func__, order);
 			return NULL;
 		}
+		/*change here: flush cache has already done by caller*/
+		/*ion_pages_sync_for_device(NULL, page, PAGE_SIZE << order,*/
+						/*DMA_BIDIRECTIONAL);*/
 	}
 	if (!page) {
-		pr_err("%s: ion_page_pool_alloc failed, order: %ld!\n",
+		pr_err("%s: Out of mem, ion_page_pool_alloc failed, order: %ld!\n",
 				 __func__, order);
 		return NULL;
 	}
@@ -92,6 +98,17 @@ static void free_buffer_page(struct ion_system_heap *heap,
 			     struct ion_buffer *buffer, struct page *page,
 			     unsigned int order)
 {
+#if defined(CONFIG_ARCH_HI6XXX)
+	bool cached = ion_buffer_cached(buffer);
+
+	if (!cached && !(buffer->private_flags & ION_PRIV_FLAG_SHRINKER_FREE)) {
+		struct ion_page_pool *pool = heap->pools[order_to_index(order)];
+
+		ion_page_pool_free(pool, page);
+	} else {
+		__free_pages(page, order);
+	}
+#elif defined(CONFIG_ARCH_HI3630)
 	bool cached = ion_buffer_cached(buffer);
 
 	//max page in pool is 32M / 4K = 8192 pages
@@ -113,6 +130,9 @@ static void free_buffer_page(struct ion_system_heap *heap,
 	} else {
 		__free_pages(page, order);
 	}
+#else
+	__free_pages(page, order);
+#endif
 }
 
 
@@ -133,7 +153,7 @@ static struct page_info *alloc_largest_available(struct ion_system_heap *heap,
 		return NULL;
 	}
 
-	if (time_before(jiffies, alloc_failed_time_stamp + HZ * 10)) {
+	if (time_before(jiffies, alloc_failed_time_stamp + 10)) {
 		if (8 == alloc_failed_order)
 			i = 1;
 		else if (4 == alloc_failed_order)
@@ -185,18 +205,10 @@ static int ion_system_heap_allocate(struct ion_heap *heap,
 	unsigned long size_remaining = PAGE_ALIGN(size);
 	unsigned int max_order = orders[0];
 
-	if (align > PAGE_SIZE) {
-		pr_err("%s: Invalid param, align > PAGE_SIZE!\n", __func__);
-		return -EINVAL;
-	}
-
 	if (size / PAGE_SIZE > totalram_pages / 2) {
 		pr_err("%s: (size / PAGE_SIZE > totalram_pages / 2)\n", __func__);
 		return -ENOMEM;
 	}
-
-	if (size / PAGE_SIZE > totalram_pages / 2)
-		return -ENOMEM;
 
 	INIT_LIST_HEAD(&pages);
 	while (size_remaining > 0) {
@@ -285,6 +297,7 @@ static void ion_system_heap_unmap_dma(struct ion_heap *heap,
 	return;
 }
 
+
 static int ion_system_heap_shrink(struct ion_heap *heap, gfp_t gfp_mask,
 					int nr_to_scan)
 {
@@ -305,9 +318,9 @@ static int ion_system_heap_shrink(struct ion_heap *heap, gfp_t gfp_mask,
 static void ion_system_heap_buffer_zero(struct ion_buffer *buffer)
 {
 	ion_heap_buffer_zero(buffer);
-
+#if defined(CONFIG_ARCH_HI3630)
 	hi3630_fc_allcpu_allcache();
-
+#endif
 	return;
 }
 
@@ -319,10 +332,10 @@ static struct ion_heap_ops system_heap_ops = {
 	.map_kernel = ion_heap_map_kernel,
 	.unmap_kernel = ion_heap_unmap_kernel,
 	.map_user = ion_heap_map_user,
-	.shrink = ion_system_heap_shrink,
 	.map_iommu = ion_heap_map_iommu,
 	.unmap_iommu = ion_heap_unmap_iommu,
 	.buffer_zero = ion_system_heap_buffer_zero,
+	.shrink = ion_system_heap_shrink,
 };
 
 static int ion_system_heap_debug_show(struct ion_heap *heap, struct seq_file *s,
@@ -333,8 +346,10 @@ static int ion_system_heap_debug_show(struct ion_heap *heap, struct seq_file *s,
 							struct ion_system_heap,
 							heap);
 	int i;
+
 	for (i = 0; i < num_orders; i++) {
 		struct ion_page_pool *pool = sys_heap->pools[i];
+
 		seq_printf(s, "%d order %u highmem pages in pool = %lu total\n",
 			   pool->high_count, pool->order,
 			   (1 << pool->order) * PAGE_SIZE * pool->high_count);
@@ -343,22 +358,6 @@ static int ion_system_heap_debug_show(struct ion_heap *heap, struct seq_file *s,
 			   (1 << pool->order) * PAGE_SIZE * pool->low_count);
 	}
 	return 0;
-}
-
-static __kernel_ulong_t ion_system_heap_free_memory(struct ion_heap *heap)
-{
-	struct ion_system_heap *sys_heap = container_of(heap,
-							struct ion_system_heap,
-							heap);
-	__kernel_ulong_t free_memory = 0;
-	int i;
-	for (i = 0; i < num_orders; i++) {
-		struct ion_page_pool *pool = sys_heap->pools[i];
-		free_memory += ((1 << pool->order) * pool->high_count);
-		free_memory += ((1 << pool->order) * pool->low_count);
-	}
-
-	return free_memory;
 }
 
 struct ion_heap *ion_system_heap_create(struct ion_platform_heap *unused)
@@ -371,25 +370,31 @@ struct ion_heap *ion_system_heap_create(struct ion_platform_heap *unused)
 		return ERR_PTR(-ENOMEM);
 	heap->heap.ops = &system_heap_ops;
 	heap->heap.type = ION_HEAP_TYPE_SYSTEM;
+#ifdef CONFIG_ARCH_HI6XXX
 	heap->heap.flags = ION_HEAP_FLAG_DEFER_FREE;
+#endif
 	heap->pools = kzalloc(sizeof(struct ion_page_pool *) * num_orders,
 			      GFP_KERNEL);
 	if (!heap->pools)
 		goto err_alloc_pools;
+	
+	if(hisi_iommu_page_size() == SZ_8K) {
+		printk(KERN_INFO"cur size %lx orders %lx\n",hisi_iommu_page_size(),num_orders);
+		orders[num_orders -1] = 1;	
+	}
+	
 	for (i = 0; i < num_orders; i++) {
 		struct ion_page_pool *pool;
 		gfp_t gfp_flags = low_order_gfp_flags;
 
-		if (orders[i] > 4)
+		if (orders[i] >= 4)
 			gfp_flags = high_order_gfp_flags;
 		pool = ion_page_pool_create(gfp_flags, orders[i]);
 		if (!pool)
 			goto err_create_pool;
 		heap->pools[i] = pool;
 	}
-
 	heap->heap.debug_show = ion_system_heap_debug_show;
-	heap->heap.free_memory = ion_system_heap_free_memory;
 	return &heap->heap;
 err_create_pool:
 	for (i = 0; i < num_orders; i++)
@@ -526,3 +531,4 @@ void ion_system_contig_heap_destroy(struct ion_heap *heap)
 {
 	kfree(heap);
 }
+

@@ -157,7 +157,7 @@ VOS_INT V_IntLock(VOS_UINT32 ulFileID, VOS_INT32 lLineNo)
 {
     VOS_INT lFlag;
 
-    lFlag = SRE_IntLock();
+    lFlag = (VOS_INT)SRE_IntLock();
 
     if ( VOS_NESTED_INTLOCK_MAX_NUM <= g_stVosIntLockNestedInfo.ulSuffix )
     {
@@ -191,7 +191,7 @@ VOS_VOID V_IntUnlock(VOS_INT lLockKey)
 
     if ( VOS_NESTED_INTLOCK_MAX_NUM <= g_stVosIntLockNestedInfo.ulSuffix )
     {
-        SRE_IntRestore(lLockKey);
+        SRE_IntRestore((VOS_UINT32)lLockKey);
 
         return;
     }
@@ -204,7 +204,7 @@ VOS_VOID V_IntUnlock(VOS_INT lLockKey)
             (VOS_INT32)g_stVosIntLockNestedInfo.astNestedInfo[g_stVosIntLockNestedInfo.ulSuffix].lLine);
     }
 
-    SRE_IntRestore(lLockKey);
+    SRE_IntRestore((VOS_UINT32)lLockKey);
 
     return;
 }
@@ -285,9 +285,9 @@ VOS_UINT32 atomic_inc_return(atomic_t *pstV)
  Return     : VOS_OK;
  Other      : none
  *****************************************************************************/
-VOS_INT32 VOS_SplIMP(VOS_VOID)
+VOS_ULONG VOS_SplIMP(VOS_VOID)
 {
-    VOS_UINT32 flags;
+    VOS_ULONG  flags;
 
     local_irq_save(flags);
 
@@ -300,9 +300,9 @@ VOS_INT32 VOS_SplIMP(VOS_VOID)
  Input      : s -- value returned by VOS_SplIMP()
  Return     : None
  *****************************************************************************/
-VOS_VOID VOS_Splx( VOS_INT32 s )
+VOS_VOID VOS_Splx( VOS_ULONG s )
 {
-    local_irq_restore((VOS_UINT32)s);
+    local_irq_restore(s);
 }
 #endif
 

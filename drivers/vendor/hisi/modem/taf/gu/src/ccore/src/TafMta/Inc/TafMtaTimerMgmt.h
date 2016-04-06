@@ -61,6 +61,7 @@ extern "C" {
 #define TI_TAF_MTA_WAIT_DPDT_VALUE_QRY_CNF_TIMER_LEN        (3 * TIMER_S_TO_MS_1000)
 
 #define TI_TAF_MTA_WAIT_JAM_DETECT_SET_CNF_TIMER_LEN        (3 * TIMER_S_TO_MS_1000)
+#define TI_TAF_MTA_WAIT_SET_GSM_FREQLOCK_CNF_TIMER_LEN      (3 * TIMER_S_TO_MS_1000)
 
 
 /*****************************************************************************
@@ -113,6 +114,7 @@ enum TAF_MTA_TIMER_ID_ENUM
     TI_TAF_MTA_WAIT_DPDT_VALUE_QRY_CNF,
 
     TI_TAF_MTA_WAIT_JAM_DETECT_SET_CNF,
+    TI_TAF_MTA_WAIT_SET_GSM_FREQLOCK_CNF,
 
     TI_TAF_MTA_TIMER_BUTT
 };

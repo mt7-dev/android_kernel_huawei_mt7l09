@@ -348,7 +348,13 @@ out_release:
 int __ref cpu_down(unsigned int cpu)
 {
 	int err;
-
+#ifdef CONFIG_ARCH_HI6XXX
+	if(cpu == 0)
+	{
+		err=-EBUSY;
+		goto out; 
+	}
+#endif
 	cpu_maps_update_begin();
 
 	if (cpu_hotplug_disabled) {
@@ -427,7 +433,13 @@ int __cpuinit cpu_up(unsigned int cpu)
 	int nid;
 	pg_data_t	*pgdat;
 #endif
-
+#ifdef CONFIG_ARCH_HI6XXX
+	if(cpu == 0)
+	{
+		err=-EBUSY;
+		goto out; 
+	}
+#endif
 	if (!cpu_possible(cpu)) {
 		printk(KERN_ERR "can't online cpu %d because it is not "
 			"configured as may-hotadd at boot time\n", cpu);
@@ -698,10 +710,12 @@ void set_cpu_present(unsigned int cpu, bool present)
 
 void set_cpu_online(unsigned int cpu, bool online)
 {
-	if (online)
+	if (online) {
 		cpumask_set_cpu(cpu, to_cpumask(cpu_online_bits));
-	else
+		cpumask_set_cpu(cpu, to_cpumask(cpu_active_bits));
+	} else {
 		cpumask_clear_cpu(cpu, to_cpumask(cpu_online_bits));
+	}
 }
 
 void set_cpu_active(unsigned int cpu, bool active)

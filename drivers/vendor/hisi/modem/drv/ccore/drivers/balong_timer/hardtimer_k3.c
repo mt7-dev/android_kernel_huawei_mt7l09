@@ -10,7 +10,7 @@
 struct timer_ctrl
 {
    timer_func routine;                    /*中断处理函数     */
-   int arg;                               /*中断处理函数参数 */
+   void* arg;                               /*中断处理函数参数 */
    u32 base_addr;
    u32 load_addr;                         /*timer的初值地址   */
    u32 value_addr;                        /*timer的当前值地址   */
@@ -26,30 +26,30 @@ struct timer_ctrl
 /*lint -restore +e631*/
 
 static struct timer_ctrl hard_timer_control[TIMER_NUM] ={
-		{NULL,0,HI_TIMER_00_REGBASE_ADDR,0,0,0,0,0,0,INT_LVL_TIMER0,HI_TIMER0_CLK,0},
-		{NULL,0,HI_TIMER_01_REGBASE_ADDR,0,0,0,0,0,0,INT_LVL_TIMER1,HI_TIMER1_CLK,0},
-		{NULL,0,HI_TIMER_02_REGBASE_ADDR,0,0,0,0,0,0,INT_LVL_TIMER2,HI_TIMER2_CLK,0},
-		{NULL,0,HI_TIMER_03_REGBASE_ADDR,0,0,0,0,0,0,INT_LVL_TIMER3,HI_TIMER3_CLK,0},
-		{NULL,0,HI_TIMER_04_REGBASE_ADDR,0,0,0,0,0,0,INT_LVL_TIMER4,HI_TIMER4_CLK,0},
-		{NULL,0,HI_TIMER_05_REGBASE_ADDR,0,0,0,0,0,0,INT_LVL_TIMER5,HI_TIMER5_CLK,0},
-		{NULL,0,HI_TIMER_06_REGBASE_ADDR,0,0,0,0,0,0,INT_LVL_TIMER6,HI_TIMER6_CLK,0},
-		{NULL,0,HI_TIMER_07_REGBASE_ADDR,0,0,0,0,0,0,INT_LVL_TIMER7,HI_TIMER7_CLK,0},
-		{NULL,0,HI_TIMER_08_REGBASE_ADDR,0,0,0,0,0,0,INT_LVL_TIMER8,HI_TIMER8_CLK,0},
-		{NULL,0,HI_TIMER_09_REGBASE_ADDR,0,0,0,0,0,0,INT_LVL_TIMER9,HI_TIMER9_CLK,0},
-		{NULL,0,HI_TIMER_10_REGBASE_ADDR,0,0,0,0,0,0,INT_LVL_TIMER10,HI_TIMER10_CLK,0},
-		{NULL,0,HI_TIMER_11_REGBASE_ADDR,0,0,0,0,0,0,INT_LVL_TIMER11,HI_TIMER11_CLK,0},
-		{NULL,0,HI_TIMER_12_REGBASE_ADDR,0,0,0,0,0,0,INT_LVL_TIMER12,HI_TIMER12_CLK,0},
-		{NULL,0,HI_TIMER_13_REGBASE_ADDR,0,0,0,0,0,0,INT_LVL_TIMER13,HI_TIMER13_CLK,0},
-		{NULL,0,HI_TIMER_14_REGBASE_ADDR,0,0,0,0,0,0,INT_LVL_TIMER14,HI_TIMER14_CLK,0},
-		{NULL,0,HI_TIMER_15_REGBASE_ADDR,0,0,0,0,0,0,INT_LVL_TIMER15,HI_TIMER15_CLK,0},
-		{NULL,0,HI_TIMER_16_REGBASE_ADDR,0,0,0,0,0,0,INT_LVL_TIMER16,HI_TIMER16_CLK,0},
-		{NULL,0,HI_TIMER_17_REGBASE_ADDR,0,0,0,0,0,0,INT_LVL_TIMER17,HI_TIMER17_CLK,0},
-		{NULL,0,HI_TIMER_18_REGBASE_ADDR,0,0,0,0,0,0,INT_LVL_TIMER18,HI_TIMER18_CLK,0},
-		{NULL,0,HI_TIMER_19_REGBASE_ADDR,0,0,0,0,0,0,INT_LVL_TIMER19,HI_TIMER19_CLK,0},
-		{NULL,0,HI_TIMER_20_REGBASE_ADDR,0,0,0,0,0,0,INT_LVL_TIMER20,HI_TIMER20_CLK,0},
-		{NULL,0,HI_TIMER_21_REGBASE_ADDR,0,0,0,0,0,0,INT_LVL_TIMER21,HI_TIMER21_CLK,0},
-		{NULL,0,HI_TIMER_22_REGBASE_ADDR,0,0,0,0,0,0,INT_LVL_TIMER22,HI_TIMER22_CLK,0},
-		{NULL,0,HI_TIMER_23_REGBASE_ADDR,0,0,0,0,0,0,INT_LVL_TIMER23,HI_TIMER23_CLK,0},
+		{NULL,NULL,HI_TIMER_00_REGBASE_ADDR,0,0,0,0,0,0,INT_LVL_TIMER0,HI_TIMER0_CLK,0},
+		{NULL,NULL,HI_TIMER_01_REGBASE_ADDR,0,0,0,0,0,0,INT_LVL_TIMER1,HI_TIMER1_CLK,0},
+		{NULL,NULL,HI_TIMER_02_REGBASE_ADDR,0,0,0,0,0,0,INT_LVL_TIMER2,HI_TIMER2_CLK,0},
+		{NULL,NULL,HI_TIMER_03_REGBASE_ADDR,0,0,0,0,0,0,INT_LVL_TIMER3,HI_TIMER3_CLK,0},
+		{NULL,NULL,HI_TIMER_04_REGBASE_ADDR,0,0,0,0,0,0,INT_LVL_TIMER4,HI_TIMER4_CLK,0},
+		{NULL,NULL,HI_TIMER_05_REGBASE_ADDR,0,0,0,0,0,0,INT_LVL_TIMER5,HI_TIMER5_CLK,0},
+		{NULL,NULL,HI_TIMER_06_REGBASE_ADDR,0,0,0,0,0,0,INT_LVL_TIMER6,HI_TIMER6_CLK,0},
+		{NULL,NULL,HI_TIMER_07_REGBASE_ADDR,0,0,0,0,0,0,INT_LVL_TIMER7,HI_TIMER7_CLK,0},
+		{NULL,NULL,HI_TIMER_08_REGBASE_ADDR,0,0,0,0,0,0,INT_LVL_TIMER8,HI_TIMER8_CLK,0},
+		{NULL,NULL,HI_TIMER_09_REGBASE_ADDR,0,0,0,0,0,0,INT_LVL_TIMER9,HI_TIMER9_CLK,0},
+		{NULL,NULL,HI_TIMER_10_REGBASE_ADDR,0,0,0,0,0,0,INT_LVL_TIMER10,HI_TIMER10_CLK,0},
+		{NULL,NULL,HI_TIMER_11_REGBASE_ADDR,0,0,0,0,0,0,INT_LVL_TIMER11,HI_TIMER11_CLK,0},
+		{NULL,NULL,HI_TIMER_12_REGBASE_ADDR,0,0,0,0,0,0,INT_LVL_TIMER12,HI_TIMER12_CLK,0},
+		{NULL,NULL,HI_TIMER_13_REGBASE_ADDR,0,0,0,0,0,0,INT_LVL_TIMER13,HI_TIMER13_CLK,0},
+		{NULL,NULL,HI_TIMER_14_REGBASE_ADDR,0,0,0,0,0,0,INT_LVL_TIMER14,HI_TIMER14_CLK,0},
+		{NULL,NULL,HI_TIMER_15_REGBASE_ADDR,0,0,0,0,0,0,INT_LVL_TIMER15,HI_TIMER15_CLK,0},
+		{NULL,NULL,HI_TIMER_16_REGBASE_ADDR,0,0,0,0,0,0,INT_LVL_TIMER16,HI_TIMER16_CLK,0},
+		{NULL,NULL,HI_TIMER_17_REGBASE_ADDR,0,0,0,0,0,0,INT_LVL_TIMER17,HI_TIMER17_CLK,0},
+		{NULL,NULL,HI_TIMER_18_REGBASE_ADDR,0,0,0,0,0,0,INT_LVL_TIMER18,HI_TIMER18_CLK,0},
+		{NULL,NULL,HI_TIMER_19_REGBASE_ADDR,0,0,0,0,0,0,INT_LVL_TIMER19,HI_TIMER19_CLK,0},
+		{NULL,NULL,HI_TIMER_20_REGBASE_ADDR,0,0,0,0,0,0,INT_LVL_TIMER20,HI_TIMER20_CLK,0},
+		{NULL,NULL,HI_TIMER_21_REGBASE_ADDR,0,0,0,0,0,0,INT_LVL_TIMER21,HI_TIMER21_CLK,0},
+		{NULL,NULL,HI_TIMER_22_REGBASE_ADDR,0,0,0,0,0,0,INT_LVL_TIMER22,HI_TIMER22_CLK,0},
+		{NULL,NULL,HI_TIMER_23_REGBASE_ADDR,0,0,0,0,0,0,INT_LVL_TIMER23,HI_TIMER23_CLK,0},
 	};
 
 void bsp_hardtimer_load_value_k3(u32 timer_id,u32 value)
@@ -107,20 +107,20 @@ u32 bsp_hardtimer_int_status_k3(u32 timer_id)
 
 void bsp_hardtimer_int_clear_k3(u32 timer_id)
 {
+	u32 stamp = 0;
 	writel(0x1,hard_timer_control[timer_id].intclr_addr);
+	stamp = bsp_get_slice_value();
+	while(get_timer_slice_delta(stamp,bsp_get_slice_value())< 2){}/*lint !e666*/
+	
 }
 
 static s32 bsp_hardtimer_disable_k3_noirq(u32 timer_id)
 {
 	/*最后1bit写0,关闭之前先清中断*/
 	u32 ret = 0;
-	ret = bsp_hardtimer_int_status_k3(timer_id);
-	if (ret )
-	{
-		bsp_hardtimer_int_clear_k3(timer_id);
-	}
 	ret = readl(hard_timer_control[timer_id].ctrl_addr);
-	writel(ret&(~0x80),hard_timer_control[timer_id].ctrl_addr);
+	writel(ret&(~0xA0),hard_timer_control[timer_id].ctrl_addr);
+	bsp_hardtimer_int_clear_k3(timer_id);
 	return OK;
 }
 s32 bsp_hardtimer_disable_k3(u32 timer_id)
@@ -140,9 +140,8 @@ s32 bsp_hardtimer_alloc_k3(struct bsp_hardtimer_control  *timer_ctrl)
 	unsigned long flags = 0;
 	intLev = hard_timer_control[timer_ctrl->timerId].interrupt_num;
 	hard_timer_control[timer_ctrl->timerId].routine = timer_ctrl->func;
-	hard_timer_control[timer_ctrl->timerId].arg = (int)timer_ctrl->para;
+	hard_timer_control[timer_ctrl->timerId].arg = timer_ctrl->para;
 	spin_lock_irqsave(&hard_timer_control[timer_ctrl->timerId].lock,flags);
-	(void)bsp_hardtimer_disable_k3_noirq(timer_ctrl->timerId);
 	timerAddr = hard_timer_control[timer_ctrl->timerId].ctrl_addr;	
 	if (TIMER_ONCE_COUNT == timer_ctrl->mode)
 	{
@@ -178,7 +177,7 @@ static s32 bsp_hardtimer_enable_k3_noirq(u32 timer_id)
 	u32 ret = 0;
 	(void)bsp_hardtimer_disable_k3_noirq(timer_id);
 	ret = readl(hard_timer_control[timer_id].ctrl_addr);
-	writel(ret|(~0xFFFFFF7F),hard_timer_control[timer_id].ctrl_addr);
+	writel(ret|0XA0,hard_timer_control[timer_id].ctrl_addr);
 	return OK;
 }
 s32 bsp_hardtimer_enable_k3(u32 timer_id)
@@ -199,7 +198,7 @@ s32 bsp_hardtimer_free_k3(u32 timer_id)
 	u32 intLev = 0;
 	(void)bsp_hardtimer_disable_k3(timer_id);
 	intLev = hard_timer_control[timer_id].interrupt_num;/* [false alarm]:误报 */
-	osl_free_irq(intLev,hard_timer_control[timer_id].routine,hard_timer_control[timer_id].arg);
+	osl_free_irq(intLev,hard_timer_control[timer_id].routine,(int)hard_timer_control[timer_id].arg);
 	hard_timer_control[timer_id].routine = NULL;
 	hard_timer_control[timer_id].arg = 0;
 	return OK;

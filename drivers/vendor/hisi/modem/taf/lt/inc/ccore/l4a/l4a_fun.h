@@ -166,6 +166,7 @@ extern VOS_VOID l4a_help(VOS_VOID);
 extern VOS_UINT32 l4a_PktDeactivateInd2Aps(L4A_PS_MSG_STRU* pData);
 extern VOS_UINT32 l4a_PktPdpModifyInd2Aps(L4A_PS_MSG_STRU* pData);
 extern VOS_UINT32 l4a_PktManagerInd2Aps(L4A_PS_MSG_STRU* pData);
+extern VOS_UINT32 l4a_PktSetupInd2Aps(L4A_PS_MSG_STRU* pData);
 extern VOS_VOID l4a_FunSetTftInfo(APP_ESM_SET_TFT_REQ_STRU* pstPsCgtftReq, APS_L4A_SET_CGTFT_REQ_STRU* pstCgtftReq);
 extern VOS_VOID l4a_FunCgtftrdpPkj(APP_ESM_INQ_DYNAMIC_TFT_CNF_STRU* pstPsInqTftCnf, APS_L4A_SDF_PF_TFT_STRU *psttft);
 extern VOS_VOID l4a_GetPLMNInfo(L4A_PLMN_ID_STRU * pMspPlmn, APP_PLMN_ID_STRU * pPsPlmn);

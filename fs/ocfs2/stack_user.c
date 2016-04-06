@@ -29,54 +29,7 @@
 
 #include <linux/dlm_plock.h>
 
-/*
- * The control protocol starts with a handshake.  Until the handshake
- * is complete, the control device will fail all write(2)s.
- *
- * The handshake is simple.  First, the client reads until EOF.  Each line
- * of output is a supported protocol tag.  All protocol tags are a single
- * character followed by a two hex digit version number.  Currently the
- * only things supported is T01, for "Text-base version 0x01".  Next, the
- * client writes the version they would like to use, including the newline.
- * Thus, the protocol tag is 'T01\n'.  If the version tag written is
- * unknown, -EINVAL is returned.  Once the negotiation is complete, the
- * client can start sending messages.
- *
- * The T01 protocol has three messages.  First is the "SETN" message.
- * It has the following syntax:
- *
- *  SETN<space><8-char-hex-nodenum><newline>
- *
- * This is 14 characters.
- *
- * The "SETN" message must be the first message following the protocol.
- * It tells ocfs2_control the local node number.
- *
- * Next comes the "SETV" message.  It has the following syntax:
- *
- *  SETV<space><2-char-hex-major><space><2-char-hex-minor><newline>
- *
- * This is 11 characters.
- *
- * The "SETV" message sets the filesystem locking protocol version as
- * negotiated by the client.  The client negotiates based on the maximum
- * version advertised in /sys/fs/ocfs2/max_locking_protocol.  The major
- * number from the "SETV" message must match
- * ocfs2_user_plugin.sp_max_proto.pv_major, and the minor number
- * must be less than or equal to ...sp_max_version.pv_minor.
- *
- * Once this information has been set, mounts will be allowed.  From this
- * point on, the "DOWN" message can be sent for node down notification.
- * It has the following syntax:
- *
- *  DOWN<space><32-char-cap-hex-uuid><space><8-char-hex-nodenum><newline>
- *
- * eg:
- *
- *  DOWN 632A924FDD844190BDA93C0DF6B94899 00000001\n
- *
- * This is 47 characters.
- */
+
 
 /*
  * Whether or not the client has done the handshake.

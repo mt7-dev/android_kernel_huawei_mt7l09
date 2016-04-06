@@ -8,8 +8,7 @@
 #include <linux/vga_switcheroo.h>
 #include <acpi/acpi_drivers.h>
 
-#include <drm/drmP.h>
-#include "i915_drv.h"
+#include "drmP.h"
 
 #define INTEL_DSM_REVISION_ID 1 /* For Calpella anyway... */
 
@@ -65,7 +64,7 @@ static int intel_dsm(acpi_handle handle, int func, int arg)
 
 	case ACPI_TYPE_BUFFER:
 		if (obj->buffer.length == 4) {
-			result = (obj->buffer.pointer[0] |
+			result =(obj->buffer.pointer[0] |
 				(obj->buffer.pointer[1] <<  8) |
 				(obj->buffer.pointer[2] << 16) |
 				(obj->buffer.pointer[3] << 24));
@@ -183,6 +182,8 @@ static void intel_dsm_platform_mux_info(void)
 			DRM_DEBUG_DRIVER("  hpd mux info: %s\n",
 			       intel_dsm_mux_type(info->buffer.pointer[3]));
 		}
+	} else {
+		DRM_ERROR("MUX INFO call failed\n");
 	}
 
 out:
@@ -207,7 +208,7 @@ static bool intel_dsm_pci_probe(struct pci_dev *pdev)
 
 	ret = intel_dsm(dhandle, INTEL_DSM_FN_SUPPORTED_FUNCTIONS, 0);
 	if (ret < 0) {
-		DRM_DEBUG_KMS("failed to get supported _DSM functions\n");
+		DRM_ERROR("failed to get supported _DSM functions\n");
 		return false;
 	}
 

@@ -211,8 +211,8 @@ parisc_cache_init(void)
 	/* "New and Improved" version from Jim Hull 
 	 *	(1 << (cc_block-1)) * (cc_line << (4 + cnf.cc_shift))
 	 * The following CAFL_STRIDE is an optimized version, see
-	 * http://lists.parisc-linux.org/pipermail/parisc-linux/2004-June/023625.html
-	 * http://lists.parisc-linux.org/pipermail/parisc-linux/2004-June/023671.html
+	 * http:
+	 * http:
 	 */
 #define CAFL_STRIDE(cnf) (cnf.cc_line << (3 + cnf.cc_block + cnf.cc_shift))
 	dcache_stride = CAFL_STRIDE(cache_info.dc_conf);

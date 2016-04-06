@@ -10,6 +10,8 @@
 #include "vos.h"
 #include "ImsaImsInterface.h"
 #include "ImsaImsInterface.h"
+#include "ImsCodecInterface.h"
+#include "ImsaEntity.h"
 
 
 /*****************************************************************************
@@ -33,6 +35,10 @@ extern "C" {
 /*****************************************************************************
   2 macro
 *****************************************************************************/
+/* zhaochen 00308719 begin for HIFI mailbox full reset 2015-11-09 */
+/* 保护定时器时长为10ms */
+#define IMSA_HIFI_ACK_PROTECT_LENGTH     10
+/* zhaochen 00308719 end for HIFI mailbox full reset 2015-11-09 */
 
 
 /*****************************************************************************
@@ -81,6 +87,8 @@ extern VOS_VOID IMSA_SndImsMsgSystemEvent(IMSA_IMS_INPUT_EVENT_STRU *pstImsaImsI
 extern VOS_VOID IMSA_SndImsMsgParaEvent(IMSA_IMS_INPUT_EVENT_STRU *pstImsaImsInputEvent);
 extern VOS_VOID IMSA_SndImsMsgUssdEvent(IMSA_IMS_INPUT_EVENT_STRU *pstImsaImsInputEvent);
 extern VOS_VOID IMSVA_ProcHifiMsg(const VOS_VOID *pRcvMsg );
+extern VOS_VOID IMSVA_ProcHifiRtMsg(const VOS_VOID *pRcvMsg );
+extern VOS_VOID IMSVA_TimerMsgDistr(const REL_TIMER_MSG *pRcvMsg );
 
 extern VOS_VOID IMSA_Snd2ImsaParaMsg(const IMSA_IMS_OUTPUT_PARA_EVENT_STRU *pstOutputService);
 extern VOS_VOID IMSA_Snd2ImsaSystemMsg(const IMSA_IMS_OUTPUT_SYSTEM_EVENT_STRU *pstOutputService);
@@ -97,6 +105,17 @@ extern VOS_UINT32 IMSA_ImsInputParaMsgSave(const IMSA_IMS_INPUT_PARA_EVENT_STRU 
 extern VOS_VOID IMSA_ImsInputParaMsgClear(VOS_VOID);
 extern VOS_VOID IMSA_SendImsCcwaiSetReq(VOS_UINT8 ucCallWaiting);
 extern VOS_VOID IMSA_ProcImsMsgCcwaiSetCnf(const IMSA_IMS_OUTPUT_PARA_EVENT_STRU *pstOutPara);
+/* zhaochen 00308719 begin for HIFI mailbox full reset 2015-11-09 */
+extern VOS_VOID IMSA_ImsAdaption_Init(VOS_VOID);
+extern VOS_VOID IMSA_ClearHifiData(VOS_VOID);
+extern VOS_VOID IMSA_ImsAdaption_ClearResource(VOS_VOID);
+extern VOS_VOID IMSA_AddDataToBuffer(IMSA_VOICE_RX_DATA_IND_STRU *pstRxDataInd);
+extern VOS_VOID IMSA_ProcTimerMsgHifiAckProtect(const VOS_VOID *pRcvMsg);
+extern VOS_VOID IMSA_SendOneBufferData(VOS_UINT8 ulNeedAckFlag);
+extern VOS_VOID IMSA_SndHifiDataInfo(VOS_VOID);
+extern VOS_VOID IMSVA_StartTimer(IMSA_TIMER_STRU *pstTimer);
+extern VOS_VOID IMSVA_StopTimer(IMSA_TIMER_STRU *pstTimer);
+/* zhaochen 00308719 end for HIFI mailbox full reset 2015-11-09 */
 /*****************************************************************************
   9 OTHERS
 *****************************************************************************/

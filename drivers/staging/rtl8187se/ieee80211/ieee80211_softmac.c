@@ -560,7 +560,7 @@ void ieee80211_softmac_ips_scan_syncro(struct ieee80211_device *ieee)
 
 		do{
 			if (watch_dog++ >= MAX_CHANNEL_NUMBER)
-		//	if (++watch_dog >= 15);//MAX_CHANNEL_NUMBER)  //YJ,modified,080630
+		//	if (++watch_dog >= 15);//MAX_CHANNEL_NUMBER)
 				goto out; /* scan completed */
 
 			ieee->current_network.channel = (ieee->current_network.channel + 1)%MAX_CHANNEL_NUMBER;
@@ -1938,7 +1938,7 @@ associate_complete:
 				ieee->state = IEEE80211_ASSOCIATING;
 				ieee->softmac_stats.reassoc++;
 
-				//notify_wx_assoc_event(ieee);  //YJ,del,080828, do not notify os here
+				//notify_wx_assoc_event(ieee);
 				queue_work(ieee->wq, &ieee->associate_procedure_wq);
 			}
 
@@ -2359,12 +2359,10 @@ void ieee80211_associate_retry_wq(struct work_struct *work)
 		ieee->actscanning = true;
 		ieee80211_rtl_start_scan(ieee);
 	}
-	//YJ,add,080828, notify os here
 	if(ieee->state == IEEE80211_NOLINK)
 	{
 		notify_wx_assoc_event(ieee);
 	}
-	//YJ,add,080828,end
 	spin_unlock_irqrestore(&ieee->lock, flags);
 
 exit:
@@ -2543,10 +2541,10 @@ void ieee80211_softmac_init(struct ieee80211_device *ieee)
 	ieee->bInactivePs = false;
 	ieee->actscanning = false;
 	ieee->ListenInterval = 2;
-	ieee->NumRxDataInPeriod = 0; //YJ,add,080828
-	ieee->NumRxBcnInPeriod = 0; //YJ,add,080828
-	ieee->NumRxOkTotal = 0;//+by amy 080312
-	ieee->NumRxUnicast = 0;//YJ,add,080828,for keep alive
+	ieee->NumRxDataInPeriod = 0;
+	ieee->NumRxBcnInPeriod = 0;
+	ieee->NumRxOkTotal = 0;
+	ieee->NumRxUnicast = 0;
 	ieee->beinretry = false;
 	ieee->bHwRadioOff = false;
 //by amy
@@ -2593,7 +2591,6 @@ void ieee80211_softmac_free(struct ieee80211_device *ieee)
 	cancel_delayed_work(&ieee->associate_retry_wq);
 
 
-	//add for RF power on power of by lizhaoming 080512
 	cancel_delayed_work(&ieee->GPIOChangeRFWorkItem);
 
 	destroy_workqueue(ieee->wq);

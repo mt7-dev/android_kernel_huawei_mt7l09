@@ -51,6 +51,9 @@ extern VOS_VOID RABM_SndTafPsDataInd( VOS_UINT8  ucEntId,  PDCP_RABM_DATA_BUF_ST
 extern VOS_VOID RABM_SndTafInActNsapiInd( VOS_UINT8 ucNsapi );
 extern VOS_VOID RABM_SndTafInActSiInd( VOS_UINT8 ucSi );
 extern VOS_VOID RABM_SndGmmRabRelInd( VOS_VOID );
+
+extern VOS_VOID NAS_RABM_SndGmmRbSetupInd(VOS_VOID);
+
 extern VOS_VOID RABM_SndTafStatusInd( VOS_UINT8 ucNsapiOrSi,VOS_UINT8 ucStatusFlg,VOS_UINT8 ucCause );
 extern VOS_VOID RABM_SndRrcRabRsp( VOS_UINT8 ucRabNum, RRRABM_RAB_IND_STRU *pMsg );
 extern VOS_VOID RABM_SndSmDeactReq(VOS_UINT8   ucNsapi);

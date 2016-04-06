@@ -675,7 +675,7 @@ VOS_UINT32 VOS_EventWrite( VOS_UINT32 ulTaskID, VOS_UINT32 ulEvents )
     /* the functin should be full later */
     int                      intLockLevel;
     VOS_UINT32               ulTempQueue;
-    VOS_UINT32               ulTempSem;
+    VOS_SEM                  ulTempSem;
 
     if ( VOS_OK != VOS_CheckEvent(ulTaskID) )
     {
@@ -746,7 +746,7 @@ VOS_UINT32 VOS_EventRead( VOS_UINT32 ulEvents,
     /* the functin should be full later */   
     VOS_UINT32     ulTaskSelf;       /*Self task ID*/
     VOS_UINT32     ulTempQueue;
-    VOS_UINT32     ulTempSem;
+    VOS_SEM        ulTempSem;
     int            intLockLevel;
     VOS_UINT32     ulTempEvent;
     

@@ -549,6 +549,9 @@ VOS_VOID NAS_MMC_SndMmaSysInfo( VOS_VOID )
     MMC_MMA_SYS_INFO_IND_STRU          *pstSysInfoInd       = VOS_NULL_PTR;
     NAS_MML_CAMP_PLMN_INFO_STRU        *pstCampPlmnInfo     = VOS_NULL_PTR;
     VOS_UINT32                          i;
+    VOS_UINT32                          ulIsHplmnInEplmnList;
+
+    VOS_UINT32                          ulIsCurrCampPlmnInEplmnList;
 
     VOS_UINT32                          ulForbiddenFlg;
 
@@ -557,6 +560,9 @@ VOS_VOID NAS_MMC_SndMmaSysInfo( VOS_VOID )
 #endif
 
     ulForbiddenFlg            = VOS_FALSE;
+    ulIsHplmnInEplmnList      = NAS_MML_IsHplmnInEplmnList();
+
+    ulIsCurrCampPlmnInEplmnList = NAS_MML_IsCurrCampPlmnInEplmnList();
 
     pstSysInfoInd = (MMC_MMA_SYS_INFO_IND_STRU *)PS_ALLOC_MSG(WUEPS_PID_MMC,
                         sizeof(MMC_MMA_SYS_INFO_IND_STRU) - VOS_MSG_HEAD_LENGTH);
@@ -604,6 +610,9 @@ VOS_VOID NAS_MMC_SndMmaSysInfo( VOS_VOID )
         {
             ulForbiddenFlg = VOS_TRUE;
         }
+
+        
+        pstSysInfoInd->enLmmAccessType  = pstCampPlmnInfo->enLmmAccessType;
     }
     else
 #endif
@@ -612,6 +621,8 @@ VOS_VOID NAS_MMC_SndMmaSysInfo( VOS_VOID )
         {
             ulForbiddenFlg = MMCMM_FORBIDDEN_PLMN;
         }
+
+        pstSysInfoInd->enLmmAccessType  = NAS_MML_LMM_ACCESS_TYPE_BUTT;
     }
 
     pstSysInfoInd->ucIsFobbiddenPlmnFlag = (VOS_UINT8)ulForbiddenFlg;
@@ -638,7 +649,17 @@ VOS_VOID NAS_MMC_SndMmaSysInfo( VOS_VOID )
     }
     else
     {
+    
+        /* 当前驻留网络肯定不在HOME PLMN上,默认漫游 */
         pstSysInfoInd->ucRoamFlag   = VOS_TRUE;
+    
+        /* 如果NV开启在EPLMN里面有HPLMN，需要额外设置为不显示漫游 */
+        if ((VOS_TRUE == NAS_MML_GetHplmnInEplmnDisplayHomeFlg())
+         && (VOS_TRUE == ulIsHplmnInEplmnList)
+         && (VOS_TRUE == ulIsCurrCampPlmnInEplmnList))
+        {
+            pstSysInfoInd->ucRoamFlag   = VOS_FALSE;            
+        }        
     }
 
     /* 填充消息头 */

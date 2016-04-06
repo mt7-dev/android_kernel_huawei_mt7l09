@@ -206,6 +206,11 @@ static void radeon_legacy_rmx_mode_set(struct drm_crtc *crtc,
 	WREG32(RADEON_FP_CRTC_V_TOTAL_DISP, fp_crtc_v_total_disp);
 }
 
+void radeon_restore_common_regs(struct drm_device *dev)
+{
+	/* don't need this yet */
+}
+
 static void radeon_pll_wait_for_read_update_complete(struct drm_device *dev)
 {
 	struct radeon_device *rdev = dev->dev_private;
@@ -290,12 +295,11 @@ static uint8_t radeon_compute_pll_gain(uint16_t ref_freq, uint16_t ref_div,
 		return 1;
 }
 
-static void radeon_crtc_dpms(struct drm_crtc *crtc, int mode)
+void radeon_crtc_dpms(struct drm_crtc *crtc, int mode)
 {
 	struct radeon_crtc *radeon_crtc = to_radeon_crtc(crtc);
 	struct drm_device *dev = crtc->dev;
 	struct radeon_device *rdev = dev->dev_private;
-	uint32_t crtc_ext_cntl = 0;
 	uint32_t mask;
 
 	if (radeon_crtc->crtc_id)
@@ -308,16 +312,6 @@ static void radeon_crtc_dpms(struct drm_crtc *crtc, int mode)
 			RADEON_CRTC_VSYNC_DIS |
 			RADEON_CRTC_HSYNC_DIS);
 
-	/*
-	 * On all dual CRTC GPUs this bit controls the CRTC of the primary DAC.
-	 * Therefore it is set in the DAC DMPS function.
-	 * This is different for GPU's with a single CRTC but a primary and a
-	 * TV DAC: here it controls the single CRTC no matter where it is
-	 * routed. Therefore we set it here.
-	 */
-	if (rdev->flags & RADEON_SINGLE_CRTC)
-		crtc_ext_cntl = RADEON_CRTC_CRT_ON;
-	
 	switch (mode) {
 	case DRM_MODE_DPMS_ON:
 		radeon_crtc->enabled = true;
@@ -328,7 +322,7 @@ static void radeon_crtc_dpms(struct drm_crtc *crtc, int mode)
 		else {
 			WREG32_P(RADEON_CRTC_GEN_CNTL, RADEON_CRTC_EN, ~(RADEON_CRTC_EN |
 									 RADEON_CRTC_DISP_REQ_EN_B));
-			WREG32_P(RADEON_CRTC_EXT_CNTL, crtc_ext_cntl, ~(mask | crtc_ext_cntl));
+			WREG32_P(RADEON_CRTC_EXT_CNTL, 0, ~mask);
 		}
 		drm_vblank_post_modeset(dev, radeon_crtc->crtc_id);
 		radeon_crtc_load_lut(crtc);
@@ -342,7 +336,7 @@ static void radeon_crtc_dpms(struct drm_crtc *crtc, int mode)
 		else {
 			WREG32_P(RADEON_CRTC_GEN_CNTL, RADEON_CRTC_DISP_REQ_EN_B, ~(RADEON_CRTC_EN |
 										    RADEON_CRTC_DISP_REQ_EN_B));
-			WREG32_P(RADEON_CRTC_EXT_CNTL, mask, ~(mask | crtc_ext_cntl));
+			WREG32_P(RADEON_CRTC_EXT_CNTL, mask, ~mask);
 		}
 		radeon_crtc->enabled = false;
 		/* adjust pm to dpms changes AFTER disabling crtcs */
@@ -422,42 +416,12 @@ int radeon_crtc_do_set_base(struct drm_crtc *crtc,
 	/* Pin framebuffer & get tilling informations */
 	obj = radeon_fb->obj;
 	rbo = gem_to_radeon_bo(obj);
-retry:
 	r = radeon_bo_reserve(rbo, false);
 	if (unlikely(r != 0))
 		return r;
-	/* Only 27 bit offset for legacy CRTC */
-	r = radeon_bo_pin_restricted(rbo, RADEON_GEM_DOMAIN_VRAM, 1 << 27,
-				     &base);
+	r = radeon_bo_pin(rbo, RADEON_GEM_DOMAIN_VRAM, &base);
 	if (unlikely(r != 0)) {
 		radeon_bo_unreserve(rbo);
-
-		/* On old GPU like RN50 with little vram pining can fails because
-		 * current fb is taking all space needed. So instead of unpining
-		 * the old buffer after pining the new one, first unpin old one
-		 * and then retry pining new one.
-		 *
-		 * As only master can set mode only master can pin and it is
-		 * unlikely the master client will race with itself especialy
-		 * on those old gpu with single crtc.
-		 *
-		 * We don't shutdown the display controller because new buffer
-		 * will end up in same spot.
-		 */
-		if (!atomic && fb && fb != crtc->fb) {
-			struct radeon_bo *old_rbo;
-			unsigned long nsize, osize;
-
-			old_rbo = gem_to_radeon_bo(to_radeon_framebuffer(fb)->obj);
-			osize = radeon_bo_size(old_rbo);
-			nsize = radeon_bo_size(rbo);
-			if (nsize <= osize && !radeon_bo_reserve(old_rbo, false)) {
-				radeon_bo_unpin(old_rbo);
-				radeon_bo_unreserve(old_rbo);
-				fb = NULL;
-				goto retry;
-			}
-		}
 		return -EINVAL;
 	}
 	radeon_bo_get_tiling_flags(rbo, &tiling_flags, NULL);
@@ -473,7 +437,7 @@ retry:
 
 	crtc_offset_cntl = 0;
 
-	pitch_pixels = target_fb->pitches[0] / (target_fb->bits_per_pixel / 8);
+	pitch_pixels = target_fb->pitch / (target_fb->bits_per_pixel / 8);
 	crtc_pitch  = (((pitch_pixels * target_fb->bits_per_pixel) +
 			((target_fb->bits_per_pixel * 8) - 1)) /
 		       (target_fb->bits_per_pixel * 8));
@@ -1024,9 +988,15 @@ static void radeon_set_pll(struct drm_crtc *crtc, struct drm_display_mode *mode)
 }
 
 static bool radeon_crtc_mode_fixup(struct drm_crtc *crtc,
-				   const struct drm_display_mode *mode,
+				   struct drm_display_mode *mode,
 				   struct drm_display_mode *adjusted_mode)
 {
+	struct drm_device *dev = crtc->dev;
+	struct radeon_device *rdev = dev->dev_private;
+
+	/* adjust pm to upcoming mode change */
+	radeon_pm_compute_clocks(rdev);
+
 	if (!radeon_crtc_scaling_mode_fixup(crtc, mode, adjusted_mode))
 		return false;
 	return true;

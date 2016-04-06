@@ -279,12 +279,7 @@ static int sa1110_target(struct cpufreq_policy *policy,
 
 	cpufreq_notify_transition(policy, &freqs, CPUFREQ_PRECHANGE);
 
-	/*
-	 * The clock could be going away for some time.  Set the SDRAMs
-	 * to refresh rapidly (every 64 memory clock cycles).  To get
-	 * through the whole array, we need to wait 262144 mclk cycles.
-	 * We wait 20ms to be safe.
-	 */
+
 	sdram_set_refresh(2);
 	if (!irqs_disabled())
 		msleep(20);

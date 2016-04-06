@@ -1,18 +1,4 @@
-/**
-    @copyright: Huawei Technologies Co., Ltd. 2012-2012. All rights reserved.
-    
-    @file: srecorder_allcpu_stack.c
-    
-    @brief: 读取死机时所有活动 CPU的调用栈
-    
-    @version: 1.0 
-    
-    @author: QiDechun ID: 216641
-    
-    @date: 2012-06-21
-    
-    @history:
-*/
+
 
 /*----includes-----------------------------------------------------------------------*/
 
@@ -44,10 +30,14 @@
 
 /*----local function prototypes---------------------------------------------------------*/
 
+#ifdef CONFIG_ARM
 static void srecorder_show_regs(srecorder_reserved_mem_info_t *pmem_info, struct pt_regs *regs, int all);
+#endif
 static void srecorder_show_data(srecorder_reserved_mem_info_t *pmem_info, unsigned long addr, int nbytes, const char *name);
+#ifdef CONFIG_ARM
 static void srecorder_show_extra_register_data(srecorder_reserved_mem_info_t *pmem_info, struct pt_regs *regs, int nbytes);
 static void __srecorder_show_regs(srecorder_reserved_mem_info_t *pmem_info, struct pt_regs *regs);
+#endif
 
 static int srecorder_trigger_all_cpu_backtrace(srecorder_reserved_mem_info_t *pmem_info);
 static void srecorder_arch_trigger_all_cpu_backtrace(srecorder_reserved_mem_info_t *pmem_info);
@@ -146,6 +136,7 @@ static void srecorder_show_data(srecorder_reserved_mem_info_t *pmem_info,
 }
 
 
+#ifdef CONFIG_ARM
 /**
     @function: static void srecorder_show_extra_register_data(srecorder_reserved_mem_info_for_log_t *pmem_info, 
         struct pt_regs *regs, int nbytes)
@@ -312,6 +303,7 @@ static void srecorder_show_regs(srecorder_reserved_mem_info_t *pmem_info, struct
     __srecorder_show_regs(pmem_info, regs);
     srecorder_dump_backtrace(pmem_info, NULL, NULL);
 }
+#endif
 
 
 /**
@@ -373,7 +365,6 @@ static void srecorder_smp_send_all_cpu_backtrace(srecorder_reserved_mem_info_t *
             unsigned long free = 0;
             unsigned state = p->state ? __ffs(p->state) + 1 : 0;
 
-            /* DTS2012110206142 wupeng-qidechun 20121105 begin */
             /* 只打印D状态、运行态、就绪态的线程调用栈 */
             if ((TASK_RUNNING == p->state) || (TASK_UNINTERRUPTIBLE == (p->state & TASK_UNINTERRUPTIBLE)))
             {
@@ -416,7 +407,6 @@ static void srecorder_smp_send_all_cpu_backtrace(srecorder_reserved_mem_info_t *
                 
                 srecorder_show_stack(pmem_info, p, NULL);
             }
-            /* DTS2012110206142 wupeng-qidechun 20121105 begin */
         } while_each_thread(g, p);
         
 #if (LINUX_VERSION_CODE < KERNEL_VERSION(3, 2, 0))
@@ -488,13 +478,11 @@ int srecorder_get_allcpu_stack(srecorder_reserved_mem_info_t *pmem_info)
         return -1;
     }
 
-    /* DTS2012101502012 wupeng 20121015 begin */
     if (srecorder_log_has_been_dumped(ALL_CPU_STACK_BIT3) || pmem_info->dump_modem_crash_log_only)
     {
         SRECORDER_PRINTK("all cpu stack have been dumped successfully!\n");
         return -1;   
     }
-    /* DTS2012101502012 wupeng 20121015 end */
     
     if (0 != srecorder_write_info_header(pmem_info, ALL_CPU_STACK_BIT3, &pinfo_header))
     {
@@ -503,6 +491,7 @@ int srecorder_get_allcpu_stack(srecorder_reserved_mem_info_t *pmem_info)
     
     if (0 > srecorder_trigger_all_cpu_backtrace(pmem_info))
     {
+#ifdef CONFIG_ARM
         int bytes_read = 0;
         struct pt_regs *regs = get_irq_regs();    
         
@@ -513,6 +502,7 @@ int srecorder_get_allcpu_stack(srecorder_reserved_mem_info_t *pmem_info)
             srecorder_renew_meminfo(pmem_info, bytes_read);
             srecorder_show_regs(pmem_info, regs, 1);
         }
+#endif
     }
 
     srecorder_validate_info_header(pinfo_header, pmem_info->bytes_per_type);

@@ -15,9 +15,13 @@
 #include <linux/module.h>
 #include <linux/slab.h>
 #include <linux/sched.h>
+#include <linux/time.h>
+#include <linux/random.h>
 #include <linux/mtd/mtd.h>
 #include <linux/uaccess.h>
 #include <linux/semaphore.h>
+#include <linux/compat.h>
+
 #include <linux/mtd/hisi_nve_interface.h>
 #include "hisi_nve.h"
 
@@ -25,6 +29,13 @@ static struct semaphore nv_sem;
 static struct class *nve_class;
 static struct NVE_struct *my_nve;
 static int hisi_nv_init_ok;
+#ifdef CONFIG_ARCH_HI6XXX
+static char nv_info[NV_INFO_LEN];
+static char temp_nv_info[NV_INFO_LEN];
+#endif
+void test_nvwrite(void);
+void test_nvread(void);
+void test_nvalldata(void);
 /*
  * Function name:nve_notify_add.
  * Discription:add NV notifier and create NV device node.
@@ -109,8 +120,8 @@ static int nve_read(struct mtd_info *mtd, loff_t from, size_t len, u_char *buf)
 
 	ret = mtd_read(mtd, from, len, &retlen, buf);
 	if ((ret && (ret != -EUCLEAN) && (ret != -EBADMSG)) || (retlen != len)) {
-		printk(KERN_ERR "[NVE][%s] Fatal error, read flash from = 0x%x, len = 0x%x, retlen = 0x%x, ret = 0x%x.\n",
-		       __func__, (uint32_t)from, len, retlen, ret);
+		printk(KERN_ERR "[NVE][%s] Fatal error, read flash from = 0x%llx, len = 0x%zx, retlen = 0x%zx, ret = 0x%x.\n",
+		       __func__, from, len, retlen, ret);
 		ret = -ENODEV;
 	} else
 		ret = 0;
@@ -139,8 +150,8 @@ static int nve_erase(struct mtd_info *mtd, loff_t from, size_t len)
 
 	ret = mtd_erase(mtd, &erase);
 	if (ret) {
-		printk(KERN_ERR "[NVE][%s] fatal error, erase flash from = 0x%x, len = 0x%x, ret = 0x%x.\n",
-		       __func__, (uint32_t)from, len, ret);
+		printk(KERN_ERR "[NVE][%s] fatal error, erase flash from = 0x%llx, len = 0x%zx, ret = 0x%x.\n",
+		       __func__, from, len, ret);
 
 		ret = -ENODEV;
 	}
@@ -161,18 +172,18 @@ static int nve_write(struct mtd_info *mtd, loff_t from, size_t len, u_char *buf)
 {
 	int ret = 0;
 	size_t retlen;
-	ret = nve_erase(mtd, from + len - (1 << PAGE_SHIFT), (1 << PAGE_SHIFT));
+	ret = nve_erase(mtd, from + len - (1<<PAGE_SHIFT), (1<<PAGE_SHIFT));
 	if (ret) {
 		printk(KERN_ERR "[NVE][%s] fatal error,write nve partition head error!\n", __func__);
 		return -ENODEV;
 	}
 
-	ret = nve_erase(mtd, from, len - (1 << PAGE_SHIFT));
+	ret = nve_erase(mtd, from, len - (1<<PAGE_SHIFT));
 	if (!ret) {
 		ret = mtd_write(mtd, from, len, &retlen, buf);
 		if ((ret) || (retlen != len)) {
-			printk(KERN_ERR "[NVE][%s] fatal error, write flash from = 0x%x, len = 0x%x, retlen = 0x%x, ret = 0x%x.\n",
-			       __func__, (uint32_t)from, len, retlen, ret);
+			printk(KERN_ERR "[NVE][%s] fatal error, write flash from = 0x%llx, len = 0x%zx, retlen = 0x%zx, ret = 0x%x.\n",
+			       __func__, from, len, retlen, ret);
 
 			ret = -ENODEV;
 		}
@@ -199,13 +210,15 @@ static int nve_check_partition(struct NVE_struct *nve, uint32_t index)
 	struct mtd_info *mtd = nve->mtd;
 	struct NVE_partition_header *nve_header = (struct NVE_partition_header *)(nve->nve_ramdisk + PARTITION_HEADER_OFFSET);
 
-	ret = nve_read(mtd, index * NVE_PARTITION_SIZE, NVE_PARTITION_SIZE, nve->nve_ramdisk);
+	ret = nve_read(mtd, (loff_t)index * NVE_PARTITION_SIZE, NVE_PARTITION_SIZE, nve->nve_ramdisk);
 
 	if (ret) {
 		printk(KERN_ERR "[NVE][%s]nve_read error in line %d!\n", __func__, __LINE__);
 		return ret;
 	}
 
+	printk(KERN_INFO"nve_header->nve_partition_name %s  compare = %s\n",
+			nve_header->nve_partition_name, NVE_HEADER_NAME);
 	/*compare nve_partition_name with const name to decide current partition is valid or not*/
 	ret = strncmp(NVE_HEADER_NAME, nve_header->nve_partition_name, strlen(NVE_HEADER_NAME));
 
@@ -230,9 +243,11 @@ static void nve_find_valid_partition(struct NVE_struct *nve)
 	for (i = 1; i < nve->nve_partition_count; i++) {
 		partition_valid = nve_check_partition(nve, i);
 
+		printk("partition_valid =%d\n", partition_valid);
 		if (partition_valid)
 			continue;
 
+		printk("nve = %d age_temp = %d\n", partition_valid, age_temp);
 		if (nve_header->nve_age > age_temp) {
 			nve->nve_current_id = i;
 			age_temp = nve_header->nve_age;
@@ -280,7 +295,7 @@ static int nve_restore(struct NVE_struct *nve)
 			printk(KERN_ERR "[NVE][%s]failed to allocate ramdisk temp buffer.\n", __func__);
 			return -EFAULT;
 		} else {
-			if (nve_read(mtd, id * NVE_PARTITION_SIZE, NVE_PARTITION_SIZE, (u_char *)nve->nve_ramdisk)) {
+			if (nve_read(mtd, (loff_t)id * NVE_PARTITION_SIZE, NVE_PARTITION_SIZE, (u_char *)nve->nve_ramdisk)) {
 				printk(KERN_ERR "[NVE][%s] nve read error in line [%d].\n", __func__, __LINE__);
 				kfree(nve_ramdisk_temp);
 				return -EFAULT;
@@ -324,12 +339,13 @@ static int nve_restore(struct NVE_struct *nve)
 			id++;
 	}
 
-	ret = nve_write(mtd, id * NVE_PARTITION_SIZE, NVE_PARTITION_SIZE, (u_char *)nve->nve_ramdisk);
+	ret = nve_write(mtd, (loff_t)id * NVE_PARTITION_SIZE, NVE_PARTITION_SIZE, (u_char *)nve->nve_ramdisk);
 
 	if (ret) {
 		printk(KERN_ERR "[NVE][%s]nve_write error in line %d!\n", __func__, __LINE__);
 		return ret;
 	}
+
 	/*ensure write success,then erase partition 0*/
 	nve_erase(mtd, NVE_PARTITION_SIZE - (1 << PAGE_SHIFT), (1 << PAGE_SHIFT));
 	nve_erase(mtd, 0, NVE_PARTITION_SIZE - (1 << PAGE_SHIFT));
@@ -360,7 +376,7 @@ static int nve_do_index_table(struct NVE_struct *nve)
 	struct mtd_info *mtd = nve->mtd;
 	struct NVE_partition_header *nve_header = (struct NVE_partition_header *)(nve->nve_ramdisk + PARTITION_HEADER_OFFSET);
 
-	if (nve_read(mtd, nve->nve_current_id * NVE_PARTITION_SIZE, NVE_PARTITION_SIZE, (u_char *)nve->nve_ramdisk)) {
+	if (nve_read(mtd, (loff_t)nve->nve_current_id * NVE_PARTITION_SIZE, NVE_PARTITION_SIZE, (u_char *)nve->nve_ramdisk)) {
 		printk(KERN_ERR "[NVE][%s] nve read error in line [%d]!\n", __func__, __LINE__);
 		return -ENODEV;
 	}
@@ -416,6 +432,7 @@ static int nve_do_index_table(struct NVE_struct *nve)
  * TEST_NV_IN_KERNEL to "1".
  */
 #if TEST_NV_IN_KERNEL
+
 static int testnve(struct NVE_struct *nve)
 {
 	struct NVE_partition_header *nve_header;
@@ -447,6 +464,62 @@ static int testnve(struct NVE_struct *nve)
 
 	return 0;
 }
+
+/* WLAN_MAC_LEN was not used */
+/*#define WLAN_MAC_LEN            6*/
+#define NV_WLAN_NUM             193
+/* NV_WLAN_VALID_SIZE was not used */
+/*#define NV_WLAN_VALID_SIZE      12*/
+#define NV_READ                 1
+#define NV_READ                 1
+void test_nvwrite(void)
+{
+    struct hisi_nve_info_user  info;
+	int ret = -1;
+    memset(&info, 0, sizeof(info));
+    strncpy(info.nv_name, "HICOUL", (sizeof("HICOUL")-1));
+    info.nv_name[sizeof("HICOUL")-1] = '\0';
+    info.nv_number = NV_WLAN_NUM;
+    info.valid_size = 6;
+    info.nv_operation = NV_WRITE;
+    info.nv_data[0] =   (u_char)(prandom_u32()%255);
+    info.nv_data[1] =   (u_char)(prandom_u32()%255);
+    info.nv_data[2] =   (u_char)(prandom_u32()%255);
+    info.nv_data[3] =   (u_char)(prandom_u32()%255);
+    info.nv_data[4] =   (u_char)(prandom_u32()%255);
+    info.nv_data[5] =   (u_char)(prandom_u32()%255);
+
+    ret = hisi_nve_direct_access( &info );
+    if (ret != -1) {
+	printk("test nv write %x %x %x %x %x %x\n success!\n", info.nv_data[0], info.nv_data[1], info.nv_data[2],info.nv_data[3],info.nv_data[4],info.nv_data[5]);
+    }else
+    	printk("test nv write %x %x %x %x %x %x\n faild!\n", info.nv_data[0], info.nv_data[1], info.nv_data[2],info.nv_data[3],info.nv_data[4],info.nv_data[5]);
+
+}
+
+void test_nvread(void)
+{
+    struct hisi_nve_info_user  info;
+	int ret = -1;
+    memset(&info, 0, sizeof(info));
+    strncpy(info.nv_name, "HICOUL", (sizeof("HICOUL")-1));
+    info.nv_name[sizeof("HICOUL")-1] = '\0';
+    info.nv_number = NV_WLAN_NUM;
+    info.valid_size = 6;
+    info.nv_operation = NV_READ;
+
+    ret = hisi_nve_direct_access( &info );
+    if (ret != -1) {
+	printk("test nv read %x %x %x %x %x %x\n success!\n", info.nv_data[0], info.nv_data[1], info.nv_data[2],info.nv_data[3],info.nv_data[4],info.nv_data[5]);
+    }else
+    	printk("test nv read %x %x %x %x %x %x\n faild!\n", info.nv_data[0], info.nv_data[1], info.nv_data[2],info.nv_data[3],info.nv_data[4],info.nv_data[5]);
+
+}
+
+void test_nvalldata(void)
+{
+	testnve(my_nve);
+}
 #endif
 
 /*
@@ -461,10 +534,7 @@ static int nve_open_ex(void)
 	int ret = 0;
 	struct mtd_info *mtd;
 	struct NVE_struct *nve;
-	if (!hisi_nv_init_ok) {
-		printk(KERN_ERR "[NVE][%s]:driver is not initialized\n", __func__);
-		return -ENODEV;
-	}
+
 	/*use the semaphore to ensure that only one thread can visit the device at the same time*/
 	if (down_interruptible(&nv_sem))
 		return -EBUSY;
@@ -501,7 +571,7 @@ static int nve_open_ex(void)
 	nve->mtd = mtd;
 
 	/*Total avaliable NV partition size is 4M,but we only use 1M*/
-	nve->nve_partition_count = (mtd->size / NVE_PARTITION_SIZE) / 4;
+	nve->nve_partition_count = NVE_PARTITION_COUNT;
 
 	nve->nve_current_id = NVE_INVALID_NVM;
 	printk(KERN_INFO "[NVE] nve->nve_partition_count = 0x%x.\n", nve->nve_partition_count);
@@ -553,6 +623,54 @@ out:
 	up(&nv_sem);
 	return ret;
 }
+/*
+ * Function name:nve_out_log.
+ * Discription:output log of reading and writing nv.
+ * Parameters:
+ *          @ struct hisi_nve_info_user *user_info pointer.
+            @ bool isRead
+ * return value:
+ *          void
+ */
+#ifdef CONFIG_ARCH_HI6XXX
+static void nve_out_log(struct hisi_nve_info_user *user_info, bool isRead)
+{
+        int index = 0;
+        if(NULL == user_info)
+        {
+           printk(KERN_WARNING "[NVE][%s]:user_info is null! \n", __func__);
+           return;
+        }
+        if(isRead)
+        {
+            printk(KERN_WARNING "[NVE][%s]:read nv:ID= %d \n", __func__, user_info->nv_number);
+        }else
+        {
+            printk(KERN_WARNING "[NVE][%s]:write nv:ID= %d \n", __func__, user_info->nv_number);
+        }
+        memset(nv_info,0,sizeof(nv_info));
+        memset(temp_nv_info,0,sizeof(temp_nv_info));
+        for(index=0; index<user_info->valid_size; index++)
+        {
+           snprintf(temp_nv_info, NV_INFO_LEN-1,"%s,0x%x",nv_info,user_info->nv_data[index]);
+           memset(nv_info,0,sizeof(nv_info));
+           snprintf(nv_info , NV_INFO_LEN-1,"%s",temp_nv_info);
+           if((index%20 == 0)&&(index>0))
+           {
+                printk(KERN_WARNING "%s\n", nv_info);
+                memset(nv_info,0,sizeof(nv_info));
+           }
+           memset(temp_nv_info,0,sizeof(temp_nv_info));
+        }
+        printk(KERN_WARNING "%s\n", nv_info);
+        if(isRead)
+        {
+            printk(KERN_WARNING "[NVE][%s]:read data = %s\n", __func__, user_info->nv_data);
+        }else{
+            printk(KERN_WARNING "[NVE][%s]:write data = %s\n", __func__, user_info->nv_data);
+        }
+}
+#endif
 
 /*
  * Function name:hisi_nve_direct_access_for_rdr.
@@ -612,7 +730,7 @@ int hisi_nve_direct_access_for_rdr(struct hisi_nve_info_user *user_info)
 		user_info->valid_size = NVE_NV_DATA_SIZE;
 	} else if (0 == user_info->valid_size) {
 		user_info->valid_size = nve_index->nv_size;
-		printk(KERN_WARNING "[NVE]Bad parameter,inputed NV length is 0,will be reassigned according to NV inedx table\n");
+		printk(KERN_INFO "[NVE]Bad parameter,inputed NV length is 0,will be reassigned according to NV inedx table\n");
 	}
 
 	nv_data = nve->nve_ramdisk + nve_index->nv_offset + sizeof(struct NV_header);
@@ -633,7 +751,7 @@ int hisi_nve_direct_access_for_rdr(struct hisi_nve_info_user *user_info)
 
 		/*write NV to emmc*/
 		nve_increment(nve);
-		ret = nve_write(mtd, nve->nve_current_id * NVE_PARTITION_SIZE, NVE_PARTITION_SIZE, (u_char *)nve->nve_ramdisk);
+		ret = nve_write(mtd, (loff_t)(nve->nve_current_id) * NVE_PARTITION_SIZE, NVE_PARTITION_SIZE, (u_char *)nve->nve_ramdisk);
 	}
 
 	/*release the semaphore*/
@@ -699,7 +817,7 @@ int hisi_nve_direct_access(struct hisi_nve_info_user *user_info)
 		user_info->valid_size = NVE_NV_DATA_SIZE;
 	} else if (0 == user_info->valid_size) {
 		user_info->valid_size = nve_index->nv_size;
-		printk(KERN_WARNING "[NVE]Bad parameter,inputed NV length is 0,will be reassigned according to NV inedx table\n");
+		printk(KERN_INFO "[NVE]Bad parameter,inputed NV length is 0,will be reassigned according to NV inedx table\n");
 	}
 
 	nv_data = nve->nve_ramdisk + nve_index->nv_offset + sizeof(struct NV_header);
@@ -707,6 +825,9 @@ int hisi_nve_direct_access(struct hisi_nve_info_user *user_info)
 	if (NV_READ == user_info->nv_operation) {
 		/*read nv from ramdisk*/
 		memcpy(user_info->nv_data, nv_data, user_info->valid_size);
+#ifdef CONFIG_ARCH_HI6XXX
+        nve_out_log(user_info, true);
+#endif
 	} else {
 		/*write nv to ramdisk*/
 		nv = (struct NV_header *)(nve->nve_ramdisk + nve_index->nv_offset);
@@ -720,7 +841,10 @@ int hisi_nve_direct_access(struct hisi_nve_info_user *user_info)
 
 		/*write NV to emmc*/
 		nve_increment(nve);
-		ret = nve_write(mtd, nve->nve_current_id * NVE_PARTITION_SIZE, NVE_PARTITION_SIZE, (u_char *)nve->nve_ramdisk);
+		ret = nve_write(mtd, (loff_t)nve->nve_current_id * NVE_PARTITION_SIZE, NVE_PARTITION_SIZE, (u_char *)nve->nve_ramdisk);
+#ifdef CONFIG_ARCH_HI6XXX
+        nve_out_log(user_info, false);
+#endif
 	}
 
 	/*release the semaphore*/
@@ -761,17 +885,13 @@ static long nve_ioctl(struct file *file, u_int cmd, u_long arg)
 	int ret = 0;
 	struct mtd_info *mtd = NULL;
 	void __user *argp = (void __user *)arg;
-	u_long size;
+	u_int size;
 	struct hisi_nve_info_user info;
 	struct NVE_struct *nve = NULL;
 	struct NVE_index *nve_index = NULL;
 	struct NV_header *nv = NULL;
 	struct NVE_partition_header *nve_header = NULL;
 	u_char *nv_data = NULL;
-	if (!hisi_nv_init_ok) {
-		printk(KERN_ERR "[NVE][%s]:driver is not initialized.\n", __func__);
-		return -EFAULT;
-	}
 
 	/*ensure only one process can visit NV device at the same time in API*/
 	if(down_interruptible(&nv_sem))
@@ -816,7 +936,7 @@ static long nve_ioctl(struct file *file, u_int cmd, u_long arg)
 			if (info.nv_number >= nve_header->valid_items) {
 				printk(KERN_ERR "[NVE][%s], nv[%d] is not defined.\n", __func__, info.nv_number);
 				up(&nv_sem);
-				return -ENXIO;
+				return -EFAULT;
 			}
 
 			nve_index = nve->nve_index_table + info.nv_number;
@@ -825,7 +945,7 @@ static long nve_ioctl(struct file *file, u_int cmd, u_long arg)
 				printk(KERN_WARNING "[NVE]Bad parameter,inputed NV length is bigger than 104,the surplus will be neglected\n");
 				info.valid_size = NVE_NV_DATA_SIZE;
 			} else if (info.valid_size == 0) {
-				printk(KERN_WARNING "[NVE]Bad parameter,inputed NV length is 0,will be reassigned according to NV inedx table\n");
+				printk(KERN_INFO "[NVE]Bad parameter,inputed NV length is 0,will be reassigned according to NV inedx table\n");
 				info.valid_size = nve_index->nv_size;
 			}
 			nv_data = nve->nve_ramdisk + nve_index->nv_offset + sizeof(struct NV_header);
@@ -833,7 +953,9 @@ static long nve_ioctl(struct file *file, u_int cmd, u_long arg)
 			if (NV_READ == info.nv_operation) {
 				/*read nv from ramdisk*/
 				memcpy(info.nv_data, nv_data, info.valid_size);
-
+#ifdef CONFIG_ARCH_HI6XXX
+                nve_out_log(&info, true);
+#endif
 				/*send back to user*/
 				if (copy_to_user(argp, &info, sizeof(struct hisi_nve_info_user))) {
 					up(&nv_sem);
@@ -852,7 +974,10 @@ static long nve_ioctl(struct file *file, u_int cmd, u_long arg)
 
 				/*write NVE to emmc*/
 				nve_increment(nve);
-				ret = nve_write(mtd, nve->nve_current_id * NVE_PARTITION_SIZE, NVE_PARTITION_SIZE, (u_char *)nve->nve_ramdisk);
+				ret = nve_write(mtd, (loff_t)nve->nve_current_id * NVE_PARTITION_SIZE, NVE_PARTITION_SIZE, (u_char *)nve->nve_ramdisk);
+#ifdef CONFIG_ARCH_HI6XXX
+                nve_out_log(&info, false);
+#endif
 			}
 			break;
 		default:
@@ -865,9 +990,20 @@ static long nve_ioctl(struct file *file, u_int cmd, u_long arg)
 	return ret;
 }
 
+
+#ifdef CONFIG_COMPAT
+static long nve_compat_ioctl(struct file *file, u_int cmd, u_long arg)
+{
+	return nve_ioctl(file, cmd, (unsigned long) compat_ptr(arg));
+}
+#endif
+
 static const struct file_operations nve_fops = {
 	.owner             = THIS_MODULE,
 	.unlocked_ioctl    = nve_ioctl,
+#ifdef CONFIG_COMPAT
+	.compat_ioctl		= nve_compat_ioctl,
+#endif
 	.open              = nve_open,
 	.release           = nve_close,
 };

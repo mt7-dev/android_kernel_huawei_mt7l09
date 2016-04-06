@@ -26,7 +26,7 @@
 #include <asm/fpsimd.h>
 #include <asm/signal32.h>
 #include <asm/uaccess.h>
-#include <asm/unistd32.h>
+#include <asm/unistd.h>
 
 struct compat_sigcontext {
 	/* We always set these two fields to 0 */
@@ -100,34 +100,6 @@ struct compat_rt_sigframe {
 
 #define _BLOCKABLE (~(sigmask(SIGKILL) | sigmask(SIGSTOP)))
 
-/*
- * For ARM syscalls, the syscall number has to be loaded into r7.
- * We do not support an OABI userspace.
- */
-#define MOV_R7_NR_SIGRETURN	(0xe3a07000 | __NR_compat_sigreturn)
-#define SVC_SYS_SIGRETURN	(0xef000000 | __NR_compat_sigreturn)
-#define MOV_R7_NR_RT_SIGRETURN	(0xe3a07000 | __NR_compat_rt_sigreturn)
-#define SVC_SYS_RT_SIGRETURN	(0xef000000 | __NR_compat_rt_sigreturn)
-
-/*
- * For Thumb syscalls, we also pass the syscall number via r7. We therefore
- * need two 16-bit instructions.
- */
-#define SVC_THUMB_SIGRETURN	(((0xdf00 | __NR_compat_sigreturn) << 16) | \
-				   0x2700 | __NR_compat_sigreturn)
-#define SVC_THUMB_RT_SIGRETURN	(((0xdf00 | __NR_compat_rt_sigreturn) << 16) | \
-				   0x2700 | __NR_compat_rt_sigreturn)
-
-const compat_ulong_t aarch32_sigret_code[6] = {
-	/*
-	 * AArch32 sigreturn code.
-	 * We don't construct an OABI SWI - instead we just set the imm24 field
-	 * to the EABI syscall number so that we create a sane disassembly.
-	 */
-	MOV_R7_NR_SIGRETURN,    SVC_SYS_SIGRETURN,    SVC_THUMB_SIGRETURN,
-	MOV_R7_NR_RT_SIGRETURN, SVC_SYS_RT_SIGRETURN, SVC_THUMB_RT_SIGRETURN,
-};
-
 static inline int put_sigset_t(compat_sigset_t __user *uset, sigset_t *set)
 {
 	compat_sigset_t	cset;
@@ -179,8 +151,7 @@ int copy_siginfo_to_user32(compat_siginfo_t __user *to, siginfo_t *from)
 	case __SI_TIMER:
 		 err |= __put_user(from->si_tid, &to->si_tid);
 		 err |= __put_user(from->si_overrun, &to->si_overrun);
-		 err |= __put_user((compat_uptr_t)(unsigned long)from->si_ptr,
-				   &to->si_ptr);
+		 err |= __put_user(from->si_int, &to->si_int);
 		break;
 	case __SI_POLL:
 		err |= __put_user(from->si_band, &to->si_band);
@@ -209,8 +180,16 @@ int copy_siginfo_to_user32(compat_siginfo_t __user *to, siginfo_t *from)
 	case __SI_MESGQ: /* But this is */
 		err |= __put_user(from->si_pid, &to->si_pid);
 		err |= __put_user(from->si_uid, &to->si_uid);
-		err |= __put_user((compat_uptr_t)(unsigned long)from->si_ptr, &to->si_ptr);
+		err |= __put_user(from->si_int, &to->si_int);
 		break;
+#ifdef __ARCH_SIGSYS
+	case __SI_SYS:
+		err |= __put_user((compat_uptr_t)(unsigned long)
+				from->si_call_addr, &to->si_call_addr);
+		err |= __put_user(from->si_syscall, &to->si_syscall);
+		err |= __put_user(from->si_arch, &to->si_arch);
+		break;
+#endif
 	default: /* this is just in case for now ... */
 		err |= __put_user(from->si_pid, &to->si_pid);
 		err |= __put_user(from->si_uid, &to->si_uid);
@@ -247,7 +226,7 @@ static int compat_preserve_vfp_context(struct compat_vfp_sigframe __user *frame)
 	 * Note that this also saves V16-31, which aren't visible
 	 * in AArch32.
 	 */
-	fpsimd_save_state(fpsimd);
+	fpsimd_preserve_current_state();
 
 	/* Place structure header on the stack */
 	__put_user_error(magic, &frame->magic, err);
@@ -310,11 +289,8 @@ static int compat_restore_vfp_context(struct compat_vfp_sigframe __user *frame)
 	 * We don't need to touch the exception register, so
 	 * reload the hardware state.
 	 */
-	if (!err) {
-		preempt_disable();
-		fpsimd_load_state(&fpsimd);
-		preempt_enable();
-	}
+	if (!err)
+		fpsimd_update_current_state(&fpsimd);
 
 	return err ? -EFAULT : 0;
 }
@@ -474,12 +450,13 @@ static void compat_setup_return(struct pt_regs *regs, struct k_sigaction *ka,
 	/* Check if the handler is written for ARM or Thumb */
 	thumb = handler & 1;
 
-	if (thumb) {
+	if (thumb)
 		spsr |= COMPAT_PSR_T_BIT;
-		spsr &= ~COMPAT_PSR_IT_MASK;
-	} else {
+	else
 		spsr &= ~COMPAT_PSR_T_BIT;
-	}
+
+	/* The IT state must be cleared for both ARM and Thumb-2 */
+	spsr &= ~COMPAT_PSR_IT_MASK;
 
 	if (ka->sa.sa_flags & SA_RESTORER) {
 		retcode = ptr_to_compat(ka->sa.sa_restorer);

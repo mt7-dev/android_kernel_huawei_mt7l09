@@ -9,16 +9,19 @@
 #include "at_common.h"
 #include "AtCmdCallProc.h"
 
+#include "AtCombinecmd.h"
+
 #ifdef  __cplusplus
   #if  __cplusplus
   extern "C"{
   #endif
 #endif
 
+/*lint -e960*/
 #define    THIS_FILE_ID        PS_FILE_ID_AT_COMBINEDCMD_C
+/*lint +e960*/
 
-
-PRIVATE VOS_UINT32 At_GetSecondAddr(VOS_UINT8 *pData,VOS_UINT16 usLen, VOS_UINT8** ppDataOut)
+VOS_UINT32 At_GetSecondAddr(VOS_UINT8 *pData,VOS_UINT16 usLen, VOS_UINT8** ppDataOut)
 {
     VOS_UINT8* pucFirAddr = NULL;
     VOS_UINT8* pucSecAddr = NULL;
@@ -56,7 +59,7 @@ PRIVATE VOS_UINT32 At_GetSecondAddr(VOS_UINT8 *pData,VOS_UINT16 usLen, VOS_UINT8
     AT_FREE(pcTmp);
     return ERR_MSP_SUCCESS;
 }
-PRIVATE VOS_UINT32 At_GetFirstCmdLen( VOS_UINT8 *pData, VOS_UINT16 usLen)
+VOS_UINT32 At_GetFirstCmdLen( VOS_UINT8 *pData, VOS_UINT16 usLen)
 {
     VOS_UINT8* pucBegin  = pData;
     VOS_UINT8* pucEnd    = pData;
@@ -103,7 +106,7 @@ VOS_VOID At_ResetCombinCmdInfo(HI_LIST_S* pstCombList)
 
             return;
         }
-        
+
         apNode[ucCmdNum] = msp_list_entry(me, AT_FW_COMBINE_CMD_NODE_STRU, stCombCmdList);
         if(NULL == apNode[ucCmdNum])
         {
@@ -125,7 +128,7 @@ VOS_VOID At_ResetCombinCmdInfo(HI_LIST_S* pstCombList)
             pstCombineCmdInfo = msp_list_entry(pstCombList, AT_FW_COMBINE_CMD_INFO_STRU, stCombineCmdList);
             pstCombineCmdInfo->usTotalNum = 0;
             pstCombineCmdInfo->usProcNum  = 0;
-    
+
             /*lint -e717*/
             HI_INIT_LIST_HEAD(pstCombList);
             /*lint -e717*/
@@ -294,7 +297,7 @@ static VOS_UINT32 At_BasicCombineCmdParse(HI_LIST_S* pstCombList, VOS_UINT8 *pDa
 
 
 /* 基础命令和扩展命令组合解析 */
-PRIVATE VOS_UINT32 At_BasicExCombineCmdParse(HI_LIST_S* pstCombList, VOS_UINT8 *pDataIn, VOS_UINT16 usLenIn, VOS_UINT16 usFirIndex)
+VOS_UINT32 At_BasicExCombineCmdParse(HI_LIST_S* pstCombList, VOS_UINT8 *pDataIn, VOS_UINT16 usLenIn, VOS_UINT16 usFirIndex)
 {
     VOS_UINT32 ulRet = ERR_MSP_FAILURE;
     VOS_UINT8* pData = pDataIn;
@@ -354,7 +357,7 @@ static VOS_VOID At_UpStringCmdName(VOS_UINT8 *pData, VOS_UINT16 usLen)
 
     return ;
 }
-PRIVATE VOS_UINT32 At_SemicolonCmdParse(HI_LIST_S* pstCombList, VOS_UINT8 *pDataIn, VOS_UINT16 usLenIn)
+VOS_UINT32 At_SemicolonCmdParse(HI_LIST_S* pstCombList, VOS_UINT8 *pDataIn, VOS_UINT16 usLenIn)
 {
     VOS_UINT32 ulRet = ERR_MSP_FAILURE;
     VOS_UINT16 usNumQuota = 0;
@@ -518,17 +521,17 @@ VOS_UINT32 AT_IsDCmdValidChar(
     {
         return VOS_TRUE;
     }
-    
+
     if ((ucPara >= 'a') && (ucPara <= 'c'))
     {
         return VOS_TRUE;
     }
-    
+
     if ((ucPara >= 'A') && (ucPara <= 'C'))
     {
         return VOS_TRUE;
     }
-    
+
     if ((ucPara == '*') || (ucPara == '#'))
     {
         return VOS_TRUE;
@@ -539,7 +542,7 @@ VOS_UINT32 AT_IsDCmdValidChar(
     {
         return VOS_TRUE;
     }
-    
+
     if ((ucPara == 'i') || (ucPara == 'I'))
     {
         return VOS_TRUE;
@@ -549,7 +552,7 @@ VOS_UINT32 AT_IsDCmdValidChar(
     {
         return VOS_TRUE;
     }
-    
+
     return VOS_FALSE;
 }
 
@@ -564,13 +567,13 @@ VOS_VOID AT_InsertDCmdGIPara(
     VOS_UINT32                          ulSrcStrLen;
 
     ulSrcStrLen = *pulSrcStrLen;
-    
+
     if (';' == pucSrcStr[ulSrcStrLen - 1])
     {
         PS_MEM_CPY(&(pucSrcStr[ulSrcStrLen - 1]), pucInsertStr, ulInsertStrLen);
 
         ulSrcStrLen += ulInsertStrLen;
-        
+
         pucSrcStr[ulSrcStrLen - 1] = ';';
     }
     else
@@ -578,7 +581,7 @@ VOS_VOID AT_InsertDCmdGIPara(
         PS_MEM_CPY(&(pucSrcStr[ulSrcStrLen]), pucInsertStr, ulInsertStrLen);
 
         ulSrcStrLen += ulInsertStrLen;
-    }    
+    }
 
     *pulSrcStrLen = ulSrcStrLen;
 
@@ -615,7 +618,7 @@ VOS_VOID AT_ProcDCmdGIPara(
         return;
     }
 
-    /* 
+    /*
     获取D命令的GI参数属性，如果存在冲突的I和i字符以最后一个字符属性为准，
     删除字符串中的属性字符GgIi
     */
@@ -684,7 +687,7 @@ VOS_VOID AT_ProcDCmdGIPara(
         aucInsertStr[ulInsertStrLen] = 'G';
         ulInsertStrLen++;
     }
-    
+
     /* 将GI属性字符串插入到被叫号码和分号字符之间 */
     AT_InsertDCmdGIPara(pulSrcStrLen, pucSrcStr, ulInsertStrLen, aucInsertStr);
 
@@ -728,7 +731,7 @@ VOS_VOID At_FilterDCmdSpecCharacter(
         *pulParaLen = *pulParaLen - 1;
         VOS_MemMove(&(pucPara[usBeginPos]), &(pucPara[usBeginPos + 1]), *pulParaLen - usBeginPos);
     }
-    
+
     /* 第一个字符为'+'时作为国际号码标示,不能过滤 */
     if ('+' == pucPara[usBeginPos])
     {
@@ -784,7 +787,7 @@ VOS_UINT32 At_CombineCmdProc(VOS_UINT8 ucClientId)
     AT_FW_COMBINE_CMD_NODE_STRU* pstCombCmdNode     = NULL;
     AT_FW_COMBINE_CMD_INFO_STRU* pstCombineCmdInfo  = NULL;
 
-    AT_RRETURN_CODE_ENUM ulResult = AT_FAILURE;
+    AT_RRETURN_CODE_ENUM_UINT32 ulResult = AT_FAILURE;
 
     /* 该函数调用处可保证ucClientId的合法性，pDataIn不为空 */
 
@@ -825,7 +828,7 @@ VOS_UINT32 At_CombineCmdProc(VOS_UINT8 ucClientId)
     At_FilterDCmdSpecCharacter(&(pstCombCmd->ulLen), pstCombCmd->ucData);
 
     /* 解析命令字符串 */
-    ulResult = (AT_RRETURN_CODE_ENUM)AT_ParseCmdType(pstCombCmd->ucData, (VOS_UINT16)pstCombCmd->ulLen);
+    ulResult = (AT_RRETURN_CODE_ENUM_UINT32)AT_ParseCmdType(pstCombCmd->ucData, (VOS_UINT16)pstCombCmd->ulLen);
 
     /* 解析出错，返回错误码 */
     if(ERR_MSP_SUCCESS != ulResult)
@@ -916,7 +919,7 @@ VOS_UINT32 At_CombineCmdChkProc(VOS_UINT8 ucClientId,  VOS_UINT8 *pDataIn, VOS_U
 
 VOS_VOID At_CombCmdProcAfterCmd(VOS_UINT8 ucClientId)
 {
-    AT_RRETURN_CODE_ENUM ulResult = AT_FAILURE;
+    AT_RRETURN_CODE_ENUM_UINT32         ulResult = AT_FAILURE;
     AT_PARSE_CONTEXT_STRU* pstClientCont = NULL;
     AT_FW_COMBINE_CMD_INFO_STRU* pstCombineCmdInfo = NULL;
 
@@ -932,7 +935,7 @@ VOS_VOID At_CombCmdProcAfterCmd(VOS_UINT8 ucClientId)
     /* 当前通道有未处理的命令 */
     if(pstCombineCmdInfo->usProcNum < pstCombineCmdInfo->usTotalNum)
     {
-        ulResult = (AT_RRETURN_CODE_ENUM)At_CombineCmdProc(ucClientId);  /* TODO: */
+        ulResult = (AT_RRETURN_CODE_ENUM_UINT32)At_CombineCmdProc(ucClientId);  /* TODO: */
         if(AT_WAIT_ASYNC_RETURN != ulResult)
         {
             At_FormatResultData(ucClientId, ulResult);

@@ -155,6 +155,7 @@ VOS_VOID  NAS_MMC_SndGmmWasAcInfoChangeInd(
     VOS_UINT8                           ucOldPsResTrictionRegister
 );
 
+VOS_VOID  NAS_MMC_SndGmmVoiceDomainChangeNotify(VOS_VOID);
 #if (VOS_OS_VER == VOS_WIN32)
 #pragma pack()
 #else

@@ -27,6 +27,9 @@ int mmc_spi_set_crc(struct mmc_host *host, int use_crc);
 int mmc_card_sleepawake(struct mmc_host *host, int sleep);
 int mmc_bus_test(struct mmc_card *card, u8 bus_width);
 int mmc_send_hpi_cmd(struct mmc_card *card, u32 *status);
+#ifdef CONFIG_MMC_PASSWORDS
+int mmc_lock_unlock_by_buf(struct mmc_card *card, u8* key_buf,int key_len, int mode);
+#endif 
 
 #endif
 

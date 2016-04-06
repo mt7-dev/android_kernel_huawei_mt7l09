@@ -645,20 +645,14 @@ typedef VOS_UINT32 DRV_AGENT_HVPDH_ERR_ENUM_UINT32;
   6 消息定义
 *****************************************************************************/
 
-/*消息处理函数指针*/
-typedef VOS_UINT32 (*DRV_AGENT_MSG_PROC_FUNC)(VOS_VOID* pMsg);
+
+
 typedef struct
 {
     VOS_UINT32                          ulStandbyTime;                          /* 单板进入待机状态的时间长度，(单位为ms),取值范围 0~65535,默认为5000。 */
     VOS_UINT32                          ulSwitchTime;                           /* 用于指定PC下发待机命令到单板进入待机状态的切换时间。（单位为ms），取值范围为 0~65535，默认为500。 */
 } DRV_AGENT_PSTANDBY_REQ_STRU;
 
-
-typedef struct
-{
-    DRV_AGENT_MSG_TYPE_ENUM_UINT32      ulMsgType;
-    DRV_AGENT_MSG_PROC_FUNC             pMsgProcFunc;
-}DRV_AGENT_MSG_PROC_STRU;
 
 
 typedef struct
@@ -786,6 +780,7 @@ typedef struct
     AT_APPCTRL_STRU                               stAtAppCtrl;
     DRV_AGENT_DLOADVER_QRY_ERROR_ENUM_UINT32      enResult;
     VOS_CHAR                                      aucVersionInfo[TAF_MAX_VER_INFO_LEN + 1];
+    VOS_UINT8                                     ucReserved1;
 } DRV_AGENT_DLOADVER_QRY_CNF_STRU;
 
 
@@ -865,6 +860,7 @@ typedef struct
     AT_APPCTRL_STRU                     stAtAppCtrl;
     VOS_UINT32                          ulResult;
     GAS_AT_CMD_ENUM_U8                  ucCmd;
+    VOS_UINT8                           aucReserved[3];
     GAS_AT_RSLT_STRU                    stAtCmdRslt;
 } DRV_AGENT_GAS_MNTN_CMD_CNF_STRU;
 
@@ -1153,14 +1149,14 @@ typedef struct
     AT_APPCTRL_STRU                     stAtAppCtrl;
     VOS_BOOL                            bFail;
     VOS_UINT8                           ucSecuBootEnable;
-    VOS_UINT8                           aucReserve1[2];                          /* 4字节对齐，保留 */
+    VOS_UINT8                           aucReserve1[3];                          /* 4字节对齐，保留 */
 }DRV_AGENT_SECUBOOT_QRY_CNF_STRU;
 typedef struct
 {
     AT_APPCTRL_STRU                     stAtAppCtrl;
     VOS_BOOL                            bFail;
     VOS_UINT8                           ucSecuBootFeature;
-    VOS_UINT8                           aucReserve1[2];                          /* 4字节对齐，保留 */
+    VOS_UINT8                           aucReserve1[7];                          /* 4字节对齐，保留 */
 }DRV_AGENT_SECUBOOTFEATURE_QRY_CNF_STRU;
 enum AT_DEVICE_CMD_BAND_ENUM
 {
@@ -1186,6 +1182,7 @@ typedef struct
     VOS_UINT16                          usUlArfcn;  /*上行的Channel No*/
     VOS_UINT16                          usDlArfcn;  /*下行的Channel No*/
     VOS_UINT16                          usDspBand;  /*DSP格式的频段值*/
+    VOS_UINT8                           aucReserved[2];
 }AT_DSP_BAND_ARFCN_STRU;
 typedef struct
 {
@@ -1224,6 +1221,7 @@ typedef struct
     VOS_UINT16                          usChannelNo;
     AT_DEVICE_CMD_RAT_MODE_ENUM_UINT8   ucDeviceRatMode;
     AT_DEVICE_CMD_BAND_ENUM_UINT8       ucDeviceAtBand;
+    VOS_UINT8                           aucReserved[2];
     VOS_BOOL                            bDspLoadFlag;
     AT_DSP_BAND_ARFCN_STRU              stDspBandArfcn;
 }DRV_AGENT_FCHAN_SET_REQ_STRU;
@@ -1293,12 +1291,13 @@ typedef struct
 
 typedef struct
 {
-    AT_APPCTRL_STRU                        stAtAppCtrl;
-    DRV_AGENT_ERROR_ENUM_UINT32            enResult;
-    DRV_AGENT_RXPRI_SET_REQ_STRU           stRxpriSetReq;
-    VOS_UINT16                             usWPriBands;
-    VOS_UINT16                             usGPriBands;
-    VOS_UINT16                             usSetPriBands;
+    AT_APPCTRL_STRU                     stAtAppCtrl;
+    DRV_AGENT_ERROR_ENUM_UINT32         enResult;
+    DRV_AGENT_RXPRI_SET_REQ_STRU        stRxpriSetReq;
+    VOS_UINT16                          usWPriBands;
+    VOS_UINT16                          usGPriBands;
+    VOS_UINT16                          usSetPriBands;
+    VOS_UINT8                           aucReserved[2];
 }DRV_AGENT_RXPRI_SET_CNF_STRU;
 
 
@@ -1327,8 +1326,6 @@ typedef struct
     VOS_UINT16                           usWDrvPriBands;
     VOS_UINT16                           usGDrvPriBands;
     VOS_BOOL                             bFail;
-    VOS_UINT8                            aucReserve1[3];
-
 }DRV_AGENT_RXPRI_QRY_CNF_STRU;
 
 
@@ -1442,6 +1439,7 @@ typedef struct
     AT_APPCTRL_STRU                         stAtAppCtrl;
     DRV_AGENT_TSELRF_SET_ERROR_ENUM_UINT32  enResult;
     VOS_UINT8                               ucDeviceRatMode;
+    VOS_UINT8                               aucReserved[3];
 }DRV_AGENT_TSELRF_SET_CNF_STRU;
 
 

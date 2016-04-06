@@ -32,7 +32,8 @@ extern "C" {
 #endif
 
 #pragma pack(4)
-
+/* Modify by H59254 */
+#if (FEATURE_OFF == FEATURE_MERGE_OM_CHAN)
 /*****************************************************************************
   2 ∫Í∂®“Â
 *****************************************************************************/
@@ -237,6 +238,8 @@ extern unsigned long ipcom_inet_addr(const char *cp);
 
 VOS_VOID  Sock_ShutdownAll(VOS_VOID);
 VOS_UINT32 Sock_PortInit(VOS_VOID);
+
+#endif
 
 #if ((VOS_OS_VER == VOS_WIN32) || (VOS_OS_VER == VOS_NUCLEUS))
 #pragma pack()

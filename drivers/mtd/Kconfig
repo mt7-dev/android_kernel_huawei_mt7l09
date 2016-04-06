@@ -13,7 +13,6 @@ menuconfig MTD
 if MTD
 
 config BALONG_MTD
-        bool
         tristate "MTD for balong modem"
         ---help---
           This option advance the block2mtd action for balong modem nv use
@@ -321,6 +320,14 @@ config MTD_SWAP
           suitable for swapping.  The mapping of written blocks is not saved.
 	  The driver provides wear leveling by storing erase counter into the
 	  OOB.
+
+config MISC_PWSTATE
+	tristate "Direct char device access to MISC devices"
+	help
+	  This provides a character device for MISC device present in
+	  the system, allowing the user to read and write directly to the
+	  memory chips, and also use ioctl() to obtain information about
+	  the device, or to erase parts of it.
 
 source "drivers/mtd/chips/Kconfig"
 

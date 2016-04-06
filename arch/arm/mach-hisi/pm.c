@@ -23,7 +23,7 @@
 #include <linux/platform_device.h>
 #include <linux/delay.h>
 #if defined(CONFIG_HI3630_LPM3_IPC)
-#include "hisi_ipc.h"
+#include "include/mach/hisi_ipc.h"
 #endif
 
 #define PSCI_POWER_STATE_ID     (0)

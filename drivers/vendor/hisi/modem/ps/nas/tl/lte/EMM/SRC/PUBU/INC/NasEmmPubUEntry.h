@@ -151,6 +151,10 @@ extern VOS_UINT32  NAS_EMM_ExportContextData(VOS_VOID);
 extern VOS_VOID    NAS_EMM_PUB_SendEsmExportCtx(VOS_VOID);
 #endif
 /*PC REPLAY MODIFY BY LEILI END*/
+
+extern VOS_VOID NAS_EMM_LocalDetachErrRecord(
+        EMM_ERR_LOG_LOCAL_DETACH_TYPE_ENUM_UINT16       enLocalDetType);
+
 /*****************************************************************************
   9 OTHERS
 *****************************************************************************/

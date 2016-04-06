@@ -86,6 +86,8 @@ typedef struct {
 
 
 	/*DH*/
+    void DH_ChangeDHParas(unsigned int ParaPLen, unsigned char *ParaP, unsigned int ParaGLen, unsigned char *ParaG);
+
     void DH_FillFixParams(DH_KEY *params);
 
 	int InitDHParam(DH_KEY *pContext,                       /* new Diffie-Hellman parameters */
@@ -108,6 +110,9 @@ typedef struct {
 
 	int AESEncrypt(unsigned char *plain, int plainLen, unsigned char *Key, unsigned short KeyLen, unsigned char *cipher, int cipherLen);
 	int AESDecrypt(unsigned char *cipher, int cipherLen, unsigned char *Key, unsigned short KeyLen, unsigned char *plain, int plainLen);
+
+	int AESEncryptS(unsigned char *input, int inputLen, unsigned char *Key, int keyBits, unsigned char *cipher, int cipherLen);
+	int AESDecryptS(unsigned char *cipher, int cipherLen, unsigned char *Key, int keyBits, unsigned char *plain, int plainLen);
 
 
 #ifdef  __cplusplus

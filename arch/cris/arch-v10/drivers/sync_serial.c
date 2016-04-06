@@ -991,15 +991,7 @@ static ssize_t sync_serial_write(struct file *file, const char *buf,
 	DEBUGWRITE(printk(KERN_DEBUG "W d%d c %lu (%d/%d)\n",
 		port->port_nbr, count, port->out_count, OUT_BUFFER_SIZE));
 	/* Space to end of buffer */
-	/*
-	 * out_buffer <c1>012345<-   c    ->OUT_BUFFER_SIZE
-	 *            outp^    +out_count
-	 *                      ^free_outp
-	 * out_buffer 45<-     c      ->0123OUT_BUFFER_SIZE
-	 *             +out_count   outp^
-	 *              free_outp
-	 *
-	 */
+
 
 	/* Read variables that may be updated by interrupts */
 	local_irq_save(flags);

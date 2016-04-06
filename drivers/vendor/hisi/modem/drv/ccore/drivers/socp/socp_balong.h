@@ -284,7 +284,7 @@ extern "C"
     do {\
         if (0 == para)\
         {\
-            printf("the parameter is NULL!\n"); \
+            printf("the parameter is NULL! %d \n",__LINE__); \
             return BSP_ERR_SOCP_NULL; \
         } \
     } while (0)
@@ -449,11 +449,11 @@ typedef struct tagSOCP_ENCSRC_CHAN_S
     u32                   u32AllocStat;    /* 通道已经或没有分配的标识*/
     u32                   u32LastRdSize;
     u32                   u32RdThreshold;
-    SOCP_ENCSRC_CHNMODE_E eChnMode;      /* 数据结构类型 */
-    SOCP_CHAN_PRIORITY_E  ePriority;
-    SOCP_DATA_TYPE_E      eDataType;
-    SOCP_DATA_TYPE_EN_E   eDataTypeEn;
-    SOCP_ENC_DEBUG_EN_E   eDebugEn;
+    SOCP_ENCSRC_CHNMODE_ENUM_UIN32 eChnMode;      /* 数据结构类型 */
+    SOCP_CHAN_PRIORITY_ENUM_UIN32  ePriority;
+    SOCP_DATA_TYPE_ENUM_UIN32      eDataType;
+    SOCP_DATA_TYPE_EN_ENUM_UIN32   eDataTypeEn;
+    SOCP_ENC_DEBUG_EN_ENUM_UIN32   eDebugEn;
     SOCP_RING_BUF_S       sEncSrcBuf;
     SOCP_RING_BUF_S       sRdBuf;
     socp_event_cb         event_cb;
@@ -465,11 +465,11 @@ typedef struct tagSOCP_ENCSRC_FIXCHAN_S
     u32                   u32ChanID;
     u32                   u32ChanEn;
     u32                   u32DestChanID;
-    SOCP_ENCSRC_CHNMODE_E eChnMode;      /* 数据结构类型 */
-    SOCP_CHAN_PRIORITY_E  ePriority;
-    SOCP_DATA_TYPE_E      eDataType;
-    SOCP_DATA_TYPE_EN_E   eDataTypeEn;
-    SOCP_ENC_DEBUG_EN_E   eDebugEn;
+    SOCP_ENCSRC_CHNMODE_ENUM_UIN32 eChnMode;      /* 数据结构类型 */
+    SOCP_CHAN_PRIORITY_ENUM_UIN32  ePriority;
+    SOCP_DATA_TYPE_ENUM_UIN32      eDataType;
+    SOCP_DATA_TYPE_EN_ENUM_UIN32   eDataTypeEn;
+    SOCP_ENC_DEBUG_EN_ENUM_UIN32   eDebugEn;
     SOCP_RING_BUF_S       sEncSrcBuf;
     SOCP_RING_BUF_S       sRdBuf;
     socp_event_cb         event_cb;
@@ -482,7 +482,7 @@ typedef struct tagSOCP_ENCDST_CHAN_S
     u32                   u32SetStat;            /* 通道已经或没有配置的标识*/
     u32                   u32Thrh;               /* 阈值*/
     SOCP_RING_BUF_S       sEncDstBuf;
-    SOCP_EVENT_E          eChnEvent;
+    SOCP_EVENT_ENUM_UIN32          eChnEvent;
     socp_event_cb         event_cb;
     socp_read_cb          read_cb;
 } SOCP_ENCDST_CHAN_S;
@@ -493,8 +493,8 @@ typedef struct tagSOCP_DECSRC_CHAN_S
     u32                   u32ChanEn;
     u32                   u32SetStat;      /* 通道已经或没有配置的标识*/
     u32                   u32RdThreshold;
-    SOCP_DATA_TYPE_EN_E   eDataTypeEn;
-    SOCP_DECSRC_CHNMODE_E eChnMode;      /* 数据结构类型 */
+    SOCP_DATA_TYPE_EN_ENUM_UIN32   eDataTypeEn;
+    SOCP_DECSRC_CHNMODE_ENUM_UIN32 eChnMode;      /* 数据结构类型 */
     SOCP_RING_BUF_S       sDecSrcBuf;
     SOCP_RING_BUF_S       sDecRdBuf;
     socp_event_cb         event_cb;
@@ -505,7 +505,7 @@ typedef struct tagSOCP_DECDST_CHAN_S
 {
     u32          u32ChanID;
     u32          u32AllocStat;
-    SOCP_DATA_TYPE_E eDataType;
+    SOCP_DATA_TYPE_ENUM_UIN32 eDataType;
     SOCP_RING_BUF_S  sDecDstBuf;
     socp_event_cb    event_cb;
     socp_read_cb     read_cb;
@@ -640,8 +640,8 @@ typedef struct tagBBPDMA_DRX_DS_S
 
 
 //函数声明增加2013年11月23日14:22:24
-void socp_get_idle_buffer(SOCP_RING_BUF_S *pRingBuffer, SOCP_BUFFER_RW_S *pRWBuffer);
-void socp_get_data_buffer(SOCP_RING_BUF_S *pRingBuffer, SOCP_BUFFER_RW_S *pRWBuffer);
+void socp_get_idle_buffer(SOCP_RING_BUF_S *pRingBuffer, SOCP_BUFFER_RW_STRU *pRWBuffer);
+void socp_get_data_buffer(SOCP_RING_BUF_S *pRingBuffer, SOCP_BUFFER_RW_STRU *pRWBuffer);
 void get_socp_base(void);
 void socp_write_done(SOCP_RING_BUF_S *pRingBuffer, u32 u32Size);
 void socp_read_done(SOCP_RING_BUF_S *pRingBuffer, u32 u32Size);

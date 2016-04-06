@@ -46,7 +46,15 @@
 #include <linux/irq_work.h>
 #include <linux/utsname.h>
 #include <linux/io.h>
-#include <linux/rtc.h>
+#include <linux/of.h>
+#include <linux/of_address.h>
+#if defined (CHIP_BB_HI6210)
+#ifndef CONFIG_ARM64
+#include <linux/hisi/hi6xxx-iomap.h>                   /* For IO_ADDRESS access */
+#endif
+#include <soc_ao_sctrl_interface.h>
+#include <soc_baseaddr_interface.h>
+#endif
 
 #include <asm/uaccess.h>
 
@@ -61,34 +69,25 @@
 /* printk's without a loglevel use this.. */
 #define DEFAULT_MESSAGE_LOGLEVEL CONFIG_DEFAULT_MESSAGE_LOGLEVEL
 
-/* DTS2013031107868 qidechun 2013-03-11 begin */ 
 #ifdef CONFIG_SRECORDER
 #include <linux/srecorder.h>
 #endif
-/* DTS2013031107868 qidechun 2013-03-11 end */ 
 
 #if defined(CONFIG_HISI_TIME)
-#if defined(CONFIG_ARCH_HI3630FPGA)
-#define SCTRL_BASE	0xfff08000
-#define SCBBPDRXSTAT1	0x1008
-#define SCBBPDRXSTAT2	0x100c
-#else
-#define SCTRL_BASE	0xfff0a000
-#define SCBBPDRXSTAT1	0x534
-#define SCBBPDRXSTAT2	0x538
-#endif
+static unsigned int scbbpdrxstat1;
+static unsigned int scbbpdrxstat2;
+static unsigned int fpga_flag;
 #endif
 
 /* We show everything that is MORE important than this.. */
 #define MINIMUM_CONSOLE_LOGLEVEL 1 /* Minimum loglevel we let people use */
 #define DEFAULT_CONSOLE_LOGLEVEL 7 /* anything MORE serious than KERN_DEBUG */
-#define MAX_PID_LEN (80)
 #ifdef CONFIG_HISI_LOG
 volatile log_buffer_head *log_buf_info;
 volatile unsigned char *res_log_buf;
 static int phyaddr_mapped;
+u64 hisi_getcurtime(void);
 extern int hilog_loaded;
-extern int inquiry_rtc_init_ok(void);
 
 EXPORT_SYMBOL(log_buf_info);
 EXPORT_SYMBOL(res_log_buf);
@@ -100,7 +99,7 @@ EXPORT_SYMBOL(res_log_buf);
 HI_DECLARE_SEMAPHORE(k3log_sema);
 EXPORT_SYMBOL(k3log_sema);
 #endif
-static size_t print_time(u64 ts, long unsigned int msec, long unsigned int sec, char *buf);
+static size_t print_time(u64 ts, char *buf);
 #ifdef CONFIG_APANIC
 extern void apanic_console_write(char *s, unsigned c);
 #endif
@@ -255,10 +254,6 @@ struct log {
 	u8 facility;		/* syslog facility */
 	u8 flags:5;		/* internal record flags */
 	u8 level:3;		/* syslog level */
-	/* add for hisi time ++ */
-	long unsigned int msec;
-	long unsigned int sec;
-	/* add for hisi time -- */
 };
 
 /*
@@ -279,7 +274,6 @@ static enum log_flags syslog_prev;
 static size_t syslog_partial;
 
 /* index and sequence number of the first record stored in the buffer */
-/* DTS2013031107868 qidechun 2013-03-11 begin */ 
 #ifdef CONFIG_SRECORDER
 static u64 log_first_seq __attribute__((__section__(".data")));
 static u32 log_first_idx __attribute__((__section__(".data")));
@@ -287,11 +281,9 @@ static u32 log_first_idx __attribute__((__section__(".data")));
 static u64 log_first_seq;
 static u32 log_first_idx;
 #endif
-/* DTS2013031107868 qidechun 2013-03-11 end */ 
 
 /* index and sequence number of the next record to store in the buffer */
 
-/* DTS2013031107868 qidechun 2013-03-11 begin */ 
 #ifdef CONFIG_SRECORDER
 static u64 log_next_seq __attribute__((__section__(".data")));
 static u32 log_next_idx __attribute__((__section__(".data")));
@@ -299,7 +291,6 @@ static u32 log_next_idx __attribute__((__section__(".data")));
 static u64 log_next_seq;
 static u32 log_next_idx;
 #endif
-/* DTS2013031107868 qidechun 2013-03-11 end */ 
 
 /* the next printk record to write to the console */
 static u64 console_seq;
@@ -309,12 +300,8 @@ static enum log_flags console_prev;
 /* the next printk record to read after the last 'clear' command */
 static u64 clear_seq;
 static u32 clear_idx;
-/* add for hisi time++ */
-static u32 cont_sec;
-static u32 cont_msec;
-/* add for hisi time-- */
 
-#define PREFIX_MAX		32
+#define PREFIX_MAX		80
 #define LOG_LINE_MAX		1024 - PREFIX_MAX
 
 /* record buffer */
@@ -324,7 +311,6 @@ static u32 cont_msec;
 #define LOG_ALIGN __alignof__(struct log)
 #endif
 
-/* DTS2013031107868 qidechun 2013-03-11 begin */ 
 #ifdef CONFIG_SRECORDER
 static char srecorder_log_buf[CONFIG_SRECORDER_LOG_BUF_LEN] __attribute__((__section__(".data")));
 static int srecorder_log_buf_len __attribute__((__section__(".data"))) = CONFIG_SRECORDER_LOG_BUF_LEN;
@@ -342,11 +328,13 @@ void get_srecorder_log_buf_info(
 }
 EXPORT_SYMBOL(get_srecorder_log_buf_info);
 #endif
-/* DTS2013031107868 qidechun 2013-03-11 end */ 
 
+#ifdef FINAL_RELEASE_MODE
 #define __LOG_BUF_LEN (1 << CONFIG_LOG_BUF_SHIFT)
+#else
+#define __LOG_BUF_LEN (1 << 20)
+#endif
 
-/* DTS2013031107868 qidechun 2013-03-11 begin */ 
 #if defined(CONFIG_SRECORDER)
 static char __log_buf[__LOG_BUF_LEN] __attribute__((aligned(LOG_ALIGN), __section__(".data")));
 static char *log_buf __attribute__((__section__(".data"))) = __log_buf;
@@ -366,7 +354,7 @@ void get_log_buf_header_info(kernel_log_buf_content_header_info_t *plog_buf_cont
         return;
     }
 
-    plog_buf_content_header_info->align_base = LOG_ALIGN;
+    plog_buf_content_header_info->align_base = LOG_ALIGN;/* [false alarm]:there is pointer protect before */
     plog_buf_content_header_info->header_len = sizeof(struct log);
 }
 #endif
@@ -379,7 +367,7 @@ void get_log_buf_info(kernel_log_buf_info_t *pkernel_log_buf_info)
         return;
     }
 
-    pkernel_log_buf_info->log_buf = (unsigned long)&log_buf;
+    pkernel_log_buf_info->log_buf = (unsigned long)&log_buf;/* [false alarm]:there is pkernel_log_buf_info protect before */
     pkernel_log_buf_info->log_first_seq = (unsigned long)&log_first_seq;
     pkernel_log_buf_info->log_first_idx = (unsigned long)&log_first_idx;
     pkernel_log_buf_info->log_next_seq = (unsigned long)&log_next_seq;
@@ -403,7 +391,6 @@ void get_log_buf_info(unsigned long *plog_buf,
 #endif
 EXPORT_SYMBOL(get_log_buf_info);
 #endif /* CONFIG_SRECORDER */
-/* DTS2013031107868 qidechun 2013-03-11 end */ 
 
 /* cpu currently holding logbuf_lock */
 static volatile unsigned int logbuf_cpu = UINT_MAX;
@@ -459,12 +446,6 @@ static void panic_print_msg(struct log *msg)
 	char time_log[80] = "";
 	size_t tlen = 0;
 	char *ptime_log;
-#ifdef CONFIG_PRINTK_EXTENSION
-	char pid_log[MAX_PID_LEN] = "";
-	bool first = true;
-	size_t pid_len = 0;
-#endif
-
 	ptime_log = time_log;
 
 	do {
@@ -475,37 +456,11 @@ static void panic_print_msg(struct log *msg)
 				text_len = next - text;
 				next++;
 				text_size -= next - text;
-#ifdef CONFIG_PRINTK_EXTENSION
-				if (first && text[0] == '[') {
-					const char * r_brackets;
-					const char * dot;
-
-					r_brackets = memchr(text, ']', text_size);
-					pid_len = r_brackets?r_brackets-text+1:0;
-
-					if (pid_len < text_len && text[pid_len] == ' ') {
-						dot = memchr(text, '.', pid_len);
-						pid_len++; /* include space after ']' */
-
-						if (dot && pid_len < MAX_PID_LEN) {
-							memcpy(pid_log, text, pid_len);
-							pid_log[pid_len] = '\0';
-						}
-					}
-
-				}
-#endif
 			} else {
 				text_len = text_size;
 			}
-			tlen = print_time(msg->ts_nsec, msg->msec, msg->sec, ptime_log);
+			tlen = print_time(msg->ts_nsec, ptime_log);
 			apanic_console_write(ptime_log, tlen);
-#ifdef CONFIG_PRINTK_EXTENSION
-			if ((pid_log != '\0') && !first) {
-				apanic_console_write(pid_log, pid_len);
-			}
-			first = false;
-#endif
 			apanic_console_write(text, text_len);
 			apanic_console_write("\n", 1);
 
@@ -523,6 +478,29 @@ static void log_store(int facility, int level,
 {
 	struct log *msg;
 	u32 size, pad_len;
+	struct tm tm_rtc;
+	unsigned long cur_secs = 0;
+	char tmp_buf[100];
+        int tmp_len = 0;
+	static unsigned int prev_jffy = 0;
+	static unsigned int prejf_init_flag = 0;
+	if (prejf_init_flag == 0) {
+		prejf_init_flag = 1;
+		prev_jffy = jiffies;
+	}
+	cur_secs = get_seconds();
+	cur_secs -= sys_tz.tz_minuteswest * 60;
+	time_to_tm(cur_secs, 0, &tm_rtc);
+	if (time_after(jiffies, prev_jffy + 1 * HZ)) {
+		prev_jffy = jiffies;
+		tmp_len += snprintf(tmp_buf, sizeof(tmp_buf), "[%lu:%.2d:%.2d %.2d:%.2d:%.2d]",
+					1900 + tm_rtc.tm_year, tm_rtc.tm_mon + 1, tm_rtc.tm_mday, tm_rtc.tm_hour, tm_rtc.tm_min, tm_rtc.tm_sec
+					);
+	}
+        tmp_len += snprintf(tmp_buf + tmp_len, sizeof(tmp_buf), "[pid:%d,cpu%d,%s]",
+                                current->pid, smp_processor_id(), in_irq()? "in irq" : current->comm
+                                );
+        text_len+=tmp_len;
 
 	/* number of '\0' padding bytes to next message */
 	size = sizeof(struct log) + text_len + dict_len;
@@ -557,31 +535,30 @@ static void log_store(int facility, int level,
 
 	/* fill message */
 	msg = (struct log *)(log_buf + log_next_idx);
-	memcpy(log_text(msg), text, text_len);
+	memcpy(log_text(msg), tmp_buf, tmp_len);
+	memcpy(log_text(msg)+tmp_len, text, text_len-tmp_len);
 	msg->text_len = text_len;
 	memcpy(log_dict(msg), dict, dict_len);
 	msg->dict_len = dict_len;
 	msg->facility = facility;
 	msg->level = level & 7;
 	msg->flags = flags & 0x1f;
-
-	if (ts_nsec > 0) {
+	if (ts_nsec > 0)
 		msg->ts_nsec = ts_nsec;
-		msg->sec = cont_sec;
-		msg->msec = cont_msec;
-	} else {
-		msg->ts_nsec = local_clock();
-		hisi_getcurtime(&msg->msec, &msg->sec);
-	}
+	else
+		msg->ts_nsec = hisi_getcurtime();
 	memset(log_dict(msg) + dict_len, 0, pad_len);
 	msg->len = sizeof(struct log) + text_len + dict_len + pad_len;
 
 	/* insert message */
 #ifdef CONFIG_APANIC
-	panic_print_msg(msg);
+	if (msg->level < DEFAULT_CONSOLE_LOGLEVEL)
+		panic_print_msg(msg);
 #endif
+
 #ifdef CONFIG_HISI_LOG
-	emit_log_char_to_rbuf(text, text_len, msg);
+	if (msg->level < DEFAULT_CONSOLE_LOGLEVEL)
+		emit_log_char_to_rbuf(text, text_len, msg);
 #endif
 	log_next_idx += msg->len;
 	log_next_seq++;
@@ -1096,14 +1073,6 @@ static bool printk_time;
 #endif
 module_param_named(time, printk_time, bool, S_IRUGO | S_IWUSR);
 
-static size_t print_time(u64 ts, long unsigned int msec, long unsigned int sec, char *buf)
-{
-	if (!buf)
-		return snprintf(NULL, 0, "[%5lu.000000] ", sec);
-
-	return sprintf(buf, "[%5lu.%06lu] ", sec, msec);
-}
-
 #if defined(CONFIG_HISI_TIME)
 void __iomem	*addr;
 int init_time_addr = 0;
@@ -1112,78 +1081,176 @@ u64 init_timervalue = 0;
 static void init_time(void)
 {
 	u64 init_value[4] = {0};
-
-	init_value[0] = readl(addr + SCBBPDRXSTAT1);
-	init_value[1] = readl(addr + SCBBPDRXSTAT2);
-	init_value[2] = readl(addr + SCBBPDRXSTAT1);
-	init_value[3] = readl(addr + SCBBPDRXSTAT2);
-
+#if defined (CHIP_BB_HI6210)
+	init_value[0] = readl(SOC_AO_SCTRL_SC_SYSTEST_SLICER_CNT0_ADDR(addr));
+	init_value[1] = readl(SOC_AO_SCTRL_SC_SYSTEST_SLICER_CNT1_ADDR(addr));
+	init_value[2] = readl(SOC_AO_SCTRL_SC_SYSTEST_SLICER_CNT0_ADDR(addr));
+	init_value[3] = readl(SOC_AO_SCTRL_SC_SYSTEST_SLICER_CNT1_ADDR(addr));
+#else
+	init_value[0] = readl(addr + scbbpdrxstat1);
+	init_value[1] = readl(addr + scbbpdrxstat2);
+	init_value[2] = readl(addr + scbbpdrxstat1);
+	init_value[3] = readl(addr + scbbpdrxstat2);
+#endif
 	if (init_value[2] < init_value[0])
 		init_timervalue = ((init_value[3] - 1) << 32) | init_value[0];
 	else
 		init_timervalue = (init_value[1] << 32) | init_value[0];
 }
 
-void hisi_getcurtime(long unsigned int *msec, long unsigned int*sec)
+u64 hisi_getcurtime(void)
 {
 	u64 timervalue[4] = {0};
 	u64 pcurtime = 0;
 	u64 ts;
-	if (!printk_time)
-		return;
-	ts = local_clock();
-	if (ts != 0) {
-		if (!init_time_addr) {
-			addr = ioremap(SCTRL_BASE, SZ_8K);
-			if (!addr) {
-				return;
-			}
-			init_time_addr = 1;
-			init_time();
-		}
-	} else {
-		*sec = 0;
-		*msec = 0;
-		return;
-	}
 
-	timervalue[0] = readl(addr + SCBBPDRXSTAT1);
-	timervalue[1] = readl(addr + SCBBPDRXSTAT2);
-	timervalue[2] = readl(addr + SCBBPDRXSTAT1);
-	timervalue[3] = readl(addr + SCBBPDRXSTAT2);
+	if (!init_time_addr)
+		return 0;
+#if defined (CHIP_BB_HI6210)
+	timervalue[0] = readl(SOC_AO_SCTRL_SC_SYSTEST_SLICER_CNT0_ADDR(addr));
+	timervalue[1] = readl(SOC_AO_SCTRL_SC_SYSTEST_SLICER_CNT1_ADDR(addr));
+	timervalue[2] = readl(SOC_AO_SCTRL_SC_SYSTEST_SLICER_CNT0_ADDR(addr));
+	timervalue[3] = readl(SOC_AO_SCTRL_SC_SYSTEST_SLICER_CNT1_ADDR(addr));
+#else
+	timervalue[0] = readl(addr + scbbpdrxstat1);
+	timervalue[1] = readl(addr + scbbpdrxstat2);
+	timervalue[2] = readl(addr + scbbpdrxstat1);
+	timervalue[3] = readl(addr + scbbpdrxstat2);
+#endif
 
 	if (timervalue[2] < timervalue[0])
 		pcurtime = (((timervalue[3] - 1) << 32) | timervalue[0]);
 	else
 		pcurtime = ((timervalue[1] << 32) | timervalue[0]);
 
-#if defined(CONFIG_ARCH_HI3630FPGA)
-	do_div(pcurtime, 12);
-	pcurtime = pcurtime * 10;
-	do_div(pcurtime, 16);
-	(*msec) = do_div(pcurtime, 1000000);
+#if defined (CHIP_BB_HI6210)
+	ts = do_div(pcurtime, 32764);
+	ts = ts * 250000000;
+	do_div(ts, 8191);
+	pcurtime = pcurtime * 1000000000 + ts;
 #else
-	(*msec) = do_div(pcurtime, 32768);
+	if (fpga_flag == 1) {
+		ts = do_div(pcurtime, 19200000);
+		ts = ts * 625;
+		do_div(ts, 12);
+		pcurtime = pcurtime * 1000000000 + ts;
+	} else {
+		ts = do_div(pcurtime, 32768);
+		ts = ts * 1953125;
+		do_div(ts, 64);
+		pcurtime = pcurtime * 1000000000 + ts;
+	}
 #endif
 
-	(*msec) = (*msec)*15625/512;
-
-	(*sec) = (long unsigned int)pcurtime;
-
-	return;
+	return pcurtime;
 }
+static size_t print_time(u64 ts, char *buf)
+{
+	int temp = 0;
+	unsigned long rem_nsec;
+
+	rem_nsec = do_div(ts, 1000000000);
+
+	if (!printk_time)
+		return 0;
+	if (!buf){
+		return snprintf(NULL, 0, "[%5lu.000000s]",
+				(unsigned long)ts
+				);
+	}
+
+	temp = sprintf(buf, "[%5lu.%06lus]",
+			(unsigned long)ts, rem_nsec/1000
+			);
+	if(temp>=0){
+		return (unsigned int)temp;
+	}else{
+		return 0;
+	}
+}
+
+static int __init uniformity_timer_init(void)
+{
+#if defined (CHIP_BB_HI6210)
+#ifdef CONFIG_ARM64
+	addr = (void __iomem *)ioremap((phys_addr_t)SOC_AO_SCTRL_BASE_ADDR, SZ_4K);
+#else
+	addr = (void __iomem *)HISI_VA_ADDRESS(SOC_AO_SCTRL_BASE_ADDR);
+#endif
+	if (!addr) {
+		printk("lisc addr init fail\n");
+		return 0;
+	}
+#else
+	struct device_node *np = NULL;
+	int ret;
+	np = of_find_compatible_node(NULL, NULL, "hisilicon,prktimer");
+	if (!np) {
+	        printk("NOT FOUND device node 'hisilicon,prktimer'!\n");
+	        return -ENXIO;
+	}
+	addr = of_iomap(np, 0);
+	if (!addr) {
+	        printk("failed to get prktimer resource. lisc addr init fail\n");
+	        return -ENXIO;
+	}
+	ret = of_property_read_u32(np, "fpga_flag", &fpga_flag);
+	if (ret) {
+	        printk("failed to get fpga_flag resource.\n");
+	        return -ENXIO;
+	}
+	if (fpga_flag == 1) {
+		scbbpdrxstat1 = 0x1008;
+		scbbpdrxstat2 = 0x100c;
+	} else {
+		scbbpdrxstat1 = 0x534;
+		scbbpdrxstat2 = 0x538;
+	}
+#endif
+	init_time();
+	init_time_addr = 1;
+	return 0;
+}
+pure_initcall(uniformity_timer_init);
 #else
 
-void hisi_getcurtime(long unsigned int *msec, long unsigned int *sec)
+u64 hisi_getcurtime(void)
 {
-	unsigned long rem_nsec;
 	u64 ts;
-	ts = local_clock();
-	rem_nsec = do_div(ts, 1000000000);
-	*sec = (long unsigned int)ts;
-	*msec = rem_nsec / 1000;
 
-	return;
+	ts = local_clock();
+
+	return ts;
+}
+
+ static size_t print_time(u64 ts, char *buf)
+ {
+	unsigned long rem_nsec;
+
+	if (!printk_time)
+		return 0;
+
+	rem_nsec = do_div(ts, 1000000000);
+
+#if defined(CONFIG_PRINTK_EXTENSION)
+	if (!buf)
+		return snprintf(NULL, 0, "[%d.%d, %s] [%5lu.000000] ",
+				current->pid, smp_processor_id(),
+				current->comm, (unsigned long)ts);
+
+	return sprintf(buf, "[%d.%d, %s] [%5lu.%06lu] ",
+					current->pid,
+					smp_processor_id(),
+					current->comm,
+					(unsigned long)ts, rem_nsec / 1000);
+#else
+	if (!buf)
+		return snprintf(NULL, 0, "[%5lu.000000] ", (unsigned long)ts);
+
+	return sprintf(buf, "[%5lu.%06lu] ",
+					(unsigned long)ts, rem_nsec / 1000);
+#endif
+
 }
 #endif
 
@@ -1206,7 +1273,7 @@ static size_t print_prefix(const struct log *msg, bool syslog, char *buf)
 		}
 	}
 
-	len += print_time(msg->ts_nsec, msg->msec, msg->sec, buf ? buf + len : NULL);
+	len += print_time(msg->ts_nsec, buf ? buf + len : NULL);
 	return len;
 }
 
@@ -1334,13 +1401,12 @@ static int syslog_print(char __user *buf, int size)
 }
 
 #ifdef CONFIG_HISI_RDR
-static char rdr_printk_tmp_buf[LOG_LINE_MAX + PREFIX_MAX];
 int rdr_syslog_print_all(char *buf, int size)
 {
-	char *text = rdr_printk_tmp_buf;
+	unsigned long flags;
 	int len = 0;
 
-	raw_spin_lock_irq(&logbuf_lock);
+	raw_spin_lock_irqsave(&logbuf_lock, flags);
 	if (buf) {
 		u64 next_seq;
 		u64 seq;
@@ -1391,7 +1457,7 @@ int rdr_syslog_print_all(char *buf, int size)
 			struct log *msg = log_from_idx(idx);
 			int textlen;
 
-			textlen = msg_print_text(msg, prev, true, text,
+			textlen = msg_print_text(msg, prev, true, buf+len,
 						 LOG_LINE_MAX + PREFIX_MAX);
 			if (textlen < 0) {
 				len = textlen;
@@ -1400,19 +1466,7 @@ int rdr_syslog_print_all(char *buf, int size)
 			idx = log_next(idx);
 			seq++;
 			prev = msg->flags;
-
-			raw_spin_unlock_irq(&logbuf_lock);
-
-			memcpy(buf + len, text, textlen);
 			len += textlen;
-/*
-			if (copy_to_user(buf + len, text, textlen))
-				len = -EFAULT;
-			else
-				len += textlen;
-*/
-			raw_spin_lock_irq(&logbuf_lock);
-
 			if (seq < log_first_seq) {
 				/* messages are gone, move to next one */
 				seq = log_first_seq;
@@ -1422,7 +1476,7 @@ int rdr_syslog_print_all(char *buf, int size)
 		}
 	}
 
-	raw_spin_unlock_irq(&logbuf_lock);
+	raw_spin_unlock_irqrestore(&logbuf_lock, flags);
 
 	return len;
 }
@@ -1523,6 +1577,112 @@ static int syslog_print_all(char __user *buf, int size, bool clear)
 	kfree(text);
 	return len;
 }
+
+#ifdef CONFIG_SRECORDER
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 5, 0))
+static char srecorder_syslog_buf[LOG_LINE_MAX + PREFIX_MAX];
+int srecorder_get_all_syslog(char *buf, int size)
+{
+    char *text = srecorder_syslog_buf;
+    int len = 0;
+
+    if (!raw_spin_trylock_irq(&logbuf_lock))
+    {
+        return 0;
+    }
+
+    if (buf)
+    {
+        u64 next_seq;
+        u64 seq;
+        u32 idx;
+        enum log_flags prev;
+
+        if (clear_seq < log_first_seq)
+        {
+            /* messages are gone, move to first available one */
+            clear_seq = log_first_seq;
+            clear_idx = log_first_idx;
+        }
+
+        /*
+        * Find first record that fits, including all following records,
+        * into the user-provided buffer for this dump.
+        */
+        seq = clear_seq;
+        idx = clear_idx;
+        prev = 0;
+        while (seq < log_next_seq)
+        {
+            struct log *msg = log_from_idx(idx);
+
+            len += msg_print_text(msg, prev, true, NULL, 0);
+            prev = msg->flags;
+            idx = log_next(idx);
+            seq++;
+        }
+
+        /* move first record forward until length fits into the buffer */
+        seq = clear_seq;
+        idx = clear_idx;
+        prev = 0;
+        while (len > size && seq < log_next_seq)
+        {
+            struct log *msg = log_from_idx(idx);
+
+            len -= msg_print_text(msg, prev, true, NULL, 0);
+            prev = msg->flags;
+            idx = log_next(idx);
+            seq++;
+        }
+
+        /* last message fitting into this dump */
+        next_seq = log_next_seq;
+
+        len = 0;
+        prev = 0;
+        while (len >= 0 && seq < next_seq)
+        {
+            struct log *msg = log_from_idx(idx);
+            int textlen;
+
+            textlen = msg_print_text(msg, prev, true, text,
+                LOG_LINE_MAX + PREFIX_MAX);
+            if (textlen < 0)
+            {
+                len = textlen;
+                break;
+            }
+            idx = log_next(idx);
+            seq++;
+            prev = msg->flags;
+
+            raw_spin_unlock_irq(&logbuf_lock);
+
+            memcpy(buf + len, text, textlen);
+            len += textlen;
+
+            if (!raw_spin_trylock_irq(&logbuf_lock))
+            {
+                return len;
+            }
+
+            if (seq < log_first_seq)
+            {
+                /* messages are gone, move to next one */
+                seq = log_first_seq;
+                idx = log_first_idx;
+                prev = 0;
+            }
+        }
+    }
+
+    raw_spin_unlock_irq(&logbuf_lock);
+
+    return len;
+}
+#endif
+#endif
 
 int do_syslog(int type, char __user *buf, int len, bool from_file)
 {
@@ -1702,6 +1862,7 @@ static void emit_one_char(char c)
 
 static void emit_a_string(char *string, size_t string_len)
 {
+
 	if (log_buf_info->waddr >= KERNEL_LOG_BUF_LEN)
 		log_buf_info->waddr = 0;
 
@@ -1723,16 +1884,7 @@ static void hisi_print_msg(struct log *msg)
 	size_t text_size = msg->text_len;
 	char time_log[80] = "";
 	size_t tlen = 0;
-	long unsigned int timestamp_len;
-	char time_buf[64];
-	struct rtc_time cur_tm;
-	struct timespec now;
 	char *ptime_log;
-#ifdef CONFIG_PRINTK_EXTENSION
-	char pid_log[MAX_PID_LEN] = "";
-	bool first = true;
-	size_t pid_len = 0;
-#endif
 	ptime_log = time_log;
 
 	do {
@@ -1743,50 +1895,14 @@ static void hisi_print_msg(struct log *msg)
 				text_len = next - text;
 				next++;
 				text_size -= next - text;
-#ifdef CONFIG_PRINTK_EXTENSION
-				if (first && text[0] == '[') {
-					const char * r_brackets;
-					const char * dot;
-
-					r_brackets = memchr(text, ']', text_size);
-					pid_len = r_brackets?r_brackets-text+1:0;
-
-					if (pid_len < text_len && text[pid_len] == ' ') {
-						dot = memchr(text, '.', pid_len);
-						pid_len++; /* include space after ']' */
-
-						if (dot && pid_len < MAX_PID_LEN) {
-							memcpy(pid_log, text, pid_len);
-							pid_log[pid_len] = '\0';
-						}
-					}
-
-				}
-#endif
 			} else {
 				text_len = text_size;
 			}
 			emit_one_char('<');
 			emit_one_char('0' + msg->level);
 			emit_one_char('>');
-			if (inquiry_rtc_init_ok()) {
-				now = current_kernel_time();
-				rtc_time_to_tm(now.tv_sec, &cur_tm);
-				timestamp_len = sprintf(time_buf, "%d-%d-%d %2d:%2d:%2d ",
-                                                cur_tm.tm_year+1900, cur_tm.tm_mon+1,
-                                                cur_tm.tm_mday, cur_tm.tm_hour,
-                                                cur_tm.tm_min, cur_tm.tm_sec);
-				emit_a_string(time_buf, timestamp_len);
-			}
-
-			tlen = print_time(msg->ts_nsec, msg->msec, msg->sec, ptime_log);
+			tlen = print_time(msg->ts_nsec, ptime_log);
 			emit_a_string(ptime_log, tlen);
-#ifdef CONFIG_PRINTK_EXTENSION
-			if ((pid_log != '\0') && !first) {
-				emit_a_string(pid_log, pid_len);
-			}
-			first = false;
-#endif
 			emit_a_string(text, text_len);
 			emit_one_char('\n');
 
@@ -1798,9 +1914,9 @@ static void hisi_print_msg(struct log *msg)
 static int  emit_log_char_to_rbuf(const char *text, u16 text_len, struct log *msg)
 {
 	int i;
-	static int k3_early_log = 1;
+	static int hisi_early_log = 1;
 	int need_init = 0;
-	int start = log_first_idx;
+	u32 start = log_first_idx;
 	char kdumplog[]="kdumplog";
 
 	if (!hilog_loaded)
@@ -1834,13 +1950,13 @@ static int  emit_log_char_to_rbuf(const char *text, u16 text_len, struct log *ms
 		phyaddr_mapped = 1;
 	}
 
-	if (k3_early_log) {
+	if (hisi_early_log) {
 		while (start  < log_next_idx) {
 			struct log *msg_early = (struct log *)(log_buf + start);
 			start += msg_early->len;
 			hisi_print_msg(msg_early);
 		}
-			k3_early_log = 0;
+			hisi_early_log = 0;
 	}
 
 	if (log_buf_info->waddr >= KERNEL_LOG_BUF_LEN)
@@ -1970,10 +2086,6 @@ static struct cont {
 	u8 facility;			/* log level of first message */
 	enum log_flags flags;		/* prefix, newline flags */
 	bool flushed:1;			/* buffer sealed and committed */
-	/* add for hisi time ++ */
-	long unsigned int msec;
-	long unsigned int sec;
-	/* add for hisi time -- */
 } cont;
 
 static void cont_flush(enum log_flags flags)
@@ -2019,13 +2131,10 @@ static bool cont_add(int facility, int level, const char *text, size_t len)
 		cont.facility = facility;
 		cont.level = level;
 		cont.owner = current;
-		cont.ts_nsec = local_clock();
+		cont.ts_nsec = hisi_getcurtime();
 		cont.flags = 0;
 		cont.cons = 0;
 		cont.flushed = false;
-		hisi_getcurtime(&cont.msec, &cont.sec);
-		cont_sec=cont.sec;
-		cont_msec = cont.msec;
 	}
 
 	memcpy(cont.buf + cont.len, text, len);
@@ -2043,7 +2152,7 @@ static size_t cont_print_text(char *text, size_t size)
 	size_t len;
 
 	if (cont.cons == 0 && (console_prev & LOG_NEWLINE)) {
-		textlen += print_time(cont.ts_nsec, cont.msec, cont.sec, text);
+		textlen += print_time(cont.ts_nsec, text);
 		size -= textlen;
 	}
 
@@ -2077,10 +2186,6 @@ asmlinkage int vprintk_emit(int facility, int level,
 	unsigned long flags;
 	int this_cpu;
 	int printed_len = 0;
-#if defined(CONFIG_PRINTK_EXTENSION)
-	char pid_log[MAX_PID_LEN] = "";
-#endif
-	size_t pid_len = 0;
 
 	boot_delay_msec(level);
 	printk_delay();
@@ -2122,16 +2227,11 @@ asmlinkage int vprintk_emit(int facility, int level,
 			  NULL, 0, recursion_msg, printed_len);
 	}
 
-#if defined(CONFIG_PRINTK_EXTENSION)
-	pid_len = scnprintf(pid_log, sizeof(pid_log), "[%d.%d, %s] ",
-			current->pid, smp_processor_id(), current->comm);
-	text += pid_len;/* text is moved, be careful with length*/
-#endif
 	/*
 	 * The printf needs to come first; we need the syslog
 	 * prefix which might be passed-in as a parameter.
 	 */
-	text_len = vscnprintf(text, sizeof(textbuf)-pid_len, fmt, args);
+	text_len = vscnprintf(text, sizeof(textbuf), fmt, args);
 
 	/* mark and strip a trailing newline */
 	if (text_len && text[text_len-1] == '\n') {
@@ -2159,7 +2259,6 @@ asmlinkage int vprintk_emit(int facility, int level,
 		}
 	}
 
-
 	if (level == -1)
 		level = default_message_loglevel;
 
@@ -2174,14 +2273,6 @@ asmlinkage int vprintk_emit(int facility, int level,
 		if (cont.len && (lflags & LOG_PREFIX || cont.owner != current))
 			cont_flush(LOG_NEWLINE);
 
-#if defined(CONFIG_PRINTK_EXTENSION)
-		if (cont.len == 0 || cont.flushed
-			|| (cont.len + text_len) > sizeof(cont.buf)) {
-			text -= pid_len;
-			memcpy(text, pid_log, pid_len);
-			text_len += pid_len;
-		}
-#endif
 		/* buffer line if possible, otherwise store it right away */
 		if (!cont_add(facility, level, text, text_len))
 			log_store(facility, level, lflags | LOG_CONT, 0,
@@ -2202,15 +2293,6 @@ asmlinkage int vprintk_emit(int facility, int level,
 		} else{
 			cont_flush(LOG_NEWLINE);
 		}
-
-#if defined(CONFIG_PRINTK_EXTENSION)
-		/* if no prefix but cont is full, we al*/
-		if (!stored) {
-			text -= pid_len;
-			memcpy(text, pid_log, pid_len);
-			text_len += pid_len;
-		}
-#endif
 
 		if (!stored)
 			log_store(facility, level, lflags, 0,
@@ -2259,9 +2341,7 @@ asmlinkage int printk_emit(int facility, int level,
 EXPORT_SYMBOL(printk_emit);
 
 #ifdef CONFIG_HISI_RDR
-/* < DTS2013121004716 wangdedong 00204535 2013.12.10 begin */
 #include <linux/huawei/rdr_private.h>
-/* DTS2013121004716 wangdedong 00204535 2013.12.10 end   > */
 #endif
 
 /**
@@ -2364,6 +2444,17 @@ int get_console_index(void)
 {
 	if ((selected_console != -1) && (selected_console < MAX_CMDLINECONSOLES))
 		return console_cmdline[selected_console].index;
+
+	return -1;
+}
+
+/*get console uart name*/
+int get_console_name(char *name, int name_buf_len)
+{
+	if ((selected_console != -1) && (selected_console < MAX_CMDLINECONSOLES)) {
+		strncpy(name, console_cmdline[selected_console].name, min(sizeof(console_cmdline[selected_console].name), name_buf_len));
+		return 0;
+	}
 
 	return -1;
 }
@@ -3102,7 +3193,7 @@ void wake_up_klogd(void)
 	preempt_enable();
 }
 
-int printk_sched(const char *fmt, ...)
+int printk_deferred(const char *fmt, ...)
 {
 	unsigned long flags;
 	va_list args;

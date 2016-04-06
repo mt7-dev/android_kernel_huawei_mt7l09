@@ -126,9 +126,6 @@ enum NAS_LMM_INTRA_MSG_ID_ENUM
     ID_NAS_LMM_INTRA_TAU_REQ                                 = NAS_LMM_INTRA_MSG_HEADER|0x11,
 
 
-    /*AUTH的内部消息*/
-    ID_NAS_LMM_INTRA_AUTH_FAIL                               = NAS_LMM_INTRA_MSG_HEADER|0x14,
-
     /*各模块通过该消息转发网侧空口消息*/
     ID_NAS_LMM_INTRA_DATA_IND                                = NAS_LMM_INTRA_MSG_HEADER|0x15,
 

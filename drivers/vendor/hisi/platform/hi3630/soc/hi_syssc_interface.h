@@ -24,19 +24,11 @@ static __inline__ void hi_syssc_wdt_reboot(void)
 
 }
 #define CONFIG_HI3630_CCORE_WDT
+#ifndef __KERNEL__
 static __inline__ void hi_syssc_wdt_enble(void)
 {
 	set_hi_sc_ctrl2_wdt_en_ctrl(0x6920);
 	set_hi_sc_ctrl2_wdt_clk_en(1);
-}
-
-static __inline__ unsigned int get_hi_version_id_version_id(void)
-{
-#if defined(__KERNEL__)
-	return readl((const volatile void *)(HI_SYSSC_BASE_ADDR_VIRT+HI_SYSSC_SOCID_OFFSET));
-#else
-	return readl((HI_SYSSC_BASE_ADDR_VIRT+HI_SYSSC_SOCID_OFFSET));
-#endif
 }
 
 /********************************************************************************/
@@ -184,6 +176,15 @@ static __inline__ unsigned int hi_get_gubbp_wakeup_status(void)
 
 	return (temp & GUBBP_WAKEUP_STAT_MASK);
 
+}
+#endif
+static __inline__ unsigned int get_hi_version_id_version_id(void)
+{
+#if defined(__KERNEL__)
+	return readl((const volatile void *)(HI_SYSSC_BASE_ADDR_VIRT+HI_SYSSC_SOCID_OFFSET));
+#else
+	return readl((HI_SYSSC_BASE_ADDR_VIRT+HI_SYSSC_SOCID_OFFSET));
+#endif
 }
 
 #endif

@@ -19,6 +19,7 @@
 #endif
 
 
+extern VOS_VOID SMS_SetSmsPsConcatenateFlag(NAS_SMS_PS_CONCATENATE_ENUM_UINT8 enFlag);
 /*****************************************************************************
   2类型定义
 *****************************************************************************/
@@ -724,7 +725,7 @@ VOS_VOID MN_MSG_SendMsgToSms(
         /* 如果IMS宏打开需要到SPM模块做域选择，否则直接走NAS信令 */
         TAF_MSG_SendSpmSmmaInd();
 #else
-        ulRet = MN_MSG_SendSmma(0, 0, VOS_FALSE, TAF_MSG_SIGNALLING_TYPE_NAS_SIGNALLING);
+        ulRet = MN_MSG_SendSmma(pstMoEntity->clientId, pstMoEntity->opId, VOS_FALSE, TAF_MSG_SIGNALLING_TYPE_NAS_SIGNALLING);
 #endif
     }
     else
@@ -977,6 +978,7 @@ LOCAL VOS_VOID MSG_SendAck(
     MN_MSG_MEMSTATUS_EVT_INFO_STRU      stMemStatusEvt;
     MN_OPERATION_ID_T                   bcOpId;
     TAF_MSG_SIGNALLING_TYPE_ENUM_UINT32 enMsgSignallingType;
+    MN_MSG_RP_CAUSE_ENUM_U8             enCause;
 
     PS_MEM_SET(&stSendMsgEvt,0X00,sizeof(stSendMsgEvt));
     PS_MEM_SET(&stMemStatusEvt,0X00,sizeof(stMemStatusEvt));
@@ -1019,6 +1021,13 @@ LOCAL VOS_VOID MSG_SendAck(
     else
     {
         stSendMsgEvt.enTpduType = MN_MSG_TPDU_DELIVER_RPT_ERR;
+
+        enCause = pstAckParm->enRpCause;
+
+        NAS_EventReport(WUEPS_PID_TAF,
+                        NAS_OM_EVENT_SMS_MT_FAIL,
+                        &enCause,
+                        sizeof(MN_MSG_RP_CAUSE_ENUM_U8));
     }
     MN_MSG_ReportSentEvent(clientId,opId,&stSendMsgEvt,MN_MSG_EVT_MSG_SENT);
 
@@ -1605,9 +1614,9 @@ LOCAL VOS_VOID MSG_Delete(
         stDeleteInfo.bSuccess     = VOS_FALSE;
         stDeleteInfo.ulFailCause  = MN_ERR_INVALIDPARM;
         stDeleteInfo.enDeleteType = pstDeleteParm->enDeleteType;
-                   
+
         MN_MSG_ReportDeleteEvent(clientId,opId,&stDeleteInfo,MN_MSG_EVT_DELETE);
-        
+
         return;
     }
 #endif
@@ -1658,7 +1667,7 @@ LOCAL VOS_VOID MSG_Delete(
             }
         }
         else
-        {        
+        {
         }
 
 #if (NAS_FEATURE_SMS_NVIM_SMSEXIST == FEATURE_ON)
@@ -2837,7 +2846,7 @@ LOCAL VOS_VOID MSG_ProcStub(
             break;
 #endif
         case MN_MSG_STUB_TYPE_PS_CONCATENATE_FLAG:
-            g_ucNasSmsPsConcatencateFlag = (VOS_UINT8)pstStubParam->ulValue;
+            SMS_SetSmsPsConcatenateFlag((NAS_SMS_PS_CONCATENATE_ENUM_UINT8)pstStubParam->ulValue);
             break;
         default:
             ulRet = MN_ERR_UNSPECIFIED;
@@ -3076,6 +3085,7 @@ VOS_UINT32 MN_MSG_CheckMoMsg(
     bStkBuffer      = VOS_FALSE;
     *pbRequireCheck = VOS_FALSE;
     *pbBufferEntity = VOS_FALSE;
+    bCheckFdn       = VOS_FALSE;
 
     if (MN_MSG_TPDU_SUBMIT != pstMoEntity->enTpduType)
     {
@@ -3204,7 +3214,7 @@ VOS_VOID TAF_MSG_ProcTafMsg (
 
     switch (pstTafMsg->ulMsgId)
     {
-    
+
         case ID_TAF_SPM_SMMA_RSP:
             TAF_MSG_RcvSpmSmmaRsp(pstMsg);
             break;

@@ -411,7 +411,6 @@ __und_usr:
 	@ this as a real undefined instruction
 	@
 	adr	r9, BSYM(ret_from_exception)
-
 	@ IRQs must be enabled before attempting to read the instruction from
 	@ user space since that could cause a page/translation fault if the
 	@ page table was modified by another CPU.
@@ -421,9 +420,8 @@ __und_usr:
 	bne	__und_usr_thumb
 	sub	r4, r2, #4			@ ARM instr at LR - 4
 1:	ldrt	r0, [r4]
-#ifdef CONFIG_CPU_ENDIAN_BE8
-	rev	r0, r0				@ little endian instruction
-#endif
+ ARM_BE8(rev	r0, r0)				@ little endian instruction
+
 	@ r0 = 32-bit ARM instruction which caused the exception
 	@ r2 = PC value for the following instruction (:= regs->ARM_pc)
 	@ r4 = PC value for the faulting instruction
@@ -654,7 +652,7 @@ __und_usr_fault_32:
 	b	1f
 __und_usr_fault_16:
 	mov	r1, #2
-1:	mov	r0, sp
+1:	mov r0, sp
 	adr	lr, BSYM(ret_from_exception)
 	b	__und_fault
 ENDPROC(__und_usr_fault_32)
@@ -1123,8 +1121,9 @@ vector_addrexcptn:
  * other mode than FIQ...  Ok you can switch to another mode, but you can't
  * get out of that mode without clobbering one register.
  */
+
 vector_fiq:
-	subs	pc, lr, #4
+	subs pc, lr, #4
 
 	.globl	vector_fiq_offset
 	.equ	vector_fiq_offset, vector_fiq

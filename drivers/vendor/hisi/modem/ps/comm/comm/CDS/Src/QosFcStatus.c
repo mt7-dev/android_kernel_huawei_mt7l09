@@ -28,7 +28,7 @@ extern "C" {
   2 外部函数声明
 *****************************************************************************/
 extern  FLOWCTRL_CDS_CONFIG_STRU        g_stFcCdsConfig;
-
+VOS_VOID QosFc_FlowCtrlProc(VOS_UINT32 ulMemRemain, VOS_UINT32 *pRestoreCnt);
 /******************************************************************************
    3 私有定义
 ******************************************************************************/
@@ -99,48 +99,8 @@ VOS_VOID QosFc_FlowCtrl(VOS_VOID)
         }
     }
 
-    /* 流控操作 */
-    if(g_stQosFcCtrl.ulWarningThres > ulMemRemain)
-    {
-        (VOS_VOID)QosFc_DiscardAllDataFlow();
-        g_stQosFcCtrl.enFlowCtrl = QOS_FC_STATE_FLOWCTRL;
-        ulRestoreCnt = 0;
-    }
-    else if(g_stQosFcCtrl.ulDiscardThres > ulMemRemain)
-    {
-        (VOS_VOID)QosFc_DiscardDataFlow();
-        g_stQosFcCtrl.enFlowCtrl = QOS_FC_STATE_FLOWCTRL;
-        ulRestoreCnt = 0;
-    }
-    else if(g_stQosFcCtrl.ulRandomDiscardThres > ulMemRemain)
-    {
-        (VOS_VOID)QosFc_RandomDiscardDataFlow();
-        g_stQosFcCtrl.enFlowCtrl = QOS_FC_STATE_FLOWCTRL;
-        ulRestoreCnt = 0;
-    }
-    else if(g_stQosFcCtrl.ulRestoreThres < ulMemRemain)
-    {
-        if(QOS_FC_STATE_FLOWCTRL == g_stQosFcCtrl.enFlowCtrl)
-        {
-            ulRestoreCnt++;
-
-            if(QOS_FC_SLOW_UP <= ulRestoreCnt)
-            {
-                /*  慢恢复 */
-                ulRestoreCnt = 0;
-                if(PS_SUCC != QosFc_RestoreDataFlow())
-                {
-                    /* 一次流控过程结束 */
-                    g_stQosFcCtrl.enFlowCtrl = QOS_FC_STATE_NORMAL;
-                }
-            }
-        }
-    }
-    /* modify by jiqiang 2014.03.19 pclint begin */
-    else
-    {
-    }
-    /* modify by jiqiang 2014.03.19 pclint end */
+    /*流控操作*/
+    QosFc_FlowCtrlProc(ulMemRemain, &ulRestoreCnt);
 
     /* 退出流控状态后不做周期性检查 */
     if(QOS_FC_STATE_FLOWCTRL == g_stQosFcCtrl.enFlowCtrl)
@@ -153,12 +113,57 @@ VOS_VOID QosFc_FlowCtrl(VOS_VOID)
     {
     }
     /* modify by jiqiang 2014.03.19 pclint end */
-    return;
 
+    return;
 }
 
 
+VOS_VOID QosFc_FlowCtrlProc(VOS_UINT32 ulMemRemain, VOS_UINT32 *pRestoreCnt)
+{
+    /* 流控操作 */
+    if (g_stQosFcCtrl.ulWarningThres > ulMemRemain)
+    {
+        (VOS_VOID)QosFc_DiscardAllDataFlow();
+        g_stQosFcCtrl.enFlowCtrl = QOS_FC_STATE_FLOWCTRL;
+        *pRestoreCnt = 0;
+    }
+    else if (g_stQosFcCtrl.ulDiscardThres > ulMemRemain)
+    {
+        (VOS_VOID)QosFc_DiscardDataFlow();
+        g_stQosFcCtrl.enFlowCtrl = QOS_FC_STATE_FLOWCTRL;
+        *pRestoreCnt = 0;
+    }
+    else if (g_stQosFcCtrl.ulRandomDiscardThres > ulMemRemain)
+    {
+        (VOS_VOID)QosFc_RandomDiscardDataFlow();
+        g_stQosFcCtrl.enFlowCtrl = QOS_FC_STATE_FLOWCTRL;
+        *pRestoreCnt = 0;
+    }
+    else if (g_stQosFcCtrl.ulRestoreThres < ulMemRemain)
+    {
+        if (QOS_FC_STATE_FLOWCTRL == g_stQosFcCtrl.enFlowCtrl)
+        {
+            (*pRestoreCnt)++;
 
+            if (QOS_FC_SLOW_UP <= (*pRestoreCnt))
+            {
+                /*  慢恢复 */
+                *pRestoreCnt = 0;
+                if (PS_SUCC != QosFc_RestoreDataFlow())
+                {
+                    /* 一次流控过程结束 */
+                    g_stQosFcCtrl.enFlowCtrl = QOS_FC_STATE_NORMAL;
+                }
+            }
+        }
+    }
+    /* modify by jiqiang 2014.03.19 pclint begin */
+    else
+    {
+    }
+    /* modify by jiqiang 2014.03.19 pclint end */
+    return;
+}
 VOS_VOID QosFcCtrlInit(VOS_VOID)
 {
     /* 基于NV填充控制结构 */

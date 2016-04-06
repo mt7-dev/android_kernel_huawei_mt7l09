@@ -96,10 +96,17 @@ typedef VOS_UINT32 MM_LMM_CSFB_SERVICE_TYPE_ENUM_UINT32;
 *****************************************************************************/
 enum   MM_LMM_CSFB_SERVICE_RSLT_ENUM
 {
-    MM_LMM_CSFB_SERVICE_RSLT_FAILURE            = 0,    /*除网侧拒绝外的失败*/
-    MM_LMM_CSFB_SERVICE_RSLT_CN_REJ     ,               /*网侧拒绝*/
-    MM_LMM_CSFB_SERVICE_RSLT_AUTH_REJ,
-    MM_LMM_CSFB_SERVICE_RSLT_T3417EXT_TIME_OUT,
+    MM_LMM_CSFB_SERVICE_RSLT_FAILURE                         = 0,   /* 其他失败原因             */
+    MM_LMM_CSFB_SERVICE_RSLT_CN_REJ                          = 1,   /* 网侧拒绝                 */
+    MM_LMM_CSFB_SERVICE_RSLT_AUTH_REJ                        = 2,   /* 鉴权拒绝                 */
+    MM_LMM_CSFB_SERVICE_RSLT_T3417EXT_TIME_OUT               = 3,   /* EXT T3417超时            */
+    MM_LMM_CSFB_SERVICE_RSLT_MMC_DETACH_FAIL                 = 4,   /* MMC下发DETACH导致的失败  */
+    MM_LMM_CSFB_SERVICE_RSLT_CN_DETACH_FAIL                  = 5,   /* 网侧下发DETACH导致的失败 */
+    MM_LMM_CSFB_SERVICE_RSLT_VERIFY_CSFB_FAIL_FOR_OTHERS     = 6,   /* 不满足发起CSFB的条件     */
+    MM_LMM_CSFB_SERVICE_RSLT_VERIFY_CSFB_FAIL_FOR_EMM_STATE  = 7,   /* EMM状态不能发起CSFB      */
+    MM_LMM_CSFB_SERVICE_RSLT_TAU_COLLISION_RSLT_SMS_ONLY     = 8,   /* TAU打断SER结果为SMS ONLY */
+    MM_LMM_CSFB_SERVICE_RSLT_TAU_COLLISION_RSLT_PS_ONLY      = 9,   /* TAU打断SER结果只PS成功   */
+    MM_LMM_CSFB_SERVICE_RSLT_TAU_COLLISION_RSLT_ABNORMAL     = 10,  /* TAU打断SER结果出现异常   */
 
     MM_LMM_CSFB_SERVICE_RSLT_BUTT
 };
@@ -245,6 +252,8 @@ typedef struct
     MM_LMM_MSG_ID_ENUM_UINT32           ulMsgId;            /*_H2ASN_Skip*/
     VOS_UINT32                          ulOpId;
     MM_LMM_CSFB_SERVICE_RSLT_ENUM_UINT32  enCsfbSrvRslt;
+
+    VOS_UINT32                            ulCnCause;        /* 仅结果为CN REJ时有效 */
 } LMM_MM_CSFB_SERVICE_END_IND_STRU;
 
 

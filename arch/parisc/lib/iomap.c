@@ -8,24 +8,7 @@
 #include <linux/export.h>
 #include <asm/io.h>
 
-/*
- * The iomap space on 32-bit PA-RISC is intended to look like this:
- * 00000000-7fffffff virtual mapped IO
- * 80000000-8fffffff ISA/EISA port space that can't be virtually mapped
- * 90000000-9fffffff Dino port space
- * a0000000-afffffff Astro port space
- * b0000000-bfffffff PAT port space
- * c0000000-cfffffff non-swapped memory IO
- * f0000000-ffffffff legacy IO memory pointers
- *
- * For the moment, here's what it looks like:
- * 80000000-8fffffff All ISA/EISA port space
- * f0000000-ffffffff legacy IO memory pointers
- *
- * On 64-bit, everything is extended, so:
- * 8000000000000000-8fffffffffffffff All ISA/EISA port space
- * f000000000000000-ffffffffffffffff legacy IO memory pointers
- */
+
 
 /*
  * Technically, this should be 'if (VMALLOC_START < addr < VMALLOC_END),

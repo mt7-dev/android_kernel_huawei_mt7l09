@@ -137,6 +137,8 @@ VOS_VOID NAS_ESM_SndEsmRabmActIndMsg( VOS_UINT32  ulEpsbId )
     pstEpsbCntxtInfo = NAS_ESM_GetEpsbCntxtInfoAddr(ulEpsbId);
     ulTmpCid = pstEpsbCntxtInfo->ulBitCId;
 
+    NAS_ESM_AssignErabmSessionId(&(pEsmRabmActIndMsg->ucSessionId));
+
     /* 拷贝承载的所有PF信息 */
     for(ulCnt = NAS_ESM_MIN_CID; ulCnt <= NAS_ESM_MAX_CID; ulCnt++)
     {
@@ -377,6 +379,15 @@ VOS_VOID  NAS_ESM_RcvEsmRabmBearerStatusReq(const ESM_ERABM_BEARER_STATUS_REQ_ST
     {
         NAS_ESM_WARN_LOG("NAS_ESM_RcvEsmRabmBearerStatusReq:WARNING:Msg is discard cause ESM state is detached!");
         return ;
+    }
+
+    /* 连续激活两条承载时，避免ERABM发送的BEAR_STATUS_REQ消息时序错乱时，错误的本地去激活承载，因此增加
+    OPID进行匹配；如果是RABM主动发送的消息不进行匹配；RABM针对ESM的ACT_IND消息回复BEAR_STATUS_REQ消息时，
+    进行OPID匹配，如果匹配不成功，直接丢弃 */
+    if ((pRcvMsg->ucSessionId != 0) && (pRcvMsg->ucSessionId != NAS_ESM_GetErabmSessionIdValue()))
+    {
+        NAS_ESM_WARN_LOG("NAS_ESM_RcvEsmRabmBearerStatusReq:WARNING:Msg is discard cause OPID is not match!");
+        return;
     }
 
     /*取出消息中的EPSID信息*/

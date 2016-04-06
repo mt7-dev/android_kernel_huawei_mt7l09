@@ -14,10 +14,10 @@ ifneq ($(strip $(CFG_BALONG_MODEM)),true)
 LOCAL_SRC_FILES := 	dummy.c 
 endif
 
-LOCAL_C_INCLUDES := $(call include-path-for, legacy)
+LOCAL_C_INCLUDES := $(call include-path-for, legacy_hi3630)
 
 LOCAL_C_INCLUDES +=\
-    bootable/bootloader/legacy/include\
+    bootable/bootloader/legacy_hi3630/include\
 
 
 LOCAL_C_INCLUDES += $(BALONG_TOPDIR)/config/product/$(OBB_PRODUCT_NAME)/config \

@@ -56,6 +56,8 @@ extern "C" {
 #define TAF_APS_TI_MASK                                 (7)                     /* 去除Ti的flag值时使用 */
 #define TAF_APS_OCTET_MOVE_THREE_BITS                   (0x03)                  /* 将一个字节移动3位 */
 
+#define TAF_APS_1_KBYTE_1024_BYTE                       (1024)
+
 /* PDP激活被拒10次之内，不限制用户向网侧发起PDP激活请求 */
 #define TAF_APS_PDP_ACT_LIMIT_NO_DELAY_COUNT_THRESHOLD   (10)
 
@@ -75,7 +77,7 @@ extern "C" {
 /* TI_TAF_APS_LIMIT_PDP_ACT定时器不和任何PDP ID邦定，所以定义一个无效值 */
 #define TAF_APS_PDP_ACT_LIMIT_PDP_ID                    (0xFF)
 
-#define TAF_APS_DSFLOW_AT_REPORT_PERIOD                 (2)
+#define TAF_APS_DSFLOW_AT_REPORT_PERIOD                 (15)
 
 #define TAF_APS_GET_MULTI_DFS_SUPPORT_FLG()     (g_stTafApsCtx.stSwitchDdrRateInfo.ulMultiDfsFlg)
 
@@ -98,6 +100,9 @@ extern "C" {
 #define TAF_APS_GET_DSFLOW_MIN_DDR_BAND()       (g_stTafApsCtx.stSwitchDdrRateInfo.ulMinBand)
 #define TAF_APS_GET_DSFLOW_MAX_DDR_BAND()       (g_stTafApsCtx.stSwitchDdrRateInfo.ulMaxBand)
 
+
+#define TAF_APS_GET_RAT_TYPE_IN_SUSPEND()           (g_stTafApsCtx.enCurrRatType)
+#define TAF_APS_SET_RAT_TYPE_IN_SUSPEND(ratType)    (g_stTafApsCtx.enCurrRatType = (ratType))
 
 /*****************************************************************************
   3 枚举定义
@@ -136,6 +141,7 @@ enum TAF_APS_DFS_TYPE_ENUM
 };
 typedef VOS_UINT32 TAF_APS_DFS_TYPE_ENUM_UINT32;
 
+
 /*****************************************************************************
   4 全局变量声明
 *****************************************************************************/
@@ -166,8 +172,8 @@ typedef struct
     VOS_UINT8                           aucReserve[3];                          /*保留位*/
 
     VOS_UINT32                          ulStartLinkTime;                        /*当前连接开始时间*/
-    TAF_DSFLOW_INFO_STRU                stCurrentFlowInfo;  /*当前连接流量信息，即最后一次PDP连接的流量信息 */
-    TAF_DSFLOW_INFO_STRU                stTotalFlowInfo;    /*累积流量信息，该RAB历史所有连接累加的流量信息 */
+    TAF_DSFLOW_INFO_STRU                stCurrentFlowInfo;                      /*当前连接流量信息，即最后一次PDP连接的流量信息 */
+    TAF_DSFLOW_INFO_STRU                stTotalFlowInfo;                        /*累积流量信息，该RAB历史所有连接累加的流量信息 */
 
 }TAF_APS_DSFLOW_STATS_STRU;
 typedef struct
@@ -194,16 +200,24 @@ typedef struct
 }TAF_APS_SWITCH_DDR_RATE_INFO_STRU;
 typedef struct
 {
-    VOS_UINT8                           ucApsDsFlowSave2NvFlg;                  /* 标识是否需要保存历史流量信息到NV中 */
+    VOS_UINT8                           ucDsFlowSave2NvFlg;                     /* 标识是否需要保存历史流量信息到NV中 */
+    VOS_UINT8                           ucDsFlowSavePeriod;                     /* 流量写NV的周期 */
 
     VOS_UINT8                           ucDsFlowOMReportFlg;                    /* 标识是否进行OM流量上报 */
     VOS_UINT8                           ucDsFlowATRptPeriod;                    /* AT端口流量上报的周期单位s */
     VOS_UINT8                           ucDsFlowOMRptPeriod;                    /* OM流量上报的周期单位s */
     VOS_UINT8                           ucDsFlowATRptTmrExpCnt;                 /* AT端口流量上报时机，用于控制上报周期 */
     VOS_UINT8                           ucDsFlowOMRptTmrExpCnt;                 /* OM流量上报时机，用于控制上报周期 */
+    VOS_UINT8                           aucReserved[1];
 
-    VOS_UINT8                           ucApsDsFlowSavePeriod;                  /* 流量写NV的周期 */
-    VOS_UINT8                           ucReserve;
+
+    VOS_UINT32                          ulFluxThresRptFlg;                      /* AP流量上报开启标记 */
+    VOS_UINT32                          ulFluxThresKByte;                       /* AP流量上报门限, 单位KByte */
+    VOS_UINT32                          ulFluxThresHigh;                        /* AP流量上报门限高四个字节, 单位Byte */
+    VOS_UINT32                          ulFluxThresLow;                         /* AP流量上报门限低四个字节, 单位Byte */
+    VOS_UINT32                          ulTotalFluxHigh;                        /* AP流量累计上报高四个字节, 单位Byte */
+    VOS_UINT32                          ulTotalFluxLow;                         /* AP流量累计上报低四个字节, 单位Byte */
+
     TAF_APS_DSFLOW_STATS_STRU           astApsDsFlowStats[TAF_APS_MAX_RAB_NUM]; /* 保留以RABID为单位的流量数据 */
 
 }TAF_APS_DSFLOW_STATS_CTX_STRU;
@@ -338,13 +352,22 @@ typedef struct
 } TAF_APS_INTERNAL_MSG_QUEUE_STRU;
 
 
-
 typedef struct
 {
     VOS_UINT8                           ucPdpActLimitFlg;                       /* 保存NV项打开关闭标志 */
     VOS_UINT8                           ucPdpActFailCount;                      /* 记录PDP激活失败次数 */
     VOS_UINT8                           aucReserved[2];                         /* 保留 四字节对齐 */
 }TAF_APS_PDP_ACT_LIMIT_INFO_STRU;
+
+/*****************************************************************************
+ 结构名称  : TAF_APS_PDN_TEARDOWN_POLICY_STRU
+ 结构说明  : PDN连接断开策略
+*****************************************************************************/
+typedef struct
+{
+    VOS_UINT8                               ucAllowDefPdnTeardownFlg;
+    VOS_UINT8                               aucReserved[3];
+} TAF_APS_PDN_TEARDOWN_POLICY_STRU;
 
 
 typedef struct
@@ -383,6 +406,13 @@ typedef struct
     TAF_APS_SWITCH_DDR_RATE_INFO_STRU       stSwitchDdrRateInfo;                    /* DDR投票信息 */
 
     VOS_UINT32                              aulCallRemainTmrLen[TAF_MAX_CID + 1];
+
+    MMC_APS_RAT_TYPE_ENUM_UINT32            enCurrRatType;                      /* 记录激活过程中挂起时的接入技术模式 */
+
+#if (FEATURE_ON == FEATURE_LTE)
+    TAF_APS_PDN_TEARDOWN_POLICY_STRU        stPdnTeardownPolicy;
+#endif
+
 }TAF_APS_CONTEXT_STRU;
 
 extern TAF_APS_CONTEXT_STRU             g_stTafApsCtx;
@@ -615,6 +645,17 @@ VOS_VOID TAF_APS_SetCallRemainTmrLen(
     VOS_UINT32                          ulTmrLen
 );
 VOS_UINT32 TAF_APS_GetCallRemainTmrLen(VOS_UINT8 ucCid);
+
+#if (FEATURE_ON == FEATURE_LTE)
+VOS_VOID TAF_APS_InitPdnTeardownPolicy(VOS_VOID);
+TAF_APS_PDN_TEARDOWN_POLICY_STRU* TAF_APS_GetPdnTeardownPolicy(VOS_VOID);
+VOS_UINT8 TAF_APS_GetAllowDefPdnTeardownFlg(VOS_VOID);
+VOS_VOID TAF_APS_SetAllowDefPdnTeardownFlg(VOS_UINT8 ucAllowFlg);
+#endif
+
+
+
+TAF_APS_CID_IMS_CFG_TBL_STRU* TAF_APS_GetCidImsCfgTable(VOS_VOID);
 
 #if (VOS_OS_VER == VOS_WIN32)
 #pragma pack()

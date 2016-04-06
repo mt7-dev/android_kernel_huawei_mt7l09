@@ -281,7 +281,7 @@ static ssize_t mtd_bitflip_threshold_store(struct device *dev,
 	mtd->bitflip_threshold = bitflip_threshold;
 	return count;
 }
-static DEVICE_ATTR(bitflip_threshold, S_IRUGO | S_IWUSR,
+static DEVICE_ATTR(bitflip_threshold, (S_IRUGO | S_IWUSR),
 		   mtd_bitflip_threshold_show,
 		   mtd_bitflip_threshold_store);
 
@@ -391,10 +391,9 @@ int add_mtd_device(struct mtd_info *mtd)
 	if (device_register(&mtd->dev) != 0)
 		goto fail_added;
 
-	if (MTD_DEVT(i))
-		device_create(&mtd_class, mtd->dev.parent,
-			      MTD_DEVT(i) + 1,
-			      NULL, "mtd%dro", i);
+	device_create(&mtd_class, mtd->dev.parent,
+		      MTD_DEVT(i) + 1,
+		      NULL, "mtd%dro", i);
 
 	pr_debug("mtd: Giving out device %d to %s\n", i, mtd->name);
 	/* No need to get a refcount on the module containing
@@ -509,8 +508,13 @@ int mtd_device_parse_register(struct mtd_info *mtd, const char * const *types,
 	}
 
 	if (err > 0) {
-		err = add_mtd_partitions(mtd, real_parts, err);
-		kfree(real_parts);
+		if(real_parts){
+			err = add_mtd_partitions(mtd, real_parts, err);
+			kfree(real_parts);
+		}
+		else{
+			err = -ENOMEM;
+		}
 	} else if (err == 0) {
 		err = add_mtd_device(mtd);
 		if (err == 1)

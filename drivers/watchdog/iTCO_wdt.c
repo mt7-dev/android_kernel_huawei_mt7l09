@@ -1,44 +1,4 @@
-/*
- *	intel TCO Watchdog Driver
- *
- *	(c) Copyright 2006-2011 Wim Van Sebroeck <wim@iguana.be>.
- *
- *	This program is free software; you can redistribute it and/or
- *	modify it under the terms of the GNU General Public License
- *	as published by the Free Software Foundation; either version
- *	2 of the License, or (at your option) any later version.
- *
- *	Neither Wim Van Sebroeck nor Iguana vzw. admit liability nor
- *	provide warranty for any of this software. This material is
- *	provided "AS-IS" and at no charge.
- *
- *	The TCO watchdog is implemented in the following I/O controller hubs:
- *	(See the intel documentation on http://developer.intel.com.)
- *	document number 290655-003, 290677-014: 82801AA (ICH), 82801AB (ICHO)
- *	document number 290687-002, 298242-027: 82801BA (ICH2)
- *	document number 290733-003, 290739-013: 82801CA (ICH3-S)
- *	document number 290716-001, 290718-007: 82801CAM (ICH3-M)
- *	document number 290744-001, 290745-025: 82801DB (ICH4)
- *	document number 252337-001, 252663-008: 82801DBM (ICH4-M)
- *	document number 273599-001, 273645-002: 82801E (C-ICH)
- *	document number 252516-001, 252517-028: 82801EB (ICH5), 82801ER (ICH5R)
- *	document number 300641-004, 300884-013: 6300ESB
- *	document number 301473-002, 301474-026: 82801F (ICH6)
- *	document number 313082-001, 313075-006: 631xESB, 632xESB
- *	document number 307013-003, 307014-024: 82801G (ICH7)
- *	document number 322896-001, 322897-001: NM10
- *	document number 313056-003, 313057-017: 82801H (ICH8)
- *	document number 316972-004, 316973-012: 82801I (ICH9)
- *	document number 319973-002, 319974-002: 82801J (ICH10)
- *	document number 322169-001, 322170-003: 5 Series, 3400 Series (PCH)
- *	document number 320066-003, 320257-008: EP80597 (IICH)
- *	document number 324645-001, 324646-001: Cougar Point (CPT)
- *	document number TBD                   : Patsburg (PBG)
- *	document number TBD                   : DH89xxCC
- *	document number TBD                   : Panther Point
- *	document number TBD                   : Lynx Point
- *	document number TBD                   : Lynx Point-LP
- */
+
 
 /*
  *	Includes, defines, variables, module parameters, ...

@@ -33,6 +33,7 @@
 		bt = <0>;
 		gps = <0>;
 		gpu = <0>;
+		cpu_chip = <0>;
 		status = "disabled";
 	};
 };

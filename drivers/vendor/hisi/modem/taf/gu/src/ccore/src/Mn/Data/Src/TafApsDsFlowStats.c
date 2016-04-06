@@ -79,10 +79,10 @@ VOS_VOID  TAF_APS_StartDsFlowStats(
     TAF_APS_StartDsFlowRpt();
 
     /* 如果需要保存到NV项中，启动周期性保存流量到NV定时器 */
-    if (VOS_TRUE == pstApsDsFlowCtx->ucApsDsFlowSave2NvFlg)
+    if (VOS_TRUE == pstApsDsFlowCtx->ucDsFlowSave2NvFlg)
     {
         TAF_APS_StartTimer(TI_TAF_APS_DSFLOW_WRITE_NV,
-                           (pstApsDsFlowCtx->ucApsDsFlowSavePeriod * 60 * TIMER_S_TO_MS_1000),
+                           (pstApsDsFlowCtx->ucDsFlowSavePeriod * 60 * TIMER_S_TO_MS_1000),
                            TAF_APS_INVALID_PDPID);
     }
     return;
@@ -658,6 +658,91 @@ VOS_UINT32  TAF_APS_CalcDsflowRate(
 }
 
 
+VOS_VOID TAF_APS_ClearApDsFlowStats( VOS_VOID )
+{
+    TAF_APS_DSFLOW_STATS_CTX_STRU      *pstDsFlowCtx = VOS_NULL_PTR;
+
+    pstDsFlowCtx = TAF_APS_GetDsFlowCtxAddr();
+
+    pstDsFlowCtx->ulTotalFluxHigh = 0;
+    pstDsFlowCtx->ulTotalFluxLow  = 0;
+
+    return;
+}
+
+
+VOS_VOID TAF_APS_ProcApDsFlowRpt(VOS_VOID)
+{
+    TAF_APS_DSFLOW_STATS_CTX_STRU      *pstDsflowCtx = VOS_NULL_PTR;
+    TAF_APDSFLOW_REPORT_STRU            stApDsFlowRptInfo;
+    TAF_DSFLOW_REPORT_STRU              stTotalDsFlowRptInfo;
+    TAF_DSFLOW_QUERY_INFO_STRU          stDsFlowQryInfo;
+    TAF_CTRL_STRU                       stCtrlHdr;
+    VOS_UINT32                          ulTotalFluxThresHigh;
+    VOS_UINT32                          ulTotalFluxThresLow;
+    VOS_UINT32                          ulTotalFluxHigh;
+    VOS_UINT32                          ulTotalFluxLow;
+    VOS_UINT32                          ulResult;
+
+    PS_MEM_SET(&stApDsFlowRptInfo, 0x00, sizeof(TAF_APDSFLOW_REPORT_STRU));
+    PS_MEM_SET(&stTotalDsFlowRptInfo, 0x00, sizeof(TAF_DSFLOW_REPORT_STRU));
+    PS_MEM_SET(&stDsFlowQryInfo, 0x00, sizeof(TAF_DSFLOW_QUERY_INFO_STRU));
+
+    pstDsflowCtx = TAF_APS_GetDsFlowCtxAddr();
+
+    if (VOS_TRUE == pstDsflowCtx->ulFluxThresRptFlg)
+    {
+        /* 查询所有激活RAB承载的上报流量信息 */
+        TAF_APS_QryAllRabDsFlowReportInfo(&stTotalDsFlowRptInfo);
+
+        /* 查询所有RAB承载的流量信息 */
+        TAF_APS_QryAllRabDsFlowStats(&stDsFlowQryInfo);
+
+        /* 累计上下行流量 */
+        TAF_APS_BIT64_ADD(ulTotalFluxHigh,
+                          ulTotalFluxLow,
+                          stDsFlowQryInfo.stTotalFlowInfo.ulDSReceiveFluxHigh,
+                          stDsFlowQryInfo.stTotalFlowInfo.ulDSReceiveFluxLow,
+                          stDsFlowQryInfo.stTotalFlowInfo.ulDSSendFluxHigh,
+                          stDsFlowQryInfo.stTotalFlowInfo.ulDSSendFluxLow);
+
+        /* 计算累计流量上报阈值 */
+        TAF_APS_BIT64_ADD(ulTotalFluxThresHigh,
+                          ulTotalFluxThresLow,
+                          pstDsflowCtx->ulTotalFluxHigh,
+                          pstDsflowCtx->ulTotalFluxLow,
+                          pstDsflowCtx->ulFluxThresHigh,
+                          pstDsflowCtx->ulFluxThresLow);
+
+        /* 检查是否达到流量上报阈值 */
+        TAF_APS_BIT64_COMPARE(ulTotalFluxHigh,
+                              ulTotalFluxLow,
+                              ulTotalFluxThresHigh,
+                              ulTotalFluxThresLow,
+                              ulResult);
+
+        if ((TAF_APS_BIT64_GREAT == ulResult) || (TAF_APS_BIT64_EQUAL == ulResult))
+        {
+            /* 更新累计流量 */
+            pstDsflowCtx->ulTotalFluxHigh       = ulTotalFluxHigh;
+            pstDsflowCtx->ulTotalFluxLow        = ulTotalFluxLow;
+
+            /* 填写控制头 */
+            TAF_APS_CFG_AT_EVT_CTRL_HDR(&stCtrlHdr, MN_CLIENT_ID_BROADCAST, 0);
+
+            /* 填写事件内容 */
+            stApDsFlowRptInfo.ulCurrentTxRate   = stTotalDsFlowRptInfo.ulCurrentSendRate;
+            stApDsFlowRptInfo.ulCurrentRxRate   = stTotalDsFlowRptInfo.ulCurrentReceiveRate;
+            stApDsFlowRptInfo.stCurrentFlowInfo = stTotalDsFlowRptInfo.stCurrentFlowInfo;
+            stApDsFlowRptInfo.stTotalFlowInfo   = stDsFlowQryInfo.stTotalFlowInfo;
+
+            /* 流量阈值上报 */
+            TAF_APS_SndApDsFlowRptInd(&stCtrlHdr, &stApDsFlowRptInfo);
+        }
+    }
+
+    return;
+}
 VOS_VOID TAF_APS_ShowDdrInfo(VOS_VOID)
 {
     VOS_UINT32                              i;

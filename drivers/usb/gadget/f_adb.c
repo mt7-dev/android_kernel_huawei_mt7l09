@@ -114,6 +114,7 @@ static struct usb_descriptor_header *hs_adb_descs[] = {
 static void adb_ready_callback(void);
 static void adb_closed_callback(void);
 #endif
+
 /* temporary variable used between adb_open() and adb_gadget_bind() */
 static struct adb_dev *_adb_dev;
 
@@ -272,7 +273,7 @@ static ssize_t adb_read(struct file *fp, char __user *buf,
 	int r = count, xfer;
 	int ret;
 
-	pr_debug("adb_read(%d)\n", count);
+	pr_debug("adb_read(%zu)\n", count);
 	if (!_adb_dev)
 		return -ENODEV;
 
@@ -350,7 +351,7 @@ static ssize_t adb_write(struct file *fp, const char __user *buf,
 
 	if (!_adb_dev)
 		return -ENODEV;
-	pr_debug("adb_write(%d)\n", count);
+	pr_debug("adb_write(%zu)\n", count);
 
 	if (adb_lock(&dev->write_excl))
 		return -EBUSY;
@@ -421,7 +422,7 @@ static int adb_open(struct inode *ip, struct file *fp)
 	/* clear the error latch */
 	_adb_dev->error = 0;
 
-	//adb_ready_callback();
+	/*adb_ready_callback();*/
 
 	return 0;
 }
@@ -430,9 +431,10 @@ static int adb_release(struct inode *ip, struct file *fp)
 {
 	pr_info("adb_release\n");
 
-	//adb_closed_callback();
+	/*adb_closed_callback();*/
 
 	adb_unlock(&_adb_dev->open_excl);
+
 	return 0;
 }
 

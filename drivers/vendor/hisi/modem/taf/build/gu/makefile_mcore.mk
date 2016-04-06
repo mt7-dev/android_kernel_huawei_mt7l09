@@ -24,19 +24,19 @@ OBC_THUMB_COMPILE :=ON
 #***********************************************************#
 # compiler flags
 #***********************************************************#
-CC_USER_FLAGS   ?= 
+CC_USER_FLAGS   ?=
 AS_USER_FLAGS   ?=
 
 
 CC_USER_FLAGS += -c  -O2 -t7 -msoft-float -fdollars-in-identifiers \
 				    -fno-builtin -fvolatile -fsigned-char -fno-feature-proxy -Wall -fno-zero-initialized-in-bss
-					
+
 ifeq ($(CFG_THUMB_COMPILE),YES)
 CC_USER_FLAGS += -mlong-calls
 else
 OBC_THUMB_COMPILE := OFF
 endif
-					
+
 ifeq ($(OBC_THUMB_COMPILE),ON)
 CC_USER_FLAGS += -march=armv6 -mthumb -mthumb-interwork
 else
@@ -56,7 +56,7 @@ CC_USER_DEFINES += -DUSP_2_0 -D__LOG_RELEASE__ -DVOS_VXWORKS=3 -DVOS_OS_VER=VOS_
 				-DBALONG_CHIP_V300=3 -DBALONG_CHIP_V500=4 -DBALONG_CHIP_VER=BALONG_CHIP_V500 -DDSP_A17_ENABLE \
 				-DVERSION_V3R2_C00 -D$(CFG_GU_PRODUCT_VERSION) -D__LDF_FUNCTION__ -DBOARD_$(CFG_BOARD) \
 				-DFEATURE_DSP2ARM -DBSP_CORE_MODEM -DMSP_GUNAS_AT_UNITE
-				
+
 ifeq ($(INSTANCE_ID) ,INSTANCE_1)
 CC_USER_DEFINES	+=-DINSTANCE_1
 endif
@@ -88,6 +88,9 @@ OBC_LOCAL_INC_DIR := \
 	$(BALONG_TOPDIR)/include/oam/comm/dms \
 	$(BALONG_TOPDIR)/include/oam/comm/nvim \
 	$(BALONG_TOPDIR)/include/oam/comm/cbpa \
+	$(BALONG_TOPDIR)/include/oam/comm/ccore/cbpa \
+	$(BALONG_TOPDIR)/include/oam/comm/ccore/om \
+	$(BALONG_TOPDIR)/include/oam/comm/cpm \
 	$(BALONG_TOPDIR)/include/oam/gu/log \
 	$(BALONG_TOPDIR)/include/oam/gu/om \
 	$(BALONG_TOPDIR)/include/oam/gu/nvim \
@@ -109,6 +112,10 @@ OBC_LOCAL_INC_DIR := \
 	$(BALONG_TOPDIR)/include/nv/gu/oam \
 	$(BALONG_TOPDIR)/include/nv/tl/lps \
     $(BALONG_TOPDIR)/platform/$(CFG_PLATFORM_HISI_BALONG)
+ifeq ($(CFG_FEATURE_MERGE_OM_CHAN),FEATURE_ON)
+OBC_LOCAL_INC_DIR += \
+    $(BALONG_TOPDIR)/include/oam/comm/comm/ppm
+endif
 
 OBC_LOCAL_INC_DIR += \
     $(BALONG_TOPDIR)/modem/ps/inc/gu \
@@ -282,6 +289,9 @@ OBC_LOCAL_SRC_FILE := \
     ${BALONG_TOPDIR}/modem/taf/gu/src/ccore/src/Mn/Phone/Src/TafMmaTimerMgmt.c\
 	${BALONG_TOPDIR}/modem/taf/gu/src/ccore/src/Mn/Phone/Src/TafMmaSndTaf.c\
     ${BALONG_TOPDIR}/modem/taf/gu/src/ccore/src/Mn/Phone/Src/TafMmaSndApp.c\
+    ${BALONG_TOPDIR}/modem/taf/gu/src/ccore/src/Mn/Phone/Src/TafMmaFsmImsSwitch.c\
+    ${BALONG_TOPDIR}/modem/taf/gu/src/ccore/src/Mn/Phone/Src/TafMmaFsmImsSwitchTbl.c\
+    ${BALONG_TOPDIR}/modem/taf/gu/src/ccore/src/Mn/Phone/Src/TafMmaComFunc.c\
     $(BALONG_TOPDIR)/modem/taf/gu/src/ccore/src/Mn/Sups/Src/Ssa_App.c\
     $(BALONG_TOPDIR)/modem/taf/gu/src/ccore/src/Mn/Sups/Src/Ssa_Common.c\
     $(BALONG_TOPDIR)/modem/taf/gu/src/ccore/src/Mn/Sups/Src/Ssa_Decode.c\
@@ -337,17 +347,17 @@ OBC_LOCAL_SRC_FILE := \
     ${BALONG_TOPDIR}/modem/taf/gu/src/ccore/src/TafSpm/Src/TafSpmComFunc.c\
     ${BALONG_TOPDIR}/modem/taf/gu/src/ccore/src/TafSpm/Src/TafSpmPreProcAct.c\
     ${BALONG_TOPDIR}/modem/taf/gu/src/ccore/src/TafSpm/Src/TafSpmPreProcTbl.c\
-    ${BALONG_TOPDIR}/modem/taf/gu/src/ccore/src/TafSpm/Src/TafSpmRedial.c    
+    ${BALONG_TOPDIR}/modem/taf/gu/src/ccore/src/TafSpm/Src/TafSpmRedial.c
 
 ifeq ($(CFG_RAT_MODE),RAT_GU)
 OBC_LOCAL_SRC_FILE += \
 
 endif
-   
+
 ifeq ($(CFG_RAT_MODE),RAT_GUL)
 OBC_LOCAL_SRC_FILE += \
     $(BALONG_TOPDIR)/modem/taf/gu/src/ccore/src/Mn/Data/Src/TafApsSndEsm.c \
-    $(BALONG_TOPDIR)/modem/taf/gu/src/ccore/src/Mn/Data/Src/TafApsSndL4a.c 
+    $(BALONG_TOPDIR)/modem/taf/gu/src/ccore/src/Mn/Data/Src/TafApsSndL4a.c
 endif
 
 ifeq ($(CFG_FEATURE_MULTI_MODEM) ,FEATURE_ON)

@@ -704,7 +704,7 @@ enum {WMM_all_frame, WMM_two_frame, WMM_four_frame, WMM_six_frame};
 #define IEEE80211_QOS_TID 0x0f
 #define QOS_CTL_NOTCONTAIN_ACK (0x01 << 5)
 
-#define MAX_IE_LEN						0xFF //+YJ,080625
+#define MAX_IE_LEN						0xFF
 
 typedef struct _CHANNEL_LIST{
 	u8	Channel[MAX_CHANNEL_NUMBER + 1];
@@ -806,9 +806,7 @@ struct ieee80211_network {
 	struct ieee80211_wmm_ac_param wmm_param[4];
 	u8 QoS_Enable;
 	u8 SignalStrength;
-//by amy 080312
 	u8 HighestOperaRate;
-//by amy 080312
 	u8 Turbo_Enable;//enable turbo mode, added by thomas
 	u16 CountryIeLen;
 	u8 CountryIeBuf[MAX_IE_LEN];
@@ -1058,25 +1056,23 @@ struct ieee80211_device {
 	bool actscanning;
 	bool beinretry;
 	u16 ListenInterval;
-	unsigned long NumRxDataInPeriod; //YJ,add,080828
-	unsigned long NumRxBcnInPeriod;  //YJ,add,080828
+	unsigned long NumRxDataInPeriod;
+	unsigned long NumRxBcnInPeriod;
 	unsigned long NumRxOkTotal;
-	unsigned long NumRxUnicast;//YJ,add,080828,for keep alive
+	unsigned long NumRxUnicast;
 	bool bHwRadioOff;
         struct delayed_work softmac_scan_wq;
         struct delayed_work associate_retry_wq;
 	struct delayed_work hw_wakeup_wq;
-	struct delayed_work hw_sleep_wq;//+by amy 080324
+	struct delayed_work hw_sleep_wq;
 	struct delayed_work watch_dog_wq;
 	struct delayed_work sw_antenna_wq;
 	struct delayed_work  start_ibss_wq;
-//by amy for rate adaptive 080312
     struct delayed_work rate_adapter_wq;
 //by amy for rate adaptive
 	struct delayed_work hw_dig_wq;
 	struct delayed_work tx_pw_wq;
 
-//Added for RF power on power off by lizhaoming 080512
 	struct delayed_work GPIOChangeRFWorkItem;
 
 	struct workqueue_struct *wq;
@@ -1374,7 +1370,6 @@ extern void ieee80211_ps_tx_ack(struct ieee80211_device *ieee, short success);
 extern void SendDisassociation(struct ieee80211_device *ieee,u8* asSta,u8 asRsn);
 extern void ieee80211_rtl_start_scan(struct ieee80211_device *ieee);
 
-//Add for RF power on power off by lizhaoming 080512
 extern void SendDisassociation(struct ieee80211_device *ieee,
        			 u8*                     asSta,
         		 u8                      asRsn);

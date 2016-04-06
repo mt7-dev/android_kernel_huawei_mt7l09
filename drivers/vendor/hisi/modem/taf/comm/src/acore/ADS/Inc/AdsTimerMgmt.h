@@ -52,12 +52,10 @@ enum ADS_TIMER_ID_ENUM
     TI_ADS_DL_ADQ_EMPTY,                                                        /* 下行ADQ空定时器 */
     TI_ADS_DL_PROTECT,                                                          /* 下行RD保护定时器 */
     TI_ADS_RPT_STATS_INFO,                                                      /* 上报统计信息定时器 */
+    TI_ADS_UL_DATA_STAT,                                                        /* 上行数据统计定时器 */
     TI_ADS_TIMER_BUTT
 };
 typedef VOS_UINT32  ADS_TIMER_ID_ENUM_UINT32;
-
-
-
 enum ADS_TIMER_STATUS_ENUM
 {
     ADS_TIMER_STATUS_STOP,                                                      /* 定时器停止状态 */
@@ -75,6 +73,14 @@ enum ADS_TIMER_OPERATION_TYPE_ENUM
 };
 typedef VOS_UINT8 ADS_TIMER_OPERATION_TYPE_ENUM_UINT8;
 
+
+enum ADS_TIMER_STOP_CAUSE_ENUM
+{
+    ADS_TIMER_STOP_CAUSE_USER,                                                   /* 用户主动停止的 */
+    ADS_TIMER_STOP_CAUSE_TIMEOUT,                                                /* 定时器超时显示停止的 */
+    ADS_TIMER_STOP_CAUSE_ENUM_BUTT
+};
+typedef VOS_UINT8 ADS_TIMER_STOP_CAUSE_ENUM_UINT8;
 
 /*****************************************************************************
   4 全局变量声明
@@ -111,9 +117,8 @@ typedef struct
 typedef struct
 {
     HTIMER                              hTimer;                                 /* 定时器的运行指针 */
-    ADS_TIMER_ID_ENUM_UINT32            enTimerId;                              /* 定时器的ID */
     ADS_TIMER_STATUS_ENUM_UINT8         enTimerStatus;                          /* 定时器的运行状态,启动或停止 */
-    VOS_UINT8                           aucRsv[3];                              /* 保留*/
+    VOS_UINT8                           aucRsv[7];                              /* 保留*/
 } ADS_TIMER_CTX_STRU;
 
 /*****************************************************************************
@@ -126,7 +131,8 @@ typedef struct
     ADS_TIMER_ID_ENUM_UINT32            enTimerId;          /* _H2ASN_Skip */
     VOS_UINT32                          ulTimerLen;         /* 定时器长度*/
     ADS_TIMER_OPERATION_TYPE_ENUM_UINT8 enTimerAction;      /* 定时器操作类型 */
-    VOS_UINT8                           aucReserved[3];
+    ADS_TIMER_STOP_CAUSE_ENUM_UINT8     enTimerStopCause;   /* 定时器停止的原因 */
+    VOS_UINT8                           aucReserved[2];
 } ADS_TIMER_INFO_STRU;
 
 
@@ -156,7 +162,8 @@ VOS_VOID  ADS_StartTimer(
 
 VOS_VOID ADS_StopTimer(
     VOS_UINT32                          ulPid,
-    ADS_TIMER_ID_ENUM_UINT32            enTimerId
+    ADS_TIMER_ID_ENUM_UINT32            enTimerId,
+    ADS_TIMER_STOP_CAUSE_ENUM_UINT8     enStopCause
 );
 
 ADS_TIMER_STATUS_ENUM_UINT8 ADS_GetTimerStatus(

@@ -95,6 +95,7 @@ enum APP_L2_MSG_TYPE_ENUM
 
     ID_OM_L2_DCM_BSR_RPT_CMD_REQ            = (APP_L2_MSG_HDR + 0x0B),  /*0xe1B*/
     ID_L2_OM_DCM_BSR_RPT_CMD_CNF            = (L2_APP_MSG_HDR + 0x0F),  /*0xe0F*/
+    ID_L2_OM_DCM_CA_CTRL_ELEMENT_IND        = (L2_APP_MSG_HDR + 0x04),  /*0xe04*/
     /*end DCM logger*/
     ID_APP_MAC_TRANSPARENT_CMD_REQ          = (APP_MAC_MSG_HDR + 0x01),
     ID_APP_MAC_TRANSPARENT_CMD_CNF          = (MAC_APP_MSG_HDR + 0x02),
@@ -111,7 +112,21 @@ enum APP_L2_MSG_TYPE_ENUM
 
     ID_APP_PDCP_TRANSPARENT_CMD_REQ         = (APP_PDCP_MSG_HDR + 0x01),
     ID_APP_PDCP_TRANSPARENT_CMD_CNF         = (PDCP_APP_MSG_HDR + 0x02),
-    ID_APP_PDCP_TRANSPARENT_CMD_IND         = (PDCP_APP_MSG_HDR + 0x03)
+    ID_APP_PDCP_TRANSPARENT_CMD_IND         = (PDCP_APP_MSG_HDR + 0x03),
+
+    ID_OM_L2_SWITCH_CONTROL_CMD_REQ         = (APP_PDCP_MSG_HDR + 0x02),  /*0xec2*/
+    ID_L2_OM_SWITCH_CONTROL_CMD_CNF         = (PDCP_APP_MSG_HDR + 0x04),   /*0xee4*/
+
+    ID_PS_OM_PDCP_UL_SRB_INFO_IND           = (PDCP_APP_MSG_HDR + 0x05),
+    ID_PS_OM_PDCP_UL_RRC_CNF_INFO_IND       = (PDCP_APP_MSG_HDR + 0x06),
+    ID_PS_OM_RLC_UL_SRB_PDU_INFO_IND        = (PDCP_APP_MSG_HDR + 0x07),
+    ID_PS_OM_RLC_UL_TX_CTRL_PDU_INFO_IND    = (PDCP_APP_MSG_HDR + 0x08),
+    ID_PS_OM_RLC_DL_RX_CTRL_PDU_INFO_IND    = (PDCP_APP_MSG_HDR + 0x09),
+    ID_PS_OM_RLC_DL_SRB_PDU_INFO_IND        = (PDCP_APP_MSG_HDR + 0x0A)
+
+
+
+
 };
 typedef         VOS_UINT32          APP_L2_MSG_TYPE_ENUM_UINT32;
 /*****************************************************************************

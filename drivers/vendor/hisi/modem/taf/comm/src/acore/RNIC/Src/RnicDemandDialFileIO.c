@@ -32,9 +32,9 @@ extern "C" {
 /*****************************************************************************
     协议栈打印打点方式下的.C文件宏定义
 *****************************************************************************/
-
+/*lint -e960*/
 #define    THIS_FILE_ID        PS_FILE_ID_RNIC_DEMAND_DIAL_FILE_IO_C
-
+/*lint +e960*/
 
 
 /*****************************************************************************
@@ -104,7 +104,7 @@ ssize_t RNIC_ReadOnDemandFile(
 {
     RNIC_DIAL_MODE_STRU                *pstDialMode;
     VOS_CHAR                            acModeTemp[RNIC_ONDEMAND_FILE_LEN];
-    VOS_INT32                           lRlst;
+    VOS_UINT32                          ulDialModeLen;
 
     if (*ppos > 0)
     {
@@ -119,20 +119,22 @@ ssize_t RNIC_ReadOnDemandFile(
 
     VOS_sprintf((VOS_CHAR *)acModeTemp, "%d", pstDialMode->enDialMode);
 
-    len             = PS_MIN(len, VOS_StrLen(acModeTemp));
+    ulDialModeLen = VOS_StrLen(acModeTemp);
+
+    len             = PS_MIN(len, ulDialModeLen);
 
     /*拷贝内核空间数据到用户空间上面*/
-    lRlst           = copy_to_user(buf,(VOS_VOID *)acModeTemp, len);
+    if (0 == copy_to_user(buf,(VOS_VOID *)acModeTemp, len))
+    {
+        *ppos += (loff_t)len;
 
-    if (lRlst < 0)
+        return (ssize_t)len;
+    }
+    else
     {
         RNIC_ERROR_LOG(ACPU_PID_RNIC, "RNIC_ReadOnDemandFile:copy_to_user fail!");
         return -EPERM;
     }
-
-    *ppos += len;
-
-    return len;
 }
 
 
@@ -147,7 +149,6 @@ ssize_t RNIC_WriteOnDemandFile(
     RNIC_DIAL_MODE_STRU                *pstDialMode;
     RNIC_DIAL_MODE_STRU                 stDialMode;
     VOS_CHAR                            acModeTemp[RNIC_ONDEMAND_FILE_LEN];
-    VOS_INT32                           lRlst;
 
     PS_MEM_SET(acModeTemp, 0x00, RNIC_ONDEMAND_FILE_LEN);
 
@@ -162,11 +163,8 @@ ssize_t RNIC_WriteOnDemandFile(
         return -ENOSPC;
     }
 
-
     /*拷贝用户空间数据到内核空间上面*/
-    lRlst = copy_from_user((VOS_VOID *)acModeTemp, (VOS_VOID *)buf, len);
-
-    if (lRlst > 0)
+    if (copy_from_user((VOS_VOID *)acModeTemp, (VOS_VOID *)buf, len)  > 0)
     {
         RNIC_ERROR_LOG(ACPU_PID_RNIC, "RNIC_WriteOnDemandFile:copy_from_user ERR!");
         return -EFAULT;
@@ -194,7 +192,7 @@ ssize_t RNIC_WriteOnDemandFile(
 
     RNIC_SendDialInfoMsg(ID_RNIC_MNTN_DIAL_MODE_INFO);
 
-    return len;
+    return (ssize_t)len;
 }
 
 
@@ -248,7 +246,7 @@ ssize_t RNIC_ReadIdleTimerOutFile(
 {
     RNIC_DIAL_MODE_STRU                *pstDialMode;
     VOS_CHAR                            acIdleTimeTemp[RNIC_IDLETIMEROUT_FILE_LEN];
-    VOS_INT32                           lRlst;
+    VOS_UINT32                          ulIdleTimeLen;
 
     if (*ppos > 0)
     {
@@ -264,20 +262,22 @@ ssize_t RNIC_ReadIdleTimerOutFile(
 
     VOS_sprintf(acIdleTimeTemp, "%d", pstDialMode->ulIdleTime);
 
-    len             = PS_MIN(len, VOS_StrLen(acIdleTimeTemp));
+    ulIdleTimeLen  = VOS_StrLen(acIdleTimeTemp);
+
+    len            = PS_MIN(len, ulIdleTimeLen);
 
     /*拷贝内核空间数据到用户空间上面*/
-    lRlst          = copy_to_user(buf,(VOS_VOID *)acIdleTimeTemp, len);
+    if (0 == copy_to_user(buf,(VOS_VOID *)acIdleTimeTemp, len))
+    {
+        *ppos += (loff_t)len;
 
-    if (lRlst < 0)
+        return (ssize_t)len;
+    }
+    else
     {
         RNIC_ERROR_LOG(ACPU_PID_RNIC, "RNIC_ReadIdleTimerOutFile:copy_to_user ERR!");
         return -EPERM;
     }
-
-    *ppos += len;
-
-    return len;
 }
 
 
@@ -292,7 +292,6 @@ ssize_t RNIC_WriteIdleTimerOutFile(
     RNIC_DIAL_MODE_STRU                *pstDialMode;
     RNIC_DIAL_MODE_STRU                 stDialMode;
     VOS_CHAR                            acIdleTimeTemp[RNIC_IDLETIMEROUT_FILE_LEN];
-    VOS_INT32                           lRlst;
 
     PS_MEM_SET(acIdleTimeTemp, 0x00, RNIC_IDLETIMEROUT_FILE_LEN);
 
@@ -303,9 +302,7 @@ ssize_t RNIC_WriteIdleTimerOutFile(
     }
 
     /*拷贝用户空间数据到内核空间上面*/
-    lRlst = copy_from_user((VOS_VOID *)acIdleTimeTemp, (VOS_VOID *)buf, len);
-
-    if (lRlst > 0)
+    if (copy_from_user((VOS_VOID *)acIdleTimeTemp, (VOS_VOID *)buf, len) > 0)
     {
         RNIC_ERROR_LOG(ACPU_PID_RNIC, "RNIC_WriteIdleTimerOutFile:copy_from_user ERR!");
         return -EFAULT;
@@ -313,10 +310,7 @@ ssize_t RNIC_WriteIdleTimerOutFile(
 
     acIdleTimeTemp[len]= '\0';
 
-
-
     stDialMode.ulIdleTime = RNIC_TransferStringToInt(acIdleTimeTemp);
-
 
     /* 获取按需拨号的模式以及时长的地址 */
     pstDialMode                         = RNIC_GetDialModeAddr();
@@ -337,7 +331,7 @@ ssize_t RNIC_WriteIdleTimerOutFile(
 
     RNIC_SendDialInfoMsg(ID_RNIC_MNTN_IDLE_TIMEOUT_INFO);
 
-    return len;
+    return (ssize_t)len;
 }
 VOS_UINT32 RNIC_InitIdleTimerOutFile(struct proc_dir_entry *pstParentFileDirEntry)
 {
@@ -387,7 +381,7 @@ ssize_t RNIC_ReadDialEventReportFile(
 {
     RNIC_DIAL_MODE_STRU                *pstDialMode;
     VOS_CHAR                            acDialEventTemp[RNIC_EVENTFLAG_FILE_LEN];
-    VOS_INT32                           lRlst;
+    VOS_UINT32                          ulDialEventLen;
 
     if (*ppos > 0)
     {
@@ -403,22 +397,23 @@ ssize_t RNIC_ReadDialEventReportFile(
 
     VOS_sprintf(acDialEventTemp, "%d", pstDialMode->enEventReportFlag);
 
+    ulDialEventLen = VOS_StrLen(acDialEventTemp);
 
-    len             = PS_MIN(len, VOS_StrLen(acDialEventTemp));
+    len            = PS_MIN(len, ulDialEventLen);
 
     /*拷贝内核空间数据到用户空间上面*/
-    lRlst          = copy_to_user(buf, (VOS_VOID *)acDialEventTemp, len);
+    if (0 == copy_to_user(buf, (VOS_VOID *)acDialEventTemp, len))
+    {
+        *ppos += (loff_t)len;
 
-
-    if (lRlst < 0)
+        return (ssize_t)len;
+    }
+    else
     {
         RNIC_ERROR_LOG(ACPU_PID_RNIC, "RNIC_ReadDialEventReportFile:copy_to_user err!");
         return -EPERM;
     }
 
-    *ppos += len;
-
-    return len;
 }
 
 
@@ -433,7 +428,6 @@ ssize_t RNIC_WriteDialEventReportFile(
     RNIC_DIAL_MODE_STRU                *pstDialMode;
     RNIC_DIAL_MODE_STRU                 stDialMode;
     VOS_CHAR                            acDialEventTemp[RNIC_EVENTFLAG_FILE_LEN];
-    VOS_INT32                           lRlst;
 
     PS_MEM_SET(acDialEventTemp, 0x00, RNIC_EVENTFLAG_FILE_LEN);
 
@@ -444,9 +438,7 @@ ssize_t RNIC_WriteDialEventReportFile(
     }
 
     /*拷贝用户空间数据到内核空间上面*/
-    lRlst = copy_from_user((VOS_VOID *)acDialEventTemp, (VOS_VOID *)buf, len);
-
-    if (lRlst > 0)
+    if (copy_from_user((VOS_VOID *)acDialEventTemp, (VOS_VOID *)buf, len) > 0)
     {
         RNIC_ERROR_LOG(ACPU_PID_RNIC, "RNIC_WriteDialEventReportFile:copy_from_user ERR!");
         return -EFAULT;
@@ -466,7 +458,7 @@ ssize_t RNIC_WriteDialEventReportFile(
 
     RNIC_SendDialInfoMsg(ID_RNIC_MNTN_EVENT_REPORT_INFO);
 
-    return len;
+    return (ssize_t)len;
 }
 VOS_UINT32 RNIC_InitDialEventReportFile(struct proc_dir_entry *pstParentFileDirEntry)
 {

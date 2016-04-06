@@ -12,6 +12,13 @@
 #include "MnComm.h"
 #include "TafLog.h"
 
+#if (FEATURE_ON == FEATURE_PTM)
+#include "NasErrorLog.h"
+#endif
+
+#include  "MnCallApi.h"
+#include  "VcCallInterface.h"
+
 #ifdef __cplusplus
 #if __cplusplus
 extern "C" {
@@ -95,6 +102,13 @@ typedef struct
     MN_CALL_CC_CAUSE_ENUM_U8            enCcCause;
 
 } TAF_CS_ERR_CODE_MAP_STRU;
+
+typedef struct
+{
+    APP_VC_OPEN_CHANNEL_FAIL_CAUSE_ENUM_UINT32     enVcCause;
+    TAF_CS_CAUSE_ENUM_UINT32                       enTafCsCasue;
+}VC_TO_TAFCS_CAUSE_STRU;
+
 /*****************************************************************************
   4 ∫Í∂®“Â
 *****************************************************************************/
@@ -242,9 +256,23 @@ VOS_VOID MN_CALL_CsCallErrRecord(
     MN_CALL_ID_T                        ucCallId,
     TAF_CS_CAUSE_ENUM_UINT32            enCause
 );
+
+
+VOS_VOID MN_CALL_SndAcpuOmFaultErrLogInd(
+    VOS_VOID                           *pData,
+    VOS_UINT32                          ulDataLen
+);
+VOS_VOID MN_CALL_CsMtCallFailRecord(
+    NAS_ERR_LOG_CS_MT_CALL_CAUSE_ENUM_U32   enCause
+);
+
 #endif
 
 extern VOS_VOID MN_CALL_ReadNvimInfo(VOS_VOID);
+
+TAF_CS_CAUSE_ENUM_UINT32 TAF_CALL_ConvertVcCauseToTafCsCause(
+    APP_VC_OPEN_CHANNEL_FAIL_CAUSE_ENUM_UINT32      enCause
+);
 
 #if ((VOS_OS_VER == VOS_WIN32) || (VOS_OS_VER == VOS_NUCLEUS))
 #pragma pack()

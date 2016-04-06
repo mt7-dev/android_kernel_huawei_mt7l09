@@ -769,12 +769,7 @@ static int hpet_clocksource_register(void)
 	t1 = hpet_readl(HPET_COUNTER);
 	rdtscll(start);
 
-	/*
-	 * We don't know the TSC frequency yet, but waiting for
-	 * 200000 TSC cycles is safe:
-	 * 4 GHz == 50us
-	 * 1 GHz == 200us
-	 */
+
 	do {
 		rep_nop();
 		rdtscll(now);

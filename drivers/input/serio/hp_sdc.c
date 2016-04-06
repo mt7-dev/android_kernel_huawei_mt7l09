@@ -1109,27 +1109,4 @@ static int __init hp_sdc_register(void)
 module_init(hp_sdc_register);
 module_exit(hp_sdc_exit);
 
-/* Timing notes:  These measurements taken on my 64MHz 7100-LC (715/64)
- *                                              cycles cycles-adj    time
- * between two consecutive mfctl(16)'s:              4        n/a    63ns
- * hp_sdc_spin_ibf when idle:                      119        115   1.7us
- * gsc_writeb status register:                      83         79   1.2us
- * IBF to clear after sending SET_IM:             6204       6006    93us
- * IBF to clear after sending LOAD_RT:            4467       4352    68us
- * IBF to clear after sending two LOAD_RTs:      18974      18859   295us
- * READ_T1, read status/data, IRQ, call handler: 35564        n/a   556us
- * cmd to ~IBF READ_T1 2nd time right after:   5158403        n/a    81ms
- * between IRQ received and ~IBF for above:    2578877        n/a    40ms
- *
- * Performance stats after a run of this module configuring HIL and
- * receiving a few mouse events:
- *
- * status in8  282508 cycles 7128 calls
- * status out8   8404 cycles  341 calls
- * data out8     1734 cycles   78 calls
- * isr         174324 cycles  617 calls (includes take)
- * take          1241 cycles    2 calls
- * put        1411504 cycles 6937 calls
- * task       1655209 cycles 6937 calls (includes put)
- *
- */
+

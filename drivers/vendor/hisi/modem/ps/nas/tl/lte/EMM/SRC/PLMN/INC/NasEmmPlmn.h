@@ -148,6 +148,9 @@ extern VOS_VOID    NAS_EMM_AppSendAttRstDefaultReqType
 );
 extern VOS_VOID NAS_EMM_PLMN_CsPagingProc(LRRC_LNAS_PAGING_UE_ID_ENUM_UINT32 enPagingUeId);
 
+extern VOS_VOID NAS_EMM_PagingErrRecord(
+        EMM_OM_ERRLOG_PAGING_ENUM_UINT16  enPagingType);
+
 /*****************************************************************************
   9 OTHERS
 *****************************************************************************/

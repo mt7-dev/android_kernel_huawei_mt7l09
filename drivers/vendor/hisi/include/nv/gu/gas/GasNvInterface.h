@@ -49,6 +49,8 @@ extern "C" {
 #define NVIM_EUTRA_CAPA_COMM_INFO_SIZE                      (260)
 #define NVIM_CBS_MID_LIST_LEN                               (2004)
 #define NVIM_CBS_MID_RANGE_LIST_LEN                         (2004)
+#define NVIM_GAS_C1_CALC_OPT_PLMN_WHITE_LIST_CNT_MAX        (20)
+
 
 /*****************************************************************************
   3 Massage Declare
@@ -617,8 +619,67 @@ typedef struct
     VOS_INT8                            cFreqRxlevThreshold;                    /* 有效频点能量门限,主要用于搜网流程
                                                                                    被动重选 目标小区选择时也会用到 */
 
-    VOS_UINT8                           aucRsv[38];
+    VOS_UINT8                           ucAutoFrNonChanRelCase;                 /* 没有收到 Channel Release 的异常场景下是否启动 FR:
+                                                                                   bit0: 1: 主动挂断时启动 FR; 
+                                                                                         0: 主动挂断时不启动FR
+                                                                                   bit1: 1: 语音链路失败启动FR; 
+                                                                                         0: 语音链路失败不启动FR */
+
+    VOS_UINT8                           aucRsv[37];
 }NVIM_GAS_INDIVIDUAL_CUSTOMIZE_CFG_STRU;
+
+
+typedef struct
+{
+   VOS_UINT16                           usCsHoTimeAlarmThreshold;                   /* CS切换时间长度门限，超过该切换时间，GAS主动上报告警信息 */
+   
+   VOS_UINT8                            aucRsv[18];                                /* 预留位，为以后KWKC预留 */
+}NVIM_GAS_MNTN_CONFIG_STRU;
+
+
+typedef struct
+{
+   VOS_UINT8                            ucTdsDefaultQRxlMin;            /* TDS 默认重选门限, 单位: -1dB */
+
+   VOS_UINT8                            aucRsv[3];                      /* 保留位 */
+}NVIM_GAS_UTRAN_TDD_DEFAULT_Q_RXLMIN;
+
+
+typedef struct
+{
+    VOS_UINT32                          ulMcc;
+    VOS_UINT32                          ulMnc;
+}NVIM_GAS_PLMN_ID_STRU;
+
+typedef struct
+{
+   VOS_UINT16                           usPlmnCnt;                                                  /* 白名单中PLMN个数 */  
+   VOS_UINT16                           usReserve;
+   NVIM_GAS_PLMN_ID_STRU                astPlmn[NVIM_GAS_C1_CALC_OPT_PLMN_WHITE_LIST_CNT_MAX];       /* 预留位，为以后KWKC预留 */
+}NVIM_GAS_C1_CALC_OPT_PLMN_WHITE_LIST_STRU;
+
+typedef struct
+{
+    VOS_UINT8                            ucHPrioCustomizeFlag;   /* H_PRIO使用场景定制配置, 0表示使用H_PRIO参数不考虑异系统小区的优先级，
+                                                                    1表示使用H_PRIO参数的前提条件是异系统小区的优先级比服务小区优先级低 */
+    
+    VOS_UINT8                            ucRsv1;                 /* 保留位1 */
+    
+    VOS_UINT8                            ucRsv2;                 /* 保留位2 */
+    
+    VOS_UINT8                            ucRsv3;                 /* 保留位3 */
+}NVIM_GAS_INTER_RAT_RESEL_H_PRIO_CUSTOMIZE_STRU;
+typedef struct
+{
+    VOS_UINT8                            ucAutoFrInvalidMask;   /* 生效标志。各bit值 0 表示可以返回, 1 表示无效不可以返回 */
+                                                                /* bit0: CSFB 主叫, NAS仍未反馈业务建立结果的情况下是否可以返回 */
+                                                                /* bit1: CSFB 被叫, NAS仍未反馈业务建立结果的情况下是否可以返回 */
+                                                                /* bit2~bit8: 保留位 */
+
+    VOS_UINT8                            ucRsv1;                /* 保留位 */
+    VOS_UINT8                            ucRsv2;                /* 保留位 */
+    VOS_UINT8                            ucRsv3;                /* 保留位 */
+}NVIM_GAS_AUTO_FR_CFG_STRU;
 
 /*****************************************************************************
   6 UNION

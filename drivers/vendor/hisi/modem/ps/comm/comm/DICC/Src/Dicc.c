@@ -15,32 +15,32 @@
      Modification: Create
 
 ******************************************************************************/
+#ifdef  __cplusplus
+ #if  __cplusplus
+    extern "C" {
+ #endif
+#endif
 
 /******************************************************************************
    1 头文件包含
 ******************************************************************************/
+#include "product_config.h"
+#if( FEATURE_ON == FEATURE_CSD )
+
 #include "vos.h"
 #include "pslog.h"
 #include "Dicc.h"
 #if (VOS_WIN32 != VOS_OS_VER)
- #if (OSA_CPU_CCPU == VOS_OSA_CPU)
-  #include "om.h"
- #elif (OSA_CPU_ACPU == VOS_OSA_CPU)
-  #include <linux/spinlock.h>
-  #include "OmApp.h"
- #endif
+    #if (OSA_CPU_CCPU == VOS_OSA_CPU)
+    #include "om.h"
+    #elif (OSA_CPU_ACPU == VOS_OSA_CPU)
+    #include <linux/spinlock.h>
+    #include "OmApp.h"
+    #endif
 #else
- #include "om.h"
- #include "OmApp.h"
+    #include "om.h"
+    #include "OmApp.h"
 #endif
-
-#ifdef  __cplusplus
- #if  __cplusplus
-extern "C" {
- #endif
-#endif
-
-#if( FEATURE_ON == FEATURE_CSD )
 
 /*****************************************************************************
     协议栈打印打点方式下的.C文件宏定义
@@ -50,23 +50,23 @@ extern "C" {
 #define     THIS_FILE_ID PS_FILE_ID_DICC_C
 
 #if (VOS_WIN32 != VOS_OS_VER)
- #if (OSA_CPU_CCPU == VOS_OSA_CPU)
-  #define    DICC_LOCAL_CPU_ID   (DICC_CPU_ID_CCPU)
-  #define    LOCAL_UEPS_PID_DICC (UEPS_PID_DICC_C)
- #elif (OSA_CPU_ACPU == VOS_OSA_CPU)
-  #define    DICC_LOCAL_CPU_ID (DICC_CPU_ID_ACPU)
-  #define    LOCAL_UEPS_PID_DICC (UEPS_PID_DICC_A)
- #endif
+    #if (OSA_CPU_CCPU == VOS_OSA_CPU)
+    #define    DICC_LOCAL_CPU_ID   (DICC_CPU_ID_CCPU)
+    #define    LOCAL_UEPS_PID_DICC (UEPS_PID_DICC_C)
+    #elif (OSA_CPU_ACPU == VOS_OSA_CPU)
+    #define    DICC_LOCAL_CPU_ID (DICC_CPU_ID_ACPU)
+    #define    LOCAL_UEPS_PID_DICC (UEPS_PID_DICC_A)
+    #endif
 #else
- #define     LOCAL_UEPS_PID_DICC (UEPS_PID_DICC_A)    /* WIN32上按照A核来设置PID, 用于看虚实转换有没有执行 */
+    #define     LOCAL_UEPS_PID_DICC (UEPS_PID_DICC_A)    /* WIN32上按照A核来设置PID, 用于看虚实转换有没有执行 */
 #endif
 
 #ifdef __UT_CENTER__
- #define DICC_TTF_PHY_TO_VIRT(var) (g_aucDiccBuff)
- #define DICC_DRV_PHY_TO_VIRT(var) (&g_ulMagicNum)
+    #define DICC_TTF_PHY_TO_VIRT(var) (g_aucDiccBuff)
+    #define DICC_DRV_PHY_TO_VIRT(var) (&g_ulMagicNum)
 #else
-#define  DICC_TTF_PHY_TO_VIRT(var)  (TTF_PHY_TO_VIRT(var))
-#define  DICC_DRV_PHY_TO_VIRT(var)  (DRV_AXI_PHY_TO_VIRT(var))
+    #define  DICC_TTF_PHY_TO_VIRT(var)  (TTF_PHY_TO_VIRT(var))
+    #define  DICC_DRV_PHY_TO_VIRT(var)  (DRV_AXI_PHY_TO_VIRT(var))
 #endif
 
 /******************************************************************************
@@ -1312,7 +1312,7 @@ VOS_UINT32 DICC_SingleChnInitAction(VOS_UINT32             ulFileId,
     {
         /* 创建本地互斥信号量(第一个参数只允许4字节, DICC Local Mutex, 缩写为DLM) */
         ulRet = VOS_SmMCreate("DLM", VOS_SEMA4_FIFO,
-                (VOS_UINT32 *)(&(g_astChanRole[enCpuId].ulDiccLocalMutexSem)));
+                (VOS_SEM *)(&(g_astChanRole[enCpuId].ulDiccLocalMutexSem)));
 
         if (VOS_OK != ulRet)
         {
@@ -2474,7 +2474,7 @@ VOS_UINT32 DICC_RemoveChannelData(VOS_UINT32              ulPid,
             DICC_PrintDebugData(pucUsrData, pstQueueNode->ucPriDataLen);
 
             /* 考虑到传递信息可能有指针之类, 为了安全, 清除传递信息 */
-            VOS_MemSet((VOS_UINT8 *)pstQueueNode->aucPriData, 0x0, sizeof(pstQueueNode->aucPriData));
+            VOS_MemSet((VOS_VOID *)pstQueueNode->aucPriData, 0x0, sizeof(pstQueueNode->aucPriData));
         }
     }
 
@@ -2981,7 +2981,7 @@ VOS_UINT32 DICC_BatRemoveChannelData(VOS_UINT32            ulPid,
             ulCopyLen += pstQueueNode->ucPriDataLen;
 
             /* 考虑到传递信息可能有指针之类, 为了安全, 清除传递信息 */
-            VOS_MemSet((VOS_UINT8 *)pstQueueNode->aucPriData, 0x0, sizeof(pstQueueNode->aucPriData));
+            VOS_MemSet((VOS_VOID *)pstQueueNode->aucPriData, 0x0, sizeof(pstQueueNode->aucPriData));
 
             /* 检查通过拷贝数据后才增加计数 */
             (*pusActiveRemoveCnt)++;

@@ -23,6 +23,8 @@ extern int rtc_tm_to_time(struct rtc_time *tm, unsigned long *time);
 extern void rtc_time_to_tm(unsigned long time, struct rtc_time *tm);
 ktime_t rtc_tm_to_ktime(struct rtc_time tm);
 struct rtc_time rtc_ktime_to_tm(ktime_t kt);
+void hisi_pmu_rtc_readtime(struct rtc_time *tm);
+void hisi_pmu_rtc_setalarmtime(unsigned long time);
 
 
 #include <linux/device.h>

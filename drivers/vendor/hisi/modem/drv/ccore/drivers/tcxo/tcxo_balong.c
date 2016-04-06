@@ -631,6 +631,8 @@ int tcxo_init_configure(void)
         writel(regvalue, HI_SYSCRG_BASE_ADDR_VIRT + HI_CRG_CLK_SEL3_OFFSET);
         adp_dpm_printf("G1BBP_104M come from ABB CH0,G2BBP_104M come from ABB CH1!\n");
     }
+#else
+    regvalue = regvalue;
 #endif
     /*»Ìº˛≈‰÷√TCXO1≥ı ºªØ◊¥Ã¨*/
     bsp_tcxo1_init();

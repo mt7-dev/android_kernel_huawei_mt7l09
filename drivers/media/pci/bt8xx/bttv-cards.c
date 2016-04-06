@@ -3222,7 +3222,7 @@ static void bttv_reset_audio(struct bttv *btv)
 	 * 2. It is enough to do this once per power-up of the card.
 	 * 3. There is a typo in the Conexant doc -- it is not at
 	 *    0x5B, but at 0x058. (B is an odd-number, obviously a typo!).
-	 * --//Shrikumar 030609
+	 * --
 	 */
 	if (btv->id != 878)
 		return;

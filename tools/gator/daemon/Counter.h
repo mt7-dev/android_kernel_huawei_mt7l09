@@ -1,5 +1,5 @@
 /**
- * Copyright (C) ARM Limited 2013. All rights reserved.
+ * Copyright (C) ARM Limited 2013-2014. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -25,8 +25,9 @@ public:
 	void clear () {
 		mType[0] = '\0';
 		mEnabled = false;
-		mEvent = 0;
+		mEvent = -1;
 		mCount = 0;
+		mCores = -1;
 		mKey = 0;
 		mDriver = NULL;
 	}
@@ -35,6 +36,7 @@ public:
 	void setEnabled(const bool enabled) { mEnabled = enabled; }
 	void setEvent(const int event) { mEvent = event; }
 	void setCount(const int count) { mCount = count; }
+	void setCores(const int cores) { mCores = cores; }
 	void setKey(const int key) { mKey = key; }
 	void setDriver(Driver *const driver) { mDriver = driver; }
 
@@ -42,6 +44,7 @@ public:
 	bool isEnabled() const { return mEnabled; }
 	int getEvent() const { return mEvent; }
 	int getCount() const { return mCount; }
+	int getCores() const { return mCores; }
 	int getKey() const { return mKey; }
 	Driver *getDriver() const { return mDriver; }
 
@@ -54,6 +57,7 @@ private:
 	bool mEnabled;
 	int mEvent;
 	int mCount;
+	int mCores;
 	int mKey;
 	Driver *mDriver;
 };

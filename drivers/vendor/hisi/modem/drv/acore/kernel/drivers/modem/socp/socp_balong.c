@@ -147,12 +147,12 @@ s32 socp_chan_is_idle(void)
 *
 * 返 回 值  :  无
 *****************************************************************************/
-void socp_get_idle_buffer(SOCP_RING_BUF_S *pRingBuffer, SOCP_BUFFER_RW_S *pRWBuffer)
+void socp_get_idle_buffer(SOCP_RING_BUF_S *pRingBuffer, SOCP_BUFFER_RW_STRU *pRWBuffer)
 {
     if(pRingBuffer->u32Write < pRingBuffer->u32Read)
     {
         /* 读指针大于写指针，直接计算 */
-        pRWBuffer->pBuffer = (char *)(pRingBuffer->u32Write);
+        pRWBuffer->pBuffer = (char *)((unsigned long)pRingBuffer->u32Write);
         pRWBuffer->u32Size = (u32)(pRingBuffer->u32Read - pRingBuffer->u32Write - 1);
         pRWBuffer->pRbBuffer = (char *)BSP_NULL;
         pRWBuffer->u32RbSize = 0;
@@ -162,14 +162,14 @@ void socp_get_idle_buffer(SOCP_RING_BUF_S *pRingBuffer, SOCP_BUFFER_RW_S *pRWBuf
         /* 写指针大于读指针，需要考虑回卷 */
         if(pRingBuffer->u32Read != pRingBuffer->u32Start)
         {
-            pRWBuffer->pBuffer = (char *)(pRingBuffer->u32Write);
+            pRWBuffer->pBuffer = (char *)((unsigned long)pRingBuffer->u32Write);
             pRWBuffer->u32Size = (u32)(pRingBuffer->u32End - pRingBuffer->u32Write + 1);
-            pRWBuffer->pRbBuffer = (char *)(pRingBuffer->u32Start);
+            pRWBuffer->pRbBuffer = (char *)((unsigned long)pRingBuffer->u32Start);
             pRWBuffer->u32RbSize = (u32)(pRingBuffer->u32Read - pRingBuffer->u32Start - 1);
         }
         else
         {
-            pRWBuffer->pBuffer = (char *)(pRingBuffer->u32Write);
+            pRWBuffer->pBuffer = (char *)((unsigned long)pRingBuffer->u32Write);
             pRWBuffer->u32Size = (u32)(pRingBuffer->u32End - pRingBuffer->u32Write);
             pRWBuffer->pRbBuffer = (char *)BSP_NULL;
             pRWBuffer->u32RbSize = 0;
@@ -191,12 +191,12 @@ void socp_get_idle_buffer(SOCP_RING_BUF_S *pRingBuffer, SOCP_BUFFER_RW_S *pRWBuf
 *
 * 返 回 值  :  无
 *****************************************************************************/
-void socp_get_data_buffer(SOCP_RING_BUF_S *pRingBuffer, SOCP_BUFFER_RW_S *pRWBuffer)
+void socp_get_data_buffer(SOCP_RING_BUF_S *pRingBuffer, SOCP_BUFFER_RW_STRU *pRWBuffer)
 {
     if(pRingBuffer->u32Read <= pRingBuffer->u32Write)
     {
         /* 写指针大于读指针，直接计算 */
-        pRWBuffer->pBuffer = (char *)(pRingBuffer->u32Read);
+        pRWBuffer->pBuffer = (char *)((unsigned long)pRingBuffer->u32Read);
         pRWBuffer->u32Size = (u32)(pRingBuffer->u32Write - pRingBuffer->u32Read);
         pRWBuffer->pRbBuffer = (char *)BSP_NULL;
         pRWBuffer->u32RbSize = 0;
@@ -204,9 +204,9 @@ void socp_get_data_buffer(SOCP_RING_BUF_S *pRingBuffer, SOCP_BUFFER_RW_S *pRWBuf
     else
     {
         /* 读指针大于写指针，需要考虑回卷 */
-        pRWBuffer->pBuffer = (char *)(pRingBuffer->u32Read);
+        pRWBuffer->pBuffer = (char *)((unsigned long)pRingBuffer->u32Read);
         pRWBuffer->u32Size = (u32)(pRingBuffer->u32End - pRingBuffer->u32Read + 1);
-        pRWBuffer->pRbBuffer = (char *)(pRingBuffer->u32Start);
+        pRWBuffer->pRbBuffer = (char *)((unsigned long)pRingBuffer->u32Start);
         pRWBuffer->u32RbSize = (u32)(pRingBuffer->u32Write - pRingBuffer->u32Start);
     }
 
@@ -534,7 +534,7 @@ s32 socp_soft_free_decsrc_chan(u32 u32DecSrcChanId)
 *****************************************************************************/
 u32 socp_get_dec_rd_size(u32 u32ChanID)
 {
-    SOCP_BUFFER_RW_S Buff;
+    SOCP_BUFFER_RW_STRU Buff;
     u32          PAddr;
 
     SOCP_REG_READ(SOCP_REG_DECSRC_RDQRPTR(u32ChanID), PAddr);
@@ -560,7 +560,7 @@ u32 socp_get_dec_rd_size(u32 u32ChanID)
 *****************************************************************************/
 u32 socp_get_enc_rd_size(u32 u32ChanID)
 {
-    SOCP_BUFFER_RW_S Buff;
+    SOCP_BUFFER_RW_STRU Buff;
     u32          PAddr;
 
     SOCP_REG_READ(SOCP_REG_ENCSRC_RDQRPTR(u32ChanID), PAddr);
@@ -1089,7 +1089,7 @@ int socp_decdst_task(void * data)
 * 返 回 值  : 创建成功与否的标识码
 *****************************************************************************/
 s32 socp_create_task( s8 * puchName,
-                        u32 * pu32TaskID,
+                        unsigned long * pu32TaskID,
                         socp_task_entry pfnFunc,
                         u32 u32Priority,
                         u32 u32StackSize,
@@ -1108,11 +1108,11 @@ s32 socp_create_task( s8 * puchName,
     param.sched_priority = u32Priority;
     if (BSP_OK != sched_setscheduler(tsk, SCHED_FIFO, &param))
     {
-        printk("\nsocp_create_task: Creat Task %s ID %d sched_setscheduler Error", puchName, *pu32TaskID);
+        printk("\nsocp_create_task: Creat Task %s ID %p sched_setscheduler Error", puchName, pu32TaskID);
         return BSP_ERROR;
     }
 
-    *pu32TaskID = (u32)tsk;
+    *pu32TaskID = (unsigned long)tsk;
 
     return BSP_OK;
 }
@@ -1135,7 +1135,7 @@ s32 socp_init_task(void)
     sema_init(&g_strSocpStat.u32EncSrcSemID, 0);
     if(!g_strSocpStat.u32EncSrcTskID)
     {
-        if ( BSP_OK != socp_create_task( "EncSrc", (u32*)&g_strSocpStat.u32EncSrcTskID, (socp_task_entry)socp_encsrc_task,
+        if ( BSP_OK != socp_create_task( "EncSrc", (unsigned long *)&g_strSocpStat.u32EncSrcTskID, (socp_task_entry)socp_encsrc_task,
                             SOCP_ENCSRC_TASK_PRO, 0x1000, aulArguments) )
         {
             printk("socp_init_task: create socp_encsrc_task failed.\n");
@@ -1147,7 +1147,7 @@ s32 socp_init_task(void)
     sema_init(&g_strSocpStat.u32EncDstSemID, 0);
     if(!g_strSocpStat.u32EncDstTskID)
     {
-        if ( BSP_OK != socp_create_task( "EncDst", (u32*)&g_strSocpStat.u32EncDstTskID, (socp_task_entry)socp_encdst_task,
+        if ( BSP_OK != socp_create_task( "EncDst", (unsigned long *)&g_strSocpStat.u32EncDstTskID, (socp_task_entry)socp_encdst_task,
                             SOCP_ENCDST_TASK_PRO, 0x1000, aulArguments) )
         {
             printk("socp_init_task: create socp_encdst_task failed.\n");
@@ -1159,7 +1159,7 @@ s32 socp_init_task(void)
     sema_init(&g_strSocpStat.u32DecSrcSemID, 0);
     if(!g_strSocpStat.u32DecSrcTskID)
     {
-        if ( BSP_OK != socp_create_task( "DecSrc", (u32*)&g_strSocpStat.u32DecSrcTskID, (socp_task_entry)socp_decsrc_task,
+        if ( BSP_OK != socp_create_task( "DecSrc", (unsigned long *)&g_strSocpStat.u32DecSrcTskID, (socp_task_entry)socp_decsrc_task,
                             SOCP_DECSRC_TASK_PRO, 0x1000, aulArguments) )
         {
             printk("socp_init_task: create u32DecSrcTskID failed.\n");
@@ -1171,7 +1171,7 @@ s32 socp_init_task(void)
     sema_init(&g_strSocpStat.u32DecDstSemID, 0);
     if(!g_strSocpStat.u32DecDstTskID)
     {
-        if ( BSP_OK != socp_create_task( "DecDst", (u32*)&g_strSocpStat.u32DecDstTskID, (socp_task_entry)socp_decdst_task,
+        if ( BSP_OK != socp_create_task( "DecDst", (unsigned long *)&g_strSocpStat.u32DecDstTskID, (socp_task_entry)socp_decdst_task,
                             SOCP_DECDST_TASK_PRO, 0x1000, aulArguments) )
         {
             printk("socp_init_task: create u32DecDstTskID failed.\n");
@@ -1547,7 +1547,7 @@ s32 socp_init(void)
     /* log2.0 2014-03-19 End*/
     
     //g_strSocpStat.baseAddr = (u32)ioremap (SOCP_REG_BASE, SOCP_REGISTER_SIZE);
-    g_strSocpStat.baseAddr = HI_SOCP_REGBASE_ADDR_VIRT;
+    g_strSocpStat.baseAddr = (unsigned long)HI_SOCP_REGBASE_ADDR_VIRT;
     if(0 == g_strSocpStat.baseAddr)
     {
         printk("socp_init: Socp Reg Base Addr ioremap Error.\n"); /* [false alarm]:屏蔽Fortify错误 */
@@ -1555,7 +1555,7 @@ s32 socp_init(void)
     }
 
     /* bsp_memmap.h里面还没有对BBP寄存器空间做映射 */
-    g_strSocpStat.armBaseAddr = (u32)BBP_REG_ARM_BASEADDR;
+    g_strSocpStat.armBaseAddr = (unsigned long)BBP_REG_ARM_BASEADDR;
     memset(&g_stSocpDebugInfo, 0x0 ,sizeof(SOCP_DEBUG_INFO_S));
 
 #ifndef BSP_CONFIG_HI3630
@@ -1613,7 +1613,7 @@ s32 socp_init(void)
         g_strSocpStat.sEncDstChan[i].u32SetStat     = SOCP_CHN_UNSET;
         g_strSocpStat.sEncDstChan[i].event_cb       = (socp_event_cb)BSP_NULL;
         g_strSocpStat.sEncDstChan[i].read_cb        = (socp_rd_cb)BSP_NULL;
-        g_strSocpStat.sEncDstChan[i].eChnEvent      = (SOCP_EVENT_E)0;
+        g_strSocpStat.sEncDstChan[i].eChnEvent      = (SOCP_EVENT_ENUM_UIN32)0;
     }
 
     for(i=0; i<SOCP_MAX_DECSRC_CHN; i++)
@@ -1749,7 +1749,7 @@ s32 socp_init(void)
 *
 * 返 回 值  : 申请及配置成功与否的标识码
 *****************************************************************************/
-s32 bsp_socp_coder_set_src_chan(SOCP_CODER_SRC_ENUM_U32 enSrcChanID, SOCP_CODER_SRC_CHAN_S *pSrcAttr)
+s32 bsp_socp_coder_set_src_chan(SOCP_CODER_SRC_ENUM_U32 enSrcChanID, SOCP_CODER_SRC_CHAN_STRU *pSrcAttr)
 {
     u32 start;
     u32 end;
@@ -1925,7 +1925,7 @@ s32 bsp_socp_coder_set_src_chan(SOCP_CODER_SRC_ENUM_U32 enSrcChanID, SOCP_CODER_
 * 返 回 值  : 申请及配置成功与否的标识码
 *****************************************************************************/
 s32 bsp_socp_decoder_set_dest_chan(SOCP_DECODER_DST_ENUM_U32 enDestChanID,
-                                                SOCP_DECODER_DEST_CHAN_S *pAttr)
+                                                SOCP_DECODER_DEST_CHAN_STRU *pAttr)
 {
     u32 start;
     u32 end;
@@ -2025,7 +2025,7 @@ s32 bsp_socp_decoder_set_dest_chan(SOCP_DECODER_DST_ENUM_U32 enDestChanID,
 * 输出参数  : 无
 * 返 回 值  : 配置成功与否的标识码
 *****************************************************************************/
-s32 bsp_socp_coder_set_dest_chan_attr(u32 u32DestChanID, SOCP_CODER_DEST_CHAN_S *pDestAttr)
+s32 bsp_socp_coder_set_dest_chan_attr(u32 u32DestChanID, SOCP_CODER_DEST_CHAN_STRU *pDestAttr)
 {
     u32 start;
     u32 end;
@@ -2129,7 +2129,7 @@ s32 bsp_socp_coder_set_dest_chan_attr(u32 u32DestChanID, SOCP_CODER_DEST_CHAN_S 
 *
 * 返 回 值  : 配置成功与否的标识码
 *****************************************************************************/
-s32 bsp_socp_decoder_set_src_chan_attr(u32 u32SrcChanID, SOCP_DECODER_SRC_CHAN_S *pInputAttr)
+s32 bsp_socp_decoder_set_src_chan_attr(u32 u32SrcChanID, SOCP_DECODER_SRC_CHAN_STRU *pInputAttr)
 {
     u32 start;
     u32 end;
@@ -2227,7 +2227,7 @@ s32 bsp_socp_decoder_set_src_chan_attr(u32 u32SrcChanID, SOCP_DECODER_SRC_CHAN_S
 *
 * 返 回 值  : 获取成功与否的标识码
 *****************************************************************************/
-s32 bsp_socp_decoder_get_err_cnt(u32 u32DstChanID, SOCP_DECODER_ERROR_CNT_S *pErrCnt)
+s32 bsp_socp_decoder_get_err_cnt(u32 u32DstChanID, SOCP_DECODER_ERROR_CNT_STRU *pErrCnt)
 {
     u32 u32ChanID;
     u32 u32ChanType;
@@ -2274,7 +2274,7 @@ s32 bsp_socp_decoder_get_err_cnt(u32 u32DstChanID, SOCP_DECODER_ERROR_CNT_S *pEr
 *
 * 返 回 值  : 设置成功与否的标识码
 *****************************************************************************/
-s32 bsp_socp_set_timeout (SOCP_TIMEOUT_EN_E eTmOutEn, u32 u32Timeout)
+s32 bsp_socp_set_timeout (SOCP_TIMEOUT_EN_ENUM_UIN32 eTmOutEn, u32 u32Timeout)
 {
 #if (FEATURE_SOCP_DECODE_INT_TIMEOUT == FEATURE_ON) 
     DECODE_TIMEOUT_MODULE decode_timeout_module = DECODE_TIMEOUT_INT_TIMEOUT;
@@ -2371,7 +2371,7 @@ s32 bsp_socp_set_timeout (SOCP_TIMEOUT_EN_E eTmOutEn, u32 u32Timeout)
 *
 * 返 回 值  : 设置成功与否的标识码
 *****************************************************************************/
-s32 bsp_socp_set_dec_pkt_lgth(SOCP_DEC_PKTLGTH_S *pPktlgth)
+s32 bsp_socp_set_dec_pkt_lgth(SOCP_DEC_PKTLGTH_STRU *pPktlgth)
 {
     u32 u32PktMaxLgth;
     u32 u32PktMinLgth;
@@ -2842,7 +2842,7 @@ s32 bsp_socp_register_event_cb(u32 u32ChanID, socp_event_cb EventCB)
 *
 * 返 回 值  : 获取成功与否的标识码
 *****************************************************************************/
-s32 bsp_socp_get_write_buff(u32 u32SrcChanID, SOCP_BUFFER_RW_S *pBuff)
+s32 bsp_socp_get_write_buff(u32 u32SrcChanID, SOCP_BUFFER_RW_STRU *pBuff)
 {
     u32 u32ChanID;
     u32 u32ChanType;
@@ -2915,7 +2915,7 @@ s32 bsp_socp_write_done(u32 u32SrcChanID, u32 u32WrtSize)
     u32 u32ChanID;
     u32 u32ChanType;
     u32 u32WrtPad;
-    SOCP_BUFFER_RW_S RwBuff;
+    SOCP_BUFFER_RW_STRU RwBuff;
     u32  uPAddr;
 
     /* 判断是否已经初始化 */
@@ -3078,7 +3078,7 @@ s32 bsp_socp_register_rd_cb(u32 u32SrcChanID, socp_rd_cb RdCB)
 *
 * 返 回 值  : 获取成功与否的标识码
 *****************************************************************************/
-s32 bsp_socp_get_rd_buffer(u32 u32SrcChanID, SOCP_BUFFER_RW_S *pBuff)
+s32 bsp_socp_get_rd_buffer(u32 u32SrcChanID, SOCP_BUFFER_RW_STRU *pBuff)
 {
     u32 u32ChanID;
     u32 u32ChanType;
@@ -3137,7 +3137,7 @@ s32 bsp_socp_read_rd_done(u32 u32SrcChanID, u32 u32RDSize)
 {
     u32 u32ChanID;
     u32 u32ChanType;
-    SOCP_BUFFER_RW_S RwBuff;
+    SOCP_BUFFER_RW_STRU RwBuff;
     u32  uPAddr;
 
     /* 判断是否已经初始化 */
@@ -3263,7 +3263,7 @@ s32 bsp_socp_register_read_cb(u32 u32DestChanID, socp_read_cb ReadCB)
 *
 * 返 回 值  : 获取成功与否的标识码
 *****************************************************************************/
-s32 bsp_socp_get_read_buff(u32 u32DestChanID, SOCP_BUFFER_RW_S *pBuffer)
+s32 bsp_socp_get_read_buff(u32 u32DestChanID, SOCP_BUFFER_RW_STRU *pBuffer)
 {
     u32 u32ChanID;
     u32 u32ChanType;
@@ -3337,7 +3337,7 @@ s32 bsp_socp_read_data_done(u32 u32DestChanID, u32 u32ReadSize)
 {
     u32 u32ChanID;
     u32 u32ChanType;
-    SOCP_BUFFER_RW_S RwBuff;
+    SOCP_BUFFER_RW_STRU RwBuff;
     u32  uPAddr;
     unsigned long lock_flag;
 
@@ -3602,7 +3602,7 @@ s32 bsp_socp_set_bbp_enable(int bEnable)
 *
 * 返 回 值  :
 *****************************************************************************/
-s32 bsp_socp_set_bbp_ds_mode(SOCP_BBP_DS_MODE_E eDsMode)
+s32 bsp_socp_set_bbp_ds_mode(SOCP_BBP_DS_MODE_ENUM_UIN32 eDsMode)
 {
     if(eDsMode >= SOCP_BBP_DS_MODE_BUTT)
     {
@@ -4637,7 +4637,11 @@ void socp_show_vote_info(void)
     printk("GU DSP      : %-5s  0x%x\n", (g_stVoteInfo[2].vote_type == 0) ? "SLEEP" : "WAKE", g_stVoteInfo[2].vote_time);    
     printk("DIAG APP    : %-5s  0x%x\n", (g_stVoteInfo[3].vote_type == 0) ? "SLEEP" : "WAKE", g_stVoteInfo[3].vote_time);
     printk("DIAG COMM   : %-5s  0x%x\n", (g_stVoteInfo[4].vote_type == 0) ? "SLEEP" : "WAKE", g_stVoteInfo[4].vote_time);
+#if (FEATURE_OFF == FEATURE_MERGE_OM_CHAN)
     printk("DIAG DEC    : %-5s  0x%x\n", (g_stVoteInfo[5].vote_type == 0) ? "SLEEP" : "WAKE", g_stVoteInfo[5].vote_time);
+#else
+    printk("DIAG FW     : %-5s  0x%x\n", (g_stVoteInfo[5].vote_type == 0) ? "SLEEP" : "WAKE", g_stVoteInfo[5].vote_time);
+#endif
     printk("************socp flag info************\n");
     printk("SOCP ON DEMAND FEATUR: %s\n", (g_ulSocpOnDemand == BSP_TRUE) ? "ON" : "OFF");
     switch(g_ulSocpPowerState)
@@ -4861,6 +4865,7 @@ static int socp_probe(struct platform_device *pdev)
 
 static const struct of_device_id socp_dev_of_match[] = {
         {.compatible = "hisilicon,modem_socp"},
+	{ },
 };
 
 static struct platform_driver socp_driver = {

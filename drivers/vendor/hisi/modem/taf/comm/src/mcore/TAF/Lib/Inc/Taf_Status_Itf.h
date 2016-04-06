@@ -1,6 +1,9 @@
 #ifndef  __STA_TAFM_H__
 #define  __STA_TAFM_H__
 
+#include "vos.h"
+#include "TafAppMma.h"
+
 /*===========================================================================*/
 
 
@@ -25,19 +28,6 @@ extern "C" {
 /*=======================================================*/
 /*--------- Sta_PhoneStart 接口参数结构 -------*/
 
-
-typedef struct
-{
-    VOS_UINT32  ulOpId;              /* 操作标识号*/
-
-#define     STA_SERVICE_NULL        0
-#define     STA_SERVICE_PS          1
-#define     STA_SERVICE_CS          2
-#define     STA_SERVICE_CS_PS       3
-    VOS_UINT8   ucModeService;       /* 服务模式*/
-
-     MMA_MMC_CARD_STATUS_ENUM_UINT8          ucCardStatus;
-} STA_PHONE_MODE_S;
 
 /*--------- Sta_SoftReset 接口参数结构 --------*/
 #define     STA_PH_RESET_ALL        0   /* 重启整个模块 */

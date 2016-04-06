@@ -288,7 +288,7 @@ VOS_VOID  APP_VC_InitGlobeVariable(VOS_VOID)
     if (APP_VC_NV_ITEM_ACTIVE == pstMsCfgInfo->usVcPcvoiceSupportFlag)
     {
         g_stVcStateMgmt.ucPcVoiceSupportFlag = VOS_TRUE;
-     }
+    }
     else
     {
         g_stVcStateMgmt.ucPcVoiceSupportFlag = VOS_FALSE;
@@ -893,8 +893,9 @@ VOS_VOID  APP_VC_CallChannelParaChangeProc(CALL_VC_CHANNEL_INFO_STRU *pstChanInf
 #endif
             {
                 /*如果是CALL发的启动请求，发送消息给CALL模块，挂断电话*/
-                APP_VC_SendEndCallReq();
+                APP_VC_SendEndCallReq(APP_VC_OPEN_CHANNEL_FAIL_CAUSE_SAMPLE_RATE_FAIL);
             }
+            APP_VC_LogEndCallReq(APP_VC_OPEN_CHANNEL_FAIL_CAUSE_SAMPLE_RATE_FAIL);
 
             /* 更新全局变量enStartHifiOrig */
             g_stVcStateMgmt.enStartHifiOrig = APP_VC_START_HIFI_ORIG_BUTT;
@@ -996,7 +997,7 @@ VOS_VOID  APP_VC_CallChannelInfoProc(CALL_VC_CHANNEL_INFO_MSG_STRU *pMsg)
             /* 如果HIFI已经启动，不需要再启动，直接返回 */
             if (VOS_TRUE == APP_VC_GetCallStatus())
             {
-                APP_VC_SendEndCallReq();
+                APP_VC_SendEndCallReq(APP_VC_OPEN_CHANNEL_FAIL_CAUSE_STARTED);
                 APP_VC_LogEndCallReq(APP_VC_OPEN_CHANNEL_FAIL_CAUSE_STARTED);
                 return;
             }
@@ -1009,7 +1010,7 @@ VOS_VOID  APP_VC_CallChannelInfoProc(CALL_VC_CHANNEL_INFO_MSG_STRU *pMsg)
 
                 /* 如果开启信道时异常，给CALL发送EndCallReq消息，
                     同时更新全局变量enStartHifiOrig */
-                APP_VC_SendEndCallReq();
+                APP_VC_SendEndCallReq(enCause);
 
                 /* 勾出可维可测消息 */
                 APP_VC_LogEndCallReq(enCause);
@@ -1035,19 +1036,21 @@ VOS_VOID  APP_VC_CallChannelInfoProc(CALL_VC_CHANNEL_INFO_MSG_STRU *pMsg)
             break;
     }
 }
-
-
 VOS_VOID  APP_VC_BufferAtSetMsg(APP_VC_REQ_MSG_STRU *pstAppMsg)
 {
-    g_stVcStateMgmt.astBufMsg[g_stVcStateMgmt.ulBuffLen].enMsgOrigin = APP_VC_MSG_ORIGIN_AT;
-    PS_MEM_CPY(g_stVcStateMgmt.astBufMsg[g_stVcStateMgmt.ulBuffLen].aucBufMsg,
-                pstAppMsg,
-                sizeof(APP_VC_REQ_MSG_STRU));
+    /* BUFF满消息直接丢弃不处理 */
+    if (g_stVcStateMgmt.ulBuffLen < VC_MAX_BUFF_MSG_NUM)
+    {
+        g_stVcStateMgmt.astBufMsg[g_stVcStateMgmt.ulBuffLen].enMsgOrigin = APP_VC_MSG_ORIGIN_AT;
+        PS_MEM_CPY(g_stVcStateMgmt.astBufMsg[g_stVcStateMgmt.ulBuffLen].aucBufMsg,
+                    pstAppMsg,
+                    sizeof(APP_VC_REQ_MSG_STRU));
 
-    g_stVcStateMgmt.ulBuffLen++;
+        g_stVcStateMgmt.ulBuffLen++;
+    }
+
+    return;
 }
-
-
 VOS_VOID  APP_VC_AppSetVolumeProc(
     APP_VC_REQ_MSG_STRU                 *pstAppMsg
 )
@@ -1453,6 +1456,8 @@ VOS_VOID  APP_VC_AppGetMuteStatusProc(
 
     return;
 }
+
+
 VOS_VOID  APP_VC_AppSetForeGroundProc(
     APP_VC_REQ_MSG_STRU                *pstAppMsg
 )
@@ -1465,6 +1470,7 @@ VOS_VOID  APP_VC_AppSetForeGroundProc(
     {
         if (VOS_OK == APP_VC_SendSetForeGroundReq())
         {
+            APP_VC_UpdateState(APP_VC_S_WAIT_SET_FOREGROUND_RSLT);
             /* 启动保护定时器，等待CODEC回复消息 */
             APP_VC_StartProtectTimer(APP_VC_TIMER_SET_FOREGROUND);
         }
@@ -1483,6 +1489,8 @@ VOS_VOID  APP_VC_AppSetForeGroundProc(
         APP_VC_SendSetForeGroundCnf( g_stVcStateMgmt.clientId, VCVOICE_EXECUTE_RSLT_FAIL);
     }
 }
+
+
 VOS_VOID  APP_VC_AppSetBackGroundProc(
     APP_VC_REQ_MSG_STRU                *pstAppMsg
 )
@@ -1495,6 +1503,7 @@ VOS_VOID  APP_VC_AppSetBackGroundProc(
     {
         if ( VOS_OK == APP_VC_SendSetBackGroundReq() )
         {
+            APP_VC_UpdateState(APP_VC_S_WAIT_SET_BACKGROUND_RSLT);
             /* 启动保护定时器，等待CODEC回复消息 */
             APP_VC_StartProtectTimer(APP_VC_TIMER_SET_BACKGROUND);
         }
@@ -1526,6 +1535,7 @@ VOS_VOID  APP_VC_AppQryGroundProc(
     {
         if ( VOS_OK == APP_VC_SendGroundQry() )
         {
+            APP_VC_UpdateState(APP_VC_S_WAIT_QRY_GROUND_RSLT);
             /* 启动保护定时器，等待CODEC回复消息 */
             APP_VC_StartProtectTimer(APP_VC_TIMER_QRY_GROUND);
         }
@@ -1620,7 +1630,7 @@ VOS_VOID  APP_VC_ImsaStartHifiNtfProc(IMSA_VC_START_HIFI_NTF_STRU* pstMsg)
     VC_IMSA_EXCEPTION_CAUSE_ENUM_UINT32                     enImsaCause;
 
     enVcCause = APP_VC_OPEN_CHANNEL_CAUSE_SUCC;
-    
+
 
     /* 更新全局变量，记录是IMSA要启动HIFI */
     g_stVcStateMgmt.enStartHifiOrig = APP_VC_START_HIFI_ORIG_IMSA;
@@ -1820,7 +1830,7 @@ VOS_VOID  APP_VC_StartCnfProc(
 #endif
             {
                 /*如果是CALL发的启动请求，发送消息给CALL模块，挂断电话*/
-                APP_VC_SendEndCallReq();
+                APP_VC_SendEndCallReq(APP_VC_OPEN_CHANNEL_FAIL_CAUSE_SET_START_FAIL);
             }
 
             APP_VC_LogEndCallReq(APP_VC_OPEN_CHANNEL_FAIL_CAUSE_SET_START_FAIL);
@@ -1909,6 +1919,54 @@ VOS_VOID APP_VC_SetVolumeCnfProc(
  }
 
 
+VOS_VOID APP_VC_ForegroundCnfProc(
+    VCVOICE_OP_RSLT_STRU              *pstOpRsltMsg
+)
+{
+    if (APP_VC_S_WAIT_SET_FOREGROUND_RSLT == APP_VC_GetState())
+    {
+        /* 接收到前台模式设置回复消息的处理 */
+        APP_VC_SendSetForeGroundCnf(g_stVcStateMgmt.clientId, pstOpRsltMsg->enExeRslt);
+
+        APP_VC_UpdateState(APP_VC_S_NULL);
+        APP_VC_StopProtectTimer();
+        APP_VC_BuffMsgProc();
+    }
+
+    return;
+}
+VOS_VOID APP_VC_BackgroundCnfProc(
+    VCVOICE_OP_RSLT_STRU              *pstOpRsltMsg
+)
+{
+    if (APP_VC_S_WAIT_SET_BACKGROUND_RSLT == APP_VC_GetState())
+    {
+        /* 接收到后台模式设置回复消息的处理 */
+        APP_VC_SendSetBackGroundCnf(g_stVcStateMgmt.clientId, pstOpRsltMsg->enExeRslt);
+
+        APP_VC_UpdateState(APP_VC_S_NULL);
+        APP_VC_StopProtectTimer();
+        APP_VC_BuffMsgProc();
+    }
+
+    return;
+}
+VOS_VOID APP_VC_GroundRspProc(
+    VCVOICE_OP_RSLT_STRU              *pstOpRsltMsg
+)
+{
+    if (APP_VC_S_WAIT_QRY_GROUND_RSLT == APP_VC_GetState())
+    {
+        /* 接收到模式查询回复消息的处理 */
+        APP_VC_SendGroundRsp(g_stVcStateMgmt.clientId, ((VCVOICE_GROUND_RSP_STRU*)pstOpRsltMsg)->enState, VOS_OK);
+
+        APP_VC_UpdateState(APP_VC_S_NULL);
+        APP_VC_StopProtectTimer();
+        APP_VC_BuffMsgProc();
+    }
+
+    return;
+}
 VOS_VOID  APP_VC_MedMsgProc(VOS_VOID *pMsg)
 {
     VCVOICE_OP_RSLT_STRU              *pOpRsltMsg;
@@ -1954,27 +2012,15 @@ VOS_VOID  APP_VC_MedMsgProc(VOS_VOID *pMsg)
             break;
 
         case ID_VOICE_VC_FOREGROUND_CNF:
-            /* 接收到前台模式、后台模式设置回复消息的处理 */
-            APP_VC_SendSetForeGroundCnf(g_stVcStateMgmt.clientId, pOpRsltMsg->enExeRslt);
-
-            APP_VC_StopProtectTimer();
-            APP_VC_BuffMsgProc();
+            APP_VC_ForegroundCnfProc(pOpRsltMsg);
             break;
 
         case ID_VOICE_VC_BACKGROUND_CNF:
-            /* 接收到后台模式设置回复消息的处理 */
-            APP_VC_SendSetBackGroundCnf(g_stVcStateMgmt.clientId, pOpRsltMsg->enExeRslt);
-
-            APP_VC_StopProtectTimer();
-            APP_VC_BuffMsgProc();
+            APP_VC_BackgroundCnfProc(pOpRsltMsg);
             break;
 
         case ID_VOICE_VC_GROUND_RSP:
-            /* 接收到模式查询回复消息的处理 */
-            APP_VC_SendGroundRsp(g_stVcStateMgmt.clientId, ((VCVOICE_GROUND_RSP_STRU*)pOpRsltMsg)->enState, VOS_OK);
-
-            APP_VC_StopProtectTimer();
-            APP_VC_BuffMsgProc();
+            APP_VC_GroundRspProc(pOpRsltMsg);
             break;
 
         default:
@@ -2000,7 +2046,7 @@ VOS_VOID  APP_VC_ImsaMsgProc(VOS_VOID *pMsg)
     {
         /* 不需要通知IMSA exception_nty,只勾出可维可测消息 */
         APP_VC_LogEndCallReq(APP_VC_OPEN_CHANNEL_FAIL_CAUSE_STARTED);
-        
+
         return;
     }
 
@@ -2120,7 +2166,7 @@ VOS_VOID  APP_VC_StartTimeoutProc(VOS_VOID)
 #endif
             {
                 /*如果是CALL发的启动请求，发送消息给CALL模块，挂断电话*/
-                APP_VC_SendEndCallReq();
+                APP_VC_SendEndCallReq(enVcCause);
             }
 
             /* 勾出可维可测消息 */
@@ -2142,7 +2188,7 @@ VOS_VOID  APP_VC_StartTimeoutProc(VOS_VOID)
 #endif
         {
             /*如果是CALL发的启动请求，发送消息给CALL模块，挂断电话*/
-            APP_VC_SendEndCallReq();
+            APP_VC_SendEndCallReq(APP_VC_OPEN_CHANNEL_FAIL_CAUSE_TI_START_EXPIRED);
         }
 
         /* 勾出可维可测消息 */

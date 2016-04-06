@@ -38,6 +38,14 @@
 #endif
 #include "RnicConfigInterface.h"
 
+#include "product_config.h"
+
+#if (VOS_WIN32 == VOS_OS_VER)
+#include <stdio.h>
+#endif
+
+
+
 /*****************************************************************************
     协议栈打印打点方式下的.C文件宏定义
 *****************************************************************************/
@@ -72,37 +80,49 @@ static const struct net_device_ops rnic_ops = {
 };
 #endif
 
-#if (FEATURE_ON == FEATURE_MULTI_MODEM)
-const RNIC_NETCARD_ELEMENT_TAB_STRU           g_astRnicManageTbl[RNIC_NET_ID_MAX_NUM] = {
-    { RNIC_RM_NET_ID_0,                      MODEM_ID_0,                           "eth_x",
-      {{0x58, 0x02, 0x03, 0x04, 0x05, 0x06}, {0x00, 0x11, 0x09, 0x64, 0x01, 0x01}, 0x0008},
-      {{0x58, 0x02, 0x03, 0x04, 0x05, 0x06}, {0x00, 0x11, 0x09, 0x64, 0x01, 0x01}, 0xDD86}},
-    { RNIC_RM_NET_ID_1,                      MODEM_ID_0,                           "eth_x1",
-      {{0x58, 0x02, 0x03, 0x04, 0x05, 0x07}, {0x00, 0x11, 0x09, 0x64, 0x01, 0x02}, 0x0008},
-      {{0x58, 0x02, 0x03, 0x04, 0x05, 0x07}, {0x00, 0x11, 0x09, 0x64, 0x01, 0x02}, 0xDD86}},
-    { RNIC_RM_NET_ID_2,                      MODEM_ID_0,                           "eth_x2",
-      {{0x58, 0x02, 0x03, 0x04, 0x05, 0x08}, {0x00, 0x11, 0x09, 0x64, 0x01, 0x03}, 0x0008},
-      {{0x58, 0x02, 0x03, 0x04, 0x05, 0x08}, {0x00, 0x11, 0x09, 0x64, 0x01, 0x03}, 0xDD86}},
-    { RNIC_RM_NET_ID_3,                      MODEM_ID_1,                           "eth_x3",
-      {{0x58, 0x02, 0x03, 0x04, 0x05, 0x09}, {0x00, 0x11, 0x09, 0x64, 0x01, 0x04}, 0x0008},
-      {{0x58, 0x02, 0x03, 0x04, 0x05, 0x09}, {0x00, 0x11, 0x09, 0x64, 0x01, 0x04}, 0xDD86}},
-    { RNIC_RM_NET_ID_4,                      MODEM_ID_1,                           "eth_x4",
-      {{0x58, 0x02, 0x03, 0x04, 0x05, 0x0a}, {0x00, 0x11, 0x09, 0x64, 0x01, 0x05}, 0x0008},
-      {{0x58, 0x02, 0x03, 0x04, 0x05, 0x0a}, {0x00, 0x11, 0x09, 0x64, 0x01, 0x05}, 0xDD86}}
-};
+#if (FEATURE_ON == FEATURE_RMNET_CUSTOM)
+#define RNIC_DEV_NAME_PREFIX            "eth_x"
 #else
-const RNIC_NETCARD_ELEMENT_TAB_STRU           g_astRnicManageTbl[RNIC_NET_ID_MAX_NUM] = {
-    { RNIC_RM_NET_ID_0,                      MODEM_ID_0,                           "eth_x",
-      {{0x58, 0x02, 0x03, 0x04, 0x05, 0x06}, {0x00, 0x11, 0x09, 0x64, 0x01, 0x01}, 0x0008},
-      {{0x58, 0x02, 0x03, 0x04, 0x05, 0x06}, {0x00, 0x11, 0x09, 0x64, 0x01, 0x01}, 0xDD86}},
-    { RNIC_RM_NET_ID_1,                      MODEM_ID_0,                           "eth_x1",
-      {{0x58, 0x02, 0x03, 0x04, 0x05, 0x07}, {0x00, 0x11, 0x09, 0x64, 0x01, 0x02}, 0x0008},
-      {{0x58, 0x02, 0x03, 0x04, 0x05, 0x07}, {0x00, 0x11, 0x09, 0x64, 0x01, 0x02}, 0xDD86}},
-    { RNIC_RM_NET_ID_2,                      MODEM_ID_0,                           "eth_x2",
-      {{0x58, 0x02, 0x03, 0x04, 0x05, 0x08}, {0x00, 0x11, 0x09, 0x64, 0x01, 0x03}, 0x0008},
-      {{0x58, 0x02, 0x03, 0x04, 0x05, 0x08}, {0x00, 0x11, 0x09, 0x64, 0x01, 0x03}, 0xDD86}}
-};
+#define RNIC_DEV_NAME_PREFIX            "rmnet"
 #endif
+
+const RNIC_NETCARD_ELEMENT_TAB_STRU           g_astRnicManageTbl[RNIC_NET_ID_MAX_NUM] = {
+    {
+#if (FEATURE_ON == FEATURE_RMNET_CUSTOM)
+      "",
+#else
+      "0",
+#endif
+      {{0x58, 0x02, 0x03, 0x04, 0x05, 0x06}, {0x00, 0x11, 0x09, 0x64, 0x01, 0x01}, 0x0008, {0, 0}},
+      {{0x58, 0x02, 0x03, 0x04, 0x05, 0x06}, {0x00, 0x11, 0x09, 0x64, 0x01, 0x01}, 0xDD86, {0, 0}},
+      MODEM_ID_0, RNIC_RM_NET_ID_0, {0, 0, 0, 0, 0}},
+    {"1",
+      {{0x58, 0x02, 0x03, 0x04, 0x05, 0x07}, {0x00, 0x11, 0x09, 0x64, 0x01, 0x02}, 0x0008, {0, 0}},
+      {{0x58, 0x02, 0x03, 0x04, 0x05, 0x07}, {0x00, 0x11, 0x09, 0x64, 0x01, 0x02}, 0xDD86, {0, 0}},
+      MODEM_ID_0, RNIC_RM_NET_ID_1, {0, 0, 0, 0, 0}},
+    { "2",
+      {{0x58, 0x02, 0x03, 0x04, 0x05, 0x08}, {0x00, 0x11, 0x09, 0x64, 0x01, 0x03}, 0x0008, {0, 0}},
+      {{0x58, 0x02, 0x03, 0x04, 0x05, 0x08}, {0x00, 0x11, 0x09, 0x64, 0x01, 0x03}, 0xDD86, {0, 0}},
+      MODEM_ID_0, RNIC_RM_NET_ID_2, {0, 0, 0, 0, 0}},
+#if (FEATURE_ON == FEATURE_MULTI_MODEM)
+    { "3",
+      {{0x58, 0x02, 0x03, 0x04, 0x05, 0x09}, {0x00, 0x11, 0x09, 0x64, 0x01, 0x04}, 0x0008, {0, 0}},
+      {{0x58, 0x02, 0x03, 0x04, 0x05, 0x09}, {0x00, 0x11, 0x09, 0x64, 0x01, 0x04}, 0xDD86, {0, 0}},
+      MODEM_ID_1, RNIC_RM_NET_ID_3, {0, 0, 0, 0, 0}},
+    {
+      "4",
+      {{0x58, 0x02, 0x03, 0x04, 0x05, 0x0a}, {0x00, 0x11, 0x09, 0x64, 0x01, 0x05}, 0x0008, {0, 0}},
+      {{0x58, 0x02, 0x03, 0x04, 0x05, 0x0a}, {0x00, 0x11, 0x09, 0x64, 0x01, 0x05}, 0xDD86, {0, 0}},
+      MODEM_ID_1, RNIC_RM_NET_ID_4, {0, 0, 0, 0, 0}},
+#endif
+
+    {
+      "_ims",
+      {{0x58, 0x02, 0x03, 0x04, 0x05, 0x0b}, {0x00, 0x11, 0x09, 0x64, 0x01, 0x06}, 0x0008, {0, 0}},
+      {{0x58, 0x02, 0x03, 0x04, 0x05, 0x0b}, {0x00, 0x11, 0x09, 0x64, 0x01, 0x06}, 0xDD86, {0, 0}},
+      MODEM_ID_0, RNIC_RM_NET_ID_VT, {0, 0, 0, 0, 0}},
+
+};
 
 
 /*lint -e762*/
@@ -616,7 +636,7 @@ netdev_tx_t RNIC_RcvOutsideModemUlData(
 {
     VOS_UINT8                           ucIpType;
     VOS_UINT8                           ucPdnId;
-    VOS_UINT32                          ulRslt;
+    VOS_ULONG                           ulRslt;
     VOS_UINT32                          ulDataLen;
     RNIC_UL_CTX_STRU                   *pstUlCtx    = VOS_NULL_PTR;
 
@@ -908,9 +928,6 @@ VOS_UINT32 RNIC_AddMacHead (
 
     if(RNIC_ETH_HDR_SIZE > (pstImmZc->data - pstImmZc->head))
     {
-        RNIC_ERROR_LOG2(ACPU_PID_RNIC, "RNIC_AddMacHead : invalid data Len! data = 0x%x, head = 0x%x \n",
-                    (VOS_INT32)pstImmZc->data, (VOS_INT32)pstImmZc->head);
-
         return VOS_ERR;
     }
 
@@ -989,7 +1006,7 @@ VOS_UINT32 RNIC_RcvSdioDlData(
         /* 释放内存 */
         IMM_ZcFree(pstImmZc);
 
-        return RNIC_ERROR;
+        return RNIC_PKT_TYPE_INVAL;
     }
 
     ulRet = RNIC_SendDlData(ucNetIndex, pstImmZc, enPktType);
@@ -1008,7 +1025,7 @@ VOS_UINT32  RNIC_RcvAdsDlData(
     VOS_UINT32                          ulRet;
 
     /* ADS带的RABID，是由ModemId和RABID组合而成 */
-    usModemId  = (ucRabid & RNIC_RABID_TAKE_MODEM_1_MASK) > 6;
+    usModemId  = (ucRabid & RNIC_RABID_TAKE_MODEM_1_MASK) >> 6;
     ucUseRabid = ucRabid & RNIC_RABID_UNTAKE_MODEM_1_MASK;
 
     /* 根据RABID获取对应网卡ID */
@@ -1120,7 +1137,7 @@ VOS_UINT32 RNIC_SendDlData(
         /* 释放内存 */
         IMM_ZcFree(pstImmZc);
 
-        return RNIC_ERROR;
+        return RNIC_PKT_TYPE_INVAL;
     }
 
     if (VOS_OK != RNIC_AddMacHead(pstImmZc, pucAddData))
@@ -1131,7 +1148,7 @@ VOS_UINT32 RNIC_SendDlData(
         /* 释放内存 */
         IMM_ZcFree(pstImmZc);
 
-        return RNIC_ERROR;
+        return RNIC_ADDMAC_FAIL;
     }
 
     pstImmZc->protocol = eth_type_trans(pstImmZc, pstPriv->pstNetDev);
@@ -1153,7 +1170,7 @@ VOS_UINT32 RNIC_SendDlData(
         pstPriv->stStats.rx_dropped++;
         pstDlCtx->stDLDataStats.ulDLTotalDroppedPkts++;
         RNIC_ERROR_LOG(ACPU_PID_RNIC, "RNIC_SendDlData:Send data failed!");
-        return RNIC_ERROR;
+        return RNIC_RX_PKT_FAIL;
     }
 
     /* 增加下行发送数据统计 */
@@ -1423,17 +1440,19 @@ VOS_INT RNIC_InitNetCard(VOS_VOID)
 
 #if (FEATURE_ON == FEATURE_MULTI_MODEM)
     VOS_UINT8                           aucAddr[RNIC_NET_ID_MAX_NUM][RNIC_MAC_ADDR_LEN] = {
-                                               {0x58,0x02,0x03,0x04,0x05,0x06},
-                                               {0x58,0x02,0x03,0x04,0x05,0x07},
-                                               {0x58,0x02,0x03,0x04,0x05,0x08},
-                                               {0x58,0x02,0x03,0x04,0x05,0x09},
-                                               {0x58,0x02,0x03,0x04,0x05,0x0a}
+                                                {0x58,0x02,0x03,0x04,0x05,0x06},
+                                                {0x58,0x02,0x03,0x04,0x05,0x07},
+                                                {0x58,0x02,0x03,0x04,0x05,0x08},
+                                                {0x58,0x02,0x03,0x04,0x05,0x09},
+                                                {0x58,0x02,0x03,0x04,0x05,0x0a},
+                                                {0x58,0x02,0x03,0x04,0x05,0x0b}
                                                };
 #else
     VOS_UINT8                           aucAddr[RNIC_NET_ID_MAX_NUM][RNIC_MAC_ADDR_LEN] = {
                                                {0x58,0x02,0x03,0x04,0x05,0x06},
                                                {0x58,0x02,0x03,0x04,0x05,0x07},
-                                               {0x58,0x02,0x03,0x04,0x05,0x08}
+                                               {0x58,0x02,0x03,0x04,0x05,0x08},
+                                               {0x58,0x02,0x03,0x04,0x05,0x0b}
                                                };
 #endif
 
@@ -1465,7 +1484,14 @@ VOS_INT RNIC_InitNetCard(VOS_VOID)
         /* 设置默认的MTU值 */
         pstNetDev->mtu = RNIC_DEFAULT_MTU;
 
-        VOS_sprintf(pstNetDev->name, g_astRnicManageTbl[ucIndex].pucRnicNetCardName);
+#if (VOS_OS_VER == VOS_WIN32)
+        sprintf(pstNetDev->name, "%s%s",
+            RNIC_DEV_NAME_PREFIX, g_astRnicManageTbl[ucIndex].pucRnicNetCardName);
+#else
+        snprintf(pstNetDev->name, sizeof(pstNetDev->name),
+            "%s%s",
+            RNIC_DEV_NAME_PREFIX, g_astRnicManageTbl[ucIndex].pucRnicNetCardName);
+#endif
 
         /* 对申请到的net_device结构的设备指针的函数域进行赋值 */
 #if (VOS_OS_VER == VOS_WIN32)
@@ -1513,7 +1539,7 @@ VOS_INT RNIC_InitNetCard(VOS_VOID)
 }
 
 
-unsigned long RNIC_StartFlowCtrl(unsigned char ucRmNetId)
+unsigned int RNIC_StartFlowCtrl(unsigned char ucRmNetId)
 {
     RNIC_SET_FLOW_CTRL_STATUS(RNIC_FLOW_CTRL_STATUS_START, ucRmNetId);
 
@@ -1521,7 +1547,7 @@ unsigned long RNIC_StartFlowCtrl(unsigned char ucRmNetId)
 }
 
 
-unsigned long RNIC_StopFlowCtrl(unsigned char ucRmNetId)
+unsigned int RNIC_StopFlowCtrl(unsigned char ucRmNetId)
 {
     RNIC_SET_FLOW_CTRL_STATUS(RNIC_FLOW_CTRL_STATUS_STOP, ucRmNetId);
 

@@ -62,10 +62,8 @@ static inline char *rtl818x_translate_scan(struct ieee80211_device *ieee,
 	/* Add the ESSID */
 	iwe.cmd = SIOCGIWESSID;
 	iwe.u.data.flags = 1;
-	//YJ,modified,080903,for hidden ap
 	//if (network->flags & NETWORK_EMPTY_ESSID) {
 	if (network->ssid_len == 0) {
-	//YJ,modified,080903,end
 		iwe.u.data.length = sizeof("<hidden>");
 		start = iwe_stream_add_point(info, start, stop, &iwe, "<hidden>");
 	} else {
@@ -361,7 +359,7 @@ int ieee80211_wx_set_encode(struct ieee80211_device *ieee,
 		 * explicitly set */
 		if (key == sec.active_key)
 			sec.flags |= SEC_ACTIVE_KEY;
-		ieee->tx_keyidx = key;//by wb 080312
+		ieee->tx_keyidx = key;
 	} else {
 		len = (*crypt)->ops->get_key(sec.keys[key], WEP_KEY_LEN,
 					     NULL, (*crypt)->priv);

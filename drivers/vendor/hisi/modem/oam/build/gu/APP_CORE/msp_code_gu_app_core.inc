@@ -1,5 +1,5 @@
 # Core information
-
+include $(BALONG_TOPDIR)/build/scripts/make_base.mk
 
 MSP_INC_DIRS := \
 	$(LINUX_KERNEL)/include/linux \
@@ -23,6 +23,7 @@ MSP_INC_DIRS := \
 	$(BALONG_TOPDIR)/include/oam/comm/errno \
 	$(BALONG_TOPDIR)/include/oam/comm/dms \
 	$(BALONG_TOPDIR)/include/oam/comm/nvim \
+	$(BALONG_TOPDIR)/include/oam/comm/cpm \
 	$(BALONG_TOPDIR)/include/nv/gu/oam \
 	$(BALONG_TOPDIR)/include/nv/gu/codec \
 	$(BALONG_TOPDIR)/include/nv/gu/drv \
@@ -72,3 +73,10 @@ MSP_INC_DIRS += \
 	$(BALONG_TOPDIR)/modem/taf/comm/src/acore/TAFAGENT/Inc/ \
 	$(BALONG_TOPDIR)/modem/taf/comm/src/acore/APPVCOM/Inc/ \
 	
+		
+ifeq ($(CFG_FEATURE_MERGE_OM_CHAN),FEATURE_ON)
+MSP_INC_DIRS += \
+	$(BALONG_TOPDIR)/modem/oam/inc/gu/acore/cbtcpm \
+	$(BALONG_TOPDIR)/modem/oam/inc/gu/acore/cbtppm \
+	$(BALONG_TOPDIR)/modem/oam/inc/comm/comm/ppm
+endif

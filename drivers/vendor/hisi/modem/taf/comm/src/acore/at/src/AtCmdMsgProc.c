@@ -65,7 +65,7 @@
 #if (FEATURE_ON==FEATURE_LTE)
 #include "at_lte_common.h"
 #endif
-
+#include "dms_core.h"
 
 #ifdef  __cplusplus
   #if  __cplusplus
@@ -247,6 +247,9 @@ const AT_PROC_MSG_FROM_MTA_STRU g_astAtProcMsgFromMtaTab[]=
 
     {ID_MTA_AT_SET_JAM_DETECT_CNF,          AT_RcvMtaSetJamDetectCnf},
     {ID_MTA_AT_JAM_DETECT_IND,              AT_RcvMtaJamDetectInd},
+    {ID_MTA_AT_SET_GSM_FREQLOCK_CNF,        AT_RcvMtaSetGFreqLockCnf},
+    {ID_MTA_AT_NVWRSECCTRL_SET_CNF,         AT_RcvMtaNvwrSecCtrlSetCnf},
+
 };
 
 const AT_PROC_MSG_FROM_MMA_STRU g_astAtProcMsgFromMmaTab[]=
@@ -270,6 +273,14 @@ const AT_PROC_MSG_FROM_MMA_STRU g_astAtProcMsgFromMmaTab[]=
     {ID_TAF_MMA_SYS_CFG_SET_CNF,        AT_RcvMmaSysCfgSetCnf},
     {ID_TAF_MMA_PHONE_MODE_SET_CNF,     AT_RcvMmaPhoneModeSetCnf},
     {ID_TAF_MMA_DETACH_CNF,             AT_RcvMmaDetachCnf},
+    /* Added by zwx247453 for VOLTE SWITCH, 2015-02-02, Begin */
+#if (FEATURE_ON == FEATURE_IMS)
+    {ID_TAF_MMA_IMS_SWITCH_SET_CNF,     AT_RcvMmaImsSwitchSetCnf},
+    {ID_TAF_MMA_IMS_SWITCH_QRY_CNF,     AT_RcvMmaImsSwitchQryCnf},
+    {ID_TAF_MMA_VOICE_DOMAIN_SET_CNF,   AT_RcvMmaVoiceDomainSetCnf},
+    {ID_TAF_MMA_VOICE_DOMAIN_QRY_CNF,   AT_RcvMmaVoiceDomainQryCnf},
+#endif
+    /* Added by zwx247453 for VOLTE SWITCH, 2015-02-02, End */
 };
 
 /* AT码流缓存数组(包括AT命令或其它数据)。
@@ -511,13 +522,13 @@ VOS_BOOL AT_E5CheckRight(
         return VOS_FALSE;
     }
 
-    VOS_MemSet(aucCmdTmp, 0x00, sizeof(aucCmdTmp));
-    VOS_MemCpy(aucCmdTmp, pucData, (SIZE_T)usQuickCmdLen);
+    VOS_MemSet(aucCmdTmp, 0x00, (VOS_SIZE_T)sizeof(aucCmdTmp));
+    VOS_MemCpy(aucCmdTmp, pucData, (VOS_SIZE_T)usQuickCmdLen);
 
     /* 不是AT^OPENPORT命令直接返回无权限 */
     if (0 != VOS_StrNiCmp((VOS_CHAR *)aucCmdTmp,
                           (VOS_CHAR *)aucQuickCmd,
-                          (SIZE_T)usQuickCmdLen))
+                          (VOS_SIZE_T)usQuickCmdLen))
     {
         At_FormatResultData(ucIndex,AT_ERROR);
         return VOS_FALSE;
@@ -924,8 +935,8 @@ VOS_UINT32 AT_FormatAtiCmdQryString(
     for (ulI = 0; ulI < (TAF_PH_IMEI_LEN - 2); ulI += 2)
     {
         ucCheckData += (TAF_UINT8)(((pstDrvAgentMsidQryCnf->aucImei[ulI])
-                       +((pstDrvAgentMsidQryCnf->aucImei[ulI + 1] * 2) / 10))
-                       +((pstDrvAgentMsidQryCnf->aucImei[ulI + 1] * 2) % 10));
+                       +((pstDrvAgentMsidQryCnf->aucImei[ulI + 1UL] * 2) / 10))
+                       +((pstDrvAgentMsidQryCnf->aucImei[ulI + 1UL] * 2) % 10));
     }
     ucCheckData = (10 - (ucCheckData%10)) % 10;
 
@@ -2266,8 +2277,8 @@ VOS_UINT32  AT_GetImeiValue(
         for (i = 0; i < (TAF_PH_IMEI_LEN-2); i += 2)
         {
             ucCheckData += aucBuf[i]
-                          +((aucBuf[i+1] + aucBuf[i+1])/10)
-                          +((aucBuf[i+1] + aucBuf[i+1])%10);
+                          +((aucBuf[i+1UL] + aucBuf[i+1UL])/10)
+                          +((aucBuf[i+1UL] + aucBuf[i+1UL])%10);
         }
         ucCheckData = (10 - (ucCheckData%10))%10;
         AT_DeciDigit2Ascii(aucBuf, (VOS_UINT8)ulDataLen, aucImei);
@@ -5237,7 +5248,7 @@ TAF_VOID At_MsgProc(MsgBlock* pMsg)
         case I1_MAPS_PIH_PID:
             At_PIHMsgProc(pMsg);
             return;
-            
+
         case I0_WUEPS_PID_RABM:
         case I1_WUEPS_PID_RABM:
             AT_RabmMsgProc((MSG_HEADER_STRU *)pMsg);
@@ -7157,15 +7168,6 @@ VOS_UINT32 AT_RcvDrvAgentPortctrlTmpSetCnf(VOS_VOID *pMsg)
         {
              ulResult    = AT_ERROR;
         }
-#if (FEATURE_ON==FEATURE_LTE)
-        else
-        {
-            if(AT_SUCCESS != DMS_OpenHsicPort())
-            {
-                ulResult = AT_ERROR;
-            }
-        }
-#endif
     }
     else
     {
@@ -9546,11 +9548,11 @@ VOS_UINT32 AT_RcvMtaCgsnQryCnf(VOS_VOID *pstMsg)
     for (ulI = 0; ulI < (TAF_PH_IMEI_LEN - 2); ulI += 2)
     {
         aucImeiAscii[ulI]     = pstCgsn->aucImei[ulI] + 0x30;
-        aucImeiAscii[ulI + 1] = pstCgsn->aucImei[ulI + 1] + 0x30;
+        aucImeiAscii[ulI + 1UL] = pstCgsn->aucImei[ulI + 1UL] + 0x30;
 
         ucCheckData += (TAF_UINT8)(pstCgsn->aucImei[ulI]
-                       +((pstCgsn->aucImei[ulI + 1] * 2) / 10)
-                       +((pstCgsn->aucImei[ulI + 1] * 2) % 10));
+                       +((pstCgsn->aucImei[ulI + 1UL] * 2) / 10)
+                       +((pstCgsn->aucImei[ulI + 1UL] * 2) % 10));
     }
     ucCheckData = (10 - (ucCheckData%10)) % 10;
 
@@ -10349,6 +10351,8 @@ VOS_VOID AT_RcvSwitchCmdModeMsg(VOS_UINT8 ucIndex)
 
     return;
 }
+
+
 VOS_UINT32 AT_RcvMtaEcidSetCnf(VOS_VOID *pMsg)
 {
     /* 定义局部变量 */
@@ -10400,8 +10404,14 @@ VOS_UINT32 AT_RcvMtaEcidSetCnf(VOS_VOID *pMsg)
     }
     else
     {
-        gstAtSendData.usBufLen = 0;
-        ulResult    = AT_ERROR;
+        gstAtSendData.usBufLen = (VOS_UINT16)At_sprintf(AT_CMD_MAX_LEN,
+                                                        (VOS_CHAR *)pgucAtSndCodeAddr,
+                                                        (VOS_CHAR *)pgucAtSndCodeAddr,
+                                                        "%s=%s",
+                                                        g_stParseContext[ucIndex].pstCmdElement->pszCmdName,
+                                                        "0,NONE:,");
+
+        ulResult    = AT_OK;
     }
 
     /* 调用At_FormatResultData发送命令结果 */
@@ -10409,6 +10419,9 @@ VOS_UINT32 AT_RcvMtaEcidSetCnf(VOS_VOID *pMsg)
 
     return VOS_OK;
 }
+
+
+
 VOS_UINT32 AT_RcvMmaSysCfgSetCnf(
     VOS_VOID                           *pMsg
 )
@@ -10444,7 +10457,7 @@ VOS_UINT32 AT_RcvMmaSysCfgSetCnf(
     }
     else
     {
-        ulResult = At_ChgTafErrorCode(ucIndex, pstCnfMsg->usErrorCause);
+        ulResult = At_ChgTafErrorCode(ucIndex, pstCnfMsg->enErrorCause);
     }
 
     gstAtSendData.usBufLen = 0;
@@ -10502,7 +10515,7 @@ VOS_UINT32 AT_RcvMmaPhoneModeSetCnf(
     }
     else
     {
-        ulResult = At_ChgTafErrorCode(ucIndex, pstCnfMsg->usErrorCause);       /* 发生错误 */
+        ulResult = At_ChgTafErrorCode(ucIndex, pstCnfMsg->enErrorCause);       /* 发生错误 */
     }
 
 
@@ -10513,7 +10526,7 @@ VOS_UINT32 AT_RcvMmaPhoneModeSetCnf(
 
     /* V7R2 ^PSTANDBY命令复用关机处理流程 */
 #ifdef FEATURE_UPGRADE_TL
-    if(AT_CMD_PSTANDBY_SET == gastAtClientTab[ucIndex].CmdCurrentOpt)
+    if(AT_CMD_PSTANDBY_SET == (AT_LTE_CMD_CURRENT_OPT_ENUM)gastAtClientTab[ucIndex].CmdCurrentOpt)
     {
         AT_STOP_TIMER_CMD_READY(ucIndex);
 
@@ -10583,7 +10596,7 @@ VOS_UINT32 AT_RcvMmaDetachCnf(
     }
     else
     {
-        gastAtClientTab[ucIndex].ulCause = pstDetachCnf->usErrorCause;
+        gastAtClientTab[ucIndex].ulCause = pstDetachCnf->enErrorCause;
         ulResult = AT_ERROR;
     }
 
@@ -10596,6 +10609,427 @@ VOS_UINT32 AT_RcvMmaDetachCnf(
 }
 
 
+
+
+
+/* Added by zwx247453 for VOLTE SWITCH, 2015-02-02, Begin */
+#if (FEATURE_ON == FEATURE_IMS)
+/*****************************************************************************
+ 函 数 名  : AT_RcvMmaImsSwitchSetCnf
+ 功能描述  : 处理ID_TAF_MMA_IMS_SWITCH_SET_CNF
+ 输入参数  :  VOS_VOID *pMsg
+ 输出参数  : 无
+ 返 回 值  : 无
+ 调用函数  :
+ 被调函数  :
+
+ 修改历史      :
+  1.日    期   : 2015年02月02日
+    作    者   : zwx247453
+    修改内容   : 新生成函数
+*****************************************************************************/
+VOS_UINT32 AT_RcvMmaImsSwitchSetCnf(
+    VOS_VOID                           *pMsg
+)
+{
+    TAF_MMA_IMS_SWITCH_SET_CNF_STRU   *pstCnfMsg = VOS_NULL_PTR;
+    VOS_UINT8                          ucIndex;
+    VOS_UINT32                         ulResult;
+
+    ucIndex = AT_BROADCAST_CLIENT_INDEX_MODEM_0;
+    pstCnfMsg = (TAF_MMA_IMS_SWITCH_SET_CNF_STRU*)pMsg;
+
+    /* 通过ClientId获取ucIndex */
+    if (AT_FAILURE == At_ClientIdToUserId(pstCnfMsg->usClientId, &ucIndex))
+    {
+        AT_WARN_LOG("AT_RcvMmaImsSwitchSetCnf: WARNING:AT INDEX NOT FOUND!");
+        return VOS_ERR;
+    }
+
+    /* 广播消息不处理 */
+    if (AT_IS_BROADCAST_CLIENT_INDEX(ucIndex))
+    {
+        AT_WARN_LOG("AT_RcvMmaImsSwitchSetCnf: WARNING:AT_BROADCAST_INDEX!");
+        return VOS_ERR;
+    }
+
+    /* 判断当前操作类型 */
+    if (AT_CMD_IMS_SWITCH_SET != gastAtClientTab[ucIndex].CmdCurrentOpt)
+    {
+        AT_WARN_LOG("AT_RcvMmaImsSwitchSetCnf: WARNING:Not AT_CMD_IMS_SWITCH_SET!");
+        return VOS_ERR;
+    }
+
+    /* 复位AT状态 */
+    AT_STOP_TIMER_CMD_READY(ucIndex);
+
+    if (TAF_MMA_APP_OPER_RESULT_SUCCESS == pstCnfMsg->enResult)
+    {
+        ulResult = AT_OK;
+    }
+    else
+    {
+        ulResult = At_ChgTafErrorCode(ucIndex, pstCnfMsg->enErrorCause);
+    }
+
+    gstAtSendData.usBufLen = 0;
+    At_FormatResultData(ucIndex, ulResult);
+
+    return VOS_OK;
+}
+
+/*****************************************************************************
+ 函 数 名  : AT_RcvMmaImsSwitchQryCnf
+ 功能描述  : 处理ID_TAF_MMA_IMS_SWITCH_QRY_CNF
+ 输入参数  :  VOS_VOID *pMsg
+ 输出参数  : 无
+ 返 回 值  : 无
+ 调用函数  :
+ 被调函数  :
+
+ 修改历史      :
+  1.日    期   : 2015年02月02日
+    作    者   : zwx247453
+    修改内容   : 新生成函数
+*****************************************************************************/
+VOS_UINT32 AT_RcvMmaImsSwitchQryCnf(
+    VOS_VOID                           *pMsg
+)
+{
+    TAF_MMA_IMS_SWITCH_QRY_CNF_STRU    *pstSwitchQryCnf = VOS_NULL_PTR;
+    VOS_UINT8                           ucIndex;
+
+    /* 初始化 */
+    pstSwitchQryCnf     = (TAF_MMA_IMS_SWITCH_QRY_CNF_STRU *)pMsg;
+
+    /* 通过clientid获取index */
+    if (AT_FAILURE == At_ClientIdToUserId(pstSwitchQryCnf->usClientId,&ucIndex))
+    {
+        AT_WARN_LOG("AT_RcvMmaImsSwitchQryCnf:WARNING:AT INDEX NOT FOUND!");
+        return VOS_ERR;
+    }
+
+    if (AT_IS_BROADCAST_CLIENT_INDEX(ucIndex))
+    {
+        AT_WARN_LOG("AT_RcvMmaImsSwitchQryCnf : AT_BROADCAST_INDEX!");
+        return VOS_ERR;
+    }
+
+    /*判断当前操作类型是否为AT_CMD_IMS_SWITCH_QRY */
+    if (AT_CMD_IMS_SWITCH_QRY != gastAtClientTab[ucIndex].CmdCurrentOpt)
+    {
+        AT_WARN_LOG("AT_RcvMmaImsSwitchQryCnf: WARNING:Not AT_CMD_IMS_SWITCH_QRY!");
+        return VOS_ERR;
+    }
+
+    /* 复位AT状态 */
+    AT_STOP_TIMER_CMD_READY(ucIndex);
+
+    gstAtSendData.usBufLen = 0;
+    gstAtSendData.usBufLen = (VOS_UINT16)At_sprintf(AT_CMD_MAX_LEN,
+                                                    (VOS_CHAR *)pgucAtSndCodeAddr,
+                                                    (VOS_CHAR *)pgucAtSndCodeAddr,
+                                                    "%s: %d",
+                                                    g_stParseContext[ucIndex].pstCmdElement->pszCmdName,
+                                                    pstSwitchQryCnf->enImsSwitch);
+
+    At_FormatResultData(ucIndex, AT_OK);
+
+    return VOS_OK;
+
+}
+
+/*****************************************************************************
+ 函 数 名  : AT_RcvMmaVoiceDomainSetCnf
+ 功能描述  : 处理ID_TAF_MMA_VOICE_DOMAIN_SET_CNF
+ 输入参数  :  VOS_VOID *pMsg
+ 输出参数  : 无
+ 返 回 值  : 无
+ 调用函数  :
+ 被调函数  :
+
+ 修改历史      :
+  1.日    期   : 2015年02月02日
+    作    者   : zwx247453
+    修改内容   : 新生成函数
+*****************************************************************************/
+VOS_UINT32 AT_RcvMmaVoiceDomainSetCnf(
+    VOS_VOID                           *pMsg
+)
+{
+    TAF_MMA_VOICE_DOMAIN_SET_CNF_STRU  *pstCnfMsg = VOS_NULL_PTR;
+    VOS_UINT8                           ucIndex;
+    VOS_UINT32                          ulResult;
+
+    ucIndex   = AT_BROADCAST_CLIENT_INDEX_MODEM_0;
+    pstCnfMsg = (TAF_MMA_VOICE_DOMAIN_SET_CNF_STRU *)pMsg;
+
+    /* 通过ClientId获取ucIndex */
+    if (AT_FAILURE == At_ClientIdToUserId(pstCnfMsg->usClientId, &ucIndex))
+    {
+        AT_WARN_LOG("AT_RcvMmaVoiceDomainSetCnf: WARNING:AT INDEX NOT FOUND!");
+        return VOS_ERR;
+    }
+
+    /* 广播消息不处理 */
+    if (AT_IS_BROADCAST_CLIENT_INDEX(ucIndex))
+    {
+        AT_WARN_LOG("AT_RcvMmaVoiceDomainSetCnf: WARNING:AT_BROADCAST_INDEX!");
+        return VOS_ERR;
+    }
+
+    /* 判断当前操作类型 */
+    if (AT_CMD_VOICE_DOMAIN_SET != gastAtClientTab[ucIndex].CmdCurrentOpt)
+    {
+        AT_WARN_LOG("AT_RcvMmaVoiceDomainSetCnf: WARNING:Not AT_CMD_VOICE_DOMAIN_SET!");
+        return VOS_ERR;
+    }
+
+    /* 复位AT状态 */
+    AT_STOP_TIMER_CMD_READY(ucIndex);
+
+    if (TAF_MMA_APP_OPER_RESULT_SUCCESS == pstCnfMsg->enResult)
+    {
+        ulResult = AT_OK;
+    }
+    else
+    {
+        ulResult = At_ChgTafErrorCode(ucIndex, pstCnfMsg->enErrorCause);
+    }
+
+    gstAtSendData.usBufLen = 0;
+    At_FormatResultData(ucIndex, ulResult);
+
+    return VOS_OK;
+}
+
+/*****************************************************************************
+ 函 数 名  : AT_VoiceDomainTransToOutputValue
+ 功能描述  : modem侧对应的voice domain值转换为AT的输出值
+ 输入参数  : enVoiceDomain
+ 输出参数  : 无
+ 返 回 值  : ulValue
+ 调用函数  :
+ 被调函数  :
+
+ 修改历史      :
+  1.日    期   : 2015年02月04日
+    作    者   : zwx247453
+    修改内容   : 新生成函数
+*****************************************************************************/
+VOS_UINT32 AT_VoiceDomainTransToOutputValue(
+    TAF_MMA_VOICE_DOMAIN_ENUM_UINT32    enVoiceDoman,
+    VOS_UINT32                         *pulValue
+)
+{
+    VOS_UINT32                          ulRst;
+
+    ulRst = VOS_TRUE;
+
+    switch (enVoiceDoman)
+    {
+        case TAF_MMA_VOICE_DOMAIN_CS_ONLY:
+            *pulValue = AT_VOICE_DOMAIN_TYPE_CS_ONLY;
+            break;
+
+        case TAF_MMA_VOICE_DOMAIN_IMS_PS_ONLY:
+            *pulValue = AT_VOICE_DOMAIN_TYPE_IMS_PS_ONLY;
+            break;
+
+        case TAF_MMA_VOICE_DOMAIN_CS_PREFERRED:
+            *pulValue = AT_VOICE_DOMAIN_TYPE_CS_PREFERRED;
+            break;
+
+        case TAF_MMA_VOICE_DOMAIN_IMS_PS_PREFERRED:
+            *pulValue = AT_VOICE_DOMAIN_TYPE_IMS_PS_PREFERRED;
+            break;
+
+        default:
+            *pulValue = AT_VOICE_DOMAIN_TYPE_BUTT;
+            ulRst = VOS_FALSE;
+            break;
+    }
+
+    return ulRst;
+
+}
+
+/*****************************************************************************
+ 函 数 名  : AT_RcvMmaVoiceDomainQryCnf
+ 功能描述  : 处理ID_TAF_MMA_VOICE_DOMAIN_QRY_CNF
+ 输入参数  :  VOS_VOID *pMsg
+ 输出参数  : 无
+ 返 回 值  : 无
+ 调用函数  :
+ 被调函数  :
+
+ 修改历史      :
+  1.日    期   : 2015年02月02日
+    作    者   : zwx247453
+    修改内容   : 新生成函数
+*****************************************************************************/
+VOS_UINT32 AT_RcvMmaVoiceDomainQryCnf(
+    VOS_VOID                           *pMsg
+)
+{
+    TAF_MMA_VOICE_DOMAIN_QRY_CNF_STRU  *pstDomainQryCnf = VOS_NULL_PTR;
+    VOS_UINT8                           ucIndex;
+    VOS_UINT32                          ulValue;
+    VOS_UINT32                          ulResult;
+
+    /* 初始化 */
+    ulValue             = 0;
+    pstDomainQryCnf     = (TAF_MMA_VOICE_DOMAIN_QRY_CNF_STRU *)pMsg;
+
+    /* 通过clientid获取index */
+    if (AT_FAILURE == At_ClientIdToUserId(pstDomainQryCnf->usClientId, &ucIndex))
+    {
+        AT_WARN_LOG("AT_RcvMmaVoiceDomainQryCnf:WARNING:AT INDEX NOT FOUND!");
+        return VOS_ERR;
+    }
+
+    if (AT_IS_BROADCAST_CLIENT_INDEX(ucIndex))
+    {
+        AT_WARN_LOG("AT_RcvMmaVoiceDomainQryCnf : AT_BROADCAST_INDEX!");
+        return VOS_ERR;
+    }
+
+    /*判断当前操作类型是否为AT_CMD_VOICE_DOMAIN_QRY */
+    if (AT_CMD_VOICE_DOMAIN_QRY != gastAtClientTab[ucIndex].CmdCurrentOpt)
+    {
+        AT_WARN_LOG("AT_RcvMmaVoiceDomainQryCnf: WARNING:Not AT_CMD_VOICE_DOMAIN_QRY!");
+        return VOS_ERR;
+    }
+
+    /* 复位AT状态 */
+    AT_STOP_TIMER_CMD_READY(ucIndex);
+
+    if (VOS_TRUE != AT_VoiceDomainTransToOutputValue(pstDomainQryCnf->enVoiceDomain, &ulValue))
+    {
+        ulResult = AT_ERROR;
+    }
+    else
+    {
+        ulResult = AT_OK;
+        gstAtSendData.usBufLen = 0;
+        gstAtSendData.usBufLen = (VOS_UINT16)At_sprintf(AT_CMD_MAX_LEN,
+                                                       (VOS_CHAR *)pgucAtSndCodeAddr,
+                                                       (VOS_CHAR *)pgucAtSndCodeAddr,
+                                                       "%s: %d",
+                                                       g_stParseContext[ucIndex].pstCmdElement->pszCmdName,
+                                                       ulValue);
+    }
+
+    At_FormatResultData(ucIndex, ulResult);
+
+    return VOS_OK;
+}
+
+#endif
+/* Added by zwx247453 for VOLTE SWITCH, 2015-02-02, End */
+
+/*****************************************************************************
+ 函 数 名  : AT_SetLogEnablePara
+ 功能描述  : ^LOGENABLE
+ 输入参数  : ucIndex - 端口索引
+ 输出参数  : 无
+ 返 回 值  : AT_XXX
+ 调用函数  :
+ 被调函数  :
+
+ 修改历史      :
+  1.日    期   : 2015年10月21日
+    作    者   : z00301431
+    修改内容   : 新生成函数
+*****************************************************************************/
+VOS_UINT32 AT_SetLogEnablePara(VOS_UINT8 ucIndex)
+{
+    /* 参数检查 */
+    if (AT_CMD_OPT_SET_PARA_CMD != g_stATParseCmd.ucCmdOptType)
+    {
+        return AT_CME_INCORRECT_PARAMETERS;
+    }
+
+    /* 参数个数检查 */
+    if (1 != gucAtParaIndex)
+    {
+        return AT_CME_INCORRECT_PARAMETERS;
+    }
+
+    if(0 == gastAtParaList[0].usParaLen)
+    {
+        return AT_CME_INCORRECT_PARAMETERS;
+    }
+
+    /* AT设置1表示允许抓取modemlog，设置0表示不允许抓取modemlog */
+    if (1 == gastAtParaList[0].ulParaValue)
+    {
+        /* 设置为FALSE表示允许抓MODEM LOG */
+        DMS_SET_PRINT_MODEM_LOG_TYPE(VOS_FALSE);
+    }
+    else
+    {
+        /* 设置为TRUE表示不允许抓MODEM LOG */
+        DMS_SET_PRINT_MODEM_LOG_TYPE(VOS_TRUE);
+    }
+
+    return AT_OK;
+}
+
+/*****************************************************************************
+ 函 数 名  : AT_QryLogEnable
+ 功能描述  : ^LOGENABLE
+ 输入参数  : ucIndex - 端口索引
+ 输出参数  : 无
+ 返 回 值  : AT_XXX
+ 调用函数  :
+ 被调函数  :
+
+ 修改历史      :
+  1.日    期   : 2015年10月21日
+    作    者   : z00301431
+    修改内容   : 新生成函数
+*****************************************************************************/
+VOS_UINT32 AT_QryLogEnable(VOS_UINT8 ucIndex)
+{
+    VOS_UINT16                          usLength;
+    VOS_UINT32                          ulEnableFlag;
+
+    /* 参数检查 */
+    if (AT_CMD_OPT_READ_CMD != g_stATParseCmd.ucCmdOptType)
+    {
+        return AT_CME_INCORRECT_PARAMETERS;
+    }
+
+    usLength                            = 0;
+
+    if (VOS_FALSE == DMS_GET_PRINT_MODEM_LOG_TYPE())
+    {
+        /* DMS当前允许抓MODEM LOG，返回enable为TRUE */
+        ulEnableFlag = VOS_TRUE;
+    }
+    else
+    {
+        /* DMS当前不允许抓MODEM LOG，返回enable为FALSE */
+        ulEnableFlag = VOS_FALSE;
+    }
+
+    usLength  = (VOS_UINT16)At_sprintf(AT_CMD_MAX_LEN,
+                                       (VOS_CHAR*)pgucAtSndCodeAddr,
+                                       (VOS_CHAR*)pgucAtSndCodeAddr,
+                                       "%s: ",
+                                       g_stParseContext[ucIndex].pstCmdElement->pszCmdName);
+
+    usLength += (VOS_UINT16)At_sprintf(AT_CMD_MAX_LEN,
+                                       (VOS_CHAR*)pgucAtSndCodeAddr,
+                                       (VOS_CHAR*)pgucAtSndCodeAddr + usLength,
+                                       "%d",
+                                       ulEnableFlag);
+
+    gstAtSendData.usBufLen = usLength;
+
+    return AT_OK;
+}
 
 
 #ifdef  __cplusplus

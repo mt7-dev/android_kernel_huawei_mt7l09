@@ -1015,6 +1015,8 @@ STATUS appl131_data_transfer (SCI_STATE_STRU *       parapState,
 
             sci_print_error("apPL131_DataTransfer:set clk failed , state is 0x%x,g_ulSciClkTimeStpFlag is 1\n",
                       pState->eCurrentState, g_ulSciClkTimeStpFlag, 0, 0, 0, 0);
+            
+            return apERR_PL131_NODATA;
         }
 
         SCI_RECORD_DATA(SCI_DATA_SEND_EVENT, (BSP_U8)(pState->DataLength), pState->pDataBuffer);

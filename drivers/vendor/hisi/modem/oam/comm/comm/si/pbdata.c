@@ -1740,6 +1740,11 @@ VOS_UINT32 SI_PB_CheckFdn(VOS_UINT8 *pucNum, VOS_UINT32 ulNumLength)
 
         SI_PB_MemSet(SI_PB_NUM_LEN, (VOS_UINT8)0xFF, aucNumber);
 
+        if(ucNumLen > (SI_PB_NUM_LEN / 2))
+        {       
+            continue;
+        }
+
         VOS_MemCpy(aucNumber, pTemp+2, ucNumLen);
 
         ucExtRecord = pucFdnContent[gastPBContent[ucPBOffset].ucRecordLen-1];

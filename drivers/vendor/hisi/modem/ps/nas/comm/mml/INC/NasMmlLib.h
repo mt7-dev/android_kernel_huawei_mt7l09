@@ -105,6 +105,7 @@ VOS_UINT32 NAS_MML_IsMccInDestMccList (
 );
 
 
+VOS_UINT8 NAS_MML_IsRoamingRejectNoRetryFlgActived(VOS_UINT8 ucCause);
 VOS_UINT32  NAS_MML_IsPlmnIdInForbidPlmnList(
    NAS_MML_PLMN_ID_STRU                *pstPlmnId
 );
@@ -327,6 +328,9 @@ VOS_VOID NAS_MML_RemoveRoamPlmnInSrchList(
 );
 
 VOS_UINT32 NAS_MMC_IsRoam(VOS_VOID);
+VOS_UINT32 NAS_MML_IsHplmnInEplmnList(VOS_VOID);
+
+VOS_UINT32 NAS_MML_IsCurrCampPlmnInEplmnList(VOS_VOID);
 
 VOS_UINT32 NAS_MML_IsCampPlmnInfoChanged(
     NAS_MML_CAMP_PLMN_INFO_STRU        *pOldCampInfo,
@@ -603,6 +607,9 @@ VOS_UINT32 NAS_MML_IsPlmnListSrchRslt(
 );
 
 VOS_UINT32  NAS_MML_IsCurrentRatHighestRat(VOS_VOID);
+
+
+VOS_UINT8 NAS_MML_IsUeSupportIms(VOS_VOID);
 
 #if (VOS_OS_VER == VOS_WIN32)
 #pragma pack()

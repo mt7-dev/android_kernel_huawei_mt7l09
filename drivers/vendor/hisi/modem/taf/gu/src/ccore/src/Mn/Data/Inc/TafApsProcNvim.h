@@ -62,27 +62,25 @@ extern "C" {
   10 º¯ÊýÉùÃ÷
 *****************************************************************************/
 
-
 VOS_VOID  TAF_APS_ReadDsFlowInfoFromNv(
     TAF_APS_DSFLOW_STATS_CTX_STRU      *pstApsDsFlowCtx
 );
-
 VOS_VOID  TAF_APS_ClearDsFlowInfoInNv( VOS_VOID );
-
-
 VOS_VOID  TAF_APS_SaveDsFlowInfoToNv( VOS_VOID );
 
-
-
-
 VOS_VOID TAF_APS_ReadPdpActLimitFlgFromNv(VOS_VOID);
-
 
 VOS_VOID TAF_APS_ReadDsflowRateConfigFromNv(TAF_APS_SWITCH_DDR_RATE_INFO_STRU *pstSwitchDdrInfo);
 
 VOS_VOID TAF_APS_Recorrect_ProfileNum(
     TAF_NV_DFS_DSFLOW_RATE_CONFIG_STRU     *pstDfsProfile,
     VOS_UINT32                              ulProfileNum);
+
+#if (FEATURE_ON == FEATURE_LTE)
+VOS_VOID TAF_APS_ReadPdnTeardownPolicyNV(VOS_VOID);
+#endif
+
+
 
 #if (VOS_OS_VER == VOS_WIN32)
 #pragma pack()

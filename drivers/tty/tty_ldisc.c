@@ -650,8 +650,6 @@ int tty_set_ldisc(struct tty_struct *tty, int ldisc)
 
 	tty->receive_room = 0;
 
-	o_ldisc = tty->ldisc;
-
 	tty_unlock(tty);
 	/*
 	 *	Make sure we don't change while someone holds a
@@ -673,6 +671,9 @@ int tty_set_ldisc(struct tty_struct *tty, int ldisc)
 
 	mutex_unlock(&tty->ldisc_mutex);
 
+	/*
+	 * Maybe reinit tty->ldisc
+	 */
 	flush_work(&tty->hangup_work);
 
 	tty_lock(tty);
@@ -695,6 +696,7 @@ int tty_set_ldisc(struct tty_struct *tty, int ldisc)
 	}
 
 	/* Shutdown the current discipline. */
+	o_ldisc = tty->ldisc;
 	tty_ldisc_close(tty, o_ldisc);
 
 	/* Now set up the new line discipline. */

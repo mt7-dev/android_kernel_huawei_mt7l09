@@ -176,11 +176,11 @@ VOS_UINT32 diag_PhyWriteAsync(DIAG_PORT_PHY_BEAR_ENUM enPort,VOS_UINT8 *pucDataB
     }
 #endif
 
-#ifdef FEATURE_UPGRADE_TL
+#ifndef FEATURE_USB_ZERO_COPY
     stVcom.pBuffer = (VOS_CHAR*)pucDataBuf;
 #else
     stVcom.pVirAddr = (VOS_CHAR*)pucDataBuf;
-    stVcom.pPhyAddr = (VOS_CHAR*)SCM_CoderDestMemVirtToPhy(DIAG_PORT_GET_CODE_DES(enPort), pucDataBuf);
+    stVcom.pPhyAddr = 0;//(VOS_CHAR*)SCM_CoderDestMemVirtToPhy(DIAG_PORT_GET_CODE_DES(enPort), pucDataBuf);
 #endif
     stVcom.u32Size = ulLen;
 
@@ -467,7 +467,7 @@ VOS_VOID diag_PortRdCB(DIAG_PORT_PHY_BEAR_ENUM enPort)
     }
 #endif
     ulDataLen = acmInfo.u32Size;
-#ifdef FEATURE_UPGRADE_TL
+#ifndef FEATURE_USB_ZERO_COPY
     pdata = acmInfo.pBuffer;
 #else
     pdata = acmInfo.pVirAddr;
@@ -603,6 +603,9 @@ VOS_UINT32 diag_PortOpen(DIAG_PORT_PHY_BEAR_ENUM enPort,UDI_ACM_DEV_TYPE devid,\
         return ERR_MSP_FAILURE;
     }
 
+    DIAG_PORT_HANDLE_SWITCH(enPort,slUartHd);   /*修改端口句柄*/
+    DIAG_PORT_CHAN_STATE_SWITCH(enPort,ACM_EVT_DEV_READY);/*打开之后修改端口状态*/
+
     stReadParam.u32BuffSize = DIAG_DATA_READ_BUFFER_SIZE;
     stReadParam.u32BuffNum  = DIAG_DATA_MAX_BUFFER_COUNT;
 
@@ -645,11 +648,13 @@ VOS_UINT32 diag_PortOpen(DIAG_PORT_PHY_BEAR_ENUM enPort,UDI_ACM_DEV_TYPE devid,\
         DIAG_DEBUG_SDM_FUN((DIAG_DEBUG_MSG_ID_ENUM)(EN_DIAG_DEBUG_TCP_OPEN_ERR+(VOS_UINT32)enPort), (VOS_UINT32)slUartHd, ret, 6);
         goto ERR_OUT;
     }
-    DIAG_PORT_HANDLE_SWITCH(enPort,slUartHd);   /*修改端口句柄*/
-    DIAG_PORT_CHAN_STATE_SWITCH(enPort,ACM_EVT_DEV_READY);/*打开之后修改端口状态*/
     return ERR_MSP_SUCCESS;
 ERR_OUT:
     udi_close(slUartHd);
+
+    DIAG_PORT_HANDLE_SWITCH(enPort,UDI_INVALID_HANDLE);   /*修改端口句柄*/
+    DIAG_PORT_CHAN_STATE_SWITCH(enPort,ACM_EVT_DEV_SUSPEND);/*打开之后修改端口状态*/
+
     return ret;
 
 }

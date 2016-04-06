@@ -400,7 +400,7 @@ BSP_S32 ipf_init(BSP_VOID)
     BSP_S32 s32Ret = 0;
 #endif
 
-#if (defined(BSP_CONFIG_HI3630))
+#if (defined(BSP_CONFIG_HI3630) && defined(CONFIG_CCORE_PM))
     unsigned long ipf_flags = 0;
 #endif
 
@@ -558,10 +558,10 @@ BSP_S32 ipf_init(BSP_VOID)
     g_stIpfDl.pstIpfADQ1 = (IPF_AD_DESC_S*)IPF_DLAD1_MEM_ADDR;
     g_stIpfDl.pstIpfCDQ = (IPF_CD_DESC_S*)IPF_DLCD_MEM_ADDR;
 
-    g_stIpfDl.pstIpfPhyBDQ = (IPF_BD_DESC_S*)(IPF_IO_ADDRESS_PHY(IPF_DLBD_MEM_ADDR));
-    g_stIpfDl.pstIpfPhyRDQ = (IPF_RD_DESC_S*)(IPF_IO_ADDRESS_PHY(IPF_DLRD_MEM_ADDR));
-    g_stIpfDl.pstIpfPhyADQ0 = (IPF_AD_DESC_S*)(IPF_IO_ADDRESS_PHY(IPF_DLAD0_MEM_ADDR));
-    g_stIpfDl.pstIpfPhyADQ1 = (IPF_AD_DESC_S*)(IPF_IO_ADDRESS_PHY(IPF_DLAD1_MEM_ADDR));
+    g_stIpfDl.pstIpfPhyBDQ = (IPF_BD_DESC_S*)(SHD_DDR_V2P(IPF_DLBD_MEM_ADDR));
+    g_stIpfDl.pstIpfPhyRDQ = (IPF_RD_DESC_S*)(SHD_DDR_V2P(IPF_DLRD_MEM_ADDR));
+    g_stIpfDl.pstIpfPhyADQ0 = (IPF_AD_DESC_S*)(SHD_DDR_V2P(IPF_DLAD0_MEM_ADDR));
+    g_stIpfDl.pstIpfPhyADQ1 = (IPF_AD_DESC_S*)(SHD_DDR_V2P(IPF_DLAD1_MEM_ADDR));
 	
     g_stIpfDl.u32IpfCdRptr = (BSP_U32*) IPF_DLCDRPTR_MEM_ADDR;
     *(g_stIpfDl.u32IpfCdRptr) = 0;
@@ -901,6 +901,7 @@ s32 ipf_drx_restore_filter(void)
 *****************************************************************************/
 void ipf_check_filter_restore(void)
 {
+#ifdef CONFIG_CCORE_PM
 	unsigned long ipf_flags = 0;
 	u32 ipf_init_status = 0;
 	spin_lock_irqsave(&ipf_filter_spinlock, ipf_flags);
@@ -929,6 +930,7 @@ void ipf_check_filter_restore(void)
 		spin_unlock_irqrestore(&ipf_filter_spinlock, ipf_flags);
 		return;
 	}
+#endif
 }
 
 #endif
@@ -1060,20 +1062,20 @@ BSP_VOID BSP_IPF_Help(BSP_VOID)
 BSP_S32 BSP_IPF_Shared_DDR_Info(BSP_VOID)
 {
 /*	BSP_U32* pIPFInit = (BSP_U32*)IPF_INIT_ADDR;*/
-	BSP_U32 ipf_Shared_ddr_start = SHM_MEM_IPF_ADDR;
+	BSP_U32 ipf_Shared_ddr_start = (BSP_U32)SHM_MEM_IPF_ADDR;
 	
-	BSP_U32 ipf_Shared_ddr_ul_start = IPF_ULBD_MEM_ADDR;
+	BSP_U32 ipf_Shared_ddr_ul_start = (BSP_U32)IPF_ULBD_MEM_ADDR;
 
-	BSP_U32 ipf_Shared_ddr_filter_pwc_start = IPF_PWRCTL_BASIC_FILTER_ADDR;
+	BSP_U32 ipf_Shared_ddr_filter_pwc_start = (BSP_U32)IPF_PWRCTL_BASIC_FILTER_ADDR;
 
-	BSP_U32 ipf_Shared_ddr_pwc_info_start = IPF_PWRCTL_INFO_ADDR;
+	BSP_U32 ipf_Shared_ddr_pwc_info_start = (BSP_U32)IPF_PWRCTL_INFO_ADDR;
 
-	BSP_U32 ipf_Shared_ddr_dlcdrptr = IPF_DLCDRPTR_MEM_ADDR;
+	BSP_U32 ipf_Shared_ddr_dlcdrptr =(BSP_U32) IPF_DLCDRPTR_MEM_ADDR;
 
-	BSP_U32 ipf_Shared_ddr_debug_dlcd_start = IPF_DEBUG_DLCD_ADDR;
+	BSP_U32 ipf_Shared_ddr_debug_dlcd_start = (BSP_U32)IPF_DEBUG_DLCD_ADDR;
 	BSP_U32 ipf_Shared_ddr_debug_dlcd_size = IPF_DEBUG_DLCD_SIZE;
-	BSP_U32 ipf_Shared_ddr_end = IPF_DEBUG_INFO_END_ADDR;
-	BSP_U32 ipf_Shared_ddr_len = IPF_DEBUG_INFO_END_ADDR - SHM_MEM_IPF_ADDR;
+	BSP_U32 ipf_Shared_ddr_end = (BSP_U32)IPF_DEBUG_INFO_END_ADDR;
+	BSP_U32 ipf_Shared_ddr_len =(BSP_U32) (IPF_DEBUG_INFO_END_ADDR - (unsigned long)SHM_MEM_IPF_ADDR);
 	
 	IPF_PRINT("ipf_Shared_ddr_start                    value is 0x%x \n", ipf_Shared_ddr_start);
 	IPF_PRINT("ipf_Shared_ddr_ul_start                value is 0x%x \n", ipf_Shared_ddr_ul_start);
@@ -1443,19 +1445,19 @@ BSP_S32 BSP_IPF_Info(IPF_CHANNEL_TYPE_E eChnType)
 
 BSP_VOID BSP_IPF_MEM(BSP_VOID)
 {
-	BSP_U32 ipf_Shared_ddr_start = SHM_MEM_IPF_ADDR;
+	BSP_U32 ipf_Shared_ddr_start = (BSP_U32)SHM_MEM_IPF_ADDR;
 	
-	BSP_U32 ipf_Shared_ddr_ul_start = IPF_ULBD_MEM_ADDR;
+	BSP_U32 ipf_Shared_ddr_ul_start = (BSP_U32)IPF_ULBD_MEM_ADDR;
 
-	BSP_U32 ipf_Shared_ddr_filter_pwc_start = IPF_PWRCTL_BASIC_FILTER_ADDR;
+	BSP_U32 ipf_Shared_ddr_filter_pwc_start = (BSP_U32)IPF_PWRCTL_BASIC_FILTER_ADDR;
 
-	BSP_U32 ipf_Shared_ddr_pwc_info_start = IPF_PWRCTL_INFO_ADDR;
+	BSP_U32 ipf_Shared_ddr_pwc_info_start = (BSP_U32)IPF_PWRCTL_INFO_ADDR;
 
-	BSP_U32 ipf_Shared_ddr_dlcdrptr = IPF_DLCDRPTR_MEM_ADDR;
+	BSP_U32 ipf_Shared_ddr_dlcdrptr = (BSP_U32)IPF_DLCDRPTR_MEM_ADDR;
 
-	BSP_U32 ipf_Shared_ddr_debug_dlcd_start = IPF_DEBUG_DLCD_ADDR;
+	BSP_U32 ipf_Shared_ddr_debug_dlcd_start = (BSP_U32)IPF_DEBUG_DLCD_ADDR;
 	BSP_U32 ipf_Shared_ddr_debug_dlcd_size = IPF_DEBUG_DLCD_SIZE;
-	BSP_U32 ipf_Shared_ddr_end = IPF_DEBUG_INFO_END_ADDR;
+	BSP_U32 ipf_Shared_ddr_end = (BSP_U32)IPF_DEBUG_INFO_END_ADDR;
 
 	
 	IPF_PRINT("ipf_Shared_ddr_start                    value is 0x%x \n", ipf_Shared_ddr_start);
@@ -3533,10 +3535,10 @@ BSP_VOID BSP_IPF_DlRegReInit(BSP_VOID)
     g_stIpfDl.pstIpfADQ1 = (IPF_AD_DESC_S*)IPF_DLAD1_MEM_ADDR;
     g_stIpfDl.pstIpfCDQ = (IPF_CD_DESC_S*)IPF_DLCD_MEM_ADDR;
 
-    g_stIpfDl.pstIpfPhyBDQ = (IPF_BD_DESC_S*)(IPF_DLBD_MEM_ADDR - DDR_SHARED_MEM_VIRT_ADDR + DDR_SHARED_MEM_ADDR);
-    g_stIpfDl.pstIpfPhyRDQ = (IPF_RD_DESC_S*)(IPF_DLRD_MEM_ADDR - DDR_SHARED_MEM_VIRT_ADDR + DDR_SHARED_MEM_ADDR);
-    g_stIpfDl.pstIpfPhyADQ0 = (IPF_AD_DESC_S*)(IPF_DLAD0_MEM_ADDR - DDR_SHARED_MEM_VIRT_ADDR + DDR_SHARED_MEM_ADDR);
-    g_stIpfDl.pstIpfPhyADQ1 = (IPF_AD_DESC_S*)(IPF_DLAD1_MEM_ADDR - DDR_SHARED_MEM_VIRT_ADDR + DDR_SHARED_MEM_ADDR);
+    g_stIpfDl.pstIpfPhyBDQ = (IPF_BD_DESC_S*)(SHD_DDR_V2P(IPF_DLBD_MEM_ADDR));
+    g_stIpfDl.pstIpfPhyRDQ = (IPF_RD_DESC_S*)(SHD_DDR_V2P(IPF_DLRD_MEM_ADDR));
+    g_stIpfDl.pstIpfPhyADQ0 = (IPF_AD_DESC_S*)(SHD_DDR_V2P(IPF_DLAD0_MEM_ADDR));
+    g_stIpfDl.pstIpfPhyADQ1 = (IPF_AD_DESC_S*)(SHD_DDR_V2P(IPF_DLAD1_MEM_ADDR));
 	
     g_stIpfDl.u32IpfCdRptr = (BSP_U32*) IPF_DLCDRPTR_MEM_ADDR;
     *(g_stIpfDl.u32IpfCdRptr) = 0;
@@ -4288,7 +4290,7 @@ BSP_VOID BSP_IPF_GetDlRd(BSP_U32* pu32Num, IPF_RD_DESC_S *pstRd)
         ipf_record_end_time_stamp(u32TimeStampEn, g_stIpfDl.pstIpfRDQ[u32RdqRptr].u32UsrField3);
 
        /* ¸üÐÂCD¶ÁÖ¸Õë */
-        u32CdqRptr = (IPF_IO_ADDRESS(pstRd[i].u32InPtr) - (BSP_U32)g_stIpfDl.pstIpfCDQ)/sizeof(IPF_CD_DESC_S);
+        u32CdqRptr = (SHD_DDR_P2V(pstRd[i].u32InPtr) - (BSP_U32)g_stIpfDl.pstIpfCDQ)/sizeof(IPF_CD_DESC_S);
 
         while(g_stIpfDl.pstIpfCDQ[u32CdqRptr].u16Attribute != 1)
         {

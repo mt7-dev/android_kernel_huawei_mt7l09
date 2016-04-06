@@ -314,7 +314,7 @@ config MMP_PDMA
 
 config HISI_DMA
 	tristate "Hisilicon K3 DMA support"
-	depends on (ARCH_HISI || ARCH_HI3630FPGA || ARCH_HI3630)
+	depends on (ARCH_HISI || ARCH_3635_FPGA || ARCH_HI3630 || ARCH_HI6XXX || ARCH_KIRIN)
 	select DMA_ENGINE
 	select DMA_VIRTUAL_CHANNELS
 	help

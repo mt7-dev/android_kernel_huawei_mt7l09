@@ -72,19 +72,6 @@ typedef int (*RSAPtr)(KEY_STRUCT *pKey, unsigned int* pIndata, unsigned int* pOu
 /* 共享数据结构体,放在AXI顶部,可以往下加元素(即添加在前面) */
 typedef struct tagOcrShareData
 {
-    int errNo;
-
-    /* 共享函数指针 */
-    SHA256HashPtr   SHA256Hash;
-    RSAPtr          RSA;
-    idioIdentifyPtr idioIdentify;
-
-    /* 共享数据段 */
-    int    bSecEn;
-    int    bRootCaInited;
-    KEY_STRUCT *pRootKey;
-    unsigned int  ulEnumFlag;
-    unsigned int  ulOcrInitedFlag;
 }tOcrShareData;
 #endif /* __ASSEMBLY__ */
 

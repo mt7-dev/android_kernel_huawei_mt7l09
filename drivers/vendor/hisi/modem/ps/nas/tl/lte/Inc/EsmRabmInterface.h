@@ -143,7 +143,8 @@ typedef struct
     ESM_ERABM_BEARER_TYPE_ENUM_UINT32   enBearerCntxtType;  /* 上下文对应承载的类型 */
     VOS_UINT32                          ulLinkedEpsbId;     /*与此承载关联的EPS承载ID*/
     VOS_UINT8                           ucQCI;              /*承载QCI */
-    VOS_UINT8                           ucRev[3];
+    VOS_UINT8                           ucSessionId;        /* 消息OPID匹配*/
+    VOS_UINT8                           ucRev[2];
 } ESM_ERABM_ACT_IND_STRU;
 
 /*****************************************************************************
@@ -175,6 +176,8 @@ typedef struct
     VOS_UINT32                          ulMsgId;            /*_H2ASN_Skip*/            /* 消息头 */
     VOS_UINT32                          ulEpsIdNum;         /* 当前对应rb已激活的EPSID个数 */
     VOS_UINT32                          aulEpsId[ESM_ERABM_MAX_EPSB_NUM];     /*存贮已激活rb的EPS BID  */
+    VOS_UINT8                           ucSessionId;
+    VOS_UINT8                           aucRsv[3];
 } ESM_ERABM_BEARER_STATUS_REQ_STRU;
 
 typedef struct

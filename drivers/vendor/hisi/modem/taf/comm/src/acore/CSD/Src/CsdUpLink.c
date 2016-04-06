@@ -74,9 +74,9 @@ VOS_UINT32 CSD_UL_InsertQueue(IMM_ZC_STRU *pstULData)
 
     IMM_ZC_HEAD_STRU                   *pstULQueue;
     VOS_UINT32                          ulInQueueRst;
-    VOS_UINT32                         *pULDataSem;
+    VOS_SEM                             hULDataSem = VOS_NULL_PTR;
 
-    pULDataSem       = CSD_GetUpLinkDataSem();
+    hULDataSem       = CSD_GetUpLinkDataSem();
 
     pstULQueue       = CSD_UL_GetQueue();
 
@@ -107,7 +107,7 @@ VOS_UINT32 CSD_UL_InsertQueue(IMM_ZC_STRU *pstULData)
     }
 
     /*数据入缓存队列成功释放信号量*/
-    VOS_SmV(*pULDataSem);
+    VOS_SmV(hULDataSem);
 
     CSD_DBG_UL_SAVE_BUFF_PKT_NUM(1);
 
@@ -193,7 +193,7 @@ VOS_UINT32 CSD_UL_BuildDiccInsertData(
     }
 
     /*虚地址转换为实地址*/
-    pstULData->pucData                  = (VOS_UINT8 *)TTF_VIRT_TO_PHY((VOS_UINT32)pstULImmZcData->data);
+    pstULData->pucData                  = (VOS_UINT8 *)TTF_VIRT_TO_PHY((VOS_VOID *)(pstULImmZcData->data));
 
     pstULData->pGarbage                 = (VOS_VOID *)pstULImmData;
     pstULData->usLen                    = (VOS_UINT16)pstULImmZcData->len;
@@ -358,17 +358,17 @@ VOS_UINT32 CSD_UL_CalcIsrSlice(VOS_VOID)
 }
 VOS_VOID CSD_UL_ProcDataTask(VOS_VOID)
 {
-    VOS_UINT32                         *pulUpLinkSem;
+    VOS_SEM                             hUpLinkSem = VOS_NULL_PTR;
     VOS_UINT32                          ulSliceDurationCnt;
     CSD_UL_SEND_DATA_STATE_ENUM_UINT16  enSendDataRslt;
 
-    pulUpLinkSem               = CSD_GetUpLinkDataSem();
+    hUpLinkSem               = CSD_GetUpLinkDataSem();
 
     for ( ; ; )
     {
 
         /* 获取信号量, 获取到的时候, 说明可以发送数据 */
-        if (VOS_OK != VOS_SmP(*pulUpLinkSem, 0))
+        if (VOS_OK != VOS_SmP(hUpLinkSem, 0))
         {
             CSD_NORMAL_LOG(ACPU_PID_CSD,
                           "CSD_UL_ProcDataTask:: VOS_SmP pulUpLinkSem then continue !");

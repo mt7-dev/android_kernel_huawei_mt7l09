@@ -48,7 +48,7 @@ VOS_INT32 At_sprintf(VOS_INT32 MaxLength,VOS_CHAR *pHeadAddr,VOS_CHAR *pCurrAddr
         return 0;
     }
 
-    va_start(args, fmt); 
+    va_start(args, fmt);
     for (pData = (VOS_CHAR *)fmt; '\0' != *pData ; ++pData)
     {
         if('%' == *pData)
@@ -1312,7 +1312,6 @@ VOS_VOID At_STKCallBackFunc(SI_STK_EVENT_INFO_STRU *pstEvent)
     }
 
     ucCommandQua = pstEvent->STKCmdStru.CmdDetail.ucCommandQua;
-
 
     if ((VOS_FALSE == SI_STK_CheckSupportAP())
         &&(SI_STK_GET_CMD_RSP_EVENT == pstEvent->STKCBEvent))

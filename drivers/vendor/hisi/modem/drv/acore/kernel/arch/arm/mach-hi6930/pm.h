@@ -55,7 +55,7 @@ typedef struct
 
 #endif
 
-#define PM_MEM_V2P(addr)            SHD_DDR_V2P(addr)
+#define PM_MEM_V2P(addr)            SHD_DDR_ASM_V2P(addr)
 #define PM_STAMP_ADDR       (TIMER_STAMP_ADDR)
 #define PM_STAMP_ADDR_PHY   (TIMER_STAMP_ADDR_PHY)
 

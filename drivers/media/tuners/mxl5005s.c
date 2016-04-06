@@ -322,17 +322,7 @@ static int mxl5005s_AssignTunerMode(struct dvb_frontend *fe, u32 mod_type,
 static int mxl5005s_reconfigure(struct dvb_frontend *fe, u32 mod_type,
 	u32 bandwidth);
 
-/* ----------------------------------------------------------------
- * Begin: Custom code salvaged from the Realtek driver.
- * Copyright (C) 2008 Realtek
- * Copyright (C) 2008 Jan Hoogenraad
- * This code is placed under the terms of the GNU General Public License
- *
- * Released by Realtek under GPLv2.
- * Thanks to Realtek for a lot of support we received !
- *
- *  Revision: 080314 - original version
- */
+
 
 static int mxl5005s_SetRfFreqHz(struct dvb_frontend *fe, unsigned long RfFreqHz)
 {

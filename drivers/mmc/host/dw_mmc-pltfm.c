@@ -23,6 +23,9 @@
 #include <linux/of.h>
 
 #include "dw_mmc.h"
+#ifdef CONFIG_ARCH_HI6XXX
+#include <linux/pwrctrl_power_state_manager.h>
+#endif
 
 int dw_mci_pltfm_register(struct platform_device *pdev,
 				const struct dw_mci_drv_data *drv_data)
@@ -43,6 +46,9 @@ int dw_mci_pltfm_register(struct platform_device *pdev,
 	if (host->irq < 0)
 		return host->irq;
 
+#ifdef CONFIG_ARCH_HI6XXX
+      host->emmc_pwr_status_id = PWRCTRL_POWER_STAT_INVALID_ID;
+#endif
 	host->drv_data = drv_data;
 	host->dev = &pdev->dev;
 	host->irq_flags = 0;
@@ -51,6 +57,7 @@ int dw_mci_pltfm_register(struct platform_device *pdev,
 	if (IS_ERR(host->regs))
 		return PTR_ERR(host->regs);
 
+    /*私有IP数据初始化*/
 	if (drv_data && drv_data->init) {
 		ret = drv_data->init(host);
 		if (ret)
@@ -58,6 +65,7 @@ int dw_mci_pltfm_register(struct platform_device *pdev,
 	}
 
 	platform_set_drvdata(pdev, host);
+	
 	ret = dw_mci_probe(host);
 	return ret;
 }

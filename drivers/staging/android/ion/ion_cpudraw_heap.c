@@ -29,10 +29,9 @@
 
 #include "hisi/hisi_cpudraw_alloc.h"
 
-#include <linux/hisi-iommu.h>
+#include <linux/hisi/hisi-iommu.h>
 
-#include <asm/mach/map.h>
-#include <asm/cacheflush.h>
+
 
 struct ion_cpudraw_heap {
 	struct ion_heap heap;
@@ -261,9 +260,15 @@ static void ion_cpudraw_heap_unmap_dma(struct ion_heap *heap,
 
 static void ion_cpudraw_heap_buffer_zero(struct ion_buffer *buffer)
 {
+	struct sg_table *table = NULL;
 	ion_heap_cpudraw_buffer_zero(buffer);
 
-	hi3630_fc_allcpu_allcache();
+	table = buffer->cpudraw_sg_table ? buffer->cpudraw_sg_table : buffer->priv_virt;
+
+	if (ion_buffer_cached(buffer))
+		dma_sync_sg_for_device(NULL, table->sgl, table->nents,
+							DMA_BIDIRECTIONAL);
+
 
 	return;
 }
@@ -282,6 +287,7 @@ static struct ion_heap_ops cpudraw_heap_ops = {
 	.buffer_zero = ion_cpudraw_heap_buffer_zero,
 };
 
+#if defined(CONFIG_ARCH_HI3630)
 static __kernel_ulong_t ion_cpudraw_heap_free_memory(struct ion_heap *heap)
 {
 	struct ion_cpudraw_heap *cpudraw_heap =
@@ -292,6 +298,7 @@ static __kernel_ulong_t ion_cpudraw_heap_free_memory(struct ion_heap *heap)
 
 	return free_memory;
 }
+#endif
 
 struct ion_heap *ion_cpudraw_heap_create(struct ion_platform_heap *heap_data)
 {
@@ -336,7 +343,9 @@ struct ion_heap *ion_cpudraw_heap_create(struct ion_platform_heap *heap_data)
 	cpudraw_heap->heap.ops = &cpudraw_heap_ops;
 	cpudraw_heap->heap.type = ION_HEAP_TYPE_CPUDRAW;
 
+#if defined(CONFIG_ARCH_HI3630)
 	cpudraw_heap->heap.free_memory = ion_cpudraw_heap_free_memory;
+#endif
 
 	return &cpudraw_heap->heap;
 }

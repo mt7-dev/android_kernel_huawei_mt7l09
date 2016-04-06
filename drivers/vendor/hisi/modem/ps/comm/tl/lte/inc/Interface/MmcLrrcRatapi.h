@@ -183,10 +183,10 @@ typedef enum
   MMC_IRAT_PS_REG_FAIL,      /* PS registration failed on the system */
   MMC_IRAT_PS_SESSION_FAIL,  /* PS session could not be opened on the system */
   MMC_IRAT_FAIL,              /* Failure due to other unknown reasons */
-  MMC_IRAT_CMD_INVALID  /*invalid command*/
+  MMC_IRAT_CMD_INVALID,  /*invalid command*/
+  MMC_IRAT_HRPD_SUCCESS    /* System Change to HRPD Success */
 }MMCRATSTATUS_ENUM;/* MmcRatStatusT */
 typedef VOS_UINT8 MMCRATSTATUS_ENUM_UINT8;
-
 
 
 enum MMCRATAPIID_ENUM
@@ -259,6 +259,7 @@ enum MMCRATAPIID_ENUM
     MMC_RAT_API_PACKET_STATISTICS_REQ,
     MMC_RAT_API_PDN_TABLE_SETUP_RSP,
     MMC_RAT_API_MODE_RSP,
+    MMC_RAT_API_IRAT_SYSTEM_CHG_ABORT_CMD,
     MMC_RAT_API_LOOKBACK_TEST_REQ = (MMC_RAT_API_BASE + 0xcc),
     MMC_RAT_API_CMD_MAX
 };
@@ -537,6 +538,20 @@ typedef struct
    MMCRATID_ENUM_UINT8                  enRatId;
    MMCSYSTEMCHANGEREQ_RPC_STRU          stSystemChangeReq;
 } MMCRATAPI_IRAT_SYSTEM_CHANGE_REQ_STRU;
+
+/* MmcSystemChangeReq_Rpc_T */
+typedef struct
+{
+   MMCSYSTEMTYPE_ENUM_UINT8             enTargetSystemType;        /* Type of the system to which CarrierInfoParam belongs */
+   VOS_UINT32                           ulReason; /* Reason of abort for currently ongoing system change */
+} MMCSYSTEMCHANGEABORTREQ_RPC_STRU;
+
+/* MmcRatAPI_IRAT_System_Change_Abort_CmdT */
+typedef struct
+{
+   MMCRATID_ENUM_UINT8                  enRatId;
+   MMCSYSTEMCHANGEABORTREQ_RPC_STRU     stSystemChangeStopReq;
+} MMCRATAPI_IRAT_SYSTEM_CHANGE_ABORT_REQ_STRU;
 
 /* MmcSIB8MeasCellList_Rpc_T */
 typedef struct

@@ -56,6 +56,9 @@
 #include "dwc_os.h"
 #include "dwc_list.h"
 
+#ifdef CONFIG_HI3635_USB
+#include "../dwc_otg_hi3635.h"
+#endif
 
 /* MISC */
 
@@ -139,7 +142,7 @@ int DWC_ATOUI(const char *str, uint32_t *value)
 
 #ifdef DWC_UTFLIB
 /* From usbstring.c */
-
+/*lint -e666 */
 int DWC_UTF8_TO_UTF16LE(uint8_t const *s, uint16_t *cp, unsigned len)
 {
 	int	count = 0;
@@ -202,18 +205,18 @@ fail:
 	return -1;
 }
 #endif	/* DWC_UTFLIB */
-
+/*lint +e666 */
 
 /* dwc_debug.h */
 
 dwc_bool_t DWC_IN_IRQ(void)
 {
-	return in_irq();
+	return (dwc_bool_t)in_irq();
 }
 
 dwc_bool_t DWC_IN_BH(void)
 {
-	return in_softirq();
+	return (dwc_bool_t)in_softirq();
 }
 
 void DWC_VPRINTF(char *format, va_list args)
@@ -340,7 +343,7 @@ void *__DWC_DMA_ALLOC(void *dma_ctx, uint32_t size, dwc_dma_t *dma_addr)
 #ifdef xxCOSIM /* Only works for 32-bit cosim */
 	void *buf = dma_alloc_coherent(dma_ctx, (size_t)size, dma_addr, GFP_KERNEL);
 #else
-	void *buf = dma_alloc_coherent(dma_ctx, (size_t)size, dma_addr, GFP_KERNEL | GFP_DMA32);
+	void *buf = dma_alloc_coherent(dma_ctx, (size_t)size, dma_addr, GFP_KERNEL | GFP_DMA);
 #endif
 	if (!buf) {
 		return NULL;
@@ -352,7 +355,7 @@ void *__DWC_DMA_ALLOC(void *dma_ctx, uint32_t size, dwc_dma_t *dma_addr)
 
 void *__DWC_DMA_ALLOC_ATOMIC(void *dma_ctx, uint32_t size, dwc_dma_t *dma_addr)
 {
-	void *buf = dma_alloc_coherent(NULL, (size_t)size, dma_addr, GFP_ATOMIC);
+	void *buf = dma_alloc_coherent(dma_ctx, (size_t)size, dma_addr, GFP_ATOMIC);
 	if (!buf) {
 		return NULL;
 	}
@@ -399,6 +402,7 @@ int DWC_AES_CBC(uint8_t *message, uint32_t messagelen, uint8_t *key, uint32_t ke
 	tfm = crypto_alloc_blkcipher("cbc(aes)", 0, CRYPTO_ALG_ASYNC);
 	if (tfm == NULL) {
 		printk("failed to load transform for aes CBC\n");
+		WARN_ON(1);
 		return -1;
 	}
 
@@ -414,6 +418,7 @@ int DWC_AES_CBC(uint8_t *message, uint32_t messagelen, uint8_t *key, uint32_t ke
 	if (crypto_blkcipher_encrypt(&desc, &sgd, &sgs, messagelen)) {
 		crypto_free_blkcipher(tfm);
 		DWC_ERROR("AES CBC encryption failed");
+		WARN_ON(1);
 		return -1;
 	}
 
@@ -558,6 +563,11 @@ uint16_t DWC_BE16_TO_CPU(uint16_t *p)
 
 uint32_t DWC_READ_REG32(uint32_t volatile *reg)
 {
+#ifdef CONFIG_HI3635_USB
+	if (unlikely(!dwc_otg_hi3635_is_power_on())) {
+		return 0;
+	}
+#endif
 	return readl(reg);
 }
 
@@ -569,6 +579,11 @@ uint64_t DWC_READ_REG64(uint64_t volatile *reg)
 
 void DWC_WRITE_REG32(uint32_t volatile *reg, uint32_t value)
 {
+#ifdef CONFIG_HI3635_USB
+	if (unlikely(!dwc_otg_hi3635_is_power_on())) {
+		return;
+	}
+#endif
 	writel(value, reg);
 }
 
@@ -580,6 +595,11 @@ void DWC_WRITE_REG64(uint64_t volatile *reg, uint64_t value)
 
 void DWC_MODIFY_REG32(uint32_t volatile *reg, uint32_t clear_mask, uint32_t set_mask)
 {
+#ifdef CONFIG_HI3635_USB
+	if (unlikely(!dwc_otg_hi3635_is_power_on())) {
+		return;
+	}
+#endif
 	writel((readl(reg) & ~clear_mask) | set_mask, reg);
 }
 
@@ -811,11 +831,11 @@ void DWC_TIMER_SCHEDULE(dwc_timer_t *timer, uint32_t time)
 
 	if (!timer->scheduled) {
 		timer->scheduled = 1;
-		DWC_DEBUG("Scheduling timer %s to expire in +%d msec", timer->name, time);
+		//DWC_DEBUG("Scheduling timer %s to expire in +%d msec", timer->name, time);
 		timer->t->expires = jiffies + msecs_to_jiffies(time);
 		add_timer(timer->t);
 	} else {
-		DWC_DEBUG("Modifying timer %s to expire in +%d msec", timer->name, time);
+		//DWC_DEBUG("Modifying timer %s to expire in +%d msec", timer->name, time);
 		mod_timer(timer->t, jiffies + msecs_to_jiffies(time));
 	}
 
@@ -853,11 +873,11 @@ void DWC_WAITQ_FREE(dwc_waitq_t *wq)
 {
 	DWC_FREE(wq);
 }
-
+/*lint -e666 */
 int32_t DWC_WAITQ_WAIT(dwc_waitq_t *wq, dwc_waitq_condition_t cond, void *data)
 {
 	int result = wait_event_interruptible(wq->queue,
-					      cond(data) || wq->abort);
+					      (cond(data)  || wq->abort));
 	if (result == -ERESTARTSYS) {
 		wq->abort = 0;
 		return -DWC_E_RESTART;
@@ -882,7 +902,7 @@ int32_t DWC_WAITQ_WAIT_TIMEOUT(dwc_waitq_t *wq, dwc_waitq_condition_t cond,
 {
 	int32_t tmsecs;
 	int result = wait_event_interruptible_timeout(wq->queue,
-						      cond(data) || wq->abort,
+						      (cond(data)  || wq->abort),
 						      msecs_to_jiffies(msecs));
 	if (result == -ERESTARTSYS) {
 		wq->abort = 0;
@@ -911,7 +931,7 @@ int32_t DWC_WAITQ_WAIT_TIMEOUT(dwc_waitq_t *wq, dwc_waitq_condition_t cond,
 
 	return -DWC_E_UNKNOWN;
 }
-
+/*lint +e666 */
 void DWC_WAITQ_TRIGGER(dwc_waitq_t *wq)
 {
 	wq->abort = 0;
@@ -1379,9 +1399,7 @@ static int dwc_common_port_init_module(void)
 #ifdef DWC_DEBUG_MEMORY
 	result = dwc_memory_debug_start(NULL);
 	if (result) {
-		printk(KERN_ERR
-		       "dwc_memory_debug_start() failed with error %d\n",
-		       result);
+		printk(KERN_ERR "dwc_memory_debug_start() failed with error %d\n", result);
 		return result;
 	}
 #endif
@@ -1389,9 +1407,7 @@ static int dwc_common_port_init_module(void)
 #ifdef DWC_NOTIFYLIB
 	result = dwc_alloc_notification_manager(NULL, NULL);
 	if (result) {
-		printk(KERN_ERR
-		       "dwc_alloc_notification_manager() failed with error %d\n",
-		       result);
+		printk(KERN_ERR "dwc_alloc_notification_manager() failed with error %d\n",result);
 		return result;
 	}
 #endif

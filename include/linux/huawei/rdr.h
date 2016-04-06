@@ -13,7 +13,6 @@
 #include <linux/types.h>
 #include <linux/huawei/rdr_area.h>
 #include <linux/huawei/hisi_ringbuffer.h>
-#include "product_config.h"
 
 /*
  ***************************************************************************
@@ -111,6 +110,7 @@ enum rdr_modid_e {
 	HISI_RDR_MOD_CP_REBOOT,
 	HISI_RDR_MOD_CP_DO_RESET,
 	HISI_RDR_MOD_CP_RILD,
+	HISI_RDR_MOD_CP_3RD,
 
 	/*BBE16 exec lists*/
 	HISI_RDR_MOD_BBE_NORMAL = (HISI_RDR_MOD_CORE_BBE),
@@ -143,6 +143,7 @@ enum rdr_modid_e {
 	HISI_RDR_MOD_HIFI_WD,
 	HISI_RDR_MOD_HIFI_PMU,
 	HISI_RDR_MOD_HIFI_REBOOT,
+	HISI_RDR_MOD_HIFI_6402_ERR,
 
 	/*TEEOS exec lists*/
 	HISI_RDR_MOD_TEEOS_NORMAL = (HISI_RDR_MOD_CORE_TEEOS),
@@ -164,6 +165,10 @@ enum rdr_modid_e {
 #define RDR_STR_CORE_TEEOS   "TEEOS"
 #define RDR_STR_CORE_UNKNOWN "UNKNOWN_COREMOD"
 
+#define RDR_STR_TASKNAME_RILD "RILD"
+#define RDR_STR_TASKNAME_3RD_CP "3RD_CP"
+
+#define RDR_DUMP_CP_INFO_MAX_LEN 1024
 void hisi_system_error(enum rdr_modid_e mod_id,
 			u32 arg1, u32 arg2, char *data, u32 length);
 
@@ -175,6 +180,8 @@ void hisi_system_error(enum rdr_modid_e mod_id,
 #endif
 #define RDR_VERSION ((RDR_SMP_FLAG << 16) | (0x112 << 0)) /* v1.12 2014.5.14 */
 #define RDR_PRODUCT PRODUCT_NAME /* "hi3630_udp" */
+//#define RDR_PRODUCT "hi3635_fpga"
+//#define RDR_PRODUCT_VERSION "K300V300C00B000"
 #define RDR_PRODUCT_VERSION PRODUCT_VERSION_STR /* "K300V300C00B000" */
 #define RDR_BUILD_DATE __DATE__
 #define RDR_BUILD_TIME __TIME__
@@ -202,7 +209,7 @@ struct dump_base_info_s {
 	u32 cpsr;
 	u32 regset[ARM_REGS_NUM];
 
-	u32 current_task;
+	u64 current_task;
 	u32 current_int;
 
 	u32 cpu_usage;
@@ -265,7 +272,7 @@ enum RDR_AREA_OFFSET {
 	RDR_TEEOS_OFFSET	= 0x600000,
 	RDR_HIFI_OFFSET		= 0x680000,
 	RDR_LPM3_OFFSET		= 0x700000,
-	RDR_IOM3_OFFSET		= 0x780000
+	RDR_IOM3_OFFSET		= 0x7f8000
 };
 
 #define RDR_ACORE_MAGIC 0xac0eac0e
@@ -379,6 +386,7 @@ struct rdr_a1_reserve_s {
 		u8 padding[64 * 1024];
 		struct {
 			u8 rdr_bin_address[16 * sizeof(u32)];/*save 16 address*/
+            u8 rdr_cpinfo[RDR_DUMP_CP_INFO_MAX_LEN];/*cp info*/
 		} content;
 	} cp_reserve;
 };
@@ -444,6 +452,7 @@ struct rdr_nv_s {
 		} bits;
 	} rdr_nv_cfg;
 	atomic_t ready;
+    atomic_t update;
 };
 
 #define RDR_NV_NUM 321

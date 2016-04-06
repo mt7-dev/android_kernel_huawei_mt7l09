@@ -752,7 +752,7 @@ LOCAL VOS_VOID  NAS_CC_ProcMnccHoldReq(
 )
 {
     NAS_CC_HOLD_AUX_STATE_ENUM_U8       enHoldState = NAS_CC_GetHoldAuxState(entityId);
-    NAS_CC_CAUSE_VALUE_ENUM_U8          enCause;
+    NAS_CC_CAUSE_VALUE_ENUM_U32         enCause;
     VOS_UINT32                          ulResult;
 
     if ((NAS_CC_CALL_STATE_U10 == enCurrState)
@@ -810,7 +810,7 @@ LOCAL VOS_VOID  NAS_CC_ProcMnccRetrieveReq(
     NAS_CC_HOLD_AUX_STATE_ENUM_U8       enHoldState = NAS_CC_GetHoldAuxState(entityId);
     NAS_AIR_MSG_HDR_STRU                stHeader;
     VOS_UINT32                          ulResult;
-    NAS_CC_CAUSE_VALUE_ENUM_U8          enCause;
+    NAS_CC_CAUSE_VALUE_ENUM_U32         enCause;
 
     if ((NAS_CC_CALL_STATE_U10 == enCurrState)
      || (NAS_CC_CALL_STATE_U26 == enCurrState))
@@ -863,7 +863,7 @@ LOCAL VOS_VOID  NAS_CC_ProcMnccStartDtmfReq(
     NAS_CC_CALL_STATE_ENUM_U8           enCurrState
 )
 {
-    NAS_CC_CAUSE_VALUE_ENUM_U8          cause;
+    NAS_CC_CAUSE_VALUE_ENUM_U32         cause;
     NAS_CC_DTMF_STATE_ENUM              enDtmfState = NAS_CC_GetDtmfState(entityId);
 
     /* 是否有DTMF过程正在进行 */
@@ -920,7 +920,7 @@ LOCAL VOS_VOID  NAS_CC_ProcMnccStopDtmfReq(
     NAS_CC_CALL_STATE_ENUM_U8           enCurrState
 )
 {
-    NAS_CC_CAUSE_VALUE_ENUM_U8          cause;
+    NAS_CC_CAUSE_VALUE_ENUM_U32         cause;
     NAS_CC_DTMF_STATE_ENUM              enDtmfState = NAS_CC_GetDtmfState(entityId);
 
     if (NAS_CC_DTMF_S_START_REJ == enDtmfState)
@@ -1197,20 +1197,22 @@ LOCAL VOS_VOID  NAS_CC_ProcMnccSrvccCallInfoNtf(
     VOS_UINT8                           aucTi[MNCC_MAX_ENTITY_NUM];
     VOS_UINT8                           ucTiNum;
 
-    /* 构造CC实体信息 */   
-    NAS_CC_CreateCcEntityWithCallEntityInfo((VOS_VOID*)pstSrvccCallInfoNtf);   
+    PS_MEM_SET(aucTi, 0x00, sizeof(aucTi));
+
+    /* 如果SRVCC带过来的CALL NUM为0也需要通知MM模块 */
+    /* 构造CC实体信息 */
+    NAS_CC_CreateCcEntityWithCallEntityInfo((VOS_VOID*)pstSrvccCallInfoNtf);
 
     /* 构造通知MM模块的TI数组信息 */
     NAS_CC_GetEntityTiInfo(&ucTiNum, aucTi);
-   
+
     /* 通知MM模块MMCC_SRVCC_CALL_INFO_NOTIFY消息 */
     NAS_CC_SendMmccSrvccCallInfoNtf(ucTiNum, aucTi);
-    
+
+
     return;
 }
 #endif
-
-
 
 
 VOS_VOID  NAS_CC_ProcMnccPrimitive(VOS_VOID *pMsg)

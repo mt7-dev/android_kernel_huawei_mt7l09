@@ -62,7 +62,7 @@ enum IMM_RSLT_CODE_ENUM
     IMM_SUCC                             = 0,
     IMM_FAIL                             = 1,
 };
-typedef unsigned long   IMM_RSLT_CODE_ENUM_UINT32;
+typedef unsigned int   IMM_RSLT_CODE_ENUM_UINT32;
 
 
 /*****************************************************************************
@@ -90,19 +90,19 @@ enum MEM_BLK_STATE_ENUM
     MEM_BLK_STATE_ALLOC,      /*∏√ƒ⁄¥Ê“—…Í«Î*/
     MEM_BLK_STATE_BUTT
 };
-typedef unsigned long MEM_BLK_STATE_ENUM_UINT32;
+typedef unsigned int MEM_BLK_STATE_ENUM_UINT32;
 
 
 
 typedef struct
 {
     MEM_BLK_STATE_ENUM_UINT32           enMemStateFlag;
-    unsigned long                       ulAllocTick;        /* CPU tick when alloc or free */
+    unsigned int                        ulAllocTick;        /* CPU tick when alloc or free */
     unsigned short                      usAllocFileID;      /* File ID when alloc or free */
     unsigned short                      usAllocLineNum;     /* File Line when alloc or free */
     unsigned short                      usTraceFileID;      /* File ID when traced */
     unsigned short                      usTraceLineNum;     /* File Line when traced */
-    unsigned long                       ulTraceTick;        /* CPU tick when traced */
+    unsigned int                        ulTraceTick;        /* CPU tick when traced */
 } IMM_BLK_MEM_DEBUG_STRU;
 
 
@@ -135,7 +135,7 @@ typedef struct sk_buff_head IMM_ZC_HEAD_STRU;
 
 typedef struct sk_buff IMM_ZC_STRU;
 
-typedef void (*IMM_MEM_EVENT_CALLBACK)(unsigned long ulMaxClusterFreeCnt);
+typedef void (*IMM_MEM_EVENT_CALLBACK)(unsigned int ulMaxClusterFreeCnt);
 
 
 /*****************************************************************************
@@ -162,7 +162,7 @@ extern void IMM_MemFree_Debug(unsigned short usFileID, unsigned short usLineNum,
 
 #define IMM_MemFree(pstMem)             IMM_MemFree_Debug(THIS_FILE_ID, __LINE__, &(pstMem))
 
-extern  unsigned long IMM_MemBlkInit(void);
+extern  unsigned int IMM_MemBlkInit(void);
 
 #endif
 #pragma pack(0)

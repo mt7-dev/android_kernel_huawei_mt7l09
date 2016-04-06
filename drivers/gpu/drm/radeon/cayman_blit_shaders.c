@@ -24,7 +24,6 @@
  *     Alex Deucher <alexander.deucher@amd.com>
  */
 
-#include <linux/bug.h>
 #include <linux/types.h>
 #include <linux/kernel.h>
 

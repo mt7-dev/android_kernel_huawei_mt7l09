@@ -15,19 +15,19 @@
 #include <linux/of_device.h>
 #include <linux/of_address.h>
 #include <linux/regulator/of_regulator.h>
-#include <linux/mfd/hisi_hi3630_regulator.h>
 #include <linux/regulator/consumer.h>
+#include <asm/irq.h>
+#include <linux/interrupt.h>
 
 /* boost control register */
-#define BST_CTRL9			0x0b8
-
+/* #define BST_CTRL9			0x0b8 */
 /* control boost enable register */
-#define BST_CTRL1			0x0b0
+/* #define BST_CTRL1			0x0b0 */
 
 /* the value use to set boost output voltage to 4.5V, set OCP overload current to 4.4A*/
-#define BST_VOL				0x2a
+/* #define BST_VOL				0x2a */
 
-#define BST_ENABLE			0x01
+/* #define BST_ENABLE			0x01 */
 
 /* PMU LED Registers define */
 #define LED_CTRL1			0x0d9
@@ -44,7 +44,7 @@
 #define FLASH_LED_MAX			11
 #define TORCH_LED_MAX			8
 
-#define LED_VOLTAGE_4P5V		4500000
+/* #define LED_VOLTAGE_4P5V		4500000 */
 
 /* Internal data struct define */
 typedef enum {
@@ -58,6 +58,18 @@ typedef enum {
 	LED_CTRL_MAX,
 }hw_pmu_led_ctl_type;
 
+typedef enum {
+	FLASH_POSITION_REAR = 0,
+	FLASH_POSITION_FRONT,
+}hw_pmu_led_position_type;
+
+typedef enum {
+	FLASH_LED_SHORT = 0,
+	FLASH_LED_OPEN,
+	FLASH_LED_INT_MAX,
+}hw_pmu_led_interrupt;
+
+
 struct hw_pmu_led_private_data_t {
 	unsigned int flash_led[FLASH_LED_MAX];
 	unsigned int torch_led[TORCH_LED_MAX];
@@ -65,7 +77,9 @@ struct hw_pmu_led_private_data_t {
 	unsigned int torch_led_num;
 	unsigned int led_ctrl_flash[LED_CTRL_MAX];
 	unsigned int led_ctrl_torch[LED_CTRL_MAX];
+	unsigned int flash_position;
 	void __iomem *pmu_base;
+	int irq[FLASH_LED_INT_MAX];
 	struct regulator_bulk_data led_vcc;
 };
 
@@ -75,7 +89,26 @@ static struct hw_flash_ctrl_t hw_pmu_led_ctrl;
 
 DEFINE_HISI_FLASH_MUTEX(pmu_led);
 
+extern void boost5v_flash_led_enable(bool enable);
+
 /* Function define */
+
+static irqreturn_t hisi_led_short_handler(int irq, void *data)
+{
+	//struct hw_pmu_led_private_data_t *pdata = (struct hw_pmu_led_private_data_t *)data;
+
+	cam_err("%s: pmu led short occurs.", __func__);
+	return IRQ_HANDLED;
+}
+
+static irqreturn_t hisi_led_open_handler(int irq, void *data)
+{
+	//struct hw_pmu_led_private_data_t *pdata = (struct hw_pmu_led_private_data_t *)data;
+
+	cam_err("%s: pmu led open occurs.", __func__);
+	return IRQ_HANDLED;
+}
+
 #if 0
 static unsigned char pmu_led_read(unsigned int reg)
 {
@@ -109,12 +142,14 @@ static int hw_pmu_led_init(struct hw_flash_ctrl_t *flash_ctrl)
 
 	pdata = (struct hw_pmu_led_private_data_t *)flash_ctrl->pdata;
 
+#if 0
 	pdata->led_vcc.supply = "led-vcc";
 	rc = devm_regulator_bulk_get(flash_ctrl->dev, 1, &(pdata->led_vcc));
 	if (rc) {
 		cam_err("%s failed to get regulator %d.", __func__, rc);
 		return rc;
 	}
+#endif
 
 	/* map pmic io register address */
 	np = of_find_node_by_name(NULL, "pmic");
@@ -126,6 +161,24 @@ static int hw_pmu_led_init(struct hw_flash_ctrl_t *flash_ctrl)
 	if (NULL == pdata->pmu_base) {
 		cam_err("%s failed to iomap pmu.", __func__);
 		return -1;
+	}
+
+	if (pdata->irq[FLASH_LED_SHORT] > 0) {
+		rc = devm_request_irq(flash_ctrl->dev, pdata->irq[FLASH_LED_SHORT], hisi_led_short_handler,
+					       IRQF_NO_SUSPEND, "led_short", pdata);
+		if (rc < 0) {
+			cam_err("%s failed to request led_short irq, rc = %d.\n", __func__, rc);
+			//return rc;
+		}
+	}
+
+	if (pdata->irq[FLASH_LED_OPEN] > 0) {
+		rc = devm_request_irq(flash_ctrl->dev, pdata->irq[FLASH_LED_OPEN], hisi_led_open_handler,
+					       IRQF_NO_SUSPEND, "led_open", pdata);
+		if (rc < 0) {
+			cam_err("%s failed to request led_open irq, rc = %d.\n", __func__, rc);
+			//return rc;
+		}
 	}
 
 	return 0;
@@ -142,7 +195,9 @@ static int hw_pmu_led_exit(struct hw_flash_ctrl_t *flash_ctrl)
 
 	pdata = (struct hw_pmu_led_private_data_t *)flash_ctrl->pdata;
 
+#if 0
 	regulator_put(pdata->led_vcc.consumer);
+#endif
 	iounmap(pdata->pmu_base);
 
 	return 0;
@@ -248,11 +303,14 @@ static int hw_pmu_led_on(struct hw_flash_ctrl_t *flash_ctrl, void *data)
 	pdata = (struct hw_pmu_led_private_data_t *)flash_ctrl->pdata;
 
 	if (STANDBY_MODE == flash_ctrl->state.mode) {
+#if 0
 		rc = regulator_bulk_enable(1, &pdata->led_vcc);
 		if (rc) {
 			cam_err("failed to enable regulators %d\n", rc);
 			return rc;
 		}
+#endif
+		boost5v_flash_led_enable(true);
 	} else {
 		cam_notice("%s flash led has been power on.", __func__);
 	}
@@ -272,7 +330,9 @@ static int hw_pmu_led_on(struct hw_flash_ctrl_t *flash_ctrl, void *data)
 static int hw_pmu_led_off(struct hw_flash_ctrl_t *flash_ctrl)
 {
 	struct hw_pmu_led_private_data_t *pdata;
+#if 0
 	int rc=-1;
+#endif
 
 	cam_debug("%s ernter.\n", __func__);
 
@@ -291,11 +351,14 @@ static int hw_pmu_led_off(struct hw_flash_ctrl_t *flash_ctrl)
 	flash_ctrl->state.mode = STANDBY_MODE;
 	flash_ctrl->state.data = 0;
 	hw_pmu_led_write(LED_CTRL2, 0);
+#if 0
 	rc = regulator_bulk_disable(1, &pdata->led_vcc);
 	if (rc) {
 		cam_err("failed to enable regulators %d\n", rc);
 		return rc;
 	}
+#endif
+	boost5v_flash_led_enable(false);
 	mutex_unlock(flash_ctrl->hw_flash_mutex);
 
 	return 0;
@@ -312,6 +375,7 @@ static int hw_pmu_led_get_dt_data(struct hw_flash_ctrl_t *flash_ctrl)
 	struct hw_pmu_led_private_data_t *pdata;
 	struct device_node *of_node;
 	int i;
+	const char *flash_position = NULL;
 	int rc = -1;
 
 	cam_debug("%s enter.\n", __func__);
@@ -390,6 +454,30 @@ static int hw_pmu_led_get_dt_data(struct hw_flash_ctrl_t *flash_ctrl)
 		}
 	}
 
+	pdata->flash_position = FLASH_POSITION_REAR;
+	rc = of_property_read_string(of_node, "huawei,flash-position",
+		&flash_position);
+	if((0 == rc)&&(flash_position != NULL)) {
+		if(!strcmp(flash_position, "front")) {
+			pdata->flash_position = FLASH_POSITION_FRONT;
+		}
+	}
+	cam_debug("%s flash_position=%d.\n", __func__, pdata->flash_position);
+
+	pdata->irq[FLASH_LED_SHORT] = platform_get_irq_byname(flash_ctrl->pdev, "led_short");
+	if (pdata->irq[FLASH_LED_SHORT] < 0) {
+		cam_err("%s: failed to get led_short irq id, err = %d.\n", __func__, pdata->irq[FLASH_LED_SHORT]);
+	} else {
+		cam_debug("%s: pmu led short irq = %d.", __func__, pdata->irq[FLASH_LED_SHORT]);
+	}
+
+	pdata->irq[FLASH_LED_OPEN] = platform_get_irq_byname(flash_ctrl->pdev, "led_open");
+	if (pdata->irq[FLASH_LED_OPEN] < 0) {
+		cam_err("%s: failed to get led_open irq id, err = %d.\n", __func__, pdata->irq[FLASH_LED_OPEN]);
+	} else {
+		cam_debug("%s: pmu led open irq = %d.", __func__, pdata->irq[FLASH_LED_OPEN]);
+	}
+
 	return rc;
 }
 
@@ -399,7 +487,7 @@ static ssize_t hw_pmu_led_lightness_show(struct device *dev,
         int rc=0;
 
         snprintf(buf, MAX_ATTRIBUTE_BUFFER_SIZE, "mode=%d, data=%d.\n",
-		hw_pmu_led_ctrl.state.mode, hw_pmu_led_ctrl.state.mode);
+		hw_pmu_led_ctrl.state.mode, hw_pmu_led_ctrl.state.data);
         rc = strlen(buf)+1;
         return rc;
 }
@@ -528,15 +616,26 @@ static int hw_pmu_led_register_attribute(struct hw_flash_ctrl_t *flash_ctrl,
 	struct device *dev)
 {
 	int rc = 0;
+	struct hw_pmu_led_private_data_t *pdata;
 
 	if ((NULL == flash_ctrl) || (NULL == dev)) {
 		cam_err("%s flash_ctrl or dev is NULL.", __func__);
 		return -1;
 	}
+	
+	pdata = (struct hw_pmu_led_private_data_t *)(flash_ctrl->pdata);
+	if(NULL == pdata) {
+		cam_err("%s pdata is NULL.", __func__);
+		return -1;
+	}
 
-	flash_ctrl->cdev_torch.name = "torch";
-	flash_ctrl->cdev_torch.max_brightness
-		= ((struct hw_pmu_led_private_data_t *)(flash_ctrl->pdata))->torch_led_num;
+	if(FLASH_POSITION_FRONT == pdata->flash_position) {
+		flash_ctrl->cdev_torch.name = "torch_front";
+	} else {
+		flash_ctrl->cdev_torch.name = "torch";
+	}
+	
+	flash_ctrl->cdev_torch.max_brightness = pdata->torch_led_num;
 	flash_ctrl->cdev_torch.brightness_set = hw_pmu_torch_brightness_set;
 	rc = led_classdev_register((struct device *)dev, &flash_ctrl->cdev_torch);
 	if (rc < 0) {

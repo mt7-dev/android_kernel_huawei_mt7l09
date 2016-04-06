@@ -89,7 +89,7 @@ extern "C" {
 #define OM_R99_DECODE_BUF_INDEX_FIRST                 (0x1)
 #define OM_R99_DECODE_BUF_INDEX_SECOND                (0x2)
 
-#define OM_OFFSET_OF(s, m) ((SIZE_T)&(((s *)0)->m))
+#define OM_OFFSET_OF(s, m) ((VOS_SIZE_T)&(((s *)0)->m))
 
 #define OM_BER_DATA_MAX_SIZE            (1024)
 
@@ -148,7 +148,7 @@ typedef struct
     VOS_UINT16 usSyncStatus;    /* 保存W同步状态 */
     VOS_UINT8  ucFuncType;      /* Functype */
     VOS_UINT8  ucReserve;       /* 保留字 */
-    VOS_UINT32 ulNoSigSyncSem;  /* 串行等待消息同步信号量 */
+    VOS_SEM    ulNoSigSyncSem;  /* 串行等待消息同步信号量 */
     VOS_UINT32 ulTotalFrameNum; /* 上报的BER总帧数 */
     VOS_UINT32 ulCurFrameNum;   /* 上报的BER当前帧数 */
 }OM_NOSIG_CTRL_STRU;

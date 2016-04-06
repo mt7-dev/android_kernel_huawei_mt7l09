@@ -131,6 +131,9 @@ VOS_UINT32 TAF_SDC_IsLteOnlyMode(
     TAF_SDC_RAT_PRIO_STRU              *pstRatOrder
 );
 
+VOS_UINT32 TAF_SDC_IsImsSrvExist(VOID);
+
+
 #if (VOS_OS_VER == VOS_WIN32)
 #pragma pack()
 #else

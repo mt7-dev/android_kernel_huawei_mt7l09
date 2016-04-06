@@ -19,6 +19,8 @@ extern "C" {
 
 #include "NasNvInterface.h"
 
+#include "RnicInterface.h"
+
 #pragma pack(4)
 
 /*****************************************************************************
@@ -88,18 +90,6 @@ enum AT_RNIC_MSG_ID_ENUM
 
 };
 typedef VOS_UINT32 AT_RNIC_MSG_ID_ENUM_UINT32;
-enum RNIC_RM_NET_ID_ENUM
-{
-    RNIC_RM_NET_ID_0,                                                           /* 网卡0 */
-    RNIC_RM_NET_ID_1,                                                           /* 网卡1 */
-    RNIC_RM_NET_ID_2,                                                           /* 网卡2 */
-#if (FEATURE_ON == FEATURE_MULTI_MODEM)
-    RNIC_RM_NET_ID_3,                                                           /* 网卡3 */
-    RNIC_RM_NET_ID_4,                                                           /* 网卡4 */
-#endif
-    RNIC_RM_NET_ID_BUTT
-};
-typedef VOS_UINT8 RNIC_RM_NET_ID_ENUM_UINT8;
 
 /*****************************************************************************
   7 STRUCT定义
@@ -247,8 +237,10 @@ typedef struct
     VOS_UINT32                          ulWinnsSecAddr;                          /* 副WINNS地址 */
     VOS_UINT32                          ulPcscfPrimAddr;                        /* 主P-CSCF地址 */
     VOS_UINT32                          ulPcscfSecAddr;                         /* 副P-CSCF地址 */
-
+    VOS_UINT32                          ulPcscfThiAddr;                         /* 第三P-CSCF地址 */
 }AT_RNIC_IPV4_PDN_INFO_STRU;
+
+
 typedef struct
 {
     VOS_UINT8                           aucPdnAddr[RNICITF_MAX_IPV6_ADDR_LEN];      /* IP地址 */
@@ -256,8 +248,10 @@ typedef struct
     VOS_UINT8                           aucDnsSecAddr[RNICITF_MAX_IPV6_ADDR_LEN];   /* 副DNS地址 */
     VOS_UINT8                           aucPcscfPrimAddr[RNICITF_MAX_IPV6_ADDR_LEN];/* 主P-CSCF地址 */
     VOS_UINT8                           aucPcscfSecAddr[RNICITF_MAX_IPV6_ADDR_LEN]; /* 副P-CSCF地址 */
-
+    VOS_UINT8                           aucPcscfThiAddr[RNICITF_MAX_IPV6_ADDR_LEN]; /* 第三P-CSCF地址 */
 } AT_RNIC_IPV6_PDN_INFO_STRU;
+
+
 typedef struct
 {
     VOS_MSG_HEADER                                                              /* 消息头   */      /* _H2ASN_Skip */

@@ -75,7 +75,7 @@ enum MMC_MM_MSG_TYPE_ENUM
     MMCMM_START_REQ                     = 6,   /* _H2ASN_MsgChoice MMCMM_START_REQ_STRU */
     MMCMM_DETACH_REQ                    = 8,   /* _H2ASN_MsgChoice MMCMM_DETACH_REQ_STRU */
     MMCMM_POWER_OFF_REQ                 = 10,  /* _H2ASN_MsgChoice MMCMM_POWER_OFF_REQ_STRU */
-    MMCMM_PLMN_USER_SEL_REQ             = 12,  /* _H2ASN_MsgChoice MMCMM_PLMN_USER_SEL_REQ_STRU */
+    /* MMCMM_PLMN_USER_SEL_REQ不再使用，删除 */
     MMCMM_ATTACH_REQ                    = 14,  /* _H2ASN_MsgChoice MMCMM_ATTACH_REQ_STRU */
     MMCMM_MODE_CHANGE_REQ               = 16,  /* _H2ASN_MsgChoice MMCMM_MODE_CHANGE_REQ_STRU */
     MMCMM_SUSPEND_IND                   = 18,  /* _H2ASN_MsgChoice MMCMM_SUSPEND_IND_STRU */
@@ -189,6 +189,15 @@ enum MMC_MM_LAU_REQ_REASON_ENUM
 typedef VOS_UINT32 MMC_MM_LAU_REQ_REASON_ENUM_UINT32;
 
 
+
+enum MMC_MM_SYS_INFO_TYPE_ENUM
+{
+    MMC_MM_SYS_INFO_TYPE_OTA           = 0,                /* 当前是ota */
+    MMC_MM_SYS_INFO_TYPE_SYS           = 1,                /* 当前是系统消息 */
+    MMC_MM_SYS_INFO_TYPE_BUTT
+};
+typedef VOS_UINT8 MMC_MM_SYS_INFO_TYPE_ENUM_UINT8;
+
 /*****************************************************************************
   4 全局变量声明
 *****************************************************************************/
@@ -228,26 +237,28 @@ typedef VOS_UINT32 MMC_MM_LAU_REQ_REASON_ENUM_UINT32;
 
 typedef struct
 {
-    MSG_HEADER_STRU         MsgHeader;                                          /* 消息头    */ /*_H2ASN_Skip*/
-    VOS_UINT32              ulMask;                                             /* 以下各IE的有效标志                         */
-    MM_PLMN_ID_STRU         PlmnId;                                             /* 本小区所在PLMN的ID                        */
-    VOS_UINT32              ulCsDrxLength;                                      /* CS域DRX长度系数                           */
-    VOS_UINT32              ulPsDrxLength;                                      /* PS域DRX长度系数                           */
-    VOS_UINT32              ulForbiddenFlg;                                     /* 与本小区相关的禁止信息                */
-    VOS_UINT32              ulCellId;
-    VOS_UINT16              usLac;
-    VOS_UINT8               ucCnCommonSize;
-    VOS_UINT8               ucCsInfoSize;
-    VOS_UINT8               ucPsInfoSize;
-    VOS_UINT8               ucAttachDetach;
-    VOS_UINT8               ucLRTimerT3212;
-    VOS_UINT8               ucGprsSupportInd;
-    VOS_UINT8               ucRac;
-    VOS_UINT8               ucNetworkOperationMode;
-    VOS_UINT8               ucUserSpecificSearchFlg;                             /* 标志是否本次驻留的小区为用户指定搜网引起 0: 否, 1: 是 */
-    VOS_UINT8               ucCsChanged2UnBarFlg;             /* 是否CS域从bar转为不bar: 0 无，1 有 */
-    VOS_UINT8               ucPsChanged2UnBarFlg;             /* 是否PS域从bar转为不bar: 0 无，1 有 */
-    VOS_UINT8               aucReserve[3];
+    MSG_HEADER_STRU                     MsgHeader;                              /* 消息头    */ /*_H2ASN_Skip*/
+    VOS_UINT32                          ulMask;                                 /* 以下各IE的有效标志                         */
+    MMC_MM_SYS_INFO_TYPE_ENUM_UINT8     enSysInfoType;
+    VOS_UINT8                           aucReserve1[3];
+    MM_PLMN_ID_STRU                     PlmnId;                                 /* 本小区所在PLMN的ID                        */
+    VOS_UINT32                          ulCsDrxLength;                          /* CS域DRX长度系数                           */
+    VOS_UINT32                          ulPsDrxLength;                          /* PS域DRX长度系数                           */
+    VOS_UINT32                          ulForbiddenFlg;                         /* 与本小区相关的禁止信息                */
+    VOS_UINT32                          ulCellId;
+    VOS_UINT16                          usLac;
+    VOS_UINT8                           ucCnCommonSize;
+    VOS_UINT8                           ucCsInfoSize;
+    VOS_UINT8                           ucPsInfoSize;
+    VOS_UINT8                           ucAttachDetach;
+    VOS_UINT8                           ucLRTimerT3212;
+    VOS_UINT8                           ucGprsSupportInd;
+    VOS_UINT8                           ucRac;
+    VOS_UINT8                           ucNetworkOperationMode;
+    VOS_UINT8                           ucUserSpecificSearchFlg;                /* 标志是否本次驻留的小区为用户指定搜网引起 0: 否, 1: 是 */
+    VOS_UINT8                           ucCsChanged2UnBarFlg;                   /* 是否CS域从bar转为不bar: 0 无，1 有 */
+    VOS_UINT8                           ucPsChanged2UnBarFlg;                   /* 是否PS域从bar转为不bar: 0 无，1 有 */
+    VOS_UINT8                           aucReserve2[3];
 }MMCMM_SYS_INFO_IND_STRU;
 
 
@@ -322,12 +333,7 @@ typedef struct
     VOS_UINT32              ulReserve;                                          /* 保留                                     */
 }MMCMM_START_REQ_STRU;
 
-/* 消息MMCMM_PLMN_USER_SEL_REQ的结构体 */
-typedef struct
-{
-    MSG_HEADER_STRU         MsgHeader;                                          /* 消息头                                   */ /*_H2ASN_Skip*/
-    VOS_UINT32              ulReserve;                                          /* 保留                                     */
-}MMCMM_PLMN_USER_SEL_REQ_STRU;
+/* 删除消息MMCMM_PLMN_USER_SEL_REQ的结构体 */
 
 /* 消息MMCMM_START_CNF的结构体 */
 typedef struct
@@ -348,7 +354,12 @@ typedef struct
     MSG_HEADER_STRU                     MsgHeader;                              /* 消息头                                   */ /*_H2ASN_Skip*/
     VOS_UINT32                          ulOpid;                                 /* MMA定义使用，记录ATTACH编号 */
     VOS_UINT32                          ulServiceStatus ;                       /* CS域服务状态 */
+    /* Added by zwx247453 for CHR optimize ,2015-3-13 begin */
+    VOS_UINT32                          ulDetachType;                           /* detach 类型 */
+    /* Added by zwx247453 for CHR optimize ,2015-3-13 end */
 } MMCMM_DETACH_CNF_STRU;
+
+
 typedef struct
 {
     MSG_HEADER_STRU                         MsgHeader;                          /* 消息头                                   */ /*_H2ASN_Skip*/
@@ -460,7 +471,7 @@ typedef struct
 
     VOS_UINT8           ucUserSpecificSearchFlg;     /* 标志是否本次驻留的小区为用户指定搜网引起 : 0: 否， 1: 是 */
 
-    RRC_NAS_RESTRICTION_UN              unAcInfo;            
+    RRC_NAS_RESTRICTION_UN              unAcInfo;
 
     VOS_UINT8           ucCsChanged2UnBarFlg;             /* 是否CS域从bar转为不bar: 0 无，1 有 */
     VOS_UINT8           ucPsChanged2UnBarFlg;             /* 是否PS域从bar转为不bar: 0 无，1 有 */
@@ -502,7 +513,7 @@ typedef struct
     MMC_RESUME_RESULT_ENUM_UINT8        ucCsResumeResult;                       /* CS域切换结果 */
     MMC_RESUME_RESULT_ENUM_UINT8        ucPsResumeResult;                       /* PS域切换结果 */
     MMC_RESUME_ORIGEN_ENUM_UINT8        ucResumeOrigen;                         /* 消息发起方，RRMM_ORIGEN_GSM:GSM，RRMM_ORIGEN_WCDMA:WCDMA */
-    VOS_UINT8                           ucCsSigExistFlg;                        /* CS信令连接存在标记 */    
+    VOS_UINT8                           ucCsSigExistFlg;                        /* CS信令连接存在标记 */
 }MMCMM_RESUME_IND_STRU;
 typedef struct
 {

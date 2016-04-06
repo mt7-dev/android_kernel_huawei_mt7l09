@@ -940,8 +940,8 @@ VOS_VOID MTC_ProcNarrowDcsStrategy(VOS_VOID)
         /* È¥Ê¹ÄÜNarrow band dcs */
         MTC_ChangeNarrowBandDcsState(PS_FALSE);
     }
-#endif
     return;
+#endif
 }
 VOS_VOID MTC_SndI1GasRrcTdsLteRfCtrlInd(PS_BOOL_ENUM_UINT8 enUplinkCloseFlag)
 {

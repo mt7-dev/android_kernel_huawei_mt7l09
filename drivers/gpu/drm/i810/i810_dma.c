@@ -30,8 +30,9 @@
  *
  */
 
-#include <drm/drmP.h>
-#include <drm/i810_drm.h>
+#include "drmP.h"
+#include "drm.h"
+#include "i810_drm.h"
 #include "i810_drv.h"
 #include <linux/interrupt.h>	/* For task queue support */
 #include <linux/delay.h>
@@ -98,6 +99,7 @@ static int i810_mmap_buffers(struct file *filp, struct vm_area_struct *vma)
 	buf_priv = buf->dev_private;
 
 	vma->vm_flags |= (VM_IO | VM_DONTCOPY);
+	vma->vm_file = filp;
 
 	buf_priv->currently_mapped = I810_BUF_MAPPED;
 
@@ -114,9 +116,6 @@ static const struct file_operations i810_buffer_fops = {
 	.unlocked_ioctl = drm_ioctl,
 	.mmap = i810_mmap_buffers,
 	.fasync = drm_fasync,
-#ifdef CONFIG_COMPAT
-	.compat_ioctl = drm_compat_ioctl,
-#endif
 	.llseek = noop_llseek,
 };
 
@@ -131,11 +130,11 @@ static int i810_map_buffer(struct drm_buf *buf, struct drm_file *file_priv)
 	if (buf_priv->currently_mapped == I810_BUF_MAPPED)
 		return -EINVAL;
 
-	/* This is all entirely broken */
+	down_write(&current->mm->mmap_sem);
 	old_fops = file_priv->filp->f_op;
 	file_priv->filp->f_op = &i810_buffer_fops;
 	dev_priv->mmap_buffer = buf;
-	buf_priv->virtual = (void *)vm_mmap(file_priv->filp, 0, buf->total,
+	buf_priv->virtual = (void *)do_mmap(file_priv->filp, 0, buf->total,
 					    PROT_READ | PROT_WRITE,
 					    MAP_SHARED, buf->bus_address);
 	dev_priv->mmap_buffer = NULL;
@@ -146,6 +145,7 @@ static int i810_map_buffer(struct drm_buf *buf, struct drm_file *file_priv)
 		retcode = PTR_ERR(buf_priv->virtual);
 		buf_priv->virtual = NULL;
 	}
+	up_write(&current->mm->mmap_sem);
 
 	return retcode;
 }
@@ -158,8 +158,11 @@ static int i810_unmap_buffer(struct drm_buf *buf)
 	if (buf_priv->currently_mapped != I810_BUF_MAPPED)
 		return -EINVAL;
 
-	retcode = vm_munmap((unsigned long)buf_priv->virtual,
+	down_write(&current->mm->mmap_sem);
+	retcode = do_munmap(current->mm,
+			    (unsigned long)buf_priv->virtual,
 			    (size_t) buf->total);
+	up_write(&current->mm->mmap_sem);
 
 	buf_priv->currently_mapped = I810_BUF_UNMAPPED;
 	buf_priv->virtual = NULL;
@@ -219,6 +222,8 @@ static int i810_dma_cleanup(struct drm_device *dev)
 			pci_free_consistent(dev->pdev, PAGE_SIZE,
 					    dev_priv->hw_status_page,
 					    dev_priv->dma_status_page);
+			/* Need to rewrite hardware status page */
+			I810_WRITE(0x02080, 0x1ffff000);
 		}
 		kfree(dev->dev_private);
 		dev->dev_private = NULL;
@@ -883,7 +888,7 @@ static int i810_flush_queue(struct drm_device *dev)
 }
 
 /* Must be called with the lock held */
-void i810_driver_reclaim_buffers(struct drm_device *dev,
+static void i810_reclaim_buffers(struct drm_device *dev,
 				 struct drm_file *file_priv)
 {
 	struct drm_device_dma *dma = dev->dma;
@@ -1205,8 +1210,6 @@ int i810_driver_load(struct drm_device *dev, unsigned long flags)
 	dev->types[8] = _DRM_STAT_SECONDARY;
 	dev->types[9] = _DRM_STAT_DMA;
 
-	pci_set_master(dev->pdev);
-
 	return 0;
 }
 
@@ -1222,17 +1225,12 @@ void i810_driver_preclose(struct drm_device *dev, struct drm_file *file_priv)
 		if (dev_priv->page_flipping)
 			i810_do_cleanup_pageflip(dev);
 	}
+}
 
-	if (file_priv->master && file_priv->master->lock.hw_lock) {
-		drm_idlelock_take(&file_priv->master->lock);
-		i810_driver_reclaim_buffers(dev, file_priv);
-		drm_idlelock_release(&file_priv->master->lock);
-	} else {
-		/* master disappeared, clean up stuff anyway and hope nothing
-		 * goes wrong */
-		i810_driver_reclaim_buffers(dev, file_priv);
-	}
-
+void i810_driver_reclaim_buffers_locked(struct drm_device *dev,
+					struct drm_file *file_priv)
+{
+	i810_reclaim_buffers(dev, file_priv);
 }
 
 int i810_driver_dma_quiescent(struct drm_device *dev)

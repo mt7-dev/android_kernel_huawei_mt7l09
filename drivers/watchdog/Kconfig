@@ -4,6 +4,7 @@
 
 menuconfig WATCHDOG
 	bool "Watchdog Timer Support"
+	default y
 	---help---
 	  If you say Y here (and to one of the following options) and create a
 	  character special file /dev/watchdog with major number 10 and minor
@@ -109,11 +110,17 @@ config WM8350_WATCHDOG
 
 config ARM_SP805_WATCHDOG
 	tristate "ARM SP805 Watchdog"
-	depends on ARM && ARM_AMBA
+	depends on ARM_AMBA
 	select WATCHDOG_CORE
 	help
 	  ARM Primecell SP805 Watchdog timer. This will reboot your system when
 	  the timeout is reached.
+
+config HISI_EXTERN_WATCHDOG
+    tristate "Hisi MCU watchdog irq handler"
+    help
+      Watchdog timer embedded into HI3XXX chips. This will register irqs of
+      MCU watchdog timer.
 
 config AT91RM9200_WATCHDOG
 	tristate "AT91RM9200 watchdog"
@@ -1367,5 +1374,11 @@ config USBPCWATCHDOG
 	  module will be called pcwd_usb.
 
 	  Most people will say N.
+
+config HISI_WATCHDOG_HIWDT100
+       tristate "hisilicon hiwdt100 watchdog driver"
+       default n
+        ---help---
+           enable this config to support the hisilicon hiwdt100 watchdog driver.
 
 endif # WATCHDOG

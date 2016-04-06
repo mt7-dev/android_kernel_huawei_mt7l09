@@ -8,6 +8,15 @@ config SRECORDER_LOG_BUF_LEN
 	hex "Length of SRecorder's reserved memory"
 	default 0x40000
 
+if !HISI_3635 && !HISI_3635_FPGA && !HISI_3635_EMULATOR
+config SRECORDER_RESERVED_MEM_PHYS_ADDR
+    hex "srecorder DDR"
+    default 0x39200000
+config SRECORDER_RESERVED_MEM_SIZE
+    hex "srecorder DDR SIZE"
+    default 0x00200000
+endif
+
 config SRECORDER_TEMPBUF_ADDR_FROM_PHYS_OFFSET
 	hex "Temporary buffer addr for SRecorder "
 	default 0x4000000
@@ -24,11 +33,11 @@ config SRECORDER_DUMP_LOG_TO_STORAGECARD
 	
 config DUMP_CRASH_TIME
 	bool "Save crash reason and time"
-	default y
+	default n
 
 config DUMP_DMESG
 	bool "Save dmesg"
-	default y
+	default n
 
 config DUMP_SYS_INFO
 	bool "Save sys info "

@@ -19,100 +19,95 @@ config ARCH_HISI
 	select PINCTRL
 	select PINCTRL_SINGLE
 	select ARCH_HAS_OPP
-	select STAGING
 	select ARCH_HAS_PASR
-
 	help
-	  Support for Hislicon Hi36xx/Hi37xx processor family
+	  Support for Hisilicon Hi36xx/Hi37xx/Hi6620 processor family
 
-config HW_CMDLINE_PARSE
-	bool "cmdline parse"
-	default y
-
+config ARCH_KIRIN
+	bool "Hisilicon Kirin family"
 	help
-	  Say 'Y' here if you want to support the cmdline parse
-
+	  Support for Hisilicon Kirin processor family
 if ARCH_HISI
+choice
+	prompt "Hisilicon processor type"
+
+config ARCH_HI3XXX
+	bool "Hisilicon HI3xxx processor Family"
+	default n
+	help
+	  Say 'Y' here if you want to support the Hisilicon HI3XXX Development
+	  Board.
+
+config ARCH_HI6XXX
+	bool "Hisilicon HI6xxx processor Family"
+	default n
+	select ARM_CCI
+	select CPU_V7
+	select ARM_TIMER_SP804
+	help
+	  Say 'Y' here if you want to support the Hisilicon HI6XXX Development
+	  Board.
+endchoice
+
+menu "HI3xxx Processor Family"
+	depends on ARCH_HI3XXX
 
 config ARCH_HI3630FPGA
-	bool "Hisilicon Development Board"
+	bool "Hisilicon HI3630 FPGA Board"
 	default n
 
 	select ARM_CCI
 	select CPU_V7
 	select ARM_TIMER_SP804
 	help
-	  Say 'Y' here if you want to support the Hisilicon Development
-	  Board.
+	  Say 'Y' here if you want to support the Hisilicon HI3630 FPGA
+	  Development Board.
 
 config ARCH_HI3630EMULATOR
-	bool "Hisilicon Emulator Board"
+	bool "Hisilicon HI3630 Emulator Board"
 	default n
 
 	select ARM_CCI
 	select CPU_V7
 	select ARM_TIMER_SP804
 	help
-	  Say 'Y' here if you want to support the Hisilicon Development
-	  Board.
+	  Say 'Y' here if you want to support the Hisilicon HI3630 EMULATOR
+	  Development Board.
 
 config ARCH_HI3630
-	bool "Hisilicon UDP Board"
+	bool "Hisilicon HI3630 ASIC Board"
 	default n
 
 	select ARM_CCI
 	select CPU_V7
 	select ARM_TIMER_SP804
 	help
-	  Say 'Y' here if you want to support the Hisilicon Development
-	  Board.
+	  Say 'Y' here if you want to support the Hisilicon HI3630 ASIC
+	  Development Board.
+endmenu
 
-config HISI_BUS_SWITCH
-	bool "Hisilicon bus switch"
-	default n
-	help
-	  Say 'Y' here if you wanna enable BUS SWITCH Feature.
 
-config HISI_AXI
-	bool "Hisilicon axierr irq"
+menu "HI6xxx Processor Family"
+	depends on ARCH_HI6XXX
+
+config ARCH_HI6620
+	bool "Hisilicon HI6620 ASIC Board"
 	default n
+
+	select ARM_CCI
+	select CPU_V7
+	select ARM_TIMER_SP804
 	help
-	Hi3630 axierr irq support
+	  Say 'Y' here if you want to support the Hisilicon HI6620 ASIC
+	  Development Board.
+endmenu
+
+endif
 
 
 menu "Hisilicon NoC Support"
-config HISI_NOC
-	bool "Hisilicon NoC support"
-	default n
-	help
-	  NoC driver for Hi36xx
 
-config HISI_NOC_ERR_PROBE
-	depends on HISI_NOC
-	bool "Hisilicon NoC Error Probe support"
-	default n
-	help
-	  NoC Error Probe driver
-
-config HISI_NOC_TIMEOUT
-	depends on HISI_NOC
-	bool "Hisilicon NoC Timeout support"
-	default n
-	help
-	  NoC Timeout driver
 endmenu
-
-config HI6421_OCP
-	bool "Hisilicon chip over current protect"
-	default n
-	help
-	  Say 'Y' here if you want to support the Hisilicon OCP.
-
-config HISI_SIM_HOTPLUG
-	bool "support sim hotplug function"
-	default n
-	help
-	  Say 'Y' here if you want to support the SIM HOTPLUG.
 
 config HI3630_LPM3_IPC
 	bool "InterProcessor Communication Support"
@@ -139,30 +134,18 @@ config HISI_REBOOT_TYPE
 	default n
 	help
 	  Hi3630 reboot type
-endif
-
-config EASY_SHELL
-       bool "Balong easy shell driver"
-       default y
-       ---help---
-        Driver which call kernel function directly
-
-config HISI_EFUSE
-	bool "Hisilicon efuse driver"
-	default n
-	help
-	Hi3630 efuse driver support
 
 config HISI_UDP_BOARDID
 	bool "Hisilicon udp board id driver"
 	default y
 	help
 	Hi3630 udp board id driver support
-config HIDE_PRODUCT_INFO
-	bool "Hide chipset name if not officially announced"
-	default n
+
+config HISI_ALTER_HARDWARE_NAME
+	bool "Hardware name can be set a alternative one"
+	default y
 	help
-	Hide chipset name if not officially announced
+	Hardware name can be set a alternative one
 
 config HISI_SR_DEBUG
 	bool "hisi suspend-resume debug interface"
@@ -183,22 +166,8 @@ config HISI_BALONG_MODEM
 	default n
 	help
 	Hisilicon ap+modem config support.
-
-config HISI_EXTERN_WDT
-	bool "Hisilicon extern watchdog"
-	default n
-	help
-	Hi3630 lpm3 extern watchdog driver
-
 config HISI_LPM3_VIEWER
 	bool "Hisilicon lpm3 log viewer"
 	default n
 	help
 	Hi3630 lpm3 log viewer driver
-
-config HISI_IRQ_AFFINITY
-	bool "Hisilicon irq affinity"
-	depends on SMP
-	default n
-	help
-	  Driver for irq affinity recovery in smp system

@@ -45,10 +45,10 @@ OM_RING_ID                          g_pstOmPrintfBufId;
 VOS_UINT32                          g_ulOmPrintfPort = OM_OUTPUT_SHELL;
 
 /* Printf BUFFER 保护信号量 */
-VOS_UINT32                          g_ulOmPrintfBuffSem;
+VOS_SEM                             g_ulOmPrintfBuffSem;
 
 /* 自处理任务信号量 */
-VOS_UINT32                          g_ulPrintfTaskSem;
+VOS_SEM                             g_ulPrintfTaskSem;
 
 /* 记录OM Printf 数据输出中无buffer错误 */
 OM_PRINTF_ERROR_RECORD_STRU         g_stOmPrintfErrRecord;
@@ -93,7 +93,7 @@ VOS_UINT32 OM_PrintfGetModuleIdLev(VOS_UINT32 ulModuleId)
     return g_astOmPrintfOutPutLev[ulModuleId-LOG_MIN_MODULE_ID_ACPU_DRV];
 }
 
-unsigned long OM_PrintfSetModuleIdLev(unsigned long ulModuleId, unsigned long ulLev)
+VOS_UINT32 OM_PrintfSetModuleIdLev(VOS_UINT32 ulModuleId, VOS_UINT32 ulLev)
 {
     /* 输入参数检查 */
     if((LOG_MAX_MODULE_ID_APP < ulModuleId)||(LOG_MIN_MODULE_ID_ACPU_DRV > ulModuleId)
@@ -173,7 +173,7 @@ VOS_VOID OM_PrintfMsgProc(OM_REQ_PACKET_STRU *pstRspPacket, OM_RSP_FUNC *pstRspF
         usReturnPrimId = APP_OM_SET_PRINTF_OUTPUT_LEV_CNF;
 
         ulRet = OM_PrintfSetOutLev((LOG_ID_LEVEL_STRU*)(pstAppToOmMsg->aucPara),
-          pstAppToOmMsg->usLength - (OM_APP_MSG_EX_LEN - VOS_OM_HEADER_LEN));
+          (VOS_UINT32)pstAppToOmMsg->usLength - (OM_APP_MSG_EX_LEN - VOS_OM_HEADER_LEN));
     }
     else
     {
@@ -274,7 +274,7 @@ VOS_UINT32 OM_PrintfDataPut(VOS_CHAR *pucDataBuf, VOS_UINT32 ulDataLen)
 
 }
 /*lint -e960 */
-unsigned long OM_PrintfWithModule(unsigned long ulModuleId, unsigned long ulLevel, char * pcformat, ... )
+VOS_UINT32 OM_PrintfWithModule(VOS_UINT32 ulModuleId, VOS_UINT32 ulLevel, VOS_CHAR * pcformat, ... )
 /*lint +e960 */
 {
     VOS_UINT32          ulReturn = OM_OK;
@@ -351,7 +351,7 @@ unsigned long OM_PrintfWithModule(unsigned long ulModuleId, unsigned long ulLeve
     return ulReturn;
 }
 /*lint -e960 */
-unsigned long OM_Printf(char * pcformat, ... )
+VOS_UINT32 OM_Printf(VOS_CHAR * pcformat, ... )
 /*lint +e960 */
 {
     VOS_UINT32          ulReturn = OM_OK;

@@ -64,7 +64,7 @@ int cshell_debug_show(void)
 	printk("cshell icc_chan_opened:%d\n", g_cshell_ctx.icc_chan_opened);
 	printk("cshell icc_channel_id:%d\n", g_cshell_ctx.icc_channel_id);
 	printk("cshell acm_channel_id:%d\n", g_cshell_ctx.acm_channel_id);
-	printk("cshell cshell_acm_fd:%d\n", g_cshell_ctx.cshell_acm_fd);
+	printk("cshell cshell_acm_fd:%p\n", g_cshell_ctx.cshell_acm_fd);
 	printk("cshell cshell_send_index:%d\n", g_cshell_ctx.cshell_send_index);
 	printk("cshell usb_send_buf_r:%d\n", g_cshell_ctx.usb_send_buf_r);
 	printk("cshell usb_send_buf_w:%d\n", g_cshell_ctx.usb_send_buf_w);
@@ -451,7 +451,11 @@ static int cshell_recv_thread(void *arg)
                 }
 
                 /* 将数据拷贝至缓冲buffer并更新buffer长度 */
+                #ifdef FEATURE_USB_ZERO_COPY
+                memcpy(cshell_ctx->recv_mem.buf + cshell_ctx->recv_mem.buf_size, acm_wt_info.pVirAddr, write_size);
+                #else
                 memcpy(cshell_ctx->recv_mem.buf + cshell_ctx->recv_mem.buf_size, acm_wt_info.pBuffer, write_size);
+                #endif
 
                 cshell_ctx->recv_mem.buf_size += write_size;
             }
@@ -487,7 +491,7 @@ static int cshell_recv_thread(void *arg)
 
             if (0 == acm_ret)
             {
-                (void)bsp_acm_ioctl(cshell_ctx->cshell_acm_fd, ACM_IOCTL_RETURN_BUFF, &acm_wt_info);
+                (void)bsp_acm_ioctl(cshell_ctx->cshell_acm_fd, ACM_IOCTL_RETURN_BUFF, (void*)&acm_wt_info);
             }
 			cshell_log.bluetooth_send_cmd_times += 1;
         }
@@ -821,25 +825,25 @@ void cshell_udi_open_cb(void)
 {
     /*lint --e{550} */
     cshell_ctx_t *cshell_ctx = &g_cshell_ctx;
-    s32 cshell_udi_handle ;
+    void* cshell_udi_handle ;
     int  ret = 0;
 
-    printk("A:cshell_udi_open_cb acm plugin: [0x%x]\n", cshell_ctx->cshell_acm_fd);
+    printk("A:cshell_udi_open_cb acm plugin: [0x%p]\n", cshell_ctx->cshell_acm_fd);
 
     /* 注意, cshell_acm_fd 是指针, 不是整形 */
     if (cshell_ctx->cshell_acm_fd)
     {
-        printk("A:cshell_udi_open_cb acm is already opened:[0x%x]\n", cshell_ctx->cshell_acm_fd);
+        printk("A:cshell_udi_open_cb acm is already opened:[0x%p]\n", cshell_ctx->cshell_acm_fd);
         return;
     }
 
     cshell_udi_handle = bsp_acm_open(UDI_USB_ACM_SHELL);
     if (cshell_udi_handle == 0)
     {
-        printk("A:cshell_udi_open_cb acm open fail: [0x%x]\n", cshell_udi_handle);
+        printk("A:cshell_udi_open_cb acm open fail: [0x%p]\n", cshell_udi_handle);
         return;
     }
-    cshell_ctx->cshell_acm_fd = (s32)cshell_udi_handle;
+    cshell_ctx->cshell_acm_fd = cshell_udi_handle;
 
     ret = bsp_acm_ioctl(cshell_ctx->cshell_acm_fd, ACM_IOCTL_SET_READ_CB, cshell_shell_recv_cb);
     if (CSHELL_OK != ret)
@@ -847,7 +851,7 @@ void cshell_udi_open_cb(void)
         printk("A:cshell_udi_open_cb cb register fail: [0x%x]\n", ret);
         return;
     }
-    printk("A:cshell_udi_open_cb cb register success: [0x%x],fd[0x%x]\n", ret, cshell_ctx->cshell_acm_fd);
+    printk("A:cshell_udi_open_cb cb register success: [0x%x],fd[0x%p]\n", ret, cshell_ctx->cshell_acm_fd);
 
     (void)cshell_set_bit(USB_CSHELL);
     if(g_cshell_ctx.ccshell_work_flg)
@@ -881,7 +885,7 @@ void cshell_udi_close_cb(void)
     cshell_ctx_t *cshell_ctx = &g_cshell_ctx;
     int ret = 0;
 
-    printk("A:cshell_udi_close_cb acm unplug: [0x%x]\n", cshell_ctx->cshell_acm_fd);
+    printk("A:cshell_udi_close_cb acm unplug: [0x%p]\n", cshell_ctx->cshell_acm_fd);
 
     /* 注意, cshell_acm_fd 是指针, 不是整形 */
     if (cshell_ctx->cshell_acm_fd)

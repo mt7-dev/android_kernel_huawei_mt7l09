@@ -216,7 +216,7 @@ static void s_vFillTxKey(struct vnt_private *pDevice, u8 *pbyBuf,
             memcpy(pDevice->abyPRNG, pbyBuf, 16);
         }
         // Append IV after Mac Header
-        *pdwIV &= WEP_IV_MASK;//00000000 11111111 11111111 11111111
+        *pdwIV &= WEP_IV_MASK;
 	*pdwIV |= (u32)pDevice->byKeyIndex << 30;
         *pdwIV = cpu_to_le32(*pdwIV);
         pDevice->dwIVCounter++;

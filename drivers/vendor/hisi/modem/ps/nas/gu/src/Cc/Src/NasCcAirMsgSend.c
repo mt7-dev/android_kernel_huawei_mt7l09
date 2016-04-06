@@ -34,7 +34,7 @@ extern "C"{
 
 *****************************************************************************/
 VOS_VOID  NAS_CC_FillCauseIe(
-    NAS_CC_CAUSE_VALUE_ENUM_U8          enCauseVal,
+    NAS_CC_CAUSE_VALUE_ENUM_U32          enCauseVal,
     NAS_CC_IE_CAUSE_STRU                *pstCauseIe
 )
 {
@@ -97,7 +97,7 @@ VOS_VOID  NAS_CC_SendConnectAck(
 
 VOS_VOID  NAS_CC_SendDisconnect(
     VOS_UINT8                           ucTi,
-    NAS_CC_CAUSE_VALUE_ENUM_U8          enCauseVal
+    NAS_CC_CAUSE_VALUE_ENUM_U32         enCauseVal
 )
 {
     VOS_UINT8                           aucData[NAS_CC_MAX_AIR_MSG_LEN];
@@ -107,7 +107,7 @@ VOS_VOID  NAS_CC_SendDisconnect(
 
 
     ucLen = 0;
-    
+
     PS_MEM_SET(&stDisc, 0, sizeof(stDisc));
 
     NAS_CC_FillAirMsgHeader(ucTi, NAS_CC_MSG_DISCONNECT, &stDisc.stHeader);
@@ -125,9 +125,9 @@ VOS_VOID  NAS_CC_SendDisconnect(
 VOS_VOID  NAS_CC_SendRelease(
     VOS_UINT8                           ucTi,
     VOS_BOOL                            bCausePresent,
-    NAS_CC_CAUSE_VALUE_ENUM_U8          enCauseVal,
+    NAS_CC_CAUSE_VALUE_ENUM_U32         enCauseVal,
     VOS_BOOL                            bCause2Present,
-    NAS_CC_CAUSE_VALUE_ENUM_U8          enCause2Val
+    NAS_CC_CAUSE_VALUE_ENUM_U32         enCause2Val
 )
 {
     VOS_UINT8                           aucData[NAS_CC_MAX_AIR_MSG_LEN];
@@ -162,7 +162,7 @@ VOS_VOID  NAS_CC_SendRelease(
 VOS_VOID  NAS_CC_SendReleaseComplete(
     VOS_UINT8                           ucTi,
     VOS_BOOL                            bCausePresent,
-    NAS_CC_CAUSE_VALUE_ENUM_U8          enCauseVal
+    NAS_CC_CAUSE_VALUE_ENUM_U32         enCauseVal
 )
 {
     VOS_UINT8                           aucData[NAS_CC_MAX_AIR_MSG_LEN];
@@ -221,7 +221,7 @@ VOS_VOID  NAS_CC_SendStopDtmf(
     VOS_UINT8                           ucLen;
     NAS_CC_MSG_STOP_DTMF_STRU           stStopDtmf;
 
-    
+
     ucLen = 0;
 
     PS_MEM_SET(&stStopDtmf, 0, sizeof(stStopDtmf));
@@ -238,7 +238,7 @@ VOS_VOID  NAS_CC_SendStopDtmf(
 
 VOS_VOID  NAS_CC_SendStatus(
     VOS_UINT8                           ucTi,
-    NAS_CC_CAUSE_VALUE_ENUM_U8          enCauseVal
+    NAS_CC_CAUSE_VALUE_ENUM_U32         enCauseVal
 )
 {
     VOS_UINT8                           aucData[NAS_CC_MAX_AIR_MSG_LEN];

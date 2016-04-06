@@ -32,9 +32,9 @@
 
 
 
-/*lint -e767*/
+/*lint -e767 -e960*/
 #define    THIS_FILE_ID        PS_FILE_ID_VC_API_C
-/*lint +e767*/
+/*lint +e767 +e960*/
 
 /*****************************************************************************
    2 函数实现
@@ -353,7 +353,7 @@ VOS_UINT32 APP_VC_SetMuteStatus(
     /* 初始化消息 */
     PS_MEM_SET((VOS_CHAR *)pstMsg + VOS_MSG_HEAD_LENGTH,
                0x00,
-               sizeof(APP_VC_REQ_MSG_STRU) - VOS_MSG_HEAD_LENGTH);
+               (VOS_SIZE_T)(sizeof(APP_VC_REQ_MSG_STRU) - VOS_MSG_HEAD_LENGTH));
 
     /* 填写消息头 */
     pstMsg->ulReceiverCpuId = VOS_LOCAL_CPUID;
@@ -396,7 +396,7 @@ VOS_UINT32 APP_VC_GetMuteStatus(
     /* 初始化消息 */
     PS_MEM_SET((VOS_CHAR *)pstMsg + VOS_MSG_HEAD_LENGTH,
                0x00,
-               sizeof(APP_VC_REQ_MSG_STRU) - VOS_MSG_HEAD_LENGTH);
+               (VOS_SIZE_T)(sizeof(APP_VC_REQ_MSG_STRU) - VOS_MSG_HEAD_LENGTH));
 
     /* 填写消息头 */
     pstMsg->ulReceiverCpuId = VOS_LOCAL_CPUID;
@@ -439,7 +439,7 @@ VOS_UINT32 APP_VC_SetModemLoop(
     /* 初始化消息 */
     PS_MEM_SET((VOS_CHAR *)pstMsg + VOS_MSG_HEAD_LENGTH,
                0x00,
-               sizeof(APP_VC_REQ_MSG_STRU) - VOS_MSG_HEAD_LENGTH);
+               (VOS_SIZE_T)(sizeof(APP_VC_REQ_MSG_STRU) - VOS_MSG_HEAD_LENGTH));
 
     /* 填写消息头 */
     pstMsg->ulReceiverCpuId = VOS_LOCAL_CPUID;

@@ -38,7 +38,7 @@ extern VOS_UINT32 Om_QueryMsgFunc(OM_REQ_PACKET_STRU *pRspPacket, OM_MSG_FUN_STR
 /*PC下发的 BBP采数与可维可测消息处理函数映射表 */
 OM_MSG_FUN_STRU                         g_astAcpuOmBbpMsgFunTbl[] =
 {
-    {APP_OM_BBP_DUMP_DUMP_REQ,    Om_AcpuDumpReboot        ,    OM_APP_BBP_DUMP_DUMP_CNF},
+    {Om_AcpuDumpReboot        ,    APP_OM_BBP_DUMP_DUMP_REQ,    OM_APP_BBP_DUMP_DUMP_CNF},
 };
 
 
@@ -90,7 +90,11 @@ VOS_VOID Om_AcpuBbpConfigMsgProc(OM_REQ_PACKET_STRU *pRspPacket, OM_RSP_FUNC *pR
     /* 没有查询到处理函数  */
     if (ulIndex == ulTotalNum)
     {
+#if (FEATURE_OFF == FEATURE_MERGE_OM_CHAN)
         OM_AcpuSendResult(pstAppToOmMsg->ucFuncType, ulResult, usPrimId);
+#else
+        OM_AcpuSendResultChannel(pstAppToOmMsg->ucCpuId, pstAppToOmMsg->ucFuncType, ulResult, usPrimId);
+#endif
     }
     return;
 

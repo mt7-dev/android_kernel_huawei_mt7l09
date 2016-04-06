@@ -19,6 +19,9 @@
 #if (FEATURE_ON == FEATURE_LTE)
 #include "MmLmmInterface.h"
 #endif
+#if (FEATURE_ON == FEATURE_PTM)
+#include "NasErrorLog.h"
+#endif
 
 
 #ifdef __cplusplus
@@ -57,6 +60,23 @@ extern "C" {
 /*****************************************************************************
   7 STRUCT定义
 *****************************************************************************/
+typedef struct
+{
+    RRC_REL_CAUSE_ENUM_UINT32       enRrcRelCause;
+    NAS_MMCM_REL_CAUSE_ENUM_UINT32  enMmCcRelCause;
+}RRC_TO_MMCC_REL_CAUSE_STRU;
+
+typedef struct
+{
+    RRC_NAS_EST_RESULT_ENUM_UINT32  enEstRslt;
+    NAS_MMCM_REL_CAUSE_ENUM_UINT32  enMmCcRelCause;
+}EST_RSLT_TO_MMCC_REL_CAUSE_STRU;
+
+typedef struct
+{
+    MM_LMM_CSFB_SERVICE_RSLT_ENUM_UINT32    enCsfbRslt;
+    NAS_MMCM_REL_CAUSE_ENUM_UINT32          enMmCcRelCause;
+}CSFB_RSLT_TO_MMCC_REL_CAUSE_STRU;
 
 
 /*****************************************************************************
@@ -134,7 +154,10 @@ extern  VOS_VOID Mm_SndCcRelInd(VOS_UINT32,VOS_UINT32);
 extern  VOS_VOID Mm_SndCcDataInd(VOS_UINT32, VOS_UINT32, VOS_UINT8 *);
 extern  VOS_VOID Mm_SndCcSyncInd(VOS_VOID);
 extern  VOS_VOID Mm_SndCcReestCnf(VOS_UINT32, VOS_UINT32);
-extern  VOS_VOID Mm_SndCcErrInd(VOS_UINT32);
+extern  VOS_VOID Mm_SndCcErrInd(
+    VOS_UINT32                          ucTi,
+    NAS_MMCM_REL_CAUSE_ENUM_UINT32      enCause
+);
 
 extern VOS_VOID NAS_MM_SndMmcPlmnSearchInd(MM_MMC_PLMN_SEARCH_TYPE_ENUM_U32 enPlmnSearchType);
 
@@ -143,7 +166,7 @@ VOS_VOID Mm_SndCcEmergencyNumberList(NAS_MML_EMERGENCY_NUM_LIST_STRU *pEmergency
 
 #if (FEATURE_ON == FEATURE_IMS)
 extern VOS_VOID NAS_MM_SndCcSrvccStatusInd(
-    NAS_MMCC_SRVCC_STATUS_ENUM_UINT32   enSrvccSta      
+    NAS_MMCC_SRVCC_STATUS_ENUM_UINT32   enSrvccSta
 );
 #endif
 
@@ -313,7 +336,7 @@ extern  VOS_VOID NAS_MM_ChangeRegRejCauseAvoidInvalidSim (
 );
 
 extern VOS_VOID NAS_MM_HandleHplmnRejCauseChange (
-    VOS_UINT8                          *pucRcvMsg,                          
+    VOS_UINT8                          *pucRcvMsg,
     VOS_UINT8                           ucConfigCauseNvim
 );
 
@@ -432,10 +455,13 @@ extern VOS_VOID  NAS_MM_FillMobileID(
 );
 extern  VOS_VOID    Mm_ComLuOnly(VOS_VOID);
 
-extern VOS_VOID Mm_ComRelAllMmConn(VOS_UINT32 ulRelCause);
+extern VOS_VOID Mm_ComRelAllMmConn(
+    NAS_MMCM_REL_CAUSE_ENUM_UINT32      enMmCcRelCause
+);
 
 
-extern  VOS_VOID Mm_ComRelAllMmConnExcEmergencyCall(NAS_MMCM_REL_CAUSE_ENUM_UINT32      enMmccRelCause
+extern  VOS_VOID Mm_ComRelAllMmConnExcEmergencyCall(
+        NAS_MMCM_REL_CAUSE_ENUM_UINT32      enMmCcRelCause
 );
 
 
@@ -445,7 +471,6 @@ extern  VOS_VOID    Mm_ComInit (VOS_VOID);
 
 extern  VOS_VOID    Mm_ComNasInfoSav (VOS_UINT8,VOS_UINT8);
 extern  VOS_VOID    Mm_ComRejectCause11(VOS_UINT8);
-extern  VOS_VOID    Mm_ComRejectCause12(VOS_UINT8);
 extern  VOS_VOID    Mm_ComRejectCause13(VOS_UINT8);
 extern  VOS_VOID    Mm_ComRejectCause15(VOS_UINT8);
 extern  VOS_VOID    Mm_ComAttUsimSav(VOS_UINT8,VOS_UINT8);
@@ -515,26 +540,26 @@ extern  VOS_VOID    Mm_Cell_S1_E3  (VOS_VOID*);
 extern  VOS_VOID    Mm_Cell_S3_E6  (VOS_VOID*);
 extern  VOS_VOID    Mm_Cell_S9_E1  (VOS_VOID*);
 extern  VOS_VOID    Mm_Cell_S9_E2  (VOS_VOID*);
-extern  VOS_VOID    Mm_Cell_S9_E4  (VOS_VOID*);
+/* 删除Mm_Cell_S9_E4 */
 extern  VOS_VOID    Mm_Cell_S10_E1 (VOS_VOID*);
 extern  VOS_VOID    Mm_Cell_S10_E2 (VOS_VOID*);
-extern  VOS_VOID    Mm_Cell_S10_E4 (VOS_VOID*);
+/* 删除Mm_Cell_S10_E4 */
 extern  VOS_VOID    Mm_Cell_S11_E1 (VOS_VOID*);
 extern  VOS_VOID    Mm_Cell_S11_E2 (VOS_VOID*);
-extern  VOS_VOID    Mm_Cell_S11_E4 (VOS_VOID*);
+/* MMCMM_PLMN_USER_SEL_REQ不再使用，删除Mm_Cell_S11_E4 */
 extern  VOS_VOID    Mm_Cell_S12_E1 (VOS_VOID*);
 extern  VOS_VOID    Mm_Cell_S12_E2 (VOS_VOID*);
-extern  VOS_VOID    Mm_Cell_S12_E4 (VOS_VOID*);
+/* MMCMM_PLMN_USER_SEL_REQ不再使用，删除Mm_Cell_S12_E4 */
 extern  VOS_VOID    Mm_Cell_S13_E1 (VOS_VOID*);
 extern  VOS_VOID    Mm_Cell_S13_E2 (VOS_VOID*);
-extern  VOS_VOID    Mm_Cell_S13_E4 (VOS_VOID*);
+/* MMCMM_PLMN_USER_SEL_REQ不再使用，删除Mm_Cell_S13_E4 */
 extern  VOS_VOID    Mm_Cell_S14_E1 (VOS_VOID*);
 extern  VOS_VOID    Mm_Cell_S14_E2 (VOS_VOID*);
-extern  VOS_VOID    Mm_Cell_S14_E4 (VOS_VOID*);
+/* MMCMM_PLMN_USER_SEL_REQ不再使用，删除Mm_Cell_S14_E4 */
 extern  VOS_VOID    Mm_Cell_S16_E1 (VOS_VOID*);
 extern  VOS_VOID    Mm_Cell_S16_E2 (VOS_VOID*);
-extern  VOS_VOID    Mm_Cell_S16_E4 (VOS_VOID*);
-extern  VOS_VOID    Mm_Cell_S19_E4 (VOS_VOID*);
+/* MMCMM_PLMN_USER_SEL_REQ不再使用，删除Mm_Cell_S16_E4 */
+/* MMCMM_PLMN_USER_SEL_REQ不再使用，删除Mm_Cell_S16_E4 */
 extern  VOS_VOID    Mm_Cell_S1_E5  (VOS_VOID*);
 extern  VOS_VOID    Mm_Cell_S2_E5  (VOS_VOID*);
 extern  VOS_VOID    Mm_Cell_S2_E21 (VOS_VOID*);
@@ -1151,7 +1176,7 @@ extern  VOS_VOID Mm_ComNetModeChange(VOS_VOID);
 extern  VOS_VOID    Mm_Cell_S16_E63( VOS_VOID*);
 extern  VOS_VOID    Mm_Cell_S16_E66( VOS_VOID*);
 extern  VOS_VOID    Mm_Cell_S27_E82( VOS_VOID*);
-extern  VOS_VOID    Mm_Cell_S27_E33( VOS_VOID*);
+/* Mm_Cell_S27_E33_Handling_REL_CAUSE_RL_FAILURE不再使用，删除 */
 extern VOS_VOID Mm_SndSmsRegStsInd( VOS_UINT8 );
 extern VOS_UINT8 MM_SndSapi3EstReq(VOS_VOID);
 extern VOS_VOID Mm_Cell_S9_E83(VOS_VOID*);
@@ -1184,6 +1209,10 @@ extern VOS_UINT8  NAS_MM_CheckIfMmIsEstablishRRConnection(VOS_VOID);
 extern  VOS_UINT8 NAS_MM_RetryCurrentProcedureCheck(
     RRC_REL_CAUSE_ENUM_UINT32           ulRelCause,
     RRC_RRC_CONN_STATUS_ENUM_UINT32     ulRrcConnStatus
+);
+
+VOS_UINT8 NAS_MM_IsRrRelCauseNeedRetryLau(
+    RRC_REL_CAUSE_ENUM_UINT32           ulRelCause
 );
 
 extern  VOS_VOID NAS_MM_RetryMmConnectionProc(
@@ -1316,7 +1345,8 @@ extern VOS_VOID NAS_MM_ResumeBackToGU_CSFB(
     NAS_MML_CSFB_SERVICE_STATUS_ENUM_UINT8                  enCsfbServiceStatus
 );
 extern VOS_VOID NAS_MM_EndCsfbFlow(
-    NAS_MML_CSFB_SERVICE_STATUS_ENUM_UINT8 enCsfbServiceStatus
+    NAS_MML_CSFB_SERVICE_STATUS_ENUM_UINT8 enCsfbServiceStatus,
+    NAS_MMCM_REL_CAUSE_ENUM_UINT32         enRelCause
 );
 
 VOS_VOID NAS_MM_PerformBufferedSsService(VOS_VOID);
@@ -1426,7 +1456,10 @@ VOS_UINT32 NAS_MM_RelEstingMmConn(
     RRC_REL_CAUSE_ENUM_UINT32           ulRelCause
 );
 
-VOS_UINT32 NAS_MM_RelBufferedServiceEstReq(VOS_VOID);
+VOS_UINT32 NAS_MM_RelBufferedServiceEstReq(
+    NAS_MMCM_REL_CAUSE_ENUM_UINT32      enMmCcRelCause
+);
+
 VOS_UINT32 NAS_MM_NotifyBufferedServiceRRConnNotExist(VOS_VOID);
 
 VOS_VOID NAS_MM_LocalDetach_MmNoImsi(VOS_VOID);
@@ -1446,6 +1479,28 @@ VOS_UINT8 NAS_MM_ProcessLuAfterCsConnectNotExist(VOS_VOID);
 
 #if (FEATURE_ON == FEATURE_PTM)
 VOS_VOID NAS_MM_SndAcpuOmChangeTmsi(VOS_VOID);
+
+VOS_VOID NAS_MM_SndAcpuOmFaultErrLogInd(
+    VOS_VOID                           *pData,
+    VOS_UINT32                          ulDataLen
+);
+VOS_VOID NAS_MM_CsPagingFailRecord(
+    NAS_ERR_LOG_CS_PAGING_CAUSE_ENUM_U32    enCause
+);
+VOS_VOID NAS_MM_CsfbMtFailRecord(VOS_VOID);
+
+/* Added by zwx247453 for CHR optimize, 2015-03-13 begin */
+VOS_VOID NAS_MM_ProcCsfbMtFailRecord(VOS_VOID);
+VOS_VOID NAS_MM_ParseErrLogCsPagingInfo(
+    VOS_VOID                     *pRcvMsg
+);
+VOS_VOID NAS_MM_RecordCsPagingFail_WaitForRrConnection(
+    RRC_NAS_EST_RESULT_ENUM_UINT32      ulResult
+);
+/* Added by zwx247453 for CHR optimize, 2015-03-13 end */
+VOS_VOID NAS_MM_SrvccFailRecord(
+    NAS_ERR_LOG_SRVCC_FAIL_CAUSE_ENUM_UINT8                 enSrvccFailCause
+);
 #endif
 
 VOS_VOID Mm_Cell_S1_E65(VOS_VOID *pRcvMsg);
@@ -1470,7 +1525,19 @@ VOS_VOID  NAS_MM_LogAuthInfo(
     VOS_UINT8                           ucExpectOpId
 );
 
+VOS_VOID  NAS_MM_LogMmCtxInfo(VOS_VOID);
+
+
+
 VOS_VOID  NAS_MM_ClearAuthInfo(VOS_VOID);
+
+RRC_NAS_EST_RESULT_ENUM_UINT32 NAS_MM_GetEstCnfResult(VOS_VOID);
+VOS_VOID NAS_MM_SetEstCnfResult(RRC_NAS_EST_RESULT_ENUM_UINT32 enEstCnfFailCause);
+
+
+VOS_VOID NAS_MM_RcvProtectingMtCsfbPagingProcedureExpired(VOS_VOID);
+
+
 
 #if (FEATURE_ON == FEATURE_LTE)
 VOS_VOID NAS_MM_RcvMmTimerGetHoSecuInfoCnfExpired(VOS_VOID);
@@ -1484,7 +1551,14 @@ VOS_VOID NAS_MM_SndLmmSrvccStatusNotify(
     NAS_MMCC_SRVCC_STATUS_ENUM_UINT32   enSrvccStatus
 );
 
+
+VOS_UINT8 NAS_MM_GetRcvSrvccCallInfoFlg(VOS_VOID);
+VOS_VOID NAS_MM_SetRcvSrvccCallInfoFlg(
+    VOS_UINT8                           ucFlg
+);
+
 #endif
+
 
 #if (FEATURE_ON == FEATURE_IMS)
 extern VOS_UINT8 NAS_MM_GetSrvccFlg(VOS_VOID);
@@ -1504,6 +1578,11 @@ VOS_VOID NAS_MM_RcvCcSrvccCallInfoNtf(
 
 VOS_UINT32 NAS_MM_RcvMmcLauReq(
     VOS_VOID                           *pstRcvMsg
+);
+
+VOS_UINT8 NAS_MM_GetCsfbMtLauFlg(VOS_VOID);
+VOS_VOID NAS_MM_SetCsfbMtLauFlg(
+    VOS_UINT8                           ucFlg
 );
 
 VOS_UINT32 Mm_IsMultiSrvCollisionAllow(NAS_MM_CONN_CTRL_ENUM_UINT8 ucMmConnCtrl);
@@ -1529,6 +1608,36 @@ VOS_VOID NAS_MM_LocationUpdateAttemptCounter(
 VOS_VOID NAS_MM_UpdateLauRetryFlg_RcvRelInd(
     RRMM_REL_IND_STRU                  *pRrcRelInd
 );
+
+NAS_MMCM_REL_CAUSE_ENUM_UINT32 NAS_MM_ConvertRrcRelCauseToMmCcRelCause(
+    RRC_REL_CAUSE_ENUM_UINT32           enRrcRelCause
+);
+NAS_MMCM_REL_CAUSE_ENUM_UINT32 NAS_MM_ConvertEstCnfRsltToMmCcRelCause(
+    RRC_NAS_EST_RESULT_ENUM_UINT32     enEstCnfRslt
+);
+NAS_MMCM_REL_CAUSE_ENUM_UINT32 NAS_MM_ConvertCsfbSrvRsltToMmCcRelCause(
+    LMM_MM_CSFB_SERVICE_END_IND_STRU   *pstCsfbEndInd
+);
+VOS_UINT32 NAS_MM_IsGsmOnlyEstCnfRslt(
+    RRC_NAS_EST_RESULT_ENUM_UINT32      ulResult
+);
+
+VOS_UINT8 NAS_MM_RcvCspagingInd_PreProc(
+    VOS_VOID                           *pstRcvMsg
+);
+VOS_VOID  NAS_MM_LogAutnLenInfo(
+    VOS_UINT8                           ucLen
+);
+VOS_VOID NAS_MM_SndRrcTransactionStatusNotify(
+    VOS_UINT32                          ulRcvPid,
+    RRMM_TRANSACTION_STATUS_ENUM_UINT8  enTranStatus
+);
+
+VOS_UINT32 NAS_MM_GetRrcPidFromCurrRatType(
+    VOS_UINT32                         *pulPid
+);
+
+
 
 #if (VOS_OS_VER == VOS_WIN32)
 #pragma pack()

@@ -22,6 +22,7 @@ extern "C" {
 #define BSP_CONST               const
 #endif
 
+
 #define BSP_ERR_SCI_NOTINIT              951
 #define BSP_ERR_SCI_INVALIDFREQ          952
 #define BSP_ERR_SCI_USEDEFAULT           953
@@ -73,15 +74,16 @@ typedef unsigned int (*Sci_Event_Func)(unsigned int u32Event, void* para);
 #define SCI_DEF_SIM_TYPE  0x1
 #define SCI_DEF_UNKNOWN_TYPE  0x0
 
+
 /* print pack */
-#define  sci_print_error(fmt, ...)    (bsp_trace(BSP_LOG_LEVEL_ERROR, BSP_MODU_SCI, "[sci]: <%s> "fmt, __FUNCTION__, ##__VA_ARGS__))
-#define  sci_print_info(fmt, ...)    (bsp_trace(BSP_LOG_LEVEL_INFO, BSP_MODU_SCI, "[sci]: <%s> "fmt, __FUNCTION__, ##__VA_ARGS__))
-#define  sci_print_debug(fmt, ...)    (bsp_trace(BSP_LOG_LEVEL_DEBUG, BSP_MODU_SCI, "[sci]: <%s> "fmt, __FUNCTION__, ##__VA_ARGS__))
-#define  sci_print_warning(fmt, ...)    (bsp_trace(BSP_LOG_LEVEL_WARNING, BSP_MODU_SCI, "[sci]: <%s> "fmt, __FUNCTION__, ##__VA_ARGS__))
+#define  sci_print_error(fmt, ...)    (bsp_trace(BSP_LOG_LEVEL_ERROR, BSP_MODU_SCI, "[sci]: <%s> [%d]"fmt, __FUNCTION__,g_stSciHwCfg.sci_id, ##__VA_ARGS__))
+#define  sci_print_info(fmt, ...)    (bsp_trace(BSP_LOG_LEVEL_INFO, BSP_MODU_SCI, "[sci]: <%s> [%d]"fmt, __FUNCTION__,g_stSciHwCfg.sci_id,##__VA_ARGS__))
+#define  sci_print_debug(fmt, ...)    (bsp_trace(BSP_LOG_LEVEL_DEBUG, BSP_MODU_SCI, "[sci]: <%s> [%d]"fmt, __FUNCTION__,g_stSciHwCfg.sci_id,g_stSciHwCfg.sci_id, ##__VA_ARGS__))
+#define  sci_print_warning(fmt, ...)    (bsp_trace(BSP_LOG_LEVEL_WARNING, BSP_MODU_SCI, "[sci]: <%s> [%d]"fmt, __FUNCTION__,g_stSciHwCfg.sci_id, ##__VA_ARGS__))
 
 //#define  sci_print               printf
 
-#define  sci_print(fmt, ...)               (bsp_trace(BSP_LOG_LEVEL_ERROR, BSP_MODU_SCI, "[sci]: <%s> "fmt, __FUNCTION__, ##__VA_ARGS__))
+#define  sci_print(fmt, ...)               (bsp_trace(BSP_LOG_LEVEL_ERROR, BSP_MODU_SCI, "[sci]: <%s> [%d]"fmt, __FUNCTION__,g_stSciHwCfg.sci_id,##__VA_ARGS__))
 #define SCI_BASE_ADDR g_stSciHwCfg.base_addr
 #define SCI_INT  g_sci_set_select.ulSciIntNum
 
@@ -151,17 +153,10 @@ typedef unsigned int (*Sci_Event_Func)(unsigned int u32Event, void* para);
 #define SCI_BUF_MAX_LEN         288  //from 512 to 288 
 /* buffer overflow End! */
 
-/* debug info got by usim for card problem 2014-03-03*/
 
-#define SCI_RECORD_ATR_LEN      (40)
-#define SCI_RECORD_REG_LEN      (36)
-#define SCI_RECORD_DATA_LEN     (72)
-#define SCI_RECORD_EVENT_LEN    (32)
-#define SCI_RECORD_TOTAL_LEN    (388)
-/* when 72 data bytes is needed,  80 bytes is saved really */
-#define SCI_RECORD_DATA_REAL_LEN    (80)
-#define SCI_RECORD_PER_DATA_LEN     (9)
-#define SCI_RECORD_TOTAL_CNT        (8)
+#define SCI_RECORD_DATA_REAL_LEN    (20*14)
+#define SCI_RECORD_PER_DATA_LEN     (14)
+#define SCI_RECORD_TOTAL_CNT        (20)
 
 #ifdef BSP_CONFIG_HI3630
 /* reset bit shift*/
@@ -193,12 +188,12 @@ typedef unsigned int (*Sci_Event_Func)(unsigned int u32Event, void* para);
 #define CARD_CONNECT_SCI1               1
 
 /*异常纪录文件路径的定义*/
-#define SCI0_RECORD_LOG_PATH_LOST_CARD   "/modem_log/log/sci0Record_lost_card.txt"
-#define SCI1_RECORD_LOG_PATH_LOST_CARD   "/modem_log/log/sci1Record_lost_card.txt"
+#define SCI0_RECORD_LOG_PATH_LOST_CARD   "/modem_log/log/"
+#define SCI1_RECORD_LOG_PATH_LOST_CARD   "/modem_log/log/"
 
 /*异常纪录文件路径的定义*/
-#define SCI0_RECORD_LOG_PATH_CONTROL   "/modem_log/log/sci0Record_control.txt"
-#define SCI1_RECORD_LOG_PATH_CONTROL   "/modem_log/log/sci1Record_control.txt"
+#define SCI0_RECORD_LOG_PATH_CONTROL   "/modem_log/log/sci0_log_list_file.txt"
+#define SCI1_RECORD_LOG_PATH_CONTROL   "/modem_log/log/sci1_log_list_file.txt"
 
 
 
@@ -220,6 +215,21 @@ typedef unsigned int (*Sci_Event_Func)(unsigned int u32Event, void* para);
 /*定义SCI初始化函数的类型*/
 typedef void (*SCI_INIT_FUNCP)(void);
 
+typedef enum 
+{
+    SCI_SLOT_SWITCH_NONE,
+    SCI_SLOT_SWITCH_CHANGE,
+    SCI_SLOT_SWITCH_BUTTON,
+        
+} SCI_SLOT_SWITCH_FLAG;
+
+/* debug struct */
+typedef struct
+{
+    u32 sci_debug_base_addr_legth;
+    char* sci_debug_base_addr;
+}sci_debug_str;
+
 /*定义硬件适配的结构*/
 typedef struct
 {
@@ -239,6 +249,11 @@ typedef struct
     unsigned int sleep_vote;            /*0x4C: 睡眠投票的序号*/
     char * pwr_type;                    /*0x50: 供电类型*/
     char *       syncTaskName;          /*0x68: sync任务名*/
+    SCI_SLOT_SWITCH_FLAG slot_switch_flag;       /*0x72:   是否进行过卡槽切换*/
+    struct regulator* sci_pmu;
+    VOIDFUNCPTR sci_int_handler;
+    s32 task_id;
+    sci_debug_str  g_sci_debug_base;
 }SCI_CFG_STRU;
 
 /*定义NV项的结构*/
@@ -328,14 +343,6 @@ typedef struct sciRxStateStru
 }SCI_RX_STATE_STRU;
 
 
-/* debug struct */
-typedef struct
-{
-    u32 sci_debug_base_addr_legth;
-    char* sci_debug_base_addr;
-}sci_debug_str;
-
-
 /*****************************************************************************
   9 全局变量声明
 *****************************************************************************/
@@ -411,8 +418,8 @@ s32 bsp_sci_excreset_times(u32 ExcResetTimes) ;
 s32 I1_bsp_sci_excreset_times(u32 ExcResetTimes) ;
 
 //
-u32 bsp_sci_record_data_save(void) ;
-u32 I1_bsp_sci_record_data_save(void) ;
+u32 bsp_sci_record_data_save(SCI_LOG_MODE log_mode) ;
+u32 I1_bsp_sci_record_data_save(SCI_LOG_MODE log_mode) ;
 
 //appl131 functions
 STATUS appl131_get_clk_freq(u32 *len, unsigned char *pbuf);
@@ -439,6 +446,16 @@ u32 bsp_sci_blk_rcv(unsigned char *pu8Data,u32 *pulLength);
 
 s32 bsp_sci_record_log_read(unsigned char *pucDataBuff, unsigned int * pulLength, unsigned int ulMaxLength);
 s32 I1_bsp_sci_record_log_read(unsigned char *pucDataBuff, unsigned int * pulLength, unsigned int ulMaxLength);
+
+s32 bsp_sci_slot_switch(SCI_SLOT sci_slot0,SCI_SLOT sci_slot1);
+s32 I1_bsp_sci_slot_switch(SCI_SLOT sci_slot0,SCI_SLOT sci_slot1);
+
+s32 bsp_sci_get_slot_state(SCI_SLOT* sci_slot0,SCI_SLOT* sci_slot1);
+s32 I1_bsp_sci_get_slot_state(SCI_SLOT* sci_slot0,SCI_SLOT* sci_slot1);
+
+
+
+
 
 /* T=1 add End */
 

@@ -15,10 +15,13 @@
 #include <linux/io.h>
 #include <linux/err.h>
 #include <linux/of.h>
-#ifdef CONFIG_HI3630_CLK
+#ifdef CONFIG_HI3XXX_CLK
 #include <linux/clkdev.h>
 #endif
-
+#ifdef CONFIG_HI6XXX_CLK
+#include <soc_baseaddr_interface.h>
+#include <soc_smart_interface.h>
+#endif
 /*
  * DOC: basic fixed-rate clock that cannot gate
  *
@@ -30,7 +33,9 @@
  */
 
 #define to_clk_fixed_rate(_hw) container_of(_hw, struct clk_fixed_rate, hw)
-
+#ifdef CONFIG_HI6XXX_CLK
+extern unsigned char hi6xxx_pmic_reg_read_ex (void *pmu_base, unsigned int reg_addr);
+#endif
 static unsigned long clk_fixed_rate_recalc_rate(struct clk_hw *hw,
 		unsigned long parent_rate)
 {
@@ -83,6 +88,18 @@ struct clk *clk_register_fixed_rate(struct device *dev, const char *name,
 
 	return clk;
 }
+EXPORT_SYMBOL_GPL(clk_register_fixed_rate);
+
+#ifdef CONFIG_HI3XXX_CLK
+int IS_FPGA(void)
+{
+	if (IS_ERR_OR_NULL(__clk_lookup("fpga")))
+		return 0;
+	else
+		return 1;
+}
+EXPORT_SYMBOL_GPL(IS_FPGA);
+#endif
 
 #ifdef CONFIG_OF
 /**
@@ -92,24 +109,30 @@ void of_fixed_clk_setup(struct device_node *node)
 {
 	struct clk *clk;
 	const char *clk_name = node->name;
-	u32 rate = 0;
+	u32 rate;
+#ifdef CONFIG_HI6XXX_CLK
+      void __iomem *pmu_baseaddr = NULL;
+      u32 pmu_version = 0;
+#endif
 
-	if (of_property_read_u32(node, "clock-frequency", &rate)) {
-		pr_err("%s Fixed rate clock <%s> must have a clock rate property\n",
-			__func__, node->name);
+	if (of_property_read_u32(node, "clock-frequency", &rate))
 		return;
-	}
-
-	if (of_property_read_string(node, "clock-output-names", &clk_name)) {
-		pr_err("%s Fixed rate clock <%s> must have a clock name property\n",
-			__func__, node->name);
-		return;
-	}
-
+	/*PMU 32k-clk: hi6553(32764), hi6552(32000) */
+#ifdef CONFIG_HI6XXX_CLK
+	pmu_baseaddr = ioremap(SOC_PMUSSI_BASE_ADDR, SZ_4K);
+       pmu_version = hi6xxx_pmic_reg_read_ex(pmu_baseaddr, SOC_SMART_VERSION_ADDR(0));
+	/*PMU chipid equals to hi6553 */
+       if((pmu_version == 0x10) || (pmu_version == 0x11)){
+             if(NULL != of_find_property(node, "clock-frequency-hi6553", NULL))
+			 if (of_property_read_u32(node, "clock-frequency-hi6553", &rate))
+				return;
+       }
+#endif
+	of_property_read_string(node, "clock-output-names", &clk_name);
 	clk = clk_register_fixed_rate(NULL, clk_name, NULL, CLK_IS_ROOT, rate);
 	if (!IS_ERR(clk))
 		of_clk_add_provider(node, of_clk_src_simple_get, clk);
-#ifdef CONFIG_HI3630_CLK
+#ifdef CONFIG_HI3XXX_CLK
 	clk_register_clkdev(clk, clk_name, NULL);
 #endif
 }

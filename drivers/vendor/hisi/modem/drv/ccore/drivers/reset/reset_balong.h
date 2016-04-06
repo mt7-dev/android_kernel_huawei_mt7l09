@@ -18,6 +18,7 @@ struct ccore_reset_ctrl
     u32 stamp_m3_reset_addr;
     u32 stamp_m3_unreset_addr;
     u32 fiq_cnt;
+	u32 fiq_out;
 	IPC_INT_LEV_E ipc_recv_irq_wakeup;
 	IPC_INT_LEV_E ipc_send_irq_in_idle;
 	IPC_INT_LEV_E ipc_send_irq_reboot_ok;

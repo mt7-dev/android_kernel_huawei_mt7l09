@@ -1,18 +1,4 @@
-/**
-    @copyright: Huawei Technologies Co., Ltd. 2012-2012. All rights reserved.
-    
-    @file: srecorder_dump_backtrace.h
-    
-    @brief: 进行内核堆栈回溯。
-    
-    @version: 1.0 
-    
-    @author: QiDechun ID: 216641
-    
-    @date: 2012-07-04
-    
-    @history:
-*/
+
 
 #ifndef SRECORDER_DUMP_BACKTRACE_H
 #define SRECORDER_DUMP_BACKTRACE_H

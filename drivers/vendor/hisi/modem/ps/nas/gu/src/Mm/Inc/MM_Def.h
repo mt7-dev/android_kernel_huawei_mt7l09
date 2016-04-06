@@ -70,7 +70,7 @@ extern "C" {
 /* MM Timer个数，增加新定时器，请同步更新。 */
 
 
-#define     MM_TIMER_NUM                                (24)
+#define     MM_TIMER_NUM                                (25)
 
 
 

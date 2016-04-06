@@ -60,7 +60,22 @@ VOS_UINT32  NAS_EMM_CheckEnterRegNormal(VOS_VOID)
 
     NAS_LMM_PUBM_LOG1_NORM("NAS_EMM_TIN=", ulTinType);
     NAS_LMM_PUBM_LOG1_NORM("NAS_EMM_UPDATE_STATE=",(NAS_LMM_GetMmAuxFsmAddr()->ucEmmUpStat));
-
+    /* 24301协议5.5.3.2.6节中对相应TAU失败的描述中:
+        b)  Lower layer failure or release of the NAS signalling connection without "Extended wait time" received from lower layers before the TRACKING AREA UPDATE ACCEPT or TRACKING AREA UPDATE REJECT message is received
+            The tracking area updating procedure shall be aborted, and the UE shall proceed as described below.
+        c)  T3430 timeout
+            The UE shall abort the procedure and proceed as described below. The NAS signalling connection shall be released locally.
+        d)  TRACKING AREA UPDATE REJECT, other causes than those treated in subclause 5.5.3.2.5, and cases of EMM cause values  #22 and #25, if considered as abnormal cases according to subclause 5.5.3.2.5
+            If the tracking area updating request is not for initiating a PDN connection for emergency bearer services, upon reception of the EMM causes #95, #96, #97, #99 and #111 the UE should set the tracking area updating attempt counter to 5.
+            The UE shall proceed as described below.
+        .....
+        For the cases b, c and d, if the tracking area updating request is not for initiating a PDN connection for emergency bearer services, the tracking area updating attempt counter shall be incremented, unless it was already set to 5.
+        If the tracking area updating attempt counter is less than 5, and the TAI of the current serving cell is included in the TAI list, and the EPS update status is equal to EU1 UPDATED and the TIN does not indicate "P-TMSI":
+            the UE shall keep the EPS update status to EU1 UPDATED and enter state EMM-REGISTERED.NORMAL-SERVICE. The UE shall start timer T3411.
+            If in addition the TRACKING AREA UPDATE REQUEST indicated "periodic updating", the timer T3411 may be stopped when the UE enters EMM-CONNECTED mode.
+            If timer T3411 expires the tracking area updating procedure is triggered again
+        协议中并为对PS挂起情形、DRX改变或者UE无线能力改变发起的TAU做特殊处理,因此TAU Other Cause Fail,EMM状态不应该转到REG+ATTEMP_TO_UPDATE态 */
+    #if 0
     /* 如果是DRX改变发起的TAU失败，不能进入NOR-SERVICE态，需修改EU值 */
     if (NAS_EMM_YES == NAS_LMM_GetEmmInfoDrxNetCapChange())
     {
@@ -79,8 +94,9 @@ VOS_UINT32  NAS_EMM_CheckEnterRegNormal(VOS_VOID)
     {
         return NAS_EMM_FAIL;
     }
-
     /* 不满足上面的所有不能进入的条件 */
+    #endif
+
     /* TA在TAI LIST && EU值为EU1 && L单模或者多模但TIN不是P-TMSI，可进入 */
     if(   (NAS_EMM_SUCC == NAS_EMM_TAU_IsCurrentTAInTaList())
         && (EMM_US_UPDATED_EU1 == (NAS_LMM_GetMmAuxFsmAddr()->ucEmmUpStat))
@@ -208,7 +224,7 @@ VOS_VOID  NAS_EMM_TAU_ProcAbnormal(VOS_VOID)
     }
 
     /*启动定时器T3402*/
-    NAS_LMM_StartPtlTimer(TI_NAS_EMM_PTL_T3402);
+    NAS_LMM_Start3402Timer(NAS_LMM_TIMER_161722Atmpt5CSPS1_FALSE);
 
     /*设置EPS状态为EU2*/
     NAS_LMM_GetMmAuxFsmAddr()->ucEmmUpStat = EMM_US_NOT_UPDATED_EU2;
@@ -238,6 +254,7 @@ VOS_VOID  NAS_EMM_TAU_ProcAbnormal(VOS_VOID)
 VOS_VOID  NAS_EMM_TAU_ProcCause161722TauAttemptCont(VOS_VOID )
 {
     NAS_EMM_ATTACH_LOG_INFO("NAS_EMM_ProcCause161722TauAttemptCont is entered");
+
     /* lihong00150010 emergency tau&service begin */
     if (VOS_TRUE == NAS_EMM_IsEnterRegLimitService())
     {
@@ -257,7 +274,7 @@ VOS_VOID  NAS_EMM_TAU_ProcCause161722TauAttemptCont(VOS_VOID )
         NAS_LMM_StartPtlTimer(TI_NAS_EMM_PTL_T3411);
 
 		/* lihong00150010 emergency delete */
-		
+
         /*修改状态：进入主状态REG子状态ATTACH_WAIT_ESM_BEARER_CNF*/
         NAS_EMM_AdStateConvert(         EMM_MS_REG,
                                         EMM_SS_REG_ATTEMPTING_TO_UPDATE_MM,
@@ -268,10 +285,14 @@ VOS_VOID  NAS_EMM_TAU_ProcCause161722TauAttemptCont(VOS_VOID )
     }
     else
     {
-        /*启动定时器TI_NAS_EMM_T3402*/
-        NAS_LMM_StartPtlTimer(      TI_NAS_EMM_PTL_T3402);
-		
-		/* lihong00150010 emergency delete */
+        if (NAS_LMM_UE_CS_PS_MODE_1 == NAS_LMM_GetEmmInfoUeOperationMode())
+        {
+            NAS_LMM_Start3402Timer(NAS_LMM_TIMER_161722Atmpt5CSPS1_TRUE);
+        }
+        else if (NAS_LMM_UE_CS_PS_MODE_2 == NAS_LMM_GetEmmInfoUeOperationMode())
+        {
+            NAS_LMM_Start3402Timer(NAS_LMM_TIMER_161722Atmpt5CSPS1_FALSE);
+        }
 
         /*修改状态：进入主状态REG子状态EMM_SS_REG_ATTEMPTING_TO_UPDATE_MM*/
         NAS_EMM_AdStateConvert(     EMM_MS_REG,
@@ -412,6 +433,10 @@ VOS_UINT32 NAS_EMM_MsTauInitSsWaitCNCnfMsgT3430Exp(VOS_UINT32  ulMsgId,
         return NAS_LMM_MSG_DISCARD;
     }
 
+    #if (FEATURE_PTM == FEATURE_ON)
+    NAS_EMM_TAUErrRecord(pMsgStru, EMM_OM_ERRLOG_TYPE_TIMEOUT);
+    #endif
+
     /*TAU ATTEMPT COUNT ++*/
     NAS_EMM_TAU_GetEmmTAUAttemptCnt()++;
 
@@ -483,35 +508,6 @@ VOS_VOID  NAS_EMM_MsTauInitSsWaitCNCnfProcMsgRrcRelInd( VOS_UINT32 ulCause )
 
     return;
 }
-VOS_UINT32 NAS_EMM_MsTauInitSsWaitCnCnfMsgAuthFail(
-                                                  VOS_UINT32  ulMsgId,
-                                                  VOS_VOID   *pMsgStru)
-{
-    NAS_EMM_INTRA_AUTH_FAIL_STRU        *pMsgAuthFail   = (NAS_EMM_INTRA_AUTH_FAIL_STRU *)pMsgStru;
-    VOS_UINT32                          ulCause;
-
-    (VOS_VOID)ulMsgId;
-
-    NAS_EMM_TAU_LOG_INFO("NAS_EMM_MsTauInitSsWaitCnCnfMsgAuthFail is entered.");
-
-    /*获得原因值*/
-    ulCause                                             =   pMsgAuthFail->ulCause;
-
-    /*依据原因值处理*/
-    if(NAS_EMM_AUTH_REJ_INTRA_CAUSE_NORMAL              ==  ulCause)
-    {
-        NAS_EMM_MsTauInitSsWaitCnTauCnfProcMsgAuthRej(      ulCause);
-    }
-    else
-    {
-        NAS_EMM_MsTauInitSsWaitCNCnfProcMsgRrcRelInd(       ulCause);
-    }
-
-
-    return NAS_LMM_MSG_HANDLED;
-}
-
-
 VOS_UINT32 NAS_EMM_MsTauInitSsWaitCnCnfMsgAuthRej(
                                         VOS_UINT32  ulMsgId,
                                         const VOS_VOID   *pMsgStru)
@@ -521,12 +517,16 @@ VOS_UINT32 NAS_EMM_MsTauInitSsWaitCnCnfMsgAuthRej(
 
     NAS_EMM_TAU_LOG_INFO("NAS_EMM_MsTauInitSsWaitCnCnfMsgAuthRej is entered.");
 
+    /* 鉴权拒绝优化处理 */
+    if (NAS_EMM_YES == NAS_EMM_IsNeedIgnoreHplmnAuthRej())
+    {
+        return  NAS_LMM_MSG_HANDLED;
+    }
+
     NAS_EMM_MsTauInitSsWaitCnTauCnfProcMsgAuthRej(NAS_EMM_AUTH_REJ_INTRA_CAUSE_NORMAL);
 
     return NAS_LMM_MSG_HANDLED;
 }
-
-
 VOS_UINT32 NAS_EMM_MsTauInitSsWaitCnCnfMsgRrcRelInd(
                                                   VOS_UINT32  ulMsgId,
                                                   VOS_VOID   *pMsgStru)
@@ -541,6 +541,9 @@ VOS_UINT32 NAS_EMM_MsTauInitSsWaitCnCnfMsgRrcRelInd(
     /*获得原因值*/
     ulCause                                             =   pRrcRelInd->enRelCause;
 
+    #if (FEATURE_PTM == FEATURE_ON)
+    NAS_EMM_TAUErrRecord(pMsgStru, EMM_OM_ERRLOG_TYPE_LRRC_REL);
+    #endif
     NAS_EMM_MsTauInitSsWaitCNCnfProcMsgRrcRelInd(           ulCause);
 
     return NAS_LMM_MSG_HANDLED;
@@ -633,6 +636,72 @@ VOS_VOID  NAS_EMM_SetBarInfo(NAS_EMM_BAR_PROCEDURE_ENUM_UINT32 enBarProc,
     return;
 }
 
+VOS_UINT32 NAS_EMM_IsBarTypeMoSingal(VOS_VOID)
+{
+    /*bit1 为1，标识MO SIGNAL类型被bar*/
+    if(NAS_EMM_BIT_SLCT == (NAS_EMM_TAU_GetRegBarType() & NAS_EMM_BIT_1))
+    {
+        return NAS_EMM_SUCC;
+    }
+    else
+    {
+        return NAS_EMM_FAIL;
+    }
+
+}
+VOS_UINT32 NAS_EMM_IsBarTypeMoCall(VOS_VOID)
+{
+    /*bit2 为1，标识MO CALL类型被bar*/
+    if(NAS_EMM_BIT_SLCT == ((NAS_EMM_TAU_GetRegBarType() & NAS_EMM_BIT_2)>> NAS_LMM_MOVEMENT_1_BITS))
+    {
+        return NAS_EMM_SUCC;
+    }
+    else
+    {
+        return NAS_EMM_FAIL;
+    }
+
+}
+VOS_UINT32 NAS_EMM_IsBarTypeMt(VOS_VOID)
+{
+    /*bit3 为1，标识MT CALL类型被bar*/
+    if(NAS_EMM_BIT_SLCT == ((NAS_EMM_TAU_GetRegBarType() & NAS_EMM_BIT_3)>>NAS_LMM_MOVEMENT_2_BITS))
+    {
+        return NAS_EMM_SUCC;
+    }
+    else
+    {
+        return NAS_EMM_FAIL;
+    }
+
+}
+VOS_UINT32 NAS_EMM_IsBarTypeMoCsfb(VOS_VOID)
+{
+    /*bit4 为1，标识MO CSFB类型被bar*/
+    if(NAS_EMM_BIT_SLCT == ((NAS_EMM_TAU_GetRegBarType() & NAS_EMM_BIT_4)>>NAS_LMM_MOVEMENT_3_BITS))
+    {
+        return NAS_EMM_SUCC;
+    }
+    else
+    {
+        return NAS_EMM_FAIL;
+    }
+
+}
+VOS_UINT32 NAS_EMM_IsBarTypeMoCallAndCsfb(VOS_VOID)
+{
+    /*bit4&bit2 为1，标识MO CALL& MO CSFB类型被bar*/
+    if((NAS_EMM_BIT_SLCT == ((NAS_EMM_TAU_GetRegBarType() & NAS_EMM_BIT_4)>>NAS_LMM_MOVEMENT_3_BITS))
+        && (NAS_EMM_BIT_SLCT == ((NAS_EMM_TAU_GetRegBarType() & NAS_EMM_BIT_2)>>NAS_LMM_MOVEMENT_1_BITS)))
+    {
+        return NAS_EMM_SUCC;
+    }
+    else
+    {
+        return NAS_EMM_FAIL;
+    }
+}
+
 /*****************************************************************************
  Function Name   : NAS_EMM_JudgeBarType
  Description     : 判断是否是某种类型的bar
@@ -646,76 +715,36 @@ VOS_VOID  NAS_EMM_SetBarInfo(NAS_EMM_BAR_PROCEDURE_ENUM_UINT32 enBarProc,
 *****************************************************************************/
 VOS_UINT32  NAS_EMM_JudgeBarType( NAS_EMM_BAR_TYPE_ENUM_UINT32 enBarType )
 {
+    VOS_UINT32 ulRslt;
     if( NAS_EMM_BAR_TYPE_MO_SIGNAL == enBarType)
     {
-        /*bit1 为1，标识MO SIGNAL类型被bar*/
-        if(NAS_EMM_BIT_SLCT == (NAS_EMM_TAU_GetRegBarType() & NAS_EMM_BIT_1))
-        {
-            return NAS_EMM_SUCC;
-        }
-        else
-        {
-            return NAS_EMM_FAIL;
-        }
+        ulRslt = NAS_EMM_IsBarTypeMoSingal();
     }
     else if(NAS_EMM_BAR_TYPE_MO_CALL == enBarType)
     {
-        /*bit2 为1，标识MO CALL类型被bar*/
-        if(NAS_EMM_BIT_SLCT == ((NAS_EMM_TAU_GetRegBarType() & NAS_EMM_BIT_2)>> NAS_LMM_MOVEMENT_1_BITS))
-        {
-            return NAS_EMM_SUCC;
-        }
-        else
-        {
-            return NAS_EMM_FAIL;
-        }
+        ulRslt = NAS_EMM_IsBarTypeMoCall();
     }
     else if(NAS_EMM_BAR_TYPE_MT == enBarType)
     {
-        /*bit3 为1，标识MT CALL类型被bar*/
-        if(NAS_EMM_BIT_SLCT == ((NAS_EMM_TAU_GetRegBarType() & NAS_EMM_BIT_3)>>NAS_LMM_MOVEMENT_2_BITS))
-        {
-            return NAS_EMM_SUCC;
-        }
-        else
-        {
-            return NAS_EMM_FAIL;
-        }
-
+        ulRslt = NAS_EMM_IsBarTypeMt();
     }
     else if(NAS_EMM_BAR_TYPE_MO_CSFB == enBarType)
     {
-        /*bit4 为1，标识MO CSFB类型被bar*/
-        if(NAS_EMM_BIT_SLCT == ((NAS_EMM_TAU_GetRegBarType() & NAS_EMM_BIT_4)>>NAS_LMM_MOVEMENT_3_BITS))
-        {
-            return NAS_EMM_SUCC;
-        }
-        else
-        {
-            return NAS_EMM_FAIL;
-        }
-
+        ulRslt = NAS_EMM_IsBarTypeMoCsfb();
     }
     else if(NAS_EMM_BAR_TYPE_MO_CALL_AND_CSFB == enBarType)
     {
-        /*bit4&bit2 为1，标识MO CALL& MO CSFB类型被bar*/
-        if((NAS_EMM_BIT_SLCT == ((NAS_EMM_TAU_GetRegBarType() & NAS_EMM_BIT_4)>>NAS_LMM_MOVEMENT_3_BITS))
-            && (NAS_EMM_BIT_SLCT == ((NAS_EMM_TAU_GetRegBarType() & NAS_EMM_BIT_2)>>NAS_LMM_MOVEMENT_1_BITS)))
-        {
-            return NAS_EMM_SUCC;
-        }
-        else
-        {
-            return NAS_EMM_FAIL;
-        }
-
+        ulRslt = NAS_EMM_IsBarTypeMoCallAndCsfb();
     }
     else
     {
         NAS_EMM_TAU_LOG_INFO("NAS_EMM_JudgeBarType: Bar type is err.");
-        return NAS_EMM_FAIL;
+        ulRslt = NAS_EMM_FAIL;
     }
+    return ulRslt;
 }
+
+
 /*VOS_UINT32  NAS_EMM_GetBarType (VOS_VOID )
 {
     NAS_EMM_BAR_TYPE_ENUM_UINT32 enBarType = NAS_EMM_BAR_TYPE_BUTT;
@@ -867,6 +896,9 @@ VOS_UINT32 NAS_EMM_MsTauInitSsWaitCNCnfMsgIntraConnectFailInd(VOS_UINT32  ulMsgI
         /*向MMC发送本地LMM_MMC_DETACH_IND消息*/
         NAS_EMM_MmcSendDetIndLocal( MMC_LMM_L_LOCAL_DETACH_OTHERS);
 
+        #if (FEATURE_PTM == FEATURE_ON)
+        NAS_EMM_LocalDetachErrRecord(EMM_ERR_LOG_LOCAL_DETACH_TYPE_OTHER);
+        #endif
         NAS_EMM_CommProcConn2Ilde();
 
         if (LRRC_EST_CELL_SEARCHING == pMrrcConnectFailRelInd->enEstResult)
@@ -1108,6 +1140,7 @@ VOS_UINT32 NAS_EMM_SndTauCmpSuccProc(VOS_VOID* pMsg)
     NAS_EMM_PUBU_LOG_NORM("NAS_EMM_SndTauCmpSuccProc: entern");
     NAS_EMM_TAU_SaveEmmTauCompleteFlag(NAS_EMM_TAU_COMPLETE_INVALID);
 
+    NAS_EMM_ClearNewMappedSecuCntxt();
     return NAS_EMM_SUCC;
 }
 #ifdef __cplusplus

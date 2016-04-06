@@ -59,6 +59,17 @@ LOCAL MN_CALL_INFO_STRU                   f_astCallInfos[MN_CALL_MAX_NUM];
 
 
 
+VC_TO_TAFCS_CAUSE_STRU                    g_astVcCauseToTafCsCause[] =
+{
+    {APP_VC_OPEN_CHANNEL_FAIL_CAUSE_STARTED         ,   TAF_CS_CAUSE_VC_ERR_STARTED         },
+    {APP_VC_OPEN_CHANNEL_FAIL_CAUSE_PORT_CFG_FAIL   ,   TAF_CS_CAUSE_VC_ERR_PORT_CFG_FAIL   },
+    {APP_VC_OPEN_CHANNEL_FAIL_CAUSE_SET_DEVICE_FAIL ,   TAF_CS_CAUSE_VC_ERR_SET_DEVICE_FAIL },
+    {APP_VC_OPEN_CHANNEL_FAIL_CAUSE_SET_START_FAIL  ,   TAF_CS_CAUSE_VC_ERR_SET_START_FAIL  },
+    {APP_VC_OPEN_CHANNEL_FAIL_CAUSE_SET_VOLUME_FAIL ,   TAF_CS_CAUSE_VC_ERR_SET_VOLUME_FAIL },
+    {APP_VC_OPEN_CHANNEL_FAIL_CAUSE_SAMPLE_RATE_FAIL,   TAF_CS_CAUSE_VC_ERR_SAMPLE_RATE_FAIL},
+    {APP_VC_OPEN_CHANNEL_FAIL_CAUSE_TI_START_EXPIRED,   TAF_CS_CAUSE_VC_ERR_TI_START_EXPIRED},
+};
+
 extern    VOS_VOID MN_CALL_SetTchStatus(
     VOS_BOOL                            bAvailable
 );
@@ -164,7 +175,7 @@ VOS_VOID  MN_CALL_Init(MN_CALL_POWER_STATE_ENUM_U8 enPowerState)
         g_enVpNvCfgState = MN_CALL_VP_MO_MT_BOTH;
     }
 
-    
+
 
     TAF_CALL_InitDtmfCtx();
 
@@ -581,13 +592,14 @@ VOS_VOID  MN_CALL_ProcVCMsg (VOS_VOID * pstMsg)
     MN_CALL_END_PARAM_STRU              stEndParm;
     VOS_UINT32                          ulRet;
 
-    stEndParm.enEndCause = MN_CALL_INTERWORKING_UNSPECIFIED;
 
     pstTmpMsg = (VC_CALL_MSG_STRU*)pstMsg;
 
     switch(pstTmpMsg->enMsgName)
     {
         case VC_CALL_END_CALL:
+            stEndParm.enEndCause    = TAF_CALL_ConvertVcCauseToTafCsCause(pstTmpMsg->enCause);
+
             MN_CALL_GetCallInfoList(&ucNumOfCalls,f_astCallInfos);
             if (ucNumOfCalls != 0)
             {
@@ -833,10 +845,10 @@ VOS_VOID  MN_CALL_ProcRabmCallSyncInd(
                         MN_CALL_SetWaitSendAlertStatus(VOS_FALSE, ucCallId);
 
                         MN_CALL_ReportEvent(ucCallId, MN_CALL_EVT_INCOMING);
-                        
+
                         MN_CALL_StartTimer(MN_CALL_TID_RING, 0, 0, VOS_RELTIMER_NOLOOP);
                     }
-                    
+
                     return;
                 }
             }
@@ -917,10 +929,22 @@ VOS_VOID MN_CALL_CsCallErrRecord(
     VOS_UINT32                                              ulLength;
     VOS_UINT32                                              ulResult;
     VOS_UINT16                                              usLevel;
+    NAS_ERR_LOG_IMS_CALL_FAIL_INFO_STRU                     stImsCallFailInfo;
 
     /* 查询对应Alarm Id是否需要记录异常信息 */
     usLevel       = NAS_GetErrLogAlmLevel(NAS_ERR_LOG_ALM_CS_CALL_FAIL);
     ulIsLogRecord = TAF_SDC_IsErrLogNeedRecord(usLevel);
+
+    PS_MEM_SET(&stImsCallFailInfo, 0, sizeof(NAS_ERR_LOG_IMS_CALL_FAIL_INFO_STRU));
+
+    /* IMS呼叫失败，到CS下重拨，callid一定是1 */
+    if (1 == ucCallId)
+    {
+        stImsCallFailInfo.ucImsCallFailFlag = TAF_SDC_GetErrLogImsCallFailFlag();
+        stImsCallFailInfo.ulImsCallFailCause = TAF_SDC_GetErrLogImsCallFailCause();
+
+        TAF_SDC_InitErrLogImsCallFailInfo();
+    }
 
     /* 不需要记录或没有异常时，不保存异常信息 */
     if ((VOS_FALSE == ulIsLogRecord)
@@ -961,6 +985,15 @@ VOS_VOID MN_CALL_CsCallErrRecord(
         PS_MEM_CPY(&stCsCallFailEvent.stDiscDir, &stCallInfo.stDiscDir, sizeof(NAS_ERR_LOG_MN_CALL_DISC_DIR_STRU) );
     }
 
+    /* 获取当前位置信息 */
+    NAS_MNTN_OutputPositionInfo(&stCsCallFailEvent.stPositionInfo);
+
+    /* 获取当前Usim信息 */
+    NAS_MMA_OutputUsimInfo(&stCsCallFailEvent.stUsimInfo);
+
+    stCsCallFailEvent.enRat = TAF_SDC_GetSysMode();
+    PS_MEM_CPY(&stCsCallFailEvent.stImsCallFailInfo, &stImsCallFailInfo, sizeof(NAS_ERR_LOG_IMS_CALL_FAIL_INFO_STRU));
+
     /*
        将异常信息写入Buffer中
        实际写入的字符数与需要写入的不等则打印异常
@@ -977,7 +1010,88 @@ VOS_VOID MN_CALL_CsCallErrRecord(
                            sizeof(stCsCallFailEvent));
     return;
 }
+
+
+VOS_VOID MN_CALL_CsMtCallFailRecord(
+    NAS_ERR_LOG_CS_MT_CALL_CAUSE_ENUM_U32   enCause
+)
+{
+    NAS_ERR_LOG_CS_MT_CALL_FAIL_EVENT_STRU  stCsMtCallFailEvt;
+    VOS_UINT32                              ulLength;
+    VOS_UINT16                              usLevel;
+    VOS_UINT32                              ulIsLogRecord;
+    VOS_UINT32                              ulResult;
+
+    /* 查询对应Alarm Id是否需要记录异常信息 */
+    usLevel       = NAS_GetErrLogAlmLevel(NAS_ERR_LOG_ALM_CS_MT_CALL_FAIL);
+    ulIsLogRecord = TAF_SDC_IsErrLogNeedRecord(usLevel);
+
+    /* 模块异常不需要记录或异常原因值不需要记录时，不保存异常信息 */
+    if (VOS_FALSE == ulIsLogRecord)
+    {
+        return;
+    }
+
+    ulLength = sizeof(NAS_ERR_LOG_CS_MT_CALL_FAIL_EVENT_STRU);
+
+    /* 填充CS PAGING失败异常信息 */
+    PS_MEM_SET(&stCsMtCallFailEvt, 0x00, ulLength);
+
+    NAS_COMM_BULID_ERRLOG_HEADER_INFO(&stCsMtCallFailEvt.stHeader,
+                                      VOS_GetModemIDFromPid(WUEPS_PID_TAF),
+                                      NAS_ERR_LOG_ALM_CS_MT_CALL_FAIL,
+                                      usLevel,
+                                      VOS_GetSlice(),
+                                      (ulLength - sizeof(OM_ERR_LOG_HEADER_STRU)));
+
+    /* 获取当前位置信息 */
+    NAS_MNTN_OutputPositionInfo(&stCsMtCallFailEvt.stPositionInfo);
+
+    /* 填写错误原因值 */
+    stCsMtCallFailEvt.enCause = enCause;
+
+    /* 将CS MT CALL失败信息发送给ACPU OM模块 */
+    TAF_SndAcpuOmFaultErrLogInd(&stCsMtCallFailEvt, ulLength);
+
+    /*
+       将异常信息写入Buffer中
+       实际写入的字符数与需要写入的不等则打印异常
+     */
+    ulResult = TAF_SDC_PutErrLogRingBuf((VOS_CHAR *)&stCsMtCallFailEvt, ulLength);
+    if (ulResult != ulLength)
+    {
+        NAS_ERROR_LOG(WUEPS_PID_TAF, "MN_CALL_SndAcpuOmCsMtCallFailInd(): Push buffer error.");
+    }
+
+    /* 可维可测勾包 */
+    NAS_COM_MntnPutRingbuf(NAS_ERR_LOG_ALM_CS_MT_CALL_FAIL,
+                           WUEPS_PID_TAF,
+                           (VOS_UINT8 *)&stCsMtCallFailEvt,
+                           sizeof(stCsMtCallFailEvt));
+
+    return;
+}
 #endif
+TAF_CS_CAUSE_ENUM_UINT32 TAF_CALL_ConvertVcCauseToTafCsCause(
+    APP_VC_OPEN_CHANNEL_FAIL_CAUSE_ENUM_UINT32 enVcCause
+)
+{
+    TAF_CS_CAUSE_ENUM_UINT32            enTafCause;
+    VOS_UINT32                          i;
+
+    enTafCause  = TAF_CS_CAUSE_CC_NW_NORMAL_CALL_CLEARING;
+
+    for (i = 0; i < (sizeof(g_astVcCauseToTafCsCause) / sizeof(g_astVcCauseToTafCsCause[0])); i++)
+    {
+        if (enVcCause == g_astVcCauseToTafCsCause[i].enVcCause)
+        {
+            enTafCause = g_astVcCauseToTafCsCause[i].enTafCsCasue;
+        }
+    }
+
+    return enTafCause;
+
+}
 
 #ifdef __cplusplus
 #if __cplusplus

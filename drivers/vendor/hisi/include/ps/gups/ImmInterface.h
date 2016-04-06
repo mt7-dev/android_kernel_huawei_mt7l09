@@ -87,7 +87,7 @@ extern IMM_ZC_STRU* IMM_ZcStaticAlloc_Debug(unsigned short usFileID, unsigned sh
 
 
 extern IMM_ZC_STRU * IMM_ZcDataTransformImmZc_Debug(unsigned short usFileID,
-            unsigned short usLineNum, const unsigned char *pucData, unsigned long ulLen, void *pstTtfMem);
+            unsigned short usLineNum, const unsigned char *pucData, unsigned int ulLen, void *pstTtfMem);
 
 
 #define IMM_DataTransformImmZc(pucData, ulLen, pstTtfMem)\
@@ -113,10 +113,10 @@ extern VOS_VOID IMM_RbRemoteFreeMem(VOS_VOID *pucAddr);
 
 
 
-extern unsigned long IMM_ZcAddMacHead (IMM_ZC_STRU *pstImmZc, const unsigned char * pucAddData);
+extern unsigned int IMM_ZcAddMacHead (IMM_ZC_STRU *pstImmZc, const unsigned char * pucAddData);
 
 
-extern VOS_UINT32 IMM_ZcRemoveMacHead (IMM_ZC_STRU *pstImmZc);
+extern unsigned int IMM_ZcRemoveMacHead (IMM_ZC_STRU *pstImmZc);
 
 
 extern IMM_MEM_STRU *IMM_ZcMapToImmMem_Debug(unsigned short usFileID,
@@ -128,7 +128,7 @@ extern IMM_MEM_STRU *IMM_ZcMapToImmMem_Debug(unsigned short usFileID,
 
 
 
-extern unsigned long IMM_ZcGetLocalFreeMemCnt (void);
+extern unsigned int IMM_ZcGetLocalFreeMemCnt (void);
 #define IMM_GetLocalFreeMemCnt()   IMM_ZcGetLocalFreeMemCnt()
 
 
@@ -176,7 +176,7 @@ extern void IMM_ZcReserve_Debug(unsigned short usFileID, unsigned short usLineNu
 
 
 
-extern unsigned long IMM_ZcGetUsedLen (const IMM_ZC_STRU *pstImmZc);
+extern unsigned int IMM_ZcGetUsedLen (const IMM_ZC_STRU *pstImmZc);
 
 
 extern unsigned short IMM_ZcGetUserApp(IMM_ZC_STRU *pstImmZc);
@@ -277,7 +277,7 @@ VOS_VOID IMM_MntnAcpuCheckPoolLeak( VOS_VOID );
 
 
 
-extern unsigned long IMM_MemRegEventCallBack
+extern unsigned int IMM_MemRegEventCallBack
 (
     IMM_MEM_POOL_ID_ENUM_UINT8          enPoolId,
     IMM_MEM_EVENT_CALLBACK              pMemAllocEvent,

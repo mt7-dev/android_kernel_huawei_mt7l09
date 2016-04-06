@@ -40,9 +40,9 @@ extern "C" {
 #include "bsp_hardtimer.h"
 #endif
 
-#ifdef __KERNEL__ 
+#ifdef __KERNEL__
 #include <linux/amba/bus.h>
-#include <linux/io.h> 
+#include <linux/io.h>
 #include <linux/gfp.h>
 #include <linux/clkdev.h>
 #include <linux/delay.h>
@@ -58,16 +58,15 @@ extern "C" {
 #include <linux/mm.h>
 #include <linux/mman.h>
 
-#include <asm/system.h>
-#include <asm/irq.h>
-#include <asm/mach-types.h>
-#include <asm/pgtable.h>
-#include <asm/mach/arch.h>
-#include <asm/mach/irq.h>
-#include <asm/mach/map.h>
-#include <asm/mach/time.h>
-#include <asm/io.h>
-#include <asm/system.h>
+//#include <asm/system.h>
+//#include <asm/irq.h>
+//#include <asm/mach-types.h>
+//#include <asm/pgtable.h>
+//#include <asm/mach/arch.h>
+//#include <asm/mach/irq.h>
+//#include <asm/mach/map.h>
+//#include <asm/mach/time.h>
+//#include <asm/io.h>
 
 #endif
 #include <bsp_clk.h>
@@ -147,7 +146,7 @@ struct dpm_device ipf_dpm_device={
 
 #endif
 
-	
+
 #ifdef __KERNEL__
 static int ipf_probe(struct platform_device *pdev);
 static int ipf_remove(struct platform_device *pdev);
@@ -357,7 +356,7 @@ void ipf_write_basic_filter(u32 filter_hw_id, IPF_MATCH_INFO_S* match_infos)
     for(j=0; j<(sizeof(IPF_MATCH_INFO_S)/4); j++)
     {
         match_info = *(match_info_addr+j);
-        ipf_writel((match_info), (HI_IPF_REGBASE_ADDR_VIRT+HI_FLT_LOCAL_ADDR0_OFFSET+j*4)); 
+        ipf_writel((match_info), (HI_IPF_REGBASE_ADDR_VIRT+HI_FLT_LOCAL_ADDR0_OFFSET+j*4));
     }
 }
 
@@ -372,7 +371,7 @@ void ipf_write_basic_filter(u32 filter_hw_id, IPF_MATCH_INFO_S* match_infos)
 *                           IPF_ERROR      初始化失败
 *
 * 修改记录  :2011年1月21日   鲁婷  创建
-				 2013年4月30日    陈东岳修改，将寄存器配置分配到两核 
+				 2013年4月30日    陈东岳修改，将寄存器配置分配到两核
 *****************************************************************************/
 #ifdef __KERNEL__
 BSP_S32 __init ipf_init(BSP_VOID)
@@ -391,7 +390,7 @@ BSP_S32 ipf_init(BSP_VOID)
     BSP_U32 u32IntStatus = 0;
     BSP_U32 u32Timeout = 0;
     BSP_U32 u32IntGate = 0;
-    BSP_U32 u32DMAOutstanding = 3;	
+    BSP_U32 u32DMAOutstanding = 3;
 #ifdef CONFIG_CCORE_PM
     BSP_U32 u32Result = 0;
 #endif
@@ -406,7 +405,7 @@ BSP_S32 ipf_init(BSP_VOID)
 
 #if !(defined(BSP_CONFIG_HI3630) && defined(__KERNEL__))
     /*ipf enable clock*/
-    struct clk *c_IpfClk; 
+    struct clk *c_IpfClk;
 
     c_IpfClk = clk_get(NULL, "ipf_clk");
     if(IS_ERR(c_IpfClk))
@@ -425,14 +424,14 @@ BSP_S32 ipf_init(BSP_VOID)
 #ifdef __VXWORKS__
     /* 初始化全局结构体 */
     memset((BSP_VOID*)IPF_ULBD_MEM_ADDR, 0x0, SHM_MEM_IPF_SIZE - IPF_DLDESC_SIZE);/* [false alarm]:fortify disable */
-    
+
     g_stIpfUl.pstIpfBDQ = (IPF_BD_DESC_S*)IPF_ULBD_MEM_ADDR;
     g_stIpfUl.pstIpfRDQ = (IPF_RD_DESC_S*)IPF_ULRD_MEM_ADDR;
     g_stIpfUl.pstIpfADQ0 = (IPF_AD_DESC_S*)IPF_ULAD0_MEM_ADDR;
     g_stIpfUl.pstIpfADQ1 = (IPF_AD_DESC_S*)IPF_ULAD1_MEM_ADDR;
     g_stIpfUl.pu32IdleBd = (BSP_U32*)IPF_ULBD_IDLENUM_ADDR;
     *(BSP_U32*)IPF_ULBD_IDLENUM_ADDR = IPF_ULBD_DESC_SIZE;
-    
+
     g_stIpfDl.pstIpfBDQ = (IPF_BD_DESC_S*)IPF_DLBD_MEM_ADDR;
     g_stIpfDl.pstIpfRDQ = (IPF_RD_DESC_S*)IPF_DLRD_MEM_ADDR;
     g_stIpfDl.pstIpfADQ0 = (IPF_AD_DESC_S*)IPF_DLAD0_MEM_ADDR;
@@ -444,14 +443,14 @@ BSP_S32 ipf_init(BSP_VOID)
     g_stIpfDl.pstIpfDebugCDQ = (IPF_CD_DESC_S*)IPF_DEBUG_DLCD_ADDR;
     #endif
     g_stIpfDl.u32IdleBd = IPF_DLBD_DESC_SIZE;
-	
+
     g_stIPFDebugInfo = (IPF_DEBUG_INFO_S*)IPF_DEBUG_INFO_ADDR;
 
     /* 申请扩展过滤器的内存, 配置扩展过滤器的基址 */
     g_pstExFilterAddr = (IPF_MATCH_INFO_S*)IPF_EXT_FILTER_ADDR;
     memset((BSP_VOID*)g_pstExFilterAddr, 0x0, EXFLITER_NUM*sizeof(IPF_MATCH_INFO_S));
-    
-    /* 配置扩展过滤器的起始地址 */	
+
+    /* 配置扩展过滤器的起始地址 */
     ipf_writel((BSP_U32)g_pstExFilterAddr, HI_IPF_REGBASE_ADDR_VIRT + HI_IPF_EF_BADDR_OFFSET);
 
     /* 初始化过滤器链表 */
@@ -460,7 +459,7 @@ BSP_S32 ipf_init(BSP_VOID)
         bsp_trace(BSP_LOG_LEVEL_ERROR, BSP_MODU_IPF, "\r ipf_init malloc list ERROR! \n");
         goto FREE_ERROR;
     }
-    
+
     /* 配置超时配置寄存器，使能超时中断，设置超时时间 */
     u32Timeout = TIME_OUT_CFG | (TIME_OUT_ENABLE);
     ipf_writel(u32Timeout, HI_IPF_REGBASE_ADDR_VIRT + HI_IPF_TIME_OUT_OFFSET);
@@ -484,12 +483,12 @@ BSP_S32 ipf_init(BSP_VOID)
     ipf_writel(u32RDSize[IPF_CHANNEL_UP]-1, HI_IPF_REGBASE_ADDR_VIRT + HI_IPF_CH0_RDQ_SIZE_OFFSET);
     ipf_writel(u32ADCtrl[IPF_CHANNEL_UP], HI_IPF_REGBASE_ADDR_VIRT + HI_IPF_CH0_ADQ_CTRL_OFFSET);
 
-    /* 上行通道的BD和RD起始地址*/    
+    /* 上行通道的BD和RD起始地址*/
     ipf_writel((BSP_U32)g_stIpfUl.pstIpfBDQ, HI_IPF_REGBASE_ADDR_VIRT + HI_IPF_CH0_BDQ_BADDR_OFFSET);
     ipf_writel((BSP_U32)g_stIpfUl.pstIpfRDQ, HI_IPF_REGBASE_ADDR_VIRT + HI_IPF_CH0_RDQ_BADDR_OFFSET);
     ipf_writel((BSP_U32)g_stIpfUl.pstIpfADQ0, HI_IPF_REGBASE_ADDR_VIRT + HI_IPF_CH0_ADQ0_BASE_OFFSET);
     ipf_writel((BSP_U32)g_stIpfUl.pstIpfADQ1, HI_IPF_REGBASE_ADDR_VIRT + HI_IPF_CH0_ADQ1_BASE_OFFSET);
-	
+
     /* 配置中断屏蔽,只开5个中断，结果上报，结果超时，RD下溢，AD0、AD1空 */
     u32IntMask0 = IPF_INT_OPEN0;  /* 0号为Modem CPU */
     u32IntMask1 = IPF_INT_OPEN1;
@@ -504,9 +503,9 @@ BSP_S32 ipf_init(BSP_VOID)
 
     /*初始化ipf过滤器配置自旋锁*/
     spin_lock_init(&ipf_filter_spinlock);
-	
+
     IPF_Int_Connect();
-	
+
 #ifdef CONFIG_CCORE_PM
 
     u32Result = bsp_device_pm_add(&ipf_dpm_device);
@@ -518,7 +517,7 @@ BSP_S32 ipf_init(BSP_VOID)
 #if (defined(BSP_CONFIG_HI3630))
     ipf_acore_init_status = (u32*)IPF_INIT_ADDR;
     ipf_ccore_init_status = (u32*)(IPF_INIT_ADDR+4);
-	
+
     spin_lock_irqsave(&ipf_filter_spinlock, ipf_flags);
     bsp_ipc_spin_lock(IPC_SEM_IPF_PWCTRL);
     *ipf_ccore_init_status = IPF_MCORE_INIT_SUCCESS;
@@ -535,17 +534,17 @@ BSP_S32 ipf_init(BSP_VOID)
     g_IPFInit = IPF_MCORE_INIT_SUCCESS;
 
     bsp_trace(BSP_LOG_LEVEL_ERROR, BSP_MODU_IPF,"[IPF] ipf init success\n");
-	
+
     return IPF_SUCCESS;
-    
+
     FREE_ERROR:
     bsp_trace(BSP_LOG_LEVEL_ERROR, BSP_MODU_IPF,"\r ipf_init malloc ERROR! \n");
     return IPF_ERROR;
-	
+
 #else
 
     memset((BSP_VOID*)IPF_DLBD_MEM_ADDR, 0x0, IPF_DLDESC_SIZE);
-	
+
     g_stIpfUl.pstIpfBDQ = (IPF_BD_DESC_S*)IPF_ULBD_MEM_ADDR;
     g_stIpfUl.pstIpfRDQ = (IPF_RD_DESC_S*)IPF_ULRD_MEM_ADDR;
     g_stIpfUl.pstIpfADQ0 = (IPF_AD_DESC_S*)IPF_ULAD0_MEM_ADDR;
@@ -558,34 +557,34 @@ BSP_S32 ipf_init(BSP_VOID)
     g_stIpfDl.pstIpfADQ1 = (IPF_AD_DESC_S*)IPF_DLAD1_MEM_ADDR;
     g_stIpfDl.pstIpfCDQ = (IPF_CD_DESC_S*)IPF_DLCD_MEM_ADDR;
 
-    g_stIpfDl.pstIpfPhyBDQ = (IPF_BD_DESC_S*)(IPF_IO_ADDRESS_PHY(IPF_DLBD_MEM_ADDR));
-    g_stIpfDl.pstIpfPhyRDQ = (IPF_RD_DESC_S*)(IPF_IO_ADDRESS_PHY(IPF_DLRD_MEM_ADDR));
-    g_stIpfDl.pstIpfPhyADQ0 = (IPF_AD_DESC_S*)(IPF_IO_ADDRESS_PHY(IPF_DLAD0_MEM_ADDR));
-    g_stIpfDl.pstIpfPhyADQ1 = (IPF_AD_DESC_S*)(IPF_IO_ADDRESS_PHY(IPF_DLAD1_MEM_ADDR));
-	
+    g_stIpfDl.pstIpfPhyBDQ = (IPF_BD_DESC_S*)(SHD_DDR_V2P(IPF_DLBD_MEM_ADDR));
+    g_stIpfDl.pstIpfPhyRDQ = (IPF_RD_DESC_S*)(SHD_DDR_V2P(IPF_DLRD_MEM_ADDR));
+    g_stIpfDl.pstIpfPhyADQ0 = (IPF_AD_DESC_S*)(SHD_DDR_V2P(IPF_DLAD0_MEM_ADDR));
+    g_stIpfDl.pstIpfPhyADQ1 = (IPF_AD_DESC_S*)(SHD_DDR_V2P(IPF_DLAD1_MEM_ADDR));
+
     g_stIpfDl.u32IpfCdRptr = (BSP_U32*) IPF_DLCDRPTR_MEM_ADDR;
     *(g_stIpfDl.u32IpfCdRptr) = 0;
 
     #if (defined(BSP_CONFIG_HI3630))
     spin_lock_init(&ipf_filter_spinlock);
     #endif
-	
+
     #ifdef __BSP_IPF_DEBUG__
     g_stIpfDl.pstIpfDebugCDQ = (IPF_CD_DESC_S*)IPF_DEBUG_DLCD_ADDR;
     #endif
 
     g_stIPFDebugInfo = (IPF_DEBUG_INFO_S*)IPF_DEBUG_INFO_ADDR;
-	
+
     /* 配置下行通道的AD、BD和RD深度 */
     ipf_writel(u32BDSize[IPF_CHANNEL_DOWN]-1, HI_IPF_REGBASE_ADDR_VIRT + HI_IPF_CH1_BDQ_SIZE_OFFSET);
     ipf_writel(u32RDSize[IPF_CHANNEL_DOWN]-1, HI_IPF_REGBASE_ADDR_VIRT + HI_IPF_CH1_RDQ_SIZE_OFFSET);
     ipf_writel(u32ADCtrl[IPF_CHANNEL_DOWN], HI_IPF_REGBASE_ADDR_VIRT + HI_IPF_CH1_ADQ_CTRL_OFFSET);
 
-    /*下行通道的BD和RD起始地址*/    
-    ipf_writel((BSP_U32)g_stIpfDl.pstIpfPhyBDQ, HI_IPF_REGBASE_ADDR_VIRT + HI_IPF_CH1_BDQ_BADDR_OFFSET);
-    ipf_writel((BSP_U32)g_stIpfDl.pstIpfPhyRDQ, HI_IPF_REGBASE_ADDR_VIRT + HI_IPF_CH1_RDQ_BADDR_OFFSET);
-    ipf_writel((BSP_U32)g_stIpfDl.pstIpfPhyADQ0, HI_IPF_REGBASE_ADDR_VIRT + HI_IPF_CH1_ADQ0_BASE_OFFSET);
-    ipf_writel((BSP_U32)g_stIpfDl.pstIpfPhyADQ1, HI_IPF_REGBASE_ADDR_VIRT + HI_IPF_CH1_ADQ1_BASE_OFFSET);
+    /*下行通道的BD和RD起始地址*/
+    ipf_writel((BSP_U32)((unsigned long)g_stIpfDl.pstIpfPhyBDQ), HI_IPF_REGBASE_ADDR_VIRT + HI_IPF_CH1_BDQ_BADDR_OFFSET);
+    ipf_writel((BSP_U32)((unsigned long)g_stIpfDl.pstIpfPhyRDQ), HI_IPF_REGBASE_ADDR_VIRT + HI_IPF_CH1_RDQ_BADDR_OFFSET);
+    ipf_writel((BSP_U32)((unsigned long)g_stIpfDl.pstIpfPhyADQ0), HI_IPF_REGBASE_ADDR_VIRT + HI_IPF_CH1_ADQ0_BASE_OFFSET);
+    ipf_writel((BSP_U32)((unsigned long)g_stIpfDl.pstIpfPhyADQ1), HI_IPF_REGBASE_ADDR_VIRT + HI_IPF_CH1_ADQ1_BASE_OFFSET);
 
     IPF_Int_Connect();
 
@@ -653,14 +652,14 @@ BSP_VOID IPF_Int_Connect(BSP_VOID)
 {
 	BSP_S32 s32Result;
 #ifdef CONFIG_MODULE_VIC
-	bsp_vic_connect((int)INT_LVL_IPF, (vicfuncptr)IPF_IntHandler, (s32)0);    
+	bsp_vic_connect((int)INT_LVL_IPF, (vicfuncptr)IPF_IntHandler, (s32)0);
 	bsp_vic_enable(INT_LVL_IPF);
 
-#else 
+#else
 	s32Result = request_irq(INT_LVL_IPF, (irq_handler_t)IPF_IntHandler, IRQF_NO_SUSPEND, "balong_ipf_v700r200", NULL);
 	if(0 != s32Result)
 	{
-            bsp_trace(BSP_LOG_LEVEL_ERROR, BSP_MODU_IPF,"\r IPF_Int_Connect Failed! \n",0,0,0,0,0,0);
+            bsp_trace(BSP_LOG_LEVEL_ERROR, BSP_MODU_IPF,"\r IPF_Int_Connect Failed! \n");
 	}
 #endif
 }
@@ -688,15 +687,15 @@ BSP_VOID IPF_IntHandler(BSP_VOID)
     BSP_U32 u32IpfInt = 0;
 
     /* 读取中断状态 */
-#ifdef __VXWORKS__ 
+#ifdef __VXWORKS__
 
-    u32IpfInt = ipf_readl(HI_IPF_REGBASE_ADDR_VIRT + HI_IPF_INT0_OFFSET); 
+    u32IpfInt = ipf_readl(HI_IPF_REGBASE_ADDR_VIRT + HI_IPF_INT0_OFFSET);
 
     /* 上行结果上报和结果超时上报 */
     if(u32IpfInt & (IPF_UL_RPT_INT0|IPF_UL_TIMEOUT_INT0))
     {
         ipf_writel((IPF_UL_RPT_INT0|IPF_UL_TIMEOUT_INT0), HI_IPF_REGBASE_ADDR_VIRT + HI_IPF_INT_STATE_OFFSET);
-	
+
         g_stIPFDebugInfo->ipf_ulbd_done_count++;
 
         /* 唤醒ps上行任务 */
@@ -711,7 +710,7 @@ BSP_VOID IPF_IntHandler(BSP_VOID)
         }
     }
 
-    /* 上行ADQ0、ADQ1都空指示 */	
+    /* 上行ADQ0、ADQ1都空指示 */
     if((IPF_UL_ADQ0_EPTY_INT0 | IPF_UL_ADQ1_EPTY_INT0) == (u32IpfInt & (IPF_UL_ADQ0_EPTY_INT0 | IPF_UL_ADQ1_EPTY_INT0)))
     {
         g_stIPFDebugInfo->u32UlAdq0Overflow++;
@@ -720,7 +719,7 @@ BSP_VOID IPF_IntHandler(BSP_VOID)
         ipf_writel((IPF_UL_ADQ0_EPTY_INT0 | IPF_UL_ADQ1_EPTY_INT0), HI_IPF_REGBASE_ADDR_VIRT + HI_IPF_INT_STATE_OFFSET);
         if(g_stIpfUl.pAdqEmptyUlCb != NULL)
         {
-            (BSP_VOID)g_stIpfUl.pAdqEmptyUlCb(IPF_EMPTY_ADQ);  
+            (BSP_VOID)g_stIpfUl.pAdqEmptyUlCb(IPF_EMPTY_ADQ);
             return;
         }
         else
@@ -729,7 +728,7 @@ BSP_VOID IPF_IntHandler(BSP_VOID)
         }
     }
 
-	
+
     /* 上行ADQ0空指示 */
     if(u32IpfInt & IPF_UL_ADQ0_EPTY_INT0)
     {
@@ -738,21 +737,21 @@ BSP_VOID IPF_IntHandler(BSP_VOID)
 
         if(g_stIpfUl.pAdqEmptyUlCb != NULL)
         {
-            (BSP_VOID)g_stIpfUl.pAdqEmptyUlCb(IPF_EMPTY_ADQ0);  
+            (BSP_VOID)g_stIpfUl.pAdqEmptyUlCb(IPF_EMPTY_ADQ0);
         }
         else
         {
             bsp_trace(BSP_LOG_LEVEL_ERROR, BSP_MODU_IPF,"\r IPF_IntHandler ULADQEMPTY NULL! \n",0,0,0,0,0,0);
         }
     }
-    /* 上行ADQ1空指示 */	
+    /* 上行ADQ1空指示 */
     if(u32IpfInt & IPF_UL_ADQ1_EPTY_INT0)
     {
        g_stIPFDebugInfo->u32UlAdq1Overflow++;
        ipf_writel(IPF_UL_ADQ1_EPTY_INT0, HI_IPF_REGBASE_ADDR_VIRT + HI_IPF_INT_STATE_OFFSET);
        if(g_stIpfUl.pAdqEmptyUlCb != NULL)
        {
-           (BSP_VOID)g_stIpfUl.pAdqEmptyUlCb(IPF_EMPTY_ADQ1);  
+           (BSP_VOID)g_stIpfUl.pAdqEmptyUlCb(IPF_EMPTY_ADQ1);
        }
        else
        {
@@ -762,7 +761,7 @@ BSP_VOID IPF_IntHandler(BSP_VOID)
 
 #else
 
-    u32IpfInt = ipf_readl(HI_IPF_REGBASE_ADDR_VIRT + HI_IPF_INT1_OFFSET); 
+    u32IpfInt = ipf_readl(HI_IPF_REGBASE_ADDR_VIRT + HI_IPF_INT1_OFFSET);
 
     /* 下行结果上报和结果超时上报 */
     if(u32IpfInt&(IPF_DL_RPT_INT1|IPF_DL_TIMEOUT_INT1))
@@ -774,14 +773,14 @@ BSP_VOID IPF_IntHandler(BSP_VOID)
         /* 唤醒ps下行任务 */
         if(g_stIpfDl.pFnDlIntCb != NULL)
         {
-            (BSP_VOID)g_stIpfDl.pFnDlIntCb();  
+            (BSP_VOID)g_stIpfDl.pFnDlIntCb();
         }
         else
         {
-            bsp_trace(BSP_LOG_LEVEL_ERROR, BSP_MODU_IPF,"\r IPF_IntHandler DLTASK NULL! \n",0,0,0,0,0,0);
+            bsp_trace(BSP_LOG_LEVEL_ERROR, BSP_MODU_IPF,"\r IPF_IntHandler DLTASK NULL! \n");
 	 }
-    } 
-     /* 下行ADQ0、ADQ1都空指示 */	
+    }
+     /* 下行ADQ0、ADQ1都空指示 */
     if((IPF_DL_ADQ0_EPTY_INT1 | IPF_DL_ADQ1_EPTY_INT1) == (u32IpfInt & (IPF_DL_ADQ0_EPTY_INT1 | IPF_DL_ADQ1_EPTY_INT1)))
     {
         g_stIPFDebugInfo->u32DlAdq0Overflow++;
@@ -789,11 +788,11 @@ BSP_VOID IPF_IntHandler(BSP_VOID)
         ipf_writel((IPF_DL_ADQ0_EPTY_INT1 | IPF_DL_ADQ1_EPTY_INT1), HI_IPF_REGBASE_ADDR_VIRT + HI_IPF_INT_STATE_OFFSET);
         if(g_stIpfDl.pAdqEmptyDlCb != NULL)
         {
-            (BSP_VOID)g_stIpfDl.pAdqEmptyDlCb(IPF_EMPTY_ADQ);  
+            (BSP_VOID)g_stIpfDl.pAdqEmptyDlCb(IPF_EMPTY_ADQ);
         }
         else
         {
-            bsp_trace(BSP_LOG_LEVEL_ERROR, BSP_MODU_IPF,"\r IPF_IntHandler DLADQEMPTY NULL! \n",0,0,0,0,0,0);
+            bsp_trace(BSP_LOG_LEVEL_ERROR, BSP_MODU_IPF,"\r IPF_IntHandler DLADQEMPTY NULL! \n");
         }
         return IRQ_HANDLED;
     }
@@ -805,26 +804,26 @@ BSP_VOID IPF_IntHandler(BSP_VOID)
         ipf_writel(IPF_DL_ADQ0_EPTY_INT1, HI_IPF_REGBASE_ADDR_VIRT + HI_IPF_INT_STATE_OFFSET);
         if(g_stIpfDl.pAdqEmptyDlCb != NULL)
         {
-            (BSP_VOID)g_stIpfDl.pAdqEmptyDlCb(IPF_EMPTY_ADQ0);  
+            (BSP_VOID)g_stIpfDl.pAdqEmptyDlCb(IPF_EMPTY_ADQ0);
         }
         else
         {
-            bsp_trace(BSP_LOG_LEVEL_ERROR, BSP_MODU_IPF,"\r IPF_IntHandler DLADQEMPTY NULL! \n",0,0,0,0,0,0);
+            bsp_trace(BSP_LOG_LEVEL_ERROR, BSP_MODU_IPF,"\r IPF_IntHandler DLADQEMPTY NULL! \n");
         }
     }
-	
-    /* 下行ADQ1空指示 */	
+
+    /* 下行ADQ1空指示 */
     if(u32IpfInt & IPF_DL_ADQ1_EPTY_INT1)
     {
         g_stIPFDebugInfo->u32DlAdq1Overflow++;
         ipf_writel(IPF_DL_ADQ1_EPTY_INT1, HI_IPF_REGBASE_ADDR_VIRT + HI_IPF_INT_STATE_OFFSET);
         if(g_stIpfDl.pAdqEmptyDlCb != NULL)
         {
-            (BSP_VOID)g_stIpfDl.pAdqEmptyDlCb(IPF_EMPTY_ADQ1);  
+            (BSP_VOID)g_stIpfDl.pAdqEmptyDlCb(IPF_EMPTY_ADQ1);
         }
         else
         {
-            bsp_trace(BSP_LOG_LEVEL_ERROR, BSP_MODU_IPF,"\r IPF_IntHandler DLADQEMPTY NULL! \n",0,0,0,0,0,0);
+            bsp_trace(BSP_LOG_LEVEL_ERROR, BSP_MODU_IPF,"\r IPF_IntHandler DLADQEMPTY NULL! \n");
         }
     }
     return IRQ_HANDLED;
@@ -841,7 +840,7 @@ BSP_VOID IPF_IntHandler(BSP_VOID)
 * 功能描述  : 提供的低功耗接口，用于IPF上电恢复
 *
 * 输入参数  : 无
-*             
+*
 * 输出参数  : 无
 * 返 回 值     : 无
 *
@@ -866,11 +865,11 @@ s32 ipf_drx_restore_filter(void)
         {
             if(filter_serial < IPF_BF_NUM)
             {
-                ipf_writel(filter_serial, HI_IPF_REGBASE_ADDR_VIRT + HI_BFLT_INDEX_OFFSET); 
+                ipf_writel(filter_serial, HI_IPF_REGBASE_ADDR_VIRT + HI_BFLT_INDEX_OFFSET);
                 for(j=0; j<(sizeof(IPF_MATCH_INFO_S)/4); j++)
                 {
                         match_info = *(match_info_addr+j);
-                        ipf_writel((match_info), (HI_IPF_REGBASE_ADDR_VIRT+HI_FLT_LOCAL_ADDR0_OFFSET+j*4)); 
+                        ipf_writel((match_info), (HI_IPF_REGBASE_ADDR_VIRT+HI_FLT_LOCAL_ADDR0_OFFSET+j*4));
                 }
                 k++;
             }
@@ -892,11 +891,11 @@ s32 ipf_drx_restore_filter(void)
 * 功能描述  : 提供的低功耗接口，用于IPF上电恢复
 *
 * 输入参数  : 无
-*             
+*
 * 输出参数  : 无
 * 返 回 值     : 无
 *
-* 
+*
 * 修改记录  : 2014年1月23日v1.00 chendongyue创建
 *****************************************************************************/
 void ipf_check_filter_restore(void)
@@ -957,7 +956,7 @@ BSP_S32 BSP_IPF_ConfigTimeout(BSP_U32 u32Timeout)
 
     u32Timeout |= TIME_OUT_ENABLE;
     ipf_writel(u32Timeout, HI_IPF_REGBASE_ADDR_VIRT + HI_IPF_TIME_OUT_OFFSET);
-    
+
     return IPF_SUCCESS;
 }
 
@@ -985,9 +984,9 @@ BSP_S32 BSP_IPF_SetPktLen(BSP_U32 u32MaxLen, BSP_U32 u32MinLen)
         bsp_trace(BSP_LOG_LEVEL_ERROR, BSP_MODU_IPF, "\r BSP_IPF_PktLen input error! \n");
         return BSP_ERR_IPF_INVALID_PARA;
     }
-    
+
     u32PktLen = ((u32MaxLen&0x3FFF)<<16) | (u32MinLen&0x3FFF);
-    
+
     ipf_writel(u32PktLen, HI_IPF_REGBASE_ADDR_VIRT + HI_IPF_PKT_LEN_OFFSET);
     return IPF_SUCCESS;
 }/*lint !e550*/
@@ -999,22 +998,22 @@ BSP_VOID BSP_IPF_Help(BSP_VOID)
     IPF_PRINT("BSP_IPF_Info    参数1:通道类型  0为上行，1为下行\n");
     IPF_PRINT("BSP_IPF_Shared_DDR_Info \n");
     IPF_PRINT("BSP_IPF_BDInfo  参数1:通道类型  参数2:BD指针\n");
-    IPF_PRINT("BSP_IPF_RDInfo  参数1:通道类型  参数2:RD指针\n"); 
-    IPF_PRINT("BSP_IPF_ADInfo  参数1:通道类型  参数2:AD指针参数3:AD 队列类型0为短,1为长\n"); 
+    IPF_PRINT("BSP_IPF_RDInfo  参数1:通道类型  参数2:RD指针\n");
+    IPF_PRINT("BSP_IPF_ADInfo  参数1:通道类型  参数2:AD指针参数3:AD 队列类型0为短,1为长\n");
     IPF_PRINT("===============================================\n");
     IPF_PRINT("BSP_IPF_Dump_BDInfo  参数1:通道类型\n");
-    IPF_PRINT("BSP_IPF_Dump_RDInfo  参数1:通道类型\n"); 
-    IPF_PRINT("BSP_IPF_Dump_ADInfo  参数1:通道类型\n"); 
+    IPF_PRINT("BSP_IPF_Dump_RDInfo  参数1:通道类型\n");
+    IPF_PRINT("BSP_IPF_Dump_ADInfo  参数1:通道类型\n");
     IPF_PRINT("===============================================\n");
     IPF_PRINT("ipf_enable_ul_time_stamp  参数1:0-disable, 1-enable\n");
     IPF_PRINT("ipf_enable_dl_time_stamp  参数1:0-disable, 1-enable\n");
     IPF_PRINT("ipf_clear_time_stamp  清除实际戳记录\n");
     IPF_PRINT("ipf_dump_time_stamp  Linux:下行时间差, vxWorks:上行时间差\n");
 
-#ifdef __VXWORKS__    
+#ifdef __VXWORKS__
     IPF_PRINT("===============================================\n");
-    IPF_PRINT("BSP_IPF_UseFilterInfo  参数1:通道类型\n"); 
-    IPF_PRINT("BSP_IPF_FreeFilterInfo\n"); 
+    IPF_PRINT("BSP_IPF_UseFilterInfo  参数1:通道类型\n");
+    IPF_PRINT("BSP_IPF_FreeFilterInfo\n");
     IPF_PRINT("BSP_IPF_FilterInfoHWID  参数1:硬件Filter ID\n");
     IPF_PRINT("BSP_IPF_FilterInfoPSID  参数1 :PS Filter ID\n");
 #endif
@@ -1060,29 +1059,29 @@ BSP_VOID BSP_IPF_Help(BSP_VOID)
 BSP_S32 BSP_IPF_Shared_DDR_Info(BSP_VOID)
 {
 /*	BSP_U32* pIPFInit = (BSP_U32*)IPF_INIT_ADDR;*/
-	BSP_U32 ipf_Shared_ddr_start = SHM_MEM_IPF_ADDR;
-	
-	BSP_U32 ipf_Shared_ddr_ul_start = IPF_ULBD_MEM_ADDR;
+	void* ipf_Shared_ddr_start = SHM_MEM_IPF_ADDR;
 
-	BSP_U32 ipf_Shared_ddr_filter_pwc_start = IPF_PWRCTL_BASIC_FILTER_ADDR;
+	void* ipf_Shared_ddr_ul_start = (void*)IPF_ULBD_MEM_ADDR;
 
-	BSP_U32 ipf_Shared_ddr_pwc_info_start = IPF_PWRCTL_INFO_ADDR;
+	void* ipf_Shared_ddr_filter_pwc_start = (void*)IPF_PWRCTL_BASIC_FILTER_ADDR;
 
-	BSP_U32 ipf_Shared_ddr_dlcdrptr = IPF_DLCDRPTR_MEM_ADDR;
+	void* ipf_Shared_ddr_pwc_info_start = (void*)IPF_PWRCTL_INFO_ADDR;
 
-	BSP_U32 ipf_Shared_ddr_debug_dlcd_start = IPF_DEBUG_DLCD_ADDR;
+	void* ipf_Shared_ddr_dlcdrptr = (void*)IPF_DLCDRPTR_MEM_ADDR;
+
+	void* ipf_Shared_ddr_debug_dlcd_start = (void*)IPF_DEBUG_DLCD_ADDR;
 	BSP_U32 ipf_Shared_ddr_debug_dlcd_size = IPF_DEBUG_DLCD_SIZE;
-	BSP_U32 ipf_Shared_ddr_end = IPF_DEBUG_INFO_END_ADDR;
-	BSP_U32 ipf_Shared_ddr_len = IPF_DEBUG_INFO_END_ADDR - SHM_MEM_IPF_ADDR;
-	
-	IPF_PRINT("ipf_Shared_ddr_start                    value is 0x%x \n", ipf_Shared_ddr_start);
-	IPF_PRINT("ipf_Shared_ddr_ul_start                value is 0x%x \n", ipf_Shared_ddr_ul_start);
-	IPF_PRINT("ipf_Shared_ddr_filter_pwc_start     value is 0x%x \n", ipf_Shared_ddr_filter_pwc_start);
-	IPF_PRINT("ipf_Shared_ddr_pwc_info_start      value is 0x%x \n", ipf_Shared_ddr_pwc_info_start);
-	IPF_PRINT("ipf_Shared_ddr_dlcdrptr                value is 0x%x \n", ipf_Shared_ddr_dlcdrptr);
-	IPF_PRINT("ipf_Shared_ddr_debug_dlcd_start   value is 0x%x \n", ipf_Shared_ddr_debug_dlcd_start);
+	void* ipf_Shared_ddr_end = (void*)IPF_DEBUG_INFO_END_ADDR;
+	BSP_U32 ipf_Shared_ddr_len =(BSP_U32) (IPF_DEBUG_INFO_END_ADDR - (unsigned long)SHM_MEM_IPF_ADDR);
+
+	IPF_PRINT("ipf_Shared_ddr_start                    value is 0x%p \n", ipf_Shared_ddr_start);
+	IPF_PRINT("ipf_Shared_ddr_ul_start                value is 0x%p\n", ipf_Shared_ddr_ul_start);
+	IPF_PRINT("ipf_Shared_ddr_filter_pwc_start     value is 0x%p \n", ipf_Shared_ddr_filter_pwc_start);
+	IPF_PRINT("ipf_Shared_ddr_pwc_info_start      value is 0x%p\n", ipf_Shared_ddr_pwc_info_start);
+	IPF_PRINT("ipf_Shared_ddr_dlcdrptr                value is 0x%p \n", ipf_Shared_ddr_dlcdrptr);
+	IPF_PRINT("ipf_Shared_ddr_debug_dlcd_start   value is 0x%p \n", ipf_Shared_ddr_debug_dlcd_start);
 	IPF_PRINT("ipf_Shared_ddr_debug_dlcd_size    value is 0x%x \n", ipf_Shared_ddr_debug_dlcd_size);
-	IPF_PRINT("ipf_Shared_ddr_end                     value is 0x%x \n", ipf_Shared_ddr_end);
+	IPF_PRINT("ipf_Shared_ddr_end                     value is 0x%p\n", ipf_Shared_ddr_end);
 	IPF_PRINT("ipf_Shared_ddr_len                     value is 0x%x (Max len is 0x10000)\n", ipf_Shared_ddr_len);
 /*	if(IPF_INIT_SUCCESS != (*pIPFInit))
 	{
@@ -1099,7 +1098,7 @@ BSP_S32 BSP_IPF_BDInfo(IPF_CHANNEL_TYPE_E eChnType, BSP_U32 u32BdqPtr)
 #ifdef __BSP_IPF_CD_DEBUG__
     BSP_U32 u32CdPtr;
 #endif
-      
+
     switch(eChnType)
     {
         case IPF_CHANNEL_UP:
@@ -1133,7 +1132,8 @@ BSP_S32 BSP_IPF_BDInfo(IPF_CHANNEL_TYPE_E eChnType, BSP_U32 u32BdqPtr)
                 IPF_PRINT("u16UsrField1:   %d\n",g_stIpfDl.pstIpfBDQ[u32BdqPtr].u16UsrField1);
                 IPF_PRINT("u32UsrField2:   0x%x\n",g_stIpfDl.pstIpfBDQ[u32BdqPtr].u32UsrField2);
                 IPF_PRINT("u32UsrField3:   0x%x\n",g_stIpfDl.pstIpfBDQ[u32BdqPtr].u32UsrField3);
-                #ifdef __BSP_IPF_CD_DEBUG__
+#if 0
+				#ifdef __BSP_IPF_CD_DEBUG__
                 #ifdef __VXWORKS__
                 u32CdPtr = g_stIpfDl.pstIpfBDQ[u32BdqPtr].u32InPtr-(BSP_U32)g_stIpfDl.pstIpfCDQ;
                 #else
@@ -1146,16 +1146,17 @@ BSP_S32 BSP_IPF_BDInfo(IPF_CHANNEL_TYPE_E eChnType, BSP_U32 u32BdqPtr)
                     IPF_PRINT("CD位置:             %d\n",u32CdPtr);
                     IPF_PRINT("u16Attribute:       %d\n",g_stIpfDl.pstIpfDebugCDQ[u32CdPtr].u16Attribute);
                     IPF_PRINT("u16PktLen:          %d\n",g_stIpfDl.pstIpfDebugCDQ[u32CdPtr].u16PktLen);
-                    IPF_PRINT("u32Ptr:             0x%x\n",g_stIpfDl.pstIpfDebugCDQ[u32CdPtr].u32Ptr);                
+                    IPF_PRINT("u32Ptr:             0x%x\n",g_stIpfDl.pstIpfDebugCDQ[u32CdPtr].u32Ptr);
                     u32CdPtr = ((u32CdPtr+1) < IPF_DLCD_DESC_SIZE)?(u32CdPtr+1):0;
                 };
                 IPF_PRINT("==========CD Info=========\n");
                 IPF_PRINT("CD位置:             %d\n",u32CdPtr);
                 IPF_PRINT("u16Attribute:       %d\n",g_stIpfDl.pstIpfDebugCDQ[u32CdPtr].u16Attribute);
                 IPF_PRINT("u16PktLen:          %d\n",g_stIpfDl.pstIpfDebugCDQ[u32CdPtr].u16PktLen);
-                IPF_PRINT("u32Ptr:             0x%x\n",g_stIpfDl.pstIpfDebugCDQ[u32CdPtr].u32Ptr);  
+                IPF_PRINT("u32Ptr:             0x%x\n",g_stIpfDl.pstIpfDebugCDQ[u32CdPtr].u32Ptr);
                 #endif
-            break; 
+#endif
+            break;
         default:
             break;
     }
@@ -1169,13 +1170,13 @@ BSP_S32 BSP_IPF_Dump_BDInfo(IPF_CHANNEL_TYPE_E eChnType)
     switch(eChnType)
     {
         case IPF_CHANNEL_UP:
-			
+
             for(i = 0;i < IPF_ULBD_DESC_SIZE;i++)
             {
                 BSP_IPF_BDInfo(IPF_CHANNEL_UP,i);
             }
         break;
-		
+
         case IPF_CHANNEL_DOWN:
 
             for(i = 0;i < IPF_DLBD_DESC_SIZE;i++)
@@ -1183,7 +1184,7 @@ BSP_S32 BSP_IPF_Dump_BDInfo(IPF_CHANNEL_TYPE_E eChnType)
                 BSP_IPF_BDInfo(IPF_CHANNEL_DOWN,i);
             }
         break;
-				
+
         default:
         IPF_PRINT("Input param invalid ! \n");
         break;
@@ -1193,7 +1194,7 @@ BSP_S32 BSP_IPF_Dump_BDInfo(IPF_CHANNEL_TYPE_E eChnType)
 }
 
 BSP_S32 BSP_IPF_RDInfo(IPF_CHANNEL_TYPE_E eChnType, BSP_U32 u32RdqPtr)
-{     
+{
     switch(eChnType)
     {
         case IPF_CHANNEL_UP:
@@ -1227,7 +1228,7 @@ BSP_S32 BSP_IPF_RDInfo(IPF_CHANNEL_TYPE_E eChnType, BSP_U32 u32RdqPtr)
             IPF_PRINT("u16UsrField1:       0x%x\n",g_stIpfDl.pstIpfRDQ[u32RdqPtr].u16UsrField1);
             IPF_PRINT("u32UsrField2:       0x%x\n",g_stIpfDl.pstIpfRDQ[u32RdqPtr].u32UsrField2);
             IPF_PRINT("u32UsrField3:       0x%x\n",g_stIpfDl.pstIpfRDQ[u32RdqPtr].u32UsrField3);
-            break; 
+            break;
         default:
             break;
     }
@@ -1249,7 +1250,7 @@ BSP_S32 BSP_IPF_Dump_RDInfo(IPF_CHANNEL_TYPE_E eChnType)
                 BSP_IPF_RDInfo(IPF_CHANNEL_UP,i);
             }
         break;
-		
+
         case IPF_CHANNEL_DOWN:
 
             for(i = 0;i < IPF_DLBD_DESC_SIZE;i++)
@@ -1328,7 +1329,7 @@ BSP_S32 BSP_IPF_Dump_ADInfo(IPF_CHANNEL_TYPE_E eChnType, BSP_U32 u32AdType)
                 BSP_IPF_ADInfo(IPF_CHANNEL_UP, i, u32AdType);
             }
         break;
-		
+
         case IPF_CHANNEL_DOWN:
 
             for(i = 0;i < IPF_DLAD0_DESC_SIZE;i++)
@@ -1336,7 +1337,7 @@ BSP_S32 BSP_IPF_Dump_ADInfo(IPF_CHANNEL_TYPE_E eChnType, BSP_U32 u32AdType)
                 BSP_IPF_ADInfo(IPF_CHANNEL_DOWN, i, u32AdType);
             }
         break;
-		
+
         default:
         IPF_PRINT("Input param invalid ! \n");
         break;
@@ -1358,7 +1359,7 @@ BSP_S32 BSP_IPF_Info(IPF_CHANNEL_TYPE_E eChnType)
     BSP_U32 u32RdqRaddr = 0;
     BSP_U32 u32Depth = 0;
     BSP_U32 u32status = 0;
-	
+
     BSP_U32 u32Adq0Rptr = 0;
     BSP_U32 u32Adq0Wptr = 0;
 
@@ -1374,15 +1375,15 @@ BSP_S32 BSP_IPF_Info(IPF_CHANNEL_TYPE_E eChnType)
         u32status = ipf_readl(HI_IPF_REGBASE_ADDR_VIRT + HI_IPF_CH0_STATE_OFFSET);
 
         u32BdqWptr = ipf_readl(HI_IPF_REGBASE_ADDR_VIRT + HI_IPF_CH0_BDQ_WPTR_OFFSET);
-        u32BdqRptr = ipf_readl(HI_IPF_REGBASE_ADDR_VIRT + HI_IPF_CH0_BDQ_RPTR_OFFSET); 
-        u32BdqWaddr = ipf_readl(HI_IPF_REGBASE_ADDR_VIRT + HI_IPF_CH0_BDQ_WADDR_OFFSET); 
-        u32BdqRaddr = ipf_readl(HI_IPF_REGBASE_ADDR_VIRT + HI_IPF_CH0_BDQ_RADDR_OFFSET); 
-    
+        u32BdqRptr = ipf_readl(HI_IPF_REGBASE_ADDR_VIRT + HI_IPF_CH0_BDQ_RPTR_OFFSET);
+        u32BdqWaddr = ipf_readl(HI_IPF_REGBASE_ADDR_VIRT + HI_IPF_CH0_BDQ_WADDR_OFFSET);
+        u32BdqRaddr = ipf_readl(HI_IPF_REGBASE_ADDR_VIRT + HI_IPF_CH0_BDQ_RADDR_OFFSET);
+
         u32RdqWptr = ipf_readl(HI_IPF_REGBASE_ADDR_VIRT + HI_IPF_CH0_RDQ_WPTR_OFFSET);
         u32RdqRptr = ipf_readl(HI_IPF_REGBASE_ADDR_VIRT + HI_IPF_CH0_RDQ_RPTR_OFFSET);
-        u32RdqWaddr = ipf_readl(HI_IPF_REGBASE_ADDR_VIRT + HI_IPF_CH0_RDQ_WADDR_OFFSET); 
-        u32RdqRaddr = ipf_readl(HI_IPF_REGBASE_ADDR_VIRT + HI_IPF_CH0_RDQ_RADDR_OFFSET); 
-		
+        u32RdqWaddr = ipf_readl(HI_IPF_REGBASE_ADDR_VIRT + HI_IPF_CH0_RDQ_WADDR_OFFSET);
+        u32RdqRaddr = ipf_readl(HI_IPF_REGBASE_ADDR_VIRT + HI_IPF_CH0_RDQ_RADDR_OFFSET);
+
         u32Adq0Rptr = ipf_readl(HI_IPF_REGBASE_ADDR_VIRT + HI_IPF_CH0_ADQ0_RPTR_OFFSET);
         u32Adq0Wptr = ipf_readl(HI_IPF_REGBASE_ADDR_VIRT + HI_IPF_CH0_ADQ0_WPTR_OFFSET);
 
@@ -1397,16 +1398,16 @@ BSP_S32 BSP_IPF_Info(IPF_CHANNEL_TYPE_E eChnType)
         u32BdqDepth = u32Depth&IPF_DQ_DEPTH_MASK;
 
         u32status = ipf_readl(HI_IPF_REGBASE_ADDR_VIRT + HI_IPF_CH1_STATE_OFFSET);
-		
+
         u32BdqWptr = ipf_readl(HI_IPF_REGBASE_ADDR_VIRT + HI_IPF_CH1_BDQ_WPTR_OFFSET);
-        u32BdqRptr = ipf_readl(HI_IPF_REGBASE_ADDR_VIRT + HI_IPF_CH1_BDQ_RPTR_OFFSET); 
-        u32BdqWaddr = ipf_readl(HI_IPF_REGBASE_ADDR_VIRT + HI_IPF_CH1_BDQ_WADDR_OFFSET); 
-        u32BdqRaddr = ipf_readl(HI_IPF_REGBASE_ADDR_VIRT + HI_IPF_CH1_BDQ_RADDR_OFFSET); 
-    
+        u32BdqRptr = ipf_readl(HI_IPF_REGBASE_ADDR_VIRT + HI_IPF_CH1_BDQ_RPTR_OFFSET);
+        u32BdqWaddr = ipf_readl(HI_IPF_REGBASE_ADDR_VIRT + HI_IPF_CH1_BDQ_WADDR_OFFSET);
+        u32BdqRaddr = ipf_readl(HI_IPF_REGBASE_ADDR_VIRT + HI_IPF_CH1_BDQ_RADDR_OFFSET);
+
         u32RdqWptr = ipf_readl(HI_IPF_REGBASE_ADDR_VIRT + HI_IPF_CH1_RDQ_WPTR_OFFSET);
         u32RdqRptr = ipf_readl(HI_IPF_REGBASE_ADDR_VIRT + HI_IPF_CH1_RDQ_RPTR_OFFSET);
-        u32RdqWaddr = ipf_readl(HI_IPF_REGBASE_ADDR_VIRT + HI_IPF_CH1_RDQ_WADDR_OFFSET); 
-        u32RdqRaddr = ipf_readl(HI_IPF_REGBASE_ADDR_VIRT + HI_IPF_CH1_RDQ_RADDR_OFFSET); 
+        u32RdqWaddr = ipf_readl(HI_IPF_REGBASE_ADDR_VIRT + HI_IPF_CH1_RDQ_WADDR_OFFSET);
+        u32RdqRaddr = ipf_readl(HI_IPF_REGBASE_ADDR_VIRT + HI_IPF_CH1_RDQ_RADDR_OFFSET);
 
         u32Adq0Rptr = ipf_readl(HI_IPF_REGBASE_ADDR_VIRT + HI_IPF_CH1_ADQ0_RPTR_OFFSET);
         u32Adq0Wptr = ipf_readl(HI_IPF_REGBASE_ADDR_VIRT + HI_IPF_CH1_ADQ0_WPTR_OFFSET);
@@ -1434,50 +1435,50 @@ BSP_S32 BSP_IPF_Info(IPF_CHANNEL_TYPE_E eChnType)
 
     IPF_PRINT("AD0 读指针:          %d\n", u32Adq0Rptr);
     IPF_PRINT("AD0 写指针:          %d\n", u32Adq0Wptr);
-	
+
     IPF_PRINT("AD1 读指针:          %d\n", u32Adq1Rptr);
     IPF_PRINT("AD1 写指针:          %d\n", u32Adq1Wptr);
-    IPF_PRINT("============================\n");   
+    IPF_PRINT("============================\n");
     return 0;
 }
 
 BSP_VOID BSP_IPF_MEM(BSP_VOID)
 {
-	BSP_U32 ipf_Shared_ddr_start = SHM_MEM_IPF_ADDR;
-	
-	BSP_U32 ipf_Shared_ddr_ul_start = IPF_ULBD_MEM_ADDR;
+	void* ipf_Shared_ddr_start = SHM_MEM_IPF_ADDR;
 
-	BSP_U32 ipf_Shared_ddr_filter_pwc_start = IPF_PWRCTL_BASIC_FILTER_ADDR;
+	void* ipf_Shared_ddr_ul_start = (void*)IPF_ULBD_MEM_ADDR;
 
-	BSP_U32 ipf_Shared_ddr_pwc_info_start = IPF_PWRCTL_INFO_ADDR;
+	void* ipf_Shared_ddr_filter_pwc_start = (void*)IPF_PWRCTL_BASIC_FILTER_ADDR;
 
-	BSP_U32 ipf_Shared_ddr_dlcdrptr = IPF_DLCDRPTR_MEM_ADDR;
+	void* ipf_Shared_ddr_pwc_info_start = (void*)IPF_PWRCTL_INFO_ADDR;
 
-	BSP_U32 ipf_Shared_ddr_debug_dlcd_start = IPF_DEBUG_DLCD_ADDR;
+	void* ipf_Shared_ddr_dlcdrptr = (void*)IPF_DLCDRPTR_MEM_ADDR;
+
+	void* ipf_Shared_ddr_debug_dlcd_start = (void*)IPF_DEBUG_DLCD_ADDR;
 	BSP_U32 ipf_Shared_ddr_debug_dlcd_size = IPF_DEBUG_DLCD_SIZE;
-	BSP_U32 ipf_Shared_ddr_end = IPF_DEBUG_INFO_END_ADDR;
+	void* ipf_Shared_ddr_end = (void*)IPF_DEBUG_INFO_END_ADDR;
 
-	
-	IPF_PRINT("ipf_Shared_ddr_start                    value is 0x%x \n", ipf_Shared_ddr_start);
-	IPF_PRINT("ipf_Shared_ddr_ul_start                value is 0x%x \n", ipf_Shared_ddr_ul_start);
-	IPF_PRINT("ipf_Shared_ddr_filter_pwc_start     value is 0x%x \n", ipf_Shared_ddr_filter_pwc_start);
-	IPF_PRINT("ipf_Shared_ddr_pwc_info_start      value is 0x%x \n", ipf_Shared_ddr_pwc_info_start);
-	IPF_PRINT("ipf_Shared_ddr_dlcdrptr                value is 0x%x \n", ipf_Shared_ddr_dlcdrptr);
-	IPF_PRINT("ipf_Shared_ddr_debug_dlcd_start   value is 0x%x \n", ipf_Shared_ddr_debug_dlcd_start);
+
+	IPF_PRINT("ipf_Shared_ddr_start                    value is 0x%p \n", ipf_Shared_ddr_start);
+	IPF_PRINT("ipf_Shared_ddr_ul_start                value is 0x%p \n", ipf_Shared_ddr_ul_start);
+	IPF_PRINT("ipf_Shared_ddr_filter_pwc_start     value is 0x%p \n", ipf_Shared_ddr_filter_pwc_start);
+	IPF_PRINT("ipf_Shared_ddr_pwc_info_start      value is 0x%p \n", ipf_Shared_ddr_pwc_info_start);
+	IPF_PRINT("ipf_Shared_ddr_dlcdrptr                value is 0x%p \n", ipf_Shared_ddr_dlcdrptr);
+	IPF_PRINT("ipf_Shared_ddr_debug_dlcd_start   value is 0x%p \n", ipf_Shared_ddr_debug_dlcd_start);
 	IPF_PRINT("ipf_Shared_ddr_debug_dlcd_size    value is 0x%x \n", ipf_Shared_ddr_debug_dlcd_size);
-	IPF_PRINT("ipf_Shared_ddr_end                     value is 0x%x \n", ipf_Shared_ddr_end);
-	IPF_PRINT("ipf_Shared_ddr_total_size             value is 0x%x \n", (ipf_Shared_ddr_end-ipf_Shared_ddr_start));
+	IPF_PRINT("ipf_Shared_ddr_end                     value is 0x%p \n", ipf_Shared_ddr_end);
+	IPF_PRINT("ipf_Shared_ddr_total_size             value is 0x%ld \n", (unsigned long)(ipf_Shared_ddr_end-ipf_Shared_ddr_start));
 
 
     IPF_PRINT("=======================================\n");
     IPF_PRINT("   BSP_IPF_MEM          ADDR            SIZE\n");
-    IPF_PRINT("%s%#x\t\t%#x\n", "IPF_ULBD_MEM_ADDR    ", IPF_ULBD_MEM_ADDR, IPF_ULBD_MEM_SIZE);
-    IPF_PRINT("%s%#x\t\t%#x\n", "IPF_ULRD_MEM_ADDR    ", IPF_ULRD_MEM_ADDR, IPF_ULRD_MEM_SIZE);
-    IPF_PRINT("%s%#x\t\t%#x\n", "IPF_DLBD_MEM_ADDR    ", IPF_DLBD_MEM_ADDR, IPF_DLBD_MEM_SIZE);
-    IPF_PRINT("%s%#x\t\t%#x\n", "IPF_DLRD_MEM_ADDR    ", IPF_DLRD_MEM_ADDR, IPF_DLRD_MEM_SIZE);
-    IPF_PRINT("%s%#x\t\t%#x\n", "IPF_DLCD_MEM_ADDR    ", IPF_DLCD_MEM_ADDR, IPF_DLCD_MEM_SIZE);
-    IPF_PRINT("%s%#x\t\t%#x\n", "IPF_INIT_ADDR        ", IPF_INIT_ADDR, IPF_INIT_SIZE);
-    IPF_PRINT("%20s%#x\t\t%#x\n", "IPF_DEBUG_INFO_ADDR  ", IPF_DEBUG_INFO_ADDR, IPF_DEBUG_INFO_SIZE);
+    IPF_PRINT("%s%lx\t\t%lu\n", "IPF_ULBD_MEM_ADDR    ", IPF_ULBD_MEM_ADDR, (unsigned long)IPF_ULBD_MEM_SIZE);
+    IPF_PRINT("%s%lx\t\t%lu\n", "IPF_ULRD_MEM_ADDR    ", IPF_ULRD_MEM_ADDR, (unsigned long)IPF_ULRD_MEM_SIZE);
+    IPF_PRINT("%s%lx\t\t%lu\n", "IPF_DLBD_MEM_ADDR    ", IPF_DLBD_MEM_ADDR, (unsigned long)IPF_DLBD_MEM_SIZE);
+    IPF_PRINT("%s%lx\t\t%lu\n", "IPF_DLRD_MEM_ADDR    ", IPF_DLRD_MEM_ADDR, (unsigned long)IPF_DLRD_MEM_SIZE);
+    IPF_PRINT("%s%lx\t\t%lu\n", "IPF_DLCD_MEM_ADDR    ", IPF_DLCD_MEM_ADDR, (unsigned long)IPF_DLCD_MEM_SIZE);
+    IPF_PRINT("%s%lx\t\t%d\n", "IPF_INIT_ADDR        ", IPF_INIT_ADDR, IPF_INIT_SIZE);
+    IPF_PRINT("%20s%lx\t\t%lu\n", "IPF_DEBUG_INFO_ADDR  ", IPF_DEBUG_INFO_ADDR, (unsigned long)IPF_DEBUG_INFO_SIZE);
 }
 
 #ifdef __VXWORKS__
@@ -1488,7 +1489,7 @@ BSP_VOID BSP_IPF_MEM(BSP_VOID)
 * 功能描述  : modem单独复位ipf适配函数，用于在复位时阻止下行数传
 *
 * 输入参数  : 无
-*   
+*
 * 输出参数  : 无
 *
 * 返 回 值     : 成功
@@ -1520,8 +1521,8 @@ BSP_S32 IPF_FilterList_Init(BSP_VOID)
     IPF_ID_S* current = NULL;
     IPF_ID_S* prev = NULL;
     IPF_ID_S* tmp = NULL;
-	
-    /* 初始化可作头节的的过滤器和uselist，从0-7*/	
+
+    /* 初始化可作头节的的过滤器和uselist，从0-7*/
     for(i =  0; i < IPF_FILTER_CHAIN_MAX_NUM; i++)
     {
         g_stIPFFilterInfo[i].u32FilterNum = 0;
@@ -1561,7 +1562,7 @@ BSP_S32 IPF_FilterList_Init(BSP_VOID)
 
         prev = current;
     }
-	
+
     prev = NULL;
     /* 初始化extfreelist  从64号开始*/
     for(i =  IPF_BF_NUM; i < IPF_TOTAL_FILTER_NUM; i++)
@@ -1593,12 +1594,12 @@ BSP_S32 IPF_FilterList_Init(BSP_VOID)
         current->pstNext = NULL;
         prev = current;
     }
-    	
+
     return IPF_SUCCESS;
-    
+
 FREE_ALL:
     i=0;
-	
+
     /* coverity[overrun-local] */
     while((g_stIPFFilterInfo[i].pstUseList != NULL)&&(i <IPF_FILTER_CHAIN_MAX_NUM))
     {
@@ -1630,7 +1631,7 @@ FREE_ALL:
 * 功能描述  : 将结点加到freelist的合适位置
 *
 * 输入参数  : IPF_ID_S* stNode             待插入的结点指针
-*             
+*
 * 输出参数  : 无
 
 * 返 回 值  : 无
@@ -1639,7 +1640,7 @@ FREE_ALL:
 *****************************************************************************/
 BSP_VOID IPF_AddToBasicFreeList(IPF_ID_S* stNode)
 {
-    IPF_ID_S* current = NULL;    
+    IPF_ID_S* current = NULL;
     IPF_ID_S* prev = NULL;
 
     current = g_stIPFBasicFreeList;
@@ -1656,7 +1657,7 @@ BSP_VOID IPF_AddToBasicFreeList(IPF_ID_S* stNode)
     if(stNode->u32FilterID < current->u32FilterID)
     {
         stNode->pstNext = current;
-        g_stIPFBasicFreeList = stNode;       
+        g_stIPFBasicFreeList = stNode;
         return;
     }
 
@@ -1682,7 +1683,7 @@ BSP_VOID IPF_AddToBasicFreeList(IPF_ID_S* stNode)
 
 BSP_VOID IPF_AddToExtFreeList(IPF_ID_S* stNode)
 {
-    IPF_ID_S* current = NULL;    
+    IPF_ID_S* current = NULL;
     IPF_ID_S* prev = NULL;
 
     current = g_stIPFExtFreeList;
@@ -1699,7 +1700,7 @@ BSP_VOID IPF_AddToExtFreeList(IPF_ID_S* stNode)
     if(stNode->u32FilterID < current->u32FilterID)
     {
         stNode->pstNext = current;
-        g_stIPFExtFreeList = stNode;       
+        g_stIPFExtFreeList = stNode;
         return;
     }
 
@@ -1728,8 +1729,8 @@ BSP_VOID IPF_AddToExtFreeList(IPF_ID_S* stNode)
 *
 * 功能描述  : 删除链表中的所有结点
 *
-* 输入参数  : IPF_FILTER_CHAIN_TYPE_E eFilterChainhead过滤器链首地址           
-*             
+* 输入参数  : IPF_FILTER_CHAIN_TYPE_E eFilterChainhead过滤器链首地址
+*
 * 输出参数  : 无
 
 * 返 回 值  : 无
@@ -1745,23 +1746,23 @@ BSP_VOID IPF_DeleteAll(IPF_FILTER_CHAIN_TYPE_E eFilterChainhead)
         pstMove = g_stIPFFilterInfo[eFilterChainhead].pstUseList;
         /* 将结点从uselist删除 */
         g_stIPFFilterInfo[eFilterChainhead].pstUseList = pstMove->pstNext;
-	
-        /* 将删除的结点添加到freelist中 */ 
+
+        /* 将删除的结点添加到freelist中 */
         if(IPF_BF_NUM > (pstMove->u32FilterID))
         {
-            IPF_AddToBasicFreeList(pstMove); 
+            IPF_AddToBasicFreeList(pstMove);
         }
         else
-        {	
-            IPF_AddToExtFreeList(pstMove); 
+        {
+            IPF_AddToExtFreeList(pstMove);
         }
         g_stIPFFilterInfo[eFilterChainhead].u32FilterNum--;
     }
 
     /* 将首过滤器索引设置为511，使能配置为0 */
     ipf_writel(eFilterChainhead, HI_IPF_REGBASE_ADDR_VIRT + HI_BFLT_INDEX_OFFSET);
-    ipf_writel(IPF_TAIL_INDEX, HI_IPF_REGBASE_ADDR_VIRT+HI_FLT_CHAIN_OFFSET); 
-    ipf_writel(IPF_DISABLE_FILTER, HI_IPF_REGBASE_ADDR_VIRT+HI_FLT_RULE_CTRL_OFFSET); 
+    ipf_writel(IPF_TAIL_INDEX, HI_IPF_REGBASE_ADDR_VIRT+HI_FLT_CHAIN_OFFSET);
+    ipf_writel(IPF_DISABLE_FILTER, HI_IPF_REGBASE_ADDR_VIRT+HI_FLT_RULE_CTRL_OFFSET);
     BSP_IPF_BackupFilter(eFilterChainhead);
 }
 
@@ -1770,8 +1771,8 @@ BSP_VOID IPF_DeleteAll(IPF_FILTER_CHAIN_TYPE_E eFilterChainhead)
 *
 * 功能描述  : 从freelist中分配一个结点(取出第一个结点)
 *
-* 输入参数  : 无       
-*             
+* 输入参数  : 无
+*
 * 输出参数  : 无
 
 * 返 回 值  : 结点指针
@@ -1790,7 +1791,7 @@ IPF_ID_S* IPF_MallocOneBasicFilter(BSP_VOID)
         bsp_trace(BSP_LOG_LEVEL_WARNING, BSP_MODU_IPF, "IPF_MallocOneBasicFilter Basic run out\n");
         return NULL;
     }
-    g_stIPFBasicFreeList  = g_stIPFBasicFreeList ->pstNext;  
+    g_stIPFBasicFreeList  = g_stIPFBasicFreeList ->pstNext;
 
     return current;
 }
@@ -1799,8 +1800,8 @@ IPF_ID_S* IPF_MallocOneBasicFilter(BSP_VOID)
 *
 * 功能描述  : 从freelist中分配一个结点(取出第一个结点)
 *
-* 输入参数  : 无       
-*             
+* 输入参数  : 无
+*
 * 输出参数  : 无
 
 * 返 回 值  : 结点指针
@@ -1819,7 +1820,7 @@ IPF_ID_S* IPF_MallocOneExtFilter(BSP_VOID)
         bsp_trace(BSP_LOG_LEVEL_ERROR, BSP_MODU_IPF, "IPF_MallocOneExtFilter Ext run out\n");
         return NULL;
     }
-    g_stIPFExtFreeList  = g_stIPFExtFreeList ->pstNext;  
+    g_stIPFExtFreeList  = g_stIPFExtFreeList ->pstNext;
 
     return current;
 }
@@ -1829,9 +1830,9 @@ IPF_ID_S* IPF_MallocOneExtFilter(BSP_VOID)
 *
 * 功能描述  : 将结点加到uselist的结尾
 *
-* 输入参数  : BSP_U8 eFilterChainhead 通道类型   
+* 输入参数  : BSP_U8 eFilterChainhead 通道类型
 *             IPF_ID_S* stNode             待插入的结点指针
-*             
+*
 * 输出参数  : 无
 
 * 返 回 值  : 无
@@ -1851,7 +1852,7 @@ BSP_VOID IPF_AddTailUsedFilter(IPF_FILTER_CHAIN_TYPE_E eFilterChainhead,IPF_ID_S
         g_stIPFFilterInfo[eFilterChainhead].u32FilterNum = 1;
         return;
     }
-	
+
     /* 将结点加到链表结尾 */
     while(current->pstNext != NULL)
     {
@@ -1859,7 +1860,7 @@ BSP_VOID IPF_AddTailUsedFilter(IPF_FILTER_CHAIN_TYPE_E eFilterChainhead,IPF_ID_S
     }
     current->pstNext = stNode;
     stNode->pstNext = NULL;
-    
+
     g_stIPFFilterInfo[eFilterChainhead].u32FilterNum++;
 
 }
@@ -1870,7 +1871,7 @@ BSP_VOID IPF_AddTailUsedFilter(IPF_FILTER_CHAIN_TYPE_E eFilterChainhead,IPF_ID_S
 * 功能描述  :将过滤器配置到硬件中
 *
 * 输入参数  : BSP_U32 u32LastFilterID, BSP_U32 u32FilterID, IPF_MATCH_INFO_S* pstMatchInfo
-*             
+*
 * 输出参数  : 无
 
 * 返 回 值  : 无
@@ -1881,12 +1882,12 @@ BSP_VOID IPF_AddTailFilterChain(BSP_U32 u32LastFilterID, BSP_U32 u32FilterID, IP
 {
     BSP_U32 u32Value = 0;
     IPF_MATCH_INFO_S* pstLastMatchInfo = NULL;
-    
+
     /* 基本过滤器--将新的过滤器规则配置到过滤器 */
     if(u32FilterID < IPF_BF_NUM)
     {
         ipf_write_basic_filter(u32FilterID, pstMatchInfo);
-		
+
         /*对基本过滤器进行备份*/
         BSP_IPF_BackupFilter(u32FilterID);
     }
@@ -1902,20 +1903,20 @@ BSP_VOID IPF_AddTailFilterChain(BSP_U32 u32LastFilterID, BSP_U32 u32FilterID, IP
         /* 将上次配置最后一个过滤器的nextIndex域重新配置 */
         if(u32LastFilterID < IPF_BF_NUM)
         {
-            ipf_writel(u32LastFilterID, HI_IPF_REGBASE_ADDR_VIRT + HI_BFLT_INDEX_OFFSET); 
+            ipf_writel(u32LastFilterID, HI_IPF_REGBASE_ADDR_VIRT + HI_BFLT_INDEX_OFFSET);
             u32Value = ipf_readl(HI_IPF_REGBASE_ADDR_VIRT + HI_FLT_CHAIN_OFFSET);
             u32Value = (u32Value&0x1FF0000) + u32FilterID;
             ipf_writel(u32Value, HI_IPF_REGBASE_ADDR_VIRT + HI_FLT_CHAIN_OFFSET);
-			
+
             /*对修改next index的基本过滤器进行重新备份*/
             BSP_IPF_BackupFilter(u32LastFilterID);
         }
         else
         {
             pstLastMatchInfo = g_pstExFilterAddr + u32LastFilterID - IPF_BF_NUM;
-            pstLastMatchInfo->unFltChain.Bits.u16NextIndex = u32FilterID;        
+            pstLastMatchInfo->unFltChain.Bits.u16NextIndex = u32FilterID;
         }
-    }    
+    }
 }
 
 /*****************************************************************************
@@ -1924,8 +1925,8 @@ BSP_VOID IPF_AddTailFilterChain(BSP_U32 u32LastFilterID, BSP_U32 u32FilterID, IP
 * 功能描述  : 在上下行链表中寻找与PS ID 匹配的Filter ID
 *
 * 输入参数  : IPF_FILTER_CHAIN_TYPE_E eFilterChainhead    通道类型
-*                           BSP_U32 u32PsID                PS ID            
-*             
+*                           BSP_U32 u32PsID                PS ID
+*
 * 输出参数  : BSP_U32* u32FilterID   查询到的Filter ID
 
 * 返 回 值     : IPF_SUCCESS                查询成功
@@ -1950,7 +1951,7 @@ BSP_S32 IPF_FindFilterID(IPF_FILTER_CHAIN_TYPE_E eFilterChainhead, BSP_U32 u32Ps
             return IPF_SUCCESS;
         }
     }
-    return IPF_ERROR;        
+    return IPF_ERROR;
 }
 
 /*****************************************************************************
@@ -1992,17 +1993,17 @@ BSP_S32 BSP_IPF_Init(IPF_COMMON_PARA_S *pstCommPara)
     }
 
     /* 配置IPF全局控制配置寄存器 */
-    u32IPFCtrl = pstCommPara->bFilterSeq | (pstCommPara->bFltAddrReverse<<1) | (pstCommPara->bSpPriSel<<2)/*lint !e701*/ 
+    u32IPFCtrl = pstCommPara->bFilterSeq | (pstCommPara->bFltAddrReverse<<1) | (pstCommPara->bSpPriSel<<2)/*lint !e701*/
                  | (pstCommPara->bSpWrrModeSel<<3) | (pstCommPara->eMaxBurst<<4)/*lint !e701*/
                  | (pstCommPara->bIpv6NextHdSel<<6) | (pstCommPara->bEspAhSel<<7)/*lint !e701*/
                  | (pstCommPara->bAhSpiDisable<<8) | (pstCommPara->bEspSpiDisable<<9)/*lint !e701*/
                  | (pstCommPara->bMultiFilterChainEn<<10) | (pstCommPara->bMultiModeEn<<11)
                  | (pstCommPara->bAdReport<<12) | (chn_schedule_strategy<<13);
-	
-    bsp_trace(BSP_LOG_LEVEL_DEBUG, BSP_MODU_IPF, "\r u32IPFCtrl = 0x%x \n", u32IPFCtrl);
-    ipf_writel(u32IPFCtrl, HI_IPF_REGBASE_ADDR_VIRT + HI_IPF_CTRL_OFFSET); 
 
-    return  IPF_SUCCESS; 
+    bsp_trace(BSP_LOG_LEVEL_DEBUG, BSP_MODU_IPF, "\r u32IPFCtrl = 0x%x \n", u32IPFCtrl);
+    ipf_writel(u32IPFCtrl, HI_IPF_REGBASE_ADDR_VIRT + HI_IPF_CTRL_OFFSET);
+
+    return  IPF_SUCCESS;
 }
 
 /*****************************************************************************
@@ -2010,7 +2011,7 @@ BSP_S32 BSP_IPF_Init(IPF_COMMON_PARA_S *pstCommPara)
 *
 * 功能描述  : 配置上行通道控制参数
 *
-* 输入参数  : IPF_CHL_CTRL_S *pstCtrl 
+* 输入参数  : IPF_CHL_CTRL_S *pstCtrl
 * 输出参数  : 无
 * 返 回 值      : 无
 *
@@ -2022,8 +2023,8 @@ BSP_S32 BSP_IPF_Init(IPF_COMMON_PARA_S *pstCommPara)
 *****************************************************************************/
 BSP_S32 BSP_IPF_ConfigUlChannel(IPF_CHL_CTRL_S *pstCtrl)
 {
-    BSP_U32 u32ChanCtrl = 0; 
-	
+    BSP_U32 u32ChanCtrl = 0;
+
 #if (defined(BSP_CONFIG_HI3630))
     /*由于K3V3总线设计问题，使用ipf 前需要检测是否需要恢复过滤器*/
     ipf_check_filter_restore();
@@ -2037,10 +2038,10 @@ BSP_S32 BSP_IPF_ConfigUlChannel(IPF_CHL_CTRL_S *pstCtrl)
     }
 
     /*配置上行通道控制寄存器 */
-    u32ChanCtrl = pstCtrl->eIpfMode | (pstCtrl->bEndian<<2) | 
+    u32ChanCtrl = pstCtrl->eIpfMode | (pstCtrl->bEndian<<2) |
                             (pstCtrl->bDataChain<<3) | (pstCtrl->u32WrrValue<<16);
     bsp_trace(BSP_LOG_LEVEL_DEBUG, BSP_MODU_IPF,"\r u32ChanCtrl = 0x%x \n", u32ChanCtrl);
-    ipf_writel(u32ChanCtrl, HI_IPF_REGBASE_ADDR_VIRT + HI_IPF_CH0_CTRL_OFFSET);  
+    ipf_writel(u32ChanCtrl, HI_IPF_REGBASE_ADDR_VIRT + HI_IPF_CH0_CTRL_OFFSET);
 
     return IPF_SUCCESS;
 }
@@ -2050,7 +2051,7 @@ BSP_S32 BSP_IPF_ConfigUlChannel(IPF_CHL_CTRL_S *pstCtrl)
 *
 * 功能描述  : 配置上行通道控制参数
 *
-* 输入参数  : IPF_CHL_CTRL_S *pstCtrl 
+* 输入参数  : IPF_CHL_CTRL_S *pstCtrl
 * 输出参数  : 无
 * 返 回 值      : 无
 *
@@ -2062,7 +2063,7 @@ BSP_S32 BSP_IPF_ConfigUlChannel(IPF_CHL_CTRL_S *pstCtrl)
 *****************************************************************************/
 BSP_S32 BSP_IPF_ConfigDlChannel(IPF_CHL_CTRL_S *pstCtrl)
 {
-    BSP_U32 u32ChanCtrl = 0; 
+    BSP_U32 u32ChanCtrl = 0;
 
 #if (defined(BSP_CONFIG_HI3630))
     /*由于K3V3总线设计问题，使用ipf 前需要检测是否需要恢复过滤器*/
@@ -2075,9 +2076,9 @@ BSP_S32 BSP_IPF_ConfigDlChannel(IPF_CHL_CTRL_S *pstCtrl)
         bsp_trace(BSP_LOG_LEVEL_ERROR, BSP_MODU_IPF,"\r BSP_IPF_ConfigDlChannel pstCtrl NULL! \n");
         return BSP_ERR_IPF_INVALID_PARA;
     }
-    
+
     /*配置上行通道控制寄存器 */
-    u32ChanCtrl = pstCtrl->eIpfMode | (pstCtrl->bEndian<<2) | 
+    u32ChanCtrl = pstCtrl->eIpfMode | (pstCtrl->bEndian<<2) |
                             (pstCtrl->bDataChain<<3) | (pstCtrl->u32WrrValue<<16);
     bsp_trace(BSP_LOG_LEVEL_DEBUG, BSP_MODU_IPF,"\r u32ChanCtrl = 0x%x \n", u32ChanCtrl);
     ipf_writel(u32ChanCtrl, HI_IPF_REGBASE_ADDR_VIRT + HI_IPF_CH1_CTRL_OFFSET);
@@ -2110,7 +2111,7 @@ BSP_S32 BSP_IPF_ConfigADThr(BSP_U32 u32UlADThr,BSP_U32 u32DlADThr)
         bsp_trace(BSP_LOG_LEVEL_ERROR, BSP_MODU_IPF,"\r IPF Not Init! \n");
         return BSP_ERR_IPF_NOT_INIT;
     }
-	
+
 #if (defined(BSP_CONFIG_HI3630))
     /*由于K3V3总线设计问题，使用ipf 前需要检测是否需要恢复过滤器*/
     ipf_check_filter_restore();
@@ -2167,19 +2168,19 @@ BSP_S32 BSP_IPF_SetFilter(IPF_FILTER_CHAIN_TYPE_E eFilterChainhead, IPF_FILTER_C
 	/* 清除该寄存器链首地址以外的所有结点 */
 	IPF_DeleteAll(eFilterChainhead);
 	udelay(g_filter_delay_time);
-		
+
 	/*分配滤器*/
 	for(i = 0; i < u32FilterNum; i++)
 	{
         /* 从freelist中取出未配置的过滤器 */
 		if(!(IPF_SET_EXT_FILTER & (pstFilterInfo->u32FilterID)))
-		{    
+		{
 			current = IPF_MallocOneBasicFilter();
 			if(NULL == current)
-			{		
+			{
 				current = IPF_MallocOneExtFilter();
 				if(NULL == current)
-				{		
+				{
 				#if (defined(BSP_CONFIG_HI3630))
 					bsp_ipc_spin_unlock(IPC_SEM_IPF_PWCTRL);
 				#endif
@@ -2187,7 +2188,7 @@ BSP_S32 BSP_IPF_SetFilter(IPF_FILTER_CHAIN_TYPE_E eFilterChainhead, IPF_FILTER_C
 					bsp_trace(BSP_LOG_LEVEL_ERROR, BSP_MODU_IPF,"\r IPF_MallocOneFilter error! \n");
 					return BSP_ERR_IPF_FILTER_NOT_ENOUGH;
 				}
-			}		
+			}
 		}
 		else
 		{
@@ -2212,13 +2213,13 @@ BSP_S32 BSP_IPF_SetFilter(IPF_FILTER_CHAIN_TYPE_E eFilterChainhead, IPF_FILTER_C
 		IPF_AddTailFilterChain(u32LastFilterID, current->u32FilterID, &pstFilterInfo->stMatchInfo);
 		IPF_AddTailUsedFilter(eFilterChainhead, current);
 		u32LastFilterID = current->u32FilterID;
-		pstFilterInfo++; 
+		pstFilterInfo++;
 	}
-	
+
 	/*将配置好的过滤器链挂到链首上*/
 	ipf_writel(eFilterChainhead, HI_IPF_REGBASE_ADDR_VIRT + HI_BFLT_INDEX_OFFSET);
-	ipf_writel(u32FirstFilterID, HI_IPF_REGBASE_ADDR_VIRT+HI_FLT_CHAIN_OFFSET); 
-	
+	ipf_writel(u32FirstFilterID, HI_IPF_REGBASE_ADDR_VIRT+HI_FLT_CHAIN_OFFSET);
+
 	/*备份更改后的首过滤器*/
 	BSP_IPF_BackupFilter(eFilterChainhead);
 	cache_sync();
@@ -2236,7 +2237,7 @@ BSP_S32 BSP_IPF_SetFilter(IPF_FILTER_CHAIN_TYPE_E eFilterChainhead, IPF_FILTER_C
 * 功能描述  : 提供给PS查询某个Filter配置信息
 *
 * 输入参数  : BSP_U32 u32FilterID   Filter ID号注意这个是psid
-*             
+*
 * 输出参数  : IPF_FILTER_CONFIG_S * pFilterInfo  查询到的Filter信息
 
 * 返 回 值     : IPF_SUCCESS                查询成功
@@ -2254,15 +2255,15 @@ BSP_S32 BSP_IPF_SetFilter(IPF_FILTER_CHAIN_TYPE_E eFilterChainhead, IPF_FILTER_C
 BSP_S32 BSP_IPF_GetFilter(IPF_FILTER_CHAIN_TYPE_E eFilterChainhead, BSP_U32 u32FilterID, IPF_FILTER_CONFIG_S *pstFilterInfo)
 {
     BSP_U32 u32FindID = 0;
-    
-    
+
+
     /* 检查模块是否初始化 */
     if(IPF_MCORE_INIT_SUCCESS != g_IPFInit)
     {
         bsp_trace(BSP_LOG_LEVEL_ERROR, BSP_MODU_IPF,"\r IPF Not Init! \n");
         return BSP_ERR_IPF_NOT_INIT;
     }
-	
+
 #if (defined(BSP_CONFIG_HI3630))
     /*由于K3V3总线设计问题，使用ipf 前需要检测是否需要恢复过滤器*/
     ipf_check_filter_restore();
@@ -2280,14 +2281,14 @@ BSP_S32 BSP_IPF_GetFilter(IPF_FILTER_CHAIN_TYPE_E eFilterChainhead, BSP_U32 u32F
     {
         return IPF_ERROR;
     }
-    pstFilterInfo->u32FilterID = u32FilterID;    
-    
+    pstFilterInfo->u32FilterID = u32FilterID;
+
     /* 如果是基本过滤器 */
     if(u32FindID < IPF_BF_NUM)
     {
-        /* 写过滤表操作地址 */    
-        ipf_writel(u32FindID, HI_IPF_REGBASE_ADDR_VIRT + HI_BFLT_INDEX_OFFSET); 
-         
+        /* 写过滤表操作地址 */
+        ipf_writel(u32FindID, HI_IPF_REGBASE_ADDR_VIRT + HI_BFLT_INDEX_OFFSET);
+
         /* 读出过滤器的配置 */
         memcpy(&pstFilterInfo->stMatchInfo, (BSP_VOID*)(HI_IPF_REGBASE_ADDR_VIRT+HI_FLT_LOCAL_ADDR0_OFFSET), sizeof(IPF_MATCH_INFO_S));/* [false alarm]:fortify disable */
     }
@@ -2341,7 +2342,7 @@ BSP_S32 IPF_ConfigCD(TTF_MEM_ST *pstTtf, BSP_U16* pu16TotalDataLen, BSP_U32* pu3
             }
             #endif
             u16TotalDataLen += p->usUsed;
-            
+
             /* 标识是否结束 */
             if(p->pNext != NULL)
             {
@@ -2375,7 +2376,7 @@ BSP_S32 IPF_ConfigCD(TTF_MEM_ST *pstTtf, BSP_U16* pu16TotalDataLen, BSP_U32* pu3
                 #ifdef __BSP_IPF_CD_DEBUG__
                 g_stIpfDl.pstIpfDebugCDQ[u32DlCDWptr].u16Attribute = 1;
                 #endif
-                
+
                 /* 结束时CD可以翻转 */
                 u32DlCDWptr = (u32DlCDWptr+1 < IPF_DLCD_DESC_SIZE)?(u32DlCDWptr+1):0;
                 #ifdef __BSP_IPF_CD_DEBUG__
@@ -2392,18 +2393,18 @@ BSP_S32 IPF_ConfigCD(TTF_MEM_ST *pstTtf, BSP_U16* pu16TotalDataLen, BSP_U32* pu3
             bsp_trace(BSP_LOG_LEVEL_ERROR, BSP_MODU_IPF,
                     "\r DownFilter CD FULL ! u32DlCDRptr=%d u32DlCDWptr=%d\n",u32DlCDRptr,u32DlCDWptr);
             return BSP_ERR_IPF_CDQ_NOT_ENOUGH;
-        }        
+        }
     }while(p != NULL);
-    
+
     g_stIpfDl.u32IpfCdWptr = u32DlCDWptr;
-    *pu16TotalDataLen = u16TotalDataLen;    
+    *pu16TotalDataLen = u16TotalDataLen;
     return IPF_SUCCESS;
 }
 
 /*****************************************************************************
 * 函 数 名      : BSP_IPF_ConfigDownFilter
 *
-* 功能描述  : IPF下行BD配置函数 
+* 功能描述  : IPF下行BD配置函数
 *
 * 输入参数  : BSP_U32 u32Num, IPF_CONFIG_ULPARAM_S* pstUlPara
 * 输出参数  : 无
@@ -2428,7 +2429,7 @@ BSP_S32 BSP_IPF_ConfigDownFilter(BSP_U32 u32Num, IPF_CONFIG_DLPARAM_S* pstDlPara
     BSP_U16 u16TotalDataLen = 0;
     BSP_U32 u32TimeStampEn;
 
-#ifdef CONFIG_BALONG_MODEM_RESET	
+#ifdef CONFIG_BALONG_MODEM_RESET
     /* 检查Ccore是否上电*/
     if(IPF_FORRESET_CONTROL_FORBID <= BSP_IPF_GetControlFLagForCcoreReset())
     {
@@ -2448,7 +2449,7 @@ BSP_S32 BSP_IPF_ConfigDownFilter(BSP_U32 u32Num, IPF_CONFIG_DLPARAM_S* pstDlPara
         bsp_trace(BSP_LOG_LEVEL_ERROR, BSP_MODU_IPF,"\r BSP_IPF_ConfigDownFilter input para ERROR! \n");
         return BSP_ERR_IPF_INVALID_PARA;
     }
-	
+
 #ifdef __BSP_IPF_DEBUG__
     if(u32Num > g_stIpfDl.u32IdleBd)
     {
@@ -2467,7 +2468,7 @@ BSP_S32 BSP_IPF_ConfigDownFilter(BSP_U32 u32Num, IPF_CONFIG_DLPARAM_S* pstDlPara
         }
     }
 
-	
+
     /* 读出BD写指针 */
     u32BdqWptr = ipf_readl(HI_IPF_REGBASE_ADDR_VIRT + HI_IPF_CH1_BDQ_WPTR_OFFSET);
 
@@ -2482,7 +2483,7 @@ BSP_S32 BSP_IPF_ConfigDownFilter(BSP_U32 u32Num, IPF_CONFIG_DLPARAM_S* pstDlPara
             g_stIPFDebugInfo->u32DlCdNotEnough++;
             return BSP_ERR_IPF_CDQ_NOT_ENOUGH;
         }
-        g_stIpfDl.pstIpfBDQ[u32BD].u16Attribute = pstDlPara[i].u16Attribute; 
+        g_stIpfDl.pstIpfBDQ[u32BD].u16Attribute = pstDlPara[i].u16Attribute;
         g_stIpfDl.pstIpfBDQ[u32BD].u32InPtr =  u32BdInPtr;
         g_stIpfDl.pstIpfBDQ[u32BD].u16PktLen = u16TotalDataLen;
         g_stIpfDl.pstIpfBDQ[u32BD].u16UsrField1 = pstDlPara[i].u16UsrField1;
@@ -2492,7 +2493,7 @@ BSP_S32 BSP_IPF_ConfigDownFilter(BSP_U32 u32Num, IPF_CONFIG_DLPARAM_S* pstDlPara
         u32BD = ((u32BD + 1) < IPF_DLBD_DESC_SIZE)? (u32BD + 1) : 0;
     }
 
-#ifdef CONFIG_BALONG_MODEM_RESET	
+#ifdef CONFIG_BALONG_MODEM_RESET
     /* 检查Ccore是否上电*/
     if(IPF_FORRESET_CONTROL_FORBID <= BSP_IPF_GetControlFLagForCcoreReset())
     {
@@ -2504,7 +2505,7 @@ BSP_S32 BSP_IPF_ConfigDownFilter(BSP_U32 u32Num, IPF_CONFIG_DLPARAM_S* pstDlPara
     g_stIPFDebugInfo->ipf_cfg_dlbd_count += u32Num;
 
     /* 更新BD写指针 */
-    ipf_writel(u32BD, HI_IPF_REGBASE_ADDR_VIRT + HI_IPF_CH1_BDQ_WPTR_OFFSET);  
+    ipf_writel(u32BD, HI_IPF_REGBASE_ADDR_VIRT + HI_IPF_CH1_BDQ_WPTR_OFFSET);
 
     return IPF_SUCCESS;
 }
@@ -2515,10 +2516,10 @@ BSP_S32 BSP_IPF_ConfigDownFilter(BSP_U32 u32Num, IPF_CONFIG_DLPARAM_S* pstDlPara
 * 功能描述  : 该接口仅在C核提供，用于移动ADQ写指针，
 				给空闲的AD分配新的内存缓冲区，一次可以处理多个AD。
 				数传前要调用这个函数分配缓冲区。
-*                           
-* 输入参数  : BSP_U32 u32Num0; 
-				 BSP_U32 u32Num1; 
-				 BSP_VOID* psk0; 
+*
+* 输入参数  : BSP_U32 u32Num0;
+				 BSP_U32 u32Num1;
+				 BSP_VOID* psk0;
 				 BSP_VOID* psk1
 *
 * 输出参数  : 无
@@ -2539,7 +2540,7 @@ BSP_S32 BSP_IPF_ConfigUlAd(BSP_U32 u32AdType, BSP_U32  u32AdNum, IPF_AD_DESC_S *
 		bsp_trace(BSP_LOG_LEVEL_ERROR, BSP_MODU_IPF,"\r IPF Not Init! \n");
 		return BSP_ERR_IPF_NOT_INIT;
 	}
-	
+
 #if (defined(BSP_CONFIG_HI3630))
 	/*由于K3V3总线设计问题，使用ipf 前需要检测是否需要恢复过滤器*/
 	ipf_check_filter_restore();
@@ -2550,14 +2551,14 @@ BSP_S32 BSP_IPF_ConfigUlAd(BSP_U32 u32AdType, BSP_U32  u32AdNum, IPF_AD_DESC_S *
 	{
 		bsp_trace(BSP_LOG_LEVEL_ERROR, BSP_MODU_IPF,"\r BSP_IPF_ConfigUlAd input para ERROR! NULL == pstAdDesc\n");
 		return BSP_ERR_IPF_INVALID_PARA;
-	}	
+	}
 
 	if(u32AdType >= IPF_AD_MAX)
 	{
 		bsp_trace(BSP_LOG_LEVEL_ERROR, BSP_MODU_IPF,"\r BSP_IPF_ConfigUlAd input para ERROR! u32AdType >= IPF_AD_MAX\n");
 		return BSP_ERR_IPF_INVALID_PARA;
 	}
-	
+
 	if(IPF_AD_0 == u32AdType)
 	{
 		if(u32AdNum >= IPF_ULAD0_DESC_SIZE)
@@ -2566,7 +2567,7 @@ BSP_S32 BSP_IPF_ConfigUlAd(BSP_U32 u32AdType, BSP_U32  u32AdNum, IPF_AD_DESC_S *
 			g_stIPFDebugInfo->ipf_ulad0_error_count++;
 			return BSP_ERR_IPF_INVALID_PARA;
 		}
-		
+
 		/*读出写指针*/
 		u32ADQwptr = ipf_readl(HI_IPF_REGBASE_ADDR_VIRT + HI_IPF_CH0_ADQ0_WPTR_OFFSET);
 		for(i=0; i < u32AdNum; i++)
@@ -2578,15 +2579,15 @@ BSP_S32 BSP_IPF_ConfigUlAd(BSP_U32 u32AdType, BSP_U32  u32AdNum, IPF_AD_DESC_S *
 			}
 			g_stIpfUl.pstIpfADQ0[u32ADQwptr].u32OutPtr1 = pstADDesc->u32OutPtr1;
 			g_stIpfUl.pstIpfADQ0[u32ADQwptr].u32OutPtr0 = pstADDesc->u32OutPtr0;
-			u32ADQwptr = ((u32ADQwptr + 1) < IPF_ULAD0_DESC_SIZE)? (u32ADQwptr + 1) : 0;	
+			u32ADQwptr = ((u32ADQwptr + 1) < IPF_ULAD0_DESC_SIZE)? (u32ADQwptr + 1) : 0;
 			pstADDesc++;
 		}
 		g_stIPFDebugInfo->ipf_cfg_ulad0_count += u32AdNum;
 
 		/* 更新AD0写指针*/
-		ipf_writel(u32ADQwptr, HI_IPF_REGBASE_ADDR_VIRT + HI_IPF_CH0_ADQ0_WPTR_OFFSET);  
+		ipf_writel(u32ADQwptr, HI_IPF_REGBASE_ADDR_VIRT + HI_IPF_CH0_ADQ0_WPTR_OFFSET);
 	}
-	
+
 	else if(IPF_AD_1 == u32AdType)
 	{
 		if(u32AdNum >= IPF_ULAD1_DESC_SIZE)
@@ -2595,7 +2596,7 @@ BSP_S32 BSP_IPF_ConfigUlAd(BSP_U32 u32AdType, BSP_U32  u32AdNum, IPF_AD_DESC_S *
 			g_stIPFDebugInfo->ipf_ulad1_error_count++;
 			return BSP_ERR_IPF_INVALID_PARA;
 		}
-		
+
 		/*读出写指针*/
 		u32ADQwptr = ipf_readl(HI_IPF_REGBASE_ADDR_VIRT + HI_IPF_CH0_ADQ1_WPTR_OFFSET);
 		for(i=0; i < u32AdNum; i++)
@@ -2607,13 +2608,13 @@ BSP_S32 BSP_IPF_ConfigUlAd(BSP_U32 u32AdType, BSP_U32  u32AdNum, IPF_AD_DESC_S *
 			}
 			g_stIpfUl.pstIpfADQ1[u32ADQwptr].u32OutPtr1 = pstADDesc->u32OutPtr1;
 			g_stIpfUl.pstIpfADQ1[u32ADQwptr].u32OutPtr0 = pstADDesc->u32OutPtr0;
-			u32ADQwptr = ((u32ADQwptr + 1) < IPF_ULAD1_DESC_SIZE)? (u32ADQwptr + 1) : 0;		
+			u32ADQwptr = ((u32ADQwptr + 1) < IPF_ULAD1_DESC_SIZE)? (u32ADQwptr + 1) : 0;
 			pstADDesc++;
 		}
 		g_stIPFDebugInfo->ipf_cfg_ulad1_count += u32AdNum;
 
 		/* 更新AD0写指针*/
-		ipf_writel(u32ADQwptr, HI_IPF_REGBASE_ADDR_VIRT + HI_IPF_CH0_ADQ1_WPTR_OFFSET);  
+		ipf_writel(u32ADQwptr, HI_IPF_REGBASE_ADDR_VIRT + HI_IPF_CH0_ADQ1_WPTR_OFFSET);
 
 	}
 	return IPF_SUCCESS;
@@ -2625,7 +2626,7 @@ BSP_S32 BSP_IPF_ConfigUlAd(BSP_U32 u32AdType, BSP_U32  u32AdNum, IPF_AD_DESC_S *
 * 功能描述  : 该接口用于使能或复位IP过滤器上下行通道
 *
 * 输入参数  : IPF_CHANNEL_TYPE_E eChanType      上下行通道标识
-*                           BSP_BOOL bFlag   使能复位标识 
+*                           BSP_BOOL bFlag   使能复位标识
 *
 * 输出参数  : 无
 * 返 回 值      : IPF_SUCCESS                使能复位成功
@@ -2661,43 +2662,43 @@ BSP_S32 BSP_IPF_ChannelEnable(IPF_CHANNEL_TYPE_E eChanType, BSP_BOOL bFlag)
     {
         u32ChanEnable = ipf_readl(HI_IPF_REGBASE_ADDR_VIRT + HI_IPF_CH_EN_OFFSET);
         u32ChanEnable |= 0x1<<eChanType;
-        ipf_writel(u32ChanEnable, HI_IPF_REGBASE_ADDR_VIRT + HI_IPF_CH_EN_OFFSET);                        
+        ipf_writel(u32ChanEnable, HI_IPF_REGBASE_ADDR_VIRT + HI_IPF_CH_EN_OFFSET);
     }
     /* 通道去使能 */
     else
     {
         u32ChanEnable = ipf_readl(HI_IPF_REGBASE_ADDR_VIRT + HI_IPF_CH_EN_OFFSET);
         u32ChanEnable &= 0xFFFFFFFF ^ (0x1<<eChanType);
-        ipf_writel(u32ChanEnable, HI_IPF_REGBASE_ADDR_VIRT + HI_IPF_CH_EN_OFFSET); 
-        
-        /* 遍历直到通道状态为0 */      
+        ipf_writel(u32ChanEnable, HI_IPF_REGBASE_ADDR_VIRT + HI_IPF_CH_EN_OFFSET);
+
+        /* 遍历直到通道状态为0 */
         do
         {
             (BSP_VOID)taskDelay(1);
             u32ChanState = ipf_readl(HI_IPF_REGBASE_ADDR_VIRT + HI_IPF_EN_STATE_OFFSET);
             u32ChanState &= 0x1<<eChanType;
             u32Times++;
-        }while((u32ChanState) && (u32Times < 100)); 
-        
+        }while((u32ChanState) && (u32Times < 100));
+
         if(100 == u32Times)
         {
             bsp_trace(BSP_LOG_LEVEL_ERROR, BSP_MODU_IPF,
                        "\r BSP_IPF_ChannelEnable disable error u32Times = %d ! \n",u32Times,0,0,0,0,0);
             return IPF_ERROR;
         }
-		
+
         /* 复位输入队列和输出队列的读写指针 */
         if(IPF_CHANNEL_UP == eChanType)
         {
             u32ChCtrl = ipf_readl(HI_IPF_REGBASE_ADDR_VIRT + HI_IPF_CH0_CTRL_OFFSET);
             u32ChCtrl |= 0x30; /* 将4，5bit设置为1 */
-            ipf_writel(u32ChCtrl, HI_IPF_REGBASE_ADDR_VIRT + HI_IPF_CH0_CTRL_OFFSET); 
+            ipf_writel(u32ChCtrl, HI_IPF_REGBASE_ADDR_VIRT + HI_IPF_CH0_CTRL_OFFSET);
         }
         else if(IPF_CHANNEL_DOWN == eChanType)
         {
             u32ChCtrl = ipf_readl(HI_IPF_REGBASE_ADDR_VIRT + HI_IPF_CH1_CTRL_OFFSET);
             u32ChCtrl |= 0x30; /* 将4，5bit设置为1 */
-            ipf_writel(u32ChCtrl, HI_IPF_REGBASE_ADDR_VIRT + HI_IPF_CH1_CTRL_OFFSET); 
+            ipf_writel(u32ChCtrl, HI_IPF_REGBASE_ADDR_VIRT + HI_IPF_CH1_CTRL_OFFSET);
         }
         else
         {
@@ -2716,7 +2717,7 @@ BSP_S32 BSP_IPF_ChannelEnable(IPF_CHANNEL_TYPE_E eChanType, BSP_BOOL bFlag)
 *
 * 输出参数  : 空闲CD数目
 * 返 回 值      : 空闲BD数目
-*  
+*
 * 修改记录  :2011年11月30日   鲁婷  创建
 			2014年1月23日v1.01 陈东岳 修改 由于K3V3总线设计问题，
 			无法在m3上进行低功耗恢复，移动到A9上进行。
@@ -2729,7 +2730,7 @@ BSP_U32 BSP_IPF_GetDlBDNum(BSP_U32* pu32CDNum)
     BSP_U32 u32IdleCd = 0;
     BSP_U32 u32IdleCdDown = 0;
     BSP_U32 u32IdleCdUp = 0;
-	
+
 #if (defined(BSP_CONFIG_HI3630))
     /*由于K3V3总线设计问题，使用ipf 前需要检测是否需要恢复过滤器*/
     ipf_check_filter_restore();
@@ -2751,7 +2752,7 @@ BSP_U32 BSP_IPF_GetDlBDNum(BSP_U32* pu32CDNum)
         u32IdleCd = (u32IdleCdUp > u32IdleCdDown)? u32IdleCdUp:u32IdleCdDown;
     }
 #if 0
-    /*保留BDQ_RESERVE_NUM个BD用于减少AD队列空中断*/	
+    /*保留BDQ_RESERVE_NUM个BD用于减少AD队列空中断*/
     u32IdleBd = (u32IdleBd > BDQ_RESERVE_NUM)? (u32IdleBd - BDQ_RESERVE_NUM):0;
 #endif
     g_stIpfDl.u32IdleBd = u32IdleBd;
@@ -2770,7 +2771,7 @@ BSP_U32 BSP_IPF_GetDlBDNum(BSP_U32* pu32CDNum)
 * 功能描述  : 该接口用于读取下行RD数目
 *
 * 输入参数  : 无
-*   
+*
 * 输出参数  : 无
 *
 * 返 回 值     : 下行RD数目
@@ -2780,7 +2781,7 @@ BSP_U32 BSP_IPF_GetDlBDNum(BSP_U32* pu32CDNum)
 BSP_U32 BSP_IPF_GetDlRdNum(BSP_VOID)
 {
     BSP_U32 u32RdqDepth = 0;
-  
+
     /* 读取RD深度 */
     u32RdqDepth = ipf_readl(HI_IPF_REGBASE_ADDR_VIRT + HI_IPF_CH1_DQ_DEPTH_OFFSET);
     u32RdqDepth = (u32RdqDepth>>16)&IPF_DQ_DEPTH_MASK;
@@ -2795,7 +2796,7 @@ BSP_U32 BSP_IPF_GetDlRdNum(BSP_VOID)
 			用于规避ipf硬件对头阻塞问题
 *
 * 输入参数  : 无
-*   
+*
 * 输出参数  : 无
 *
 * 返 回 值     : 下行可传输包数
@@ -2816,18 +2817,18 @@ BSP_U32 BSP_IPF_GetDlDescNum(BSP_VOID)
 	BSP_U32 u32DlAdrptr = 0;
 	BSP_U32 u32DlBdDepth = 0;
 	BSP_U32 u32DlCdNum = 0;
-	
+
 #if (defined(BSP_CONFIG_HI3630))
 	/*由于K3V3总线设计问题，使用ipf 前需要检测是否需要恢复过滤器*/
 	ipf_check_filter_restore();
 #endif
-				
+
 	/* 计算空闲AD0数量 */
 	u32DlBdDepth = ipf_readl(HI_IPF_REGBASE_ADDR_VIRT + HI_IPF_CH0_DQ_DEPTH_OFFSET);
 	u32DlAdwptr = ipf_readl(HI_IPF_REGBASE_ADDR_VIRT + HI_IPF_CH0_ADQ0_WPTR_OFFSET);
 	u32DlAdrptr = ipf_readl(HI_IPF_REGBASE_ADDR_VIRT + HI_IPF_CH0_ADQ0_RPTR_OFFSET);
 	u32DlBdDepth = u32DlBdDepth&IPF_DQ_DEPTH_MASK;
-	
+
 	if (u32DlAdwptr >= u32DlAdrptr)/*写指针在前，正常顺序*/
 	{
 		u32DlAd0Num = u32DlAdwptr - u32DlAdrptr;
@@ -2861,7 +2862,7 @@ BSP_U32 BSP_IPF_GetDlDescNum(BSP_VOID)
 	{
 		u32DlAd1Num =  IPF_ULAD1_DESC_SIZE - (u32DlAdrptr -u32DlAdwptr);
 	}
-	
+
 	if(u32DlAd1Num > u32DlBdDepth)
 	{
 		u32DlAd1Num -= u32DlBdDepth;
@@ -2901,7 +2902,7 @@ BSP_U32 BSP_IPF_GetDlDescNum(BSP_VOID)
 
 
 
-	
+
 	if(u32DlBdNum > u32DlRdNum)
 	{
 		u32DlBdNum = u32DlRdNum;
@@ -2916,20 +2917,20 @@ BSP_U32 BSP_IPF_GetDlDescNum(BSP_VOID)
 * 函 数 名     : BSP_IPF_DlStateIdle
 *
 * 功能描述  : 该接口用于获取下行通道是否为空闲
-*                            
+*
 * 输入参数  : 无
 *
 * 输出参数  : 无
 * 返 回 值      : IPF_SUCCESS  表示下行空闲，
 *                            IPF_ERROR      表示下行非空闲，
-*  
+*
 * 修改记录  :2011年12月9日   鲁婷  创建
 *****************************************************************************/
 BSP_S32 BSP_IPF_DlStateIdle(BSP_VOID)
 {
     BSP_U32 u32DlState = 0;
     BSP_U32 u32BdqWptr = 0;
-    
+
     u32DlState = ipf_readl(HI_IPF_REGBASE_ADDR_VIRT + HI_IPF_CH1_STATE_OFFSET);
 
     if(u32DlState != IPF_CHANNEL_STATE_IDLE)
@@ -2946,12 +2947,12 @@ BSP_S32 BSP_IPF_DlStateIdle(BSP_VOID)
 * 函 数 名     : BSP_IPF_RegisterWakeupUlCb
 *
 * 功能描述  : 该接口用于注册上行PS任务回调函数
-*                           
+*
 * 输入参数  : BSP_IPF_WakeupUlCb *pFnWakeupUl
 *
 * 输出参数  : 无
 * 返 回 值      : 无
-*  
+*
 * 修改记录  :2011年11月30日   鲁婷  创建
 *****************************************************************************/
 BSP_S32 BSP_IPF_RegisterWakeupUlCb(BSP_IPF_WakeupUlCb pFnWakeupUl)
@@ -2971,7 +2972,7 @@ BSP_S32 BSP_IPF_RegisterWakeupUlCb(BSP_IPF_WakeupUlCb pFnWakeupUl)
 *
 * 功能描述  : 此接口只在C核提供，用于注册唤醒上行PS的
                              ADQ队列空回调函数
-*                           
+*
 * 输入参数  : BSP_IPF_AdqEmptyCb pFnWakeupUl
 *
 * 输出参数  : 无
@@ -2997,9 +2998,9 @@ BSP_S32 BSP_IPF_RegisterAdqEmptyUlCb(BSP_IPF_AdqEmptyUlCb pAdqEmptyUl)
 *
 * 功能描述  : 该接口用于读取上行BD, 支持一次读取多个BD
 *
-* 输入参数  : BSP_U32* pu32Num    
+* 输入参数  : BSP_U32* pu32Num
 *                           IPF_RD_DESC_S *pstRd
-*   
+*
 * 输出参数  : BSP_U32* pu32Num    实际读取的RD数目
 *
 * 返 回 值     : IPF_SUCCESS               操作成功
@@ -3014,7 +3015,7 @@ BSP_VOID BSP_IPF_GetUlRd(BSP_U32* pu32Num, IPF_RD_DESC_S *pstRd)
     BSP_U32 u32Num = 0;
     BSP_U32 i = 0;
     BSP_U32 u32TimeStampEn;
-	
+
     /* 读取RD深度 */
     u32RdqDepth = ipf_readl(HI_IPF_REGBASE_ADDR_VIRT + HI_IPF_CH0_DQ_DEPTH_OFFSET);
     u32RdqDepth = (u32RdqDepth>>16)&IPF_DQ_DEPTH_MASK;
@@ -3031,7 +3032,7 @@ BSP_VOID BSP_IPF_GetUlRd(BSP_U32* pu32Num, IPF_RD_DESC_S *pstRd)
     /* 读取RD读指针 */
     u32RdqRptr = ipf_readl(HI_IPF_REGBASE_ADDR_VIRT + HI_IPF_CH0_RDQ_RPTR_OFFSET);
     for(i = 0; i < u32Num; i++)
-    {        
+    {
         /* 获取RD */
         pstRd[i].u16Attribute = g_stIpfUl.pstIpfRDQ[u32RdqRptr].u16Attribute;
         pstRd[i].u16PktLen = g_stIpfUl.pstIpfRDQ[u32RdqRptr].u16PktLen;
@@ -3042,9 +3043,9 @@ BSP_VOID BSP_IPF_GetUlRd(BSP_U32* pu32Num, IPF_RD_DESC_S *pstRd)
         pstRd[i].u32UsrField2 = g_stIpfUl.pstIpfRDQ[u32RdqRptr].u32UsrField2;
         pstRd[i].u32UsrField3 = g_stIpfUl.pstIpfRDQ[u32RdqRptr].u32UsrField3;
         ipf_record_end_time_stamp(u32TimeStampEn, g_stIpfUl.pstIpfRDQ[u32RdqRptr].u32UsrField3);
-				
+
         /* 更新RD读指针 */
-        u32RdqRptr = ((u32RdqRptr+1) < IPF_ULRD_DESC_SIZE)?(u32RdqRptr+1):0;        
+        u32RdqRptr = ((u32RdqRptr+1) < IPF_ULRD_DESC_SIZE)?(u32RdqRptr+1):0;
     }
     ipf_writel(u32RdqRptr, HI_IPF_REGBASE_ADDR_VIRT + HI_IPF_CH0_RDQ_RPTR_OFFSET);
     #ifdef __BSP_IPF_DEBUG__
@@ -3065,7 +3066,7 @@ BSP_VOID BSP_IPF_GetUlRd(BSP_U32* pu32Num, IPF_RD_DESC_S *pstRd)
 *
 * 输入参数  :BSP_OK：正常返回
                             BSP_ERROR：出错
-*             
+*
 * 输出参数  : 无
 * 返 回 值     : 无
 * 修改记录  : 2011年11月24日   陈东岳  创建
@@ -3103,7 +3104,7 @@ BSP_S32 BSP_IPF_GetUlAdNum(BSP_U32* pu32AD0Num,BSP_U32* pu32AD1Num)
 	}
 	*pu32AD0Num = u32UlAdDepth;
 
-	/*扣除reserve ad，用于防止硬件将ad队列满识别成空和低功耗引发内存泄露*/	
+	/*扣除reserve ad，用于防止硬件将ad队列满识别成空和低功耗引发内存泄露*/
 	if(u32UlAdDepth > IPF_ADQ_RESERVE_NUM)
 	{
 		*pu32AD0Num = u32UlAdDepth - IPF_ADQ_RESERVE_NUM;
@@ -3123,7 +3124,7 @@ BSP_S32 BSP_IPF_GetUlAdNum(BSP_U32* pu32AD0Num,BSP_U32* pu32AD1Num)
 	{
 		u32UlAdDepth =  u32UlAdrptr - u32UlAdwptr;
 	}
-	
+
 	/*扣除reserve ad，用于防止硬件将ad队列满识别成空和低功耗引发内存泄露*/
 	if(u32UlAdDepth > IPF_ADQ_RESERVE_NUM)
 	{
@@ -3144,7 +3145,7 @@ BSP_S32 BSP_IPF_GetUlAdNum(BSP_U32* pu32AD0Num,BSP_U32* pu32AD1Num)
 * 功能描述  : 该接口用于读取上行RD数目
 *
 * 输入参数  : 无
-*   
+*
 * 输出参数  : 无
 *
 * 返 回 值     : 上行RD数目
@@ -3154,7 +3155,7 @@ BSP_S32 BSP_IPF_GetUlAdNum(BSP_U32* pu32AD0Num,BSP_U32* pu32AD1Num)
 BSP_U32 BSP_IPF_GetUlRdNum(BSP_VOID)
 {
     BSP_U32 u32RdqDepth = 0;
-  
+
     /* 读取RD深度 */
     u32RdqDepth = ipf_readl(HI_IPF_REGBASE_ADDR_VIRT + HI_IPF_CH0_DQ_DEPTH_OFFSET);
     u32RdqDepth = (u32RdqDepth>>16)&IPF_DQ_DEPTH_MASK;
@@ -3168,7 +3169,7 @@ BSP_U32 BSP_IPF_GetUlRdNum(BSP_VOID)
 *
 * 输入参数  : BSP_TRUE   上报给C核
 *                           BSP_FALSE  不上报给C核
-*             
+*
 * 输出参数  : 无
 * 返 回 值     : 无
 * 修改记录  : 2011年2月14日   鲁婷  创建
@@ -3196,7 +3197,7 @@ BSP_VOID BSP_IPF_SwitchInt(BSP_BOOL bFlag)
 * 功能描述  : 提供的debug接口，获取已经使用的filter号
 *
 * 输入参数  : IPF_CHANNEL_TYPE_E eChnType  通道类型
-*             
+*
 * 输出参数  : 无
 * 返 回 值  : 无
 *
@@ -3208,25 +3209,25 @@ BSP_VOID BSP_IPF_UseFilterInfo(IPF_FILTER_CHAIN_TYPE_E eFilterChainhead)
     IPF_ID_S* current = NULL;
     BSP_U32 u32FilterNum = 0;
 /*    BSP_S32 s32GetChar = 0;*/
-    
+
     u32FilterNum = g_stIPFFilterInfo[eFilterChainhead].u32FilterNum;
     current = g_stIPFFilterInfo[eFilterChainhead].pstUseList;
-	
-    IPF_PRINT("Total Filter Num = %u\n",u32FilterNum);            
+
+    IPF_PRINT("Total Filter Num = %u\n",u32FilterNum);
     IPF_PRINT("=============================\n");
 
     while(u32FilterNum)
-    { 
+    {
         while(u32FilterNum)
         {
             if(1 == u32FilterNum)
             {
-                IPF_PRINT("Filter ID = %d,    PS ID = %d\n    ,Next HWID = %d\n",current->u32FilterID, current->u32PsID, current->pstNext->u32FilterID);            
+                IPF_PRINT("Filter ID = %d,    PS ID = %d\n    ,Next HWID = %d\n",current->u32FilterID, current->u32PsID, current->pstNext->u32FilterID);
                 u32FilterNum--;
             }
             else
             {
-                IPF_PRINT("Filter ID = %d,    PS ID = %d\n    ,Next HWID = %d\n",current->u32FilterID, current->u32PsID, current->pstNext->u32FilterID);            
+                IPF_PRINT("Filter ID = %d,    PS ID = %d\n    ,Next HWID = %d\n",current->u32FilterID, current->u32PsID, current->pstNext->u32FilterID);
                 current = current->pstNext;
                 u32FilterNum--;
             }
@@ -3242,7 +3243,7 @@ BSP_VOID BSP_IPF_UseFilterInfo(IPF_FILTER_CHAIN_TYPE_E eFilterChainhead)
 * 功能描述  : 提供的debug接口，获取未使用的filter号
 *
 * 输入参数  : IPF_CHANNEL_TYPE_E eChnType  通道类型
-*             
+*
 * 输出参数  : 无
 * 返 回 值  : 无
 *
@@ -3263,10 +3264,10 @@ BSP_VOID BSP_IPF_BasicFreeFilterInfo(BSP_VOID)
         while(current != NULL)
         {
             IPF_PRINT("Filter ID:      %d\n",current->u32FilterID);
-            current = current->pstNext; 
+            current = current->pstNext;
         }
     }
-    IPF_PRINT("*****************************\n");    
+    IPF_PRINT("*****************************\n");
 }
 BSP_VOID BSP_IPF_ExtFreeFilterInfo(BSP_VOID)
 {
@@ -3282,21 +3283,21 @@ BSP_VOID BSP_IPF_ExtFreeFilterInfo(BSP_VOID)
         while(current != NULL)
         {
             IPF_PRINT("Filter ID:      %d\n",current->u32FilterID);
-            current = current->pstNext; 
+            current = current->pstNext;
         }
     }
-    IPF_PRINT("*****************************\n");    
+    IPF_PRINT("*****************************\n");
 }
 
 BSP_VOID BSP_IPF_FilterInfoHWID(BSP_U32 u32Num)
 {
-    IPF_MATCH_INFO_S stMatchInfo; 
-    
+    IPF_MATCH_INFO_S stMatchInfo;
+
     if(u32Num < IPF_BF_NUM)
     {
-         /* 写过滤表操作地址 */    
-        ipf_writel(u32Num, HI_IPF_REGBASE_ADDR_VIRT + HI_BFLT_INDEX_OFFSET); 
-         
+         /* 写过滤表操作地址 */
+        ipf_writel(u32Num, HI_IPF_REGBASE_ADDR_VIRT + HI_BFLT_INDEX_OFFSET);
+
         /* 读出过滤器的配置 */
         memcpy(&stMatchInfo, (BSP_VOID*)(HI_IPF_REGBASE_ADDR_VIRT+HI_FLT_LOCAL_ADDR0_OFFSET), sizeof(IPF_MATCH_INFO_S));/* [false alarm]:fortify disable */
     }
@@ -3323,14 +3324,14 @@ BSP_VOID BSP_IPF_FilterInfoHWID(BSP_U32 u32Num)
     IPF_PRINT("Type :        %d  Code: %d\n", stMatchInfo.unFltCodeType.Bits.u16Type, stMatchInfo.unFltCodeType.Bits.u16Code);
     IPF_PRINT("NextIndex : %d  FltPri: %d\n", stMatchInfo.unFltChain.Bits.u16NextIndex, stMatchInfo.unFltChain.Bits.u16FltPri);
     IPF_PRINT("FltSpi :             %d\n", stMatchInfo.u32FltSpi);
-    IPF_PRINT("FltRuleCtrl :        %x\n", stMatchInfo.unFltRuleCtrl.u32FltRuleCtrl);    
+    IPF_PRINT("FltRuleCtrl :        %x\n", stMatchInfo.unFltRuleCtrl.u32FltRuleCtrl);
     IPF_PRINT("============================\n");
 }
 
 BSP_VOID BSP_IPF_FilterInfoPSID(IPF_FILTER_CHAIN_TYPE_E eFilterChainhead, BSP_U32 u32Num)
 {
     BSP_U32 u32FindID = 0;
-    
+
     /* 查找PS ID 对应的FilterID*/
     if(IPF_FindFilterID(eFilterChainhead, u32Num, &u32FindID) != IPF_SUCCESS)
     {
@@ -3347,7 +3348,7 @@ BSP_VOID BSP_IPF_FilterInfoPSID(IPF_FILTER_CHAIN_TYPE_E eFilterChainhead, BSP_U3
 * 功能描述  : 备份基本过滤器到DDR
 *
 * 输入参数  : 过滤器ID
-*   
+*
 * 输出参数  : 无
 *
 * 返 回 值     : 无
@@ -3361,12 +3362,12 @@ BSP_VOID BSP_IPF_BackupFilter(BSP_U32 u32FilterID)
     pstFilterMatchInfo += u32FilterID;
     memcpy((BSP_VOID*)pstFilterMatchInfo, (BSP_VOID*)(HI_IPF_REGBASE_ADDR_VIRT+HI_FLT_LOCAL_ADDR0_OFFSET), sizeof(IPF_MATCH_INFO_S));
 #else
-    BSP_U32 j;	
+    BSP_U32 j;
     BSP_U32* match_info_addr = (u32 *)(IPF_PWRCTL_BASIC_FILTER_ADDR + u32FilterID*sizeof(IPF_MATCH_INFO_S));
 
     for(j=0; j<(sizeof(IPF_MATCH_INFO_S)/4); j++)
     {
-        *match_info_addr = ipf_readl((HI_IPF_REGBASE_ADDR_VIRT+HI_FLT_LOCAL_ADDR0_OFFSET+j*4)); 
+        *match_info_addr = ipf_readl((HI_IPF_REGBASE_ADDR_VIRT+HI_FLT_LOCAL_ADDR0_OFFSET+j*4));
         match_info_addr++;
 
     }
@@ -3381,7 +3382,7 @@ BSP_VOID BSP_IPF_BackupFilter(BSP_U32 u32FilterID)
 * 功能描述  : dpm进入准备函数
 *
 * 输入参数  : 设备指针
-*   
+*
 * 输出参数  : 无
 *
 * 返 回 值     : IPF_ERROR 失败
@@ -3428,7 +3429,7 @@ static int ipf_ul_dpm_prepare(struct dpm_device *dev)
 * 功能描述  : dpm桩函数
 *
 * 输入参数  : 设备指针
-*   
+*
 * 输出参数  : 无
 *
 * 返 回 值     : 成功
@@ -3442,11 +3443,11 @@ static int ipf_ul_suspend(struct dpm_device *dev)
 #if (defined(BSP_CONFIG_HI3630))
 
     unsigned long ipf_flags = 0;
-	
+
     spin_lock_irqsave(&ipf_filter_spinlock, ipf_flags);
     bsp_ipc_spin_lock(IPC_SEM_IPF_PWCTRL);
     *ipf_ccore_init_status = IPF_PWC_DOWN;
-    cache_sync();		
+    cache_sync();
     bsp_ipc_spin_unlock(IPC_SEM_IPF_PWCTRL);
     spin_unlock_irqrestore(&ipf_filter_spinlock, ipf_flags);
 
@@ -3461,7 +3462,7 @@ static int ipf_ul_suspend(struct dpm_device *dev)
 * 功能描述  : dpm桩函数
 *
 * 输入参数  : 设备指针
-*   
+*
 * 输出参数  : 无
 *
 * 返 回 值     : 成功
@@ -3480,7 +3481,7 @@ static int ipf_ul_resume(struct dpm_device *dev)
 * 功能描述  : dpm桩函数
 *
 * 输入参数  : 设备指针
-*   
+*
 * 输出参数  : 无
 *
 * 返 回 值     : 成功
@@ -3506,7 +3507,7 @@ static int ipf_ul_dpm_complete(struct dpm_device *dev)
 
 *
 * 输入参数  : 无
-*   
+*
 * 输出参数  : 无
 *
 * 返 回 值     : 无
@@ -3520,7 +3521,7 @@ BSP_VOID BSP_IPF_DlRegReInit(BSP_VOID)
     BSP_U32 u32RDSize[IPF_CHANNEL_MAX] = {IPF_ULRD_DESC_SIZE, IPF_DLRD_DESC_SIZE};
     BSP_U32 u32ADCtrl[IPF_CHANNEL_MAX] = {IPF_ADQ_DEFAULT_SEETING,IPF_ADQ_DEFAULT_SEETING};
     memset((BSP_VOID*)IPF_DLBD_MEM_ADDR, 0x0, IPF_DLDESC_SIZE);
-	
+
     g_stIpfUl.pstIpfBDQ = (IPF_BD_DESC_S*)IPF_ULBD_MEM_ADDR;
     g_stIpfUl.pstIpfRDQ = (IPF_RD_DESC_S*)IPF_ULRD_MEM_ADDR;
     g_stIpfUl.pstIpfADQ0 = (IPF_AD_DESC_S*)IPF_ULAD0_MEM_ADDR;
@@ -3533,26 +3534,26 @@ BSP_VOID BSP_IPF_DlRegReInit(BSP_VOID)
     g_stIpfDl.pstIpfADQ1 = (IPF_AD_DESC_S*)IPF_DLAD1_MEM_ADDR;
     g_stIpfDl.pstIpfCDQ = (IPF_CD_DESC_S*)IPF_DLCD_MEM_ADDR;
 
-    g_stIpfDl.pstIpfPhyBDQ = (IPF_BD_DESC_S*)(IPF_DLBD_MEM_ADDR - DDR_SHARED_MEM_VIRT_ADDR + DDR_SHARED_MEM_ADDR);
-    g_stIpfDl.pstIpfPhyRDQ = (IPF_RD_DESC_S*)(IPF_DLRD_MEM_ADDR - DDR_SHARED_MEM_VIRT_ADDR + DDR_SHARED_MEM_ADDR);
-    g_stIpfDl.pstIpfPhyADQ0 = (IPF_AD_DESC_S*)(IPF_DLAD0_MEM_ADDR - DDR_SHARED_MEM_VIRT_ADDR + DDR_SHARED_MEM_ADDR);
-    g_stIpfDl.pstIpfPhyADQ1 = (IPF_AD_DESC_S*)(IPF_DLAD1_MEM_ADDR - DDR_SHARED_MEM_VIRT_ADDR + DDR_SHARED_MEM_ADDR);
-	
+    g_stIpfDl.pstIpfPhyBDQ = (IPF_BD_DESC_S*)(SHD_DDR_V2P(IPF_DLBD_MEM_ADDR));
+    g_stIpfDl.pstIpfPhyRDQ = (IPF_RD_DESC_S*)(SHD_DDR_V2P(IPF_DLRD_MEM_ADDR));
+    g_stIpfDl.pstIpfPhyADQ0 = (IPF_AD_DESC_S*)(SHD_DDR_V2P(IPF_DLAD0_MEM_ADDR));
+    g_stIpfDl.pstIpfPhyADQ1 = (IPF_AD_DESC_S*)(SHD_DDR_V2P(IPF_DLAD1_MEM_ADDR));
+
     g_stIpfDl.u32IpfCdRptr = (BSP_U32*) IPF_DLCDRPTR_MEM_ADDR;
     *(g_stIpfDl.u32IpfCdRptr) = 0;
 
     g_stIPFDebugInfo = (IPF_DEBUG_INFO_S*)IPF_DEBUG_INFO_ADDR;
-	
+
     /* 配置下行通道的AD、BD和RD深度 */
     ipf_writel(u32BDSize[IPF_CHANNEL_DOWN]-1, HI_IPF_REGBASE_ADDR_VIRT + HI_IPF_CH1_BDQ_SIZE_OFFSET);
     ipf_writel(u32RDSize[IPF_CHANNEL_DOWN]-1, HI_IPF_REGBASE_ADDR_VIRT + HI_IPF_CH1_RDQ_SIZE_OFFSET);
     ipf_writel(u32ADCtrl[IPF_CHANNEL_DOWN], HI_IPF_REGBASE_ADDR_VIRT + HI_IPF_CH1_ADQ_CTRL_OFFSET);
 
-    /*下行通道的BD和RD起始地址*/    
-    ipf_writel((BSP_U32)g_stIpfDl.pstIpfPhyBDQ, HI_IPF_REGBASE_ADDR_VIRT + HI_IPF_CH1_BDQ_BADDR_OFFSET);
-    ipf_writel((BSP_U32)g_stIpfDl.pstIpfPhyRDQ, HI_IPF_REGBASE_ADDR_VIRT + HI_IPF_CH1_RDQ_BADDR_OFFSET);
-    ipf_writel((BSP_U32)g_stIpfDl.pstIpfPhyADQ0, HI_IPF_REGBASE_ADDR_VIRT + HI_IPF_CH1_ADQ0_BASE_OFFSET);
-    ipf_writel((BSP_U32)g_stIpfDl.pstIpfPhyADQ1, HI_IPF_REGBASE_ADDR_VIRT + HI_IPF_CH1_ADQ1_BASE_OFFSET);
+    /*下行通道的BD和RD起始地址*/
+    ipf_writel((BSP_U32)((unsigned long)g_stIpfDl.pstIpfPhyBDQ), HI_IPF_REGBASE_ADDR_VIRT + HI_IPF_CH1_BDQ_BADDR_OFFSET);
+    ipf_writel((BSP_U32)((unsigned long)g_stIpfDl.pstIpfPhyRDQ), HI_IPF_REGBASE_ADDR_VIRT + HI_IPF_CH1_RDQ_BADDR_OFFSET);
+    ipf_writel((BSP_U32)((unsigned long)g_stIpfDl.pstIpfPhyADQ0), HI_IPF_REGBASE_ADDR_VIRT + HI_IPF_CH1_ADQ0_BASE_OFFSET);
+    ipf_writel((BSP_U32)((unsigned long)g_stIpfDl.pstIpfPhyADQ1), HI_IPF_REGBASE_ADDR_VIRT + HI_IPF_CH1_ADQ1_BASE_OFFSET);
 
     g_IPFInit = IPF_ACORE_INIT_SUCCESS;
 
@@ -3572,7 +3573,7 @@ BSP_VOID BSP_IPF_DlRegReInit(BSP_VOID)
 				  该函数运行时会关闭通道
 
 * 输入参数  : eAdType: AD队列类型
-*   
+*
 * 输出参数  : pu32AdNum: 需要释放的AD数目
 				  pstAdDesc: 需要释放的AD数组头指针
 *
@@ -3591,7 +3592,7 @@ BSP_S32 BSP_IPF_GetUsedDlAd(IPF_AD_TYPE_E eAdType, BSP_U32 * pu32AdNum, IPF_AD_D
 	BSP_U32 u32ADQwptr;
 	BSP_U32 u32ADQrptr;
 	BSP_U32 u32ADCtrl;
-#ifndef CONFIG_IPF_AD_RPRT_FIX		
+#ifndef CONFIG_IPF_AD_RPRT_FIX
 	BSP_U32 u32RptrOffsetValue = 0;
 #endif
 	/*关闭下行AD配置接口*/
@@ -3602,8 +3603,8 @@ BSP_S32 BSP_IPF_GetUsedDlAd(IPF_AD_TYPE_E eAdType, BSP_U32 * pu32AdNum, IPF_AD_D
 	{
 		bsp_trace(BSP_LOG_LEVEL_ERROR, BSP_MODU_IPF,"\r BSP_IPF_ConfigDlAd input para ERROR!NULL == pu32AdNum or NULL == pstAdDesc\n");
 		return BSP_ERR_IPF_INVALID_PARA;
-	}	
-		
+	}
+
 	/*等待通道idle ,200ms超时*/
 	do
 	{
@@ -3614,9 +3615,9 @@ BSP_S32 BSP_IPF_GetUsedDlAd(IPF_AD_TYPE_E eAdType, BSP_U32 * pu32AdNum, IPF_AD_D
 		{
 			break;
 		}
-		
+
 	}while(--u32Timeout);
-	if (!u32Timeout) 
+	if (!u32Timeout)
 	{
 		bsp_trace(BSP_LOG_LEVEL_ERROR, BSP_MODU_IPF,"\r After 20ms IPF dl channel still on, unable to free AD \n");
 		return IPF_ERROR;
@@ -3624,7 +3625,7 @@ BSP_S32 BSP_IPF_GetUsedDlAd(IPF_AD_TYPE_E eAdType, BSP_U32 * pu32AdNum, IPF_AD_D
 	/*尝试关闭下行通道*/
 	u32ChanEnable = ipf_readl(HI_IPF_REGBASE_ADDR_VIRT + HI_IPF_CH_EN_OFFSET);
 	u32ChanEnable &= 0xFFFFFFFF ^ (0x1<<IPF_CHANNEL_DOWN);
-	ipf_writel(u32ChanEnable, HI_IPF_REGBASE_ADDR_VIRT + HI_IPF_CH_EN_OFFSET); 
+	ipf_writel(u32ChanEnable, HI_IPF_REGBASE_ADDR_VIRT + HI_IPF_CH_EN_OFFSET);
 
 	u32ADCtrl = ipf_readl(HI_IPF_REGBASE_ADDR_VIRT + HI_IPF_CH1_ADQ_CTRL_OFFSET);
 	u32ADCtrl &= IPF_ADQ_EN_MASK;
@@ -3638,18 +3639,18 @@ BSP_S32 BSP_IPF_GetUsedDlAd(IPF_AD_TYPE_E eAdType, BSP_U32 * pu32AdNum, IPF_AD_D
 		/*回退AD读指针*/
 		u32ADQwptr = ipf_readl(HI_IPF_REGBASE_ADDR_VIRT + HI_IPF_CH1_ADQ0_WPTR_OFFSET);
 		u32ADQrptr = ipf_readl(HI_IPF_REGBASE_ADDR_VIRT + HI_IPF_CH1_ADQ0_RPTR_OFFSET);
-#ifndef CONFIG_IPF_AD_RPRT_FIX		
+#ifndef CONFIG_IPF_AD_RPRT_FIX
 		if(u32AdStateValue & IPF_ADQ_BUF_EPT_MASK)
 		{
-			u32RptrOffsetValue = 0; 
+			u32RptrOffsetValue = 0;
 		}
 		else if(u32AdStateValue & IPF_ADQ_BUF_FULL_MASK)
 		{
-			u32RptrOffsetValue = 2; 
+			u32RptrOffsetValue = 2;
 		}
 		else
 		{
-			u32RptrOffsetValue = 1;    
+			u32RptrOffsetValue = 1;
 		}
 		if(u32ADQrptr >= u32RptrOffsetValue)
 		{
@@ -3665,7 +3666,7 @@ BSP_S32 BSP_IPF_GetUsedDlAd(IPF_AD_TYPE_E eAdType, BSP_U32 * pu32AdNum, IPF_AD_D
 			pstAdDesc->u32OutPtr1 = g_stIpfDl.pstIpfADQ0[u32ADQrptr].u32OutPtr1;
 			pstAdDesc->u32OutPtr0 = g_stIpfDl.pstIpfADQ0[u32ADQrptr].u32OutPtr0;
 //			printk("AD0[%u]OutPtr1 = 0x%x \n", u32ADQrptr, pstAdDesc->u32OutPtr1);
-			u32ADQrptr = ((u32ADQrptr + 1) < IPF_DLAD0_DESC_SIZE)? (u32ADQrptr + 1) : 0;	
+			u32ADQrptr = ((u32ADQrptr + 1) < IPF_DLAD0_DESC_SIZE)? (u32ADQrptr + 1) : 0;
 			pstAdDesc++;
 			u32FreeAdNum++;
 		}
@@ -3676,18 +3677,18 @@ BSP_S32 BSP_IPF_GetUsedDlAd(IPF_AD_TYPE_E eAdType, BSP_U32 * pu32AdNum, IPF_AD_D
 		/*回退AD读指针*/
 		u32ADQwptr = ipf_readl(HI_IPF_REGBASE_ADDR_VIRT + HI_IPF_CH1_ADQ1_WPTR_OFFSET);
 		u32ADQrptr = ipf_readl(HI_IPF_REGBASE_ADDR_VIRT + HI_IPF_CH1_ADQ1_RPTR_OFFSET);
-#ifndef CONFIG_IPF_AD_RPRT_FIX		
+#ifndef CONFIG_IPF_AD_RPRT_FIX
 		if(u32AdStateValue & IPF_ADQ_BUF_EPT_MASK)
 		{
-			u32RptrOffsetValue = 0; 
+			u32RptrOffsetValue = 0;
 		}
 		else if(u32AdStateValue & IPF_ADQ_BUF_FULL_MASK)
 		{
-			u32RptrOffsetValue = 2; 
+			u32RptrOffsetValue = 2;
 		}
 		else
 		{
-			u32RptrOffsetValue = 1;    
+			u32RptrOffsetValue = 1;
 		}
 		if(u32ADQrptr >= u32RptrOffsetValue)
 		{
@@ -3704,7 +3705,7 @@ BSP_S32 BSP_IPF_GetUsedDlAd(IPF_AD_TYPE_E eAdType, BSP_U32 * pu32AdNum, IPF_AD_D
 			pstAdDesc->u32OutPtr1 = g_stIpfDl.pstIpfADQ1[u32ADQrptr].u32OutPtr1;
 			pstAdDesc->u32OutPtr0 = g_stIpfDl.pstIpfADQ1[u32ADQrptr].u32OutPtr0;
 //			printk("AD1[%u]OutPtr1 = 0x%x", u32ADQrptr, pstAdDesc->u32OutPtr1);
-			u32ADQrptr = ((u32ADQrptr + 1) < IPF_DLAD1_DESC_SIZE)? (u32ADQrptr + 1) : 0;	
+			u32ADQrptr = ((u32ADQrptr + 1) < IPF_DLAD1_DESC_SIZE)? (u32ADQrptr + 1) : 0;
 			pstAdDesc++;
 			u32FreeAdNum++;
 		}
@@ -3717,7 +3718,7 @@ BSP_S32 BSP_IPF_GetUsedDlAd(IPF_AD_TYPE_E eAdType, BSP_U32 * pu32AdNum, IPF_AD_D
 	/*返回AD*/
 	*pu32AdNum = u32FreeAdNum;
 	return IPF_SUCCESS;
-	
+
 }
 
 
@@ -3728,7 +3729,7 @@ BSP_S32 BSP_IPF_GetUsedDlAd(IPF_AD_TYPE_E eAdType, BSP_U32 * pu32AdNum, IPF_AD_D
 * 功能描述  : modem单独复位ipf适配函数，用于在复位时阻止下行数传
 *
 * 输入参数  : 无
-*   
+*
 * 输出参数  : 无
 *
 * 返 回 值     : 成功
@@ -3746,12 +3747,12 @@ BSP_VOID BSP_IPF_SetControlFLagForCcoreReset(IPF_FORREST_CONTROL_E eResetFlag)
     /*设置标志，终止上行数传*/
     g_eCcoreResetFlag = eResetFlag;
 #if (defined(BSP_CONFIG_HI3630))
-#ifdef CONFIG_BALONG_MODEM_RESET	
+#ifdef CONFIG_BALONG_MODEM_RESET
     /*设置标志，终止下行数传*/
     *modem_reset_flag = eResetFlag;
 #endif
 #endif
-    cache_sync();			
+    cache_sync();
 }
 
 /*****************************************************************************
@@ -3760,7 +3761,7 @@ BSP_VOID BSP_IPF_SetControlFLagForCcoreReset(IPF_FORREST_CONTROL_E eResetFlag)
 * 功能描述  : modem单独复位ipf适配函数，用于在复位时阻止下行数传
 *
 * 输入参数  : 无
-*   
+*
 * 输出参数  : 无
 *
 * 返 回 值     : 成功
@@ -3772,7 +3773,7 @@ static IPF_FORREST_CONTROL_E BSP_IPF_GetControlFLagForCcoreReset(BSP_VOID)
     return g_eCcoreResetFlag;
 }
 
-#ifdef CONFIG_BALONG_MODEM_RESET	
+#ifdef CONFIG_BALONG_MODEM_RESET
 int bsp_ipf_reset_ccore_cb(DRV_RESET_CALLCBFUN_MOMENT eparam, int userdata)
 {
 	BSP_U32 u32Timeout = 2;
@@ -3790,9 +3791,9 @@ int bsp_ipf_reset_ccore_cb(DRV_RESET_CALLCBFUN_MOMENT eparam, int userdata)
 			{
 				break;
 			}
-			
+
 		}while(--u32Timeout);
-		if (!u32Timeout) 
+		if (!u32Timeout)
 		{
 			bsp_trace(BSP_LOG_LEVEL_ERROR, BSP_MODU_IPF,
 				"\r IPF dl channel on after bsp_ipf_reset_ccore_cb called \n");
@@ -3821,7 +3822,7 @@ int bsp_ipf_reset_ccore_cb(DRV_RESET_CALLCBFUN_MOMENT eparam, int userdata)
 *
 * 输出参数  : 无
 * 返 回 值      : 空闲BD数目
-*  
+*
 * 修改记录  :2011年11月30日   鲁婷  创建
 *****************************************************************************/
 BSP_U32 BSP_IPF_GetUlBDNum(BSP_VOID)
@@ -3838,7 +3839,7 @@ BSP_U32 BSP_IPF_GetUlBDNum(BSP_VOID)
     u32IdleBd = (u32IdleBd > BDQ_RESERVE_NUM)? (u32IdleBd - BDQ_RESERVE_NUM):0;
 #endif
     *(g_stIpfUl.pu32IdleBd) = u32IdleBd;
-	
+
     if(0 == u32IdleBd)
 	{
 		g_stIPFDebugInfo->u32UlBdNotEnough++;
@@ -3852,7 +3853,7 @@ BSP_U32 BSP_IPF_GetUlBDNum(BSP_VOID)
 * 功能描述  : 该接口用于读取上行RD数目
 *
 * 输入参数  : 无
-*   
+*
 * 输出参数  : 无
 *
 * 返 回 值     : 上行RD数目
@@ -3862,7 +3863,7 @@ BSP_U32 BSP_IPF_GetUlBDNum(BSP_VOID)
 BSP_U32 BSP_IPF_GetUlRdNum(BSP_VOID)
 {
     BSP_U32 u32RdqDepth = 0;
-  
+
     /* 读取RD深度 */
     u32RdqDepth = ipf_readl(HI_IPF_REGBASE_ADDR_VIRT + HI_IPF_CH0_DQ_DEPTH_OFFSET);
     u32RdqDepth = (u32RdqDepth>>16)&IPF_DQ_DEPTH_MASK;
@@ -3877,7 +3878,7 @@ BSP_U32 BSP_IPF_GetUlRdNum(BSP_VOID)
 			用于规避ipf硬件对头阻塞问题
 *
 * 输入参数  : 无
-*   
+*
 * 输出参数  : 无
 *
 * 返 回 值     : 上行可发送包数
@@ -3900,7 +3901,7 @@ BSP_U32 BSP_IPF_GetUlDescNum(BSP_VOID)
 	u32UlAdwptr = ipf_readl(HI_IPF_REGBASE_ADDR_VIRT + HI_IPF_CH0_ADQ0_WPTR_OFFSET);
 	u32UlAdrptr = ipf_readl(HI_IPF_REGBASE_ADDR_VIRT + HI_IPF_CH0_ADQ0_RPTR_OFFSET);
 	u32UlBdDepth = u32UlBdDepth&IPF_DQ_DEPTH_MASK;
-	
+
 	if (u32UlAdwptr >= u32UlAdrptr)/*写指针在前，正常顺序*/
 	{
 		u32UlAd0Num = u32UlAdwptr - u32UlAdrptr;
@@ -3925,7 +3926,7 @@ BSP_U32 BSP_IPF_GetUlDescNum(BSP_VOID)
 	u32UlAdwptr = ipf_readl(HI_IPF_REGBASE_ADDR_VIRT + HI_IPF_CH0_ADQ1_WPTR_OFFSET);
 	u32UlAdrptr = ipf_readl(HI_IPF_REGBASE_ADDR_VIRT + HI_IPF_CH0_ADQ1_RPTR_OFFSET);
 	u32UlBdDepth = u32UlBdDepth&IPF_DQ_DEPTH_MASK;
-	
+
 	if (u32UlAdwptr >= u32UlAdrptr)/*写指针在前，正常顺序*/
 	{
 		u32UlAd1Num = u32UlAdwptr - u32UlAdrptr;
@@ -3934,7 +3935,7 @@ BSP_U32 BSP_IPF_GetUlDescNum(BSP_VOID)
 	{
 		u32UlAd1Num =  IPF_ULAD1_DESC_SIZE - (u32UlAdrptr -u32UlAdwptr);
 	}
-	
+
 	if(u32UlAd1Num > u32UlBdDepth)
 	{
 		u32UlAd1Num -= u32UlBdDepth;
@@ -3987,7 +3988,7 @@ BSP_U32 BSP_IPF_GetUlDescNum(BSP_VOID)
 /*****************************************************************************
 * 函 数 名      : BSP_IPF_ConfigUpFilter
 *
-* 功能描述  : IPF上行BD配置函数 
+* 功能描述  : IPF上行BD配置函数
 *
 * 输入参数  : BSP_U32 u32Num, IPF_CONFIG_ULPARAM_S* pstUlPara
 * 输出参数  : 无
@@ -4012,7 +4013,7 @@ BSP_S32 BSP_IPF_ConfigUpFilter(BSP_U32 u32Num, IPF_CONFIG_ULPARAM_S* pstUlPara)
     if((NULL == pstUlPara)||(0 == u32Num))
     {
         bsp_trace(BSP_LOG_LEVEL_ERROR, BSP_MODU_IPF,
-                         "\r BSP_IPF_ConfigUpFilter pInfoNode NULL! \n",0,0,0,0,0,0);
+                         "\r BSP_IPF_ConfigUpFilter pInfoNode NULL! \n");
         return BSP_ERR_IPF_INVALID_PARA;
     }
 
@@ -4046,11 +4047,11 @@ BSP_S32 BSP_IPF_ConfigUpFilter(BSP_U32 u32Num, IPF_CONFIG_ULPARAM_S* pstUlPara)
             return BSP_ERR_IPF_INVALID_PARA;
         }
     }
-	
+
     u32TimeStampEn = g_stIPFDebugInfo->ipf_timestamp_ul_en;
 
     /* 读出BD写指针,将u32BdqWptr作为临时写指针使用 */
-    u32BdqWptr = ipf_readl(HI_IPF_REGBASE_ADDR_VIRT + HI_IPF_CH0_BDQ_WPTR_OFFSET); 
+    u32BdqWptr = ipf_readl(HI_IPF_REGBASE_ADDR_VIRT + HI_IPF_CH0_BDQ_WPTR_OFFSET);
     u32BD = (u32BdqWptr&IPF_DQ_PTR_MASK);
     for(i = 0; i < u32Num; i++)
     {
@@ -4070,18 +4071,18 @@ BSP_S32 BSP_IPF_ConfigUpFilter(BSP_U32 u32Num, IPF_CONFIG_ULPARAM_S* pstUlPara)
         #endif
         u32BD = ((u32BD + 1) < IPF_ULBD_DESC_SIZE)? (u32BD + 1) : 0;
     }
-    
+
     /* 检查Ccore是否上电*/
     if(IPF_FORRESET_CONTROL_FORBID <= BSP_IPF_GetControlFLagForCcoreReset())
     {
         g_stIPFDebugInfo->ipf_acore_not_init_count++;
         return BSP_ERR_IPF_CCORE_RESETTING;
     }
-	
+
     g_stIPFDebugInfo->ipf_cfg_ulbd_count += u32Num;
 
     /* 更新BD写指针*/
-    ipf_writel(u32BD, HI_IPF_REGBASE_ADDR_VIRT + HI_IPF_CH0_BDQ_WPTR_OFFSET);  
+    ipf_writel(u32BD, HI_IPF_REGBASE_ADDR_VIRT + HI_IPF_CH0_BDQ_WPTR_OFFSET);
     return IPF_SUCCESS;
 }
 
@@ -4091,10 +4092,10 @@ BSP_S32 BSP_IPF_ConfigUpFilter(BSP_U32 u32Num, IPF_CONFIG_ULPARAM_S* pstUlPara)
 * 功能描述  : 该接口仅在A核提供，用于移动ADQ写指针，
 				给空闲的AD分配新的内存缓冲区，一次可以处理多个AD。
 				数传前要调用这个函数分配缓冲区。
-*                           
-* 输入参数  : BSP_U32 u32ADNum0; 
-				 BSP_U32 u32ADNum1; 
-				 BSP_VOID* psk0; 
+*
+* 输入参数  : BSP_U32 u32ADNum0;
+				 BSP_U32 u32ADNum1;
+				 BSP_VOID* psk0;
 				 BSP_VOID* psk1
 *
 * 输出参数  : 无
@@ -4110,7 +4111,7 @@ BSP_S32 BSP_IPF_ConfigDlAd(BSP_U32 u32AdType, BSP_U32  u32AdNum, IPF_AD_DESC_S *
 	{
 		bsp_trace(BSP_LOG_LEVEL_ERROR, BSP_MODU_IPF,"\r BSP_IPF_ConfigDlAd input para ERROR! NULL == pstAdDesc\n");
 		return BSP_ERR_IPF_INVALID_PARA;
-	}	
+	}
 
 	if(u32AdType >= IPF_AD_MAX)
 	{
@@ -4138,7 +4139,7 @@ BSP_S32 BSP_IPF_ConfigDlAd(BSP_U32 u32AdType, BSP_U32  u32AdNum, IPF_AD_DESC_S *
 		u32ADQwptr = ipf_readl(HI_IPF_REGBASE_ADDR_VIRT + HI_IPF_CH1_ADQ0_WPTR_OFFSET);
 		for(i=0; i < u32AdNum; i++)
 		{
-			if(NULL == (BSP_VOID*)(pstADDesc->u32OutPtr1))
+			if(0 == pstADDesc->u32OutPtr1)
 			{
 				bsp_trace(BSP_LOG_LEVEL_ERROR, BSP_MODU_IPF,"\r BSP_IPF_ConfigDlAd input u32OutPtr1 NULL! \n");
 				g_stIPFDebugInfo->ipf_dlad0_error_count++;
@@ -4146,13 +4147,13 @@ BSP_S32 BSP_IPF_ConfigDlAd(BSP_U32 u32AdType, BSP_U32  u32AdNum, IPF_AD_DESC_S *
 			}
 			g_stIpfDl.pstIpfADQ0[u32ADQwptr].u32OutPtr1 = pstADDesc->u32OutPtr1;
 			g_stIpfDl.pstIpfADQ0[u32ADQwptr].u32OutPtr0 = pstADDesc->u32OutPtr0;
-			u32ADQwptr = ((u32ADQwptr + 1) < IPF_DLAD0_DESC_SIZE)? (u32ADQwptr + 1) : 0;		
+			u32ADQwptr = ((u32ADQwptr + 1) < IPF_DLAD0_DESC_SIZE)? (u32ADQwptr + 1) : 0;
 			pstADDesc++;
 		}
 		g_stIPFDebugInfo->ipf_cfg_dlad0_count += u32AdNum;
 
 		/* 更新AD0写指针*/
-		ipf_writel(u32ADQwptr, HI_IPF_REGBASE_ADDR_VIRT + HI_IPF_CH1_ADQ0_WPTR_OFFSET);  
+		ipf_writel(u32ADQwptr, HI_IPF_REGBASE_ADDR_VIRT + HI_IPF_CH1_ADQ0_WPTR_OFFSET);
 	}
 	else if(IPF_AD_1 == u32AdType)
 	{
@@ -4166,7 +4167,7 @@ BSP_S32 BSP_IPF_ConfigDlAd(BSP_U32 u32AdType, BSP_U32  u32AdNum, IPF_AD_DESC_S *
 		u32ADQwptr = ipf_readl(HI_IPF_REGBASE_ADDR_VIRT + HI_IPF_CH1_ADQ1_WPTR_OFFSET);
 		for(i=0; i < u32AdNum; i++)
 		{
-			if(NULL == (BSP_VOID*)(pstADDesc->u32OutPtr1))
+			if(0 == pstADDesc->u32OutPtr1)
 			{
 				bsp_trace(BSP_LOG_LEVEL_ERROR, BSP_MODU_IPF,"\r BSP_IPF_ConfigDlAd input u32OutPtr1 NULL! \n");
 				g_stIPFDebugInfo->ipf_dlad1_error_count++;
@@ -4175,13 +4176,13 @@ BSP_S32 BSP_IPF_ConfigDlAd(BSP_U32 u32AdType, BSP_U32  u32AdNum, IPF_AD_DESC_S *
 
 			g_stIpfDl.pstIpfADQ1[u32ADQwptr].u32OutPtr1 = pstADDesc->u32OutPtr1;
 			g_stIpfDl.pstIpfADQ1[u32ADQwptr].u32OutPtr0 = pstADDesc->u32OutPtr0;
-			u32ADQwptr = ((u32ADQwptr + 1) < IPF_DLAD1_DESC_SIZE)? (u32ADQwptr + 1) : 0;		
+			u32ADQwptr = ((u32ADQwptr + 1) < IPF_DLAD1_DESC_SIZE)? (u32ADQwptr + 1) : 0;
 			pstADDesc++;
 		}
 		g_stIPFDebugInfo->ipf_cfg_dlad1_count += u32AdNum;
 
 		/* 更新AD1写指针*/
-		ipf_writel(u32ADQwptr, HI_IPF_REGBASE_ADDR_VIRT + HI_IPF_CH1_ADQ1_WPTR_OFFSET);  
+		ipf_writel(u32ADQwptr, HI_IPF_REGBASE_ADDR_VIRT + HI_IPF_CH1_ADQ1_WPTR_OFFSET);
 	}
 	return IPF_SUCCESS;
 }
@@ -4190,12 +4191,12 @@ BSP_S32 BSP_IPF_ConfigDlAd(BSP_U32 u32AdType, BSP_U32  u32AdNum, IPF_AD_DESC_S *
 * 函 数 名     : BSP_IPF_RegisterWakeupDlCb
 *
 * 功能描述  : 该接口用于注册下行PS任务回调函数
-*                           
+*
 * 输入参数  : BSP_IPF_WakeupDlkCb *pFnWakeupDl
 *
 * 输出参数  : 无
 * 返 回 值      : 无
-*  
+*
 * 修改记录  :2011年11月30日   鲁婷  创建
 *****************************************************************************/
 BSP_S32 BSP_IPF_RegisterWakeupDlCb(BSP_IPF_WakeupDlCb pFnWakeupDl)
@@ -4215,7 +4216,7 @@ BSP_S32 BSP_IPF_RegisterWakeupDlCb(BSP_IPF_WakeupDlCb pFnWakeupDl)
 *
 * 功能描述  : 此接口只在A核提供，用于注册唤醒上行PS的
                              ADQ队列空回调函数
-*                           
+*
 * 输入参数  : BSP_IPF_AdqEmptyCb pAdqEmptyDl
 *
 * 输出参数  : 无
@@ -4240,9 +4241,9 @@ BSP_S32 BSP_IPF_RegisterAdqEmptyDlCb(BSP_IPF_AdqEmptyDlCb pAdqEmptyDl)
 *
 * 功能描述  : 该接口用于读取下行BD, 支持一次读取多个BD
 *
-* 输入参数  : BSP_U32* pu32Num    
+* 输入参数  : BSP_U32* pu32Num
 *                           IPF_RD_DESC_S *pstRd
-*   
+*
 * 输出参数  : BSP_U32* pu32Num    实际读取的RD数目
 *
 * 返 回 值     : IPF_SUCCESS               操作成功
@@ -4258,11 +4259,11 @@ BSP_VOID BSP_IPF_GetDlRd(BSP_U32* pu32Num, IPF_RD_DESC_S *pstRd)
     BSP_U32 i = 0;
     BSP_U32 u32CdqRptr;
     BSP_U32 u32TimeStampEn;
-	
+
     /* 读取RD深度 */
     u32RdqDepth = ipf_readl(HI_IPF_REGBASE_ADDR_VIRT + HI_IPF_CH1_DQ_DEPTH_OFFSET);
     u32RdqDepth = (u32RdqDepth>>16)&IPF_DQ_DEPTH_MASK;
-	
+
     u32Num = (u32RdqDepth < *pu32Num)?u32RdqDepth:*pu32Num;
     if(0 == u32Num)
     {
@@ -4275,7 +4276,7 @@ BSP_VOID BSP_IPF_GetDlRd(BSP_U32* pu32Num, IPF_RD_DESC_S *pstRd)
     u32RdqRptr = ipf_readl(HI_IPF_REGBASE_ADDR_VIRT + HI_IPF_CH1_RDQ_RPTR_OFFSET);
     for(i = 0; i < u32Num; i++)
     {
-        
+
         /* 获取RD */
         pstRd[i].u16Attribute = g_stIpfDl.pstIpfRDQ[u32RdqRptr].u16Attribute;
         pstRd[i].u16PktLen = g_stIpfDl.pstIpfRDQ[u32RdqRptr].u16PktLen;
@@ -4288,7 +4289,7 @@ BSP_VOID BSP_IPF_GetDlRd(BSP_U32* pu32Num, IPF_RD_DESC_S *pstRd)
         ipf_record_end_time_stamp(u32TimeStampEn, g_stIpfDl.pstIpfRDQ[u32RdqRptr].u32UsrField3);
 
        /* 更新CD读指针 */
-        u32CdqRptr = (IPF_IO_ADDRESS(pstRd[i].u32InPtr) - (BSP_U32)g_stIpfDl.pstIpfCDQ)/sizeof(IPF_CD_DESC_S);
+        u32CdqRptr = ((unsigned long)SHD_DDR_P2V(pstRd[i].u32InPtr) - (unsigned long)g_stIpfDl.pstIpfCDQ)/sizeof(IPF_CD_DESC_S);
 
         while(g_stIpfDl.pstIpfCDQ[u32CdqRptr].u16Attribute != 1)
         {
@@ -4301,13 +4302,13 @@ BSP_VOID BSP_IPF_GetDlRd(BSP_U32* pu32Num, IPF_RD_DESC_S *pstRd)
         g_stIpfDl.pstIpfCDQ[u32CdqRptr].u16Attribute = 0;
         g_stIpfDl.pstIpfCDQ[u32CdqRptr].u16PktLen = 0;
         g_stIpfDl.pstIpfCDQ[u32CdqRptr].u32Ptr = 0;
-		
+
         u32CdqRptr = ((u32CdqRptr+1) < IPF_DLCD_DESC_SIZE)?(u32CdqRptr+1):0;
         *(g_stIpfDl.u32IpfCdRptr) = u32CdqRptr;
         /* 更新RD读指针 */
-        u32RdqRptr = ((u32RdqRptr+1) < IPF_DLRD_DESC_SIZE)?(u32RdqRptr+1):0;        
+        u32RdqRptr = ((u32RdqRptr+1) < IPF_DLRD_DESC_SIZE)?(u32RdqRptr+1):0;
     }
-    ipf_writel(u32RdqRptr, HI_IPF_REGBASE_ADDR_VIRT + HI_IPF_CH1_RDQ_RPTR_OFFSET);         
+    ipf_writel(u32RdqRptr, HI_IPF_REGBASE_ADDR_VIRT + HI_IPF_CH1_RDQ_RPTR_OFFSET);
     *pu32Num = u32Num;
     g_stIPFDebugInfo->ipf_get_dlrd_count += u32Num;
 }
@@ -4319,7 +4320,7 @@ BSP_VOID BSP_IPF_GetDlRd(BSP_U32* pu32Num, IPF_RD_DESC_S *pstRd)
 *
 * 输入参数  :BSP_OK：正常返回
                             BSP_ERROR：出错
-*             
+*
 * 输出参数  : 无
 * 返 回 值     : 无
 * 修改记录  : 2011年11月24日   陈东岳  创建
@@ -4343,7 +4344,7 @@ BSP_S32 BSP_IPF_GetDlAdNum(BSP_U32* pu32AD0Num,BSP_U32* pu32AD1Num)
 		bsp_trace(BSP_LOG_LEVEL_ERROR, BSP_MODU_IPF,"\r BSP_IPF_GetDlAdNum pstCtrl NULL! \n");
 		return BSP_ERR_IPF_INVALID_PARA;
 	}
-	
+
 	/* 计算空闲AD0数量 */
 	u32DlAdwptr = ipf_readl(HI_IPF_REGBASE_ADDR_VIRT + HI_IPF_CH1_ADQ0_WPTR_OFFSET);
 	u32DlAdrptr = ipf_readl(HI_IPF_REGBASE_ADDR_VIRT + HI_IPF_CH1_ADQ0_RPTR_OFFSET);
@@ -4365,7 +4366,7 @@ BSP_S32 BSP_IPF_GetDlAdNum(BSP_U32* pu32AD0Num,BSP_U32* pu32AD1Num)
 	{
 		*pu32AD0Num = 0;
 	}
-	
+
 	/* 计算空闲AD1数量 */
 	u32DlAdwptr = ipf_readl(HI_IPF_REGBASE_ADDR_VIRT + HI_IPF_CH1_ADQ1_WPTR_OFFSET);
 	u32DlAdrptr = ipf_readl(HI_IPF_REGBASE_ADDR_VIRT + HI_IPF_CH1_ADQ1_RPTR_OFFSET);
@@ -4379,7 +4380,7 @@ BSP_S32 BSP_IPF_GetDlAdNum(BSP_U32* pu32AD0Num,BSP_U32* pu32AD1Num)
 	}
 	*pu32AD1Num = u32DlAdDepth;
 
-	/*扣除reserve ad，用于防止硬件将ad队列满识别成空和低功耗引发内存泄露*/	
+	/*扣除reserve ad，用于防止硬件将ad队列满识别成空和低功耗引发内存泄露*/
 	if(u32DlAdDepth > IPF_ADQ_RESERVE_NUM)
 	{
 		*pu32AD1Num = u32DlAdDepth - IPF_ADQ_RESERVE_NUM;
@@ -4398,7 +4399,7 @@ BSP_S32 BSP_IPF_GetDlAdNum(BSP_U32* pu32AD0Num,BSP_U32* pu32AD1Num)
 * 功能描述  : 该接口用于读取下行RD数目
 *
 * 输入参数  : 无
-*   
+*
 * 输出参数  : 无
 *
 * 返 回 值     : 上行RD数目
@@ -4408,7 +4409,7 @@ BSP_S32 BSP_IPF_GetDlAdNum(BSP_U32* pu32AD0Num,BSP_U32* pu32AD1Num)
 BSP_U32 BSP_IPF_GetDlRdNum(BSP_VOID)
 {
     BSP_U32 u32RdqDepth = 0;
-  
+
     /* 读取RD深度 */
     u32RdqDepth = ipf_readl(HI_IPF_REGBASE_ADDR_VIRT + HI_IPF_CH1_DQ_DEPTH_OFFSET);
     u32RdqDepth = (u32RdqDepth>>16)&IPF_DQ_DEPTH_MASK;
@@ -4421,7 +4422,7 @@ BSP_U32 BSP_IPF_GetDlRdNum(BSP_VOID)
 * 功能描述  : 平台设备桩函数
 *
 * 输入参数  : 无
-*   
+*
 * 输出参数  : 无
 *
 * 返 回 值     : 成功
@@ -4440,7 +4441,7 @@ static int ipf_probe(struct platform_device *pdev)
 * 功能描述  : 平台设备桩函数
 *
 * 输入参数  : 无
-*   
+*
 * 输出参数  : 无
 *
 * 返 回 值     : 成功
@@ -4460,7 +4461,7 @@ static int ipf_remove(struct platform_device *pdev)
 * 功能描述  : dpm进入准备函数
 *
 * 输入参数  : 设备指针
-*   
+*
 * 输出参数  : 无
 *
 * 返 回 值     : IPF_ERROR 失败
@@ -4471,7 +4472,7 @@ static int ipf_remove(struct platform_device *pdev)
 static int ipf_dl_dpm_prepare(struct device *pdev)
 {
     u32 u32_dl_state;
-	
+
     #if 0
     u32 u32_adq0_wptr;
     u32 u32_adq0_rptr;
@@ -4479,7 +4480,7 @@ static int ipf_dl_dpm_prepare(struct device *pdev)
     u32 u32_adq1_rptr;
     #endif
 
-#ifdef CONFIG_BALONG_MODEM_RESET	
+#ifdef CONFIG_BALONG_MODEM_RESET
     /* 检查Ccore是否上电，如果已经下电，跳过低功耗保存恢复流程*/
     if(IPF_FORRESET_CONTROL_FORBID <= BSP_IPF_GetControlFLagForCcoreReset())
     {
@@ -4517,7 +4518,7 @@ static int ipf_dl_dpm_prepare(struct device *pdev)
 * 功能描述  : dpm桩函数
 *
 * 输入参数  : 设备指针
-*   
+*
 * 输出参数  : 无
 *
 * 返 回 值     : 无
@@ -4535,7 +4536,7 @@ static void ipf_dl_dpm_complete(struct device *pdev)
 * 功能描述  : dpm桩函数
 *
 * 输入参数  : 设备指针
-*   
+*
 * 输出参数  : 无
 *
 * 返 回 值     : 成功
@@ -4550,7 +4551,7 @@ static int ipf_dl_suspend(struct device *dev)
 
     unsigned long ipf_flags = 0;
 
-#ifdef CONFIG_BALONG_MODEM_RESET	
+#ifdef CONFIG_BALONG_MODEM_RESET
     /* 检查Ccore是否上电如果已经下电，跳过低功耗保存恢复流程*/
     if(IPF_FORRESET_CONTROL_FORBID <= BSP_IPF_GetControlFLagForCcoreReset())
     {
@@ -4562,7 +4563,7 @@ static int ipf_dl_suspend(struct device *dev)
     spin_lock_irqsave(&ipf_filter_spinlock, ipf_flags);
     bsp_ipc_spin_lock(IPC_SEM_IPF_PWCTRL);
     *ipf_acore_init_status = IPF_PWC_DOWN;
-    cache_sync();		
+    cache_sync();
     bsp_ipc_spin_unlock(IPC_SEM_IPF_PWCTRL);
     spin_unlock_irqrestore(&ipf_filter_spinlock, ipf_flags);
 
@@ -4578,7 +4579,7 @@ static int ipf_dl_suspend(struct device *dev)
 * 功能描述  : dpm桩函数
 *
 * 输入参数  : 设备指针
-*   
+*
 * 输出参数  : 无
 *
 * 返 回 值     : 成功
@@ -4589,7 +4590,7 @@ static int ipf_dl_suspend(struct device *dev)
 *****************************************************************************/
 static int ipf_dl_resume(struct device *dev)
 {
-#ifdef CONFIG_BALONG_MODEM_RESET	
+#ifdef CONFIG_BALONG_MODEM_RESET
     /* 检查Ccore是否上电如果已经下电，跳过低功耗保存恢复流程*/
     if(IPF_FORRESET_CONTROL_FORBID <= BSP_IPF_GetControlFLagForCcoreReset())
     {

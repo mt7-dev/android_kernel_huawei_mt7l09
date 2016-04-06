@@ -120,5 +120,5 @@ int32_t hisi_pmic_i2c_probe(struct i2c_client *client,
 	const struct i2c_device_id *id);
 int hisi_pmic_config(struct hisi_pmic_ctrl_t *pmic_ctrl, void *argp);
 int hisi_pmic_get_dt_data(struct hisi_pmic_ctrl_t *pmic_ctrl);
-
+struct hisi_pmic_ctrl_t * hisi_get_pmic_ctrl(void);
 #endif

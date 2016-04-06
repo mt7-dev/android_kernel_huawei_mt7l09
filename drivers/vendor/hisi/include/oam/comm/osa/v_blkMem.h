@@ -60,12 +60,12 @@ extern "C" {
 #define VOS_ERRNO_MEMORY_LOCATION_TIMERSPACE            0x2003DDDD
 #define VOS_ERRNO_MEMORY_LOCATION_CANNOTDO              0x2003CCCC
 
-#define VOS_ARM_ALIGNMENT                               0x03
+#define VOS_ARM_ALIGNMENT                               (0x03U)
 
 typedef struct MEM_HEAD_BLOCK
 {
-    VOS_UINT32        ulMemCtrlAddress;/* the address of  VOS_MEM_CTRL_BLOCK */
-    VOS_UINT32        ulMemAddress;/* the address of User's */
+    VOS_UINT_PTR      ulMemCtrlAddress;/* the address of  VOS_MEM_CTRL_BLOCK */
+    VOS_UINT_PTR      ulMemAddress;/* the address of User's */
     VOS_UINT32        ulMemUsedFlag;/* whether be used or not */
     struct MEM_HEAD_BLOCK  *pstNext;/*  next block whether allocated or not */
 
@@ -78,7 +78,7 @@ typedef struct MEM_HEAD_BLOCK
 #endif
 
 #if VOS_YES == VOS_MEMORY_COUNT
-    VOS_UINT32        ulRealCtrlAddr;/* which VOS_MEM_CTRL_BLOCK should be allocated */
+    VOS_UINT_PTR      ulRealCtrlAddr;/* which VOS_MEM_CTRL_BLOCK should be allocated */
 #endif
 } VOS_MEM_HEAD_BLOCK;
 
@@ -86,9 +86,10 @@ typedef struct
 {
     VOS_INT             BlockLength;/* block size */
     VOS_INT             TotalBlockNumber;/* block number */
-    VOS_UINT32          Buffer;/*start address of block */
-    VOS_UINT32          BufferEnd;/*end address of block*/
+    VOS_UINT_PTR        Buffer;/*start address of block */
+    VOS_UINT_PTR        BufferEnd;/*end address of block*/
     VOS_INT             IdleBlockNumber;/* the number of free block*/
+    VOS_UINT8           aucRsv[4];
     VOS_MEM_HEAD_BLOCK  *Blocks;/*list of free block*/
 
 #if VOS_YES == VOS_MEMORY_CHECK
@@ -102,6 +103,7 @@ typedef struct
     VOS_INT             lRealNumber;
     VOS_INT             lMaxRealNumber;
 #endif
+    VOS_UINT8           aucRsv1[4];
 } VOS_MEM_CTRL_BLOCK;
 
 
@@ -142,6 +144,7 @@ typedef struct
     VOS_INT             MinSize;/* the Min allocated size */
     VOS_INT             MaxSize;/* the Max allocated size */
     VOS_INT             lMaxRealNumber;
+    VOS_UINT8           aucRsv[4];
 #endif
 } VOS_MEM_RECORD_ST;
 
@@ -200,8 +203,8 @@ VOS_UINT32 V_MemFree( VOS_UINT32 ulInfo, VOS_VOID **ppAddr,
 #define VOS_MemFree( ulInfo, pAddr )\
     V_MemFree( (ulInfo), (VOS_VOID**)(&(pAddr)), VOS_FILE_ID, __LINE__ )
 
-VOS_UINT32 VOS_MemCheck( VOS_VOID *pAddr, VOS_UINT32 *pulBlock,
-                         VOS_UINT32 *pulCtrl, VOS_UINT32 ulFileID,
+VOS_UINT32 VOS_MemCheck( VOS_VOID *pAddr, VOS_UINT_PTR *pulBlock,
+                         VOS_UINT_PTR *pulCtrl, VOS_UINT32 ulFileID,
                          VOS_INT32 usLineNo );
 
 VOS_UINT32 VOS_MemCtrlBlkFree( VOS_MEM_CTRL_BLOCK *VOS_MemCtrlBlock,
@@ -250,7 +253,7 @@ VOS_UINT32 VOS_RegisterMemAllocHook( VOS_UINT32 ulMode, MEMORY_HOOK_FUNC pfnHook
 
 #endif
 
-VOS_VOID VOS_ModifyMemBlkInfo(VOS_UINT32 ulAddr, VOS_PID PID);
+VOS_VOID VOS_ModifyMemBlkInfo(VOS_UINT_PTR ulAddr, VOS_PID PID);
 
 VOS_VOID *VOS_ExcDumpMemAlloc(VOS_UINT32 ulNumber);
 
@@ -258,13 +261,13 @@ VOS_VOID *VOS_CacheMemAlloc(VOS_UINT32 ulSize);
 
 VOS_UINT32 VOS_CacheMemFree(VOS_VOID *pAddr);
 
-VOS_VOID *VOS_UnCacheMemAlloc(VOS_UINT32 ulSize, VOS_UINT32 *pulRealAddr);
+VOS_VOID *VOS_UnCacheMemAlloc(VOS_UINT32 ulSize, VOS_UINT_PTR *pulRealAddr);
 
 VOS_VOID VOS_UnCacheMemFree(VOS_VOID *pVirtAddr, VOS_VOID *pPhyAddr, VOS_UINT32 ulSize);
 
-VOS_UINT32 VOS_UncacheMemPhyToVirt(VOS_UINT8 *pucCurPhyAddr, VOS_UINT8 *pucPhyStart, VOS_UINT8 *pucVirtStart, VOS_UINT32 ulBufLen);
+VOS_UINT_PTR VOS_UncacheMemPhyToVirt(VOS_UINT8 *pucCurPhyAddr, VOS_UINT8 *pucPhyStart, VOS_UINT8 *pucVirtStart, VOS_UINT32 ulBufLen);
 
-VOS_UINT32 VOS_UncacheMemVirtToPhy(VOS_UINT8 *pucCurVirtAddr, VOS_UINT8 *pucPhyStart, VOS_UINT8 *pucVirtStart, VOS_UINT32 ulBufLen);
+VOS_UINT_PTR VOS_UncacheMemVirtToPhy(VOS_UINT8 *pucCurVirtAddr, VOS_UINT8 *pucPhyStart, VOS_UINT8 *pucVirtStart, VOS_UINT32 ulBufLen);
 
 VOS_VOID VOS_FlushCpuWriteBuf(VOS_VOID);
 

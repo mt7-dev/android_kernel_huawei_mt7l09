@@ -187,6 +187,9 @@ VOS_VOID IMSA_SMS_ProcNwSmsErr(const IMSA_IMS_OUTPUT_SMS_EVENT_STRU  *pstOutSms)
     ulErrCode = SMR_SMT_ERROR_IMS_ERROR_BEGIN + pstOutSms->stErrorCode.usSipStatusCode;
 
     IMSA_SMS_SndMsgReportInd(ulErrCode,VOS_NULL_PTR,0);
+    /* zhaochen 00308719 begin for VoLTE 2015-08-25 */
+    IMSA_CommonDeregProc();
+    /* zhaochen 00308719 end for VoLTE 2015-08-25 */
 }
 VOS_VOID IMSA_SMS_ProcNwSmsRpError(const IMSA_IMS_OUTPUT_SMS_EVENT_STRU  *pstOutSms)
 {
@@ -233,6 +236,9 @@ VOS_VOID IMSA_SMS_ProcNwSmsRpError(const IMSA_IMS_OUTPUT_SMS_EVENT_STRU  *pstOut
             pstSmrMoEntity->ucMemAvailFlg = IMSA_SMS_FALSE;                   /* 清除mem avail标志                        */
             pstSmrMoEntity->ucRetransFlg  = IMSA_SMR_RETRANS_PERMIT;          /* 复位重发标志                             */
             pstSmrMoEntity->enState = IMSA_SMS_SMR_STATE_IDLE;                                      /* 状态迁移到空闲状态                       */
+            /* zhaochen 00308719 begin for VoLTE 2015-08-25 */
+            IMSA_CommonDeregProc();
+            /* zhaochen 00308719 end for VoLTE 2015-08-25 */
         }
     }
     else
@@ -241,6 +247,9 @@ VOS_VOID IMSA_SMS_ProcNwSmsRpError(const IMSA_IMS_OUTPUT_SMS_EVENT_STRU  *pstOut
         IMSA_SMS_SndMsgReportInd(SMR_SMT_ERROR_RP_ERROR_BEGIN|pstOutSms->aucMessage[IMSA_SMS_RP_ERROR_OFFSET],
                            (VOS_UINT8*)pstOutSms->aucMessage,\
                             pstOutSms->ucMessageLen);
+        /* zhaochen 00308719 begin for VoLTE 2015-08-25 */
+        IMSA_CommonDeregProc();
+        /* zhaochen 00308719 end for VoLTE 2015-08-25 */
     }
 }
 
@@ -310,7 +319,9 @@ VOS_VOID IMSA_SMS_ProcNwSmsReceived(const IMSA_IMS_OUTPUT_SMS_EVENT_STRU  *pstOu
         IMSA_SMS_SndMsgReportInd(SMR_SMT_ERROR_NO_ERROR,
                            (VOS_UINT8*)pstOutSms->aucMessage,\
                             pstOutSms->ucMessageLen);
-
+        /* zhaochen 00308719 begin for VoLTE 2015-08-25 */
+        IMSA_CommonDeregProc();
+        /* zhaochen 00308719 end for VoLTE 2015-08-25 */
         break;
 
     case IMSA_SMS_NTM_DATA_TYPE_RP_ERR:

@@ -34,6 +34,7 @@ extern "C" {
 
 #define GMM_RABM_SERVICEREQ_DELAYED             (2)         /* SERVICE REQUEST延迟重发 */
 
+#define GMM_RABM_SERVICEREQ_OOS                 (3)         /* AS搜网导致建链失败 */
 
 /* RABM接收PDU数据的最大长度 */
 #ifndef RABM_RECV_N_PDU_NUM_LIST_IE_MAXLEN
@@ -71,6 +72,8 @@ enum GMM_RABM_MSG_ID_ENUM
     ID_RABM_GMM_RAB_REL_IND                     = 0x0001,           /* _H2ASN_MsgChoice GMMRABM_RAB_REL_IND_STRU */
     ID_RABM_GMM_ROUTING_AREA_UPDATE_RSP         = 0x0002,           /* _H2ASN_MsgChoice GMMRABM_ROUTING_AREA_UPDATE_RSP_MSG */
     ID_RABM_GMM_MML_PROC_STATUS_QRY_REQ         = 0x0003,           /* _H2ASN_MsgChoice RABM_GMM_MML_RPOCEDURE_SERVICE_QRY_REQ_STRU */
+
+    ID_RABM_GMM_RAB_SETUP_IND                   = 0x0004,           /* _H2ASN_MsgChoice GMMRABM_RAB_SETUP_IND_STRU */
 
     ID_GMM_RABM_REESTABLISH_CNF                 = 0x1000,           /* _H2ASN_MsgChoice GMMRABM_REESTABLISH_CNF_STRU */
     ID_GMM_RABM_SYS_SRV_CHG_IND                 = 0x1001,           /* _H2ASN_MsgChoice GMM_RABM_SYS_SRV_CHG_IND_STRU */
@@ -196,6 +199,18 @@ typedef struct
 
 } GMMRABM_RAB_REL_IND_STRU;
 
+/*****************************************************************************
+ 结构名    : GMMRABM_RAB_SETUP_IND_STRU
+ 协议表格  :
+ ASN.1描述 :
+ 结构说明  : 原语ID_RABM_GMM_RAB_SETUP_IND的结构体
+*****************************************************************************/
+typedef struct
+{
+    MSG_HEADER_STRU                     MsgHeader;          /* 消息头 */        /* _H2ASN_Skip */
+
+} GMMRABM_RAB_SETUP_IND_STRU;
+
 
 /*****************************************************************************
  结构名    : GMM_RABM_SYS_SRV_CHG_IND_STRU
@@ -269,6 +284,7 @@ typedef struct
 /*****************************************************************************
   10 函数声明
 *****************************************************************************/
+VOS_UINT32 NAS_RABM_IsPsRbExist(VOS_VOID);
 
 
 #if (VOS_OS_VER == VOS_WIN32)

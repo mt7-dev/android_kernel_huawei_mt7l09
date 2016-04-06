@@ -1,0 +1,11 @@
+#
+# dsp image load
+#
+
+comment "dsp image load driver"
+
+config DSP_BALONG
+	tristate "dsp image load"
+	default n
+	help
+	  dsp image load driver

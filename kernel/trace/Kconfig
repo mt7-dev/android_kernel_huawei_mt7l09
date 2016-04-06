@@ -67,6 +67,11 @@ config TRACER_MAX_TRACE
 
 config TRACE_CLOCK
 	bool
+	
+config TRACE_KERNEL
+	bool
+	help
+	 Allow the use of trace dot.
 
 config RING_BUFFER
 	bool
@@ -111,6 +116,7 @@ config TRACING
 	select BINARY_PRINTF
 	select EVENT_TRACING
 	select TRACE_CLOCK
+	select TRACE_KERNEL
 
 config GENERIC_TRACER
 	bool

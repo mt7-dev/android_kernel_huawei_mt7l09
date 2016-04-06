@@ -18,11 +18,19 @@ extern "C" {
 
 #pragma pack(4)
 
-#if (FEATURE_IMS == FEATURE_ON)
 /*****************************************************************************
   2 宏定义
 *****************************************************************************/
+#define TAF_SPM_IS_PS_VIDEO(CallType, CsVpCfgState, VoiceDomain)    \
+           (((MN_CALL_TYPE_VIDEO_TX    == CallType)                 \
+          || (MN_CALL_TYPE_VIDEO_RX    == CallType)                 \
+          || (MN_CALL_TYPE_VIDEO       == CallType))                \
+         && ((TAF_SPM_VP_NONE          == CsVpCfgState)             \
+          || (TAF_SPM_VP_MT_ONLY       == CsVpCfgState))            \
+         && (TAF_CALL_VOICE_DOMAIN_IMS == VoiceDomain))
 
+
+#if (FEATURE_IMS == FEATURE_ON)
 /*****************************************************************************
   3 枚举定义
 *****************************************************************************/
@@ -205,7 +213,7 @@ TAF_SPM_DOMAIN_SEL_RESULT_ENUM_UINT8 TAF_SPM_ProcCcDomainSelection(
 );
 TAF_SPM_DOMAIN_SEL_RESULT_ENUM_UINT8 TAF_SPM_ProcSsDomainSelection(
     VOS_UINT32                          ulEventType,
-    struct MsgCB                       *pstMsg    
+    struct MsgCB                       *pstMsg
 );
 
 VOS_VOID TAF_SPM_ProcSmmaIndDomainSelectionResult(
@@ -224,6 +232,22 @@ VOS_UINT32 TAF_SPM_ProcSmsMsgQueue(TAF_SPM_DOMAIN_SEL_RESULT_ENUM_UINT8 *pEnDoma
 VOS_UINT8 TAF_SPM_IsNeedtoWaitImsRegStatus(
     TAF_SPM_SERVICE_STATUS_ENUM_UINT8   enLastPsStatus
 );
+
+VOS_UINT32 TAF_SPM_RcvAppCallModifyReqBasedOnCsOverIp(
+    struct MsgCB                       *pstMsg
+);
+VOS_UINT32 TAF_SPM_RcvAppCallAnswerRemoteModifyReqBasedOnCsOverIp(
+    struct MsgCB                       *pstMsg
+);
+
+VOS_UINT32 TAF_SPM_RcvAppEconfDialReqBasedOnCsOverIp(
+    struct MsgCB                       *pstMsg
+);
+
+VOS_UINT32 TAF_SPM_RcvAppGetEconfInfoReqBasedOnCsOverIp(
+    struct MsgCB                       *pstMsg
+);
+
 #endif
 
 VOS_VOID TAF_SPM_SendCcServiceRequetFail(

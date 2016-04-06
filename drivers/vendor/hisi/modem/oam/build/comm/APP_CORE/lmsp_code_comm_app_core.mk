@@ -1,5 +1,5 @@
 # Core information
-
+-include $(BALONG_TOPDIR)/config/product/$(OBB_PRODUCT_NAME)/config/balong_product_config.mk
 MSPDIR = ../../../../oam/comm
 
 
@@ -26,3 +26,16 @@ MSP_COMM_SRC_FILES := \
 	$(MSPDIR)/comm/si/stkapi.c\
 	$(MSPDIR)/comm/si/pihapi.c\
 	$(MSPDIR)/comm/scm/SCMProc.c
+	
+ifeq ($(CFG_FEATURE_MERGE_OM_CHAN),FEATURE_ON)
+MSP_COMM_SRC_FILES += \
+	$(MSPDIR)/acore/cpm/cpm.c\
+	$(MSPDIR)/acore/ppm/OmCommonPpm.c\
+	$(MSPDIR)/acore/ppm/OmFsPpm.c\
+	$(MSPDIR)/acore/ppm/OmHsicPpm.c\
+	$(MSPDIR)/acore/ppm/OmSdPpm.c\
+	$(MSPDIR)/acore/ppm/OmSocketPpm.c\
+	$(MSPDIR)/acore/ppm/OmUsbPpm.c\
+	$(MSPDIR)/acore/ppm/OmVcomPpm.c\
+	$(MSPDIR)/comm/scm/SCMSoftDecode.c
+endif

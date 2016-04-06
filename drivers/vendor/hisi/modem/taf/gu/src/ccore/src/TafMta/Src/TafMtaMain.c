@@ -17,7 +17,9 @@
 #include "NasMtaInterface.h"
 #include "TafMtaUnSolicitedReport.h"
 
+#if (FEATURE_ON == FEATURE_PTM)
 #include "NasErrorLog.h"
+#endif
 
 #include "MtaMtcInterface.h"
 #include "TafMtaModemControl.h"
@@ -91,6 +93,9 @@ const MTA_MSG_PROC_STRU g_astMtaMsgProcAtTab[]=
 
     {ID_AT_MTA_SET_JAM_DETECT_REQ,              TAF_MTA_RcvAtSetJamDetectReq},
 
+    {ID_AT_MTA_SET_GSM_FREQLOCK_REQ,            TAF_MTA_RcvAtSetGFreqLockReq},
+    {ID_AT_MTA_NVWRSECCTRL_SET_REQ,             TAF_MTA_RcvAtNvwrSecCtrlSetReq},
+
 };
 
 /* MTA模块处理来自PHY APM模块的消息函数对应表*/
@@ -119,6 +124,7 @@ const MTA_MSG_PROC_STRU g_astMtaMsgProcGasTab[]=
 
     {ID_RRC_MTA_JAM_DETECT_CNF,                 TAF_MTA_RcvRrcJamDetectCnf},
     {ID_RRC_MTA_JAM_DETECT_IND,                 TAF_MTA_RcvRrcJamDetectInd},
+    {ID_GRR_MTA_FREQLOCK_SET_CNF,               TAF_MTA_RcvGasSetFreqLockCnf},
 };
 /* MTA模块处理来自接入层W模下消息函数对应表*/
 const MTA_MSG_PROC_STRU g_astMtaMsgProcWcomTab[]=
@@ -204,6 +210,7 @@ const MTA_MSG_PROC_STRU g_astMtaMsgProcTimerTab[]=
 
     {TI_TAF_MTA_WAIT_JAM_DETECT_SET_CNF,        TAF_MTA_RcvTiWaitGrrSetJamDetectExpired},
 
+    {TI_TAF_MTA_WAIT_SET_GSM_FREQLOCK_CNF,      TAF_MTA_RcvTiWaitGasSetGFreqLockExpired},
 };
 
 /* MTA模块处理来自MMA模块的消息函数对应表*/

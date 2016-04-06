@@ -286,7 +286,7 @@ VOS_UINT32 OM_LittleImgInitLogFile(VOS_UINT32 ulFileSize)
     LOG_FILE_DISK_INFO_STRU stDiskInfo;
 
     /* 创建LOG文件对应的信号量 */
-    if (VOS_OK != VOS_SmMCreate("FILE", VOS_SEMA4_FIFO, &g_stLogFileSaveInfo.ulSem))
+    if (VOS_OK != VOS_SmMCreate("FILE", VOS_SEMA4_PRIOR | VOS_SEMA4_INVERSION_SAFE, &g_stLogFileSaveInfo.ulSem))
     {
         g_ulLittleImgLogErr = LOG_OPERATION_CREATE_SEM_FAIL;
 

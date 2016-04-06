@@ -126,7 +126,7 @@ IMM_MEM_STRU *IMM_ZcMapToImmMem_Debug(unsigned short usFileID,
     作    者   :
     修改内容   : Created
 *****************************************************************************/
-unsigned long IMM_ZcAddMacHead (IMM_ZC_STRU *pstImmZc, const unsigned char* pucAddData)
+unsigned int IMM_ZcAddMacHead (IMM_ZC_STRU *pstImmZc, const unsigned char* pucAddData)
 {
     unsigned char                      *pucDestAddr;
 
@@ -165,7 +165,7 @@ unsigned long IMM_ZcAddMacHead (IMM_ZC_STRU *pstImmZc, const unsigned char* pucA
 
 
 
-unsigned long IMM_ZcRemoveMacHead(IMM_ZC_STRU *pstImmZc)
+unsigned int IMM_ZcRemoveMacHead(IMM_ZC_STRU *pstImmZc)
 {
     IMM_DEBUG_TRACE_FUNC_ENTER();
 
@@ -257,7 +257,7 @@ void IMM_ZcReserve_Debug(unsigned short usFileID, unsigned short usLineNum,
 
 
 
-unsigned long IMM_ZcGetUsedLen (const IMM_ZC_STRU *pstImmZc)
+unsigned int IMM_ZcGetUsedLen (const IMM_ZC_STRU *pstImmZc)
 {
     IMM_DEBUG_TRACE_FUNC_ENTER();
 
@@ -388,15 +388,15 @@ unsigned int IMM_ZcQueueLen_Debug(unsigned short usFileID, unsigned short usLine
 
 
 IMM_ZC_STRU * IMM_ZcDataTransformImmZc_Debug(unsigned short usFileID,
-        unsigned short usLineNum, const unsigned char *pucData, unsigned long ulLen, void *pstTtfMem)
+        unsigned short usLineNum, const unsigned char *pucData, unsigned int ulLen, void *pstTtfMem)
 {
     IMM_ZC_STRU                        *pstSkb             = NULL;
 
 
     /* MBB形态, 将数据块的挂接到IMM_ZC_STRU上 */
-    unsigned long                       ulDataReservedHead;
-    unsigned long                       ulDataReservedTail = 0;
-    unsigned long                       ulDataAllign       = 32;
+    unsigned int                       ulDataReservedHead;
+    unsigned int                       ulDataReservedTail = 0;
+    unsigned int                       ulDataAllign       = 32;
 
     IMM_DEBUG_TRACE_FUNC_ENTER();
 
@@ -457,12 +457,10 @@ IMM_ZC_STRU* IMM_ZcStaticCopy_Debug(VOS_UINT16 usFileID, VOS_UINT16 usLineNum, I
 }
 
 
-
 void IMM_ZcHeadFree(IMM_ZC_STRU* pstImmZc)
 {
     return;
 }
-
 
 
 IMM_MEM_STRU *IMM_ZcMapToImmMem_Debug(unsigned short usFileID,
@@ -489,10 +487,9 @@ IMM_MEM_STRU *IMM_ZcMapToImmMem_Debug(unsigned short usFileID,
     作    者   :
     修改内容   : Created
 *****************************************************************************/
-unsigned long IMM_ZcAddMacHead (IMM_ZC_STRU *pstImmZc, const unsigned char* pucAddData)
+unsigned int IMM_ZcAddMacHead (IMM_ZC_STRU *pstImmZc, const unsigned char* pucAddData)
 {
     unsigned char                      *pucDestAddr;
-
 
     if ( NULL == pstImmZc )
     {
@@ -509,8 +506,8 @@ unsigned long IMM_ZcAddMacHead (IMM_ZC_STRU *pstImmZc, const unsigned char* pucA
 
     if( IMM_MAC_HEADER_RES_LEN > (pstImmZc->data - pstImmZc->head) )
     {
-        vos_printf("IMM_ZcAddMacHead invalid data Len! data = 0x%x, head = 0x%x \n",
-                    (VOS_INT32)pstImmZc->data, (VOS_INT32)pstImmZc->head);
+        vos_printf("IMM_ZcAddMacHead invalid data Len! data = %p, head = %p \n",
+                    pstImmZc->data, pstImmZc->head);
 
         return VOS_ERR;
     }
@@ -518,13 +515,12 @@ unsigned long IMM_ZcAddMacHead (IMM_ZC_STRU *pstImmZc, const unsigned char* pucA
     pucDestAddr = IMM_ZcPush(pstImmZc, IMM_MAC_HEADER_RES_LEN);
     memcpy(pucDestAddr, pucAddData, IMM_MAC_HEADER_RES_LEN);
 
-
     return VOS_OK;
 }
 
 
 
-unsigned long IMM_ZcRemoveMacHead(IMM_ZC_STRU *pstImmZc)
+unsigned int IMM_ZcRemoveMacHead(IMM_ZC_STRU *pstImmZc)
 {
     if ( NULL == pstImmZc )
     {
@@ -532,16 +528,15 @@ unsigned long IMM_ZcRemoveMacHead(IMM_ZC_STRU *pstImmZc)
         return VOS_ERR;
     }
 
-    if ( IMM_MAC_HEADER_RES_LEN > (pstImmZc->tail - pstImmZc->data) )
+    if ( IMM_MAC_HEADER_RES_LEN > pstImmZc->len )
     {
-        vos_printf("IMM_ZcRemoveMacHead invalid data Len! tail = 0x%x, data = 0x%x \n",
-                    (VOS_INT32)pstImmZc->tail, (VOS_INT32)pstImmZc->data);
+        vos_printf("IMM_ZcRemoveMacHead invalid data Len! tail = %p, data = %p, len = %d \n",
+                    skb_tail_pointer(pstImmZc), pstImmZc->data, pstImmZc->len);
 
         return VOS_ERR;
     }
 
     IMM_ZcPull(pstImmZc, IMM_MAC_HEADER_RES_LEN);
-
 
     return VOS_OK;
 }
@@ -555,7 +550,6 @@ unsigned char* IMM_ZcPush_Debug(unsigned short usFileID, unsigned short usLineNu
 
     pucRet = skb_push((pstImmZc), (ulLen));
 
-
     return pucRet;
 }
 
@@ -568,7 +562,6 @@ unsigned char* IMM_ZcPull_Debug(unsigned short usFileID, unsigned short usLineNu
 
     pucRet = skb_pull(pstImmZc, ulLen);
 
-
     return pucRet;
 }
 
@@ -579,9 +572,7 @@ unsigned char* IMM_ZcPut_Debug(unsigned short usFileID, unsigned short usLineNum
 {
     unsigned char* pucRet = NULL;
 
-
     pucRet = skb_put(pstImmZc, ulLen);
-
 
     return pucRet;
 }
@@ -591,12 +582,14 @@ unsigned char* IMM_ZcPut_Debug(unsigned short usFileID, unsigned short usLineNum
 void IMM_ZcReserve_Debug(unsigned short usFileID, unsigned short usLineNum,
             IMM_ZC_STRU *pstImmZc, unsigned int ulLen)
 {
-    skb_reserve(pstImmZc, ulLen);
+    skb_reserve(pstImmZc, (int)ulLen);
+
+    return;
 }
 
 
 
-unsigned long IMM_ZcGetUsedLen (const IMM_ZC_STRU *pstImmZc)
+unsigned int IMM_ZcGetUsedLen (const IMM_ZC_STRU *pstImmZc)
 {
     IMM_DEBUG_TRACE_FUNC_ENTER();
 
@@ -607,7 +600,6 @@ unsigned long IMM_ZcGetUsedLen (const IMM_ZC_STRU *pstImmZc)
     }
 
     IMM_DEBUG_TRACE_FUNC_LEAVE();
-
 
     return pstImmZc->len;
 }
@@ -622,7 +614,7 @@ unsigned short IMM_ZcGetUserApp(IMM_ZC_STRU *pstImmZc)
 
 
 void IMM_ZcSetUserApp (IMM_ZC_STRU *pstImmZc, unsigned short usApp)
-{   
+{
     if ( NULL == pstImmZc )
     {
         return;
@@ -636,7 +628,7 @@ void IMM_ZcSetUserApp (IMM_ZC_STRU *pstImmZc, unsigned short usApp)
 
 
 IMM_ZC_STRU * IMM_ZcDataTransformImmZc_Debug(unsigned short usFileID,
-        unsigned short usLineNum, const unsigned char *pucData, unsigned long ulLen, void *pstTtfMem)
+        unsigned short usLineNum, const unsigned char *pucData, unsigned int ulLen, void *pstTtfMem)
 {
     return NULL;
 }/* IMM_ZcDataTransformImmZc_Debug */

@@ -34,36 +34,36 @@ extern "C" {
 /*****************************************************************************
   2 函数声明
 *****************************************************************************/
-unsigned long mailbox_send_msg(
-                unsigned long            mailcode,
+unsigned int mailbox_send_msg(
+                unsigned int            mailcode,
                 void                    *data,
-                unsigned long            length);
+                unsigned int            length);
 
-unsigned long mailbox_reg_msg_cb(
-                unsigned long             mailcode,
+unsigned int mailbox_reg_msg_cb(
+                unsigned int             mailcode,
                 mb_msg_cb                 func,
                 void                     *data);
 
-unsigned long mailbox_read_msg_data(
+unsigned int mailbox_read_msg_data(
                 void                   *mail_handle,
                  char                  *buff,
-                unsigned long          *size);
+                unsigned int          *size);
 /*****************************************************************************
   3 函数实现
 *****************************************************************************/
 
 
-unsigned long DRV_MAILBOX_SENDMAIL(
-                unsigned long           MailCode,
+unsigned int DRV_MAILBOX_SENDMAIL(
+                unsigned int           MailCode,
                 void                   *pData,
-                unsigned long           Length)
+                unsigned int           Length)
 {
     return mailbox_send_msg(MailCode, pData, Length);
 }
 
 
-unsigned long DRV_MAILBOX_REGISTERRECVFUNC(
-                unsigned long           MailCode,
+unsigned int DRV_MAILBOX_REGISTERRECVFUNC(
+                unsigned int           MailCode,
                 mb_msg_cb               pFun,
                 void                   *UserHandle)
 {
@@ -71,10 +71,10 @@ unsigned long DRV_MAILBOX_REGISTERRECVFUNC(
 }
 
 
-unsigned long DRV_MAILBOX_READMAILDATA(
+unsigned int DRV_MAILBOX_READMAILDATA(
                 void                   *MailHandle,
                 unsigned char          *pData,
-                unsigned long          *pSize)
+                unsigned int          *pSize)
 {
     return mailbox_read_msg_data(MailHandle, (char *)pData, pSize);
 }

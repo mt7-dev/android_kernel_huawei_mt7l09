@@ -46,6 +46,11 @@ struct vmap_area {
 	struct list_head purge_list;    /* "lazy purge" list */
 	struct vm_struct *vm;
 	struct rcu_head rcu_head;
+
+	int 			tid;
+	int				tgid;
+	char 			thread_name[16];
+	char 			process_name[16];
 };
 
 /*
@@ -178,10 +183,16 @@ struct vmalloc_info {
 #ifdef CONFIG_MMU
 #define VMALLOC_TOTAL (VMALLOC_END - VMALLOC_START)
 extern void get_vmalloc_info(struct vmalloc_info *vmi);
+extern void get_vmalloc_info_filtered(struct vmalloc_info *vmi, unsigned long flags);
 #else
 
 #define VMALLOC_TOTAL 0UL
 #define get_vmalloc_info(vmi)			\
+do {						\
+	(vmi)->used = 0;			\
+	(vmi)->largest_chunk = 0;		\
+} while (0)
+#define get_vmalloc_info_filtered(vmi, flags)			\
 do {						\
 	(vmi)->used = 0;			\
 	(vmi)->largest_chunk = 0;		\

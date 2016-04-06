@@ -20,7 +20,9 @@
 #include <linux/mmc/host.h>
 #include "queue.h"
 
+#ifdef CONFIG_MMC_BLOCK_BOUNCE
 #define MMC_QUEUE_BOUNCESZ	65536
+#endif
 
 /*
  * Prepare a MMC request. This just filters out odd stuff.
@@ -68,10 +70,8 @@ static int mmc_queue_thread(void *d)
 			set_current_state(TASK_RUNNING);
 			cmd_flags = req ? req->cmd_flags : 0;
 			mq->issue_fn(mq, req);
-			if (mq->flags & MMC_QUEUE_NEW_REQUEST) {
-				mq->flags &= ~MMC_QUEUE_NEW_REQUEST;
+			if(test_and_clear_bit(MMC_QUEUE_NEW_REQUEST_BIT, &mq->flags))
 				continue; /* fetch again */
-			}
 
 			/*
 			 * Current request becomes previous request
@@ -415,8 +415,7 @@ void mmc_queue_suspend(struct mmc_queue *mq)
 	struct request_queue *q = mq->queue;
 	unsigned long flags;
 
-	if (!(mq->flags & MMC_QUEUE_SUSPENDED)) {
-		mq->flags |= MMC_QUEUE_SUSPENDED;
+	if (!test_and_set_bit(MMC_QUEUE_SUSPENDED_BIT, &mq->flags)) {
 
 		spin_lock_irqsave(q->queue_lock, flags);
 		blk_stop_queue(q);
@@ -435,8 +434,7 @@ void mmc_queue_resume(struct mmc_queue *mq)
 	struct request_queue *q = mq->queue;
 	unsigned long flags;
 
-	if (mq->flags & MMC_QUEUE_SUSPENDED) {
-		mq->flags &= ~MMC_QUEUE_SUSPENDED;
+	if (test_and_clear_bit(MMC_QUEUE_SUSPENDED_BIT, &mq->flags)) {
 
 		up(&mq->thread_sem);
 
@@ -499,7 +497,7 @@ unsigned int mmc_queue_map_sg(struct mmc_queue *mq, struct mmc_queue_req *mqrq)
 			return mmc_queue_packed_map_sg(mq, mqrq->packed,
 						       mqrq->sg, cmd_type);
 		else
-			return blk_rq_map_sg(mq->queue, mqrq->req, mqrq->sg);
+			return (unsigned int)blk_rq_map_sg(mq->queue, mqrq->req, mqrq->sg);
 	}
 
 	BUG_ON(!mqrq->bounce_sg);

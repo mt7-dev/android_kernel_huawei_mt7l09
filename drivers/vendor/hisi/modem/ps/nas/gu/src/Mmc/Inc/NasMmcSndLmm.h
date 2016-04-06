@@ -166,6 +166,12 @@ VOS_VOID  NAS_MMC_SndLmmDisableLteNotify(
 
 VOS_VOID  NAS_MMC_SndLmmEnableLteNotify(VOS_VOID);
 
+VOS_VOID NAS_MMC_SndLmmCsConnStatusNotify(
+    VOS_UINT8                           ucCsRrConnStatusFlg,
+    VOS_UINT8                           ucCsEmergencyConnStatusFlg
+);
+
+
 VOS_VOID NAS_MMC_FillGprsRegInfoInLmmActionRslt(
     MMC_LMM_ACTION_RESULT_REQ_STRU                         *pstMsg
 );
@@ -272,6 +278,9 @@ VOS_VOID NAS_MMC_SndLmmImsVoiceCapChangeNtf(
     VOS_UINT8                           ucImsVoiceAvail
 );
 
+VOS_VOID NAS_MMC_SndLmmVoiceDomainChangeInd(
+    MMC_LMM_VOICE_DOMAIN_ENUM_UINT32    enVoiceDomain
+);
 #endif
 
 #if (VOS_OS_VER == VOS_WIN32)

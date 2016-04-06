@@ -28,6 +28,12 @@ extern "C" {
 *****************************************************************************/
 #define MN_CALL_MAX_ASCII_NUM_LEN    (MN_CALL_MAX_BCD_NUM_LEN * 2)
 
+#define TAF_SPM_ECONF_GET_INDEX_FROM_PARA(ulPara)       ((ulPara >> 16) & VOS_NULL_WORD)
+
+#define TAF_SPM_ECONF_SET_SEND_PARA(ulIndex, usClient)  ((VOS_UINT32)((ulIndex << 16) | (VOS_UINT32)usClient))
+
+
+
 
 /*****************************************************************************
   3 Ã¶¾Ù¶¨Òå
@@ -131,7 +137,7 @@ VOS_VOID TAF_SPM_SendAtGetCallInfoCnf(
 #endif
 
 VOS_VOID TAF_SPM_GetCallInfoFromFsmEntryMsg(
-    MN_CALL_CALLED_NUM_STRU            *pstDialNumber,    
+    MN_CALL_CALLED_NUM_STRU            *pstDialNumber,
     MN_CALL_TYPE_ENUM_U8               *penCallType,
     MN_CALL_MODE_ENUM_U8               *penCallMode,
     MN_CALL_CS_DATA_CFG_STRU           *pstDataCfg
@@ -148,7 +154,44 @@ VOS_UINT32 TAF_SPM_IsUESupportMoCallType(
 
 #if (FEATURE_ON == FEATURE_IMS)
 VOS_VOID TAF_SPM_ProcSmsRptEvent(TAF_SPM_MSG_REPORT_IND_STRU  *pstMsgReportInd);
+
+VOS_VOID TAF_SPM_SendAtEconfDialCnf(
+    MN_CLIENT_ID_T                      usClientId,
+    MN_OPERATION_ID_T                   ucOpId,
+    MN_CALL_ID_T                        ucCallId,
+    TAF_CS_CAUSE_ENUM_UINT32            enCause
+);
+
+VOS_VOID TAF_SPM_SendAtGetEconfCallInfoCnf(
+    IMSA_SPM_CALL_GET_ECONF_CALLED_INFO_CNF_STRU   *pstImsaMsg
+);
+
+VOS_VOID TAF_SPM_ParseEconfDailInfoFromMsg(
+    struct MsgCB                       *pstAppMsg
+);
+
+VOS_VOID TAF_SPM_SendEconfNotifyInd(
+    MN_OPERATION_ID_T                   ucOpId,
+    VOS_UINT8                           ucNumOfCalls,
+    TAF_CALL_ECONF_INFO_PARAM_STRU     *pstCallInfo
+);
+
+VOS_VOID TAF_SPM_ReportEconfCheckRslt(VOS_VOID);
+
+VOS_VOID TAF_SPM_RecordEconfCheckRslt(
+    VOS_UINT32                          ulIndex,
+    VOS_UINT32                          ulResult
+);
+
+VOS_VOID TAF_SPM_SetEconfPreRslt(
+    TAF_CS_CAUSE_ENUM_UINT32            enCause
+);
+
+VOS_UINT32 TAF_SPM_ProcEconfCheckResult(VOS_VOID);
+
+
 #endif
+
 
 #if (VOS_OS_VER == VOS_WIN32)
 #pragma pack()

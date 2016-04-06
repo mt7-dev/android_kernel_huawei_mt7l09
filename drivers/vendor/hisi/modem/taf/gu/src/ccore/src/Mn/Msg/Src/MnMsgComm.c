@@ -189,6 +189,13 @@ VOS_VOID MN_MSG_PowerOff()
        才会向AS发送激活CBS的请求 */
     TAF_CBA_InitNetworkInfo();
 #endif
+
+
+    /* 停止所有正在运行的定时器 */
+    MN_MSG_StopAllRunningTimer();
+
+    /*初始化定时器相关参数*/
+    MN_MSG_InitAllTimers();
 }
 
 
@@ -352,8 +359,8 @@ VOS_UINT32 MN_MSG_UpdateMoEntityAccordingToMoSmsCtrl(
     ulRet = MN_MSG_SendSmsRpDataReq(pstMoEntity->enSendDomain,
                                     pstMoEntity->aucRpDataInfo,
                                     pstMoEntity->ucRpDataLen,
-                                    pstMoEntity->enMsgSignallingType);    
-    
+                                    pstMoEntity->enMsgSignallingType);
+
     if (VOS_ERR == ulRet)
     {
         return MN_ERR_SEND_MSG_ERROR;
@@ -597,7 +604,7 @@ VOS_VOID MN_MSG_FailErrRecord(TAF_MSG_ERROR_ENUM_UINT32 enErrorCode)
     NAS_MMA_OutputUsimInfo(&stSmsMoFailEvent.stUsimInfo);
 
     /* 获取位置信息 */
-    NAS_MMC_OutputPositionInfo(&stSmsMoFailEvent.stPositionInfo);
+    NAS_MNTN_OutputPositionInfo(&stSmsMoFailEvent.stPositionInfo);
 
     MN_MSG_OutputSmsMoFailureInfo(enErrorCode, &stSmsMoFailEvent.stMoFail);
 
@@ -655,7 +662,7 @@ VOS_VOID TAF_MSG_RcvSpmSmmaRsp(
     }
 
     /* 给SMS/IMSA发送SMMA消息 */
-    MN_MSG_SendSmma(0, 0, VOS_FALSE, pstSmmaMsg->enMsgSignallingType);
+    MN_MSG_SendSmma(pstSmmaMsg->clientId, pstSmmaMsg->opId, VOS_FALSE, pstSmmaMsg->enMsgSignallingType);
 
     return;
 

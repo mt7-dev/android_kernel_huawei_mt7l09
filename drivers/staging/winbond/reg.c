@@ -680,9 +680,9 @@ u32 w89rf242_rf_data[] = {
 	(0x01 << 24) | 0xEFFFC2, /* 3BFFF; MODB  (0x01) -- turn off RSSI, and other circuits are turned on */
 	(0x02 << 24) | 0x102504, /* 04094; FSET  (0x02) -- default 20MHz crystal ; Icmp=1.5mA */
 	(0x03 << 24) | 0x026286, /* 0098A; FCHN  (0x03) -- default CH7, 2442MHz */
-	(0x04 << 24) | 0x000208, /* 02008; FCAL  (0x04) -- XTAL Freq Trim=001000 (socket board#1); FA5976AYG_v1.3C */
+	(0x04 << 24) | 0x000208,
 	(0x05 << 24) | 0x24C60A, /* 09316; GANA  (0x05) -- TX VGA default (TXVGA=0x18(12)) & TXGPK=110 ; FA5976A_1.3D */
-	(0x06 << 24) | 0x3432CC, /* 0D0CB; GANB  (0x06) -- RXDC(DC offset) on; LNA=11; RXVGA=001011(11) ; RXFLSW=11(010001); RXGPK=00; RXGCF=00; -50dBm input */
+	(0x06 << 24) | 0x3432CC,
 	(0x07 << 24) | 0x0C68CE, /* 031A3; FILT  (0x07) -- TX/RX filter with auto-tuning; TFLBW=011; RFLBW=100 */
 	(0x08 << 24) | 0x100010, /* 04000; TCAL  (0x08) -- for LO */
 	(0x09 << 24) | 0x004012, /* 1B900; RCALA (0x09) -- FASTS=11; HPDE=01 (100nsec); SEHP=1 (select B0 pin=RXHP); RXHP=1 (Turn on RXHP function)(FA5976A_1.3C) */
@@ -1204,7 +1204,6 @@ void RFSynthesizer_initial(struct hw_data *pHwData)
 		Wb35Reg_WriteSync(pHwData, 0x0864, ltmp);
 
 		/* for LNA=11 -------- */
-		/* Calibration (5c-h). RX DC offset current bias ON; & LNA=11; RXVGA=111111 */
 		ltmp = (1 << 31) | (0 << 30) | (24 << 24) | BitReverse((0x06<<24) | 0x343FCC, 24);
 		Wb35Reg_WriteSync(pHwData, 0x0864, ltmp);
 		/* Calibration (5d). turn on RX DC offset cal function; and waiting 2 msec cal time */
@@ -1216,7 +1215,6 @@ void RFSynthesizer_initial(struct hw_data *pHwData)
 		Wb35Reg_WriteSync(pHwData, 0x0864, ltmp);
 
 		/* for LNA=10 -------- */
-		/* Calibration (5c-m). RX DC offset current bias ON; & LNA=10; RXVGA=111111 */
 		ltmp = (1 << 31) | (0 << 30) | (24 << 24) | BitReverse((0x06<<24) | 0x342FCC, 24);
 		Wb35Reg_WriteSync(pHwData, 0x0864, ltmp);
 		/* Calibration (5d). turn on RX DC offset cal function; and waiting 2 msec cal time */
@@ -1228,7 +1226,6 @@ void RFSynthesizer_initial(struct hw_data *pHwData)
 		Wb35Reg_WriteSync(pHwData, 0x0864, ltmp);
 
 		/* for LNA=01 -------- */
-		/* Calibration (5c-m). RX DC offset current bias ON; & LNA=01; RXVGA=111111 */
 		ltmp = (1 << 31) | (0 << 30) | (24 << 24) | BitReverse((0x06<<24) | 0x341FCC, 24);
 		Wb35Reg_WriteSync(pHwData, 0x0864, ltmp);
 		/* Calibration (5d). turn on RX DC offset cal function; and waiting 2 msec cal time */
@@ -1240,7 +1237,6 @@ void RFSynthesizer_initial(struct hw_data *pHwData)
 		Wb35Reg_WriteSync(pHwData, 0x0864, ltmp);
 
 		/* for LNA=00 -------- */
-		/* Calibration (5c-l). RX DC offset current bias ON; & LNA=00; RXVGA=111111 */
 		ltmp = (1 << 31) | (0 << 30) | (24 << 24) | BitReverse((0x06<<24) | 0x340FCC, 24);
 		Wb35Reg_WriteSync(pHwData, 0x0864, ltmp);
 		/* Calibration (5d). turn on RX DC offset cal function; and waiting 2 msec cal time */

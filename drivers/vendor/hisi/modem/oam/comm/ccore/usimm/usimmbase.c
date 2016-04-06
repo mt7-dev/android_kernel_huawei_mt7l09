@@ -29,6 +29,7 @@ VOS_UINT32 USIMM_RefreshHandle(USIMM_MsgBlock *pMsg)
     USIMM_REFRESH_REQ_STRU             *pstMsg;
     VOS_UINT8                           aucTemp[] = {0x81,0x03,0x00,0x00,0x00,0x02,0x02,0x82,0x81,0x83,0x01,0x00};
     USIMM_MODE_TYPE_ENUM_UINT8          ucMode;
+	USIMM_PIN_INFO_STRU                 stPINInfo;
 
 
     pstMsg = (USIMM_REFRESH_REQ_STRU*)pMsg;
@@ -71,9 +72,11 @@ VOS_UINT32 USIMM_RefreshHandle(USIMM_MsgBlock *pMsg)
         if ((USIMM_CARD_USIM == gastUSIMMCardAppInfo[USIMM_UICC_USIM].enCardType)
          && (USIMM_APPLICATION_RESET_3G_ONLY == pstMsg->enRefreshType))
         {
+            VOS_MemCpy(&stPINInfo, &gstUSIMMADFInfo.stPINInfo, sizeof(stPINInfo));
             USIMM_Status_APDU(USIMM_STATUS_TERMINATION_CURAPP, USIMM_STATUS_DF_NAME_RETURNED, 0xFF);
 
             USIMM_Reselect3GApp();
+            VOS_MemCpy(&gstUSIMMADFInfo.stPINInfo, &stPINInfo, sizeof(stPINInfo));
         }
 
         USIMM_InsertNoNeedPinFileToPool();
@@ -815,11 +818,14 @@ VOS_UINT32 USIMM_ProtectFirstStep(VOS_UINT32  ulOldCardType)
 
     if(VOS_OK != ulResult)
     {
+        DRV_USIMMSCI_RECORD_DATA_SAVE(SCI_LOG_PROTECT_RESET_FAIL);
+
         USIMM_ERROR_LOG("USIMM_ProtectFirstStep: USIMM_DLResetCard Error");
 
         return VOS_ERR;
     }
-
+    
+    DRV_USIMMSCI_RECORD_DATA_SAVE(SCI_LOG_PROTECT_RESET_SUCC);
     /* 重置卡类型的全局变量 */
     gastUSIMMCardAppInfo[USIMM_UICC_USIM].enCardType = ulOldCardType;
 
@@ -3257,9 +3263,9 @@ VOS_UINT32 USIMM_DeactiveRealCard(USIMM_MsgBlock *pMsg)
 
     OM_RecordInfoEnd(VOS_EXC_DUMP_MEM_NUM_1);
 
-    USIMM_InitGlobalVarOnPower();
-
     USIMM_InitGlobalVarOnReset();
+
+    USIMM_InitGlobalVarOnPower();
 
     gastUSIMMCardAppInfo[USIMM_UICC_USIM].enCardType     = USIMM_CARD_NOCARD;
     gastUSIMMCardAppInfo[USIMM_UICC_USIM].enCardService  = USIMM_CARD_SERVIC_ABSENT;
@@ -4251,12 +4257,12 @@ VOS_UINT32 USIMM_FID_Init(enum VOS_INIT_PHASE_DEFINE ip)
             ddmPhaseScoreBoot("start usim init",__LINE__);
 
             /* 创建获取卡状态时所起的callback定时器所用信号量*/
-            if(VOS_OK != VOS_SmBCreate("GCS", 0, VOS_SEMA4_FIFO, (VOS_UINT32*)&g_ulUSIMMGetCardStatSemID))
+            if(VOS_OK != VOS_SmBCreate("GCS", 0, VOS_SEMA4_FIFO, &g_ulUSIMMGetCardStatSemID))
             {
                 return VOS_ERR;
             }
 			
-            if(VOS_OK != VOS_SmBCreate("UTD", 0, VOS_SEMA4_FIFO, (VOS_UINT32*)&g_ulUSIMMTaskDelaySemID))
+            if(VOS_OK != VOS_SmBCreate("UTD", 0, VOS_SEMA4_FIFO, &g_ulUSIMMTaskDelaySemID))
             {
                 return VOS_ERR;
             }
@@ -4296,7 +4302,7 @@ VOS_UINT32 USIMM_FID_Init(enum VOS_INIT_PHASE_DEFINE ip)
 
 #ifndef OAM_DMT
                 ulResult = USIMM_ActiveCardReq(WUEPS_PID_USIM);
-#endif
+#endif  /*OAM_DMT*/
 
                 USIMM_CardStatusRegCbFuncProc();
             }

@@ -172,12 +172,6 @@ static ide_startstop_t __ide_do_rw_disk(ide_drive_t *drive, struct request *rq,
 	return rc;
 }
 
-/*
- * 268435455  == 137439 MB or 28bit limit
- * 320173056  == 163929 MB or 48bit addressing
- * 1073741822 == 549756 MB or 48bit addressing fake drive
- */
-
 static ide_startstop_t ide_do_rw_disk(ide_drive_t *drive, struct request *rq,
 				      sector_t block)
 {

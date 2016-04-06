@@ -7,6 +7,7 @@
 #include "MmSuspend.h"
 #include "MmGsmDifMsg.h"
 #include "MM_Share.h"
+#include "MmCmInterface.h"
 
 #ifdef  __cplusplus
   #if  __cplusplus
@@ -346,10 +347,12 @@ VOS_VOID MM_SndMsgFuncChg()
 VOS_VOID MM_RetransferMsg()
 {
     RRMM_EST_REQ_STRU  *pEstReqMsg;
+    VOS_UINT8          *pData = VOS_NULL_PTR;
     RRMM_DATA_REQ_STRU *pDataReqMsg;
     IDNNS_STRU          stIdnnsInfo;
-    VOS_UINT8           i;
     VOS_INT32           Result = VOS_ERR;
+    VOS_UINT8           i;
+    VOS_UINT8           ucPd;
 
     NAS_MML_MS_CAPACILITY_INFO_STRU    *pstMsCapability;
 
@@ -448,6 +451,15 @@ VOS_VOID MM_RetransferMsg()
             {
                 continue;
             }
+ 
+            pData = (VOS_UINT8 *)pDataReqMsg->SendNasMsg.aucNasMsg;
+            ucPd = pData[0] & MM_IE_PD_MASK;
+            if ((MM_IE_PD_MM_MSG == ucPd) || (MM_IE_PD_CALL_CONTROL == ucPd)
+               || (MM_IE_PD_NON_CALL_RLT_SS_MSG == ucPd))
+            {
+                g_stMmNsd.ucNsd = (pData[1] >> 6) % g_stMmNsd.ucNsdMod;
+            }
+
             Result = g_NasMmImportFunc.SigDataTransfer.RrDataReqFunc(RRC_NAS_CS_DOMAIN,
                                                             (VOS_UINT8)pDataReqMsg->ulPriorityInd,
                                                             pDataReqMsg->SendNasMsg.ulNasMsgSize,
@@ -471,7 +483,6 @@ VOS_VOID MM_RetransferMsg()
     return;
 }
 /* add,sunxibo,2006-12-12, for GCF end */
-
 
 VOS_VOID MM_Restore()
 {
@@ -751,7 +762,8 @@ VOS_VOID Mm_Cell_S3_E84( VOS_VOID* pMsg )
     {
         if ( MM_TIMER_RUNNING == gstMmTimer[i].ucTimerStatus )
         {
-            if ( MM_TIMER_T3212 != i )
+            if (( MM_TIMER_T3212 != i )
+             && ( MM_TIMER_PROTECT_MT_CSFB_PAGING_PROCEDURE != i ))
             {
                 Mm_TimerPause(i);
             }
@@ -797,7 +809,7 @@ VOS_VOID Mm_Cell_S3_E84( VOS_VOID* pMsg )
 
         return;
     }
-#endif    
+#endif
 
     NAS_MM_SndMmcSuspendRsp();
 
@@ -806,23 +818,29 @@ VOS_VOID Mm_Cell_S3_E84( VOS_VOID* pMsg )
 
 #if (FEATURE_ON == FEATURE_LTE)
 VOS_VOID NAS_MM_EndCsfbFlow(
-    NAS_MML_CSFB_SERVICE_STATUS_ENUM_UINT8 enCsfbServiceStatus
+    NAS_MML_CSFB_SERVICE_STATUS_ENUM_UINT8 enCsfbServiceStatus,
+    NAS_MMCM_REL_CAUSE_ENUM_UINT32         enRelCause
 )
 {
+    
+    /* LAU携带CSMT标志，启动定时器进行保护 */
+    NAS_MM_SetCsfbMtLauFlg(VOS_FALSE);
+    Mm_TimerStop(MM_TIMER_PROTECT_MT_CSFB_PAGING_PROCEDURE);
+    
     /* MO CSFB流程中在L下恢复，认为CSFB失败，向CC或SS回复建链失败，清缓存 */
     if (NAS_MML_CSFB_SERVICE_STATUS_MO_NORMAL_CC_EXIST == enCsfbServiceStatus)
     {
         if (MM_TRUE == g_MmGlobalInfo.ConnCtrlInfo[MM_CONN_CTRL_CC].RcvXXEstReq.ucFlg)
         {
             Mm_SndCcRelInd(g_MmCcEstReq.ulTransactionId,
-                          NAS_MMCM_REL_CAUSE_MM_REJ_OTHER_CAUSES);     /* 通知CC建立失败 */
+                            enRelCause);     /* 通知CC建立失败 */
 
             NAS_MM_ClearConnCtrlInfo(MM_IE_PD_CALL_CONTROL);
         }
 
         /* 更新CSFB状态 */
         NAS_MML_SetCsfbServiceStatus(NAS_MML_CSFB_SERVICE_STATUS_NOT_EXIST);
-        
+
         return;
     }
 
@@ -831,29 +849,29 @@ VOS_VOID NAS_MM_EndCsfbFlow(
     {
         if (MM_TRUE == g_MmGlobalInfo.ConnCtrlInfo[MM_CONN_CTRL_SS].RcvXXEstReq.ucFlg)
         {
-            Mm_SndSsRelInd(g_MmSsEstReq.ulTi, NAS_MMCM_REL_CAUSE_MM_REJ_OTHER_CAUSES);
+            Mm_SndSsRelInd(g_MmSsEstReq.ulTi, enRelCause);
 
             NAS_MM_ClearConnCtrlInfo(MM_IE_PD_NON_CALL_RLT_SS_MSG);
         }
 
         /* 更新CSFB状态为不存在 */
         NAS_MML_SetCsfbServiceStatus(NAS_MML_CSFB_SERVICE_STATUS_NOT_EXIST);
-        
+
         return;
     }
 
     if (NAS_MML_CSFB_SERVICE_STATUS_MO_EMERGENCY_EXIST == enCsfbServiceStatus)
     {
         Mm_SndCcRelInd(g_MmCcEstReq.ulTransactionId,
-                      NAS_MMCM_REL_CAUSE_MM_REJ_OTHER_CAUSES);     /* 通知CC建立失败 */
+                      enRelCause);     /* 通知CC建立失败 */
 
         /* Mm_RcvCcEstReq函数判断如果是紧急呼设置了ucEstingCallTypeFlg，需要清除 */
         if (VOS_TRUE == NAS_MML_GetCsEmergencyServiceFlg())
         {
-            g_MmGlobalInfo.ConnCtrlInfo[MM_CONN_CTRL_CC].ucEstingCallTypeFlg = MM_FALSE;        
+            g_MmGlobalInfo.ConnCtrlInfo[MM_CONN_CTRL_CC].ucEstingCallTypeFlg = MM_FALSE;
             NAS_MML_SetCsEmergencyServiceFlg( VOS_FALSE );
         }
-        
+
         NAS_MM_ClearConnCtrlInfo(MM_IE_PD_CALL_CONTROL);
 
         /* 更新CSFB状态为不存在 */
@@ -865,12 +883,18 @@ VOS_VOID NAS_MM_EndCsfbFlow(
     /* 当前存在CSFB被叫 */
     if (NAS_MML_CSFB_SERVICE_STATUS_MT_EXIST == enCsfbServiceStatus)
     {
+        /* Added by zwx247453 for CHR optimize, 2015-3-13, begin */
+#if (FEATURE_ON == FEATURE_PTM)
+        /* 处理记录CSFB MT异常 */
+        NAS_MM_ProcCsfbMtFailRecord();
+#endif
+        /* Added by zwx247453 for CHR optimize, 2015-3-13, end */
         /* 更新CSFB状态为不存在 */
         NAS_MML_SetCsfbServiceStatus(NAS_MML_CSFB_SERVICE_STATUS_NOT_EXIST);
-        
-        NAS_MML_SetRelCauseCsfbHighPrioFlg(VOS_FALSE);   
-        
-              
+
+        NAS_MML_SetRelCauseCsfbHighPrioFlg(VOS_FALSE);
+
+
     }
 
     return;
@@ -886,15 +910,15 @@ VOS_VOID NAS_MM_ResumeBackToGU_CSFB(
     VOS_UINT8                                               ucUltraFlashCsfbFlg;
 
     ucUltraFlashCsfbFlg = NAS_MML_GetUltraFlashCsfbSupportFlg();
-    
+
     if (MMC_RESUME_RESULT_SUCCESS != pstResumeInd->ucCsResumeResult)
     {
         /* 异系统失败，认为CSFB流程失败 */
-        NAS_MM_EndCsfbFlow(enCsfbServiceStatus);
+        NAS_MM_EndCsfbFlow(enCsfbServiceStatus, NAS_MMCM_REL_CAUSE_MM_INTER_ERR_RESUME_TO_GU_FAIL);
         return;
     }
 
-    /* 只有在CSFB标志存在时才会走到这里 */     
+    /* 只有在CSFB标志存在时才会走到这里 */
     if (MMC_SUSPEND_CAUSE_HANDOVER == g_MmGlobalInfo.stSuspendShare.ucSuspendCause)
     {
         /* CSFB网络支持HO到GU,MM_CONNECTION_ACTIVE收到resume_ind直接发cm_service_request,提升MO CSFB电话接通速度 */
@@ -917,7 +941,7 @@ VOS_VOID NAS_MM_ResumeBackToGU_CSFB(
             }
         }
     }
-    
+
 }
 
 
@@ -936,18 +960,18 @@ VOS_VOID NAS_MM_ProcResumeIndBackToLTE(
 
     /* LTE到GU的handover流程,回退到LTE时需要回退CS的安全上下文 */
     if ((MMC_SUSPEND_CAUSE_HANDOVER == g_MmGlobalInfo.stSuspendShare.ucSuspendCause)
-     && (NAS_MML_NET_RAT_TYPE_LTE   == g_MmGlobalInfo.stSuspendShare.enOldNetType)) 
+     && (NAS_MML_NET_RAT_TYPE_LTE   == g_MmGlobalInfo.stSuspendShare.enOldNetType))
     {
         NAS_MML_SetSimCsSecurity(&(g_MmGlobalInfo.stBackupShare.stCsSimSecuInfo));
     }
-    
-#if (FEATURE_ON == FEATURE_IMS)   
+
+#if (FEATURE_ON == FEATURE_IMS)
     if (VOS_TRUE == NAS_MM_GetSrvccFlg())
     {
         NAS_MM_ProcResumeIndBackToLTE_Srvcc();
     }
-#endif    
-    
+#endif
+
     NAS_MM_ChgStateIntoLMode();
 
     /* 清除MML中的CS连接相关信息 */
@@ -965,14 +989,23 @@ VOS_VOID NAS_MM_ProcResumeIndBackToLTE(
     NAS_MML_SetRrcConnStatusFlg(VOS_FALSE);
 
 
+
+    /* 回到L后，则清除LAU时携带CSMT 标志,保护定时器已经在上面停止了 */
+    NAS_MM_SetCsfbMtLauFlg(VOS_FALSE);
+
     if (VOS_TRUE == NAS_MML_IsCsfbServiceStatusExist())
     {
-       /* 异系统重回LTE后，则需要让MMC继续搜网 */
-       NAS_MM_SndMmcPlmnSearchInd(MM_MMC_PLMN_SEARCH_TYPE_CSFB_BACK_LTE);
+        /* 异系统重回LTE后，则需要让MMC继续搜网 */
+        NAS_MM_SndMmcPlmnSearchInd(MM_MMC_PLMN_SEARCH_TYPE_CSFB_BACK_LTE);
+
+        /* 异系统失败回退到LTE时，记录异常状态为CSFB MT触发搜网 */
+#if (FEATURE_ON == FEATURE_PTM)
+        NAS_MML_SetErrLogCsfbMtState(NAS_ERR_LOG_CSFB_MT_STATE_TRAG_NW_SEARCH_FOR_INTER_SYS_BACK);
+#endif
     }
     else
     {
-        Mm_ComRelAllMmConn(NAS_MMCM_REL_CAUSE_MM_NO_SERVICE);
+        Mm_ComRelAllMmConn(NAS_MMCM_REL_CAUSE_MM_INTER_ERR_BACK_TO_LTE);
     }
 
     MM_RelMsgBuf();
@@ -1008,7 +1041,7 @@ VOS_VOID NAS_MM_ProcResumeToHRPD(
     NAS_MML_SetRrcConnStatusFlg(VOS_FALSE);
 
     /* 释放所有MM连接 */
-    Mm_ComRelAllMmConn(NAS_MMCM_REL_CAUSE_MM_NO_SERVICE);
+    Mm_ComRelAllMmConn(NAS_MMCM_REL_CAUSE_MM_INTER_ERR_RESUME_TO_EHRPD);
 
     /* 释放挂起过程中的缓存 */
     MM_RelMsgBuf();
@@ -1058,7 +1091,7 @@ VOS_VOID NAS_MM_ResumeSuspendInfo(
             Mm_TimerResume(i);
         }
     }
-       
+
     /* 停止缓存队列保护定时器 */
     if ( MM_TIMER_START == gstMmTimerSuspend.ucTimerStatus )
     {
@@ -1100,13 +1133,13 @@ VOS_VOID NAS_MM_ProcResumeIndInterRatChangedToGU(
 
     /* 如果发生过系统间改变，需要通知接入层PTMSI信息 */
     Mm_SndRrNasInfoChgReq(MM_NAS_INFO_LOCA_INFO_FLG);
-      
+
     /* 异系统切换W到G */
     if (NAS_MML_NET_RAT_TYPE_GSM == NAS_MML_GetCurrNetRatType())
     {
         g_MmSubLyrShare.MmShare.ucCsIntegrityProtect  = NAS_MML_RRC_INTEGRITY_PROTECT_DEACTIVE;
     }
-    
+
     if ((g_MmGlobalInfo.ucState  == WAIT_FOR_RR_CONNECTION_IMSI_DETACH)
      || ((g_MmGlobalInfo.ucState == WAIT_FOR_REESTABLISH_WAIT_FOR_EST_CNF)
       && (g_MmGlobalInfo.ucCsSigConnFlg != MM_CS_SIG_CONN_PRESENT)))
@@ -1151,7 +1184,7 @@ VOS_VOID NAS_MM_ProcResumeIndInterRatChangedToGU(
             NAS_MML_SetCsSigConnStatusFlg(VOS_FALSE);
         }
     }
-    
+
      /* W重选/CCO到G后，CS连接肯定不存在，需要上层主动释放 */
     if (((MMC_SUSPEND_CAUSE_CELLCHANGE   == g_MmGlobalInfo.stSuspendShare.ucSuspendCause)
       || (MMC_SUSPEND_CAUSE_CELLRESELECT == g_MmGlobalInfo.stSuspendShare.ucSuspendCause))
@@ -1174,29 +1207,29 @@ VOS_VOID NAS_MM_ProcResumeIndBackToGU(
     MMCMM_RESUME_IND_STRU              *pstResumeMsg
 )
 {
-#if (FEATURE_ON == FEATURE_LTE)  
+#if (FEATURE_ON == FEATURE_LTE)
     NAS_MML_CSFB_SERVICE_STATUS_ENUM_UINT8  enCsfbStatus;
 #endif
-#if (FEATURE_ON == FEATURE_IMS)    
+#if (FEATURE_ON == FEATURE_IMS)
     VOS_UINT8                               ucSrvccFlg;
 #endif
-   
+
     /* 异系统切换，当前处在建链请求状态，模拟发EST_CNF(fail)清除建链请求 */
     if (NAS_MML_GetCurrNetRatType() != g_MmGlobalInfo.stSuspendShare.enOldNetType)
     {
-        NAS_MM_ProcResumeIndInterRatChangedToGU(pstResumeMsg);   
-    } 
-    
-#if (FEATURE_ON == FEATURE_IMS)  
+        NAS_MM_ProcResumeIndInterRatChangedToGU(pstResumeMsg);
+    }
+
+#if (FEATURE_ON == FEATURE_IMS)
     ucSrvccFlg      = NAS_MM_GetSrvccFlg();
-    
+
     if (VOS_TRUE == ucSrvccFlg)
     {
         NAS_MM_ProcResumeIndBackToGU_Srvcc();
     }
 #endif
 
-#if (FEATURE_ON == FEATURE_LTE)  
+#if (FEATURE_ON == FEATURE_LTE)
     enCsfbStatus    = NAS_MML_GetCsfbServiceStatus();
 
     if (NAS_MML_NET_RAT_TYPE_LTE == g_MmGlobalInfo.stSuspendShare.enOldNetType)
@@ -1206,10 +1239,10 @@ VOS_VOID NAS_MM_ProcResumeIndBackToGU(
         {
             NAS_MM_ResumeBackToGU_CSFB((MMCMM_RESUME_IND_STRU*)pstResumeMsg, enCsfbStatus);
         }
-        
+
         /* 非SRVCC流程,LTE切换到GU后需要回退CS的安全上下文,保证RRC收到resume rsp获取CK/IK的正确性 */
         if ((MMC_SUSPEND_CAUSE_HANDOVER == g_MmGlobalInfo.stSuspendShare.ucSuspendCause)
-#if (FEATURE_ON == FEATURE_IMS)   
+#if (FEATURE_ON == FEATURE_IMS)
          && (VOS_FALSE                  == ucSrvccFlg)
 #endif
             )
@@ -1234,7 +1267,7 @@ VOS_VOID NAS_MM_ProcSrvccSuccess(VOS_VOID)
     layers that a SRVCC handover was completed successfully.
     After completing MM connection establishment, MM layer shall indicate "MM connection establishment due to
     SRVCC handover" to upper layer and shall enter state MM CONNECTION ACTIVE. */
-     
+
     if (VOS_FALSE == NAS_MML_IsCsfbServiceStatusExist())
     {
         /* 通知CC模块SRVCC的成功结果 */
@@ -1244,13 +1277,19 @@ VOS_VOID NAS_MM_ProcSrvccSuccess(VOS_VOID)
         NAS_MM_SndLmmSrvccStatusNotify(NAS_MMCC_SRVCC_STATUS_SUCCESS);
     }
 
+    NAS_MML_SetDelayedCsfbLauFlg(VOS_TRUE);
+
     /* 记录当前MM的流程标记以及建链请求时MM的状态 */
     Mm_ComSaveProcAndCauseVal(MM_MM_CONN_PROC, NAS_MML_REG_FAIL_CAUSE_NULL);
     g_MmGlobalInfo.ucStaOfRcvXXEstReq = g_MmGlobalInfo.ucSuspendPreState;
 
+
+    /* 在SRVCC后，在ACTIVE状态收到REL处理，状态迁移到了MM NULL,需要设置释放后的原因值 */
+    g_MmGlobalInfo.ucStaAfterWaitForNwkCmd = g_MmGlobalInfo.ucStaOfRcvXXEstReq;
+
     /* 迁移状态到MM CONNECTION ACTIVE */
     Mm_ComSetMmState(MM_CONNECTION_ACTIVE);
-    
+
     /* 设置RRC连接存在 */
     NAS_MML_SetRrcConnStatusFlg(VOS_TRUE);
 
@@ -1264,13 +1303,13 @@ VOS_VOID NAS_MM_ProcSrvccSuccess(VOS_VOID)
     Mm_SndMmcRrConnInfInd(MMC_MM_RR_CONN_ESTED);
 
     /* 通知MMC当前CS业务已经建立 */
-    Mm_SndMmcCmSvcInd(MM_CS_SERV_EXIST); 
+    Mm_SndMmcCmSvcInd(MM_CS_SERV_EXIST);
 
     /* 更新CS业务连接状态 */
     NAS_MML_SetCsServiceConnStatusFlg(VOS_TRUE);
 
     /* 3GPP 24007 11.2.3.2.3.2 The  sequenced message transfer operation is initiated by establishing
-    a RR connection.The send state variables V(SD) are set to 0.After successful completion of SRVCC 
+    a RR connection.The send state variables V(SD) are set to 0.After successful completion of SRVCC
     handover (see 3GPP TS 23.216 [27]), the mobile station shall set the send state variable V(SD) to 0.*/
     g_stMmNsd.ucNsd = MM_NSD_INITAL_VALUE;
 
@@ -1295,32 +1334,75 @@ VOS_VOID NAS_MM_ProcSrvccFail(VOS_VOID)
     {
         /* 清除同步过来的TI信息 */
         g_MmGlobalInfo.ConnCtrlInfo[MM_CONN_CTRL_CC].aucMMConnExtFlg[0] = MM_CONST_NUM_0;
-    
+
         /* 通知CC模块SRVCC的失败结果 */
         NAS_MM_SndCcSrvccStatusInd(NAS_MMCC_SRVCC_STATUS_FAIL);
+
+#if (FEATURE_ON == FEATURE_PTM)
+        NAS_MM_SrvccFailRecord(NAS_ERR_LOG_SRVCC_FAIL_RESUME_IND_BACK_TO_LTE);
+#endif
     }
+
+    return;
+}
+VOS_VOID NAS_MM_ProcSrvccNoCallNum(VOS_VOID)
+{
+    /* 释放RRC链接 */
+    Mm_SndRrRelReq(RRC_CELL_UNBARRED);
+
+    g_MmGlobalInfo.ucStaAfterWaitForNwkCmd = g_MmGlobalInfo.ucState;
+    Mm_TimerStart(MM_TIMER_T3240);
+
+    /* MM状态迁移 */
+    Mm_ComSetMmState(WAIT_FOR_NETWORK_COMMAND);
+
+    /* 通知CC模块SRVCC的失败结果 */
+    NAS_MM_SndCcSrvccStatusInd(NAS_MMCC_SRVCC_STATUS_FAIL);
+
+#if (FEATURE_ON == FEATURE_PTM)
+    NAS_MM_SrvccFailRecord(NAS_ERR_LOG_SRVCC_FAIL_NO_CALL_NUM);
+#endif
 
     return;
 }
 VOS_VOID NAS_MM_ProcResumeIndBackToGU_Srvcc(VOS_VOID)
 {
+#if (FEATURE_ON == FEATURE_LTE)
+    VOS_UINT8                           ucRcvSrvccCallInfoFlg;
+
+    ucRcvSrvccCallInfoFlg               = NAS_MM_GetRcvSrvccCallInfoFlg();
+#endif
+
     /* 清除SRVCC过程标记 */
     NAS_MM_SetSrvccFlg(VOS_FALSE);
 
-#if (FEATURE_ON == FEATURE_LTE)   
+#if (FEATURE_ON == FEATURE_LTE)
     /* 挂起前接入技术为LTE,挂起后为GU,说明SRVCC成功 */
-    if (NAS_MML_NET_RAT_TYPE_LTE == g_MmGlobalInfo.stSuspendShare.enOldNetType)  
+    if (NAS_MML_NET_RAT_TYPE_LTE == g_MmGlobalInfo.stSuspendShare.enOldNetType)
     {
-#if 0    
+#if 0
         /* 如果MM未收到CC的同步TI信息,这个时序上有问题,认为异常,当做SRVCC失败处理 */
-        if (MM_CONST_NUM_0 == g_MmGlobalInfo.ConnCtrlInfo[MM_CONN_CTRL_CC].aucMMConnExtFlg[0])  
+        if (MM_CONST_NUM_0 == g_MmGlobalInfo.ConnCtrlInfo[MM_CONN_CTRL_CC].aucMMConnExtFlg[0])
         {
             NAS_MM_ProcSrvccFail();
-            
+
             return;
         }
-#endif        
-        NAS_MM_ProcSrvccSuccess();    
+#endif
+        /* 清除SRVCC过程收到CALLINFO的标识 */
+        NAS_MM_SetRcvSrvccCallInfoFlg(VOS_FALSE);
+
+        /* 如果收到CC同步过来的CALLINFO且CALLNUM为0 */
+        if ((VOS_TRUE       == ucRcvSrvccCallInfoFlg)
+         && (MM_CONST_NUM_0 == g_MmGlobalInfo.ConnCtrlInfo[MM_CONN_CTRL_CC].aucMMConnExtFlg[0])
+         && (MM_CONST_NUM_0 == g_MmGlobalInfo.ConnCtrlInfo[MM_CONN_CTRL_CC].aucMMConnExtFlg[1]))
+        {
+            NAS_MM_ProcSrvccNoCallNum();
+
+            return;
+        }
+
+        NAS_MM_ProcSrvccSuccess();
     }
 #endif
 
@@ -1328,6 +1410,7 @@ VOS_VOID NAS_MM_ProcResumeIndBackToGU_Srvcc(VOS_VOID)
 }
 
 #if (FEATURE_ON == FEATURE_LTE)
+
 VOS_VOID NAS_MM_ProcResumeIndBackToLTE_Srvcc(VOS_VOID)
 {
     /* 清除SRVCC过程标记 */
@@ -1404,8 +1487,8 @@ VOS_VOID Mm_Cell_S32_E85( VOS_VOID* pMsg )
 #endif
 
     NAS_LOG(WUEPS_PID_MM, MM_SUSPEND, PS_PRINT_INFO,  "MM leave SUSPEND state");
-    
-    /* 恢复MM模块的状态以及定时器相关信息 */  
+
+    /* 恢复MM模块的状态以及定时器相关信息 */
     NAS_MM_ResumeSuspendInfo((MMCMM_RESUME_IND_STRU*)pMsg);
 
     /* MM向mmc发送resume rsp */
@@ -1434,7 +1517,7 @@ VOS_VOID Mm_Cell_S32_E85( VOS_VOID* pMsg )
 #endif
 
     /* 异系统变换到GU下的处理 */
-    NAS_MM_ProcResumeIndBackToGU((MMCMM_RESUME_IND_STRU*)pMsg);        
+    NAS_MM_ProcResumeIndBackToGU((MMCMM_RESUME_IND_STRU*)pMsg);
 
     /* 调用函数 MM_SndMsgFuncChg 切换向接入层发送消息的函数 */
     MM_SndMsgFuncChg();
@@ -1478,7 +1561,7 @@ VOS_VOID Mm_Cell_S32_E85( VOS_VOID* pMsg )
 
                 Mm_RcvRrmmRelInd();
 
-               Mm_ComRelAllMmConn(NAS_MMCM_REL_CAUSE_MM_REJ_OTHER_CAUSES);
+               Mm_ComRelAllMmConn(NAS_MMCM_REL_CAUSE_MM_INTER_ERR_RESUME_TO_GU_FAIL);
             }
             else
             {
@@ -1545,7 +1628,7 @@ VOS_VOID Mm_Cell_S32_CCEstREQ( VOS_VOID* pMsg )
         }
         else
         {
-           Mm_SndCcRelInd(g_MmCcEstReq.ulTransactionId, NAS_MMCM_REL_CAUSE_MM_WRONG_STATE);
+           Mm_SndCcRelInd(g_MmCcEstReq.ulTransactionId, NAS_MMCM_REL_CAUSE_MM_INTER_ERR_INTER_RAT_SYSTEM_CHANGE);
         }
 
     }
@@ -1563,7 +1646,7 @@ VOS_VOID Mm_Cell_S32_SMSEstREQ( VOS_VOID* pMsg )
     }
     else
     {
-        Mm_SndSmsRelInd(g_MmSmsEstReq.ulTi, NAS_MMCM_REL_CAUSE_MM_WRONG_STATE);
+        Mm_SndSmsRelInd(g_MmSmsEstReq.ulTi, NAS_MMCM_REL_CAUSE_MM_INTER_ERR_INTER_RAT_SYSTEM_CHANGE);
     }
     return;
 }
@@ -1579,7 +1662,7 @@ VOS_VOID Mm_Cell_S32_SSEstREQ( VOS_VOID* pMsg )
     }
     else
     {
-        Mm_SndSsRelInd(g_MmSsEstReq.ulTi, NAS_MMCM_REL_CAUSE_MM_WRONG_STATE);
+        Mm_SndSsRelInd(g_MmSsEstReq.ulTi, NAS_MMCM_REL_CAUSE_MM_INTER_ERR_INTER_RAT_SYSTEM_CHANGE);
     }
     return;
 }
@@ -1606,7 +1689,7 @@ VOS_VOID Mm_Cell_S32_E23( VOS_VOID* pMsg )
     }
 
     /* ==>l107747 modified begin 2007-09-24 */
-    Mm_ComRelAllMmConn(NAS_MMCM_REL_CAUSE_MM_REJ_OTHER_CAUSES);
+    Mm_ComRelAllMmConn(NAS_MMCM_REL_CAUSE_MM_INTER_ERR_CS_DETACH);
 
     /* ==>l107747 modified end 2007-09-24 */
     MM_RelMsgBuf();

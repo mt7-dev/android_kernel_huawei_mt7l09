@@ -49,6 +49,9 @@ extern "C"{
 #define    THIS_FILE_ID        PS_FILE_ID_OM_SOCK_C
 /*lint +e767 */
 
+#if (FEATURE_OFF == FEATURE_MERGE_OM_CHAN)
+#if ((VOS_OS_VER == VOS_WIN32) || (FEATURE_HISOCKET == FEATURE_ON))
+
 /*****************************************************************************
   2 全局变量定义
 *****************************************************************************/
@@ -60,10 +63,10 @@ SOCKET              g_sockListen = SOCK_NULL;
 COMM_INFO_STRU      g_astCommInfo[SOCKET_NUM_MAX] = {{SOCK_NULL, VOS_NULL_PTR},{SOCK_NULL, VOS_NULL_PTR}};
 
 /*同步信号量，用来保证SOCKET服务器任务在APP启动后再运行*/
-VOS_UINT32          g_ulSockTaskSem = VOS_NULL_PTR;
+VOS_SEM             g_ulSockTaskSem = VOS_NULL_PTR;
 
 /*互斥信号量，用来保证SOCKET发送过程中不能被关闭*/
-VOS_UINT32          g_ulSockCloseSem = VOS_NULL_PTR;
+VOS_SEM             g_ulSockCloseSem = VOS_NULL_PTR;
 
 /*保存当前SOCKET的状态*/
 VOS_UINT32          g_ulSockState = SOCK_OK;
@@ -468,6 +471,10 @@ VOS_UINT32 Sock_PortInit(VOS_VOID)
 
     return VOS_OK;
 }
+
+#endif
+
+#endif //(FEATURE_OFF == FEATURE_MERGE_OM_CHAN)
 
 #ifdef __cplusplus
 #if __cplusplus

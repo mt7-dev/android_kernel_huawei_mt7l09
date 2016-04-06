@@ -5,6 +5,8 @@
 /*****************************************************************************
   1 头文件包含
 *****************************************************************************/
+#include "product_config.h"
+#if(FEATURE_ON == FEATURE_ACPU_FC_POINT_REG)
 #include "Fc.h"
 #include "FcInterface.h"
 #include "FcCdsInterface.h"
@@ -77,7 +79,7 @@ FC_CPU_DRV_ASSEM_CONFIG_PARA_STRU       g_stCpuDriverAssePara =
 };
 
 /* 驱动组包参数实体结构 */
-FC_CPU_DRV_ASSEM_PARA_ENTITY_STRU  g_stDrvAssemParaEntity = {0, 0, 0, 0, 0, {100, {0, 0, 0, 0, 0, 0, {0, 0}}}, VOS_NULL_PTR, VOS_NULL_PTR};
+FC_CPU_DRV_ASSEM_PARA_ENTITY_STRU  g_stDrvAssemParaEntity = {0, 0, 0, 0, 0, {0, 0, 0, 0}, {100, {0, 0, 0, 0, 0, 0, {0, 0}}}, VOS_NULL_PTR, VOS_NULL_PTR};
 
 VOS_SPINLOCK                       g_stFcMemSpinLock;
 
@@ -92,7 +94,6 @@ VOS_VOID  FC_BRIDGE_CalcRate( VOS_UINT32 ulPeriod )
     VOS_UINT32                          ulLastByteCnt;
     VOS_UINT32                          ulRate;
     VOS_UINT32                          ulDeltaPacketCnt;
-
 
     if (0 == ulPeriod)
     {
@@ -192,7 +193,7 @@ VOS_VOID FC_ShowDrvAssemPara(VOS_VOID)
     vos_printf("g_stDrvAssemParaEntity.ucSmoothCntDown = %d\n", g_stDrvAssemParaEntity.ucSmoothCntDown);
     vos_printf("g_stCpuDriverAssePara.ucSmoothCntUpLev = %d\n", g_stCpuDriverAssePara.ucSmoothCntUpLev);
     vos_printf("g_stCpuDriverAssePara.ucSmoothCntDownLev = %d\n", g_stCpuDriverAssePara.ucSmoothCntDownLev);
-    vos_printf("g_stDrvAssemParaEntity.pDrvSetAssemParaFunc = 0x%x\n", g_stDrvAssemParaEntity.pDrvSetAssemParaFuncUe);
+    vos_printf("g_stDrvAssemParaEntity.pDrvSetAssemParaFunc = %p\n", g_stDrvAssemParaEntity.pDrvSetAssemParaFuncUe);
     vos_printf("g_stDrvAssemParaEntity.ucSetDrvFailCnt = 0x%x\n", g_stDrvAssemParaEntity.ucSetDrvFailCnt);
 
     for (i = 0; i < FC_ACPU_DRV_ASSEM_LEV_BUTT; i++)
@@ -574,8 +575,10 @@ VOS_UINT32 FC_CPUA_UpJudge
         return VOS_FALSE;
     }
 
+#if(FEATURE_ON == FEATURE_ACPU_STAT)
     /* A核ulSmoothTimerLen >= 2，详见FC_CFG_CheckParam函数内注释 */
     FC_BRIDGE_CalcRate((pstFcCfgCpu->ulSmoothTimerLen - 1) * CPULOAD_GetRegularTimerLen());
+#endif
 
     g_stFcCpuACtrl.ulSmoothTimerLen  = 0;
 
@@ -709,8 +712,9 @@ VOS_UINT32  FC_CPUA_StopFcAttempt( VOS_UINT32 ulParam1, VOS_UINT32 ulParam2 )
         return VOS_OK;
     }
 
-
+#if(FEATURE_ON == FEATURE_ACPU_STAT)
     CPULOAD_ResetUserDefLoad();
+#endif
 
     /*如果定时器已经开启，则不需要再次启动*/
     if (VOS_NULL_PTR == g_stFcCpuACtrl.pstStopAttemptTHandle)
@@ -769,13 +773,14 @@ VOS_UINT32  FC_CPUA_StopFlowCtrl( VOS_VOID )
 {
     FC_CFG_CPU_STRU                    *pstFcCfgCpu;
     FC_POLICY_STRU                     *pstFcPolicy;
-    VOS_UINT32                          ulCpuLoad;
-
+    VOS_UINT32                          ulCpuLoad = 0;
 
     pstFcCfgCpu = &(g_stFcCfg.stFcCfgCpuA);
     pstFcPolicy = FC_POLICY_Get(FC_PRIVATE_POLICY_ID_CPU_A_MODEM_0);
 
+#if (FEATURE_ON == FEATURE_ACPU_STAT)
     ulCpuLoad   = CPULOAD_GetUserDefLoad();
+#endif
 
     /* 当前CPU小于解流控门限值,解流控 */
     if ( (ulCpuLoad <= pstFcCfgCpu->ulCpuUnderLoadVal)
@@ -806,13 +811,13 @@ VOS_UINT32  FC_CPUA_Init( VOS_VOID )
 
     return VOS_OK;
 }
-VOS_UINT32  FC_MEM_CalcUpTargetFcPri
+FC_PRI_ENUM_UINT8  FC_MEM_CalcUpTargetFcPri
 (
     FC_POLICY_STRU                     *pPolicy,
     VOS_UINT32                          ulMemValue
 )
 {
-    FC_PRI_ENUM_UINT32                  enTargetPri;
+    FC_PRI_ENUM_UINT8                  enTargetPri;
     FC_CFG_MEM_STRU                    *pstMemCfg;
 
 
@@ -857,15 +862,14 @@ VOS_UINT32  FC_MEM_CalcUpTargetFcPri
     return enTargetPri;
 } /* FC_MEM_CalcUpTargetFcPri */
 
-VOS_UINT32  FC_MEM_CalcDownTargetFcPri
+FC_PRI_ENUM_UINT8  FC_MEM_CalcDownTargetFcPri
 (
     FC_POLICY_STRU                     *pPolicy,
     VOS_UINT32                          ulMemValue
 )
 {
-    FC_PRI_ENUM_UINT32                  enTargetPri;
+    FC_PRI_ENUM_UINT8                  enTargetPri;
     FC_CFG_MEM_STRU                    *pstMemCfg;
-
 
     pstMemCfg   = &(g_stFcCfg.stFcCfgMem);
     enTargetPri = pPolicy->enDonePri;
@@ -910,12 +914,12 @@ VOS_UINT32  FC_MEM_CalcDownTargetFcPri
 
 VOS_UINT32  FC_MEM_AdjustPriForUp
 (
-    FC_PRI_ENUM_UINT32                  enPointPri,
-    FC_ID_ENUM_UINT32                   enFcId
+    FC_PRI_ENUM_UINT8                  enPointPri,
+    FC_ID_ENUM_UINT8                   enFcId
 )
 {
     FC_POLICY_STRU                     *pPolicy;
-    FC_PRI_ENUM_UINT32                  enTargetPri;
+    FC_PRI_ENUM_UINT8                  enTargetPri;
     VOS_UINT32                          ulMemValue;
 
 
@@ -946,23 +950,21 @@ VOS_UINT32  FC_MEM_AdjustPriForUp
 }
 VOS_UINT32  FC_MEM_AdjustPriForDown
 (
-    FC_PRI_ENUM_UINT32                  enPointPri,
-    VOS_UINT32                          ulFcId
+    FC_PRI_ENUM_UINT8                   enPointPri,
+    FC_ID_ENUM_UINT8                    enFcId
 )
 {
     FC_POLICY_STRU                     *pPolicy;
-    FC_PRI_ENUM_UINT32                  enTargetPri;
+    FC_PRI_ENUM_UINT8                   enTargetPri;
     VOS_UINT32                          ulMemValue;
 
 
     /* 获取内存流控策略和内存流控配置 */
     pPolicy         = FC_POLICY_Get(FC_PRIVATE_POLICY_ID_MEM_MODEM_0);
 
-
     /* 根据内存情况，重新刷新内存流控目标优先级 */
     ulMemValue      = IMM_GetLocalFreeMemCnt();
     enTargetPri     = FC_MEM_CalcDownTargetFcPri(pPolicy, ulMemValue);
-
 
     /* 目标优先级调整后，进行流控处理调整，符合新的流控优先级 */
     if (pPolicy->enDonePri < enTargetPri)
@@ -980,7 +982,7 @@ VOS_UINT32  FC_MEM_AdjustPriForDown
 
     return VOS_OK;
 }
-VOS_UINT32  FC_MEM_SndUpToTargetPriIndMsg(FC_PRI_ENUM_UINT32 enTargetPri, VOS_UINT16 usMemFreeCnt)
+VOS_UINT32  FC_MEM_SndUpToTargetPriIndMsg(FC_PRI_ENUM_UINT8 enTargetPri, VOS_UINT16 usMemFreeCnt)
 {
     FC_MEM_UP_TO_TARGET_PRI_IND_STRU   *pstMsg;
     VOS_UINT32                          ulResult;
@@ -1015,7 +1017,7 @@ VOS_UINT32  FC_MEM_SndUpToTargetPriIndMsg(FC_PRI_ENUM_UINT32 enTargetPri, VOS_UI
 
 
 
-VOS_UINT32  FC_MEM_SndDownToTargetPriIndMsg( FC_PRI_ENUM_UINT32 enTargetPri, VOS_UINT16 usMemFreeCnt)
+VOS_UINT32  FC_MEM_SndDownToTargetPriIndMsg( FC_PRI_ENUM_UINT8 enTargetPri, VOS_UINT16 usMemFreeCnt)
 {
     FC_MEM_DOWN_TO_TARGET_PRI_IND_STRU *pstMsg;
     VOS_UINT32                          ulResult;
@@ -1053,8 +1055,8 @@ VOS_UINT32  FC_MEM_SndDownToTargetPriIndMsg( FC_PRI_ENUM_UINT32 enTargetPri, VOS
 VOS_VOID FC_MEM_UpProcess( VOS_UINT32 ulMemValue  )
 {
     FC_POLICY_STRU                     *pPolicy;
-    FC_PRI_ENUM_UINT32                  enTargetPri;
-    VOS_UINT32                          ulFlags = 0;
+    FC_PRI_ENUM_UINT8                  enTargetPri;
+    VOS_ULONG                           ulFlags = 0UL;
 
     /* 参数检查 */
     if ( FC_POLICY_MASK_MEM != (FC_POLICY_MASK_MEM & g_stFcCfg.ulFcEnbaleMask) )
@@ -1092,8 +1094,8 @@ VOS_VOID FC_MEM_UpProcess( VOS_UINT32 ulMemValue  )
 VOS_VOID  FC_MEM_DownProcess( VOS_UINT32 ulMemValue )
 {
     FC_POLICY_STRU                     *pPolicy;
-    FC_PRI_ENUM_UINT32                  enTargetPri;
-    VOS_UINT32                          ulFlags = 0;
+    FC_PRI_ENUM_UINT8                  enTargetPri;
+    VOS_ULONG                           ulFlags = 0UL;
 
     /* 参数检查 */
     if ( FC_POLICY_MASK_MEM != (FC_POLICY_MASK_MEM & g_stFcCfg.ulFcEnbaleMask) )
@@ -1210,15 +1212,15 @@ FC_RAB_MAPPING_INFO_STRU  *FC_CDS_GetFcInfo( VOS_UINT8 ucRabId, MODEM_ID_ENUM_UI
 {
     FC_RAB_MAPPING_INFO_SET_STRU       *pstFcRabMappingInfoSet;
     FC_RAB_MAPPING_INFO_STRU           *pstFcRabMappingInfo;
-    FC_ID_ENUM_UINT32                   enFcId;
+    FC_ID_ENUM_UINT8                    enFcId;
     VOS_UINT32                          ulRabMask;
 
 
     pstFcRabMappingInfoSet  = &g_astFcRabMappingInfoSet[enModemId];
-    ulRabMask               = (1 << ucRabId);
+    ulRabMask               = (VOS_UINT32)(1UL << ucRabId);
 
     /*====================================*//* 遍历所有映射关系，如果找到包含指定RAB_ID的映射关系，则退出 */
-    for (enFcId = 0; enFcId < pstFcRabMappingInfoSet->ulFcIdCnt; enFcId++)
+    for (enFcId = 0; enFcId < pstFcRabMappingInfoSet->enFcIdCnt; enFcId++)
     {
         pstFcRabMappingInfo = &(pstFcRabMappingInfoSet->astFcRabMappingInfo[enFcId]);
         if ( 0 != (ulRabMask & pstFcRabMappingInfo->ulIncludeRabMask) )
@@ -1229,17 +1231,16 @@ FC_RAB_MAPPING_INFO_STRU  *FC_CDS_GetFcInfo( VOS_UINT8 ucRabId, MODEM_ID_ENUM_UI
 
     return VOS_NULL_PTR;
 }
-VOS_UINT32  FC_CDS_DelFcId( FC_ID_ENUM_UINT32 enFcId, MODEM_ID_ENUM_UINT16 enModemId )
+VOS_UINT32  FC_CDS_DelFcId( FC_ID_ENUM_UINT8 enFcId, MODEM_ID_ENUM_UINT16 enModemId )
 {
     FC_RAB_MAPPING_INFO_SET_STRU       *pstFcRabMappingInfoSet;
     FC_RAB_MAPPING_INFO_STRU           *pstFcRabMappingInfo;
-    FC_ID_ENUM_UINT32                   enFcIdNum;
-    FC_ID_ENUM_UINT32                   enShiftFcId;
-
+    FC_ID_ENUM_UINT8                    enFcIdNum;
+    FC_ID_ENUM_UINT8                    enShiftFcId;
 
     pstFcRabMappingInfoSet    = &g_astFcRabMappingInfoSet[enModemId];
 
-    for (enFcIdNum = 0; enFcIdNum < pstFcRabMappingInfoSet->ulFcIdCnt; enFcIdNum++)
+    for (enFcIdNum = 0; enFcIdNum < pstFcRabMappingInfoSet->enFcIdCnt; enFcIdNum++)
     {
         if (enFcId == pstFcRabMappingInfoSet->astFcRabMappingInfo[enFcIdNum].enFcId)
         {
@@ -1247,50 +1248,48 @@ VOS_UINT32  FC_CDS_DelFcId( FC_ID_ENUM_UINT32 enFcId, MODEM_ID_ENUM_UINT16 enMod
         }
     }
 
-    if (enFcIdNum >= pstFcRabMappingInfoSet->ulFcIdCnt)
+    if (enFcIdNum >= pstFcRabMappingInfoSet->enFcIdCnt)
     {
         FC_LOG1(PS_PRINT_WARNING, "FC_CDS_DelFcId, can not find the Fc Id <1>!\n",
             (VOS_INT32)enFcId);
         return VOS_ERR;
     }
 
-
     /* 将后面的映射关系拷贝过来，保持数组连续性 */
-    for (enShiftFcId = enFcIdNum + 1; enShiftFcId < pstFcRabMappingInfoSet->ulFcIdCnt; enShiftFcId++)
+    for (enShiftFcId = (FC_PRI_ENUM_UINT8)(enFcIdNum + 1); enShiftFcId < pstFcRabMappingInfoSet->enFcIdCnt; enShiftFcId++)
     {
         pstFcRabMappingInfo   = &(pstFcRabMappingInfoSet->astFcRabMappingInfo[enShiftFcId]);
         PS_MEM_CPY((pstFcRabMappingInfo - 1), pstFcRabMappingInfo, sizeof(FC_RAB_MAPPING_INFO_STRU));
     }
 
     /* 最后一个映射关系无法被拷贝覆盖，所以需要手动清除 */
-    PS_MEM_SET(&(pstFcRabMappingInfoSet->astFcRabMappingInfo[enShiftFcId-1]), 0, sizeof(FC_RAB_MAPPING_INFO_STRU));
-    pstFcRabMappingInfoSet->ulFcIdCnt--;
+    PS_MEM_SET(&(pstFcRabMappingInfoSet->astFcRabMappingInfo[enShiftFcId - 1]), 0, sizeof(FC_RAB_MAPPING_INFO_STRU));
+    pstFcRabMappingInfoSet->enFcIdCnt--;
 
     return VOS_OK;
 }
 
 
 
-VOS_UINT32  FC_CDS_AddRab(FC_ID_ENUM_UINT32 enFcId, VOS_UINT8 ucRabId, MODEM_ID_ENUM_UINT16 enModemId )
+VOS_UINT32  FC_CDS_AddRab(FC_ID_ENUM_UINT8 enFcId, VOS_UINT8 ucRabId, MODEM_ID_ENUM_UINT16 enModemId )
 {
     FC_RAB_MAPPING_INFO_SET_STRU       *pstFcRabMappingInfoSet;
     FC_RAB_MAPPING_INFO_STRU           *pstFcRabMappingInfo;
-    FC_ID_ENUM_UINT32                   enFcIdNum;
+    FC_ID_ENUM_UINT8                    enFcIdNum;
     VOS_UINT32                          ulRabMask;
 
-
     pstFcRabMappingInfoSet  = &g_astFcRabMappingInfoSet[enModemId];
-    ulRabMask               = (1 << ucRabId);
+    ulRabMask               = (VOS_UINT32)(1UL << ucRabId);
 
-    if ( FC_MAX_NUM < pstFcRabMappingInfoSet->ulFcIdCnt )
+    if ( FC_MAX_NUM < pstFcRabMappingInfoSet->enFcIdCnt )
     {
         FC_LOG1(PS_PRINT_ERROR, "FC_CDS_AddRab, g_astFcRabMappingInfoSet is exceed the ranger!\n",
-            (VOS_INT32)pstFcRabMappingInfoSet->ulFcIdCnt);
+            (VOS_INT32)pstFcRabMappingInfoSet->enFcIdCnt);
         return VOS_ERR;
     }
 
     /*====================================*//* 遍历该FC的流控信息，如果找到包含指定RAB_ID的Fc Id，则退出 */
-    for (enFcIdNum = 0; enFcIdNum < pstFcRabMappingInfoSet->ulFcIdCnt; enFcIdNum++)
+    for (enFcIdNum = 0; enFcIdNum < pstFcRabMappingInfoSet->enFcIdCnt; enFcIdNum++)
     {
         pstFcRabMappingInfo = &(pstFcRabMappingInfoSet->astFcRabMappingInfo[enFcIdNum]);
         if ( enFcId == pstFcRabMappingInfo->enFcId )
@@ -1306,19 +1305,19 @@ VOS_UINT32  FC_CDS_AddRab(FC_ID_ENUM_UINT32 enFcId, VOS_UINT8 ucRabId, MODEM_ID_
         }
     }
 
-    if ( FC_MAX_NUM == pstFcRabMappingInfoSet->ulFcIdCnt )
+    if ( FC_MAX_NUM == pstFcRabMappingInfoSet->enFcIdCnt )
     {
         FC_LOG(PS_PRINT_ERROR, "FC_CDS_AddRab, AtClientCnt reaches the max num!\n");
         return VOS_ERR;
     }
 
     /*====================================*//* 如果是新的FC Id，则添加该Fc Id和RAB ID */
-    pstFcRabMappingInfo = &(pstFcRabMappingInfoSet->astFcRabMappingInfo[pstFcRabMappingInfoSet->ulFcIdCnt]);
+    pstFcRabMappingInfo = &(pstFcRabMappingInfoSet->astFcRabMappingInfo[pstFcRabMappingInfoSet->enFcIdCnt]);
     pstFcRabMappingInfo->enFcId             = enFcId;
     pstFcRabMappingInfo->ulIncludeRabMask   = ulRabMask;
     pstFcRabMappingInfo->ulNoFcRabMask      = ulRabMask;
 
-    pstFcRabMappingInfoSet->ulFcIdCnt++;
+    pstFcRabMappingInfoSet->enFcIdCnt++;
 
     return VOS_OK;
 }
@@ -1339,9 +1338,9 @@ VOS_UINT32  FC_CDS_DelRab( VOS_UINT8 ucRabId, MODEM_ID_ENUM_UINT16 enModemId )
     }
 
     /* 清除该RabId的信息，如果该Fc上已经不存在不需要流控的RabId，则进行流控 */
-    ulRabMask       = (1 << ucRabId);
+    ulRabMask       = (VOS_UINT32)(1UL << ucRabId);
 
-	pstFcRabMappingInfo->ulIncludeRabMask  &= (~ulRabMask);
+    pstFcRabMappingInfo->ulIncludeRabMask  &= (~ulRabMask);
 
     if (0 != pstFcRabMappingInfo->ulNoFcRabMask)
     {
@@ -1506,7 +1505,7 @@ VOS_UINT32  FC_GPRS_DownProcess( VOS_VOID )
 
     return VOS_OK;
 }
-VOS_VOID  FC_ChannelMapCreate(FC_ID_ENUM_UINT32 enFcId, VOS_UINT8 ucRabId, MODEM_ID_ENUM_UINT16  enModemId)
+VOS_VOID  FC_ChannelMapCreate(FC_ID_ENUM_UINT8 enFcId, VOS_UINT8 ucRabId, MODEM_ID_ENUM_UINT16  enModemId)
 {
     FC_ADD_RAB_FCID_MAP_IND_STRU       *pstMsg;
     VOS_UINT32                          ulResult;
@@ -1647,7 +1646,6 @@ VOS_UINT32  FC_ACORE_RegPoint( VOS_VOID )
 {
 /* V9R1项目中增加使用宏开关判断FC模块是否需要进行流控点注册 */
 #if(FEATURE_ON == FEATURE_NFEXT)
-#if(FEATURE_ON == FEATURE_ACPU_FC_POINT_REG)
     FC_REG_POINT_STRU                   stFcRegPoint;
 
     PS_MEM_SET(&stFcRegPoint, 0, sizeof(FC_REG_POINT_STRU));
@@ -1714,7 +1712,6 @@ VOS_UINT32  FC_ACORE_RegPoint( VOS_VOID )
     stFcRegPoint.pRstFunc   = VOS_NULL_PTR;
     FC_POINT_Reg(&stFcRegPoint);
 
-#endif
 #endif
 
     return VOS_OK;
@@ -1795,8 +1792,6 @@ VOS_UINT32  FC_ACORE_RcvIntraMsg( MsgBlock * pMsg )
                 ((FC_MEM_DOWN_TO_TARGET_PRI_IND_STRU *)pMsg)->enTargetPri );
             break;
 
-        /* V9R1中才需要处理这些消息 */
-#if(FEATURE_OFF == FEATURE_ACPU_FC_POINT_REG)
         case ID_FC_ACORE_CRESET_START_IND:
             FC_ACORE_CResetProc(FC_ACORE_CRESET_BEFORE_RESET);
             break;
@@ -1808,7 +1803,6 @@ VOS_UINT32  FC_ACORE_RcvIntraMsg( MsgBlock * pMsg )
         case ID_FC_ACORE_CRESET_START_RSP:
             FC_ACORE_CResetRcvStartRsp();
             break;
-#endif
 
         default:
             break;
@@ -1816,6 +1810,9 @@ VOS_UINT32  FC_ACORE_RcvIntraMsg( MsgBlock * pMsg )
 
     return VOS_OK;
 }
+
+
+
 VOS_UINT32  FC_ACORE_MsgProc( MsgBlock * pMsg )
 {
     switch (pMsg->ulSenderPid)
@@ -1848,7 +1845,7 @@ VOS_UINT32  FC_ACORE_Init( VOS_VOID )
 {
     VOS_UINT32                          ulResult;
     VOS_INT                             iRet;
-
+    VOS_CHAR                            ucSmName[] = "FcACoreCResetDoneSem";
 
     ulResult = FC_CommInit();
 
@@ -1874,9 +1871,9 @@ VOS_UINT32  FC_ACORE_Init( VOS_VOID )
     FC_DrvAssemInit();
 
     /* 创建信号量，用于C核单独复位时，通知底软FcACore的回调事务已完成 */
-    if ( VOS_OK != VOS_SmBCreate("FcACoreCResetDoneSem", 0, VOS_SEMA4_FIFO, &g_ulFcACoreCResetDoneSem) )
+    if ( VOS_OK != VOS_SmBCreate(ucSmName, 0, VOS_SEMA4_FIFO, (VOS_SEM *)&g_ulFcACoreCResetDoneSem) )
     {
-        FC_LOG(PS_PRINT_ERROR,"FC_ACORE_Init, Creat Sem Fail\n");
+        FC_LOG(PS_PRINT_ERROR,"FC_ACORE_Init, Create Sem Fail\n");
         return VOS_ERR;
     }
 
@@ -1969,79 +1966,52 @@ VOS_UINT32 FC_ACORE_FidInit(enum VOS_INIT_PHASE_DEFINE enPhase)
     return VOS_OK;
 }
 
+#else
 
-/*lint -e565 -e718 -e746 -e40 -e64 -e115 -e86 -e63*//* 直接调用了Linux内核函数，不做PC-lint */
+/*****************************************************************************
+  1 头文件包含
+*****************************************************************************/
+#include "FcInterface.h"
 
-int  FC_GetPidPri( pid_t pid )
+/*****************************************************************************
+  2 函数实现
+*****************************************************************************/
+/*****************************************************************************
+ 函 数 名  : FC_FidInit
+ 功能描述  : 流控FID初始化函数
+ 输入参数  : enum VOS_INIT_PHASE_DEFINE enPhase
+ 输出参数  : 无
+ 返 回 值  : VOS_UINT32
+ 调用函数  :
+ 被调函数  :
+
+ 修改历史      :
+  1.日    期   : 2011年12月14日
+    作    者   :
+    修改内容   : 新生成函数
+*****************************************************************************/
+VOS_UINT32 FC_ACORE_FidInit(enum VOS_INIT_PHASE_DEFINE enPhase)
 {
-    struct task_struct                 *p;
-
-
-    p = pid_task(find_vpid(pid), PIDTYPE_PID);
-
-    if (NULL == p)
-    {
-        vos_printf("invalid pid %d\r\n", pid);
-        return -1;
-    }
-
-    vos_printf ("pid %d, pri %d\r\n", pid, p->rt_priority);
-
-
-    return (int)(p->rt_priority);
+    return VOS_OK;
 }
 
 
-
-int  FC_SetPidPri( pid_t pid, int pri )
+VOS_VOID  FC_ChannelMapCreate(FC_ID_ENUM_UINT8 enFcId, VOS_UINT8 ucRabId, MODEM_ID_ENUM_UINT16  enModemId)
 {
-    struct sched_param                  stParam;
-    struct task_struct                 *p;
-
-
-    p = pid_task(find_vpid(pid), PIDTYPE_PID);
-
-    if (NULL == p)
-    {
-        vos_printf("invalid pid %d\r\n", pid);
-        return -1;
-    }
-
-    stParam.sched_priority  = pri;
-
-    sched_setscheduler(p, -1, &stParam);
-
-    vos_printf ("pid %d, pri %d\r\n", pid, p->rt_priority);
-
-    return (int)(p->rt_priority);
+    return;
 }
 
 
-
-
-int  FC_SetPidScheduler( pid_t pid, int policy )
+VOS_VOID  FC_ChannelMapDelete( VOS_UINT8 ucRabId, MODEM_ID_ENUM_UINT16  enModemId )
 {
-    struct sched_param                  stParam;
-    struct task_struct                 *p;
-
-
-    p = pid_task(find_vpid(pid), PIDTYPE_PID);
-
-    if (NULL == p)
-    {
-        vos_printf("invalid pid %d\r\n", pid);
-        return -1;
-    }
-
-    stParam.sched_priority  = (int)p->rt_priority;
-
-    sched_setscheduler(p, policy, &stParam);
-
-    vos_printf ("pid %d, schedler %d, pri %d\r\n", pid, policy, p->rt_priority);
-
-    return (int)(p->rt_priority);
+    return;
 }
-/*lint +e565 +e718 +e746 +e40 +e64 +e115 +e86 +e63*/
+
+
+VOS_UINT32 FC_ACORE_RegDrvAssemFunc(FC_ACORE_DRV_ASSEMBLE_PARA_FUNC pFcDrvSetAssemParaFuncUe, FC_ACORE_DRV_ASSEMBLE_PARA_FUNC pFcDrvSetAssemParaFuncPc)
+{
+    return VOS_OK;
+}
 
 
 #ifdef __cplusplus
@@ -2049,4 +2019,9 @@ int  FC_SetPidScheduler( pid_t pid, int policy )
         }
     #endif
 #endif
+
+
+#endif
+
+
 

@@ -2,12 +2,13 @@
 #ifndef    _BSP_MEM_H_
 #define    _BSP_MEM_H_
 
+#include <linux/highmem.h>
 #include <bsp_sram.h>
 #include <drv_comm.h>
 #include <asm/cacheflush.h>
 #include <asm/cache.h>
 #include <asm/tlbflush.h>
-#include <asm/system.h>
+//#include <asm/system.h>
 #include <linux/module.h>
 #include <bsp_shared_ddr.h>
 #include <bsp_om.h>

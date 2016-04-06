@@ -76,7 +76,7 @@ struct e1000_info;
 #define E1000_MAX_RXD			4096
 #define E1000_MIN_RXD			64
 
-#define E1000_MIN_ITR_USECS		10 /* 100000 irq/sec */
+#define E1000_MIN_ITR_USECS		10
 #define E1000_MAX_ITR_USECS		10000 /* 100    irq/sec */
 
 #define E1000_FC_PAUSE_TIME		0x0680 /* 858 usec */

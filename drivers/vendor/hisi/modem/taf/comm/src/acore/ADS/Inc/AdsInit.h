@@ -77,10 +77,8 @@ extern "C" {
 #pragma pack(0)
 #endif
 
-VOS_UINT32 ADS_UL_FidInit(enum VOS_INIT_PHASE_DEFINE ip);
 VOS_UINT32 ADS_UL_PidInit(enum VOS_INIT_PHASE_DEFINE enPhase);
 
-VOS_UINT32 ADS_DL_FidInit(enum VOS_INIT_PHASE_DEFINE ip);
 VOS_UINT32 ADS_DL_PidInit(enum VOS_INIT_PHASE_DEFINE enPhase);
 
 VOS_INT ADS_UL_CCpuResetCallback(

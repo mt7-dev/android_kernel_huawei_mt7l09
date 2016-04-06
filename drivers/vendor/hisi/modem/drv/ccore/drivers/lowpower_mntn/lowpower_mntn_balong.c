@@ -599,6 +599,7 @@ void bsp_lowpower_mntn_init(void)
 		writel(0x20000, HI_SYSCTRL_BASE_ADDR_VIRT + HI_SC_CTRL103_OFFSET);
 		writel(0x0, HI_SYSCTRL_BASE_ADDR_VIRT + HI_SC_CTRL105_OFFSET);
 #else
+        regvalue = regvalue;
 		mntn_printf("This version don't support prevent bus error identity!");
 #endif
 	}
@@ -611,12 +612,10 @@ static void bsp_lowpower_mntn_lock_info(void)
    for (i = 0; i < 9 ; i++){
            if (lockmap & ((unsigned int)0x1 << i)){
                     hi6930_lockinfo.lock_lookup[i + 2].status = 1;
-                    //vote_printf("awake_time > 2s --lock: %s ,status : 1 \n",ccore_lock[i].name);
            }
            else{
                     hi6930_lockinfo.lock_lookup[i + 2].status = 0;
            }
-		  //snprintf(hi6930_lockinfo.lock_lookup[i + 2].name, sizeof(hi6930_lockinfo.lock_lookup[i + 2].name), "%s", ccore_lock[i].name); /*lint !e119*/ /* [false alarm]:Îó±¨ */
    }
     bsp_log_bin_ind(0x5220, &hi6930_lockinfo, sizeof(hi6930_lockinfo));
     return;
@@ -629,7 +628,7 @@ void update_awake_time_stamp(void)
 }
 
 void check_awake_time_limit(void)
-{
+{     
       unsigned int newslice = 0;
       newslice = bsp_get_slice_value();
       if(get_timer_slice_delta(time_stamp, newslice) > AWAKE_TIME){

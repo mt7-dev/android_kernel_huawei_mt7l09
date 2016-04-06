@@ -86,9 +86,9 @@ enum MAILBOX_LINUX_PROC_STYLE_E
 *****************************************************************************/
 struct mb_local_work
 {
-    unsigned long             channel_id;      /*邮箱ID号，可能是核间连接ID,也可能是物理通道ID*/
-    unsigned long             data_flag;       /*此邮箱是否有数据的标志位*/
-    long		      (*cb)(unsigned long channel_id);
+    unsigned int             channel_id;      /*邮箱ID号，可能是核间连接ID,也可能是物理通道ID*/
+    unsigned int             data_flag;       /*此邮箱是否有数据的标志位*/
+    int		      (*cb)(unsigned int channel_id);
     struct mb_local_work            *next;          /*指向下一条*/
 #ifdef MAILBOX_OPEN_MNTN                                  
     void                     *mb_priv;
@@ -101,8 +101,8 @@ struct mb_local_work
 struct mb_local_proc
 {
     signed char                 proc_name[16];   /*处理方式名字*/
-    unsigned long               proc_id;         /*处理方式ID号*/
-    signed long                 priority;       /*任务优先级*/
+    unsigned int               proc_id;         /*处理方式ID号*/
+    signed int                 priority;       /*任务优先级*/
     struct mb_local_work       *work_list;      /*此任务挂接的邮箱处理队列*/
     wait_queue_head_t           wait;           /*任务方式等待的消息*/
     struct tasklet_struct       tasklet;        /*tasklet方式的句柄*/
@@ -115,17 +115,17 @@ struct mb_local_proc
 *****************************************************************************/
 struct mb_local_cfg
 {
-    unsigned long               channel_id;      /*邮箱通道ID。*/
-    unsigned long               property;      /*通道属性*/
-    unsigned long               int_src;         /*邮箱通道所使用的核间中断资源号。*/
-    unsigned long               dst_id;          /*邮箱通道所使用的核间中断目标CPU号*/
+    unsigned int               channel_id;      /*邮箱通道ID。*/
+    unsigned int               property;      /*通道属性*/
+    unsigned int               int_src;         /*邮箱通道所使用的核间中断资源号。*/
+    unsigned int               dst_id;          /*邮箱通道所使用的核间中断目标CPU号*/
 };
 
 struct mb_mutex
 {
     void          *lock;
     unsigned long  flags;
-    unsigned long  type;
+    unsigned int  type;
 };
 
 /*****************************************************************************
@@ -199,6 +199,7 @@ MAILBOX_LOCAL void mailbox_receive_process(unsigned long data)
 {
     struct mb_local_proc *proc = (struct mb_local_proc *)data;
     struct mb_local_work *work = proc->work_list;
+
     
     while (MAILBOX_NULL != work) {
         /*遍历标志位，如果有置位，调用对应的邮箱ID号的回调函数*/
@@ -221,11 +222,10 @@ MAILBOX_LOCAL void mailbox_receive_process(unsigned long data)
         }
         work = work->next;
     }
-    
 #ifdef _DRV_LLT_
 process_exit:
-    wake_unlock(&mb_lpwr_lock);
 #endif
+    wake_unlock(&mb_lpwr_lock);
 }
 int mailbox_receive_task(void * data)
 {
@@ -251,11 +251,11 @@ int mailbox_receive_task(void * data)
 
 /*本邮箱核的对外提供接口*/
 
-MAILBOX_EXTERN long mailbox_init_platform(void)
+MAILBOX_EXTERN int mailbox_init_platform(void)
 {
     struct mb_local_proc     *local_proc    = &g_mailbox_local_proc_tbl[0];
-    unsigned long            count    =  sizeof(g_mailbox_local_proc_tbl) / sizeof(struct mb_local_proc);
-    unsigned long            proc_id;
+    unsigned int            count    =  sizeof(g_mailbox_local_proc_tbl) / sizeof(struct mb_local_proc);
+    unsigned int            proc_id;
     struct task_struct *task = MAILBOX_NULL;
 
     wake_lock_init(&mb_lpwr_lock, WAKE_LOCK_SUSPEND, "mailbox_low_power_wake_lock");
@@ -290,13 +290,13 @@ MAILBOX_EXTERN long mailbox_init_platform(void)
 }
 
 
-MAILBOX_LOCAL long mailbox_ipc_process(
+MAILBOX_LOCAL int mailbox_ipc_process(
                 struct mb_local_work  *local_work,
                 struct mb_local_proc  *local_proc,
-                unsigned long channel_id,
-                unsigned long proc_id)
+                unsigned int channel_id,
+                unsigned int proc_id)
 {
-    unsigned long is_find = MAILBOX_TRUE;
+    unsigned int is_find = MAILBOX_TRUE;
 
     while (local_work) {
         /*从邮箱工作队列中找到对应的邮箱，设置标志位并释放信号量通知处理任务*/
@@ -341,16 +341,16 @@ MAILBOX_LOCAL long mailbox_ipc_process(
 }
 
 
-MAILBOX_LOCAL long mailbox_ipc_int_handle(unsigned long int_num)
+MAILBOX_LOCAL int mailbox_ipc_int_handle(unsigned int int_num)
 {
     struct mb_local_cfg         *local_cfg    =  &g_mb_local_cfg_tbl[0];
     struct mb_local_proc        *local_proc   =   MAILBOX_NULL;
     struct mb_local_work        *local_work      =   MAILBOX_NULL;
-    unsigned long count = sizeof(g_mailbox_local_proc_tbl)/sizeof(struct mb_local_proc);
-    unsigned long proc_id = 0;
-    unsigned long channel_id = 0;
-    unsigned long is_find = MAILBOX_FALSE;
-    unsigned long ret_val = MAILBOX_OK;
+    unsigned int count = sizeof(g_mailbox_local_proc_tbl)/sizeof(struct mb_local_proc);
+    unsigned int proc_id = 0;
+    unsigned int channel_id = 0;
+    unsigned int is_find = MAILBOX_FALSE;
+    unsigned int ret_val = MAILBOX_OK;
 
     /*找到传入ID对应的邮箱配置*/
     while (MAILBOX_MAILCODE_INVALID != local_cfg->channel_id) {
@@ -389,16 +389,16 @@ MAILBOX_LOCAL long mailbox_ipc_int_handle(unsigned long int_num)
 
     return ret_val;
 }
-MAILBOX_EXTERN long mailbox_process_register(
-                unsigned long channel_id, 
-                 long (*cb)(unsigned long channel_id),
+MAILBOX_EXTERN int mailbox_process_register(
+                unsigned int channel_id, 
+                 int (*cb)(unsigned int channel_id),
                  void *priv)
 {
     struct mb_local_work        *local_work    =   MAILBOX_NULL;
     struct mb_local_cfg         *local_cfg  =  &g_mb_local_cfg_tbl[0];
     struct mb_local_proc        *local_proc =  &g_mailbox_local_proc_tbl[0];
     struct mb_local_cfg*         find_cfg     =   MAILBOX_NULL;
-    unsigned long count = sizeof(g_mailbox_local_proc_tbl)/sizeof(struct mb_local_proc);
+    unsigned int count = sizeof(g_mailbox_local_proc_tbl)/sizeof(struct mb_local_proc);
 
     while (MAILBOX_MAILCODE_INVALID != local_cfg->channel_id) {
         /*找到与传入邮箱ID最适配的系统邮箱配置*/
@@ -455,11 +455,11 @@ MAILBOX_EXTERN long mailbox_process_register(
 }
 
 
-MAILBOX_EXTERN long mailbox_channel_register(
-                unsigned long channel_id,
-                unsigned long int_src,
-                unsigned long dst_id,
-                unsigned long direct,
+MAILBOX_EXTERN int mailbox_channel_register(
+                unsigned int channel_id,
+                unsigned int int_src,
+                unsigned int dst_id,
+                unsigned int direct,
                 void   **mutex)
 {
     struct mb_local_cfg    *local_cfg  =  &g_mb_local_cfg_tbl[0];
@@ -495,7 +495,7 @@ MAILBOX_EXTERN long mailbox_channel_register(
 
     return MAILBOX_OK;
 }
-MAILBOX_EXTERN long mailbox_delivery(unsigned long channel_id)
+MAILBOX_EXTERN int mailbox_delivery(unsigned int channel_id)
 {
     struct mb_local_cfg     *local_cfg    =  &g_mb_local_cfg_tbl[0];
     struct mb_local_cfg     *find_cfg       =   MAILBOX_NULL;
@@ -511,7 +511,7 @@ MAILBOX_EXTERN long mailbox_delivery(unsigned long channel_id)
     }
 
     if (MAILBOX_NULL != find_cfg) {
-        return (unsigned long)BSP_IPC_IntSend((IPC_INT_CORE_E)find_cfg->dst_id, 
+        return (int)BSP_IPC_IntSend((IPC_INT_CORE_E)find_cfg->dst_id, 
                                 (IPC_INT_LEV_E)find_cfg->int_src);
     }
 
@@ -519,7 +519,7 @@ MAILBOX_EXTERN long mailbox_delivery(unsigned long channel_id)
 }
 MAILBOX_LOCAL void *mailbox_mutex_create(struct mb_local_cfg *local_cfg)
 {
-    unsigned long channel_id = local_cfg->channel_id;
+    unsigned int channel_id = local_cfg->channel_id;
     struct mb_mutex* mtx = MAILBOX_NULL;
    
     /*根据不同通道类型申请不同的资源保护锁*/
@@ -574,7 +574,7 @@ error_exit:
 }
 
 
-MAILBOX_EXTERN long mailbox_mutex_lock(void **mutexId)
+MAILBOX_EXTERN int mailbox_mutex_lock(void **mutexId)
 {
     struct mb_mutex *mtx = (struct mb_mutex *)*mutexId;
 
@@ -613,7 +613,7 @@ MAILBOX_EXTERN void *mailbox_init_completion(void)
     return (void*)wait;
 }
 
-MAILBOX_EXTERN long mailbox_wait_completion(void **wait, unsigned long timeout)
+MAILBOX_EXTERN int mailbox_wait_completion(void **wait, unsigned int timeout)
 {
     long jiffies = msecs_to_jiffies(timeout);
     long ret =  wait_for_completion_timeout(*wait, jiffies);
@@ -632,21 +632,19 @@ MAILBOX_EXTERN void mailbox_del_completion(void **wait)
 }
 
 
-MAILBOX_EXTERN void *mailbox_memcpy(void *Destination, const void *Source, long Size)
+MAILBOX_EXTERN void *mailbox_memcpy(void *Destination, const void *Source, unsigned int Size)
 {
-
     return (void *)memcpy(Destination, Source, Size);
 }
 
 
-MAILBOX_EXTERN void *mailbox_memset(void * m, long c, unsigned long size)
+MAILBOX_EXTERN void *mailbox_memset(void * m, int c, unsigned int size)
 {
-
     return memset(m, c, size);
 }
 
 
-MAILBOX_EXTERN void mailbox_assert(unsigned long ErroNo)
+MAILBOX_EXTERN void mailbox_assert(unsigned int ErroNo)
 {
 #ifndef _DRV_LLT_
     while (1)
@@ -658,7 +656,7 @@ MAILBOX_EXTERN void mailbox_assert(unsigned long ErroNo)
 }
 
 
-MAILBOX_EXTERN long mailbox_int_context(void)
+MAILBOX_EXTERN int mailbox_int_context(void)
 {
 #ifdef _DRV_LLT_
     return 0;
@@ -669,10 +667,10 @@ MAILBOX_EXTERN long mailbox_int_context(void)
 
 
 
-MAILBOX_EXTERN long mailbox_scene_delay(unsigned long scene_id, unsigned long *try_times)
+MAILBOX_EXTERN int mailbox_scene_delay(unsigned int scene_id, int *try_times)
 {
-    unsigned long go_on = MAILBOX_FALSE;
-    unsigned long delay_ms = 0;
+    unsigned int go_on = MAILBOX_FALSE;
+    unsigned int delay_ms = 0;
 
     switch (scene_id)
     {
@@ -699,7 +697,7 @@ MAILBOX_EXTERN long mailbox_scene_delay(unsigned long scene_id, unsigned long *t
 }
 
 
-MAILBOX_EXTERN long mailbox_get_timestamp(void)
+MAILBOX_EXTERN int mailbox_get_timestamp(void)
 {
 #ifndef _DRV_LLT_
     return BSP_GetSliceValue();

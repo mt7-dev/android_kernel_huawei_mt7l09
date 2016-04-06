@@ -11,10 +11,8 @@
  * GNU General Public License for more details.
  */
 
-/include/ "hisi_3630_gpio.dtsi"
 /include/ "hisi_6421v300_pmu.dtsi"
 /include/ "hisi_3630_i2c.dtsi"
-/include/ "hisi_3630_clock.dtsi"
 /*/include / "hisi_3630_pin_fpga.dtsi"*/
 / {
 
@@ -120,7 +118,7 @@
 		hisi,reset_valid = <1>;
 		hisi,vcmpd_valid = <0>;
 		hisi,i2c-index = <0>;
-		hisi,i2c-speed = <0x0a>; /* 240000 / 64 / 400 = 10 */
+		hisi,i2c-speed = <0x0a>;
 		hisi,i2c-addr = <0x20>;
 		hisi,i2c-addr_bits = <1>;
 		hisi,i2c-val_bits = <0>;
@@ -153,7 +151,7 @@
 		hisi,reset_valid = <1>;
 		hisi,vcmpd_valid = <0>;
 		hisi,i2c-index = <0>;
-		hisi,i2c-speed = <0x0a>; /* 240000 / 64 / 400 = 10 */
+		hisi,i2c-speed = <0x0a>;
 		hisi,i2c-addr = <0x34>;
 		hisi,i2c-addr_bits = <1>;
 		hisi,i2c-val_bits = <0>;
@@ -187,7 +185,7 @@
 		hisi,reset_valid = <1>;
 		hisi,vcmpd_valid = <0>;
 		hisi,i2c-index = <0>;
-		hisi,i2c-speed = <0x0a>; /* 240000 / 64 / 400 = 10 */
+		hisi,i2c-speed = <0x0a>;
 		hisi,i2c-addr = <0x34>;
 		hisi,i2c-addr_bits = <1>;
 		hisi,i2c-val_bits = <0>;
@@ -221,7 +219,7 @@
 		hisi,reset_valid = <1>;
 		hisi,vcmpd_valid = <0>;
 		hisi,i2c-index = <1>;
-		hisi,i2c-speed = <0x0a>; /* 240000 / 64 / 400 = 10 */
+		hisi,i2c-speed = <0x0a>;
 		hisi,i2c-addr = <0x6c>;
 		hisi,i2c-addr_bits = <1>;
 		hisi,i2c-val_bits = <0>;
@@ -254,7 +252,7 @@
 		hisi,reset_valid = <1>;
 		hisi,vcmpd_valid = <0>;
 		hisi,i2c-index = <1>;
-		hisi,i2c-speed = <0x0a>; /* 240000 / 64 / 400 = 10 */
+		hisi,i2c-speed = <0x0a>;
 		hisi,i2c-addr = <0x30>;
 		hisi,i2c-addr_bits = <1>;
 		hisi,i2c-val_bits = <0>;
@@ -316,8 +314,6 @@
 
 		hisi,led_ctrl_flash = <0x13 0x00 0x75 0x0a 0xd7 0xc8 0x1b>;
 		hisi,led_ctrl_torch = <0x13 0x00 0x75 0x0a 0xd7 0x48 0x1b>;
-
-		led-vcc-supply = <&boost5v>;
 
 		status = "disable";
 	};

@@ -8,6 +8,7 @@
   1 其他头文件包含
 *****************************************************************************/
 #include "vos.h"
+#include "PsLib.h"
 #include "FcInterface.h"
 #include "FcIntraMsg.h"
 #include "TtfNvInterface.h"
@@ -82,6 +83,12 @@ extern "C" {
 
 #define FC_CCPU_TRACE_CPULOAD_TIMELEN   (1000)              /* CCPU负载上报周期，1s */
 #define TIMER_FC_CCPU_TRACE_CPULOAD     (0x1001)
+
+#define FC_CCPU_PTR_OCTET_OCCUPIED      (1)       /* CCPU上指针占用1个U32 */
+#define FC_ACPU_PTR_OCTET_OCCUPIED      (2)       /* ACPU上指针占用1个U32 */
+
+#define FC_PTR_MAX_OCTET_OCCUPIED           /*lint -e(506) */(PS_MAX(FC_CCPU_PTR_OCTET_OCCUPIED, FC_ACPU_PTR_OCTET_OCCUPIED))
+
 
 /*****************************************************************************
   3 枚举定义
@@ -169,9 +176,9 @@ typedef struct
     VOS_UINT8                           ucValid;                   /*PS_TRUE:有效, PS_FALSE:无效 */
     VOS_UINT8                           ucFcIdCnt;                 /*当前优先级对应的流控Id个数 */
     VOS_UINT8                           ucFcIdIndex;
-    VOS_UINT8                           aucRsv[1];
-    FC_ID_ENUM_UINT32                   aenFcId[FC_MAX_POINT_NUM]; /*当前优先级对应的流控Id */
-    FC_PRI_ENUM_UINT32                  enPri;                     /*当前优先级*/
+    FC_PRI_ENUM_UINT8                   enPri;                     /*当前优先级*/
+    FC_ID_ENUM_UINT8                    aenFcId[FC_MAX_POINT_NUM]; /*当前优先级对应的流控Id */
+    VOS_UINT8                           aucRsv[6];
 } FC_PRI_STRU;
 
 
@@ -182,18 +189,18 @@ typedef struct
  结构说明  : 流控通用策略结构，进行
 *****************************************************************************/
 typedef VOS_UINT32 (*FC_POLICY_POSTPROCESS)(VOS_UINT32 ulParam1, VOS_UINT32 ulParam2);
-typedef VOS_UINT32 (*FC_POLICY_ADJUST_FOR_UP_FUNC)(FC_PRI_ENUM_UINT32 enPointPri, FC_ID_ENUM_UINT32 enFcId);
-typedef VOS_UINT32 (*FC_POLICY_ADJUST_FOR_DOWN_FUNC)(FC_PRI_ENUM_UINT32 enPointPri, FC_ID_ENUM_UINT32 enFcId);
+typedef VOS_UINT32 (*FC_POLICY_ADJUST_FOR_UP_FUNC)(FC_PRI_ENUM_UINT8 enPointPri, FC_ID_ENUM_UINT8 enFcId);
+typedef VOS_UINT32 (*FC_POLICY_ADJUST_FOR_DOWN_FUNC)(FC_PRI_ENUM_UINT8 enPointPri, FC_ID_ENUM_UINT8 enFcId);
 
 
 typedef struct
 {
     FC_PRIVATE_POLICY_ID_ENUM_UINT8     enPolicyId;             /* 策略ID */
     VOS_UINT8                           ucPriCnt;               /* 当前策略的优先级总数 */
-    VOS_UINT8                           aucRsv[2];
-    FC_PRI_ENUM_UINT32                  enHighestPri;           /* 当前流控策略的最高优先级别 */
-    FC_PRI_ENUM_UINT32                  enDonePri;              /* 当前处理过的优先级 */
-    FC_PRI_ENUM_UINT32                  enToPri;
+    FC_PRI_ENUM_UINT8                   enHighestPri;           /* 当前流控策略的最高优先级别 */
+    FC_PRI_ENUM_UINT8                   enDonePri;              /* 当前处理过的优先级 */
+    FC_PRI_ENUM_UINT8                   enToPri;
+    VOS_UINT8                           aucRsv[3];
     FC_PRI_STRU                         astFcPri[FC_PRI_BUTT];  /* 某一个优先级流控对应的处理 */
     FC_POLICY_ADJUST_FOR_UP_FUNC        pAdjustForUpFunc;       /* _H2ASN_Replace VOS_UINT32  pAdjustForUpFunc; */
     FC_POLICY_ADJUST_FOR_DOWN_FUNC      pAdjustForDownFunc;     /* _H2ASN_Replace VOS_UINT32  pAdjustForDownFunc; */
@@ -202,9 +209,9 @@ typedef struct
 
 typedef struct
 {
-    FC_ID_ENUM_UINT32                   enFcId;                 /* 流控ID */
+    FC_ID_ENUM_UINT8                    enFcId;                 /* 流控ID */
+    VOS_UINT8                           aucRsv[1];
     MODEM_ID_ENUM_UINT16                enModemId;              /* ModemId */   /* _H2ASN_Replace VOS_UINT16  enModemId; */
-    VOS_UINT8                           aucRsv[2];
     VOS_UINT32                          ulPolicyMask;           /* 该流控点关联的流控策略，便于查找核删除 */
     VOS_UINT32                          ulFcMask;               /* 流控投票管理 */
     VOS_UINT32                          ulParam1;               /* 该流控点注册时，记录的参数值 */
@@ -224,6 +231,7 @@ typedef struct
 typedef struct
 {
     VOS_UINT32                          ulPointNum;
+    VOS_UINT8                           aucRsv[4];
     FC_POINT_STRU                       astFcPoint[FC_MAX_POINT_NUM];
 } FC_POINT_MGR_STRU;
 
@@ -238,7 +246,8 @@ typedef struct
 /*====================================*//*一个FC上FC 和RAB之间的映射关系*/
 typedef struct
 {
-    FC_ID_ENUM_UINT32                   enFcId;
+    FC_ID_ENUM_UINT8                    enFcId;
+    VOS_UINT8                           aucRsv[7];
     VOS_UINT32                          ulIncludeRabMask;                       /* 该Fc Id对应的所有RAB，用掩码表示 */
     VOS_UINT32                          ulNoFcRabMask;                          /* 该Fc Id上不要求流控的RAB，没有RAB流控时等于ulIncludeRabMask */
 } FC_RAB_MAPPING_INFO_STRU;
@@ -246,29 +255,61 @@ typedef struct
 
 typedef struct
 {
-    VOS_UINT32                          ulFcIdCnt;                              /* FC Id流控实体个数 */
+    FC_ID_ENUM_UINT8                    enFcIdCnt;                              /* FC Id流控实体个数 */
+    VOS_UINT8                           aucRsv[3];
     FC_RAB_MAPPING_INFO_STRU            astFcRabMappingInfo[FC_MAX_NUM];        /* FC 和RAB之间的映射关系集合 */
 } FC_RAB_MAPPING_INFO_SET_STRU;
 
 
 /*====================================*//* 可维可测信息 */
+/* 流控点钩包结构 */
+typedef struct
+{
+    FC_ID_ENUM_UINT8                    enFcId;                 /* 流控ID */
+    VOS_UINT8                           aucRsv[5];
+    MODEM_ID_ENUM_UINT16                enModemId;              /* ModemId */   /* _H2ASN_Replace VOS_UINT16  enModemId; */
+    VOS_UINT32                          ulPolicyMask;           /* 该流控点关联的流控策略，便于查找核删除 */
+    VOS_UINT32                          ulFcMask;               /* 流控投票管理 */
+    VOS_UINT32                          ulParam1;               /* 该流控点注册时，记录的参数值 */
+    VOS_UINT32                          ulParam2;               /* 该流控点注册时，记录的参数值 */
+    VOS_UINT32                          aulPointSetAddr[FC_PTR_MAX_OCTET_OCCUPIED];    /* 记录流控执行函数的地址 */
+    VOS_UINT32                          aulPointClrAddr[FC_PTR_MAX_OCTET_OCCUPIED];    /* 记录流控清除函数的地址 */
+    VOS_UINT32                          aulPointRstAddr[FC_PTR_MAX_OCTET_OCCUPIED];    /* 记录流控复位处理与恢复函数的地址 */
+} FC_MNTN_POINT_INFO_STRU;
+
+/* 流控点钩包TRACE结构 */
 typedef struct
 {
     VOS_MSG_HEADER                                                              /* _H2ASN_Skip */
     FC_MNTN_EVENT_TYPE_ENUM_UINT16      enMsgName;                              /* _H2ASN_Skip */
     VOS_UINT8                           aucRsv[2];
-    FC_POINT_STRU                       stFcPoint;
+    FC_MNTN_POINT_INFO_STRU             stFcPoint;
     VOS_UINT32                          ulIsFuncInvoked;
     VOS_UINT32                          ulResult;
 } FC_MNTN_POINT_FC_STRU;
 
+/* 流控策略钩包结构 */
+typedef struct
+{
+    FC_PRIVATE_POLICY_ID_ENUM_UINT8     enPolicyId;             /* 策略ID */
+    VOS_UINT8                           ucPriCnt;               /* 当前策略的优先级总数 */
+    FC_PRI_ENUM_UINT8                   enHighestPri;           /* 当前流控策略的最高优先级别 */
+    FC_PRI_ENUM_UINT8                   enDonePri;              /* 当前处理过的优先级 */
+    FC_PRI_ENUM_UINT8                   enToPri;
+    VOS_UINT8                           aucRsv[3];
+    FC_PRI_STRU                         astFcPri[FC_PRI_BUTT];  /* 某一个优先级流控对应的处理 */
+    VOS_UINT32                          aulPolicyUpAddr[FC_PTR_MAX_OCTET_OCCUPIED];    /* 记录流控策略升执行函数的地址 */
+    VOS_UINT32                          aulPolicyDownAddr[FC_PTR_MAX_OCTET_OCCUPIED];    /* 记录流控策略降执行函数的地址 */
+    VOS_UINT32                          aulPolicyPostAddr[FC_PTR_MAX_OCTET_OCCUPIED];    /* 流控策略执行到最后一级的回调函数的地址 */
+} FC_MNTN_POLICY_INFO_STRU;
 
+/* 流控策略钩包TRACE结构 */
 typedef struct
 {
     VOS_MSG_HEADER                                                              /* _H2ASN_Skip */
     FC_MNTN_EVENT_TYPE_ENUM_UINT16      enMsgName;                              /* _H2ASN_Skip */
     VOS_UINT8                           aucRsv[2];
-    FC_POLICY_STRU                      stPolicy;
+    FC_MNTN_POLICY_INFO_STRU            stPolicy;
 } FC_MNTN_POLICY_STRU;
 
 
@@ -291,14 +332,15 @@ typedef struct
 typedef struct
 {
     VOS_UINT32                          ulSmoothTimerLen;       /* CPU流控的平滑次数，连续若干次CPU超标，才进行CPU流控 */
+    VOS_UINT8                           aucRsv[4];
     HTIMER                              pstStopAttemptTHandle;  /* CPU流控解除优化定时器 */
 } FC_CPU_CTRL_STRU;
 
 typedef struct
 {
     const VOS_UINT32                    ulTraceCpuLoadTimerLen; /* 上报CCPU负载定时器时长 */ /* _H2ASN_Skip */
-    HTIMER                              pstTraceCpuLoadTHandle; /* 上报CCPU负载定时器 */
     VOS_UINT32                          ulCpuLoadRecord;        /* 记录底软上报的CPU负载 */
+    HTIMER                              pstTraceCpuLoadTHandle; /* 上报CCPU负载定时器 */
 } FC_TRACE_CPULOAD_STRU;
 
 
@@ -363,6 +405,7 @@ typedef struct
 typedef struct
 {
     VOS_UINT32                          ulLev;
+    VOS_UINT8                           aucRsv[4];
     FC_CPU_DRV_ASSEM_PARA_STRU         *pstCpuDrvAssemPara;
 }FC_CPU_DRV_ASSEM_PARA_LEV_STRU;
 
@@ -373,6 +416,7 @@ typedef struct
     VOS_UINT8                               ucSetDrvFailCnt;
     VOS_UINT8                               ucRsv;
     VOS_UINT32                              ulCurLev;
+    VOS_UINT8                               aucRsv[4];
     FC_CPU_DRV_ASSEM_PARA_STRU              stCurAssemPara;
     FC_ACORE_DRV_ASSEMBLE_PARA_FUNC         pDrvSetAssemParaFuncUe;             /* _H2ASN_Replace VOS_UINT32  pDrvSetAssemParaFuncUe; */
     FC_ACORE_DRV_ASSEMBLE_PARA_FUNC         pDrvSetAssemParaFuncPc;             /* _H2ASN_Replace VOS_UINT32  pDrvSetAssemParaFuncPc; */
@@ -440,64 +484,64 @@ typedef struct
 *****************************************************************************/
 extern VOS_VOID     FC_LOG
 (
-    VOS_UINT32      ulLevel,
-    VOS_CHAR       *pcString
+    VOS_UINT32          ulLevel,
+    const VOS_CHAR     *pcString
 );
 
 extern VOS_VOID     FC_LOG1
 (
-    VOS_UINT32      ulLevel,
-    VOS_CHAR       *pcString,
-    VOS_INT32       lPara1
+    VOS_UINT32          ulLevel,
+    const VOS_CHAR     *pcString,
+    VOS_INT32           lPara1
 );
 
 extern VOS_VOID     FC_LOG2
 (
-    VOS_UINT32      ulLevel,
-    VOS_CHAR       *pcString,
-    VOS_INT32       lPara1,
-    VOS_INT32       lPara2
+    VOS_UINT32          ulLevel,
+    const VOS_CHAR     *pcString,
+    VOS_INT32           lPara1,
+    VOS_INT32           lPara2
 );
 
 extern VOS_VOID     FC_LOG3
 (
-    VOS_UINT32      ulLevel,
-    VOS_CHAR       *pcString,
-    VOS_INT32       lPara1,
-    VOS_INT32       lPara2,
-    VOS_INT32       lPara3
+    VOS_UINT32          ulLevel,
+    const VOS_CHAR     *pcString,
+    VOS_INT32           lPara1,
+    VOS_INT32           lPara2,
+    VOS_INT32           lPara3
 );
 
 extern VOS_VOID     FC_LOG4
 (
-    VOS_UINT32      ulLevel,
-    VOS_CHAR       *pcString,
-    VOS_INT32       lPara1,
-    VOS_INT32       lPara2,
-    VOS_INT32       lPara3,
-    VOS_INT32       lPara4
+    VOS_UINT32          ulLevel,
+    const VOS_CHAR     *pcString,
+    VOS_INT32           lPara1,
+    VOS_INT32           lPara2,
+    VOS_INT32           lPara3,
+    VOS_INT32           lPara4
 );
 
 extern VOS_UINT32  FC_POLICY_AddPoint
 (
     FC_POLICY_ID_ENUM_UINT8             enPolicyId,
-    FC_ID_ENUM_UINT32                   enFcId,
-    FC_PRI_ENUM_UINT32                  enPointPri
+    FC_ID_ENUM_UINT8                    enFcId,
+    FC_PRI_ENUM_UINT8                   enPointPri
 );
 
 extern VOS_UINT32  FC_POLICY_DelPoint
 (
     FC_POLICY_ID_ENUM_UINT8             enPolicyId,
-    FC_ID_ENUM_UINT32                   enFcId
+    FC_ID_ENUM_UINT8                    enFcId
 );
 
 
 extern VOS_UINT32  FC_POLICY_ChangePoint
 (
     FC_POLICY_ID_ENUM_UINT8             enPolicyId,
-    FC_ID_ENUM_UINT32                   enFcId,
-    FC_PRI_ENUM_UINT32                  enPointOldPri,
-    FC_PRI_ENUM_UINT32                  enPointNewPri
+    FC_ID_ENUM_UINT8                    enFcId,
+    FC_PRI_ENUM_UINT8                   enPointOldPri,
+    FC_PRI_ENUM_UINT8                   enPointNewPri
 );
 
 
@@ -521,29 +565,22 @@ extern VOS_UINT32 FC_SndRegPointMsg
 
 extern VOS_UINT32 FC_SndDeRegPointMsg
 (
-    FC_ID_ENUM_UINT32                   enFcId,
+    FC_ID_ENUM_UINT8                    enFcId,
     MODEM_ID_ENUM_UINT16                enModemId
 );
 
 extern VOS_UINT32 FC_SndChangePointMsg
 (
-    FC_ID_ENUM_UINT32                   enFcId,
+    FC_ID_ENUM_UINT8                    enFcId,
     FC_POLICY_ID_ENUM_UINT8             enPolicyId,
-    FC_PRI_ENUM_UINT32                  enPri,
+    FC_PRI_ENUM_UINT8                   enPri,
     MODEM_ID_ENUM_UINT16                enModemId
 );
 
-#if 0
-extern FC_POLICY_STRU  *FC_POLICY_Get
+extern FC_PRI_ENUM_UINT8  FC_POLICY_GetPriWithFcId
 (
-    FC_PRIVATE_POLICY_ID_ENUM_UINT8     enPolicyId
-);
-#endif
-
-extern FC_PRI_ENUM_UINT32  FC_POLICY_GetPriWithFcId
-(
-    FC_POLICY_ID_ENUM_UINT8             enPolicyId,
-    FC_ID_ENUM_UINT32                   enFcId
+    FC_PRIVATE_POLICY_ID_ENUM_UINT8             enPolicyId,
+    FC_ID_ENUM_UINT8                            enFcId
 );
 
 extern VOS_UINT32 FC_POLICY_Up
@@ -559,25 +596,25 @@ extern VOS_UINT32 FC_POLICY_Down
 extern VOS_UINT32  FC_POLICY_UpToTargetPri
 (
     FC_POLICY_STRU                     *pFcPolicy,
-    FC_PRI_ENUM_UINT32                  enTargetPri
+    FC_PRI_ENUM_UINT8                   enTargetPri
 );
 
 extern VOS_UINT32  FC_POLICY_DownToTargetPri
 (
     FC_POLICY_STRU                     *pFcPolicy,
-    FC_PRI_ENUM_UINT32                  enTargetPri
+    FC_PRI_ENUM_UINT8                   enTargetPri
 );
 
 extern FC_PRI_OPER_ENUM_UINT32 FC_POINT_SetFc
 (
     VOS_UINT32                          ulPolicyMask,
-    FC_ID_ENUM_UINT32                   enFcId
+    FC_ID_ENUM_UINT8                    enFcId
 );
 
 extern FC_PRI_OPER_ENUM_UINT32 FC_POINT_ClrFc
 (
     VOS_UINT32                          ulPolicyMask,
-    FC_ID_ENUM_UINT32                   enFcId
+    FC_ID_ENUM_UINT8                    enFcId
 );
 
 extern VOS_UINT32  FC_POINT_Reg
@@ -585,17 +622,17 @@ extern VOS_UINT32  FC_POINT_Reg
     FC_REG_POINT_STRU                  *pstFcRegPoint
 );
 
-extern VOS_UINT32  FC_POINT_DeReg(FC_ID_ENUM_UINT32 enFcId, MODEM_ID_ENUM_UINT16  enModemId);
+extern VOS_UINT32  FC_POINT_DeReg(FC_ID_ENUM_UINT8 enFcId, MODEM_ID_ENUM_UINT16  enModemId);
 
 extern VOS_UINT32  FC_POINT_Change
 (
-    FC_ID_ENUM_UINT32                   enFcId,
+    FC_ID_ENUM_UINT8                    enFcId,
     FC_POLICY_ID_ENUM_UINT8             enPolicyId,
-    FC_PRI_ENUM_UINT32                  enNewPri,
+    FC_PRI_ENUM_UINT8                   enNewPri,
     MODEM_ID_ENUM_UINT16                enModemId
 );
 
-extern FC_POINT_STRU *FC_POINT_Get(FC_ID_ENUM_UINT32 enFcId);
+extern FC_POINT_STRU *FC_POINT_Get(FC_ID_ENUM_UINT8 enFcId);
 
 
 extern VOS_UINT32  FC_CommInit( VOS_VOID );
@@ -606,7 +643,6 @@ extern VOS_UINT32  FC_CFG_CheckUlRateParam( FC_CFG_UM_UL_RATE_STRU *pstFcCfgUmUl
 extern VOS_UINT32  FC_CFG_CheckParam( FC_CFG_STRU *pstFcCfg );
 extern VOS_UINT32  FC_MNTN_TraceCpuLoad(FC_MNTN_EVENT_TYPE_ENUM_UINT16 enMsgName, VOS_UINT32  ulCpuLoad );
 extern VOS_UINT32  FC_MNTN_TraceDrvAssemPara(FC_DRV_ASSEM_PARA_STRU *pstDrvAssenPara);
-extern VOS_VOID    FC_JudgeDrvToMaxPara(VOS_VOID);
 extern VOS_VOID FC_MNTN_TracePointFcEvent
 (
     FC_MNTN_EVENT_TYPE_ENUM_UINT16      enMsgName,
@@ -614,6 +650,135 @@ extern VOS_VOID FC_MNTN_TracePointFcEvent
     VOS_UINT32                          ulIsFuncInvoked,
     VOS_UINT32                          ulResult
 );
+extern VOS_VOID FC_MNTN_TraceEvent(VOS_VOID *pMsg);
+extern VOS_UINT32  FC_MNTN_TracePolicy(FC_MNTN_EVENT_TYPE_ENUM_UINT16 enMsgName, FC_POLICY_STRU *pPolicy );
+extern VOS_UINT32 FC_IsPolicyEnable(VOS_UINT32 ulPointPolicyMask, MODEM_ID_ENUM_UINT16 enModemId);
+extern VOS_UINT32  FC_POINT_Add
+(
+    FC_REG_POINT_STRU                  *pstFcRegPoint
+);
+extern VOS_UINT32  FC_POINT_Del(FC_ID_ENUM_UINT8 enFcId );
+extern VOS_VOID  FC_POINT_Init( VOS_VOID );
+extern VOS_VOID  FC_POLICY_TrimInvalidPri( FC_POLICY_STRU *pFcPolicy );
+extern FC_PRI_OPER_ENUM_UINT32 FC_POLICY_UpWithOnePri
+(
+    FC_POLICY_STRU                     *pFcPolicy,
+    FC_PRI_STRU                        *pstPri
+);
+extern FC_PRI_OPER_ENUM_UINT32  FC_POLICY_DownWithOnePri
+(
+    FC_POLICY_STRU                     *pPolicy,
+    FC_PRI_STRU                        *pstPri
+);
+extern VOS_VOID  FC_POLICY_UpdateHighestPri( FC_POLICY_STRU *pPolicy );
+extern VOS_UINT32  FC_POLICY_AddPointForPri
+(
+    FC_POLICY_STRU                     *pPolicy,
+    FC_ID_ENUM_UINT8                    enFcId,
+    FC_PRI_ENUM_UINT8                   enPointPri
+);
+extern VOS_UINT32  FC_POLICY_DelPointForPri
+(
+    FC_POLICY_STRU                     *pPolicy,
+    FC_ID_ENUM_UINT8                    enFcId,
+    FC_PRI_ENUM_UINT8                   enPointPri
+);
+extern VOS_UINT32  FC_POLICY_GetPriCnt(FC_POLICY_STRU *pFcPolicy);
+extern VOS_UINT32  FC_POLICY_Init( VOS_VOID );
+extern VOS_UINT32  FC_CFG_SetDefaultValue( FC_CFG_STRU *pstFcCfg );
+extern VOS_UINT32  FC_CFG_SetNvValue( FC_CFG_NV_STRU  *pstFcCfgNv );
+extern VOS_UINT32  FC_CFG_Init( VOS_VOID );
+extern VOS_UINT32  FC_SetDebugLev( VOS_UINT32 ulLev );
+extern VOS_UINT32  FC_SetFcEnableMask( VOS_UINT32 ulEnableMask );
+extern VOS_UINT32  FC_SetThreshold
+(
+    VOS_UINT32                          ulPolicyId,
+    VOS_UINT32                          ulParam1,
+    VOS_UINT32                          ulSetThreshold,
+    VOS_UINT32                          ulStopThreshold
+);
+extern VOS_UINT32  FC_Help( VOS_VOID );
+
+
+extern VOS_VOID  FC_BRIDGE_CalcRate( VOS_UINT32 ulPeriod );
+extern VOS_VOID  FC_BRIDGE_ResetRate( VOS_VOID );
+extern VOS_UINT32  FC_BRIDGE_GetRate( VOS_VOID );
+extern VOS_UINT32  FC_RmRateJudge( VOS_VOID );
+extern VOS_VOID FC_ShowDrvAssemPara(VOS_VOID);
+extern VOS_VOID FC_DrvAssemInit(VOS_VOID);
+extern VOS_VOID FC_JudgeAssemSmoothFactor(FC_CPU_DRV_ASSEM_PARA_STRU *pstDrvAssemPara);
+extern FC_CPU_DRV_ASSEM_PARA_STRU *FC_GetCpuDrvAssemPara(VOS_UINT32 ulLev);
+extern VOS_UINT32 FC_JudgeCdsDlThres(VOS_UINT8 ucThres);
+extern FC_CPU_DRV_ASSEM_PARA_STRU* FC_GetCurrentAssemPara(VOS_UINT32 ulAssemLev);
+extern VOS_VOID FC_DoJudgeDrvAssem(FC_CPU_DRV_ASSEM_PARA_STRU *pstDrvAssemPara);
+extern VOS_VOID FC_JudgeDrvAssemAction(VOS_UINT32 ulAssemLev);
+extern VOS_VOID FC_JudgeDrvToMaxPara(VOS_VOID);
+extern FC_CPU_DRV_ASSEM_PARA_STRU* FC_SelectDrvAssemParaRule(VOS_UINT32 ulCpuLoad, VOS_UINT32 *pulAssemLev);
+extern VOS_VOID FC_JudgeDrvAssemPara(VOS_UINT32 ulCpuLoad);
+extern VOS_UINT32  FC_UmRateOverThreshold( VOS_VOID );
+extern VOS_UINT32  FC_PsRateJudge( VOS_VOID );
+extern VOS_VOID  FC_GetPsRate( VOS_UINT32 *pulUlRate, VOS_UINT32 *pulDlRate );
+extern VOS_UINT32 FC_CPUA_UpJudge
+(
+    VOS_UINT32       ulCpuLoad,
+    FC_CFG_CPU_STRU *pstFcCfgCpu,
+    FC_POLICY_STRU  *pstFcPolicy
+);
+extern VOS_UINT32 FC_CPUA_DownJudge
+(
+    VOS_UINT32       ulCpuLoad,
+    FC_CFG_CPU_STRU *pstFcCfgCpu,
+    FC_POLICY_STRU  *pstFcPolicy
+);
+extern VOS_VOID FC_CPUA_RcvCpuLoad(VOS_UINT32  ulCpuLoad);
+extern VOS_UINT32  FC_CPUA_StopFcAttempt( VOS_UINT32 ulParam1, VOS_UINT32 ulParam2 );
+extern VOS_UINT32  FC_CPUA_UpProcess( VOS_VOID );
+extern VOS_UINT32  FC_CPUA_DownProcess( VOS_VOID );
+extern VOS_UINT32  FC_CPUA_StopFlowCtrl( VOS_VOID );
+extern VOS_UINT32  FC_CPUA_Init( VOS_VOID );
+extern FC_PRI_ENUM_UINT8  FC_MEM_CalcUpTargetFcPri
+(
+    FC_POLICY_STRU                     *pPolicy,
+    VOS_UINT32                          ulMemValue
+);
+extern FC_PRI_ENUM_UINT8  FC_MEM_CalcDownTargetFcPri
+(
+    FC_POLICY_STRU                     *pPolicy,
+    VOS_UINT32                          ulMemValue
+);
+extern VOS_UINT32  FC_MEM_AdjustPriForUp
+(
+    FC_PRI_ENUM_UINT8                  enPointPri,
+    FC_ID_ENUM_UINT8                   enFcId
+);
+extern VOS_UINT32  FC_MEM_AdjustPriForDown
+(
+    FC_PRI_ENUM_UINT8                  enPointPri,
+    FC_ID_ENUM_UINT8                   enFcId
+);
+extern VOS_UINT32  FC_MEM_SndUpToTargetPriIndMsg(FC_PRI_ENUM_UINT8 enTargetPri, VOS_UINT16 usMemFreeCnt);
+extern VOS_UINT32  FC_MEM_SndDownToTargetPriIndMsg( FC_PRI_ENUM_UINT8 enTargetPri, VOS_UINT16 usMemFreeCnt);
+extern VOS_VOID  FC_MEM_UpProcess( VOS_UINT32 ulMemValue  );
+extern VOS_VOID  FC_MEM_DownProcess( VOS_UINT32 ulMemValue );
+extern VOS_UINT32  FC_MEM_Init( VOS_VOID );
+extern VOS_UINT32  FC_CST_UpProcess( VOS_UINT8 ucRabId );
+extern VOS_UINT32  FC_CST_DownProcess( VOS_UINT8 ucRabId );
+extern FC_RAB_MAPPING_INFO_STRU  *FC_CDS_GetFcInfo( VOS_UINT8 ucRabId, MODEM_ID_ENUM_UINT16 enModemId );
+extern VOS_UINT32  FC_CDS_DelFcId( FC_ID_ENUM_UINT8 enFcId, MODEM_ID_ENUM_UINT16 enModemId );
+extern VOS_UINT32  FC_CDS_AddRab(FC_ID_ENUM_UINT8 enFcId, VOS_UINT8 ucRabId, MODEM_ID_ENUM_UINT16 enModemId );
+extern VOS_UINT32  FC_CDS_DelRab( VOS_UINT8 ucRabId, MODEM_ID_ENUM_UINT16 enModemId );
+extern VOS_UINT32  FC_CDS_Init( VOS_VOID );
+extern VOS_UINT32  FC_CDS_UpProcess( VOS_UINT8 ucRabId, MODEM_ID_ENUM_UINT16 enModemId );
+extern VOS_UINT32  FC_CDS_DownProcess( VOS_UINT8 ucRabId, MODEM_ID_ENUM_UINT16 enModemId );
+extern VOS_UINT32  FC_GPRS_UpProcess( VOS_VOID );
+extern VOS_UINT32  FC_GPRS_DownProcess( VOS_VOID );
+extern VOS_UINT32  FC_RcvCstMsg( MsgBlock * pMsg );
+extern VOS_UINT32  FC_RcvCdsMsg( MsgBlock * pMsg );
+extern VOS_UINT32  FC_ACORE_RegPoint( VOS_VOID );
+extern VOS_UINT32  FC_ACORE_RcvTimerMsg(REL_TIMER_MSG *pTimerMsg);
+extern VOS_UINT32  FC_ACORE_RcvIntraMsg( MsgBlock * pMsg );
+extern VOS_UINT32  FC_ACORE_MsgProc( MsgBlock * pMsg );
+extern VOS_UINT32  FC_ACORE_Init( VOS_VOID );
 
 #if (VOS_OS_VER == VOS_WIN32)
 #pragma pack()

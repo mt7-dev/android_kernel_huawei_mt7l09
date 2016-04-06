@@ -128,10 +128,12 @@ VOS_UINT32 TAF_SPM_SndInternalDomainSelectionInd(VOS_VOID)
     return VOS_TRUE;
 }
 VOS_VOID TAF_SPM_SendMsgSmmaRsp(
-    TAF_MSG_SIGNALLING_TYPE_ENUM_UINT32 enMsgSignallingType
+    TAF_MSG_SIGNALLING_TYPE_ENUM_UINT32 enMsgSignallingType,
+    struct MsgCB                       *pstMsg
 )
 {
     TAF_SPM_SMMA_RSP_STRU              *pstSmmaRsp = VOS_NULL_PTR;
+    TAF_SPM_SMMA_IND_STRU              *pstSmmaInd = VOS_NULL_PTR;
 
     pstSmmaRsp = (TAF_SPM_SMMA_RSP_STRU *)PS_ALLOC_MSG_WITH_HEADER_LEN(WUEPS_PID_TAF,sizeof(TAF_SPM_SMMA_RSP_STRU));
 
@@ -141,14 +143,18 @@ VOS_VOID TAF_SPM_SendMsgSmmaRsp(
         return;
     }
 
-    PS_MEM_SET(pstSmmaRsp, 0, sizeof(TAF_SPM_SMMA_RSP_STRU));
+    pstSmmaInd  = (TAF_SPM_SMMA_IND_STRU *)pstMsg;
     
+    PS_MEM_SET(pstSmmaRsp, 0, sizeof(TAF_SPM_SMMA_RSP_STRU));
+
     pstSmmaRsp->ulSenderCpuId        = VOS_LOCAL_CPUID;
     pstSmmaRsp->ulSenderPid          = WUEPS_PID_TAF;
     pstSmmaRsp->ulReceiverCpuId      = VOS_LOCAL_CPUID;
     pstSmmaRsp->ulReceiverPid        = WUEPS_PID_TAF;
     pstSmmaRsp->ulLength             = sizeof(TAF_SPM_SMMA_RSP_STRU) - VOS_MSG_HEAD_LENGTH;
     pstSmmaRsp->ulMsgId              = ID_TAF_SPM_SMMA_RSP;
+    pstSmmaRsp->clientId             = pstSmmaInd->clientId;
+    pstSmmaRsp->opId                 = pstSmmaInd->opId;
     pstSmmaRsp->enMsgSignallingType  = enMsgSignallingType;
 
     if ( VOS_OK != PS_SEND_MSG( WUEPS_PID_TAF, pstSmmaRsp ) )

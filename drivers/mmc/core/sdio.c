@@ -33,6 +33,14 @@
 #include <linux/mmc/sdio_ids.h>
 #endif
 
+#ifdef CONFIG_HI110X_WIFI_ENABLE
+#include <linux/huawei/hw_connectivity.h>
+#endif
+#ifdef  CONFIG_HUAWEI_DSM
+#include <dsm/dsm_pub.h>
+extern void dw_mci_dsm_dump(struct dw_mci  *host, int err_num);
+
+#endif
 static int sdio_read_fbr(struct sdio_func *func)
 {
 	int ret;
@@ -376,12 +384,15 @@ static unsigned mmc_sdio_get_max_clock(struct mmc_card *card)
 		 * mandatory.
 		 */
 		max_dtr = 50000000;
-	} else {
+	} else
+	{
 		max_dtr = card->cis.max_dtr;
 	}
 
+
+
 	if (card->type == MMC_TYPE_SD_COMBO)
-		max_dtr = min(max_dtr, mmc_sd_get_max_clock(card));
+		max_dtr = min(max_dtr, mmc_sd_get_max_clock(card));/*lint !e666*/
 
 	return max_dtr;
 }
@@ -594,7 +605,9 @@ static int mmc_sdio_init_card(struct mmc_host *host, u32 ocr,
 	BUG_ON(!host);
 	WARN_ON(!host->claimed);
 
+#ifndef CONFIG_ARCH_HI3XXX
 try_again:
+#endif
 	if (!retries) {
 		pr_warning("%s: Skipping voltage switch\n",
 				mmc_hostname(host));
@@ -653,6 +666,7 @@ try_again:
 	if (host->ops->init_card)
 		host->ops->init_card(host, card);
 
+#ifndef CONFIG_ARCH_HI3XXX
 	/*
 	 * If the host and card support UHS-I mode request the card
 	 * to switch to 1.8V signaling level.  No 1.8v signalling if
@@ -678,6 +692,7 @@ try_again:
 		ocr &= ~R4_18V_PRESENT;
 		host->ocr &= ~R4_18V_PRESENT;
 	}
+#endif
 
 	/*
 	 * For native busses:  set card RCA and quit open drain mode.
@@ -723,16 +738,50 @@ try_again:
 		 * It's host's responsibility to fill cccr and cis
 		 * structures in init_card().
 		 */
-		mmc_set_clock(host, card->cis.max_dtr);
+#ifdef CONFIG_HI110X_WIFI_ENABLE
+    if(isMyConnectivityChip(CHIP_TYPE_HI110X))
+    {
+    	/*
+    	 * Switch to wider bus (if supported).
+    	 */
+		err = sdio_read_cccr(card, ocr);
+		if (err)
+			goto remove;
 
 		if (card->cccr.high_speed) {
-			mmc_card_set_highspeed(card);
-			mmc_set_timing(card->host, MMC_TIMING_SD_HS);
+		err = sdio_enable_hs(card);
+		if (err > 0)
+			mmc_sd_go_highspeed(card);
 		}
+		mmc_set_clock(host, card->cis.max_dtr);
+		err = sdio_enable_4bit_bus(card);
+		if (err > 0)
+			mmc_set_bus_width(card->host, MMC_BUS_WIDTH_4);
+		else if (err)
+			goto remove;
+        if (oldcard) {
+        int same = (card->cis.vendor == oldcard->cis.vendor &&
+            card->cis.device == oldcard->cis.device);
+        mmc_remove_card(card);
+        if (!same)
+            return -ENOENT;
 
+        card = oldcard;
+        }
 		goto finish;
-	}
+    }
+    else
+#endif
+		{
+			mmc_set_clock(host, card->cis.max_dtr);
+			if (card->cccr.high_speed) {
+				mmc_card_set_highspeed(card);
+				mmc_set_timing(card->host, MMC_TIMING_SD_HS);
+			}
 
+			goto finish;
+		}
+	}
 #ifdef CONFIG_MMC_EMBEDDED_SDIO
 	if (host->embedded_sdio_data.cccr)
 		memcpy(&card->cccr, host->embedded_sdio_data.cccr, sizeof(struct sdio_cccr));
@@ -786,6 +835,8 @@ try_again:
 		} else
 			card->dev.type = &sd_type;
 	}
+
+
 
 	/*
 	 * If needed, disconnect card detection pull-up resistor.
@@ -1257,7 +1308,9 @@ err:
 
 	pr_err("%s: error %d whilst initialising SDIO card\n",
 		mmc_hostname(host), err);
-
+#ifdef CONFIG_HUAWEI_DSM
+	dw_mci_dsm_dump(dev_get_drvdata(host->parent), DSM_SDIO_ATTACH_ERR_NO);
+#endif
 	return err;
 }
 
@@ -1270,19 +1323,43 @@ int sdio_reset_comm(struct mmc_card *card)
 	printk("%s():\n", __func__);
 	mmc_claim_host(host);
 
-	mmc_go_idle(host);
-
+#ifdef CONFIG_ARCH_HI3XXX
+	mmc_set_timing(host, MMC_TIMING_LEGACY);
+	mmc_set_clock(host, 100000); /* enum with 100K clock */
+#else
 	mmc_set_clock(host, host->f_min);
+#endif
+
+	/*
+	 * sdio_reset() is technically not needed. Having just powered up the
+	 * hardware, it should already be in reset state. However, some
+	 * platforms do not instantly cut power,
+	 * meaning that a reset is required when restoring power soon after
+	 * powering off. It is harmless in other cases.
+	*/
+	sdio_reset(host);
+	mmc_go_idle(host);
 
 	err = mmc_send_io_op_cond(host, 0, &ocr);
 	if (err)
 		goto err;
+
+#ifdef CONFIG_ARCH_HI3XXX
+	if (host->ocr_avail_sdio)
+		host->ocr_avail = host->ocr_avail_sdio;
+#endif
 
 	host->ocr = mmc_select_voltage(host, ocr);
 	if (!host->ocr) {
 		err = -EINVAL;
 		goto err;
 	}
+
+#ifdef CONFIG_ARCH_HI3XXX
+	if (mmc_host_uhs(host))
+		/* to query card if 1.8V signalling is supported */
+		host->ocr |= R4_18V_PRESENT;
+#endif
 
 	err = mmc_sdio_init_card(host, host->ocr, card, 0);
 	if (err)

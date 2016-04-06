@@ -91,10 +91,7 @@ static void efar_set_piomode (struct ata_port *ap, struct ata_device *adev)
 	u8 udma_enable;
 	int control = 0;
 
-	/*
-	 *	See Intel Document 298600-004 for the timing programing rules
-	 *	for PIIX/ICH. The EFAR is a clone so very similar
-	 */
+
 
 	static const	 /* ISP  RTC */
 	u8 timings[][2]	= { { 0, 0 },

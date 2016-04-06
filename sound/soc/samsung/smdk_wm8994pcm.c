@@ -18,14 +18,7 @@
 #include "dma.h"
 #include "pcm.h"
 
-/*
- * Board Settings:
- *  o '1' means 'ON'
- *  o '0' means 'OFF'
- *  o 'X' means 'Don't care'
- *
- * SMDKC210, SMDKV310: CFG3- 1001, CFG5-1000, CFG7-111111
- */
+
 
 /*
  * Configure audio route as :-

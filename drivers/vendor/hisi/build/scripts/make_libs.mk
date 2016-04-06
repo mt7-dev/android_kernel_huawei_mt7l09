@@ -30,8 +30,9 @@ ifeq ($(CFG_DUMMY_ENABLE),YES)
 endif
 ifeq ($(CFG_FEATURE_IMS) ,FEATURE_ON)
 	$(Q)cp -f $(BALONG_TOPDIR)/build/libs/IMS/hw_sdk.o $(OBB_PRODUCT_DELIVERY_DIR)/lib
+	$(Q)cp -f $(BALONG_TOPDIR)/../corenet/ims/acore/libs/act_acore.o $(OBB_PRODUCT_DELIVERY_DIR)/lib
 endif
-	$(MAKE)  $(OBB_JOBS)  -f make_libs_ccore.mk
+	$(MAKE)   -f make_libs_ccore.mk
 	
 ccore1_rename :
 ifeq ($(CFG_FEATURE_MULTI_MODEM) ,FEATURE_ON)
@@ -42,10 +43,10 @@ endif
 .PHONY: clean
 clean:
 ifeq ($(OBB_CORE_NAME),all)
-	$(MAKE)  $(OBB_JOBS)  -f make_libs_ccore.mk $@
+	$(MAKE)  -f make_libs_ccore.mk $@
 	
 else
-	$(MAKE)  $(OBB_JOBS)  -f make_libs_$(OBB_CORE_NAME).mk $@
+	$(MAKE)  -f make_libs_$(OBB_CORE_NAME).mk $@
 endif
 	$(Q)echo "make libs clean complete."
 

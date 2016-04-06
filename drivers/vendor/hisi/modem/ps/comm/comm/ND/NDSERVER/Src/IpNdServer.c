@@ -2254,7 +2254,9 @@ VOS_UINT32  IP_NDSERVER_BuildTooBigICMPPkt
     pucData += 2;
 
     /*MTU 域*/
+    /*lint -e960*/
     *(VOS_UINT32 *)(VOS_VOID*)pucData = VOS_HTONL(ulDataLen);
+    /*lint +e960*/
     pucData += 4;
 
     /*填写ICMP PayLoad部分*/
@@ -3380,7 +3382,7 @@ VOS_VOID  IP_NDSERVER_ShowAddrInfo( VOS_UINT32 ulIndex )
                                 pstInfoAddr->stTeAddrInfo.aucTeLinkLocalAddr[15]);
 
     vos_printf("************定时器状态************\r\n");
-    vos_printf("系统定时器地址: %08x\r\n",pstInfoAddr->stTimerInfo.hTm);
+    vos_printf("系统定时器地址: %p\r\n",pstInfoAddr->stTimerInfo.hTm);
     vos_printf("定时器类型: %d\r\n",pstInfoAddr->stTimerInfo.ulName);
     vos_printf("定时器超时次数: %d\r\n",pstInfoAddr->stTimerInfo.ucLoopTimes);
     vos_printf("周期性路由公告时间计数: %d\r\n",g_aulPeriodicRaTimeCnt[ulIndex]);

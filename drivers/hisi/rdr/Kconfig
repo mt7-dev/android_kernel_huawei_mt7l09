@@ -2,7 +2,7 @@ menu "Kernel run data recorder menu"
 
 config HISI_RDR
 	bool "kernel run data recorder"
-	depends on SYSFS && K3V3_BALONG_MODEM
+	depends on SYSFS
 	default n
 	help
 	  This module can record some data about kernel internal info.
@@ -35,4 +35,9 @@ config HISI_RDR_SWITCH
 	  if select n,then trace these options.
 	  if select y,then stop trace.
 
+config HIFI_RESET
+	bool "hifi reset switch"
+	default n
+	help
+	  hifi reset
 endmenu

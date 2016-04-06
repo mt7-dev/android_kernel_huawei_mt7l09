@@ -81,6 +81,10 @@ const CMMCA_PKT_EVT_FUNC_TBL_STRU       g_astCmmcaPktPsEvtFuncTbl[] =
     {ID_EVT_TAF_PS_SET_PRIM_PDP_CONTEXT_INFO_CNF,
         CMMCA_PKT_RcvTafPsEvtSetPrimPdpContextInfoCnf},
 
+    /* 鉴权回复 */
+    {ID_EVT_TAF_PS_SET_AUTHDATA_INFO_CNF,
+        CMMCA_PKT_RcvTafSetPdnPcoAuthCnf},
+
     /* PS CALL */
     {ID_EVT_TAF_PS_CALL_ORIG_CNF,
         CMMCA_PKT_RcvTafPsEvtCallOrigCnf},
@@ -1707,6 +1711,108 @@ CMMCA_RAT_MMC_PKT_ERRCODE_UINT8 CMMCA_PKT_TransferErrCode(
     }
 
     return CMMCA_RAT_MMC_PKT_ERRCODE_UNKNOWN;
+}
+
+
+VOS_VOID CMMCA_PKT_SndSetPdnPcoAuthRsp(
+    CMMCA_SET_PDN_PCO_AUTH_RESULT_ENUM_UINT8        enRslt
+)
+{
+    VOS_UINT8                          *pucCmdData = VOS_NULL_PTR;
+    VOS_UINT32                          ulRslt;
+
+    pucCmdData = (VOS_UINT8 *)PS_MEM_ALLOC(WUEPS_PID_CMMCA, CMMCA_CMD_SET_PND_PCO_AUTH_RSP_LEN);
+    if (VOS_NULL_PTR == pucCmdData)
+    {
+        return;
+    }
+
+    /* 调用CMMCA_PackSetPdnTabRsp，打包PDN设置回复消息 */
+    ulRslt = CMMCA_PackSetPdnPcoAuthRsp(enRslt, CMMCA_CMD_SET_PND_PCO_AUTH_RSP_LEN, pucCmdData);
+
+    if (VOS_OK != ulRslt)
+    {
+        PS_MEM_FREE(WUEPS_PID_CMMCA, pucCmdData);
+
+        return;
+    }
+
+    /* 调用CBPCA_SndDataToCbpca函数发送至cbpca */
+    ulRslt = CBPCA_SndDataToCbpca(WUEPS_PID_CMMCA, CMMCA_CBPCA_DATA_REQ, pucCmdData, CMMCA_CMD_SET_PND_PCO_AUTH_RSP_LEN);
+
+    if (VOS_OK != ulRslt)
+    {
+        PS_MEM_FREE(WUEPS_PID_CMMCA, pucCmdData);
+
+        return;
+    }
+
+    /* 消息发送结束，释放内存 */
+    PS_MEM_FREE(WUEPS_PID_CMMCA, pucCmdData);
+
+    return;
+}
+VOS_UINT32 CMMCA_PKT_RcvTafSetPdnPcoAuthCnf(
+    VOS_VOID                           *pEvtInfo
+)
+{
+    TAF_PS_SET_AUTHDATA_INFO_CNF_STRU  *pstSetPdnPcoAuthCnf = VOS_NULL_PTR;
+
+    pstSetPdnPcoAuthCnf  = (TAF_PS_SET_AUTHDATA_INFO_CNF_STRU*)pEvtInfo;
+
+    if (TAF_PS_CAUSE_SUCCESS == pstSetPdnPcoAuthCnf->enCause)
+    {
+        CMMCA_PKT_SndSetPdnPcoAuthRsp(CMMCA_SET_PDN_PCO_AUTH_RESULT_SUCC);
+    }
+    else
+    {
+        CMMCA_PKT_SndSetPdnPcoAuthRsp(CMMCA_SET_PDN_PCO_AUTH_RESULT_FAIL);
+    }
+
+    return VOS_OK;
+}
+
+
+VOS_VOID CMMCA_PKT_RcvCmmcSetPdnPcoAuthReq(
+    VOS_VOID                           *pMsg
+)
+{
+    CBPCA_DATA_IND_MSG_STRU                *pstDataInd      = VOS_NULL_PTR;
+    TAF_AUTHDATA_EXT_STRU                   stAuthdataExt;
+    VOS_UINT32                              ulRslt;
+    VOS_UINT8                               ucOpid;
+
+    /* 初始化 */
+    PS_MEM_SET(&stAuthdataExt, 0x0, sizeof(TAF_AUTHDATA_EXT_STRU));
+
+    /* 参考VIA接口文档，解析消息 */
+    pstDataInd      = (CBPCA_DATA_IND_MSG_STRU *)pMsg;
+
+    /* 做参数检查和转换 */
+    ulRslt = CMMCA_ParseSetPdnPcoAuthReq((VOS_UINT16)(pstDataInd->ulDataLen),
+                                         pstDataInd->aucData,
+                                         &stAuthdataExt);
+    if (VOS_ERR == ulRslt)
+    {
+        /* 直接回RSP(FAIL) */
+        CMMCA_PKT_SndSetPdnPcoAuthRsp(CMMCA_SET_PDN_PCO_AUTH_RESULT_FAIL);
+        return;
+    }
+
+    /* 申请OPID */
+    ucOpid = 0x0;
+    CMMCA_AssignOpid(&ucOpid);
+
+    /* 调用APS的函数处理消息 */
+    ulRslt = TAF_PS_SetAuthDataInfo(WUEPS_PID_CMMCA, CMMCA_CLIENT_ID, ucOpid, &stAuthdataExt);
+    if (VOS_OK != ulRslt)
+    {
+        /* 直接回RSP(FAIL) */
+        CMMCA_PKT_SndSetPdnPcoAuthRsp(CMMCA_SET_PDN_PCO_AUTH_RESULT_FAIL);
+        return;
+    }
+
+    return;
 }
 
 

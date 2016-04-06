@@ -82,7 +82,7 @@ VOS_UINT32 RFA_GetFixMemInfo(VOS_UINT32 ulMemType, VOS_UINT32 ulMemSize, VOS_UIN
         return VOS_ERR;     /*异常退出*/
     }
 
-    *pulMemAddr = stDDRInfo.ulSectVirtAddr; /*由于虚实地址一致，因此返回其一即可*/
+    *pulMemAddr = (VOS_UINT32)stDDRInfo.pSectVirtAddr; /*由于虚实地址一致，因此返回其一即可*/
 
     return VOS_OK;
 }

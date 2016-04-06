@@ -72,36 +72,6 @@ extern int BSP_PMU_UsbEndRegActionFunc(pFUNCPTR srcFunc, unsigned char actionInd
 #define DRV_USB_ENDREGACTION_FUNC(srcFunc,actionIndex) \
                 BSP_PMU_UsbEndRegActionFunc(srcFunc,actionIndex)
 
-
-/*****************************************************************************
-函数名：   BSP_USB_PortTypeValidCheck
-功能描述:  提供给上层查询设备端口形态配置合法性接口
-           1、端口为已支持类型，2、包含PCUI口，3、无重复端口，4、端点数不超过16，
-           5、第一个设备不为MASS类
-输入参数： pucPortType  端口形态配置
-           ulPortNum    端口形态个数
-返回值：   0:    端口形态合法
-           其他：端口形态非法
-*****************************************************************************/
-unsigned int BSP_USB_PortTypeValidCheck(unsigned char *pucPortType, unsigned long ulPortNum);
-#define DRV_USB_PORT_TYPE_VALID_CHECK(pucPortType, ulPortNum)  \
-                    BSP_USB_PortTypeValidCheck(pucPortType, ulPortNum)
-
-/*****************************************************************************
-函数名：   BSP_USB_GetAvailabePortType
-功能描述:  提供给上层查询当前设备支持端口形态列表接口
-输入参数： ulPortMax    协议栈支持最大端口形态个数
-输出参数:  pucPortType  支持的端口形态列表
-           pulPortNum   支持的端口形态个数
-返回值：   0:    获取端口形态列表成功
-           其他：获取端口形态列表失败
-*****************************************************************************/
-unsigned int BSP_USB_GetAvailabePortType(unsigned char *pucPortType,
-                            unsigned long *pulPortNum, unsigned long ulPortMax);
-#define DRV_USB_GET_AVAILABLE_PORT_TYPE(pucPortType, pulPortNum, ulPortMax)  \
-                BSP_USB_GetAvailabePortType(pucPortType, pulPortNum, ulPortMax)
-
-
 /************************************
 函 数 名  : BSP_PMU_AptEnable
 功能描述  : 使能PMU的APT功能

@@ -65,6 +65,10 @@ NAS_ACT_STRU   g_astNasMmcNullActTbl[]                      =
     NAS_ACT_TBL_ITEM( WUEPS_PID_MMC,
                       MMCMMC_SWITCH_ON_RSLT_CNF,
                       NAS_MMC_RcvSwitchOnRslt_NULL),
+
+    NAS_ACT_TBL_ITEM( WUEPS_PID_MMA,
+                      ID_MMA_MMC_POWER_OFF_REQ,
+                      NAS_MMC_RcvPowerOffReq_NULL),
 };
 
 /* NAS_MMC_L1_STA_INITIAL动作表 */
@@ -155,7 +159,21 @@ NAS_ACT_STRU   g_astNasMmcInitialActTbl[]                   =
                       ID_MMA_MMC_PLMN_USER_RESEL_REQ,
                       NAS_MMC_RcvUserReselReq_L1Main),
 
+
+    /* 底层发起的异系统重选 */
+    NAS_ACT_TBL_ITEM( WUEPS_PID_WRR,
+                      RRMM_SUSPEND_IND,
+                      NAS_MMC_RcvSuspendInd_Initial),
+
+    NAS_ACT_TBL_ITEM( UEPS_PID_GAS,
+                      RRMM_SUSPEND_IND,
+                      NAS_MMC_RcvSuspendInd_Initial),
+
 #if (FEATURE_ON == FEATURE_LTE)
+    NAS_ACT_TBL_ITEM( PS_PID_MM,
+                      ID_LMM_MMC_SUSPEND_IND,
+                      NAS_MMC_RcvSuspendInd_Initial),
+
     NAS_ACT_TBL_ITEM( PS_PID_MM,
                       ID_LMM_MMC_DETACH_CNF,
                       NAS_MMC_RcvLmmDetachCnf_L1Main),
@@ -364,7 +382,7 @@ NAS_ACT_STRU   g_astNasMmcOnPlmnActTbl[] =
                       TI_NAS_MMC_PERIOD_TRYING_HIGH_PRIO_PLMN_SEARCH,
                       NAS_MMC_RcvTiTryingHighPrioPlmnSearchExpired_OnPlmn),
 
-    NAS_ACT_TBL_ITEM( VOS_PID_TIMER,                  
+    NAS_ACT_TBL_ITEM( VOS_PID_TIMER,
                       TI_NAS_MMC_HIGH_PRIO_RAT_HPLMN_TIMER,
                       NAS_MMC_RcvTiHighPrioRatHplmnSrchTimerExpired_OnPlmn),
 
@@ -440,6 +458,17 @@ NAS_ACT_STRU   g_astNasMmcOnPlmnActTbl[] =
                       ID_MMA_MMC_IMS_VOICE_CAP_IND,
                       NAS_MMC_RcvMmaImsVoiceCapInd_OnPlmn),
 
+
+#if (FEATURE_IMS == FEATURE_ON)
+    NAS_ACT_TBL_ITEM( WUEPS_PID_MMA,
+                      ID_MMA_MMC_IMS_SWITCH_STATE_IND,
+                      NAS_MMC_RcvMmaImsSwitchStateInd_OnPlmn ),
+#endif
+
+    NAS_ACT_TBL_ITEM( WUEPS_PID_MMA,
+                      ID_MMA_MMC_VOICE_DOMAIN_CHANGE_IND,
+                      NAS_MMC_RcvMmaVoiceDomainChangeInd_OnPlmn ),
+
 };
 
 /* NAS_MMC_L1_STA_OOC动作表 */
@@ -514,7 +543,7 @@ NAS_ACT_STRU   g_astNasMmcOOCActTbl[]   =
     NAS_ACT_TBL_ITEM( PS_PID_MM,
                       ID_LMM_MMC_ATTACH_CNF,
                       NAS_MMC_RcvLmmAttachCnf_L1Main),
-	
+
     NAS_ACT_TBL_ITEM( PS_PID_MM,
                       ID_LMM_MMC_SERVICE_RESULT_IND,
                       NAS_MMC_RcvLmmMmcServiceRsltInd_OnPlmn),

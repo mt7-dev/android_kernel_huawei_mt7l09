@@ -325,7 +325,19 @@ VOS_UINT32 NAS_UTRANCTRL_SndAsMsg(
             
             return VOS_OK;
         }
-        
+
+        if (VOS_TRUE == NAS_UTRANCTRL_IsNeedSkipSearchUtranTddMode(*ppstMsg))
+        {
+            /* UTRANCTRL模块对发送消息的保存预处理 */
+            NAS_UTRANCTRL_SaveBufferedSndUtranReqMsg_SndUtranAsMsgPreProcessMsg(ulSndPid,
+                                                                   *ppstMsg);
+            /* 跳过搜索tds,直接给MMC发送tds下搜网失败 */
+            NAS_MMC_SndInterSkipSearchTdsIndMsg();
+
+            PS_FREE_MSG(ulSndPid, *ppstMsg);
+            return VOS_OK;
+        }
+
         NAS_UTRANCTRL_SndUtranAsMsgPreProcessMsg(ulSndPid, *ppstMsg);
     }
 
@@ -1072,6 +1084,49 @@ VOS_UINT32 NAS_UTRANCTRL_IsSndOmPcRecurMsgValid(VOS_VOID)
 
     return ulRslt;
 }
+VOS_UINT32 NAS_UTRANCTRL_IsNeedUtranCtrlFsmProcMsg(
+    struct MsgCB                       *pstMsg
+)
+{
+    VOS_UINT32                          ulEventType;
+    VOS_UINT32                          ulSupportFddFlg;
+    VOS_UINT32                          ulSupportTddFlg;
+
+    /* 取得当前消息的事件类型 */
+    ulEventType = NAS_UTRANCTRL_GetMsgEventType(pstMsg);
+
+    ulSupportFddFlg = NAS_MML_IsPlatformSupportUtranFdd();
+    ulSupportTddFlg = NAS_MML_IsPlatformSupportUtranTdd();
+
+    /* 如果FDD或TDD都支持，则进Utran状态机处理，直接返回VOS_TRUE */
+    if (ulSupportFddFlg == ulSupportTddFlg)
+    {
+        return VOS_TRUE;
+    }
+
+    /* 否则在FDD/TDD单模时候，也处理GMM发来的开机回复消息，进行NV的读写 */
+    if (ulEventType == NAS_UTRANCTRL_BuildEventType(WUEPS_PID_GMM, MMCGMM_START_CNF))
+    {
+        return VOS_TRUE;
+    }
+
+    if (ulEventType == NAS_UTRANCTRL_BuildEventType(VOS_PID_TIMER, TI_NAS_MMC_WAIT_MM_START_CNF))
+    {
+        return VOS_TRUE;
+    }
+
+    if (ulEventType == NAS_UTRANCTRL_BuildEventType(WUEPS_PID_MMC, MMCMMC_INTER_ABORT_UTRAN_CTRL_PLMN_SEARCH_REQ))
+    {
+        return VOS_TRUE;
+    }
+
+    /* 其他消息在FDD/TDD单模时候，不需要进入UTRANCTRL FSM处理 */
+    return VOS_FALSE;
+}
+
+
+
+
 VOS_UINT32 NAS_UTRANCTRL_IsNeedSndAnotherUtranModeMsg(
     struct MsgCB                       *pstMsg
 )
@@ -1152,6 +1207,88 @@ VOS_UINT32 NAS_UTRANCTRL_IsNeedSkipSearchUtranFddMode(
         return VOS_TRUE;
     }
     
+    return VOS_FALSE;
+}
+VOS_UINT32 NAS_UTRANCTRL_IsNeedSkipSearchUtranTddMode(
+    struct MsgCB                       *pstMsg
+)
+{
+    RRMM_PLMN_SEARCH_REQ_STRU          *pstPlmnSearchReqMsg  = VOS_NULL_PTR;
+    NAS_MMC_DPLMN_NPLMN_CFG_INFO_STRU  *pstUserCfgDPlmnNPlmnInfo = VOS_NULL_PTR;
+    NAS_MML_PLMN_ID_STRU               *pstOtherModemPlmnId = VOS_NULL_PTR;
+    VOS_UINT32                          ulIsCurrSearchingPlmnInTdMccList;
+    NAS_MML_PLMN_ID_STRU                stPlmnId;
+    VOS_UINT32                          ulHongKongMcc;
+    VOS_UINT32                          ulIsOtherModemPlmnInTdMccList;
+
+    pstPlmnSearchReqMsg              = (RRMM_PLMN_SEARCH_REQ_STRU *)pstMsg;
+    pstUserCfgDPlmnNPlmnInfo         = NAS_MMC_GetDPlmnNPlmnCfgInfo();
+    ulIsCurrSearchingPlmnInTdMccList = VOS_FALSE;
+    ulIsOtherModemPlmnInTdMccList    = VOS_FALSE;
+    PS_MEM_SET(&stPlmnId, 0, sizeof(stPlmnId));
+
+    /* 香港国家码是454 */
+    ulHongKongMcc = NAS_UTRANCTRL_HONGKONG_MCC;
+
+    /* 如果当前不支持UTRAN自动切换，则不需要跳过搜tds模式 */
+    if ( NAS_UTRANCTRL_UTRAN_SWITCH_MODE_AUTO != NAS_UTRANCTRL_GetCurUtranSwitchMode())
+    {
+        return VOS_FALSE;
+    }
+
+    /* 当前不在TDD模式下，则不需要跳过 */
+    if ( NAS_UTRANCTRL_UTRAN_MODE_TDD != NAS_UTRANCTRL_GetCurrUtranMode())
+    {
+        return VOS_FALSE;
+    }
+
+    /* 检测当前是否在W下的搜网信息,如果不是RRMM_PLMN_SEARCH_REQ搜网信息，则不需要跳过TDS */
+    if ( (WUEPS_PID_MMC        != pstPlmnSearchReqMsg->MsgHeader.ulSenderPid)
+      || (RRMM_PLMN_SEARCH_REQ != pstPlmnSearchReqMsg->MsgHeader.ulMsgName)  )
+    {
+        return VOS_FALSE;
+    }
+
+    /* 不是开机搜网不需要跳过tds */
+    if (VOS_FALSE == NAS_UTRANCTRL_GetSwithOnPlmnSearchFlag())
+    {
+        return VOS_FALSE;
+    }
+
+    /* 检测当前副卡是否在国内,如果在国内，则不需要跳过TDS */
+    pstOtherModemPlmnId = NAS_MMC_GetOtherModemPlmnId();
+    ulIsOtherModemPlmnInTdMccList = NAS_MML_IsMccInDestMccList(pstOtherModemPlmnId->ulMcc,
+                                                NAS_UTRANCTRL_GetSpecTdMccListNum(),
+                                                NAS_UTRANCTRL_GetSpecTdMccList());
+
+    if (VOS_TRUE == ulIsOtherModemPlmnInTdMccList)
+    {
+        /* 当前副卡在中国，主卡不跳过搜TDS */
+        return VOS_FALSE;
+    }
+
+    /* anycell搜网不跳过tds */
+    if (0 == pstPlmnSearchReqMsg->ulPlmnIdNum)
+    {
+        return VOS_FALSE;
+    }
+
+    /* 如果当前搜索的网络不在TDS国家码里且不是香港网络，则跳过tds搜网 */
+    stPlmnId.ulMcc = pstPlmnSearchReqMsg->aPlmnIdList[0].ulMcc;
+    stPlmnId.ulMnc = pstPlmnSearchReqMsg->aPlmnIdList[0].ulMnc;
+
+
+    ulIsCurrSearchingPlmnInTdMccList = NAS_MML_IsMccInDestMccList(stPlmnId.ulMcc,
+                                        NAS_UTRANCTRL_GetSpecTdMccListNum(),
+                                        NAS_UTRANCTRL_GetSpecTdMccList());
+
+    if ((VOS_FALSE == NAS_MML_ComparePlmnMcc(stPlmnId.ulMcc, ulHongKongMcc))
+     && (VOS_FALSE == ulIsCurrSearchingPlmnInTdMccList)
+     && (VOS_TRUE == pstUserCfgDPlmnNPlmnInfo->ucActiveFlg))
+    {
+        return VOS_TRUE;
+    }
+
     return VOS_FALSE;
 }
 VOS_UINT32 NAS_UTRANCTRL_SaveBufferedSndUtranReqMsg_SndUtranAsMsgPreProcessMsg(
@@ -1487,6 +1624,40 @@ VOS_VOID NAS_UTRANCTRL_SndUtranAsMsgPreProcessMsg(
 
 }
 
+
+
+VOS_UINT32 NAS_UTRANCTRL_IsSpecPlmnMccInGuRrcPlmnIdList(
+    VOS_UINT32                          ulSpecPlmnMcc,
+    RRC_PLMN_ID_LIST_STRU              *pstGuPlmnIdList
+)
+{
+    VOS_UINT32                          ulMccNum;
+    VOS_UINT32                         *pulRrcMccList = VOS_NULL_PTR;
+
+    pulRrcMccList = (VOS_UINT32 *)PS_MEM_ALLOC(WUEPS_PID_MMC,
+                        sizeof(VOS_UINT32) * (RRC_MAX_HIGH_PLMN_NUM + RRC_MAX_LOW_PLMN_NUM));
+
+
+    if ( VOS_NULL_PTR == pulRrcMccList )
+    {
+        NAS_ERROR_LOG(WUEPS_PID_MMC, "NAS_UTRANCTRL_IsSpecPlmnMccInDestPlmnIdList ERROR: MEM ALLOC FAIL");
+
+        return VOS_FALSE;
+    }
+
+    /* 从RRC的PLMN ID列表中获取MCC列表 */
+    NAS_MMC_GetMccListInRrcPlmnIdList(&ulMccNum, pulRrcMccList, pstGuPlmnIdList);
+
+    /* 判断MCC是否在TD MCC列表中 */
+    if (VOS_TRUE == NAS_MML_IsMccInDestMccList(ulSpecPlmnMcc, ulMccNum, pulRrcMccList))
+    {
+        PS_MEM_FREE(WUEPS_PID_MMC, pulRrcMccList);
+        return VOS_TRUE;
+    }
+
+    PS_MEM_FREE(WUEPS_PID_MMC, pulRrcMccList);
+    return VOS_FALSE;
+}
 
 VOS_VOID NAS_UTRANCTRL_UpdateSearchedSpecTdMccFLg(
     VOS_UINT32                          ulTdMccNum,

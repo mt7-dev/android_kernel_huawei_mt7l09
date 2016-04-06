@@ -165,13 +165,13 @@ extern "C"
 
 /* channel buffer ddr and regs backup ddr */
 #ifdef K3V3_LPM3_HAS_MODEM_FEATURE
-#define SOCP_DRX_BACKUP_DDR_ADDR        0x00026000//from lowpowerM3\lpm3.ld: AON_SOCP  //SHM_MEM_M3_MNTN_ADDR
+#define SOCP_DRX_BACKUP_DDR_ADDR        0x00026800//from lowpowerM3\lpm3.ld: AON_SOCP  //SHM_MEM_M3_MNTN_ADDR
 #else
-#define SOCP_DRX_BACKUP_DDR_ADDR        SHM_MEM_M3_MNTN_ADDR
+#define SOCP_DRX_BACKUP_DDR_ADDR        (unsigned int)(SHM_MEM_M3_MNTN_ADDR)
 #endif
 #define SOCP_DRX_BACKUP_DDR_SIZE        (1024 *2)
 
-#define SOCP_M3_LPM3_ENCSRC_ADDR        (SHM_MEM_M3_MNTN_ADDR + SOCP_DRX_BACKUP_DDR_SIZE)
+#define SOCP_M3_LPM3_ENCSRC_ADDR        ((unsigned int)SHM_MEM_M3_MNTN_ADDR + SOCP_DRX_BACKUP_DDR_SIZE)
 #define SOCP_M3_IOM3_ENCSRC_ADDR        (SOCP_M3_LPM3_ENCSRC_ADDR + SOCP_M3_CHN_SIZE)
 
 #ifdef K3V3_LPM3_HAS_MODEM_FEATURE
@@ -280,7 +280,7 @@ typedef struct tagBBPDMA_DRX_DS_S
   º¯ÊýÉùÃ÷
 **************************************************************************/
 
-s32 bsp_socp_get_write_buff(u32 u32SrcChanID, SOCP_BUFFER_RW_S *pBuff);
+s32 bsp_socp_get_write_buff(u32 u32SrcChanID, SOCP_BUFFER_RW_STRU *pBuff);
 s32 bsp_socp_write_done(u32 u32SrcChanID, u32 u32WrtSize);
 s32 bsp_socp_suspend(void);
 void bsp_socp_resume(void);

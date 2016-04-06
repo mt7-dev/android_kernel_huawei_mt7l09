@@ -67,16 +67,16 @@ VOS_UINT32                              g_ulIpAddr = 0;
 AT_FCID_MAP_STRU                        g_stFcIdMaptoFcPri[FC_ID_BUTT];
 
 #if (FEATURE_ON == FEATURE_MULTI_MODEM)
-AT_PS_RMNET_ID_TAB                      g_astPsRmNetIdTab[] = {{FC_ID_NIC_1, MODEM_ID_0, AT_PS_USER_CID_1},
-                                                               {FC_ID_NIC_2, MODEM_ID_0, AT_PS_USER_CID_2},
-                                                               {FC_ID_NIC_3, MODEM_ID_0, AT_PS_USER_CID_3},
-                                                               {FC_ID_NIC_4, MODEM_ID_1, AT_PS_USER_CID_1},
-                                                               {FC_ID_NIC_5, MODEM_ID_1, AT_PS_USER_CID_2}
+AT_PS_RMNET_ID_TAB                      g_astPsRmNetIdTab[] = {{MODEM_ID_0, FC_ID_NIC_1, AT_PS_USER_CID_1},
+                                                               {MODEM_ID_0, FC_ID_NIC_2, AT_PS_USER_CID_2},
+                                                               {MODEM_ID_0, FC_ID_NIC_3, AT_PS_USER_CID_3},
+                                                               {MODEM_ID_1, FC_ID_NIC_4, AT_PS_USER_CID_1},
+                                                               {MODEM_ID_1, FC_ID_NIC_5, AT_PS_USER_CID_2}
                                                                };
 #else
-AT_PS_RMNET_ID_TAB                      g_astPsRmNetIdTab[] = {{FC_ID_NIC_1, MODEM_ID_0, AT_PS_USER_CID_1},
-                                                               {FC_ID_NIC_2, MODEM_ID_0, AT_PS_USER_CID_2},
-                                                               {FC_ID_NIC_3, MODEM_ID_0, AT_PS_USER_CID_3}
+AT_PS_RMNET_ID_TAB                      g_astPsRmNetIdTab[] = {{MODEM_ID_0, FC_ID_NIC_1, AT_PS_USER_CID_1},
+                                                               {MODEM_ID_0, FC_ID_NIC_2, AT_PS_USER_CID_2},
+                                                               {MODEM_ID_0, FC_ID_NIC_3, AT_PS_USER_CID_3}
                                                                };
 
 #endif
@@ -151,15 +151,15 @@ AT_PS_SND_PDP_DEACT_IND_STRU            g_astAtSndPdpDeActIndTab[] =
 AT_CHDATA_RNIC_RMNET_ID_STRU            g_astAtChdataRnicRmNetIdTab[] =
 {
 #if (FEATURE_ON == FEATURE_MULTI_MODEM)
-    {AT_CH_DATA_CHANNEL_ID_1, RNIC_RM_NET_ID_0},
-    {AT_CH_DATA_CHANNEL_ID_2, RNIC_RM_NET_ID_1},
-    {AT_CH_DATA_CHANNEL_ID_3, RNIC_RM_NET_ID_2},
-    {AT_CH_DATA_CHANNEL_ID_4, RNIC_RM_NET_ID_3},
-    {AT_CH_DATA_CHANNEL_ID_5, RNIC_RM_NET_ID_4}
+    {AT_CH_DATA_CHANNEL_ID_1, RNIC_RM_NET_ID_0, {0, 0, 0}},
+    {AT_CH_DATA_CHANNEL_ID_2, RNIC_RM_NET_ID_1, {0, 0, 0}},
+    {AT_CH_DATA_CHANNEL_ID_3, RNIC_RM_NET_ID_2, {0, 0, 0}},
+    {AT_CH_DATA_CHANNEL_ID_4, RNIC_RM_NET_ID_3, {0, 0, 0}},
+    {AT_CH_DATA_CHANNEL_ID_5, RNIC_RM_NET_ID_4, {0, 0, 0}}
 #else
-    {AT_CH_DATA_CHANNEL_ID_1, RNIC_RM_NET_ID_0},
-    {AT_CH_DATA_CHANNEL_ID_2, RNIC_RM_NET_ID_1},
-    {AT_CH_DATA_CHANNEL_ID_3, RNIC_RM_NET_ID_2}
+    {AT_CH_DATA_CHANNEL_ID_1, RNIC_RM_NET_ID_0, {0, 0, 0}},
+    {AT_CH_DATA_CHANNEL_ID_2, RNIC_RM_NET_ID_1, {0, 0, 0}},
+    {AT_CH_DATA_CHANNEL_ID_3, RNIC_RM_NET_ID_2, {0, 0, 0}}
 #endif
 };
 
@@ -229,7 +229,7 @@ TAF_UINT32 AT_DHCPGetIPMask(
 )
 {
     /* 11111111.11111111.11111111.11111110*/
-    TAF_UINT32 ulMask    = 0xfffffffe;
+    TAF_UINT32 ulMask    = 0xfffffffeU;
     TAF_UINT32 ulIpTemp  = ulIpAddrHL;
     TAF_UINT32 ul1stBit;
 
@@ -1126,7 +1126,7 @@ VOS_UINT32 AT_DHCPCheckCfg(
 )
 {
     if ( (0 == ptrDHCPCfg->ulIPAddr)
-      || (0 == (0xffffffff - ptrDHCPCfg->ulIPAddr)) )
+      || (0 == (0xffffffffU - ptrDHCPCfg->ulIPAddr)) )
     {
         return VOS_ERR;
     }
@@ -1233,7 +1233,7 @@ VOS_UINT32 AT_GetDisplayRate(
 {
       VOS_UINT8 aucSpeed[AT_AP_SPEED_STRLEN + 1];
 
-      PS_MEM_SET(aucSpeed, 0, AT_AP_SPEED_STRLEN + 1);
+      PS_MEM_SET(aucSpeed, 0, (VOS_SIZE_T)(AT_AP_SPEED_STRLEN + 1));
       if (VOS_ERR == Taf_GetDisplayRate(usClientId, aucSpeed))
       {
           AT_ERR_LOG("AT_GetDisplayRate : ERROR : at get rate Error!");
@@ -1477,7 +1477,7 @@ VOS_VOID AT_GetPsDialParamFromAtDialParam(
 
 
 VOS_UINT32 AT_GetFcPriFromMap(
-    FC_ID_ENUM_UINT32                  enFcId,
+    FC_ID_ENUM_UINT8                   enFcId,
     AT_FCID_MAP_STRU                  *pstFcIdMap
 )
 {
@@ -1497,7 +1497,7 @@ VOS_UINT32 AT_GetFcPriFromMap(
      || (FC_ID_DIPC_3 == enFcId))
     {
         pstFcIdMap->ulUsed  = g_stFcIdMaptoFcPri[enFcId].ulUsed;
-        pstFcIdMap->ulFcPri = g_stFcIdMaptoFcPri[enFcId].ulFcPri;
+        pstFcIdMap->enFcPri = g_stFcIdMaptoFcPri[enFcId].enFcPri;
 
         return VOS_OK;
     }
@@ -1511,10 +1511,10 @@ VOS_UINT32 AT_GetFcPriFromMap(
 
 VOS_VOID AT_NotifyFcWhenPdpModify(
     TAF_PS_CALL_PDP_MODIFY_CNF_STRU    *pstEvent,
-    FC_ID_ENUM_UINT32                   enFcId
+    FC_ID_ENUM_UINT8                    enFcId
 )
 {
-    FC_PRI_ENUM_UINT32                  enFCPriCurrent;
+    FC_PRI_ENUM_UINT8                   enFCPriCurrent;
     AT_FCID_MAP_STRU                    stFCPriOrg;
 
     if (VOS_OK == AT_GetFcPriFromMap(enFcId, &stFCPriOrg))
@@ -1529,7 +1529,7 @@ VOS_VOID AT_NotifyFcWhenPdpModify(
         }
 
         if ( (VOS_TRUE == stFCPriOrg.ulUsed)
-           && (enFCPriCurrent > stFCPriOrg.ulFcPri))
+           && (enFCPriCurrent > stFCPriOrg.enFcPri))
         {
             /* 根据返回QOS来改变流控点的优先级*/
             AT_ChangeFCPoint(&pstEvent->stCtrl,enFCPriCurrent,enFcId);
@@ -2414,6 +2414,14 @@ VOS_VOID  AT_NdisAddrProc(
         g_stAtNdisDhcpPara.stIpv4Dhcp.bitOpIpv4Secpcscf = VOS_TRUE;
     }
 
+    /* 获取第三PCSCF地址 */
+    if (VOS_TRUE == pstEvent->stPcscf.bitOpThiPcscfAddr)
+    {
+        /* IP地址的有效性由APS保证 */
+        g_stAtNdisDhcpPara.stIpv4Dhcp.ulIpv4ThiPCSCF    = AT_GetLanAddr32(pstEvent->stPcscf.aucThiPcscfAddr);
+        g_stAtNdisDhcpPara.stIpv4Dhcp.bitOpIpv4Thipcscf = VOS_TRUE;
+    }
+
     return;
 }
 
@@ -2642,7 +2650,7 @@ VOS_VOID  AT_ProcNdisRegFCPoint(
 {
     VOS_UINT32                          ulRet;
     AT_FCID_MAP_STRU                    stFCPriOrg;
-    FC_PRI_ENUM_UINT32                  enFCPriCurrent;
+    FC_PRI_ENUM_UINT8                   enFCPriCurrent;
     MODEM_ID_ENUM_UINT16                enModemId;
 
     enModemId                           = MODEM_ID_0;
@@ -2676,7 +2684,7 @@ VOS_VOID  AT_ProcNdisRegFCPoint(
             }
 
             /* 如果当前FC优先级比之前承载的FC优先级高，那么调整优先级。*/
-            if(enFCPriCurrent > stFCPriOrg.ulFcPri)
+            if(enFCPriCurrent > stFCPriOrg.enFcPri)
             {
                 AT_ChangeFCPoint(&pstEvent->stCtrl,enFCPriCurrent, FC_ID_NIC_1);
             }
@@ -3125,20 +3133,20 @@ VOS_UINT32 AT_DisableNdisFlowCtl(
 }
 VOS_UINT32 AT_RegNdisFCPoint(
     TAF_PS_CALL_PDP_ACTIVATE_CNF_STRU  *pstEvent,
-    FC_ID_ENUM_UINT32                   ulFcId,
+    FC_ID_ENUM_UINT8                    enFcId,
     MODEM_ID_ENUM_UINT16                enModemId
 )
 {
     FC_REG_POINT_STRU                   stRegFcPoint;
     VOS_UINT32                          ulRet;
-FC_PRI_ENUM_UINT32                  enFCPri;
+    FC_PRI_ENUM_UINT8                   enFCPri;
 
     PS_MEM_SET(&stRegFcPoint,0,sizeof(FC_REG_POINT_STRU));
 
     /* 配置通道与RABID映射关系 */
-    FC_ChannelMapCreate(ulFcId, pstEvent->ucRabId, enModemId);
+    FC_ChannelMapCreate(enFcId, pstEvent->ucRabId, enModemId);
 
-    stRegFcPoint.enFcId             = ulFcId;
+    stRegFcPoint.enFcId             = enFcId;
 
     /* 根据网卡上最高优先级RAB QoS优先级来折算,优先级改变时，需要改变优先级 */
     /*  FC_PRI_3        有最低优先级的承载
@@ -3159,7 +3167,7 @@ FC_PRI_ENUM_UINT32                  enFCPri;
     stRegFcPoint.pClrFunc           = AT_DisableNdisFlowCtl;
     stRegFcPoint.pSetFunc           = AT_EnableNdisFlowCtl;
     stRegFcPoint.pRstFunc           = AT_ResetFlowCtl;
-    stRegFcPoint.ulParam2           = ulFcId;
+    stRegFcPoint.ulParam2           = enFcId;
     stRegFcPoint.ulParam1           = (VOS_UINT32)pstEvent->stCtrl.usClientId;
 
     /* 注册流控点,需要分别注册MEM,CPU,CDS和GPRS。 */
@@ -3197,7 +3205,7 @@ FC_PRI_ENUM_UINT32                  enFCPri;
 
     /* 设置FCID与FC Pri的映射关系 */
     g_stFcIdMaptoFcPri[FC_ID_NIC_1].ulUsed      = VOS_TRUE;
-    g_stFcIdMaptoFcPri[FC_ID_NIC_1].ulFcPri     = enFCPri;
+    g_stFcIdMaptoFcPri[FC_ID_NIC_1].enFcPri     = enFCPri;
     /* 有一张网卡上多个RABID的情况，所以需要将多个RABID记录下来 */
     g_stFcIdMaptoFcPri[FC_ID_NIC_1].ulRabIdMask |= (1 << (pstEvent->ucRabId));
     g_stFcIdMaptoFcPri[FC_ID_NIC_1].enModemId   = enModemId;
@@ -3214,7 +3222,7 @@ VOS_UINT32 AT_DeRegNdisFCPoint(
     MODEM_ID_ENUM_UINT16                enModemId
 )
 {
-    FC_ID_ENUM_UINT32                   enFcId;
+    FC_ID_ENUM_UINT8                    enFcId;
     VOS_UINT32                          ulRet;
 
     /* 在调用FC_DeRegPoint前,先调用FC_ChannelMapDelete */
@@ -3232,7 +3240,7 @@ VOS_UINT32 AT_DeRegNdisFCPoint(
 
     /* 清除FCID与FC Pri的映射关系 */
     g_stFcIdMaptoFcPri[FC_ID_NIC_1].ulUsed      = VOS_FALSE;
-    g_stFcIdMaptoFcPri[FC_ID_NIC_1].ulFcPri     = FC_PRI_BUTT;
+    g_stFcIdMaptoFcPri[FC_ID_NIC_1].enFcPri     = FC_PRI_BUTT;
     /* 有一张网卡上多个RABID的情况，所以需要将对应的RABID掩码清除掉 */
     g_stFcIdMaptoFcPri[FC_ID_NIC_1].ulRabIdMask &= ~((VOS_UINT32)1 << ucRabId);
     g_stFcIdMaptoFcPri[FC_ID_NIC_1].enModemId   = MODEM_ID_BUTT;
@@ -3788,6 +3796,14 @@ VOS_VOID AT_AppPdpAddrProc(
         pstAppPdpEntity->stIpv4Dhcp.ulIpv4SecPCSCF    = AT_GetLanAddr32(pstEvent->stPcscf.aucSecPcscfAddr);
     }
 
+    /* 获取第三PCSCF地址 */
+    if (VOS_TRUE == pstEvent->stPcscf.bitOpThiPcscfAddr)
+    {
+        /* IP地址的有效性由APS保证 */
+        pstAppPdpEntity->stIpv4Dhcp.bitOpIpv4Thipcscf = VOS_TRUE;
+        pstAppPdpEntity->stIpv4Dhcp.ulIpv4ThiPCSCF    = AT_GetLanAddr32(pstEvent->stPcscf.aucThiPcscfAddr);
+    }
+
     return;
 }
 
@@ -4109,7 +4125,7 @@ VOS_UINT32 AT_SendRnicIpv4ActInd(VOS_UINT8 ucRmNetId)
     /* 初始化消息 */
     PS_MEM_SET((VOS_CHAR*)pstMsg + VOS_MSG_HEAD_LENGTH,
                0x00,
-               sizeof(AT_RNIC_IPV4_PDP_ACT_IND_STRU) - VOS_MSG_HEAD_LENGTH);
+               (VOS_SIZE_T)(sizeof(AT_RNIC_IPV4_PDP_ACT_IND_STRU) - VOS_MSG_HEAD_LENGTH));
 
     /* 填写消息头 */
     pstMsg->ulReceiverCpuId = VOS_LOCAL_CPUID;
@@ -4159,7 +4175,7 @@ VOS_UINT32 AT_SendRnicIpv6ActInd(VOS_UINT8 ucRmNetId)
     /* 初始化消息 */
     PS_MEM_SET((VOS_CHAR*)pstMsg + VOS_MSG_HEAD_LENGTH,
                0x00,
-               sizeof(AT_RNIC_IPV6_PDP_ACT_IND_STRU) - VOS_MSG_HEAD_LENGTH);
+               (VOS_SIZE_T)(sizeof(AT_RNIC_IPV6_PDP_ACT_IND_STRU) - VOS_MSG_HEAD_LENGTH));
 
 
     /* 填写消息头 */
@@ -4212,7 +4228,7 @@ VOS_UINT32 AT_SendRnicIpv4v6ActInd(VOS_UINT8 ucRmNetId)
     /* 初始化消息 */
     PS_MEM_SET((VOS_CHAR*)pstMsg + VOS_MSG_HEAD_LENGTH,
                0x00,
-               sizeof(AT_RNIC_IPV4V6_PDP_ACT_IND_STRU) - VOS_MSG_HEAD_LENGTH);
+               (VOS_SIZE_T)(sizeof(AT_RNIC_IPV4V6_PDP_ACT_IND_STRU) - VOS_MSG_HEAD_LENGTH));
 
 
     /* 填写消息头 */
@@ -4309,7 +4325,7 @@ VOS_UINT32 AT_SendRnicPdpDeactInd(
     /* 初始化消息 */
     PS_MEM_SET((VOS_CHAR*)pstMsg + VOS_MSG_HEAD_LENGTH,
                0x00,
-               sizeof(AT_RNIC_PDP_DEACT_IND_STRU) - VOS_MSG_HEAD_LENGTH);
+               (VOS_SIZE_T)(sizeof(AT_RNIC_PDP_DEACT_IND_STRU) - VOS_MSG_HEAD_LENGTH));
 
     /* 填写消息头 */
     pstMsg->ulReceiverCpuId = VOS_LOCAL_CPUID;
@@ -4379,7 +4395,7 @@ VOS_VOID  AT_ProcAppRegFCPoint(
 {
     VOS_UINT32                          ulResult;
     AT_FCID_MAP_STRU                    stFCPriOrg;
-    FC_ID_ENUM_UINT32                   enDefaultFcId;
+    FC_ID_ENUM_UINT8                    enDefaultFcId;
 
     /* APP拨号默认使用NDIS网卡1的流控点 */
     enDefaultFcId = FC_ID_NIC_1;
@@ -4412,6 +4428,7 @@ VOS_VOID  AT_SaveIPv6Pcscf(
 {
     pstPdpEntity->stIpv6Dhcp.bitOpIpv6PriPCSCF = VOS_FALSE;
     pstPdpEntity->stIpv6Dhcp.bitOpIpv6SecPCSCF = VOS_FALSE;
+    pstPdpEntity->stIpv6Dhcp.bitOpIpv6ThiPCSCF = VOS_FALSE;
 
     /* 处理IPV6的主PCSCF地址 */
     if (VOS_TRUE == pstEvent->stIpv6Pcscf.bitOpPrimPcscfAddr)
@@ -4430,8 +4447,17 @@ VOS_VOID  AT_SaveIPv6Pcscf(
                    pstEvent->stIpv6Pcscf.aucSecPcscfAddr,
                    TAF_IPV6_ADDR_LEN);
     }
-}
 
+    /* 处理IPV6的副PCSCF地址 */
+    if (VOS_TRUE == pstEvent->stIpv6Pcscf.bitOpThiPcscfAddr)
+    {
+        pstPdpEntity->stIpv6Dhcp.bitOpIpv6ThiPCSCF = VOS_TRUE;
+        PS_MEM_CPY(pstPdpEntity->stIpv6Dhcp.aucThiPcscfAddr,
+                   pstEvent->stIpv6Pcscf.aucThiPcscfAddr,
+                   TAF_IPV6_ADDR_LEN);
+    }
+
+}
 VOS_VOID  AT_SaveIPv6Dns(
     TAF_PS_CALL_PDP_ACTIVATE_CNF_STRU  *pstEvent,
     AT_PDP_ENTITY_STRU                 *pstPdpEntity
@@ -5112,13 +5138,13 @@ VOS_UINT32 AT_AppClearFlowCtrl(
 
 
 VOS_UINT32 AT_AppRegFCPoint(
-    FC_ID_ENUM_UINT32                   ulFcId,
+    FC_ID_ENUM_UINT8                    enFcId,
     TAF_PS_CALL_PDP_ACTIVATE_CNF_STRU  *pstEvent,
     VOS_UINT8                           ucRmNetId
 )
 {
     FC_REG_POINT_STRU                   stRegFcPoint;
-    FC_PRI_ENUM_UINT32                  enDefaultFcPri;
+    FC_PRI_ENUM_UINT8                   enDefaultFcPri;
     VOS_UINT32                          ulRslt;
     MODEM_ID_ENUM_UINT16                enModemId;
 
@@ -5135,14 +5161,14 @@ VOS_UINT32 AT_AppRegFCPoint(
     }
 
     /* 配置通道与RABID映射关系 */
-    FC_ChannelMapCreate(ulFcId, pstEvent->ucRabId, enModemId);
+    FC_ChannelMapCreate(enFcId, pstEvent->ucRabId, enModemId);
 
     /* 根据网卡上最高优先级RAB QoS优先级来折算,优先级改变时，需要改变优先级 */
     /*  FC_PRI_3        有最低优先级的承载
         FC_PRI_4        有NONGBR承载
         FC_PRI_5        有GBR承载 */
     enDefaultFcPri          = FC_PRI_FOR_PDN_LOWEST;
-    stRegFcPoint.enFcId     = ulFcId;
+    stRegFcPoint.enFcId     = enFcId;
     stRegFcPoint.enFcPri    = enDefaultFcPri;
 
     stRegFcPoint.enModemId  = enModemId;
@@ -5151,7 +5177,7 @@ VOS_UINT32 AT_AppRegFCPoint(
 
     /* Paramter1设置为RmNetId, Paramter2设置为FCID */
     stRegFcPoint.ulParam1   = ucRmNetId;
-    stRegFcPoint.ulParam2   = ulFcId;
+    stRegFcPoint.ulParam2   = enFcId;
     stRegFcPoint.pRstFunc   = AT_ResetFlowCtl;
 
     /* 注册流控点, 需要分别注册MEM和CDS */
@@ -5173,11 +5199,11 @@ VOS_UINT32 AT_AppRegFCPoint(
     }
 
     /* 设置FCID与FC Pri的映射关系 */
-    g_stFcIdMaptoFcPri[ulFcId].ulUsed       = VOS_TRUE;
-    g_stFcIdMaptoFcPri[ulFcId].ulFcPri      = enDefaultFcPri;
+    g_stFcIdMaptoFcPri[enFcId].ulUsed       = VOS_TRUE;
+    g_stFcIdMaptoFcPri[enFcId].enFcPri      = enDefaultFcPri;
     /* 有一张网卡上多个RABID的情况，所以需要将多个RABID记录下来 */
-    g_stFcIdMaptoFcPri[ulFcId].ulRabIdMask  |= (1 << (pstEvent->ucRabId));
-    g_stFcIdMaptoFcPri[ulFcId].enModemId    = enModemId;
+    g_stFcIdMaptoFcPri[enFcId].ulRabIdMask  |= (1 << (pstEvent->ucRabId));
+    g_stFcIdMaptoFcPri[enFcId].enModemId    = enModemId;
 
     /* 勾流控消息 */
     AT_MNTN_TraceRegFcPoint((VOS_UINT8)pstEvent->stCtrl.usClientId, AT_FC_POINT_TYPE_RMNET);
@@ -5185,7 +5211,7 @@ VOS_UINT32 AT_AppRegFCPoint(
     return VOS_OK;
 }
 VOS_UINT32 AT_AppDeRegFCPoint(
-    FC_ID_ENUM_UINT32                   enFcId,
+    FC_ID_ENUM_UINT8                     enFcId,
     TAF_PS_CALL_PDP_DEACTIVATE_CNF_STRU *pstEvent
 )
 {
@@ -5214,7 +5240,7 @@ VOS_UINT32 AT_AppDeRegFCPoint(
 
     /* 清除FCID与FC Pri的映射关系 */
     g_stFcIdMaptoFcPri[enFcId].ulUsed       = VOS_FALSE;
-    g_stFcIdMaptoFcPri[enFcId].ulFcPri      = FC_PRI_BUTT;
+    g_stFcIdMaptoFcPri[enFcId].enFcPri      = FC_PRI_BUTT;
     /* 有一张网卡上多个RABID的情况，所以需要将对应的RABID掩码清除掉 */
     g_stFcIdMaptoFcPri[enFcId].ulRabIdMask &= ~((VOS_UINT32)1 << pstEvent->ucRabId);
     g_stFcIdMaptoFcPri[enFcId].enModemId    = MODEM_ID_BUTT;
@@ -5251,12 +5277,12 @@ VOS_VOID AT_APP_ParseUsrInfo(
 }
 
 
-FC_PRI_ENUM_UINT32 AT_GetFCPriFromQos(
+FC_PRI_ENUM_UINT8 AT_GetFCPriFromQos(
     TAF_UMTS_QOS_STRU                  *pstUmtsQos
 )
 {
 
-    FC_PRI_ENUM_UINT32                  enFCPri;
+    FC_PRI_ENUM_UINT8                   enFCPri;
     VOS_UINT8                           ucTrafficClass;
 
     /* 初始化 */
@@ -6022,7 +6048,7 @@ VOS_UINT32 AT_VpResetFlowCtl(
 )
 {
     VOS_UINT32                          ulRet;
-    FC_ID_ENUM_UINT32                   enFcId;
+    FC_ID_ENUM_UINT8                    enFcId;
     MODEM_ID_ENUM_UINT16                enModemId;
 
     enFcId    = ulParam2;
@@ -6038,7 +6064,7 @@ VOS_UINT32 AT_VpResetFlowCtl(
         }
 
         g_stFcIdMaptoFcPri[enFcId].ulUsed       = VOS_FALSE;
-        g_stFcIdMaptoFcPri[enFcId].ulFcPri      = FC_PRI_BUTT;
+        g_stFcIdMaptoFcPri[enFcId].enFcPri      = FC_PRI_BUTT;
         g_stFcIdMaptoFcPri[enFcId].enModemId    = MODEM_ID_BUTT;
     }
 
@@ -6048,12 +6074,12 @@ VOS_UINT32 AT_VpResetFlowCtl(
 
 VOS_UINT32 AT_RegModemVideoPhoneFCPoint(
     VOS_UINT8                           ucIndex,
-    FC_ID_ENUM_UINT32                   ulFcId
+    FC_ID_ENUM_UINT8                    enFcId
 )
 {
     FC_REG_POINT_STRU                   stRegFcPoint;
     VOS_UINT32                          ulRet;
-    FC_PRI_ENUM_UINT32                  enFcPri;
+    FC_PRI_ENUM_UINT8                   enFcPri;
     MODEM_ID_ENUM_UINT16                enModemId;
 
     enModemId = MODEM_ID_0;
@@ -6068,7 +6094,7 @@ VOS_UINT32 AT_RegModemVideoPhoneFCPoint(
         return VOS_ERR;
     }
 
-    stRegFcPoint.enFcId             = ulFcId;
+    stRegFcPoint.enFcId             = enFcId;
 
     /*  FC_PRI_3        有最低优先级的承载
         FC_PRI_4        有NONGBR承载
@@ -6080,7 +6106,7 @@ VOS_UINT32 AT_RegModemVideoPhoneFCPoint(
     stRegFcPoint.pClrFunc           = AT_MODEM_StopFlowCtrl;
     stRegFcPoint.pSetFunc           = AT_MODEM_StartFlowCtrl;
     stRegFcPoint.ulParam1           = (VOS_UINT32)g_alAtUdiHandle[ucIndex];
-    stRegFcPoint.ulParam2           = ulFcId;
+    stRegFcPoint.ulParam2           = enFcId;
     stRegFcPoint.pRstFunc           = AT_VpResetFlowCtl;
 
     /* 注册流控点,需要分别注册MEM,CPU,CST */
@@ -6109,7 +6135,7 @@ VOS_UINT32 AT_RegModemVideoPhoneFCPoint(
 
     /* 设置FCID与FC Pri的映射关系 */
     g_stFcIdMaptoFcPri[FC_ID_MODEM].ulUsed  = VOS_TRUE;
-    g_stFcIdMaptoFcPri[FC_ID_MODEM].ulFcPri = enFcPri;
+    g_stFcIdMaptoFcPri[FC_ID_MODEM].enFcPri = enFcPri;
     g_stFcIdMaptoFcPri[FC_ID_MODEM].enModemId = enModemId;
 
     /* 勾流控消息 */
@@ -6141,7 +6167,7 @@ VOS_UINT32 AT_DeRegModemVideoPhoneFCPoint(VOS_UINT8 ucIndex)
 
     /* 清除FCID与FC Pri的映射关系 */
     g_stFcIdMaptoFcPri[FC_ID_MODEM].ulUsed      = VOS_FALSE;
-    g_stFcIdMaptoFcPri[FC_ID_MODEM].ulFcPri     = FC_PRI_BUTT;
+    g_stFcIdMaptoFcPri[FC_ID_MODEM].enFcPri     = FC_PRI_BUTT;
     g_stFcIdMaptoFcPri[FC_ID_MODEM].enModemId   = MODEM_ID_BUTT;
 
     /* 勾流控消息 */
@@ -6155,12 +6181,12 @@ VOS_UINT32 AT_DeRegModemVideoPhoneFCPoint(VOS_UINT8 ucIndex)
 VOS_UINT32 AT_RegModemPsDataFCPoint(
     VOS_UINT8                           ucIndex,
     TAF_PS_CALL_PDP_ACTIVATE_CNF_STRU  *pstEvent,
-    FC_ID_ENUM_UINT32                   ulFcId
+    FC_ID_ENUM_UINT8                    enFcId
 )
 {
     FC_REG_POINT_STRU                   stRegFcPoint;
     VOS_UINT32                          ulRet;
-    FC_PRI_ENUM_UINT32                  enFcPri;
+    FC_PRI_ENUM_UINT8                   enFcPri;
     MODEM_ID_ENUM_UINT16                enModemId;
     AT_UART_CTX_STRU                   *pstUartCtx = VOS_NULL_PTR;
 
@@ -6186,9 +6212,9 @@ VOS_UINT32 AT_RegModemPsDataFCPoint(
     }
 
     /* 配置通道与RABID映射关系 */
-    FC_ChannelMapCreate(ulFcId, pstEvent->ucRabId, enModemId);
+    FC_ChannelMapCreate(enFcId, pstEvent->ucRabId, enModemId);
 
-    stRegFcPoint.enFcId             = ulFcId;
+    stRegFcPoint.enFcId             = enFcId;
 
     /* 根据网卡上最高优先级RAB QoS优先级来折算,优先级改变时，需要改变优先级 */
     /*  FC_PRI_3        有最低优先级的承载
@@ -6216,7 +6242,7 @@ VOS_UINT32 AT_RegModemPsDataFCPoint(
 #endif
     stRegFcPoint.ulParam1           = (VOS_UINT32)g_alAtUdiHandle[ucIndex];
     stRegFcPoint.enModemId          = enModemId;
-    stRegFcPoint.ulParam2           = ulFcId;
+    stRegFcPoint.ulParam2           = enFcId;
     stRegFcPoint.pRstFunc           = AT_ResetFlowCtl;
 
     /* 注册流控点,需要分别注册MEM,CPU,CDS和GPRS。 */
@@ -6252,7 +6278,7 @@ VOS_UINT32 AT_RegModemPsDataFCPoint(
 
     /* 设置FCID与FC Pri的映射关系 */
     g_stFcIdMaptoFcPri[FC_ID_MODEM].ulUsed      = VOS_TRUE;
-    g_stFcIdMaptoFcPri[FC_ID_MODEM].ulFcPri     = enFcPri;
+    g_stFcIdMaptoFcPri[FC_ID_MODEM].enFcPri     = enFcPri;
     /* 有一张网卡上多个RABID的情况，所以需要将多个RABID记录下来 */
     g_stFcIdMaptoFcPri[FC_ID_MODEM].ulRabIdMask |= (1 << (pstEvent->ucRabId));
     g_stFcIdMaptoFcPri[FC_ID_MODEM].enModemId   = enModemId;
@@ -6300,7 +6326,7 @@ VOS_UINT32 AT_DeRegModemPsDataFCPoint(
 
     /* 清除FCID与FC Pri的映射关系 */
     g_stFcIdMaptoFcPri[FC_ID_MODEM].ulUsed      = VOS_FALSE;
-    g_stFcIdMaptoFcPri[FC_ID_MODEM].ulFcPri     = FC_PRI_BUTT;
+    g_stFcIdMaptoFcPri[FC_ID_MODEM].enFcPri     = FC_PRI_BUTT;
     /* 有一张网卡上多个RABID的情况，所以需要将对应的RABID掩码清除掉 */
     g_stFcIdMaptoFcPri[FC_ID_MODEM].ulRabIdMask &= ~((VOS_UINT32)1 << ucRabId);
     g_stFcIdMaptoFcPri[FC_ID_MODEM].enModemId   = MODEM_ID_BUTT;
@@ -6312,8 +6338,8 @@ VOS_UINT32 AT_DeRegModemPsDataFCPoint(
 }
 VOS_UINT32 AT_ChangeFCPoint(
     TAF_CTRL_STRU                       *pstCtrl,
-    FC_PRI_ENUM_UINT32                   enFCPri,
-    FC_ID_ENUM_UINT32                    ulFcId
+    FC_PRI_ENUM_UINT8                    enFCPri,
+    FC_ID_ENUM_UINT8                     enFcId
 )
 {
     VOS_UINT32                          ulRet;
@@ -6329,27 +6355,27 @@ VOS_UINT32 AT_ChangeFCPoint(
         return VOS_ERR;
     }
 
-    if (FC_ID_BUTT != ulFcId)
+    if (FC_ID_BUTT != enFcId)
     {
-        ulRet = FC_ChangePoint(ulFcId, FC_POLICY_ID_MEM, enFCPri, enModemId);
+        ulRet = FC_ChangePoint(enFcId, FC_POLICY_ID_MEM, enFCPri, enModemId);
         if (VOS_OK != ulRet)
         {
             AT_ERR_LOG("AT_ChangeFCPoint: ERROR: Change FC Point Failed.");
         }
 
-        ulRet = FC_ChangePoint(ulFcId, FC_POLICY_ID_CPU_A , enFCPri, enModemId);
+        ulRet = FC_ChangePoint(enFcId, FC_POLICY_ID_CPU_A , enFCPri, enModemId);
         if (VOS_OK != ulRet)
         {
             AT_ERR_LOG("AT_ChangeFCPoint: ERROR: Change FC Point Failed.");
         }
 
-        ulRet = FC_ChangePoint(ulFcId, FC_POLICY_ID_CDS, enFCPri, enModemId);
+        ulRet = FC_ChangePoint(enFcId, FC_POLICY_ID_CDS, enFCPri, enModemId);
         if (VOS_OK != ulRet)
         {
             AT_ERR_LOG("AT_ChangeFCPoint: ERROR: Change FC Point Failed.");
         }
 
-        ulRet = FC_ChangePoint(ulFcId, FC_POLICY_ID_GPRS, enFCPri, enModemId);
+        ulRet = FC_ChangePoint(enFcId, FC_POLICY_ID_GPRS, enFCPri, enModemId);
         if (VOS_OK != ulRet)
         {
             AT_ERR_LOG("AT_ChangeFCPoint: ERROR: Change FC Point Failed.");
@@ -6398,9 +6424,9 @@ VOS_UINT32 AT_RegHsicFCPoint(
 {
     FC_REG_POINT_STRU                   stRegFcPoint;
     VOS_UINT32                          ulRet;
-    FC_PRI_ENUM_UINT32                  enFCPri;
+    FC_PRI_ENUM_UINT8                   enFCPri;
     UDI_DEVICE_ID                       enDataChannelId;
-    FC_ID_ENUM_UINT32                   enFcId;
+    FC_ID_ENUM_UINT8                    enFcId;
     MODEM_ID_ENUM_UINT16                enModemId;
     AT_MODEM_PS_CTX_STRU               *pstPsModemCtx = VOS_NULL_PTR;
 
@@ -6507,7 +6533,7 @@ VOS_UINT32 AT_RegHsicFCPoint(
 
     /* 设置FCID与FC Pri的映射关系 */
     g_stFcIdMaptoFcPri[enFcId].ulUsed       = VOS_TRUE;
-    g_stFcIdMaptoFcPri[enFcId].ulFcPri      = enFCPri;
+    g_stFcIdMaptoFcPri[enFcId].enFcPri      = enFCPri;
     /* 有一张网卡上多个RABID的情况，所以需要将多个RABID记录下来 */
     g_stFcIdMaptoFcPri[enFcId].ulRabIdMask  |= (1 << (pstEvent->ucRabId));
     g_stFcIdMaptoFcPri[enFcId].enModemId    = enModemId;
@@ -6523,7 +6549,7 @@ VOS_UINT32 AT_DeRegHsicFCPoint(
     TAF_PS_CALL_PDP_DEACTIVATE_CNF_STRU *pstEvent
 )
 {
-    FC_ID_ENUM_UINT32                   enFcId;
+    FC_ID_ENUM_UINT8                    enFcId;
     VOS_UINT32                          ulRet;
     UDI_DEVICE_ID                       enDataChannelId;
     MODEM_ID_ENUM_UINT16                enModemId;
@@ -6583,7 +6609,7 @@ VOS_UINT32 AT_DeRegHsicFCPoint(
 
     /* 清除FCID与FC Pri的映射关系 */
     g_stFcIdMaptoFcPri[enFcId].ulUsed       = VOS_FALSE;
-    g_stFcIdMaptoFcPri[enFcId].ulFcPri      = FC_PRI_BUTT;
+    g_stFcIdMaptoFcPri[enFcId].enFcPri      = FC_PRI_BUTT;
     /* 有一张网卡上多个RABID的情况，所以需要将对应的RABID掩码清除掉 */
     g_stFcIdMaptoFcPri[enFcId].ulRabIdMask &= ~((VOS_UINT32)1 << pstEvent->ucRabId);
     g_stFcIdMaptoFcPri[enFcId].enModemId    = MODEM_ID_BUTT;
@@ -6720,7 +6746,7 @@ VOS_UINT32 AT_SendRnicCgactIpv4ActInd(
     /* 初始化消息 */
     PS_MEM_SET((VOS_CHAR*)pstMsg + VOS_MSG_HEAD_LENGTH,
                0x00,
-               sizeof(AT_RNIC_IPV4_PDP_ACT_IND_STRU) - VOS_MSG_HEAD_LENGTH);
+               (VOS_SIZE_T)(sizeof(AT_RNIC_IPV4_PDP_ACT_IND_STRU) - VOS_MSG_HEAD_LENGTH));
 
     /* 填写消息头 */
     pstMsg->ulReceiverCpuId = VOS_LOCAL_CPUID;
@@ -6747,7 +6773,7 @@ VOS_VOID  AT_ProcAppPsRspEvtPdpActCnf(
 {
     VOS_UINT32                          ulRslt;
     AT_FCID_MAP_STRU                    stFCPriOrg;
-    FC_ID_ENUM_UINT32                   enDefaultFcId;
+    FC_ID_ENUM_UINT8                    enDefaultFcId;
     VOS_UINT8                           ucRmNetId;
 
     ucRmNetId = 0;
@@ -6792,7 +6818,7 @@ VOS_VOID  AT_ProcAppPsRspEvtPdpDeActCnf(
     TAF_PS_CALL_PDP_DEACTIVATE_CNF_STRU *pstEvent
 )
 {
-    FC_ID_ENUM_UINT32                   enDefaultFcId;
+    FC_ID_ENUM_UINT8                    enDefaultFcId;
     VOS_UINT8                           ucRmNetId;
     VOS_UINT32                          ulRslt;
 
@@ -6824,7 +6850,7 @@ VOS_VOID AT_ProcAppPsRspEvtPdpDeactivated(
 )
 {
     VOS_UINT16                          usLength;
-    FC_ID_ENUM_UINT32                   enDefaultFcId;
+    FC_ID_ENUM_UINT8                    enDefaultFcId;
     VOS_UINT8                           ucRmNetId;
     VOS_UINT32                          ulRslt;
 
@@ -6904,7 +6930,7 @@ VOS_VOID AT_NotifyFcWhenAppPdpModify(
 {
     VOS_UINT32                          ulRslt;
     VOS_UINT8                           ucRmNetId;
-    FC_ID_ENUM_UINT32                   enDefaultFcId;
+    FC_ID_ENUM_UINT8                    enDefaultFcId;
 
     ucRmNetId = 0;
 
@@ -7042,10 +7068,10 @@ VOS_UINT32 AT_ResetFlowCtl(
     VOS_UINT8                           ucRabIdIndex;
     VOS_UINT32                          ulRabIdMask;
     VOS_UINT32                          ulRet;
-    FC_ID_ENUM_UINT32                   enFcId;
+    FC_ID_ENUM_UINT8                    enFcId;
     MODEM_ID_ENUM_UINT16                enModemId;
 
-    enFcId      = ulParam2;
+    enFcId      = (FC_ID_ENUM_UINT8)ulParam2;
     enModemId   = g_stFcIdMaptoFcPri[enFcId].enModemId;
     ulRabIdMask = g_stFcIdMaptoFcPri[enFcId].ulRabIdMask;
 
@@ -7067,7 +7093,7 @@ VOS_UINT32 AT_ResetFlowCtl(
         }
 
         g_stFcIdMaptoFcPri[enFcId].ulUsed       = VOS_FALSE;
-        g_stFcIdMaptoFcPri[enFcId].ulFcPri      = FC_PRI_BUTT;
+        g_stFcIdMaptoFcPri[enFcId].enFcPri      = FC_PRI_BUTT;
         g_stFcIdMaptoFcPri[enFcId].ulRabIdMask  = 0;
         g_stFcIdMaptoFcPri[enFcId].enModemId    = MODEM_ID_BUTT;
 
@@ -7166,7 +7192,7 @@ VOS_UINT32 AT_PS_GetChDataValueFromRnicRmNetId(
 }
 
 
-FC_ID_ENUM_UINT32 AT_PS_GetFcIdByUdiDeviceId(
+FC_ID_ENUM_UINT8 AT_PS_GetFcIdByUdiDeviceId(
     UDI_DEVICE_ID                       enDataChannelId
 )
 {
@@ -7191,7 +7217,7 @@ FC_ID_ENUM_UINT32 AT_PS_GetFcIdByUdiDeviceId(
 }
 
 
-FC_ID_ENUM_UINT32 AT_PS_GetFcIdFromRnicByRmNetId(
+FC_ID_ENUM_UINT8 AT_PS_GetFcIdFromRnicByRmNetId(
     VOS_UINT32                          ulRmNetId
 )
 {
@@ -7779,6 +7805,13 @@ VOS_VOID AT_PS_PdpAddrProc(
         pstCallEntity->stIpv4DhcpInfo.ulIpv4SecPCSCF      = AT_GetLanAddr32(pstEvent->stPcscf.aucSecPcscfAddr);
     }
 
+    if (VOS_TRUE == pstEvent->stPcscf.bitOpThiPcscfAddr)
+    {
+        /* IP地址的有效性由APS保证 */
+        pstCallEntity->stIpv4DhcpInfo.bitOpIpv4Thipcscf   = VOS_TRUE;
+        pstCallEntity->stIpv4DhcpInfo.ulIpv4ThiPCSCF      = AT_GetLanAddr32(pstEvent->stPcscf.aucThiPcscfAddr);
+    }
+
     return;
 }
 
@@ -8131,7 +8164,7 @@ VOS_VOID AT_PS_SndRnicIpv4PdpActInd(
     /* 初始化消息 */
     PS_MEM_SET((VOS_CHAR*)pstMsg + VOS_MSG_HEAD_LENGTH,
                0x00,
-               sizeof(AT_RNIC_IPV4_PDP_ACT_IND_STRU) - VOS_MSG_HEAD_LENGTH);
+               (VOS_SIZE_T)(sizeof(AT_RNIC_IPV4_PDP_ACT_IND_STRU) - VOS_MSG_HEAD_LENGTH));
 
     /* 填写消息头 */
     pstMsg->ulReceiverCpuId = VOS_LOCAL_CPUID;
@@ -8183,7 +8216,7 @@ VOS_VOID AT_PS_SndRnicIpv6PdpActInd(
     /* 初始化消息 */
     PS_MEM_SET((VOS_CHAR*)pstMsg + VOS_MSG_HEAD_LENGTH,
                0x00,
-               sizeof(AT_RNIC_IPV6_PDP_ACT_IND_STRU) - VOS_MSG_HEAD_LENGTH);
+               (VOS_SIZE_T)(sizeof(AT_RNIC_IPV6_PDP_ACT_IND_STRU) - VOS_MSG_HEAD_LENGTH));
 
     /* 填写消息头 */
     pstMsg->ulReceiverCpuId = VOS_LOCAL_CPUID;
@@ -8258,7 +8291,7 @@ VOS_VOID AT_PS_SndRnicPdpDeactInd(
     /* 初始化消息 */
     PS_MEM_SET((VOS_CHAR*)pstMsg + VOS_MSG_HEAD_LENGTH,
                0x00,
-               sizeof(AT_RNIC_PDP_DEACT_IND_STRU) - VOS_MSG_HEAD_LENGTH);
+               (VOS_SIZE_T)(sizeof(AT_RNIC_PDP_DEACT_IND_STRU) - VOS_MSG_HEAD_LENGTH));
 
     /* 填写消息头 */
     pstMsg->ulReceiverCpuId = VOS_LOCAL_CPUID;
@@ -8408,16 +8441,16 @@ VOS_UINT32 AT_PS_GenIpv6LanAddrWithRadomIID(
 
     /* 在进行PC测试时，不使用随机值 */
 #if (VOS_WIN32 == VOS_OS_VER)
-    paulAddr[2] = 0xFFFFFFFF;
+    paulAddr[2] = 0xFFFFFFFFU;
 
-    paulAddr[3] = 0xFFFFFFFF;
+    paulAddr[3] = 0xFFFFFFFFU;
 
 #else
     VOS_SetSeed(ulTick);
-    paulAddr[2] = VOS_Rand(0xFFFFFFFF);
+    paulAddr[2] = VOS_Rand(0xFFFFFFFFU);
 
     VOS_SetSeed(ulTick + 10);
-    paulAddr[3] = VOS_Rand(0xFFFFFFFF);
+    paulAddr[3] = VOS_Rand(0xFFFFFFFFU);
 
 #endif
 
@@ -8468,6 +8501,7 @@ VOS_VOID  AT_PS_SaveIPv6Pcscf(
 
     pstCallEntity->stIpv6DhcpInfo.bitOpIpv6PriPCSCF = VOS_FALSE;
     pstCallEntity->stIpv6DhcpInfo.bitOpIpv6SecPCSCF = VOS_FALSE;
+    pstCallEntity->stIpv6DhcpInfo.bitOpIpv6ThiPCSCF = VOS_FALSE;
 
     /* 处理IPV6的主PCSCF地址 */
     if (VOS_TRUE == pstEvent->stIpv6Pcscf.bitOpPrimPcscfAddr)
@@ -8486,6 +8520,16 @@ VOS_VOID  AT_PS_SaveIPv6Pcscf(
                    pstEvent->stIpv6Pcscf.aucSecPcscfAddr,
                    TAF_IPV6_ADDR_LEN);
     }
+
+    /* 处理IPV6的第三PCSCF地址 */
+    if (VOS_TRUE == pstEvent->stIpv6Pcscf.bitOpThiPcscfAddr)
+    {
+        pstCallEntity->stIpv6DhcpInfo.bitOpIpv6ThiPCSCF = VOS_TRUE;
+        PS_MEM_CPY(pstCallEntity->stIpv6DhcpInfo.aucThiPcscfAddr,
+                   pstEvent->stIpv6Pcscf.aucThiPcscfAddr,
+                   TAF_IPV6_ADDR_LEN);
+    }
+
 }
 
 
@@ -9582,7 +9626,7 @@ VOS_UINT32 AT_PS_ProcCallModifyEvent(
     VOS_UINT8                           ucUserCid;
     AT_MODEM_PS_CTX_STRU               *pstModemPsCtx = VOS_NULL_PTR;
     VOS_UINT32                          ulRmNetId;
-    FC_ID_ENUM_UINT32                   enDefaultFcId;
+    FC_ID_ENUM_UINT8                    enDefaultFcId;
 
     ulRmNetId = 0;
 
@@ -9624,9 +9668,9 @@ VOS_VOID AT_PS_RegHsicFCPoint(
 {
     AT_FCID_MAP_STRU                    stFCPriOrg;
     FC_REG_POINT_STRU                   stRegFcPoint;
-    FC_PRI_ENUM_UINT32                  enFCPri;
+    FC_PRI_ENUM_UINT8                   enFCPri;
     UDI_DEVICE_ID                       enDataChannelId;
-    FC_ID_ENUM_UINT32                   enFcId;
+    FC_ID_ENUM_UINT8                    enFcId;
     VOS_UINT32                          ulRet;
     MODEM_ID_ENUM_UINT16                enModemId;
     AT_MODEM_PS_CTX_STRU               *pstPsModemCtx = VOS_NULL_PTR;
@@ -9682,7 +9726,7 @@ VOS_VOID AT_PS_RegHsicFCPoint(
     if (VOS_TRUE == stFCPriOrg.ulUsed)
     {
         /* 如果当前FC优先级比之前承载的FC优先级高, 那么调整优先级 */
-        if (enFCPri > stFCPriOrg.ulFcPri)
+        if (enFCPri > stFCPriOrg.enFcPri)
         {
             AT_ChangeFCPoint(&pstEvent->stCtrl, enFCPri, enFcId);
         }
@@ -9744,7 +9788,7 @@ VOS_VOID AT_PS_RegHsicFCPoint(
 
     /* 设置FCID与FC Pri的映射关系 */
     g_stFcIdMaptoFcPri[enFcId].ulUsed  = VOS_TRUE;
-    g_stFcIdMaptoFcPri[enFcId].ulFcPri = enFCPri;
+    g_stFcIdMaptoFcPri[enFcId].enFcPri = enFCPri;
 
     /* 勾流控消息 */
     AT_MNTN_TraceRegFcPoint((VOS_UINT8)pstEvent->stCtrl.usClientId, AT_FC_POINT_TYPE_HSIC);
@@ -9756,7 +9800,7 @@ VOS_VOID AT_PS_DeRegHsicFCPoint(
     TAF_PS_CALL_PDP_DEACTIVATE_CNF_STRU *pstEvent
 )
 {
-    FC_ID_ENUM_UINT32                   enFcId;
+    FC_ID_ENUM_UINT8                    enFcId;
     VOS_UINT32                          ulRet;
     UDI_DEVICE_ID                       enDataChannelId;
     MODEM_ID_ENUM_UINT16                enModemId;
@@ -9804,7 +9848,7 @@ VOS_VOID AT_PS_DeRegHsicFCPoint(
 
     /* 清除FCID与FC Pri的映射关系 */
     g_stFcIdMaptoFcPri[enFcId].ulUsed  = VOS_FALSE;
-    g_stFcIdMaptoFcPri[enFcId].ulFcPri = FC_PRI_BUTT;
+    g_stFcIdMaptoFcPri[enFcId].enFcPri = FC_PRI_BUTT;
 
     /* 勾流控消息 */
     AT_MNTN_TraceDeregFcPoint((VOS_UINT8)pstEvent->stCtrl.usClientId, AT_FC_POINT_TYPE_HSIC);
@@ -9820,7 +9864,7 @@ VOS_VOID AT_PS_RegAppFCPoint(
 {
     VOS_UINT32                          ulRslt;
     AT_FCID_MAP_STRU                    stFCPriOrg;
-    FC_ID_ENUM_UINT32                   enDefaultFcId;
+    FC_ID_ENUM_UINT8                    enDefaultFcId;
     VOS_UINT32                          ulRmNetId;
     AT_MODEM_PS_CTX_STRU               *pstPsModemCtx = VOS_NULL_PTR;
 
@@ -9863,7 +9907,7 @@ VOS_VOID AT_PS_DeRegAppFCPoint(
     TAF_PS_CALL_PDP_DEACTIVATE_CNF_STRU *pstEvent
 )
 {
-    FC_ID_ENUM_UINT32                   enDefaultFcId;
+    FC_ID_ENUM_UINT8                    enDefaultFcId;
     VOS_UINT32                          ulRmNetId;
     AT_MODEM_PS_CTX_STRU               *pstPsModemCtx = VOS_NULL_PTR;
 
@@ -11238,7 +11282,7 @@ VOS_UINT32 AT_PS_SendRnicPdnInfoCfgInd(
     /* 初始化消息 */
     PS_MEM_SET((VOS_CHAR*)pstRnicPdnCfgInd + VOS_MSG_HEAD_LENGTH,
                0x00,
-               sizeof(AT_RNIC_PDN_INFO_CFG_IND_STRU) - VOS_MSG_HEAD_LENGTH);
+               (VOS_SIZE_T)(sizeof(AT_RNIC_PDN_INFO_CFG_IND_STRU) - VOS_MSG_HEAD_LENGTH));
 
     /* 填写消息头 */
     pstRnicPdnCfgInd->ulReceiverCpuId = VOS_LOCAL_CPUID;
@@ -11263,6 +11307,9 @@ VOS_UINT32 AT_PS_SendRnicPdnInfoCfgInd(
         pstRnicPdnCfgInd->stIpv4PdnInfo.ulWinnsSecAddr  = pstAppPdpEntity->stIpv4Dhcp.bitOpIpv4SecWINNS;
         pstRnicPdnCfgInd->stIpv4PdnInfo.ulPcscfPrimAddr = pstAppPdpEntity->stIpv4Dhcp.ulIpv4PrimPCSCF;
         pstRnicPdnCfgInd->stIpv4PdnInfo.ulPcscfSecAddr  = pstAppPdpEntity->stIpv4Dhcp.bitOpIpv4Secpcscf;
+
+        pstRnicPdnCfgInd->stIpv4PdnInfo.ulPcscfThiAddr  = pstAppPdpEntity->stIpv4Dhcp.ulIpv4ThiPCSCF;
+
     }
     else if(TAF_PDP_IPV6 == ucPdpType)
     {
@@ -11288,6 +11335,11 @@ VOS_UINT32 AT_PS_SendRnicPdnInfoCfgInd(
         PS_MEM_CPY(pstRnicPdnCfgInd->stIpv6PdnInfo.aucPcscfSecAddr,
                    pstAppPdpEntity->stIpv6Dhcp.aucSecPcscfAddr,
                    TAF_IPV6_ADDR_LEN);
+
+        PS_MEM_CPY(pstRnicPdnCfgInd->stIpv6PdnInfo.aucPcscfThiAddr,
+                   pstAppPdpEntity->stIpv6Dhcp.aucThiPcscfAddr,
+                   TAF_IPV6_ADDR_LEN);
+
     }
     else
     {
@@ -11326,7 +11378,7 @@ VOS_UINT32 AT_PS_SendRnicPdnInfoRelInd(
     /* 初始化消息 */
     PS_MEM_SET((VOS_CHAR *)pstRnicPdnRelInd + VOS_MSG_HEAD_LENGTH,
                0x00,
-               sizeof(AT_RNIC_PDN_INFO_REL_IND_STRU) - VOS_MSG_HEAD_LENGTH);
+               (VOS_SIZE_T)(sizeof(AT_RNIC_PDN_INFO_REL_IND_STRU) - VOS_MSG_HEAD_LENGTH));
 
     /* 填写消息头 */
     pstRnicPdnRelInd->ulReceiverCpuId = VOS_LOCAL_CPUID;

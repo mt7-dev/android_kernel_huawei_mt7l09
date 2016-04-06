@@ -1,7 +1,8 @@
 
 
 #include "AtCheckFunc.h"
-
+#include "AtTypeDef.h"
+#include "at_common.h"
 
 #ifdef  __cplusplus
   #if  __cplusplus
@@ -9,9 +10,9 @@
   #endif
 #endif
 
-
+/*lint -e960*/
 #define    THIS_FILE_ID        PS_FILE_ID_AT_CHECKFUNC_C
-
+/*lint +e960*/
 
 
 VOS_UINT32 atCheckBasicCmdName( VOS_UINT8 Char )
@@ -1237,7 +1238,7 @@ TAF_UINT32 At_CheckMmiString( TAF_UINT8 *pData,TAF_UINT16 usLen )
     Author      : ---
     Modification: Created function
 *****************************************************************************/
-TAF_UINT32 At_CheckJuncture( TAF_UINT8 Char )
+VOS_UINT32 At_CheckJuncture( VOS_UINT8 Char )
 {
     if( '-' == Char )
     {
@@ -1264,7 +1265,7 @@ TAF_UINT32 At_CheckJuncture( TAF_UINT8 Char )
     Author      : ---
     Modification: Created function
 *****************************************************************************/
-TAF_UINT32 At_CheckEnd( TAF_UINT8 Char )
+VOS_UINT32 At_CheckEnd( VOS_UINT8 Char )
 {
     if( '\0' == Char )
     {

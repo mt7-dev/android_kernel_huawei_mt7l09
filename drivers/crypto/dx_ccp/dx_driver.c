@@ -71,8 +71,8 @@
 #include <linux/sched.h>
 #include <linux/random.h>
 #include <linux/of.h>
+#include <linux/clk.h>
 #include <linux/of_address.h>
-#include <linux/regulator/driver.h>
 
 #include "dx_config.h"
 #include "dx_driver.h"
@@ -87,6 +87,11 @@
 
 #define DX_CACHE_PARAMS_SET_MASK 0x80000000
 #define DX_CACHE_PARAMS_SET_TIMEOUT_MS 100
+
+#define CRG_PERRSTEN4 0x90
+#define CRG_PERRSTDIS4 0x94
+#define CRG_CCP_RST_VAL (1<<15)
+static void __iomem *hs_crgctrl_base;
 
 #ifdef DX_DUMP_BYTES
 void dump_byte_array(const char *name, const uint8_t *the_array, unsigned long size)
@@ -370,21 +375,16 @@ static int init_cc_resources(struct platform_device *plat_dev)
 	irq_registered = 1;
 	DX_LOG_DEBUG("Registered to IRQ (%s) %u\n", new_drvdata->res_irq->name, new_drvdata->res_irq->start);
 
-	new_drvdata->ccp_regu.supply = "sec-p-buring";
-	rc = devm_regulator_bulk_get(&plat_dev->dev, 1, &(new_drvdata->ccp_regu));
-	if (rc) {
-		DX_LOG_ERR("couldn't get regulators %d\n",rc);
-		rc = -EINVAL;
+	new_drvdata->clk = devm_clk_get(&plat_dev->dev, NULL);
+	if (IS_ERR_OR_NULL(new_drvdata->clk)) {
+		DX_LOG_ERR("Failed to get clk\n");
 		goto init_cc_res_err;
 	}
 
-	rc = regulator_bulk_enable(1, &(new_drvdata->ccp_regu));
-	if (rc) {
-		DX_LOG_ERR("failed to enable regulators %d\n", rc);
-		rc = -EINVAL;
+	if (clk_prepare_enable(new_drvdata->clk)) {
+		DX_LOG_ERR("Failed to enable clk\n");
 		goto init_cc_res_err;
 	}
-
 
 
 #ifdef DX_FPGA_ENV
@@ -410,7 +410,7 @@ static int init_cc_resources(struct platform_device *plat_dev)
 	new_drvdata->plat_dev = plat_dev;
 
 #ifdef DISABLE_COHERENT_DMA_OPS
-//#warning Using default (incoherent) DMA operations
+#warning Using default (incoherent) DMA operations
 #else
 	/* ARM-specific DMA coherency operations option */
 	set_dma_ops(&plat_dev->dev, &arm_coherent_dma_ops);
@@ -526,11 +526,14 @@ init_cc_res_err:
 		}
 	#endif
 
+		if (new_drvdata->clk != NULL) {
+			clk_disable_unprepare(new_drvdata->clk);
+			devm_clk_put(&plat_dev->dev, new_drvdata->clk);
+			new_drvdata->clk = NULL;
+		}
+
 		if (req_mem_cc_regs != NULL) {
 				if (irq_registered) {
-					if (regulator_is_enabled(new_drvdata->ccp_regu.consumer)) {
-						regulator_bulk_disable(1, &(new_drvdata->ccp_regu));
-					}
 					free_irq(new_drvdata->res_irq->start,
 						new_drvdata);
 					new_drvdata->res_irq = NULL;
@@ -592,8 +595,10 @@ static void cleanup_cc_resources(struct platform_device *plat_dev)
 		drvdata->res_mem = NULL;
 	}
 
-	if (regulator_is_enabled(drvdata->ccp_regu.consumer)) {
-		regulator_bulk_disable(1, &(drvdata->ccp_regu));
+	if (drvdata->clk != NULL) {
+		clk_disable_unprepare(drvdata->clk);
+		devm_clk_put(&plat_dev->dev, drvdata->clk);
+		drvdata->clk = NULL;
 	}
 
 	kfree(drvdata);
@@ -603,6 +608,7 @@ static void cleanup_cc_resources(struct platform_device *plat_dev)
 static int cc44_probe(struct platform_device *plat_dev)
 {
 	int rc;
+	struct device_node *np_crgctrl;
 
 #ifndef DISABLE_COHERENT_DMA_OPS
 #define PERI_CTRL13 0x34
@@ -635,6 +641,14 @@ static int cc44_probe(struct platform_device *plat_dev)
 		     " Part 0x%03X, Rev r%dp%d\n",
 		(ctr>>24), (ctr>>16)&0xF, (ctr>>4)&0xFFF, (ctr>>20)&0xF, ctr&0xF);
 #endif
+
+	np_crgctrl = of_find_compatible_node(NULL, NULL, "hisilicon,crgctrl");
+	if (!np_crgctrl) {
+		dev_err(&plat_dev->dev, "cc44_probe: of_find_compatible_node failed!\n");
+		return -EAGAIN;
+	}
+	hs_crgctrl_base = of_iomap(np_crgctrl, 0);
+
 	/* Map registers space */
 	rc = init_cc_resources(plat_dev);
 	if (rc != 0)
@@ -674,9 +688,7 @@ static int dx_driver_suspend(struct platform_device *pdev, pm_message_t state)
 
 	rc = dx_suspend_queue(drvdata);
 
-	if (regulator_is_enabled(drvdata->ccp_regu.consumer)) {
-		regulator_disable(drvdata->ccp_regu.consumer);
-	}
+	clk_disable_unprepare(drvdata->clk);
 
 	dev_info(&pdev->dev, "%s-", __func__);
 
@@ -691,9 +703,14 @@ static int dx_driver_resume(struct platform_device *pdev)
 
 	dev_info(&pdev->dev, "%s+", __func__);
 
-	rc = regulator_bulk_enable(1, &(drvdata->ccp_regu));
-	if (rc) {
-		DX_LOG_ERR("dx_pm_ext_hw_resume: regulator_bulk_enable error(%x)\n", rc);
+	/* reset seceng-p. */
+	writel(CRG_CCP_RST_VAL, hs_crgctrl_base + CRG_PERRSTEN4);
+	/* disable reset seceng-p. */
+	writel(CRG_CCP_RST_VAL, hs_crgctrl_base + CRG_PERRSTDIS4);
+
+	if (clk_prepare_enable(drvdata->clk)) {
+		DX_LOG_ERR("Failed to enable clk\n");
+		return -EAGAIN;
 	}
 
 	rc = init_cc_regs(drvdata);

@@ -63,21 +63,9 @@ VOS_VOID IMSA_ProcMmaMsg(const VOS_VOID *pRcvMsg )
 {
     /* 定义消息头指针*/
     PS_MSG_HEADER_STRU          *pHeader = VOS_NULL_PTR;
-    IMSA_CONTROL_MANAGER_STRU   *pstControlManager;
 
     /* 获取消息头指针*/
     pHeader = (PS_MSG_HEADER_STRU *) pRcvMsg;
-
-    pstControlManager = IMSA_GetControlManagerAddress();
-
-    /* 关机过程中，收到除开关机消息外的消息，都直接丢弃 */
-    if ((IMSA_STATUS_STOPING == pstControlManager->enImsaStatus)
-        && (ID_MMA_IMSA_START_REQ != pHeader->ulMsgName)
-        && (ID_MMA_IMSA_STOP_REQ != pHeader->ulMsgName))
-    {
-        IMSA_WARN_LOG("IMSA_ProcMmaMsg: Status is Stoping and msg is not start and stop!");
-        return;
-    }
 
     switch(pHeader->ulMsgName)
     {
@@ -86,7 +74,7 @@ VOS_VOID IMSA_ProcMmaMsg(const VOS_VOID *pRcvMsg )
             break;
 
         case ID_MMA_IMSA_STOP_REQ:
-            IMSA_ProcMmaMsgStopReq();
+            IMSA_ProcMmaMsgStopReq(pRcvMsg);
             break;
 
         case ID_MMA_IMSA_DEREG_REQ:
@@ -99,6 +87,12 @@ VOS_VOID IMSA_ProcMmaMsg(const VOS_VOID *pRcvMsg )
 
         case ID_MMA_IMSA_CAMP_INFO_CHANGE_IND:
             IMSA_ProcMmaMsgCampInfoChangeInd(pRcvMsg);
+            break;
+        case ID_MMA_IMSA_MODEM1_INFO_IND:
+            IMSA_ProcMmaMsgModem1InfoInd(pRcvMsg);
+            break;
+        case ID_MMA_IMSA_VOICE_DOMAIN_CHANGE_IND:
+            IMSA_ProcMmaMsgVoiceDomainChangeInd(pRcvMsg);
             break;
         default:
             break;
@@ -214,9 +208,16 @@ VOS_VOID IMSA_SndMmaMsgStartCnf(VOS_VOID  )
  History        :
       1.sunbing 49683      2013-06-21  Draft Enact
 *****************************************************************************/
-VOS_VOID IMSA_ProcMmaMsgStopReq(VOS_VOID  )
+VOS_VOID IMSA_ProcMmaMsgStopReq
+(
+    const VOS_VOID                     *pRcvMsg
+)
 {
     IMSA_CONTROL_MANAGER_STRU *pstControlManager;
+
+    MMA_IMSA_STOP_REQ_STRU            *pstMmaImsaStopReq = VOS_NULL_PTR;
+
+    pstMmaImsaStopReq = (MMA_IMSA_START_REQ_STRU*) pRcvMsg;
 
     IMSA_INFO_LOG("IMSA_ProcMmaMsgStopReq: enter!");
 
@@ -241,6 +242,9 @@ VOS_VOID IMSA_ProcMmaMsgStopReq(VOS_VOID  )
 
     /*停止开关机保护定时器*/
     IMSA_StopTimer(&pstControlManager->stProtectTimer);
+
+    /* 记录关机请求类型。如果关机请求类型是ims动态关闭，则需要在收到IMS关机结果后释放现有承载 */
+    pstControlManager->enStopType = pstMmaImsaStopReq->enStopType;
 
     /*通知IMS关机，转状态*/
     pstControlManager->enImsaStatus = IMSA_STATUS_STOPING;
@@ -347,6 +351,24 @@ VOS_VOID IMSA_ProcMmaMsgCampInfoChangeInd
     return ;
 }
 
+VOS_VOID IMSA_ProcMmaMsgModem1InfoInd
+(
+    const VOS_VOID                     *pRcvMsg
+)
+{
+    IMSA_SRV_ProcModem1InfoInd((MMA_IMSA_MODEM1_INFO_IND_STRU*)pRcvMsg);
+    return;
+}
+
+VOS_VOID IMSA_ProcMmaMsgVoiceDomainChangeInd
+(
+    const VOS_VOID                     *pRcvMsg
+)
+{
+    IMSA_SRV_ProcVoiceDomainChangeInd((MMA_IMSA_VOICE_DOMAIN_CHANGE_IND_STRU*)pRcvMsg);
+
+    return ;
+}
 
 /*****************************************************************************
  Function Name  : IMSA_SndMmaMsgDeregCnf()
@@ -395,7 +417,11 @@ VOS_VOID IMSA_SndMmaMsgDeregCnf(VOS_VOID )
 *****************************************************************************/
 VOS_VOID IMSA_ProcImsMsgStartOrStopCnf(VOS_VOID)
 {
-    IMSA_CONTROL_MANAGER_STRU *pstControlManager;
+    IMSA_CONTROL_MANAGER_STRU          *pstControlManager;
+    IMSA_NORMAL_CONN_STRU              *pstNormalConn      = VOS_NULL_PTR;
+    IMSA_EMC_CONN_STRU                 *pstEmcConn         = VOS_NULL_PTR;
+    VOS_UINT8                           ucOpid             = IMSA_NULL;
+    VOS_UINT32                          ulLoop             = IMSA_NULL;
 
     IMSA_NORM_LOG("IMSA_ProcImsMsgStartOrStopCnf: Enter!");
 
@@ -407,6 +433,78 @@ VOS_VOID IMSA_ProcImsMsgStartOrStopCnf(VOS_VOID)
     /*关机流程*/
     if(pstControlManager->enImsaStatus == IMSA_STATUS_STOPING)
     {
+        /* 如果是IMS动态关闭类型的关机，则释放链接 */
+        if (pstControlManager->enStopType == MMA_IMSA_STOP_TYPE_IMS_SWITCH_OFF)
+        {
+            pstEmcConn      = IMSA_CONN_GetEmcConnAddr();
+            if (IMSA_CONN_STATUS_IDLE != pstEmcConn->enImsaConnStatus)
+            {
+                /* 请求APS释放连接 */
+                IMSA_WARN_LOG("IMSA_ProcImsMsgStartOrStopCnf:releasing emc conn!");
+                /* 如果在CONNING态，则请求释放正在建立的信令承载和已经激活的信令承载 */
+                if (IMSA_CONN_STATUS_CONNING == pstEmcConn->enImsaConnStatus)
+                {
+                    /* 产生OPID并存储 */
+                    IMSA_CONN_AssignOpid(IMSA_CONN_TYPE_EMC, &ucOpid);
+                    if (VOS_OK != TAF_PS_CallEnd(   PS_PID_IMSA, IMSA_CLIENT_ID, ucOpid,
+                                                    pstEmcConn->stSelSdfPara.ucCid))
+                    {
+                        IMSA_WARN_LOG("IMSA_ProcImsMsgStartOrStopCnf:EMC,conninig,CallEnd failed!");
+                    }
+                }
+
+                else
+                {
+                    /* 产生OPID并存储 */
+                    IMSA_CONN_AssignOpid(IMSA_CONN_TYPE_EMC, &ucOpid);
+
+                    if (VOS_OK != TAF_PS_CallEnd(   PS_PID_IMSA, IMSA_CLIENT_ID, ucOpid,
+                                                    (VOS_UINT8)pstEmcConn->stSipSignalPdp.ucCid))
+                    {
+                        IMSA_WARN_LOG("IMSA_ProcImsMsgStartOrStopCnf:IMS Swtich off,conn,CallEnd failed!");
+                    }
+                    IMSA_CONN_SndCdsSetImsBearerReq();
+                }
+            }
+            pstNormalConn      = IMSA_CONN_GetNormalConnAddr();
+            if (IMSA_CONN_STATUS_IDLE != pstNormalConn->enImsaConnStatus)
+            {
+                /* 请求APS释放连接 */
+                IMSA_WARN_LOG("IMSA_ProcImsMsgStartOrStopCnf:releasing normal conn!");
+                /* 如果在CONNING态，则请求释放正在建立的信令承载和已经激活的信令承载 */
+                if (IMSA_CONN_STATUS_CONNING == pstNormalConn->enImsaConnStatus)
+                {
+                    /* 产生OPID并存储 */
+                    IMSA_CONN_AssignOpid(IMSA_CONN_TYPE_NORMAL, &ucOpid);
+
+                    if (VOS_OK != TAF_PS_CallEnd(   PS_PID_IMSA, IMSA_CLIENT_ID, ucOpid,
+                                                    pstNormalConn->stSelSdfPara.ucCid))
+                    {
+                        IMSA_WARN_LOG("IMSA_ProcImsMsgStartOrStopCnf:IMS Swtich off,normal,conninig,CallEnd failed!");
+                    }
+                }
+
+                if (0 == pstNormalConn->ulSipSignalPdpNum)
+                {
+                    IMSA_WARN_LOG("IMSA_ProcImsMsgStartOrStopCnf:IMS Swtich off,normal,conning,no active pdp!");
+                }
+                else
+                {
+                    /* 如果建立了多个承载，需要逐个释放 */
+                    for (ulLoop = 0 ; ulLoop < pstNormalConn->ulSipSignalPdpNum ; ulLoop ++)
+                    {
+                        /* 产生OPID并存储 */
+                        IMSA_CONN_AssignOpid(IMSA_CONN_TYPE_NORMAL, &ucOpid);
+                        if (VOS_OK != TAF_PS_CallEnd(   PS_PID_IMSA, IMSA_CLIENT_ID, ucOpid,
+                                                    pstNormalConn->astSipSignalPdpArray[ulLoop].ucCid))
+                        {
+                            IMSA_WARN_LOG("IMSA_ProcImsMsgStartOrStopCnf:IMS Swtich off,normal,CallEnd failed!");
+                        }
+                    }
+                    IMSA_CONN_SndCdsSetImsBearerReq();
+               }
+            }
+        }
         /*清除资源*/
         IMSA_ClearResource();
 
@@ -454,6 +552,12 @@ VOS_VOID IMSA_ProcImsMsgStartOrStopCnf(VOS_VOID)
         IMSA_ConfigSsConfInfo2Ims();
 
         IMSA_ConfigSecurityInfo2Ims();
+
+        IMSA_ConfigMediaParmInfo2Ims();
+
+        #if (FEATURE_ON == FEATURE_PTM)
+        IMSA_ConfigErrlogCtrlInfo2Ims();
+        #endif
     }
     else
     {

@@ -16,6 +16,7 @@
 #include "NasUtranCtrlInterface.h"
 #include "NasUtranCtrlCommFunc.h"
 #include "NasMmcComFunc.h"
+#include "NasMmcFsmPlmnSelection.h"
 
 #ifdef __cplusplus
 #if __cplusplus
@@ -765,6 +766,15 @@ VOS_VOID NAS_MMC_BuildAsSpecPlmnSearchReqMsg(
     NAS_MMC_BuildForbLaInAsSpecPlmnSearchReqMsg(&(pstMsg->ulForbLaNum),
                                                 pstMsg->aForbLaList,
                                                 pstForbRoamLaInfo);
+
+    if (NAS_MMC_PLMN_SEARCH_SCENE_CSFB_SERVIEC_REJ == NAS_MMC_GetPlmnSearchScene_PlmnSelection())
+    {
+        pstMsg->enCsfbFlg = PS_TRUE;
+    }
+    else
+    {
+        pstMsg->enCsfbFlg = PS_FALSE;
+    }
 
     return;
 }

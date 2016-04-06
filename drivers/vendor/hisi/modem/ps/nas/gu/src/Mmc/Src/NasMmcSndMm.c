@@ -169,6 +169,8 @@ VOS_VOID   NAS_MMC_SndMmWasSysInfoInd(
 
     pstInternalMsg->ulMask = NAS_MMC_GetOptMask_WasSysinfo(pstRrMmSysInfoInd);
 
+    pstInternalMsg->enSysInfoType  = pstRrMmSysInfoInd->enSysInfoType;
+
     pstInternalMsg->ucCnCommonSize = pstRrMmSysInfoInd->ucCnCommonSize;
 
     /* aucCnCommonInfo[0] 和 aucCnCommonInfo[1] 代表 lac[0] 和  Lac[1]*/

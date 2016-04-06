@@ -130,15 +130,15 @@ extern "C" {
 #define VOS_NTOHS(x)    (x)
 #define VOS_HTONS(x)    (x)
 #else
-#define VOS_NTOHL(x)    ((((x) & 0x000000ff) << 24) | \
-                         (((x) & 0x0000ff00) <<  8) | \
-                         (((x) & 0x00ff0000) >>  8) | \
-                         (((x) & 0xff000000) >> 24))
+#define VOS_NTOHL(x)    ((((x) & 0x000000ffU) << 24) | \
+                         (((x) & 0x0000ff00U) <<  8) | \
+                         (((x) & 0x00ff0000U) >>  8) | \
+                         (((x) & 0xff000000U) >> 24))
 
-#define VOS_HTONL(x)    ((((x) & 0x000000ff) << 24) | \
-                         (((x) & 0x0000ff00) <<  8) | \
-                         (((x) & 0x00ff0000) >>  8) | \
-                         (((x) & 0xff000000) >> 24))
+#define VOS_HTONL(x)    ((((x) & 0x000000ffU) << 24) | \
+                         (((x) & 0x0000ff00U) <<  8) | \
+                         (((x) & 0x00ff0000U) >>  8) | \
+                         (((x) & 0xff000000U) >> 24))
 
 #define VOS_NTOHS(x)    ((((x) & 0x00ff) << 8) | \
                          (((x) & 0xff00) >> 8))
@@ -344,7 +344,8 @@ typedef struct
 typedef struct
 {
     ADS_FILTER_PKT_TYPE_ENUM_UINT32     enPktType;
-    VOS_UINT32                          ulTmrCnt;
+    VOS_UINT8                           aucReserved[4];
+    unsigned long                       ulTmrCnt;
     ADS_FILTER_IPV4_HEADER_STRU         stIPHeader;
 
     union
@@ -383,6 +384,7 @@ typedef struct
     HI_LIST_S                           astLists[ADS_FILTER_MAX_LIST_NUM];      /* ADS下行数据过滤表 */
     ADS_IPV6_ADDR_UN                    unIPv6Addr;                             /* ADS用于过滤下行IPv6类型数据 */
     VOS_UINT32                          ulAgingTimeLen;                         /* ADS过滤节点老化时长, 单位毫秒 */
+    VOS_UINT8                           aucReserved[4];
 }ADS_FILTER_CTX_STRU;
 
 

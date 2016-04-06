@@ -75,6 +75,12 @@ TAF_SPM_PROC_MSG_STRU g_astTafSpmImsDomainSelMsgTbl[]=
     TAF_ACT_TBL_ITEM(WUEPS_PID_AT,  ID_TAFAGENT_MN_GET_CALL_INFO_REQ,   TAF_SPM_RcvAppGetCallInfoReqBasedOnCsOverIp),
     TAF_ACT_TBL_ITEM(WUEPS_PID_AT,  MN_CALL_APP_CLPR_GET_REQ,           TAF_SPM_RcvAppGetClprReqBasedOnCsOverIp),
 
+    TAF_ACT_TBL_ITEM(WUEPS_PID_AT,  MN_CALL_APP_CALL_MODIFY_REQ,        TAF_SPM_RcvAppCallModifyReqBasedOnCsOverIp),
+    TAF_ACT_TBL_ITEM(WUEPS_PID_AT,  MN_CALL_APP_CALL_ANSWER_REMOTE_MODIFY_REQ,  TAF_SPM_RcvAppCallAnswerRemoteModifyReqBasedOnCsOverIp),
+
+    TAF_ACT_TBL_ITEM(WUEPS_PID_AT,  TAF_CALL_APP_ECONF_DIAL_REQ,   TAF_SPM_RcvAppEconfDialReqBasedOnCsOverIp),
+    TAF_ACT_TBL_ITEM(WUEPS_PID_AT,  TAF_CALL_APP_GET_ECONF_CALLED_INFO_REQ,      TAF_SPM_RcvAppGetEconfInfoReqBasedOnCsOverIp),
+
     /*  AT SS message */
     TAF_ACT_TBL_ITEM(WUEPS_PID_AT,  TAF_MSG_PROCESS_USS_MSG,            TAF_SPM_RcvProcUssSsReqBasedOnCsOverIp),
     TAF_ACT_TBL_ITEM(WUEPS_PID_AT,  TAF_MSG_RLEASE_MSG,                 TAF_SPM_RcvRleaseSsReqBasedOnCsOverIp),
@@ -94,7 +100,7 @@ TAF_SPM_PROC_MSG_STRU g_astTafSpmImsDomainSelMsgTbl[]=
     TAF_ACT_TBL_ITEM(MAPS_STK_PID,  STK_SS_REGISTERSS_REQ,              TAF_SPM_RcvRegisterSsReqBasedOnCsOverIp),
 
     /* STK SMS message */
-    TAF_ACT_TBL_ITEM(MAPS_STK_PID,  STK_MSG_SEND_REQ,                   TAF_SPM_RcvSendRpdataDirectBasedOnCsOverIp)
+    TAF_ACT_TBL_ITEM(MAPS_STK_PID,  STK_MSG_SEND_REQ,                   TAF_SPM_RcvSendRpdataDirectBasedOnCsOverIp),
 };
 
 /*****************************************************************************
@@ -140,7 +146,7 @@ TAF_SPM_DOMAIN_SEL_RESULT_ENUM_UINT8 TAF_SPM_ProcEmergencyCallDomainSelectionInC
         else
         {
             /* nothing to do */
-        }        
+        }
     }
 
     return TAF_SPM_DOMAIN_SEL_RESULT_NAS_SIGNALLING;
@@ -155,7 +161,7 @@ TAF_SPM_DOMAIN_SEL_RESULT_ENUM_UINT8 TAF_SPM_ProcEmergencyCallDomainSelectionInI
      *  CS over IP
      */
     if ((TAF_SDC_IMS_NORMAL_REG_STATUS_REG     == TAF_SDC_GetImsNormalRegStatus())
-     && (TAF_SDC_NW_IMS_VOICE_SUPPORTED == pstLteNwCapInfo->enNwImsVoCap))    
+     && (TAF_SDC_NW_IMS_VOICE_SUPPORTED == pstLteNwCapInfo->enNwImsVoCap))
     {
         return TAF_SPM_DOMAIN_SEL_RESULT_CS_OVER_IP;
     }
@@ -171,7 +177,7 @@ TAF_SPM_DOMAIN_SEL_RESULT_ENUM_UINT8 TAF_SPM_ProcEmergencyCallDomainSelectionInI
     if (TAF_SDC_NW_IMS_VOICE_SUPPORTED == pstLteNwCapInfo->enNwImsVoCap)
     {
          /* select buffer message if IMS is registering */
-         if (TAF_SDC_IMS_NORMAL_REG_STATUS_REGING == TAF_SDC_GetImsNormalRegStatus())         
+         if (TAF_SDC_IMS_NORMAL_REG_STATUS_REGING == TAF_SDC_GetImsNormalRegStatus())
          {
              return TAF_SPM_DOMAIN_SEL_RESULT_BUFFER_MESSAGE;
          }
@@ -189,13 +195,13 @@ TAF_SPM_DOMAIN_SEL_RESULT_ENUM_UINT8 TAF_SPM_ProcEmergencyCallDomainSelectionInI
     if (TAF_SDC_NW_IMS_VOICE_SUPPORTED == pstLteNwCapInfo->enNwImsVoCap)
     {
         /* select CS over IP if IMS is in registered status */
-        if (TAF_SDC_IMS_NORMAL_REG_STATUS_REG == TAF_SDC_GetImsNormalRegStatus())        
+        if (TAF_SDC_IMS_NORMAL_REG_STATUS_REG == TAF_SDC_GetImsNormalRegStatus())
         {
             return TAF_SPM_DOMAIN_SEL_RESULT_CS_OVER_IP;
         }
 
         /* select buffer message if IMS is registering */
-        if (TAF_SDC_IMS_NORMAL_REG_STATUS_REGING == TAF_SDC_GetImsNormalRegStatus())        
+        if (TAF_SDC_IMS_NORMAL_REG_STATUS_REGING == TAF_SDC_GetImsNormalRegStatus())
         {
             return TAF_SPM_DOMAIN_SEL_RESULT_BUFFER_MESSAGE;
         }
@@ -226,7 +232,7 @@ TAF_SPM_DOMAIN_SEL_RESULT_ENUM_UINT8 TAF_SPM_ProcNormalCallDomainSelectionInCsVo
      && (VOS_FALSE == ucRoamSupport))
     {
         return TAF_SPM_DOMAIN_SEL_RESULT_NAS_SIGNALLING;
-    }    
+    }
 
     /* select nas signalling if UE support CSFB and LTE network support CSFB preferred */
     if ((TAF_SDC_LTE_SUPPORT_CSFB_AND_SMS_OVER_SGS == TAF_SDC_GetLteCsSeviceCap())
@@ -239,12 +245,12 @@ TAF_SPM_DOMAIN_SEL_RESULT_ENUM_UINT8 TAF_SPM_ProcNormalCallDomainSelectionInCsVo
     if (TAF_SDC_NW_IMS_VOICE_SUPPORTED == pstLteNwCapInfo->enNwImsVoCap)
     {
         /*  IMS is in registered status, select CS over IP */
-        if (TAF_SDC_IMS_NORMAL_REG_STATUS_REG == TAF_SDC_GetImsNormalRegStatus())        
+        if (TAF_SDC_IMS_NORMAL_REG_STATUS_REG == TAF_SDC_GetImsNormalRegStatus())
         {
             return TAF_SPM_DOMAIN_SEL_RESULT_CS_OVER_IP;
         }
         /* select buffer message if IMS is registering */
-        else if (TAF_SDC_IMS_NORMAL_REG_STATUS_REGING == TAF_SDC_GetImsNormalRegStatus())        
+        else if (TAF_SDC_IMS_NORMAL_REG_STATUS_REGING == TAF_SDC_GetImsNormalRegStatus())
         {
             return TAF_SPM_DOMAIN_SEL_RESULT_BUFFER_MESSAGE;
         }
@@ -285,7 +291,7 @@ TAF_SPM_DOMAIN_SEL_RESULT_ENUM_UINT8 TAF_SPM_ProcNormalCallDomainSelectionInImsP
      && (VOS_FALSE == ucRoamSupport))
     {
         return TAF_SPM_DOMAIN_SEL_RESULT_NAS_SIGNALLING;
-    }    
+    }
 
     /*  IMS is in registered status and network support IMS voice, select
      *  CS over IP
@@ -307,7 +313,7 @@ TAF_SPM_DOMAIN_SEL_RESULT_ENUM_UINT8 TAF_SPM_ProcNormalCallDomainSelectionInImsP
     if (TAF_SDC_NW_IMS_VOICE_SUPPORTED == pstLteNwCapInfo->enNwImsVoCap)
     {
          /* select buffer message if IMS is registering */
-         if (TAF_SDC_IMS_NORMAL_REG_STATUS_REGING == TAF_SDC_GetImsNormalRegStatus())         
+         if (TAF_SDC_IMS_NORMAL_REG_STATUS_REGING == TAF_SDC_GetImsNormalRegStatus())
          {
              return TAF_SPM_DOMAIN_SEL_RESULT_BUFFER_MESSAGE;
          }
@@ -344,19 +350,19 @@ TAF_SPM_DOMAIN_SEL_RESULT_ENUM_UINT8 TAF_SPM_ProcNormalCallDomainSelectionInImsP
      && (VOS_FALSE == ucRoamSupport))
     {
         return TAF_SPM_DOMAIN_SEL_RESULT_SELECT_FAIL;
-    }    
+    }
 
     /* network supports IMS vocie */
     if (TAF_SDC_NW_IMS_VOICE_SUPPORTED == pstLteNwCapInfo->enNwImsVoCap)
     {
         /* select CS over IP if IMS is in registered status */
-        if (TAF_SDC_IMS_NORMAL_REG_STATUS_REG == TAF_SDC_GetImsNormalRegStatus())        
+        if (TAF_SDC_IMS_NORMAL_REG_STATUS_REG == TAF_SDC_GetImsNormalRegStatus())
         {
             return TAF_SPM_DOMAIN_SEL_RESULT_CS_OVER_IP;
         }
 
         /* select buffer message if IMS is registering */
-        if (TAF_SDC_IMS_NORMAL_REG_STATUS_REGING == TAF_SDC_GetImsNormalRegStatus())        
+        if (TAF_SDC_IMS_NORMAL_REG_STATUS_REGING == TAF_SDC_GetImsNormalRegStatus())
         {
             return TAF_SPM_DOMAIN_SEL_RESULT_BUFFER_MESSAGE;
         }
@@ -372,7 +378,7 @@ TAF_SPM_DOMAIN_SEL_RESULT_ENUM_UINT8 TAF_SPM_ProcNormalCallDomainSelectionInImsP
 TAF_SPM_DOMAIN_SEL_RESULT_ENUM_UINT8 TAF_SPM_ProcNormalCallDomainSelectionOnEutran(VOS_VOID)
 {
     TAF_SPM_DOMAIN_SEL_RESULT_ENUM_UINT8                    enDomainSelRslt;
-    TAF_SDC_VOICE_DOMAIN_ENUM_UINT32                        enVoicePerferred;  
+    TAF_SDC_VOICE_DOMAIN_ENUM_UINT32                        enVoicePerferred;
 
     enDomainSelRslt  = TAF_SPM_DOMAIN_SEL_RESULT_NAS_SIGNALLING;
 
@@ -454,9 +460,42 @@ TAF_SPM_DOMAIN_SEL_RESULT_ENUM_UINT8 TAF_SPM_ProcEmergencyCallDomainSelectionOnE
     /* select CS call */
     return (enDomainSelRslt);
 }
+
+ #if (FEATURE_ON == FEATURE_IMS)
+TAF_SPM_DOMAIN_SEL_RESULT_ENUM_UINT8 TAF_SPM_ProcEConfDomainSelectionOnEutran(VOS_VOID)
+{
+    TAF_SPM_DOMAIN_SEL_RESULT_ENUM_UINT8                    enDomainSelRslt;
+    TAF_SDC_VOICE_DOMAIN_ENUM_UINT32                        enVoicePerferred;
+
+    enDomainSelRslt  = TAF_SPM_DOMAIN_SEL_RESULT_SELECT_FAIL;
+
+    enVoicePerferred = TAF_SDC_GetVoiceDomain();
+    switch (enVoicePerferred)
+    {
+        /* 只有IMS域的ECONF，如果用户设置了CS域优先，也不选择NAS SIGNALING，按照PS ONLY处理 */
+        /* domain selection in CS voice preferred */
+        case TAF_SDC_VOICE_DOMAIN_CS_PREFERRED:
+        /* domain selection in IMS PS voice preferred */
+        case TAF_SDC_VOICE_DOMAIN_IMS_PS_PREFERRED:
+        /* domain selection in IMS PS voice only */
+        case TAF_SDC_VOICE_DOMAIN_IMS_PS_ONLY:
+            enDomainSelRslt = TAF_SPM_ProcNormalCallDomainSelectionInImsPsVoiceOnlyOnEutran();
+            break;
+
+        /* domain selection in CS voice only */
+        case TAF_SDC_VOICE_DOMAIN_CS_ONLY:
+        default:
+            break;
+    }
+
+    return (enDomainSelRslt);
+}
+#endif
 TAF_SPM_DOMAIN_SEL_RESULT_ENUM_UINT8 TAF_SPM_ProcCcDomainSelectionOnEutran(
+    VOS_UINT32                          ulEventType,
     struct MsgCB                       *pstMsg,
-    MN_CALL_TYPE_ENUM_U8                enCallType
+    MN_CALL_TYPE_ENUM_U8                enCallType,
+    TAF_CALL_VOICE_DOMAIN_ENUM_UINT8    enVoiceDomain
 )
 {
     TAF_SPM_DOMAIN_SEL_RESULT_ENUM_UINT8                    enDomainSelRslt;
@@ -466,7 +505,7 @@ TAF_SPM_DOMAIN_SEL_RESULT_ENUM_UINT8 TAF_SPM_ProcCcDomainSelectionOnEutran(
     if (VOS_FALSE == TAF_SDC_GetLteImsSupportFlag())
     {
         return TAF_SPM_DOMAIN_SEL_RESULT_NAS_SIGNALLING;
-    }  
+    }
 
     switch (enCallType)
     {
@@ -477,7 +516,9 @@ TAF_SPM_DOMAIN_SEL_RESULT_ENUM_UINT8 TAF_SPM_ProcCcDomainSelectionOnEutran(
 
         /* video call */
         case MN_CALL_TYPE_VIDEO:
-            if (VOS_TRUE == TAF_SDC_GetVideoCallOnImsSupportFlag())
+        case MN_CALL_TYPE_VIDEO_TX:
+        case MN_CALL_TYPE_VIDEO_RX:
+            if (TAF_CALL_VOICE_DOMAIN_IMS == enVoiceDomain)
             {
                 enDomainSelRslt = TAF_SPM_ProcNormalCallDomainSelectionOnEutran();
             }
@@ -485,7 +526,17 @@ TAF_SPM_DOMAIN_SEL_RESULT_ENUM_UINT8 TAF_SPM_ProcCcDomainSelectionOnEutran(
 
         /* voice call */
         case MN_CALL_TYPE_VOICE:
-            enDomainSelRslt = TAF_SPM_ProcNormalCallDomainSelectionOnEutran();
+            /* 如果是增强型会议的发起 */
+#if (FEATURE_ON == FEATURE_IMS)
+           if (ulEventType == TAF_BuildEventType(WUEPS_PID_AT, TAF_CALL_APP_ECONF_DIAL_REQ))
+            {
+                enDomainSelRslt = TAF_SPM_ProcEConfDomainSelectionOnEutran();
+            }
+            else
+#endif
+            {
+                enDomainSelRslt = TAF_SPM_ProcNormalCallDomainSelectionOnEutran();
+            }
             break;
 
         /* if call type is butt, return request fail */
@@ -502,6 +553,8 @@ TAF_SPM_DOMAIN_SEL_RESULT_ENUM_UINT8 TAF_SPM_ProcCcDomainSelectionOnEutran(
 
     return enDomainSelRslt;
 }
+
+
 TAF_SPM_DOMAIN_SEL_RESULT_ENUM_UINT8 TAF_SPM_ProcSsDomainSelectionInCsVoicePreferredOnEutran(VOS_VOID)
 {
     TAF_SDC_NETWORK_CAP_INFO_STRU      *pstLteNwCapInfo = VOS_NULL_PTR;
@@ -520,7 +573,7 @@ TAF_SPM_DOMAIN_SEL_RESULT_ENUM_UINT8 TAF_SPM_ProcSsDomainSelectionInCsVoicePrefe
      && (VOS_FALSE == ucRoamSupport))
     {
         return TAF_SPM_DOMAIN_SEL_RESULT_NAS_SIGNALLING;
-    }    
+    }
 
     /* select nas signalling if UE support CSFB and LTE network support CSFB preferred */
     if ((TAF_SDC_LTE_SUPPORT_CSFB_AND_SMS_OVER_SGS == TAF_SDC_GetLteCsSeviceCap())
@@ -530,13 +583,13 @@ TAF_SPM_DOMAIN_SEL_RESULT_ENUM_UINT8 TAF_SPM_ProcSsDomainSelectionInCsVoicePrefe
     }
 
     /*  IMS is in registered status, select CS over IP */
-    if (TAF_SDC_IMS_NORMAL_REG_STATUS_REG == TAF_SDC_GetImsNormalRegStatus())    
+    if (TAF_SDC_IMS_NORMAL_REG_STATUS_REG == TAF_SDC_GetImsNormalRegStatus())
     {
         return TAF_SPM_DOMAIN_SEL_RESULT_CS_OVER_IP;
     }
 
     /* select buffer message if IMS is registering */
-    if (TAF_SDC_IMS_NORMAL_REG_STATUS_REGING == TAF_SDC_GetImsNormalRegStatus())    
+    if (TAF_SDC_IMS_NORMAL_REG_STATUS_REGING == TAF_SDC_GetImsNormalRegStatus())
     {
         return TAF_SPM_DOMAIN_SEL_RESULT_BUFFER_MESSAGE;
     }
@@ -572,10 +625,10 @@ TAF_SPM_DOMAIN_SEL_RESULT_ENUM_UINT8 TAF_SPM_ProcSsDomainSelectionInImsPsVoicePr
      && (VOS_FALSE == ucRoamSupport))
     {
         return TAF_SPM_DOMAIN_SEL_RESULT_NAS_SIGNALLING;
-    }    
+    }
 
     /*  IMS is in registered status, select CS over IP */
-    if (TAF_SDC_IMS_NORMAL_REG_STATUS_REG == TAF_SDC_GetImsNormalRegStatus())    
+    if (TAF_SDC_IMS_NORMAL_REG_STATUS_REG == TAF_SDC_GetImsNormalRegStatus())
     {
         return TAF_SPM_DOMAIN_SEL_RESULT_CS_OVER_IP;
     }
@@ -588,7 +641,7 @@ TAF_SPM_DOMAIN_SEL_RESULT_ENUM_UINT8 TAF_SPM_ProcSsDomainSelectionInImsPsVoicePr
     }
 
     /* select buffer message if IMS is registering */
-    if (TAF_SDC_IMS_NORMAL_REG_STATUS_REGING == TAF_SDC_GetImsNormalRegStatus())    
+    if (TAF_SDC_IMS_NORMAL_REG_STATUS_REGING == TAF_SDC_GetImsNormalRegStatus())
     {
         return TAF_SPM_DOMAIN_SEL_RESULT_BUFFER_MESSAGE;
     }
@@ -621,16 +674,16 @@ TAF_SPM_DOMAIN_SEL_RESULT_ENUM_UINT8 TAF_SPM_ProcSsDomainSelectionInImsPsVoiceOn
      && (VOS_FALSE == ucRoamSupport))
     {
         return TAF_SPM_DOMAIN_SEL_RESULT_SELECT_FAIL;
-    }    
+    }
 
     /* select CS over IP if IMS is in registered status */
-    if (TAF_SDC_IMS_NORMAL_REG_STATUS_REG == TAF_SDC_GetImsNormalRegStatus())    
+    if (TAF_SDC_IMS_NORMAL_REG_STATUS_REG == TAF_SDC_GetImsNormalRegStatus())
     {
         return TAF_SPM_DOMAIN_SEL_RESULT_CS_OVER_IP;
     }
 
     /* select buffer message if IMS is registering */
-    if (TAF_SDC_IMS_NORMAL_REG_STATUS_REGING == TAF_SDC_GetImsNormalRegStatus())    
+    if (TAF_SDC_IMS_NORMAL_REG_STATUS_REGING == TAF_SDC_GetImsNormalRegStatus())
     {
         return TAF_SPM_DOMAIN_SEL_RESULT_BUFFER_MESSAGE;
     }
@@ -688,16 +741,17 @@ TAF_SPM_DOMAIN_SEL_RESULT_ENUM_UINT8 TAF_SPM_ProcSmsDomainSelectionOnEutran(VOS_
     TAF_SDC_SERVICE_STATUS_ENUM_UINT8   enPsServiceStatus;
     VOS_UINT8                           ucRoamSupport;
 
+    enLteCsCap = TAF_SDC_GetLteNwCapInfo()->enLteCsCap;
+
     /*
-       3.驻留在LTE下时，但不支持IMS短信，发送CS/PS短信
-       4.驻留在LTE下，支持IMS短信，SMS OVER IP不优先，发送CS/PS短信
-       5.驻留在LTE下，支持IMS短信，SMS OVER IP优先，PS不正常服务服务，缓存消息
-       6.IMS正在注册，缓存消息
-       7.驻留在LTE下，支持IMS短信，SMS OVER IP优先，IMS未注册成功，发送CS/PS短信
-       8.驻留在LTE下，支持IMS短信，SMS OVER IP优先，IMS已经注册成功，
-         IMSA主动上报的消息中ext_info指示IMS可以使用SMS，发送IMS短信
-       9.驻留在LTE下，支持IMS短信，SMS OVER IP优先，IMS已经注册成功，
-         IMSA主动上报的消息中ext_info指示IMS不可以使用SMS，发送CS/PS短信
+       1.驻留在LTE下时，但不支持IMS短信，发送CS/PS短信
+       2.驻留在LTE下，支持IMS短信，SMS OVER IP不优先，发送CS/PS短信
+       3.驻留在LTE下，支持IMS短信，SMS OVER IP优先，PS不正常服务服务，缓存消息
+       4.驻留在LTE下，支持IMS短信，SMS OVER IP优先，IMSA主动上报的消息中ext_info指示IMS不可以使用SMS，发送CS/PS短信
+       5.驻留在LTE下，支持IMS短信，SMS OVER IP优先，IMS注册成功，发送IMS短信
+       6.驻留在LTE下，支持IMS短信，SMS OVER IP优先，sms over sgs支持，发送CS/PS短信
+       7.驻留在LTE下，支持IMS短信，SMS OVER IP优先，IMS正在注册，缓存消息
+       8.其他，发送CS/PS短信
     */
 
     /* LTE下的IMS不支持 */
@@ -718,7 +772,6 @@ TAF_SPM_DOMAIN_SEL_RESULT_ENUM_UINT8 TAF_SPM_ProcSmsDomainSelectionOnEutran(VOS_
     if (TAF_SDC_SMS_DOMAIN_PREFER_TO_USE_SMS_OVER_IP != TAF_SDC_GetSmsDomain())
     {
         /* 判断CS业务能力之前，首先确认PS服务状态，否则仅仅判定CS业务能力参数不准确 */
-        enLteCsCap = TAF_SDC_GetLteNwCapInfo()->enLteCsCap;
         if ((TAF_SDC_SERVICE_STATUS_NORMAL_SERVICE  == enPsServiceStatus)
          && (TAF_SDC_LTE_CS_CAPBILITY_NOT_SUPPORTED == enLteCsCap))
         {
@@ -739,9 +792,28 @@ TAF_SPM_DOMAIN_SEL_RESULT_ENUM_UINT8 TAF_SPM_ProcSmsDomainSelectionOnEutran(VOS_
      && (VOS_FALSE == ucRoamSupport))
     {
         return TAF_SPM_DOMAIN_SEL_RESULT_NAS_SIGNALLING;
-    }    
+    }
 
-    enImsaRegStatus = TAF_SDC_GetImsNormalRegStatus();    
+    enImsaRegStatus = TAF_SDC_GetImsNormalRegStatus();
+
+    /* IMSA主动上报的消息中ext_info指示IMS是否可以使用SMS */
+    /* 目前没有主动上报，接口先保留，上下文中初始化为支持 */
+    if (VOS_FALSE == TAF_SPM_GetImsSmsSupportedOnImsServer())
+    {
+        return TAF_SPM_DOMAIN_SEL_RESULT_NAS_SIGNALLING;
+    }
+
+    /* if ims reg succ */
+    if (TAF_SDC_IMS_NORMAL_REG_STATUS_REG == enImsaRegStatus)
+    {
+        return TAF_SPM_DOMAIN_SEL_RESULT_CS_OVER_IP;
+    }
+
+    /* if nv config sms over sgs available and nw support sgs sms */
+    if (TAF_SDC_LTE_CS_CAPBILITY_NOT_SUPPORTED != enLteCsCap)
+    {
+        return TAF_SPM_DOMAIN_SEL_RESULT_NAS_SIGNALLING;
+    }
 
     /* IMS正在注册 */
     if (TAF_SDC_IMS_NORMAL_REG_STATUS_REGING == enImsaRegStatus)
@@ -749,33 +821,23 @@ TAF_SPM_DOMAIN_SEL_RESULT_ENUM_UINT8 TAF_SPM_ProcSmsDomainSelectionOnEutran(VOS_
         return TAF_SPM_DOMAIN_SEL_RESULT_BUFFER_MESSAGE;
     }
 
-    /* IMS未注册成功 */
-    if (TAF_SDC_IMS_NORMAL_REG_STATUS_REG != enImsaRegStatus)
+    /* ims reg fail */
+    if (TAF_SDC_IMS_NORMAL_REG_STATUS_DEREG == enImsaRegStatus)
     {
-        return TAF_SPM_DOMAIN_SEL_RESULT_NAS_SIGNALLING;
+        return TAF_SPM_DOMAIN_SEL_RESULT_SELECT_FAIL;
     }
 
-    /* IMS已经注册成功，IMSA主动上报的消息中ext_info指示IMS可以使用SMS */
-    /* 目前没有主动上报，接口先保留，上下文中初始化为支持 */
-    if (VOS_TRUE == TAF_SPM_GetImsSmsSupportedOnImsServer())
-    {
-        return TAF_SPM_DOMAIN_SEL_RESULT_CS_OVER_IP;
-    }
-
-    /* IMSA主动上报的消息中ext_info指示IMS不可以使用SMS */
     return TAF_SPM_DOMAIN_SEL_RESULT_NAS_SIGNALLING;
 
 }
 #endif
-
-
 TAF_SPM_DOMAIN_SEL_RESULT_ENUM_UINT8 TAF_SPM_ProcCcDomainSelectionOnNoRat(
     MN_CALL_TYPE_ENUM_U8                enCallType
 )
 {
     if ((VOS_TRUE == TAF_SDC_GetImsSupportFlag())
      && (MN_CALL_TYPE_EMERGENCY != enCallType))
-    {       
+    {
         return TAF_SPM_DOMAIN_SEL_RESULT_BUFFER_MESSAGE;
     }
 
@@ -785,7 +847,7 @@ TAF_SPM_DOMAIN_SEL_RESULT_ENUM_UINT8 TAF_SPM_ProcCcDomainSelectionOnNoRat(
 TAF_SPM_DOMAIN_SEL_RESULT_ENUM_UINT8 TAF_SPM_ProcSmsDomainSelectionOnNoRat(VOS_VOID)
 {
     if (VOS_TRUE == TAF_SDC_GetImsSupportFlag())
-    {        
+    {
         return TAF_SPM_DOMAIN_SEL_RESULT_BUFFER_MESSAGE;
     }
 
@@ -795,13 +857,29 @@ TAF_SPM_DOMAIN_SEL_RESULT_ENUM_UINT8 TAF_SPM_ProcSmsDomainSelectionOnNoRat(VOS_V
 TAF_SPM_DOMAIN_SEL_RESULT_ENUM_UINT8 TAF_SPM_ProcSsDomainSelectionOnNoRat(VOS_VOID)
 {
     if (VOS_TRUE == TAF_SDC_GetImsSupportFlag())
-    {       
+    {
         return TAF_SPM_DOMAIN_SEL_RESULT_BUFFER_MESSAGE;
     }
 
     /* select NAS signalling if UE don't supported IMS on any RAT */
     return TAF_SPM_DOMAIN_SEL_RESULT_NAS_SIGNALLING;
 }
+VOS_UINT8 TAF_SPM_IsServiceExistedInCcDomainSelection(
+    VOS_UINT32                          ulEventType
+)
+{
+    if (ulEventType  != TAF_BuildEventType(WUEPS_PID_AT, MN_CALL_APP_ORIG_REQ)
+     && ulEventType  != TAF_BuildEventType(WUEPS_PID_AT, TAF_CALL_APP_ECONF_DIAL_REQ)
+     && ulEventType  != TAF_BuildEventType(MAPS_STK_PID, STK_CALL_CALLORIG_REQ))
+    {
+        return VOS_FALSE;
+    }
+    else
+    {
+        return VOS_TRUE;
+    }
+}
+
 TAF_SPM_DOMAIN_SEL_RESULT_ENUM_UINT8 TAF_SPM_ProcCcDomainSelection(
     VOS_UINT32                          ulEventType,
     struct MsgCB                       *pstMsg
@@ -813,30 +891,46 @@ TAF_SPM_DOMAIN_SEL_RESULT_ENUM_UINT8 TAF_SPM_ProcCcDomainSelection(
     MN_CALL_APP_REQ_MSG_STRU                               *pstAppMsg       = VOS_NULL_PTR;
     MN_APP_CALL_CALLORIG_REQ_STRU                          *pstStkOrigReq   = VOS_NULL_PTR;
 
+    TAF_CALL_VOICE_DOMAIN_ENUM_UINT8                        enVoiceDomain;
+
     pstAppMsg       = (MN_CALL_APP_REQ_MSG_STRU *)pstMsg;
     pstStkOrigReq   = (MN_APP_CALL_CALLORIG_REQ_STRU *)pstMsg;
-    
+
     enDomainSelRslt = TAF_SPM_DOMAIN_SEL_RESULT_NAS_SIGNALLING;
 
     ucImsInvitePtptFlag = VOS_FALSE;
-    
+
+    enVoiceDomain   = TAF_CALL_VOICE_DOMAIN_3GPP;
+
     if (ulEventType == TAF_BuildEventType(WUEPS_PID_AT, MN_CALL_APP_ORIG_REQ))
     {
         enCallType          = pstAppMsg->unParm.stOrig.enCallType;
-		
+
         ucImsInvitePtptFlag = pstAppMsg->unParm.stOrig.ucImsInvitePtptFlag;
+
+        enVoiceDomain       = pstAppMsg->unParm.stOrig.enVoiceDomain;
     }
+#if (FEATURE_ON == FEATURE_IMS)
+    else if (ulEventType == TAF_BuildEventType(WUEPS_PID_AT, TAF_CALL_APP_ECONF_DIAL_REQ))
+    {
+        enCallType          = pstAppMsg->unParm.stEconfDial.enCallType;
+        ucImsInvitePtptFlag = pstAppMsg->unParm.stEconfDial.ucImsInvitePtptFlag;
+
+        enVoiceDomain       = pstAppMsg->unParm.stEconfDial.enVoiceDomain;
+    }
+#endif
     else
     {
         enCallType      = pstStkOrigReq->enCallType;
     }
 
-    /* 这是IMS邀请第三方加入电话会议呼叫，直接选择IMS域发送 */
+    /* 这是IMS邀请第三方加入电话会议呼叫，直接选择IMS域发送
+       如果是IMS的增强型会议添加与会者，直接选择IMS域发送 */
     if (VOS_TRUE == ucImsInvitePtptFlag)
     {
         return TAF_SPM_DOMAIN_SEL_RESULT_CS_OVER_IP;
     }
-    
+
     /* select NAS signalling if call is running on CS domain*/
     if (VOS_TRUE == TAF_SDC_GetCsCallExistFlg())
     {
@@ -846,20 +940,27 @@ TAF_SPM_DOMAIN_SEL_RESULT_ENUM_UINT8 TAF_SPM_ProcCcDomainSelection(
     /* call is running on IMS domain and select OVER IP */
     if (VOS_TRUE == TAF_SDC_GetImsCallExistFlg())
     {
-        return TAF_SPM_DOMAIN_SEL_RESULT_CS_OVER_IP;
+        /* 异常保护，如果处于IMS CALL过程中，不允许上层下发视频呼叫 */
+        if (TAF_SPM_IS_VIDEO_CALL(enCallType))
+        {
+            return TAF_SPM_DOMAIN_SEL_RESULT_SELECT_FAIL;
+        }
+        else
+        {
+            return TAF_SPM_DOMAIN_SEL_RESULT_CS_OVER_IP;
+        }
     }
 
     /* In this case, NAS SIGNALLING is selected */
     /* 异常场景:如MN_CALL_APP_SUPS_CMD_REQ等一般在有业务存在时才下发；如果业务不存在，默认走nas信令 */
-    if ((ulEventType != TAF_BuildEventType(WUEPS_PID_AT, MN_CALL_APP_ORIG_REQ))
-     && (ulEventType != TAF_BuildEventType(MAPS_STK_PID, STK_CALL_CALLORIG_REQ)))
+    if (VOS_FALSE == TAF_SPM_IsServiceExistedInCcDomainSelection(ulEventType))
     {
         return TAF_SPM_DOMAIN_SEL_RESULT_NAS_SIGNALLING;
     }
 
     /* 呼叫类型和卡状态的判断放到预处理里面来做 */
 
-    
+
     /* check whether voice call on IMS is supported or not */
     if (VOS_FALSE == TAF_SDC_GetVoiceCallOnImsSupportFlag())
     {
@@ -871,7 +972,7 @@ TAF_SPM_DOMAIN_SEL_RESULT_ENUM_UINT8 TAF_SPM_ProcCcDomainSelection(
     {
 #if (FEATURE_ON == FEATURE_LTE)
         case TAF_SDC_SYS_MODE_LTE:
-            enDomainSelRslt = TAF_SPM_ProcCcDomainSelectionOnEutran(pstMsg, enCallType);
+            enDomainSelRslt = TAF_SPM_ProcCcDomainSelectionOnEutran(ulEventType, pstMsg, enCallType, enVoiceDomain);
             break;
 #endif
         /* select NAS signalling in GEARN or UTRAN currently */
@@ -885,9 +986,6 @@ TAF_SPM_DOMAIN_SEL_RESULT_ENUM_UINT8 TAF_SPM_ProcCcDomainSelection(
             enDomainSelRslt = TAF_SPM_ProcCcDomainSelectionOnNoRat(enCallType);
             break;
     }
-
-    /* log service domain selection pre-condition infomation */
-    TAF_SPM_LogSrvDomainSelPreconditionInfo();
 
     return (enDomainSelRslt);
 }
@@ -913,7 +1011,7 @@ TAF_SPM_DOMAIN_SEL_RESULT_ENUM_UINT8 TAF_SPM_ProcSsDomainSelection(
        IMS电话或短信业务存在时,收到AT或STK发起的非USSD的SS业务直接回复失败; */
 
     ucUssdOnImsSupportFlag = TAF_SDC_GetUssdOnImsSupportFlag();
-    
+
     if ((VOS_FALSE == TAF_SPM_IsUssdServiceType(ulEventType))
      || (VOS_FALSE == ucUssdOnImsSupportFlag))
     {
@@ -923,10 +1021,10 @@ TAF_SPM_DOMAIN_SEL_RESULT_ENUM_UINT8 TAF_SPM_ProcSsDomainSelection(
         {
             return TAF_SPM_DOMAIN_SEL_RESULT_SELECT_FAIL;
         }
-    
+
         return TAF_SPM_DOMAIN_SEL_RESULT_NAS_SIGNALLING;
     }
-    
+
 
     ucCsCallExistFlg = TAF_SDC_GetCsCallExistFlg();
     if ((VOS_TRUE == TAF_SDC_GetCsSsSrvExistFlg())
@@ -964,13 +1062,8 @@ TAF_SPM_DOMAIN_SEL_RESULT_ENUM_UINT8 TAF_SPM_ProcSsDomainSelection(
             break;
     }
 
-    /* log service domain selection pre-condition infomation */
-    TAF_SPM_LogSrvDomainSelPreconditionInfo();
-
     return (enDomainSelRslt);
 }
-
-
 TAF_SPM_DOMAIN_SEL_RESULT_ENUM_UINT8 TAF_SPM_ProcSmsDomainSelection(VOS_VOID)
 {
     VOS_UINT8                                                   ucCsSmsExistFlg;
@@ -1033,15 +1126,8 @@ TAF_SPM_DOMAIN_SEL_RESULT_ENUM_UINT8 TAF_SPM_ProcSmsDomainSelection(VOS_VOID)
 
     }
 
-    /* log service domain selection pre-condition infomation */
-    TAF_SPM_LogSrvDomainSelPreconditionInfo();
-
     return enDomainSelRslt;
 }
-
-
-
-
 TAF_SPM_DOMAIN_SEL_RESULT_ENUM_UINT8 TAF_SPM_ProcServiceRequestDomainSelection(
     VOS_UINT32                          ulEventType,
     struct MsgCB                       *pstMsg
@@ -1073,29 +1159,60 @@ TAF_SPM_DOMAIN_SEL_RESULT_ENUM_UINT8 TAF_SPM_ProcServiceRequestDomainSelection(
             break;
     }
 
+    /* log service domain selection pre-condition infomation */
+    TAF_SPM_LogSrvDomainSelPreconditionInfo();
+
+    TAF_SPM_LogSrvDomainSelRedialInfo();
     return (enDomainSelRslt);
 }
-
-
 VOS_UINT32 TAF_SPM_ProcCcSrvReqProtectTimerExpired(VOS_VOID)
 {
     TAF_SPM_CACHE_MSG_INFO_STRU        *pstCachedMsg = VOS_NULL_PTR;
+    TAF_SDC_VOICE_DOMAIN_ENUM_UINT32    enVoiceDomain;
+
+    enVoiceDomain = TAF_SDC_GetVoiceDomain();
+
+    if (TAF_SDC_VOICE_DOMAIN_IMS_PS_ONLY == enVoiceDomain)
+    {
+        /* get first index message address */
+        pstCachedMsg = TAF_SPM_GetSpecifiedIndexMessageAddrFromCcQueue(0);
+
+        /* indicate sender that CC service request is failure */
+        TAF_SPM_SendCcServiceRequetFail(pstCachedMsg->stMsgEntry.ulEventType,
+                                        (struct MsgCB *)&(pstCachedMsg->stMsgEntry.aucEntryMsgBuffer[0]),
+                                        TAF_CS_CAUSE_DOMAIN_SELECTION_TIMER_EXPIRED);
+
+        /* clear the first cached message in queue */
+        TAF_SPM_FreeSpecificedIndexMessageInCcQueue(0);
+
+        /* log service domain selection infomation */
+        TAF_SPM_LogSrvDomainSelQueueInfo();
+
+        return VOS_TRUE;
+    }
+
+    /* 非PS ONLY，尝试域选择到NAS信令进行处理*/
 
     /* get first index message address */
-    pstCachedMsg = TAF_SPM_GetSpecifiedIndexMessageAddrFromCcQueue(0);
+    pstCachedMsg          = TAF_SPM_GetSpecifiedIndexMessageAddrFromCcQueue(0);
 
-    /* indicate sender that CC service request is failure */
-    TAF_SPM_SendCcServiceRequetFail(pstCachedMsg->stMsgEntry.ulEventType,
-                                    (struct MsgCB *)&(pstCachedMsg->stMsgEntry.aucEntryMsgBuffer[0]),
-                                    TAF_CS_CAUSE_DOMAIN_SELECTION_TIMER_EXPIRED);
+    (VOS_VOID)TAF_SPM_ProcReqMsgBasedOnNasSignalling(pstCachedMsg->stMsgEntry.ulEventType,
+                                           (struct MsgCB*)&(pstCachedMsg->stMsgEntry.aucEntryMsgBuffer[0]));
+
+    TAF_SPM_UpdateServiceCtrlEntryMsg(pstCachedMsg->stMsgEntry.ulEventType,
+                                      (struct MsgCB*)&(pstCachedMsg->stMsgEntry.aucEntryMsgBuffer[0]));
+
+    TAF_SPM_SetUpdateEntryMsgFlg(VOS_TRUE);
 
     /* clear the first cached message in queue */
     TAF_SPM_FreeSpecificedIndexMessageInCcQueue(0);
 
-    /* log service domain selection infomation */
     TAF_SPM_LogSrvDomainSelQueueInfo();
 
-    return VOS_TRUE;
+    /* message need to be processed further by call module, so return VOS_FALSE
+       需要替换入口消息
+    */
+    return VOS_FALSE;
 }
 
 
@@ -1113,55 +1230,87 @@ VOS_UINT32 TAF_SPM_ProcSmsSrvReqProtectTimerExpired(
 
     pstRcvTimerMsg = (REL_TIMER_MSG *)pstMsg;
     usClientId     = (VOS_UINT16)pstRcvTimerMsg->ulPara;
-    
+
     /* 查找起动保护定时器消息 */
     for (i = 0; i < TAF_SPM_GetSmsMsgQueueNum(); i++)
     {
         pstCachedMsg = TAF_SPM_GetSpecifiedIndexMessageAddrFromSmsQueue(i);
 
-        pstAppMsg   = (MN_APP_MSG_SEND_REQ_STRU *)&(pstCachedMsg->stMsgEntry.aucEntryMsgBuffer[0]);
-        ulEventType = pstCachedMsg->stMsgEntry.ulEventType;
+        pstAppMsg    = (MN_APP_MSG_SEND_REQ_STRU *)&(pstCachedMsg->stMsgEntry.aucEntryMsgBuffer[0]);
+
+        ulEventType  = pstCachedMsg->stMsgEntry.ulEventType;
 
         /* 根据client ID查找缓存消息, SMMA消息不起域选择定时器，因此不care */
         if ((pstAppMsg->usClientId == usClientId)
          && (TAF_BuildEventType(WUEPS_PID_TAF, ID_TAF_SPM_SMMA_IND) != ulEventType))
         {
-            /* send fail indication to user */
-            TAF_SPM_SendSmsServiceRequetFail(pstCachedMsg->stMsgEntry.ulEventType,
-                                             (struct MsgCB *)&(pstCachedMsg->stMsgEntry.aucEntryMsgBuffer[0]),
-                                             MN_ERR_CLASS_SMS_DOMAIN_SELECTION_TIMER_EXPIRED);
+            (VOS_VOID)TAF_SPM_ProcReqMsgBasedOnNasSignalling(pstCachedMsg->stMsgEntry.ulEventType,
+                                           (struct MsgCB*)&(pstCachedMsg->stMsgEntry.aucEntryMsgBuffer[0]));
 
-            /* clear the first cached message in queue */
+            TAF_SPM_UpdateServiceCtrlEntryMsg(pstCachedMsg->stMsgEntry.ulEventType,
+                                      (struct MsgCB*)&(pstCachedMsg->stMsgEntry.aucEntryMsgBuffer[0]));
+
+            TAF_SPM_SetUpdateEntryMsgFlg(VOS_TRUE);
+
             TAF_SPM_FreeSpecificedIndexMessageInSmsQueue(i);
 
             break;
         }
     }
 
-    /* log service domain selection infomation */
     TAF_SPM_LogSrvDomainSelQueueInfo();
 
-    return VOS_TRUE;
+    /* message need to be processed further by call module, so return VOS_FALSE */
+    return VOS_FALSE;
 }
 VOS_UINT32 TAF_SPM_ProcSsSrvReqProtectTimerExpired(VOS_VOID)
 {
-    TAF_SPM_CACHE_MSG_INFO_STRU        *pstCachedMsg = VOS_NULL_PTR;
+    TAF_SPM_CACHE_MSG_INFO_STRU                            *pstCachedMsg = VOS_NULL_PTR;
+    TAF_SDC_VOICE_DOMAIN_ENUM_UINT32                        enVoiceDomain;
+
+    enVoiceDomain = TAF_SDC_GetVoiceDomain();
+
+    if (TAF_SDC_VOICE_DOMAIN_IMS_PS_ONLY == enVoiceDomain)
+    {
+        /* get the first cached message in queue */
+        pstCachedMsg = TAF_SPM_GetSpecifiedIndexMessageAddrFromSsQueue(0);
+
+        TAF_SPM_SendSsServiceRequetFail(pstCachedMsg->stMsgEntry.ulEventType,
+                                        (struct MsgCB *)&(pstCachedMsg->stMsgEntry.aucEntryMsgBuffer[0]),
+                                        TAF_ERR_SS_DOMAIN_SELECTION_TIMER_EXPIRED);
+
+        /* clear the first cached message in queue */
+        TAF_SPM_FreeSpecificedIndexMessageInSsQueue(0);
+
+        /* log service domain selection infomation */
+        TAF_SPM_LogSrvDomainSelQueueInfo();
+
+        return VOS_TRUE;
+    }
+
+    /* 非PS ONLY，尝试域选择到NAS信令进行处理*/
 
     /* get the first cached message in queue */
-    pstCachedMsg = TAF_SPM_GetSpecifiedIndexMessageAddrFromSsQueue(0);
+    pstCachedMsg      = TAF_SPM_GetSpecifiedIndexMessageAddrFromSsQueue(0);
 
-    TAF_SPM_SendSsServiceRequetFail(pstCachedMsg->stMsgEntry.ulEventType,
-                                    (struct MsgCB *)&(pstCachedMsg->stMsgEntry.aucEntryMsgBuffer[0]),
-                                    TAF_ERR_SS_DOMAIN_SELECTION_TIMER_EXPIRED);
+    (VOS_VOID)TAF_SPM_ProcReqMsgBasedOnNasSignalling(pstCachedMsg->stMsgEntry.ulEventType,
+                                           (struct MsgCB*)&(pstCachedMsg->stMsgEntry.aucEntryMsgBuffer[0]));
+
+    TAF_SPM_UpdateServiceCtrlEntryMsg(pstCachedMsg->stMsgEntry.ulEventType,
+                                      (struct MsgCB*)&(pstCachedMsg->stMsgEntry.aucEntryMsgBuffer[0]));
+
+    TAF_SPM_SetUpdateEntryMsgFlg(VOS_TRUE);
 
     /* clear the first cached message in queue */
     TAF_SPM_FreeSpecificedIndexMessageInSsQueue(0);
 
-    /* log service domain selection infomation */
     TAF_SPM_LogSrvDomainSelQueueInfo();
 
-    return VOS_TRUE;
+    /* message need to be processed further by call module, so return VOS_FALSE */
+    return VOS_FALSE;
 }
+
+
 VOS_UINT32 TAF_SPM_ProcBufferedDomainSelectionResult(
     TAF_SPM_ENTRY_MSG_STRU                                     *pstMsgEntry,
     TAF_SPM_DOMAIN_SEL_RESULT_ENUM_UINT8                        enDomainSelRslt
@@ -1236,11 +1385,11 @@ VOS_VOID TAF_SPM_ProcSmmaIndDomainSelectionResult(
 )
 {
     TAF_MSG_SIGNALLING_TYPE_ENUM_UINT32                     enMsgSignallingType;
-    MN_APP_REQ_MSG_STRU                                    *pstSmsMsg = VOS_NULL_PTR;       
+    MN_APP_REQ_MSG_STRU                                    *pstSmsMsg = VOS_NULL_PTR;
 
     if (TAF_SPM_DOMAIN_SEL_RESULT_CS_OVER_IP == enDomainSelRslt)
-    {        
-        enMsgSignallingType = TAF_MSG_SIGNALLING_TYPE_CS_OVER_IP;        
+    {
+        enMsgSignallingType = TAF_MSG_SIGNALLING_TYPE_CS_OVER_IP;
     }
     else if (TAF_SPM_DOMAIN_SEL_RESULT_NAS_SIGNALLING == enDomainSelRslt)
     {
@@ -1261,13 +1410,15 @@ VOS_VOID TAF_SPM_ProcSmmaIndDomainSelectionResult(
         /* 忽略该SMMA消息 */
         return;
     }
-    
+
     /* 短信换域重拨功能打开，保存消息到缓存 */
     if (TAF_MSG_SIGNALLING_TYPE_CS_OVER_IP == enMsgSignallingType)
     {
-        
+
         /* 设置IMS短信发送标志为TRUE */
         TAF_SPM_SetImsSmsSendingFlg(VOS_TRUE);
+
+        TAF_SPM_LogSrvDomainSelRedialInfo();
 
         if (VOS_TRUE == TAF_SDC_GetSmsRedailFromImsToCsSupportFlag())
         {
@@ -1283,7 +1434,7 @@ VOS_VOID TAF_SPM_ProcSmmaIndDomainSelectionResult(
     }
 
     /* 发送消息到MSG模块 */
-    TAF_SPM_SendMsgSmmaRsp(enMsgSignallingType);
+    TAF_SPM_SendMsgSmmaRsp(enMsgSignallingType, pstMsg);
 }
 VOS_UINT32 TAF_SPM_ProcCcMsgQueue(TAF_SPM_DOMAIN_SEL_RESULT_ENUM_UINT8 *pEnDomainSelRslt)
 {
@@ -1342,14 +1493,14 @@ VOS_UINT32 TAF_SPM_ProcSmsMsgQueue(TAF_SPM_DOMAIN_SEL_RESULT_ENUM_UINT8 *pEnDoma
         TAF_SPM_ProcSmmaIndDomainSelectionResult(pstMsgInfo->stMsgEntry.ulEventType,
                                                  (struct MsgCB *)&(pstMsgInfo->stMsgEntry.aucEntryMsgBuffer[0]),
                                                  *pEnDomainSelRslt);
-        
+
         ulRst = VOS_TRUE;
     }
-    else    
+    else
     {
         /* process domain selection result */
         ulRst = TAF_SPM_ProcBufferedDomainSelectionResult(&(pstMsgInfo->stMsgEntry), *pEnDomainSelRslt);
-        
+
         /* stop SMS service protect timer */
         pstAppMsg = (MN_APP_REQ_MSG_STRU *)&(pstMsgInfo->stMsgEntry.aucEntryMsgBuffer[0]);
         TAF_SPM_StopTimer(TI_TAF_SPM_SMS_SRV_REQ_PROTECT_TIMER, pstAppMsg->clientId);
@@ -1438,11 +1589,11 @@ VOS_UINT32 TAF_SPM_ProcBufferedMsgInQueue(VOS_VOID)
             /* if SS or SMS message queue is not null, send domain selection indication message to self */
             ucSmsMsgQueueNum = TAF_SPM_GetSmsMsgQueueNum();
             ucSsMsgQueueNum  = TAF_SPM_GetSsMsgQueueNum();
-            if ((0 != ucSmsMsgQueueNum) 
+            if ((0 != ucSmsMsgQueueNum)
              || (0 != ucSsMsgQueueNum))
             {
                 TAF_SPM_SndInternalDomainSelectionInd();
-            }            
+            }
 
             /* log service domain selection infomation */
             TAF_SPM_LogSrvDomainSelQueueInfo();
@@ -1476,7 +1627,7 @@ VOS_VOID TAF_SPM_FreeMessagesInMessageQueue(VOS_VOID)
 
      /* free CC service request message in queue */
     ucMsgQueueNum = TAF_SPM_GetCcMsgQueueNum();
-    ucMsgQueueNum = TAF_SDC_MIN(ucMsgQueueNum, TAF_SPM_MAX_CC_MSG_QUEUE_NUM);    
+    ucMsgQueueNum = TAF_SDC_MIN(ucMsgQueueNum, TAF_SPM_MAX_CC_MSG_QUEUE_NUM);
     for (ucIndex = 0; ucIndex < ucMsgQueueNum; ucIndex++)
     {
         /* get the first cached message in queue */
@@ -1494,11 +1645,11 @@ VOS_VOID TAF_SPM_FreeMessagesInMessageQueue(VOS_VOID)
         /* clear the first cached message in queue */
         TAF_SPM_FreeSpecificedIndexMessageInCcQueue(ucIndex);
 
-    }    
+    }
 
     /* free SMS service request message in queue */
     ucMsgQueueNum = TAF_SPM_GetSmsMsgQueueNum();
-    ucMsgQueueNum = TAF_SDC_MIN(ucMsgQueueNum, TAF_SPM_MAX_SMS_MSG_QUEUE_NUM);    
+    ucMsgQueueNum = TAF_SDC_MIN(ucMsgQueueNum, TAF_SPM_MAX_SMS_MSG_QUEUE_NUM);
     for (ucIndex = 0; ucIndex < ucMsgQueueNum; ucIndex++)
     {
         /* get the first cached message in queue */
@@ -1511,12 +1662,12 @@ VOS_VOID TAF_SPM_FreeMessagesInMessageQueue(VOS_VOID)
         if (TAF_BuildEventType(WUEPS_PID_TAF, ID_TAF_SPM_SMMA_IND) != pstCachedMsg->stMsgEntry.ulEventType)
         {
             /* 停止域选择缓存定时器 */
-            TAF_SPM_StopTimer(TI_TAF_SPM_SMS_SRV_REQ_PROTECT_TIMER, pstAppMsg->clientId);   
+            TAF_SPM_StopTimer(TI_TAF_SPM_SMS_SRV_REQ_PROTECT_TIMER, pstAppMsg->clientId);
 
             /* 通知应用层消息发送失败 */
             TAF_SPM_SendSmsServiceRequetFail(pstCachedMsg->stMsgEntry.ulEventType,
                                              (struct MsgCB *)&(pstCachedMsg->stMsgEntry.aucEntryMsgBuffer[0]),
-                                             MN_ERR_CLASS_SMS_POWER_OFF);                                          
+                                             MN_ERR_CLASS_SMS_POWER_OFF);
         }
 
         /* clear the first cached message in queue */
@@ -1525,7 +1676,7 @@ VOS_VOID TAF_SPM_FreeMessagesInMessageQueue(VOS_VOID)
 
     /* free SS service request message in queue */
     ucMsgQueueNum = TAF_SPM_GetSsMsgQueueNum();
-    ucMsgQueueNum = TAF_SDC_MIN(ucMsgQueueNum, TAF_SPM_MAX_SS_MSG_QUEUE_NUM);    
+    ucMsgQueueNum = TAF_SDC_MIN(ucMsgQueueNum, TAF_SPM_MAX_SS_MSG_QUEUE_NUM);
     for (ucIndex = 0; ucIndex < ucMsgQueueNum; ucIndex++)
     {
         /* get the first cached message in queue */
@@ -1550,7 +1701,7 @@ VOS_VOID TAF_SPM_FreeMessagesInMessageQueue(VOS_VOID)
 
 
 VOS_VOID TAF_SPM_ProcMmaPowerOffInd(VOS_VOID)
-{    
+{
     /* free all buffered message */
     TAF_SPM_FreeMessagesInMessageQueue();
 
@@ -1737,8 +1888,24 @@ VOS_UINT32 TAF_SPM_ProcReqMsgBasedOnCsOverIp(
     VOS_UINT32                          ulRetFlg;
     TAF_SPM_PROC_MSG_STRU              *pstTabHeader = VOS_NULL_PTR;
 
+    MN_CALL_APP_REQ_MSG_STRU           *pstCallMsg   = VOS_NULL_PTR;
+    MN_CALL_ORIG_PARAM_STRU            *pstOrigReq   = VOS_NULL_PTR;
+
     /* Get tab first address */
     pstTabHeader = TAF_SPM_GetImsDomainSelMsgTabAddr();
+
+    if (ulEventType == TAF_BuildEventType(WUEPS_PID_AT, MN_CALL_APP_ORIG_REQ))
+    {
+        pstCallMsg   = (MN_CALL_APP_REQ_MSG_STRU *)pstMsg;
+        pstOrigReq   = (MN_CALL_ORIG_PARAM_STRU *)(&pstCallMsg->unParm);
+
+        /* IMS视频在域选择完后如果VIDEO能力不支持需要转成IMS语音呼叫 */
+        if ((VOS_FALSE == TAF_SDC_GetVideoCallOnImsSupportFlag())
+         && (TAF_SPM_IS_VIDEO_CALL(pstOrigReq->enCallType)))
+        {
+            pstOrigReq->enCallType = MN_CALL_TYPE_VOICE;
+        }
+    }
 
     /* look up the matched message event type */
     for (i = 0; i < TAF_SPM_GET_IMS_DOMAIN_SEL_MSG_TAB_SIZE; i++)
@@ -1755,8 +1922,6 @@ VOS_UINT32 TAF_SPM_ProcReqMsgBasedOnCsOverIp(
 
     return VOS_FALSE;
 }
-
-
 VOS_UINT32 TAF_SPM_RcvRegisterSsReqBasedOnCsOverIp(
     struct MsgCB                       *pstMsg
 )
@@ -1864,12 +2029,12 @@ VOS_UINT32 TAF_SPM_RcvAppOrigReqBasedOnCsOverIp(
 
         return VOS_TRUE;
     }
-	
+
     /* 重拨功能打开且语音优先域为CS preferred 或VOIP preferred时，保存消息到缓存 */
     enVoicePerferred = TAF_SDC_GetVoiceDomain();
     if ((VOS_TRUE                         == TAF_SDC_GetCallRedailFromImsToCsSupportFlag())
      && (TAF_SDC_VOICE_DOMAIN_IMS_PS_ONLY != enVoicePerferred))
-    {    
+    {
         ulEventType = TAF_BuildEventType(pstAppMsg->ulSenderPid, pstAppMsg->enReq);
         if (VOS_FALSE == TAF_SPM_StoreMsgIntoCallRedialBuffer(ulEventType, pstMsg))
         {
@@ -1881,7 +2046,7 @@ VOS_UINT32 TAF_SPM_RcvAppOrigReqBasedOnCsOverIp(
     }
 
     TAF_SPM_SendImsaCallOrigReq(pstAppMsg);
-    
+
     return VOS_TRUE;
 }
 
@@ -1893,7 +2058,7 @@ VOS_UINT32 TAF_SPM_RcvAppSupsCmdReqBasedOnCsOverIp(
     MN_CALL_APP_REQ_MSG_STRU            *pstAppMsg = VOS_NULL_PTR;
 
     pstAppMsg = (MN_CALL_APP_REQ_MSG_STRU *)pstMsg;
-    
+
     /* 发送给IMSA处理 */
     TAF_SPM_SendImsaSupsCmdReq((MN_CALL_APP_REQ_MSG_STRU *)pstMsg);
 
@@ -1903,7 +2068,7 @@ VOS_UINT32 TAF_SPM_RcvAppSupsCmdReqBasedOnCsOverIp(
         case MN_CALL_SUPS_CMD_REL_CALL_X:
             TAF_SPM_FreeCallRedialBufferWithCallId(pstAppMsg->callId);
             break;
-            
+
         case MN_CALL_SUPS_CMD_REL_ALL_CALL:
         case MN_CALL_SUPS_CMD_REL_ALL_EXCEPT_WAITING_CALL:
             TAF_SPM_FreeCallRedialBufferWithClientId(pstAppMsg->clientId);
@@ -1912,7 +2077,7 @@ VOS_UINT32 TAF_SPM_RcvAppSupsCmdReqBasedOnCsOverIp(
         default:
             break;
     }
-    
+
     return VOS_TRUE;
 }
 
@@ -1923,6 +2088,15 @@ VOS_UINT32 TAF_SPM_RcvAppGetInfoReqBasedOnCsOverIp(
 {
     /* 发送给IMSA处理 */
     TAF_SPM_SendImsaGetCallInfoReq((MN_CALL_APP_REQ_MSG_STRU *)pstMsg, CALL_IMSA_GET_CALL_INFO_REQ_TYPE_CLCC);
+
+    return VOS_TRUE;
+}
+VOS_UINT32 TAF_SPM_RcvAppGetEconfInfoReqBasedOnCsOverIp(
+    struct MsgCB                       *pstMsg
+)
+{
+    /* 发送给IMSA处理 */
+    TAF_SPM_SendImsaGetEconfInfoReq((MN_CALL_APP_REQ_MSG_STRU *)pstMsg);
 
     return VOS_TRUE;
 }
@@ -1978,15 +2152,15 @@ VOS_UINT32 TAF_SPM_RcvStkOrigReqBasedOnCsOverIp(
     MN_APP_CALL_CALLORIG_REQ_STRU      *pstOrigParam       = VOS_NULL_PTR;
     MN_CALL_APP_REQ_MSG_STRU            stAppMsg;
     TAF_SDC_VOICE_DOMAIN_ENUM_UINT32    enVoicePerferred;
-    VOS_UINT32                          ulEventType;    
+    VOS_UINT32                          ulEventType;
 
     pstOrigParam           = (MN_APP_CALL_CALLORIG_REQ_STRU *)pstMsg;
 
-    /* 重拨功能打开且语音优先域为CS preferred 或VOIP preferred时，保存消息到缓存 */    
+    /* 重拨功能打开且语音优先域为CS preferred 或VOIP preferred时，保存消息到缓存 */
     enVoicePerferred = TAF_SDC_GetVoiceDomain();
     if ((VOS_TRUE == TAF_SDC_GetCallRedailFromImsToCsSupportFlag())
      && (TAF_SDC_VOICE_DOMAIN_IMS_PS_ONLY != enVoicePerferred))
-    {  
+    {
         ulEventType = TAF_BuildEventType(pstOrigParam->ulSenderPid, pstOrigParam->ulMsgId);
         if (VOS_FALSE == TAF_SPM_StoreMsgIntoCallRedialBuffer(ulEventType, pstMsg))
         {
@@ -2014,7 +2188,7 @@ VOS_UINT32 TAF_SPM_RcvStkOrigReqBasedOnCsOverIp(
     {
         stAppMsg.unParm.stOrig.stSubaddr.IsExist        = VOS_TRUE;
         stAppMsg.unParm.stOrig.stSubaddr.LastOctOffset  = 0;
-    
+
         PS_MEM_CPY(stAppMsg.unParm.stOrig.stSubaddr.SubAddrInfo,
                     pstOrigParam->stSubAddr.aucSubAddr,
                     MN_CALL_MAX_SUBADDR_INFO_LEN);
@@ -2031,7 +2205,7 @@ VOS_UINT32 TAF_SPM_RcvStkOrigReqBasedOnCsOverIp(
     PS_MEM_CPY(&(stAppMsg.unParm.stOrig.stDialNumber.aucBcdNum[0]),
                &(pstOrigParam->stCalledAddr.aucAddr[0]),
                stAppMsg.unParm.stOrig.stDialNumber.ucNumLen);
-                
+
     PS_MEM_CPY(&(stAppMsg.unParm.stOrig.stEmergencyCat),
                 (MN_CALL_EMERGENCY_CAT_STRU *)&pstOrigParam->stEmergencyCat,
                 sizeof(MN_CALL_EMERGENCY_CAT_STRU));
@@ -2064,7 +2238,7 @@ VOS_UINT32 TAF_SPM_RcvStkSupsCmdReqBasedOnCsOverIp(
         case MN_CALL_SUPS_CMD_REL_CALL_X:
             TAF_SPM_FreeCallRedialBufferWithCallId(pstCallSups->stSupsPara.callId);
             break;
-            
+
         case MN_CALL_SUPS_CMD_REL_ALL_CALL:
         case MN_CALL_SUPS_CMD_REL_ALL_EXCEPT_WAITING_CALL:
             TAF_SPM_FreeCallRedialBufferWithClientId(pstCallSups->usClientId);
@@ -2133,11 +2307,11 @@ VOS_UINT32 TAF_SPM_RcvSendRpdataDirectBasedOnCsOverIp(
 
     pstMsgSnd->enMsgSignallingType = TAF_MSG_SIGNALLING_TYPE_CS_OVER_IP;
 
-    /* 短信换域重拨功能打开，保存消息到缓存 */    
+    /* 短信换域重拨功能打开，保存消息到缓存 */
     if (VOS_TRUE == TAF_SDC_GetSmsRedailFromImsToCsSupportFlag())
     {
         ulEventType = TAF_BuildEventType(pstRcvMsg->ulSenderPid, pstSmsMsg->usMsgName);
-        
+
         if (VOS_FALSE == TAF_SPM_StoreMsgIntoSmsRedialBuffer(ulEventType, pstRcvMsg))
         {
             /* 存储消息失败，缓存队列满，拒绝当前SMS */
@@ -2146,8 +2320,10 @@ VOS_UINT32 TAF_SPM_RcvSendRpdataDirectBasedOnCsOverIp(
         }
     }
 
-    /* 设置IMS短信发送标志 */    
+    /* 设置IMS短信发送标志 */
     TAF_SPM_SetImsSmsSendingFlg(VOS_TRUE);
+
+    TAF_SPM_LogSrvDomainSelRedialInfo();
 
     return VOS_FALSE;
 }
@@ -2166,11 +2342,11 @@ VOS_UINT32 TAF_SPM_RcvSendRpdataFromMemBasedOnCsOverIp(
     /* set SMS sending flag to IMS stack */
     pstSndMemMsg->enMsgSignallingType = TAF_MSG_SIGNALLING_TYPE_CS_OVER_IP;
 
-    /* 短信换域重拨功能打开，保存消息到缓存 */    
+    /* 短信换域重拨功能打开，保存消息到缓存 */
     if (VOS_TRUE == TAF_SDC_GetSmsRedailFromImsToCsSupportFlag())
     {
         ulEventType = TAF_BuildEventType(pstRcvMsg->ulSenderPid, pstSmsMsg->usMsgName);
-        
+
         if (VOS_FALSE == TAF_SPM_StoreMsgIntoSmsRedialBuffer(ulEventType, pstRcvMsg))
         {
             /* 存储消息失败，缓存队列满，拒绝当前SMS */
@@ -2181,6 +2357,9 @@ VOS_UINT32 TAF_SPM_RcvSendRpdataFromMemBasedOnCsOverIp(
 
     /* 设置IMS短信发送标志 */
     TAF_SPM_SetImsSmsSendingFlg(VOS_TRUE);
+
+    TAF_SPM_LogSrvDomainSelRedialInfo();
+
 
     return VOS_FALSE;
 }
@@ -2193,7 +2372,7 @@ VOS_UINT8 TAF_SPM_IsNeedtoWaitImsRegStatus(
     TAF_SPM_SERVICE_STATUS_ENUM_UINT8   enCurrPsStatus;
     TAF_SDC_VOICE_DOMAIN_ENUM_UINT32    enVoicePerferred;
     TAF_SDC_NETWORK_CAP_INFO_STRU      *pstNwCapInfo = VOS_NULL_PTR;
-    
+
     /* 获取当前网络能力 */
     pstNwCapInfo = TAF_SDC_GetLteNwCapInfo();
 
@@ -2202,7 +2381,7 @@ VOS_UINT8 TAF_SPM_IsNeedtoWaitImsRegStatus(
 
     /* 获取语音优先域设置 */
     enVoicePerferred = TAF_SDC_GetVoiceDomain();
-    
+
     if ((TAF_SPM_SERVICE_STATUS_NORMAL_SERVICE == enCurrPsStatus)
      && (enCurrPsStatus                        != enLastPsStatus)
      && (TAF_SDC_NW_IMS_VOICE_SUPPORTED        == pstNwCapInfo->enNwImsVoCap)
@@ -2210,11 +2389,48 @@ VOS_UINT8 TAF_SPM_IsNeedtoWaitImsRegStatus(
     {
         return VOS_TRUE;
     }
-    
+
     return VOS_FALSE;
+}
+VOS_UINT32 TAF_SPM_RcvAppCallModifyReqBasedOnCsOverIp(
+    struct MsgCB                       *pstMsg
+)
+{
+    /* 发送ID_SPM_IMSA_CALL_MODIFY_REQ给IMSA处理 */
+    TAF_SPM_SendImsaCallModifyReq((MN_CALL_APP_REQ_MSG_STRU *)pstMsg);
+    return VOS_TRUE;
+}
+VOS_UINT32 TAF_SPM_RcvAppCallAnswerRemoteModifyReqBasedOnCsOverIp(
+    struct MsgCB                       *pstMsg
+)
+{
+    /* 发送ID_SPM_IMSA_CALL_ANSWER_REMOTE_MODIFY_REQ给IMSA处理 */
+    TAF_SPM_SendImsaCallAnswerRemoteModifyReq((MN_CALL_APP_REQ_MSG_STRU *)pstMsg);
+    return VOS_TRUE;
+}
+VOS_UINT32 TAF_SPM_RcvAppEconfDialReqBasedOnCsOverIp(
+    struct MsgCB                       *pstMsg
+)
+{
+    MN_CALL_APP_REQ_MSG_STRU           *pstAppMsg  = VOS_NULL_PTR;
+
+    pstAppMsg = (MN_CALL_APP_REQ_MSG_STRU *)pstMsg;
+
+    if (VOS_TRUE == pstAppMsg->unParm.stEconfDial.ucImsInvitePtptFlag)
+    {
+        /* 发送ID_SPM_IMSA_CALL_ECONF_ADD_USERS_REQ给IMSA处理 */
+        TAF_SPM_SendImsaEconfAddUsersReq((MN_CALL_APP_REQ_MSG_STRU *)pstMsg);
+        return VOS_TRUE;
+    }
+
+    /* 发送ID_SPM_IMSA_CALL_ECONF_DIAL_REQ给IMSA处理 */
+    TAF_SPM_SendImsaEconfDialReq((MN_CALL_APP_REQ_MSG_STRU *)pstMsg);
+    return VOS_TRUE;
 }
 
 #endif
+
+
 VOS_VOID TAF_SPM_SendCcServiceRequetFail(
     VOS_UINT32                          ulEventType,
     struct MsgCB                       *pstMsg,
@@ -2231,22 +2447,38 @@ VOS_VOID TAF_SPM_SendCcServiceRequetFail(
 
         TAF_CALL_SendCallOrigCnf(pstAtMsg->clientId, pstAtMsg->opId, pstAtMsg->callId, enCause);
 
-        MN_CALL_ReportErrIndEvent(MN_CLIENT_ALL, 0, enCause, 0);
+#if (FEATURE_ON == FEATURE_PTM)
+        /* 记录CS呼叫异常log */
+        MN_CALL_CsCallErrRecord(0, enCause);
+#endif
     }
     else if (TAF_BuildEventType(MAPS_STK_PID, STK_CALL_CALLORIG_REQ) == ulEventType)
     {
         pstStkMsg = (MN_APP_CALL_CALLORIG_REQ_STRU *)pstMsg;
         TAF_CALL_SendCallOrigCnf(pstStkMsg->usClientId, pstStkMsg->opID, pstStkMsg->callID, enCause);
 
-        MN_CALL_ReportErrIndEvent(MN_CLIENT_ALL, 0, enCause, 0);
+#if (FEATURE_ON == FEATURE_PTM)
+        /* 记录CS呼叫异常log */
+        MN_CALL_CsCallErrRecord(0, enCause);
+#endif
     }
+#if (FEATURE_ON == FEATURE_IMS)
+    else if (TAF_BuildEventType(WUEPS_PID_AT, TAF_CALL_APP_ECONF_DIAL_REQ) == ulEventType)
+    {
+        pstAtMsg = (MN_CALL_APP_REQ_MSG_STRU *)pstMsg;
+        TAF_SPM_SendAtEconfDialCnf(pstAtMsg->clientId, pstAtMsg->opId, pstAtMsg->callId, enCause);
+
+#if (FEATURE_ON == FEATURE_PTM)
+        /* 记录CS呼叫异常log */
+        MN_CALL_CsCallErrRecord(0, enCause);
+#endif
+    }
+#endif
     else
     {
         /* nothing to do */
     }
 }
-
-
 VOS_VOID TAF_SPM_SendSmsServiceRequetFail(
     VOS_UINT32                          ulEventType,
     struct MsgCB                       *pstMsg,
@@ -2314,6 +2546,15 @@ VOS_UINT32 TAF_SPM_ProcReqMsgBasedOnNasSignalling(
     MN_APP_REQ_MSG_STRU                *pstSmsMsg    = VOS_NULL_PTR;
     MN_MSG_SEND_PARM_STRU              *pstMsgSnd    = VOS_NULL_PTR;
     MN_MSG_SEND_FROMMEM_PARM_STRU      *pstSndMemMsg = VOS_NULL_PTR;
+    VOS_UINT32                          ulRet;
+
+    MN_CALL_APP_REQ_MSG_STRU           *pstCallMsg   = VOS_NULL_PTR;
+    MN_CALL_ORIG_PARAM_STRU            *pstOrigReq   = VOS_NULL_PTR;
+    TAF_SPM_SERVICE_CTRL_CFG_INFO_STRU *pstServiceCtrlCfgInfo = VOS_NULL_PTR;
+
+    pstServiceCtrlCfgInfo   = TAF_SPM_GetServiceCtrlCfgInfoAddr();
+
+    ulRet = VOS_FALSE;
 
     /* only care SMS request messages from APP */
     switch (ulEventType)
@@ -2335,11 +2576,44 @@ VOS_UINT32 TAF_SPM_ProcReqMsgBasedOnNasSignalling(
             pstSndMemMsg->enMsgSignallingType = TAF_MSG_SIGNALLING_TYPE_NAS_SIGNALLING;
             break;
 
+        case TAF_BuildEventType(WUEPS_PID_AT, MN_CALL_APP_ORIG_REQ):
+            pstCallMsg   = (MN_CALL_APP_REQ_MSG_STRU *)pstRcvMsg;
+            pstOrigReq   = (MN_CALL_ORIG_PARAM_STRU *)(&pstCallMsg->unParm);
+
+            /* PS域的视频在域选择完后需要转成普通的语音呼叫 */
+            if (TAF_SPM_IS_PS_VIDEO(pstOrigReq->enCallType,
+                                    pstServiceCtrlCfgInfo->enVpCfgState,
+                                    pstOrigReq->enVoiceDomain))
+            {
+                pstOrigReq->enCallType = MN_CALL_TYPE_VOICE;
+            }
+            break;
+
+#if (FEATURE_ON == FEATURE_IMS)
+        case TAF_BuildEventType(WUEPS_PID_AT, TAF_CALL_APP_ECONF_DIAL_REQ):
+            /* 域选择为CS域则直接返回域选择失败 */
+            pstCallMsg   = (MN_CALL_APP_REQ_MSG_STRU *)pstRcvMsg;
+
+            TAF_SPM_SendAtEconfDialCnf(pstCallMsg->clientId,
+                                       pstCallMsg->opId,
+                                       pstCallMsg->callId,
+                                       TAF_CS_CAUSE_DOMAIN_SELECTION_FAILURE);
+
+            /* 记录状态 */
+            TAF_SPM_SetEconfPreRslt(TAF_CS_CAUSE_DOMAIN_SELECTION_FAILURE);
+
+            /* 上报Notify Ind */
+            TAF_SPM_ReportEconfCheckRslt();
+
+            ulRet = VOS_TRUE;
+            break;
+#endif
+
         default:
             break;
     }
 
-    return VOS_FALSE;
+    return ulRet;
 }
 
 #ifdef __cplusplus

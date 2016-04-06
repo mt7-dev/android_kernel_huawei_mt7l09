@@ -55,7 +55,7 @@ VOS_UINT32 TAF_APS_RcvAtGetDsFlowInfoReq_PreProc(
     struct MsgCB                       *pstMsg
 )
 {
-    TAF_PS_MSG_STRU                 *pstMsgHeader;
+    TAF_PS_MSG_STRU                    *pstMsgHeader;
     TAF_PS_GET_DSFLOW_INFO_REQ_STRU    *pstGetDsFlowInfoReq;
     TAF_DSFLOW_QUERY_INFO_STRU          stDsFlowQryInfo;
 
@@ -85,7 +85,7 @@ VOS_UINT32 TAF_APS_RcvAtClearDsFlowReq_PreProc(
     struct MsgCB                       *pstMsg
 )
 {
-    TAF_PS_MSG_STRU                 *pstMsgHeader;
+    TAF_PS_MSG_STRU                    *pstMsgHeader;
     TAF_PS_CLEAR_DSFLOW_REQ_STRU       *pstClearDsFlowReq;
     TAF_APS_DSFLOW_STATS_CTX_STRU      *pstApsDsflowCtx;
 
@@ -97,9 +97,12 @@ VOS_UINT32 TAF_APS_RcvAtClearDsFlowReq_PreProc(
     /* 清除所有RAB承载的流量信息 */
     TAF_APS_ClearAllRabDsFlowStats();
 
+    /* 清除AP相关流量统计 */
+    TAF_APS_ClearApDsFlowStats();
+
     /* 如果流量保存NV功能使能，清除NV项中历史信息 */
     pstApsDsflowCtx = TAF_APS_GetDsFlowCtxAddr();
-    if (VOS_TRUE == pstApsDsflowCtx->ucApsDsFlowSave2NvFlg)
+    if (VOS_TRUE == pstApsDsflowCtx->ucDsFlowSave2NvFlg)
     {
         TAF_APS_ClearDsFlowInfoInNv();
     }
@@ -110,9 +113,6 @@ VOS_UINT32 TAF_APS_RcvAtClearDsFlowReq_PreProc(
 
     return VOS_TRUE;
 }
-
-
-
 VOS_UINT32 TAF_APS_RcvAtConfigDsFlowRptReq_PreProc(
     VOS_UINT32                          ulEventType,
     struct MsgCB                       *pstMsg
@@ -146,17 +146,184 @@ VOS_UINT32 TAF_APS_RcvAtConfigDsFlowRptReq_PreProc(
 
     return VOS_TRUE;
 }
+VOS_UINT32 TAF_APS_RcvSetApDsFlowRptCfgReq_PreProc(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+)
+{
+    TAF_PS_SET_APDSFLOW_RPT_CFG_REQ_STRU   *pstSetRptCfgReq = VOS_NULL_PTR;
+    TAF_APS_DSFLOW_STATS_CTX_STRU          *pstDsFlowCtx    = VOS_NULL_PTR;
+    TAF_PS_CAUSE_ENUM_UINT32                enCause;
+    VOS_UINT32                              ulResult;
+
+    pstSetRptCfgReq = (TAF_PS_SET_APDSFLOW_RPT_CFG_REQ_STRU *)TAF_PS_GET_MSG_CONTENT(pstMsg);
+    pstDsFlowCtx    = TAF_APS_GetDsFlowCtxAddr();
+
+    if (VOS_TRUE == pstSetRptCfgReq->stRptCfg.ulRptEnabled)
+    {
+        /* 阈值换算: KBYTE ---> BYTE */
+        ulResult = VOS_64Multi32(0,                                             /* ulMultiplicandHigh */
+                                 pstSetRptCfgReq->stRptCfg.ulFluxThreshold,     /* ulMultiplicandLow */
+                                 TAF_APS_1_KBYTE_1024_BYTE,                     /* ulMultiplicator */
+                                 &(pstDsFlowCtx->ulFluxThresHigh),              /* pulProductHigh */
+                                 &(pstDsFlowCtx->ulFluxThresLow));              /* pulProductLow */
+        if (VOS_OK == ulResult)
+        {
+            /* 更新流量阈值上报参数 */
+            pstDsFlowCtx->ulFluxThresRptFlg = VOS_TRUE;
+            pstDsFlowCtx->ulFluxThresKByte  = pstSetRptCfgReq->stRptCfg.ulFluxThreshold;
+
+            enCause                         = TAF_PS_CAUSE_SUCCESS;
+        }
+        else
+        {
+            TAF_WARNING_LOG(WUEPS_PID_TAF,
+                "TAF_APS_RcvSetApDsFlowRptCfgReq_PreProc: VOS_64Multi32 failed.");
+
+            enCause                         = TAF_PS_CAUSE_INVALID_PARAMETER;
+        }
+    }
+    else
+    {
+        /* 更新流量阈值上报参数 */
+        pstDsFlowCtx->ulFluxThresRptFlg     = VOS_FALSE;
+        pstDsFlowCtx->ulFluxThresKByte      = 0;
+        pstDsFlowCtx->ulFluxThresHigh       = 0;
+        pstDsFlowCtx->ulFluxThresLow        = 0;
+        pstDsFlowCtx->ulTotalFluxHigh       = 0;
+        pstDsFlowCtx->ulTotalFluxLow        = 0;
+
+        enCause                             = TAF_PS_CAUSE_SUCCESS;
+    }
+
+    TAF_APS_SndSetApDsFlowRptCfgCnf(&(pstSetRptCfgReq->stCtrl), enCause);
+    return VOS_TRUE;
+}
+
+
+VOS_UINT32 TAF_APS_RcvGetApDsFlowRptCfgReq_PreProc(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+)
+{
+    TAF_PS_GET_APDSFLOW_RPT_CFG_REQ_STRU   *pstGetRptCfgReq = VOS_NULL_PTR;
+    TAF_APS_DSFLOW_STATS_CTX_STRU          *pstDsFlowCtx    = VOS_NULL_PTR;
+    TAF_APDSFLOW_RPT_CFG_STRU               stRptCfg;
+
+    pstGetRptCfgReq = (TAF_PS_GET_APDSFLOW_RPT_CFG_REQ_STRU *)TAF_PS_GET_MSG_CONTENT(pstMsg);
+    pstDsFlowCtx    = TAF_APS_GetDsFlowCtxAddr();
+
+    /* 获取APDSFLOW配置参数 */
+    stRptCfg.ulRptEnabled    = pstDsFlowCtx->ulFluxThresRptFlg;
+    stRptCfg.ulFluxThreshold = pstDsFlowCtx->ulFluxThresKByte;
+
+    TAF_APS_SndGetApDsFlowRptCfgCnf(&(pstGetRptCfgReq->stCtrl),
+                                    TAF_PS_CAUSE_SUCCESS,
+                                    &stRptCfg);
+
+    return VOS_TRUE;
+}
+VOS_UINT32 TAF_APS_RcvSetDsFlowNvWriteCfgReq_PreProc(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+)
+{
+    TAF_PS_SET_DSFLOW_NV_WRITE_CFG_REQ_STRU    *pstSetNvWriteCfgReq = VOS_NULL_PTR;
+    TAF_APS_DSFLOW_STATS_CTX_STRU              *pstDsFlowCtx        = VOS_NULL_PTR;
+
+    pstSetNvWriteCfgReq = (TAF_PS_SET_DSFLOW_NV_WRITE_CFG_REQ_STRU *)TAF_PS_GET_MSG_CONTENT(pstMsg);
+    pstDsFlowCtx        = TAF_APS_GetDsFlowCtxAddr();
+
+    /* 开启流量写NV功能 */
+    if (VOS_TRUE == pstSetNvWriteCfgReq->stNvWriteCfg.ucEnabled)
+    {
+        /* 流量写NV功能已开启, 根据当前流量写NV功能是否开启做不同处理 */
+        if (VOS_TRUE == pstDsFlowCtx->ucDsFlowSave2NvFlg)
+        {
+            /* 如果流量写NV周期变化, 刷新当前流量到NV, 重启定时器 */
+            if (pstDsFlowCtx->ucDsFlowSavePeriod != pstSetNvWriteCfgReq->stNvWriteCfg.ucInterval)
+            {
+                pstDsFlowCtx->ucDsFlowSavePeriod = pstSetNvWriteCfgReq->stNvWriteCfg.ucInterval;
+
+                TAF_APS_SaveDsFlowInfoToNv();
+
+                TAF_APS_StopTimer(TI_TAF_APS_DSFLOW_WRITE_NV,
+                                  TAF_APS_INVALID_PDPID);
+
+                TAF_APS_StartTimer(TI_TAF_APS_DSFLOW_WRITE_NV,
+                                   (pstDsFlowCtx->ucDsFlowSavePeriod * 60 * TIMER_S_TO_MS_1000),
+                                   TAF_APS_INVALID_PDPID);
+            }
+        }
+        /* 流量写NV功能未开启, 使能流量写NV功能, 启动定时器 */
+        else
+        {
+            pstDsFlowCtx->ucDsFlowSave2NvFlg = VOS_TRUE;
+            pstDsFlowCtx->ucDsFlowSavePeriod = pstSetNvWriteCfgReq->stNvWriteCfg.ucInterval;
+
+            TAF_APS_StartTimer(TI_TAF_APS_DSFLOW_WRITE_NV,
+                               (pstDsFlowCtx->ucDsFlowSavePeriod * 60 * TIMER_S_TO_MS_1000),
+                               TAF_APS_INVALID_PDPID);
+        }
+    }
+    /* 关闭流量写NV功能 */
+    else
+    {
+        /* 流量写NV功能已开启, 刷新当前流量到NV, 停止定时器 */
+        if (VOS_TRUE == pstDsFlowCtx->ucDsFlowSave2NvFlg)
+        {
+            pstDsFlowCtx->ucDsFlowSave2NvFlg = VOS_FALSE;
+            pstDsFlowCtx->ucDsFlowSavePeriod = pstSetNvWriteCfgReq->stNvWriteCfg.ucInterval;
+
+            TAF_APS_SaveDsFlowInfoToNv();
+
+            TAF_APS_StopTimer(TI_TAF_APS_DSFLOW_WRITE_NV,
+                              TAF_APS_INVALID_PDPID);
+        }
+    }
+
+    TAF_APS_SndSetDsFlowNvWriteCfgCnf(&(pstSetNvWriteCfgReq->stCtrl),
+                                      TAF_PS_CAUSE_SUCCESS);
+
+    return VOS_TRUE;
+}
+
+
+VOS_UINT32 TAF_APS_RcvGetDsFlowNvWriteCfgReq_PreProc(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+)
+{
+    TAF_PS_GET_DSFLOW_NV_WRITE_CFG_REQ_STRU    *pstGetNvWriteCfgReq = VOS_NULL_PTR;
+    TAF_APS_DSFLOW_STATS_CTX_STRU              *pstDsFlowCtx        = VOS_NULL_PTR;
+    TAF_DSFLOW_NV_WRITE_CFG_STRU                stNvWriteCfg;
+
+    pstGetNvWriteCfgReq = (TAF_PS_GET_DSFLOW_NV_WRITE_CFG_REQ_STRU *)TAF_PS_GET_MSG_CONTENT(pstMsg);
+    pstDsFlowCtx        = TAF_APS_GetDsFlowCtxAddr();
+
+    /* 获取DSFLOW写NV配置参数 */
+    PS_MEM_SET(&stNvWriteCfg, 0x00, sizeof(TAF_DSFLOW_NV_WRITE_CFG_STRU));
+    stNvWriteCfg.ucEnabled  = pstDsFlowCtx->ucDsFlowSave2NvFlg;
+    stNvWriteCfg.ucInterval = pstDsFlowCtx->ucDsFlowSavePeriod;
+
+    TAF_APS_SndGetDsFlowNvWriteCfgCnf(&(pstGetNvWriteCfgReq->stCtrl),
+                                      TAF_PS_CAUSE_SUCCESS,
+                                      &stNvWriteCfg);
+
+    return VOS_TRUE;
+}
 VOS_UINT32 TAF_APS_RcvTiDsFlowReportExpired_PreProc(
     VOS_UINT32                          ulEventType,
     struct MsgCB                       *pstMsg
 )
 {
+    TAF_APS_DSFLOW_STATS_CTX_STRU      *pstApsDsflowCtx = VOS_NULL_PTR;
     TAF_CTRL_STRU                       stCtrl;
     TAF_DSFLOW_REPORT_STRU              stTotalDsFlowRptInfo;
-    TAF_APS_DSFLOW_STATS_CTX_STRU      *pstApsDsflowCtx;
 
-    /* 初始化 */
     PS_MEM_SET(&stCtrl, 0x00, sizeof(TAF_CTRL_STRU));
+
+    /* 获取DSFLOW上下文 */
     pstApsDsflowCtx = TAF_APS_GetDsFlowCtxAddr();
 
     /* 如果当前无PDP激活，返回 */
@@ -196,6 +363,9 @@ VOS_UINT32 TAF_APS_RcvTiDsFlowReportExpired_PreProc(
                                                   % pstApsDsflowCtx->ucDsFlowOMRptPeriod;
     }
 
+    /* 流量阈值上报处理 */
+    TAF_APS_ProcApDsFlowRpt();
+
     /* 保存当前流量信息到流量统计上下文全局变量，方便下次定时器超时计算速率 */
     TAF_APS_UpdateAllRabCurrentFlowInfo();
 
@@ -210,6 +380,9 @@ VOS_UINT32 TAF_APS_RcvTiDsFlowReportExpired_PreProc(
 
     return VOS_TRUE;
 }
+
+
+
 VOS_UINT32 TAF_APS_RcvTiDsFlowWriteNvExpired_PreProc(
     VOS_UINT32                          ulEventType,
     struct MsgCB                       *pstMsg
@@ -224,11 +397,11 @@ VOS_UINT32 TAF_APS_RcvTiDsFlowWriteNvExpired_PreProc(
     TAF_APS_SaveDsFlowInfoToNv();
 
     /* 判断保存历史流量到NV是否使能 */
-    if (VOS_TRUE == pstApsDsflowCtx->ucApsDsFlowSave2NvFlg)
+    if (VOS_TRUE == pstApsDsflowCtx->ucDsFlowSave2NvFlg)
     {
         /* 重新启动定时器 */
         TAF_APS_StartTimer(TI_TAF_APS_DSFLOW_WRITE_NV,
-                           (pstApsDsflowCtx->ucApsDsFlowSavePeriod * 60 * TIMER_S_TO_MS_1000),
+                           (pstApsDsflowCtx->ucDsFlowSavePeriod * 60 * TIMER_S_TO_MS_1000),
                            TAF_APS_INVALID_PDPID);
     }
 
@@ -1505,7 +1678,6 @@ VOS_UINT32 TAF_APS_RcvAtSetCidParaReq_PreProc(
 }
 
 
-
 VOS_UINT32 TAF_APS_RcvAtGetCidQosParaReq_PreProc(
     VOS_UINT32                          ulEventType,
     struct MsgCB                       *pstMsg
@@ -1523,6 +1695,10 @@ VOS_UINT32 TAF_APS_RcvAtGetCidQosParaReq_PreProc(
         APS_ERR_LOG("TAF_APS_GetCidQosParaReq_PreProc:alloc msg failed.");
         return VOS_TRUE;
     }
+
+    PS_MEM_SET((VOS_CHAR*)pCnf + VOS_MSG_HEAD_LENGTH,
+               0x00,
+               sizeof(TAFAGENT_APS_GET_CID_QOS_PARA_CNF_STRU) - VOS_MSG_HEAD_LENGTH);
 
     pMsgReq                             = (TAFAGENT_APS_GET_CID_QOS_PARA_REQ_STRU*)pstMsg;
 
@@ -4135,11 +4311,21 @@ VOS_UINT32 TAF_APS_RcvL4aApsPdpDeactivateInd_PreProc(
 )
 {
     APS_L4A_PDP_DEACTIVATE_IND_STRU    *pstPdpDeactInd;
+    VOS_UINT8                           ucPdpId;
 
     pstPdpDeactInd = (APS_L4A_PDP_DEACTIVATE_IND_STRU*)pstMsg;
 
     /* 如果找不到对应的PDP ID，则丢弃该消息 */
-    if (TAF_APS_INVALID_PDPID == TAF_APS_GetPdpIdByCid(pstPdpDeactInd->ucCid))
+    if (VOS_TRUE == pstPdpDeactInd->bitOpLinkCid)
+    {
+        ucPdpId = TAF_APS_GetPdpIdByCid(pstPdpDeactInd->ucCid);
+    }
+    else
+    {
+        ucPdpId = TAF_APS_GetPdpIdByEpsbId(pstPdpDeactInd->ulEpsbId);
+    }
+
+    if (TAF_APS_INVALID_PDPID == ucPdpId)
     {
         /* 丢弃该消息 */
         return VOS_TRUE;
@@ -4148,7 +4334,51 @@ VOS_UINT32 TAF_APS_RcvL4aApsPdpDeactivateInd_PreProc(
     return VOS_FALSE;
 }
 
+/*****************************************************************************
+ 函 数 名  : TAF_APS_RcvL4aApsPdpSetupInd_PreProc
+ 功能描述  : 收到ID_L4A_APS_PDP_SETUP_IND消息的预处理
+ 输入参数  : VOS_UINT32         ulEventType
+             struct MsgCB      *pstMsg
+ 输出参数  : 无
+ 返 回 值  : VOS_UINT32
+ 调用函数  :
+ 被调函数  :
 
+ 修改历史      :
+  1.日    期   : 2015年11月19日
+    作    者   : w00316404
+    修改内容   : 新生成函数
+
+*****************************************************************************/
+VOS_UINT32 TAF_APS_RcvL4aApsPdpSetupInd_PreProc(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+)
+{
+    APS_L4A_PDP_SETUP_IND_STRU         *pstPdpSetupInd;
+    VOS_UINT8                           ucPdpId;
+
+    pstPdpSetupInd = (APS_L4A_PDP_SETUP_IND_STRU*)pstMsg;
+
+    if (VOS_TRUE == pstPdpSetupInd->bitOpLinkCid)
+    {
+        /* 从消息中所带的Cid来查找对应的PDP ID */
+        ucPdpId = TAF_APS_GetPdpIdByCid((VOS_UINT8)(pstPdpSetupInd->ucCid));
+    }
+    else
+    {
+        /* 从消息中所带的RabId来查找对应的PDP ID */
+        ucPdpId = TAF_APS_GetPdpIdByEpsbId(pstPdpSetupInd->ulRabId);
+    }
+
+    if (TAF_APS_INVALID_PDPID == ucPdpId)
+    {
+        /* 丢弃该消息 */
+        return VOS_TRUE;
+    }
+
+    return VOS_FALSE;
+}
 VOS_UINT32 TAF_APS_RcvL4aSenNdisconnCnf_PreProc(
     VOS_UINT32                          ulEventType,
     struct MsgCB                       *pstMsg
@@ -4200,7 +4430,15 @@ VOS_UINT32 TAF_APS_RcvEsmEpsBearInfoInd_PreProc(
     }
 
     /* 正常情况下，按照CID来查找Pdp Id */
-    ucPdpId = TAF_APS_GetPdpIdByCid(ucCid);
+    if (SM_ESM_PDP_OPT_ACTIVATE == pstBearerInfo->enPdpOption)
+    {
+        ucPdpId = TAF_APS_GetPdpIdByCid(ucCid);
+    }
+    else
+    {
+        ucPdpId = TAF_APS_GetPdpIdByEpsbId(pstBearerInfo->ulEpsbId);
+    }
+
     if (TAF_APS_INVALID_PDPID != ucPdpId)
     {
         return VOS_FALSE;
@@ -4739,6 +4977,23 @@ VOS_UINT32 TAF_APS_RcvOmSetDsflowRptReq_PreProc(
 
 
 
+VOS_UINT32 TAF_APS_RcvMmcServiceStatusInd_PreProc(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+)
+{
+    MMC_APS_SERVICE_STATUS_IND_STRU    *pstSerStaInd;
+
+    /* 初始化, 获取消息内容 */
+    pstSerStaInd = (MMC_APS_SERVICE_STATUS_IND_STRU*)pstMsg;
+
+    if (MMC_APS_RAT_TYPE_NULL != pstSerStaInd->enRatType)
+    {
+        TAF_APS_SET_RAT_TYPE_IN_SUSPEND(pstSerStaInd->enRatType);
+    }
+
+    return VOS_FALSE;
+}
 VOS_UINT32 TAF_APS_RcvGetCidSdfReq_PreProc(
     VOS_UINT32                          ulEventType,
     struct MsgCB                       *pstMsg
@@ -4786,7 +5041,67 @@ VOS_UINT32 TAF_APS_RcvGetCidSdfReq_PreProc(
     return VOS_TRUE;
 }
 
+/*****************************************************************************
+ 函 数 名  : TAF_APS_RcvSetImsPdpCfgReq_PreProc
+ 功能描述  : 设置PDP是否支持IMS
+ 输入参数  : VOS_VOID                           *pMsgData
+ 输出参数  : 无
+ 返 回 值  : VOS_UINT32
+ 调用函数  :
+ 被调函数  :
+
+ 修改历史      :
+  1.日    期   : 2015年7月29日
+    作    者   : z00301431
+    修改内容   : 新生成函数
+
+*****************************************************************************/
+VOS_UINT32 TAF_APS_RcvSetImsPdpCfgReq_PreProc(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+)
+{
+    TAF_APS_CID_IMS_CFG_TBL_STRU       *pstCidImsCfgTbl;
+    TAF_PS_SET_IMS_PDP_CFG_REQ_STRU    *pstSetImsPdpCfgReq;
+    TAF_PS_SET_IMS_PDP_CFG_CNF_STRU     stSetImsPdpCfgCnf;
+    TAF_PS_CAUSE_ENUM_UINT32            enCause;
+    VOS_UINT8                           ucCid;
+    VOS_UINT8                           ucImsFlag;
+
+    enCause             = TAF_PS_CAUSE_SUCCESS;
+    pstSetImsPdpCfgReq  = (TAF_PS_SET_IMS_PDP_CFG_REQ_STRU *)TAF_PS_GET_MSG_CONTENT(pstMsg);
+
+    ucCid       = pstSetImsPdpCfgReq->stImsPdpCfg.ucCid;
+    ucImsFlag   = pstSetImsPdpCfgReq->stImsPdpCfg.ucImsFlag;
+
+    /* 判断CID有效性 */
+    if (!(TAF_PS_PDP_CONTEXT_CID_VALID(ucCid)))
+    {
+        enCause = TAF_PS_CAUSE_CID_INVALID;
+    }
+    else
+    {
+        /* 设置CID的IMS配置 */
+        pstCidImsCfgTbl = TAF_APS_GetCidImsCfgTable();
+        pstCidImsCfgTbl->aucImsFlag[ucCid] = ucImsFlag;
+    }
+
+    PS_MEM_SET(&stSetImsPdpCfgCnf, 0, sizeof(TAF_PS_SET_IMS_PDP_CFG_CNF_STRU));
+
+    /* 填写消息头 */
+    stSetImsPdpCfgCnf.stCtrl  = pstSetImsPdpCfgReq->stCtrl;
+    stSetImsPdpCfgCnf.enCause = enCause;
+
+    /* 发送ID_EVT_TAF_PS_SET_IMS_PDP_CFG_CNF消息 */
+    (VOS_VOID)TAF_APS_SndPsEvt(ID_EVT_TAF_PS_SET_IMS_PDP_CFG_CNF,
+                               &stSetImsPdpCfgCnf,
+                               sizeof(TAF_PS_SET_IMS_PDP_CFG_CNF_STRU));
+
+    return VOS_TRUE;
+}
+
 #if (FEATURE_ON == FEATURE_CL_INTERWORK)
+
 VOS_UINT8 TAF_APS_LCCheckReqValid(
     TAF_CTRL_STRU                       *pstCtrlInfo
 )

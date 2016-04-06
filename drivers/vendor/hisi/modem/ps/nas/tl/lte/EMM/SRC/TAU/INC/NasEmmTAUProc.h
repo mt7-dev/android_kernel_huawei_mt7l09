@@ -105,6 +105,9 @@ extern "C" {
 #define NAS_EMM_TAU_GetPeriodTauRegDomain()                 (g_stEmmTAUCtrlTbl.ulPeriodTauRegDomain)
 #define NAS_EMM_TAU_SavePeriodTauRegDomain(RegDomain)       (NAS_EMM_TAU_GetPeriodTauRegDomain() = (RegDomain))
 
+#define NAS_EMM_TAU_GetEmmPtmsiActiveFlagCtrl()             (g_stEmmTAUCtrlTbl.enPtmsiActiveFlagCtrl)
+#define NAS_EMM_TAU_SaveEmmPtmsiActiveFlagCtrl(ActiveFlag)  (NAS_EMM_TAU_GetEmmPtmsiActiveFlagCtrl() = (ActiveFlag))
+
 
 #define NAS_EMM_TAU_GetEmmTauImsiDetachFlag()               (g_stEmmTAUCtrlTbl.enImsiCnDetachFlag)
 #define NAS_EMM_TAU_SaveEmmTauImsiDetachFlag(ImsiDetachFlag) (NAS_EMM_TAU_GetEmmTauImsiDetachFlag() = (ImsiDetachFlag))
@@ -248,6 +251,15 @@ enum    NAS_EMM_TAU_TYPE_ENUM
 };
 typedef VOS_UINT8   NAS_EMM_TAU_TYPE_ENUM_UINT8;
 
+enum    NAS_EMM_PTMSI_ACTIVE_FLAG_CTRL_ENUM
+{
+    NAS_EMM_PTMSI_ACTIVE_FLAG_CTRL_INVALID                 = 0x00,
+    NAS_EMM_PTMSI_ACTIVE_FLAG_CTRL_VALID                   = 0x01,
+
+    NAS_EMM_PTMSI_ACTIVE_FLAG_CTRL_BUTT
+};
+typedef VOS_UINT8   NAS_EMM_PTMSI_ACTIVE_FLAG_CTRL_ENUM_UINT8;
+
 enum    NAS_EMM_TAU_ACTIVE_FLAG_ENUM
 {
     NAS_EMM_TAU_NO_BEARER_EST_REQ                        = 0x00,
@@ -383,6 +395,8 @@ typedef struct
     NAS_EMM_TAU_COMPLETE_FLAG_ENUM_UINT8     enTauCompleteFlag;
     EMMC_EMM_FORBIDDEN_INFO_ENUM_UINT32     ulForbInfo;
     NAS_LMM_REG_DOMAIN_ENUM_UINT32          ulPeriodTauRegDomain;
+    NAS_EMM_PTMSI_ACTIVE_FLAG_CTRL_ENUM_UINT8 enPtmsiActiveFlagCtrl;   /* P-TMSI要带active flag定制需求生效标识 */
+    VOS_UINT8                               aucRsv[3];
 
 }EMM_TAU_CTRL_STRU;
 typedef struct
@@ -492,6 +506,11 @@ extern VOS_VOID   NAS_EMM_TAU_TAUReqRejectCasue15( VOS_VOID);
 /*extern VOS_VOID   NAS_EMM_TAU_TAUReqRejectCasue25();*/
 /* lihong00150010 emergency tau&service end */
 extern VOS_VOID   NAS_EMM_TAU_TAUReqRejectCasue40();
+extern VOS_VOID NAS_EMM_TAU_TAUReqRejectCasue35
+(
+    NAS_EMM_CN_CAUSE_ENUM_UINT8   ucTAUrejcause
+);
+
 extern VOS_VOID   NAS_EMM_TAU_TAUReqRejectOtherCause(const NAS_EMM_CN_CAUSE_ENUM_UINT8   ucTAUrejcause);
 extern VOS_VOID   NAS_EMM_TAU_RcvTAURej(const NAS_EMM_CN_CAUSE_ENUM_UINT8   ucTAUrejcause);
 extern VOS_VOID   NAS_EMM_TAU_StartTAUREQ(VOS_VOID);
@@ -548,6 +567,9 @@ extern VOS_VOID NAS_EMM_TAU_TAUReqRejectCasue8( );
 
 /* 改到 TAUINTERFACE.H中声明 extern VOS_VOID   NAS_EMM_TAU_IsUplinkPending( VOS_VOID );*/
 extern VOS_VOID   NAS_EMM_RegSomeStateMsgSysInfoCommProc( VOS_VOID );
+extern VOS_VOID NAS_EMM_RegStateMmcOriResumeSysInfoWithTmsiProc(VOS_VOID);
+
+
 extern VOS_VOID  NAS_EMM_RegStateMmcOriResumeSysInfoNeednotWaitTimerExpProc( VOS_VOID );
 extern VOS_UINT32  NAS_EMM_RegStateMmcOriResumeSysInfoRecogniseWaitTimerExp( VOS_VOID );
 /*add for test
@@ -684,6 +706,11 @@ extern VOS_VOID NAS_EMM_TauRstLeadSndAttachRst(MMC_LMM_ATTACH_RSLT_ENUM_UINT32 u
 extern VOS_UINT32 NAS_EMM_IsAnnexP5AConditionSatisfied(VOS_VOID);
 extern VOS_UINT32 NAS_EMM_IsAnnexP5BConditionSatisfied(VOS_VOID);
 extern VOS_UINT32  NAS_EMM_IsAnnexP5ConditionSatisfied(VOS_VOID);
+
+extern VOS_UINT32 NAS_EMM_IsIntraHoIgnoreForbSysInfo(VOS_VOID);
+extern VOS_VOID  NAS_EMM_TAU_ClearActiveFlagProc(VOS_VOID);
+
+extern VOS_UINT8  NAS_EMM_IsPtmsiTauActiveFlagSatified(VOS_VOID);
 
 /*****************************************************************************
   9 OTHERS

@@ -24,9 +24,15 @@
 #include <linux/bcd.h>
 #include <linux/delay.h>
 #include <linux/slab.h>
-#ifdef CONFIG_RTC_DRV_HI3630_PMU
+#ifdef CONFIG_RTC_DRV_HI3635_PMU
 #include <linux/of_address.h>
-#include <linux/rtc-pmurtc.h>
+#include <linux/reboot.h>
+#include <linux/syscalls.h>
+#include <linux/workqueue.h>
+#include <linux/init.h>
+#include <linux/kthread.h>
+#include <linux/delay.h>
+#include <linux/mfd/hi3xxx_hi6421v300.h>
 #endif
 
 /*
@@ -73,6 +79,29 @@
 
 #define RTC_TIMER_FREQ 32768
 
+#ifdef CONFIG_RTC_DRV_HI3635_PMU
+/*
+ * Hi6421V300 RTC Register definitions
+ */
+#define HI6421V300_RTCDR0               (0x12C) /* Data read register */
+#define HI6421V300_RTCDR1               (0x12D) /* Data read register */
+#define HI6421V300_RTCDR2               (0x12E) /* Data read register */
+#define HI6421V300_RTCDR3               (0x12F) /* Data read register */
+#define HI6421V300_RTCMR0               (0x130) /* Match register */
+#define HI6421V300_RTCMR1               (0x131) /* Match register */
+#define HI6421V300_RTCMR2               (0x132) /* Match register */
+#define HI6421V300_RTCMR3               (0x133) /* Match register */
+#define HI6421V300_RTCLR0               (0x134) /* Data load register */
+#define HI6421V300_RTCLR1               (0x135) /* Data load register */
+#define HI6421V300_RTCLR2               (0x136) /* Data load register */
+#define HI6421V300_RTCLR3               (0x137) /* Data load register */
+#define HI6421V300_RTCCTRL              (0x138) /* Control register */
+#define HI6421V300_RTCIRQ0              (0x120) /* Alarm interrupt bit */
+#define HI6421V300_RTCIRQM0             (0x102) /* Alarm interrupt mask and set register  1:enable,0:disable */
+#define HI6421V300_IRQSTS             (0x001) /* Alarm interrupt mask and set register  1:enable,0:disable */
+#define HI6421V300_ALARM_ON             (0x001) /* Alarm current status */
+#define ALARM_ENABLE_MASK               0xFE
+#endif
 /**
  * struct pl031_vendor_data - per-vendor variations
  * @ops: the vendor-specific operations used on this silicon version
@@ -93,11 +122,12 @@ struct pl031_local {
 	struct pl031_vendor_data *vendor;
 	struct rtc_device *rtc;
 	void __iomem *base;
-#ifdef CONFIG_RTC_DRV_HI3630_PMU
+#ifdef CONFIG_RTC_DRV_HI3635_PMU
 	void __iomem *hisi_pmurtc_base;
 #endif
 };
-#ifdef CONFIG_RTC_DRV_HI3630_PMU
+#ifdef CONFIG_RTC_DRV_HI3635_PMU
+extern unsigned int get_pd_charge_flag(void);
 static struct pl031_local *pmurtcdata;
 /* read 4 8-bit registers & covert it into a 32-bit data */
 static unsigned int hisi_pmu_read_bulk(void __iomem *base, unsigned int reg)
@@ -138,11 +168,11 @@ static int hisi_pmu_rtc_settime(struct device *dev, struct rtc_time *tm)
 
 	rtc_tm_to_time(tm, &time);
 
-	writel_relaxed(0, ldata->hisi_pmurtc_base + (HI6421V300_RTCCTRL << 2));
+    writel_relaxed(1, ldata->hisi_pmurtc_base + (HI6421V300_RTCCTRL << 2));
+
+    udelay(100);
 
 	hisi_pmu_write_bulk(ldata->hisi_pmurtc_base, HI6421V300_RTCLR0, time);
-
-	writel_relaxed(1, ldata->hisi_pmurtc_base + (HI6421V300_RTCCTRL << 2));
 
 	return 0;
 }
@@ -238,11 +268,53 @@ static void hisi_pmu_rtc_unconfig(struct device *dev)
 	iounmap(ldata->hisi_pmurtc_base);
 }
 
+static int oem_rtc_reboot_thread(void *u)
+{
+	printk(KERN_INFO "Entering Rebooting Causeed by Alarm...\n");
+	emergency_remount();
+	sys_sync();
+	msleep(500);
+	kernel_restart("oem_rtc");
+
+	/* should not be here */
+	panic("oem_rtc");
+	return 0;
+}
+
+void oem_rtc_reboot(unsigned long t)
+{
+	kernel_thread(oem_rtc_reboot_thread, NULL, CLONE_FS | CLONE_FILES);
+}
+static DECLARE_TASKLET(oem_rtc_reboot_tasklet, oem_rtc_reboot, 0);
+
+irqreturn_t pmu_rtc_handler(int irq, void *data)
+{
+	struct hi6421_pmic *pmic = (struct hi6421_pmic *)data;
+	unsigned char alarm_status = HI6421V300_ALARM_ON;
+
+	/*needn't clear interrupt irq because pmic has done*/
+	alarm_status &= hi6421_pmic_read(pmic, HI6421V300_IRQSTS);
+
+	printk(KERN_INFO "pmu_rtc_handler alarm_status=%d\n", alarm_status);
+
+	if (0 == alarm_status) {
+		return IRQ_HANDLED;
+	}
+
+	if(unlikely(get_pd_charge_flag()))
+	{
+		printk(KERN_INFO "pmu_rtc_handler startreboot");
+		tasklet_schedule(&oem_rtc_reboot_tasklet);
+	}
+	return IRQ_HANDLED;
+}
+EXPORT_SYMBOL(pmu_rtc_handler);
+
 #else
 
 static void hisi_pmu_rtc_settime(struct device *dev, struct rtc_time *tm) { }
 
-static void hisi_pmu_rtc_setalarmtime(unsigned long time) { }
+void hisi_pmu_rtc_setalarmtime(unsigned long time) { }
 
 static int hisi_pmu_rtc_config(struct device *dev) { return 0; }
 
@@ -505,7 +577,9 @@ static int pl031_probe(struct amba_device *adev, const struct amba_id *id)
 	}
 
 	amba_set_drvdata(adev, ldata);
+#ifdef CONFIG_RTC_DRV_HI3635_PMU
 	pmurtcdata = ldata;
+#endif
 	dev_dbg(&adev->dev, "designer ID = 0x%02x\n", amba_manf(adev));
 	dev_dbg(&adev->dev, "revision = 0x%01x\n", amba_rev(adev));
 

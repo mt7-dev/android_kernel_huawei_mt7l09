@@ -14,9 +14,6 @@
 #include <linux/slab.h>
 #include <linux/init.h>
 
-#include <linux/hw_log.h>
-#define HWLOG_TAG	ddr_info
-HWLOG_REGIST();
 #define DDR_INFO_ADDR (0xFFF0A330)
 //DDR_INFO_ADDR is the physical address of the register for storing DDR manufacturer id and memory size.the register vlaue is conveyed from xloader to Linux kernel,defined in "xloader/ddr/ddr_asic.h",and named  SYSCTRL_DDRINFO.
 
@@ -33,17 +30,18 @@ RETURN VALUE:
 static unsigned int get_ddr_info(void)
 {
     unsigned int tmp_reg_value;
-    unsigned int* virtual_addr =(unsigned int *)ioremap_nocache(DDR_INFO_ADDR&0xFFFFF000,0x800);
+
+    unsigned long* virtual_addr =(unsigned long *)ioremap_nocache(DDR_INFO_ADDR&0xFFFFF000,0x800);
     if(0 == virtual_addr)
     {
-        hwlog_err("%s  ioremap ERROR !!\n",__func__);
+        printk("%s  ioremap ERROR !!\n",__func__);
         return 0;
     }
     else
     {
-        hwlog_info("%s  virtual_addr = 0x%x\n",__func__,(unsigned int)virtual_addr);
+        printk("%s  virtual_addr = 0x%x\n",__func__,(unsigned long)virtual_addr);
     }
-    tmp_reg_value = *(unsigned int *)((unsigned int)virtual_addr + (DDR_INFO_ADDR&0x00000FFF));
+    tmp_reg_value = *(unsigned long *)((unsigned long)virtual_addr + (DDR_INFO_ADDR&0x00000FFF));
     iounmap(virtual_addr);
     return tmp_reg_value;
 }
@@ -76,7 +74,7 @@ static int __init proc_ddr_info_init(void)
     ret = (unsigned int)proc_create("ddr_info", 0, NULL, &proc_ddrinfo_operations);
     if(0 == ret)
     {
-        hwlog_err("%s  //proc//ddr_info init ERROR !!\n",__func__);
+        printk("%s  //proc//ddr_info init ERROR !!\n",__func__);
     }
     return 0;
 }

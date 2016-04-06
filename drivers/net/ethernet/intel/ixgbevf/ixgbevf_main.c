@@ -683,11 +683,7 @@ static void ixgbevf_update_itr(struct ixgbevf_q_vector *q_vector,
 	if (packets == 0)
 		return;
 
-	/* simple throttlerate management
-	 *    0-20MB/s lowest (100000 ints/s)
-	 *   20-100MB/s low   (20000 ints/s)
-	 *  100-1249MB/s bulk (8000 ints/s)
-	 */
+
 	/* what was last interrupt timeslice? */
 	timepassed_us = q_vector->itr >> 2;
 	bytes_perint = bytes / timepassed_us; /* bytes/usec */

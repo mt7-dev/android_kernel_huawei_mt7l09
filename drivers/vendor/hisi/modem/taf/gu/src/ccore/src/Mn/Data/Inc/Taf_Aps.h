@@ -33,6 +33,10 @@
 
 #include "AdsInterface.h"
 
+/* Added by zhuli for K3V3VSIM项目, 2014-10-16, begin */
+#include "siapppih.h"
+/* Added by zhuli for K3V3VSIM项目, 2014-10-16, end */
+
 #if (FEATURE_ON == FEATURE_LTE)
 #include "ApsL4aInterface.h"
 #endif
@@ -614,9 +618,6 @@ PROTOCAL ID1 LEN = 3*/
 
 
 /*--------------------事件上报相关-----------------------*/
-#define APS_SET_EVT_RABID(PsAppEvt,ucPdpId)\
-            PsAppEvt.ucRabId            = g_PdpEntity[ucPdpId].ucNsapi;
-
 #define APS_NETDCMP_2_ATDCMP(AtDCmp, NetDCmp)                                   \
             if (SN_V42_ALGRTH == NetDCmp)                                       \
             {                                                                   \
@@ -646,8 +647,8 @@ PROTOCAL ID1 LEN = 3*/
 {                                                                               \
     if (VOS_TRUE == g_PdpEntity[ucPdpId].bitOpCause)                            \
     {                                                                           \
-        PsAppEvt.bitOpCause     = VOS_TRUE;                                     \
-        PsAppEvt.enCause        = g_PdpEntity[ucPdpId].enCause;                 \
+        PsAppEvt->bitOpCause     = VOS_TRUE;                                     \
+        PsAppEvt->enCause        = g_PdpEntity[ucPdpId].enCause;                 \
     }                                                                           \
 }
 #endif
@@ -958,7 +959,7 @@ AUTH_PAP (RFC 1334)
                                     &&  (0 == g_TafCidTab[ucCid].ucEpsQosInfoFlg)  \
                                     &&  (0 == g_TafCidTab[ucCid].ucQosTabFlag)  \
                                     &&  (0 == g_TafCidTab[ucCid].ucMinQosFlag)  \
-                                    &&  (0 == g_TafCidTab[ucCid].ucTftTabFlag)  \
+                                    &&  (0 == g_TafCidTab[ucCid].ucPfTabFlag)  \
                                     &&  (0 == g_TafCidTab[ucCid].ucAuthFlag)    \
                                     &&  (0 == g_TafCidTab[ucCid].ucDnsFlag)     \
                                     &&  (0 == g_TafCidTab[ucCid].ucPriCidFlag))
@@ -967,7 +968,7 @@ AUTH_PAP (RFC 1334)
                                     ||  (1 == g_TmpPdpTab.ucEpsQosInfoFlg)  \
                                     ||  (1 == g_TmpPdpTab.ucQosTabFlag)  \
                                     ||  (1 == g_TmpPdpTab.ucMinQosFlag)  \
-                                    ||  (1 == g_TmpPdpTab.ucTftTabFlag)  \
+                                    ||  (1 == g_TmpPdpTab.ucPfTabFlag)  \
                                     ||  (1 == g_TmpPdpTab.ucAuthFlag)    \
                                     ||  (1 == g_TmpPdpTab.ucDnsFlag)     \
                                     ||  (1 == g_TmpPdpTab.ucPriCidFlag))
@@ -1042,6 +1043,14 @@ typedef TAF_UINT8 TAF_PCO_AUTH_TYPE;
 
 #define TAF_PCO_CONTENT_MAX_LEN         (255)                                   /*PCO中的每个content的长度都是由一字节的length字段决定的，故最长为255个字节*/
 
+#define TAF_APS_CFG_EVT_CTRL_HDR(pstCtrlHdr, ModuleId, ClientId, OpId)\
+            (pstCtrlHdr)->ulModuleId = WUEPS_PID_AT;\
+            (pstCtrlHdr)->usClientId = ClientId;\
+            (pstCtrlHdr)->ucOpId = OpId
+
+#define TAF_APS_CFG_AT_EVT_CTRL_HDR(pstCtrlHdr, ClientId, OpId)\
+            TAF_APS_CFG_EVT_CTRL_HDR(pstCtrlHdr, WUEPS_PID_AT, ClientId, OpId)
+
 #define TAF_APS_INVALID_MODULEID                            (WUEPS_PID_AT)
 
 #define TAF_APS_GET_MODULEID_FORM_CTRL_HDR(pstCtrl)         ((pstCtrl)->ulModuleId)
@@ -1075,10 +1084,10 @@ typedef struct
     VOS_UINT8                           aucRsv3[3];
     TAF_UMTS_QOS_STRU                   MinQosTab;                              /*MINQos表*/
 
-    VOS_UINT8                           ucTftTabFlag;                           /*0：Tft表无效，1：Tft表有效*/
+    VOS_UINT8                           ucPfTabFlag;                            /*0：pf表无效，1：pf表有效*/
     VOS_UINT8                           aucRsv4[2];
-    VOS_UINT8                           ucPfNum;                                /*ProFile个数*/
-    TAF_PDP_TFT_STRU                    astTftTab[TAF_MAX_SDF_PF_NUM];          /*Tft表*/
+    VOS_UINT8                           ucPfNum;                                /* pf个数 */
+    TAF_PDP_PF_STRU                     astPfTab[TAF_MAX_SDF_PF_NUM];           /* pf表 */
 
     VOS_UINT8                           ucAuthFlag;                             /*0：Auth表无效，1：Auth表有效*/
     VOS_UINT8                           aucRsv5[3];
@@ -1155,10 +1164,10 @@ typedef struct
     VOS_UINT8                           aucRsv3[3];
     TAF_UMTS_QOS_STRU                   MinQosTab;                              /*MINQos表*/
 
-    VOS_UINT8                           ucTftTabFlag;                           /*0：Tft表无效，1：Tft表有效*/
+    VOS_UINT8                           ucPfTabFlag;                            /* 0：pf表无效，1：pf表有效 */
     VOS_UINT8                           aucRsv4[2];
-    VOS_UINT8                           ucPfNum;                                /*ProFile个数*/
-    TAF_PDP_TFT_STRU                    astTftTab[TAF_MAX_SDF_PF_NUM];          /*Tft表*/
+    VOS_UINT8                           ucPfNum;                                /* pf个数 */
+    TAF_PDP_PF_STRU                     astPfTab[TAF_MAX_SDF_PF_NUM];           /* pf表 */
 
     VOS_UINT8                           ucAuthFlag;                             /*0：Auth表无效，1：Auth表有效*/
     VOS_UINT8                           aucRsv5[3];
@@ -1366,17 +1375,6 @@ typedef struct
 
     VOS_UINT8                           aucGateWay[TAF_IPV4_ADDR_LEN];
 } MN_APS_PDP_GATEWAY_STRU;
-
-
-typedef struct
-{
-    VOS_UINT32                          bitOpPrimPcscfAddr  : 1;
-    VOS_UINT32                          bitOpSecPcscfAddr   : 1;
-    VOS_UINT32                          bitOpSpare          : 30;
-
-    VOS_UINT8                           aucPrimPcscfAddr[TAF_IPV4_ADDR_LEN];
-    VOS_UINT8                           aucSecPcscfAddr[TAF_IPV4_ADDR_LEN];
-} TAF_APS_PDP_PCSCF_STRU;
 
 #if (FEATURE_ON == FEATURE_IPV6)
 /*****************************************************************************
@@ -1589,9 +1587,9 @@ typedef struct
     VOS_UINT32                          bitOpImCnSigalFlag  :   1;
 
 #if (FEATURE_ON == FEATURE_LTE)
-    VOS_UINT32                          bitOpSpare          :   17;
+    VOS_UINT32                          bitOpSpare          :   15;
 #else
-    VOS_UINT32                          bitOpSpare          :   19;
+    VOS_UINT32                          bitOpSpare          :   17;
 #endif /* (FEATURE_ON == FEATURE_LTE) */
 
     VOS_UINT32                          ulUsedFlg;          /* 当前实体是否被使用的标示，VOS_TRUE:已经使用，VOS_FALSE:没有使用 */
@@ -1608,7 +1606,8 @@ typedef struct
     APS_PDP_DNS_ST                      PdpDns;
     APS_PDP_NBNS_ST                     stPdpNbns;
     MN_APS_PDP_GATEWAY_STRU             stPdpGateWay;
-    TAF_APS_PDP_PCSCF_STRU              stPdpPcscf;
+
+    TAF_PDP_PCSCF_STRU                  stPdpPcscf;
 
     APS_PDP_TFT_ST                      PdpTft[APS_TFT_FILTER_AMOUNT + 1];
 
@@ -1645,6 +1644,8 @@ typedef struct
     TAF_APS_PDP_MOD_DIAL_STRU           stModDial;
 
 }APS_PDP_CONTEXT_ENTITY_ST;
+
+typedef APS_PDP_CONTEXT_ENTITY_ST TAF_APS_PDN_CONTEXT_STRU;
 
 
 /*入呼TI记录表，有效索引为1-7*/
@@ -2104,6 +2105,19 @@ typedef struct
     TAF_PDP_APN_STRU                    stApn;
 } TAF_APS_MATCH_PARAM_STRU;
 
+/*****************************************************************************
+ 结构名称: TAF_APS_CID_IMS_CFG_TBL_STRU
+ 结构说明: CID IMS配置表
+
+ 修改历史      :
+  1.日    期   : 2015年7月30日
+    作    者   : z00301431
+    修改内容   : 新增结构
+*****************************************************************************/
+typedef struct
+{
+    VOS_UINT8            aucImsFlag[TAF_MAX_CID + 1];
+}TAF_APS_CID_IMS_CFG_TBL_STRU;
 
 /*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
 /*                   for APS RABM相关                    */
@@ -2241,6 +2255,8 @@ extern  VOS_UINT8   g_ApsWins;
 
 /*WIN7 NDIS特性新增:用于保存^AUTHDATA命令的鉴权数据*/
 extern  TAF_NDIS_AUTHDATA_TABLE_STRU    *g_ApsNdisAuthdataTab;
+
+extern  TAF_APS_CID_IMS_CFG_TBL_STRU   g_stCidImsCfgTable;
 
 /*****************************************************************************
   9 FUNCTIONS定义
@@ -3021,7 +3037,12 @@ VOS_VOID    Aps_PdpActCnfQosSatisfy (   VOS_UINT8          ucPdpId,
                                         SMREG_PDP_ACTIVATE_CNF_STRU *pStCnf   );
 VOS_VOID    TAF_APS_SndPdpActivateCnf(
     VOS_UINT8                           ucPdpId,
-    VOS_UINT8                           ucCid );
+    VOS_UINT8                           ucCid
+);
+VOS_VOID TAF_APS_SndPdpActivateInd(
+    VOS_UINT8                           ucPdpId,
+    VOS_UINT8                           ucCid
+);
 
 VOS_VOID    Aps_PdpQosNotSatisfy (      VOS_UINT8                   ucPdpId,
                                         APS_QOS_NOT_SATISFY_MSGTYPE_ENUM  QosMsgType );
@@ -3174,6 +3195,7 @@ VOS_VOID    Aps_dealRabmLocalPdpDeactReqMsg(RABM_APS_LOCAL_PDP_DEACT_REQ* pMsg);
 VOS_UINT32  Aps_Init (                  VOS_VOID                                );
 VOS_VOID    Aps_DbInit( VOS_VOID );
 VOS_VOID    Aps_LoadDefault(VOS_VOID);
+VOS_VOID    Aps_PowerOff(VOS_VOID);
 
 
 /*****************************************************************************
@@ -3762,6 +3784,12 @@ VOS_UINT32  TAF_APS_SndSetUmtsQosMinInfoCnf(
     VOS_UINT32                          ulErrCode
 );
 
+#if (FEATURE_ON == FEATURE_LTE)
+VOS_VOID TAF_APS_SetEvtTftInfo(
+    VOS_UINT8                           ucPdpId,
+    TAF_PDP_TFT_STRU                   *pstTft
+);
+#endif
 
 #if ((VOS_OS_VER == VOS_WIN32) || (VOS_OS_VER == VOS_NUCLEUS))
 #pragma pack()
@@ -3775,11 +3803,4 @@ VOS_UINT32  TAF_APS_SndSetUmtsQosMinInfoCnf(
     #endif
 #endif
 
-#endif /* end of MapsTemplate.h*/
-
-
-
-
-
-
-
+#endif /* end of Taf_Aps.h*/

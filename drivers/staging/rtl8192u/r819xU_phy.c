@@ -1136,7 +1136,6 @@ bool rtl8192_SetRFPowerState(struct net_device *dev, RT_RF_POWER_STATE eRFPowerS
 				{
 				case eRfOff:
 					//
-					//If Rf off reason is from IPS, Led should blink with no link, by Maddest 071015
 					//
 					if(pMgntInfo->RfOffReason==RF_CHANGE_BY_IPS )
 					{

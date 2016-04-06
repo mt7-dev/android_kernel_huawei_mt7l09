@@ -65,6 +65,7 @@ void int_switch_hook_delete(void)
 }
 EXPORT_SYMBOL(int_switch_hook_delete);
 #else
+
 void int_switch_hook_add(rdr_funcptr_3 p_hook_func)
 {
 }
@@ -72,6 +73,10 @@ void int_switch_hook_add(rdr_funcptr_3 p_hook_func)
 void int_switch_hook_delete(void)
 {
 }
+
+EXPORT_SYMBOL(int_switch_hook_delete);
+
+
 #endif
 
 unsigned long irq_err_count;
@@ -111,6 +116,18 @@ void handle_IRQ(unsigned int irq, struct pt_regs *regs)
 #endif
 #endif
 
+#if 0
+
+	unsigned int old_int_num = curr_int_num;
+
+	curr_int_num = irq;
+
+	if (NULL != int_switch_hook) {/*exc int hook func*/
+		int_switch_hook(0, old_int_num, curr_int_num);
+		int_switch_flag = 1;
+	}
+#endif	
+
 	irq_enter();
 
 	/*
@@ -133,6 +150,12 @@ void handle_IRQ(unsigned int irq, struct pt_regs *regs)
 	if ((NULL != int_switch_hook) && (0 != int_switch_flag))
 		int_switch_hook(1, old_int_num, curr_int_num);
 #endif
+#endif
+
+#if 0
+	/*call exception interrupt hook func*/
+	if ((NULL != int_switch_hook) && (0 != int_switch_flag))
+		int_switch_hook(1, old_int_num, curr_int_num);
 #endif
 
 	set_irq_regs(old_regs);
@@ -217,7 +240,7 @@ static bool migrate_one_irq(struct irq_desc *desc)
 	c = irq_data_get_irq_chip(d);
 	if (!c->irq_set_affinity)
 		pr_debug("IRQ%u: unable to set affinity\n", d->irq);
-	else if (c->irq_set_affinity(d, affinity, true) == IRQ_SET_MASK_OK && ret)
+	else if (c->irq_set_affinity(d, affinity, false) == IRQ_SET_MASK_OK && ret)
 		cpumask_copy(d->affinity, affinity);
 
 	return ret;

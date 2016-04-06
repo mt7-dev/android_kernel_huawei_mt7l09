@@ -1,0 +1,34 @@
+config CONFIG_IPC_ADP
+	tristate "ipc adaption"
+	depends on IPC_DRIVER
+	default n
+	help
+	  ipc adaption
+
+config CONFIG_ICC_ADP
+	tristate "icc adaption"
+	depends on ICC_BALONG
+	default n
+	help
+	  icc adaption
+
+
+config CONFIG_ADP_GIC
+	tristate "gic adp"
+	default n
+	help
+	  gic adaption
+	  
+	  
+	  
+config CONFIG_ANTEN_ADP
+	tristate "anten adaption"
+	default n
+	help
+	  anten adaption
+	  
+config CONFIG_NVIM_ADP
+	tristate "nvim adaption"
+	default n
+	help
+	  nvim adaption	  

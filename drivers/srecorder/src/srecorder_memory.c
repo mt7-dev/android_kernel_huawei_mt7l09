@@ -1,27 +1,11 @@
-/**
-    @copyright: Huawei Technologies Co., Ltd. 2012-2012. All rights reserved.
-    
-    @file: srecorder_memory.c
-    
-    @brief: 定义SRecorder的内存操作函数
-    
-    @version: 1.0 
-    
-    @author: QiDechun ID: 216641
-    
-    @date: 2013-01-18
-    
-    @history:
-*/
+
 
 /*----includes-----------------------------------------------------------------------*/
 
 #include <linux/module.h>
 #include <linux/kernel.h>
 
-/* DTS2012110206142 wupeng-qidechun 20121105 begin */
 #include <linux/highmem.h>
-/* DTS2012110206142 wupeng-qidechun 20121105 end */
 #include <linux/version.h>
 #include <asm/page.h>        /* for PAGE_SIZE */
 
@@ -48,7 +32,6 @@ static bool s_srecorder_has_contiguous_virt_addr = false;
 
 /*----function definitions--------------------------------------------------------------*/
 
-/* DTS2012110206142 wupeng-qidechun 20121105 begin */
 /**
     @function: void srecorder_read_data_from_phys_page(char *pdst, unsigned long phys_src, size_t bytes_to_read)
     @brief: 根据物理地址按照每个物理页面读数据
@@ -79,7 +62,7 @@ int srecorder_read_data_from_phys_page(char *pdst, unsigned long phys_src, size_
         size_t bytes_left_in_this_phys_page = 0;
         
         page = pfn_to_page(phys_src >> PAGE_SHIFT);
-        if (NULL == page) 
+        if (NULL == page)
         {
             return bytes_read_total;
         }
@@ -230,7 +213,7 @@ void srecorder_release_virt_addr(psrecorder_virt_zone_info_t pzone_info)
 */
 bool srecorder_map_phys_addr(psrecorder_virt_zone_info_t pzone_info)
 {
-    int bytes_to_mapped = (int)pzone_info->size;
+    int bytes_to_mapped;
     int bytes_left_in_this_phys_page = 0;
     struct page *prev_page = NULL;
     struct page *page = NULL;
@@ -241,10 +224,11 @@ bool srecorder_map_phys_addr(psrecorder_virt_zone_info_t pzone_info)
     {
         return false;
     }
+    bytes_to_mapped = (int)pzone_info->size;/* [false alarm]:there is protect for pzone_info */
     
     while (bytes_to_mapped > 0)
     {
-        page = phys_to_page(pzone_info->phys_addr);
+        page = phys_to_page(pzone_info->phys_addr);/* [false alarm]:there is protect for pzone_info before*/
         if (unlikely(NULL == page))
         {
             break;
@@ -294,7 +278,6 @@ bool srecorder_map_phys_addr(psrecorder_virt_zone_info_t pzone_info)
 }
 
 
-/* DTS2012110206142 wupeng-qidechun 20121105 begin */
 /**
     @function: void srecorder_set_contiguous_virt_addr_flag(void)
     @brief: 设置s_srecorder_has_contiguous_virt_addr的值

@@ -118,10 +118,6 @@ VOS_VOID ADS_UL_SendCdsStopSendDataRsp(
     MODEM_ID_ENUM_UINT16                enModemId,
     VOS_UINT8                           ucRabId
 );
-VOS_UINT32 ADS_UL_SendPacket(
-    IMM_ZC_STRU                        *pstData,
-    VOS_UINT8                           ucRabId
-);
 #if(FEATURE_OFF == FEATURE_SKB_EXP)
 VOS_VOID ADS_UL_SaveIpfUlSrcMem(IMM_ZC_STRU *pstImmZcNode);
 VOS_VOID ADS_UL_FreeIpfUlConfigSuccSrcMem(VOS_VOID);
@@ -157,6 +153,11 @@ VOS_VOID ADS_UL_StartRptStatsInfoTimer(
 );
 VOS_VOID ADS_UL_StopRptStatsInfoTimer(VOS_VOID);
 VOS_VOID ADS_UL_RcvTiRptStatsInfoExpired(
+    VOS_UINT32                          ulTimerName,
+    VOS_UINT32                          ulParam
+);
+
+VOS_VOID ADS_UL_RcvTiDataStatExpired(
     VOS_UINT32                          ulTimerName,
     VOS_UINT32                          ulParam
 );

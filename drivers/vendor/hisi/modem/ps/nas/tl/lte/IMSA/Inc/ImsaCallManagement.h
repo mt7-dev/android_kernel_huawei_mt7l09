@@ -116,7 +116,9 @@ extern VOS_VOID   IMSA_CallSpmMsgClear(VOS_VOID);
 
 extern IMSA_CALL_ENTITY_STRU* IMSA_CallEntityAlloc( VOS_VOID );
 extern VOS_VOID   IMSA_CallEntityFree(IMSA_CALL_ENTITY_STRU *pstCallEntity);
-extern IMSA_CALL_ENTITY_STRU* IMSA_CallEntityGetUsedByCallId(VOS_UINT32 ulCallId);
+extern IMSA_CALL_ENTITY_STRU* IMSA_CallEntityGetUsedByImsCallId(VOS_UINT32 ulCallId);
+extern IMSA_CALL_ENTITY_STRU* IMSA_CallEntityGetUsedBySpmCallId(VOS_UINT32 ulCallId);
+
 
 extern VOS_UINT32 IMSA_CallImsCmdRelAll(VOS_VOID);
 extern VOS_UINT32 IMSA_CallImsCmdRel(VOS_UINT32 ulCallId);
@@ -127,6 +129,11 @@ extern VOS_VOID IMSA_CallProcTimeoutDtmfDuration(const VOS_VOID *pTimerMsg);
 extern VOS_VOID IMSA_CallProcTimeoutDtmfProtect(const VOS_VOID *pTimerMsg);
 extern VOS_VOID IMSA_CallProcTimeoutRedialMaxTime(const VOS_VOID *pTimerMsg);
 extern VOS_VOID IMSA_CallProcTimeoutRedialIntervel(const VOS_VOID *pTimerMsg);
+extern VOS_VOID IMSA_CallProcTimeoutTCall(const VOS_VOID *pTimerMsg);
+extern VOS_VOID IMSA_StartTcallTimer(const IMSA_CALL_ENTITY_STRU *pstCallEntity);
+extern VOS_VOID IMSA_CallProcTimeoutEmcTCall(const VOS_VOID *pTimerMsg);
+extern VOS_VOID IMSA_CallProcEmcTcallExpWhenEmcSrvEstablishSucc(VOS_VOID);
+
 extern VOS_UINT32 IMSA_CallProcIntraMsgEmcCallSrvStatus(const VOS_VOID *pMsg);
 extern VOS_UINT32 IMSA_CallProcIntraMsgNrmCallSrvStatus(const VOS_VOID *pMsg);
 
@@ -154,7 +161,12 @@ extern VOS_VOID IMSA_CallSendSpmLocalAlertingInd(VOS_UINT16 usClientId,
 extern VOS_UINT32 IMSA_CallSendIntraResultAction(IMSA_CALL_TYPE_ENUM_UINT8 enCallType,
                                                  IMSA_RESULT_ACTION_ENUM_UINT32 enAction);
 
-extern VOS_UINT32 IMSA_CallSendImsMsgResRsp(VOS_UINT32 ulCallId, VOS_UINT32 ulImsOpId, VOS_UINT32 ulSuccess);
+extern VOS_UINT32 IMSA_CallSendImsMsgResRsp
+(
+    VOS_UINT32 ulCallId,
+    VOS_UINT32 ulImsOpId,
+    IMSA_CALL_CALL_REASON_RESOURCE_RESULT_ENUM_UINT8 enResResult
+);
 
 extern VOS_UINT32 IMSA_CallCtxInit(VOS_VOID);
 extern VOS_UINT32 IMSA_CallCtxDeinit(VOS_VOID);
@@ -196,6 +208,7 @@ extern VOS_UINT32 IMSA_CallSendImsMsgDial(VOS_UINT32 ulCallId, const SPM_IMSA_CA
 extern VOS_UINT32 IMSA_CallEntityGetUsedCount(VOS_VOID);
 extern VOS_UINT32 IMSA_CallImsMsgSave(const IMSA_IMS_INPUT_CALL_EVENT_STRU *pstCallEvt);
 extern IMSA_IMS_EMERGENCY_TYPE_ENUM_UINT8 IMSA_CallNum2EmcSubType(const MN_CALL_EMERGENCY_CAT_STRU *pstEmcCat);
+extern MN_CALL_EMER_CATEGORG_TYPE_ENUM_U8 IMSA_CallEmcSubType2SPMEmcCat(const IMSA_IMS_EMERGENCY_TYPE_ENUM_UINT8 EmcSubType);
 extern IMSA_IMS_CALL_CLIR_TYPE_ENUM_UINT8 IMSA_CallConverterClir2Ims(MN_CALL_CLIR_CFG_ENUM_UINT8 enClir);
 extern VOS_UINT32 IMSA_CallSendSpmSsNotifyEvt
 (
@@ -214,12 +227,18 @@ extern VOS_VOID IMSA_CallConverterOrig2Ims(VOS_UINT32 ulCallId,
 extern VOS_VOID IMSA_CallConverterSups2Ims(VOS_UINT32 ulCallId,
                                                    const MN_CALL_SUPS_PARAM_STRU*  pSpmParam,
                                                    IMSA_IMS_INPUT_EVENT_STRU *pstInputEvent);
+#if 0
 extern VOS_VOID IMSA_CallConverterRejectCallById2Ims(VOS_UINT32 ulCallId,
                                                               IMSA_IMS_INPUT_EVENT_STRU *pstInputEvent);
-extern VOS_VOID IMSA_CallConverterResRsp2Ims(VOS_UINT32 ulImsOpId,
-                                             VOS_UINT32 ulCallId,
-                                             VOS_UINT32 ulSuccess,
-                                             IMSA_IMS_INPUT_EVENT_STRU *pstInputEvent);
+#endif
+
+extern VOS_VOID IMSA_CallConverterResRsp2Ims
+(
+    VOS_UINT32 ulImsOpId,
+    VOS_UINT32 ulCallId,
+    IMSA_CALL_CALL_REASON_RESOURCE_RESULT_ENUM_UINT8 enResResult,
+    IMSA_IMS_INPUT_EVENT_STRU *pstInputEvent
+);
 
 /* xiongxianghui00253310 add for conference 20140210 begin */
 extern VOS_UINT32 IMSA_CallInviteNewPtptAvailableCheck(VOS_VOID);
@@ -335,7 +354,59 @@ extern VOS_VOID IMSA_CallInterruptRedial
 (
     IMSA_CALL_ENTITY_STRU        *pstCallEntity
 );
+extern VOS_UINT32 IMSA_CallSendImsMsgModify
+(
+    const SPM_IMSA_CALL_MODIFY_REQ_STRU  *pstAppMsg
+);
+extern VOS_UINT32 IMSA_CallSendImsMsgAnswerRemoteModify
+(
+    const SPM_IMSA_CALL_ANSWER_REMOTE_MODIFY_REQ_STRU  *pstAppMsg
+);
+extern VOS_UINT32 IMSA_CallTypeAvailabilityCheck(MN_CALL_TYPE_ENUM_UINT8 enCallType);
+extern VOS_VOID IMSA_CallEntityUpdateCalledNumberByBcd
+(
+    MN_CALL_CALLED_NUM_STRU            *pstDialNumber,
+    IMSA_CALLED_NUMBER_STRU              *pstCalledNumber
+);
 
+extern VOS_UINT32 IMSA_CallSendImsMsgCreatEconf
+(
+    VOS_UINT32                              ulCallId,
+    const SPM_IMSA_CALL_ECONF_DIAL_REQ_STRU  *pstAppMsg
+);
+extern IMSA_CALL_ENTITY_STRU* IMSA_CallEntityGetUsedByEconfFlag(VOS_VOID);
+extern VOS_VOID IMSA_CallSendSpmEconfNotifyInd
+(
+    IMSA_CALL_ENTITY_STRU* pstCallEntity
+);
+extern IMSA_CALL_ECONF_SUMMARY_STRU* IMSA_EconfCalledGetUsedByCalledNum
+(
+    IMSA_CALL_ENTITY_STRU              *pstCallEntity,
+    VOS_CHAR                                 *pCalledNum
+);
+extern VOS_UINT32 IMSA_CallProcSpmMsgSupsEconfRelUser(VOS_UINT32 ulCallId, const SPM_IMSA_CALL_SUPS_CMD_REQ_STRU *pstAppMsg);
+extern VOS_UINT32 IMSA_CallSendImsMsgEconfAddUser
+(
+    VOS_UINT32                              ulCallId,
+    const SPM_IMSA_CALL_ECONF_ADD_USERS_REQ_STRU  *pstAppMsg
+);
+extern VOS_VOID IMSA_CONN_ProcPcscfInvalid
+(
+    IMSA_CONN_TYPE_ENUM_UINT32          enConnType,
+    IMSA_PDP_CNTXT_INFO_STRU           *pstPdpContext,
+    IMSA_PDP_CNTXT_INFO_STRU           *pstPdpContextOld
+);
+#if (FEATURE_ON == FEATURE_PTM)
+extern VOS_VOID IMSA_SndCallErrLogInfo
+(
+    IMSA_ERR_LOG_CALL_FAIL_STRU  stImsCallRstEvent
+);
+extern VOS_VOID IMSA_CallErrRecord
+(
+    IMSA_ERR_LOG_CALL_FAIL_REASON_ENUM_UINT16       enCallFailReason,
+    IMSA_CALL_ENTITY_STRU *pstCallEntity
+);
+#endif
 /*****************************************************************************
   9 OTHERS
 *****************************************************************************/

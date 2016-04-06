@@ -13,10 +13,6 @@
 #ifndef __USB_VENDOR_H__
 #define __USB_VENDOR_H__
 
-#ifdef __cplusplus
-extern "C" { /* allow C++ to use these headers */
-#endif /* __cplusplus */
-
 #include <linux/notifier.h>
 
 #define USB_NOTIF_PRIO_ADP      0           /* adp has lowest priority */
@@ -72,8 +68,7 @@ extern "C" { /* allow C++ to use these headers */
 #endif
 
 
-typedef enum tagUSB_PID_UNIFY_IF_PROT_T
-{
+typedef enum tagUSB_PID_UNIFY_IF_PROT_T {
     USB_IF_PROTOCOL_VOID             = 0x00,
     USB_IF_PROTOCOL_3G_MODEM         = 0x01,
     USB_IF_PROTOCOL_3G_PCUI          = 0x02,
@@ -97,7 +92,7 @@ typedef enum tagUSB_PID_UNIFY_IF_PROT_T
     USB_IF_PROTOCOL_GPS              = 0x14,
     USB_IF_PROTOCOL_PCVOICE          = 0x15,
     USB_IF_PROTOCOL_NCM              = 0x16,
-    USB_IF_PROTOCOL_CDMA_LOG	     = 0x17,
+    USB_IF_PROTOCOL_CDMA_LOG         = 0x17,
     USB_IF_PROTOCOL_CDROM            = 0xA1,
     USB_IF_PROTOCOL_SDRAM            = 0xA2,
     USB_IF_PROTOCOL_RNDIS            = 0xA3,
@@ -107,10 +102,10 @@ typedef enum tagUSB_PID_UNIFY_IF_PROT_T
 
 
 typedef struct usb_enum_stat {
-    char* fd_name;                  /* function drvier file name */
-    unsigned usb_intf_id;           /* usb interface id */
-    unsigned is_enum;               /* whether the dev is enum */
-}usb_enum_stat_t;
+	char* fd_name;                  /* function drvier file name */
+	unsigned usb_intf_id;           /* usb interface id */
+	unsigned is_enum;               /* whether the dev is enum */
+} usb_enum_stat_t;
 
 
 /* charger type identify interface */
@@ -146,9 +141,4 @@ void bsp_usb_set_last_cdev_name(char* dev_name);
 int bsp_usb_is_support_wwan(void);
 int bsp_usb_is_support_shell(void);
 
-
-#ifdef __cplusplus
-} /* allow C++ to use these headers */
-#endif /* __cplusplus */
-
-#endif    /* End of __USB_VENDOR_H__ */
+#endif    /* __USB_VENDOR_H__ */

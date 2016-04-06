@@ -32,6 +32,9 @@
 #include "ScInterface.h"
 #include "CallImsaInterface.h"
 #include "LNasNvInterface.h"
+#if (FEATURE_ON == FEATURE_PTM)
+#include "ImsaProcOmMsg.h"
+#endif
 
 /*lint -e767*/
 #define    THIS_FILE_ID      PS_FILE_ID_IMSAPUBLIC_C
@@ -55,7 +58,21 @@ extern "C" {
 static VOS_UINT32 gulImsaImsOpId = 0;
 
 /*IMS主动发送给IMSA，需要IMSA回复消息的OPID*/
-static VOS_UINT32 gulImsaRcvImsOpId = 0;
+static VOS_UINT32 gulImsaRcvImsNormOpId = 0;
+static VOS_UINT32 gulImsaRcvImsEmcOpId = 0;
+
+static VOS_UINT8 gucImsaUsimOpId = 0;
+
+#if (FEATURE_ON == FEATURE_PTM)
+/* IMSA模块Error Log异常级别表 */
+IMSA_ERR_LOG_ALM_LEVEL_STRU g_astImsaErrAlmLevelTb[] = {
+    {IMSA_ERR_LOG_ALM_CALL_FAIL_EVENT,      IMSA_ERR_LOG_CTRL_LEVEL_CRITICAL},
+    {IMSA_ERR_LOG_ALM_REG_FAIL_EVENT,       IMSA_ERR_LOG_CTRL_LEVEL_CRITICAL},
+    {IMSA_ERR_LOG_ALM_MNTN,                         IMSA_ERR_LOG_CTRL_LEVEL_CRITICAL}
+};
+#endif
+
+VOS_UINT32   g_ulImsaNotifyRrcVoLteCallStartFlag = VOS_FALSE;
 
 extern VOS_UINT32  IMSA_EncodeIsimFile(const IMSA_ISIM_DATA_STRU *pstIsimData);
 extern VOS_UINT32  IMSA_DecodeIsimDomain(const  IMSA_ISIM_DATA_STRU *pstIsimData);
@@ -72,9 +89,21 @@ extern VOS_VOID     IMSA_ReadPcscfDiscoveryPolicy(VOS_VOID);
 extern VOS_VOID IMSA_ReadNvIpv6FallBackExtCause(VOS_VOID);
 
 extern VOS_VOID  IMSA_ReadImsaNvImsConfig( VOS_VOID);
-extern VOS_VOID     IMSA_SndD2AuthSyncFailure(const USIMM_IMS_AUTH_CNF_STRU  *pstIMSCnf);
-extern VOS_VOID     IMSA_SndD2AuthNetworkFailure(VOS_VOID);
-extern VOS_VOID IMSA_SndD2AuthSuccRsp(const USIMM_IMS_AUTH_CNF_STRU  *pstIMSCnf);
+extern VOS_VOID IMSA_SndD2AuthSyncFailure
+(
+    const USIMM_IMS_AUTH_CNF_STRU      *pstIMSCnf,
+    VOS_UINT32                          ulIsEmergencyAuth
+);
+extern VOS_VOID IMSA_SndD2AuthNetworkFailure
+(
+    VOS_UINT32                          ulIsEmergencyAuth
+);
+extern VOS_VOID IMSA_SndD2AuthSuccRsp
+(
+    const USIMM_IMS_AUTH_CNF_STRU      *pstIMSCnf,
+    VOS_UINT32                          ulIsEmergencyAuth
+);
+
 extern VOS_UINT32  IMSA_BcdToAsciiCode
 (
     VOS_UINT8                           ucBcdCode,
@@ -283,8 +312,7 @@ NAS_COMM_PRINT_MSG_LIST_STRU g_astImsaTimerArray[] =
             "STATE TI:  TI_IMSA_START_OR_STOP                       "},
     {   TI_IMSA_PERIOD_TRY_IMS_SRV     ,
             "STATE TI:  TI_IMSA_PERIOD_TRY_IMS_SRV                  "},
-    {   TI_IMSA_PERIOD_TRY_IMS_EMC_SRV     ,
-            "STATE TI:  TI_IMSA_PERIOD_TRY_IMS_EMC_SRV                  "},
+    /* delete PeriodImsEmcSrvTryTimer */
     {   TI_IMSA_SIP_SIGAL_PDP_ORIG               ,
             "STATE TI:  TI_IMSA_SIP_SIGAL_PDP_ORIG                  "},
     {   TI_IMSA_SIP_SIGAL_PDP_END               ,
@@ -295,6 +323,8 @@ NAS_COMM_PRINT_MSG_LIST_STRU g_astImsaTimerArray[] =
             "STATE TI:  TI_IMSA_REG_PROTECT                         "},
     {   TI_IMSA_REG_RETRY               ,
             "STATE TI:  TI_IMSA_REG_RETRY                           "},
+    {   TI_IMSA_REG_PERIOD_TRY               ,
+            "STATE TI:  TI_IMSA_REG_PERIOD_TRY                      "},
     {   TI_IMSA_CALL_PROTECT,
             "STATE TI:  TI_IMSA_CALL_PROTECT                        "},
     {   TI_IMSA_CALL_RES_READY,
@@ -311,7 +341,10 @@ NAS_COMM_PRINT_MSG_LIST_STRU g_astImsaTimerArray[] =
             "STATE TI:  TI_IMSA_USSD_WAIT_NET_RSP                    "},
     {   TI_IMSA_USSD_WAIT_APP_RSP,
             "STATE TI:  TI_IMSA_USSD_WAIT_APP_RSP                    "},
-
+    {   TI_IMSA_CALL_NORMAL_TCALL,
+            "STATE TI:  TI_IMSA_CALL_NORMAL_TCALL                    "},
+    {   TI_IMSA_CALL_EMC_TCALL,
+            "STATE TI:  TI_IMSA_CALL_EMC_TCALL                       "},
 };
 
 NAS_COMM_PRINT_MSG_LIST_STRU g_astImsaMmaMsgIdArray[] =
@@ -326,6 +359,8 @@ NAS_COMM_PRINT_MSG_LIST_STRU g_astImsaMmaMsgIdArray[] =
             "MSG:  ID_MMA_IMSA_SERVICE_CHANGE_IND                    "},
     {   ID_MMA_IMSA_CAMP_INFO_CHANGE_IND                    ,
             "MSG:  ID_MMA_IMSA_CAMP_INFO_CHANGE_IND                  "},
+    {   ID_MMA_IMSA_MODEM1_INFO_IND                    ,
+            "MSG:  ID_MMA_IMSA_MODEM1_INFO_IND                       "},
     {   ID_IMSA_MMA_START_CNF                    ,
             "MSG:  ID_IMSA_MMA_START_CNF                             "},
     {   ID_IMSA_MMA_STOP_CNF                    ,
@@ -383,6 +418,21 @@ NAS_COMM_PRINT_LIST_STRU g_astImsaSpmMsgIdArray[] =
     {   ID_SPM_IMSA_CALL_GET_CLPR_REQ               ,
             "MSG:  ID_SPM_IMSA_CALL_GET_CLPR_REQ                     ",
         VOS_NULL_PTR},
+    {   ID_SPM_IMSA_CALL_MODIFY_REQ               ,
+            "MSG:  ID_SPM_IMSA_CALL_MODIFY_REQ                     ",
+        VOS_NULL_PTR},
+    {   ID_SPM_IMSA_CALL_ANSWER_REMOTE_MODIFY_REQ               ,
+            "MSG:  ID_SPM_IMSA_CALL_ANSWER_REMOTE_MODIFY_REQ                     ",
+        VOS_NULL_PTR},
+    {   ID_SPM_IMSA_CALL_ECONF_DIAL_REQ               ,
+            "MSG:  ID_SPM_IMSA_CALL_ECONF_DIAL_REQ                     ",
+        VOS_NULL_PTR},
+    {   ID_SPM_IMSA_CALL_ECONF_ADD_USERS_REQ               ,
+            "MSG:  ID_SPM_IMSA_CALL_ECONF_ADD_USERS_REQ                     ",
+        VOS_NULL_PTR},
+    {   ID_SPM_IMSA_CALL_GET_ECONF_CALLED_INFO_REQ               ,
+            "MSG:  ID_SPM_IMSA_CALL_GET_ECONF_CALLED_INFO_REQ                     ",
+        VOS_NULL_PTR},
     {   ID_SPM_IMSA_REGISTER_SS_REQ     ,
             "MSG:  ID_SPM_IMSA_REGISTER_SS_REQ                       ",
         VOS_NULL_PTR},
@@ -428,6 +478,15 @@ NAS_COMM_PRINT_LIST_STRU g_astImsaSpmMsgIdArray[] =
     {   ID_IMSA_SPM_CALL_STOP_DTMF_RSLT_IND               ,
             "MSG:  ID_IMSA_SPM_CALL_STOP_DTMF_RSLT_IND               ",
         VOS_NULL_PTR},
+    {   ID_IMSA_SPM_CALL_MODIFY_CNF               ,
+            "MSG:  ID_IMSA_SPM_CALL_MODIFY_CNF               ",
+        VOS_NULL_PTR},
+    {   ID_IMSA_SPM_CALL_ANSWER_REMOTE_MODIFY_CNF               ,
+            "MSG:  ID_IMSA_SPM_CALL_ANSWER_REMOTE_MODIFY_CNF               ",
+        VOS_NULL_PTR},
+    {   ID_IMSA_SPM_CALL_MODIFY_STATUS_IND               ,
+            "MSG:  ID_IMSA_SPM_CALL_MODIFY_STATUS_IND               ",
+        VOS_NULL_PTR},
     {   ID_IMSA_SPM_SS_MSG,
             "MSG:  ID_IMSA_SPM_SS_MSG                                ",
         VOS_NULL_PTR},
@@ -437,8 +496,20 @@ NAS_COMM_PRINT_LIST_STRU g_astImsaSpmMsgIdArray[] =
         VOS_NULL_PTR},
     {   ID_IMSA_SPM_CALL_INVITE_NEW_PTPT_CNF,
             "MSG:  ID_IMSA_SPM_CALL_INVITE_NEW_PTPT_CNF              ",
-        VOS_NULL_PTR}
+        VOS_NULL_PTR},
     /* xiongxianghui00253310 add for conference 20140210 end */
+    {   ID_IMSA_SPM_CALL_ECONF_DIAL_CNF,
+            "MSG:  ID_IMSA_SPM_CALL_ECONF_DIAL_CNF              ",
+        VOS_NULL_PTR},
+    {   ID_IMSA_SPM_CALL_ECONF_ADD_USERS_CNF,
+            "MSG:  ID_IMSA_SPM_CALL_ECONF_ADD_USERS_CNF              ",
+        VOS_NULL_PTR},
+    {   ID_IMSA_SPM_CALL_GET_ECONF_CALLED_INFO_CNF,
+            "MSG:  ID_IMSA_SPM_CALL_GET_ECONF_CALLED_INFO_CNF              ",
+        VOS_NULL_PTR},
+    {   ID_IMSA_SPM_CALL_ECONF_NOTIFY_IND,
+            "MSG:  ID_IMSA_SPM_CALL_ECONF_NOTIFY_IND              ",
+        VOS_NULL_PTR}
 };
 
 NAS_COMM_PRINT_LIST_STRU g_astImsaMsgMsgIdArray[] =
@@ -509,6 +580,9 @@ NAS_COMM_PRINT_LIST_STRU g_astImsaAtMsgIdArray[] =
         VOS_NULL_PTR},
     {   ID_IMSA_AT_CIREPI_IND                  ,
             "MSG:  ID_IMSA_AT_CIREPI_IND                            ",
+        VOS_NULL_PTR},
+    {   ID_IMSA_AT_MT_STATES_IND                  ,
+            "MSG:  ID_IMSA_AT_MT_STATES_IND                            ",
         VOS_NULL_PTR}
 
 };
@@ -601,7 +675,11 @@ NAS_COMM_PRINT_MSG_LIST_STRU g_astCallSupsCmdArray[] =
     {   MN_CALL_SUPS_CMD_REL_HELD                   ,
             "enCallSupsCmd:  MN_CALL_SUPS_CMD_REL_HELD                         \r\n"},
     {   MN_CALL_SUPS_CMD_REL_ACTIVE                    ,
-            "enCallSupsCmd:  MN_CALL_SUPS_CMD_REL_ACTIVE                       \r\n"}
+            "enCallSupsCmd:  MN_CALL_SUPS_CMD_REL_ACTIVE                       \r\n"},
+    {   MN_CALL_SUPS_CMD_ECONF_REL_USER                    ,
+            "enCallSupsCmd:  MN_CALL_SUPS_CMD_ECONF_REL_USER                       \r\n"},
+    {   MN_CALL_SUPS_CMD_ECONF_MERGE_CALL                    ,
+            "enCallSupsCmd:  MN_CALL_SUPS_CMD_ECONF_MERGE_CALL                       \r\n"},
 };
 
 NAS_COMM_PRINT_MSG_LIST_STRU g_astCallMsgEvtArray[] =
@@ -630,8 +708,7 @@ NAS_COMM_PRINT_MSG_LIST_STRU g_astCallMsgEvtArray[] =
             "enEventType:  MN_CALL_EVT_HOLD                                  \r\n"},
     {   MN_CALL_EVT_RETRIEVE                   ,
             "enEventType:  MN_CALL_EVT_RETRIEVE                              \r\n"},
-    {   MN_CALL_EVT_ERR_IND                    ,
-            "enEventType:  MN_CALL_EVT_ERR_IND                               \r\n"},
+    /*del the MN_CALL_EVT_ERR_IND base on gu xixiangying request*/
     {   MN_CALL_EVT_CALL_ORIG_CNF                    ,
             "enEventType:  MN_CALL_EVT_CALL_ORIG_CNF                         \r\n"},
     {   MN_CALL_EVT_SUPS_CMD_CNF                    ,
@@ -641,7 +718,19 @@ NAS_COMM_PRINT_MSG_LIST_STRU g_astCallMsgEvtArray[] =
     {   MN_CALL_EVT_START_DTMF_RSLT                    ,
             "enEventType:  MN_CALL_EVT_START_DTMF_RSLT                       \r\n"},
     {   MN_CALL_EVT_STOP_DTMF_RSLT                    ,
-            "enEventType:  MN_CALL_EVT_STOP_DTMF_RSLT                        \r\n"}
+            "enEventType:  MN_CALL_EVT_STOP_DTMF_RSLT                        \r\n"},
+    {   MN_CALL_EVT_CALL_MODIFY_CNF                    ,
+            "enEventType:  MN_CALL_EVT_CALL_MODIFY_CNF                        \r\n"},
+    {   MN_CALL_EVT_CALL_ANSWER_REMOTE_MODIFY_CNF                    ,
+            "enEventType:  MN_CALL_EVT_CALL_ANSWER_REMOTE_MODIFY_CNF        \r\n"},
+    {   MN_CALL_EVT_CALL_MODIFY_STATUS_IND                    ,
+            "enEventType:  MN_CALL_EVT_CALL_MODIFY_STATUS_IND               \r\n"},
+    {   TAF_CALL_EVT_ECONF_DIAL_CNF                    ,
+            "enEventType:  TAF_CALL_EVT_ECONF_DIAL_CNF                        \r\n"},
+    {   TAF_CALL_EVT_ECONF_NOTIFY_IND                    ,
+            "enEventType:  TAF_CALL_EVT_ECONF_NOTIFY_IND                        \r\n"},
+    {   TAF_CALL_EVT_CLCCECONF_INFO                    ,
+            "enEventType:  TAF_CALL_EVT_CLCCECONF_INFO                        \r\n"}
 
 };
 
@@ -683,8 +772,20 @@ NAS_COMM_PRINT_MSG_LIST_STRU g_astInputCallReasonArray[] =
             "REASON:  IMSA_IMS_INPUT_CALL_REASON_RESOURCE_FAILED                \r\n"},
     /* xiongxianghui00253310 add for conference 20140214 begin */
     {   IMSA_IMS_INPUT_CALL_REASON_CONFERENCE_INVITE_NEW_PARTICIPANT   ,
-            "REASON:  IMSA_IMS_INPUT_CALL_REASON_CONFERENCE_INVITE_NEW_PARTICIPANT  \r\n"}
+            "REASON:  IMSA_IMS_INPUT_CALL_REASON_CONFERENCE_INVITE_NEW_PARTICIPANT  \r\n"},
     /* xiongxianghui00253310 add for conference 20140214 end */
+    {   IMSA_IMS_INPUT_CALL_REASON_MODIFY   ,
+            "REASON:  IMSA_IMS_INPUT_CALL_REASON_MODIFY                         \r\n"},
+    {   IMSA_IMS_INPUT_CALL_REASON_ANSWER_REMOTE_MODIFY   ,
+            "REASON:  IMSA_IMS_INPUT_CALL_REASON_ANSWER_REMOTE_MODIFY           \r\n"},
+    {   IMSA_IMS_INPUT_CALL_REASON_CREAT_NEW_ECONFERENCE    ,
+            "REASON:  IMSA_IMS_INPUT_CALL_REASON_CREAT_NEW_ECONFERENCE           \r\n"},
+    {   IMSA_IMS_INPUT_CALL_REASON_ECONFERENCE_INVITE_NEW_PARTICIPANT    ,
+            "REASON:  IMSA_IMS_INPUT_CALL_REASON_ECONFERENCE_INVITE_NEW_PARTICIPANT \r\n"},
+    {   IMSA_IMS_INPUT_CALL_REASON_ECONFERENCE_MERGER_NEW_PARTICIPANT    ,
+            "REASON:  IMSA_IMS_INPUT_CALL_REASON_ECONFERENCE_MERGER_NEW_PARTICIPANT \r\n"},
+    {   IMSA_IMS_INPUT_CALL_REASON_ECONFERENCE_KICK_PARTICIPANT    ,
+            "REASON:  IMSA_IMS_INPUT_CALL_REASON_ECONFERENCE_KICK_PARTICIPANT   \r\n"}
 };
 
 NAS_COMM_PRINT_MSG_LIST_STRU g_astInputSmsReasonArray[] =
@@ -783,7 +884,15 @@ NAS_COMM_PRINT_MSG_LIST_STRU g_astOutputCallReasonArray[] =
     {   IMSA_IMS_OUTPUT_CALL_REASON_EMERGENCY_INDICATION                   ,
             "REASON:  IMSA_IMS_OUTPUT_CALL_REASON_EMERGENCY_INDICATION          \r\n"},
     {   IMSA_IMS_OUTPUT_CALL_REASON_EXTRA_INFO                    ,
-            "REASON:  IMSA_IMS_OUTPUT_CALL_REASON_EXTRA_INFO                    \r\n"}
+            "REASON:  IMSA_IMS_OUTPUT_CALL_REASON_EXTRA_INFO                    \r\n"},
+    {   IMSA_IMS_OUTPUT_CALL_REASON_MODIFY_IND                    ,
+            "REASON:  IMSA_IMS_OUTPUT_CALL_REASON_MODIFY_IND                    \r\n"},
+    {   IMSA_IMS_OUTPUT_CALL_REASON_MODIFY_BEGIN                    ,
+            "REASON:  IMSA_IMS_OUTPUT_CALL_REASON_MODIFY_BEGIN                  \r\n"},
+    {   IMSA_IMS_OUTPUT_CALL_REASON_MODIFY_END                    ,
+            "REASON:  IMSA_IMS_OUTPUT_CALL_REASON_MODIFY_END                    \r\n"},
+    {   IMSA_IMS_OUTPUT_CALL_REASON_ECONF_NOTIFY_IND                    ,
+            "REASON:  IMSA_IMS_OUTPUT_CALL_REASON_ECONF_NOTIFY_IND                    \r\n"}
 };
 
 NAS_COMM_PRINT_MSG_LIST_STRU g_astOutputSmsReasonArray[] =
@@ -955,7 +1064,7 @@ VOS_VOID IMSA_StartTimer(IMSA_TIMER_STRU *pstTimer)
 *****************************************************************************/
 VOS_VOID IMSA_StopTimer(IMSA_TIMER_STRU *pstTimer)
 {
-    VOS_UINT32                          ulTimerRemainLen;
+    VOS_UINT32                          ulTimerRemainLen    =    0;
 
     if(pstTimer == VOS_NULL_PTR)
     {
@@ -1311,6 +1420,7 @@ VOS_VOID  IMSA_ReadImsaNvImsRatSupportConfig( VOS_VOID)
         pstControlManager->stImsaConfigPara.ucUtranImsSupportFlag= stNvImsRatSupport.ucUtranImsSupportFlag;
         pstControlManager->stImsaConfigPara.ucLteEmsSupportFlag= stNvImsRatSupport.ucLteEmsSupportFlag;
         pstControlManager->stImsaConfigPara.ucLteImsSupportFlag= stNvImsRatSupport.ucLteImsSupportFlag;
+        pstControlManager->stImsaConfigPara.ucRoamingImsNotSupportFlag = stNvImsRatSupport.ucRoamingImsNotSupportFlag;
     }
     else
     {
@@ -1323,9 +1433,56 @@ VOS_VOID  IMSA_ReadImsaNvImsRatSupportConfig( VOS_VOID)
         pstControlManager->stImsaConfigPara.ucUtranImsSupportFlag= VOS_FALSE;
         pstControlManager->stImsaConfigPara.ucLteEmsSupportFlag= VOS_FALSE;
         pstControlManager->stImsaConfigPara.ucLteImsSupportFlag= VOS_TRUE;
+        /* 漫游网络下不允许IMS注册功能，默认关闭 */
+        pstControlManager->stImsaConfigPara.ucRoamingImsNotSupportFlag = VOS_FALSE;
     }
 
 }
+
+/* zhaochen 00308719 begin for HIFI mailbox full reset 2015-11-09 */
+/*****************************************************************************
+ Function Name  : IMSA_ReadImsaNvHifiControlConfig()
+ Description    : 读取HIFI流控开关配置信息
+ Input          : VOS_VOID
+ Output         : VOS_VOID
+ Return Value   : VOS_VOID
+
+ History        :
+      1.zhaochen 00308719   2015-11-18  Draft Enact
+*****************************************************************************/
+VOS_VOID  IMSA_ReadImsaNvHifiControlConfig( VOS_VOID)
+{
+    IMSA_HIFI_DATA_MANAGER_STRU        *pstHifiDataManager;
+    IMSA_COMM_PARA_CONFIG_STRU          stNvImsaConfig;
+    VOS_UINT32                          ulRslt;
+
+    pstHifiDataManager = IMSA_GetHifiDataManagerAddress();
+
+    /* 读NV */
+
+    ulRslt = IMSA_NV_Read(EN_NV_ID_IMSA_COMM_PARA_CONFIG,&stNvImsaConfig,\
+                 sizeof(IMSA_COMM_PARA_CONFIG_STRU));
+
+    if(VOS_OK == ulRslt)
+    {
+        /* 根据NV设置 */
+        pstHifiDataManager->ucHifiDataControlFlag = stNvImsaConfig.ucHifiDataControlFlag;
+        pstHifiDataManager->ucHifiDataNeedAckNum  = stNvImsaConfig.ucHifiDataNeedAckNum;
+        pstHifiDataManager->ucHifiDatMaxBufferNum = stNvImsaConfig.ucHifiDatMaxBufferNum;
+    }
+    else
+    {
+        IMSA_WARN_LOG("IMSA_ReadImsaNvHifiControlConfig: read NV err!");
+
+        /* 设置初始值 */
+        pstHifiDataManager->ucHifiDataControlFlag = VOS_TRUE;
+        pstHifiDataManager->ucHifiDataNeedAckNum  = 5;
+        pstHifiDataManager->ucHifiDatMaxBufferNum = 25;
+    }
+
+    return;
+}
+/* zhaochen 00308719 end for HIFI mailbox full reset 2015-11-09 */
 
 
 VOS_VOID  IMSA_ReadImsaNvImsaConfig( VOS_VOID)
@@ -1353,9 +1510,21 @@ VOS_VOID  IMSA_ReadImsaNvImsaConfig( VOS_VOID)
         pstImsaRegManager->ulBaseTime   = stNvImsaConfig.ulBaseTime;
         pstImsaRegManager->ulRetryPeriod= stNvImsaConfig.ulRegFailRetryIntervel;
         pstImsaRegManager->ulSaveRetryTimes = stNvImsaConfig.ucRetryTimes;
+        pstControlManager->stImsaConfigPara.stCMCCCustomReq.ucCMCCCustomDeregFlag
+                    = stNvImsaConfig.stCMCCCustomReq.ucCMCCCustomDeregFlag;
+        pstControlManager->stImsaConfigPara.stCMCCCustomReq.ucCMCCCustomTcallFlag
+                    = stNvImsaConfig.stCMCCCustomReq.ucCMCCCustomTcallFlag;
+        pstControlManager->stImsaConfigPara.stCMCCCustomReq.ucCMCCCustomTqosFlag
+                    = stNvImsaConfig.stCMCCCustomReq.ucCMCCCustomTqosFlag;
+        pstControlManager->stImsaConfigPara.stCMCCCustomReq.ulTcallTimerLen
+                    = stNvImsaConfig.stCMCCCustomReq.ulTcallTimerLen;
+        pstControlManager->stImsaConfigPara.stCMCCCustomReq.ulTqosTimerLen
+                    = stNvImsaConfig.stCMCCCustomReq.ulTqosTimerLen;
         IMSA_MEM_CPY(   &pstControlManager->stImsaConfigPara.stImsRedialCfg,
                         &stNvImsaConfig.stImsRedialCfg,
                         sizeof(IMSA_NV_IMS_REDIAL_CFG_STRU));
+        pstImsaRegManager->stNormalRegEntity.stProtectTimer.ulTimerLen = stNvImsaConfig.ulRegTimerLen;
+        pstImsaRegManager->stEmcRegEntity.stProtectTimer.ulTimerLen = stNvImsaConfig.ulRegTimerLen;
     }
     else
     {
@@ -1371,7 +1540,11 @@ VOS_VOID  IMSA_ReadImsaNvImsaConfig( VOS_VOID)
         pstImsaRegManager->ulMaxTime    = 1800;
         pstImsaRegManager->ulBaseTime   = 30;
         pstImsaRegManager->ulRetryPeriod= 0;
-
+        pstControlManager->stImsaConfigPara.stCMCCCustomReq.ucCMCCCustomDeregFlag = VOS_FALSE;
+        pstControlManager->stImsaConfigPara.stCMCCCustomReq.ucCMCCCustomTcallFlag = VOS_FALSE;
+        pstControlManager->stImsaConfigPara.stCMCCCustomReq.ucCMCCCustomTqosFlag = VOS_FALSE;
+        pstControlManager->stImsaConfigPara.stCMCCCustomReq.ulTcallTimerLen = 10000;
+        pstControlManager->stImsaConfigPara.stCMCCCustomReq.ulTqosTimerLen = 2000;
         IMSA_MEM_SET(   &pstControlManager->stImsaConfigPara.stImsRedialCfg,
                         0,
                         sizeof(IMSA_NV_IMS_REDIAL_CFG_STRU));
@@ -1584,6 +1757,7 @@ VOS_VOID  IMSA_ReadImei( VOS_VOID )
     {
         pstCommInfo->stImsaUeId.acImei[i] = IMSA_ConverterDigit2Chacter(aucBuf[i]);
     }
+    pstCommInfo->stImsaUeId.acImei[IMSA_IMS_IMEI_LEN-1] = 0x30;
     pstCommInfo->stImsaUeId.acImei[IMSA_IMS_IMEI_LEN] = '\0';
 }
 
@@ -1626,7 +1800,6 @@ VOS_VOID  IMSA_ReadNvVoiceDomain(VOS_VOID )
                 pstControlManager->stImsaConfigPara.enVoiceDomain = IMSA_VOICE_DOMAIN_IMS_PS_PREFERRED;
                 break;
         }
-        pstControlManager->stImsaConfigPara.enVoiceDomain = stNvVoiceDomain.enVoicDomain;
     }
     else
     {
@@ -1747,6 +1920,10 @@ VOS_VOID IMSA_ReadImsaNV(VOS_VOID)
     IMSA_ReadPcscfDiscoveryPolicy();
 
     IMSA_ReadNvIpv6FallBackExtCause();
+
+    /* zhaochen 00308719 begin for HIFI mailbox full reset 2015-11-09 */
+    IMSA_ReadImsaNvHifiControlConfig();
+    /* zhaochen 00308719 end for HIFI mailbox full reset 2015-11-09 */
 }
 
 /*****************************************************************************
@@ -1804,34 +1981,59 @@ VOS_UINT32 IMSA_GetImsOpId(VOS_VOID)
     return gulImsaImsOpId;
 }
 
-/*****************************************************************************
- Function Name  : IMSA_SaveRcvImsOpid()
- Description    : 保存IMS发送消息的OPID，IMSA回复该消息时，需要使用
- Input          : VOS_UINT32 ulImsOpid
- Output         : VOS_VOID
- Return Value   : VOS_VOID
 
- History        :
-      1.sunbing 49683      2013-07-03  Draft Enact
-*****************************************************************************/
-VOS_VOID IMSA_SaveRcvImsOpid(VOS_UINT32 ulImsOpid)
+VOS_UINT8 IMSA_AllocUsimOpId(VOS_VOID)
 {
-    gulImsaRcvImsOpId = ulImsOpid;
+    /* 用gucImsaUsimOpId的第八位区分当前是普通鉴权还是紧急鉴权，所以仅用第0~6位来
+    分配OPID，如果当前OPID值为0x7F时，则翻转 */
+    if (IMSA_USIM_MAX_OPID > gucImsaUsimOpId)
+    {
+        gucImsaUsimOpId++;
+    }
+    else
+    {
+        gucImsaUsimOpId = 0;
+        gucImsaUsimOpId ++;
+    }
+
+    IMSA_INFO_LOG1("IMSA_AllocUsimOpId: ", gucImsaUsimOpId);
+
+    return gucImsaUsimOpId;
 }
 
-/*****************************************************************************
- Function Name  : IMSA_GetRcvImsOpid()
- Description    : IMSA回复IMS消息时，需要使用IMS先前发送消息的OPID
- Input          : VOS_VOID
- Output         : VOS_VOID
- Return Value   : VOS_UINT32 ulImsOpid
 
- History        :
-      1.sunbing 49683      2013-07-03  Draft Enact
-*****************************************************************************/
-VOS_UINT32 IMSA_GetRcvImsOpid(VOS_VOID)
+VOS_VOID IMSA_ResetUsimOpId(VOS_VOID)
 {
-    return gulImsaRcvImsOpId;
+    gucImsaUsimOpId = 0;
+}
+
+
+VOS_UINT8 IMSA_GetUsimOpId(VOS_VOID)
+{
+    return gucImsaUsimOpId;
+}
+
+
+VOS_VOID IMSA_SaveRcvImsNormOpid(VOS_UINT32 ulImsOpid)
+{
+    gulImsaRcvImsNormOpId = ulImsOpid;
+}
+
+
+VOS_UINT32 IMSA_GetRcvImsNormOpid(VOS_VOID)
+{
+    return gulImsaRcvImsNormOpId;
+}
+
+VOS_VOID IMSA_SaveRcvImsEmcOpid(VOS_UINT32 ulImsOpid)
+{
+    gulImsaRcvImsEmcOpId = ulImsOpid;
+}
+
+
+VOS_UINT32 IMSA_GetRcvImsEmcOpid(VOS_VOID)
+{
+    return gulImsaRcvImsEmcOpId;
 }
 
 /*****************************************************************************
@@ -1914,7 +2116,12 @@ VOS_VOID IMSA_ProcIsimRefreshInd(const VOS_VOID *pRcvMsg)
  History        :
       1.sunbing 49683      2013-07-17  Draft Enact
 *****************************************************************************/
-VOS_VOID IMSA_SndD2AuthSyncFailure(const USIMM_IMS_AUTH_CNF_STRU  *pstIMSCnf)
+VOS_VOID IMSA_SndD2AuthSyncFailure
+(
+    const USIMM_IMS_AUTH_CNF_STRU      *pstIMSCnf,
+    VOS_UINT32                          ulIsEmergencyAuth
+)
+
 {
 
     IMSA_IMS_INPUT_EVENT_STRU   *pstHiInputEvent;
@@ -1935,9 +2142,16 @@ VOS_VOID IMSA_SndD2AuthSyncFailure(const USIMM_IMS_AUTH_CNF_STRU  *pstIMSCnf)
 
     pstHiInputEvent->enEventType = IMSA_IMS_EVENT_TYPE_SERVICE;
 
-    pstHiInputEvent->evt.stInputServiceEvent.enInputServeReason = IMSA_IMS_INPUT_SERVICE_REASON_AKA_RESPONSE_SYNC_FAILURE;
-
-    pstHiInputEvent->evt.stInputServiceEvent.ulOpId = IMSA_GetRcvImsOpid();
+    if (IMSA_TRUE == ulIsEmergencyAuth)
+    {
+        pstHiInputEvent->evt.stInputServiceEvent.ulOpId = IMSA_GetRcvImsEmcOpid();
+        pstHiInputEvent->evt.stInputServiceEvent.enInputServeReason = IMSA_IMS_INPUT_SERVICE_REASON_AKA_RESPONSE_SYNC_FAILURE_EMERGENCY;
+    }
+    else
+    {
+        pstHiInputEvent->evt.stInputServiceEvent.ulOpId = IMSA_GetRcvImsNormOpid();
+        pstHiInputEvent->evt.stInputServiceEvent.enInputServeReason = IMSA_IMS_INPUT_SERVICE_REASON_AKA_RESPONSE_SYNC_FAILURE;
+    }
 
     pstHiInputEvent->evt.stInputServiceEvent.bitOpAka = IMSA_OP_TRUE;
 
@@ -1998,7 +2212,11 @@ VOS_VOID IMSA_SndImsMsgServiceSuspendOrResumeSrvInfo
  History        :
       1.sunbing 49683      2013-07-17  Draft Enact
 *****************************************************************************/
-VOS_VOID IMSA_SndD2AuthNetworkFailure(VOS_VOID)
+VOS_VOID IMSA_SndD2AuthNetworkFailure
+(
+    VOS_UINT32                          ulIsEmergencyAuth
+)
+
 {
     IMSA_IMS_INPUT_EVENT_STRU               *pstHiInputEvent;
 
@@ -2018,9 +2236,18 @@ VOS_VOID IMSA_SndD2AuthNetworkFailure(VOS_VOID)
 
     pstHiInputEvent->enEventType = IMSA_IMS_EVENT_TYPE_SERVICE;
 
-    pstHiInputEvent->evt.stInputServiceEvent.enInputServeReason = IMSA_IMS_INPUT_SERVICE_REASON_AKA_RESPONSE_NETWORK_FAILURE;
+    if (IMSA_TRUE == ulIsEmergencyAuth)
+    {
+        pstHiInputEvent->evt.stInputServiceEvent.ulOpId = IMSA_GetRcvImsEmcOpid();
+        pstHiInputEvent->evt.stInputServiceEvent.enInputServeReason = IMSA_IMS_INPUT_SERVICE_REASON_AKA_RESPONSE_NETWORK_FAILURE_EMERGENCY;
+    }
+    else
+    {
+        pstHiInputEvent->evt.stInputServiceEvent.ulOpId = IMSA_GetRcvImsNormOpid();
+        pstHiInputEvent->evt.stInputServiceEvent.enInputServeReason = IMSA_IMS_INPUT_SERVICE_REASON_AKA_RESPONSE_NETWORK_FAILURE;
+    }
 
-    pstHiInputEvent->evt.stInputServiceEvent.ulOpId = IMSA_GetRcvImsOpid();
+    pstHiInputEvent->evt.stInputServiceEvent.bitOpAka = IMSA_OP_TRUE;
 
     IMSA_SndImsMsgServiceEvent(pstHiInputEvent);
 
@@ -2029,17 +2256,12 @@ VOS_VOID IMSA_SndD2AuthNetworkFailure(VOS_VOID)
 
 }
 
-/*****************************************************************************
- Function Name  : IMSA_SndD2AuthSuccRsp()
- Description    : 处理ISIM卡鉴权成功信息
- Input          : VOS_VOID
- Output         : VOS_VOID
- Return Value   : VOS_VOID
 
- History        :
-      1.sunbing 49683      2013-07-01  Draft Enact
-*****************************************************************************/
-VOS_VOID IMSA_SndD2AuthSuccRsp(const USIMM_IMS_AUTH_CNF_STRU  *pstIMSCnf)
+VOS_VOID IMSA_SndD2AuthSuccRsp
+(
+    const USIMM_IMS_AUTH_CNF_STRU      *pstIMSCnf,
+    VOS_UINT32                          ulIsEmergencyAuth
+)
 {
     IMSA_IMS_INPUT_EVENT_STRU               *pstHiInputEvent;
 
@@ -2059,11 +2281,18 @@ VOS_VOID IMSA_SndD2AuthSuccRsp(const USIMM_IMS_AUTH_CNF_STRU  *pstIMSCnf)
 
     pstHiInputEvent->enEventType = IMSA_IMS_EVENT_TYPE_SERVICE;
 
-    pstHiInputEvent->evt.stInputServiceEvent.enInputServeReason = IMSA_IMS_INPUT_SERVICE_REASON_AKA_RESPONSE_SUCCESS;
+    if (IMSA_TRUE == ulIsEmergencyAuth)
+    {
+        pstHiInputEvent->evt.stInputServiceEvent.ulOpId = IMSA_GetRcvImsEmcOpid();
+        pstHiInputEvent->evt.stInputServiceEvent.enInputServeReason = IMSA_IMS_INPUT_SERVICE_REASON_AKA_RESPONSE_SUCCESS_EMERGENCY;
+    }
+    else
+    {
+        pstHiInputEvent->evt.stInputServiceEvent.ulOpId = IMSA_GetRcvImsNormOpid();
+        pstHiInputEvent->evt.stInputServiceEvent.enInputServeReason = IMSA_IMS_INPUT_SERVICE_REASON_AKA_RESPONSE_SUCCESS;
+    }
 
-    pstHiInputEvent->evt.stInputServiceEvent.ulOpId = IMSA_GetRcvImsOpid();
-
-    pstHiInputEvent->evt.stInputServiceEvent.bitOpAka = 1;
+    pstHiInputEvent->evt.stInputServiceEvent.bitOpAka = IMSA_OP_TRUE;
 
     IMSA_MEM_CPY(pstHiInputEvent->evt.stInputServiceEvent.stAka.aucCk,
                  &pstIMSCnf->aucCK[1],
@@ -2099,7 +2328,8 @@ VOS_VOID IMSA_SndD2AuthSuccRsp(const USIMM_IMS_AUTH_CNF_STRU  *pstIMSCnf)
 *****************************************************************************/
 VOS_VOID IMSA_ProcIsimAuthRsp(const VOS_VOID *pRcvMsg)
 {
-    USIMM_AUTH_CNF_STRU         *pstAuthCnf;
+    USIMM_AUTH_CNF_STRU                *pstAuthCnf;
+    VOS_UINT32                          ulIsEmergencyAuth = IMSA_FALSE;
 
     IMSA_NORM_LOG("IMSA_ProcIsimAuthRsp: ENTER!");
 
@@ -2111,22 +2341,36 @@ VOS_VOID IMSA_ProcIsimAuthRsp(const VOS_VOID *pRcvMsg)
         return;
     }
 
+    if (IMSA_GetUsimNormOpid() == pstAuthCnf->ucOpId)
+    {
+        ulIsEmergencyAuth = IMSA_FALSE;
+    }
+    else if (IMSA_GetUsimEmcOpid() == pstAuthCnf->ucOpId)
+    {
+        ulIsEmergencyAuth = IMSA_TRUE;
+    }
+    else
+    {
+        IMSA_WARN_LOG("IMSA_ProcIsimAuthRsp: OPID not match!");
+        return;
+    }
+
     switch(pstAuthCnf->enResult)
     {
     case USIMM_AUTH_IMS_SUCCESS:
-        IMSA_SndD2AuthSuccRsp(&pstAuthCnf->cnfdata.stIMSCnf);
+        IMSA_SndD2AuthSuccRsp(&pstAuthCnf->cnfdata.stIMSCnf, ulIsEmergencyAuth);
         break;
 
     case USIMM_AUTH_MAC_FAILURE:
-        IMSA_SndD2AuthNetworkFailure();
+        IMSA_SndD2AuthNetworkFailure(ulIsEmergencyAuth);
         break;
 
     case USIMM_AUTH_SYNC_FAILURE:
-        IMSA_SndD2AuthSyncFailure(&pstAuthCnf->cnfdata.stIMSCnf);
+        IMSA_SndD2AuthSyncFailure(&pstAuthCnf->cnfdata.stIMSCnf, ulIsEmergencyAuth);
         break;
 
     case USIMM_AUTH_IMS_OTHER_FAILURE:
-        IMSA_SndD2AuthNetworkFailure();
+        IMSA_SndD2AuthNetworkFailure(ulIsEmergencyAuth);
         break;
 
     default:/*其他结果，异常处理*/
@@ -4662,6 +4906,42 @@ VOS_UINT32 IMSA_ConverterSecurityInfo2Ims
 
     return ulRslt;
 }
+
+
+VOS_UINT32 IMSA_ConverterMediaParmInfo2Ims
+(
+    IMSA_IMS_INPUT_EVENT_STRU                   *pstImsaImsInputEvt
+)
+{
+    IMS_PARM_MEDIA_STRU        stNvImsMediaParmConfig;
+    VOS_UINT32                      ulRslt = VOS_ERR;
+
+    IMSA_INFO_LOG("IMSA_ConverterMediaParmInfo2Ims is entered!");
+
+    ulRslt = IMSA_NV_Read(EN_NV_ID_IMS_MEDIA_PARM_CONFIG,&stNvImsMediaParmConfig,\
+                 sizeof(IMS_PARM_MEDIA_STRU));
+
+    if(ulRslt == VOS_OK)
+    {
+        pstImsaImsInputEvt->enEventType = IMSA_IMS_EVENT_TYPE_NV_INFO;
+
+        pstImsaImsInputEvt->evt.stInputNvInfoEvent.ulOpId = IMSA_AllocImsOpId();
+
+        pstImsaImsInputEvt->evt.stInputNvInfoEvent.enInputNvInfoReason = IMSA_IMS_INPUT_NV_INFO_REASON_MEDIA;
+
+        pstImsaImsInputEvt->evt.stInputNvInfoEvent.ulNvInfoLen = sizeof(IMS_PARM_MEDIA_STRU);
+
+        /*lint -e419*/
+        IMSA_MEM_CPY(   pstImsaImsInputEvt->evt.stInputNvInfoEvent.aucNvInfo,
+                        &stNvImsMediaParmConfig,
+                        sizeof(IMS_PARM_MEDIA_STRU));
+        /*lint +e419*/
+    }
+
+    return ulRslt;
+}
+
+
 /*lint +e516*/
 /*lint +e718*/
 /*lint +e732*/
@@ -4932,6 +5212,45 @@ VOS_VOID IMSA_ConfigSecurityInfo2Ims( VOS_VOID )
 }
 
 
+VOS_VOID IMSA_ConfigMediaParmInfo2Ims( VOS_VOID )
+{
+    IMSA_IMS_INPUT_EVENT_STRU           *pstImsaImsInputEvent = VOS_NULL_PTR;
+    VOS_UINT32                          ulRslt = VOS_ERR;
+    VOS_UINT32                          ulInputEventLen = 0;
+
+    IMSA_INFO_LOG("IMSA_ConfigMediaParmInfo2Ims is entered!");
+
+
+    ulInputEventLen = sizeof(IMSA_IMS_INPUT_EVENT_STRU) + sizeof(IMS_PARM_MEDIA_STRU)-IMSA_NV_INFO_LEN ;
+
+    /*分配空间并检验分配是否成功*/
+    pstImsaImsInputEvent = (IMSA_IMS_INPUT_EVENT_STRU *)IMSA_MEM_ALLOC(ulInputEventLen);
+
+    if ( VOS_NULL_PTR == pstImsaImsInputEvent )
+    {
+        /*打印异常信息*/
+        IMSA_ERR_LOG("IMSA_ConfigMediaParmInfo2Ims:ERROR:Alloc Mem fail!");
+        return ;
+    }
+
+    /*清空*/
+    /*lint --e{669}*/
+    IMSA_MEM_SET(pstImsaImsInputEvent, 0, ulInputEventLen);
+
+    ulRslt = IMSA_ConverterMediaParmInfo2Ims(pstImsaImsInputEvent);
+
+    /* 只有读取NV成功，才给IMS 配置 */
+    if (VOS_OK == ulRslt)
+    {
+        IMSA_SndImsMsgNvInfoEvent(pstImsaImsInputEvent,sizeof(IMS_PARM_MEDIA_STRU));
+    }
+
+    /*释放消息空间*/
+    IMSA_MEM_FREE(pstImsaImsInputEvent);
+}
+
+
+
 VOS_VOID IMSA_ConfigTimerLength2Ims( VOS_VOID )
 {
     IMSA_IMS_INPUT_EVENT_STRU          *pstImsaImsInputEvent = VOS_NULL_PTR;
@@ -5084,6 +5403,22 @@ VOS_VOID IMSA_ConverterNetCapParam2Ims
     {
         pstImsaImsInputEvt->evt.stInputParaEvent.u.stNetworkCapability.ucVoice = VOS_FALSE;
     }
+    /* zhaochen 00308719 begin for sending RAT to IMS 2015-09-03 */
+    switch (pstNwInfo->enImsaCampedRatType)
+    {
+        case IMSA_CAMPED_RAT_TYPE_EUTRAN:
+            pstImsaImsInputEvt->evt.stInputParaEvent.u.stNetworkCapability.enNwRatType = IMSA_IMS_RAT_TYPE_LTE;
+            break;
+        case IMSA_CAMPED_RAT_TYPE_UTRAN:
+            pstImsaImsInputEvt->evt.stInputParaEvent.u.stNetworkCapability.enNwRatType = IMSA_IMS_RAT_TYPE_UTRAN;
+            break;
+        case IMSA_CAMPED_RAT_TYPE_GSM:
+            pstImsaImsInputEvt->evt.stInputParaEvent.u.stNetworkCapability.enNwRatType = IMSA_IMS_RAT_TYPE_GSM;
+            break;
+        default:
+            pstImsaImsInputEvt->evt.stInputParaEvent.u.stNetworkCapability.enNwRatType = IMSA_IMS_RAT_TYPE_BUTT;
+    }
+    /* zhaochen 00308719 end for sending RAT to IMS 2015-09-03 */
 }
 VOS_VOID IMSA_ConfigUeCapabilityInfo2Ims( VOS_VOID )
 {
@@ -5322,7 +5657,7 @@ VOS_UINT32 IMSA_IsRegParaAvailable
 
     IMSA_INFO_LOG("IMSA_IsRegParaAvailable is entered!");
 
-    pstRegEntity = IMSA_RegEntityGetByType(enConnType);
+    pstRegEntity = IMSA_RegEntityGetByType((IMSA_REG_TYPE_ENUM_UINT8)enConnType);
 
     pstIpAddr = pstRegEntity->stPairMgrCtx.pstIpv6List;
 
@@ -5362,7 +5697,7 @@ VOS_UINT32 IMSA_SetCurrentPara
     VOS_CHAR                        *pacPcscfAddr
 )
 {
-    IMSA_REG_ENTITY_STRU               *pstRegEntity        = IMSA_RegEntityGetByType(enConnType);
+    IMSA_REG_ENTITY_STRU               *pstRegEntity        = IMSA_RegEntityGetByType((IMSA_REG_TYPE_ENUM_UINT8)enConnType);
     IMSA_REG_ADDR_PAIR_STRU            *pstIpAddr;
 
     IMSA_INFO_LOG("IMSA_SetCurrentPara is entered!");
@@ -5400,7 +5735,483 @@ VOS_UINT32 IMSA_SetCurrentPara
 
 
 
+VOS_UINT32 IMSA_IsImsExist(VOS_VOID)
+{
+    if (VOS_TRUE == IMSA_IsCallConnExist())
+    {
+        return VOS_TRUE;
+    }
+
+    if (VOS_TRUE == IMSA_IsSmsConnExist())
+    {
+        return VOS_TRUE;
+    }
+
+    if (VOS_TRUE == IMSA_IsSsConnExist())
+    {
+        return VOS_TRUE;
+    }
+
+    return VOS_FALSE;
+}
+
+
+VOS_UINT32 IMSA_IsCurrentAccessTypeSupportIms(VOS_VOID)
+{
+    VOS_UINT32                   ulResult           = VOS_TRUE;
+    IMSA_NETWORK_INFO_STRU       *pstNwInfo         = VOS_NULL_PTR;
+    IMSA_CONTROL_MANAGER_STRU    *pstControlManager = VOS_NULL_PTR;
+
+    pstNwInfo             = IMSA_GetNetInfoAddress();
+    pstControlManager     = IMSA_GetControlManagerAddress();
+
+    IMSA_INFO_LOG1("IMSA_IsCurrentAccessTypeSupportIms: enAccessType=",pstNwInfo->enAccessType);
+
+    switch(pstNwInfo->enAccessType)
+    {
+    case MMA_IMSA_ACCESS_TYPE_EUTRAN_TDD:
+    case MMA_IMSA_ACCESS_TYPE_EUTRAN_FDD:
+        if ((VOS_FALSE == pstControlManager->stImsaConfigPara.ucLteEmsSupportFlag) &&
+            (VOS_FALSE == pstControlManager->stImsaConfigPara.ucLteImsSupportFlag))
+        {
+            ulResult = VOS_FALSE;
+        }
+        break;
+    case MMA_IMSA_ACCESS_TYPE_UTRAN_TDD:
+    case MMA_IMSA_ACCESS_TYPE_UTRAN_FDD:
+        if ((VOS_FALSE == pstControlManager->stImsaConfigPara.ucUtranEmsSupportFlag) &&
+            (VOS_FALSE == pstControlManager->stImsaConfigPara.ucUtranImsSupportFlag))
+        {
+            ulResult = VOS_FALSE;
+        }
+        break;
+    case MMA_IMSA_ACCESS_TYPE_GERAN:
+        if ((VOS_FALSE == pstControlManager->stImsaConfigPara.ucGsmEmsSupportFlag) &&
+            (VOS_FALSE == pstControlManager->stImsaConfigPara.ucGsmImsSupportFlag))
+        {
+            ulResult = VOS_FALSE;
+        }
+        break;
+    default:
+        break;
+    }
+
+    return ulResult;
+}
+#if (FEATURE_ON == FEATURE_PTM)
+
+VOS_UINT16 IMSA_GetErrLogAlmLevel(IMSA_ERR_LOG_ALM_ID_ENUM_UINT16 enAlmId)
+{
+    VOS_UINT16                          usTableLen;
+    VOS_UINT16                          usStep;
+
+    /* 获取Tab表长度 */
+    usTableLen = sizeof(g_astImsaErrAlmLevelTb)/sizeof(g_astImsaErrAlmLevelTb[0]);
+
+    /* 查表返回对应Alm ID的log等级 */
+    for (usStep = 0; usStep < usTableLen; usStep++)
+    {
+        if (g_astImsaErrAlmLevelTb[usStep].enAlmID == enAlmId)
+        {
+            return g_astImsaErrAlmLevelTb[usStep].usLogLevel;
+        }
+    }
+
+    /* 未查到，返回未定义等级 */
+    return IMSA_ERR_LOG_CTRL_LEVEL_NULL;
+}
+VOS_UINT32 IMSA_IsErrLogNeedRecord(VOS_UINT16 usLevel)
+{
+    /* Log开关关闭，不需要上报 */
+    if (0 == IMSA_GetErrlogCtrlFlag())
+    {
+        IMSA_INFO_LOG1("IMSA_IsErrLogNeedRecord: IMSA_GetErrlogCtrlFlag=",IMSA_GetErrlogCtrlFlag());
+        return VOS_FALSE;
+    }
+
+    /* 模块log级别usLevel大于用户设置的log上报级别或usLevel无效，不需要上报 */
+    if ((IMSA_GetErrlogAlmLevel() < usLevel)
+     || (IMSA_ERR_LOG_CTRL_LEVEL_NULL == usLevel))
+    {
+        return VOS_FALSE;
+    }
+
+    return VOS_TRUE;
+}
+
+
+VOS_UINT32 IMSA_GetErrLogRingBufContent
+(
+    VOS_CHAR                           *pbuffer,
+    VOS_UINT32                          ulbytes
+)
+{
+    return (VOS_UINT32)OM_RingBufferGet(IMSA_GetErrorLogRingBufAddr(), pbuffer, (VOS_INT)ulbytes);
+}
+
+
+VOS_UINT32 IMSA_GetErrLogRingBufferUseBytes(VOS_VOID)
+{
+    return (VOS_UINT32)OM_RingBufferNBytes(IMSA_GetErrorLogRingBufAddr());
+}
+
+
+VOS_VOID IMSA_CleanErrLogRingBuf(VOS_VOID)
+{
+    OM_RingBufferFlush(IMSA_GetErrorLogRingBufAddr());
+
+    return;
+}
+
+VOS_UINT32 IMSA_PutErrLogRingBuf
+(
+    VOS_CHAR                           *pbuffer,
+    VOS_UINT32                          ulbytes
+)
+{
+    VOS_UINT32                          ulFreeSize;
+    VOS_UINT32                          ulCount;
+    OM_RING_ID                          pTafRingBuffer;
+
+    pTafRingBuffer = IMSA_GetErrorLogRingBufAddr();
+    if (VOS_NULL_PTR == pTafRingBuffer)
+    {
+        return 0;
+    }
+
+    /* 如果写入比RING BUFFER还大则不写入 */
+    if (ulbytes > IMSA_RING_BUFFER_SIZE)
+    {
+        return 0;
+    }
+
+    /* 获取RING BUFFER剩余空间大小 */
+    ulFreeSize = (VOS_UINT32)OM_RingBufferFreeBytes(pTafRingBuffer);
+
+    ulCount = IMSA_GetErrlogOverflowCnt();
+    /* 如果剩余空间不足写入的大小，则清空RING BUFFER */
+    if (ulFreeSize < ulbytes)
+    {
+        ulCount++;
+        IMSA_SetErrlogOverflowCnt(ulCount);
+
+        OM_RingBufferFlush(pTafRingBuffer);
+    }
+
+    /* 写入RING BUFFER */
+    return (VOS_UINT32)OM_RingBufferPut(pTafRingBuffer, pbuffer, (VOS_INT)ulbytes);
+}
+
+
+
+
+IMSA_ERR_LOG_CALL_STATUS_ENUM_UINT8 IMSA_CallImsaState2ErrlogState(IMSA_CALL_STATUS_ENUM_UINT8 enImsaState)
+{
+    IMSA_ERR_LOG_CALL_STATUS_ENUM_UINT8 enNewState = IMSA_ERR_LOG_CALL_STATUS_BUTT;
+
+    switch (enImsaState)
+    {
+    case IMSA_CALL_STATUS_ACTIVE:
+        enNewState = IMSA_ERR_LOG_CALL_STATUS_ACTIVE;
+        break;
+    case IMSA_CALL_STATUS_HELD:
+        enNewState = IMSA_ERR_LOG_CALL_STATUS_HELD;
+        break;
+    case IMSA_CALL_STATUS_TRYING:
+        enNewState = IMSA_ERR_LOG_CALL_STATUS_TRYING;
+        break;
+    case IMSA_CALL_STATUS_DIALING:
+        enNewState = IMSA_ERR_LOG_CALL_STATUS_DIALING;
+        break;
+    case IMSA_CALL_STATUS_ALERTING:
+        enNewState = IMSA_ERR_LOG_CALL_STATUS_ALERTING;
+        break;
+    case IMSA_CALL_STATUS_INCOMING:
+        enNewState = IMSA_ERR_LOG_CALL_STATUS_INCOMING;
+        break;
+    case IMSA_CALL_STATUS_WAITING:
+        enNewState = IMSA_ERR_LOG_CALL_STATUS_WAITING;
+        break;
+    default:
+        IMSA_ERR_LOG1("IMSA_CallImsaState2ErrlogState: invalid mapping state", enImsaState);
+    }
+
+    return enNewState;
+}
+
+IMSA_ERR_LOG_REGISTER_REASON_ENUM_UINT8 IMSA_RegAddrType2ErrlogRegReason(IMSA_REG_ADDR_PARAM_ENUM_UINT32 enImsaRegAddr)
+{
+    IMSA_ERR_LOG_REGISTER_REASON_ENUM_UINT8 enImsaRegReason = IMSA_ERR_LOG_REGISTER_REASON_BUTT;
+
+    switch (enImsaRegAddr)
+    {
+    case IMSA_REG_ADDR_PARAM_NEW:
+        enImsaRegReason = IMSA_ERR_LOG_REGISTER_REASON_ADDR_PARAM_NEW;
+        break;
+    case IMSA_REG_ADDR_PARAM_SAME:
+        enImsaRegReason = IMSA_ERR_LOG_REGISTER_REASON_ADDR_PARAM_SAME;
+        break;
+    case IMSA_REG_ADDR_PARAM_NEXT:
+        enImsaRegReason = IMSA_ERR_LOG_REGISTER_REASON_ADDR_PARAM_NEXT;
+        break;
+    case IMSA_REG_ADDR_PARAM_RESTORATION:
+        enImsaRegReason = IMSA_ERR_LOG_REGISTER_REASON_ADDR_PARAM_RESTORATION;
+        break;
+    default:
+        IMSA_ERR_LOG1("IMSA_CallImsaState2ErrlogState: invalid mapping state", enImsaRegAddr);
+    }
+
+    return enImsaRegReason;
+}
+
+
+IMSA_ERR_LOG_MPTY_STATE_ENUM_UINT8 IMSA_CallImsaMpty2ErrlogMpty(MN_CALL_MPTY_STATE_ENUM_UINT8 enImsaMpty)
+{
+    IMSA_ERR_LOG_MPTY_STATE_ENUM_UINT8 enNewMpty = IMSA_ERR_LOG_CALL_MPYT_STATE_BUTT;
+
+    switch (enImsaMpty)
+    {
+    case MN_CALL_NOT_IN_MPTY:
+        enNewMpty = IMSA_ERR_LOG_CALL_NOT_IN_MPTY;
+        break;
+    case MN_CALL_IN_MPTY:
+        enNewMpty = IMSA_ERR_LOG_CALL_IN_MPTY;
+        break;
+    default:
+        IMSA_ERR_LOG1("IMSA_CallImsaState2ErrlogState: invalid mapping state", enImsaMpty);
+    }
+
+    return enNewMpty;
+}
+
+IMSA_ERR_LOG_REG_STATUS_ENUM_UINT8 IMSA_RegState2ErrlogState(IMSA_REG_STAUTS_ENUM_UINT8 enImsaRegState)
+{
+    IMSA_ERR_LOG_REG_STATUS_ENUM_UINT8 enRegState = IMSA_ERR_LOG_REG_STATUS_BUTT;
+
+    switch (enImsaRegState)
+    {
+    case IMSA_REG_STATUS_NOT_REGISTER:
+        enRegState = IMSA_ERR_LOG_REG_STATUS_NOT_REGISTER;
+        break;
+    case IMSA_REG_STATUS_REGISTERING:
+        enRegState = IMSA_ERR_LOG_REG_STATUS_REGISTERING;
+        break;
+    case IMSA_REG_STATUS_REGISTERED:
+        enRegState = IMSA_ERR_LOG_REG_STATUS_REGISTERED;
+        break;
+    case IMSA_REG_STATUS_DEREGING:
+        enRegState = IMSA_ERR_LOG_REG_STATUS_DEREGING;
+        break;
+    case IMSA_REG_STATUS_WAIT_RETRY:
+        enRegState = IMSA_ERR_LOG_REG_STATUS_WAIT_RETRY;
+        break;
+    case IMSA_REG_STATUS_PENDING:
+        enRegState = IMSA_ERR_LOG_REG_STATUS_PENDING;
+        break;
+    case IMSA_REG_STATUS_ROLLING_BACK:
+        enRegState = IMSA_ERR_LOG_REG_STATUS_ROLLING_BACK;
+        break;
+    default:
+        IMSA_ERR_LOG1("IMSA_RegState2ErrlogState: invalid mapping state", enImsaRegState);
+    }
+
+    return enRegState;
+}
+
+IMSA_ERR_LOG_PS_SERVICE_STATUS_ENUM_UINT8 IMSA_PsSerStates2ErrlogPsStates
+(
+    IMSA_PS_SERVICE_STATUS_ENUM_UINT8 enImsaPsStates
+)
+{
+    IMSA_ERR_LOG_PS_SERVICE_STATUS_ENUM_UINT8 enPsState = IMSA_ERR_LOG_PS_SERVICE_STATUS_BUTT;
+
+    switch (enImsaPsStates)
+    {
+    case IMSA_PS_SERVICE_STATUS_NORMAL_SERVICE:
+        enPsState = IMSA_ERR_LOG_PS_SERVICE_STATUS_NORMAL_SERVICE;
+        break;
+    case IMSA_PS_SERVICE_STATUS_LIMITED_SERVICE:
+        enPsState = IMSA_ERR_LOG_PS_SERVICE_STATUS_LIMITED_SERVICE;
+        break;
+    case IMSA_PS_SERVICE_STATUS_NO_SERVICE:
+        enPsState = IMSA_ERR_LOG_PS_SERVICE_STATUS_NO_SERVICE;
+        break;
+    default:
+        IMSA_ERR_LOG1("IMSA_RegState2ErrlogState: invalid mapping state", enImsaPsStates);
+    }
+
+    return enPsState;
+}
+
+
+IMSA_ERR_LOG_PDN_CONN_STATUS_ENUM_UINT8 IMSA_ConnState2ErrlogConnState(IMSA_CONN_STATUS_ENUM_UINT8 enImsaConnState)
+{
+    IMSA_ERR_LOG_PDN_CONN_STATUS_ENUM_UINT8 enConnState = IMSA_ERR_LOG_PDN_CONN_STATUS_BUTT;
+
+    switch (enImsaConnState)
+    {
+    case IMSA_CONN_STATUS_IDLE:
+        enConnState = IMSA_ERR_LOG_PDN_CONN_STATUS_IDLE;
+        break;
+    case IMSA_CONN_STATUS_CONNING:
+        enConnState = IMSA_ERR_LOG_PDN_CONN_STATUS_CONNING;
+        break;
+    case IMSA_CONN_STATUS_RELEASING:
+        enConnState = IMSA_ERR_LOG_PDN_CONN_STATUS_RELEASING;
+        break;
+    case IMSA_CONN_STATUS_CONN:
+        enConnState = IMSA_ERR_LOG_PDN_CONN_STATUS_CONN;
+        break;
+    default:
+        IMSA_ERR_LOG1("IMSA_RegState2ErrlogState: invalid mapping state", enImsaConnState);
+    }
+
+    return enConnState;
+}
+
+
+IMSA_ERR_LOG_VOPS_STATUS_ENUM_UINT8 IMSA_VoPsState2ErrlogVoPsState(IMSA_IMS_VOPS_STATUS_ENUM_UINT8 enImsaImsVoPsStatus)
+{
+    IMSA_ERR_LOG_VOPS_STATUS_ENUM_UINT8 enVoPsState = IMSA_ERR_LOG_VOPS_STATUS_BUTT;
+
+    switch (enImsaImsVoPsStatus)
+    {
+    case IMSA_IMS_VOPS_STATUS_NOT_SUPPORT:
+        enVoPsState = IMSA_ERR_LOG_VOPS_STATUS_NOT_SUPPORT;
+        break;
+    case IMSA_IMS_VOPS_STATUS_SUPPORT:
+        enVoPsState = IMSA_ERR_LOG_VOPS_STATUS_SUPPORT;
+        break;
+    default:
+        IMSA_ERR_LOG1("IMSA_CallImsaState2ErrlogState: invalid mapping state", enImsaImsVoPsStatus);
+    }
+
+    return enVoPsState;
+}
+
+/*lint -e593 -e830*/
+
+VOS_VOID IMSA_InitErrLogInfo(VOS_VOID)
+{
+    VOS_CHAR                           *pbuffer;
+    OM_RING_ID                          pRingbuffer;
+
+    IMSA_ReadErrlogCtrlInfoNvim();
+
+    /* 申请cache的动态内存 , 长度加1是因为读和写指针之间在写满时会相差一个字节 */
+    pbuffer = (char *)PS_MEM_ALLOC(PS_PID_IMSA, IMSA_RING_BUFFER_SIZE + 1);
+    if (VOS_NULL_PTR == pbuffer)
+    {
+        IMSA_SetErrorLogRingBufAddr(VOS_NULL_PTR);
+        IMSA_ERR_LOG("IMSA_InitErrLogInfo: alloc fail");
+        return;
+    }
+
+    /* 调用OM的接口，将申请的动态内存创建为RING BUFFER */
+    pRingbuffer = OM_RingBufferCreateEx(pbuffer, IMSA_RING_BUFFER_SIZE + 1);
+    if (VOS_NULL_PTR == pRingbuffer)
+    {
+        IMSA_MEM_FREE(pbuffer);
+    }
+
+    /* 保存ringbuffer指针 */
+    IMSA_SetErrorLogRingBufAddr(pRingbuffer);
+
+    IMSA_SetErrlogOverflowCnt(0);
+
+    return;
+
+}
+/*lint +e593 +e830*/
+
+
+VOS_VOID IMSA_ConverterErrlogCtrlInfo2Ims
+(
+    IMSA_IMS_INPUT_EVENT_STRU                   *pstImsaImsInputEvt
+)
+{
+    IMSA_INFO_LOG("IMSA_ConverterErrlogCtrlInfo2Ims is entered!");
+
+    pstImsaImsInputEvt->enEventType = IMSA_IMS_EVENT_TYPE_PARA;
+
+    pstImsaImsInputEvt->evt.stInputParaEvent.ulOpId = IMSA_AllocImsOpId();
+    pstImsaImsInputEvt->evt.stInputParaEvent.enInputParaReason = IMAS_IMS_INPUT_PARA_REASON_SET_ERR_LOG_CTRL_INFO;
+
+    pstImsaImsInputEvt->evt.stInputParaEvent.u.stErrlogCtrlInfo.ucErrlogCtrlFlag = IMSA_GetErrlogCtrlFlag();
+    pstImsaImsInputEvt->evt.stInputParaEvent.u.stErrlogCtrlInfo.usAlmLevel = IMSA_GetErrlogAlmLevel();
+}
+
+
+VOS_VOID IMSA_ConfigErrlogCtrlInfo2Ims( VOS_VOID )
+{
+    IMSA_IMS_INPUT_EVENT_STRU          *pstImsaImsInputEvent = VOS_NULL_PTR;
+
+    IMSA_INFO_LOG("IMSA_ConfigErrlogCtrlInfo2Ims is entered!");
+
+    /*分配空间并检验分配是否成功*/
+    pstImsaImsInputEvent = IMSA_MEM_ALLOC(sizeof(IMSA_IMS_INPUT_EVENT_STRU));
+
+    if ( VOS_NULL_PTR == pstImsaImsInputEvent )
+    {
+        /*打印异常信息*/
+        IMSA_ERR_LOG("IMSA_ConfigErrlogCtrlInfo2Ims:ERROR:Alloc Mem fail!");
+        return ;
+    }
+
+    /*清空*/
+    IMSA_MEM_SET(pstImsaImsInputEvent, 0, \
+                 sizeof(IMSA_IMS_INPUT_EVENT_STRU));
+
+    IMSA_ConverterErrlogCtrlInfo2Ims(pstImsaImsInputEvent);
+
+    IMSA_SndImsMsgParaEvent(pstImsaImsInputEvent);
+
+    /*释放消息空间*/
+    IMSA_MEM_FREE(pstImsaImsInputEvent);
+}
+
+#endif
 /*lint +e961*/
+
+VOS_VOID IMSA_SndRrcVolteStatusNotify(IMSA_LRRC_VOLTE_STATUS_ENUM_UINT8  enVolteStatus)
+{
+    IMSA_LRRC_VOLTE_STATUS_NOTIFY_STRU  *pstVolteStatusNotify;
+
+    pstVolteStatusNotify = (VOS_VOID *)IMSA_ALLOC_MSG(sizeof(IMSA_LRRC_VOLTE_STATUS_NOTIFY_STRU));
+
+    if (VOS_NULL_PTR == pstVolteStatusNotify)
+    {
+        return;
+    }
+
+    /* 消息初始化 */
+    IMSA_MEM_SET(pstVolteStatusNotify,0,sizeof(IMSA_LRRC_VOLTE_STATUS_NOTIFY_STRU));
+
+    /*填写消息头*/
+    IMSA_WRITE_LRRC_MSG_HEAD(   pstVolteStatusNotify,
+                                ID_IMSA_LRRC_VOLTE_STATUS_NOTIFY,
+                                sizeof(IMSA_LRRC_VOLTE_STATUS_NOTIFY_STRU));
+
+    /* 填充消息体 */
+    pstVolteStatusNotify->enVolteStatus = enVolteStatus;
+
+    if (IMSA_LRRC_VOLTE_STATUS_START == enVolteStatus)
+    {
+        /* Start时置上该标志, 用于判断是否已经通知过LRRC Start */
+        g_ulImsaNotifyRrcVoLteCallStartFlag = VOS_TRUE;
+    }
+    else if (IMSA_LRRC_VOLTE_STATUS_END == enVolteStatus)
+    {
+        /* End时清除该标志 */
+        g_ulImsaNotifyRrcVoLteCallStartFlag = VOS_FALSE;
+    }
+    else
+    {
+    }
+
+    /* 发送DOPRA消息 */
+    IMSA_SND_MSG(pstVolteStatusNotify);
+}
 /*lint +e960*/
 
 

@@ -30,6 +30,7 @@
 #include <linux/gpio.h>
 #include <linux/pinctrl/consumer.h>
 #include <media/v4l2-subdev.h>
+#include <media/huawei/extisp_cfg.h>
 #include "../sensor/hwsensor.h"
 #include "../cam_log.h"
 
@@ -78,10 +79,13 @@ struct sensor_cfg_data;
 #define LDO_VOLTAGE_1P2V		1200000
 #define LDO_VOLTAGE_1P5V		1500000
 #define LDO_VOLTAGE_1P8V		1800000
+#define LDO_VOLTAGE_2P7V		2700000
 #define LDO_VOLTAGE_2P8V		2850000
 //add by hefei
 #define LDO_VOLTAGE_V2P8V		2800000
 #define LDO_VOLTAGE_V2P85V	2850000
+//add by yinxuerui
+#define LDO_VOLTAGE_V2P5V   2500000
 
 #define PMIC_1P1V			1100000
 #define PMIC_1P2V			1200000
@@ -117,6 +121,8 @@ enum sensor_power_seq_type_t {
 	SENSOR_DVDD2, /* using for power up second sensor's ldo */
 	SENSOR_AVDD,
 	SENSOR_AVDD2, /* using for power up second sensor's ldo */
+	SENSOR_OIS,
+	SENSOR_OIS2,
 	SENSOR_IOVDD,
 	SENSOR_VCM_AVDD,
 	SENSOR_VCM_AVDD2,/* using for power up second sensor's ldo */
@@ -125,6 +131,9 @@ enum sensor_power_seq_type_t {
 	SENSOR_IOCFG,
 	SENSOR_RST2,
 	SENSOR_PMIC,
+	SENSOR_CS,
+	SENSOR_LDO_EN,
+	SENSOR_MINIISP_VPP,
 };
 
 enum sensor_power_pmic_type_t {
@@ -231,6 +240,7 @@ typedef enum {
 	LDO_VCM,
 	LDO_VCM2,
 	LDO_IOPW,
+	LDO_MINI_ISP,
 	LDO_MAX,
 } ldo_index_t;
 
@@ -241,6 +251,9 @@ typedef enum {
 	VCM,
 	SUSPEND,//used to suspend the other sensor when power up
 	RESETB2, //add by hefei
+	LDO_EN,
+	OIS,
+	OIS2,
 	IO_MAX
 } gpio_t;
 
@@ -282,6 +295,7 @@ typedef struct _tag_hwsensor_board_info
 	int vcm_enable;
 
 	unsigned int sensor_type;
+	int extisp_type;
 } hwsensor_board_info_t;
 
 struct hisi_sensor_awb_otp {
@@ -324,9 +338,16 @@ int hw_sensor_i2c_read(sensor_t *s_ctrl, void *data);
 int hw_sensor_i2c_write(sensor_t *s_ctrl, void *data);
 int hw_sensor_i2c_read_seq(sensor_t *s_ctrl, void *data);
 int hw_sensor_i2c_write_seq(sensor_t *s_ctrl, void *data);
+int hw_sensor_i2c_read_otp(sensor_t *s_ctrl, void *data);
 int hisi_sensor_apply_expo_gain(sensor_t *s_ctrl, void *data);
 int hisi_sensor_suspend_eg_task(sensor_t *s_ctrl);
 int hw_sensor_get_dt_data(struct platform_device *pdev, sensor_t *sensor);
 void hw_camdrv_msleep(unsigned int ms);
 int hwsensor_writefile(int index, const char *sensor_name);
+int misp_get_module_info(uint8_t index,uint16_t *sensor_id, uint8_t *module_id);
+int misp_get_chipid(void);
+int misp_load_fw(u8 *out_fw_disp);
+void hwcam_mclk_enable(int index, int enable);
+
+
 #endif

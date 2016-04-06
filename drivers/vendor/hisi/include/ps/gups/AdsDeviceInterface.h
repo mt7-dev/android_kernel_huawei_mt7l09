@@ -90,6 +90,7 @@ typedef struct
     MODEM_ID_ENUM_UINT16                enModemId;
     VOS_UINT8                           ucRabId;                                /* RAB标识，取值范围:[5,15] */
     ADS_NDIS_IP_PACKET_TYPE_ENUM_UINT8  enIpPacketType;
+    VOS_UINT8                           aucReserved[4];
     IMM_ZC_STRU                        *pstSkBuff;                              /* 数据包结构指针 */
 } ADS_NDIS_DATA_IND_STRU;
 

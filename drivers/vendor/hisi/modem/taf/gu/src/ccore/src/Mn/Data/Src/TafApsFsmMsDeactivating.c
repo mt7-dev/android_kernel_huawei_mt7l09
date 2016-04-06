@@ -67,20 +67,13 @@ VOS_UINT32 TAF_APS_RcvAtSetPdpContextStateReq_MsDeactivating_Init(
     struct MsgCB                       *pstMsg
 )
 {
-    TAF_PS_MSG_STRU                    *pstAppMsg;
-    TAF_PS_SET_PDP_STATE_REQ_STRU      *pstSetPdpCtxStateReq;
-    VOS_UINT8                           ucPdpId;
+    TAF_PS_SET_PDP_STATE_REQ_STRU      *pstSetPdpCtxStateReq = VOS_NULL_PTR;
     MMC_APS_RAT_TYPE_ENUM_UINT32        enCurrRatType;
+    VOS_UINT8                           ucPdpId;
 
-    /* 获取消息内容 */
-    pstAppMsg            = (TAF_PS_MSG_STRU*)pstMsg;
-    pstSetPdpCtxStateReq = (TAF_PS_SET_PDP_STATE_REQ_STRU*)(pstAppMsg->aucContent);
-
-    /* 获取APS实体索引 */
-    ucPdpId       = TAF_APS_GetCurrFsmEntityPdpId();
-
-    /* 获取当前接入技术类型 */
-    enCurrRatType = TAF_APS_GetCurrPdpEntityRatType();
+    pstSetPdpCtxStateReq = (TAF_PS_SET_PDP_STATE_REQ_STRU *)TAF_PS_GET_MSG_CONTENT(pstMsg);
+    enCurrRatType        = TAF_APS_GetCurrPdpEntityRatType();
+    ucPdpId              = TAF_APS_GetCurrFsmEntityPdpId();
 
     /* 上报PDP去激活请求响应事件 */
     TAF_APS_SndSetPdpCtxStateCnf(&(pstSetPdpCtxStateReq->stCtrl), TAF_PS_CAUSE_SUCCESS);
@@ -98,7 +91,7 @@ VOS_UINT32 TAF_APS_RcvAtSetPdpContextStateReq_MsDeactivating_Init(
 
 #if (FEATURE_ON == FEATURE_LTE)
         case MMC_APS_RAT_TYPE_LTE:
-            if (VOS_TRUE == TAF_APS_GetPdpEntAttachBearerFlag(ucPdpId))
+            if (VOS_FALSE == TAF_APS_IsPdnCntxtTeardownAllowed(TAF_APS_GetPdpEntInfoAddr(ucPdpId)))
             {
                 TAF_APS_RcvAtPsCallEndReq_MsDeactivating_LteMode_ReserveDef();
             }
@@ -128,27 +121,18 @@ VOS_UINT32 TAF_APS_RcvAtSetPdpContextStateReq_MsDeactivating_Init(
 
     return VOS_TRUE;
 }
-
-
 VOS_UINT32 TAF_APS_RcvAtPsCallEndReq_MsDeactivating_Init(
     VOS_UINT32                          ulEventType,
     struct MsgCB                       *pstMsg
 )
 {
-    TAF_PS_MSG_STRU                    *pstAppMsg;
-    TAF_PS_CALL_END_REQ_STRU           *pstCallEndReq;
-    VOS_UINT8                           ucPdpId;
+    TAF_PS_CALL_END_REQ_STRU           *pstCallEndReq = VOS_NULL_PTR;
     MMC_APS_RAT_TYPE_ENUM_UINT32        enCurrRatType;
+    VOS_UINT8                           ucPdpId;
 
-    /* 获取消息内容 */
-    pstAppMsg     = (TAF_PS_MSG_STRU*)pstMsg;
-    pstCallEndReq = (TAF_PS_CALL_END_REQ_STRU*)(pstAppMsg->aucContent);
-
-    /* 获取APS实体索引 */
-    ucPdpId       = TAF_APS_GetCurrFsmEntityPdpId();
-
-    /* 获取当前接入技术类型 */
+    pstCallEndReq = (TAF_PS_CALL_END_REQ_STRU *)TAF_PS_GET_MSG_CONTENT(pstMsg);
     enCurrRatType = TAF_APS_GetCurrPdpEntityRatType();
+    ucPdpId       = TAF_APS_GetCurrFsmEntityPdpId();
 
     /* 上报PS呼叫挂断响应事件 */
     TAF_APS_SndCallEndCnf(&(pstCallEndReq->stCtrl), pstCallEndReq->ucCid, TAF_PS_CAUSE_SUCCESS);
@@ -166,7 +150,7 @@ VOS_UINT32 TAF_APS_RcvAtPsCallEndReq_MsDeactivating_Init(
 
 #if (FEATURE_ON == FEATURE_LTE)
         case MMC_APS_RAT_TYPE_LTE:
-            if (VOS_TRUE == TAF_APS_GetPdpEntAttachBearerFlag(ucPdpId))
+            if (VOS_FALSE == TAF_APS_IsPdnCntxtTeardownAllowed(TAF_APS_GetPdpEntInfoAddr(ucPdpId)))
             {
                 TAF_APS_RcvAtPsCallEndReq_MsDeactivating_LteMode_ReserveDef();
             }
@@ -196,22 +180,18 @@ VOS_UINT32 TAF_APS_RcvAtPsCallEndReq_MsDeactivating_Init(
 
     return VOS_TRUE;
 }
-
-
-
 VOS_UINT32 TAF_APS_RcvApsInternalPdpDeavtivateReq_MsDeactivating_Init(
     VOS_UINT32                          ulEventType,
     struct MsgCB                       *pstMsg
 )
 {
-    VOS_UINT8                               ucPdpId;
+    TAF_APS_INTER_PDP_DEACTIVATE_REQ_STRU  *pstInternalMsg = VOS_NULL_PTR;
     MMC_APS_RAT_TYPE_ENUM_UINT32            enCurrRatType;
-    TAF_APS_INTER_PDP_DEACTIVATE_REQ_STRU  *pstInternalMsg;
+    VOS_UINT8                               ucPdpId;
 
-    /* 初始化, 获取消息内容 */
-    pstInternalMsg = (TAF_APS_INTER_PDP_DEACTIVATE_REQ_STRU*)pstMsg;
-    ucPdpId        = TAF_APS_GetCurrFsmEntityPdpId();
+    pstInternalMsg = (TAF_APS_INTER_PDP_DEACTIVATE_REQ_STRU *)pstMsg;
     enCurrRatType  = TAF_APS_GetCurrPdpEntityRatType();
+    ucPdpId        = TAF_APS_GetCurrFsmEntityPdpId();
 
     /* 保存子状态机的入口消息 */
     TAF_APS_SaveCurrSubFsmEntryMsg(ulEventType, pstMsg);
@@ -226,7 +206,7 @@ VOS_UINT32 TAF_APS_RcvApsInternalPdpDeavtivateReq_MsDeactivating_Init(
 
 #if (FEATURE_ON == FEATURE_LTE)
         case MMC_APS_RAT_TYPE_LTE:
-            if (VOS_TRUE == TAF_APS_GetPdpEntAttachBearerFlag(ucPdpId))
+            if (VOS_FALSE == TAF_APS_IsPdnCntxtTeardownAllowed(TAF_APS_GetPdpEntInfoAddr(ucPdpId)))
             {
                 TAF_APS_RcvAtPsCallEndReq_MsDeactivating_LteMode_ReserveDef();
             }
@@ -256,6 +236,9 @@ VOS_UINT32 TAF_APS_RcvApsInternalPdpDeavtivateReq_MsDeactivating_Init(
 
     return VOS_TRUE;
 }
+
+
+
 VOS_UINT32 TAF_APS_RcvAtPsCallHangupReq_MsDeactivating_Init(
     VOS_UINT32                          ulEventType,
     struct MsgCB                       *pstMsg
@@ -301,12 +284,16 @@ VOS_UINT32 TAF_APS_RcvMmcServiceStatusInd_MsDeactivating_Suspend(
     MMC_APS_SERVICE_STATUS_IND_STRU        *pstSerStaInd;
     TAF_APS_ENTRY_MSG_STRU                 *pstEntryMsg;
     TAF_APS_INTER_PDP_DEACTIVATE_REQ_STRU  *pstInternalMsg;
+#if (FEATURE_ON == FEATURE_LTE)
+    VOS_UINT8                               ucPdpId;
+#endif
 
     /* 获取当前的状态机入口消息和EVENTTYPE */
-    pstEntryMsg = TAF_APS_GetCurrSubFsmMsgAddr();
-
-    /* 初始化, 获取消息内容 */
-    pstSerStaInd        = (MMC_APS_SERVICE_STATUS_IND_STRU*)pstMsg;
+    pstEntryMsg  = TAF_APS_GetCurrSubFsmMsgAddr();
+    pstSerStaInd = (MMC_APS_SERVICE_STATUS_IND_STRU*)pstMsg;
+#if (FEATURE_ON == FEATURE_LTE)
+    ucPdpId      = TAF_APS_GetCurrFsmEntityPdpId();
+#endif
 
     /* 设置PS域SIM卡状态信息 */
     TAF_APS_SetCurrPdpEntitySimRegStatus(pstSerStaInd->ulPsSimRegStatus);
@@ -346,7 +333,7 @@ VOS_UINT32 TAF_APS_RcvMmcServiceStatusInd_MsDeactivating_Suspend(
             switch(pstEntryMsg->ulEventType)
             {
                 case TAF_BuildEventType(WUEPS_PID_TAF, ID_MSG_TAF_PS_SET_PDP_CONTEXT_STATE_REQ):
-                    if (VOS_TRUE == TAF_APS_GetPdpEntAttachBearerFlag(TAF_APS_GetCurrFsmEntityPdpId()))
+                    if (VOS_FALSE == TAF_APS_IsPdnCntxtTeardownAllowed(TAF_APS_GetPdpEntInfoAddr(ucPdpId)))
                     {
                         TAF_APS_RcvAtPsCallEndReq_MsDeactivating_LteMode_ReserveDef();
                     }
@@ -357,7 +344,7 @@ VOS_UINT32 TAF_APS_RcvMmcServiceStatusInd_MsDeactivating_Suspend(
                     break;
 
                 case TAF_BuildEventType(WUEPS_PID_TAF, ID_MSG_TAF_PS_CALL_END_REQ):
-                    if (VOS_TRUE == TAF_APS_GetPdpEntAttachBearerFlag(TAF_APS_GetCurrFsmEntityPdpId()))
+                    if (VOS_FALSE == TAF_APS_IsPdnCntxtTeardownAllowed(TAF_APS_GetPdpEntInfoAddr(ucPdpId)))
                     {
                         TAF_APS_RcvAtPsCallEndReq_MsDeactivating_LteMode_ReserveDef();
                     }
@@ -381,6 +368,8 @@ VOS_UINT32 TAF_APS_RcvMmcServiceStatusInd_MsDeactivating_Suspend(
     return VOS_TRUE;
 
 }
+
+
 VOS_UINT32 TAF_APS_RcvAtSetPdpContextStateReq_MsDeactivating_Suspend(
     VOS_UINT32                          ulEventType,
     struct MsgCB                       *pstMsg
@@ -419,7 +408,6 @@ VOS_UINT32 TAF_APS_RcvAtPppDailOrigReq_MsDeactivating_Suspend(
                              TAF_PS_CAUSE_CID_INVALID);
 
     return VOS_TRUE;
-
 }
 
 
@@ -438,7 +426,7 @@ VOS_UINT32 TAF_APS_RcvAtPsCallOrigReq_MsDeactivating_Suspend(
     /* 正在去激活该APS实体, 激活该APS实体所用的CID, 返回ERROR */
     TAF_APS_SndCallOrigCnf(&(pstCallOrigReq->stCtrl),
                           pstCallOrigReq->stDialParaInfo.ucCid,
-                          TAF_PS_CAUSE_CID_INVALID);
+                          TAF_PS_CAUSE_OPERATION_CONFLICT);
 
     return VOS_TRUE;
 }
@@ -674,6 +662,12 @@ VOS_UINT32 TAF_APS_RcvL4aPdpDeactivateInd_MsDeactivating_Suspend(
         }
     }
 
+    /* 如果SNDCP已经激活, 释放SNDCP资源 */
+    if (APS_SNDCP_ACT == pstPdpEntity->PdpProcTrack.ucSNDCPActOrNot)
+    {
+        Aps_ReleaseSndcpResource(ucPdpId);
+    }
+
     /* 释放资源 */
     Aps_ReleaseApsResource(ucPdpId);
 
@@ -686,6 +680,8 @@ VOS_UINT32 TAF_APS_RcvL4aPdpDeactivateInd_MsDeactivating_Suspend(
     return VOS_TRUE;
 }
 #endif
+
+
 VOS_UINT32 TAF_APS_RcvTiMsDeactivatingExpired_MsDeactivating_Suspend(
     VOS_UINT32                          ulEventType,
     struct MsgCB                       *pstMsg
@@ -698,8 +694,6 @@ VOS_UINT32 TAF_APS_RcvTiMsDeactivatingExpired_MsDeactivating_Suspend(
 
     ucPdpId        = TAF_APS_GetCurrFsmEntityPdpId();
     pstPdpEntity   = TAF_APS_GetPdpEntInfoAddr(ucPdpId);
-
-    /* 认为本地去激活 */
 
     /* 获取当前的状态机入口消息和EVENTTYPE */
     pstEntryMsg    = TAF_APS_GetCurrSubFsmMsgAddr();
@@ -748,6 +742,9 @@ VOS_UINT32 TAF_APS_RcvTiMsDeactivatingExpired_MsDeactivating_Suspend(
     /* 向SM发送本地去激活请求 */
     TAF_APS_SndSmPdpLocalDeactivateReq(ucPdpId);
 
+    /* 本地去激活与当前缺省承载关联的专用承载 */
+    TAF_APS_SndLocalAllSecPdpDeactivateInd(ucPdpId, SM_TAF_CAUSE_SM_NW_REGULAR_DEACTIVATION);
+
     /* 认为本地去激活，释放资源 */
     Aps_ReleaseApsResource(ucPdpId);
 
@@ -761,7 +758,6 @@ VOS_UINT32 TAF_APS_RcvTiMsDeactivatingExpired_MsDeactivating_Suspend(
     TAF_APS_QuitCurrSubFsm();
 
     return VOS_TRUE;
-
 }
 VOS_UINT32 TAF_APS_RcvAtSetPdpContextStateReq_MsDeactivating_WaitSmDeactivateCnf(
     VOS_UINT32                          ulEventType,
@@ -778,6 +774,7 @@ VOS_UINT32 TAF_APS_RcvAtSetPdpContextStateReq_MsDeactivating_WaitSmDeactivateCnf
     /* 正在去激活该APS实体, 再激活或去激活该APS实体所用的CID,上报ERROR事件 */
     TAF_APS_SndSetPdpCtxStateCnf(&(pstPdpContextStateReq->stCtrl),
                                 TAF_PS_CAUSE_CID_INVALID);
+
     return VOS_TRUE;
 }
 
@@ -817,7 +814,7 @@ VOS_UINT32 TAF_APS_RcvAtPsCallOrigReq_MsDeactivating_WaitSmDeactivateCnf(
     /* 正在去激活该APS实体, 激活该APS实体所用的CID, 返回ERROR */
     TAF_APS_SndCallOrigCnf(&(pstCallOrigReq->stCtrl),
                           pstCallOrigReq->stDialParaInfo.ucCid,
-                          TAF_PS_CAUSE_CID_INVALID);
+                          TAF_PS_CAUSE_OPERATION_CONFLICT);
 
     return VOS_TRUE;
 }
@@ -982,7 +979,6 @@ VOS_UINT32 TAF_APS_RcvSmPdpDeactivateCnf_MsDeactivating_WaitSmDeactivateCnf(
 
         /* 退出子状态机 */
         TAF_APS_QuitCurrSubFsm();
-
     }
 
     return VOS_TRUE;
@@ -1069,7 +1065,6 @@ VOS_UINT32 TAF_APS_RcvSmPdpDeactivateInd_MsDeactivating_WaitSmDeactivateCnf(
     }
 
     return VOS_TRUE;
-
 }
 VOS_UINT32 TAF_APS_RcvApsLocalPdpDeactivateInd_MsDeactivating_WaitSmDeactivateCnf(
     VOS_UINT32                          ulEventType,
@@ -1246,6 +1241,9 @@ VOS_UINT32 TAF_APS_RcvTiMsDeactivatingExpired_MsDeactivating_WaitSmDeactivateCnf
     /* 向SM发送本地去激活请求 */
     TAF_APS_SndSmPdpLocalDeactivateReq(ucPdpId);
 
+    /* 本地去激活与当前缺省承载关联的专用承载 */
+    TAF_APS_SndLocalAllSecPdpDeactivateInd(ucPdpId, SM_TAF_CAUSE_SM_NW_REGULAR_DEACTIVATION);
+
     /* 释放资源 */
     Aps_ReleaseApsResource(ucPdpId);
 
@@ -1260,6 +1258,10 @@ VOS_UINT32 TAF_APS_RcvTiMsDeactivatingExpired_MsDeactivating_WaitSmDeactivateCnf
     return VOS_TRUE;
 
 }
+
+
+
+
 VOS_UINT32 TAF_APS_RcvAtSetPdpContextStateReq_MsDeactivating_WaitSmDeactivateCnfSuspend(
     VOS_UINT32                          ulEventType,
     struct MsgCB                       *pstMsg
@@ -1315,7 +1317,7 @@ VOS_UINT32 TAF_APS_RcvAtPsCallOrigReq_MsDeactivating_WaitSmDeactivateCnfSuspend(
     /* 正在去激活该APS实体, 激活该APS实体所用的CID, 返回ERROR */
     TAF_APS_SndCallOrigCnf(&(pstCallOrigReq->stCtrl),
                           pstCallOrigReq->stDialParaInfo.ucCid,
-                          TAF_PS_CAUSE_CID_INVALID);
+                          TAF_PS_CAUSE_OPERATION_CONFLICT);
 
     return VOS_TRUE;
 }
@@ -1715,6 +1717,12 @@ VOS_UINT32 TAF_APS_RcvL4aPdpDeactivateInd_MsDeactivating_WaitSmDeactivateCnfSusp
         }
     }
 
+    /* 如果SNDCP已经激活, 释放SNDCP资源 */
+    if (APS_SNDCP_ACT == pstPdpEntity->PdpProcTrack.ucSNDCPActOrNot)
+    {
+        Aps_ReleaseSndcpResource(ucPdpId);
+    }
+
     /* 释放资源 */
     Aps_ReleaseApsResource(ucPdpId);
 
@@ -1771,7 +1779,7 @@ VOS_UINT32 TAF_APS_RcvMmcServiceStatusInd_MsDeactivating_WaitSmDeactivateCnfSusp
         switch(pstEntryMsg->ulEventType)
         {
             case TAF_BuildEventType(WUEPS_PID_TAF, ID_MSG_TAF_PS_SET_PDP_CONTEXT_STATE_REQ):
-                if (VOS_TRUE == TAF_APS_GetPdpEntAttachBearerFlag(ucPdpId))
+                if (VOS_FALSE == TAF_APS_IsPdnCntxtTeardownAllowed(TAF_APS_GetPdpEntInfoAddr(ucPdpId)))
                 {
                     TAF_APS_RcvAtPsCallEndReq_MsDeactivating_LteMode_ReserveDef();
                 }
@@ -1782,7 +1790,7 @@ VOS_UINT32 TAF_APS_RcvMmcServiceStatusInd_MsDeactivating_WaitSmDeactivateCnfSusp
                 break;
 
             case TAF_BuildEventType(WUEPS_PID_TAF, ID_MSG_TAF_PS_CALL_END_REQ):
-                if (VOS_TRUE == TAF_APS_GetPdpEntAttachBearerFlag(ucPdpId))
+                if (VOS_FALSE == TAF_APS_IsPdnCntxtTeardownAllowed(TAF_APS_GetPdpEntInfoAddr(ucPdpId)))
                 {
                     TAF_APS_RcvAtPsCallEndReq_MsDeactivating_LteMode_ReserveDef();
                 }
@@ -1790,7 +1798,6 @@ VOS_UINT32 TAF_APS_RcvMmcServiceStatusInd_MsDeactivating_WaitSmDeactivateCnfSusp
                 {
                     TAF_APS_RcvAtPsCallEndReq_MsDeactivating_LteMode();
                 }
-
                 break;
 
             case TAF_BuildEventType(WUEPS_PID_TAF, ID_MSG_TAF_PS_APS_INTERNAL_PDP_DEACTIVATE_REQ):
@@ -1864,6 +1871,9 @@ VOS_UINT32 TAF_APS_RcvTiMsDeactivatingExpired_MsDeactivating_WaitSmDeactivateCnf
     /* 向SM发送本地去激活请求 */
     TAF_APS_SndSmPdpLocalDeactivateReq(ucPdpId);
 
+    /* 本地去激活与当前缺省承载关联的专用承载 */
+    TAF_APS_SndLocalAllSecPdpDeactivateInd(ucPdpId, SM_TAF_CAUSE_SM_NW_REGULAR_DEACTIVATION);
+
     /* 认为本地去激活，释放资源 */
     Aps_ReleaseApsResource(ucPdpId);
 
@@ -1879,9 +1889,6 @@ VOS_UINT32 TAF_APS_RcvTiMsDeactivatingExpired_MsDeactivating_WaitSmDeactivateCnf
     return VOS_TRUE;
 
 }
-
-
-
 VOS_UINT32 TAF_APS_RcvAtSetPdpContextStateReq_MsDeactivating_WaitSndcpDeactivateRsp(
     VOS_UINT32                          ulEventType,
     struct MsgCB                       *pstMsg
@@ -1937,7 +1944,7 @@ VOS_UINT32 TAF_APS_RcvAtPsCallOrigReq_MsDeactivating_WaitSndcpDeactivateRsp(
     /* 正在去激活该APS实体, 激活该APS实体所用的CID, 返回ERROR */
     TAF_APS_SndCallOrigCnf(&(pstCallOrigReq->stCtrl),
                           pstCallOrigReq->stDialParaInfo.ucCid,
-                          TAF_PS_CAUSE_CID_INVALID);
+                          TAF_PS_CAUSE_OPERATION_CONFLICT);
 
     return VOS_TRUE;
 }
@@ -2175,7 +2182,6 @@ VOS_UINT32 TAF_APS_RcvAtSetPdpContextStateReq_MsDeactivating_WaitSndcpDeactivate
                                 TAF_PS_CAUSE_CID_INVALID);
 
     return VOS_TRUE;
-
 }
 
 
@@ -2195,7 +2201,6 @@ VOS_UINT32 TAF_APS_RcvAtPppDailOrigReq_MsDeactivating_WaitSndcpDeactivateRspSusp
     TAF_APS_SndPppDialOrigCnf(&(pstPppDialOrigReq->stCtrl),
                              TAF_PS_CAUSE_CID_INVALID);
 
-
     return VOS_TRUE;
 }
 
@@ -2213,7 +2218,9 @@ VOS_UINT32 TAF_APS_RcvAtPsCallOrigReq_MsDeactivating_WaitSndcpDeactivateRspSuspe
     pstCallOrigReq  = (TAF_PS_CALL_ORIG_REQ_STRU*)(pstAppMsg->aucContent);
 
     /* 正在去激活该APS实体, 激活该APS实体所用的CID, 返回ERROR */
-    TAF_APS_SndCallOrigCnf(&(pstCallOrigReq->stCtrl), pstCallOrigReq->stDialParaInfo.ucCid, TAF_PS_CAUSE_CID_INVALID);
+    TAF_APS_SndCallOrigCnf(&(pstCallOrigReq->stCtrl),
+                           pstCallOrigReq->stDialParaInfo.ucCid,
+                           TAF_PS_CAUSE_OPERATION_CONFLICT);
 
     return VOS_TRUE;
 }
@@ -2474,7 +2481,6 @@ VOS_UINT32 TAF_APS_RcvTiMsDeactivatingExpired_MsDeactivating_WaitSndcpDeactivate
     TAF_APS_QuitCurrSubFsm();
 
     return VOS_TRUE;
-
 }
 
 #if (FEATURE_ON == FEATURE_LTE)
@@ -2529,7 +2535,9 @@ VOS_UINT32 TAF_APS_RcvAtPsCallOrigReq_MsDeactivating_WaitL4aDeactivateCnf(
     pstCallOrigReq  = (TAF_PS_CALL_ORIG_REQ_STRU*)(pstAppMsg->aucContent);
 
     /* 正在去激活该APS实体, 激活该APS实体所用的CID, 返回ERROR */
-    TAF_APS_SndCallOrigCnf(&(pstCallOrigReq->stCtrl), pstCallOrigReq->stDialParaInfo.ucCid, TAF_PS_CAUSE_CID_INVALID);
+    TAF_APS_SndCallOrigCnf(&(pstCallOrigReq->stCtrl),
+                           pstCallOrigReq->stDialParaInfo.ucCid,
+                           TAF_PS_CAUSE_OPERATION_CONFLICT);
 
     return VOS_TRUE;
 }
@@ -2777,7 +2785,6 @@ VOS_UINT32 TAF_APS_RcvL4aPdpDeactivateRej_MsDeactivating_WaitL4aDeactivateCnf(
 
         /* 退出子状态机 */
         TAF_APS_QuitCurrSubFsm();
-
     }
 
     return VOS_TRUE;
@@ -2842,6 +2849,9 @@ VOS_UINT32 TAF_APS_RcvTiMsDeactivatingExpired_MsDeactivating_WaitL4aDeactivateCn
         TAF_APS_SndSmPdpLocalDeactivateReq(ucPdpId);
     }
 
+    /* 本地去激活与当前缺省承载关联的专用承载 */
+    TAF_APS_SndLocalAllSecPdpDeactivateInd(ucPdpId, SM_TAF_CAUSE_SM_NW_REGULAR_DEACTIVATION);
+
     /* 释放资源 */
     Aps_ReleaseApsResource(ucPdpId);
 
@@ -2854,8 +2864,6 @@ VOS_UINT32 TAF_APS_RcvTiMsDeactivatingExpired_MsDeactivating_WaitL4aDeactivateCn
     return VOS_TRUE;
 
 }
-
-
 VOS_UINT32 TAF_APS_RcvMmcServiceStatusInd_MsDeactivating_WaitL4aDeactivateCnf(
     VOS_UINT32                          ulEventType,
     struct MsgCB                       *pstMsg
@@ -2991,7 +2999,9 @@ VOS_UINT32 TAF_APS_RcvAtPsCallOrigReq_MsDeactivating_WaitL4aDeactivateCnfSuspend
     pstCallOrigReq  = (TAF_PS_CALL_ORIG_REQ_STRU*)(pstAppMsg->aucContent);
 
     /* 正在去激活该APS实体, 激活该APS实体所用的CID, 返回ERROR */
-    TAF_APS_SndCallOrigCnf(&(pstCallOrigReq->stCtrl), pstCallOrigReq->stDialParaInfo.ucCid, TAF_PS_CAUSE_CID_INVALID);
+    TAF_APS_SndCallOrigCnf(&(pstCallOrigReq->stCtrl),
+                           pstCallOrigReq->stDialParaInfo.ucCid,
+                           TAF_PS_CAUSE_OPERATION_CONFLICT);
 
     return VOS_TRUE;
 }
@@ -3297,6 +3307,12 @@ VOS_UINT32 TAF_APS_RcvL4aPdpDeactivateInd_MsDeactivating_WaitL4aDeactivateCnfSus
         }
     }
 
+    /* 如果SNDCP已经激活, 释放SNDCP资源 */
+    if (APS_SNDCP_ACT == pstPdpEntity->PdpProcTrack.ucSNDCPActOrNot)
+    {
+        Aps_ReleaseSndcpResource(ucPdpId);
+    }
+
     /* 释放资源 */
     Aps_ReleaseApsResource(ucPdpId);
 
@@ -3307,10 +3323,7 @@ VOS_UINT32 TAF_APS_RcvL4aPdpDeactivateInd_MsDeactivating_WaitL4aDeactivateCnfSus
     TAF_APS_QuitCurrSubFsm();
 
     return VOS_TRUE;
-
 }
-
-
 VOS_UINT32 TAF_APS_RcvMmcServiceStatusInd_MsDeactivating_WaitL4aDeactivateCnfSuspend(
     VOS_UINT32                          ulEventType,
     struct MsgCB                       *pstMsg
@@ -3422,6 +3435,7 @@ VOS_UINT32 TAF_APS_RcvL4aPsCallEndCnf_MsDeactivating_WaitL4aDeactivateCnfSuspend
     return VOS_TRUE;
 }
 
+
 VOS_UINT32 TAF_APS_RcvTiMsDeactivatingExpired_MsDeactivating_WaitL4aDeactivateCnfSuspend(
     VOS_UINT32                          ulEventType,
     struct MsgCB                       *pstMsg
@@ -3480,6 +3494,9 @@ VOS_UINT32 TAF_APS_RcvTiMsDeactivatingExpired_MsDeactivating_WaitL4aDeactivateCn
         TAF_APS_SndSmPdpLocalDeactivateReq(ucPdpId);
     }
 
+    /* 本地去激活与当前缺省承载关联的专用承载 */
+    TAF_APS_SndLocalAllSecPdpDeactivateInd(ucPdpId, SM_TAF_CAUSE_SM_NW_REGULAR_DEACTIVATION);
+
     /* 释放资源 */
     Aps_ReleaseApsResource(ucPdpId);
 
@@ -3497,6 +3514,8 @@ VOS_UINT32 TAF_APS_RcvTiMsDeactivatingExpired_MsDeactivating_WaitL4aDeactivateCn
 }
 
 #endif
+
+
 VOS_UINT32 TAF_APS_RcvAtSetPdpContextStateReq_MsDeactivating_GuMode(
     SM_TAF_CAUSE_ENUM_UINT16            enCause
 )
@@ -3581,6 +3600,8 @@ VOS_UINT32 TAF_APS_RcvAtPsCallEndReq_MsDeactivating_GuMode(
 
     return VOS_TRUE;
 }
+
+
 VOS_UINT32 TAF_APS_RcvApsInternalPdpDeavtivateReq_MsDeactivating_GuMode(
     SM_TAF_CAUSE_ENUM_UINT16            enCause
 )
@@ -3671,7 +3692,6 @@ VOS_UINT32 TAF_APS_RcvAtPsCallHangupReq_MsDeactivating_GuMode(VOS_VOID)
     TAF_APS_QuitCurrSubFsm();
 
     return VOS_TRUE;
-
 }
 
 #if (FEATURE_ON == FEATURE_LTE)
@@ -3898,7 +3918,6 @@ VOS_UINT32 TAF_APS_RcvAtPsCallEndReq_MsDeactivating_LteMode_ReserveDef(VOS_VOID)
 
     return VOS_TRUE;
 }
-
 #endif
 
 

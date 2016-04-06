@@ -22,18 +22,18 @@ BSP_S32 DRV_SAVE_REGISTER(BSP_S32 funcType, OM_SAVE_FUNC *pFunc)
     return BSP_OK;
 }
 
-BSP_U32  DRV_EXCH_MEM_MALLOC(BSP_U32 ulSize)
+BSP_PVOID  DRV_EXCH_MEM_MALLOC(BSP_U32 ulSize)
 {
     char *buffer = NULL;
     u32 length = 0;
 
     if(BSP_OK != bsp_dump_get_buffer(DUMP_SAVE_MOD_OSA_COMM, &buffer, &length))
     {
-        return (BSP_U32)NULL;
+        return NULL;
     }
     else
     {
-        return (BSP_U32)((ulSize > length) ? (NULL) : (buffer));
+        return ((ulSize > length) ? (NULL) : (buffer));
     }
 }
 

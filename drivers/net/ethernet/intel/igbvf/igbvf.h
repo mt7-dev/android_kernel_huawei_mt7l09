@@ -70,7 +70,7 @@ enum latency_range {
 #define IGBVF_MAX_RXD                   4096
 #define IGBVF_MIN_RXD                   80
 
-#define IGBVF_MIN_ITR_USECS             10 /* 100000 irq/sec */
+#define IGBVF_MIN_ITR_USECS             10
 #define IGBVF_MAX_ITR_USECS             10000 /* 100    irq/sec */
 
 /* RX descriptor control thresholds.

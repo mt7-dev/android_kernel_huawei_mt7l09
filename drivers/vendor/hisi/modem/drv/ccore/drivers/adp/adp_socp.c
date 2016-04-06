@@ -33,7 +33,7 @@ BSP_S32 DRV_SOCP_INIT()
  返 回 值  : SOCP_OK:编码源通道分配成功。
              SOCP_ERROR:编码源通道分配失败。
 *****************************************************************************/
-BSP_S32 DRV_SOCP_CORDER_SET_SRC_CHAN(SOCP_CODER_SRC_ENUM_U32 enSrcChanID, SOCP_CODER_SRC_CHAN_S *pSrcAttr)
+BSP_S32 DRV_SOCP_CORDER_SET_SRC_CHAN(SOCP_CODER_SRC_ENUM_U32 enSrcChanID, SOCP_CODER_SRC_CHAN_STRU *pSrcAttr)
 {
     return 0;
 }
@@ -130,7 +130,7 @@ BSP_S32 DRV_SOCP_CHAN_SOFT_RESET(BSP_U32 u32ChanID)
  返 回 值  : SOCP_OK:获取写数据buffer成功。
              SOCP_ERROR:获取写数据buffer失败
 *****************************************************************************/
-BSP_S32 DRV_SOCP_GET_WRITE_BUFF( BSP_U32 u32SrcChanID, SOCP_BUFFER_RW_S *pBuff)
+BSP_S32 DRV_SOCP_GET_WRITE_BUFF( BSP_U32 u32SrcChanID, SOCP_BUFFER_RW_STRU *pBuff)
 {
     return 0;
 }
@@ -172,7 +172,7 @@ BSP_S32 DRV_SOCP_REGISTER_RD_CB(BSP_U32 u32SrcChanID, socp_rd_cb RdCB)
  返 回 值  : SOCP_OK:获取RD环形缓冲区成功
              SOCP_ERROR:获取RD环形缓冲区失败
 *****************************************************************************/
-BSP_S32 DRV_SOCP_GET_RD_BUFFER( BSP_U32 u32SrcChanID,SOCP_BUFFER_RW_S *pBuff)
+BSP_S32 DRV_SOCP_GET_RD_BUFFER( BSP_U32 u32SrcChanID,SOCP_BUFFER_RW_STRU *pBuff)
 {
     return 0;
 }
@@ -270,7 +270,7 @@ BSP_U32  DRV_SOCP_INIT_LTE_BBP_DS(BSP_U32 ulChanId,BSP_U32 ulPhyAddr,BSP_U32 ulS
 
 BSP_VOID DRV_SOCP_ENABLE_LTE_BBP_DSP(BSP_U32 ulChanId)
 {
-    return 0;
+    return;
 }
 
 /*****************************************************************************
@@ -311,7 +311,7 @@ BSP_S32 DRV_SOCP_INIT()
  返 回 值  : SOCP_OK:编码源通道分配成功。
              SOCP_ERROR:编码源通道分配失败。
 *****************************************************************************/
-BSP_S32 DRV_SOCP_CORDER_SET_SRC_CHAN(SOCP_CODER_SRC_ENUM_U32 enSrcChanID, SOCP_CODER_SRC_CHAN_S *pSrcAttr)
+BSP_S32 DRV_SOCP_CORDER_SET_SRC_CHAN(SOCP_CODER_SRC_ENUM_U32 enSrcChanID, SOCP_CODER_SRC_CHAN_STRU *pSrcAttr)
 {
     return bsp_socp_coder_set_src_chan(enSrcChanID, pSrcAttr);
 }
@@ -408,7 +408,7 @@ BSP_S32 DRV_SOCP_CHAN_SOFT_RESET(BSP_U32 u32ChanID)
  返 回 值  : SOCP_OK:获取写数据buffer成功。
              SOCP_ERROR:获取写数据buffer失败
 *****************************************************************************/
-BSP_S32 DRV_SOCP_GET_WRITE_BUFF( BSP_U32 u32SrcChanID, SOCP_BUFFER_RW_S *pBuff)
+BSP_S32 DRV_SOCP_GET_WRITE_BUFF( BSP_U32 u32SrcChanID, SOCP_BUFFER_RW_STRU *pBuff)
 {
     return bsp_socp_get_write_buff(u32SrcChanID, pBuff);
 }
@@ -450,7 +450,7 @@ BSP_S32 DRV_SOCP_REGISTER_RD_CB(BSP_U32 u32SrcChanID, socp_rd_cb RdCB)
  返 回 值  : SOCP_OK:获取RD环形缓冲区成功
              SOCP_ERROR:获取RD环形缓冲区失败
 *****************************************************************************/
-BSP_S32 DRV_SOCP_GET_RD_BUFFER( BSP_U32 u32SrcChanID,SOCP_BUFFER_RW_S *pBuff)
+BSP_S32 DRV_SOCP_GET_RD_BUFFER( BSP_U32 u32SrcChanID,SOCP_BUFFER_RW_STRU *pBuff)
 {
     return bsp_socp_get_rd_buffer(u32SrcChanID, pBuff);
 }

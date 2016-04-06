@@ -194,6 +194,24 @@ ENTRY(v7_flush_kern_cache_all)
 	mov	pc, lr
 ENDPROC(v7_flush_kern_cache_all)
 
+
+ENTRY(v7_flush_kern_cache_all_pm)
+ ARM(	stmfd	sp!, {r4-r5, r7, r9-r11, lr}	)
+ THUMB(	stmfd	sp!, {r4-r7, r9-r11, lr}	)
+    /*add cache disable for pm start*/
+    mrc p15,0x0,r0,c1,c0,0x0
+    bic r0,r0,#0x4
+    mcr p15,0x0,r0,c1,c0,0x0
+    /*add cache disable for pm end*/
+    
+	bl	v7_flush_dcache_all
+	mov	r0, #0
+	ALT_SMP(mcr	p15, 0, r0, c7, c1, 0)	@ invalidate I-cache inner shareable
+	ALT_UP(mcr	p15, 0, r0, c7, c5, 0)	@ I+BTB cache invalidate
+ ARM(	ldmfd	sp!, {r4-r5, r7, r9-r11, lr}	)
+ THUMB(	ldmfd	sp!, {r4-r7, r9-r11, lr}	)
+	mov	pc, lr
+ENDPROC(v7_flush_kern_cache_all_pm)
  /*
  *     v7_flush_kern_cache_louis(void)
  *
@@ -212,6 +230,42 @@ ENTRY(v7_flush_kern_cache_louis)
 	mov	pc, lr
 ENDPROC(v7_flush_kern_cache_louis)
 
+
+ENTRY(v7_flush_kern_cache_louis_pm)
+ ARM(	stmfd	sp!, {r4-r5, r7, r9-r11, lr}	)
+ THUMB(	stmfd	sp!, {r4-r7, r9-r11, lr}	)
+     /*add cache disable for pm start*/
+    mrc p15,0x0,r0,c1,c0,0x0
+    bic r0,r0,#0x4
+    mcr p15,0x0,r0,c1,c0,0x0
+    /*add cache disable for pm end*/
+    
+	bl	v7_flush_dcache_louis
+	
+	mov r0,sp
+	mcr	p15, 0, r0, c7, c14, 1
+	add r0,r0,#4
+	mcr	p15, 0, r0, c7, c14, 1
+	add r0,r0,#4
+	mcr	p15, 0, r0, c7, c14, 1
+	add r0,r0,#4
+	mcr	p15, 0, r0, c7, c14, 1
+	add r0,r0,#4
+	mcr	p15, 0, r0, c7, c14, 1
+	add r0,r0,#4
+	mcr	p15, 0, r0, c7, c14, 1
+	add r0,r0,#4
+	mcr	p15, 0, r0, c7, c14, 1
+	add r0,r0,#4
+	mcr	p15, 0, r0, c7, c14, 1
+	
+	//mov	r0, #0
+	//ALT_SMP(mcr	p15, 0, r0, c7, c1, 0)	@ invalidate I-cache inner shareable
+	//ALT_UP(mcr	p15, 0, r0, c7, c5, 0)	@ I+BTB cache invalidate
+ ARM(	ldmfd	sp!, {r4-r5, r7, r9-r11, lr}	)
+ THUMB(	ldmfd	sp!, {r4-r7, r9-r11, lr}	)
+	mov	pc, lr
+ENDPROC(v7_flush_kern_cache_louis_pm)
 /*
  *	v7_flush_cache_all()
  *
@@ -349,7 +403,7 @@ ENDPROC(v7_flush_kern_dcache_area)
  *	- start   - virtual start address of region
  *	- end     - virtual end address of region
  */
-v7_dma_inv_range:
+ENTRY(v7_dma_inv_range)
 	dcache_line_size r2, r3
 	sub	r3, r2, #1
 	tst	r0, r3
@@ -377,7 +431,7 @@ ENDPROC(v7_dma_inv_range)
  *	- start   - virtual start address of region
  *	- end     - virtual end address of region
  */
-v7_dma_clean_range:
+ENTRY(v7_dma_clean_range)
 	dcache_line_size r2, r3
 	sub	r3, r2, #1
 	bic	r0, r0, r3

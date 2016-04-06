@@ -51,7 +51,7 @@ typedef enum __LPHY_REQ_MSGID_TIMING__
     LPHY_REQ_TIMING_MBMS_EST_PERIOD,            /*多播定时跟踪周期*/
     LPHY_REQ_TIMING_MBMS_LONG_PERIOD,           /*多播最大估计周期*/
     LPHY_REQ_TIMING_TRMS_STUB,                  /*单播trms打桩*/
-    LPHY_REQ_TIMING_MBMS_TRMS_STUB              /*多播trms打桩*/    
+    LPHY_REQ_TIMING_MBMS_TRMS_STUB              /*多播trms打桩*/
 }LPHY_REQ_MSGID_TIMING_ENUM;
 
 typedef struct __LPHY_REQ_TIMING_ENA_TRU_STRU__
@@ -155,7 +155,7 @@ typedef struct __LPHY_REQ_TIMING_MBMS_PARA_STRU__
     UINT8                    ucTref1[6];
     UINT8                    ucTref2[6];
     UINT8                        ucM[6];
-    UINT8               ucSampleR[4][6]; 
+    UINT8               ucSampleR[4][6];
     INT16           sResetLowThreshHold;
     INT16          sResetHighThreshHold;
     INT16                          sRsv;
@@ -267,7 +267,7 @@ typedef struct __TIMING_COUNTER_INFO_STRU__
     UINT32 ulAfn;           /*绝对帧号*/
     UINT32 ulAbs;           /*绝对时标*/
     UINT32 ulSfn;           /*系统帧号*/
-    UINT32 ulSysTime;       /*系统定时当前计数值*/    
+    UINT32 ulSysTime;       /*系统定时当前计数值*/
 }TIMING_COUNTER_INFO_STRU;
 
 /* 定时切换类型 */
@@ -308,7 +308,7 @@ typedef UINT16 TIMING_STATE_ENUM_UINT16;
 /*解调定时跟踪类型*/
 typedef enum __TIMING_EVT_E__
 {
-    TIMING_EVT_NONE         = 0x0,          /*空事件*/                
+    TIMING_EVT_NONE         = 0x0,          /*空事件*/
     TIMING_EVT_STOP         = (1<<0),       /*前端主动停止定时跟踪，此后处于hold状态*/
     TIMING_EVT_START        = (1<<1),       /*前端启动定时跟踪，恢复定时跟踪*/
     TIMING_EVT_START_RESET  = (1<<2),       /*前端复位后设置初时解调定时位置， 并恢复定时跟踪*/
@@ -330,7 +330,7 @@ typedef UINT32 TIMING_EVT_ENUM_UINT32;
 typedef enum __TIMING_SWITCH_CONFIG_E__
 {
 	TIMING_TRACKING_MODE = 0,
-	TIMING_SWITCH_RESET_MODE,	
+	TIMING_SWITCH_RESET_MODE,
 	TIMING_SWITCH_NO_RESET_MODE,
 }TIMING_SWITCH_CONFIG_ENUM;
 
@@ -344,35 +344,35 @@ typedef struct __TIMING_EST_STRU__ /*estimate*/
     UINT32 			                ulTruRsrp;
     UINT16                          usAfcUnLockedFlag;  /*AFC锁定标记*/
     UINT16                          usFirstPathCmpFlag; /*首径搜索比较开关,default 1*/
-    
+
     UINT16                          usFilterInitFlag;   /*滤波器是否初始化*/
     UINT16                          usDurMaxSubFrmNum;  /*一个估计周期总子帧数*/
-    
+
     UINT16                          usDurSubFrmCounter; /*一个估计周期总子帧计数，包含各种帧*/
     UINT16                          usVldMaxSubFrmNum;  /*一个周期内有效估计子帧总数*/
-    
+
     UINT16                          usVldSubFrmCounter; /*一个周期内已经完成的有效估计子帧计数*/
     //UINT16                          usAlphaStateFlag;   //Alpha滤波初始化标志
     //UINT16                          usReserved;
     UINT16                          usSavedFilterPAR;   /*滤波后的峰均比值*/
-    
+
     UINT16                          usSavedOncePAR;     /*单次峰均比值*/
     UINT16                          usLowPARThreshold;  /*低信噪比峰均比值域值*/
-    
+
     UINT16                          usLowPARFlagSuccNum;/*连续低信噪比个数*/
     UINT16                          usLowPARHoldFlag;   /*低信噪比HoldFlag指示*/
 
     UINT16                          usIsCaclDone;       /*硬件未正常结束*/
     UINT16                          usSubFrmNumOfCaclDone;    /*硬件未正常结束*/
-    
+
     INT16                           sDelta;             /*最近一次的定时偏差估计值,单位:0.5Ts*/
-    INT16                           usTrefParThreshold; /*进行提前量折算的PAR域值*/    
-    
+    INT16                           usTrefParThreshold; /*进行提前量折算的PAR域值*/
+
     TIMING_SDR_STATE_ENUM_UINT16    enState;            /*定时偏差估计状态机*/
     UINT16                          usExcTerminateFlag; /*本次估计结果不可信，目前是因为提前遇到gap*/
-    
+
     INT16                           sTref[2];           /*提前量*/
-    
+
     UINT8                           ucTimeCoef;
     UINT8                           ucFreqCoef;
     UINT8                           ucLeftCoef;
@@ -381,7 +381,7 @@ typedef struct __TIMING_EST_STRU__ /*estimate*/
 
 #if 0
 /*2. 多经搜索部分，包括算法多经搜索(3.3.4节)及其对应的功能部分*/
-typedef struct __TIMING_MPS_STRU__ 
+typedef struct __TIMING_MPS_STRU__
 {
 
     UINT16                          usFilterInitFlag;   /*滤波器是否初始化*/
@@ -418,7 +418,7 @@ typedef struct __TIMING_DTT_STRU__
     UINT32                          ulBakDemodTime;     /*备份的解调定时位置*/
     INT32                           lBakTimeAdjust;     /*备份的定时调整量*/
     UINT16                          usBakKiIndex;       /*备份滤波器系数*/
-        
+
     /*输出当前定时跟踪类型，解调定时，调整量*/
     UINT16                          usResetFlag;        /*重置标记*/
     INT32                           lTimeAdjust;        /*定时调整值，0.25TS单位*/
@@ -478,7 +478,7 @@ typedef struct __TIMING_DTA_STRU__
     UINT8                           ucSubRef;                 /*本周期所用定时提前量*/
     UINT16                          usReserved;
     UINT32							pFpu;
-    
+
 }TIMING_DTA_STRU;
 typedef struct __TIMING_MBMS_DTA_STRU__
 {
@@ -504,7 +504,7 @@ typedef struct __TIMING_MBMS_DTA_STRU__
     UINT8                           ucMbmsEstAdjFlag;         /*多播调整标记*/
     UINT8                           ucMbmsFlag;               /*多播主ID或者非主ID区域*/
     UINT8                           ucSubRef;                 /*本周期所用定时提前量*/
-    
+
 }TIMING_MBMS_DTA_STRU;
 
 /*6. 系统定时调整部分，根据系统定时跟踪的结果配置硬件进行定时调整*/
@@ -521,7 +521,7 @@ typedef struct __TIMING_STA_STRU__
     UINT32                          ulBakSysTime;       /*备份的系统定时, 单位: 0.25TS*/
     /*备份最近一次切系统定时对应的计数寄存器，回切的时候通过这些值来推算回复SFN*/
     TIMING_COUNTER_INFO_STRU        stSysTimCntRegs;    /*记录系统定时相关的计数寄存器*/
-    
+
 }TIMING_STA_STRU;
 
 
@@ -535,7 +535,7 @@ typedef struct __timing_controller_stru__
     UINT16                         usSccTimingStartFlag;
     UINT16                         usMbmsTimingStartFlag;
     //UINT32                          ulBgsAnrSyncPos;    /*背景搜或ANR小区的同步位置: 16Ts*/
-    LTE_CELL_INFO_STRU              stCurCellInfo[LPHY_FEATURE_MAX_CARRIER_NUM];      /*当前小区的参数信息*/ 
+    LTE_CELL_INFO_STRU              stCurCellInfo[LPHY_FEATURE_MAX_CARRIER_NUM];      /*当前小区的参数信息*/
     LTE_CELL_INFO_STRU              stBakCellInfo;      /*备份小区的参数信息*/
     UINT16                          usPreSyncFlag;
     UINT16                          usReserved;
@@ -549,8 +549,8 @@ typedef struct __timing_trms_stru__
     UINT16                          usTrms;             /*trms结果*/
     UINT16                          usNoiseFlag1;       /*异常情况*/
     UINT16                          usRawTrmsFlag;      /*字节对齐*/
-    UINT8                           ucCurSaveTrmsPos;   /*当前trms位置*/    
-    UINT8                           ucVldSaveTrmsNum;   /*保存的有效个数*/    
+    UINT8                           ucCurSaveTrmsPos;   /*当前trms位置*/
+    UINT8                           ucVldSaveTrmsNum;   /*保存的有效个数*/
     UINT8                           ucTrmsSave[32];     /*保存32个历史值*/
     UINT32                          ulSqrPowMulPosAcc;  /*二阶矩*/
     UINT32                          ulValidPowMulPosAcc;/*一阶矩*/
@@ -572,7 +572,7 @@ typedef struct __timing_trms_stru__
 #if 0
 typedef struct __timing_mbms_trms_stru__
 {
-    UINT32                          ulStateRegValue;    /*状态寄存器*/ 
+    UINT32                          ulStateRegValue;    /*状态寄存器*/
     UINT32                          ulResultRegValue;   /*时延扩展寄存器*/
     UINT16                          usSavedFilterPAR[3];/*滤波后的峰均比值*/
     UINT16                          usSavedOncePAR[3];   /*滤波后的峰均比值*/
@@ -586,7 +586,7 @@ typedef struct __timing_mbms_trms_stru__
     UINT8                           ucWinProtectFlag;   /*总窗保护标记*/
     UINT8                           ucWinTrmsValueL;    /*总窗trms值*/
     UINT8                           ucWin1TrmsValueL;   /*窗1trms值*/
-    
+
     UINT16                          usTrms;             /*trms结果*/
     UINT16                          usRsv;
 }TIMING_MBMS_TRMS_STRU;
@@ -597,7 +597,7 @@ typedef struct __TIMING_MBMS_CTRL_STRU__
     TIMING_SDR_STATE_ENUM_UINT16    enState;            /*MBMS定时偏差估计状态机*/
     UINT16                          usAllocType;        /*MBMS中每个周期中的分配广播帧数,1或者4*/
     UINT16                          usAllocPeriod;      /*MBMS的分配周期*/
-    UINT16                          usAllocSubFrmNum;   /*MBMS中每个周期中分配的子帧数*/ 
+    UINT16                          usAllocSubFrmNum;   /*MBMS中每个周期中分配的子帧数*/
     UINT16                          usRsv;              /*4字节对齐*/
     LTE_CELL_INFO_STRU              stCurCellInfo;      /*MBMS对应的小区参数*/
 }TIMING_MBMS_CTRL_STRU;
@@ -634,6 +634,7 @@ typedef struct __TIMING_INFO_STRU__
 
 
 /*9. 定时模块结构定义*/
+#define LPHY_TIMING_MAINTAIN_CELL_NUM   3
 typedef struct __TIMING_MODULE_STRU__
 {
     UINT16                          usSysFrmNum;        /*上报时候的系统帧号*/
@@ -647,7 +648,7 @@ typedef struct __TIMING_MODULE_STRU__
     TIMING_STT_STRU                 stStt;              /*系统定时跟踪*/
     //TIMING_DTA_STRU                 stDta;              /*解调定时调整*/
     TIMING_STA_STRU                 stSta;              /*系统定时调整*/
-    TIMING_INFO_STRU                stMaintainedInfo[3];/*位ANR增加的维护定时小区*/
+    TIMING_INFO_STRU                stMaintainedInfo[LPHY_TIMING_MAINTAIN_CELL_NUM];/*位ANR增加的维护定时小区*/
 }TIMING_MODULE_STRU;
 
 

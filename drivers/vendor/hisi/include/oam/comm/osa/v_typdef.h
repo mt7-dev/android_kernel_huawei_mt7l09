@@ -80,7 +80,6 @@ extern "C" {
 #include <linux/tty.h>
 #include <linux/delay.h>
 #include <net/sock.h>
-#include <asm/system.h>
 #include <asm/uaccess.h>
 #include <linux/module.h>
 #include <linux/init.h>
@@ -109,7 +108,7 @@ extern "C" {
 #define VOS_NULL_PTR           (0L)
 #define VOS_NULL_BYTE          (0XFF)
 #define VOS_NULL_WORD          (0xFFFF)
-#define VOS_NULL_DWORD         (0xFFFFFFFF)
+#define VOS_NULL_DWORD         (0xFFFFFFFFU)
 #define VOS_NULL_LONG          (VOS_NULL_DWORD)
 #define VOS_NULL_OBJ           (-1)
 #define VOS_NULL_PARA          (-1)
@@ -118,7 +117,7 @@ extern "C" {
 #define VOS_ERR                (1)                 /* For VRP VOS adaptation */
 #define VOS_ERROR              (-1)
 
-#define VOS_MEMORY_CRC         0x55AA55AA
+#define VOS_MEMORY_CRC         (0x55AA55AAUL)
 
 typedef void                   VOS_VOID;
 
@@ -139,15 +138,11 @@ typedef signed   short         VOS_INT16;
 typedef signed   short         VOS_WCHAR;          /* 16 bit Unicode */
 
 
-typedef unsigned long          VOS_UINT32;
+typedef unsigned int           VOS_UINT32;
 
-typedef signed   long          VOS_INT32;
+typedef signed   int           VOS_INT32;
 
-typedef unsigned long          VOS_BOOL;
-
-typedef unsigned long           VOS_SEM;
-
-typedef unsigned long           VOS_UINT_PTR;
+typedef unsigned int           VOS_BOOL;
 
 typedef union {
     VOS_UINT32 b32[2];
@@ -174,13 +169,13 @@ typedef double                 VOS_DOUBLE;         /* 64 bits double */
 
 
 
-typedef unsigned long          VOS_PID;
+typedef unsigned int           VOS_PID;
 
-typedef unsigned long          VOS_FID;
+typedef unsigned int           VOS_FID;
 
-typedef unsigned long          SIZE_T;
+typedef unsigned int           VOS_SIZE_T;
 
-typedef VOS_INT32             VOS_SOCKET;
+typedef VOS_INT32              VOS_SOCKET;
 
 typedef VOS_UINT32             TICK_T;
 
@@ -191,6 +186,14 @@ typedef unsigned char           BOOL_TYPE;
 typedef struct { unsigned char  placehold; } NULL_SEQ;
 
 typedef struct { unsigned char  placehold; } NULL_SET;
+
+typedef long                    VOS_INT_PTR;
+
+typedef unsigned long           VOS_UINT_PTR;
+
+typedef long                    VOS_LONG;
+
+typedef unsigned long           VOS_ULONG;
 
 
 typedef struct tagCpuTickEx

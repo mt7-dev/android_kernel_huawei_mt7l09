@@ -1,26 +1,4 @@
-/* 
- *  Hisilicon K3 SOC camera driver source file 
- * 
- *  Copyright (C) Huawei Technology Co., Ltd. 
- * 
- * Author:	  h00145353 
- * Email:	  alan.hefeng@huawei.com
- * Date:	  2013-11-16
- *
- * This program is free software; you can redistribute it and/or modify 
- * it under the terms of the GNU General Public License as published by 
- * the Free Software Foundation; either version 2 of the License, or 
- * (at your option) any later version. 
- *
- * This program is distributed in the hope that it will be useful, 
- * but WITHOUT ANY WARRANTY; without even the implied warranty of 
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
- * GNU General Public License for more details. 
- * 
- * You should have received a copy of the GNU General Public License 
- * along with this program; if not, write to the Free Software 
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA 
- */
+
 
 
 #ifndef __HW_ALAN_KERNEL_CAMERA_OBJ_MDL_INTERFACE__
@@ -46,6 +24,12 @@ struct ion_handle;
 
 typedef struct _tag_hwcam_cfgreq_vtbl hwcam_cfgreq_vtbl_t; 
 typedef struct _tag_hwcam_cfgreq_intf hwcam_cfgreq_intf_t; 
+
+typedef struct _tag_hwcam_cfgreq_mount_pipeline_vtbl hwcam_cfgreq_mount_pipeline_vtbl_t; 
+typedef struct _tag_hwcam_cfgreq_mount_pipeline_intf hwcam_cfgreq_mount_pipeline_intf_t; 
+
+typedef struct _tag_hwcam_cfgreq_mount_stream_vtbl hwcam_cfgreq_mount_stream_vtbl_t; 
+typedef struct _tag_hwcam_cfgreq_mount_stream_intf hwcam_cfgreq_mount_stream_intf_t; 
 
 typedef struct _tag_hwcam_cfgack hwcam_cfgack_t; 
 
@@ -77,8 +61,12 @@ typedef struct _tag_hwcam_vbuf
 
 typedef struct _tag_hwcam_cfgreq_vtbl
 {
+    void (*get)(hwcam_cfgreq_intf_t* intf);
+    int (*put)(hwcam_cfgreq_intf_t* intf); 
     int (*on_req)(hwcam_cfgreq_intf_t* intf, 
                   struct v4l2_event* ev); 
+    int (*on_cancel)(hwcam_cfgreq_intf_t* intf, 
+                     int reason); 
     int (*on_ack)(hwcam_cfgreq_intf_t* intf, 
                   hwcam_cfgack_t* ack); 
 } hwcam_cfgreq_vtbl_t; 
@@ -88,40 +76,30 @@ typedef struct _tag_hwcam_cfgreq_intf
     hwcam_cfgreq_vtbl_t const*                  vtbl; 
 } hwcam_cfgreq_intf_t; 
 
-typedef struct _tag_hwcam_cfgpipeline_mount_req
+static inline void 
+hwcam_cfgreq_intf_get(hwcam_cfgreq_intf_t* intf)
 {
-    hwcam_cfgreq_intf_t                         intf; 
+    return intf->vtbl->get(intf); 
+}
 
-    struct video_device*                        vdev; 
-
-    struct list_head*                           pipelines; 
-    hwcam_dev_intf_t*                           cam; 
-    int                                         moduleID; 
-
-    hwcam_cfgpipeline_intf_t*                   pipeline; 
-    int                                         rc; 
-} hwcam_cfgpipeline_mount_req_t; 
-
-typedef struct _tag_hwcam_cfgstream_mount_req
+static inline int 
+hwcam_cfgreq_intf_put(hwcam_cfgreq_intf_t* intf)
 {
-    hwcam_cfgreq_intf_t                         intf; 
-
-    struct video_device*                        vdev; 
-
-    struct list_head*                           streams; 
-    hwcam_cfgpipeline_intf_t*                   pl; 
-    hwcam_user_intf_t*                          user; 
-    hwcam_stream_info_t*                        info; 
-    struct dma_buf*                             buf; 
-
-    hwcam_cfgstream_intf_t*                     stream; 
-} hwcam_cfgstream_mount_req_t; 
+    return intf->vtbl->put(intf); 
+}
 
 static inline int 
 hwcam_cfgreq_intf_on_req(hwcam_cfgreq_intf_t* intf, 
                          struct v4l2_event* ev)
 {
     return intf->vtbl->on_req(intf, ev); 
+}
+
+static inline int 
+hwcam_cfgreq_intf_on_cancel(hwcam_cfgreq_intf_t* intf, 
+                            int reason)
+{
+    return intf->vtbl->on_cancel(intf, reason); 
 }
 
 static inline int 
@@ -147,8 +125,63 @@ typedef struct _tag_hwcam_cfgack
     struct v4l2_event                           ev; 
 } hwcam_cfgack_t; 
 
-extern hwcam_cfgreq_vtbl_t* hwcam_cfgpipeline_mount_req_vtbl(void); 
-extern hwcam_cfgreq_vtbl_t* hwcam_cfgstream_mount_req_vtbl(void); 
+static inline int 
+hwcam_cfgack_result(hwcam_cfgack_t* ack)
+{
+    return ((hwcam_cfgreq_t*)ack->ev.u.data)->rc; 
+}
+
+typedef struct _tag_hwcam_cfgreq_mount_pipeline_vtbl
+{
+    hwcam_cfgreq_vtbl_t                         base; 
+    void (*get_result)(hwcam_cfgreq_mount_pipeline_intf_t* intf, 
+                      hwcam_cfgpipeline_intf_t** pl); 
+} hwcam_cfgreq_mount_pipeline_vtbl_t; 
+
+typedef struct _tag_hwcam_cfgreq_mount_pipeline_intf
+{
+    hwcam_cfgreq_mount_pipeline_vtbl_t const*   vtbl; 
+} hwcam_cfgreq_mount_pipeline_intf_t; 
+
+static inline void 
+hwcam_cfgreq_mount_pipeline_intf_get_result(hwcam_cfgreq_mount_pipeline_intf_t* pintf, 
+                                            hwcam_cfgpipeline_intf_t** pl)
+{
+    pintf->vtbl->get_result(pintf, pl); 
+}
+
+extern int
+hwcam_cfgpipeline_mount_req_create_instance(struct video_device* vdev, 
+                                            hwcam_dev_intf_t* cam, 
+                                            int moduleID, 
+                                            hwcam_cfgreq_mount_pipeline_intf_t** req); 
+
+typedef struct _tag_hwcam_cfgreq_mount_stream_vtbl
+{
+    hwcam_cfgreq_vtbl_t                         base; 
+    void (*get_result)(hwcam_cfgreq_mount_stream_intf_t* intf, 
+                      hwcam_cfgstream_intf_t** st); 
+} hwcam_cfgreq_mount_stream_vtbl_t; 
+
+typedef struct _tag_hwcam_cfgreq_mount_stream_intf
+{
+    hwcam_cfgreq_mount_stream_vtbl_t const*     vtbl; 
+} hwcam_cfgreq_mount_stream_intf_t; 
+
+static inline void 
+hwcam_cfgreq_mount_stream_intf_get_result(hwcam_cfgreq_mount_stream_intf_t* pintf, 
+                                          hwcam_cfgstream_intf_t** st)
+{
+    pintf->vtbl->get_result(pintf, st); 
+}
+
+extern int
+hwcam_cfgstream_mount_req_create_instance(struct video_device* vdev, 
+                                          struct list_head* streams, 
+                                          hwcam_cfgpipeline_intf_t* pl, 
+                                          hwcam_user_intf_t* user, 
+                                          hwcam_stream_info_t* info, 
+                                          hwcam_cfgreq_mount_stream_intf_t** req); 
 
 //  hwcam_cfgreq interface definition end
 
@@ -286,11 +319,14 @@ hwcam_cfgdev_import_data_table(char const* name,
 extern void
 hwcam_cfgdev_release_data_table(struct ion_handle* handle); 
 
-extern void* 
-hwcam_cfgdev_import_graphic_buffer(hwcam_buf_info_t const* bi); 
+extern struct ion_handle* 
+hwcam_cfgdev_import_graphic_buffer(int fd); 
+
+extern int
+hwcam_cfgdev_share_graphic_buffer(struct ion_handle* hdl); 
 
 extern void
-hwcam_cfgdev_release_graphic_buffer(void); 
+hwcam_cfgdev_release_graphic_buffer(struct ion_handle* hdl); 
 
 //  hwcam_cfgdev interface definition end
 
@@ -404,6 +440,10 @@ hwcam_cfgpipeline_intf_mount_stream(hwcam_cfgpipeline_intf_t* intf,
 {
     return intf->vtbl->mount_stream(intf, user, info); 
 }
+
+extern int
+hwcam_cfgpipeline_wait_idle(hwcam_dev_intf_t* cam, 
+                            int timeout); 
 
 //  hwcam_cfgpipeline interface definition end
 

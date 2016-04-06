@@ -1,20 +1,4 @@
-/*
- * Copyright (C) 2007 Oracle.  All rights reserved.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public
- * License v2 as published by the Free Software Foundation.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- * General Public License for more details.
- *
- * You should have received a copy of the GNU General Public
- * License along with this program; if not, write to the
- * Free Software Foundation, Inc., 59 Temple Place - Suite 330,
- * Boston, MA 021110-1307, USA.
- */
+
 
 #include <linux/fs.h>
 #include <linux/slab.h>
@@ -524,7 +508,6 @@ int btrfs_wait_for_commit(struct btrfs_root *root, u64 transid)
 		if (transid <= root->fs_info->last_trans_committed)
 			goto out;
 
-		ret = -EINVAL;
 		/* find specified transaction */
 		spin_lock(&root->fs_info->trans_lock);
 		list_for_each_entry(t, &root->fs_info->trans_list, list) {
@@ -540,9 +523,16 @@ int btrfs_wait_for_commit(struct btrfs_root *root, u64 transid)
 			}
 		}
 		spin_unlock(&root->fs_info->trans_lock);
-		/* The specified transaction doesn't exist */
-		if (!cur_trans)
+
+		/*
+		 * The specified transaction doesn't exist, or we
+		 * raced with btrfs_commit_transaction
+		 */
+		if (!cur_trans) {
+			if (transid > root->fs_info->last_trans_committed)
+				ret = -EINVAL;
 			goto out;
+		}
 	} else {
 		/* find newest transaction that is committing | committed */
 		spin_lock(&root->fs_info->trans_lock);

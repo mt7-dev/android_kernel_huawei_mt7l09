@@ -27,6 +27,7 @@ extern "C" {
 
 /*´æ´¢RABIDºÍSDU LENµ½TTFÃèÊö·ûÖÐ*/
 /*lint -emacro({717}, CDS_DL_SAVE_LEN_MODEMID_RABID_TO_TTF)*/
+/*lint -emacro({701}, CDS_DL_SAVE_LEN_MODEMID_RABID_TO_TTF)*/
 #define CDS_DL_SAVE_LEN_MODEMID_RABID_TO_TTF(pstIpPkt,usLen,usModemId,ucRabId) \
                     do\
                     {\

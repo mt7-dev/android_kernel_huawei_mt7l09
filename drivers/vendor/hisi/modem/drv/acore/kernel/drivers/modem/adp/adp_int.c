@@ -33,11 +33,11 @@ BSP_S32	adp_int_disable(int ulLvl)
 	else
 		return -1;
 }
-BSP_S32 adp_int_connect(int ulLvl,FUNCPTR_1 routine,int parameter)
+BSP_S32 adp_int_connect(int ulLvl,FUNCPTR_1 routine,void* parameter)
 {
 
 	if(ulLvl<INT_LVL_MAX && ulLvl>=0)
-		return BSP_INT_Connect((VOIDFUNCPTR * )ulLvl,(VOIDFUNCPTR)routine,parameter);
+		return BSP_INT_Connect(ulLvl, (VOIDFUNCPTR)routine, parameter);
 	else if(ulLvl>=INT_LVL_MAX && ulLvl<INT_LVL_MAX+64)
 	{
 	#ifdef CONFIG_MODULE_VIC

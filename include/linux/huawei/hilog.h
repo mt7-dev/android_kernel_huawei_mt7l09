@@ -9,8 +9,6 @@
 #ifndef __HISILOG_H
 #define __HISILOG_H
 
-#include <linux/miscdevice.h>
-
 #define HISI_1K	(1024)
 #define HISI_1M	(1024 * 1024)
 
@@ -32,8 +30,8 @@
 
 
 typedef struct {
-	unsigned long waddr;
-	unsigned long raddr;
+	unsigned int waddr;
+	unsigned int raddr;
 } log_buffer_head;
 
 #endif

@@ -228,6 +228,7 @@ typedef struct
     VOS_UINT8                                               ucMsRadioCapSupportLteFromRegReq;   /* ATTACH或RAU时携带的MS Radio Access capability IE是否支持LTE,VOS_TRUE:支持LTE,VOS_FALSE:不支持LTE */
     VOS_UINT8                                               ucMsRadioCapSupportLteFromAs;       /* 记录GAS接入层发送的GRRMM_MS_RADIO_ACCESS_CAPABILITIES_IND或GRRMM_MS_RADIO_ACCESS_CAPABILITIES_TDS_IND
                                                                                                   是否支持LTE,VOS_TRUE:支持L；VOS_FALSE:不支持L */
+    NAS_MML_VOICE_DOMAIN_PREFERENCE_ENUM_UINT8              enVoiceDomainFromRegReq;            /* 记录发起ATTACH或RAU时的voice domain */
 
 }GMM_UE_INFO_STRU;
 
@@ -496,8 +497,10 @@ typedef struct
     VOS_UINT8                           ucDetachAcceptedFlg;                    /* 标志记录GMM是否刚发送完DETACH ACCEPTED消息给LL */
     VOS_UINT8                           ucRelConnAfterPdpDeact;
     GMM_SM_CAUSE_ENUM_UINT16            enAttach2DetachCause;
-    VOS_UINT8                           ucRcvNetDetachFlg;  
-    VOS_UINT8                           aucReseve[3];
+    VOS_UINT8                           ucRcvNetDetachFlg;
+
+    VOS_UINT8                           ucIsNeedStartT3340PdpExist;
+    VOS_UINT8                           aucReseve[2];
 }GMM_GLOBAL_CTRL_STRU;
 
 
@@ -750,6 +753,43 @@ typedef struct
 
     VOS_UINT8           ucGetLteSecContext;             /* 记录异系统是否已经从Lte获取了安全上下文,VOS_TRUE,已获取,VOS_FALSE未获取 */
 }GMM_SUSPEND_CTRL_STRU;
+
+/*******************************************************************************
+ 结构名    : GMM_CALL_SUPPORT_CODEC_STRU
+ 协议表格  :
+ ASN.1描述 :
+ 结构说明  : 当前支持的codec类型,bit位置1表示该codec有效
+*******************************************************************************/
+typedef struct
+{
+    VOS_UINT16                          CodecType_GSMFR         :1;
+    VOS_UINT16                          CodecType_GSMHR         :1;
+    VOS_UINT16                          CodecType_GSMEFR        :1;
+    VOS_UINT16                          CodecType_GSMFRAMR      :1;
+    VOS_UINT16                          CodecType_GSMHRAMR      :1;
+    VOS_UINT16                          CodecType_UMTSAMR       :1;
+    VOS_UINT16                          CodecType_UMTSAMR2      :1;
+    VOS_UINT16                          CodecType_TDMAEFR       :1;
+    VOS_UINT16                          CodecType_PDCEFR        :1;
+    VOS_UINT16                          CodecType_GSMFRAMRWB    :1;
+    VOS_UINT16                          CodecType_UMTSAMRWB     :1;
+    VOS_UINT16                          CodecType_OHR_AMR       :1;
+    VOS_UINT16                          CodecType_OFR_AMR_WB    :1;
+    VOS_UINT16                          CodecType_OHR_AMR_WB    :1;
+    VOS_UINT16                          BandSpare               :2;
+}GMM_CALL_SUPPORT_CODEC_STRU;
+
+/*******************************************************************************
+ 结构名    :MN_CALL_SUPPORT_CODEC_STRU
+ 协议表格  :
+ ASN.1描述 :
+ 结构说明  : 当前支持的codec类型,bit位置1表示该codec有效
+*******************************************************************************/
+typedef union
+{
+    GMM_CALL_SUPPORT_CODEC_STRU         stSupportCodec;
+    VOS_UINT16                          usSupportCodec;
+}GMM_CALL_SUPPORT_CODEC_UNION;
 
 #if ((VOS_OS_VER == VOS_WIN32) || (VOS_OS_VER == VOS_NUCLEUS))
 #pragma pack()

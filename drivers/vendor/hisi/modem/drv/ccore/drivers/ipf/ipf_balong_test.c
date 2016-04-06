@@ -1241,7 +1241,7 @@ BSP_S32  BSP_IPF_AINIT(BSP_VOID)
 
 BSP_S32 BSP_IPF_ST_000(BSP_VOID)
 {
-	BSP_U32 ipf_Shared_ddr_start = SHM_MEM_IPF_ADDR;
+	BSP_U32 ipf_Shared_ddr_start = (u32)SHM_MEM_IPF_ADDR;
 	
 	BSP_U32 ipf_Shared_ddr_ul_start = IPF_ULBD_MEM_ADDR;
 

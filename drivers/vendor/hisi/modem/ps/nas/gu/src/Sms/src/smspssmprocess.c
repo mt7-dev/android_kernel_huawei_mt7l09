@@ -327,8 +327,6 @@ VOS_VOID SMC_RcvPsMtData(
     }
     return;
 }
-
-
 VOS_VOID NAS_SMC_BufferPsCpAck(
     VOS_BOOL                            *pbBufferFlag
 )
@@ -337,7 +335,7 @@ VOS_VOID NAS_SMC_BufferPsCpAck(
     VOS_UINT8                           ucAccessTech;
 
     /*PS域短信联发功能关闭: 直接返回不需要缓存CP-ACK消息;*/
-    if (0 == g_ucNasSmsPsConcatencateFlag)
+    if (NAS_SMS_PS_CONCATENATE_DISABLE == SMS_GetSmsPsConcatenateFlag())
     {
         *pbBufferFlag = VOS_FALSE;
         return;

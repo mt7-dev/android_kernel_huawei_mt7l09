@@ -1,3 +1,0 @@
-source "drivers/huawei/sensor/hall/Kconfig"
-
-source "drivers/huawei/sensor/fingerprint/Kconfig"

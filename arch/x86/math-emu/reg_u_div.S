@@ -158,23 +158,6 @@ L_no_overflow:
 	jmp	LRound_precision	/* Do the rounding as required */
 
 
-/*---------------------------------------------------------------------------+
- |  Divide:   Return  arg1/arg2 to arg3.                                     |
- |                                                                           |
- |  This routine does not use the exponents of arg1 and arg2, but does       |
- |  adjust the exponent of arg3.                                             |
- |                                                                           |
- |  The maximum returned value is (ignoring exponents)                       |
- |               .ffffffff ffffffff                                          |
- |               ------------------  =  1.ffffffff fffffffe                  |
- |               .80000000 00000000                                          |
- | and the minimum is                                                        |
- |               .80000000 00000000                                          |
- |               ------------------  =  .80000000 00000001   (rounded)       |
- |               .ffffffff ffffffff                                          |
- |                                                                           |
- +---------------------------------------------------------------------------*/
-
 
 L_Full_Division:
 	/* Save extended dividend in local register */

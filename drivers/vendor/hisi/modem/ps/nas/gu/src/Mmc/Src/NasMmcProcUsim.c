@@ -1122,29 +1122,15 @@ VOS_VOID  NAS_MMC_UpdateRaiFormPsLociFile(
     pstPsDomainInfo->stLastSuccRai.ucRac    = pucPsLociFileContent[ucCurrPos];
 }
 
-/*****************************************************************************
- 函 数 名  : NAS_MMC_UpdateSimInfoFromPsLociFile
- 功能描述  : 根据USIM中的PSLOCI的内容更新MML中保存的SIM相关信息
- 输入参数  : 无
- 输出参数  : 无
- 返 回 值  :
- 调用函数  :
- 被调函数  :
 
- 修改历史      :
- 1.日    期   : 2011年7月12日
-   作    者   : zhoujun 40661
-   修改内容   : 新生成函数
-
- 2.日    期   : 2011年12月1日
-   作    者   : zhoujun /40661
-   修改内容   : 更新保存在MML内存中的EFPSLOCI原始文件的内容
-*****************************************************************************/
 VOS_VOID  NAS_MMC_UpdateSimInfoFromPsLociFile(
     VOS_UINT8                          *pucPsLociFileContent
 )
 {
     NAS_MML_SIM_STATUS_STRU            *pstSimStatus;
+    NAS_MML_SIM_FORMAT_PLMN_ID          stSimPlmnId;
+    NAS_MML_PLMN_ID_STRU                stPlmnId;
+    VOS_UINT8                           ucCurrPos;
     VOS_UINT8                           ucUpdateStatus;
 
     pstSimStatus    = NAS_MML_GetSimStatus();
@@ -1184,10 +1170,33 @@ VOS_VOID  NAS_MMC_UpdateSimInfoFromPsLociFile(
     ucUpdateStatus = pucPsLociFileContent[NAS_MML_PS_LOCI_SIM_FILE_LEN - 1];
     ucUpdateStatus = (ucUpdateStatus) & NAS_MML_UPDATE_STATUS_MASK_IN_SIM;
 
-    if (ucUpdateStatus > NAS_MML_LOCATION_UPDATE_STATUS_LOCATION_AREA_NOT_ALLOWED )
+    /* 取得SIM卡中的PLMN ID信息，用于判读PLMN是否全0 */
+    ucCurrPos           = NAS_MML_RAI_POS_EFPSLOCI_FILE;
+
+    PS_MEM_SET(&stSimPlmnId, 0, sizeof(stSimPlmnId));
+    PS_MEM_SET(&stPlmnId, 0, sizeof(stPlmnId));
+
+    /* 存储PLMN ID */
+    PS_MEM_CPY(stSimPlmnId.aucSimPlmn,
+               pucPsLociFileContent + ucCurrPos,
+               NAS_MML_SIM_PLMN_ID_LEN);
+
+    NAS_MMC_ConvertSimPlmnToNasPLMN(&stSimPlmnId, &stPlmnId);
+
+    if ((NAS_MML_UPDATE_STATUS_MASK_IN_SIM == ucUpdateStatus)
+     && (0 == stPlmnId.ulMcc)
+     && (0 == stPlmnId.ulMnc))
     {
-        ucUpdateStatus = NAS_MML_LOCATION_UPDATE_STATUS_LOCATION_AREA_NOT_ALLOWED;
+        ucUpdateStatus = NAS_MML_ROUTING_UPDATE_STATUS_BUTT;
     }
+    else
+    {
+        if (ucUpdateStatus > NAS_MML_ROUTING_UPDATE_STATUS_ROUTING_AREA_NOT_ALLOWED )
+        {
+            ucUpdateStatus = NAS_MML_ROUTING_UPDATE_STATUS_ROUTING_AREA_NOT_ALLOWED;
+        }
+    }
+
     pstSimStatus->enPsUpdateStatus  = ucUpdateStatus;
 }
 
@@ -1426,6 +1435,9 @@ VOS_VOID  NAS_MMC_UpdateSimInfoFromCsLociFile(
 )
 {
     NAS_MML_SIM_STATUS_STRU            *pstSimStatus = VOS_NULL_PTR;
+    VOS_UINT8                          *pucLaiPos;
+    NAS_MML_SIM_FORMAT_PLMN_ID          stSimPlmnId;
+    NAS_MML_PLMN_ID_STRU                stPlmnId;
     VOS_UINT8                           ucUpdateStatus;
 
     pstSimStatus    = NAS_MML_GetSimStatus();
@@ -1459,10 +1471,33 @@ VOS_VOID  NAS_MMC_UpdateSimInfoFromCsLociFile(
     ucUpdateStatus = pucCsLociFileContent[NAS_MML_CS_LOCI_SIM_FILE_LEN - 1];
     ucUpdateStatus = (ucUpdateStatus) & NAS_MML_UPDATE_STATUS_MASK_IN_SIM;
 
-    if (ucUpdateStatus > NAS_MML_LOCATION_UPDATE_STATUS_LOCATION_AREA_NOT_ALLOWED )
+    /* 取得SIM卡中的PLMN ID信息，用于判读PLMN是否有效 */
+    pucLaiPos             = pucCsLociFileContent +  NAS_MML_LAI_POS_EFLOCI_FILE;
+
+    PS_MEM_SET(&stSimPlmnId, 0, sizeof(stSimPlmnId));
+    PS_MEM_SET(&stPlmnId, 0, sizeof(stPlmnId));
+
+    /* 存储PLMN ID */
+    PS_MEM_CPY(stSimPlmnId.aucSimPlmn,
+               pucLaiPos,
+               NAS_MML_SIM_PLMN_ID_LEN);
+
+    NAS_MMC_ConvertSimPlmnToNasPLMN(&stSimPlmnId, &stPlmnId);
+
+    if ((NAS_MML_UPDATE_STATUS_MASK_IN_SIM == ucUpdateStatus)
+     && (0 == stPlmnId.ulMcc)
+     && (0 == stPlmnId.ulMnc))
     {
-        ucUpdateStatus = NAS_MML_LOCATION_UPDATE_STATUS_PLMN_NOT_ALLOWED;
+        ucUpdateStatus = NAS_MML_LOCATION_UPDATE_STATUS_BUTT;
     }
+    else
+    {
+        if (ucUpdateStatus > NAS_MML_LOCATION_UPDATE_STATUS_LOCATION_AREA_NOT_ALLOWED )
+        {
+            ucUpdateStatus = NAS_MML_LOCATION_UPDATE_STATUS_PLMN_NOT_ALLOWED;
+        }
+    }
+
     pstSimStatus->enCsUpdateStatus  = ucUpdateStatus;
 }
 VOS_VOID  NAS_MMC_UpdateCsSecutityInfoFromUsimFile(

@@ -77,6 +77,10 @@ OBC_LOCAL_PCLINT_SRC_FILE += \
 	$(BSP_DIR)/acore/kernel/drivers/modem/nvim/nv_test.c \
 	$(BSP_DIR)/acore/kernel/drivers/modem/adp/adp_nvim.c
 	
+#/*misc*/
+OBC_LOCAL_PCLINT_SRC_FILE += \
+	$(BSP_DIR)/acore/kernel/drivers/modem/misc/sc_balong.c 
+	
 #/*******************************************bsp1 end*******************************************/
 
 

@@ -23,9 +23,6 @@ extern "C" {
 #include  "IpComm.h"
 #include  "IpIpmGlobal.h"
 #include  "msp_at.h"
-#if (FEATURE_ON == FEATURE_LTE)
-#include  "msp_diag.h"
-#endif
 
 /*lint -e767*/
 #define    THIS_FILE_ID        PS_FILE_ID_IPCOMM_C    /*待修改*/
@@ -121,6 +118,8 @@ VOS_VOID IP_BuildIPv6Header
 }
 
 
+/*lint -e830*/
+/*lint -e438*/
 VOS_VOID IP_ND_FormIPv6HeaderMsg
 (
     const VOS_UINT8                    *aucSrcIPAddr,
@@ -161,6 +160,9 @@ VOS_VOID IP_ND_FormIPv6HeaderMsg
                 IP_IPV6_ADDR_LEN);
     pucData += IP_IPV6_ADDR_LEN;
 }
+/*lint +e830*/
+/*lint +e438*/
+
 IP_BOOL_ENUM_UINT8 IP_IsValidRAPacket
 (
     const VOS_UINT8                    *pucIpMsg,
@@ -350,7 +352,7 @@ IP_BOOL_ENUM_UINT8 IP_IsIcmpv6Packet
     IP_GetUint16Data(usPayLoad, pucIpMsg + IP_IPV6_BASIC_HEAD_PAYLOAD_OFFSET);
 
     /* 长度合法检查 */
-    if ((usPayLoad + IP_IPV6_HEAD_LEN) > ulIpMsgLen)
+    if ((VOS_UINT32)(usPayLoad + IP_IPV6_HEAD_LEN) > ulIpMsgLen)
     {
         if(1 == g_ulCnNd)
         {
@@ -818,112 +820,6 @@ VOS_UINT32 TTF_NDIS_InputUDPHead
 
     return VOS_OK;
 }
-
-#if (FEATURE_ON ==FEATURE_LTE)
-
-VOS_VOID IPND_OM_LOG( const VOS_CHAR  *pcFileName,  VOS_UINT32  ulLineNum,
-                           VOS_UINT32      ulModuleId,   VOS_UINT32 ulLevel,
-                           const VOS_CHAR  *pcString )
-{
-    VOS_UINT32          ulRslt = 0;
-
-    ulRslt = DIAG_PrintfV(DIAG_ID( ulModuleId,ulLevel ), (VOS_CHAR*)pcFileName, ulLineNum, (VOS_CHAR*)("%s"), (VOS_INT32)pcString);
-    if (PS_SUCC != ulRslt)
-    {
-        return;
-    }
-
-    return;
-}
-
-
-VOS_VOID IPND_OM_LOG1( const VOS_CHAR   *pcFileName, VOS_UINT32  ulLineNum,
-                            VOS_UINT32  ulModuleId,       VOS_UINT32 ulLevel,
-                            const VOS_CHAR    *pcString,  VOS_INT32  lPara1)
-{
-    VOS_UINT32          ulRslt = 0;
-
-    ulRslt = DIAG_PrintfV(DIAG_ID( ulModuleId,ulLevel ),(VOS_CHAR*)pcFileName,ulLineNum, (VOS_CHAR*)("%s, %d"), (VOS_INT32)pcString,lPara1);
-    if (PS_SUCC != ulRslt)
-    {
-        return;
-    }
-
-    return;
-}
-
-
-VOS_VOID IPND_OM_LOG2( const VOS_CHAR   *pcFileName, VOS_UINT32  ulLineNum,
-                            VOS_UINT32 ulModuleId,        VOS_UINT32 ulLevel,
-                            const VOS_CHAR   *pcString,   VOS_INT32  lPara1,
-                            VOS_INT32  lPara2)
-{
-    VOS_UINT32          ulRslt = 0;
-
-    ulRslt = DIAG_PrintfV(DIAG_ID( ulModuleId,ulLevel ),
-                           (VOS_CHAR*)pcFileName,
-                           ulLineNum,
-                           (VOS_CHAR*)("%s, %d, %d"),
-                           (VOS_INT32)pcString,
-                           lPara1,
-                           lPara2);
-    if (PS_SUCC != ulRslt)
-    {
-        return;
-    }
-
-    return;
-}
-
-VOS_VOID IPND_OM_LOG3( const VOS_CHAR  *pcFileName,  VOS_UINT32  ulLineNum,
-                            VOS_UINT32 ulModuleId,        VOS_UINT32 ulLevel,
-                            const VOS_CHAR   *pcString,   VOS_INT32  lPara1,
-                            VOS_INT32  lPara2,            VOS_INT32  lPara3)
-{
-    VOS_UINT32          ulRslt = 0;
-
-    ulRslt = DIAG_PrintfV(DIAG_ID( ulModuleId,ulLevel ),
-                           (VOS_CHAR*)pcFileName,
-                           ulLineNum,
-                           (VOS_CHAR*)("%s, %d, %d, %d"),
-                           (VOS_INT32)pcString,
-                           lPara1,
-                           lPara2,
-                           lPara3);
-    if (PS_SUCC != ulRslt)
-    {
-        return;
-    }
-    return;
-}
-
-
-VOS_VOID IPND_OM_LOG4( const VOS_CHAR   *pcFileName, VOS_UINT32  ulLineNum,
-                            VOS_UINT32 ulModuleId,        VOS_UINT32 ulLevel,
-                            const VOS_CHAR   *pcString,   VOS_INT32  lPara1,
-                            VOS_INT32  lPara2,            VOS_INT32  lPara3,
-                            VOS_INT32  lPara4)
-{
-    VOS_UINT32          ulRslt = 0;
-
-    ulRslt = DIAG_PrintfV(DIAG_ID( ulModuleId,ulLevel ),
-                           (VOS_CHAR*)pcFileName,
-                           ulLineNum,
-                           (VOS_CHAR*)("%s, %d, %d, %d, %d"),
-                           (VOS_INT32)pcString,
-                           lPara1,
-                           lPara2,
-                           lPara3,
-                           lPara4);
-    if (PS_SUCC != ulRslt)
-    {
-        return;
-    }
-
-    return;
-}
-#endif
-/*huibo from V3R1 end*/
 
 #ifdef __cplusplus
     #if __cplusplus

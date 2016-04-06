@@ -87,7 +87,6 @@ static void btuart_detach(struct pcmcia_device *p_dev);
 /* Maximum baud rate */
 #define SPEED_MAX  115200
 
-/* Default baud rate: 57600, 115200, 230400 or 460800 */
 #define DEFAULT_BAUD_RATE  115200
 
 

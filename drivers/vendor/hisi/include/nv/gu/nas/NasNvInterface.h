@@ -68,6 +68,18 @@ extern "C" {
 #define NAS_MMC_NVIM_MAX_USER_CFG_OPLMN_DATA_LEN              (500)             /* 用户配置OPLMN的最大字节数,扩容前只支持500*/
 #define NAS_MMC_NVIM_MAX_USER_CFG_OPLMN_DATA_EXTEND_LEN       (1280)            /* 扩展后的用户配置OPLMN的最大字节数*/
 
+
+/* Modified by c00318887 for DPlmn扩容和优先接入HPLMN, 2015-5-18, begin */
+/* 扩容:由128改256; 增加预置类型信息,由6改7*/
+#define NAS_MMC_NVIM_MAX_CFG_DPLMN_DATA_LEN             (7*256)            /* 扩展后的用户配置DPLMN的最大字节数 */
+#define NAS_MMC_NVIM_MAX_CFG_NPLMN_DATA_LEN             (7*256)            /* 扩展后的用户配置NPLMN的最大字节数 */
+/* Modified by c00318887 for DPlmn扩容和优先接入HPLMN, 2015-5-18, end */
+
+#define NAS_MMC_NVIM_MAX_CFG_DPLMN_DATA_EXTEND_LEN       (6*128)            /* 扩展后的用户配置DPLMN的最大字节数*/
+#define NAS_MMC_NVIM_MAX_CFG_NPLMN_DATA_EXTEND_LEN       (6*128)            /* 扩展后的用户配置NPLMN的最大字节数*/
+#define NAS_MMC_NVIM_MAX_CFG_HPLMN_NUM                   (3*8)
+
+
 #define NAS_NVIM_MAX_OPER_SHORT_NAME_LEN                36
 #define NAS_NVIM_MAX_OPER_LONG_NAME_LEN                 40
 
@@ -111,6 +123,7 @@ extern "C" {
 #define NAS_NVIM_FORBIDDEN_RAT_NUM_2                 (2)
 
 
+#define NAS_NVIM_MAX_ROAMING_REJECT_NO_RETRY_CAUSE_NUM               (8)
 /* 对NVID枚举的转定义(PS_NV_ID_ENUM, SYS_NV_ID_ENUM, RF_NV_ID_ENUM) */
 typedef VOS_UINT16  NV_ID_ENUM_U16;
 #define NV_ITEM_IMEI_SIZE                      16
@@ -135,11 +148,10 @@ enum NAS_MMC_NVIM_SINGLE_DOMAIN_REG_FAIL_ACTION_ENUM
     NAS_MMC_NVIM_SINGLE_DOMAIN_REG_FAIL_ACTION_NORMAL_CAMP_ON                    = 1,            /* 正常驻留 */
     NAS_MMC_NVIM_SINGLE_DOMAIN_REG_FAIL_ACTION_OPTIONAL_PLMN_SELECTION           = 2,            /* 触发可选搜网 */
     NAS_MMC_NVIM_SINGLE_DOMAIN_REG_FAIL_ACTION_LIMITED_CAMP_ON                   = 3,            /* 限制驻留 */
+    NAS_MMC_NVIM_SINGLE_DOMAIN_ROAMING_REG_FAIL_ACTION_PLMN_SELECTION            = 4,            /* 在漫游网络上注册发起搜网，在HOME网络上不生效 */
     NAS_MMC_NVIM_SINGLE_DOMAIN_REG_FAIL_ACTION_BUTT
 };
 typedef VOS_UINT8 NAS_MMC_NVIM_SINGLE_DOMAIN_REG_FAIL_ACTION_ENUM_UINT8;
-
-
 enum NAS_MMC_NVIM_REG_FAIL_CAUSE_ENUM
 {
     NAS_MMC_NVIM_REG_FAIL_CAUSE_GPRS_SERV_NOT_ALLOW_IN_PLMN = 14,
@@ -487,6 +499,64 @@ typedef struct
 }NAS_MMC_NVIM_USER_CFG_OPLMN_EXTEND_STRU;
 
 
+/* Added by c00318887 for DPlmn扩容和优先接入HPLMN, 2015-5-28, begin */
+/*****************************************************************************
+ 结构名    : NAS_MMC_NVIM_CFG_DPLMN_NPLMN_INFO_STRU
+ 结构说明  : en_NV_Item_CMCC_Cfg_Dplmn_Nplmn_Info NVIM
+            en_NV_Item_UNICOM_Cfg_Dplmn_Nplmn_Info
+            en_NV_Item_CT_Cfg_Dplmn_Nplmn_Info
+            中的DPLMN NPLMN功能信息
+ 1.日    期   : 2015年5月28日
+   作    者   : c00318887
+   修改内容   : 漫游优化搜网DPlmn扩容和优先接入HPLMN
+*****************************************************************************/
+typedef struct
+{
+    VOS_UINT16                         usDplmnListNum;                                       /* 本地配置的Dplmn的个数 */
+    VOS_UINT16                         usNplmnListNum;                                       /* 本地配置的Nplmn的个数 */
+
+    /* DPLMN数据,每7个字节代表一个dplmn信息，第1-3个字节为sim卡格式plmn id，
+       第4-5字节为支持的接入技术(0x8000为支持w，0x4000为支持lte，0x0080为支持gsm)，
+       第6字节为域信息:1(cs域注册成功)；2(ps域注册成功)；3(cs ps均注册成功)
+       第7直接为预置标示信息: 1(预置Dplmn), 0(自学习到的DPLMN) */
+    VOS_UINT8                          aucDPlmnList[NAS_MMC_NVIM_MAX_CFG_DPLMN_DATA_LEN];
+
+    /* NPLMN数据,每7个字节代表一个nplmn信息，第1-3个字节为sim卡格式plmn id，
+       第4-5字节为支持的接入技术(0x8000为支持w，0x4000为支持lte，0x0080为支持gsm)，
+       第6字节为域信息:1(cs域注册成功)；2(ps域注册成功)；3(cs ps均注册成功)
+       第7直接为预置标示信息: 1(预置nplmn), 0(自学习到的nplmn) */
+    VOS_UINT8                          aucNPlmnList[NAS_MMC_NVIM_MAX_CFG_NPLMN_DATA_LEN];/* NPLMN数据*/
+}NAS_MMC_NVIM_CFG_DPLMN_NPLMN_INFO_STRU;
+typedef struct
+{
+    VOS_UINT16                         usDplmnListNum;                                       /* 本地配置的Dplmn的个数 */
+    VOS_UINT16                         usNplmnListNum;                                       /* 本地配置的Nplmn的个数 */
+
+    /* DPLMN数据,每6个字节代表一个dplmn信息，第1-3个字节为sim卡格式plmn id，
+       第4-5字节为支持的接入技术(0x8000为支持w，0x4000为支持lte，0x0080为支持gsm)，第6字节为域信息:1(cs域注册成功)；2(ps域注册成功)；3(cs ps均注册成功)*/
+    VOS_UINT8                          aucDPlmnList[NAS_MMC_NVIM_MAX_CFG_DPLMN_DATA_EXTEND_LEN];
+
+    /* NPLMN数据,每6个字节代表一个nplmn信息，第1-3个字节为sim卡格式plmn id，
+       第4-5字节为支持的接入技术(0x8000为支持w，0x4000为支持lte，0x0080为支持gsm)，第6字节为域信息:1(cs域注册成功)；2(ps域注册成功)；3(cs ps均注册成功)*/
+    VOS_UINT8                          aucNPlmnList[NAS_MMC_NVIM_MAX_CFG_NPLMN_DATA_EXTEND_LEN];/* NPLMN数据*/
+}NAS_MMC_NVIM_CFG_DPLMN_NPLMN_INFO_OLD_STRU;
+/* Added by c00318887 for DPlmn扩容和优先接入HPLMN, 2015-5-28, end */
+
+
+typedef struct
+{
+    VOS_UINT16                         usCfgDplmnNplmnFlag;
+    VOS_UINT8                          ucCMCCHplmnNum;
+    VOS_UINT8                          aucCMCCHplmnList[NAS_MMC_NVIM_MAX_CFG_HPLMN_NUM];
+    VOS_UINT8                          ucUNICOMHplmnNum;
+    VOS_UINT8                          aucUNICOMHplmnList[NAS_MMC_NVIM_MAX_CFG_HPLMN_NUM];
+    VOS_UINT8                          ucCTHplmnNum;
+    VOS_UINT8                          aucCTHplmnList[NAS_MMC_NVIM_MAX_CFG_HPLMN_NUM];
+    VOS_UINT8                          aucReserve[3];
+}NAS_MMC_NVIM_CFG_DPLMN_NPLMN_FLAG_STRU;
+
+
+
 
 typedef struct
 {
@@ -516,17 +586,17 @@ typedef struct
 
 enum NAS_MMC_NVIM_RAT_FORBIDDEN_LIST_SWITCH_FLAG_ENUM
 {
-    NAS_MMC_NVIM_RAT_FORBIDDEN_LIST_SWITCH_INACTIVE                   = 0,           /* 功能未激活 */                     
-    NAS_MMC_NVIM_RAT_FORBIDDEN_LIST_SWITCH_BLACK                      = 1,           /* 开启黑名单功能 */                 
-    NAS_MMC_NVIM_RAT_FORBIDDEN_LIST_SWITCH_WHITE                      = 2,           /* 开启白名单功能 */ 
+    NAS_MMC_NVIM_RAT_FORBIDDEN_LIST_SWITCH_INACTIVE                   = 0,           /* 功能未激活 */
+    NAS_MMC_NVIM_RAT_FORBIDDEN_LIST_SWITCH_BLACK                      = 1,           /* 开启黑名单功能 */
+    NAS_MMC_NVIM_RAT_FORBIDDEN_LIST_SWITCH_WHITE                      = 2,           /* 开启白名单功能 */
     NAS_MMC_NVIM_RAT_FORBIDDEN_LIST_SWITCH_BUTT
 };
 typedef VOS_UINT8 NAS_MMC_NVIM_RAT_FORBIDDEN_LIST_SWITCH_FLAG_ENUM_UINT8;
 enum NAS_MMC_NVIM_PLATFORM_SUPPORT_RAT_ENUM
 {
-    NAS_MMC_NVIM_PLATFORM_SUPPORT_RAT_GERAN                   = 0,           /* GERAN */                     
-    NAS_MMC_NVIM_PLATFORM_SUPPORT_RAT_UTRAN                   = 1,           /* UTRAN包括WCDMA/TDS-CDMA */                 
-    NAS_MMC_NVIM_PLATFORM_SUPPORT_RAT_EUTRAN                  = 2,           /* E-UTRAN */ 
+    NAS_MMC_NVIM_PLATFORM_SUPPORT_RAT_GERAN                   = 0,           /* GERAN */
+    NAS_MMC_NVIM_PLATFORM_SUPPORT_RAT_UTRAN                   = 1,           /* UTRAN包括WCDMA/TDS-CDMA */
+    NAS_MMC_NVIM_PLATFORM_SUPPORT_RAT_EUTRAN                  = 2,           /* E-UTRAN */
     NAS_MMC_NVIM_PLATFORM_SUPPORT_RAT_BUTT
 };
 typedef VOS_UINT8 NAS_MMC_NVIM_PLATFORM_SUPPORT_RAT_ENUM_UINT8;
@@ -623,8 +693,8 @@ typedef struct
 enum NAS_NVIM_CHANGE_REG_REJ_CAUSE_TYPE_ENUM
 {
     NAS_NVIM_CHANGE_REG_REJ_CAUSE_TYPE_INACTIVE,      /* 功能不生效 */
-    NAS_NVIM_CHANGE_REG_REJ_CAUSE_TYPE_CS_PS,         /* 修改CS+PS的拒绝原因值 */                                         
-    NAS_NVIM_CHANGE_REG_REJ_CAUSE_TYPE_CS_ONLY,       /* 仅修改CS域的拒绝原因值 */                                     
+    NAS_NVIM_CHANGE_REG_REJ_CAUSE_TYPE_CS_PS,         /* 修改CS+PS的拒绝原因值 */
+    NAS_NVIM_CHANGE_REG_REJ_CAUSE_TYPE_CS_ONLY,       /* 仅修改CS域的拒绝原因值 */
     NAS_NVIM_CHANGE_REG_REJ_CAUSE_TYPE_PS_ONLY,       /* 仅修改PS域的拒绝原因值 */
     NAS_NVIM_CHANGE_REG_REJ_CAUSE_TYPE_BUTT
 };
@@ -638,6 +708,13 @@ typedef struct
     VOS_UINT8   ucPreferredRegRejCau_NOT_HPLMN_EHPLMN;         /* 非HPLMN/EHPLMN时使用的拒绝原因值 */
     VOS_UINT8   aucReserve[1];
 }NAS_NVIM_CHANGE_REG_REJECT_CAUSE_FLG_STRU;
+
+typedef struct
+{
+    VOS_UINT8   ucNoRetryRejectCauseNum;
+    VOS_UINT8   aucNoRetryRejectCause[NAS_NVIM_MAX_ROAMING_REJECT_NO_RETRY_CAUSE_NUM];
+    VOS_UINT8   aucReserve[3];
+}NAS_NVIM_ROAMINGREJECT_NORETYR_CFG_STRU;
 
 
 typedef struct
@@ -822,8 +899,8 @@ typedef struct
 {
     VOS_UINT32                  ulWcdmaBand;
     VOS_UINT32                  ulGsmBand;
-    VOS_UINT8                   aucUeSupportWcdmaBand[NVIM_MAX_FDD_FREQ_BANDS_NUM];
-    VOS_UINT8                   aucUeSupportGsmBand[NVIM_MAX_FDD_FREQ_BANDS_NUM];
+    VOS_UINT8                   aucReserved1[12];
+    VOS_UINT8                   aucReserved2[12];
     VOS_UINT8                   aucReserved[24];        /* 为保证nv长度一致保留 */
 }NVIM_UE_SUPPORT_FREQ_BAND_STRU;
 
@@ -1080,13 +1157,26 @@ typedef struct
 
 typedef struct
 {
-    VOS_UINT8                           ucActiveFLg;                             /* 该定时器是否使能 */
+    VOS_UINT8                           ucActiveFLg;                             /* 该定时器是否使能 */                       /* TD开始背景搜的次数 */
     VOS_UINT8                           aucRsv[3];
     VOS_UINT32                          ulFirstSearchTimeLen;                   /* high prio rat timer定时器第一次的时长 单位:秒 */
     VOS_UINT32                          ulFirstSearchTimeCount;                 /* high prio rat timer定时器第一次时长的限制搜索次数 */
     VOS_UINT32                          ulNonFirstSearchTimeLen;                /* high prio rat timer定时器非首次的时长 单位:秒 */
     VOS_UINT32                          ulRetrySearchTimeLen;                   /* high prio rat 搜被中止或不能立即发起重试的时长 单位:秒*/
+}NAS_MMC_NVIM_HIGH_PRIO_RAT_HPLMN_TIMER_INFO_STRU;
+typedef struct
+{
+    VOS_UINT8                           ucActiveFLg;                            /* 该定时器是否使能 */
+    VOS_UINT8                           ucTdThreshold;                          /* TD开始背景搜的次数 */
+    VOS_UINT8                           aucRsv[2];
+    VOS_UINT32                          ulFirstSearchTimeLen;                   /* high prio rat timer定时器第一次的时长 单位:秒 */
+    VOS_UINT32                          ulFirstSearchTimeCount;                 /* high prio rat timer定时器第一次时长的限制搜索次数 */
+    VOS_UINT32                          ulNonFirstSearchTimeLen;                /* high prio rat timer定时器非首次的时长 单位:秒 */
+    VOS_UINT32                          ulRetrySearchTimeLen;                   /* high prio rat 搜被中止或不能立即发起重试的时长 单位:秒*/
 }NAS_MMC_NVIM_HIGH_PRIO_RAT_HPLMN_TIMER_CFG_STRU;
+
+
+
 typedef struct
 {
     VOS_UINT8                           ucUltraFlashCsfbSupportFLg;                 /* 是否支持ultra flash csfb */
@@ -1097,6 +1187,53 @@ typedef struct
     VOS_UINT8                           uc3GPP2UplmnNotPrefFlg;                    /* 是否开启3GPP2 pref plmn */
     VOS_UINT8                           aucRsv[3];
 }NAS_MMC_NVIM_3GPP2_UPLMN_NOT_PREF_STRU;
+typedef struct
+{
+    VOS_UINT8                           ucHighPrioRatPlmnSrchFlg;                  /* 是否开启高优先级接入技术搜网 */
+    VOS_UINT8                           aucReserved1[3];
+}NAS_MMC_NVIM_SYSCFG_TRIGGER_PLMN_SEARCH_CFG_STRU;
+typedef struct
+{
+    VOS_UINT8                           ucRelPsSignalConFlg;/* 是否开启数据域网络防呆功能 */
+    VOS_UINT8                           aucReserved[3];
+    VOS_UINT32                          ulT3340Len;         /* 配置的GMM T3340的时长,单位:秒 */
+}NAS_MMC_NVIM_REL_PS_SIGNAL_CON_CFG_STRU;
+
+
+typedef struct
+{
+    VOS_UINT8                           ucHplmnInEplmnDisplayHomeFlg;
+    VOS_UINT8                           ucReserved1;
+    VOS_UINT8                           ucReserved2;
+    VOS_UINT8                           ucReserved3;
+}NAS_MMC_NVIM_ROAM_DISPLAY_CFG_STRU;
+
+
+typedef struct
+{
+    VOS_UINT16                          usMtCsfbPagingProcedureLen;
+    VOS_UINT8                           ucReserved1;
+    VOS_UINT8                           ucReserved2;
+}NAS_MMC_NVIM_PROTECT_MT_CSFB_PAGING_PROCEDURE_LEN_STRU;
+
+
+enum NAS_SMS_PS_CONCATENATE_ENUM
+{
+    NAS_SMS_PS_CONCATENATE_DISABLE      = 0,
+    NAS_SMS_PS_CONCATENATE_ENABLE,
+
+    NAS_SMS_PS_CONCATENATE_BUTT
+};
+typedef VOS_UINT8 NAS_SMS_PS_CONCATENATE_ENUM_UINT8;
+
+
+typedef struct
+{
+    NAS_SMS_PS_CONCATENATE_ENUM_UINT8   enSmsConcatenateFlag;
+    VOS_UINT8                           ucReserved1;
+    VOS_UINT8                           ucReserved2;
+    VOS_UINT8                           ucReserved3;
+} NAS_NV_SMS_PS_CTRL_STRU;
 
 /*****************************************************************************
   6 UNION

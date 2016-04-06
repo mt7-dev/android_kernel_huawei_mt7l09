@@ -31,7 +31,8 @@ ADS_TIMER_PRECISION_STRU                g_astAdsTmrPrecisionTbl[] =
     { TI_ADS_DSFLOW_STATS_1,            VOS_TIMER_NO_PRECISION },
     { TI_ADS_DL_ADQ_EMPTY,              VOS_TIMER_PRECISION_0  },
     { TI_ADS_DL_PROTECT,                VOS_TIMER_PRECISION_5  },
-    { TI_ADS_RPT_STATS_INFO,            VOS_TIMER_NO_PRECISION }
+    { TI_ADS_RPT_STATS_INFO,            VOS_TIMER_NO_PRECISION },
+    { TI_ADS_UL_DATA_STAT,              VOS_TIMER_NO_PRECISION }
 };
 
 
@@ -44,21 +45,23 @@ VOS_VOID  ADS_MNTN_TraceTimerOperation(
     VOS_UINT32                          ulPid,
     ADS_TIMER_ID_ENUM_UINT32            enTimerId,
     VOS_UINT32                          ulTimerLen,
-    ADS_TIMER_OPERATION_TYPE_ENUM_UINT8 enTimerAction
+    ADS_TIMER_OPERATION_TYPE_ENUM_UINT8 enTimerAction,
+    ADS_TIMER_STOP_CAUSE_ENUM_UINT8     enStopCause
 )
 {
     ADS_TIMER_INFO_STRU                 stMsg;
 
     PS_MEM_SET(&stMsg, 0x00, sizeof(ADS_TIMER_INFO_STRU));
 
-    stMsg.ulSenderCpuId   = VOS_LOCAL_CPUID;
-    stMsg.ulReceiverCpuId = VOS_LOCAL_CPUID;
-    stMsg.ulSenderPid     = ulPid;
-    stMsg.ulReceiverPid   = VOS_PID_TIMER;
-    stMsg.ulLength        = sizeof(ADS_TIMER_INFO_STRU) - VOS_MSG_HEAD_LENGTH;
-    stMsg.enTimerId       = enTimerId;
-    stMsg.ulTimerLen      = ulTimerLen;
-    stMsg.enTimerAction   = enTimerAction;
+    stMsg.ulSenderCpuId     = VOS_LOCAL_CPUID;
+    stMsg.ulReceiverCpuId   = VOS_LOCAL_CPUID;
+    stMsg.ulSenderPid       = ulPid;
+    stMsg.ulReceiverPid     = VOS_PID_TIMER;
+    stMsg.ulLength          = sizeof(ADS_TIMER_INFO_STRU) - VOS_MSG_HEAD_LENGTH;
+    stMsg.enTimerId         = enTimerId;
+    stMsg.ulTimerLen        = ulTimerLen;
+    stMsg.enTimerAction     = enTimerAction;
+    stMsg.enTimerStopCause  = enStopCause;
 
     OM_AcpuTraceMsgHook(&stMsg);
 
@@ -87,40 +90,18 @@ VOS_VOID ADS_DL_StartAdqEmptyTimer(VOS_VOID)
     ADS_TIMER_CTX_STRU                 *pstTiCtx;
     VOS_TIMER_PRECISION_ENUM_UINT32     enTmrPrecision;
     VOS_UINT32                          ulRslt;
-    VOS_UINT32                          i;
 
     pstTiCtx = ADS_GetTiCtx();
 
     /* 如果该定时器已经启动则直接返回 */
-    for (i = 0; i < ADS_MAX_TIMER_NUM; i++)
+    if (ADS_TIMER_STATUS_RUNNING == pstTiCtx[TI_ADS_DL_ADQ_EMPTY].enTimerStatus)
     {
-        if ( (ADS_TIMER_STATUS_RUNNING == pstTiCtx[i].enTimerStatus)
-          && (TI_ADS_DL_ADQ_EMPTY == pstTiCtx[i].enTimerId) )
-        {
-            ADS_NORMAL_LOG(ACPU_PID_ADS_DL, "ADS_DL_StartAdqEmptyTimer:timer is already start!");
-            return;
-        }
-    }
-
-    /* 找到一个空闲位置 */
-    for (i = 0; i < ADS_MAX_TIMER_NUM; i++)
-    {
-        if (ADS_TIMER_STATUS_STOP == pstTiCtx[i].enTimerStatus )
-        {
-            break;
-        }
-    }
-
-    /* 未找到空闲位置，无法保存该定时器信息，直接返回 */
-    if (i >= ADS_MAX_TIMER_NUM)
-    {
-        ADS_ERROR_LOG1(ACPU_PID_ADS_DL, "ADS_DL_StartAdqEmptyTimer:i is", i);
         return;
     }
 
     enTmrPrecision = ADS_GetTimerPrecision(TI_ADS_DL_ADQ_EMPTY);
 
-    ulRslt = VOS_StartCallBackRelTimer(&(pstTiCtx[i].hTimer),
+    ulRslt = VOS_StartCallBackRelTimer(&(pstTiCtx[TI_ADS_DL_ADQ_EMPTY].hTimer),
                                        ACPU_PID_ADS_DL,
                                        TI_ADS_DL_ADQ_EMPTY_LEN,
                                        TI_ADS_DL_ADQ_EMPTY,
@@ -135,8 +116,7 @@ VOS_VOID ADS_DL_StartAdqEmptyTimer(VOS_VOID)
         return;
     }
 
-    pstTiCtx[i].enTimerId     = TI_ADS_DL_ADQ_EMPTY;
-    pstTiCtx[i].enTimerStatus = ADS_TIMER_STATUS_RUNNING;
+    pstTiCtx[TI_ADS_DL_ADQ_EMPTY].enTimerStatus = ADS_TIMER_STATUS_RUNNING;
 
     return;
 }
@@ -148,40 +128,18 @@ VOS_VOID ADS_DL_StartProtectTimer(VOS_VOID)
     ADS_TIMER_CTX_STRU                 *pstTiCtx;
     VOS_TIMER_PRECISION_ENUM_UINT32     enTmrPrecision;
     VOS_UINT32                          ulRslt;
-    VOS_UINT32                          i;
 
     pstTiCtx = ADS_GetTiCtx();
 
     /* 如果该定时器已经启动则直接返回 */
-    for (i = 0; i < ADS_MAX_TIMER_NUM; i++)
+    if (ADS_TIMER_STATUS_RUNNING == pstTiCtx[TI_ADS_DL_PROTECT].enTimerStatus)
     {
-        if ( (ADS_TIMER_STATUS_RUNNING == pstTiCtx[i].enTimerStatus)
-          && (TI_ADS_DL_PROTECT == pstTiCtx[i].enTimerId) )
-        {
-            ADS_NORMAL_LOG(ACPU_PID_ADS_DL, "ADS_DL_StartProtectTimer:timer is already start!");
-            return;
-        }
-    }
-
-    /* 找到一个空闲位置 */
-    for (i = 0; i < ADS_MAX_TIMER_NUM; i++)
-    {
-        if (ADS_TIMER_STATUS_STOP == pstTiCtx[i].enTimerStatus )
-        {
-            break;
-        }
-    }
-
-    /* 未找到空闲位置，无法保存该定时器信息，直接返回 */
-    if (i >= ADS_MAX_TIMER_NUM)
-    {
-        ADS_ERROR_LOG1(ACPU_PID_ADS_DL, "ADS_DL_StartProtectTimer:i is", i);
         return;
     }
 
     enTmrPrecision = ADS_GetTimerPrecision(TI_ADS_DL_PROTECT);
 
-    ulRslt = VOS_StartCallBackRelTimer(&(pstTiCtx[i].hTimer),
+    ulRslt = VOS_StartCallBackRelTimer(&(pstTiCtx[TI_ADS_DL_PROTECT].hTimer),
                                        ACPU_PID_ADS_DL,
                                        TI_ADS_DL_PROTECT_LEN,
                                        TI_ADS_DL_PROTECT,
@@ -196,8 +154,7 @@ VOS_VOID ADS_DL_StartProtectTimer(VOS_VOID)
         return;
     }
 
-    pstTiCtx[i].enTimerId     = TI_ADS_DL_PROTECT;
-    pstTiCtx[i].enTimerStatus = ADS_TIMER_STATUS_RUNNING;
+    pstTiCtx[TI_ADS_DL_PROTECT].enTimerStatus = ADS_TIMER_STATUS_RUNNING;
 
     return;
 }
@@ -207,7 +164,6 @@ VOS_VOID  ADS_StartTimer(
     VOS_UINT32                          ulLen
 )
 {
-    VOS_UINT32                          i;
     VOS_UINT32                          ulRet;
     ADS_TIMER_CTX_STRU                 *pstTiCtx;
     VOS_TIMER_PRECISION_ENUM_UINT32     enTmrPrecision;
@@ -224,38 +180,22 @@ VOS_VOID  ADS_StartTimer(
         ulLen = VOS_TIMER_MAX_LENGTH - 1;
     }
 
+    /* 不在使用的定时器范围内 */
+    if (enTimerId >= ADS_MAX_TIMER_NUM)
+    {
+        return;
+    }
+
     pstTiCtx = ADS_GetTiCtx();
 
-    /* 如果该定时器已经启动则直接返回 */
-    for (i = 0; i < ADS_MAX_TIMER_NUM; i++)
+    if (ADS_TIMER_STATUS_RUNNING == pstTiCtx[enTimerId].enTimerStatus)
     {
-        if ((ADS_TIMER_STATUS_RUNNING == pstTiCtx[i].enTimerStatus)
-         && (enTimerId               == pstTiCtx[i].enTimerId))
-        {
-            ADS_NORMAL_LOG1(ACPU_PID_ADS_UL, "ADS_StartTimer:timer %d is already start!", enTimerId);
-            return;
-        }
-    }
-
-    /* 找到一个空闲位置 */
-    for (i = 0; i < ADS_MAX_TIMER_NUM; i++)
-    {
-        if (ADS_TIMER_STATUS_STOP == pstTiCtx[i].enTimerStatus )
-        {
-            break;
-        }
-    }
-
-    /* 未找到空闲位置，无法保存该定时器信息，直接返回 */
-    if (i >= ADS_MAX_TIMER_NUM)
-    {
-        ADS_ERROR_LOG1(ACPU_PID_ADS_UL, "ADS_StartTimer:i is",i);
         return;
     }
 
     enTmrPrecision = ADS_GetTimerPrecision(enTimerId);
 
-    ulRet = VOS_StartRelTimer(&(pstTiCtx[i].hTimer),
+    ulRet = VOS_StartRelTimer(&(pstTiCtx[enTimerId].hTimer),
                               ulPid,
                               ulLen,
                               enTimerId,
@@ -269,57 +209,48 @@ VOS_VOID  ADS_StartTimer(
         return;
     }
 
-    pstTiCtx[i].enTimerId     = enTimerId;
-    pstTiCtx[i].enTimerStatus = ADS_TIMER_STATUS_RUNNING;
+    pstTiCtx[enTimerId].enTimerStatus = ADS_TIMER_STATUS_RUNNING;
 
     /*勾包ADS_TIMER_INFO_STRU*/
-    ADS_MNTN_TraceTimerOperation(ulPid, enTimerId, ulLen, ADS_TIMER_OPERATION_START);
+    ADS_MNTN_TraceTimerOperation(ulPid, enTimerId, ulLen, ADS_TIMER_OPERATION_START, ADS_TIMER_STOP_CAUSE_ENUM_BUTT);
 
     return;
 }
 VOS_VOID ADS_StopTimer(
     VOS_UINT32                          ulPid,
-    ADS_TIMER_ID_ENUM_UINT32            enTimerId
+    ADS_TIMER_ID_ENUM_UINT32            enTimerId,
+    ADS_TIMER_STOP_CAUSE_ENUM_UINT8     enStopCause
 )
 {
-    VOS_UINT32                          i;
     ADS_TIMER_CTX_STRU                 *pstTiCtx;
 
     pstTiCtx = ADS_GetTiCtx();
 
-    /* 如果该定时器已经启动则直接返回 */
-    for (i = 0; i < ADS_MAX_TIMER_NUM; i++)
+    /* 不在使用的定时器范围内 */
+    if (enTimerId >= ADS_MAX_TIMER_NUM)
     {
-        if ((ADS_TIMER_STATUS_RUNNING == pstTiCtx[i].enTimerStatus)
-         && (enTimerId               == pstTiCtx[i].enTimerId))
-        {
-            break;
-        }
+        return;
     }
 
-    /* 未找到该定时器 */
-    if ( i >= ADS_MAX_TIMER_NUM)
+    if (ADS_TIMER_STATUS_RUNNING != pstTiCtx[enTimerId].enTimerStatus)
     {
         return;
     }
 
     /* 停止VOS定时器: 当定时器的指针已经为空的时候, 说明其已经停止或者超时 */
-    if (VOS_NULL_PTR != pstTiCtx[i].hTimer)
+    if (VOS_NULL_PTR != pstTiCtx[enTimerId].hTimer)
     {
-        VOS_StopRelTimer(&(pstTiCtx[i].hTimer));
+        VOS_StopRelTimer(&(pstTiCtx[enTimerId].hTimer));
     }
 
-    pstTiCtx[i].hTimer        = VOS_NULL_PTR;
-    pstTiCtx[i].enTimerId     = TI_ADS_TIMER_BUTT;
-    pstTiCtx[i].enTimerStatus = ADS_TIMER_STATUS_STOP;
+    pstTiCtx[enTimerId].hTimer        = VOS_NULL_PTR;
+    pstTiCtx[enTimerId].enTimerStatus = ADS_TIMER_STATUS_STOP;
 
     /*勾包ADS_TIMER_INFO_STRU*/
-    ADS_MNTN_TraceTimerOperation(ulPid, enTimerId, 0, ADS_TIMER_OPERATION_STOP);
+    ADS_MNTN_TraceTimerOperation(ulPid, enTimerId, 0, ADS_TIMER_OPERATION_STOP, enStopCause);
 
     return;
 }
-
-
 ADS_TIMER_STATUS_ENUM_UINT8 ADS_GetTimerStatus(
     VOS_UINT32                          ulPid,
     ADS_TIMER_ID_ENUM_UINT32            enTimerId
@@ -327,19 +258,14 @@ ADS_TIMER_STATUS_ENUM_UINT8 ADS_GetTimerStatus(
 {
     ADS_TIMER_CTX_STRU                 *pstTiCtx;
     ADS_TIMER_STATUS_ENUM_UINT8         enTimerStatus;
-    VOS_UINT32                          i;
 
     pstTiCtx  = ADS_GetTiCtx();
 
     enTimerStatus = ADS_TIMER_STATUS_STOP;
 
-    for (i = 0; i < ADS_MAX_TIMER_NUM; i++)
+    if (enTimerId < ADS_MAX_TIMER_NUM)
     {
-        if (enTimerId == pstTiCtx[i].enTimerId)
-        {
-            enTimerStatus = pstTiCtx[i].enTimerStatus;
-            break;
-        }
+        enTimerStatus = pstTiCtx[enTimerId].enTimerStatus;
     }
 
     return enTimerStatus;

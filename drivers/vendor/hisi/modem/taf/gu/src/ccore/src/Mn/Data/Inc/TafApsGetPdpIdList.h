@@ -199,6 +199,10 @@ VOS_VOID TAF_APS_GetPdpIdListWithL4aDeactivateInd(
     struct MsgCB                       *pstMsg,
     TAF_APS_PDPID_LIST_STRU            *pstPdpIdList
 );
+VOS_VOID TAF_APS_GetPdpIdListWithL4aSetupInd(
+    struct MsgCB                       *pstMsg,
+    TAF_APS_PDPID_LIST_STRU            *pstPdpIdList
+);
 VOS_VOID TAF_APS_GetPdpIdListWithL4aSetNdisConnCnf(
     struct MsgCB                       *pstMsg,
     TAF_APS_PDPID_LIST_STRU            *pstPdpIdList

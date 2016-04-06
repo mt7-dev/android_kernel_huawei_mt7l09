@@ -25,6 +25,7 @@
 *****************************************************************************/
 #include "v_id.h"
 #include "AtTypeDef.h"
+#include "MnClient.h"
 #include "TafApsApi.h"
 
 
@@ -47,6 +48,7 @@ extern "C" {
 
 /* PS域呼叫最大个数 */
 #define AT_PS_MAX_CALL_NUM              (3)
+
 
 #define AT_PS_RABID_OFFSET              (5)                 /* RABID偏移 */
 #define AT_PS_RABID_MAX_NUM             (11)                /* RABID数量 */
@@ -157,7 +159,8 @@ typedef struct
     VOS_UINT32                          bitOpIpv6SecDns   : 1;
     VOS_UINT32                          bitOpIpv6PriPCSCF : 1;
     VOS_UINT32                          bitOpIpv6SecPCSCF : 1;
-    VOS_UINT32                          bitOpIpv6Spare    : 28;
+    VOS_UINT32                          bitOpIpv6ThiPCSCF : 1;
+    VOS_UINT32                          bitOpIpv6Spare    : 27;
 
     VOS_UINT8                           ucRabId;                                /* RAB标识，取值范围:[5,15] */
     VOS_UINT8                           aucRsv[3];
@@ -167,6 +170,7 @@ typedef struct
     VOS_UINT8                           aucIpv6SecDNS[TAF_IPV6_ADDR_LEN];    /* 从 PDP上下文带来的IPV6副DNS长度，不包括":" */
     VOS_UINT8                           aucPrimPcscfAddr[TAF_IPV6_ADDR_LEN]; /* IPV6的主P-CSCF，主机序 */
     VOS_UINT8                           aucSecPcscfAddr[TAF_IPV6_ADDR_LEN];  /* IPV6的副P-CSCF，主机序 */
+    VOS_UINT8                           aucThiPcscfAddr[TAF_IPV6_ADDR_LEN];  /* IPV6的第三P-CSCF，主机序 */
 }AT_IPV6_DHCP_PARAM_STRU;
 
 /*****************************************************************************
@@ -183,7 +187,8 @@ typedef struct
     VOS_UINT32                          bitOpIpv4SecWINNS : 1;
     VOS_UINT32                          bitOpIpv4PriPCSCF : 1;
     VOS_UINT32                          bitOpIpv4Secpcscf : 1;
-    VOS_UINT32                          bitOpSpare        : 26;
+    VOS_UINT32                          bitOpIpv4Thipcscf : 1;
+    VOS_UINT32                          bitOpSpare        : 25;
 
     VOS_UINT8                           ucRabId;                                /* RAB标识，取值范围:[5,15] */
     VOS_UINT8                           aucRsv[3];
@@ -197,11 +202,9 @@ typedef struct
     VOS_UINT32                          ulIpv4PrimWINNS;                        /* IPV4的主WINNS，主机序 */
     VOS_UINT32                          ulIpv4SecWINNS;                         /* IPV4的副WINNS，主机序 */
     VOS_UINT32                          ulIpv4PrimPCSCF;                        /* IPV4的主P-CSCF，主机序 */
-    VOS_UINT32                          ulIpv4SecPCSCF;                         /* IPV4的副P-CSCF   ，主机序 */
+    VOS_UINT32                          ulIpv4SecPCSCF;                         /* IPV4的副P-CSCF，主机序 */
+    VOS_UINT32                          ulIpv4ThiPCSCF;                         /* IPV4的第三P-CSCF，主机序 */
 }AT_IPV4_DHCP_PARAM_STRU;
-
-
-
 typedef struct
 {
     AT_CLIENT_TAB_INDEX_UINT8           enPortIndex;
@@ -289,7 +292,6 @@ typedef struct
     AT_PS_SND_PDP_ACT_IND_FUNC          pSndPdpActInd;
 }AT_PS_SND_PDP_ACT_IND_STRU;
 
-
 /*消息处理函数指针*/
 typedef VOS_VOID (*AT_PS_SND_PDP_DEACT_IND_FUNC)(\
     VOS_UINT8                           ucCid, \
@@ -316,6 +318,7 @@ typedef struct
 typedef struct
 {
     VOS_UINT32                          ulCauseNum;
+    VOS_UINT8                           aucReserved[4];
     TAF_PS_CAUSE_ENUM_UINT32            aenPsCause[TAF_NV_IPV6_FALLBACK_EXT_CAUSE_MAX_NUM];
 } AT_PS_IPV6_BACKPROC_EXT_CAUSE_STRU;
 #endif
@@ -349,13 +352,13 @@ typedef struct
 {
 #if (FEATURE_ON == FEATURE_IPV6)
     VOS_UINT8                           ucIpv6Capability;
-    VOS_UINT8                           aucReserved1[3];
+    VOS_UINT8                           aucReserved1[7];
 
     /* 保存用户定制的用于回退处理的PS域原因值 */
     AT_PS_IPV6_BACKPROC_EXT_CAUSE_STRU  stIpv6BackProcExtCauseTbl;
 #endif
     VOS_UINT8                           ucSharePdpFlag;
-    VOS_UINT8                           aucReserved2[3];
+    VOS_UINT8                           aucReserved2[7];
 }AT_COMM_PS_CTX_STRU;
 typedef struct
 {

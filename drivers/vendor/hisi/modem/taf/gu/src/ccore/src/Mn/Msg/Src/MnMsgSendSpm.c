@@ -97,6 +97,44 @@ VOS_VOID TAF_MSG_SpmMsgReportInd(
 #endif
 
 
+VOS_VOID TAF_MSG_SendSpmMsgCheckResultInd(
+    MN_CLIENT_ID_T                      usClientId,
+    MN_OPERATION_ID_T                   ucOpId,
+    TAF_MSG_ERROR_ENUM_UINT32           enRslt
+)
+{
+    TAF_SPM_MSG_CHECK_RESULT_IND_STRU  *pstMsg = VOS_NULL_PTR;
+
+    pstMsg = (TAF_SPM_MSG_CHECK_RESULT_IND_STRU *)PS_ALLOC_MSG_WITH_HEADER_LEN(WUEPS_PID_TAF,
+                                                                         sizeof(TAF_SPM_MSG_CHECK_RESULT_IND_STRU));
+
+    if (VOS_NULL_PTR == pstMsg)
+    {
+        MN_WARN_LOG("TAF_MSG_SendSpmMsgCheckResultInd:ERROR: message alloctiaon fail!");
+        return;
+    }
+
+    PS_MEM_SET(((VOS_UINT8*)pstMsg) + VOS_MSG_HEAD_LENGTH,
+               0,
+               sizeof(TAF_SPM_MSG_CHECK_RESULT_IND_STRU) - VOS_MSG_HEAD_LENGTH);
+
+    pstMsg->ulSenderCpuId        = VOS_LOCAL_CPUID;
+    pstMsg->ulSenderPid          = WUEPS_PID_TAF;
+    pstMsg->ulReceiverCpuId      = VOS_LOCAL_CPUID;
+    pstMsg->ulReceiverPid        = WUEPS_PID_TAF;
+    pstMsg->ulMsgId              = ID_TAF_SPM_MSG_CHECK_RESULT_IND;
+
+    pstMsg->usClientId           = usClientId;
+    pstMsg->ucOpId               = ucOpId;
+    pstMsg->enRslt               = enRslt;
+
+    if ( VOS_OK != PS_SEND_MSG( WUEPS_PID_TAF, pstMsg ) )
+    {
+        MN_WARN_LOG( "TAF_MSG_SpmMsgReportInd:WARNING:SEND ID_TAF_SPM_MSG_REPORT_IND msg FAIL!" );
+    }
+
+    return;
+}
 
 
 #ifdef  __cplusplus

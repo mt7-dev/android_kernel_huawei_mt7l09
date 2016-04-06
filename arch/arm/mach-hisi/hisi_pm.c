@@ -31,7 +31,7 @@
 #include <linux/delay.h>
 #include <asm/tlbflush.h>
 #if defined(CONFIG_HI3630_LPM3_IPC)
-#include "hisi_ipc.h"
+#include "include/mach/hisi_ipc.h"
 #endif
 
 #define RES0_LOCK_OFFSET		(0x400)

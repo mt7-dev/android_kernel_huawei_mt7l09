@@ -742,7 +742,7 @@ VOS_VOID  NAS_ESM_ModifySdfQos
 {
     VOS_UINT32                          ulCnt           = NAS_ESM_NULL;
     NAS_ESM_SDF_CNTXT_INFO_STRU        *pstSdfCntxtInfo = VOS_NULL_PTR;
-    NAS_ESM_CONTEXT_LTE_QOS_STRU        stQosTemp;
+    NAS_ESM_CONTEXT_LTE_QOS_STRU        stQosTemp = {0};
     VOS_UINT8                           ucCidNum  = 0;
 
     /* 获得承载关联的CID数目 */

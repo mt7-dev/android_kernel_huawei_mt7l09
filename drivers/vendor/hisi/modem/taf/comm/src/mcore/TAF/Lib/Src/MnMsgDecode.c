@@ -44,9 +44,12 @@ typedef struct
 /*****************************************************************************
   5 函数实现
 *****************************************************************************/
+/*lint -e958*/
 
 
 /* MN_BcdToAsciiCode、MN_BcdNumberToAscii、MN_MSG_BcdAddrToAscii调整到TafStdlib.c中 */
+
+
 
 VOS_UINT32 MN_MSG_BcdAddrToAscii(
     MN_MSG_BCD_ADDR_STRU                *pstBcdAddr,
@@ -151,6 +154,106 @@ LOCAL VOS_UINT32 MSG_DecodeTimeStamp(
     *pulLen = MN_MSG_ABSOLUTE_TIMESTAMP_LEN;
     return MN_ERR_NO_ERROR;
 }
+
+
+/*****************************************************************************
+ 函 数 名  : MSG_ConvertBcdNumberToAscii
+ 功能描述  : 将BCD编码的号码转换成Ascii编码的号码
+ 输入参数  : pBcdNumber     - BCD号码
+             ucBcdLen       - BCD号码的长度
+ 输出参数  : pcAsciiNumber  - 转换得到的ASCII号码(以'\0'结尾)
+ 返 回 值  :
+ 调用函数  :
+ 被调函数  :
+
+ 修改历史      :
+  1.日    期   : 2015年10月05日
+    作    者   : f00317170
+    修改内容   : 新生成函数
+*****************************************************************************/
+VOS_UINT32  MSG_ConvertBcdNumberToAscii(
+    const VOS_UINT8                    *pucBcdNumber,
+    VOS_UINT8                           ucBcdLen,
+    VOS_CHAR                           *pcAsciiNumber
+)
+{
+    VOS_CHAR                            cAsciiNumber;
+    VOS_UINT8                           ucLoop;
+    VOS_UINT8                           ucLen;
+    VOS_UINT8                           ucBcdCode;
+    VOS_UINT32                          ulRet;
+
+    if ((VOS_NULL_PTR == pucBcdNumber)
+     || (VOS_NULL_PTR == pcAsciiNumber))
+    {
+        return MN_ERR_NULLPTR;
+    }
+
+    /*整理号码字符串，去除无效的0XFF数据*/
+    while (ucBcdLen > 1)
+    {
+        if (0xFF == pucBcdNumber[ucBcdLen - 1])
+        {
+            ucBcdLen--;
+        }
+        else
+        {
+            break;
+        }
+    }
+
+    /*判断pucBcdAddress所指向的字符串的最后一个字节的高位是否为1111，
+    如果是，说明号码位数为奇数，否则为偶数*/
+    if ((pucBcdNumber[ucBcdLen - 1] & 0xF0) == 0xF0)
+    {
+        ucLen = (VOS_UINT8)((ucBcdLen * 2) - 1);
+    }
+    else
+    {
+        ucLen = (VOS_UINT8)(ucBcdLen * 2);
+    }
+
+    /*解析号码*/
+	
+    for (ucLoop = 0; ucLoop < ucLen; ucLoop++)
+    {
+        /*判断当前解码的是奇数位号码还是偶数位号码，从0开始，是偶数*/
+        if (1 == (ucLoop % 2))
+        {
+            /*如果是奇数位号码，则取高4位的值*/
+            ucBcdCode = ((pucBcdNumber[(ucLoop / 2)] >> 4) & 0x0F);
+        }
+        else
+        {
+            /*如果是偶数位号码，则取低4位的值*/
+            ucBcdCode = (pucBcdNumber[(ucLoop / 2)] & 0x0F);
+        }
+
+        /* 将二进制数字转换成Ascii码形式, 无效填充值字符F用字符‘0’替代 */
+    	cAsciiNumber = 0;
+		
+        ulRet = TAF_STD_ConvertBcdCodeToAscii(ucBcdCode, &cAsciiNumber);
+		if (MN_ERR_NO_ERROR != ulRet)
+		{
+			if (MN_ERR_INVALID_BCD != ulRet)
+			{
+				return ulRet;
+			}
+			
+			MN_WARN_LOG("MSG_ConvertBcdNumberToAscii: The BCD number is invalid.");
+			cAsciiNumber    = '0';
+		}
+		
+		pcAsciiNumber[ucLoop] = cAsciiNumber;
+		
+	}
+
+    pcAsciiNumber[ucLoop] = '\0';      /*字符串末尾为0*/
+
+    return MN_ERR_NO_ERROR;
+}
+
+
 VOS_UINT32 MN_MSG_DecodeAddress(
     const VOS_UINT8                     *pucAddr,
     VOS_BOOL                            bRpAddr,
@@ -175,7 +278,9 @@ VOS_UINT32 MN_MSG_DecodeAddress(
     if (VOS_TRUE == bRpAddr)
     {
         /*从长度中去除号码类型及编码类型的长度(1 OCTET)*/
+        /*lint -e961*/
         ucBcdLen                = pucAddr[ulPos++];
+        /*lint +e961*/
         /*地址长度为0直接返回*/
         if (0 == ucBcdLen)
         {
@@ -190,7 +295,7 @@ VOS_UINT32 MN_MSG_DecodeAddress(
             return MN_ERR_CLASS_SMS_INVALID_SCADDR;
         }
 
-        if((pucAddr[(ulPos + 1) + (ucBcdLen - 1)] & 0xF0) != 0xF0)
+        if((pucAddr[(VOS_ULONG)((ulPos + 1) + (ucBcdLen - (VOS_UINT8)1))] & 0xF0) != 0xF0)
         {
             pstAsciiAddr->ulLen = ucBcdLen * 2;
         }
@@ -201,7 +306,9 @@ VOS_UINT32 MN_MSG_DecodeAddress(
     }
     else
     {
+        /*lint -e961*/
         pstAsciiAddr->ulLen     = pucAddr[ulPos++];
+        /*lint +e961*/
         if (0 == pstAsciiAddr->ulLen)
         {
             pstAsciiAddr->enNumPlan = pucAddr[ulPos] &  0x0f;
@@ -260,6 +367,12 @@ VOS_UINT32 MN_MSG_DecodeAddress(
         ulRet = TAF_STD_ConvertBcdNumberToAscii(&(pucAddr[ulPos]),
                                     ucBcdLen,
                                     (VOS_CHAR *)pstAsciiAddr->aucAsciiNum);
+		if (MN_ERR_INVALID_BCD == ulRet)
+		{
+			ulRet = MSG_ConvertBcdNumberToAscii(&(pucAddr[ulPos]),
+                                                    ucBcdLen,
+                                                    (VOS_CHAR *)pstAsciiAddr->aucAsciiNum);
+		}
     }
     *pulLen = 2 + ucBcdLen;
 
@@ -890,7 +1003,7 @@ LOCAL VOS_UINT8 MSG_DecodeUdhVarPic(
     /*Refer to 23040 9.2.3.24.10.1.9*/
     VOS_UINT8                           ucPos               = 1;
     VOS_UINT8                           ucIeiLen            = 0;
-    VOS_UINT32                          ucPduNum;
+    VOS_UINT32                          ulPduNum;
 
     if ((VOS_NULL_PTR == pucUdh)
      || (VOS_NULL_PTR == pstVarPic))
@@ -898,7 +1011,7 @@ LOCAL VOS_UINT8 MSG_DecodeUdhVarPic(
         MN_ERR_LOG("MSG_DecodeUdhVarPic: Parameter of the function is null.");
         return MN_ERR_NULLPTR;
     }
-
+    /*lint -e961*/
     ucIeiLen               = pucUdh[ucPos++];
     if (ucIeiLen < MN_MSG_UDH_VAR_PIC_HEADER_LEN)
     {
@@ -909,13 +1022,14 @@ LOCAL VOS_UINT8 MSG_DecodeUdhVarPic(
     /*Horizontal dimension of the picture: 一行中象素个数需要转换成占用OCTET数，1OCTET可表示8个象素*/
     pstVarPic->ucHorDim    = (VOS_UINT8)(pucUdh[ucPos++] * MN_MSG_PIXELS_IN_A_OCTET);
     pstVarPic->ucVertDim   = pucUdh[ucPos++];
-    ucPduNum = (pstVarPic->ucHorDim/MN_MSG_PIXELS_IN_A_OCTET) * pstVarPic->ucVertDim;
-    if ((ucIeiLen - MN_MSG_UDH_VAR_PIC_HEADER_LEN) != ucPduNum)
+    /*lint +e961*/
+    ulPduNum = (pstVarPic->ucHorDim/MN_MSG_PIXELS_IN_A_OCTET) * pstVarPic->ucVertDim;
+    if ((ucIeiLen - MN_MSG_UDH_VAR_PIC_HEADER_LEN) != ulPduNum)
     {
         MN_WARN_LOG("MSG_DecodeUdhVarPic: invalid IE length.");
         return 0;
     }
-    PS_MEM_CPY(pstVarPic->aucData, &(pucUdh[ucPos]), ucPduNum);
+    PS_MEM_CPY(pstVarPic->aucData, &(pucUdh[ucPos]), ulPduNum);
 
     ucIeiLen += 2;
 
@@ -1548,7 +1662,7 @@ LOCAL VOS_UINT32 MSG_DecodeUserData_ForUsimMsg(
     pstUserData->ucNumofHeaders = 0;
     PS_MEM_SET(pstUserData->astUserDataHeader,
                           0x00,
-                          sizeof(MN_MSG_USER_HEADER_TYPE_STRU) * MN_MSG_MAX_UDH_NUM);
+                          (VOS_SIZE_T)(sizeof(MN_MSG_USER_HEADER_TYPE_STRU) * MN_MSG_MAX_UDH_NUM));
     ucUdl  = pucUserData[ulPos];
     if (0 == ucUdl)
     {

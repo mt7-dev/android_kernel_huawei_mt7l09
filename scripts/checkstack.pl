@@ -90,7 +90,6 @@ my (@stack, $re, $dre, $x, $xs, $funcre);
 	} elsif ($arch =~ /^s390x?$/) {
 		#   11160:       a7 fb ff 60             aghi   %r15,-160
 		# or
-		#  100092:	 e3 f0 ff c8 ff 71	 lay	 %r15,-56(%r15)
 		$re = qr/.*(?:lay|ag?hi).*\%r15,-(([0-9]{2}|[3-9])[0-9]{2})
 		      (?:\(\%r15\))?$/ox;
 	} elsif ($arch =~ /^sh64$/) {

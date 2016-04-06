@@ -834,7 +834,7 @@ extern SI_STK_IMSICHG_MATCH_STRU        gstSTKIMSIMatch; /* NVÏî¶Á³öµÄIMSIÇÐ»»Æ¥
 
 extern SI_STK_ENVELOPE_CMD_STRU         gstSTKEnvelopeCmd; /* »º´æEnvelopeÃüÁî */
 
-extern VOS_UINT32                       gulSTKApiSmId;
+extern VOS_SEM                          gulSTKApiSmId;
 
 extern SI_STK_TAGLIST_STRU              gastSTKDecodeList[24];
 

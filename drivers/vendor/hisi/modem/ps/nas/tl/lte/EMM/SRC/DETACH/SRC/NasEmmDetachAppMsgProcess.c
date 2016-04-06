@@ -167,7 +167,9 @@ VOS_UINT32    NAS_EMM_MsRegSsAnyMsgAppStopReq(
 
     /* 设置App消息的相关参数 */
     NAS_EMM_SaveAppMsgPara(pstAttStopReq->ulMsgId,pstAttStopReq->ulOpId);
-
+    /* 保存关机标识,提供给LRRC,用于LRRC判断空口是否是关机detach 该标志
+       在LMM收到LRRC的power off cnf、等待power off cnf超时或者开机时清除(即置为0) */
+    NAS_LMM_SetEmmInfoLtePowerOffFlag(NAS_EMM_YES);
     if(NAS_EMM_SUCC != NAS_EMM_JudgeBarType(NAS_EMM_BAR_TYPE_MO_SIGNAL))
     {
         /*启动定时器TI_NAS_EMM_PTL_SWITCH_OFF_TIMER*/
@@ -1358,7 +1360,9 @@ VOS_UINT32    NAS_EMM_MsTauInitSsWtCnTauCnfMsgAppDetachReq( VOS_UINT32  ulMsgId,
         if ((NAS_EMM_COLLISION_SERVICE == NAS_EMM_TAU_GetEmmCollisionCtrl())
             && (VOS_TRUE == NAS_EMM_SER_IsCsfbProcedure()))
         {
-            NAS_EMM_MmSendCsfbSerEndInd(MM_LMM_CSFB_SERVICE_RSLT_FAILURE);
+            NAS_EMM_SetCsfbProcedureFlag(PS_FALSE);
+
+            NAS_EMM_MmSendCsfbSerEndInd(MM_LMM_CSFB_SERVICE_RSLT_MMC_DETACH_FAIL, NAS_LMM_CAUSE_NULL);
             NAS_EMM_TAU_SaveEmmCollisionCtrl(NAS_EMM_COLLISION_NONE);
         }
         if ((NAS_EMM_COLLISION_SERVICE == NAS_EMM_TAU_GetEmmCollisionCtrl())
@@ -1383,7 +1387,9 @@ VOS_UINT32    NAS_EMM_MsTauInitSsWtCnTauCnfMsgAppDetachReq( VOS_UINT32  ulMsgId,
 
         if (VOS_TRUE == NAS_EMM_SER_IsCsfbProcedure())
         {
-            NAS_EMM_MmSendCsfbSerEndInd(MM_LMM_CSFB_SERVICE_RSLT_FAILURE);
+            NAS_EMM_SetCsfbProcedureFlag(PS_FALSE);
+
+            NAS_EMM_MmSendCsfbSerEndInd(MM_LMM_CSFB_SERVICE_RSLT_MMC_DETACH_FAIL, NAS_LMM_CAUSE_NULL);
             NAS_EMM_TAU_SaveEmmCollisionCtrl(NAS_EMM_COLLISION_NONE);
         }
 
@@ -1522,7 +1528,9 @@ VOS_UINT32    NAS_EMM_MsSerInitSsWtCnSerCnfMsgAppDetachReq( VOS_UINT32  ulMsgId,
 
     if (VOS_TRUE == NAS_EMM_SER_IsCsfbProcedure())
     {
-        NAS_EMM_MmSendCsfbSerEndInd(MM_LMM_CSFB_SERVICE_RSLT_FAILURE);
+        NAS_EMM_SetCsfbProcedureFlag(PS_FALSE);
+
+        NAS_EMM_MmSendCsfbSerEndInd(MM_LMM_CSFB_SERVICE_RSLT_MMC_DETACH_FAIL, NAS_LMM_CAUSE_NULL);
     }
 
     /* 判断是否为IMSI DETACH */

@@ -66,7 +66,7 @@ enum MMA_MN_MSG_TYPE_ENUM
     ID_TAF_SPM_MSG_REPORT_IND                               ,                                 /* _H2ASN_MsgChoice TAF_SPM_MSG_REPORT_IND_STRU */
     ID_TAF_SPM_SMMA_RSP                                     ,                                 /* _H2ASN_MsgChoice TAF_SPM_SMMA_RSP_STRU */
 
-
+    ID_TAF_SPM_MSG_CHECK_RESULT_IND,                                            /* _H2ASN_MsgChoice TAF_SPM_MSG_CHECK_RESULT_IND_STRU */
     /* 最后一条消息 */
     ID_MMA_MSG_TYPE_BUTT
 };
@@ -416,6 +416,17 @@ typedef struct
 {
     VOS_MSG_HEADER
     VOS_UINT32                          ulMsgId;
+    TAF_MSG_ERROR_ENUM_UINT32           enRslt;                                 /* 检查结果 */
+    MN_CLIENT_ID_T                      usClientId;                             /* Client ID */
+    MN_OPERATION_ID_T                   ucOpId;                                 /* Operation ID */
+    VOS_UINT8                           aucReserve[1];                          /* 保留位 */
+}TAF_SPM_MSG_CHECK_RESULT_IND_STRU;
+
+
+typedef struct
+{
+    VOS_MSG_HEADER
+    VOS_UINT32                          ulMsgId;
     MN_CLIENT_ID_T                      clientId;                               /* Client ID */
     MN_OPERATION_ID_T                   opId;                                   /* Operation ID */
     VOS_UINT8                           aucReserve[1];                         /* 保留 */
@@ -757,6 +768,19 @@ VOS_UINT32  MN_CALL_JudgeMtCallType(
     const NAS_CC_IE_BC_OCTET5A_STRU     *pstOctet5a,
     MN_CALL_TYPE_ENUM_U8                *penCallType
 );
+
+
+#if (FEATURE_ON == FEATURE_IMS)
+VOS_VOID TAF_SndMmaImsSrvInfoNotify(
+    VOS_UINT8                           ucImsCallFlg
+);
+#endif
+#if (FEATURE_ON == FEATURE_PTM)
+VOS_VOID TAF_SndAcpuOmFaultErrLogInd(
+    VOS_VOID                           *pData,
+    VOS_UINT32                          ulDataLen
+);
+#endif
 
 #if ((VOS_OS_VER == VOS_WIN32) || (VOS_OS_VER == VOS_NUCLEUS))
 #pragma pack()

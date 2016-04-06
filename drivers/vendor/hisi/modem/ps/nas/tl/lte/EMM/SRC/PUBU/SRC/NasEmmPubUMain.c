@@ -527,10 +527,6 @@ NAS_EMM_ACT_STRU    g_astEmmMsRegInitSsWaitCnAttachCnfTable[] =
                     NAS_EMM_CN_MT_AUTH_REJ,
                     NAS_EMM_MsRegInitSsWtCnAttCnfMsgAuthRej),
 
-    NAS_EMM_ACT_TBL_ITEM(PS_PID_MM,
-                    ID_NAS_LMM_INTRA_AUTH_FAIL,
-                    NAS_EMM_MsRegInitSsWtCnAttCnfMsgAuthFail),
-
     /*============= MRRC ==========================================*/
     NAS_EMM_ACT_CN_TBL_ITEM(PS_PID_ERRC,
                     NAS_EMM_CN_MT_IDEN_REQ,
@@ -741,10 +737,6 @@ NAS_EMM_ACT_STRU    g_astEmmMsRegSsNormalServiceTable[] =
                     NAS_EMM_CN_MT_AUTH_REJ,
                     NAS_EMM_MsRegSsNmlSrvMsgAuthRej),
 
-    NAS_EMM_ACT_TBL_ITEM(PS_PID_MM,
-                    ID_NAS_LMM_INTRA_AUTH_FAIL,
-                    NAS_EMM_MsRegSsNmlSrvMsgAuthFail),
-
     /*============= AUTH ==========================================*/
     /*============= MRRC ==========================================*/
     NAS_EMM_ACT_CN_TBL_ITEM(PS_PID_ERRC,
@@ -899,10 +891,6 @@ NAS_EMM_ACT_STRU    g_astEmmMsRegSsLimitServiceTable[] =
     NAS_EMM_ACT_CN_TBL_ITEM(PS_PID_ERRC,
                     NAS_EMM_CN_MT_AUTH_REJ,
                     NAS_EMM_MsRegSsLimitedSrvMsgAuthRej),
-
-    NAS_EMM_ACT_TBL_ITEM(PS_PID_MM,
-                    ID_NAS_LMM_INTRA_AUTH_FAIL,
-                    NAS_EMM_MsRegSsLimitedSrvMsgAuthFail),
 
     /*============= AUTH ==========================================*/
     /*============= MRRC ==========================================*/
@@ -1168,6 +1156,10 @@ NAS_EMM_ACT_STRU    g_astEmmMsRegSsRegAttemptingToUpdateMMTable[] =
     NAS_EMM_ACT_TBL_ITEM(PS_PID_TC,
                     ID_EMM_ETC_DATA_REQ,
                     NAS_EMM_MsRegSsRegAttemptUpdateMmMsgTcDataReq),
+    /* 解决Reg Update MM下不处理CS Paging问题 */
+    NAS_EMM_ACT_TBL_ITEM(WUEPS_PID_MM,
+                    ID_MM_LMM_CSFB_SERVICE_START_NOTIFY,
+                    NAS_EMM_MsRegSsAttempToUpdateMmMsgMmCsfbSerStartNotify),
     /*============= GUTI ==========================================*/
     /*============= IDEN ==========================================*/
     /*============= AUTH ==========================================*/
@@ -1182,10 +1174,6 @@ NAS_EMM_ACT_STRU    g_astEmmMsRegSsRegAttemptingToUpdateMMTable[] =
     NAS_EMM_ACT_CN_TBL_ITEM(PS_PID_ERRC,
                     NAS_EMM_CN_MT_AUTH_REJ,
                     NAS_EMM_MsRegSsRegAttemptUpdateMmMsgAuthRej),
-
-    NAS_EMM_ACT_TBL_ITEM(PS_PID_MM,
-                    ID_NAS_LMM_INTRA_AUTH_FAIL,
-                    NAS_EMM_MsRegSsRegAttemptUpdateMmMsgAuthFail),
 
     /*============= AUTH ==========================================*/
     /*============= MRRC ==========================================*/
@@ -1276,9 +1264,6 @@ NAS_EMM_ACT_STRU    g_astEmmMsRegSsRegImsiDetachWaitCnDetachCnfTable[] =
                     NAS_EMM_CN_MT_AUTH_REJ,
                     NAS_EMM_MsRegImsiDetachWtCnDetCnfMsgAuthRej),
 
-    NAS_EMM_ACT_TBL_ITEM(PS_PID_MM,
-                    ID_NAS_LMM_INTRA_AUTH_FAIL,
-                    NAS_EMM_MsRegImsiDetachWtCnDetCnfMsgAuthFail),
     NAS_EMM_ACT_TBL_ITEM(WUEPS_PID_MMC,
                     ID_MMC_LMM_ATTACH_REQ,
                     NAS_EMM_MsRegImsiDetachWtCnDetCnfMsgAppAttachReq),
@@ -1676,10 +1661,6 @@ NAS_EMM_ACT_STRU    g_astEmmMsTauInitSsWaitCnTauCnfTable[] =
                     NAS_EMM_CN_MT_AUTH_REJ,
                     NAS_EMM_MsTauInitSsWaitCnCnfMsgAuthRej),
 
-    NAS_EMM_ACT_TBL_ITEM(PS_PID_MM,
-                     ID_NAS_LMM_INTRA_AUTH_FAIL,
-                     NAS_EMM_MsTauInitSsWaitCnCnfMsgAuthFail),
-
     /*============= AUTH ==========================================*/
     /*============= MRRC ==========================================*/
 
@@ -1761,10 +1742,6 @@ NAS_EMM_ACT_STRU    g_astEmmMsSerInitSsWaitCnSerCnfTable[] =
                     NAS_EMM_CN_MT_AUTH_REJ,
                     NAS_EMM_MsSerInitSsWaitCnSerCnfMsgAuthRej),
 
-    NAS_EMM_ACT_TBL_ITEM(PS_PID_MM,
-                    ID_NAS_LMM_INTRA_AUTH_FAIL,
-                    NAS_EMM_MsSerInitSsWaitCnSerCnfMsgAuthFail),
-
     /*============= MRRC ==========================================*/
     NAS_EMM_ACT_CN_TBL_ITEM(PS_PID_ERRC,
                     NAS_EMM_CN_MT_GUTI_CMD,
@@ -1842,10 +1819,6 @@ NAS_EMM_ACT_STRU    g_astEmmMsDeregInitSsWaitCnDetachCnfTable[] =
     NAS_EMM_ACT_CN_TBL_ITEM(PS_PID_ERRC,
                     NAS_EMM_CN_MT_AUTH_REJ,
                     NAS_EMM_MsDrgInitSsWtCnDetCnfMsgAuthRej),
-
-    NAS_EMM_ACT_TBL_ITEM(PS_PID_MM,
-                    ID_NAS_LMM_INTRA_AUTH_FAIL,
-                    NAS_EMM_MsDrgInitSsWtCnDetCnfMsgAuthFail),
 };
 
 /* EMM_MS_RRC_CONN_EST_INIT =================================================*/
@@ -2432,6 +2405,25 @@ VOS_VOID*  LRRC_LNAS_GetMmInfo( LRRC_LNAS_INFO_TYPE_ENUM_UINT32  enInfoType )
              return &gstRrcNasPlmnId;
         }
     }
+    else if(LRRC_LNAS_INFO_TYPE_RPLMN == enInfoType)
+    {
+        if((NAS_EMM_AD_BIT_SLCT == NAS_EMM_GetLVRTaiOpBit()) &&
+            (VOS_FALSE == NAS_LMM_CheckPlmnIsInvalid(NAS_LMM_GetEmmInfoLastRegPlmnAddr())))
+        {
+            NAS_LMM_PUBM_LOG_INFO("Nas_GetLteInfo:RPLMN VALID");
+            NAS_LMM_MEM_CPY(            &gstRrcNasPlmnId,
+                                        NAS_LMM_GetEmmInfoLastRegPlmnAddr(),
+                                        sizeof(NAS_MM_PLMN_ID_STRU));
+        }
+        else
+        {
+            NAS_LMM_MEM_CPY(            &gstRrcNasPlmnId,
+                                        &(pstMmNetInfo->stPresentNetId.stPlmnId),
+                                        sizeof(NAS_MM_PLMN_ID_STRU));
+        }
+
+        return &gstRrcNasPlmnId;
+    }
     else
     {
     }
@@ -2497,6 +2489,30 @@ VOS_UINT32 NAS_EMM_ReadAccClassMask( VOS_VOID )
 }
 
 
+VOS_UINT32 NAS_LMM_GetLteGutiInfo
+(
+    NAS_LMM_INFO_STRU             *pstLmmInfo,
+    const NAS_LMM_UEID_STRU             *pstMmUeId
+)
+{
+    VOS_UINT32 ulRslt;
+    if (NAS_EMM_BIT_SLCT == pstMmUeId->bitOpGuti)
+    {
+        NAS_LMM_PUBM_LOG_INFO("Nas_GetLteInfo:GUTI VALID");
+        NAS_LMM_MEM_CPY(             &pstLmmInfo->u.stGuti,
+                                    &pstMmUeId->stGuti,
+                                    sizeof(NAS_LMM_GUTI_STRU));
+
+        ulRslt = MMC_LMM_SUCC;
+    }
+    else
+    {
+        ulRslt = MMC_LMM_FAIL;
+    }
+    return ulRslt;
+
+}
+
 MMC_LMM_RESULT_ID_ENUM_UINT32  Nas_GetLteInfo
 (
     NAS_LMM_INFO_TYPE_ENUM_UINT32  ulInfoType,
@@ -2523,19 +2539,7 @@ MMC_LMM_RESULT_ID_ENUM_UINT32  Nas_GetLteInfo
 
     if (NAS_LMM_GUTI == ulInfoType)
     {
-        if (NAS_EMM_BIT_SLCT == pstMmUeId->bitOpGuti)
-        {
-            NAS_LMM_PUBM_LOG_INFO("Nas_GetLteInfo:GUTI VALID");
-            NAS_LMM_MEM_CPY(             &pstLmmInfo->u.stGuti,
-                                        &pstMmUeId->stGuti,
-                                        sizeof(NAS_LMM_GUTI_STRU));
-
-            ulRslt = MMC_LMM_SUCC;
-        }
-        else
-        {
-            ulRslt = MMC_LMM_FAIL;
-        }
+        ulRslt = NAS_LMM_GetLteGutiInfo(pstLmmInfo,pstMmUeId);
 
     }
     else if (NAS_LMM_FORB_TAI_ROAM_LIST == ulInfoType)
@@ -2613,8 +2617,9 @@ MMC_LMM_RESULT_ID_ENUM_UINT32  Nas_GetLteInfo
 MMC_LMM_RESULT_ID_ENUM_UINT32  Nas_GetEutraUeCap(
     MMC_LMM_PLMN_ID_STRU stPlmnId, VOS_UINT16 *pusEUeCapDataLen, VOS_UINT8 *pucEUeCapData)
 {
-    LRRC_LNAS_PLMN_ID_STRU   stRrcNasPlmnId =  {0};
+    LRRC_LNAS_PLMN_ID_STRU   stRrcNasPlmnId;
 
+    PS_MEM_SET(&stRrcNasPlmnId, 0, sizeof(LRRC_LNAS_PLMN_ID_STRU));
     stRrcNasPlmnId.aucPlmnId[0] = stPlmnId.aucPlmnId[0];
     stRrcNasPlmnId.aucPlmnId[1] = stPlmnId.aucPlmnId[1];
     stRrcNasPlmnId.aucPlmnId[2] = stPlmnId.aucPlmnId[2];
@@ -2647,6 +2652,12 @@ VOS_UINT32  Nas_GetLrrcConnFailureFlag( VOS_VOID )
     }
 }
 /* lihong00150010 rrc connection failure end */
+
+
+VOS_UINT8 LRRC_LNAS_GetPowerOffFlag(VOS_VOID)
+{
+    return NAS_LMM_GetEmmInfoLtePowerOffFlag();
+}
 /*lint +e961*/
 /*lint +e960*/
 #ifdef __cplusplus

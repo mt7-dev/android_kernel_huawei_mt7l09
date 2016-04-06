@@ -9,7 +9,9 @@
 
 #include    "vos.h"
 
-
+#if (FEATURE_ON == FEATURE_PTM)
+#include "ImsaErrlogInterface.h"
+#endif
 /*****************************************************************************
   1.1 Cplusplus Announce
 *****************************************************************************/
@@ -44,8 +46,15 @@ extern "C" {
 #define IMSA_CONN_REG_PARA_INVALID      (0)
 #define IMSA_CONN_REG_PARA_VALID        (1)
 
+#define IMSA_IPV4_ADDR_LEN		(4)
+#define IMSA_IPV6_ADDR_LEN		(16)
 
+#define IMSA_IPV6_ADDR_PREFIX_LEN		(8)
 
+#define IMSA_IPV6_ADDR_PREFIX_BIT_LEN		(64)
+
+#define IMSA_IPV6_STRING_PREFIX_LEN		(46)
+#define IMSA_IPV4_STRING_PREFIX_LEN		(15)
 /*****************************************************************************
   3 Massage Declare
 *****************************************************************************/
@@ -85,6 +94,11 @@ enum    IMSA_INTRA_MSG_ID_ENUM
 
     /* 勾到HIDS上显示NIC PDP INFO */
     ID_IMSA_NIC_PDP_INFO_IND            = 0x220,                /* _H2ASN_MsgChoice IMSA_PRINT_NIC_PDP_INFO_STRU */
+
+    /* zhaochen 00308719 begin for HIFI mailbox full reset 2015-11-09 */
+    /* 够到HIDS显示HIFI控制丢包情况 */
+    ID_IMSA_HIFI_DATA_INFO_IND          = 0x221,                /* _H2ASN_MsgChoice IMSA_HIFI_DATA_INFO_IND_STRU */
+    /* zhaochen 00308719 end for HIFI mailbox full reset 2015-11-09 */
 
     ID_IMSA_INTRA_MSG_ID_ENUM_BUTT
 };
@@ -168,6 +182,18 @@ enum IMSA_IP_TYPE_ENUM
 typedef VOS_UINT8 IMSA_IP_TYPE_ENUM_UINT8;
 
 
+enum IMSA_PF_TRANS_DIRECTION_ENUM
+{
+    IMSA_PF_TRANS_DIRECTION_PRE_REL7     = 0x00,             /* 0 - Pre-Release 7 TFT filter (see 3GPP TS 24.008 [8], table 10.5.162) */
+    IMSA_PF_TRANS_DIRECTION_UPLINK       = 0x01,             /* 1 - Uplink */
+    IMSA_PF_TRANS_DIRECTION_DOWNLINK     = 0x02,             /* 2 - Downlink */
+    IMSA_PF_TRANS_DIRECTION_BIDIRECTION  = 0x03,             /* 3 - Birectional (Up & Downlink) (default if omitted) */
+
+    IMSA_PF_TRANS_DIRECTION_BUTT         = 0xFF
+};
+typedef VOS_UINT8 IMSA_PF_TRANS_DIRECTION_ENUM_UINT8;
+
+
 enum IMSA_CONN_TYPE_ENUM
 {
     IMSA_CONN_TYPE_NORMAL               = 0,    /* 正常连接 */
@@ -210,6 +236,7 @@ enum    IMSA_RESULT_ACTION_ENUM
     IMSA_RESULT_ACTION_REG_WITH_CURRENT_ADDR_PAIR,      /**< 发起注册并使用当前地址 */
     IMSA_RESULT_ACTION_REG_WITH_NEXT_ADDR_PAIR,         /**< 发起注册并使用下一组未使用地址对 */
     IMSA_RESULT_ACTION_REG_RESTORATION,                 /**< 需要主控模块进行restoration流程 */
+    IMSA_RESULT_ACTION_REG_LOCAL_DEREG,                 /**< 仅修改注册状态为DEREG */
     IMSA_RESULT_ACTION_BUTT
 };
 typedef VOS_UINT32 IMSA_RESULT_ACTION_ENUM_UINT32;
@@ -247,6 +274,34 @@ enum IMSA_CONN_SIP_PDP_TYPE_ENUM
 typedef VOS_UINT32  IMSA_CONN_SIP_PDP_TYPE_ENUM_UINT32;
 
 /*****************************************************************************
+    枚举名    : IMSA_CONN_MEDIA_PDP_TYPE_ENUM
+    枚举说明  : 媒体承载类型
+*****************************************************************************/
+enum IMSA_CONN_MEDIA_PDP_TYPE_ENUM
+{
+    IMSA_CONN_MEDIA_PDP_TYPE_VOICE               = 0,                /**< 语音承载 */
+    IMSA_CONN_MEDIA_PDP_TYPE_VIDEO               = 1,                /**< 视频承载 */
+    IMSA_CONN_MEDIA_PDP_TYPE_OTHERS              = 2,
+
+    IMSA_CONN_MEDIA_PDP_TYPE_BUTT
+};
+typedef VOS_UINT32  IMSA_CONN_MEDIA_PDP_TYPE_ENUM_UINT32;
+
+
+/*****************************************************************************
+    枚举名    : IMSA_CONN_MODIFY_TYPE_ENUM
+    枚举说明  : 承载MODIFY类型
+*****************************************************************************/
+enum IMSA_CONN_MODIFY_TYPE_ENUM
+{
+    IMSA_CONN_MODIFY_TYPE_REG_PARA_INVALID  = 0,                /**< 注册参数失效 */
+    IMSA_CONN_MODIFY_TYPE_PCSCF_INVALID     = 1,                /**< P-CSCF地址失效 */
+
+    IMSA_CONN_MODIFY_TYPE_BUTT
+};
+typedef VOS_UINT32  IMSA_CONN_MODIFY_TYPE_ENUM_UINT32;
+
+/*****************************************************************************
     枚举名    : IMSA_PCSCF_SRC_TYPE
     枚举说明  : PCSCF地址来源类型
 *****************************************************************************/
@@ -277,8 +332,11 @@ typedef VOS_UINT8  IMSA_SRV_TYPE_ENUM_UINT8;
 *****************************************************************************/
 enum    IMSA_CALL_TYPE_ENUM
 {
-    IMSA_CALL_TYPE_NORMAL               = 0,                        /**< 普通呼叫 */
-    IMSA_CALL_TYPE_EMC                  = 1,                        /**< 紧急呼叫 */
+    IMSA_CALL_TYPE_VOICE    = 0,      /* Voice only call */
+	IMSA_CALL_TYPE_VIDEO_TX = 1,      /* PS Video telephony call: one way TX video,Two way audio */
+    IMSA_CALL_TYPE_VIDEO_RX = 2,      /* Video telephony call: ony way RX video,two way audio */
+    IMSA_CALL_TYPE_VIDEO    = 3,      /* video call */    
+    IMSA_CALL_TYPE_EMC      = 9,      /* emergency call */
     IMSA_CALL_TYPE_BUTT
 };
 typedef VOS_UINT8 IMSA_CALL_TYPE_ENUM_UINT8;
@@ -428,8 +486,9 @@ typedef struct
 
     IMSA_CONN_TYPE_ENUM_UINT32              enConnType;
     IMSA_CONN_SIP_PDP_TYPE_ENUM_UINT32      enSipPdpType;   /*0信令，1数据*/
-} IMSA_CONN_SETUP_IND_STRU;
+    IMSA_CONN_MEDIA_PDP_TYPE_ENUM_UINT32    enMediaPdpType; /* 媒体承载的类型 */
 
+} IMSA_CONN_SETUP_IND_STRU;
 
 /*****************************************************************************
  结构名    : IMSA_CONN_REL_REQ_STRU
@@ -471,12 +530,14 @@ typedef struct
     VOS_MSG_HEADER
     VOS_UINT32                              ulMsgId;
 
-    VOS_UINT32                              bitOpRegParaValidFlag   : 1;
-    VOS_UINT32                              bitSpare                : 31;
+    VOS_UINT32                              bitOpModifyType         : 1;
+    VOS_UINT32                              bitOpMediaModifyType    :1;
+    VOS_UINT32                              bitSpare                : 30;
 
     IMSA_CONN_TYPE_ENUM_UINT32              enConnType;
     IMSA_CONN_SIP_PDP_TYPE_ENUM_UINT32      enSipPdpType;/*0信令，1数据*/
-    VOS_UINT32                              ulRegParaValidFlag;/*0失效，1有效 */
+    IMSA_CONN_MEDIA_PDP_TYPE_ENUM_UINT32    enMediaPdpType; /* 媒体承载的类型 */
+    IMSA_CONN_MODIFY_TYPE_ENUM_UINT32       enModifyType;
 } IMSA_CONN_MODIFY_IND_STRU;
 
 
@@ -570,6 +631,19 @@ typedef struct
 }IMSA_INTRA_MSG;
 
 
+/* zhaochen 00308719 begin for HIFI mailbox full reset 2015-11-09 */
+typedef struct
+{
+    VOS_MSG_HEADER
+    VOS_UINT32                          ulMsgId;
+    VOS_UINT32                          ulDataLoseNum;
+    VOS_UINT32                          ulTotalDataLoseNum;
+    VOS_UINT32                          ulDataBufferNum;
+    VOS_UINT32                          ulTotalDataBufferNum;
+
+}IMSA_HIFI_DATA_INFO_IND_STRU;
+/* zhaochen 00308719 end for HIFI mailbox full reset 2015-11-09 */
+
 /*****************************************************************************
   6 UNION
 *****************************************************************************/
@@ -588,7 +662,7 @@ typedef struct
  * @retval 返回结果是0，表示Control可以提供正常服务，Call可以直接打电话
  * @retval 返回结果是1，表示不能提供正常服务，打电话失败
  */
-extern VOS_UINT32 IMSA_StartImsNormalService(VOS_VOID);
+extern VOS_UINT32 IMSA_StartImsNormalService( IMSA_CALL_TYPE_ENUM_UINT8 enCallType);
 
 /**
  * \brief 控制管理模块提供给呼叫模块的API, Call模块在打紧急电话时调用
@@ -611,7 +685,8 @@ extern VOS_UINT32 IMSA_StartImsEmergService
  */
 extern VOS_VOID IMSA_ProcCallResourceIsReady
 (
-    IMSA_CONN_TYPE_ENUM_UINT32              enConnType
+    IMSA_CONN_TYPE_ENUM_UINT32              enConnType,
+    IMSA_CONN_MEDIA_PDP_TYPE_ENUM_UINT32    enMediaPdpType
 );
 
 /**
@@ -732,7 +807,8 @@ extern VOS_UINT32 IMSA_RegGetRegedPara
 (
     IMSA_REG_TYPE_ENUM_UINT8            ulRegType,
     VOS_CHAR                           *pacUeAddr,
-    VOS_CHAR                           *pacPcscfAddr
+    VOS_CHAR                           *pacPcscfAddr,
+    IMSA_IP_TYPE_ENUM_UINT8            *penIptype
 );
 
 
@@ -779,7 +855,37 @@ extern VOS_UINT32 IMSA_SRV_IsConningRegState(VOS_UINT8 ucIsEmc);
 extern VOS_VOID IMSA_CONN_UpdateNicPdpInfo( VOS_VOID );
 
 
+extern VOS_UINT32 IMSA_CONN_HasActiveVoicePdp
+(
+    VOS_VOID
+);
+extern VOS_UINT32 IMSA_CONN_HasActiveVideoPdp
+(
+    VOS_VOID
+);
 
+
+extern VOS_UINT32 IMSA_IsCallConnExist(VOS_VOID);
+extern VOS_UINT32 IMSA_IsSmsConnExist(VOS_VOID);
+extern VOS_UINT32 IMSA_IsSsConnExist(VOS_VOID);
+
+extern VOS_VOID IMSA_CMCCDeregProc(VOS_VOID);
+extern VOS_UINT32 IMSA_RegAddrPairMgrGetCurrent(IMSA_REG_TYPE_ENUM_UINT8 ulRegType,
+                                             VOS_CHAR  *pacUeAddr,
+                                             VOS_CHAR  *pacPcscfAddr);
+
+#if (FEATURE_ON == FEATURE_PTM)
+extern VOS_VOID IMSA_RegErrRecord
+(
+    IMSA_ERR_LOG_REG_FAIL_REASON_ENUM_UINT8 enRegFailReason
+);
+extern VOS_VOID IMSA_PdnRejErrRecord
+(
+    IMSA_ERR_LOG_PDNREJ_CAUSE_ENUM_UINT32   enPdnConnRejCause
+);
+#endif
+extern VOS_UINT32 IMSA_IsImsEmcServiceEstablishSucc(VOS_VOID);
+extern VOS_VOID IMSA_StopImsEmcService(VOS_VOID);
 
 /*****************************************************************************
   9 OTHERS

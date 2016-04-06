@@ -1,10 +1,11 @@
 
+#include <bsp_pm.h>
 #include <bsp_reset.h>
 #include <hi_cipher.h>
 #include <hi_ipf.h>
 #include <socp_balong.h>
 #include "reset_balong.h"
-
+#include "bsp_pmu_hi6561.h"
 /*lint --e{666} */
 
 u32 print_sw = 1;
@@ -627,10 +628,14 @@ void bsp_modem_master_enter_idle(void)
     (void)ccpu_reset_ipf_and_wait_idle();
     (void)ccpu_reset_bbp_and_wait_idle();
     ccpu_reset_bbe16_sysbus();
+	
+	bsp_pastar_leakage_bugfix();/*¹æ±ÜPASTARÂ©µçbug*/
 
     *(u32 *)STAMP_RESET_MASTER_IDLE_QUIT = bsp_get_slice_value();
     return;
 }
+
+
 static void reset_stamp_addr_value(void)
 {
     *(u32 *)STAMP_RESET_BASE_ADDR = 0xcccccccc;
@@ -655,11 +660,16 @@ static void reset_stamp_addr_value(void)
 }
 void FIQ_IntHandle(void)
 {
-    reset_stamp_addr_value();
-	bsp_modem_master_enter_idle();
-	bsp_ipc_int_send(IPC_CORE_ACORE, g_reset_ctrl.ipc_send_irq_in_idle);
-    g_reset_ctrl.fiq_cnt++;
+	g_reset_ctrl.fiq_cnt++;
     *(u32 *)(STAMP_RESET_FIQ_COUNT) = g_reset_ctrl.fiq_cnt;
+	writel(0x0,GIC_CPU_BASE);
+    reset_stamp_addr_value();
+	if(!pm_in_waiting_pd()){
+	bsp_modem_master_enter_idle();
+	}
+	bsp_ipc_int_send(IPC_CORE_ACORE, g_reset_ctrl.ipc_send_irq_in_idle);
+	g_reset_ctrl.fiq_out++;
+	writel(g_reset_ctrl.fiq_out, STAMP_RESET_FIQ_OUT_COUNT);
 	return;
 }
 
@@ -692,6 +702,8 @@ s32 bsp_reset_init(void)
 	if (!bsp_reset_ccore_is_reboot())
 	{
 		g_reset_ctrl.fiq_cnt = 0;
+		g_reset_ctrl.fiq_out = 0;
+		memset((void*)STAMP_RESET_FIQ_OUT_COUNT, 0, 4);
         *(u32 *)(STAMP_RESET_FIQ_COUNT) = 0;
         *(u32 *)(STAMP_RESET_IDLE_FAIL_COUNT) = 0;
 	}
@@ -700,7 +712,8 @@ s32 bsp_reset_init(void)
         reset_print_err("master enter idle fail cnt: 0x%x\n", *(u32 *)(STAMP_RESET_IDLE_FAIL_COUNT));
     }
 	g_reset_ctrl.fiq_cnt = *(u32 *)(STAMP_RESET_FIQ_COUNT);
-	reset_print_err("master enter fiq cnt: %d\n", g_reset_ctrl.fiq_cnt);
+	g_reset_ctrl.fiq_out = readl(STAMP_RESET_FIQ_OUT_COUNT);
+	reset_print_err("master enter fiq cnt:%d, out_fiq_cnt:%d\n", g_reset_ctrl.fiq_cnt, g_reset_ctrl.fiq_out);
 
 	g_reset_ctrl.state = 1;
 	reset_print_err("ok\n");

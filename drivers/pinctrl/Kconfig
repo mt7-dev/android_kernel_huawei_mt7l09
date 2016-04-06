@@ -221,6 +221,11 @@ config PINCTRL_S3C64XX
 	depends on ARCH_S3C64XX
 	select PINCTRL_SAMSUNG
 
+config PINCTRL_HI6402
+	bool "Hisilicon hi6402 codec chip pinctrl driver"
+	select PINMUX
+	select PINCONF
+
 source "drivers/pinctrl/mvebu/Kconfig"
 source "drivers/pinctrl/sh-pfc/Kconfig"
 source "drivers/pinctrl/spear/Kconfig"

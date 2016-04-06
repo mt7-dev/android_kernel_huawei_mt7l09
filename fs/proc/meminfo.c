@@ -15,12 +15,13 @@
 #include <asm/page.h>
 #include <asm/pgtable.h>
 #include "internal.h"
-#include <linux/hisi_ion.h>
 
-/* used memory of reserved */
+#ifdef CONFIG_ARCH_HI3630
 extern unsigned long hisi_used_reserved_memory_size;
 extern unsigned long hisi_total_reserved_memory_size;
 extern unsigned long hisi_unused_reserved_memory_size;
+extern hisi_ionsysinfo(struct sysinfo *si);
+#endif
 
 void __attribute__((weak)) arch_report_meminfo(struct seq_file *m)
 {
@@ -31,9 +32,13 @@ static int meminfo_proc_show(struct seq_file *m, void *v)
 	struct sysinfo i;
 	unsigned long committed;
 	unsigned long allowed;
-	struct vmalloc_info vmi;
+	struct vmalloc_info vmi, vmif;
 	long cached;
+	long available;
+	unsigned long pagecache;
+	unsigned long wmark_low = 0;
 	unsigned long pages[NR_LRU_LISTS];
+	struct zone *zone;
 	int lru;
 	unsigned long used_reserve_memory;
 
@@ -43,9 +48,10 @@ static int meminfo_proc_show(struct seq_file *m, void *v)
 #define K(x) ((x) << (PAGE_SHIFT - 10))
 	si_meminfo(&i);
 	si_swapinfo(&i);
-	//k3 add
-	hisi_ionsysinfo(&i);
 
+#ifdef CONFIG_ARCH_HI3630
+	hisi_ionsysinfo(&i);
+#endif
 	committed = percpu_counter_read_positive(&vm_committed_as);
 	allowed = ((totalram_pages - hugetlb_total_pages())
 		* sysctl_overcommit_ratio / 100) + total_swap_pages;
@@ -56,21 +62,55 @@ static int meminfo_proc_show(struct seq_file *m, void *v)
 		cached = 0;
 
 	get_vmalloc_info(&vmi);
+	get_vmalloc_info_filtered(&vmif, VM_ALLOC);
 
 	for (lru = LRU_BASE; lru < NR_LRU_LISTS; lru++)
 		pages[lru] = global_page_state(NR_LRU_BASE + lru);
 
-	/* add reserved ram to /proc/meminfo */
+	for_each_zone(zone)
+		wmark_low += zone->watermark[WMARK_LOW];
+
+	/*
+	 * Estimate the amount of memory available for userspace allocations,
+	 * without causing swapping.
+	 *
+	 * Free memory cannot be taken below the low watermark, before the
+	 * system starts swapping.
+	 */
+#ifdef CONFIG_ARCH_HI3630
 	i.totalram += hisi_total_reserved_memory_size >> (PAGE_SHIFT);
 	i.totalhigh += hisi_total_reserved_memory_size >> (PAGE_SHIFT);
 	i.freeram += hisi_unused_reserved_memory_size >> (PAGE_SHIFT);
 	used_reserve_memory = hisi_used_reserved_memory_size >> (PAGE_SHIFT);
+#endif
+	available = i.freeram - wmark_low;
+
+	/*
+	 * Not all the page cache can be freed, otherwise the system will
+	 * start swapping. Assume at least half of the page cache, or the
+	 * low watermark worth of cache, needs to stay.
+	 */
+	pagecache = pages[LRU_ACTIVE_FILE] + pages[LRU_INACTIVE_FILE];
+	pagecache -= min(pagecache / 2, wmark_low);
+	available += pagecache;
+
+	/*
+	 * Part of the reclaimable slab consists of items that are in use,
+	 * and cannot be freed. Cap this estimate at the low watermark.
+	 */
+	available += global_page_state(NR_SLAB_RECLAIMABLE) -
+		     min(global_page_state(NR_SLAB_RECLAIMABLE) / 2, wmark_low);
+
+	if (available < 0)
+		available = 0;
+
 	/*
 	 * Tagged format, for easy grepping and expansion.
 	 */
 	seq_printf(m,
 		"MemTotal:       %8lu kB\n"
 		"MemFree:        %8lu kB\n"
+		"MemAvailable:   %8lu kB\n"
 		"Buffers:        %8lu kB\n"
 		"Cached:         %8lu kB\n"
 		"SwapCached:     %8lu kB\n"
@@ -116,6 +156,7 @@ static int meminfo_proc_show(struct seq_file *m, void *v)
 		"Committed_AS:   %8lu kB\n"
 		"VmallocTotal:   %8lu kB\n"
 		"VmallocUsed:    %8lu kB\n"
+		"VmallocFilt:    %8lu kB\n"
 		"VmallocChunk:   %8lu kB\n"
 #ifdef CONFIG_MEMORY_FAILURE
 		"HardwareCorrupted: %5lu kB\n"
@@ -126,6 +167,7 @@ static int meminfo_proc_show(struct seq_file *m, void *v)
 		,
 		K(i.totalram),
 		K(i.freeram),
+		K(available),
 		K(i.bufferram),
 		K(cached),
 		K(total_swapcache_pages()),
@@ -178,6 +220,7 @@ static int meminfo_proc_show(struct seq_file *m, void *v)
 		K(committed),
 		(unsigned long)VMALLOC_TOTAL >> 10,
 		vmi.used >> 10,
+		vmif.used >> 10,
 		vmi.largest_chunk >> 10
 #ifdef CONFIG_MEMORY_FAILURE
 		,atomic_long_read(&num_poisoned_pages) << (PAGE_SHIFT - 10)

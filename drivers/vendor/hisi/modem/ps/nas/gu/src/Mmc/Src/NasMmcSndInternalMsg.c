@@ -394,6 +394,83 @@ VOS_VOID  NAS_MMC_SndInterSkipSearchWIndMsg(VOS_VOID)
 
     return;
 }
+VOS_VOID  NAS_MMC_SndInterSkipSearchTdsIndMsg(VOS_VOID)
+{
+    NAS_MMCMMC_INTER_SKIP_SEARCH_TDS_IND_STRU              *pstInternalMsg = VOS_NULL_PTR;
+
+    /* 从内部消息队列中获取一个还没有使用的空间 */
+    pstInternalMsg  = (NAS_MMCMMC_INTER_SKIP_SEARCH_TDS_IND_STRU *)NAS_MML_GetIntMsgSendBuf(sizeof(NAS_MMCMMC_INTER_SKIP_SEARCH_TDS_IND_STRU));
+
+    if ( VOS_NULL_PTR == pstInternalMsg)
+    {
+        return;
+    }
+
+    pstInternalMsg->MsgHeader.ulSenderCpuId   = VOS_LOCAL_CPUID;
+    pstInternalMsg->MsgHeader.ulSenderPid     = WUEPS_PID_MMC;
+    pstInternalMsg->MsgHeader.ulReceiverCpuId = VOS_LOCAL_CPUID;
+    pstInternalMsg->MsgHeader.ulReceiverPid   = WUEPS_PID_MMC;
+    pstInternalMsg->MsgHeader.ulMsgName       = MMCMMC_INTER_SKIP_SEARCH_TDS_IND;
+    pstInternalMsg->MsgHeader.ulLength        = sizeof(NAS_MMCMMC_INTER_SKIP_SEARCH_TDS_IND_STRU) - VOS_MSG_HEAD_LENGTH;
+
+    PS_MEM_SET(pstInternalMsg->aucReserved, 0x00, sizeof(pstInternalMsg->aucReserved));
+
+    NAS_MML_SndInternalMsg(pstInternalMsg);
+
+    return;
+}
+VOS_VOID  NAS_MMC_SndInterAbortUtranCtrlPlmnSearchReqMsg(VOS_VOID)
+{
+    NAS_MMCMMC_INTER_ABORT_UTRAN_CTRL_PLMN_SEARCH_REQ_STRU *pstInternalMsg = VOS_NULL_PTR;
+
+    /* 从内部消息队列中获取一个还没有使用的空间 */
+    pstInternalMsg  = (NAS_MMCMMC_INTER_ABORT_UTRAN_CTRL_PLMN_SEARCH_REQ_STRU *)NAS_MML_GetIntMsgSendBuf(sizeof(NAS_MMCMMC_INTER_ABORT_UTRAN_CTRL_PLMN_SEARCH_REQ_STRU));
+
+    if ( VOS_NULL_PTR == pstInternalMsg)
+    {
+        return;
+    }
+
+    pstInternalMsg->MsgHeader.ulSenderCpuId   = VOS_LOCAL_CPUID;
+    pstInternalMsg->MsgHeader.ulSenderPid     = WUEPS_PID_MMC;
+    pstInternalMsg->MsgHeader.ulReceiverCpuId = VOS_LOCAL_CPUID;
+    pstInternalMsg->MsgHeader.ulReceiverPid   = WUEPS_PID_MMC;
+    pstInternalMsg->MsgHeader.ulMsgName       = MMCMMC_INTER_ABORT_UTRAN_CTRL_PLMN_SEARCH_REQ;
+    pstInternalMsg->MsgHeader.ulLength        = sizeof(NAS_MMCMMC_INTER_ABORT_UTRAN_CTRL_PLMN_SEARCH_REQ_STRU) - VOS_MSG_HEAD_LENGTH;
+
+    PS_MEM_SET(pstInternalMsg->aucReserved, 0x00, sizeof(pstInternalMsg->aucReserved));
+
+    NAS_MML_SndInternalMsg(pstInternalMsg);
+
+    return;
+}
+VOS_VOID  NAS_MMC_SndInterAbortUtranCtrlPlmnSearchCnfMsg(VOS_VOID)
+{
+    NAS_MMCMMC_INTER_ABORT_UTRAN_CTRL_PLMN_SEARCH_CNF_STRU *pstInternalMsg = VOS_NULL_PTR;
+
+    /* 从内部消息队列中获取一个还没有使用的空间 */
+    pstInternalMsg  = (NAS_MMCMMC_INTER_ABORT_UTRAN_CTRL_PLMN_SEARCH_CNF_STRU *)NAS_MML_GetIntMsgSendBuf(sizeof(NAS_MMCMMC_INTER_ABORT_UTRAN_CTRL_PLMN_SEARCH_CNF_STRU));
+
+    if ( VOS_NULL_PTR == pstInternalMsg)
+    {
+        return;
+    }
+
+    pstInternalMsg->MsgHeader.ulSenderCpuId   = VOS_LOCAL_CPUID;
+    pstInternalMsg->MsgHeader.ulSenderPid     = WUEPS_PID_MMC;
+    pstInternalMsg->MsgHeader.ulReceiverCpuId = VOS_LOCAL_CPUID;
+    pstInternalMsg->MsgHeader.ulReceiverPid   = WUEPS_PID_MMC;
+    pstInternalMsg->MsgHeader.ulMsgName       = MMCMMC_INTER_ABORT_UTRAN_CTRL_PLMN_SEARCH_CNF;
+    pstInternalMsg->MsgHeader.ulLength        = sizeof(NAS_MMCMMC_INTER_ABORT_UTRAN_CTRL_PLMN_SEARCH_CNF_STRU) - VOS_MSG_HEAD_LENGTH;
+
+    PS_MEM_SET(pstInternalMsg->aucReserved, 0x00, sizeof(pstInternalMsg->aucReserved));
+
+    NAS_MML_SndInternalMsg(pstInternalMsg);
+
+    return;
+}
+
+
 
 
 VOS_VOID  NAS_MMC_SndBgPlmnSearchRslt(

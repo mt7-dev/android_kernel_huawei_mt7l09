@@ -2341,6 +2341,31 @@ VOS_VOID  NAS_ESM_SaveNwModEpsbReqInfo
                         &pstMsgIE->stApnAmbrInfo,
                         sizeof(NAS_ESM_CONTEXT_APN_AMBR_STRU));
     }
+
+    /* 检查如果携带P-CSCF地址，则覆盖式保存 */
+    if( NAS_ESM_OP_TRUE == pstMsgIE->bitOpPco )
+    {
+        if (0 != pstMsgIE->stPcoInfo.ucIpv4PcscfNum)
+        {
+            pstEpsbCntxtInfo->bitOpPco = NAS_ESM_OP_TRUE;
+            /* 记录修改后的IPV4 P-CSCF地址个数 */
+            pstEpsbCntxtInfo->stPcoInfo.ucIpv4PcscfNum = pstMsgIE->stPcoInfo.ucIpv4PcscfNum;
+            NAS_ESM_MEM_CPY(&pstEpsbCntxtInfo->stPcoInfo.astIpv4Pcscf[0],
+                            &pstMsgIE->stPcoInfo.astIpv4Pcscf[0],
+                            sizeof(NAS_ESM_IPV4_ADDR_STRU) * NAS_ESM_MAX_PCSCF_NUM);
+
+        }
+
+        if (0 != pstMsgIE->stPcoInfo.ucIpv6PcscfNum)
+        {
+            pstEpsbCntxtInfo->bitOpPco = NAS_ESM_OP_TRUE;
+            /* 记录修改后的IPV6 P-CSCF地址个数 */
+            pstEpsbCntxtInfo->stPcoInfo.ucIpv6PcscfNum = pstMsgIE->stPcoInfo.ucIpv6PcscfNum;
+            NAS_ESM_MEM_CPY(&pstEpsbCntxtInfo->stPcoInfo.astIpv6Pcscf[0],
+                            &pstMsgIE->stPcoInfo.astIpv6Pcscf[0],
+                            sizeof(NAS_ESM_IPV6_ADDR_STRU) * NAS_ESM_MAX_PCSCF_NUM);
+        }
+    }
 }
 
 /*****************************************************************************
@@ -3597,6 +3622,109 @@ VOS_VOID  NAS_ESM_SaveNwModDediEpsbReplacePf
     NAS_ESM_ModulateSdfQos(ulStateTblIndex);
 }
 
+
+VOS_VOID  NAS_ESM_SaveNwModDediEpsbCreatPf
+(
+    const  NAS_ESM_NW_MSG_STRU          *pstMsgIE,
+    VOS_UINT32                           ulStateTblIndex
+)
+{   VOS_UINT32                          ulRslt              = NAS_ESM_NULL;
+    VOS_UINT32                          ulCidTmp            = NAS_ESM_NULL;
+    NAS_ESM_SDF_CNTXT_INFO_STRU        *pstSdfCntxtInfoTmp  = VOS_NULL_PTR;
+    APP_ESM_EPS_QOS_INFO_STRU          *pstEpsQosInfo       = VOS_NULL_PTR;
+    APP_ESM_EPS_QOS_INFO_STRU          *pstSdfQosInfo       = VOS_NULL_PTR;
+    NAS_ESM_STATE_INFO_STRU            *pstStateAddr     = VOS_NULL_PTR;
+    NAS_ESM_SDF_CNTXT_INFO_STRU        *pstSdfCntxtInfo  = VOS_NULL_PTR;
+    NAS_ESM_EPSB_CNTXT_INFO_STRU       *pstEpsbCntxtInfo = VOS_NULL_PTR;
+
+    pstStateAddr = NAS_ESM_GetStateTblAddr(ulStateTblIndex);
+
+    pstSdfCntxtInfo = NAS_ESM_GetSdfCntxtInfo(pstStateAddr->ulCid);
+
+    pstEpsbCntxtInfo = NAS_ESM_GetEpsbCntxtInfoAddr(pstMsgIE->ucEpsbId);
+
+    /* 若空口消息中携带的预添加的packet filter在承载下已全部存在或部分存在,
+       且已存在的packet filter所属的sdf与动态表中存储的用户预操作的sdf不一致，
+       则删除已存在的packet filter所属的sdf并更新承载QOS信息 */
+    ulRslt = NAS_ESM_QuerySdfId(pstMsgIE, &ulCidTmp);
+    if((NAS_ESM_QUERY_CID_RSLT_ALL_UNFOUND != ulRslt)
+        && (ulCidTmp != pstStateAddr->ulCid))
+    {
+        NAS_ESM_INFO_LOG("NAS_ESM_SaveNwModDediEpsbCreatPf:packet filter already exist in other sdf!");
+
+        pstSdfCntxtInfoTmp = NAS_ESM_GetSdfCntxtInfo(ulCidTmp);
+
+        pstEpsQosInfo = &pstEpsbCntxtInfo->stEpsQoSInfo.stQosInfo;
+        pstSdfQosInfo = &pstSdfCntxtInfoTmp->stSdfQosInfo.stQosInfo;
+
+        if (PS_TRUE == NAS_ESM_IsGbrBearer(pstEpsQosInfo->ucQCI))
+        {
+            pstEpsQosInfo->ulULMaxRate -= pstSdfQosInfo->ulULMaxRate;
+            pstEpsQosInfo->ulDLMaxRate -= pstSdfQosInfo->ulDLMaxRate;
+            pstEpsQosInfo->ulULGMaxRate -= pstSdfQosInfo->ulULGMaxRate;
+            pstEpsQosInfo->ulDLGMaxRate -= pstSdfQosInfo->ulDLGMaxRate;
+        }
+
+        /* 删除旧SDF上下文 */
+        NAS_ESM_MEM_SET(pstSdfCntxtInfoTmp, 0, sizeof(NAS_ESM_SDF_CNTXT_INFO_STRU));
+
+        /* 上报APP SDF释放 */
+        NAS_ESM_SndEsmAppSdfRelIndMsg(ulCidTmp, pstMsgIE->ucEpsbId);
+
+        /* 清除承载关联的此CID */
+        NAS_ESM_ClearBearCntxtLinkCid(pstMsgIE->ucEpsbId, ulCidTmp);
+    }
+
+
+    /* 赋值SDF关联的承载信息 */
+    pstSdfCntxtInfo->ulEpsbId = pstMsgIE->ucEpsbId;
+
+    /* 删除旧的TFT信息 */
+    NAS_ESM_MEM_SET(pstSdfCntxtInfo->astSdfPfInfo,\
+                    NAS_ESM_NULL,\
+                    sizeof(NAS_ESM_CONTEXT_TFT_STRU) * NAS_ESM_MAX_SDF_PF_NUM);
+    pstSdfCntxtInfo->ulSdfPfNum = NAS_ESM_NULL;
+
+    /* 添加新的TFT信息 */
+    NAS_ESM_MEM_CPY(pstSdfCntxtInfo->astSdfPfInfo,\
+                    pstMsgIE->stTadInfo.astSdfPfInfo,\
+                    sizeof(NAS_ESM_CONTEXT_TFT_STRU) * pstMsgIE->stTadInfo.ucSdfPfNum);
+    pstSdfCntxtInfo->ulSdfPfNum = pstMsgIE->stTadInfo.ucSdfPfNum;
+
+    /* 如果静态和动态信息不一致，则进行调整 */
+    NAS_ESM_ModulateSdfTft(ulStateTblIndex);
+
+
+    /* 如果不带QOS */
+    if( NAS_ESM_OP_TRUE != pstMsgIE->bitOpEpsQos)
+    {
+        /* 对于NON-GBR承载，当收到网侧的承载修改请求，TAD码为CREAT SDF，且不带QOS信息时,
+           将承载QOS信息中的QCI赋值给新增SDF的QCI*/
+        if (PS_FALSE == NAS_ESM_IsGbrBearer(pstEpsbCntxtInfo->stEpsQoSInfo.stQosInfo.ucQCI))
+        {
+            NAS_ESM_MEM_SET(&pstSdfCntxtInfo->stSdfQosInfo,
+                            NAS_ESM_NULL,
+                            sizeof (NAS_ESM_CONTEXT_LTE_QOS_STRU));
+
+            /* 更新SDF的QCI信息 */
+            pstSdfCntxtInfo->stSdfQosInfo.stQosInfo.ucQCI =
+                        pstEpsbCntxtInfo->stEpsQoSInfo.stQosInfo.ucQCI;
+
+            pstSdfCntxtInfo->stSdfQosInfo.ucNwQCI =
+                        pstEpsbCntxtInfo->stEpsQoSInfo.ucNwQCI;
+
+        }
+
+        return ;
+    }
+
+
+    NAS_ESM_UpdateEpsQosInfo(pstMsgIE, pstEpsbCntxtInfo, pstSdfCntxtInfo);
+
+    NAS_ESM_ModulateSdfQos(ulStateTblIndex);
+}
+
+
 /*****************************************************************************
  Function Name   : NAS_ESM_SaveNwModDediEpsbDeletePf
  Description     : 保存专有承载修改激活的上下文信息(DELETE PF)
@@ -3810,7 +3938,10 @@ VOS_VOID  NAS_ESM_SaveNwModDediEpsbReqInfo
             NAS_ESM_NORM_LOG("NAS_ESM_SaveNwModDediEpsbReqInfo:ADD PF!");
             NAS_ESM_SaveNwModDediEpsbAddPf(pstMsgIE, ulStateTblIndex);
             break;
-
+        case NAS_ESM_TFT_OP_TYPE_CREATE_TFT:
+            NAS_ESM_NORM_LOG("NAS_ESM_SaveNwModDediEpsbReqInfo:CREAT PF!");
+            NAS_ESM_SaveNwModDediEpsbCreatPf(pstMsgIE, ulStateTblIndex);
+            break;
         case NAS_ESM_TFT_OP_TYPE_REPLACE_FILTER:
             NAS_ESM_NORM_LOG("NAS_ESM_SaveNwModDediEpsbReqInfo:REPLACE PF!");
             NAS_ESM_SaveNwModDediEpsbReplacePf(pstMsgIE, ulStateTblIndex);

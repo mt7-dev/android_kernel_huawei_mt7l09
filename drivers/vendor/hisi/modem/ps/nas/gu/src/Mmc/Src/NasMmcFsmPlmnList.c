@@ -763,8 +763,51 @@ VOS_UINT32  NAS_MMC_RcvMmcAbortFsmMsg_PlmnList_WaitWasSysInfoInd(
     struct MsgCB                       *pstMsg
 )
 {
+    NAS_MMC_ABORT_FSM_STRU                *pstAbortMsg = VOS_NULL_PTR;
+
+    pstAbortMsg = (NAS_MMC_ABORT_FSM_STRU*)pstMsg;
+    
     /* 记录状态机退出标记 */
     NAS_MMC_SetAbortFlag_PlmnList(VOS_TRUE);
+
+    
+    /* 如果在等系统消息时候,收到SUSPEND IND消息，则打断当前状态机，进行异系统流程 */
+    if ( NAS_BuildEventType(WUEPS_PID_WRR, RRMM_SUSPEND_IND) == pstAbortMsg->ulEventType )
+    {
+        /* 停止等待WAS系统消息的保护定时器 */
+        NAS_MMC_StopTimer(TI_NAS_MMC_WAIT_WAS_SYS_INFO); 
+
+        /* 启动5S周期性尝试定时器 */
+        if ( VOS_TRUE == NAS_MMC_IsUserPlmnList_PlmnList())
+        {
+             /* CS业务比如电话或短信引起的接入层list rej需要终止list搜，
+                响应业务否则AT口被list请求占用，用户无法发起接听电话或收短信 */
+            if (VOS_TRUE == NAS_MML_GetCsServiceExistFlg())
+            {
+                /* 发送LIST REJ给MMA */
+                NAS_Mmc_SndMmaPlmnListRej();
+            }
+            else
+            {
+                NAS_MMC_StartTimer(TI_NAS_MMC_PERIOD_TRYING_USER_PLMN_LIST, TI_NAS_MMC_PERIOD_TRYING_USER_PLMN_LIST_LEN);
+            }
+        }
+        else
+        {
+            NAS_MMC_StartTimer(TI_NAS_MMC_PERIOD_TRYING_INTER_PLMN_LIST, TI_NAS_MMC_PERIOD_TRYING_INTER_PLMN_LIST_LEN);
+        }
+
+        /* 发送状态机失败的退出结果 */
+        NAS_MMC_SndRslt_PlmnList(NAS_MMC_PLMN_LIST_FAIL,
+                                VOS_FALSE,
+                                NAS_MMC_GetSearchedPlmnListInfo_PlmnList(),
+                                NAS_MMC_GetRegRsltInfo_PlmnList());
+
+        /* 退出状态机 */
+        NAS_MMC_FSM_QuitFsmL2();        
+    
+        return VOS_TRUE;
+    }
 
     return VOS_TRUE;
 }
@@ -788,9 +831,52 @@ VOS_UINT32  NAS_MMC_RcvMmcAbortFsmMsg_PlmnList_WaitGasSysInfoInd(
     struct MsgCB                       *pstMsg
 )
 {
+    NAS_MMC_ABORT_FSM_STRU                *pstAbortMsg = VOS_NULL_PTR;
+
+    pstAbortMsg = (NAS_MMC_ABORT_FSM_STRU*)pstMsg;
+    
     /* 记录状态机退出标记 */
     NAS_MMC_SetAbortFlag_PlmnList(VOS_TRUE);
 
+    
+    /* 如果在等系统消息时候,收到SUSPEND IND消息，则打断当前状态机，进行异系统流程 */
+    if ( NAS_BuildEventType(UEPS_PID_GAS, RRMM_SUSPEND_IND) == pstAbortMsg->ulEventType )
+    {
+        /* 停止等待WAS系统消息的保护定时器 */
+        NAS_MMC_StopTimer(TI_NAS_MMC_WAIT_GAS_SYS_INFO);
+
+        /* 启动5S周期性尝试定时器 */
+        if ( VOS_TRUE == NAS_MMC_IsUserPlmnList_PlmnList())
+        {
+             /* CS业务比如电话或短信引起的接入层list rej需要终止list搜，
+                响应业务否则AT口被list请求占用，用户无法发起接听电话或收短信 */
+            if (VOS_TRUE == NAS_MML_GetCsServiceExistFlg())
+            {
+                /* 发送LIST REJ给MMA */
+                NAS_Mmc_SndMmaPlmnListRej();
+            }
+            else
+            {
+                NAS_MMC_StartTimer(TI_NAS_MMC_PERIOD_TRYING_USER_PLMN_LIST, TI_NAS_MMC_PERIOD_TRYING_USER_PLMN_LIST_LEN);
+            }
+        }
+        else
+        {
+            NAS_MMC_StartTimer(TI_NAS_MMC_PERIOD_TRYING_INTER_PLMN_LIST, TI_NAS_MMC_PERIOD_TRYING_INTER_PLMN_LIST_LEN);
+        }
+
+        /* 发送状态机失败的退出结果 */
+        NAS_MMC_SndRslt_PlmnList(NAS_MMC_PLMN_LIST_FAIL,
+                                VOS_FALSE,
+                                NAS_MMC_GetSearchedPlmnListInfo_PlmnList(),
+                                NAS_MMC_GetRegRsltInfo_PlmnList());
+
+        /* 退出状态机 */
+        NAS_MMC_FSM_QuitFsmL2();        
+    
+        return VOS_TRUE;
+    }
+    
     return VOS_TRUE;
 }
 VOS_UINT32  NAS_MMC_RcvTafPlmnListAbortReq_PlmnList_WaitGasSysInfoInd(
@@ -1585,6 +1671,10 @@ VOS_UINT32 NAS_MMC_RcvAreaLostInd_PlmnList_WaitCsPsRegRsltInd(
     /* 当前信号更新 */
     NAS_MML_InitRssiValue(NAS_MML_GetCampCellInfo());
 
+
+    /* 通知MM/GMM进入丢网,MM会释放CS业务 */
+    NAS_MMC_SndMmCoverageLostInd();
+    NAS_MMC_SndGmmCoverageLostInd();
     /* 向WAS/GAS发送LIST搜网请求,迁移状态到等待WAS/GAS LIST搜网回复状态,启动保护定时器 */
     NAS_MMC_SndSpecRatPlmnListReq_PlmnList(NAS_MML_GetCurrNetRatType());
 
@@ -1599,8 +1689,6 @@ VOS_UINT32 NAS_MMC_RcvAreaLostInd_PlmnList_WaitCsPsRegRsltInd(
 
     return VOS_TRUE;
 }
-
-
 VOS_UINT32  NAS_MMC_RcvRrMmSysInfoInd_PlmnList_WaitCsPsRegRsltInd(
     VOS_UINT32                          ulEventType,
     struct MsgCB                       *pstMsg
@@ -3984,6 +4072,9 @@ VOS_VOID NAS_MMC_ProcCsRegRslt_PlmnList(
     NAS_MMC_GU_ACTION_RSLT_INFO_STRU                        stActionRslt;
 #endif
 
+    NAS_MMC_DPLMN_NPLMN_CFG_INFO_STRU                      *pstDPlmnNPlmnCfgInfo = VOS_NULL_PTR;
+    pstDPlmnNPlmnCfgInfo  = NAS_MMC_GetDPlmnNPlmnCfgInfo();
+
     /* 将MM的服务状态转换为MMC 的*/
     enService = NAS_MMC_ConverMmStatusToMmc(NAS_MMC_REG_DOMAIN_CS,
                                         (NAS_MM_COM_SERVICE_STATUS_ENUM_UINT8)pstCsRegRsltInd->ulServiceStatus);
@@ -3997,6 +4088,15 @@ VOS_VOID NAS_MMC_ProcCsRegRslt_PlmnList(
 
         /* 根据注册结果更新注册信息表 */
         NAS_MMC_UpdatePlmnRegInfoList(NAS_MML_GetCurrCampPlmnId(), NAS_MMC_REG_DOMAIN_CS, NAS_MML_REG_FAIL_CAUSE_NULL);
+
+        /* 更新DPLMN NPLMN列表 */
+        if (VOS_TRUE == NAS_MMC_IsRoam())
+        {
+            NAS_MMC_UpdateDPlmnNPlmnList(NAS_MML_GetCurrCampPlmnId(),NAS_MML_GetCurrNetRatType(), NAS_MMC_REG_DOMAIN_CS,&pstDPlmnNPlmnCfgInfo->usDplmnListNum,pstDPlmnNPlmnCfgInfo->astDPlmnList);
+            NAS_MMC_DeleteDPlmnNPlmnList(NAS_MML_GetCurrCampPlmnId(),NAS_MML_GetCurrNetRatType(), NAS_MMC_REG_DOMAIN_CS,&pstDPlmnNPlmnCfgInfo->usNplmnListNum,pstDPlmnNPlmnCfgInfo->astNPlmnList);
+            NAS_MMC_WriteDplmnNplmnToNvim();
+            NAS_MMC_LogDplmnNplmnList();
+        }
 
         /* 对Hplmn的Rej Lai信息的清除 */
         NAS_MMC_ClearHplmnRejDomainInfo(NAS_MML_GetCurrCampPlmnId(), NAS_MMC_REG_DOMAIN_CS);
@@ -4037,6 +4137,16 @@ VOS_VOID NAS_MMC_ProcCsRegRslt_PlmnList(
         {
             /* 只在跟网测真实发生交互的时候才更新注册信息表 */
             NAS_MMC_UpdatePlmnRegInfoList(NAS_MML_GetCurrCampPlmnId(), NAS_MMC_REG_DOMAIN_CS, pstCsRegRsltInd->enRegFailCause);
+
+            /* 更新DPLMN NPLMN列表 */
+            if (VOS_TRUE == NAS_MMC_IsRoam())
+            {
+                NAS_MMC_UpdateDPlmnNPlmnList(NAS_MML_GetCurrCampPlmnId(), NAS_MML_GetCurrNetRatType(), NAS_MMC_REG_DOMAIN_CS,&pstDPlmnNPlmnCfgInfo->usNplmnListNum,pstDPlmnNPlmnCfgInfo->astNPlmnList);
+                NAS_MMC_DeleteDPlmnNPlmnList(NAS_MML_GetCurrCampPlmnId(), NAS_MML_GetCurrNetRatType(), NAS_MMC_REG_DOMAIN_CS,&pstDPlmnNPlmnCfgInfo->usDplmnListNum,pstDPlmnNPlmnCfgInfo->astDPlmnList);
+                NAS_MMC_WriteDplmnNplmnToNvim();
+                NAS_MMC_LogDplmnNplmnList();
+            }
+
         }
 
         NAS_MMC_UpdateUserSpecPlmnRegisterStatusWhenRegFail(pstCsRegRsltInd->enRegFailCause);

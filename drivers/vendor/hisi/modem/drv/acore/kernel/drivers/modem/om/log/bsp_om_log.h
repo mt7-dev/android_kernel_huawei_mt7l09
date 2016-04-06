@@ -47,15 +47,15 @@ typedef struct
 
 typedef struct
 {
-    u32                     addr;
+    void*                     addr;
     u16                     is_edle;
     u16                     is_valible;
 }bsp_log_node_ctrl_s;
 
 typedef struct
 {
-    u32                     start_ptr;      /*  起始地址*/
-    u32                     start_phy_ptr;
+    void*                     start_ptr;      /*  起始地址*/
+    void*                     start_phy_ptr;
     u32                     node_num;    /* buf 块总数*/
     u32                     buys_node_num;   /* 被占用的节点数目*/
     u32                     valible_node_num;   /* 写入数据的节点数目*/

@@ -8,14 +8,12 @@
  */
 
 
-
 /include/ "JAZZ_ULCA_V3_config.dtsi"
-/include/ "hisi_3630_pin_JAZZ_ULCA_VN1.dtsi"
-/include/ "hisi_3630_modem_JAZZ_ULCA_VN1.dtsi"
+
 / {
+	hisi,boardid = <9 7 2 7>;
+	hisi,boardname = "JAZZ_ULCA_VN1";
 	board_info: board_info {
-		hisi,boardid = <7 2 7>;
-		hisi,boardname = "Jazz_UL+CA_VN1";
 		hw,public;
 	};
 

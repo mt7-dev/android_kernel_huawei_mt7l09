@@ -372,7 +372,7 @@ static void *bsd_alloc (unsigned char *options, int opt_len, int decomp)
 	hsize = 5003;
 	hshift = 4;
 	break;
-    case 13:			/* needs 176784 */
+    case 13:
 	hsize = 9001;
 	hshift = 5;
 	break;

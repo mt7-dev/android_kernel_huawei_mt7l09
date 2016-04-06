@@ -7,10 +7,10 @@
 #ifdef __KERNEL__
 
 typedef struct {
-	unsigned long fds_bits;
+    unsigned int fds_bits;
 } hi_fd_set;
 
-#define __HI_NFDBITS	(8 * sizeof(unsigned long))
+#define __HI_NFDBITS	(8 * sizeof(unsigned int))
 #define	__HI_FDMASK(d)	(1UL << ((d) % __HI_NFDBITS))
 
 #define HI_FD_ISSET(d, set) ((set)->fds_bits & __HI_FDMASK(d))
@@ -40,7 +40,7 @@ int hi_getsockname(int fd, struct sockaddr *addr, int *addrlen);
 int hi_getpeername(int fd, struct sockaddr *addr, int *addrlen);
 int hi_getsockopt(int fd, int level, int optname, char *optval, int *optlen);
 int hi_setsockopt(int fd, int level, int optname, char *optval, unsigned int optlen);
-int hi_ioctl(int fd, int cmd, unsigned long arg);
+int hi_ioctl(int fd, int cmd, unsigned int arg);
 int hi_shutdown(int fd, enum sock_shutdown_cmd how);
 unsigned int hi_inet_addr(const char * str);
 

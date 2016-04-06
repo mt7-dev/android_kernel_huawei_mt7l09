@@ -11,6 +11,8 @@
 #include "msp_diag.h"
 #endif
 
+#include "AtTestParaCmd.h"
+
 #ifdef __cplusplus
 #if __cplusplus
 extern "C" {
@@ -20,9 +22,9 @@ extern "C" {
 /*****************************************************************************
     协议栈打印打点方式下的.C文件宏定义
 *****************************************************************************/
-/*lint -e767*/
+/*lint -e767 -e960*/
 #define    THIS_FILE_ID                 PS_FILE_ID_AT_CMD_FTM_PROC_C
-/*lint +e767*/
+/*lint +e767 +e960*/
 
 /*****************************************************************************
   2 全局变量定义
@@ -33,6 +35,7 @@ extern "C" {
   3 函数实现
 *****************************************************************************/
 
+#if (FEATURE_OFF == FEATURE_MERGE_OM_CHAN)
 VOS_UINT32 At_SetLogPortPara(VOS_UINT8 ucIndex)
 {
     VOS_UINT32                          ulRslt;
@@ -83,6 +86,44 @@ VOS_UINT32 At_SetLogPortPara(VOS_UINT8 ucIndex)
         return AT_ERROR;
     }
 }
+#else
+VOS_UINT32 At_SetLogPortPara(VOS_UINT8 ucIndex)
+{
+    VOS_UINT32                          ulRslt;
+    VOS_UINT32                          ulOmLogPort;
+
+    if (AT_CMD_OPT_SET_PARA_CMD != g_stATParseCmd.ucCmdOptType)
+    {
+        return AT_ERROR;
+    }
+    if ((2 < gucAtParaIndex) || (0 == gucAtParaIndex))
+    {
+        return AT_ERROR;
+    }
+    if (AT_LOG_PORT_USB == gastAtParaList[0].ulParaValue)
+    {
+        ulOmLogPort = CPM_OM_PORT_TYPE_USB;
+    }
+    else
+    {
+        ulOmLogPort = CPM_OM_PORT_TYPE_VCOM;
+    }
+    if (1 == gucAtParaIndex)
+    {
+        gastAtParaList[1].ulParaValue = VOS_TRUE;
+    }
+    ulRslt = PPM_LogPortSwitch(ulOmLogPort, gastAtParaList[1].ulParaValue);
+    if (VOS_OK == ulRslt)
+    {
+        return AT_OK;
+    }
+    else
+    {
+        return AT_ERROR;
+    }
+}
+#endif
+#if (FEATURE_OFF == FEATURE_MERGE_OM_CHAN)
 VOS_UINT32 At_QryLogPortPara(VOS_UINT8 ucIndex)
 {
     VOS_UINT16                          usLength;
@@ -137,7 +178,49 @@ VOS_UINT32 At_QryLogPortPara(VOS_UINT8 ucIndex)
 
     return AT_OK;
 }
+#else
+VOS_UINT32 At_QryLogPortPara(VOS_UINT8 ucIndex)
+{
+    VOS_UINT16                          usLength;
+    VOS_UINT32                          ulOmLogPort;
+    VOS_UINT32                          ulAtLogPort;
+    VOS_UINT32                          ulRslt;
 
+    usLength                            = 0;
+    ulOmLogPort                         = AT_LOG_PORT_USB;
+    ulRslt = PPM_QueryLogPort(&ulOmLogPort);
+
+    if (VOS_OK != ulRslt)
+    {
+        return AT_ERROR;
+    }
+
+    if (COMM_LOG_PORT_USB == ulOmLogPort)
+    {
+        ulAtLogPort = AT_LOG_PORT_USB;
+    }
+    else
+    {
+        ulAtLogPort = AT_LOG_PORT_VCOM;
+    }
+
+    usLength  = (VOS_UINT16)At_sprintf(AT_CMD_MAX_LEN,
+                                       (VOS_CHAR*)pgucAtSndCodeAddr,
+                                       (VOS_CHAR*)pgucAtSndCodeAddr,
+                                       "%s: ",
+                                       g_stParseContext[ucIndex].pstCmdElement->pszCmdName);
+
+    usLength += (VOS_UINT16)At_sprintf(AT_CMD_MAX_LEN,
+                                       (VOS_CHAR*)pgucAtSndCodeAddr,
+                                       (VOS_CHAR*)pgucAtSndCodeAddr + usLength,
+                                       "%d",
+                                       ulAtLogPort);
+
+    gstAtSendData.usBufLen = usLength;
+
+    return AT_OK;
+}
+#endif
 
 VOS_UINT32 At_SetDpdtTestFlagPara(VOS_UINT8 ucIndex)
 {
@@ -605,6 +688,113 @@ VOS_UINT32 AT_RcvMtaJamDetectInd(
 
         At_SendResultData(ucIndex, pgucAtSndCodeAddr, gstAtSendData.usBufLen);
     }
+    return VOS_OK;
+}
+VOS_UINT32 AT_SetGFreqLock(VOS_UINT8 ucIndex)
+{
+    AT_MTA_SET_GSM_FREQLOCK_REQ_STRU    stGFreqLockInfo;
+    VOS_UINT32                          ulRst;
+
+    /* 参数个数检查 */
+    if ((gucAtParaIndex != 1) && (gucAtParaIndex != 3))
+    {
+        return AT_CME_INCORRECT_PARAMETERS;
+    }
+
+    /* 初始化 */
+    PS_MEM_SET(&stGFreqLockInfo, 0, sizeof(AT_MTA_SET_GSM_FREQLOCK_REQ_STRU));
+
+    /* 参数有效性检查 */
+    /* 第一个参数必须带 */
+    if (0 == gastAtParaList[0].usParaLen)
+    {
+        return AT_CME_INCORRECT_PARAMETERS;
+    }
+
+    stGFreqLockInfo.enableFlag = (PS_BOOL_ENUM_UINT8)gastAtParaList[0].ulParaValue;
+
+    /* 若启动锁频，则必须带第二个参数和第三个参数 */
+    if (PS_TRUE == stGFreqLockInfo.enableFlag)
+    {
+        if ( (0 == gastAtParaList[1].usParaLen)
+          || (0 == gastAtParaList[2].usParaLen) )
+        {
+            return AT_CME_INCORRECT_PARAMETERS;
+        }
+        else
+        {
+            stGFreqLockInfo.usFreq = (VOS_UINT16)gastAtParaList[1].ulParaValue;
+            stGFreqLockInfo.enBand = (AT_MTA_GSM_BAND_ENUM_UINT16)gastAtParaList[2].ulParaValue;
+        }
+    }
+
+    /* 发送消息给C核处理 */
+    ulRst = AT_FillAndSndAppReqMsg(gastAtClientTab[ucIndex].usClientId,
+                                   0,
+                                   ID_AT_MTA_SET_GSM_FREQLOCK_REQ,
+                                   &stGFreqLockInfo,
+                                   sizeof(AT_MTA_SET_GSM_FREQLOCK_REQ_STRU),
+                                   I0_UEPS_PID_MTA);
+
+    if (TAF_SUCCESS == ulRst)
+    {
+        gastAtClientTab[ucIndex].CmdCurrentOpt = AT_CMD_GSM_FREQLOCK_SET;
+        return AT_WAIT_ASYNC_RETURN;
+    }
+    else
+    {
+        return AT_ERROR;
+    }
+}
+
+
+VOS_UINT32 AT_RcvMtaSetGFreqLockCnf(
+    VOS_VOID                           *pMsg
+)
+{
+    AT_MTA_MSG_STRU                    *pstRcvMsg;
+    MTA_AT_SET_GSM_FREQLOCK_CNF_STRU   *pstSetCnf;
+    VOS_UINT8                           ucIndex;
+    VOS_UINT32                          ulResult;
+
+    /* 初始化 */
+    pstRcvMsg    = (AT_MTA_MSG_STRU *)pMsg;
+    pstSetCnf    = (MTA_AT_SET_GSM_FREQLOCK_CNF_STRU *)pstRcvMsg->aucContent;
+    ucIndex      = 0;
+    ulResult     = AT_ERROR;
+
+    /* 通过clientid获取index */
+    if (AT_FAILURE == At_ClientIdToUserId(pstRcvMsg->stAppCtrl.usClientId, &ucIndex))
+    {
+        AT_WARN_LOG("AT_RcvMtaSetGFreqLockCnf : WARNING:AT INDEX NOT FOUND!");
+        return VOS_ERR;
+    }
+
+    if (AT_IS_BROADCAST_CLIENT_INDEX(ucIndex))
+    {
+        AT_WARN_LOG("AT_RcvMtaSetGFreqLockCnf : AT_BROADCAST_INDEX.");
+        return VOS_ERR;
+    }
+
+    /* 当前AT是否在等待该命令返回 */
+    if (AT_CMD_GSM_FREQLOCK_SET != gastAtClientTab[ucIndex].CmdCurrentOpt)
+    {
+        AT_WARN_LOG("AT_RcvMtaSetGFreqLockCnf : Current Option is not AT_CMD_GSM_FREQLOCK_SET.");
+        return VOS_ERR;
+    }
+
+    /* 复位AT状态 */
+    AT_STOP_TIMER_CMD_READY(ucIndex);
+
+    /* 格式化命令返回 */
+    gstAtSendData.usBufLen = 0;
+
+    if (MTA_AT_RESULT_NO_ERROR == pstSetCnf->enResult)
+    {
+        ulResult = AT_OK;
+    }
+
+    At_FormatResultData(ucIndex, ulResult);
     return VOS_OK;
 }
 

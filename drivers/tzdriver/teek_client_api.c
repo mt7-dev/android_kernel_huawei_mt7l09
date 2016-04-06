@@ -1,13 +1,4 @@
-/*
- * FileName:
- * Author:         h00211444  Version: 0.0.1  Date: 2012-12-24
- * Description:
- * Version:
- * Function List:
- *                 1.
- * History:
- *     <author>   <time>    <version >   <desc>
- */
+
 #include <linux/slab.h>
 #include <linux/fs.h>
 #include <linux/platform_device.h>
@@ -32,12 +23,6 @@
 
 #define MAX_APP_INFO 100
 #define SYSTEM_BIN_SIZE 23
-
-extern int TC_NS_ClientOpen_from_kernel(unsigned int *dev_file_count);
-extern long TC_NS_ClientIoctl_from_kernel(unsigned int dev_file_count, unsigned cmd,    unsigned long arg);
-extern int TC_NS_ClientClose_from_kernel(unsigned int dev_id);
-extern int is_agent_alive(unsigned int agent_id);
-
 
 TEEC_Result TEEK_CheckOperation (
     TEEC_Operation *operation);
@@ -78,7 +63,6 @@ TEEC_Result TEEK_InitializeContext (
     TEEC_Context* context)
 {
     int32_t ret = 0;
-    unsigned int dev_file_count;
     TEEC_Debug(KERN_ERR "TEEK_InitializeContext Started:\n");
 
 
@@ -86,6 +70,7 @@ TEEC_Result TEEK_InitializeContext (
     if (context == NULL)
         return (TEEC_Result)TEEC_ERROR_BAD_PARAMETERS;
 
+    context->dev = NULL;
     /* Paramters right, start execution */
 #if 0
     if (name == NULL)
@@ -93,14 +78,13 @@ TEEC_Result TEEK_InitializeContext (
     else
         ret = open(name, O_RDWR);
 #endif
-    ret = TC_NS_ClientOpen_from_kernel(&dev_file_count);
+    ret = TC_NS_ClientOpen(&context->dev, TEE_REQ_FROM_KERNEL_MODE);
 
     if (ret != TEEC_SUCCESS) {
         TEEC_Error("open device failed\n");
         return (TEEC_Result)TEEC_ERROR_GENERIC;
     } else {
         TEEC_Debug("open device success\n");
-        context->fd = dev_file_count;
         INIT_LIST_HEAD((struct list_head *)&context->session_list);
         INIT_LIST_HEAD((struct list_head *)&context->shrd_mem_list);
         return TEEC_SUCCESS;
@@ -147,8 +131,7 @@ void TEEK_FinalizeContext (
 #endif
 
     TEEC_Debug("close device\n");
-    TC_NS_ClientClose_from_kernel(context->fd);
-    context->fd = 0;
+    TC_NS_ClientClose(context->dev, 0);
 #endif
 }
 
@@ -181,6 +164,7 @@ TEEC_Result TEEK_OpenSession (
     uint32_t origin = TEEC_ORIGIN_API;
     TC_NS_ClientContext cli_context;
     TC_NS_ClientLogin cli_login = {0, 0};
+    TC_NS_DEV_File *dev_file;
     //char linkc[MAX_APP_INFO], path[MAX_APP_INFO];
     //char linkj[MAX_APP_INFO];/*, pathj[MAX_APP_INFO];*/
     //int32_t retz;
@@ -208,6 +192,18 @@ TEEC_Result TEEK_OpenSession (
             cli_login.mdata = *(uint32_t*)connectionData;
             break;
         case TEEC_LOGIN_IDENTIFY:
+            cli_login.method = connectionMethod;
+            dev_file = (TC_NS_DEV_File *)(context->dev);
+            dev_file->pkg_name_len = (uint32_t)(operation->params[3].tmpref.size);
+            if (operation->params[3].tmpref.size > MAX_PACKAGE_NAME_LEN) {
+                goto error;
+            }
+            else {
+                memcpy(dev_file->pkg_name, operation->params[3].tmpref.buffer, operation->params[3].tmpref.size);
+            }
+            dev_file->pub_key_len = 0;
+	    dev_file->login_setup = 1;
+
 #if 0
             if (connectionData != NULL)
                 goto error;
@@ -280,7 +276,7 @@ TEEC_Result TEEK_OpenSession (
 #if 0
     ret = ioctl(context->fd, TC_NS_CLIENT_IOCTL_SES_OPEN_REQ, &cli_context);
 #endif
-    ret = TC_NS_ClientIoctl_from_kernel(context->fd, TC_NS_CLIENT_IOCTL_SES_OPEN_REQ, (unsigned long)(&cli_context));
+    ret = TC_NS_OpenSession(context->dev, &cli_context);
     if (ret == 0) {
         TEEC_Debug("open session success\n");
         session->session_id = cli_context.session_id;
@@ -361,7 +357,8 @@ void TEEK_CloseSession (
 #if 0
     ret = ioctl(session->context->fd, TC_NS_CLIENT_IOCTL_SES_CLOSE_REQ, &cli_context);
 #endif
-    ret = TC_NS_ClientIoctl_from_kernel(session->context->fd, TC_NS_CLIENT_IOCTL_SES_CLOSE_REQ, (unsigned long)(&cli_context));
+    ret = TC_NS_CloseSession(session->context->dev, &cli_context);
+
     if (ret == 0) {
         TEEC_Debug("close session success\n");
         session->session_id = 0;
@@ -416,7 +413,7 @@ TEEC_Result TEEK_InvokeCommand(
 #if 0
     ret = ioctl(session->context->fd, TC_NS_CLIENT_IOCTL_SEND_CMD_REQ, &cli_context);
 #endif
-    ret = TC_NS_ClientIoctl_from_kernel(session->context->fd, TC_NS_CLIENT_IOCTL_SEND_CMD_REQ, (unsigned long)(&cli_context));
+    ret = TC_NS_Send_CMD(session->context->dev, &cli_context);
     if (ret == 0) {
         TEEC_Debug("invoke cmd success\n");
         teec_ret = TEEC_SUCCESS;
@@ -479,7 +476,7 @@ TEEC_Result TEEK_RegisterSharedMemory (
     list_insert_tail(&context->shrd_mem_list, &sharedMem->head);
     sharedMem->context = context;
 #endif
-    printk(KERN_ERR "TEEK_RegisterSharedMemory not supported\n");
+    TCERR("TEEK_RegisterSharedMemory not supported\n");
     return TEEC_ERROR_GENERIC;
 }
 
@@ -496,7 +493,7 @@ TEEC_Result TEEK_AllocateSharedMemory (
     TEEC_Context* context,
     TEEC_SharedMemory* sharedMem)
 {
-    printk(KERN_ERR "TEEK_AllocateSharedMemory not supported\n");
+    TCERR("TEEK_AllocateSharedMemory not supported\n");
     return TEEC_ERROR_GENERIC;
 #if 0
     TEEC_Result teec_ret;
@@ -542,16 +539,14 @@ TEEC_Result TEEK_AllocateSharedMemory (
 void TEEK_ReleaseSharedMemory (
     TEEC_SharedMemory* sharedMem)
 {
-    printk(KERN_ERR "TEEK_ReleaseSharedMemory not supported\n");
+    TCERR("TEEK_ReleaseSharedMemory not supported\n");
     return;
 #if 0
     int32_t ret;
     struct list_node *ptr;
     TEEC_SharedMemory* temp_shardmem;
     bool found = false;
-    /* DTS2013030408264 h00211444 begin */
     void* rel_addr;
-    /* DTS2013030408264 h00211444 end */
 
     /* First, check parameters is valid or not */
     if (sharedMem == NULL) {
@@ -577,7 +572,6 @@ void TEEK_ReleaseSharedMemory (
 
     /* Paramters right, start execution */
     if ((sharedMem->is_allocated) && (sharedMem->size != 0)) {
-        /* DTS2013030408264 h00211444 begin */
         rel_addr = (void*)sharedMem->buffer;
         /* call munmap, notify os decrease mmap count */
         ret = munmap(sharedMem->buffer, sharedMem->size);
@@ -592,7 +586,6 @@ void TEEK_ReleaseSharedMemory (
             TEEC_Error("release SharedMemory failed, ioctl error\n");
             return;
         }
-        /* DTS2013030408264 h00211444 end */
     }
 
     sharedMem->buffer = NULL;
@@ -637,12 +630,10 @@ static TEEC_Result TEEK_CheckMemRef(
         if (!(memref.parent->flags & TEEC_MEM_OUTPUT))
             goto param_error;
     } else if (param_type == TEEC_MEMREF_PARTIAL_INOUT) {
-        /* DTS2013030509162 h00211444 begin */
         if (!(memref.parent->flags & TEEC_MEM_INPUT))
             goto param_error;
         if (!(memref.parent->flags & TEEC_MEM_OUTPUT))
             goto param_error;
-        /* DTS2013030509162 h00211444 end */
     } else {
         // if type is TEEC_MEMREF_WHOLE, ignore it
     }
@@ -765,9 +756,13 @@ void TEEK_Encode(
             || (param_type[param_cnt] == TEEC_MEMREF_TEMP_INOUT)) {
 
             cli_context->params[param_cnt].memref.buffer
-                = (uint32_t)operation->params[param_cnt].tmpref.buffer;
+                = (char *)operation->params[param_cnt].tmpref.buffer;
+            cli_context->params[param_cnt].memref.buffer_h_addr
+                = ((unsigned long)operation->params[param_cnt].tmpref.buffer)>>32;
             cli_context->params[param_cnt].memref.size_addr
-                = (uint32_t)&operation->params[param_cnt].tmpref.size;
+                = (char *)&operation->params[param_cnt].tmpref.size;
+            cli_context->params[param_cnt].memref.size_h_addr
+                = ((unsigned long)&operation->params[param_cnt].tmpref.size)>>32;
         } else if ((param_type[param_cnt] == TEEC_MEMREF_WHOLE)
             || (param_type[param_cnt] == TEEC_MEMREF_PARTIAL_INPUT)
             || (param_type[param_cnt] == TEEC_MEMREF_PARTIAL_OUTPUT)
@@ -777,24 +772,32 @@ void TEEK_Encode(
             if (param_type[param_cnt] == TEEC_MEMREF_WHOLE) {
                 cli_context->params[param_cnt].memref.offset = 0;
                 cli_context->params[param_cnt].memref.size_addr
-                    = (uint32_t)&operation->params[param_cnt].memref.parent->size;
+                    = (char *)&operation->params[param_cnt].memref.parent->size;
+                cli_context->params[param_cnt].memref.size_h_addr
+                    = ((unsigned long)&operation->params[param_cnt].memref.parent->size)>>32;
             } else {
                 cli_context->params[param_cnt].memref.offset
                     = operation->params[param_cnt].memref.offset;
                 cli_context->params[param_cnt].memref.size_addr
-                    = (uint32_t)&operation->params[param_cnt].memref.size;
+                    = (char *)&operation->params[param_cnt].memref.size;
+                cli_context->params[param_cnt].memref.size_h_addr
+                    = ((unsigned long)&operation->params[param_cnt].memref.size)>>32;
             }
 
             if (operation->params[param_cnt].memref.parent->is_allocated) {
                 cli_context->params[param_cnt].memref.buffer
-                    = (uint32_t)operation->params[param_cnt].memref.parent->buffer;
+                    = (char *)operation->params[param_cnt].memref.parent->buffer;
+                cli_context->params[param_cnt].memref.buffer_h_addr
+                    = ((unsigned long)operation->params[param_cnt].memref.parent->buffer)>>32;
             } else {
                 cli_context->params[param_cnt].memref.buffer
-                    = (uint32_t)operation->params[param_cnt].memref.parent->buffer
+                    = (char *)operation->params[param_cnt].memref.parent->buffer
                     + operation->params[param_cnt].memref.offset;
+                cli_context->params[param_cnt].memref.buffer_h_addr
+                    = (unsigned long)(operation->params[param_cnt].memref.parent->buffer
+                    + operation->params[param_cnt].memref.offset)>>32;
                 cli_context->params[param_cnt].memref.offset = 0;
             }
-            /* DTSDTS2013030104869 h00211444 begin */
             /* translate the paramType to know the driver */
             if (param_type[param_cnt] == TEEC_MEMREF_WHOLE) {
                 switch (operation->params[param_cnt].memref.parent->flags) {
@@ -816,15 +819,18 @@ void TEEK_Encode(
              * translate TEEC_MEMREF_PARTIAL_XXX to TEEC_MEMREF_TEMP_XXX */
             if (!operation->params[param_cnt].memref.parent->is_allocated)
                 param_type[param_cnt] = param_type[param_cnt] - diff;
-            /* DTSDTS2013030104869 h00211444 end */
         }  else if ((param_type[param_cnt] ==  TEEC_VALUE_INPUT)
             || (param_type[param_cnt] == TEEC_VALUE_OUTPUT)
             || (param_type[param_cnt] == TEEC_VALUE_INOUT)) {
 
             cli_context->params[param_cnt].value.a_addr
-                = (uint32_t)&operation->params[param_cnt].value.a;
+                = (char *)&operation->params[param_cnt].value.a;
+            cli_context->params[param_cnt].value.a_h_addr
+                = ((unsigned long)&operation->params[param_cnt].value.a)>>32;
             cli_context->params[param_cnt].value.b_addr
-                = (uint32_t)&operation->params[param_cnt].value.b;
+                = (char *)&operation->params[param_cnt].value.b;
+            cli_context->params[param_cnt].value.b_h_addr
+                = ((unsigned long)&operation->params[param_cnt].value.b)>>32;
         } else {
             /* if type is none, ignore it */
         }
@@ -892,7 +898,7 @@ error:
    // if((teec_ret != TEEC_SUCCESS) && (returnOrigin))
    //     *returnOrigin = origin;
 #endif
-    printk(KERN_ERR "TEEK_RequestCancellation not supported\n");
+    TCERR("TEEK_RequestCancellation not supported\n");
     return;
 
 }

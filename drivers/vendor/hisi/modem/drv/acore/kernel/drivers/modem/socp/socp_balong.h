@@ -250,11 +250,11 @@ typedef struct tagSOCP_ENCSRC_CHAN_S
     u32                     u32AllocStat;  /* 通道已经或没有分配的标识*/
     u32                     u32LastRdSize;
     u32                     u32RdThreshold;
-    SOCP_ENCSRC_CHNMODE_E   eChnMode;      /* 数据结构类型 */
-    SOCP_CHAN_PRIORITY_E    ePriority;
-    SOCP_DATA_TYPE_E        eDataType;
-    SOCP_DATA_TYPE_EN_E     eDataTypeEn;
-    SOCP_ENC_DEBUG_EN_E     eDebugEn;
+    SOCP_ENCSRC_CHNMODE_ENUM_UIN32   eChnMode;      /* 数据结构类型 */
+    SOCP_CHAN_PRIORITY_ENUM_UIN32    ePriority;
+    SOCP_DATA_TYPE_ENUM_UIN32        eDataType;
+    SOCP_DATA_TYPE_EN_ENUM_UIN32     eDataTypeEn;
+    SOCP_ENC_DEBUG_EN_ENUM_UIN32     eDebugEn;
     SOCP_RING_BUF_S         sEncSrcBuf;
     SOCP_RING_BUF_S         sRdBuf;
     socp_event_cb           event_cb;
@@ -267,11 +267,11 @@ typedef struct tagSOCP_ENCSRC_FIXCHAN_S
     u32                     u32ChanID;
     u32                     u32ChanEn;
     u32                     u32DestChanID;
-    SOCP_ENCSRC_CHNMODE_E   eChnMode;      /* 数据结构类型 */
-    SOCP_CHAN_PRIORITY_E    ePriority;
-    SOCP_DATA_TYPE_E        eDataType;
-    SOCP_DATA_TYPE_EN_E     eDataTypeEn;
-    SOCP_ENC_DEBUG_EN_E     eDebugEn;
+    SOCP_ENCSRC_CHNMODE_ENUM_UIN32   eChnMode;      /* 数据结构类型 */
+    SOCP_CHAN_PRIORITY_ENUM_UIN32    ePriority;
+    SOCP_DATA_TYPE_ENUM_UIN32        eDataType;
+    SOCP_DATA_TYPE_EN_ENUM_UIN32     eDataTypeEn;
+    SOCP_ENC_DEBUG_EN_ENUM_UIN32     eDebugEn;
     SOCP_RING_BUF_S         sEncSrcBuf;
     SOCP_RING_BUF_S         sRdBuf;
     socp_event_cb           event_cb;
@@ -284,7 +284,7 @@ typedef struct tagSOCP_ENCDST_CHAN_S
     u32                     u32SetStat;    /* 通道已经或没有配置的标识*/
     u32                     u32Thrh;       /* 阈值*/
     SOCP_RING_BUF_S         sEncDstBuf;
-    SOCP_EVENT_E            eChnEvent;
+    SOCP_EVENT_ENUM_UIN32            eChnEvent;
     socp_event_cb           event_cb;
     socp_read_cb            read_cb;
 }SOCP_ENCDST_CHAN_S;
@@ -295,8 +295,8 @@ typedef struct tagSOCP_DECSRC_CHAN_S
     u32                     u32ChanEn;
     u32                     u32SetStat;    /* 通道已经或没有配置的标识*/
     u32                     u32RdThreshold;
-    SOCP_DATA_TYPE_EN_E     eDataTypeEn;
-    SOCP_DECSRC_CHNMODE_E   eChnMode;      /* 数据结构类型 */
+    SOCP_DATA_TYPE_EN_ENUM_UIN32     eDataTypeEn;
+    SOCP_DECSRC_CHNMODE_ENUM_UIN32   eChnMode;      /* 数据结构类型 */
     SOCP_RING_BUF_S         sDecSrcBuf;
     SOCP_RING_BUF_S         sDecRdBuf;
     socp_event_cb           event_cb;
@@ -307,7 +307,7 @@ typedef struct tagSOCP_DECDST_CHAN_S
 {
     u32                     u32ChanID;
     u32                     u32AllocStat;
-    SOCP_DATA_TYPE_E        eDataType;
+    SOCP_DATA_TYPE_ENUM_UIN32        eDataType;
     SOCP_RING_BUF_S         sDecDstBuf;
     socp_event_cb           event_cb;
     socp_read_cb            read_cb;
@@ -318,18 +318,18 @@ typedef struct tagSOCP_DECDST_CHAN_S
 typedef struct tagSOCP_GBL_STATE
 {
     s32                     bInitFlag;
-    u32                     baseAddr;
-    u32                     armBaseAddr;
-    u32                     tensiAddr;
-    u32                     bbpDsAddr;
+    unsigned long           baseAddr;
+    unsigned long           armBaseAddr;
+    unsigned long           tensiAddr;
+    unsigned long           bbpDsAddr;
     struct semaphore        u32EncSrcSemID;
     struct semaphore        u32EncDstSemID;
     struct semaphore        u32DecSrcSemID;
     struct semaphore        u32DecDstSemID;
-    s32                     u32EncSrcTskID;
-    s32                     u32EncDstTskID;
-    s32                     u32DecSrcTskID;
-    s32                     u32DecDstTskID;
+    unsigned long           u32EncSrcTskID;
+    unsigned long           u32EncDstTskID;
+    unsigned long           u32DecSrcTskID;
+    unsigned long           u32DecDstTskID;
     u32                     u32IntEncSrcHeader;
     u32                     u32IntEncSrcRD;
     u32                     u32IntEncDstTfr;
@@ -749,9 +749,11 @@ s32 bsp_socp_set_log_cfg(SOCP_ENC_DST_BUF_LOG_CFG_STRU * cfg);
 u32 socp_is_encdst_chan_empty(void);
 /* log2.0 2014-03-19 End:*/
 
-#define BSP_REG_SETBITS(base, reg, pos, bits, val) (BSP_REG(base, reg) = (BSP_REG(base, reg) & (~((((u32)1 << (bits)) - 1) << (pos)))) \
+#define SOCP_REG(base, reg) (*(volatile unsigned int *)((base) + (unsigned long)(reg)))
+
+#define REG_SETBITS(base, reg, pos, bits, val) (SOCP_REG(base, reg) = (SOCP_REG(base, reg) & (~((((u32)1 << (bits)) - 1) << (pos)))) \
                                                                          | ((u32)((val) & (((u32)1 << (bits)) - 1)) << (pos)))
-#define BSP_REG_GETBITS(base, reg, pos, bits) ((BSP_REG(base, reg) >> (pos)) & (((u32)1 << (bits)) - 1))
+#define REG_GETBITS(base, reg, pos, bits) ((SOCP_REG(base, reg) >> (pos)) & (((u32)1 << (bits)) - 1))
 
 #ifdef BSP_CONFIG_HI3630
 #define SOCP_REG_WRITE(reg, data) (writel(data, (volatile void *)(g_strSocpStat.baseAddr + reg)))
@@ -765,8 +767,8 @@ u32 socp_is_encdst_chan_empty(void);
 #define SOCP_REG_READ(reg, result) (result = readl(g_strSocpStat.baseAddr + reg))
 #endif
 
-#define SOCP_REG_SETBITS(reg, pos, bits, val) BSP_REG_SETBITS(g_strSocpStat.baseAddr, reg, pos, bits, val)
-#define SOCP_REG_GETBITS(reg, pos, bits) BSP_REG_GETBITS(g_strSocpStat.baseAddr, reg, pos, bits)
+#define SOCP_REG_SETBITS(reg, pos, bits, val) REG_SETBITS(g_strSocpStat.baseAddr, reg, pos, bits, val)
+#define SOCP_REG_GETBITS(reg, pos, bits) REG_GETBITS(g_strSocpStat.baseAddr, reg, pos, bits)
 
 #ifdef BSP_CONFIG_HI3630
 #define BBP_REG_WRITE(reg, data) (writel(data, (volatile void *)(g_strSocpStat.armBaseAddr + reg)))
@@ -780,8 +782,8 @@ u32 socp_is_encdst_chan_empty(void);
 #define BBP_REG_READ(reg, result) (result = readl(g_strSocpStat.armBaseAddr + reg))
 #endif
 
-#define BBP_REG_SETBITS(reg, pos, bits, val) BSP_REG_SETBITS(g_strSocpStat.armBaseAddr, reg, pos, bits, val)
-#define BBP_REG_GETBITS(reg, pos, bits) BSP_REG_GETBITS(g_strSocpStat.armBaseAddr, reg, pos, bits)
+#define BBP_REG_SETBITS(reg, pos, bits, val) REG_SETBITS(g_strSocpStat.armBaseAddr, reg, pos, bits, val)
+#define BBP_REG_GETBITS(reg, pos, bits) REG_GETBITS(g_strSocpStat.armBaseAddr, reg, pos, bits)
 /**************************************************************************/
 #if 0
 #define SOCP_FLUSH_CACHE(ptr, size) __dma_single_cpu_to_dev(ptr, size, 1)

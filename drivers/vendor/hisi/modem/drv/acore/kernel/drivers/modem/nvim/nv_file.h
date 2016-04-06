@@ -170,11 +170,23 @@ s32   nv_rfile_seek(FILE * fp, s32 offset, s32 whence);
 
 #define FSZ                             long unsigned int
 
+#ifdef HI3630_FASTBOOT_MODEM
+
 #define NV_IMG_SEC_NAME                "block2mtd: /dev/block/mmcblk0p24"
 #define NV_BACK_SEC_NAME               "block2mtd: /dev/block/mmcblk0p23"
 #define NV_DLOAD_SEC_NAME              "block2mtd: /dev/block/mmcblk0p29"
 #define NV_DEF_SEC_NAME                "block2mtd: /dev/block/mmcblk0p7"
 #define NV_SYS_SEC_NAME                "block2mtd: /dev/block/mmcblk0p25"
+
+#else
+
+#define NV_IMG_SEC_NAME                "block2mtd: /dev/block/mmcblk0p11"
+#define NV_BACK_SEC_NAME               "block2mtd: /dev/block/mmcblk0p10"
+#define NV_DLOAD_SEC_NAME              "block2mtd: /dev/block/mmcblk0p20"
+#define NV_DEF_SEC_NAME                "block2mtd: /dev/block/mmcblk0p6"
+#define NV_SYS_SEC_NAME                "block2mtd: /dev/block/mmcblk0p12"
+
+#endif
 
 struct nv_emmc_info_stru
 {

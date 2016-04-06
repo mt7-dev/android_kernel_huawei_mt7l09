@@ -106,7 +106,7 @@ VOS_UINT8  NAS_MM_AnalyzeLmmEvent(MSG_HEADER_STRU *pMsgHeader)
         case ID_LMM_MM_CSFB_SERVICE_PAGING_IND:
             ucEventID = NAS_MM_RcvLmmCsPagingInd(pMsgHeader);
             break;
-        
+
         case ID_LMM_MM_HO_SECU_INFO_CNF:
             ucEventID = NAS_MM_RcvLmmHoSecuInfoCnf((struct MsgCB*)pMsgHeader);
             break;
@@ -175,9 +175,8 @@ VOS_UINT8   Mm_Event_Analy_From_MMC(MSG_HEADER_STRU* pMsgHeader)
     case MMCMM_PLMN_SEARCH_INITIATED:
         ucEventID   = 3;
         break;
-    case MMCMM_PLMN_USER_SEL_REQ:
-        ucEventID   = 4;
-        break;
+
+    /* MMCMM_PLMN_USER_SEL_REQ不再使用，删除 */
 
     case MMCMM_SYS_INFO_IND:
     case MMCMM_GSM_SYS_INFO_IND:
@@ -208,17 +207,17 @@ VOS_UINT8   Mm_Event_Analy_From_MMC(MSG_HEADER_STRU* pMsgHeader)
         ucEventID   = 88;
         break;
 
-#if (FEATURE_ON == FEATURE_IMS)    
+#if (FEATURE_ON == FEATURE_IMS)
     case MMCMM_SRVCC_INFO_NOTIFY:
         NAS_MM_RcvMmcSrvccInfoNtf((struct MsgCB*)pMsgHeader);
         break;
-#endif        
+#endif
 
     case MMCMM_LAU_REQ:
         NAS_MM_RcvMmcLauReq((struct MsgCB*)pMsgHeader);
         break;
-    
-    
+
+
     default:
         PS_LOG(WUEPS_PID_MM, VOS_NULL, PS_PRINT_WARNING, "Mm_Event_Analy_From_MMC:WARNING: Msg name from MMC is Error");
         break;
@@ -226,8 +225,6 @@ VOS_UINT8   Mm_Event_Analy_From_MMC(MSG_HEADER_STRU* pMsgHeader)
 
     return ucEventID;
 }
-
-
 VOS_UINT8   Mm_Event_Analy_From_CC(MSG_HEADER_STRU* pMsgHeader)
 {
     VOS_UINT8 ucEventID = MM_EVENT_ID_INVALID;
@@ -320,7 +317,7 @@ VOS_UINT8   Mm_Event_Analy_From_GAS(MSG_HEADER_STRU* pMsgHeader)
     switch ( pMsgHeader->ulMsgName )
     {
     case GRRMM_PAGING_IND: /* GAS 的呼叫指示,处理与WAS统一 */
-        ucEventID   = 31;
+        ucEventID   = NAS_MM_RcvCspagingInd_PreProc((struct MsgCB*)pMsgHeader);
         break;
     case RRMM_EST_CNF:
         ucEventID   = 32;
@@ -371,7 +368,7 @@ VOS_UINT8   Mm_Event_Analy_From_RRCF(MSG_HEADER_STRU* pMsgHeader)
     switch ( pMsgHeader->ulMsgName )
     {
     case RRMM_PAGING_IND:
-        ucEventID   = 31;
+        ucEventID   = NAS_MM_RcvCspagingInd_PreProc((struct MsgCB*)pMsgHeader);
         break;
     case RRMM_EST_CNF:
         ucEventID   = 32;
@@ -622,7 +619,7 @@ VOS_VOID NAS_MM_WaitConnectRelTimeOut()
         MM_SndMmcRrRelInd(RRC_REL_CAUSE_RR_NORM_EVENT);
 
         /* 释放所有MM连接,正在建的MM连接 */
-        Mm_ComRelAllMmConn(NAS_MMCM_REL_CAUSE_MM_REJ_OTHER_CAUSES);
+        Mm_ComRelAllMmConn(NAS_MMCM_REL_CAUSE_RR_REL_NAS_REL_REQ);
     }
 
     return;
@@ -631,6 +628,13 @@ VOS_VOID NAS_MM_HoWaitSysinfoTimeOut(VOS_VOID)
 {
 
 #if (FEATURE_ON == FEATURE_LTE)
+
+    if (MM_TIMER_RUNNING == gstMmTimer[MM_TIMER_PROTECT_MT_CSFB_PAGING_PROCEDURE].ucTimerStatus)
+    {
+        /* 后续LAU携带CSMT标志 */
+        NAS_MM_SetCsfbMtLauFlg(VOS_TRUE);
+    }
+
     /* 处于CSFB流程发起LAU流程 */
     if ( VOS_TRUE == NAS_MML_IsCsfbServiceStatusExist())
     {
@@ -643,6 +647,7 @@ VOS_VOID NAS_MM_HoWaitSysinfoTimeOut(VOS_VOID)
 }
 
 #if (FEATURE_ON == FEATURE_LTE)
+
 VOS_VOID NAS_MM_EmergencyCallCsfbWaitHoSysInfoTimeOut(VOS_VOID)
 {
     /* 处于紧急呼CSFB流程发起紧急呼叫 */
@@ -672,6 +677,9 @@ VOS_VOID NAS_MM_EmergencyCallCsfbWaitHoSysInfoTimeOut(VOS_VOID)
     return;
 }
 #endif
+
+
+
 VOS_VOID NAS_MM_ModeICsPsPowerOffProtectTimeOut(VOS_VOID)
 {
     Mm_ComSetMmState(MM_STATE_NULL);
@@ -723,7 +731,7 @@ VOS_UINT8 Mm_Timer_Event_Analy(VOS_UINT32 *aulRcvMsg)
     }
 
     NAS_TIMER_EventReport(aulRcvMsg[1], WUEPS_PID_MM, NAS_OM_EVENT_TIMER_OPERATION_EXPIRED);
-    
+
     switch ( aulRcvMsg[1] )
     {
     case MM_TIMER_T3210:
@@ -827,11 +835,15 @@ VOS_UINT8 Mm_Timer_Event_Analy(VOS_UINT32 *aulRcvMsg)
         break;
 
     case MM_TIMER_WAIT_GET_HO_SECU_INFO_CNF:
-#if (FEATURE_ON == FEATURE_LTE)    
+#if (FEATURE_ON == FEATURE_LTE)
         NAS_MM_RcvMmTimerGetHoSecuInfoCnfExpired();
-#endif        
+#endif
         break;
 
+
+    case MM_TIMER_PROTECT_MT_CSFB_PAGING_PROCEDURE:
+        NAS_MM_RcvProtectingMtCsfbPagingProcedureExpired();
+        break;
     default:
         PS_LOG(WUEPS_PID_MM, VOS_NULL, PS_PRINT_WARNING, "Mm_Timer_Event_Analy:WARNING: TimerId is Error");
         break;
@@ -1091,7 +1103,7 @@ VOS_VOID MmMsgProc (struct MsgCB* pMsg)
     }
 
     NAS_MM_LogMmStateInfo(g_MmGlobalInfo.ucState);
-    
+
 #ifdef __PS_WIN32_RECUR__
     if ((WUEPS_PID_MM == pMsg->ulSenderPid) && (WUEPS_PID_MM == pMsg->ulReceiverPid))
     {

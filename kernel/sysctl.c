@@ -146,6 +146,11 @@ static int min_percpu_pagelist_fract = 8;
 static int ngroups_max = NGROUPS_MAX;
 static const int cap_last_cap = CAP_LAST_CAP;
 
+/*this is needed for proc_doulongvec_minmax of sysctl_hung_task_timeout_secs */
+#ifdef CONFIG_DETECT_HUNG_TASK
+static unsigned long hung_task_timeout_max = (LONG_MAX/HZ);
+#endif
+
 #ifdef CONFIG_INOTIFY_USER
 #include <linux/inotify.h>
 #endif
@@ -272,6 +277,10 @@ static int max_sched_tunable_scaling = SCHED_TUNABLESCALING_END-1;
 #ifdef CONFIG_COMPACTION
 static int min_extfrag_threshold;
 static int max_extfrag_threshold = 1000;
+#endif
+#ifdef CONFIG_SHRINK_MEMORY
+static int min_shrink_memory = 1;
+static int max_shrink_memory = 1;
 #endif
 
 static struct ctl_table kern_table[] = {
@@ -968,6 +977,7 @@ static struct ctl_table kern_table[] = {
 		.maxlen		= sizeof(unsigned long),
 		.mode		= 0644,
 		.proc_handler	= proc_dohung_task_timeout_secs,
+		.extra2		= &hung_task_timeout_max,
 	},
 	{
 		.procname	= "hung_task_warnings",
@@ -1054,6 +1064,16 @@ static struct ctl_table kern_table[] = {
 		.maxlen		= sizeof(sysctl_perf_event_sample_rate),
 		.mode		= 0644,
 		.proc_handler	= perf_proc_update_handler,
+		.extra1		= &one,
+	},
+	{
+		.procname	= "perf_cpu_time_max_percent",
+		.data		= &sysctl_perf_cpu_time_max_percent,
+		.maxlen		= sizeof(sysctl_perf_cpu_time_max_percent),
+		.mode		= 0644,
+		.proc_handler	= perf_cpu_time_max_percent_handler,
+		.extra1		= &zero,
+		.extra2		= &one_hundred,
 	},
 #endif
 #ifdef CONFIG_KMEMCHECK
@@ -1072,6 +1092,15 @@ static struct ctl_table kern_table[] = {
 		.maxlen		= sizeof(int),
 		.mode		= 0644,
 		.proc_handler	= proc_dointvec,
+	},
+#endif
+#ifdef CONFIG_HISI_ALTER_HARDWARE_NAME
+	{
+		.procname	= "hardware_alter",
+		.data		= &alter_hardware_name,
+		.maxlen		= MAX_HARDWARE_NAME,
+		.mode		= 0200,
+		.proc_handler	= proc_dostring,
 	},
 #endif
 	{ }
@@ -1188,6 +1217,43 @@ static struct ctl_table vm_table[] = {
 		.extra1		= &zero,
 		.extra2		= &one_hundred,
 	},
+#ifdef CONFIG_ARM64
+	{
+		.procname	= "cache_limit_ratio",
+		.data		= &vm_cache_limit_ratio,
+		.maxlen		= sizeof(vm_cache_limit_ratio),
+		.mode		= 0644,
+		.proc_handler	= cache_limit_ratio_sysctl_handler,
+		.extra1		= &vm_cache_limit_ratio_min,
+		.extra2		= &vm_cache_limit_ratio_max,
+	},
+	{
+		.procname	= "cache_limit_mbytes",
+		.data		= &vm_cache_limit_mbytes,
+		.maxlen		= sizeof(vm_cache_limit_mbytes),
+		.mode		= 0644,
+		.proc_handler	= cache_limit_mbytes_sysctl_handler,
+		.extra1		= &vm_cache_limit_mbytes_min,
+		.extra2		= &vm_cache_limit_mbytes_max,
+	},
+	{
+		.procname	= "cache_reclaim_s",
+		.data		= &vm_cache_reclaim_s,
+		.maxlen		= sizeof(vm_cache_reclaim_s),
+		.mode		= 0644,
+		.proc_handler	= proc_doulongvec_minmax,
+		.extra1		= &vm_cache_reclaim_s_min,
+	},
+	{
+		.procname	= "cache_reclaim_weight",
+		.data		= &vm_cache_reclaim_weight,
+		.maxlen		= sizeof(vm_cache_reclaim_weight),
+		.mode		= 0644,
+		.proc_handler	= proc_doulongvec_minmax,
+		.extra1		= &vm_cache_reclaim_weight_min,
+		.extra2		= &vm_cache_reclaim_weight_max,
+	},
+#endif
 #ifdef CONFIG_HUGETLB_PAGE
 	{
 		.procname	= "nr_hugepages",
@@ -1257,6 +1323,25 @@ static struct ctl_table vm_table[] = {
 		.mode		= 0200,
 		.proc_handler	= sysctl_compaction_handler,
 	},
+#ifdef CONFIG_ARM64
+	{
+		.procname	= "compact_memory_s",
+		.data		= &sysctl_compact_memory_s,
+		.maxlen		= sizeof(sysctl_compact_memory_s),
+		.mode		= 0644,
+		.proc_handler	= proc_doulongvec_minmax,
+		.extra1		= &sysctl_compact_memory_s_min,
+	},
+	{
+		.procname	= "compact_memory_ratio",
+		.data		= &sysctl_compact_memory_ratio,
+		.maxlen		= sizeof(sysctl_compact_memory_ratio),
+		.mode		= 0644,
+		.proc_handler	= proc_doulongvec_minmax,
+		.extra1		= &sysctl_compact_memory_ratio_min,
+		.extra2		= &sysctl_compact_memory_ratio_max,
+	},
+#endif
 	{
 		.procname	= "extfrag_threshold",
 		.data		= &sysctl_extfrag_threshold,
@@ -1268,6 +1353,17 @@ static struct ctl_table vm_table[] = {
 	},
 
 #endif /* CONFIG_COMPACTION */
+#ifdef CONFIG_SHRINK_MEMORY
+	{
+		.procname	= "shrink_memory",
+		.data 		= &sysctl_shrink_memory,
+		.maxlen		= sizeof(int),
+		.mode		= 0200,
+		.proc_handler = sysctl_shrinkmem_handler,
+		.extra1 	= &min_shrink_memory,
+		.extra2	    = &max_shrink_memory,
+	},
+#endif
 	{
 		.procname	= "min_free_kbytes",
 		.data		= &min_free_kbytes,

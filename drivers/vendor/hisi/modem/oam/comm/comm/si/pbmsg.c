@@ -765,9 +765,11 @@ VOS_UINT32 SI_PB_SReadProc(PBMsgBlock *pMsg)
 *****************************************************************************/
 VOS_UINT32 SI_PBUpdateAGlobal(PBMsgBlock *pMsg)
 {
-    SI_PB_UPDATEGLOBAL_IND_STRU *pstMsg;
+    SI_PB_UPDATEGLOBAL_IND_STRU        *pstMsg;
+
 #if (VOS_LINUX == VOS_OS_VER)
-    VOS_UINT32                  i;
+    VOS_UINT32                          i;
+    VOS_UINT_PTR                        TempAddr;
 #endif
 
     pstMsg = (SI_PB_UPDATEGLOBAL_IND_STRU*)pMsg;
@@ -784,37 +786,76 @@ VOS_UINT32 SI_PBUpdateAGlobal(PBMsgBlock *pMsg)
 #if (VOS_LINUX == VOS_OS_VER)
     for (i=0; i<PB_CONTENT_BUTT; i++)
     {
+        gastPBContent[i].pContent   = VOS_NULL_PTR;
+
+        TempAddr = pstMsg->astPBContentAddr[i].ulContentAddr;
+
+        gastPBContent[i].pContent   = (VOS_UINT8 *)TempAddr;
+
+        gastPBContent[i].pIndex     = VOS_NULL_PTR;
+
+        TempAddr = pstMsg->astPBContentAddr[i].ulIndexAddr;
+
+        gastPBContent[i].pIndex     = (VOS_UINT8 *)TempAddr;
+
         if(VOS_NULL_PTR != gastPBContent[i].pContent)
         {
-            gastPBContent[i].pContent   = (VOS_UINT8*)DRV_DDR_PHY_TO_VIRT((unsigned int)gastPBContent[i].pContent);
-            gastPBContent[i].pIndex     = (VOS_UINT8*)DRV_DDR_PHY_TO_VIRT((unsigned int)gastPBContent[i].pIndex);
+            gastPBContent[i].pContent   = (VOS_UINT8*)DRV_DDR_PHY_TO_VIRT(gastPBContent[i].pContent);
+        }
+        if (VOS_NULL_PTR != gastPBContent[i].pIndex)
+        {
+            gastPBContent[i].pIndex     = (VOS_UINT8*)DRV_DDR_PHY_TO_VIRT(gastPBContent[i].pIndex);
         }
     }
 
     for (i=0; i<SI_PB_MAX_NUMBER; i++)
     {
+        gastEXTContent[i].pExtContent   = VOS_NULL_PTR;
+
+        TempAddr = pstMsg->aulExtContentAddr[i];
+
+        gastEXTContent[i].pExtContent   = (VOS_UINT8 *)TempAddr;
+
         if(VOS_NULL_PTR != gastEXTContent[i].pExtContent)
         {
-            gastEXTContent[i].pExtContent   = (VOS_UINT8*)DRV_DDR_PHY_TO_VIRT((unsigned int)gastEXTContent[i].pExtContent);
+            gastEXTContent[i].pExtContent   = (VOS_UINT8*)DRV_DDR_PHY_TO_VIRT(gastEXTContent[i].pExtContent);
         }
     }
 
     for (i=0; i<SI_PB_ANRMAX; i++)
     {
+        gastANRContent[i].pContent   = VOS_NULL_PTR;
+
+        TempAddr = pstMsg->aulANRContentAddr[i];
+
+        gastANRContent[i].pContent   = (VOS_UINT8*)TempAddr;
+
         if(VOS_NULL_PTR != gastANRContent[i].pContent)
         {
-            gastANRContent[i].pContent   = (VOS_UINT8*)DRV_DDR_PHY_TO_VIRT((unsigned int)gastANRContent[i].pContent);
+            gastANRContent[i].pContent   = (VOS_UINT8*)DRV_DDR_PHY_TO_VIRT(gastANRContent[i].pContent);
         }
     }
 
+    gstEMLContent.pContent  = VOS_NULL_PTR;
+
+    TempAddr = pstMsg->ulEMLContentAddr;
+
+    gstEMLContent.pContent      = (VOS_UINT8*)TempAddr;
+
     if(VOS_NULL_PTR != gstEMLContent.pContent)
     {
-        gstEMLContent.pContent  = (VOS_UINT8*)DRV_DDR_PHY_TO_VIRT((unsigned int)gstEMLContent.pContent);
+        gstEMLContent.pContent  = (VOS_UINT8*)DRV_DDR_PHY_TO_VIRT(gstEMLContent.pContent);
     }
+
+    gstIAPContent.pIAPContent   = VOS_NULL_PTR;
+
+    TempAddr = pstMsg->ulIAPContentAddr;
+
+    gstIAPContent.pIAPContent   = (VOS_UINT8*)TempAddr;
 
     if(VOS_NULL_PTR != gstIAPContent.pIAPContent)
     {
-        gstIAPContent.pIAPContent   = (VOS_UINT8*)DRV_DDR_PHY_TO_VIRT((unsigned int)gstIAPContent.pIAPContent);
+        gstIAPContent.pIAPContent   = (VOS_UINT8*)DRV_DDR_PHY_TO_VIRT(gstIAPContent.pIAPContent);
     }
 #endif
 

@@ -1,18 +1,4 @@
-/**
-    @copyright: Huawei Technologies Co., Ltd. 2012-2012. All rights reserved.
-    
-    @file: srecorder_crash_time.c
-    
-    @brief: 读取死机时当前系统的时间(UTC格式)
-    
-    @version: 1.0 
-    
-    @author: QiDechun ID: 216641
-    
-    @date: 2012-06-21
-    
-    @history:
-*/
+
 
 /*----includes-----------------------------------------------------------------------*/
 
@@ -65,21 +51,17 @@
 int srecorder_get_crash_time(srecorder_reserved_mem_info_t *pmem_info)
 {
     struct timeval tv;
-    /* DTS2012101502012 wupeng 20121015 begin */
     /* struct timex txc; */
-    /* DTS2012101502012 wupeng 20121015 end */
     struct rtc_time tm;
     int bytes_read = 0;
     char *pbuf = NULL;
     psrecorder_info_header_t pinfo_header = NULL;
         
-    /* DTS2012101502012 wupeng 20121015 begin */
     if (unlikely(NULL == pmem_info))
     {
         SRECORDER_PRINTK("File [%s] line [%d] invalid param or kernel symbol addr!\n", __FILE__, __LINE__);
         return -1;
     }
-    /* DTS2012101502012 wupeng 20121015 end */
 
     if (srecorder_log_has_been_dumped(CRASH_REASON_TIME_BIT0))
     {
@@ -88,9 +70,7 @@ int srecorder_get_crash_time(srecorder_reserved_mem_info_t *pmem_info)
     }
     
     memset(&tv, 0, sizeof(struct timeval));
-    /* DTS2012101502012 wupeng 20121015 begin */
     /* memset(&txc, 0, sizeof(struct timex)); */
-    /* DTS2012101502012 wupeng 20121015 end */
     memset(&tm, 0, sizeof(struct rtc_time));
 
     if (0 != srecorder_write_info_header(pmem_info, CRASH_REASON_TIME_BIT0, &pinfo_header))
@@ -101,7 +81,7 @@ int srecorder_get_crash_time(srecorder_reserved_mem_info_t *pmem_info)
     do_gettimeofday(&tv);
     tv.tv_sec -= sys_tz.tz_minuteswest * 60; /* 一分钟=60秒 */
     rtc_time_to_tm(tv.tv_sec, &tm);
-    pbuf = pmem_info->start_addr + pmem_info->bytes_read;
+    pbuf = pmem_info->start_addr + pmem_info->bytes_read;/* [false alarm]:there is pmem_info protect before  */
     bytes_read = SRECORDER_SNPRINTF(pmem_info->start_addr + pmem_info->bytes_read, pmem_info->bytes_left, 
         "Crash reason: %s %s Crash Time: %04d%02d%02d-%02d:%02d:%02d\n", 
         (NULL == pmem_info->crash_reason1) ? ("") : (pmem_info->crash_reason1), 

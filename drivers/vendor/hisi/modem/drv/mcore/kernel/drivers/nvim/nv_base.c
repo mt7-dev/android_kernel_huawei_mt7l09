@@ -182,10 +182,10 @@ u32 bsp_nvm_flushEx(u32 off,u32 len,u32 itemid)
 }
 u32 bsp_nvm_flush(void)
 {
-
     struct nv_global_ddr_info_stru* ddr_info = (struct nv_global_ddr_info_stru*)NV_GLOBAL_INFO_ADDR;
+    struct nv_ctrl_file_info_stru* ctrl_info = (struct nv_ctrl_file_info_stru*)NV_GLOBAL_CTRL_INFO_ADDR;
 
-    return bsp_nvm_flushEx(0,ddr_info->file_len,NV_ERROR);
+    return bsp_nvm_flushEx(ctrl_info->ctrl_size,(ddr_info->file_len-ctrl_info->ctrl_size),NV_ERROR);
 }
 
 

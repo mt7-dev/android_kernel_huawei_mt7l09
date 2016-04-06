@@ -136,6 +136,18 @@ config SND_SOC_ALL_CODECS
 	  be selected separately.
 
           If unsure select "N".
+          
+select SND_SOC_HI6402
+        help
+          Normally ASoC codec drivers are only built if a machine driver which
+          uses them is also built since they are only usable with a machine
+          driver.  Selecting this option will allow these drivers to be built
+          without an explicit machine driver for test and development purposes.
+
+	  Support for the bus types used to access the codecs to be built must
+	  be selected separately.
+
+          If unsure select "N".
 
 config SND_SOC_88PM860X
 	tristate
@@ -529,3 +541,9 @@ config SND_SOC_TPA6130A2
 
 config SND_SOC_HI6401
 	tristate "Support Sound SoC Hi6401 Codec"
+
+config SND_SOC_HI6402
+	tristate "Support Sound SoC Hi6402 Codec"
+	
+config SND_SOC_CODEC_HISSC
+	tristate "HI Soc Smartstar Codec support"

@@ -76,7 +76,6 @@
 #ifdef CONFIG_LIRC_SERIAL_NSLU2
 #include <asm/hardware.h>
 #endif
-/* From Intel IXP42X Developer's Manual (#252480-005): */
 /* ftp://download.intel.com/design/network/manuals/25248005.pdf */
 #define UART_IE_IXP42X_UUE   0x40 /* IXP42X UART Unit enable */
 #define UART_IE_IXP42X_RTOIE 0x10 /* IXP42X Receiver Data Timeout int.enable */
@@ -816,12 +815,9 @@ static int hardware_init_port(void)
 	switch (type) {
 	case LIRC_IRDEO:
 	case LIRC_IRDEO_REMOTE:
-		/* setup port to 7N1 @ 115200 Baud */
-		/* 7N1+start = 9 bits at 115200 ~ 3 bits at 38kHz */
 
 		/* Set DLAB 1. */
 		soutp(UART_LCR, sinp(UART_LCR) | UART_LCR_DLAB);
-		/* Set divisor to 1 => 115200 Baud */
 		soutp(UART_DLM, 0);
 		soutp(UART_DLL, 1);
 		/* Set DLAB 0 +  7N1 */

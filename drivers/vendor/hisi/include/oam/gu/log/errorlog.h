@@ -573,7 +573,6 @@ typedef struct
     NAS_MNTN_SMS_MO_INFO_STRU           stMoFail;
     NAS_MNTN_SEND_DOMAIN_STATUS_ENUM_UINT32                 enCsStatus;
     NAS_MNTN_SEND_DOMAIN_STATUS_ENUM_UINT32                 enPsStatus;
-    VOS_UINT8                           aucReservedd[2];
 }NAS_MNTN_SMS_MO_FAIL_EVENT_STRU;
 
 /*******************************************************************************

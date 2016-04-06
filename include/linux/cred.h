@@ -68,6 +68,7 @@ extern void groups_free(struct group_info *);
 extern int set_current_groups(struct group_info *);
 extern int set_groups(struct cred *, struct group_info *);
 extern int groups_search(const struct group_info *, kgid_t);
+extern bool may_setgroups(void);
 
 /* access the groups "array" with this macro */
 #define GROUP_AT(gi, i) \
@@ -243,6 +244,8 @@ static inline const struct cred *get_cred(const struct cred *cred)
 static inline void put_cred(const struct cred *_cred)
 {
 	struct cred *cred = (struct cred *) _cred;
+
+        BUG_ON(atomic_read(&cred->usage) == 0);
 
 	validate_creds(cred);
 	if (atomic_dec_and_test(&(cred)->usage))

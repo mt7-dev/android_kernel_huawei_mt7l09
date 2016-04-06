@@ -31,8 +31,13 @@
 #include <linux/topology.h>
 #include <linux/types.h>
 #include <asm/bL_switcher.h>
+#include <linux/notifier.h>
 
 #include "arm_big_little.h"
+
+#ifdef CONFIG_HUAWEI_HW_DEV_DCT
+#include <linux/hw_dev_dec.h>
+#endif
 
 #ifdef CONFIG_BL_SWITCHER
 bool bL_switching_enabled;
@@ -40,6 +45,110 @@ bool bL_switching_enabled;
 
 #define ACTUAL_FREQ(cluster, freq)	((cluster == A7_CLUSTER) ? freq << 1 : freq)
 #define VIRT_FREQ(cluster, freq)	((cluster == A7_CLUSTER) ? freq >> 1 : freq)
+
+
+#ifdef CONFIG_ARCH_HI3630
+#define CPU_NO_EXTRA_HIGH_FREQ			0x01
+#define CPU_EXTRA_HIGH_FREQ				0x02
+
+enum {
+	MAXPROF_ADJUST_PLUS_0 = 0x00,
+	MAXPROF_ADJUST_PLUS_1 = 0x01,
+	MAXPROF_ADJUST_PLUS_2 = 0x02,
+	MAXPROF_ADJUST_MINUS_1 = 0x03,
+	MAXPROF_ADJUST_MINUS_2 = 0x04,
+	MAXPROF_ADJUST_MINUS_3 = 0x05,
+	MAXPROF_ADJUST_MINUS_4 = 0x06,
+	MAXPROF_ADJUST_MINUS_5 = 0x07,
+};
+
+struct efuse_info {
+	unsigned int group;
+	unsigned int start;
+	unsigned int bits;
+};
+#endif
+
+
+#ifdef CONFIG_HISI_3635
+typedef struct _soc_freq{
+	unsigned int id;
+	int val;
+}soc_freq;
+
+typedef struct _soc_freq_long{
+	unsigned long id;
+	unsigned long val;
+}soc_freq_long;
+
+#define BIG_CLUSTER			1
+
+enum SOC_EFUSE_FREQ_ENUM{
+    SOC_EFUSE_FREQ_0 = 0x00,/*1017600*/
+    SOC_EFUSE_FREQ_1 = 0x01,/*1209600*/
+    SOC_EFUSE_FREQ_2 = 0x02,/*1401600*/
+    SOC_EFUSE_FREQ_3 = 0x03,/*1612800*/
+    SOC_EFUSE_FREQ_4 = 0x04,/*1708800*/
+    SOC_EFUSE_FREQ_5 = 0x05,/*1804800*/
+    SOC_EFUSE_FREQ_6 = 0x06,/*2016000*/
+    SOC_EFUSE_FREQ_7 = 0x07,/*2208000*/
+    SOC_EFUSE_FREQ_MAX,/*max*/
+};
+
+/*will be sync from dts later*/
+#define MAX_FREQ_LIMIT 1804800000
+soc_freq_long freq_prof_val_table[SOC_EFUSE_FREQ_MAX]={
+	{SOC_EFUSE_FREQ_0,1017600000},
+	{SOC_EFUSE_FREQ_1,1209600000},
+	{SOC_EFUSE_FREQ_2,1401600000},
+	{SOC_EFUSE_FREQ_3,1612800000},
+	{SOC_EFUSE_FREQ_4,1708800000},
+	{SOC_EFUSE_FREQ_5,1804800000},
+	{SOC_EFUSE_FREQ_6,2016000000},
+	{SOC_EFUSE_FREQ_7,2208000000},
+};
+
+#define EFUSE_TABLE_LEN 4
+#define DEFAULT_EFUSE_FREQ_LEVEL 2
+soc_freq soc_efuse_freq_table[EFUSE_TABLE_LEN]=
+{
+	{0x00,SOC_EFUSE_FREQ_6},
+	{0x01,SOC_EFUSE_FREQ_5},
+	{0x10,SOC_EFUSE_FREQ_6},
+	{0x11,SOC_EFUSE_FREQ_7},
+};
+
+#define EFUSE_ADJUST_LEN 8
+#define DEFAULT_ADJUST_FREQ_LEVEL 0
+soc_freq soc_adjust_freq_table[EFUSE_ADJUST_LEN]=
+{
+	{0x0,0},
+	{0x1,1},
+	{0x2,2},
+	{0x3,-1},
+	{0x4,-2},
+	{0x5,-3},
+	{0x6,-4},
+	{0x7,-5},
+};
+
+#if defined(CONFIG_HI3XXX_EFUSE)||defined(CONFIG_HI6XXX_EFUSE)
+extern int get_efuse_freq_value(unsigned char *pu8Buffer, unsigned int u32Length);
+#endif
+
+#ifdef __SLT_FEATURE__
+unsigned int g_acpu_chip_max_freq;
+#define show_chip_one(file_name, object)					\
+static ssize_t show_##file_name(struct cpufreq_policy *policy,\
+	char *buf)		\
+{									\
+	return sprintf(buf, "%u\n", object);		\
+}
+show_chip_one(chip_max_freq, g_acpu_chip_max_freq);
+cpufreq_freq_attr_ro(chip_max_freq);
+#endif
+
+#endif
 
 static struct cpufreq_arm_bL_ops *arm_bL_ops;
 static struct clk *clk[MAX_CLUSTERS];
@@ -327,11 +436,285 @@ static void put_cluster_clk_and_freq_table(struct device *cpu_dev)
 	kfree(freq_table[MAX_CLUSTERS]);
 }
 
+#ifdef CONFIG_ARCH_HI3630
+#if defined(CONFIG_HI3XXX_EFUSE)||defined(CONFIG_HI3630_EFUSE)
+extern int bsp_efuse_read(unsigned int* buf,
+                          const unsigned int group,
+                          const unsigned int size);
+#endif
+
+int hisi_efuse_read(unsigned int* buf,
+			const unsigned int group,
+			const unsigned int size)
+{
+	int ret = -1;
+	int loop = 2;
+
+	do{
+#if defined(CONFIG_HI3XXX_EFUSE)||defined(CONFIG_HI3630_EFUSE)
+		ret = bsp_efuse_read(buf, group, size);
+#endif
+		loop--;
+	}while(ret != 0 && loop > 0);
+
+	if (ret)
+		pr_err("[%s] bsp_efuse_read failed,%d\n",__func__,ret);
+
+	return ret;
+}
+
+int get_efuse_param(struct efuse_info *einfo)
+{
+	unsigned int value,ret;
+	unsigned int gotten = 0;
+	unsigned int cur = 0;
+	unsigned int group = 0;
+	unsigned int start = 0;
+	unsigned int left = 0;
+	unsigned int param = 0;
+
+	if (!einfo) {
+		pr_err("%s:param error.\n",__func__);
+		return 0;
+	}
+
+	group = einfo->group;
+	start = einfo->start;
+	left = einfo->bits;
+
+	for (gotten = 0; left != 0; group++, start = 0) {
+		ret = hisi_efuse_read(&value, group, 1);
+		if (ret)
+			goto error;
+
+		cur = (left <= 32 - start) ? left : (32 - start);
+		param += ((value >> start) & ((1 << cur) - 1)) << gotten;
+		gotten += cur;
+		left -= cur;
+	}
+	return param;
+error:
+	return ret;
+}
+EXPORT_SYMBOL_GPL(get_efuse_param);
+
+int check_cpu_profile(void)
+{
+	struct efuse_info einfo_maxprof = {54, 10, 4}; /* 1738-1741 */
+	struct efuse_info einfo_maxprof_adjust = {54, 7, 3}; /* 1735-1737 */
+	unsigned int _max_prof = CPU_NO_EXTRA_HIGH_FREQ;
+	unsigned int max_prof = get_efuse_param(&einfo_maxprof);
+	unsigned int max_prof_adjust = get_efuse_param(&einfo_maxprof_adjust);
+
+	if ((CPU_EXTRA_HIGH_FREQ != max_prof) &&
+		(CPU_NO_EXTRA_HIGH_FREQ != max_prof))
+		max_prof = CPU_NO_EXTRA_HIGH_FREQ;
+
+    /*
+     * case 2000MHZ
+     * max_prof = 2000MHZ, max_prof_adjust = +0, +1, +2;
+     * max_prof = 1700/1800MHZ, max_prof_adjust = +1, +2;
+     */
+	if (((CPU_EXTRA_HIGH_FREQ == max_prof) &&
+		(max_prof_adjust <= MAXPROF_ADJUST_PLUS_2)) ||
+		((CPU_NO_EXTRA_HIGH_FREQ == max_prof) &&
+		(max_prof_adjust <= MAXPROF_ADJUST_PLUS_2) &&
+		(max_prof_adjust >= MAXPROF_ADJUST_PLUS_1))) {
+		_max_prof = CPU_EXTRA_HIGH_FREQ;
+	}
+    /*
+     * case 1700/1800MHZ
+     * max_prof = 1700/1800MHZ, max_prof_adjust = +0;
+     * max_prof = 1700/1800MHZ, max_prof_adjust = -1, -2, -3, -4, -5;
+     * max_prof = 2000MHZ, max_prof_adjust = -1, -2, -3, -4, -5;
+     */
+	else if (((CPU_NO_EXTRA_HIGH_FREQ == max_prof) &&
+		((MAXPROF_ADJUST_PLUS_0 == max_prof_adjust))) ||
+		((CPU_NO_EXTRA_HIGH_FREQ == max_prof) &&
+		(max_prof_adjust >= MAXPROF_ADJUST_MINUS_1)) ||
+		((CPU_EXTRA_HIGH_FREQ == max_prof) &&
+		(max_prof_adjust >= MAXPROF_ADJUST_MINUS_1)
+		)) {
+		_max_prof = CPU_NO_EXTRA_HIGH_FREQ;
+	}
+	return _max_prof;
+}
+EXPORT_SYMBOL_GPL(check_cpu_profile);
+#endif
+
+#ifdef CONFIG_HISI_3635
+int of_target_cpu(unsigned long * freq)
+{
+	struct device_node *np;
+	char * target_cpu;
+	unsigned int target_max_freq = 0;
+	int ret;
+	unsigned int index;
+
+	np = of_find_compatible_node(NULL,NULL,"hisi,targetcpu");
+	if (!np)
+		return -1;
+	ret = of_property_read_string(np,"target_cpu",&target_cpu);
+	if (ret)
+		return -1;
+	pr_info("target_cpu:%s:.\n", target_cpu);
+
+	np = of_find_compatible_node(NULL,NULL,"hisi,supportedtarget");
+	if (!np)
+		return -1;
+
+	index = of_property_match_string(np, "support_name", target_cpu);
+	pr_info("%s: index :%llu.\n", __func__,index);
+
+	ret = of_property_read_u32_index(np,"support_value",index, &target_max_freq);
+	if (ret)
+		return -1;
+
+	*freq = target_max_freq*1000;
+	/*if parse error,set 2.0G as default*/
+	if (*freq < freq_prof_val_table[SOC_EFUSE_FREQ_0].val)	{
+		*freq = freq_prof_val_table[SOC_EFUSE_FREQ_6].val;
+	}
+	pr_info("%s: target_max_freq:%llu.\n", __func__,*freq);
+
+	return 0;
+}
+int of_init_efuse_freq_table(soc_freq_long* efuse_req)
+{
+	struct device_node *np;
+	const struct property *prop;
+	const __be32 *val;
+	int nr;
+	int i = 0;
+
+	np = of_find_node_by_path("/cpus/cpu@100");
+	if (!np) {
+		pr_err("cpu@100 not found.\n");
+		return -1;
+	}
+	prop = of_find_property(np, "operating-points", NULL);
+	if (!prop) {
+		pr_err("operating-points node not found.\n");
+		return -1;
+	}
+	if (!prop->value) {
+		pr_err("operating-points value not found.\n");
+		return -1;
+	}
+
+	/*
+	 * Each OPP is a set of tuples consisting of frequency and
+	 * voltage like <freq-kHz vol-uV>.
+	 */
+	nr = prop->length / sizeof(u32);
+	if (nr % 2) {
+		pr_err("%s: Invalid OPP list\n", __func__);
+		return -1;
+	}
+
+	val = prop->value;
+	i = 0;
+	while (nr) {
+		unsigned long freq = be32_to_cpup(val++) * 1000;
+		unsigned long volt = be32_to_cpup(val++);
+
+		pr_info("id:0x%llu,freq:%llu.\n",freq_prof_val_table[i].id,freq_prof_val_table[i].val);
+
+		efuse_req[i].id = i;
+		efuse_req[i].val= freq;
+
+		i++;
+		nr -= 2;
+	}
+
+	return 0;
+}
+
+int check_cpu_profile(unsigned long* freq_val,unsigned int prof_len)
+{
+	unsigned int _max_prof = SOC_EFUSE_FREQ_6;/*the final level*/
+    unsigned int max_prof = 0x10;/* 1738-1741 */
+    unsigned int max_prof_adjust = 0x0;/* 1735-1737 */
+    unsigned int efuse_val = 0;
+
+#if defined(CONFIG_HI3XXX_EFUSE)||defined(CONFIG_HI6XXX_EFUSE)
+    if (0 != get_efuse_freq_value(&efuse_val,4)) {
+		pr_err("%s:read freq_efuse fail,val:0x%x.\n",__func__,efuse_val);
+		return -1;
+    }
+#endif
+	pr_info("%s:read freq_efuse ok,val:0x%x.\n",__func__,efuse_val);
+
+	/*udp efuse 0,default 2.0G*/
+	if (efuse_val != 0) {
+		max_prof = (efuse_val >> 3)&0xf;
+		max_prof_adjust = efuse_val&0x7;
+	} else {
+		max_prof = DEFAULT_EFUSE_FREQ_LEVEL;
+		max_prof_adjust = DEFAULT_ADJUST_FREQ_LEVEL;
+	}
+
+	pr_info("%s:max_prof:0x%x,adjust_prof:0x%x.\n",__func__,max_prof,max_prof_adjust);
+
+	if (max_prof > EFUSE_TABLE_LEN) {
+		_max_prof = soc_efuse_freq_table[0].val;
+		pr_err("%s:ATE efuse:0x%x err.\n",__func__,max_prof);
+	} else {
+		_max_prof = soc_efuse_freq_table[max_prof].val;
+	}
+
+	pr_info("%s:efuse_max_freq:0x%x.\n",__func__,_max_prof);
+
+	if (max_prof_adjust >= EFUSE_ADJUST_LEN) {
+		pr_err("%s:ATE efuse adjust:0x%x err.\n",__func__,max_prof_adjust);
+		return -1;
+	} else {
+		_max_prof += (soc_adjust_freq_table[max_prof_adjust].val);
+	}
+
+	pr_info("%s:efuse_adjust_freq:0x%x.\n",__func__,_max_prof);
+
+	if (_max_prof > prof_len -1) {
+		pr_err("%s:CHIP WARNING,efuse_adjust_freq real prof:0x%x > max prof:0x%x.\n",__func__,_max_prof,prof_len-1);
+		_max_prof = prof_len -1;
+	}
+
+	*freq_val = freq_prof_val_table[_max_prof].val;
+
+#ifdef __SLT_FEATURE__
+	/*chip max freq,set to node*/
+	g_acpu_chip_max_freq = *freq_val;
+#endif
+
+	/*prevent adjust level too low*/
+	if (*freq_val < MAX_FREQ_LIMIT) {
+		pr_err("%s:freq adjust result:%llu error,set to MAX_FREQ_LIMIT.\n",__func__,*freq_val);
+		*freq_val = MAX_FREQ_LIMIT;
+	}
+	pr_info("%s:efuse real freq:%llu.\n",__func__,*freq_val);
+
+	return 0;
+}
+EXPORT_SYMBOL_GPL(check_cpu_profile);
+#endif
+
 static int _get_cluster_clk_and_freq_table(struct device *cpu_dev)
 {
 	u32 cluster = cpu_to_cluster(cpu_dev->id);
 	char name[14] = "cpu-cluster.X";
 	int ret;
+#ifdef CONFIG_ARCH_HI3630
+	int max_freq_flag;
+	unsigned long freq;
+	bool set_flag = true;
+#endif
+
+#ifdef CONFIG_HISI_3635
+    unsigned long max_freq_efuse = 0;
+    unsigned long freq = ULONG_MAX;
+    unsigned long target_freq = ULONG_MAX;
+    bool set_flag = true;
+#endif
 
 	if (atomic_inc_return(&cluster_usage[cluster]) != 1)
 		return 0;
@@ -343,6 +726,91 @@ static int _get_cluster_clk_and_freq_table(struct device *cpu_dev)
 		goto atomic_dec;
 	}
 
+#ifdef CONFIG_ARCH_HI3630
+	#define big_cluster			0
+	#define CPU_NOMARL_HIGH_FREQ			1804800000
+	if (cluster == big_cluster) {
+		max_freq_flag = check_cpu_profile();
+		freq = ULONG_MAX;
+		rcu_read_lock();
+		opp_find_freq_floor(cpu_dev, &freq);
+		rcu_read_unlock();
+		if (CPU_EXTRA_HIGH_FREQ != max_freq_flag
+				&& freq > CPU_NOMARL_HIGH_FREQ){
+			set_flag = false;
+			opp_disable(cpu_dev, freq);
+		}
+	#ifdef CONFIG_HUAWEI_HW_DEV_DCT
+		/*detect current device successful, set the flag */
+		if (set_flag){
+			set_hw_dev_flag(DEV_I2C_CPU_CHIP);
+		}
+	#endif
+	}
+#endif
+
+
+#ifdef CONFIG_HISI_3635
+	if (cluster == BIG_CLUSTER) {
+		/*parse target_cpu to find max_freq of dts*/
+		if (0 != of_target_cpu(&target_freq)) {
+			pr_err("of_target_cpu parse error.\n");
+			set_flag = false;
+			goto dev_check_chip_freq;
+		}
+
+		/*get the target freq and disable unused prof*/
+		rcu_read_lock();
+		opp_find_freq_floor(cpu_dev, &freq);
+		rcu_read_unlock();
+		pr_info("dts floor_freq:%llu.\n",freq);
+
+		while (freq > target_freq) {
+			opp_disable(cpu_dev, freq);
+
+			rcu_read_lock();
+			opp_find_freq_floor(cpu_dev, &freq);
+			rcu_read_unlock();
+		}
+		pr_info("target floor_freq:%llu.\n",freq);
+
+		/*sync freq_table with dts*/
+		if (0 != of_init_efuse_freq_table(&freq_prof_val_table)) {
+			set_flag = false;
+			max_freq_efuse = freq_prof_val_table[SOC_EFUSE_FREQ_6].val;
+			goto dev_check_chip_freq;
+		}
+
+		/*get freq efuse level/adjust level*/
+		if (0 != check_cpu_profile(&max_freq_efuse,SOC_EFUSE_FREQ_MAX)) {
+			set_flag = false;
+			max_freq_efuse = freq_prof_val_table[SOC_EFUSE_FREQ_MAX-1].val;
+			goto dev_check_chip_freq;
+		}
+		pr_info("max_freq_efuse:%llu.\n",max_freq_efuse);
+
+		/*if check failed,just delete the max profile*/
+		if (freq > max_freq_efuse) {
+			set_flag = false;
+			/*SLT/UDP plat,set 2.2G as max_freq in dts*/
+			opp_disable(cpu_dev, freq);
+			pr_err("Chip_check FAIL.firmware_freq:%llu > efuse_freq:%llu.\n",freq,max_freq_efuse);
+		}
+		else if (freq == max_freq_efuse) {
+			pr_err("Chip_check SUCC.OK, firmware_freq = efuse_freq:%llu.\n",freq);
+		} else {
+			pr_err("Chip_check SUCC.WARNING,firmware_freq:%llu < efuse_freq:%llu.\n",freq,max_freq_efuse);
+		}
+
+	dev_check_chip_freq:
+	#ifdef CONFIG_HUAWEI_HW_DEV_DCT
+		/*detect current device successful, set the flag */
+		if (set_flag == true) {
+			set_hw_dev_flag(DEV_I2C_CPU_CHIP);
+		}
+	#endif
+	}
+#endif
 	ret = opp_init_cpufreq_table(cpu_dev, &freq_table[cluster]);
 	if (ret) {
 		dev_err(cpu_dev, "%s: failed to init cpufreq table, cpu: %d, err: %d\n",
@@ -457,9 +925,12 @@ static int bL_cpufreq_init(struct cpufreq_policy *policy)
 	cpufreq_frequency_table_get_attr(freq_table[cur_cluster], policy->cpu);
 
 	if (cur_cluster < MAX_CLUSTERS) {
+		int cpu;
+
 		cpumask_copy(policy->cpus, topology_core_cpumask(policy->cpu));
 
-		per_cpu(physical_cluster, policy->cpu) = cur_cluster;
+		for_each_cpu(cpu, policy->cpus)
+			per_cpu(physical_cluster, cpu) = cur_cluster;
 	} else {
 		/* Assumption: during init, we are always running on A15 */
 		per_cpu(physical_cluster, policy->cpu) = A15_CLUSTER;
@@ -483,6 +954,9 @@ static int bL_cpufreq_init(struct cpufreq_policy *policy)
 /* Export freq_table to sysfs */
 static struct freq_attr *bL_cpufreq_attr[] = {
 	&cpufreq_freq_attr_scaling_available_freqs,
+#if defined(CONFIG_ARCH_HI3635) && defined(__SLT_FEATURE__)
+	&chip_max_freq,/*/sys/devices/system/cpu/cpu4/cpufreq*/
+#endif
 	NULL,
 };
 
@@ -529,6 +1003,26 @@ static struct notifier_block bL_switcher_notifier = {
 	.notifier_call = bL_cpufreq_switcher_notifier,
 };
 
+static int cpufreq_print_panic_notify(struct notifier_block *self,
+			unsigned long event, void *data)
+{
+	unsigned int freq, cluster;
+	for (cluster = 0; cluster < MAX_CLUSTERS; cluster++) {
+		if (!IS_ERR(clk[cluster])) {
+			freq = clk_get_rate(clk[cluster]) / 1000;
+			pr_err("cluster:%d, freq:%d kHz\n", cluster, freq);
+		}
+	}
+
+	return NOTIFY_OK;
+}
+
+struct notifier_block cpufreq_print_panic_nb = {
+	.notifier_call = cpufreq_print_panic_notify,
+	.priority = INT_MAX,
+};
+
+
 int bL_cpufreq_register(struct cpufreq_arm_bL_ops *ops)
 {
 	int ret, i;
@@ -567,6 +1061,8 @@ int bL_cpufreq_register(struct cpufreq_arm_bL_ops *ops)
 					__func__, ops->name);
 		}
 	}
+
+	atomic_notifier_chain_register(&panic_notifier_list, &cpufreq_print_panic_nb);
 
 	bL_switcher_put_enabled();
 	return ret;

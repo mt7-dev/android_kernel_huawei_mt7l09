@@ -1,26 +1,4 @@
-/*
- *  Hisilicon K3 SOC camera driver source file
- *
- *  Copyright (C) Huawei Technology Co., Ltd.
- *
- * Author:	  h00145353
- * Email:	  alan.hefeng@huawei.com
- * Date:	  2013-12-05
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
- */
+
 
 
 #include <linux/compiler.h>
@@ -55,7 +33,7 @@ typedef struct _tag_hwsensor
 #define SD2Sensor(sd) container_of(sd, hwsensor_t, subdev)
 #define I2S(i) container_of(i, sensor_t, intf)
 
-u32 hwcam_debug_mask =CAM_DEBUG_DEBUG|CAM_DEBUG_INFO |CAM_DEBUG_EMERG|CAM_DEBUG_ALERT|CAM_DEBUG_CRIT| \
+u32 hwcam_debug_mask =CAM_DEBUG_INFO |CAM_DEBUG_EMERG|CAM_DEBUG_ALERT|CAM_DEBUG_CRIT| \
                                     CAM_DEBUG_ERR|CAM_DEBUG_WARING | CAM_DEBUG_NOTICE;
 
 static int hw_sensor_subdev_internal_close(struct v4l2_subdev *sd, struct v4l2_subdev_fh *fh)
@@ -72,8 +50,9 @@ static int hw_sensor_subdev_internal_close(struct v4l2_subdev *sd, struct v4l2_s
     if (s->intf == NULL || s->intf->vtbl == NULL
         || s->intf->vtbl->config == NULL || s->intf->vtbl->csi_disable == NULL)
         return rc;
-    rc = s->intf->vtbl->config(s->intf,(void *)(&cdata));
-    rc |= s->intf->vtbl->csi_disable(s->intf);
+
+    rc = s->intf->vtbl->csi_disable(s->intf);
+    rc |= s->intf->vtbl->config(s->intf,(void *)(&cdata));
 
     cam_notice(" enter %s,return value %d", __func__,rc);
     return rc;
@@ -131,10 +110,17 @@ hwsensor_subdev_get_info(
     unsigned int index;
     sensor_t *sensor = I2S(s->intf);
     memcpy(info->name, hwsensor_intf_get_name(s->intf),
-            HWSENSOR_NAME_SIZE);
+            DEVICE_NAME_SIZE);
+    info->vcm_enable= sensor->board_info->vcm_enable;
+    if(info->vcm_enable) {
+        memcpy(info->vcm_name, sensor->board_info->vcm_name, DEVICE_NAME_SIZE);
+    } else {
+        memset(info->vcm_name, 0, DEVICE_NAME_SIZE);
+    }
     info->dev_id = s->cam_dev_num;
     index = sensor->board_info->sensor_index;
     info->mount_position = (hwsensor_position_kind_t)index;
+    info->extisp_type = sensor->board_info->extisp_type;
     return 0;
 }
 
@@ -285,7 +271,7 @@ hwsensor_register(
             "%s", hwsensor_intf_get_name(si));
     subdev->flags |= V4L2_SUBDEV_FL_HAS_DEVNODE;
     v4l2_set_subdevdata(subdev, pdev);
-    platform_set_drvdata(pdev, subdev);
+    //platform_set_drvdata(pdev, subdev);
 
     media_entity_init(&subdev->entity, 0, NULL, 0);
     subdev->entity.type = MEDIA_ENT_T_V4L2_SUBDEV;
@@ -306,5 +292,19 @@ hwsensor_register(
 
 register_fail:
     return rc;
+}
+
+#define Intf2Hwsensor(si) container_of(si, hwsensor_t, intf)
+extern void
+hwsensor_unregister(hwsensor_intf_t* si)
+{
+    struct v4l2_subdev* subdev = NULL;
+    hwsensor_t* sensor = Intf2Hwsensor(si);
+
+    subdev = &sensor->subdev;
+    media_entity_cleanup(&subdev->entity);
+    hwcam_cfgdev_unregister_subdev(subdev);
+
+    kzfree(sensor);
 }
 

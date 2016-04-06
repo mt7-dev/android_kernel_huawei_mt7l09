@@ -17,16 +17,18 @@
 #include <linux/cpufreq.h>
 #include <linux/init.h>
 
-#ifdef CONFIG_ARCH_HISI
+#if defined(CONFIG_ARCH_HI3XXX) && defined(CONFIG_HI3XXX_CMDLINE_PARSE)
 extern int get_lowbatteryflag(void);
 extern void set_lowBatteryflag(int flag);
+#ifdef CONFIG_ARCH_HI3630
 static int big_is_booting;
+#endif
 #endif
 
 static int cpufreq_governor_performance(struct cpufreq_policy *policy,
 					unsigned int event)
 {
-#ifdef CONFIG_ARCH_HISI
+#if defined(CONFIG_ARCH_HI3XXX) && defined(CONFIG_HI3XXX_CMDLINE_PARSE)
 	unsigned int utarget = policy->max;
 #endif
 
@@ -36,13 +38,15 @@ static int cpufreq_governor_performance(struct cpufreq_policy *policy,
 		pr_debug("setting to %u kHz because of event %u\n",
 						policy->max, event);
 
-#ifdef CONFIG_ARCH_HISI
+#if defined(CONFIG_ARCH_HI3XXX) && defined(CONFIG_HI3XXX_CMDLINE_PARSE)
+#ifdef CONFIG_ARCH_HI3630
 		if (policy->cpu == 4) {
 			if (big_is_booting) {
 #define BIG_BOOTING_PERFORMANCE_OPERATING_POINT 1708800
 				utarget = BIG_BOOTING_PERFORMANCE_OPERATING_POINT;
 			}
 		}
+#endif
 
 		if ((get_lowbatteryflag() == 1) && (policy->cpu == 4))
 			utarget = policy->min;
@@ -50,20 +54,21 @@ static int cpufreq_governor_performance(struct cpufreq_policy *policy,
 		pr_info("%s utarget=%d\n", __func__, utarget);
 
 		__cpufreq_driver_target(policy, utarget,
-						CPUFREQ_RELATION_H);
+			CPUFREQ_RELATION_H);
 #else
 		__cpufreq_driver_target(policy, policy->max,
 						CPUFREQ_RELATION_H);
 #endif
 		break;
 
-#ifdef CONFIG_ARCH_HISI
+#if defined(CONFIG_ARCH_HI3XXX) && defined(CONFIG_HI3XXX_CMDLINE_PARSE)
 	case CPUFREQ_GOV_POLICY_EXIT:
-
 		set_lowBatteryflag(0);
 
+#ifdef CONFIG_ARCH_HI3630
 		if (policy->cpu == 4)
 			big_is_booting = 0;
+#endif
 
 		break;
 #endif
@@ -86,7 +91,9 @@ struct cpufreq_governor cpufreq_gov_performance = {
 
 static int __init cpufreq_gov_performance_init(void)
 {
+#if defined(CONFIG_ARCH_HI3630) && defined(CONFIG_HI3XXX_CMDLINE_PARSE)
 	big_is_booting = 1;
+#endif
 
 	return cpufreq_register_governor(&cpufreq_gov_performance);
 }

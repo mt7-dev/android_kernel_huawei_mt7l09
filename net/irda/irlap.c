@@ -822,7 +822,6 @@ void irlap_wait_min_turn_around(struct irlap_cb *self, struct qos_info *qos)
 	speed = qos->baud_rate.value;
 	min_turn_time = qos->min_turn_time.value;
 
-	/* No need to calculate XBOFs for speeds over 115200 bps */
 	if (speed > 115200) {
 		self->mtt_required = min_turn_time;
 		return;

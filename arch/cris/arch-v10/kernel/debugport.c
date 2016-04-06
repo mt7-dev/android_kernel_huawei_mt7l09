@@ -301,12 +301,7 @@ console_write_direct(struct console *co, const char *buf, unsigned int len)
 		*port->write = buf[i];
 	}
 
-	/*
-	 * Feed the watchdog, otherwise it will reset the chip during boot.
-	 * The time to send an ordinary boot message line (10-90 chars)
-	 * varies between 1-8ms at 115200. What makes up for the additional
-	 * 90ms that allows the watchdog to bite?
-	*/
+
 	reset_watchdog();
 
 	local_irq_restore(flags);

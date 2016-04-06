@@ -27,11 +27,17 @@
 #define NETLINK_ECRYPTFS	19
 #define NETLINK_RDMA		20
 #define NETLINK_CRYPTO		21	/* Crypto layer */
-#define NETLINK_BALONG_RIL  22
+#define NETLINK_CHR_EVENT_NL  23
+
+#ifdef CONFIG_HW_WIFIPRO
+#define NETLINK_WIFIPRO_EVENT_NL  24
+#endif
 
 #define NETLINK_INET_DIAG	NETLINK_SOCK_DIAG
 
-#define NETLINK_HW_LOGCAT   29  /*modem logcat */
+#define NETLINK_HISI_WIFI_PMF  27
+#define NETLINK_HISI_WIFI_MSG  28
+#define NETLINK_HW_LOGCAT   29
 #define NETLINK_HW_KSTATE   30  /* kstate send event to user */
 #define MAX_LINKS 32		
 

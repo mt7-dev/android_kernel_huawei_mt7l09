@@ -23,6 +23,8 @@ extern "C" {
 #include "vos.h"
 #include "v_timer.h"
 
+#define ADS_FLOW_DL_DEFAULT_RPT_THRESHOLD   (5000000)
+#define ADS_FLOW_UL_DEFAULT_RPT_THRESHOLD   (500000)
 
 /*****************************************************************************
   2 外部函数声明
@@ -178,6 +180,19 @@ VOS_VOID ADS_ShowULProcStats(VOS_VOID)
     vos_printf("上行释放源内存个数                              %d\n",g_stAdsStats.stUlComStatsInfo.ulUlIpfFreeSrcMemNum);
     vos_printf("上行释放内存错误                                %d\n",g_stAdsStats.stUlComStatsInfo.ulUlIpfFreeSrcMemErr);
     vos_printf("上行超过队列长度，丢包个数                      %d\n",g_stAdsStats.stUlComStatsInfo.ulUlDroppedPacketNum);
+
+    vos_printf("上行水线边界1配置次数                           %d\n",g_stAdsStats.stUlComStatsInfo.ulLevelOneCnt);
+    vos_printf("上行水线边界2配置次数                           %d\n",g_stAdsStats.stUlComStatsInfo.ulLevelTwoCnt);
+    vos_printf("上行水线边界3配置次数                           %d\n",g_stAdsStats.stUlComStatsInfo.ulLevelThreeCnt);
+    vos_printf("上行水线边界4配置次数                           %d\n",g_stAdsStats.stUlComStatsInfo.ulLevelFourCnt);
+
+    vos_printf("上行赞包门限1                                   %d\n",g_stAdsCtx.stAdsIpfCtx.stUlAssemParmInfo.stThresholdLevel.ulThreshold1);
+    vos_printf("上行赞包门限2                                   %d\n",g_stAdsCtx.stAdsIpfCtx.stUlAssemParmInfo.stThresholdLevel.ulThreshold2);
+    vos_printf("上行赞包门限3                                   %d\n",g_stAdsCtx.stAdsIpfCtx.stUlAssemParmInfo.stThresholdLevel.ulThreshold3);
+    vos_printf("上行赞包门限4                                   %d\n",g_stAdsCtx.stAdsIpfCtx.stUlAssemParmInfo.stThresholdLevel.ulThreshold4);
+    vos_printf("当前赞包门限值                                  %d\n",g_stAdsCtx.stAdsIpfCtx.ulThredHoldNum);
+
+
 #endif
 
     vos_printf("\r\n");
@@ -253,10 +268,10 @@ VOS_VOID ADS_ShowDLProcStats(VOS_VOID)
 VOS_VOID ADS_ShowResetStats(VOS_VOID)
 {
     vos_printf("模块初始化标识                              %d\n", g_stAdsStats.stResetStatsinfo.ulSemInitFlg);
-    vos_printf("当前的上行二进制信号量                      %x\n", g_stAdsCtx.ulULResetSem);
-    vos_printf("当前的下行二进制信号量                      %x\n", g_stAdsCtx.ulDLResetSem);
-    vos_printf("创建的上行二进制信号量                      %x\n", g_stAdsStats.stResetStatsinfo.ulULBinarySemId);
-    vos_printf("创建的下行二进制信号量                      %x\n", g_stAdsStats.stResetStatsinfo.ulDLBinarySemId);
+    vos_printf("当前的上行二进制信号量                      %p\n", g_stAdsCtx.hULResetSem);
+    vos_printf("当前的下行二进制信号量                      %p\n", g_stAdsCtx.hDLResetSem);
+    vos_printf("创建的上行二进制信号量                      %x\n", g_stAdsStats.stResetStatsinfo.hULBinarySemId);
+    vos_printf("创建的下行二进制信号量                      %x\n", g_stAdsStats.stResetStatsinfo.hDLBinarySemId);
     vos_printf("创建上行二进制信号量失败次数                %d\n", g_stAdsStats.stResetStatsinfo.ulULCreateBinarySemFailNum);
     vos_printf("创建下行二进制信号量失败次数                %d\n", g_stAdsStats.stResetStatsinfo.ulDLCreateBinarySemFailNum);
     vos_printf("锁上行二进制信号量失败次数                  %d\n", g_stAdsStats.stResetStatsinfo.ulULLockBinarySemFailNum);
@@ -422,7 +437,7 @@ VOS_VOID ADS_LATENCY_OM_LOG( const VOS_CHAR  *pcFileName,  VOS_UINT32  ulLineNum
     #if (FEATURE_ON == FEATURE_LTE)
     VOS_UINT32          ulRslt = 0;
 
-    ulRslt = DIAG_PrintfV(DIAG_ID( ulModuleId,ulLevel ), (VOS_CHAR*)pcFileName, ulLineNum, (VOS_CHAR*)("%s"), (VOS_INT32)pcString);
+    ulRslt = DIAG_PrintfV(DIAG_ID( ulModuleId,ulLevel ), (VOS_CHAR*)pcFileName, ulLineNum, (VOS_CHAR*)("%s"), pcString);
     if (PS_SUCC != ulRslt)
     {
         return;
@@ -432,6 +447,112 @@ VOS_VOID ADS_LATENCY_OM_LOG( const VOS_CHAR  *pcFileName,  VOS_UINT32  ulLineNum
     return;
 }
 
+
+VOS_VOID ADS_SetFlowDebugFlag(VOS_UINT32  ulFlowDebugFlag)
+{
+    switch (ulFlowDebugFlag)
+    {
+        case ADS_FLOW_DEBUG_DL_ON:
+            g_stAdsStats.stDlComStatsInfo.ulDLFlowDebugFlag     = PS_TRUE;
+            g_stAdsStats.stUlComStatsInfo.ulULFlowDebugFlag     = PS_FALSE;
+            g_stAdsStats.stDlComStatsInfo.ulDLFlowRptThreshold  = ADS_FLOW_DL_DEFAULT_RPT_THRESHOLD;
+            break;
+
+        case ADS_FLOW_DEBUG_UL_ON:
+            g_stAdsStats.stDlComStatsInfo.ulDLFlowDebugFlag     = PS_FALSE;
+            g_stAdsStats.stUlComStatsInfo.ulULFlowDebugFlag     = PS_TRUE;
+            g_stAdsStats.stUlComStatsInfo.ulULFlowRptThreshold  = ADS_FLOW_UL_DEFAULT_RPT_THRESHOLD;
+            break;
+
+        case ADS_FLOW_DEBUG_ALL_ON:
+            g_stAdsStats.stDlComStatsInfo.ulDLFlowDebugFlag     = PS_TRUE;
+            g_stAdsStats.stUlComStatsInfo.ulULFlowDebugFlag     = PS_TRUE;
+            g_stAdsStats.stDlComStatsInfo.ulDLFlowRptThreshold  = ADS_FLOW_DL_DEFAULT_RPT_THRESHOLD;
+            g_stAdsStats.stUlComStatsInfo.ulULFlowRptThreshold  = ADS_FLOW_UL_DEFAULT_RPT_THRESHOLD;
+            break;
+
+        default:
+            g_stAdsStats.stDlComStatsInfo.ulDLFlowDebugFlag     = PS_FALSE;
+            g_stAdsStats.stUlComStatsInfo.ulULFlowDebugFlag     = PS_FALSE;
+            break;
+    }
+
+    return;
+}
+
+
+VOS_VOID ADS_SetFlowDLRptThreshold(VOS_UINT32  ulFlowDLRptThreshold)
+{
+    g_stAdsStats.stDlComStatsInfo.ulDLFlowRptThreshold  = ulFlowDLRptThreshold;
+    return;
+}
+
+
+VOS_VOID ADS_SetFlowULRptThreshold(VOS_UINT32  ulFlowULRptThreshold)
+{
+    g_stAdsStats.stUlComStatsInfo.ulULFlowRptThreshold  = ulFlowULRptThreshold;
+    return;
+}
+
+
+VOS_VOID ADS_DLFlowAdd(VOS_UINT8  ucIndex, VOS_UINT32  ulSduLen)
+{
+    ADS_SPEC_STATS_INFO_STRU           *pstAdsSpecStatsInfo;
+
+    if (PS_TRUE == g_stAdsStats.stDlComStatsInfo.ulDLFlowDebugFlag)
+    {
+        pstAdsSpecStatsInfo = &(g_stAdsStats.astAdsSpecStatsInfo[ucIndex]);
+
+        /* 流量统计 */
+        pstAdsSpecStatsInfo->ulDLFlowInfo += ulSduLen;
+
+        /* 流量统计上报 */
+        if (pstAdsSpecStatsInfo->ulDLFlowInfo >= g_stAdsStats.stDlComStatsInfo.ulDLFlowRptThreshold)
+        {
+            pstAdsSpecStatsInfo->ulDLEndSlice   = VOS_GetSlice();
+
+            vos_printf("ADS Index = %d, DL Flow Info = %10d, Pkt Num = %10d, Slice = %10d, Time = %10d\n",
+                ucIndex, pstAdsSpecStatsInfo->ulDLFlowInfo,
+                pstAdsSpecStatsInfo->ulDlSendPktNum, pstAdsSpecStatsInfo->ulDLEndSlice,
+                (pstAdsSpecStatsInfo->ulDLEndSlice - pstAdsSpecStatsInfo->ulDLStartSlice));
+
+            pstAdsSpecStatsInfo->ulDLStartSlice = pstAdsSpecStatsInfo->ulDLEndSlice;
+            pstAdsSpecStatsInfo->ulDLFlowInfo   = 0;
+        }
+    }
+
+    return;
+}
+
+
+VOS_VOID ADS_ULFlowAdd(VOS_UINT8  ucIndex, VOS_UINT32  ulSduLen)
+{
+    ADS_SPEC_STATS_INFO_STRU           *pstAdsSpecStatsInfo;
+
+    if (PS_TRUE == g_stAdsStats.stUlComStatsInfo.ulULFlowDebugFlag)
+    {
+        pstAdsSpecStatsInfo = &(g_stAdsStats.astAdsSpecStatsInfo[ucIndex]);
+
+        /* 流量统计 */
+        pstAdsSpecStatsInfo->ulULFlowInfo += ulSduLen;
+
+        /* 流量统计上报 */
+        if (pstAdsSpecStatsInfo->ulULFlowInfo >= g_stAdsStats.stUlComStatsInfo.ulULFlowRptThreshold)
+        {
+            pstAdsSpecStatsInfo->ulULEndSlice   = VOS_GetSlice();
+
+            vos_printf("ADS Index = %d, UL Flow Info = %10d, Pkt Num = %10d, Slice = %10d, Time = %10d\n",
+                ucIndex, pstAdsSpecStatsInfo->ulULFlowInfo,
+                pstAdsSpecStatsInfo->ulUlRecvPktNum, pstAdsSpecStatsInfo->ulULEndSlice,
+                (pstAdsSpecStatsInfo->ulULEndSlice - pstAdsSpecStatsInfo->ulULStartSlice));
+
+            pstAdsSpecStatsInfo->ulULStartSlice = pstAdsSpecStatsInfo->ulULEndSlice;
+            pstAdsSpecStatsInfo->ulULFlowInfo   = 0;
+        }
+    }
+
+    return;
+}
 
 #ifdef __cplusplus
     #if __cplusplus

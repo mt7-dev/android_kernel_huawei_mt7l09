@@ -37,7 +37,7 @@
 #define ISPCMD_CAMERA_STARTDUALVIDEO				0x3040
 #define ISPCMD_CAMERA_STOPDUALVIDEO					0x3041
 #define ISPCMD_CAMERA_SET_FAST_SHOT_MODE			0x3042
-#define ISPCMD_CAMERA_SET_SENSOR_MODULE_ID                            0x3043
+#define ISPCMD_CAMERA_SET_SENSOR_MODULE_ID			0x3043
 
 // Bulk Data
 #define ISPCMD_BULK_WRITE_COMPONENTCODE				0x2000
@@ -52,7 +52,12 @@
 #define ISPCMD_BULK_WRITE_MEMORY					0x2100
 #define ISPCMD_BULK_READ_MEMORY						0x2101
 #define ISPCMD_BULK_LOG_DUMP						0x2102
+#define ISPCMD_BULK_READ_OIS_DATA                   0x2105
+#define ISPCMD_BULK_WRITE_OIS_DATA                  0x2106
+#define ISPCMD_BULK_WRITE_PDAF_AREA                 0x2107
 #define ISPCMD_BULK_GET_OTP_DATA					0x2104
+#define ISPCMD_CAMERA_TAKEZSLPICTURES               0x2109
+#define ISPCMD_CAMERA_STOPZSLPICTURES               0x210A
 
 #define ISPCMD_GET_BULK_CHIPTEST_REPORT				0x010A
 // Basic Setting
@@ -131,7 +136,7 @@
 #define ISPCMD_BASIC_SET_DENOISEMODE                0x10A1
 #define ISPCMD_BASIC_HDR_PROCESS					0x10A3
 #define ISPCMD_BASIC_SET_S1AF_ENABLE				0x10A4
-#define ISPCMD_BASIC_SET_Motion_Detected			0x10A5
+#define ISPCMD_BASIC_SET_MOTION_DETECTED			0x10A5
 
 
 // System Management
@@ -154,6 +159,7 @@
 #define ISPCMD_SYSTEM_SET_EXPO_TIME					0x0106
 #define ISPCMD_SYSTEM_SET_AD_GAIN					0x0107
 #define ISPCMD_SYSTEM_SET_LOG_LEVEL					0x0109
+#define ISPCMD_SYSTEM_GET_PIPELINE_STATUS			0x0112
 
 // AL6045 Operation
 #define ISPCMD_AL6045_MINIISPOPEN					0x4000
@@ -267,7 +273,7 @@
 #define T_TAKEPIC_STOP			2
 
 //AE metering mode
-#define T_AE_AUTO				0 
+#define T_AE_AUTO				0
 #define T_AE_AVERAGE 			1
 #define T_AE_CENTRWEIGHT		2
 #define T_AE_SPOT				3
@@ -277,13 +283,22 @@ int misp_exec_unidir_cmd(u16 cmd, bool set_flag,\
 							bool out_to_block, u8 *param, u32 len);
 int misp_exec_bidir_cmd(u16 cmd, u8 *in, u32 in_len,\
 						bool out_to_block, u8 *out, u32 out_len);
+
+int misp_exec_write_block_res(u16 cmd, u8 *in, u32 in_len, bool out_to_block, u8 *out,u32 bulk_len, u32 out_len);
+int misp_exec_write_block(u16 cmd, u8 *in, u32 in_len, u8 *out, u32 out_len);
+
 int misp_init(void);
 int misp_exit(void);
-//int misp_set_power(camera_power_state power);
-int misp_load_fw(void);
+int misp_set_power(int on);
 int misp_flush_log(void);
 int misp_flush_reg(void);
 int misp_reset_vcm(void);
+int misp_stop(void);
 
+void parser_dmd_error(u32 err, char* out_err_name, char* out_err_num);
+void altek6045_notify_cmd_done( uint32_t cmd, uint32_t result);
+void altek6045_notify_dump( uint32_t type);
+void altek6045_notify_error( uint32_t id);
+int altek6045_get_chipid(void);
 #endif
 

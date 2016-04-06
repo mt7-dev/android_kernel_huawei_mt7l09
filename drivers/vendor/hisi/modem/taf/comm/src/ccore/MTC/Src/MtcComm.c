@@ -13,6 +13,8 @@
 #include "CmmcaMtcInterface.h"
 #include "MtcRfLcdIntrusion.h"
 
+#include  "NVIM_Interface.h"
+
 #ifdef __cplusplus
 #if __cplusplus
 extern "C" {
@@ -74,6 +76,8 @@ VOS_UINT32 MTC_GetOtherModemId(
 
     return VOS_OK;
 }
+
+
 
 
 VOS_VOID MTC_RcvMmaRatModeInd(VOS_VOID *pMsg)
@@ -142,7 +146,8 @@ VOS_VOID MTC_RcvMmaCurrCampPlmnInfoInd(VOS_VOID *pMsg)
             额外判断副卡的PLMN。如果发现中国区的，跳过W的搜索*/
         MTC_SndMmaOtherModemInfoNotify(enOtherModemId,
                                        &pstCurrCampPlmnInfo->stPlmnId,
-                                       VOS_NULL_PTR);
+                                       VOS_NULL_PTR,
+                                       MTC_MODEM_POWER_STATE_BUTT);
     }
 
     /* PS域迁移策略开启时触发流程 */
@@ -203,7 +208,10 @@ VOS_VOID MTC_RcvMmaEplmnInfoInd(VOS_VOID *pMsg)
     {
         if (VOS_OK == MTC_GetOtherModemId(enModemId, &enOtherModemId))
         {
-            MTC_SndMmaOtherModemInfoNotify(enOtherModemId, VOS_NULL_PTR, &pstEplmnInfo->stEplmnInfo);
+            MTC_SndMmaOtherModemInfoNotify(enOtherModemId,
+                                           VOS_NULL_PTR,
+                                           &pstEplmnInfo->stEplmnInfo,
+                                           MTC_MODEM_POWER_STATE_BUTT);
         }
     }
 
@@ -279,6 +287,154 @@ VOS_VOID MTC_RcvMmaRegStatusInd(VOS_VOID *pMsg)
 
 
 
+VOS_VOID MTC_SndMmaOtherModemDplmnNplmnInfoNotify(
+    MODEM_ID_ENUM_UINT16                enModemId,
+    MODEM_ID_ENUM_UINT16                enOtherModemId
+)
+{
+    VOS_UINT32                                              ulMsgLenth;
+    VOS_UINT32                                              ulNvLen;
+    VOS_UINT32                                              ulReceivePid;
+    MTC_MMA_OTHER_MODEM_DPLMN_NPLMN_INFO_NOTIFY_STRU       *pstOtherModemDplmnNplmnInfoNotify = VOS_NULL_PTR;
+    NAS_MMC_NVIM_CFG_DPLMN_NPLMN_INFO_STRU                 *pstNvimCfgDPlmnNPlmnInfo = VOS_NULL_PTR;
+    NAS_MMC_NVIM_CFG_DPLMN_NPLMN_FLAG_STRU                  stNvimCfgDPlmnNPlmnFlag;
+
+    PS_MEM_SET(&stNvimCfgDPlmnNPlmnFlag, 0, sizeof(stNvimCfgDPlmnNPlmnFlag));
+    ulMsgLenth = 0;
+    ulNvLen    = 0;
+    ulMsgLenth = sizeof(MTC_MMA_OTHER_MODEM_DPLMN_NPLMN_INFO_NOTIFY_STRU) - VOS_MSG_HEAD_LENGTH;
+
+    if (MODEM_ID_0 == enOtherModemId)
+    {
+        ulReceivePid = I0_WUEPS_PID_MMA;
+    }
+    else if (MODEM_ID_1 == enOtherModemId)
+    {
+        ulReceivePid = I1_WUEPS_PID_MMA;
+    }
+    else
+    {
+        MTC_ERROR_LOG("MTC_SndMmaOtherModemDplmnNplmnInfoNotify: Error Modem Id!");
+        return;
+    }
+
+    /* 分配消息空间 */
+    pstOtherModemDplmnNplmnInfoNotify = (MTC_MMA_OTHER_MODEM_DPLMN_NPLMN_INFO_NOTIFY_STRU*)PS_ALLOC_MSG(UEPS_PID_MTC, ulMsgLenth);
+
+    if (VOS_NULL_PTR == pstOtherModemDplmnNplmnInfoNotify)
+    {
+        MTC_ERROR_LOG("MTC_SndMmaOtherModemDplmnNplmnInfoNotify: Alloc msg fail!");
+        return;
+    }
+
+    /* 清消息空间 */
+    PS_MEM_SET((VOS_UINT8*)pstOtherModemDplmnNplmnInfoNotify + VOS_MSG_HEAD_LENGTH, 0, ulMsgLenth);
+
+    pstNvimCfgDPlmnNPlmnInfo = (NAS_MMC_NVIM_CFG_DPLMN_NPLMN_INFO_STRU*)PS_MEM_ALLOC(
+                                                      UEPS_PID_MTC,
+                                                      sizeof(NAS_MMC_NVIM_CFG_DPLMN_NPLMN_INFO_STRU));
+    if (VOS_NULL_PTR == pstNvimCfgDPlmnNPlmnInfo)
+    {
+        PS_FREE_MSG(UEPS_PID_MTC, pstOtherModemDplmnNplmnInfoNotify);
+        return;
+    }
+
+    NV_GetLength(en_NV_Item_Cfg_Dplmn_Nplmn_Flag, &ulNvLen);
+
+    if (ulNvLen > sizeof(NAS_MMC_NVIM_CFG_DPLMN_NPLMN_FLAG_STRU))
+    {
+        PS_MEM_FREE(UEPS_PID_MTC, pstNvimCfgDPlmnNPlmnInfo);
+        PS_FREE_MSG(UEPS_PID_MTC, pstOtherModemDplmnNplmnInfoNotify);
+        return;
+    }
+
+    /* 读取本modem的nv项 */
+    if (NV_OK != NV_ReadEx(enModemId, en_NV_Item_Cfg_Dplmn_Nplmn_Flag, &stNvimCfgDPlmnNPlmnFlag, ulNvLen))
+    {
+        PS_MEM_FREE(UEPS_PID_MTC, pstNvimCfgDPlmnNPlmnInfo);
+        PS_FREE_MSG(UEPS_PID_MTC, pstOtherModemDplmnNplmnInfoNotify);
+        return;
+    }
+
+    PS_MEM_SET(pstNvimCfgDPlmnNPlmnInfo, 0x00, sizeof(NAS_MMC_NVIM_CFG_DPLMN_NPLMN_INFO_STRU));
+
+    /* 填充消息 */
+    pstOtherModemDplmnNplmnInfoNotify->stMsgHeader.ulReceiverPid   = ulReceivePid;
+    pstOtherModemDplmnNplmnInfoNotify->stMsgHeader.ulMsgName       = ID_MTC_MMA_OTHER_MODEM_DPLMN_NPLMN_INFO_NOTIFY;
+
+    /* dplmn和nplmn支持nv项关闭，则无需读取移动联通电信的dplmn和nplmn信息,无需通知 */
+    if (VOS_FALSE == stNvimCfgDPlmnNPlmnFlag.usCfgDplmnNplmnFlag)
+    {
+        PS_MEM_FREE(UEPS_PID_MTC, pstNvimCfgDPlmnNPlmnInfo);
+        PS_FREE_MSG(UEPS_PID_MTC, pstOtherModemDplmnNplmnInfoNotify);
+        return;
+    }
+
+    /* Modified by c00318887 for DPlmn扩容和优先接入HPLMN, 2015-5-28, end */
+    NV_GetLength(en_NV_Item_CMCC_Cfg_Dplmn_Nplmn_Info, &ulNvLen);
+
+    if (ulNvLen > sizeof(NAS_MMC_NVIM_CFG_DPLMN_NPLMN_INFO_STRU))
+    {
+        PS_MEM_FREE(UEPS_PID_MTC, pstNvimCfgDPlmnNPlmnInfo);
+        PS_FREE_MSG(UEPS_PID_MTC, pstOtherModemDplmnNplmnInfoNotify);
+        return;
+    }
+
+    /* 读NV项en_NV_Item_CMCC_Cfg_Dplmn_Nplmn */
+    if (NV_OK == NV_ReadEx(enModemId, en_NV_Item_CMCC_Cfg_Dplmn_Nplmn_Info,
+                         pstNvimCfgDPlmnNPlmnInfo, ulNvLen))
+    {
+        PS_MEM_CPY(&pstOtherModemDplmnNplmnInfoNotify->stCmccDplmnNplmnInfo,
+            pstNvimCfgDPlmnNPlmnInfo, sizeof(pstOtherModemDplmnNplmnInfoNotify->stCmccDplmnNplmnInfo));
+    }
+
+    NV_GetLength(en_NV_Item_UNICOM_Cfg_Dplmn_Nplmn_Info, &ulNvLen);
+
+    if (ulNvLen > sizeof(NAS_MMC_NVIM_CFG_DPLMN_NPLMN_INFO_STRU))
+    {
+        PS_MEM_FREE(UEPS_PID_MTC, pstNvimCfgDPlmnNPlmnInfo);
+        PS_FREE_MSG(UEPS_PID_MTC, pstOtherModemDplmnNplmnInfoNotify);
+        return;
+    }
+
+    /* 读NV项en_NV_Item_UNICOM_Cfg_Dplmn_Nplmn*/
+    if (NV_OK == NV_ReadEx(enModemId, en_NV_Item_UNICOM_Cfg_Dplmn_Nplmn_Info,
+                         pstNvimCfgDPlmnNPlmnInfo, ulNvLen))
+    {
+        PS_MEM_CPY(&pstOtherModemDplmnNplmnInfoNotify->stUnicomDplmnNplmnInfo,
+            pstNvimCfgDPlmnNPlmnInfo, sizeof(pstOtherModemDplmnNplmnInfoNotify->stUnicomDplmnNplmnInfo));
+    }
+
+    NV_GetLength(en_NV_Item_CT_Cfg_Dplmn_Nplmn_Info, &ulNvLen);
+
+    if (ulNvLen > sizeof(NAS_MMC_NVIM_CFG_DPLMN_NPLMN_INFO_STRU))
+    {
+        PS_MEM_FREE(UEPS_PID_MTC, pstNvimCfgDPlmnNPlmnInfo);
+        PS_FREE_MSG(UEPS_PID_MTC, pstOtherModemDplmnNplmnInfoNotify);
+        return;
+    }
+
+    /* 读NV项en_NV_Item_CT_Cfg_Dplmn_Nplmn*/
+    if (NV_OK == NV_ReadEx(enModemId, en_NV_Item_CT_Cfg_Dplmn_Nplmn_Info,
+                         pstNvimCfgDPlmnNPlmnInfo, ulNvLen))
+    {
+        PS_MEM_CPY(&pstOtherModemDplmnNplmnInfoNotify->stCtDplmnNplmnInfo,
+            pstNvimCfgDPlmnNPlmnInfo, sizeof(pstOtherModemDplmnNplmnInfoNotify->stCtDplmnNplmnInfo));
+    }
+    /* Modified by c00318887 for DPlmn扩容和优先接入HPLMN, 2015-5-28, end */
+
+
+    /* 发送消息 */
+    if (VOS_OK != PS_SEND_MSG(UEPS_PID_MTC, pstOtherModemDplmnNplmnInfoNotify))
+    {
+        MTC_ERROR1_LOG("MTC_SndMmaOtherModemDplmnNplmnInfoNotify: Snd Msg err. Rec Pid ", I0_WUEPS_PID_MMA);
+        PS_MEM_FREE(UEPS_PID_MTC, pstNvimCfgDPlmnNPlmnInfo);
+        return;
+    }
+
+    PS_MEM_FREE(UEPS_PID_MTC, pstNvimCfgDPlmnNPlmnInfo);
+    return;
+}
 VOS_VOID MTC_RcvMmaPowerStateInd(VOS_VOID *pMsg)
 {
     VOS_UINT32                          ulPid;
@@ -291,7 +447,12 @@ VOS_VOID MTC_RcvMmaPowerStateInd(VOS_VOID *pMsg)
     MTC_CFG_ENUM_UINT8                  enTlRfCtrlCfg;
     MTC_MODEM_MIPI_CLK_PRI_STRU         stMomdemPri;
     VOS_UINT16                          usMipiClk;
+
+    MODEM_ID_ENUM_UINT16                enOtherModemId;
+
     MTC_PS_TRANSFER_CTX_STRU           *pstPsTransferCtx = VOS_NULL_PTR;
+
+    MTC_MODEM_POWER_STATE_ENUM_UINT8    enModem0ImsaState;
 
     pstPsTransferCtx = MTC_GetPsTransferCtxAddr();
 
@@ -314,6 +475,9 @@ VOS_VOID MTC_RcvMmaPowerStateInd(VOS_VOID *pMsg)
         {
             MTC_SndIntrusionActionSetReq(enModemId, PS_TRUE);
         }
+
+        MTC_GetOtherModemId(enModemId, &enOtherModemId);
+        MTC_SndMmaOtherModemDplmnNplmnInfoNotify(enModemId,enOtherModemId);
     }
     else
     {
@@ -382,13 +546,22 @@ VOS_VOID MTC_RcvMmaPowerStateInd(VOS_VOID *pMsg)
 
     MTC_ProcRseStrategy();
 
+    enModem0ImsaState = MTC_GetModemImsaState(MODEM_ID_0);
+    if ( (MODEM_ID_1 == enModemId)
+      && (MTC_MODEM_POWER_ON == enModem0ImsaState) )
+    {
+        /* VOLTE Rank1方案: Modem1的开关机状态变化要通知到IMSA */
+        MTC_SndMmaOtherModemInfoNotify(MODEM_ID_0,
+                                       VOS_NULL_PTR,
+                                       VOS_NULL_PTR,
+                                       pstPowerState->enPowerState);
+    }
+
     /* 可维可测记录开关机状态上报次数 */
     MTC_DEBUG_RcvPowerStateInd(enModemId, pstPowerState->enPowerState);
 
     return;
 }
-
-
 VOS_VOID MTC_RcvTafCsSrvInfoInd(VOS_VOID *pMsg)
 {
     VOS_UINT32                          ulPid;
@@ -439,7 +612,8 @@ VOS_VOID MTC_RcvTafCsSrvInfoInd(VOS_VOID *pMsg)
 VOS_VOID MTC_SndMmaOtherModemInfoNotify(
     MODEM_ID_ENUM_UINT16                enModemId,
     MTC_MMA_PLMN_ID_STRU               *pstCurrCampPlmnId,
-    MTC_MMA_EPLMN_INFO_STRU            *pstEplmnInfo
+    MTC_MMA_EPLMN_INFO_STRU            *pstEplmnInfo,
+    MTC_MODEM_POWER_STATE_ENUM_UINT8    enOtherModemPowerState
 )
 {
     VOS_UINT32                                  ulLenth;
@@ -492,6 +666,10 @@ VOS_VOID MTC_SndMmaOtherModemInfoNotify(
         PS_MEM_CPY(pstOtherModemInfoNotify->stEplmnInfo.astEquPlmnAddr, pstEplmnInfo->astEquPlmnAddr,
                    sizeof(pstOtherModemInfoNotify->stEplmnInfo.astEquPlmnAddr));
     }
+
+    pstOtherModemInfoNotify->bitOpOtherModemPowerState =
+        (MTC_MODEM_POWER_STATE_BUTT == enOtherModemPowerState) ? VOS_FALSE : VOS_TRUE;
+    pstOtherModemInfoNotify->enOtherModemPowerState = enOtherModemPowerState;
 
     /* 发送消息 */
     if (VOS_OK != PS_SEND_MSG(UEPS_PID_MTC, pstOtherModemInfoNotify))
@@ -723,7 +901,10 @@ VOS_VOID MTC_RcvCmmcaOtherRatInfoInd(VOS_VOID* pMsg)
     /* 通知MMA等效PLMN */
     if (VOS_OK == MTC_GetEplmnFromOtherRatInfoInd(&stEplmnInfo, &(pstOtherRatInfoInd->stOtherRatInfo)))
     {
-        MTC_SndMmaOtherModemInfoNotify(MODEM_ID_0, VOS_NULL_PTR, &stEplmnInfo);
+        MTC_SndMmaOtherModemInfoNotify(MODEM_ID_0,
+                                       VOS_NULL_PTR,
+                                       &stEplmnInfo,
+                                       MTC_MODEM_POWER_STATE_BUTT);
     }
 
     /* 通知MMA LTE频点信息 */
@@ -734,7 +915,43 @@ VOS_VOID MTC_RcvCmmcaOtherRatInfoInd(VOS_VOID* pMsg)
 
     return;
 }
+VOS_VOID MTC_RcvMmaImsaStateInd(VOS_VOID *pMsg)
+{
+    VOS_UINT32                          ulPid;
+    MMA_MTC_IMSA_STATE_IND_STRU        *pstImsaStateInd = VOS_NULL_PTR;
+    MODEM_ID_ENUM_UINT16                enModemId;
+    MODEM_ID_ENUM_UINT16                enOtherModemId;
+    MTC_MODEM_POWER_STATE_ENUM_UINT8    enOtherModemPowerState;
 
+    pstImsaStateInd = (MMA_MTC_IMSA_STATE_IND_STRU *)pMsg;
+    ulPid           = pstImsaStateInd->stMsgHeader.ulSenderPid;
+
+    /* 根据 Pid获取modem ID */
+    enModemId       = VOS_GetModemIDFromPid(ulPid);
+    if (enModemId >= MODEM_ID_BUTT)
+    {
+        MTC_ERROR_LOG("MTC_RcvMmaPowerStateInd: Modem ID Err.");
+        return ;
+    }
+
+    /* 更新IMSA开关机状态 */
+    MTC_SetModemImsaState(enModemId, pstImsaStateInd->enPowerState);
+
+    if (MTC_MODEM_POWER_ON == pstImsaStateInd->enPowerState)
+    {
+        /* 如果是开机消息，需要将另一个Modem的开机状态通知到IMSA */
+        MTC_GetOtherModemId(enModemId, &enOtherModemId);
+        enOtherModemPowerState = MTC_GetModemPowerState(enOtherModemId);
+
+        MTC_SndMmaOtherModemInfoNotify(enModemId,
+                                       VOS_NULL_PTR,
+                                       VOS_NULL_PTR,
+                                       enOtherModemPowerState);
+
+    }
+
+    return;
+}
 
 #ifdef __cplusplus
     #if __cplusplus

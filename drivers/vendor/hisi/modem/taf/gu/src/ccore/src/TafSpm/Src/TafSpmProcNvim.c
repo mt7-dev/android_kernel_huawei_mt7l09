@@ -106,7 +106,7 @@ VOS_VOID TAF_SPM_ReadVideoCallNvim(VOS_VOID)
 
     if (VOS_TRUE == stVideoCall.ucStatus)
     {
-        pstServiceCtrlCfgInfo->enVpCfgState = stVideoCall.ucVpCfgState;        
+        pstServiceCtrlCfgInfo->enVpCfgState = stVideoCall.ucVpCfgState;
     }
 
     return;

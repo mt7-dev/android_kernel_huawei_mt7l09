@@ -73,7 +73,7 @@ MNTN_ERRLOG_STRU g_stErrLogStru;
 LOG_ENTITY_ST  g_stLogEnt =
 {LOG_FALSE,  OM_OUTPUT_SHELL, LOG_NULL_PTR, LOG_NULL_PTR};
 /*用来对RingBuffer进行互斥访问*/
-LOG_SEM        g_logBuffSem;
+VOS_SEM        g_logBuffSem;
 /*全局变量，用来保存每个模块的打印级别*/
 LOG_LEVEL_EN   g_aulLogPrintLevPsTable[LOG_PS_MODULE_MAX_NUM] = {LOG_LEVEL_OFF};
 LOG_LEVEL_EN   g_aulLogPrintLevDrvTable[LOG_DRV_MODULE_MAX_NUM] = {LOG_LEVEL_OFF};
@@ -123,7 +123,7 @@ extern VOS_UINT32 USIMM_GetCardIMSI(VOS_UINT8 *pucImsi);
     作    者   :
     修改内容   : 新生成函数
 *****************************************************************************/
-VOS_VOID OM_InitLogPath(void)
+VOS_VOID OM_InitLogPath(VOS_VOID)
 {
     OM_PORT_CFG_STRU    stPortCfg;
     VOS_UINT32          ulIndex;
@@ -251,7 +251,7 @@ FILE* MNTN_OpenErrorLog(VOS_UINT32 ulFileId, VOS_INT32 lFileFlag)
 }
 
 
-void  MNTN_RecordVersionInfo(void)
+VOS_VOID  MNTN_RecordVersionInfo(VOS_VOID)
 {
     FILE*                           lLogFile ;
     VOS_INT                         lFileSize;
@@ -280,7 +280,7 @@ void  MNTN_RecordVersionInfo(void)
         return;
     }
 
-    if(VOS_OK != Log_SmP(&g_stErrLogStru.semFileId))
+    if(VOS_OK != VOS_SmP(g_stErrLogStru.semFileId, 0))
     {
         DRV_FILE_CLOSE(lLogFile);
         vos_printf("MNTN_RecordVersionInfo:Take semphore Error\n");
@@ -300,12 +300,12 @@ void  MNTN_RecordVersionInfo(void)
         if(DRV_FILE_NULL == lLogFile)
         {
             vos_printf("MNTN_RecordVersionInfo:fopen fd file error\n");
-            Log_SmV(&g_stErrLogStru.semFileId);
+            VOS_SmV(g_stErrLogStru.semFileId);
             return;
         }
     }
 
-    Log_SmV(&g_stErrLogStru.semFileId);
+    VOS_SmV(g_stErrLogStru.semFileId);
 
     /*获取版本信息*/
     MNTN_GetHeadVersion((VOS_VOID *)&stVerInfo);
@@ -332,7 +332,7 @@ VOS_UINT32 MNTN_ErrLog_BufInput(VOS_CHAR * pcLogStr, VOS_UINT32 ulLen)
         return VOS_ERR ;
     }
 
-    if(VOS_OK != Log_SmP(&g_stErrLogStru.semErrlog))
+    if(VOS_OK != VOS_SmP(g_stErrLogStru.semErrlog, 0))
     {
         vos_printf("MNTN_ErrLog_BufInput:Take semphore error\n");
         return VOS_ERR ;
@@ -343,21 +343,21 @@ VOS_UINT32 MNTN_ErrLog_BufInput(VOS_CHAR * pcLogStr, VOS_UINT32 ulLen)
     /* 判断buf中空间是否足以存放该记录 */
     if(MAX_ERRLOG_BUF_LEN < (ulLen + ulRecordLen))
     {
-        Log_SmV(&g_stErrLogStru.semErrlog);
+        VOS_SmV(g_stErrLogStru.semErrlog);
         return VOS_ERR ;
     }
 
     /* 将记录拷贝到buf中 */
-    memcpy(g_stErrLogStru.acbuf[g_stErrLogStru.ucBufId] + ulRecordLen,
+    VOS_MemCpy(g_stErrLogStru.acbuf[g_stErrLogStru.ucBufId] + ulRecordLen,
                 pcLogStr, ulLen);
     g_stErrLogStru.aulRecordLen[g_stErrLogStru.ucBufId] = ulRecordLen + ulLen;
 
-    Log_SmV(&g_stErrLogStru.semErrlog);
+    VOS_SmV(g_stErrLogStru.semErrlog);
 
     return VOS_OK;
 }
-unsigned int MNTN_ErrorLog(char * cFileName, unsigned int ulFileId, unsigned int ulLine,
-                unsigned int ulErrNo, void *pRecord, unsigned int ulLen)
+VOS_UINT32 MNTN_ErrorLog(VOS_CHAR * cFileName, VOS_UINT32 ulFileId, VOS_UINT32 ulLine,
+                VOS_UINT32 ulErrNo, VOS_VOID *pRecord, VOS_UINT32 ulLen)
 {
     MNTN_HEAD_INFO_STRU *       pstHeadInfo;
     VOS_UINT32                  ulInfolen;
@@ -412,19 +412,19 @@ unsigned int MNTN_ErrorLog(char * cFileName, unsigned int ulFileId, unsigned int
         ulfistCallFlag = VOS_FALSE;
     }
     /* 将记录保存到buf中 */
-    MNTN_ErrLog_BufInput((char *)pRecord,ulLen);
+    MNTN_ErrLog_BufInput((VOS_CHAR *)pRecord,ulLen);
 
     /* 将长度转换成长整形字节的个数 */
-    ulInfolen = ((ulLen + sizeof(long)) - 1)>>2 ;
+    ulInfolen = ((ulLen + sizeof(VOS_UINT32)) - 1)>>2 ;
 
     /* 将记录通过omlog输出 */
     #ifdef __LOG_BBIT__
     ret = Log_StrNParam(cFileName, ulLine, LOG_ERRLOG_ID, (LOG_SUBMOD_ID_EN)0,
-                LOG_LEVEL_ERROR, "Errlog:", (unsigned char)ulInfolen ,(long *)pRecord);
+                LOG_LEVEL_ERROR, "Errlog:", (VOS_UINT8)ulInfolen ,(VOS_INT32*)pRecord);
     #endif
     #ifdef __LOG_RELEASE__
     ret = Log_IdNParam(LOG_ERRLOG_ID, 0, LOG_LEVEL_ERROR,
-                PsLogId(ulFileId, ulLine), ulInfolen , (long *)pRecord);
+                PsLogId(ulFileId, ulLine), ulInfolen , (VOS_INT32*)pRecord);
     #endif
 
     if(MNTN_USB_ENUMERATE_STATUS_EVENT == ulErrNo)
@@ -434,7 +434,7 @@ unsigned int MNTN_ErrorLog(char * cFileName, unsigned int ulFileId, unsigned int
 
     if (VOS_OK != ret)
     {
-        Log_SmV(&(g_stLogEnt.semOmPrint));
+        VOS_SmV(g_stLogEnt.semOmPrint);
     }
     return VOS_OK ;
 }
@@ -589,15 +589,15 @@ VOS_VOID  MNTN_ErrLogInit(VOS_VOID)
         }
     }
 
-    /*   创建互斥信号量，控制buf的互斥操作   */
-    if (LOG_OK != LOG_CreateMutex(&g_stErrLogStru.semErrlog))
+    /*   创建互斥信号量，控制buf的互斥操作   */    
+    if (VOS_OK != VOS_SmMCreate("errlog", VOS_SEMA4_PRIOR | VOS_SEMA4_INVERSION_SAFE, &g_stErrLogStru.semErrlog))
     {
         vos_printf("MNTN_ErrLogInit:Log: Error, semCreate Fail\n");
         return;
     }
 
     /*   创建互斥信号量，控制FileId   */
-    if (LOG_OK != LOG_CreateMutex(&g_stErrLogStru.semFileId))
+    if (VOS_OK != VOS_SmMCreate("fileid", VOS_SEMA4_PRIOR | VOS_SEMA4_INVERSION_SAFE, &g_stErrLogStru.semFileId))
     {
         vos_printf("MNTN_ErrLogInit:Log: Error, semCreate Fail\n");
         return;
@@ -611,7 +611,7 @@ VOS_VOID  MNTN_ErrLogInit(VOS_VOID)
 }
 
 
-void MNTN_WriteErrorLog(void)
+VOS_VOID MNTN_WriteErrorLog(VOS_VOID)
 {
     FILE*                           lLogFile;
     VOS_INT                         lFileSize;
@@ -619,7 +619,7 @@ void MNTN_WriteErrorLog(void)
     VOS_UINT8                       ucBufId;
     MNTN_VERSION_INFO_EVENT_STRU    stVerInfo;
 
-    if(VOS_OK != Log_SmP(&g_stErrLogStru.semErrlog))
+    if(VOS_OK != VOS_SmP(g_stErrLogStru.semErrlog, 0))
     {
         vos_printf("MNTN_WriteErrorLog:Take semphore Error\n");
         return;
@@ -630,7 +630,7 @@ void MNTN_WriteErrorLog(void)
     /*buf中没有记录则直接返回*/
     if (0 == ulRecordLen)
     {
-        Log_SmV(&g_stErrLogStru.semErrlog);
+        VOS_SmV(g_stErrLogStru.semErrlog);
         return;
     }
 
@@ -639,7 +639,7 @@ void MNTN_WriteErrorLog(void)
     /*切换buf ID*/
     g_stErrLogStru.ucBufId = (g_stErrLogStru.ucBufId + 1)%2;
 
-    Log_SmV(&g_stErrLogStru.semErrlog);
+    VOS_SmV(g_stErrLogStru.semErrlog);
 
     /*Errlog.bin文件不存在，则创建*/
     lLogFile = MNTN_OpenErrorLog(g_stErrLogStru.ucFileId, DRV_O_CREAT|DRV_O_APPEND|DRV_O_RDWR);
@@ -673,7 +673,7 @@ void MNTN_WriteErrorLog(void)
         }
     }
 
-    if(VOS_OK != Log_SmP(&g_stErrLogStru.semFileId))
+    if(VOS_OK != VOS_SmP(g_stErrLogStru.semFileId, 0))
     {
         DRV_FILE_CLOSE(lLogFile);
         vos_printf("MNTN_WriteErrorLog:Take semphore Error\n");
@@ -693,7 +693,7 @@ void MNTN_WriteErrorLog(void)
         if (DRV_FILE_NULL == lLogFile)
         {
             vos_printf("MNTN_WriteErrorLog:fopen fd file error\n");
-            Log_SmV(&g_stErrLogStru.semFileId);
+            VOS_SmV(g_stErrLogStru.semFileId);
             return;
         }
         else
@@ -707,7 +707,7 @@ void MNTN_WriteErrorLog(void)
             }
         }
     }
-    Log_SmV(&g_stErrLogStru.semFileId);
+    VOS_SmV(g_stErrLogStru.semFileId);
 
     /* 将buf中的记录全部写入文件中 */
     if (DRV_ERROR == DRV_FILE_WRITE(g_stErrLogStru.acbuf[ucBufId], sizeof(VOS_CHAR), ulRecordLen, lLogFile))
@@ -722,7 +722,7 @@ void MNTN_WriteErrorLog(void)
 
     return;
 }
-void MNTN_ErrorLogWriteFile(void)
+VOS_VOID MNTN_ErrorLogWriteFile(VOS_VOID)
 {
     if(ERRLOG_DISABLE == g_stErrLogStru.ucInitSucc)
     {
@@ -761,14 +761,14 @@ void MNTN_ErrorLogWriteFile(void)
     作    者   : 甘兰 47350
     修改内容   : 新生成函数
 *****************************************************************************/
-unsigned long LOG_GetTick(void)
+VOS_UINT32 LOG_GetTick(VOS_VOID)
 {
 #if ((VOS_OS_VER == VOS_VXWORKS) || (VOS_OS_VER == VOS_RTOSCK))
 /*lint -e718*/
 /*lint -e746*/
 
     /*在ASIC/FPGA平台下，需要将Slice值转换成tick值，保证和SDT的显示一致*/
-    unsigned long   ulSlice;
+    VOS_UINT32   ulSlice;
     ulSlice = OM_GetSlice();
     /*Slice值每隔一秒增加32768，通过以下计算转换成10ms的tick值
     而先右移7位，再乘以100，是为了防止数据过大而溢出*/
@@ -781,7 +781,7 @@ unsigned long LOG_GetTick(void)
 /*lint +e746*/
 
 #elif(VOS_OS_VER == VOS_WIN32)
-    return (unsigned long)GetTickCount();
+    return (VOS_UINT32)GetTickCount();
 #else
     return 0;
 #endif
@@ -793,7 +793,7 @@ unsigned long LOG_GetTick(void)
  输入参数  : LOG_MODULE_ID_EN enModuleId
              LOG_SUBMOD_ID_EN enSubModId
  输出参数  : 无
- 返 回 值  : unsigned long
+ 返 回 值  : VOS_UINT32
  调用函数  :
  被调函数  :
 
@@ -807,7 +807,7 @@ unsigned long LOG_GetTick(void)
     修改内容   : 可维可测第三阶段需求
 
 *****************************************************************************/
-unsigned long Log_GetPrintLevel(VOS_UINT32 ulModuleId)
+VOS_UINT32 Log_GetPrintLevel(VOS_UINT32 ulModuleId)
 {
     /*在配置为OM输出时，不输出OM模块的打印信息，否则有可能会造成死循环*/
     if ((WUEPS_PID_MUX == ulModuleId) && (OM_OUTPUT_SDT == g_stLogEnt.ulLogOutput))
@@ -831,7 +831,7 @@ unsigned long Log_GetPrintLevel(VOS_UINT32 ulModuleId)
  功能描述  : 得到文件路径名的偏移值
  输入参数  : char* pcFileName
  输出参数  : 无
- 返 回 值  : void
+ 返 回 值  : VOS_VOID
  调用函数  :
  被调函数  :
 
@@ -841,25 +841,25 @@ unsigned long Log_GetPrintLevel(VOS_UINT32 ulModuleId)
     修改内容   : 新生成函数
 
 *****************************************************************************/
-long Log_GetPathOffset(char* pcFileName)
+VOS_INT32 Log_GetPathOffset(VOS_CHAR* pcFileName)
 {
-    long     lOffset;
-    long     lOffset1;
-    long     lOffset2;
-    char    *pcPathPos;
+    VOS_INT32     lOffset;
+    VOS_INT32     lOffset1;
+    VOS_INT32     lOffset2;
+    VOS_CHAR     *pcPathPos;
 
     lOffset1  = 0;
     lOffset2  = 0;
 
     /* 操作系统可能使用'\'来查找路径 */
-    pcPathPos = (char*)strrchr(pcFileName, '\\');
+    pcPathPos = (VOS_CHAR*)strrchr(pcFileName, '\\');
     if (LOG_NULL_PTR != pcPathPos)
     {
         lOffset1 = (pcPathPos - pcFileName) + 1;
     }
 
     /* 操作系统可能使用'/'来查找路径 */
-    pcPathPos = (char*)strrchr(pcFileName, '/');
+    pcPathPos = (VOS_CHAR*)strrchr(pcFileName, '/');
     if (LOG_NULL_PTR != pcPathPos)
     {
         lOffset2 = (pcPathPos - pcFileName) + 1;
@@ -873,9 +873,9 @@ long Log_GetPathOffset(char* pcFileName)
 /*****************************************************************************
  函 数 名  : Log_Init
  功能描述  : 打印初始化
- 输入参数  : void
+ 输入参数  : VOS_VOID
  输出参数  : 无
- 返 回 值  : void
+ 返 回 值  : VOS_VOID
  调用函数  :
  被调函数  :
 
@@ -885,28 +885,27 @@ long Log_GetPathOffset(char* pcFileName)
     修改内容   : 新生成函数
 
 *****************************************************************************/
-void Log_Init(void)
+VOS_VOID Log_Init(VOS_VOID)
 {
     g_stLogEnt.ulPrintSwitch = LOG_FALSE;
 
-    if (LOG_OK != LOG_CreateMutex(&g_logBuffSem))
+    if (VOS_OK != VOS_SmMCreate("LOG_MSem", VOS_SEMA4_PRIOR | VOS_SEMA4_INVERSION_SAFE, &g_logBuffSem))
     {
         vos_printf("Log: Error, semMCreate Fail");
-        return;
+        return ;
     }
-
-    if (LOG_OK != LOG_CreateSemaphore(&(g_stLogEnt.semOmPrint)))
+    if (VOS_OK != VOS_SmCCreate("LOG_CSem", 0, VOS_SEMA4_FIFO, &(g_stLogEnt.semOmPrint)))
     {
-        LOG_DeleteSemaphore(&g_logBuffSem);
+        VOS_SmDelete(g_logBuffSem);
         vos_printf("Log: Error, semCCreate Fail");
-        return;
+        return ;
     }
 
     g_stLogEnt.rngOmRbufId = OM_RingBufferCreate(LOG_BUF_VOLUMN);
     if (LOG_NULL_PTR == g_stLogEnt.rngOmRbufId)
     {
-        LOG_DeleteSemaphore(&g_logBuffSem);
-        LOG_DeleteSemaphore(&g_stLogEnt.semOmPrint);
+        VOS_SmDelete(g_logBuffSem);
+        VOS_SmDelete(g_stLogEnt.semOmPrint);
         vos_printf("Log: Error, rngCreate Fail");
         return;
     }
@@ -924,7 +923,7 @@ void Log_Init(void)
                     (LOG_PFUN)OM_LogId3, (LOG_PFUN)OM_LogId4);
 #endif
 
-    MNTN_ERRLOG_REG_FUNC((RECORD_ERRLOG_PFUN)MNTN_ErrorLog);
+    MNTN_ERRLOG_REG_FUNC((MNTN_ERRLOGREGFUN)MNTN_ErrorLog);
 
     return;
 }
@@ -935,13 +934,13 @@ void Log_Init(void)
  函 数 名  : OM_Log
  功能描述  : 字符串类型的打印接口函数（无参数）
  输入参数  : char             *cFileName
-             unsigned long      ulLineNum
+             VOS_UINT32      ulLineNum
              LOG_MODULE_ID_EN  enModuleId
              LOG_SUBMOD_ID_EN   enSubModId
              LOG_LEVEL_EN      enLevel
              char              *pcString
  输出参数  : 无
- 返 回 值  : void
+ 返 回 值  : VOS_VOID
  调用函数  :
  被调函数  :
 
@@ -951,9 +950,9 @@ void Log_Init(void)
     修改内容   : 新生成函数
 
 *****************************************************************************/
-void OM_Log(char             *cFileName,  unsigned long      ulLineNum,
+VOS_VOID OM_Log(VOS_CHAR  *cFileName,  VOS_UINT32        ulLineNum,
             LOG_MODULE_ID_EN  enModuleId, LOG_SUBMOD_ID_EN   enSubModId,
-            LOG_LEVEL_EN      enLevel,    char              *pcString)
+            LOG_LEVEL_EN      enLevel,    VOS_CHAR          *pcString)
 {
     Log_StrNParam(cFileName, ulLineNum, enModuleId, enSubModId, enLevel,
             pcString, 0, LOG_NULL_PTR);
@@ -963,15 +962,15 @@ void OM_Log(char             *cFileName,  unsigned long      ulLineNum,
 /*****************************************************************************
  函 数 名  : OM_Log1
  功能描述  : 字符串类型的打印接口函数（1 个参数）
- 输入参数  : char             *cFileName
-             unsigned long      ulLineNum
+ 输入参数  : VOS_CHAR             *cFileName
+             VOS_UINT32      ulLineNum
              LOG_MODULE_ID_EN  enModuleId
              LOG_SUBMOD_ID_EN   enSubModId
              LOG_LEVEL_EN      enLevel
-             char              *pcString
-             long              lPara1
+             VOS_CHAR              *pcString
+             VOS_INT32              lPara1
  输出参数  : 无
- 返 回 值  : void
+ 返 回 值  : VOS_VOID
  调用函数  :
  被调函数  :
 
@@ -981,12 +980,12 @@ void OM_Log(char             *cFileName,  unsigned long      ulLineNum,
     修改内容   : 新生成函数
 
 *****************************************************************************/
-void OM_Log1(char             *cFileName,  unsigned long      ulLineNum,
+VOS_VOID OM_Log1(VOS_CHAR *cFileName,  VOS_UINT32         ulLineNum,
              LOG_MODULE_ID_EN  enModuleId, LOG_SUBMOD_ID_EN   enSubModId,
-             LOG_LEVEL_EN      enLevel,    char              *pcString,
-             long              lPara1)
+             LOG_LEVEL_EN      enLevel,    VOS_CHAR          *pcString,
+             VOS_INT32         lPara1)
 {
-    long alParam[4];
+    VOS_INT32 alParam[4];
     alParam[0] = lPara1;
 
     Log_StrNParam(cFileName, ulLineNum, enModuleId, enSubModId, enLevel,
@@ -997,16 +996,16 @@ void OM_Log1(char             *cFileName,  unsigned long      ulLineNum,
 /*****************************************************************************
  函 数 名  : OM_Log2
  功能描述  : 字符串类型的打印接口函数（2个参数）
- 输入参数  : char             *cFileName
-             unsigned long      ulLineNum
+ 输入参数  : VOS_CHAR             *cFileName
+             VOS_UINT32      ulLineNum
              LOG_MODULE_ID_EN  enModuleId
              LOG_SUBMOD_ID_EN   enSubModId
              LOG_LEVEL_EN      enLevel
-             char              *pcString
-             long              lPara1
-             long               lPara2
+             VOS_CHAR              *pcString
+             VOS_INT32              lPara1
+             VOS_INT32               lPara2
  输出参数  : 无
- 返 回 值  : void
+ 返 回 值  : VOS_VOID
  调用函数  :
  被调函数  :
 
@@ -1016,12 +1015,12 @@ void OM_Log1(char             *cFileName,  unsigned long      ulLineNum,
     修改内容   : 新生成函数
 
 *****************************************************************************/
-void OM_Log2(char             *cFileName,  unsigned long      ulLineNum,
+VOS_VOID OM_Log2(VOS_CHAR *cFileName,  VOS_UINT32         ulLineNum,
              LOG_MODULE_ID_EN  enModuleId, LOG_SUBMOD_ID_EN   enSubModId,
-             LOG_LEVEL_EN      enLevel,    char              *pcString,
-             long              lPara1,     long               lPara2)
+             LOG_LEVEL_EN      enLevel,    VOS_CHAR          *pcString,
+             VOS_INT32         lPara1,     VOS_INT32          lPara2)
 {
-    long alParam[4];
+    VOS_INT32 alParam[4];
 
     alParam[0] = lPara1;
     alParam[1] = lPara2;
@@ -1035,17 +1034,17 @@ void OM_Log2(char             *cFileName,  unsigned long      ulLineNum,
 /*****************************************************************************
  函 数 名  : OM_Log3
  功能描述  : 字符串类型的打印接口函数（3 个参数）
- 输入参数  : char             *cFileName
-             unsigned long      ulLineNum
+ 输入参数  : VOS_CHAR             *cFileName
+             VOS_UINT32      ulLineNum
              LOG_MODULE_ID_EN  enModuleId
              LOG_SUBMOD_ID_EN   enSubModId
              LOG_LEVEL_EN      enLevel
-             char              *pcString
-             long              lPara1
-             long               lPara2
-             long              lPara3
+             VOS_CHAR              *pcString
+             VOS_INT32              lPara1
+             VOS_INT32               lPara2
+             VOS_INT32              lPara3
  输出参数  : 无
- 返 回 值  : void
+ 返 回 值  : VOS_VOID
  调用函数  :
  被调函数  :
 
@@ -1055,13 +1054,13 @@ void OM_Log2(char             *cFileName,  unsigned long      ulLineNum,
     修改内容   : 新生成函数
 
 *****************************************************************************/
-void OM_Log3(char             *cFileName,  unsigned long      ulLineNum,
+VOS_VOID OM_Log3(VOS_CHAR *cFileName,  VOS_UINT32         ulLineNum,
              LOG_MODULE_ID_EN  enModuleId, LOG_SUBMOD_ID_EN   enSubModId,
-             LOG_LEVEL_EN      enLevel,    char              *pcString,
-             long              lPara1,     long               lPara2,
-             long              lPara3)
+             LOG_LEVEL_EN      enLevel,    VOS_CHAR          *pcString,
+             VOS_INT32         lPara1,     VOS_INT32          lPara2,
+             VOS_INT32         lPara3)
 {
-    long alParam[4];
+    VOS_INT32 alParam[4];
 
     alParam[0] = lPara1;
     alParam[1] = lPara2;
@@ -1076,18 +1075,18 @@ void OM_Log3(char             *cFileName,  unsigned long      ulLineNum,
 /*****************************************************************************
  函 数 名  : OM_Log4
  功能描述  : 字符串类型的打印接口函数（4 个参数）
- 输入参数  : char             *cFileName
-                         unsigned long      ulLineNum
+ 输入参数  : VOS_CHAR             *cFileName
+                         VOS_UINT32      ulLineNum
                          LOG_MODULE_ID_EN  enModuleId
                          LOG_SUBMOD_ID_EN   enSubModId
                          LOG_LEVEL_EN      enLevel
-                         char              *pcString
-                         long              lPara1
-                         long               lPara2
-                         long              lPara3
-                         long               lPara4
+                         VOS_CHAR              *pcString
+                         VOS_INT32              lPara1
+                         VOS_INT32               lPara2
+                         VOS_INT32              lPara3
+                         VOS_INT32               lPara4
  输出参数  : 无
- 返 回 值  : void
+ 返 回 值  : VOS_VOID
  调用函数  :
  被调函数  :
 
@@ -1097,13 +1096,13 @@ void OM_Log3(char             *cFileName,  unsigned long      ulLineNum,
         修改内容   : 新生成函数
 
 *****************************************************************************/
-void OM_Log4(char             *cFileName,  unsigned long      ulLineNum,
+VOS_VOID OM_Log4(VOS_CHAR *cFileName,  VOS_UINT32         ulLineNum,
              LOG_MODULE_ID_EN  enModuleId, LOG_SUBMOD_ID_EN   enSubModId,
-             LOG_LEVEL_EN      enLevel,    char              *pcString,
-             long              lPara1,     long               lPara2,
-             long              lPara3,     long               lPara4)
+             LOG_LEVEL_EN      enLevel,    VOS_CHAR          *pcString,
+             VOS_INT32         lPara1,     VOS_INT32          lPara2,
+             VOS_INT32         lPara3,     VOS_INT32          lPara4)
 {
-    long alParam[4];
+    VOS_INT32 alParam[4];
 
     alParam[0] = lPara1;
     alParam[1] = lPara2;
@@ -1119,16 +1118,16 @@ void OM_Log4(char             *cFileName,  unsigned long      ulLineNum,
 /*****************************************************************************
  函 数 名  : Log_BuildStr
  功能描述  : 构建字符串类型的打印输出信息
- 输入参数  : char          *pcFileName
-                         unsigned long  ulLineNum
+ 输入参数  : VOS_CHAR          *pcFileName
+                         VOS_UINT32  ulLineNum
                          LOG_LEVEL_EN   enPrintLev
-                         char          *pcOriStr
-                         unsigned char  ucParaCnt
-                         long          *plPara
-                         char          *pcDstStr
-                         unsigned long *pulLen
+                         VOS_CHAR          *pcOriStr
+                         VOS_UINT8  ucParaCnt
+                         VOS_INT32          *plPara
+                         VOS_CHAR          *pcDstStr
+                         VOS_UINT32 *pulLen
  输出参数  : 无
- 返 回 值  : void
+ 返 回 值  : VOS_VOID
  调用函数  :
  被调函数  :
 
@@ -1138,37 +1137,37 @@ void OM_Log4(char             *cFileName,  unsigned long      ulLineNum,
         修改内容   : 新生成函数
 
 *****************************************************************************/
-void Log_BuildStr(char          *pcFileName,  unsigned long  ulLineNum,
-                  LOG_LEVEL_EN   enPrintLev,  char          *pcOriStr,
-                  unsigned char  ucParaCnt,   long          *plPara,
-                  char          *pcDstStr,    unsigned long *pulLen)
+VOS_VOID Log_BuildStr(VOS_CHAR *pcFileName,  VOS_UINT32  ulLineNum,
+                      LOG_LEVEL_EN enPrintLev,  VOS_CHAR   *pcOriStr,
+                      VOS_UINT8    ucParaCnt,   VOS_INT32  *plPara,
+                      VOS_CHAR    *pcDstStr,    VOS_UINT32 *pulLen)
 {
-    long            lTmpLen;
-    long            lStrLen;
-    long            lOffset;
-    long            lParamLen;
-    long            lSpareLen;
-    long            lOccupyLen;
-    unsigned char   i;
+    VOS_INT32            lTmpLen;
+    VOS_INT32            lStrLen;
+    VOS_INT32            lOffset;
+    VOS_INT32            lParamLen;
+    VOS_INT32            lSpareLen;
+    VOS_INT32            lOccupyLen;
+    VOS_UINT8            i;
 
     *pulLen = 0;
 
     switch ( enPrintLev )
     {
         case LOG_LEVEL_ERROR :
-            lTmpLen    = LOG_SNPRINTF( pcDstStr, LOG_MAX_COLUMN_VAL, "\nERROR,F: ");
+            lTmpLen    = VOS_nsprintf( pcDstStr, LOG_MAX_COLUMN_VAL, "\nERROR,F: ");
             break;
         case LOG_LEVEL_WARNING :
-            lTmpLen    = LOG_SNPRINTF( pcDstStr, LOG_MAX_COLUMN_VAL, "\nWARNING,F: ");
+            lTmpLen    = VOS_nsprintf( pcDstStr, LOG_MAX_COLUMN_VAL, "\nWARNING,F: ");
             break;
         case LOG_LEVEL_NORMAL :
-            lTmpLen    = LOG_SNPRINTF( pcDstStr, LOG_MAX_COLUMN_VAL, "\nNORMAL,F: ");
+            lTmpLen    = VOS_nsprintf( pcDstStr, LOG_MAX_COLUMN_VAL, "\nNORMAL,F: ");
             break;
         case LOG_LEVEL_INFO :
-            lTmpLen    = LOG_SNPRINTF( pcDstStr, LOG_MAX_COLUMN_VAL, "\nINFO,F: ");
+            lTmpLen    = VOS_nsprintf( pcDstStr, LOG_MAX_COLUMN_VAL, "\nINFO,F: ");
             break;
         default:
-            lTmpLen    = LOG_SNPRINTF( pcDstStr, LOG_MAX_COLUMN_VAL, "\nF: ");
+            lTmpLen    = VOS_nsprintf( pcDstStr, LOG_MAX_COLUMN_VAL, "\nF: ");
             break;
     }
 
@@ -1180,10 +1179,10 @@ void Log_BuildStr(char          *pcFileName,  unsigned long  ulLineNum,
 
         /* 将路径去除,只保留文件名称 */
     lOffset = Log_GetPathOffset(pcFileName);
-    lTmpLen = (long)strlen(pcFileName + lOffset);
+    lTmpLen = (VOS_INT32)strlen(pcFileName + lOffset);
     if (lTmpLen < LOG_MAX_FILENAME_LEN)
     {
-        memcpy(pcDstStr + lOccupyLen, pcFileName + lOffset, (unsigned int)lTmpLen);
+        memcpy(pcDstStr + lOccupyLen, pcFileName + lOffset, (VOS_UINT32)lTmpLen);
         lOccupyLen += lTmpLen;
     }
     else
@@ -1194,7 +1193,7 @@ void Log_BuildStr(char          *pcFileName,  unsigned long  ulLineNum,
 
     lSpareLen   = LOG_MAX_COLUMN_VAL - lOccupyLen;
 
-    lTmpLen = LOG_SNPRINTF( pcDstStr + lOccupyLen, (unsigned int)lSpareLen,
+    lTmpLen = VOS_nsprintf( pcDstStr + lOccupyLen, (VOS_UINT32)lSpareLen,
                            ", Line: %u, Tick: %u, ", ulLineNum, LOG_GetTick());
 
     lOccupyLen += lTmpLen;
@@ -1206,15 +1205,15 @@ void Log_BuildStr(char          *pcFileName,  unsigned long  ulLineNum,
     LOG_AFFIRM(0 <= lStrLen)
 
         /*=======================*/ /* 加入字符串信息 */
-    lTmpLen = (long)strlen(pcOriStr);
+    lTmpLen = (VOS_INT32)strlen(pcOriStr);
     if (lTmpLen <= lStrLen)
     {
-        memcpy(pcDstStr + lOccupyLen, pcOriStr, (unsigned int)lTmpLen);
+        memcpy(pcDstStr + lOccupyLen, pcOriStr, (VOS_UINT32)lTmpLen);
         lOccupyLen += lTmpLen;
     }
     else
     {
-        memcpy(pcDstStr + lOccupyLen, pcOriStr, (unsigned int)lStrLen);
+        memcpy(pcDstStr + lOccupyLen, pcOriStr, (VOS_UINT32)lStrLen);
         lOccupyLen += lStrLen;
     }
 
@@ -1231,7 +1230,7 @@ void Log_BuildStr(char          *pcFileName,  unsigned long  ulLineNum,
         }
 
         LOG_AFFIRM(LOG_MAX_COLUMN_VAL >= lOccupyLen)
-        *pulLen = (unsigned long)lOccupyLen;
+        *pulLen = (VOS_UINT32)lOccupyLen;
         return;
     }
 
@@ -1244,30 +1243,30 @@ void Log_BuildStr(char          *pcFileName,  unsigned long  ulLineNum,
         /*=======================*/ /* 加入参数 */
     for (i = 0; i < ucParaCnt; i++)
     {
-        lTmpLen = LOG_SNPRINTF( pcDstStr + lOccupyLen, (unsigned int)lSpareLen, " %d.", *(plPara + i));
+        lTmpLen = VOS_nsprintf( pcDstStr + lOccupyLen, (VOS_UINT32)lSpareLen, " %d.", *(plPara + i));
         lOccupyLen += lTmpLen;
         LOG_AFFIRM(LOG_MAX_COLUMN_VAL >= lOccupyLen)
 
         lSpareLen  = LOG_MAX_COLUMN_VAL - lOccupyLen;
     }
 
-    *pulLen = (unsigned long)(LOG_MAX_COLUMN_VAL - lSpareLen);
+    *pulLen = (VOS_UINT32)(LOG_MAX_COLUMN_VAL - lSpareLen);
     return;
 }
 
 /*****************************************************************************
  函 数 名  : Log_StrNParam
  功能描述  : 字符串类型的打印函数（N 个参数）
- 输入参数  : char             *cFileName
-                         unsigned long      ulLineNum
+ 输入参数  : VOS_CHAR             *cFileName
+                         VOS_UINT32      ulLineNum
                          LOG_MODULE_ID_EN  enModuleId
                          LOG_SUBMOD_ID_EN   enSubModId
                          LOG_LEVEL_EN      enLevel
-                         char              *pcOriStr
-                         unsigned char     ucParaCnt
-                         long              *plPara
+                         VOS_CHAR              *pcOriStr
+                         VOS_UINT8     ucParaCnt
+                         VOS_INT32              *plPara
  输出参数  : 无
- 返 回 值  : void
+ 返 回 值  : VOS_VOID
  调用函数  :
  被调函数  :
 
@@ -1277,16 +1276,16 @@ void Log_BuildStr(char          *pcFileName,  unsigned long  ulLineNum,
         修改内容   : 新生成函数
 
 *****************************************************************************/
-int Log_StrNParam(char             *cFileName,  unsigned long      ulLineNum,
+VOS_INT32 Log_StrNParam(VOS_CHAR *cFileName, VOS_UINT32 ulLineNum,
              LOG_MODULE_ID_EN  enModuleId, LOG_SUBMOD_ID_EN   enSubModId,
-             LOG_LEVEL_EN      enLevel,    char              *pcOriStr,
-             unsigned char     ucParaCnt,  long              *plPara)
+             LOG_LEVEL_EN      enLevel,    VOS_CHAR          *pcOriStr,
+             VOS_UINT8         ucParaCnt,  VOS_INT32         *plPara)
 {
-    unsigned long     ulLen;
-    int               ret = VOS_ERR;
+    VOS_UINT32        ulLen;
+    VOS_INT32         ret = VOS_ERR;
 
     /*lint -e813*/
-    char              acLogStr[LOG_MAX_COLUMN_VAL_EX + 1];
+    VOS_CHAR          acLogStr[LOG_MAX_COLUMN_VAL_EX + 1];
     /*lint +e813*/
 
     if (LOG_TRUE != g_stLogEnt.ulPrintSwitch)
@@ -1346,9 +1345,9 @@ int Log_StrNParam(char             *cFileName,  unsigned long      ulLineNum,
  输入参数  : LOG_MODULE_ID_EN  enModuleId
                          LOG_SUBMOD_ID_EN  enSubModId
                          LOG_LEVEL_EN      enLevel
-                         unsigned long     ulLogId
+                         VOS_UINT32     ulLogId
  输出参数  : 无
- 返 回 值  : void
+ 返 回 值  : VOS_VOID
  调用函数  :
  被调函数  :
 
@@ -1358,8 +1357,8 @@ int Log_StrNParam(char             *cFileName,  unsigned long      ulLineNum,
         修改内容   : 新生成函数
 
 *****************************************************************************/
-void OM_LogId(LOG_MODULE_ID_EN  enModuleId, LOG_SUBMOD_ID_EN  enSubModId,
-              LOG_LEVEL_EN      enLevel,    unsigned long     ulLogId)
+VOS_VOID OM_LogId(LOG_MODULE_ID_EN  enModuleId, LOG_SUBMOD_ID_EN  enSubModId,
+                      LOG_LEVEL_EN      enLevel,    VOS_UINT32        ulLogId)
 {
     Log_IdNParam(enModuleId, enSubModId, enLevel, ulLogId, 0, LOG_NULL_PTR);
     return;
@@ -1371,10 +1370,10 @@ void OM_LogId(LOG_MODULE_ID_EN  enModuleId, LOG_SUBMOD_ID_EN  enSubModId,
  输入参数  : LOG_MODULE_ID_EN  enModuleId
                          LOG_SUBMOD_ID_EN  enSubModId
                          LOG_LEVEL_EN      enLevel
-                         unsigned long     ulLogId
-                         long              lPara1
+                         VOS_UINT32     ulLogId
+                         VOS_INT32              lPara1
  输出参数  : 无
- 返 回 值  : void
+ 返 回 值  : VOS_VOID
  调用函数  :
  被调函数  :
 
@@ -1384,11 +1383,11 @@ void OM_LogId(LOG_MODULE_ID_EN  enModuleId, LOG_SUBMOD_ID_EN  enSubModId,
         修改内容   : 新生成函数
 
 *****************************************************************************/
-void OM_LogId1(LOG_MODULE_ID_EN  enModuleId, LOG_SUBMOD_ID_EN  enSubModId,
-               LOG_LEVEL_EN      enLevel,    unsigned long     ulLogId,
-               long              lPara1)
+VOS_VOID OM_LogId1(LOG_MODULE_ID_EN  enModuleId, LOG_SUBMOD_ID_EN  enSubModId,
+                       LOG_LEVEL_EN      enLevel,    VOS_UINT32        ulLogId,
+                       VOS_INT32         lPara1)
 {
-    long alParam[4];
+    VOS_INT32 alParam[4];
     alParam[0] = lPara1;
 
     Log_IdNParam(enModuleId, enSubModId, enLevel, ulLogId, 1, alParam);
@@ -1401,11 +1400,11 @@ void OM_LogId1(LOG_MODULE_ID_EN  enModuleId, LOG_SUBMOD_ID_EN  enSubModId,
  输入参数  : LOG_MODULE_ID_EN  enModuleId
                          LOG_SUBMOD_ID_EN  enSubModId
                          LOG_LEVEL_EN      enLevel
-                         unsigned long     ulLogId
-                         long              lPara1
-                         long              lPara2
+                         VOS_UINT32     ulLogId
+                         VOS_INT32              lPara1
+                         VOS_INT32              lPara2
  输出参数  : 无
- 返 回 值  : void
+ 返 回 值  : VOS_VOID
  调用函数  :
  被调函数  :
 
@@ -1415,11 +1414,11 @@ void OM_LogId1(LOG_MODULE_ID_EN  enModuleId, LOG_SUBMOD_ID_EN  enSubModId,
         修改内容   : 新生成函数
 
 *****************************************************************************/
-void OM_LogId2(LOG_MODULE_ID_EN  enModuleId, LOG_SUBMOD_ID_EN  enSubModId,
-               LOG_LEVEL_EN      enLevel,    unsigned long     ulLogId,
-               long              lPara1,     long              lPara2)
+VOS_VOID OM_LogId2(LOG_MODULE_ID_EN  enModuleId, LOG_SUBMOD_ID_EN  enSubModId,
+                       LOG_LEVEL_EN      enLevel,    VOS_UINT32     ulLogId,
+                       VOS_INT32         lPara1,     VOS_INT32      lPara2)
 {
-    long alParam[4];
+    VOS_INT32 alParam[4];
 
     alParam[0] = lPara1;
     alParam[1] = lPara2;
@@ -1435,12 +1434,12 @@ void OM_LogId2(LOG_MODULE_ID_EN  enModuleId, LOG_SUBMOD_ID_EN  enSubModId,
  输入参数  : LOG_MODULE_ID_EN  enModuleId
                          LOG_SUBMOD_ID_EN  enSubModId
                          LOG_LEVEL_EN      enLevel
-                         unsigned long     ulLogId
-                         long              lPara1
-                         long              lPara2
-                         long              lPara3
+                         VOS_UINT32     ulLogId
+                         VOS_INT32              lPara1
+                         VOS_INT32              lPara2
+                         VOS_INT32              lPara3
  输出参数  : 无
- 返 回 值  : void
+ 返 回 值  : VOS_VOID
  调用函数  :
  被调函数  :
 
@@ -1450,12 +1449,12 @@ void OM_LogId2(LOG_MODULE_ID_EN  enModuleId, LOG_SUBMOD_ID_EN  enSubModId,
         修改内容   : 新生成函数
 
 *****************************************************************************/
-void OM_LogId3(LOG_MODULE_ID_EN  enModuleId, LOG_SUBMOD_ID_EN  enSubModId,
-               LOG_LEVEL_EN      enLevel,    unsigned long     ulLogId,
-               long              lPara1,     long              lPara2,
-               long              lPara3)
+VOS_VOID OM_LogId3(LOG_MODULE_ID_EN  enModuleId, LOG_SUBMOD_ID_EN  enSubModId,
+                       LOG_LEVEL_EN      enLevel,    VOS_UINT32        ulLogId,
+                       VOS_INT32         lPara1,     VOS_INT32         lPara2,
+                       VOS_INT32         lPara3)
 {
-    long alParam[4];
+    VOS_INT32 alParam[4];
 
     alParam[0] = lPara1;
     alParam[1] = lPara2;
@@ -1472,13 +1471,13 @@ void OM_LogId3(LOG_MODULE_ID_EN  enModuleId, LOG_SUBMOD_ID_EN  enSubModId,
  输入参数  : LOG_MODULE_ID_EN  enModuleId
                          LOG_SUBMOD_ID_EN  enSubModId
                          LOG_LEVEL_EN      enLevel
-                         unsigned long     ulLogId
-                         long              lPara1
-                         long              lPara2
-                         long              lPara3
-                         long              lPara4
+                         VOS_UINT32     ulLogId
+                         VOS_INT32              lPara1
+                         VOS_INT32              lPara2
+                         VOS_INT32              lPara3
+                         VOS_INT32              lPara4
  输出参数  : 无
- 返 回 值  : void
+ 返 回 值  : VOS_VOID
  调用函数  :
  被调函数  :
 
@@ -1488,12 +1487,12 @@ void OM_LogId3(LOG_MODULE_ID_EN  enModuleId, LOG_SUBMOD_ID_EN  enSubModId,
         修改内容   : 新生成函数
 
 *****************************************************************************/
-void OM_LogId4(LOG_MODULE_ID_EN  enModuleId, LOG_SUBMOD_ID_EN  enSubModId,
-               LOG_LEVEL_EN      enLevel,    unsigned long     ulLogId,
-               long              lPara1,     long              lPara2,
-               long              lPara3,     long              lPara4)
+VOS_VOID OM_LogId4(LOG_MODULE_ID_EN  enModuleId, LOG_SUBMOD_ID_EN  enSubModId,
+                       LOG_LEVEL_EN      enLevel,    VOS_UINT32        ulLogId,
+                       VOS_INT32         lPara1,     VOS_INT32         lPara2,
+                       VOS_INT32         lPara3,     VOS_INT32         lPara4)
 {
-    long alParam[4];
+    VOS_INT32 alParam[4];
 
     alParam[0] = lPara1;
     alParam[1] = lPara2;
@@ -1508,13 +1507,13 @@ void OM_LogId4(LOG_MODULE_ID_EN  enModuleId, LOG_SUBMOD_ID_EN  enSubModId,
 /*****************************************************************************
  函 数 名  : Log_BuildId
  功能描述  : 构建打印点类型的打印输出信息
- 输入参数  : unsigned long  ulLogId
-                         unsigned char  ucParaCnt
-                         long *plPara
-                         char          *pcDst
-                         unsigned long *pulLen
+ 输入参数  : VOS_UINT32  ulLogId
+                         VOS_UINT8  ucParaCnt
+                         VOS_INT32 *plPara
+                         VOS_CHAR          *pcDst
+                         VOS_UINT32 *pulLen
  输出参数  : 无
- 返 回 值  : void
+ 返 回 值  : VOS_VOID
  调用函数  :
  被调函数  :
 
@@ -1524,13 +1523,13 @@ void OM_LogId4(LOG_MODULE_ID_EN  enModuleId, LOG_SUBMOD_ID_EN  enSubModId,
         修改内容   : 新生成函数
 
 *****************************************************************************/
-void Log_BuildId(unsigned long  ulLogId, unsigned char  ucParaCnt, long *plPara,
-                    char          *pcDst,   unsigned long *pulLen)
+VOS_VOID Log_BuildId(VOS_UINT32  ulLogId, VOS_UINT8   ucParaCnt, VOS_INT32 *plPara,
+                        VOS_CHAR   *pcDst,   VOS_UINT32 *pulLen)
 {
-    long             lTmpLen;
-    long             lSpareLen;
-    long             lOccupyLen;
-    unsigned char    i;
+    VOS_INT32             lTmpLen;
+    VOS_INT32             lSpareLen;
+    VOS_INT32             lOccupyLen;
+    VOS_UINT8             i;
 
     *pulLen = 0;
 
@@ -1539,14 +1538,14 @@ void Log_BuildId(unsigned long  ulLogId, unsigned char  ucParaCnt, long *plPara,
         ucParaCnt = LOG_MAX_PARA_CNT;
     }
 
-    lTmpLen    = LOG_SNPRINTF( pcDst, LOG_MAX_COLUMN_VAL, "%d, ", ulLogId);
+    lTmpLen    = VOS_nsprintf( pcDst, LOG_MAX_COLUMN_VAL, "%d, ", ulLogId);
     LOG_AFFIRM (0 <= lTmpLen)
 
     lOccupyLen = lTmpLen;
     LOG_AFFIRM(LOG_MAX_COLUMN_VAL >= lOccupyLen)
     lSpareLen  = LOG_MAX_COLUMN_VAL - lOccupyLen;
 
-    lTmpLen    = LOG_SNPRINTF( pcDst + lOccupyLen, lSpareLen, "%u, ", LOG_GetTick());
+    lTmpLen    = VOS_nsprintf( pcDst + lOccupyLen, lSpareLen, "%u, ", LOG_GetTick());
     LOG_AFFIRM(0 <= lTmpLen)
 
     lOccupyLen += lTmpLen;
@@ -1555,7 +1554,7 @@ void Log_BuildId(unsigned long  ulLogId, unsigned char  ucParaCnt, long *plPara,
 
     for (i = 0; i < ucParaCnt; i ++)
     {
-        lTmpLen = LOG_SNPRINTF( pcDst + lOccupyLen, lSpareLen, "%d, ", *plPara);
+        lTmpLen = VOS_nsprintf( pcDst + lOccupyLen, lSpareLen, "%d, ", *plPara);
         LOG_AFFIRM(0 <= lTmpLen)
 
         lOccupyLen += lTmpLen;
@@ -1564,7 +1563,7 @@ void Log_BuildId(unsigned long  ulLogId, unsigned char  ucParaCnt, long *plPara,
         plPara++;
     }
 
-    *pulLen = (unsigned long)(LOG_MAX_COLUMN_VAL - lSpareLen);
+    *pulLen = (VOS_UINT32)(LOG_MAX_COLUMN_VAL - lSpareLen);
 
     return;
 }
@@ -1575,11 +1574,11 @@ void Log_BuildId(unsigned long  ulLogId, unsigned char  ucParaCnt, long *plPara,
  输入参数  : LOG_MODULE_ID_EN enModuleId
                          LOG_SUBMOD_ID_EN  enSubModId
                          LOG_LEVEL_EN     enLevel
-                         unsigned long     ulLogId
-                         unsigned char    ucParaCnt
-                         long             *plPara
+                         VOS_UINT32     ulLogId
+                         VOS_UINT8    ucParaCnt
+                         VOS_INT32             *plPara
  输出参数  : 无
- 返 回 值  : void
+ 返 回 值  : VOS_VOID
  调用函数  :
  被调函数  :
 
@@ -1589,15 +1588,15 @@ void Log_BuildId(unsigned long  ulLogId, unsigned char  ucParaCnt, long *plPara,
         修改内容   : 新生成函数
 
 *****************************************************************************/
-int Log_IdNParam(LOG_MODULE_ID_EN enModuleId, LOG_SUBMOD_ID_EN  enSubModId,
-               LOG_LEVEL_EN     enLevel,    unsigned long     ulLogId,
-               unsigned char    ucParaCnt,  long             *plPara)
+VOS_INT32 Log_IdNParam(LOG_MODULE_ID_EN enModuleId, LOG_SUBMOD_ID_EN  enSubModId,
+               LOG_LEVEL_EN     enLevel,    VOS_UINT32     ulLogId,
+               VOS_UINT8        ucParaCnt,  VOS_INT32     *plPara)
 {
-    unsigned long     ulLen;
-    int               ret = VOS_ERR;
+    VOS_UINT32        ulLen;
+    VOS_INT32         ret = VOS_ERR;
 
 /*lint -e813*/
-    char              acLogStr[LOG_MAX_COLUMN_VAL_EX + 1];
+    VOS_CHAR          acLogStr[LOG_MAX_COLUMN_VAL_EX + 1];
 /*lint +e813*/
 
     if (LOG_TRUE != g_stLogEnt.ulPrintSwitch)
@@ -1624,10 +1623,10 @@ int Log_IdNParam(LOG_MODULE_ID_EN enModuleId, LOG_SUBMOD_ID_EN  enSubModId,
 /*****************************************************************************
  函 数 名  : Log_BufInput
  功能描述  : 将打印信息写入缓存
- 输入参数  : char *pcLogStr
-                         unsigned long ulLen
+ 输入参数  : VOS_CHAR *pcLogStr
+                         VOS_UINT32 ulLen
  输出参数  : 无
- 返 回 值  : void
+ 返 回 值  : VOS_VOID
  调用函数  :
  被调函数  :
 
@@ -1637,32 +1636,33 @@ int Log_IdNParam(LOG_MODULE_ID_EN enModuleId, LOG_SUBMOD_ID_EN  enSubModId,
         修改内容   : 新生成函数
 
 *****************************************************************************/
-int Log_BufInput(char *pcLogStr, unsigned long ulLen)
+VOS_INT32 Log_BufInput(VOS_CHAR *pcLogStr, VOS_UINT32 ulLen)
 {
-    int     sRet;
+    VOS_INT32     sRet;
+
 
     if (0 < ulLen)
     {
-        if(VOS_OK != Log_SmP(&g_logBuffSem))
+        if(VOS_OK != VOS_SmP(g_logBuffSem, 0))
         {
             return VOS_ERR;
         }
 
-        if ((ulLen + sizeof(unsigned long)) > (unsigned long)OM_RingBufferFreeBytes(g_stLogEnt.rngOmRbufId))
+        if ((ulLen + sizeof(VOS_UINT32)) > (VOS_UINT32)OM_RingBufferFreeBytes(g_stLogEnt.rngOmRbufId))
         {
-            Log_SmV(&g_logBuffSem);
+            VOS_SmV(g_logBuffSem);
             return VOS_ERR;
         }
 
-        sRet = OM_RingBufferPut(g_stLogEnt.rngOmRbufId, (char*)(&ulLen), sizeof(unsigned long));
-        if ((int)sizeof(unsigned long) == sRet)
+        sRet = OM_RingBufferPut(g_stLogEnt.rngOmRbufId, (VOS_CHAR*)(&ulLen), sizeof(VOS_UINT32));
+        if ((VOS_INT32)sizeof(VOS_UINT32) == sRet)
         {
-            sRet = OM_RingBufferPut(g_stLogEnt.rngOmRbufId, pcLogStr, (long)ulLen);
-            Log_SmV(&g_logBuffSem);
+            sRet = OM_RingBufferPut(g_stLogEnt.rngOmRbufId, pcLogStr, (VOS_INT32)ulLen);
+            VOS_SmV(g_logBuffSem);
 
-            if (ulLen == (unsigned long)sRet)
+            if (ulLen == (VOS_UINT32)sRet)
             {
-                Log_SmV(&(g_stLogEnt.semOmPrint));
+                VOS_SmV(g_stLogEnt.semOmPrint);
                 return VOS_OK ;
             }
             else
@@ -1672,7 +1672,7 @@ int Log_BufInput(char *pcLogStr, unsigned long ulLen)
         }
         else
         {
-            Log_SmV(&g_logBuffSem);
+            VOS_SmV(g_logBuffSem);
             vos_printf("\nLog, Error, rngBufPut DataLen not OK");
         }
     }
@@ -1682,12 +1682,12 @@ int Log_BufInput(char *pcLogStr, unsigned long ulLen)
 /*****************************************************************************
  函 数 名  : Log_SelfTask
  功能描述  : 打印自处理任务
- 输入参数  : unsigned long ulPara1
-                         unsigned long ulPara2
-                         unsigned long ulPara3
-                         unsigned long ulPara4
+ 输入参数  : VOS_UINT32 ulPara1
+                         VOS_UINT32 ulPara2
+                         VOS_UINT32 ulPara3
+                         VOS_UINT32 ulPara4
  输出参数  : 无
- 返 回 值  : void
+ 返 回 值  : VOS_VOID
  调用函数  :
  被调函数  :
 
@@ -1697,19 +1697,19 @@ int Log_BufInput(char *pcLogStr, unsigned long ulLen)
         修改内容   : 新生成函数
 
 *****************************************************************************/
-void Log_SelfTask(unsigned long ulPara1, unsigned long ulPara2,
-                  unsigned long ulPara3, unsigned long ulPara4)
+VOS_VOID Log_SelfTask(VOS_UINT32 ulPara1, VOS_UINT32 ulPara2,
+                  VOS_UINT32 ulPara3, VOS_UINT32 ulPara4)
 {
-    int             sRet;
-    unsigned long   ulLen;
+    VOS_INT32                           sRet;
+    VOS_UINT32                          ulLen;
 /*lint -e813*/
-    char            acTmpStr[LOG_MAX_COLUMN_VAL_EX + 1];
+    VOS_CHAR                            acTmpStr[LOG_MAX_COLUMN_VAL_EX + 1];
 /*lint +e813*/
     Log_Init();
 
     for(;;)
     {
-        if(VOS_OK != Log_SmP(&g_stLogEnt.semOmPrint))
+        if(VOS_OK != VOS_SmP(g_stLogEnt.semOmPrint, 0))
         {
             continue;
         }
@@ -1726,8 +1726,8 @@ void Log_SelfTask(unsigned long ulPara1, unsigned long ulPara2,
             continue;
         }
 
-        sRet = OM_RingBufferGet(g_stLogEnt.rngOmRbufId, (char*)(&ulLen), sizeof(unsigned long));
-        if (sizeof(unsigned long) != (unsigned long)sRet)
+        sRet = OM_RingBufferGet(g_stLogEnt.rngOmRbufId, (VOS_CHAR*)(&ulLen), sizeof(VOS_UINT32));
+        if (sizeof(VOS_UINT32) != (VOS_UINT32)sRet)
         {
             continue;
         }
@@ -1739,8 +1739,8 @@ void Log_SelfTask(unsigned long ulPara1, unsigned long ulPara2,
             continue;
         }
 
-        sRet = OM_RingBufferGet(g_stLogEnt.rngOmRbufId, acTmpStr, (long)ulLen);
-        if (ulLen == (unsigned long)sRet)
+        sRet = OM_RingBufferGet(g_stLogEnt.rngOmRbufId, acTmpStr, (VOS_INT32)ulLen);
+        if (ulLen == (VOS_UINT32)sRet)
         {
             Log_Output(g_stLogEnt.ulLogOutput, acTmpStr, ulLen);
         }
@@ -1750,10 +1750,10 @@ void Log_SelfTask(unsigned long ulPara1, unsigned long ulPara2,
  函 数 名  : Log_Output
  功能描述  : 打印输出函数（输出到串口 、写入Flash）
  输入参数  : LOG_OUTPUT_EN enOutputType
-             char *pcStr
-             unsigned long ulLen
+             VOS_CHAR *pcStr
+             VOS_UINT32 ulLen
  输出参数  : 无
- 返 回 值  : void
+ 返 回 值  : VOS_VOID
  调用函数  :
  被调函数  :
 
@@ -1763,7 +1763,7 @@ void Log_SelfTask(unsigned long ulPara1, unsigned long ulPara2,
     修改内容   : 新生成函数
 
 *****************************************************************************/
-void Log_Output(unsigned long ulOutputType, char *pcStr, unsigned long ulLen)
+VOS_VOID Log_Output(VOS_UINT32 ulOutputType, VOS_CHAR *pcStr, VOS_UINT32 ulLen)
 {
     if (ulLen < LOG_MAX_COLUMN_VAL_EX)
     {
@@ -1801,7 +1801,7 @@ void Log_Output(unsigned long ulOutputType, char *pcStr, unsigned long ulLen)
  功能描述  : 调整打印输出位置（串口、FileSystem, OM）的接口控制函数
  输入参数  : OM_OUTPUT_PORT_ENUM_UINT32 enOutputType
  输出参数  : 无
- 返 回 值  : void
+ 返 回 值  : VOS_VOID
  调用函数  :
  被调函数  :
 
@@ -1867,14 +1867,14 @@ VOS_UINT32 Log_CheckPara(LOG_ID_LEVEL_STRU *pstLogIdLevel, VOS_UINT32 ulLength)
              enSubModId - 子模块ID号，目前没有用到
              enLevel    - 打印级别
  输出参数  : 无
- 返 回 值  : void
+ 返 回 值  : VOS_VOID
 
  修改历史      :
   1.日    期   : 2008年9月9日
     作    者   : 甘兰 47350
     修改内容   : 新生成函数,添加可维可测第三阶段需求
 *****************************************************************************/
-void Log_SetModuleIdLev(LOG_MODULE_ID_EN enModuleId, LOG_SUBMOD_ID_EN enSubModId,
+VOS_VOID Log_SetModuleIdLev(LOG_MODULE_ID_EN enModuleId, LOG_SUBMOD_ID_EN enSubModId,
                                 LOG_LEVEL_EN enLevel)
 {
     /*lint -e662 -e661*/
@@ -1950,7 +1950,7 @@ VOS_UINT32 Log_SetPrintLev(LOG_ID_LEVEL_STRU *pstLogIdLevel, VOS_UINT32 ulLength
  功能描述  : 处理工具侧发来的消息包
  输入参数  : pRspPacket - 消息包的指针
  输出参数  : 无
- 返 回 值  : void
+ 返 回 值  : VOS_VOID
 
  修改历史      :
   1.日    期   : 2008年9月11日
@@ -2002,9 +2002,9 @@ VOS_VOID Log_OmMsgProc(OM_REQ_PACKET_STRU *pRspPacket, OM_RSP_FUNC *pRspFuncPtr)
 /*****************************************************************************
  函 数 名  : Log_InitFile
  功能描述  : 初始化LOG文件
- 输入参数  : void
+ 输入参数  : VOS_VOID
  输出参数  : 无
- 返 回 值  : void
+ 返 回 值  : VOS_VOID
 
  修改历史      :
   1.日    期   : 2008年9月11日
@@ -2030,7 +2030,7 @@ VOS_UINT32 Log_InitFile(VOS_VOID)
         /*参数检测*/
         if (OM_OUTPUT_BUTT > stPortCfg.enPortType)
         {
-            g_stLogEnt.ulLogOutput = (LOG_ULONG)stPortCfg.enPortType;
+            g_stLogEnt.ulLogOutput = (VOS_UINT32)stPortCfg.enPortType;
         }
     }
 

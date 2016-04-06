@@ -18,7 +18,7 @@ struct hisi_ringbuffer_s {
 	u32 field_count;
 	u32 rear;
 	u32 is_full;
-	u32 data[1];
+	u64 data[1];
 };
 
 void hisi_ringbuffer_init(struct hisi_ringbuffer_s *q, u32 bytes, u32 fieldcnt);

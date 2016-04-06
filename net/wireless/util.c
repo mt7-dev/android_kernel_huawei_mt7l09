@@ -12,6 +12,7 @@
 #include <net/dsfield.h>
 #include "core.h"
 #include "rdev-ops.h"
+#include "nl80211.h"
 
 
 struct ieee80211_rate *
@@ -767,6 +768,9 @@ void cfg80211_process_wdev_events(struct wireless_dev *wdev)
 			break;
 		case EVENT_IBSS_JOINED:
 			__cfg80211_ibss_joined(wdev->netdev, ev->ij.bssid);
+			break;
+		case EVENT_DRV_RECOVERY:
+			cfg80211_do_drv_recovery(wdev->netdev, GFP_KERNEL);
 			break;
 		}
 		wdev_unlock(wdev);

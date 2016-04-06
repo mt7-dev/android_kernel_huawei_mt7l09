@@ -50,6 +50,11 @@ VOS_UINT32 CDS_IsIpv4FragInfoEq(const CDS_IP_DATA_INFO_STRU *pstSrc,
     CDS_ASSERT_RTN(VOS_NULL_PTR != pstSrc, PS_FALSE);
     CDS_ASSERT_RTN(VOS_NULL_PTR != pstTarget, PS_FALSE);
 
+    if (IP_VERSION_V4 != pstSrc->ucIpVersion)
+    {
+        return PS_FALSE;
+    }
+
     if (pstSrc->ulIpIdentity != pstTarget->ulIpIdentity)
     {
         return PS_FALSE;
@@ -60,7 +65,7 @@ VOS_UINT32 CDS_IsIpv4FragInfoEq(const CDS_IP_DATA_INFO_STRU *pstSrc,
         return PS_FALSE;
     }
 
-    if (pstSrc->unIpv4SrcAddr.ulIpAddr != pstTarget->unIpv4SrcAddr.ulIpAddr)
+    if (pstSrc->unIpv4DestAddr.ulIpAddr != pstTarget->unIpv4DestAddr.ulIpAddr)
     {
         return PS_FALSE;
     }
@@ -74,6 +79,11 @@ VOS_UINT32 CDS_IsIpv6FragInfoEq(const CDS_IP_DATA_INFO_STRU *pstSrc,
 {
     CDS_ASSERT_RTN(VOS_NULL_PTR != pstSrc, PS_FALSE);
     CDS_ASSERT_RTN(VOS_NULL_PTR != pstTarget, PS_FALSE);
+
+    if (IP_VERSION_V6 != pstSrc->ucIpVersion)
+    {
+        return PS_FALSE;
+    }
 
     if (pstSrc->ulIpIdentity != pstTarget->ulIpIdentity)
     {
@@ -215,6 +225,7 @@ VOS_VOID CDS_DecodeIpv4Hdr(const TTF_MEM_ST *pstIpPkt, CDS_IP_DATA_INFO_STRU *ps
     pstIpInfo->unIpv4SrcAddr.ulIpAddr  = pstIpv4Hdr->unSrcAddr.ulIpAddr;
     pstIpInfo->unIpv4DestAddr.ulIpAddr = pstIpv4Hdr->unDestAddr.ulIpAddr;
     pstIpInfo->ulIpIdentity   = IP_NTOHS(pstIpv4Hdr->usIdentification);
+    pstIpInfo->ucIpVersion    = IP_VERSION_V4;
 
     /*·ÖÆ¬ÀàÐÍ*/
     usFragOffset  = IP_NTOHS(pstIpv4Hdr->usOffset) & IPV4_OFFSET_MASK;
@@ -299,6 +310,7 @@ VOS_VOID CDS_DecodeIpv6Hdr(const TTF_MEM_ST *pstIpPkt, CDS_IP_DATA_INFO_STRU *ps
     pstIpInfo->ulFlowLable    = IPV6_FLOW_LABLE(pstIpv6Hdr);
     pstIpInfo->ucNextHdr      = pstIpv6Hdr->ucNextHdr;
     pstIpInfo->ulHdrLen       = IPV6_HDR_LEN;
+    pstIpInfo->ucIpVersion    = IP_VERSION_V6;
     PS_MEM_CPY(&(pstIpInfo->unIpv6SrcAddr),&(pstIpv6Hdr->unSrcAddr),IPV6_ADDR_LEN);
     PS_MEM_CPY(&(pstIpInfo->unIpv6DestAddr),&(pstIpv6Hdr->unDstAddr),IPV6_ADDR_LEN);
     return ;

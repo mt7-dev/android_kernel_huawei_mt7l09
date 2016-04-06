@@ -507,6 +507,43 @@ VOS_VOID    NAS_LMM_StartPtlTimer(
 
     return;
 }
+VOS_VOID NAS_LMM_Start3402Timer(VOS_UINT8 ucIs161722Atmpt5CsPs1)
+{
+    NAS_LMM_TIMER_CTRL_STRU              *pstPtlTimer;
+    NAS_LMM_PTL_TI_ENUM_UINT16            enPtlTimerId = TI_NAS_EMM_PTL_T3402;
+
+    NAS_LMM_StartPtlTimer( enPtlTimerId);
+
+    /*获取该协议定时器控制块地址*/
+    pstPtlTimer = NAS_LMM_GetPtlTimerAddr(enPtlTimerId);
+
+    pstPtlTimer->ucRsv  = ucIs161722Atmpt5CsPs1;
+}
+VOS_UINT32 NAS_LMM_IsNeedStop3402Timer(VOS_VOID)
+{
+    NAS_LMM_TIMER_CTRL_STRU              *pstPtlTimer = VOS_NULL_PTR;
+    NAS_LMM_PTL_TI_ENUM_UINT16            enPtlTimerId = TI_NAS_EMM_PTL_T3402;
+
+    /*获取该协议定时器控制块地址*/
+    pstPtlTimer = NAS_LMM_GetPtlTimerAddr(enPtlTimerId);
+
+    /*检查该状态定时器是否在运行*/
+    if ( (VOS_NULL_PTR != pstPtlTimer->psthTimer)
+         && (NAS_LMM_TIMER_161722Atmpt5CSPS1_TRUE == pstPtlTimer->ucRsv) )
+    {
+        return VOS_TRUE;
+    }
+    else
+    {
+        return VOS_FALSE;
+    }
+
+}
+
+
+
+
+
 VOS_VOID    NAS_LMM_StopPtlTimer(
                     NAS_LMM_PTL_TI_ENUM_UINT16               enPtlTimerId )
 {
@@ -874,7 +911,7 @@ VOS_VOID    NAS_LMM_InitPtlTimer(
     return;
 
 }
-VOS_VOID  NAS_LMM_StopAllEmmStateTimer(VOS_VOID)
+VOS_VOID  NAS_LMM_StopAllStateTimerExceptDelForbTaProidTimer(VOS_VOID)
 {
     NAS_LMM_TIMER_CTRL_STRU              *pstStateTimerList;
     VOS_UINT32                          ulTcbIdxLoop;
@@ -889,6 +926,13 @@ VOS_VOID  NAS_LMM_StopAllEmmStateTimer(VOS_VOID)
     /*停止所有处于运行状态的协议定时器*/
     for ( ulTcbIdxLoop = TI_NAS_EMM_STATE_NO_TIMER + 1; ulTcbIdxLoop < TI_NAS_EMM_STATE_TI_BUTT; ulTcbIdxLoop++ )
     {
+        /* Del Forb Ta Proid只能在关机时主动停止,所以此处跳过Del Forb Ta Proid定时器:
+            解决定时器误停止, 导致Forb Ta列表中的TA无法被剔除,从而导致TA一直不可用 */
+        if (TI_NAS_EMM_STATE_DEL_FORB_TA_PROID == ulTcbIdxLoop)
+        {
+            continue;
+        }
+
         /*检查该状态定时器是否在运行，如果正在运行，停止该定时器。
           停止定时器时，VOS会直接将该定时器句柄清除为VOS_NULL_PTR*/
         if ( VOS_NULL_PTR != pstStateTimerList[ulTcbIdxLoop].psthTimer )
@@ -951,73 +995,7 @@ VOS_VOID    NAS_LMM_StopAllEmmPtlTimer( VOS_VOID )
    return;
 }
 
-
-/*****************************************************************************
- Function Name   : NAS_LMM_StopAllEmmPtlTimer
- Description     : 停止EMM所有的协议定时器
- Input           : VOS_VOID
- Output          : None
- Return          : NAS_LMM_SUCC   -- 成功
-                   NAS_LMM_FAIL   -- 失败
-
- History         :
-    1.Hanlufeng 41410      2011-04-28  Draft Enact
-
-*****************************************************************************/
-VOS_VOID    NAS_LMM_StopAllLmmTimerExcept3412_3423( VOS_VOID )
-{
-    NAS_LMM_TIMER_CTRL_STRU              *pstPtlTimerList;
-    VOS_UINT32                          ulTcbIdxLoop;
-    VOS_UINT32                          ulRslt;
-
-    /* 停止所有状态定时器 */
-    NAS_LMM_StopAllStateTimer();
-
-
-    /* 停止所有协议定时器 */
-
-    /*获取状态定时器列表首地址*/
-    pstPtlTimerList = NAS_LMM_GetPtlTimerListAddr();
-
-    /*停止所有处于运行状态的协议定时器*/
-    for (   ulTcbIdxLoop = TI_NAS_LMM_PTL_TI_PUB_BOUNDARY_START +1;
-            ulTcbIdxLoop < NAS_LMM_PTL_TI_BUTT;
-            ulTcbIdxLoop++ )
-    {
-        /*检查该协议定时器是否在运行，如果正在运行，停止该定时器。
-          停止定时器时，VOS会直接将该定时器句柄清除为VOS_NULL_PTR*/
-        if ( VOS_NULL_PTR != pstPtlTimerList[ulTcbIdxLoop].psthTimer )
-        {
-
-            /* 若是T3412或3423，不停此2定时器，继续判断剩余定时器 */
-            if(   (TI_NAS_EMM_PTL_T3412 == (pstPtlTimerList[ulTcbIdxLoop].ulName))
-                ||(TI_NAS_EMM_PTL_T3423 == (pstPtlTimerList[ulTcbIdxLoop].ulName)))
-            {
-                NAS_LMM_PUBM_LOG1_INFO("NAS_LMM_StopAllEmmPtlTimerExcept3412_3423. ",
-                                      pstPtlTimerList[ulTcbIdxLoop].ulName);
-                continue;
-            }
-
-            ulRslt = PS_STOP_REL_TIMER(&(pstPtlTimerList[ulTcbIdxLoop].psthTimer));
-
-            /*这里调用的是VOS的接口函数，因此需要使用VOS的返回值进行检查*/
-            if ( VOS_OK != ulRslt )
-            {
-                NAS_LMM_PUBM_LOG1_ERR("NAS_LMM_StopAllPtlTimer, Stop pstPtlTimerList[%d] Failure!",
-                                     ulTcbIdxLoop);
-            }
-
-            pstPtlTimerList[ulTcbIdxLoop].ucTimerRs = NAS_LMM_TIMER_RS_NOT_RUNNING;
-            pstPtlTimerList[ulTcbIdxLoop].ucTimerSs = NAS_LMM_TIMER_SS_NOT_SUSPENDING;
-
-        }
-    }
-
-
-
-
-   return;
-}
+/* 删除不用函数 */
 /*****************************************************************************
  Function Name   : NAS_LMM_StopAllEmmPtlTimer
  Description     : 在挂起时停止EMM定时器

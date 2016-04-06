@@ -1,8 +1,2 @@
-menu "Hifi mailbox driver"
-
-config HIFI_MAILBOX
-     bool "hifi mailbox driver base on ipc"
-     default n
-     help
-          transplant balong mailbox driver.
-endmenu
+source "drivers/hisi/mailbox/hi6xxx_mailbox/Kconfig"
+source "drivers/hisi/mailbox/hisi_mailbox/Kconfig"

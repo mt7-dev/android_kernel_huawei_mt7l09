@@ -143,6 +143,9 @@ VOS_VOID    NAS_ESM_ProcTimerMsgT3482Exp(const VOS_VOID * pMsg)
         return ;
     }
 
+    #if (FEATURE_PTM == FEATURE_ON)
+    NAS_ESM_PdnConFailRecord(VOS_NULL_PTR, ESM_OM_ERRLOG_TIMEOUT_T3482);
+    #endif
     /*根据消息对应的ulStateTblIndex,获取相关联的定时器T3482*/
     pTimer3482 = NAS_ESM_GetStateTblTimer(ulStateTblIndex);
 
@@ -211,6 +214,9 @@ VOS_VOID    NAS_ESM_ProcTimerMsgT3492Exp(const VOS_VOID * pMsg)
         return ;
     }
 
+    #if (FEATURE_PTM == FEATURE_ON)
+    NAS_ESM_PdnDisconFailRecord(VOS_NULL_PTR, ESM_OM_ERRLOG_TIMEOUT_T3492);
+    #endif
     /*根据消息对应的ulStateTblIndex,获取相关联的定时器*/
     pTimer3492 = NAS_ESM_GetStateTblTimer(ulStateTblIndex);
 
@@ -280,6 +286,9 @@ VOS_VOID   NAS_ESM_ProcTimerMsgT3480Exp
         return ;
     }
 
+    #if (FEATURE_PTM == FEATURE_ON)
+    NAS_ESM_ResAllocFailRecord(VOS_NULL_PTR, ESM_OM_ERRLOG_TIMEOUT_T3480);
+    #endif
     /*根据消息对应的ulStateTblIndex,获取相关联的定时器*/
     pTimer3480 = NAS_ESM_GetStateTblTimer(ulStateTblIndex);
 
@@ -342,6 +351,9 @@ VOS_VOID    NAS_ESM_ProcTimerMsgT3481Exp(const VOS_VOID * pMsg)
         return ;
     }
 
+    #if (FEATURE_PTM == FEATURE_ON)
+    NAS_ESM_ResModFailRecord(VOS_NULL_PTR, ESM_OM_ERRLOG_TIMEOUT_T3481);
+    #endif
     /*根据消息对应的ulStateTblIndex,获取相关联的定时器*/
     pTimer3481 = NAS_ESM_GetStateTblTimer(ulStateTblIndex);
 

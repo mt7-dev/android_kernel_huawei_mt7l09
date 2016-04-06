@@ -72,7 +72,7 @@ VOS_UINT16  IP_CalcCRC16(VOS_UINT8 *pucData, VOS_UINT16 usLen)
         return 0;
     }
 
-    pBuffer = (VOS_UINT16 *)((VOS_UINT32)pucData);
+    pBuffer = (VOS_UINT16 *)((VOS_VOID*)pucData);
 
     while(usLen > 1)
     {
@@ -208,7 +208,7 @@ VOS_VOID IPV4_DHCP_FormDhcpHdrStru(const IPV4_DHCP_ANALYSE_RESULT_STRU *pstDhcpA
         return;
     }
 
-    pstDhcpHdr = (IPV4_DHCP_PROTOCL_STRU*)((VOS_UINT32)pucDhcpData);
+    pstDhcpHdr = (IPV4_DHCP_PROTOCL_STRU*)((VOS_VOID*)pucDhcpData);
 
     pstDhcpHdr->ucOP = IPV4_DHCP_OPERATION_REPLY;
     pstDhcpHdr->ucHardwareType = IPV4_DHCP_ETHERNET_HTYPE;
@@ -236,7 +236,7 @@ VOS_VOID IPV4_DHCP_FormOption(const NDIS_IPV4_INFO_STRU *pstIpV4Entity,
     IPV4_DHCP_OPTION_ITEM_STRU  *pstOptionItem;
     VOS_UINT8                    ucDnsLen;
     VOS_UINT32                   ulTimeLen;
-    VOS_UINT32                   ulOptionAddr;
+    VOS_UINT8                   *pucOptionAddr;
     VOS_UINT8                    ucWinsLen;
 
     if ((VOS_NULL_PTR == pstIpV4Entity) || (VOS_NULL_PTR == pucOption)
@@ -246,34 +246,34 @@ VOS_VOID IPV4_DHCP_FormOption(const NDIS_IPV4_INFO_STRU *pstIpV4Entity,
         return;
     }
 
-    ulOptionAddr = (VOS_UINT32)pucOption;
+    pucOptionAddr = pucOption;
     /* 报文类型 */
-    pstOptionItem = (IPV4_DHCP_OPTION_ITEM_STRU *)ulOptionAddr;
+    pstOptionItem = (IPV4_DHCP_OPTION_ITEM_STRU *)((VOS_VOID*)pucOptionAddr);
     pstOptionItem->ucOptionType = IPV4_DHCP_OPTION_MSG_TYPE;
     pstOptionItem->ucOptionLen  = 1;
     pstOptionItem->aucOptionValue[0] = ucDhcpType;
     *pusOptionLen += 3;
-    ulOptionAddr  += 3;
+    pucOptionAddr += 3;
 
     /* 子网掩码 */
-    pstOptionItem = (IPV4_DHCP_OPTION_ITEM_STRU *)ulOptionAddr;
+    pstOptionItem = (IPV4_DHCP_OPTION_ITEM_STRU *)((VOS_VOID*)pucOptionAddr);
     pstOptionItem->ucOptionType = IPV4_DHCP_OPTION_SUBNET_MASK;
     pstOptionItem->ucOptionLen  = IPV4_ADDR_LEN;
     IP_MEM_CPY(pstOptionItem->aucOptionValue,&(pstIpV4Entity->unNmIpInfo),IPV4_ADDR_LEN);
     *pusOptionLen += IPV4_ADDR_LEN + 2;
-    ulOptionAddr  += IPV4_ADDR_LEN + 2;
+    pucOptionAddr += IPV4_ADDR_LEN + 2;
 
     /* 默认网关 */
-    pstOptionItem = (IPV4_DHCP_OPTION_ITEM_STRU *)ulOptionAddr;
+    pstOptionItem = (IPV4_DHCP_OPTION_ITEM_STRU *)((VOS_VOID*)pucOptionAddr);
     pstOptionItem->ucOptionType = IPV4_DHCP_OPTION_ROUTER_IP;
     pstOptionItem->ucOptionLen  = IPV4_ADDR_LEN;
     IP_MEM_CPY(pstOptionItem->aucOptionValue,&(pstIpV4Entity->unGwIpInfo),IPV4_ADDR_LEN);
     *pusOptionLen += IPV4_ADDR_LEN + 2;
-    ulOptionAddr  += IPV4_ADDR_LEN + 2;
+    pucOptionAddr += IPV4_ADDR_LEN + 2;
 
     /* DNS */
     ucDnsLen = 0;
-    pstOptionItem = (IPV4_DHCP_OPTION_ITEM_STRU *)ulOptionAddr;
+    pstOptionItem = (IPV4_DHCP_OPTION_ITEM_STRU *)((VOS_VOID*)pucOptionAddr);
     pstOptionItem->ucOptionType = IPV4_DHCP_OPTION_DOMAIN_NAME_SERVER;
     if (0 != pstIpV4Entity->unPrimDnsAddr.ulIpAddr)
     {
@@ -291,19 +291,19 @@ VOS_VOID IPV4_DHCP_FormOption(const NDIS_IPV4_INFO_STRU *pstIpV4Entity,
     if (0 != ucDnsLen)
     {
         *pusOptionLen += ucDnsLen + 2;
-        ulOptionAddr  += ucDnsLen + 2;
+        pucOptionAddr += ucDnsLen + 2;
     }
 
     /* DHCP SERVER IP */
-    pstOptionItem = (IPV4_DHCP_OPTION_ITEM_STRU *)ulOptionAddr;
+    pstOptionItem = (IPV4_DHCP_OPTION_ITEM_STRU *)((VOS_VOID*)pucOptionAddr);
     pstOptionItem->ucOptionType = IPV4_DHCP_OPTION_SERVER_IP;
     pstOptionItem->ucOptionLen  = IPV4_ADDR_LEN;
     IP_MEM_CPY(pstOptionItem->aucOptionValue,&(pstIpV4Entity->unGwIpInfo),IPV4_ADDR_LEN);
     *pusOptionLen += IPV4_ADDR_LEN + 2;
-    ulOptionAddr  += IPV4_ADDR_LEN + 2;
+    pucOptionAddr += IPV4_ADDR_LEN + 2;
 
     /*  租期 */
-    pstOptionItem = (IPV4_DHCP_OPTION_ITEM_STRU *)ulOptionAddr;
+    pstOptionItem = (IPV4_DHCP_OPTION_ITEM_STRU *)((VOS_VOID*)pucOptionAddr);
     pstOptionItem->ucOptionType = IPV4_DHCP_OPTION_LEASE_TIME;
     pstOptionItem->ucOptionLen  = IPV4_DHCP_OPTION_LEASE_TIME_LEN;
     /* 转换为网络字节序 */
@@ -311,31 +311,31 @@ VOS_VOID IPV4_DHCP_FormOption(const NDIS_IPV4_INFO_STRU *pstIpV4Entity,
     ulTimeLen = IP_HTONL(ulTimeLen);
     IP_MEM_CPY(pstOptionItem->aucOptionValue,&ulTimeLen,IPV4_DHCP_OPTION_LEASE_TIME_LEN);
     *pusOptionLen += IPV4_DHCP_OPTION_LEASE_TIME_LEN + 2;
-    ulOptionAddr  += IPV4_DHCP_OPTION_LEASE_TIME_LEN + 2;
+    pucOptionAddr += IPV4_DHCP_OPTION_LEASE_TIME_LEN + 2;
 
     /* Renewal (T1) Time Value */
-    pstOptionItem = (IPV4_DHCP_OPTION_ITEM_STRU *)ulOptionAddr;
+    pstOptionItem = (IPV4_DHCP_OPTION_ITEM_STRU *)((VOS_VOID*)pucOptionAddr);
     pstOptionItem->ucOptionType = IPV4_DHCP_OPTION_T1;
     pstOptionItem->ucOptionLen  = IPV4_DHCP_OPTION_LEASE_TIME_LEN;
     ulTimeLen = (VOS_UINT32)IPV4_DHCP_T1;
     ulTimeLen = IP_HTONL(ulTimeLen);
     IP_MEM_CPY(pstOptionItem->aucOptionValue,&ulTimeLen,IPV4_DHCP_OPTION_LEASE_TIME_LEN);
     *pusOptionLen += IPV4_DHCP_OPTION_LEASE_TIME_LEN + 2;
-    ulOptionAddr  += IPV4_DHCP_OPTION_LEASE_TIME_LEN + 2;
+    pucOptionAddr += IPV4_DHCP_OPTION_LEASE_TIME_LEN + 2;
 
     /* Renewal (T2) Time Value */
-    pstOptionItem = (IPV4_DHCP_OPTION_ITEM_STRU *)ulOptionAddr;
+    pstOptionItem = (IPV4_DHCP_OPTION_ITEM_STRU *)((VOS_VOID*)pucOptionAddr);
     pstOptionItem->ucOptionType = IPV4_DHCP_OPTION_T2;
     pstOptionItem->ucOptionLen  = IPV4_DHCP_OPTION_LEASE_TIME_LEN;
     ulTimeLen = (VOS_UINT32)IPV4_DHCP_T2;
     ulTimeLen = IP_HTONL(ulTimeLen);
     IP_MEM_CPY(pstOptionItem->aucOptionValue,&ulTimeLen,IPV4_DHCP_OPTION_LEASE_TIME_LEN);
     *pusOptionLen += IPV4_DHCP_OPTION_LEASE_TIME_LEN + 2;
-    ulOptionAddr  += IPV4_DHCP_OPTION_LEASE_TIME_LEN + 2;
+    pucOptionAddr += IPV4_DHCP_OPTION_LEASE_TIME_LEN + 2;
 
     /*WINS : NetBios Name Server*/
     ucWinsLen = 0;
-    pstOptionItem = (IPV4_DHCP_OPTION_ITEM_STRU *)ulOptionAddr;
+    pstOptionItem = (IPV4_DHCP_OPTION_ITEM_STRU *)((VOS_VOID*)pucOptionAddr);
     pstOptionItem->ucOptionType = IPV4_DHCP_OPTION_NETBIOS_NAME_SERVER;
     if (0 != pstIpV4Entity->unPrimWinsAddr.ulIpAddr)
     {
@@ -353,11 +353,11 @@ VOS_VOID IPV4_DHCP_FormOption(const NDIS_IPV4_INFO_STRU *pstIpV4Entity,
     if (0 != ucWinsLen)
     {
         *pusOptionLen += ucWinsLen + 2;
-        ulOptionAddr  += ucWinsLen + 2;
+        pucOptionAddr += ucWinsLen + 2;
     }
 
     /*  End Option 0xff option结束标志*/
-    *((VOS_UINT8*)ulOptionAddr) = 0xFF;
+    *pucOptionAddr = 0xFF;
     *pusOptionLen += 1;
 
     return;
@@ -793,8 +793,8 @@ VOS_VOID IPV4_DHCP_AnalyseDhcpPkt( VOS_UINT8                     *pucDhcp,
                                             IPV4_DHCP_ANALYSE_RESULT_STRU *pstAnalyseRst)
 {
     IPV4_DHCP_PROTOCL_STRU        *pstDhcpFixHdr;
-    VOS_UINT32                     ulOptionStart;
-    VOS_UINT32                     ulOptionEnd;
+    VOS_UINT8                     *pucOptionStart;
+    VOS_UINT8                     *pucOptionEnd;
     IPV4_DHCP_OPTION_ITEM_STRU    *pstOptionStru;
 
     if ((VOS_NULL_PTR == pucDhcp)||(VOS_NULL_PTR == pstAnalyseRst))
@@ -810,7 +810,7 @@ VOS_VOID IPV4_DHCP_AnalyseDhcpPkt( VOS_UINT8                     *pucDhcp,
     }
 
     /*记录DHCP固定头中的信息*/
-    pstDhcpFixHdr = (IPV4_DHCP_PROTOCL_STRU *)((VOS_UINT32)pucDhcp);
+    pstDhcpFixHdr = (IPV4_DHCP_PROTOCL_STRU *)((VOS_VOID*)pucDhcp);
     pstAnalyseRst->ulTransactionID = pstDhcpFixHdr->ulTransactionID;
     pstAnalyseRst->unClientIPAddr.ulIpAddr = pstDhcpFixHdr->unClientIPAddr.ulIpAddr;
     pstAnalyseRst->unYourIPAddr.ulIpAddr   = pstDhcpFixHdr->unYourIPAddr.ulIpAddr;
@@ -818,13 +818,13 @@ VOS_VOID IPV4_DHCP_AnalyseDhcpPkt( VOS_UINT8                     *pucDhcp,
     IP_MEM_CPY(pstAnalyseRst->aucHardwareAddr,pstDhcpFixHdr->aucClientHardwardAddr,pstAnalyseRst->ucHardwareLen);
 
     /*Option Start and End Address,not include Magic Code*/
-    ulOptionStart = (VOS_UINT32)pucDhcp + IPV4_DHCP_OPTION_OFFSET;
+    pucOptionStart = pucDhcp + IPV4_DHCP_OPTION_OFFSET;
     /*Remove End */
-    ulOptionEnd   = ulOptionStart + ulDhcpLen -  IPV4_DHCP_OPTION_OFFSET;
+    pucOptionEnd   = pucOptionStart + ulDhcpLen -  IPV4_DHCP_OPTION_OFFSET;
 
-    while (ulOptionStart < ulOptionEnd )
+    while (pucOptionStart < pucOptionEnd )
     {
-        pstOptionStru = (IPV4_DHCP_OPTION_ITEM_STRU *)ulOptionStart;
+        pstOptionStru = (IPV4_DHCP_OPTION_ITEM_STRU *)((VOS_VOID*)pucOptionStart);
 
         if (IPV4_DHCP_OPTION_MSG_TYPE == pstOptionStru->ucOptionType)
         {
@@ -841,7 +841,7 @@ VOS_VOID IPV4_DHCP_AnalyseDhcpPkt( VOS_UINT8                     *pucDhcp,
         else if (IPV4_DHCP_OPTION_PAD_OPTIOIN == pstOptionStru->ucOptionType)
         {
             /*PAD Only 1 byte*/
-            ulOptionStart ++;
+            pucOptionStart ++;
             continue;
         }
         else if (IPV4_DHCP_OPTION_END_OPTION == pstOptionStru->ucOptionType)
@@ -852,7 +852,7 @@ VOS_VOID IPV4_DHCP_AnalyseDhcpPkt( VOS_UINT8                     *pucDhcp,
         {
         }
 
-        ulOptionStart += pstOptionStru->ucOptionLen + IP_DHCPV4_OPTION_ITEM_HDR_LEN;
+        pucOptionStart += pstOptionStru->ucOptionLen + IP_DHCPV4_OPTION_ITEM_HDR_LEN;
 
     }
 
@@ -871,7 +871,7 @@ VOS_UINT32 IPV4_DHCP_IsDhcpPacket(VOS_UINT8  *pucIpPkt)
     }
 
     /*非IPv4数据包*/
-    pstIpHdr = (ETH_IPFIXHDR_STRU *)((VOS_UINT32)pucIpPkt);
+    pstIpHdr = (ETH_IPFIXHDR_STRU *)((VOS_VOID*)pucIpPkt);
     if (IP_IPV4_VERSION != pstIpHdr->ucIpVer)
     {
         return PS_FALSE;
@@ -884,7 +884,7 @@ VOS_UINT32 IPV4_DHCP_IsDhcpPacket(VOS_UINT8  *pucIpPkt)
     }
 
     /*端口号67*/
-    pstUdpHdr = (ETH_UDPHDR_STRU *)((VOS_UINT32)pucIpPkt + (pstIpHdr->ucIpHdrLen << 2));
+    pstUdpHdr = (ETH_UDPHDR_STRU *)((VOS_VOID*)(pucIpPkt + (pstIpHdr->ucIpHdrLen << 2)));
     if (UDP_DHCP_SERVICE_PORT != pstUdpHdr->usDstPort)
     {
         return PS_FALSE;
@@ -914,7 +914,7 @@ VOS_VOID IPV4_DHCP_ProcDhcpPkt(VOS_UINT8  *pucIpPkt, VOS_UINT8 ucRabId)
 
     /*record src ip and dst ip in the ip hdr */
     IP_MEM_SET(&stDhcpRst,0,sizeof(IPV4_DHCP_ANALYSE_RESULT_STRU));
-    pstIpFixHdr = (ETH_IPFIXHDR_STRU *)((VOS_UINT32)pucIpPkt);
+    pstIpFixHdr = (ETH_IPFIXHDR_STRU *)((VOS_VOID*)pucIpPkt);
     stDhcpRst.unSrcIPAddr.ulIpAddr = pstIpFixHdr->ulSrcAddr;
     stDhcpRst.unDstIpAddr.ulIpAddr = pstIpFixHdr->ulDestAddr;
     ulIpLen = IP_NTOHS(pstIpFixHdr->usTotalLen);

@@ -112,6 +112,11 @@ extern VOS_UINT32 TAF_MTA_Ac2sl(
     VOS_UINT32                          usLen,
     VOS_INT32                          *plRtn);
 
+extern VOS_UINT32 TAF_MTA_AcNums2DecNums(
+    VOS_UINT8                          *pucAsciiNum,
+    VOS_UINT8                          *pucDecNum,
+    VOS_UINT32                          ulLen
+);
 
 #if ((VOS_OS_VER == VOS_WIN32) || (VOS_OS_VER == VOS_NUCLEUS))
 #pragma pack()

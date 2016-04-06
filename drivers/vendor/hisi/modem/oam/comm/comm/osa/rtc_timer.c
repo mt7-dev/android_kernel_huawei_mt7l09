@@ -57,6 +57,20 @@ extern "C"{
 #define THE_FIRST_RTC_TIMER_TAG                             1
 #define THE_SECOND_RTC_TIMER_TAG                            2
 
+/* can't make a mistake,add threshold */
+#define RTC_TIMER_CHECK_PRECISION                           10
+
+/* the tag of  RTC_Add_Timer_To_List */
+enum
+{
+    VOS_ADD_TIMER_TAG_1,
+    VOS_ADD_TIMER_TAG_2,
+    VOS_ADD_TIMER_TAG_3,
+    VOS_ADD_TIMER_TAG_4,
+    VOS_ADD_TIMER_TAG_5,
+    VOS_ADD_TIMER_TAG_BUTT
+};
+
 /* timer task's stack size */
 #define RTC_TIMER_TASK_STACK_SIZE                           3072
 
@@ -64,15 +78,19 @@ extern "C"{
 #define RTC_ONE_SECOND                                      1000
 
 /* 32.768K */
-#define RTC_CYCLE_LENGTH                                    32.768
-
-
-/* 32.768K */
 #define RTC_PRECISION_CYCLE_LENGTH                          0.32768
 
+#ifdef V8R1_SINGLECLOCK
+/* 32.000K */
+#define RTC_SINGLECLOCK_PRECISION_CYCLE_LENGTH              0.32000
+VOS_UINT16                                                  g_usSingleXO = UCOM_NV_32K_TYPE_32768;
+#endif
 
 #define RTC_TIMER_NORMAL_COUNT                              5
 
+#ifndef BIT
+#define BIT(x)                  ((unsigned)0x1 << (x))
+#endif
 
 typedef struct RTC_TIMER_CONTROL_STRU
 {
@@ -81,6 +99,7 @@ typedef struct RTC_TIMER_CONTROL_STRU
     VOS_PID         Pid;/* who allocate the timer */
     VOS_UINT32      Name;/* timer's name */
     VOS_UINT32      Para;/* timer's paremate */
+    VOS_UINT8       aucRsv[4];
     REL_TIMER_FUNC  CallBackFunc;/* timer's callback function */
     HTIMER          *phTm;/* user's pointer which point the real timer room */
     VOS_UINT32      TimeOutValueInMilliSeconds;
@@ -95,8 +114,10 @@ typedef struct RTC_TIMER_CONTROL_STRU
 
 #if VOS_YES == VOS_TIMER_CHECK
     VOS_UINT32      ulAllocTick;/* CPU tick of block allocation */
+    VOS_UINT32      ulFreeTick;/* CPU tick of block free */
     VOS_UINT32      ulFileID;/* alloc file ID */
     VOS_UINT32      ulLineNo;/* alloc line no. */
+    VOS_UINT32      ulBackUpTimeOutValueInCycle;
 #endif
     VOS_UINT32      ulBackUpTimerId;/* timer ID */
 } RTC_TIMER_CONTROL_BLOCK;
@@ -119,17 +140,6 @@ typedef struct DRX_TIMER_CONTROL_STRU
     VOS_UINT32      ulLineNo;                       /* alloc line no. */
 #endif
 } DRX_TIMER_CONTROL_BLOCK;
-
-typedef struct
-{
-    VOS_UINT32      ulStartCount;                   /* 调底软接口起定时器次数 */
-    VOS_UINT32      ulStopCount;                    /* 调底软接口停定时器次数 */
-    VOS_UINT32      ulExpireCount;                  /* 收到定时器中断次数 */
-    VOS_UINT32      ulStartErrCount;                /* 调底软起定时器接口返回错误次数 */
-    VOS_UINT32      ulStopErrCount;                 /* 调底软停定时器接口返回错误次数 */
-    VOS_UINT32      ulElapsedErrCount;              /* 调底软获取剩余时间接口次数 */
-    VOS_UINT32      ulElapsedContentErrCount;       /* 调底软获取剩余时间接口返回错误次数 */
-}RTC_TIMER_SOC_TIMER_INFO_STRU;
 
 /* the number of task's control block */
 VOS_UINT32                RTC_TimerCtrlBlkNumber;
@@ -158,8 +168,8 @@ VOS_UINT32                RTC_TimerTaskId;
 /* the Min usage of timer */
 VOS_UINT32                RTC_TimerMinTimerIdUsed;
 
-/* the semaphore will be given when RTC's interrupt occures */
-VOS_UINT32                RTC_SEM;
+/* the queue will be given when RTC's interrupt occures */
+VOS_UINT32                g_ulRTCTaskQueueId;
 
 /*record start value */
 VOS_UINT32                RTC_Start_Value = ELAPESD_TIME_INVAILD;
@@ -168,15 +178,27 @@ VOS_UINT32                RTC_Start_Value = ELAPESD_TIME_INVAILD;
 
 VOS_CHAR g_acRtcTimerCtrlBuf[RTC_TIMER_CTRL_BUF_SIZE];
 
+/* 循环记录SOC Timer的启停记录 */
+enum
+{
+    RTC_SOC_TIMER_SEND_ERR = 0xfffffffd,
+    RTC_SOC_TIMER_EXPIRED = 0xfffffffe,
+    RTC_SOC_TIMER_STOPED = 0xffffffff
+};
+
+VOS_UINT32  g_ulRtcSocTimerDebugInfoSuffix = 0;
+
+RTC_SOC_TIMER_DEBUG_INFO_STRU g_astRtcSocTimerDebugInfo[RTC_MAX_TIMER_NUMBER];
+
 /* 记录 RTC timer 可维可测信息 */
-RTC_TIMER_SOC_TIMER_INFO_STRU g_stRtcSocTimerInfo;
+VOS_TIMER_SOC_TIMER_INFO_STRU g_stRtcSocTimerInfo;
 
 
 /* the array of DRX timer's control block */
 DRX_TIMER_CONTROL_BLOCK   g_astDRXTimerCtrlBlk[DRX_TIMER_MAX_NUMBER];
 
 /* the semaphore will be given when DRX's interrupt occures */
-VOS_UINT32                g_ulDRXSem;
+VOS_SEM                   g_ulDRXSem;
 
 /* the task ID of DRX timer's task */
 VOS_UINT32                g_ulDRXTimerTaskId;
@@ -197,39 +219,20 @@ VOS_VOID VOS_ShowUsed32KTimerInfo( VOS_VOID );
 extern VOS_VOID OM_RecordInfoEnd(VOS_EXC_DUMP_MEM_NUM_ENUM_UINT32 enNumber);
 extern VOS_VOID OM_RecordInfoStart(VOS_EXC_DUMP_MEM_NUM_ENUM_UINT32 enNumber, VOS_UINT32 ulSendPid, VOS_UINT32 ulRcvPid, VOS_UINT32 ulMsgName);
 
-VOS_UINT32 g_ulstartslice = 0;      /* timer启动时的slice */
-VOS_UINT32 g_ulExpectSlice = 0;     /* 预测的超时slice */
-VOS_UINT32 g_ulCallbackSlice = 0;   /* 超时回调slice */
-
-typedef struct
-{
-    VOS_UINT32 ulmax;                   /* 最大的偏差 */
-    VOS_UINT32 timercallback;           /* timer超时的slice */
-    VOS_UINT32 startslice;              /* 启动timer时的slice */
-    VOS_UINT32 timerlen;                /* 启动timer时长 */
-    VOS_UINT32 ulexpectslice;              /* 预测的callback slice */
-}VOS_TIMER_CALLBACK_STRU;
-
-typedef struct
-{
-    VOS_UINT32 ulmaxelapse;             /* 获取的耗时时长与实际的耗时时长的最大偏差 */
-    VOS_UINT32 ulcurslice;              /* 当前的slice */
-    VOS_UINT32 timerretelapse;          /* 从timer获取的elapse */
-    VOS_UINT32 startslice;              /* 启动timer时的slice */
-    VOS_UINT32 timerlen;                /* 启动timer时长 */
-}VOS_TIMER_ELAPSE_STRU;
-
-typedef struct
-{
-    VOS_UINT32 ulmax;                   /* 回调与任务得到执行的最大偏差 */
-    VOS_UINT32 ulcurslice;              /* 当前的slice */
-    VOS_UINT32 timercallback;           /* timer超时回调的slice */
-}VOS_TIMER_TASK_STRU;
+/* Just for Sparse checking. */
+VOS_VOID StartHardTimer( VOS_UINT32 value );
+VOS_VOID StopHardTimer(VOS_VOID);
+VOS_VOID RTC_DualTimerIsrEntry(VOS_VOID);
+VOS_INT32 RTC_DualTimerIsr(VOS_INT lPara);
+RTC_TIMER_CONTROL_BLOCK *RTC_TimerCtrlBlkGet(VOS_UINT32 ulFileID, VOS_INT32 usLineNo);
+VOS_UINT32 RTC_TimerCtrlBlkFree(RTC_TIMER_CONTROL_BLOCK *Ptr, VOS_UINT8 ucTag );
+VOS_UINT32 GetHardTimerElapsedTime(VOS_VOID);
+VOS_VOID RTC_TimerTaskFunc( VOS_UINT32 Para0, VOS_UINT32 Para1, VOS_UINT32 Para2, VOS_UINT32 Para3 );
+VOS_VOID RTC_Add_Timer_To_List( RTC_TIMER_CONTROL_BLOCK  *Timer);
+VOS_VOID RTC_Del_Timer_From_List( RTC_TIMER_CONTROL_BLOCK  *Timer);
+VOS_VOID ShowRtcTimerLog( VOS_VOID );
 
 
-VOS_TIMER_CALLBACK_STRU g_stCallback;
-VOS_TIMER_ELAPSE_STRU   g_stElapse;
-VOS_TIMER_TASK_STRU     g_stTimerTask;
 
 #if (OSA_CPU_ACPU == VOS_OSA_CPU)
 VOS_UINT32 g_timerlpm = 0;
@@ -374,6 +377,135 @@ VOS_UINT32 RTC_MUL_DOT_32768(VOS_UINT32 ulValue,VOS_UINT32 ulFileID,
 #endif
 
 /*****************************************************************************
+ Function   : RTC_DebugSocInfo
+ Description: record the track of Soc timer
+ Input      :
+ Return     :
+ Other      :
+ *****************************************************************************/
+VOS_VOID RTC_DebugSocInfo(VOS_UINT32 ulAction, VOS_UINT32 ulSlice)
+{
+    g_astRtcSocTimerDebugInfo[g_ulRtcSocTimerDebugInfoSuffix].ulAction = ulAction;
+    g_astRtcSocTimerDebugInfo[g_ulRtcSocTimerDebugInfoSuffix].ulSlice = ulSlice;
+
+    g_ulRtcSocTimerDebugInfoSuffix++;
+
+    if ( RTC_MAX_TIMER_NUMBER <= g_ulRtcSocTimerDebugInfoSuffix )
+    {
+        g_ulRtcSocTimerDebugInfoSuffix = 0;
+    }
+}
+
+/*****************************************************************************
+ Function   : RTC_DualTimerIsrEntry
+ Description: handle timer's list
+ Input      :
+ Return     :
+ Other      :
+ *****************************************************************************/
+VOS_VOID RTC_DualTimerIsrEntry(VOS_VOID)
+{
+    RTC_TIMER_CONTROL_BLOCK     *head_Ptr;
+    /* the timer control which expire */
+    RTC_TIMER_CONTROL_BLOCK     *RTC_TimerCtrlBlkCurrent;
+    /* the timer head control which expire */
+    RTC_TIMER_CONTROL_BLOCK     *RTC_TimerCtrlBlkexpired = VOS_NULL_PTR;
+    RTC_TIMER_CONTROL_BLOCK     *RTC_TimerCtrlBlkexpiredTail = VOS_NULL_PTR;
+    VOS_ULONG                   ulLockLevel;
+    VOS_UINT32                  ulTempCount;
+    VOS_UINT32                  ulElapsedCycles;
+
+
+    /*intLockLevel = VOS_SplIMP();*/
+    VOS_SpinLockIntLock(&g_stVosTimerSpinLock, ulLockLevel);
+
+    ulElapsedCycles = RTC_Start_Value;
+    RTC_Start_Value = ELAPESD_TIME_INVAILD;
+
+    if (VOS_NULL_PTR == RTC_Timer_head_Ptr)
+    {
+        /*VOS_Splx(intLockLevel);*/
+        VOS_SpinUnlockIntUnlock(&g_stVosTimerSpinLock, ulLockLevel);
+
+        return;
+    }
+
+    head_Ptr = RTC_Timer_head_Ptr;
+
+    /* sub timer value */
+    head_Ptr->TimeOutValueInCycle -= ulElapsedCycles;
+
+    ulTempCount = 0;
+
+    /* check the left timer */
+    while ( ( VOS_NULL_PTR != head_Ptr )
+        && ( 0 == head_Ptr->TimeOutValueInCycle ) )
+    {
+        ulTempCount++;
+        if ( RTC_TimerCtrlBlkNumber < ulTempCount )
+        {
+            /*VOS_Splx(intLockLevel);*/
+            VOS_SpinUnlockIntUnlock(&g_stVosTimerSpinLock, ulLockLevel);
+
+            LogPrint2("# RTC Timer list error.Max %d Count %d.\r\n",
+                (VOS_INT)RTC_TimerCtrlBlkNumber, (VOS_INT)ulTempCount);
+            return;
+        }
+
+        RTC_TimerCtrlBlkCurrent = head_Ptr;
+
+        *(head_Ptr->phTm) = VOS_NULL_PTR;
+        /*head_Ptr->State = RTC_TIMER_CTRL_BLK_STOP;*/
+
+        head_Ptr = RTC_TimerCtrlBlkCurrent->next;
+
+        RTC_TimerCtrlBlkCurrent->next = VOS_NULL_PTR;
+        if ( VOS_NULL_PTR == RTC_TimerCtrlBlkexpired )
+        {
+            RTC_TimerCtrlBlkexpired = RTC_TimerCtrlBlkCurrent;
+            RTC_TimerCtrlBlkexpiredTail = RTC_TimerCtrlBlkCurrent;
+        }
+        else
+        {
+            /*lint -e613 */
+            RTC_TimerCtrlBlkexpiredTail->next = RTC_TimerCtrlBlkCurrent;/* [false alarm]: 屏蔽Fortify 错误 */
+            /*lint +e613 */
+            RTC_TimerCtrlBlkexpiredTail = RTC_TimerCtrlBlkCurrent;
+        }
+
+        RTC_Timer_head_Ptr = head_Ptr;
+    }
+
+    if ( VOS_NULL_PTR != RTC_Timer_head_Ptr )
+    {
+        RTC_Timer_head_Ptr->previous = VOS_NULL_PTR;
+
+        if (0 == RTC_Timer_head_Ptr->TimeOutValueInCycle)
+        {
+            RTC_Timer_head_Ptr->TimeOutValueInCycle += 1;
+        }
+
+        StartHardTimer(RTC_Timer_head_Ptr->TimeOutValueInCycle);
+    }
+
+    /*VOS_Splx(intLockLevel);*/
+    VOS_SpinUnlockIntUnlock(&g_stVosTimerSpinLock, ulLockLevel);
+
+    if ( VOS_NULL_PTR != RTC_TimerCtrlBlkexpired )
+    {
+        if (VOS_OK != VOS_FixedQueueWriteDirect(g_ulRTCTaskQueueId, (VOS_VOID *)RTC_TimerCtrlBlkexpired, VOS_NORMAL_PRIORITY_MSG))
+        {
+            g_stRtcSocTimerInfo.ulExpiredSendErrCount++;
+            g_stRtcSocTimerInfo.ulExpiredSendErrSlice   = VOS_GetSlice();
+
+            RTC_DebugSocInfo((VOS_UINT32)RTC_SOC_TIMER_SEND_ERR, VOS_GetSlice());
+        }
+    }
+
+    return;
+}
+
+/*****************************************************************************
  Function   : RTC_DualTimerIsr
  Description: ISR of DualTimer
  Input      :
@@ -382,29 +514,26 @@ VOS_UINT32 RTC_MUL_DOT_32768(VOS_UINT32 ulValue,VOS_UINT32 ulFileID,
  *****************************************************************************/
 VOS_INT32 RTC_DualTimerIsr(VOS_INT lPara)
 {
-    VOS_UINT32 ulMax;
-    
+    VOS_UINT32      ulCurrentSlice;
+
     g_stRtcSocTimerInfo.ulExpireCount++;
 
-    if ( VOS_OK != DRV_TIMER_STOP((VOS_UINT32)lPara) )
+    ulCurrentSlice = VOS_GetSlice();
+
+    if ( (ulCurrentSlice- g_stRtcSocTimerInfo.ulStartSlice) < RTC_Start_Value )
+    {
+        g_stRtcSocTimerInfo.ulExpiredShortErrCount++;
+        g_stRtcSocTimerInfo.ulExpiredShortErrSlice  = VOS_GetSlice();
+    }
+
+    if ( VOS_OK != DRV_TIMER_STOP((unsigned int)lPara) )
     {
         g_stRtcSocTimerInfo.ulStopErrCount++;
     }
 
-    g_ulCallbackSlice = VOS_GetSlice();
+    RTC_DebugSocInfo((VOS_UINT32)RTC_SOC_TIMER_EXPIRED, ulCurrentSlice);
 
-    ulMax = (g_ulCallbackSlice > g_ulExpectSlice) ?  (g_ulCallbackSlice - g_ulExpectSlice) : (g_ulExpectSlice - g_ulCallbackSlice);
-
-    if(ulMax > g_stCallback.ulmax)
-    {
-        g_stCallback.ulmax          = ulMax;
-        g_stCallback.timercallback  = g_ulCallbackSlice;
-        g_stCallback.startslice     = g_ulstartslice;
-        g_stCallback.timerlen       = RTC_Start_Value;
-        g_stCallback.ulexpectslice  = g_ulExpectSlice;
-    }
-
-    VOS_SmV(RTC_SEM);
+    RTC_DualTimerIsrEntry();
 
     return 0;
 }
@@ -427,6 +556,8 @@ VOS_VOID StopHardTimer(VOS_VOID)
 
     RTC_Start_Value = ELAPESD_TIME_INVAILD;
 
+    RTC_DebugSocInfo((VOS_UINT32)RTC_SOC_TIMER_STOPED, VOS_GetSlice());
+
     return;
 }
 
@@ -443,6 +574,8 @@ VOS_VOID StartHardTimer( VOS_UINT32 value )
 
     StopHardTimer();
 
+    g_stRtcSocTimerInfo.ulStartSlice = VOS_GetSlice();
+
     RTC_Start_Value = value;
 
     if ( VOS_OK != DRV_TIMER_START(VOS_RTC_TIMER_ID, (FUNCPTR_1)RTC_DualTimerIsr, VOS_RTC_TIMER_ID, value, TIMER_ONCE_COUNT,TIMER_UNIT_NONE) )
@@ -450,8 +583,7 @@ VOS_VOID StartHardTimer( VOS_UINT32 value )
         g_stRtcSocTimerInfo.ulStartErrCount++;
     }
 
-    g_ulstartslice = VOS_GetSlice();
-    g_ulExpectSlice = g_ulstartslice + value;
+    RTC_DebugSocInfo(value, g_stRtcSocTimerInfo.ulStartSlice);
 
     return;
 }
@@ -465,9 +597,6 @@ VOS_VOID StartHardTimer( VOS_UINT32 value )
  *****************************************************************************/
 VOS_UINT32 GetHardTimerElapsedTime(VOS_VOID)
 {
-    VOS_UINT32 ulcurlice;
-    VOS_UINT32 ultmplice;
-    VOS_UINT32 ulMax;
     VOS_UINT32 ulTempValue = 0;
 
     if ( ELAPESD_TIME_INVAILD == RTC_Start_Value )
@@ -480,22 +609,10 @@ VOS_UINT32 GetHardTimerElapsedTime(VOS_VOID)
         g_stRtcSocTimerInfo.ulElapsedErrCount++;
     }
 
-    ulcurlice = VOS_GetSlice();
-    ultmplice = RTC_Start_Value - (ulcurlice - g_ulstartslice);
-
-    ulMax = (ultmplice > ulTempValue) ? (ultmplice - ulTempValue) : (ulTempValue - ultmplice);
-
-    if(ulMax > g_stElapse.ulmaxelapse)
-    {
-        g_stElapse.ulmaxelapse      = ulMax;
-        g_stElapse.ulcurslice       = ulcurlice;
-        g_stElapse.timerretelapse   = ulTempValue;
-        g_stElapse.startslice       = g_ulstartslice;
-        g_stElapse.timerlen         = RTC_Start_Value;
-    }
     if ( RTC_Start_Value < ulTempValue )
     {
         g_stRtcSocTimerInfo.ulElapsedContentErrCount++;
+        g_stRtcSocTimerInfo.ulElapsedContentErrSlice    = VOS_GetSlice();
 
         return RTC_Start_Value;
     }
@@ -521,7 +638,7 @@ VOS_UINT32 RTC_TimerCtrlBlkInit(VOS_VOID)
 
     RTC_TimerIdleCtrlBlk = RTC_TimerCtrlBlk;
     RTC_TimerCtrlBlkBegin = (VOS_VOID *)RTC_TimerCtrlBlk;
-    RTC_TimerCtrlBlkEnd  = (VOS_VOID*)( (VOS_UINT32)(RTC_TimerCtrlBlk) +
+    RTC_TimerCtrlBlkEnd  = (VOS_VOID*)( (VOS_UINT_PTR)(RTC_TimerCtrlBlk) +
         RTC_TimerCtrlBlkNumber * sizeof(RTC_TIMER_CONTROL_BLOCK) );
 
     for(i=0; i<RTC_TimerCtrlBlkNumber-1; i++)
@@ -547,14 +664,13 @@ VOS_UINT32 RTC_TimerCtrlBlkInit(VOS_VOID)
 
     RTC_TimerMinTimerIdUsed             = RTC_TimerCtrlBlkNumber;
 
-    VOS_MemSet(&g_stRtcSocTimerInfo, 0x0, sizeof(RTC_TIMER_SOC_TIMER_INFO_STRU));
+    VOS_MemSet(&g_stRtcSocTimerInfo, 0x0, sizeof(VOS_TIMER_SOC_TIMER_INFO_STRU));
 
-    if( VOS_OK != VOS_SmCreate("RTC", 0, VOS_SEMA4_FIFO, &RTC_SEM))
+    VOS_MemSet((VOS_VOID *)g_astRtcSocTimerDebugInfo, 0x0, sizeof(g_astRtcSocTimerDebugInfo));
+
+    /* 1 -> only one queue */
+    if( VOS_OK != VOS_FixedQueueCreate( VOS_FID_QUEUE_LENGTH, &g_ulRTCTaskQueueId, VOS_MSG_Q_FIFO, VOS_FID_MAX_MSG_LENGTH, 1 ) )
     {
-        Print("# RTC timer creat semaphore error.\r\n");
-
-        /*free(RTC_TimerCtrlBlk);*/
-
         return VOS_ERR;
     }
 
@@ -643,8 +759,8 @@ VOS_UINT32 RTC_TimerCtrlBlkFree(RTC_TIMER_CONTROL_BLOCK *Ptr, VOS_UINT8 ucTag )
 {
     /*int             intLockLevel;*/
 
-    if ( (VOS_UINT32)Ptr < (VOS_UINT32)RTC_TimerCtrlBlkBegin
-        || (VOS_UINT32)Ptr > (VOS_UINT32)RTC_TimerCtrlBlkEnd )
+    if ( (VOS_UINT_PTR)Ptr < (VOS_UINT_PTR)RTC_TimerCtrlBlkBegin
+        || (VOS_UINT_PTR)Ptr > (VOS_UINT_PTR)RTC_TimerCtrlBlkEnd )
     {
         return VOS_ERR;
     }
@@ -667,6 +783,10 @@ VOS_UINT32 RTC_TimerCtrlBlkFree(RTC_TIMER_CONTROL_BLOCK *Ptr, VOS_UINT8 ucTag )
 
     RTC_TimerIdleCtrlBlkNumber++;
 
+#if VOS_YES == VOS_TIMER_CHECK
+    Ptr->ulFreeTick = VOS_GetSlice();
+#endif
+
     /*VOS_Splx(intLockLevel);*/
 
     return VOS_OK;
@@ -683,190 +803,138 @@ VOS_VOID RTC_TimerTaskFunc( VOS_UINT32 Para0, VOS_UINT32 Para1,
                             VOS_UINT32 Para2, VOS_UINT32 Para3 )
 {
     RTC_TIMER_CONTROL_BLOCK     *head_Ptr;
-    /* the timer control which expire */
-    RTC_TIMER_CONTROL_BLOCK     *RTC_TimerCtrlBlkCurrent;
-    /* the timer head control which expire */
     RTC_TIMER_CONTROL_BLOCK     *RTC_TimerCtrlBlkexpired = VOS_NULL_PTR;
-    RTC_TIMER_CONTROL_BLOCK     *RTC_TimerCtrlBlkexpiredTail = VOS_NULL_PTR;
-    VOS_UINT32                  ulLockLevel;
-    VOS_UINT32                  ulTempCount;
+    VOS_ULONG                   ulLockLevel;
     REL_TIMER_MSG               *pstExpireMsg;
-    VOS_UINT32                  ulElapsedCycles;
-    VOS_UINT32                  ulcurlice;
+    VOS_UINT32                  ulCurrentSlice;
+    VOS_UINT32                  ulIntervalSlice;
+    VOS_UINT_PTR                ulCtrlBlkAddress;
+    VOS_UINT_PTR                TempValue;
 
+    /* coverity[no_escape] */
     for(;;)
     {
-        /* SemTake SEM when releas*/
-        /* coverity[lock] */
-        (VOS_VOID)VOS_SmP(RTC_SEM, 0);
-
-        ulcurlice = VOS_GetSlice();
-        if((ulcurlice - g_ulCallbackSlice) > g_stTimerTask.ulmax)
+        if (VOS_ERR == VOS_FixedQueueRead(g_ulRTCTaskQueueId, 0, &ulCtrlBlkAddress, VOS_FID_MAX_MSG_LENGTH))
         {
-            g_stTimerTask.ulmax          = (ulcurlice - g_ulCallbackSlice);
-            g_stTimerTask.ulcurslice     = ulcurlice;
-            g_stTimerTask.timercallback  = g_ulCallbackSlice;
+            continue;
         }
-        /*intLockLevel = VOS_SplIMP();*/
-        VOS_SpinLockIntLock(&g_stVosTimerSpinLock, ulLockLevel);
 
-        ulElapsedCycles = RTC_Start_Value;
-        RTC_Start_Value = ELAPESD_TIME_INVAILD;
+        ulCurrentSlice = VOS_GetSlice();
 
-        head_Ptr = RTC_Timer_head_Ptr;
+        RTC_TimerCtrlBlkexpired = (RTC_TIMER_CONTROL_BLOCK *)ulCtrlBlkAddress;
 
-        if ( head_Ptr != VOS_NULL_PTR)
+        while ( VOS_NULL_PTR != RTC_TimerCtrlBlkexpired )
         {
-            /* sub timer value */
-            head_Ptr->TimeOutValueInCycle -= ulElapsedCycles;
+            head_Ptr = RTC_TimerCtrlBlkexpired;
 
-            ulTempCount = 0;
-
-            /* check the left timer */
-            while ( ( VOS_NULL_PTR != head_Ptr )
-                && ( 0 == head_Ptr->TimeOutValueInCycle ) )
+            if( VOS_RELTIMER_LOOP == head_Ptr->Mode )
             {
-                ulTempCount++;
-                if ( RTC_TimerCtrlBlkNumber < ulTempCount )
+                if ( VOS_NULL_PTR == head_Ptr->CallBackFunc )
                 {
-                    /*VOS_Splx(intLockLevel);*/
-                    VOS_SpinUnlockIntUnlock(&g_stVosTimerSpinLock, ulLockLevel);
-
-                    LogPrint2("# RTC Timer list error.Max %d Count %d.\r\n",
-                        (VOS_INT)RTC_TimerCtrlBlkNumber, (VOS_INT)ulTempCount);
-                    return;
-                }
-
-                RTC_TimerCtrlBlkCurrent = head_Ptr;
-
-                *(head_Ptr->phTm) = VOS_NULL_PTR;
-                /*head_Ptr->State = RTC_TIMER_CTRL_BLK_STOP;*/
-
-                head_Ptr = RTC_TimerCtrlBlkCurrent->next;
-
-                RTC_TimerCtrlBlkCurrent->next = VOS_NULL_PTR;
-                if ( VOS_NULL_PTR == RTC_TimerCtrlBlkexpired )
-                {
-                    RTC_TimerCtrlBlkexpired = RTC_TimerCtrlBlkCurrent;
-                    RTC_TimerCtrlBlkexpiredTail = RTC_TimerCtrlBlkCurrent;
+                   V_Start32KRelTimer( head_Ptr->phTm,
+                               head_Ptr->Pid,
+                               head_Ptr->TimeOutValueInMilliSeconds,
+                               head_Ptr->Name,
+                               head_Ptr->Para,
+                               VOS_RELTIMER_LOOP,
+                               head_Ptr->ulPrecision,
+#if VOS_YES == VOS_TIMER_CHECK
+                               head_Ptr->ulFileID,
+                               (VOS_INT32)head_Ptr->ulLineNo);
+#else
+                               VOS_FILE_ID,
+                               (VOS_INT32)__LINE__);
+#endif
                 }
                 else
                 {
-                    RTC_TimerCtrlBlkexpiredTail->next = RTC_TimerCtrlBlkCurrent; /*lint !e613*/  /* [false alarm]: 屏蔽Fortify错误 */
-                    RTC_TimerCtrlBlkexpiredTail = RTC_TimerCtrlBlkCurrent;
+                    V_Start32KCallBackRelTimer( head_Ptr->phTm,
+                               head_Ptr->Pid,
+                               head_Ptr->TimeOutValueInMilliSeconds,
+                               head_Ptr->Name,
+                               head_Ptr->Para,
+                               VOS_RELTIMER_LOOP,
+                               head_Ptr->CallBackFunc,
+                               head_Ptr->ulPrecision,
+#if VOS_YES == VOS_TIMER_CHECK
+                               head_Ptr->ulFileID,
+                               (VOS_INT32)head_Ptr->ulLineNo);
+#else
+                               VOS_FILE_ID,
+                               (VOS_INT32)__LINE__);
+#endif
                 }
-
-                RTC_Timer_head_Ptr = head_Ptr;
             }
 
-            if ( VOS_NULL_PTR != RTC_Timer_head_Ptr )
-            {
-                RTC_Timer_head_Ptr->previous = VOS_NULL_PTR;
-
-                StartHardTimer(RTC_Timer_head_Ptr->TimeOutValueInCycle);
-            }
-
-            /*VOS_Splx(intLockLevel);*/
-            VOS_SpinUnlockIntUnlock(&g_stVosTimerSpinLock, ulLockLevel);
-
-            while ( VOS_NULL_PTR != RTC_TimerCtrlBlkexpired )
-            {
-                head_Ptr = RTC_TimerCtrlBlkexpired;
-
-                if( VOS_RELTIMER_LOOP == head_Ptr->Mode )
-                {
-                    if ( VOS_NULL_PTR == head_Ptr->CallBackFunc )
-                    {
-                       V_Start32KRelTimer( head_Ptr->phTm,
-                                   head_Ptr->Pid,
-                                   head_Ptr->TimeOutValueInMilliSeconds,
-                                   head_Ptr->Name,
-                                   head_Ptr->Para,
-                                   VOS_RELTIMER_LOOP,
-                                   head_Ptr->ulPrecision,
-#if VOS_YES == VOS_TIMER_CHECK
-                                   head_Ptr->ulFileID,
-                                   (VOS_INT32)head_Ptr->ulLineNo);
-#else
-                                   VOS_FILE_ID,
-                                   __LINE__);
-#endif
-                    }
-                    else
-                    {
-                        V_Start32KCallBackRelTimer( head_Ptr->phTm,
-                                   head_Ptr->Pid,
-                                   head_Ptr->TimeOutValueInMilliSeconds,
-                                   head_Ptr->Name,
-                                   head_Ptr->Para,
-                                   VOS_RELTIMER_LOOP,
-                                   head_Ptr->CallBackFunc,
-                                   head_Ptr->ulPrecision,
-#if VOS_YES == VOS_TIMER_CHECK
-                                   head_Ptr->ulFileID,
-                                   (VOS_INT32)head_Ptr->ulLineNo);
-#else
-                                   VOS_FILE_ID,
-                                   __LINE__);
-#endif
-                    }
-                }
-                
 #if (OSA_CPU_ACPU == VOS_OSA_CPU)
-                if(g_timerlpm)
-                {
-                    g_timerlpm = 0;
-                    LogPrint2("[C SR] rtc_timer pid %d, name 0x%x.\n", 
-                        RTC_TimerCtrlBlkexpired->Pid, RTC_TimerCtrlBlkexpired->Name);
-                }
+            if(g_timerlpm)
+            {
+                g_timerlpm = 0;
+                LogPrint2("[C SR] rtc_timer pid %d, name 0x%x.\n",
+                    RTC_TimerCtrlBlkexpired->Pid, RTC_TimerCtrlBlkexpired->Name);
+            }
 #endif
+            TempValue = (VOS_UINT_PTR)(RTC_TimerCtrlBlkexpired->CallBackFunc);
 
-                /* CallBackFunc需要用32位传入，所以和name互换位置保证数据不丢失 */
-                OM_RecordInfoStart(VOS_EXC_DUMP_MEM_NUM_3, (VOS_UINT32)(RTC_TimerCtrlBlkexpired->Pid), RTC_TimerCtrlBlkexpired->Name, (VOS_UINT32)(RTC_TimerCtrlBlkexpired->CallBackFunc));
+            /* CallBackFunc需要用32位传入，所以和name互换位置保证数据不丢失 */
+            OM_RecordInfoStart(VOS_EXC_DUMP_MEM_NUM_3, (VOS_UINT32)(RTC_TimerCtrlBlkexpired->Pid), RTC_TimerCtrlBlkexpired->Name, (VOS_UINT32)TempValue);
 
-                if ( VOS_NULL_PTR == RTC_TimerCtrlBlkexpired->CallBackFunc )
+            if ( VOS_NULL_PTR == RTC_TimerCtrlBlkexpired->CallBackFunc )
+            {
+                /* Alloc expires's Msg */
+                pstExpireMsg
+                    = VOS_TimerPreAllocMsg(RTC_TimerCtrlBlkexpired->Pid);
+
+                if ( VOS_NULL_PTR != pstExpireMsg )
                 {
-                    /* Alloc expires's Msg */
-                    pstExpireMsg
-                        = VOS_TimerPreAllocMsg(RTC_TimerCtrlBlkexpired->Pid);
-
-                    if ( VOS_NULL_PTR != pstExpireMsg )
-                    {
-                        pstExpireMsg->ulName = RTC_TimerCtrlBlkexpired->Name;
-                        pstExpireMsg->ulPara = RTC_TimerCtrlBlkexpired->Para;
+                    pstExpireMsg->ulName = RTC_TimerCtrlBlkexpired->Name;
+                    pstExpireMsg->ulPara = RTC_TimerCtrlBlkexpired->Para;
+                    TempValue            = (VOS_UINT_PTR)(RTC_TimerCtrlBlkexpired->TimeOutValueInMilliSeconds);
+                    pstExpireMsg->hTm    = (HTIMER)TempValue;
 
 #if (VOS_YES == VOS_TIMER_CHECK)
-                        pstExpireMsg->pNext
-                            = (struct REL_TIMER_MSG_STRU *)(RTC_TimerCtrlBlkexpired->ulAllocTick);
-                        pstExpireMsg->pPrev
-                            = (struct REL_TIMER_MSG_STRU *)VOS_GetSlice();
+                    TempValue            = (VOS_UINT_PTR)RTC_TimerCtrlBlkexpired->ulAllocTick;
+
+                    pstExpireMsg->pNext
+                        = (struct REL_TIMER_MSG_STRU *)TempValue;
+
+                    TempValue            = (VOS_UINT_PTR)ulCurrentSlice;
+
+                    pstExpireMsg->pPrev
+                        = (struct REL_TIMER_MSG_STRU *)TempValue;
+
+                    ulIntervalSlice = (RTC_TimerCtrlBlkexpired->ulBackUpTimeOutValueInCycle - RTC_TimerCtrlBlkexpired->ulPrecisionInCycle);
+
+                    ulIntervalSlice = ( (ulIntervalSlice > RTC_TIMER_CHECK_PRECISION) ? (ulIntervalSlice - RTC_TIMER_CHECK_PRECISION) : ulIntervalSlice );
+
+                    if ( (ulCurrentSlice - RTC_TimerCtrlBlkexpired->ulAllocTick) < ulIntervalSlice )
+                    {
+#if (OSA_CPU_CCPU == VOS_OSA_CPU)
+                        /*RTC_SocTimerMemDump();
+
+                        VOS_ProtectionReboot(RTC_TIMER_EXPIRED_TOO_SHORT, 0, (VOS_INT)ulCurrentSlice, (VOS_CHAR *)RTC_TimerCtrlBlkexpired, sizeof(RTC_TIMER_CONTROL_BLOCK));*/
 #endif
-                        /* coverity[check_return] */
-                        VOS_SendMsg(DOPRA_PID_TIMER, pstExpireMsg);
-
                     }
+#endif
+                    (VOS_VOID)VOS_SendMsg(DOPRA_PID_TIMER, pstExpireMsg);
+
                 }
-                else
-                {
-                    RTC_TimerCtrlBlkexpired->CallBackFunc(
-                        RTC_TimerCtrlBlkexpired->Para,
-                        RTC_TimerCtrlBlkexpired->Name);
-                }
-
-                OM_RecordInfoEnd(VOS_EXC_DUMP_MEM_NUM_3);
-
-                RTC_TimerCtrlBlkexpired = RTC_TimerCtrlBlkexpired->next;
-
-                VOS_SpinLockIntLock(&g_stVosTimerSpinLock, ulLockLevel);
-
-                RTC_TimerCtrlBlkFree(head_Ptr, THE_FIRST_RTC_TIMER_TAG);
-
-                VOS_SpinUnlockIntUnlock(&g_stVosTimerSpinLock, ulLockLevel);
             }
-        }
-        else
-        {
-            /*VOS_Splx(intLockLevel);*/
+            else
+            {
+                RTC_TimerCtrlBlkexpired->CallBackFunc(
+                    RTC_TimerCtrlBlkexpired->Para,
+                    RTC_TimerCtrlBlkexpired->Name);
+            }
+
+            OM_RecordInfoEnd(VOS_EXC_DUMP_MEM_NUM_3);
+
+            RTC_TimerCtrlBlkexpired = RTC_TimerCtrlBlkexpired->next;
+
+            VOS_SpinLockIntLock(&g_stVosTimerSpinLock, ulLockLevel);
+
+            RTC_TimerCtrlBlkFree(head_Ptr, THE_FIRST_RTC_TIMER_TAG);
+
             VOS_SpinUnlockIntUnlock(&g_stVosTimerSpinLock, ulLockLevel);
         }
     }
@@ -910,6 +978,8 @@ VOS_VOID RTC_Add_Timer_To_List( RTC_TIMER_CONTROL_BLOCK  *Timer)
     if ( VOS_NULL_PTR == RTC_Timer_head_Ptr )
     {
         RTC_Timer_head_Ptr = Timer;
+
+        Timer->Reserved[1] = VOS_ADD_TIMER_TAG_1;
     }
     else
     {
@@ -930,6 +1000,7 @@ VOS_VOID RTC_Add_Timer_To_List( RTC_TIMER_CONTROL_BLOCK  *Timer)
                 {
                     /* forward adjust; do nothindg when TimeOutValueInCycle == 0 */
                     Timer->TimeOutValueInCycle = 0;
+                    Timer->Reserved[1] = VOS_ADD_TIMER_TAG_2;
 
                     pre_temp_Ptr = temp_Ptr;
                     temp_Ptr = temp_Ptr->next;
@@ -946,6 +1017,8 @@ VOS_VOID RTC_Add_Timer_To_List( RTC_TIMER_CONTROL_BLOCK  *Timer)
 
                 pre_temp_Ptr = temp_Ptr;
                 temp_Ptr = temp_Ptr->next;
+
+                Timer->Reserved[1] = VOS_ADD_TIMER_TAG_3;
             }
             else
             {
@@ -953,6 +1026,7 @@ VOS_VOID RTC_Add_Timer_To_List( RTC_TIMER_CONTROL_BLOCK  *Timer)
                 {
                     /* backward adjust */
                     Timer->TimeOutValueInCycle = 0;
+                    Timer->Reserved[1] = VOS_ADD_TIMER_TAG_4;
 
                     pre_temp_Ptr = temp_Ptr;
                     temp_Ptr = temp_Ptr->next;
@@ -966,6 +1040,8 @@ VOS_VOID RTC_Add_Timer_To_List( RTC_TIMER_CONTROL_BLOCK  *Timer)
 
                     break;
                 }
+
+                Timer->Reserved[1] = VOS_ADD_TIMER_TAG_5;
 
                 /* can't adjust */
                 break;
@@ -999,8 +1075,12 @@ VOS_VOID RTC_Add_Timer_To_List( RTC_TIMER_CONTROL_BLOCK  *Timer)
         /* judge timer value when the new timer at head */
         Timer->TimeOutValueInCycle -= ElapsedCycles;
 
-        StartHardTimer(Timer->TimeOutValueInCycle);
+        if (0 == Timer->TimeOutValueInCycle)
+        {
+            Timer->TimeOutValueInCycle += 1;
+        }
 
+        StartHardTimer(Timer->TimeOutValueInCycle);
     }
 
     /*VOS_Splx(intLockLevel);*/
@@ -1048,6 +1128,11 @@ VOS_VOID RTC_Del_Timer_From_List( RTC_TIMER_CONTROL_BLOCK  *Timer)
         if (VOS_TRUE == bIsHead)
         {
             Timer->next->TimeOutValueInCycle -= GetHardTimerElapsedTime();
+
+            if (0 == Timer->next->TimeOutValueInCycle)
+            {
+                Timer->next->TimeOutValueInCycle += 1;
+            }
 
             StartHardTimer(Timer->next->TimeOutValueInCycle);
         }
@@ -1176,8 +1261,18 @@ VOS_UINT32 R_Get32KRelTmRemainTime( HTIMER * phTm, VOS_UINT32 * pulTime,
         /*VOS_Splx(intLockLevel);*/
 
 #ifdef FLOAT_SUPPORT
-        *pulTime
-            = (VOS_UINT32)( (remain_value - ulTempValue) / RTC_CYCLE_LENGTH );
+#ifdef V8R1_SINGLECLOCK
+        if (UCOM_NV_32K_TYPE_32000 == g_usSingleXO)
+        {
+            *pulTime
+                = (VOS_UINT32)( (remain_value - ulTempValue) / RTC_SINGLECLOCK_CYCLE_LENGTH );
+        }
+        else
+#endif
+        {
+            *pulTime
+                = (VOS_UINT32)( (remain_value - ulTempValue) / RTC_CYCLE_LENGTH );
+        }
 #else
         *pulTime
             = (VOS_UINT32)RTC_DIV_32_DOT_768((remain_value - ulTempValue), ulFileID, usLineNo);
@@ -1243,7 +1338,7 @@ VOS_UINT32 V_Start32KCallBackRelTimer( HTIMER *phTm, VOS_PID Pid, VOS_UINT32 ulL
 {
     RTC_TIMER_CONTROL_BLOCK  *Timer;
     VOS_UINT32               TimerId;
-    VOS_UINT32               ulLockLevel;
+    VOS_ULONG                ulLockLevel;
 
     /* stop the timer if exists */
     /*intLockLevel = VOS_SplIMP();*/
@@ -1273,7 +1368,7 @@ VOS_UINT32 V_Start32KCallBackRelTimer( HTIMER *phTm, VOS_PID Pid, VOS_UINT32 ulL
 
         VOS_SetErrorNo(VOS_RTC_ERRNO_RELTM_START_MSGNOTINSTALL);
 
-        DRV_SYSTEM_ERROR(START_32K_CALLBACK_RELTIMER_FAIL_TO_ALLOCATE, (VOS_INT)ulFileID, (VOS_INT)usLineNo, (VOS_CHAR *)(&g_stRtcSocTimerInfo), sizeof(RTC_TIMER_SOC_TIMER_INFO_STRU));
+        DRV_SYSTEM_ERROR(START_32K_CALLBACK_RELTIMER_FAIL_TO_ALLOCATE, (VOS_INT)ulFileID, (VOS_INT)usLineNo, (VOS_CHAR *)(&g_stRtcSocTimerInfo), sizeof(VOS_TIMER_SOC_TIMER_INFO_STRU));
 
         return(VOS_RTC_ERRNO_RELTM_START_MSGNOTINSTALL);
     }
@@ -1291,12 +1386,23 @@ VOS_UINT32 V_Start32KCallBackRelTimer( HTIMER *phTm, VOS_PID Pid, VOS_UINT32 ulL
     Timer->TimeOutValueInMilliSeconds   = ulLength;
     Timer->ulPrecision                  = ulPrecision;
 #ifdef FLOAT_SUPPORT
-    Timer->TimeOutValueInCycle = (VOS_UINT32)(RTC_CYCLE_LENGTH * ulLength);
-    Timer->ulPrecisionInCycle = (VOS_UINT32)(RTC_PRECISION_CYCLE_LENGTH * ulLength * ulPrecision);
+#ifdef V8R1_SINGLECLOCK
+    if (UCOM_NV_32K_TYPE_32000 == g_usSingleXO)
+    {
+        Timer->TimeOutValueInCycle = (VOS_UINT32)(RTC_SINGLECLOCK_CYCLE_LENGTH * ulLength);
+        Timer->ulPrecisionInCycle = (VOS_UINT32)(RTC_SINGLECLOCK_PRECISION_CYCLE_LENGTH * ulLength * ulPrecision);
+    }
+    else
+#endif
+    {
+        Timer->TimeOutValueInCycle = (VOS_UINT32)(RTC_CYCLE_LENGTH * ulLength);
+        Timer->ulPrecisionInCycle = (VOS_UINT32)(RTC_PRECISION_CYCLE_LENGTH * ulLength * ulPrecision);
+    }
 #else
     Timer->TimeOutValueInCycle = (VOS_UINT32)RTC_MUL_32_DOT_768(ulLength, ulFileID, usLineNo);
     Timer->ulPrecisionInCycle = (VOS_UINT32)RTC_MUL_DOT_32768((ulLength * ulPrecision), ulFileID, usLineNo);
 #endif
+    Timer->ulBackUpTimeOutValueInCycle = Timer->TimeOutValueInCycle;
     /*Timer->State                        = RTC_TIMER_CTRL_BLK_RUNNIG;*/
     Timer->CallBackFunc                 = TimeOutRoutine;
     /*Timer->next                         = VOS_NULL_PTR;*/
@@ -1331,7 +1437,7 @@ VOS_UINT32 V_Start32KRelTimer( HTIMER *phTm, VOS_PID Pid, VOS_UINT32 ulLength,
 {
     RTC_TIMER_CONTROL_BLOCK  *Timer;
     VOS_UINT32               TimerId;
-    VOS_UINT32               ulLockLevel;
+    VOS_ULONG                ulLockLevel;
 
     /* stop the timer if exists */
     /*intLockLevel = VOS_SplIMP();*/
@@ -1362,7 +1468,7 @@ VOS_UINT32 V_Start32KRelTimer( HTIMER *phTm, VOS_PID Pid, VOS_UINT32 ulLength,
 
         VOS_SetErrorNo(VOS_RTC_ERRNO_RELTM_START_MSGNOTINSTALL);
 
-        DRV_SYSTEM_ERROR(START_32K_CALLBACK_RELTIMER_FAIL_TO_ALLOCATE, (VOS_INT)ulFileID, (VOS_INT)usLineNo, (VOS_CHAR *)(&g_stRtcSocTimerInfo), sizeof(RTC_TIMER_SOC_TIMER_INFO_STRU));
+        DRV_SYSTEM_ERROR(START_32K_CALLBACK_RELTIMER_FAIL_TO_ALLOCATE, (VOS_INT)ulFileID, (VOS_INT)usLineNo, (VOS_CHAR *)(&g_stRtcSocTimerInfo), sizeof(VOS_TIMER_SOC_TIMER_INFO_STRU));
 
         return(VOS_RTC_ERRNO_RELTM_START_MSGNOTINSTALL);
     }
@@ -1380,12 +1486,23 @@ VOS_UINT32 V_Start32KRelTimer( HTIMER *phTm, VOS_PID Pid, VOS_UINT32 ulLength,
     Timer->TimeOutValueInMilliSeconds   = ulLength;
     Timer->ulPrecision                  = ulPrecision;
 #ifdef FLOAT_SUPPORT
-    Timer->TimeOutValueInCycle  = (VOS_UINT32)(RTC_CYCLE_LENGTH * ulLength);
-    Timer->ulPrecisionInCycle = (VOS_UINT32)(RTC_PRECISION_CYCLE_LENGTH * ulLength * ulPrecision);
+#ifdef V8R1_SINGLECLOCK
+    if (UCOM_NV_32K_TYPE_32000 == g_usSingleXO)
+    {
+        Timer->TimeOutValueInCycle = (VOS_UINT32)(RTC_SINGLECLOCK_CYCLE_LENGTH * ulLength);
+        Timer->ulPrecisionInCycle = (VOS_UINT32)(RTC_SINGLECLOCK_PRECISION_CYCLE_LENGTH * ulLength * ulPrecision);
+    }
+    else
+#endif
+    {
+        Timer->TimeOutValueInCycle = (VOS_UINT32)(RTC_CYCLE_LENGTH * ulLength);
+        Timer->ulPrecisionInCycle = (VOS_UINT32)(RTC_PRECISION_CYCLE_LENGTH * ulLength * ulPrecision);
+    }
 #else
     Timer->TimeOutValueInCycle = (VOS_UINT32)RTC_MUL_32_DOT_768(ulLength, ulFileID, usLineNo);
     Timer->ulPrecisionInCycle = (VOS_UINT32)RTC_MUL_DOT_32768((ulLength * ulPrecision), ulFileID, usLineNo);
 #endif
+    Timer->ulBackUpTimeOutValueInCycle = Timer->TimeOutValueInCycle;
     /*Timer->State                        = VOS_TIMER_CTRL_BLK_RUNNIG;*/
     Timer->CallBackFunc                 = VOS_NULL_PTR;
     /*Timer->next                         = VOS_NULL_PTR;*/
@@ -1448,11 +1565,22 @@ VOS_UINT32 R_Restart32KRelTimer( HTIMER *phTm, VOS_UINT32 ulFileID,
 
     /* reset timer value */
 #ifdef FLOAT_SUPPORT
-    Timer->TimeOutValueInCycle
-        = (VOS_UINT32)(RTC_CYCLE_LENGTH * Timer->TimeOutValueInMilliSeconds);
+#ifdef V8R1_SINGLECLOCK
+    if (UCOM_NV_32K_TYPE_32000 == g_usSingleXO)
+    {
+        Timer->TimeOutValueInCycle
+            = (VOS_UINT32)(RTC_SINGLECLOCK_CYCLE_LENGTH * Timer->TimeOutValueInMilliSeconds);
+    }
+    else
+#endif
+    {
+        Timer->TimeOutValueInCycle
+            = (VOS_UINT32)(RTC_CYCLE_LENGTH * Timer->TimeOutValueInMilliSeconds);
+    }
 #else
     Timer->TimeOutValueInCycle = (VOS_UINT32)RTC_MUL_32_DOT_768(Timer->TimeOutValueInMilliSeconds, ulFileID, usLineNo);
 #endif
+    Timer->ulBackUpTimeOutValueInCycle = Timer->TimeOutValueInCycle;
 
     Timer->next = VOS_NULL_PTR;
     Timer->previous = VOS_NULL_PTR;
@@ -1475,7 +1603,7 @@ VOS_UINT32 R_Restart32KRelTimer( HTIMER *phTm, VOS_UINT32 ulFileID,
 VOS_UINT32 RTC_timer_running( VOS_VOID )
 {
     RTC_TIMER_CONTROL_BLOCK     *head_Ptr;
-    VOS_UINT32                   ulLockLevel;
+    VOS_ULONG                    ulLockLevel;
 
     /*intLockLevel = VOS_SplIMP();*/
     VOS_SpinLockIntLock(&g_stVosTimerSpinLock, ulLockLevel);
@@ -1594,7 +1722,7 @@ VOS_BOOL RTC_CalcTimerInfo(VOS_VOID)
  *****************************************************************************/
 VOS_VOID VOS_ShowUsed32KTimerInfo( VOS_VOID )
 {
-    VOS_UINT32                   ulLockLevel;
+    VOS_ULONG                    ulLockLevel;
     RTC_TIMER_CONTROL_BLOCK     *pstTimer;
 
     LogPrint("# VOS_ShowUsed32KTimerInfo:");
@@ -1999,25 +2127,8 @@ VOS_VOID ShowRtcTimerLog( VOS_VOID )
                 g_stRtcSocTimerInfo.ulElapsedErrCount);
     vos_printf("g_stRtcSocTimerInfo.ulElapsedContentErrCount = %d. (call DRV get rest timer err num)\r\n",
                 g_stRtcSocTimerInfo.ulElapsedContentErrCount);
-    vos_printf("elapse info : max 0x%x, cur slice 0x%x, ret slice 0x%x, start slice 0x%x, timer len 0x%x.\n",
-        g_stElapse.ulmaxelapse, 
-        g_stElapse.ulcurslice, 
-        g_stElapse.timerretelapse, 
-        g_stElapse.startslice, 
-        g_stElapse.timerlen);
-    
-    vos_printf("callback info : max 0x%x, callback slice 0x%x, start slice 0x%x, timer len 0x%x, expect slice 0x%x.\n",
-        g_stCallback.ulmax, 
-        g_stCallback.timercallback, 
-        g_stCallback.startslice, 
-        g_stCallback.timerlen, 
-        g_stCallback.ulexpectslice);
-
-    vos_printf("taskproc info : max 0x%x, cur slice 0x%x, callback slice 0x%x.\n",
-        g_stTimerTask.ulmax, 
-        g_stTimerTask.ulcurslice, 
-        g_stTimerTask.timercallback);
 }
+
 
 #ifdef __cplusplus
 #if __cplusplus

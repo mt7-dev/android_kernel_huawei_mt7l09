@@ -5,7 +5,7 @@
 #include <linux/err.h>
 #include <linux/notifier.h>
 #include <linux/pm_qos.h>
-
+#include <linux/io.h>
 #include <linux/debugfs.h>
 #include <linux/uaccess.h>
 #include <linux/kernel.h>
@@ -18,7 +18,7 @@
 #include <linux/of_device.h>
 #include <linux/of_address.h>
 
-#include <linux/huawei/mailbox.h>
+#include <linux/hisi/hisi_mailbox.h>
 
 #define MODULE_NAME	"hisilicon,lowpowerm3"
 

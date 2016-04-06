@@ -2002,17 +2002,41 @@ VOS_UINT32 TAF_APS_RcvSndcpModifyRsp_MsModifying_WaitSndcpModifyRspSuspend(
 )
 {
     VOS_UINT8                           ucPdpId;
+    APS_SNDCP_MODIFY_RSP_ST            *pstSnModifyRsp;
+    TAF_APS_ENTRY_MSG_STRU             *pstEntryMsg;
 
     /* 初始化, 获取消息内容 */
+    pstSnModifyRsp                      = &((APS_SNDCP_MODIFY_RSP_MSG*)pstMsg)->ApsSnMdfRsp;
     ucPdpId                             = TAF_APS_GetCurrFsmEntityPdpId();
+    pstEntryMsg                         = TAF_APS_GetCurrSubFsmMsgAddr();
+
+    /* 根据触发流程的入口消息判断回复消息类型 */
+    switch (pstEntryMsg->ulEventType)
+    {
+        case TAF_BuildEventType(WUEPS_PID_SM, ID_SMREG_PDP_MODIFY_CNF):
+            /* 如果是用户发起的MODIFY，上报ID_EVT_TAF_PS_CALL_PDP_MODIFY_CNF事件 */
+            TAF_APS_SndPdpModifyCnf(ucPdpId);
+            break;
+
+        case TAF_BuildEventType(WUEPS_PID_SM, ID_SMREG_PDP_MODIFY_IND):
+
+            /* 如果是网络发起的MODIFY，上报ID_EVT_TAF_PS_CALL_PDP_MODIFY_IND事件 */
+            TAF_APS_SndPdpModifyInd(ucPdpId);
+            break;
+
+        default:
+            TAF_WARNING_LOG(WUEPS_PID_TAF,
+                "TAF_APS_RcvSndcpModifyRsp_MsModifying_WaitSndcpModifyRsp: invalid message!");
+            return VOS_TRUE;
+    }
+
+    /* 设置RABM的传输模式 */
+    Aps_SnMsgModSnMdfRsp(pstSnModifyRsp);
 
     /* 停止全流程状态机保护定时器*/
     TAF_APS_StopTimer(TI_TAF_APS_MS_MODIFYING, ucPdpId);
 
-    /* 上报ID_EVT_TAF_PS_CALL_PDP_MODIFY_CNF事件 */
-    TAF_APS_SndPdpModifyCnf(ucPdpId);
-
-    /* 主状态迁移至TAF_APS_STA_ACTIVE, 退出子状态机 */
+    /* 主状态迁移至TAF_APS_STA_ACTIVE */
     TAF_APS_SetCurrPdpEntityMainFsmState(TAF_APS_STA_ACTIVE);
 
     /* 退出子状态机 */
@@ -2020,6 +2044,8 @@ VOS_UINT32 TAF_APS_RcvSndcpModifyRsp_MsModifying_WaitSndcpModifyRspSuspend(
 
     return VOS_TRUE;
 }
+
+
 VOS_UINT32 TAF_APS_RcvSndcpStatusReq_MsModifying_WaitSndcpModifyRspSuspend(
     VOS_UINT32                          ulEventType,
     struct MsgCB                       *pstMsg
@@ -2060,14 +2086,14 @@ VOS_UINT32 TAF_APS_RcvMmcServiceStatusInd_MsModifying_WaitSndcpModifyRspSuspend(
     struct MsgCB                       *pstMsg
 )
 {
-    MMC_APS_SERVICE_STATUS_IND_STRU    *pstSerStaInd;
-#if (FEATURE_ON == FEATURE_LTE)
-    APS_PDP_CONTEXT_ENTITY_ST          *pstPdpEntity;
+    MMC_APS_SERVICE_STATUS_IND_STRU    *pstSerStaInd = VOS_NULL_PTR;
+    TAF_APS_ENTRY_MSG_STRU             *pstEntryMsg  = VOS_NULL_PTR;
     VOS_UINT8                           ucPdpId;
-#endif
 
     /* 初始化, 获取消息内容 */
     pstSerStaInd                        = (MMC_APS_SERVICE_STATUS_IND_STRU*)pstMsg;
+    ucPdpId                             = TAF_APS_GetCurrFsmEntityPdpId();
+    pstEntryMsg                         = TAF_APS_GetCurrSubFsmMsgAddr();
 
     /* 设置当前网络类型 */
     TAF_APS_SetCurrPdpEntityRatType(pstSerStaInd->enRatType);
@@ -2075,30 +2101,52 @@ VOS_UINT32 TAF_APS_RcvMmcServiceStatusInd_MsModifying_WaitSndcpModifyRspSuspend(
     /* 设置PS域SIM卡状态信息 */
     TAF_APS_SetCurrPdpEntitySimRegStatus(pstSerStaInd->ulPsSimRegStatus);
 
-    if ( (MMC_APS_RAT_TYPE_GSM == pstSerStaInd->enRatType)
-      || (MMC_APS_RAT_TYPE_WCDMA == pstSerStaInd->enRatType))
+    if (MMC_APS_RAT_TYPE_GSM == pstSerStaInd->enRatType)
     {
-        /*GU模下 ,不需要处理,继续等SNDCP的回复,状态回到
-          TAF_APS_MS_MODIFYING_SUBSTA_WAIT_SNDCP_MODIFY_RSP
+        /* GU模下 ,不需要处理,继续等SNDCP的回复,状态回到
+           TAF_APS_MS_MODIFYING_SUBSTA_WAIT_SNDCP_MODIFY_RSP
         */
         TAF_APS_SetCurrPdpEntitySubFsmState(TAF_APS_MS_MODIFYING_SUBSTA_WAIT_SNDCP_MODIFY_RSP);
     }
+    else if ( (MMC_APS_RAT_TYPE_WCDMA == pstSerStaInd->enRatType)
 #if (FEATURE_ON == FEATURE_LTE)
-    else if (MMC_APS_RAT_TYPE_LTE == pstSerStaInd->enRatType)
+           || (MMC_APS_RAT_TYPE_LTE == pstSerStaInd->enRatType)
+#endif
+    )
     {
-        ucPdpId                             = TAF_APS_GetCurrFsmEntityPdpId();
-        pstPdpEntity                        = TAF_APS_GetPdpEntInfoAddr(ucPdpId);
-
         /* 释放SNDCP资源 */
         Aps_ReleaseSndcpResource(ucPdpId);
 
-        /* 设置SNDCP未激活 */
-        pstPdpEntity->PdpProcTrack.ucSNDCPActOrNot = APS_SNDCP_INACT;
+        /* 根据触发流程的入口消息判断回复消息类型 */
+        switch (pstEntryMsg->ulEventType)
+        {
+            case TAF_BuildEventType(WUEPS_PID_SM, ID_SMREG_PDP_MODIFY_CNF):
 
-        /* LTE模下发起EPS承载修改请求 */
-        TAF_APS_RcvAtPsCallModifyReq_MsModifying_LteMode();
+                /* 如果是用户发起的MODIFY，上报ID_EVT_TAF_PS_CALL_PDP_MODIFY_CNF事件 */
+                TAF_APS_SndPdpModifyCnf(ucPdpId);
+                break;
+
+            case TAF_BuildEventType(WUEPS_PID_SM, ID_SMREG_PDP_MODIFY_IND):
+
+                /* 如果是网络发起的MODIFY，上报ID_EVT_TAF_PS_CALL_PDP_MODIFY_IND事件 */
+                TAF_APS_SndPdpModifyInd(ucPdpId);
+                break;
+
+            default:
+                TAF_WARNING_LOG(WUEPS_PID_TAF,
+                    "TAF_APS_RcvMmcServiceStatusInd_MsModifying_WaitSndcpModifyRspSuspend: invalid message!");
+                break;
+        }
+
+        /* 停止全流程状态机保护定时器*/
+        TAF_APS_StopTimer(TI_TAF_APS_MS_MODIFYING, ucPdpId);
+
+        /* 主状态迁移至TAF_APS_STA_ACTIVE */
+        TAF_APS_SetCurrPdpEntityMainFsmState(TAF_APS_STA_ACTIVE);
+
+        /* 退出子状态机 */
+        TAF_APS_QuitCurrSubFsm();
     }
-#endif
     else
     {
         TAF_WARNING_LOG(WUEPS_PID_TAF,

@@ -288,6 +288,7 @@ VOS_UINT32 NAS_MMC_IsNeedSndAsSuitableCellSelReq_AnyCellSearch(VOS_VOID);
 VOS_UINT32 NAS_MMC_IsNeedSndLmmSuitableCellSelReq_AnyCellSearch(VOS_VOID);
 #endif
 
+VOS_UINT32 NAS_MMC_IsNeedRejectAnycellSerach_AnyCellSearch(VOS_VOID);
 #if (VOS_OS_VER == VOS_WIN32)
 #pragma pack()
 #else

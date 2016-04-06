@@ -544,7 +544,8 @@ VOS_UINT32 TAF_SPM_GetClientIdWithStkMsg(
     if (PS_USIM_ENVELOPE_CNF == pstMsgHeader->ulMsgName)
     {
         pstEnvelope  = (PS_USIM_ENVELOPE_CNF_STRU *)pstMsg;
-        *pusClientId = (VOS_UINT16)pstEnvelope->ulSendPara;
+        /* 低16位为CliendId */
+       *pusClientId     = (VOS_UINT16)(pstEnvelope->ulSendPara & 0x0000ffff);
     }
     else
     {
@@ -555,8 +556,6 @@ VOS_UINT32 TAF_SPM_GetClientIdWithStkMsg(
 
     return VOS_TRUE;
 }
-
-
 VOS_UINT32 TAF_SPM_GetOpIdWithAppMsg(
     struct MsgCB                       *pstMsg,
     VOS_UINT8                          *pucOpId
@@ -644,7 +643,8 @@ VOS_UINT32 TAF_SPM_GetClientIdWithPbMsg(
         case PS_USIM_FDN_CHECK_CNF:
 
             pstCheckCnf     = (PB_FDN_CHECK_CNF_STRU*)pstMsg;
-           *pusClientId     = (VOS_UINT16)pstCheckCnf->ulSendPara;
+            /* 低16位为CliendId */
+           *pusClientId     = (VOS_UINT16)(pstCheckCnf->ulSendPara & 0x0000ffff);
             ulRet           = VOS_TRUE;
             break;
 
@@ -656,8 +656,6 @@ VOS_UINT32 TAF_SPM_GetClientIdWithPbMsg(
 
     return ulRet;
 }
-
-
 VOS_UINT32 TAF_SPM_GetClientIdWithTafMsg(
     struct MsgCB                       *pstMsg,
     VOS_UINT16                         *pusClientId
@@ -731,7 +729,7 @@ VOS_VOID TAF_SPM_SetImsSmsSupportedOnImsServer(
 )
 {
     TAF_SPM_GetSpmCtxAddr()->stDomainSelCtx.ucImsSmsSupported = ucImsSmsSupported;
-    
+
     return;
 }
 
@@ -779,8 +777,8 @@ VOS_VOID TAF_SPM_InitBufferCcMsgQueue(
 {
     VOS_UINT8                           i;
 
-    pstCcMsgQueue->ucCacheMsgNum = 0;   
-    
+    pstCcMsgQueue->ucCacheMsgNum = 0;
+
     for (i = 0; i < TAF_SPM_MAX_CC_MSG_QUEUE_NUM; i++)
     {
         PS_MEM_SET(&(pstCcMsgQueue->astMsgQueue[i]), 0, sizeof(TAF_SPM_CACHE_MSG_INFO_STRU));
@@ -803,7 +801,7 @@ VOS_VOID TAF_SPM_InitBufferSmsMsgQueue(
         PS_MEM_SET(&(pstSmsMsgQueue->astMsgQueue[i]), 0, sizeof(TAF_SPM_CACHE_MSG_INFO_STRU));
     }
 
-    PS_MEM_SET(&(pstSmsMsgQueue->aucReserve[0]), 0, sizeof(VOS_UINT8)*3);    
+    PS_MEM_SET(&(pstSmsMsgQueue->aucReserve[0]), 0, sizeof(VOS_UINT8)*3);
 }
 
 
@@ -834,10 +832,10 @@ VOS_VOID TAF_SPM_InitDomainSelCtx(TAF_SPM_DOMAIN_SEL_CTX_STRU *pstDomainSelCtx)
 
     /* 初始化上次PS服务状态 */
     pstDomainSelCtx->enLastPsStatus      = TAF_SPM_SERVICE_STATUS_NO_SERVICE;
-    
+
     /* set IMS SMS supported to TRUE by server */
     TAF_SPM_SetImsSmsSupportedOnImsServer(VOS_TRUE);
-    
+
     /* get address of buffer message queue */
     pstBufferMsgQueue = TAF_SPM_GetBufferMsgQueueAddr();
 
@@ -855,7 +853,7 @@ VOS_VOID TAF_SPM_InitDomainSelCtx(TAF_SPM_DOMAIN_SEL_CTX_STRU *pstDomainSelCtx)
 
     /* 初始化短信换域重拨缓存 */
     TAF_SPM_InitSmsRedialBuffer(&(pstDomainSelCtx->stRedialMsgQueue.stSmsMsgQueue));
-    
+
     /* subscript IMS register status */
     pstDomainSelCtx->ulSubscriptId = 0;
     IMSA_AddSubscription(WUEPS_PID_TAF, IMSA_SUBCRIBE_TYPE_NORMAL_REG, 0, &(pstDomainSelCtx->ulSubscriptId));
@@ -881,7 +879,7 @@ VOS_UINT8 TAF_SPM_IsCcMsgQueueFull(VOS_VOID)
 TAF_SPM_CACHE_MSG_INFO_STRU *TAF_SPM_GetSpecifiedIndexMessageAddrFromCcQueue(
     VOS_UINT8                           ucIndex
 )
-{   
+{
     return &(TAF_SPM_GetBufferMsgQueueAddr()->stCcMsgQueue.astMsgQueue[ucIndex]);
 }
 
@@ -907,13 +905,13 @@ VOS_UINT32 TAF_SPM_PutMessageToCcQueue(
     pstCacheMsgInfo = TAF_SPM_GetSpecifiedIndexMessageAddrFromCcQueue(ucCacheMsgNum);
 
     /* cache message */
-    pstCacheMsgInfo->stMsgEntry.ulEventType = ulEventType;    
+    pstCacheMsgInfo->stMsgEntry.ulEventType = ulEventType;
     PS_MEM_CPY(&(pstCacheMsgInfo->stMsgEntry.aucEntryMsgBuffer[0]), pstMsg, pstMsg->ulLength + VOS_MSG_HEAD_LENGTH);
 
     /* update number of cached messages */
     ucCacheMsgNum++;
     TAF_SPM_SetCcMsgQueueNum(ucCacheMsgNum);
-    
+
     return (VOS_TRUE);
 }
 VOS_VOID TAF_SPM_FreeSpecificedIndexMessageInCcQueue(
@@ -924,7 +922,7 @@ VOS_VOID TAF_SPM_FreeSpecificedIndexMessageInCcQueue(
     TAF_SPM_CACHE_MSG_INFO_STRU        *pstCachedMsgInfo = VOS_NULL_PTR;
 
     /* get the specified index message address */
-    pstCachedMsgInfo = TAF_SPM_GetSpecifiedIndexMessageAddrFromCcQueue(ucIndex);    
+    pstCachedMsgInfo = TAF_SPM_GetSpecifiedIndexMessageAddrFromCcQueue(ucIndex);
 
     /* get the cached message number */
     ucCacheMsgNum = TAF_SPM_GetCcMsgQueueNum();
@@ -934,13 +932,13 @@ VOS_VOID TAF_SPM_FreeSpecificedIndexMessageInCcQueue(
         /* update the cached message number */
         ucCacheMsgNum--;
         TAF_SPM_SetCcMsgQueueNum(ucCacheMsgNum);
-        
+
         /* by the way, move the cached messages forward */
-        PS_MEM_MOVE(pstCachedMsgInfo, 
+        PS_MEM_MOVE(pstCachedMsgInfo,
                     (pstCachedMsgInfo+1),
                     (ucCacheMsgNum - ucIndex) * sizeof(TAF_SPM_CACHE_MSG_INFO_STRU));
 
-        PS_MEM_SET((pstCachedMsgInfo + ucCacheMsgNum), 0, sizeof(TAF_SPM_CACHE_MSG_INFO_STRU));                    
+        PS_MEM_SET((pstCachedMsgInfo + ucCacheMsgNum), 0, sizeof(TAF_SPM_CACHE_MSG_INFO_STRU));
     }
 }
 
@@ -966,7 +964,7 @@ VOS_UINT8 TAF_SPM_IsSmsMsgQueueFull(VOS_VOID)
 TAF_SPM_CACHE_MSG_INFO_STRU *TAF_SPM_GetSpecifiedIndexMessageAddrFromSmsQueue(
     VOS_UINT8                           ucIndex
 )
-{   
+{
     return &(TAF_SPM_GetBufferMsgQueueAddr()->stSmsMsgQueue.astMsgQueue[ucIndex]);
 }
 
@@ -1003,7 +1001,7 @@ VOS_UINT32 TAF_SPM_PutMessageToSmsQueue(
     /* update number of cached messages */
     ucCacheMsgNum++;
     TAF_SPM_SetSmsMsgQueueNum(ucCacheMsgNum);
-    
+
     return (VOS_TRUE);
 }
 VOS_VOID TAF_SPM_FreeSpecificedIndexMessageInSmsQueue(
@@ -1014,20 +1012,20 @@ VOS_VOID TAF_SPM_FreeSpecificedIndexMessageInSmsQueue(
     TAF_SPM_CACHE_MSG_INFO_STRU        *pstCachedMsgInfo = VOS_NULL_PTR;
 
     /* get the first cached message in queue */
-    pstCachedMsgInfo = TAF_SPM_GetSpecifiedIndexMessageAddrFromSmsQueue(ucIndex);   
+    pstCachedMsgInfo = TAF_SPM_GetSpecifiedIndexMessageAddrFromSmsQueue(ucIndex);
 
     /* get the cached message number */
     ucCacheMsgNum = TAF_SPM_GetSmsMsgQueueNum();
-    
+
     if (0 < ucCacheMsgNum)
     {
         /* update the cached message number */
         ucCacheMsgNum--;
         TAF_SPM_SetSmsMsgQueueNum(ucCacheMsgNum);
-        
+
         /* by the way, move the cached messages forward */
-        PS_MEM_MOVE(pstCachedMsgInfo, 
-                    (pstCachedMsgInfo+1), 
+        PS_MEM_MOVE(pstCachedMsgInfo,
+                    (pstCachedMsgInfo+1),
                     (ucCacheMsgNum - ucIndex) * sizeof(TAF_SPM_CACHE_MSG_INFO_STRU));
 
         PS_MEM_SET((pstCachedMsgInfo + ucCacheMsgNum), 0, sizeof(TAF_SPM_CACHE_MSG_INFO_STRU));
@@ -1057,7 +1055,7 @@ VOS_UINT8 TAF_SPM_IsSsMsgQueueFull(VOS_VOID)
 TAF_SPM_CACHE_MSG_INFO_STRU *TAF_SPM_GetSpecifiedIndexMessageAddrFromSsQueue(
     VOS_UINT8                           ucIndex
 )
-{   
+{
     return &(TAF_SPM_GetBufferMsgQueueAddr()->stSsMsgQueue.astMsgQueue[ucIndex]);
 }
 
@@ -1087,13 +1085,13 @@ VOS_UINT32 TAF_SPM_PutMessageToSsQueue(
     pstCacheMsgInfo = TAF_SPM_GetSpecifiedIndexMessageAddrFromSsQueue(ucCacheMsgNum);
 
     /* cache message */
-    pstCacheMsgInfo->stMsgEntry.ulEventType = ulEventType;    
+    pstCacheMsgInfo->stMsgEntry.ulEventType = ulEventType;
     PS_MEM_CPY(&(pstCacheMsgInfo->stMsgEntry.aucEntryMsgBuffer[0]), pstMsg, pstMsg->ulLength + VOS_MSG_HEAD_LENGTH);
 
     /* update number of cached messages */
     ucCacheMsgNum++;
     TAF_SPM_SetSsMsgQueueNum(ucCacheMsgNum);
-    
+
     return (VOS_TRUE);
 }
 VOS_VOID TAF_SPM_FreeSpecificedIndexMessageInSsQueue(
@@ -1108,16 +1106,16 @@ VOS_VOID TAF_SPM_FreeSpecificedIndexMessageInSsQueue(
 
     /* get the cached message number */
     ucCacheMsgNum = TAF_SPM_GetSsMsgQueueNum();
-    
+
     if (0 < ucCacheMsgNum)
     {
         /* update the cached message number */
         ucCacheMsgNum--;
         TAF_SPM_SetSsMsgQueueNum(ucCacheMsgNum);
-        
+
         /* by the way, move the cached messages forward */
-        PS_MEM_MOVE(pstCachedMsgInfo, 
-                    (pstCachedMsgInfo+1), 
+        PS_MEM_MOVE(pstCachedMsgInfo,
+                    (pstCachedMsgInfo+1),
                     (ucCacheMsgNum - ucIndex) * sizeof(TAF_SPM_CACHE_MSG_INFO_STRU));
 
         PS_MEM_SET((pstCachedMsgInfo + ucCacheMsgNum), 0, sizeof(TAF_SPM_CACHE_MSG_INFO_STRU));
@@ -1140,7 +1138,7 @@ VOS_VOID TAF_SPM_InitCallRedialBuffer(
 
 
 VOS_UINT8 TAF_SPM_GetNumberOfCallRedialBuffer(VOS_VOID)
-{   
+{
     return (TAF_SPM_GetRedialMsgQueueAddr()->stCcMsgQueue.ucCacheMsgNum);
 }
 
@@ -1169,10 +1167,10 @@ TAF_SPM_ENTRY_MSG_STRU *TAF_SPM_GetSpecificedIndexFromCallRedialBuffer(VOS_UINT8
 }
 
 
-VOS_UINT32 TAF_SPM_PutMsgIntoCallRedialBuffer(    
+VOS_UINT32 TAF_SPM_PutMsgIntoCallRedialBuffer(
     VOS_UINT32                          ulEventType,
     struct MsgCB                       *pstMsg
-)   
+)
 {
     TAF_SPM_ENTRY_MSG_STRU             *pstCacheMsgInfo = VOS_NULL_PTR;
     VOS_UINT8                           ucCacheMsgNum;
@@ -1190,16 +1188,16 @@ VOS_UINT32 TAF_SPM_PutMsgIntoCallRedialBuffer(
     pstCacheMsgInfo = TAF_SPM_GetSpecificedIndexFromCallRedialBuffer(ucCacheMsgNum);
 
     /* 缓存消息 */
-    pstCacheMsgInfo->ulEventType = ulEventType;    
-    PS_MEM_CPY(&(pstCacheMsgInfo->aucEntryMsgBuffer[0]), 
-               pstMsg, 
+    pstCacheMsgInfo->ulEventType = ulEventType;
+    PS_MEM_CPY(&(pstCacheMsgInfo->aucEntryMsgBuffer[0]),
+               pstMsg,
                pstMsg->ulLength + VOS_MSG_HEAD_LENGTH);
 
     /* update number of cached messages */
     ucCacheMsgNum++;
     TAF_SPM_SetNumberOfCallRedialBuffer(ucCacheMsgNum);
-    
-    return (VOS_TRUE);    
+
+    return (VOS_TRUE);
 }
 VOS_VOID TAF_SPM_FreeSpecificedIndexCallRedialBuffer(VOS_UINT8 ucIndex)
 {
@@ -1207,7 +1205,7 @@ VOS_VOID TAF_SPM_FreeSpecificedIndexCallRedialBuffer(VOS_UINT8 ucIndex)
     TAF_SPM_ENTRY_MSG_STRU             *pstCachedMsgInfo = VOS_NULL_PTR;
 
     /* get the specified index message address */
-    pstCachedMsgInfo = TAF_SPM_GetSpecificedIndexFromCallRedialBuffer(ucIndex);    
+    pstCachedMsgInfo = TAF_SPM_GetSpecificedIndexFromCallRedialBuffer(ucIndex);
 
     /* get the cached message number */
     ucCacheMsgNum = TAF_SPM_GetNumberOfCallRedialBuffer();
@@ -1217,9 +1215,9 @@ VOS_VOID TAF_SPM_FreeSpecificedIndexCallRedialBuffer(VOS_UINT8 ucIndex)
         /* update the cached message number */
         ucCacheMsgNum--;
         TAF_SPM_SetNumberOfCallRedialBuffer(ucCacheMsgNum);
-        
+
         /* by the way, move the cached messages forward */
-        PS_MEM_MOVE(pstCachedMsgInfo, 
+        PS_MEM_MOVE(pstCachedMsgInfo,
                     (pstCachedMsgInfo+1),
                     (ucCacheMsgNum - ucIndex) * sizeof(TAF_SPM_ENTRY_MSG_STRU));
 
@@ -1266,10 +1264,10 @@ TAF_SPM_ENTRY_MSG_STRU *TAF_SPM_GetSpecificedIndexFromSmsRedialBuffer(VOS_UINT8 
 }
 
 
-VOS_UINT32 TAF_SPM_PutMsgIntoSmsRedialBuffer(    
+VOS_UINT32 TAF_SPM_PutMsgIntoSmsRedialBuffer(
     VOS_UINT32                          ulEventType,
     struct MsgCB                       *pstMsg
-)   
+)
 {
     TAF_SPM_ENTRY_MSG_STRU             *pstCacheMsgInfo = VOS_NULL_PTR;
     VOS_UINT8                           ucCacheMsgNum;
@@ -1290,16 +1288,16 @@ VOS_UINT32 TAF_SPM_PutMsgIntoSmsRedialBuffer(
     pstCacheMsgInfo = TAF_SPM_GetSpecificedIndexFromSmsRedialBuffer(ucCacheMsgNum);
 
     /* 缓存消息 */
-    pstCacheMsgInfo->ulEventType = ulEventType;    
-    PS_MEM_CPY(&(pstCacheMsgInfo->aucEntryMsgBuffer[0]), 
-               pstMsg, 
+    pstCacheMsgInfo->ulEventType = ulEventType;
+    PS_MEM_CPY(&(pstCacheMsgInfo->aucEntryMsgBuffer[0]),
+               pstMsg,
                pstMsg->ulLength + VOS_MSG_HEAD_LENGTH);
 
     /* update number of cached messages */
     ucCacheMsgNum++;
     TAF_SPM_SetNumberOfSmsRedialBuffer(ucCacheMsgNum);
-    
-    return (VOS_TRUE);        
+
+    return (VOS_TRUE);
 }
 VOS_VOID TAF_SPM_FreeSpecificedIndexSmsRedialBuffer(VOS_UINT8 ucIndex)
 {
@@ -1307,7 +1305,7 @@ VOS_VOID TAF_SPM_FreeSpecificedIndexSmsRedialBuffer(VOS_UINT8 ucIndex)
     TAF_SPM_ENTRY_MSG_STRU             *pstCachedMsgInfo = VOS_NULL_PTR;
 
     /* get the specified index message address */
-    pstCachedMsgInfo = TAF_SPM_GetSpecificedIndexFromSmsRedialBuffer(ucIndex);    
+    pstCachedMsgInfo = TAF_SPM_GetSpecificedIndexFromSmsRedialBuffer(ucIndex);
 
     /* get the cached message number */
     ucCacheMsgNum = TAF_SPM_GetNumberOfSmsRedialBuffer();
@@ -1317,15 +1315,54 @@ VOS_VOID TAF_SPM_FreeSpecificedIndexSmsRedialBuffer(VOS_UINT8 ucIndex)
         /* update the cached message number */
         ucCacheMsgNum--;
         TAF_SPM_SetNumberOfSmsRedialBuffer(ucCacheMsgNum);
-        
+
         /* by the way, move the cached messages forward */
-        PS_MEM_MOVE(pstCachedMsgInfo, 
+        PS_MEM_MOVE(pstCachedMsgInfo,
                     (pstCachedMsgInfo+1),
                     (ucCacheMsgNum - ucIndex) * sizeof(TAF_SPM_ENTRY_MSG_STRU));
 
         PS_MEM_SET((pstCachedMsgInfo + ucCacheMsgNum), 0, sizeof(TAF_SPM_ENTRY_MSG_STRU));
     }
 }
+
+
+TAF_SPM_CALL_ECONF_INFO_STRU* TAF_SPM_GetCallEconfInfoAddr(VOS_VOID)
+{
+    return &(TAF_SPM_GetSpmCtxAddr()->stEconfInfo);
+}
+
+
+VOS_VOID TAF_SPM_InitEconfInfo(VOS_VOID)
+{
+    TAF_SPM_CALL_ECONF_INFO_STRU       *pstCallEconfAddr = VOS_NULL_PTR;
+    VOS_UINT32                          ulIndex;
+
+    pstCallEconfAddr = TAF_SPM_GetCallEconfInfoAddr();
+
+    PS_MEM_SET(pstCallEconfAddr, 0x0, sizeof(TAF_SPM_CALL_ECONF_INFO_STRU));
+
+    for (ulIndex = 0; ulIndex < TAF_CALL_MAX_ECONF_CALLED_NUM; ulIndex++)
+    {
+        pstCallEconfAddr->astEconfCheckInfo[ulIndex].enCheckRslt    = TAF_CS_CAUSE_SUCCESS;
+        pstCallEconfAddr->astEconfCheckInfo[ulIndex].ulCheckCnfFlag = VOS_FALSE;
+    }
+
+    return;
+}
+
+
+VOS_UINT32 TAF_SPM_GetEventTypeFromCurrEntityFsmEntryMsg(VOS_VOID)
+{
+    MN_APP_REQ_MSG_STRU                *pstAppMsg   = VOS_NULL_PTR;
+    TAF_SPM_ENTRY_MSG_STRU             *pstEntryMsg = VOS_NULL_PTR;
+
+    pstEntryMsg         = TAF_SPM_GetCurrEntityFsmEntryMsgAddr();
+    pstAppMsg           = (MN_APP_REQ_MSG_STRU *)pstEntryMsg->aucEntryMsgBuffer;
+
+    return TAF_BuildEventType(pstAppMsg->ulSenderPid, pstAppMsg->usMsgName);
+}
+
+
 #endif
 
 #ifdef __cplusplus

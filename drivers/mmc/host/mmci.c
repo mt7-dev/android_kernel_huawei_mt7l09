@@ -36,10 +36,7 @@
 #include <linux/types.h>
 #include <linux/pinctrl/consumer.h>
 
-#include <asm/div64.h>
 #include <asm/io.h>
-#include <asm/sizes.h>
-
 #include "mmci.h"
 
 #define DRIVER_NAME "mmci-pl18x"
@@ -908,9 +905,9 @@ static int mmci_pio_read(struct mmci_host *host, char *buffer, unsigned int rema
 		 */
 		if (unlikely(count & 0x3)) {
 			if (count < 4) {
-				unsigned char buf[4];
+				unsigned char buf[4] = {0};
 				ioread32_rep(base + MMCIFIFO, buf, 1);
-				memcpy(ptr, buf, count);
+				memcpy((void *)ptr,(void const *) buf, count);
 			} else {
 				ioread32_rep(base + MMCIFIFO, ptr, count >> 2);
 				count &= ~0x3;
@@ -1283,7 +1280,7 @@ static void mmci_dt_populate_generic_pdata(struct device_node *np,
 	else
 		pdata->cd_invert = false;
 
-	of_property_read_u32(np, "max-frequency", &pdata->f_max);
+	(void)of_property_read_u32(np, "max-frequency", &pdata->f_max);
 	if (!pdata->f_max)
 		pr_warn("%s has no 'max-frequency' property\n", np->full_name);
 
@@ -1292,7 +1289,7 @@ static void mmci_dt_populate_generic_pdata(struct device_node *np,
 	if (of_get_property(np, "mmc-cap-sd-highspeed", NULL))
 		pdata->capabilities |= MMC_CAP_SD_HIGHSPEED;
 
-	of_property_read_u32(np, "bus-width", &bus_width);
+	(void)of_property_read_u32(np, "bus-width", &bus_width);
 	switch (bus_width) {
 	case 0 :
 		/* No bus-width supplied. */
@@ -1693,7 +1690,7 @@ static int mmci_runtime_resume(struct device *dev)
 
 	if (mmc) {
 		struct mmci_host *host = mmc_priv(mmc);
-		clk_prepare_enable(host->clk);
+		(void)clk_prepare_enable(host->clk);
 	}
 
 	return 0;

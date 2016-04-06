@@ -1673,71 +1673,7 @@ extern unsigned long sun4v_vintr_set_target(unsigned long dev_handle,
 					    unsigned long cpuid);
 #endif
 
-/* PCI IO services.
- *
- * See the terminology descriptions in the device interrupt services
- * section above as those apply here too.  Here are terminology
- * definitions specific to these PCI IO services:
- *
- *	tsbnum		TSB number.  Indentifies which io-tsb is used.
- *			For this version of the specification, tsbnum
- *			must be zero.
- *
- *	tsbindex	TSB index.  Identifies which entry in the TSB
- *			is used.  The first entry is zero.
- *
- *	tsbid		A 64-bit aligned data structure which contains
- *			a tsbnum and a tsbindex.  Bits 63:32 contain the
- *			tsbnum and bits 31:00 contain the tsbindex.
- *
- *			Use the HV_PCI_TSBID() macro to construct such
- * 			values.
- *
- *	io_attributes	IO attributes for IOMMU mappings.  One of more
- *			of the attritbute bits are stores in a 64-bit
- *			value.  The values are defined below.
- *
- *	r_addr		64-bit real address
- *
- *	pci_device	PCI device address.  A PCI device address identifies
- *			a specific device on a specific PCI bus segment.
- *			A PCI device address ia a 32-bit unsigned integer
- *			with the following format:
- *
- *				00000000.bbbbbbbb.dddddfff.00000000
- *
- *			Use the HV_PCI_DEVICE_BUILD() macro to construct
- *			such values.
- *
- *	pci_config_offset
- *			PCI configureation space offset.  For conventional
- *			PCI a value between 0 and 255.  For extended
- *			configuration space, a value between 0 and 4095.
- *
- *			Note: For PCI configuration space accesses, the offset
- *			      must be aligned to the access size.
- *
- *	error_flag	A return value which specifies if the action succeeded
- *			or failed.  0 means no error, non-0 means some error
- *			occurred while performing the service.
- *
- *	io_sync_direction
- *			Direction definition for pci_dma_sync(), defined
- *			below in HV_PCI_SYNC_*.
- *
- *	io_page_list	A list of io_page_addresses, an io_page_address is
- *			a real address.
- *
- *	io_page_list_p	A pointer to an io_page_list.
- *
- *	"size based byte swap" - Some functions do size based byte swapping
- *				 which allows sw to access pointers and
- *				 counters in native form when the processor
- *				 operates in a different endianness than the
- *				 IO bus.  Size-based byte swapping converts a
- *				 multi-byte field between big-endian and
- *				 little-endian format.
- */
+
 
 #define HV_PCI_MAP_ATTR_READ		0x01
 #define HV_PCI_MAP_ATTR_WRITE		0x02

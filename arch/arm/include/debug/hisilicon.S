@@ -22,6 +22,12 @@
 #define HI3630_UART6_PHYS_BASE	0xfff32000
 #define HI3630_UART6_VIRT_BASE	0xfdf32000
 
+#define HI6620_UART0_PHYS_BASE	0xf7110000
+#define HI6620_UART0_VIRT_BASE	0xf7d10000
+
+#define HI6210_UART0_PHYS_BASE	0xf8015000
+#define HI6210_UART0_VIRT_BASE	0xf8c15000
+
 #if defined(CONFIG_SERIAL_AMBA_PL010) || defined(CONFIG_SERIAL_AMBA_PL011)
 #include <asm/hardware/debug-pl01x.S>
 
@@ -47,6 +53,18 @@
 		.macro	addruart,rp,rv,tmp
 		ldr	\rp, =HI3716_UART0_PHYS_BASE
 		ldr	\rv, =HI3716_UART0_VIRT_BASE
+		.endm
+
+#elif defined(CONFIG_DEBUG_HI6620_UART0)
+		.macro	addruart,rp,rv,tmp
+		ldr	\rp, =HI6620_UART0_PHYS_BASE
+		ldr	\rv, =HI6620_UART0_VIRT_BASE
+		.endm
+
+#elif defined(CONFIG_DEBUG_HI6210_UART0)
+		.macro	addruart,rp,rv,tmp
+		ldr	\rp, =HI6210_UART0_PHYS_BASE
+		ldr	\rv, =HI6210_UART0_VIRT_BASE
 		.endm
 
 #endif

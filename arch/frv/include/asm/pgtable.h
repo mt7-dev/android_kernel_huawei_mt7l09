@@ -89,39 +89,7 @@ extern unsigned long empty_zero_page;
 #define ZERO_PAGE(vaddr)	virt_to_page(empty_zero_page)
 #endif
 
-/*
- * we use 2-level page tables, folding the PMD (mid-level table) into the PGE (top-level entry)
- * [see Documentation/frv/mmu-layout.txt]
- *
- * Page Directory:
- *  - Size: 16KB
- *  - 64 PGEs per PGD
- *  - Each PGE holds 1 PUD and covers 64MB
- *
- * Page Upper Directory:
- *  - Size: 256B
- *  - 1 PUE per PUD
- *  - Each PUE holds 1 PMD and covers 64MB
- *
- * Page Mid-Level Directory
- *  - Size: 256B
- *  - 1 PME per PMD
- *  - Each PME holds 64 STEs, all of which point to separate chunks of the same Page Table
- *  - All STEs are instantiated at the same time
- *
- * Page Table
- *  - Size: 16KB
- *  - 4096 PTEs per PT
- *  - Each Linux PT is subdivided into 64 FR451 PT's, each of which holds 64 entries
- *
- * Pages
- *  - Size: 4KB
- *
- * total PTEs
- *	= 1 PML4E * 64 PGEs * 1 PUEs * 1 PMEs * 4096 PTEs
- *	= 1 PML4E * 64 PGEs * 64 STEs * 64 PTEs/FR451-PT
- *	= 262144 (or 256 * 1024)
- */
+
 #define PGDIR_SHIFT		26
 #define PGDIR_SIZE		(1UL << PGDIR_SHIFT)
 #define PGDIR_MASK		(~(PGDIR_SIZE - 1))

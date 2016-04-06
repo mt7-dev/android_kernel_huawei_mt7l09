@@ -8,7 +8,7 @@
 #endif
 
 #include "osl_types.h"
-
+#include <product_config.h>
 #ifdef ENABLE_BUILD_UTRACE
 
 s32 bsp_utrace_init(void);

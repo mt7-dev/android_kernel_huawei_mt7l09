@@ -177,6 +177,23 @@ VOS_VOID TAF_MTA_RcvRrcJamDetectInd(
 
 VOS_VOID TAF_MTA_RcvTiWaitGrrSetJamDetectExpired(VOS_VOID *pMsg);
 
+VOS_VOID TAF_MTA_RcvAtSetGFreqLockReq(
+    VOS_VOID                           *pMsg
+);
+
+VOS_VOID TAF_MTA_RcvGasSetFreqLockCnf(
+    VOS_VOID                           *pMsg
+);
+
+VOS_UINT32 TAF_MTA_SndGasSetFreqLockReq(
+    AT_MTA_SET_GSM_FREQLOCK_REQ_STRU   *pstSetGFreqLockReq
+);
+
+VOS_VOID TAF_MTA_RcvTiWaitGasSetGFreqLockExpired(
+    VOS_VOID                           *pMsg
+);
+
+
 #if ((VOS_OS_VER == VOS_WIN32) || (VOS_OS_VER == VOS_NUCLEUS))
 #pragma pack()
 #else

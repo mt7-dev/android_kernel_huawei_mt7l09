@@ -1,27 +1,4 @@
-/*
- * File:	sta_h54.136
- *
- * Abstract:	This file contains memory image 'fw_image'.
- *
- * Contents:	Total size of the memory image: 81742 bytes.
- *		Total number of blocks: 4 blocks.
- *		Block  1 : load address 00000060, 388 bytes.
- *		Block  2 : load address 00000C16, 11278 bytes.
- *		Block  3 : load address 001E3824, 21726 bytes.
- *		Block  4 : load address 001F4000, 48350 bytes.
- *
- * Identity:	component id: 31 (variant 4) version 1.36
- *
- * Compatibility:
- *		supplying interface 4 (variant 4) : 1 - 2
- *		acting on interface 1 (variant 7) : 3 - 3
- *		acting on interface 1 (variant 8) : 1 - 1
- *		acting on interface 2 (variant 4) : 1 - 2
- *
- * Generated:	by g:\fw\fupu3.exe version 4.26
- *
- * Commandline:	g:\fw\fupu3.exe /f=4 /n=fw_image /i=r4013600.hex
- */
+
 
 
 #include "hcfcfg.h"				// to get hcf_16 etc defined as well as

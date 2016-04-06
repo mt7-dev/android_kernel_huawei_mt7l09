@@ -88,6 +88,15 @@ unsigned long get_wchan(struct task_struct *p);
 #define KSTK_ESP(tsk)	task_pt_regs(tsk)->ARM_sp
 
 /*
+ * alternative hardware name
+ */
+#ifdef CONFIG_HISI_ALTER_HARDWARE_NAME
+#define MAX_HARDWARE_NAME 128
+extern char alter_hardware_name[MAX_HARDWARE_NAME];
+#endif
+
+
+/*
  * Prefetching support - only ARMv5.
  */
 #if __LINUX_ARM_ARCH__ >= 5

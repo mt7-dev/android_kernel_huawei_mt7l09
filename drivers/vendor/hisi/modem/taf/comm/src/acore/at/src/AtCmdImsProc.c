@@ -6,6 +6,8 @@
 #include "AtCmdImsProc.h"
 #include "ATCmdProc.h"
 
+#include "AtDataProc.h"
+
 #ifdef __cplusplus
 #if __cplusplus
 extern "C" {
@@ -15,9 +17,9 @@ extern "C" {
 /*****************************************************************************
     协议栈打印打点方式下的.C文件宏定义
 *****************************************************************************/
-/*lint -e767*/
+/*lint -e767 -e960*/
 #define    THIS_FILE_ID                 PS_FILE_ID_AT_CMD_IMS_PROC_C
-/*lint +e767*/
+/*lint +e767 +e960*/
 
 #if (FEATURE_ON == FEATURE_IMS)
 
@@ -37,6 +39,9 @@ const AT_IMSA_MSG_PRO_FUNC_STRU g_astAtImsaMsgTab[]=
     {ID_IMSA_AT_CIREPH_IND,                 AT_RcvImsaCirephInd},
     {ID_IMSA_AT_CIREPI_IND,                 AT_RcvImsaCirepiInd},
     {ID_IMSA_AT_CCWAI_SET_CNF,              AT_RcvImsaCcwaiSetCnf},
+    {ID_IMSA_AT_VT_PDP_ACTIVATE_IND,        AT_RcvImsaVtPdpActInd},
+    {ID_IMSA_AT_VT_PDP_DEACTIVATE_IND,      AT_RcvImsaVtPdpDeactInd},
+    {ID_IMSA_AT_MT_STATES_IND,              AT_RcvImsaMtStateInd},
 };
 
 
@@ -559,9 +564,264 @@ VOS_UINT32 AT_RcvImsaCcwaiSetCnf(VOS_VOID * pMsg)
 
     return VOS_OK;
 }
+VOS_VOID AT_RcvImsaVtIpv4PdpActInd(
+    VOS_UINT8                           ucIndex,
+    IMSA_AT_VT_PDP_ACTIVATE_IND_STRU   *pstPdpActInd
+)
+{
+    VOS_UINT32                          ulIPAddr;                               /* IP 地址，网侧分配*/
+    VOS_UINT32                          ulSubNetMask;                           /* 子网掩码地址，根据IP地址计算*/
+    VOS_UINT32                          ulGateWay;                              /* 网关地址，也是本DHCP Server的地址*/
+    VOS_UINT32                          ulPrimDNS;                              /* 主 DNS地址，网侧分配*/
+    VOS_UINT32                          ulSecDNS;                               /* 次 DNS地址，网侧分配*/
+
+    ulIPAddr     = AT_GetLanAddr32(pstPdpActInd->stPdpAddr.aucIpv4Addr);
+    ulSubNetMask = AT_DHCPGetIPMask(ulIPAddr);
+    ulGateWay    = AT_DHCPGetGateWay(ulIPAddr, ulSubNetMask);
+    ulPrimDNS    = 0;
+    ulSecDNS     = 0;
+
+    if (pstPdpActInd->stIpv4Dns.bitOpPrimDnsAddr)
+    {
+        ulPrimDNS = AT_GetLanAddr32(pstPdpActInd->stIpv4Dns.aucPrimDnsAddr);
+    }
+
+    if (pstPdpActInd->stIpv4Dns.bitOpSecDnsAddr)
+    {
+        ulSecDNS = AT_GetLanAddr32(pstPdpActInd->stIpv4Dns.aucSecDnsAddr);
+    }
+
+    gstAtSendData.usBufLen = (VOS_UINT16)At_sprintf(AT_CMD_MAX_LEN,
+                                                    (VOS_CHAR *)pgucAtSndCodeAddr,
+                                                    (VOS_CHAR *)pgucAtSndCodeAddr,
+                                                    "%s^VTDCONNV4:%08X,%08X,%08X,%08X,%08X,%08X%s",
+                                                    gaucAtCrLf,
+                                                    VOS_HTONL(ulIPAddr),
+                                                    VOS_HTONL(ulSubNetMask),
+                                                    VOS_HTONL(ulGateWay),
+                                                    VOS_HTONL(ulGateWay),
+                                                    VOS_HTONL(ulPrimDNS),
+                                                    VOS_HTONL(ulSecDNS),
+                                                    gaucAtCrLf);
+
+    At_SendResultData(ucIndex, pgucAtSndCodeAddr, gstAtSendData.usBufLen);
+}
+VOS_VOID AT_RcvImsaVtIpv6PdpActInd(
+    VOS_UINT8                           ucIndex,
+    IMSA_AT_VT_PDP_ACTIVATE_IND_STRU   *pstPdpActInd
+)
+{
+    VOS_UINT16                          usLength;
+    VOS_UINT8                           aucIpv6AddrStr[TAF_MAX_IPV6_ADDR_COLON_STR_LEN];
+    VOS_UINT8                           aucInvalidIpv6Addr[TAF_IPV6_ADDR_LEN];
+
+    usLength     = 0;
+    PS_MEM_SET(aucIpv6AddrStr, 0x00, (TAF_MAX_IPV6_ADDR_COLON_STR_LEN));
+    PS_MEM_SET(aucInvalidIpv6Addr, 0x00, TAF_IPV6_ADDR_LEN);
+
+    usLength  += (VOS_UINT16)At_sprintf(AT_CMD_MAX_LEN, (VOS_CHAR*)pgucAtSndCodeAddr,
+                           (VOS_CHAR*)pgucAtSndCodeAddr + usLength, "%s^VTDCONNV6:", gaucAtCrLf);
+
+    /* 填写IPV6地址 */
+    AT_ConvertIpv6AddrToCompressedStr(aucIpv6AddrStr,
+                                      pstPdpActInd->stPdpAddr.aucIpv6Addr,
+                                      TAF_IPV6_STR_RFC2373_TOKENS);
+
+    usLength += (VOS_UINT16)At_sprintf(AT_CMD_MAX_LEN, (VOS_CHAR*)pgucAtSndCodeAddr,
+                          (VOS_CHAR*)pgucAtSndCodeAddr + usLength, "%s", aucIpv6AddrStr);
+
+    /* 填写IPV6掩码, 该字段填全0 */
+    AT_ConvertIpv6AddrToCompressedStr(aucIpv6AddrStr,
+                                      aucInvalidIpv6Addr,
+                                      TAF_IPV6_STR_RFC2373_TOKENS);
+    usLength += (VOS_UINT16)At_sprintf(AT_CMD_MAX_LEN, (VOS_CHAR*)pgucAtSndCodeAddr,
+                          (VOS_CHAR*)pgucAtSndCodeAddr + usLength, ",%s", aucIpv6AddrStr);
+
+    /* 填写IPV6网关, 该字段填全0 */
+    AT_ConvertIpv6AddrToCompressedStr(aucIpv6AddrStr,
+                                      aucInvalidIpv6Addr,
+                                      TAF_IPV6_STR_RFC2373_TOKENS);
+    usLength += (VOS_UINT16)At_sprintf(AT_CMD_MAX_LEN, (VOS_CHAR*)pgucAtSndCodeAddr,
+                          (VOS_CHAR*)pgucAtSndCodeAddr + usLength, ",%s", aucIpv6AddrStr);
+
+    /* 填写DHCP IPV6, 该字段填全0 */
+    AT_ConvertIpv6AddrToCompressedStr(aucIpv6AddrStr,
+                                      aucInvalidIpv6Addr,
+                                      TAF_IPV6_STR_RFC2373_TOKENS);
+    usLength += (VOS_UINT16)At_sprintf(AT_CMD_MAX_LEN, (VOS_CHAR*)pgucAtSndCodeAddr,
+                          (VOS_CHAR*)pgucAtSndCodeAddr + usLength, ",%s", aucIpv6AddrStr);
+
+    /* 填写IPV6 Primary DNS */
+    AT_ConvertIpv6AddrToCompressedStr(aucIpv6AddrStr,
+                                      pstPdpActInd->stIpv6Dns.aucPrimDnsAddr,
+                                      TAF_IPV6_STR_RFC2373_TOKENS);
+    usLength += (VOS_UINT16)At_sprintf(AT_CMD_MAX_LEN, (VOS_CHAR*)pgucAtSndCodeAddr,
+                          (VOS_CHAR*)pgucAtSndCodeAddr + usLength, ",%s", aucIpv6AddrStr);
+
+    /* 填写IPV6 Secondary DNS */
+    AT_ConvertIpv6AddrToCompressedStr(aucIpv6AddrStr,
+                                      pstPdpActInd->stIpv6Dns.aucSecDnsAddr,
+                                      TAF_IPV6_STR_RFC2373_TOKENS);
+    usLength += (VOS_UINT16)At_sprintf(AT_CMD_MAX_LEN, (VOS_CHAR*)pgucAtSndCodeAddr,
+                          (VOS_CHAR*)pgucAtSndCodeAddr + usLength, ",%s", aucIpv6AddrStr);
+
+
+    usLength += (VOS_UINT16)At_sprintf(AT_CMD_MAX_LEN, (VOS_CHAR*)pgucAtSndCodeAddr,
+                          (VOS_CHAR*)pgucAtSndCodeAddr + usLength, "%s", gaucAtCrLf);
+
+
+    gstAtSendData.usBufLen = usLength;
+
+    At_SendResultData(ucIndex, pgucAtSndCodeAddr, gstAtSendData.usBufLen);
+
+}
+
+
+VOS_VOID AT_RcvImsaVtIpv4v6PdpActInd(
+    VOS_UINT8                           ucIndex,
+    IMSA_AT_VT_PDP_ACTIVATE_IND_STRU   *pstPdpActInd
+)
+{
+    AT_RcvImsaVtIpv4PdpActInd(ucIndex, pstPdpActInd);
+    AT_RcvImsaVtIpv6PdpActInd(ucIndex, pstPdpActInd);
+}
+
+
+VOS_UINT32 AT_RcvImsaVtPdpActInd(VOS_VOID * pMsg)
+{
+    /* 定义局部变量 */
+    IMSA_AT_VT_PDP_ACTIVATE_IND_STRU   *pstPdpActInd;
+    VOS_UINT8                           ucIndex;
+
+    /* 初始化消息变量 */
+    ucIndex     = 0;
+    pstPdpActInd = (IMSA_AT_VT_PDP_ACTIVATE_IND_STRU *)pMsg;
+
+    /* 通过ClientId获取ucIndex */
+    if ( AT_FAILURE == At_ClientIdToUserId(pstPdpActInd->usClientId, &ucIndex) )
+    {
+        AT_WARN_LOG("AT_RcvImsaVtPdpActInd: WARNING:AT INDEX NOT FOUND!");
+        return VOS_ERR;
+    }
+
+    switch(pstPdpActInd->stPdpAddr.enPdpType)
+    {
+        case TAF_PDP_IPV4:
+            AT_RcvImsaVtIpv4PdpActInd(ucIndex, pstPdpActInd);
+            break;
+        case TAF_PDP_IPV6:
+            AT_RcvImsaVtIpv6PdpActInd(ucIndex, pstPdpActInd);
+            break;
+        case TAF_PDP_IPV4V6:
+            AT_RcvImsaVtIpv4v6PdpActInd(ucIndex, pstPdpActInd);
+            break;
+        default:
+            return VOS_ERR;
+    }
+
+    return VOS_OK;
+}
+VOS_UINT32 AT_RcvImsaVtPdpDeactInd(VOS_VOID * pMsg)
+{
+    /* 定义局部变量 */
+    IMSA_AT_VT_PDP_DEACTIVATE_IND_STRU *pstPdpDeactInd;
+    VOS_UINT8                           ucIndex;
+    VOS_UINT16                          usLength;
+
+    /* 初始化消息变量 */
+    usLength       = 0;
+    ucIndex        = 0;
+    pstPdpDeactInd = (IMSA_AT_VT_PDP_DEACTIVATE_IND_STRU *)pMsg;
+
+    /* 通过ClientId获取ucIndex */
+    if ( AT_FAILURE == At_ClientIdToUserId(pstPdpDeactInd->usClientId, &ucIndex) )
+    {
+        AT_WARN_LOG("AT_RcvImsaVtPdpDeactInd: WARNING:AT INDEX NOT FOUND!");
+        return VOS_ERR;
+    }
+
+    switch(pstPdpDeactInd->enPdpType)
+    {
+        case TAF_PDP_IPV4:
+            usLength += (VOS_UINT16)At_sprintf(AT_CMD_MAX_LEN,
+                                               (VOS_CHAR *)pgucAtSndCodeAddr,
+                                               (VOS_CHAR *)pgucAtSndCodeAddr + usLength,
+                                               "%s^VTDENDV4%s",
+                                               gaucAtCrLf,
+                                               gaucAtCrLf);
+            break;
+        case TAF_PDP_IPV6:
+            usLength += (VOS_UINT16)At_sprintf(AT_CMD_MAX_LEN,
+                                                            (VOS_CHAR *)pgucAtSndCodeAddr,
+                                                            (VOS_CHAR *)pgucAtSndCodeAddr + usLength,
+                                                            "%s^VTDENDV6%s",
+                                                            gaucAtCrLf,
+                                                            gaucAtCrLf);
+            break;
+        case TAF_PDP_IPV4V6:
+            usLength += (VOS_UINT16)At_sprintf(AT_CMD_MAX_LEN,
+                                                            (VOS_CHAR *)pgucAtSndCodeAddr,
+                                                            (VOS_CHAR *)pgucAtSndCodeAddr + usLength,
+                                                            "%s^VTDENDV4%s",
+                                                            gaucAtCrLf,
+                                                            gaucAtCrLf);
+
+            usLength += (VOS_UINT16)At_sprintf(AT_CMD_MAX_LEN,
+                                                            (VOS_CHAR *)pgucAtSndCodeAddr,
+                                                            (VOS_CHAR *)pgucAtSndCodeAddr + usLength,
+                                                            "%s^VTDENDV6%s",
+                                                            gaucAtCrLf,
+                                                            gaucAtCrLf);
+
+            break;
+        default:
+            return VOS_ERR;
+    }
+
+    gstAtSendData.usBufLen = usLength;
+
+    At_SendResultData(ucIndex, pgucAtSndCodeAddr, gstAtSendData.usBufLen);
+
+    return VOS_OK;
+
+}
+VOS_UINT32 AT_RcvImsaMtStateInd(VOS_VOID * pMsg)
+{
+    /* 定义局部变量 */
+    IMSA_AT_MT_STATES_IND_STRU          *pstMtStatusInd;
+    VOS_UINT8                           ucIndex;
+    VOS_CHAR                            acString[AT_IMSA_CALL_ASCII_NUM_MAX_LENGTH + 1];
+
+    /* 初始化消息变量 */
+    ucIndex     = 0;
+    pstMtStatusInd  = (IMSA_AT_MT_STATES_IND_STRU*)pMsg;
+
+    /* 通过ClientId获取ucIndex */
+    if ( AT_FAILURE == At_ClientIdToUserId(pstMtStatusInd->usClientId, &ucIndex) )
+    {
+        AT_WARN_LOG("AT_RcvImsaImpuSetCnf: WARNING:AT INDEX NOT FOUND!");
+        return VOS_ERR;
+    }
+
+    VOS_MemSet(acString, 0, sizeof(acString));
+    VOS_MemCpy(acString, pstMtStatusInd->aucAsciiCallNum, AT_IMSA_CALL_ASCII_NUM_MAX_LENGTH);
+
+    gstAtSendData.usBufLen= (VOS_UINT16)At_sprintf(AT_CMD_MAX_LEN,
+                                                   (VOS_CHAR *)pgucAtSndCodeAddr,
+                                                   (VOS_CHAR *)pgucAtSndCodeAddr,
+                                                   "%s^IMSMTRPT: %s,%d,%d%s",
+                                                   gaucAtCrLf,
+                                                   acString,
+                                                   pstMtStatusInd->ucMtStatus,
+                                                   pstMtStatusInd->ulCauseCode,
+                                                   gaucAtCrLf);
+
+    At_SendResultData(ucIndex, pgucAtSndCodeAddr, gstAtSendData.usBufLen);
+
+    return VOS_OK;
+}
 
 #endif
-
 
 #ifdef __cplusplus
     #if __cplusplus

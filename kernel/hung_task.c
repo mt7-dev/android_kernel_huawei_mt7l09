@@ -16,7 +16,6 @@
 #include <linux/export.h>
 #include <linux/sysctl.h>
 
-/* < DTS2013100805232 weiyuan 20130926 begin */
 #ifdef CONFIG_HW_DETECT_HUNG_TASK
 
 #include <linux/proc_fs.h>
@@ -49,6 +48,10 @@ void rdr_hung_task_hook_add(rdr_funcptr_2 p_hook_func)
 void rdr_hung_task_hook_delete(void)
 {
 }
+#endif
+
+#ifdef CONFIG_HUAWEI_NFF
+extern void nff_log_event_hungtask(char *taskname);
 #endif
 
 /*
@@ -85,7 +88,6 @@ static struct tag_switch_count last_switch_count_table[NAME_NUM];
 static bool rcu_lock_break(struct task_struct *g, struct task_struct *t);
 
 #endif /*CONFIG_HW_DETECT_HUNG_TASK*/
-/* DTS2013100805232 weiyuan 20130926 end > */
 
 /*
  * The number of tasks checked:
@@ -143,17 +145,14 @@ static struct notifier_block panic_block = {
 	.notifier_call = hung_task_panic,
 };
 
-/* < DTS2013100805232 weiyuan 20130926 begin */
 #ifdef CONFIG_HW_DETECT_HUNG_TASK
 
 static void dump_hungtask_trace(unsigned long where, unsigned long from)
 {
 #ifdef CONFIG_HISI_RDR
-	/* < DTS2013122401935 wangdedong 00204535 2013.12.24 begin */
 	if (0 == atomic_read(&rdr_crit_dump_stack))
 		return;
-	/* DTS2013122401935 wangdedong 00204535 2013.12.24 end > */
-	if ((NULL != g_rdr_dump_stack) && (g_rdr_dump_stack_len > (20 * 4))) {
+	if ((NULL != g_rdr_dump_stack) && (g_rdr_dump_stack_len > 20)) {
 		int i;
 		u32 buf[9];
 
@@ -250,13 +249,11 @@ static int checklist(pid_t ht_pid, pid_t ht_ppid, unsigned int list_category)
 }
 
 #endif /*CONFIG_HW_DETECT_HUNG_TASK*/
-/* DTS2013100805232 weiyuan 20130926 end > */
 
 static void check_hung_task(struct task_struct *t, unsigned long timeout)
 {
 	unsigned long switch_count = t->nvcsw + t->nivcsw;
 
-/* < DTS2013100805232 weiyuan 20130926 begin */
 #ifdef CONFIG_HW_DETECT_HUNG_TASK
 
 	int idx, first_empty_item = -1;
@@ -265,7 +262,6 @@ static void check_hung_task(struct task_struct *t, unsigned long timeout)
 	pid_t ht_pid, ht_ppid;
 
 #endif /*CONFIG_HW_DETECT_HUNG_TASK*/
-/* DTS2013100805232 weiyuan 20130926 end > */
 
 	/*
 	 * Ensure the task is not frozen.
@@ -274,7 +270,6 @@ static void check_hung_task(struct task_struct *t, unsigned long timeout)
 	if (unlikely(t->flags & (PF_FROZEN | PF_FREEZER_SKIP)))
 	    return;
 
-/* < DTS2013100805232 weiyuan 20130926 begin */
 #ifdef CONFIG_HW_DETECT_HUNG_TASK
 
 	/*
@@ -301,10 +296,13 @@ static void check_hung_task(struct task_struct *t, unsigned long timeout)
 			pr_err("hung_task: %s NOT in whitelist.\n", t->comm);
 			return;
 		}
+	} else {
+		if (BLACK_LIST == list_category) {
+			pr_err("hung_task: %s is in blacklist.\n", t->comm);
+			return;
+		}
+		pr_err("hung_task: %s is in whitelist.\n", t->comm);
 	}
-	if ((0 != in_list) && (BLACK_LIST == list_category))
-		return;
-
 
 	/* find last swich count record in last_switch_count_table */
 	for (idx = 0; idx < NAME_NUM; idx++) {
@@ -332,6 +330,9 @@ static void check_hung_task(struct task_struct *t, unsigned long timeout)
 
 		last_switch_count_table[idx].last_swithc_count = switch_count;
 		return;
+	} else {
+		pr_err("switch_count = %ld, last_switch_count = %ld\n", \
+			switch_count, last_switch_count_table[idx].last_swithc_count);
 	}
 
 #else
@@ -342,18 +343,15 @@ static void check_hung_task(struct task_struct *t, unsigned long timeout)
 	}
 
 #endif /*CONFIG_HW_DETECT_HUNG_TASK*/
-/* DTS2013100805232 weiyuan 20130926 end > */
 
 	if (!sysctl_hung_task_warnings)
 		return;
 
-/* < DTS2013100805232 weiyuan 20130926 begin */
 #ifdef CONFIG_HW_DETECT_HUNG_TASK
 	/* sysctl_hung_task_warnings--;*/
 #else
 	sysctl_hung_task_warnings--;
 #endif /*CONFIG_HW_DETECT_HUNG_TASK*/
-/* DTS2013100805232 weiyuan 20130926 end > */
 
 	/*
 	 * Ok, the task did not get scheduled for more than 2 minutes,
@@ -364,7 +362,7 @@ static void check_hung_task(struct task_struct *t, unsigned long timeout)
 			t->comm, t->pid, sysctl_hung_task_timeout_secs);
 
 #ifdef CONFIG_HISI_RDR
-	g_rdr_hung_task_hook((u32)t, (u32)sysctl_hung_task_timeout_secs);
+	g_rdr_hung_task_hook((unsigned long)t, sysctl_hung_task_timeout_secs);
 	sched_show_task(t);
 #else
 	sched_show_task(t);
@@ -382,6 +380,9 @@ static void check_hung_task(struct task_struct *t, unsigned long timeout)
 #endif
 */
 	if (sysctl_hung_task_panic) {
+#ifdef CONFIG_HUAWEI_NFF
+		nff_log_event_hungtask(t->comm);
+#endif
 		trigger_all_cpu_backtrace();
 		panic("hung_task: blocked tasks");
 	}
@@ -487,29 +488,28 @@ static int watchdog(void *dummy)
 		while (schedule_timeout_interruptible(timeout_jiffies(timeout)))
 			timeout = sysctl_hung_task_timeout_secs;
 
-/* < DTS2013100805232 weiyuan 20130926 begin */
+	pr_err("watchdog is wakeup-----------.\n");
+
 #ifdef CONFIG_HW_DETECT_HUNG_TASK
 		if (hungtask_enable)
 			check_hung_uninterruptible_tasks(timeout);
 #else
 		check_hung_uninterruptible_tasks(timeout);
 #endif /*CONFIG_HW_DETECT_HUNG_TASK*/
-/* DTS2013100805232 weiyuan 20130926 end > */
 	}
 
 	return 0;
 }
 
-/* < DTS2013100805232 weiyuan 20130926 begin */
 #ifdef CONFIG_HW_DETECT_HUNG_TASK
 
 static ssize_t enable_show(struct kobject *kobj, struct kobj_attribute *attr,
 			char *buf)
 {
 	if (hungtask_enable)
-		return snprintf(buf, 4, "on\n");
+		return snprintf(buf, sizeof(buf), "on\n");
 	else
-		return snprintf(buf, 4, "off\n");
+		return snprintf(buf, sizeof(buf), "off\n");
 }
 
 static ssize_t enable_store(struct kobject *kobj,
@@ -553,13 +553,11 @@ static ssize_t monitorlist_show(struct kobject *kobj,
 	char *start = buf;
 
 	if (whitelist == WHITE_LIST)
-		buf += snprintf(buf, sizeof(p_name) + 16,
-			"whitelist: [%s]\n", p_name);
+		buf += sprintf(buf, "whitelist: [%s]\n", p_name);
 	else if (whitelist == BLACK_LIST)
-		buf += snprintf(buf, sizeof(p_name) + 16,
-			"blacklist: [%s]\n", p_name);
+		buf += sprintf(buf, "blacklist: [%s]\n", p_name);
 	else
-		buf += snprintf(buf, 4, "\n");
+		buf += sprintf(buf, "\n");
 
 	return buf - start;
 }
@@ -592,14 +590,19 @@ static int rebuild_name_table(char *pname, int pname_len)
 		}
 
 		/* check if the number of proccess exceed the limit,
-		 * indicates that the after [NAME_NUM - 1] proccess,
-		 * the [NAME_NUM] proccess was found!
-		 * Ignore the redundant names.
+		 * pointer [curr] not an end symbol indicates
+		 * that the after [NAME_NUM] proccess,
+		 * the [NAME_NUM + 1]th proccess was found
 		 */
-		if (NAME_NUM - 1 == count) {
-			pr_err("more than 15 names,ignore redundant.\n");
+		if (NAME_NUM == count && '\0' != *curr)
+			goto err_proc_num;
+
+		/* if the user input [NAME_NUM] proccess name,
+		 * but just end his input by a space or comma,
+		 * we just jump out the loop
+		 */
+		if (NAME_NUM == count)
 			break;
-		}
 
 		/* the [count]th name should be storage in corresponding
 		 * item in table, and [proc_name_len] is set to count
@@ -660,10 +663,17 @@ static int rebuild_name_table(char *pname, int pname_len)
 
 err_proc_name:
 	memset(p_name_table, 0x00, sizeof(p_name_table));
-	memset(p_name, 0x00, sizeof(p_name));
+	memset(pname, 0x00, sizeof(pname));
 	pr_err("hung_task: rebuild_name_table: Error: process name");
 	pr_err(" is invallid, set monitorlist failed.\n");
+
 	return 0;
+
+err_proc_num:
+	/* more than 16 processes,remove it */
+	pr_err("hung_task: rebuild_name_table: Warnig: too many ");
+	pr_err("processess, leave it and do nothing.\n");
+	return count;
 }
 
 /* since the proccess name written into [pname_table]
@@ -781,23 +791,21 @@ int create_sysfs_hungtask(void)
 	return retval;
 }
 
+typedef void (*funcptr2)(unsigned long, unsigned long);
 static void register_hook_func(void)
 {
 	add_hw_hungtask_hook((funcptr2)dump_hungtask_trace);
 }
 #endif /*CONFIG_HW_DETECT_HUNG_TASK*/
-/* DTS2013100805232 weiyuan 20130926 end > */
 
 static int __init hung_task_init(void)
 {
-/* < DTS2013100805232 weiyuan 20130926 begin */
 #ifdef CONFIG_HW_DETECT_HUNG_TASK
 	int ret;
 	ret =	create_sysfs_hungtask();
 	if (ret)
 		pr_err("hung_task: create_sysfs_hungtask fail.\n");
 #endif /*CONFIG_HW_DETECT_HUNG_TASK*/
-/* DTS2013100805232 weiyuan 20130926 end > */
 
 	atomic_notifier_chain_register(&panic_notifier_list, &panic_block);
 	register_hook_func();

@@ -1204,6 +1204,9 @@ static void atmci_start_request(struct atmel_mci *host,
 	if (host->submit_data == &atmci_submit_data_dma)
 		atmci_send_command(host, cmd, cmdflags);
 
+	if (host->submit_data == &atmci_submit_data_dma)
+		atmci_send_command(host, cmd, cmdflags);
+
 	if (mrq->stop) {
 		host->stop_cmdr = atmci_prepare_command(slot->mmc, mrq->stop);
 		host->stop_cmdr |= ATMCI_CMDR_STOP_XFER;
@@ -1429,7 +1432,7 @@ static int atmci_get_cd(struct mmc_host *mmc)
 	if (gpio_is_valid(slot->detect_pin)) {
 		present = !(gpio_get_value(slot->detect_pin) ^
 			    slot->detect_is_active_high);
-		dev_dbg(&mmc->class_dev, "card is %spresent\n",
+		dev_info(&mmc->class_dev, "card is %spresent\n",
 				present ? "" : "not ");
 	}
 

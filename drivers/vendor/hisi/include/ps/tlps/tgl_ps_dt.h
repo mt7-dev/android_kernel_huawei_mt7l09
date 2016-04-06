@@ -39,7 +39,11 @@ extern "C" {
         }
 
 #define TDS_MAX_RPT_CELL_NUM              (6)
-#define TDS_OM_MAX_TS_NUM                   (7)
+#define TDS_OM_MAX_TS_NUM                 (7)
+#define TDS_DT_MAX_RB                     (10) /*tds 实际使用的RB个数,暂时定为10个*/
+
+
+
 
 /*****************************************************************************
   3 枚举定义
@@ -348,6 +352,130 @@ typedef struct
     VOS_UINT32                            ulAppDlThp;
     VOS_UINT32                            ulHsdschThp;
 } TRRC_DT_THROUGHPUT_INFO_IND_STRU;
+
+/*****************************************************************************
+ 结构名    : TL2_DT_RLC_RB_INFO_STRU
+ 协议表格  :
+ ASN.1描述 :
+ 结构说明  :
+*****************************************************************************/
+typedef struct
+{
+    VOS_UINT8                             ucRlcRbId;
+    VOS_UINT8                             ucRbUlMode;                 /*0:AM,1:UM,2:TM*/
+    VOS_UINT8                             ucRbDlMode;                 /*0:AM,1:UM,2:TM*/
+    VOS_UINT8                             ucRbState;
+    VOS_UINT32                            ulRlcBo;                    /*RLC当前缓存BO值*/
+    VOS_UINT32                            ulRlcAverageBo;             /*RLC平均缓存BO值*/
+    VOS_UINT32                            ulRlcUlReTxRatio;
+    VOS_UINT32                            ulRlcDlRxErrRatio;
+    VOS_INT32                             lRlcVarianceBo;             /*RLC缓存BO值的变化*/
+}TL2_DT_RLC_RB_INFO_STRU;
+
+/*****************************************************************************
+ 结构名    : TDS_MAC_RB_MAPPING_INFO_STRU
+ 协议表格  :
+ ASN.1描述 :
+ 结构说明  :
+*****************************************************************************/
+typedef struct
+{
+    u8                                    loChNumUl;
+    u8                                    loChNumDl;
+    u8                                    ucResv[2];
+}TDS_MAC_RB_MAPPING_INFO_STRU;
+
+/*****************************************************************************
+ 结构名    : TDS_MAC_RB_INFORMATION_STRU
+ 协议表格  :
+ ASN.1描述 :
+ 结构说明  :
+*****************************************************************************/
+typedef struct
+{
+    u8                                    rbIdentity;
+    u8                                    rbMuxNum;
+    u8                                    ucResv[2];
+    TDS_MAC_RB_MAPPING_INFO_STRU          rbMappingInfo[maxRBMuxOptions];
+}TDS_MAC_RB_INFORMATION_STRU;
+
+/*****************************************************************************
+ 结构名    : TDS_MAC_RB_INFO_STRU
+ 协议表格  :
+ ASN.1描述 :
+ 结构说明  :
+*****************************************************************************/
+typedef struct
+{
+    u8                                    ucRbNum;
+    u8                                    ucResv[3];
+    TDS_MAC_RB_INFORMATION_STRU           stRbInfo[maxRB];
+}TDS_MAC_RB_INFO_STRU;
+
+/*****************************************************************************
+ 结构名    : TL2_DT_RB_INFO_IND_STRU
+ 协议表格  :
+ ASN.1描述 :
+ 结构说明  :
+*****************************************************************************/
+typedef struct
+{
+    VOS_MSG_HEADER                                             /*_H2ASN_Skip*/
+    VOS_UINT32                            ulMsgId;             /*_H2ASN_Skip*/
+    APP_MSG_HEADER
+    VOS_UINT32                            ulOpId;
+    VOS_UINT32                            ulLchNum;
+    VOS_UINT32                            ulRbNum;
+    TL2_DT_RLC_RB_INFO_STRU               astRbInfo[10];
+    TDS_MAC_RB_INFO_STRU                  stMacRbInfo;
+} TL2_DT_RB_INFO_IND_STRU;
+
+/*****************************************************************************
+ 结构名    : TL2_DT_HSDPA_MAC_INFO_STRU
+ 协议表格  :
+ ASN.1描述 :
+ 结构说明  :
+*****************************************************************************/
+typedef struct
+{
+    VOS_UINT8                             ucQueId;
+    VOS_UINT8                             ucResv;
+    VOS_UINT16                            usPduSize;
+    VOS_UINT16                            usSubSfn;
+    VOS_UINT16                            usTsn;
+} TL2_DT_HSDPA_MAC_INFO_STRU;
+
+/*****************************************************************************
+ 结构名    : TL2_DT_HSDPA_MAC_STATICS_STRU
+ 协议表格  :
+ ASN.1描述 :
+ 结构说明  :
+*****************************************************************************/
+typedef struct
+{
+    VOS_UINT32                            ulRbId;
+    VOS_UINT32                            ulRecvCnt;
+    VOS_UINT32                            ulErrorCnt;
+    VOS_UINT32                            ulHISICHCnt;
+    VOS_UINT32                            ulPduRecvRate;       /*bps*/
+    VOS_UINT32                            ulPduAvgSize;        /*byte*/
+} TL2_DT_HSDPA_MAC_STATICS_STRU;
+
+/*****************************************************************************
+ 结构名    : TL2_DT_HSDPA_INFO_IND_STRU
+ 协议表格  :
+ ASN.1描述 :
+ 结构说明  :
+*****************************************************************************/
+typedef struct
+{
+    VOS_MSG_HEADER                                             /*_H2ASN_Skip*/
+    VOS_UINT32                            ulMsgId;             /*_H2ASN_Skip*/
+    APP_MSG_HEADER
+    VOS_UINT32                            ulOpId;
+    TL2_DT_HSDPA_MAC_INFO_STRU            stHsdpaMacInfo[80];
+    TL2_DT_HSDPA_MAC_STATICS_STRU         stHsdpaStaticsInfo;
+} TL2_DT_HSDPA_INFO_IND_STRU;
 
 /*****************************************************************************
  结构名    : TRRC_DT_THROUGHPUT_INFO_IND_SG

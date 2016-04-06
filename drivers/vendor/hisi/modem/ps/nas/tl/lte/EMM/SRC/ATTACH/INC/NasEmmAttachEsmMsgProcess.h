@@ -144,6 +144,10 @@ extern VOS_VOID NAS_EMM_RestartAttProcedural(VOS_VOID);
 /*leili modify for isr end*/
 
 extern NAS_EMM_BEARER_STATE_ENUM_UINT8  NAS_EMM_IsEpsBearStatusAct (VOS_VOID);
+
+extern VOS_VOID NAS_EMM_LocalDetachErrRecord(
+        EMM_ERR_LOG_LOCAL_DETACH_TYPE_ENUM_UINT16       enLocalDetType);
+
 /*****************************************************************************
   9 OTHERS
 *****************************************************************************/

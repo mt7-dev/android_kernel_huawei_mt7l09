@@ -596,6 +596,8 @@ extern NAS_RABM_TIMER_STATUS_ENUM_UINT8    g_ulNasRabmFDFluxDetectTimer;
 extern NAS_RABM_TIMER_STATUS_ENUM_UINT8    g_ulNasRabmFDRetryTimer;
 extern NAS_RABM_TIMER_STATUS_ENUM_UINT8    g_ulNasRabmFDWaitGmmQryRsltTimer;
 
+extern NAS_RABM_TIMER_STATUS_ENUM_UINT8    g_ulNasRabmResendEstTimer;
+
 extern RAB_MAP_STRU                     g_astRabMap[PS_WUE_MAX_RB_ID + 1];
 extern VOS_UINT8                        g_aucRb2Rab[PS_WUE_MAX_RB_ID + 1];
 

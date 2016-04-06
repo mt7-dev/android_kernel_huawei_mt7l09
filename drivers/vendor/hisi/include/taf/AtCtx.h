@@ -92,12 +92,12 @@ typedef VOS_UINT8 AT_PORT_NO;
 #if (VOS_WIN32 == VOS_OS_VER)
 #define AT_USB_COM_PORT_NO              (2)
 #else
-#define AT_USB_COM_PORT_NO              (EN_DMS_BEARER_USB_COM4_AT) /*值为8*/
+#define AT_USB_COM_PORT_NO              (DMS_PHY_BEAR_USB_PCUI) /*值为8*/
 #endif
 
-#define AT_CTR_PORT_NO                  (EN_DMS_BEARER_USB_COM_CTRL)/*值为9，产品线需求，增加一个control端口*/
+#define AT_CTR_PORT_NO                  (DMS_PHY_BEAR_USB_CTRL)/*值为9，产品线需求，增加一个control端口*/
 
-#define AT_NDIS_PORT_NO                 (EN_DMS_BEARER_USB_NCM)     /*值为11，NDIS AT端口号，该端口号无用*/
+#define AT_NDIS_PORT_NO                 (DMS_PHY_BEAR_USB_NCM)     /*值为11，NDIS AT端口号，该端口号无用*/
 
 #define AT_HSIC1_PORT_NO                (12)                /*HSIC AT通道1端口*/
 #define AT_HSIC2_PORT_NO                (13)                /*HSIC AT通道2端口*/
@@ -118,7 +118,7 @@ typedef VOS_UINT8 AT_PORT_NO;
 #define AT_HSUART_PORT_NO               (25)                /* HSUART端口 */
 
 #define AT_MIN_ABORT_TIME_INTERNAL      (13)
-#define AT_MAX_TICK_TIME_VALUE          (0xFFFFFFFF)
+#define AT_MAX_TICK_TIME_VALUE          (0xFFFFFFFFU)
 
 /*================================PORT NO End================================*/
 /*********************************PORT End*****************************/
@@ -183,6 +183,11 @@ typedef MN_CALL_MODE_ENUM_U8     AT_CMOD_MODE_ENUM;
 
 /*********************************SMS Begin************************************/
 #define AT_SMSMT_BUFFER_MAX             (2)
+
+typedef VOS_UINT8 AT_CSCS_TYPE;
+#define AT_CSCS_IRA_CODE            0
+#define AT_CSCS_UCS2_CODE           1
+#define AT_CSCS_GSM_7Bit_CODE       2
 
 typedef VOS_UINT8 AT_CSDH_TYPE;
 #define AT_CSDH_NOT_SHOW_TYPE           (0)
@@ -291,24 +296,22 @@ typedef VOS_UINT8 AT_CGREG_TYPE;
 #define AT_UART_DEFAULT_FC_DTE_BY_DCE   (AT_UART_FC_DTE_BY_DCE_NONE)
 
 
-#ifndef __AT_DISABLE_OM__
-#include "om.h"
-#define AT_INFO_LOG(String)            PS_LOG(WUEPS_PID_AT, 0, PS_PRINT_INFO, String)
-#define AT_NORM_LOG(String)            PS_LOG(WUEPS_PID_AT, 0, PS_PRINT_NORMAL, String)
-#define AT_NORM_LOG1(String,Para1)     PS_LOG1(WUEPS_PID_AT, 0, PS_PRINT_NORMAL, String, (TAF_INT32)Para1)
-#define AT_WARN_LOG(String)            PS_LOG(WUEPS_PID_AT, 0, PS_PRINT_WARNING, String)
-#define AT_WARN_LOG1(String,Para1)     PS_LOG1(WUEPS_PID_AT, 0, PS_PRINT_WARNING, String, (TAF_INT32)Para1)
-#define AT_ERR_LOG(String)             PS_LOG(WUEPS_PID_AT, 0, PS_PRINT_ERROR, String)
-#define AT_ERR_LOG1(String, Para1)     PS_LOG1(WUEPS_PID_AT, 0, PS_PRINT_ERROR, String, (VOS_INT32)Para1)
-#define AT_LOG1(String, Para1)         PS_LOG1(WUEPS_PID_AT, 0, PS_PRINT_INFO, String, (TAF_INT32)Para1)
-#else
-#define AT_INFO_LOG(String)
-#define AT_NORM_LOG(String)
-#define AT_WARN_LOG(String)
-#define AT_ERR_LOG(String)
-#define AT_LOG1(String, Para1)
+
+#if !defined(AT_ARRAY_SIZE)
+#define AT_ARRAY_SIZE(a)                (sizeof((a)) / sizeof((a[0])))
 #endif
 
+#define AT_SET_BIT64(n)       ((VOS_UINT64)1 << (n))
+
+#define AT_CLIENT_CFG_ELEMENT(port)\
+            { AT_CLIENT_ID_##port, TAF_NV_CLIENT_CFG_##port, #port, AT_SET_BIT64(TAF_NV_CLIENT_CFG_##port) }
+
+#define AT_GET_CLIENT_CFG_TAB_LEN()         (g_ucAtClientCfgMapTabLen)
+
+#define AT_PORT_LEN_MAX                     (20)
+
+/* WIFI n模式WL命令的速率值为0~7，共8个 */
+#define AT_WIFI_N_RATE_NUM              (8)
 
 /*****************************************************************************
   3 枚举定义
@@ -703,7 +706,7 @@ enum AT_UART_RI_TYPE_ENUM
 
     AT_UART_RI_TYPE_BUTT
 };
-typedef VOS_UINT8 AT_UART_RI_TYPE_ENUM_UINT32;
+typedef VOS_UINT32 AT_UART_RI_TYPE_ENUM_UINT32;
 
 
 enum AT_UART_RI_STATUS_ENUM
@@ -763,7 +766,7 @@ typedef struct
     USIMM_CARD_SERVIC_ENUM_UINT32       enCardStatus;                           /* 卡状态*/
     VOS_UINT8                           aucIMSI[9];                             /* IMSI号*/
     VOS_UINT8                           ucIMSILen;                              /* IMSI长度 */
-    VOS_UINT8                           ucReserve[2];
+    VOS_UINT8                           ucReserve[6];
 }AT_USIM_INFO_CTX_STRU;
 
 
@@ -773,6 +776,7 @@ typedef struct
     VOS_UINT8                           ucPlatformSptWcdma;
     VOS_UINT8                           ucPlatformSptGsm;
     VOS_UINT8                           ucPlatformSptUtralTDD;
+    VOS_UINT8                           aucReserved[4];
 }AT_MODEM_SPT_RAT_STRU;
 
 /*********************************CTRL CTX Begin*****************************/
@@ -796,12 +800,13 @@ typedef MN_CALL_CS_DATA_CFG_STRU AT_CBST_DATA_CFG_STRU;
 
 typedef struct
 {
-    VOS_BOOL                            bTimerStart;
     HTIMER                              s0Timer;
+    VOS_BOOL                            bTimerStart;
     VOS_UINT16                          usClientId;
     VOS_UINT8                           ucS0TimerLen;
     VOS_UINT8                           ucReserved;                             /* 保留 */
     VOS_UINT32                          ulTimerName;
+    VOS_UINT8                           aucReserved[4];
 }AT_S0_TIMER_INFO_STRU;
 
 typedef MN_CALL_CUG_CFG_STRU     AT_CCUG_CFG_STRU;
@@ -821,7 +826,7 @@ typedef struct
     AT_CNMI_BM_TYPE                     CnmiTmpBmType;
     AT_CNMI_DS_TYPE                     CnmiTmpDsType;
     AT_CNMI_BFR_TYPE                    CnmiTmpBfrType;
-    VOS_UINT8                           aucReserved[2];
+    VOS_UINT8                           aucReserved[6];
 }AT_CNMI_TYPE_STRU;
 
 typedef struct
@@ -829,13 +834,14 @@ typedef struct
     MN_MSG_EVENT_INFO_STRU              astEvent[AT_BUFFER_CBM_EVENT_MAX];
     VOS_UINT8                           aucUsed[AT_BUFFER_CBM_EVENT_MAX];
     VOS_UINT8                           ucIndex;
+    VOS_UINT8                           aucReserved[2];
 }AT_CBM_BUFFER_STRU;
 
 typedef struct
 {
     VOS_UINT8                           ucActFlg;
     AT_CGSMS_SEND_DOMAIN_ENUM_U8        enSendDomain;
-    TAF_UINT8                           aucReserved[2];
+    TAF_UINT8                           aucReserved[6];
 }AT_CGSMS_SEND_DOMAIN_STRU;
 
 typedef struct
@@ -864,6 +870,7 @@ typedef struct
     MN_MSG_MEM_STORE_ENUM_U8            enMemSendorWrite;
     MN_MSG_MEM_STORE_ENUM_U8            enTmpMemReadorDelete;
     MN_MSG_MEM_STORE_ENUM_U8            enTmpMemSendorWrite;
+    VOS_UINT8                           aucReserved[4];
     MN_MSG_SET_RCVMSG_PATH_PARM_STRU    stRcvPath;
     MN_MSG_STORAGE_LIST_EVT_INFO_STRU   stUsimStorage;
     MN_MSG_STORAGE_LIST_EVT_INFO_STRU   stNvimStorage;
@@ -872,8 +879,9 @@ typedef struct
 typedef struct
 {
     TAF_BOOL                            bUsed;
-    MN_MSG_EVENT_INFO_STRU              *pstEvent;
-    MN_MSG_TS_DATA_INFO_STRU            *pstTsDataInfo;
+    VOS_UINT8                           aucReserved[4];
+    MN_MSG_EVENT_INFO_STRU             *pstEvent;
+    MN_MSG_TS_DATA_INFO_STRU           *pstTsDataInfo;
 }AT_SMS_MT_BUFFER_STRU;
 
 typedef struct
@@ -881,6 +889,7 @@ typedef struct
     MN_MSG_EVENT_INFO_STRU              astEvent[AT_BUFFER_SMT_EVENT_MAX];
     VOS_UINT8                           aucUsed[AT_BUFFER_SMT_EVENT_MAX];
     VOS_UINT8                           ucIndex;
+    VOS_UINT8                           aucReserved[2];
 }AT_SMT_BUFFER_STRU;
 
 /*********************************SMS CTX End*****************************/
@@ -909,10 +918,21 @@ typedef struct
 
 typedef struct
 {
+    VOS_UINT8                           ucNumOfCalls;                           /* 所有正在通话的个数 */
+    VOS_UINT8                           aucReserved[3];
+    TAF_CALL_ECONF_INFO_PARAM_STRU      astCallInfo[TAF_CALL_MAX_ECONF_CALLED_NUM];  /* 每一个成员的信息 */
+}AT_ECONF_INFO_STRU;
+
+
+typedef struct
+{
     VOS_UINT32                          ulCurIsExistCallFlag;                   /* 当前是否存在呼叫标志 */
     TAF_CS_CAUSE_ENUM_UINT32            enCsErrCause;                           /* 用于记录CS域错误码 */
 
     AT_S0_TIMER_INFO_STRU               stS0TimeInfo;                           /* 自动应答时间，0表示关闭自动应答，1~255，启动自动应答的时间 */
+
+    AT_ECONF_INFO_STRU                  stEconfInfo;
+
 }AT_MODEM_CC_CTX_STRU;
 typedef struct
 {
@@ -924,7 +944,7 @@ typedef struct
     AT_COLP_TYPE                        ucColpType;                             /* 使能/禁止连接号码显示 */
     AT_CRC_TYPE                         ucCrcType;                              /* 使能/禁止来电指示扩展上报格式 */
     AT_CCWA_TYPE                        ucCcwaType;                             /* 使能/禁止呼叫等待 */
-    VOS_UINT8                           ucReserved[2];
+    VOS_UINT8                           ucReserved[7];
 
     AT_CBST_DATA_CFG_STRU               stCbstDataCfg;                          /* 承载(CBST)类型*/
     AT_CCUG_CFG_STRU                    stCcugCfg;                              /* 闭合用户群(CUG)参数 */
@@ -972,16 +992,13 @@ typedef struct
     AT_CMD_ANTENNA_LEVEL_ENUM_UINT8     enCalculateAntennaLevel;                /* 磁滞处理后的天线格数 */
     AT_CMD_ANTENNA_LEVEL_ENUM_UINT8     aenAntennaLevel[AT_ANTENNA_LEVEL_MAX_NUM]; /* 记录3次天线格数 */
     VOS_UINT8                           ucCerssiMinTimerInterval;               /* 信号上报的最小间隔时间 */
-    VOS_UINT8                           ucReserve1;
-    VOS_UINT8                           ucReserve2;
+    VOS_UINT8                           ucReserve1[3];
 
     NAS_MM_INFO_IND_STRU                stTimeInfo;                             /* 时间信息 */
 
 #if(FEATURE_ON == FEATURE_LTE)
     AT_CEREG_TYPE_ENUM_UINT8            ucCeregType;                            /* VOS_TRUE: EPS域服务状态上报，VOS_FALSE: 不上报 */
-    VOS_UINT8                           ucReserve4;
-    VOS_UINT8                           ucReserve5;
-    VOS_UINT8                           ucReserve6;
+    VOS_UINT8                           ucReserve2[7];
 #endif
 
 }AT_MODEM_NET_CTX_STRU;
@@ -991,8 +1008,7 @@ typedef struct
 {
     AT_CPOSR_FLG_ENUM_UNIT8             enCposrReport;                    /* +CPOSR命令主动上报控制，上电开机默认为不允许主动上报 */
     AT_XCPOSR_FLG_ENUM_UNIT8            enXcposrReport;                   /* +XCPOSR命令主动上报控制，上电开机默认为不允许主动上报 */
-    VOS_UINT8                           ucReserve1;
-    VOS_UINT8                           ucReserve2;
+    VOS_UINT8                           aucReserve[6];
 
     AT_XML_STRU                         stXml;                            /* XML码流结构，存储AGPS下发的数据信息 */
 }AT_MODEM_AGPS_CTX_STRU;
@@ -1027,14 +1043,14 @@ typedef struct
 
     AT_MUX_DLCI_TYPE_ENUM_UINT8         enDlci;                                 /* 目前MUX AT通道所用的通道ID*/
 
-    VOS_UINT8                           aucRsv[2];
+    VOS_UINT8                           aucRsv[6];
 }AT_MUX_CLIENT_TAB_STRU;
 
 typedef struct
 {
     AT_MUX_CLIENT_TAB_STRU              astMuxClientTab[AT_MUX_AT_CHANNEL_MAX]; /* MUX 8个通道表 */
     VOS_UINT8                           ucMuxSupportFlg;                        /* 是否支持MUX特性 */
-    VOS_UINT8                           aucRsv[3];
+    VOS_UINT8                           aucRsv[7];
 }AT_MUX_CTX_STRU;
 
 /*********************************COMM CTX End*****************************/
@@ -1051,8 +1067,9 @@ typedef struct
 
 typedef struct
 {
-    VOS_UINT32                          ulResetSem;                             /* 二进制信号量，用于复位处理  */
+    VOS_SEM                             hResetSem;                              /* 二进制信号量，用于复位处理  */
     VOS_UINT32                          ulResetingFlag;                         /* 复位标志 */
+    VOS_UINT32                          ulReserved;
 }AT_RESET_CTX_STRU;
 
 
@@ -1110,7 +1127,7 @@ typedef struct
     VOS_UINT32                          ulVoiceRiOnInterval;    /* 语音RI拉高持续时间(ms) */
     VOS_UINT32                          ulVoiceRiOffInterval;   /* 语音RI拉低持续时间(ms) */
     VOS_UINT8                           ucVoiceRiCycleTimes;    /* 语音RI波形周期次数     */
-    VOS_UINT8                           aucReserved[3];
+    VOS_UINT8                           aucReserved[7];
 
 } AT_UART_RI_CFG_STRU;
 typedef struct
@@ -1120,9 +1137,9 @@ typedef struct
 
     HTIMER                              hVoiceRiTmrHdl;     /* 语音RI定时器句柄 */
     AT_TIMER_STATUS_ENUM_UINT32         enVoiceRiTmrStatus; /* 语音RI定时器状态 */
+    VOS_UINT32                          ulVoiceRiCycleCount;/* 语音上报周期计数 */
     AT_UART_RI_STATUS_ENUM_UINT8        aenVoiceRiStatus[MN_CALL_MAX_NUM + 1];
                                                             /* 语音RI状态(多个CALLID) */
-    VOS_UINT32                          ulVoiceRiCycleCount;/* 语音上报周期计数 */
 
     HTIMER                              hSmsRiTmrHdl;       /* 短信RI定时器句柄 */
     AT_TIMER_STATUS_ENUM_UINT32         enSmsRiTmrStatus;   /* 短信RI定时器状态 */
@@ -1142,7 +1159,7 @@ typedef struct
 {
     AT_PORT_BUFF_CFG_ENUM_UINT8         enSmsBuffCfg;
     VOS_UINT8                           ucNum;                                  /* 当前表中的个数 */
-    VOS_UINT8                           aucRcv[2];
+    VOS_UINT8                           aucRcv[6];
     VOS_UINT32                          ulUsedClientID[AT_MAX_CLIENT_NUM];      /* 已经使用的client ID记录 */
 }AT_PORT_BUFF_CFG_STRU;
 
@@ -1150,9 +1167,7 @@ typedef struct
 typedef struct
 {
     VOS_UINT8                           ucSystemAppConfigAddr;                  /* 保存后台版本 */
-    VOS_UINT8                           ucReserve1;
-    VOS_UINT8                           ucReserve2;
-    VOS_UINT8                           ucReserve3;
+    VOS_UINT8                           aucReserve[7];
 
     AT_MUX_CTX_STRU                     stMuxCtx;                               /* MUX AT通道上下文 */
     AT_COMM_PS_CTX_STRU                 stPsCtx;                                /* PS域相关的公共上下文 */
@@ -1183,8 +1198,6 @@ typedef struct
 
 /*********************************后续需要调整的*************************************/
 /*********************************Other Begin*****************************/
-
-#define AT_NOTSUPPORT_STR_LEN           (16)
 
 enum  AT_E5_RIGHT_FLAG_ENUM
 {
@@ -1304,6 +1317,29 @@ typedef VOS_UINT8 AT_SS_CUSTOMIZE_TYPE_UINT8;
 
 /*********************************Other End*****************************/
 
+typedef struct
+{
+    VOS_UINT8                           ucModemId   : 2;
+    VOS_UINT8                           ucReportFlg : 1;
+    VOS_UINT8                           ucReserved  : 5;
+}AT_CLINET_CONFIG_DESC_STRU;
+
+
+typedef union
+{
+    VOS_UINT64                          ulRptCfgBit64;
+    VOS_UINT32                          aulRptCfgBit32[2];
+} AT_PORT_RPT_CFG_UNION;
+
+
+typedef struct
+{
+    AT_CLIENT_ID_ENUM_UINT16            enClientId;
+    TAF_NV_CLIENT_CFG_ENUM_UINT16       enNvIndex;
+    VOS_UINT8                           aucPortName[AT_PORT_LEN_MAX];
+    VOS_UINT64                          ulRptCfgBit64;
+}AT_CLIENT_CFG_MAP_TAB_STRU;
+
 
 /*****************************************************************************
   8 UNION定义
@@ -1366,6 +1402,9 @@ extern NVIM_ECIO_CFG_STRU g_stEcioCfg;
 #endif
 
 extern AT_SS_CUSTOMIZE_PARA_STRU           g_stAtSsCustomizePara;
+
+extern AT_CLIENT_CFG_MAP_TAB_STRU          g_astAtClientCfgMapTbl[];
+extern const VOS_UINT8                     g_ucAtClientCfgMapTabLen;
 
 /*****************************************************************************
   10 函数声明
@@ -1446,10 +1485,6 @@ extern AT_MODEM_CTX_STRU* AT_GetModemCtxAddr(
            MODEM_ID_ENUM_UINT16                enModemId
        );
 extern VOS_UINT8* AT_GetSystemAppConfigAddr(VOS_VOID);
-extern VOS_UINT32 AT_GetModemIdFromClient(
-           VOS_UINT16                          usClientId,
-           MODEM_ID_ENUM_UINT16               *pModemId
-       );
 extern VOS_UINT32 AT_GetDestPid(
            MN_CLIENT_ID_T                      usClientId,
            VOS_UINT32                          ulRcvPid
@@ -1470,7 +1505,7 @@ extern VOS_UINT32 AT_GetSsCustomizePara(AT_SS_CUSTOMIZE_TYPE_UINT8 enSsCustomize
 
 extern VOS_VOID AT_InitResetCtx(VOS_VOID);
 extern AT_RESET_CTX_STRU* AT_GetResetCtxAddr(VOS_VOID);
-extern VOS_UINT32 AT_GetResetSem(VOS_VOID);
+extern VOS_SEM AT_GetResetSem(VOS_VOID);
 extern VOS_UINT32 AT_GetResetFlag(VOS_VOID);
 extern VOS_VOID AT_SetResetFlag(VOS_UINT32 ulFlag);
 
@@ -1521,6 +1556,11 @@ VOS_VOID AT_InitPortBuffCfg(VOS_VOID);
 VOS_VOID AT_AddUsedClientId2Tab(VOS_UINT16 usClientId);
 
 VOS_VOID AT_RmUsedClientIdFromTab(VOS_UINT16 usClientId);
+
+AT_CLIENT_CONFIGURATION_STRU* AT_GetClientConfig(
+    AT_CLIENT_ID_ENUM_UINT16            enClientId
+);
+AT_CLIENT_CFG_MAP_TAB_STRU* AT_GetClientCfgMapTbl(VOS_UINT8 ucIndex);
 
 #if (VOS_OS_VER == VOS_WIN32)
 #pragma pack()

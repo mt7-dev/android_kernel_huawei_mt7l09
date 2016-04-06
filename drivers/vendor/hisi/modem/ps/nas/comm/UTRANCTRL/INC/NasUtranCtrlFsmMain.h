@@ -71,10 +71,23 @@ VOS_UINT32 NAS_UTRANCTRL_RcvWasPlmnSrchCnf_Main(
     struct MsgCB                       *pstMsg
 );
 
+
+VOS_UINT32 NAS_UTRANCTRL_RcvInterAbortUtranCtrlPlmnSearchReq_Main(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+);
+
+
 VOS_UINT32 NAS_UTRANCTRL_RcvMmcInterSkipSearchWasIndMsg_Main(
     VOS_UINT32                          ulEventType,
     struct MsgCB                       *pstMsg
 );
+
+VOS_UINT32 NAS_UTRANCTRL_RcvMmcInterSkipSearchTdsIndMsg_Main(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+);
+
 VOS_UINT32 NAS_UTRANCTRL_RcvGasPlmnSrchCnf_Main(
     VOS_UINT32                          ulEventType,
     struct MsgCB                       *pstMsg
@@ -111,6 +124,19 @@ VOS_UINT32 NAS_UTRANCTRL_RcvPlmnSpecialReq_Main(
     VOS_UINT32                          ulEventType,
     struct MsgCB                       *pstMsg
 );
+
+VOS_UINT32 NAS_UTRANCTRL_RcvPlmnSearchReq_Main(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+);
+
+VOS_UINT32 NAS_UTRANCTRL_RcvMmaAcqReq_Main(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+);
+
+
+
 VOS_UINT32 NAS_UTRANCTRL_RcvTdPowerOffCnf_Main(
     VOS_UINT32                          ulEventType,
     struct MsgCB                       *pstMsg

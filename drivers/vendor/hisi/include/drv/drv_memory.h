@@ -218,8 +218,8 @@ typedef struct tagBSP_DDR_SECT_INFO
 {
     BSP_DDR_SECT_TYPE_E    enSectType;
     BSP_DDR_SECT_ATTR_E    enSectAttr;
-    BSP_U32                ulSectVirtAddr;
-    BSP_U32                ulSectPhysAddr;
+    BSP_VOID*               pSectVirtAddr;
+    BSP_VOID*                pSectPhysAddr;
     BSP_U32                ulSectSize;
 }BSP_DDR_SECT_INFO;
 
@@ -228,8 +228,8 @@ typedef struct tagBSP_DDR_SECT_INFO
 typedef struct tagBSP_AXI_SECT_INFO
 {
     BSP_AXI_SECT_TYPE_E    enSectType;
-    BSP_U32                ulSectVirtAddr;
-    BSP_U32                ulSectPhysAddr;
+    BSP_VOID*                pSectVirtAddr;
+    BSP_VOID*                pSectPhysAddr;
     BSP_U32                ulSectSize;
 }BSP_AXI_SECT_INFO;
 
@@ -265,7 +265,7 @@ BSP_S32 BSP_AXI_GetSectInfo(BSP_AXI_SECT_TYPE_E enSectType, BSP_AXI_SECT_INFO *p
  输出参数  : 无
  返回值    ：实地址
 *****************************************************************************/
-unsigned int DRV_DDR_VIRT_TO_PHY(unsigned int ulVAddr);
+void* DRV_DDR_VIRT_TO_PHY(void* ulVAddr);
 
 /*****************************************************************************
  函 数 名  : DRV_DDR_PHY_TO_VIRT
@@ -274,7 +274,7 @@ unsigned int DRV_DDR_VIRT_TO_PHY(unsigned int ulVAddr);
  输出参数  : 无
  返回值    ：虚地址
 *****************************************************************************/
-unsigned int DRV_DDR_PHY_TO_VIRT(unsigned int ulPAddr);
+void* DRV_DDR_PHY_TO_VIRT(void* ulPAddr);
 
 /*****************************************************************************
  函 数 名  : TTF_VIRT_TO_PHY
@@ -283,7 +283,7 @@ unsigned int DRV_DDR_PHY_TO_VIRT(unsigned int ulPAddr);
  输出参数  : 无
  返回值    ：实地址
 *****************************************************************************/
-extern unsigned int TTF_VIRT_TO_PHY(unsigned int ulVAddr);
+void* TTF_VIRT_TO_PHY(void* ulVAddr);
 
 /*****************************************************************************
  函 数 名  : TTF_PHY_TO_VIRT
@@ -292,7 +292,7 @@ extern unsigned int TTF_VIRT_TO_PHY(unsigned int ulVAddr);
  输出参数  : 无
  返回值    ：虚地址
 *****************************************************************************/
-extern unsigned int TTF_PHY_TO_VIRT(unsigned int ulPAddr);
+void* TTF_PHY_TO_VIRT(void* ulPAddr);
 
 /*****************************************************************************
  函 数 名  : IPF_VIRT_TO_PHY
@@ -301,7 +301,7 @@ extern unsigned int TTF_PHY_TO_VIRT(unsigned int ulPAddr);
  输出参数  : 无
  返回值    ：实地址
 *****************************************************************************/
-extern unsigned int IPF_VIRT_TO_PHY(unsigned int ulVAddr);
+void* IPF_VIRT_TO_PHY(void* ulVAddr);
 
 /*****************************************************************************
  函 数 名  : IPF_PHY_TO_VIRT
@@ -310,7 +310,7 @@ extern unsigned int IPF_VIRT_TO_PHY(unsigned int ulVAddr);
  输出参数  : 无
  返回值    ：虚地址
 *****************************************************************************/
-extern unsigned int IPF_PHY_TO_VIRT(unsigned int ulPAddr);
+void* IPF_PHY_TO_VIRT(void* ulPAddr);
 /*****************************************************************************
  函 数 名  : DRV_AXI_VIRT_TO_PHY
  功能描述  : AXI内虚地址往实地址转换
@@ -318,7 +318,7 @@ extern unsigned int IPF_PHY_TO_VIRT(unsigned int ulPAddr);
  输出参数  : 无
  返回值    ：虚地址
 *****************************************************************************/
-extern unsigned int DRV_AXI_VIRT_TO_PHY(unsigned int ulVAddr);
+void* DRV_AXI_VIRT_TO_PHY(void* ulVAddr);
 
 /*****************************************************************************
  函 数 名  : DRV_AXI_PHY_TO_VIRT
@@ -327,7 +327,7 @@ extern unsigned int DRV_AXI_VIRT_TO_PHY(unsigned int ulVAddr);
  输出参数  : 无
  返回值    ：虚地址
 *****************************************************************************/
-extern unsigned int DRV_AXI_PHY_TO_VIRT(unsigned int ulPAddr);
+void* DRV_AXI_PHY_TO_VIRT(void* ulPAddr);
 
 
 

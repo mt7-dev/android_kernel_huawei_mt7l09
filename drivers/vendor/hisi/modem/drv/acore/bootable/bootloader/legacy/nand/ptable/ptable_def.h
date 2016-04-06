@@ -1,0 +1,1 @@
+../../../../../kernel/drivers/mtd/nand/ptable/ptable_def.h

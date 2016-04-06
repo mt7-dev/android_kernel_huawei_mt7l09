@@ -368,6 +368,50 @@ extern VOS_VOID IPS_MNTN_TraceAdvancedCfgReq(VOS_VOID *pMsg);
 /* IP 数据包可维可测*/
 extern VOS_VOID IPS_MNTN_TraceIpInfo(struct sk_buff *skb,VOS_UINT16 usType);
 extern VOS_VOID IPS_MNTN_IPInfoCfgReq(VOS_VOID *pMsg);
+extern VOS_VOID IPS_MNTN_FillMsg(OM_APP_TRACE_STRU *pstAppTrace, VOS_UINT32 ulMsgName, VOS_UINT32 ulMsgLen);
+extern VOS_UINT32 IPS_MNTN_TransMsg
+(
+    VOS_UINT8                              *pucTransMsg,
+    VOS_UINT32                              ulTransMsgContentLen,
+    IPS_MNTN_TRACE_MSG_TYPE_ENUM_UINT16     enMsgName
+);
+extern VOS_UINT32 IPS_MNTN_GetPktLenByTraceCfg
+(
+    IPS_MNTN_TRACE_CONFIG_STRU     *pstTraceCfg,
+    VOS_UINT16                      usPktLen,
+    VOS_UINT32                     *pulDataLen
+);
+extern VOS_VOID IPS_MNTN_PktInfoCB
+(
+    const VOS_UINT8                        *pucNetIfName,
+    const VOS_UINT8                        *pucPktData,
+    VOS_UINT16                              usPktLen,
+    IPS_MNTN_TRACE_MSG_TYPE_ENUM_UINT16     usType
+);
+extern VOS_VOID IPS_MNTN_BridgePktInfoCB
+(
+    const VOS_UINT8                        *pucSrcPort,
+    const VOS_UINT8                        *pucDestPort,
+    VOS_UINT8                              *pucPktData,
+    VOS_UINT16                              usPktLen,
+    IPS_MNTN_TRACE_MSG_TYPE_ENUM_UINT16     usType
+);
+extern VOS_VOID IPS_MNTN_CtrlPktInfoCB
+(
+    const VOS_UINT8                        *pucNetIfName,
+    const VOS_UINT8                        *pucPktData,
+    VOS_UINT16                              usPktLen,
+    IPS_MNTN_TRACE_MSG_TYPE_ENUM_UINT16     usType
+);
+extern PS_BOOL_ENUM_UINT8  IPS_MNTN_BridgeTraceCfgChkParam(IPS_MNTN_TRACE_CONFIG_REQ_STRU *pRcvMsg);
+extern PS_BOOL_ENUM_UINT8  IPS_MNTN_TraceCfgChkParam(IPS_MNTN_TRACE_CONFIG_REQ_STRU *pRcvMsg);
+extern PS_BOOL_ENUM_UINT8  IPS_MNTN_TraceAdvancedCfgChkParam(IPS_MNTN_TRACE_CONFIG_REQ_STRU *pRcvMsg);
+extern VOS_VOID IPS_MNTN_SendTranMsgDirect(OM_APP_TRACE_STRU *pstAppTrace, VOS_UINT32 ulMsgContenLen, VOS_UINT32 ulMsgName);
+extern VOS_VOID IPS_MNTN_FlowCtrl(VOS_UINT32 ulFcType, IPS_MNTN_TRACE_MSG_TYPE_ENUM_UINT16  usType);
+extern PS_BOOL_ENUM_UINT8  IPS_MNTN_IPInfoCfgChkParam(IPS_MNTN_IP_INFO_CONFIG_REQ_STRU *pRcvIpInfoCfg);
+extern VOS_VOID IPS_MNTN_Ipv4DataParse(IPS_MNTN_IP_INFO_STRU *pstIpInfo,VOS_UINT8 *pData);
+extern VOS_VOID IPS_MNTN_Ipv6DataParse(IPS_MNTN_IP_INFO_STRU *pstIpInfo,VOS_UINT8 *pData);
+extern VOS_UINT32 IPS_MNTN_GetIPInfoCfg(VOS_UINT16 usType);
 
 #ifdef __cplusplus
 #if __cplusplus

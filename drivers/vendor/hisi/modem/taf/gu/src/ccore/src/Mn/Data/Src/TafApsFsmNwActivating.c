@@ -1170,6 +1170,11 @@ VOS_UINT32 TAF_APS_RcvL4aSetCgansCnf_NwActivating_WaitL4aCgansCnf(
     }
 #endif
 
+#if (FEATURE_ON == FEATURE_IMS)
+    /* 处理IMS专有承载 */
+    TAF_APS_ProcImsDedicateBearer(pstPdpEntity);
+#endif
+
     /* 激活成功，启动流量统计 */
     TAF_APS_StartDsFlowStats(pstPdpEntity->ucNsapi);
 
@@ -1187,6 +1192,9 @@ VOS_UINT32 TAF_APS_RcvL4aSetCgansCnf_NwActivating_WaitL4aCgansCnf(
     return VOS_TRUE;
 
 }
+
+
+
 VOS_UINT32 TAF_APS_RcvMmcServiceStatusInd_NwActivating_WaitL4aCgansCnf(
     VOS_UINT32                          ulEventType,
     struct MsgCB                       *pstMsg
@@ -1268,11 +1276,6 @@ VOS_UINT32 TAF_APS_RcvEsmSmEpsBearerInfoInd_NwActivating_WaitL4aCgansCnf(
     {
         MN_APS_ProcEsmBearerInfoIndOptActivate(pstPdpEntity, pstBearerInfo);
 
-#if (FEATURE_ON == FEATURE_IMS)
-        /* 处理IMS专有承载 */
-        TAF_APS_ProcImsBearerInfoIndOptActivate(pstPdpEntity, pstBearerInfo);
-#endif
-
 #if (FEATURE_ON == FEATURE_IPV6)
         /* 如果地址类型是IPv6, 需要同步给ND Client */
         if ( (TAF_APS_CheckPrimaryPdp(ucPdpId))
@@ -1292,8 +1295,6 @@ VOS_UINT32 TAF_APS_RcvEsmSmEpsBearerInfoInd_NwActivating_WaitL4aCgansCnf(
 
     return VOS_TRUE;
 }
-
-
 VOS_UINT32 TAF_APS_RcvTiNwActivatingExpired_NwActivating_WaitL4aCgansCnf(
     VOS_UINT32                          ulEventType,
     struct MsgCB                       *pstMsg
@@ -2029,9 +2030,11 @@ VOS_UINT32 TAF_APS_RcvL4aPdpActivateInd_NwActivating_LteMode(VOS_VOID)
     TAF_APS_ENTRY_MSG_STRU             *pstEntryMsg;
     APS_L4A_PDP_ACTIVATE_IND_STRU      *pstL4aPdpActivateInd;
     TAF_PS_CALL_PDP_MANAGE_IND_STRU     stPdpActIndEvt;
+#if (FEATURE_ON == FEATURE_IMS)
     VOS_UINT8                           ucPdpId;
     TAF_PS_CALL_ANSWER_REQ_STRU         stCallAnswerReq;
     TAF_APS_TIMER_STATUS_ENUM_U8        enTimerStatus;
+#endif
 
     /*---------------------------------------------------------
        LTE下，网络发起的激活，无论是自动应答还是手动应答都在

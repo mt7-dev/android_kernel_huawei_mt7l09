@@ -142,7 +142,9 @@ VOS_UINT32  NAS_ESM_EncodeBearerResAllocReqMsg
     VOS_UINT32                          ulRslt              = NAS_ESM_FAILURE;
     VOS_UINT8                          *pTmpSendMsg         = pSendMsg;
     NAS_ESM_SDF_PARA_STRU              *pstSdfPara          = VOS_NULL_PTR;
-    NAS_ESM_CONTEXT_LTE_QOS_STRU        stEpsQosInfo        = { NAS_ESM_NULL };
+    NAS_ESM_CONTEXT_LTE_QOS_STRU        stEpsQosInfo                      ;
+
+    PS_MEM_SET(&stEpsQosInfo, 0, sizeof(NAS_ESM_CONTEXT_LTE_QOS_STRU));
 
     NAS_ESM_INFO_LOG("NAS_ESM_EncodeBearerResAllocReqMsg:INFO:NAS_ESM_EncodeBearerResAllocReqMsg been entered!");
 
@@ -522,7 +524,9 @@ VOS_UINT32 NAS_ESM_EncodeBearerResModReqMsgAddSdf
     VOS_UINT32                          ulSum               = *pulLength;
     VOS_UINT8                          *pTmpSendMsg         = pSendMsg;
     NAS_ESM_SDF_PARA_STRU              *pstSdfPara          = VOS_NULL_PTR;
-    NAS_ESM_CONTEXT_LTE_QOS_STRU        stEpsQosInfo        = { NAS_ESM_NULL };
+    NAS_ESM_CONTEXT_LTE_QOS_STRU        stEpsQosInfo                      ;
+
+    PS_MEM_SET(&stEpsQosInfo, 0, sizeof(NAS_ESM_CONTEXT_LTE_QOS_STRU));
 
     pstSdfPara = NAS_ESM_GetSdfParaAddr(stResModEncodeInfo.ulCid);
 
@@ -561,7 +565,7 @@ VOS_UINT32 NAS_ESM_EncodeBearerResModReqMsgAddSdf
         }
 
         ulSum = ulSum + ulIndex;
-        ulIndex = NAS_ESM_NULL;
+        /* ulIndex = NAS_ESM_NULL; */
     }
     else
     {
@@ -574,6 +578,8 @@ VOS_UINT32 NAS_ESM_EncodeBearerResModReqMsgAddSdf
     *pulLength = ulSum;
     return NAS_ESM_SUCCESS;
 }
+
+
 VOS_VOID NAS_ESM_ModEpsQos
 (
     const APP_ESM_EPS_QOS_INFO_STRU                      *pstEpsQoSInfoOld,
@@ -695,7 +701,7 @@ VOS_UINT32 NAS_ESM_EncodeBearerResModReqMsgDeleteSdf
     VOS_UINT32                           ulSum            = NAS_ESM_NULL;
     VOS_UINT32                           ulActCidNum      = NAS_ESM_NULL;
     APP_ESM_EPS_QOS_INFO_STRU           *pstSdfQosInfo    = VOS_NULL_PTR;
-    NAS_ESM_CONTEXT_LTE_QOS_STRU         stEpsQosInfo;
+    NAS_ESM_CONTEXT_LTE_QOS_STRU         stEpsQosInfo     = {0};
     NAS_ESM_EPSB_CNTXT_INFO_STRU        *pstEpsbCntxtInfo = VOS_NULL_PTR;
     NAS_ESM_SDF_CNTXT_INFO_STRU         *pstSdfCntxtInfo  = VOS_NULL_PTR;
 
@@ -747,7 +753,7 @@ VOS_UINT32 NAS_ESM_EncodeBearerResModReqMsgDeleteSdf
             }
 
             ulSum = ulSum + ulIndex;
-            ulIndex = NAS_ESM_NULL;
+            /* ulIndex = NAS_ESM_NULL; */
         }
     }
 
@@ -822,7 +828,9 @@ VOS_UINT32 NAS_ESM_EncodeBearerResModReqMsgModQos
     VOS_UINT8                          *pTmpSendMsg         = pSendMsg;
     VOS_UINT8                           aucNwPacketFilterId[NAS_ESM_MAX_SDF_PF_NUM] = {0};
     NAS_ESM_SDF_PARA_STRU              *pstSdfPara          = VOS_NULL_PTR;
-    NAS_ESM_CONTEXT_LTE_QOS_STRU        stEpsQoSInfo        = { NAS_ESM_NULL };
+    NAS_ESM_CONTEXT_LTE_QOS_STRU        stEpsQoSInfo                      ;
+
+    PS_MEM_SET(&stEpsQoSInfo, 0, sizeof(NAS_ESM_CONTEXT_LTE_QOS_STRU));
 
     pstSdfPara = NAS_ESM_GetSdfParaAddr(stResModEncodeInfo.ulCid);
 
@@ -861,7 +869,7 @@ VOS_UINT32 NAS_ESM_EncodeBearerResModReqMsgModQos
         }
 
         ulSum = ulSum + ulIndex;
-        ulIndex = NAS_ESM_NULL;
+        /* ulIndex = NAS_ESM_NULL; */
     }
     else
     {
@@ -897,7 +905,9 @@ VOS_UINT32 NAS_ESM_EncodeBearerResModReqMsgModQosAndPf
     VOS_UINT32                          ulIndex             = NAS_ESM_NULL;
     VOS_UINT32                          ulSum               = *pulLength;
     VOS_UINT8                          *pTmpSendMsg         = pSendMsg;
-    NAS_ESM_CONTEXT_LTE_QOS_STRU        stEpsQoSInfo        = { NAS_ESM_NULL };
+    NAS_ESM_CONTEXT_LTE_QOS_STRU        stEpsQoSInfo                  ;
+
+    PS_MEM_SET(&stEpsQoSInfo, 0, sizeof(NAS_ESM_CONTEXT_LTE_QOS_STRU));
 
     /* 编码TFT信息 */
     if(NAS_ESM_FAILURE == NAS_ESM_EncodeTftCreateTftOrReplacePf(NAS_ESM_TFT_REPLACE_FILTER,
@@ -928,7 +938,7 @@ VOS_UINT32 NAS_ESM_EncodeBearerResModReqMsgModQosAndPf
         }
 
         ulSum = ulSum + ulIndex;
-        ulIndex = NAS_ESM_NULL;
+        /* ulIndex = NAS_ESM_NULL; */
     }
     else
     {
@@ -941,6 +951,9 @@ VOS_UINT32 NAS_ESM_EncodeBearerResModReqMsgModQosAndPf
     *pulLength = ulSum;
     return NAS_ESM_SUCCESS;
 }
+
+
+
 VOS_VOID NAS_ESM_EncodeActDedictdEpsbCntxtAccMsg( NAS_ESM_ENCODE_INFO_STRU stEncodeInfo,
                                                      VOS_UINT8  *pSendMsg,
                                                      VOS_UINT32 *pulLength)
@@ -1569,8 +1582,8 @@ VOS_VOID  NAS_ESM_EncodeChapContent
     APP_ESM_GW_AUTH_INFO_STRU          *pstTmpGwAuthInfo=pstGwAuthInfo;
     VOS_UINT32                          ulSum           = *pulLength;
     VOS_UINT8                           ucGwAuthId      = NAS_ESM_NULL;
-    VOS_UINT8                           aucChlgVal[NAS_ESM_AUTH_CHALLENGE_VALUE_LEN];
-    VOS_UINT8                           aucRspVal[NAS_ESM_AUTH_RESPONSE_VALUE_LEN];
+    VOS_UINT8                           aucChlgVal[NAS_ESM_AUTH_CHALLENGE_VALUE_LEN] = {0};
+    VOS_UINT8                           aucRspVal[NAS_ESM_AUTH_RESPONSE_VALUE_LEN] = {0};
     VOS_UINT32                           ulIndex         = NAS_ESM_NULL;
     VOS_UINT32                           ulIndex1        = NAS_ESM_NULL;
     VOS_UINT32                          usItemId     = NAS_ESM_NULL;
@@ -2214,6 +2227,7 @@ VOS_UINT32 NAS_ESM_EncodePco
     VOS_UINT32                          ulIndex         = NAS_ESM_NULL;
     VOS_UINT32                          ulTmpIndex      = NAS_ESM_NULL;
     APP_ESM_GW_AUTH_INFO_STRU          *pstTmpGwAuthInfo =&pstSdfPara->stGwAuthInfo;
+    VOS_UINT8                           ucImsSuppFlag   = VOS_FALSE;
 
 
     NAS_ESM_INFO_LOG("NAS_ESM_EncodePco:INFO:NAS_ESM_EncodePCO been entered!");
@@ -2246,8 +2260,9 @@ VOS_UINT32 NAS_ESM_EncodePco
     /* 目前判断bitOpGwAuthInfo为1，且用户名长度大于0，才认为存在鉴权信息 ,且存在APN时才会在编码PCO信元中带给网侧*/
     if (VOS_TRUE == NAS_ESM_IsNeedEncodePapOrChap(pstSdfPara))
     {
-        if ((APP_ESM_MAX_USER_NAME_LEN < pstSdfPara->stGwAuthInfo.ucUserNameLen)
-            || (APP_ESM_MAX_PASSWORD_LEN < pstSdfPara->stGwAuthInfo.ucPwdLen))
+        /* PCO消息最大长度为253，若用户名和密码为127时将超过PCO消息最大长度，GU在AUTH编码时允许用户名和密码最大长度为99,根据GU此处用户名或者密码大于99时不编码AUTH */
+        if ((APP_ESM_MAX_USER_NAME_ENCODE_LEN < pstSdfPara->stGwAuthInfo.ucUserNameLen)
+            || (APP_ESM_MAX_PASSWORD_ENCODE_LEN < pstSdfPara->stGwAuthInfo.ucPwdLen))
         {
              NAS_ESM_NORM_LOG("NAS_ESM_EncodePco:Input gw auth len is err!");
 
@@ -2301,8 +2316,13 @@ VOS_UINT32 NAS_ESM_EncodePco
     NAS_ESM_EncodeImCnSignalFlag(pstSdfPara, (pTmpSendMsg + ulSum),&ulTmpIndex);
     ulSum                               = ulSum + ulTmpIndex;
 
-    if ((NAS_ESM_OP_TRUE == pstSdfPara->bitOpImsCnSignalFlag)
+    if (VOS_OK != APP_GetCidImsSuppFlag((VOS_UINT8)pstSdfPara->ulCId, &ucImsSuppFlag))
+    {
+        ucImsSuppFlag                   = VOS_FALSE;
+    }
+    if (((NAS_ESM_OP_TRUE == pstSdfPara->bitOpImsCnSignalFlag)
         && (APP_ESM_PDP_FOR_IMS_CN_SIG_ONLY == pstSdfPara->enImsCnSignalFlag))
+        || (VOS_TRUE == ucImsSuppFlag))
     {
         ulTmpIndex                          = NAS_ESM_NULL;
         NAS_ESM_EncodeIpv4PcscfReq(pstSdfPara, (pTmpSendMsg + ulSum),&ulTmpIndex);
@@ -2605,6 +2625,22 @@ VOS_UINT32  NAS_ESM_VerifyApnCharacter
                                            NAS_ESM_APN_VERIFY_CHARACTER_TYPE_MIDDLE);
 }
 
+VOS_UINT32 NAS_ESM_CheckApnReverseTransformationParaValid
+(
+    const APP_ESM_APN_INFO_STRU  *pstAPNInfoAfterTrans,
+    const NAS_ESM_CONTEXT_APN_STRU  *pstAPNInfoBeforeTrans
+)
+{
+    if((VOS_NULL_PTR == pstAPNInfoBeforeTrans) || (VOS_NULL_PTR == pstAPNInfoAfterTrans)
+        || (NAS_ESM_NULL == pstAPNInfoBeforeTrans->ucApnLen)
+        || (NAS_ESM_MAX_APN_NUM < pstAPNInfoBeforeTrans->ucApnLen))
+    {
+        NAS_ESM_WARN_LOG("NAS_ESM_CheckApnReverseTransformationPara:Error:Input parameter is invalid!");
+        return (VOS_UINT32)PS_FALSE;
+    }
+    return (VOS_UINT32)PS_TRUE;
+}
+
 
 
 VOS_UINT32  NAS_ESM_ApnReverseTransformation
@@ -2620,14 +2656,11 @@ VOS_UINT32  NAS_ESM_ApnReverseTransformation
     APP_ESM_APN_INFO_STRU               stTmpApnInfo;
 
     /* 输入参数合法性判断 */
-    if((VOS_NULL_PTR == pstAPNInfoBeforeTrans) || (VOS_NULL_PTR == pstAPNInfoAfterTrans)
-        || (NAS_ESM_NULL == pstAPNInfoBeforeTrans->ucApnLen)
-        || (NAS_ESM_MAX_APN_NUM < pstAPNInfoBeforeTrans->ucApnLen))
+    if(PS_FALSE == NAS_ESM_CheckApnReverseTransformationParaValid(pstAPNInfoAfterTrans, pstAPNInfoBeforeTrans))
     {
         NAS_ESM_WARN_LOG("NAS_ESM_ApnReverseTransformation:Error:Input parameter is invalid!");
         return NAS_ESM_FAILURE;
     }
-
     NAS_ESM_MEM_SET(&stTmpApnInfo, NAS_ESM_NULL, sizeof(APP_ESM_APN_INFO_STRU));
 
     /*APN Name为空*/
@@ -2659,6 +2692,7 @@ VOS_UINT32  NAS_ESM_ApnReverseTransformation
     }
     /* 替换LABEL的长度为分隔字符'.' */
     ulPointIndex = pstAPNInfoBeforeTrans->aucApnName[0];
+    /* 检测APN信元值长度，若为空，则中断检测，总长度仅统计0之前的部分; */
     while(ulPointIndex < stTmpApnInfo.ucApnLen)
     {
         /* 判断LABEL的长度是否有效 */
@@ -2666,7 +2700,7 @@ VOS_UINT32  NAS_ESM_ApnReverseTransformation
         if(PS_TRUE != enIsApnLabelLenValid)
         {
             NAS_ESM_WARN_LOG("NAS_ESM_ApnReverseTransformation:Error:NAS_ESM_IsApnLabelLenValid fail in while loop!");
-            /* return NAS_ESM_FAILURE;*/
+            /* return NAS_ESM_FAILURE; */
             stTmpApnInfo.ucApnLen = (unsigned char)ulPointIndex;
             break;
 
@@ -2676,15 +2710,13 @@ VOS_UINT32  NAS_ESM_ApnReverseTransformation
         ulPointIndex = (ulTemp + stTmpApnInfo.aucApnName[ulTemp]) + 1;
         stTmpApnInfo.aucApnName[ulTemp] = NAS_ESM_APN_LABEL_INTERVAL_CHARACTER;
     }
-    /*stTmpApnInfo.ucApnLen = (unsigned char)ulPointIndex;*/
     /* 判断各LABEL的之和，再加上各分隔符的个数，是否等于总长度 */
-    /*
+
     if(ulPointIndex != stTmpApnInfo.ucApnLen)
     {
         NAS_ESM_WARN_LOG("NAS_ESM_ApnReverseTransformation:APN length mismatch!");
         return NAS_ESM_FAILURE;
     }
-    */
 
     /* 判断每个字符的有效性 */
     for(ulCur = 0; ulCur < stTmpApnInfo.ucApnLen; ulCur++)

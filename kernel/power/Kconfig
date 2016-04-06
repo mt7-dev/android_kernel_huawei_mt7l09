@@ -299,6 +299,10 @@ config PM_GENERIC_DOMAINS_RUNTIME
 	def_bool y
 	depends on PM_RUNTIME && PM_GENERIC_DOMAINS
 
+config PM_GENERIC_DOMAINS_OF
+	def_bool y
+	depends on PM_GENERIC_DOMAINS && OF && !ARCH_EXYNOS
+
 config CPU_PM
 	bool
 	depends on SUSPEND || CPU_IDLE
@@ -309,3 +313,10 @@ config SUSPEND_TIME
 	  Prints the time spent in suspend in the kernel log, and
 	  keeps statistics on the time spent in suspend in
 	  /sys/kernel/debug/suspend_time
+
+config HUAWEI_POWEROFF_RTC
+	bool "Hisilicon suspend optimization for POWEROFF RTC"
+	depends on SUSPEND
+	default n
+	help
+	  Driver for suspend optimization  for POWEROFF RTC

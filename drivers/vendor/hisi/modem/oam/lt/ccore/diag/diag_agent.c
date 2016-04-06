@@ -140,11 +140,15 @@ VOS_VOID diag_SocpVoteCnfMsgProc(MsgBlock * pMsgBlock)
     DIAG_MSG_SOCP_VOTE_WAKE_CNF_STRU * voteCnf;
 
     voteCnf = (DIAG_MSG_SOCP_VOTE_WAKE_CNF_STRU *)pMsgBlock;
-    if((voteCnf->ulVoteId == SOCP_VOTE_DIAG_COMM) && (voteCnf->ulVoteType) == SOCP_VOTE_FOR_WAKE && (g_diagDspState == LDSP_INITING))
+    if((voteCnf->ulVoteId == SOCP_VOTE_DIAG_COMM) && (voteCnf->ulVoteType) == SOCP_VOTE_FOR_WAKE)
     {
         if(voteCnf->ulVoteRst != 0)
         {
             diag_printf("%s: vote fail", __FUNCTION__);
+        }
+        else
+        {
+
         }
     }
 }
@@ -422,13 +426,6 @@ VOS_UINT32 diag_AgentMsgProcInit(enum VOS_INIT_PHASE_DEFINE ip)
         }
 
 #if(FEATURE_SOCP_ON_DEMAND == FEATURE_ON)
-#if 0
-        if(ERR_MSP_SUCCESS != VOS_SmBCreate(NULL, 0, VOS_SEMA4_FIFO, &g_diagAgentSem))
-        {
-            diag_printf("[%s]:agent sem init err!\n",__FUNCTION__);
-            return ERR_MSP_FAILURE;
-        }
-#endif
         voteReq = (DIAG_MSG_SOCP_VOTE_REQ_STRU *)VOS_AllocMsg(MSP_PID_DIAG_AGENT,(sizeof(DIAG_MSG_SOCP_VOTE_REQ_STRU) - 20));
         if(voteReq == NULL)
         {
@@ -865,7 +862,7 @@ VOS_UINT32 diag_BspLogProcEntry(VOS_UINT8* pstReq , VOS_UINT32 ulCmdId)
     {
         pstLogSet = (DIAG_bsp_log_swt_cfg_s *)DIAG_OFFSET_HEAD_GET_DATA(pstReq);
         data_len = pstDiagHead->ulDataSize  - sizeof(MSP_DIAG_DATA_REQ_STRU);
-        stLogSetCnf.ulRet  = DRV_LOG_LVL_SET(pstLogSet,data_len);
+        stLogSetCnf.ulRet  = ERR_MSP_SUCCESS;
 
         pstCnf = (VOS_UINT8 *)&stLogSetCnf ;
         cnf_data_len = sizeof(DIAG_BSP_PRINT_LOG_SWT_CNF_STRU);

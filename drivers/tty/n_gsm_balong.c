@@ -64,7 +64,7 @@
 #include <linux/etherdevice.h>
 #include <linux/gsmmux.h>
 #include <linux/of.h>
-#include <linux/hw_log.h>
+#include <huawei_platform/log/hw_log.h>
 
 static int debug = 0;
 module_param(debug, int, 0600);

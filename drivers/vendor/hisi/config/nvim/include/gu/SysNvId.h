@@ -143,6 +143,46 @@ enum SYS_NV_ID_ENUM
 /*   150 */      en_NV_Item_MTC_RF_LCD_CFG = GU_SYS_NV_ID_MIN + 150,
 /*   151 */      en_NV_Item_MTC_RF_LCD_TIMER_INTERVAL_CFG = GU_SYS_NV_ID_MIN + 151,
 /*   2049*/      en_NV_Item_OM_Port_Num = GU_SYS_NV_ID_MIN + 2049,
+/*   2302*/      en_NV_Item_HIGH_PRIO_RAT_HPLMN_TIMER_CFG = 2302,
+/* 2305  */      en_NV_Item_CMCC_Cfg_Dplmn_Nplmn = 2305,
+/* 2306  */      en_NV_Item_UNICOM_Cfg_Dplmn_Nplmn = 2306,
+/* 2307  */      en_NV_Item_CT_Cfg_Dplmn_Nplmn = 2307,
+/* 2308  */      en_NV_Item_Cfg_Dplmn_Nplmn_Flag = 2308,
+/*   2309*/     en_NV_Item_REL_PS_SIGNAL_CON_CFG = 2309,
+/*  2311 */      en_NV_Item_PDN_TEARDOWN_POLICY = 2311,
+
+/*  2319 */     en_NV_Item_Roam_Display_Cfg = 2319,                /* 漫游显示配置 */
+
+/*   2320*/     en_NV_Item_Rat_Frequently_Switch_Chr_Rpt_Cfg = 2320,
+
+/*  2321 */     en_NV_Item_NVWR_SEC_CTRL            = 2321,                     /* NVWR命令安全控制 */
+
+/* 2324 */      en_NV_Item_Protect_Mt_Csfb_Paging_Procedure_Len = 2324,         /* csmt 保护时长 */
+                en_NV_Item_SMS_PS_CTRL              = 2326,
+/* Added by c00318887 for DPlmn扩容和优先接入HPLMN, 2015-5-18, begin */
+/* 2327  */      en_NV_Item_CMCC_Cfg_Dplmn_Nplmn_Info = 2327,
+/* 2328  */      en_NV_Item_UNICOM_Cfg_Dplmn_Nplmn_Info = 2328,
+/* 2329  */      en_NV_Item_CT_Cfg_Dplmn_Nplmn_Info = 2329,
+/* Added by c00318887 for DPlmn扩容和优先接入HPLMN, 2015-5-18, begin */
+
+
+
+/*  2340 */     en_NV_Item_Ccwa_Ctrl_Mode                   = 2340,
+
+/* Added by w00316404 for Add Get Modem Log, 2015-10-17, Begin */
+/*  2361 */     en_NV_Item_Print_Modem_Log_Type     = 2361,                     /* 控制是否输出modem log的类型 */
+/* Added by w00316404 for Add Get Modem Log, 2015-10-17, End */
+/*   3000*/      en_NV_Item_ErrLog_CsHo_Len = 3000,
+
+/* 3002 */      en_NV_Item_GAS_UTRAN_TDD_DEFAULT_Q_RXLMIN = 3002,
+
+/* 3003 */      en_NV_Item_GAS_C1_Calc_Opt_White_Plmn_List = 3003,
+/* 3016 */      en_NV_Item_Inter_Rat_Resel_H_PRIO_Customization      = 3016,
+
+/* 3018 */      en_NV_Item_GAS_AUTO_FR_CFG      = 3018,
+
+/*   4000 */     en_NV_Item_DDR_ADJUST_CFG  = 4000,
+
 /*   8250*/      en_NV_Item_GCF_TYPE_CONTENT_ID = 8250,
 /*   8517*/      en_NV_Item_ENHANCE_SIMCARD_LOCK_STATUS = 8517,
 /*   8518*/      en_NV_Item_GENHANCE_SIMCARD_REMAIN_TIMES = 8518,
@@ -309,10 +349,21 @@ enum SYS_NV_ID_ENUM
 /* 9254 */       en_NV_Item_IMS_USSD_SUPPORT_FLG            = 9254,
 
 /* 9263 */       en_NV_Item_Multi_Dfs_Dsflow_Rate_CFG    = 9263,
-
-/* 9255 */       en_NV_Item_Ultra_Flash_Csfb_Support_Flg    = 9266,
+/* 9266 */       en_NV_Item_Ultra_Flash_Csfb_Support_Flg    = 9266,
+/* 9268 */       en_NV_Item_ADS_DYNAMIC_THRESHOLD_CFG        = 9268,
+/* 9269 */       en_NV_Item_DMS_DEBUG_CFG = 9269,
 
 /* 9270 */       en_NV_Item_3GPP2_Uplmn_Not_Pref_Flg    = 9270,
+/* 9272 */       en_NV_Item_ROAMING_REJECT_NORETRY_CFG  = 9272,   /* 定制NV: Other Plmn上收到reject 17时不重试 */
+/* ATA是否异步方式上报OK NV控制，异步方式即发送了connect未收
+   到网络connect ack就上报ok，非异步方式是等收到网络connect ack再上报ok*/
+/* 9276 */     en_NV_Item_Ata_Report_Ok_Async_Cfg = 9276,
+
+/* 9282 */     en_NV_Item_Syscfg_Trigger_Plmn_Search_Cfg = 9282,
+
+/* 9286  */     en_NV_Item_Was_Freqbands_Priority  = 9286,
+
+/* 16042  */     en_NV_Item_W_T313_BACK_CTRL  = 16042,
 
 
 /* 50009 */      en_NV_Item_TRAFFIC_CLASS_Type = GU_CUSTOM_EXTEND_NV_ID_MIN + 9,

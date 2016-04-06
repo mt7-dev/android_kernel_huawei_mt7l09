@@ -21,6 +21,35 @@
 #define    THIS_FILE_ID        PS_FILE_ID_GMM_SERVICE_C
 
 
+VOS_VOID NAS_GMM_RcvRabmRabSetupInd(
+    GMMRABM_RAB_SETUP_IND_STRU         *pstRabSetupIndMsg
+)
+{
+    VOS_UINT32                          ulT3340TimerStatus;
+
+    ulT3340TimerStatus = NAS_GMM_QryTimerStatus(GMM_TIMER_T3340);
+
+    /* 2G网络模式不处理 */
+    if (GMM_TRUE == GMM_IsCasGsmMode())
+    {
+        return;
+    }
+
+    /* 如果t3340定时器在运行，则停止t3340 */
+    if (VOS_TRUE == ulT3340TimerStatus)
+    {
+        Gmm_TimerStop(GMM_TIMER_T3340);
+
+        if (0 != g_GmmGlobalCtrl.MsgHold.ulMsgHoldMsk)
+        {
+            Gmm_DealWithBuffAfterProc();
+        }
+    }
+
+    return;
+}
+
+
 VOS_VOID Gmm_RcvRabmReestablishReq(VOS_VOID *pMsg)
 {
     VOS_UINT32                      ulRrcEstCauseTemp;
@@ -387,7 +416,15 @@ VOS_VOID NAS_GMM_RcvRabmEstReq_SuspendWaitForSysinfo(
         NAS_MML_SetPsServiceBufferStatusFlg(VOS_TRUE);
 
         g_GmmGlobalCtrl.ucSpecProcHold = GMM_SERVICE_REQUEST_DATA_IDLE;
+
+        /* 如果等系统消息定时器在运行，则不下发RAU */
+        if (NAS_GMM_TIMER_HO_WAIT_SYSINFO_FLG == (NAS_GMM_TIMER_HO_WAIT_SYSINFO_FLG & g_GmmTimerMng.ulTimerRunMask))
+        {
+            return;
+        }
+
         Gmm_RoutingAreaUpdateInitiate(GMM_UPDATING_TYPE_INVALID);
+
     }
 
     return;
@@ -1749,13 +1786,18 @@ VOS_VOID NAS_GMM_RcvSmsEstReq_SuspendWaitForSysinfo(
 
         g_GmmGlobalCtrl.ucSpecProcHold = GMM_SERVICE_REQUEST_SIGNALLING;
 
+        
+        /* 如果等系统消息定时器在运行，则不下发RAU */
+        if (NAS_GMM_TIMER_HO_WAIT_SYSINFO_FLG == (NAS_GMM_TIMER_HO_WAIT_SYSINFO_FLG & g_GmmTimerMng.ulTimerRunMask))
+        {
+            return;
+        }
+
         Gmm_RoutingAreaUpdateInitiate(GMM_UPDATING_TYPE_INVALID);
     }
 
     return;
 }
-
-
 VOS_VOID NAS_GMM_RcvRabmMmlProcStatusQryReq(
     struct MsgCB                       *pMsg
 )

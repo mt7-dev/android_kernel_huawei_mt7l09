@@ -246,7 +246,6 @@ static int analyze_baud_rate(struct usb_serial_port *port, speed_t new_rate)
 	if (unstable_bauds)
 		return new_rate;
 
-	/* FRWD Dongle uses 115200 bps */
 	if (is_frwd(port->serial->dev))
 		return new_rate;
 

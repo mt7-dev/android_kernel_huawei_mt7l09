@@ -865,7 +865,7 @@ VOS_UINT32 USIMM_InitSimFDNBDNStatus(VOS_VOID)
     /* IMSI和LOCI不同时无效时，单板执行不受约束操作 */
     if((USIMM_EFSTATUS_DEACTIVE != imsiState)||(USIMM_EFSTATUS_DEACTIVE != lociState))
     {
-        return VOS_OK;
+        USIMM_WARNING_LOG("USIMM_ICC_InitSimFBDN: EFIMIS or EFLOCI File status fail");
     }
 
     /* BDN能力请求 */
@@ -1285,7 +1285,7 @@ VOS_UINT32 USIMM_DecodeATR(VOS_VOID)
 
     stFlag.usSimAtrFlag = VOS_FALSE;
 
-    lSCIResult = DRV_USIMMSCI_GET_ATR(&ulATRLen, aucATR, &stSCIATRInfo);
+    lSCIResult = DRV_USIMMSCI_GET_ATR((VOS_ULONG*)&ulATRLen, aucATR, &stSCIATRInfo);
 
 	/*lint --e{831,669} */
     if((USIMM_SCI_SUCCESS != lSCIResult)||(ulATRLen > sizeof(aucATR)))
@@ -1369,7 +1369,7 @@ VOS_VOID USIMM_DecodeATRSecondStep(VOS_VOID)
     VOS_UINT32                          ulResult;
     SCI_ATRInfo                         stSCIATRInfo;
 
-    lSCIResult = DRV_USIMMSCI_GET_ATR(&ulATRLen, aucATR, &stSCIATRInfo);
+    lSCIResult = DRV_USIMMSCI_GET_ATR((VOS_ULONG*)&ulATRLen, aucATR, &stSCIATRInfo);
 
     if ((USIMM_SCI_SUCCESS != lSCIResult)
         ||(ulATRLen > sizeof(aucATR)))
@@ -2067,6 +2067,7 @@ VOS_UINT32 USIMM_DecodeEFDIR(VOS_VOID)
     VOS_UINT8                           aucIsimRidAppCode[USIMM_RID_LEN + USIMM_APP_CODE_LEN] = {0xA0,0x00,0x00,0x00,0x87,0x10,0x04};
     VOS_UINT8                           aucCsimRidAppCode[USIMM_RID_LEN + USIMM_APP_CODE_LEN] = {0xA0,0x00,0x00,0x03,0x43,0x10,0x02};
     VOS_UINT16                          ausPath[] = {MF, EFDIR};
+    VOS_BOOL                            ulUsimAidHit = VOS_FALSE;
 
     ulResult = USIMM_SelectFile(USIMM_UMTS_APP, USIMM_NEED_FCP, ARRAYSIZE(ausPath), ausPath);
 
@@ -2117,7 +2118,8 @@ VOS_UINT32 USIMM_DecodeEFDIR(VOS_VOID)
         ulAidLen = (pucdata[i + APP_AID_LEN_OFFSET] > USIMM_AID_LEN_MAX)?USIMM_AID_LEN_MAX:pucdata[i + APP_AID_LEN_OFFSET];
 
         /* 只要匹配到A0000000871002就认为找到了USIM的AID */
-        if (VOS_OK == VOS_MemCmp(pucdata + i + APP_AID_VALUE_OFFSET, aucUsimRidAppCode, sizeof(aucUsimRidAppCode)))
+        if ((VOS_OK == VOS_MemCmp(pucdata + i + APP_AID_VALUE_OFFSET, aucUsimRidAppCode, sizeof(aucUsimRidAppCode)))
+            && (VOS_FALSE == ulUsimAidHit))
         {
 
             VOS_MemCpy(gstUSIMMADFInfo.aucAID, pucdata + i + APP_AID_VALUE_OFFSET, ulAidLen);    /*保存相关信息*/
@@ -2128,6 +2130,8 @@ VOS_UINT32 USIMM_DecodeEFDIR(VOS_VOID)
 
             g_astAidInfo[USIMM_AID_TYPE_USIM].ulAIDLen = ulAidLen;
             VOS_MemCpy(g_astAidInfo[USIMM_AID_TYPE_USIM].aucAID, pucdata + i + APP_AID_VALUE_OFFSET, ulAidLen);    /*保存相关信息*/
+			
+            ulUsimAidHit = VOS_TRUE;
         }
 
         /* 只要匹配到A0000000871004就认为找到了ISIM的AID */

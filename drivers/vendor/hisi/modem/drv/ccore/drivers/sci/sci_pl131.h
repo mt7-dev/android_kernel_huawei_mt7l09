@@ -389,7 +389,7 @@
 #define PL131_DEF_DEBOUNCE     ((u32) 136)      /*debounce time = 136ms*/
 #define PL131_DEF_ACTEVENT     ((u32) 42500)    /*activation time 42000 card clock cycles*/
 #define PL131_DEF_DEACTEVENT   ((u32) 200)      /*deact time 200us*/
-#define PL131_DEF_ATRSTIME     ((u32) 40200)    /*ATR start within 40000 card clock cycles*/
+#define PL131_DEF_ATRSTIME     ((u32) 45000)    /*ATR start within 40000 card clock cycles*/
 #define PL131_DEF_ATRDTIME     ((u32) 19200)    /*ATR complete within 19200 ETUs*/
 #define PL131_DEF_CHARTIME     ((u32) 9600)     /*char interval 9600 ETUs*/
 #define PL131_DEF_BLOCKTIME    ((u32) 9600)     /*block timeout interval 9600 ETUs*/

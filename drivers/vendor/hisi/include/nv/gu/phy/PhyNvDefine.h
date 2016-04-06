@@ -267,6 +267,21 @@ enum UCOM_NV_DCXO_TEMP_CIRCUIT_ENUM
 };
 typedef PHY_UINT16 UCOM_NV_DCXO_TEMP_CIRCUIT_ENUM_UINT16;
 /*****************************************************************************
+ 枚举名    :UCOM_NV_GU_ABB_CHAN_ENUM_UINT16
+ 协议表格  :
+ ASN.1描述 :
+ 枚举说明  :ABB通道，0表示通道0,1表示通道1,2表示两个通道
+*****************************************************************************/
+enum UCOM_NV_GU_ABB_CHAN_ENUM
+{
+    UCOM_NV_GU_ABB_CHAN_0                = 0,                                    /* 表示使用 通道0 */                                                           /* 上行仅存在DPCH */
+    UCOM_NV_GU_ABB_CHAN_1                = 1,                                    /* 表示使用 通道1 */                                                             /* 上行存在RACH */
+    UCOM_NV_GU_ABB_CHAN_2                = 2,                                    /* 表示使用 通道0/1 */
+    UCOM_NV_GU_ABB_CHAN_BUTT             = 3
+};
+typedef PHY_UINT16 UCOM_NV_GU_ABB_CHAN_ENUM_UINT16;
+
+/*****************************************************************************
   5 STRUCT
 *****************************************************************************/
 /*****************************************************************************
@@ -4042,6 +4057,18 @@ typedef struct
 
 
 /*****************************************************************************
+ 结构名    : UCOM_NV_W_DUAL_ANT_DPDT_PROTECT_TIME_STRU
+ 协议表格  :
+ ASN.1描述 :
+ 结构说明  : 天线交换DPDT开关保护时间控制字
+*****************************************************************************/
+typedef struct
+{
+    PHY_UINT16                              uhwPaOffToAntExchangeTime;          /* 关闭PA到输出DPDT信号时间,单位us */
+    PHY_UINT16                              uhwAntExchangeToPaOnTime;           /* 输出DPDT信号到打开PA时间,单位us */
+}UCOM_NV_W_DUAL_ANT_DPDT_PROTECT_TIME_STRU;
+
+/*****************************************************************************
  结构名    : UCOM_NV_WCDMA_DUAL_ANT_MEAS_STRU
  协议表格  :
  ASN.1描述 :
@@ -4311,6 +4338,16 @@ typedef struct
 
 }UCOM_NV_G_MODEM_DFS_CONFIG_STRU;
 
+/*****************************************************************************
+ 结构名    : UCOM_NV_GUMODE_CHAN_PARA_STRU
+ 协议表格  :
+ ASN.1描述 :
+ 结构说明  : 通道相关NV项，为跨通道连续CA测G，G定时漂问题加入，原因是L切TXCO时钟引起
+*****************************************************************************/
+typedef struct
+{
+    UCOM_NV_GU_MODE_BASIC_PARAM_UNION   aunModeBasicParam[2];
+}UCOM_NV_GUMODE_CHAN_PARA_STRU;
 
 /*****************************************************************************
  结构名    : UCOM_NV_GSM_RF_INTERFERE_CONTROL_STRU
@@ -4455,6 +4492,22 @@ typedef struct
 {
     UCOM_NV_RF_CONFIG_STRU                      stGsmVirtualBandRfConfig;       /* 虚拟频段的天线开关配置 */
 }UCOM_NV_GSM_VIRTUAL_BAND_ANT_CONFIG_STRU;
+
+
+/*****************************************************************************
+ 结构名    : UCOM_NV_W_T313_BACK_CTRL_STRU
+ 协议表格  :
+ ASN.1描述 :
+ 结构说明  : T313回退值控制
+*****************************************************************************/
+typedef struct
+{
+    VOS_UINT16                          uhwT313BackEn;                          /* T313回退控制开关 */
+    VOS_UINT16                          uhwT313BackValue;                       /* T313回退值，单位10ms */
+    VOS_UINT16                          uhwT313MinValue;                        /* T313最小值，单位10ms */
+    VOS_UINT16                          uhwReserved;                            /* 保留 */
+}UCOM_NV_W_T313_BACK_CTRL_STRU;
+
 
 /*****************************************************************************
   6 UNION

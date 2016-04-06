@@ -2529,22 +2529,7 @@ restart:
 	return NETDEV_TX_OK;
 
 overflow:
-	/*
-	 * This race condition is unavoidable with lock-free drivers.
-	 * We wake up the queue _before_ tx_prd is advanced, so that we can
-	 * enter hard_start_xmit too early, while tx ring still looks closed.
-	 * This happens ~1-4 times per 100000 packets, so that we can allow
-	 * to loop syncing to other CPU. Probably, we need an additional
-	 * wmb() in ace_tx_intr as well.
-	 *
-	 * Note that this race is relieved by reserving one more entry
-	 * in tx ring than it is necessary (see original non-SG driver).
-	 * However, with SG we need to reserve 2*MAX_SKB_FRAGS+1, which
-	 * is already overkill.
-	 *
-	 * Alternative is to return with 1 not throttling queue. In this
-	 * case loop becomes longer, no more useful effects.
-	 */
+
 	if (time_before(jiffies, maxjiff)) {
 		barrier();
 		cpu_relax();

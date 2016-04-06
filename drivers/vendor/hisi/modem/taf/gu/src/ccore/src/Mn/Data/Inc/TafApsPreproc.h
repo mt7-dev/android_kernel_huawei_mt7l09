@@ -80,6 +80,26 @@ VOS_UINT32 TAF_APS_RcvAtConfigDsFlowRptReq_PreProc(
     struct MsgCB                       *pstMsg
 );
 
+VOS_UINT32 TAF_APS_RcvSetApDsFlowRptCfgReq_PreProc(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+);
+
+VOS_UINT32 TAF_APS_RcvGetApDsFlowRptCfgReq_PreProc(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+);
+
+VOS_UINT32 TAF_APS_RcvSetDsFlowNvWriteCfgReq_PreProc(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+);
+
+VOS_UINT32 TAF_APS_RcvGetDsFlowNvWriteCfgReq_PreProc(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+);
+
 VOS_UINT32 TAF_APS_RcvTiDsFlowReportExpired_PreProc(
     VOS_UINT32                          ulEventType,
     struct MsgCB                       *pstMsg
@@ -605,6 +625,10 @@ VOS_UINT32 TAF_APS_RcvL4aApsPdpDeactivateInd_PreProc(
     VOS_UINT32                          ulEventType,
     struct MsgCB                       *pstMsg
 );
+VOS_UINT32 TAF_APS_RcvL4aApsPdpSetupInd_PreProc(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+);
 VOS_UINT32 TAF_APS_RcvL4aSenNdisconnCnf_PreProc(
     VOS_UINT32                          ulEventType,
     struct MsgCB                       *pstMsg
@@ -687,6 +711,11 @@ VOS_UINT32 TAF_APS_RcvOmSetDsflowRptReq_PreProc(
     struct MsgCB                       *pstMsg
 );
 
+VOS_UINT32 TAF_APS_RcvMmcServiceStatusInd_PreProc(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+);
+
 /*****************************************************************************
  函 数 名  : TAF_Aps_RcvGetCidSdfReq
  功能描述  : 用于获取所有NV项中的SDF配置信息预处理
@@ -695,6 +724,11 @@ VOS_UINT32 TAF_APS_RcvOmSetDsflowRptReq_PreProc(
  返 回 值  : VOS_UINT32
 *****************************************************************************/
 VOS_UINT32 TAF_APS_RcvGetCidSdfReq_PreProc(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+);
+
+VOS_UINT32 TAF_APS_RcvSetImsPdpCfgReq_PreProc(
     VOS_UINT32                          ulEventType,
     struct MsgCB                       *pstMsg
 );

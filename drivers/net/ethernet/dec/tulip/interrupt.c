@@ -266,13 +266,7 @@ int tulip_poll(struct napi_struct *napi, int budget)
                /* New ack strategy... irq does not ack Rx any longer
                   hopefully this helps */
 
-               /* Really bad things can happen here... If new packet arrives
-                * and an irq arrives (tx or just due to occasionally unset
-                * mask), it will be acked by irq handler, but new thread
-                * is not scheduled. It is major hole in design.
-                * No idea how to fix this if "playing with fire" will fail
-                * tomorrow (night 011029). If it will not fail, we won
-                * finally: amount of IO did not increase at all. */
+
        } while ((ioread32(tp->base_addr + CSR5) & RxIntr));
 
  #ifdef CONFIG_TULIP_NAPI_HW_MITIGATION

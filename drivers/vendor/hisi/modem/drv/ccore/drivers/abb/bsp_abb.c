@@ -304,7 +304,7 @@ int bsp_abb_write(u32 addr, u32 value)
 
 int bsp_abb_buffer_enable(enum ABB_BUFFER_ID id, enum ABB_BUFFER_VOTE vote)
 {
-#ifdef ABB_K3V3
+#if defined(ABB_K3V3) && ! defined (BSP_CONFIG_BOARD_SFT)
     unsigned long irq_flags;
 
     if ((id >= ABB_BUFFER_ID_MAX) || (vote >= ABB_BUFFER_VOTE_MAX))
@@ -340,7 +340,7 @@ int bsp_abb_buffer_enable(enum ABB_BUFFER_ID id, enum ABB_BUFFER_VOTE vote)
 
 int bsp_abb_buffer_disable(enum ABB_BUFFER_ID id, enum ABB_BUFFER_VOTE vote)
 {
-#ifdef ABB_K3V3
+#if defined(ABB_K3V3) && ! defined (BSP_CONFIG_BOARD_SFT)
     unsigned long irq_flags;
 
     if ((id >= ABB_BUFFER_ID_MAX) || (vote >= ABB_BUFFER_VOTE_MAX))

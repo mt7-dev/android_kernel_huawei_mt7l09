@@ -99,18 +99,18 @@ typedef struct tsens_region_config
 /* 共享温度区数据结构 */
 typedef struct thermal_data_area
 {
-    unsigned long               magic_start;                 /* 分区起始Magic Code 0x5A5A5A5A*/
+    unsigned int             magic_start;                 /* 分区起始Magic Code 0x5A5A5A5A*/
     struct hkadc_chan_out       chan_out[HKADC_CHAN_MAX];    /* 各通道输出区域*/
     struct hkadc_chan_config    chan_cfg[HKADC_CHAN_MAX];    /* 各通道配置区域 */
     struct sys_temp_cfg         sys_temp_cfg;                /* 系统放电温保配置 */
-    unsigned long               hw_ver_id;                   /* 版本ID */
+    unsigned int               hw_ver_id;                   /* 版本ID */
     unsigned short              phy_tbl[HKADC_CHAN_MAX];     /* HKADC物理通道与逻辑通道对应表 */
-    unsigned long               debug_flag;                  /* 调测开关 */
+    unsigned int              debug_flag;                  /* 调测开关 */
     struct tsens_region_cfg     tens_cfg[TSENS_REGION_MAX];  /* TSENSOR温保配置 */
     struct tsens_region_config  region_cfg;                  /* TSENSOR各区域的配置信息*/
     short                       tsens_out[TSENS_REGION_MAX]; /* TSENSOR各区域的输出信息*/
     short                       reserved;                    /* 保留信息*/
-    unsigned long               magic_end;                   /* 分区结束Magic Code 0x5A5A5A5A*/
+    unsigned int               magic_end;                   /* 分区结束Magic Code 0x5A5A5A5A*/
 } DRV_HKADC_DATA_AREA;
 
 #ifdef __cplusplus

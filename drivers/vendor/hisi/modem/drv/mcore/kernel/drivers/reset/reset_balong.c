@@ -6,6 +6,7 @@
 #include <wakelock.h>
 #include <wdt_balong.h>
 #include <modem_start.h>
+#include <bsp_dual_modem.h>
 #include "reset_balong.h"
 
 #ifndef NOC_LOCK_ID
@@ -26,15 +27,6 @@ do {                               \
 #define CHECK_TIMEOUT(a)   (get_timer_slice_delta(a, bsp_get_slice_value()) < CCORE_RST_TIMEOUT_NUM)
 
 #ifdef CONFIG_BALONG_MODEM_RESET
-
-__ao_func void ccore_freq_drop(void)
-{
-	//reset_print_debug("(%d)\n", ++g_mreset_ctrl.main_stage);
-}
-__ao_func void ccore_freq_raise(void)
-{
-	//reset_print_debug("(%d)\n", ++g_mreset_ctrl.main_stage);
-}
 extern void ccore_ipc_disable(void);
 extern void ccore_ipc_enable(void);
 extern void reset_ipc_status_bakup(void);
@@ -42,7 +34,7 @@ extern void reset_ipc_status_resume(void);
 extern void ipc_modem_reset_cb(DRV_RESET_CALLCBFUN_MOMENT stage, int userdata);
 extern void cpufreq_resume(void);
 extern int bsp_ipf_reset_ccore_lpm3_cb(DRV_RESET_CALLCBFUN_MOMENT eparam, int userdata);
-__ao_func void modem_a9_unreset(void)
+void modem_a9_unreset(void)
 {
 	//reset_print_debug("(%d)\n", ++g_mreset_ctrl.main_stage);
     /* 16 a9 start addr */
@@ -58,7 +50,7 @@ __ao_func void modem_a9_unreset(void)
     writel(0x1<<15, HI_SYSCTRL_BASE_ADDR + HI_CRG_SRSTDIS1_OFFSET);
     writel(0x1<<6, HI_SYSCTRL_BASE_ADDR + HI_CRG_SRSTDIS1_OFFSET);
 }
-__ao_func void reset_m3_stamp_addr_value(void)
+void reset_m3_stamp_addr_value(void)
 {
     *(u32 *)STAMP_RESET_M3_BASE_ADDR = 0x33333333;
     *(u32 *)STAMP_RESET_M3_BUSERROR_STEP1 = 0x0;
@@ -76,7 +68,7 @@ __ao_func void reset_m3_stamp_addr_value(void)
     *(u32 *)STAMP_UNRESET_M3_UNRESET_A9 = 0x0;
 }
 
-__ao_func int modem_subsys_reset(void)
+int modem_subsys_reset(void)
 {
     u32 tmp = 0;
     u32 slicebegin = 0;
@@ -175,7 +167,7 @@ __ao_func int modem_subsys_reset(void)
     return 0;
 }
 
-__ao_func void modem_subsys_unreset(void)
+void modem_subsys_unreset(void)
 {
     u32 tmp = 0;
     u32 slicebegin = 0;
@@ -223,7 +215,7 @@ __ao_func void modem_subsys_unreset(void)
     /*writel(0x0, HI_SYSCTRL_BASE_ADDR + HI_SEC_CTRL0_OFFSET);*/
 	tmp = readl(HI_SYSCTRL_BASE_ADDR + HI_SEC_CTRL0_OFFSET);
 	tmp = tmp & ~((u32)0x1 << 9);  /*nsec-read ok*/
-	writel(tmp, HI_SYSCTRL_BASE_ADDR + HI_SEC_CTRL0_OFFSET)
+	writel(tmp, HI_SYSCTRL_BASE_ADDR + HI_SEC_CTRL0_OFFSET);
 
     /* 1 2 mtcmos power up and wait for complete */
     writel(0x1<<1, HI_SYSCTRL_BASE_ADDR + HI_PWR_CTRL6_OFFSET);
@@ -259,28 +251,11 @@ __ao_func void modem_subsys_unreset(void)
     *(u32 *)STAMP_UNRESET_M3_UNRESET_SUBSYS = bsp_get_slice_value();
 }
 
-__ao_func s32 send_msg_to_acore(u32 msg)
-{
-	u32 channel_id = ICC_CHANNEL_ID_MAKEUP(ICC_CHN_MCORE_ACORE, MCORE_ACORE_FUNC_RESET);
-	s32 ret = RESET_ERROR;
-
-	//reset_print_debug("(%d) channel_id=0x%x\n", ++g_mreset_ctrl.main_stage, channel_id);
-
-	ret = bsp_icc_send((u32)ICC_CPU_APP, channel_id, (u8 *)(&msg), sizeof(msg));
-	if(ret < 0)
-	{
-		reset_print_err("Fail to reply msg to cpu%d\n", ICC_CPU_MODEM);
-		return RESET_ERROR;
-	}
-
-	return RESET_OK;
-}
-
 extern void pm_mdma9_nvic_disable(void);
 extern void pm_mdma9_nvic_enable(void);
 extern void bsp_socp_ccore_reset_stop_channel(void);
 
-__ao_func s32 msg_from_ap_ipc(union ipc_data *msg)
+ s32 msg_from_ap_ipc(union ipc_data *msg)
 {
 	u32 reset_info = 0;
     int irqlock = 0;
@@ -309,6 +284,7 @@ __ao_func s32 msg_from_ap_ipc(union ipc_data *msg)
 				ipc_modem_reset_cb(DRV_RESET_CALLCBFUN_RESET_BEFORE, 0);
 				reset_ipc_status_bakup();
 				bsp_socp_ccore_reset_stop_channel();
+				bsp_dual_modem_disable_cb();
 
 				ret = modem_subsys_reset();
 				if (ret)
@@ -355,7 +331,7 @@ __ao_func s32 msg_from_ap_ipc(union ipc_data *msg)
 	return 0;
 }
 
-__ao_func s32 bsp_reset_init(void)
+ s32 bsp_reset_init(void)
 {
 	memset((void *)&g_mreset_ctrl, 0, sizeof(g_mreset_ctrl));
 	g_mreset_ctrl.multicore_msg_switch = 1;
@@ -376,7 +352,7 @@ fail:
 	return 1;
 }
 
-__ao_func s32 bsp_reset_ccpu_status_get(void)
+ s32 bsp_reset_ccpu_status_get(void)
 {
 	enum RESET_MULTICORE_CHANNEL_STATUS channel_status = CCORE_STATUS;
 	return (g_mreset_ctrl.multicore_msg_switch & channel_status) ? 1 : 0;
@@ -384,7 +360,7 @@ __ao_func s32 bsp_reset_ccpu_status_get(void)
 
 #else  /* !CONFIG_BALONG_MODEM_RESET */
 
-__ao_func s32 bsp_reset_ccpu_status_get(void)
+ s32 bsp_reset_ccpu_status_get(void)
 {
 	return 1;
 }

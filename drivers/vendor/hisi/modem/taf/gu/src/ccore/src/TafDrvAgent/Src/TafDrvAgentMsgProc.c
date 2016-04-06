@@ -54,7 +54,6 @@ VOS_UINT8 g_ucGcfInd = VOS_FALSE;       /* 指示当前是否为GCF测试 */
 #ifndef _PS_COMPILE_EDGE_ADAPT_MOIRI_B073_
 extern void       TTF_SetGcfTestFlag(VOS_UINT32 ulGctTestFlag);
 #endif
-extern VOS_UINT8* AT_GetSystemAppConfigAddr(VOS_VOID);
 VOS_UINT16 gausDevCmdBandToWDspBandTbl[] =
 {
     W_FREQ_BAND1,

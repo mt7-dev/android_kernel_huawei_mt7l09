@@ -15,22 +15,26 @@
 #include <linux/printk.h>
 #include "hw_isp_io.h"
 
-unsigned int hw_isp_base;
+unsigned char *hw_isp_base = NULL;
 
 unsigned int HW_CSI_GETREG32(unsigned int reg)
 {
 	//cam_info("%s enter reg=0x%x.\n", __func__, reg);
+	if(NULL == hw_isp_base)
+		return 0;
 	return ioread32((volatile unsigned int*)(hw_isp_base + reg));
 }
 
 void HW_CSI_SETREG32(unsigned int reg, unsigned int val)
 {
 	//cam_info("%s enter reg=0x%x,val=0x%x.\n", __func__, reg, val);
+	if(NULL == hw_isp_base)
+		return;
 	iowrite32(val, (volatile void*)(hw_isp_base + reg));
 }
 
-void hw_io_set_isp_base(unsigned int isp_base_addr)
+void hw_io_set_isp_base(unsigned char *isp_base_addr)
 {
-	printk("%s enter, isp_base_addr=0x%x\n", __func__, isp_base_addr);
+	printk("%s enter, isp_base_addr=0x%p\n", __func__, isp_base_addr);
 	hw_isp_base = isp_base_addr;
 }

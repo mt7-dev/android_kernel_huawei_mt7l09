@@ -274,6 +274,21 @@ extern VOS_UINT32  NAS_EMM_DeriveKasme(        const VOS_UINT8 *pucCK,
                                                const VOS_UINT8 *pucIK,
                                                VOS_UINT8 *pucKasme);
 extern VOS_VOID NAS_EMM_AuthCheckFail(VOS_VOID);
+extern VOS_VOID  NAS_EMM_MsRegInitSsWtCnAttCnfProcMsgRrcRelInd(VOS_UINT32 ulCause);
+extern VOS_VOID  NAS_EMM_ProcMsRegImsiDetachInitMsgRrcRelInd
+(
+    VOS_UINT32                          ulCause
+);
+extern VOS_VOID  NAS_EMM_MsTauInitSsWaitCNCnfProcMsgRrcRelInd( VOS_UINT32 ulCause );
+extern VOS_VOID  NAS_EMM_MsSerInitSsWaitCnSerCnfProcMsgRrcRelInd( VOS_UINT32 ulCause);
+extern VOS_VOID  NAS_EMM_MsDrgInitSsWtCnDetCnfProcMsgRrcRelInd( VOS_UINT32 ulCause);
+extern VOS_VOID  NAS_EMM_MsRegInitSsWtCnAttCnfProcMsgAuthRej(
+                                                    VOS_UINT32  ulCause);
+
+extern VOS_VOID NAS_EMM_SndMmcSimAuthFailInd(LMM_MMC_SIM_AUTH_FAIL_ENUM_UINT16  enSimAuthFailValue);
+
+extern VOS_VOID NAS_EMM_AuthCnFailErrRecord(
+        EMM_OM_ERRLOG_AUTH_FAIL_ENUM_UINT16       enErrAuthFail);
 /*****************************************************************************
   9 OTHERS
 *****************************************************************************/

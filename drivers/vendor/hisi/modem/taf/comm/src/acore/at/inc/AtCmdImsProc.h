@@ -78,7 +78,6 @@ typedef struct
     AT_IMSA_MSG_PROC_FUNC               pProcMsgFunc;
 }AT_IMSA_MSG_PRO_FUNC_STRU;
 
-
 /*****************************************************************************
   8 UNION∂®“Â
 *****************************************************************************/
@@ -113,6 +112,10 @@ VOS_UINT32 AT_RcvImsaCireguInd(VOS_VOID * pMsg);
 
 VOS_UINT32 AT_RcvImsaCcwaiSetCnf(VOS_VOID * pMsg);
 
+VOS_UINT32 AT_RcvImsaVtPdpActInd(VOS_VOID * pMsg);
+VOS_UINT32 AT_RcvImsaVtPdpDeactInd(VOS_VOID * pMsg);
+
+VOS_UINT32 AT_RcvImsaMtStateInd(VOS_VOID * pMsg);
 
 #endif /* end of FEATURE_IMS */
 

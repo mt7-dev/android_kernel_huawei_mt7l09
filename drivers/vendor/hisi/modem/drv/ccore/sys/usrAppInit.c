@@ -33,6 +33,9 @@ Initialize user application code.
 #include "bsp_ipc.h"
 #include <bsp_icc.h>
 #include "bsp_nvim.h"
+/* yangzhi for sc file backup and restore begin: */
+#include "bsp_misc.h"
+/* yangzhi for sc file backup and restore end! */
 #include "gpio_balong.h"
 #include "osl_bio.h"
 #include "bsp_abb.h"
@@ -70,7 +73,7 @@ Initialize user application code.
 #include "bsp_dual_modem.h"
 #include "bsp_pmu.h"
 #include "rse_balong.h"
-
+#include "bsp_utrace.h"
 #ifdef CONFIG_MODULE_VIC
 #include "vic_balong.h"
 #endif
@@ -127,50 +130,6 @@ void BSP_DRV_Init()
 #endif
 
 /***********************基础模块初始化***************************/
-#ifdef CONFIG_BALONG_CCLK
-    hi6930_clock_init();
-#endif
-#ifdef CONFIG_CCORE_PM
-		 bsp_dpm_init();
-#endif
-#ifdef K3_TIMER_FEATURE
-	k3_timer_init();
-#endif
-    adp_timer_init();
-    timer_dpm_init();
-
-    if(0 != BSP_UDI_Init())
-        logMsg("BSP_UDI_Init fail\n",0,0,0,0,0,0);
-
-    bsp_ipc_init();
-
-	bsp_icc_init();
-
-#ifdef CONFIG_K3V3_CLK_CRG /*CONFIG_K3V3_CLK_CRG*/
-    gps_refclk_icc_read_cb_init();
-#endif
-	/* Cshell init if magic number is set to PRT_FLAG_EN_MAGIC_M */
-#ifdef CONFIG_CSHELL
-    if(0 != cshell_init())
-    {
-            logMsg("cshell init fail\n",0,0,0,0,0,0);
-    }
-#endif
-
-#ifdef CONFIG_NVIM
-     if(0 != bsp_nvm_init())
-        logMsg("nv init fail\n",0,0,0,0,0,0);
-#endif
-
-    /* axi monitor监控初始化 */
-    (void)bsp_amon_init();
-
-	/*此初始化必须放置在MSP/OAM/PS初始化之前，请不要随意改动顺序*/
-    tcxo_init_configure();
-
-    if(0 != bsp_rfile_init())
-        logMsg("rfile init fail\n",0,0,0,0,0,0);
-
 	/* version inits */
     bsp_productinfo_init();
 
@@ -198,13 +157,14 @@ void BSP_DRV_Init()
     }
 #endif
 
+#ifdef ENABLE_BUILD_SOCP
     /*C core init ipc module*/
     if(0 != socp_init())
         logMsg("socp init fail\n",0,0,0,0,0,0);
-
+#endif
      if(0 != bsp_om_server_init())
         logMsg("om init fail\n",0,0,0,0,0,0);
-	 if(0 != bsp_dual_modem_init())
+	 if(0 != dual_modem_init())
 	     logMsg("dual modem uart init fail\n",0,0,0,0,0,0);
 
 /***********************外设模块初始化***************************/
@@ -213,6 +173,8 @@ void BSP_DRV_Init()
 #ifdef CONFIG_BBP_INT
 	bbp_int_init();/*此处需要放在dsp初始化之后，放在pastar/abb之前*/
 #endif
+	/*k3v3+必须放在bbp初始化后面，原因待确认*/
+	board_fpga_init();
 
     bsp_spi_init();
     bsp_pmu_init();
@@ -328,6 +290,12 @@ void BSP_DRV_Init()
 
 	(void)bsp_antn_sw_init();
 
+/* yangzhi for sc file backup and restore begin: */
+    if(0 != bsp_sc_init())
+        logMsg("sc init fail\n",0,0,0,0,0,0);   
+/* yangzhi for sc file backup and restore end! */
+
+
 }
 
 void BSP_PromptSet()
@@ -398,17 +366,18 @@ void modem_clk_init(void)
 */
 void usrAppInit (void)
 {
+
 #ifdef BSP_CONFIG_HI3630
 #ifdef CONFIG_K3V3_CLK_CRG /* CONFIG_K3V3_CLK_CRG */
     modem_clk_init();
 #endif
-    bsp_utrace_init();
-    bsp_utrace_resume();
+    (void)bsp_utrace_init();
+    (void)bsp_utrace_resume();
 #endif
 
 	power_on_c_status_set(POWER_OS_OK);
 
-    board_fpga_init();
+   
 
 #if defined (BSP_CONFIG_P531_FPGA) || defined(BSP_CONFIG_V7R2_SFT)
     //p531_fpga_test_init();
@@ -417,6 +386,51 @@ void usrAppInit (void)
 #endif
 
     ddm_phase_boot_score("start BSP_DRV_Init",__LINE__);
+#ifdef CONFIG_BALONG_CCLK
+		hi6930_clock_init();
+#endif
+#ifdef CONFIG_CCORE_PM
+			 bsp_dpm_init();
+#endif
+#ifdef K3_TIMER_FEATURE
+		k3_timer_init();
+#endif
+		adp_timer_init();
+		timer_dpm_init();
+	
+		if(0 != BSP_UDI_Init())
+			logMsg("BSP_UDI_Init fail\n",0,0,0,0,0,0);
+	
+		bsp_ipc_init();
+	
+		bsp_icc_init();
+	
+#ifdef CONFIG_K3V3_CLK_CRG /*CONFIG_K3V3_CLK_CRG*/
+		gps_refclk_icc_read_cb_init();
+#endif
+		/* Cshell init if magic number is set to PRT_FLAG_EN_MAGIC_M */
+#ifdef CONFIG_CSHELL
+		if(0 != cshell_init())
+		{
+				logMsg("cshell init fail\n",0,0,0,0,0,0);
+		}
+#endif
+	
+#ifdef CONFIG_NVIM
+		 if(0 != bsp_nvm_init())
+			logMsg("nv init fail\n",0,0,0,0,0,0);
+#endif
+	
+		/* axi monitor监控初始化 */
+		(void)bsp_amon_init();
+	
+		/*此初始化必须放置在MSP/OAM/PS初始化之前，请不要随意改动顺序*/
+		tcxo_init_configure();
+	
+		if(0 != bsp_rfile_init())
+			logMsg("rfile init fail\n",0,0,0,0,0,0);
+	
+
     BSP_DRV_Init();
 
 	power_on_c_status_set(POWER_BSP_OK);

@@ -148,6 +148,27 @@ VOS_UINT32 NAS_MMC_IsPlmnWithRatInPlmnList (
     NAS_MMC_PLMN_SELECTION_LIST_INFO_STRU                  *pstPlmnSelectionListInfo,
     VOS_UINT32                                              ulPlmnNum
 );
+
+VOS_VOID NAS_MMC_ConvertPlmnId2NasFormat(
+    NAS_MML_PLMN_ID_STRU               *pstPlmnId,
+    VOS_UINT8                           ucPlmnMncNum
+);
+VOS_UINT32 NAS_MMC_IsPlmnMccSameWithRplmn(
+    VOS_UINT32                          ulMcc
+);
+
+VOS_VOID NAS_MMC_UpdateDplmnNplmnInfo(
+    NAS_MMC_NVIM_CFG_DPLMN_NPLMN_INFO_STRU                 *pstNvimCfgDPlmnNPlmnInfo
+);
+
+VOS_VOID NAS_MMC_UpdateDPlmnNPlmnFlagInfo(
+    NAS_MMC_NVIM_CFG_DPLMN_NPLMN_FLAG_STRU                 *pstNvimCfgDPlmnNPlmnFlagInfo
+);
+
+VOS_UINT32 NAS_MMC_IsPlmnMccSameWithHplmn(
+    VOS_UINT32                          ulMcc
+);
+
 VOS_VOID  NAS_MMC_DelDuplicatedPlmnWithRatInPlmnList (
     NAS_MMC_PLMN_SELECTION_LIST_INFO_STRU                  *pstPlmnSelectionListInfo
 );
@@ -279,6 +300,9 @@ VOS_UINT32 NAS_MMC_IsNeedEnableLteRoam(
     VOS_UINT32                          ulMcc
 );
 
+VOS_UINT32 NAS_MMC_IsNeedEnableLte_ImsSwitchOnOrNotCsOnly(VOS_VOID);
+VOS_UINT32 NAS_MMC_IsNeedDisableLte_CsOnly(VOS_VOID);
+
 VOS_UINT32 NAS_MMC_IsCampLteNormalService(VOS_VOID);
 
 VOS_UINT32  NAS_MMC_IsReCampLteLimitedService( VOS_VOID );
@@ -403,6 +427,8 @@ VOS_VOID NAS_MMC_AddPlmnListIntoSimEhplmnInfo(
 
 VOS_VOID NAS_MMC_DelHplmnInFplmn(VOS_VOID);
 
+VOS_UINT32  NAS_MMC_IsCurrentWcdmaMode(VOS_VOID);
+
 VOS_UINT32  NAS_MMC_IsCurrentTdscdmaMode(VOS_VOID);
 
 VOS_UINT32 NAS_MMC_IsNetRatSupportedTdscdma(VOS_VOID);
@@ -494,6 +520,16 @@ VOS_VOID NAS_MMC_BuildEquPlmnInfo(
 VOS_VOID NAS_MMC_SearchNetErrRecord(NAS_MMCMMC_PLMN_SELECTION_RSLT_STRU *pstPlmnSelectionRslt);
 VOS_VOID NAS_MMC_CsRegErrRecord(MMMMC_CS_REG_RESULT_IND_STRU *pstCsRegRstInd);
 VOS_VOID NAS_MMC_PsRegErrRecord(GMMMMC_PS_REG_RESULT_IND_STRU *pstPsRegRstInd);
+VOS_VOID NAS_MMC_PsServiceRegErrRecord(GMMMMC_SERVICE_REQUEST_RESULT_IND_STRU *pstServiceRsltInd);
+/* Added by zwx247453 for CHR optimize, 2015-3-13 Begin */
+VOS_VOID NAS_MMC_CmServiceRejErrRecord(
+    VOS_UINT32                                       ulCause,
+    VOS_UINT32                                       ulServiceStatus
+);
+VOS_VOID NAS_MMC_MoDetachIndRecord(
+    VOS_UINT32                              ulDetachType
+);
+/* Added by zwx247453 for CHR optimize, 2015-3-13 End */
 #endif
 
 VOS_UINT32 NAS_MMC_IsCampOnHighestPrioRatHplmn(VOS_VOID);
@@ -501,6 +537,8 @@ VOS_UINT32 NAS_MMC_IsCampOnHighestPrioRatHplmn(VOS_VOID);
 VOS_UINT32 NAS_MMC_IsHighPrioRatHplmnSearchVaild( VOS_VOID );
 
 VOS_UINT32 NAS_MMC_IsNeedStartHighPrioRatHPlmnTimer(VOS_VOID);
+
+VOS_VOID NAS_MMC_UpdateHighPrioRatHPlmnTimerTdCount(VOS_VOID);
 
 VOS_UINT32  NAS_MMC_IsSorTriggerAdditionalLau(VOS_VOID);
 
@@ -526,6 +564,54 @@ VOS_VOID   NAS_MMC_Convert3GPP2RatType(
     NAS_MML_3GPP2_RAT_TYPE_ENUM_UINT8  *penMML3GPP2RatType
 );
 
+VOS_VOID  NAS_MMC_UpdateDPlmnNPlmnList(
+    NAS_MML_PLMN_ID_STRU               *pstCurrPlmn,
+    NAS_MML_NET_RAT_TYPE_ENUM_UINT8     enNetType,
+    NAS_MMC_REG_DOMAIN_ENUM_UINT8       enRegDomain,
+    VOS_UINT16                                             *pulDestPlmnNum,
+    NAS_MMC_SIM_PLMN_WITH_REG_DOMAIN_STRU                  *pstDestPlmnIdList
+);
+VOS_VOID  NAS_MMC_DeleteDPlmnNPlmnList(
+    NAS_MML_PLMN_ID_STRU               *pstCurrPlmn,
+    NAS_MML_NET_RAT_TYPE_ENUM_UINT8     enNetType,
+    NAS_MMC_REG_DOMAIN_ENUM_UINT8       enRegDomain,
+    VOS_UINT16                                             *pulDestPlmnNum,
+    NAS_MMC_SIM_PLMN_WITH_REG_DOMAIN_STRU                  *pstDestPlmnIdList
+);
+VOS_UINT16  NAS_MMC_ConvertNetRatToSimRat(NAS_MML_NET_RAT_TYPE_ENUM_UINT8   enPlmnNetRat);
+
+VOS_UINT32 NAS_MMC_IsBcchPlmnIdWithRatInDestSimPlmnList (
+    NAS_MML_PLMN_WITH_RAT_STRU         *pstBcchPlmnIdWithRat,
+    VOS_UINT16                          usSimPlmnWithRatNum,
+    NAS_MML_SIM_PLMN_WITH_RAT_STRU     *pstSimPlmnWithRatList
+);
+
+VOS_UINT32 NAS_MMC_ComparePlmnIdWithRatWithUplmn (
+    NAS_MML_PLMN_WITH_RAT_STRU         *pstPlmnIdWithRat
+);
+
+VOS_UINT32 NAS_MMC_ComparePlmnIdWithRatWithOplmn (
+    NAS_MML_PLMN_WITH_RAT_STRU         *pstPlmnIdWithRat
+);
+
+VOS_UINT32 NAS_MMC_IsPlmnIdWithSimRatInSimPlmnWithRegDomainList(
+    NAS_MML_PLMN_ID_STRU                                   *pstPlmnId,
+    VOS_UINT16                                              usSimRat,
+    VOS_UINT32                                              ulDestPlmnNum,
+    NAS_MMC_SIM_PLMN_WITH_REG_DOMAIN_STRU                  *pstDestPlmnIdList
+);
+
+VOS_UINT32 NAS_MMC_IsPlmnIdWithRatInSimPlmnWithRegDomainList(
+    NAS_MML_PLMN_WITH_RAT_STRU                             *pstSrcPlmnId,
+    VOS_UINT32                                              ulDestPlmnNum,
+    NAS_MMC_SIM_PLMN_WITH_REG_DOMAIN_STRU                  *pstDestPlmnIdList
+);
+NAS_MML_NET_RAT_TYPE_ENUM_UINT8  NAS_MMC_ConvertSimRatToNetRat(
+    VOS_UINT16                          usSimRat
+);
+
+
+VOS_UINT32 NAS_MMC_IsEnableLteTriggerPlmnSearch_ImsSwitchOnOrNotCsOnly(VOS_VOID);
 #if (VOS_OS_VER == VOS_WIN32)
 #pragma pack()
 #else

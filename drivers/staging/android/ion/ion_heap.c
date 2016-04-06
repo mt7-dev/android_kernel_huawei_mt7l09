@@ -26,7 +26,7 @@
 #include "ion.h"
 #include "ion_priv.h"
 
-#include <linux/hisi-iommu.h>
+#include <linux/hisi/hisi-iommu.h>
 
 void *ion_heap_map_kernel(struct ion_heap *heap,
 			  struct ion_buffer *buffer)
@@ -51,6 +51,7 @@ void *ion_heap_map_kernel(struct ion_heap *heap,
 	for_each_sg(table->sgl, sg, table->nents, i) {
 		int npages_this_entry = PAGE_ALIGN(sg->length) / PAGE_SIZE;
 		struct page *page = sg_page(sg);
+
 		BUG_ON(i >= npages);
 		for (j = 0; j < npages_this_entry; j++)
 			*(tmp++) = page++;
@@ -132,6 +133,7 @@ void ion_heap_unmap_iommu(struct ion_iommu_map *map_data)
 static int ion_heap_clear_pages(struct page **pages, int num, pgprot_t pgprot)
 {
 	void *addr = vm_map_ram(pages, num, -1, pgprot);
+
 	if (!addr)
 		return -ENOMEM;
 	memset(addr, 0, PAGE_SIZE * num);
@@ -140,7 +142,6 @@ static int ion_heap_clear_pages(struct page **pages, int num, pgprot_t pgprot)
 	return 0;
 }
 
-/* modified by l00196665, for DTS2014060904376 */
 #if 0
 
 int ion_heap_sglist_zero(struct scatterlist *sgl, unsigned int nents,
@@ -185,7 +186,18 @@ int ion_heap_sglist_zero(struct scatterlist *sgl, unsigned int nents,
 						pgprot_t pgprot)
 {
 	struct scatterlist *sg;
-	int i, j, k = 0;
+	int i;
+#ifdef CONFIG_ARM64	
+	for_each_sg(sgl, sg, nents, i) {
+		struct page *p = sg_page(sg);
+		unsigned int len = sg->length;
+
+		memset(page_address(p), 0, len);
+	}
+
+	return 0;
+#else
+	int j, k = 0;
 	int ret = 0;
 	struct page **pages;
 	unsigned int max_npages = 1024;
@@ -214,10 +226,7 @@ int ion_heap_sglist_zero(struct scatterlist *sgl, unsigned int nents,
 	}
 
 	if (k) {
-		if (k < BITS_PER_LONG)
-			ret = ion_heap_clear_pages(pages, k, pgprot);
-		else
-			ret = ion_heap_clear_pages_for_large_buffer(pages, k, pgprot);
+		ret = ion_heap_clear_pages_for_large_buffer(pages, k, pgprot);
 
 		if (ret)
 			pr_err("%s: failed! k: %d\n", __func__, k);
@@ -226,6 +235,7 @@ int ion_heap_sglist_zero(struct scatterlist *sgl, unsigned int nents,
 done:
 	kfree(pages);
 	return ret;
+#endif
 }
 #endif
 
@@ -338,8 +348,6 @@ int ion_heap_init_deferred_free(struct ion_heap *heap)
 	struct sched_param param = { .sched_priority = 0 };
 
 	INIT_LIST_HEAD(&heap->free_list);
-	heap->free_list_size = 0;
-	spin_lock_init(&heap->free_lock);
 	init_waitqueue_head(&heap->waitqueue);
 	heap->task = kthread_run(ion_heap_deferred_free, heap,
 				 "%s", heap->name);
@@ -410,9 +418,6 @@ struct ion_heap *ion_heap_create(struct ion_platform_heap *heap_data)
 	case ION_HEAP_TYPE_DMA:
 		heap = ion_cma_heap_create(heap_data);
 		break;
-	case ION_HEAP_TYPE_DMA_POOL:
-		heap = ion_cma_pool_heap_create(heap_data);
-		break;
 	case ION_HEAP_TYPE_CPUDRAW:
 		heap = ion_cpudraw_heap_create(heap_data);
 		break;
@@ -454,9 +459,6 @@ void ion_heap_destroy(struct ion_heap *heap)
 		break;
 	case ION_HEAP_TYPE_DMA:
 		ion_cma_heap_destroy(heap);
-		break;
-	case ION_HEAP_TYPE_DMA_POOL:
-		ion_cma_pool_heap_destroy(heap);
 		break;
 	case ION_HEAP_TYPE_CPUDRAW:
 		ion_cpudraw_heap_destroy(heap);

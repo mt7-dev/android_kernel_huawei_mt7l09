@@ -28,6 +28,9 @@
 *****************************************************************************/
 #define    THIS_FILE_ID        PS_FILE_ID_SMS_MAIN_C
 
+NAS_SMS_PS_CONCATENATE_ENUM_UINT8   g_enNasSmsPsConcatencateFlag = NAS_SMS_PS_CONCATENATE_DISABLE;
+
+
 /*****************************************************************************
   3 类型定义
 *****************************************************************************/
@@ -955,8 +958,13 @@ VOS_VOID SMS_GetCustomizedPara(VOS_VOID)
     f_ucNasSmsTc1mMaxExpTimes = (VOS_UINT8)(usCpDataTimes - 1);
     PS_MEM_CPY(&f_stNasSmsTimerLength, &stTimerLength, sizeof(f_stNasSmsTimerLength));
 
+    /* 从NV 中获取ps域短信发送控制 */
+    SMS_GetPsConcatenateFlagFromNV();
+
     return;
 }
+
+
 VOS_VOID SMS_GetTc1mTimeOutRetryFlag(
     VOS_UINT8                           ucExpireTimes,
     VOS_BOOL                           *pbRetryFlag
@@ -1061,6 +1069,50 @@ VOS_UINT32 WuepsSmsPidInit ( enum VOS_INIT_PHASE_DEFINE ip )
     return VOS_OK;
 }
 
+
+VOS_VOID  SMS_GetPsConcatenateFlagFromNV(VOS_VOID)
+{
+    VOS_UINT32                          ulRet;
+    NAS_NV_SMS_PS_CTRL_STRU             stPsCtrl;
+
+    /* 初始化 */
+    PS_MEM_SET(&stPsCtrl, 0x0, sizeof(NAS_NV_SMS_PS_CTRL_STRU));
+
+    /* 读取NV项 */
+    ulRet = NV_Read(en_NV_Item_SMS_PS_CTRL,
+                    &stPsCtrl,
+                    sizeof(NAS_NV_SMS_PS_CTRL_STRU));
+    if (NV_OK != ulRet)
+    {
+        /* 默认设置来不支持 */
+        SMS_SetSmsPsConcatenateFlag(NAS_SMS_PS_CONCATENATE_DISABLE);
+
+        return;
+    }
+
+    if (stPsCtrl.enSmsConcatenateFlag < NAS_SMS_PS_CONCATENATE_BUTT)
+    {
+        SMS_SetSmsPsConcatenateFlag(stPsCtrl.enSmsConcatenateFlag);
+    }
+    else
+    {
+        SMS_SetSmsPsConcatenateFlag(NAS_SMS_PS_CONCATENATE_DISABLE);
+    }
+
+    return;
+}
+VOS_VOID SMS_SetSmsPsConcatenateFlag(
+    NAS_SMS_PS_CONCATENATE_ENUM_UINT8 enFlag
+)
+{
+    g_enNasSmsPsConcatencateFlag = enFlag;
+}
+
+
+NAS_SMS_PS_CONCATENATE_ENUM_UINT8 SMS_GetSmsPsConcatenateFlag(VOS_VOID)
+{
+    return g_enNasSmsPsConcatencateFlag;
+}
 
 #ifdef  __cplusplus
   #if  __cplusplus

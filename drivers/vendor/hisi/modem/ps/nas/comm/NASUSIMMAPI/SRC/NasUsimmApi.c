@@ -1023,7 +1023,7 @@ VOS_VOID NAS_STKAPI_EnvelopeRspDataFree(
 
 VOS_UINT32 NAS_STKAPI_EnvelopeDownload(
     VOS_UINT32                          ulSenderPid,
-    VOS_UINT16                          usClientId,
+    VOS_UINT32                          ulSendPara,
     SI_STK_ENVELOPE_STRU               *pstENStru
 )
 {
@@ -1032,19 +1032,19 @@ VOS_UINT32 NAS_STKAPI_EnvelopeDownload(
     /* SVLTE */
     if (VOS_TRUE == NAS_USIMM_IsSvlteSupported())
     {
-        ulRslt = SI_STK_EnvelopeDownload_Instance(MODEM_ID_0, ulSenderPid, usClientId, pstENStru);
+        ulRslt = SI_STK_EnvelopeDownload_Instance(MODEM_ID_0, ulSenderPid, ulSendPara, pstENStru);
 
         /* 调用可维可测 */
-        NAS_LogStkApiEnvelopDownload(ulRslt, NAS_USIMM_API_TYPE_WITH_INSTANCE, usClientId, pstENStru);
+        NAS_LogStkApiEnvelopDownload(ulRslt, NAS_USIMM_API_TYPE_WITH_INSTANCE, ulSendPara, pstENStru);
 
         return ulRslt;
     }
 
     /* 单待或DSDA */
-    ulRslt =  SI_STK_EnvelopeDownload(ulSenderPid, usClientId, pstENStru);
+    ulRslt =  SI_STK_EnvelopeDownload(ulSenderPid, ulSendPara, pstENStru);
 
     /* 调用可维可测 */
-    NAS_LogStkApiEnvelopDownload( ulRslt, NAS_USIMM_API_TYPE_WITHOUT_INSTANCE, usClientId, pstENStru);
+    NAS_LogStkApiEnvelopDownload( ulRslt, NAS_USIMM_API_TYPE_WITHOUT_INSTANCE, ulSendPara, pstENStru);
 
     return ulRslt;
 

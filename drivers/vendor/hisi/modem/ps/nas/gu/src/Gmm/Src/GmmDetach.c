@@ -96,7 +96,7 @@ VOS_UINT32 NAS_GMM_RcvMmcGmmDetachReqMsg_GmmRegisteredInitiated(
         NAS_GMM_SaveDetachMsg(pMsg);
 
         return VOS_FALSE;                                                       /* 返回                                     */
-    }    
+    }
 
     /* 在联合注册过程中，则缓存消息,在联合注册过程结束后再处理 */
     if ( (GMM_ATTACH_COMBINED            == g_GmmGlobalCtrl.ucSpecProc)
@@ -113,7 +113,7 @@ VOS_UINT32 NAS_GMM_RcvMmcGmmDetachReqMsg_GmmRegisteredInitiated(
 
     /* 网络模式I,如果当前CS域已处于DETACH状态，并且当前是CS与PS域的DETACH，则只进行PS ONLY DETACH */
     ulDetachType = NAS_GMM_ConvertDetachType(ulDetachType);
-    
+
     Gmm_TimerStop(GMM_TIMER_T3310);                                             /* 停T3310                                  */
     Gmm_TimerStop(GMM_TIMER_T3318);                                             /* 停止T3318                                */
     Gmm_TimerStop(GMM_TIMER_T3320);                                             /* 停止T3320                                */
@@ -516,8 +516,8 @@ VOS_UINT32 NAS_GMM_IsNeedProcUserCsDetach(VOS_VOID)
     pstNetWorkInfo    =  NAS_MML_GetNetworkInfo();
 
     ulRet             = VOS_FALSE;
-    
-    
+
+
     /* 非网络模式I下，不用GMM处理用户发起的detach */
     if ( NAS_MML_NET_MODE_I != pstCampInfo->enNetworkMode )
     {
@@ -564,8 +564,8 @@ VOS_UINT32 NAS_GMM_IsNeedProcUserCsDetach(VOS_VOID)
     {
         return VOS_FALSE;
     }
-   
-    /* 否则用户发起的CS域的DETACH，可由GMM进行处理 */    
+
+    /* 否则用户发起的CS域的DETACH，可由GMM进行处理 */
     return VOS_TRUE;
 
 }
@@ -580,7 +580,7 @@ NAS_GMM_DETACH_TYPE_ENUM_UINT32 NAS_GMM_ConvertDetachType(
     {                                                                           /* 是combined detach                        */
         if ( GMM_NET_MODE_I != g_GmmGlobalCtrl.ucNetMod )
         {                                                                       /* 当前是非A+I                              */
-            return MMC_GMM_PS_DETACH; 
+            return MMC_GMM_PS_DETACH;
         }
 
         if ( (MM_STATUS_DETACHED             == g_MmSubLyrShare.MmShare.ucCsAttachState)
@@ -592,10 +592,10 @@ NAS_GMM_DETACH_TYPE_ENUM_UINT32 NAS_GMM_ConvertDetachType(
 
         return MMC_GMM_PS_CS_DETACH;
     }
-    
-    /* 其它去注册类型保持不变 */    
+
+    /* 其它去注册类型保持不变 */
     return ulDetachType;
-    
+
 }
 
 
@@ -642,15 +642,15 @@ VOS_VOID NAS_Gmm_RcvMmCsLocalDetachInd_RegImsiDtchInit(VOS_VOID)
 VOS_VOID NAS_Gmm_RcvMmCsLocalDetachInd_RegInit(VOS_VOID)
 {
     NAS_MML_NET_RAT_TYPE_ENUM_UINT8     enCurRat;                           /* 当前的网络接入技术 */
- 
+
     enCurRat = NAS_MML_GetCurrNetRatType();
-    
+
     /* 当前处在联合RAU/attach过程中 */
     if ( (GMM_ATTACH_COMBINED            != g_GmmGlobalCtrl.ucSpecProc)
       && (GMM_ATTACH_WHILE_IMSI_ATTACHED != g_GmmGlobalCtrl.ucSpecProc) )
     {
         return ;
-    }    
+    }
 
     /* W下存在信令，则通知接入层进行链接释放 */
     if ( ( NAS_MML_NET_RAT_TYPE_WCDMA == enCurRat )
@@ -660,7 +660,7 @@ VOS_VOID NAS_Gmm_RcvMmCsLocalDetachInd_RegInit(VOS_VOID)
         Gmm_SndRrmmRelReq(RRC_CELL_UNBARRED);
 
     }
-    
+
     return;                                                                     /* 返回                                     */
 }
 
@@ -670,14 +670,14 @@ VOS_VOID NAS_Gmm_RcvMmCsLocalDetachInd_RegInit(VOS_VOID)
 VOS_VOID NAS_Gmm_RcvMmCsLocalDetachInd_RauInit(VOS_VOID)
 {
     NAS_MML_NET_RAT_TYPE_ENUM_UINT8     enCurRat;                           /* 当前的网络接入技术 */
- 
+
     enCurRat = NAS_MML_GetCurrNetRatType();
-    
+
     /* 当前处在联合RAU/attach过程中 */
     if ( (GMM_RAU_COMBINED            != g_GmmGlobalCtrl.ucSpecProc)
       && (GMM_RAU_WITH_IMSI_ATTACH    != g_GmmGlobalCtrl.ucSpecProc) )
     {
-        return ; 
+        return ;
     }
 
     /* W下存在信令，则通知接入层进行链接释放 */
@@ -686,7 +686,7 @@ VOS_VOID NAS_Gmm_RcvMmCsLocalDetachInd_RauInit(VOS_VOID)
         || (GMM_RRC_RRMM_EST_CNF_FLG  == (g_GmmReqCnfMng.ucCnfMask & GMM_RRC_RRMM_EST_CNF_FLG)) )  )
     {
         Gmm_SndRrmmRelReq(RRC_CELL_UNBARRED);
-    }   
+    }
 
     return;                                                                     /* 返回                                     */
 }
@@ -838,7 +838,7 @@ VOS_VOID Gmm_RcvMmcDetachReq(
     {
         NAS_GMM_GprsLocalDetach_SvltePsTransfer();
 
-        
+
         NAS_MML_SetPsLocalDetachFlag(VOS_FALSE);
         return;
     }
@@ -993,9 +993,9 @@ VOS_VOID Gmm_RcvMmcDetachReq(
     if ( (VOS_TRUE             == NAS_GMM_IsNeedProcUserCsDetach())
       && (GMM_WAIT_CS_DETACH   == (g_GmmGlobalCtrl.stDetachInfo.enDetachType & GMM_WAIT_CS_DETACH)) )
     {
-        NAS_GMM_SndMmcMmDetachInfo();        
+        NAS_GMM_SndMmcMmDetachInfo();
         return;
-    }  
+    }
 
     return;                                                                     /* 返回                                     */
 }
@@ -1134,7 +1134,7 @@ VOS_VOID NAS_GMM_ProcDetachReq_RegNmlServ(
 
         Gmm_RoutingAreaUpdateInitiate(GMM_UPDATING_TYPE_INVALID);
     }
-    
+
     else
     {
         Gmm_MsInitNormalDetach(ulDetachType);                                   /* 调用MS启动的detach处理                   */
@@ -1216,22 +1216,22 @@ VOS_VOID Gmm_RcvMmcPowerOffReq(
     GMM_BufferMsgDump();
 
     NAS_GMM_FreeGsmSysInfo();
-	
+
     NAS_GMM_FreeWasSysInfo();
-	
+
     /* PS未attach上,直接给MMC回复关机结果 */
     if ((GMM_STATUS_ATTACHED                    != g_MmSubLyrShare.GmmShare.ucAttachSta)
      && (GMM_REGISTERED_INITIATED               != g_GmmGlobalCtrl.ucState)
      && (GMM_ROUTING_AREA_UPDATING_INITIATED    != g_GmmGlobalCtrl.ucState))
-    {                       
+    {
         g_GmmReqCnfMng.ucCnfMask = 0;
         g_GmmGlobalCtrl.ucSpecProcHold = GMM_NULL_PROCEDURE;
         g_GmmGlobalCtrl.ucSpecProcInCsTrans = GMM_NULL_PROCEDURE;
-    
+
         Gmm_ComStaChg(GMM_NULL);                                                /* 调用状态的公共处理                       */
         Gmm_SndMmcPowerOffCnf();                                                /* 向MMC发送MMCGMM_POWER_CNF               */
         Gmm_ComVariantInit();                                                   /* 清除全局变量                             */
-        
+
         return;
     }
 
@@ -1679,6 +1679,10 @@ VOS_VOID Gmm_RcvDetachRequestMsg(
         }
     }
 
+#if (FEATURE_ON == FEATURE_PTM)
+    NAS_GMM_NwDetachIndRecord(ucDetachType, ucGmmCause, ucForceToStandby);
+#endif
+
     switch (g_GmmGlobalCtrl.ucState)
     {                                                                           /* 判断当前状态进行不同的处理               */
     case GMM_REGISTERED_INITIATED:                                              /* GMM-REGISTERED-INITIATED                 */
@@ -1820,7 +1824,7 @@ VOS_VOID Gmm_RcvDetachRequestMsg_DeregInit(
         /* 收到网侧的去注册成功后需要通知MM，否则MM不启动T3212定时器 */
         NAS_GMM_SndMmGprsDetachComplete();
     }
-    
+
 
     Gmm_SndMmcNetworkDetachInd(ucDetachType, ucGmmCause);  /* 发送MMCGMM_NETWORK_DETACH_IND            */
 
@@ -1980,8 +1984,8 @@ VOS_VOID Gmm_RcvDetachRequestMsg_RegImsiDtchInit(
 )
 {
 
-    
-    
+
+
     NAS_MSG_STRU    *pDetachAccept;                                             /* 定义指针                                 */
 
     pDetachAccept = Gmm_DetachAcceptMsgMake();                                  /* 调用函数制作detach accept消息            */
@@ -1993,24 +1997,24 @@ VOS_VOID Gmm_RcvDetachRequestMsg_RegImsiDtchInit(
         case GMM_NET_DETACH_REATTACH_NOT_REQUIRED:                              /* "re-attach not required"                 */
             Gmm_NetInitNotRequiredDetach(ucGmmCause);                           /* 调用"re-attach not required"的公共处理   */
             break;
-            
+
         case GMM_NET_DETACH_REATTACH_REQUIRED:                                  /* "re-attach required"                     */
 
-            /* 设置CS不准许标志，这样不会发起联合ATTACH */    
+            /* 设置CS不准许标志，这样不会发起联合ATTACH */
             if (GMM_WAIT_CS_DETACH == (g_GmmGlobalCtrl.stDetachInfo.enDetachType & GMM_WAIT_CS_DETACH))
             {
                 NAS_MML_SetCsAttachAllowFlg(VOS_FALSE);
             }
-            
+
             Gmm_NetInitRequiredDetach();                                        /* 调用re-attach required的处理             */
             break;
-            
+
         case GMM_NET_DETACH_IMSI_DETACH:                                        /* IMSI detach                              */
             Gmm_SndRrmmDataReq(RRC_NAS_MSG_PRIORTY_HIGH, pDetachAccept);        /* 发送RRMM_DATA_REQ(detach accept消息)     */
             Gmm_ComStaChg(GMM_REGISTERED_NORMAL_SERVICE);
             Gmm_SndMmcNetworkDetachInd(ucDetachType, ucGmmCause);
             break;
-            
+
         default:
             NAS_WARNING_LOG(WUEPS_PID_GMM, "Gmm_RcvDetachRequestMsg_RegImsiDtchInit: INVALID DETACH TYPE!");
             break;
@@ -2020,7 +2024,7 @@ VOS_VOID Gmm_RcvDetachRequestMsg_RegImsiDtchInit(
     {
         NAS_GMM_SndMmcMmDetachInfo();
     }
-    
+
 
     return;
 }
@@ -2217,7 +2221,7 @@ VOS_VOID Gmm_NetInitRequiredDetach(VOS_VOID)
         Gmm_TimerStop(GMM_TIMER_T3314);
 
         gstGmmCasGlobalCtrl.GmmSrvState = GMM_AGB_GPRS_IDLE;
-        
+
         NAS_GMM_SndGasInfoChangeReq(NAS_GSM_MASK_GSM_GMM_STATE);
     }
     /* END:   Added by liurui id:40632, 2006/4/28   PN:A32D03272 */
@@ -2491,13 +2495,13 @@ VOS_VOID Gmm_RcvDetachAcceptMsg_DeregInit(VOS_VOID)
         {
             NAS_GMM_SndMmcMmDetachInfo();
         }
-        
+
         else
         {
             /* 收到网侧的去注册成功后需要通知MM，否则MM不启动T3212定时器 */
             NAS_GMM_SndMmGprsDetachComplete();
         }
-        
+
         g_GmmGlobalCtrl.ucSpecProc = GMM_NULL_PROCEDURE;
     }
     else if (VOS_OK != Mm_StartRelTimer(&g_stGmmProtectRrRelTimer,
@@ -2518,7 +2522,7 @@ VOS_VOID Gmm_RcvDetachAcceptMsg_DeregInit(VOS_VOID)
             /* 收到网侧的去注册成功后需要通知MM，否则MM不启动T3212定时器 */
             NAS_GMM_SndMmGprsDetachComplete();
         }
-        
+
         g_GmmGlobalCtrl.ucSpecProc = GMM_NULL_PROCEDURE;
         PS_LOG(WUEPS_PID_GMM, VOS_NULL, PS_PRINT_WARNING, "Gmm_RcvDetachAcceptMsg_DeregInit:WARNING: Gmm Start Timer fail.");
     }

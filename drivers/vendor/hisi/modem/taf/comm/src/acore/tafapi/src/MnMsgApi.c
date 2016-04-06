@@ -609,6 +609,12 @@ VOS_UINT32   MN_MSG_ReadStaRpt(
 {
     VOS_UINT32                          ulRet;
 
+    if (VOS_NULL_PTR == pstReadParam)
+    {
+        AT_WARN_LOG("MN_MSG_ReadStaRpt:pstReadParam is Null");
+        return MN_ERR_NULLPTR;
+    }
+
     if ((MN_MSG_MEM_STORE_SIM != pstReadParam->enMemStore)
      && (MN_MSG_MEM_STORE_NV != pstReadParam->enMemStore))
     {
@@ -620,12 +626,6 @@ VOS_UINT32   MN_MSG_ReadStaRpt(
     {
         AT_WARN_LOG("MN_MSG_ReadStaRpt:Invalid enMemStore2");
         return MN_ERR_INVALIDPARM;
-    }
-
-    if (VOS_NULL_PTR == pstReadParam)
-    {
-        AT_WARN_LOG("MN_MSG_ReadStaRpt:pstReadParam is Null");
-        return MN_ERR_NULLPTR;
     }
 
     ulRet = MSG_SendAppReq(MN_MSG_MSGTYPE_READ_STARPT,

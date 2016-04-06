@@ -75,7 +75,7 @@ s32 socp_init(void);
  返 回 值  : SOCP_OK:编码源通道分配成功。
              SOCP_ERROR:编码源通道分配失败。
 *****************************************************************************/
-s32 bsp_socp_coder_set_src_chan(SOCP_CODER_SRC_ENUM_U32 enSrcChanID, SOCP_CODER_SRC_CHAN_S *pSrcAttr);
+s32 bsp_socp_coder_set_src_chan(SOCP_CODER_SRC_ENUM_U32 enSrcChanID, SOCP_CODER_SRC_CHAN_STRU *pSrcAttr);
 
 /*****************************************************************************
  函 数 名  : bsp_socp_coder_set_dest_chan_attr
@@ -86,7 +86,7 @@ s32 bsp_socp_coder_set_src_chan(SOCP_CODER_SRC_ENUM_U32 enSrcChanID, SOCP_CODER_
  返 回 值  : SOCP_OK:编码目的通道设置成功。
              SOCP_ERROR:编码目的通道设置失败。
 *****************************************************************************/
-s32 bsp_socp_coder_set_dest_chan_attr(u32 u32DestChanID, SOCP_CODER_DEST_CHAN_S *pDestAttr);
+s32 bsp_socp_coder_set_dest_chan_attr(u32 u32DestChanID, SOCP_CODER_DEST_CHAN_STRU *pDestAttr);
 
 /*****************************************************************************
  函 数 名      : bsp_socp_decoder_set_dest_chan
@@ -99,7 +99,7 @@ s32 bsp_socp_coder_set_dest_chan_attr(u32 u32DestChanID, SOCP_CODER_DEST_CHAN_S 
  返 回 值      : SOCP_OK:解码目的通道分配成功。
                              SOCP_ERROR:解码目的通道设置失败。
 *****************************************************************************/
-s32 bsp_socp_decoder_set_dest_chan(SOCP_DECODER_DST_ENUM_U32 enDestChanID, SOCP_DECODER_DEST_CHAN_S *pAttr);
+s32 bsp_socp_decoder_set_dest_chan(SOCP_DECODER_DST_ENUM_U32 enDestChanID, SOCP_DECODER_DEST_CHAN_STRU *pAttr);
 
 /*****************************************************************************
  函 数 名      : bsp_socp_decoder_set_src_chan_attr
@@ -110,7 +110,7 @@ s32 bsp_socp_decoder_set_dest_chan(SOCP_DECODER_DST_ENUM_U32 enDestChanID, SOCP_
  返 回 值      : SOCP_OK:解码源通道设置成功
                              SOCP_ERROR:解码源通道设置失败
 *****************************************************************************/
-s32 bsp_socp_decoder_set_src_chan_attr ( u32 u32SrcChanID,SOCP_DECODER_SRC_CHAN_S *pInputAttr);
+s32 bsp_socp_decoder_set_src_chan_attr ( u32 u32SrcChanID,SOCP_DECODER_SRC_CHAN_STRU *pInputAttr);
 
 /*****************************************************************************
  函 数 名      : bsp_socp_decoder_get_err_cnt
@@ -121,7 +121,7 @@ s32 bsp_socp_decoder_set_src_chan_attr ( u32 u32SrcChanID,SOCP_DECODER_SRC_CHAN_
  返 回 值      : SOCP_OK:返回异常计数成功
                              SOCP_ERROR:返回异常计数失败
 *****************************************************************************/
-s32 bsp_socp_decoder_get_err_cnt (u32 u32ChanID, SOCP_DECODER_ERROR_CNT_S *pErrCnt);
+s32 bsp_socp_decoder_get_err_cnt (u32 u32ChanID, SOCP_DECODER_ERROR_CNT_STRU *pErrCnt);
 
 /*****************************************************************************
  函 数 名  : bsp_socp_free_channel
@@ -186,7 +186,7 @@ s32 bsp_socp_stop(u32 u32SrcChanID);
  返 回 值      : SOCP_OK:设置超时时间阈值成功。
                              SOCP_ERROR:设置超时时间阈值失败
 *****************************************************************************/
-s32 bsp_socp_set_timeout (SOCP_TIMEOUT_EN_E eTmOutEn, u32 u32Timeout);
+s32 bsp_socp_set_timeout (SOCP_TIMEOUT_EN_ENUM_UIN32 eTmOutEn, u32 u32Timeout);
 
 /*****************************************************************************
  函 数 名   : bsp_socp_set_dec_pkt_lgth
@@ -197,7 +197,7 @@ s32 bsp_socp_set_timeout (SOCP_TIMEOUT_EN_E eTmOutEn, u32 u32Timeout);
  返 回 值      : SOCP_OK:设置成功。
                     其他值:设置失败
 *****************************************************************************/
-s32 bsp_socp_set_dec_pkt_lgth(SOCP_DEC_PKTLGTH_S *pPktlgth);
+s32 bsp_socp_set_dec_pkt_lgth(SOCP_DEC_PKTLGTH_STRU *pPktlgth);
 
 /*****************************************************************************
  函 数 名   : bsp_socp_set_debug
@@ -230,7 +230,7 @@ s32 bsp_socp_chan_soft_reset(u32 u32ChanID);
  返 回 值      : SOCP_OK:获取写数据buffer成功。
                              SOCP_ERROR:获取写数据buffer失败
 *****************************************************************************/
-s32 bsp_socp_get_write_buff( u32 u32SrcChanID, SOCP_BUFFER_RW_S *pBuff);
+s32 bsp_socp_get_write_buff( u32 u32SrcChanID, SOCP_BUFFER_RW_STRU *pBuff);
 
 /*****************************************************************************
  函 数 名      : bsp_socp_write_done
@@ -263,7 +263,7 @@ s32 bsp_socp_register_rd_cb(u32 u32SrcChanID, socp_rd_cb RdCB);
  返 回 值      : SOCP_OK:获取RD环形缓冲区成功
                              SOCP_ERROR:获取RD环形缓冲区失败
 *****************************************************************************/
-s32 bsp_socp_get_rd_buffer( u32 u32SrcChanID,SOCP_BUFFER_RW_S *pBuff);
+s32 bsp_socp_get_rd_buffer( u32 u32SrcChanID,SOCP_BUFFER_RW_STRU *pBuff);
 
 /*****************************************************************************
  函 数 名      : bsp_socp_read_rd_done
@@ -296,7 +296,7 @@ s32 bsp_socp_register_read_cb( u32 u32DestChanID, socp_read_cb ReadCB);
  返 回 值      : SOCP_OK:获取读数据缓冲区成功。
                              SOCP_ERROR:获取读数据缓冲区成功。
 *****************************************************************************/
-s32 bsp_socp_get_read_buff(u32 u32DestChanID,SOCP_BUFFER_RW_S *pBuffer);
+s32 bsp_socp_get_read_buff(u32 u32DestChanID,SOCP_BUFFER_RW_STRU *pBuffer);
 
 /*****************************************************************************
  函 数 名      : bsp_socp_read_data_done
@@ -327,7 +327,7 @@ s32 bsp_socp_set_bbp_enable(int bEnable);
  返 回 值      : SOCP_OK:设置成功。
                    其他值:设置失败
 *****************************************************************************/
-s32 bsp_socp_set_bbp_ds_mode(SOCP_BBP_DS_MODE_E eDsMode);
+s32 bsp_socp_set_bbp_ds_mode(SOCP_BBP_DS_MODE_ENUM_UIN32 eDsMode);
 
 /*****************************************************************************
 * 函 数 名  : bsp_socp_start_dsp

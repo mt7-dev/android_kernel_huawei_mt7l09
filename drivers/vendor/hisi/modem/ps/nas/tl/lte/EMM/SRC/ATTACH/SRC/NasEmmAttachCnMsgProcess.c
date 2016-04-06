@@ -1141,6 +1141,7 @@ VOS_UINT32  NAS_EMM_MsRegInitSsWtCnAttCnfMsgCnAttachAcp(VOS_UINT32  ulMsgId,
 
     }
 
+    NAS_EMM_ResetHplmnAuthRejCout();
 
     /*停止定时器T3410*/
     NAS_LMM_StopStateTimer(          TI_NAS_EMM_T3410);
@@ -1303,10 +1304,10 @@ VOS_UINT32  NAS_EMM_MsRegInitSsWtCnAttCnfMsgCnAttachReject(
     /*保存ATTACH拒绝原因*/
     NAS_EMM_GLO_AD_GetAttRejCau()       = pRcvEmmMsg->ucCause;
     NAS_EMM_GLO_AD_GetAttRejEsmCau()    = pRcvEmmMsg->ucEsmCause;
-	
+
     /* xiongxianghui00253310 modify for ftmerrlog begin */
     #if (FEATURE_PTM == FEATURE_ON)
-    NAS_LMM_ErrlogInfoProc(pRcvEmmMsg->ucCause);
+    NAS_EMM_AttachErrRecord(pMsgStru, EMM_OM_ERRLOG_TYPE_CN_REJ);
     #endif
     /* xiongxianghui00253310 modify for ftmerrlog end   */
 

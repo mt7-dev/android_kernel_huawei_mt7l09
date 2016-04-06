@@ -111,8 +111,8 @@ int __cpuinit __cpu_up(unsigned int cpu, struct task_struct *idle)
 	 * its stack and the page tables.
 	 */
 	secondary_data.stack = task_stack_page(idle) + THREAD_START_SP;
-	secondary_data.pgdir = virt_to_phys(idmap_pgd);
-	secondary_data.swapper_pg_dir = virt_to_phys(swapper_pg_dir);
+	secondary_data.pgdir = virt_to_idmap(idmap_pgd);
+	secondary_data.swapper_pg_dir = virt_to_idmap(swapper_pg_dir);
 	__cpuc_flush_dcache_area(&secondary_data, sizeof(secondary_data));
 	outer_clean_range(__pa(&secondary_data), __pa(&secondary_data + 1));
 
@@ -874,6 +874,7 @@ EXPORT_SYMBOL(unregister_secure_notify_handler);
 #endif
 
 
+#if defined(CONFIG_ARCH_HI3630)
 /*HI3630: flush all cpu all cache++*/
 #ifdef HI3630_FC_DEBUG
 #define HI3630_FC_PRINTK(format, args...)		do { printk(KERN_ERR format, args); } while (0)
@@ -1031,3 +1032,4 @@ void hi3630_fc_allcpu_allcache(void)
 	preempt_enable();
 }
 /*HI3630: flush all cpu all cache--*/
+#endif

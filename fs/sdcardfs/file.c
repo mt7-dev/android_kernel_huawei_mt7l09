@@ -19,6 +19,9 @@
  */
 
 #include "sdcardfs.h"
+#ifdef CONFIG_SDCARD_FS_FADV_NOACTIVE
+#include <linux/backing-dev.h>
+#endif
 
 static ssize_t sdcardfs_read(struct file *file, char __user *buf,
 			   size_t count, loff_t *ppos)
@@ -26,8 +29,24 @@ static ssize_t sdcardfs_read(struct file *file, char __user *buf,
 	int err;
 	struct file *lower_file;
 	struct dentry *dentry = file->f_path.dentry;
+#ifdef CONFIG_SDCARD_FS_FADV_NOACTIVE
+	struct backing_dev_info *bdi;
+#endif
 
 	lower_file = sdcardfs_lower_file(file);
+
+#ifdef CONFIG_SDCARD_FS_FADV_NOACTIVE
+	if (file->f_mode & FMODE_NOACTIVE) {
+		if (!(lower_file->f_mode & FMODE_NOACTIVE)) {
+			bdi = lower_file->f_mapping->backing_dev_info;
+			lower_file->f_ra.ra_pages = bdi->ra_pages * 2;
+			spin_lock(&lower_file->f_lock);
+			lower_file->f_mode |= FMODE_NOACTIVE;
+			spin_unlock(&lower_file->f_lock);
+		}
+	}
+#endif
+
 	err = vfs_read(lower_file, buf, count, ppos);
 	/* update our inode atime upon a successful lower read */
 	if (err >= 0)
@@ -146,7 +165,6 @@ static int sdcardfs_mmap(struct file *file, struct vm_area_struct *vma)
 		goto out;
 	}
 
-        /* DTS2014061002949 for sdcardfs file mmap problem begin */
 	/*
 	 * find and save lower vm_ops.
 	 *
@@ -169,9 +187,7 @@ static int sdcardfs_mmap(struct file *file, struct vm_area_struct *vma)
         fput(file);
         get_file(lower_file);
         vma->vm_file = lower_file;
-        /* DTS2014061002949 for sdcardfs file mmap problem end */
-
-        file->f_mapping->a_ops = &sdcardfs_aops;
+	file->f_mapping->a_ops = &sdcardfs_aops; /* set our aops */
 	if (!SDCARDFS_F(file)->lower_vm_ops) /* save for our ->fault */
 		SDCARDFS_F(file)->lower_vm_ops = saved_vm_ops;
 
@@ -211,6 +227,7 @@ static int sdcardfs_open(struct inode *inode, struct file *file)
 	/* save current_cred and override it */
 	OVERRIDE_CRED(sbi, saved_cred);
 
+	file->f_mode |= FMODE_NOMAPPABLE;
 	file->private_data =
 		kzalloc(sizeof(struct sdcardfs_file_info), GFP_KERNEL);
 	if (!SDCARDFS_F(file)) {
@@ -219,9 +236,8 @@ static int sdcardfs_open(struct inode *inode, struct file *file)
 	}
 
 	/* open lower object and link sdcardfs's file struct to lower's */
-	sdcardfs_get_lower_path(file->f_path.dentry, &lower_path);
+	sdcardfs_copy_lower_path(file->f_path.dentry, &lower_path);
 	lower_file = dentry_open(&lower_path, file->f_flags, current_cred());
-        path_put(&lower_path);
 	if (IS_ERR(lower_file)) {
 		err = PTR_ERR(lower_file);
 		lower_file = sdcardfs_lower_file(file);
@@ -236,8 +252,10 @@ static int sdcardfs_open(struct inode *inode, struct file *file)
 	if (err)
 		kfree(SDCARDFS_F(file));
 	else {
-		fsstack_copy_attr_all(inode, sdcardfs_lower_inode(inode));
+		mutex_lock(&inode->i_mutex);
+		sdcardfs_copy_inode_attr(inode, sdcardfs_lower_inode(inode));
 		fix_derived_permission(inode);
+		mutex_unlock(&inode->i_mutex);
 	}
 
 out_revert_cred:
@@ -302,6 +320,11 @@ static int sdcardfs_fasync(int fd, struct file *file, int flag)
 	return err;
 }
 
+static struct file *sdcardfs_get_lower_file(struct file *f)
+{
+	return sdcardfs_lower_file(f);
+}
+
 const struct file_operations sdcardfs_main_fops = {
 	.llseek		= generic_file_llseek,
 	.read		= sdcardfs_read,
@@ -316,6 +339,7 @@ const struct file_operations sdcardfs_main_fops = {
 	.release	= sdcardfs_file_release,
 	.fsync		= sdcardfs_fsync,
 	.fasync		= sdcardfs_fasync,
+	.get_lower_file = sdcardfs_get_lower_file,
 };
 
 /* trimmed directory options */
@@ -332,4 +356,5 @@ const struct file_operations sdcardfs_dir_fops = {
 	.flush		= sdcardfs_flush,
 	.fsync		= sdcardfs_fsync,
 	.fasync		= sdcardfs_fasync,
+	.get_lower_file = sdcardfs_get_lower_file,
 };

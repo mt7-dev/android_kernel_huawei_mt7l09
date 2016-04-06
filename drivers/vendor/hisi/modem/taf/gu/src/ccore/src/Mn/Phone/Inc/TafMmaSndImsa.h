@@ -73,10 +73,20 @@ VOS_VOID TAF_MMA_SndImsaSrvInfoNotify(
 );
 
 VOS_VOID TAF_MMA_SndImsaCampInfoChangeInd(VOS_VOID);
+VOS_VOID TAF_MMA_SndImsaStopReq(
+    MMA_IMSA_STOP_TYPE_ENUM_UINT32      enStopType
+);
 
-VOS_UINT32 TAF_MMA_SndImsaStopReq(VOS_VOID);
-
-VOS_UINT32 TAF_MMA_SndImsaStartReq(VOS_VOID);
+VOS_UINT32 TAF_MMA_SndImsaStartReq(
+    MMA_IMSA_START_TYPE_ENUM_UINT32     enStartType
+);
+VOS_VOID TAF_MMA_SndImsaVoiceDomainChangeInd(
+    MMA_IMSA_VOICE_DOMAIN_ENUM_UINT32   enVoiceDomain
+);
+#if (FEATURE_MULTI_MODEM == FEATURE_ON)
+VOS_VOID TAF_MMA_SndImsaModem1InfoInd(
+    MMA_IMSA_MODEM_POWER_STATE_ENUM_UINT8   enModem1PowerState);
+#endif
 
 #endif
 

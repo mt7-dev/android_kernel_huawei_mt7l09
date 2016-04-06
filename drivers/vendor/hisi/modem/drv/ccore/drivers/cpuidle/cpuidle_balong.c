@@ -2,6 +2,7 @@
 #include <osl_irq.h> /*lint !e537*/
 #include <bsp_hardtimer.h>
 #include <bsp_lowpower_mntn.h>
+#include <bsp_pmu_hi6561.h>
 #include "sleep.h"
 #include "cpuidle_balong.h"
 
@@ -16,7 +17,9 @@ unsigned int g_ulDfsCcpuIdleTime_long = 0;
 
 /*WFI enter function*/
 static void hi6930_enter_idle(void)
-{	
+{
+	/*规避pastar漏电问题*/
+	bsp_pastar_leakage_bugfix();
 	cpu_enter_idle();
 	return;
 }
@@ -44,9 +47,6 @@ void cpuidle_idle_management(void)
      if(0 == has_wake_lock(0)){
              if(idle_go_deepsleep)
                     ret = idle_go_deepsleep();/*lint !e732*/
-             update_awake_time_stamp();
-     }else {
-              check_awake_time_limit();
      }
      if(ret)
               hi6930_enter_idle();

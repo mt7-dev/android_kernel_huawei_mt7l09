@@ -1,26 +1,4 @@
-/* 
- *  Hisilicon K3 SOC camera driver source file 
- * 
- *  Copyright (C) Huawei Technology Co., Ltd. 
- * 
- * Author:	  h00145353 
- * Email:	  alan.hefeng@huawei.com
- * Date:	  2013-12-11
- *
- * This program is free software; you can redistribute it and/or modify 
- * it under the terms of the GNU General Public License as published by 
- * the Free Software Foundation; either version 2 of the License, or 
- * (at your option) any later version. 
- *
- * This program is distributed in the hope that it will be useful, 
- * but WITHOUT ANY WARRANTY; without even the implied warranty of 
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
- * GNU General Public License for more details. 
- * 
- * You should have received a copy of the GNU General Public License 
- * along with this program; if not, write to the Free Software 
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA 
- */
+
 
 
 #ifndef __HW_ALAN_KERNEL_HWISP_INTERFACE_H__
@@ -59,6 +37,7 @@ typedef struct _tag_hwisp_vtbl
                         hwisp_stream_intf_t* stm);   
     int (*stream_stop)(hwisp_intf_t* i, 
                        hwisp_stream_intf_t* stm);   
+    int (*fix_ddrfreq)(hwisp_intf_t* i,void* ddrfreq);
 } hwisp_vtbl_t; 
 
 typedef struct _tag_hwisp_intf
@@ -102,6 +81,12 @@ hwisp_intf_init_reg(hwisp_intf_t* i)
     return i->vtbl->init_reg(i); 
 }
 
+static inline int
+hwisp_stream_intf_fix_ddrfreq(hwisp_intf_t* intf,void* ddrfreq)
+{
+    return intf->vtbl->fix_ddrfreq(intf, ddrfreq);
+}
+
 static inline int 
 hwisp_intf_create_stream(hwisp_intf_t* i, 
                          struct video_device* vdev, 
@@ -129,6 +114,7 @@ typedef struct _tag_hwisp_notify_vtbl
     void (*sof)(hwisp_notify_intf_t* i, hwisp_event_t* isp_ev);
     void (*eof)(hwisp_notify_intf_t* i, hwisp_event_t* isp_ev);
     void (*cmd_ready)(hwisp_notify_intf_t* i, hwisp_event_t* isp_ev); 
+    void (*vsync)(hwisp_notify_intf_t* i, hwisp_event_t* isp_ev);
 } hwisp_notify_vtbl_t; 
 
 typedef struct _tag_hwisp_notify_intf
@@ -151,10 +137,17 @@ hwisp_notify_intf_eof(hwisp_notify_intf_t* i,
 }
 
 static inline void 
-hwisp_notify_intf_cmd_ready(hwisp_notify_intf_t* i, 
+hwisp_notify_intf_cmd_ready(hwisp_notify_intf_t* i,
                             hwisp_event_t* isp_ev)
 {
-    return i->vtbl->cmd_ready(i, isp_ev); 
+    return i->vtbl->cmd_ready(i, isp_ev);
+}
+
+static inline void
+hwisp_notify_intf_vsync(hwisp_notify_intf_t* i,
+                            hwisp_event_t* isp_ev)
+{
+    return i->vtbl->vsync(i, isp_ev);
 }
 
 typedef struct _tag_hwisp_buf
@@ -236,8 +229,11 @@ hwisp_register(struct platform_device* pdev,
         hwisp_intf_t* isp,
         hwisp_notify_intf_t** notify); 
 
-extern void 
-hwisp_tasklet(unsigned long data); 
+extern void
+hwisp_unregister(hwisp_intf_t* isp_intf);
+
+extern void
+hwisp_tasklet(unsigned long data);
 
 extern int 
 hwisp_create_stream(struct video_device* vdev, 
@@ -256,8 +252,8 @@ typedef struct _tag_hwisp_stream
     struct list_head	                        node;
     struct mutex                                lock; 
 
-    unsigned long                               stream_type : 2; 
-    unsigned long                               stream_direction : 2;
+    unsigned long                               stream_type;
+    unsigned long                               stream_direction;
     ovisp23_port_info_t                         port; 
 
     struct semaphore                            buffer_readyQ;

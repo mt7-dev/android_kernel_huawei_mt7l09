@@ -120,21 +120,6 @@
 /* user interface */
 /* ============== */
 
-/*
-   Currently there is only a information display planned, as the layer
-   is not visible for the user space at all.
-
-   Information is available via procfs. The current entry is "/proc/videocodecs"
-   but it makes sense to "hide" it in the /proc/video tree of v4l(2) --TODO--.
-
-A example for such an output is:
-
-<S>lave or attached <M>aster name  type flags    magic    (connected as)
-S                          zr36050 0002 0000d001 00000000 (TEMPLATE)
-M                       zr36055[0] 0001 0000c001 00000000 (zr36050[0])
-M                       zr36055[1] 0001 0000c001 00000000 (zr36050[1])
-
-*/
 
 
 /* =============================================== */

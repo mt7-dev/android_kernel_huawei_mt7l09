@@ -231,6 +231,20 @@ void bsp_version_init(void);
 
 int bsp_productinfo_init(void);
 
+/*****************************************************************************
+* 函数	: bsp_get_board_actual_type
+* 功能	: get board actual type 
+* 输入	: void
+* 输出	: void
+* 返回	: BOARD_ACTUAL_TYPE_E       BBIT/SFT/ASIC
+*
+* 其它       : 无
+*
+*****************************************************************************/
+BOARD_ACTUAL_TYPE_E bsp_get_board_actual_type(void);
+
+u32 bsp_version_get_chip_type(void);
+
 #ifdef __cplusplus
 }
 #endif

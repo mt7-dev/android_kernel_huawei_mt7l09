@@ -100,40 +100,7 @@ int wlcore_translate_addr(struct wl1271 *wl, int addr)
 }
 EXPORT_SYMBOL_GPL(wlcore_translate_addr);
 
-/* Set the partitions to access the chip addresses
- *
- * To simplify driver code, a fixed (virtual) memory map is defined for
- * register and memory addresses. Because in the chipset, in different stages
- * of operation, those addresses will move around, an address translation
- * mechanism is required.
- *
- * There are four partitions (three memory and one register partition),
- * which are mapped to two different areas of the hardware memory.
- *
- *                                Virtual address
- *                                     space
- *
- *                                    |    |
- *                                 ...+----+--> mem.start
- *          Physical address    ...   |    |
- *               space       ...      |    | [PART_0]
- *                        ...         |    |
- *  00000000  <--+----+...         ...+----+--> mem.start + mem.size
- *               |    |         ...   |    |
- *               |MEM |      ...      |    |
- *               |    |   ...         |    |
- *  mem.size  <--+----+...            |    | {unused area)
- *               |    |   ...         |    |
- *               |REG |      ...      |    |
- *  mem.size     |    |         ...   |    |
- *      +     <--+----+...         ...+----+--> reg.start
- *  reg.size     |    |   ...         |    |
- *               |MEM2|      ...      |    | [PART_1]
- *               |    |         ...   |    |
- *                                 ...+----+--> reg.start + reg.size
- *                                    |    |
- *
- */
+
 int wlcore_set_partition(struct wl1271 *wl,
 			 const struct wlcore_partition_set *p)
 {

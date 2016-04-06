@@ -38,6 +38,10 @@
 #include "ImsaProcUssdMsg.h"
 /* modify by jiqiang 2014.03.25 pclint fix error 718 end */
 
+#if (FEATURE_ON == FEATURE_PTM)
+#include "ImsaProcOmMsg.h"
+#endif
+
 /*lint -e767*/
 #define    THIS_FILE_ID    PS_FILE_ID_IMSAMAIN_C
 /*lint +e767*/
@@ -81,6 +85,9 @@ extern VOS_VOID IMSA_PihMsgDistr(const VOS_VOID *pRcvMsg );
 extern VOS_VOID IMSA_VcMsgDistr(const VOS_VOID *pRcvMsg);
 
 extern VOS_VOID IMSA_AtMsgDistr(const VOS_VOID *pRcvMsg);
+#if (FEATURE_ON == FEATURE_PTM)
+extern VOS_VOID IMSA_OmMsgDistr(const VOS_VOID *pRcvMsg);
+#endif
 extern VOS_VOID IMSA_Init(VOS_VOID);
 extern VOS_VOID IMSA_PrintState( VOS_VOID );
 extern VOS_UINT8 * IMSA_GetNextIntraMsg(VOS_VOID);
@@ -116,7 +123,16 @@ VOS_VOID IMSA_Init(VOS_VOID)
 
     IMSA_ResetImsOpId();
 
+    IMSA_ResetUsimOpId();
+
     IMSA_USSD_Init();
+
+    #if (FEATURE_ON == FEATURE_PTM)
+    IMSA_InitErrLogInfo();
+    #endif
+    /* zhaochen 00308719 begin for HIFI mailbox full reset 2015-11-09 */
+    IMSA_ImsAdaption_Init();
+    /* zhaochen 00308719 begin for HIFI mailbox full reset 2015-11-09 */
 }
 
 /*****************************************************************************
@@ -143,6 +159,13 @@ VOS_VOID IMSA_ClearResource( VOS_VOID )
     IMSA_SMS_ClearResource();
 
     IMSA_USSD_ClearResource();
+
+    IMSA_ResetImsOpId();
+
+    IMSA_ResetUsimOpId();
+    /* zhaochen 00308719 begin for HIFI mailbox full reset 2015-11-09 */
+    IMSA_ImsAdaption_ClearResource();
+    /* zhaochen 00308719 end for HIFI mailbox full reset 2015-11-09 */
 }
 
 
@@ -220,7 +243,11 @@ VOS_VOID IMSA_MsgHandle(const VOS_VOID *pRcvMsg )
         case WUEPS_PID_AT:
             IMSA_AtMsgDistr(pRcvMsg);
             break;
-
+        #if (FEATURE_PTM == FEATURE_ON)
+        case ACPU_PID_OM:
+            IMSA_OmMsgDistr(pRcvMsg);
+            break;
+        #endif
         /*发送对象错误，报警*/
         default:
             IMSA_WARN_LOG("IMSA_MsgHandle:NORM: Error SenderPid!");
@@ -419,18 +446,9 @@ VOS_VOID IMSA_TafMsgDistr(const VOS_VOID *pRcvMsg )
 {
     /* 定义消息头指针*/
     PS_MSG_HEADER_STRU          *pHeader = VOS_NULL_PTR;
-    IMSA_CONTROL_MANAGER_STRU   *pstControlManager;
 
     /* 获取消息头指针*/
     pHeader = (PS_MSG_HEADER_STRU *) pRcvMsg;
-    pstControlManager = IMSA_GetControlManagerAddress();
-
-    /* 关机过程中收到TAF发送的消息，直接丢弃 */
-    if(pstControlManager->enImsaStatus == IMSA_STATUS_STOPING)
-    {
-        IMSA_WARN_LOG("IMSA_TafMsgDistr: Status is Stoping!");
-        return;
-    }
 
     /*APS消息*/
     if(MN_CALLBACK_PS_CALL == pHeader->ulMsgName)
@@ -480,17 +498,9 @@ VOS_VOID IMSA_TafMsgDistr(const VOS_VOID *pRcvMsg )
 VOS_VOID IMSA_IntraMsgDistr(const VOS_VOID *pRcvMsg )
 {
     PS_MSG_HEADER_STRU                 *pstImsaIntraMsg = VOS_NULL_PTR;
-    IMSA_CONTROL_MANAGER_STRU          *pstControlManager = IMSA_GetControlManagerAddress();
 
     /*打印进入该函数*/
     IMSA_INFO_LOG("IMSA_IntraMsgDistr is entered.");
-
-    /* 关机过程中收到IMSA的内部消息，直接丢弃 */
-    if(IMSA_STATUS_STOPING == pstControlManager->enImsaStatus)
-    {
-        IMSA_WARN_LOG("IMSA_IntraMsgDistr: Status is Stoping!");
-        return;
-    }
 
     pstImsaIntraMsg = (PS_MSG_HEADER_STRU*)pRcvMsg;
 
@@ -562,17 +572,9 @@ VOS_VOID IMSA_UsimMsgDistr(const VOS_VOID *pRcvMsg )
 {
     /* 定义消息头指针*/
     PS_MSG_HEADER_STRU          *pHeader = VOS_NULL_PTR;
-    IMSA_CONTROL_MANAGER_STRU   *pstControlManager = IMSA_GetControlManagerAddress();
 
     /* 获取消息头指针*/
     pHeader = (PS_MSG_HEADER_STRU *) pRcvMsg;
-
-    /* 关机过程中收到USIM发送的消息，直接丢弃 */
-    if(IMSA_STATUS_STOPING == pstControlManager->enImsaStatus)
-    {
-        IMSA_WARN_LOG("IMSA_UsimMsgDistr: Status is Stoping!");
-        return;
-    }
 
     switch(pHeader->ulMsgName)
     {
@@ -644,17 +646,9 @@ VOS_VOID IMSA_VcMsgDistr(const VOS_VOID *pRcvMsg)
 {
     /* 定义消息头指针*/
     PS_MSG_HEADER_STRU          *pHeader = VOS_NULL_PTR;
-    IMSA_CONTROL_MANAGER_STRU   *pstControlManager = IMSA_GetControlManagerAddress();
 
     /* 获取消息头指针*/
     pHeader = (PS_MSG_HEADER_STRU *) pRcvMsg;
-
-    /* 关机过程中收到HIFI的消息，直接丢弃 */
-    if(IMSA_STATUS_STOPING == pstControlManager->enImsaStatus)
-    {
-        IMSA_WARN_LOG("IMSA_VcMsgDistr: Status is Stoping!");
-        return;
-    }
 
     switch(pHeader->ulMsgName)
     {
@@ -667,8 +661,6 @@ VOS_VOID IMSA_VcMsgDistr(const VOS_VOID *pRcvMsg)
             break;
     }
 }
-
-
 VOS_VOID IMSA_AtMsgDistr(const VOS_VOID *pRcvMsg)
 {
     /* 定义消息头指针*/
@@ -704,6 +696,30 @@ VOS_VOID IMSA_AtMsgDistr(const VOS_VOID *pRcvMsg)
     }
 }
 
+#if (FEATURE_ON == FEATURE_PTM)
+VOS_VOID IMSA_OmMsgDistr(const VOS_VOID *pRcvMsg)
+{
+    /* 定义消息头指针*/
+    PS_MSG_HEADER_STRU          *pHeader = VOS_NULL_PTR;
+
+    /* 获取消息头指针*/
+    pHeader = (PS_MSG_HEADER_STRU *) pRcvMsg;
+
+    switch(pHeader->ulMsgName)
+    {
+        /**/
+        case ID_OM_ERR_LOG_CTRL_IND:
+            IMSA_RcvAcpuOmErrLogCtrlInd((VOS_VOID *)pRcvMsg);
+            break;
+        case ID_OM_ERR_LOG_REPORT_REQ:
+            IMSA_RcvAcpuOmErrLogRptReq((VOS_VOID *)pRcvMsg);
+            break;
+
+        default:
+            break;
+    }
+}
+#endif
 
 /*****************************************************************************
  Function Name  : IMSA_PidInit
@@ -821,6 +837,14 @@ VOS_VOID IMSVA_TaskEntry(MsgBlock * pMsg)
     {
         case DSP_PID_VOICE:
             IMSVA_ProcHifiMsg(pMsg);
+            break;
+
+        case DSP_PID_VOICE_RT:
+            IMSVA_ProcHifiRtMsg(pMsg);
+            break;
+
+        case VOS_PID_TIMER:
+            IMSVA_TimerMsgDistr((REL_TIMER_MSG *)pMsg);
             break;
 
         default:

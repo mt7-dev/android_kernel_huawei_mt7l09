@@ -8,20 +8,41 @@
 #include <asm/thread_info.h>
 #include <asm/memory.h>
 #include <asm/page.h>
+#include <asm/pgtable.h>
 
 #define ARM_EXIT_KEEP(x)
 #define ARM_EXIT_DISCARD(x)	x
 
 OUTPUT_ARCH(aarch64)
-ENTRY(stext)
+ENTRY(_text)
 
 jiffies = jiffies_64;
+
+#define HYPERVISOR_TEXT					\
+	/*						\
+	 * Force the alignment to be compatible with	\
+	 * the vectors requirements			\
+	 */						\
+	. = ALIGN(2048);				\
+	VMLINUX_SYMBOL(__hyp_idmap_text_start) = .;	\
+	*(.hyp.idmap.text)				\
+	VMLINUX_SYMBOL(__hyp_idmap_text_end) = .;	\
+	VMLINUX_SYMBOL(__hyp_text_start) = .;		\
+	*(.hyp.text)					\
+	VMLINUX_SYMBOL(__hyp_text_end) = .;
+
+#ifdef CONFIG_DEBUG_ALIGN_RODATA
+#define ALIGN_DEBUG_RO			. = ALIGN(1<<SECTION_SHIFT);
+#define ALIGN_DEBUG_RO_MIN(min)		ALIGN_DEBUG_RO
+#else
+#define ALIGN_DEBUG_RO
+#define ALIGN_DEBUG_RO_MIN(min)		. = ALIGN(min);
+#endif
 
 SECTIONS
 {
 	/*
 	 * XXX: The linker does not define how output sections are
-	 * assigned to input sections when there are multiple statements
 	 * matching the same input section name.  There is no documented
 	 * order of matching.
 	 */
@@ -48,24 +69,29 @@ SECTIONS
 			TEXT_TEXT
 			SCHED_TEXT
 			LOCK_TEXT
+			HYPERVISOR_TEXT
 			*(.fixup)
 			*(.gnu.warning)
 		. = ALIGN(16);
 		*(.got)			/* Global offset table		*/
 	}
 
+	ALIGN_DEBUG_RO
 	RO_DATA(PAGE_SIZE)
-
+	EXCEPTION_TABLE(8)
+	NOTES
+	ALIGN_DEBUG_RO
 	_etext = .;			/* End of text and rodata section */
 
-	. = ALIGN(PAGE_SIZE);
+	ALIGN_DEBUG_RO_MIN(PAGE_SIZE)
 	__init_begin = .;
 
 	INIT_TEXT_SECTION(8)
 	.exit.text : {
 		ARM_EXIT_KEEP(EXIT_TEXT)
 	}
-	. = ALIGN(16);
+
+	ALIGN_DEBUG_RO_MIN(16)
 	.init.data : {
 		INIT_DATA
 		INIT_SETUP(16)
@@ -81,45 +107,35 @@ SECTIONS
 	PERCPU_SECTION(64)
 
 	__init_end = .;
-	. = ALIGN(THREAD_SIZE);
-	__data_loc = .;
 
-	.data : AT(__data_loc) {
-		_data = .;		/* address in memory */
-		_sdata = .;
-
-		/*
-		 * first, the init task union, aligned
-		 * to an 8192 byte boundary.
-		 */
-		INIT_TASK_DATA(THREAD_SIZE)
-		NOSAVE_DATA
-		CACHELINE_ALIGNED_DATA(64)
-		READ_MOSTLY_DATA(64)
-
-		/*
-		 * The exception fixup table (might need resorting at runtime)
-		 */
-		. = ALIGN(32);
-		__start___ex_table = .;
-		*(__ex_table)
-		__stop___ex_table = .;
-
-		/*
-		 * and the usual data section
-		 */
-		DATA_DATA
-		CONSTRUCTORS
-
-		_edata = .;
+	. = ALIGN(32);
+	__start_hwlog_tag = .;
+	__start_hwlog_tag : {
+        *(__hwlog_tag)
 	}
-	_edata_loc = __data_loc + SIZEOF(.data);
+	__stop_hwlog_tag = .;
 
-	NOTES
+	. = ALIGN(PAGE_SIZE);
+	_data = .;
+	_sdata = .;
+	RW_DATA_SECTION(64, PAGE_SIZE, THREAD_SIZE)
+	_edata = .;
 
 	BSS_SECTION(0, 0, 0)
-	_end = .;
 
+	. = ALIGN(PAGE_SIZE);
+	idmap_pg_dir = .;
+	. += IDMAP_DIR_SIZE;
+	swapper_pg_dir = .;
+	. += SWAPPER_DIR_SIZE;
+
+	_end = .;
 	STABS_DEBUG
 	.comment 0 : { *(.comment) }
 }
+
+/*
+ * The HYP init code can't be more than a page long.
+ */
+ASSERT(((__hyp_idmap_text_start + PAGE_SIZE) > __hyp_idmap_text_end),
+       "HYP init code too big")

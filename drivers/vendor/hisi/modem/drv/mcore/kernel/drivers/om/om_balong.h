@@ -124,11 +124,11 @@ typedef void (*om_xputc)(void *rb, unsigned n, void *cookie);
 *****************************************************************************/
 
 /* 打印接口，输出trace到HSO 或者SHELL*/
-void bsp_trace(bsp_log_level_e log_level,bsp_module_e mod_id,char *fmt,...);
-
+//void bsp_trace(bsp_log_level_e log_level,bsp_module_e mod_id,char *fmt,...);
+#ifdef ENABLE_BUILD_OM
 void om_switch_set(u32 ulSwitch);
 
-void bsp_log_bin_ind(s32 str_id, void* ind_data, u32 ind_data_size);
+//void bsp_log_bin_ind(s32 str_id, void* ind_data, u32 ind_data_size);
 void om_log_init(void);
 
 u32 om_get_hso_connect_flag(void);
@@ -138,7 +138,10 @@ u32 om_get_hso_connect_flag(void);
 void om_m3_dump_save();
 
 #endif
+#else
+static inline void om_log_init(void){}
 
+#endif
 #ifdef __cplusplus
 }
 #endif

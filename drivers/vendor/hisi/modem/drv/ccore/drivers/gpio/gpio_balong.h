@@ -16,9 +16,10 @@
 extern "C" {
 #endif
 
-#include "hi_gpio.h"
-#include "osl_types.h"
-#include "bsp_memmap.h"
+#include <drv_nv_def.h>
+#include <hi_gpio.h>
+#include <osl_types.h>
+#include <bsp_memmap.h>
 
 /* GPIO״̬*/
 #define GPIO_OK                     0
@@ -915,13 +916,11 @@ void bsp_gpio_set_value(u32 gpio,u32 value);
 *****************************************************************************/
 s32 bsp_gpio_get_value(u32 gpio);
 
-void rf_gpio_set_high(void);
+void gpio_power_set_high(GPIO_POWER_E mid);
 
-void rf_gpio_set_low(void);
+void gpio_power_set_low(GPIO_POWER_E mid);
 
-int ldo_gpio123_get_value(void);
-
-int ldo_gpio124_get_value(void);
+int gpio_power_get_status(GPIO_POWER_E mid);
 
 int bsp_rf_switch_init(void);
 

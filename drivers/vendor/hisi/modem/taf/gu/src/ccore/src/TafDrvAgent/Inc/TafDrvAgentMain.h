@@ -53,6 +53,14 @@ extern VOS_UINT16  *g_pusDrvAgentAdcTable;              /*PA hkadc转换表*/
   7 STRUCT定义
 *****************************************************************************/
 
+/*消息处理函数指针*/
+typedef VOS_UINT32 (*DRV_AGENT_MSG_PROC_FUNC)(VOS_VOID* pMsg);
+typedef struct
+{
+    DRV_AGENT_MSG_TYPE_ENUM_UINT32      ulMsgType;
+    DRV_AGENT_MSG_PROC_FUNC             pMsgProcFunc;
+}DRV_AGENT_MSG_PROC_STRU;
+
 
 /*****************************************************************************
   8 UNION定义

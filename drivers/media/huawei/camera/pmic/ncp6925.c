@@ -18,7 +18,7 @@
 #define EXTID		0x01
 #define BUCK1_VOUT	0x02 /* BUCK VOUT=0.6V+BUCKx_VOUT[7:0]*0.0125      (0.6V to 2.1875V) */
 #define BUCK2_VOUT	0x03
-#define BUCK_VSEL	0x04
+//#define BUCK_VSEL	0x04
 #define LDO1_VOUT	0x05 /* LDO VOUT = 0.5V + LDOx_VOUT[6:0] * 0.025V  ( Except  LDOx_VOUT[6:0] = 0x7F ) */
 #define LDO2_VOUT	0x06
 #define LDO3_VOUT	0x07
@@ -26,11 +26,11 @@
 #define LDO5_VOUT	0x09
 #define CHX_ERR		0x0a
 #define CHX_EN		0x0b
-#define BUCK_SEQ_1_2	0x0c
-#define LDO_SEQ_1_2	0x0d
-#define LDO_SEQ_3_4	0x0e
-#define LDO_SEQ_5	0x0f
-#define SEQ_SPEED	0x10
+//#define BUCK_SEQ_1_2	0x0c
+//#define LDO_SEQ_1_2	0x0d
+//#define LDO_SEQ_3_4	0x0e
+//#define LDO_SEQ_5	0x0f
+//#define SEQ_SPEED	0x10
 
 
 #define BUCK_MIN	600000
@@ -316,13 +316,15 @@ static int ncp6925_seq_config(struct hisi_pmic_ctrl_t *pmic_ctrl, pmic_seq_index
 			calc_ldo_vlotage(voltage, &voltage_val);
 
 		i2c_func->i2c_write(i2c_client, voltage_reg, voltage_val);
-		msleep(10);
+		msleep(1);
 		i2c_func->i2c_write(i2c_client, CHX_EN, chx_enable_tmp | chx_enable);
 		cam_info("%s chx_enable 0x%x, voltage_reg 0x%x, voltage_val 0x%x", __func__, chx_enable, voltage_reg, voltage_val);
 	} else {
 		i2c_func->i2c_write(i2c_client, CHX_EN, chx_enable_tmp & (~chx_enable));
 		//i2c_func->i2c_write(i2c_client, voltage_reg, state);
 	}
+
+	i2c_func->i2c_read(i2c_client, CHX_ERR, &chx_enable_tmp);
 
 	return ret;
 }
@@ -450,6 +452,7 @@ static int ncp6925_register_attribute(struct hisi_pmic_ctrl_t *pmic_ctrl, struct
 		cam_err("%s dev is null", __func__);
 		return -1;
 	}
+#ifdef DEBUG_HISI_CAMERA
 	rc = device_create_file(dev, &ncp6925_debug);
 	if (rc < 0) {
 		cam_err("%s failed to creat ctrol attribute.", __func__);
@@ -461,15 +464,18 @@ static int ncp6925_register_attribute(struct hisi_pmic_ctrl_t *pmic_ctrl, struct
 		cam_err("%s failed to creat reg attribute.", __func__);
 		goto err_create_ncp6925_file;
 	}
+#endif
 
 	return 0;
+#ifdef DEBUG_HISI_CAMERA
 err_create_ncp6925_file:
 	device_remove_file(dev, &ncp6925_debug);
 	return rc;
+#endif
 }
 
 static const struct i2c_device_id ncp6925_id[] = {
-	{"ncp6925", (int)&ncp6925_ctrl},
+	{"ncp6925", (unsigned long)&ncp6925_ctrl},
 	{}
 };
 

@@ -119,6 +119,9 @@ VOS_UINT32  TAF_APS_InitTask( VOS_VOID )
     /* 初始化APS模块CTX */
     TAF_APS_InitCtx();
 
+    /* 初始化APS流量统计上下文 */
+    TAF_APS_InitDsFlowCtx(TAF_APS_GetDsFlowCtxAddr());
+
     /* 初始化DDR调频信息 */
     TAF_APS_InitSwitchDdrInfo();
 
@@ -127,6 +130,7 @@ VOS_UINT32  TAF_APS_InitTask( VOS_VOID )
 
     return VOS_OK;
 }
+
 VOS_VOID  TAF_APS_InitEntityFsm( VOS_VOID )
 {
     VOS_UINT8                           i;
@@ -166,8 +170,6 @@ VOS_VOID  TAF_APS_InitCtx( VOS_VOID )
     /* 初始化APS定时器上下文 */
     TAF_APS_InitAllTimers(TAF_APS_GetTimerCtxAddr());
 
-    /* 初始化APS流量统计上下文 */
-    TAF_APS_InitDsFlowCtx(TAF_APS_GetDsFlowCtxAddr());
 
     /* 初始化内部消息队列 */
     TAF_APS_InitInternalMsgQueue(&pApsCtx->stInternalMsgQueue);
@@ -186,6 +188,15 @@ VOS_VOID  TAF_APS_InitCtx( VOS_VOID )
 
     /* 初始化呼叫保护定时器时长 */
     TAF_APS_InitCallRemainTmrLen();
+
+    TAF_APS_SET_RAT_TYPE_IN_SUSPEND(MMC_APS_RAT_TYPE_NULL);
+
+#if (FEATURE_ON == FEATURE_LTE)
+    /* 初始化PDN连接断开策略配置信息 */
+    TAF_APS_InitPdnTeardownPolicy();
+#endif
+
+    return;
 }
 
 

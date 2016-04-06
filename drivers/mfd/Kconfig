@@ -1122,13 +1122,40 @@ config MFD_WM8994
 	  core support for the WM8994, in order to use the actual
 	  functionaltiy of the device other drivers must be enabled.
 
-config MFD_HI6421_PMIC
+config HI3XXX_HI6421V300_PMIC
 	tristate "HiSilicon Hi6421 PMU/Codec IC"
 	depends on OF
 	help
 	  This driver supports HiSilicon Hi6421 power management and codec IC,
 	  including regulators, codec, ADCs, Coulomb counter, etc. Memory
 	  mapped I/O ports are the way of communication with it.
+	  
+	  
+
+menuconfig HISI_HI6XXX_PMIC
+	tristate "HISI_HI6XXX_PMIC"
+	help
+
+
+if HISI_HI6XXX_PMIC
+
+config  HISI_HI6551_PMIC  
+		
+		bool "PMIC VERSION HISI_HI6551_PMIC"
+		---help---
+			If you define CONFIG_HISI_HI6552_PMIC£¬the build system define HISI_HI6XXX_PMIC
+			
+config  HISI_HI6552_PMIC  
+		
+		bool "PMIC VERSION HISI_HI6552_PMIC"
+		---help---
+			If you define CONFIG_HISI_HI6552_PMIC£¬the build system define HISI_HI6XXX_PMIC
+			
+config  HISI_HI6553_PMIC  		
+		bool "PMIC VERSION HISI_HI6553_PMIC"
+		---help---
+			If you define CONFIG_HISI_HI6553_PMIC£¬the build system define HISI_HI6XXX_PMIC
+endif
 
 endmenu
 endif
@@ -1172,7 +1199,7 @@ config VEXPRESS_SPC
 	  Serial Power Controller driver for ARM Ltd. test chips.
 
 
-config REGULATOR_HI3630_CORE
+config HI3XXX_HI3630_CORE
 	tristate "Control HiSilicon system interior area voltage"
 	depends on OF
 	help
@@ -1192,7 +1219,13 @@ config MFD_HI3630_ASP_IRQ
 	tristate "Support HiSilicon Hi3630 ASP"
 	depends on OF
 	help
-	  This driver supports HiSilicon Hi6401  codec IC,
+	  This driver supports HiSilicon Hi3630 ASP,
 	  including codec, ADCs, etc. Memory
 	  mapped I/O ports are the way of communication with it.
-	  
+config MFD_HI6402_IRQ
+	tristate "Support HiSilicon Hi6402 Codec IC"
+	depends on OF
+	help
+	  This driver supports HiSilicon Hi6402  codec IC,
+	  including codec, ADCs, etc. Memory
+	  mapped I/O ports are the way of communication with it.

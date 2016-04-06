@@ -31,7 +31,7 @@ extern "C" {
 /*****************************************************************************
   2 宏定义
 *****************************************************************************/
-#define VC_MAX_BUFF_MSG_NUM                 4
+#define VC_MAX_BUFF_MSG_NUM                 (8)
 
 /*内部宏定义*/
 #define APP_VC_GetState()                   (g_stVcStateMgmt.enState)
@@ -67,6 +67,10 @@ enum APP_VC_STATE_ENUM
     APP_VC_S_WAIT_AT_SET_DEV_RSLT,                                              /* 等待AT设置DEVICE结果状态 */
     APP_VC_S_WAIT_AT_SET_VOLUME_RSLT,                                           /* 等待AT设置VOLUME结果状态 */
     APP_VC_S_WAIT_AT_SET_MUTE_STATUS_RSLT,                                      /* 等待AT设置静音结果状态 */
+
+    APP_VC_S_WAIT_SET_FOREGROUND_RSLT,                                          /* 等待设置前台模式结果状态 */
+    APP_VC_S_WAIT_SET_BACKGROUND_RSLT,                                          /* 等待设置后台模式结果状态 */
+    APP_VC_S_WAIT_QRY_GROUND_RSLT,                                              /* 等待查询前后台模式结果状态 */
 
     APP_VC_S_BUTT
 };

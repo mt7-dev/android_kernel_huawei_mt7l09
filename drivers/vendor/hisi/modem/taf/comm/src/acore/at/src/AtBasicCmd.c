@@ -5,6 +5,7 @@
 *****************************************************************************/
 #include "AtParse.h"
 #include "ATCmdProc.h"
+#include "AtTestParaCmd.h"
 
 
 #if (FEATURE_ON==FEATURE_LTE)

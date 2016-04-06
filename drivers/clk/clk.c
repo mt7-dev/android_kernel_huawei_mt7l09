@@ -21,7 +21,7 @@
 #include <linux/init.h>
 #include <linux/sched.h>
 
-#ifdef CONFIG_HI3630_CLK_DEBUG
+#ifdef CONFIG_HISI_CLK_DEBUG
 #include <linux/uaccess.h>
 #include <linux/io.h>
 #endif
@@ -39,7 +39,7 @@ static HLIST_HEAD(clk_root_list);
 static HLIST_HEAD(clk_orphan_list);
 static LIST_HEAD(clk_notifier_list);
 
-#ifdef CONFIG_HI3630_CLK_DEBUG
+#ifdef CONFIG_HISI_CLK_DEBUG
 static LIST_HEAD(clocks);
 static DEFINE_MUTEX(clock_list_lock);
 #endif
@@ -110,7 +110,7 @@ static struct dentry *rootdir;
 static struct dentry *orphandir;
 static int inited = 0;
 
-#ifdef CONFIG_HI3630_CLK_DEBUG
+#ifdef CONFIG_HISI_CLK_DEBUG
 static struct dentry *clock;
 static struct dentry *test_all_clocks;
 static struct dentry *test_one_clock;
@@ -119,7 +119,7 @@ static struct dentry *test_one_clock;
 #define to_clk_mux(_hw) container_of(_hw, struct clk_mux, hw)
 #define to_clk_divider(_hw) container_of(_hw, struct clk_divider, hw)
 
-static char g_clk_status[3][10] = {"NOREG", "OK", "ERR"};
+static char g_clk_status[4][10] = {"NOREG", "OK", "ERR", "NULL"};
 
 
 char *clk_enreg_check(struct clk *c)
@@ -155,6 +155,10 @@ char *clk_selreg_check(struct clk *c)
 	}
 
 	val = c->ops->check_selreg(c->hw);
+
+	if(3 == val) {
+		return g_clk_status[3]; 
+	}
 
 	return val ? g_clk_status[1] : g_clk_status[2];
 }
@@ -781,16 +785,18 @@ clock_setparent_store(struct file *filp, const char __user *ubuf, size_t cnt,
 					break;
 				}
 			}
-			if (parent)
-				pr_info("[%s]: %s\n\n", __func__, parent->name);
-			ret = clk_set_parent(clk, parent);
-			if (ret)
-				goto out;
+			if (parent) {
+				pr_info("[%s]: set %s\n\n", __func__, parent->name);
+				ret = clk_set_parent(clk, parent);
+				if (ret)
+					goto out;
 
-			pr_info("[%s]: %s\n\n", clk->name, parent->name);
+				pr_info("[%s]: %s\n\n", clk->name, parent->name);
 
-			pr_info("clk set parent ok!\n\n");
-
+				pr_info("clk set parent ok!\n\n");
+			}else{
+				printk("no parent find!");
+			}
 			mutex_unlock(&clock_list_lock);
 			return cnt;
 		}
@@ -1046,7 +1052,7 @@ static const struct file_operations clk_dump_fops = {
 	.release	= single_release,
 };
 
-#ifdef DEBUG
+#ifdef CONFIG_HISI_CLK_DEBUG
 static int clk_rate_fops_get(void *data, u64 *rate)
 {
 	struct clk *clk = data;
@@ -1092,7 +1098,7 @@ static int clk_debug_create_one(struct clk *clk, struct dentry *pdentry)
 
 	clk->dentry = d;
 
-#ifdef DEBUG
+#ifdef CONFIG_HISI_CLK_DEBUG
 	d = debugfs_create_file("clk_rate", S_IWUSR | S_IRUGO, clk->dentry,
 				clk, &clk_rate_fops);
 #else
@@ -1164,6 +1170,7 @@ out:
  * Caller must hold prepare_lock.  Only clk_init calls this function (so
  * far) so this is taken care.
  */
+
 static int clk_debug_register(struct clk *clk)
 {
 	struct clk *parent;
@@ -1245,7 +1252,7 @@ static int __init clk_debug_init(void)
 {
 	struct clk *clk;
 	struct dentry *d;
-#ifdef CONFIG_HI3630_CLK_DEBUG
+#ifdef CONFIG_HISI_CLK_DEBUG
 	struct dentry *pdentry;
 #endif
 
@@ -1269,7 +1276,7 @@ static int __init clk_debug_init(void)
 	if (!orphandir)
 		return -ENOMEM;
 
-#ifdef CONFIG_HI3630_CLK_DEBUG
+#ifdef CONFIG_HISI_CLK_DEBUG
 	clock = debugfs_create_dir("clock", NULL);
 	if (!clock)
 		return -ENOMEM;
@@ -1285,23 +1292,24 @@ static int __init clk_debug_init(void)
 	debugfs_create_file("clock_tree", S_IRUGO, clock,
 			NULL, &clock_tree_show_fops);
 
+	#define PRIV_AUTH	(S_IRUSR|S_IWUSR|S_IRGRP)
 	pdentry = test_all_clocks;
-	debugfs_create_file("clk_get", S_IRUGO, pdentry, NULL, &clock_get_show_fops);
-	debugfs_create_file("clk_lookup", S_IRUGO, pdentry, NULL, &clock_lookup_show_fops);
-	debugfs_create_file("clk_enable", S_IRUGO, pdentry, NULL, &clock_enable_show_fops);
-	debugfs_create_file("clk_disable", S_IRUGO, pdentry, NULL, &clock_disable_show_fops);
-	debugfs_create_file("clk_getparent", S_IRUGO, pdentry, NULL, &clock_getparent_show_fops);
-	debugfs_create_file("clk_getrate", S_IRUGO, pdentry, NULL, &clock_getrate_show_fops);
+	debugfs_create_file("clk_get", PRIV_AUTH, pdentry, NULL, &clock_get_show_fops);
+	debugfs_create_file("clk_lookup", PRIV_AUTH, pdentry, NULL, &clock_lookup_show_fops);
+	debugfs_create_file("clk_enable", PRIV_AUTH, pdentry, NULL, &clock_enable_show_fops);
+	debugfs_create_file("clk_disable", PRIV_AUTH, pdentry, NULL, &clock_disable_show_fops);
+	debugfs_create_file("clk_getparent", PRIV_AUTH, pdentry, NULL, &clock_getparent_show_fops);
+	debugfs_create_file("clk_getrate", PRIV_AUTH, pdentry, NULL, &clock_getrate_show_fops);
 
 	pdentry = test_one_clock;
-	#define PRIV_MODE	(S_IRUGO | S_IWUSR)
+	#define PRIV_MODE	(S_IWUSR|S_IWGRP)
 	debugfs_create_file("enable", PRIV_MODE, pdentry, NULL, &clock_enable_fops);
 	debugfs_create_file("disable", PRIV_MODE, pdentry, NULL, &clock_disable_fops);
 	debugfs_create_file("get_parent", PRIV_MODE, pdentry, NULL, &clock_getparent_fops);
 	debugfs_create_file("set_parent", PRIV_MODE, pdentry, NULL, &clock_setparent_fops);
 	debugfs_create_file("get_rate", PRIV_MODE, pdentry, NULL, &clock_getrate_fops);
 	debugfs_create_file("set_rate", PRIV_MODE, pdentry, NULL, &clock_setrate_fops);
-	debugfs_create_file("get_reg", 0644, pdentry, NULL, &clock_getreg_fops);
+	debugfs_create_file("get_reg", PRIV_MODE, pdentry, NULL, &clock_getreg_fops);
 #endif
 
 	clk_prepare_lock();
@@ -2317,6 +2325,9 @@ int clk_set_rate(struct clk *clk, unsigned long rate)
 	struct clk *top, *fail_clk;
 	int ret = 0;
 
+	if (!clk)
+		return 0;
+
 	/* prevent racing with updates to the clock topology */
 	clk_prepare_lock();
 
@@ -2383,6 +2394,7 @@ EXPORT_SYMBOL_GPL(clk_get_parent);
  * .parents array exists, and if so use it to avoid an expensive tree
  * traversal.  If .parents does not exist then walk the tree with __clk_lookup.
  */
+
 static struct clk *__clk_init_parent(struct clk *clk)
 {
 	struct clk *ret = NULL;
@@ -2505,6 +2517,7 @@ out:
 	return ret;
 }
 EXPORT_SYMBOL_GPL(clk_set_parent);
+
 
 /**
  * __clk_init - initialize the data structures in a struct clk
@@ -2647,7 +2660,7 @@ int __clk_init(struct device *dev, struct clk *clk)
 
 	clk_debug_register(clk);
 
-#ifdef CONFIG_HI3630_CLK_DEBUG
+#ifdef CONFIG_HISI_CLK_DEBUG
 	mutex_lock(&clock_list_lock);
 	list_add(&clk->node, &clocks);
 	mutex_unlock(&clock_list_lock);
@@ -3079,6 +3092,12 @@ struct clk *of_clk_get_from_provider(struct of_phandle_args *clkspec)
 
 	return clk;
 }
+
+int of_clk_get_parent_count(struct device_node *np)
+{
+	return of_count_phandle_with_args(np, "clocks", "#clock-cells");
+}
+EXPORT_SYMBOL_GPL(of_clk_get_parent_count);
 
 const char *of_clk_get_parent_name(struct device_node *np, int index)
 {

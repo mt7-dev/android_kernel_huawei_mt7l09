@@ -131,26 +131,6 @@ static noinline_for_stack
 char *put_dec_full9(char *buf, unsigned q)
 {
 	unsigned r;
-
-	/*
-	 * Possible ways to approx. divide by 10
-	 * (x * 0x1999999a) >> 32 x < 1073741829 (multiply must be 64-bit)
-	 * (x * 0xcccd) >> 19     x <      81920 (x < 262149 when 64-bit mul)
-	 * (x * 0x6667) >> 18     x <      43699
-	 * (x * 0x3334) >> 17     x <      16389
-	 * (x * 0x199a) >> 16     x <      16389
-	 * (x * 0x0ccd) >> 15     x <      16389
-	 * (x * 0x0667) >> 14     x <       2739
-	 * (x * 0x0334) >> 13     x <       1029
-	 * (x * 0x019a) >> 12     x <       1029
-	 * (x * 0x00cd) >> 11     x <       1029 shorter code than * 0x67 (on i386)
-	 * (x * 0x0067) >> 10     x <        179
-	 * (x * 0x0034) >>  9     x <         69 same
-	 * (x * 0x001a) >>  8     x <         69 same
-	 * (x * 0x000d) >>  7     x <         69 same, shortest code (on i386)
-	 * (x * 0x0007) >>  6     x <         19
-	 * See <http://www.cs.uiowa.edu/~jones/bcd/divide.html>
-	 */
 	r      = (q * (uint64_t)0x1999999a) >> 32;
 	*buf++ = (q - 10 * r) + '0'; /* 1 */
 	q      = (r * (uint64_t)0x1999999a) >> 32;
@@ -1085,10 +1065,7 @@ char *pointer(const char *fmt, char *buf, char *end, void *ptr,
 					 * 6:	0001:0203:...:0708
 					 * 6c:	1::708 or 1::1.2.3.4
 					 */
-	case 'i':			/* Contiguous:
-					 * 4:	001.002.003.004
-					 * 6:   000102...0f
-					 */
+	case 'i':
 		switch (fmt[1]) {
 		case '6':
 			return ip6_addr_string(buf, end, ptr, spec, fmt);

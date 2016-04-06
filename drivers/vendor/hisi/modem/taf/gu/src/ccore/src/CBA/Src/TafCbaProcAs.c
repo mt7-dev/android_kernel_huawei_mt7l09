@@ -135,6 +135,7 @@ VOS_VOID TAF_CBA_ProcLrrcMsg(
 #endif
 
         case ID_LRRC_CBS_DATA_IND:
+            TAF_CBA_SetNetRatType(TAF_CBA_NET_RAT_TYPE_LTE);
             TAF_CBA_RcvLrrcCbsDataInd((LRRC_CBS_DATA_IND_STRU *)pstMsg);
             break;
 

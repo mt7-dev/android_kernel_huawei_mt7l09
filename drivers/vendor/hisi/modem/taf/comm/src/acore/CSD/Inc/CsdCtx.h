@@ -68,8 +68,8 @@ extern "C" {
 
 typedef struct
 {
-    VOS_UINT32                          ulULdataSem;                            /*上行数据信号量*/
-    VOS_UINT32                          ulDLdataSem;                            /*下行数据信号量*/
+    VOS_SEM                             hULdataSem;                             /*上行数据信号量*/
+    VOS_SEM                             hDLdataSem;                             /*下行数据信号量*/
     VOS_UINT32                          ulLastDICCIsrSlice;                     /*记录DICC中断SLICE*/
     AT_CSD_CALL_TYPE_STATE_ENUM_UINT16  enCallState;                            /*记录当前通话状态*/
     VOS_UINT8                           ucAtClientIndex;                        /* AT Client Index */
@@ -91,9 +91,9 @@ typedef struct
 *****************************************************************************/
 
 AT_CSD_CALL_TYPE_STATE_ENUM_UINT16 CSD_GetCallState(VOS_VOID);
-VOS_UINT32 *CSD_GetDownLinkDataSem(VOS_VOID);
+VOS_SEM CSD_GetDownLinkDataSem(VOS_VOID);
 VOS_UINT32 CSD_GetLastTxSlice(VOS_VOID);
-VOS_UINT32 *CSD_GetUpLinkDataSem(VOS_VOID);
+VOS_SEM CSD_GetUpLinkDataSem(VOS_VOID);
 VOS_UINT32 CSD_InitCtx(VOS_VOID);
 VOS_UINT32 CSD_InitSem(VOS_VOID);
 VOS_VOID CSD_SetCallState(AT_CSD_CALL_TYPE_STATE_ENUM_UINT16 enCallState);

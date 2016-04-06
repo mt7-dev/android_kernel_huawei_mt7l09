@@ -33,16 +33,16 @@ extern "C" {
 
 #if (FEATURE_ON == FEATURE_MULTI_MODEM)
 #define RNIC_IS_DSFLOW_TIMER_ID(enTimerId)          \
-            (TI_RNIC_DSFLOW_STATS_0 == enTimerId)   \
-         || (TI_RNIC_DSFLOW_STATS_1 == enTimerId)   \
-         || (TI_RNIC_DSFLOW_STATS_2 == enTimerId)   \
-         || (TI_RNIC_DSFLOW_STATS_3 == enTimerId)   \
-         || (TI_RNIC_DSFLOW_STATS_4 == enTimerId)
+            ((TI_RNIC_DSFLOW_STATS_0 == (enTimerId))   \
+         || (TI_RNIC_DSFLOW_STATS_1 == (enTimerId))   \
+         || (TI_RNIC_DSFLOW_STATS_2 == (enTimerId))   \
+         || (TI_RNIC_DSFLOW_STATS_3 == (enTimerId))   \
+         || (TI_RNIC_DSFLOW_STATS_4 == (enTimerId)))
 #else
 #define RNIC_IS_DSFLOW_TIMER_ID(enTimerId)          \
-            (TI_RNIC_DSFLOW_STATS_0 == enTimerId)   \
-         || (TI_RNIC_DSFLOW_STATS_1 == enTimerId)   \
-         || (TI_RNIC_DSFLOW_STATS_2 == enTimerId)
+            ((TI_RNIC_DSFLOW_STATS_0 == (enTimerId))   \
+         || (TI_RNIC_DSFLOW_STATS_1 == (enTimerId))   \
+         || (TI_RNIC_DSFLOW_STATS_2 == (enTimerId)))
 #endif
 
 /*****************************************************************************
@@ -79,7 +79,7 @@ enum RNIC_TIMER_OPERATION_TYPE_ENUM
     RNIC_TIMER_OPERATION_STOP,                                                  /* 停止定时器 */
     RNIC_TIMER_OPERATION_TYPE_ENUM_BUTT
 };
-typedef VOS_UINT32  RNIC_TIMER_OPERATION_TYPE_ENUM_UINT8;
+typedef VOS_UINT8  RNIC_TIMER_OPERATION_TYPE_ENUM_UINT8;
 
 
 /*****************************************************************************
@@ -104,13 +104,9 @@ typedef VOS_UINT32  RNIC_TIMER_OPERATION_TYPE_ENUM_UINT8;
 typedef struct
 {
     HTIMER                              hTimer;                                 /* 定时器的运行指针 */
-    RNIC_TIMER_ID_ENUM_UINT16           enTimerId;                              /* 定时器的ID */
     RNIC_TIMER_STATUS_ENUM_UINT8        enTimerStatus;                          /* 定时器的运行状态,启动或停止 */
-    VOS_UINT8                           aucRsv[1];                              /* 保留 */
+    VOS_UINT8                           aucRsv[7];                              /* 保留 */
 } RNIC_TIMER_CTX_STRU;
-
-
-
 typedef struct
 {
     VOS_MSG_HEADER

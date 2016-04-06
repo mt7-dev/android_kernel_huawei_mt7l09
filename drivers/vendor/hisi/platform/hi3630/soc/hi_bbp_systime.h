@@ -29,7 +29,7 @@
 /********************************************************************************/
 /*    bbp_systime 寄存器偏移定义（项目名_模块名_寄存器名_OFFSET)        */
 /********************************************************************************/
-#ifdef BSP_CONFIG_K3V3_SFT
+#ifdef BSP_CONFIG_BOARD_SFT
 #define    HI_BBP_SYSTIME_ABS_TIMER_L_OFFSET                 0x1008 /* DRX绝对定时的低32位 */
 #define    HI_BBP_SYSTIME_ABS_TIMER_H_OFFSET                 0x100c /* DRX绝对定时的高32位 */
 #else

@@ -37,7 +37,6 @@ VOS_UINT32                              g_ulAdsDLTaskReadyFlag = 0;  /* ADSÏÂÐÐÈ
 /* ADSÄ£¿éµÄÉÏÏÂÎÄ */
 ADS_CTX_STRU                            g_stAdsCtx;
 
-
 /*****************************************************************************
   3 º¯ÊýÊµÏÖ
 *****************************************************************************/
@@ -169,9 +168,8 @@ VOS_UINT32 ADS_UL_InsertQueue(
 #if(FEATURE_OFF == FEATURE_SKB_EXP)
     VOS_UINT                            ulQueueLen;
 #endif
-    VOS_UINT32                          ulLockLevel;
+    VOS_ULONG                           ulLockLevel;
 
-    ulLockLevel = 0;
     ulNonEmptyEvent = VOS_FALSE;
 
     /* ´Ë½Ó¿Ú²»ÊÍ·ÅpstData£¬ÓÉÉÏ²ãÄ£¿é¸ù¾Ýº¯Êý·µ»ØÖµÅÐ¶ÏÊÇ·ñÐèÒªÊÍ·ÅÄÚ´æ */
@@ -183,7 +181,9 @@ VOS_UINT32 ADS_UL_InsertQueue(
     }
 
     /* ¶ÓÁÐ¼ÓËø */
+    /*lint -e571*/
     VOS_SpinLockIntLock(ADS_UL_GET_QUEUE_LINK_SPINLOCK(ucInstanceIndex, ucRabId), ulLockLevel);
+    /*lint +e571*/
 
     /* ½áµã´æÔÚ£¬µ«¶ÓÁÐ²»´æÔÚ */
     if (VOS_OK != ADS_UL_IsQueueExistent(ucInstanceIndex, ucRabId))
@@ -224,21 +224,56 @@ VOS_UINT32 ADS_UL_InsertQueue(
     ulAllUlQueueDataNum = ADS_UL_GetAllQueueDataNum();
 
 #if(FEATURE_OFF == FEATURE_SKB_EXP)
-    /* (1).¶ÓÁÐÓÉ¿Õ±äÎª·Ç¿ÕÊ±´¥·¢ÉÏÐÐ»º´æ´¦ÀíÊÂ¼þ
-       (2).¶ÓÁÐÖÐÊý¾ÝÒÑµ½ÔÜ°üÃÅÏÞµÄÕûÊý±¶ÇÒµ±Ç°Ã»ÓÐÔÚ´¦ÀíÊý¾Ý
-           ´¥·¢ÉÏÐÐ»º´æ»º´æ´¦ÀíÊÂ¼þ
-     */
+    if (VOS_TRUE == ADS_UL_GET_THRESHOLD_ACTIVE_FLAG())
+    {
+        /* (1).jiffies³¬Ê±,ÔòÖ±½Ó´¥·¢·¢Êý,²¢Í£Ö¹·¢Êý¶¨Ê±Æ÷
+           (2).¶ÓÁÐÖÐÊý¾ÝÒÑµ½ÔÜ°üÃÅÏÞÇÒµ±Ç°Ã»ÓÐÔÚ´¦ÀíÊý¾Ý,´¥·¢ÉÏÐÐ»º´æ»º´æ´¦ÀíÊÂ¼þ
+           (3).¶ÓÁÐÓÉ¿Õ±äÎª·Ç¿ÕÊ±Æô¶¯Êý¾ÝÍ³¼Æ¶¨Ê±Æ÷ÒÔ¼°±£»¤¶¨Ê±Æ÷
+         */
+        ADS_UL_ADD_STAT_PKT_NUM(1);
 
-    /* ¶ÓÁÐÓÉ¿Õ±äÎª·Ç¿Õ */
-    if (VOS_TRUE == ulNonEmptyEvent)
-    {
-        ADS_UL_SndEvent(ADS_UL_EVENT_DATA_PROC);
-    }
-    else
-    {
+        /* ³¬Ê±³¤¶ÈÎª·ÇÁãÔòÐèÒªÆô¶¯´¥·¢·¢Êý */
+        if (0 != ADS_UL_GET_JIFFIES_EXP_TMR_LEN())
+        {
+            if (ADS_TIME_AFTER_EQ(ADS_GET_CURR_KERNEL_TIME(),
+                                  (ADS_UL_GET_JIFFIES_TMR_CNT() + ADS_UL_GET_JIFFIES_EXP_TMR_LEN())))
+            {
+                ADS_StopTimer(ACPU_PID_ADS_UL, TI_ADS_UL_SEND, ADS_TIMER_STOP_CAUSE_USER);
+                ADS_UL_SET_JIFFIES_TMR_CNT(ADS_GET_CURR_KERNEL_TIME());
+                ADS_UL_SndEvent(ADS_UL_EVENT_DATA_PROC);
+
+                return VOS_OK;
+            }
+        }
+
         if (ADS_UL_IS_REACH_THRESHOLD(ulAllUlQueueDataNum, ADS_UL_GET_SENDING_FLAG()))
         {
             ADS_UL_SndEvent(ADS_UL_EVENT_DATA_PROC);
+        }
+
+        /* ¶ÓÁÐÓÉ¿Õ±äÎª·Ç¿Õ */
+        if (VOS_TRUE == ulNonEmptyEvent)
+        {
+            ADS_StartTimer(ACPU_PID_ADS_UL, TI_ADS_UL_DATA_STAT, ADS_UL_GET_STAT_TIMER_LEN());
+            ADS_StartTimer(ACPU_PID_ADS_UL, TI_ADS_UL_SEND, ADS_UL_GET_PROTECT_TIMER_LEN());
+        }
+    }
+    else
+    {
+        /* (1).¶ÓÁÐÓÉ¿Õ±äÎª·Ç¿ÕÊ±´¥·¢ÉÏÐÐ»º´æ´¦ÀíÊÂ¼þ
+           (2).¶ÓÁÐÖÐÊý¾ÝÒÑµ½ÔÜ°üÃÅÏÞµÄÕûÊý±¶ÇÒµ±Ç°Ã»ÓÐÔÚ´¦ÀíÊý¾Ý
+               ´¥·¢ÉÏÐÐ»º´æ»º´æ´¦ÀíÊÂ¼þ
+         */
+        if (VOS_TRUE == ulNonEmptyEvent)
+        {
+            ADS_UL_SndEvent(ADS_UL_EVENT_DATA_PROC);
+        }
+        else
+        {
+            if (ADS_UL_IS_REACH_THRESHOLD(ulAllUlQueueDataNum, ADS_UL_GET_SENDING_FLAG()))
+            {
+                ADS_UL_SndEvent(ADS_UL_EVENT_DATA_PROC);
+            }
         }
     }
 #else
@@ -390,9 +425,7 @@ VOS_VOID ADS_UL_DestroyQueue(
     VOS_UINT8                           ucRabId
 )
 {
-    VOS_UINT32                          ulLockLevel;
-
-    ulLockLevel = 0;
+    VOS_ULONG                           ulLockLevel;
 
     /* ½áµã´æÔÚµ«¶ÓÁÐÎª¿Õ */
     if (VOS_ERR == ADS_UL_IsQueueExistent(ucInstanceIndex, ucRabId))
@@ -412,7 +445,9 @@ VOS_VOID ADS_UL_DestroyQueue(
     }
 
     /* ¶ÓÁÐ¼ÓËø */
+    /*lint -e571*/
     VOS_SpinLockIntLock(ADS_UL_GET_QUEUE_LINK_SPINLOCK(ucInstanceIndex, ucRabId), ulLockLevel);
+    /*lint +e571*/
 
     /* Ïú»Ù¶ÓÁÐÖÐµÄÊý¾Ý */
     ADS_UL_ClearQueue(ucRabId,
@@ -511,7 +546,7 @@ VOS_VOID ADS_UL_UpdateQueueInPdpModified(
     /* ÏÈ½«ÐÞ¸Ä¶ÔÓ¦Î»ºóÃæµÄÏòÇ°ÒÆ¶¯Ò»Î» */
     for (i = ulIndex; i <  ADS_RAB_NUM_MAX - 1; i++)
     {
-        pstAdsUlCtx->aucPrioIndex[i] = pstAdsUlCtx->aucPrioIndex[i + 1];
+        pstAdsUlCtx->aucPrioIndex[i] = pstAdsUlCtx->aucPrioIndex[i + 1UL];
     }
     pstAdsUlCtx->aucPrioIndex[ADS_RAB_NUM_MAX - 1] = ADS_RAB_ID_INVALID;
 
@@ -540,7 +575,7 @@ VOS_VOID ADS_UL_UpdateQueueInPdpDeactived(
 
     for (i = ulIndex; i < ADS_RAB_NUM_MAX - 1; i++)
     {
-        pstAdsUlCtx->aucPrioIndex[i] = pstAdsUlCtx->aucPrioIndex[i + 1];
+        pstAdsUlCtx->aucPrioIndex[i] = pstAdsUlCtx->aucPrioIndex[i + 1UL];
     }
     pstAdsUlCtx->aucPrioIndex[ADS_RAB_NUM_MAX - 1] = ADS_RAB_ID_INVALID;
 
@@ -660,15 +695,15 @@ VOS_VOID ADS_DL_ResetFcAssemParamInfo(VOS_VOID)
     return;
 }
 
-VOS_UINT32 ADS_GetULResetSem(VOS_VOID)
+VOS_SEM ADS_GetULResetSem(VOS_VOID)
 {
-    return g_stAdsCtx.ulULResetSem;
+    return g_stAdsCtx.hULResetSem;
 }
 
 
-VOS_UINT32 ADS_GetDLResetSem(VOS_VOID)
+VOS_SEM ADS_GetDLResetSem(VOS_VOID)
 {
-    return g_stAdsCtx.ulDLResetSem;
+    return g_stAdsCtx.hDLResetSem;
 }
 
 
@@ -936,18 +971,32 @@ VOS_VOID ADS_ResetIpfCtx(VOS_VOID)
     {
         PS_MEM_SET(g_stAdsCtx.stAdsIpfCtx.astIpfDlAdBuff[ucAdqIndex],
                    0x00,
-                   IPF_DLAD0_DESC_SIZE * sizeof(IPF_AD_DESC_S));
+                   (VOS_SIZE_T)(IPF_DLAD0_DESC_SIZE * sizeof(IPF_AD_DESC_S)));
     }
 #endif
 
     /* ³õÊ¼»¯ÉÏÐÐBD BUFF*/
-    PS_MEM_SET(g_stAdsCtx.stAdsIpfCtx.astIpfUlBdBuff, 0x00, IPF_ULBD_DESC_SIZE * sizeof(IPF_CONFIG_ULPARAM_S));
+    PS_MEM_SET(g_stAdsCtx.stAdsIpfCtx.astIpfUlBdBuff, 0x00, (VOS_SIZE_T)(IPF_ULBD_DESC_SIZE * sizeof(IPF_CONFIG_ULPARAM_S)));
 
     /* ³õÊ¼»¯ÏÂÐÐRD BUFF*/
-    PS_MEM_SET(g_stAdsCtx.stAdsIpfCtx.astIpfDlRdBuff, 0x00, IPF_DLRD_DESC_SIZE * sizeof(IPF_RD_DESC_S));
+    PS_MEM_SET(g_stAdsCtx.stAdsIpfCtx.astIpfDlRdBuff, 0x00, (VOS_SIZE_T)(IPF_DLRD_DESC_SIZE * sizeof(IPF_RD_DESC_S)));
 
     /* Ä¬ÈÏÉÏÐÐÊý¾Ý·¢ËÍ±£»¤¶¨Ê±Æ÷Ê±³¤Îª10ms */
     g_stAdsCtx.stAdsIpfCtx.ulProtectTmrLen   = 10;
+
+    /* Ä¬ÈÏÉÏÐÐÊý¾ÝÍ³¼Æ¶¨Ê±Æ÷Ê±³¤Îª100ms */
+    g_stAdsCtx.stAdsIpfCtx.stUlAssemParmInfo.stThresholdStatInfo.ulStatTmrLen = 100;
+    g_stAdsCtx.stAdsIpfCtx.stUlAssemParmInfo.stThresholdStatInfo.ulStatPktNum = 0;
+
+    /* Ä¬ÈÏÔÜ°üµÄ×î´ó¸öÊý */
+    if (VOS_TRUE == g_stAdsCtx.stAdsIpfCtx.stUlAssemParmInfo.ulActiveFlag)
+    {
+        g_stAdsCtx.stAdsIpfCtx.ulThredHoldNum = ADS_UL_DATA_THRESHOLD_ONE;
+    }
+    else
+    {
+        g_stAdsCtx.stAdsIpfCtx.ulThredHoldNum = 32;
+    }
 
     /* Ä¬ÈÏÊý¾Ý²»ÔÚ·¢ËÍ */
     g_stAdsCtx.stAdsIpfCtx.ucSendingFlg = VOS_FALSE;
@@ -956,12 +1005,16 @@ VOS_VOID ADS_ResetIpfCtx(VOS_VOID)
 
 VOS_VOID ADS_InitIpfCtx(VOS_VOID)
 {
+    VOS_UINT32                          ulRst;
+    ADS_NV_DYNAMIC_THRESHOLD_STRU       stThreshold;
+    ADS_UL_DYNAMIC_ASSEM_INFO_STRU     *pstUlAssemParmInfo;
+
 #if(FEATURE_OFF == FEATURE_SKB_EXP)
     VOS_UINT8                           i;
 
     for (i = 0; i < ADS_DL_ADQ_MAX_NUM; i++)
     {
-        PS_MEM_SET(g_stAdsCtx.stAdsIpfCtx.astIpfDlAdBuff[i], 0x00, IPF_DLAD0_DESC_SIZE * sizeof(IPF_AD_DESC_S));
+        PS_MEM_SET(g_stAdsCtx.stAdsIpfCtx.astIpfDlAdBuff[i], 0x00, (VOS_SIZE_T)(IPF_DLAD0_DESC_SIZE * sizeof(IPF_AD_DESC_S)));
     }
 
     /* ³õÊ¼»¯ÉÏÐÐÔ´ÄÚ´æÊÍ·Å¶ÓÁÐ */
@@ -969,17 +1022,75 @@ VOS_VOID ADS_InitIpfCtx(VOS_VOID)
 #endif
 
     /* ³õÊ¼»¯ÉÏÐÐBD BUFF*/
-    PS_MEM_SET(g_stAdsCtx.stAdsIpfCtx.astIpfUlBdBuff, 0x00, IPF_ULBD_DESC_SIZE * sizeof(IPF_CONFIG_ULPARAM_S));
+    PS_MEM_SET(g_stAdsCtx.stAdsIpfCtx.astIpfUlBdBuff, 0x00, (VOS_SIZE_T)(IPF_ULBD_DESC_SIZE * sizeof(IPF_CONFIG_ULPARAM_S)));
 
     /* ³õÊ¼»¯ÏÂÐÐRD BUFF*/
-    PS_MEM_SET(g_stAdsCtx.stAdsIpfCtx.astIpfDlRdBuff, 0x00, IPF_DLRD_DESC_SIZE * sizeof(IPF_RD_DESC_S));
+    PS_MEM_SET(g_stAdsCtx.stAdsIpfCtx.astIpfDlRdBuff, 0x00, (VOS_SIZE_T)(IPF_DLRD_DESC_SIZE * sizeof(IPF_RD_DESC_S)));
 
     /* Ä¬ÈÏÉÏÐÐÊý¾Ý·¢ËÍ±£»¤¶¨Ê±Æ÷Ê±³¤Îª10ms */
     g_stAdsCtx.stAdsIpfCtx.ulProtectTmrLen   = 10;
 
+    pstUlAssemParmInfo = &g_stAdsCtx.stAdsIpfCtx.stUlAssemParmInfo;
+
+    PS_MEM_SET(&stThreshold, 0x00, (VOS_SIZE_T)sizeof(ADS_NV_DYNAMIC_THRESHOLD_STRU));
+
+    ulRst = NV_ReadEx(MODEM_ID_0,
+                      en_NV_Item_ADS_DYNAMIC_THRESHOLD_CFG,
+                      &stThreshold,
+                      sizeof(ADS_NV_DYNAMIC_THRESHOLD_STRU));
+    if(NV_OK != ulRst)
+    {
+        pstUlAssemParmInfo->ulActiveFlag                      = VOS_FALSE;
+        pstUlAssemParmInfo->ulProtectTmrExpCnt                = 0;
+        pstUlAssemParmInfo->stWaterMarkLevel.ulWaterLevel1    = 80;
+        pstUlAssemParmInfo->stWaterMarkLevel.ulWaterLevel2    = 150;
+        pstUlAssemParmInfo->stWaterMarkLevel.ulWaterLevel3    = 500;
+        pstUlAssemParmInfo->stWaterMarkLevel.ulWaterLevel4    = 0xFFFFFFFF;
+
+        pstUlAssemParmInfo->stThresholdLevel.ulThreshold1     = 1;
+        pstUlAssemParmInfo->stThresholdLevel.ulThreshold2     = 13;
+        pstUlAssemParmInfo->stThresholdLevel.ulThreshold3     = 60;
+        pstUlAssemParmInfo->stThresholdLevel.ulThreshold4     = 64;
+        ADS_ERROR_LOG(ACPU_PID_ADS_UL, "ADS_InitIpfCtx: NV read failed !");
+    }
+
+    pstUlAssemParmInfo->ulActiveFlag                      = stThreshold.ulActiveFlag;
+    pstUlAssemParmInfo->ulProtectTmrExpCnt                = stThreshold.ulProtectTmrExpCnt;
+    pstUlAssemParmInfo->stWaterMarkLevel.ulWaterLevel1    = stThreshold.stWaterMarkLevel.ulWaterLevel1;
+    pstUlAssemParmInfo->stWaterMarkLevel.ulWaterLevel2    = stThreshold.stWaterMarkLevel.ulWaterLevel2;
+    pstUlAssemParmInfo->stWaterMarkLevel.ulWaterLevel3    = stThreshold.stWaterMarkLevel.ulWaterLevel3;
+    pstUlAssemParmInfo->stWaterMarkLevel.ulWaterLevel4    = stThreshold.stWaterMarkLevel.ulWaterLevel4;
+
+    pstUlAssemParmInfo->stThresholdLevel.ulThreshold1     = stThreshold.stThresholdLevel.ulThreshold1;
+    pstUlAssemParmInfo->stThresholdLevel.ulThreshold2     = stThreshold.stThresholdLevel.ulThreshold2;
+    pstUlAssemParmInfo->stThresholdLevel.ulThreshold3     = stThreshold.stThresholdLevel.ulThreshold3;
+    pstUlAssemParmInfo->stThresholdLevel.ulThreshold4     = stThreshold.stThresholdLevel.ulThreshold4;
+
+    /* Ä¬ÈÏÉÏÐÐÊý¾ÝÍ³¼Æ¶¨Ê±Æ÷Ê±³¤Îª100ms */
+    pstUlAssemParmInfo->stThresholdStatInfo.ulStatTmrLen = 100;
+    pstUlAssemParmInfo->stThresholdStatInfo.ulStatPktNum = 0;
+
+    /* ³¬Ê±Ê±³¤´óÓÚÁã²ÅÐèÒªÆô¶¯jiffies±£»¤¶¨Ê±Æ÷ */
+    if (0 != pstUlAssemParmInfo->ulProtectTmrExpCnt)
+    {
+        pstUlAssemParmInfo->ulProtectTmrCnt = ADS_GET_CURR_KERNEL_TIME();
+    }
+
+    /* Ä¬ÈÏÔÜ°üµÄ×î´ó¸öÊý */
+    if (VOS_TRUE == pstUlAssemParmInfo->ulActiveFlag)
+    {
+        g_stAdsCtx.stAdsIpfCtx.ulThredHoldNum = ADS_UL_DATA_THRESHOLD_ONE;
+    }
+    else
+    {
+        g_stAdsCtx.stAdsIpfCtx.ulThredHoldNum = 32;
+    }
+
     /* Ä¬ÈÏÊý¾Ý²»ÔÚ·¢ËÍ */
     g_stAdsCtx.stAdsIpfCtx.ucSendingFlg = VOS_FALSE;
 }
+
+
 VOS_VOID ADS_InitTiCtx(VOS_VOID)
 {
     VOS_UINT32                          i;
@@ -987,7 +1098,6 @@ VOS_VOID ADS_InitTiCtx(VOS_VOID)
     for (i = 0; i < ADS_MAX_TIMER_NUM; i++)
     {
         g_stAdsCtx.astAdsTiCtx[i].hTimer        = VOS_NULL_PTR;
-        g_stAdsCtx.astAdsTiCtx[i].enTimerId     = TI_ADS_TIMER_BUTT;
         g_stAdsCtx.astAdsTiCtx[i].enTimerStatus = ADS_TIMER_STATUS_STOP;
     }
 
@@ -997,11 +1107,11 @@ VOS_VOID ADS_InitTiCtx(VOS_VOID)
 
 VOS_VOID ADS_InitResetSem(VOS_VOID)
 {
-    g_stAdsCtx.ulULResetSem  = 0;
-    g_stAdsCtx.ulDLResetSem  = 0;
+    g_stAdsCtx.hULResetSem  = VOS_NULL_PTR;
+    g_stAdsCtx.hDLResetSem  = VOS_NULL_PTR;
 
     /* ·ÖÅä¶þ½øÖÆÐÅºÅÁ¿ */
-    if (VOS_OK != VOS_SmBCreate( "UL", 0, VOS_SEMA4_FIFO, &g_stAdsCtx.ulULResetSem))
+    if (VOS_OK != VOS_SmBCreate( "UL", 0, VOS_SEMA4_FIFO, &g_stAdsCtx.hULResetSem))
     {
         vos_printf("Create ADS acpu UL_CNF sem failed!\r\n");
         ADS_UL_DBG_CREATE_BINARY_SEM_FAIL_NUM(1);
@@ -1011,10 +1121,10 @@ VOS_VOID ADS_InitResetSem(VOS_VOID)
     }
     else
     {
-        ADS_UL_DBG_SAVE_BINARY_SEM_ID(g_stAdsCtx.ulULResetSem);
+        ADS_UL_DBG_SAVE_BINARY_SEM_ID(g_stAdsCtx.hULResetSem);
     }
 
-    if (VOS_OK != VOS_SmBCreate( "DL", 0, VOS_SEMA4_FIFO, &g_stAdsCtx.ulDLResetSem))
+    if (VOS_OK != VOS_SmBCreate( "DL", 0, VOS_SEMA4_FIFO, &g_stAdsCtx.hDLResetSem))
     {
         vos_printf("Create ADS acpu DL_CNF sem failed!\r\n");
         ADS_DL_DBG_CREATE_BINARY_SEM_FAIL_NUM(1);
@@ -1024,7 +1134,7 @@ VOS_VOID ADS_InitResetSem(VOS_VOID)
     }
     else
     {
-        ADS_DL_DBG_SAVE_BINARY_SEM_ID(g_stAdsCtx.ulDLResetSem);
+        ADS_DL_DBG_SAVE_BINARY_SEM_ID(g_stAdsCtx.hDLResetSem);
     }
 
     ADS_DBG_SET_SEM_INIT_FLAG(VOS_TRUE);

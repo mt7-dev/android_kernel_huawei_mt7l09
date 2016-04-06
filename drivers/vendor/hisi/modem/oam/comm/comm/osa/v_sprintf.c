@@ -133,7 +133,7 @@ VOS_INT32 _C_formatter(const VOS_CHAR *format,
     VOS_INT32                 length, mask, nr_of_bits, n;
     VOS_INT32                 field_width;
     VOS_CHAR                flag_char, left_adjust; 
-    VOS_UINT32       ulong;
+    VOS_UINT_PTR           ulong;
         
 #ifdef VOS_FLOAT_SUPPORT
         VOS_DOUBLE              fvalue;
@@ -322,11 +322,11 @@ VOS_INT32 _C_formatter(const VOS_CHAR *format,
             { /* huyong ??? ---- %p和标准的输出不同 */
                 if (length)
                 {
-                    ulong = (VOS_UINT32)va_arg(ap,VOS_CHAR *);
+                    ulong = (VOS_UINT_PTR)va_arg(ap,VOS_CHAR *);
                 }
                 else
                 {
-                    ulong = (VOS_UINT32)va_arg(ap,VOS_CHAR *);
+                    ulong = (VOS_UINT_PTR)va_arg(ap,VOS_CHAR *);
                 }
             }
             else if (length)
@@ -335,7 +335,7 @@ VOS_INT32 _C_formatter(const VOS_CHAR *format,
             }
             else
             {
-                ulong = (VOS_UINT32)va_arg(ap,VOS_INT32);
+                ulong = (VOS_UINT_PTR)va_arg(ap,VOS_INT32);
             }
             
             ptr = buf_pointer = &buf[FRMWRI_BUFSIZE - 1];
@@ -989,7 +989,7 @@ VOS_INT32 ANSI_vsprintf(VOS_CHAR *out_buf, const VOS_CHAR *fmt0, va_list argp)
     VOS_INT 				lRealSize;        	
     VOS_INT 				lConverSize;        
     VOS_INT 				lFormatWidth;     	
-    VOS_UINT32 				ulLong;          	
+    VOS_UINT_PTR			ulLong;
     VOS_CHAR 				ucPrefixSign;     	
     VOS_CHAR 				*pucDigs;        	
     VOS_CHAR 				ucBuf[BUF];        	
@@ -1182,7 +1182,7 @@ rflag:  switch (*++pucFmt) {
             lBase = 8;
             goto nosign;
         case 'p':
-            ulLong = (VOS_UINT32)va_arg(argp, VOS_VOID *);
+            ulLong = (VOS_UINT_PTR)va_arg(argp, VOS_VOID *);
             lBase = 16;
             goto nosign;
         case 's':

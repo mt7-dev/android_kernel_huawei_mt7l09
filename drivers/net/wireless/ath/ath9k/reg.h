@@ -2068,7 +2068,7 @@ enum {
 #define AR_WOW_LENGTH2_MASK(_i)	(AR_WOW_LENGTH_MAX << AR_WOW_LEN2_SHIFT(_i))
 
 #define AR9271_CORE_CLOCK	117   /* clock to 117Mhz */
-#define AR9271_TARGET_BAUD_RATE	19200 /* 115200 */
+#define AR9271_TARGET_BAUD_RATE	19200
 
 #define AR_AGG_WEP_ENABLE_FIX		0x00000008  /* This allows the use of AR_AGG_WEP_ENABLE */
 #define AR_ADHOC_MCAST_KEYID_ENABLE     0x00000040  /* This bit enables the Multicast search

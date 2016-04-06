@@ -54,14 +54,18 @@ enum NAS_MMC_OM_MSG_ID_ENUM
 {
     /* MMC发送给OM的消息 */
     MMCOM_LOG_FSM_INFO_IND                       = 0x1000,      /*_H2ASN_MsgChoice  NAS_MMC_LOG_FSM_INFO_STRU */
-    MMCOM_LOG_GUTI_INFO_IND                              ,  /*_H2ASN_MsgChoice  NAS_MMC_LOG_GUTI_INFO_STRU */
-    MMCOM_LOG_BUFFER_MSG_INFO_IND                        ,  /*_H2ASN_MsgChoice  NAS_MMC_LOG_BUffER_MSG_INFO_STRU */
-    MMCOM_LOG_PLMN_SELECTION_LIST                        ,  /*_H2ASN_MsgChoice  NAS_MMC_LOG_PLMN_SELECTION_LIST_MSG_STRU */
-    MMCOM_LOG_INTER_MSG_INFO_IND                        ,  /*_H2ASN_MsgChoice  NAS_MMC_LOG_INTER_MSG_INFO_STRU */
-    MMCOM_LOG_DRX_TIMER_STATUS_IND                      ,
+    MMCOM_LOG_GUTI_INFO_IND                      = 0x1001,  /*_H2ASN_MsgChoice  NAS_MMC_LOG_GUTI_INFO_STRU */
+    MMCOM_LOG_BUFFER_MSG_INFO_IND                = 0x1002,  /*_H2ASN_MsgChoice  NAS_MMC_LOG_BUffER_MSG_INFO_STRU */
+    MMCOM_LOG_PLMN_SELECTION_LIST                = 0x1003,  /*_H2ASN_MsgChoice  NAS_MMC_LOG_PLMN_SELECTION_LIST_MSG_STRU */
+    MMCOM_LOG_INTER_MSG_INFO_IND                 = 0x1004,  /*_H2ASN_MsgChoice  NAS_MMC_LOG_INTER_MSG_INFO_STRU */
+    MMCOM_LOG_DRX_TIMER_STATUS_IND               = 0x1005,
+    MMCOM_LOG_DPLMN_LIST                         = 0x1006,  /*_H2ASN_MsgChoice  NAS_MMC_LOG_DPLMN_LIST_STRU */
+    MMCOM_LOG_NPLMN_LIST                         = 0x1007,  /*_H2ASN_MsgChoice  NAS_MMC_LOG_NPLMN_LIST_STRU */
+    MMCOM_LOG_AS_PLMN_SELECTION_LIST             = 0x1008,
+    MMCOM_LOG_RPLMN_RELATED_INFO                 = 0x100A,
+    MMCOM_LOG_FORBIDDEN_PLMN_RELATED_INFO        = 0x100B,
+    MMCOM_LOG_RPLMN_CFG_INFO                     = 0x100C,
     MMCOM_LOG_MMC_TIMER_STATUS                  = 0x2000 ,  /*_H2ASN_MsgChoice  NAS_MMC_TIMER_INFO_STRU */
-
-    MMCOM_LOG_AS_PLMN_SELECTION_LIST            = 0x2001,
 
     MMCOM_LOG_MMC_PLATFORM_RAT_CAP              = 0x3000 ,  /*_H2ASN_MsgChoice  NAS_MMC_TIMER_INFO_STRU */
 
@@ -131,6 +135,20 @@ typedef struct
 }NAS_MMC_LOG_INTER_MSG_INFO_STRU;
 typedef struct
 {
+    MSG_HEADER_STRU                                         stMsgHeader;/* 消息头    */ /*_H2ASN_Skip*/
+    VOS_UINT16                                              usDplmnListNum;   
+    VOS_UINT8                                               aucReserve[2];
+    NAS_MMC_SIM_PLMN_WITH_REG_DOMAIN_STRU                   astDPlmnList[NAS_MMC_MAX_CFG_DPLMN_NUM];
+}NAS_MMC_LOG_DPLMN_LIST_STRU;
+typedef struct
+{
+    MSG_HEADER_STRU                                         stMsgHeader;/* 消息头    */ /*_H2ASN_Skip*/
+    VOS_UINT16                                              usNplmnListNum;   
+    VOS_UINT8                                               aucReserve[2];
+    NAS_MMC_SIM_PLMN_WITH_REG_DOMAIN_STRU                   astNPlmnList[NAS_MMC_MAX_CFG_NPLMN_NUM];
+}NAS_MMC_LOG_NPLMN_LIST_STRU;
+typedef struct
+{
     VOS_UINT8                                               aucImeisv[NAS_MML_MAX_IMEISV_LEN];          /* IMEISV */
     NAS_MMC_PLMN_SELECTION_MODE_ENUM_UINT8                  enSelectionMode;                            /* MMC当前搜网模式,自动模式或手动模式*/
     NAS_MML_MS_NETWORK_CAPACILITY_STRU                      stMsNetworkCapability;                  /* MS network capability*/
@@ -161,6 +179,36 @@ typedef struct{
     MSG_HEADER_STRU                                         stMsgHeader;/* 消息头                                   */ /*_H2ASN_Skip*/
     NAS_MMC_SEARCHED_PLMN_LIST_INFO_STRU                    stSrchedPlmn;
 }NAS_MMC_LOG_AS_PLMN_LIST_MSG_STRU;
+typedef struct{
+    MSG_HEADER_STRU                                         stMsgHeader;/* 消息头                                   */ /*_H2ASN_Skip*/
+    NAS_MML_PLMN_ID_STRU                                    stGetLteRplmn;      /* 获取当前LTE的RPLMN */
+    NAS_MML_PLMN_ID_STRU                                    stGetGuRplmn;       /* 获取当前GU的RPLMN */
+    NAS_MML_RPLMN_CFG_INFO_STRU                             stRplmnCfg;         /* RPLMN的定制特性 */
+    NAS_MML_LAI_STRU                                        stLastSuccLai;      /* CS域最后一次注册成功的LAI信息或注册失败后需要删除LAI，则该值为无效值 */
+    NAS_MML_RAI_STRU                                        stLastSuccRai;      /* PS域最后一次注册成功的RAI信息或注册失败后需要删除RAI，则该值为无效值 */
+    NAS_MML_ROUTING_UPDATE_STATUS_ENUM_UINT8                enPsUpdateStatus;   /* status of routing update */
+    NAS_MML_LOCATION_UPDATE_STATUS_ENUM_UINT8               enCsUpdateStatus;   /* status of location update */
+    NAS_MML_MS_MODE_ENUM_UINT8                              enMsMode;           /* 手机模式 */
+    VOS_UINT8                                               ucReserved;
+}NAS_MMC_LOG_RPLMN_RELATED_INFO_STRU;
+typedef struct{
+    MSG_HEADER_STRU                                         stMsgHeader;/* 消息头                                   */ /*_H2ASN_Skip*/
+    NAS_MML_RPLMN_CFG_INFO_STRU                             stRplmnCfg;         /* RPLMN的定制特性 */
+}NAS_MMC_LOG_RPLMN_CFG_INFO_STRU;
+
+
+
+typedef struct{
+    MSG_HEADER_STRU                                         stMsgHeader;/* 消息头                                   */ /*_H2ASN_Skip*/
+    NAS_MML_SIM_FORBIDPLMN_INFO_STRU                        stSimForbidenInfo;  /* SIM卡中的禁止网络信息 */
+    NAS_MML_ROAM_CFG_INFO_STRU                              stRoamCfg;          /* ROAM的定制特性 */
+    NAS_MML_PLMN_LOCK_CFG_INFO_STRU                         stPlmnLockCfg;      /* 锁网定制需求,黑名单或白名单 */
+    NAS_MML_LTE_INTERNATION_ROAM_CFG_STRU                   stLteRoamCfg;       /* LTE国际漫游定制特性 */
+    NAS_MML_RAT_FORBIDDEN_STATUS_STRU                       stRatFirbiddenStatusCfg;    
+    NAS_MML_LTE_CAPABILITY_STATUS_ENUM_UINT32               enLteCapabilityStatus;/* 去使能LTE能力标记 */
+    MMC_LMM_DISABLE_LTE_REASON_ENUM_UINT32                  enDisableLteReason;
+    VOS_UINT32                                              ulDisableLteRoamFlg;/* 禁止LTE漫游导致的disable LTE标记 */
+}NAS_MMC_LOG_FORBIDDEN_PLMN_RELATED_INFO_STRU;
 typedef struct
 {
     MSG_HEADER_STRU                     stMsgHeader;/* 消息头                                   */ /*_H2ASN_Skip*/
@@ -247,6 +295,10 @@ VOS_VOID NAS_MMC_SndOmPlmnSelectionList(
     NAS_MMC_PLMN_SELECTION_LIST_INFO_STRU                  *pstPlmnSelectionList,
     NAS_MML_PLMN_RAT_PRIO_STRU                             *pstPrioRatList
 );
+
+VOS_VOID NAS_MMC_LogRplmnRelatedInfo(VOS_VOID);
+VOS_VOID NAS_MMC_LogForbiddenPlmnRelatedInfo(VOS_VOID);
+VOS_VOID NAS_MMC_LogRplmnCfgInfo(VOS_VOID);
 
 VOS_VOID  NAS_MMC_SndOmMmcTimerStatus(
     NAS_MMC_TIMER_STATUS_ENUM_U8        enTimerStatus,

@@ -151,6 +151,8 @@ VOS_VOID  NAS_UTRANCTRL_InitMainCtrlInfo(
                 (VOS_UINT8)0x00,
                 sizeof(NAS_UTRANCTRL_ENTRY_MSG_STRU) );
 
+    NAS_UTRANCTRL_SetSwithOnPlmnSearchFlag(VOS_FALSE);
+
     return;
 }
 VOS_VOID  NAS_UTRANCTRL_InitFsmBufferEntryMsgQueueCtx(
@@ -524,6 +526,25 @@ VOS_VOID NAS_UTRANCTRL_SetUtranTddPsSmcNeededFlg(
 
     return;
 }
+
+
+
+VOS_VOID NAS_UTRANCTRL_SetSwithOnPlmnSearchFlag(
+    VOS_UINT8                           ucSwitchOnPlmnSearchFlag
+)
+{
+    NAS_UTRANCTRL_GetUtranCtrlCtx()->stMainCtrlInfo.ucSwitchOnPlmnSearchFlag = ucSwitchOnPlmnSearchFlag;
+}
+
+
+
+VOS_UINT8 NAS_UTRANCTRL_GetSwithOnPlmnSearchFlag(VOS_VOID)
+{
+    return NAS_UTRANCTRL_GetUtranCtrlCtx()->stMainCtrlInfo.ucSwitchOnPlmnSearchFlag;
+}
+
+
+
 
 
 VOS_VOID NAS_UTRANCTRL_SetReplaceMmcMsgFlg(

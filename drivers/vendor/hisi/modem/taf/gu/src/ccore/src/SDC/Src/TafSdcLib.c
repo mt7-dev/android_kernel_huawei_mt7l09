@@ -11,7 +11,9 @@
 #include "zlib.h"
 #include "NVIM_Interface.h"
 
+#if (FEATURE_ON == FEATURE_PTM)
 #include "NasErrorLog.h"
+#endif
 
 #ifdef  __cplusplus
   #if  __cplusplus
@@ -636,6 +638,31 @@ VOS_UINT32 TAF_SDC_IsConfigCLInterWork(VOS_VOID)
 
     return VOS_FALSE;
 }
+
+
+
+
+VOS_UINT32 TAF_SDC_IsImsSrvExist(VOID)
+{
+    VOS_UINT8                           ucImsVoiceFlag;
+    VOS_UINT8                           ucImsSmsFlag;
+    VOS_UINT8                           ucImsSsFlag;
+
+    ucImsVoiceFlag  = TAF_SDC_GetImsCallExistFlg();
+    ucImsSmsFlag    = TAF_SDC_GetImsSmsSrvExistFlg();
+    ucImsSsFlag     = TAF_SDC_GetImsSsSrvExistFlg();
+
+    if ((VOS_TRUE == ucImsVoiceFlag)
+     || (VOS_TRUE == ucImsSmsFlag)
+     || (VOS_TRUE == ucImsSsFlag))
+    {
+        return VOS_TRUE;
+    }
+
+    return VOS_FALSE;
+
+}
+
 
 #ifdef  __cplusplus
   #if  __cplusplus

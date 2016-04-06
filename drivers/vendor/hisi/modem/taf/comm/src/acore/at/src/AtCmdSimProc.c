@@ -15,9 +15,9 @@ extern "C" {
 /*****************************************************************************
     协议栈打印打点方式下的.C文件宏定义
 *****************************************************************************/
-/*lint -e767*/
+/*lint -e767 -e960*/
 #define    THIS_FILE_ID                 PS_FILE_ID_AT_CMD_SIM_PROC_C
-/*lint +e767*/
+/*lint +e767 +e960*/
 
 /*****************************************************************************
   2 全局变量定义
@@ -81,11 +81,11 @@ VOS_UINT32 At_SetSIMSlotPara(VOS_UINT8 ucIndex)
             其余值：无效 */
     if (1 == gastAtParaList[0].ulParaValue)
     {
-        stSCICfg.ulValue = stSCICfg.ulValue & 0xFFFFF8FF;
+        stSCICfg.ulValue = stSCICfg.ulValue & 0xFFFFF8FFU;
     }
     else if (2 == gastAtParaList[0].ulParaValue)
     {
-        stSCICfg.ulValue = stSCICfg.ulValue & 0xFFFFF8FF;
+        stSCICfg.ulValue = stSCICfg.ulValue & 0xFFFFF8FFU;
         stSCICfg.ulValue = stSCICfg.ulValue | 0x100;
     }
     else
@@ -95,11 +95,11 @@ VOS_UINT32 At_SetSIMSlotPara(VOS_UINT8 ucIndex)
 
     if (1 == gastAtParaList[1].ulParaValue)
     {
-        stSCICfg.ulValue = stSCICfg.ulValue & 0xFFFFC7FF;
+        stSCICfg.ulValue = stSCICfg.ulValue & 0xFFFFC7FFU;
     }
     else if (2 == gastAtParaList[1].ulParaValue)
     {
-        stSCICfg.ulValue = stSCICfg.ulValue & 0xFFFFC7FF;
+        stSCICfg.ulValue = stSCICfg.ulValue & 0xFFFFC7FFU;
         stSCICfg.ulValue = stSCICfg.ulValue | 0x800;
     }
     else
@@ -173,17 +173,17 @@ VOS_UINT32 At_Base16Decode(VOS_CHAR *pcData, VOS_UINT32 ulDataLen, VOS_UINT8* pu
     {
         for(j = 0; j < 2; j++)
         {
-            if(pcData[i+j] >= '0' && pcData[i+j] <= '9')
+            if(pcData[(VOS_ULONG)(i+j)] >= '0' && pcData[(VOS_ULONG)(i+j)] <= '9')
             {
-                n[j] = pcData[i+j] - '0';
+                n[(VOS_ULONG)j] = pcData[(VOS_ULONG)(i+j)] - '0';
             }
-            else if(pcData[i+j] >= 'a' && pcData[i+j] <= 'f')
+            else if(pcData[(VOS_ULONG)(i+j)] >= 'a' && pcData[(VOS_ULONG)(i+j)] <= 'f')
             {
-                n[j] = pcData[i+j] - 'a' + 10;
+                n[(VOS_ULONG)j] = pcData[(VOS_ULONG)(i+j)] - 'a' + 10;
             }
-            else if(pcData[i+j] >= 'A' && pcData[i+j] <= 'F')
+            else if(pcData[(VOS_ULONG)(i+j)] >= 'A' && pcData[(VOS_ULONG)(i+j)] <= 'F')
             {
-                n[j] = pcData[i+j] - 'A' + 10;
+                n[(VOS_ULONG)j] = pcData[(VOS_ULONG)(i+j)] - 'A' + 10;
             }
             else
             {
@@ -197,6 +197,230 @@ VOS_UINT32 At_Base16Decode(VOS_CHAR *pcData, VOS_UINT32 ulDataLen, VOS_UINT8* pu
     }
 
     return (ulDataLen/2);
+}
+
+/*****************************************************************************
+ 函 数 名  : At_SetHvsstPara
+ 功能描述  : (AT^HVSST)激活/去激活(U)SIM卡
+ 输入参数  : ucIndex - 用户索引
+ 输出参数  : 无
+ 返 回 值  :
+ 调用函数  :
+ 被调函数  :
+
+ 修改历史      :
+  1.日    期   : 2013年03月18日
+    作    者   : zhuli
+    修改内容   : vSIM卡项目新增函数
+  2.日    期  : 2014年10月9日
+    作    者  : zhuli
+    修改内容  : 根据青松产品要求，该接口不受宏控制
+*****************************************************************************/
+VOS_UINT32 At_SetHvsstPara(VOS_UINT8 ucIndex)
+{
+    VOS_UINT32                              ulResult;
+    SI_PIH_HVSST_SET_STRU                   stHvSStSet;
+
+    /* 参数过多 */
+    if (gucAtParaIndex > 3)
+    {
+        AT_WARN_LOG("At_SetHvsstPara: Too Much Parameter.");
+        return AT_ERROR;
+    }
+
+    /* 参数不存在 */
+    if ( (0 == gastAtParaList[0].usParaLen)
+       ||(0 == gastAtParaList[1].usParaLen)
+       ||(0 == gastAtParaList[2].usParaLen) )
+    {
+        AT_WARN_LOG("At_SetHvsstPara: Parameter is not enough.");
+        return AT_CME_INCORRECT_PARAMETERS;
+    }
+
+    /*参数检查, index目前只支持区分硬卡还是软卡*/
+    if ( (gastAtParaList[0].ulParaValue != SI_PIH_SIM_REAL_SIM1)
+       &&(gastAtParaList[0].ulParaValue != SI_PIH_SIM_VIRT_SIM1) )
+    {
+        AT_WARN_LOG("At_SetHvsstPara: Parameter <Index> is Wrong.");
+        return AT_CME_INCORRECT_PARAMETERS;
+    }
+
+    stHvSStSet.ucIndex = (VOS_UINT8)gastAtParaList[0].ulParaValue;
+
+    /*参数检查, enable参数*/
+    if (gastAtParaList[1].ulParaValue >= SI_PIH_SIM_STATE_BUTT)
+    {
+        AT_WARN_LOG("At_SetHvsstPara: Parameter <enable> is Wrong.");
+        return AT_CME_INCORRECT_PARAMETERS;
+    }
+
+    stHvSStSet.enSIMSet = (VOS_UINT8)gastAtParaList[1].ulParaValue;
+
+    /*参数检查, slot废弃，不通过这个参数区分卡槽*/
+
+    ulResult = SI_PIH_HvSstSet(gastAtClientTab[ucIndex].usClientId,
+                              gastAtClientTab[ucIndex].opId,
+                              &stHvSStSet);
+
+    if (TAF_SUCCESS != ulResult)
+    {
+        AT_WARN_LOG("At_SetHvsstPara: SI_PIH_HvSstSet fail.");
+        return AT_CME_PHONE_FAILURE;
+    }
+
+    /* 设置AT模块实体的状态为等待异步返回 */
+    gastAtClientTab[ucIndex].CmdCurrentOpt = AT_CMD_HVSST_SET;
+
+    return AT_WAIT_ASYNC_RETURN;
+}
+
+/*****************************************************************************
+ 函 数 名  : At_QryHvsstPara
+ 功能描述  : ^HVSST查询命令处理函数
+ 输入参数  : VOS_UINT8 ucIndex
+ 输出参数  : 无
+ 返 回 值  : VOS_UINT32
+ 调用函数  :
+ 被调函数  :
+
+ 修改历史      :
+  1.日    期   : 2013年03月18日
+    作    者   : zhuli
+    修改内容   : vSIM卡项目新增函数
+  2.日    期  : 2014年10月9日
+    作    者  : zhuli
+    修改内容  : 根据青松产品要求，该接口不受宏控制
+*****************************************************************************/
+VOS_UINT32 At_QryHvsstPara(VOS_UINT8 ucIndex)
+{
+    VOS_UINT32                          ulResult;
+
+    ulResult = SI_PIH_HvSstQuery(gastAtClientTab[ucIndex].usClientId,
+                                      gastAtClientTab[ucIndex].opId);
+
+    if (TAF_SUCCESS != ulResult)
+    {
+        AT_WARN_LOG("AT_QryPortAttribSetPara: AT_FillAndSndAppReqMsg fail.");
+        return AT_ERROR;
+    }
+
+    /* 设置AT模块实体的状态为等待异步返回 */
+    gastAtClientTab[ucIndex].CmdCurrentOpt = AT_CMD_HVSST_QUERY;
+
+    return AT_WAIT_ASYNC_RETURN;
+}
+VOS_UINT32 At_TestHvsstPara(VOS_UINT8 ucIndex)
+{
+    gstAtSendData.usBufLen = (VOS_UINT16)At_sprintf(AT_CMD_MAX_LEN,
+                                       (VOS_CHAR *)pgucAtSndCodeAddr,
+                                       (VOS_CHAR *)pgucAtSndCodeAddr,
+                                       "^HVSST: (1,11), (0,1), (1)");
+    return AT_OK;
+}
+
+/*****************************************************************************
+ 函 数 名  : At_SetSciChgPara
+ 功能描述  : ^SCICHG设置函数
+ 输入参数  : VOS_UINT8 ucIndex
+ 输出参数  : 无
+ 返 回 值  : VOS_UINT32
+ 调用函数  :
+ 被调函数  :
+
+ 修改历史      :
+  1.日    期  : 2014年10月9日
+    作    者  : zhuli
+    修改内容  : 青松产品天际通功能增加
+*****************************************************************************/
+VOS_UINT32 At_SetSciChgPara(VOS_UINT8 ucIndex)
+{
+    VOS_UINT32                              ulResult;
+
+    /* 参数过多 */
+    if (gucAtParaIndex > 2)
+    {
+        AT_WARN_LOG("At_SetSciChgPara: Too Much Parameter.");
+        return AT_ERROR;
+    }
+
+    /* 参数不存在 */
+    if ( (0 == gastAtParaList[0].usParaLen)
+       ||(0 == gastAtParaList[1].usParaLen))
+    {
+        AT_WARN_LOG("At_SetSciChgPara: Parameter is not enough.");
+        return AT_CME_INCORRECT_PARAMETERS;
+    }
+
+    ulResult = SI_PIH_SciCfgSet(gastAtClientTab[ucIndex].usClientId,
+                                  gastAtClientTab[ucIndex].opId,
+                                  gastAtParaList[0].ulParaValue,
+                                  gastAtParaList[1].ulParaValue);
+
+    if (TAF_SUCCESS != ulResult)
+    {
+        AT_WARN_LOG("At_SetSciChgPara: SI_PIH_HvSstSet fail.");
+        return AT_CME_PHONE_FAILURE;
+    }
+
+    /* 设置AT模块实体的状态为等待异步返回 */
+    gastAtClientTab[ucIndex].CmdCurrentOpt = AT_CMD_HVSST_SET;
+
+    return AT_WAIT_ASYNC_RETURN;}
+
+/*****************************************************************************
+ 函 数 名  : At_QryHvsstPara
+ 功能描述  : ^SCICHG查询命令处理函数
+ 输入参数  : VOS_UINT8 ucIndex
+ 输出参数  : 无
+ 返 回 值  : VOS_UINT32
+ 调用函数  :
+ 被调函数  :
+
+ 修改历史      :
+  1.日    期  : 2014年10月9日
+    作    者  : zhuli
+    修改内容  : 青松产品天际通功能增加
+*****************************************************************************/
+VOS_UINT32 At_QrySciChgPara(VOS_UINT8 ucIndex)
+{
+    VOS_UINT32                          ulResult;
+
+    ulResult = SI_PIH_SciCfgQuery(gastAtClientTab[ucIndex].usClientId,
+                                      gastAtClientTab[ucIndex].opId);
+
+    if (TAF_SUCCESS != ulResult)
+    {
+        AT_WARN_LOG("At_QrySciChgPara: AT_FillAndSndAppReqMsg fail.");
+        return AT_ERROR;
+    }
+
+    /* 设置AT模块实体的状态为等待异步返回 */
+    gastAtClientTab[ucIndex].CmdCurrentOpt = AT_CMD_HVSST_QUERY;
+
+    return AT_WAIT_ASYNC_RETURN;
+}
+
+/*****************************************************************************
+ 函 数 名  : At_TestSciChgPara
+ 功能描述  : ^SCICHG测试函数
+ 输入参数  : VOS_UINT8 ucIndex
+ 输出参数  : 无
+ 返 回 值  : VOS_UINT32
+ 调用函数  :
+ 被调函数  :
+
+ 修改历史      :
+  1.日    期  : 2014年10月9日
+    作    者  : zhuli
+    修改内容  : 青松产品天际通功能增加
+*****************************************************************************/
+VOS_UINT32 At_TestSciChgPara(VOS_UINT8 ucIndex)
+{
+    gstAtSendData.usBufLen = (VOS_UINT16)At_sprintf(AT_CMD_MAX_LEN,
+                                       (VOS_CHAR *)pgucAtSndCodeAddr,
+                                       (VOS_CHAR *)pgucAtSndCodeAddr,
+                                       "^SCICFG: (0,1), (0,1)");
+    return AT_OK;
 }
 
 #if (FEATURE_ON == FEATURE_VSIM)
@@ -319,128 +543,6 @@ VOS_UINT32 At_TestHvsDHPara(VOS_UINT8 ucIndex)
                                                     (TAF_CHAR *)pgucAtSndCodeAddr,
                                                     "%s: 1",
                                                     g_stParseContext[ucIndex].pstCmdElement->pszCmdName);
-    return AT_OK;
-}
-
-/*****************************************************************************
- 函 数 名  : At_SetHvsstPara
- 功能描述  : (AT^HVSST)激活/去激活(U)SIM卡
- 输入参数  : ucIndex - 用户索引
- 输出参数  : 无
- 返 回 值  :
- 调用函数  :
- 被调函数  :
-
- 修改历史      :
-  1.日    期   : 2013年03月18日
-    作    者   : zhuli
-    修改内容   : vSIM卡项目新增函数
-*****************************************************************************/
-VOS_UINT32 At_SetHvsstPara(VOS_UINT8 ucIndex)
-{
-    VOS_UINT32                              ulResult;
-    SI_PIH_HVSST_SET_STRU                   stHvSStSet;
-
-    /* 参数过多 */
-    if (gucAtParaIndex > 3)
-    {
-        AT_WARN_LOG("At_SetHvsstPara: Too Much Parameter.");
-        return AT_ERROR;
-    }
-
-    /* 参数不存在 */
-    if ( (0 == gastAtParaList[0].usParaLen)
-       ||(0 == gastAtParaList[1].usParaLen)
-       ||(0 == gastAtParaList[2].usParaLen) )
-    {
-        AT_WARN_LOG("At_SetHvsstPara: Parameter is not enough.");
-        return AT_CME_INCORRECT_PARAMETERS;
-    }
-
-    /*参数检查, index目前只支持1个卡*/
-    if ( (gastAtParaList[0].ulParaValue != SI_PIH_SIM_REAL_SIM1)
-       &&(gastAtParaList[0].ulParaValue != SI_PIH_SIM_VIRT_SIM1) )
-    {
-        AT_WARN_LOG("At_SetHvsstPara: Parameter <Index> is Wrong.");
-        return AT_CME_INCORRECT_PARAMETERS;
-    }
-
-    stHvSStSet.ucIndex = (VOS_UINT8)gastAtParaList[0].ulParaValue;
-
-    /*参数检查, enable参数*/
-    if (gastAtParaList[1].ulParaValue >= SI_PIH_SIM_STATE_BUTT)
-    {
-        AT_WARN_LOG("At_SetHvsstPara: Parameter <enable> is Wrong.");
-        return AT_CME_INCORRECT_PARAMETERS;
-    }
-
-    stHvSStSet.enSIMSet = (VOS_UINT8)gastAtParaList[1].ulParaValue;
-
-    /*参数检查, slot目前只支持2个卡*/
-    if ( (gastAtParaList[2].ulParaValue != SI_PIH_SIM_SLOT1)
-       &&(gastAtParaList[2].ulParaValue != SI_PIH_SIM_SLOT2) )
-    {
-        AT_WARN_LOG("AT_SetHvsstPara: Parameter <slot> is Wrong.");
-        return AT_CME_INCORRECT_PARAMETERS;
-    }
-
-    stHvSStSet.ucSlot = (VOS_UINT8)gastAtParaList[2].ulParaValue;
-
-    ulResult = SI_PIH_HvSstSet(gastAtClientTab[ucIndex].usClientId,
-                              gastAtClientTab[ucIndex].opId,
-                              &stHvSStSet);
-
-    if (TAF_SUCCESS != ulResult)
-    {
-        AT_WARN_LOG("At_SetHvsstPara: SI_PIH_HvSstSet fail.");
-        return AT_CME_PHONE_FAILURE;
-    }
-
-    /* 设置AT模块实体的状态为等待异步返回 */
-    gastAtClientTab[ucIndex].CmdCurrentOpt = AT_CMD_HVSST_SET;
-
-    return AT_WAIT_ASYNC_RETURN;
-}
-
-/*****************************************************************************
- 函 数 名  : At_QryHvsstPara
- 功能描述  : ^HVSST查询命令处理函数
- 输入参数  : VOS_UINT8 ucIndex
- 输出参数  : 无
- 返 回 值  : VOS_UINT32
- 调用函数  :
- 被调函数  :
-
- 修改历史      :
-  1.日    期   : 2013年03月18日
-    作    者   : zhuli
-    修改内容   : vSIM卡项目新增函数
-
-*****************************************************************************/
-VOS_UINT32 At_QryHvsstPara(VOS_UINT8 ucIndex)
-{
-    VOS_UINT32                          ulResult;
-
-    ulResult = SI_PIH_HvSstQuery(gastAtClientTab[ucIndex].usClientId,
-                                      gastAtClientTab[ucIndex].opId);
-
-    if (TAF_SUCCESS != ulResult)
-    {
-        AT_WARN_LOG("AT_QryPortAttribSetPara: AT_FillAndSndAppReqMsg fail.");
-        return AT_ERROR;
-    }
-
-    /* 设置AT模块实体的状态为等待异步返回 */
-    gastAtClientTab[ucIndex].CmdCurrentOpt = AT_CMD_HVSST_QUERY;
-
-    return AT_WAIT_ASYNC_RETURN;
-}
-VOS_UINT32 At_TestHvsstPara(VOS_UINT8 ucIndex)
-{
-    gstAtSendData.usBufLen = (VOS_UINT16)At_sprintf(AT_CMD_MAX_LEN,
-                                       (VOS_CHAR *)pgucAtSndCodeAddr,
-                                       (VOS_CHAR *)pgucAtSndCodeAddr,
-                                       "^HVSST: (1,11), (0,1), (1)");
     return AT_OK;
 }
 
@@ -680,7 +782,7 @@ VOS_UINT16 At_HvsstQueryCnf(SI_PIH_EVENT_INFO_STRU *pstEvent)
     usLength += (VOS_UINT16)At_sprintf(AT_CMD_MAX_LEN,
                                 (VOS_CHAR *)pgucAtSndCodeAddr,
                                 (VOS_CHAR *)pgucAtSndCodeAddr + usLength,
-                                "%d,", pstEvent->PIHEvent.HVSSTQueryCnf.enSlot);
+                                "1,");
 
     usLength += (VOS_UINT16)At_sprintf(AT_CMD_MAX_LEN,
                                 (VOS_CHAR *)pgucAtSndCodeAddr,
@@ -843,6 +945,111 @@ VOS_UINT16 AT_HvsDHQueryCnf(SI_PIH_EVENT_INFO_STRU *pstEvent)
     }
     usLength += (VOS_UINT16)At_sprintf(AT_CMD_MAX_LEN,(VOS_CHAR *)pgucAtSndCodeAddr,(VOS_CHAR *)pgucAtSndCodeAddr + usLength,"\"");
     return usLength;
+}
+
+/*****************************************************************************
+ 函 数 名  : At_SetHvteePara
+ 功能描述  : ^HVTEE设置函数
+ 输入参数  : VOS_UINT8 ucIndex
+ 输出参数  : 无
+ 返 回 值  : VOS_UINT32
+ 调用函数  :
+ 被调函数  :
+
+ 修改历史      :
+  1.日    期  : 2014年10月9日
+    作    者  : zhuli
+    修改内容  : 青松产品天际通功能增加
+*****************************************************************************/
+VOS_UINT32 At_SetHvteePara(VOS_UINT8 ucIndex)
+{
+    VOS_UINT32                              ulResult;
+    SI_PIH_HVTEE_SET_STRU                   stHvteeSet;
+
+    /* 参数过多 */
+    if (gucAtParaIndex > 3)
+    {
+        AT_WARN_LOG("At_SetHvteePara: Too Much Parameter.");
+        return AT_ERROR;
+    }
+
+    /* 参数不存在 */
+    if ( (0 == gastAtParaList[0].usParaLen)
+       ||(0 == gastAtParaList[1].usParaLen)
+       ||(0 == gastAtParaList[2].usParaLen))
+    {
+        AT_WARN_LOG("At_SetHvteePara: Parameter is not enough.");
+        return AT_CME_INCORRECT_PARAMETERS;
+    }
+
+    stHvteeSet.bAPNFlag         = gastAtParaList[0].ulParaValue;
+    stHvteeSet.bDHParaFlag      = gastAtParaList[1].ulParaValue;
+    stHvteeSet.bVSIMDataFlag    = gastAtParaList[2].ulParaValue;
+
+    ulResult = SI_PIH_HvteeSet(gastAtClientTab[ucIndex].usClientId,
+                              gastAtClientTab[ucIndex].opId,
+                              &stHvteeSet);
+
+    if (TAF_SUCCESS != ulResult)
+    {
+        AT_WARN_LOG("At_SetHvteePara: SI_PIH_HvSstSet fail.");
+        return AT_CME_PHONE_FAILURE;
+    }
+
+    /* 设置AT模块实体的状态为等待异步返回 */
+    gastAtClientTab[ucIndex].CmdCurrentOpt = AT_CMD_HVSST_SET;
+
+    return AT_WAIT_ASYNC_RETURN;
+}
+
+/*****************************************************************************
+ 函 数 名  : At_TestHvteePara
+ 功能描述  : ^HVTEE测试函数
+ 输入参数  : VOS_UINT8 ucIndex
+ 输出参数  : 无
+ 返 回 值  : VOS_UINT32
+ 调用函数  :
+ 被调函数  :
+
+ 修改历史      :
+  1.日    期  : 2014年10月9日
+    作    者  : zhuli
+    修改内容  : 青松产品天际通功能增加
+*****************************************************************************/
+VOS_UINT32 At_TestHvteePara(VOS_UINT8 ucIndex)
+{
+    gstAtSendData.usBufLen = (VOS_UINT16)At_sprintf(AT_CMD_MAX_LEN,
+                                       (VOS_CHAR *)pgucAtSndCodeAddr,
+                                       (VOS_CHAR *)pgucAtSndCodeAddr,
+                                       "^HVTEE: (0,1),(0,1),(0,1)");
+    return AT_OK;
+}
+
+/*****************************************************************************
+ 函 数 名  : At_QryHvCheckCardPara
+ 功能描述  : ^HVCHECKCARD 查询函数
+ 输入参数  : VOS_UINT8 ucIndex
+ 输出参数  : 无
+ 返 回 值  : VOS_UINT32
+ 调用函数  :
+ 被调函数  :
+
+ 修改历史      :
+  1.日    期  : 2014年10月9日
+    作    者  : zhuli
+    修改内容  : 青松产品天际通功能增加
+*****************************************************************************/
+VOS_UINT32 At_QryHvCheckCardPara(VOS_UINT8 ucIndex)
+{
+    if(AT_SUCCESS == SI_PIH_HvCheckCardQuery(gastAtClientTab[ucIndex].usClientId, gastAtClientTab[ucIndex].opId))
+    {
+        /* 设置当前操作类型 */
+        gastAtClientTab[ucIndex].CmdCurrentOpt = AT_CMD_HVSCONT_READ;
+
+        return AT_WAIT_ASYNC_RETURN;    /* 返回命令处理挂起状态 */
+    }
+
+    return AT_ERROR;
 }
 
 #endif  /*end of (FEATURE_VSIM == FEATURE_ON)*/

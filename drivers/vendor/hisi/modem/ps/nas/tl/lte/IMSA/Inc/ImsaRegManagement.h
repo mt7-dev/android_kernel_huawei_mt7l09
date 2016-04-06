@@ -40,10 +40,13 @@ extern "C" {
 #ifdef PS_ITT_PC_TEST_NAS
 #define IMSA_REG_TIMER_LEN_PROTECT              (8*1000)
 #define IMSA_REG_TIMER_LEN_RETRY                (6*1000)
+#define IMSA_REG_TIMER_LEN_PERIOD_TRY_REG       (5*60*1000)
 #else
 #define IMSA_REG_TIMER_LEN_PROTECT              (30*1000)
 #define IMSA_REG_TIMER_LEN_RETRY                (5*60*1000)
+#define IMSA_REG_TIMER_LEN_PERIOD_TRY_REG       (5*60*1000)
 #endif
+#define IMSA_PRIOD_TRY_REG_MAX_TIMES            (5)
 
 /*****************************************************************************
   3 Massage Declare
@@ -131,7 +134,6 @@ extern VOS_UINT32 IMSA_RegProcUserDeregReqMsg(const VOS_VOID *pRcvMsg);
 
 extern VOS_VOID IMSA_RegProcTimeoutProtect(const VOS_VOID *pTimerMsg);
 extern VOS_VOID IMSA_RegProcTimeoutRetry(const VOS_VOID *pTimerMsg);
-
 extern VOS_UINT32 IMSA_RegSendIntraMsg(VOS_UINT32 ulMsgId, const VOS_UINT8 *pucMsg, VOS_UINT32 ulLen);
 extern VOS_VOID IMSA_RegEntityDeinit(IMSA_REG_ENTITY_STRU *pstRegEntity);
 extern VOS_VOID IMSA_RegPrintEmcRegState( VOS_VOID );
@@ -143,6 +145,19 @@ extern VOS_VOID IMSA_RegSaveRegedPara
     VOS_UINT8                           ucCid,
     TAF_PDP_TYPE_ENUM_UINT8             enPdpType
 );
+
+extern VOS_VOID IMSA_RegProcNwNotifyMsgByEvent
+(
+    IMSA_REG_ENTITY_STRU               *pstEntity,
+    VOS_VOID                           *pData
+);
+
+#if (FEATURE_ON == FEATURE_PTM)
+extern VOS_VOID IMSA_SndRegErrLogInfo
+(
+    IMSA_ERR_LOG_REG_FAIL_STRU  stImsRegRstEvent
+);
+#endif
 /* lihong00150010 lte pclint 717 begin */
 #define IMSA_RegTimerStart(timer, para)   \
 {                               \

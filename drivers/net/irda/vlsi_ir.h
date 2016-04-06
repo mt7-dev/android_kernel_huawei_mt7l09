@@ -442,23 +442,7 @@ calc_width_bits(unsigned baudrate, unsigned widthselect, unsigned clockselect)
 #define PHYCTL_MIR(cs)		BWP_TO_PHYCTL(0,((cs)?9:10),1)
 #define PHYCTL_FIR		BWP_TO_PHYCTL(0,0,15)
 
-/* quite ugly, I know. But implementing these calculations here avoids
- * having magic numbers in the code and allows some playing with pulsewidths
- * without risk to violate the standards.
- * FWIW, here is the table for reference:
- *
- * baudrate	BAUD	min-PLSWID	nom-PLSWID	PREAMB
- *     2400	  47	   0(0)		   12(24)	   0
- *     9600	  11	   0(0)		   12(24)	   0
- *    19200	   5	   1(2)		   12(24)	   0
- *    38400	   2	   3(6)	           12(24)	   0
- *    57600	   1	   5(10)	   12(24)	   0
- *   115200	   0	  11(22)	   12(24)	   0
- *	MIR	   0	    -		    9(10)	   1
- *	FIR	   0        -               0		  15
- *
- * note: x(y) means x-value for 40MHz / y-value for 48MHz primary input clock
- */
+
 
 /* ------------------------------------------ */
 

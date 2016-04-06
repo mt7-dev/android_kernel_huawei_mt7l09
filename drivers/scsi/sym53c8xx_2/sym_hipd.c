@@ -791,11 +791,7 @@ static int sym_prepare_setting(struct Scsi_Host *shost, struct sym_hcb *np, stru
 	if (np->features & FE_NOPM)
 		np->rv_ccntl0	|= (ENPMJ);
 
- 	/*
-	 *  C1010-33 Errata: Part Number:609-039638 (rev. 1) is fixed.
-	 *  In dual channel mode, contention occurs if internal cycles
-	 *  are used. Disable internal cycles.
-	 */
+
 	if (pdev->device == PCI_DEVICE_ID_LSI_53C1010_33 &&
 	    pdev->revision < 0x1)
 		np->rv_ccntl0	|=  DILS;
@@ -3000,7 +2996,11 @@ sym_dequeue_from_squeue(struct sym_hcb *np, int i, int target, int lun, int task
 		if ((target == -1 || cp->target == target) &&
 		    (lun    == -1 || cp->lun    == lun)    &&
 		    (task   == -1 || cp->tag    == task)) {
+#ifdef SYM_OPT_HANDLE_DEVICE_QUEUEING
 			sym_set_cam_status(cp->cmd, DID_SOFT_ERROR);
+#else
+			sym_set_cam_status(cp->cmd, DID_REQUEUE);
+#endif
 			sym_remque(&cp->link_ccbq);
 			sym_insque_tail(&cp->link_ccbq, &np->comp_ccbq);
 		}

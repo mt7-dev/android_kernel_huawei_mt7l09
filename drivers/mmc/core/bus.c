@@ -58,6 +58,14 @@ static struct device_attribute mmc_dev_attrs[] = {
  */
 static int mmc_bus_match(struct device *dev, struct device_driver *drv)
 {
+#ifdef CONFIG_MMC_PASSWORDS
+	struct mmc_card *card = mmc_dev_to_card(dev);
+	
+	if ((card->type == MMC_TYPE_SD) && mmc_card_locked(card)) {
+		dev_dbg(&card->dev, "sd card is locked; binding is deferred\n");
+		return 0;
+	}
+#endif
 	return 1;
 }
 
@@ -84,6 +92,14 @@ mmc_bus_uevent(struct device *dev, struct kobj_uevent_env *env)
 	default:
 		type = NULL;
 	}
+#ifdef CONFIG_MMC_PASSWORDS
+	if (mmc_card_locked(card)) {
+		printk("[SDLOCK] %s MMC_LOCK=LOCKED", __func__);
+		retval = add_uevent_var(env, "MMC_LOCK=LOCKED");
+		if (retval)
+			return retval;
+	}
+#endif
 
 	if (type) {
 		retval = add_uevent_var(env, "MMC_TYPE=%s", type);
@@ -349,13 +365,13 @@ int mmc_add_card(struct mmc_card *card)
 			mmc_card_ddr_mode(card) ? "DDR " : "",
 			type);
 	} else {
-		pr_info("%s: new %s%s%s%s%s card at address %04x\n",
+		pr_info("%s: new %s%s%s%s%s card at address %04x,manfid:0x%02x,date:%d/%d\n",
 			mmc_hostname(card->host),
 			mmc_card_uhs(card) ? "ultra high speed " :
 			(mmc_card_highspeed(card) ? "high speed " : ""),
 			(mmc_card_hs200(card) ? "HS200 " : ""),
 			mmc_card_ddr_mode(card) ? "DDR " : "",
-			uhs_bus_speed_mode, type, card->rca);
+			uhs_bus_speed_mode, type, card->rca,card->cid.manfid,card->cid.year,card->cid.month);
 	}
 
 #ifdef CONFIG_DEBUG_FS
@@ -366,6 +382,15 @@ int mmc_add_card(struct mmc_card *card)
 	ret = device_add(&card->dev);
 	if (ret)
 		return ret;
+#ifdef CONFIG_MMC_PASSWORDS 
+	if (card->host->bus_ops->sysfs_add) { 
+		ret = card->host->bus_ops->sysfs_add(card->host, card);
+		if (ret) { 
+			device_del(&card->dev);
+			return ret;
+		 }
+	}
+#endif
 
 	mmc_card_set_present(card);
 
@@ -390,6 +415,10 @@ void mmc_remove_card(struct mmc_card *card)
 			pr_info("%s: card %04x removed\n",
 				mmc_hostname(card->host), card->rca);
 		}
+#ifdef CONFIG_MMC_PASSWORDS		
+		if (card->host->bus_ops->sysfs_remove)
+			card->host->bus_ops->sysfs_remove(card->host, card);
+#endif
 		device_del(&card->dev);
 	}
 

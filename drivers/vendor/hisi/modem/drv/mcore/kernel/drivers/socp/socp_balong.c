@@ -51,7 +51,7 @@ __ao_func void socp_memcpy(u32 *_dst, const u32 *_src, u32 len)
 *
 * 返 回 值  :  无
 *****************************************************************************/
-void socp_get_idle_buffer(SOCP_RING_BUF_S *pRingBuffer, SOCP_BUFFER_RW_S *pRWBuffer)
+void socp_get_idle_buffer(SOCP_RING_BUF_S *pRingBuffer, SOCP_BUFFER_RW_STRU *pRWBuffer)
 {
     if (pRingBuffer->u32Write < pRingBuffer->u32Read)
     {
@@ -311,7 +311,11 @@ void socp_m3_init(void)
         /*配置SOCP 参数*/
         SOCP_REG_SETBITS(SOCP_REG_ENCSRC_BUFCFG1((i + SOCP_ENCSRC_LPM3_BASE)), 0, 1, 0);
         SOCP_REG_SETBITS(SOCP_REG_ENCSRC_BUFCFG1((i + SOCP_ENCSRC_LPM3_BASE)), 1, 2, 1);
+#if (FEATURE_OFF == FEATURE_MERGE_OM_CHAN)
         SOCP_REG_SETBITS(SOCP_REG_ENCSRC_BUFCFG1((i + SOCP_ENCSRC_LPM3_BASE)), 4, 4, SOCP_CODER_DST_LOM_IND);
+#else
+        SOCP_REG_SETBITS(SOCP_REG_ENCSRC_BUFCFG1((i + SOCP_ENCSRC_LPM3_BASE)), 4, 4, SOCP_CODER_DST_OM_IND);
+#endif
         if(0==i)
 		{
 			SOCP_REG_SETBITS(SOCP_REG_ENCSRC_BUFCFG1((i + SOCP_ENCSRC_LPM3_BASE)), 8, 2, 1);
@@ -354,7 +358,7 @@ void socp_m3_init(void)
 * 返 回 值  : 获取成功与否的标识码
 *****************************************************************************/
 /*lint -save -e18 -e516 */
-s32 bsp_socp_get_write_buff(u32 u32SrcChanID, SOCP_BUFFER_RW_S *pBuff)
+s32 bsp_socp_get_write_buff(u32 u32SrcChanID, SOCP_BUFFER_RW_STRU *pBuff)
 {
     u32 u32ChanID;
     u32 u32ChanType;
@@ -413,7 +417,7 @@ s32 bsp_socp_write_done(u32 u32SrcChanID, u32 u32WrtSize)
     u32 u32ChanType;
     u32 u32WrtPad;
 
-    SOCP_BUFFER_RW_S RwBuff;
+    SOCP_BUFFER_RW_STRU RwBuff;
 	SOCP_RING_BUF_S  pTempBuff;
 
     /* 判断是否已经初始化 */

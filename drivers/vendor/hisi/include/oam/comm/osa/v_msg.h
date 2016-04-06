@@ -130,6 +130,7 @@ typedef VOS_UINT32 (*PVOSSENDMSGPROC)(VOS_PID Pid, VOS_VOID **ppMsg,VOS_UINT32 u
 typedef struct
 {
     VOS_PID         ulEndPID;
+    VOS_UINT32      ulRsv;
     PVOSSENDMSGPROC pfSendMsg;
     PVOSSENDMSGPROC pfSendUrgentMsg;
 }VOS_SENDMSG_FUNCLIST_ST;

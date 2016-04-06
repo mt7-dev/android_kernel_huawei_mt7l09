@@ -33,10 +33,10 @@ extern "C"
  *				:   else  			- failure
  * Desciption	:	NULL
  */
-int bsp_nand_read(const char *partition_name, u32 partition_offset, void* ptr_ram_addr, u32 length, u32 *skip_len)
+int bsp_nand_read(const char *partition_name, loff_t partition_offset, void* ptr_ram_addr, size_t length, u32 *skip_len)
 {
 	int ret = NANDC_ERROR;
-	unsigned int retlen = 0;
+    size_t retlen = 0;
     struct mtd_info *mtd = NULL;
 
     /* check param */
@@ -57,7 +57,7 @@ int bsp_nand_read(const char *partition_name, u32 partition_offset, void* ptr_ra
 
     if(partition_offset >= mtd->size)
     {
-        printk(KERN_ERR"ERROR: invalid partition offset 0x%x , 0x%llx ,%s!\n", partition_offset,mtd->size,mtd->name);
+        printk(KERN_ERR"ERROR: invalid partition offset 0x%llx , 0x%llx ,%s!\n", partition_offset,mtd->size,mtd->name);
         goto erro;
     }
 
@@ -96,7 +96,7 @@ erro:
  *				:   else  			- failure
  * Desciption	:	NULL
  */
-int bsp_nand_erase(const char *partition_name, u32 partition_offset)
+int bsp_nand_erase(const char *partition_name, loff_t partition_offset)
 {
     /* eMMC doesn't need erasing  */
     return 0;
@@ -112,10 +112,10 @@ int bsp_nand_erase(const char *partition_name, u32 partition_offset)
  *				:   else  			- failure
  * Description	: 	write flash
  */
-s32 bsp_nand_write(const char *partition_name, u32 partition_offset, void* ptr_ram_addr, u32 length)
+s32 bsp_nand_write(const char *partition_name, loff_t partition_offset, void* ptr_ram_addr, size_t length)
 {
 	int ret = NANDC_ERROR;
-	unsigned int retlen = 0;
+	size_t retlen = 0;
     struct mtd_info *mtd = NULL;
 
     /* check param */
@@ -136,7 +136,7 @@ s32 bsp_nand_write(const char *partition_name, u32 partition_offset, void* ptr_r
 
     if(partition_offset >= mtd->size)
     {
-        printk(KERN_ERR"ERROR: invalid partition offset 0x%x!\n", partition_offset);
+        printk(KERN_ERR"ERROR: invalid partition offset 0x%llx!\n", partition_offset);
         goto erro;
     }
 
@@ -177,7 +177,7 @@ erro:
  *              :   -1              - error
  * Description	: 	check whether a block is bad
  */
-int bsp_nand_isbad(const char *partition_name, u32 partition_offset)
+int bsp_nand_isbad(const char *partition_name, loff_t partition_offset)
 {
     /* eMMC doesn't need check bad */
 	return 0;
@@ -192,7 +192,7 @@ int bsp_nand_isbad(const char *partition_name, u32 partition_offset)
  *				:   else  			- failure
  * Description	: 	read nv_flag of a block
  */
-unsigned int bsp_nand_read_flag_nv(const char *partition_name, unsigned int partition_offset, unsigned char *flag)
+unsigned int bsp_nand_read_flag_nv(const char *partition_name, loff_t partition_offset, unsigned char *flag)
 {
     if (!flag)
     {

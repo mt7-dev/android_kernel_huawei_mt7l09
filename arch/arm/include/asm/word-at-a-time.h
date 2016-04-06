@@ -39,7 +39,6 @@ static inline unsigned long find_zero(unsigned long mask)
 	/* We have clz available. */
 	ret = fls(mask) >> 3;
 #else
-	/* (000000 0000ff 00ffff ffffff) -> ( 1 1 2 3 ) */
 	ret = (0x0ff0001 + mask) >> 23;
 	/* Fix the 1 for 00 case */
 	ret &= mask;

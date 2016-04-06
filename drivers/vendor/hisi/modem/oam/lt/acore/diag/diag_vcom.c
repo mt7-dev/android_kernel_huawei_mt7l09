@@ -9,18 +9,19 @@ extern "C" {
 
 #include "diag_port.h"
 #include "diag_common.h"
+#include "dms.h"
 
 /*lint -save -e767 原因:Log打印*/
 #define    THIS_FILE_ID        MSP_FILE_ID_DIAG_VCOM_C
 /*lint -restore*/
 
 VOS_VOID diag_ShowVcomStatus(VOS_VOID);
-VOS_VOID diag_VcomCtrlEvtCB(APP_VCOM_EVT_UINT32 event);
-VOS_VOID diag_VcomAppEvtCB(APP_VCOM_EVT_UINT32 event);
-VOS_UINT32 diag_VcomRead(VOS_UINT8 ucDevIndex, VOS_UINT8 *pData, VOS_UINT32 uslength);
+VOS_VOID diag_VcomCtrlEvtCB(VOS_UINT32 ulChan, VOS_UINT32 ulEvent);
+VOS_VOID diag_VcomAppEvtCB(VOS_UINT32 ulChan, VOS_UINT32 ulEvent);
+VOS_UINT32 diag_VcomRead(VOS_UINT32 ulChan, VOS_UINT8 *pData, VOS_UINT32 uslength);
 
 /* CTRL、APP端口状态,0:ctrl,1:app */
-static APP_VCOM_EVT_UINT32 g_diagVcomState[2];
+static VOS_UINT32 g_diagVcomState[2];
 
 static VOS_VOID diag_VcomInfo_Init(VOS_VOID)
 {
@@ -40,13 +41,13 @@ static VOS_VOID diag_VcomInfo_Init(VOS_VOID)
 	g_diagPort[EN_DIAG_VCOM_BEABER_DIAG_APP].ulRecivBufLen      = 0;
     g_diagPort[EN_DIAG_VCOM_BEABER_DIAG_APP].slPortHandle       = UDI_INVALID_HANDLE;
 
-    g_diagVcomState[0] = APP_VCOM_EVT_RELEASE;  /* CTRL */
-    g_diagVcomState[1] = APP_VCOM_EVT_RELEASE;  /* APP */
+    g_diagVcomState[0] = DMS_CHAN_EVT_CLOSE;  /* CTRL */
+    g_diagVcomState[1] = DMS_CHAN_EVT_CLOSE;  /* APP */
 }
 
 /*lint -save -e958*/
 VOS_UINT32 diag_VcomWriteSync(DIAG_PORT_PHY_BEAR_ENUM enPort,
-                                 APP_VCOM_DEV_INDEX_UINT8 enDevIndex,
+                                 VOS_UINT32 ulChan,
                                  VOS_UINT8 *pucDataBuf,VOS_UINT32 ulLen)
 {
     VOS_UINT32 ulRet = ERR_MSP_SUCCESS;
@@ -55,7 +56,7 @@ VOS_UINT32 diag_VcomWriteSync(DIAG_PORT_PHY_BEAR_ENUM enPort,
 
     if(DIAG_PORT_GET_STATE(enPort) == ACM_EVT_DEV_READY)
     {
-        ulRet = APP_VCOM_Send(enDevIndex,pucDataBuf,ulLen);
+        ulRet = DMS_WriteOmData(ulChan,pucDataBuf,ulLen);
         SCM_RlsDestBuf(DIAG_PORT_GET_CODE_DES(enPort),ulLen);
     }
     else
@@ -71,25 +72,25 @@ VOS_UINT32 diag_VcomWriteSync(DIAG_PORT_PHY_BEAR_ENUM enPort,
 VOS_VOID diag_ShowVcomStatus(VOS_VOID)
 {
     diag_printf("**********VCOM STATUS**********\n");
-    diag_printf("VCOM CTRL: %s\n", (g_diagVcomState[0] == APP_VCOM_EVT_RELEASE) ? "CLOSED" : "OPEN");
-    diag_printf("VCOM APP : %s\n", (g_diagVcomState[1] == APP_VCOM_EVT_RELEASE) ? "CLOSED" : "OPEN");
+    diag_printf("VCOM CTRL: %s\n", (g_diagVcomState[0] == DMS_CHAN_EVT_CLOSE) ? "CLOSED" : "OPEN");
+    diag_printf("VCOM APP : %s\n", (g_diagVcomState[1] == DMS_CHAN_EVT_CLOSE) ? "CLOSED" : "OPEN");
 }
 
-VOS_VOID diag_VcomCtrlEvtCB(APP_VCOM_EVT_UINT32 event)
+VOS_VOID diag_VcomCtrlEvtCB(VOS_UINT32 ulChan, VOS_UINT32 ulEvent)
 {
     DIAG_PORT_CONNECT_STA_PFN pfnConn = DIAG_PORT_GET_CONN_CALLBACK();
 
-    g_diagVcomState[0] = event;
+    g_diagVcomState[0] = ulEvent;
 
-    if(APP_VCOM_EVT_OPEN == event)
+    if(DMS_CHAN_EVT_OPEN == ulEvent)
     {
-		DIAG_PORT_CHAN_STATE_SWITCH(EN_DIAG_VCOM_BEABER_DIAG_CTRL, ACM_EVT_DEV_READY);
+        DIAG_PORT_CHAN_STATE_SWITCH(EN_DIAG_VCOM_BEABER_DIAG_CTRL, ACM_EVT_DEV_READY);
         return;
     }
     else
     {
-		DIAG_PORT_CHAN_STATE_SWITCH(EN_DIAG_VCOM_BEABER_DIAG_CTRL, ACM_EVT_DEV_SUSPEND);
-        if((g_diagVcomState[0] != APP_VCOM_EVT_RELEASE) || (g_diagVcomState[1] != APP_VCOM_EVT_RELEASE))
+        DIAG_PORT_CHAN_STATE_SWITCH(EN_DIAG_VCOM_BEABER_DIAG_CTRL, ACM_EVT_DEV_SUSPEND);
+        if((g_diagVcomState[0] != DMS_CHAN_EVT_CLOSE) || (g_diagVcomState[1] != DMS_CHAN_EVT_CLOSE))
         {
             return;
         }
@@ -101,21 +102,21 @@ VOS_VOID diag_VcomCtrlEvtCB(APP_VCOM_EVT_UINT32 event)
     }
 }
 
-VOS_VOID diag_VcomAppEvtCB(APP_VCOM_EVT_UINT32 event)
+VOS_VOID diag_VcomAppEvtCB(VOS_UINT32 ulChan, VOS_UINT32 ulEvent)
 {
     DIAG_PORT_CONNECT_STA_PFN pfnConn = DIAG_PORT_GET_CONN_CALLBACK();
 
-    g_diagVcomState[1] = event;
+    g_diagVcomState[1] = ulEvent;
 
-    if(APP_VCOM_EVT_OPEN == event)
+    if(DMS_CHAN_EVT_OPEN == ulEvent)
     {
-		DIAG_PORT_CHAN_STATE_SWITCH(EN_DIAG_VCOM_BEABER_DIAG_APP, ACM_EVT_DEV_READY);
+        DIAG_PORT_CHAN_STATE_SWITCH(EN_DIAG_VCOM_BEABER_DIAG_APP, ACM_EVT_DEV_READY);
         return;
     }
     else
     {
-		DIAG_PORT_CHAN_STATE_SWITCH(EN_DIAG_VCOM_BEABER_DIAG_APP, ACM_EVT_DEV_SUSPEND);
-        if((g_diagVcomState[0] != APP_VCOM_EVT_RELEASE) || (g_diagVcomState[1] != APP_VCOM_EVT_RELEASE))
+        DIAG_PORT_CHAN_STATE_SWITCH(EN_DIAG_VCOM_BEABER_DIAG_APP, ACM_EVT_DEV_SUSPEND);
+        if((g_diagVcomState[0] != DMS_CHAN_EVT_CLOSE) || (g_diagVcomState[1] != DMS_CHAN_EVT_CLOSE))
         {
             return;
         }
@@ -127,16 +128,16 @@ VOS_VOID diag_VcomAppEvtCB(APP_VCOM_EVT_UINT32 event)
     }
 }
 /*lint -save -e958*/
-VOS_UINT32 diag_VcomRead(VOS_UINT8 ucDevIndex, VOS_UINT8 *pData, VOS_UINT32 uslength)
+VOS_UINT32 diag_VcomRead(VOS_UINT32 ulChan, VOS_UINT8 *pData, VOS_UINT32 uslength)
 {
     VOS_UINT32 ulRet = ERR_MSP_SUCCESS;
 #if(FEATURE_SOCP_ON_DEMAND == FEATURE_ON)
     DIAG_PORT_DATA_BUF_STRU * dataNode;
 #endif
     /*lint -restore*/
-    if((ucDevIndex != DIAG_APPVCOM_CHAN_CTRL)||(NULL == pData)||(0 == uslength))
+    if((ulChan != DIAG_APPVCOM_CHAN_CTRL)||(NULL == pData)||(0 == uslength))
     {
-        diag_printf("[%s]:INVALID PARAMETER ! ucDevIndex :0x%x,uslength :0x%x\n",__FUNCTION__,ucDevIndex,uslength);
+        diag_printf("[%s]:INVALID PARAMETER ! ulChan :0x%x,uslength :0x%x\n",__FUNCTION__,ulChan,uslength);
         DIAG_DEBUG_SDM_FUN(EN_DIAG_DEBUG_APPVCOM_READ_ERR,0, uslength, 1);
         return ERR_MSP_INVALID_PARAMETER;
     }
@@ -190,11 +191,14 @@ VOS_UINT32 diag_VcomInit(VOS_VOID)
     diag_VcomInfo_Init();
 #if (FEATURE_ON == FEATURE_VCOM_EXT)
     /*注册APP VCOM读回调*/
-    APP_VCOM_RegDataCallback(DIAG_APPVCOM_CHAN_CTRL, (SEND_UL_AT_FUNC)diag_VcomRead);
+    DMS_RegOmChanDataReadCB(DIAG_APPVCOM_CHAN_CTRL, diag_VcomRead);
+
     /*CTRL口事件回调*/
-    APP_VCOM_RegEvtCallback(DIAG_APPVCOM_CHAN_CTRL, (EVENT_FUNC)diag_VcomCtrlEvtCB);
+    DMS_RegOmChanEventCB(DIAG_APPVCOM_CHAN_CTRL, diag_VcomCtrlEvtCB);
+
     /*APP口事件回调*/
-    APP_VCOM_RegEvtCallback(DIAG_APPVCOM_CHAN_APP, (EVENT_FUNC)diag_VcomAppEvtCB);
+    DMS_RegOmChanEventCB(DIAG_APPVCOM_CHAN_APP, diag_VcomAppEvtCB);
+
     DIAG_PORT_INIT_STATE_SWITCH(EN_DIAG_VCOM_BEABER_DIAG_CTRL,EN_PORT_INIT_SUCC);
     DIAG_PORT_INIT_STATE_SWITCH(EN_DIAG_VCOM_BEABER_DIAG_APP,EN_PORT_INIT_SUCC);
 #endif

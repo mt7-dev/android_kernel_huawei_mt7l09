@@ -16,35 +16,35 @@
 const BSP_AXI_SECT_INFO g_stAxiSectInfo[BSP_AXI_SECT_TYPE_BUTTOM] =
 {
     {BSP_AXI_SECT_TYPE_TEMPERATURE,       SRAM_TEMP_PROTECT_ADDR,            SRAM_TEMP_PROTECT_ADDR,         SRAM_TEMP_PROTECT_SIZE},
-    {BSP_AXI_SECT_TYPE_DICC,              (u32)MEMORY_AXI_DICC_ADDR,              (u32)MEMORY_AXI_DICC_ADDR,              8},
+    {BSP_AXI_SECT_TYPE_DICC,              MEMORY_AXI_DICC_ADDR,              MEMORY_AXI_DICC_ADDR,              8},
     {BSP_AXI_SECT_TYPE_HIFI,              SHM_MEM_HIFI_ADDR,                     SHM_MEM_HIFI_ADDR,        SHM_MEM_HIFI_SIZE},
-    {BSP_AXI_SECT_TYPE_TTF_BBP,           SRAM_GU_MAC_HEADER_ADDR,           SRAM_V2P(SRAM_GU_MAC_HEADER_ADDR),           SRAM_GU_MAC_HEADER_SIZE},
+    {BSP_AXI_SECT_TYPE_TTF_BBP,           SRAM_GU_MAC_HEADER_ADDR,           (void*)SRAM_V2P(SRAM_GU_MAC_HEADER_ADDR),           SRAM_GU_MAC_HEADER_SIZE},
 
 };
 
 /* 全局的结构体，记录DDR内存段分配信息 */
 const BSP_DDR_SECT_INFO g_stDdrSectInfo[BSP_DDR_SECT_TYPE_BUTTOM] = {
-    {BSP_DDR_SECT_TYPE_TTF,       BSP_DDR_SECT_ATTR_NONCACHEABLE, ECS_TTF_BASE_ADDR,                ECS_TTF_BASE_ADDR,              ECS_TTF_SIZE},
-    {BSP_DDR_SECT_TYPE_ARMDSP,    BSP_DDR_SECT_ATTR_NONCACHEABLE, ECS_ARM_DSP_BUFFER_BASE_ADDR,     ECS_ARM_DSP_BUFFER_BASE_ADDR,   ECS_ARM_DSP_BUFFER_SIZE},
-    {BSP_DDR_SECT_TYPE_UPA,       BSP_DDR_SECT_ATTR_NONCACHEABLE, ECS_UPA_BASE_ADDR,                ECS_UPA_BASE_ADDR,              ECS_UPA_SIZE},
-    {BSP_DDR_SECT_TYPE_CQI,       BSP_DDR_SECT_ATTR_NONCACHEABLE, ECS_CQI_BASE_ADDR,                ECS_CQI_BASE_ADDR,              ECS_CQI_SIZE},
-    {BSP_DDR_SECT_TYPE_APT,       BSP_DDR_SECT_ATTR_NONCACHEABLE, ECS_APT_BASE_ADDR,                ECS_APT_BASE_ADDR,              ECS_APT_SIZE},
-    {BSP_DDR_SECT_TYPE_ET,        BSP_DDR_SECT_ATTR_NONCACHEABLE, ECS_ET_BASE_ADDR,                 ECS_ET_BASE_ADDR,               ECS_ET_SIZE},
-    {BSP_DDR_SECT_TYPE_BBPMASTER, BSP_DDR_SECT_ATTR_NONCACHEABLE, ECS_BBP_MASTER_BASE_ADDR,         ECS_BBP_MASTER_BASE_ADDR,       ECS_BBP_MASTER_SIZE},
+    {BSP_DDR_SECT_TYPE_TTF,       BSP_DDR_SECT_ATTR_NONCACHEABLE, (void*)ECS_TTF_BASE_ADDR,                (void*)ECS_TTF_BASE_ADDR,              ECS_TTF_SIZE},
+    {BSP_DDR_SECT_TYPE_ARMDSP,    BSP_DDR_SECT_ATTR_NONCACHEABLE, (void*)ECS_ARM_DSP_BUFFER_BASE_ADDR,     (void*)ECS_ARM_DSP_BUFFER_BASE_ADDR,   ECS_ARM_DSP_BUFFER_SIZE},
+    {BSP_DDR_SECT_TYPE_UPA,       BSP_DDR_SECT_ATTR_NONCACHEABLE,(void*) ECS_UPA_BASE_ADDR,                (void*)ECS_UPA_BASE_ADDR,              ECS_UPA_SIZE},
+    {BSP_DDR_SECT_TYPE_CQI,       BSP_DDR_SECT_ATTR_NONCACHEABLE, (void*)ECS_CQI_BASE_ADDR,                (void*)ECS_CQI_BASE_ADDR,              ECS_CQI_SIZE},
+    {BSP_DDR_SECT_TYPE_APT,       BSP_DDR_SECT_ATTR_NONCACHEABLE, (void*)ECS_APT_BASE_ADDR,                (void*)ECS_APT_BASE_ADDR,              ECS_APT_SIZE},
+    {BSP_DDR_SECT_TYPE_ET,        BSP_DDR_SECT_ATTR_NONCACHEABLE, (void*)ECS_ET_BASE_ADDR,                 (void*)ECS_ET_BASE_ADDR,               ECS_ET_SIZE},
+    {BSP_DDR_SECT_TYPE_BBPMASTER, BSP_DDR_SECT_ATTR_NONCACHEABLE, (void*)ECS_BBP_MASTER_BASE_ADDR,         (void*)ECS_BBP_MASTER_BASE_ADDR,       ECS_BBP_MASTER_SIZE},
 
     /* GU NV/DICC内存上层要求C/A核虚地址必须一致，by 陈迎国 */
-    {BSP_DDR_SECT_TYPE_NV,        BSP_DDR_SECT_ATTR_NONCACHEABLE, ECS_NV_BASE_ADDR_VIRT,            ECS_NV_BASE_ADDR,               ECS_NV_SIZE},
-    {BSP_DDR_SECT_TYPE_DICC,      BSP_DDR_SECT_ATTR_NONCACHEABLE, ECS_TTF_DICC_ADDR_VIRT,           ECS_TTF_DICC_ADDR,              ECS_TTF_DICC_SIZE},
+    {BSP_DDR_SECT_TYPE_NV,        BSP_DDR_SECT_ATTR_NONCACHEABLE, (void*)ECS_NV_BASE_ADDR_VIRT,            (void*)ECS_NV_BASE_ADDR,               ECS_NV_SIZE},
+    {BSP_DDR_SECT_TYPE_DICC,      BSP_DDR_SECT_ATTR_NONCACHEABLE, (void*)ECS_TTF_DICC_ADDR_VIRT,           (void*)ECS_TTF_DICC_ADDR,              ECS_TTF_DICC_SIZE},
 
-    {BSP_DDR_SECT_TYPE_WAN,       BSP_DDR_SECT_ATTR_NONCACHEABLE, SHM_MEM_WAN_ADDR,                 SHM_MEM_WAN_ADDR,               SHM_MEM_WAN_SIZE},
-    {BSP_DDR_SECT_TYPE_SHARE_MEM, BSP_DDR_SECT_ATTR_NONCACHEABLE, DDR_SHARED_MEM_ADDR,              DDR_SHARED_MEM_ADDR,            DDR_SHARED_MEM_SIZE},
-    {BSP_DDR_SECT_TYPE_EXCP,      BSP_DDR_SECT_ATTR_NONCACHEABLE, DDR_MNTN_ADDR,                    DDR_MNTN_ADDR,                  DDR_MNTN_SIZE},
-    {BSP_DDR_SECT_TYPE_HIFI,      BSP_DDR_SECT_ATTR_NONCACHEABLE, DDR_HIFI_ADDR,                    DDR_HIFI_ADDR,                  DDR_HIFI_SIZE},
-    {BSP_DDR_SECT_TYPE_ZSP_UP,    BSP_DDR_SECT_ATTR_NONCACHEABLE, ZSP_UP_ADDR,                      ZSP_UP_ADDR,                    ZSP_UP_SIZE},
+    {BSP_DDR_SECT_TYPE_WAN,       BSP_DDR_SECT_ATTR_NONCACHEABLE, (void*)SHM_MEM_WAN_ADDR,                 (void*)SHM_MEM_WAN_ADDR,               SHM_MEM_WAN_SIZE},
+    {BSP_DDR_SECT_TYPE_SHARE_MEM, BSP_DDR_SECT_ATTR_NONCACHEABLE, (void*)DDR_SHARED_MEM_ADDR,           (void*) DDR_SHARED_MEM_ADDR,            DDR_SHARED_MEM_SIZE},
+    {BSP_DDR_SECT_TYPE_EXCP,      BSP_DDR_SECT_ATTR_NONCACHEABLE, (void*)DDR_MNTN_ADDR,                    (void*)DDR_MNTN_ADDR,                  DDR_MNTN_SIZE},
+    {BSP_DDR_SECT_TYPE_HIFI,      BSP_DDR_SECT_ATTR_NONCACHEABLE, (void*)DDR_HIFI_ADDR,                    (void*)DDR_HIFI_ADDR,                  DDR_HIFI_SIZE},
+    {BSP_DDR_SECT_TYPE_ZSP_UP,    BSP_DDR_SECT_ATTR_NONCACHEABLE, (void*)ZSP_UP_ADDR,                      (void*)ZSP_UP_ADDR,                    ZSP_UP_SIZE},
 
     /* GU BBPHAC内存上层要求C/A核虚地址必须一致，by 陈迎国 */
-    {BSP_DDR_SECT_TYPE_HARQ,      BSP_DDR_SECT_ATTR_NONCACHEABLE, ECS_BBPHAC_BASE_ADDR_VIRT,        ECS_BBPHAC_BASE_ADDR,         ECS_BBPHAC_SIZE},
-    {BSP_DDR_SECT_TYPE_BBPSAMPLE, BSP_DDR_SECT_ATTR_NONCACHEABLE, 0,   0,0},
+    {BSP_DDR_SECT_TYPE_HARQ,      BSP_DDR_SECT_ATTR_NONCACHEABLE, (void*)ECS_BBPHAC_BASE_ADDR_VIRT,        (void*)ECS_BBPHAC_BASE_ADDR,         ECS_BBPHAC_SIZE},
+    {BSP_DDR_SECT_TYPE_BBPSAMPLE, BSP_DDR_SECT_ATTR_NONCACHEABLE, (void*)0,   (void*)0,0},
 };
 
 BSP_VOID BSP_DDR_ShowSectInfo(BSP_VOID);
@@ -108,8 +108,8 @@ BSP_VOID BSP_DDR_ShowSectInfo(BSP_VOID)
     {
         printk("0x%-8.8x 0x%-8.8x 0x%-8.8x 0x%-8.8x 0x%-8.8x\n\n", \
           g_stDdrSectInfo[enSectTypeIndex].enSectType, \
-          g_stDdrSectInfo[enSectTypeIndex].ulSectPhysAddr, \
-          g_stDdrSectInfo[enSectTypeIndex].ulSectVirtAddr, \
+          g_stDdrSectInfo[enSectTypeIndex].pSectPhysAddr, \
+          g_stDdrSectInfo[enSectTypeIndex].pSectVirtAddr, \
           g_stDdrSectInfo[enSectTypeIndex].ulSectSize, \
           g_stDdrSectInfo[enSectTypeIndex].enSectAttr);
     }
@@ -123,24 +123,24 @@ BSP_VOID BSP_DDR_ShowSectInfo(BSP_VOID)
  输出参数  : 无
  返回值    ：实地址
 *****************************************************************************/
-    unsigned int DRV_DDR_VIRT_TO_PHY(unsigned int ulVAddr)
+    void* DRV_DDR_VIRT_TO_PHY(void* ulVAddr)
     {
 
-        if((ulVAddr >= DDR_SHARED_MEM_VIRT_ADDR)
-            && (ulVAddr < SHM_MEM_TOP_ADDR))
+        if(((u32)ulVAddr >= (u32)DDR_SHARED_MEM_VIRT_ADDR)
+            && ((u32)ulVAddr < (u32)SHM_MEM_TOP_ADDR))
         {
-            return SHD_DDR_V2P(ulVAddr);
+            return (void*)SHD_DDR_V2P(ulVAddr);
         }
 		/* coverity[unsigned_compare] */
-        if((ulVAddr >= DDR_GU_ADDR_VIRT)/*lint !e685 !e568 */
-            && (ulVAddr <= DDR_GU_ADDR_VIRT + DDR_GU_SIZE))
+        if(((u32)ulVAddr >= (u32)DDR_GU_ADDR_VIRT)/*lint !e685 !e568 */
+            && ((u32)ulVAddr <= (u32)DDR_GU_ADDR_VIRT + DDR_GU_SIZE))
         {
-            return (ulVAddr - DDR_GU_ADDR_VIRT + DDR_GU_ADDR);
+            return (void*)((u32)ulVAddr - (u32)DDR_GU_ADDR_VIRT + DDR_GU_ADDR);
         }
 
         printk("DRV_DDR_VIRT_TO_PHY: ulVAddr(0x%x) is invalid!\n", ulVAddr);
 
-        return 0;
+        return NULL;
     }
 
 
@@ -151,22 +151,22 @@ BSP_VOID BSP_DDR_ShowSectInfo(BSP_VOID)
  输出参数  : 无
  返回值    ：虚地址
 *****************************************************************************/
-    unsigned int DRV_DDR_PHY_TO_VIRT(unsigned int ulPAddr)
+void* DRV_DDR_PHY_TO_VIRT(void* ulPAddr)
     {
-        if((ulPAddr >= DDR_SHARED_MEM_ADDR)
-            && (ulPAddr < DDR_SHARED_MEM_ADDR + DDR_SHARED_MEM_SIZE))
+        if(((u32)ulPAddr >= (u32)DDR_SHARED_MEM_ADDR)
+            && ((u32)ulPAddr < (u32)DDR_SHARED_MEM_ADDR + DDR_SHARED_MEM_SIZE))
         {
-            return SHD_DDR_P2V(ulPAddr);
+            return (void *)SHD_DDR_P2V(ulPAddr);
         }
 
-        if((ulPAddr >= DDR_GU_ADDR)
-            && (ulPAddr < DDR_GU_ADDR + DDR_GU_SIZE))
+        if(((u32)ulPAddr >= (u32)DDR_GU_ADDR)
+            && ((u32)ulPAddr < (u32)DDR_GU_ADDR + DDR_GU_SIZE))
         {
-            return (ulPAddr - DDR_GU_ADDR + DDR_GU_ADDR_VIRT);
+            return (void*)(ulPAddr - (u32)DDR_GU_ADDR + (u32)DDR_GU_ADDR_VIRT);
         }
 
         printk("DRV_DDR_PHY_TO_VIRT: ulVAddr(0x%x) is invalid!\n",ulPAddr);
-        return 0;
+        return (void*)0;
     }
 
 /*****************************************************************************
@@ -176,9 +176,9 @@ BSP_VOID BSP_DDR_ShowSectInfo(BSP_VOID)
  输出参数  : 无
  返回值    ：实地址
 *****************************************************************************/
-unsigned int TTF_VIRT_TO_PHY(unsigned int ulVAddr)
+void* TTF_VIRT_TO_PHY(void* ulVAddr)
 {
-    return (ulVAddr - ECS_TTF_BASE_ADDR_VIRT + ECS_TTF_BASE_ADDR);
+    return (void*)((u32)ulVAddr - (u32)ECS_TTF_BASE_ADDR_VIRT + (u32)ECS_TTF_BASE_ADDR);
 }
 
 /*****************************************************************************
@@ -188,9 +188,9 @@ unsigned int TTF_VIRT_TO_PHY(unsigned int ulVAddr)
  输出参数  : 无
  返回值    ：虚地址
 *****************************************************************************/
-unsigned int TTF_PHY_TO_VIRT(unsigned int ulPAddr)
+void* TTF_PHY_TO_VIRT(void* ulPAddr)
 {
-    return (ulPAddr - ECS_TTF_BASE_ADDR + ECS_TTF_BASE_ADDR_VIRT);
+    return (void *)((u32)ulPAddr - (u32)ECS_TTF_BASE_ADDR + (u32)ECS_TTF_BASE_ADDR_VIRT);
 }
 
 /*****************************************************************************
@@ -200,9 +200,9 @@ unsigned int TTF_PHY_TO_VIRT(unsigned int ulPAddr)
  输出参数  : 无
  返回值    ：虚地址
 *****************************************************************************/
-unsigned int DRV_AXI_VIRT_TO_PHY(unsigned int ulVAddr)
+void* DRV_AXI_VIRT_TO_PHY(void* ulVAddr)
 {
-    return (ulVAddr - HI_SRAM_MEM_ADDR_VIRT + HI_SRAM_MEM_ADDR);
+    return (void*)((u32)ulVAddr - (u32)HI_SRAM_MEM_ADDR_VIRT + (u32)HI_SRAM_MEM_ADDR);
 }
 
 /*****************************************************************************
@@ -212,9 +212,9 @@ unsigned int DRV_AXI_VIRT_TO_PHY(unsigned int ulVAddr)
  输出参数  : 无
  返回值    ：虚地址
 *****************************************************************************/
-unsigned int DRV_AXI_PHY_TO_VIRT(unsigned int ulPAddr)
+void* DRV_AXI_PHY_TO_VIRT(void* ulPAddr)
 {
-    return (ulPAddr - HI_SRAM_MEM_ADDR + HI_SRAM_MEM_ADDR_VIRT);
+    return (void *)((u32)ulPAddr - (u32)HI_SRAM_MEM_ADDR + (u32)HI_SRAM_MEM_ADDR_VIRT);
 }
 
 /*****************************************************************************
@@ -254,7 +254,7 @@ void show_sram_status(void)
 {
 	/*请依照先后顺序增加打印输出项*/
 	int total_size = SRAM_TOP_RESERVE_SIZE + SRAM_MCU_RESERVE_SIZE + SRAM_ICC_SIZE + SRAM_RTT_SLEEP_FLAG_SIZE +
-                     SRAM_GU_MAC_HEADER_SIZE + SRAM_DYNAMIC_SEC_ADDR;/*lint !e569 */
+                     SRAM_GU_MAC_HEADER_SIZE + (u32)SRAM_DYNAMIC_SEC_ADDR;/*lint !e569 */
 	printf("%-30s%10s%10s%10s\n", "name", "phy addr", "virt addr", "size");
 	printf("%-30s%10x%10x%10x\n", "SRAM_TOP_RESERVE_ADDR", SRAM_V2P(SRAM_TOP_RESERVE_ADDR),SRAM_TOP_RESERVE_ADDR, SRAM_TOP_RESERVE_SIZE);/*lint !e778 */
 	printf("%-30s%10x%10x%10x\n", "SRAM_MCU_RESERVE_ADDR", SRAM_V2P(SRAM_MCU_RESERVE_ADDR),SRAM_MCU_RESERVE_ADDR, SRAM_MCU_RESERVE_SIZE);

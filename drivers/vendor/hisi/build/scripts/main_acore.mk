@@ -46,15 +46,28 @@ MOUDULES := drv
 endif
 
 # linux path
-OBB_ANDROID_DIR = $(BALONG_TOPDIR)/../../../..
 export LINUX_KERNEL  := $(OBB_ANDROID_DIR)/kernel
 export OUT_ANDROID   := $(OBB_ANDROID_DIR)/out/target/product/$(CFG_OS_ANDROID_PRODUCT_NAME)/obj
 export OUT_KERNEL    := $(OBB_ANDROID_DIR)/out/target/product/$(CFG_OS_ANDROID_PRODUCT_NAME)/obj/KERNEL_OBJ
 
+ARCH64_COMPILER_4.9 := $(OBB_ANDROID_DIR)/prebuilts/gcc/linux-x86/aarch64/aarch64-linux-android-4.9
+ARCH64_COMPILER_4.8 := $(OBB_ANDROID_DIR)/prebuilts/gcc/linux-x86/arm/gcc-linaro-aarch64-linux-gnu
 
+ifneq ($(wildcard $(ARCH64_COMPILER_4.9)),)
+ARCH64_COMPILER := $(ARCH64_COMPILER_4.9)
+else
+ARCH64_COMPILER := $(ARCH64_COMPILER_4.8)
+endif
 
 ifeq ($(strip $(CFG_OS_ANDROID_USE_K3V3_KERNEL)),YES)
+ifeq ($(strip $(CFG_OS_ANDROID_AARCH64)),YES)
+export TARGET_PRODUCT := $(CFG_OS_ANDROID_PRODUCT_NAME)
+export CROSS_COMPILE := $(ARCH64_COMPILER)/bin/aarch64-linux-android-
 else
+export CROSS_COMPILE := $(OBB_ANDROID_DIR)/prebuilts/gcc/linux-x86/arm/arm-eabi-4.7/bin/arm-eabi-
+endif
+else
+export CROSS_COMPILE := $(OBB_ANDROID_DIR)/prebuilts/gcc/linux-x86/arm/arm-linux-androideabi-4.6/bin/arm-linux-androideabi-
 endif
 
 ifeq ($(distcc),true)
@@ -66,11 +79,14 @@ ifeq ($(FORTIFY),true)
 export CROSS_COMPILE := '$(SOURCEANALYZER) $(CROSS_COMPILE)'
 endif
 
-
+ifeq ($(strip $(CFG_OS_ANDROID_AARCH64)),YES)
+export ARCH          :=arm64
+else
 export ARCH          :=arm
+endif
 COMMON_HEAD          += $(BALONG_TOPDIR)/include/drv/
 COMMON_HEAD          += $(BALONG_TOPDIR)/platform/$(CFG_PLATFORM)/
-export OUT_ACORE_DIR :=$(OUT_KERNEL)/drivers/modem/balong_oam_ps
+export OUT_ACORE_DIR        :=$(OUT_KERNEL)/drivers/hisi/modem_hi3630/drv/balong_oam_ps
 #soc only used for drv this moment
 COMMON_HEAD          += $(BALONG_TOPDIR)/platform/$(CFG_PLATFORM)/soc
 COMMON_HEAD          += $(BALONG_TOPDIR)/config/product/include/$(CFG_GU_PLATFORM_NEW)/
@@ -97,7 +113,7 @@ else
 OBC_LINUX_DEFCONFIG       := $(CFG_OS_LINUX_PRODUCT_NAME)
 endif
 
-OUT_MODEM_DIR             :=$(OUT_KERNEL)/drivers/modem
+OUT_MODEM_DIR             :=$(OUT_KERNEL)/drivers/hisi/modem_hi3630/drv/
 
 # This is the default target.  It must be the first declared target.
 .PHONY: balong
@@ -115,14 +131,17 @@ comm : prebuild
 	$(Q) echo do $@
 ifeq ($(strip $(CFG_OS_ANDROID_USE_K3V3_KERNEL)),YES)
 	$(Q)if [ ! -h $(OBB_ANDROID_DIR)/kernel/drivers/modem ]; then $(OBC_SYNC) $(BALONG_TOPDIR)/modem/drv/acore/ $(OBB_ANDROID_DIR)/	; fi
+	$(Q)cd $(LINUX_KERNEL) && git checkout $(LINUX_KERNEL)/Makefile
 	$(Q)sed -i 's/-Werror[-?]/-W/g' $(LINUX_KERNEL)/Makefile
 	$(Q)sed -i 's/-Werror//g' $(LINUX_KERNEL)/Makefile
-	$(Q)cat  $(LINUX_KERNEL)/arch/arm/configs/$(CFG_OS_LINUX_PRODUCT_NAME)      > $(LINUX_KERNEL)/arch/arm/configs/$(OBC_LINUX_DEFCONFIG)
-	$(Q)cat  $(BALONG_TOPDIR)/$(CFG_OS_PATH)/acore/$(CFG_OS_ANDROID_MODEM_DECONFIG) >> $(LINUX_KERNEL)/arch/arm/configs/$(OBC_LINUX_DEFCONFIG)
-	$(Q)sed -i "s/CONFIG_WATCHDOG=y/# CONFIG_WATCHDOG is not set/g" $(LINUX_KERNEL)/arch/arm/configs/$(OBC_LINUX_DEFCONFIG) 
+	$(Q)cat  $(LINUX_KERNEL)/arch/$(ARCH)/configs/$(CFG_OS_LINUX_PRODUCT_NAME)      > $(LINUX_KERNEL)/arch/$(ARCH)/configs/$(OBC_LINUX_DEFCONFIG)
+	$(Q)cat  $(BALONG_TOPDIR)/$(CFG_OS_PATH)/acore/$(CFG_OS_ANDROID_MODEM_DECONFIG) >> $(LINUX_KERNEL)/arch/$(ARCH)/configs/$(OBC_LINUX_DEFCONFIG)
+	$(Q)sed -i "s/CONFIG_WATCHDOG=y/# CONFIG_WATCHDOG is not set/g" $(LINUX_KERNEL)/arch/$(ARCH)/configs/$(OBC_LINUX_DEFCONFIG) 
 	$(Q)echo  > $(OUT_MODEM_DIR)/Makefile
 else
-	$(Q)$(OBC_SYNC) $(BALONG_TOPDIR)/modem/drv/acore/ $(OBB_ANDROID_DIR)/	
+	$(Q)$(OBC_SYNC) $(BALONG_TOPDIR)/modem/drv/acore/ $(OBB_ANDROID_DIR)/  
+	$(Q) cd $(LINUX_KERNEL)/drivers && rm -rf hisi/modem_hi3630 && mkdir -p hisi/modem_hi3630
+	$(Q) cd $(LINUX_KERNEL)/drivers && mv ./modem ./hisi/modem_hi3630/drv
 	$(Q)rsync -rt $(BALONG_TOPDIR)/$(CFG_OS_PATH)/acore/*  $(LINUX_KERNEL)/arch/arm/configs
 	$(Q)cp -rf $(BALONG_TOPDIR)/modem/system/external/busybox/ $(OBB_ANDROID_DIR)/external
 	$(Q)cp -rf $(BALONG_TOPDIR)/modem/system/external/btools/ $(OBB_ANDROID_DIR)/external
@@ -140,15 +159,15 @@ else
 	$(Q)cp -rf $(BALONG_TOPDIR)/modem/system/external/bcm43239/ $(LINUX_KERNEL)/drivers
 	$(Q)cp -rf $(BALONG_TOPDIR)/modem/system/external/bcm43241/ $(LINUX_KERNEL)/drivers
 endif
-	$(Q)$(MAKE) -C $(LINUX_KERNEL) O=$(OUT_KERNEL) ARCH=arm  CROSS_COMPILE=$(CROSS_COMPILE) $(DISTCC_KERNEL) $(OBC_LINUX_DEFCONFIG)
-	$(Q)$(MAKE) -C $(LINUX_KERNEL) O=$(OUT_KERNEL) ARCH=arm  CROSS_COMPILE=$(CROSS_COMPILE) $(DISTCC_KERNEL) modules_prepare BALONG_INC="$(BALONG_INC)"
-	$(Q)$(MAKE) -C $(LINUX_KERNEL) O=$(OUT_KERNEL) ARCH=arm  CROSS_COMPILE=$(CROSS_COMPILE) $(DISTCC_KERNEL) scripts BALONG_INC="$(BALONG_INC)"
+	$(Q)$(MAKE) -C $(LINUX_KERNEL) O=$(OUT_KERNEL) ARCH=$(ARCH)  CROSS_COMPILE=$(CROSS_COMPILE) $(DISTCC_KERNEL) $(OBC_LINUX_DEFCONFIG)
+	$(Q)$(MAKE) -C $(LINUX_KERNEL) O=$(OUT_KERNEL) ARCH=$(ARCH)  CROSS_COMPILE=$(CROSS_COMPILE) $(DISTCC_KERNEL) modules_prepare BALONG_INC="$(BALONG_INC)"
+	$(Q)$(MAKE) -C $(LINUX_KERNEL) O=$(OUT_KERNEL) ARCH=$(ARCH)  CROSS_COMPILE=$(CROSS_COMPILE) $(DISTCC_KERNEL) scripts BALONG_INC="$(BALONG_INC)"
 
 # lte
 lps : comm
-	$(MAKE) -C $(BALONG_TOPDIR)/modem/ps/build/tl/APP_CORE 
+	$(TTIME) $(MAKE)  -C $(BALONG_TOPDIR)/modem/ps/build/tl/APP_CORE 
 lmsp : comm
-	$(MAKE) -C $(BALONG_TOPDIR)/modem/oam/build/lt/APP_CORE $(maction)
+	$(TTIME) $(MAKE)  -C $(BALONG_TOPDIR)/modem/oam/build/lt/APP_CORE $(maction)
 
 ifeq ($(OBB_SEPARATE),true)
 oam_ps :
@@ -163,23 +182,44 @@ drv : comm oam_ps
 
 # gu
 gups : comm
-	$(MAKE) -C $(BALONG_TOPDIR)/modem/ps/build/gu/APP_CORE 
+	$(TTIME) $(MAKE)   -C $(BALONG_TOPDIR)/modem/ps/build/gu/APP_CORE 
 gumsp : comm
-	$(MAKE) -C $(BALONG_TOPDIR)/modem/oam/build/gu/APP_CORE 
+	$(TTIME) $(MAKE)   -C $(BALONG_TOPDIR)/modem/oam/build/gu/APP_CORE 
 
 $(warning The moudles are $(MOUDULES).)
 
+ifeq ($(CFG_OS_ANDROID_USE_K3V3_KERNEL),YES)
+android : 
+	rm -rf  $(BALONG_TOPDIR)/system/Android.mk
+	-touch $(BALONG_TOPDIR)/system/Android.mk
+	cd $(BALONG_TOPDIR)/../../; ./device/hisi/hi3630/build/build_hi3630.sh 
+	rm -rf  $(BALONG_TOPDIR)/system/Android.mk
+	@echo nothing to be done for [$@]
+else
 android : $(MOUDULES)
 	@echo nothing to be done for [$@]
+endif
+	
 
 # this is the goal.
 balong : android 
 	@echo balong acore is Ready.
 
-# android independent image
-%image %.img : comm
+bootimage:  
 	@echo do [$@]
-	$(MAKE)  -C $(BALONG_TOPDIR)/modem/drv/build/acore $@
+	cd $(BALONG_TOPDIR)/../../; ./device/hisi/hi3630/build/build_hi3630.sh $@
+# android independent image
+
+ifeq ($(CFG_OS_ANDROID_USE_K3V3_KERNEL),YES)
+%image %.img : 
+	@echo do [$@]
+	cd $(BALONG_TOPDIR)/../../; ./device/hisi/hi3630/build/build_hi3630.sh $@
+else 
+%image %.img : 
+	@echo do [$@]
+	#$(TTIME) $(MAKE)  -C $(BALONG_TOPDIR)/modem/drv/build/acore $@
+endif
+
 
 %.mk %akefile :
 	@echo nothing to be done for [$@]
@@ -187,7 +227,19 @@ balong : android
 # 
 %:: comm
 	$(warning do[$@])
-	$(MAKE)  -C $(BALONG_TOPDIR)/modem/drv/build/acore $@
+	$(TTIME) $(MAKE)  -C $(BALONG_TOPDIR)/modem/drv/build/acore $@
+
+lpm3libs:
+	@echo do [$@]
+ifeq ($(OBB_PRODUCT_NAME),hi3630_udp)
+	cd $(BALONG_TOPDIR)/../../; ./device/hisi/hi3630/build/build_hi3630.sh $@
+endif
+
+ifeq ($(OBB_PRODUCT_NAME),hi3635_udp)
+	cd $(BALONG_TOPDIR)/../../; ./device/hisi/hi3635/build/build_hi3635.sh $@
+endif
+
+
 # clean is so.....................................................
 CLEAN_MOUDULES :=
 # group 1, null
@@ -208,9 +260,9 @@ endif
 .PHONY:clean clean-comm clean-lps clean-gups clean-lmsp clean-gumsp clean-drv clean-android
 
 clean-android:
-	$(MAKE)  $(OBB_JOBS)  -C $(OBB_SCRIPTS_DIR)/acore/android clean
+	$(MAKE)    -C $(OBB_SCRIPTS_DIR)/acore/android clean
 clean-system_img:
-	$(MAKE)  $(OBB_JOBS)  -C $(OBB_SCRIPTS_DIR)/acore/system_img clean
+	$(MAKE)    -C $(OBB_SCRIPTS_DIR)/acore/system_img clean
 
 clean-app: clean-system_img
 	@echo nothing to be done for [$@] 
@@ -225,21 +277,26 @@ ifeq ($(strip $(CFG_OS_ANDROID_USE_K3V3_KERNEL)),YES)
 #	@-mkdir -p $(LINUX_KERNEL)/drivers/modem
 #	@echo > $(LINUX_KERNEL)/drivers/modem/Kconfig
 endif
-	$(MAKE) $(OBB_JOBS) -C $(BALONG_TOPDIR)/modem/drv/build/acore clean
+	$(MAKE)   -C $(BALONG_TOPDIR)/modem/drv/build/acore clean
 
 clean-lmsp: clean-app
-	$(MAKE) $(OBB_JOBS) -C $(BALONG_TOPDIR)/modem/oam/build/lt/APP_CORE clean
+	$(MAKE)   -C $(BALONG_TOPDIR)/modem/oam/build/lt/APP_CORE clean
 clean-lps: clean-app
-	$(MAKE) $(OBB_JOBS) -C $(BALONG_TOPDIR)/modem/ps/build/tl/APP_CORE clean
+	$(MAKE)    -C $(BALONG_TOPDIR)/modem/ps/build/tl/APP_CORE clean
 clean-gups: clean-app
-	$(MAKE) $(OBB_JOBS) -C $(BALONG_TOPDIR)/modem/ps/build/gu/APP_CORE clean
+	$(MAKE)    -C $(BALONG_TOPDIR)/modem/ps/build/gu/APP_CORE clean
 clean-gumsp: clean-app
-	$(MAKE) $(OBB_JOBS) -C $(BALONG_TOPDIR)/modem/oam/build/gu/APP_CORE clean
+	$(MAKE)    -C $(BALONG_TOPDIR)/modem/oam/build/gu/APP_CORE clean
 	
 clean-comm:
 	@echo complete $@
 
+ifeq ($(CFG_OS_ANDROID_USE_K3V3_KERNEL),YES)
+clean: 
+	cd $(BALONG_TOPDIR)/../../; ./device/hisi/hi3630/build/build_hi3630.sh clean
+else
 clean: $(CLEAN_MOUDULES)
+endif
 	@echo "Clean the targets: $(CLEAN_MOUDULES)."
 
 distclean: clean-comm clean 
@@ -252,7 +309,7 @@ help:
 
 .PHONY:cmd
 cmd:
-	$(MAKE)  $(OBB_JOBS)  -C $(BALONG_TOPDIR)/$(mdir) -f $(mfile) $(goals)
+	$(MAKE)    -C $(BALONG_TOPDIR)/$(mdir) -f $(mfile) $(goals)
 .PHONY: showcommands
 showcommands:
 	@echo >/dev/null
@@ -260,9 +317,9 @@ showcommands:
 # Used to force goals to build.  Only use for conditionally defined goals.
 .PHONY: FORCE
 pc-lint-msp:
-	$(MAKE) -C $(BALONG_TOPDIR)/modem/oam/build/lt/APP_CORE $(maction)
+	$(TTIME) $(MAKE)  -C $(BALONG_TOPDIR)/modem/oam/build/lt/APP_CORE $(maction)
 pc-lint-drv:
-	$(MAKE) -C $(BALONG_TOPDIR)/modem/drv/build/acore $(maction)
+	$(TTIME) $(MAKE)  -C $(BALONG_TOPDIR)/modem/drv/build/acore $(maction)
 
 .PHONY: $(maction)
 $(maction): pc-lint-msp pc-lint-drv

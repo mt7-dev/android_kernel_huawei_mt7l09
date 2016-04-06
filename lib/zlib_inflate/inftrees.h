@@ -30,14 +30,6 @@ typedef struct {
     unsigned short val;         /* offset in table or code value */
 } code;
 
-/* op values as set by inflate_table():
-    00000000 - literal
-    0000tttt - table link, tttt != 0 is the number of table index bits
-    0001eeee - length or distance, eeee is the number of extra bits
-    01100000 - end of block
-    01000000 - invalid code
- */
-
 /* Maximum size of dynamic tree.  The maximum found in a long but non-
    exhaustive search was 1444 code structures (852 for length/literals
    and 592 for distances, the latter actually the result of an

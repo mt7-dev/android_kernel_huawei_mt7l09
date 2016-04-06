@@ -1,13 +1,4 @@
-/*
- * Hisilicon Ltd. Hi3630 SoC
- *
- * Copyright (C) 2012-2013 Hisilicon Ltd.
- * Author: w00221409 <hw.wangxiaoyin@huawei.com>
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * publishhed by the Free Software Foundation.
- */
+
 
 /{
 	amba{

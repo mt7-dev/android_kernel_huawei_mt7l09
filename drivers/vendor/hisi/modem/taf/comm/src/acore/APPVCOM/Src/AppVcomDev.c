@@ -67,7 +67,6 @@ static const struct file_operations     g_stOperations_Fops =
 };
 #endif
 
-VOS_UINT32                              g_ulAppVcomDebugFlg = 0;
 
 /* APPVCOM的规格和应用
 APPVCOM ID   缓存大小  用途           是否AT的CLIENT    ModemId
@@ -107,44 +106,44 @@ APPVCOM31      2M      log 3.5               否
 #if (FEATURE_ON == FEATURE_VCOM_EXT)
 const APP_VCOM_DEV_CONFIG_STRU g_astAppVcomCogfigTab[] =
 {
-    {APP_VCOM_DEV_NAME_0, APP_VCOM_SEM_NAME_0, 0x1000},                         /* APPVCOM */
-    {APP_VCOM_DEV_NAME_1, APP_VCOM_SEM_NAME_1, 0x1000},                         /* APPVCOM1 */
-    {APP_VCOM_DEV_NAME_2, APP_VCOM_SEM_NAME_2, 0x1000},                         /* APPVCOM2 */
-    {APP_VCOM_DEV_NAME_3, APP_VCOM_SEM_NAME_3, 0x2000},                         /* APPVCOM3 */
-    {APP_VCOM_DEV_NAME_4, APP_VCOM_SEM_NAME_4, 0x1000},                         /* APPVCOM4 */
-    {APP_VCOM_DEV_NAME_5, APP_VCOM_SEM_NAME_5, 0x1000},                         /* APPVCOM5 */
-    {APP_VCOM_DEV_NAME_6, APP_VCOM_SEM_NAME_6, 0x1000},                         /* APPVCOM6 */
-    {APP_VCOM_DEV_NAME_7, APP_VCOM_SEM_NAME_7, 0x2000},                         /* APPVCOM7 */
-    {APP_VCOM_DEV_NAME_8, APP_VCOM_SEM_NAME_8, 0x1000},                         /* APPVCOM8 */
-    {APP_VCOM_DEV_NAME_9, APP_VCOM_SEM_NAME_9, 0x1000},                         /* APPVCOM9 */
-    {APP_VCOM_DEV_NAME_10, APP_VCOM_SEM_NAME_10, 0x1000},                       /* APPVCOM10 */
-    {APP_VCOM_DEV_NAME_11, APP_VCOM_SEM_NAME_11, 0x1000},                       /* APPVCOM11 */
-    {APP_VCOM_DEV_NAME_12, APP_VCOM_SEM_NAME_12, 0x1000},                       /* APPVCOM12 */
-    {APP_VCOM_DEV_NAME_13, APP_VCOM_SEM_NAME_13, 0x1000},                       /* APPVCOM13 */
-    {APP_VCOM_DEV_NAME_14, APP_VCOM_SEM_NAME_14, 0x1000},                       /* APPVCOM14 */
-    {APP_VCOM_DEV_NAME_15, APP_VCOM_SEM_NAME_15, 0x1000},                       /* APPVCOM15 */
-    {APP_VCOM_DEV_NAME_16, APP_VCOM_SEM_NAME_16, 0x1000},                       /* APPVCOM16 */
-    {APP_VCOM_DEV_NAME_17, APP_VCOM_SEM_NAME_17, 0x1000},                       /* APPVCOM17 */
-    {APP_VCOM_DEV_NAME_18, APP_VCOM_SEM_NAME_18, 0x1000},                       /* APPVCOM18 */
-    {APP_VCOM_DEV_NAME_19, APP_VCOM_SEM_NAME_19, 0x1000},                       /* APPVCOM19 */
-    {APP_VCOM_DEV_NAME_20, APP_VCOM_SEM_NAME_20, 0x1000},                       /* APPVCOM20 */
-    {APP_VCOM_DEV_NAME_21, APP_VCOM_SEM_NAME_21, 0x1000},                       /* APPVCOM21 */
-    {APP_VCOM_DEV_NAME_22, APP_VCOM_SEM_NAME_22, 0x1000},                       /* APPVCOM22 */
-    {APP_VCOM_DEV_NAME_23, APP_VCOM_SEM_NAME_23, 0x1000},                       /* APPVCOM23 */
-    {APP_VCOM_DEV_NAME_24, APP_VCOM_SEM_NAME_24, 0x1000},                       /* APPVCOM24 */
-    {APP_VCOM_DEV_NAME_25, APP_VCOM_SEM_NAME_25, 0x1000},                       /* APPVCOM25 */
-    {APP_VCOM_DEV_NAME_26, APP_VCOM_SEM_NAME_26, 0x1000},                       /* APPVCOM26 */
-    {APP_VCOM_DEV_NAME_27, APP_VCOM_SEM_NAME_27, 0x200000},                     /* APPVCOM27 */
-    {APP_VCOM_DEV_NAME_28, APP_VCOM_SEM_NAME_28, 0x1000},                       /* APPVCOM28 */
-    {APP_VCOM_DEV_NAME_29, APP_VCOM_SEM_NAME_29, 0x4000},                       /* APPVCOM29 */
-    {APP_VCOM_DEV_NAME_30, APP_VCOM_SEM_NAME_30, 0x200000},                     /* APPVCOM30 */
-    {APP_VCOM_DEV_NAME_31, APP_VCOM_SEM_NAME_31, 0x200000}                      /* APPVCOM31 */
+    {APP_VCOM_DEV_NAME_0, APP_VCOM_SEM_NAME_0, 0x1000, 0},                      /* APPVCOM */
+    {APP_VCOM_DEV_NAME_1, APP_VCOM_SEM_NAME_1, 0x1000, 0},                      /* APPVCOM1 */
+    {APP_VCOM_DEV_NAME_2, APP_VCOM_SEM_NAME_2, 0x1000, 0},                      /* APPVCOM2 */
+    {APP_VCOM_DEV_NAME_3, APP_VCOM_SEM_NAME_3, 0x2000, 0},                      /* APPVCOM3 */
+    {APP_VCOM_DEV_NAME_4, APP_VCOM_SEM_NAME_4, 0x1000, 0},                      /* APPVCOM4 */
+    {APP_VCOM_DEV_NAME_5, APP_VCOM_SEM_NAME_5, 0x1000, 0},                      /* APPVCOM5 */
+    {APP_VCOM_DEV_NAME_6, APP_VCOM_SEM_NAME_6, 0x1000, 0},                      /* APPVCOM6 */
+    {APP_VCOM_DEV_NAME_7, APP_VCOM_SEM_NAME_7, 0x2000, 0},                      /* APPVCOM7 */
+    {APP_VCOM_DEV_NAME_8, APP_VCOM_SEM_NAME_8, 0x1000, 0},                      /* APPVCOM8 */
+    {APP_VCOM_DEV_NAME_9, APP_VCOM_SEM_NAME_9, 0x1000, 0},                      /* APPVCOM9 */
+    {APP_VCOM_DEV_NAME_10, APP_VCOM_SEM_NAME_10, 0x1000, 0},                    /* APPVCOM10 */
+    {APP_VCOM_DEV_NAME_11, APP_VCOM_SEM_NAME_11, 0x1000, 0},                    /* APPVCOM11 */
+    {APP_VCOM_DEV_NAME_12, APP_VCOM_SEM_NAME_12, 0x1000, 0},                    /* APPVCOM12 */
+    {APP_VCOM_DEV_NAME_13, APP_VCOM_SEM_NAME_13, 0x1000, 0},                    /* APPVCOM13 */
+    {APP_VCOM_DEV_NAME_14, APP_VCOM_SEM_NAME_14, 0x1000, 0},                    /* APPVCOM14 */
+    {APP_VCOM_DEV_NAME_15, APP_VCOM_SEM_NAME_15, 0x1000, 0},                    /* APPVCOM15 */
+    {APP_VCOM_DEV_NAME_16, APP_VCOM_SEM_NAME_16, 0x1000, 0},                    /* APPVCOM16 */
+    {APP_VCOM_DEV_NAME_17, APP_VCOM_SEM_NAME_17, 0x1000, 0},                    /* APPVCOM17 */
+    {APP_VCOM_DEV_NAME_18, APP_VCOM_SEM_NAME_18, 0x1000, 0},                    /* APPVCOM18 */
+    {APP_VCOM_DEV_NAME_19, APP_VCOM_SEM_NAME_19, 0x1000, 0},                    /* APPVCOM19 */
+    {APP_VCOM_DEV_NAME_20, APP_VCOM_SEM_NAME_20, 0x1000, 0},                    /* APPVCOM20 */
+    {APP_VCOM_DEV_NAME_21, APP_VCOM_SEM_NAME_21, 0x1000, 0},                    /* APPVCOM21 */
+    {APP_VCOM_DEV_NAME_22, APP_VCOM_SEM_NAME_22, 0x1000, 0},                    /* APPVCOM22 */
+    {APP_VCOM_DEV_NAME_23, APP_VCOM_SEM_NAME_23, 0x1000, 0},                    /* APPVCOM23 */
+    {APP_VCOM_DEV_NAME_24, APP_VCOM_SEM_NAME_24, 0x1000, 0},                    /* APPVCOM24 */
+    {APP_VCOM_DEV_NAME_25, APP_VCOM_SEM_NAME_25, 0x1000, 0},                    /* APPVCOM25 */
+    {APP_VCOM_DEV_NAME_26, APP_VCOM_SEM_NAME_26, 0x1000, 0},                    /* APPVCOM26 */
+    {APP_VCOM_DEV_NAME_27, APP_VCOM_SEM_NAME_27, 0x200000, 0},                  /* APPVCOM27 */
+    {APP_VCOM_DEV_NAME_28, APP_VCOM_SEM_NAME_28, 0x1000, 0},                    /* APPVCOM28 */
+    {APP_VCOM_DEV_NAME_29, APP_VCOM_SEM_NAME_29, 0x4000, 0},                    /* APPVCOM29 */
+    {APP_VCOM_DEV_NAME_30, APP_VCOM_SEM_NAME_30, 0x200000, 0},                  /* APPVCOM30 */
+    {APP_VCOM_DEV_NAME_31, APP_VCOM_SEM_NAME_31, 0x200000, 0}                   /* APPVCOM31 */
 };
 #else
 const APP_VCOM_DEV_CONFIG_STRU g_astAppVcomCogfigTab[] =
 {
-    {APP_VCOM_DEV_NAME_0, APP_VCOM_SEM_NAME_0, 0x1000},                         /* APPVCOM */
-    {APP_VCOM_DEV_NAME_1, APP_VCOM_SEM_NAME_1, 0x1000}                          /* APPVCOM1 */
+    {APP_VCOM_DEV_NAME_0, APP_VCOM_SEM_NAME_0, 0x1000, 0},                      /* APPVCOM */
+    {APP_VCOM_DEV_NAME_1, APP_VCOM_SEM_NAME_1, 0x1000, 0}                       /* APPVCOM1 */
 #if 0
     {APP_VCOM_DEV_NAME_2, APP_VCOM_SEM_NAME_2, 0x1000},                         /* APPVCOM2 */
     {APP_VCOM_DEV_NAME_3, APP_VCOM_SEM_NAME_3, 0x2000},                         /* APPVCOM3 */
@@ -152,6 +151,9 @@ const APP_VCOM_DEV_CONFIG_STRU g_astAppVcomCogfigTab[] =
 #endif
 };
 #endif
+
+APP_VCOM_DEBUG_CFG_STRU              g_stAppVcomDebugCfg;
+
 /*****************************************************************************
    3 函数、变量声明
 *****************************************************************************/
@@ -275,7 +277,7 @@ VOS_VOID APP_VCOM_Setup(
     iErr = cdev_add(&pstDev->stAppVcomDev, ulDevno, 1);
     if (iErr)
     {
-        vos_printf("APP_VCOM_Setup cdev_add error!\n");
+        APP_VCOM_TRACE_ERR(ucIndex, "APP_VCOM_Setup cdev_add error! ");
         return;
     }
 
@@ -304,12 +306,15 @@ VOS_INT APP_VCOM_Init(VOS_VOID)
     VOS_UINT8                           ucIndex;
     APP_VCOM_DEV_CTX_STRU              *pstVcomCtx;
     APP_VCOM_DEV_ENTITY_STRU           *pstVcomDevp;
+    VOS_CHAR                            acWakeLockName[APP_VCOM_RD_WAKE_LOCK_NAME_LEN];
 
     pstVcomCtx = VOS_NULL_PTR;
     pstVcomDevp  = VOS_NULL_PTR;
 
     /* 初始化可维可测全局变量 */
     VOS_MemSet(&g_stAppVcomDebugInfo, 0x0, sizeof(g_stAppVcomDebugInfo));
+
+    VOS_MemSet(&g_stAppVcomDebugCfg, 0x0, sizeof(g_stAppVcomDebugCfg));
 
     /* 初始化虚拟设备 */
     for (ucIndex = 0; ucIndex < APP_VCOM_MAX_NUM; ucIndex++)
@@ -345,7 +350,7 @@ VOS_INT APP_VCOM_Init(VOS_VOID)
         {
             /* 去注册该设备，返回错误 */
             unregister_chrdev_region(ulDevno, 1);
-            printk("[VCOM %d]APP_VCOM_Init malloc device Entity fail. \n", ucIndex);
+            APP_VCOM_TRACE_ERR(ucIndex, "APP_VCOM_Init malloc device Entity fail. ");
             return VOS_ERROR;
         }
 
@@ -360,13 +365,19 @@ VOS_INT APP_VCOM_Init(VOS_VOID)
         {
             /* 去注册该设备，返回错误 */
             unregister_chrdev_region(ulDevno, 1);
-            printk("[VCOM %d]APP_VCOM_Init malloc device buff fail. \n", ucIndex);
+            APP_VCOM_TRACE_ERR(ucIndex, "APP_VCOM_Init malloc device buff fail. ");
             kfree(pstVcomCtx->pstAppVcomDevEntity);
             pstVcomCtx->pstAppVcomDevEntity = VOS_NULL_PTR;
             return VOS_ERROR;
         }
 
         init_waitqueue_head(&pstVcomDevp->Read_Wait);
+        /* Add by w00316404 for add read wake lock, 2015-11-06, Begin */
+        VOS_MemSet(acWakeLockName, 0x00, APP_VCOM_RD_WAKE_LOCK_NAME_LEN);
+        snprintf(acWakeLockName, APP_VCOM_RD_WAKE_LOCK_NAME_LEN, "appvcom%d_rd_wake", ucIndex);
+        acWakeLockName[APP_VCOM_RD_WAKE_LOCK_NAME_LEN - 1] = '\0';
+        wake_lock_init(&pstVcomDevp->stRdWakeLock, WAKE_LOCK_SUSPEND, acWakeLockName);
+        /* Add by w00316404 for add read wake lock, 2015-11-06, End */
 
         APP_VCOM_Setup(pstVcomDevp, ucIndex);
 
@@ -399,7 +410,6 @@ int APP_VCOM_Release(
     struct file                        *filp
 )
 {
-#if(FEATURE_SOCP_ON_DEMAND == FEATURE_ON)
     VOS_UINT                            ulDevMajor;
     VOS_UINT8                           ucIndex;
     APP_VCOM_DEV_CTX_STRU              *pstVcomCtx;
@@ -415,9 +425,9 @@ int APP_VCOM_Release(
     /* 根据主设备号得到设备在全局变量中的索引值 */
     ucIndex = APP_VCOM_GetIndexFromMajorDevId(ulDevMajor);
 
-     if (ucIndex >= APP_VCOM_MAX_NUM)
+    if (ucIndex >= APP_VCOM_MAX_NUM)
     {
-        vos_printf("APP_VCOM_Release ulIndex:%d is error. \n", ucIndex);
+        APP_VCOM_TRACE_ERR(ucIndex, "APP_VCOM_Release ucIndex is error. ");
         return VOS_ERROR;
     }
 
@@ -426,26 +436,28 @@ int APP_VCOM_Release(
 
     if (VOS_NULL_PTR == pstVcomCtx->pstAppVcomDevEntity)
     {
-        vos_printf("[VCOM %d]APP_VCOM_Release VcomDevEntity is NULL. \n", ucIndex);
+        APP_VCOM_TRACE_ERR(ucIndex, "APP_VCOM_Release VcomDevEntity is NULL. ");
         return VOS_ERROR;
     }
 
     /* 将设备结构体指针赋值给文件私有数据指针 */
     filp->private_data = pstVcomCtx->pstAppVcomDevEntity;
 
-    if (0 != (g_ulAppVcomDebugFlg & APP_VCOM_SET_BIT(ucIndex)))
-    {
-        vos_printf("[VCOM %d]APP_VCOM_Release enter. \n", ucIndex);
-    }
+    APP_VCOM_TRACE_INFO(ucIndex, "APP_VCOM_Release enter. ");
 
+#if(FEATURE_SOCP_ON_DEMAND == FEATURE_ON)
     if(NULL != pstVcomCtx->pEventFunc)
     {
-        pstVcomCtx->pEventFunc(APP_VCOM_EVT_RELEASE);
+		(VOS_VOID)(pstVcomCtx->pEventFunc(APP_VCOM_EVT_RELEASE));
     }
 #endif
+    /* Add by w00316404 for add read wake lock, 2015-11-06, Begin */
+    pstVcomCtx->pstAppVcomDevEntity->ulIsDeviceOpen = VOS_FALSE;
+    wake_unlock(&pstVcomCtx->pstAppVcomDevEntity->stRdWakeLock);
+    /* Add by w00316404 for add read wake lock, 2015-11-06, End */
+
     return VOS_OK;
 }
-
 
 
 int APP_VCOM_Open(
@@ -470,7 +482,7 @@ int APP_VCOM_Open(
 
     if (ucIndex >= APP_VCOM_MAX_NUM)
     {
-        vos_printf("APP_VCOM_Open ulIndex:%d is error. \n", ucIndex);
+        APP_VCOM_TRACE_ERR(ucIndex, "APP_VCOM_Open ucIndex is error. ");
         return VOS_ERROR;
     }
 
@@ -479,24 +491,22 @@ int APP_VCOM_Open(
 
     if (VOS_NULL_PTR == pstVcomCtx->pstAppVcomDevEntity)
     {
-        vos_printf("[VCOM %d]APP_VCOM_Open VcomDevEntity is NULL. \n", ucIndex);
+        APP_VCOM_TRACE_ERR(ucIndex, "APP_VCOM_Open VcomDevEntity is NULL. ");
         return VOS_ERROR;
     }
 
     /* 将设备结构体指针赋值给文件私有数据指针 */
     filp->private_data = pstVcomCtx->pstAppVcomDevEntity;
 
-    if (0 != (g_ulAppVcomDebugFlg & APP_VCOM_SET_BIT(ucIndex)))
-    {
-        vos_printf("[VCOM %d]APP_VCOM_Open enter. \n", ucIndex);
-    }
+    APP_VCOM_TRACE_INFO(ucIndex, "APP_VCOM_Open enter. ");
 
 #if(FEATURE_SOCP_ON_DEMAND == FEATURE_ON)
     if(pstVcomCtx->pEventFunc != NULL)
     {
-        pstVcomCtx->pEventFunc(APP_VCOM_EVT_OPEN);
+        (VOS_VOID)(pstVcomCtx->pEventFunc(APP_VCOM_EVT_OPEN));
     }
 #endif
+    pstVcomCtx->pstAppVcomDevEntity->ulIsDeviceOpen = VOS_TRUE;
     return VOS_OK;
 }
 
@@ -531,12 +541,9 @@ ssize_t APP_VCOM_Read(
 
     pstVcomCtx = APP_VCOM_GetVcomCtxAddr(ucIndex);
 
-    if (0 != (g_ulAppVcomDebugFlg & APP_VCOM_SET_BIT(ucIndex)))
-    {
-        vos_printf("[VCOM %d]APP_VCOM_Read, read count:%d, current_len:%d.\n", ucIndex, count, pstVcomDev->current_len);
-        vos_printf("[VCOM %d]APP_VCOM_Read, f_flags:%d.\n", ucIndex, stFilp->f_flags);
-        vos_printf("[VCOM %d]APP_VCOM_Read, wait_event 111,flag:%d.\n", ucIndex,  pstVcomDev->ulReadWakeUpFlg);
-    }
+    APP_VCOM_TRACE_INFO(ucIndex, "APP_VCOM_Read, read count:%d, current_len:%d. ", count, pstVcomDev->current_len);
+    APP_VCOM_TRACE_INFO(ucIndex, "APP_VCOM_Read, f_flags:%d. ", stFilp->f_flags);
+    APP_VCOM_TRACE_INFO(ucIndex, "APP_VCOM_Read, wait_event 111, flag:%d. ", pstVcomDev->ulReadWakeUpFlg);
 
     if (stFilp->f_flags & O_NONBLOCK)
     {
@@ -557,10 +564,7 @@ ssize_t APP_VCOM_Read(
         g_stAppVcomDebugInfo.ulReadLenErr[ucIndex]++;
     }
 
-    if (0 != (g_ulAppVcomDebugFlg & APP_VCOM_SET_BIT(ucIndex)))
-    {
-        vos_printf("[VCOM %d]APP_VCOM_Read, wait_event 222,flag:%d.\n", ucIndex, pstVcomDev->ulReadWakeUpFlg);
-    }
+    APP_VCOM_TRACE_INFO(ucIndex, "APP_VCOM_Read, wait_event 222,flag:%d. ", pstVcomDev->ulReadWakeUpFlg);
 
     /* 获取信号量 */
     down(&pstVcomCtx->pstAppVcomDevEntity->stMsgSendSem);
@@ -572,7 +576,7 @@ ssize_t APP_VCOM_Read(
 
     if (copy_to_user(buf, pstVcomDev->pucAppVcomMem, count))
     {
-        vos_printf("[VCOM %d]APP_VCOM_Read, copy_to_user fail.\n", ucIndex);
+        APP_VCOM_TRACE_ERR(ucIndex, "APP_VCOM_Read, copy_to_user fail. ");
 
         /* 释放信号量 */
         up(&pstVcomCtx->pstAppVcomDevEntity->stMsgSendSem);
@@ -584,19 +588,20 @@ ssize_t APP_VCOM_Read(
         /* FIFO数据前移 */
         memmove(pstVcomDev->pucAppVcomMem, (pstVcomDev->pucAppVcomMem + count), (pstVcomDev->current_len - count));
 
-        if (0 != (g_ulAppVcomDebugFlg & APP_VCOM_SET_BIT(ucIndex)))
-        {
-            vos_printf("APP_VCOM_Read, FIFO move\n");
-        }
+        APP_VCOM_TRACE_INFO(ucIndex, "APP_VCOM_Read, FIFO move. ");
     }
 
     /* 有效数据长度减小*/
     pstVcomDev->current_len -= count;
 
-    if (0 != (g_ulAppVcomDebugFlg & APP_VCOM_SET_BIT(ucIndex)))
+    APP_VCOM_TRACE_INFO(ucIndex, "APP_VCOM_Read, read %d bytes, current_len:%d. ", count, pstVcomDev->current_len);
+    /* Add by w00316404 for add read wake lock, 2015-11-06, Begin */
+    if (0 == pstVcomDev->current_len)
     {
-        vos_printf("[VCOM %d]APP_VCOM_Read, read %d bytes，current_len:%d\n", ucIndex, count, pstVcomDev->current_len);
+        APP_VCOM_TRACE_NORM(ucIndex, "APP_VCOM_Send: read all data. ");
+        wake_unlock(&pstVcomDev->stRdWakeLock);
     }
+    /* Add by w00316404 for add read wake lock, 2015-11-06, End */
 
     /* 释放信号量 */
     up(&pstVcomCtx->pstAppVcomDevEntity->stMsgSendSem);
@@ -632,19 +637,19 @@ ssize_t APP_VCOM_Write(
 
     if(ucIndex >= APP_VCOM_MAX_NUM)
     {
-        vos_printf("APP_VCOM_Write, ucIndex=%d fail\n", ucIndex);
+        APP_VCOM_TRACE_ERR(ucIndex, "APP_VCOM_Write, ucIndex fail. ");
         return APP_VCOM_ERROR;
     }
 
     /* 获得全局变量地址 */
     pstVcomCtx = APP_VCOM_GetVcomCtxAddr(ucIndex);
 
-
     /* 申请内存 */
     pucDataBuf = kmalloc(count, GFP_KERNEL);
     if (VOS_NULL_PTR == pucDataBuf )
     {
-        vos_printf("[VCOM %d]APP_VCOM_Write, kmalloc fail\n", ucIndex);
+        APP_VCOM_TRACE_ERR(ucIndex, "APP_VCOM_Write, kmalloc fail. ");
+
         return APP_VCOM_ERROR;
     }
 
@@ -653,7 +658,8 @@ ssize_t APP_VCOM_Write(
 
     if (copy_from_user(pucDataBuf, buf, count))
     {
-        vos_printf("[VCOM %d]APP_VCOM_Write, copy_from_user fail\n", ucIndex);
+        APP_VCOM_TRACE_ERR(ucIndex, "APP_VCOM_Write, copy_from_user fail. ");
+
         kfree(pucDataBuf);
         return APP_VCOM_ERROR;
     }
@@ -665,7 +671,8 @@ ssize_t APP_VCOM_Write(
 
         if (VOS_NULL_PTR != pstVcomCtx->pstAppVcomDevEntity->pucWrtBuffer)
         {
-            vos_printf("[VCOM %d]APP_VCOM_Write: free buff.\n", ucIndex);
+            APP_VCOM_TRACE_NORM(ucIndex, "APP_VCOM_Write: free buff. ");
+
             kfree(pstVcomCtx->pstAppVcomDevEntity->pucWrtBuffer);
             pstVcomCtx->pstAppVcomDevEntity->pucWrtBuffer   = VOS_NULL_PTR;
             pstVcomCtx->pstAppVcomDevEntity->ulWrtBufferLen = 0;
@@ -673,7 +680,8 @@ ssize_t APP_VCOM_Write(
 
         if (VOS_NULL_PTR == pstVcomCtx->pSendUlAtFunc)
         {
-            vos_printf("[VCOM %d]APP_VCOM_Write: save buff.\n", ucIndex);
+            APP_VCOM_TRACE_NORM(ucIndex, "APP_VCOM_Write: save buff. ");
+
             pstVcomCtx->pstAppVcomDevEntity->pucWrtBuffer   = pucDataBuf;
             pstVcomCtx->pstAppVcomDevEntity->ulWrtBufferLen = count;
             up(&pstVcomCtx->pstAppVcomDevEntity->stWrtSem);
@@ -687,7 +695,7 @@ ssize_t APP_VCOM_Write(
     /* 调用回调函数处理buf中的AT码流*/
     if (VOS_NULL_PTR == pstVcomCtx->pSendUlAtFunc)
     {
-        vos_printf("[VCOM %d]APP_VCOM_Write, pSendUlAtFunc is null\n", ucIndex);
+        APP_VCOM_TRACE_ERR(ucIndex, "APP_VCOM_Write, pSendUlAtFunc is null. ");
         kfree(pucDataBuf);
         return APP_VCOM_ERROR;
     }
@@ -696,16 +704,14 @@ ssize_t APP_VCOM_Write(
     if (VOS_OK != iRst)
     {
         g_stAppVcomDebugInfo.ulAtCallBackErr[ucIndex]++;
-        vos_printf("[VCOM %d]APP_VCOM_Write, AT_RcvFromAppCom fail\n", ucIndex);
+        APP_VCOM_TRACE_ERR(ucIndex, "APP_VCOM_Write, AT_RcvFromAppCom fail. ");
+
         kfree(pucDataBuf);
 
         return APP_VCOM_ERROR;
     }
 
-    if (0 != (g_ulAppVcomDebugFlg & APP_VCOM_SET_BIT(ucIndex)))
-    {
-        vos_printf("[VCOM %d]APP_VCOM_Write, AT_RcvFromAppCom Success\n", ucIndex);
-    }
+    APP_VCOM_TRACE_INFO(ucIndex, "APP_VCOM_Write, write %d bytes, AT_RcvFromAppCom Success.",count);
 
     /* 释放内存 */
     kfree(pucDataBuf);
@@ -736,10 +742,7 @@ unsigned int APP_VCOM_Poll(struct file *fp, struct poll_table_struct *wait)
         mask |= POLLIN | POLLRDNORM;
     }
 
-    if (0 != (g_ulAppVcomDebugFlg & APP_VCOM_SET_BIT(ucIndex)))
-    {
-        vos_printf("[VCOM %d]APP_VCOM_Poll, mask = %d\n", ucIndex, mask);
-    }
+    APP_VCOM_TRACE_INFO(ucIndex, "APP_VCOM_Poll, mask = %d. ", mask);
 
     return mask;
 }
@@ -759,7 +762,7 @@ VOS_UINT32  APP_VCOM_Send (
     if (enDevIndex >= APP_VCOM_MAX_NUM)
     {
         g_stAppVcomDebugInfo.ulDevIndexErr++;
-        vos_printf("APP_VCOM_Send, enDevIndex:%d is error\n", enDevIndex);
+        APP_VCOM_TRACE_ERR(enDevIndex, "APP_VCOM_Send, enDevIndex is error. ");
         return VOS_ERR;
     }
 
@@ -767,7 +770,8 @@ VOS_UINT32  APP_VCOM_Send (
     pstVcomCtx = APP_VCOM_GetVcomCtxAddr(enDevIndex);
     if (VOS_NULL_PTR == pstVcomCtx)
     {
-        vos_printf("[VCOM %d]APP_VCOM_Send, pstVcomCtx is null\n", enDevIndex);
+        APP_VCOM_TRACE_ERR(enDevIndex, "APP_VCOM_Send, pstVcomCtx is null. ");
+
         return VOS_ERR;
     }
 #endif
@@ -778,7 +782,8 @@ VOS_UINT32  APP_VCOM_Send (
     if (VOS_NULL_PTR == pstVcomDev)
     {
         g_stAppVcomDebugInfo.ulVcomDevErr[enDevIndex]++;
-        vos_printf("[VCOM %d]APP_VCOM_Send,pstVcomDev is null\n", enDevIndex);
+        APP_VCOM_TRACE_ERR(enDevIndex, "APP_VCOM_Send, pstVcomDev is null. ");
+
         return VOS_ERR;
     }
 
@@ -791,7 +796,8 @@ VOS_UINT32  APP_VCOM_Send (
         {
             if (VOS_NULL_PTR != pstVcomCtx->pSendUlAtFunc)
             {
-                vos_printf("[VCOM %d]APP_VCOM_Send: handle buff.\n", enDevIndex);
+                APP_VCOM_TRACE_NORM(enDevIndex, "APP_VCOM_Send: handle buff. ");
+
                 (VOS_VOID)pstVcomCtx->pSendUlAtFunc(enDevIndex,
                                         pstVcomDev->pucWrtBuffer,
                                         pstVcomDev->ulWrtBufferLen);
@@ -806,10 +812,7 @@ VOS_UINT32  APP_VCOM_Send (
     }
 #endif
 
-    if (0 != (g_ulAppVcomDebugFlg & APP_VCOM_SET_BIT(enDevIndex)))
-    {
-        vos_printf("[VCOM %d]APP_VCOM_Send, uslength:%d,current_len:%d\n", enDevIndex, uslength, pstVcomDev->current_len);
-    }
+    APP_VCOM_TRACE_INFO(enDevIndex, "APP_VCOM_Send, uslength:%d, current_len:%d. ", uslength, pstVcomDev->current_len);
 
     /* 获取信号量 */
     down(&pstVcomDev->stMsgSendSem);
@@ -817,10 +820,7 @@ VOS_UINT32  APP_VCOM_Send (
     /* 队列满则直接返回 */
     if (g_astAppVcomCogfigTab[enDevIndex].ulAppVcomMemSize == pstVcomDev->current_len)
     {
-        if (0 != (g_ulAppVcomDebugFlg & APP_VCOM_SET_BIT(enDevIndex)))
-        {
-            vos_printf("[VCOM %d]APP_VCOM_Send: VCOM MEM FULL\n", enDevIndex);
-        }
+        APP_VCOM_TRACE_NORM(enDevIndex, "APP_VCOM_Send: VCOM MEM FULL. ");
 
         g_stAppVcomDebugInfo.ulMemFullErr[enDevIndex]++;
 
@@ -831,10 +831,8 @@ VOS_UINT32  APP_VCOM_Send (
     /* 发送数据大于剩余Buffer大小 */
     if (uslength > (g_astAppVcomCogfigTab[enDevIndex].ulAppVcomMemSize - pstVcomDev->current_len))
     {
-        if (0 != (g_ulAppVcomDebugFlg & APP_VCOM_SET_BIT(enDevIndex)))
-        {
-            vos_printf("[VCOM %d]APP_VCOM_Send: data more than Buffer\n", enDevIndex);
-        }
+        APP_VCOM_TRACE_NORM(enDevIndex, "APP_VCOM_Send: data more than Buffer. ");
+
         uslength = g_astAppVcomCogfigTab[enDevIndex].ulAppVcomMemSize - pstVcomDev->current_len;
     }
 
@@ -842,11 +840,17 @@ VOS_UINT32  APP_VCOM_Send (
     memcpy(pstVcomDev->pucAppVcomMem + pstVcomDev->current_len, pData, uslength);
     pstVcomDev->current_len += uslength;
 
-    if (0 != (g_ulAppVcomDebugFlg & APP_VCOM_SET_BIT(enDevIndex)))
+    APP_VCOM_TRACE_INFO(enDevIndex, "APP_VCOM_Send, written %d byte(s), new len: %d. ", uslength, pstVcomDev->current_len);
+
+    /* Add by w00316404 for add read wake lock, 2015-11-06, Begin */
+    APP_VCOM_TRACE_INFO(enDevIndex, "APP_VCOM_Send, IsDeviceOpen: %d. ", pstVcomDev->ulIsDeviceOpen);
+    /*lint -e713*/
+    if (VOS_TRUE == pstVcomDev->ulIsDeviceOpen)
     {
-        vos_printf("[VCOM %d]APP_VCOM_Send, written %d byte(s), new len: %d\n",
-            enDevIndex, uslength, pstVcomDev->current_len);
+        wake_lock_timeout(&pstVcomDev->stRdWakeLock, msecs_to_jiffies(APP_VCOM_READ_WAKE_LOCK_LEN));
     }
+    /*lint +e713*/
+    /* Add by w00316404 for add read wake lock, 2015-11-06, End */
 
     /* 释放信号量 */
     up(&pstVcomDev->stMsgSendSem);
@@ -861,34 +865,9 @@ VOS_UINT32  APP_VCOM_Send (
         g_stAppVcomDebugInfo.ulSendLenErr[enDevIndex]++;
     }
 
-    if (0 != (g_ulAppVcomDebugFlg & APP_VCOM_SET_BIT(enDevIndex)))
-    {
-        vos_printf("[VCOM %d]APP_VCOM_Send, wakeup.\n", enDevIndex);
-    }
+    APP_VCOM_TRACE_INFO(enDevIndex, "APP_VCOM_Send, wakeup. ");
 
     return VOS_OK;
-}
-
-
-VOS_UINT32 APP_VCOM_SetDebugFlag(VOS_UINT8 ucIndex)
-{
-    if (ucIndex >= APP_VCOM_MAX_NUM)
-    {
-         vos_printf("Error: The channel range is 0-%d\r\n", (APP_VCOM_MAX_NUM - 1));
-         return g_ulAppVcomDebugFlg;
-    }
-
-    g_ulAppVcomDebugFlg |= APP_VCOM_SET_BIT(ucIndex);
-
-    return g_ulAppVcomDebugFlg;
-}
-
-
-VOS_UINT32 APP_VCOM_DebugReset(VOS_VOID)
-{
-    g_ulAppVcomDebugFlg = 0;
-
-    return g_ulAppVcomDebugFlg;
 }
 
 
@@ -943,6 +922,33 @@ VOS_VOID APP_VCOM_FreeMem(VOS_VOID)
    return;
 }
 #endif
+
+
+VOS_VOID APP_VCOM_SendDebugNvCfg(
+    VOS_UINT32                          ulPortIdMask,
+    VOS_UINT32                          ulDebugLevel
+)
+{
+    g_stAppVcomDebugCfg.ulPortIdMask = ulPortIdMask;
+    g_stAppVcomDebugCfg.ulDebugLevel = ulDebugLevel;
+}
+
+
+/*lint -esym(960,69)*/
+VOS_VOID APP_VCOM_MNTN_LogPrintf(VOS_CHAR *pcFmt, ...)
+{
+    VOS_CHAR                            acBuf[APP_VCOM_TRACE_BUF_LEN] = {0};
+    VOS_UINT32                          ulPrintLength = 0;
+
+    /* 格式化输出BUFFER */
+    APP_VCOM_LOG_FORMAT(ulPrintLength, acBuf, APP_VCOM_TRACE_BUF_LEN, pcFmt);
+
+#if (VOS_OS_VER == VOS_LINUX)
+    printk(KERN_ERR "%s", acBuf);
+#endif
+    return;
+}
+/*lint +esym(960,69)*/
 
 #if (VOS_LINUX == VOS_OS_VER)
 #if (FEATURE_ON == FEATURE_DELAY_MODEM_INIT)

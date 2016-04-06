@@ -1,15 +1,18 @@
 /**
- * Copyright (C) ARM Limited 2010-2013. All rights reserved.
+ * Copyright (C) ARM Limited 2010-2014. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
  * published by the Free Software Foundation.
  */
 
-#ifndef	__STREAMLINE_SETUP_H__
-#define	__STREAMLINE_SETUP_H__
+#ifndef __STREAMLINE_SETUP_H__
+#define __STREAMLINE_SETUP_H__
 
-#include "OlySocket.h"
+#include <stdint.h>
+#include <string.h>
+
+class OlySocket;
 
 // Commands from Streamline
 enum {
@@ -18,7 +21,7 @@ enum {
 	COMMAND_APC_START   = 2,
 	COMMAND_APC_STOP    = 3,
 	COMMAND_DISCONNECT  = 4,
-	COMMAND_PING		= 5
+	COMMAND_PING        = 5
 };
 
 class StreamlineSetup {
@@ -44,4 +47,4 @@ private:
 	StreamlineSetup &operator=(const StreamlineSetup &);
 };
 
-#endif 	//__STREAMLINE_SETUP_H__
+#endif //__STREAMLINE_SETUP_H__

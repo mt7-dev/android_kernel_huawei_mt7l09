@@ -7,7 +7,10 @@
 *****************************************************************************/
 #include  "PsTypeDef.h"
 #include  "ComInterface.h"
-
+/* Added by zwx247453 for CHR optimize, 2015-3-13 Begin */
+#include  "errorlog.h"
+#include  "NasErrorLog.h"
+/* Added by zwx247453 for CHR optimize, 2015-3-13 End */
 #include  "product_config.h"
 #include  "NVIM_Interface.h"
 
@@ -162,7 +165,7 @@ enum TAF_SDC_IMS_NORMAL_REG_STATUS_ENUM
     TAF_SDC_IMS_NORMAL_REG_STATUS_DEREGING     = 0x01,
     TAF_SDC_IMS_NORMAL_REG_STATUS_REGING       = 0x02,
     TAF_SDC_IMS_NORMAL_REG_STATUS_REG          = 0x03,
-    
+
     TAF_SDC_IMS_NORMAL_REG_STATUS_BUTT         = 0xFF
 };
 typedef VOS_UINT8 TAF_SDC_IMS_NORMAL_REG_STATUS_ENUM_UINT8;
@@ -408,9 +411,55 @@ enum TAF_SDC_PHONE_MODE_ENUM
     TAF_SDC_PHONE_MODE_VDFMINI             = 7,   /* mini mode required by VDF*/
     TAF_SDC_PHONE_MODE_POWEROFF            = 8,   /* 关机下电模式 */
     TAF_SDC_PHONE_MODE_LOWPOWER            = 9,
-    TAF_SDC_PHONE_MODE_BUTT 
+    TAF_SDC_PHONE_MODE_BUTT
 };
 typedef VOS_UINT8 TAF_SDC_PHONE_MODE_ENUM_UINT8;
+enum TAF_SDC_LMM_ACCESS_TYPE_ENUM
+{
+    TAF_SDC_LMM_ACCESS_TYPE_EUTRAN_TDD      = 0,
+    TAF_SDC_LMM_ACCESS_TYPE_EUTRAN_FDD         ,
+    TAF_SDC_LMM_ACCESS_TYPE_BUTT
+};
+typedef VOS_UINT8 TAF_SDC_LMM_ACCESS_TYPE_ENUM_UINT8;
+
+enum TAF_SDC_CREG_TYPE_ENUM
+{
+    TAF_SDC_CREG_TYPE_NOT_REPORT        = 0,
+    TAF_SDC_CREG_TYPE_BREVITE           = 1,
+    TAF_SDC_CREG_TYPE_ENTIRE            = 2,
+    TAF_SDC_CREG_TYPE_BUTT
+};
+typedef VOS_UINT8 TAF_SDC_CREG_TYPE_ENUM_UINT8;
+
+
+enum TAF_SDC_CGREG_TYPE_ENUM
+{
+    TAF_SDC_CGREG_TYPE_NOT_REPORT       = 0,
+    TAF_SDC_CGREG_TYPE_BREVITE          = 1,
+    TAF_SDC_CGREG_TYPE_ENTIRE           = 2,
+    TAF_SDC_CGREG_TYPE_BUTT
+};
+typedef VOS_UINT8 TAF_SDC_CGREG_TYPE_ENUM_UINT8;
+
+
+enum TAF_SDC_CEREG_TYPE_ENUM
+{
+    TAF_SDC_CEREG_TYPE_NOT_REPORT       = 0,
+    TAF_SDC_CEREG_TYPE_BREVITE          = 1,
+    TAF_SDC_CEREG_TYPE_ENTIRE           = 2,
+    TAF_SDC_CEREG_TYPE_BUTT
+};
+typedef VOS_UINT8 TAF_SDC_CEREG_TYPE_ENUM_UINT8;
+
+
+
+enum TAF_SDC_IMS_SWITCH_STATE_ENUM
+{
+    TAF_SDC_IMS_SWITCH_STATE_OFF        = 0,
+    TAF_SDC_IMS_SWITCH_STATE_ON         = 1,
+    TAF_SDC_IMS_SWITCH_STATE_BUTT
+};
+typedef VOS_UINT8 TAF_SDC_IMS_SWITCH_STATE_ENUM_UINT8;
 
 
 /*****************************************************************************
@@ -441,8 +490,8 @@ typedef struct
 
 typedef struct
 {
-    VOS_UINT8                           ucRatNum;                          
-    TAF_SDC_SYS_MODE_ENUM_UINT8         aenRatPrio[TAF_SDC_MAX_RAT_NUM];    
+    VOS_UINT8                           ucRatNum;
+    TAF_SDC_SYS_MODE_ENUM_UINT8         aenRatPrio[TAF_SDC_MAX_RAT_NUM];
 }TAF_SDC_RAT_PRIO_STRU;
 
 
@@ -493,7 +542,7 @@ typedef struct
     TAF_SDC_SWITCH_DOMAIN_REDIAL_STRU   stRedial;                               /* IMS<-->CS换域重拨标志 */
     TAF_SDC_VOICE_DOMAIN_ENUM_UINT32    enVoiceDomain;                          /* voice domain preferrece */
 
-    VOS_UINT32                          ulWaitImsVoiceAvailTimerLen;            /* 等待IMS VOICE 可用的定时器时长 */    
+    VOS_UINT32                          ulWaitImsVoiceAvailTimerLen;            /* 等待IMS VOICE 可用的定时器时长 */
 }TAF_SDC_IMS_CONFIG_PARA_STRU;
 typedef struct
 {
@@ -520,7 +569,7 @@ typedef struct
 typedef struct
 {
     VOS_UINT8                           ucEccNumCount;                                  /* 紧急号个数 */
-    VOS_UINT8                           aucReseve[3];                                   
+    VOS_UINT8                           aucReseve[3];
     TAF_SDC_CUSTOM_ECC_NUM_STRU         astCustomEccNumList[TAF_SDC_MAX_CUSTOM_ECC_NUM];/* 紧急呼列表 */
 } TAF_SDC_CUSTOM_ECC_NUM_LIST_STRU;
 
@@ -570,7 +619,7 @@ typedef struct
     VOS_UINT8                           ucRac;
     VOS_UINT8                           ucRoamFlag;                     /* 当前驻留网络是否漫游 VOS_TRUE:漫游网络 VOS_FALSE:非漫游网络 */
     VOS_UINT8                           ucCampOnFlg;                    /* 当前是否驻留,收到系统消息认为驻留,收到搜网或丢网指示认为未驻留 */
-    VOS_UINT8                           aucReserved[1];
+    TAF_SDC_LMM_ACCESS_TYPE_ENUM_UINT8  enLmmAccessType;
     VOS_UINT32                          ulCellId;
 } TAF_SDC_CAMP_PLMN_INFO_STRU;
 
@@ -623,7 +672,7 @@ typedef struct
 typedef struct
 {
     VOS_UINT8                           aucImsi[TAF_SDC_MAX_IMSI_LEN];
-	
+
 	VOS_UINT8                           aucLastImsi[TAF_SDC_MAX_IMSI_LEN];
     VOS_UINT8                           aucReserved[2];
 }TAF_SDC_SIM_MS_IDENTITY_STRU;
@@ -679,9 +728,9 @@ typedef struct
     VOS_UINT16                          usAppCfgSupportType;                    /*控制应用版本*/
     TAF_SDC_UE_USAGE_SETTING_ENUM_UINT8 enUeUsageSetting;                       /* UE's usage setting */
     VOS_UINT8                           aucReserve[1];
-    
+
     TAF_SDC_RAT_PRIO_STRU               stPrioRatList;                          /* 接入技术以及优先级 */
-	
+
     TAF_SDC_DSDA_PLMN_SEARCH_ENHANCED_CFG_STRU  stDsdaPlmnSearchEnhancedCfg;
 }TAF_SDC_MS_SYS_CFG_INFO_STRU;
 typedef struct
@@ -712,7 +761,7 @@ typedef struct
     TAF_SDC_NETWORK_CAP_INFO_STRU       stGuNwCapInfo;                          /* GU下网络业务能力信息 */
     TAF_SDC_NETWORK_CAP_INFO_STRU       stLteNwCapInfo;                         /* LTE下网络业务能力信息 */
 
-    TAF_SDC_IMS_DOMAIN_INFO_STRU        stImsDomainInfo;                        /* IMS域的网络信息 */    
+    TAF_SDC_IMS_DOMAIN_INFO_STRU        stImsDomainInfo;                        /* IMS域的网络信息 */
 
 }TAF_SDC_NETWORK_INFO_STRU;
 
@@ -772,17 +821,75 @@ typedef struct
 
 typedef struct
 {
-    /* TAF层的共享缓存 */
-    OM_RING_ID                          pstRingBuffer;
-    VOS_UINT8                           ucErrLogCtrlFlag;                       /* ERRLOG打开标识 */
-    VOS_UINT8                           ucReserved;
-    VOS_UINT16                          usAlmLevel;                             /* 故障告警级别 */
+    VOS_UINT8                           bitOpActiveRptFlag    :1;
+    VOS_UINT8                           bitOpRatSwitchRptFlag :1;
+    VOS_UINT8                           bitOpSpare            :6;
+}TAF_SDC_ERRLOG_REPORT_CTRL_OCTET_STRU;
+
+
+typedef struct
+{
+    VOS_UINT8                                               ucErrLogCtrlFlag;                       /* ERRLOG打开标识 */
+    TAF_SDC_ERRLOG_REPORT_CTRL_OCTET_STRU                   stErrLogRptCtrl;
+    VOS_UINT16                                              usAlmLevel;                             /* 故障告警级别 */
+}TAF_SDC_ERRLOG_CTRL_INFO_STRU;
+
+
+typedef struct
+{
+    OM_RING_ID                          pstRingBuffer;                          /* MM层的共享缓存 */
+    VOS_UINT32                          ulOverflowCnt;                          /* Ringbuf溢出的次数 */
+}TAF_SDC_ERRLOG_BUFF_INFO_STRU;
+
+/* Added by zwx247453 for CHR optimize, 2015-3-13 Begin */
+/*****************************************************************************
+ 结构名    : TAF_SDC_ERRLOG_RAT_FREQUENTLY_SWITCH_INFO_STRU
+ 结构说明  : RAT频繁切换的信息结构
+ 1.日    期   : 2015年03月13日
+   作    者   : zwx247453
+   修改内容   : 新建
+*****************************************************************************/
+typedef struct
+{
+    VOS_UINT32                          ulNvStatisticTime;                      /* NV配置的统计时间 */
+    VOS_UINT32                          ulNvSwitchNum;                          /* NV配置的gutl频繁切换的次数 */
+    VOS_UINT8                           ucOldRatType;                           /* 最后入队元素的模式类型 */
+    VOS_UINT8                           aucReserved[3];
+    OM_RING_ID                          pstRingBuffer;                          /* 记录频繁切换记录的循环队列 */
+}TAF_SDC_ERRLOG_RAT_FREQUENTLY_SWITCH_INFO_STRU;
+/* Added by zwx247453 for CHR optimize, 2015-3-13 End */
+
+typedef struct
+{
+    TAF_SDC_ERRLOG_CTRL_INFO_STRU                       stCtrlInfo;
+    TAF_SDC_ERRLOG_BUFF_INFO_STRU                       stBuffInfo;
+    /* Added by zwx247453 for CHR optimize, 2015-3-13 Begin */
+    TAF_SDC_ERRLOG_RAT_FREQUENTLY_SWITCH_INFO_STRU      stRatFrequentlySwitchInfo;
+    /* Added by zwx247453 for CHR optimize, 2015-3-13 End */
+    NAS_ERR_LOG_IMS_CALL_FAIL_INFO_STRU                 stImsCallFailInfo;
+
 }TAF_SDC_ERRLOG_INFO_STRU;
+
+
 typedef struct
 {
     TAF_SDC_PHONE_MODE_ENUM_UINT8       enPhMode;
-    VOS_UINT8                           aucRsv[3];
+
+    TAF_SDC_IMS_SWITCH_STATE_ENUM_UINT8 enImsSwitchState;
+
+    VOS_UINT8                           aucRsv[2];
 }TAF_SDC_PHONE_INFO_STRU;
+
+
+typedef struct
+{
+    TAF_SDC_CREG_TYPE_ENUM_UINT8        enCregType;
+    TAF_SDC_CGREG_TYPE_ENUM_UINT8       enCgregType;
+    TAF_SDC_CEREG_TYPE_ENUM_UINT8       enCeregType;
+    VOS_UINT8                           aucRsv;
+}TAF_SDC_REG_REPORT_STATUS_STRU;
+
+
 
 
 typedef struct
@@ -795,6 +902,9 @@ typedef struct
     TAF_SDC_PHONE_INFO_STRU             stPhoneInfo;
 
     TAF_SDC_ERRLOG_INFO_STRU            stErrlogInfo;
+
+    TAF_SDC_REG_REPORT_STATUS_STRU      stRegReportStatus;
+
 }TAF_SDC_CTX_STRU;
 
 
@@ -909,6 +1019,10 @@ VOS_VOID TAF_SDC_SetPsAcRestriction(TAF_SDC_ACCESS_RESTRICTION_STRU *pstPsAcRetr
 TAF_SDC_ACCESS_RESTRICTION_STRU *TAF_SDC_GetCsAcRestriction(VOS_VOID);
 
 TAF_SDC_ACCESS_RESTRICTION_STRU *TAF_SDC_GetPsAcRestriction(VOS_VOID);
+
+
+TAF_SDC_LMM_ACCESS_TYPE_ENUM_UINT8 TAF_SDC_GetCurrLmmAccessType(VOS_VOID);
+VOS_VOID TAF_SDC_SetCurrLmmAccessType(TAF_SDC_LMM_ACCESS_TYPE_ENUM_UINT8 enAccessType);
 
 
 VOS_VOID TAF_SDC_InitCurcRptCtrlInfo(VOS_VOID);
@@ -1103,6 +1217,54 @@ VOS_UINT8 TAF_SDC_GetErrlogCtrlFlag(VOS_VOID);
 VOS_VOID TAF_SDC_SetErrlogCtrlFlag(VOS_UINT8 ucFlag);
 VOS_UINT16 TAF_SDC_GetErrlogAlmLevel(VOS_VOID);
 VOS_VOID TAF_SDC_SetErrlogAlmLevel(VOS_UINT16 usAlmLevel);
+VOS_UINT32 TAF_SDC_GetErrlogOverflowCnt(VOS_VOID);
+VOS_VOID TAF_SDC_SetErrlogOverflowCnt(VOS_UINT32 ulOverflowCnt);
+VOS_UINT8 TAF_SDC_GetErrLogImsCallFailFlag(VOS_VOID);
+VOS_VOID TAF_SDC_SetErrLogImsCallFailFlag(
+    VOS_UINT8                           ucImsCallFailFlag
+);
+VOS_UINT32 TAF_SDC_GetErrLogImsCallFailCause(VOS_VOID);
+VOS_VOID TAF_SDC_SetErrLogImsCallFailCause(
+    VOS_UINT32                          ulImsCallFailCause
+);
+VOS_VOID TAF_SDC_InitErrLogImsCallFailInfo(VOS_VOID);
+/* Added by zwx247453 for CHR optimize, 2015-3-13 Begin */
+VOS_UINT8 TAF_SDC_GetErrlogActiveRptFlag(VOS_VOID);
+VOS_VOID TAF_SDC_SetErrlogActiveRptFlag(VOS_UINT8 ucActiveRptFlag);
+VOS_UINT8 TAF_SDC_GetErrlogRatSwitchRptFlag(VOS_VOID);
+VOS_VOID TAF_SDC_SetErrlogRatSwitchRptFlag(VOS_UINT8 ucRatSwitchRptFlag);
+VOS_UINT32 TAF_SDC_GetErrlogRatSwitchStatisticTime(VOS_VOID);
+VOS_VOID TAF_SDC_SetErrlogRatSwitchStatisticTime(
+    VOS_UINT32                           ulStatisticTime
+);
+VOS_UINT32 TAF_SDC_GetErrlogRatSwitchStatisticNum(VOS_VOID);
+VOS_VOID TAF_SDC_SetErrlogRatSwitchStatisticNum(
+    VOS_UINT32                           ulSwitchNum
+);
+VOS_VOID TAF_SDC_ReadRatFrequentlySwitchChrRptCfgNvim(VOS_VOID);
+VOS_UINT8 TAF_SDC_GetErrLogOldRatType(VOS_VOID);
+VOS_VOID TAF_SDC_SetErrLogOldRatType(
+    VOS_UINT8                           ucRatType
+);
+OM_RING_ID TAF_SDC_GetRatSwitchRingBufAddr(VOS_VOID);
+VOS_VOID TAF_SDC_SetRatSwitchRingBufAddr(
+    OM_RING_ID                          pRingBuffer
+);
+VOS_UINT32 TAF_SDC_PutRatSwitchRingBuf(
+    VOS_CHAR                           *pbuffer,
+    VOS_UINT32                          ulbytes
+);
+VOS_VOID TAF_SDC_CleanRatSwitchRingBuf(VOS_VOID);
+VOS_UINT32 TAF_SDC_RatSwitchRingBufRemoveRecord(
+    VOS_UINT32                          ulbytes
+);
+VOS_UINT32 TAF_SDC_GetRecordFromRatSwitchRingBuf(
+    VOS_CHAR                           *pbuffer,
+    VOS_UINT32                          ulbytes
+);
+VOS_UINT32 TAF_SDC_GetRatSwitchRingBufferFreeBytes(VOS_VOID);
+VOS_VOID TAF_SDC_CreatRatSwitchRingBuf(VOS_VOID);
+/* Added by zwx247453 for CHR optimize, 2015-3-13 End */
 VOS_VOID TAF_SDC_ReadErrlogCtrlInfoNvim(VOS_VOID);
 VOS_VOID TAF_SDC_InitErrLogInfo(
     TAF_SDC_ERRLOG_INFO_STRU           *pstErrLogInfo
@@ -1208,8 +1370,23 @@ VOS_VOID  TAF_SDC_SetCurPhoneMode(
 
 TAF_SDC_PHONE_MODE_ENUM_UINT8  TAF_SDC_GetCurPhoneMode(VOS_VOID);
 
+TAF_SDC_CREG_TYPE_ENUM_UINT8  TAF_SDC_GetCregType(VOS_VOID);
+
+TAF_SDC_CGREG_TYPE_ENUM_UINT8  TAF_SDC_GetCgregType(VOS_VOID);
+
+TAF_SDC_CEREG_TYPE_ENUM_UINT8  TAF_SDC_GetCeregType(VOS_VOID);
+
+VOS_VOID  TAF_SDC_SetCregType(TAF_SDC_CREG_TYPE_ENUM_UINT8 enCregType);
+
+VOS_VOID  TAF_SDC_SetCgregType(TAF_SDC_CGREG_TYPE_ENUM_UINT8 enCgregType);
+
+VOS_VOID  TAF_SDC_SetCeregType(TAF_SDC_CEREG_TYPE_ENUM_UINT8 enCeregType);
 VOS_VOID TAF_SDC_InitPhoneInfo(
     TAF_SDC_PHONE_INFO_STRU            *pstPhInfo
+);
+
+VOS_VOID TAF_SDC_InitRegReportStatus(
+    TAF_SDC_REG_REPORT_STATUS_STRU     *pstRegReportStatus
 );
 
 VOS_VOID TAF_SDC_SetWaitImsVoiceAvailTimerLen(
@@ -1245,6 +1422,12 @@ VOS_VOID   TAF_SDC_SetLCWorkCfg(
 VOS_UINT8 TAF_SDC_GetLCRatCombined(VOS_VOID);
 
 TAF_SDC_LC_CONFIG_PARA_STRU* TAF_SDC_GetLcConfigPara(VOS_VOID);
+
+
+VOS_VOID  TAF_SDC_SetCurImsSwitchState(
+    TAF_SDC_IMS_SWITCH_STATE_ENUM_UINT8       enState
+);
+TAF_SDC_IMS_SWITCH_STATE_ENUM_UINT8  TAF_SDC_GetCurImsSwitchState(VOS_VOID);
 
 #if (VOS_OS_VER == VOS_WIN32)
 #pragma pack()

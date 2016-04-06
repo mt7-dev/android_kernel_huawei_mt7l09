@@ -31,14 +31,43 @@ extern VOS_VOID  NAS_ERABM_TaskEntry( MsgBlock* pMsg );
 extern VOS_UINT32 NAS_ERABM_PidInit ( enum VOS_INIT_PHASE_DEFINE ip );
 extern VOS_UINT32 NAS_ETC_PidInit ( enum VOS_INIT_PHASE_DEFINE ip );
 extern VOS_VOID  NAS_ETC_TaskEntry( MsgBlock* pMsg );
-extern VOS_UINT32 IP_PidInit ( enum VOS_INIT_PHASE_DEFINE ip );
-extern VOS_VOID  IP_TaskEntry
-(
-    MsgBlock                           *pstMsg
-);
+
 /*****************************************************************************
   3 Function
 *****************************************************************************/
+/*****************************************************************************
+ Function Name   : IP_TaskEntry
+ Description     : 删除NAS IP相关功能，但是考虑到直接删除可能会导致引入空指针，
+                   所以写了空函数，该PID后续作为他用。
+ Input           : None
+ Output          : None
+ Return          : VOS_VOID
+
+ History         :
+
+*****************************************************************************/
+VOS_VOID  IP_TaskEntry
+(
+    MsgBlock                           *pstMsg
+)
+{
+    return;
+}
+
+/*****************************************************************************
+ Function Name  : IP_PidInit
+ Discription    : 删除NAS IP相关功能，但是考虑到直接删除可能会导致引入空指针，
+                   所以写了空函数，该PID后续作为他用。
+ Input          :
+ Output         : None
+ Return         : None
+ History:
+*****************************************************************************/
+VOS_UINT32 IP_PidInit ( enum VOS_INIT_PHASE_DEFINE ip )
+{
+    return VOS_OK;
+}
+
 
 VOS_VOID  NAS_ESM_TaskEntry(MsgBlock * pMsg)
 {
@@ -258,7 +287,6 @@ VOS_VOID NAS_ESM_Init(VOS_VOID)
     /* xiongxianghui00253310 modify for ftmerrlog begin */
     #if (FEATURE_PTM == FEATURE_ON)
     NAS_ESM_FtmInfoInit();
-    NAS_ESM_ErrlogInfoInit();
     #endif
     /* xiongxianghui00253310 modify for ftmerrlog end   */
     

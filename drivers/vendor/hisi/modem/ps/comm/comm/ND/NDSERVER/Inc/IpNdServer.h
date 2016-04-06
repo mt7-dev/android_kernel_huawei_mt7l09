@@ -206,7 +206,10 @@ typedef struct
 {
     VOS_UINT8                           ucEpsbId;
     VOS_UINT8                           ucValidFlag;
-    VOS_UINT8                           aucReserved[2];
+    VOS_UINT8                           aucReserved[14];
+    /*为了同64位操作系统兼容，放在8字节对齐位置*/
+    LUP_QUEUE_STRU                     *pstDlPktQue;                            /*下行包缓存队列*/
+    IP_SND_MSG_STRU                     stIpSndNwMsg;
 
     ESM_IP_IPV6_NW_PARA_STRU            stIpv6NwPara;
 
@@ -216,11 +219,8 @@ typedef struct
 
     IP_TIMER_STRU                       stTimerInfo;
 
-    IP_SND_MSG_STRU                     stIpSndNwMsg;
-
     VOS_UINT8                           aucUeMacAddr[IP_MAC_ADDR_LEN];
     VOS_UINT8                           aucMacFrmHdr[IP_ETH_MAC_HEADER_LEN];
-    LUP_QUEUE_STRU                     *pstDlPktQue;                            /*下行包缓存队列*/
 }IP_NDSERVER_ADDR_INFO_STRU;
 
 /*****************************************************************************

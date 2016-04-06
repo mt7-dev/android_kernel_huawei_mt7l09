@@ -52,7 +52,7 @@ VOS_UINT32 CSD_UL_InsertQueueTail(
     IMM_ZC_STRU                        *pstNode
 )
 {
-    VOS_UINT32                          ulLockLevel;
+    VOS_ULONG                           ulLockLevel;
 
     ulLockLevel = 0;
 
@@ -77,7 +77,7 @@ VOS_UINT32 CSD_UL_InsertQueueTail(
 IMM_ZC_STRU  *CSD_UL_GetQueueFrontNode(IMM_ZC_HEAD_STRU *pstQueue)
 {
     IMM_ZC_STRU                        *pstNode;
-    VOS_UINT32                          ulLockLevel;
+    VOS_ULONG                           ulLockLevel;
 
     ulLockLevel = 0;
 
@@ -155,15 +155,15 @@ VOS_VOID CSD_SetCurrTxSlice(VOS_UINT32 ulCurrSlice)
 }
 
 
-VOS_UINT32 *CSD_GetUpLinkDataSem(VOS_VOID)
+VOS_SEM CSD_GetUpLinkDataSem(VOS_VOID)
 {
-    return &g_stCsdCtx.ulULdataSem;
+    return g_stCsdCtx.hULdataSem;
 }
 
 
-VOS_UINT32 *CSD_GetDownLinkDataSem(VOS_VOID)
+VOS_SEM CSD_GetDownLinkDataSem(VOS_VOID)
 {
-    return &g_stCsdCtx.ulDLdataSem;
+    return g_stCsdCtx.hDLdataSem;
 }
 
 
@@ -181,21 +181,21 @@ VOS_VOID CSD_SetCallState(AT_CSD_CALL_TYPE_STATE_ENUM_UINT16 enCallState)
 VOS_UINT32 CSD_InitSem(VOS_VOID)
 {
     VOS_UINT32                          ulRslt;
-    VOS_UINT32                         *pULDataSem;
-    VOS_UINT32                         *pDLDataSem;
+    VOS_SEM                             hULDataSem;
+    VOS_SEM                             hDLDataSem;
 
-    pDLDataSem  = CSD_GetDownLinkDataSem();
-    pULDataSem  = CSD_GetUpLinkDataSem();
+    hDLDataSem  = CSD_GetDownLinkDataSem();
+    hULDataSem  = CSD_GetUpLinkDataSem();
 
     /* 初始下行信号量 */
     ulRslt      = VOS_SmBCreate("ulDldataSem",
                                 CSD_SEMAPHORE_INIT_CNT,
                                 VOS_SEMA4_FIFO,
-                                pDLDataSem);
+                                &hDLDataSem);
 
     if (VOS_OK != ulRslt)
     {
-        VOS_SmDelete(*pDLDataSem);
+        VOS_SmDelete(hDLDataSem);
         CSD_ERROR_LOG(ACPU_PID_CSD,
                       "CSD_InitSem:: VOS_SmBCreate pDLDataSem fail");
 
@@ -206,11 +206,11 @@ VOS_UINT32 CSD_InitSem(VOS_VOID)
     ulRslt      = VOS_SmBCreate("ulUldataSem",
                                 CSD_SEMAPHORE_INIT_CNT,
                                 VOS_SEMA4_FIFO,
-                                pULDataSem);
+                                &hULDataSem);
 
     if (VOS_OK != ulRslt)
     {
-        VOS_SmDelete(*pULDataSem);
+        VOS_SmDelete(hULDataSem);
         CSD_ERROR_LOG(ACPU_PID_CSD,
                       "CSD_InitSem:: VOS_SmBCreate pULDataSem fail");
 

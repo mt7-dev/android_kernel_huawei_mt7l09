@@ -81,7 +81,7 @@ static int clk_gate_enable(struct clk_hw *hw)
 
 static void clk_gate_disable(struct clk_hw *hw)
 {
-#ifndef CONFIG_HI3630_CLK_ALWAYS_ON
+#ifndef CONFIG_HI3XXX_CLK_ALWAYS_ON
 	clk_gate_endisable(hw, 0);
 #endif
 }
@@ -163,3 +163,4 @@ struct clk *clk_register_gate(struct device *dev, const char *name,
 
 	return clk;
 }
+EXPORT_SYMBOL_GPL(clk_register_gate);

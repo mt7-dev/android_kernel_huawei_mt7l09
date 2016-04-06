@@ -45,6 +45,15 @@
 #include "sd_ops.h"
 #include "sdio_ops.h"
 
+#include <linux/debugfs.h>
+
+#ifdef CONFIG_HUAWEI_SDCARD_DSM
+#include <linux/mmc/dsm_sdcard.h>
+#endif
+#ifdef CONFIG_HUAWEI_EMMC_DSM
+#include <linux/mmc/dsm_emmc.h>
+#include "../card/queue.h"
+#endif
 /* If the device is not responding */
 #define MMC_CORE_TIMEOUT_MS	(10 * 60 * 1000) /* 10 minute timeout */
 
@@ -54,6 +63,7 @@
  */
 #define MMC_BKOPS_MAX_TIMEOUT	(4 * 60 * 1000) /* max time to wait in ms */
 
+/*according to K3 modify*/
 static struct workqueue_struct *workqueue_mmc0;
 static struct workqueue_struct *workqueue_mmc2;
 
@@ -84,6 +94,60 @@ module_param_named(removable, mmc_assume_removable, bool, 0644);
 MODULE_PARM_DESC(
 	removable,
 	"MMC/SD cards are removable and may be removed during suspend");
+
+static struct dentry *dentry_mmclog;
+u64 rwlog_enable_flag = 0;   /* 0 : Disable , 1: Enable */
+u64 cmdlog_enable_flag = 0;   /* 0 : Disable , 1: Enable */
+u64 rwlog_index = 0;     /* device index, 0: for emmc */
+int mmc_debug_mask = 0;
+
+static int rwlog_enable_set(void *data, u64 val)
+{
+    rwlog_enable_flag = val;
+    return 0;
+}
+static int rwlog_enable_get(void *data, u64 *val)
+{
+    *val = rwlog_enable_flag;
+    return 0;
+}
+
+static int cmdlog_enable_set(void *data, u64 val)
+{
+    cmdlog_enable_flag = val;
+    return 0;
+}
+static int cmdlog_enable_get(void *data, u64 *val)
+{
+    *val = cmdlog_enable_flag;
+    return 0;
+}
+
+static int rwlog_index_set(void *data, u64 val)
+{
+    rwlog_index = val;
+    return 0;
+}
+static int rwlog_index_get(void *data, u64 *val)
+{
+    *val = rwlog_index;
+    return 0;
+}
+static int debug_mask_set(void *data, u64 val)
+{
+    mmc_debug_mask = (int)val;
+    return 0;
+}
+static int debug_mask_get(void *data, u64 *val)
+{
+    *val = (u64)mmc_debug_mask;
+    return 0;
+}
+
+DEFINE_SIMPLE_ATTRIBUTE(rwlog_enable_fops,rwlog_enable_get, rwlog_enable_set, "%llu\n");
+DEFINE_SIMPLE_ATTRIBUTE(cmdlog_enable_fops,cmdlog_enable_get, cmdlog_enable_set, "%llu\n");
+DEFINE_SIMPLE_ATTRIBUTE(rwlog_index_fops,rwlog_index_get, rwlog_index_set, "%llu\n");
+DEFINE_SIMPLE_ATTRIBUTE(debug_mask_fops,debug_mask_get, debug_mask_set, "%llu\n");
 
 /*
  * Internal function. Schedule delayed work in the MMC work queue.
@@ -219,16 +283,34 @@ mmc_start_request(struct mmc_host *host, struct mmc_request *mrq)
 #endif
 
 	if (mrq->sbc) {
+		if(1 == cmdlog_enable_flag)
+		printk("<%s: starting CMD%u arg %08x flags %08x>\n",
+			 mmc_hostname(host), mrq->sbc->opcode,
+			 mrq->sbc->arg, mrq->sbc->flags);
+		else
 		pr_debug("<%s: starting CMD%u arg %08x flags %08x>\n",
 			 mmc_hostname(host), mrq->sbc->opcode,
 			 mrq->sbc->arg, mrq->sbc->flags);
 	}
 
-	pr_debug("%s: starting CMD%u arg %08x flags %08x\n",
+	if(1 == cmdlog_enable_flag)
+		printk("%s: starting CMD%u arg %08x flags %08x\n",
+		mmc_hostname(host), mrq->cmd->opcode,
+		mrq->cmd->arg, mrq->cmd->flags);
+	else
+		pr_debug("%s: starting CMD%u arg %08x flags %08x\n",
 		 mmc_hostname(host), mrq->cmd->opcode,
 		 mrq->cmd->arg, mrq->cmd->flags);
 
 	if (mrq->data) {
+		if(1 == cmdlog_enable_flag)
+			printk("%s:     blksz %d blocks %d flags %08x "
+			"tsac %d ms nsac %d\n",
+			mmc_hostname(host), mrq->data->blksz,
+			mrq->data->blocks, mrq->data->flags,
+			mrq->data->timeout_ns / 1000000,
+			mrq->data->timeout_clks);
+		else
 		pr_debug("%s:     blksz %d blocks %d flags %08x "
 			"tsac %d ms nsac %d\n",
 			mmc_hostname(host), mrq->data->blksz,
@@ -238,11 +320,31 @@ mmc_start_request(struct mmc_host *host, struct mmc_request *mrq)
 	}
 
 	if (mrq->stop) {
+		if(1 == cmdlog_enable_flag)
+			printk("%s:     CMD%u arg %08x flags %08x\n",
+			mmc_hostname(host), mrq->stop->opcode,
+			mrq->stop->arg, mrq->stop->flags);
+		else
 		pr_debug("%s:     CMD%u arg %08x flags %08x\n",
 			 mmc_hostname(host), mrq->stop->opcode,
 			 mrq->stop->arg, mrq->stop->flags);
 	}
 
+    if(1 == rwlog_enable_flag)
+    {
+        if(mrq->cmd->opcode == MMC_WRITE_MULTIPLE_BLOCK
+            || mrq->cmd->opcode == MMC_WRITE_BLOCK
+            || mrq->cmd->opcode == MMC_READ_MULTIPLE_BLOCK
+            || mrq->cmd->opcode == MMC_READ_SINGLE_BLOCK)
+        {
+            /* only mmc rw log is output */
+            if(rwlog_index == host->index)
+            {
+                printk("%s:cmd=%d,mrq->data.blocks=%d,index=%d,arg=%x\n",__func__,
+                (int)mrq->cmd->opcode, mrq->data->blocks, host->index, mrq->cmd->arg);
+            }
+        }
+    }
 	WARN_ON(!host->claimed);
 
 	mrq->cmd->error = 0;
@@ -309,6 +411,11 @@ void mmc_start_bkops(struct mmc_card *card, bool from_exception)
 	    from_exception)
 		return;
 
+#ifdef CONFIG_HUAWEI_EMMC_DSM
+	DSM_EMMC_LOG(card, DSM_EMMC_URGENT_BKOPS,
+		"the device needs to perform background operations urgently\n");
+#endif
+
 	mmc_claim_host(card->host);
 	if (card->ext_csd.raw_bkops_status >= EXT_CSD_BKOPS_LEVEL_2) {
 		timeout = MMC_BKOPS_MAX_TIMEOUT;
@@ -346,8 +453,10 @@ EXPORT_SYMBOL(mmc_start_bkops);
  */
 static void mmc_wait_data_done(struct mmc_request *mrq)
 {
+	spin_lock(&mrq->host->context_info.lock);
 	mrq->host->context_info.is_done_rcv = true;
 	wake_up_interruptible(&mrq->host->context_info.wait);
+	spin_unlock(&mrq->host->context_info.lock);
 }
 
 static void mmc_wait_done(struct mmc_request *mrq)
@@ -430,14 +539,13 @@ static int mmc_wait_for_data_req_done(struct mmc_host *host,
 				pr_info("%s: req failed (CMD%u): %d, retrying...\n",
 					mmc_hostname(host),
 					cmd->opcode, cmd->error);
-				if (host->sd_need_reinit) {
-					err = mmc_reinit_host(host);
-					if (err)
-						pr_info("%s: mmc_reinit_host err=%d\n",
-							mmc_hostname(host), err);
-					else
+					if (host->sd_need_reinit && !host->sd_in_reinit) {
+						err = mmc_reinit_host(host);
 						host->sd_need_reinit = 0;
-				}
+						if (err)
+							pr_info("%s: mmc_reinit_host err=%d\n",
+								mmc_hostname(host), err);
+					}
 				cmd->retries--;
 				cmd->error = 0;
 				host->ops->request(host, mrq);
@@ -454,6 +562,100 @@ static int mmc_wait_for_data_req_done(struct mmc_host *host,
 	return err;
 }
 
+#ifdef CONFIG_HUAWEI_EMMC_DSM
+#define MMC_RSP_R1_ERROR_MASK (R1_OUT_OF_RANGE | R1_ADDRESS_ERROR | R1_BLOCK_LEN_ERROR | R1_ERASE_SEQ_ERROR | \
+								  R1_ERASE_PARAM | R1_WP_VIOLATION | R1_LOCK_UNLOCK_FAILED | \
+								  R1_COM_CRC_ERROR | R1_ILLEGAL_COMMAND | R1_CARD_ECC_FAILED | R1_CC_ERROR | \
+								  R1_ERROR | R1_CID_CSD_OVERWRITE | \
+								  R1_WP_ERASE_SKIP | R1_ERASE_RESET | \
+								  R1_SWITCH_ERROR)
+
+#define MMC_RSP_R1_ERROR_NON_CRC_MASK (MMC_RSP_R1_ERROR_MASK & (~(R1_COM_CRC_ERROR | R1_ILLEGAL_COMMAND)))
+
+static inline int mmc_dsm_request_response_error_filter(struct mmc_request *mrq) {
+	return (((mrq)->cmd->opcode == MMC_SEND_TUNING_BLOCK_HS200) ||
+			(((mrq)->cmd->opcode == MMC_SWITCH) && ((mrq)->cmd->resp[0] & (R1_COM_CRC_ERROR | R1_ILLEGAL_COMMAND)) && (((mrq)->cmd->resp[0] & MMC_RSP_R1_ERROR_NON_CRC_MASK) == 0)));
+}
+
+static void mmc_dsm_request_response_error_check(struct mmc_host *host, struct mmc_request *mrq) {
+	int do_event = 0;
+	if (mrq->sbc) {
+		if (mrq->sbc->resp[0] & (MMC_RSP_R1_ERROR_MASK | R1_EXCEPTION_EVENT)) {
+			if (host->index == 0) {
+				if (mrq->sbc->resp[0] & MMC_RSP_R1_ERROR_MASK) {
+					struct mmc_card *card;
+					card = host->card;
+					DSM_EMMC_LOG(card, DSM_EMMC_RSP_ERR,
+						"cmd: %d, requesting status %#x\n",
+						mrq->sbc->opcode, mrq->sbc->resp[0]);
+				}
+				do_event = mrq->sbc->resp[0] & R1_EXCEPTION_EVENT;
+			}
+		}
+	}
+	if (mrq->cmd && ((mmc_resp_type(mrq->cmd) == MMC_RSP_R1) || (mmc_resp_type(mrq->cmd) == MMC_RSP_R1B))) {
+		if (mrq->cmd->resp[0] & (MMC_RSP_R1_ERROR_MASK | R1_EXCEPTION_EVENT)) {
+			if (host->index == 0) {
+				if ((mrq->cmd->resp[0] & MMC_RSP_R1_ERROR_MASK) && !mmc_dsm_request_response_error_filter(mrq)) {
+					struct mmc_card *card;
+					card = host->card;
+					DSM_EMMC_LOG(card, DSM_EMMC_RSP_ERR,
+						"cmd: %d, requesting status %#x\n",
+						mrq->cmd->opcode, mrq->cmd->resp[0]);
+				}
+				do_event = mrq->cmd->resp[0] & R1_EXCEPTION_EVENT;
+			}
+		}
+	}
+	if (mrq->stop) {
+		if (mrq->stop->resp[0] & (MMC_RSP_R1_ERROR_MASK | R1_EXCEPTION_EVENT)) {
+			if (host->index == 0) {
+				if (mrq->stop->resp[0] & MMC_RSP_R1_ERROR_MASK) {
+					struct mmc_card *card;
+					card = host->card;
+					DSM_EMMC_LOG(card, DSM_EMMC_RSP_ERR,
+						"cmd: %d, requesting status %#x\n",
+						mrq->stop->opcode, mrq->stop->resp[0]);
+				}
+				do_event = mrq->stop->resp[0] & R1_EXCEPTION_EVENT;
+			}
+		}
+	}
+	if (unlikely(do_event)) {
+		if(mrq->done == mmc_wait_data_done) {
+			struct mmc_queue_req *mq_mrq = container_of(mrq, struct mmc_queue_req,
+								    brq.mrq);
+			do_event = !mmc_packed_cmd(mq_mrq->cmd_type);
+		} else {
+			do_event = 0;
+		}
+		if (do_event) {
+			int err;
+			u8 *ext_csd;
+			ext_csd = kzalloc(512, GFP_KERNEL);
+			if (!ext_csd)
+				return;
+			err = mmc_send_ext_csd(host->card, ext_csd);
+			if (err)
+				goto free;
+			if(ext_csd[EXT_CSD_EXP_EVENTS_STATUS] &
+			     EXT_CSD_DYNCAP_NEEDED) {
+				DSM_EMMC_LOG(host->card, DSM_EMMC_DYNCAP_NEEDED,
+					"DYNCAP_NEEDED [58]: %d, the device may degrade in performance and eventually become non-functional\n",
+			       ext_csd[58]);
+			}
+			if(ext_csd[EXT_CSD_EXP_EVENTS_STATUS] &
+			     EXT_CSD_SYSPOOL_EXHAUSTED) {
+				DSM_EMMC_LOG(host->card, DSM_EMMC_SYSPOOL_EXHAUSTED,
+					"SYSPOOL_EXHAUSTED, System resources pool exhausted\n");
+			}
+free:
+			kfree(ext_csd);
+		}
+	}
+}
+#endif
+
 static void mmc_wait_for_req_done(struct mmc_host *host,
 				  struct mmc_request *mrq)
 {
@@ -464,19 +666,21 @@ static void mmc_wait_for_req_done(struct mmc_host *host,
 		wait_for_completion(&mrq->completion);
 
 		cmd = mrq->cmd;
+#ifdef CONFIG_HUAWEI_EMMC_DSM
+		mmc_dsm_request_response_error_check(host, mrq);
+#endif
 		if (!cmd->error || !cmd->retries ||
 		    mmc_card_removed(host->card))
 			break;
 
 		pr_debug("%s: req failed (CMD%u): %d, retrying...\n",
 			 mmc_hostname(host), cmd->opcode, cmd->error);
-		if (host->sd_need_reinit) {
+		if (host->sd_need_reinit && !host->sd_in_reinit) {
 			err = mmc_reinit_host(host);
+			host->sd_need_reinit = 0;
 			if (err)
 				pr_info("%s: mmc_reinit_host err=%d\n",
 						 mmc_hostname(host), err);
-			else
-				host->sd_need_reinit = 0;
 		}
 		cmd->retries--;
 		cmd->error = 0;
@@ -570,6 +774,10 @@ struct mmc_async_req *mmc_start_req(struct mmc_host *host,
 		     (mmc_resp_type(host->areq->mrq->cmd) == MMC_RSP_R1B)) &&
 		    (host->areq->mrq->cmd->resp[0] & R1_EXCEPTION_EVENT))
 			mmc_start_bkops(host->card, true);
+
+#ifdef CONFIG_HUAWEI_EMMC_DSM
+		mmc_dsm_request_response_error_check(host, host->areq->mrq);
+#endif
 	}
 
 	if (!err && areq) {
@@ -1031,6 +1239,9 @@ static inline void mmc_set_ios(struct mmc_host *host)
 	if (ios->clock > 0)
 		mmc_set_ungated(host);
 	host->ops->set_ios(host, ios);
+	if (ios->old_rate != ios->clock) {
+		ios->old_rate = ios->clock;
+	}
 }
 
 /*
@@ -1054,7 +1265,6 @@ static void __mmc_set_clock(struct mmc_host *host, unsigned int hz)
 
 	if (hz > host->f_max)
 		hz = host->f_max;
-
 	host->ios.clock = hz;
 	mmc_set_ios(host);
 }
@@ -1358,7 +1568,7 @@ EXPORT_SYMBOL_GPL(mmc_regulator_get_supply);
 u32 mmc_select_voltage(struct mmc_host *host, u32 ocr)
 {
 	int bit;
-	u32 oriocr = ocr;
+
 	ocr &= host->ocr_avail;
 
 	bit = ffs(ocr);
@@ -1377,9 +1587,6 @@ u32 mmc_select_voltage(struct mmc_host *host, u32 ocr)
 		ocr = 0;
 	}
 
-	if(host->index == 2) {  //only print in mmc2 host
-		pr_err("%s select_voltage ffs: %d, original ocr: %u, new ocr: %u\n", mmc_hostname(host), bit, oriocr, ocr);
-	}
 	return ocr;
 }
 
@@ -1429,12 +1636,21 @@ int mmc_set_signal_voltage(struct mmc_host *host, int signal_voltage)
 
 	cmd.opcode = SD_SWITCH_VOLTAGE;
 	cmd.arg = 0;
-	cmd.flags = MMC_RSP_R1 | MMC_CMD_AC;
+	/*
+	 * Here for using Kingsdon SD produced after 03-2015,
+	 * We set long resp and delete CRC flag for cmd11.
+	 */
+	cmd.flags = MMC_RSP_PRESENT | MMC_RSP_OPCODE | MMC_CMD_AC | MMC_RSP_136;
 
 	err = mmc_wait_for_cmd(host, &cmd, 0);
 	if (err)
+	{
+       if(!strcmp(mmc_hostname(host),"mmc1"))
+	   {
+	       printk(KERN_ERR "%s:send cmd11 fail,err=%d\n",mmc_hostname(host),err);
+	   }
 		return err;
-
+	}
 	if (!mmc_host_is_spi(host) && (cmd.resp[0] & R1_ERROR))
 		return -EIO;
 
@@ -1482,11 +1698,14 @@ int mmc_set_signal_voltage(struct mmc_host *host, int signal_voltage)
 
 power_cycle:
 	if (err) {
-		pr_debug("%s: Signal voltage switch failed, "
+		printk(KERN_ERR "%s: Signal voltage switch failed, "
 			"power cycling card\n", mmc_hostname(host));
 		mmc_power_cycle(host);
 	}
-
+    else
+	{
+	   printk(KERN_ERR "%s:host and card voltage have changed into 1.8v success!\n",mmc_hostname(host));
+	}
 	mmc_host_clk_release(host);
 
 	return err;
@@ -1552,7 +1771,7 @@ void mmc_power_up(struct mmc_host *host)
 	mmc_set_ios(host);
 
 	/* Set signal voltage to 3.3V */
-	__mmc_set_signal_voltage(host, MMC_SIGNAL_VOLTAGE_330);
+	(void)__mmc_set_signal_voltage(host, MMC_SIGNAL_VOLTAGE_330);
 
 	/*
 	 * This delay should be sufficient to allow the power supply
@@ -1711,7 +1930,7 @@ static void __mmc_release_bus(struct mmc_host *host)
 	BUG_ON(!host);
 	BUG_ON(host->bus_refs);
 	BUG_ON(!host->bus_dead);
-	printk(KERN_ERR "%s, %d.\n", __FUNCTION__, __LINE__);
+
 	host->bus_ops = NULL;
 }
 
@@ -1744,6 +1963,7 @@ static inline void mmc_bus_put(struct mmc_host *host)
 
 int mmc_resume_bus(struct mmc_host *host)
 {
+#ifndef CONFIG_MMC_BLOCK_DEFERRED_RESUME
 	unsigned long flags;
 
 	if (!mmc_bus_needs_resume(host))
@@ -1768,6 +1988,33 @@ int mmc_resume_bus(struct mmc_host *host)
 	mmc_bus_put(host);
 	printk("%s: Deferred resume completed\n", mmc_hostname(host));
 	return 0;
+#else
+	unsigned long flags;
+
+	mmc_claim_host(host);
+	spin_lock_irqsave(&host->lock, flags);
+	if (!mmc_bus_needs_resume(host)) {
+		spin_unlock_irqrestore(&host->lock, flags);
+		mmc_release_host(host);
+		return 0;
+	}
+	host->bus_resume_flags &= ~MMC_BUSRESUME_NEEDS_RESUME;
+	spin_unlock_irqrestore(&host->lock, flags);
+
+	printk("%s: Starting deferred resume\n", mmc_hostname(host));
+	mmc_bus_get(host);
+	if (host->bus_ops && !host->bus_dead) {
+		mmc_power_up(host);
+		BUG_ON(!host->bus_ops->resume);
+		host->bus_ops->resume(host);
+	}
+	mmc_bus_put(host);
+	mmc_release_host(host);
+	mmc_detect_change(host, 0);
+
+	printk("%s: Deferred resume completed\n", mmc_hostname(host));
+	return 0;
+#endif
 }
 
 EXPORT_SYMBOL(mmc_resume_bus);
@@ -1790,7 +2037,6 @@ void mmc_attach_bus(struct mmc_host *host, const struct mmc_bus_ops *ops)
 	BUG_ON(host->bus_ops);
 	BUG_ON(host->bus_refs);
 
-	printk(KERN_ERR "%s, %d.\n", __FUNCTION__, __LINE__);
 	host->bus_ops = ops;
 	host->bus_refs = 1;
 	host->bus_dead = 0;
@@ -2090,6 +2336,15 @@ static int mmc_do_erase(struct mmc_card *card, unsigned int from,
 		/* Do not retry else we can't see errors */
 		err = mmc_wait_for_cmd(card->host, &cmd, 0);
 		if (err || (cmd.resp[0] & 0xFDF92000)) {
+#ifdef CONFIG_HUAWEI_EMMC_DSM
+			if (!mmc_card_sd(card)){
+				DSM_EMMC_LOG(card, DSM_EMMC_ERASE_ERR,
+					"%s:error %d requesting status %#x\n", __FUNCTION__,
+					err, cmd.resp[0]);
+			
+			}
+#endif
+
 			pr_err("error %d requesting status %#x\n",
 				err, cmd.resp[0]);
 			err = -EIO;
@@ -2215,11 +2470,7 @@ int mmc_can_sanitize(struct mmc_card *card)
 	if (!mmc_can_trim(card) && !mmc_can_erase(card))
 		return 0;
 	if (card->ext_csd.sec_feature_support & EXT_CSD_SEC_SANITIZE)
-	/*disable sanitize feature to make resetfactory faster*/
-	{
-		printk("disable sanitize feature to make resetfactory faster.\n");
-		return 0;
-	}
+		return 1;
 	return 0;
 }
 EXPORT_SYMBOL(mmc_can_sanitize);
@@ -2476,6 +2727,18 @@ static int mmc_rescan_try_freq(struct mmc_host *host, unsigned freq)
 int _mmc_detect_card_removed(struct mmc_host *host)
 {
 	int ret;
+#ifdef CONFIG_HUAWEI_SDCARD_DSM
+	int i;
+
+	if(!strcmp(mmc_hostname(host), "mmc1"))
+	{
+		for(i=0; i< DSM_SDCARD_CMD_MAX; i++)
+		{
+			dsm_sdcard_cmd_logs[i].value = 0;
+		}
+		
+	}
+#endif
 
 	if ((host->caps & MMC_CAP_NONREMOVABLE) || !host->bus_ops->alive)
 		return 0;
@@ -2541,6 +2804,8 @@ int mmc_detect_card_removed(struct mmc_host *host)
 }
 EXPORT_SYMBOL(mmc_detect_card_removed);
 
+
+
 void mmc_rescan(struct work_struct *work)
 {
 	struct mmc_host *host =
@@ -2548,18 +2813,14 @@ void mmc_rescan(struct work_struct *work)
 	int i;
 	bool extend_wakelock = false;
 
-	printk(KERN_ERR "enter %s, %d.\n", __FUNCTION__, __LINE__);
-	if (host->rescan_disable){
-		printk("rescan_disable is true. %s, %d.\n", __FUNCTION__, __LINE__);
+	if (host->rescan_disable)
 		goto out;
-	}
+
+
 
 	/* If there is a non-removable card registered, only scan once */
-	if ((host->caps & MMC_CAP_NONREMOVABLE) && host->rescan_entered){
-		printk(KERN_ERR "rescan_entered has been entered. %s, %d. cap: 0x%08x, rescan_entered: %d\n", 
-			__FUNCTION__, __LINE__, host->caps, host->rescan_entered);
+	if ((host->caps & MMC_CAP_NONREMOVABLE) && host->rescan_entered)
 		goto out;
-	}
 	host->rescan_entered = 1;
 
 	mmc_bus_get(host);
@@ -2590,7 +2851,6 @@ void mmc_rescan(struct work_struct *work)
 	/* if there still is a card present, stop here */
 	if (host->bus_ops != NULL) {
 		mmc_bus_put(host);
-		printk(KERN_ERR "card still present. %s, %d.\n", __FUNCTION__, __LINE__);
 		goto out;
 	}
 
@@ -2608,6 +2868,11 @@ void mmc_rescan(struct work_struct *work)
 		mmc_release_host(host);
 		goto out;
 	}
+
+#ifdef CONFIG_MMC_BLOCK_DEFERRED_RESUME
+	if (mmc_bus_needs_resume(host))
+		goto out;
+#endif
 
 	mmc_claim_host(host);
 
@@ -2634,13 +2899,11 @@ void mmc_rescan(struct work_struct *work)
 	mmc_release_host(host);
 
  out:
-	printk(KERN_ERR "exit %s, %d.\n", __FUNCTION__, __LINE__);
 	if (extend_wakelock)
 		wake_lock_timeout(&host->detect_wake_lock, HZ / 2);
 	else
 		wake_unlock(&host->detect_wake_lock);
 	if (host->caps & MMC_CAP_NEEDS_POLL) {
-		printk(KERN_ERR "still need rescan. %s, %d, caps: 0x%08x. \n", __FUNCTION__, __LINE__, host->caps);
 		wake_lock(&host->detect_wake_lock);
 		mmc_schedule_delayed_work(&host->detect, HZ);
 	}
@@ -2649,11 +2912,13 @@ void mmc_rescan(struct work_struct *work)
 void mmc_start_host(struct mmc_host *host)
 {
 	if (host->index == 0)
-		host->f_init = max(freqs_emmc[0], host->f_min);
+	{
+		host->f_init = freqs_emmc[0];
+		printk(KERN_INFO"mmc_start_host :%x MMC!\n",host->f_init);
+	}
 	else
 		host->f_init = max(freqs[0], host->f_min);
 	host->rescan_disable = 0;
-	printk(KERN_ERR "%s, %d.\n", __FUNCTION__, __LINE__);
 	if (host->caps2 & MMC_CAP2_NO_PRESCAN_POWERUP)
 		mmc_power_off(host);
 	else
@@ -2671,7 +2936,6 @@ void mmc_stop_host(struct mmc_host *host)
 #endif
 
 	host->rescan_disable = 1;
-	printk(KERN_ERR "%s, %d.\n", __FUNCTION__, __LINE__);
 	if (cancel_delayed_work_sync(&host->detect))
 		wake_unlock(&host->detect_wake_lock);
 	mmc_flush_scheduled_work();
@@ -2699,7 +2963,6 @@ void mmc_stop_host(struct mmc_host *host)
 	mmc_power_off(host);
 }
 
-
 int mmc_power_save_host_for_wifi(struct mmc_host *host)
 {
 	int ret = 0;
@@ -2710,7 +2973,8 @@ int mmc_power_save_host_for_wifi(struct mmc_host *host)
 
 	mmc_bus_get(host);
 
-	if (!host->bus_ops || host->bus_dead || !host->bus_ops->power_restore) {
+	if ( (!host->ops || !host->ops->set_ios) ||
+         (host->bus_dead) ) {
 		mmc_bus_put(host);
 		return -EINVAL;
 	}
@@ -2733,13 +2997,13 @@ int mmc_power_restore_host_for_wifi(struct mmc_host *host)
 
 	mmc_bus_get(host);
 
-	if (!host->bus_ops || host->bus_dead || !host->bus_ops->power_restore) {
+	if ( (!host->ops || !host->ops->set_ios) ||
+         (host->bus_dead) ) {
 		mmc_bus_put(host);
 		return -EINVAL;
 	}
 
 	mmc_power_up(host);
-	pr_err("%s: power up at %lu\n", __func__, jiffies);
 
 	mmc_bus_put(host);
 
@@ -3011,42 +3275,44 @@ int mmc_resume_host(struct mmc_host *host)
 }
 EXPORT_SYMBOL(mmc_resume_host);
 
+/*
+ *  change here for compile 64bit emmc
+ *  puck.chen@hisilicon.com
+ */
 int mmc_reinit_host(struct mmc_host *host)
 {
 	int err = 0;
-	int retries = 3;
 
 	//mmc_bus_get(host);
-    if (host->bus_ops && !host->bus_dead) {
-        while (retries) {
-            if (!mmc_card_keep_power(host)) {
-                mmc_power_off(host);
-                mmc_delay(10);
-                mmc_power_up(host);
-                mmc_select_voltage(host, host->ocr);
-            }
-            err = mmc_sd_init_card(host, host->ocr, host->card);
-            if (err) {
-                retries--;
-                continue;
-            }
-            break;
+
+	host->sd_in_reinit = 1;
+
+	if(!host->ops->get_cd(host)){
+		host->sd_in_reinit = 0;
+		host->sd_need_reinit = 0;
+		return -ENODEV;
+	}
+
+	if (host->bus_ops && !host->bus_dead) {
+		if (!mmc_card_keep_power(host)) {
+			mmc_power_off(host);
+			mmc_delay(200);
+			mmc_power_up(host);
+			mmc_select_voltage(host, host->ocr);
 		}
-    }
+		err = mmc_sd_init_card(host, host->ocr, host->card);
+	}
 	if (!host->card)
 		mmc_power_off(host);
 	host->pm_flags &= ~MMC_PM_KEEP_POWER;
-	//mmc_bus_put(host);
 
-	if (!retries) {
-		printk(KERN_ERR "%s: mmc_reinit_host() failure (err = %d)\n",
-		       mmc_hostname(host), err);
-	}
+	host->sd_in_reinit = 0;
+	//mmc_bus_put(host);
 
 	return err;
 }
-EXPORT_SYMBOL(mmc_reinit_host);
 
+EXPORT_SYMBOL(mmc_reinit_host);
 /* Do the card removal on suspend if card is assumed removeable
  * Do that in pm notifier while userspace isn't yet frozen, so we will be able
    to sync the card.
@@ -3067,7 +3333,6 @@ int mmc_pm_notify(struct notifier_block *notify_block,
 			break;
 		}
 		host->rescan_disable = 1;
-		printk(KERN_ERR "%s, %d, mode: %lu.\n", __FUNCTION__, __LINE__, mode);
 		spin_unlock_irqrestore(&host->lock, flags);
 		if (cancel_delayed_work_sync(&host->detect))
 			wake_unlock(&host->detect_wake_lock);
@@ -3092,11 +3357,13 @@ int mmc_pm_notify(struct notifier_block *notify_block,
 
 		spin_lock_irqsave(&host->lock, flags);
 		if (mmc_bus_manual_resume(host)) {
+#ifdef CONFIG_MMC_BLOCK_DEFERRED_RESUME
+			host->rescan_disable = 0;
+#endif
 			spin_unlock_irqrestore(&host->lock, flags);
 			break;
 		}
 		host->rescan_disable = 0;
-		printk(KERN_ERR "%s, %d, mode:%lu.\n", __FUNCTION__, __LINE__, mode);
 		spin_unlock_irqrestore(&host->lock, flags);
 		mmc_detect_change(host, 0);
 
@@ -3167,7 +3434,18 @@ static int __init mmc_init(void)
 	ret = sdio_register_bus();
 	if (ret)
 		goto unregister_host_class;
-
+    dentry_mmclog = debugfs_create_dir("hw_mmclog", NULL);
+    if(dentry_mmclog )
+    {
+        debugfs_create_file("rwlog_enable", S_IFREG|S_IRWXU|S_IRGRP|S_IROTH,
+            dentry_mmclog, NULL, &rwlog_enable_fops);
+        debugfs_create_file("cmdlog_enable", S_IFREG|S_IRWXU|S_IRGRP|S_IROTH,
+            dentry_mmclog, NULL, &cmdlog_enable_fops);
+        debugfs_create_file("rwlog_index", S_IFREG|S_IRWXU|S_IRGRP|S_IROTH,
+            dentry_mmclog, NULL, &rwlog_index_fops);
+        debugfs_create_file("debug_mask", S_IFREG|S_IRWXU|S_IRGRP|S_IROTH,
+            dentry_mmclog, NULL, &debug_mask_fops);
+    }
 	return 0;
 
 unregister_host_class:

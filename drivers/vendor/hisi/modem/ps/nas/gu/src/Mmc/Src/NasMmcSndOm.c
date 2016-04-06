@@ -1202,6 +1202,145 @@ VOS_VOID NAS_MMC_SndOmPlmnSelectionList(
 
     return;
 }
+VOS_VOID NAS_MMC_LogRplmnRelatedInfo(VOS_VOID)
+{
+    NAS_MMC_LOG_RPLMN_RELATED_INFO_STRU                      *pstMsg  = VOS_NULL_PTR;
+
+    pstMsg = (NAS_MMC_LOG_RPLMN_RELATED_INFO_STRU *)PS_MEM_ALLOC(WUEPS_PID_MMC,
+                          (sizeof(NAS_MMC_LOG_RPLMN_RELATED_INFO_STRU)));
+    if (TAF_NULL_PTR == pstMsg)
+    {
+        NAS_ERROR_LOG(WUEPS_PID_MMC, "NAS_MMC_LogRplmnRelatedInfo:ERROR:Alloc Mem Fail.");
+        return;
+    }
+
+    PS_MEM_SET(pstMsg, 0X00, sizeof(NAS_MMC_LOG_RPLMN_RELATED_INFO_STRU) - VOS_MSG_HEAD_LENGTH);
+
+    pstMsg->stMsgHeader.ulReceiverCpuId = VOS_LOCAL_CPUID;
+    pstMsg->stMsgHeader.ulSenderPid     = WUEPS_PID_MMC;
+    pstMsg->stMsgHeader.ulReceiverPid   = WUEPS_PID_MMC;
+    pstMsg->stMsgHeader.ulMsgName       = MMCOM_LOG_RPLMN_RELATED_INFO;
+    pstMsg->stMsgHeader.ulLength        = sizeof(NAS_MMC_LOG_RPLMN_RELATED_INFO_STRU) - VOS_MSG_HEAD_LENGTH;
+
+    /* 获取LTE的RPLMN */
+    NAS_MML_GetLteRPlmn(&pstMsg->stGetLteRplmn);
+
+    /* 获取GU的RPLMN */
+    NAS_MML_GetGURPlmn(&pstMsg->stGetGuRplmn);   
+
+    /* 打印RPLMN的配置信息 */
+    PS_MEM_CPY(&pstMsg->stRplmnCfg, NAS_MML_GetRplmnCfg(), sizeof(NAS_MML_RPLMN_CFG_INFO_STRU));
+
+    /* CS域最后一次注册成功的LAI信息或注册失败后需要删除LAI，则该值为无效值 */
+    PS_MEM_CPY(&pstMsg->stLastSuccLai, NAS_MML_GetCsLastSuccLai(), sizeof(NAS_MML_LAI_STRU));
+
+    /* PS域最后一次注册成功的RAI信息或注册失败后需要删除RAI，则该值为无效值 */
+    PS_MEM_CPY(&pstMsg->stLastSuccRai, NAS_MML_GetPsLastSuccRai(), sizeof(NAS_MML_RAI_STRU));
+
+    /* PS UPDATE STATUS */
+    pstMsg->enPsUpdateStatus   = NAS_MML_GetPsUpdateStatus();
+
+    /* CS UPDATE STATUS */
+    pstMsg->enCsUpdateStatus   = NAS_MML_GetCsUpdateStatus();
+
+    /* MS MODE */
+    pstMsg->enMsMode            = NAS_MML_GetMsMode();
+
+    OM_TraceMsgHook(pstMsg);
+
+    PS_MEM_FREE(WUEPS_PID_MMC, pstMsg);
+
+    return;
+}
+
+
+VOS_VOID NAS_MMC_LogForbiddenPlmnRelatedInfo(VOS_VOID)
+{
+    NAS_MMC_LOG_FORBIDDEN_PLMN_RELATED_INFO_STRU           *pstMsg       = VOS_NULL_PTR;
+    NAS_MML_CUSTOM_CFG_INFO_STRU                           *pstCustomCfg = VOS_NULL_PTR;
+
+    pstCustomCfg = NAS_MML_GetCustomCfg();
+
+    pstMsg = (NAS_MMC_LOG_FORBIDDEN_PLMN_RELATED_INFO_STRU *)PS_MEM_ALLOC(WUEPS_PID_MMC,
+                          (sizeof(NAS_MMC_LOG_FORBIDDEN_PLMN_RELATED_INFO_STRU)));
+    if (TAF_NULL_PTR == pstMsg)
+    {
+        NAS_ERROR_LOG(WUEPS_PID_MMC, "NAS_MMC_LogForbiddenPlmnRelatedInfo:ERROR:Alloc Mem Fail.");
+        
+        return;
+    }
+
+    PS_MEM_SET(pstMsg, 0X00, sizeof(NAS_MMC_LOG_FORBIDDEN_PLMN_RELATED_INFO_STRU) - VOS_MSG_HEAD_LENGTH);
+
+    pstMsg->stMsgHeader.ulReceiverCpuId = VOS_LOCAL_CPUID;
+    pstMsg->stMsgHeader.ulSenderPid     = WUEPS_PID_MMC;
+    pstMsg->stMsgHeader.ulReceiverPid   = WUEPS_PID_MMC;
+    pstMsg->stMsgHeader.ulMsgName       = MMCOM_LOG_FORBIDDEN_PLMN_RELATED_INFO;
+    pstMsg->stMsgHeader.ulLength        = sizeof(NAS_MMC_LOG_FORBIDDEN_PLMN_RELATED_INFO_STRU) - VOS_MSG_HEAD_LENGTH;
+
+    /* 打印FORB PLMN的信息 */
+    PS_MEM_CPY(&pstMsg->stSimForbidenInfo, NAS_MML_GetForbidPlmnInfo(), sizeof(NAS_MML_SIM_FORBIDPLMN_INFO_STRU));
+
+    /* 打印ROMA CFG的信息 */
+    PS_MEM_CPY(&pstMsg->stRoamCfg, NAS_MML_GetRoamCfg(), sizeof(NAS_MML_ROAM_CFG_INFO_STRU));
+
+    /* 打印锁网定制需求,黑名单或白名单的信息 */
+    PS_MEM_CPY(&pstMsg->stPlmnLockCfg, NAS_MML_GetPlmnLockCfg(), sizeof(NAS_MML_PLMN_LOCK_CFG_INFO_STRU));
+
+    /* 打印LTE国际漫游的信息 */
+    PS_MEM_CPY(&pstMsg->stLteRoamCfg, &(pstCustomCfg->stLteCustomCfgInfo.stLteRoamCfg), sizeof(NAS_MML_LTE_INTERNATION_ROAM_CFG_STRU));
+
+    /* 打印禁止接入技术的信息 */
+    PS_MEM_CPY(&pstMsg->stRatFirbiddenStatusCfg, &(pstCustomCfg->stRatFirbiddenStatusCfg), sizeof(NAS_MML_RAT_FORBIDDEN_STATUS_STRU));
+
+    /* 打印DISABLE LTE的相关信息，在DISABLE LTE时对搜网会产生影响 */
+    pstMsg->enLteCapabilityStatus = NAS_MML_GetLteCapabilityStatus();
+    pstMsg->enDisableLteReason    = NAS_MML_GetDisableLteReason();
+    pstMsg->ulDisableLteRoamFlg   = NAS_MML_GetDisableLteRoamFlg();
+
+    OM_TraceMsgHook(pstMsg);
+
+    PS_MEM_FREE(WUEPS_PID_MMC, pstMsg);
+
+    return;
+}
+
+
+
+VOS_VOID NAS_MMC_LogRplmnCfgInfo(VOS_VOID)
+{
+    NAS_MMC_LOG_RPLMN_CFG_INFO_STRU                      *pstMsg  = VOS_NULL_PTR;
+
+    pstMsg = (NAS_MMC_LOG_RPLMN_CFG_INFO_STRU *)PS_MEM_ALLOC(WUEPS_PID_MMC,
+                          (sizeof(NAS_MMC_LOG_RPLMN_CFG_INFO_STRU)));
+    if (TAF_NULL_PTR == pstMsg)
+    {
+        NAS_ERROR_LOG(WUEPS_PID_MMC, "NAS_MMC_LogRplmnCfgInfo:ERROR:Alloc Mem Fail.");
+        return;
+    }
+
+    PS_MEM_SET(pstMsg, 0X00, sizeof(NAS_MMC_LOG_RPLMN_CFG_INFO_STRU) - VOS_MSG_HEAD_LENGTH);
+
+    pstMsg->stMsgHeader.ulReceiverCpuId = VOS_LOCAL_CPUID;
+    pstMsg->stMsgHeader.ulSenderPid     = WUEPS_PID_MMC;
+    pstMsg->stMsgHeader.ulReceiverPid   = WUEPS_PID_MMC;
+    pstMsg->stMsgHeader.ulMsgName       = MMCOM_LOG_RPLMN_CFG_INFO;
+    pstMsg->stMsgHeader.ulLength        = sizeof(NAS_MMC_LOG_RPLMN_CFG_INFO_STRU) - VOS_MSG_HEAD_LENGTH;
+
+    /* 打印RPLMN的配置信息 */
+    PS_MEM_CPY(&pstMsg->stRplmnCfg, NAS_MML_GetRplmnCfg(), sizeof(NAS_MML_RPLMN_CFG_INFO_STRU));
+
+    OM_TraceMsgHook(pstMsg);
+
+    PS_MEM_FREE(WUEPS_PID_MMC, pstMsg);
+
+    return;
+}
+
+
+
+
+
 VOS_VOID  NAS_MMC_SndOmMmcTimerStatus(
     NAS_MMC_TIMER_STATUS_ENUM_U8        enTimerStatus,
     NAS_MMC_TIMER_ID_ENUM_UINT16        enTimerId,

@@ -87,9 +87,10 @@ void timer_disable_stamp_dbg(u32 clkid)
 	if (pstEnable_dbg->enable_cnt >=ADP_TIMER_ENABLE_TIMES)
 		pstEnable_dbg->enable_cnt = 0;
 }
-void timer_callback_stamp_dbg(u32 clkid)
+
+static void timer_callback_stamp_dbg(struct adp_timer_control* pAdp_timer_ctrl)
 {
-	struct adp_timer_callback_dbg *pstCallback_dbg = &adp_timer_ctrl[clkid].stCallback;
+	struct adp_timer_callback_dbg *pstCallback_dbg = &pAdp_timer_ctrl->stCallback;
 	pstCallback_dbg->callback_slice[pstCallback_dbg->callback_slice_cnt] = bsp_get_slice_value();
 	pstCallback_dbg->callback_slice_cnt++;
 	if (pstCallback_dbg->callback_slice_cnt >= ADP_TIMER_CALLBACK_TIMES)
@@ -97,6 +98,7 @@ void timer_callback_stamp_dbg(u32 clkid)
 		pstCallback_dbg->callback_slice_cnt = 0;
 	}
 }
+
 void timer_get_stamp_dbg(u32 clkid, u32 curtime)
 {
 	struct adp_timer_get_dbg *pstGet_dbg = &adp_timer_ctrl[clkid].stGet;
@@ -112,17 +114,24 @@ OSL_IRQ_FUNC(static irqreturn_t,adp_timer_handler,irq,para)
 {
 	u32 ret_value = 0;
 	u32 timer_id_phy;
-	timer_id_phy =(u32)para;
-	timer_callback_stamp_dbg(timer_id_phy);
+	struct adp_timer_control *pAdp_timer_control;
+
+	pAdp_timer_control = (struct adp_timer_control *)para;
+	/* performance with divide operation is low, had better save a pointer
+	 * in structure adp_timer_control, which pointers to bsp_hardtimer_ctl
+         */
+	timer_id_phy = ((unsigned long)pAdp_timer_control - (unsigned long)adp_timer_ctrl)/sizeof(struct adp_timer_control);
+
+	timer_callback_stamp_dbg(pAdp_timer_control);
 	ret_value = bsp_hardtimer_int_status(timer_id_phy);
 	if(0x0 !=ret_value)
 	{
 		bsp_hardtimer_int_clear(timer_id_phy);
-		if(adp_timer_ctrl[timer_id_phy].mode == TIMER_ONCE_COUNT)
+		if(pAdp_timer_control->mode == TIMER_ONCE_COUNT)
 		(void)bsp_hardtimer_disable(timer_id_phy);
-		if(NULL!=adp_timer_ctrl[timer_id_phy].routine)
+		if(NULL!=pAdp_timer_control->routine)
 		{
-			adp_timer_ctrl[timer_id_phy].routine(adp_timer_ctrl[timer_id_phy].args);
+			pAdp_timer_control->routine(adp_timer_ctrl[timer_id_phy].args);
 		}
 	}
 
@@ -130,10 +139,11 @@ OSL_IRQ_FUNC(static irqreturn_t,adp_timer_handler,irq,para)
 }
 
 #ifdef __KERNEL__
+#if 0
 /*TIMER_ACPU_OSA_ID:和caixi确认，后续可拿掉*/
 void BSP_StartHardTimer(unsigned int value)
 {
-    writel(HARD_TIMER_DISABLE,(volatile void *)TIMER_CONTROLREG(HI_TIMER_18_REGBASE_ADDR_VIRT));
+    writel(HARD_TIMER_DISABLE, (volatile void *)TIMER_CONTROLREG(HI_TIMER_18_REGBASE_ADDR_VIRT));
     writel(value,(volatile void *)TIMER_LOADCOUNT(HI_TIMER_18_REGBASE_ADDR_VIRT));/*lint !e516 */
     writel(HARD_TIMER_ENABLE,(volatile void *)TIMER_CONTROLREG(HI_TIMER_18_REGBASE_ADDR_VIRT));
     return;
@@ -163,6 +173,7 @@ void BSP_ClearTimerINT(void)
 {
     (void)readl((const volatile void *)TIMER_EOI(HI_TIMER_18_REGBASE_ADDR_VIRT));
 }
+#endif
 #elif defined(__VXWORKS__)
 /*TIMER_ACPU_OSA_ID:和caixi确认，后续可拿掉*/
 void BSP_StartHardTimer(u32 value)
@@ -203,7 +214,7 @@ int DRV_TIMER_START(unsigned int usrClkId,FUNCPTR_1 routine,int arg,unsigned int
    {
        if(adp_timer_ctrl[usrClkId].routine)
        {
-          osl_free_irq(intLev,adp_timer_handler,usrClkId);
+          osl_free_irq(intLev,adp_timer_handler, &adp_timer_ctrl[usrClkId]);
           adp_timer_ctrl[usrClkId].routine = NULL;
        }
    }
@@ -254,7 +265,7 @@ int DRV_TIMER_START(unsigned int usrClkId,FUNCPTR_1 routine,int arg,unsigned int
     }
     if(TIMER_ACPU_CPUVIEW_ID==usrClkId)
     {
-        ret = request_irq( adp_timer_ctrl[usrClkId].int_num,(irq_handler_t)adp_timer_handler,0,"timer callback",(void*)usrClkId);
+        ret = request_irq( adp_timer_ctrl[usrClkId].int_num,(irq_handler_t)adp_timer_handler,0,"timer callback", &adp_timer_ctrl[usrClkId]);
         if(ret)
         {
             return ERROR;
@@ -315,13 +326,13 @@ static struct syscore_ops debug_timer_dpm_ops = {
 static int adp_timer_init(void)
 {
 	int ret = 0;
-	ret = request_irq(adp_timer_ctrl[TIMER_ACPU_OSA_ID].int_num,adp_timer_handler,IRQF_NO_SUSPEND," acpu osa",(void*)TIMER_ACPU_OSA_ID);
+	ret = request_irq(adp_timer_ctrl[TIMER_ACPU_OSA_ID].int_num,adp_timer_handler,IRQF_NO_SUSPEND," acpu osa", &adp_timer_ctrl[TIMER_ACPU_OSA_ID]);
 	if(ret)
 	{
 		hardtimer_print_error("TIMER_ACPU_OSA_ID request_irq failed\n");
 		return -1;
 	}
-	ret = request_irq(adp_timer_ctrl[TIMER_ACPU_OM_TCXO_ID].int_num,adp_timer_handler,0," acpu osa",(void*)TIMER_ACPU_OM_TCXO_ID);
+	ret = request_irq(adp_timer_ctrl[TIMER_ACPU_OM_TCXO_ID].int_num,adp_timer_handler,0," acpu osa", &adp_timer_ctrl[TIMER_ACPU_OM_TCXO_ID]);
 	if(ret)
 	{
 		hardtimer_print_error("TIMER_ACPU_OSA_ID request_irq failed\n");

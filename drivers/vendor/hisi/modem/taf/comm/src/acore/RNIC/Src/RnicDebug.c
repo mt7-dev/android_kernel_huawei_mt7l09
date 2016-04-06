@@ -144,8 +144,8 @@ VOS_VOID RNIC_ShowDLProcStats(VOS_UINT8 ucRmNetId)
 VOS_VOID RNIC_ShowResetStats(VOS_VOID)
 {
     vos_printf("模块初始化标识                              %d\n", g_astRnicStats[0].ulSemInitFlg);
-    vos_printf("当前的二进制信号量                          %x\n", g_stRnicCtx.ulResetSem);
-    vos_printf("创建的二进制信号量                          %x\n", g_astRnicStats[0].ulBinarySemId);
+    vos_printf("当前的二进制信号量                          %p\n", g_stRnicCtx.hResetSem);
+    vos_printf("创建的二进制信号量                          %p\n", g_astRnicStats[0].hBinarySemId);
     vos_printf("创建二进制信号量失败次数                    %d\n", g_astRnicStats[0].ulCreateBinarySemFailNum);
     vos_printf("锁二进制信号量失败次数                      %d\n", g_astRnicStats[0].ulLockBinarySemFailNum);
     vos_printf("最后一次锁二进制信号量失败原因              %x\n", g_astRnicStats[0].ulLastBinarySemErrRslt);
@@ -307,7 +307,7 @@ VOS_VOID RNIC_LATENCY_OM_LOG( const VOS_CHAR  *pcFileName,  VOS_UINT32  ulLineNu
 #if (FEATURE_ON == FEATURE_LTE)
     VOS_UINT32          ulRslt = 0;
 
-    ulRslt = DIAG_PrintfV(DIAG_ID(ulModuleId, ulLevel), (VOS_CHAR*)pcFileName, ulLineNum, (VOS_CHAR*)("%s"), (VOS_INT32)pcString);
+    ulRslt = DIAG_PrintfV(DIAG_ID(ulModuleId, ulLevel), (VOS_CHAR*)pcFileName, ulLineNum, (VOS_CHAR*)("%s"), pcString);
     if (PS_SUCC != ulRslt)
     {
         return;

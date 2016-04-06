@@ -277,6 +277,30 @@ extern int vm_swappiness;
 extern int remove_mapping(struct address_space *mapping, struct page *page);
 extern unsigned long vm_total_pages;
 
+#ifdef CONFIG_ARM64
+extern unsigned long vm_cache_limit_ratio;
+extern unsigned long vm_cache_limit_ratio_min;
+extern unsigned long vm_cache_limit_ratio_max;
+extern unsigned long vm_cache_limit_mbytes;
+extern unsigned long vm_cache_limit_mbytes_min;
+extern unsigned long vm_cache_limit_mbytes_max;
+extern unsigned long vm_cache_reclaim_s;
+extern unsigned long vm_cache_reclaim_s_min;
+extern unsigned long vm_cache_reclaim_weight;
+extern unsigned long vm_cache_reclaim_weight_min;
+extern unsigned long vm_cache_reclaim_weight_max;
+extern unsigned long page_cache_over_limit(void);
+extern void shrink_page_cache(gfp_t mask);
+extern int cache_limit_ratio_sysctl_handler(struct ctl_table *table, int write,
+			void __user *buffer, size_t *length, loff_t *ppos);
+extern int cache_limit_mbytes_sysctl_handler(struct ctl_table *table, int write,
+			void __user *buffer, size_t *length, loff_t *ppos);
+#endif
+#ifdef CONFIG_SHRINK_MEMORY
+extern int sysctl_shrink_memory;
+extern int sysctl_shrinkmem_handler(struct ctl_table *table, int write,
+			void __user *buffer, size_t *length , loff_t *ppos);
+#endif
 #ifdef CONFIG_NUMA
 extern int zone_reclaim_mode;
 extern int sysctl_min_unmapped_ratio;

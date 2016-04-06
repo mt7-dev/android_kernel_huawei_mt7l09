@@ -34,9 +34,14 @@
 #include <linux/completion.h>
 #include <linux/mutex.h>
 #include <linux/syscore_ops.h>
+#include <linux/suspend.h>
+#include <linux/tick.h>
 
 #include <trace/events/power.h>
 
+#ifdef CONFIG_HUAWEI_MSG_POLICY
+#include <huawei_platform/power/msgnotify.h>
+#endif
 /**
  * The "cpufreq driver" - the arch- or hardware-dependent low
  * level driver of CPUFreq support, and its spinlock. This lock
@@ -49,7 +54,15 @@ static DEFINE_PER_CPU(struct cpufreq_policy *, cpufreq_cpu_data);
 static DEFINE_PER_CPU(char[CPUFREQ_NAME_LEN], cpufreq_cpu_governor);
 #endif
 static DEFINE_RWLOCK(cpufreq_driver_lock);
-static DEFINE_MUTEX(cpufreq_governor_lock);
+DEFINE_MUTEX(cpufreq_governor_lock);
+
+/* Flag to suspend/resume CPUFreq governors */
+static bool cpufreq_suspended;
+
+static inline bool has_target(void)
+{
+	return cpufreq_driver->target;
+}
 
 /*
  * cpu_policy_rwsem is a per CPU reader-writer semaphore designed to cure
@@ -637,6 +650,29 @@ static ssize_t show_scaling_setspeed(struct cpufreq_policy *policy, char *buf)
 	return policy->governor->show_setspeed(policy, buf);
 }
 
+#ifdef CONFIG_HUAWEI_MSG_POLICY
+static ssize_t store_msg_policy(struct cpufreq_policy *policy,
+					const char *buf, size_t count)
+{
+	unsigned int value = 0;
+	unsigned int ret;
+
+	ret = sscanf(buf, "%u", &value);
+	if (ret != 1)
+		return -EINVAL;
+
+	set_msg_threshold(value);
+
+	return count;
+}
+
+static ssize_t show_msg_policy(struct cpufreq_policy *policy, char *buf)
+{
+	return snprintf(buf, PAGE_SIZE, "threshold:%u,max_msg_percent:%u\n", 
+		get_msg_threshold(), get_max_msg_percent());
+}
+#endif
+
 /**
  * show_bios_limit - show the current cpufreq HW/BIOS limitation
  */
@@ -666,6 +702,9 @@ cpufreq_freq_attr_rw(scaling_min_freq);
 cpufreq_freq_attr_rw(scaling_max_freq);
 cpufreq_freq_attr_rw(scaling_governor);
 cpufreq_freq_attr_rw(scaling_setspeed);
+#ifdef CONFIG_HUAWEI_MSG_POLICY
+cpufreq_freq_attr_rw(msg_policy);
+#endif
 
 static struct attribute *default_attrs[] = {
 	&cpuinfo_min_freq.attr,
@@ -679,6 +718,9 @@ static struct attribute *default_attrs[] = {
 	&scaling_driver.attr,
 	&scaling_available_governors.attr,
 	&scaling_setspeed.attr,
+#ifdef CONFIG_HUAWEI_MSG_POLICY
+	&msg_policy.attr,
+#endif
 	NULL
 };
 
@@ -864,6 +906,10 @@ static int cpufreq_add_policy_cpu(unsigned int cpu, unsigned int sibling,
 	unsigned long flags;
 
 	policy = cpufreq_cpu_get(sibling);
+	if(NULL == policy){
+		pr_err("[%s]: policy cpufreq_cpu_get return null.\n", __func__);
+		return -1;
+	}
 	WARN_ON(!policy);
 
 	if (has_target)
@@ -1349,7 +1395,11 @@ out:
 	return ret_freq;
 }
 EXPORT_SYMBOL(cpufreq_get);
+unsigned int cpufreq_get_fb(unsigned int cpu)
+{
+	return cpufreq_get(cpu);
 
+}
 static struct subsys_interface cpufreq_interface = {
 	.name		= "cpufreq",
 	.subsys		= &cpu_subsys,
@@ -1359,82 +1409,114 @@ static struct subsys_interface cpufreq_interface = {
 
 
 /**
- * cpufreq_bp_suspend - Prepare the boot CPU for system suspend.
+ * cpufreq_suspend() - Suspend CPUFreq governors
  *
- * This function is only executed for the boot processor.  The other CPUs
- * have been put offline by means of CPU hotplug.
+ * Called during system wide Suspend/Hibernate cycles for suspending governors
+ * as some platforms can't change frequency after this point in suspend cycle.
+ * Because some of the devices (like: i2c, regulators, etc) they use for
+ * changing frequency are suspended quickly after this point.
  */
-static int cpufreq_bp_suspend(void)
+void cpufreq_suspend(void)
 {
-	int ret = 0;
+	struct cpufreq_policy *policy;
+	int cpu;
 
-	int cpu = smp_processor_id();
-	struct cpufreq_policy *cpu_policy;
+	if (!cpufreq_driver)
+		return;
 
-	pr_debug("suspending cpu %u\n", cpu);
+	if (!has_target())
+		return;
 
-	/* If there's no policy for the boot CPU, we have nothing to do. */
-	cpu_policy = cpufreq_cpu_get(cpu);
-	if (!cpu_policy)
-		return 0;
+	pr_debug("%s: Suspending Governors\n", __func__);
 
-	if (cpufreq_driver->suspend) {
-		ret = cpufreq_driver->suspend(cpu_policy);
-		if (ret)
-			printk(KERN_ERR "cpufreq: suspend failed in ->suspend "
-					"step on CPU %u\n", cpu_policy->cpu);
+	for_each_possible_cpu(cpu) {
+		if (!cpu_online(cpu))
+			continue;
+
+		policy = cpufreq_cpu_get(cpu);
+		/* fix linaro cpufreq bugs */
+#ifdef CONFIG_HISI_CPUFREQ
+		if(!policy)
+			continue;
+#endif
+		if (__cpufreq_governor(policy, CPUFREQ_GOV_STOP))
+			pr_debug("%s: Failed to stop governor for policy: %p\n",
+				__func__, policy);
+		else if (cpufreq_driver->suspend
+		    && cpufreq_driver->suspend(policy))
+			pr_err("%s: Failed to suspend driver: %p\n", __func__,
+				policy);
+
+#ifdef CONFIG_HISI_CPUFREQ
+		cpufreq_cpu_put(policy);
+#endif
 	}
 
-	cpufreq_cpu_put(cpu_policy);
-	return ret;
+	cpufreq_suspended = true;
 }
 
 /**
- * cpufreq_bp_resume - Restore proper frequency handling of the boot CPU.
+ * cpufreq_resume() - Resume CPUFreq governors
  *
- *	1.) resume CPUfreq hardware support (cpufreq_driver->resume())
- *	2.) schedule call cpufreq_update_policy() ASAP as interrupts are
- *	    restored. It will verify that the current freq is in sync with
- *	    what we believe it to be. This is a bit later than when it
- *	    should be, but nonethteless it's better than calling
- *	    cpufreq_driver->get() here which might re-enable interrupts...
- *
- * This function is only executed for the boot CPU.  The other CPUs have not
- * been turned on yet.
+ * Called during system wide Suspend/Hibernate cycle for resuming governors that
+ * are suspended with cpufreq_suspend().
  */
-static void cpufreq_bp_resume(void)
+void cpufreq_resume(void)
 {
-	int ret = 0;
+	struct cpufreq_policy *policy;
+	int cpu;
 
-	int cpu = smp_processor_id();
-	struct cpufreq_policy *cpu_policy;
-
-	pr_debug("resuming cpu %u\n", cpu);
-
-	/* If there's no policy for the boot CPU, we have nothing to do. */
-	cpu_policy = cpufreq_cpu_get(cpu);
-	if (!cpu_policy)
+	if (!cpufreq_driver)
 		return;
 
-	if (cpufreq_driver->resume) {
-		ret = cpufreq_driver->resume(cpu_policy);
-		if (ret) {
-			printk(KERN_ERR "cpufreq: resume failed in ->resume "
-					"step on CPU %u\n", cpu_policy->cpu);
-			goto fail;
-		}
+	if (!has_target())
+		return;
+
+	pr_debug("%s: Resuming Governors\n", __func__);
+
+	cpufreq_suspended = false;
+
+	for_each_possible_cpu(cpu) {
+		if (!cpu_online(cpu))
+			continue;
+
+		policy = cpufreq_cpu_get(cpu);
+#ifdef CONFIG_HISI_CPUFREQ
+		if(!policy)
+			continue;
+
+		if (cpufreq_driver->resume
+		    && cpufreq_driver->resume(policy))
+			pr_err("%s: Failed to resume driver: %p\n", __func__,
+				policy);
+		else if (__cpufreq_governor(policy, CPUFREQ_GOV_START)
+		    || __cpufreq_governor(policy, CPUFREQ_GOV_LIMITS))
+			pr_debug("%s: Failed to start governor for policy: %p\n",
+				__func__, policy);
+#else
+		if (__cpufreq_governor(policy, CPUFREQ_GOV_START)
+		    || __cpufreq_governor(policy, CPUFREQ_GOV_LIMITS))
+			pr_debug("%s: Failed to start governor for policy: %p\n",
+				__func__, policy);
+		else if (cpufreq_driver->resume
+		    && cpufreq_driver->resume(policy))
+			pr_err("%s: Failed to resume driver: %p\n", __func__,
+				policy);
+#endif
+
+		/*
+		 * schedule call cpufreq_update_policy() for boot CPU, i.e. last
+		 * policy in list. It will verify that the current freq is in
+		 * sync with what we believe it to be.
+		 */
+		if (cpu == 0)
+			schedule_work(&policy->update);
+
+#ifdef CONFIG_HISI_CPUFREQ
+		cpufreq_cpu_put(policy);
+#endif
 	}
-
-	schedule_work(&cpu_policy->update);
-
-fail:
-	cpufreq_cpu_put(cpu_policy);
 }
-
-static struct syscore_ops cpufreq_syscore_ops = {
-	.suspend	= cpufreq_bp_suspend,
-	.resume		= cpufreq_bp_resume,
-};
 
 /**
  *	cpufreq_get_current_driver - return current driver's name
@@ -1626,6 +1708,12 @@ static int __cpufreq_governor(struct cpufreq_policy *policy,
 	struct cpufreq_governor *gov = &cpufreq_gov_performance;
 #else
 	struct cpufreq_governor *gov = NULL;
+#endif
+
+#ifndef CONFIG_HISI_CPUFREQ
+	/* Don't start any governor operations if we are entering suspend */
+	if (cpufreq_suspended)
+		return 0;
 #endif
 
 	if (policy->governor->max_transition_latency &&
@@ -2086,7 +2174,6 @@ static int __init cpufreq_core_init(void)
 
 	cpufreq_global_kobject = kobject_create_and_add("cpufreq", &cpu_subsys.dev_root->kobj);
 	BUG_ON(!cpufreq_global_kobject);
-	register_syscore_ops(&cpufreq_syscore_ops);
 
 	return 0;
 }

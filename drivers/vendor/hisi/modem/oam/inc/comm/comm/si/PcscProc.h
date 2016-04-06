@@ -93,7 +93,7 @@ typedef struct
 typedef struct
 {
     SI_PIH_MSG_HEADER_STRU          stMsgHeader;
-    VOS_UINT16                      ulMsgType;
+    VOS_UINT32                      ulMsgType;
     VOS_UINT32                      ulCmdType;
     VOS_UINT32                      ulCmdLen;
     VOS_UINT8                       aucAPDU[8];

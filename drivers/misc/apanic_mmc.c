@@ -46,13 +46,11 @@
 #include "apanic_mmc.h"
 #include <../../fs/proc/internal.h>
 
-/* DTS2013031107868 qidechun 2013-03-11 begin */ 
 #ifdef CONFIG_SRECORDER_DUMP_LOG_TO_STORAGECARD
 #include <linux/vmalloc.h>
 #include <linux/srecorder.h>
 #endif
-/* DTS2013031107868 qidechun 2013-03-11 end */ 
-#define MEM_DUMP_LABEL "memdump"
+//#define MEM_DUMP_LABEL "memdump"
 
 struct panic_header {
 	u32 magic;
@@ -66,18 +64,16 @@ struct panic_header {
 
 	u32 threads_offset;
 	u32 threads_length;
-/* DTS2013031107868 qidechun 2013-03-11 begin */ 	
 #ifdef CONFIG_SRECORDER_DUMP_LOG_TO_STORAGECARD
     u32 srecorder_offset;
     u32 srecorder_length;
 #endif
-/* DTS2013031107868 qidechun 2013-03-11 end */ 
 };
 
 struct memdump_header {
 #define MEMDUMP_MAGIC_LEN 8
 	char magic[MEMDUMP_MAGIC_LEN];
-#define MEMDUMP_MAGIC "MEM-DUMP"
+//#define MEMDUMP_MAGIC "MEM-DUMP"
 	u32 version;
 	struct timespec ts;
 	/* dump contents */
@@ -92,11 +88,9 @@ struct apanic_data {
 	void			*bounce;
 	struct proc_dir_entry	*apanic_console;
 	struct proc_dir_entry	*apanic_threads;
-/* DTS2013031107868 qidechun 2013-03-11 begin */ 	
 #ifdef CONFIG_SRECORDER_DUMP_LOG_TO_STORAGECARD
     struct proc_dir_entry *apanic_srecorder;
 #endif
-/* DTS2013031107868 qidechun 2013-03-11 end */ 
 	struct raw_hd_struct    *mmchd;
 	struct raw_mmc_panic_ops	*mmc_panic_ops;
 };
@@ -163,7 +157,7 @@ void apanic_console_write(char *s, unsigned c)
 }
 
 
-#define APANIC_INVALID_OFFSET 0xFFFFFFFF
+//#define APANIC_INVALID_OFFSET 0xFFFFFFFF
 
 static void mmc_bio_complete(struct bio *bio, int err)
 {
@@ -310,7 +304,6 @@ static int apanic_proc_show(struct seq_file *m, void *v)
 		file_length = ctx->curr.threads_length;
 		file_offset = ctx->curr.threads_offset;
 		break;
-/* DTS2013031107868 qidechun 2013-03-11 begin */ 
 #ifdef CONFIG_SRECORDER_DUMP_LOG_TO_STORAGECARD
     case 3:	/* apanic_srecorder */ 
         {
@@ -319,7 +312,6 @@ static int apanic_proc_show(struct seq_file *m, void *v)
             break;
         }
 #endif
-/* DTS2013031107868 qidechun 2013-03-11 end */ 
 	default:
 		mutex_unlock(&drv_mutex);
 		return -EINVAL;
@@ -469,7 +461,6 @@ static void apanic_remove_proc_work(struct work_struct *work)
 		remove_proc_entry("apanic_threads", NULL);
 		ctx->apanic_threads = NULL;
 	}
-/* DTS2013031107868 qidechun 2013-03-11 begin */ 	
 #ifdef CONFIG_SRECORDER_DUMP_LOG_TO_STORAGECARD
     if (NULL != ctx->apanic_srecorder) 
     {
@@ -477,7 +468,6 @@ static void apanic_remove_proc_work(struct work_struct *work)
         ctx->apanic_srecorder = NULL;
     }
 #endif
-/* DTS2013031107868 qidechun 2013-03-11 end */ 
 	mutex_unlock(&drv_mutex);
 }
 
@@ -497,12 +487,10 @@ static int apanic_proc_open_threads(struct inode *inode, struct file *file)
 	return single_open(file, apanic_proc_show, (void *)2);
 }
 
-/* DTS2013031107868 qidechun 2013-03-11 begin */ 
 static int apanic_proc_open_srecorder(struct inode *inode, struct file *file)
 {
 	return single_open(file, apanic_proc_show, (void *)3);
 }
-/* DTS2013031107868 qidechun 2013-03-11 end */ 
 
 static const struct file_operations proc_apanic_operations_console = {
 	.open		= apanic_proc_open_console,
@@ -520,7 +508,6 @@ static const struct file_operations proc_apanic_operations_threads = {
 	.release	= single_release,
 };
 
-/* DTS2013031107868 qidechun 2013-03-11 begin */ 
 static const struct file_operations proc_apanic_operations_srecorder = {
 	.open		= apanic_proc_open_srecorder,
 	.read		= seq_read,
@@ -528,7 +515,6 @@ static const struct file_operations proc_apanic_operations_srecorder = {
 	.llseek		= seq_lseek,
 	.release	= single_release,
 };
-/* DTS2013031107868 qidechun 2013-03-11 end */ 
 
 static void mmc_panic_notify_add(struct raw_hd_struct *hd,
 			struct raw_mmc_panic_ops *panic_ops)
@@ -613,7 +599,6 @@ static void mmc_panic_notify_add(struct raw_hd_struct *hd,
 		}
 	}
 
-/* DTS2013031107868 qidechun 2013-03-11 begin */ 	
 #ifdef CONFIG_SRECORDER_DUMP_LOG_TO_STORAGECARD
     printk(KERN_EMERG "Apanic: srecorder_length = %d", hdr->srecorder_length);
     if (0 != hdr->srecorder_length)
@@ -630,7 +615,6 @@ static void mmc_panic_notify_add(struct raw_hd_struct *hd,
         }
     }
 #endif
-/* DTS2013031107868 qidechun 2013-03-11 end */ 
 	return;
 out_err:
 	ctx->mmchd = NULL;
@@ -783,7 +767,6 @@ static int apanic_write_console_mmc(unsigned int off)
 #endif
 }
 
-/* DTS2013031107868 qidechun 2013-03-11 begin */ 
 #ifdef CONFIG_SRECORDER_DUMP_LOG_TO_STORAGECARD
 static int apanic_write_srecorder_mmc(unsigned int off, char *psrc, int data_len)
 {
@@ -838,19 +821,14 @@ char *alloc_buf_for_srecorder(unsigned long size)
 }
 EXPORT_SYMBOL(alloc_buf_for_srecorder);
 #endif
-/* DTS2013031107868 qidechun 2013-03-11 end */ 
 
-/* DTS2013032106476 qidechun 2013-03-22 begin */
 extern void feed_watdog(void);
-/* DTS2013032106476 qidechun 2013-03-22 end */
 
-/* DTS2013031107868 qidechun 2013-03-11 begin */ 
 #ifdef CONFIG_SRECORDER_DUMP_LOG_TO_STORAGECARD
 static void apanic_mmc_logbuf_dump(char *panic_reason)
 #else
 static void apanic_mmc_logbuf_dump(void)
 #endif
-/* DTS2013031107868 qidechun 2013-03-11 end */ 
 {
 	struct apanic_data *ctx = &drv_ctx;
 	struct panic_header *hdr = (struct panic_header *) ctx->bounce;
@@ -858,12 +836,10 @@ static void apanic_mmc_logbuf_dump(void)
 	int console_len = 0;
 	int threads_offset = 0;
 	int threads_len = 0;
-/* DTS2013031107868 qidechun 2013-03-11 begin */ 	
 #ifdef CONFIG_SRECORDER_DUMP_LOG_TO_STORAGECARD
     int srecorder_offset = 0;
     int srecorder_len = 0;
 #endif
-/* DTS2013031107868 qidechun 2013-03-11 end */ 
 	int rc;
 	struct timespec now;
 	struct timespec uptime;
@@ -886,10 +862,6 @@ static void apanic_mmc_logbuf_dump(void)
 		return;
 	}
 
-    /* DTS2013032106476 qidechun 2013-03-22 begin */
-    //feed_watdog();
-    /* DTS2013032106476 qidechun 2013-03-22 end */
-	
 	/*
 	 * Add timestamp to displays current UTC time and uptime (in seconds).
 	 */
@@ -922,7 +894,6 @@ static void apanic_mmc_logbuf_dump(void)
 		console_len = 0;
 	}
 
-/* DTS2013031107868 qidechun 2013-03-11 begin */ 
 #ifdef CONFIG_SRECORDER_DUMP_LOG_TO_STORAGECARD
     /*
      * Write out log captured by SRecorder
@@ -954,11 +925,9 @@ static void apanic_mmc_logbuf_dump(void)
         con->flags &= ~CON_ENABLED;
     }
 #endif
-/* DTS2013031107868 qidechun 2013-03-11 end */ 
 	/*
 	 * Write out all threads
 	 */
-/* DTS2013031107868 qidechun 2013-03-11 begin */ 
 #ifdef CONFIG_SRECORDER_DUMP_LOG_TO_STORAGECARD
     threads_offset = (ALIGN(console_offset + console_len + srecorder_offset + srecorder_len,
         1024) == 0) ? 1024 :
@@ -968,7 +937,6 @@ static void apanic_mmc_logbuf_dump(void)
 		1024) == 0) ? 1024 :
 		ALIGN(console_offset + console_len, 1024);
 #endif
-/* DTS2013031107868 qidechun 2013-03-11 end */ 
 
 	//log_buf_clear();
 
@@ -997,13 +965,11 @@ static void apanic_mmc_logbuf_dump(void)
 
 	hdr->threads_offset = threads_offset;
 	hdr->threads_length = threads_len;
-/* DTS2013031107868 qidechun 2013-03-11 begin */ 	
     /* add srecorder file header */
 #ifdef CONFIG_SRECORDER_DUMP_LOG_TO_STORAGECARD
     hdr->srecorder_offset = srecorder_offset;
     hdr->srecorder_length = srecorder_len;
 #endif
-/* DTS2013031107868 qidechun 2013-03-11 end */ 
 
 	rc = ctx->mmc_panic_ops->panic_write(ctx->mmchd, ctx->bounce, 0,
 		console_offset);
@@ -1088,13 +1054,11 @@ static int apanic_mmc(struct notifier_block *this, unsigned long event,
 #endif
 	touch_softlockup_watchdog();
 
-/* DTS2013031107868 qidechun 2013-03-11 begin */ 
 #ifdef CONFIG_SRECORDER_DUMP_LOG_TO_STORAGECARD
     apanic_mmc_logbuf_dump(ptr);
 #else
 	apanic_mmc_logbuf_dump();
 #endif
-/* DTS2013031107868 qidechun 2013-03-11 end */ 
 
 #ifdef CONFIG_APANIC_MMC_MEMDUMP
 	apanic_mmc_memdump();

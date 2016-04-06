@@ -7,18 +7,7 @@
  * and H. Peter Anvin <hpa@transmeta.com>.
  */
 
-/*
- * NOTE-cpg-040217:
- *
- *   - when compiled as a module, after loading the module,
- *     it will refuse to unload, indicating it is in use,
- *     when it is not.
- *   - no s3 (suspend to ram) testing.
- *   - tested on the efficeon integrated nothbridge for tens
- *     of iterations of starting x and glxgears.
- *   - tested with radeon 9000 and radeon mobility m9 cards
- *   - tested with c3/c4 enabled (with the mobility m9 card)
- */
+
 
 #include <linux/module.h>
 #include <linux/pci.h>

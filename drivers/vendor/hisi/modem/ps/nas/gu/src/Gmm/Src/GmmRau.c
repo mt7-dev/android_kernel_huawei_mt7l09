@@ -339,6 +339,18 @@ VOS_UINT32  NAS_GMM_GetRoutingAreaUpdateRequestMsgIELength( VOS_VOID )
 
     #if (FEATURE_ON == FEATURE_LTE)
 
+        if (VOS_TRUE == NAS_MML_GetSupportSrvccFlg())
+        {
+            /* classmark2  */
+            ulMsgLen += 5;
+
+            /* classmark3  */
+            ulMsgLen += 34;
+
+            /* supported codec list  */
+            ulMsgLen += 10;
+        }
+
         ulMsgLen += pstUeNetworkCap->ucUeNetCapLen + 2;
         /* 说明如果UE支持E-UTRAN能力且支持CS fallback and SMS over SGs，
             则ATTACH和RAU请求消息中需要带Voice domain preference and UE's usage setting IE项 */
@@ -509,7 +521,33 @@ NAS_MSG_STRU *Gmm_RoutingAreaUpdateRequestMsgMake(
 
             }
 
+            if (VOS_TRUE == NAS_MML_GetSupportSrvccFlg())
+            {
+                /* 填写classmark2 */
+                GMM_Fill_IE_ClassMark2(&pRauRequest->aucNasMsg[ucNumber]);
+                ucNumber += GMM_MSG_LEN_CLASSMARK2;
 
+                /* 填写classmark3 */
+                if (NAS_UTRANCTRL_UTRAN_MODE_FDD == NAS_UTRANCTRL_GetCurrUtranMode())
+                {
+                    ucNumber += GMM_Fill_IE_FDD_ClassMark3(&pRauRequest->aucNasMsg[ucNumber]);
+                }
+                else if (NAS_UTRANCTRL_UTRAN_MODE_TDD == NAS_UTRANCTRL_GetCurrUtranMode())
+                {
+                    ucNumber += GMM_Fill_IE_TDD_ClassMark3(&pRauRequest->aucNasMsg[ucNumber]);
+                }
+                else
+                {
+                }
+                
+                /* 填写support code list */
+                ucNumber += GMM_CALL_FillIeSupCodecList(&pRauRequest->aucNasMsg[ucNumber]);
+                
+            }
+
+            
+            /* 记录本次发起RAU时的voice domain,后续voice domain发生变化时，也要做RAU */
+            g_GmmGlobalCtrl.UeInfo.enVoiceDomainFromRegReq  = NAS_MML_GetVoiceDomainPreference();
 
             /* 说明如果UE支持E-UTRAN能力且支持CS fallback and SMS over SGs，
                 则ATTACH和RAU请求消息中需要带Voice domain preference and UE's usage setting IE项 */
@@ -1008,6 +1046,10 @@ VOS_VOID Gmm_RcvRoutingAreaUpdateRejectMsg_T3302_Handling(
     else
     {
         g_GmmRauCtrl.ucRetryFlg = GMM_FALSE;                                /* 清除换小区进行RAU标志                    */
+    }
+    if (VOS_TRUE == NAS_MML_IsRoamingRejectNoRetryFlgActived(pMsg->aucNasMsg[2]))
+    {
+        g_GmmRauCtrl.ucRauAttmptCnt = 5;
     }
     Gmm_RoutingAreaUpdateAttemptCounter(pMsg->aucNasMsg[2]);                /* 调用异常处理函数                         */
     *pucAbnormalCaseFlg = GMM_TRUE;
@@ -1719,6 +1761,7 @@ VOS_VOID Gmm_RoutingAreaUpdataAcceptRaOnly(
                 aucIeOffset[GMM_RAU_ACCEPT_IE_GMM_CAUSE] + 1 ];                 /* 得到GMM CAUSE                            */
     }
 
+
     if ((GMM_RAU_NORMAL_CS_TRANS == g_GmmGlobalCtrl.ucSpecProc)
         || (GMM_RAU_NORMAL       == g_GmmGlobalCtrl.ucSpecProc))
     {                                                                           /* 当前的specific过程是NORMAL RAU           */
@@ -1774,6 +1817,24 @@ VOS_VOID Gmm_RoutingAreaUpdataAcceptRaOnly(
             return;
         }
 
+        
+        /* R11升级:   24008 4.7.3.2.3.2    Other GMM causevalues and the case that no GMM cause IE 
+           was received are considered as abnormal cases. The combined attach procedure shall be 
+           considered as failed for non-GPRS services */
+        if ((GMM_RAU_WITH_IMSI_ATTACH == g_GmmGlobalCtrl.ucSpecProc)
+         || (GMM_RAU_COMBINED         == g_GmmGlobalCtrl.ucSpecProc))
+        {                                                                           /* 当前发起的联合注册 */
+            /* 若失败原因值不为#2,#16,#17,#22,直接将原因值替换为#16 */
+            if ((NAS_MML_REG_FAIL_CAUSE_MSC_UNREACHABLE      != enCause)
+             && (NAS_MML_REG_FAIL_CAUSE_NETWORK_FAILURE      != enCause)
+             && (NAS_MML_REG_FAIL_CAUSE_PROCEDURE_CONGESTION != enCause)
+             && (NAS_MML_REG_FAIL_CAUSE_IMSI_UNKNOWN_IN_HLR  != enCause))
+            {
+                enCause = NAS_MML_REG_FAIL_CAUSE_MSC_UNREACHABLE;
+            }
+        }
+
+        
         if (NAS_MML_REG_FAIL_CAUSE_IMSI_UNKNOWN_IN_HLR == enCause)
         {                                                                       /* 原因值为2                                */
             Gmm_AttachRauAcceptCause2();                                        /* 调用原因值2处理函数                      */
@@ -1819,7 +1880,6 @@ VOS_VOID Gmm_RoutingAreaUpdataAcceptRaOnly(
 
     return;
 }
-
 VOS_VOID Gmm_RoutingAreaUpdataAcceptCombined(
                                      GMM_MSG_RESOLVE_STRU    *pRauAcceptIe,     /* 指向GMM_MSG_RESOLVE_STRU结构的指针       */
                                      NAS_MSG_FOR_PCLINT_STRU *pMsg
@@ -1876,6 +1936,7 @@ VOS_VOID Gmm_RoutingAreaUpdataAcceptCombined(
 
     return;
 }
+
 VOS_UINT32 NAS_GMM_CheckNpduValid(
     VOS_UINT8                           ucNpduLen,
     VOS_UINT8                          *pucNpdu
@@ -3013,7 +3074,6 @@ VOS_VOID Gmm_RcvRoutingAreaUpdateAcceptMsg(
 {
     GMM_MSG_RESOLVE_STRU            RauAcceptIe;
     NAS_MSG_STRU                   *pGmmStatus;
-    VOS_UINT32                      ulGmmCause = 0;
     VOS_BOOL                        bTlliUpdateFlag = VOS_TRUE;
     VOS_UINT8                       i,j;
     NAS_MML_IGNORE_AUTH_REJ_INFO_STRU      *pstAuthRejInfo;
@@ -3153,13 +3213,7 @@ VOS_VOID Gmm_RcvRoutingAreaUpdateAcceptMsg(
     NAS_GMM_SndMmcNetworkCapabilityInfoInd(GMM_MMC_NW_EMC_BS_NOT_SUPPORTED,
                                            NAS_MML_NW_IMS_VOICE_NOT_SUPPORTED,
                                            GMM_MMC_LTE_CS_CAPBILITY_NOT_SUPPORTED);
-    
-    if (GMM_RAU_ACCEPT_IE_GMM_CAUSE_FLG
-        == (RauAcceptIe.usOptionalIeMask & GMM_RAU_ACCEPT_IE_GMM_CAUSE_FLG))
-    {
-        ulGmmCause = pMsg->aucNasMsg[RauAcceptIe.
-            aucIeOffset[GMM_RAU_ACCEPT_IE_GMM_CAUSE] + 1 ];                     /* 得到GMM CAUSE                            */
-    }
+
 
     Gmm_TimerStop(GMM_TIMER_T3330);                                             /* 停止Timer3330                            */
     Gmm_TimerStop(GMM_TIMER_T3311);                                             /* 停止Timer3311                            */
@@ -3167,49 +3221,34 @@ VOS_VOID Gmm_RcvRoutingAreaUpdateAcceptMsg(
     Gmm_TimerStop(GMM_TIMER_T3320);                                             /* 停止T3320                                */
     Gmm_TimerStop(GMM_TIMER_T3316);                                             /* 停止T3316                                */
 
+    /* 4.7.2.1.2 Handling of READY timer in the MS in Iu mode and S1 mode
+       The READY timer is not applicable for Iu mode and S1 mode.
+       Upon completion of a successful GPRS attach or routing area updating
+       procedure in Iu mode, the MS may stop the READY timer, if running.
+       Upon completion of a successful EPS attach or tracking area updating
+       procedure, the MS may stop the READY timer, if running. */
+    if (NAS_MML_NET_RAT_TYPE_WCDMA == NAS_MML_GetCurrNetRatType())
+    {
+        Gmm_TimerStop(GMM_TIMER_T3314);
+        gstGmmCasGlobalCtrl.GmmSrvState = GMM_AGB_GPRS_STANDBY;
+    }
+
     /* 清除鉴权相关全局变量 */
     g_GmmAuthenCtrl.ucResStoredFlg  = GMM_FALSE;                                /* 将"RES存在标志 "置为0                    */
     g_GmmAuthenCtrl.ucRandStoredFlg = GMM_FALSE;                                /* 将"RAND存在标志 "置为0                   */
 
     ucUpdateResultValue = (pMsg->aucNasMsg[2] >> NAS_MML_OCTET_MOVE_FOUR_BITS) & NAS_MML_OCTET_LOW_THREE_BITS;
 
-    if ((GMM_RA_UPDATED == ucUpdateResultValue)
-     || (GMM_RA_UPDATED_ISR_ACTIVE == ucUpdateResultValue))
+
+#if   (FEATURE_ON == FEATURE_LTE)
+    pstRplmnCfgInfo = NAS_MML_GetRplmnCfg();
+
+    if ( NAS_MML_TIN_TYPE_PTMSI != pstRplmnCfgInfo->enTinType)
     {
-        if ((GMM_RAU_WITH_IMSI_ATTACH == g_GmmGlobalCtrl.ucSpecProc)
-            || (GMM_RAU_COMBINED      == g_GmmGlobalCtrl.ucSpecProc))
-        {                                                                       /* 当前的specific过程是COMBINED RAU         */
-            if((GMM_TRUE == g_GmmRauCtrl.ucPeriodicRauFlg)
-                && (0 == ulGmmCause))
-            {
-                ;
-            }
-            else
-            {
-                if ((NAS_MML_REG_FAIL_CAUSE_MSC_UNREACHABLE     != ulGmmCause)
-                && (NAS_MML_REG_FAIL_CAUSE_NETWORK_FAILURE      != ulGmmCause)
-                && (NAS_MML_REG_FAIL_CAUSE_PROCEDURE_CONGESTION != ulGmmCause)
-                && (NAS_MML_REG_FAIL_CAUSE_IMSI_UNKNOWN_IN_HLR  != ulGmmCause))
-                {                                                               /* 其他原因值                               */
-
-                    NAS_GMM_UpdateAttemptCounterForSpecialCause(VOS_FALSE, ulGmmCause);
-
-                    Gmm_RoutingAreaUpdateAttemptCounter(
-                                                    NAS_MML_REG_FAIL_CAUSE_COMB_REG_CS_FAIL_OTHER_CAUSE);  /* 调用异常处理函数                         */
-
-                    g_GmmGlobalCtrl.ucSpecProc    = GMM_NULL_PROCEDURE;         /* 清除当前进行的specific 流程标志          */
-                    PS_LOG(WUEPS_PID_GMM, VOS_NULL, PS_PRINT_INFO, "Gmm_RcvRoutingAreaUpdateAcceptMsg:INFO: specific procedure ended");
-                    g_GmmRauCtrl.ucPeriodicRauFlg = GMM_FALSE;                  /* 清除当前RAU是否是周期RAU标志             */
-                    g_GmmGlobalCtrl.MsgHold.ucHandleRauFlg = GMM_FALSE;
-                    g_GmmGlobalCtrl.MsgHold.ucInitiateLuFlg = GMM_FALSE;
-                    g_GmmGlobalCtrl.ucFollowOnFlg = GMM_FALSE;                  /* 删除FOLLOW ON标志                        */
-                    NAS_MML_SetPsServiceBufferStatusFlg(VOS_FALSE);
-
-                    return;
-                }
-            }
-        }
+        NAS_GMM_UpdateTinType_RauAccept(pstRplmnCfgInfo->enTinType,
+                            pstRplmnCfgInfo->aucLastImsi, ucUpdateResultValue);
     }
+#endif
 
     Gmm_RoutingAreaUpdateHandle(&RauAcceptIe, pMsg, bTlliUpdateFlag);                            /* 解析RAU ACCEPT中的IE                     */
 
@@ -3256,13 +3295,6 @@ VOS_VOID Gmm_RcvRoutingAreaUpdateAcceptMsg(
         NAS_MML_SetT3412Status(NAS_MML_TIMER_STOP);
     }
 
-    pstRplmnCfgInfo = NAS_MML_GetRplmnCfg();
-
-    if ( NAS_MML_TIN_TYPE_PTMSI != pstRplmnCfgInfo->enTinType)
-    {
-        NAS_GMM_UpdateTinType_RauAccept(pstRplmnCfgInfo->enTinType,
-                           pstRplmnCfgInfo->aucLastImsi, ucUpdateResultValue);
-    }
 #endif
 
     /*检查是否需要启动T3340定时器监控RRC链路的释放 */
@@ -3275,6 +3307,7 @@ VOS_VOID Gmm_RcvRoutingAreaUpdateAcceptMsg(
     pstAuthRejInfo->ucHplmnPsAuthRejCounter = 0;
     return;
 }
+
 VOS_VOID Gmm_SndRoutingAreaUpdateReq(
                                  VOS_UINT8 ucUpdataType                         /* 发送RAU REQUEST的类型                    */
                                  )
@@ -3507,11 +3540,14 @@ VOS_VOID NAS_GMM_SndRoutingAreaUpdateReq(
 
         if (NAS_MML_NET_RAT_TYPE_GSM == NAS_MML_GetCurrNetRatType())
         {
-            if (GMM_NOT_SUSPEND_LLC == gstGmmCasGlobalCtrl.ucSuspendLlcCause)
+            if (GMM_TRUE == gstGmmCasGlobalCtrl.ucTlliAssignFlg)
             {
-                GMM_SndLlcSuspendReq();                                             /* 停止LLC数据传输 */
+                if (GMM_NOT_SUSPEND_LLC == gstGmmCasGlobalCtrl.ucSuspendLlcCause)
+                {
+                    GMM_SndLlcSuspendReq();                                             /* 停止LLC数据传输 */
+                }
+                gstGmmCasGlobalCtrl.ucSuspendLlcCause |= GMM_SUSPEND_LLC_FOR_RAU;
             }
-            gstGmmCasGlobalCtrl.ucSuspendLlcCause |= GMM_SUSPEND_LLC_FOR_RAU;
         }
 
         return;
@@ -3542,11 +3578,14 @@ VOS_VOID NAS_GMM_SndRoutingAreaUpdateReq(
 
         if (NAS_MML_NET_RAT_TYPE_GSM == NAS_MML_GetCurrNetRatType())
         {
-            if (GMM_NOT_SUSPEND_LLC == gstGmmCasGlobalCtrl.ucSuspendLlcCause)
+            if (GMM_TRUE == gstGmmCasGlobalCtrl.ucTlliAssignFlg)
             {
-                GMM_SndLlcSuspendReq();                                             /* 停止LLC数据传输 */
+                if (GMM_NOT_SUSPEND_LLC == gstGmmCasGlobalCtrl.ucSuspendLlcCause)
+                {
+                    GMM_SndLlcSuspendReq();                                             /* 停止LLC数据传输 */
+                }
+                gstGmmCasGlobalCtrl.ucSuspendLlcCause |= GMM_SUSPEND_LLC_FOR_RAU;
             }
-            gstGmmCasGlobalCtrl.ucSuspendLlcCause |= GMM_SUSPEND_LLC_FOR_RAU;
         }
     }
     else

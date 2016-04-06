@@ -34,7 +34,9 @@
 #define GPIOIBE 0x408
 #define GPIOIEV 0x40C
 #define GPIOIE  0x410
-#define GPIORIS 0x414
+/* lint -esym(750,*) */
+/* #define GPIORIS 0x414 */
+/* lint +esym(750,*) */
 #define GPIOMIS 0x418
 #define GPIOIC  0x41C
 
@@ -318,7 +320,7 @@ static const struct irq_domain_ops pl061_domain_ops = {
 static int pl061_parse_gpio_base(struct device *dev)
 {
 	struct device_node *np = dev->of_node;
-	int ret;
+	int ret = -EINVAL;
 
 	if (of_property_read_u32(np, "linux,gpio-base", &ret))
 		return -ENOENT;

@@ -1431,10 +1431,6 @@
 #define MDCNFG_DRI	Fld (15, 17)	/* min. DRAM Refresh Interval/4    */
                 	        	/* [Tmem]                          */
 #define MDCNFG_RefInt(Tcpu)     	/*  min. Refresh Interval          */ \
-                	        	/*  [0..262136 Tcpu]               */ \
-                	((Tcpu)/8 << FShft (MDCNFG_DRI))
-
-/* SA1110 MDCNFG values */
 #define MDCNFG_SA1110_DE0	0x00000001	/* DRAM Enable bank 0        */
 #define MDCNFG_SA1110_DE1	0x00000002 	/* DRAM Enable bank 1        */
 #define MDCNFG_SA1110_DTIM0	0x00000004	/* DRAM timing type 0/1      */

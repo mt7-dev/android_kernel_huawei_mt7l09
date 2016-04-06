@@ -13,14 +13,24 @@
 #include <linux/uaccess.h>
 #include <linux/delay.h>
 #include <linux/huawei/rdr.h>
-#include "drv_reset.h"
-#include "rdr_internal.h"
+#include <drv_reset.h>
+#include <rdr_internal.h>
+
+#ifdef CONFIG_ARM64
+#include <product_config.h>
+#ifdef CONFIG_HIFI_RESET
+#include <bsp_reset.h>
+#include <linux/hisi/rdr_hifi_reset.h>
+#endif
+#define HIFI_SEC_HEAD_BACKUP		(0x37C75000)
+#define HIFI_SEC_HEAD_SIZE		(1024)
+#else
+#include "../hi3630dsp/hifi_lpp.h"
+#endif
 
 #ifndef HIFI_SEC_DDR_MAX_NUM
 #define HIFI_SEC_DDR_MAX_NUM		(32)
 #endif
-#define HIFI_SEC_HEAD_ADDR			(0x37DF5000)
-#define HIFI_SEC_HEAD_SIZE			(1024)
 #define HIFI_BSS_SEC				(2)
 
 struct drv_hifi_sec_info {
@@ -31,19 +41,19 @@ struct drv_hifi_sec_info {
 };
 
 struct drv_hifi_sec_ddr_head {
-	unsigned int                                    sections_num;
-	struct drv_hifi_sec_info                 sections[HIFI_SEC_DDR_MAX_NUM];
+	unsigned int sections_num;
+	struct drv_hifi_sec_info sections[HIFI_SEC_DDR_MAX_NUM];
 };
 
 int reset_hifi_sec(void)
 {
-	struct drv_hifi_sec_ddr_head	  *head;
+	struct drv_hifi_sec_ddr_head *head;
 	void *sec_head = NULL;
 	void *sec_addr = NULL;
 	int i;
 	int ret = 0;
 
-	sec_head = ioremap(HIFI_SEC_HEAD_ADDR, HIFI_SEC_HEAD_SIZE);
+	sec_head = ioremap(HIFI_SEC_HEAD_BACKUP, HIFI_SEC_HEAD_SIZE);
 	if (NULL == sec_head) {
 		ret = -1;
 		goto error;
@@ -77,114 +87,232 @@ error:
 	return ret;
 }
 
-static char *shcmd = "/system/bin/sh";
-static char *killcmd = "/system/bin/kill";
-static char *cmd_envp[] = { "HOME=/data", "TERM=vt100", "USER=root",
-	"PATH=/system/xbin:/system/bin", NULL };
+#ifdef CONFIG_ARM64
+#ifdef CONFIG_HIFI_RESET
 
-#define MAX_PID_LEN			(10)
-#define PID_FILE_MAXLEN		(512)
-#define PID_FILE_NAME		"/data/mediaserver_pid.dat"
-#define PID_SH_CMD			"/system/etc/mediaserver_pid.sh"
-int get_mediaserver_pid(char *media_pid)
+/*Link used for hifi reset*/
+sreset_mgr_LLI  *g_pmgr_hifireset_data = NULL;
+
+/*****************************************************************************
+ 函 数 名  : reset_link_insert
+ 功能描述  : 将数据插入链表
+ 输入参数  : sreset_mgr_LLI *plink, 链表指针
+             sreset_mgr_LLI *punit，待插入的节点指针
+ 输出参数  : 无
+ 返 回 值  : int
+*****************************************************************************/
+sreset_mgr_LLI * reset_link_insert(sreset_mgr_LLI *plink, sreset_mgr_LLI *punit)
 {
-	int ret = -EINVAL;
-	mm_segment_t old_fs;
-	struct file *file;
-	loff_t pos = 0;
-	char statline[PID_FILE_MAXLEN];
-	char *cur, *token;
-	int pid_len = 0;
+	sreset_mgr_LLI    *phead = plink;
+	sreset_mgr_LLI    *ppose = plink;
+	sreset_mgr_LLI    *ptail = plink;
 
-	file = filp_open(PID_FILE_NAME, O_RDONLY, 0600);
-	if (IS_ERR(file)) {
-		pr_err("filp_open(%s) failed\n", PID_FILE_NAME);
-		ret = PTR_ERR(file);
-		return ret;
+	if (NULL == plink || NULL == punit)
+	{
+		return NULL;
 	}
-
-	old_fs = get_fs();
-	set_fs(KERNEL_DS);
-	ret = vfs_read(file, statline, PID_FILE_MAXLEN-1, &pos);
-	set_fs(old_fs);
-	filp_close(file, NULL);
-	if (ret < 0) {
-		pr_err("read_file failed\n");
-		return ret;
-	}
-
-	statline[ret] = 0;
-	cur = statline;
-	pr_info("read from .dat[%s]\n", statline);
-
-	while (token = strsep(&cur, " \n")) {
-		if (strncmp(token, "media", strlen("media")) == 0) {
-			while (token = strsep(&cur, " ")) {
-				if (token[0] != 0)
-					break;
+	while (NULL != ppose)
+	{
+		/*根据优先级插入到链表中*/
+		if (ppose->cbfuninfo.priolevel > punit->cbfuninfo.priolevel)
+		{
+			if (phead == ppose)
+			{
+				punit->pnext = ppose;
+				phead = punit;
 			}
-
-			if (token != NULL) {
-				pid_len = (strlen(token) > MAX_PID_LEN ?
-						MAX_PID_LEN : strlen(token));
-				strncpy(media_pid, token, pid_len);
-				pr_info("media_pid is %s\n", media_pid);
-				ret = 0;
-			} else {
-				pr_err("get mdeia pid fail pid is null\n");
-				ret = -1;
+			else
+			{
+				ptail->pnext = punit;
+				punit->pnext = ppose;
 			}
 			break;
 		}
+		ptail = ppose;
+		ppose = ppose->pnext;
 	}
-	if (token == NULL) {
-		pr_err("get mdeia pid fail pid is null\n");
-		ret = -1;
+	if (NULL == ppose)
+	{
+		ptail->pnext = punit;
 	}
-
-	return ret;
+	return phead;
 }
 
-int reset_mediaserver(void)
+/*****************************************************************************
+ 函 数 名  : reset_do_regcbfunc
+ 功能描述  : 用于其它组件注册回调函数，处理Modem复位前后相关数据。
+ 输入参数  :
+         sreset_mgr_LLI *plink,管理链表，注意，允许为空.
+            const char *pname, 组件注册的名字
+         pdrv_reset_cbfun cbfun,    组件注册的回调函数
+         int userdata,组件的私有数据
+         Int Priolevel, 回调函数调用优先级 0-49，其中0-9 保留。
+ 输出参数  : 无
+ 返 回 值  : int
+*****************************************************************************/
+sreset_mgr_LLI * reset_do_regcbfunc(sreset_mgr_LLI *plink, const char *pname, pdrv_reset_cbfun pcbfun, int userdata, int priolevel)
 {
-	char media_pid[MAX_PID_LEN] = {'0'};
-	char *cmd_argv[] = {shcmd, NULL, NULL};
-	int result = 0, num = 0;
+	sreset_mgr_LLI  *phead = plink;
+	sreset_mgr_LLI  *pmgr_unit = NULL;
 
-	cmd_argv[0] = shcmd;
-	cmd_argv[1] = PID_SH_CMD;
-	do {
-		result = call_usermodehelper(shcmd, cmd_argv, cmd_envp,
-				UMH_WAIT_PROC);
-		num++;
-		if (num > 300)
-			break;
-	} while (result == -EBUSY);
-	if (result < 0) {
-		pr_err("%s : get media server pis fail %d\n",
-				__func__ , result);
-		return result;
+	/*判断入参是否合法，不合法返回错误*/
+	if (NULL == pname
+		|| NULL == pcbfun
+		|| (priolevel < RESET_CBFUNC_PRIO_LEVEL_LOWT || priolevel > RESET_CBFUNC_PRIO_LEVEL_HIGH))
+	{
+		printk(KERN_ERR "%s: fail in ccore reset regcb,fail, name 0x%s, cbfun 0x%p, prio %d\n", __FUNCTION__, \
+						pname, pcbfun, priolevel);
+		return NULL;
 	}
 
-	result = get_mediaserver_pid(media_pid);
-	if (result < 0) {
-		pr_err("%s : analyze media server pid fail %d\n",
-				__func__ , result);
-		return -1;
+	/*分配空间*/
+	pmgr_unit = (sreset_mgr_LLI*)kmalloc(sizeof(sreset_mgr_LLI), GFP_KERNEL);
+	if (NULL != pmgr_unit)
+	{
+		memset((void*)pmgr_unit, 0, (sizeof(sreset_mgr_LLI)));
+		/*赋值*/
+		strncpy(pmgr_unit->cbfuninfo.name, pname, 9);
+		pmgr_unit->cbfuninfo.priolevel = priolevel;
+		pmgr_unit->cbfuninfo.userdata = userdata;
+		pmgr_unit->cbfuninfo.cbfun = pcbfun;
+	}
+	else
+	{
+		printk(KERN_ERR "%s: pmgr_unit malloc fail!\n", __FUNCTION__);
+		return NULL;
 	}
 
-	num = 0;
-	cmd_argv[0] = killcmd;
-	cmd_argv[1] = media_pid;
-	do {
-		result = call_usermodehelper(killcmd, cmd_argv, cmd_envp,
-				UMH_WAIT_PROC);
-		num++;
-		if (num > 300)
-			break;
-	} while (result == -EBUSY);
-	if (result < 0)
-		pr_err("%s : reset mediaserver fail %d\n",  __func__ , result);
+	/*第一次调用该函数，链表为空*/
+	if (NULL == phead)
+	{
+		phead = pmgr_unit;
+	}
+	else
+	{
+	/*根据优先级插入链表*/
+		phead = reset_link_insert(phead, pmgr_unit);
+	}
+	return phead;
+}
 
+/*****************************************************************************
+ 函 数 名  : hifireset_regcbfunc
+ 功能描述  : 用于其它组件注册回调函数，处理HIFI复位前后相关数据。
+ 输入参数  : const char *pname, 组件注册的名字
+         pdrv_reset_cbfun cbfun,    组件注册的回调函数
+         int userdata,组件的私有数据
+         Int Priolevel, 回调函数调用优先级 0-49，其中0-9 保留。
+ 输出参数  : 无
+ 返 回 值  : int
+*****************************************************************************/
+int hifireset_regcbfunc(const char *pname, pdrv_reset_cbfun pcbfun, int userdata, int priolevel)
+{
+	g_pmgr_hifireset_data = reset_do_regcbfunc(g_pmgr_hifireset_data, pname, pcbfun, userdata, priolevel);
+	printk(KERN_INFO "%s: %s registered a cbfun for hifi reset\n", __FUNCTION__, pname);
 	return 0;
 }
+
+/*****************************************************************************
+ 函 数 名  :  hifireset_doruncbfun
+ 功能描述  : HIFI复位前后调用回调函数的函数。由于圈复杂度超标，所以这里封装函数
+ 输入参数  : DRV_RESET_CALLCBFUN_MOMENT eparam, 0 表示HIFI复位前；非零表示复位后。
+
+ 输出参数  : 无
+ 返 回 值  : int
+        0, 成功，非0，失败
+*****************************************************************************/
+int hifireset_doruncbfun (const char *pname, DRV_RESET_CALLCBFUN_MOMENT eparam)
+{
+	int  iresult = BSP_RESET_OK;
+
+	sreset_mgr_LLI  *phead = g_pmgr_hifireset_data;
+	BUG_ON(NULL == pname);
+	/*不判断模块名字,按顺序执行*/
+	if (strcmp(pname, RESET_CBFUN_IGNORE_NAME) == 0)
+	{
+		while (NULL != phead)
+		{
+			if (NULL != phead->cbfuninfo.cbfun)
+			{
+				iresult = phead->cbfuninfo.cbfun(eparam, phead->cbfuninfo.userdata);
+				if (BSP_RESET_OK != iresult)
+				{
+					/*如果返回失败，记录下组件名字,返回值*/
+					printk(KERN_ERR "%s: fail to run cbfun of %s, at %d return %d\n", __FUNCTION__, phead->cbfuninfo.name, eparam, iresult);
+					break;
+				}
+				printk(KERN_INFO "%s: run %s cb function 0x%p\n", __FUNCTION__, phead->cbfuninfo.name,phead->cbfuninfo.cbfun);
+			}
+			phead = phead->pnext;
+		}
+	}
+	else/*需要判断模块名字，执行指定的回调函数*/
+	{
+		while (NULL != phead)
+		{
+			if (strcmp(pname, phead->cbfuninfo.name) == 0
+				&& NULL != phead->cbfuninfo.cbfun)
+			{
+				iresult  = phead->cbfuninfo.cbfun(eparam, phead->cbfuninfo.userdata);
+				printk(KERN_INFO "%s: run %s cb function 0x%p\n", __FUNCTION__, phead->cbfuninfo.name, phead->cbfuninfo.cbfun);
+				break;
+			}
+			phead = phead->pnext;
+		}
+	}
+
+	if (BSP_RESET_OK != iresult)
+	{
+		if (NULL != phead)
+		{
+			printk(KERN_ERR "%s: fail to run cbfun of %s, at %d, return %d\n", __FUNCTION__, phead->cbfuninfo.name, eparam ,iresult);
+
+		}
+		else
+		{
+			printk(KERN_ERR "%s: fail to run cbfun, but phead or pname is null\n", __FUNCTION__);
+		}
+	}
+	return iresult;
+}
+
+/*****************************************************************************
+ 函 数 名  :  hifireset _runcbfun
+ 功能描述  : HIFI复位前后调用回调函数的函数。
+ 输入参数  : DRV_RESET_CALLCBFUN_MOMENT eparam, 0 表示HIFI复位前；非零表示复位后。
+
+ 输出参数  : 无
+ 返 回 值  : int
+        0, 成功，非0，失败
+*****************************************************************************/
+int hifireset_runcbfun (DRV_RESET_CALLCBFUN_MOMENT eparam)
+{
+	int  iresult = 0;
+
+	if (DRV_RESET_CALLCBFUN_RESET_BEFORE == eparam)
+	{
+		/*遍历回调函数链表，调用NAS的回调*/
+		iresult = hifireset_doruncbfun("NAS_AT", eparam);
+		if (BSP_RESET_OK != iresult)
+		{
+			/*如果返回失败，记录下组建name, 返回值，保存到文件*/
+			goto return_error;
+		}
+	}
+	else
+	{
+		/*遍历回调函数链表，调用回调函数*/
+		iresult = hifireset_doruncbfun(RESET_CBFUN_IGNORE_NAME, eparam);
+		if (BSP_RESET_OK != iresult)
+		{
+			goto return_error;
+		}
+	}
+	printk(KERN_INFO "%s: end of run cb functions for hifi reset at %d, %d\n", __FUNCTION__, eparam, iresult);
+	return BSP_RESET_OK;
+return_error:
+	return BSP_RESET_ERROR;
+}
+#endif
+#endif
+

@@ -39,7 +39,7 @@ extern "C" {
 /*****************************************************************************
   2 宏定义
 *****************************************************************************/
-
+#define MTA_IMEI_LEN                    (15)
 
 /*****************************************************************************
   3 枚举定义
@@ -104,6 +104,7 @@ VOS_VOID TAF_MTA_RcvQryImeiVerifyReq(VOS_VOID *pMsg);
 VOS_VOID TAF_MTA_RcvQryCgsnReq(VOS_VOID *pMsg);
 
 
+VOS_VOID TAF_MTA_RcvAtNvwrSecCtrlSetReq( VOS_VOID *pMsg );
 
 
 

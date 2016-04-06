@@ -2,7 +2,7 @@
 # Makefile for sensor chip drivers.
 #
 
-obj-$(CONFIG_HWMON)		+= hwmon.o hwmon_trace.o
+obj-$(CONFIG_HWMON)		+= hwmon.o
 obj-$(CONFIG_HWMON_VID)		+= hwmon-vid.o
 
 # APCI drivers
@@ -146,3 +146,12 @@ obj-$(CONFIG_PMBUS)		+= pmbus/
 
 ccflags-$(CONFIG_HWMON_DEBUG_CHIP) := -DDEBUG
 
+ifdef CONFIG_HI6XXX_THERMAL
+#ccflags-y	+= -I$(srctree)/drivers/hisi/mntn/
+EXTRA_CFLAGS += -DBSP_CORE_APP
+obj-y   += hi6xxx_tempsys_device.o hi6xxx_hkadc_value.o
+obj-y   += hi6xxx_tsensor_driver.o
+obj-y   += hi6xxx_tsensor_governor.o
+obj-y   += hi6xxx_hkadc_ctrl.o
+obj-y   += hi6xxx_hkadc_debug_device.o
+endif

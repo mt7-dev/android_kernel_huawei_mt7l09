@@ -1,5 +1,5 @@
 /*
- * 
+ *
  *
  * Copyright (C) 2013 Huawei Inc.
  */

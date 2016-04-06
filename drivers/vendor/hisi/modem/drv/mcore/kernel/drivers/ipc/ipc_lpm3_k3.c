@@ -191,35 +191,12 @@ void ipc_modem_reset_cb(DRV_RESET_CALLCBFUN_MOMENT stage, int userdata)
 /*lint --e{572,778}*/
 __ao_func void ccore_ipc_disable(void)
 {
-	u32 ret = 0,temp=0x1 ;
 	unsigned long flags=0;
 	local_irq_save(flags);
-	ret = readl((const volatile void *)(ipc_ctrl.ipc_base + BSP_IPC_CPU_INT_MASK(ipc_ctrl.core_num)));
-	if(ret&(temp<<(u32)IPC_MCU_INT_SRC_CCPU_DRX))
-	{
-		bsp_ipc_int_disable(IPC_MCU_INT_SRC_CCPU_DRX);
-		ipc_ccore_int_reset_flag|=temp<<(u32)IPC_MCU_INT_SRC_CCPU_DRX;
-	}
-	if(ret&(temp<<(u32)IPC_MCU_INT_SRC_CCPU_MSG))
-	{
-		bsp_ipc_int_disable(IPC_MCU_INT_SRC_CCPU_MSG);
-		ipc_ccore_int_reset_flag|=temp<<(u32)IPC_MCU_INT_SRC_CCPU_MSG;
-	}
-	if(ret&(temp<<(u32)IPC_MCU_INT_SRC_CCPU_IPF))
-	{
-		bsp_ipc_int_disable(IPC_MCU_INT_SRC_CCPU_IPF);
-		ipc_ccore_int_reset_flag|=temp<<(u32)IPC_MCU_INT_SRC_CCPU_IPF;
-	}
-	if(ret&(temp<<(u32)IPC_MCU_INT_SRC_CCPU_PD))
-	{
-		bsp_ipc_int_disable(IPC_MCU_INT_SRC_CCPU_PD);
-		ipc_ccore_int_reset_flag|=temp<<(u32)IPC_MCU_INT_SRC_CCPU_PD;
-	}
-	if(ret&(temp<<(u32)IPC_MCU_INT_SRC_ICC))
-	{
-		bsp_ipc_int_disable(IPC_MCU_INT_SRC_ICC);
-		ipc_ccore_int_reset_flag|=temp<<(u32)IPC_MCU_INT_SRC_ICC;
-	}
+	ipc_ccore_int_reset_flag = readl((const volatile void *)(ipc_ctrl.ipc_base + BSP_IPC_CPU_INT_MASK(ipc_ctrl.core_num)));
+
+    writel(0x0,(volatile void *)(ipc_ctrl.ipc_base+BSP_IPC_CPU_INT_MASK(ipc_ctrl.core_num)));  
+	
 	/*把所有C核中断恢复默认值，即屏蔽掉*/
 	writel(0x0, ipc_ctrl.ipc_base + BSP_IPC_CPU_INT_MASK(IPC_CORE_CCORE));
 	local_irq_restore(flags);
@@ -227,16 +204,8 @@ __ao_func void ccore_ipc_disable(void)
 __ao_func void ccore_ipc_enable(void)
 {
 	unsigned long flag = 0;
-	u32 i = 0;
 	local_irq_save(flag);
-	for(i = 0;i < 32;i++)
-	{
-		if(ipc_ccore_int_reset_flag&((u32)0x1<<i))
-		{
-			bsp_ipc_int_enable((IPC_INT_LEV_E)i);
-			ipc_ccore_int_reset_flag&=~((u32)0x1<<i);
-		}
-	}
+    writel(ipc_ccore_int_reset_flag,(volatile void *)(ipc_ctrl.ipc_base+BSP_IPC_CPU_INT_MASK(ipc_ctrl.core_num)));    
 	local_irq_restore(flag);
 }
 void bsp_ipc_init(void)

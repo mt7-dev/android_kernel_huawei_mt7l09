@@ -188,8 +188,7 @@ VOS_UINT32  NAS_EMMC_RcvMmcPlmnSrchReq(MsgBlock *pMsg )
       由于SVLTE项目PS域在不同modem上迁移需求，新需求为只要MMC发起了搜网，且不是list搜，不论
       搜到小区是否变化都需要上报注册状态。
       因此在MMC发搜网时，设置搜网标记，收到系统消息后上报注册状态，并清除搜网标记*/
-    if((MMC_LMM_PLMN_SRCH_LIST != pstMmcPlmnReq->enSrchType)
-        || (MMC_LMM_PLMN_SRCH_TYPE_BUTT != pstMmcPlmnReq->enSrchType))
+    if(MMC_LMM_PLMN_SRCH_LIST != pstMmcPlmnReq->enSrchType)
     {
         NAS_LMM_EMMC_LOG_INFO("NAS_EMMC_RcvMmcPlmnSrchReq: set single plmn search flag!");
         NAS_EMMC_SetSinglePlmnSrchFlag(NAS_EMM_YES);
@@ -401,7 +400,17 @@ VOS_UINT32  NAS_EMMC_RcvMmcEplmnNotifyReq(MsgBlock *pMsg)
 
     pstEplmnReq                        = (MMC_LMM_EPLMN_NOTIFY_REQ_STRU *)pMsg;
 
-
+    /* 保存等效PLMN列表 */
+    if(MMC_LMM_MAX_EQUPLMN_NUM < (pstEplmnReq->ulEplmnNum))
+    {
+        NAS_LMM_GetEmmInfoNetInfoEplmnListAddr()->ulPlmnNum = MMC_LMM_MAX_EQUPLMN_NUM;
+    }
+    else
+    {
+        NAS_LMM_GetEmmInfoNetInfoEplmnListAddr()->ulPlmnNum = pstEplmnReq->ulEplmnNum;
+    }
+    NAS_LMM_MEM_CPY(&(NAS_LMM_GetEmmInfoNetInfoEplmnListAddr()->astPlmnId[0]),&(pstEplmnReq->astEplmnList[0]),
+                    sizeof(NAS_MM_PLMN_ID_STRU)*(NAS_LMM_GetEmmInfoNetInfoEplmnListAddr()->ulPlmnNum));
     /*发送RRC_MM_EQU_PLMN_NOTIFY_REQ消息*/
     NAS_EMMC_SendRrcEplmnNotifyReq(pstEplmnReq);
 
@@ -413,9 +422,6 @@ VOS_UINT32  NAS_EMMC_RcvMmcEplmnNotifyReq(MsgBlock *pMsg)
 
     return NAS_LMM_MSG_HANDLED;
 }
-
-
-
 VOS_UINT32  NAS_EMMC_RcvMmcStopSrchReq( MsgBlock *pMsg)
 {
     NAS_LMM_EMMC_LOG_NORM("NAS_EMMC_RcvMmcStopSrchReq is entered.");
@@ -717,6 +723,10 @@ VOS_UINT32 NAS_EMMC_RcvMmcGuSysInfoInd(MsgBlock *pMsg )
     /*收到GU系统消息,停止运行的T3402以及T3411 */
     NAS_LMM_StopPtlTimer(TI_NAS_EMM_PTL_T3411);
 
+    NAS_EMM_SetCsfbProcedureFlag(PS_FALSE);
+	
+    /* 收到系统消息后，判断LAI是否发生变化 */
+    NAS_LMM_SetEmmInfoLaiChangeFlag(NAS_MML_IsCsLaiChanged());
 /*lint -e960*/
 /* GCF测试情况下如果3402在运行不停止3402，也不必清次数，待3402超时后自然会清，
    3411定时器先不修改，暂还按照原来的停止处理 */
@@ -738,8 +748,33 @@ VOS_UINT32 NAS_EMMC_RcvMmcGuSysInfoInd(MsgBlock *pMsg )
     NAS_EMM_GLO_AD_GetAttAtmpCnt() = 0;
 
 
+
     return NAS_LMM_MSG_HANDLED;
 }
+VOS_UINT32  NAS_EMMC_RcvRrcSearchPlmnInfoInd(MsgBlock *pMsg)
+{
+    LRRC_LMM_SEARCHED_PLMN_INFO_IND_STRU *pLrrcMsg = NAS_LMM_NULL_PTR;
+
+    NAS_LMM_EMMC_LOG_NORM("NAS_EMMC_RcvRrcSearchPlmnInfoInd: entered.");
+
+    /* 入参检查 */
+    if (NAS_EMMC_NULL_PTR == pMsg)
+    {
+        NAS_LMM_EMMC_LOG_ERR("NAS_EMMC_RcvRrcSearchPlmnInfoInd: input null");
+        return  NAS_LMM_ERR_CODE_PTR_NULL;
+    }
+
+    /* 结构转化 */
+    pLrrcMsg = (LRRC_LMM_SEARCHED_PLMN_INFO_IND_STRU *)pMsg;
+
+    /* 发送LMM_MMC_SEARCHED_PLMN_INFO_IND消息 */
+    NAS_EMMC_SendMmcSearchPlmnInfoInd(pLrrcMsg);
+
+    return NAS_LMM_MSG_HANDLED;
+}
+
+
+
 
 #ifdef __cplusplus
     #if __cplusplus

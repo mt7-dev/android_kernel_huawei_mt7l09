@@ -597,7 +597,7 @@ static void init_startup_params(ray_dev_t *local)
 	 *
 	 *    a_hop_time = uS           a_hop_time = KuS
 	 *    a_beacon_period = hops    a_beacon_period = KuS
-	 *//* 64ms = 010000 */
+	 *
 	if (local->fw_ver == 0x55) {
 		memcpy((UCHAR *) &local->sparm.b4, b4_default_startup_parms,
 		       sizeof(struct b4_startup_params));

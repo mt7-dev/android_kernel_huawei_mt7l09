@@ -1,26 +1,4 @@
-/*
- *  Hisilicon K3 SOC camera driver source file
- *
- *  Copyright (C) Huawei Technology Co., Ltd.
- *
- * Author:	  h00145353
- * Email:	  alan.hefeng@huawei.com
- * Date:	  2013-12-11
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
- */
+
 
 
 #include <linux/compiler.h>
@@ -59,13 +37,12 @@ typedef struct _tag_hwisp
 } hwisp_t;
 
 #define SD2ISP(sd) container_of(sd, hwisp_t, subdev)
-
 static int hwisp_vo_open(
         struct v4l2_subdev* sd,
         struct v4l2_subdev_fh* fh)
 {
     hwisp_t* s = SD2ISP(sd);
-    HWCAM_CFG_INFO("instance(0x%p). \n", s);
+    HWCAM_CFG_INFO("instance(0x%p)", s);
     return 0;
 }
 
@@ -76,20 +53,24 @@ hwisp_vo_close(
 {
     struct isp_cfg_data data;
     struct ion_handle* hdl = NULL;
+    memset(&data, 0x0, sizeof(data));
     hwisp_t* s = SD2ISP(sd);
     hwcam_data_table_t* cfg = NULL;
+    HWCAM_CFG_INFO("instance(0x%p)", s);
 
+    if (mutex_lock_interruptible(&s->lock))
+        return -ERESTARTSYS;
     data.cfgtype = CONFIG_POWER_OFF;
     s->hw->vtbl->config(s->hw,(void *)&data);
+    mutex_unlock(&s->lock);
 
     swap(s->cfg_hdl, hdl);
     swap(s->cfg, cfg);
     if (hdl) {
-        HWCAM_CFG_ERR("release isp driver data table! \n");
+        HWCAM_CFG_ERR("release isp driver data table!");
         hwcam_cfgdev_release_data_table(hdl);
     }
 
-    HWCAM_CFG_INFO("instance(0x%p). \n", s);
     return 0;
 }
 
@@ -106,7 +87,9 @@ static void hwisp_notify_sof(hwisp_notify_intf_t* i, hwisp_event_t* isp_ev)
     hwisp_t *isp = NULL;
     struct v4l2_event ev;
     struct video_device *vdev = NULL;
-    hwisp_event_t* req = (hwisp_event_t*)ev.u.data;
+    hwisp_event_t* req = NULL;
+    memset(&ev, 0x0, sizeof(ev));
+    req = (hwisp_event_t*)ev.u.data;
 
     isp = NotifytoHwisp(i);
     vdev = isp->subdev.devnode;
@@ -126,7 +109,9 @@ static void hwisp_notify_eof(hwisp_notify_intf_t* i, hwisp_event_t* isp_ev)
     hwisp_t *isp = NULL;
     struct v4l2_event ev;
     struct video_device *vdev = NULL;
-    hwisp_event_t* req = (hwisp_event_t*)ev.u.data;
+    hwisp_event_t* req = NULL;
+    memset(&ev, 0x0, sizeof(ev));
+    req = (hwisp_event_t*)ev.u.data;
 
     isp = NotifytoHwisp(i);
     vdev = isp->subdev.devnode;
@@ -145,7 +130,9 @@ static void hwisp_notify_cmd_ready(hwisp_notify_intf_t* i, hwisp_event_t* isp_ev
     hwisp_t *isp = NULL;
     struct v4l2_event ev;
     struct video_device *vdev = NULL;
-    hwisp_event_t* req = (hwisp_event_t*)ev.u.data;
+    hwisp_event_t* req = NULL;
+    memset(&ev, 0x0, sizeof(ev));
+    req = (hwisp_event_t*)ev.u.data;
 
     isp = NotifytoHwisp(i);
     vdev = isp->subdev.devnode;
@@ -160,11 +147,31 @@ static void hwisp_notify_cmd_ready(hwisp_notify_intf_t* i, hwisp_event_t* isp_ev
     v4l2_event_queue(vdev, &ev);
 }
 
+static void hwisp_notify_vsync_time(hwisp_notify_intf_t* i, hwisp_event_t* isp_ev)
+{
+    hwisp_t *isp = NULL;
+    struct v4l2_event ev;
+    struct video_device *vdev = NULL;
+    hwisp_event_t* req = (hwisp_event_t*)ev.u.data;
+
+    isp = NotifytoHwisp(i);
+    vdev = isp->subdev.devnode;
+
+    ev.type = HWISP_V4L2_EVENT_TYPE;
+    ev.id = HWISP_HIGH_PRIO_EVENT;
+
+    req->kind = isp_ev->kind;
+    req->data.vsync.time = isp_ev->data.vsync.time;
+    req->data.vsync.pipeline= isp_ev->data.vsync.pipeline;
+    v4l2_event_queue(vdev, &ev);
+}
+
 static hwisp_notify_vtbl_t s_notify_hwisp =
 {
     .sof = hwisp_notify_sof,
     .eof = hwisp_notify_eof,
     .cmd_ready = hwisp_notify_cmd_ready,
+    .vsync = hwisp_notify_vsync_time,
 };
 
 
@@ -181,8 +188,9 @@ hwisp_subdev_get_info(
         hwisp_t* isp,
         hwisp_info_t* info)
 {
-    memcpy(info->name, hwisp_intf_get_name(isp->hw),
-            HWISP_NAME_SIZE);
+    const char *p_name = hwisp_intf_get_name(isp->hw);
+    size_t size = strlen(p_name) > HWISP_NAME_SIZE ? HWISP_NAME_SIZE : strlen(p_name);
+    memcpy(info->name, hwisp_intf_get_name(isp->hw), size);
     return 0;
 }
 
@@ -253,6 +261,9 @@ hwisp_vo_subdev_ioctl(
         break;
     case HWISP_IOCTL_CFG_ISP:
         rc = isp->hw->vtbl->config(isp->hw,arg);
+        break;
+    case HWISP_IOCTL_FIX_DDR:
+        rc = isp->hw->vtbl->fix_ddrfreq(isp->hw, arg);
         break;
     default:
         HWCAM_CFG_ERR("invalid IOCTL CMD(%d)! \n", cmd);
@@ -347,5 +358,20 @@ hwisp_register(
 
 alloc_fail:
     return rc;
+}
+
+#define HwtoHwisp(isp_intf) container_of(isp_intf, hwisp_t, hw)
+void
+hwisp_unregister(hwisp_intf_t* isp_intf)
+{
+    hwisp_t* isp = NULL;
+    struct v4l2_subdev* subdev = NULL;
+
+    isp = HwtoHwisp(isp_intf);
+    subdev  = &isp->subdev;
+    media_entity_cleanup(&subdev->entity);
+    hwcam_cfgdev_unregister_subdev(subdev);
+
+    kzfree(isp);
 }
 

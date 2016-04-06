@@ -41,7 +41,7 @@ unsigned int  sw_unpd_en = 0;
 
 *****************************************************************************/
 
-unsigned long drv_gpio_oprt(unsigned long ulOp, unsigned char *pucPL)
+unsigned int drv_gpio_oprt(unsigned int ulOp, unsigned char *pucPL)
 {
     unsigned int i = 0;
     unsigned int j = 0;
@@ -121,26 +121,19 @@ int bsp_rf_ldo_init(void)
     return -1;
 }
 
-void rf_gpio_set_high(void)
+void gpio_power_set_high(GPIO_POWER_E mid)
 {
     return;
 }
 
-void rf_gpio_set_low(void)
+void gpio_power_set_low(GPIO_POWER_E mid)
 {
     return;
 }
 
-int ldo_gpio123_get_value(void)
+int gpio_power_get_status(GPIO_POWER_E mid)
 {
-
-    return -1;
-}
-
-int ldo_gpio124_get_value(void)
-{
-
-    return -1;
+	return -1;
 }
 
 int outer_rfswitch_set(unsigned int status)
@@ -186,6 +179,7 @@ int bsp_antn_sw_init(void)
 {
 	return 0;
 }
+
 #else
 
 #define RF_GPIO_NV_MAX     16
@@ -343,7 +337,7 @@ int bsp_pintrl_mux_get_without_dts(unsigned int gpio, unsigned int *func)
 
 }
 
-unsigned long drv_gpio_oprt(unsigned long ulOp, unsigned char *pucPL)
+unsigned int drv_gpio_oprt(unsigned int ulOp, unsigned char *pucPL)
 {
     return 0;
 }
@@ -466,62 +460,43 @@ int bsp_ldo_gpio_init(void)
     return 0;
 }
 
-void rf_gpio_set_high(void)
+void gpio_power_set_high(GPIO_POWER_E mid)
 {
-    unsigned int ldo_gpio_num = sizeof(DRV_DRV_LDO_GPIO_STRU)/sizeof(DRV_DRV_LDO_GPIO_CFG);
-    unsigned int i = 0;
-    for(i = 0;i < ldo_gpio_num;i++)
-    {
-        if(1 == ldo_gpio_cfg_data.ldo_gpio[i].used)
-        {
-            bsp_gpio_direction_output(ldo_gpio_cfg_data.ldo_gpio[i].gpio, 1);
-        }
-        else
-        {
-            ldo_gpio_flag[i] = 1;
-        }
 
+    if(1 == ldo_gpio_cfg_data.ldo_gpio[mid].used)
+    {
+        bsp_gpio_direction_output(ldo_gpio_cfg_data.ldo_gpio[mid].gpio, 1);
+    }
+    else
+    {
+        ldo_gpio_flag[mid] = 1;
     }
 
-
-    //bsp_gpio_direction_output(GPIO_123, 1);
-    //bsp_gpio_direction_output(GPIO_124, 1);
 
 }
 
-void rf_gpio_set_low(void)
+void gpio_power_set_low(GPIO_POWER_E mid)
 {
-    unsigned int ldo_gpio_num = sizeof(DRV_DRV_LDO_GPIO_STRU)/sizeof(DRV_DRV_LDO_GPIO_CFG);
-    unsigned int i = 0;
-    for(i = 0;i < ldo_gpio_num;i++)
+
+    if(1 == ldo_gpio_cfg_data.ldo_gpio[mid].used)
     {
-        if(1 == ldo_gpio_cfg_data.ldo_gpio[i].used)
-        {
-	        
-			/*如果天线开关不下电特性打开并且为gpio_123,则不可以拉低此*/
-			if(ldo_gpio_cfg_data.ldo_gpio[i].gpio == GPIO_123 && sw_unpd_en)
-				continue;
-			
-	        bsp_gpio_direction_output(ldo_gpio_cfg_data.ldo_gpio[i].gpio, 0);
-    	}		
-		else
-		{
-			ldo_gpio_flag[i] = 0;
-		}
-    }
-    //bsp_gpio_direction_output(GPIO_123, 0);
-    //bsp_gpio_direction_output(GPIO_124, 0);
+        bsp_gpio_direction_output(ldo_gpio_cfg_data.ldo_gpio[mid].gpio, 0);
+	}		
+	else
+	{
+		ldo_gpio_flag[mid] = 0;
+	}
 
 }
 
-int ldo_gpio123_get_value(void)
+int gpio_power_get_status(GPIO_POWER_E mid)
 {
-    if(1 == ldo_gpio_cfg_data.ldo_gpio[0].used)
+    if(1 == ldo_gpio_cfg_data.ldo_gpio[mid].used)
     {
-        return bsp_gpio_get_value(ldo_gpio_cfg_data.ldo_gpio[0].gpio);
+        return bsp_gpio_get_value(ldo_gpio_cfg_data.ldo_gpio[mid].gpio);
     }
 
-    return (int)(ldo_gpio_flag[0]);
+    return (int)(ldo_gpio_flag[mid]);
 
 
     
@@ -533,25 +508,31 @@ int ldo_gpio123_get_value(void)
     return -1;*/
 }
 
-int ldo_gpio124_get_value(void)
+
+/*会调用pastar接口，放在初始化最执行*/
+int bsp_antn_sw_init(void)
 {
-    if(1 == ldo_gpio_cfg_data.ldo_gpio[1].used)
+	int ret;
+
+	/*读取天线开关不下电特性是否使能*/
+    ret = bsp_nvm_read(NV_ID_DRV_ANTN_UNPD_FLAG,(u8*)(&sw_unpd_en),sizeof(DRV_ANT_SW_UNPD_ENFLAG));	
+    if (ret !=  0)
     {
-        return bsp_gpio_get_value(ldo_gpio_cfg_data.ldo_gpio[1].gpio);
+        gpio_print_error("rf_gpio read NV=0x%x, ret = %d \n",NV_ID_DRV_ANTN_UNPD_FLAG, ret);
     }
 
-    return (int)(ldo_gpio_flag[1]);
-
-    /*if(1 == bsp_gpio_direction_get(GPIO_124))
+	/*读取天线开关不下电特性中gpio的默认配置*/
+    ret = bsp_nvm_read(NV_ID_DRV_ANTN_UNPD_CFG,(u8*)sw_unpd_cfg,sizeof(NV_DRV_ANT_SW_UNPD_CFG));	
+    if (ret !=  0)
     {
-        return bsp_gpio_get_value(GPIO_124);
-
+        gpio_print_error("rf_gpio read NV=0x%x, ret = %d \n",NV_ID_DRV_ANTN_UNPD_CFG, ret);
     }
-    gpio_print_error("gpio124 direction is error.\n");
-    return -1;*/
-    
+    /*初始化时配置天线开关默为认值，与dpm唤醒时是一致的*/
+	bsp_dpm_powerup_antn_config();
+
+	return ret;
+
 }
-
 #ifdef CONFIG_MODEM_PINTRL
 
 #define RF_PIN_MAX  31
@@ -722,75 +703,7 @@ int bsp_rse_gpio_set(unsigned int flag, unsigned int mask, unsigned int value)
     return 0;
 }
 
-/*会调用pastar接口，放在初始化最执行*/
-int bsp_antn_sw_init(void)
-{
-	int ret;
 
-	/*读取天线开关不下电特性是否使能*/
-    ret = bsp_nvm_read(NV_ID_DRV_ANTN_UNPD_FLAG,(u8*)(&sw_unpd_en),sizeof(DRV_ANT_SW_UNPD_ENFLAG));	
-    if (ret !=  0)
-    {
-        gpio_print_error("rf_gpio read NV=0x%x, ret = %d \n",NV_ID_DRV_ANTN_UNPD_FLAG, ret);
-    }
-
-	/*读取天线开关不下电特性中gpio的默认配置*/
-    ret = bsp_nvm_read(NV_ID_DRV_ANTN_UNPD_CFG,(u8*)sw_unpd_cfg,sizeof(NV_DRV_ANT_SW_UNPD_CFG));	
-    if (ret !=  0)
-    {
-        gpio_print_error("rf_gpio read NV=0x%x, ret = %d \n",NV_ID_DRV_ANTN_UNPD_CFG, ret);
-    }
-    /*初始化时配置天线开关默为认值，与dpm唤醒时是一致的*/
-	bsp_dpm_powerup_antn_config();
-
-	return ret;
-
-}
-
-
-int bsp_rf_switch_init(void)
-{
-    unsigned int  ret = 0;
-    unsigned int i = 0;
-
-    unsigned int outer_index = 0;
-    unsigned int inside_index = 0;
-    RF_GPIO_CFG rf_gpio_cfg_data[RF_GPIO_NV_MAX];
-
-    memset((void*)rf_gpio_cfg_data, 0, sizeof(rf_gpio_cfg_data));
-    memset((void*)gpio_outer,  0, sizeof(gpio_outer));
-    memset((void*)gpio_inside, 0, sizeof(gpio_inside));
-
-    /*Get NV data by NV id*/
-    ret = bsp_nvm_read(NV_ID_RF_SWITCH_CFG,(u8*)rf_gpio_cfg_data,sizeof(rf_gpio_cfg_data));
-    if (ret !=  0)
-    {
-        gpio_print_error("rf_gpio read NV=0x%x, ret = %d \n",NV_ID_RF_SWITCH_CFG, ret);
-        return -1;
-    }
-
-    /*Write NV data to global struct*/
-    for(i = 0; i < RF_GPIO_NV_MAX; i++)
-    {
-        if(1 == rf_gpio_cfg_data[i].modem_inside.is_used)
-        {
-            gpio_inside[inside_index].gpio = rf_gpio_cfg_data[i].rf_gpio_num;
-            gpio_inside[inside_index].gpio_value = rf_gpio_cfg_data[i].modem_inside.gpio_level;
-            ++inside_index;
-        }
-        else if(1 == rf_gpio_cfg_data[i].modem_outside.is_used)
-        {
-            gpio_outer[outer_index].gpio = rf_gpio_cfg_data[i].rf_gpio_num;
-            gpio_outer[outer_index].gpio_value = rf_gpio_cfg_data[i].modem_outside.gpio_level;
-            ++outer_index;
-
-        }
-
-    }
-
-    return 0;
-
-}
 
 
 int bsp_ant_modem_set(GPIO_ANT_MODESET_E mode)
@@ -990,7 +903,57 @@ int outer_rfswitch_get(unsigned int *status)
     return 0;
 }
 
+
+int bsp_rf_switch_init(void)
+{
+    unsigned int  ret = 0;
+    unsigned int i = 0;
+
+    unsigned int outer_index = 0;
+    unsigned int inside_index = 0;
+    RF_GPIO_CFG rf_gpio_cfg_data[RF_GPIO_NV_MAX];
+
+    memset((void*)rf_gpio_cfg_data, 0, sizeof(rf_gpio_cfg_data));
+    memset((void*)gpio_outer,  0, sizeof(gpio_outer));
+    memset((void*)gpio_inside, 0, sizeof(gpio_inside));
+
+    /*Get NV data by NV id*/
+    ret = bsp_nvm_read(NV_ID_RF_SWITCH_CFG,(u8*)rf_gpio_cfg_data,sizeof(rf_gpio_cfg_data));
+    if (ret !=  0)
+    {
+        gpio_print_error("rf_gpio read NV=0x%x, ret = %d \n",NV_ID_RF_SWITCH_CFG, ret);
+        return -1;
+    }
+
+    /*Write NV data to global struct*/
+    for(i = 0; i < RF_GPIO_NV_MAX; i++)
+    {
+        if(1 == rf_gpio_cfg_data[i].modem_inside.is_used)
+        {
+            gpio_inside[inside_index].gpio = rf_gpio_cfg_data[i].rf_gpio_num;
+            gpio_inside[inside_index].gpio_value = rf_gpio_cfg_data[i].modem_inside.gpio_level;
+            ++inside_index;
+        }
+        else if(1 == rf_gpio_cfg_data[i].modem_outside.is_used)
+        {
+            gpio_outer[outer_index].gpio = rf_gpio_cfg_data[i].rf_gpio_num;
+            gpio_outer[outer_index].gpio_value = rf_gpio_cfg_data[i].modem_outside.gpio_level;
+            ++outer_index;
+
+        }
+
+    }
+
+    return 0;
+
+}
+
+
 #else
+int bsp_rse_gpio_set(unsigned int flag, unsigned int mask, unsigned int value)
+{
+	return -1;
+}
 
 int bsp_gpio_rf_pin_set(unsigned int mask, unsigned int is_hz, unsigned int value)
 {
@@ -1063,7 +1026,6 @@ int bsp_ant_modem_set(GPIO_ANT_MODESET_E mode)
 
     if(NULL == gpio_inside[0])
     {
-        gpio_print_error("nv config error.\n");
         return -1;
     }
     
@@ -1130,7 +1092,6 @@ int outer_rfswitch_set(unsigned int status)
 
     if(NULL == gpio_outer[0])
     {
-        gpio_print_error("nv config error.\n");
         return -1;
     }
     
@@ -1196,13 +1157,11 @@ int outer_rfswitch_get(unsigned int *status)
     
     if(NULL == status)
     {
-        gpio_print_error("para error, status=%d.\n", status);
         return -1;
     }
 
     if(NULL == gpio_outer[0])
     {
-        gpio_print_error("nv config error.\n");
         return -1;
     }
     

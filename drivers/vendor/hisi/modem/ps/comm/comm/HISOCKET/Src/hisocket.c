@@ -1,4 +1,9 @@
-
+/******************************************************************************/
+#include "product_config.h"
+#if (FEATURE_ON == FEATURE_HISOCKET)
+/******************************************************************************
+   1 头文件包含
+******************************************************************************/
 #include <linux/mm.h>
 #include <linux/socket.h>
 #include <linux/file.h>
@@ -52,10 +57,10 @@
 
 #include "hisocket.h"
 
-#define HI_POLLIN_SET (POLLRDNORM | POLLRDBAND | POLLIN | POLLHUP | POLLERR)
-#define HI_POLLOUT_SET (POLLWRBAND | POLLWRNORM | POLLOUT | POLLERR)
-#define HI_POLLEX_SET (POLLPRI)
-#define HI_MAX_SLACK	(100 * NSEC_PER_MSEC)
+#define HI_POLLIN_SET   (POLLRDNORM | POLLRDBAND | POLLIN | POLLHUP | POLLERR)
+#define HI_POLLOUT_SET  (POLLWRBAND | POLLWRNORM | POLLOUT | POLLERR)
+#define HI_POLLEX_SET   (POLLPRI)
+#define HI_MAX_SLACK    (100 * NSEC_PER_MSEC)
 
 extern int sock_create_kern(int family, int type, int protocol, struct socket **res);
 extern void sock_release(struct socket *sock);
@@ -74,15 +79,14 @@ extern int kernel_setsockopt(struct socket *sock, int level, int optname, char *
 extern int kernel_sock_ioctl(struct socket *sock, int cmd, unsigned long arg);
 extern int kernel_sock_shutdown(struct socket *sock, enum sock_shutdown_cmd how);
 extern int sock_create_lite(int family, int type, int protocol, struct socket **res);
-extern int poll_select_set_timeout(struct timespec *to, long sec, long nsec);
 
 
 #define HI_SOCKET_MAX  32
 static int socket_debug=DISABLE_SOCKET_DEBUG;
 
-#define SOCKET_DBG(format, arg...) {					\
-	if (socket_debug == ENABLE_SOCKET_DEBUG)			\
-		printk(format, ## arg);				\
+#define SOCKET_DBG(format, arg...) {                    \
+    if (socket_debug == ENABLE_SOCKET_DEBUG)            \
+        printk(format, ## arg);             \
 }
 
 struct hi_files_struct
@@ -102,7 +106,7 @@ static struct hi_fs_table hifstable;
 
 struct hi_poll_table_entry
 {
-  unsigned long key;
+  unsigned int key;
   wait_queue_t wait;
   wait_queue_head_t *wait_address;
 };
@@ -119,12 +123,12 @@ struct hi_poll_wqueues
 
 struct hi_fd_set_bits
 {
-  unsigned long  in;
-  unsigned long  out;
-  unsigned long  ex;
-  unsigned long  res_in;
-  unsigned long  res_out;
-  unsigned long  res_ex;
+  unsigned int  in;
+  unsigned int  out;
+  unsigned int  ex;
+  unsigned int  res_in;
+  unsigned int  res_out;
+  unsigned int  res_ex;
 };
 
 static struct file file_stub;
@@ -473,9 +477,9 @@ static int hi_poll_select_copy_remaining(struct timespec *end_time, void *p,
 }
 
 
-static long __hi_estimate_accuracy(struct timespec *tv)
+static int __hi_estimate_accuracy(struct timespec *tv)
 {
-  long slack;
+  int slack;
   int divfactor = 1000;
 
   if (tv->tv_sec < 0)
@@ -497,9 +501,9 @@ static long __hi_estimate_accuracy(struct timespec *tv)
 }
 
 
-static long hi_estimate_accuracy(struct timespec *tv)
+static int hi_estimate_accuracy(struct timespec *tv)
 {
-  unsigned long ret;
+  unsigned int ret;
   struct timespec now;
 
   ktime_get_ts(&now);
@@ -512,8 +516,8 @@ static long hi_estimate_accuracy(struct timespec *tv)
 }
 
 
-static inline void hi_wait_key_set(poll_table *wait, unsigned long in,
-  unsigned long out, unsigned long bit)
+static inline void hi_wait_key_set(poll_table *wait, unsigned int in,
+  unsigned int out, unsigned int bit)
 {
   if (wait) {
     wait->_key = HI_POLLEX_SET;
@@ -542,7 +546,7 @@ int hi_pollwake(wait_queue_t *wait, unsigned mode, int sync, void *key)
   struct hi_poll_table_entry *entry;
 
   entry = container_of(wait, struct hi_poll_table_entry, wait);
-  if (key && !((unsigned long)key & entry->key))
+  if (key && !((unsigned int)key & entry->key))
     return 0;
   return __hi_pollwake(wait, mode, sync, key);
 }
@@ -586,7 +590,7 @@ void hi_poll_initwait(struct hi_poll_wqueues *pwq)
 
 
 int hi_poll_schedule_timeout(struct hi_poll_wqueues *pwq, int state,
-  ktime_t *expires, unsigned long slack)
+  ktime_t *expires, unsigned int slack)
 {
   int rc = -EINTR;
 
@@ -622,7 +626,7 @@ int hi_do_select(int n, struct hi_fd_set_bits *fds, struct timespec *end_time)
   struct hi_poll_wqueues table;
   poll_table *wait;
   int retval, i, timed_out = 0;
-  unsigned long slack = 0;
+  unsigned int slack = 0;
   struct socket *sock;
 
   hi_poll_initwait(&table);
@@ -638,8 +642,8 @@ int hi_do_select(int n, struct hi_fd_set_bits *fds, struct timespec *end_time)
 
   retval = 0;
   for (;;) {
-    unsigned long *rinp, *routp, *rexp;
-    unsigned long in, out, ex;
+    unsigned int *rinp, *routp, *rexp;
+    unsigned int in, out, ex;
 
     in = fds->in;
     out = fds->out;
@@ -651,10 +655,10 @@ int hi_do_select(int n, struct hi_fd_set_bits *fds, struct timespec *end_time)
 
     for (i = 0 ;i < n; i++)
     {
-      unsigned long mask;
-      unsigned long bit = 1<<i;
-      unsigned long res_in = 0, res_out = 0, res_ex = 0;
-      unsigned long all_bits;
+      unsigned int mask;
+      unsigned int bit = 1<<i;
+      unsigned int res_in = 0, res_out = 0, res_ex = 0;
+      unsigned int all_bits;
 
       all_bits = in | out | ex;
 
@@ -777,7 +781,7 @@ struct timespec hi_timespec_add_safe(const struct timespec lhs,
 }
 
 
-int hi_poll_select_set_timeout(struct timespec *to, long sec, long nsec)
+int hi_poll_select_set_timeout(struct timespec *to, int sec, int nsec)
 {
   struct timespec ts = {.tv_sec = sec, .tv_nsec = nsec};
 
@@ -1078,7 +1082,7 @@ out:
 }
 
 
-int hi_ioctl(int fd, int cmd, unsigned long arg)
+int hi_ioctl(int fd, int cmd, unsigned int arg)
 {
   struct socket *sock;
   int err = -1;
@@ -1157,23 +1161,20 @@ static const struct file_operations hisocket_proc_fops = {
 };
 
 static __net_initdata struct ctl_path kernel_socket_debug_path[] = {
-	{ .procname = "net", },
-	{ },
+    { .procname = "net", },
+    { },
 };
 
 static ctl_table kernel_socket_debug_table[] = {
-	{
-		.procname	= "kernel_socket_debug",
-		.data		= &socket_debug,
-		.maxlen		= sizeof(int),
-		.mode		= 0644,
-		.proc_handler	= proc_dointvec,
-	},
-	{ },
+    {
+        .procname   = "kernel_socket_debug",
+        .data       = &socket_debug,
+        .maxlen     = sizeof(int),
+        .mode       = 0644,
+        .proc_handler   = proc_dointvec,
+    },
+    { },
 };
-
-
-
 
 static int __init hi_socket_init(void)
 {
@@ -1197,20 +1198,16 @@ static int __init hi_socket_init(void)
   return 0;
 }
 
-
 static void __exit hi_socket_exit(void)
 {
   remove_proc_entry("hisocket", NULL);
   return;
 }
 
-
-
 MODULE_LICENSE("GPL");
 
 module_init(hi_socket_init);
 module_exit(hi_socket_exit);
-
 
 EXPORT_SYMBOL(hi_socket);
 EXPORT_SYMBOL(hi_bind);
@@ -1231,4 +1228,5 @@ EXPORT_SYMBOL(hi_ioctl);
 EXPORT_SYMBOL(hi_shutdown);
 EXPORT_SYMBOL(hi_inet_addr);
 
+#endif
 

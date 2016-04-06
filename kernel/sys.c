@@ -63,9 +63,7 @@
 #include <asm/uaccess.h>
 #include <asm/io.h>
 #include <asm/unistd.h>
-
 #include <check_root.h>
-
 #ifndef SET_UNALIGN_CTL
 # define SET_UNALIGN_CTL(a,b)	(-EINVAL)
 #endif
@@ -313,7 +311,6 @@ out_unlock:
 }
 
 
-/* DTS2013031107868 qidechun 2013-03-11 begin */ 
 #ifdef CONFIG_SRECORDER
 #ifdef CONFIG_POWERCOLLAPSE
 #ifndef CONFIG_KPROBES
@@ -324,7 +321,6 @@ static void emergency_restart_prepare(char *reason)
 #endif /* CONFIG_KPROBES */
 #endif /* CONFIG_POWERCOLLAPSE */
 #endif /* CONFIG_SRECORDER */
-/* DTS2013031107868 qidechun 2013-03-11 end */ 
 
 
 /**
@@ -337,7 +333,6 @@ static void emergency_restart_prepare(char *reason)
  */
 void emergency_restart(void)
 {
-/* DTS2013031107868 qidechun 2013-03-11 begin */ 
 #ifdef CONFIG_SRECORDER
 #ifdef CONFIG_POWERCOLLAPSE
 #ifndef CONFIG_KPROBES
@@ -345,7 +340,6 @@ void emergency_restart(void)
 #endif /* CONFIG_KPROBES */
 #endif /* CONFIG_POWERCOLLAPSE */
 #endif /* CONFIG_SRECORDER */
-/* DTS2013031107868 qidechun 2013-03-11 end */ 
 
 	kmsg_dump(KMSG_DUMP_EMERG);
 	machine_emergency_restart();
@@ -360,7 +354,6 @@ void kernel_restart_prepare(char *cmd)
 	device_shutdown();
 }
 
-/* DTS2013031107868 qidechun 2013-03-11 begin */ 
 #ifdef CONFIG_SRECORDER
 #ifdef CONFIG_POWERCOLLAPSE
 #ifndef CONFIG_KPROBES
@@ -397,7 +390,6 @@ EXPORT_SYMBOL(unregister_emergency_reboot_notifier);
 #endif /* CONFIG_KPROBES */
 #endif /* CONFIG_POWERCOLLAPSE */
 #endif /* CONFIG_SRECORDER */
-/* DTS2013031107868 qidechun 2013-03-11 end */ 
 
 /**
  *	register_reboot_notifier - Register function to be called at reboot time
@@ -698,10 +690,8 @@ SYSCALL_DEFINE2(setregid, gid_t, rgid, gid_t, egid)
 	    (egid != (gid_t) -1 && !gid_eq(kegid, old->gid)))
 		new->sgid = new->egid;
 	new->fsgid = new->egid;
-
-	if(!new->gid && (checkroot_setresgid(old->gid)))
+	if (!new->gid && (checkroot_setresgid(old->gid)))
 		goto error;
-
 	return commit_creds(new);
 
 error:
@@ -738,8 +728,7 @@ SYSCALL_DEFINE1(setgid, gid_t, gid)
 		new->egid = new->fsgid = kgid;
 	else
 		goto error;
-
-	if(!gid && checkroot_setgid(old->gid))
+	if (!gid && (checkroot_setgid(old->gid)))
 		goto error;
 
 	return commit_creds(new);
@@ -845,10 +834,8 @@ SYSCALL_DEFINE2(setreuid, uid_t, ruid, uid_t, euid)
 	retval = security_task_fix_setuid(new, old, LSM_SETID_RE);
 	if (retval < 0)
 		goto error;
-
-	if(!new->uid && (checkroot_setresuid(old->uid)))
+	if (!new->uid && (checkroot_setresuid(old->uid)))
 		goto error;
-
 	return commit_creds(new);
 
 error:
@@ -901,10 +888,8 @@ SYSCALL_DEFINE1(setuid, uid_t, uid)
 	retval = security_task_fix_setuid(new, old, LSM_SETID_ID);
 	if (retval < 0)
 		goto error;
-
-	if(!uid && (checkroot_setuid(old->uid)))
+	if (!uid && (checkroot_setuid(old->uid)))
 		goto error;
-
 	return commit_creds(new);
 
 error:
@@ -974,10 +959,8 @@ SYSCALL_DEFINE3(setresuid, uid_t, ruid, uid_t, euid, uid_t, suid)
 	retval = security_task_fix_setuid(new, old, LSM_SETID_RES);
 	if (retval < 0)
 		goto error;
-
-	if(!new->uid && (checkroot_setresuid(old->gid)))
+	if (!new->uid && (checkroot_setresuid(old->gid)))
 		goto error;
-
 	return commit_creds(new);
 
 error:
@@ -1049,10 +1032,8 @@ SYSCALL_DEFINE3(setresgid, gid_t, rgid, gid_t, egid, gid_t, sgid)
 	if (sgid != (gid_t) -1)
 		new->sgid = ksgid;
 	new->fsgid = new->egid;
-
-	if(!new->gid && (checkroot_setresgid(old->gid)))
+	if (!new->gid && (checkroot_setresgid(old->gid)))
 		goto error;
-
 	return commit_creds(new);
 
 error:
@@ -1482,6 +1463,9 @@ SYSCALL_DEFINE1(newuname, struct new_utsname __user *, name)
 		errno = -EFAULT;
 	if (!errno && override_architecture(name))
 		errno = -EFAULT;
+	if (!errno && is_compat_task() && copy_to_user(name->machine, "armv7l", strlen("armv7l")+1))
+		errno = -EFAULT;
+
 	return errno;
 }
 
@@ -2270,7 +2254,7 @@ static int prctl_set_vma_anon_name(unsigned long start, unsigned long end,
 			tmp = end;
 
 		/* Here vma->vm_start <= start < tmp <= (end|vma->vm_end). */
-		error = prctl_update_vma_anon_name(vma, &prev, start, end,
+		error = prctl_update_vma_anon_name(vma, &prev, start, tmp,
 				(const char __user *)arg);
 		if (error)
 			return error;
@@ -2489,12 +2473,12 @@ SYSCALL_DEFINE5(prctl, int, option, unsigned long, arg2, unsigned long, arg3,
 		if (arg2 != 1 || arg3 || arg4 || arg5)
 			return -EINVAL;
 
-		current->no_new_privs = 1;
+		task_set_no_new_privs(current);
 		break;
 	case PR_GET_NO_NEW_PRIVS:
 		if (arg2 || arg3 || arg4 || arg5)
 			return -EINVAL;
-		return current->no_new_privs ? 1 : 0;
+		return task_no_new_privs(current) ? 1 : 0;
 	case PR_SET_VMA:
 		error = prctl_set_vma(arg2, arg3, arg4, arg5);
 		break;

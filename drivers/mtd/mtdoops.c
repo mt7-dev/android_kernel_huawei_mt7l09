@@ -45,7 +45,9 @@ MODULE_PARM_DESC(record_size,
 		"record size for MTD OOPS pages in bytes (default 4096)");
 
 static char mtddev[80];
-module_param_string(mtddev, mtddev, 80, 0400);
+/*lint -e665*/
+module_param_string(mtddev, mtddev, sizeof(mtddev), 0400);
+/*lint +e665*/
 MODULE_PARM_DESC(mtddev,
 		"name or index number of the MTD device to use");
 

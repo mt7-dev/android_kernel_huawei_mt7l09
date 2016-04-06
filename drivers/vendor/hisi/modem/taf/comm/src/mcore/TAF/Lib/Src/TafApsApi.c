@@ -5,15 +5,15 @@
    1 头文件包含
 *****************************************************************************/
 
-#include "TafApsApi.h"
 #include "pslog.h"
 #include "PsCommonDef.h"
-
+#include "TafApsApi.h"
 #if (OSA_CPU_CCPU == VOS_OSA_CPU)
 #include "Taf_Aps.h"
 #include "TafApsMntn.h"
-
 #endif
+
+
 
 #ifdef  __cplusplus
   #if  __cplusplus
@@ -30,14 +30,22 @@
 /*****************************************************************************
    2 全局变量定义
 *****************************************************************************/
+
+
+/*****************************************************************************
+   3 外部函数声明
+*****************************************************************************/
+
 #if (OSA_CPU_ACPU == VOS_OSA_CPU)
 extern VOS_UINT32 AT_GetDestPid(
     MN_CLIENT_ID_T                      usClientId,
     VOS_UINT32                          ulRcvPid
 );
 #endif
+
+
 /*****************************************************************************
-   3 函数实现
+   4 函数实现
 *****************************************************************************/
 
 
@@ -1308,7 +1316,6 @@ VOS_UINT32 TAF_PS_SetPdpProfInfo(
 
     return ulResult;
 }
-
 #endif
 VOS_UINT32 TAF_PS_GetCidSdfParaInfo(
     VOS_UINT32                          ulModuleId,
@@ -1424,6 +1431,166 @@ VOS_UINT32 TAF_PS_GetDynamicDnsInfo(
                              ID_MSG_TAF_PS_GET_NEGOTIATION_DNS_REQ,
                              &stNegoDns,
                              sizeof(TAF_PS_GET_NEGOTIATION_DNS_REQ_STRU));
+
+    return ulResult;
+}
+
+
+VOS_UINT32 TAF_PS_SetApDsFlowRptCfg(
+    VOS_UINT32                          ulModuleId,
+    VOS_UINT16                          usClientId,
+    VOS_UINT8                           ucOpId,
+    TAF_APDSFLOW_RPT_CFG_STRU          *pstRptCfg
+)
+{
+    TAF_PS_SET_APDSFLOW_RPT_CFG_REQ_STRU    stSetRptCfgReq;
+    VOS_UINT32                              ulResult;
+
+    PS_MEM_SET(&stSetRptCfgReq, 0x00, sizeof(TAF_PS_SET_APDSFLOW_RPT_CFG_REQ_STRU));
+
+    /* 构造ID_MSG_TAF_PS_SET_APDSFLOW_RPT_CFG_REQ消息 */
+    stSetRptCfgReq.stCtrl.ulModuleId = ulModuleId;
+    stSetRptCfgReq.stCtrl.usClientId = usClientId;
+    stSetRptCfgReq.stCtrl.ucOpId     = ucOpId;
+
+    PS_MEM_CPY(&(stSetRptCfgReq.stRptCfg),
+               pstRptCfg,
+               sizeof(TAF_APDSFLOW_RPT_CFG_STRU));
+
+    /* 发送消息 */
+    ulResult = TAF_PS_SndMsg(I0_WUEPS_PID_TAF,
+                             ID_MSG_TAF_PS_SET_APDSFLOW_RPT_CFG_REQ,
+                             &stSetRptCfgReq,
+                             sizeof(TAF_PS_SET_APDSFLOW_RPT_CFG_REQ_STRU));
+
+    return ulResult;
+}
+
+
+VOS_UINT32 TAF_PS_GetApDsFlowRptCfg(
+    VOS_UINT32                          ulModuleId,
+    VOS_UINT16                          usClientId,
+    VOS_UINT8                           ucOpId
+)
+{
+    TAF_PS_GET_APDSFLOW_RPT_CFG_REQ_STRU    stGetRptCfgReq;
+    VOS_UINT32                              ulResult;
+
+    PS_MEM_SET(&stGetRptCfgReq, 0x00, sizeof(TAF_PS_GET_APDSFLOW_RPT_CFG_REQ_STRU));
+
+    /* 构造ID_MSG_TAF_PS_GET_APDSFLOW_RPT_CFG_REQ消息 */
+    stGetRptCfgReq.stCtrl.ulModuleId = ulModuleId;
+    stGetRptCfgReq.stCtrl.usClientId = usClientId;
+    stGetRptCfgReq.stCtrl.ucOpId     = ucOpId;
+
+    /* 发送消息 */
+    ulResult = TAF_PS_SndMsg(I0_WUEPS_PID_TAF,
+                             ID_MSG_TAF_PS_GET_APDSFLOW_RPT_CFG_REQ,
+                             &stGetRptCfgReq,
+                             sizeof(TAF_PS_GET_APDSFLOW_RPT_CFG_REQ_STRU));
+
+    return ulResult;
+}
+
+
+VOS_UINT32 TAF_PS_SetDsFlowNvWriteCfg(
+    VOS_UINT32                          ulModuleId,
+    VOS_UINT16                          usClientId,
+    VOS_UINT8                           ucOpId,
+    TAF_DSFLOW_NV_WRITE_CFG_STRU       *pstNvWriteCfg
+)
+{
+    TAF_PS_SET_DSFLOW_NV_WRITE_CFG_REQ_STRU stSetWriteNvCfgReq;
+    VOS_UINT32                              ulResult;
+
+    PS_MEM_SET(&stSetWriteNvCfgReq, 0x00, sizeof(TAF_PS_SET_DSFLOW_NV_WRITE_CFG_REQ_STRU));
+
+    /* 构造ID_MSG_TAF_PS_SET_DSFLOW_NV_WRITE_CFG_REQ消息 */
+    stSetWriteNvCfgReq.stCtrl.ulModuleId = ulModuleId;
+    stSetWriteNvCfgReq.stCtrl.usClientId = usClientId;
+    stSetWriteNvCfgReq.stCtrl.ucOpId     = ucOpId;
+
+    PS_MEM_CPY(&(stSetWriteNvCfgReq.stNvWriteCfg),
+               pstNvWriteCfg,
+               sizeof(TAF_DSFLOW_NV_WRITE_CFG_STRU));
+
+    /* 发送消息 */
+    ulResult = TAF_PS_SndMsg(I0_WUEPS_PID_TAF,
+                             ID_MSG_TAF_PS_SET_DSFLOW_NV_WRITE_CFG_REQ,
+                             &stSetWriteNvCfgReq,
+                             sizeof(TAF_PS_SET_DSFLOW_NV_WRITE_CFG_REQ_STRU));
+
+    return ulResult;
+}
+
+
+VOS_UINT32 TAF_PS_GetDsFlowNvWriteCfg(
+    VOS_UINT32                          ulModuleId,
+    VOS_UINT16                          usClientId,
+    VOS_UINT8                           ucOpId
+)
+{
+    TAF_PS_GET_DSFLOW_NV_WRITE_CFG_REQ_STRU stGetNvWriteCfgReq;
+    VOS_UINT32                              ulResult;
+
+    PS_MEM_SET(&stGetNvWriteCfgReq, 0x00, sizeof(TAF_PS_GET_DSFLOW_NV_WRITE_CFG_REQ_STRU));
+
+    /* 构造ID_MSG_TAF_PS_GET_DSFLOW_WRITE_NV_CFG_REQ消息 */
+    stGetNvWriteCfgReq.stCtrl.ulModuleId = ulModuleId;
+    stGetNvWriteCfgReq.stCtrl.usClientId = usClientId;
+    stGetNvWriteCfgReq.stCtrl.ucOpId     = ucOpId;
+
+    /* 发送消息 */
+    ulResult = TAF_PS_SndMsg(I0_WUEPS_PID_TAF,
+                             ID_MSG_TAF_PS_GET_DSFLOW_NV_WRITE_CFG_REQ,
+                             &stGetNvWriteCfgReq,
+                             sizeof(TAF_PS_GET_DSFLOW_NV_WRITE_CFG_REQ_STRU));
+
+    return ulResult;
+}
+
+/*****************************************************************************
+ 函 数 名  : TAF_PS_SetImsPdpCfg
+ 功能描述  : 设置IMS PDP
+ 输入参数  : usClientId                 - 客户端ID
+             ucOpId                     - 操作码ID
+             pstImsPdpCfg               - IMS PDP配置
+ 输出参数  : 无
+ 返 回 值  : VOS_OK                     - 发送消息成功
+             VOS_ERR                    - 发送消息失败
+ 调用函数  :
+ 被调函数  :
+
+ 修改历史      :
+  1.日    期   : 2015年7月30日
+    作    者   : z00301431
+    修改内容   : 新生成函数
+*****************************************************************************/
+VOS_UINT32 TAF_PS_SetImsPdpCfg(
+    VOS_UINT32                          ulModuleId,
+    VOS_UINT16                          usClientId,
+    VOS_UINT8                           ucOpId,
+    TAF_IMS_PDP_CFG_STRU               *pstImsPdpCfg
+)
+{
+    VOS_UINT32                          ulResult;
+    TAF_PS_SET_IMS_PDP_CFG_REQ_STRU     stSetImsPdpCfgReq;
+
+    /* 初始化 */
+    ulResult = VOS_OK;
+    PS_MEM_SET(&stSetImsPdpCfgReq, 0x00, sizeof(TAF_PS_SET_IMS_PDP_CFG_REQ_STRU));
+
+    /* 构造ID_MSG_TAF_PS_SET_IMS_PDP_CFG_REQ消息 */
+    stSetImsPdpCfgReq.stCtrl.ulModuleId = ulModuleId;
+    stSetImsPdpCfgReq.stCtrl.usClientId = usClientId;
+    stSetImsPdpCfgReq.stCtrl.ucOpId     = ucOpId;
+    stSetImsPdpCfgReq.stImsPdpCfg       = *pstImsPdpCfg;
+
+    /* 发送消息 */
+    ulResult = TAF_PS_SndMsg(I0_WUEPS_PID_TAF,
+                             ID_MSG_TAF_PS_SET_IMS_PDP_CFG_REQ,
+                             &stSetImsPdpCfgReq,
+                             sizeof(TAF_PS_SET_IMS_PDP_CFG_REQ_STRU));
 
     return ulResult;
 }

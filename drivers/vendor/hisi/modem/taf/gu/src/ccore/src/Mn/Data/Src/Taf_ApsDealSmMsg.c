@@ -443,9 +443,11 @@ VOS_VOID Aps_PdpActCnfQosSatisfy(
     APS_INNER_SN_ACT_ST                 ApsInerSnAct;
     SM_TAF_QOS_STRU                     stQos;
     MMC_APS_RAT_TYPE_ENUM_UINT32        enCurrRatType;
+    MMC_APS_RAT_TYPE_ENUM_UINT32        enCurrRatTypeSuspend;
 
     pstPdpEntity                        = TAF_APS_GetPdpEntInfoAddr(ucPdpId);
     enCurrRatType                       = TAF_APS_GetCurrPdpEntityRatType();
+    enCurrRatTypeSuspend                = TAF_APS_GET_RAT_TYPE_IN_SUSPEND();
 
 /*~~~~~~~~~~~~~~~~~~~~~~~向PDP状态机中填SM返回的参数开始~~~~~~~~~~~~~~~~~~~~*/
 
@@ -523,7 +525,8 @@ VOS_VOID Aps_PdpActCnfQosSatisfy(
 
 /*~~~~~~~~~~~~~~~~~~~~~~~~~~向PDP状态机中填参数完毕~~~~~~~~~~~~~~~~~~~~~~~~*/
 
-    if (MMC_APS_RAT_TYPE_WCDMA == enCurrRatType)
+    if ((MMC_APS_RAT_TYPE_WCDMA == enCurrRatType)
+     || (MMC_APS_RAT_TYPE_WCDMA == enCurrRatTypeSuspend))
     {
         /* 上报ID_EVT_TAF_PS_CALL_PDP_ACTIVATE_CNF事件 */
         TAF_APS_SndPdpActivateCnf(ucPdpId, TAF_APS_GetPdpEntCurrCid(ucPdpId));
@@ -2178,8 +2181,8 @@ VOS_UINT32 TAF_APS_DecodeIpv4PcscfProtocolPkt(
     }
 
     /*-------------------------------------------------------------
-       只处理两个IPv4的P-CSCF, 如果PCO包含两个以上的IPv4 P-CSCF,
-       只取前两个, 其它的忽略.
+       只处理三个IPv4的P-CSCF, 如果PCO包含三个以上的IPv4 P-CSCF,
+       只取前三个, 其它的忽略.
     -------------------------------------------------------------*/
     if (*pucIpv4PcscfNum == 0)
     {
@@ -2202,6 +2205,19 @@ VOS_UINT32 TAF_APS_DecodeIpv4PcscfProtocolPkt(
         {
             pstPdpEntity->stPdpPcscf.bitOpSecPcscfAddr = VOS_TRUE;
             PS_MEM_CPY(pstPdpEntity->stPdpPcscf.aucSecPcscfAddr,
+                       pucProtocolPacket,
+                       TAF_IPV4_ADDR_LEN);
+            (*pucIpv4PcscfNum)++;
+        }
+    }
+    else if (*pucIpv4PcscfNum == 2)
+    {
+        if (0 != PS_MEM_CMP(pucProtocolPacket,
+                            aucInvalidIpv4Addr,
+                            TAF_IPV4_ADDR_LEN))
+        {
+            pstPdpEntity->stPdpPcscf.bitOpThiPcscfAddr = VOS_TRUE;
+            PS_MEM_CPY(pstPdpEntity->stPdpPcscf.aucThiPcscfAddr,
                        pucProtocolPacket,
                        TAF_IPV4_ADDR_LEN);
             (*pucIpv4PcscfNum)++;
@@ -2292,8 +2308,8 @@ VOS_UINT32 TAF_APS_DecodeIpv6PcscfProtocolPkt(
     }
 
     /*-------------------------------------------------------------
-       只处理两个IPv6的P-CSCF, 如果PCO包含两个以上的IPv6 P-CSCF,
-       只取前两个, 其它的忽略.
+       只处理三个IPv6的P-CSCF, 如果PCO包含三个以上的IPv6 P-CSCF,
+       只取前三个, 其它的忽略.
     -------------------------------------------------------------*/
     if (*pucIpv6PcscfNum == 0)
     {
@@ -2316,6 +2332,19 @@ VOS_UINT32 TAF_APS_DecodeIpv6PcscfProtocolPkt(
         {
             pstPdpEntity->stPdpIpv6Pcscf.bitOpSecPcscfAddr = VOS_TRUE;
             PS_MEM_CPY(pstPdpEntity->stPdpIpv6Pcscf.aucSecPcscfAddr,
+                       pucProtocolPacket,
+                       TAF_IPV6_ADDR_LEN);
+            (*pucIpv6PcscfNum)++;
+        }
+    }
+    else if (*pucIpv6PcscfNum == 2)
+    {
+        if (0 != PS_MEM_CMP(pucProtocolPacket,
+                            aucInvalidIpv6Addr,
+                            TAF_IPV6_ADDR_LEN))
+        {
+            pstPdpEntity->stPdpIpv6Pcscf.bitOpThiPcscfAddr = VOS_TRUE;
+            PS_MEM_CPY(pstPdpEntity->stPdpIpv6Pcscf.aucThiPcscfAddr,
                        pucProtocolPacket,
                        TAF_IPV6_ADDR_LEN);
             (*pucIpv6PcscfNum)++;

@@ -14,7 +14,7 @@
 #include <linux/wakelock.h>
 #include <linux/syscalls.h>
 #include <linux/suspend.h>
-
+#ifdef CONFIG_ARM64
 static int suspend_sys_sync_count = 0;
 static DEFINE_SPINLOCK(suspend_sys_sync_lock);
 static struct workqueue_struct *suspend_sys_sync_work_queue = NULL;
@@ -96,3 +96,4 @@ static int __init sys_sync_thread_init(void)
 }
 
 core_initcall(sys_sync_thread_init);
+#endif

@@ -270,7 +270,7 @@ VOS_VOID Ss_RcvMmssEstInd(
     /* VSIM的MODEM且NAS的VSIM特性开关打开，则拒绝网络发起的SS业务 */
     if (VOS_TRUE == NAS_VSIM_IsRequireVsimCtrl())
     {
-        Ss_SndMmssRelReq(ucTi);                                                 
+        Ss_SndMmssRelReq(ucTi);
         return;
     }
 
@@ -379,51 +379,13 @@ VOS_VOID TAF_SS_ConvertMmssRelCauseToSsassCause(
     SSA_SS_REL_CAUSE_ENUM_UINT32       *penSsCause
 )
 {
-    SSA_SS_REL_CAUSE_ENUM_UINT32        enSsCause;
+    /* 目前mmss rel cause 与ss ssa rel cause偏移量相同，直接赋值
+       后续mmss rel cause新增原因值需要同时在ss ssa rel cause增加 */
 
-    switch (enMmssRelCause)
-    {
-        case NAS_MMCM_REL_CAUSE_AS_REJ_LOW_LEVEL_FAIL:
-            enSsCause = SSA_SS_REL_CAUSE_AS_REJ_LOW_LEVEL_FAIL;
-            break;
-
-        case NAS_MMCM_REL_CAUSE_AS_REJ_OTHER_CAUSES:
-            enSsCause = SSA_SS_REL_CAUSE_AS_REJ_OTHER_CAUSES;
-            break;
-
-        case NAS_MMCM_REL_CAUSE_MM_WRONG_STATE:
-            enSsCause = SSA_SS_REL_CAUSE_MM_WRONG_STATE;
-            break;
-
-        case NAS_MMCM_REL_CAUSE_MM_NO_SERVICE:
-            enSsCause = SSA_SS_REL_CAUSE_MM_NO_SERVICE;
-            break;
-
-        case NAS_MMCM_REL_CAUSE_MM_LIMIT_SERVICE:
-            enSsCause = SSA_SS_REL_CAUSE_MM_LIMIT_SERVICE;
-            break;
-
-        case NAS_MMCM_REL_CAUSE_MM_TIMER_T3230_EXP:
-            enSsCause = SSA_SS_REL_CAUSE_MM_TIMER_T3230_EXP;
-            break;
-
-        case NAS_MMCM_REL_CAUSE_MM_REJ_OTHER_CAUSES:
-            enSsCause = SSA_SS_REL_CAUSE_MM_REJ_OTHER_CAUSES;
-            break;
-
-        default:
-             enSsCause = SSA_SS_REL_CAUSE_MM_REJ_OTHER_CAUSES;
-             SS_INFO_LOG("TAF_SS_ConvertMmssRelCauseToSsassCause: invalid cause");
-             break;
-    }
-
-    *penSsCause = enSsCause;
+    *penSsCause = enMmssRelCause;
 
     return;
 }
-
-
-
 
 VOS_VOID Ss_RcvMmssRelInd(
                       VOS_VOID *pMsg

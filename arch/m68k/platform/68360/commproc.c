@@ -24,11 +24,7 @@
  *
  */
 
-/*
- * Michael Leslie <mleslie@lineo.com>
- * adapted Dan Malek's ppc8xx drivers to M68360
- *
- */
+
 
 #include <linux/errno.h>
 #include <linux/sched.h>

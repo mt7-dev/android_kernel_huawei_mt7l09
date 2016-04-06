@@ -665,7 +665,12 @@ static ssize_t fsg_store_file(struct device *dev, struct device_attribute *attr,
 	down_write(filesem);
 	if (count > 0 && buf[0]) {
 		/* fsg_lun_open() will close existing file if any. */
-		pr_info("fsg_store_file: count=%d, buf=%p, curlun=%p\n", count, buf, curlun);
+		rc = fsg_lun_open(curlun, buf);
+		if (rc == 0)
+			curlun->unit_attention_data =
+					SS_NOT_READY_TO_READY_TRANSITION;
+
+		pr_info("fsg_store_file: count=%zu, buf=%p, curlun=%p\n", count, buf, curlun);
 		if( count>3 && 0==memcmp(&buf[count-4], ".iso",4) ){
 			pr_info("buf=%s, buf[count-4]=%s\n", buf, &buf[count-4]);
 			curlun->cdrom = 1;
@@ -677,13 +682,9 @@ static ssize_t fsg_store_file(struct device *dev, struct device_attribute *attr,
 			curlun->cdrom = 0;
 			curlun->ro = 0;
 			curlun->removable = 1;
-			curlun->nofua = 0;
+			curlun->nofua = 1;
 			incdrom = 0;
 		}
-		rc = fsg_lun_open(curlun, buf);
-		if (rc == 0)
-			curlun->unit_attention_data =
-					SS_NOT_READY_TO_READY_TRANSITION;
 	} else if (fsg_lun_is_open(curlun)) {
 		int needclose = 1;
 		if (incdrom){

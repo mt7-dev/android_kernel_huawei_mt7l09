@@ -16,7 +16,7 @@ extern "C" {
 #endif
 
 /* total size is 0x4000 */
-#define SCI_RECORD_BASE_ADDR    g_sci_debug_base.sci_debug_base_addr
+#define SCI_RECORD_BASE_ADDR    g_stSciHwCfg.g_sci_debug_base.sci_debug_base_addr
 #define SCI_RECORD_ATR_SIZE     0x30                    /* 48 */
 #define SCI_RECORD_REG_SIZE     0x90                    /* (36*4) */
 #define SCI_EXC_GBL_ADDR        (SCI_RECORD_BASE_ADDR+0x100)
@@ -45,9 +45,11 @@ extern "C" {
 #define SCI_DATA_SEND_EVENT     0x55
 #define SCI_DATA_RCV_EVENT      0xAA
 
-#define SCI_DATA_TOTAL_MAX_LGTH (10)
-#define SCI_DATA_PER_MAX_LGTH   (8)
-#define SCI_DATA_HALF_MAX_LGTH  (4)
+#define SCI_DATA_TOTAL_MAX_LGTH  (14)
+#define SCI_DATA_PER_MAX_LGTH     (8)
+#define SCI_DATA_HALF_MAX_LGTH    (4)
+#define SCI_DATA_TIMESTAMP_LGTH   (4)
+
 
 #define SCI_DATA_RING_SIZE 	    (0x800)
 
@@ -106,6 +108,7 @@ typedef enum
     SCI_EVENT_API_CLOCK_STOP,
     SCI_EVENT_API_GET_STATUS,
     SCI_EVENT_API_GET_ATR,
+    SCI_EVENT_API_SLOT_SWITCH,
     SCI_EVENT_CARD_ACTIVE_START,
     SCI_EVENT_CARD_ACTIVE_SUCCESS,
     SCI_EVENT_ATR_REC_START,
@@ -187,7 +190,7 @@ void sciEventRecordStart(void);
 
 void sciRecordExcGbl(u32 excEvent, u32 u32RecvLen,  u32 u32TimeSamp);
 
-u32 sci_record_data_save(void);
+u32 sci_record_data_save(SCI_LOG_MODE log_mode);
 
 s32 sci_record_log_read(unsigned char *pucDataBuff, unsigned int * pulLength, unsigned int ulMaxLength);
 

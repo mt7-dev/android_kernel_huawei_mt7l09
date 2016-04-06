@@ -29,6 +29,8 @@
 #include "NasMmcSndLmm.h"
 
 #include "NasErrorLog.h"
+#include "GmmExt.h"
+#include "MM_Ext.h"
 
 #ifdef  __cplusplus
   #if  __cplusplus
@@ -83,21 +85,7 @@ NAS_MML_CTX_STRU*  NAS_MML_GetMmlCtx( VOS_VOID )
     return &(g_stNasMmlCtx);
 }
 
-/*****************************************************************************
- 函 数 名  : NAS_MML_InitSimStatusInfoCtx
- 功能描述  : 初始化MML_CTX中SIM 状态相关信息
- 输入参数  : 无
- 输出参数  : pstSimStatusInfo:SIM卡状态相关信息
- 返 回 值  : 无
- 调用函数  :
- 被调函数  :
 
- 修改历史      :
- 1.日    期   : 2011年7月11日
-   作    者   : zhoujun 40661
-   修改内容   : 新生成函数
-
-*****************************************************************************/
 VOS_VOID  NAS_MML_InitSimStatusInfoCtx(
     NAS_MML_SIM_STATUS_STRU             *pstSimStatusInfo
 )
@@ -108,6 +96,8 @@ VOS_VOID  NAS_MML_InitSimStatusInfoCtx(
     pstSimStatusInfo->ucSimPsRegStatus    = VOS_FALSE;
     pstSimStatusInfo->enCsUpdateStatus    = NAS_MML_LOCATION_UPDATE_STATUS_BUTT;
     pstSimStatusInfo->enPsUpdateStatus    = NAS_MML_ROUTING_UPDATE_STATUS_BUTT;
+    /* IMSI REFRESH状态在开关机时都会清除 */
+    pstSimStatusInfo->ucImsiRefreshStatus = VOS_FALSE;
 }
 
 /*****************************************************************************
@@ -783,8 +773,8 @@ VOS_VOID  NAS_MML_InitMsCapability(
     pstMsCapability->aucClassmark2[2]           =   NAS_MML_DEFAULT_CLASSMARK2_THIRD_VALUE;
     pstMsCapability->aucClassmark2[3]           =   NAS_MML_DEFAULT_CLASSMARK2_FOURTH_VALUE;
 
-    PS_MEM_SET(pstMsCapability->aucFddClassmark3, 0x0, NAS_MML_CLASSMARK3_LEN);   
-    PS_MEM_SET(pstMsCapability->aucTddClassmark3, 0x0, NAS_MML_CLASSMARK3_LEN);    
+    PS_MEM_SET(pstMsCapability->aucFddClassmark3, 0x0, NAS_MML_CLASSMARK3_LEN);
+    PS_MEM_SET(pstMsCapability->aucTddClassmark3, 0x0, NAS_MML_CLASSMARK3_LEN);
 
     pstMsCapability->stMsNetworkCapability.ucNetworkCapabilityLen     =   NAS_MML_DEFAULT_NETWORKCAPABILITY_LEN;
 
@@ -821,7 +811,7 @@ VOS_VOID  NAS_MML_InitMsCapability(
     pstMsCapability->stPlatformRatCap.ucRatNum      = NAS_MML_MIN_PLATFORM_RAT_NUM;
     pstMsCapability->stPlatformRatCap.aenRatPrio[0] = NAS_MML_PLATFORM_RAT_TYPE_GSM;
 
-    
+
     NAS_MML_InitPlatformBandCap(&(pstMsCapability->stPlatformBandCap));
 }
 
@@ -886,11 +876,20 @@ VOS_VOID  NAS_MML_InitMsSysCfgInfo(
     /* 初始化VOICE DOMAIN PREFERENCE为无效值 */
      NAS_MML_SetVoiceDomainPreference(NAS_MML_VOICE_DOMAIN_PREFER_BUTT);
 
+    /* 初始化IMS不支持 */
+    NAS_MML_SetLteImsSupportFlg(VOS_FALSE);
+    NAS_MML_SetVoiceCallOnImsSupportFlag(VOS_FALSE);
+    NAS_MML_SetSmsOnImsSupportFlag(VOS_FALSE);
+    NAS_MML_SetVideoCallOnImsSupportFlag(VOS_FALSE);
+    NAS_MML_SetUssdOnImsSupportFlag(VOS_FALSE);
+
     NAS_MML_SetDisableLteRoamFlg(VOS_FALSE);
 
 #endif
 
     NAS_MML_SetDelayedCsfbLauFlg(VOS_FALSE);
+
+    NAS_MML_SetSyscfgTriHighRatSrchFlg(VOS_TRUE);
 }
 
 /*****************************************************************************
@@ -1008,6 +1007,25 @@ VOS_VOID  NAS_MML_InitHplmnRejCauseChangedCounter(
 }
 
 
+VOS_VOID  NAS_MML_InitRoamingRejectNoRetryInfo(
+    NAS_MML_ROAMINGREJECT_NORETYR_CFG_STRU           *pstRetryInfo
+)
+{
+    pstRetryInfo->aucReserve[0]                    = 0;
+    pstRetryInfo->aucReserve[1]                    = 0;
+    pstRetryInfo->aucReserve[2]                    = 0;
+    pstRetryInfo->ucNoRetryRejectCauseNum          = 0;
+    pstRetryInfo->aucNoRetryRejectCause[0]         = 0;
+    pstRetryInfo->aucNoRetryRejectCause[1]         = 0;
+    pstRetryInfo->aucNoRetryRejectCause[2]         = 0;
+    pstRetryInfo->aucNoRetryRejectCause[3]         = 0;
+    pstRetryInfo->aucNoRetryRejectCause[4]         = 0;
+    pstRetryInfo->aucNoRetryRejectCause[5]         = 0;
+    pstRetryInfo->aucNoRetryRejectCause[6]         = 0;
+    pstRetryInfo->aucNoRetryRejectCause[7]         = 0;
+
+    return;
+}
 
 VOS_VOID  NAS_MML_InitPlmnLockCfgInfo(
     NAS_MML_PLMN_LOCK_CFG_INFO_STRU     *pstPlmnLockCfg
@@ -1055,7 +1073,7 @@ VOS_VOID  NAS_MML_InitRatForbiddenList(
     {
         pstRatBlackList->aenForbidRatList[i] = NAS_MML_NET_RAT_TYPE_BUTT;
     }
-    
+
 }
 
 
@@ -1188,6 +1206,7 @@ VOS_VOID  NAS_MML_InitCustomCfgInfo(
     NAS_MML_SetChangeRegRejCauFlg(NAS_MML_CHANGE_REG_REJ_CAUSE_TYPE_INACTIVE);
     NAS_MML_SetPreferredRegRejCause_HPLMN_EHPLMN(NAS_MML_REG_FAIL_CAUSE_NETWORK_FAILURE);
     NAS_MML_SetPreferredRegRejCause_NOT_HPLMN_EHPLMN(NAS_MML_REG_FAIL_CAUSE_ROAM_NOT_ALLOW);
+    NAS_MML_InitRoamingRejectNoRetryInfo(&(pstCustomCfg->stRoamingRejectNoRetryInfo));
 
     NAS_MML_InitHplmnRejCauseChangedCounter(&(pstCustomCfg->stChangeRegRejCauInfo.stHplmnRejCauseChangedCounter));
     NAS_MML_SetUserAutoReselActiveFlg(VOS_FALSE);
@@ -1235,12 +1254,22 @@ VOS_VOID  NAS_MML_InitCustomCfgInfo(
     NAS_MML_InitRatForbiddenStatusCfg(&(pstCustomCfg->stRatFirbiddenStatusCfg));
     NAS_MML_SetImsVoiceInterSysLauEnableFlg(VOS_FALSE);
     NAS_MML_SetImsVoiceMMEnableFlg(VOS_FALSE);
-	
+
     NAS_MML_SetLcEnableFlg(VOS_FALSE);
 
-    NAS_MML_SetUltraFlashCsfbSupportFlg(VOS_FALSE);
+    /* ultra flash csfb不支持，FR NV打开时，MO电话CSFB，CS域HO到GU,mm在connective active不处理系统消息，
+       等链接释放之后再重新驻留才能处理。而如果FR打开，链接释放之后不会驻留，而是FR回LTE，导致电话失败 */
+    NAS_MML_SetUltraFlashCsfbSupportFlg(VOS_TRUE);
 
     NAS_MML_Set3GPP2UplmnNotPrefFlg(VOS_TRUE);
+
+    NAS_MML_SetSupportSrvccFlg(VOS_FALSE);
+
+    NAS_MML_SetRelPsSigConFlg(VOS_FALSE);
+    NAS_MML_SetRelPsSigConCfg_T3340TimerLen(0);
+    NAS_MML_SetHplmnInEplmnDisplayHomeFlg(VOS_FALSE);
+
+    NAS_MML_SetProtectMtCsfbPagingProcedureLen(NAS_MML_PROTECT_MT_CSFB_PAGING_PROCEDURE_DEFAULT_LEN);
 
     return;
 }
@@ -1349,6 +1378,8 @@ VOS_VOID  NAS_MML_InitCampPlmnInfo(
     NAS_MML_InitRrcNcellInfo(&(pstCampPlmnInfo->stRrcNcellInfo));
 
     NAS_MML_InitRssiValue(&(pstCampPlmnInfo->stCampCellInfo));
+
+    pstCampPlmnInfo->enLmmAccessType    = NAS_MML_LMM_ACCESS_TYPE_BUTT;
 }
 
 
@@ -1534,7 +1565,7 @@ VOS_VOID NAS_MML_InitEpsDomainInfo(
    pstEpsDomainInfo->enT3423Status            = NAS_MML_TIMER_STOP;
    pstEpsDomainInfo->enAdditionUpdateRsltInfo = NAS_MML_ADDITION_UPDATE_RSLT_BUTT;
    pstEpsDomainInfo->enEpsRegStatus           = NAS_MML_REG_NOT_REGISTERED_NOT_SEARCH;
-   pstEpsDomainInfo->enNwImsVoCap             = NAS_MML_NW_IMS_VOICE_NOT_SUPPORTED;  
+   pstEpsDomainInfo->enNwImsVoCap             = NAS_MML_NW_IMS_VOICE_NOT_SUPPORTED;
 
    return;
 }
@@ -1545,7 +1576,8 @@ VOS_VOID NAS_MML_InitImsDomainInfo(
 )
 {
     pstImsDomainInfo->ucImsVoiceAvail   = VOS_FALSE;
-    pstImsDomainInfo->enImsNormalRegSta = NAS_MML_IMS_NORMAL_REG_STATUS_DEREG; 
+    pstImsDomainInfo->enImsNormalRegSta = NAS_MML_IMS_NORMAL_REG_STATUS_DEREG;
+    pstImsDomainInfo->ucImsCallFlg      = VOS_FALSE;
 }
 
 
@@ -1663,6 +1695,8 @@ VOS_VOID  NAS_MML_InitMaintainInfo(
 
     pstMaintainInfo->stFtmMntnInfo.ucFtmCtrlFlag           = VOS_FALSE;
 #endif
+
+    NAS_MML_InitLogEventState(&(pstMaintainInfo->stLogEventState));
 }
 
 /*****************************************************************************
@@ -1939,6 +1973,45 @@ NAS_MML_LOCATION_UPDATE_STATUS_ENUM_UINT8 NAS_MML_GetCsUpdateStatus(VOS_VOID)
     return NAS_MML_GetMmlCtx()->stSimInfo.stSimStatus.enCsUpdateStatus;
 }
 
+/*****************************************************************************
+ 函 数 名  : NAS_MML_GetImsiRefreshStatus
+ 功能描述  : 获取MML中保存的IMSI REFRESH状态
+ 输入参数  : 无
+ 输出参数  : 无
+ 返 回 值  : IMSI REFRESH状态 VOS_TRUE表示IMSI REFRESH，VOS_FALSE表示非IMSI REFRESH
+ 调用函数  :
+ 被调函数  :
+
+ 修改历史      :
+ 1.日    期   : 2015年11月17日
+   作    者   : z00359541
+   修改内容   : 新生成函数
+*****************************************************************************/
+VOS_UINT8 NAS_MML_GetImsiRefreshStatus(VOS_VOID)
+{
+    return NAS_MML_GetMmlCtx()->stSimInfo.stSimStatus.ucImsiRefreshStatus;
+}
+
+/*****************************************************************************
+ 函 数 名  : NAS_MML_SetImsiRefreshStatus
+ 功能描述  : 将IMSI REFRESH状态写入MML中保存
+ 输入参数  : 无
+ 输出参数  : 无
+ 返 回 值  : 无
+ 调用函数  :
+ 被调函数  :
+
+ 修改历史      :
+ 1.日    期   : 2015年11月17日
+   作    者   : z00359541
+   修改内容   : 新生成函数
+*****************************************************************************/
+VOS_VOID NAS_MML_SetImsiRefreshStatus(
+    VOS_UINT8                           ucImsiRefreshStatus
+)
+{
+    NAS_MML_GetMmlCtx()->stSimInfo.stSimStatus.ucImsiRefreshStatus = ucImsiRefreshStatus;
+}
 
 /*****************************************************************************
  函 数 名  : NAS_MML_GetSimMsIdentity
@@ -2928,6 +3001,37 @@ NAS_MML_VOICE_DOMAIN_PREFERENCE_ENUM_UINT8 NAS_MML_GetVoiceDomainPreference( VOS
 
 
 
+VOS_UINT8 NAS_MML_GetLteImsSupportFlg( VOS_VOID )
+{
+    return NAS_MML_GetMmlCtx()->stMsCfgInfo.stMsSysCfgInfo.stImsConfig.stImsRatSupport.ucLteImsSupportFlag;
+}
+
+
+VOS_UINT8 NAS_MML_GetVoiceCallOnImsSupportFlag( VOS_VOID )
+{
+    return NAS_MML_GetMmlCtx()->stMsCfgInfo.stMsSysCfgInfo.stImsConfig.stImsCapability.ucVoiceCallOnImsSupportFlag;
+}
+
+
+VOS_UINT8 NAS_MML_GetSmsOnImsSupportFlag( VOS_VOID )
+{
+    return NAS_MML_GetMmlCtx()->stMsCfgInfo.stMsSysCfgInfo.stImsConfig.stImsCapability.ucSmsOnImsSupportFlag;
+}
+
+
+
+VOS_UINT8 NAS_MML_GetVideoCallOnImsSupportFlag( VOS_VOID )
+{
+    return NAS_MML_GetMmlCtx()->stMsCfgInfo.stMsSysCfgInfo.stImsConfig.stImsCapability.ucVideoCallOnImsSupportFlag;
+}
+
+
+VOS_UINT8 NAS_MML_GetUssdOnImsSupportFlag( VOS_VOID )
+{
+    return NAS_MML_GetMmlCtx()->stMsCfgInfo.stMsSysCfgInfo.stImsConfig.stImsCapability.ucUssdOnImsSupportFlag;
+}
+
+
 VOS_UINT32 NAS_MML_GetHoWaitSysinfoTimerLen(VOS_VOID)
 {
     return (NAS_MML_GetMmlCtx()->stMsCfgInfo.stCustomCfg.stLteCustomCfgInfo.ulHoWaitSysinfoTimeLen);
@@ -2960,6 +3064,12 @@ NAS_MML_CHANGE_REG_REJ_CAUSE_TYPE_ENUM_UINT8 NAS_MML_GetChangeRegRejCauFlg(VOS_V
     return (NAS_MML_GetMmlCtx()->stMsCfgInfo.stCustomCfg.stChangeRegRejCauInfo.enChangeRegRejCauseFlg);
 }
 
+
+
+NAS_MML_ROAMINGREJECT_NORETYR_CFG_STRU* NAS_MML_GetRoamingRejectNoRetryCfg( VOS_VOID )
+{
+    return &(NAS_MML_GetMmlCtx()->stMsCfgInfo.stCustomCfg.stRoamingRejectNoRetryInfo);
+}
 
 VOS_UINT8 NAS_MML_GetPreferredRegRejCause_HPLMN_EHPLMN(VOS_VOID)
 {
@@ -3191,6 +3301,49 @@ VOS_VOID NAS_MML_SetVoiceDomainPreference(
 {
     NAS_MML_GetMmlCtx()->stMsCfgInfo.stMsSysCfgInfo.enVoiceDomainPreference = enVoiceDomainPrefer;
 }
+
+
+VOS_VOID NAS_MML_SetLteImsSupportFlg(
+    VOS_UINT8                           ucImsSupportFlg
+)
+{
+    NAS_MML_GetMmlCtx()->stMsCfgInfo.stMsSysCfgInfo.stImsConfig.stImsRatSupport.ucLteImsSupportFlag = ucImsSupportFlg;
+}
+
+
+VOS_VOID NAS_MML_SetVoiceCallOnImsSupportFlag(
+    VOS_UINT8                           ucVoiceCallOnImsSupportFlag
+)
+{
+    NAS_MML_GetMmlCtx()->stMsCfgInfo.stMsSysCfgInfo.stImsConfig.stImsCapability.ucVoiceCallOnImsSupportFlag = ucVoiceCallOnImsSupportFlag;
+}
+
+
+VOS_VOID NAS_MML_SetSmsOnImsSupportFlag(
+    VOS_UINT8                           ucSmsOnImsSupportFlag
+)
+{
+    NAS_MML_GetMmlCtx()->stMsCfgInfo.stMsSysCfgInfo.stImsConfig.stImsCapability.ucSmsOnImsSupportFlag = ucSmsOnImsSupportFlag;
+}
+
+
+VOS_VOID NAS_MML_SetVideoCallOnImsSupportFlag(
+    VOS_UINT8                           ucVideoCallOnImsSupportFlag
+)
+{
+    NAS_MML_GetMmlCtx()->stMsCfgInfo.stMsSysCfgInfo.stImsConfig.stImsCapability.ucVideoCallOnImsSupportFlag = ucVideoCallOnImsSupportFlag;
+}
+
+
+
+VOS_VOID NAS_MML_SetUssdOnImsSupportFlag(
+    VOS_UINT8                           ucUssdOnImsSupportFlag
+)
+{
+    NAS_MML_GetMmlCtx()->stMsCfgInfo.stMsSysCfgInfo.stImsConfig.stImsCapability.ucUssdOnImsSupportFlag = ucUssdOnImsSupportFlag;
+}
+
+
 
 
 VOS_VOID NAS_MML_SetLteUeUsageSetting(
@@ -3517,6 +3670,15 @@ NAS_MML_PLMN_LOCK_CFG_INFO_STRU* NAS_MML_GetPlmnLockCfg( VOS_VOID )
 
 
 
+
+NAS_MML_CUSTOM_CFG_INFO_STRU* NAS_MML_GetCustomCfg( VOS_VOID )
+{
+    return &(NAS_MML_GetMmlCtx()->stMsCfgInfo.stCustomCfg);
+}
+
+
+
+
 NAS_MML_DISABLED_RAT_PLMN_CFG_INFO_STRU* NAS_MML_GetDisabledRatPlmnCfg( VOS_VOID )
 {
     return &(NAS_MML_GetMmlCtx()->stMsCfgInfo.stCustomCfg.stPlmnLockCfg.stDisabledRatPlmnCfg);
@@ -3645,6 +3807,16 @@ VOS_UINT8  NAS_MML_GetHighPrioRatHplmnTimerActiveFlg( VOS_VOID )
     return pstHighRatHplmnTimerCfg->ucActiveFLg;
 }
 
+
+
+VOS_UINT8  NAS_MML_GetHighPrioRatHplmnTimerTdThreshold(VOS_VOID)
+{
+    NAS_MML_HIGH_PRIO_RAT_HPLMN_TIMER_CFG_STRU             *pstHighRatHplmnTimerCfg = VOS_NULL_PTR;
+
+    pstHighRatHplmnTimerCfg = NAS_MML_GetHighPrioRatHplmnTimerCfg();
+
+    return pstHighRatHplmnTimerCfg->ucTdThreshold;
+}
 
 /*****************************************************************************
  函 数 名  : NAS_MML_GetStkSteeringOfRoamingSupportFlg
@@ -3955,6 +4127,41 @@ NAS_MML_LAI_STRU* NAS_MML_GetCsLastSuccLai( VOS_VOID )
 {
     return &(NAS_MML_GetMmlCtx()->stNetworkInfo.stCsDomainInfo.stLastSuccLai)   ;
 }
+
+
+VOS_UINT32 NAS_MML_GetCsLastSuccLac( VOS_VOID )
+{
+    NAS_MML_LAI_STRU                   *pstCsSuccLai = VOS_NULL_PTR;
+    VOS_UINT32                          ulCsSuccLac;
+
+    pstCsSuccLai    = &(NAS_MML_GetMmlCtx()->stNetworkInfo.stCsDomainInfo.stLastSuccLai);
+
+    ulCsSuccLac = (pstCsSuccLai->aucLac[0] << 8) & 0xFF00;
+    ulCsSuccLac |= pstCsSuccLai->aucLac[1];
+
+    return ulCsSuccLac;
+}
+
+
+NAS_MML_PLMN_ID_STRU*  NAS_MML_GetCsLastSuccPlmnId( VOS_VOID )
+{
+    return &(NAS_MML_GetMmlCtx()->stNetworkInfo.stCsDomainInfo.stLastSuccLai.stPlmnId) ;
+}
+
+
+
+VOS_UINT32  NAS_MML_GetCsLastSuccMcc( VOS_VOID )
+{
+    return (NAS_MML_GetMmlCtx()->stNetworkInfo.stCsDomainInfo.stLastSuccLai.stPlmnId.ulMcc) ;
+}
+
+
+
+VOS_UINT32  NAS_MML_GetCsLastSuccMnc( VOS_VOID )
+{
+    return (NAS_MML_GetMmlCtx()->stNetworkInfo.stCsDomainInfo.stLastSuccLai.stPlmnId.ulMnc) ;
+}
+
 
 /*****************************************************************************
  函 数 名  : NAS_MML_GetPsLastSuccRai
@@ -4354,6 +4561,13 @@ VOS_VOID NAS_MML_SetPsServiceBufferStatusFlg(
 {
     NAS_MML_GetMmlCtx()->stNetworkInfo.stConnStatus.ucPsServiceBufferFlg
         = ucPsServiceBufferStatusFlg;
+}
+
+
+
+VOS_UINT8 NAS_MML_GetPsServiceBufferStatusFlg(VOS_VOID)
+{
+    return NAS_MML_GetMmlCtx()->stNetworkInfo.stConnStatus.ucPsServiceBufferFlg;
 }
 
 
@@ -4890,15 +5104,15 @@ VOS_VOID NAS_MML_SaveEquPlmnList (
          is released.
        2.紧急注册时，不能删除EPLMN列表中的forbidden plmn列表(目前不支持)：
          and if the attach procedure is not for emergency bearer services, the UE shall remove from the list any
-         PLMN code that is already in the list of "forbidden PLMNs" or in the list of "forbidden PLMNs for GPRS 
-         service". */       
+         PLMN code that is already in the list of "forbidden PLMNs" or in the list of "forbidden PLMNs for GPRS
+         service". */
     if (VOS_FALSE == NAS_MML_GetEmcPdpStatusFlg())
     {
         /*从EPLMN列表中删除无效 、禁止和不允许漫游的网络*/
         ulEquPlmnNum = NAS_MML_DelInvalidPlmnFromList(ulEquPlmnNum, pstEplmnList->astEquPlmnAddr);
         ulEquPlmnNum = NAS_MML_DelForbPlmnInList(ulEquPlmnNum, pstEplmnList->astEquPlmnAddr);
     }
-    
+
     pstEplmnList->ucEquPlmnNum = (VOS_UINT8)ulEquPlmnNum;
 
     NAS_MML_SetEplmnValidFlg(VOS_TRUE);
@@ -5159,8 +5373,8 @@ VOS_VOID NAS_MML_InitSorAdditionalLauCtx(VOS_VOID)
     pstAdditionalLau->stLai.enCampPlmnNetRat    = NAS_MML_NET_RAT_TYPE_BUTT;
     pstAdditionalLau->stLai.ucRac               = NAS_MML_RAC_INVALID;
 
-    PS_MEM_SET(pstAdditionalLau->auReserv, 0X00, sizeof(pstAdditionalLau->auReserv)); 
-    
+    PS_MEM_SET(pstAdditionalLau->auReserv, 0X00, sizeof(pstAdditionalLau->auReserv));
+
     return ;
 }
 
@@ -5479,13 +5693,13 @@ VOS_VOID NAS_MML_SetIsrSupportFlg(
 
 OM_RING_ID NAS_MML_GetErrLogRingBufAddr(VOS_VOID)
 {
-    return g_stNasMmlCtx.stMaintainInfo.stErrLogMntnInfo.pstRingBuffer;
+    return g_stNasMmlCtx.stMaintainInfo.stErrLogMntnInfo.stBuffInfo.pstRingBuffer;
 }
 
 
 VOS_VOID NAS_MML_SetErrLogRingBufAddr(OM_RING_ID pRingBuffer)
 {
-    g_stNasMmlCtx.stMaintainInfo.stErrLogMntnInfo.pstRingBuffer = pRingBuffer;
+    g_stNasMmlCtx.stMaintainInfo.stErrLogMntnInfo.stBuffInfo.pstRingBuffer = pRingBuffer;
 
     return;
 }
@@ -5494,13 +5708,13 @@ VOS_VOID NAS_MML_SetErrLogRingBufAddr(OM_RING_ID pRingBuffer)
 
 VOS_UINT8 NAS_MML_GetErrlogCtrlFlag(VOS_VOID)
 {
-    return g_stNasMmlCtx.stMaintainInfo.stErrLogMntnInfo.ucErrLogCtrlFlag;
+    return g_stNasMmlCtx.stMaintainInfo.stErrLogMntnInfo.stCtrlInfo.ucErrLogCtrlFlag;
 }
 
 
 VOS_VOID NAS_MML_SetErrlogCtrlFlag(VOS_UINT8 ucFlag)
 {
-    g_stNasMmlCtx.stMaintainInfo.stErrLogMntnInfo.ucErrLogCtrlFlag = ucFlag;
+    g_stNasMmlCtx.stMaintainInfo.stErrLogMntnInfo.stCtrlInfo.ucErrLogCtrlFlag = ucFlag;
 
     return;
 }
@@ -5508,17 +5722,346 @@ VOS_VOID NAS_MML_SetErrlogCtrlFlag(VOS_UINT8 ucFlag)
 
 VOS_UINT16 NAS_MML_GetErrlogAlmLevel(VOS_VOID)
 {
-    return g_stNasMmlCtx.stMaintainInfo.stErrLogMntnInfo.usAlmLevel;
+    return g_stNasMmlCtx.stMaintainInfo.stErrLogMntnInfo.stCtrlInfo.usAlmLevel;
 }
 
 
 VOS_VOID NAS_MML_SetErrlogAlmLevel(VOS_UINT16 usAlmLevel)
 {
-    g_stNasMmlCtx.stMaintainInfo.stErrLogMntnInfo.usAlmLevel = usAlmLevel;
+    g_stNasMmlCtx.stMaintainInfo.stErrLogMntnInfo.stCtrlInfo.usAlmLevel = usAlmLevel;
 
     return;
 }
 
+
+VOS_UINT32 NAS_MML_GetErrlogOverflowCnt(VOS_VOID)
+{
+    return g_stNasMmlCtx.stMaintainInfo.stErrLogMntnInfo.stBuffInfo.ulOverflowCnt;
+}
+
+
+VOS_VOID NAS_MML_SetErrlogOverflowCnt(VOS_UINT32 ulOverflowCnt)
+{
+    g_stNasMmlCtx.stMaintainInfo.stErrLogMntnInfo.stBuffInfo.ulOverflowCnt = ulOverflowCnt;
+
+    return;
+}
+
+
+VOS_VOID NAS_MML_SetErrLogCsfbMtState(
+    NAS_ERR_LOG_CSFB_MT_STATE_ENUM_U32  enCsfbMtState
+)
+{
+    g_stNasMmlCtx.stMaintainInfo.stErrLogMntnInfo.stStateInfo.enCsfbMtState = enCsfbMtState;
+
+    return;
+}
+
+
+NAS_ERR_LOG_CSFB_MT_STATE_ENUM_U32 NAS_MML_GetErrLogCsfbMtState(VOS_VOID)
+{
+    return g_stNasMmlCtx.stMaintainInfo.stErrLogMntnInfo.stStateInfo.enCsfbMtState;
+}
+
+
+/* Added by zwx247453 for CHR optimize, 2015-03-13 begin */
+
+VOS_VOID NAS_MML_SetErrLogEstCnfCsfbMtFailRecordFlag(
+    VOS_UINT8                           ucEstCnfCsfbMtFailRecordFlag
+)
+{
+    g_stNasMmlCtx.stMaintainInfo.stErrLogMntnInfo.stStateInfo.ucEstCnfCsfbMtFailRecordFlag = ucEstCnfCsfbMtFailRecordFlag;
+
+    return;
+}
+
+
+VOS_UINT8 NAS_MML_GetErrLogEstCnfCsfbMtFailRecordFlag(VOS_VOID)
+{
+    return g_stNasMmlCtx.stMaintainInfo.stErrLogMntnInfo.stStateInfo.ucEstCnfCsfbMtFailRecordFlag;
+}
+
+
+VOS_VOID NAS_MML_SetErrLogWaitForRrConnRcvEstCnfFlag(
+    VOS_UINT8                           ucWaitForRrConnRcvEstCnfFlag
+)
+{
+    g_stNasMmlCtx.stMaintainInfo.stErrLogMntnInfo.stStateInfo.ucWaitForRrConnRcvEstCnfFlag = ucWaitForRrConnRcvEstCnfFlag;
+
+    return;
+}
+
+
+VOS_UINT8 NAS_MML_GetErrLogWaitForRrConnRcvEstCnfFlag(VOS_VOID)
+{
+    return g_stNasMmlCtx.stMaintainInfo.stErrLogMntnInfo.stStateInfo.ucWaitForRrConnRcvEstCnfFlag;
+}
+
+/*****************************************************************************
+ 函 数 名  : NAS_MML_SetErrLogGMsIdType
+ 功能描述  : 设置CS Paging ucGMsIdType变量
+ 输入参数  : VOS_UINT8                      ucGMsIdType
+ 输出参数  : 无
+ 返 回 值  : VOS_VOID
+ 调用函数  :
+ 被调函数  :
+
+ 修改历史      :
+ 1.日    期   : 2015年03月13日
+   作    者   : zwx247453
+   修改内容   : 新生成函数
+*****************************************************************************/
+VOS_VOID NAS_MML_SetErrLogGMsIdType(
+    VOS_UINT8                               ucGMsIdType
+)
+{
+    g_stNasMmlCtx.stMaintainInfo.stErrLogMntnInfo.stPagingInfo.ucGMsIdType = ucGMsIdType;
+
+    return;
+}
+
+/*****************************************************************************
+ 函 数 名  : NAS_MML_GetErrLogGMsIdType
+ 功能描述  : 获取CS Paging ucGMsIdType变量
+ 输入参数  :
+ 输出参数  : 无
+ 返 回 值  : CS Paging ucGMsIdType
+ 调用函数  :
+ 被调函数  :
+
+ 修改历史      :
+ 1.日    期   : 2015年03月13日
+   作    者   : zwx247453
+   修改内容   : 新生成函数
+*****************************************************************************/
+VOS_UINT8 NAS_MML_GetErrLogGMsIdType(VOS_VOID)
+{
+    return g_stNasMmlCtx.stMaintainInfo.stErrLogMntnInfo.stPagingInfo.ucGMsIdType;
+}
+
+/*****************************************************************************
+ 函 数 名  : NAS_MML_SetErrLogGPagingType
+ 功能描述  : 设置CS Paging ucGPagingType变量
+ 输入参数  : VOS_UINT8                      ucGPagingType
+ 输出参数  : 无
+ 返 回 值  : VOS_VOID
+ 调用函数  :
+ 被调函数  :
+
+ 修改历史      :
+ 1.日    期   : 2015年03月13日
+   作    者   : zwx247453
+   修改内容   : 新生成函数
+*****************************************************************************/
+VOS_VOID NAS_MML_SetErrLogGPagingType(
+    VOS_UINT8                               ucGPagingType
+)
+{
+    g_stNasMmlCtx.stMaintainInfo.stErrLogMntnInfo.stPagingInfo.ucGPagingType = ucGPagingType;
+
+    return;
+}
+
+/*****************************************************************************
+ 函 数 名  : NAS_MML_GetErrLogGPagingType
+ 功能描述  : 获取CS Paging GMsIdType变量
+ 输入参数  :
+ 输出参数  : 无
+ 返 回 值  : CS Paging ucGPagingType
+ 调用函数  :
+ 被调函数  :
+
+ 修改历史      :
+ 1.日    期   : 2015年03月13日
+   作    者   : zwx247453
+   修改内容   : 新生成函数
+*****************************************************************************/
+VOS_UINT8 NAS_MML_GetErrLogGPagingType(VOS_VOID)
+{
+    return g_stNasMmlCtx.stMaintainInfo.stErrLogMntnInfo.stPagingInfo.ucGPagingType;
+}
+
+/*****************************************************************************
+ 函 数 名  : NAS_MML_SetErrLogWCnDomainId
+ 功能描述  : 设置CS Paging ulWCnDomainId变量
+ 输入参数  : VOS_UINT32                     ulWCnDomainId
+ 输出参数  : 无
+ 返 回 值  : VOS_VOID
+ 调用函数  :
+ 被调函数  :
+
+ 修改历史      :
+ 1.日    期   : 2015年03月13日
+   作    者   : zwx247453
+   修改内容   : 新生成函数
+*****************************************************************************/
+VOS_VOID NAS_MML_SetErrLogWCnDomainId(
+    VOS_UINT32                              ulWCnDomainId
+)
+{
+    g_stNasMmlCtx.stMaintainInfo.stErrLogMntnInfo.stPagingInfo.ulWCnDomainId = ulWCnDomainId;
+
+    return;
+}
+
+/*****************************************************************************
+ 函 数 名  : NAS_MML_GetErrLogWCnDomainId
+ 功能描述  : 获取CS Paging ulWCnDomainId变量
+ 输入参数  :
+ 输出参数  : 无
+ 返 回 值  : CS Paging ulWCnDomainId
+ 调用函数  :
+ 被调函数  :
+
+ 修改历史      :
+ 1.日    期   : 2015年03月13日
+   作    者   : zwx247453
+   修改内容   : 新生成函数
+*****************************************************************************/
+VOS_UINT32 NAS_MML_GetErrLogWCnDomainId(VOS_VOID)
+{
+    return g_stNasMmlCtx.stMaintainInfo.stErrLogMntnInfo.stPagingInfo.ulWCnDomainId;
+}
+
+/*****************************************************************************
+ 函 数 名  : NAS_MML_SetErrLogWPagingType
+ 功能描述  : 设置CS Paging ulWPagingType变量
+ 输入参数  : VOS_UINT32                     ulWPagingType
+ 输出参数  : 无
+ 返 回 值  : VOS_VOID
+ 调用函数  :
+ 被调函数  :
+
+ 修改历史      :
+ 1.日    期   : 2015年03月13日
+   作    者   : zwx247453
+   修改内容   : 新生成函数
+*****************************************************************************/
+VOS_VOID NAS_MML_SetErrLogWPagingType(
+    VOS_UINT32                              ulWPagingType
+)
+{
+    g_stNasMmlCtx.stMaintainInfo.stErrLogMntnInfo.stPagingInfo.ulWPagingType = ulWPagingType;
+
+    return;
+}
+
+/*****************************************************************************
+ 函 数 名  : NAS_MML_GetErrLogWPagingType
+ 功能描述  : 获取CS Paging ulWPagingType变量
+ 输入参数  :
+ 输出参数  : 无
+ 返 回 值  : CS Paging ulWPagingType
+ 调用函数  :
+ 被调函数  :
+
+ 修改历史      :
+ 1.日    期   : 2015年03月13日
+   作    者   : zwx247453
+   修改内容   : 新生成函数
+*****************************************************************************/
+VOS_UINT32 NAS_MML_GetErrLogWPagingType(VOS_VOID)
+{
+    return g_stNasMmlCtx.stMaintainInfo.stErrLogMntnInfo.stPagingInfo.ulWPagingType;
+}
+
+/*****************************************************************************
+ 函 数 名  : NAS_MML_SetErrLogWPagingCause
+ 功能描述  : 设置CS Paging ulWPagingCause变量
+ 输入参数  : VOS_UINT32                     ulWPagingCause
+ 输出参数  : 无
+ 返 回 值  : VOS_VOID
+ 调用函数  :
+ 被调函数  :
+
+ 修改历史      :
+ 1.日    期   : 2015年03月13日
+   作    者   : zwx247453
+   修改内容   : 新生成函数
+*****************************************************************************/
+VOS_VOID NAS_MML_SetErrLogWPagingCause(
+    VOS_UINT32                              ulWPagingCause
+)
+{
+    g_stNasMmlCtx.stMaintainInfo.stErrLogMntnInfo.stPagingInfo.ulWPagingCause = ulWPagingCause;
+
+    return;
+}
+
+/*****************************************************************************
+ 函 数 名  : NAS_MML_GetErrLogWPagingCause
+ 功能描述  : 获取CS Paging ulWPagingCause变量
+ 输入参数  :
+ 输出参数  : 无
+ 返 回 值  : CS Paging ulWPagingCause
+ 调用函数  :
+ 被调函数  :
+
+ 修改历史      :
+ 1.日    期   : 2015年03月13日
+   作    者   : zwx247453
+   修改内容   : 新生成函数
+*****************************************************************************/
+VOS_UINT32 NAS_MML_GetErrLogWPagingCause(VOS_VOID)
+{
+    return g_stNasMmlCtx.stMaintainInfo.stErrLogMntnInfo.stPagingInfo.ulWPagingCause;
+}
+
+/*****************************************************************************
+ 函 数 名  : NAS_MML_SetErrLogWPagingUeId
+ 功能描述  : 设置CS Paging ulWPagingUeId变量
+ 输入参数  : VOS_UINT32                     ulWPagingUeId
+ 输出参数  : 无
+ 返 回 值  : VOS_VOID
+ 调用函数  :
+ 被调函数  :
+
+ 修改历史      :
+ 1.日    期   : 2015年03月13日
+   作    者   : zwx247453
+   修改内容   : 新生成函数
+*****************************************************************************/
+VOS_VOID NAS_MML_SetErrLogWPagingUeId(
+    VOS_UINT32                              ulWPagingUeId
+)
+{
+    g_stNasMmlCtx.stMaintainInfo.stErrLogMntnInfo.stPagingInfo.ulWPagingUeId = ulWPagingUeId;
+
+    return;
+}
+
+/*****************************************************************************
+ 函 数 名  : NAS_MML_GetErrLogWPagingUeId
+ 功能描述  : 获取CS Paging ulWPagingUeId变量
+ 输入参数  :
+ 输出参数  : 无
+ 返 回 值  : CS Paging ulWPagingUeId
+ 调用函数  :
+ 被调函数  :
+
+ 修改历史      :
+ 1.日    期   : 2015年03月13日
+   作    者   : zwx247453
+   修改内容   : 新生成函数
+*****************************************************************************/
+VOS_UINT32 NAS_MML_GetErrLogWPagingUeId(VOS_VOID)
+{
+    return g_stNasMmlCtx.stMaintainInfo.stErrLogMntnInfo.stPagingInfo.ulWPagingUeId;
+}
+
+
+VOS_VOID NAS_MML_InitErrLogPagingInfo(VOS_VOID)
+{
+    NAS_MML_SetErrLogGMsIdType(GAS_MS_ID_TYPE_BUTT);
+    NAS_MML_SetErrLogGPagingType(GAS_PAGING_TYPE_BUTT);
+    NAS_MML_SetErrLogWCnDomainId(RRC_NAS_CN_DOMAIN_TYPE_BUTT);
+    NAS_MML_SetErrLogWPagingType(RRC_PAGE_CAUSE_BUTT);
+    NAS_MML_SetErrLogWPagingCause(RRC_NAS_PAGING_TYPE_BUTT);
+    NAS_MML_SetErrLogWPagingUeId(RRC_PAGE_UE_ID_BUTT);
+
+    return;
+}
+/* Added by zwx247453 for CHR optimize, 2015-03-13 end */
 
 VOS_UINT8 NAS_MML_GetFtmCtrlFlag(VOS_VOID)
 {
@@ -5542,14 +6085,14 @@ VOS_VOID NAS_MML_InitErrLogMntnInfo(
     VOS_CHAR                               *pbuffer;
     OM_RING_ID                              pRingbuffer;
 
-    pstErrLogInfo->ucErrLogCtrlFlag         = VOS_FALSE;
-    pstErrLogInfo->usAlmLevel               = NAS_ERR_LOG_CTRL_LEVEL_CRITICAL;
+    pstErrLogInfo->stCtrlInfo.ucErrLogCtrlFlag         = VOS_FALSE;
+    pstErrLogInfo->stCtrlInfo.usAlmLevel               = NAS_ERR_LOG_CTRL_LEVEL_CRITICAL;
 
     /* 申请cache的动态内存 , 长度加1是因为读和写指针之间在写满时会相差一个字节 */
     pbuffer = (char *)PS_MEM_ALLOC(WUEPS_PID_MMC ,NAS_MML_RING_BUFFER_SIZE + 1);
     if (VOS_NULL_PTR == pbuffer)
     {
-        pstErrLogInfo->pstRingBuffer = VOS_NULL_PTR;
+        pstErrLogInfo->stBuffInfo.pstRingBuffer = VOS_NULL_PTR;
         return;
     }
 
@@ -5561,7 +6104,14 @@ VOS_VOID NAS_MML_InitErrLogMntnInfo(
     }
 
     /* 保存ringbuffer指针 */
-    pstErrLogInfo->pstRingBuffer = pRingbuffer;
+    pstErrLogInfo->stBuffInfo.pstRingBuffer = pRingbuffer;
+
+    pstErrLogInfo->stBuffInfo.ulOverflowCnt = 0;
+    pstErrLogInfo->stStateInfo.enCsfbMtState = NAS_ERR_LOG_CSFB_MT_STATE_NULL;
+
+    NAS_MML_InitErrLogPagingInfo();
+    NAS_MML_SetErrLogEstCnfCsfbMtFailRecordFlag(VOS_FALSE);
+    NAS_MML_SetErrLogWaitForRrConnRcvEstCnfFlag(VOS_FALSE);
 
     return;
 
@@ -5572,6 +6122,7 @@ VOS_UINT32 NAS_MML_PutErrLogRingBuf(
 )
 {
     VOS_UINT32                          ulFreeSize;
+    VOS_UINT32                          ulCount;
     OM_RING_ID                          pTafRingBuffer;
 
     pTafRingBuffer = NAS_MML_GetErrLogRingBufAddr();
@@ -5589,9 +6140,13 @@ VOS_UINT32 NAS_MML_PutErrLogRingBuf(
     /* 获取RING BUFFER剩余空间大小 */
     ulFreeSize = (VOS_UINT32)OM_RingBufferFreeBytes(pTafRingBuffer);
 
+    ulCount = NAS_MML_GetErrlogOverflowCnt();
     /* 如果剩余空间不足写入的大小，则清空RING BUFFER */
     if (ulFreeSize < ulbytes)
     {
+        ulCount++;
+        NAS_MML_SetErrlogOverflowCnt(ulCount);
+
         OM_RingBufferFlush(pTafRingBuffer);
     }
 
@@ -5751,7 +6306,7 @@ VOS_UINT8  NAS_MML_GetRrcUtranNcellExistFlg( VOS_VOID )
 
 
 
-VOS_VOID  NAS_MML_SetRrcUtranNcellExistFlg( 
+VOS_VOID  NAS_MML_SetRrcUtranNcellExistFlg(
     VOS_UINT8                           ucUtranNcellExist
 )
 {
@@ -5766,7 +6321,7 @@ VOS_UINT8  NAS_MML_GetRrcLteNcellExistFlg( VOS_VOID )
 
 
 
-VOS_VOID  NAS_MML_SetRrcLteNcellExistFlg( 
+VOS_VOID  NAS_MML_SetRrcLteNcellExistFlg(
     VOS_UINT8                           ucLteNcellExist
 )
 {
@@ -5777,18 +6332,18 @@ VOS_VOID  NAS_MML_SetRrcLteNcellExistFlg(
 
 
 VOS_VOID  NAS_MML_SetDsdsRfShareFlg(
-    VOS_UINT16                          usDsdsRfShareFlg    
+    VOS_UINT16                          usDsdsRfShareFlg
 )
 {
     NAS_MML_GetMmlCtx()->stMsCfgInfo.stCustomCfg.usDsdsRfShareSupportFlg = usDsdsRfShareFlg;
-    
+
     return;
 }
 
 
 VOS_UINT16 NAS_MML_GetDsdsRfShareFlg(VOS_VOID)
 {
-    return NAS_MML_GetMmlCtx()->stMsCfgInfo.stCustomCfg.usDsdsRfShareSupportFlg;   
+    return NAS_MML_GetMmlCtx()->stMsCfgInfo.stCustomCfg.usDsdsRfShareSupportFlg;
 }
 
 VOS_VOID    NAS_MML_SetImsNormalRegStatus(
@@ -5822,6 +6377,23 @@ VOS_UINT8   NAS_MML_GetImsVoiceAvailFlg(VOS_VOID)
     return NAS_MML_GetMmlCtx()->stNetworkInfo.stImsDomainInfo.ucImsVoiceAvail;
 }
 
+VOS_VOID    NAS_MML_SetImsCallFlg(
+    VOS_UINT8                                               ucImsCallFlg
+)
+{
+    NAS_MML_GetMmlCtx()->stNetworkInfo.stImsDomainInfo.ucImsCallFlg = ucImsCallFlg;
+
+    return;
+}
+
+
+VOS_UINT8   NAS_MML_GetImsCallFlg(VOS_VOID)
+{
+    return NAS_MML_GetMmlCtx()->stNetworkInfo.stImsDomainInfo.ucImsCallFlg;
+}
+
+
+
 VOS_VOID NAS_MML_SetGsmBandCapability(
     VOS_UINT32                          ulBand
 )
@@ -5837,14 +6409,14 @@ VOS_UINT32 NAS_MML_GetGsmBandCapability(VOS_VOID)
 
 
 
-VOS_VOID NAS_MML_SetEmcPdpStatusFlg( 
+VOS_VOID NAS_MML_SetEmcPdpStatusFlg(
     VOS_UINT8                           ucEmcPdpStatusFlg
 )
 {
     NAS_MML_CONN_STATUS_INFO_STRU      *pstConnStatus = VOS_NULL_PTR;
 
     pstConnStatus   = NAS_MML_GetConnStatus();
-    
+
     pstConnStatus->ucEmcPdpStatusFlg    = ucEmcPdpStatusFlg;
 }
 
@@ -5975,7 +6547,7 @@ VOS_VOID  NAS_MML_InitHighPrioRatHplmnTimerCfgInfo(
 {
     pstHighHplmnTimerCfg->ulNonFirstSearchTimeLen   = TI_NAS_MMC_HIGH_PRIO_RAT_HPLMN_TIMER_NON_FIRST_LEN;
     pstHighHplmnTimerCfg->ulFirstSearchTimeLen      = TI_NAS_MMC_HIGH_RPIO_RAT_HPLMN_TIMER_FIRST_LEN;
-    pstHighHplmnTimerCfg->ulFirstSearchTimeCount    = TI_NAS_MMC_HIGH_RPIO_RAT_HPLMN_TIMER_FIRST_SEARCH_COUNT;    
+    pstHighHplmnTimerCfg->ulFirstSearchTimeCount    = TI_NAS_MMC_HIGH_RPIO_RAT_HPLMN_TIMER_FIRST_SEARCH_COUNT;
     pstHighHplmnTimerCfg->ulRetrySearchTimeLen      = TI_NAS_MMC_HIGH_RPIO_RAT_HPLMN_TIMER_FIRST_LEN;
     pstHighHplmnTimerCfg->ucActiveFLg               = VOS_FALSE;
 }
@@ -5993,6 +6565,311 @@ VOS_VOID NAS_MML_Set3GPP2UplmnNotPrefFlg(VOS_UINT8 uc3GPPUplmnNotPrefFlg)
     NAS_MML_GetMmlCtx()->stMsCfgInfo.stCustomCfg.uc3GPPUplmnNotPrefFlg = uc3GPPUplmnNotPrefFlg;
 }
 
+
+VOS_UINT8 NAS_MML_GetSupportSrvccFlg(VOS_VOID)
+{
+    return NAS_MML_GetMmlCtx()->stMsCfgInfo.stCustomCfg.ucSupportSrvccFlg;
+}
+
+
+VOS_VOID NAS_MML_SetSupportSrvccFlg(VOS_UINT8 ucSupportSrvccFlg)
+{
+    NAS_MML_GetMmlCtx()->stMsCfgInfo.stCustomCfg.ucSupportSrvccFlg = ucSupportSrvccFlg;
+}
+
+
+VOS_UINT8 NAS_MML_GetSyscfgTriHighRatSrchFlg(VOS_VOID)
+{
+    return (NAS_MML_GetMmlCtx()->stMsCfgInfo.stMsSysCfgInfo.ucSyscfgTriHighRatSrchFlg);
+}
+
+
+VOS_VOID NAS_MML_SetSyscfgTriHighRatSrchFlg(VOS_UINT8 ucSyscfgTriHighRatSrchFlg)
+{
+    NAS_MML_GetMmlCtx()->stMsCfgInfo.stMsSysCfgInfo.ucSyscfgTriHighRatSrchFlg = ucSyscfgTriHighRatSrchFlg;
+}
+
+
+NAS_MML_CALL_UMTS_CODEC_TYPE_STRU *NAS_MML_CALL_GetCallUmtsCodecType(VOS_VOID)
+{
+    return &(NAS_MML_GetMmlCtx()->stMsCfgInfo.stCustomCfg.stCallUmtsCodecType);
+}
+
+
+VOS_VOID NAS_MML_CALL_SetCallUmtsCodecType(NAS_MML_CALL_UMTS_CODEC_TYPE_STRU *pstCodecType)
+{
+    NAS_MML_CALL_UMTS_CODEC_TYPE_STRU  *pstUmtsCodecType = VOS_NULL_PTR;
+    VOS_UINT32                          ulDefaultValue;
+    VOS_UINT32                          i;
+
+    ulDefaultValue          = VOS_FALSE;
+
+    pstUmtsCodecType        = &(NAS_MML_GetMmlCtx()->stMsCfgInfo.stCustomCfg.stCallUmtsCodecType);
+
+    /* 检查参数是否合法,不合法则使用默认值,个数是否越界 */
+    if ( pstCodecType->ucCnt > NAS_MML_CALL_MAX_UMTS_CODEC_TYPE_NUM )
+    {
+        ulDefaultValue      = VOS_TRUE;
+        pstCodecType->ucCnt = NAS_MML_CALL_MAX_UMTS_CODEC_TYPE_NUM;
+    }
+
+    pstUmtsCodecType->ucCnt = 0;
+
+    /* 检查是否有重复定义和超出范围的codec类型*/
+    for ( i = 0; i < pstCodecType->ucCnt; i++ )
+    {
+        if ( (NAS_MML_CALL_UMTS_CODEC_TYPE_AMR   != pstCodecType->aucUmtsCodec[i])
+          && (NAS_MML_CALL_UMTS_CODEC_TYPE_AMR2  != pstCodecType->aucUmtsCodec[i])
+          && (NAS_MML_CALL_UMTS_CODEC_TYPE_AMRWB != pstCodecType->aucUmtsCodec[i]) )
+        {
+            ulDefaultValue = VOS_TRUE;
+            break;
+        }
+
+        /* 将NVIM中的语音能力加入到内存中 */
+        pstUmtsCodecType->aucUmtsCodec[pstUmtsCodecType->ucCnt++] = pstCodecType->aucUmtsCodec[i];
+    }
+
+    if ( VOS_TRUE == ulDefaultValue )
+    {
+        pstUmtsCodecType->ucCnt                                   = 0;
+        /*lint -e961*/
+        pstUmtsCodecType->aucUmtsCodec[pstUmtsCodecType->ucCnt++] = NAS_MML_CALL_UMTS_CODEC_TYPE_AMR;
+        pstUmtsCodecType->aucUmtsCodec[pstUmtsCodecType->ucCnt++] = NAS_MML_CALL_UMTS_CODEC_TYPE_AMR2;
+        /*lint +e961*/
+    }
+}
+VOS_VOID NAS_MML_CALL_InitCallUmtsCodecType(NAS_MML_CALL_UMTS_CODEC_TYPE_STRU *pstCodecType)
+{
+    PS_MEM_SET(pstCodecType, 0, sizeof(NAS_MML_CALL_UMTS_CODEC_TYPE_STRU));
+
+    pstCodecType->ucCnt                              = 0;
+    /*lint -e961*/
+    pstCodecType->aucUmtsCodec[pstCodecType->ucCnt++]= NAS_MML_CALL_UMTS_CODEC_TYPE_AMR;
+    pstCodecType->aucUmtsCodec[pstCodecType->ucCnt++]= NAS_MML_CALL_UMTS_CODEC_TYPE_AMR2;
+    /*lint -e961*/
+
+    return;
+}
+
+
+NAS_MML_CALL_GSM_CODEC_TYPE_STRU *NAS_MML_CALL_GetCallGsmCodeType(VOS_VOID)
+{
+    return &(NAS_MML_GetMmlCtx()->stMsCfgInfo.stCustomCfg.stCallGsmCodecType);
+}
+
+
+VOS_VOID NAS_MML_CALL_SetCallGsmCodecType(NAS_MML_CALL_GSM_CODEC_TYPE_STRU *pstCodecType)
+{
+    /* 初始化语音编码版本列表 */
+    NAS_MML_CALL_GSM_CODEC_TYPE_STRU   *pstGsmCodecType  = VOS_NULL_PTR;
+    VOS_UINT32                          ulDefaultValue;
+    VOS_UINT32                          i;
+
+    ulDefaultValue = VOS_FALSE;
+
+    pstGsmCodecType = &(NAS_MML_GetMmlCtx()->stMsCfgInfo.stCustomCfg.stCallGsmCodecType);
+
+    /* 检查参数是否合法,不合法则使用默认值,个数是否越界 */
+    if (pstCodecType->ucCodecTypeNum > NAS_MML_CALL_BC_MAX_SPH_VER_NUM )
+    {
+        ulDefaultValue               = VOS_TRUE;
+        pstCodecType->ucCodecTypeNum = NAS_MML_CALL_BC_MAX_SPH_VER_NUM;
+    }
+
+    pstGsmCodecType->ucCodecTypeNum = 0;
+
+    /* 检查是否有重复定义和超出范围的codec类型*/
+    for ( i = 0; i < pstCodecType->ucCodecTypeNum; i++ )
+    {
+        if ( (NAS_MML_CALL_BC_VAL_SPH_VER_FR_1 != pstCodecType->aucCodecType[i])
+          && (NAS_MML_CALL_BC_VAL_SPH_VER_FR_2 != pstCodecType->aucCodecType[i])
+          && (NAS_MML_CALL_BC_VAL_SPH_VER_FR_3 != pstCodecType->aucCodecType[i])
+          && (NAS_MML_CALL_BC_VAL_SPH_VER_HR_1 != pstCodecType->aucCodecType[i])
+          && (NAS_MML_CALL_BC_VAL_SPH_VER_HR_3 != pstCodecType->aucCodecType[i])
+          && (NAS_MML_CALL_BC_VAL_SPH_VER_FR_5 != pstCodecType->aucCodecType[i]))
+        {
+            ulDefaultValue = VOS_TRUE;
+            break;
+        }
+
+        /* 将NVIM中的语音能力加入到内存中 */
+        pstGsmCodecType->aucCodecType[pstGsmCodecType->ucCodecTypeNum] = pstCodecType->aucCodecType[i];
+        pstGsmCodecType->ucCodecTypeNum++;
+    }
+
+    /* 此处表示需要使用默认值 */
+    if ( VOS_TRUE == ulDefaultValue )
+    {
+        /*lint -e961*/
+        pstGsmCodecType->ucCodecTypeNum                                   = 0;
+        pstGsmCodecType->aucCodecType[pstGsmCodecType->ucCodecTypeNum++] = NAS_MML_CALL_BC_VAL_SPH_VER_FR_3;
+        pstGsmCodecType->aucCodecType[pstGsmCodecType->ucCodecTypeNum++] = NAS_MML_CALL_BC_VAL_SPH_VER_HR_3;
+        pstGsmCodecType->aucCodecType[pstGsmCodecType->ucCodecTypeNum++] = NAS_MML_CALL_BC_VAL_SPH_VER_FR_2;
+        pstGsmCodecType->aucCodecType[pstGsmCodecType->ucCodecTypeNum++] = NAS_MML_CALL_BC_VAL_SPH_VER_FR_1;
+        pstGsmCodecType->aucCodecType[pstGsmCodecType->ucCodecTypeNum++] = NAS_MML_CALL_BC_VAL_SPH_VER_HR_1;
+        pstGsmCodecType->aucCodecType[pstGsmCodecType->ucCodecTypeNum++] = NAS_MML_CALL_BC_VAL_SPH_VER_FR_5;
+        /*lint +e961*/
+    }
+}
+VOS_VOID NAS_MML_CALL_InitCallGsmCodecType(NAS_MML_CALL_GSM_CODEC_TYPE_STRU *pstCodecType)
+{
+    PS_MEM_SET(pstCodecType, 0, sizeof(NAS_MML_CALL_GSM_CODEC_TYPE_STRU));
+
+    /*lint -e961*/
+    pstCodecType->ucCodecTypeNum                               = 0;
+    pstCodecType->aucCodecType[pstCodecType->ucCodecTypeNum++] = NAS_MML_CALL_BC_VAL_SPH_VER_FR_3;
+    pstCodecType->aucCodecType[pstCodecType->ucCodecTypeNum++] = NAS_MML_CALL_BC_VAL_SPH_VER_HR_3;
+    pstCodecType->aucCodecType[pstCodecType->ucCodecTypeNum++] = NAS_MML_CALL_BC_VAL_SPH_VER_FR_2;
+    pstCodecType->aucCodecType[pstCodecType->ucCodecTypeNum++] = NAS_MML_CALL_BC_VAL_SPH_VER_FR_1;
+    pstCodecType->aucCodecType[pstCodecType->ucCodecTypeNum++] = NAS_MML_CALL_BC_VAL_SPH_VER_HR_1;
+    pstCodecType->aucCodecType[pstCodecType->ucCodecTypeNum++] = NAS_MML_CALL_BC_VAL_SPH_VER_FR_5;
+    /*lint -e961*/
+
+    return;
+}
+
+
+VOS_VOID NAS_MML_AddLogEventState(VOS_UINT16 usSendPid, VOS_UINT16 usReceivePid, VOS_UINT16 usMsgName)
+{
+    NAS_MML_LOG_EVENT_STATE_STRU       *pstLogEventState;
+    VOS_UINT8                           ucIndex;
+
+    pstLogEventState = &(NAS_MML_GetMmlCtx()->stMaintainInfo.stLogEventState);
+
+    pstLogEventState->ucLatestIndex = (pstLogEventState->ucLatestIndex + 1) % NAS_MML_MAX_LOG_EVENT_STATE_NUM;
+
+    ucIndex                         = pstLogEventState->ucLatestIndex;
+
+    pstLogEventState->stEventState[ucIndex].ulReceiveTime = VOS_GetTick();
+    pstLogEventState->stEventState[ucIndex].usSendPid     = usSendPid;
+    pstLogEventState->stEventState[ucIndex].usReceivePid  = usReceivePid;
+    pstLogEventState->stEventState[ucIndex].usMsgName     = usMsgName;
+    pstLogEventState->stEventState[ucIndex].ucMmcFsmId    = (VOS_UINT8)NAS_MMC_GetCurrFsmId();
+    pstLogEventState->stEventState[ucIndex].ucMmcState    = (VOS_UINT8)NAS_MMC_GetFsmTopState();
+    pstLogEventState->stEventState[ucIndex].ucGmmState    = g_GmmGlobalCtrl.ucState;
+    pstLogEventState->stEventState[ucIndex].ucMmState     = g_MmGlobalInfo.ucState;
+
+    return;
+}
+
+
+VOS_VOID NAS_MML_UpdateExitTime(VOS_VOID)
+{
+    NAS_MML_LOG_EVENT_STATE_STRU       *pstLogEventState;
+
+    pstLogEventState             = &(NAS_MML_GetMmlCtx()->stMaintainInfo.stLogEventState);
+
+    pstLogEventState->ulExitTime = VOS_GetTick();
+
+    return;
+}
+
+
+VOS_VOID NAS_MML_InitLogEventState(NAS_MML_LOG_EVENT_STATE_STRU *pstLogEventState)
+{
+    PS_MEM_SET(pstLogEventState, 0, sizeof(NAS_MML_LOG_EVENT_STATE_STRU));
+
+    return;
+}
+
+/*****************************************************************************
+ 函 数 名  : NAS_MML_SetRelPsSigConFlg
+ 功能描述  : 设置当前是否启用了网络防呆功能
+ 输入参数  : ucRelPsSigConFlg - 网络防呆功能是打开
+ 输出参数  : 无
+ 返 回 值  : 无
+ 调用函数  :
+ 被调函数  :
+
+ 修改历史     :
+ 1.日    期   : 2014年11月04日
+   作    者   : w0000281933
+   修改内容   : 新增
+
+*****************************************************************************/
+VOS_VOID NAS_MML_SetRelPsSigConFlg(VOS_UINT8 ucRelPsSigConFlg)
+{
+    NAS_MML_GetMmlCtx()->stMsCfgInfo.stCustomCfg.stRelPsSigConInfo.ucRelPsSigConFlg = ucRelPsSigConFlg;
+}
+
+/*****************************************************************************
+ 函 数 名  : NAS_MML_GetRelPsSigConFlg
+ 功能描述  : 获取当前是否启用了网络防呆功能
+ 输入参数  :
+ 输出参数  : 无
+ 返 回 值  : 网络防呆功能是否开启的FLAG
+ 调用函数  :
+ 被调函数  :
+
+ 修改历史     :
+ 1.日    期   : 2014年11月04日
+   作    者   : w0000281933
+   修改内容   : 新增
+
+*****************************************************************************/
+VOS_UINT8 NAS_MML_GetRelPsSigConFlg(VOS_VOID)
+{
+    return (NAS_MML_GetMmlCtx()->stMsCfgInfo.stCustomCfg.stRelPsSigConInfo.ucRelPsSigConFlg);
+}
+
+/*****************************************************************************
+ 函 数 名  : NAS_MML_SetRelPsSigConCfg_T3340TimerLen
+ 功能描述  : 设置当前启用了网络防呆功能配置的T3340的时长
+ 输入参数  : ulTimerLen - t3340 时长，单位秒
+ 输出参数  : 无
+ 返 回 值  : 无
+ 调用函数  :
+ 被调函数  :
+
+ 修改历史     :
+ 1.日    期   : 2014年11月04日
+   作    者   : w0000281933
+   修改内容   : 新增
+
+*****************************************************************************/
+VOS_VOID NAS_MML_SetRelPsSigConCfg_T3340TimerLen(VOS_UINT32 ulTimerLen)
+{
+    NAS_MML_GetMmlCtx()->stMsCfgInfo.stCustomCfg.stRelPsSigConInfo.ulT3340TimerLen= ulTimerLen;
+}
+
+
+VOS_UINT32 NAS_MML_GetRelPsSigConCfg_T3340TimerLen(VOS_VOID)
+{
+    return (NAS_MML_GetMmlCtx()->stMsCfgInfo.stCustomCfg.stRelPsSigConInfo.ulT3340TimerLen);
+}
+
+
+VOS_VOID  NAS_MML_SetHplmnInEplmnDisplayHomeFlg(
+    VOS_UINT8                           ucHplmnInEplmnDisplayHomeFlg
+)
+{
+    NAS_MML_GetMmlCtx()->stMsCfgInfo.stCustomCfg.ucHplmnInEplmnDisplayHomeFlg = ucHplmnInEplmnDisplayHomeFlg;
+
+    return;
+}
+
+
+VOS_UINT8 NAS_MML_GetHplmnInEplmnDisplayHomeFlg(VOS_VOID)
+{
+    return NAS_MML_GetMmlCtx()->stMsCfgInfo.stCustomCfg.ucHplmnInEplmnDisplayHomeFlg;
+}
+
+
+VOS_VOID  NAS_MML_SetProtectMtCsfbPagingProcedureLen(
+    VOS_UINT16                          usMtCsfbPagingProcedureLen
+)
+{
+    NAS_MML_GetMmlCtx()->stMsCfgInfo.stCustomCfg.usMtCsfbPagingProcedureLen = usMtCsfbPagingProcedureLen;
+
+    return;
+}
+
+
+VOS_UINT16 NAS_MML_GetProtectMtCsfbPagingProcedureLen(VOS_VOID)
+{
+    return NAS_MML_GetMmlCtx()->stMsCfgInfo.stCustomCfg.usMtCsfbPagingProcedureLen;
+}
 #ifdef  __cplusplus
   #if  __cplusplus
   }

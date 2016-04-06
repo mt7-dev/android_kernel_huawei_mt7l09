@@ -21,6 +21,7 @@
 #define   CCPU_SYSTIMER               4
 
 #define   CCPU_SOFTTIMER_NOWAKE       5
+#define   DSP_SWITCH_DELAY_ID         6
 #define   CCPU_DRX_TIMER              8/*ap timer30*/
 #define   CCPU_OSA_TIMER              9/*ap timer31*/
 #define   DSP_TIMER1                  7

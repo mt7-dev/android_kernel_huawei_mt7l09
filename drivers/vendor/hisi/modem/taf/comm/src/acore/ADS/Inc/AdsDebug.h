@@ -72,6 +72,11 @@ extern "C" {
 #define ADS_DBG_UL_IPF_FREE_SRCMEM_ERROR(n)         (g_stAdsStats.stUlComStatsInfo.ulUlIpfFreeSrcMemErr   += (n))
 #define ADS_DBG_UL_DROPPED_PACKET_NUM(n)            (g_stAdsStats.stUlComStatsInfo.ulUlDroppedPacketNum   += (n))
 
+#define ADS_DBG_UL_LEVEL_ONE_CNT(n)                  (g_stAdsStats.stUlComStatsInfo.ulLevelOneCnt   += (n))
+#define ADS_DBG_UL_LEVEL_TWO_CNT(n)                  (g_stAdsStats.stUlComStatsInfo.ulLevelTwoCnt   += (n))
+#define ADS_DBG_UL_LEVEL_THREE_CNT(n)                (g_stAdsStats.stUlComStatsInfo.ulLevelThreeCnt += (n))
+#define ADS_DBG_UL_LEVEL_FOUR_CNT(n)                 (g_stAdsStats.stUlComStatsInfo.ulLevelFourCnt  += (n))
+
     /* 下行申请系统内存统计 */
 #define ADS_DBG_DL_ALLOC_SYS_MEM_FAIL_NUM(n)        (g_stAdsStats.stDlComStatsInfo.ulDlAllocSysMemFailNum   += (n))
 #define ADS_DBG_DL_ALLOC_SYS_MEM_SUCC_NUM(n)        (g_stAdsStats.stDlComStatsInfo.ulDlAllocSysMemSuccNum   += (n))
@@ -94,8 +99,8 @@ extern "C" {
 #define  ADS_DBG_DL_FC_TMR_EXP_NUM(n)               (g_stAdsStats.stDlComStatsInfo.ulDlFcActivateCnt += (n))
 
 #define ADS_DBG_SET_SEM_INIT_FLAG(flag)              (g_stAdsStats.stResetStatsinfo.ulSemInitFlg = (flag))
-#define ADS_UL_DBG_SAVE_BINARY_SEM_ID(sem_id)        (g_stAdsStats.stResetStatsinfo.ulULBinarySemId = (sem_id))
-#define ADS_DL_DBG_SAVE_BINARY_SEM_ID(sem_id)        (g_stAdsStats.stResetStatsinfo.ulDLBinarySemId = (sem_id))
+#define ADS_UL_DBG_SAVE_BINARY_SEM_ID(sem_id)        (g_stAdsStats.stResetStatsinfo.hULBinarySemId = (sem_id))
+#define ADS_DL_DBG_SAVE_BINARY_SEM_ID(sem_id)        (g_stAdsStats.stResetStatsinfo.hDLBinarySemId = (sem_id))
 #define ADS_UL_DBG_CREATE_BINARY_SEM_FAIL_NUM(n)     (g_stAdsStats.stResetStatsinfo.ulULCreateBinarySemFailNum += (n))
 #define ADS_DL_DBG_CREATE_BINARY_SEM_FAIL_NUM(n)     (g_stAdsStats.stResetStatsinfo.ulDLCreateBinarySemFailNum += (n))
 #define ADS_UL_DBG_LOCK_BINARY_SEM_FAIL_NUM(n)       (g_stAdsStats.stResetStatsinfo.ulULLockBinarySemFailNum += (n))
@@ -108,6 +113,20 @@ extern "C" {
 /*****************************************************************************
   3 枚举定义
 *****************************************************************************/
+/*****************************************************************************
+ 枚举名    : ADS_FLOW_DEBUG_ENUM
+ 协议表格  :
+ ASN.1描述 :
+ 枚举说明  : ADS流量上报Debug开关
+*****************************************************************************/
+enum ADS_FLOW_DEBUG_ENUM
+{
+    ADS_FLOW_DEBUG_OFF                  = 0,
+    ADS_FLOW_DEBUG_DL_ON                = 1,
+    ADS_FLOW_DEBUG_UL_ON                = 2,
+    ADS_FLOW_DEBUG_ALL_ON               = 3,
+    ADS_FLOW_DEBUG_BUTT
+};
 
 /*****************************************************************************
   5 消息头定义
@@ -144,7 +163,18 @@ typedef struct
 
     VOS_UINT32              ulDlTransformImmZcErr;                              /*需要转发给NDClient数据包的个数*/
     VOS_UINT32              ulDlFreeNum;                                        /*ADS错误释放C核内存的次数*/
+
+    /* 流量统计信息 */
+    VOS_UINT32              ulDLFlowInfo;                                       /*ADS下行流量Byte计数*/
+    VOS_UINT32              ulDLStartSlice;                                     /*ADS下行流量统计开始时间*/
+    VOS_UINT32              ulDLEndSlice;                                       /*ADS下行流量统计结束时间*/
+
+    VOS_UINT32              ulULFlowInfo;                                       /*ADS上行流量Byte计数*/
+    VOS_UINT32              ulULStartSlice;                                     /*ADS上行流量统计开始时间*/
+    VOS_UINT32              ulULEndSlice;                                       /*ADS上行流量统计结束时间*/
 }ADS_SPEC_STATS_INFO_STRU;
+
+
 typedef struct
 {
     VOS_UINT32              ulUlCfgIpfHaveNoBDCD;                               /*配置下行IPF没有获得BD/CD次数*/
@@ -157,8 +187,19 @@ typedef struct
     VOS_UINT32              ulUlIpfFreeSrcMemNum;                               /* 上行释放源内存个数 */
     VOS_UINT32              ulUlIpfFreeSrcMemErr;                               /* 上行释放内存错误 */
     VOS_UINT32              ulUlDroppedPacketNum;                               /* 上行超长丢包个数 */
+
+    VOS_UINT32              ulLevelOneCnt;
+    VOS_UINT32              ulLevelTwoCnt;
+    VOS_UINT32              ulLevelThreeCnt;
+    VOS_UINT32              ulLevelFourCnt;
+
 #endif
+    /* 流量统计信息 */
+    VOS_UINT32              ulULFlowDebugFlag;                                  /*上行流量Debug开关*/
+    VOS_UINT32              ulULFlowRptThreshold;                               /*上行流量上报门限*/
 }ADS_UL_COM_STATS_INFO_STRU;
+
+
 typedef struct
 {
     VOS_UINT32              ulDlRecvIPFBreakNum;                                /*下行收到IPF事件的个数*/
@@ -186,14 +227,15 @@ typedef struct
     VOS_UINT32              ulDlRdProctectEventNum;                             /*ADS发送下行RD保护事件次数*/
     VOS_UINT32              ulDlFcTmrExpiredCnt;
     VOS_UINT32              ulDlFcActivateCnt;
+    /* 流量统计信息 */
+    VOS_UINT32              ulDLFlowDebugFlag;                                  /*下行流量Debug开关*/
+    VOS_UINT32              ulDLFlowRptThreshold;                               /*下行流量上报门限*/
 }ADS_DL_COM_STATS_INFO_STRU;
-
-
 typedef struct
 {
+    VOS_SEM                 hULBinarySemId;                                     /* 上行二进制信号量ID */
+    VOS_SEM                 hDLBinarySemId;                                     /* 下行二进制信号量ID */
     VOS_UINT32              ulSemInitFlg;                                       /* 初始化标识, VOS_TRUE: 成功; VOS_FALSE: 失败 */
-    VOS_UINT32              ulULBinarySemId;                                    /* 上行二进制信号量ID */
-    VOS_UINT32              ulDLBinarySemId;                                    /* 下行二进制信号量ID */
     VOS_UINT32              ulULCreateBinarySemFailNum;                         /* 创建上行二进制信号量失败次数 */
     VOS_UINT32              ulDLCreateBinarySemFailNum;                         /* 创建下行二进制信号量失败次数 */
     VOS_UINT32              ulULLockBinarySemFailNum;                           /* 锁上行二进制信号量失败次数 */
@@ -272,6 +314,11 @@ extern VOS_VOID ADS_MNTN_TraceRcvDlData(VOS_VOID);
 
 VOS_VOID ADS_ResetDebugInfo(VOS_VOID);
 
+extern VOS_VOID ADS_DLFlowAdd(VOS_UINT8  ucIndex, VOS_UINT32  ulSduLen);
+extern VOS_VOID ADS_ULFlowAdd(VOS_UINT8  ucIndex, VOS_UINT32  ulSduLen);
+VOS_VOID ADS_SetFlowDebugFlag(VOS_UINT32  ulFlowDebugFlag);
+VOS_VOID ADS_SetFlowDLRptThreshold(VOS_UINT32  ulFlowDLRptThreshold);
+VOS_VOID ADS_SetFlowULRptThreshold(VOS_UINT32  ulFlowULRptThreshold);
 
 #if (VOS_OS_VER == VOS_WIN32)
 #pragma pack()

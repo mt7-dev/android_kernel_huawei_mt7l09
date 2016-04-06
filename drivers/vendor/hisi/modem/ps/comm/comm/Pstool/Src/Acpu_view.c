@@ -27,21 +27,23 @@
 #include <linux/time.h>
 
 #include "DrvInterface.h"
+#include "vos.h"
 
-#if defined(_lint) || defined(__UT_CENTER__)
+#if ((VOS_OS_VER == VOS_WIN32) || defined(__UT_CENTER__))
 #include "Linuxstub.h"
 #endif
 
 /******************************************************************************
    2 外部函数声明
 ******************************************************************************/
-typedef unsigned long               ACPU_UINT32;
-typedef signed long                 ACPU_INT32;
+typedef unsigned int                ACPU_UINT32;
+typedef signed int                  ACPU_INT32;
 typedef unsigned short              ACPU_UINT16;
 typedef int                         ACPU_INT;
 typedef unsigned char               ACPU_UINT8;
 typedef char                        ACPU_CHAR;
 typedef void                        ACPU_VOID;
+typedef ptrdiff_t                   ACPU_PTR;
 typedef void (*FUNC_VOID)(void);
 
 extern int task_switch_hook_add (FUNC_VOID switchHook);
@@ -61,7 +63,7 @@ enum CPU_VIEW_TYPE_ENUM
     CPU_VIEW_TYPE_BUTT
 };
 
-typedef unsigned long CPU_VIEW_TYPE_ENUM_UINT32;
+typedef unsigned int CPU_VIEW_TYPE_ENUM_UINT32;
 
 enum CPU_VIEW_LEV_ENUM
 {
@@ -71,7 +73,7 @@ enum CPU_VIEW_LEV_ENUM
     CPU_VIEW_LEV_BUTT
 };
 
-typedef unsigned long CPU_VIEW_LEV_ENUM_UINT32;
+typedef unsigned int CPU_VIEW_LEV_ENUM_UINT32;
 
 enum CPU_VIEW_RECORD_MODE_ENUM
 {
@@ -81,7 +83,7 @@ enum CPU_VIEW_RECORD_MODE_ENUM
     CPU_VIEW_RECORD_MODE_BUTT
 };
 
-typedef unsigned long CPU_VIEW_RECORD_MODE_ENUM_UINT32;
+typedef unsigned int CPU_VIEW_RECORD_MODE_ENUM_UINT32;
 
 enum CPU_VIEW_MEMORY_MODE_ENUM
 {
@@ -91,7 +93,7 @@ enum CPU_VIEW_MEMORY_MODE_ENUM
     CPU_VIEW_MEMORY_MODE_BUTT
 };
 
-typedef unsigned long CPU_VIEW_MEMORY_MODE_ENUM_UINT32;
+typedef unsigned int CPU_VIEW_MEMORY_MODE_ENUM_UINT32;
 
 enum CPU_VIEW_DUMP_GEN_MODE_ENUM
 {
@@ -101,7 +103,7 @@ enum CPU_VIEW_DUMP_GEN_MODE_ENUM
     CPU_VIEW_DUMP_GEN_MODE_BUTT
 };
 
-typedef unsigned long CPU_VIEW_DUMP_GEN_MODE_ENUM_UINT32;
+typedef unsigned int CPU_VIEW_DUMP_GEN_MODE_ENUM_UINT32;
 
 enum CPU_VIEW_RECORD_OVERTURN_ENUM
 {
@@ -111,7 +113,7 @@ enum CPU_VIEW_RECORD_OVERTURN_ENUM
     CPU_VIEW_RECORD_OVERTURN_BUTT
 };
 
-typedef unsigned long CPU_VIEW_RECORD_OVERTURN_ENUM_UINT32;
+typedef unsigned int CPU_VIEW_RECORD_OVERTURN_ENUM_UINT32;
 
 #define CPU_MOD_GET(x, y)                       ((x) % (y))
 #define CPU_MOD_ADD(x, y, z)                    (((x) + (y)) % (z))
@@ -794,7 +796,7 @@ void AcpuView_Dump(ACPU_UINT32 ulDumpMode)
         #if (FEATURE_ON == FEATURE_SKB_EXP)
         snprintf(acDumpFileName, strlen("/yaffs0/AcpuView255.dump"), "/yaffs0/AcpuView%d.dump", s_ucDumpFileNO);
         #else
-        snprintf(acDumpFileName, strlen("/data/ap-log/AcpuView255.dump"), "/data/ap-log/AcpuView%d.dump", s_ucDumpFileNO);
+        snprintf(acDumpFileName, strlen("/data/hisi_logs/ap_log/coredump/AcpuView255.dump"), "/data/hisi_logs/ap_log/coredump/AcpuView%d.dump", s_ucDumpFileNO);
         #endif
 
         printk("file name:%s\r\n", acDumpFileName);
@@ -861,22 +863,15 @@ void AcpuView_Dump(ACPU_UINT32 ulDumpMode)
 
 void AcpuView_InfoPrint(void)
 {
-    ACPU_UINT32 ulCpuViewCtrlPhyAddr;
-    ACPU_UINT32 ulCpuViewPhyAddr;
-
     if ((CPU_VIEW_NO == g_ulAcpuViewInitFlag) || (NULL == g_pstAcpuViewCtrl))
     {
         printk("CpuView is not initialized!\r\n");
         return;
     }
 
-    printk( "CpuView Virt Base Addr=0x%x\n", (unsigned int)g_pstAcpuViewCtrl);
+    printk( "CpuView Virt Base Addr=%zu\n", (ACPU_PTR)g_pstAcpuViewCtrl);
 
-    ulCpuViewCtrlPhyAddr = (ACPU_UINT32)TTF_VIRT_TO_PHY((unsigned int)g_pstAcpuViewCtrl);
-    printk("CpuViewCtrl PHY Base Addr=0x%x\r\n", (unsigned int)ulCpuViewCtrlPhyAddr);
-
-    ulCpuViewPhyAddr = (ACPU_UINT32)TTF_VIRT_TO_PHY((unsigned int)g_pstAcpuViewCtrl->pstCpuView);
-    printk("CpuView PHY Base Addr=0x%x\r\n", (unsigned int)ulCpuViewPhyAddr);
+    printk("CpuView Virt Data Addr=%zu\r\n", ((ACPU_PTR)g_pstAcpuViewCtrl->pstCpuView));
 
     printk("CpuView Mode:%d\r\n", (ACPU_UINT16)g_pstAcpuViewCtrl->ulCpuViewMode);
     printk("CpuView TraceCnt:%d\r\n", (ACPU_UINT16)g_pstAcpuViewCtrl->ulCpuViewTraceCnt);

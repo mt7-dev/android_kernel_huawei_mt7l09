@@ -12,6 +12,7 @@
  */
 
 #include <linux/device.h>
+#include <linux/err.h>
 #include <linux/errno.h>
 #include <linux/module.h>
 #include <linux/io.h>
@@ -42,8 +43,14 @@ static int of_gpiochip_find_and_xlate(struct gpio_chip *gc, void *data)
 		return false;
 
 	ret = gc->of_xlate(gc, &gg_data->gpiospec, gg_data->flags);
-	if (ret < 0)
-		return false;
+	if (ret < 0) {
+		/* We've found the gpio chip, but the translation failed.
+		 * Return true to stop looking and return the translation
+		 * error via out_gpio
+		 */
+		gg_data->out_gpio = ret;
+		return true;
+	 }
 
 	gg_data->out_gpio = ret + gc->base;
 	return true;
@@ -87,6 +94,36 @@ int of_get_named_gpio_flags(struct device_node *np, const char *propname,
 	return gg_data.out_gpio;
 }
 EXPORT_SYMBOL(of_get_named_gpio_flags);
+
+/**
+ * of_get_gpio_by_prop() - Get a GPIO number and flags to use with a property
+ * @np:		    device node to get GPIO from
+ * @propname:	property name to get GPIO
+ * @prop_index:	index of the phandle to get GPIO
+ * @gpio_index:	index of the GPIO
+ * @flags:	    a flags pointer to fill in
+ *
+ * Returns GPIO number to use with Linux generic GPIO API, or one of the errno
+ * value on the error condition. If @flags is not NULL the function also fills
+ * in flags for the GPIO.
+ */
+int of_get_gpio_by_prop(struct device_node *np, const char *propname,
+			   int prop_index, int gpio_index, enum of_gpio_flags *flags)
+{
+    struct device_node *gpio_np = NULL;
+    int gpio = -EINVAL;
+
+    gpio_np = of_parse_phandle(np, propname, prop_index);
+    if (!gpio_np) {
+        pr_debug("%s: can't parse property\n", __func__);
+		return -ENOENT;
+	}
+
+    gpio = of_get_gpio_flags(gpio_np, gpio_index, flags);
+
+    return gpio;
+}
+EXPORT_SYMBOL(of_get_gpio_by_prop);
 
 /**
  * of_gpio_simple_xlate - translate gpio_spec to the GPIO number and flags

@@ -169,6 +169,7 @@ extern struct gpio_chip *gpiochip_find(void *data,
 /* Always use the library code for GPIO management calls,
  * or when sleeping may be involved.
  */
+ extern void gpio_powerhold_hook_register(void *func);
 extern int gpio_request(unsigned gpio, const char *label);
 extern void gpio_free(unsigned gpio);
 

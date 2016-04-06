@@ -126,15 +126,7 @@ static int tick_add_compare(unsigned long adj)
 
 	orig_tick &= ~TICKCMP_IRQ_BIT;
 
-	/* Workaround for Spitfire Errata (#54 I think??), I discovered
-	 * this via Sun BugID 4008234, mentioned in Solaris-2.5.1 patch
-	 * number 103640.
-	 *
-	 * On Blackbird writes to %tick_cmpr can fail, the
-	 * workaround seems to be to execute the wr instruction
-	 * at the start of an I-cache line, and perform a dummy
-	 * read back from %tick_cmpr right after writing to it. -DaveM
-	 */
+
 	__asm__ __volatile__("ba,pt	%%xcc, 1f\n\t"
 			     " add	%1, %2, %0\n\t"
 			     ".align	64\n"

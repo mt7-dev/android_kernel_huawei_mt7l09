@@ -101,7 +101,7 @@ int bsp_bbe_load_muti(void)
     int ret = 0;
     u32 flag;
 
-    flag = readl(SHM_MEM_DSP_FLAG_ADDR);
+    flag = readl((unsigned)SHM_MEM_DSP_FLAG_ADDR);
     if (flag != DSP_IMAGE_STATE_OK)
     {
         bsp_trace(BSP_LOG_LEVEL_ERROR, BSP_MODU_DSP, "DSP image not found\r\n");
@@ -596,6 +596,7 @@ int bsp_dsp_pll_enable(void)
 
     while (!get_hi_crg_dfs2_ctrl3_lock()) ;
 #elif defined(BSP_DSP_K3V3)
+#ifndef BSP_CONFIG_BOARD_SFT
     if(!get_hi_crg_dsppll_cfg0_pll_lock())
     {
         set_hi_crg_dsppll_cfg0_pll_en(1);
@@ -606,6 +607,7 @@ int bsp_dsp_pll_enable(void)
         set_hi_crg_dsppll_cfg1_pll_clk_gt(1);
         //set_hi_crg_clken3_bbe_refclk_en(1);
     }
+#endif
 #endif
 
     spin_unlock_irqrestore(&(g_bbe16_state.spin_lock), irq_flags);

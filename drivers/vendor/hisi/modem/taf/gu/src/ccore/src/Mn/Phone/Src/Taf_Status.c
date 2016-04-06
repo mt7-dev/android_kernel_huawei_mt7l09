@@ -466,7 +466,7 @@ VOS_UINT32 TAF_MMA_GetDetachFsmSubNum(
 
 
 VOS_UINT32 TAF_MMA_IsDetachCnfEnable(VOS_VOID)
-{    
+{
     /* DETACHCNF状态输入条件检查异常*/
     if ((g_StatusContext.ulFsmState != STA_FSM_DE_ATTACH)
      && (g_StatusContext.ulFsmState != STA_FSM_ENABLE)
@@ -820,15 +820,15 @@ VOS_VOID MN_PH_UpdateBeginRegTime( VOS_VOID  )
     {
         ucIsNeedPin = VOS_FALSE;
     }
-    
+
     if ( ((TAF_MMA_FSM_PHONE_MODE        == TAF_MMA_GetCurrFsmId())
        || (MN_PH_REG_TIME_STATE_PINVALID == g_stRegTimeInfo.enRegTimeState))
-      && (VOS_FALSE == ucIsNeedPin) )    
+      && (VOS_FALSE == ucIsNeedPin) )
     {
         g_stRegTimeInfo.ulBeginTick = OM_GetSlice();
         MN_INFO_LOG1("MN_PH_UpdateBeginRegTime:first time",(VOS_INT16)g_stRegTimeInfo.ulBeginTick);
     }
-    
+
     if (VOS_FALSE == ucIsNeedPin)
     {
         MN_INFO_LOG1("MN_PH_UpdateBeginRegTime:second time,no need pin",(VOS_INT16)g_stRegTimeInfo.ulBeginTick);
@@ -1171,7 +1171,7 @@ VOS_UINT32 Sta_PlmnSelect ( VOS_UINT32 ulOpID, TAF_PLMN_ID_STRU PlmnId,
             "Sta_PlmnSelect():WARNING:parameter invalid");
         return STA_ERROR;
     }
-    
+
     /* svlte nv开启允许关机状态设置cops */
     if (TAF_PH_MODE_FULL != TAF_SDC_GetCurPhoneMode())
     {
@@ -1850,7 +1850,7 @@ VOS_UINT32 Sta_AttachCnf(
         return VOS_TRUE;     /* 错误返回*/
     }/* ATTACHCNF状态输入条件检查异常*/
 
-    
+
 
     /*增加在ENABLE状态下ATTACH_CNF的接受*/
     if ( STA_FSM_DE_ATTACH == g_StatusContext.ulFsmState)
@@ -1906,7 +1906,7 @@ VOS_UINT32 Sta_AttachCnf(
 
 
         /* 服务状态上报，统一放到Sta_ServiceStatusInd()处理,attach cnf 和 detach cnf不再做处理 */
-        
+
         /* 修改：Attach CS+PS时，CS和PS域有一个域正常服务，就认为ATTACH成功，
            只有两个域都不能正常服务时，才给AT上报ERROR */
         if (MMA_MMC_SRVDOMAIN_CS == pAttachCnf->enCnDomainId)
@@ -1935,7 +1935,6 @@ VOS_UINT32 Sta_AttachCnf(
         {
             ucOperate = TAF_PH_EVT_CS_ATTACH_CNF;
 
-            TAF_SDC_SetCsAttachAllowFlg(VOS_TRUE);
 
             /* 增加判断CS ATTACH结果的原因值,如果不是正常服务上报error */
             if (MMA_MMC_SERVICE_STATUS_NORMAL_SERVICE != enCsServiceStatus)
@@ -1949,8 +1948,7 @@ VOS_UINT32 Sta_AttachCnf(
         {
             ucOperate = TAF_PH_EVT_PS_ATTACH_CNF;
 
-            TAF_SDC_SetPsAttachAllowFlg(VOS_TRUE);
-            
+
             /* 增加判断PS ATTACH结果的原因值,如果不是正常服务上报error */
             if (MMA_MMC_SERVICE_STATUS_NORMAL_SERVICE != enPsServiceStatus)
             {
@@ -1963,8 +1961,6 @@ VOS_UINT32 Sta_AttachCnf(
         {
             ucOperate = TAF_PH_EVT_ATTACH_CNF;
 
-            TAF_SDC_SetCsAttachAllowFlg(VOS_TRUE);
-            TAF_SDC_SetPsAttachAllowFlg(VOS_TRUE);
 
             /*增加判断CS+PS ATTACH结果的原因值：只有两个域都不能正常服务时，才给AT上报ERROR */
           if ((TAF_SDC_SERVICE_STATUS_NORMAL_SERVICE != enCsServiceStatus )
@@ -2299,7 +2295,7 @@ VOS_UINT32 Sta_DetachCnf(
         if (VOS_TRUE != TAF_MMA_GetSpecOperTypeIndex(TAF_MMA_OPER_DETACH_REQ, &ucCtxIndex))
         {
             return VOS_TRUE;
-        } 
+        }
 
         /* 查找对应的子状态*/
         opId  = pDetachCnf->ulOpID;
@@ -2366,7 +2362,7 @@ VOS_UINT32 Sta_DetachCnf(
             g_StatusContext.ucOperateType |= STA_OP_CSSERVICESTATUS;
 
             /* 服务状态上报，统一放到Sta_ServiceStatusInd()处理,attach cnf 和 detach cnf不再做处理 */
-            
+
             /*增加判断DETACH结果的原因值*/
             if (MMA_MMC_SERVICE_STATUS_NORMAL_SERVICE == pDetachCnf->enServiceStatus)
             {
@@ -2377,9 +2373,9 @@ VOS_UINT32 Sta_DetachCnf(
         if (MMA_MMC_SRVDOMAIN_PS == pDetachCnf->enCnDomainId)
         {
             g_StatusContext.ucOperateType |= STA_OP_PSSERVICESTATUS;
-            
+
             /* 服务状态上报，统一放到Sta_ServiceStatusInd()处理,attach cnf 和 detach cnf不再做处理 */
-            
+
             /*增加判断DETACH结果的原因值*/
             if (MMA_MMC_SERVICE_STATUS_NORMAL_SERVICE == pDetachCnf->enServiceStatus)
             {
@@ -2508,7 +2504,7 @@ VOS_UINT32 Sta_DetachCnf(
         }
     }
     else
-    {   
+    {
           /* 服务状态上报，统一放到Sta_ServiceStatusInd()处理,attach cnf 和 detach cnf不再做处理 */
     }
 
@@ -2519,7 +2515,7 @@ VOS_UINT32 Sta_SysCfgCnf(
     struct MsgCB                       *pstMsg
 )
 {
-    TAF_PH_ERR_CODE                     usErrorCode;
+    TAF_ERROR_CODE_ENUM_UINT32          enErrorCode;
     MN_MMA_LAST_SETTED_SYSCFG_SET_STRU *pstLastSyscfgSet = VOS_NULL_PTR;
 
     TAF_SDC_SYS_MODE_ENUM_UINT8         enSysMode;
@@ -2563,7 +2559,7 @@ VOS_UINT32 Sta_SysCfgCnf(
 
         if (MMA_MMC_SYS_CFG_SET_SUCCESS == pstSysCfgCnf->enRst)
         {
-            usErrorCode = TAF_ERR_NO_ERROR;
+            enErrorCode = TAF_ERR_NO_ERROR;
 
 
             if (TAF_MMA_SYSCFG_USER_AT == TAF_MMA_GetSyscfgUser())
@@ -2596,13 +2592,13 @@ VOS_UINT32 Sta_SysCfgCnf(
         }
         else if (MMA_MMC_SYS_CFG_SET_FAILURE_CS_SERV_EXIST == pstSysCfgCnf->enRst)
         {
-            usErrorCode = TAF_ERR_SYSCFG_CS_SERV_EXIST;
+            enErrorCode = TAF_ERR_SYSCFG_CS_SERV_EXIST;
             /* 如果是4F36refresh触发的SYSCFG失败，需要启动TI_TAF_MMA_PERIOD_TRYING_RAT_BALANCING定时器 */
             TAF_MMA_RcvSyscfgCnfFail();
         }
         else
         {
-            usErrorCode = TAF_ERR_ERROR;
+            enErrorCode = TAF_ERR_ERROR;
 
             /* 如果是4F36refresh触发的SYSCFG失败，需要启动TI_TAF_MMA_PERIOD_TRYING_RAT_BALANCING定时器 */
             TAF_MMA_RcvSyscfgCnfFail();
@@ -2613,7 +2609,7 @@ VOS_UINT32 Sta_SysCfgCnf(
 
         if (TAF_MMA_SYSCFG_USER_AT == TAF_MMA_GetSyscfgUser())
         {
-            TAF_MMA_ReportSysCfgSetCnf(usErrorCode);
+            TAF_MMA_ReportSysCfgSetCnf(enErrorCode);
         }
     }
 
@@ -3055,6 +3051,168 @@ VOS_VOID Sta_ModeChangeEventReport(VOS_UINT8 ucNewSysMode, VOS_UINT8 ucNewSysSub
     return;
 }
 
+/* Added by zwx247453 for CHR optimize, 2015-3-13 Begin */
+#if (FEATURE_ON == FEATURE_PTM)
+/*****************************************************************************
+ 函 数 名  : TAF_MMA_CheckRatValid
+ 功能描述  : 检查是否是有需要记录的改变的网络模式
+ 输入参数  : 系统模式
+ 输出参数  : 无
+ 返 回 值  : VOS_TRUE ---- 成功
+             VOS_FALSE --- 失败
+ 调用函数  :
+ 修改历史      :
+  1.日    期   : 2015年03月13日
+    作    者   : zwx247453
+    修改内容   : 新生成函数
+*****************************************************************************/
+VOS_UINT32 TAF_MMA_CheckRatValid(VOS_UINT8 ucSysMode)
+{
+    switch (ucSysMode)
+    {
+        case TAF_PH_INFO_GSM_RAT:
+        case TAF_PH_INFO_WCDMA_RAT:
+        case TAF_PH_INFO_LTE_RAT:
+        case TAF_PH_INFO_TD_SCDMA_RAT:
+            return VOS_TRUE;
+
+        default:
+            return VOS_FALSE;
+    }
+}
+
+/*****************************************************************************
+ 函 数 名  : TAF_MMA_RatFrequentlySwitchProc
+ 功能描述  : 比较队列中最先进来的元素跟最后进来的元素时间差是否符合记录上报
+ 输入参数  :
+ 输出参数  : 无
+ 返 回 值  :
+ 调用函数  :
+ 修改历史      :
+  1.日    期   : 2015年03月13日
+    作    者   : zwx247453
+    修改内容   : 新生成函数
+*****************************************************************************/
+VOS_VOID TAF_MMA_RatFrequentlySwitchProc(
+    NAS_ERR_LOG_RAT_SWITCH_RECORD_STRU  *pstNewRatSwitchRecord
+)
+{
+    NAS_ERR_LOG_RAT_SWITCH_RECORD_STRU  stOldRatSwitchRecord;
+    VOS_UINT32                          ulNvStatisticTime;
+    VOS_UINT32                          ulLength;
+    VOS_UINT32                          ulFreeSize;
+    VOS_UINT32                          ulActuallyReadLength;
+
+    ulNvStatisticTime = TAF_SDC_GetErrlogRatSwitchStatisticTime();
+
+    ulLength = sizeof(NAS_ERR_LOG_RAT_SWITCH_RECORD_STRU);
+
+    /* 填充OldRatSwitchRecord结构 */
+    PS_MEM_SET(&stOldRatSwitchRecord, 0x00, ulLength);
+
+    ulFreeSize = TAF_SDC_GetRatSwitchRingBufferFreeBytes();
+
+    /* 队列是否存满，存满则检查头部尾部数据时间差是否小于NV配置项 */
+    if (0 == ulFreeSize)
+    {
+        ulActuallyReadLength = TAF_SDC_GetRecordFromRatSwitchRingBuf((VOS_CHAR *)&stOldRatSwitchRecord, ulLength);
+        if (ulActuallyReadLength != ulLength)
+        {
+            return;
+        }
+
+        if ((pstNewRatSwitchRecord->ulSystemTick - stOldRatSwitchRecord.ulSystemTick)
+            < (ulNvStatisticTime * PRE_SECOND_TO_TICK))
+        {
+            /* NV规定时间内，rat切换次数达到NV规定次数，属于频繁切换，需要记录 */
+            TAF_MMA_RatFrequentlySwitchRecord();
+        }
+    }
+
+    return;
+}
+
+/*****************************************************************************
+ 函 数 名  : TAF_MMA_RatSwitchRecord
+ 功能描述  : 存储GUTL模式切换并记录频率过高的切换
+ 输入参数  : VOS_VOID
+ 输出参数  : 无
+ 返 回 值  : 无
+ 调用函数  :
+ 修改历史      :
+  1.日    期   : 2015年03月13日
+    作    者   : zwx247453
+    修改内容   : 新生成函数
+*****************************************************************************/
+VOS_VOID TAF_MMA_RatSwitchRecord(
+    VOS_UINT8                           ucNewSysMode
+)
+{
+    NAS_ERR_LOG_RAT_SWITCH_RECORD_STRU  stNewRatSwitchRecord;
+    VOS_UINT32                          ulNvSwitchNum;                          /* NV配置的gutl切换的统计次数 */
+    VOS_UINT32                          ulNvStatisticTime;                      /* NV配置的统计时间 */
+    VOS_UINT32                          ulLength;
+    VOS_UINT32                          ulActuallyWriteLength;
+    TAF_PH_INFO_RAT_TYPE                ucOldSysMode;
+
+    ulNvSwitchNum     = TAF_SDC_GetErrlogRatSwitchStatisticNum();
+    ulNvStatisticTime = TAF_SDC_GetErrlogRatSwitchStatisticTime();
+
+    PS_MEM_SET(&stNewRatSwitchRecord, 0, sizeof(NAS_ERR_LOG_RAT_SWITCH_RECORD_STRU));
+
+    stNewRatSwitchRecord.ulSystemTick   = VOS_GetTick();
+    stNewRatSwitchRecord.ucRatType      = ucNewSysMode;
+    NAS_MNTN_OutputPositionInfo(&stNewRatSwitchRecord.stPositionInfo);
+
+    /* 如果当前变化的状态为无服务或者其他不需要记录的状态，则不做任何处理 */
+    if (VOS_FALSE == TAF_MMA_CheckRatValid(ucNewSysMode))
+    {
+        return;
+    }
+
+    /* 如果NV项读取出来的数据异常，则返回 */
+    if ((0 == ulNvSwitchNum)
+     || (ulNvSwitchNum > NAS_ERR_LOG_MAX_RAT_SWITCH_RECORD_MUN))
+    {
+        return;
+    }
+
+    if ((0 == ulNvStatisticTime)
+     || (ulNvStatisticTime > NAS_ERR_LOG_MAX_RAT_SWITCH_STATISTIC_TIME))
+    {
+        return;
+    }
+
+    /* 获取队列最后一次插入元素的模式类型 */
+    ucOldSysMode = TAF_SDC_GetErrLogOldRatType();
+
+    /* 本次切换的模式与前一次切换的模式一致，则不插入队列 */
+    if (ucNewSysMode == ucOldSysMode)
+    {
+        return;
+    }
+
+    ulLength = sizeof(NAS_ERR_LOG_RAT_SWITCH_RECORD_STRU);
+
+    /* 将元素插入到队列中 */
+    ulActuallyWriteLength = TAF_SDC_PutRatSwitchRingBuf((VOS_CHAR *)&stNewRatSwitchRecord, ulLength);
+    if (ulActuallyWriteLength != ulLength)
+    {
+        NAS_ERROR_LOG(WUEPS_PID_MMA, "TAF_MMA_RatSwitchRecord(): Push buffer error.");
+
+        return;
+    }
+
+    /* 将这次切换的模式记录一下 */
+    TAF_SDC_SetErrLogOldRatType(ucNewSysMode);
+
+    /* 如果模式切换过于频繁，超过NV配置规定，则做记录上报 */
+    TAF_MMA_RatFrequentlySwitchProc(&stNewRatSwitchRecord);
+
+    return;
+}
+#endif
+/* Added by zwx247453 for CHR optimize, 2015-3-13 End */
 
 
 VOS_VOID Sta_UpdateDataTranStatusAndMode(MMA_MMC_DATATRAN_ATTRI_ENUM_UINT8 enDataTranAttri)
@@ -3173,6 +3331,10 @@ VOS_UINT32 Sta_DataTranAttri(
             {
 
                 Sta_ModeChangeEventReport(TAF_PH_INFO_WCDMA_RAT, ucNewWSysSubMode);
+
+#if (FEATURE_ON == FEATURE_PTM)
+                TAF_MMA_RatSwitchRecord(TAF_PH_INFO_WCDMA_RAT);
+#endif
             }
         }
         else
@@ -3185,6 +3347,10 @@ VOS_UINT32 Sta_DataTranAttri(
             {
 
                 Sta_ModeChangeEventReport(TAF_PH_INFO_TD_SCDMA_RAT, ucNewTdSysSubMode);
+
+#if (FEATURE_ON == FEATURE_PTM)
+                TAF_MMA_RatSwitchRecord(TAF_PH_INFO_TD_SCDMA_RAT);
+#endif
             }
         }
     }
@@ -3205,9 +3371,9 @@ VOS_VOID Sta_IccStatusReport(VOS_UINT32 ulCsServiceStatus, VOS_UINT32 ulPsServic
     TAF_SDC_SERVICE_STATUS_ENUM_UINT8   enPsServiceStatus;
     VOS_UINT8                           ucSimStatus;
     VOS_UINT8                           ucSimLockStatus;
-    
+
     ucSimStatus                         = MMA_GetUsimStatus(VOS_FALSE);
-     
+
     /* 获取锁卡状态 */
     if ( MMA_SIM_IS_LOCK == MMA_GetMeLockStatus() )
     {
@@ -3217,7 +3383,7 @@ VOS_VOID Sta_IccStatusReport(VOS_UINT32 ulCsServiceStatus, VOS_UINT32 ulPsServic
     {
         ucSimLockStatus                 = VOS_FALSE;
     }
-    
+
 
     enCsServiceStatus = TAF_SDC_GetCsServiceStatus();
     enPsServiceStatus = TAF_SDC_GetPsServiceStatus();
@@ -3517,11 +3683,11 @@ VOS_VOID TAF_MMA_ProcMmcServiceStatusInd(
 {
     VOS_UINT8                           ucOldCsSrvSta;
     VOS_UINT8                           ulOldSrvSta;
-    
-#if (FEATURE_IMS == FEATURE_ON)    
+
+#if (FEATURE_IMS == FEATURE_ON)
     if (VOS_TRUE  == TAF_SDC_GetImsSupportFlag())
     {
-        /* PS服务状态发生变化通知IMSA或SPM模块 */       
+        /* PS服务状态发生变化通知IMSA或SPM模块 */
         if (VOS_TRUE == TAF_MMA_IsPsSrvStatusChanged(pstServiceStatus->enCnDomainId, pstServiceStatus->enServiceStatus))
         {
             /* 通知SPM服务状态变更，触发SPM处理缓存的消息，消息中不带服务域和服务状态，由SPM取SDC全局变量中的 */
@@ -3530,8 +3696,8 @@ VOS_VOID TAF_MMA_ProcMmcServiceStatusInd(
             /* 修改通知IMSA的SERVICE CHANGE IND逻辑,收到服务状态地方变化后通知,另外收到PS注册完成后通知一次 */
             if ((MMA_MMC_SRVDOMAIN_PS    == pstServiceStatus->enCnDomainId)
              || (MMA_MMC_SRVDOMAIN_CS_PS == pstServiceStatus->enCnDomainId))
-            { 
-                TAF_MMA_SndImsaSrvInfoNotify(pstServiceStatus->enServiceStatus);             
+            {
+                TAF_MMA_SndImsaSrvInfoNotify(pstServiceStatus->enServiceStatus);
             }
         }
     }
@@ -3548,7 +3714,7 @@ VOS_VOID TAF_MMA_ProcMmcServiceStatusInd(
     if (ulOldSrvSta != TAF_SDC_GetServiceStatus())
     {
         g_StatusContext.ucOperateType = STA_OP_PHONESERVICESTATUS;
-    
+
         Sta_EventReport(g_StatusContext.ulCurOpId, TAF_PH_EVT_SERVICE_STATUS_IND);
     }
 
@@ -3606,7 +3772,7 @@ VOS_UINT32 Sta_ServiceStatusInd(
     /* 更新本地的服务状态 */
     if (VOS_TRUE == pServiceStatus->bitOpSrvSta)
     {
-        TAF_MMA_ProcMmcServiceStatusInd(pServiceStatus); 
+        TAF_MMA_ProcMmcServiceStatusInd(pServiceStatus);
     }
 
     if (VOS_TRUE == pServiceStatus->bitOpRegSta)
@@ -3664,7 +3830,7 @@ VOS_UINT32 Sta_ServiceStatusInd(
             break;
 
         default:
-            
+
             break;
     }
 
@@ -3680,7 +3846,7 @@ VOS_UINT32 Sta_DetachInd(
     STA_PHONE_DATA_S                    Update; /* 需要更新的全局数据 */
     VOS_UINT32                          ulRet;
     VOS_UINT32                          ulOldSrvSta;
-    VOS_UINT8                           ucOldCsSrvSta; 
+    VOS_UINT8                           ucOldCsSrvSta;
 
     MMC_MMA_DETACH_IND_STRU            *pDetachInd;
 
@@ -4084,7 +4250,7 @@ VOS_UINT32 Sta_CoverageAreaInd(
 #if (FEATURE_MULTI_MODEM == FEATURE_ON)
     MMA_MTC_CURR_CAMP_PLMN_INFO_IND_STRU                    stSndMtcPlmnInfo;
 #endif
-    
+
     pCoverageAreaInd = (MMC_MMA_COVERAGE_AREA_IND_STRU*)pstMsg;
 
     g_StatusContext.ulTimMaxFlg = pCoverageAreaInd->ulTimMaxFlg;
@@ -4092,9 +4258,9 @@ VOS_UINT32 Sta_CoverageAreaInd(
     if (MMA_MMC_COVERAGE_AREA_CHANGE_MODE_LOST == pCoverageAreaInd->enCoverageChgMode)
     {
         TAF_SDC_SetCampOnFlag(VOS_FALSE);
-        
+
         TAF_MMA_SndMtaAreaLostInd();
-        
+
 #if (FEATURE_MULTI_MODEM == FEATURE_ON)
         if (VOS_TRUE == TAF_SDC_GetUtranSkipWPlmnSearchFlag())
         {
@@ -4107,14 +4273,14 @@ VOS_UINT32 Sta_CoverageAreaInd(
             TAF_MMA_SndMtcCurrCampPlmnInfoInd(&stSndMtcPlmnInfo);
         }
 #endif
-        
+
         ucSysMode = TAF_SDC_GetSysMode();
         ucSysSubmode = TAF_SDC_GetSysSubMode();
         if ((TAF_SDC_SYS_MODE_BUTT    != ucSysMode)
          || (TAF_SDC_SYS_SUBMODE_NONE != ucSysSubmode)){
             Mma_ModeChgReport(TAF_SDC_SYS_MODE_BUTT, TAF_SYS_SUBMODE_NONE);
             TAF_SDC_SetSysMode(TAF_SDC_SYS_MODE_BUTT);
-            TAF_SDC_SetSysSubMode(TAF_SYS_SUBMODE_NONE); 
+            TAF_SDC_SetSysSubMode(TAF_SYS_SUBMODE_NONE);
         }
     }
 
@@ -4663,7 +4829,7 @@ VOS_VOID Sta_EventReport ( VOS_UINT32 ulOpID, VOS_UINT32 ulEventType )
     TAF_PHONE_EVENT                         ucPhoneEvent;
     VOS_UINT16                              ClientId;
     VOS_UINT8                               AppOpId;
-    
+
     TAF_SDC_SERVICE_STATUS_ENUM_UINT8   enCsServiceStatus;
     TAF_SDC_SERVICE_STATUS_ENUM_UINT8   enPsServiceStatus;
     TAF_SDC_REPORT_SRVSTA_ENUM_UINT8    enServiceStatus;
@@ -4851,8 +5017,8 @@ VOS_VOID Sta_EventReport ( VOS_UINT32 ulOpID, VOS_UINT32 ulEventType )
 
     PS_MEM_FREE(WUEPS_PID_MMA, pstPhoneEvent);
 
-    
-    
+
+
     return ;    /* 正常返回 */
 }
 
@@ -5736,11 +5902,19 @@ VOS_VOID Mma_ModeChgReport(
             {
                 /* G->W下，先上报缺省模式: ^MODE:5,4,后续上报时根据RRMM_AT_MSG_IND更新 */
                 Sta_ModeChangeEventReport(TAF_PH_INFO_WCDMA_RAT, TAF_SYS_SUBMODE_WCDMA);
+
+#if (FEATURE_ON == FEATURE_PTM)
+                TAF_MMA_RatSwitchRecord(TAF_PH_INFO_WCDMA_RAT);
+#endif
             }
             else
             {
                 /* G->TD下，先上报缺省模式: ^MODE:15,8,后续上报时根据RRMM_AT_MSG_IND更新 */
                 Sta_ModeChangeEventReport(TAF_PH_INFO_TD_SCDMA_RAT, TAF_SYS_SUBMODE_TD_SCDMA);
+
+#if (FEATURE_ON == FEATURE_PTM)
+                TAF_MMA_RatSwitchRecord(TAF_PH_INFO_TD_SCDMA_RAT);
+#endif
             }
 
             /* 更新全局变量中保存的UtranMode */
@@ -5749,10 +5923,18 @@ VOS_VOID Mma_ModeChgReport(
         else if (TAF_SDC_SYS_MODE_GSM == enCurNetWork)
         {
             Sta_ModeChangeEventReport(TAF_PH_INFO_GSM_RAT, ucSysSubMode);
+
+#if (FEATURE_ON == FEATURE_PTM)
+            TAF_MMA_RatSwitchRecord(TAF_PH_INFO_GSM_RAT);
+#endif
         }
         else if (TAF_SDC_SYS_MODE_LTE == enCurNetWork)
         {
             Sta_ModeChangeEventReport(TAF_PH_INFO_LTE_RAT, ucSysSubMode);
+
+#if (FEATURE_ON == FEATURE_PTM)
+            TAF_MMA_RatSwitchRecord(TAF_PH_INFO_LTE_RAT);
+#endif
         }
         else
         {
@@ -5842,7 +6024,7 @@ TAF_PH_PLMN_SELECTION_RESULT_ENUM_UINT32 TAF_MMA_ConvertServiceTypeToAtType(
 
         case MMA_MMC_PLMN_SELECTION_RESULT_NO_SERVICE:
              return TAF_PH_PLMN_SELECTION_RESULT_NO_SERVICE;
-             
+
         case MMA_MMC_PLMN_SELECTION_RESULT_INTERRUPT:
              return TAF_PH_PLMN_SELECTION_RESULT_INTERRUPT;
 
@@ -5858,9 +6040,9 @@ VOS_UINT32 TAF_MMA_ProcPlmnSelectStartInd(
     struct MsgCB                       *pstMsg
 )
 {
-    MMC_MMA_PLMN_SELECTION_START_IND_STRU                  *pstPlmnStartInd    = VOS_NULL_PTR;  
-    TAF_PH_PLMN_SELECTION_INFO_STRU                         stTafPlmnSelectInfo;   
-    
+    MMC_MMA_PLMN_SELECTION_START_IND_STRU                  *pstPlmnStartInd    = VOS_NULL_PTR;
+    TAF_PH_PLMN_SELECTION_INFO_STRU                         stTafPlmnSelectInfo;
+
     pstPlmnStartInd = (MMC_MMA_PLMN_SELECTION_START_IND_STRU *)pstMsg;
     PS_MEM_SET(&stTafPlmnSelectInfo, 0, sizeof(TAF_PH_PLMN_SELECTION_INFO_STRU));
 
@@ -5869,7 +6051,7 @@ VOS_UINT32 TAF_MMA_ProcPlmnSelectStartInd(
         MN_ERR_LOG("TAF_MMA_ProcPlmnSelectStartInd: The input is invalid");
         return VOS_TRUE;
     }
-  
+
     /* 填充上报事件 */
     stTafPlmnSelectInfo.ulPlmnSelectRlst = TAF_PH_PLMN_SELECTION_RESULT_BUTT;
     stTafPlmnSelectInfo.ulPlmnSelectFlag = TAF_PH_PLMN_SELECTION_START;
@@ -5881,7 +6063,7 @@ VOS_UINT32 TAF_MMA_ProcPlmnSelectStartInd(
 
     /* 调用电话管理上报函数 */
     MN_PH_SendMsg(stTafPlmnSelectInfo.ClientId,(VOS_UINT8*)&stTafPlmnSelectInfo,sizeof(TAF_PH_PLMN_SELECTION_INFO_STRU));
-    
+
     return VOS_TRUE;
 }
 
@@ -5895,9 +6077,9 @@ VOS_UINT32 MN_MMA_ProcPlmnSelectionRlstInd(
 {
     MMC_MMA_PLMN_SELECTION_RLST_IND_STRU                    *pstPlmnSelRslt;
 
-    TAF_PH_PLMN_SELECTION_INFO_STRU     stTafPlmnSelectInfo;   
+    TAF_PH_PLMN_SELECTION_INFO_STRU     stTafPlmnSelectInfo;
 
-    pstPlmnSelRslt = (MMC_MMA_PLMN_SELECTION_RLST_IND_STRU*)pstMsg; 
+    pstPlmnSelRslt = (MMC_MMA_PLMN_SELECTION_RLST_IND_STRU*)pstMsg;
 
     PS_MEM_SET(&stTafPlmnSelectInfo, 0, sizeof(TAF_PH_PLMN_SELECTION_INFO_STRU));
 
@@ -5942,7 +6124,7 @@ VOS_UINT32 MN_MMA_ProcPlmnSelectionRlstInd(
 
     /* 调用电话管理上报函数 */
     MN_PH_SendMsg(stTafPlmnSelectInfo.ClientId,(VOS_UINT8*)&stTafPlmnSelectInfo,sizeof(TAF_PH_PLMN_SELECTION_INFO_STRU));
-    
+
     return VOS_TRUE;
 }
 
@@ -6180,7 +6362,7 @@ VOS_UINT32 TAF_MMA_RcvMmcPlmnSpecialSelCnf(
     if (TAF_PH_MODE_FULL != TAF_SDC_GetCurPhoneMode())
     {
         TAF_MMA_SetPlmnSelectionMode(MMA_MMC_PLMN_SEL_MODE_MANUAL);
-        
+
         g_StatusContext.ucOperateType = STA_OP_REGPLMN;
         Sta_EventReport(g_StatusContext.ulCurOpId, TAF_PH_EVT_PLMN_SEL_CNF);
 
@@ -6683,7 +6865,7 @@ VOS_UINT32 TAF_MMA_IsGsmAccessForbidden(VOS_VOID)
         {
             /* 根据USIM卡文件中EFust，第27和38项判断是否允许GSM接入 */
             ulEfustGsmAccess     = NAS_USIMMAPI_IsServiceAvailable(NAS_USIM_SVR_GSM_ACCESS_IN_USIM);
-            ulEfustGsmSecContext = NAS_USIMMAPI_IsServiceAvailable(NAS_USIM_SVR_GSM_SECURITY_CONTEXT);            
+            ulEfustGsmSecContext = NAS_USIMMAPI_IsServiceAvailable(NAS_USIM_SVR_GSM_SECURITY_CONTEXT);
 
             if ((0 == ulEfustGsmAccess) && (0 == ulEfustGsmSecContext))
             {
@@ -6830,7 +7012,7 @@ VOS_VOID TAF_MMA_ReportRegStatus(
         case TAF_SDC_SYS_MODE_WCDMA:
             pstPhoneEvent->RatType = TAF_PH_INFO_WCDMA_RAT;
             break;
-            
+
         case TAF_SDC_SYS_MODE_GSM:
             pstPhoneEvent->RatType = TAF_PH_INFO_GSM_RAT;
             break;
@@ -7034,7 +7216,7 @@ VOS_UINT32  TAF_MMA_PlmnReselectAutoReq_PowerOff(VOS_UINT32 ulOpID)
         TAF_MMA_WritePlmnSelectionModeNvim(MMA_MMC_PLMN_SEL_MODE_AUTO);
 
         TAF_MMA_SetPlmnSelectionMode(MMA_MMC_PLMN_SEL_MODE_AUTO);
-            
+
         /* 直接上报结果 */
         g_StatusContext.PhoneError    = TAF_ERR_NO_ERROR;
         g_StatusContext.ucOperateType = STA_OP_PLMNRESELMODE;

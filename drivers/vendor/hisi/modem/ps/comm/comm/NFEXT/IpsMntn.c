@@ -24,9 +24,6 @@
 #include "v_id.h"
 #include "vos.h"
 
-#ifdef _lint
-#include "skbuff.h"
-#endif
 
 #if (FEATURE_ON == FEATURE_NFEXT)
 #include "NetfilterEx.h"

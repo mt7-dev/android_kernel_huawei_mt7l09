@@ -56,12 +56,19 @@
  *	 or macros.
  *
  */
+//#include <mach/boardid.h>
 
 #include "dwc_os.h"
 #include "dwc_otg_regs.h"
 #include "dwc_otg_cil.h"
-#include "dwc_otg_hi3630.h"
+#include "dwc_otg_os_dep.h"
 
+#ifndef CONFIG_HI3635_USB
+extern struct hiusb_info *g_hiusb_info;
+#endif
+#ifdef CONFIG_HUAWEI_USB_OTGSWITCH
+extern int g_otg_enable;
+#endif
 static int dwc_otg_setup_params(dwc_otg_core_if_t * core_if);
 
 /**
@@ -183,25 +190,15 @@ dwc_otg_core_if_t *dwc_otg_cil_init(const uint32_t * reg_base_addr)
 	core_if->hwcfg4.d32 =
 	    DWC_READ_REG32(&core_if->core_global_regs->ghwcfg4);
 
-/* modified by l00196665 */
-#if 0
 	/* Force host mode to get HPTXFSIZ exact power on value */
 	{
-		gusbcfg_data_t gusbcfg = {.d32 = 0 };
-		gusbcfg.d32 =  DWC_READ_REG32(&core_if->core_global_regs->gusbcfg);
-		gusbcfg.b.force_host_mode = 1;
-		DWC_WRITE_REG32(&core_if->core_global_regs->gusbcfg, gusbcfg.d32);
-		dwc_mdelay(100);
-		core_if->hptxfsiz.d32 =
-		    DWC_READ_REG32(&core_if->core_global_regs->hptxfsiz);
-		gusbcfg.d32 =  DWC_READ_REG32(&core_if->core_global_regs->gusbcfg);
-		gusbcfg.b.force_host_mode = 0;
-		DWC_WRITE_REG32(&core_if->core_global_regs->gusbcfg, gusbcfg.d32);
-		dwc_mdelay(100);
-	}
+#ifdef CONFIG_HI3635_USB
+		core_if->hptxfsiz.b.startaddr = 0x600;
+		core_if->hptxfsiz.b.depth = 0x300;
 #else
-	core_if->hptxfsiz.d32 = 0x300 | 0x600;
+		core_if->hptxfsiz.d32 = HPTXFSIZ_DEFAULT_VALUE;
 #endif
+	}
 
 	DWC_DEBUGPL(DBG_CILV, "hwcfg1=%08x\n", core_if->hwcfg1.d32);
 	DWC_DEBUGPL(DBG_CILV, "hwcfg2=%08x\n", core_if->hwcfg2.d32);
@@ -242,9 +239,6 @@ dwc_otg_core_if_t *dwc_otg_cil_init(const uint32_t * reg_base_addr)
 	/*
 	 * Create new workqueue and init works
 	 */
-/* modified by l00196665, for id change work */
-#if 0
-
 	core_if->wq_otg = DWC_WORKQ_ALLOC("dwc_otg");
 	if (core_if->wq_otg == 0) {
 		DWC_WARN("DWC_WORKQ_ALLOC failed\n");
@@ -253,10 +247,7 @@ dwc_otg_core_if_t *dwc_otg_cil_init(const uint32_t * reg_base_addr)
 		DWC_FREE(core_if);
 		return 0;
 	}
-#else
-	INIT_DELAYED_WORK(&core_if->id_change_work, w_conn_id_status_change);
-	mutex_init(&core_if->id_change_mutex);
-#endif
+
 	core_if->snpsid = DWC_READ_REG32(&core_if->core_global_regs->gsnpsid);
 
 	DWC_PRINTF("Core Release: %x.%x%x%x\n",
@@ -264,8 +255,16 @@ dwc_otg_core_if_t *dwc_otg_cil_init(const uint32_t * reg_base_addr)
 		   (core_if->snpsid >> 8 & 0xF),
 		   (core_if->snpsid >> 4 & 0xF), (core_if->snpsid & 0xF));
 
-	/* modified by l00196665, use linux kernel timer */
-	setup_timer(&core_if->wkp_timer, w_wakeup_detected, (unsigned long)core_if);
+	core_if->wkp_timer = DWC_TIMER_ALLOC("Wake Up Timer",
+					     w_wakeup_detected, core_if);
+	if (core_if->wkp_timer == 0) {
+		DWC_WARN("DWC_TIMER_ALLOC failed\n");
+		DWC_FREE(host_if);
+		DWC_FREE(dev_if);
+		DWC_WORKQ_FREE(core_if->wq_otg);
+		DWC_FREE(core_if);
+		return 0;
+	}
 
 	if (dwc_otg_setup_params(core_if)) {
 		DWC_WARN("Error while setting core params\n");
@@ -273,7 +272,6 @@ dwc_otg_core_if_t *dwc_otg_cil_init(const uint32_t * reg_base_addr)
 
 	core_if->hibernation_suspend = 0;
 
-	/* modified by l00196665, host mode and device use one spin lock */
 	spin_lock_init(&core_if->core_if_lock);
 	core_if->lock = (dwc_spinlock_t *)&core_if->core_if_lock;
 
@@ -288,7 +286,7 @@ dwc_otg_core_if_t *dwc_otg_cil_init(const uint32_t * reg_base_addr)
  * This function frees the structures allocated by dwc_otg_cil_init().
  *
  * @param core_if The core interface pointer returned from
- *		  dwc_otg_cil_init().
+ * 		  dwc_otg_cil_init().
  *
  */
 void dwc_otg_cil_remove(dwc_otg_core_if_t * core_if)
@@ -305,15 +303,10 @@ void dwc_otg_cil_remove(dwc_otg_core_if_t * core_if)
 				 dctl.d32);
 	}
 
-/* modified by l00196665, for id change work */
-#if 0
 	if (core_if->wq_otg) {
 		DWC_WORKQ_WAIT_WORK_DONE(core_if->wq_otg, 500);
 		DWC_WORKQ_FREE(core_if->wq_otg);
 	}
-#else
-	cancel_delayed_work(&core_if->id_change_work);
-#endif
 	if (core_if->dev_if) {
 		DWC_FREE(core_if->dev_if);
 	}
@@ -327,6 +320,9 @@ void dwc_otg_cil_remove(dwc_otg_core_if_t * core_if)
 	}
 	if (core_if->core_params) {
 		DWC_FREE(core_if->core_params);
+	}
+	if (core_if->wkp_timer) {
+		DWC_TIMER_FREE(core_if->wkp_timer);
 	}
 	if (core_if->srp_timer) {
 		DWC_TIMER_FREE(core_if->srp_timer);
@@ -405,8 +401,7 @@ static void dwc_otg_enable_common_interrupts(dwc_otg_core_if_t * core_if)
 	 * Enable the interrupts in the GINTMSK.
 	 */
 	intr_mask.b.modemismatch = 1;
-/* removed by l00196665, do not handle this interrupt on hi3630 */
-#if 0
+#ifndef CONFIG_HI3635_USB
 	intr_mask.b.otgintr = 1;
 #endif
 
@@ -438,12 +433,18 @@ static void dwc_otg_enable_common_interrupts(dwc_otg_core_if_t * core_if)
 int dwc_otg_device_hibernation_restore(dwc_otg_core_if_t * core_if,
 				       int rem_wakeup, int reset)
 {
+#ifdef CONFIG_HI3635_USB
+	WARN_ON(1);
+	return  1;
+#else
 	gpwrdn_data_t gpwrdn = {.d32 = 0 };
 	pcgcctl_data_t pcgcctl = {.d32 = 0 };
 	dctl_data_t dctl = {.d32 = 0 };
+	dcfg_data_t dcfg = {.d32 = 0 };
 
 	int timeout = 2000;
 
+	dwc_udelay(200);
 	if (!core_if->hibernation_suspend) {
 		DWC_PRINTF("Already exited from Hibernation\n");
 		return 1;
@@ -452,13 +453,20 @@ int dwc_otg_device_hibernation_restore(dwc_otg_core_if_t * core_if,
 	DWC_DEBUGPL(DBG_PCD, "%s called\n", __FUNCTION__);
 	/* Switch-on voltage to the core */
 	gpwrdn.b.pwrdnswtch = 1;
-	DWC_MODIFY_REG32(&core_if->core_global_regs->gpwrdn, gpwrdn.d32, 0);
+	/*DWC_MODIFY_REG32(&core_if->core_global_regs->gpwrdn, gpwrdn.d32, 0);*/
 	dwc_udelay(10);
 
 	/* Reset core */
 	gpwrdn.d32 = 0;
 	gpwrdn.b.pwrdnrstn = 1;
-	DWC_MODIFY_REG32(&core_if->core_global_regs->gpwrdn, gpwrdn.d32, 0);
+	/*DWC_MODIFY_REG32(&core_if->core_global_regs->gpwrdn, gpwrdn.d32, 0);*/
+    #if defined(CHIP_BB_HI6210)
+    writel(((1 << SOC_PERI_SCTRL_SC_PERIPH_RSTEN0_periph_rsten0_usbotg_bus_START) |
+     (1 << SOC_PERI_SCTRL_SC_PERIPH_RSTEN0_periph_rsten0_por_picophy_START) |
+     (1 << SOC_PERI_SCTRL_SC_PERIPH_RSTEN0_periph_rsten0_usbotg_START) |
+     (1 << SOC_PERI_SCTRL_SC_PERIPH_RSTEN0_periph_rsten0_usbotg_32k_START)),
+     (void __iomem*)SOC_PERI_SCTRL_SC_PERIPH_RSTEN0_ADDR(g_hiusb_info->pericrg_base));    
+    #endif
 	dwc_udelay(10);
 
 	/* Assert Restore signal */
@@ -470,7 +478,7 @@ int dwc_otg_device_hibernation_restore(dwc_otg_core_if_t * core_if,
 	/* Disable power clamps */
 	gpwrdn.d32 = 0;
 	gpwrdn.b.pwrdnclmp = 1;
-	DWC_MODIFY_REG32(&core_if->core_global_regs->gpwrdn, gpwrdn.d32, 0);
+	/*DWC_MODIFY_REG32(&core_if->core_global_regs->gpwrdn, gpwrdn.d32, 0);*/
 
 	if (rem_wakeup) {
 		dwc_udelay(70);
@@ -479,7 +487,14 @@ int dwc_otg_device_hibernation_restore(dwc_otg_core_if_t * core_if,
 	/* Deassert Reset core */
 	gpwrdn.d32 = 0;
 	gpwrdn.b.pwrdnrstn = 1;
-	DWC_MODIFY_REG32(&core_if->core_global_regs->gpwrdn, 0, gpwrdn.d32);
+	/*DWC_MODIFY_REG32(&core_if->core_global_regs->gpwrdn, 0, gpwrdn.d32);*/
+    #if defined(CHIP_BB_HI6210)
+    writel(((1 << SOC_PERI_SCTRL_SC_PERIPH_RSTDIS0_periph_rstdis0_usbotg_bus_START) |
+     (1 << SOC_PERI_SCTRL_SC_PERIPH_RSTDIS0_periph_rstdis0_por_picophy_START) |
+     (1 << SOC_PERI_SCTRL_SC_PERIPH_RSTDIS0_periph_rstdis0_usbotg_START) |
+     (1 << SOC_PERI_SCTRL_SC_PERIPH_RSTDIS0_periph_rstdis0_usbotg_32k_START)),
+     (void __iomem*)SOC_PERI_SCTRL_SC_PERIPH_RSTDIS0_ADDR(g_hiusb_info->pericrg_base));
+    #endif
 	dwc_udelay(10);
 
 	/* Disable PMU interrupt */
@@ -552,8 +567,12 @@ int dwc_otg_device_hibernation_restore(dwc_otg_core_if_t * core_if,
 	/* Restore GUSBCFG and DCFG */
 	DWC_WRITE_REG32(&core_if->core_global_regs->gusbcfg,
 			core_if->gr_backup->gusbcfg_local);
+    dcfg.d32 = core_if->dr_backup->dcfg;
+    //if (reset == 1) {
+    dcfg.b.devaddr = 0;
+    //}
 	DWC_WRITE_REG32(&core_if->dev_if->dev_global_regs->dcfg,
-			core_if->dr_backup->dcfg);
+			dcfg.d32);
 
 	/* De-assert Wakeup Logic */
 	gpwrdn.d32 = 0;
@@ -572,7 +591,7 @@ int dwc_otg_device_hibernation_restore(dwc_otg_core_if_t * core_if,
 		DWC_WRITE_REG32(&core_if->dev_if->dev_global_regs->dctl, dctl.d32);
 	}
 
-	dwc_mdelay(2);
+	dwc_mdelay(1);
 	/* Clear all pending interupts */
 	DWC_WRITE_REG32(&core_if->core_global_regs->gintsts, 0xFFFFFFFF);
 
@@ -594,6 +613,7 @@ int dwc_otg_device_hibernation_restore(dwc_otg_core_if_t * core_if,
 	DWC_PRINTF("Hibernation recovery completes here\n");
 
 	return 1;
+#endif
 }
 
 /*
@@ -678,7 +698,7 @@ int dwc_otg_host_hibernation_restore(dwc_otg_core_if_t * core_if,
 			if (gintsts.b.restoredone) {
 				gintsts.d32 = 0;
 				gintsts.b.restoredone = 1;
-				DWC_WRITE_REG32(&core_if->core_global_regs->gintsts, gintsts.d32);
+         		DWC_WRITE_REG32(&core_if->core_global_regs->gintsts, gintsts.d32);
 				DWC_DEBUGPL(DBG_HCD,"Restore Done Interrupt seen\n");
 				break;
 			}
@@ -801,9 +821,6 @@ int dwc_otg_save_global_regs(dwc_otg_core_if_t * core_if)
 	gr->pcgcctl_local = DWC_READ_REG32(core_if->pcgcctl);
 	gr->gdfifocfg_local =
 	    DWC_READ_REG32(&core_if->core_global_regs->gdfifocfg);
-
-	/* modified by l00196665, there is only 15 dtxfsiz registers */
-	//for (i = 0; i < MAX_EPS_CHANNELS; i++) {
 	for (i = 0; i < (MAX_EPS_CHANNELS - 1); i++) {
 		gr->dtxfsiz_local[i] =
 		    DWC_READ_REG32(&(core_if->core_global_regs->dtxfsiz[i]));
@@ -967,9 +984,6 @@ int dwc_otg_restore_global_regs(dwc_otg_core_if_t * core_if)
 			gr->hptxfsiz_local);
 	DWC_WRITE_REG32(&core_if->core_global_regs->gdfifocfg,
 			gr->gdfifocfg_local);
-
-	/* modified by l00196665, there is only 15 dtxfsiz registers */
-	//for (i = 0; i < MAX_EPS_CHANNELS; i++) {
 	for (i = 0; i < (MAX_EPS_CHANNELS - 1); i++) {
 		DWC_WRITE_REG32(&core_if->core_global_regs->dtxfsiz[i],
 				gr->dtxfsiz_local[i]);
@@ -1022,10 +1036,10 @@ int dwc_otg_restore_host_regs(dwc_otg_core_if_t * core_if, int reset)
 	}
 
 	DWC_WRITE_REG32(&core_if->host_if->host_global_regs->hcfg, hr->hcfg_local);
-	//if (!reset)
-	//{
-	//      DWC_WRITE_REG32(&core_if->host_if->host_global_regs->hfir, hr->hfir_local);
-	//}
+	/* if (!reset)
+	{
+	      DWC_WRITE_REG32(&core_if->host_if->host_global_regs->hfir, hr->hfir_local);
+	} */
 
 	DWC_WRITE_REG32(&core_if->host_if->host_global_regs->haintmsk,
 			hr->haintmsk_local);
@@ -1241,7 +1255,8 @@ static uint32_t calc_num_out_eps(dwc_otg_core_if_t * core_if)
 	}
 	return num_out_eps;
 }
-
+extern int use_switch_driver;
+extern int id_no_bypass;
 /**
  * This function initializes the DWC_otg controller registers and
  * prepares the core for device mode or host mode operation.
@@ -1249,16 +1264,28 @@ static uint32_t calc_num_out_eps(dwc_otg_core_if_t * core_if)
  * @param core_if Programming view of the DWC_otg controller
  *
  */
-void dwc_otg_core_init(dwc_otg_core_if_t * core_if)
+int dwc_otg_core_init(dwc_otg_core_if_t * core_if)
 {
+	int i = 0;
+	int ret = 0;
+    #ifdef CONFIG_HUAWEI_USB_OTGSWITCH
+    int vbus_is_on = 0;
+    #endif
 	dwc_otg_core_global_regs_t *global_regs = core_if->core_global_regs;
 	dwc_otg_dev_if_t *dev_if = core_if->dev_if;
 	gahbcfg_data_t ahbcfg = {.d32 = 0 };
 	gusbcfg_data_t usbcfg = {.d32 = 0 };
 	gi2cctl_data_t i2cctl = {.d32 = 0 };
 
+    printk(KERN_INFO "%s +\n",__func__);
 	DWC_DEBUGPL(DBG_CILV, "dwc_otg_core_init(%p)\n", core_if);
-
+#ifdef CONFIG_HUAWEI_USB_OTGSWITCH
+    if(vbus_status())
+    {
+        vbus_is_on = 1;
+    }
+    DWC_INFO("[USB_DEBUG]%s,vbus state=%d .\n",__func__,vbus_is_on);
+#endif
 	/* Common Initialization */
 	usbcfg.d32 = DWC_READ_REG32(&global_regs->gusbcfg);
 
@@ -1270,17 +1297,52 @@ void dwc_otg_core_init(dwc_otg_core_if_t * core_if)
 	/* Set external TS Dline pulsing */
 	usbcfg.b.term_sel_dl_pulse =
 	    (core_if->core_params->ts_dline == 1) ? 1 : 0;
+
+#ifndef CONFIG_HI3635_USB
+	/* force host mode for fsa9685 id issue*/
+        if( core_if->op_state ==A_HOST /*&& core_if->op_state == B_HOST*/ && use_switch_driver && id_no_bypass ){
+            usbcfg.b.force_host_mode=1;
+            usbcfg.b.force_dev_mode=0;
+	}/*else if( core_if->op_state ==A_PERIPHERAL && core_if->op_state == B_PERIPHERAL && use_switch_driver ){
+            usbcfg.b.force_host_mode=0;
+            usbcfg.b.force_dev_mode=1;
+	}*/
+    #ifdef CONFIG_HUAWEI_USB_OTGSWITCH
+    DWC_INFO("[USB_DEBUG]---op_state=%d,otg_enable=%d\n",core_if->op_state,g_otg_enable);
+    if(g_otg_enable == 0){
+        DWC_INFO("[USB_DEBUG]------devices\n");
+        usbcfg.b.force_host_mode=0;
+        usbcfg.b.force_dev_mode=1;
+    }
+    else
+    {
+        if(B_PERIPHERAL == core_if->op_state)
+        {
+            DWC_INFO("[USB_DEBUG]%s,op_state is B_PERIPHERAL\n",__func__);
+            usbcfg.b.force_host_mode=0;
+            usbcfg.b.force_dev_mode=1;
+        }
+        else if((A_HOST == core_if->op_state) && !vbus_is_on)
+        {
+            DWC_INFO("[USB_DEBUG]%s,op_state is A_HOST\n",__func__);
+        }
+        else
+        {
+            DWC_INFO("[USB_DEBUG]%s,else is op_state is B_PERIPHERAL\n",__func__);
+            usbcfg.b.force_host_mode=0;
+            usbcfg.b.force_dev_mode=1;
+        }
+    }
+    #endif
+#endif
 	DWC_WRITE_REG32(&global_regs->gusbcfg, usbcfg.d32);
 
 	/* Reset the Controller */
-	dwc_otg_core_reset(core_if);
+	ret = dwc_otg_core_reset(core_if);
 
 	core_if->adp_enable = core_if->core_params->adp_supp_enable;
 	core_if->power_down = core_if->core_params->power_down;
 	core_if->otg_sts = 0;
-
-	printk(KERN_INFO "[%s]adp_enable: %d, power_down: %d", __func__,
-		core_if->adp_enable, core_if->power_down);
 
 	/* Initialize parameters from Hardware configuration registers. */
 	dev_if->num_in_eps = calc_num_in_eps(core_if);
@@ -1289,8 +1351,6 @@ void dwc_otg_core_init(dwc_otg_core_if_t * core_if)
 	DWC_DEBUGPL(DBG_CIL, "num_dev_perio_in_ep=%d\n",
 		    core_if->hwcfg4.b.num_dev_perio_in_ep);
 
-/* removed by l00196665, These parametres are useless */
-#if 0
 	for (i = 0; i < core_if->hwcfg4.b.num_dev_perio_in_ep; i++) {
 		dev_if->perio_tx_fifo_size[i] =
 		    DWC_READ_REG32(&global_regs->dtxfsiz[i]) >> 16;
@@ -1304,7 +1364,6 @@ void dwc_otg_core_init(dwc_otg_core_if_t * core_if)
 		DWC_DEBUGPL(DBG_CIL, "Tx FIFO SZ #%d=0x%0x\n",
 			    i, dev_if->tx_fifo_size[i]);
 	}
-#endif
 
 	core_if->total_fifo_size = core_if->hwcfg3.b.dfifo_depth;
 	core_if->rx_fifo_size = DWC_READ_REG32(&global_regs->grxfsiz);
@@ -1332,7 +1391,7 @@ void dwc_otg_core_init(dwc_otg_core_if_t * core_if)
 			DWC_WRITE_REG32(&global_regs->gusbcfg, usbcfg.d32);
 
 			/* Reset after a PHY select */
-			dwc_otg_core_reset(core_if);
+			ret = dwc_otg_core_reset(core_if);
 		}
 
 		/* Program DCFG.DevSpd or HCFG.FSLSPclkSel to 48Mhz in FS.      Also
@@ -1389,7 +1448,7 @@ void dwc_otg_core_init(dwc_otg_core_if_t * core_if)
 			}
 			DWC_WRITE_REG32(&global_regs->gusbcfg, usbcfg.d32);
 			/* Reset after setting the PHY parameters */
-			dwc_otg_core_reset(core_if);
+			ret = dwc_otg_core_reset(core_if);
 		}
 	}
 
@@ -1410,7 +1469,11 @@ void dwc_otg_core_init(dwc_otg_core_if_t * core_if)
 
 	/* Program the GAHBCFG Register. */
 	switch (core_if->hwcfg2.b.architecture) {
-
+		/*
+		 * 2'b00: Slave-Only
+		 * 2'b01: External DMA
+		 * 2'b10: Internal DMA
+		 */
 	case DWC_SLAVE_ONLY_ARCH:
 		DWC_DEBUGPL(DBG_CIL, "Slave Only Mode\n");
 		ahbcfg.b.nptxfemplvl_txfemplvl =
@@ -1437,15 +1500,12 @@ void dwc_otg_core_init(dwc_otg_core_if_t * core_if)
 
 	case DWC_INT_DMA_ARCH:
 		DWC_DEBUGPL(DBG_CIL, "Internal DMA Mode\n");
-
-/* modified by l00196665 */
-#if 0
 		/* Old value was DWC_GAHBCFG_INT_DMA_BURST_INCR - done for
 		   Host mode ISOC in issue fix - vahrama */
-		ahbcfg.b.hburstlen = DWC_GAHBCFG_INT_DMA_BURST_INCR4;
-#else
+		/* ahbcfg.b.hburstlen = DWC_GAHBCFG_INT_DMA_BURST_INCR4; */
 		ahbcfg.b.hburstlen = DWC_GAHBCFG_INT_DMA_BURST_INCR16; /* 256 words */
-		ahbcfg.b.nptxfemplvl_txfemplvl = DWC_GAHBCFG_TXFEMPTYLVL_EMPTY;
+		/* ahbcfg.b.nptxfemplvl_txfemplvl =DWC_GAHBCFG_TXFEMPTYLVL_EMPTY; */
+#ifdef CONFIG_HI3635_USB
 		ahbcfg.b.ahbsingle = 1; /* the remaining data in a transfer is sent using Single burst size */
 #endif
 
@@ -1556,6 +1616,11 @@ void dwc_otg_core_init(dwc_otg_core_if_t * core_if)
 				 0, gusbcfg.d32);
 	}
 	{
+		/*
+		 * Indicates whether OTG Revision 1.3 or OTG Revision 2.0 is supported
+		 * 1'b0: OTG 1.3 is supported
+		 * 1'b1: OTG 2.0 is supported
+		 */
 		gotgctl_data_t gotgctl = {.d32 = 0 };
 		gotgctl.b.otgver = core_if->core_params->otg_ver;
 		DWC_MODIFY_REG32(&core_if->core_global_regs->gotgctl, 0,
@@ -1568,20 +1633,24 @@ void dwc_otg_core_init(dwc_otg_core_if_t * core_if)
 
 	/* Enable common interrupts */
 	dwc_otg_enable_common_interrupts(core_if);
-	dwc_msleep(50);
+    dwc_msleep(50);
 
 	/* Do device or host intialization based on mode during PCD
 	 * and HCD initialization  */
 	if (dwc_otg_is_host_mode(core_if)) {
 		DWC_DEBUGPL(DBG_ANY, "Host Mode\n");
 		core_if->op_state = A_HOST;
+        printk(KERN_INFO "[usbotg][%s]:usb mode %s\n", __func__, "Host");
 	} else {
 		DWC_DEBUGPL(DBG_ANY, "Device Mode\n");
 		core_if->op_state = B_PERIPHERAL;
+        printk(KERN_INFO "[usbotg][%s]:usb mode %s\n", __func__, "Device");
 #ifdef DWC_DEVICE_ONLY
 		dwc_otg_core_dev_init(core_if);
 #endif
 	}
+    printk(KERN_INFO "%s -\n",__func__);
+	return ret;
 }
 
 /**
@@ -1622,7 +1691,7 @@ void dwc_otg_enable_device_interrupts(dwc_otg_core_if_t * core_if)
 		intr_mask.b.epmismatch = 1;
 	}
 
-	//intr_mask.b.incomplisoout = 1;
+	/* intr_mask.b.incomplisoout = 1; */
 	intr_mask.b.incomplisoin = 1;
 
 /* Enable the ignore frame number for ISOC xfers - MAS */
@@ -1700,10 +1769,17 @@ void dwc_otg_core_dev_init(dwc_otg_core_if_t * core_if)
 	uint16_t rxfsiz, nptxfsiz;
 	gdfifocfg_data_t gdfifocfg = {.d32 = 0 };
 	hwcfg3_data_t hwcfg3 = {.d32 = 0 };
+    int count = 0;
 
+    printk(KERN_INFO "%s +\n",__func__);
 	/* Restart the Phy Clock */
 	DWC_WRITE_REG32(core_if->pcgcctl, 0);
 
+#ifndef CONFIG_HI3635_USB
+    /* DDMA in device mode */
+    core_if->core_params->dma_desc_enable = 1;
+    core_if->dma_desc_enable = 1;
+#endif
 	/* Device configuration register */
 	init_devspd(core_if);
 	dcfg.d32 = DWC_READ_REG32(&dev_if->dev_global_regs->dcfg);
@@ -1864,8 +1940,7 @@ void dwc_otg_core_dev_init(dwc_otg_core_if_t * core_if)
 		}
 	}
 
-/* added by l00196665, set device mode fifo size */
-#if 1
+#ifdef CONFIG_HI3635_USB
 	DWC_WRITE_REG32(&global_regs->gdfifocfg, 0x0F801000);
 	DWC_WRITE_REG32(&global_regs->grxfsiz, 0x00000200);
 	DWC_WRITE_REG32(&global_regs->gnptxfsiz, 0x01000200);
@@ -1978,23 +2053,32 @@ void dwc_otg_core_dev_init(dwc_otg_core_if_t * core_if)
 		DWC_WRITE_REG32(&dev_if->in_ep_regs[i]->diepint, 0xFF);
 	}
 
-	for (i = 0; i <= dev_if->num_out_eps; i++) {
+	for (i = 1; i <= dev_if->num_out_eps; i++) {
 		depctl_data_t depctl;
 		depctl.d32 = DWC_READ_REG32(&dev_if->out_ep_regs[i]->doepctl);
 		if (depctl.b.epena) {
 			dctl_data_t dctl = {.d32 = 0 };
 			gintmsk_data_t gintsts = {.d32 = 0 };
 			doepint_data_t doepint = {.d32 = 0 };
+            asm("dsb sy");
+            asm("isb sy");
 			dctl.b.sgoutnak = 1;
 			DWC_MODIFY_REG32(&core_if->dev_if->dev_global_regs->dctl, 0, dctl.d32);
 			do {
 				dwc_udelay(10);
 				gintsts.d32 = DWC_READ_REG32(&core_if->core_global_regs->gintsts);
+                if (++count > 10000) {
+                    printk(KERN_ERR "gintsts:0x%x!!!\n",gintsts.d32);
+                    count = 0;
+                    break;
+                }
 			} while (!gintsts.b.goutnakeff);
 			gintsts.d32 = 0;
 			gintsts.b.goutnakeff = 1;
 			DWC_WRITE_REG32(&core_if->core_global_regs->gintsts, gintsts.d32);
 
+            asm("dsb sy");
+            asm("isb sy");
 			depctl.d32 = 0;
 			depctl.b.epdis = 1;
 			depctl.b.snak = 1;
@@ -2003,6 +2087,11 @@ void dwc_otg_core_dev_init(dwc_otg_core_if_t * core_if)
 				dwc_udelay(10);
 				doepint.d32 = DWC_READ_REG32(&core_if->dev_if->
 					out_ep_regs[i]->doepint);
+                if (++count > 10000) {
+                    printk(KERN_ERR "out_ep_regs[%d]->doepint:0x%x!!!\n",i,doepint.d32);
+                    count = 0;
+                    break;
+                }
 			} while (!doepint.b.epdisabled);
 
 			doepint.b.epdisabled = 1;
@@ -2071,7 +2160,6 @@ void dwc_otg_core_dev_init(dwc_otg_core_if_t * core_if)
 		dctl.b.nakonbble = 1;
 		DWC_MODIFY_REG32(&dev_if->dev_global_regs->dctl, 0, dctl.d32);
 	}
-/* removed by l00196665 */
 #if 0
 	if (core_if->snpsid >= OTG_CORE_REV_2_94a) {
 		dctl_data_t dctl = {.d32 = 0 };
@@ -2080,6 +2168,7 @@ void dwc_otg_core_dev_init(dwc_otg_core_if_t * core_if)
 		DWC_WRITE_REG32(&dev_if->dev_global_regs->dctl, dctl.d32);
 	}
 #endif
+    printk(KERN_INFO "%s -\n",__func__);
 }
 
 /**
@@ -2156,8 +2245,10 @@ void dwc_otg_core_host_init(dwc_otg_core_if_t * core_if)
 	dwc_otg_core_global_regs_t *global_regs = core_if->core_global_regs;
 	dwc_otg_host_if_t *host_if = core_if->host_if;
 	dwc_otg_core_params_t *params = core_if->core_params;
+	hprt0_data_t hprt0 = {.d32 = 0 };
 	fifosize_data_t nptxfifosize;
 	fifosize_data_t ptxfifosize;
+	uint16_t rxfsiz, nptxfsiz, hptxfsiz;
 	gdfifocfg_data_t gdfifocfg = {.d32 = 0 };
 	int i;
 	hcchar_data_t hcchar;
@@ -2171,7 +2262,11 @@ void dwc_otg_core_host_init(dwc_otg_core_if_t * core_if)
 
 	/* Restart the Phy Clock */
 	DWC_WRITE_REG32(core_if->pcgcctl, 0);
-
+#ifndef CONFIG_HI3635_USB
+    /* BDMA in host mode */
+    core_if->core_params->dma_desc_enable = 0;
+    core_if->dma_desc_enable = 0;
+#endif
 	/* Initialize Host Configuration Register */
 	init_fslspclksel(core_if);
 	if (core_if->core_params->speed == DWC_SPEED_PARAM_FULL) {
@@ -2217,6 +2312,7 @@ void dwc_otg_core_host_init(dwc_otg_core_if_t * core_if)
 	}
 
 	/* Configure data FIFO sizes */
+#ifdef CONFIG_HI3635_USB
 	if (core_if->hwcfg2.b.dynamic_fifo && params->enable_dynamic_fifo) {
 
 		/* Rx FIFO */
@@ -2236,7 +2332,62 @@ void dwc_otg_core_host_init(dwc_otg_core_if_t * core_if)
 		gdfifocfg.d32 = 0x0f801000;
 		DWC_WRITE_REG32(&global_regs->gdfifocfg, gdfifocfg.d32);
 	}
+#else
+	if (core_if->hwcfg2.b.dynamic_fifo && params->enable_dynamic_fifo) {
+		DWC_DEBUGPL(DBG_CIL, "Total FIFO Size=%d\n",
+			    core_if->total_fifo_size);
+		DWC_DEBUGPL(DBG_CIL, "Rx FIFO Size=%d\n",
+			    params->host_rx_fifo_size);
+		DWC_DEBUGPL(DBG_CIL, "NP Tx FIFO Size=%d\n",
+			    params->host_nperio_tx_fifo_size);
+		DWC_DEBUGPL(DBG_CIL, "P Tx FIFO Size=%d\n",
+			    params->host_perio_tx_fifo_size);
 
+		/* Rx FIFO */
+		DWC_DEBUGPL(DBG_CIL, "initial grxfsiz=%08x\n",
+			    DWC_READ_REG32(&global_regs->grxfsiz));
+		DWC_WRITE_REG32(&global_regs->grxfsiz,
+				params->host_rx_fifo_size);
+		/* DWC_WRITE_REG32(&global_regs->grxfsiz, 0x0300); */
+		DWC_DEBUGPL(DBG_CIL, "new grxfsiz=%08x\n",
+			    DWC_READ_REG32(&global_regs->grxfsiz));
+
+		/* Non-periodic Tx FIFO */
+		DWC_DEBUGPL(DBG_CIL, "initial gnptxfsiz=%08x\n",
+			    DWC_READ_REG32(&global_regs->gnptxfsiz));
+		nptxfifosize.b.depth = params->host_nperio_tx_fifo_size;
+		nptxfifosize.b.startaddr = params->host_rx_fifo_size;
+		/*nptxfifosize.b.depth = 0x0300;
+		nptxfifosize.b.startaddr = 0x0300;*/
+		DWC_WRITE_REG32(&global_regs->gnptxfsiz, nptxfifosize.d32);
+		DWC_DEBUGPL(DBG_CIL, "new gnptxfsiz=%08x\n",
+			    DWC_READ_REG32(&global_regs->gnptxfsiz));
+
+		/* Periodic Tx FIFO */
+		DWC_DEBUGPL(DBG_CIL, "initial hptxfsiz=%08x\n",
+			    DWC_READ_REG32(&global_regs->hptxfsiz));
+		ptxfifosize.b.depth = params->host_perio_tx_fifo_size;
+		ptxfifosize.b.startaddr =
+		    nptxfifosize.b.startaddr + nptxfifosize.b.depth;
+		/*ptxfifosize.b.depth = 0x0300;
+		ptxfifosize.b.startaddr = 0x0600;*/
+		DWC_WRITE_REG32(&global_regs->hptxfsiz, ptxfifosize.d32);
+		DWC_DEBUGPL(DBG_CIL, "new hptxfsiz=%08x\n",
+			    DWC_READ_REG32(&global_regs->hptxfsiz));
+
+		if (core_if->en_multiple_tx_fifo
+		    && core_if->snpsid <= OTG_CORE_REV_2_94a) {
+			/* Global DFIFOCFG calculation for Host mode - include RxFIFO, NPTXFIFO and HPTXFIFO */
+			 gdfifocfg.d32 = DWC_READ_REG32(&global_regs->gdfifocfg);
+		    /*gdfifocfg.d32 = 0x0f801000;*/
+			rxfsiz = (DWC_READ_REG32(&global_regs->grxfsiz) & 0x0000ffff);
+			nptxfsiz = (DWC_READ_REG32(&global_regs->gnptxfsiz) >> 16);
+			hptxfsiz = (DWC_READ_REG32(&global_regs->hptxfsiz) >> 16);
+			gdfifocfg.b.epinfobase = rxfsiz + nptxfsiz + hptxfsiz;
+			DWC_WRITE_REG32(&global_regs->gdfifocfg, gdfifocfg.d32);
+		}
+	}
+#endif
 	/* TODO - check this */
 	/* Clear Host Set HNP Enable in the OTG Control Register */
 	gotgctl.b.hstsethnpen = 1;
@@ -2274,10 +2425,11 @@ void dwc_otg_core_host_init(dwc_otg_core_if_t * core_if)
 			DWC_DEBUGPL(DBG_HCDV, "%s: Halt channel %d\n", __func__, i);
 			do {
 				hcchar.d32 = DWC_READ_REG32(&hc_regs->hcchar);
-				if (++count > 1000) {
+				if (++count > 1000000) {
 					DWC_ERROR
 					    ("%s: Unable to clear halt on channel %d\n",
 					     __func__, i);
+					count = 0;
 					break;
 				}
 				dwc_udelay(1);
@@ -2288,17 +2440,12 @@ void dwc_otg_core_host_init(dwc_otg_core_if_t * core_if)
 	/* Turn on the vbus power. */
 	DWC_PRINTF("Init: Port Power? op_state=%d\n", core_if->op_state);
 	if (core_if->op_state == A_HOST) {
-/* modified by l00196665 */
-#if 0
 		hprt0.d32 = dwc_otg_read_hprt0(core_if);
 		DWC_PRINTF("Init: Power Port (%d)\n", hprt0.b.prtpwr);
 		if (hprt0.b.prtpwr == 0) {
 			hprt0.b.prtpwr = 1;
 			DWC_WRITE_REG32(host_if->hprt0, hprt0.d32);
 		}
-#else
-		dwc_otg_set_prtpower(core_if, 1);
-#endif
 	}
 
 	dwc_otg_enable_host_interrupts(core_if);
@@ -2696,8 +2843,12 @@ void hc_xfer_timeout(void *ptr)
 	hc_xfer_info_t *xfer_info = NULL;
 	int hc_num = 0;
 
-	if (ptr)
+	if (ptr){
 		xfer_info = (hc_xfer_info_t *) ptr;
+	}else{
+		DWC_ERROR("hc_xfer_timeout error: NULL pointer!\n");
+		return;
+	}
 
 	if (!xfer_info->hc) {
 		DWC_ERROR("xfer_info->hc = %p\n", xfer_info->hc);
@@ -3217,7 +3368,7 @@ uint32_t calc_frame_interval(dwc_otg_core_if_t * core_if)
 	gusbcfg_data_t usbcfg;
 	hwcfg2_data_t hwcfg2;
 	hprt0_data_t hprt0;
-	int clock = 60;		// default value
+	uint32_t clock = 60;		// default value
 	usbcfg.d32 = DWC_READ_REG32(&core_if->core_global_regs->gusbcfg);
 	hwcfg2.d32 = DWC_READ_REG32(&core_if->core_global_regs->ghwcfg2);
 	hprt0.d32 = DWC_READ_REG32(core_if->host_if->hprt0);
@@ -3544,18 +3695,17 @@ void dwc_otg_ep_deactivate(dwc_otg_core_if_t * core_if, dwc_ep_t * ep)
 	if (ep->is_in == 1)
 		depctl.b.txfnum = 0;
 
-	/* modified by l00196665, for rndis */
 	if (core_if->dma_desc_enable) {
-		depctl.b.epdis = 1;
+	  depctl.b.epdis = 1;
 	} else if (core_if->dma_enable) {
-		if (depctl.b.epena) {
-			depctl.d32 = 0;
-			depctl.b.epdis = 1;
-			depctl.b.snak = 1;
-		}
+	  if (depctl.b.epena) {
+	    depctl.d32 = 0;
+	    depctl.b.epdis = 1;
+	    depctl.b.snak = 1;
+	  }
 	}
-	DWC_WRITE_REG32(addr, depctl.d32);
 
+	DWC_WRITE_REG32(addr, depctl.d32);
 	depctl.d32 = DWC_READ_REG32(addr);
 	if (core_if->dma_enable && ep->type == DWC_OTG_EP_TYPE_ISOC
 	    && depctl.b.epena) {
@@ -3640,15 +3790,13 @@ void dwc_otg_ep_deactivate(dwc_otg_core_if_t * core_if, dwc_ep_t * ep)
 	} else {
 		DWC_MODIFY_REG32(&core_if->dev_if->dev_global_regs->daintmsk,
 				 daintmsk.d32, 0);
-		/* added by l00196665, for rndis */
 		if (!core_if->dma_desc_enable) {
-			if (ep->is_in == 1)
-				DWC_WRITE_REG32(&core_if->dev_if->in_ep_regs[ep->num]->diepint, 0xffffffff);
-			else
-				DWC_WRITE_REG32(&core_if->dev_if->out_ep_regs[ep->num]->doepint, 0xffffffff);
+		  if (ep->is_in == 1)
+		    DWC_WRITE_REG32(&core_if->dev_if->in_ep_regs[ep->num]->diepint, 0xffffffff);
+		  else
+		    DWC_WRITE_REG32(&core_if->dev_if->out_ep_regs[ep->num]->doepint, 0xffffffff);
 		}
 	}
-
 }
 
 /**
@@ -3723,7 +3871,7 @@ static void init_dma_desc_chain(dwc_otg_core_if_t * core_if, dwc_ep_t * ep)
 					dma_desc->status.b.bytes = xfer_est;
 				else
 					dma_desc->status.b.bytes =
-						xfer_est + ((4 - (xfer_est & 0x3)) & 0x3);
+				    		xfer_est + ((4 - (xfer_est & 0x3)) & 0x3);
 			}
 
 			dma_desc->buf = ep->dma_addr + offset;
@@ -3832,7 +3980,7 @@ void dwc_otg_ep_start_transfer(dwc_otg_core_if_t * core_if, dwc_ep_t * ep)
 
 		if (ep->maxpacket > ep->maxxfer / MAX_PKT_CNT)
 			ep->xfer_len += (ep->maxxfer < (ep->total_len - ep->xfer_len)) ?
-				ep->maxxfer : (ep->total_len - ep->xfer_len);
+		    		ep->maxxfer : (ep->total_len - ep->xfer_len);
 		else
 			ep->xfer_len += (MAX_PKT_CNT * ep->maxpacket < (ep->total_len - ep->xfer_len)) ?
 				 MAX_PKT_CNT * ep->maxpacket : (ep->total_len - ep->xfer_len);
@@ -3859,6 +4007,7 @@ void dwc_otg_ep_start_transfer(dwc_otg_core_if_t * core_if, dwc_ep_t * ep)
 			if (ep->type == DWC_OTG_EP_TYPE_ISOC)
 				deptsiz.b.mc = deptsiz.b.pktcnt;
 		}
+
 		/* Write the DMA register */
 		if (core_if->dma_enable) {
 			if (core_if->dma_desc_enable == 0) {
@@ -3934,6 +4083,8 @@ void dwc_otg_ep_start_transfer(dwc_otg_core_if_t * core_if, dwc_ep_t * ep)
 				}
 			}
 		}
+        asm("dsb sy");
+        asm("isb sy");
 		/* EP enable, IN data in FIFO */
 		depctl.b.cnak = 1;
 		depctl.b.epena = 1;
@@ -3950,7 +4101,7 @@ void dwc_otg_ep_start_transfer(dwc_otg_core_if_t * core_if, dwc_ep_t * ep)
 		if (!core_if->dma_desc_enable) {
 			if (ep->maxpacket > ep->maxxfer / MAX_PKT_CNT)
 				ep->xfer_len += (ep->maxxfer < (ep->total_len - ep->xfer_len)) ?
-				ep->maxxfer : (ep->total_len - ep->xfer_len);
+                        	ep->maxxfer : (ep->total_len - ep->xfer_len);
                 else
 					ep->xfer_len += (MAX_PKT_CNT * ep->maxpacket < (ep->total_len
 					- ep->xfer_len)) ? MAX_PKT_CNT * ep->maxpacket : (ep->total_len - ep->xfer_len);
@@ -3974,7 +4125,7 @@ void dwc_otg_ep_start_transfer(dwc_otg_core_if_t * core_if, dwc_ep_t * ep)
 			}
 			if (!core_if->dma_desc_enable) {
 				ep->xfer_len =
-					deptsiz.b.pktcnt * ep->maxpacket + ep->xfer_count;
+			    		deptsiz.b.pktcnt * ep->maxpacket + ep->xfer_count;
 			}
 			deptsiz.b.xfersize = ep->xfer_len - ep->xfer_count;
 		}
@@ -4044,11 +4195,11 @@ void dwc_otg_ep_start_transfer(dwc_otg_core_if_t * core_if, dwc_ep_t * ep)
 				}
 			}
 		}
-
+        asm("dsb sy");
+        asm("isb sy");
 		/* EP enable */
 		depctl.b.cnak = 1;
 		depctl.b.epena = 1;
-
 		DWC_WRITE_REG32(&out_regs->doepctl, depctl.d32);
 
 		DWC_DEBUGPL(DBG_PCD, "DOEPCTL=%08x DOEPTSIZ=%08x\n",
@@ -4093,7 +4244,7 @@ void dwc_otg_ep_start_zl_transfer(dwc_otg_core_if_t * core_if, dwc_ep_t * ep)
 	gintmsk_data_t intr_mask = {.d32 = 0 };
 
 	DWC_DEBUGPL((DBG_PCDV | DBG_CILV), "%s()\n", __func__);
-	DWC_PRINTF("zero length transfer is called\n");
+	/* DWC_PRINTF("zero length transfer is called\n"); */
 
 	/* IN endpoint */
 	if (ep->is_in == 1) {
@@ -4138,7 +4289,8 @@ void dwc_otg_ep_start_zl_transfer(dwc_otg_core_if_t * core_if, dwc_ep_t * ep)
 				}
 			}
 		}
-
+        asm("dsb sy");
+        asm("isb sy");
 		if (!core_if->core_params->en_multiple_tx_fifo && core_if->dma_enable)
 			depctl.b.nextep = core_if->nextep_seq[ep->num];
 		/* EP enable, IN data in FIFO */
@@ -4169,11 +4321,11 @@ void dwc_otg_ep_start_zl_transfer(dwc_otg_core_if_t * core_if, dwc_ep_t * ep)
 		} else {
 			DWC_WRITE_REG32(&out_regs->doeptsiz, deptsiz.d32);
 		}
-
+        asm("dsb sy");
+        asm("isb sy");
 		/* EP enable */
 		depctl.b.cnak = 1;
 		depctl.b.epena = 1;
-
 		DWC_WRITE_REG32(&out_regs->doepctl, depctl.d32);
 
 	}
@@ -4287,6 +4439,10 @@ void dwc_otg_ep0_start_transfer(dwc_otg_core_if_t * core_if, dwc_ep_t * ep)
 				dma_desc->status.b.sts = 0;
 				dma_desc->status.b.bs = BS_HOST_READY;
 
+                DWC_DEBUGPL(DBG_PCDV,
+			    "IN: in_desc_addr=0x%p  dma_desc->buf=0x%x \n",
+			    dma_desc, dma_desc->buf);
+
 				/** DIEPDMA0 Register write */
 				DWC_WRITE_REG32(&in_regs->diepdma,
 						core_if->
@@ -4368,6 +4524,10 @@ void dwc_otg_ep0_start_transfer(dwc_otg_core_if_t * core_if, dwc_ep_t * ep)
 				dma_desc->buf = ep->dma_addr;
 				dma_desc->status.b.sts = 0;
 				dma_desc->status.b.bs = BS_HOST_READY;
+
+                DWC_DEBUGPL(DBG_PCDV,
+			    "IN: in_desc_addr=0x%p  dma_desc->buf=0x%x \n",
+			    dma_desc, dma_desc->buf);
 
 				/** DOEPDMA0 Register write */
 				DWC_WRITE_REG32(&out_regs->doepdma,
@@ -4469,6 +4629,8 @@ void dwc_otg_ep0_continue_transfer(dwc_otg_core_if_t * core_if, dwc_ep_t * ep)
 				DWC_WRITE_REG32(&(in_regs->diepdma),
 						(uint32_t) ep->dma_addr);
 		}
+        asm("dsb sy");
+        asm("isb sy");
 		if (!core_if->core_params->en_multiple_tx_fifo && core_if->dma_enable)
 			depctl.b.nextep = core_if->nextep_seq[ep->num];
 		/* EP enable, IN data in FIFO */
@@ -4545,7 +4707,8 @@ void dwc_otg_ep0_continue_transfer(dwc_otg_core_if_t * core_if, dwc_ep_t * ep)
 						(uint32_t) ep->dma_addr);
 
 		}
-
+        asm("dsb sy");
+        asm("isb sy");
 		/* EP enable, IN data in FIFO */
 		depctl.b.cnak = 1;
 		depctl.b.epena = 1;
@@ -5179,7 +5342,7 @@ void dwc_otg_flush_rx_fifo(dwc_otg_core_if_t * core_if)
  * Do core a soft reset of the core.  Be careful with this because it
  * resets all the internal state machines of the core.
  */
-void dwc_otg_core_reset(dwc_otg_core_if_t * core_if)
+int dwc_otg_core_reset(dwc_otg_core_if_t * core_if)
 {
 	dwc_otg_core_global_regs_t *global_regs = core_if->core_global_regs;
 	volatile grstctl_t greset = {.d32 = 0 };
@@ -5193,7 +5356,7 @@ void dwc_otg_core_reset(dwc_otg_core_if_t * core_if)
 		if (++count > 100000) {
 			DWC_WARN("%s() HANG! AHB Idle GRSTCTL=%0x\n", __func__,
 				 greset.d32);
-			return;
+			return -1;
 		}
 	}
 	while (greset.b.ahbidle == 0);
@@ -5207,14 +5370,15 @@ void dwc_otg_core_reset(dwc_otg_core_if_t * core_if)
 		if (++count > 10000) {
 			DWC_WARN("%s() HANG! Soft Reset GRSTCTL=%0x\n",
 				 __func__, greset.d32);
-			break;
+			return -1;
 		}
 		dwc_udelay(1);
 	}
 	while (greset.b.csftrst == 1);
 
 	/* Wait for 3 PHY Clocks */
-	dwc_udelay(1000);
+	dwc_udelay(100);
+	return 0;
 }
 
 uint8_t dwc_otg_is_device_mode(dwc_otg_core_if_t * _core_if)
@@ -5431,11 +5595,10 @@ static int dwc_otg_setup_params(dwc_otg_core_if_t * core_if)
 				  sizeof(*core_if->core_params) /
 				  sizeof(int32_t));
 	DWC_PRINTF("Setting default values for core params\n");
-	//dwc_otg_set_param_otg_cap(core_if, dwc_param_otg_cap_default);
-	dwc_otg_set_param_otg_cap(core_if, DWC_OTG_CAP_PARAM_NO_HNP_SRP_CAPABLE);
+	dwc_otg_set_param_otg_cap(core_if, dwc_param_otg_cap_default);
 	dwc_otg_set_param_dma_enable(core_if, dwc_param_dma_enable_default);
-	//dwc_otg_set_param_dma_desc_enable(core_if, DWC_PARAM_DMA_DESC_DISABLE);
-	dwc_otg_set_param_dma_desc_enable(core_if, dwc_param_dma_desc_enable_default);
+	dwc_otg_set_param_dma_desc_enable(core_if,
+					  dwc_param_dma_desc_enable_default);
 	dwc_otg_set_param_opt(core_if, dwc_param_opt_default);
 	dwc_otg_set_param_dma_burst_size(core_if,
 					 dwc_param_dma_burst_size_default);
@@ -5447,22 +5610,32 @@ static int dwc_otg_setup_params(dwc_otg_core_if_t * core_if)
 					 dwc_param_data_fifo_size_default);
 	dwc_otg_set_param_dev_rx_fifo_size(core_if,
 					   dwc_param_dev_rx_fifo_size_default);
+#if defined(CHIP_BB_HI6210)
 	dwc_otg_set_param_dev_nperio_tx_fifo_size(core_if,
+						  dwc_param_dev_nperio_tx_fifo_size_default/2);
+    dwc_otg_set_param_host_rx_fifo_size(core_if,
+					    dwc_param_host_rx_fifo_size_default/2);
+    dwc_otg_set_param_host_nperio_tx_fifo_size(core_if,
+						   dwc_param_host_nperio_tx_fifo_size_default/2);
+	dwc_otg_set_param_host_perio_tx_fifo_size(core_if,
+						  dwc_param_host_perio_tx_fifo_size_default/2);
+#else
+    dwc_otg_set_param_dev_nperio_tx_fifo_size(core_if,
 						  dwc_param_dev_nperio_tx_fifo_size_default);
-	dwc_otg_set_param_host_rx_fifo_size(core_if,
+    dwc_otg_set_param_host_rx_fifo_size(core_if,
 					    dwc_param_host_rx_fifo_size_default);
-	dwc_otg_set_param_host_nperio_tx_fifo_size(core_if,
+    dwc_otg_set_param_host_nperio_tx_fifo_size(core_if,
 						   dwc_param_host_nperio_tx_fifo_size_default);
 	dwc_otg_set_param_host_perio_tx_fifo_size(core_if,
 						  dwc_param_host_perio_tx_fifo_size_default);
+#endif
+	
 	dwc_otg_set_param_max_transfer_size(core_if,
 					    dwc_param_max_transfer_size_default);
 	dwc_otg_set_param_max_packet_count(core_if,
 					   dwc_param_max_packet_count_default);
 	dwc_otg_set_param_host_channels(core_if,
 					dwc_param_host_channels_default);
-	//dwc_otg_set_param_host_channels(core_if, 16);
-
 	dwc_otg_set_param_dev_endpoints(core_if,
 					dwc_param_dev_endpoints_default);
 	dwc_otg_set_param_phy_type(core_if, dwc_param_phy_type_default);
@@ -5472,20 +5645,29 @@ static int dwc_otg_setup_params(dwc_otg_core_if_t * core_if)
 	dwc_otg_set_param_phy_ulpi_ddr(core_if, dwc_param_phy_ulpi_ddr_default);
 	dwc_otg_set_param_phy_ulpi_ext_vbus(core_if,
 					    dwc_param_phy_ulpi_ext_vbus_default);
-
-	/* modified by l00196665, utmi width 8 bits */
-	#if 0
-	dwc_otg_set_param_phy_utmi_width(core_if, dwc_param_phy_utmi_width_default);
-	#else
-	dwc_otg_set_param_phy_utmi_width(core_if, 8);
-	#endif
-
+#ifdef CONFIG_HI3635_USB
+	dwc_otg_set_param_phy_utmi_width(core_if, 8);  
+#else
+	dwc_otg_set_param_phy_utmi_width(core_if,
+					 dwc_param_phy_utmi_width_default);
+#endif
 	dwc_otg_set_param_ts_dline(core_if, dwc_param_ts_dline_default);
 	dwc_otg_set_param_i2c_enable(core_if, dwc_param_i2c_enable_default);
 	dwc_otg_set_param_ulpi_fs_ls(core_if, dwc_param_ulpi_fs_ls_default);
 	dwc_otg_set_param_en_multiple_tx_fifo(core_if,
 					      dwc_param_en_multiple_tx_fifo_default);
-	for (i = 0; i < 15; i++) {
+
+    /* alloc ep dma_desc static, don't alloc this in ep-enable */
+    memset(g_dma_desc, 0, (sizeof(struct ep_dma_desc) * MAX_EPS_CHANNELS * 2));
+    for(i = 0; i < MAX_EPS_CHANNELS; i++) {
+    	g_dma_desc[i][0].desc_addr = DWC_DMA_ALLOC_ATOMIC(MAX_DMA_DESC_CNT * sizeof(dwc_otg_dev_dma_desc_t),
+		    &g_dma_desc[i][0].dma_desc_addr);
+		g_dma_desc[i][1].desc_addr = DWC_DMA_ALLOC_ATOMIC(MAX_DMA_DESC_CNT * sizeof(dwc_otg_dev_dma_desc_t),
+		    &g_dma_desc[i][1].dma_desc_addr);
+
+    }
+#ifdef  CONFIG_HI3635_USB
+    for (i = 0; i < 15; i++) {
 		dwc_otg_set_param_dev_perio_tx_fifo_size(core_if,
 							 dwc_param_dev_perio_tx_fifo_size_default,
 							 i);
@@ -5496,7 +5678,38 @@ static int dwc_otg_setup_params(dwc_otg_core_if_t * core_if)
 			   dwc_param_dev_tx_fifo_size_default,
 			   i);
 	}
+#elif defined(CHIP_BB_HI6210)
+	for (i = 0; i < 15; i++) {
+		dwc_otg_set_param_dev_perio_tx_fifo_size(core_if,
+							 dwc_param_dev_perio_tx_fifo_size_default/2,
+							 i);
+	}
 
+    /*ep0-ep10 out 512 bytes*/
+	for (i = 0; i < 11; i++) {
+    	dwc_otg_set_param_dev_tx_fifo_size(core_if,
+    					   dwc_param_dev_tx_fifo_size_default/2,
+    					   i);
+	}
+
+#else
+    for (i = 0; i < 15; i++) {
+		dwc_otg_set_param_dev_perio_tx_fifo_size(core_if,
+							 dwc_param_dev_perio_tx_fifo_size_default,
+							 i);
+	}
+	for (i = 0; i < 10; i++) {
+    	dwc_otg_set_param_dev_tx_fifo_size(core_if,
+    					   dwc_param_dev_tx_fifo_size_default,
+    					   i);
+	}
+
+	for (i = 10; i < 15; i++) {
+		dwc_otg_set_param_dev_tx_fifo_size(core_if,
+						   0x80,
+						   i);
+	}
+#endif
 	dwc_otg_set_param_thr_ctl(core_if, dwc_param_thr_ctl_default);
 	dwc_otg_set_param_mpi_enable(core_if, dwc_param_mpi_enable_default);
 	dwc_otg_set_param_pti_enable(core_if, dwc_param_pti_enable_default);
@@ -5512,11 +5725,7 @@ static int dwc_otg_setup_params(dwc_otg_core_if_t * core_if)
 	dwc_otg_set_param_reload_ctl(core_if, dwc_param_reload_ctl_default);
 	dwc_otg_set_param_dev_out_nak(core_if, dwc_param_dev_out_nak_default);
 	dwc_otg_set_param_cont_on_bna(core_if, dwc_param_cont_on_bna_default);
-
-	/* modified by l00196665 */
-	//dwc_otg_set_param_ahb_single(core_if, dwc_param_ahb_single_default);
-	dwc_otg_set_param_ahb_single(core_if, 1);
-
+	dwc_otg_set_param_ahb_single(core_if, dwc_param_ahb_single_default);
 	dwc_otg_set_param_otg_ver(core_if, dwc_param_otg_ver_default);
 	dwc_otg_set_param_adp_enable(core_if, dwc_param_adp_enable_default);
 	return 0;
@@ -5651,7 +5860,7 @@ int dwc_otg_set_param_dma_desc_enable(dwc_otg_core_if_t * core_if, int32_t val)
 		return -DWC_E_INVALID;
 	}
 
-	if ((val == 1)
+    if ((val == 1)
 	    && ((dwc_otg_get_param_dma_enable(core_if) == 0)
 		|| (core_if->hwcfg4.b.desc_dma == 0))) {
 		if (dwc_otg_param_initialized
@@ -6907,7 +7116,7 @@ uint32_t dwc_otg_get_prtpower(dwc_otg_core_if_t * core_if)
 
 uint32_t dwc_otg_get_core_state(dwc_otg_core_if_t * core_if)
 {
-	return core_if->hibernation_suspend;
+	return (uint32_t)core_if->hibernation_suspend;
 }
 
 void dwc_otg_set_prtpower(dwc_otg_core_if_t * core_if, uint32_t val)
@@ -7192,7 +7401,7 @@ uint32_t dwc_otg_get_hptxfsiz(dwc_otg_core_if_t * core_if)
 
 uint16_t dwc_otg_get_otg_version(dwc_otg_core_if_t * core_if)
 {
-	return ((core_if->otg_ver == 1) ? (uint16_t)0x0200 : (uint16_t)0x0103);
+	return ((core_if->otg_ver == 1) ? (uint16_t)0x0200 : (uint16_t)0x0103);/* [false alarm]:fortify */
 }
 
 /**

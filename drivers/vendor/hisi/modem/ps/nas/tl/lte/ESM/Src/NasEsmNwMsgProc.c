@@ -171,8 +171,10 @@ NAS_ESM_CAUSE_ENUM_UINT8  NAS_ESM_ValidateDelPfRenderEmpty
     VOS_UINT8                           ucCnt1          = NAS_ESM_NULL;
     VOS_UINT8                           ucCnt2          = NAS_ESM_NULL;
     VOS_UINT8                           ucNumTmp        = NAS_ESM_NULL;
-    NAS_ESM_PF_PRCDNC_VLDT_STRU         astPfPVListTmp[NAS_ESM_MAX_SDF_PF_NUM]= {0};
+    NAS_ESM_PF_PRCDNC_VLDT_STRU         astPfPVListTmp[NAS_ESM_MAX_SDF_PF_NUM];
     const NAS_ESM_CONTEXT_TFT_STRU     *pstPacketFilter = VOS_NULL_PTR;
+
+    PS_MEM_SET(astPfPVListTmp, 0, sizeof(NAS_ESM_PF_PRCDNC_VLDT_STRU)*NAS_ESM_MAX_SDF_PF_NUM);
 
     if (PS_TRUE == NAS_ESM_IsDefaultEpsBearerType(NAS_ESM_GetBearCntxtType(pstNwMsg->ucEpsbId)))
     {
@@ -327,11 +329,13 @@ VOS_UINT32 NAS_ESM_ValidateTftOpRsltProc
 
     switch(pstEsmNwMsgIE->stTadInfo.enTftOpType)
     {
+        #if 0
         case NAS_ESM_TFT_OP_TYPE_CREATE_TFT:
             return NAS_ESM_ValidateTftOpCreateTftRsltProc(pstEsmNwMsgIE,
                                                           pstEncodeInfo,
                                                           enRslt,
                                                           ulStateTblIndex);
+        #endif
         case NAS_ESM_TFT_OP_TYPE_DELETE_TFT:
         case NAS_ESM_TFT_OP_TYPE_DELETE_FILTER:
             return NAS_ESM_ValidateTftOpDelTftOrDelPfRsltProc(pstEsmNwMsgIE,
@@ -705,7 +709,7 @@ VOS_VOID NAS_ESM_ProcNwMsgForIllegalPti
                                                             &ulEsmBuffIndex))
     {
         NAS_ESM_LOG1("NAS_ESM_ProcNwMsgForIllegalPti:WARNING:PTI not matched!",ucPti);
-    
+
         /*返回REJ消息*/
         NAS_ESM_SndRejAirMsg(pstEsmNwMsgIE->enEsmCnMsgType, &stEncodeInfo);
 
@@ -1145,8 +1149,10 @@ VOS_VOID  NAS_ESM_CreatePfPVListInBearAddOrReplaceFilter
     VOS_UINT32                          ulCnt2          = NAS_ESM_NULL;
     VOS_UINT8                           ucPfPVNumTmp    = NAS_ESM_NULL;
     VOS_UINT8                           ucPfPVNum       = NAS_ESM_NULL;
-    NAS_ESM_PF_PRCDNC_VLDT_STRU         astPfPVListTmp[NAS_ESM_MAX_SDF_PF_NUM]= {0};
+    NAS_ESM_PF_PRCDNC_VLDT_STRU         astPfPVListTmp[NAS_ESM_MAX_SDF_PF_NUM];
     const NAS_ESM_CONTEXT_TFT_STRU     *pstPacketFilter = VOS_NULL_PTR;
+
+    PS_MEM_SET(astPfPVListTmp, 0, sizeof(NAS_ESM_PF_PRCDNC_VLDT_STRU)*NAS_ESM_MAX_SDF_PF_NUM);
 
     /* 获取此承载下packet filter优先级验证列表 */
     NAS_ESM_GetPfPrecedenceValidateListInBearer(pstNwMsg->ucEpsbId,
@@ -1463,6 +1469,38 @@ NAS_ESM_CAUSE_ENUM_UINT8 NAS_ESM_ValidateEpsQos
 }
 
 /*****************************************************************************
+ Function Name   : NAS_ESM_IsNwActBearerWithOnlyOneCid
+ Description     : 判断只有一个关联CID，且这个关联CID也是网侧主动激活的
+ Input           : ucEpsBearer--承载号
+ Output          : None
+ Return          : VOS_UINT32
+
+ History         :
+    1.lihong00150010      2015-01-20  Draft Enact
+
+*****************************************************************************/
+VOS_UINT32 NAS_ESM_IsNwActBearerWithOnlyOneCid
+(
+    VOS_UINT32                      ucEpsBearer
+)
+{
+    NAS_ESM_EPSB_CNTXT_INFO_STRU    *pstEpsbCntxtInfo = VOS_NULL_PTR;
+    VOS_UINT32                      ulCid = NAS_ESM_NULL;
+
+    pstEpsbCntxtInfo = NAS_ESM_GetEpsbCntxtInfoAddr(ucEpsBearer);
+    ulCid = NAS_ESM_GetCid(ucEpsBearer);
+
+    /* 判断承载关联CID有且只有一个，且网侧主动激活的CID */
+    if (pstEpsbCntxtInfo->ulBitCId == (NAS_ESM_BIT_0 << ulCid))
+    {
+        return PS_TRUE;
+    }
+
+    return PS_FALSE;
+}
+
+
+/*****************************************************************************
  Function Name   : NAS_ESM_ValidateQosInModMsg
  Description     : 对承载修改请求中的QOS信息进行合法性检测
  Input           : pstMsgIE -- 译码后的网络消息
@@ -1510,6 +1548,13 @@ NAS_ESM_CAUSE_ENUM_UINT8  NAS_ESM_ValidateQosInModMsg
     if (PS_TRUE == NAS_ESM_IsGbrBearer(pstEpsbCntxtInfo->stEpsQoSInfo.stQosInfo.ucQCI))
 
     {
+        /* 网侧注册修改承载，且修改的承载只有一个关联的CID，且这个关联的CID也是网侧
+           主动激活的，这种场景下直接返回SUCCESS */
+        if ((NAS_ESM_PTI_UNASSIGNED_VALUE == pstMsgIE->ucPti)
+            && (PS_TRUE == NAS_ESM_IsNwActBearerWithOnlyOneCid(pstMsgIE->ucEpsbId)))
+        {
+            return NAS_ESM_CAUSE_SUCCESS;
+        }
         enEsmCause = NAS_ESM_ValidateEpsQos(pstMsgIE->stTadInfo.enTftOpType,
                                             &pstEpsbCntxtInfo->stEpsQoSInfo,
                                             &pstMsgIE->stSdfQosInfo);
@@ -1784,7 +1829,10 @@ static VOS_UINT32  NAS_ESM_ValidateDeactEpsbReqMsg
     if (enEsmCause != NAS_ESM_CAUSE_SUCCESS)
     {
         NAS_ESM_LOG1("NAS_ESM_ValidateDeactEpsbReqMsg:WARN:Validate Pti failed, cause : ", enEsmCause);
-        return NAS_ESM_MSG_HANDLED;
+        /* UE发起承载释放，由于时序问题接入层提前把承载释放掉了，导致动态表里找不到对应的PTI，
+           所以在收到网侧去激活时由于PTI对应不上，所以没有给网侧回复去激活结果，
+           为了提高网络兼容性，不直接return，需要给网侧回复结果。*/
+        /* return NAS_ESM_MSG_HANDLED; */
     }
 
     /* 检测承载号范围，必须位于5-15之间，必须为激活态，否则直接回复ACCEPT消息 */
@@ -2212,7 +2260,7 @@ VOS_VOID  NAS_ESM_ProcNwMsgPdnConnRej
 
     /* xiongxianghui00253310 modify for ftmerrlog begin */
     #if (FEATURE_PTM == FEATURE_ON)
-    NAS_ESM_ErrlogInfoProc(pRcvMsg->stEsmNwMsgIE.enEsmCau);
+    NAS_ESM_PdnConFailRecord(pRcvMsg, 0);
     #endif
     /* xiongxianghui00253310 modify for ftmerrlog begin */
 
@@ -2242,7 +2290,7 @@ VOS_VOID  NAS_ESM_ProcNwMsgPdnDisconRej
 
     /* xiongxianghui00253310 modify for ftmerrlog begin */
     #if (FEATURE_PTM == FEATURE_ON)
-    NAS_ESM_ErrlogInfoProc(pRcvMsg->stEsmNwMsgIE.enEsmCau);
+    NAS_ESM_PdnDisconFailRecord(pRcvMsg, 0);
     #endif
     /* xiongxianghui00253310 modify for ftmerrlog begin */
 
@@ -2272,7 +2320,7 @@ VOS_VOID  NAS_ESM_ProcNwMsgResModRej
 
     /* xiongxianghui00253310 modify for ftmerrlog begin */
     #if (FEATURE_PTM == FEATURE_ON)
-    NAS_ESM_ErrlogInfoProc(pRcvMsg->stEsmNwMsgIE.enEsmCau);
+    NAS_ESM_ResModFailRecord(pRcvMsg, 0);
     #endif
     /* xiongxianghui00253310 modify for ftmerrlog begin */
 
@@ -2302,7 +2350,7 @@ VOS_VOID  NAS_ESM_ProcNwMsgResAllocRej
 
     /* xiongxianghui00253310 modify for ftmerrlog begin */
     #if (FEATURE_PTM == FEATURE_ON)
-    NAS_ESM_ErrlogInfoProc(pRcvMsg->stEsmNwMsgIE.enEsmCau);
+    NAS_ESM_ResAllocFailRecord(pRcvMsg, 0);
     #endif
     /* xiongxianghui00253310 modify for ftmerrlog begin */
 
@@ -2391,7 +2439,7 @@ VOS_VOID NAS_ESM_ProcNwMsgEsmNotification
         NAS_ESM_SndEsmEmmDataReqMsg(NAS_ESM_ILLEGAL_OPID, PS_FALSE, ulMsgLen, NAS_ESM_GetCurEsmSndNwMsgAddr());
     }
     else if (((ucRcvEbi > NAS_ESM_UNASSIGNED_EPSB_ID) && (ucRcvEbi < NAS_ESM_MIN_EPSB_ID)) ||
-             (NAS_ESM_SUCCESS != NAS_ESM_QueryStateTblIndexByEpsbId(ucRcvEbi, &ulStateId)) ||
+             (NAS_ESM_BEARER_STATE_ACTIVE != NAS_ESM_GetBearCntxtState(ucRcvEbi)) ||
              ((NAS_ESM_UNASSIGNED_EPSB_ID == ucRcvEbi) && (NAS_ESM_PTI_UNASSIGNED_VALUE == ucRcvPti)))
     {
         /* 1. includes a reserved EPS bearer identity value

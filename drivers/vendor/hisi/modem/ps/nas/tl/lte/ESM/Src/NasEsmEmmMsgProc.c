@@ -26,6 +26,53 @@ extern "C" {
 /*****************************************************************************
   2 Declare the Global Variable
 *****************************************************************************/
+#if (FEATURE_ON == FEATURE_PTM)
+NAS_ESM_CN_CAUSE_TRANS_STRU          g_astEsmErrlogErrNoMap[] =
+{
+    /*------------casue-----------------------------------error id---------------------------*/
+    {NAS_ESM_CAUSE_OPERATOR_DETERMINE_BARRING,      ESM_OM_ERRLOG_CAUSE_OPERATOR_DETERMINE_BARRING},
+    {NAS_ESM_CAUSE_INSUFFICIENT_RESOURCES,          ESM_OM_ERRLOG_CAUSE_INSUFFICIENT_RESOURCES},
+    {NAS_ESM_CAUSE_UNKNOWN_OR_MISSING_APN,          ESM_OM_ERRLOG_CAUSE_UNKNOWN_OR_MISSING_APN},
+    {NAS_ESM_CAUSE_UNKNOWN_PDN_TYPE,                ESM_OM_ERRLOG_CAUSE_UNKNOWN_PDN_TYPE},
+    {NAS_ESM_CAUSE_USER_AUTH_FAIL,                  ESM_OM_ERRLOG_CAUSE_USER_AUTH_FAIL},
+    {NAS_ESM_CAUSE_REQ_REJ_BY_SGW_OR_PGW,           ESM_OM_ERRLOG_CAUSE_REQ_REJ_BY_SGW_OR_PGW},
+    {NAS_ESM_CAUSE_REQ_REJ_UNSPECITY,               ESM_OM_ERRLOG_CAUSE_REQ_REJ_UNSPECITY},
+    {NAS_ESM_CAUSE_SERVICE_OPTION_NOT_SUPPORT,      ESM_OM_ERRLOG_CAUSE_SERVICE_OPTION_NOT_SUPPORT},
+    {NAS_ESM_CAUSE_REQ_SERVICE_NOT_SUBSCRIBED,      ESM_OM_ERRLOG_CAUSE_REQ_SERVICE_NOT_SUBSCRIBED},
+    {NAS_ESM_CAUSE_SERVICE_OPTION_TEMP_OUT_ORDER,   ESM_OM_ERRLOG_CAUSE_SERVICE_OPTION_TEMP_OUT_ORDER},
+    {NAS_ESM_CAUSE_PTI_ALREADY_IN_USED,             ESM_OM_ERRLOG_CAUSE_PTI_ALREADY_IN_USED},
+    {NAS_ESM_CAUSE_REGULAR_DEACTIVATION,            ESM_OM_ERRLOG_CAUSE_REGULAR_DEACTIVATION},
+    {NAS_ESM_CAUSE_EPS_QOS_NOT_ACCEPT,              ESM_OM_ERRLOG_CAUSE_EPS_QOS_NOT_ACCEPT},
+    {NAS_ESM_CAUSE_NETWORK_FAILURE,                 ESM_OM_ERRLOG_CAUSE_NETWORK_FAILURE},
+    {NAS_ESM_CAUSE_SYNTACTIC_ERR_IN_TFT,            ESM_OM_ERRLOG_CAUSE_SYNTACTIC_ERR_IN_TFT},
+    {NAS_ESM_CAUSE_SEMANTIC_ERR_IN_PACKET_FILTER,   ESM_OM_ERRLOG_CAUSE_SEMANTIC_ERR_IN_PACKET_FILTER},
+    {NAS_ESM_CAUSE_SYNCTACTIC_ERR_IN_PACKET_FILTER, ESM_OM_ERRLOG_CAUSE_SYNCTACTIC_ERR_IN_PACKET_FILTER},
+    {NAS_ESM_CAUSE_BEARER_WITHOUT_TFT_ACT,          ESM_OM_ERRLOG_CAUSE_BEARER_WITHOUT_TFT_ACT},
+    {NAS_ESM_CAUSE_PTI_MISMATCH,                    ESM_OM_ERRLOG_CAUSE_PTI_MISMATCH},
+    {NAS_ESM_CAUSE_LAST_PDN_DISCONN_NOT_ALLOWED,    ESM_OM_ERRLOG_CAUSE_LAST_PDN_DISCONN_NOT_ALLOWED},
+    {NAS_ESM_CAUSE_PDNTYPE_IPV4_ONLY_ALLOWED,       ESM_OM_ERRLOG_CAUSE_PDNTYPE_IPV4_ONLY_ALLOWED},
+    {NAS_ESM_CAUSE_PDNTYPE_IPV6_ONLY_ALLOWED,       ESM_OM_ERRLOG_CAUSE_PDNTYPE_IPV6_ONLY_ALLOWED},
+    {NAS_ESM_CAUSE_SINGLE_ADDR_BEARER_ONLY_ALLOWED, ESM_OM_ERRLOG_CAUSE_SINGLE_ADDR_BEARER_ONLY_ALLOWED},
+    {NAS_ESM_CAUSE_ESM_INFORMATION_NOT_RECEIVED,    ESM_OM_ERRLOG_CAUSE_ESM_INFORMATION_NOT_RECEIVED},
+    {NAS_ESM_CAUSE_PDN_CONNECTION_DOES_NOT_EXIST,   ESM_OM_ERRLOG_CAUSE_PDN_CONNECTION_DOES_NOT_EXIST},
+    {NAS_ESM_CAUSE_SAME_APN_MULTI_PDN_CONNECTION_NOT_ALLOWED, ESM_OM_ERRLOG_CAUSE_SAME_APN_MULTI_PDN_CONNECTION_NOT_ALLOWED},
+    {NAS_ESM_CAUSE_COLLISION_WITH_NETWORK_INITIATED_REQUEST,  ESM_OM_ERRLOG_CAUSE_COLLISION_WITH_NETWORK_INITIATED_REQUEST},
+    {NAS_ESM_CAUSE_UNSUPPORTED_QCI_VALUE,           ESM_OM_ERRLOG_CAUSE_UNSUPPORTED_QCI_VALUE},
+    {NAS_ESM_CAUSE_INVALID_PTI_VALUE,               ESM_OM_ERRLOG_CAUSE_INVALID_PTI_VALUE},
+    {NAS_ESM_CAUSE_SEMANTICALLY_INCORRECT_MESSAGE,  ESM_OM_ERRLOG_CAUSE_SEMANTICALLY_INCORRECT_MESSAGE},
+    {NAS_ESM_CAUSE_INVALID_MANDATORY_INFORMATION,   ESM_OM_ERRLOG_CAUSE_INVALID_MANDATORY_INFORMATION},
+    {NAS_ESM_CAUSE_MESSAGE_TYPE_NON_EXIST_OR_NOT_IMPLEMENTED, ESM_OM_ERRLOG_CAUSE_MESSAGE_TYPE_NON_EXIST_OR_NOT_IMPLEMENTED},
+    {NAS_ESM_CAUSE_MESSAGE_TYPE_NOT_COMPATIBLE_WITH_PROT_STA, ESM_OM_ERRLOG_CAUSE_MESSAGE_TYPE_NOT_COMPATIBLE_WITH_PROT_STA},
+    {NAS_ESM_CAUSE_INFO_ELEMENT_NON_EXIST_OR_NOT_IMPLEMENTED, ESM_OM_ERRLOG_CAUSE_INFO_ELEMENT_NON_EXIST_OR_NOT_IMPLEMENTED},
+    {NAS_ESM_CAUSE_CONDITIONAL_IE_ERROR,            ESM_OM_ERRLOG_CAUSE_CONDITIONAL_IE_ERROR},
+    {NAS_ESM_CAUSE_MESSAGE_NOT_COMPATIBLE_WITH_PROT_STA,     ESM_OM_ERRLOG_CAUSE_MESSAGE_NOT_COMPATIBLE_WITH_PROT_STA},
+    {NAS_ESM_CAUSE_PROTOCOL_ERROR,                  ESM_OM_ERRLOG_CAUSE_PROTOCOL_ERROR},
+    {NAS_ESM_CAUSE_APN_RESTRICTION_VAL_INCOMPATIBLE_WITH_ACT_BEARER, ESM_OM_ERRLOG_CAUSE_APN_RESTRICTION_VAL_INCOMPATIBLE_WITH_ACT_BEARER},
+};
+
+static VOS_UINT32   g_astEsmErrlogErrNum
+        = sizeof(g_astEsmErrlogErrNoMap)/sizeof(NAS_ESM_CN_CAUSE_TRANS_STRU);
+#endif
 
 
 
@@ -1759,8 +1806,251 @@ VOS_VOID NAS_ESM_SndEsmEmmClrEsmProcResNtyMsg(VOS_UINT32 ulOpId, VOS_UINT8 ucIsE
 /*lint +e961*/
 /*lint +e960*/
 
+#if (FEATURE_ON == FEATURE_PTM)
+
+ESM_OM_ERRLOG_ID_ENUM_UINT16  NAS_ESM_CnCauseProc(VOS_UINT8 ucCnCause)
+{
+    ESM_OM_ERRLOG_ID_ENUM_UINT16   ulErrId = 0;
+    VOS_UINT32 i;
+
+    NAS_ESM_INFO_LOG("NAS_ESM_CnCauseProc!");
+
+    for(i = 0; i < g_astEsmErrlogErrNum; i++)
+    {
+        if(ucCnCause == g_astEsmErrlogErrNoMap[i].ulEsmCnCasue)
+        {
+            ulErrId = g_astEsmErrlogErrNoMap[i].ulEsmErrId;
+            break;
+        }
+    }
+    if(g_astEsmErrlogErrNum == i)
+    {
+            ulErrId = ESM_OM_ERRLOG_CAUSE_OTHERS;
+    }
+
+    return ulErrId;
+}
 
 
+VOS_VOID NAS_ESM_SndEsmErrlogToEmm(
+                 VOS_VOID     *pstEsmErrRslt,  VOS_UINT32   ulEsmErrLength)
+{
+    EMM_ESM_SAVE_ERRLOG_IND_STRU        *pstSaveEsmErrMsg = NAS_ESM_NULL;
+    VOS_UINT32                          ulLength          = 0;
+
+    NAS_ESM_NORM_LOG("NAS_ESM_SndEsmErrlogToEmm!!!");
+
+    /*根据消息的长度分配空间*/
+    ulLength = sizeof(EMM_ESM_SAVE_ERRLOG_IND_STRU) + ulEsmErrLength - 4;
+
+    pstSaveEsmErrMsg = (VOS_VOID*)NAS_ESM_ALLOC_MSG(ulLength);
+    /*检测是否分配成功*/
+    if (VOS_NULL_PTR == pstSaveEsmErrMsg)
+    {
+         /*打印异常信息*/
+         NAS_ESM_ERR_LOG("NAS_ESM_SndEsmErrlogToEmm:ERROR:Alloc Msg fail!");
+         return ;
+    }
+
+    /*清空*/
+    NAS_ESM_MEM_SET(pstSaveEsmErrMsg, 0, ulLength);
+
+    /*填写实际的esm errlog消息头长度*/
+    pstSaveEsmErrMsg->stEmmEsmErrlog.ulEsmMsgSize = ulEsmErrLength;
+
+    /*填写实际要写入缓冲区的esm errlog数据*/
+    NAS_ESM_MEM_CPY(pstSaveEsmErrMsg->stEmmEsmErrlog.aucEsmMsg, pstEsmErrRslt, ulEsmErrLength);
+
+    /*填写消息头*/
+    NAS_ESM_WRITE_EMM_MSG_HEAD(pstSaveEsmErrMsg, ID_EMM_ESM_SAVE_ERRLOG_IND);
+
+    /*调用消息发送函数 */
+    NAS_ESM_SND_MSG(pstSaveEsmErrMsg);
+}
+
+VOS_VOID  NAS_ESM_PdnConFailRecord(
+        const EMM_ESM_INTRA_DATA_IND_STRU   *pstEmmEsmDataInd,
+        ESM_OM_ERRLOG_TIMEOUT_ENUM_UINT16   enErrEsmTimeOut)
+{
+    ESM_ERR_INFO_PDN_CONN_REJ_RESULT_EVENT_STRU            stEsmPdnConnFailRslt;
+    VOS_UINT32                                              ulLength;
+    VOS_UINT16                                              usLevel;
+    VOS_UINT32                                              ulIsLogRecord;
+
+    NAS_ESM_NORM_LOG("NAS_ESM_PdnConFailRecord!!");
+
+
+    /* 查询对应Alarm Id是否需要记录异常信息 */
+    usLevel       = NAS_EMM_GetErrLogAlmLevel(LNAS_OM_ERRLOG_ALM_ID_ESM_PDN_CONN_FAIL);
+    ulIsLogRecord = NAS_EMM_IsErrLogNeedRecord(usLevel);
+
+    /* 模块异常不需要记录或异常原因值不需要记录时，不保存异常信息 */
+    if (VOS_FALSE == ulIsLogRecord)
+    {
+        return;
+    }
+
+    ulLength = sizeof(ESM_ERR_INFO_PDN_CONN_REJ_RESULT_EVENT_STRU);
+
+    PS_MEM_SET(&stEsmPdnConnFailRslt, 0x00, ulLength);
+
+    /*填充esm fail异常场景头*/
+    NAS_ESM_COMM_BULID_ERRLOG_HEADER_INFO(&stEsmPdnConnFailRslt.stHeader,
+                                   VOS_GetModemIDFromPid(PS_PID_ESM),
+                                   LNAS_OM_ERRLOG_ALM_ID_ESM_PDN_CONN_FAIL,
+                                   usLevel,
+                                   VOS_GetSlice(),
+                                   (ulLength - sizeof(OM_ERR_LOG_HEADER_STRU)));
+
+    if(VOS_NULL_PTR != pstEmmEsmDataInd)
+    {
+        stEsmPdnConnFailRslt.enFailCause =
+                    NAS_ESM_CnCauseProc(pstEmmEsmDataInd->stEsmNwMsgIE.enEsmCau);
+    }
+    stEsmPdnConnFailRslt.enEsmTimeout = enErrEsmTimeOut;
+
+    /*发送ESM errlog信息给EMM，为防止并发导致存储log失败，由EMM保存*/
+    NAS_ESM_SndEsmErrlogToEmm(&stEsmPdnConnFailRslt, ulLength);
+}
+
+
+VOS_VOID  NAS_ESM_PdnDisconFailRecord(
+        const EMM_ESM_INTRA_DATA_IND_STRU   *pstEmmEsmDataInd,
+        ESM_OM_ERRLOG_TIMEOUT_ENUM_UINT16   enErrEsmTimeOut)
+{
+    ESM_ERR_INFO_PDN_DISCONN_REJ_RESULT_EVENT_STRU         stEsmPdnDisconFailRslt;
+    VOS_UINT32                                              ulLength;
+    VOS_UINT16                                              usLevel;
+    VOS_UINT32                                              ulIsLogRecord;
+
+
+    NAS_ESM_NORM_LOG("NAS_ESM_PdnDisconFailRecord!!");
+
+
+    /* 查询对应Alarm Id是否需要记录异常信息 */
+    usLevel       = NAS_EMM_GetErrLogAlmLevel(LNAS_OM_ERRLOG_ALM_ID_ESM_PDN_DISCONN_FAIL);
+    ulIsLogRecord = NAS_EMM_IsErrLogNeedRecord(usLevel);
+
+    /* 模块异常不需要记录或异常原因值不需要记录时，不保存异常信息 */
+    if (VOS_FALSE == ulIsLogRecord)
+    {
+        return;
+    }
+
+    ulLength = sizeof(ESM_ERR_INFO_PDN_DISCONN_REJ_RESULT_EVENT_STRU);
+
+    PS_MEM_SET(&stEsmPdnDisconFailRslt, 0x00, ulLength);
+
+    /*填充esm fail异常场景头*/
+    NAS_ESM_COMM_BULID_ERRLOG_HEADER_INFO(&stEsmPdnDisconFailRslt.stHeader,
+                                   VOS_GetModemIDFromPid(PS_PID_ESM),
+                                   LNAS_OM_ERRLOG_ALM_ID_ESM_PDN_DISCONN_FAIL,
+                                   usLevel,
+                                   VOS_GetSlice(),
+                                   (ulLength - sizeof(OM_ERR_LOG_HEADER_STRU)));
+
+    if(VOS_NULL_PTR != pstEmmEsmDataInd)
+    {
+        stEsmPdnDisconFailRslt.enFailCause =
+                        NAS_ESM_CnCauseProc(pstEmmEsmDataInd->stEsmNwMsgIE.enEsmCau);
+    }
+    stEsmPdnDisconFailRslt.enEsmTimeout = enErrEsmTimeOut;
+
+    /*发送ESM errlog信息给EMM，为防止并发导致存储log失败，由EMM保存*/
+     NAS_ESM_SndEsmErrlogToEmm(&stEsmPdnDisconFailRslt, ulLength);
+}
+
+
+VOS_VOID  NAS_ESM_ResModFailRecord(
+        const EMM_ESM_INTRA_DATA_IND_STRU   *pstEmmEsmDataInd,
+        ESM_OM_ERRLOG_TIMEOUT_ENUM_UINT16   enErrEsmTimeOut)
+{
+    ESM_ERR_INFO_RES_MOD_REJ_RESULT_EVENT_STRU             stEsmResModFailRslt;
+    VOS_UINT32                                              ulLength;
+    VOS_UINT16                                              usLevel;
+    VOS_UINT32                                              ulIsLogRecord;
+
+    NAS_ESM_NORM_LOG("NAS_ESM_ResModFailRecord!!");
+
+    /* 查询对应Alarm Id是否需要记录异常信息 */
+    usLevel       = NAS_EMM_GetErrLogAlmLevel(LNAS_OM_ERRLOG_ALM_ID_ESM_RES_MOD_FAIL);
+    ulIsLogRecord = NAS_EMM_IsErrLogNeedRecord(usLevel);
+
+    /* 模块异常不需要记录或异常原因值不需要记录时，不保存异常信息 */
+    if (VOS_FALSE == ulIsLogRecord)
+    {
+        return;
+    }
+
+    ulLength = sizeof(ESM_ERR_INFO_RES_MOD_REJ_RESULT_EVENT_STRU);
+
+    PS_MEM_SET(&stEsmResModFailRslt, 0x00, ulLength);
+
+    /*填充esm fail异常场景头*/
+    NAS_ESM_COMM_BULID_ERRLOG_HEADER_INFO(&stEsmResModFailRslt.stHeader,
+                                   VOS_GetModemIDFromPid(PS_PID_ESM),
+                                   LNAS_OM_ERRLOG_ALM_ID_ESM_RES_MOD_FAIL,
+                                   usLevel,
+                                   VOS_GetSlice(),
+                                   (ulLength - sizeof(OM_ERR_LOG_HEADER_STRU)));
+
+    if(VOS_NULL_PTR != pstEmmEsmDataInd)
+    {
+        stEsmResModFailRslt.enFailCause =
+                        NAS_ESM_CnCauseProc(pstEmmEsmDataInd->stEsmNwMsgIE.enEsmCau);
+    }
+    stEsmResModFailRslt.enEsmTimeout = enErrEsmTimeOut;
+
+    /*发送ESM errlog信息给EMM，为防止并发导致存储log失败，由EMM保存*/
+    NAS_ESM_SndEsmErrlogToEmm(&stEsmResModFailRslt, ulLength);
+}
+
+
+VOS_VOID  NAS_ESM_ResAllocFailRecord(
+        const EMM_ESM_INTRA_DATA_IND_STRU   *pstEmmEsmDataInd,
+        ESM_OM_ERRLOG_TIMEOUT_ENUM_UINT16   enErrEsmTimeOut)
+{
+    ESM_ERR_INFO_RES_ALLOC_REJ_RESULT_EVENT_STRU           stEsmResAllocFailRslt;
+    VOS_UINT32                                              ulLength;
+    VOS_UINT16                                              usLevel;
+    VOS_UINT32                                              ulIsLogRecord;
+
+    NAS_ESM_NORM_LOG("NAS_ESM_ResAllocFailRecord!!");
+
+    /* 查询对应Alarm Id是否需要记录异常信息 */
+    usLevel       = NAS_EMM_GetErrLogAlmLevel(LNAS_OM_ERRLOG_ALM_ID_ESM_RES_ALLOC_FAIL);
+    ulIsLogRecord = NAS_EMM_IsErrLogNeedRecord(usLevel);
+
+    /* 模块异常不需要记录或异常原因值不需要记录时，不保存异常信息 */
+    if (VOS_FALSE == ulIsLogRecord)
+    {
+        return;
+    }
+
+    ulLength = sizeof(ESM_ERR_INFO_RES_ALLOC_REJ_RESULT_EVENT_STRU);
+
+    PS_MEM_SET(&stEsmResAllocFailRslt, 0x00, ulLength);
+
+    /*填充esm fail异常场景头*/
+    NAS_ESM_COMM_BULID_ERRLOG_HEADER_INFO(&stEsmResAllocFailRslt.stHeader,
+                                   VOS_GetModemIDFromPid(PS_PID_ESM),
+                                   LNAS_OM_ERRLOG_ALM_ID_ESM_RES_ALLOC_FAIL,
+                                   usLevel,
+                                   VOS_GetSlice(),
+                                   (ulLength - sizeof(OM_ERR_LOG_HEADER_STRU)));
+
+    if(VOS_NULL_PTR != pstEmmEsmDataInd)
+    {
+        stEsmResAllocFailRslt.enFailCause =
+                        NAS_ESM_CnCauseProc(pstEmmEsmDataInd->stEsmNwMsgIE.enEsmCau);
+    }
+    stEsmResAllocFailRslt.enEsmTimeout = enErrEsmTimeOut;
+
+    /*发送ESM errlog信息给EMM，为防止并发导致存储log失败，由EMM保存*/
+    NAS_ESM_SndEsmErrlogToEmm(&stEsmResAllocFailRslt, ulLength);
+}
+
+#endif
 #ifdef __cplusplus
     #if __cplusplus
         }

@@ -1490,34 +1490,7 @@ ath5k_hw_channel(struct ath5k_hw *ah,
   PHY calibration
 \*****************/
 
-/**
- * DOC: PHY Calibration routines
- *
- * Noise floor calibration: When we tell the hardware to
- * perform a noise floor calibration by setting the
- * AR5K_PHY_AGCCTL_NF bit on AR5K_PHY_AGCCTL, it will periodically
- * sample-and-hold the minimum noise level seen at the antennas.
- * This value is then stored in a ring buffer of recently measured
- * noise floor values so we have a moving window of the last few
- * samples. The median of the values in the history is then loaded
- * into the hardware for its own use for RSSI and CCA measurements.
- * This type of calibration doesn't interfere with traffic.
- *
- * AGC calibration: When we tell the hardware to perform
- * an AGC (Automatic Gain Control) calibration by setting the
- * AR5K_PHY_AGCCTL_CAL, hw disconnects the antennas and does
- * a calibration on the DC offsets of ADCs. During this period
- * rx/tx gets disabled so we have to deal with it on the driver
- * part.
- *
- * I/Q calibration: When we tell the hardware to perform
- * an I/Q calibration, it tries to correct I/Q imbalance and
- * fix QAM constellation by sampling data from rxed frames.
- * It doesn't interfere with traffic.
- *
- * For more infos on AGC and I/Q calibration check out patent doc
- * #03/094463.
- */
+
 
 /**
  * ath5k_hw_read_measured_noise_floor() - Read measured NF from hw

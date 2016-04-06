@@ -252,10 +252,7 @@ enum {
 	 *   5th byte: frame rate
 	 */
 
-	/* :0 s b8 81 1800 0003 0003 3 <
-	 * :0 0 3 = 030104
-	 * QUERY SIGNAL AND DETECTED LINES, maybe INPUT
-	 */
+
 
 enum hdpvr_video_std {
 	HDPVR_60HZ = 0,

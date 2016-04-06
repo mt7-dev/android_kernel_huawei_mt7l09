@@ -62,7 +62,8 @@ extern "C" {
         IMSA_CONN_SndConnSetupInd(IMSA_CONN_RESULT_SUCCESS, (enConnType), IMSA_CONN_SIP_PDP_TYPE_SIGNAL);\
     }
 
-#define IMSA_CONN_SetupConnFail(enConnType, enResult)\
+#if 0
+#define IMSA_CONN_SetupConnFail(enConnType, enResult, enCnRejCause)\
     {\
         /* 更新连接状态为IDLE */\
         IMSA_CONN_SetConnStatus(enConnType, IMSA_CONN_STATUS_IDLE);\
@@ -72,10 +73,10 @@ extern "C" {
 \
         IMSA_CONN_SndConnSetupInd(  enResult,\
                                     enConnType,\
-                                    IMSA_CONN_SIP_PDP_TYPE_SIGNAL);\
+                                    IMSA_CONN_SIP_PDP_TYPE_SIGNAL,\
+                                    enCnRejCause);\
     }
-
-
+#endif
 /*****************************************************************************
   3 Massage Declare
 *****************************************************************************/
@@ -132,8 +133,11 @@ extern VOS_VOID IMSA_CONN_SndConnSetupInd
 );
 extern VOS_VOID IMSA_CONN_SndConnMediaPdpModifyInd
 (
-    IMSA_CONN_TYPE_ENUM_UINT32              enConnType
+    IMSA_CONN_TYPE_ENUM_UINT32              enConnType,
+    IMSA_CONN_MEDIA_PDP_TYPE_ENUM_UINT32    enModifyType
 );
+
+extern VOS_VOID IMSA_CONN_SndConnRegPcscfInvalid( IMSA_CONN_TYPE_ENUM_UINT32 enConnType );
 extern VOS_VOID IMSA_CONN_SndConnRelInd
 (
     IMSA_CONN_TYPE_ENUM_UINT32              enConnType,
@@ -301,8 +305,41 @@ extern VOS_VOID IMSA_CONN_AddNormalPdpInfo2NicPdpInfo(VOS_VOID);
 extern VOS_VOID IMSA_CONN_AddEmcPdpInfo2NicPdpInfo(VOS_VOID);
 extern VOS_VOID IMSA_CONN_AddPdpInfo2NicPdpInfo(VOS_VOID);
 
+extern VOS_UINT32 IMSA_CONN_SipSignalPdpActOrig
+(
+    IMSA_CONN_TYPE_ENUM_UINT32          enConnType,
+    VOS_UINT8                           ucCid,
+    IMSA_IP_TYPE_ENUM_UINT8             enIpType
+);
 
-
+extern VOS_UINT32 IMSA_CONN_IsVoiceMediaPdpType
+(
+    IMSA_PDP_TFT_INFO_STRU              *pstTft,
+    VOS_UINT8                           ucQCI
+);
+#if (FEATURE_ON == FEATURE_PTM)
+extern IMSA_ERR_LOG_PDNREJ_CAUSE_ENUM_UINT32  IMSA_PDN_CnRejCauseProc
+(
+    TAF_PS_CAUSE_ENUM_UINT32 enCause
+);
+extern IMSA_ERR_LOG_PDNREJ_CAUSE_ENUM_UINT32  IMSA_PDN_InterRejCauseProc
+(
+    IMSA_CONN_RESULT_ENUM_UINT32    enResult,
+    TAF_PS_CAUSE_ENUM_UINT32        enCause
+);
+#endif
+extern VOS_VOID IMSA_CONN_SetupConnFail
+(
+    IMSA_CONN_TYPE_ENUM_UINT32          enConnType,
+    IMSA_CONN_RESULT_ENUM_UINT32        enResult,
+    TAF_PS_CAUSE_ENUM_UINT32            enCause
+);
+extern VOS_VOID IMSA_CONN_SndConnMediaSetupInd
+(
+    IMSA_CONN_RESULT_ENUM_UINT32            enResult,
+    IMSA_CONN_TYPE_ENUM_UINT32              enConnType,
+    IMSA_CONN_MEDIA_PDP_TYPE_ENUM_UINT32    enMediaPdpType
+);
 /*****************************************************************************
   9 OTHERS
 *****************************************************************************/

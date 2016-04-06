@@ -66,38 +66,38 @@ TAF_ACT_STRU        g_astTafSpmMainProcessActTbl[]   =
 
     TAF_ACT_TBL_ITEM( WUEPS_PID_AT,
                       TAF_MSG_ERASECCENTRY_MSG,
-                      TAF_SPM_RcvAppReqMsg_Main ),    
+                      TAF_SPM_RcvAppReqMsg_Main ),
 
     TAF_ACT_TBL_ITEM( WUEPS_PID_AT,
                       TAF_MSG_PROCESS_USS_MSG,
                       TAF_SPM_RcvAppReqMsg_Main ),
-                      
+
 
     /* STK SS message */
     TAF_ACT_TBL_ITEM( MAPS_STK_PID,
                       STK_SS_USSD_REQ,
                       TAF_SPM_RcvAppReqMsg_Main ),
-                      
+
     TAF_ACT_TBL_ITEM( MAPS_STK_PID,
                       STK_SS_REGISTERSS_REQ,
                       TAF_SPM_RcvAppReqMsg_Main ),
-    
+
     TAF_ACT_TBL_ITEM( MAPS_STK_PID,
                       STK_SS_ERASESS_REQ,
                       TAF_SPM_RcvAppReqMsg_Main ),
-    
+
     TAF_ACT_TBL_ITEM( MAPS_STK_PID,
                       STK_SS_ACTIVATESS_REQ,
                       TAF_SPM_RcvAppReqMsg_Main ),
-    
+
     TAF_ACT_TBL_ITEM( MAPS_STK_PID,
                       STK_SS_DEACTIVATESS_REQ,
                       TAF_SPM_RcvAppReqMsg_Main ),
-    
+
     TAF_ACT_TBL_ITEM( MAPS_STK_PID,
                       STK_SS_INTERROGATESS_REQ,
                       TAF_SPM_RcvAppReqMsg_Main ),
-    
+
     TAF_ACT_TBL_ITEM( MAPS_STK_PID,
                       STK_SS_REGPWD_REQ,
                       TAF_SPM_RcvAppReqMsg_Main ),
@@ -138,6 +138,12 @@ TAF_ACT_STRU        g_astTafSpmMainProcessActTbl[]   =
 
 
 
+
+#if (FEATURE_ON == FEATURE_IMS)
+    TAF_ACT_TBL_ITEM( WUEPS_PID_AT,
+                      TAF_CALL_APP_ECONF_DIAL_REQ,
+                      TAF_SPM_RcvAppReqMsg_Main ),
+#endif
 
 
 };

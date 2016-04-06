@@ -63,6 +63,18 @@ extern "C" {
   7 Extern Global Variable
 *****************************************************************************/
 extern OM_ESM_STATE_INFO_STRU   g_stEsmOmInfo[APP_ESM_MAX_EPSB_NUM];
+extern VOS_VOID NAS_ESM_InitAttachBearerReestInfo();
+extern VOS_UINT32 NAS_PTT_PidInit ( enum VOS_INIT_PHASE_DEFINE ip );
+extern VOS_VOID  NAS_PTT_TaskEntry( MsgBlock* pMsg );
+extern VOS_VOID  IP_TaskEntry
+(
+    MsgBlock                           *pstMsg
+);
+extern VOS_UINT32 IP_PidInit
+(
+    enum VOS_INIT_PHASE_DEFINE ip
+);
+
 
 /*****************************************************************************
   8 Fuction Extern

@@ -200,6 +200,7 @@ VOS_VOID CDS_UlProcImsData(MODEM_ID_ENUM_UINT16 enModemId)
     TTF_MEM_ST             *pstIpPkt;
     VOS_INT32               lLock;
     CDS_ENTITY_STRU        *pstCdsEntity;
+    IPF_RESULT_STRU        *pstIpfResult;
     VOS_UINT16              usResult;
 
     pstCdsEntity = CDS_GetCdsEntity(enModemId);
@@ -211,7 +212,7 @@ VOS_VOID CDS_UlProcImsData(MODEM_ID_ENUM_UINT16 enModemId)
     for (ulCnt = 0; ulCnt < CDS_IMS_QUE_SIZE; ulCnt ++)
     {
         lLock = VOS_SplIMP();
-        if (PS_SUCC != LUP_DeQue(pstCdsEntity->pstIMSDataQue, &pstIpPkt))
+        if (PS_SUCC != LUP_DeQue(pstCdsEntity->pstIMSDataQue, (VOS_VOID **)&pstIpPkt))
         {
             VOS_Splx(lLock);
             break;
@@ -228,7 +229,8 @@ VOS_VOID CDS_UlProcImsData(MODEM_ID_ENUM_UINT16 enModemId)
         }
 
         /*将过滤结果存到TTF中*/
-        CDS_UL_SAVE_IPFRSLT_TO_TTF(pstIpPkt,usResult);
+        pstIpfResult = (IPF_RESULT_STRU *)((VOS_UINT32)&usResult);
+        CDS_UL_SAVE_IPFRSLT_MODEMID_RABID_TO_TTF(pstIpPkt, usResult, enModemId, pstIpfResult->usBearedId);
 
         /*鈎包*/
         CDS_SendIpPacket2PC(pstIpPkt);
@@ -431,9 +433,17 @@ VOS_UINT32 CDS_ImsGetPktDestPort(VOS_UINT16 *pusDestPort,
         return PS_FAIL;
     }
 
+    /*异常保护,端口号不能为0*/
+    if (0 == *pusDestPort)
+    {
+        return PS_FAIL;
+    }
+
     return PS_SUCC;
 
 }
+
+
 VOS_UINT32 CDS_IsImsUtPkt(const TTF_MEM_ST *pstIpPkt,const CDS_ENTITY_STRU *pstCdsEntity)
 {
     CDS_IP_DATA_INFO_STRU       stIpPktInfo = {0};

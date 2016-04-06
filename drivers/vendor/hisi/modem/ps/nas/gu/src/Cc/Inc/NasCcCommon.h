@@ -34,6 +34,10 @@ extern "C" {
 #include "pslog.h"
 #include "NasCommDef.h"
 
+#if (FEATURE_ON == FEATURE_PTM)
+#include "NasErrorLog.h"
+#endif
+
 /*****************************************************************************
   2 常量定义
 *****************************************************************************/
@@ -124,6 +128,22 @@ extern NAS_CC_AIR_MSG_BUF_STRU          g_stNasCcBufferedSetupMsg;
 #endif
 
 VOS_VOID NAS_CC_ReadNvimInfo(VOS_VOID);
+
+
+#if (FEATURE_ON == FEATURE_PTM)
+VOS_VOID NAS_CC_SndAcpuOmFaultErrLogInd(
+    VOS_VOID                           *pData,
+    VOS_UINT32                          ulDataLen
+);
+VOS_UINT32 NAS_CC_IsErrLogNeedRecord(VOS_UINT16 usLevel);
+VOS_VOID NAS_CC_CsMtCallFailRecord(
+    NAS_ERR_LOG_CS_MT_CALL_CAUSE_ENUM_U32   enCause
+);
+#endif
+
+VOS_VOID  NAS_CC_LogBufferQueueMsg(
+    VOS_UINT32                          ulFullFlg
+);
 
 #ifdef __cplusplus
 #if __cplusplus

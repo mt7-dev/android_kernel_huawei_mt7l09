@@ -44,7 +44,7 @@ extern "C"
 
 /*IPF√Ë ˆ∑˚µÿ÷∑∂®“Â*/
 
-#define IPF_DLBD_MEM_ADDR              SHM_MEM_IPF_ADDR
+#define IPF_DLBD_MEM_ADDR              (unsigned long)(SHM_MEM_IPF_ADDR)
 #define IPF_DLBD_MEM_SIZE               (IPF_DLBD_DESC_SIZE * sizeof(IPF_BD_DESC_S))
 
 #define IPF_DLRD_MEM_ADDR              (IPF_DLBD_MEM_ADDR + IPF_DLBD_MEM_SIZE)
@@ -151,8 +151,8 @@ extern "C"
 #define IPF_PRINT                         printk
 #endif
 
-#define IPF_IO_ADDRESS(x)  (((x) - DDR_SHARED_MEM_ADDR) + DDR_SHARED_MEM_VIRT_ADDR)
-#define IPF_IO_ADDRESS_PHY(x)  (((x) - DDR_SHARED_MEM_VIRT_ADDR) + DDR_SHARED_MEM_ADDR)
+#define IPF_IO_ADDRESS(x)  ((unsigned long)(x) - (unsigned long)(DDR_SHARED_MEM_ADDR) + (unsigned long)(DDR_SHARED_MEM_VIRT_ADDR))
+#define IPF_IO_ADDRESS_PHY(x)  ((unsigned long)(x) - (unsigned long)(DDR_SHARED_MEM_VIRT_ADDR) + (unsigned long)(DDR_SHARED_MEM_ADDR))
 
 
 /**************************************************************************
@@ -545,11 +545,11 @@ int bsp_ipf_reset_ccore_lpm3_cb(DRV_RESET_CALLCBFUN_MOMENT eparam, int userdata)
 #endif
 
 #if (defined(BSP_CONFIG_HI3630) && defined(__KERNEL__))
-static __inline__ unsigned ipf_readl(u32 addr)
+static __inline__ unsigned ipf_readl(void * addr)
 {
     return readl((const volatile void *)(addr));
 }
-static __inline__ void ipf_writel(u32 val, u32 addr)
+static __inline__ void ipf_writel(u32 val, void * addr)
 {
     writel(val, (volatile void *)addr);
 }

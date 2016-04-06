@@ -49,13 +49,15 @@
  */
 
 #include "dwc_otg_pcd.h"
-#include "dwc_otg_hi3630.h"
+#include "dwc_otg_driver.h"
 
 #ifdef DWC_UTE_CFI
 #include "dwc_otg_cfi.h"
 
 extern int init_cfi(cfiobject_t * cfiobj);
 #endif
+
+struct ep_dma_desc g_dma_desc[MAX_EPS_CHANNELS][2];
 
 /**
  * Choose endpoint from ep arrays using usb_ep structure.
@@ -1038,14 +1040,9 @@ static void srp_timeout(void *ptr)
 		DWC_PRINTF("SRP Timeout\n");
 
 		if ((core_if->srp_success) && (gotgctl.b.bsesvld)) {
-			// changed by l00196665
-			#if 0
 			if (core_if->pcd_cb && core_if->pcd_cb->resume_wakeup) {
 				core_if->pcd_cb->resume_wakeup(core_if->pcd_cb->p);
 			}
-			#else
-			cil_pcd_resume(core_if);
-			#endif
 
 			/* Clear Session Request */
 			gotgctl.d32 = 0;
@@ -1109,24 +1106,6 @@ static void start_xfer_tasklet_func(void *data)
 	return;
 }
 
-static void disconnect_detect_work(struct work_struct *work)
-{
-	struct dwc_otg_pcd *pcd = container_of(work, struct dwc_otg_pcd,
-			disconnect_detect_work.work);
-	int enum_done, set_addr;
-
-	enum_done = atomic_read(&pcd->is_enumdone_interrupt_received);
-	set_addr = atomic_read(&pcd->is_set_address_request_received);
-
-	printk(KERN_INFO "[%s]is_enum_done_interrupt: %d,"
-		" is_set_address_request: %d\n",
-		__func__, enum_done, set_addr);
-
-	if ((0 == enum_done) && (0 == set_addr)) {
-		pcd->fops->disconnect(pcd);
-	}
-}
-
 /**
  * This function initialized the PCD portion of the driver.
  *
@@ -1156,11 +1135,7 @@ dwc_otg_pcd_t *dwc_otg_pcd_init(dwc_otg_core_if_t * core_if)
 	core_if->lock = pcd->lock;
 #else
 	pcd->lock = core_if->lock;
-	if ((spinlock_t *)pcd->lock != &core_if->core_if_lock) {
-		WARN_ON(1);
-	}
 #endif
-
 	pcd->core_if = core_if;
 
 	dev_if = core_if->dev_if;
@@ -1171,11 +1146,6 @@ dwc_otg_pcd_t *dwc_otg_pcd_init(dwc_otg_core_if_t * core_if)
 	} else {
 		DWC_PRINTF("Shared Tx FIFO mode\n");
 	}
-
-	/*
-	 * Initialize the delayed work for detect usb cable disconnect.
-	 */
-	INIT_DELAYED_WORK(&pcd->disconnect_detect_work, disconnect_detect_work);
 
 	/*
 	 * Initialized the Core for Device mode here if there is nod ADP support.
@@ -1278,7 +1248,16 @@ dwc_otg_pcd_t *dwc_otg_pcd_init(dwc_otg_core_if_t * core_if)
 
 	dwc_otg_pcd_reinit(pcd);
 
-
+	/* Allocate the cfi object for the PCD */
+#ifdef DWC_UTE_CFI
+	pcd->cfi = DWC_ALLOC(sizeof(cfiobject_t));
+	if (NULL == pcd->cfi)
+		goto fail;
+	if (init_cfi(pcd->cfi)) {
+		CFI_INFO("%s: Failed to init the CFI object\n", __func__);
+		goto fail;
+	}
+#endif
 
 	/* Initialize tasklets */
 	pcd->start_xfer_tasklet = DWC_TASK_ALLOC("xfer_tasklet",
@@ -1302,6 +1281,20 @@ dwc_otg_pcd_t *dwc_otg_pcd_init(dwc_otg_core_if_t * core_if)
 	}
 
 	return pcd;
+#ifdef DWC_UTE_CFI
+fail:
+#endif
+	if (pcd->setup_pkt)
+		DWC_FREE(pcd->setup_pkt);
+	if (pcd->status_buf)
+		DWC_FREE(pcd->status_buf);
+#ifdef DWC_UTE_CFI
+	if (pcd->cfi)
+		DWC_FREE(pcd->cfi);
+#endif
+	if (pcd)
+		DWC_FREE(pcd);
+	return NULL;
 
 }
 
@@ -1404,10 +1397,10 @@ uint32_t dwc_otg_pcd_is_otg(dwc_otg_pcd_t * pcd)
  * This function assigns periodic Tx FIFO to an periodic EP
  * in shared Tx FIFO mode
  */
-static uint32_t assign_tx_fifo(dwc_otg_core_if_t * core_if)
+uint32_t assign_tx_fifo(dwc_otg_core_if_t * core_if)
 {
 	uint32_t TxMsk = 1;
-	int i;
+	uint32_t i;
 
 	for (i = 0; i < core_if->hwcfg4.b.num_in_eps; ++i) {
 		if ((TxMsk & core_if->tx_msk) == 0) {
@@ -1426,7 +1419,7 @@ static uint32_t assign_tx_fifo(dwc_otg_core_if_t * core_if)
 static uint32_t assign_perio_tx_fifo(dwc_otg_core_if_t * core_if)
 {
 	uint32_t PerTxMsk = 1;
-	int i;
+	uint32_t i;
 	for (i = 0; i < core_if->hwcfg4.b.num_dev_perio_in_ep; ++i) {
 		if ((PerTxMsk & core_if->p_tx_msk) == 0) {
 			core_if->p_tx_msk |= PerTxMsk;
@@ -1469,6 +1462,9 @@ int dwc_otg_pcd_ep_enable(dwc_otg_pcd_t * pcd,
 	dwc_otg_pcd_ep_t *ep = NULL;
 	const usb_endpoint_descriptor_t *desc;
 	dwc_irqflags_t flags;
+	fifosize_data_t dptxfsiz = {.d32 = 0 };
+	gdfifocfg_data_t gdfifocfg = {.d32 = 0 };
+	gdfifocfg_data_t gdfifocfgbase = {.d32 = 0 };
 	int retval = 0;
 	int i, epcount;
 
@@ -1544,8 +1540,31 @@ int dwc_otg_pcd_ep_enable(dwc_otg_pcd_t * pcd,
 			/*
 			 * if Dedicated FIFOs mode is on then assign a Tx FIFO.
 			 */
-			ep->dwc_ep.tx_fifo_num =
-			    assign_tx_fifo(GET_CORE_IF(pcd));
+			/*ep->dwc_ep.tx_fifo_num =
+			    assign_tx_fifo(GET_CORE_IF(pcd));*/
+			/*the fifo num need to be the same as the ep num*/
+            ep->dwc_ep.tx_fifo_num = ep->dwc_ep.num;
+            printk(KERN_INFO "%s: tx_fifo_num %x ep num %x\n",__FUNCTION__,ep->dwc_ep.tx_fifo_num,ep->dwc_ep.num);
+		}
+
+		/* Calculating EP info controller base address */
+		if (ep->dwc_ep.tx_fifo_num
+		    && GET_CORE_IF(pcd)->en_multiple_tx_fifo) {
+			gdfifocfg.d32 =
+			    DWC_READ_REG32(&GET_CORE_IF(pcd)->
+					   core_global_regs->gdfifocfg);
+			gdfifocfgbase.d32 = gdfifocfg.d32 >> 16;
+			dptxfsiz.d32 =
+			    (DWC_READ_REG32
+			     (&GET_CORE_IF(pcd)->core_global_regs->
+			      dtxfsiz[ep->dwc_ep.tx_fifo_num - 1]) >> 16);
+			gdfifocfg.b.epinfobase =
+			    gdfifocfgbase.d32 + dptxfsiz.d32;
+			if (GET_CORE_IF(pcd)->snpsid <= OTG_CORE_REV_2_94a) {
+				DWC_WRITE_REG32(&GET_CORE_IF(pcd)->
+						core_global_regs->gdfifocfg,
+						gdfifocfg.d32);
+			}
 		}
 	}
 	/* Set initial data PID. */
@@ -1558,10 +1577,8 @@ int dwc_otg_pcd_ep_enable(dwc_otg_pcd_t * pcd,
 #ifndef DWC_UTE_PER_IO
 		if (ep->dwc_ep.type != UE_ISOCHRONOUS) {
 #endif
-			ep->dwc_ep.desc_addr =
-			    dwc_otg_ep_alloc_desc_chain(&ep->
-							dwc_ep.dma_desc_addr,
-							MAX_DMA_DESC_CNT);
+			ep->dwc_ep.desc_addr = g_dma_desc[ep->dwc_ep.num][ep->dwc_ep.is_in].desc_addr;
+			ep->dwc_ep.dma_desc_addr = g_dma_desc[ep->dwc_ep.num][ep->dwc_ep.is_in].dma_desc_addr;
 			if (!ep->dwc_ep.desc_addr) {
 				DWC_WARN("%s, can't allocate DMA descriptor\n",
 					 __func__);
@@ -1585,13 +1602,7 @@ int dwc_otg_pcd_ep_enable(dwc_otg_pcd_t * pcd,
 		ep->dwc_ep.frame_num = 0xFFFFFFFF;
 	}
 
-	if (likely(dwc_otg_hi3630_is_power_on())) {
-		dwc_otg_ep_activate(GET_CORE_IF(pcd), &ep->dwc_ep);
-	} else {
-		printk("[%s]don't access registers after power off\n", __func__);
-		DWC_SPINUNLOCK_IRQRESTORE(pcd->lock, flags);
-		return -DWC_E_NO_DEVICE;
-	}
+	dwc_otg_ep_activate(GET_CORE_IF(pcd), &ep->dwc_ep);
 
 #ifdef DWC_UTE_CFI
 	if (pcd->cfi->ops.ep_enable) {
@@ -1615,6 +1626,9 @@ int dwc_otg_pcd_ep_disable(dwc_otg_pcd_t * pcd, void *ep_handle)
 	dwc_irqflags_t flags;
 	dwc_otg_dev_dma_desc_t *desc_addr;
 	dwc_dma_t dma_desc_addr;
+	gdfifocfg_data_t gdfifocfgbase = {.d32 = 0 };
+	gdfifocfg_data_t gdfifocfg = {.d32 = 0 };
+	fifosize_data_t dptxfsiz = {.d32 = 0 };
 
 	ep = get_ep_from_handle(pcd, ep_handle);
 
@@ -1627,20 +1641,7 @@ int dwc_otg_pcd_ep_disable(dwc_otg_pcd_t * pcd, void *ep_handle)
 
 	dwc_otg_request_nuke(ep);
 
-	if (likely(dwc_otg_hi3630_is_power_on())) {
-		dwc_otg_ep_deactivate(GET_CORE_IF(pcd), &ep->dwc_ep);
-		if (ep->dwc_ep.is_in) {
-			if (GET_CORE_IF(pcd)->en_multiple_tx_fifo) {
-				/* Flush the Tx FIFO */
-				dwc_otg_flush_tx_fifo(GET_CORE_IF(pcd), ep->dwc_ep.tx_fifo_num);
-			}
-		}
-	} else {
-		printk("[%s]don't access registers after power off\n", __func__);
-		DWC_SPINUNLOCK_IRQRESTORE(pcd->lock, flags);
-		return 0;
-	}
-
+	dwc_otg_ep_deactivate(GET_CORE_IF(pcd), &ep->dwc_ep);
 	if (pcd->core_if->core_params->dev_out_nak) {
 		DWC_TIMER_CANCEL(pcd->core_if->ep_xfer_timer[ep->dwc_ep.num]);
 		pcd->core_if->ep_xfer_info[ep->dwc_ep.num].state = 0;
@@ -1648,9 +1649,30 @@ int dwc_otg_pcd_ep_disable(dwc_otg_pcd_t * pcd, void *ep_handle)
 	ep->desc = NULL;
 	ep->stopped = 1;
 
+	gdfifocfg.d32 =
+	    DWC_READ_REG32(&GET_CORE_IF(pcd)->core_global_regs->gdfifocfg);
+	gdfifocfgbase.d32 = gdfifocfg.d32 >> 16;
+
 	if (ep->dwc_ep.is_in) {
+		if (GET_CORE_IF(pcd)->en_multiple_tx_fifo) {
+			/* Flush the Tx FIFO */
+			dwc_otg_flush_tx_fifo(GET_CORE_IF(pcd),
+					      ep->dwc_ep.tx_fifo_num);
+		}
 		release_perio_tx_fifo(GET_CORE_IF(pcd), ep->dwc_ep.tx_fifo_num);
 		release_tx_fifo(GET_CORE_IF(pcd), ep->dwc_ep.tx_fifo_num);
+		if (GET_CORE_IF(pcd)->en_multiple_tx_fifo) {
+			/* Decreasing EPinfo Base Addr */
+			dptxfsiz.d32 =
+			    (DWC_READ_REG32
+			     (&GET_CORE_IF(pcd)->
+		      		core_global_regs->dtxfsiz[ep->dwc_ep.tx_fifo_num-1]) >> 16);
+			gdfifocfg.b.epinfobase = gdfifocfgbase.d32 - dptxfsiz.d32;
+			if (GET_CORE_IF(pcd)->snpsid <= OTG_CORE_REV_2_94a) {
+				DWC_WRITE_REG32(&GET_CORE_IF(pcd)->core_global_regs->gdfifocfg,
+						gdfifocfg.d32);
+			}
+		}
 	}
 
 	/* Free DMA Descriptors */
@@ -1661,8 +1683,8 @@ int dwc_otg_pcd_ep_disable(dwc_otg_pcd_t * pcd, void *ep_handle)
 
 			/* Cannot call dma_free_coherent() with IRQs disabled */
 			DWC_SPINUNLOCK_IRQRESTORE(pcd->lock, flags);
-			dwc_otg_ep_free_desc_chain(desc_addr, dma_desc_addr,
-						   MAX_DMA_DESC_CNT);
+			/*dwc_otg_ep_free_desc_chain(desc_addr, dma_desc_addr,
+						   MAX_DMA_DESC_CNT);*/
 
 			goto out_unlocked;
 		}
@@ -2066,6 +2088,9 @@ int dwc_otg_pcd_ep_queue(dwc_otg_pcd_t * pcd, void *ep_handle,
 	dwc_otg_pcd_request_t *req;
 	dwc_otg_pcd_ep_t *ep;
 	uint32_t max_transfer;
+#ifdef CONFIG_HI3635_USB
+	dctl_data_t dctl = { 0 };
+#endif
 
 	ep = get_ep_from_handle(pcd, ep_handle);
 	if (!ep || (!ep->desc && ep->dwc_ep.num != 0)) {
@@ -2096,22 +2121,24 @@ int dwc_otg_pcd_ep_queue(dwc_otg_pcd_t * pcd, void *ep_handle,
 	req->sent_zlp = zero;
 	req->priv = req_handle;
 	req->dw_align_buf = NULL;
-	if (buflen && (dma_buf & 0x3) && GET_CORE_IF(pcd)->dma_enable
+	if ((buflen != 0) && (dma_buf & 0x3) && GET_CORE_IF(pcd)->dma_enable
 	    && !GET_CORE_IF(pcd)->dma_desc_enable)
 		req->dw_align_buf = DWC_DMA_ALLOC_ATOMIC(buflen,
 						  &req->dw_align_buf_dma);
 	DWC_SPINLOCK_IRQSAVE(pcd->lock, &flags);
 
-	if (likely(dwc_otg_hi3630_is_power_on())) {
-		/* power on state, do nothing */
-	} else {
-		printk("[%s]don't access registers after power off\n", __func__);
-		DWC_SPINUNLOCK_IRQRESTORE(pcd->lock, flags);
-		if (req->dw_align_buf)
-			DWC_FREE(req->dw_align_buf);
-		DWC_FREE(req);
-		return -DWC_E_NO_DEVICE;
+#ifdef CONFIG_HI3635_USB
+	/* check connection */
+	if (ep == &pcd->ep0) {
+		dctl.d32 = DWC_READ_REG32(&pcd->core_if->dev_if->dev_global_regs->dctl);
+		if (1 == dctl.b.sftdiscon) {
+			DWC_SPINUNLOCK_IRQRESTORE(pcd->lock, flags);
+			printk(KERN_ERR "%s: disconnected, do not queue req to ep0!\n",__func__);
+			dump_stack();
+			return -ENODEV;
+		}
 	}
+#endif
 
 	/*
 	 * After adding request to the queue for IN ISOC wait for In Token Received
@@ -2551,13 +2578,12 @@ void dwc_otg_pcd_connect_us(dwc_otg_pcd_t * pcd, int no_of_usecs)
 	dctl_data_t dctl = { 0 };
 
 	if (dwc_otg_is_device_mode(core_if)) {
-		/* modified by l00196665, 2011-01-02. */
 		printk(KERN_INFO "connetct us\n");
 		dwc_otg_flush_tx_fifo(GET_CORE_IF(pcd), 0x10);
 		dwc_otg_flush_rx_fifo(GET_CORE_IF(pcd));
 		dctl.b.sftdiscon = 1;
 		DWC_MODIFY_REG32(&core_if->dev_if->dev_global_regs->dctl, dctl.d32, 0);
-		dwc_udelay(50);
+		dwc_udelay(no_of_usecs);
 	} else{
 		DWC_PRINTF("NOT SUPPORTED IN HOST MODE\n");
 	}
@@ -2570,15 +2596,17 @@ void dwc_otg_pcd_disconnect_us(dwc_otg_pcd_t * pcd, int no_of_usecs)
 	dctl_data_t dctl = { 0 };
 
 	if (dwc_otg_is_device_mode(core_if)) {
-		printk(KERN_INFO "disconect us\n");
 		dctl.b.sftdiscon = 1;
-		/* modified by l00196665, 2011-01-02. */
+		DWC_PRINTF("Soft disconnect for %d useconds\n",no_of_usecs);
 		DWC_MODIFY_REG32(&core_if->dev_if->dev_global_regs->dctl, 0, dctl.d32);
-		dwc_udelay(50);
+		dwc_udelay(no_of_usecs);
+		/*DWC_MODIFY_REG32(&core_if->dev_if->dev_global_regs->dctl, dctl.d32,0);*/
+
 	} else{
 		DWC_PRINTF("NOT SUPPORTED IN HOST MODE\n");
 	}
 	return;
+
 }
 
 int dwc_otg_pcd_wakeup(dwc_otg_pcd_t * pcd)
@@ -2612,14 +2640,52 @@ int dwc_otg_pcd_wakeup(dwc_otg_pcd_t * pcd)
 
 }
 
-// added by l00196665
 int dwc_otg_pcd_pullup(dwc_otg_pcd_t * pcd, int is_on)
 {
-	if (is_on)
-		dwc_otg_pcd_connect_us(pcd,50);
-	else
-		dwc_otg_pcd_disconnect_us(pcd,50);
-	return 0;
+#ifdef CONFIG_HI3635_USB
+	WARN_ON(1);
+    return 0;
+#else
+    struct lm_device *lm_dev;
+    dwc_otg_core_if_t *core_if = GET_CORE_IF(pcd);
+    int count = 0;
+
+    printk(KERN_INFO "%s +\n",__func__);
+    lm_dev = pcd->otg_dev->os_dep.lmdev;
+
+    if (lm_dev->hiusb_info->pullup != NULL) {
+        lm_dev->hiusb_info->pullup(lm_dev, is_on);
+    }
+
+    /* usb is not on position */
+    if (lm_dev->hiusb_info->hiusb_status == HIUSB_OFF ||
+          lm_dev->hiusb_info->hiusb_status == HIUSB_HOST) {
+        printk(KERN_ERR "usb status: %d, no pullup!\n", lm_dev->hiusb_info->hiusb_status);
+        return -1;
+    }
+
+    if (is_on)
+        dwc_otg_pcd_connect_us(pcd,50);
+    else{
+        dwc_otg_pcd_disconnect_us(pcd,50);
+        dwc_otg_disable_global_interrupts(core_if);
+        core_if->op_state = B_PERIPHERAL;
+        dwc_otg_core_init(core_if);
+
+        while (!dwc_otg_is_device_mode(core_if)) {
+            dev_info(&lm_dev->dev, "%s, wait for device mode +.\n", __func__);
+            dwc_msleep(10);
+            if (++count > 50)
+                return -1;
+        }
+
+        core_if->op_state = B_PERIPHERAL;
+        cil_pcd_start(core_if);
+        dwc_otg_enable_global_interrupts(core_if);
+    }
+    printk(KERN_INFO "%s -\n",__func__);
+    return 0;
+#endif
 }
 
 /**

@@ -180,6 +180,7 @@ VOS_VOID TAF_APS_NotifyAdsWhenPdpModify(
     PS_MEM_SET(&stAdsInd, 0x00, sizeof(ADS_PDP_STATUS_IND_STRU));
     stAdsInd.enModemId = MODEM_ID_0;
 
+#if 0
 #if (FEATURE_ON == FEATURE_IMS)
     /* 当module id为IMSA或者是专有承载时，不给ADS发送PDP状态改变通知消息 */
     if (PS_PID_IMSA == pstEvent->stCtrl.ulModuleId)
@@ -187,6 +188,7 @@ VOS_VOID TAF_APS_NotifyAdsWhenPdpModify(
         APS_WARN_LOG("TAF_APS_NotifyAdsWhenPdpModify:module id is imsa");
         return;
     }
+#endif
 #endif
 
     stAdsInd.enModemId = VOS_GetModemIDFromPid(WUEPS_PID_TAF);
@@ -224,6 +226,7 @@ VOS_VOID TAF_APS_NotifyAdsWhenPdpDeactivated(
     PS_MEM_SET(&stAdsInd, 0x00, sizeof(ADS_PDP_STATUS_IND_STRU));
     stAdsInd.enModemId = MODEM_ID_0;
 
+#if 0
 #if (FEATURE_ON == FEATURE_IMS)
     /* 当module id为IMSA或者是专有承载时，不给ADS发送PDP状态改变通知消息 */
     if (PS_PID_IMSA == pstEvent->stCtrl.ulModuleId)
@@ -231,6 +234,7 @@ VOS_VOID TAF_APS_NotifyAdsWhenPdpDeactivated(
         APS_WARN_LOG("TAF_APS_NotifyAdsWhenPdpDeactivated:module id is imsa");
         return;
     }
+#endif
 #endif
 
     stAdsInd.enModemId = VOS_GetModemIDFromPid(WUEPS_PID_TAF);
@@ -268,6 +272,7 @@ VOS_VOID TAF_APS_NotifyAdsWhenPdpAvtivated(
     PS_MEM_SET(&stAdsInd, 0x00, sizeof(ADS_PDP_STATUS_IND_STRU));
     stAdsInd.enModemId = MODEM_ID_0;
 
+#if 0
 #if (FEATURE_ON == FEATURE_IMS)
     /* 当module id为IMSA或者是专有承载时，不给ADS发送PDP状态改变通知消息 */
     if (PS_PID_IMSA == pstEvent->stCtrl.ulModuleId)
@@ -275,6 +280,7 @@ VOS_VOID TAF_APS_NotifyAdsWhenPdpAvtivated(
         APS_WARN_LOG("TAF_APS_NotifyAdsWhenPdpAvtivated:module id is imsa");
         return;
     }
+#endif
 #endif
 
     stAdsInd.enModemId = VOS_GetModemIDFromPid(WUEPS_PID_TAF);

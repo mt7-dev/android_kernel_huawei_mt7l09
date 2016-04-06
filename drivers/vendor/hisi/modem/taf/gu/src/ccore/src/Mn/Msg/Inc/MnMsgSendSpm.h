@@ -30,6 +30,13 @@ VOS_VOID TAF_MSG_SpmMsgReportInd(
 );
 
 #endif
+
+VOS_VOID TAF_MSG_SendSpmMsgCheckResultInd(
+    MN_CLIENT_ID_T                      usClientId,
+    MN_OPERATION_ID_T                   ucOpId,
+    TAF_MSG_ERROR_ENUM_UINT32           enRslt
+);
+
 #if ((VOS_OS_VER == VOS_WIN32) || (VOS_OS_VER == VOS_NUCLEUS))
 #pragma pack()
 #else

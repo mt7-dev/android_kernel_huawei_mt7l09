@@ -72,13 +72,7 @@ typedef VOS_UINT8    MN_MSG_OPER_TYPE_T;
 #define MN_MSG_ACTIVE_MESSAGE_MAX_URL_LEN                   (160)
 #define MN_MSG_ACTIVE_MESSAGE_PARA_LEN                      ((MN_MSG_ACTIVE_MESSAGE_MAX_URL_LEN) + 6)
 
-#define MN_GET_TON(enNumType, ucAddrType) ((enNumType) = ((ucAddrType >> 4) & 0x07))
-#define MN_GET_NPI(enNumPlan, ucAddrType) ((enNumPlan) = (ucAddrType & 0x0f))
-#define MN_GET_ADDRTYPE(ucAddrType, enNumType, enNumPlan)                           \
-                        ((ucAddrType) = 0x80 | (VOS_UINT8)((enNumType) << 4) | enNumPlan)
 
-#define MN_GET_TON(enNumType, ucAddrType) ((enNumType) = ((ucAddrType >> 4) & 0x07))
-#define MN_GET_NPI(enNumPlan, ucAddrType) ((enNumPlan) = (ucAddrType & 0x0f))
 #define MN_GET_ADDRTYPE(ucAddrType, enNumType, enNumPlan)                           \
                         ((ucAddrType) = 0x80 | (VOS_UINT8)((enNumType) << 4) | enNumPlan)
 
@@ -250,7 +244,7 @@ enum MN_MSG_IMS_CAUSE_ENUM
     MN_MSG_IMS_CAUSE_SMS_INCAPABILITY                       = 0x06,
     MN_MSG_IMS_CAUSE_SMS_NO_SMSC                            = 0x07,
     MN_MSG_IMS_CAUSE_SMS_NO_IPSMGW                          = 0x08,
-    
+
     MN_MSG_IMS_CAUSE_UNSPECIFIED_ERR                        = 0xff
 };
 typedef VOS_UINT8  MN_MSG_IMS_CAUSE_ENUM_UINT8;
@@ -260,7 +254,7 @@ enum MN_MSG_IMSA_CAUSE_ENUM
 {
     MN_MSG_IMSA_CAUSE_NO_SERVICE                             = 0x01,
     MN_MSG_IMSA_CAUSE_SMS_OPERATING                          = 0x02,
-    
+
     MN_MSG_IMSA_CAUSE_UNSPECIFIED_ERR                        = 0xff
 };
 typedef VOS_UINT8  MN_MSG_IMSA_CAUSE_ENUM_UINT8;
@@ -703,7 +697,7 @@ typedef struct
     MN_MSG_CSMS_MSG_VERSION_ENUM_U8     enSmsServVersion;                       /*巴西vivo短消息方案-添加变量*/
 
     MN_MSG_CNMI_MT_TYPE_ENUM_U8         enMtType;
-    
+
 }MN_MSG_CONFIG_PARM_STRU;
 
 /*******************************************************************************
@@ -814,7 +808,7 @@ typedef struct
     MN_MSG_MSG_WAITING_KIND_ENUM_U8     enMsgWaitingKind;                       /*sms msg waiting king*/
     VOS_BOOL                            bRawDcsValid;                            /*Compressed or not*/
     VOS_UINT8                           ucRawDcsData;                           /*Raw DCS Byte */
-    VOS_UINT8                           aucReserve1[3];
+    VOS_UINT8                           aucReserve1[7];
 } MN_MSG_DCS_CODE_STRU;
 
 /*Sms TimeStamp */
@@ -1238,12 +1232,11 @@ typedef struct
 #define MN_MSG_MAX_UDH_NUM                                  7
 typedef struct
 {
-    VOS_UINT8                           ucNumofHeaders;                         /*number of user header*/
-    VOS_UINT8                           aucReserve1[3];
-    MN_MSG_USER_HEADER_TYPE_STRU        astUserDataHeader[MN_MSG_MAX_UDH_NUM];  /*detail of user header*/
     VOS_UINT32                          ulLen;                                  /*Length of sms*/
     VOS_UINT8                           aucOrgData[MN_MSG_MAX_LEN];             /*sms content,not 7bit,all 8bit */
-    VOS_UINT8                           aucReserve2[1];
+
+    VOS_UINT8                           ucNumofHeaders;                         /*number of user header*/
+    MN_MSG_USER_HEADER_TYPE_STRU        astUserDataHeader[MN_MSG_MAX_UDH_NUM];  /*detail of user header*/
 } MN_MSG_USER_DATA_STRU;
 
 /*Content of TP User Data(Concatenate Sms) */
@@ -1284,6 +1277,7 @@ typedef struct
     VOS_UINT8                           aucReserve1[3];
     MN_MSG_DCS_CODE_STRU                stDcs;                                  /*TP-DCS*/
     MN_MSG_TIMESTAMP_STRU               stTimeStamp;                            /*TP-SCTS*/
+    VOS_UINT8                           aucReserve2[4];
     MN_MSG_LONG_USER_DATA_STRU          stLongUserData;                         /*TP-UD*/
 }MN_MSG_DELIVER_LONG_STRU;
 
@@ -1341,7 +1335,8 @@ typedef struct
     VOS_UINT8                           aucReserve2[3];
     MN_MSG_DCS_CODE_STRU                stDcs;                                  /*TP-DCS*/
     MN_MSG_VALID_PERIOD_STRU            stValidPeriod;                          /*TP-VPF& TP-VP*/
-    MN_MSG_LONG_USER_DATA_STRU         stLongUserData;                         /*TP-UD*/
+    VOS_UINT8                           aucReserve3[4];
+    MN_MSG_LONG_USER_DATA_STRU          stLongUserData;                         /*TP-UD*/
 }MN_MSG_SUBMIT_LONG_STRU;
 
 /*Content of Status Report-Ack TPDU*/
@@ -1360,7 +1355,7 @@ typedef struct
 typedef struct
 {
     VOS_BOOL                            bUserDataHeaderInd;                     /*TP-UDHI*/
-    MN_MSG_TP_CAUSE_ENUM_U8             enFailCause  ;                          /*TP-FCS*/
+    MN_MSG_TP_CAUSE_ENUM_U8             enFailCause;                            /*TP-FCS*/
     VOS_UINT8                           aucReserve1[3];
     MN_MSG_TIMESTAMP_STRU               stTimeStamp;                            /*TP-SCTS*/
     VOS_UINT8                           ucParaInd;                              /*TP-PI*/
@@ -1520,7 +1515,15 @@ enum TAF_MSG_ERROR_ENUM
 
     TAF_MSG_ERROR_EPS_ERROR_BEGIN         = 0x200000,
 
-    TAF_MSG_ERROR_IMS_ERROR_BEGIN         = 0x400000,    
+    TAF_MSG_ERROR_IMS_ERROR_BEGIN         = 0x400000,
+
+    TAF_MSG_ERROR_CHECK_ERROR_BEGIN       = 0x800000,
+
+    TAF_MSG_ERROR_FDN_CHECK_FAIL          = 0x800001,
+    TAF_MSG_ERROR_FDN_CHECK_TIMEROUT      = 0x800002,
+
+    TAF_MSG_ERROR_CTRL_CHECK_FAIL         = 0x800010,
+    TAF_MSG_ERROR_CTRL_CHECK_TIMEOUT      = 0x800011,
 
     TAF_MSG_ERROR_ERROR_BUTT              = 0xFFFFFFFF
 };
@@ -1745,12 +1748,14 @@ typedef struct
     MN_MSG_SRV_PARAM_STRU               astSrvParm[MN_MSG_MAX_USIM_EFSMSP_NUM];
     MN_MSG_SET_RCVMSG_PATH_PARM_STRU    stRcvMsgPath;
     MN_MSG_CLASS0_TAILOR_U8             enClass0Tailor;
+    VOS_UINT8                           aucReserved[3];
 }MN_MSG_INIT_SMSP_EVT_INFO_STRU;
 
 typedef struct
 {
-    VOS_UINT32                            ulErrorCode;                          /*set(get) success or failure */
-    MN_MSG_LINK_CTRL_U8                   enLinkCtrl;
+    VOS_UINT32                          ulErrorCode;                            /*set(get) success or failure */
+    MN_MSG_LINK_CTRL_U8                 enLinkCtrl;
+    VOS_UINT8                           aucReserved[3];
 }MN_MSG_LINK_CTRL_EVT_INFO_STRU;
 
 /*****************************************************************************
@@ -1759,7 +1764,7 @@ typedef struct
 *****************************************************************************/
 typedef struct
 {
-    VOS_UINT32                            ulErrorCode;                          /*set(get) success or failure */
+    VOS_UINT32                          ulErrorCode;                            /*set(get) success or failure */
 }MN_MSG_RESULT_EVT_INFO_STRU;
 
 #if ((FEATURE_ON == FEATURE_GCBS) || (FEATURE_ON == FEATURE_WCBS))
@@ -1805,11 +1810,11 @@ typedef struct
 typedef struct
 {
     VOS_UINT16                          usMid;
-    VOS_UINT8                           aucReserve1[2];
-    MN_MSG_CBDCS_CODE_STRU              stDcs;
-    MN_MSG_CBSN_STRU                    stSn;
     VOS_UINT8                           ucPageIndex;
     VOS_UINT8                           ucPageNum;
+
+    MN_MSG_CBDCS_CODE_STRU              stDcs;
+    MN_MSG_CBSN_STRU                    stSn;
     MN_MSG_CBDATA_INFO_STRU             stContent;
 }MN_MSG_CBPAGE_STRU;
 typedef struct
@@ -1824,7 +1829,7 @@ typedef struct
 typedef struct
 {
     VOS_UINT16                          usCbmirNum;                             /* 小区广播消息的ID个数 */
-    VOS_UINT8                           aucReserve[2];
+    VOS_UINT8                           aucReserve[6];
     TAF_CBA_CBMI_RANGE_STRU             astCbmiRangeInfo[TAF_CBA_MAX_CBMID_RANGE_NUM]; /* 小区广播消息的范围信息 */
 }TAF_CBA_CBMI_RANGE_LIST_STRU;
 
@@ -1872,6 +1877,7 @@ typedef struct
 {
     MN_CLIENT_ID_T                      clientId;
     MN_OPERATION_ID_T                   opId;
+    VOS_UINT8                           ucReserved;
     VOS_UINT32                          ulFailCause;                            /*Failure case when read failed*/
 }MN_MSG_EVENT_PARM_STRU;
 
@@ -2519,18 +2525,6 @@ VOS_UINT32 MN_MSG_GetSubmitInfoForStk(
     VOS_UINT8                          *pucUdhl,
     MN_MSG_MSG_CODING_ENUM_U8          *penMsgCoding,
     VOS_UINT32                         *pulDcsOffset
-);
-
-VOS_UINT32  AT_BcdNumberToAscii(
-    const VOS_UINT8                     *pucBcdNumber,
-    VOS_UINT8                           ucBcdLen,
-    VOS_CHAR                            *pcAsciiNumber
-);
-
-VOS_UINT32  AT_AsciiNumberToBcd(
-    const VOS_CHAR                      *pcAsciiNumber,
-    VOS_UINT8                           *pucBcdNumber,
-    VOS_UINT8                           *pucBcdLen
 );
 
 

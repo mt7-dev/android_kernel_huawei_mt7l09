@@ -188,7 +188,7 @@ VOS_UINT32 diag_CreateLogBuf(DIAG_BUF_CTRL_STRU *pstBufCtrl, VOS_INT32 lBufSize)
         return ERR_MSP_MALLOC_FAILUE;
     }
 
-    diag_printf("diag_CreateLogBuf: real addr=0x%p, virt addr==0x%p\n", pstBufCtrl->pucRealBuf, pstBufCtrl->pucBuf);
+    diag_printf("diag_CreateLogBuf: real addr=%p, virt addr==%p\n", pstBufCtrl->pucRealBuf, pstBufCtrl->pucBuf);
 
     return ERR_MSP_SUCCESS;
 }
@@ -274,8 +274,6 @@ VOS_UINT32 diag_ReleaseLogMem(DIAG_BUF_CTRL_STRU *pstBufCtrl,VOS_UINT8 *pAddr, V
     if ((pAddr != (pstBufCtrl->pucBuf + pstBufCtrl->lRelease))
         && (pAddr != pstBufCtrl->pucBuf))
     {
-        diag_printf("diag_ReleaseLogMem:待释放地址不对!pAddr=%p,pstBufCtrl->pucBuf=%p,pstBufCtrl->lRelease=0x%x\n",
-                    pAddr,pstBufCtrl->pucBuf,pstBufCtrl->lRelease);
         /*DRV_SYSTEM_ERROR(DIAG_REALSE_POINTER_ERROR, MSP_FILE_ID_DIAG_BUF_CTRL_C, __LINE__, VOS_NULL, 0);*//*lint !e569*/
     }
 
@@ -287,8 +285,6 @@ VOS_UINT32 diag_ReleaseLogMem(DIAG_BUF_CTRL_STRU *pstBufCtrl,VOS_UINT8 *pAddr, V
         /* 长度错误 */
         if (lUsedSize < lLen)
         {
-            diag_printf("diag_ReleaseLogMem:使用长度小于待释放长度!lAlloc=0x%x,lRelease=0x%x,lLen=%d!\n",
-                        pstBufCtrl->lAlloc,pstBufCtrl->lRelease,lLen);
             return ERR_MSP_FAILURE;
         }
 
@@ -309,7 +305,6 @@ VOS_UINT32 diag_ReleaseLogMem(DIAG_BUF_CTRL_STRU *pstBufCtrl,VOS_UINT8 *pAddr, V
     /* 输入ulLen不正确 */
     if ((lTmpRls > pstBufCtrl->lAlloc) && (lTmpRls < pstBufCtrl->lRelease))
     {
-        diag_printf("diag_ReleaseLogMem:有回卷情况，待释放地址不对!\n");
         return ERR_MSP_FAILURE;
     }
 

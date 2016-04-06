@@ -22,8 +22,9 @@ extern "C" {
 
 #include "drv_comm.h"
 
-#define LDO_GPIO_MAX 2
-
+#define LDO_GPIO_MAX        2
+#define RSE_MIPI_SW_REG_NUM 8
+#define RSE_MODEM_NUM       2
 
 /*******************************************************************/
 
@@ -679,10 +680,21 @@ typedef struct
 typedef struct
 {
     BSP_U32  enUartEnableCfg;
-	BSP_U32  AwaitReplyTimer;
+	BSP_U32  enUartlogEnableCfg;
 	BSP_U32  AwakeTmer;
 	BSP_U32  DoSleepTimer;
 }DRV_DUAL_MODEM_STR;
+
+
+typedef struct
+{
+	BSP_U32 enUart5IrqCfg;
+	BSP_U32 dmInitCfg;
+	BSP_U32 ex1_param;
+	BSP_U32 ex2_param;
+	BSP_U32 ex3_param;
+	BSP_U32 ex4_param;
+}DRV_DM_UART5_STR;
 
 /* GPIO控制LDO开关 NV项 = 0xd137 */
 typedef struct
@@ -691,9 +703,15 @@ typedef struct
     BSP_U32 used;      /* GPIO是否使用 */
 } DRV_DRV_LDO_GPIO_CFG;
 
+typedef enum{
+	GPIO_POWER_FEM = 0,
+	GPIO_POWER_RF,
+	GPIO_POWER_NUM
+}GPIO_POWER_E;
+
 typedef struct
 {
-    DRV_DRV_LDO_GPIO_CFG ldo_gpio[2];
+    DRV_DRV_LDO_GPIO_CFG ldo_gpio[LDO_GPIO_MAX];/*0为fem，1为控制rf*/
 }DRV_DRV_LDO_GPIO_STRU;
 
 
@@ -749,6 +767,43 @@ typedef struct
 }NV_DRV_ANT_SW_UNPD_CFG;
 /*End 天线开关不下电特性NV*/
 
+/*主、副卡天线共电源特性是否使能*/
+typedef struct
+{
+	BSP_U32 en_flag;
+}NV_DRV_FEM_SHARE_POWER;
+
+/*rse mipi 配置方式*/
+typedef struct
+{
+	BSP_U32 en_flag;
+}DRV_ANT_SW_MIPI_ENFLAG;
+
+typedef struct
+{
+    BSP_U32 is_invalid;/*当前mipi指令是否需要配置*/
+    BSP_U8  mipi_chn;  /*mipi通道号*/
+    BSP_U8  slave_id;  /*天线开关的slave id*/
+    BSP_U8  reg_offset;/*配置的寄存器偏移*/
+    BSP_U8  value;     /*配置的值*/
+}DRV_ANT_SW_MIPI;
+
+typedef struct
+{
+    DRV_ANT_SW_MIPI modem_switch[RSE_MIPI_SW_REG_NUM];     /*每个modem配置的mipi指令个数最多为8个*/
+}DRV_ANT_SW_MIPI_CONFIG;
+
+typedef struct
+{
+    DRV_ANT_SW_MIPI_CONFIG all_switch[RSE_MODEM_NUM];/*0对应为modem0，1对应为modem1*/
+}DRV_DRV_ANT_SW_MIPI_CONFIG;
+
+/*end rse mipi 配置方式*/
+
+typedef struct
+{
+	BSP_U32 en_flag;
+}DRV_FEM_VIO_ALWAYS_ON;
 #ifdef __cplusplus
 #if __cplusplus
 }

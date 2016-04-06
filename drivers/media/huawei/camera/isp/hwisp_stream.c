@@ -1,26 +1,4 @@
-/*
- *  Hisilicon K3 SOC camera driver source file
- *
- *  Copyright (C) Huawei Technology Co., Ltd.
- *
- * Author:	  h00145353
- * Email:	  alan.hefeng@huawei.com
- * Date:	  2013-12-12
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
- */
+
 
 
 #include <linux/anon_inodes.h>
@@ -36,9 +14,14 @@
 #include <media/v4l2-ioctl.h>
 #include <media/v4l2-subdev.h>
 #include <media/videobuf2-core.h>
-
+#ifdef CONFIG_COMPAT
+#include "hwcam_compat32.h"
+#endif
 #include "hwisp_intf.h"
 #include "ovisp2.3/isp_ops.h"
+
+#define CREATE_TRACE_POINTS
+#include "trace_hwisp.h"
 /*
 typedef struct _tag_hwisp_stream
 {
@@ -70,6 +53,8 @@ typedef struct _tag_hwisp_stream
 
 #define NODE2STM(n) container_of(n, hwisp_stream_t, node)
 
+#define ISP_STREAM_BUFFER_LEAST 4
+
 static void
 hwisp_stream_release(
         struct kref* r)
@@ -80,7 +65,7 @@ hwisp_stream_release(
 	void *vaddr = NULL;
 	struct ion_handle *hdl = NULL;
 
-    HWCAM_CFG_INFO("instance(0x%p) type=%d, port=%d", stm, stm->stream_type, stm->port.id);
+    HWCAM_CFG_INFO("instance(0x%p) type=%ld, port=%d", stm, stm->stream_type, stm->port.id);
 
 	if (stm->port.id == ISP_PORT_VC0 && !IS_ERR_OR_NULL(stm->ion_vc)) {
 		HWCAM_CFG_INFO("unmap stream vc buf count=%ld", stm->enque_buf_count);
@@ -203,12 +188,11 @@ hwisp_stream_buf_done(
     hwisp_buf_t* tmp = NULL;
     unsigned long flags;
 
-    HWCAM_CFG_INFO("enter !");
-
     spin_lock_irqsave(&stm->lock_bufq, flags);
     list_for_each_entry_safe(entry, tmp, &stm->bufq_busy, node) {
         if (entry == vb) {
             list_move_tail(&entry->node, &stm->bufq_done);
+            trace_hwisp_stream_buf_done(vb); 
             rc = 0;
             break;
         }
@@ -216,7 +200,6 @@ hwisp_stream_buf_done(
     spin_unlock_irqrestore(&stm->lock_bufq, flags);
 
     if (entry) {
-        HWCAM_CFG_INFO("wake up!");
         wake_up_all(&stm->rq.wait);
     }
 
@@ -298,7 +281,7 @@ hwisp_stream_vo_enqueue_buf(
     hwisp_buf_t* tmp = NULL;
     unsigned long flags;
 
-    printk("enter %s\n",__func__);
+    //printk("enter %s\n",__func__);
     spin_lock_irqsave(&stm->lock_bufq, flags);
     list_for_each_entry_safe(entry, tmp, &stm->bufq_user, node) {
         if (entry->info.user_buffer_handle == bi->user_buffer_handle) {
@@ -352,7 +335,7 @@ end:
                     (unsigned long)bi->user_buffer_handle);
         }
     }
-    printk("leave %s\n",__func__);
+    //printk("leave %s\n",__func__);
     return rc;
 }
 
@@ -385,7 +368,10 @@ hwisp_stream_vo_do_ioctl(
 {
     long rc = -EINVAL;
     hwisp_stream_t* stm = I2STM(filep->private_data);
-	BUG_ON(!filep->private_data);
+    if (!filep->private_data) {
+        HWCAM_CFG_ERR("%s()invalid priv data! \n", __func__);
+        return rc;
+    }
     switch (cmd)
     {
     case VIDIOC_DQEVENT:
@@ -461,6 +447,70 @@ hwisp_stream_vo_ioctl(
     return rc;
 }
 
+#ifdef CONFIG_COMPAT
+static long
+hwisp_stream_vo_ioctl32(
+        struct file* filep,
+        unsigned int cmd,
+        unsigned long arg)
+{
+    int rc = 0;
+    void __user *up = NULL;
+    void __user *kp = NULL;
+    up = compat_ptr(arg);
+
+    switch (cmd)
+    {
+    case VIDIOC_DQEVENT32: cmd = VIDIOC_DQEVENT; break;
+    case HWISP_STREAM_IOCTL_ENQUEUE_BUF32: cmd = HWISP_STREAM_IOCTL_ENQUEUE_BUF; break;
+    case HWISP_STREAM_IOCTL_DEQUEUE_BUF32: cmd = HWISP_STREAM_IOCTL_DEQUEUE_BUF; break;
+	}
+
+    switch (cmd)
+    {
+    case VIDIOC_DQEVENT:
+         {
+			kp = compat_alloc_user_space(sizeof(struct v4l2_event));
+			if (NULL == kp)
+				return -EFAULT;
+
+			rc = compat_get_v4l2_event_data(kp, up);
+			if (0 != rc)
+				return rc;
+			rc = hwisp_stream_vo_ioctl(filep, cmd, (unsigned long)kp);
+			if (0 != rc)
+				return rc;
+			rc = compat_put_v4l2_event_data(kp, up);
+			return rc;
+		}
+        break;
+#if 1
+    case HWISP_STREAM_IOCTL_ENQUEUE_BUF:
+    case HWISP_STREAM_IOCTL_DEQUEUE_BUF:
+         {
+            kp = compat_alloc_user_space(sizeof(hwisp_stream_buf_info_t));
+            if (NULL == kp)
+                return -EFAULT;
+
+            rc = compat_get_hwisp_stream_buf_info(kp, up);
+            if (0 != rc)
+                return rc;
+            rc = hwisp_stream_vo_ioctl(filep, cmd, (unsigned long)kp);
+            if (0 != rc)
+                return rc;
+            rc = compat_put_hwisp_stream_buf_info(kp, up);
+            return rc;
+        }
+        break;
+#endif        
+    default:
+        rc = hwisp_stream_vo_ioctl(filep, cmd, arg);
+        break;
+    }
+    return rc;
+}
+#endif
+
 static int
 hwisp_stream_vo_close(
         struct inode* i,
@@ -476,8 +526,8 @@ hwisp_stream_vo_close(
         v4l2_fh_del(&stm->rq);
         v4l2_fh_exit(&stm->rq);
 
-        hwisp_stream_intf_put(&stm->intf);
         mutex_unlock(&stm->lock);
+        hwisp_stream_intf_put(&stm->intf);
     }
     return 0;
 }
@@ -487,6 +537,9 @@ s_fops_hwisp_stream =
 {
     .poll = hwisp_stream_vo_poll,
     .unlocked_ioctl = hwisp_stream_vo_ioctl,
+#ifdef CONFIG_COMPAT
+	.compat_ioctl = hwisp_stream_vo_ioctl32,
+#endif
     .release = hwisp_stream_vo_close,
 };
 
@@ -514,8 +567,8 @@ hwisp_create_stream(
     hwisp_stream_t* stm = NULL;
     int i = 0;
 
-    if (si->buf_queue_size < 4) {
-        si->buf_queue_size = 4;
+    if (si->buf_queue_size < ISP_STREAM_BUFFER_LEAST) {
+        si->buf_queue_size = ISP_STREAM_BUFFER_LEAST;
     }
     if (VIDEO_MAX_FRAME < si->buf_queue_size) {
         si->buf_queue_size = VIDEO_MAX_FRAME;
@@ -541,16 +594,17 @@ hwisp_create_stream(
     stm->port.pix_format = si->pix_format;
     stm->port.use_phy_memory = si->use_phy_memory;
     stm->isp = isp;
-	stm->enque_buf_count = 0;
+    stm->enque_buf_count = 0;
 
-	HWCAM_CFG_INFO("create stm type=%d portid=%d", si->stream_type, si->portid);
-	if (si->portid == ISP_PORT_VC0) {
-		stm->ion_vc = hisi_ion_client_create("hwcam-stream-vc0");
-		if (IS_ERR_OR_NULL(stm->ion_vc)) {
-			HWCAM_CFG_ERR("create ion err");
-			return PTR_ERR(stm->ion_vc);
-		}
-	}
+    if (si->portid == ISP_PORT_VC0) {
+        stm->ion_vc = hisi_ion_client_create("hwcam-stream-vc0");
+        if (IS_ERR_OR_NULL(stm->ion_vc)) {
+            HWCAM_CFG_ERR("create ion err");
+            i = PTR_ERR(stm->ion_vc);
+            kfree(stm);
+            return i;
+        }
+    }
 
     sema_init(&stm->buffer_readyQ, 0);
 
@@ -569,6 +623,7 @@ hwisp_create_stream(
     if (ret < 0) {
         hwisp_stream_intf_put(&stm->intf);
         HWCAM_CFG_ERR("failed to mount isp stream! \n");
+        kfree(stm);
         goto end_create_stream;
     }
 	v4l2_fh_init(&stm->rq, vdev);
@@ -578,7 +633,7 @@ hwisp_create_stream(
 
     si->fd_ispstream = ret;
 
-    HWCAM_CFG_INFO("instance(0x%p)", stm);
+    HWCAM_CFG_INFO("instance(0x%p) portid=%u", stm, stm->port.id);
 
 end_create_stream:
     return ret;

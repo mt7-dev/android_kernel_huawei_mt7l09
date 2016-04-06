@@ -47,6 +47,10 @@ NAS_LMM_SYSINFO_COUNT_STRU               g_stMsgSysInfCnt;
 
 OM_EMM_STATE_INFO_STRU                   g_stEmmOmInfo;
 
+VOS_UINT32  g_ulCsfbProcedureFlag = PS_FALSE;
+
+VOS_UINT32                       g_ulPtmsiTauActiveFlag = PS_FALSE;
+
 /*****************************************************************************
   3 Function
 *****************************************************************************/
@@ -83,7 +87,6 @@ VOS_VOID    NAS_EMM_FsmInit(            VOS_VOID )
     pEmmCurState->enMainState           = EMM_MS_NULL;
     pEmmCurState->enSubState            = EMM_SS_NULL_WAIT_APP_START_REQ;
     pEmmCurState->enStaTId              = TI_NAS_EMM_STATE_NO_TIMER;
-
 
     /* 状态机栈 初始化 */
     pEmmStack   = NAS_LMM_GetFsmStackAddr(NAS_LMM_PARALLEL_FSM_EMM);
@@ -380,15 +383,19 @@ VOS_VOID  NAS_EMM_ReadNvCsService(VOS_VOID )
 
 VOS_VOID  NAS_EMM_ReadNvVoiceDomain(VOS_VOID )
 {
-
-    LNAS_LMM_NV_VOICE_DOMAIN_STRU       stNvVoiceDomain;
     NAS_EMM_PUB_INFO_STRU              *pstPubInfo;
+#if (FEATURE_ON == FEATURE_IMS)
+    LNAS_LMM_NV_VOICE_DOMAIN_STRU       stNvVoiceDomain;
     VOS_VOID                           *pData = VOS_NULL_PTR;
     VOS_UINT32                          ulRslt;
     VOS_UINT16                          usDataLen;
-
+#endif
     pstPubInfo = NAS_LMM_GetEmmInfoAddr();
-     pData                               = (VOS_VOID *)&(stNvVoiceDomain);
+    pstPubInfo->bitOpVoiceDomain      = NAS_EMM_BIT_SLCT;
+    pstPubInfo->ulVoiceDomain         = NAS_LMM_VOICE_DOMAIN_CS_ONLY;
+    NAS_MML_SetVoiceDomainPreference(NAS_LMM_VOICE_DOMAIN_CS_ONLY);
+#if (FEATURE_ON == FEATURE_IMS)
+    pData                               = (VOS_VOID *)&(stNvVoiceDomain);
     usDataLen = sizeof(LNAS_LMM_NV_VOICE_DOMAIN_STRU);
 
     ulRslt = NAS_LMM_NvimRead(          EN_NV_ID_UE_VOICE_DOMAIN,
@@ -430,7 +437,7 @@ VOS_VOID  NAS_EMM_ReadNvVoiceDomain(VOS_VOID )
 
     }
     /*sunbing 49683 2013-10-28 VoLTE end*/
-
+#endif
     return;
 }
 VOS_VOID  NAS_EMM_ReadNvNasRelease(VOS_VOID )
@@ -2760,8 +2767,12 @@ VOS_VOID NAS_EMM_AddForbTa
     NAS_LMM_PUBM_LOG_NORM("NAS_EMMC_AddForbTa is entered");
 
     NAS_LMM_AddTaInTaList(pstTa, pstTaList, NAS_LMM_MAX_FORBTA_NUM);
-
-    NAS_LMM_StartStateTimer(TI_NAS_EMM_STATE_DEL_FORB_TA_PROID);
+    /* DEL FORB TA PROID定时器未启动时启动定时器,防止出现A小区加入TA被禁列表,定时器快超时时,
+        B小区被禁加入TA被禁列表重新启动定时器,导致出现A小区长时间无法被解禁 */
+    if(NAS_LMM_TIMER_RUNNING != NAS_LMM_IsStaTimerRunning(TI_NAS_EMM_STATE_DEL_FORB_TA_PROID))
+    {
+        NAS_LMM_StartStateTimer(TI_NAS_EMM_STATE_DEL_FORB_TA_PROID);
+    }
     return;
 }
 
@@ -2794,7 +2805,18 @@ VOS_UINT32  NAS_LMM_IsLastAttemptRegTaInTaiList(VOS_VOID)
 }
 
 
+VOS_UINT8  NAS_EMM_IsPtmsiTauActiveFlagSatified(VOS_VOID)
+{
+    /* 如果NV项打开，且不为测试卡，且TIN为P-TMSI，则条件满足，否则条件不满足 */
+    if ((PS_TRUE == g_ulPtmsiTauActiveFlag)
+        && (PS_SUCC != LPS_OM_IsTestMode())
+        && (MMC_LMM_TIN_P_TMSI == NAS_EMM_GetTinType()))
+    {
+        return NAS_EMM_YES;
+    }
 
+    return NAS_EMM_NO;
+}
 VOS_UINT32  NAS_EMM_IsRegStatusEmcRegingOrContainEmcBear(VOS_VOID)
 {
     /* 处于紧急注册过程中 */
@@ -2887,8 +2909,8 @@ VOS_VOID NAS_LMM_ClearEmmInfoMmcAttachReason( VOS_VOID )
 
 VOS_VOID  NAS_EMM_LocalDetachProc( VOS_VOID )
 {
-    /* 停止所有EMM状态定时器 */
-    NAS_LMM_StopAllEmmStateTimer();
+    /* 关闭当前EMM的除Del Forb Ta Proid之外的状态定时器, Del Forb Ta Proid只能在关机时停止*/
+    NAS_LMM_StopAllStateTimerExceptDelForbTaProidTimer();
 
     /* 停止所有协议定时器 */
     NAS_LMM_StopAllPtlTimer();
@@ -3368,6 +3390,9 @@ VOS_VOID  NAS_EMM_DeriveMappedGuti
 {
     NAS_GUMM_PTMSI_STRU                 stPtmsi;
     MMC_LMM_RAI_STRU                    stRai;
+
+    PS_MEM_SET(&stPtmsi, 0, sizeof(NAS_GUMM_PTMSI_STRU));
+    PS_MEM_SET(&stRai, 0, sizeof(MMC_LMM_RAI_STRU));
 
     NAS_EMM_PUBU_LOG_NORM("NAS_EMM_DeriveMappedGuti entered.");
 
@@ -4112,6 +4137,10 @@ VOS_VOID  NAS_EMM_SomeStateRcvMsgSysInfoLteRadioCapChgCommProc(VOS_VOID)
 
         /* 本地DETACH, 同时释放各模块资源:动态内存、赋初值 */
         NAS_EMM_LocalDetachProc();
+
+        #if (FEATURE_PTM == FEATURE_ON)
+        NAS_EMM_LocalDetachErrRecord(EMM_ERR_LOG_LOCAL_DETACH_TYPE_RADIO_CAP_CHANGE);
+        #endif
         NAS_LMM_DeregReleaseResource();
 
         NAS_EMM_AdStateConvert(EMM_MS_DEREG,
@@ -5362,6 +5391,40 @@ VOS_VOID NAS_EMM_TranStateRegNormalServiceOrRegLimitService(VOS_VOID)
     }
 }
 /* lihong00150010 emergency tau&service end */
+
+VOS_UINT32 NAS_EMM_IsNeedIgnoreHplmnAuthRej(VOS_VOID)
+{
+    NAS_MML_IGNORE_AUTH_REJ_INFO_STRU  *pstAuthRejInfo = NAS_EMM_NULL_PTR;
+
+    pstAuthRejInfo = NAS_MML_GetAuthRejInfo();
+
+    if (NAS_EMM_NULL_PTR == pstAuthRejInfo)
+    {
+        return NAS_EMM_NO;
+    }
+
+    /* VPLMN下,功能打开且忽略auth rej消息次数未达到最大值，则需要忽略 */
+    if (   (NAS_EMM_YES == NAS_LMM_IsRegisteredInHplmn())
+        && (VOS_TRUE    == pstAuthRejInfo->ucIgnoreAuthRejFlg)
+        && (pstAuthRejInfo->ucHplmnPsAuthRejCounter < pstAuthRejInfo->ucMaxAuthRejNo))
+    {
+        pstAuthRejInfo->ucHplmnPsAuthRejCounter++;
+        return NAS_EMM_YES;
+    }
+
+    return NAS_EMM_NO;
+}
+VOS_VOID NAS_EMM_ResetHplmnAuthRejCout(VOS_VOID)
+{
+    NAS_MML_IGNORE_AUTH_REJ_INFO_STRU  *pstAuthRejInfo = NAS_EMM_NULL_PTR;
+
+    pstAuthRejInfo = NAS_MML_GetAuthRejInfo();
+
+    if (pstAuthRejInfo)
+    {
+        pstAuthRejInfo->ucHplmnPsAuthRejCounter = 0;
+    }
+}
 /*lint +e961*/
 /*lint +e960*/
 

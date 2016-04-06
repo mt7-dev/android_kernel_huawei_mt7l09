@@ -1,18 +1,4 @@
-/**
-    @copyright: Huawei Technologies Co., Ltd. 2012-2012. All rights reserved.
-    
-    @file: srecorder_common.h
-    
-    @brief: 定义SRecorder整个工程中用到的全局资源
-    
-    @version: 1.0 
-    
-    @author: QiDechun ID: 216641
-    
-    @date: 2012-06-21
-    
-    @history:
-*/
+
 
 #ifndef SRECORDER_COMMON_H
 #define SRECORDER_COMMON_H
@@ -84,8 +70,6 @@ extern "C" {
 /*                     与平台相关日志导出开关 begin                 */
 /*==================================================================*/
 #ifdef CONFIG_ARCH_MSM
-/* DTS2012091002904 Qidechun-wupeng 20120910 begin */
-/* DTS2012110506430 wupeng-qidechun 20121114 begin */
 #ifndef CONFIG_DUMP_MODEM_LOG_BY_FIQ
 //#define CONFIG_DUMP_MODEM_LOG_BY_FIQ
 #endif
@@ -98,8 +82,6 @@ extern "C" {
 #ifndef CONFIG_CPU_FREQ_DEFAULT_VALUE
 #define CONFIG_CPU_FREQ_DEFAULT_VALUE (1150000000UL) /* 1.15GHz */
 #endif
-/* DTS2012110506430 wupeng-qidechun 20121114 end */
-/* DTS2012091002904 Qidechun-wupeng 20120910 end */
 #endif
 /*==================================================================*/
 /*                     与平台相关日志导出开关 end                   */
@@ -109,10 +91,8 @@ extern "C" {
 /*==================================================================*/
 /*                       系统控制开关 begin                         */
 /*==================================================================*/
-#if defined(CONFIG_ARCH_MSM) || defined(CONFIG_ARCH_K3V2)
-/* DTS2012110206142 wupeng-qidechun 20121105 begin */
+#if defined(CONFIG_ARCH_MSM)
 #define LET_MODEM_OR_WATCHDOG_RESET_SYSTEM (1) /* 为了不改变系统原有的错误处理流程，建议使用该配置 */
-/* DTS2012110206142 wupeng-qidechun 20121105 end */
 #else
 #define LET_MODEM_OR_WATCHDOG_RESET_SYSTEM (0) /* 采用该配置时，SRecorder导完日志之后会立即重启系统 */
 #endif
@@ -234,17 +214,18 @@ typedef struct __srecorder_module_init_params_t
 typedef struct __srecorder_reserved_mem_info_for_log
 {
     spinlock_t lock; /* 同步对以下变量的操作 */
-    char *start_addr; /* SRecorder保留内存区的日志存储起始地址 */
+    char *start_addr; /* SRecorder's temp buffer to save log, allocated by vmalloc */
+#ifdef CONFIG_SRECORDER_RESERVED_MEM_PHYS_ADDR
+    char *start_addr_mapped_by_ioremap; /* SRecorder's reserved buffer */
+#endif
     int bytes_read; /* 已往SRecorder保留内存dump的字节数 */
     int bytes_left; /* SRecorder保留内存区剩余空间大小 */
     int bytes_per_type; /* 每类信息的字节数，不包括信息头部的校验数据 */
     int mem_size; /* SRecorder保留内存区存储有效信息的大小, 不包括该头部信息 */
     char *crash_reason1; /* 系统发生panic的第一个原因 */
     char *crash_reason2; /* 系统发生panic的第二个原因，比如第一个原因是oops，紧跟着就发生panic，panic可以看做第二原因 */
-    /* DTS2012101502012 wupeng 20121015 begin */
     bool dump_modem_crash_log_only; /* 判断是否是dump modem日志 */
     bool do_delay_when_dump_modem_log; /* 判断在dump modem日志时是否需要延时 */ 
-    /* DTS2012101502012 wupeng 20121015 end */
     bool log_has_been_dumped_previously; /* 日志已经被dump */
 } srecorder_reserved_mem_info_t, *psrecorder_reserved_mem_info_t;
 
@@ -413,25 +394,6 @@ srecorder_reserved_mem_info_t* srecorder_get_reserved_mem_info(void);
     @note: 
 */
 unsigned long srecorder_get_reserved_mem_addr(void);
-
-
-/**
-    @function: void srecorder_write_reserved_mem_header(bool normal_reset, 
-        bool need_flush_cache, unsigned long magic_number, int valid_log_len)
-    @brief: 填写SRecorder保留内存头部信息
-
-    @param: normal_reset 系统是否即将正常重启
-    @param: need_flush_cache 是否需要刷新缓存
-    @param: magic_number 魔数
-    @param: valid_log_len SRecorder抓到的有效数据长度
-    
-    @return: none
-
-    @note:
-*/
-void srecorder_write_reserved_mem_header(bool normal_reset, 
-    bool need_flush_cache, unsigned long magic_number, int valid_log_len);
-
 
 /**
     @function: int srecorder_init_common(srecorder_module_init_params_t *pinit_params)

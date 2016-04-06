@@ -99,6 +99,12 @@ extern VOS_VOID NAS_EMMC_SendMmcBgPlmnSearchCnf(const LRRC_LMM_BG_PLMN_SEARCH_CN
 extern VOS_VOID NAS_EMMC_SendMmcBgPlmnSearchStopCnf(const LRRC_LMM_BG_PLMN_SEARCH_STOP_CNF_STRU *pstLrrcMsg);
 extern VOS_VOID NAS_EMMC_SendMmcNotCampOnInd(VOS_VOID);
 
+extern VOS_VOID  NAS_EMMC_SendMmcSearchPlmnInfoInd
+(
+    const LRRC_LMM_SEARCHED_PLMN_INFO_IND_STRU *pstLrrcMsg
+);
+
+
 /*****************************************************************************
 8 Fuction Extern
 *****************************************************************************/

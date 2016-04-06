@@ -74,7 +74,7 @@ int BSP_CHG_Sply( void)
  输出参数  : 无
  返回值：    无
 *****************************************************************************/
-void  DRV_CHG_STATE_SET(unsigned long ulState)
+void  DRV_CHG_STATE_SET(unsigned int ulState)
 {
 
 }

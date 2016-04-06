@@ -119,6 +119,10 @@ TAF_ACT_STRU   g_astTafApsActiveActTbl[]   =
                      ID_L4A_APS_PDP_DEACTIVATE_IND,
                      TAF_APS_RcvL4aPdpDeactivateInd_Active),
 
+    TAF_ACT_TBL_ITEM(MSP_L4_L4A_PID,
+                     ID_L4A_APS_PDP_SETUP_IND,
+                     TAF_APS_RcvL4aPdpSetupInd_Active),
+
     TAF_ACT_TBL_ITEM(PS_PID_ESM,
                      ID_ESM_SM_EPS_BEARER_INFO_IND,
                      TAF_APS_RcvEsmSmEpsBearerInfoInd_Active),

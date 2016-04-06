@@ -47,9 +47,11 @@ struct mmc_queue {
 	struct mmc_card		*card;
 	struct task_struct	*thread;
 	struct semaphore	thread_sem;
-	unsigned int		flags;
+	volatile unsigned long	flags;
 #define MMC_QUEUE_SUSPENDED	(1 << 0)
 #define MMC_QUEUE_NEW_REQUEST	(1 << 1)
+#define MMC_QUEUE_SUSPENDED_BIT		(1 << 0)
+#define MMC_QUEUE_NEW_REQUEST_BIT	(1 << 1)
 
 	int			(*issue_fn)(struct mmc_queue *, struct request *);
 	void			*data;

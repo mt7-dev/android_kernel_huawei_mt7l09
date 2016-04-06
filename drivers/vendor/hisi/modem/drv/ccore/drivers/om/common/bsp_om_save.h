@@ -7,7 +7,7 @@
 extern "C"
 {
 #endif /* __cplusplus */
-
+#include <product_config.h>
 
 /**************************************************************************
   宏定义
@@ -44,12 +44,18 @@ extern "C"
 /**************************************************************************
   函数声明
 **************************************************************************/
+#ifdef ENABLE_BUILD_OM
 int  bsp_om_save_loop_file(char * dirName, char *fileHeader, void * address, u32 length);
 int  bsp_om_save_file(char *filename, void * address, u32 length, u32 mode);
 int  bsp_om_append_file(char *filename, void * address, u32 length, u32 max_size);
 bool bsp_om_fs_check(void);
 void bsp_om_record_resetlog(void);
 void bsp_om_save_resetlog(void);
+#else
+static inline int  bsp_om_save_file(char *filename, void * address, u32 length, u32 mode) {return 0;}
+static inline int  bsp_om_append_file(char *filename, void * address, u32 length, u32 max_size){return 0;}
+
+#endif
 #ifdef __cplusplus
 }
 #endif /* __cplusplus */

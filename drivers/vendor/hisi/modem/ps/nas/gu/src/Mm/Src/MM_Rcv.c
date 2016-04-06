@@ -222,15 +222,19 @@ VOS_UINT8 Mm_RcvMmcSysInfoInd(
                 }
             }
             else
-            {
-                g_MmGlobalInfo.usRac      = MM_UNSUPPORT_GPRS;
-                g_MmGlobalInfo.ucNtMod    = MM_NET_MODE_INVALID;
-                g_MmGlobalInfo.ucNewNtMod = MM_NET_MODE_INVALID;
+            { 
+                if (MMC_MM_SYS_INFO_TYPE_SYS == pSysInfoInd->enSysInfoType)
+                {
+                    g_MmGlobalInfo.usRac      = MM_UNSUPPORT_GPRS;
+                    g_MmGlobalInfo.ucNtMod    = MM_NET_MODE_INVALID;
+                    g_MmGlobalInfo.ucNewNtMod = MM_NET_MODE_INVALID;
+                }
             }
         }
 
-        if (0 == pSysInfoInd->ucCsInfoSize)
-        {
+        if ((0 == pSysInfoInd->ucCsInfoSize)
+         && (MMC_MM_SYS_INFO_TYPE_SYS == pSysInfoInd->enSysInfoType))
+        { 
             /* 系统消息中指示CS不支持，MM在idle态下状态迁移到No cell available */
             if (MM_IDLE_NO_CELL_AVAILABLE == g_MmGlobalInfo.ucState)
             {
@@ -942,6 +946,7 @@ VOS_UINT8 Mm_RcvRrcEstCnf(
     VOS_UINT8                                ucRet = MM_TRUE;                   /* 返回值                                   */
     RRMM_EST_CNF_STRU                       *pMsg  = VOS_NULL_PTR;              /* 定义接收到的消息类型指针                 */
     NAS_MML_CONN_STATUS_INFO_STRU           *pstConnStatus;
+    VOS_UINT32                               ulIsGsmOnlyEstCnfRslt;
 
     pstConnStatus       = NAS_MML_GetConnStatus();
 
@@ -1000,15 +1005,24 @@ VOS_UINT8 Mm_RcvRrcEstCnf(
         /* 在LU过程中,random access rej时,需要再发起一次LU建链过程,在第二次建链失败时,清除CSFB标志
            其它原因值直接清除CSFB标志*/
 #if (FEATURE_ON == FEATURE_LTE)
-        if (( (NAS_MML_NET_RAT_TYPE_GSM     == NAS_MML_GetCurrNetRatType())
-          && (RRC_EST_RANDOM_ACCESS_REJECT == pMsg->ulResult)
-          && (g_MmGlobalInfo.LuInfo.ucT3213AttmptCnt >= MM_CONST_NUM_1)
-          && (WAIT_FOR_RR_CONNECTION_LOCATION_UPDATING == g_MmGlobalInfo.ucState))
-         || (RRC_EST_RANDOM_ACCESS_REJECT != pMsg->ulResult))
+        ulIsGsmOnlyEstCnfRslt = NAS_MM_IsGsmOnlyEstCnfRslt(pMsg->ulResult);
+
+        if ((NAS_MML_NET_RAT_TYPE_GSM == NAS_MML_GetCurrNetRatType())
+          && (VOS_TRUE == ulIsGsmOnlyEstCnfRslt)
+          && ((g_MmGlobalInfo.LuInfo.ucT3213AttmptCnt < MM_CONST_NUM_1)
+           || ((WAIT_FOR_RR_CONNECTION_LOCATION_UPDATING != g_MmGlobalInfo.ucState)
+            && (g_MmGlobalInfo.LuInfo.ucT3213AttmptCnt >= MM_CONST_NUM_1))))
+
         {
+            /* Added by zwx247453 for CHR optimize, 2015-3-13, begin */
+#if (FEATURE_ON == FEATURE_PTM)
+            /* 处理记录CSFB MT异常 */
+            NAS_MM_ProcCsfbMtFailRecord();
+#endif
+            /* Added by zwx247453 for CHR optimize, 2015-3-13, end */
             NAS_MML_SetCsfbServiceStatus(NAS_MML_CSFB_SERVICE_STATUS_NOT_EXIST);
 
-            NAS_MML_SetRelCauseCsfbHighPrioFlg(VOS_FALSE);   
+            NAS_MML_SetRelCauseCsfbHighPrioFlg(VOS_FALSE);
         }
 #endif
 
@@ -1016,6 +1030,8 @@ VOS_UINT8 Mm_RcvRrcEstCnf(
 
     return ucRet;                                                               /* 返回检查结果                             */
 }
+
+
 VOS_UINT8 Mm_RcvRrcRelInd(
                         VOS_VOID            *pRcvMsg                            /* 收到的原语头指针                         */
                         )
@@ -1035,22 +1051,28 @@ VOS_UINT8 Mm_RcvRrcRelInd(
         PS_LOG(WUEPS_PID_MM, VOS_NULL, PS_PRINT_WARNING, "Mm_RcvRrcRelInd:WARNING: RRMM_REL_IND CHECK PRIMITIVE ERROR!");
         return MM_FALSE;
     }
-    
+
     /* 链路释放，清除MM 链路控制变量，并更新CS 信令连接状态 */
     pstConnStatus->ucCsSigConnStatusFlg = VOS_FALSE;
     if (RRC_RRC_CONN_STATUS_ABSENT == pMsg->ulRrcConnStatus)
     {
         pstConnStatus->ucRrcStatusFlg   = VOS_FALSE;
     }
-    
+
 #if (FEATURE_ON == FEATURE_LTE)
 
     /* 若当前存在CSFB标志，则清除CSFB标志 */
     if (VOS_TRUE == NAS_MML_IsCsfbServiceStatusExist())
-    {        
+    {
+        /* Added by zwx247453 for CHR optimize, 2015-3-13, begin */
+#if (FEATURE_ON == FEATURE_PTM)
+        /* 处理记录CSFB MT异常 */
+        NAS_MM_ProcCsfbMtFailRecord();
+#endif
+        /* Added by zwx247453 for CHR optimize, 2015-3-13, end */
         NAS_MML_SetCsfbServiceStatus(NAS_MML_CSFB_SERVICE_STATUS_NOT_EXIST);
-        
-        NAS_MML_SetRelCauseCsfbHighPrioFlg(VOS_FALSE);   
+
+        NAS_MML_SetRelCauseCsfbHighPrioFlg(VOS_FALSE);
     }
 #endif
 
@@ -1076,8 +1098,6 @@ VOS_UINT8 Mm_RcvRrcRelInd(
     }
     return ucRet;                                                               /* 返回检查结果                             */
 }
-
-
 VOS_UINT8 Mm_RcvRrcSecurityInd(
                            VOS_VOID            *pRcvMsg                         /* 收到的原语头指针                         */
                            )
@@ -1335,6 +1355,8 @@ VOS_UINT8   Mm_RcvAgntUsimAuthenticationCnf(
     {
         NAS_MML_SetSimCsSecurityUmtsCk(g_AgentUsimAuthCnf.aucCipheringKey);
         NAS_MML_SetSimCsSecurityUmtsIk(g_AgentUsimAuthCnf.aucIntegrityKey);
+
+        NAS_MML_SetSimCsSecurityCksn(g_MmMsgAuthReq.MmIeCKSN.ucCksn);
 
         PS_MEM_CPY(g_MmGlobalInfo.AuthenCtrlInfo.aucRes,
                     g_AgentUsimAuthCnf.aucResponse, 4);
@@ -1689,7 +1711,7 @@ VOS_UINT8 Mm_RcvCcPromptRej(
     pMsg = (MMCC_PROMPT_REJ_STRU *)pRcvMsg;                                                             /* 消息转换                                 */
 
     g_MmCcPromptRej.ulRefuseCause = pMsg->ulRefuseCause;
-    
+
     return ucRet;                                                               /* 返回检查结果                             */
 }
 VOS_UINT8 Mm_RcvMmcAttachReq(

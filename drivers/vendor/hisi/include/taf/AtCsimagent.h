@@ -6,6 +6,7 @@
 /*****************************************************************************
   1 其他头文件包含
 *****************************************************************************/
+#include "vos.h"
 
 #ifdef __cplusplus
 #if __cplusplus
@@ -45,7 +46,7 @@ enum CBP_MODEM_RESET_STATUS_ENUM
     CBP_MODEM_RESET_FAIL             = 0x02,    /* CBP Modem复位失败 */
     CBP_MODEM_RESET_BUTT
 };
-typedef VOS_UINT16     CBP_MODEM_RESET_STATUS_ENUM_UINT32;
+typedef VOS_UINT32     CBP_MODEM_RESET_STATUS_ENUM_UINT32;
 
 /*****************************************************************************
  结构名    :AT_CSIMA_RESET_STATUS_IND_MSG_STRU

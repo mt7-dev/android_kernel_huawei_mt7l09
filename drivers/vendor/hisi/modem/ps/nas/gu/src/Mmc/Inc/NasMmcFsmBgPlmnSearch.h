@@ -1116,6 +1116,8 @@ VOS_UINT32 NAS_MMC_RcvMmaImsVoiceCapInd_BgPlmnSearch_WaitEpsRegRsltInd(
 
 VOS_UINT8  NAS_MMC_IsHighPrioRatHplmnSearch_BgPlmnSearch(VOS_VOID);
 
+VOS_VOID  NAS_MMC_UpdateHighPrioPlmnList_BgPlmnSearch(VOS_VOID);
+
 #if (FEATURE_ON == FEATURE_LTE)
 VOS_UINT32 NAS_MMC_IsNeedEnableLTE_FastSpecSearch(VOS_VOID);
 VOS_VOID NAS_MMC_SendEnableLTE_FastSpecSearch(VOS_VOID);

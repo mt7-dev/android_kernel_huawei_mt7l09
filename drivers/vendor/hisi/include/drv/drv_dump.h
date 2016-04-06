@@ -32,7 +32,7 @@ typedef BSP_S32 (*OM_SAVE_FUNC)(BSP_S32 funcType, BSP_U8 *data, BSP_U32 *ulLengt
 
 BSP_VOID DRV_SYSTEM_ERROR(BSP_S32 modId, BSP_S32 arg1, BSP_S32 arg2, BSP_CHAR* arg3, BSP_S32 arg3Length);
 BSP_S32  DRV_SAVE_REGISTER(BSP_S32 funcType, OM_SAVE_FUNC *pFunc);
-BSP_U32  DRV_EXCH_MEM_MALLOC(BSP_U32 ulSize);
+BSP_PVOID  DRV_EXCH_MEM_MALLOC(BSP_U32 ulSize);
 BSP_S32  DRV_EXCH_FILE_SAVE(BSP_VOID *address, BSP_U32 length, BSP_U8 IsFileEnd, BSP_U8 type);
 BSP_VOID DRV_EXCH_HOOK_FUNC_ADD(BSP_VOID);
 BSP_VOID DRV_EXCH_HOOK_FUNC_DELETE(BSP_VOID);
@@ -103,6 +103,7 @@ typedef enum{
     DUMP_SAVE_MOD_AMON,
     DUMP_SAVE_MOD_TLPS,
     DUMP_SAVE_MOD_RUN_TRACE, /* ´òµã¸ú×ÙÇøÓò */ 
+    DUMP_SAVE_MOD_DUAL_MODEM,
 	DUMP_CP_FIELD_END,
 
     /*LPM3 FIELD IDs*/
@@ -137,7 +138,7 @@ typedef enum{
 #define DUMP_EXT_AMON_SIZE                           (0x1000)
 #define DUMP_EXT_TLPS_SIZE                           (0x1000)
 #define DUMP_EXT_RUN_TRACE_SIZE                      (0x400)
-
+#define DUMP_EXT_DUAL_MODEM_SIZE					 (0x1400)
 #else
 
 typedef enum{

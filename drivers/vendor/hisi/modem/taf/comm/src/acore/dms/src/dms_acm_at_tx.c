@@ -1,126 +1,51 @@
 
 
-/*******************************************************************************
- PROJECT   :
- SUBSYSTEM :
- MODULE    :
- OWNER     :
-*******************************************************************************/
+/*****************************************************************************
+  1 头文件包含
+*****************************************************************************/
 
+#include <product_config.h>
+#include <DrvInterface.h>
 #include "msp_errno.h"
 #include <dms.h>
 #include "dms_core.h"
 #include "vos.h"
 
 
-#define THIS_FILE_ID LMSP_FILE_ID_DMS_ACM_AT_TX_C
-
-DMS_STATIC_BUF_STRU stDmsStaticBufInfo ;
-
-#if (VOS_WIN32== VOS_OS_VER)
-
-VOS_UINT8 aucStaticBuf[DMS_LOG_STATIC_ONE_BUF_SIZE*DMS_LOG_STATIC_BUF_NUM + 32] = {0};
+#ifdef __cplusplus
+    #if __cplusplus
+    extern "C" {
+    #endif
 #endif
-VOS_UINT8 *g_aucStaticBuf = NULL;
 
-extern VOS_UINT32 dms_debug_flag;
 
 /*****************************************************************************
-函 数 名  : writeAtData
-功能描述  : AT写USB数据总入口
-输入参数  : ulClientId: 客户端ID
-          aucDataBuf: 发送数据指针
-          ulLen:发送长度
-输出参数  :
-返 回 值  : ERR_MSP_FAILURE/ERR_MSP_SUCCESS
-调用函数  :
-被调函数  : Dms_WriteAtData
-修改历史  :
-1.日    期  : 2012年8月27日
-  作    者  : heliping
-  修改内容  : Creat Function
+    协议栈打印打点方式下的.C文件宏定义
 *****************************************************************************/
 
-VOS_UINT32 writeAtData(VOS_UINT32 ulClientId, VOS_UINT8 *aucDataBuf, VOS_UINT32 ulLen)
-{
-    VOS_UINT32 ret = ERR_MSP_SUCCESS;
-    VOS_UINT8 *pSenBuf  = VOS_NULL;
+/*lint -e767 -e960*/
+#define THIS_FILE_ID                    PS_FILE_ID_DMS_ACM_AT_TX_C
+/*lint +e767 +e960*/
 
-    if (VOS_NULL == aucDataBuf || 0 == ulLen)
-    {
-        return ERR_MSP_FAILURE;
-    }
-
-    /*发送 PCUI 通道的数据 */
-    if (ulClientId == EN_DMS_AT_CLIENT_CTRL)
-    {
-        pSenBuf = Dms_GetStaticBuf(ulLen);
-
-        if(pSenBuf ==VOS_NULL)
-        {
-            return ERR_MSP_FAILURE;
-        }
-
-        VOS_MemCpy(pSenBuf, aucDataBuf, ulLen);
-
-        ret = dms_VcomWriteAsync(EN_DMS_BEARER_USB_COM_CTRL,pSenBuf,(VOS_UINT32)ulLen);
-
-        if( ret != ERR_MSP_SUCCESS)
-        {
-            Dms_FreeStaticBuf( pSenBuf );
-        }
-
-    }
-    /*发送 CTRL 通道的数据 */
-    else if (ulClientId == EN_DMS_AT_CLIENT_ACM)
-    {
-
-        pSenBuf = Dms_GetStaticBuf(ulLen);
-
-        if(pSenBuf ==VOS_NULL)
-        {
-            return ERR_MSP_FAILURE;
-        }
-
-        VOS_MemCpy(pSenBuf, aucDataBuf, ulLen);
-
-        ret = dms_VcomWriteAsync(EN_DMS_BEARER_USB_COM4_AT,pSenBuf,(VOS_UINT32)ulLen);
-
-        if( ret != ERR_MSP_SUCCESS)
-        {
-            Dms_FreeStaticBuf( pSenBuf );
-        }
-
-    }
-    /*发送 NDIS CTRL 通道的数据 */
-    else if(ulClientId == EN_DMS_AT_CLIENT_NCM)
-    {
-        pSenBuf = Dms_GetStaticBuf(ulLen);
-
-        if(pSenBuf ==VOS_NULL)
-        {
-            return ERR_MSP_FAILURE;
-        }
-
-        VOS_MemCpy(pSenBuf, aucDataBuf, ulLen);
-
-        ret = dms_NcmSendData(pSenBuf,(VOS_UINT32)ulLen);
-
-        if( ret != ERR_MSP_SUCCESS)
-        {
-            Dms_FreeStaticBuf( pSenBuf );
-        }
-    }
-    else
-    {
-        ret = ERR_MSP_INVALID_PARAMETER;
-    }
-
-    return ret;
-}
 
 /*****************************************************************************
- 函 数 名  : Dms_WriteAtData
+  2 全局变量定义
+*****************************************************************************/
+
+DMS_STATIC_BUF_STRU                     stDmsStaticBufInfo ;
+
+#if (VOS_WIN32== VOS_OS_VER)
+VOS_UINT8                               aucStaticBuf[DMS_LOG_STATIC_ONE_BUF_SIZE*DMS_LOG_STATIC_BUF_NUM + 32] = {0};
+#endif
+VOS_UINT8                              *g_aucStaticBuf = NULL;
+
+
+/*****************************************************************************
+  3 函数实现
+*****************************************************************************/
+
+/*****************************************************************************
+ 函 数 名  : DMS_WriteData
  功能描述  : AT写数据总入口
  输入参数  : ucPortNo: 通道ID
              pData: 发送数据指针
@@ -134,38 +59,62 @@ VOS_UINT32 writeAtData(VOS_UINT32 ulClientId, VOS_UINT8 *aucDataBuf, VOS_UINT32 
      作    者  : heliping
      修改内容  : Creat Function
 *****************************************************************************/
-
-VOS_INT32 Dms_WriteAtData(VOS_UINT8 ucPortNo, VOS_UINT8* pData, VOS_UINT16 uslength)
+VOS_INT32 DMS_WriteData(DMS_PHY_BEAR_ENUM enPhyBear, VOS_UINT8 *pucData, VOS_UINT16 usLen)
 {
-    VOS_INT32 slRet = -1;
-    VOS_UINT32 ulClientId = 0;
+    VOS_UINT8                          *pucSenBuf = NULL;
+    VOS_INT32                           lRet      = VOS_ERROR;
 
-    if (VOS_TRUE == dms_debug_flag)
+    if ((NULL == pucData) || (0 == usLen))
     {
-        vos_printf("Dms_WriteAtData: PortNo = %d, len = %d, buf = %s\r\n", ucPortNo, uslength, pData);
+        return VOS_ERROR;
     }
 
-    if(EN_DMS_BEARER_USB_COM4_AT == ucPortNo)
-    {
-        ulClientId = EN_DMS_AT_CLIENT_ACM;
-    }
-    else if(EN_DMS_BEARER_USB_NCM == ucPortNo)
-    {
-        ulClientId =  EN_DMS_AT_CLIENT_NCM;
-    }
+    DMS_LOG_INFO("DMS_WriteData: PortNo = %d, len = %d, buf = %s\n", enPhyBear, usLen, pucData);
 
-    else if(EN_DMS_BEARER_USB_COM_CTRL == ucPortNo)
+    if ( (DMS_PHY_BEAR_USB_PCUI == enPhyBear)
+      || (DMS_PHY_BEAR_USB_CTRL == enPhyBear) )
     {
-        ulClientId = EN_DMS_AT_CLIENT_CTRL;
+        pucSenBuf = Dms_GetStaticBuf(usLen);
+
+        if (NULL == pucSenBuf)
+        {
+            return VOS_ERROR;
+        }
+
+        VOS_MemCpy(pucSenBuf, pucData, usLen);
+
+        lRet = (VOS_INT32)DMS_VcomWriteAsync(enPhyBear, pucSenBuf, usLen);
+
+        if (ERR_MSP_SUCCESS != lRet)
+        {
+            Dms_FreeStaticBuf(pucSenBuf);
+        }
+
+    }
+    else if (DMS_PHY_BEAR_USB_NCM == enPhyBear)
+    {
+        pucSenBuf = Dms_GetStaticBuf(usLen);
+
+        if (NULL == pucSenBuf)
+        {
+            return VOS_ERROR;
+        }
+
+        VOS_MemCpy(pucSenBuf, pucData, usLen);
+
+        lRet = (VOS_INT32)DMS_NcmSendData(pucSenBuf, usLen);
+
+        if (ERR_MSP_SUCCESS != lRet)
+        {
+            Dms_FreeStaticBuf(pucSenBuf);
+        }
     }
     else
     {
-        return slRet;
+        lRet = VOS_ERROR;
     }
 
-    slRet = (VOS_INT32)writeAtData(ulClientId, pData, (VOS_UINT32)uslength);
-
-    return slRet;
+    return lRet;
 }
 
 /*****************************************************************************
@@ -179,10 +128,9 @@ VOS_INT32 Dms_WriteAtData(VOS_UINT8 ucPortNo, VOS_UINT8* pData, VOS_UINT16 uslen
  被调函数  :
  修改历史  :
    1.日    期  : 2012年8月27日
-     作    者  : heliping上
+     作    者  : heliping
      修改内容  : Creat Function
 *****************************************************************************/
-
 VOS_VOID Dms_StaticBufInit(VOS_VOID)
 {
     VOS_UINT32 i = 0;
@@ -205,15 +153,15 @@ VOS_VOID Dms_StaticBufInit(VOS_VOID)
 #endif
 
     /*取32字节对齐的地址*/
-    pTemp = g_aucStaticBuf + (32 - ((VOS_UINT32 )g_aucStaticBuf%32));
+    pTemp = g_aucStaticBuf + (32 - ((VOS_ULONG )g_aucStaticBuf%32));
 
-    stDmsStaticBufInfo.enBufType      = EN_DMS_DYMIC_BUF_TYP;
+    stDmsStaticBufInfo.enBufType      = DMS_BUF_TYP_DYMIC;
 
     /* 初始化缓冲信息*/
     for (i = 0; i < DMS_LOG_STATIC_BUF_NUM; i++)
     {
-        stDmsStaticBufInfo.stBufSta[i].buf    = (VOS_UINT8 *)(i * DMS_LOG_STATIC_ONE_BUF_SIZE + pTemp);
-        stDmsStaticBufInfo.stBufSta[i].enBusy = EN_STATIC_BUF_STA_IDLE;
+        stDmsStaticBufInfo.stBufSta[i].pcuBuf = (VOS_UINT8 *)((VOS_ULONG)i * DMS_LOG_STATIC_ONE_BUF_SIZE + pTemp);
+        stDmsStaticBufInfo.stBufSta[i].enBusy = STATIC_BUF_STA_IDLE;
     }
 
     return ;
@@ -233,7 +181,6 @@ VOS_VOID Dms_StaticBufInit(VOS_VOID)
    作    者  : heliping
    修改内容  : Creat Function
 *****************************************************************************/
-
 VOS_UINT8* Dms_GetStaticBuf(VOS_UINT32 ulLen)
 {
     VOS_UINT32 i = 0;
@@ -253,11 +200,11 @@ VOS_UINT8* Dms_GetStaticBuf(VOS_UINT32 ulLen)
 
     for (i = 0; i < DMS_LOG_STATIC_BUF_NUM; i++)
     {
-        if (stDmsStaticBufInfo.stBufSta[i].enBusy == EN_STATIC_BUF_STA_IDLE)
+        if (stDmsStaticBufInfo.stBufSta[i].enBusy == STATIC_BUF_STA_IDLE)
         {
-            stDmsStaticBufInfo.stBufSta[i].enBusy = EN_STATIC_BUF_STA_BUSY;
+            stDmsStaticBufInfo.stBufSta[i].enBusy = STATIC_BUF_STA_BUSY;
 
-            return  stDmsStaticBufInfo.stBufSta[i].buf;
+            return  stDmsStaticBufInfo.stBufSta[i].pcuBuf;
         }
     }
 
@@ -293,11 +240,11 @@ VOS_UINT8* Dms_GetStaticBuf(VOS_UINT32 ulLen)
     if(( buf >= g_aucStaticBuf )
         &&(buf < g_aucStaticBuf +DMS_LOG_STATIC_ONE_BUF_SIZE * DMS_LOG_STATIC_BUF_NUM  +32))
     {
-        return TRUE;
+        return VOS_TRUE;
     }
     else
     {
-        return FALSE;
+        return VOS_FALSE;
     }
 
 }
@@ -316,7 +263,6 @@ VOS_UINT8* Dms_GetStaticBuf(VOS_UINT32 ulLen)
      作    者  : heliping
      修改内容  : Creat Function
 *****************************************************************************/
-
 VOS_VOID Dms_FreeStaticBuf( VOS_UINT8 * buf)
 {
     VOS_UINT32 i = 0;
@@ -329,9 +275,9 @@ VOS_VOID Dms_FreeStaticBuf( VOS_UINT8 * buf)
     /*静态buf释放*/
     for (i = 0; i < DMS_LOG_STATIC_BUF_NUM; i++)
     {
-        if (stDmsStaticBufInfo.stBufSta[i].buf == buf)
+        if (stDmsStaticBufInfo.stBufSta[i].pcuBuf == buf)
         {
-            stDmsStaticBufInfo.stBufSta[i].enBusy = EN_STATIC_BUF_STA_IDLE;
+            stDmsStaticBufInfo.stBufSta[i].enBusy = STATIC_BUF_STA_IDLE;
             return ;
         }
     }
@@ -348,7 +294,7 @@ VOS_VOID Dms_FreeStaticBuf( VOS_UINT8 * buf)
     return ;
 }
 /*****************************************************************************
- 函 数 名  : dms_VcomWriteAsync
+ 函 数 名  : DMS_VcomWriteAsync
  功能描述  : USB异步写接口
  输入参数  : VcomId: 通道ID
              pucDataBuf: 发送指针
@@ -362,118 +308,70 @@ VOS_VOID Dms_FreeStaticBuf( VOS_UINT8 * buf)
      作    者  : heliping
      修改内容  : Creat Function
 *****************************************************************************/
-
-VOS_UINT32 dms_VcomWriteAsync(VOS_UINT32 VcomId,VOS_UINT8 *pucDataBuf,VOS_UINT32 ulLen)
+VOS_UINT32 DMS_VcomWriteAsync(
+    DMS_PHY_BEAR_ENUM                   enPhyBear,
+    VOS_UINT8                          *pucDataBuf,
+    VOS_UINT32                          ulLen
+)
 {
-    VOS_INT32 ret = ERR_MSP_SUCCESS;
-    ACM_WR_ASYNC_INFO  stVcom  = {0};
-    VOS_INT32 slHandle = 0;
-    DMS_PHY_BEAR_PROPERTY_STRU* aenPhyBear = dmsgetPhyBearProperty();
+    DMS_PHY_BEAR_PROPERTY_STRU         *pstPhyBearProp = NULL;
+    ACM_WR_ASYNC_INFO                   stAcmInfo = {0};
+    UDI_HANDLE                          lHandle = UDI_INVALID_HANDLE;
+    VOS_INT32                           lRet = ERR_MSP_SUCCESS;
+#ifdef CONFIG_ARM64
+    struct device                       dev;
+    VOS_UINT64                          dma_mask = 0xffffffffULL;
 
-    stVcom.pBuffer = (VOS_CHAR*)pucDataBuf;
-    stVcom.u32Size = ulLen;
+    VOS_MemSet(&dev, 0, (VOS_SIZE_T)sizeof(dev));
 
-    /*LTE DIAG CTRL*/
-    if (VcomId == EN_DMS_BEARER_USB_COM1_DIAG_CTRL)
+    dev.dma_mask = &(dma_mask);
+#endif
+
+#ifdef FEATURE_USB_ZERO_COPY
+    stAcmInfo.pVirAddr = (VOS_CHAR *)pucDataBuf;
+
+#ifdef CONFIG_ARM64
+    stAcmInfo.pPhyAddr = (VOS_CHAR *)DMS_CACHE_FLUSH_WITH_DEV(&dev, (VOS_CHAR *)pucDataBuf, ulLen);
+#else
+    stAcmInfo.pPhyAddr = (VOS_CHAR *)DMS_CACHE_FLUSH((VOS_CHAR *)pucDataBuf, ulLen);
+#endif
+#else
+    stAcmInfo.pBuffer  = (VOS_CHAR *)pucDataBuf;
+#endif
+    stAcmInfo.u32Size  = ulLen;
+
+    pstPhyBearProp = DMS_GetPhyBearProperty(enPhyBear);
+
+    lHandle = pstPhyBearProp->lPortHandle;
+    if (UDI_INVALID_HANDLE == lHandle)
     {
-        slHandle = aenPhyBear[EN_DMS_BEARER_USB_COM1_DIAG_CTRL].slPortHandle;
-
-        if(slHandle == UDI_INVALID_HANDLE)
-        {
-            return ERR_MSP_FAILURE;
-        }
-
-        DMS_DEBUG_SDM_FUN(EN_SDM_DMS_VCOM1_WRT, ulLen, 0, 0);
-
-        ret = udi_ioctl((int)slHandle, ACM_IOCTL_WRITE_ASYNC, &stVcom);
-
-        if(ret == ERR_MSP_SUCCESS)
-        {
-            DMS_DEBUG_SDM_FUN(EN_SDM_DMS_VCOM1_WRT_SUCC, ulLen, 0, 0);
-        }
-
-    }
-    /*LTE DIAG DATA*/
-    else if(VcomId == EN_DMS_BEARER_USB_COM2_DIAG_APP)
-    {
-        slHandle = aenPhyBear[EN_DMS_BEARER_USB_COM2_DIAG_APP].slPortHandle;
-
-        if(slHandle == UDI_INVALID_HANDLE)
-        {
-            return ERR_MSP_FAILURE;
-        }
-
-        DMS_DEBUG_SDM_FUN(EN_SDM_DMS_VCOM2_WRT, ulLen, 0, 0);
-        ret = udi_ioctl((int)slHandle, ACM_IOCTL_WRITE_ASYNC, &stVcom);
-
-        if(ret == ERR_MSP_SUCCESS)
-        {
-            DMS_DEBUG_SDM_FUN(EN_SDM_DMS_VCOM2_WRT_SUCC, ulLen, 0, 0);
-        }
-
-    }
-    /*AT PCUI*/
-    else if(VcomId == EN_DMS_BEARER_USB_COM4_AT)
-    {
-        slHandle = aenPhyBear[EN_DMS_BEARER_USB_COM4_AT].slPortHandle;
-
-        if(slHandle == UDI_INVALID_HANDLE)
-        {
-            if (VOS_TRUE == dms_debug_flag)
-            {
-                vos_printf("dms_VcomWriteAsync: INVALID HANDLE\r\n");
-            }
-
-            return ERR_MSP_FAILURE;
-        }
-
-        if(aenPhyBear[EN_DMS_BEARER_USB_COM4_AT].ucChanStat ==ACM_EVT_DEV_SUSPEND)
-        {
-            if (VOS_TRUE == dms_debug_flag)
-            {
-                vos_printf("dms_VcomWriteAsync: DEV SUSPEND\r\n");
-            }
-
-            return ERR_MSP_FAILURE;
-        }
-
-        DMS_DEBUG_SDM_FUN(EN_SDM_DMS_VCOM_AT_WRT, ulLen, 0, 0);
-
-        ret = udi_ioctl((int)slHandle, ACM_IOCTL_WRITE_ASYNC, &stVcom);
-
-        if(ret == ERR_MSP_SUCCESS)
-        {
-            DMS_DEBUG_SDM_FUN(EN_SDM_DMS_VCOM_AT_WRT_SUSS, ulLen, 0, 0);
-        }
-
-    }
-    /*AT CTRL*/
-    else if(VcomId == EN_DMS_BEARER_USB_COM_CTRL)
-    {
-        slHandle = aenPhyBear[EN_DMS_BEARER_USB_COM_CTRL].slPortHandle;
-
-        if(slHandle == UDI_INVALID_HANDLE)
-        {
-            return ERR_MSP_FAILURE;
-        }
-
-        DMS_DEBUG_SDM_FUN(EN_SDM_DMS_VCOM_CTRL_WRT, ulLen, 0, 0);
-
-        ret = udi_ioctl((int)slHandle, ACM_IOCTL_WRITE_ASYNC, &stVcom);
-
-        if(ret == ERR_MSP_SUCCESS)
-        {
-            DMS_DEBUG_SDM_FUN(EN_SDM_DMS_VCOM_CTRL_WRT_SUSS, ulLen, 0, 0);
-        }
-
-    }
-    else
-    {
-        ret = ERR_MSP_INVALID_PARAMETER;
+        DMS_LOG_INFO("DMS_VcomWriteAsync[%d]: INVALID HANDLE.\n", enPhyBear);
+        return ERR_MSP_FAILURE;
     }
 
-    return (VOS_UINT32)ret;
+    if (ACM_EVT_DEV_SUSPEND == pstPhyBearProp->ucChanStat)
+    {
+        DMS_LOG_INFO("DMS_VcomWriteAsync[%d]: DEV SUSPEND.\n", enPhyBear);
+        return ERR_MSP_FAILURE;
+    }
+
+    DMS_DBG_SDM_FUN((DMS_SDM_MSG_ID_ENUM)(DMS_SDM_VCOM_WRT_BEGIN + (VOS_UINT32)enPhyBear),\
+                    ulLen, 0, 0);
+
+    lRet = DRV_UDI_IOCTL(lHandle, ACM_IOCTL_WRITE_ASYNC, &stAcmInfo);
+    if (ERR_MSP_SUCCESS == lRet)
+    {
+        DMS_DBG_SDM_FUN((DMS_SDM_MSG_ID_ENUM)(DMS_SDM_VCOM_WRT_SUSS_BEGIN + (VOS_UINT32)enPhyBear),\
+                        ulLen, 0, 0);
+    }
+
+    return (VOS_UINT32)lRet;
 }
 
 
+#ifdef __cplusplus
+    #if __cplusplus
+        }
+    #endif
+#endif
 

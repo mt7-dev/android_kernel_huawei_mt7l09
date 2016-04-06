@@ -210,9 +210,7 @@ static int __init dns323_read_mac_addr(void)
 	int i;
 	char *mac_page;
 
-	/* MAC address is stored as a regular ol' string in /dev/mtdblock4
-	 * (0x007d0000-0x00800000) starting at offset 196480 (0x2ff80).
-	 */
+
 	mac_page = ioremap(DNS323_NOR_BOOT_BASE + 0x7d0000 + 196480, 1024);
 	if (!mac_page)
 		return -ENOMEM;

@@ -417,7 +417,7 @@ VOS_VOID Gmm_RcvAgentUsimAuthenticationCnf(
                                        )
 {
     USIMM_AUTH_CNF_STRU *ptr;
-   
+
 
     ptr = (USIMM_AUTH_CNF_STRU *)pMsg;
 
@@ -455,12 +455,12 @@ VOS_VOID Gmm_Com_RcvAgentUsimAuthenticationCnf(
     ucCause             = NAS_MML_REG_FAIL_CAUSE_NULL;
     enUsimAuthFailVaule = NAS_MML_SIM_AUTH_FAIL_NULL;
 
-    if ((USIMM_3G_AUTH != ptr->enAuthType) 
+    if ((USIMM_3G_AUTH != ptr->enAuthType)
      && (USIMM_2G_AUTH != ptr->enAuthType))
     {
-        PS_LOG(WUEPS_PID_GMM, VOS_NULL, PS_PRINT_WARNING, 
+        PS_LOG(WUEPS_PID_GMM, VOS_NULL, PS_PRINT_WARNING,
                "Gmm_Com_RcvAgentUsimAuthenticationCnf:WARNING: authentication is not expected");
-        return;        
+        return;
     }
 
     /* V200R001 Modify Begin: */
@@ -488,7 +488,7 @@ VOS_VOID Gmm_Com_RcvAgentUsimAuthenticationCnf(
     }
     /*modify,sunxibo,2006-03-02,itt end*/
     /* V200R001 Modify End: */
-    
+
     switch (ptr->enResult)
     {
     case USIMM_AUTH_MAC_FAILURE:
@@ -697,7 +697,6 @@ VOS_UINT8 Gmm_Auth_Request_Option_Ie_Check(NAS_MSG_FOR_PCLINT_STRU *pMsg,
 {
     VOS_UINT8        ucAddOffset = 0;
     VOS_UINT8       *pucMsgTemp;                                                /* 暂时指针变量                             */
-    NAS_MSG_STRU    *pGmmStatus;
 
     if (VOS_NULL == pMsg)
     {
@@ -762,16 +761,18 @@ VOS_UINT8 Gmm_Auth_Request_Option_Ie_Check(NAS_MSG_FOR_PCLINT_STRU *pMsg,
             if (16 != (*(pucMsgTemp + 4 + ucAddOffset + 1)))
             {
                 PS_LOG(WUEPS_PID_GMM, VOS_NULL, PS_PRINT_WARNING, "Gmm_RcvAuthenAndCipherRequestMsg:WARNING: Semantically incorrect message");
-                pGmmStatus = Gmm_GmmStatusMsgMake(
+                /*pGmmStatus = Gmm_GmmStatusMsgMake(
                                   NAS_MML_REG_FAIL_CAUSE_SEMANTICALLY_INCORRECT_MSG);
 
                 Gmm_SndRrmmDataReq(RRC_NAS_MSG_PRIORTY_HIGH , pGmmStatus);
-                return GMM_FAILURE;
+                return GMM_FAILURE;*/
+
+                NAS_GMM_LogAutnLenInfo(*(pucMsgTemp + 4 + ucAddOffset + 1));
             }
 
             *pucAutnFlag = GMM_TRUE;
             *ppAutn = pucMsgTemp + 4 + ucAddOffset;
-            ucAddOffset += 18;
+            ucAddOffset += 2 + (*(pucMsgTemp + 4 + ucAddOffset + 1));
             break;
         default :
             PS_LOG(WUEPS_PID_GMM, VOS_NULL, PS_PRINT_WARNING, "Gmm_RcvAuthenAndCipherRequestMsg:WARNING: Conditional IE error");
@@ -923,12 +924,12 @@ VOS_VOID Gmm_RcvAuthenAndCipherRequestMsg_Gsm_Auth_Handling(
 
     if (GMM_FALSE == g_GmmAuthenCtrl.ucResStoredFlg)
     {                                                                           /* 易失性内存为空                           */
-    
+
         ucTempOpId = g_GmmAuthenCtrl.ucOpId;
 
         g_GmmAuthenCtrl.ucOpId = (VOS_UINT8)((ucTempOpId) % 255);
         g_GmmAuthenCtrl.ucOpId++;
-        
+
         NAS_USIMMAPI_AuthReq(WUEPS_PID_GMM,
                       AUTHENTICATION_REQ_GSM_CHALLENGE,
                       g_GmmAuthenCtrl.aucRandSav,
@@ -1257,7 +1258,7 @@ VOS_VOID Gmm_RcvAuthenAndCipherRejectMsg(
         Gmm_SndRrmmDataReq(RRC_NAS_MSG_PRIORTY_HIGH , pGmmStatus);
         return;
     }
-	
+
     pstCurrCampPlmnId = NAS_MML_GetCurrCampPlmnId();
     pstAuthRejInfo = NAS_MML_GetAuthRejInfo();
 
@@ -1268,7 +1269,7 @@ VOS_VOID Gmm_RcvAuthenAndCipherRejectMsg(
          {
                pstAuthRejInfo->ucHplmnPsAuthRejCounter++;
                return;
-         }            
+         }
     }
 
     g_GmmAuthenCtrl.ucLastFailCause = GMM_AUTHEN_REJ_CAUSE_INVALID;
@@ -2335,6 +2336,10 @@ VOS_VOID NAS_GMM_UpdateAttemptCounterForSpecialCause(
     }
 #endif
 
+    if (VOS_TRUE == NAS_MML_IsRoamingRejectNoRetryFlgActived((VOS_UINT8)ulGmmCause))
+    {
+        g_GmmAttachCtrl.ucAttachAttmptCnt = 4;
+    }
     return;
 }
 VOS_VOID NAS_GMM_CheckCauseToStartT3340(
@@ -2478,8 +2483,10 @@ VOS_UINT8 NAS_GMM_RetryAttachProcedureCheck(
             if (RRC_RRC_CONN_STATUS_ABSENT == ulRrcConnStatus)
             {
                 /* 释放的是RRC连接 */
-                if (  (RRC_REL_CAUSE_RR_NORM_EVENT == ulRelCause)
-                    ||(RRC_REL_CAUSE_RR_USER_INACT == ulRelCause))
+                if ( (RRC_REL_CAUSE_RR_NORM_EVENT    == ulRelCause)
+                  || (RRC_REL_CAUSE_RR_USER_INACT    == ulRelCause)
+                  || (RRC_REL_CAUSE_CELL_UPDATE_FAIL == ulRelCause)
+                  || (RRC_REL_CAUSE_T315_EXPIRED     == ulRelCause) )
                 {
                     return VOS_TRUE;
                 }
@@ -2560,9 +2567,11 @@ VOS_UINT8 NAS_GMM_RetryDetachProcedureCheck(
         if (RRC_RRC_CONN_STATUS_ABSENT == ulRrcConnStatus)
         {
             /* 释放的是RRC连接 */
-            if (   (RRC_REL_CAUSE_RR_NORM_EVENT == ulRelCause)
-                || (RRC_REL_CAUSE_RR_USER_INACT == ulRelCause)
-                || (RRC_REL_CAUSE_RR_DRIECT_SIGN_CONN_EST == ulRelCause))
+            if ( (RRC_REL_CAUSE_RR_NORM_EVENT == ulRelCause)
+              || (RRC_REL_CAUSE_RR_USER_INACT == ulRelCause)
+              || (RRC_REL_CAUSE_RR_DRIECT_SIGN_CONN_EST == ulRelCause)
+              || (RRC_REL_CAUSE_CELL_UPDATE_FAIL        == ulRelCause)
+              || (RRC_REL_CAUSE_T315_EXPIRED            == ulRelCause) )
             {
                 return VOS_TRUE;
             }
@@ -2633,8 +2642,10 @@ VOS_UINT8 NAS_GMM_RetryRauProcedureCheck(
             if (RRC_RRC_CONN_STATUS_ABSENT == ulRrcConnStatus)
             {
                 /* 释放的是RRC连接 */
-            if (   (RRC_REL_CAUSE_RR_NORM_EVENT == ulRelCause)
-                || (RRC_REL_CAUSE_RR_USER_INACT == ulRelCause))
+                if ( (RRC_REL_CAUSE_RR_NORM_EVENT       == ulRelCause)
+                  || (RRC_REL_CAUSE_RR_USER_INACT       == ulRelCause)
+                  || (RRC_REL_CAUSE_CELL_UPDATE_FAIL    == ulRelCause)
+                  || (RRC_REL_CAUSE_T315_EXPIRED        == ulRelCause) )
                 {
                     return VOS_TRUE;
                 }
@@ -2701,9 +2712,11 @@ VOS_UINT8 NAS_GMM_RetrySrProcedureCheck(
         if (RRC_RRC_CONN_STATUS_ABSENT == ulRrcConnStatus)
         {
             /* 释放的是RRC连接 */
-            if (   (RRC_REL_CAUSE_RR_NORM_EVENT == ulRelCause)
-                || (RRC_REL_CAUSE_RR_USER_INACT == ulRelCause)
-                || (RRC_REL_CAUSE_RR_DRIECT_SIGN_CONN_EST == ulRelCause))
+            if ( (RRC_REL_CAUSE_RR_NORM_EVENT           == ulRelCause)
+              || (RRC_REL_CAUSE_RR_USER_INACT           == ulRelCause)
+              || (RRC_REL_CAUSE_RR_DRIECT_SIGN_CONN_EST == ulRelCause)
+              || (RRC_REL_CAUSE_CELL_UPDATE_FAIL        == ulRelCause)
+              || (RRC_REL_CAUSE_T315_EXPIRED            == ulRelCause) )
             {
                 return VOS_TRUE;
             }
@@ -3198,7 +3211,13 @@ VOS_UINT32  NAS_GMM_DecodeDaylightSavingTimeIE(
 
 VOS_VOID  NAS_GMM_CheckIfNeedToStartTimerT3340(VOS_VOID)
 {
-    VOS_INT8                        cVersion;
+    VOS_INT8                            cVersion;
+    VOS_UINT32                          ulT3340TimerStatus;
+    NAS_MML_NET_RAT_TYPE_ENUM_UINT8     enRatType;
+    VOS_UINT32                          ulDataAvailFlg;
+    VOS_UINT32                          ulIsPsRabExistFlag;
+
+    ulIsPsRabExistFlag = NAS_RABM_IsPsRbExist();
 
     cVersion = NAS_Common_Get_Supported_3GPP_Version(MM_COM_SRVDOMAIN_PS);
 
@@ -3209,11 +3228,43 @@ VOS_VOID  NAS_GMM_CheckIfNeedToStartTimerT3340(VOS_VOID)
         if (   (GMM_FALSE == GMM_IsCasGsmMode())
             && (GMM_FALSE == g_GmmGlobalCtrl.ucFopFlg))
         {
-            /* 当前PDP Context存在时，不启动T3340 */
-            if (VOS_FALSE == NAS_MML_IsPsBearerExist())
+            if ((VOS_FALSE == NAS_MML_IsPsBearerExist())
+             || (VOS_TRUE == g_GmmGlobalCtrl.ucIsNeedStartT3340PdpExist))
             {
                 Gmm_TimerStart(GMM_TIMER_T3340);
             }
+        }
+
+        /* 网络防呆处理 */
+        ulT3340TimerStatus = NAS_GMM_QryTimerStatus(GMM_TIMER_T3340);
+        enRatType          = NAS_MML_GetCurrNetRatType();
+        
+        if (   (VOS_TRUE                   == NAS_GMM_IsEnableRelPsSigCon()) 
+            && (NAS_MML_NET_RAT_TYPE_WCDMA == enRatType)
+            && (VOS_FALSE                  == ulT3340TimerStatus)
+            && (GMM_TRUE == g_GmmGlobalCtrl.ucFopFlg))
+        {
+            /* RAU request消息未携带follow on,满足以下条件，则启动T3340:
+            1、当前没有数据在进行
+            2、且没有缓存的rabm重建请求
+            3、没有缓存的sm业务请求
+            4、不存在ps的rab */
+            ulDataAvailFlg     = CDS_IsPsDataAvail();
+
+            if ((VOS_TRUE != NAS_GMM_IsFollowOnPend())
+             && (PS_TRUE  != ulDataAvailFlg)
+             && (VOS_TRUE != ulIsPsRabExistFlag)
+             && (GMM_MSG_HOLD_FOR_SERVICE != (g_GmmGlobalCtrl.MsgHold.ulMsgHoldMsk & GMM_MSG_HOLD_FOR_SERVICE))
+             && (GMM_MSG_HOLD_FOR_SM != (g_GmmGlobalCtrl.MsgHold.ulMsgHoldMsk & GMM_MSG_HOLD_FOR_SM)))
+            {
+                /* 使用网络防呆功能配置的T3340的定时器时长 */
+                g_GmmTimerMng.aTimerInf[GMM_TIMER_T3340].ulTimerVal = NAS_GMM_GetRelPsSigConCfg_T3340TimerLen();
+                Gmm_TimerStart(GMM_TIMER_T3340);
+
+                /* 恢复T3340的协议标准时长 */
+                g_GmmTimerMng.aTimerInf[GMM_TIMER_T3340].ulTimerVal = GMM_TIMER_T3340_VALUE;
+            }
+
         }
     }
 #endif
@@ -4174,7 +4225,7 @@ VOS_UINT8 NAS_GMM_IsNeedDeactiveISR_RauAccept(VOS_VOID)
        1)ISR没激活 MS支持L 则应该把TIN设为"P-TMSI"
        2)ISR激活 满足p.5则设置TIN为"P-TMSI"
     */
-    /* 24008 附录P.5条件 
+    /* 24008 附录P.5条件
        满足如下两个场景之一
        场景1：
        1)MMA指示IMS VOICE可用
@@ -4191,17 +4242,17 @@ VOS_UINT8 NAS_GMM_IsNeedDeactiveISR_RauAccept(VOS_VOID)
      && (VOS_TRUE                           == ucImsVoiceAvailFlg)
      && (NAS_MML_CS_VOICE_ONLY              != enVoiceDomainPreference)
      && ((NAS_MML_NW_IMS_VOICE_SUPPORTED    == enGUNwImsVoiceSupport)
-      || (NAS_MML_NW_IMS_VOICE_SUPPORTED    == enLNwImsVoiceSupport))) 
+      || (NAS_MML_NW_IMS_VOICE_SUPPORTED    == enLNwImsVoiceSupport)))
     {
         return VOS_TRUE;
     }
-    
+
     return VOS_FALSE;
 }
 
 
 VOS_UINT8 NAS_GMM_IsISRActived_RauAccept(VOS_UINT8 ucUpdateResultValue)
-{    
+{
 
     VOS_UINT32                                              ulPlatformSuppLteFlg;
     VOS_UINT8                                               ucIsrSupport;
@@ -4217,7 +4268,7 @@ VOS_UINT8 NAS_GMM_IsISRActived_RauAccept(VOS_UINT8 ucUpdateResultValue)
     {
         return VOS_TRUE;
     }
-    
+
     return VOS_FALSE;
 }
 
@@ -4258,7 +4309,7 @@ VOS_VOID NAS_GMM_UpdateTinType_RauAccept(
     /* ISR去激活，需要更新pdp激活是在ISR激活前激活的 */
     NAS_MML_UpdateAllPsBearIsrFlg(NAS_MML_PS_BEARER_EXIST_BEFORE_ISR_ACT);
 
-    
+
     return;
 }
 
@@ -4293,7 +4344,7 @@ VOS_VOID NAS_GMM_IsrActiveRaiNoChgBeforeT3312Exp_InterSys(VOS_VOID)
     VOS_UINT8                                               ucCsRestrictionFlg;
     VOS_UINT8                                               ucCsAttachAllow;
     VOS_UINT8                                               ucSimCsRegStatus;
-    VOS_UINT8                                               ucImsVoiceMMEnableFlg;    
+    VOS_UINT8                                               ucImsVoiceMMEnableFlg;
 	VOS_UINT8                                               ucImsVoiceAvailFlg;
     NAS_MML_NW_IMS_VOICE_CAP_ENUM_UINT8                     enImsSupportInLTE;
     NAS_MML_VOICE_DOMAIN_PREFERENCE_ENUM_UINT8              enVoiceDomainPreference;
@@ -4307,7 +4358,7 @@ VOS_VOID NAS_GMM_IsrActiveRaiNoChgBeforeT3312Exp_InterSys(VOS_VOID)
        and the GMM receives an indication of "RRC connection failure" from lower layers due to
        lower layer failure while in S1 mode;
        如果LTE重建成功如果ISR激活位置区未改变，gmm判断该标识为1需要触发rau */
-       
+
     /* 网络带下来的T3302定时器时长为0时，不启T3302定时器，如果不加最后一个判断，UE会一直发起ATTACH */
     if ((VOS_TRUE == Nas_GetLrrcConnFailureFlag())
      && (GMM_TIMER_T3302_FLG != (g_GmmTimerMng.ulTimerRunMask & GMM_TIMER_T3302_FLG))
@@ -4317,13 +4368,13 @@ VOS_VOID NAS_GMM_IsrActiveRaiNoChgBeforeT3312Exp_InterSys(VOS_VOID)
     }
     else if (NAS_MML_ROUTING_UPDATE_STATUS_UPDATED == NAS_MML_GetPsUpdateStatus())
     {
-        /** 
+        /**
           * 24301中对于从L异系统变换到U下，增加了RAU的场景：
           * If the TRACKING AREA UPDATE ACCEPT message contains:
           * i)  no indication that ISR is activated, the UE shall set the TIN to "GUTI";
           * ii) an indication that ISR is activated, then:
-          * -   if the UE is required to perform routing area updating for IMS voice 
-          * termination as specified in 3GPP TS 24.008 [13], annex P.5, 
+          * -   if the UE is required to perform routing area updating for IMS voice
+          * termination as specified in 3GPP TS 24.008 [13], annex P.5,
           * the UE shall set the TIN to "GUTI";
 
           * 24008中规定：
@@ -4346,7 +4397,7 @@ VOS_VOID NAS_GMM_IsrActiveRaiNoChgBeforeT3312Exp_InterSys(VOS_VOID)
           && (NAS_MML_CS_VOICE_ONLY != enVoiceDomainPreference))
         {
             Gmm_RoutingAreaUpdateInitiate(GMM_UPDATING_TYPE_INVALID);
-         
+
             return;
         }
         g_GmmGlobalCtrl.ucRealProFlg = GMM_UNREAL_PROCEDURE;
@@ -4611,6 +4662,87 @@ VOS_VOID  NAS_GMM_LogGmmStateInfo(
 }
 
 
+
+VOS_VOID  NAS_GMM_LogGmmCtxInfo(VOS_VOID)
+{
+    GMMOM_LOG_CTX_INFO_STRU            *pstMsg = VOS_NULL_PTR;
+    NAS_MML_CONN_STATUS_INFO_STRU      *pstConnStatus = VOS_NULL_PTR;
+
+    pstMsg = (GMMOM_LOG_CTX_INFO_STRU*)PS_MEM_ALLOC(WUEPS_PID_GMM,
+                                         sizeof(GMMOM_LOG_CTX_INFO_STRU));
+
+    pstConnStatus = NAS_MML_GetConnStatus();
+
+    if (VOS_NULL_PTR == pstMsg)
+    {
+        NAS_ERROR_LOG(WUEPS_PID_GMM, "NAS_GMM_LogGmmCtxInfo:ERROR:Alloc Mem Fail.");
+        return;
+    }
+
+    PS_MEM_SET(pstMsg, 0x00, sizeof(GMMOM_LOG_CTX_INFO_STRU));
+
+    pstMsg->stMsgHeader.ulSenderCpuId   = VOS_LOCAL_CPUID;
+    pstMsg->stMsgHeader.ulReceiverCpuId = VOS_LOCAL_CPUID;
+    pstMsg->stMsgHeader.ulSenderPid     = WUEPS_PID_GMM;
+    pstMsg->stMsgHeader.ulReceiverPid   = WUEPS_PID_GMM;
+    pstMsg->stMsgHeader.ulLength        = sizeof(GMMOM_LOG_CTX_INFO_STRU) - VOS_MSG_HEAD_LENGTH;
+    pstMsg->stMsgHeader.ulMsgName       = GMMOM_LOG_CTX_INFO_IND;
+
+    pstMsg->stGmmGasGlobalCtrlInfo.ucLastDataSender  = gstGmmCasGlobalCtrl.ucLastDataSender;
+    pstMsg->stGmmGasGlobalCtrlInfo.ucSuspendLlcCause = gstGmmCasGlobalCtrl.ucSuspendLlcCause;
+    pstMsg->stGmmGasGlobalCtrlInfo.ucTlliAssignFlg   = gstGmmCasGlobalCtrl.ucTlliAssignFlg;
+
+    pstMsg->stGmmGlobalCtrlInfo.CsInfo_ucCsTransFlg  = g_GmmGlobalCtrl.CsInfo.ucCsTransFlg;
+    pstMsg->stGmmGlobalCtrlInfo.SysInfo_Rai          = g_GmmGlobalCtrl.SysInfo.Rai;
+    pstMsg->stGmmGlobalCtrlInfo.SysInfo_ucCellChgFlg = g_GmmGlobalCtrl.SysInfo.ucCellChgFlg;
+    pstMsg->stGmmGlobalCtrlInfo.SysInfo_ucNetMod     = g_GmmGlobalCtrl.SysInfo.ucNetMod;
+    pstMsg->stGmmGlobalCtrlInfo.ucCvrgAreaLostFlg    = g_GmmGlobalCtrl.ucCvrgAreaLostFlg;
+    pstMsg->stGmmGlobalCtrlInfo.ucDetachType         = (VOS_UINT8)g_GmmGlobalCtrl.stDetachInfo.enDetachType;
+    pstMsg->stGmmGlobalCtrlInfo.ucRaiChgRelFlg       = g_GmmGlobalCtrl.ucRaiChgRelFlg;
+    pstMsg->stGmmGlobalCtrlInfo.ucRelCause           = g_GmmGlobalCtrl.ucRelCause;
+    pstMsg->stGmmGlobalCtrlInfo.ucSigConFlg          = g_GmmGlobalCtrl.ucSigConFlg;
+    pstMsg->stGmmGlobalCtrlInfo.ucSpecProc           = g_GmmGlobalCtrl.ucSpecProc;
+    pstMsg->stGmmGlobalCtrlInfo.ucSpecProcInCsTrans  = g_GmmGlobalCtrl.ucSpecProcInCsTrans;
+    pstMsg->stGmmGlobalCtrlInfo.UeInfo_ucMsRadioCapSupportLteFromAs     = g_GmmGlobalCtrl.UeInfo.ucMsRadioCapSupportLteFromAs;
+    pstMsg->stGmmGlobalCtrlInfo.UeInfo_ucMsRadioCapSupportLteFromRegReq = g_GmmGlobalCtrl.UeInfo.ucMsRadioCapSupportLteFromRegReq;
+    pstMsg->stGmmGlobalCtrlInfo.UeInfo_UeId_ucUeIdMask = g_GmmGlobalCtrl.UeInfo.UeId.ucUeIdMask;
+    pstMsg->stGmmGlobalCtrlInfo.UeInfo_enVoiceDomainFromRegRq   = g_GmmGlobalCtrl.UeInfo.enVoiceDomainFromRegReq;
+
+    pstMsg->stGmmRauCtrlInfo.ucT3311ExpiredFlg         = g_GmmRauCtrl.ucT3311ExpiredFlg;
+    pstMsg->stGmmRauCtrlInfo.ucT3312ExpiredFlg         = g_GmmRauCtrl.ucT3312ExpiredFlg;
+
+    pstMsg->stGmmReqCnfMngInfo.ucCnfMask               = g_GmmReqCnfMng.ucCnfMask;
+
+    pstMsg->stGmmServiceCtrlInfo.ucRetrySrForRelCtrlFlg = g_GmmServiceCtrl.ucRetrySrForRelCtrlFlg;
+
+    pstMsg->stGmmSuspendCtrlInfo.ucNetModeChange        = gstGmmSuspendCtrl.ucNetModeChange;
+    pstMsg->stGmmSuspendCtrlInfo.ucPreRat               = gstGmmSuspendCtrl.ucPreRat;
+    pstMsg->stGmmSuspendCtrlInfo.ucPreSrvState          = gstGmmSuspendCtrl.ucPreSrvState;
+    pstMsg->stGmmSuspendCtrlInfo.ucT3312State           = gstGmmSuspendCtrl.ucT3312State;
+
+    pstMsg->stGmmTimerMngInfo.ulTimerRunMask            = g_GmmTimerMng.ulTimerRunMask;
+
+    pstMsg->stMmlCtxInfo.ucWSysInfoDrxLen               = NAS_MML_GetWSysInfoDrxLen();
+    pstMsg->stMmlCtxInfo.ucT3423State                   = NAS_MML_GetT3423Status();
+    pstMsg->stMmlCtxInfo.ucPsServiceBufferStatusFlg     = pstConnStatus->ucPsServiceBufferFlg;
+    pstMsg->stMmlCtxInfo.ucPsRegStatus                  = NAS_MML_GetSimPsRegStatus();
+    pstMsg->stMmlCtxInfo.ucIsTmsiValid                  = (VOS_UINT8)NAS_MML_IsTmsiValid();
+    PS_MEM_CPY(&pstMsg->stMmlCtxInfo.stPsLastSuccRai ,NAS_MML_GetPsLastSuccRai(),sizeof(pstMsg->stMmlCtxInfo.stPsLastSuccRai));
+    pstMsg->stMmlCtxInfo.enTinType                      = NAS_MML_GetTinType();
+    pstMsg->stMmlCtxInfo.enPsUpdateStatus               = NAS_MML_GetPsUpdateStatus();
+    pstMsg->stMmlCtxInfo.enMsMode                       = NAS_MML_GetMsMode();
+    pstMsg->stMmlCtxInfo.enCurrUtranMode                = NAS_UTRANCTRL_GetCurrUtranMode();
+    PS_MEM_CPY(pstMsg->stMmlCtxInfo.astPsBearerContext, NAS_MML_GetPsBearerCtx(), sizeof(pstMsg->stMmlCtxInfo.astPsBearerContext));
+
+    pstMsg->stMmSubLyrShareInfo.GmmShare_ucGsAssociationFlg = g_MmSubLyrShare.GmmShare.ucGsAssociationFlg;
+
+    OM_TraceMsgHook(pstMsg);
+
+    PS_MEM_FREE(WUEPS_PID_GMM, pstMsg);
+
+    return;
+}
+
 VOS_VOID NAS_GMM_LogPsRegContainDrxInfo(
     NAS_MML_PS_REG_CONTAIN_DRX_PARA_ENUM_UINT8    enPsRegContainDrx
 )
@@ -4835,6 +4967,181 @@ VOS_VOID NAS_GMM_ConvertPdpCtxStatusToNetworkPdpCtxStatusForSingalServiceReq(
 
 }
 
+#if (FEATURE_ON == FEATURE_PTM)
+
+VOS_VOID NAS_GMM_NwDetachIndRecord(
+    VOS_UINT8                           ucDetachType,
+    VOS_UINT8                           ucGmmCause,
+    VOS_UINT8                           ucForceToStandby
+)
+{
+    NAS_ERR_LOG_NW_DETACH_IND_EVENT_STRU                    stNwDetachIndEvent;
+    VOS_UINT32                                              ulIsLogRecord;
+    VOS_UINT32                                              ulLength;
+    VOS_UINT32                                              ulResult;
+    VOS_UINT16                                              usLevel;
+
+    /* 查询对应Alarm Id是否需要记录异常信息 */
+    usLevel       = NAS_GetErrLogAlmLevel(NAS_ERR_LOG_ALM_NW_DETACH_IND);
+    ulIsLogRecord = NAS_MML_IsErrLogNeedRecord(usLevel);
+
+    /* 模块异常不需要记录或异常原因值不需要记录时，不保存异常信息 */
+    if (VOS_FALSE == ulIsLogRecord)
+    {
+        return;
+    }
+
+    ulLength = sizeof(NAS_ERR_LOG_NW_DETACH_IND_EVENT_STRU);
+
+    /* 填充CS注册失败异常信息 */
+    PS_MEM_SET(&stNwDetachIndEvent, 0x00, ulLength);
+
+    NAS_COMM_BULID_ERRLOG_HEADER_INFO(&stNwDetachIndEvent.stHeader,
+                                      VOS_GetModemIDFromPid(WUEPS_PID_GMM),
+                                      NAS_ERR_LOG_ALM_NW_DETACH_IND,
+                                      usLevel,
+                                      VOS_GetSlice(),
+                                      (ulLength - sizeof(OM_ERR_LOG_HEADER_STRU)));
+
+    NAS_MNTN_OutputPositionInfo(&stNwDetachIndEvent.stPositionInfo);
+
+    stNwDetachIndEvent.ucDetachType         = ucDetachType;
+    stNwDetachIndEvent.ucGmmCause           = ucGmmCause;
+    stNwDetachIndEvent.ucForceToStandby     = ucForceToStandby;
+    stNwDetachIndEvent.ucCurrNetRat         = NAS_MML_GetCurrNetRatType();
+
+    /*
+       将异常信息写入Buffer中
+       实际写入的字符数与需要写入的不等则打印异常
+     */
+    ulResult = NAS_MML_PutErrLogRingBuf((VOS_CHAR *)&stNwDetachIndEvent, ulLength);
+    if (ulResult != ulLength)
+    {
+        NAS_ERROR_LOG(WUEPS_PID_GMM, "NAS_MMC_NwDetachIndRecord(): Push buffer error.");
+    }
+
+    NAS_COM_MntnPutRingbuf(NAS_ERR_LOG_ALM_NW_DETACH_IND,
+                           WUEPS_PID_GMM,
+                           (VOS_UINT8 *)&stNwDetachIndEvent,
+                           sizeof(stNwDetachIndEvent));
+
+    return;
+}
+
+#endif
+
+/*****************************************************************************
+ 函 数 名  : NAS_GMM_IsEnableRelPsSigCon
+ 功能描述  : gmm 判断是否开启了网络防呆功能
+ 输入参数  : 无
+ 输出参数  : 无
+ 返 回 值  :  是否开启网络防呆功能，TRUE表示开启，FALSE:未开启
+
+ 修改历史  :
+ 1.日    期   : 2014年11月04日
+   作    者   : w000281933
+   修改内容   : 新生成函数
+
+*****************************************************************************/
+VOS_UINT8 NAS_GMM_IsEnableRelPsSigCon(VOS_VOID)
+{
+    if (VOS_TRUE == NAS_USIMMAPI_IsTestCard())
+    {
+        NAS_WARNING_LOG(WUEPS_PID_MMC, "NAS_GMM_IsEnableRelPsSigCon(): The sim is Test card!");
+        return VOS_FALSE;
+    }
+
+    return (NAS_MML_GetRelPsSigConFlg());
+}
+
+/*****************************************************************************
+ 函 数 名  : NAS_GMM_GetRelPsSigConCfg_T3340TimerLen
+ 功能描述  : gmm 在开启网络防呆功能后，获取配置的T3340 的值；
+ 输入参数  : 无
+ 输出参数  : 无
+ 返 回 值  :  配置的T3340 的时长；单位为毫秒；
+
+ 修改历史  :
+ 1.日    期   : 2014年11月04日
+   作    者   : w000281933
+   修改内容   : 新生成函数
+
+*****************************************************************************/
+VOS_UINT32 NAS_GMM_GetRelPsSigConCfg_T3340TimerLen(VOS_VOID)
+{
+    VOS_UINT32                          ulTmpT3340timeLen;
+
+    ulTmpT3340timeLen = (NAS_MML_GetRelPsSigConCfg_T3340TimerLen() * NAS_MML_ONE_THOUSAND_MILLISECOND); /* 单位换为毫秒 */
+
+    return ulTmpT3340timeLen;
+}
+
+
+/*****************************************************************************
+ 函 数 名  : NAS_GMM_IsUeInfoChangeTriggerRau
+ 功能描述  : UE信息变化是否需要触发RAU
+ 输入参数  : 无
+ 输出参数  : 无
+ 返 回 值  :  VOS_TRUE:需要
+              VOS_FALSE:不需要
+
+ 修改历史  :
+ 1.日    期   : 2014年11月04日
+   作    者   : w000281933
+   修改内容   : 新生成函数
+
+*****************************************************************************/
+VOS_UINT32 NAS_GMM_IsUeInfoChangeTriggerRau(VOS_VOID)
+{
+#if (FEATURE_ON == FEATURE_LTE)
+    /* radio capability与上一次注册时的不同，需要做RAU */
+    if (g_GmmGlobalCtrl.UeInfo.ucMsRadioCapSupportLteFromAs != g_GmmGlobalCtrl.UeInfo.ucMsRadioCapSupportLteFromRegReq)
+    {
+        return VOS_TRUE;
+    }
+
+    /* voice domain与上一次注册时的不同，需要做RAU */
+    if (g_GmmGlobalCtrl.UeInfo.enVoiceDomainFromRegReq != NAS_MML_GetVoiceDomainPreference())
+    {
+        return VOS_TRUE;
+    }
+#endif
+    return VOS_FALSE;
+}
+
+
+
+VOS_VOID  NAS_GMM_LogAutnLenInfo(
+    VOS_UINT8                           ucLen
+)
+{
+    NAS_GMM_LOG_AUTN_LEN_INFO_STRU         *pstMsg = VOS_NULL_PTR;
+
+    pstMsg = (NAS_GMM_LOG_AUTN_LEN_INFO_STRU*)PS_MEM_ALLOC(WUEPS_PID_MM,
+                                         sizeof(NAS_GMM_LOG_AUTN_LEN_INFO_STRU));
+
+    if (VOS_NULL_PTR == pstMsg)
+    {
+        NAS_ERROR_LOG(WUEPS_PID_MM, "NAS_GMM_LogAutnLenInfo:ERROR:Alloc Mem Fail.");
+        return;
+    }
+
+    PS_MEM_SET(pstMsg, 0x00, sizeof(NAS_GMM_LOG_AUTN_LEN_INFO_STRU));
+
+    pstMsg->stMsgHeader.ulSenderCpuId   = VOS_LOCAL_CPUID;
+    pstMsg->stMsgHeader.ulReceiverCpuId = VOS_LOCAL_CPUID;
+    pstMsg->stMsgHeader.ulSenderPid     = WUEPS_PID_GMM;
+    pstMsg->stMsgHeader.ulReceiverPid   = WUEPS_PID_GMM;
+    pstMsg->stMsgHeader.ulLength        = sizeof(NAS_GMM_LOG_AUTN_LEN_INFO_STRU) - VOS_MSG_HEAD_LENGTH;
+    pstMsg->stMsgHeader.ulMsgName       = GMMOM_LOG_AUTN_LEN_INFO_IND;
+    pstMsg->ucLen                       = ucLen;
+
+    OM_TraceMsgHook(pstMsg);
+
+    PS_MEM_FREE(WUEPS_PID_GMM, pstMsg);
+
+    return;
+}
 
 #ifdef  __cplusplus
   #if  __cplusplus

@@ -27,6 +27,7 @@
 #include <linux/device.h>
 #include <linux/cdev.h>
 #include <linux/wakelock.h>
+#include <linux/board_sensors.h>
 #include "input-compat.h"
 
 struct evdev {
@@ -98,8 +99,15 @@ static void evdev_pass_values(struct evdev_client *client,
 	struct input_event event;
 	bool wakeup = false;
 
-	event.time = ktime_to_timeval(client->clkid == CLOCK_MONOTONIC ?
-				      mono : real);
+	if (client->clkid == CLOCK_BOOTTIME)
+	{
+		event.time = ktime_to_timeval(ktime_get_boottime());
+	}
+	else
+	{
+		event.time = ktime_to_timeval(client->clkid == CLOCK_MONOTONIC ?
+						  mono : real);
+	}
 
 	/* Interrupts are disabled, just acquire the lock. */
 	spin_lock(&client->buffer_lock);
@@ -791,7 +799,7 @@ static long evdev_do_ioctl(struct file *file, unsigned int cmd,
 	case EVIOCSCLOCKID:
 		if (copy_from_user(&i, p, sizeof(unsigned int)))
 			return -EFAULT;
-		if (i != CLOCK_MONOTONIC && i != CLOCK_REALTIME)
+		if (i != CLOCK_MONOTONIC && i != CLOCK_REALTIME && i != CLOCK_BOOTTIME)
 			return -EINVAL;
 		client->clkid = i;
 		return 0;
@@ -1055,6 +1063,9 @@ static int evdev_connect(struct input_handler *handler, struct input_dev *dev,
 	evdev->dev.release = evdev_free;
 	device_initialize(&evdev->dev);
 
+#ifdef CONFIG_HUAWEI_SENSORS_INPUT_INFO
+	set_sensor_event(evdev->handle.dev->name, evdev->handle.name);
+#endif
 	error = input_register_handle(&evdev->handle);
 	if (error)
 		goto err_free_evdev;

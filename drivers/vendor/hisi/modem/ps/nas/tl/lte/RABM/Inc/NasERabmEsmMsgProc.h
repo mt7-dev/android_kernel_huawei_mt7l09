@@ -88,7 +88,8 @@ extern VOS_VOID NAS_ERABM_RcvRabmEsmRelInd( VOS_VOID );
 extern VOS_VOID NAS_ERABM_SaveEpsbActInfo(const ESM_ERABM_ACT_IND_STRU *pRcvMsg, VOS_UINT32 ulEpsbId );
 extern VOS_VOID NAS_ERABM_SaveUeIpAddr(const ESM_ERABM_ACT_IND_STRU *pRcvMsg, VOS_UINT32 ulEpsbId);
 extern VOS_VOID NAS_ERABM_SndRabmEsmBearerStatusReq(const VOS_UINT32 *pulEpsbId,
-                                                                     VOS_UINT32 ulEpsbIdNum );
+                                                              VOS_UINT32 ulEpsbIdNum,
+                                                              VOS_UINT8 ucSessionId);
 extern VOS_VOID NAS_ERABM_SndRabmEsmRelReq( VOS_VOID );
 
 

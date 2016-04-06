@@ -65,11 +65,6 @@ struct sirfsoc_gpio_bank {
 
 static struct sirfsoc_gpio_bank sgpio_bank[SIRFSOC_GPIO_NO_OF_BANKS];
 static DEFINE_SPINLOCK(sgpio_lock);
-
-/*
- * pad list for the pinmux subsystem
- * refer to CS-131858-DC-6A.xls
- */
 static const struct pinctrl_pin_desc sirfsoc_pads[] = {
 	PINCTRL_PIN(0, "gpio0-0"),
 	PINCTRL_PIN(1, "gpio0-1"),

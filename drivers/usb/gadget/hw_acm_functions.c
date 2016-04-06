@@ -125,7 +125,6 @@ static struct android_usb_function hw_acm_function = {
 	.init		= hw_acm_function_init,
 	.cleanup	= hw_acm_function_cleanup,
 	.bind_config	= hw_acm_function_bind_config,
-	.ctrlrequest = acm_function_ctrlrequest,
 //	.unbind_config	= hw_acm_function_unbind_config,
 	.attributes	= hw_acm_function_attributes,
 };

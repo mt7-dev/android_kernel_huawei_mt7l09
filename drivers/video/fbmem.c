@@ -46,7 +46,7 @@ static DEFINE_MUTEX(registration_lock);
 struct fb_info *registered_fb[FB_MAX] __read_mostly;
 int num_registered_fb __read_mostly;
 
-static struct fb_info *get_fb_info(unsigned int idx)
+struct fb_info *get_fb_info(unsigned int idx)
 {
 	struct fb_info *fb_info;
 
@@ -61,6 +61,7 @@ static struct fb_info *get_fb_info(unsigned int idx)
 
 	return fb_info;
 }
+EXPORT_SYMBOL(get_fb_info);
 
 static void put_fb_info(struct fb_info *fb_info)
 {
@@ -1017,7 +1018,9 @@ fb_set_var(struct fb_info *info, struct fb_var_screeninfo *var)
 				}
 			}
 
+#ifndef CONFIG_FB_HI6220_CLCD
 			fb_pan_display(info, &info->var);
+#endif
 			fb_set_cmap(&info->cmap, info);
 			fb_var_to_videomode(&mode, &info->var);
 
@@ -1048,7 +1051,6 @@ fb_blank(struct fb_info *info, int blank)
 {	
 	struct fb_event event;
 	int ret = -EINVAL, early_ret;
-
  	if (blank > FB_BLANK_POWERDOWN)
  		blank = FB_BLANK_POWERDOWN;
 

@@ -1,18 +1,4 @@
-/**
-    @copyright: Huawei Technologies Co., Ltd. 2012-2012. All rights reserved.
-    
-    @file: srecorder_common.c
-    
-    @brief: 定义SRecorder整个工程中用到的全局资源，提供信息头部写入函数，crc32的校验函数
-    
-    @version: 1.0 
-    
-    @author: QiDechun ID: 216641
-    
-    @date: 2012-06-21
-    
-    @history:
-*/
+
 
 /*----includes-----------------------------------------------------------------------*/
 
@@ -193,7 +179,9 @@ void srecorder_set_dump_enable_bit(unsigned long bit)
     }
     spin_lock(&(pmem_info->lock));
     pmem_header = (srecorder_reserved_mem_header_t *)srecorder_get_reserved_mem_addr();
-    pmem_header->dump_ctrl_bits[bit / 32] |= ((unsigned long)1 << (bit % 32));
+    if(bit <= sizeof(pmem_header->dump_ctrl_bits)*8){
+        pmem_header->dump_ctrl_bits[bit / 32] |= ((unsigned long)1 << (bit % 32));/* [false alarm]:dump_ctrl_bits have protect  */
+    }
     spin_unlock(&(pmem_info->lock));
 }
 
@@ -220,7 +208,9 @@ void srecorder_clear_dump_enable_bit(unsigned long bit)
     
     spin_lock(&(pmem_info->lock));
     pmem_header = (srecorder_reserved_mem_header_t *)srecorder_get_reserved_mem_addr();
-    pmem_header->dump_ctrl_bits[bit / 32] &= (~((unsigned long)1 << (bit % 32)));
+    if( bit <= sizeof(pmem_header->dump_ctrl_bits)*8 ){
+        pmem_header->dump_ctrl_bits[bit / 32] &= (~((unsigned long)1 << (bit % 32)));/* [false alarm]:dump_ctrl_bits have protect  */
+    }
     spin_unlock(&(pmem_info->lock));
 }
 
@@ -245,7 +235,11 @@ bool srecorder_dump_enable_bit_has_been_set(unsigned long bit)
     }
     
     pmem_header = (srecorder_reserved_mem_header_t *)srecorder_get_reserved_mem_addr();
+    if(bit < sizeof(pmem_header->dump_ctrl_bits)* 8 ){
     return ((unsigned long)0x0 != (pmem_header->dump_ctrl_bits[bit / 32] & (((unsigned long)1 << (bit % 32))))) ? (true) : (false);
+    }else{
+	return false;
+    }
 }
 
 
@@ -275,7 +269,7 @@ unsigned long srecorder_get_crc32(unsigned char const *pbuf, unsigned long data_
     crc32 = CRC32_SEED_VALUE;     
     for (i = 0; i < data_len; i++) 
     {
-        crc32 = (crc32 >> 8) ^ s_crc32tab[(crc32 & 0xFF) ^ pbuf[i]];     
+        crc32 = (crc32 >> 8) ^ s_crc32tab[(crc32 & 0xFF) ^ pbuf[i]]; /* [false alarm]:there is pbuf protect before  */    
     }  
 
     return crc32 ^= CRC32_SEED_VALUE; 

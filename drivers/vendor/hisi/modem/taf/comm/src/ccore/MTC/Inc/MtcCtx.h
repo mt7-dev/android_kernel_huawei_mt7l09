@@ -198,7 +198,11 @@ typedef struct
 
     MTC_MODEM_MIPICLK_BITMAP_STRU       stRfCellInfo;                           /* Modem当前的BITMAP状态 */
 
+    MTC_MODEM_POWER_STATE_ENUM_UINT8    enImsaState;                           /* Modem的IMSA开关机状态 */
+    VOS_UINT8                           aucReserved[3];
 }MTC_MODEM_INFO_STRU;
+
+
 typedef struct
 {
     MTC_NV_PS_TRANSFER_CFG_STRU         stPsTransferCfg;                        /* 保存PS TRANSFER NV配置信息 */
@@ -281,6 +285,12 @@ VOS_VOID MTC_SetModemRatMode(
     MODEM_ID_ENUM_UINT16                enModemId,
     MTC_RATMODE_ENUM_UINT8              enRatMode
 );
+
+VOS_VOID MTC_SetModemImsaState(
+    MODEM_ID_ENUM_UINT16                enModemId,
+    MTC_MODEM_POWER_STATE_ENUM_UINT8    enState);
+
+MTC_MODEM_POWER_STATE_ENUM_UINT8 MTC_GetModemImsaState(MODEM_ID_ENUM_UINT16 enModemId);
 
 MTC_RATMODE_ENUM_UINT8 MTC_GetModemRatMode(MODEM_ID_ENUM_UINT16 enModemId);
 

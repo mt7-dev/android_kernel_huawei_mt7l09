@@ -50,7 +50,10 @@ extern "C" {
 
 /* 主模非LTE模时，UE支持的异频的最大数目是4，
    主模为LTE模时，UE支持的异频的最大数目是3 */
-#define    LRRC_LPHY_MAX_ADDITIONAL_CARRIER_NUM               4
+/* 主模非LTE模时，UE支持的异频的最大数目是6，
+   主模为LTE模时，UE支持的异频的最大数目是5 */
+#define    LRRC_LPHY_MAX_ADDITIONAL_CARRIER_NUM               6
+/* End: add inter meas ferq num */
 
 /* UE 配置 SI 消息的最大数目 */
 #define LRRC_LPHY_MAX_SI_CONFIG_NUM                           32
@@ -182,13 +185,16 @@ enum LRRC_LPHY_MSG_ID_ENUM
     /*寻呼下移特性begin*/
     ID_LRRC_LPHY_PAGING_INFO_REQ                 = (ERRC_LPHY_MSG_HDR + 0x22), /* _H2ASN_MsgChoice LRRC_LPHY_UE_ID_INFO_STRU */
     /*寻呼下移特性end*/
-	
+
 	/* MTC NOTCH add begin */
     ID_LRRC_LPHY_NOTCH_REQ                       = (ERRC_LPHY_MSG_HDR + 0x23), /* _H2ASN_MsgChoice LRRC_LPHY_NOTCH_BYPASS_REQ_STRU */
     /* MTC NOTCH add end */
 
     ID_LRRC_LPHY_DPDT_CMD_REQ                   = (ERRC_LPHY_MSG_HDR + 0x24),
 
+    /*begin: hifi sync switch */
+    ID_LRRC_LPHY_HIFI_SYNC_SWITCH_IND           = (ERRC_LPHY_MSG_HDR + 0x25),   /* _H2ASN_MsgChoice LRRC_LPHY_HIFI_SYNC_SWITCH_IND_STRU */
+    /*end: hifi sync switch */
 
 	/* 物理层发给RRC的原语 */
     ID_LRRC_LPHY_CELL_SEARCHING_IND               = (LPHY_ERMM_MSG_HDR + 0x00), /* _H2ASN_MsgChoice LRRC_LPHY_CELL_SEARCHING_IND_STRU */
@@ -250,7 +256,11 @@ enum LRRC_LPHY_MSG_ID_ENUM
     ID_LRRC_LPHY_ERROR_LOG_IND                    = (LPHY_ERMM_MSG_HDR + 0x27), /* _H2ASN_MsgChoice LRRC_LPHY_MEAS_INFO_IND_STRU */
     /* sunyanjie end */
 
-    ID_LRRC_LPHY_DPDT_CMD_IND                   = (LPHY_ERRC_MSG_HDR + 0x28),
+    ID_LRRC_LPHY_DPDT_CMD_IND                     = (LPHY_ERRC_MSG_HDR + 0x28),
+
+    /*begin: hifi sync switch */
+    ID_LRRC_LPHY_VOICE_SYNC_IND                  = (LPHY_ERRC_MSG_HDR + 0x29),   /* _H2ASN_MsgChoice LRRC_LPHY_VOICE_SYNC_IND_STRU */
+    /*end: hifi sync switch */
 
     ID_LRRC_LPHY_BUTT
 };
@@ -2254,7 +2264,10 @@ typedef struct
     VOS_UINT16                                    usCellId;                     /* 小区ID */
     VOS_INT16                                     sRsrp;                        /* RSRP测量值 */
     VOS_INT16                                     sRsrq;                        /* RSRQ测量值 */
-    VOS_UINT16                                    usReserved;                   /* 保留字段 */
+    /* niuxiufan rrc release modify begin */
+    VOS_UINT8                                     ucFakeCellInd;                /*假小区指示,上报的假小区时为1 */
+    VOS_UINT8                                     ucReserved;                   /* 保留字段 */
+    /* niuxiufan rrc release modify end */
 }LRRC_LPHY_CELL_SEARCHING_IND_STRU;
 
 /*****************************************************************************
@@ -3625,12 +3638,22 @@ typedef struct
 *****************************************************************************/
 typedef struct
 {
+    VOS_UINT16                                      usScellIndex;
+    VOS_UINT16                                      usTa;
+    VOS_INT32                                       lSINR;
+    LRRC_LPHY_CQI_INFO_STRU                         stCQI;
+}LRRC_LPHY_SCC_INFO_STRU;
+
+typedef struct
+{
     VOS_MSG_HEADER                                                     /*_H2ASN_Skip*/
     LRRC_LPHY_MSG_ID_ENUM_UINT32                    enMsgId;           /*_H2ASN_Skip*/
     VOS_UINT16                                      usOpId;
     VOS_UINT16                                      usTa;
     VOS_INT32                                       lSINR;
     LRRC_LPHY_CQI_INFO_STRU                         stCQI;
+    VOS_UINT32                                      ulSccCnt;
+    LRRC_LPHY_SCC_INFO_STRU                         astSccInfo[LRRC_LPHY_MAX_SECONDARY_CARRIER_NUM];
 }LRRC_LPHY_MEAS_INFO_IND_STRU;
 /*NMR end*/
 
@@ -5310,6 +5333,49 @@ typedef struct
 }LRRC_LPHY_DPDT_CMD_IND_STRU;
 
 /* v7r2 interface end */
+
+/*begin: hifi sync switch */
+/*****************************************************************************
+ 结构名    : LRRC_LPHY_HIFI_SYNC_SWITCH_IND_STRU
+ 协议表格  :
+ ASN.1描述 :
+ 结构说明  : 通知LDSP HIFI同步开关指示
+*****************************************************************************/
+typedef struct
+{
+    VOS_MSG_HEADER                                                              /*_H2ASN_Skip*/
+    LRRC_LPHY_MSG_ID_ENUM_UINT32                        enMsgId;                /*_H2ASN_Skip*/
+    VOS_UINT8                                           ucHifiSyncEnabled;      /* 0: 关闭; 1: 打开; */
+    VOS_UINT8                                           ucPowerState;         /* Modem1 开关机状态，0 : 表示关闭 1: 表示打开  */
+    VOS_UINT8                                           aucReserved[2];
+}LRRC_LPHY_HIFI_SYNC_SWITCH_IND_STRU;
+
+/*****************************************************************************
+ 结构名    : LRRC_LPHY_VOICE_SYNC_IND_STRU
+ 协议表格  :
+ ASN.1描述 :
+ 结构说明  : VoLTE语音业务启动后，LPHY发送该消息LHPA，LHPA转发给CODEC进行时序同步
+            |------------------|-------------------|-----OnDuration-----|
+            |                  |<--uhwSendOffset-->|
+            |<---uhwWakeUpOffset------------------>|
+            |                  |                   |
+            |                  |                   |
+            HIFI唤醒时刻       HIFI发送语音包时刻  CDRX OnDuration起始时刻
+*****************************************************************************/
+typedef struct
+{
+    VOS_MSG_HEADER                                                              /*_H2ASN_Skip*/
+    LRRC_LPHY_MSG_ID_ENUM_UINT32                        enMsgId;                /*_H2ASN_Skip*/
+    VOS_UINT16                          usOpId;                                 /* 操作标识符 */
+    VOS_UINT16                          usReserved;
+
+    VOS_UINT32                          ulOnDurationSlice;                      /* LPHY给出的LTE CDRX OnDuration起始时刻*/
+    VOS_UINT16                          usWakeUpOffset;                         /* 以uwOnDurationSlice为基点，HIFI唤醒提前量*/
+    VOS_UINT16                          usSendOffset;                           /* 以uwOnDurationSlice为基点，HIFI发送语音包前量 */
+}LRRC_LPHY_VOICE_SYNC_IND_STRU;
+
+/*end: hifi sync switch */
+
 
 /*****************************************************************************
   6 UNION

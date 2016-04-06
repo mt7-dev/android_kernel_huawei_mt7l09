@@ -11,10 +11,13 @@
 #include <linux/dma-mapping.h>
 #include <linux/slab.h>
 
-#include <linux/hisi-iommu.h>
+#include <linux/hisi/hisi-iommu.h>
+#include <linux/hisi/hi3xxx/global_ddr_map.h>
 
 #define D(format, arg...) printk(KERN_INFO "[iommutest] " format, ##arg);
 
+#define HISI_IOMMU_PGTABLE_ADDR (HISI_RESERVED_SMMU_PHYMEM_BASE)
+#define HISI_IOMMU_PGTABLE_SIZE (HISI_RESERVED_SMMU_PHYMEM_SIZE)
 
 struct iommu_test {
 	void *map_priv;
@@ -27,10 +30,10 @@ struct iommu_test {
  * str1: options
  * str2: option to find
  */
-static unsigned getopt(const char *str1, const char *str2)
+static unsigned long getopt(const char *str1, const char *str2)
 {
 	char *p = NULL;
-	unsigned int value = 0;
+	unsigned long value = 0;
 
 	p = strstr(str1, str2);
 	if (!p)
@@ -123,7 +126,7 @@ static void do_map(struct maptest_info *info, unsigned int len)
 	D("check map result:\n")
 	for (i = 0; i < (len >> PAGE_SHIFT); i++) {
 		unsigned long tmp_iova = info->format.iova_start + i * PAGE_SIZE;
-		D(" 0x%lx ---- 0x%x\n", tmp_iova,
+		D(" 0x%lx ---- 0x%lx\n", tmp_iova,
 				hisi_iommu_domain_iova_to_phys(tmp_iova));
 		if (i > 20)
 			break;
@@ -137,7 +140,7 @@ static void do_map(struct maptest_info *info, unsigned int len)
 static ssize_t map_show(struct device *dev, struct device_attribute *attr,
 			char *buf)
 {
-	return sprintf(buf, "usage: map=0x?, echo len=0x?, is_tile=0x? "
+	return snprintf(buf, PAGE_SIZE, "usage: map=0x?, echo len=0x?, is_tile=0x? "
 		"phys_len=0x?, virt_len=0x? > map\n");
 }
 
@@ -204,7 +207,7 @@ static DEVICE_ATTR(map, S_IRUGO | S_IWUSR, map_show, map_store);
 static ssize_t dump_pgtbl_show(struct device *dev, struct device_attribute *attr,
 			char *buf)
 {
-	return sprintf(buf, "usage: echo a=0xXXXX, l=0xXXXX > dump_pgtbl!\n");
+	return snprintf(buf, PAGE_SIZE, "usage: echo a=0xXXXX, l=0xXXXX > dump_pgtbl!\n");
 }
 static ssize_t dump_pgtbl_store(struct device *pdev,
 		struct device_attribute *attr, const char *buf, size_t size)
@@ -237,15 +240,15 @@ static ssize_t dump_pgtbl_store(struct device *pdev,
 		return size;
 	}
 
-	pgtbl_addr = ioremap_nocache(hisi_reserved_smmu_phymem, HISI_IOMMU_PGTABLE_SIZE);
+	pgtbl_addr = ioremap_nocache(HISI_IOMMU_PGTABLE_ADDR, HISI_IOMMU_PGTABLE_SIZE);
 	if (!pgtbl_addr) {
 		printk("ioremap failed!\n");
 		return size;
 	}
 
 	for (i = a; i <= (a + l); i += 0x10) {
-		printk("0x%08lx: 0x%08x   0x%08x   0x%08x   0x%08x\n",
-			(hisi_reserved_smmu_phymem + i),
+		printk("0x%08x: 0x%08x  0x%08x  0x%08x  0x%08x\n",
+			(HISI_IOMMU_PGTABLE_ADDR + i),
 			*(unsigned *)(pgtbl_addr + i),
 			*(unsigned *)(pgtbl_addr + i + 4),
 			*(unsigned *)(pgtbl_addr + i + 8),
@@ -266,11 +269,15 @@ static ssize_t ptbspeed_store(struct device *dev, struct device_attribute *attr,
 	struct timespec stamp1, stamp2;
 	struct scatterlist sg;
 	unsigned long iova;
-	unsigned iova_size;
+	unsigned long iova_size;
 	s64 ns_passed;
 	int i;
 
 	iova_size = getopt(buf, "len");
+	if (iova_size <= 0) {
+		printk(KERN_ERR "getopt failed!\n");
+		return 0;
+	}
 
 	/* init sg */
 	sg_init_table(&sg, 1);
@@ -296,7 +303,7 @@ static ssize_t ptbspeed_store(struct device *dev, struct device_attribute *attr,
 
 	hisi_iommu_free_iova(iova, iova_size);
 
-	printk(KERN_INFO "iommu map unmap 0x%x needs %lld ns\n",
+	printk(KERN_INFO "iommu map unmap 0x%lx needs %lld ns\n",
 			iova_size, ns_passed);
 	return size;
 }
@@ -310,13 +317,13 @@ static ssize_t iovapoolinfo_show(struct device *dev, struct device_attribute *at
 	int ret = 0;
 	size_t size, available;
 	size = hisi_iommu_iova_size();
-	available = hisi_iommu_iova_available();
-	printk(KERN_INFO "iova pool info: size: 0x%x, available: 0x%x\n",
+	available = hisi_iommu_iova_available(1);
+	
+	printk(KERN_INFO "iova pool info: size: 0x%lx, available: 0x%lx\n",
 			size, available);
 
-
-	ret += sprintf(buf, "iova pool info: size: 0x%x, available: 0x%x\n",
-			size, available);
+	ret += snprintf(buf, PAGE_SIZE, "iova pool info: size: 0x%lx, available: 0x%lx\n", 
+		size, available);
 	return ret;
 }
 static DEVICE_ATTR(iovapoolinfo, S_IRUGO, iovapoolinfo_show, NULL);
@@ -373,14 +380,23 @@ struct platform_driver hisi_iommutest_drv = {
 int init_iommt_test(void)
 {
 	int i;
+	int ret;
 
 	for (i = 0; i < IOMMUTEST_DEV_NUM; i++) {
 		iommutest_dev[i].id = i;
 		iommutest_dev[i].name = "hisi-iommu-test";
-		platform_device_register(&iommutest_dev[i]);
+		ret = platform_device_register(&iommutest_dev[i]);
+		if (ret) {
+			printk(KERN_ERR "init_iommt_test device register is failed!: %d\n", ret);
+			return ret;
+		}
 	}
 
-	platform_driver_register(&hisi_iommutest_drv);
+	ret = platform_driver_register(&hisi_iommutest_drv);
+	if (ret) {
+			printk(KERN_ERR "init_iommt_test device register is failed!: %d\n", ret);
+			return ret;
+		}
 
-	return 0;
+	return ret;
 }

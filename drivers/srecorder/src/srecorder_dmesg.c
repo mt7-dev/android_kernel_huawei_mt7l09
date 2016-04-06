@@ -1,18 +1,4 @@
-/**
-    @copyright: Huawei Technologies Co., Ltd. 2012-2012. All rights reserved.
-    
-    @file: srecorder_dmesg.c
-    
-    @brief: 读取内核循环缓冲中的内容，即内核中用printk打印的信息。
-    
-    @version: 1.0 
-    
-    @author: QiDechun ID: 216641
-    
-    @date: 2012-06-21
-    
-    @history:
-*/
+
 
 /*----includes-----------------------------------------------------------------------*/
 
@@ -54,11 +40,11 @@
 /*----local function prototypes---------------------------------------------------------*/
 
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 5, 0))
+#if 0
 static unsigned long srecorder_write_data(srecorder_write_kernel_log_param_t *psrecorder_write_kernel_log_param);
+#endif
 #else
-/* DTS2012091002904 Qidechun-wupeng 20120910 begin */
 static int srecorder_write_data(char *pdst, const char *psrc, int bytes_to_write);
-/* DTS2012091002904 Qidechun-wupeng 20120910 end */
 #endif
 
 
@@ -76,8 +62,8 @@ static int srecorder_write_data(char *pdst, const char *psrc, int bytes_to_write
 
     @note: 
 */
-/* DTS2012091002904 Qidechun-wupeng 20120910 begin */
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 5, 0))
+#if 0
 static unsigned long srecorder_write_data(srecorder_write_kernel_log_param_t *psrecorder_write_kernel_log_param)
 {
     kernel_log_t *plog = NULL;
@@ -163,6 +149,7 @@ static unsigned long srecorder_write_data(srecorder_write_kernel_log_param_t *ps
 
     return bytes_saved_total;
 }
+#endif
 #else
 static int srecorder_write_data(char *pdst, const char *psrc, int bytes_to_write)
 {
@@ -188,7 +175,6 @@ static int srecorder_write_data(char *pdst, const char *psrc, int bytes_to_write
 
     return j;
 }
-/* DTS2012091002904 Qidechun-wupeng 20120910 end */
 #endif
 
 
@@ -250,6 +236,11 @@ int srecorder_get_dmesg(srecorder_reserved_mem_info_t *pmem_info)
     }
     
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 5, 0))
+#if 1
+    bytes_read1 = srecorder_get_all_syslog(pmem_info->start_addr + pmem_info->bytes_read,
+        pmem_info->bytes_left - 1);
+    srecorder_renew_meminfo(pmem_info, bytes_read1);
+#else
     memset((void *)&kernel_log_buf_content_header_info, 0, sizeof(kernel_log_buf_content_header_info_t));
     memset((void *)&kernel_log_buf_info, 0, sizeof(kernel_log_buf_info_t));
     memset((void *)&srecorder_write_kernel_log_param, 0, sizeof(srecorder_write_kernel_log_param_t));
@@ -291,6 +282,7 @@ int srecorder_get_dmesg(srecorder_reserved_mem_info_t *pmem_info)
     srecorder_write_kernel_log_param.kernel_log_buf_len = *(unsigned long *)kernel_log_buf_info.log_next_idx;
     bytes_read2 = (int)srecorder_write_data(&srecorder_write_kernel_log_param);
     srecorder_renew_meminfo(pmem_info, bytes_read2);
+#endif
 #else
     log_buf = (char *)(*(srec_ksym_addr_t*)srecorder_get_log_buf());
     if (NULL == log_buf)
@@ -312,22 +304,16 @@ int srecorder_get_dmesg(srecorder_reserved_mem_info_t *pmem_info)
     if (log_end >= bytes_to_read)
     {
         start1 = log_buf + log_end - bytes_to_read;
-        /* DTS2012091002904 Qidechun-wupeng 20120910 begin */
         bytes_read1 = srecorder_write_data(pmem_info->start_addr + pmem_info->bytes_read, start1, bytes_to_read);
-        /* DTS2012091002904 Qidechun-wupeng 20120910 end */
         srecorder_renew_meminfo(pmem_info, bytes_read1);
     }
     else
     {
         start1 = log_buf + log_buf_len - (bytes_to_read - log_end);
-        /* DTS2012091002904 Qidechun-wupeng 20120910 begin */
         bytes_read1 = srecorder_write_data(pmem_info->start_addr + pmem_info->bytes_read, start1, (bytes_to_read - log_end));
-        /* DTS2012091002904 Qidechun-wupeng 20120910 end */
         srecorder_renew_meminfo(pmem_info, bytes_read1);
         start2 = log_buf;
-        /* DTS2012091002904 Qidechun-wupeng 20120910 begin */
         bytes_read2 = srecorder_write_data(pmem_info->start_addr + pmem_info->bytes_read, start2, log_end);
-        /* DTS2012091002904 Qidechun-wupeng 20120910 end */
         srecorder_renew_meminfo(pmem_info, bytes_read2);
     } 
 #endif
@@ -337,9 +323,7 @@ int srecorder_get_dmesg(srecorder_reserved_mem_info_t *pmem_info)
         pmem_info->bytes_left, "\n", 1);
 #else
     /* 写入"\n" */
-    /* DTS2012091002904 Qidechun-wupeng 20120910 begin */
     bytes_read1 = srecorder_write_data(pmem_info->start_addr + pmem_info->bytes_read, "\n", 1);
-    /* DTS2012091002904 Qidechun-wupeng 20120910 end */
 #endif
     srecorder_renew_meminfo(pmem_info, bytes_read1);
 

@@ -1,42 +1,77 @@
 config ARM64
 	def_bool y
 	select ARCH_HAS_ATOMIC64_DEC_IF_POSITIVE
+	select ARCH_HAS_OPP
+	select ARCH_USE_CMPXCHG_LOCKREF
+	select ARCH_HAS_OPP
+	select ARCH_HAS_TICK_BROADCAST if GENERIC_CLOCKEVENTS_BROADCAST
+	select ARCH_SUPPORTS_ATOMIC_RMW
+	select ARCH_HAS_GCOV_PROFILE_ALL
 	select ARCH_WANT_OPTIONAL_GPIOLIB
 	select ARCH_WANT_COMPAT_IPC_PARSE_VERSION
 	select ARCH_WANT_FRAME_POINTERS
 	select ARM_AMBA
 	select ARM_ARCH_TIMER
 	select ARM_GIC
+	select ARM_GIC_V3
+	select BUILDTIME_EXTABLE_SORT
+	select AUDIT_ARCH_COMPAT_GENERIC
 	select CLONE_BACKWARDS
 	select COMMON_CLK
+	select CPU_PM if (SUSPEND || CPU_IDLE)
+	select DCACHE_WORD_ACCESS
+	select GENERIC_ALLOCATOR
 	select GENERIC_CLOCKEVENTS
+	select GENERIC_CLOCKEVENTS_BROADCAST if SMP
+	select GENERIC_CPU_AUTOPROBE
+	select GENERIC_EARLY_IOREMAP
 	select GENERIC_IOMAP
 	select GENERIC_IRQ_PROBE
 	select GENERIC_IRQ_SHOW
 	select GENERIC_SMP_IDLE_THREAD
+	select GENERIC_STRNCPY_FROM_USER
+	select GENERIC_STRNLEN_USER
 	select GENERIC_TIME_VSYSCALL
 	select HARDIRQS_SW_RESEND
+	select HAVE_ARCH_JUMP_LABEL
+	select HAVE_ARCH_KGDB
+	select HAVE_ARCH_AUDITSYSCALL
+	select HAVE_ARCH_SECCOMP_FILTER
 	select HAVE_ARCH_TRACEHOOK
+	select HAVE_C_RECORDMCOUNT
+	select HAVE_CC_STACKPROTECTOR
 	select HAVE_DEBUG_BUGVERBOSE
 	select HAVE_DEBUG_KMEMLEAK
 	select HAVE_DMA_API_DEBUG
 	select HAVE_DMA_ATTRS
+	select HAVE_DMA_CONTIGUOUS
+	select HAVE_DYNAMIC_FTRACE
+	select HAVE_EFFICIENT_UNALIGNED_ACCESS
+	select HAVE_FTRACE_MCOUNT_RECORD
+	select HAVE_FUNCTION_TRACER
+	select HAVE_FUNCTION_GRAPH_TRACER
 	select HAVE_GENERIC_DMA_COHERENT
 	select HAVE_GENERIC_HARDIRQS
 	select HAVE_HW_BREAKPOINT if PERF_EVENTS
 	select HAVE_MEMBLOCK
+	select HAVE_PATA_PLATFORM
 	select HAVE_PERF_EVENTS
+	select HAVE_PERF_REGS
+	select HAVE_PERF_USER_STACK_DUMP
+	select HAVE_SYSCALL_TRACEPOINTS
 	select IRQ_DOMAIN
 	select MODULES_USE_ELF_RELA
 	select NO_BOOTMEM
 	select OF
 	select OF_EARLY_FLATTREE
+	select OF_RESERVED_MEM
 	select PERF_USE_VMALLOC
 	select POWER_RESET
 	select POWER_SUPPLY
 	select RTC_LIB
 	select SPARSE_IRQ
 	select SYSCTL_EXCEPTION_TRACE
+	select ARCH_HAS_PASR
 	help
 	  ARM 64-bit (AArch64) Linux support.
 
@@ -61,11 +96,7 @@ config LOCKDEP_SUPPORT
 config TRACE_IRQFLAGS_SUPPORT
 	def_bool y
 
-config GENERIC_LOCKBREAK
-	def_bool y
-	depends on SMP && PREEMPT
-
-config RWSEM_GENERIC_SPINLOCK
+config RWSEM_XCHGADD_ALGORITHM
 	def_bool y
 
 config GENERIC_HWEIGHT
@@ -77,7 +108,7 @@ config GENERIC_CSUM
 config GENERIC_CALIBRATE_DELAY
 	def_bool y
 
-config ZONE_DMA32
+config ZONE_DMA
 	def_bool y
 
 config ARCH_DMA_ADDR_T_64BIT
@@ -95,6 +126,12 @@ config SWIOTLB
 config IOMMU_HELPER
 	def_bool SWIOTLB
 
+config FIX_EARLYCON_MEM
+	def_bool y
+
+config KERNEL_MODE_NEON
+	def_bool y
+
 source "init/Kconfig"
 
 source "kernel/Kconfig.freezer"
@@ -111,6 +148,85 @@ config ARCH_VEXPRESS
 	  This enables support for the ARMv8 software model (Versatile
 	  Express).
 
+config ARCH_XGENE
+	bool "AppliedMicro X-Gene SOC Family"
+	help
+	  This enables support for AppliedMicro X-Gene SOC Family
+
+
+config ARCH_HI3XXX
+	bool "Hisilicon Family"
+	select PINCTRL
+	select ARM_CCI
+	help
+		This enables Hisilicon processor family.
+
+if ARCH_HI3XXX
+
+config HISI_3635_FPGA
+	bool "HISI 3635 FPGA Platform"
+	default n
+	help
+		Say 'Y' here if you want to support the Hisilicon 3635 FPGA Development
+		Board.
+
+config HISI_3635_EMULATOR
+	bool "HISI 3635 FPGA Platform"
+	default n
+	help
+		Say 'Y' here if you want to support the Hisilicon 3635 FPGA Development
+		Board.
+
+config HISI_3635
+	bool "HISI 3635 ASIC Platform"
+	default n
+	help
+		Say 'Y' here if you want to support the Hisilicon 3635 ASIC Development
+		Board.
+endif
+
+config TTBR1_48BITS_VARANGE_BUG
+	bool "TTBR1 48bits VA range is not filled with 1."
+	depends on HISI_3635 || HISI_3635_EMULATOR || HISI_3635_FPGA
+	default y
+	help
+	  This bug will caused by two cluster cpus which is not filled the 1 to another cpu.
+
+config ARCH_HI6XXX
+	bool "ARMv8 software model (Hisilicon Hi6220)"
+	select PINCTRL
+	select TRACE_KERNEL
+	help
+	  This enables support for the ARMv8 software model (Hisilicon Hi6220).
+
+config ARCH_KIRIN
+	bool "Hisilicon Kirin family"
+	help
+	  Support for Hislicon Kirin processor family
+
+config HISI_ALTER_HARDWARE_NAME
+	bool "Hardware name can be set a alternative one"
+	default y
+	help
+	Hardware name can be set a alternative one
+
+config HISI_BALONG_MODEM
+	bool "Hisilicon ap+modem config"
+	default n
+	help
+	Hisilicon ap+modem config support.
+
+config HISI_BALONG_MODEM_HI3XXX
+	bool "Hisilicon ap+modem config"
+	default n
+	help
+	Hisilicon ap+modem config support.
+
+config ARM_TIMER_SP804
+	bool "sp804 clockevent support"
+	default n
+	select CLKSRC_OF if OF
+
 endmenu
 
 menu "Bus support"
@@ -122,6 +238,32 @@ endmenu
 
 menu "Kernel Features"
 
+menu "ARM errata workarounds"
+
+config ARM64_ERRATUM_845719
+	bool "Cortex-A53: 845719: a load might read incorrect data"
+	depends on COMPAT
+	default n
+	help
+	  This option adds an alternative code sequence to work around ARM
+	  erratum 845719 on Cortex-A53 parts up to r0p4.
+
+	  When running a compat (AArch32) userspace on an affected Cortex-A53
+	  part, a load at EL0 from a virtual address that matches the bottom 32
+	  bits of the virtual address used by a recent load at (AArch64) EL1
+	  might return incorrect data.
+
+	  The workaround is to write the contextidr_el1 register on exception
+	  return to a 32-bit task.
+	  Please note that this does not necessarily enable the workaround,
+	  as it depends on the alternative framework, which will only patch
+	  the kernel if an affected CPU is detected.
+
+	  If unsure, say Y.
+
+endmenu
+
+
 config ARM64_64K_PAGES
 	bool "Enable 64KB pages support"
 	help
@@ -129,6 +271,11 @@ config ARM64_64K_PAGES
 	  allowing only two levels of page tables and faster TLB
 	  look-up. AArch32 emulation is not available when this feature
 	  is enabled.
+
+config CPU_BIG_ENDIAN
+       bool "Build big-endian kernel"
+       help
+         Say Y if you plan on running a kernel in big-endian mode.
 
 config SMP
 	bool "Symmetric Multi-Processing"
@@ -144,17 +291,9 @@ config SMP
 
 	  If you don't know what to do here, say N.
 
-config ARM_CPU_TOPOLOGY
-	bool "Support CPU topology definition"
-	depends on SMP
-	default y
-	help
-	  Support CPU topology definition, based on configuration
-	  provided by the firmware.
-
 config SCHED_MC
 	bool "Multi-core scheduler support"
-	depends on ARM_CPU_TOPOLOGY
+	depends on SMP
 	help
 	  Multi-core scheduler support improves the CPU scheduler's decision
 	  making when dealing with multi-core CPU chips at a cost of slightly
@@ -162,7 +301,7 @@ config SCHED_MC
 
 config SCHED_SMT
 	bool "SMT scheduler support"
-	depends on ARM_CPU_TOPOLOGY
+	depends on SMP
 	help
 	  Improves the CPU scheduler's decision making when dealing with
 	  MultiThreading at a cost of slightly increased overhead in some
@@ -264,11 +403,19 @@ config SCHED_HMP_LITTLE_PACKING
 	  packing_limit: runqueue load ratio where a RQ is considered
 	    to be full. Default is NICE_0_LOAD * 9/8.
 
+config SCHED_HMP_BOOST
+	bool "boost feature for HMP"
+	depends on SCHED_HMP
+	default n
+	help
+	  Allows hmp boost to increase performance.
+
 config NR_CPUS
 	int "Maximum number of CPUs (2-32)"
 	range 2 32
 	depends on SMP
-	default "4"
+	# These have to remain sorted largest to smallest
+	default "8"
 
 config HOTPLUG_CPU
 	bool "Support for hot-pluggable CPUs"
@@ -276,6 +423,31 @@ config HOTPLUG_CPU
 	help
 	  Say Y here to experiment with turning CPUs off and on.  CPUs
 	  can be controlled through /sys/devices/system/cpu.
+
+config SWP_EMULATE
+	bool "Emulate SWP/SWPB instructions"
+	help
+	  ARMv6 architecture deprecates use of the SWP/SWPB instructions. ARMv8
+	  oblosetes the use of SWP/SWPB instructions. ARMv7 multiprocessing
+	  extensions introduce the ability to disable these instructions,
+	  triggering an undefined instruction exception when executed. Say Y
+	  here to enable software emulation of these instructions for userspace
+	  (not kernel) using LDREX/STREX. Also creates /proc/cpu/swp_emulation
+	  for statistics.
+
+	  In some older versions of glibc [<=2.8] SWP is used during futex
+	  trylock() operations with the assumption that the code will not
+	  be preempted. This invalid assumption may be more likely to fail
+	  with SWP emulation enabled, leading to deadlock of the user
+	  application.
+
+	  NOTE: when accessing uncached shared regions, LDREX/STREX rely
+	  on an external transaction monitoring block called a global
+	  monitor to maintain update atomicity. If your system does not
+	  implement a global monitor, this option can cause programs that
+	  perform SWP operations to uncached memory to deadlock.
+
+	  If unsure, say Y.
 
 source kernel/Kconfig.preempt
 
@@ -307,7 +479,58 @@ config HW_PERF_EVENTS
 	  Enable hardware performance counter support for perf events. If
 	  disabled, perf events will use software events only.
 
+config SYS_SUPPORTS_HUGETLBFS
+	def_bool y
+
+config ARCH_WANT_GENERAL_HUGETLB
+	def_bool y
+
+config ARCH_WANT_HUGE_PMD_SHARE
+	def_bool y if !ARM64_64K_PAGES
+
+config HAVE_ARCH_TRANSPARENT_HUGEPAGE
+	def_bool y
+
+config ARMV7_COMPAT
+	bool "Kernel support for ARMv7 applications"
+	depends on COMPAT
+	select SWP_EMULATE
+	help
+	 This option enables features that allow that ran on an ARMv7 or older
+	 processor to continue functioning.
+
+	 If you want to execute ARMv7 applications, say Y
+
+config ARMV7_COMPAT_CPUINFO
+	bool "Report backwards compatible cpu features in /proc/cpuinfo"
+	depends on ARMV7_COMPAT
+	default y
+	help
+	 This option makes /proc/cpuinfo list CPU features that an ARMv7 or
+	 earlier kernel would report, but are not optional on an ARMv8 or later
+	 processor.
+
+	 If you want to execute ARMv7 applications, say Y
+
 source "mm/Kconfig"
+
+config FORCE_MAX_ZONEORDER
+	int
+	default "14" if (ARM64_64K_PAGES && TRANSPARENT_HUGEPAGE)
+	default "11"
+
+config SECCOMP
+	bool "Enable seccomp to safely compute untrusted bytecode"
+	---help---
+	  This kernel feature is useful for number crunching applications
+	  that may need to compute untrusted bytecode during their
+	  execution. By using pipes or other transports made available to
+	  the process as file descriptors supporting the read/write
+	  syscalls, it's possible to isolate those applications in
+	  their own address space using seccomp. Once seccomp is
+	  enabled via prctl(PR_SET_SECCOMP), it cannot be disabled
+	  and the task is only allowed to execute a few safe syscalls
+	  defined by each seccomp mode.
 
 endmenu
 
@@ -321,6 +544,23 @@ config CMDLINE
 	  entering them here. As a minimum, you should specify the the
 	  root device (e.g. root=/dev/nfs).
 
+choice
+	prompt "Kernel command line type" if CMDLINE != ""
+	default CMDLINE_FROM_BOOTLOADER
+
+config CMDLINE_FROM_BOOTLOADER
+	bool "Use bootloader kernel arguments if available"
+	help
+	  Uses the command-line options passed by the boot loader. If
+	  the boot loader doesn't provide any, the default kernel command
+	  string provided in CMDLINE will be used.
+
+config CMDLINE_EXTEND
+	bool "Extend bootloader kernel arguments"
+	help
+	  The command-line arguments provided by the boot loader will be
+	  appended to the default kernel command string.
+
 config CMDLINE_FORCE
 	bool "Always use the default kernel command string"
 	help
@@ -328,6 +568,36 @@ config CMDLINE_FORCE
 	  loader passes other arguments to the kernel.
 	  This is useful if you cannot or don't want to change the
 	  command-line options your boot loader passes to the kernel.
+endchoice
+
+config BUILD_ARM64_APPENDED_DTB_IMAGE
+	bool "Build a concatenated Image.gz/dtb by default"
+	depends on OF
+	help
+	  Enabling this option will cause a concatenated Image.gz and list of
+	  DTBs to be built by default (instead of a standalone Image.gz.)
+	  The image will built in arch/arm64/boot/Image.gz-dtb
+
+config BUILD_ARM64_APPENDED_DTB_IMAGE_NAMES
+	string "Default dtb names"
+	depends on BUILD_ARM64_APPENDED_DTB_IMAGE
+	help
+	  Space separated list of names of dtbs to append when
+	  building a concatenated Image.gz-dtb.
+
+config EFI
+	bool "UEFI runtime support"
+	depends on OF && !CPU_BIG_ENDIAN
+	select LIBFDT
+	select UCS2_STRING
+	select EFI_PARAMS_FROM_FDT
+	default y
+	help
+	  This option provides support for runtime services provided
+	  by UEFI firmware (such as non-volatile variables, realtime
+          clock, and platform reset). A UEFI stub is also provided to
+	  allow the kernel to be booted as an EFI application. This
+	  is only useful on systems that have UEFI firmware.
 
 endmenu
 
@@ -361,6 +631,17 @@ menu "Power management options"
 source "kernel/power/Kconfig"
 
 source "drivers/cpufreq/Kconfig"
+config ARCH_SUSPEND_POSSIBLE
+	def_bool y
+
+config ARM64_CPU_SUSPEND
+	def_bool PM_SLEEP
+
+endmenu
+
+menu "CPU Power Management"
+
+source "drivers/cpuidle/Kconfig"
 
 endmenu
 
@@ -368,12 +649,19 @@ source "net/Kconfig"
 
 source "drivers/Kconfig"
 
+source "drivers/firmware/Kconfig"
+
 source "fs/Kconfig"
+
+source "arch/arm64/kvm/Kconfig"
 
 source "arch/arm64/Kconfig.debug"
 
 source "security/Kconfig"
 
 source "crypto/Kconfig"
+if CRYPTO
+source "arch/arm64/crypto/Kconfig"
+endif
 
 source "lib/Kconfig"

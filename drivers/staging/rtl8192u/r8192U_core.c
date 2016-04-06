@@ -182,7 +182,7 @@ static CHANNEL_LIST ChannelPlan[] = {
 	{{1,2,3,4,5,6,7,8,9,10,11,12,13},13},	//Israel.
 	{{1,2,3,4,5,6,7,8,9,10,11,12,13,14,36,40,44,48,52,56,60,64},22},			// For 11a , TELEC
 	{{1,2,3,4,5,6,7,8,9,10,11,12,13,14,36,40,44,48,52,56,60,64}, 22},    //MIC
-	{{1,2,3,4,5,6,7,8,9,10,11,12,13,14},14}					//For Global Domain. 1-11:active scan, 12-14 passive scan. //+YJ, 080626
+	{{1,2,3,4,5,6,7,8,9,10,11,12,13,14},14}					//For Global Domain. 1-11:active scan, 12-14 passive scan.
 };
 
 static void rtl819x_set_channel_map(u8 channel_plan, struct r8192_priv* priv)
@@ -2672,14 +2672,14 @@ static void rtl8192_init_priv_variable(struct net_device* dev)
 	priv->ieee80211->softmac_features  = IEEE_SOFTMAC_SCAN |
 		IEEE_SOFTMAC_ASSOCIATE | IEEE_SOFTMAC_PROBERQ |
 		IEEE_SOFTMAC_PROBERS | IEEE_SOFTMAC_TX_QUEUE |
-		IEEE_SOFTMAC_BEACONS;//added by amy 080604 //|  //IEEE_SOFTMAC_SINGLE_QUEUE;
+		IEEE_SOFTMAC_BEACONS;
 
 	priv->ieee80211->active_scan = 1;
 	priv->ieee80211->modulation = IEEE80211_CCK_MODULATION | IEEE80211_OFDM_MODULATION;
 	priv->ieee80211->host_encrypt = 1;
 	priv->ieee80211->host_decrypt = 1;
-	priv->ieee80211->start_send_beacons = NULL;//rtl819xusb_beacon_tx;//-by amy 080604
-	priv->ieee80211->stop_send_beacons = NULL;//rtl8192_beacon_stop;//-by amy 080604
+	priv->ieee80211->start_send_beacons = NULL;//rtl819xusb_beacon_tx;
+	priv->ieee80211->stop_send_beacons = NULL;//rtl8192_beacon_stop;
 	priv->ieee80211->softmac_hard_start_xmit = rtl8192_hard_start_xmit;
 	priv->ieee80211->set_chan = rtl8192_set_chan;
 	priv->ieee80211->link_change = rtl8192_link_change;
@@ -4480,7 +4480,6 @@ void UpdateRxPktTimeStamp8190 (struct net_device *dev, struct ieee80211_rx_stats
 	}
 }
 
-//by amy 080606
 
 long rtl819x_translate_todbm(u8 signal_strength_index	)// 0-100 index.
 {
@@ -5311,7 +5310,6 @@ void query_rxdesc_status(struct sk_buff *skb, struct ieee80211_rx_stats *stats, 
 		stats->bIsAMPDU = (driver_info->PartAggr==1);
 		stats->bFirstMPDU = (driver_info->PartAggr==1) && (driver_info->FirstAGGR==1);
 		stats->TimeStampLow = driver_info->TSFL;
-		// xiong mask it, 070514
 		//pRfd->Status.TimeStampHigh = PlatformEFIORead4Byte(Adapter, TSFR+4);
 		// stats->TimeStampHigh = read_nic_dword(dev,  TSFR+4);
 
@@ -5536,7 +5534,6 @@ rtl819xusb_process_received_packet(
 	//PRX_TS_RECORD	pts = NULL;
 
 	// Get shifted bytes of Starting address of 802.11 header. 2006.09.28, by Emily
-	//porting by amy 080508
 	pstats->virtual_address += get_rxpacket_shiftbytes_819xusb(pstats);
 	frame = pstats->virtual_address;
 	frame_len = pstats->packetlength;
@@ -5617,7 +5614,6 @@ void rtl8192_rx_cmd(struct sk_buff *skb)
 	{
 
 		query_rx_cmdpkt_desc_status(skb,&stats);
-		// this is to be done by amy 080508     prfd->queue_id = 1;
 
 
 		//

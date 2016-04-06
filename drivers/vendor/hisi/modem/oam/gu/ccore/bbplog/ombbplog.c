@@ -34,11 +34,19 @@ extern "C"{
 *****************************************************************************/
 
 /* GU BBP 可维可测上报SOCP 通道配置参数 */
+#if (FEATURE_OFF == FEATURE_MERGE_OM_CHAN)
 SCM_CODER_SRC_CFG_STRU                  g_astBbpDbgCoderSrcCfg[BBP_DBG_CODER_SRC_NUM]=
 {
-    {SCM_CHANNEL_UNINIT, SOCP_CODER_SRC_GUBBP1,   SOCP_CODER_DST_GU_OM,   SOCP_DATA_TYPE_1, SOCP_ENCSRC_CHNMODE_CTSPACKET, SOCP_CHAN_PRIORITY_3, VOS_NULL_PTR, VOS_NULL_PTR, BBP_DBG_CODER_SRC_SIZE, VOS_NULL_PTR, VOS_NULL_PTR, VOS_NULL_PTR},
-    {SCM_CHANNEL_UNINIT, SOCP_CODER_SRC_GUBBP2,   SOCP_CODER_DST_GU_OM,   SOCP_DATA_TYPE_1, SOCP_ENCSRC_CHNMODE_CTSPACKET, SOCP_CHAN_PRIORITY_3, VOS_NULL_PTR, VOS_NULL_PTR, BBP_DBG_CODER_SRC_SIZE, VOS_NULL_PTR, VOS_NULL_PTR, VOS_NULL_PTR}
+    {SCM_CHANNEL_UNINIT, SOCP_CODER_SRC_GUBBP1,   SOCP_CODER_DST_GU_OM,   SOCP_DATA_TYPE_1, SOCP_ENCSRC_CHNMODE_CTSPACKET, SOCP_CHAN_PRIORITY_3, BBP_DBG_CODER_SRC_SIZE, VOS_NULL_PTR, VOS_NULL_PTR,  VOS_NULL_PTR, VOS_NULL_PTR, VOS_NULL_PTR},
+    {SCM_CHANNEL_UNINIT, SOCP_CODER_SRC_GUBBP2,   SOCP_CODER_DST_GU_OM,   SOCP_DATA_TYPE_1, SOCP_ENCSRC_CHNMODE_CTSPACKET, SOCP_CHAN_PRIORITY_3, BBP_DBG_CODER_SRC_SIZE, VOS_NULL_PTR, VOS_NULL_PTR, VOS_NULL_PTR, VOS_NULL_PTR, VOS_NULL_PTR}
 };
+#else
+SCM_CODER_SRC_CFG_STRU                  g_astBbpDbgCoderSrcCfg[BBP_DBG_CODER_SRC_NUM]=
+{
+    {SCM_CHANNEL_UNINIT, SOCP_CODER_SRC_GUBBP1,   SOCP_CODER_DST_OM_IND,   SOCP_DATA_TYPE_1, SOCP_ENCSRC_CHNMODE_CTSPACKET, SOCP_CHAN_PRIORITY_3, BBP_DBG_CODER_SRC_SIZE, VOS_NULL_PTR, VOS_NULL_PTR,  VOS_NULL_PTR, VOS_NULL_PTR, VOS_NULL_PTR},
+    {SCM_CHANNEL_UNINIT, SOCP_CODER_SRC_GUBBP2,   SOCP_CODER_DST_OM_IND,   SOCP_DATA_TYPE_1, SOCP_ENCSRC_CHNMODE_CTSPACKET, SOCP_CHAN_PRIORITY_3, BBP_DBG_CODER_SRC_SIZE, VOS_NULL_PTR, VOS_NULL_PTR, VOS_NULL_PTR, VOS_NULL_PTR, VOS_NULL_PTR}
+};
+#endif
 
 /* 记录BBP 可维可测上报初始化的调试信息 */
 BBP_DBG_ERR_INFO_STRU                   g_stBbpDbgErrInfo;
@@ -62,7 +70,7 @@ MsgBlock*                               g_pstBbpDbgMsg          = VOS_NULL_PTR;
 BALONG_DMA_CB                           *g_pstBbpCycBufHead       = VOS_NULL_PTR;
 
 /*控制BBP可维可测的计数信号量*/
-VOS_UINT32                              g_ulBbpDbgSem = VOS_NULL;
+VOS_SEM                                 g_ulBbpDbgSem = VOS_NULL;
 
 /*****************************************************************************
  3  函数声明
@@ -88,10 +96,10 @@ extern VOS_UINT32 Om_QueryMsgFunc(OM_REQ_PACKET_STRU *pRspPacket,
 /*PC下发的 BBP采数与可维可测消息处理函数映射表 */
 OM_MSG_FUN_STRU                         g_astOmBbpMsgFunTbl[]   =
 {
-    {APP_OM_BBP_DUMP_SET_REQ,      Om_ConfigBbpDump     ,    OM_APP_BBP_DUMP_SET_CNF },
-    {APP_OM_BBP_DUMP_END_REQ ,     Om_EndBbpDump        ,    OM_APP_BBP_DUMP_END_CNF },
-    {APP_OM_BBP_DBG_SET_REQ,       Om_ConfigBbpDbg      ,    OM_APP_BBP_DBG_SET_CNF  },
-    {APP_OM_BBP_EDMA_ERR_REQ ,     Om_SendEdmaErrToPc   ,    OM_APP_BBP_EDMA_ERR_CNF },
+    {Om_ConfigBbpDump     ,    APP_OM_BBP_DUMP_SET_REQ,      OM_APP_BBP_DUMP_SET_CNF },
+    {Om_EndBbpDump        ,    APP_OM_BBP_DUMP_END_REQ ,     OM_APP_BBP_DUMP_END_CNF },
+    {Om_ConfigBbpDbg      ,    APP_OM_BBP_DBG_SET_REQ,       OM_APP_BBP_DBG_SET_CNF  },
+    {Om_SendEdmaErrToPc   ,    APP_OM_BBP_EDMA_ERR_REQ ,     OM_APP_BBP_EDMA_ERR_CNF },
 };
 
 /*****************************************************************************
@@ -277,7 +285,7 @@ VOS_UINT32 Om_ConfigBbpDumpEdma(VOS_UINT32 ulLen,
         return BBP_DUMP_ALLOC_MEM_ERR;
     }
 
-    *pulPhyAddr = stSectInfo.ulSectPhysAddr;
+    *pulPhyAddr = (VOS_UINT32)stSectInfo.pSectPhysAddr;
 
     ulLenByte = ulLen * 1024;
     if(stSectInfo.ulSectSize < ulLenByte)
@@ -298,13 +306,13 @@ VOS_UINT32 Om_ConfigBbpDumpEdma(VOS_UINT32 ulLen,
     {
         /* 使能EDMA */
         lRet = DRV_EDMA_CHANNEL_ASYNC_START((VOS_UINT32)g_stBbpDumpInfo.lEdmaChanID, WBBP_DUMP_DMA_RDATA_W_ADDR,
-                                            stSectInfo.ulSectPhysAddr, ulLenByte);
+                                            (BSP_U32)stSectInfo.pSectPhysAddr, ulLenByte);
     }
     else
     {
         /* 使能EDMA */
         lRet = DRV_EDMA_CHANNEL_ASYNC_START((VOS_UINT32)g_stBbpDumpInfo.lEdmaChanID, OAM_GBBP_CPU_GDUMP_FIFO_RD_ADDR,
-                                            stSectInfo.ulSectPhysAddr, ulLenByte);
+                                            (BSP_U32)stSectInfo.pSectPhysAddr, ulLenByte);
     }
 
     if (BSP_OK != lRet)
@@ -757,7 +765,7 @@ VOS_UINT32 Om_BbpDbgAllocCycBuf(VOS_VOID)
 {
     VOS_UINT32                          i;
     VOS_UINT32                          ulVirBufAddr;
-    VOS_UINT32                          ulPhyBufAddr;
+    VOS_UINT_PTR                        ulPhyBufAddr;
     BALONG_DMA_CB                      *pstCycBuf;
     BALONG_DMA_CB                      *pstCycBufTemp;
 
@@ -919,7 +927,7 @@ VOS_VOID Om_BbpDbgChanInit(VOS_VOID)
     VOS_UINT32                          i;
     VOS_UINT32                          ulRet;
     OM_REQ_PACKET_STRU                 *pstPcMsg;
-    SOCP_CODER_SRC_CHAN_S               stChannel;   /* 通道的属性信息 */
+    SOCP_CODER_SRC_CHAN_STRU           stChannel;   /* 通道的属性信息 */
     BALONG_DMA_CB                      *pstConfigAddr;
 
     /* 初始化全局变量 */
@@ -928,6 +936,15 @@ VOS_VOID Om_BbpDbgChanInit(VOS_VOID)
 
     /* 置可维可测状态标志 */
     g_stBbpDbgInfo.ulBbpDbgStatus = OM_BBP_DBG_STOP;
+
+    /*创建信号量*/
+    if ( VOS_OK != VOS_SmCCreate("BbpD", 0, VOS_SEMA4_FIFO, &g_ulBbpDbgSem))
+    {
+        g_stBbpDbgErrInfo.usCreateSemErr++;
+        g_stBbpDbgInfo.ulBbpErrCode = BBP_DBG_CREATE_SEM_ERR;
+        LogPrint("Om_BbpDbgChanInit: VOS_SmCCreate Fail\r\n");
+        return;
+    }
 
     /*初始化BBP 可维可测使用的EDMA通道 */
     g_stBbpDbgInfo.lBbpEdmaChanID = DRV_EDMA_CHANNEL_INIT(EDMA_BBP_DBG,
@@ -998,14 +1015,6 @@ VOS_VOID Om_BbpDbgChanInit(VOS_VOID)
         g_astBbpDbgCoderSrcCfg[i].enInitState = SCM_CHANNEL_INIT_SUCC; /* 记录通道初始化配置信息 */
     }
 
-    /*创建信号量*/
-    if ( VOS_OK != VOS_SmCCreate("BbpD", 0, VOS_SEMA4_FIFO, &g_ulBbpDbgSem))
-    {
-        g_stBbpDbgErrInfo.usCreateSemErr++;
-        g_stBbpDbgInfo.ulBbpErrCode = BBP_DBG_CREATE_SEM_ERR;
-        return;
-    }
-
     /* 申请一条保留消息，用于中断中发送 */
     g_pstBbpDbgMsg = (MsgBlock*)VOS_AllocMsg(UEPS_PID_OMRL, sizeof(OM_REQ_PACKET_STRU));
     if (VOS_NULL_PTR == g_pstBbpDbgMsg)
@@ -1032,7 +1041,7 @@ VOS_VOID Om_BbpDbgSelfTask(unsigned long ulPara1, unsigned long ulPara2,
 {
     VOS_UINT32                          ulIndex;
     VOS_UINT32                          ulRet;
-    SOCP_BUFFER_RW_S                    stRwBuf;
+    SOCP_BUFFER_RW_STRU                    stRwBuf;
 
 #if (VOS_WIN32 == VOS_OS_VER)
     VOS_UINT32                          i;

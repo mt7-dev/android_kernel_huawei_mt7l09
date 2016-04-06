@@ -26,50 +26,6 @@
   3 宏定义
 *****************************************************************************/
 
-/*23040 9.2.3.1 bits no 0 and 1 of the first octet of all PDUs*/
-#define MSG_SET_TP_MTI(ucFo, ucMti)                         ((ucFo) |= ((ucMti) & 0x03))
-/*23040 9.2.3.25  1 bit field located within bit 2 of the first octet of SMS SUBMIT*/
-#define MSG_SET_TP_RD(ucFo, bFlag)                          ((ucFo) |= (VOS_TRUE == (bFlag)) ? 0x04 : 0)
-/*23040 9.2.3.2 bit no 2 of the first octet of SMS DELIVER and SMS STATUS REPORT*/
-#define MSG_SET_TP_MMS(ucFo, bFlag)                         ((ucFo) |= (VOS_TRUE == (bFlag)) ? 0 : 0x04)
-/*23040 9.2.3.3 bit no 3 and 4 of the first octet of SMS SUBMIT*/
-#define MSG_SET_TP_VPF(ucFo, ucVpf)                         ((ucFo) |= (((ucVpf) << 3) & 0x18))
-/*23040 9.2.3.26 bit no. 5 of the first octet of SMS STATUS REPORT*/
-#define MSG_SET_TP_SRQ(ucFo, bFlag)                         ((ucFo) |= (VOS_TRUE == (bFlag)) ? 0x20 : 0)
-/*23040 9.2.3.4 bit no. 5 of the first octet of SMS DELIVER*/
-#define MSG_SET_TP_SRI(ucFo, bFlag)                         ((ucFo) |= (VOS_TRUE == (bFlag)) ? 0x20 : 0)
-/*23040 9.2.3.5 bit no. 5 of the first octet of SMS SUBMIT and SMS COMMAND*/
-#define MSG_SET_TP_SRR(ucFo, bFlag)                         ((ucFo) |= (VOS_TRUE == (bFlag)) ? 0x20 : 0)
-/*23040 9.2.3.23 1 bit field within bit 6 of the first octet of SMS SUBMIT SMS-SUBMIT-REPORT SMS DELIVER,SMS-DELIVER-REPORT SMS-STATUS-REPORT SMS-COMMAND.*/
-#define MSG_SET_TP_UDHI(ucFo, bFlag)                        ((ucFo) |= (VOS_TRUE == (bFlag))? 0x40 : 0)
-/*23040 9.2.3.17 1 bit field, located within bit no 7 of the first octet of both SMS DELIVER and SMS SUBMIT,*/
-#define MSG_SET_TP_RP(ucFo, bFlag)                          ((ucFo) |= (VOS_TRUE == (bFlag))? 0x80 : 0)
-/*23038 4 Coding Group Bits 00xx
-        SMS Data Coding Scheme indicates whether the text is uncompressed */
-#define MSG_SET_COMPRESSED(ucDcs, bFlag)                    ((ucDcs) |= (VOS_TRUE == (bFlag)) ? 0x20 : 0)
-/*23038 4 Coding Group Bits 00xx
-        SMS Data Coding Scheme indicates whether the Message have a message class meaning*/
-#define MSG_SET_CLASSFLAG(ucDcs, bFlag)                     ((ucDcs) |= (MN_MSG_MSG_CLASS_NONE == (bFlag)) ? 0 : 0x10)
-/*23038 4 Coding Group Bits 00xx 1111
-        SMS Data Coding Scheme Bit 1 Bit 0 indicates Message Class*/
-#define MSG_SET_MSGCLASS(ucDcs, ucClass)                    ((ucDcs) |= ((ucClass) & 0x03))
-/*23038 4 Coding Group Bits 00xx
-        SMS Data Coding Scheme Bits 3 and 2 indicate the character set being used*/
-#define MSG_SET_CHARSET(ucDcs, ucCharSet)                   ((ucDcs) |= ((ucCharSet) << 2) & 0x0C)
-/*23038 4 Coding Group Bits 1101
-        SMS Data Coding Scheme Bits 3 indicates Indication Sense*/
-#define MSG_SET_INDSENSE(ucDcs, bFlag)                      ((ucDcs) |= (VOS_TRUE == (bFlag)) ? 0x08 : 0)
-/*23038 4 Coding Group Bits 1101
-        SMS Data Coding Scheme Bit 1 Bit 0 indicates Indication Type*/
-#define MSG_SET_INDTYPE(ucDcs, ucIndType)                   ((ucDcs) |= ((ucIndType) & 0x03))
-/*23038 4 Coding Group Bits 1111
-        SMS Data Coding Scheme Bit 2 indicates Message coding*/
-#define MSG_SET_MSGCODING(ucDcs, ucMsgCoding)               ((ucDcs) |= ((ucMsgCoding) << 2) & 0x04)
-
-#define MSG_SetObjForwardedFlag(ucCtrlData, bFlag)          (ucCtrlData |= ((VOS_TRUE == bFlag)? 0x01 : 0x00))
-
-#define MSG_SetUserPromptInd(ucCtrlData, bFlag)             (ucCtrlData |= ((VOS_TRUE == bFlag)? 0x02 : 0x00))
-
 /*****************************************************************************
   4 变量定义
 *****************************************************************************/
@@ -3028,7 +2984,7 @@ VOS_UINT32   MN_MSG_Segment(
             pstSubmit->stUserData.ulLen = ulLen;
         }
         PS_MEM_CPY(pstSubmit->stUserData.aucOrgData,
-                   &(pstLongSubmit->stLongUserData.pucOrgData[(ulLen * ulLoop)]),
+                   &(pstLongSubmit->stLongUserData.pucOrgData[((VOS_ULONG)ulLen * ulLoop)]),
                    pstSubmit->stUserData.ulLen);
         ulRet = MSG_EncodeSubmit(pstSubmit, pstRawData);
         if ( MN_ERR_NO_ERROR != ulRet )

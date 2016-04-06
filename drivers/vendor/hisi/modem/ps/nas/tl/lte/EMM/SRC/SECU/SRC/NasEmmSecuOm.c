@@ -890,10 +890,11 @@ VOS_VOID  NAS_EMM_SecuResumeIdle(VOS_VOID )
 VOS_VOID  NAS_EMM_SecuRrcSecuParamIndHo(
                                                 const VOS_UINT8 *pucSecuParaHo )
 {
-    NAS_LMM_HO_LRRC_SECU_PARA_STRU           stHoLrrcSecuPara = {0};
+    NAS_LMM_HO_LRRC_SECU_PARA_STRU           stHoLrrcSecuPara;
     VOS_UINT32                               ulRslt;
     VOS_UINT8                                ucEia = NAS_EMM_NULL;
 
+    PS_MEM_SET(&stHoLrrcSecuPara, 0, sizeof(NAS_LMM_HO_LRRC_SECU_PARA_STRU));
     NAS_EMM_SECU_LOG_INFO("NAS_EMM_SecuRrcSecuParamIndHo entered.");
 
     /* 解析LRRC上报的安全参数*/
@@ -1861,9 +1862,12 @@ VOS_UINT32 NAS_EMM_KDF_HmacSha256
     KEY_MAKE_S                          stKeyMake;
     CIPHER_KEY_LEN_E_U32                ulenKeyLen;
     /*PC REPLAY MODIFY BY LEILI BEGIN*/
-    NAS_LMM_BSP_INPUT_PARA_STRU         stBspInputPara = {0};
-    NAS_LMM_BSP_OUTPUT_PARA_STRU        stBspOutputPara= {0};
+    NAS_LMM_BSP_INPUT_PARA_STRU         stBspInputPara;
+    NAS_LMM_BSP_OUTPUT_PARA_STRU        stBspOutputPara;
     /*PC REPLAY MODIFY BY LEILI END*/
+
+    PS_MEM_SET(&stBspInputPara, 0, sizeof(NAS_LMM_BSP_INPUT_PARA_STRU));
+    PS_MEM_SET(&stBspOutputPara, 0, sizeof(NAS_LMM_BSP_OUTPUT_PARA_STRU));
     NAS_EMM_SECU_LOG_INFO("NAS_EMM_KDF_HmacSha256 entered.");
 
     (void)aucDigest;

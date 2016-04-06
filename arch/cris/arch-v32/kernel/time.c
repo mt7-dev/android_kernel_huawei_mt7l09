@@ -86,16 +86,6 @@ unsigned long get_ns_in_jiffie(void)
 	ns = (TIMER0_DIV - data) * 10;
 	return ns;
 }
-
-
-/* From timer MDS describing the hardware watchdog:
- * 4.3.1 Watchdog Operation
- * The watchdog timer is an 8-bit timer with a configurable start value.
- * Once started the watchdog counts downwards with a frequency of 763 Hz
- * (100/131072 MHz). When the watchdog counts down to 1, it generates an
- * NMI (Non Maskable Interrupt), and when it counts down to 0, it resets the
- * chip.
- */
 /* This gives us 1.3 ms to do something useful when the NMI comes */
 
 /* Right now, starting the watchdog is the same as resetting it */

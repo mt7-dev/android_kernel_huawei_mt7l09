@@ -1025,12 +1025,12 @@ static void pmz_convert_to_zs(struct uart_pmac_port *uap, unsigned int cflag,
 		uap->flags |= PMACZILOG_FLAG_IS_EXTCLK;
 	} else {
 		switch (baud) {
-		case ZS_CLOCK/16:	/* 230400 */
+		case ZS_CLOCK/16:
 			uap->curregs[R4] = X16CLK;
 			uap->curregs[R11] = 0;
 			uap->curregs[R14] = 0;
 			break;
-		case ZS_CLOCK/32:	/* 115200 */
+		case ZS_CLOCK/32:
 			uap->curregs[R4] = X32CLK;
 			uap->curregs[R11] = 0;
 			uap->curregs[R14] = 0;

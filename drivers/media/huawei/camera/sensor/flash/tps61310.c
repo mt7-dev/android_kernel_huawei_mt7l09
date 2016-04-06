@@ -18,7 +18,7 @@
 #define REGISTER3		0x03
 #define REGISTER4		0x04
 #define REGISTER5		0x05
-#define REGISTER6		0x06
+/* #define REGISTER6		0x06 */
 #define REGISTER7		0x07
 
 #define FLASH_LED13_MAX	17
@@ -39,6 +39,8 @@
 #define TX_MAXK_ENABLE		0x01
 #define TX_MAXK_DISABLE	0xfe
 #define MODE_CTRL_SHUTDONW	0x3f
+
+extern struct dsm_client *client_flash;
 
 /* Internal data struct define */
 typedef enum {
@@ -249,6 +251,31 @@ static int hw_tps61310_led_enable(struct hw_flash_ctrl_t *flash_ctrl,
 	i2c_func->i2c_write(i2c_client, REGISTER5, val);
 	i2c_func->i2c_read(i2c_client, REGISTER5, &val);
 
+      //Add dmd log:  flash open/short  when D4 = 1
+      i2c_func->i2c_read(i2c_client, REGISTER3, &val);//Apple
+      val = val & 0x10;
+       if(val == 0x10)
+	{
+	    if(!dsm_client_ocuppy(client_flash)){
+              dsm_client_record(client_flash, "flash open or short\n");
+              dsm_client_record(client_flash, "val = 0x%x\n", val);
+              dsm_client_notify(client_flash, DSM_FLASH_OPEN_SHOTR_ERROR_NO);
+              cam_info("[I/DSM] %s dsm_client_notify", client_flash->client_name);
+          }
+      }
+
+      //Add dmd log:  flash hot die  when D6D5 = 10
+      i2c_func->i2c_read(i2c_client, REGISTER4, &val);//Apple
+      val = val & 0x60;
+      if(val == 0x40)
+	{
+          if(!dsm_client_ocuppy(client_flash)){
+              dsm_client_record(client_flash, "flash hot die\n");
+              dsm_client_record(client_flash, "val = 0x%x\n", val);
+              dsm_client_notify(client_flash, DSM_FLASH_HOT_DIE_ERROR_NO);
+	       cam_info("[I/DSM] %s dsm_client_notify", client_flash->client_name);
+          }
+      }
 	return 0;
 }
 
@@ -442,14 +469,25 @@ static int tps61310_check(struct hw_flash_ctrl_t *flash_ctrl)
 	int status = -1;
 
 	i2c_client = flash_ctrl->flash_i2c_client;
-	i2c_func = flash_ctrl->flash_i2c_client->i2c_func_tbl;
+	if(i2c_client == NULL) {
+		cam_err("%s: i2c client is NULL.", __func__);
+		return FLASH_LED_ERROR;
+	}
 
+	i2c_func = flash_ctrl->flash_i2c_client->i2c_func_tbl;
+	if(i2c_func == NULL) {
+		cam_err("%s: i2c function is NULL.", __func__);
+		return FLASH_LED_ERROR;
+	}
+
+	hw_tps61310_set_reset(flash_ctrl, HIGH);
 	i2c_func->i2c_read(i2c_client, REGISTER3, &val);
 	if(val & 0x10) {
 		status = FLASH_LED_FAULT;
 	} else {
 		status = FLASH_LED_NORMAL;
 	}
+	hw_tps61310_set_reset(flash_ctrl, LOW);
 
 	return status;
 }
@@ -805,7 +843,7 @@ static int hw_tps61310_remove(struct i2c_client *client)
 }
 
 static const struct i2c_device_id hw_tps61310_id[] = {
-	{"hw_tps61310", (int)&hw_tps61310_ctrl},
+	{"hw_tps61310", (unsigned long)&hw_tps61310_ctrl},
 	{}
 };
 
@@ -848,7 +886,7 @@ static struct hw_flash_fn_t hw_tps61310_func_tbl = {
 	.flash_off = hw_tps61310_off,
 	.flash_match = hw_tps61310_match,
 	.flash_get_dt_data = hw_tps61310_get_dt_data,
-	/* check flash open or short by zwx211899 */
+	/* check flash open or short */
 	.flash_check = tps61310_check,
 	.flash_register_attribute = hw_tps61310_register_attribute,
 };

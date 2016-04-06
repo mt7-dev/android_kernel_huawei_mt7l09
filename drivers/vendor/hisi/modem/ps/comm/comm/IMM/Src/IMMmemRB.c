@@ -42,7 +42,6 @@ extern "C" {
 /*lint +e767*/
 
 #if (FEATURE_ON == FEATURE_SKB_EXP)
-
 /* 垃圾回收任务优先级 */
 const VOS_UINT8 IMM_RB_FREE_TASK_PRI_LINUX                  = 85;
 
@@ -65,7 +64,7 @@ VOS_UINT8        g_ulFreeIMMMemBlkNoticNum                  = 0x1f;
 VOS_UINT32       g_ulACPUTimerStartFlag                     = PS_FALSE;
 
 /* IMM MEM RB 释放任务信号量 */
-VOS_UINT32       g_ulImmMemRbFreeSem                        = 0;
+VOS_SEM         g_ulImmMemRbFreeSem                         = 0;
 
 /* IMM MEM RB 可维可测实体 */
 IMM_MEM_RB_MNTN_INFO_STRU               g_stImmMemRbMntnEntity;
@@ -168,8 +167,8 @@ VOS_VOID IMM_RbMemRelDataIsr(VOS_VOID)
 VOS_VOID IMM_RbMemFreeQueInit(VOS_VOID)
 {
     /*lint -e778*/
-    g_pstAcpuTTFMemFreeQue  = (LUP_QUEUE_STRU*)DRV_DDR_PHY_TO_VIRT(CORESHARE_MEM_WAN_ADDR + (TTF_MEM_FREE_QUE_LEN + 5)* sizeof(VOS_VOID*));
-    g_pstAcpuIMMMemFreeQue  = (LUP_QUEUE_STRU*)DRV_DDR_PHY_TO_VIRT(CORESHARE_MEM_WAN_ADDR + TTF_MEM_FREE_AREA_SIZE + (IMM_MEM_FREE_QUE_LEN + 5)* sizeof(VOS_VOID*));
+    g_pstAcpuTTFMemFreeQue  = (LUP_QUEUE_STRU *)DRV_DDR_PHY_TO_VIRT(CORESHARE_MEM_WAN_ADDR + (TTF_MEM_FREE_QUE_LEN + 5)* sizeof(VOS_VOID *));
+    g_pstAcpuIMMMemFreeQue  = (LUP_QUEUE_STRU *)DRV_DDR_PHY_TO_VIRT(CORESHARE_MEM_WAN_ADDR + TTF_MEM_FREE_AREA_SIZE + (IMM_MEM_FREE_QUE_LEN + 5)* sizeof(VOS_VOID *));
     /*lint +e778*/
 
     return;
@@ -210,7 +209,7 @@ VOS_VOID IMM_RbRxFreeMemTaskInit( VOS_VOID )
     PS_MEM_SET(&g_stImmMemRbMntnEntity, 0x0, sizeof(IMM_MEM_RB_MNTN_INFO_STRU));
 
     /* 初始化信号量 */
-    if ( VOS_OK != VOS_SmBCreate("g_ulImmMemRbFreeSem", 0, VOS_SEMA4_FIFO, &g_ulImmMemRbFreeSem ) )
+    if ( VOS_OK != VOS_SmBCreate("g_ulImmMemRbFreeSem", 0, VOS_SEMA4_FIFO, (VOS_SEM *)&g_ulImmMemRbFreeSem ) )
     {
         IMM_LOG(UEPS_PID_IMM_RB_FREE, IMM_PRINT_ERROR, "IMM_RB, IMM_RbRxFreeMemTaskInit, ERROR, Create g_ulImmMemRbFreeSem fail!\n");
         return;
@@ -343,7 +342,7 @@ VOS_VOID IMM_RbRemoteFreeMem(VOS_VOID *pucAddr)
     VOS_UINT32                          ulResult;
     VOS_UINT32                          ulNum;
     VOS_INT32                           lIsrRet;    /* 中断操作返回值 */
-    VOS_UINT32                          ulFlags = 0;
+    VOS_ULONG                           ulFlags = 0UL;
 
     if ( VOS_NULL_PTR == pucAddr )
     {
@@ -522,13 +521,6 @@ VOS_VOID IMM_RbRemoteFreeMem(VOS_VOID *pucAddr)
 
 VOS_UINT32 IMM_RbMemFreeFidInit ( enum VOS_INIT_PHASE_DEFINE ip )
 {
-    /* 初始化TTF内存地址值 */
-    if (VOS_OK != TTF_MEMCTRL_ACORE_AddrInit())
-    {
-        vos_printf("IMM_RbMemFreeFidInit::call TTF_MEMCTRL_AddrInit error!\n");
-        return VOS_ERR;
-    }
-
     return VOS_OK;
 }
 

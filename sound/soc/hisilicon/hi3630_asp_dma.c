@@ -24,7 +24,9 @@
 #include <linux/of_irq.h>
 #include <linux/of_platform.h>
 #include <linux/compiler.h>
+#include <linux/regulator/consumer.h>
 #include <linux/hwspinlock.h>
+#include <linux/pm_runtime.h>
 #include <sound/core.h>
 #include <sound/dmaengine_pcm.h>
 #include <sound/pcm.h>
@@ -32,36 +34,53 @@
 #include <sound/pcm_params.h>
 #include <sound/tlv.h>
 #include <sound/soc.h>
-#include "drv_mailbox_cfg.h"
 
 #include "hi3630_log.h"
 #include "hi3630_asp_dma.h"
 
-#ifdef __cplusplus
-#if __cplusplus
-extern "C" {
-#endif
-#endif
-#define __DRV_AUDIO_MAILBOX_WORK__
+#define HWLOCK_ID		2  /* hardware lock ID */
+#define HWLOCK_WAIT_TIME	50 /* 50ms */
 
-#ifndef OK
-#define OK	0
-#endif
+#undef CONFIG_PM_RUNTIME
 
-#ifndef ERROR
-#define ERROR	-1
-#endif
+struct hi3630_asp_dmac_data {
+	struct hwspinlock *hwlock;
+	struct resource	*res;
+	void __iomem	*reg_base_addr;
+	int		irq;
+	spinlock_t 	lock;
+	struct regulator_bulk_data	regu;
+	struct device *dev;
+};
 
-#undef NULL
-#define NULL ((void *)0)
+enum hi3630_asp_dmac_status {
+	STATUS_DMAC_STOP = 0,
+	STATUS_DMAC_RUNNING,
+};
 
-#define HI3630_MAX_BUFFER_SIZE	( 128 * 1024 )	/* 0x20000 */
+struct dma_lli_cfg
+{
+	unsigned int lli;
+	unsigned int reserved[3];
+	unsigned int a_count;
+	unsigned int src_addr;
+	unsigned int des_addr;
+	unsigned int config;
+} __aligned(32);
 
-static const unsigned int freq[] = {
-	8000,	11025,	12000,	16000,
-	22050,	24000,	32000,	44100,
-	48000,	88200,	96000,	176400,
-	192000,
+struct hi3630_asp_dmac_runtime_data {
+	spinlock_t lock;
+	struct hi3630_asp_dmac_data *pdata;
+	struct mutex mutex;
+	enum hi3630_asp_dmac_status status;
+	bool two_dma_flag;
+	unsigned int dma_addr;
+	unsigned int period_size;
+	unsigned int period_cur;
+	unsigned int period_next;
+
+	struct dma_lli_cfg *pdma_lli_cfg;
+	unsigned int lli_dma_addr;
 };
 
 static const struct of_device_id hi3630_asp_dmac_of_match[] = {
@@ -71,6 +90,87 @@ static const struct of_device_id hi3630_asp_dmac_of_match[] = {
 	{ },
 };
 MODULE_DEVICE_TABLE(of, hi3630_asp_dmac_of_match);
+
+static inline int hi3630_dmac_reg_read(struct hi3630_asp_dmac_data *pdata, unsigned int reg)
+{
+	unsigned long flag = 0;
+	int ret = 0;
+
+	BUG_ON(NULL == pdata);
+
+	if (hwspin_lock_timeout_irqsave(pdata->hwlock, HWLOCK_WAIT_TIME, &flag)) {
+		loge("%s: hwspinlock timeout!\n", __func__);
+		return ret;
+	}
+
+	ret = readl_relaxed(pdata->reg_base_addr + reg);
+
+	hwspin_unlock_irqrestore(pdata->hwlock, &flag);
+	return ret;
+}
+
+static inline void hi3630_dmac_reg_write(struct hi3630_asp_dmac_data *pdata,
+					 unsigned int reg, unsigned int value)
+{
+	unsigned long flag = 0;
+
+	BUG_ON(NULL == pdata);
+
+	if (hwspin_lock_timeout_irqsave(pdata->hwlock, HWLOCK_WAIT_TIME, &flag)) {
+		loge("%s: hwspinlock timeout!\n", __func__);
+		return;
+	}
+
+	writel_relaxed(value, pdata->reg_base_addr + reg);
+
+	hwspin_unlock_irqrestore(pdata->hwlock, &flag);
+}
+
+static inline void hi3630_dmac_set_bit(struct hi3630_asp_dmac_data *pdata,
+				       unsigned int reg, unsigned int offset)
+{
+	unsigned int value = 0;
+	unsigned long flag_hw = 0;
+	unsigned long flag_sft = 0;
+
+	BUG_ON(NULL == pdata);
+
+	if (hwspin_lock_timeout_irqsave(pdata->hwlock, HWLOCK_WAIT_TIME, &flag_hw)) {
+		loge("%s: hwspinlock timeout!\n", __func__);
+		return;
+	}
+
+	spin_lock_irqsave(&pdata->lock, flag_sft);
+	value = readl_relaxed(pdata->reg_base_addr + reg);
+	value |= (1 << offset);
+	writel_relaxed(value, pdata->reg_base_addr + reg);
+	spin_unlock_irqrestore(&pdata->lock, flag_sft);
+
+	hwspin_unlock_irqrestore(pdata->hwlock, &flag_hw);
+}
+
+static inline void hi3630_dmac_clr_bit(struct hi3630_asp_dmac_data *pdata,
+				       unsigned int reg, unsigned int offset)
+{
+	unsigned int value = 0;
+	unsigned long flag_hw = 0;
+	unsigned long flag_sft = 0;
+
+	BUG_ON(NULL == pdata);
+
+	if (hwspin_lock_timeout_irqsave(pdata->hwlock, HWLOCK_WAIT_TIME, &flag_hw)) {
+		loge("%s: hwspinlock timeout!\n", __func__);
+		return;
+	}
+
+	spin_lock_irqsave(&pdata->lock, flag_sft);
+	value = readl_relaxed(pdata->reg_base_addr + reg);
+	value &= ~(1 << offset);
+	writel_relaxed(value, pdata->reg_base_addr + reg);
+	spin_unlock_irqrestore(&pdata->lock, flag_sft);
+
+	hwspin_unlock_irqrestore(pdata->hwlock, &flag_hw);
+}
 
 static const struct snd_pcm_hardware hi3630_asp_dmac_hardware = {
 	.info			= SNDRV_PCM_INFO_MMAP |
@@ -87,121 +187,6 @@ static const struct snd_pcm_hardware hi3630_asp_dmac_hardware = {
 	.buffer_bytes_max	= 128 * 1024,
 };
 
-#ifdef CONFIG_SND_TEST_AUDIO_PCM_LOOP
-struct hi3630_simu_pcm_data hi3630_simu_pcm;
-#endif
-
-#ifdef __DRV_AUDIO_MAILBOX_WORK__
-/* workqueue for playback and capture */
-struct hi3630_pcm_mailbox_wq hi3630_pcm_mailbox_workqueue;
-#endif
-
-static u32 pcm_cp_status_open = 0;
-static u32 pcm_pb_status_open = 0;
-
-DEFINE_SEMAPHORE(g_pcm_cp_open_sem);
-DEFINE_SEMAPHORE(g_pcm_pb_open_sem);
-
-extern unsigned long mailbox_reg_msg_cb(unsigned long mailcode,
-					mb_msg_cb func, void *data);
-
-extern unsigned long mailbox_read_msg_data(void *mail_handle,
-					char *buff, unsigned long *size);
-
-#ifdef CONFIG_SND_TEST_AUDIO_PCM_LOOP
-static irq_rt_t hi3630_notify_recv_isr(void *usr_para, void *mail_handle,
-					unsigned int mail_len);
-#endif
-
-#ifdef __DRV_AUDIO_MAILBOX_WORK__
-static irq_rt_t hi3630_mb_intr_handle(struct snd_pcm_substream *substream,
-					unsigned short pcm_mode);
-#endif
-
-#ifdef CONFIG_SND_TEST_AUDIO_PCM_LOOP
-void simu_pcm_work_func(struct work_struct *work)
-{
-	struct hi3630_simu_pcm_data *priv =
-		container_of(work, struct hi3630_simu_pcm_data, simu_pcm_delay_work.work);
-	struct hifi_chn_pcm_period_elapsed pk_data;
-
-	BUG_ON(NULL == priv);
-
-	logd("simu_pcm_work_func:\r\n");
-	logd("\tmsg_type = %x\r\n", priv->msg_type);
-	logd("\tpcm_mode = %d\r\n", priv->pcm_mode);
-	logd("\tdata_addr = 0x%x\r\n", priv->data_addr);
-	logd("\tdata_len = %d\r\n", priv->data_len);
-	logd("\tsubstream = 0x%x\r\n", priv->substream);
-
-	/* simu data move and make response */
-	memset(&pk_data, 0, sizeof(struct hifi_chn_pcm_period_elapsed));
-	pk_data.msg_type = HI_CHN_MSG_PCM_PERIOD_ELAPSED;
-	pk_data.pcm_mode = priv->pcm_mode;
-	pk_data.substream = priv->substream;
-
-	hi3630_notify_recv_isr(0, &pk_data, sizeof(struct hifi_chn_pcm_period_elapsed));
-}
-#endif
-
-#ifdef __DRV_AUDIO_MAILBOX_WORK__
-void pcm_mailbox_work_func(struct work_struct *work)
-{
-	struct hi3630_pcm_mailbox_data *priv =
-		container_of(work, struct hi3630_pcm_mailbox_data, pcm_mailbox_delay_work.work);
-	int ret = 0;
-	unsigned short msg_type= 0;
-	unsigned short pcm_mode = 0;
-	struct snd_pcm_substream * substream = NULL;
-	struct hi3630_runtime_data *prtd = NULL;
-
-	BUG_ON(NULL == priv);
-
-	msg_type = priv->msg_type;
-	pcm_mode = priv->pcm_mode;
-	substream = priv->substream;
-	logd("substream : 0x%x\n", substream);
-
-	if (NULL == substream) {
-		loge("End, substream == NULL\n");
-		return;
-	}
-
-	if (NULL == substream->runtime) {
-		loge("End, substream->runtime == NULL\n");
-		return;
-	}
-
-	prtd = (struct hi3630_runtime_data *)substream->runtime->private_data;
-
-	if (NULL == prtd) {
-		loge("End, prtd is null \n");
-		return;
-	}
-
-	switch(msg_type) {
-	case HI_CHN_MSG_PCM_PERIOD_ELAPSED:
-		ret = hi3630_mb_intr_handle(substream, pcm_mode);
-		if (IRQ_NH == ret) {
-			loge("ret : %d\n", ret);
-			return;
-		}
-		break;
-	case HI_CHN_MSG_PCM_PERIOD_STOP:
-		if (STATUS_STOPPING == prtd->status){
-			prtd->status = STATUS_STOP;
-			logd("stop now !\n");
-		}
-		break;
-	default:
-		loge("msg_type 0x%x\n", msg_type);
-		break;
-	}
-
-	return;
-}
-#endif
-
 int hi3630_pcm_preallocate_dma_buffer(struct snd_pcm *pcm, int stream)
 {
 	struct snd_pcm_substream *substream = pcm->streams[stream].substream;
@@ -211,7 +196,7 @@ int hi3630_pcm_preallocate_dma_buffer(struct snd_pcm *pcm, int stream)
 	buf->dev.type = SNDRV_DMA_TYPE_DEV;
 	buf->dev.dev = pcm->card->dev;
 	buf->private_data = NULL;
-	buf->area = dma_alloc_writecombine(pcm->card->dev, size,
+	buf->area = dma_alloc_coherent(pcm->card->dev, size,
 					   &buf->addr, GFP_KERNEL);
 
 	if (!buf->area) {
@@ -240,789 +225,508 @@ void hi3630_pcm_free_dma_buffers(struct snd_pcm *pcm)
 		if (!buf->area)
 			continue;
 
-		dma_free_writecombine(pcm->card->dev, buf->bytes,
-					  buf->area, buf->addr);
+		dma_free_coherent(pcm->card->dev, buf->bytes,
+				      buf->area, buf->addr);
 		buf->area = NULL;
 	}
 }
 EXPORT_SYMBOL(hi3630_pcm_free_dma_buffers);
 
-static int hi3630_mailbox_send_data(void *pmsg_body, unsigned int msg_len,
-					unsigned int msg_priority)
+/*
+*dma operations
+*
+**/
+static void asp_dma_init(struct hi3630_asp_dmac_data *pdata)
 {
-	int ret = 0;
+	/*clear interrupt*/
+	hi3630_dmac_reg_write(pdata, HI3630_DMAC_INT_TC1_RAW_REG,  CH_0_INT_CLR);
+	hi3630_dmac_reg_write(pdata, HI3630_DMAC_INT_TC2_RAW_REG,  CH_0_INT_CLR);
+	hi3630_dmac_reg_write(pdata, HI3630_DMAC_INT_ERR1_RAW_REG, CH_0_INT_CLR);
+	hi3630_dmac_reg_write(pdata, HI3630_DMAC_INT_ERR2_RAW_REG, CH_0_INT_CLR);
+	hi3630_dmac_reg_write(pdata, HI3630_DMAC_INT_ERR3_RAW_REG, CH_0_INT_CLR);
 
-#ifdef CONFIG_SND_TEST_AUDIO_PCM_LOOP
-	struct hifi_chn_pcm_trigger *pcm_trigger = (struct hifi_chn_pcm_trigger *)pmsg_body;
-
-	/* simu */
-	switch (pcm_trigger->msg_type) {
-	case HI_CHN_MSG_PCM_TRIGGER :
-		if((SNDRV_PCM_TRIGGER_START == pcm_trigger->tg_cmd) ||
-				(SNDRV_PCM_TRIGGER_RESUME == pcm_trigger->tg_cmd) ||
-				(SNDRV_PCM_TRIGGER_PAUSE_RELEASE == pcm_trigger->tg_cmd)) {
-			hi3630_simu_pcm.msg_type = (pcm_trigger)->msg_type;
-			hi3630_simu_pcm.pcm_mode = (pcm_trigger)->pcm_mode;
-			hi3630_simu_pcm.substream = (pcm_trigger)->substream;
-			hi3630_simu_pcm.data_addr = (pcm_trigger)->data_addr;
-			hi3630_simu_pcm.data_len = (pcm_trigger)->data_len;
-			queue_delayed_work(hi3630_simu_pcm.simu_pcm_delay_wq,
-					&hi3630_simu_pcm.simu_pcm_delay_work,
-					msecs_to_jiffies(20));
-		}
-		break;
-	case HI_CHN_MSG_PCM_SET_BUF :
-		hi3630_simu_pcm.msg_type = ((struct hifi_channel_set_buffer *)pmsg_body)->msg_type;
-		hi3630_simu_pcm.pcm_mode = ((struct hifi_channel_set_buffer *)pmsg_body)->pcm_mode;
-		hi3630_simu_pcm.data_addr = ((struct hifi_channel_set_buffer *)pmsg_body)->data_addr;
-		hi3630_simu_pcm.data_len = ((struct hifi_channel_set_buffer *)pmsg_body)->data_len;
-		queue_delayed_work(hi3630_simu_pcm.simu_pcm_delay_wq,
-				&hi3630_simu_pcm.simu_pcm_delay_work,
-				msecs_to_jiffies(0));
-		break;
-	default:
-		logd("hi3630_mailbox_send_data MSG_TYPE(0x%x)\r\n", (pcm_trigger)->msg_type);
-		break;
-	}
-
-#else
-	extern int hifi_send_msg(unsigned long mailcode, void *data, unsigned long length);
-	ret = hifi_send_msg(MAILBOX_MAILCODE_ACPU_TO_HIFI_AUDIO, (void*)pmsg_body, msg_len);
-	if (0 != ret) {
-		extern void hifi_dump_panic_log(void);
-		hifi_dump_panic_log();
-		loge("ret=%d\n", ret);
-	}
-#endif
-
-	return ret;
+	/*dma ch unmask*/
+	hi3630_dmac_set_bit(pdata, HI3630_DMAC_INT_TC1_MASK_0_REG , CH_0_UNMASK_BIT);
+	hi3630_dmac_set_bit(pdata, HI3630_DMAC_INT_TC2_MASK_0_REG , CH_0_UNMASK_BIT);
+	hi3630_dmac_set_bit(pdata, HI3630_DMAC_INT_ERR1_MASK_0_REG , CH_0_UNMASK_BIT);
+	hi3630_dmac_set_bit(pdata, HI3630_DMAC_INT_ERR2_MASK_0_REG , CH_0_UNMASK_BIT);
+	hi3630_dmac_set_bit(pdata, HI3630_DMAC_INT_ERR3_MASK_0_REG , CH_0_UNMASK_BIT);
 }
 
-static bool check_pcm_mode(unsigned short pcm_mode)
+/*dma config lli node*/
+static void asp_dma_cfg(struct hi3630_asp_dmac_runtime_data *prtd)
 {
-	if ((SNDRV_PCM_STREAM_PLAYBACK != pcm_mode)
-			&& (SNDRV_PCM_STREAM_CAPTURE != pcm_mode)) {
-		loge("pcm_mode=%d\n", pcm_mode);
-		return false;
+	unsigned int sio_tx_dma_addr = BASE_ADDR_SIO_VOICE + HI3630_SIO_I2S_TX_CHN_REG;
+	unsigned int next_addr = 0x0;
+	unsigned int dma_lli_num = DMA_LLI_NUM;
+	unsigned int i;
+
+	memset(prtd->pdma_lli_cfg, 0, dma_lli_num * sizeof(struct dma_lli_cfg));
+
+	for (i = 0; i < dma_lli_num; i++) {
+		next_addr = (unsigned int)(prtd->lli_dma_addr + sizeof(struct dma_lli_cfg) * (i + 1));
+		prtd->pdma_lli_cfg[i].lli = next_addr | DMA_LLI_ENABLE;
+		prtd->pdma_lli_cfg[i].config = DMA_CONFIG;
+		prtd->pdma_lli_cfg[i].des_addr = sio_tx_dma_addr;
 	}
 
-	return true;
+	prtd->pdma_lli_cfg[dma_lli_num - 1].lli = prtd->lli_dma_addr | DMA_LLI_ENABLE;
 }
 
-static int hi3630_notify_pcm_set_buf(struct snd_pcm_substream *substream)
+static void check_and_stop_rxdma(struct hi3630_asp_dmac_runtime_data *prtd)
 {
-	struct hi3630_runtime_data *prtd =
-			(struct hi3630_runtime_data *)substream->runtime->private_data;
-	unsigned int period_size = 0;
-	unsigned short pcm_mode = (unsigned short)substream->stream;
-	struct hifi_channel_set_buffer msg_body = {0};
-	int ret = 0;
+	struct hi3630_asp_dmac_data *pdata;
+	unsigned int lli_index = prtd->period_next % DMA_LLI_NUM;
+	unsigned int der = 0;
+	unsigned int irsr = 0;
+	unsigned int i = 45;/* 1ms * 45; one buffer is about 20ms */
 
-	if (!check_pcm_mode(pcm_mode))
-		return -EINVAL;
+	pdata = prtd->pdata;
 
-	BUG_ON(NULL == prtd);
-
-	period_size = prtd->period_size;
-
-	msg_body.msg_type	= (unsigned short)HI_CHN_MSG_PCM_SET_BUF;
-	msg_body.pcm_mode	= pcm_mode;
-	msg_body.data_addr	= substream->runtime->dma_addr + (prtd->period_next * period_size);
-	msg_body.data_len	= period_size;
-
-	logd("d_addr=0x%x(%d)\r\n", msg_body.data_addr, msg_body.data_len);
-
-	if (STATUS_RUNNING != prtd->status){
-		loge("pcm is closed \n");
-		return -EINVAL;
-	}
-
-	/* mail-box send */
-	ret = hi3630_mailbox_send_data(&msg_body, sizeof(struct hifi_channel_set_buffer), 0);
-	if (OK != ret)
-		ret = -EBUSY;
-
-	logd("End(%d)\r\n", ret);
-	return ret;
-}
-
-static irq_rt_t hi3630_intr_handle(struct snd_pcm_substream *substream)
-{
-	struct hi3630_runtime_data *prtd = NULL;
-	unsigned int rt_period_size = 0;
-	unsigned int num_period = 0;
-	snd_pcm_uframes_t avail = 0;
-	int ret = OK;
-
-	if (NULL == substream) {
-		loge("End, substream == NULL\n");
-		return IRQ_HDD_PTR;
-	}
-
-	if (NULL == substream->runtime) {
-		loge("End, substream->runtime == NULL\n");
-		return IRQ_HDD_PTR;
-	}
-
-	prtd = (struct hi3630_runtime_data *)substream->runtime->private_data;
-	rt_period_size = substream->runtime->period_size;
-	num_period = substream->runtime->periods;
-
-	if (NULL == prtd) {
-		loge("End, prtd == NULL\n");
-		return IRQ_HDD_PTR;
-	}
-
-	spin_lock(&prtd->lock);
-	++prtd->period_cur;
-	prtd->period_cur = (prtd->period_cur) % num_period;
-	spin_unlock(&prtd->lock);
-
-	snd_pcm_period_elapsed(substream);
-
-	if (STATUS_RUNNING != prtd->status) {
-		logd("End, dma stopped\n");
-		return IRQ_HDD_STATUS;
-	}
-
-	if (SNDRV_PCM_STREAM_PLAYBACK == substream->stream)
-		avail = (snd_pcm_uframes_t)snd_pcm_playback_hw_avail(substream->runtime);
-	else
-		avail = (snd_pcm_uframes_t)snd_pcm_capture_hw_avail(substream->runtime);
-	if (avail < rt_period_size) {
-		logd("End, avail(%d)< rt_period_size(%d)\n", (int)avail, rt_period_size);
-		return IRQ_HDD_SIZE;
-	} else {
-		ret = hi3630_notify_pcm_set_buf(substream);
-		if(0 >	ret) {
-			loge("End, hi3630_notify_pcm_set_buf(ret=%d)\n", ret);
-			return IRQ_HDD_ERROR;
-		}
-
-		spin_lock(&prtd->lock);
-		prtd->period_next = (prtd->period_next + 1) % num_period;
-		spin_unlock(&prtd->lock);
-	}
-
-	return IRQ_HDD;
-}
-
-static irq_rt_t hi3630_mb_intr_handle(struct snd_pcm_substream *substream,
-					unsigned short pcm_mode)
-{
-	irq_rt_t ret = IRQ_NH;
-	int sema = 0;
-
-	switch(pcm_mode) {
-	case SNDRV_PCM_STREAM_PLAYBACK:
-		if (NULL !=substream) {
-			/* SEM used to protect close while doing _intr_handle_pb */
-			sema = down_interruptible(&g_pcm_pb_open_sem);
-			if (0 == pcm_pb_status_open) {
-				logd("pcm playback closed\n");
-				up(&g_pcm_pb_open_sem);
-				return IRQ_HDD;
-			}
-
-			ret = hi3630_intr_handle(substream);
-			up(&g_pcm_pb_open_sem);
+	do {
+		der = hi3630_dmac_reg_read(pdata, HI3630_DMAC_CX_CONFIG_0_REG) & CH_0_UNMASK;
+		irsr = hi3630_dmac_reg_read(pdata, HI3630_DMAC_INT_STAT_0_REG) & CH_0_UNMASK;
+		if (der | irsr) {
+			prtd->pdma_lli_cfg[lli_index].lli= 0x0;
+			usleep_range(HI3630_MIN_STOP_DMA_TIME_US, HI3630_MAX_STOP_DMA_TIME_US);
 		} else {
-			loge("PB,substream is NULL\n");
-			ret = IRQ_HDD_PTRS;
-		}
-		break;
-	case SNDRV_PCM_STREAM_CAPTURE:
-		if (NULL != substream) {
-			/* SEM used to protect close while doing _intr_handle_cp */
-			sema = down_interruptible(&g_pcm_cp_open_sem);
-			if (0 == pcm_cp_status_open) {
-				logd("pcm capture closed\n");
-				up(&g_pcm_cp_open_sem);
-				return IRQ_HDD;
-			}
-			ret = hi3630_intr_handle(substream);
-			up(&g_pcm_cp_open_sem);
-		} else {
-			loge("CP,substream is NULL\n");
-			ret = IRQ_HDD_PTRS;
-		}
-		break;
-	default:
-		ret = IRQ_NH_MODE;
-		loge("PCM Mode error(%d)\n", pcm_mode);
-		break;
-	}
-
-	return ret;
-}
-
-static int hi3630_notify_pcm_open(unsigned short pcm_mode)
-{
-	struct hifi_chn_pcm_open msg_body = {0};
-	int ret = OK;
-
-	if (!check_pcm_mode(pcm_mode))
-		return -EINVAL;
-
-	msg_body.msg_type = (unsigned short)HI_CHN_MSG_PCM_OPEN;
-	msg_body.pcm_mode = pcm_mode;
-
-	/* mail-box send */
-	ret = hi3630_mailbox_send_data(&msg_body, sizeof(struct hifi_chn_pcm_open), 0);
-	if (OK != ret) {
-		ret = -EBUSY;
-		loge("mailbox ret=%d\r\n", ret);
-	}
-
-	return ret;
-}
-
-static int hi3630_notify_pcm_close(unsigned short pcm_mode)
-{
-	struct hifi_chn_pcm_close msg_body = {0};
-	int ret = OK;
-
-	if (!check_pcm_mode(pcm_mode))
-		return -EINVAL;
-
-	msg_body.msg_type = (unsigned short)HI_CHN_MSG_PCM_CLOSE;
-	msg_body.pcm_mode = pcm_mode;
-
-	/* mail-box send */
-	ret = hi3630_mailbox_send_data(&msg_body, sizeof(struct hifi_chn_pcm_close), 0);
-	if (OK != ret)
-		ret = -EBUSY;
-
-	logd("mailbox ret=%d\r\n", ret);
-
-	return ret;
-}
-
-static int hi3630_notify_pcm_hw_params(unsigned short pcm_mode,
-					struct snd_pcm_hw_params *params)
-{
-	struct hifi_chn_pcm_hw_params msg_body = {0};
-	unsigned int params_value = 0;
-	unsigned int infreq_index = 0;
-	int ret	= OK;
-
-	if (!check_pcm_mode(pcm_mode))
-		return -EINVAL;
-
-	msg_body.msg_type = (unsigned short)HI_CHN_MSG_PCM_HW_PARAMS;
-	msg_body.pcm_mode = pcm_mode;
-
-	/* CHECK SUPPORT CHANNELS : mono or stereo */
-	params_value = params_channels(params);
-	if ((2 == params_value) || (1 == params_value)) {
-		msg_body.channel_num = params_value;
-	} else {
-		loge("DAC not support %d channels\n", params_value);
-		return -EINVAL;
-	}
-
-	/* CHECK SUPPORT RATE */
-	params_value = params_rate(params);
-	logd("set rate = %d \n", params_value);
-	for (infreq_index = 0; infreq_index < ARRAY_SIZE(freq); infreq_index++) {
-		if (params_value == freq[infreq_index])
 			break;
-	}
-	if (ARRAY_SIZE(freq) <= infreq_index) {
-		loge("set rate = %d \n", params_value);
-		return -EINVAL;
-	}
-	msg_body.sample_rate = params_value;
-
-	if (SNDRV_PCM_STREAM_PLAYBACK == pcm_mode) {
-		/* PLAYBACK */
-		params_value = (unsigned int)params_format(params);
-		/* check formats */
-		if ((SNDRV_PCM_FORMAT_S16_BE != params_value)
-				&& (SNDRV_PCM_FORMAT_S16_LE != params_value)) {
-			loge("format err : %d, not support\n", params_value);
-			return -EINVAL;
 		}
-		msg_body.format = params_value;
-	} else {
-		/* CAPTURE */
-		params_value = (unsigned int)params_format(params);
-		/* check formats */
-		if (SNDRV_PCM_FORMAT_LAST < params_value) {
-			loge("format err : %d, not support\n", params_value);
-			return -EINVAL;
-		}
-		msg_body.format = params_value;
-	}
+	} while(--i);
 
-	logd("%s:\r\n", __FUNCTION__);
-	logd("\tmsg_type = 0x%x\r\n", msg_body.msg_type);
-	logd("\tpcm_mode = %d\r\n", msg_body.pcm_mode);
-	logd("\tchannel_num = %d\r\n", msg_body.channel_num);
-	logd("\tsample_rate = %d\r\n", msg_body.sample_rate);
-	logd("\tformat = %d\r\n", msg_body.format);
+	hi3630_dmac_clr_bit(pdata, HI3630_DMAC_CX_CONFIG_0_REG, DMA_ENABLE_BIT);
 
-	/* mail-box send */
-	ret = hi3630_mailbox_send_data(&msg_body, sizeof(struct hifi_chn_pcm_hw_params), 0);
-	if(OK != ret)
-		ret = -EBUSY;
-
-	return ret;
+	if (!i)
+		loge("exit with der=%#x, irsr=%#x\n", der, irsr);
 }
 
-static int hi3630_notify_pcm_trigger(struct snd_pcm_substream *substream, int cmd)
+/*dma write first node to registers*/
+static void asp_dma_set_first_node(struct hi3630_asp_dmac_runtime_data *prtd)
 {
-	struct hi3630_runtime_data *prtd =
-			(struct hi3630_runtime_data *)substream->runtime->private_data;
-	unsigned int period_size = 0;
-	struct hifi_chn_pcm_trigger msg_body = {0};
-	int ret = OK;
+	struct hi3630_asp_dmac_data *pdata;
+	struct dma_lli_cfg *lli_cfg = &prtd->pdma_lli_cfg[0];
 
-	BUG_ON(NULL == prtd);
+	pdata = prtd->pdata;
 
-	period_size = prtd->period_size;
+	hi3630_dmac_reg_write(pdata, HI3630_DMAC_CX_LLI_0_REG, lli_cfg->lli);
 
-	msg_body.msg_type	= (unsigned short)HI_CHN_MSG_PCM_TRIGGER;
-	msg_body.pcm_mode	= (unsigned short)substream->stream;
-	msg_body.tg_cmd		= (unsigned short)cmd;
-	msg_body.enPcmObj	= (unsigned short)0/*AP*/;
-	msg_body.substream	= substream;
-
-	if ((SNDRV_PCM_TRIGGER_START == cmd) || (SNDRV_PCM_TRIGGER_RESUME == cmd)
-			|| (SNDRV_PCM_TRIGGER_PAUSE_RELEASE == cmd)) {
-		msg_body.data_addr = substream->runtime->dma_addr + prtd->period_next * period_size;
-		msg_body.data_len = period_size;
-	}
-
-	logd("%s:\r\n", __FUNCTION__);
-	logd("\tmsg_type = 0x%x\r\n", msg_body.msg_type);
-	logd("\tpcm_mode = %d\r\n", msg_body.pcm_mode);
-	logd("\ttg_cmd = %d\r\n", msg_body.tg_cmd);
-	logd("\tenPcmObj = %d\r\n", msg_body.enPcmObj);
-	logd("\tdata_addr = 0x%x\r\n", msg_body.data_addr);
-	logd("\tdata_len = %d\r\n", msg_body.data_len);
-	logd("\tsubstream = 0x%p\r\n", msg_body.substream);
-
-	/* mail-box send */
-	ret = hi3630_mailbox_send_data(&msg_body, sizeof(struct hifi_chn_pcm_trigger), 0);
-	if(OK != ret)
-		ret = -EBUSY;
-
-	return ret;
+	hi3630_dmac_reg_write(pdata, HI3630_DMAC_CX_CNT0_0_REG, lli_cfg->a_count);
+	hi3630_dmac_reg_write(pdata, HI3630_DMAC_CX_SRC_ADDR_0_REG, lli_cfg->src_addr);
+	hi3630_dmac_reg_write(pdata, HI3630_DMAC_CX_DES_ADDR_0_REG, lli_cfg->des_addr);
+	hi3630_dmac_reg_write(pdata, HI3630_DMAC_CX_CONFIG_0_REG, lli_cfg->config);
 }
 
-static irq_rt_t hi3630_notify_recv_isr(void *usr_para, void *mail_handle, unsigned int mail_len)
+static void asp_dma_set_lli_node(struct hi3630_asp_dmac_runtime_data *prtd,
+				 unsigned int dma_lli_num, unsigned int dma_addr)
 {
-	struct hifi_chn_pcm_period_elapsed mail_buf;
-	unsigned long mail_size = mail_len;
-	unsigned long ret_mail = 0;
-
-#ifdef __DRV_AUDIO_MAILBOX_WORK__
-	struct snd_pcm_substream * substream = NULL;
-	struct hi3630_runtime_data *prtd = NULL;
-	struct hi3630_pcm_mailbox_data *hi3630_pcm_mailbox = NULL;
-#else
-	irq_rt_t ret = IRQ_NH;
-#endif
-
-	memset(&mail_buf, 0, sizeof(struct hifi_chn_pcm_period_elapsed));
-	/* get data */
-#ifdef CONFIG_SND_TEST_AUDIO_PCM_LOOP
-	memcpy(&mail_buf, mail_handle, sizeof(struct hifi_chn_pcm_period_elapsed));
-#else
-	ret_mail = mailbox_read_msg_data(mail_handle, (unsigned char*)&mail_buf, &mail_size);
-
-	if ((ret_mail != MAILBOX_OK) || (mail_size <= 0)
-			|| (mail_size > sizeof(struct hifi_chn_pcm_period_elapsed))) {
-		loge("Empty point or data length error! size: %ld\n", mail_size);
-		return IRQ_NH_MB;
-	}
-#endif
-
-#ifdef __DRV_AUDIO_MAILBOX_WORK__
-	substream = mail_buf.substream;
-	if (NULL == substream) {
-		loge("substream from hifi is NULL\n");
-		return IRQ_NH_OTHERS;
-	}
-
-	if (NULL == substream->runtime) {
-		loge("substream->runtime is NULL\n");
-		return IRQ_NH_OTHERS;
-	}
-
-	prtd = (struct hi3630_runtime_data *)substream->runtime->private_data;
-	if (NULL == prtd) {
-		loge("prtd is NULL\n");
-		return IRQ_NH_OTHERS;
-	}
-
-	if (STATUS_STOP == prtd->status) {
-		logd("process has stopped there is still info coming from hifi\n");
-		return IRQ_NH_OTHERS;
-	}
-
-	logd("Begin msg_type=0x%x, substream=0x%x\n", mail_buf.msg_type, mail_buf.substream);
-	hi3630_pcm_mailbox = &prtd->hi3630_pcm_mailbox;
-	hi3630_pcm_mailbox->msg_type = mail_buf.msg_type;
-	hi3630_pcm_mailbox->pcm_mode = mail_buf.pcm_mode;
-	hi3630_pcm_mailbox->substream = mail_buf.substream;
-
-	queue_delayed_work(hi3630_pcm_mailbox->pcm_mailbox_delay_wq,
-			&hi3630_pcm_mailbox->pcm_mailbox_delay_work,
-			msecs_to_jiffies(0));
-
-	logd("End\n");
-
-	return IRQ_HDD;
-#else
-	switch(mail_buf.msg_type) {
-	case HI_CHN_MSG_PCM_PERIOD_ELAPSED:
-		ret = hi3630_mb_intr_handle(mail_buf.substream, mail_buf.pcm_mode);
-		if (IRQ_NH == ret)
-			loge("ret : %d\n", ret);
-		break;
-	default:
-		ret = IRQ_NH_TYPE;
-		loge("msg_type 0x%x\n", mail_buf.msg_type);
-		break;
-	}
-
-	return ret;
-#endif
+	unsigned int lli_index = prtd->period_next % dma_lli_num;
+	prtd->pdma_lli_cfg[lli_index].src_addr = dma_addr + prtd->period_next * prtd->period_size;
+	prtd->pdma_lli_cfg[lli_index].a_count = prtd->period_size;
 }
 
-static int hi3630_notify_isr_register(irq_hdl_t pisr)
+static bool error_interrupt_handle(struct hi3630_asp_dmac_data *pdata)
 {
-#ifdef CONFIG_SND_TEST_AUDIO_PCM_LOOP
-	return OK;
-#else
-	int ret = OK;
+	unsigned int irs_tmp = 0;
+	unsigned int count = 0;
 
-	if(NULL == pisr) {
-		loge("pisr==NULL!\n");
-		ret = ERROR;
-	} else {
-		ret = mailbox_reg_msg_cb(MAILBOX_MAILCODE_HIFI_TO_ACPU_AUDIO, (void *)pisr, NULL);
-		if (OK != ret)
-			loge("ret : %d\n", ret);
+	// loge("%d in\n", __LINE__);
+	/*dma config error interrupt*/
+	irs_tmp = hi3630_dmac_reg_read(pdata, HI3630_DMAC_INT_ERR1_0_REG) & CH_0_UNMASK;
+	if (unlikely(0 != irs_tmp)) {
+		loge("dmac ch0 interrupt config error happend!");
+		hi3630_dmac_reg_write(pdata, HI3630_DMAC_INT_ERR1_RAW_REG, CH_0_INT_CLR);
+		count++;
 	}
 
-	return ret;
-#endif
-}
-
-static int hi3630_pcm_hifi_hw_params(struct snd_pcm_substream *substream,
-					struct snd_pcm_hw_params *params)
-{
-	unsigned long bytes = params_buffer_bytes(params);
-	struct hi3630_runtime_data *prtd =
-			(struct hi3630_runtime_data *)substream->runtime->private_data;
-	int ret = 0;
-
-	IN_FUNCTION;
-
-	logd("entry : %s\n", substream->stream == SNDRV_PCM_STREAM_PLAYBACK
-			? "PLAYBACK" : "CAPTURE");
-
-	ret = snd_pcm_lib_malloc_pages(substream, bytes);
-	if (0 > ret) {
-		loge("snd_pcm_lib_malloc_pages ret : %d\n", ret);
-
-		OUT_FUNCTION;
-		return ret;
+	/*dma transit error interrupt*/
+	irs_tmp = hi3630_dmac_reg_read(pdata, HI3630_DMAC_INT_ERR2_0_REG) & CH_0_UNMASK;
+	if (unlikely(0 != irs_tmp)) {
+		loge("dmac ch0 interrupt transit error happend!");
+		hi3630_dmac_reg_write(pdata, HI3630_DMAC_INT_ERR2_RAW_REG, CH_0_INT_CLR);
+		count++;
 	}
 
-	prtd->period_size = params_period_bytes(params);
-	prtd->period_next = 0;
-
-	ret = hi3630_notify_pcm_hw_params((unsigned short)substream->stream, params);
-	if (0 > ret) {
-		loge("hi3630_notify_pcm_hw_params ret : %d\n", ret);
-		snd_pcm_lib_free_pages(substream);
+	/*dma lli transit, read lli error interrupt*/
+	irs_tmp = hi3630_dmac_reg_read(pdata, HI3630_DMAC_INT_ERR3_0_REG) & CH_0_UNMASK;
+	if (unlikely(0 != irs_tmp)) {
+		loge("dmac ch0 interrupt read lli error happend!");
+		hi3630_dmac_reg_write(pdata, HI3630_DMAC_INT_ERR3_RAW_REG, CH_0_INT_CLR);
+		count++;
 	}
 
-	OUT_FUNCTION;
+	if (unlikely(0 < count))
+		return true;
 
-	return ret;
-}
-
-static int hi3630_pcm_hifi_hw_free(struct snd_pcm_substream *substream)
-{
-	logd("entry : %s\n", substream->stream == SNDRV_PCM_STREAM_PLAYBACK
-		? "PLAYBACK" : "CAPTURE");
-
-	return snd_pcm_lib_free_pages(substream);
-}
-
-static int hi3630_pcm_hifi_prepare(struct snd_pcm_substream *substream)
-{
-	struct hi3630_runtime_data *prtd =
-			(struct hi3630_runtime_data *)substream->runtime->private_data;
-
-	logd("entry : %s\n", substream->stream == SNDRV_PCM_STREAM_PLAYBACK
-			? "PLAYBACK" : "CAPTURE");
-
-	BUG_ON(NULL == prtd);
-
-	/* init prtd */
-	prtd->status = STATUS_STOP;
-	prtd->period_next = 0;
-	prtd->period_cur = 0;
-
-	return OK;
-}
-
-static int hi3630_pcm_hifi_trigger(struct snd_pcm_substream *substream, int cmd)
-{
-	struct snd_pcm_runtime *runtime = substream->runtime;
-	struct hi3630_runtime_data *prtd =
-			(struct hi3630_runtime_data *)substream->runtime->private_data;
-	unsigned int num_periods = runtime->periods;
-	int ret = OK;
-
-	IN_FUNCTION;
-
-	logd("entry : %s, cmd : %d\n", substream->stream == SNDRV_PCM_STREAM_PLAYBACK
-			? "PLAYBACK" : "CAPTURE", cmd);
-
-	switch (cmd) {
-	case SNDRV_PCM_TRIGGER_START:
-	case SNDRV_PCM_TRIGGER_RESUME:
-	case SNDRV_PCM_TRIGGER_PAUSE_RELEASE:
-		ret = hi3630_notify_pcm_trigger(substream, cmd);
-		if (0 > ret) {
-			loge("hi3630_notify_pcm_trigger ret : %d\n", ret);
-		} else {
-			spin_lock(&prtd->lock);
-			prtd->status = STATUS_RUNNING;
-			prtd->period_next = (prtd->period_next + 1) % num_periods;
-			spin_unlock(&prtd->lock);
-		}
-		break;
-
-	case SNDRV_PCM_TRIGGER_STOP:
-	case SNDRV_PCM_TRIGGER_SUSPEND:
-	case SNDRV_PCM_TRIGGER_PAUSE_PUSH:
-		spin_lock(&prtd->lock);
-		prtd->status = STATUS_STOPPING;
-		spin_unlock(&prtd->lock);
-
-		ret = hi3630_notify_pcm_trigger(substream, cmd);
-		if (0 > ret)
-			loge("hi3630_notify_pcm_trigger ret : %d\n", ret);
-		break;
-
-	default:
-		loge("cmd error : %d", cmd);
-		ret = -EINVAL;
-		break;
+	irs_tmp = hi3630_dmac_reg_read(pdata, HI3630_DMAC_INT_TC1_0_REG) & CH_0_UNMASK;
+	if (unlikely(0 != irs_tmp)) {
+		logd("dmac ch0 transit finished!");
+		hi3630_dmac_reg_write(pdata, HI3630_DMAC_INT_TC1_RAW_REG, CH_0_INT_CLR);
+		return true;
 	}
 
-	OUT_FUNCTION;
-
-	return ret;
-}
-
-static snd_pcm_uframes_t hi3630_pcm_hifi_pointer(struct snd_pcm_substream *substream)
-{
-	struct snd_pcm_runtime *runtime = substream->runtime;
-	struct hi3630_runtime_data *prtd =
-			(struct hi3630_runtime_data *)substream->runtime->private_data;
-	snd_pcm_uframes_t frame = 0L;
-
-	frame = bytes_to_frames(runtime, prtd->period_cur * prtd->period_size);
-	if (frame >= runtime->buffer_size)
-		frame = 0;
-
-	return frame;
-}
-
-static int hi3630_pcm_hifi_open(struct snd_pcm_substream *substream)
-{
-	struct hi3630_runtime_data *prtd = NULL;
-	int ret = OK;
-
-	IN_FUNCTION;
-
-	logd("entry : %s\n", substream->stream == SNDRV_PCM_STREAM_PLAYBACK
-		? "PLAYBACK" : "CAPTURE");
-
-	prtd = kzalloc(sizeof(struct hi3630_runtime_data), GFP_KERNEL);
-	if (NULL == prtd) {
-		loge("kzalloc faile,prtd==NULL\n");
-		OUT_FUNCTION;
-		return -ENOMEM;
+	/*dma lli transit finish interrupt*/
+	irs_tmp = hi3630_dmac_reg_read(pdata, HI3630_DMAC_INT_TC2_0_REG) & CH_0_UNMASK;
+	if (likely(0 != irs_tmp)) {
+		hi3630_dmac_reg_write(pdata, HI3630_DMAC_INT_TC2_RAW_REG, CH_0_INT_CLR);
 	}
 
-	spin_lock_init(&prtd->lock);
-
-	substream->runtime->private_data = prtd;
-
-	snd_soc_set_runtime_hwparams(substream, &hi3630_asp_dmac_hardware);
-
-#ifdef __DRV_AUDIO_MAILBOX_WORK__
-	prtd->hi3630_pcm_mailbox.pcm_mailbox_delay_wq = hi3630_pcm_mailbox_workqueue.pcm_mailbox_delay_wq;
-	INIT_DELAYED_WORK(&prtd->hi3630_pcm_mailbox.pcm_mailbox_delay_work, pcm_mailbox_work_func);
-#endif
-
-	ret = hi3630_notify_pcm_open( (unsigned short)substream->stream );
-	if (0 > ret) {
-		loge("hi3630_notify_pcm_open ret : %d\n", ret);
-		OUT_FUNCTION;
-		return ret;
-	}
-
-	OUT_FUNCTION;
-
-	return ret;
-}
-
-static int hi3630_pcm_hifi_close(struct snd_pcm_substream *substream)
-{
-	struct hi3630_runtime_data *prtd =
-			(struct hi3630_runtime_data *)substream->runtime->private_data;
-
-	IN_FUNCTION;
-
-	logd("entry : %s\n", substream->stream == SNDRV_PCM_STREAM_PLAYBACK
-			? "PLAYBACK" : "CAPTURE");
-
-	if(NULL == prtd)
-		loge("prtd==NULL\n");
-
-	hi3630_notify_pcm_close((unsigned short)substream->stream);
-
-#ifdef CONFIG_SND_TEST_AUDIO_PCM_LOOP
-	if(hi3630_simu_pcm.simu_pcm_delay_wq) {
-		cancel_delayed_work(&hi3630_simu_pcm.simu_pcm_delay_work);
-		flush_workqueue(hi3630_simu_pcm.simu_pcm_delay_wq);
-	}
-#endif
-
-	if (prtd) {
-		kfree(prtd);
-		substream->runtime->private_data = NULL;
-	}
-
-	OUT_FUNCTION;
-
-	return OK;
+	return false;
 }
 
 static int hi3630_asp_dmac_hw_params(struct snd_pcm_substream *substream,
-					 struct snd_pcm_hw_params *params)
+				     struct snd_pcm_hw_params *params)
 {
-	return hi3630_pcm_hifi_hw_params(substream, params);
+	struct hi3630_asp_dmac_runtime_data *prtd = substream->runtime->private_data;
+	unsigned long bytes = params_buffer_bytes(params);
+	unsigned int lli_dma_addr = 0;
+	int ret = 0;
+
+	loge("%d in\n", __LINE__);
+	if (SNDRV_PCM_STREAM_PLAYBACK == substream->stream) {
+		ret = snd_pcm_lib_malloc_pages(substream, bytes);
+		if (ret < 0) {
+			loge("snd_pcm_lib_malloc_pages ret is %d", ret);
+			return ret;
+		}
+
+		mutex_lock(&prtd->mutex);
+
+		prtd->pdma_lli_cfg = (struct dma_lli_cfg *)dma_alloc_coherent(prtd->pdata->dev,
+			DMA_LLI_NUM * sizeof(struct dma_lli_cfg), &lli_dma_addr, GFP_KERNEL);
+
+		if (NULL == prtd->pdma_lli_cfg) {
+			loge("prtd->pdma_lli_cfg dma alloc coherent error!");
+			ret = -ENOMEM;
+			goto err_out;
+		}
+
+		prtd->lli_dma_addr = lli_dma_addr;
+		prtd->period_size = params_period_bytes(params);
+		prtd->period_next = 0;
+
+err_out:
+		if (0 > ret) {
+			loge("hw params error, ret : %d\n", ret);
+			snd_pcm_lib_free_pages(substream);
+		}
+
+		mutex_unlock(&prtd->mutex);
+	}
+
+	return ret;
 }
 
 static int hi3630_asp_dmac_hw_free(struct snd_pcm_substream *substream)
 {
-	struct hi3630_runtime_data *prtd = NULL;
-	int i = 0;
+	struct hi3630_asp_dmac_runtime_data *prtd = substream->runtime->private_data;
 	int ret = 0;
 
-	prtd = (struct hi3630_runtime_data *)substream->runtime->private_data;
+	loge("%d in\n", __LINE__);
+	if (SNDRV_PCM_STREAM_PLAYBACK == substream->stream) {
+		check_and_stop_rxdma(prtd);
 
-	for(i = 0; i < 30 ; i++) {	/* wait for dma ok */
-		if (STATUS_STOP == prtd->status) {
-			break;
-		} else {
-			msleep(10);
-		}
+		dma_free_coherent(prtd->pdata->dev, DMA_LLI_NUM * sizeof(struct dma_lli_cfg),
+				(void*)prtd->pdma_lli_cfg, prtd->lli_dma_addr);
+
+		ret = snd_pcm_lib_free_pages(substream);
 	}
-	if (30 == i){
-		loge("timeout for waiting for stop info from hifi \n");
-	}
-#ifdef __DRV_AUDIO_MAILBOX_WORK__
-	flush_workqueue(hi3630_pcm_mailbox_workqueue.pcm_mailbox_delay_wq);
-#endif
-	ret = hi3630_pcm_hifi_hw_free(substream);
+
+	snd_pcm_set_runtime_buffer(substream, NULL);
 
 	return ret;
 }
 
 static int hi3630_asp_dmac_prepare(struct snd_pcm_substream *substream)
 {
-	return hi3630_pcm_hifi_prepare(substream);
+	struct snd_pcm_runtime *runtime = substream->runtime;
+	struct hi3630_asp_dmac_runtime_data *prtd = substream->runtime->private_data;
+	unsigned int num_periods = substream->runtime->periods;
+
+	loge("%d in\n", __LINE__);
+	mutex_lock(&prtd->mutex);
+
+	prtd->status = STATUS_DMAC_STOP;
+	prtd->two_dma_flag = true;
+	prtd->period_next = 0;
+	prtd->period_cur = 0;
+	prtd->dma_addr = runtime->dma_addr;
+
+	if (SNDRV_PCM_STREAM_PLAYBACK == substream->stream) {
+		check_and_stop_rxdma(prtd);
+
+		asp_dma_cfg(prtd);
+
+		asp_dma_set_lli_node(prtd, DMA_LLI_NUM, runtime->dma_addr);
+		prtd->period_next = (prtd->period_next + 1) % num_periods;
+
+		asp_dma_set_lli_node(prtd, DMA_LLI_NUM, runtime->dma_addr);
+		prtd->period_next = (prtd->period_next + 1) % num_periods;
+
+		asp_dma_set_first_node(prtd);
+
+		asp_dma_init(prtd->pdata);
+	}
+
+	mutex_unlock(&prtd->mutex);
+
+	return 0;
 }
 
 static int hi3630_asp_dmac_trigger(struct snd_pcm_substream *substream, int cmd)
 {
-	return hi3630_pcm_hifi_trigger(substream, cmd);
+	int ret = 0;
+	struct hi3630_asp_dmac_runtime_data *prtd = substream->runtime->private_data;
+
+    loge("%d in cmd = %d \n", __LINE__,cmd);
+	switch (cmd) {
+	case SNDRV_PCM_TRIGGER_START:
+	case SNDRV_PCM_TRIGGER_RESUME:
+	case SNDRV_PCM_TRIGGER_PAUSE_RELEASE:
+		if (SNDRV_PCM_STREAM_PLAYBACK == substream->stream) {
+			prtd->status = STATUS_DMAC_RUNNING;
+			hi3630_dmac_set_bit(prtd->pdata,
+					HI3630_DMAC_CX_CONFIG_0_REG, DMA_ENABLE_BIT);
+		}
+		break;
+	case SNDRV_PCM_TRIGGER_STOP:
+	case SNDRV_PCM_TRIGGER_SUSPEND:
+	case SNDRV_PCM_TRIGGER_PAUSE_PUSH:
+		if (SNDRV_PCM_STREAM_PLAYBACK == substream->stream) {
+			prtd->status = STATUS_DMAC_STOP;
+		}
+		break;
+	default:
+		loge("error!");
+		ret = -EINVAL;
+		break;
+	}
+
+	return ret;
 }
 
 static snd_pcm_uframes_t hi3630_asp_dmac_pointer(struct snd_pcm_substream *substream)
 {
-	return hi3630_pcm_hifi_pointer(substream);
+	snd_pcm_uframes_t offset = 0;
+	struct snd_pcm_runtime *runtime = substream->runtime;
+	struct hi3630_asp_dmac_runtime_data *prtd = substream->runtime->private_data;
+	unsigned int period_cur = 0;
+	unsigned int period_size = 0;
+
+    //loge("%d in \n", __LINE__);
+	spin_lock(&prtd->lock);
+	period_cur = prtd->period_cur;
+	period_size = prtd->period_size;
+	spin_unlock(&prtd->lock);
+
+	offset = bytes_to_frames(runtime, period_cur * period_size);
+
+	if(offset >= runtime->buffer_size)
+		offset = 0;
+
+	return offset;
 }
 
 static int hi3630_asp_dmac_mmap(struct snd_pcm_substream *substream,
 				struct vm_area_struct *vma)
 {
+
+    loge("%d in \n", __LINE__);
 	int ret = 0;
 	struct snd_pcm_runtime *runtime = substream->runtime;
 
-	if (NULL != runtime)
+	if (NULL != runtime){
 		ret = dma_mmap_writecombine(substream->pcm->card->dev,
 				vma,
 				runtime->dma_area,
 				runtime->dma_addr,
 				runtime->dma_bytes);
+         loge("%d dma_mmap_writecombine \n", __LINE__);
+    }
 
 	return ret;
 }
 
+static irqreturn_t hi3630_intr_dmac_handle(int irq, void *dev_id)
+{
+	struct snd_pcm *pcm = dev_id;
+	struct snd_pcm_substream *substream = NULL;
+	struct snd_pcm_runtime *runtime = NULL;
+	struct hi3630_asp_dmac_runtime_data *prtd = NULL;
+	snd_pcm_uframes_t avail = 0;
+	unsigned int irs_stat = 0;
+	unsigned int rt_period_size = 0;
+	unsigned int num_period = 0;
+	struct hi3630_asp_dmac_data *pdata = NULL;
+
+  BUG_ON(NULL == pcm);
+	substream = pcm->streams[SNDRV_PCM_STREAM_PLAYBACK].substream;
+	if (NULL == substream) {
+		loge("substream is NULL\n");
+		return IRQ_HANDLED;
+	}
+
+		loge("=======hi3630_intr_dmac_handle========= \n");
+		
+	runtime = substream->runtime;
+	BUG_ON(NULL == runtime);
+	prtd = runtime->private_data;
+	BUG_ON(NULL == prtd);
+	pdata = prtd->pdata;
+	BUG_ON(NULL == pdata);
+
+	/*dma transit state*/
+	irs_stat = hi3630_dmac_reg_read(pdata, HI3630_DMAC_INT_STAT_0_REG) & CH_0_UNMASK;
+	if (0 == irs_stat) {
+		/* when hifi dsp is incall, it will go to here */
+		return IRQ_NONE;
+	}
+
+	if (error_interrupt_handle(pdata)) {
+		return IRQ_HANDLED;
+	}
+
+	rt_period_size = runtime->period_size;
+	num_period = runtime->periods;
+
+	spin_lock(&prtd->lock);
+	prtd->period_cur = (prtd->period_cur + 1) % num_period;
+	spin_unlock(&prtd->lock);
+
+	snd_pcm_period_elapsed(substream);
+
+	spin_lock(&prtd->lock);
+
+	/* DMA IS STOPPED */
+	if (STATUS_DMAC_STOP == prtd->status) {
+		logd("dma stop.\n");
+		prtd->pdma_lli_cfg[(prtd->period_next) % DMA_LLI_NUM].lli= 0x0;
+		spin_unlock(&prtd->lock);
+		return IRQ_HANDLED;
+	}
+
+	avail = snd_pcm_capture_hw_avail(runtime);
+
+	if(avail < rt_period_size) {
+		if (prtd->two_dma_flag) {
+			prtd->two_dma_flag = false;
+			logw("Run out of data in one DMA, disable one DMA\n");
+		} else {
+			logw("Run out of data in both DMAs, disable both DMAs\n");
+		}
+		spin_unlock(&prtd->lock);
+		return IRQ_HANDLED;
+	} else {
+		asp_dma_set_lli_node(prtd, DMA_LLI_NUM, runtime->dma_addr);
+		prtd->period_next = (prtd->period_next + 1) % num_period;
+
+		if ((!prtd->two_dma_flag) && (avail >= rt_period_size * 2 )) {
+			logd("enable both DMAs\n");
+			prtd->two_dma_flag = true;
+
+			asp_dma_set_lli_node(prtd, DMA_LLI_NUM, runtime->dma_addr);
+			prtd->period_next = (prtd->period_next + 1) % num_period;
+		}
+	}
+
+	spin_unlock(&prtd->lock);
+	return IRQ_HANDLED;
+}
 
 static int hi3630_asp_dmac_open(struct snd_pcm_substream *substream)
 {
+	struct hi3630_asp_dmac_runtime_data *prtd = NULL;
+	struct snd_soc_pcm_runtime *rtd = NULL;
+	struct hi3630_asp_dmac_data *pdata = NULL;
+	struct snd_pcm *pcm = substream->pcm;
 	int ret = 0;
-	int sema = 0;
 
-	if (SNDRV_PCM_STREAM_PLAYBACK == substream->stream) {
-		sema = down_interruptible(&g_pcm_pb_open_sem);
-		pcm_pb_status_open = (u32)1;
-		up(&g_pcm_pb_open_sem);
-	} else {
-		sema = down_interruptible(&g_pcm_cp_open_sem);
-		pcm_cp_status_open = (u32)1;
-		up(&g_pcm_cp_open_sem);
+	loge("%d in\n", __LINE__);
+	prtd = kzalloc(sizeof(struct hi3630_asp_dmac_runtime_data), GFP_KERNEL);
+	if (NULL == prtd) {
+		loge("kzalloc hi3630_asp_dmac_runtime_data error!\n");
+		return -ENOMEM;
 	}
-	ret = hi3630_pcm_hifi_open(substream);
 
+	mutex_init(&prtd->mutex);
+	spin_lock_init(&prtd->lock);
+
+	rtd = (struct snd_soc_pcm_runtime *)substream->private_data;
+	pdata = (struct hi3630_asp_dmac_data *)snd_soc_platform_get_drvdata(rtd->platform);
+
+	BUG_ON(NULL == pdata);
+
+#ifdef CONFIG_PM_RUNTIME
+	pm_runtime_get_sync(pdata->dev);
+#else
+	ret = regulator_bulk_enable(1, &pdata->regu);
+	if (0 != ret) {
+		loge("couldn't enable regulators %d\n", ret);
+		goto err_bulk;
+	}
+#endif
+
+	prtd->pdata = pdata;
+
+	substream->runtime->private_data = prtd;
+
+	ret = request_irq(pdata->irq, hi3630_intr_dmac_handle,
+			  IRQF_SHARED, "asp_dma_irq", pcm);
+	if (0 > ret) {
+		loge("request irq error, error No. = %d\n", ret);
+		goto err_irq;
+	}
+	loge("request_irq = %d,irq = %d \n", ret,pdata->irq);
+
+	ret = snd_soc_set_runtime_hwparams(substream, &hi3630_asp_dmac_hardware);
+
+	return ret;
+
+err_irq:
+#ifdef CONFIG_PM_RUNTIME
+	pm_runtime_mark_last_busy(pdata->dev);
+	pm_runtime_put_autosuspend(pdata->dev);
+#else
+	regulator_bulk_disable(1, &prtd->pdata->regu);
+err_bulk:
+#endif
+	kfree(prtd);
 	return ret;
 }
 
 static int hi3630_asp_dmac_close(struct snd_pcm_substream *substream)
 {
-	int ret = 0;
-	int sema = 0;
+	struct hi3630_asp_dmac_runtime_data *prtd = substream->runtime->private_data;
 
-	if (SNDRV_PCM_STREAM_PLAYBACK == substream->stream) {
-		sema = down_interruptible(&g_pcm_pb_open_sem);
-		pcm_pb_status_open = (u32)0;
-		ret = hi3630_pcm_hifi_close(substream);
-		up(&g_pcm_pb_open_sem);
+	loge("%d in\n", __LINE__);
+	if (NULL == prtd) {
+		loge("prtd is NULL\n");
 	} else {
-		sema = down_interruptible(&g_pcm_cp_open_sem);
-		pcm_cp_status_open = (u32)0;
-		ret = hi3630_pcm_hifi_close(substream);
-		up(&g_pcm_cp_open_sem);
+		BUG_ON(NULL == prtd->pdata);
+		free_irq(prtd->pdata->irq, substream->pcm);
+#ifdef CONFIG_PM_RUNTIME
+		pm_runtime_mark_last_busy(prtd->pdata->dev);
+		pm_runtime_put_autosuspend(prtd->pdata->dev);
+#else
+		regulator_bulk_disable(1, &prtd->pdata->regu);
+#endif
+
+		kfree(prtd);
+		substream->runtime->private_data = NULL;
 	}
 
-	return ret;
+	return 0;
 }
 
 static struct snd_pcm_ops hi3630_asp_dmac_ops = {
-	.open		= hi3630_asp_dmac_open,
-	.close		= hi3630_asp_dmac_close,
-	.ioctl		= snd_pcm_lib_ioctl,
-	.hw_params	= hi3630_asp_dmac_hw_params,
-	.hw_free	= hi3630_asp_dmac_hw_free,
-	.prepare	= hi3630_asp_dmac_prepare,
-	.trigger	= hi3630_asp_dmac_trigger,
-	.pointer	= hi3630_asp_dmac_pointer,
-	.mmap		= hi3630_asp_dmac_mmap,
+	.open	    = hi3630_asp_dmac_open,
+	.close	    = hi3630_asp_dmac_close,
+	.ioctl      = snd_pcm_lib_ioctl,
+	.hw_params  = hi3630_asp_dmac_hw_params,
+	.hw_free    = hi3630_asp_dmac_hw_free,
+	.prepare    = hi3630_asp_dmac_prepare,
+	.trigger    = hi3630_asp_dmac_trigger,
+	.pointer    = hi3630_asp_dmac_pointer,
+	.mmap       = hi3630_asp_dmac_mmap,
 };
 
 static unsigned long long hi3630_pcm_dmamask = DMA_BIT_MASK(32);
@@ -1030,7 +734,7 @@ static unsigned long long hi3630_pcm_dmamask = DMA_BIT_MASK(32);
 static int hi3630_asp_dmac_new(struct snd_soc_pcm_runtime *rtd)
 {
 	struct snd_card *card = rtd->card->snd_card;
-	struct snd_pcm	*pcm  = rtd->pcm;
+	struct snd_pcm  *pcm  = rtd->pcm;
 	struct hi3630_asp_dmac_data *pdata =
 		(struct hi3630_asp_dmac_data *)snd_soc_platform_get_drvdata(rtd->platform);
 	int ret = 0;
@@ -1044,28 +748,14 @@ static int hi3630_asp_dmac_new(struct snd_soc_pcm_runtime *rtd)
 	if (!card->dev->coherent_dma_mask)
 		card->dev->coherent_dma_mask = DMA_BIT_MASK(32);
 
-	if (pcm->streams[SNDRV_PCM_STREAM_CAPTURE].substream) {
+	if (pcm->streams[SNDRV_PCM_STREAM_PLAYBACK].substream) {
 		ret = hi3630_pcm_preallocate_dma_buffer(pcm,
-				SNDRV_PCM_STREAM_CAPTURE);
+				SNDRV_PCM_STREAM_PLAYBACK);
 		if (ret) {
 			loge("preallocate dma for dmac error(%d)\n", ret);
 			hi3630_pcm_free_dma_buffers(pcm);
 			return ret;
 		}
-	}
-
-	ret = snd_pcm_lib_preallocate_pages_for_all(pcm, SNDRV_DMA_TYPE_DEV,
-			pcm->card->dev, HI3630_MAX_BUFFER_SIZE, HI3630_MAX_BUFFER_SIZE);
-	if (ret) {
-		loge("snd_pcm_lib_preallocate_pages_for_all error : %d\n", ret);
-		return ret;
-	}
-
-	/* register ipc recv function */
-	ret = hi3630_notify_isr_register((void *)hi3630_notify_recv_isr);
-	if (ret) {
-		loge("notify Isr register error : %d\n", ret);
-		snd_pcm_lib_preallocate_free_for_all(pcm);
 	}
 
 	return ret;
@@ -1109,14 +799,14 @@ static int hi3630_asp_dmac_probe(struct platform_device *pdev)
 	}
 
 	if (!devm_request_mem_region(dev, pdata->res->start,
-					 resource_size(pdata->res),
-					 pdev->name)) {
+				     resource_size(pdata->res),
+				     pdev->name)) {
 		dev_err(dev, "cannot claim register memory\n");
 		return -ENOMEM;
 	}
 
 	pdata->reg_base_addr = devm_ioremap(dev, pdata->res->start,
-						resource_size(pdata->res));
+					    resource_size(pdata->res));
 	if (!pdata->reg_base_addr) {
 		dev_err(dev, "cannot map register memory\n");
 		return -ENOMEM;
@@ -1127,31 +817,33 @@ static int hi3630_asp_dmac_probe(struct platform_device *pdev)
 		dev_err(dev, "cannot get irq\n");
 		return -ENOENT;
 	}
+	pdata->regu.supply = "asp-dmac";
+	ret = devm_regulator_bulk_get(dev, 1, &(pdata->regu));
+	if (0 != ret) {
+		dev_err(dev, "couldn't get regulators %d\n", ret);
+		return -ENOENT;
+	}
+
+	pdata->hwlock = hwspin_lock_request_specific(HWLOCK_ID);
+	if(NULL == pdata->hwlock) {
+		dev_err(dev, "couldn't request hwlock:%d\n", HWLOCK_ID);
+		return -ENOENT;
+	}
 
 	spin_lock_init(&pdata->lock);
 
 	pdata->dev = dev;
 
+#ifdef CONFIG_PM_RUNTIME
+	pm_runtime_set_autosuspend_delay(dev, 100); /* 100ms*/
+	pm_runtime_use_autosuspend(dev);
+
+	pm_runtime_enable(dev);
+#endif
+
 	platform_set_drvdata(pdev, pdata);
 
 	dev_set_name(dev, "hi3630-pcm-asp-dma");
-
-#ifdef CONFIG_SND_TEST_AUDIO_PCM_LOOP
-	hi3630_simu_pcm.simu_pcm_delay_wq = create_singlethread_workqueue("simu_pcm_delay_wq");
-	if (!(hi3630_simu_pcm.simu_pcm_delay_wq)) {
-		pr_err("%s(%u) : workqueue create failed", __FUNCTION__,__LINE__);
-		return -ENOMEM;
-	}
-	INIT_DELAYED_WORK(&hi3630_simu_pcm.simu_pcm_delay_work, simu_pcm_work_func);
-#endif
-#ifdef __DRV_AUDIO_MAILBOX_WORK__
-	hi3630_pcm_mailbox_workqueue.pcm_mailbox_delay_wq = create_singlethread_workqueue("pcm_mailbox_delay_wq");
-	if (!(hi3630_pcm_mailbox_workqueue.pcm_mailbox_delay_wq)) {
-		pr_err("%s(%u) : workqueue create failed", __FUNCTION__,__LINE__);
-		return -ENOMEM;
-	}
-	/*	put INIT_DELAYED_WORK to open() function */
-#endif
 
 	ret = snd_soc_register_platform(dev, &hi3630_pcm_asp_dmac_platform);
 	if (ret) {
@@ -1165,26 +857,65 @@ static int hi3630_asp_dmac_probe(struct platform_device *pdev)
 static int hi3630_asp_dmac_remove(struct platform_device *pdev)
 {
 	snd_soc_unregister_platform(&pdev->dev);
+#ifdef CONFIG_PM_RUNTIME
+	pm_runtime_disable(&pdev->dev);
+#endif
+	return 0;
+}
+
+#ifdef CONFIG_PM_RUNTIME
+int hi3630_asp_dmac_runtime_suspend(struct device *dev)
+{
+	struct hi3630_asp_dmac_data *pdata = dev_get_drvdata(dev);
+
+	BUG_ON(NULL == pdata);
+
+	dev_info(dev, "%s+", __FUNCTION__);
+
+	regulator_bulk_disable(1, &pdata->regu);
+
+	dev_info(dev, "%s-", __FUNCTION__);
 
 	return 0;
 }
+
+int hi3630_asp_dmac_runtime_resume(struct device *dev)
+{
+	struct hi3630_asp_dmac_data *pdata = dev_get_drvdata(dev);
+	int ret;
+
+	BUG_ON(NULL == pdata);
+
+	dev_info(dev, "%s+", __FUNCTION__);
+
+	ret = regulator_bulk_enable(1, &pdata->regu);
+	if (0 != ret)
+		dev_err(dev, "couldn't enable regulators %d\n", ret);
+
+	dev_info(dev, "%s-", __FUNCTION__);
+
+	return ret;
+}
+
+const struct dev_pm_ops hi3630_asp_dmac_pm_ops = {
+	.runtime_suspend	= hi3630_asp_dmac_runtime_suspend,
+	.runtime_resume		= hi3630_asp_dmac_runtime_resume,
+};
+#endif
 
 static struct platform_driver hi3630_asp_dmac_driver = {
 	.driver = {
 		.name	= "hi3630-pcm-asp-dma",
 		.owner	= THIS_MODULE,
 		.of_match_table = hi3630_asp_dmac_of_match,
+#ifdef CONFIG_PM_RUNTIME
+		.pm	= &hi3630_asp_dmac_pm_ops,
+#endif
 	},
 	.probe	= hi3630_asp_dmac_probe,
 	.remove	= hi3630_asp_dmac_remove,
 };
 module_platform_driver(hi3630_asp_dmac_driver);
-
-#ifdef __cplusplus
-#if __cplusplus
-}
-#endif
-#endif
 
 MODULE_AUTHOR("chengong <apollo.chengong@huawei.com>");
 MODULE_DESCRIPTION("Hi3630 ASP DMA Driver");

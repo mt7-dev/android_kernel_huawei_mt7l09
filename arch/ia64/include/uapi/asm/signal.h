@@ -89,11 +89,7 @@
  * more than 16KB of space.
  */
 #if 1
-  /*
-   * This is a stupid typo: the value was _meant_ to be 131072 (0x20000), but I typed it
-   * in wrong. ;-(  To preserve backwards compatibility, we leave the kernel at the
-   * incorrect value and fix libc only.
-   */
+
 # define MINSIGSTKSZ	131027	/* min. stack size for sigaltstack() */
 #else
 # define MINSIGSTKSZ	131072	/* min. stack size for sigaltstack() */

@@ -84,6 +84,7 @@ SNDCP_NSAPI_MAP_RB_INFO                                     gastNsapiMapRb[SNDCP
 NAS_RABM_TIMER_STATUS_ENUM_UINT8                           g_ulNasRabmFDFluxDetectTimer;
 NAS_RABM_TIMER_STATUS_ENUM_UINT8                           g_ulNasRabmFDRetryTimer;
 NAS_RABM_TIMER_STATUS_ENUM_UINT8                           g_ulNasRabmFDWaitGmmQryRsltTimer;
+NAS_RABM_TIMER_STATUS_ENUM_UINT8                           g_ulNasRabmResendEstTimer;
 
 /*RABM从PDCP处获知的RCV NPDU NUM 信息*/
 RABM_PDCP_GET_N_PDU_NUM_LIST_ST                             gPdcpRcvNpduNum;
@@ -291,6 +292,9 @@ VOS_UINT32  NAS_RabmStartTimer( RABM_TIMER_NAME_ENUM Name, RABM_TIMER_PARA_ENUM 
             g_ulNasRabmFDWaitGmmQryRsltTimer = NAS_RABM_TIMER_STATUS_RUNING;
             break;
 
+        case RABM_TIMER_RESEND_EST_REQ:
+            g_ulNasRabmResendEstTimer = NAS_RABM_TIMER_STATUS_RUNING;
+
         default:
             break;
     }
@@ -323,6 +327,8 @@ NAS_RABM_TIMER_STATUS_ENUM_UINT8  NAS_RABM_CheckTimerStatus(
         case RABM_TIMER_FASTDORM_WAIT_GMM_QRY_RESULT:
             return g_ulNasRabmFDWaitGmmQryRsltTimer;
 
+        case RABM_TIMER_RESEND_EST_REQ:
+            return g_ulNasRabmResendEstTimer;
         default:
             return NAS_RABM_TIMER_STATUS_STOP;
     }
@@ -395,6 +401,10 @@ VOS_UINT32  NAS_RabmStopTimer( RABM_TIMER_NAME_ENUM Name, RABM_TIMER_PARA_ENUM P
         case RABM_TIMER_FASTDORM_WAIT_GMM_QRY_RESULT:
             g_ulNasRabmFDWaitGmmQryRsltTimer = NAS_RABM_TIMER_STATUS_STOP;
             break;
+
+        case RABM_TIMER_RESEND_EST_REQ:
+            g_ulNasRabmResendEstTimer = NAS_RABM_TIMER_STATUS_STOP;
+
 
         default:
             break;
@@ -869,6 +879,7 @@ VOS_VOID  NAS_RabmPowerOff(VOS_VOID)
         if ( RABM_TRUE == g_ucReestTimerFlg )
         {
             RABM_TimerStop(0);
+            NAS_RabmStopTimer(RABM_TIMER_NAME_COMMON, RABM_TIMER_RESEND_EST_REQ);
             g_ucReestTimerFlg = RABM_FALSE;
         }
 
@@ -925,6 +936,11 @@ VOS_VOID  NAS_RabmPowerOff(VOS_VOID)
     if (NAS_RABM_TIMER_STATUS_RUNING == g_ulNasRabmFDWaitGmmQryRsltTimer)
     {
         NAS_RabmStopTimer(RABM_TIMER_NAME_COMMON,RABM_TIMER_FASTDORM_WAIT_GMM_QRY_RESULT);
+    }
+
+    if (NAS_RABM_TIMER_STATUS_RUNING == g_ulNasRabmResendEstTimer)
+    {
+        NAS_RabmStopTimer(RABM_TIMER_NAME_COMMON,RABM_TIMER_RESEND_EST_REQ);
     }
 
     /*调用初始化函数:*/
@@ -1616,6 +1632,8 @@ VOS_UINT32 RABM_SendDlData(VOS_UINT8 ucAsId, TTF_MEM_ST *pstData)
     if (NAS_MML_NET_RAT_TYPE_WCDMA == NAS_RABM_GetCurrentSysMode())
     {
         NAS_RABM_IncFastDormDlDataCnt();
+
+        NAS_RABM_AbortRelRrcProcedure();
     }
 
 
@@ -1640,6 +1658,8 @@ VOS_UINT32 RABM_SndPdcpUlDataCallBack(VOS_UINT8 ucRabId, VOS_UINT8 ucRbId, TTF_M
     }
 
     NAS_RABM_IncFastDormUlDataCnt();
+
+    NAS_RABM_AbortRelRrcProcedure();
 
     return PS_SUCC;
 }
@@ -1868,6 +1888,20 @@ VOS_UINT32  RABM_ResumeFirstActIndStatus(RABM_CUR_NET_ENUM enCurNetType, VOS_UIN
     }
 
     return VOS_OK;
+}
+VOS_UINT32 NAS_RABM_IsPsRbExist(VOS_VOID)
+{
+    VOS_UINT32                          i;
+
+    for (i = 0; i < RABM_PS_MAX_ENT_NUM; i++)
+    {
+        if (0 != g_aRabmPsEnt[i].RabInfo.ucRbNum)
+        {
+            return VOS_TRUE;
+        }
+    }
+
+    return VOS_FALSE;
 }
 
 

@@ -43,13 +43,12 @@ TTF_MEMCTRL_ADDR_STRU              g_stTtfMemCtrlAddr;
    6 º¯ÊýÊµÏÖ
 ******************************************************************************/
 
-unsigned long   TTF_MEMCTRL_GetMemTotalLen(void)
+VOS_UINT32   TTF_MEMCTRL_GetMemTotalLen(void)
 {
+    VOS_UINT32                          ulMemTotalLen;
     BSP_DDR_SECT_QUERY                  stQuery;
     BSP_DDR_SECT_INFO                   stInfo;
-    unsigned long                       ulMemTotalLen;
     signed int                          lRslt;
-
 
     stQuery.enSectType = BSP_DDR_SECT_TYPE_TTF;
     stInfo.ulSectSize  = TTF_MEMCTRL_INVAILD_SIZE;
@@ -63,20 +62,18 @@ unsigned long   TTF_MEMCTRL_GetMemTotalLen(void)
 
     ulMemTotalLen    = stInfo.ulSectSize;
 
-
     return ulMemTotalLen;
 }
 
 
 
-unsigned long   TTF_MEMCTRL_AddrInit(void)
+VOS_UINT32   TTF_MEMCTRL_AddrInit(void)
 {
-    unsigned char                       ucTypeLoop;
-    unsigned char                       ucTypeLoopOne   = 0;
-    unsigned long                       ulTypeOffestLen = 0;
-    unsigned long                       ulCCoreTypeLen  = 0;
-    unsigned long                       ulMemTotalLen   = 0;
-
+    VOS_UINT8                           ucTypeLoop;
+    VOS_UINT8                           ucTypeLoopOne   = 0;
+    VOS_UINT32                          ulTypeOffestLen = 0;
+    VOS_UINT32                          ulCCoreTypeLen  = 0;
+    VOS_UINT32                          ulMemTotalLen   = 0;
 
     if (TTF_MEMCTRL_TYPE_INIT_FLG == TTF_MEMCTRL_GET_ADDR_INIT_FLG())
     {
@@ -130,20 +127,19 @@ unsigned long   TTF_MEMCTRL_AddrInit(void)
 
 
 
-unsigned long   TTF_MEMCTRL_ACORE_AddrInit(void)
+VOS_UINT32   TTF_MEMCTRL_ACORE_AddrInit(VOS_VOID)
 {
     TTF_MEMCTRL_AddrInit();
 
     TTF_MEMCTRL_SET_TYPE_FLG(TTF_MEMCTRL_HDLC_MASTER_ADDR_TYPE, TTF_MEMCTRL_TYPE_VISIBLE_FLG);
     TTF_MEMCTRL_SET_TYPE_FLG(TTF_MEMCTRL_ACORE_POOL_ADDR_TYPE, TTF_MEMCTRL_TYPE_VISIBLE_FLG);
 
-
     return 0;
 }
 
 
 
-unsigned long   TTF_MEMCTRL_CCORE_AddrInit(void)
+VOS_UINT32   TTF_MEMCTRL_CCORE_AddrInit(VOS_VOID)
 {
     TTF_MEMCTRL_AddrInit();
 
@@ -151,15 +147,13 @@ unsigned long   TTF_MEMCTRL_CCORE_AddrInit(void)
     TTF_MEMCTRL_SET_TYPE_FLG(TTF_MEMCTRL_BBP_MASTER_ADDR_TYPE, TTF_MEMCTRL_TYPE_VISIBLE_FLG);
     TTF_MEMCTRL_SET_TYPE_FLG(TTF_MEMCTRL_CCORE_POOL_ADDR_TYPE, TTF_MEMCTRL_TYPE_VISIBLE_FLG);
 
-
     return 0;
 }
 
 
-unsigned long  TTF_MEMCTRL_GetOffsetBaseLen(unsigned long  ulType)
+VOS_UINT32  TTF_MEMCTRL_GetOffsetBaseLen(VOS_UINT32  ulType)
 {
-    unsigned long                          ulAttribute;
-
+    VOS_UINT32                          ulAttribute;
 
     if (ulType >= TTF_MEMCTRL_ADDR_TYPE_BUTT)
     {
@@ -181,23 +175,19 @@ unsigned long  TTF_MEMCTRL_GetOffsetBaseLen(unsigned long  ulType)
     {
         return TTF_MEMCTRL_GET_TYPE_OFFSET_BASE_LEN(ulType);
     }
-    else
-    {
-        vos_printf("TTF_MEMCTRL_GetOffsetBaseLen::ulType:%d, ulAttribute:%d is not exist or not visible!\n",
+
+    vos_printf("TTF_MEMCTRL_GetOffsetBaseLen::ulType:%d, ulAttribute:%d is not exist or not visible!\n",
                     ulType, ulAttribute);
 
-        return 0;
-    }
-
+    return 0;
 }
 
 
 
-unsigned long  TTF_MEMCTRL_GetTypeAddr(unsigned long ulAddr, unsigned long  ulType)
+VOS_UINT_PTR  TTF_MEMCTRL_GetTypeAddr(VOS_UINT_PTR ulAddr, VOS_UINT32 ulType)
 {
-    unsigned long                       ulOffsetBaseLen;
-    unsigned long                       ulTtfMemCtrlTypeAddr = 0;
-
+    VOS_UINT32                          ulOffsetBaseLen;
+    VOS_UINT_PTR                        ulTtfMemCtrlTypeAddr;
 
     if (ulType >= TTF_MEMCTRL_ADDR_TYPE_BUTT)
     {
@@ -207,7 +197,6 @@ unsigned long  TTF_MEMCTRL_GetTypeAddr(unsigned long ulAddr, unsigned long  ulTy
 
     ulOffsetBaseLen         = TTF_MEMCTRL_GetOffsetBaseLen(ulType);
     ulTtfMemCtrlTypeAddr    = ulAddr + ulOffsetBaseLen;
-
 
     return  ulTtfMemCtrlTypeAddr;
 }

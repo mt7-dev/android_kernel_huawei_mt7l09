@@ -11,24 +11,6 @@ extern "C"
 
 #ifndef ENABLE_BUILD_OM
 /*****************************************************************************
-* 函 数 名  : DRV_LOG_LVL_SET
-*
-* 功能描述  : HSO设置底软打印级别处理函数
-*
-* 输入参数  : log_swt_stru:各个模块的打印级别值
-*                         data_len:      参数log_swt_stru的长度
-* 输出参数  : 无
-*
-* 返 回 值  : BSP_OK 成功;其他 失败
-*****************************************************************************/
-
-BSP_U32 DRV_LOG_LVL_SET(VOID *log_swt_stru ,BSP_U32 data_len)
-{
-    return 0;
-}
-
-
-/*****************************************************************************
 * 函 数 名  : DRV_OM_SET_HSO_CONN_FLAG
 *
 * 功能描述  : flag :连接标志，1表示连接，0表示断开
@@ -180,24 +162,6 @@ BSP_VOID DRV_LOG_BIN_IND_REGISTER(log_bin_ind_cb log_ind_cb)
 
 #else
 /*****************************************************************************
-* 函 数 名  : DRV_LOG_LVL_SET
-*
-* 功能描述  : HSO设置底软打印级别处理函数
-*
-* 输入参数  : log_swt_stru:各个模块的打印级别值
-*                         data_len:      参数log_swt_stru的长度
-* 输出参数  : 无
-*
-* 返 回 值  : BSP_OK 成功;其他 失败
-*****************************************************************************/
-
-BSP_U32 DRV_LOG_LVL_SET(VOID *log_swt_stru ,BSP_U32 data_len)
-{
-    return bsp_log_module_cfg_set((bsp_log_swt_cfg_s * )log_swt_stru , data_len);
-}
-
-
-/*****************************************************************************
 * 函 数 名  : DRV_OM_SET_HSO_CONN_FLAG
 *
 * 功能描述  : flag :连接标志，1表示连接，0表示断开
@@ -212,8 +176,7 @@ BSP_U32 DRV_LOG_LVL_SET(VOID *log_swt_stru ,BSP_U32 data_len)
 
 BSP_VOID DRV_OM_SET_HSO_CONN_FLAG(BSP_U32 flag)
 {
-    bsp_log_level_reset();
-    bsp_om_set_hso_conn_flag( flag);
+    bsp_om_set_hso_conn_flag(flag);
 }
 
 #ifndef ENABLE_BUILD_SYSVIEW

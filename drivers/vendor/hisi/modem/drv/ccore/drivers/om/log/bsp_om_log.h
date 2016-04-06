@@ -24,6 +24,10 @@ extern "C" {
 #define  BSP_DIAG_IND_DATA_MAX_LEN         (4096)
 
 #define VXWORKS_INT_LOCK_FLAG   ( 0xc0)
+/* add time sample yangzhi 8-16 B:*/
+#define BSP_TRACE_BUF_LEN_MAX  (255)
+#define BSP_LOG_BUF_LEN         (8192)
+/* add time sample yangzhi 8-16 E!*/
 /*****************************************************************************
   2 Ã¶¾Ù¶¨Òå
 *****************************************************************************/
@@ -68,6 +72,13 @@ typedef struct
 }bsp_om_log_buf_ctrl_s;
 
 
+/* add time sample yangzhi 8-16 B:*/
+typedef struct
+{
+    int                     buf_offset;
+    char*                   write_ptr;
+}bsp_log_buf_ctrl_s;
+/* add time sample yangzhi 8-16 E!*/
 u32 bsp_log_module_cfg_get(bsp_module_e mod_id);
 
 /*****************************************************************************

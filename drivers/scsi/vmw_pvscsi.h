@@ -268,41 +268,7 @@ struct PVSCSIRingsState {
 	u32	msgNumEntriesLog2;
 } __packed;
 
-/*
- * Request descriptor.
- *
- * sizeof(RingReqDesc) = 128
- *
- * - context: is a unique identifier of a command. It could normally be any
- *   64bit value, however we currently store it in the serialNumber variable
- *   of struct SCSI_Command, so we have the following restrictions due to the
- *   way this field is handled in the vmkernel storage stack:
- *    * this value can't be 0,
- *    * the upper 32bit need to be 0 since serialNumber is as a u32.
- *   Currently tracked as PR 292060.
- * - dataLen: contains the total number of bytes that need to be transferred.
- * - dataAddr:
- *   * if PVSCSI_FLAG_CMD_WITH_SG_LIST is set: dataAddr is the PA of the first
- *     s/g table segment, each s/g segment is entirely contained on a single
- *     page of physical memory,
- *   * if PVSCSI_FLAG_CMD_WITH_SG_LIST is NOT set, then dataAddr is the PA of
- *     the buffer used for the DMA transfer,
- * - flags:
- *   * PVSCSI_FLAG_CMD_WITH_SG_LIST: see dataAddr above,
- *   * PVSCSI_FLAG_CMD_DIR_NONE: no DMA involved,
- *   * PVSCSI_FLAG_CMD_DIR_TOHOST: transfer from device to main memory,
- *   * PVSCSI_FLAG_CMD_DIR_TODEVICE: transfer from main memory to device,
- *   * PVSCSI_FLAG_CMD_OUT_OF_BAND_CDB: reserved to handle CDBs larger than
- *     16bytes. To be specified.
- * - vcpuHint: vcpuId of the processor that will be most likely waiting for the
- *   completion of the i/o. For guest OSes that use lowest priority message
- *   delivery mode (such as windows), we use this "hint" to deliver the
- *   completion action to the proper vcpu. For now, we can use the vcpuId of
- *   the processor that initiated the i/o as a likely candidate for the vcpu
- *   that will be waiting for the completion..
- * - bus should be 0: we currently only support bus 0 for now.
- * - unused should be zero'd.
- */
+
 
 #define PVSCSI_FLAG_CMD_WITH_SG_LIST        (1 << 0)
 #define PVSCSI_FLAG_CMD_OUT_OF_BAND_CDB     (1 << 1)

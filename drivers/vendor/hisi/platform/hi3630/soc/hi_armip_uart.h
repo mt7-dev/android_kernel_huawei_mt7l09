@@ -26,6 +26,7 @@
 /*-------------------IFLS BITS FIELD-----------------------------*/
 
 #define UART_IFLS_DEF_SET           0x00 	/* 接收发送水线为FIFO-1/8 */
+#define UART_IFLS_RX_DEF_ONETWO		0x10	/* 接收发送水线为FIFO-1/2 */
 #define UART_ARM_LCR_DLS_8BITS      0x60 	/* 数据长度选择,8bits */
 /*-------------------IER BITS FIELD-----------------------------*/
 #define UART_DISABLE	        	0x00 	/* uart禁能 */

@@ -39,6 +39,10 @@ const CMMCA_CBPCA_MSG_PROC_STRU         g_astCmmcaMsgProcCbpcaTab[] =
     {ID_CMMCA_MMC_RAT_CELL_INFO_PS_REG_REQ,                 CMMCA_REG_RcvCellInfoPsRegReq},
     {ID_CMMCA_MMC_RAT_NO_SERVICE_REQ,                       CMMCA_REG_RcvNoServiceReq},
     {ID_CMMCA_MMC_RAT_DATACONNECTION_CMD_REQ,               CMMCA_REG_RcvPktDataCmdReq},
+    {ID_CMMCA_MMC_RAT_BEARER_DETACH_REQ,                    CMMCA_REG_RcvBearDetachReq},
+
+    /* 鉴权相关消息 */
+    {ID_CMMCA_MMC_API_SET_PDN_PCO_AUTH_REQ,                 CMMCA_PKT_RcvCmmcSetPdnPcoAuthReq},
 
     /* Meas and Resel:直接透传给ERRC或者MMC */
     {ID_CMMCA_MMC_RAT_IRAT_MEAS_IND,                        CMMCA_RcvCmmcMeasReselReq},

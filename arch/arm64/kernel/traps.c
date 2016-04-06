@@ -3,6 +3,7 @@
  *
  * Copyright (C) 1995-2009 Russell King
  * Copyright (C) 2012 ARM Ltd.
+ * Copyright (c) 2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -32,6 +33,7 @@
 #include <linux/syscalls.h>
 
 #include <asm/atomic.h>
+#include <asm/debug-monitors.h>
 #include <asm/traps.h>
 #include <asm/stacktrace.h>
 #include <asm/exception.h>
@@ -45,6 +47,16 @@ static const char *handler[]= {
 };
 
 int show_unhandled_signals = 1;
+
+#ifdef CONFIG_DETECT_HUNG_TASK
+typedef void (*funcptr2)(unsigned long, unsigned long);
+extern void add_hw_hungtask_hook(funcptr2 printhook);
+static funcptr2 hw_hung_task_hook;
+void add_hw_hungtask_hook(funcptr2 printhook)
+{
+	hw_hung_task_hook = printhook;
+}
+#endif
 
 /*
  * Dump out the contents of some memory nicely...
@@ -131,7 +143,6 @@ static void dump_instr(const char *lvl, struct pt_regs *regs)
 static void dump_backtrace(struct pt_regs *regs, struct task_struct *tsk)
 {
 	struct stackframe frame;
-	const register unsigned long current_sp asm ("sp");
 
 	pr_debug("%s(regs = %p tsk = %p)\n", __func__, regs, tsk);
 
@@ -144,7 +155,7 @@ static void dump_backtrace(struct pt_regs *regs, struct task_struct *tsk)
 		frame.pc = regs->pc;
 	} else if (tsk == current) {
 		frame.fp = (unsigned long)__builtin_frame_address(0);
-		frame.sp = current_sp;
+		frame.sp = current_stack_pointer;
 		frame.pc = (unsigned long)dump_backtrace;
 	} else {
 		/*
@@ -155,7 +166,7 @@ static void dump_backtrace(struct pt_regs *regs, struct task_struct *tsk)
 		frame.pc = thread_saved_pc(tsk);
 	}
 
-	printk("Call trace:\n");
+	pr_emerg("Call trace:\n");
 	while (1) {
 		unsigned long where = frame.pc;
 		int ret;
@@ -172,6 +183,151 @@ void show_stack(struct task_struct *tsk, unsigned long *sp)
 	dump_backtrace(NULL, tsk);
 	barrier();
 }
+
+void show_stack_ex(struct pt_regs *regs, struct task_struct *tsk)
+{
+	if (!user_mode(regs) || in_interrupt()) {
+		dump_backtrace(regs, tsk);
+		barrier();
+	} else {
+		pr_info("Call trace: in user_mode!\n");
+	}
+}
+
+#include <linux/huawei/rdr.h>
+#include <linux/huawei/rdr_private.h>
+#ifdef CONFIG_HISI_RDR
+/*
+ * Dump out the contents of some memory nicely...
+ */
+static void dump_mem_for_rdr(const char *lvl, const char *str, unsigned long bottom,
+		     unsigned long top)
+{
+	unsigned long first;
+	mm_segment_t fs;
+	int i;
+
+	/*
+	 * We need to switch to kernel mode so that we can use __get_user
+	 * to safely read from kernel space.  Note that we now dump the
+	 * code first, just in case the backtrace kills us.
+	 */
+	fs = get_fs();
+	set_fs(KERNEL_DS);
+
+	//printk("%s%s(0x%016lx to 0x%016lx)\n", lvl, str, bottom, top);
+
+	for (first = bottom & ~31; first < top; first += 32) {
+		unsigned long p;
+		char str[sizeof(" 12345678") * 8 + 1];
+
+		memset(str, ' ', sizeof(str));
+		str[sizeof(str) - 1] = '\0';
+
+		for (p = first, i = 0; i < 8 && p < top; i++, p += 4) {
+			if (p >= bottom && p < top) {
+				unsigned int val;
+				if (__get_user(val, (unsigned int *)p) == 0)
+					sprintf(str + i * 9, " %08x", val);
+				else
+					sprintf(str + i * 9, " ????????");
+			}
+		}
+		//printk("%s%04lx:%s\n", lvl, first & 0xffff, str);
+	}
+
+	set_fs(fs);
+}
+
+static void dump_backtrace_entry_for_rdr(unsigned long where,
+        unsigned long from)
+{
+#ifdef CONFIG_DETECT_HUNG_TASK
+    if (hw_hung_task_hook != NULL)
+        hw_hung_task_hook(where, from);
+#endif
+#if 0
+	print_ip_sym(where);
+	if (in_exception_text(where))
+		dump_mem_for_rdr("", "Exception stack", stack,
+			 stack + sizeof(struct pt_regs));
+#endif
+}
+
+static void dump_backtrace_for_rdr(struct pt_regs *regs,
+		struct task_struct *tsk)
+{
+	struct stackframe frame;
+	const register unsigned long current_sp asm ("sp");
+
+	if (!tsk)
+		tsk = current;
+	if (regs) {
+		frame.fp = regs->regs[29];
+		frame.sp = regs->sp;
+		frame.pc = regs->pc;
+	} else if (tsk == current) {
+		frame.fp = (unsigned long)__builtin_frame_address(0);
+		frame.sp = current_sp;
+		frame.pc = (unsigned long)dump_backtrace;
+	} else {
+		/*
+		 * task blocked in __switch_to
+		 */
+		frame.fp = thread_saved_fp(tsk);
+		frame.sp = thread_saved_sp(tsk);
+		frame.pc = thread_saved_pc(tsk);
+		//printk("xiehongliang. else\n");
+	}
+
+	while (1) {
+		unsigned long where = frame.pc;
+		int ret;
+
+		ret = unwind_frame(&frame);
+		if (ret < 0)
+			break;
+		dump_backtrace_entry_for_rdr(where, frame.sp);
+	}
+}
+void show_stack_for_rdr(struct task_struct *tsk, unsigned long *sp)
+{
+	dump_backtrace_for_rdr(NULL, tsk);
+	barrier();
+}
+void dump_stack_bl(struct task_struct *tsk)
+{
+	show_stack_for_rdr(tsk, NULL);
+}
+
+static rdr_funcptr_3 p_exc_hook;
+unsigned int arm_exc_type = 0xffff;
+
+void exc_hook_add(rdr_funcptr_3 p_hook_func)
+{
+	p_exc_hook = p_hook_func;
+}
+EXPORT_SYMBOL(exc_hook_add);
+
+void exc_hook_delete(void)
+{
+	p_exc_hook = NULL;
+}
+EXPORT_SYMBOL(exc_hook_delete);
+#else
+void dump_stack_bl(struct task_struct *tsk)
+{
+}
+
+void exc_hook_add(rdr_funcptr_3 p_hook_func)
+{
+}
+
+void exc_hook_delete(void)
+{
+}
+#endif
+
 
 #ifdef CONFIG_PREEMPT
 #define S_PREEMPT " PREEMPT"
@@ -237,6 +393,11 @@ void die(const char *str, struct pt_regs *regs, int err)
 	bust_spinlocks(0);
 	add_taint(TAINT_DIE, LOCKDEP_NOW_UNRELIABLE);
 	raw_spin_unlock_irq(&die_lock);
+
+#ifdef CONFIG_HISI_RDR
+	if (NULL != p_exc_hook) /*excute exc hook func*/
+		p_exc_hook(current, arm_exc_type, regs);
+#endif
 	oops_exit();
 
 	if (in_interrupt())
@@ -256,17 +417,58 @@ void arm64_notify_die(const char *str, struct pt_regs *regs,
 		die(str, regs, err);
 }
 
+static LIST_HEAD(undef_hook);
+
+void register_undef_hook(struct undef_hook *hook)
+{
+	list_add(&hook->node, &undef_hook);
+}
+
+static int call_undef_hook(struct pt_regs *regs, unsigned int instr)
+{
+	struct undef_hook *hook;
+	int (*fn)(struct pt_regs *regs, unsigned int instr) = NULL;
+
+	list_for_each_entry(hook, &undef_hook, node)
+		if ((instr & hook->instr_mask) == hook->instr_val &&
+		    (regs->pstate & hook->pstate_mask) == hook->pstate_val)
+			fn = hook->fn;
+
+	return fn ? fn(regs, instr) : 1;
+}
+
 asmlinkage void __exception do_undefinstr(struct pt_regs *regs)
 {
+	u32 instr;
 	siginfo_t info;
 	void __user *pc = (void __user *)instruction_pointer(regs);
 
-#ifdef CONFIG_COMPAT
 	/* check for AArch32 breakpoint instructions */
-	if (compat_user_mode(regs) && aarch32_break_trap(regs) == 0)
+	if (!aarch32_break_handler(regs))
 		return;
-#endif
+	if (user_mode(regs)) {
+		if (compat_thumb_mode(regs)) {
+			if (get_user(instr, (u16 __user *)pc))
+				goto die_sig;
+			if (is_wide_instruction(instr)) {
+				u32 instr2;
+				if (get_user(instr2, (u16 __user *)pc+1))
+					goto die_sig;
+				instr <<= 16;
+				instr |= instr2;
+			}
+		} else if (get_user(instr, (u32 __user *)pc)) {
+			goto die_sig;
+		}
+	} else {
+		/* kernel mode */
+		instr = *((u32 *)pc);
+	}
 
+	if (call_undef_hook(regs, instr) == 0)
+		return;
+
+die_sig:
 	if (show_unhandled_signals && unhandled_signal(current, SIGILL) &&
 	    printk_ratelimit()) {
 		pr_info("%s[%d]: undefined instruction: pc=%p\n",
@@ -278,6 +480,10 @@ asmlinkage void __exception do_undefinstr(struct pt_regs *regs)
 	info.si_errno = 0;
 	info.si_code  = ILL_ILLOPC;
 	info.si_addr  = pc;
+
+#ifdef CONFIG_HISI_RDR
+	arm_exc_type = DUMP_ARM_VEC_UNDEF;
+#endif
 
 	arm64_notify_die("Oops - undefined instruction", regs, &info, 0);
 }
@@ -306,6 +512,36 @@ asmlinkage long do_ni_syscall(struct pt_regs *regs)
 	return sys_ni_syscall();
 }
 
+
+#ifdef CONFIG_SMP
+extern void smp_send_cpus_backtrace(struct pt_regs *regs);
+void trigger_cpus_backtrace(struct pt_regs *regs)
+{
+	smp_send_cpus_backtrace(regs);
+}
+#else
+void trigger_cpus_backtrace(struct pt_regs *regs)
+{
+	show_regs(regs);
+	show_stack_ex(regs, NULL);
+}
+#endif
+
+/*
+ * fiq_dump handles the case in the fiq exception vector.
+ */
+ #define BAD_FIQ     2
+asmlinkage void fiq_dump(struct pt_regs *regs, unsigned int esr)
+{
+	pr_crit("fiq_dump Begin\n");
+
+	console_verbose();
+	trigger_cpus_backtrace(regs);
+
+	pr_crit("fiq_dump End\n");
+	while (1);
+}
+
 /*
  * bad_mode handles the impossible case in the exception vector.
  */
@@ -324,22 +560,25 @@ asmlinkage void bad_mode(struct pt_regs *regs, int reason, unsigned int esr)
 	info.si_code  = ILL_ILLOPC;
 	info.si_addr  = pc;
 
+#ifdef CONFIG_HISI_RDR
+	arm_exc_type = DUMP_ARM_VEC_RESET;
+#endif
 	arm64_notify_die("Oops - bad mode", regs, &info, 0);
 }
 
 void __pte_error(const char *file, int line, unsigned long val)
 {
-	printk("%s:%d: bad pte %016lx.\n", file, line, val);
+	pr_crit("%s:%d: bad pte %016lx.\n", file, line, val);
 }
 
 void __pmd_error(const char *file, int line, unsigned long val)
 {
-	printk("%s:%d: bad pmd %016lx.\n", file, line, val);
+	pr_crit("%s:%d: bad pmd %016lx.\n", file, line, val);
 }
 
 void __pgd_error(const char *file, int line, unsigned long val)
 {
-	printk("%s:%d: bad pgd %016lx.\n", file, line, val);
+	pr_crit("%s:%d: bad pgd %016lx.\n", file, line, val);
 }
 
 void __init trap_init(void)

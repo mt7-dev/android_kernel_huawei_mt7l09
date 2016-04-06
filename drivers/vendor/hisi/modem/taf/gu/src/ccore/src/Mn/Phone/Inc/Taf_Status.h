@@ -381,13 +381,14 @@ typedef struct
 
     TAF_PH_RAT_ORDER_STRU               stRatPrioList;   /* 接入模式优先级*/
 
-    TAF_PHONE_ERROR     PhoneError;                     /* 错误事件代号*/
+    TAF_ERROR_CODE_ENUM_UINT32          PhoneError;                     /* 错误事件代号*/
 
     VOS_UINT8                                   aucStaPhoneOperator[STA_TIMER_MAX];
     STA_DATA_TRANSFER_STATUS_UINT8              ucDataTranStatus;                           /* 记录小区数传状态*/
     STA_DATA_TRANSFER_MODE_UINT8                ucDataTranMode;                             /* 记录小区数传状态下的系统子模式 */
     VOS_UINT8                                   ucPlmnSelMode;                  /* 记录搜网模式:手动，自动 */
     VOS_UINT8                                   ucPreUtranMode;                 /* 记录当前的UtranMode：FDD，TDD */
+    VOS_UINT8                                   aucRes[2];
     TAF_MMA_NETWORK_SELECTION_MENU_CTX_STRU     stNetSelMenuCtx;                /* 网络选择菜单控制上下文 */
     TAF_MMA_RAT_BALANCING_CTX_STRU              stRatBalancingCtx;              /* 接入技术平衡控制上下文 */
 } STATUS_CONTEXT_STRU;
@@ -779,6 +780,17 @@ VOS_UINT32 TAF_MMA_IsPsServDomainAvail(
 );
 
 
+/* Added by zwx247453 for CHR optimize, 2015-3-13 Begin */
+#if (FEATURE_ON == FEATURE_PTM)
+VOS_UINT32 TAF_MMA_CheckRatValid(VOS_UINT8 ucSysMode);
+VOS_VOID TAF_MMA_RatFrequentlySwitchProc(
+    NAS_ERR_LOG_RAT_SWITCH_RECORD_STRU  *pstNewRatSwitchRecord
+);
+VOS_VOID TAF_MMA_RatSwitchRecord(
+    TAF_PH_INFO_RAT_TYPE               ucNewSysMode
+);
+#endif
+/* Added by zwx247453 for CHR optimize, 2015-3-13 End */
 /*=======================================================*/
 
 /*=================================================================*/

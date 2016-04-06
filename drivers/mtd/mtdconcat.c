@@ -32,7 +32,6 @@
 #include <linux/mtd/mtd.h>
 #include <linux/mtd/concat.h>
 
-#include <asm/div64.h>
 
 /*
  * Our storage structure:

@@ -59,7 +59,7 @@ typedef struct
     u32                 icc_chan_opened;
     u32                 icc_channel_id ;
     u32                 acm_channel_id;
-    s32                 cshell_acm_fd;
+    void*                 cshell_acm_fd;
     u32                 valid;
     cshell_mem_handle_t recv_mem;
     cshell_mem_handle_t send_mem[CSHELL_SEND_BUFFER_NUM];

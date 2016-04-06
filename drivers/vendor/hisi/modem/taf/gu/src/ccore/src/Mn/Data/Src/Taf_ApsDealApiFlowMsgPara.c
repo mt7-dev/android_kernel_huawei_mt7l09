@@ -95,86 +95,104 @@ VOS_UINT32 TAF_APS_SndPsEvt(
 
     return VOS_OK;
 }
-VOS_VOID    TAF_APS_SndPdpActivateCnf(
+VOS_VOID TAF_APS_SndPdpActivateCnf(
     VOS_UINT8                           ucPdpId,
     VOS_UINT8                           ucCid
 )
 {
+    TAF_PS_CALL_PDP_ACTIVATE_CNF_STRU  *pstPdpActCnfEvt;
 
-    TAF_PS_CALL_PDP_ACTIVATE_CNF_STRU   stPdpActCnfEvt;
+    pstPdpActCnfEvt = (TAF_PS_CALL_PDP_ACTIVATE_CNF_STRU *)PS_MEM_ALLOC(WUEPS_PID_TAF,
+                      sizeof(TAF_PS_CALL_PDP_ACTIVATE_CNF_STRU));
 
-    PS_MEM_SET(&stPdpActCnfEvt, 0, sizeof(TAF_PS_CALL_PDP_ACTIVATE_CNF_STRU));
-
-    stPdpActCnfEvt.ucCid = ucCid;
-
-    TAF_APS_SetPsCallEvtCtrl(ucPdpId, stPdpActCnfEvt.ucCid, &stPdpActCnfEvt.stCtrl);
-
-    TAF_APS_FillEvtPdpType(&stPdpActCnfEvt.stPdpAddr.enPdpType, ucPdpId, ucCid);
-    if (VOS_OK == Aps_SetEvtAddr(ucPdpId, &stPdpActCnfEvt.stPdpAddr))
+    /* 申请消息失败 */
+    if (VOS_NULL_PTR == pstPdpActCnfEvt)
     {
-        stPdpActCnfEvt.bitOpPdpAddr        = VOS_TRUE;
+        /* 系统异常打印, 直接返回 */
+        TAF_ERROR_LOG(WUEPS_PID_TAF, "TAF_APS_SndPdpActivateCnf: PS_MEM_ALLOC Error!");
+        return;
     }
 
-    APS_SET_EVT_RABID(stPdpActCnfEvt, ucPdpId);
+    PS_MEM_SET(pstPdpActCnfEvt, 0, sizeof(TAF_PS_CALL_PDP_ACTIVATE_CNF_STRU));
 
-    if (VOS_OK == Aps_SetEvtApn(ucPdpId, &stPdpActCnfEvt.stApn))
+    pstPdpActCnfEvt->ucCid = ucCid;
+
+    TAF_APS_SetPsCallEvtCtrl(ucPdpId, pstPdpActCnfEvt->ucCid, &pstPdpActCnfEvt->stCtrl);
+
+    TAF_APS_FillEvtPdpType(&pstPdpActCnfEvt->stPdpAddr.enPdpType, ucPdpId, ucCid);
+    if (VOS_OK == Aps_SetEvtAddr(ucPdpId, &pstPdpActCnfEvt->stPdpAddr))
     {
-        stPdpActCnfEvt.bitOpApn = VOS_TRUE;
+        pstPdpActCnfEvt->bitOpPdpAddr        = VOS_TRUE;
+    }
+
+    pstPdpActCnfEvt->ucRabId = g_PdpEntity[ucPdpId].ucNsapi;
+
+    if (VOS_OK == Aps_SetEvtApn(ucPdpId, &pstPdpActCnfEvt->stApn))
+    {
+        pstPdpActCnfEvt->bitOpApn = VOS_TRUE;
     }
 
     /* UMTS QOS */
     if (VOS_TRUE == g_PdpEntity[ucPdpId].PdpQosFlag)
     {
-        stPdpActCnfEvt.bitOpUmtsQos = VOS_TRUE;
-        Aps_3GQos2AppQos(&g_PdpEntity[ucPdpId].PdpQos, &stPdpActCnfEvt.stUmtsQos);
+        pstPdpActCnfEvt->bitOpUmtsQos = VOS_TRUE;
+        Aps_3GQos2AppQos(&g_PdpEntity[ucPdpId].PdpQos, &pstPdpActCnfEvt->stUmtsQos);
     }
 
 #if (FEATURE_ON == FEATURE_LTE)
     /* EPS QOS */
     if (VOS_TRUE == g_PdpEntity[ucPdpId].bitOpEpsQos)
     {
-        stPdpActCnfEvt.bitOpEpsQos  = VOS_TRUE;
-        stPdpActCnfEvt.stEpsQos     = g_PdpEntity[ucPdpId].stEpsQos;
+        pstPdpActCnfEvt->bitOpEpsQos  = VOS_TRUE;
+        pstPdpActCnfEvt->stEpsQos     = g_PdpEntity[ucPdpId].stEpsQos;
+    }
+
+    if (VOS_TRUE == g_PdpEntity[ucPdpId].bitOpPf)
+    {
+        pstPdpActCnfEvt->bitOpTft = VOS_TRUE;
+        TAF_APS_SetEvtTftInfo(ucPdpId, &pstPdpActCnfEvt->stTft);
     }
 #endif
+
     if (APS_PDP_ACT_SEC == g_PdpEntity[ucPdpId].ActType)
     {
-        stPdpActCnfEvt.bitOpLinkdRabId  = VOS_TRUE;
-        stPdpActCnfEvt.ucLinkdRabId     = g_PdpEntity[ucPdpId].ucLinkedNsapi;
+        pstPdpActCnfEvt->bitOpLinkdRabId  = VOS_TRUE;
+        pstPdpActCnfEvt->ucLinkdRabId     = g_PdpEntity[ucPdpId].ucLinkedNsapi;
     }
 
     if (VOS_TRUE == g_PdpEntity[ucPdpId].bitOpImCnSigalFlag)
     {
-        stPdpActCnfEvt.bitOpImCnSignalFlg   = VOS_TRUE;
-        stPdpActCnfEvt.enImCnSignalFlg      = g_PdpEntity[ucPdpId].enImCnSignalFlg;
+        pstPdpActCnfEvt->bitOpImCnSignalFlg   = VOS_TRUE;
+        pstPdpActCnfEvt->enImCnSignalFlg      = g_PdpEntity[ucPdpId].enImCnSignalFlg;
     }
 
-    stPdpActCnfEvt.bitOpEmergencyInd    = VOS_TRUE;
-    stPdpActCnfEvt.enEmergencyInd       = g_PdpEntity[ucPdpId].enEmergencyFlg;
+    pstPdpActCnfEvt->bitOpEmergencyInd    = VOS_TRUE;
+    pstPdpActCnfEvt->enEmergencyInd       = g_PdpEntity[ucPdpId].enEmergencyFlg;
 
-    Aps_SetEvtDns(ucPdpId, &stPdpActCnfEvt.stDns, &stPdpActCnfEvt.stIpv6Dns);
-    MN_APS_SetEvtNbns(ucPdpId, &stPdpActCnfEvt.stNbns);
-    MN_APS_SetEvtGateWay(ucPdpId, &stPdpActCnfEvt);
-    TAF_APS_SetEvtPcscf(ucPdpId, &stPdpActCnfEvt.stPcscf, &stPdpActCnfEvt.stIpv6Pcscf);
+    Aps_SetEvtDns(ucPdpId, &pstPdpActCnfEvt->stDns, &pstPdpActCnfEvt->stIpv6Dns);
+    MN_APS_SetEvtNbns(ucPdpId, &pstPdpActCnfEvt->stNbns);
+    MN_APS_SetEvtGateWay(ucPdpId, pstPdpActCnfEvt);
+    TAF_APS_SetEvtPcscf(ucPdpId, &pstPdpActCnfEvt->stPcscf, &pstPdpActCnfEvt->stIpv6Pcscf);
 
 #if (FEATURE_ON == FEATURE_IPV6)
-    MN_APS_SET_EVT_SM_CAUSE(stPdpActCnfEvt, ucPdpId);
+    MN_APS_SET_EVT_SM_CAUSE(pstPdpActCnfEvt, ucPdpId);
 #endif
 
-    /* 通知ADS PDP状态，当module为imsa不需要通知ADS PDP状态 */
-    TAF_APS_NotifyAdsWhenPdpAvtivated(&stPdpActCnfEvt);
+    /* 通知ADS PDP状态 */
+    TAF_APS_NotifyAdsWhenPdpAvtivated(pstPdpActCnfEvt);
 
     /*调用TAFM提供的事件上报函数 */
     TAF_APS_SndPsEvt(ID_EVT_TAF_PS_CALL_PDP_ACTIVATE_CNF,
-                     &stPdpActCnfEvt,
+                     pstPdpActCnfEvt,
                      sizeof(TAF_PS_CALL_PDP_ACTIVATE_CNF_STRU));
 
+
+    /* 释放内存 */
+    PS_MEM_FREE(WUEPS_PID_TAF, pstPdpActCnfEvt);
 
     APS_NORM_LOG("APS->APP ACT_CNF MSG ");
     return;
 }
-
-
 VOS_VOID TAF_APS_SndPdpActivateRej(
     VOS_UINT8                           ucPdpId,
     TAF_PS_CAUSE_ENUM_UINT32            enCause
@@ -211,98 +229,112 @@ VOS_VOID TAF_APS_SndPdpActivateRej(
 
     return;
 }
-
-
 VOS_VOID TAF_APS_SndPdpActivateInd(
     VOS_UINT8                           ucPdpId,
     VOS_UINT8                           ucCid
 )
 {
-    TAF_PS_CALL_PDP_ACTIVATE_IND_STRU   stPdpActIndEvt;
+    TAF_PS_CALL_PDP_ACTIVATE_IND_STRU  *pstPdpActIndEvt;
+
+    pstPdpActIndEvt = (TAF_PS_CALL_PDP_ACTIVATE_IND_STRU *)PS_MEM_ALLOC(WUEPS_PID_TAF,
+                      sizeof(TAF_PS_CALL_PDP_ACTIVATE_IND_STRU));
+
+    /* 申请消息失败 */
+    if (VOS_NULL_PTR == pstPdpActIndEvt)
+    {
+        /* 系统异常打印, 直接返回 */
+        TAF_ERROR_LOG(WUEPS_PID_TAF, "TAF_APS_SndPdpActivateInd: PS_MEM_ALLOC Error!");
+        return;
+    }
 
     /* 初始化 */
-    PS_MEM_SET(&stPdpActIndEvt, 0, sizeof(TAF_PS_CALL_PDP_ACTIVATE_IND_STRU));
+    PS_MEM_SET(pstPdpActIndEvt, 0, sizeof(TAF_PS_CALL_PDP_ACTIVATE_IND_STRU));
 
     /* 消息头 */
-    TAF_APS_SetPsCallEvtCtrl(ucPdpId, ucCid, &stPdpActIndEvt.stCtrl);
+    TAF_APS_SetPsCallEvtCtrl(ucPdpId, ucCid, &pstPdpActIndEvt->stCtrl);
 
-    stPdpActIndEvt.ucCid = ucCid;
+    pstPdpActIndEvt->ucCid = ucCid;
 
     /* PDP类型和地址 */
-    stPdpActIndEvt.stPdpAddr.enPdpType = TAF_APS_ConvertPdpType(g_PdpEntity[ucPdpId].PdpAddr.ucPdpTypeNum);
-    if (VOS_OK == Aps_SetEvtAddr(ucPdpId, &stPdpActIndEvt.stPdpAddr))
+    pstPdpActIndEvt->stPdpAddr.enPdpType = TAF_APS_ConvertPdpType(g_PdpEntity[ucPdpId].PdpAddr.ucPdpTypeNum);
+    if (VOS_OK == Aps_SetEvtAddr(ucPdpId, &pstPdpActIndEvt->stPdpAddr))
     {
-        stPdpActIndEvt.bitOpPdpAddr        = VOS_TRUE;
+        pstPdpActIndEvt->bitOpPdpAddr        = VOS_TRUE;
     }
 
     /* RBAID */
-    APS_SET_EVT_RABID(stPdpActIndEvt, ucPdpId);
+    pstPdpActIndEvt->ucRabId = g_PdpEntity[ucPdpId].ucNsapi;
 
     /* 设置APN */
-    if (VOS_OK == Aps_SetEvtApn(ucPdpId, &stPdpActIndEvt.stApn))
+    if (VOS_OK == Aps_SetEvtApn(ucPdpId, &pstPdpActIndEvt->stApn))
     {
-        stPdpActIndEvt.bitOpApn = VOS_TRUE;
+        pstPdpActIndEvt->bitOpApn = VOS_TRUE;
     }
 
     /* UMTS QOS */
     if (VOS_TRUE == g_PdpEntity[ucPdpId].PdpQosFlag)
     {
-        stPdpActIndEvt.bitOpUmtsQos = VOS_TRUE;
-        Aps_3GQos2AppQos(&g_PdpEntity[ucPdpId].PdpQos, &stPdpActIndEvt.stUmtsQos);
+        pstPdpActIndEvt->bitOpUmtsQos = VOS_TRUE;
+        Aps_3GQos2AppQos(&g_PdpEntity[ucPdpId].PdpQos, &pstPdpActIndEvt->stUmtsQos);
     }
 
 #if (FEATURE_ON == FEATURE_LTE)
     /* EPS QOS */
     if (VOS_TRUE == g_PdpEntity[ucPdpId].bitOpEpsQos)
     {
-        stPdpActIndEvt.bitOpEpsQos  = VOS_TRUE;
-        stPdpActIndEvt.stEpsQos     = g_PdpEntity[ucPdpId].stEpsQos;
+        pstPdpActIndEvt->bitOpEpsQos  = VOS_TRUE;
+        pstPdpActIndEvt->stEpsQos     = g_PdpEntity[ucPdpId].stEpsQos;
+    }
+
+    if (VOS_TRUE == g_PdpEntity[ucPdpId].bitOpPf)
+    {
+        pstPdpActIndEvt->bitOpTft = VOS_TRUE;
+        TAF_APS_SetEvtTftInfo(ucPdpId, &pstPdpActIndEvt->stTft);
     }
 #endif
 
     if (APS_PDP_ACT_SEC == g_PdpEntity[ucPdpId].ActType)
     {
-        stPdpActIndEvt.bitOpLinkdRabId  = VOS_TRUE;
-        stPdpActIndEvt.ucLinkdRabId     = g_PdpEntity[ucPdpId].ucLinkedNsapi;
+        pstPdpActIndEvt->bitOpLinkdRabId  = VOS_TRUE;
+        pstPdpActIndEvt->ucLinkdRabId     = g_PdpEntity[ucPdpId].ucLinkedNsapi;
     }
 
     if (VOS_TRUE == g_PdpEntity[ucPdpId].bitOpImCnSigalFlag)
     {
-        stPdpActIndEvt.bitOpImCnSignalFlg   = VOS_TRUE;
-        stPdpActIndEvt.enImCnSignalFlg      = g_PdpEntity[ucPdpId].enImCnSignalFlg;
+        pstPdpActIndEvt->bitOpImCnSignalFlg   = VOS_TRUE;
+        pstPdpActIndEvt->enImCnSignalFlg      = g_PdpEntity[ucPdpId].enImCnSignalFlg;
     }
 
-    stPdpActIndEvt.bitOpEmergencyInd    = VOS_TRUE;
-    stPdpActIndEvt.enEmergencyInd       = g_PdpEntity[ucPdpId].enEmergencyFlg;
+    pstPdpActIndEvt->bitOpEmergencyInd    = VOS_TRUE;
+    pstPdpActIndEvt->enEmergencyInd       = g_PdpEntity[ucPdpId].enEmergencyFlg;
 
     /* DNS */
-    Aps_SetEvtDns(ucPdpId, &stPdpActIndEvt.stDns, &stPdpActIndEvt.stIpv6Dns);
+    Aps_SetEvtDns(ucPdpId, &pstPdpActIndEvt->stDns, &pstPdpActIndEvt->stIpv6Dns);
 
     /* NBNS */
-    MN_APS_SetEvtNbns(ucPdpId, &stPdpActIndEvt.stNbns);
+    MN_APS_SetEvtNbns(ucPdpId, &pstPdpActIndEvt->stNbns);
 
     /* GATE WAY */
-    MN_APS_SetEvtGateWay(ucPdpId, &stPdpActIndEvt);
+    MN_APS_SetEvtGateWay(ucPdpId, pstPdpActIndEvt);
 
     /* P-CSCF */
-    TAF_APS_SetEvtPcscf(ucPdpId, &stPdpActIndEvt.stPcscf, &stPdpActIndEvt.stIpv6Pcscf);
-
+    TAF_APS_SetEvtPcscf(ucPdpId, &pstPdpActIndEvt->stPcscf, &pstPdpActIndEvt->stIpv6Pcscf);
 
 #if (FEATURE_ON == FEATURE_IPV6)
-    MN_APS_SET_EVT_SM_CAUSE(stPdpActIndEvt, ucPdpId);
+    MN_APS_SET_EVT_SM_CAUSE(pstPdpActIndEvt, ucPdpId);
 #endif
 
     /* 发送ID_EVT_TAF_PS_CALL_PDP_ACTIVATE_IND给IMSA */
     TAF_APS_SndPsEvt(ID_EVT_TAF_PS_CALL_PDP_ACTIVATE_IND,
-                     &stPdpActIndEvt,
+                     pstPdpActIndEvt,
                      sizeof(TAF_PS_CALL_PDP_ACTIVATE_IND_STRU));
+
+    /* 释放内存 */
+    PS_MEM_FREE(WUEPS_PID_TAF, pstPdpActIndEvt);
 
     APS_NORM_LOG("APS->APP ACT_IND MSG ");
     return;
 }
-
-
-
 VOS_UINT32 TAF_APS_SndPdpManageInd(
     VOS_UINT8                           ucPdpId,
     SMREG_PDP_ACTIVATE_IND_STRU        *pStActInd
@@ -310,13 +342,12 @@ VOS_UINT32 TAF_APS_SndPdpManageInd(
 {
     VOS_UINT32                          ulRet;
     VOS_UINT16                          ClientId;
-    TAF_PS_CALL_PDP_MANAGE_IND_STRU     stPdpActIndEvt;
-
+    TAF_PS_CALL_PDP_MANAGE_IND_STRU     stPdpManageIndEvt;
 
     ClientId                            = TAF_CLIENTID_BROADCAST;
 
     /*clean "stPdpActIndEvt" */
-    PS_MEM_SET(&stPdpActIndEvt, 0, sizeof(TAF_PS_CALL_PDP_MANAGE_IND_STRU));
+    PS_MEM_SET(&stPdpManageIndEvt, 0, sizeof(TAF_PS_CALL_PDP_MANAGE_IND_STRU));
 
     /*把SM传来的信息填入PDP表项中,手动应答时要读取这些信息:ADDR, APN*/
     /*ADDR信息分解为ADDRTYPE和ADDR两个信息*/
@@ -337,36 +368,36 @@ VOS_UINT32 TAF_APS_SndPdpManageInd(
     }
 
     /* GU模式下，手动应答由AT完成 */
-    stPdpActIndEvt.stCtrl.ulModuleId    = WUEPS_PID_AT;
-    stPdpActIndEvt.stCtrl.usClientId    = ClientId;
+    stPdpManageIndEvt.stCtrl.ulModuleId    = WUEPS_PID_AT;
+    stPdpManageIndEvt.stCtrl.usClientId    = ClientId;
 
     /*上报给APP，OpId就是此PDP激活的标识,该OpId等于120 + ucPdpId*/
-    stPdpActIndEvt.stCtrl.ucOpId        = APS_MT_DIFF_VALU + ucPdpId;
+    stPdpManageIndEvt.stCtrl.ucOpId        = APS_MT_DIFF_VALU + ucPdpId;
 
-    if (VOS_OK == Aps_SetEvtAddr(ucPdpId, &stPdpActIndEvt.stPdpAddr))
+    if (VOS_OK == Aps_SetEvtAddr(ucPdpId, &stPdpManageIndEvt.stPdpAddr))
     {
-        stPdpActIndEvt.bitOpPdpAddr     = VOS_TRUE;
+        stPdpManageIndEvt.bitOpPdpAddr     = VOS_TRUE;
     }
 
-    if (VOS_OK == Aps_SetEvtApn(ucPdpId, &stPdpActIndEvt.stApn))
+    if (VOS_OK == Aps_SetEvtApn(ucPdpId, &stPdpManageIndEvt.stApn))
     {
-        stPdpActIndEvt.bitOpApn = APS_USED;
+        stPdpManageIndEvt.bitOpApn = APS_USED;
     }
 
     /* 填充PDP类型 */
 
-    stPdpActIndEvt.stPdpAddr.enPdpType = TAF_APS_ConvertPdpType(g_PdpEntity[ucPdpId].PdpAddr.ucPdpTypeNum);
+    stPdpManageIndEvt.stPdpAddr.enPdpType = TAF_APS_ConvertPdpType(g_PdpEntity[ucPdpId].PdpAddr.ucPdpTypeNum);
 
     /* 记录将网络发起PDP激活的类型，用于answer后上报结果 */
     TAF_APS_SetPdpEntDialPdpType(ucPdpId,
                                 g_PdpEntity[ucPdpId].stClientInfo.ucCid,
-                                stPdpActIndEvt.stPdpAddr.enPdpType);
+                                stPdpManageIndEvt.stPdpAddr.enPdpType);
 
 
     /* 上报TAFM */
     APS_NORM_LOG("APS->APP  ID_EVT_TAF_PS_CALL_PDP_MANAGE_IND");
     TAF_APS_SndPsEvt(ID_EVT_TAF_PS_CALL_PDP_MANAGE_IND,
-                     &stPdpActIndEvt,
+                     &stPdpManageIndEvt,
                      sizeof(TAF_PS_CALL_PDP_MANAGE_IND_STRU));
 
 
@@ -374,77 +405,117 @@ VOS_UINT32 TAF_APS_SndPdpManageInd(
 }
 VOS_VOID TAF_APS_SndPdpModifyCnf(VOS_UINT8 ucPdpId)
 {
-    TAF_PS_CALL_PDP_MODIFY_CNF_STRU         stPdpMdfCnfEvt;
+    TAF_PS_CALL_PDP_MODIFY_CNF_STRU        *pstPdpMdfCnfEvt;
 
-    PS_MEM_SET(&stPdpMdfCnfEvt, 0, sizeof(TAF_PS_CALL_PDP_MODIFY_CNF_STRU));
+    pstPdpMdfCnfEvt = (TAF_PS_CALL_PDP_MODIFY_CNF_STRU *)PS_MEM_ALLOC(WUEPS_PID_TAF,
+                      sizeof(TAF_PS_CALL_PDP_MODIFY_CNF_STRU));
 
-    stPdpMdfCnfEvt.ucCid = TAF_APS_GetPdpEntCurrCid(ucPdpId);
+    /* 申请消息失败 */
+    if (VOS_NULL_PTR == pstPdpMdfCnfEvt)
+    {
+        /* 系统异常打印, 直接返回 */
+        TAF_ERROR_LOG(WUEPS_PID_TAF, "TAF_APS_SndPdpModifyCnf: PS_MEM_ALLOC Error!");
+        return;
+    }
 
-    TAF_APS_GetPdpEntModDialInfo(ucPdpId, &stPdpMdfCnfEvt.stCtrl);
+    PS_MEM_SET(pstPdpMdfCnfEvt, 0, sizeof(TAF_PS_CALL_PDP_MODIFY_CNF_STRU));
 
-    APS_SET_EVT_RABID(stPdpMdfCnfEvt, ucPdpId);
+    pstPdpMdfCnfEvt->ucCid = TAF_APS_GetPdpEntCurrCid(ucPdpId);
+
+    TAF_APS_GetPdpEntModDialInfo(ucPdpId, &pstPdpMdfCnfEvt->stCtrl);
+
+    pstPdpMdfCnfEvt->ucRabId = g_PdpEntity[ucPdpId].ucNsapi;
 
     /* 更新UMTS QOS */
     if (APS_FREE != g_PdpEntity[ucPdpId].PdpQosFlag)
     {
-        stPdpMdfCnfEvt.bitOpUmtsQos = TAF_USED;
-        Aps_3GQos2AppQos(&g_PdpEntity[ucPdpId].PdpQos, &stPdpMdfCnfEvt.stUmtsQos);
+        pstPdpMdfCnfEvt->bitOpUmtsQos = TAF_USED;
+        Aps_3GQos2AppQos(&g_PdpEntity[ucPdpId].PdpQos, &pstPdpMdfCnfEvt->stUmtsQos);
     }
 
 #if (FEATURE_ON == FEATURE_LTE)
     /* EPS QOS */
     if (VOS_TRUE == g_PdpEntity[ucPdpId].bitOpEpsQos)
     {
-        stPdpMdfCnfEvt.bitOpEpsQos  = VOS_TRUE;
-        stPdpMdfCnfEvt.stEpsQos     = g_PdpEntity[ucPdpId].stEpsQos;
+        pstPdpMdfCnfEvt->bitOpEpsQos  = VOS_TRUE;
+        pstPdpMdfCnfEvt->stEpsQos     = g_PdpEntity[ucPdpId].stEpsQos;
+    }
+
+    if (VOS_TRUE == g_PdpEntity[ucPdpId].bitOpPf)
+    {
+        pstPdpMdfCnfEvt->bitOpTft = VOS_TRUE;
+        TAF_APS_SetEvtTftInfo(ucPdpId, &pstPdpMdfCnfEvt->stTft);
     }
 #endif
 
-    Aps_SetEvtDns(ucPdpId, &stPdpMdfCnfEvt.stDns, &stPdpMdfCnfEvt.stIpv6Dns);
-    MN_APS_SetEvtNbns(ucPdpId, &stPdpMdfCnfEvt.stNbns);
-    TAF_APS_SetEvtPcscf(ucPdpId, &stPdpMdfCnfEvt.stPcscf, &stPdpMdfCnfEvt.stIpv6Pcscf);
+    Aps_SetEvtDns(ucPdpId, &pstPdpMdfCnfEvt->stDns, &pstPdpMdfCnfEvt->stIpv6Dns);
+    MN_APS_SetEvtNbns(ucPdpId, &pstPdpMdfCnfEvt->stNbns);
+    TAF_APS_SetEvtPcscf(ucPdpId, &pstPdpMdfCnfEvt->stPcscf, &pstPdpMdfCnfEvt->stIpv6Pcscf);
 
-    /* 通知ADS PDP状态，当module为imsa不需要通知ADS PDP状态 */
-    TAF_APS_NotifyAdsWhenPdpModify(&stPdpMdfCnfEvt);
+    /* 通知ADS PDP状态 */
+    TAF_APS_NotifyAdsWhenPdpModify(pstPdpMdfCnfEvt);
 
     TAF_APS_SndPsEvt(ID_EVT_TAF_PS_CALL_PDP_MODIFY_CNF,
-                     &stPdpMdfCnfEvt,
+                     pstPdpMdfCnfEvt,
                      sizeof(TAF_PS_CALL_PDP_MODIFY_CNF_STRU));
+
+    /* 释放内存 */
+    PS_MEM_FREE(WUEPS_PID_TAF, pstPdpMdfCnfEvt);
 
     return;
 }
-VOS_VOID    TAF_APS_SndPdpModifyInd( VOS_UINT8                ucPdpId )
-{
 
-    TAF_PS_CALL_PDP_MODIFY_IND_STRU     stPdpMdfIndEvt;
+
+VOS_VOID TAF_APS_SndPdpModifyInd(
+    VOS_UINT8                           ucPdpId
+)
+{
+    TAF_PS_CALL_PDP_MODIFY_IND_STRU    *pstPdpMdfIndEvt;
     VOS_UINT8                           i;
-    TAF_APS_BITCID_INFO_STRU                     stCid;
+    TAF_APS_BITCID_INFO_STRU            stCid;
+
+    pstPdpMdfIndEvt = (TAF_PS_CALL_PDP_MODIFY_IND_STRU *)PS_MEM_ALLOC(WUEPS_PID_TAF,
+                      sizeof(TAF_PS_CALL_PDP_MODIFY_IND_STRU));
+
+    /* 申请消息失败 */
+    if (VOS_NULL_PTR == pstPdpMdfIndEvt)
+    {
+        /* 系统异常打印, 直接返回 */
+        TAF_ERROR_LOG(WUEPS_PID_TAF, "TAF_APS_SndPdpModifyInd: PS_MEM_ALLOC Error!");
+        return;
+    }
 
     PS_MEM_SET(&stCid, 0, sizeof(TAF_APS_BITCID_INFO_STRU));
-    PS_MEM_SET(&stPdpMdfIndEvt, 0, sizeof(TAF_PS_CALL_PDP_MODIFY_IND_STRU));
+    PS_MEM_SET(pstPdpMdfIndEvt, 0, sizeof(TAF_PS_CALL_PDP_MODIFY_IND_STRU));
 
-    APS_SET_EVT_RABID(stPdpMdfIndEvt, ucPdpId);
+    pstPdpMdfIndEvt->ucRabId = g_PdpEntity[ucPdpId].ucNsapi;
 
     if (APS_FREE != g_PdpEntity[ucPdpId].PdpQosFlag)
     {
-        stPdpMdfIndEvt.bitOpUmtsQos = TAF_USED;
-        Aps_3GQos2AppQos(&g_PdpEntity[ucPdpId].PdpQos, &stPdpMdfIndEvt.stUmtsQos);
+        pstPdpMdfIndEvt->bitOpUmtsQos = TAF_USED;
+        Aps_3GQos2AppQos(&g_PdpEntity[ucPdpId].PdpQos, &pstPdpMdfIndEvt->stUmtsQos);
     }
 
 #if (FEATURE_ON == FEATURE_LTE)
     /* EPS QOS */
     if (VOS_TRUE == g_PdpEntity[ucPdpId].bitOpEpsQos)
     {
-        stPdpMdfIndEvt.bitOpEpsQos  = VOS_TRUE;
-        stPdpMdfIndEvt.stEpsQos     = g_PdpEntity[ucPdpId].stEpsQos;
+        pstPdpMdfIndEvt->bitOpEpsQos  = VOS_TRUE;
+        pstPdpMdfIndEvt->stEpsQos     = g_PdpEntity[ucPdpId].stEpsQos;
+    }
+
+    if (VOS_TRUE == g_PdpEntity[ucPdpId].bitOpPf)
+    {
+        pstPdpMdfIndEvt->bitOpTft = VOS_TRUE;
+        TAF_APS_SetEvtTftInfo(ucPdpId, &pstPdpMdfIndEvt->stTft);
     }
 #endif
 
-    Aps_SetEvtDns(ucPdpId, &stPdpMdfIndEvt.stDns, &stPdpMdfIndEvt.stIpv6Dns);
+    Aps_SetEvtDns(ucPdpId, &pstPdpMdfIndEvt->stDns, &pstPdpMdfIndEvt->stIpv6Dns);
 
-    MN_APS_SetEvtNbns(ucPdpId, &stPdpMdfIndEvt.stNbns);
+    MN_APS_SetEvtNbns(ucPdpId, &pstPdpMdfIndEvt->stNbns);
 
-    TAF_APS_SetEvtPcscf(ucPdpId, &stPdpMdfIndEvt.stPcscf, &stPdpMdfIndEvt.stIpv6Pcscf);
+    TAF_APS_SetEvtPcscf(ucPdpId, &pstPdpMdfIndEvt->stPcscf, &pstPdpMdfIndEvt->stIpv6Pcscf);
 
 
     /* 存在APN共用时，向所有用户主动上报MODIFY */
@@ -453,24 +524,24 @@ VOS_VOID    TAF_APS_SndPdpModifyInd( VOS_UINT8                ucPdpId )
 
     for (i = 0; i < stCid.ulNum; i++)
     {
-        stPdpMdfIndEvt.ucCid = stCid.aucCid[i];
+        pstPdpMdfIndEvt->ucCid = stCid.aucCid[i];
 
-        TAF_APS_SetPsCallEvtCtrl(ucPdpId, stPdpMdfIndEvt.ucCid, &stPdpMdfIndEvt.stCtrl);
+        TAF_APS_SetPsCallEvtCtrl(ucPdpId, pstPdpMdfIndEvt->ucCid, &pstPdpMdfIndEvt->stCtrl);
 
-        /* 通知ADS PDP状态，当module为imsa不需要通知ADS PDP状态 */
-        TAF_APS_NotifyAdsWhenPdpModify(&stPdpMdfIndEvt);
+        /* 通知ADS PDP状态 */
+        TAF_APS_NotifyAdsWhenPdpModify(pstPdpMdfIndEvt);
 
         APS_NORM_LOG("APS->APP  ID_EVT_TAF_PS_CALL_PDP_MODIFY_IND");
         TAF_APS_SndPsEvt(ID_EVT_TAF_PS_CALL_PDP_MODIFY_IND,
-                         &stPdpMdfIndEvt,
+                         pstPdpMdfIndEvt,
                          sizeof(TAF_PS_CALL_PDP_MODIFY_IND_STRU));
     }
 
+    /* 释放内存 */
+    PS_MEM_FREE(WUEPS_PID_TAF, pstPdpMdfIndEvt);
+
     return;
 }
-
-
-
 VOS_VOID    TAF_APS_SndPdpModifyRej   (
     VOS_UINT8                               ucPdpId,
     TAF_PS_CAUSE_ENUM_UINT32                enCause
@@ -507,8 +578,7 @@ VOS_VOID    TAF_APS_SndPdpDeActivateCnf(
     VOS_UINT8                           ucCid
 )
 {
-
-    TAF_PS_CALL_PDP_DEACTIVATE_CNF_STRU         stPdpDeActCnfEvt;
+    TAF_PS_CALL_PDP_DEACTIVATE_CNF_STRU stPdpDeActCnfEvt;
 
     PS_MEM_SET(&stPdpDeActCnfEvt, 0, sizeof(TAF_PS_CALL_PDP_DEACTIVATE_CNF_STRU));
 
@@ -518,11 +588,11 @@ VOS_VOID    TAF_APS_SndPdpDeActivateCnf(
 
     TAF_APS_FillEvtPdpType(&stPdpDeActCnfEvt.enPdpType, ucPdpId, ucCid);
 
-    APS_SET_EVT_RABID((stPdpDeActCnfEvt), (ucPdpId));
+    stPdpDeActCnfEvt.ucRabId = g_PdpEntity[ucPdpId].ucNsapi;
 
     stPdpDeActCnfEvt.enCause = TAF_PS_CAUSE_SUCCESS;
 
-    /* 通知ADS PDP状态，当module为imsa不需要通知ADS PDP状态 */
+    /* 通知ADS PDP状态 */
     TAF_APS_NotifyAdsWhenPdpDeactivated(&stPdpDeActCnfEvt);
 
     APS_NORM_LOG("APS->APP  ID_EVT_TAF_PS_CALL_PDP_DEACTIVATE_CNF");
@@ -544,7 +614,7 @@ VOS_VOID    TAF_APS_SndPdpDeActivateInd(
     PS_MEM_SET(&stCid, 0, sizeof(TAF_APS_BITCID_INFO_STRU));
     PS_MEM_SET(&stPdpDeActIndEvt, 0, sizeof(TAF_PS_CALL_PDP_DEACTIVATE_IND_STRU));
 
-    APS_SET_EVT_RABID(stPdpDeActIndEvt, ucPdpId);
+    stPdpDeActIndEvt.ucRabId = g_PdpEntity[ucPdpId].ucNsapi;
     stPdpDeActIndEvt.enCause = enCause;
 
     /* 获取当前所有使用该实体的用户 */
@@ -556,7 +626,7 @@ VOS_VOID    TAF_APS_SndPdpDeActivateInd(
         TAF_APS_FillEvtPdpType(&stPdpDeActIndEvt.enPdpType, ucPdpId, stPdpDeActIndEvt.ucCid);
         TAF_APS_SetPsCallEvtCtrl(ucPdpId, stPdpDeActIndEvt.ucCid, &stPdpDeActIndEvt.stCtrl);
 
-        /* 通知ADS PDP状态，当module为imsa不需要通知ADS PDP状态 */
+        /* 通知ADS PDP状态 */
         TAF_APS_NotifyAdsWhenPdpDeactivated(&stPdpDeActIndEvt);
 
         APS_NORM_LOG("APS->APP  ID_EVT_TAF_PS_CALL_PDP_DEACTIVATE_IND");
@@ -1407,6 +1477,104 @@ VOS_UINT32  TAF_APS_SndGetCgeqosrdpCnf(
 }
 
 
+VOS_UINT32  TAF_APS_SndSetApDsFlowRptCfgCnf(
+    TAF_CTRL_STRU                      *pstCtrl,
+    TAF_PS_CAUSE_ENUM_UINT32            enCause
+)
+{
+    TAF_PS_SET_APDSFLOW_RPT_CFG_CNF_STRU    stSetRptCfgCnf;
+    VOS_UINT32                              ulResult;
+
+    stSetRptCfgCnf.stCtrl  = *pstCtrl;
+    stSetRptCfgCnf.enCause = enCause;
+
+    ulResult = TAF_APS_SndPsEvt(ID_EVT_TAF_PS_SET_APDSFLOW_RPT_CFG_CNF,
+                                &stSetRptCfgCnf,
+                                sizeof(TAF_PS_SET_APDSFLOW_RPT_CFG_CNF_STRU));
+
+    return ulResult;
+}
+
+
+VOS_UINT32  TAF_APS_SndGetApDsFlowRptCfgCnf(
+    TAF_CTRL_STRU                      *pstCtrl,
+    TAF_PS_CAUSE_ENUM_UINT32            enCause,
+    TAF_APDSFLOW_RPT_CFG_STRU          *pstRptCfg
+)
+{
+    TAF_PS_GET_APDSFLOW_RPT_CFG_CNF_STRU    stGetRptCfgCnf;
+    VOS_UINT32                              ulResult;
+
+    stGetRptCfgCnf.stCtrl   = *pstCtrl;
+    stGetRptCfgCnf.enCause  = enCause;
+    stGetRptCfgCnf.stRptCfg = *pstRptCfg;
+
+    ulResult = TAF_APS_SndPsEvt(ID_EVT_TAF_PS_GET_APDSFLOW_RPT_CFG_CNF,
+                                &stGetRptCfgCnf,
+                                sizeof(TAF_PS_GET_APDSFLOW_RPT_CFG_CNF_STRU));
+
+    return ulResult;
+}
+
+
+VOS_UINT32  TAF_APS_SndApDsFlowRptInd(
+    TAF_CTRL_STRU                      *pstCtrl,
+    TAF_APDSFLOW_REPORT_STRU           *pstRptInfo
+)
+{
+    TAF_PS_APDSFLOW_REPORT_IND_STRU     stRptInd;
+    VOS_UINT32                          ulResult;
+
+    stRptInd.stCtrl            = *pstCtrl;
+    stRptInd.stApDsFlowRptInfo = *pstRptInfo;
+
+    ulResult = TAF_APS_SndPsEvt(ID_EVT_TAF_PS_APDSFLOW_REPORT_IND,
+                                &stRptInd,
+                                sizeof(TAF_PS_APDSFLOW_REPORT_IND_STRU));
+
+    return ulResult;
+}
+
+
+VOS_UINT32  TAF_APS_SndSetDsFlowNvWriteCfgCnf(
+    TAF_CTRL_STRU                      *pstCtrl,
+    TAF_PS_CAUSE_ENUM_UINT32            enCause
+)
+{
+    TAF_PS_SET_DSFLOW_NV_WRITE_CFG_CNF_STRU stSetNvWriteCfgCnf;
+    VOS_UINT32                              ulResult;
+
+    stSetNvWriteCfgCnf.stCtrl  = *pstCtrl;
+    stSetNvWriteCfgCnf.enCause = enCause;
+
+    ulResult = TAF_APS_SndPsEvt(ID_EVT_TAF_PS_SET_DSFLOW_NV_WRITE_CFG_CNF,
+                                &stSetNvWriteCfgCnf,
+                                sizeof(TAF_PS_SET_DSFLOW_NV_WRITE_CFG_CNF_STRU));
+
+    return ulResult;
+}
+
+
+VOS_UINT32  TAF_APS_SndGetDsFlowNvWriteCfgCnf(
+    TAF_CTRL_STRU                      *pstCtrl,
+    TAF_PS_CAUSE_ENUM_UINT32            enCause,
+    TAF_DSFLOW_NV_WRITE_CFG_STRU       *pstNvWriteCfg
+)
+{
+    TAF_PS_GET_DSFLOW_NV_WRITE_CFG_CNF_STRU stGetNvWriteCfgCnf;
+    VOS_UINT32                              ulResult;
+
+    stGetNvWriteCfgCnf.stCtrl      = *pstCtrl;
+    stGetNvWriteCfgCnf.enCause     = enCause;
+    stGetNvWriteCfgCnf.stNvWriteCfg = *pstNvWriteCfg;
+
+    ulResult = TAF_APS_SndPsEvt(ID_EVT_TAF_PS_GET_DSFLOW_NV_WRITE_CFG_CNF,
+                                &stGetNvWriteCfgCnf,
+                                sizeof(TAF_PS_GET_DSFLOW_NV_WRITE_CFG_CNF_STRU));
+
+    return ulResult;
+}
+
 
 VOS_UINT32 MN_APS_ValidateCidList(
     VOS_UINT8                       aucCidList[],
@@ -1715,6 +1883,10 @@ TAF_PS_CAUSE_ENUM_UINT32 MN_APS_RcvCallOrigReq(
     {
         stApn.ucLength = (VOS_UINT8)VOS_StrLen((VOS_CHAR *)pstDialParam->aucApn);
         PS_MEM_CPY(stApn.aucValue, pstDialParam->aucApn, TAF_MAX_APN_LEN);
+
+/* Added by zhuli for K3V3VSIM项目, 2014-10-16, begin */
+        PIH_GetVsimAPN(TAF_MAX_APN_LEN, stApn.aucValue, &stApn.ucLength);
+/* Added by zhuli for K3V3VSIM项目, 2014-10-16, end */
     }
 
     /* 获取鉴权类型 */
@@ -2093,7 +2265,7 @@ VOS_UINT8 TAF_APS_GetRptTftInfoCidNum(VOS_VOID)
     /* 循环遍历g_TafCidTab, 获取有效TFT参数的CID个数 */
     for (ucIndex = 1; ucIndex <= TAF_MAX_CID; ucIndex++)
     {
-        if (TAF_USED == g_TafCidTab[ucIndex].ucTftTabFlag)
+        if (TAF_USED == g_TafCidTab[ucIndex].ucPfTabFlag)
         {
             ucCidNum++;
         }
@@ -2147,7 +2319,7 @@ VOS_UINT32 MN_APS_RcvGetTftInfoReq(
     for ( ucIndex = 1; ucIndex <= TAF_MAX_CID; ucIndex++ )
     {
         /* 该CID上下文对TFT参数没有定义 */
-        if ( TAF_FREE == g_TafCidTab[ucIndex].ucTftTabFlag)
+        if ( TAF_FREE == g_TafCidTab[ucIndex].ucPfTabFlag)
         {
             continue;
         }
@@ -5998,7 +6170,7 @@ VOS_UINT32  Aps_PackApsSecActReqPara (
     Taf_FillQos( pTafPdp, &pApsSecActReq->Qos );
 
     /*处理TFT*/
-    if ( TAF_FREE == g_TafCidTab[ucCid].ucTftTabFlag )
+    if ( TAF_FREE == g_TafCidTab[ucCid].ucPfTabFlag )
     {
         /*if(PDP全局数据表中该CID的PDP没有定义TFT)*/
         pApsSecActReq->Op_Tft                       = TAF_FREE;
@@ -6449,7 +6621,7 @@ VOS_UINT32 Aps_PackApsMdfReqPara (
     }
 
     /*fill Tft*/
-    if ( TAF_USED == g_TafCidTab[ucCid].ucTftTabFlag)
+    if ( TAF_USED == g_TafCidTab[ucCid].ucPfTabFlag)
     {
         pApsMdfReq->Op_Tft          = APS_USED;
         ulReturn = Aps_FillTft(     &g_TafCidTab[ucCid],

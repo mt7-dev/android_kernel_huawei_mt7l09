@@ -168,7 +168,6 @@ function reset_code()
 	for prj in ${project}
 	do
 		prj_local_path=`cat ${PROJECT_TOPDIR}/.repo/manifest.xml | grep "${prj}" |  awk '{print $2}' | awk -F "\"" '{print $2}'`
-		echo "add by zhangteng ${PROJECT_TOPDIR}/${prj_local_path}"
 		cd ${PROJECT_TOPDIR}/${prj_local_path}
 		git reset HEAD^1
 		git checkout  -f .

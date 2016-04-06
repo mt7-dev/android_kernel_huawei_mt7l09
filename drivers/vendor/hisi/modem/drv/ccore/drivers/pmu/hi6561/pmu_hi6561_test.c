@@ -20,7 +20,7 @@
 
 
 extern HI6561_VLTGS_ATTR hi6561_volt_attr[];
-static int test_hi6561_power_on(void)
+int test_hi6561_power_on(void)
 {
 	int power_id = 0;
 	int chip_id = 0;
@@ -48,7 +48,7 @@ static int test_hi6561_power_on(void)
 }
 
 
-static int test_hi6561_power_off(void)
+int test_hi6561_power_off(void)
 {
 	int power_id = 0;
 	int chip_id = 0;
@@ -76,7 +76,7 @@ static int test_hi6561_power_off(void)
 }
 
 
-static int test_hi6561_voltage_get_set(void)
+int test_hi6561_voltage_get_set(void)
 {
 	HI6561_POWER_ID power_id = 0;
 	HI6561_ID_ENUM chip_id = 0;
@@ -136,7 +136,7 @@ static int test_hi6561_voltage_get_set(void)
 }
 
 
-static int bsp_hi6561_volt_onoff_test(u32 test_times)
+int bsp_hi6561_volt_onoff_test(u32 test_times)
 {
     int fail_times[2] = {0,0};
     u32 test_counts = 0;
@@ -167,7 +167,7 @@ static int bsp_hi6561_volt_onoff_test(u32 test_times)
 
 }
 
-static int bsp_hi6561_volt_setget_test(u32 test_times)
+int bsp_hi6561_volt_setget_test(u32 test_times)
 {
     int fail_times = 0;
     u32 test_counts = 0;

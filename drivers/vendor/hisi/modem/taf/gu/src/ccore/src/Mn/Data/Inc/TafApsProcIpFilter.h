@@ -63,7 +63,7 @@ extern "C" {
 /* IPF过滤不匹配所有Filter */
 #define TAF_APS_IPF_INVALID_BEARER_ID           (0x3F)
 
-#if (FEATURE_OFF == FEATURE_SKB_EXP) 
+#if (FEATURE_OFF == FEATURE_SKB_EXP)
 #define TAF_APS_IPF_UL_IPV4_FILTER_ID(rabid, filterid)\
     ((((VOS_UINT32)rabid)<<8)|((VOS_UINT32)(filterid)))
 
@@ -436,12 +436,12 @@ extern VOS_UINT32 TAF_APS_IpfGenerateFilterWithoutTFT(
 );
 
 extern VOS_VOID TAF_APS_IpfConvertOtherPartToFilter(
-    const TAF_PDP_TFT_STRU             *pstTftPf,
+    const TAF_PDP_PF_STRU              *pstPdpPf,
     IPF_MATCH_INFO_S                   *pstIpFilter
 );
 
 extern VOS_UINT32 TAF_APS_IpfCheckFilterType(
-    const TAF_PDP_TFT_STRU             *pstTftPf,
+    const TAF_PDP_PF_STRU              *pstPdpPf,
     VOS_UINT8                           ucPdpType
 );
 

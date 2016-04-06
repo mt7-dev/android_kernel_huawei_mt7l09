@@ -53,13 +53,13 @@ u32 mem_smalloc_test(u32 size)
     void * pret = bsp_smalloc(size, MEM_ICC_DDR_POOL);
     if(pret)
     {
-        mem_print_dbg("sucess BSP_Malloc addr:%x   size:%d", pret, size);
+        mem_print_dbg("sucess BSP_Malloc addr:%p   size:%d", pret, size);
         bsp_sfree(pret);
         return MEM_TEST_OK;
     }
     else
     {
-        mem_print_error("fail! BSP_Malloc addr:%x   size:%d", pret, size);
+        mem_print_error("fail! BSP_Malloc addr:%p   size:%d", pret, size);
         return MEM_TEST_ERROR;
     }
 
@@ -96,7 +96,7 @@ s32 use_smem_test(int size)
     u32  rawsize = size;
     if(pret)
     {
-        mem_print_dbg("sucess BSP_Malloc addr:%x   size:%d", pret, size);
+        mem_print_dbg("sucess BSP_Malloc addr:%p   size:%d", pret, size);
         while(size > 0)
         {
             size -= 4;
@@ -111,7 +111,7 @@ s32 use_smem_test(int size)
             size -= sizeof(u32);
             if(*pret != ACORE_MAGIC_NUM)
             {
-                mem_print_error("fail! Use smalloc fail addr:%x     size:%d", pret, size);
+                mem_print_error("fail! Use smalloc fail addr:%p     size:%d", pret, size);
                 return MEM_TEST_ERROR;
             }
             pret++;
@@ -122,7 +122,7 @@ s32 use_smem_test(int size)
     }
     else
     {
-        mem_print_error("fail! BSP_Malloc addr:%x   size:%d", pret, size);
+        mem_print_error("fail! BSP_Malloc addr:%p   size:%d", pret, size);
         return MEM_TEST_ERROR;
     }
 }

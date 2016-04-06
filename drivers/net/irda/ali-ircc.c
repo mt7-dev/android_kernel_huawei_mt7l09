@@ -1192,7 +1192,6 @@ static void ali_ircc_change_dongle_speed(struct ali_ircc_cb *priv, int speed)
 			// IRTX    ________
 			//         T1 T2 T3  
 			
-			/* MIR 115200, 57600 */
 			if (speed==1152000)
 			{
 				tmp |= 0xA0;	   //HDLC=1, 1.152Mbps=1
@@ -1208,7 +1207,6 @@ static void ali_ircc_change_dongle_speed(struct ali_ircc_cb *priv, int speed)
       			switch_bank(iobase, BANK2);
       			outb(tmp, iobase+FIR_IRDA_CR);
 						
-			/* MIR 115200, 57600 */	
 						
 			//switch_bank(iobase, BANK2);			
 			// T1 -> SD/MODE:0 IRTX:0

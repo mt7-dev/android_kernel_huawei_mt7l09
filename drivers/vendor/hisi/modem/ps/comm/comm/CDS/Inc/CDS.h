@@ -237,6 +237,26 @@ typedef struct CDS_ENTITY
 }CDS_ENTITY_STRU;
 
 
+/*****************************************************************************
+ 结构名    : CDS_RX_DL_SDU_DATA_IND_STRU
+ 协议表格  : 定义CDS钩收到的下行SDU消息包。
+ ASN.1描述 :
+ 结构说明  :
+*****************************************************************************/
+typedef struct
+{
+    VOS_MSG_HEADER                                              /* 消息头 */
+    VOS_UINT16                              usMsgName;          /* 消息类型 */
+    VOS_UINT8                               ucRbId;             /* Rb Id*/
+    VOS_UINT8                               aucReserve1[1];     /* 4字节对齐，保留*/
+
+    VOS_UINT8                               ucPduType;
+    VOS_UINT8                               ucPdcpPid;
+    VOS_UINT16                              usPdcpSn;
+    VOS_UINT32                              ulDataLen;
+    VOS_UINT8                               aucData[4];
+} CDS_RX_SDU_DATA_IND_STRU;
+
 extern CDS_ENTITY_STRU   g_astCdsEntity[];
 
 
@@ -245,9 +265,11 @@ extern CDS_ENTITY_STRU   g_astCdsEntity[];
 #define CDS_GET_TMR_LEN(pstCdsEntity,ulTmrId)                 ((pstCdsEntity)->astTimer[ulTmrId].ulTmrLen)
 
 /*设置GU RAB SR状态*/
+/*lint -emacro({701}, CDS_SET_GU_RAB_SR_FLG)*/
 #define CDS_SET_GU_RAB_SR_FLG(pstCdsEntity,ucRabId)         (((pstCdsEntity)->usGuRabSRStatus) |= (VOS_UINT16)(1 << ((ucRabId)-1)))
 #define CDS_CLR_GU_RAB_SR_FLG(pstCdsEntity,ucRabId)         (((pstCdsEntity)->usGuRabSRStatus) &= (~(VOS_UINT16)(1 << ((ucRabId)-1))))
 #define CDS_CLR_GU_ALL_RAB_SR_FLG(pstCdsEntity)             ((pstCdsEntity)->usGuRabSRStatus = 0)
+/*lint -emacro({701}, CDS_GET_GU_RAB_SR_FLG)*/
 #define CDS_GET_GU_RAB_SR_FLG(pstCdsEntity,ucRabId)         ((((pstCdsEntity)->usGuRabSRStatus) & (1 << ((ucRabId)-1))) >> ((ucRabId)-1))
 
 

@@ -71,7 +71,7 @@ extern VOS_VOID IMSA_ProcMmaMsgStartReq(VOS_VOID  );
 
 extern VOS_VOID IMSA_SndMmaMsgStartCnf(VOS_VOID  );
 
-extern VOS_VOID IMSA_ProcMmaMsgStopReq(VOS_VOID  );
+extern VOS_VOID IMSA_ProcMmaMsgStopReq(const VOS_VOID *pRcvMsg );
 
 extern VOS_VOID IMSA_SndMmaMsgStopCnf(VOS_VOID  );
 
@@ -79,13 +79,21 @@ extern VOS_VOID IMSA_ProcMmaMsgDeregReq(VOS_VOID );
 
 extern VOS_VOID IMSA_SndMmaMsgDeregCnf(VOS_VOID );
 
-extern VOS_VOID IMSA_ProcMmaMsgServiceChangeInd(const VOS_VOID *pRcvMsg  );
+extern VOS_VOID IMSA_ProcMmaMsgServiceChangeInd(const VOS_VOID *pRcvMsg );
 extern VOS_VOID IMSA_ProcMmaMsgCampInfoChangeInd
 (
     const VOS_VOID                     *pRcvMsg
 );
 extern VOS_VOID IMSA_ProcImsMsgStartOrStopCnf(VOS_VOID);
 extern VOS_VOID IMSA_SndMmaMsgImsVoiceCapNotify(MMA_IMSA_IMS_VOICE_CAP_ENUM_UINT8 enImsVoiceCap);
+extern VOS_VOID IMSA_ProcMmaMsgModem1InfoInd
+(
+    const VOS_VOID                     *pRcvMsg
+);
+extern VOS_VOID IMSA_ProcMmaMsgVoiceDomainChangeInd
+(
+    const VOS_VOID                     *pRcvMsg
+);
 
 /*****************************************************************************
   9 OTHERS

@@ -2725,7 +2725,7 @@ static struct omap_hwmod omap44xx_ocp2scp_usb_phy_hwmod = {
 	 * specified as the main_clk for an OMAP IP block.  However it
 	 * turns out that this clock is actually the main clock for
 	 * the ocp2scp_usb_phy IP block:
-	 * http://lists.infradead.org/pipermail/linux-arm-kernel/2012-September/119943.html
+	 * http:
 	 * So listing ocp2scp_usb_phy_phy_48m as a main_clk here seems
 	 * to be the best workaround.
 	 */

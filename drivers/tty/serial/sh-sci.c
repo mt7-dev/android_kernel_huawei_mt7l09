@@ -1821,15 +1821,6 @@ static void sci_set_termios(struct uart_port *port, struct ktermios *termios,
 	struct plat_sci_reg *reg;
 	unsigned int baud, smr_val, max_baud, cks;
 	int t = -1;
-
-	/*
-	 * earlyprintk comes here early on with port->uartclk set to zero.
-	 * the clock framework is not up and running at this point so here
-	 * we assume that 115200 is the maximum baud rate. please note that
-	 * the baud rate is not programmed during earlyprintk - it is assumed
-	 * that the previous boot loader has enabled required clocks and
-	 * setup the baud rate generator hardware for us already.
-	 */
 	max_baud = port->uartclk ? port->uartclk / 16 : 115200;
 
 	baud = uart_get_baud_rate(port, termios, old, 0, max_baud);
@@ -1892,16 +1883,7 @@ static void sci_set_termios(struct uart_port *port, struct ktermios *termios,
 	serial_port_out(port, SCSCR, s->cfg->scscr);
 
 #ifdef CONFIG_SERIAL_SH_SCI_DMA
-	/*
-	 * Calculate delay for 1.5 DMA buffers: see
-	 * drivers/serial/serial_core.c::uart_update_timeout(). With 10 bits
-	 * (CS8), 250Hz, 115200 baud and 64 bytes FIFO, the above function
-	 * calculates 1 jiffie for the data plus 5 jiffies for the "slop(e)."
-	 * Then below we calculate 3 jiffies (12ms) for 1.5 DMA buffers (3 FIFO
-	 * sizes), but it has been found out experimentally, that this is not
-	 * enough: the driver too often needlessly runs on a DMA timeout. 20ms
-	 * as a minimum seem to work perfectly.
-	 */
+
 	if (s->chan_rx) {
 		s->rx_timeout = (port->timeout - HZ / 50) * s->buf_len_rx * 3 /
 			port->fifosize / 2;

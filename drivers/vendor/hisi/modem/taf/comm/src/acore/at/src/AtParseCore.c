@@ -11,6 +11,8 @@
 
 #include "AtInternalMsg.h"
 
+#include "AtParseCore.h"
+
 #ifdef  __cplusplus
   #if  __cplusplus
   extern "C"{
@@ -39,7 +41,7 @@ AT_PARSE_CONTEXT_STRU g_stParseContext[AT_MAX_CLIENT_NUM];
    由g_stCmdElement=> g_stCmdElement[AT_MAX_CLIENT_NUM] */
 AT_PAR_CMD_ELEMENT_STRU g_stCmdElement[AT_MAX_CLIENT_NUM];
 
-PRIVATE VOS_UINT32 CmdStringFormat(VOS_UINT8 ucClientId, VOS_UINT8 *pData,VOS_UINT16* pusLen);
+
 
 
 VOS_VOID At_ParseInit(VOS_VOID)
@@ -129,7 +131,7 @@ VOS_VOID AT_ClacCmdProc(VOS_VOID)
 
     return ;
 }
-PRIVATE VOS_UINT8 AT_BlockCmdCheck(VOS_VOID)
+VOS_UINT8 AT_BlockCmdCheck(VOS_VOID)
 {
     VOS_UINT8 i = 0;
     VOS_UINT8 ucBlockid = AT_MAX_CLIENT_NUM;
@@ -278,7 +280,7 @@ VOS_VOID AT_BlockCmdTimeOutProc(VOS_UINT8 ucIndex)
 
 
 
-PRIVATE VOS_VOID AT_PendClientProc(VOS_UINT8 ucIndex, VOS_UINT8 *pData, VOS_UINT16 usLen)
+VOS_VOID AT_PendClientProc(VOS_UINT8 ucIndex, VOS_UINT8 *pData, VOS_UINT16 usLen)
 {
     if ((4 == usLen)
         && ('S' == At_UpChar(pData[0])) && ('T' == At_UpChar(pData[1]))
@@ -312,7 +314,7 @@ PRIVATE VOS_VOID AT_PendClientProc(VOS_UINT8 ucIndex, VOS_UINT8 *pData, VOS_UINT
 
     return ;
 }
-PRIVATE VOS_VOID AT_HoldBlockCmd(VOS_UINT8 ucIndex, VOS_UINT8 *pData, VOS_UINT16 usLen)
+VOS_VOID AT_HoldBlockCmd(VOS_UINT8 ucIndex, VOS_UINT8 *pData, VOS_UINT16 usLen)
 {
     VOS_UINT32 ulTimerName = 0;
     VOS_UINT32 ulTempIndex = 0;
@@ -351,7 +353,7 @@ PRIVATE VOS_VOID AT_HoldBlockCmd(VOS_UINT8 ucIndex, VOS_UINT8 *pData, VOS_UINT16
 
 
 
-PRIVATE VOS_UINT32 AT_ParseCmdIsComb(VOS_UINT8 ucIndex, VOS_UINT8 *pData, VOS_UINT16 usLen)
+VOS_UINT32 AT_ParseCmdIsComb(VOS_UINT8 ucIndex, VOS_UINT8 *pData, VOS_UINT16 usLen)
 {
     AT_PARSE_CONTEXT_STRU* pstClientContext = NULL;
 
@@ -370,7 +372,7 @@ PRIVATE VOS_UINT32 AT_ParseCmdIsComb(VOS_UINT8 ucIndex, VOS_UINT8 *pData, VOS_UI
     return ERR_MSP_SUCCESS;
 
 }
-PRIVATE VOS_UINT32 AT_ParseCmdIsPend(VOS_UINT8 ucIndex, VOS_UINT8 *pData, VOS_UINT16 usLen)
+VOS_UINT32 AT_ParseCmdIsPend(VOS_UINT8 ucIndex, VOS_UINT8 *pData, VOS_UINT16 usLen)
 {
     VOS_UINT32 i = 0;
     AT_PARSE_CONTEXT_STRU* pstClientContext = NULL;
@@ -447,8 +449,10 @@ VOS_VOID AT_DiscardInvalidCharForSms(TAF_UINT8* pData, TAF_UINT16 *pusLen)
     /*  MAC系统上的MP后台问题:AT+CMGS=**<CR><^z><Z>(或AT+CMGW=**<CR><^z><Z>)
        为了规避该问题，需要在接收到如上形式的码流后，
        需要将命令后的无效字符<^z><Z>删去  */
+    /*lint -e960 Note -- Violates MISRA 2004 Required Rule 4.1, Prohibited escape sequence used (hexadecimal)*/
     if ((ucAtS3 == pData[*pusLen - 3]) && ('\x1a' == pData[*pusLen - 2])
         && (('z' == pData[*pusLen - 1]) || ('Z' == pData[*pusLen - 1])))
+    /*lint +e960*/
     {
         /* 删去结尾的<^z><Z>字符 */
         *pusLen -= 2;
@@ -473,7 +477,7 @@ VOS_VOID AT_DiscardInvalidCharForSms(TAF_UINT8* pData, TAF_UINT16 *pusLen)
 
     return;
 }
-PRIVATE VOS_VOID AT_ResetParseVariable(VOS_VOID)
+VOS_VOID AT_ResetParseVariable(VOS_VOID)
 {
     PS_MEM_SET(&g_stATParseCmd, 0 , sizeof(AT_PARSECMD_STRU));
 
@@ -565,7 +569,7 @@ VOS_UINT32 AT_ParseCmdType( VOS_UINT8 * pData, VOS_UINT16 usLen)
 
 
 
-PRIVATE VOS_UINT32 At_MatchSmsCmdName(VOS_UINT8 ucIndex, VOS_CHAR *pszCmdName)
+VOS_UINT32 At_MatchSmsCmdName(VOS_UINT8 ucIndex, VOS_CHAR *pszCmdName)
 {
     VOS_UINT32                          i = 0;
     AT_MODEM_SMS_CTX_STRU              *pstSmsCtx = VOS_NULL_PTR;
@@ -671,7 +675,7 @@ VOS_UINT32 atMatchCmdName (VOS_UINT8 ucClientId, VOS_UINT32 CmdType)
 
 
 
-PRIVATE VOS_UINT32 ParseParam(AT_PAR_CMD_ELEMENT_STRU* pstCmdElement)
+VOS_UINT32 ParseParam(AT_PAR_CMD_ELEMENT_STRU* pstCmdElement)
 {
     VOS_UINT32 ulParaLen = 0;
 
@@ -691,15 +695,15 @@ PRIVATE VOS_UINT32 ParseParam(AT_PAR_CMD_ELEMENT_STRU* pstCmdElement)
 }
 
 
-PRIVATE AT_RRETURN_CODE_ENUM fwCmdTestProc(VOS_UINT8 ucIndex, AT_PAR_CMD_ELEMENT_STRU* pstCmdElement)
+AT_RRETURN_CODE_ENUM_UINT32 fwCmdTestProc(VOS_UINT8 ucIndex, AT_PAR_CMD_ELEMENT_STRU* pstCmdElement)
 {
-    AT_RRETURN_CODE_ENUM ulResult = AT_FAILURE;
+    AT_RRETURN_CODE_ENUM_UINT32         ulResult = AT_FAILURE;
 
     /* 调用的地方保证指针不为空 */
 
     if(NULL != pstCmdElement->pfnTestProc)
     {
-        ulResult = (AT_RRETURN_CODE_ENUM)pstCmdElement->pfnTestProc(ucIndex);
+        ulResult = (AT_RRETURN_CODE_ENUM_UINT32)pstCmdElement->pfnTestProc(ucIndex);
 
         if(AT_WAIT_ASYNC_RETURN == ulResult)
         {
@@ -732,9 +736,9 @@ PRIVATE AT_RRETURN_CODE_ENUM fwCmdTestProc(VOS_UINT8 ucIndex, AT_PAR_CMD_ELEMENT
 
 
 
-AT_RRETURN_CODE_ENUM atCmdDispatch (VOS_UINT8 ucIndex)
+AT_RRETURN_CODE_ENUM_UINT32 atCmdDispatch (VOS_UINT8 ucIndex)
 {
-    AT_RRETURN_CODE_ENUM ulResult = AT_FAILURE;
+    AT_RRETURN_CODE_ENUM_UINT32         ulResult = AT_FAILURE;
     PFN_AT_FW_CMD_PROC pfnCmdProc = NULL;
     VOS_UINT32 ulTimerLen = 0;
     AT_PAR_CMD_ELEMENT_STRU* pstCmdElement = g_stParseContext[ucIndex].pstCmdElement;
@@ -764,7 +768,7 @@ AT_RRETURN_CODE_ENUM atCmdDispatch (VOS_UINT8 ucIndex)
         return AT_ERROR;
     }
 
-    ulResult = (AT_RRETURN_CODE_ENUM)pfnCmdProc(ucIndex);
+    ulResult = (AT_RRETURN_CODE_ENUM_UINT32)pfnCmdProc(ucIndex);
 
     if(AT_WAIT_ASYNC_RETURN == ulResult)
     {
@@ -781,10 +785,10 @@ AT_RRETURN_CODE_ENUM atCmdDispatch (VOS_UINT8 ucIndex)
 
     return ulResult;
 }
-PRIVATE VOS_UINT32 LimitedCmdProc(VOS_UINT8 ucClientId, VOS_UINT8 *pData, VOS_UINT16 usLen, AT_PAR_CMD_ELEMENT_STRU* pstCmdElement)
+VOS_UINT32 LimitedCmdProc(VOS_UINT8 ucClientId, VOS_UINT8 *pData, VOS_UINT16 usLen, AT_PAR_CMD_ELEMENT_STRU* pstCmdElement)
 {
     VOS_BOOL bE5CheckRight = VOS_TRUE;
-    AT_RRETURN_CODE_ENUM ulResult = AT_FAILURE;
+    AT_RRETURN_CODE_ENUM_UINT32         ulResult = AT_FAILURE;
 
     if(NULL == pstCmdElement)
     {
@@ -822,7 +826,7 @@ PRIVATE VOS_UINT32 LimitedCmdProc(VOS_UINT8 ucClientId, VOS_UINT8 *pData, VOS_UI
     {
         if (AT_USBCOM_USER == gastAtClientTab[ucClientId].UserType)
         {
-            ulResult = (AT_RRETURN_CODE_ENUM)AT_DockHandleCmd(ucClientId, pData, usLen);
+            ulResult = (AT_RRETURN_CODE_ENUM_UINT32)AT_DockHandleCmd(ucClientId, pData, usLen);
             if(AT_SUCCESS == ulResult)
             {
                 return AT_SUCCESS;  /* 命令内容已转发到E5通道，本通道不返回任何结果 */
@@ -837,7 +841,7 @@ PRIVATE VOS_UINT32 LimitedCmdProc(VOS_UINT8 ucClientId, VOS_UINT8 *pData, VOS_UI
     /* 如果PIN码保护受限，则调用查询PIN码受限条件接口，受限的话返回AT_ERROR，否则返回AT_OK */
     if(0 == (pstCmdElement->ulChkFlag & CMD_TBL_PIN_IS_LOCKED))
     {
-        ulResult = (AT_RRETURN_CODE_ENUM)At_CheckUsimStatus((VOS_UINT8*)pstCmdElement->pszCmdName, ucClientId);
+        ulResult = (AT_RRETURN_CODE_ENUM_UINT32)At_CheckUsimStatus((VOS_UINT8*)pstCmdElement->pszCmdName, ucClientId);
         if(AT_SUCCESS == ulResult)
         {
             /* PIN码已解锁，继续后续的检查处理 */
@@ -855,14 +859,14 @@ PRIVATE VOS_UINT32 LimitedCmdProc(VOS_UINT8 ucClientId, VOS_UINT8 *pData, VOS_UI
 
 VOS_UINT32 CmdParseProc(VOS_UINT8 ucClientId, VOS_UINT8 *pData, VOS_UINT16 usLen)
 {
-    AT_RRETURN_CODE_ENUM ulResult = AT_FAILURE;
+    AT_RRETURN_CODE_ENUM_UINT32         ulResult = AT_FAILURE;
     AT_PAR_CMD_ELEMENT_STRU* pstCmdElement = NULL;
 
     /* 该函数调用处可保证ucClientId的合法性，pDataIn不为空 */
 
 
     /* 匹配命令名称 */
-    ulResult = (AT_RRETURN_CODE_ENUM)atMatchCmdName(ucClientId, g_stATParseCmd.ucCmdFmtType);
+    ulResult = (AT_RRETURN_CODE_ENUM_UINT32)atMatchCmdName(ucClientId, g_stATParseCmd.ucCmdFmtType);
     if(ERR_MSP_SUCCESS != ulResult)
     {
         /* HAL_DIAG_SDM_FUN(EN_SDM_AT_FW_PARSE_FAILURE, 6, 0, 0); */
@@ -877,14 +881,14 @@ VOS_UINT32 CmdParseProc(VOS_UINT8 ucClientId, VOS_UINT8 *pData, VOS_UINT16 usLen
     }
 
     /* 受限命令判断和处理接口，返回失败表示处于受限条件，直接返回错误码 */
-    ulResult = (AT_RRETURN_CODE_ENUM)LimitedCmdProc(ucClientId, pData, usLen, pstCmdElement);
+    ulResult = (AT_RRETURN_CODE_ENUM_UINT32)LimitedCmdProc(ucClientId, pData, usLen, pstCmdElement);
     if(AT_OK != ulResult)
     {
         return ulResult;
     }
 
     /* 匹配解析参数 */
-    ulResult = (AT_RRETURN_CODE_ENUM)ParseParam(pstCmdElement);
+    ulResult = (AT_RRETURN_CODE_ENUM_UINT32)ParseParam(pstCmdElement);
 
     if(ERR_MSP_SUCCESS != ulResult)
     {
@@ -900,18 +904,18 @@ VOS_UINT32 CmdParseProc(VOS_UINT8 ucClientId, VOS_UINT8 *pData, VOS_UINT16 usLen
         }
         else
         {
-            return (AT_RRETURN_CODE_ENUM)(pstCmdElement->ulParamErrCode);
+            return (AT_RRETURN_CODE_ENUM_UINT32)(pstCmdElement->ulParamErrCode);
         }
     }
 
-    ulResult = (AT_RRETURN_CODE_ENUM)atCmdDispatch(ucClientId);
+    ulResult = (AT_RRETURN_CODE_ENUM_UINT32)atCmdDispatch(ucClientId);
 
     return ulResult;
 }
 
 
 
-PRIVATE VOS_VOID RepeatCmdProc(AT_PARSE_CONTEXT_STRU* pstClientContext)
+VOS_VOID RepeatCmdProc(AT_PARSE_CONTEXT_STRU* pstClientContext)
 {
     VOS_UINT8* pData = pstClientContext->aucDataBuff;
     VOS_UINT32 ulLen = pstClientContext->usDataLen;
@@ -947,7 +951,7 @@ PRIVATE VOS_VOID RepeatCmdProc(AT_PARSE_CONTEXT_STRU* pstClientContext)
 
     return;
 }
-PRIVATE VOS_VOID SaveRepeatCmd(AT_PARSE_CONTEXT_STRU* pstClientContext, VOS_UINT8 *pData, VOS_UINT16 usLen)
+VOS_VOID SaveRepeatCmd(AT_PARSE_CONTEXT_STRU* pstClientContext, VOS_UINT8 *pData, VOS_UINT16 usLen)
 {
     /* 保存A/命令缓存 */
     if(NULL != pstClientContext->pucCmdLine)
@@ -966,7 +970,7 @@ PRIVATE VOS_VOID SaveRepeatCmd(AT_PARSE_CONTEXT_STRU* pstClientContext, VOS_UINT
 
     return;
 }
-PRIVATE VOS_UINT32 ScanDelChar( VOS_UINT8 *pData, VOS_UINT16 *pLen, VOS_UINT8 AtS5)
+VOS_UINT32 ScanDelChar( VOS_UINT8 *pData, VOS_UINT16 *pLen, VOS_UINT8 AtS5)
 {
     VOS_UINT16 usChkLen  = 0;
     VOS_UINT16 usLen     = 0;
@@ -1009,7 +1013,7 @@ PRIVATE VOS_UINT32 ScanDelChar( VOS_UINT8 *pData, VOS_UINT16 *pLen, VOS_UINT8 At
 
 
 
-PRIVATE VOS_UINT32 ScanCtlChar( VOS_UINT8 *pData, VOS_UINT16 *pLen)
+VOS_UINT32 ScanCtlChar( VOS_UINT8 *pData, VOS_UINT16 *pLen)
 {
     VOS_UINT8  *pWrite    = pData;
     VOS_UINT8  *pRead     = pData;
@@ -1050,7 +1054,7 @@ PRIVATE VOS_UINT32 ScanCtlChar( VOS_UINT8 *pData, VOS_UINT16 *pLen)
 
 
 
-PRIVATE VOS_UINT32 ScanBlankChar( VOS_UINT8 *pData, VOS_UINT16 *pLen)
+VOS_UINT32 ScanBlankChar( VOS_UINT8 *pData, VOS_UINT16 *pLen)
 {
     /* VOS_UINT8  *pCheck        = pData; */
     VOS_UINT8  *pWrite        = pData;
@@ -1187,7 +1191,7 @@ PRIVATE VOS_UINT32 ScanBlankCharAfterEq(IN OUT VOS_UINT8 *pData,IN OUT VOS_UINT1
     *pLen  =  usLen;
     return AT_SUCCESS;
 }
-PRIVATE VOS_UINT32 FormatCmdStr (VOS_UINT8 *pData, VOS_UINT16 *pLen, VOS_UINT8 AtS3)
+VOS_UINT32 FormatCmdStr (VOS_UINT8 *pData, VOS_UINT16 *pLen, VOS_UINT8 AtS3)
 {
     VOS_UINT8  *pCheck    = pData;
     VOS_UINT32 ulChkS3Len = 0;
@@ -1259,7 +1263,7 @@ VOS_UINT32  AT_DiscardInvalidChar(VOS_UINT8* pucData, VOS_UINT16 *pusLen)
 
 
 
-PRIVATE VOS_UINT32 CmdStringFormat(VOS_UINT8 ucClientId, VOS_UINT8 *pData,VOS_UINT16* pusLen)
+VOS_UINT32 CmdStringFormat(VOS_UINT8 ucClientId, VOS_UINT8 *pData,VOS_UINT16* pusLen)
 {
     VOS_UINT32 ulRet = ERR_MSP_FAILURE;
 
@@ -1465,7 +1469,7 @@ VOS_UINT32 AnyCharCmdProc(VOS_UINT8 *pData, VOS_UINT16* pusLen)
 VOS_VOID At_ReadyClientCmdProc(VOS_UINT8 ucIndex, VOS_UINT8 *pData, VOS_UINT16 usLen)
 {
     VOS_UINT32 ulRet                           = ERR_MSP_FAILURE;
-    AT_RRETURN_CODE_ENUM ulResult         = AT_WAIT_ASYNC_RETURN;
+    AT_RRETURN_CODE_ENUM_UINT32         ulResult         = AT_WAIT_ASYNC_RETURN;
     AT_PARSE_CONTEXT_STRU* pClientContext = NULL;
 
     if(usLen < 3)
@@ -1549,7 +1553,7 @@ VOS_VOID At_ReadyClientCmdProc(VOS_UINT8 ucIndex, VOS_UINT8 *pData, VOS_UINT16 u
         return;
     }
 
-    ulResult = (AT_RRETURN_CODE_ENUM)At_CombineCmdChkProc(ucIndex, pData, usLen);
+    ulResult = (AT_RRETURN_CODE_ENUM_UINT32)At_CombineCmdChkProc(ucIndex, pData, usLen);
 
     /* 返回结果 */
     if((AT_FAILURE == ulResult) || (AT_SUCCESS == ulResult))
@@ -1567,10 +1571,10 @@ VOS_VOID At_ReadyClientCmdProc(VOS_UINT8 ucIndex, VOS_UINT8 *pData, VOS_UINT16 u
 
 
 
-PRIVATE VOS_VOID atCmdMsgProc(VOS_UINT8 ucIndex, VOS_UINT8 *pData, VOS_UINT16 usLen)
+VOS_VOID atCmdMsgProc(VOS_UINT8 ucIndex, VOS_UINT8 *pData, VOS_UINT16 usLen)
 {
     VOS_UINT32                          ulRet = ERR_MSP_FAILURE;
-    AT_RRETURN_CODE_ENUM                ulResult = AT_WAIT_ASYNC_RETURN;
+    AT_RRETURN_CODE_ENUM_UINT32         ulResult = AT_WAIT_ASYNC_RETURN;
     AT_PARSE_CONTEXT_STRU              *pClientContext = NULL;
     AT_MODEM_AGPS_CTX_STRU             *pstAgpsCtx = VOS_NULL_PTR;
 
@@ -1585,7 +1589,7 @@ PRIVATE VOS_VOID atCmdMsgProc(VOS_UINT8 ucIndex, VOS_UINT8 *pData, VOS_UINT16 us
 
     if (AT_SMS_MODE == pClientContext->ucMode)
     {
-        ulResult = (AT_RRETURN_CODE_ENUM)At_SmsProc(ucIndex, pData, usLen);
+        ulResult = (AT_RRETURN_CODE_ENUM_UINT32)At_SmsProc(ucIndex, pData, usLen);
 
         if ((AT_SUCCESS == ulResult)
          || (AT_WAIT_SMS_INPUT == ulResult))
@@ -1618,7 +1622,7 @@ PRIVATE VOS_VOID atCmdMsgProc(VOS_UINT8 ucIndex, VOS_UINT8 *pData, VOS_UINT16 us
     else if (AT_XML_MODE == pClientContext->ucMode)
     {
         /* 调用XML输入处理函数 */
-        ulResult = (AT_RRETURN_CODE_ENUM)At_ProcXmlText(ucIndex, pData, usLen);
+        ulResult = (AT_RRETURN_CODE_ENUM_UINT32)At_ProcXmlText(ucIndex, pData, usLen);
 
         /* 处理成功，输出提示符">" */
         if (AT_WAIT_XML_INPUT == ulResult)
@@ -1696,7 +1700,9 @@ VOS_UINT32 At_CmdStreamRcv(VOS_UINT8 ucIndex, VOS_UINT8* pData, VOS_UINT16 usLen
     /* 行结束符(<CR>或者用户指定) */
     while(usCount++ < usLen)
     {
+        /*lint -e960 Note -- Violates MISRA 2004 Required Rule 4.1, Prohibited escape sequence used (hexadecimal)*/
         if(At_CheckCmdSms(*(pData+usCount-1), pstClientContext->ucMode))
+        /*lint +e960*/
         {
             /* 缓存中已经有数据 */
             if(pstClientContext->usDataLen > 0)
@@ -1712,7 +1718,7 @@ VOS_UINT32 At_CmdStreamRcv(VOS_UINT8 ucIndex, VOS_UINT8* pData, VOS_UINT16 usLen
             }
             else    /* 缓存中无数据 */
             {
-                PS_MEM_CPY(&pstClientContext->aucDataBuff[0], pHead, usCount-usTotal);
+                PS_MEM_CPY(&pstClientContext->aucDataBuff[0], pHead, (VOS_SIZE_T)(usCount-usTotal));
                 pstClientContext->usDataLen = usCount-usTotal;
             }
 
@@ -1747,7 +1753,7 @@ VOS_UINT32 At_CmdStreamRcv(VOS_UINT8 ucIndex, VOS_UINT8* pData, VOS_UINT16 usLen
 
 VOS_VOID At_CombineBlockCmdProc(VOS_UINT8 ucIndex)
 {
-    AT_RRETURN_CODE_ENUM ulResult = AT_WAIT_ASYNC_RETURN;
+    AT_RRETURN_CODE_ENUM_UINT32         ulResult = AT_WAIT_ASYNC_RETURN;
     AT_PARSE_CONTEXT_STRU* pClientContext = NULL;
     AT_FW_COMBINE_CMD_INFO_STRU* pstCombineCmdInfo = NULL;
     VOS_UINT8* pucBlockCmd = NULL;
@@ -1766,7 +1772,7 @@ VOS_VOID At_CombineBlockCmdProc(VOS_UINT8 ucIndex)
     if((pstCombineCmdInfo->usProcNum < pstCombineCmdInfo->usTotalNum))
     {
         /* 处理下一条命令 */
-        ulResult = (AT_RRETURN_CODE_ENUM)At_CombineCmdProc(ucIndex);
+        ulResult = (AT_RRETURN_CODE_ENUM_UINT32)At_CombineCmdProc(ucIndex);
 
         /* 返回结果 */
         if((AT_FAILURE == ulResult) || (AT_SUCCESS == ulResult))
@@ -2036,11 +2042,11 @@ VOS_UINT32 AT_IsAbortCmdStr(
     }
 
 
-    
+
     /* 检测当前打断tick值是否满足相隔125ms条件,如果不满足，则直接返回不打断 */
     if  ( ulAtCurrSetTick >= pstCmdAbortTick->ulAtSetTick[ucIndex] )
     {
-    
+
         ulTimeInternal = ulAtCurrSetTick - pstCmdAbortTick->ulAtSetTick[ucIndex];
     }
     else

@@ -181,8 +181,10 @@ VOS_VOID NAS_EMM_TAU_TauAcpNormalCsfbSerCollisionProc(VOS_VOID)
 
     if (NAS_LMM_ADDITIONAL_UPDATE_SMS_ONLY == NAS_EMM_GetAddUpdateRslt())
     {
+        NAS_EMM_SetCsfbProcedureFlag(PS_FALSE);
+
         /* 对于SMS ONLY,普通CSFB必须先通知MM模块CSFB流程终止，然后上报TAU结果 */
-        NAS_EMM_MmSendCsfbSerEndInd(MM_LMM_CSFB_SERVICE_RSLT_FAILURE);
+        NAS_EMM_MmSendCsfbSerEndInd(MM_LMM_CSFB_SERVICE_RSLT_TAU_COLLISION_RSLT_SMS_ONLY, NAS_LMM_CAUSE_NULL);
         NAS_EMM_MmcSendTauActionResultIndSucc();
         /*NAS_EMM_RecogAndProcSmsOnlyCsfbNotPrefDisable();*/
         return ;
@@ -341,8 +343,26 @@ VOS_VOID NAS_EMM_TAU_TauAcpTaOnlySerCollisionProc
 
             if(NAS_EMM_CSFB_ABORT_FLAG_VALID != NAS_EMM_SER_GetEmmSerCsfbAbortFlag())
             {
-                /* 普通CSFB则通知MM终止CSFB */
-                NAS_EMM_MmSendCsfbSerEndInd(MM_LMM_CSFB_SERVICE_RSLT_FAILURE);
+                /* ESR流程被TAU流程打断,TAU ACP PS ONLY不能直接结束电话,未提高呼通率,原因值不为2时,需要去GU下尝试 */
+                if(NAS_EMM_REJ_YES != NAS_LMM_GetEmmInfoRejCause2Flag())
+                {
+                    /*向MMC上报TAU结果 */
+                    NAS_EMM_MmcSendTauActionResultIndSucc();
+
+                    /*向MMC发送LMM_MMC_SERVICE_RESULT_IND消息, 注意与上报SERVICE结果顺序不可颠倒 */
+                    NAS_EMM_MmcSendSerResultIndOtherType(MMC_LMM_SERVICE_RSLT_FAILURE);
+                    NAS_EMM_SER_SndEsmBufMsg();
+
+                    /* 先diable LTE，改为API发送TAU CMP消息后直接释放即可 */
+                    NAS_EMM_DisableLteCommonProc();
+                    return;
+                }
+                else
+                {
+                    NAS_EMM_SetCsfbProcedureFlag(PS_FALSE);
+                    /* 普通CSFB则通知MM终止CSFB */
+                    NAS_EMM_MmSendCsfbSerEndInd(MM_LMM_CSFB_SERVICE_RSLT_TAU_COLLISION_RSLT_PS_ONLY, NAS_LMM_CAUSE_NULL);
+                }
             }
             break ;
 
@@ -488,7 +508,10 @@ VOS_VOID  NAS_EMM_TAU_TauSuccProc
     NAS_LMM_SetEmmInfoGConnState(GMM_LMM_GPRS_MM_STATE_IDLE);
     NAS_LMM_SetEmmInfoUConnState(GMM_LMM_PACKET_MM_STATE_PMM_IDLE);
 
-
+    /* 清除VOICE DOMAIN发生变化的标识 */
+    NAS_EMM_SetVoiceDomainChange(NAS_EMM_NO);
+    NAS_LMM_SetEmmInfoLaiChangeFlag(VOS_FALSE);
+    NAS_LMM_SetEmmInfoCsEmcConneExitFlag(VOS_FALSE);
     /*TAU成功后，表明异系统变换成功，清除触发的原因记录*/
      NAS_EMM_ClearResumeInfo();
 
@@ -496,6 +519,8 @@ VOS_VOID  NAS_EMM_TAU_TauSuccProc
     NAS_EMM_ClearUeRadioAccCapChgFlag();
 
 }
+
+
 VOS_VOID NAS_EMM_TAU_ProcTauAcpCauseVal2
 (
     VOS_VOID                           *pstRcvMsg
@@ -530,8 +555,8 @@ VOS_VOID NAS_EMM_TAU_ProcTauAcpCauseVal2
     }
     else
     {
-        /*clear 'active' flag */
-        NAS_EMM_TAU_SaveEmmTauReqActiveCtrl(NAS_EMM_TAU_NO_BEARER_EST_REQ);
+        NAS_EMM_TAU_ClearActiveFlagProc();
+
 		/* lihong00150010 emergency tau&service begin */
         NAS_EMM_TranStateRegNormalServiceOrRegLimitService();
 
@@ -549,6 +574,8 @@ VOS_VOID NAS_EMM_TAU_ProcTauAcpCauseVal2
         }
     }
 }
+
+
 VOS_VOID NAS_EMM_TAU_ProcTauAcpCauseVal18
 (
     VOS_VOID                           *pstRcvMsg
@@ -590,8 +617,8 @@ VOS_VOID NAS_EMM_TAU_ProcTauAcpCauseVal18
     }
     else
     {
-        /*clear 'active' flag */
-        NAS_EMM_TAU_SaveEmmTauReqActiveCtrl(NAS_EMM_TAU_NO_BEARER_EST_REQ);
+        NAS_EMM_TAU_ClearActiveFlagProc();
+
 		/* lihong00150010 emergency tau&service begin */
         NAS_EMM_TranStateRegNormalServiceOrRegLimitService();
 
@@ -612,15 +639,13 @@ VOS_VOID NAS_EMM_TAU_ProcTauAcpCauseVal18
         }
     }
 }
+
+
 VOS_VOID NAS_EMM_TAU_ProcTauAcpCauseVal161722
 (
     VOS_VOID                           *pstRcvMsg
 )
 {
-    /*NAS_EMM_CN_TAU_ACP_STRU            *pstTAUAcp   = NAS_EMM_NULL_PTR;
-
-    pstTAUAcp = (NAS_EMM_CN_TAU_ACP_STRU *)pstRcvMsg;*/
-
     /*TAU ATTEMPT COUNT ++*/
     NAS_EMM_TAU_GetEmmTAUAttemptCnt()++;
 
@@ -640,13 +665,13 @@ VOS_VOID NAS_EMM_TAU_ProcTauAcpCauseVal161722
         return ;
     }
 
-    /*clear 'active' flag */
-    NAS_EMM_TAU_SaveEmmTauReqActiveCtrl(NAS_EMM_TAU_NO_BEARER_EST_REQ);
+    NAS_EMM_TAU_ClearActiveFlagProc();
+
 	/* lihong00150010 emergency tau&service begin */
     if (VOS_TRUE == NAS_EMM_IsEnterRegLimitService())
     {
         NAS_EMM_TAU_SaveEmmTAUAttemptCnt(NAS_EMM_TAU_ATTEMPT_CNT_ZERO);
-		
+
 		NAS_EMM_AdStateConvert(         EMM_MS_REG,
                                         EMM_SS_REG_LIMITED_SERVICE,
                                         TI_NAS_EMM_STATE_NO_TIMER);
@@ -664,10 +689,15 @@ VOS_VOID NAS_EMM_TAU_ProcTauAcpCauseVal161722
     }
     else
     {
-        /*启动定时器TI_NAS_EMM_T3402*/
-        NAS_LMM_StartPtlTimer(      TI_NAS_EMM_PTL_T3402);
+        if (NAS_LMM_UE_CS_PS_MODE_1 == NAS_LMM_GetEmmInfoUeOperationMode())
+        {
+            NAS_LMM_Start3402Timer(NAS_LMM_TIMER_161722Atmpt5CSPS1_TRUE);
+        }
+        else if (NAS_LMM_UE_CS_PS_MODE_2 == NAS_LMM_GetEmmInfoUeOperationMode())
+        {
+            NAS_LMM_Start3402Timer(NAS_LMM_TIMER_161722Atmpt5CSPS1_FALSE);
+        }
 
-		/* lihong00150010 emergency delete */
         /*修改状态：进入主状态REG子状态EMM_SS_REG_ATTEMPTING_TO_UPDATE_MM*/
         NAS_EMM_AdStateConvert(     EMM_MS_REG,
                                     EMM_SS_REG_ATTEMPTING_TO_UPDATE_MM,
@@ -700,7 +730,6 @@ VOS_VOID NAS_EMM_TAU_ProcTauAcpCauseVal161722
     }
 }
 #if 0
-
 VOS_VOID NAS_EMM_TAU_ProcTauAcpCauseValOther
 (
     NAS_EMM_CN_CAUSE_ENUM_UINT8         ucRejCauseVal
@@ -1248,6 +1277,17 @@ VOS_VOID  NAS_EMM_TAU_SetISRAct
                                         *EMM_ESM_MAX_EPS_BEARER_NUM);
             return;
         }
+        /* 如果是VOICE DOMAIN发生变化，触发的TAU，在ISR激活后，需要将TIN值设置为GUTI */
+        if (NAS_EMM_TAU_START_CAUSE_VOICE_DOMAIN_CHANGE == NAS_EMM_TAU_GetEmmTAUStartCause())
+        {
+            /*发送 LMM_MMC_TIN_TYPE_IND*/
+            NAS_EMM_SetTinType(MMC_LMM_TIN_GUTI);
+
+            /*更新承载的ISR标识*/
+            NAS_EMM_UpdateBearISRFlag(NAS_MML_GetPsBearerCtx());
+
+            return;
+        }
         #if 0
         /*IMS已注册且IMS voice over PS session改变，设置ITN值为GUTI*/
         if(NAS_EMM_YES == NAS_EMM_ChangeRegAreaOfIMS())
@@ -1362,8 +1402,8 @@ VOS_VOID    NAS_EMM_TAU_RcvTAUAcp(VOS_VOID *pMsgStru)
     }
     else
     {
-        /*clear 'active' flag */
-        NAS_EMM_TAU_SaveEmmTauReqActiveCtrl(NAS_EMM_TAU_NO_BEARER_EST_REQ);
+        NAS_EMM_TAU_ClearActiveFlagProc();
+
 		/* lihong00150010 emergency tau&service begin */
         NAS_EMM_TranStateRegNormalServiceOrRegLimitService();
 
@@ -1389,11 +1429,6 @@ VOS_VOID    NAS_EMM_TAU_RcvTAUAcp(VOS_VOID *pMsgStru)
     return;
 
 }
-
-
-
-
-
 VOS_UINT32 NAS_EMM_MsTauInitSsWaitCNCnfMsgTAUAcp(VOS_UINT32  ulMsgId,
                                                    VOS_VOID   *pMsgStru
                                )
@@ -1413,6 +1448,8 @@ VOS_UINT32 NAS_EMM_MsTauInitSsWaitCNCnfMsgTAUAcp(VOS_UINT32  ulMsgId,
         NAS_EMM_TAU_LOG_WARN( "NAS_EMM_TAUSER_CHKFSMStateMsgp ERROR !!");
         return NAS_LMM_MSG_DISCARD;
     }
+
+    NAS_EMM_ResetHplmnAuthRejCout();
 
     /*停止T3416，删除RAND,RES*/
     NAS_LMM_StopPtlTimer(                TI_NAS_EMM_PTL_T3416);
@@ -1545,8 +1582,7 @@ VOS_VOID  NAS_EMM_TAU_CollisionDetachProc( VOS_VOID )
     /*清除冲突标志*/
     NAS_EMM_TAU_SaveEmmCollisionCtrl(NAS_EMM_COLLISION_NONE);
 
-    /*clear 'active' flag */
-    NAS_EMM_TAU_SaveEmmTauReqActiveCtrl(NAS_EMM_TAU_NO_BEARER_EST_REQ);
+    NAS_EMM_TAU_ClearActiveFlagProc();
 
     /* 清除联合DETACH被TAU打断标识 */
     NAS_EMM_TAU_SetEmmCombinedDetachBlockFlag(NAS_EMM_COM_DET_BLO_NO);
@@ -1554,8 +1590,8 @@ VOS_VOID  NAS_EMM_TAU_CollisionDetachProc( VOS_VOID )
     /* 如果冲突的DETACH类型不是IMSI DEACH，则还需停止定时器，通知ESM进入DETACHED态 */
     if (MMC_LMM_MO_DET_CS_ONLY != NAS_EMM_GLO_AD_GetDetTypeMo())
     {
-        /*停所有EMM(MMC除外)定时器*/
-        NAS_LMM_StopAllEmmStateTimer();
+        /* 关闭当前EMM的除Del Forb Ta Proid之外的状态定时器, Del Forb Ta Proid只能在关机时停止*/
+        NAS_LMM_StopAllStateTimerExceptDelForbTaProidTimer();
 
         NAS_LMM_StopPtlTimer(TI_NAS_EMM_PTL_T3402);
 
@@ -1568,6 +1604,8 @@ VOS_VOID  NAS_EMM_TAU_CollisionDetachProc( VOS_VOID )
 
     return;
 }
+
+
 VOS_VOID  NAS_EMM_TAU_CollisionServiceProc
 (
     NAS_LMM_SEND_TAU_RESULT_ACT_FUN     pfTauRslt,
@@ -1598,7 +1636,9 @@ VOS_VOID  NAS_EMM_TAU_CollisionServiceProc
             }
             else
             {
-                NAS_EMM_MmSendCsfbSerEndInd(MM_LMM_CSFB_SERVICE_RSLT_FAILURE);
+                NAS_EMM_SetCsfbProcedureFlag(PS_FALSE);
+
+                NAS_EMM_MmSendCsfbSerEndInd(MM_LMM_CSFB_SERVICE_RSLT_TAU_COLLISION_RSLT_ABNORMAL, NAS_LMM_CAUSE_NULL);
 
                 /* 上报TAU结果, 顺序一定要在给MM发终止之后 */
                 NAS_EMM_TAU_SEND_MMC_RESULT_IND(pfTauRslt,pvPara);
@@ -1637,8 +1677,7 @@ VOS_VOID  NAS_EMM_TAU_CollisionServiceProc
     /* 清除冲突标志 */
     NAS_EMM_TAU_SaveEmmCollisionCtrl( NAS_EMM_COLLISION_NONE);
 
-    /* 清除Active Flag */
-    NAS_EMM_TAU_SaveEmmTauReqActiveCtrl(NAS_EMM_TAU_NO_BEARER_EST_REQ);
+    NAS_EMM_TAU_ClearActiveFlagProc();
 
     /**清除保存数据的标志和数据区**************/
     NAS_EMM_SerClearEsmDataBuf();
@@ -1646,8 +1685,6 @@ VOS_VOID  NAS_EMM_TAU_CollisionServiceProc
     return;
 
 }
-
-
 VOS_VOID  NAS_EMM_TAU_RelIndCollisionProc
 (
     NAS_LMM_SEND_TAU_RESULT_ACT_FUN     pfTauRslt,

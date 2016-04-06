@@ -40,6 +40,7 @@ typedef struct
     int  pToBuf;    /* offset from start of buffer where to write next */
     int  pFromBuf;  /* offset from start of buffer where to read next */
     int  bufSize;   /* size of ring in bytes */
+    char acRsv[4];
     char *buf;      /* pointer to start of buffer */
 } OM_RING;
 

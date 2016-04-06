@@ -696,8 +696,6 @@ static void via_ircc_change_speed(struct via_ircc_cb *self, __u32 speed)
 		CRC16(iobase, ON);
 		break;
 	case 576000:
-		/* FIXME: this can't be right, as it's the same as 115200,
-		 * and 576000 is MIR, not SIR. */
 		value = 0;
 		SetSIR(iobase, ON);
 		CRC16(iobase, ON);

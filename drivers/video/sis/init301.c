@@ -7894,20 +7894,9 @@ SiS_SetCHTVReg(struct SiS_Private *SiS_Pr, unsigned short ModeNo, unsigned short
       SiS_SetCH700x(SiS_Pr,0x0a,CHTVRegData[resindex].Reg[3]);	/* Horiz Position register */
       SiS_SetCH700x(SiS_Pr,0x0b,CHTVRegData[resindex].Reg[4]);	/* Vertical Position register */
 
-      /* Set minimum flicker filter for Luma channel (SR1-0=00),
-                minimum text enhancement (S3-2=10),
-   	        maximum flicker filter for Chroma channel (S5-4=10)
-	        =00101000=0x28 (When reading, S1-0->S3-2, and S3-2->S1-0!)
-       */
       SiS_SetCH700x(SiS_Pr,0x01,0x28);
 
-      /* Set video bandwidth
-            High bandwidth Luma composite video filter(S0=1)
-            low bandwidth Luma S-video filter (S2-1=00)
-	    disable peak filter in S-video channel (S3=0)
-	    high bandwidth Chroma Filter (S5-4=11)
-	    =00110001=0x31
-      */
+
       SiS_SetCH700x(SiS_Pr,0x03,0xb1);       /* old: 3103 */
 
       /* Register 0x3D does not exist in non-macrovision register map

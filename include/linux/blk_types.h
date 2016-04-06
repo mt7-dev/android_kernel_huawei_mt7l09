@@ -230,4 +230,9 @@ enum rq_flag_bits {
 #define REQ_KERNEL		(1 << __REQ_KERNEL)
 #define REQ_PM			(1 << __REQ_PM)
 
+#if 1 //clb
+#define REQ_PACKED			REQ_PM
+#define REQ_PACKED_START	REQ_FAILFAST_DEV
+#define REQ_PACKED_END		REQ_FAILFAST_TRANSPORT
+#endif 
 #endif /* __LINUX_BLK_TYPES_H */

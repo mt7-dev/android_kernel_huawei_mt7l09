@@ -23,16 +23,15 @@ proc-y	+= version.o
 proc-y	+= softirqs.o
 proc-y	+= namespaces.o
 proc-y	+= self.o
-proc-y	+= app_info.o
-proc-y	+= ddr_info.o
+proc-$(CONFIG_PROC_APP_INFO)	+= app_info.o
+proc-$(CONFIG_ARCH_HI3XXX)	+= ddr_info.o
+proc-$(CONFIG_ARCH_HI6XXX)	+= ddr_info_type.o
 proc-$(CONFIG_PROC_SYSCTL)	+= proc_sysctl.o
 proc-$(CONFIG_NET)		+= proc_net.o
 proc-$(CONFIG_PROC_KCORE)	+= kcore.o
 proc-$(CONFIG_PROC_VMCORE)	+= vmcore.o
-proc-$(CONFIG_PROC_DEVICETREE)	+= proc_devtree.o
 proc-$(CONFIG_PRINTK)	+= kmsg.o
 proc-$(CONFIG_PROC_PAGE_MONITOR)	+= page.o
-#/* < DTS2013092906363 hanpeng 20131008 begin */
 proc-$(CONFIG_FEATURE_HUAWEI_EMERGENCY_DATA)  += emerg_data.o
-#/* DTS2013092906363 hanpeng 20131008 end > */
 proc-y	+= check_root.o
+proc-$(CONFIG_PROC_POSTFSDATA)         += post-fs-data.o

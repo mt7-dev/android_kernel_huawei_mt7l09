@@ -139,6 +139,9 @@ enum LRRC_TRRC_MSG_TYPE_ENUM
     ID_LRRC_TRRC_RELALL_REQ                = (LRRC_TRRC_MSG_HDR + 0x19),        /* _H2ASN_MsgChoice LRRC_TRRC_RELALL_REQ_STRU */             /* SendPid:PS_PID_ERRC; RcvPid:WUEPS_PID_WRR */
     ID_TRRC_LRRC_RELALL_CNF                = (TRRC_LRRC_MSG_HDR + 0x19),        /* _H2ASN_MsgChoice TRRC_LRRC_RELALL_CNF_STRU */             /* SendPid:WUEPS_PID_WRR; RcvPid:PS_PID_ERRC */
 
+    ID_TRRC_LRRC_FR_INFO_REQ               = (TRRC_LRRC_MSG_HDR + 0x1a),        /* _H2ASN_MsgChoice TRRC_LRRC_FR_INFO_REQ_STRU */
+    ID_LRRC_TRRC_FR_INFO_CNF               = (LRRC_TRRC_MSG_HDR + 0x1a),        /* _H2ASN_MsgChoice LRRC_TRRC_FR_INFO_CNF_STRU */
+
     ID_LRRC_TRRC_MSG_TYPE_BUTT
 };
 
@@ -1020,6 +1023,31 @@ typedef struct
     VOS_MSG_HEADER
     LRRC_TRRC_MSG_DATA                                      stMsgData;
 }LRrcTRrcInterface_MSG;
+
+/*****************************************************************************
+ 结构名    : TRRC_LRRC_FR_INFO_REQ_STRU
+ 协议表格  :
+ ASN.1描述 :
+ 结构说明  : TRRC指示LRRC获取LTE自主FR频点
+*****************************************************************************/
+typedef struct
+{
+    VOS_MSG_HEADER                                               /*_H2ASN_Skip*/
+    LRRC_TRRC_MSG_TYPE_ENUM_UINT32            enMsgId;           /*_H2ASN_Skip*/
+}TRRC_LRRC_FR_INFO_REQ_STRU;
+
+/*****************************************************************************
+ 结构名    : LRRC_TRRC_FR_INFO_CNF_STRU
+ 协议表格  :
+ ASN.1描述 :
+ 结构说明  : LRRC指示TRRC获取LTE自主FR频点的结果
+*****************************************************************************/
+typedef struct
+{
+    VOS_MSG_HEADER                                               /*_H2ASN_Skip*/
+    LRRC_TRRC_MSG_TYPE_ENUM_UINT32            enMsgId;           /*_H2ASN_Skip*/
+    LRRC_GURRC_REDIR_SAVED_EUTRA_INFO_STRU    stRedirEutraInfo;
+}LRRC_TRRC_FR_INFO_CNF_STRU;
 
 /*****************************************************************************
   6 UNION

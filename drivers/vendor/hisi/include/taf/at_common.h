@@ -19,6 +19,8 @@
 #ifndef __AT_COMMON_H__
 #define __AT_COMMON_H__
 
+#include "vos.h"
+
 
 #ifdef __cplusplus
 extern "C"
@@ -31,8 +33,6 @@ extern VOS_VOID At_HeapFreeD(VOS_VOID *pAddr);
 #define AT_MALLOC(ulSize)          At_HeapAllocD(ulSize)
 #define AT_FREE(pAddr)             At_HeapFreeD(pAddr)
 
-/* 把字符串转成无符号整型值*/
-extern VOS_UINT32 atAuc2ul( VOS_UINT8 *nptr,VOS_UINT16 usLen, VOS_UINT32 *pRtn);
 
 #define AT_DISABLE_CSIM                       (0)
 

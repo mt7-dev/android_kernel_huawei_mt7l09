@@ -73,7 +73,7 @@ typedef enum _bsp_module_e
     BSP_MODU_DUMP,
     BSP_MODU_SOCP,
     BSP_MODU_OMS,
-    BSP_MODU_LOG,
+    BSP_MODU_LOG,           //10
     BSP_MODU_SYSVIEW,
     BSP_MODU_RFILE,
     BSP_MODU_MBX,
@@ -83,7 +83,7 @@ typedef enum _bsp_module_e
     BSP_MODU_SOFTTIMER,
     BSP_MODU_HARDTIMER,
     BSP_MODU_MIPI,
-    BSP_MODU_BBP,
+    BSP_MODU_BBP,           //20
     BSP_MODU_DPM,
     BSP_MODU_IPC,
 	BSP_MODU_I2C,
@@ -93,7 +93,7 @@ typedef enum _bsp_module_e
     BSP_MODU_EARLYSUSPEND,
 	BSP_MODU_AMON,
     BSP_MODU_TEST,
-	BSP_MODU_LCD,
+	BSP_MODU_LCD,           //30
     BSP_MODU_EMI,
 	BSP_MODU_VERSION,
 	BSP_MODU_SPI,
@@ -103,7 +103,7 @@ typedef enum _bsp_module_e
     BSP_MUDU_CPUFREQ,
 	BSP_MUDU_WDT,
     BSP_MODU_WAKELOCK,
-    BSP_MODU_CSHELL,
+    BSP_MODU_CSHELL,        //40
     BSP_MODU_CIPHER,
     BSP_MODU_ACC,
     BSP_MODU_SECURITY,
@@ -113,7 +113,7 @@ typedef enum _bsp_module_e
     BSP_MODU_ABB,
     BSP_MODU_DSP,
     BSP_MODU_HKADC,
-    BSP_MODU_GPIO,
+    BSP_MODU_GPIO,          //50
     BSP_MODU_IOS,
     BSP_MODU_EFUSE,
     BSP_MODU_DDM,
@@ -123,7 +123,7 @@ typedef enum _bsp_module_e
     BSP_MODU_TSENSOR,
     BSP_MODU_TEMPERATURE,
     BSP_MODU_PM,
-    BSP_MODU_COUL,
+    BSP_MODU_COUL,          //60
 	BSP_MODU_HWADP,
     BSP_MODU_ADP_DPM,
     BSP_MODU_M3_CPUFREQ,
@@ -133,13 +133,16 @@ typedef enum _bsp_module_e
     BSP_MODU_ONOFF,
     BSP_MODU_RESET,
     BSP_MODU_TUNER,
-    BSP_MODU_HW_SPINLOCK,
+    BSP_MODU_HW_SPINLOCK,  //70
     BSP_MODU_MEMREPAIR,
     BSP_MODU_DUAL_MODEM,
     BSP_MODU_PASTAR,
     BSP_MODU_HI6559_RTC,
     BSP_MODU_HSUART,
     BSP_MODU_PARF,
+/* yangzhi for sc file backup and restore begin: */
+    BSP_MODU_SC,
+/* yangzhi for sc file backup and restore end! */	
     BSP_MODU_ALL,   /* 代表所有的模块 */
     BSP_MODU_MAX = 128    /* 边界值 */
 } bsp_module_e;
@@ -215,9 +218,16 @@ void bsp_log_bin_ind(s32 str_id, void * ind_data, u32 ind_data_size);
 
 
 #else
+static inline void bsp_log_bin_ind(s32 str_id, void * ind_data, u32 ind_data_size){}
 
+#if  defined(__KERNEL__) || defined(__CMSIS_RTOS)
 #define bsp_trace( log_level, mod_id,fmt,...)\
 (printk( "<%s> "fmt"\n", __FUNCTION__, ##__VA_ARGS__))
+
+#else
+#define bsp_trace( log_level, mod_id,fmt,...)\
+(printf( "<%s> "fmt"\n", __FUNCTION__, ##__VA_ARGS__))
+#endif
 #if 0
 static void inline bsp_trace(bsp_log_level_e log_level,bsp_module_e mod_id,char *fmt,...)
 {
@@ -228,32 +238,32 @@ static void inline bsp_trace(bsp_log_level_e log_level,bsp_module_e mod_id,char 
 
 static void inline bsp_error_save (bsp_module_e mod_id,char *fmt ,...)
 {
-    return 0;
+    return ;
 }
 
 static void inline bsp_int_lock_enter(void)
 {
-    return 0;
+    return ;
 }
 
 static void inline bsp_int_lock_out(void)
 {
-    return 0;
+    return ;
 }
 
 static void inline error_log(char *fmt ,...)
 {
-    return 0;
+    return ;
 }
 
 static void inline print2file(char* filename, char *fmt,...)
 {
-    return 0;
+    return ;
 }
 
 static int inline dmesg_write(const char* buffer, const unsigned len)
 {
-    return 0;
+    return 0 ;
 }
 
 static void inline bsp_socp_chan_enable(void)
@@ -283,16 +293,16 @@ static u32 inline bsp_mod_level_set(bsp_module_e  mod_id ,u32 print_level)
     return 0;
 }
 
-static void inline dmesg_init()
+static void inline dmesg_init(void)
 {
     return ;
 }
-
+#if 0
 static void inline bsp_log_bin_ind(s32 str_id, void * ind_data, u32 ind_data_size)
 {
     return;
 }
-
+#endif
 
 #endif
 

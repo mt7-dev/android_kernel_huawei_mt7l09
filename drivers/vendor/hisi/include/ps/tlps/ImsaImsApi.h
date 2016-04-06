@@ -143,7 +143,8 @@ typedef struct
 extern unsigned int IMSA_StartVoiceDsp
 (
     IMSA_VOICE_CODEC_ENUM_UINT16    enCodecType,
-    unsigned long                   ulPacketTime
+    unsigned long                   ulPacketTime,
+    unsigned long                   ulSendBitrate
 );
 
 /**

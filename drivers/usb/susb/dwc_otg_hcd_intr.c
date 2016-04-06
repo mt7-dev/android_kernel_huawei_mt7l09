@@ -34,10 +34,8 @@
 
 #include <linux/usb.h>
 #include <linux/usb/hcd.h>
-
 #include "dwc_otg_hcd.h"
 #include "dwc_otg_regs.h"
-#include "dwc_otg_hi3630.h"
 
 /** @file
  * This file contains the implementation of the HCD Interrupt handlers.
@@ -54,22 +52,11 @@ int32_t dwc_otg_hcd_handle_intr(dwc_otg_hcd_t * dwc_otg_hcd)
 	dwc_otg_core_global_regs_t *global_regs = core_if->core_global_regs;
 #endif
 
-	DWC_SPINLOCK(dwc_otg_hcd->lock);
-
-	if (likely(dwc_otg_hi3630_is_power_on())) {
-		/* power on state, do nothing */
-	} else {
-		printk("[%s]do not access registers after power off\n", __func__);
-		DWC_SPINUNLOCK(dwc_otg_hcd->lock);
-		return 1;
-	}
-
 	/* Exit from ISR if core is hibernated */
 	if (core_if->hibernation_suspend == 1) {
-		DWC_SPINUNLOCK(dwc_otg_hcd->lock);
 		return retval;
 	}
-
+	DWC_SPINLOCK(dwc_otg_hcd->lock);
 	/* Check if HOST Mode */
 	if (dwc_otg_is_host_mode(core_if)) {
 		gintsts.d32 = dwc_otg_read_core_intr(core_if);
@@ -323,7 +310,7 @@ int32_t dwc_otg_hcd_handle_port_intr(dwc_otg_hcd_t * dwc_otg_hcd)
 	hprt0_data_t hprt0_modify;
 
 	hprt0.d32 = DWC_READ_REG32(dwc_otg_hcd->core_if->host_if->hprt0);
-	hprt0_modify.d32 = hprt0.d32;
+	hprt0_modify.d32 = DWC_READ_REG32(dwc_otg_hcd->core_if->host_if->hprt0);
 
 	/* Clear appropriate bits in HPRT0 to clear the interrupt bit in
 	 * GINTSTS */
@@ -345,9 +332,8 @@ int32_t dwc_otg_hcd_handle_port_intr(dwc_otg_hcd_t * dwc_otg_hcd)
 	}
 
 	if (hprt0.b.prtconndet) {
-		printk(KERN_INFO "[%s]port connect change!\n", __func__);
 		/** @todo - check if steps performed in 'else' block should be perfromed regardles adp */
-		if (dwc_otg_hcd->core_if->adp_enable &&
+		if (dwc_otg_hcd->core_if->adp_enable && 	
 				dwc_otg_hcd->core_if->adp.vbuson_timer_started == 1) {
 			DWC_PRINTF("PORT CONNECT DETECTED ----------------\n");
 			DWC_TIMER_CANCEL(dwc_otg_hcd->core_if->adp.vbuson_timer);
@@ -361,17 +347,16 @@ int32_t dwc_otg_hcd_handle_port_intr(dwc_otg_hcd_t * dwc_otg_hcd)
 			dwc_otg_enable_global_interrupts(dwc_otg_hcd->core_if);
 			cil_hcd_start(dwc_otg_hcd->core_if);*/
 		} else {
-
+		
 			DWC_DEBUGPL(DBG_HCD, "--Port Interrupt HPRT0=0x%08x "
 				    "Port Connect Detected--\n", hprt0.d32);
 			dwc_otg_hcd->flags.b.port_connect_status_change = 1;
 			dwc_otg_hcd->flags.b.port_connect_status = 1;
 			hprt0_modify.b.prtconndet = 1;
-
+	
 			/* B-Device has connected, Delete the connection timer. */
 			DWC_TIMER_CANCEL(dwc_otg_hcd->conn_timer);
 
-			/* added by l00196665, for hi3630 */
 			usb_hcd_resume_root_hub(dwc_otg_hcd->priv);
 		}
 		/* The Hub driver asserts a reset when it sees port connect
@@ -382,7 +367,6 @@ int32_t dwc_otg_hcd_handle_port_intr(dwc_otg_hcd_t * dwc_otg_hcd)
 	/* Port Enable Changed
 	 * Clear if detected - Set internal flag if disabled */
 	if (hprt0.b.prtenchng) {
-		printk(KERN_INFO "[%s]port enable change!\n", __func__);
 		DWC_DEBUGPL(DBG_HCD, "  --Port Interrupt HPRT0=0x%08x "
 			    "Port Enable Changed--\n", hprt0.d32);
 		hprt0_modify.b.prtenchng = 1;
@@ -395,7 +379,7 @@ int32_t dwc_otg_hcd_handle_port_intr(dwc_otg_hcd_t * dwc_otg_hcd)
 			    dwc_otg_hcd->core_if->core_global_regs;
 			dwc_otg_host_if_t *host_if =
 			    dwc_otg_hcd->core_if->host_if;
-
+			    
 			/* Every time when port enables calculate
 			 * HFIR.FrInterval
 			 */
@@ -608,6 +592,13 @@ static int update_urb_state_xfer_comp(dwc_hc_t * hc,
 
 	/* non DWORD-aligned buffer case handling. */
 	if (hc->align_buff && xfer_length && hc->ep_is_in) {
+		if (urb->length > urb->actual_length) {
+			if (xfer_length > (urb->length - urb->actual_length)) {
+				xfer_length = urb->length - urb->actual_length;
+			}
+		} else {
+			xfer_length = 0;
+		}
 		dwc_memcpy(urb->buf + urb->actual_length, hc->qh->dw_align_buf,
 			   xfer_length);
 	}
@@ -622,8 +613,13 @@ static int update_urb_state_xfer_comp(dwc_hc_t * hc,
 	} else if (short_read || urb->actual_length == urb->length) {
 		xfer_done = 1;
 		urb->status = 0;
+	} else if (urb->actual_length > urb->length) {
+		DWC_WARN("device has some problem, it transfers actual (%d) more than wanted(%d)!\n", 
+			urb->actual_length, urb->length); 
+			xfer_done = 1; 
+			urb->status = 0; 
 	}
-
+	
 #ifdef DEBUG
 	{
 		hctsiz_data_t hctsiz;
@@ -670,6 +666,8 @@ void dwc_otg_hcd_save_data_toggle(dwc_hc_t * hc,
 		} else {
 			qtd->data_toggle = DWC_OTG_HC_PID_DATA1;
 		}
+	}else {
+	    printk(KERN_ERR "%s:qtd null\n",__func__);
 	}
 }
 
@@ -704,7 +702,7 @@ update_isoc_urb_state(dwc_otg_hcd_t * hcd,
 			dwc_memcpy(urb->buf + frame_desc->offset + qtd->isoc_split_offset,
 				   hc->qh->dw_align_buf, frame_desc->actual_length);
 		}
-
+		
 		break;
 	case DWC_OTG_HC_XFER_FRAME_OVERRUN:
 		urb->error_count++;
@@ -1255,6 +1253,11 @@ static void update_urb_state_xfer_intr(dwc_hc_t * hc,
 							    halt_status, NULL);
 	/* non DWORD-aligned buffer case handling. */
 	if (hc->align_buff && bytes_transferred && hc->ep_is_in) {
+		if (urb->length < urb->actual_length)
+			bytes_transferred = 0;
+		else if (bytes_transferred > (urb->length - urb->actual_length))
+			bytes_transferred = urb->length - urb->actual_length;
+
 		dwc_memcpy(urb->buf + urb->actual_length, hc->qh->dw_align_buf,
 			   bytes_transferred);
 	}
@@ -1304,6 +1307,11 @@ static int32_t handle_hc_nak_intr(dwc_otg_hcd_t * hcd,
 		}
 		qtd->complete_split = 0;
 		halt_channel(hcd, hc, qtd, DWC_OTG_HC_XFER_NAK);
+		goto handle_nak_done;
+	}
+
+	if((NULL == qtd) || (NULL == qtd->urb)) {
+		DWC_ERROR("[USB_OTG]: NULL PTR to Phone Dump!!\n");
 		goto handle_nak_done;
 	}
 
@@ -1479,13 +1487,13 @@ static int32_t handle_hc_nyet_intr(dwc_otg_hcd_t * hcd,
 			qtd->isoc_split_offset = 0;
 			if (++qtd->isoc_frame_index == qtd->urb->packet_count) {
 				hcd->fops->complete(hcd, qtd->urb->priv, qtd->urb, 0);
-				release_channel(hcd, hc, qtd, DWC_OTG_HC_XFER_URB_COMPLETE);
+				release_channel(hcd, hc, qtd, DWC_OTG_HC_XFER_URB_COMPLETE);	
 			}
 			else
-				release_channel(hcd, hc, qtd, DWC_OTG_HC_XFER_NO_HALT_STATUS);
+				release_channel(hcd, hc, qtd, DWC_OTG_HC_XFER_NO_HALT_STATUS);	
 			goto handle_nyet_done;
 		}
-
+		
 		if (hc->ep_type == DWC_OTG_EP_TYPE_INTR ||
 		    hc->ep_type == DWC_OTG_EP_TYPE_ISOC) {
 			int frnum = dwc_otg_hcd_get_frame_number(hcd);
@@ -1681,6 +1689,10 @@ static int32_t handle_hc_xacterr_intr(dwc_otg_hcd_t * hcd,
 	DWC_DEBUGPL(DBG_HCD, "--Host Channel %d Interrupt: "
 		    "Transaction Error--\n", hc->hc_num);
 
+	if((NULL == hcd) || (NULL == hc) || (NULL == hc_regs) || (NULL == qtd) || (NULL == qtd->urb)) {
+		DWC_ERROR("[USB_OTG]: NULL PTR to Phone Dump!!\n");
+		goto handle_xacterr_done;
+	}
 	if (hcd->core_if->dma_desc_enable) {
 		dwc_otg_hcd_complete_xfer_ddma(hcd, hc, hc_regs,
 					       DWC_OTG_HC_XFER_XACT_ERR);
@@ -1994,12 +2006,9 @@ static void handle_hc_chhltd_intr_dma(dwc_otg_hcd_t * hcd,
 				DWC_READ_REG32(&hcd->core_if->core_global_regs->gintsts));
 		}
 	} else {
+	    clear_hc_int(hc_regs, chhltd);
 		DWC_PRINTF("NYET/NAK/ACK/other in non-error case, 0x%08x\n",
 			   hcint.d32);
-		dwc_otg_hc_cleanup(hcd->core_if, hc);
-		printk(KERN_ERR "hcint: 0x%x, intsts: 0x%x\n",
-			DWC_READ_REG32(&hc_regs->hcint),
-			DWC_READ_REG32(&hcd->core_if->core_global_regs->gintsts));
 	}
 }
 

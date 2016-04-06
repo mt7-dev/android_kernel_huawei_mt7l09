@@ -56,6 +56,11 @@ NAS_ACT_STRU        g_astNasUtranCtrlPlmnSelectionInitActTbl[]   =
                       NAS_UTRANCTRL_RcvMmcInterSkipSearchWasIndMsg_PlmnSelection_Init),
                       
 
+    /* 收到MMC发送的跳过搜网TDS消息 */
+    NAS_ACT_TBL_ITEM( WUEPS_PID_MMC,
+                      MMCMMC_INTER_SKIP_SEARCH_TDS_IND,
+                      NAS_UTRANCTRL_RcvMmcInterSkipSearchTdsIndMsg_PlmnSelection_Init),
+
     /* 收到WAS的搜网回复超时消息 */
     NAS_ACT_TBL_ITEM( VOS_PID_TIMER,
                       TI_NAS_UTRANCTRL_WAIT_WAS_PLMN_SEARCH_CNF,
@@ -234,6 +239,11 @@ NAS_ACT_STRU        g_astNasUtranCtrlPlmnSelectionWaitWasPlmnSearchCnfActTbl[]  
     NAS_ACT_TBL_ITEM( TPS_PID_RRC,
                       RRMM_PLMN_SEARCH_CNF,
                       NAS_UTRANCTRL_RcvTdPlmnSearchCnf_PlmnSelection_WaitWasPlmnSearchCnf),
+
+    NAS_ACT_TBL_ITEM( WUEPS_PID_MMC,
+                     MMCMMC_INTER_ABORT_UTRAN_CTRL_PLMN_SEARCH_REQ,
+                     NAS_UTRANCTRL_RcvInterAbortUtranCtrlPlmnSearchReq_PlmnSelection_WaitWasPlmnSearchCnf),
+
 
     NAS_ACT_TBL_ITEM( WUEPS_PID_MMA,
                      ID_MMA_MMC_POWER_OFF_REQ,
@@ -496,8 +506,6 @@ NAS_STA_STRU        g_astNasUtranCtrlPlmnSelectionStaTbl[]   =
     NAS_STA_TBL_ITEM( NAS_UTRANCTRL_PLMN_SELECTION_STA_WAIT_TD_SUSPEND_CNF_BACK_W,
                       g_astNasUtranCtrlPlmnSelectionWaitTdSuspendCnBackWfActTbl ),
 };
-
-
 VOS_UINT32 NAS_UTRANCTRL_GetPlmnSelectionStaTblSize( VOS_VOID  )
 {
     return (sizeof(g_astNasUtranCtrlPlmnSelectionStaTbl)/sizeof(NAS_STA_STRU));

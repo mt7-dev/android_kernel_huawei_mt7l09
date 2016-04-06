@@ -14,14 +14,14 @@
 struct timer_ctrl
 {
    timer_func routine;                    /*中断处理函数     */
-   int arg;                               /*中断处理函数参数 */
-   u32 base_addr;
-   u32 load_addr;                         /*timer的初值地址   */
-   u32 value_addr;                        /*timer的当前值地址   */
-   u32 ctrl_addr;                         /*timer的控制地址   */
-   u32 intclr_addr;                       /*timer的中断清除地址   */
-   u32 intris_addr;                       /*timer的原始中断地址   */
-   u32 bgload_addr;                       /*timer的周期初值地址   */
+   void* arg;                               /*中断处理函数参数 */
+   void* base_addr;
+   void* load_addr;                         /*timer的初值地址   */
+   void* value_addr;                        /*timer的当前值地址   */
+   void* ctrl_addr;                         /*timer的控制地址   */
+   void* intclr_addr;                       /*timer的中断清除地址   */
+   void* intris_addr;                       /*timer的原始中断地址   */
+   void* bgload_addr;                       /*timer的周期初值地址   */
    u32 interrupt_num;                     /*timer的中断号   */
    u32 clk;                               /*timer的时钟频率 */
    u32 init_timeout;
@@ -30,22 +30,22 @@ struct timer_ctrl
 /*lint -restore +e631*/
 
 static struct timer_ctrl hard_timer_control[TIMER_NUM] ={
-		{NULL,0,0,0,0,0,0,0,0,INT_LVL_TIMER0,HI_TIMER0_CLK,0},
-		{NULL,0,0,0,0,0,0,0,0,INT_LVL_TIMER1,HI_TIMER1_CLK,0},
-		{NULL,0,0,0,0,0,0,0,0,INT_LVL_TIMER2,HI_TIMER2_CLK,0},
-		{NULL,0,0,0,0,0,0,0,0,INT_LVL_TIMER3,HI_TIMER3_CLK,0},
-		{NULL,0,0,0,0,0,0,0,0,INT_LVL_TIMER4,HI_TIMER4_CLK,0},
-		{NULL,0,0,0,0,0,0,0,0,INT_LVL_TIMER5,HI_TIMER5_CLK,0},
-		{NULL,0,0,0,0,0,0,0,0,INT_LVL_TIMER6,HI_TIMER6_CLK,0},
-		{NULL,0,0,0,0,0,0,0,0,INT_LVL_TIMER7,HI_TIMER7_CLK,0},
-		{NULL,0,0,0,0,0,0,0,0,INT_LVL_TIMER8,HI_TIMER8_CLK,0},
-		{NULL,0,0,0,0,0,0,0,0,INT_LVL_TIMER9,HI_TIMER9_CLK,0},
-		{NULL,0,0,0,0,0,0,0,0,INT_LVL_TIMER10,HI_TIMER10_CLK,0},
-		{NULL,0,0,0,0,0,0,0,0,INT_LVL_TIMER11,HI_TIMER11_CLK,0},
-		{NULL,0,0,0,0,0,0,0,0,INT_LVL_TIMER12,HI_TIMER12_CLK,0},
-		{NULL,0,0,0,0,0,0,0,0,INT_LVL_TIMER13,HI_TIMER13_CLK,0},
-		{NULL,0,0,0,0,0,0,0,0,INT_LVL_TIMER14,HI_TIMER14_CLK,0},
-		{NULL,0,0,0,0,0,0,0,0,INT_LVL_TIMER15,HI_TIMER15_CLK,0},
+		{NULL,NULL,0,0,0,0,0,0,0,INT_LVL_TIMER0,HI_TIMER0_CLK,0},
+		{NULL,NULL,0,0,0,0,0,0,0,INT_LVL_TIMER1,HI_TIMER1_CLK,0},
+		{NULL,NULL,0,0,0,0,0,0,0,INT_LVL_TIMER2,HI_TIMER2_CLK,0},
+		{NULL,NULL,0,0,0,0,0,0,0,INT_LVL_TIMER3,HI_TIMER3_CLK,0},
+		{NULL,NULL,0,0,0,0,0,0,0,INT_LVL_TIMER4,HI_TIMER4_CLK,0},
+		{NULL,NULL,0,0,0,0,0,0,0,INT_LVL_TIMER5,HI_TIMER5_CLK,0},
+		{NULL,NULL,0,0,0,0,0,0,0,INT_LVL_TIMER6,HI_TIMER6_CLK,0},
+		{NULL,NULL,0,0,0,0,0,0,0,INT_LVL_TIMER7,HI_TIMER7_CLK,0},
+		{NULL,NULL,0,0,0,0,0,0,0,INT_LVL_TIMER8,HI_TIMER8_CLK,0},
+		{NULL,NULL,0,0,0,0,0,0,0,INT_LVL_TIMER9,HI_TIMER9_CLK,0},
+		{NULL,NULL,0,0,0,0,0,0,0,INT_LVL_TIMER10,HI_TIMER10_CLK,0},
+		{NULL,NULL,0,0,0,0,0,0,0,INT_LVL_TIMER11,HI_TIMER11_CLK,0},
+		{NULL,NULL,0,0,0,0,0,0,0,INT_LVL_TIMER12,HI_TIMER12_CLK,0},
+		{NULL,NULL,0,0,0,0,0,0,0,INT_LVL_TIMER13,HI_TIMER13_CLK,0},
+		{NULL,NULL,0,0,0,0,0,0,0,INT_LVL_TIMER14,HI_TIMER14_CLK,0},
+		{NULL,NULL,0,0,0,0,0,0,0,INT_LVL_TIMER15,HI_TIMER15_CLK,0},
 	};
 /*lint -save -e14*/
 
@@ -80,19 +80,18 @@ u32 bsp_hardtimer_int_status(u32 timer_id)
 
 void bsp_hardtimer_int_clear(u32 timer_id)
 {
+	u32 stamp =0;
 	writel(0x1,(volatile void *)hard_timer_control[timer_id].intclr_addr);
+	stamp = bsp_get_slice_value();
+	while(get_timer_slice_delta(stamp,bsp_get_slice_value())< 2){}
 }
 static s32 bsp_hardtimer_disable_noirq(u32 timer_id)
 {
 	/*最后1bit写0,关闭之前先清中断*/
 	u32 ret = 0;
-	ret = bsp_hardtimer_int_status(timer_id);
-	if (ret )
-	{
-		bsp_hardtimer_int_clear(timer_id);
-	}
 	ret = readl((const volatile void *)hard_timer_control[timer_id].ctrl_addr);
-	writel(ret&(~0x80),(volatile void *)hard_timer_control[timer_id].ctrl_addr);
+	writel(ret&(~0xA0),(volatile void *)hard_timer_control[timer_id].ctrl_addr);
+	bsp_hardtimer_int_clear(timer_id);
 	return OK;
 }
 s32 bsp_hardtimer_disable(u32 timer_id)
@@ -109,14 +108,15 @@ s32 bsp_hardtimer_disable(u32 timer_id)
 
 s32 bsp_hardtimer_alloc(struct bsp_hardtimer_control  *timer_ctrl)
 {
-	u32 readValue = 0, intLev = 0, timerAddr = 0;
+	u32 readValue = 0, intLev = 0;
 	s32 ret = 0;
 	unsigned long flags = 0;
+	void *timerAddr;
+
 	intLev = hard_timer_control[timer_ctrl->timerId].interrupt_num;
 	hard_timer_control[timer_ctrl->timerId].routine = timer_ctrl->func;
-	hard_timer_control[timer_ctrl->timerId].arg = (int)timer_ctrl->para;
+	hard_timer_control[timer_ctrl->timerId].arg = timer_ctrl->para;
 	spin_lock_irqsave(&hard_timer_control[timer_ctrl->timerId].lock,flags);
-	(void)bsp_hardtimer_disable_noirq(timer_ctrl->timerId);
 	timerAddr = hard_timer_control[timer_ctrl->timerId].ctrl_addr;
 	if (TIMER_ONCE_COUNT == timer_ctrl->mode)
 	{
@@ -153,7 +153,7 @@ static s32 bsp_hardtimer_enable_noirq(u32 timer_id)
 	unsigned int ret = 0;
 	(void)bsp_hardtimer_disable_noirq(timer_id);
 	ret = readl((const volatile void *)hard_timer_control[timer_id].ctrl_addr);
-	writel(ret|(~0xFFFFFF7F),(volatile void *)hard_timer_control[timer_id].ctrl_addr);
+	writel(ret|0XA0,(volatile void *)hard_timer_control[timer_id].ctrl_addr);
 	return OK;
 }
 s32 bsp_hardtimer_enable(u32 timer_id)
@@ -173,7 +173,7 @@ s32 bsp_hardtimer_free(u32 timer_id)
 	u32 intLev = 0;
 	(void)bsp_hardtimer_disable(timer_id);
 	intLev = hard_timer_control[timer_id].interrupt_num;
-	osl_free_irq(intLev,hard_timer_control[timer_id].routine,hard_timer_control[timer_id].arg);
+	osl_free_irq(intLev,hard_timer_control[timer_id].routine, hard_timer_control[timer_id].arg);
 	hard_timer_control[timer_id].routine = NULL;
 	hard_timer_control[timer_id].arg = 0;
 	return OK;
@@ -186,24 +186,24 @@ static int k3_timer_probe(struct platform_device *dev)
 {
 	u32 i = 0,ret = 0;
 	/*lint -save -e64*/
-	hard_timer_control[0].base_addr = (u32)ioremap_nocache(HI_TIMER_00_REGBASE_ADDR,TIMER_ADDR_SIZE);
+	hard_timer_control[0].base_addr = ioremap_nocache(HI_TIMER_00_REGBASE_ADDR, TIMER_ADDR_SIZE);
 	hard_timer_control[1].base_addr = hard_timer_control[0].base_addr;
 	/*timer 2\3，即timer10\11属性为安全，AP侧不可访问*/
 	/*
 	hard_timer_control[2].base_addr = ioremap_nocache(HI_TIMER_02_REGBASE_ADDR,TIMER_ADDR_SIZE);
 	hard_timer_control[3].base_addr = hard_timer_control[2].base_addr;
 	*/
-	hard_timer_control[4].base_addr = (u32)ioremap_nocache(HI_TIMER_04_REGBASE_ADDR,TIMER_ADDR_SIZE);
+	hard_timer_control[4].base_addr = ioremap_nocache(HI_TIMER_04_REGBASE_ADDR, TIMER_ADDR_SIZE);
 	hard_timer_control[5].base_addr = hard_timer_control[4].base_addr;
-	hard_timer_control[6].base_addr = (u32)ioremap_nocache(HI_TIMER_06_REGBASE_ADDR,TIMER_ADDR_SIZE);
+	hard_timer_control[6].base_addr = ioremap_nocache(HI_TIMER_06_REGBASE_ADDR, TIMER_ADDR_SIZE);
 	hard_timer_control[7].base_addr = hard_timer_control[6].base_addr;
-	hard_timer_control[8].base_addr = (u32)ioremap_nocache(HI_TIMER_08_REGBASE_ADDR,TIMER_ADDR_SIZE);
+	hard_timer_control[8].base_addr = ioremap_nocache(HI_TIMER_08_REGBASE_ADDR, TIMER_ADDR_SIZE);
 	hard_timer_control[9].base_addr = hard_timer_control[8].base_addr;
-	hard_timer_control[10].base_addr = (u32)ioremap_nocache(HI_TIMER_10_REGBASE_ADDR,TIMER_ADDR_SIZE);
+	hard_timer_control[10].base_addr = ioremap_nocache(HI_TIMER_10_REGBASE_ADDR, TIMER_ADDR_SIZE);
 	hard_timer_control[11].base_addr = hard_timer_control[10].base_addr;
-	hard_timer_control[12].base_addr = (u32)ioremap_nocache(HI_TIMER_12_REGBASE_ADDR,TIMER_ADDR_SIZE);
+	hard_timer_control[12].base_addr = ioremap_nocache(HI_TIMER_12_REGBASE_ADDR, TIMER_ADDR_SIZE);
 	hard_timer_control[13].base_addr = hard_timer_control[12].base_addr;
-	hard_timer_control[14].base_addr = (u32)ioremap_nocache(HI_TIMER_14_REGBASE_ADDR,TIMER_ADDR_SIZE);
+	hard_timer_control[14].base_addr = ioremap_nocache(HI_TIMER_14_REGBASE_ADDR, TIMER_ADDR_SIZE);
 	hard_timer_control[15].base_addr = hard_timer_control[14].base_addr;
 	/*lint -restore +e64*/
 	for(i = 0;i < TIMER_NUM-8;i+=2)

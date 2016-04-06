@@ -9,6 +9,7 @@
 *****************************************************************************/
 #include "product_config.h"
 #include "MemoryMap.h"
+#include "vos.h"
 
 
 #ifdef __cplusplus
@@ -24,7 +25,7 @@ extern "C" {
   2 宏定义
 *****************************************************************************/
 /* 32 字节对齐 */
-#define TTF_GET_32BYTE_ALIGN_VALUE(ulAddr)   (((unsigned long)(ulAddr) + 0x1F) & (~0x1F))
+#define TTF_GET_32BYTE_ALIGN_VALUE(ulAddr)   (((VOS_UINT_PTR)(ulAddr) + 0x1FUL) & (~0x1FUL))
 
     /*********Uncache mem(20M) deploy begin*********/
     /*->startAddr|-------------------------------|   */
@@ -443,9 +444,6 @@ const IMM_MEM_CLUSTER_CFG_INFO_STRU    g_astImmMemSharePoolClusterTableInfo[] =
 #define TTF_MEM_CTRL_MEM_CNT                        (IMM_MEM_SHARE_POOL_MEM_CNT)
 #endif
 
-
-
-
 #if 0
 #if (FEATURE_ON == FEATURE_BBP_MASTER)
 /* A CPU 不可cache内存基地址 */
@@ -455,6 +453,7 @@ const IMM_MEM_CLUSTER_CFG_INFO_STRU    g_astImmMemSharePoolClusterTableInfo[] =
 #define TTF_ACORE_POOL_MEM_START_ADDR(BaseAddr) (TTF_GET_32BYTE_ALIGN_VALUE(TTF_CIPHER_MASTER_END_ADDR(BaseAddr)))
 #endif
 #endif
+
 /* IMM MEM 所有内存所需控制头总块数*/
 #define IMM_MEM_CTRL_MEM_TOTAL_CNT              (IMM_MEM_SHARE_POOL_MEM_CNT + IMM_MEM_CTRL_MEM_CNT)
 
@@ -521,7 +520,7 @@ enum TTF_MEMCTRL_ADDR_TYPE_ENUM
     TTF_MEMCTRL_CCORE_POOL_ADDR_TYPE,
     TTF_MEMCTRL_ADDR_TYPE_BUTT
 };
-typedef unsigned long TTF_MEMCTRL_ADDR_TYPE_ENUM_UINT32;
+typedef unsigned int TTF_MEMCTRL_ADDR_TYPE_ENUM_UINT32;
 
 /*****************************************************************************
   8 UNION定义
@@ -537,10 +536,10 @@ typedef unsigned long TTF_MEMCTRL_ADDR_TYPE_ENUM_UINT32;
 /*****************************************************************************
   10 函数声明
 *****************************************************************************/
-extern unsigned long   TTF_MEMCTRL_ACORE_AddrInit(void);
-extern unsigned long   TTF_MEMCTRL_CCORE_AddrInit(void);
-extern unsigned long   TTF_MEMCTRL_GetOffsetBaseLen(unsigned long  ulType);
-extern unsigned long   TTF_MEMCTRL_GetTypeAddr(unsigned long ulAddr, unsigned long  ulType);
+extern VOS_UINT32       TTF_MEMCTRL_ACORE_AddrInit(VOS_VOID);
+extern VOS_UINT32       TTF_MEMCTRL_CCORE_AddrInit(VOS_VOID);
+extern VOS_UINT32       TTF_MEMCTRL_GetOffsetBaseLen(VOS_UINT32  ulType);
+extern VOS_UINT_PTR     TTF_MEMCTRL_GetTypeAddr(VOS_UINT_PTR ulAddr, VOS_UINT32 ulType);
 
 
 #ifdef __cplusplus

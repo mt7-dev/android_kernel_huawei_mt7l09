@@ -18,10 +18,10 @@ obj-y				+= usbtrace/
 endif
 obj-$(CONFIG_ENABLE_TEST_CODE)				+= test/
 
-KBUILD_CPPFLAGS +=	-Idrivers/modem/om/common \
-                    -Idrivers/modem/om/dump \
-                    -Idrivers/modem/om/oms\
-                    -Idrivers/modem/om/log \
-                    -Idrivers/modem/om/sys_view \
-		    -Idrivers/modem/om/usbtrace
+KBUILD_CPPFLAGS +=	-Idrivers/hisi/modem_hi3630/drv/om/common \
+                    -Idrivers/hisi/modem_hi3630/drv/om/dump \
+                    -Idrivers/hisi/modem_hi3630/drv/om/oms\
+                    -Idrivers/hisi/modem_hi3630/drv/om/log \
+                    -Idrivers/hisi/modem_hi3630/drv/om/sys_view \
+		    -Idrivers/hisi/modem_hi3630/drv/om/usbtrace
 

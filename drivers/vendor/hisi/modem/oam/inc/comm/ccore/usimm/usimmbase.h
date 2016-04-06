@@ -340,6 +340,9 @@ extern "C" {
 
 #define USIMM_CB_TIMER_NAME_TASKDELAY   (2)
 
+#define USIMM_HUK_LEN                   (0x10)
+
+#define USIMM_HUK_BITS                  (128)
 
 /*******************************************************************************
   3 Ã¶¾Ù¶¨Òå
@@ -1133,6 +1136,11 @@ extern USIMM_MNTN_STATE_ERROR_EVENT_STRU    g_stCardErrorLog;
 extern NV_ID_ERR_LOG_CTRL_INFO_STRU         g_stErrLogCtrlInfo;
 #endif
 
+#if (FEATURE_VSIM == FEATURE_ON)
+extern VOS_UINT8                           *g_pucUSIMMVsimData;
+#endif
+
+
 extern USIMM_BASE_INFO_ST                    gstUSIMMBaseInfo;
 
 extern USIMM_CARD_APP_INFO_ST                gastUSIMMCardAppInfo[USIMM_UICC_BUTT];
@@ -1229,11 +1237,11 @@ extern VOS_CHAR *g_pcUSIMMVSimXmlFilePath;
 
 extern HTIMER                    g_ulUSIMMGetCardStatTimerID;
 
-extern VOS_UINT32                g_ulUSIMMGetCardStatSemID;
+extern VOS_SEM                   g_ulUSIMMGetCardStatSemID;
 
 extern HTIMER                    g_ulUSIMMTaskDelayTimerID;
 
-extern VOS_UINT32                g_ulUSIMMTaskDelaySemID;
+extern VOS_SEM                   g_ulUSIMMTaskDelaySemID;
 
 extern USIMM_CARD_VERSIONTYPE_STRU  g_stUSIMMCardVersionType;
 
@@ -1627,6 +1635,10 @@ extern VOS_UINT32 USIMM_DecodeVsimRoot(OAM_XML_NODE_STRU *pstXmlNode,USIMM_CARD_
 extern VOS_UINT32 USIMM_DecodeVsimFile(VOS_UINT8 *pucData);
 
 extern VOS_UINT8* USIMM_ReadVsimFile(VOS_UINT32 ulReadPID);
+
+extern VOS_UINT32 USIMM_VsimHUKDecode(VOS_UINT8 *pucSrc, VOS_UINT32 ulSrcLen,  VOS_UINT8 *pucDst, VOS_UINT32 *pulDstLen);
+
+extern VOS_BOOL USIMM_CheckSupportAP(VOS_VOID);
 
 extern VOS_UINT32 USIMM_InitCardHandle(USIMM_MsgBlock *pMsg);
 

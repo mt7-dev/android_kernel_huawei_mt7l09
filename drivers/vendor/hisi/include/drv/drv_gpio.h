@@ -60,12 +60,12 @@ typedef enum tagGPIO_ANT_MODESET_E
  返 回 值  :  0 ：OK  非 0 ：Error
 
 *****************************************************************************/
-extern unsigned long drv_gpio_oprt(unsigned long ulOp, unsigned char *pucPL);
+extern unsigned int drv_gpio_oprt(unsigned int ulOp, unsigned char *pucPL);
 #define DRV_GPIO_OPRT(ulOp, pucPL) drv_gpio_oprt(ulOp, pucPL)
 
 
 /* from v9r1, 根据GPIO 拨码开关判断是否启动协议栈代码, V7R2先打桩实现 */
-static INLINE unsigned long DRV_BBP_GPIO_GET(void)
+static INLINE unsigned int DRV_BBP_GPIO_GET(void)
 {
 	return ~DRV_NOT_START_UMTS;
 }

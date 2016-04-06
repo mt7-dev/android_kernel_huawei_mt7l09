@@ -112,6 +112,18 @@ config CPU_FREQ_DEFAULT_GOV_INTERACTIVE
 	  loading your cpufreq low-level hardware driver, using the
 	  'interactive' governor for latency-sensitive workloads.
 
+config CPU_FREQ_DEFAULT_GOV_OPTDEMAND
+	bool "optdemand"
+	select CPU_FREQ_GOV_OPTDEMAND
+	select CPU_FREQ_GOV_PERFORMANCE
+	help
+	  Use the CPUFreq governor 'optdemand' as default. This allows
+	  you to get a full dynamic frequency capable system by simply
+	  loading your cpufreq low-level hardware driver.
+	  Be aware that not all cpufreq drivers support the optdemand
+	  governor. If unsure have a look at the help section of the
+	  driver. Fallback governor will be the performance governor.
+	  
 endchoice
 
 config CPU_FREQ_GOV_PERFORMANCE
@@ -190,7 +202,7 @@ config CPU_FREQ_GOV_INTERACTIVE
 
 config INPUT_PULSE_SUPPORT
 	bool "input pulse support"
-	depends on CPU_FREQ_GOV_INTERACTIVE
+	depends on CPU_FREQ_GOV_INTERACTIVE || CPU_FREQ_GOV_OPTDEMAND
 	default n
 	help
 	  'INPUT_PULSE_SUPPORT' is used to enable 'interactive' governor to
@@ -216,6 +228,26 @@ config CPU_FREQ_GOV_CONSERVATIVE
 
 	  To compile this driver as a module, choose M here: the
 	  module will be called cpufreq_conservative.
+
+	  For details, take a look at linux/Documentation/cpu-freq.
+
+	  If in doubt, say N.
+
+config CPU_FREQ_GOV_OPTDEMAND
+	tristate "'optdemand' cpufreq policy governor"
+	depends on ARCH_HI6XXX
+	select CPU_FREQ_TABLE
+	select CPU_FREQ_GOV_COMMON
+	help
+	  'optdemand' - This driver adds a dynamic cpufreq policy governor.
+	  The governor does a periodic polling and 
+	  changes frequency based on the CPU utilization.
+	  The support for this governor depends on CPU capability to
+	  do fast frequency switching (i.e, very low latency frequency
+	  transitions). 
+
+	  To compile this driver as a module, choose M here: the
+	  module will be called cpufreq_optdemand.
 
 	  For details, take a look at linux/Documentation/cpu-freq.
 

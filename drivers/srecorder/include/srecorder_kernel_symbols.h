@@ -1,18 +1,4 @@
-/**
-    @copyright: Huawei Technologies Co., Ltd. 2012-2012. All rights reserved.
-    
-    @file: srecorder_kernel_symbols.h
-    
-    @brief: 读取内核符号的地址
-    
-    @version: 1.0 
-    
-    @author: QiDechun ID: 216641
-    
-    @date: 2012-06-21
-    
-    @history:
-*/
+
 
 #ifndef SRECORDER_KERNEL_SYMBOLS_H
 #define SRECORDER_KERNEL_SYMBOLS_H
@@ -479,7 +465,6 @@ srec_ksym_addr_t srecorder_get_slub_lock(void);
 
 
 #if defined(CONFIG_DUMP_MODEM_LOG)
-/* DTS2012101502012 wupeng 20121015 begin */
 /**
     @function: srec_ksym_addr_t srecorder_get_spinlocks_initialized(void)
     @brief: 获取变量spinlocks_initialized的地址
@@ -530,7 +515,6 @@ srec_ksym_addr_t srecorder_get_smem_areas(void);
     @note: 
 */
 srec_ksym_addr_t srecorder_get_num_smem_areas(void);
-/* DTS2012101502012 wupeng 20121015 end */
 #endif
 
 

@@ -186,6 +186,19 @@ enum L2_OM_KEYEVENT_RPT_NUM
 typedef VOS_UINT32  L2_OM_KEYEVENT_RPT_NUM_UINT32;
 
 /*****************************************************************************
+ 枚举名    : L2_DCM_SCELL_STATUS_ENUM
+ 枚举说明  : SCELL状态
+*****************************************************************************/
+typedef enum
+{
+    L2_MAC_SCELL_ACTIVE    = 0,
+    L2_MAC_SCELL_DEACTIVE,
+    L2_MAC_SCELL_NOT_CONFIG,
+    L2_MAC_SCELL_BUTT
+}L2_DCM_SCELL_STATUS_ENUM;
+
+typedef VOS_UINT8 L2_DCM_SCELL_STATUS_ENUM_UINT8;
+/*****************************************************************************
    5 STRUCT
 *****************************************************************************/
 /* MAC地址定义 */
@@ -926,6 +939,21 @@ typedef struct
     L2_MAC_UL_HEADER_STRU         stMacUlData;
 
 }L2_MAC_UL_HEADER_INFO_STRU;
+
+/*****************************************************************************
+ 结构名    :L2_DCM_CA_CTRL_ELEMENT_STRU
+ 协议表格  :
+ ASN.1描述 :
+ 结构说明  :  SCELL MAC CE上报结构
+*****************************************************************************/
+typedef struct
+{
+    VOS_MSG_HEADER                                                    /* 消息头 */        /* _H2ASN_Skip */
+    VOS_UINT32                          enMsgName;                    /* 消息类型 */      /* _H2ASN_Skip */
+    VOS_UINT16                          usSCellCtrlRevSFN;
+    VOS_UINT16                          usSCellCtrlRevSubSFN;
+    L2_DCM_SCELL_STATUS_ENUM_UINT8      aucScellIndex[TL_OM_LMAC_CA_MAX_RPT_CELL_NUM];
+}L2_DCM_CA_CTRL_ELEMENT_STRU;
 
 extern L2_MAC_DL_HEADER_STRU  g_stL2MacDlHdrInfo;
 extern L2_MAC_UL_HEADER_STRU  g_stL2MacUlHdrInfo;

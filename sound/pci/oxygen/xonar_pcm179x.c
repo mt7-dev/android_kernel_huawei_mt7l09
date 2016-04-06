@@ -100,8 +100,8 @@
  */
 
 /*
- * Xonar Essence ST (Deluxe)/STX
- * -----------------------------
+ * Xonar Essence ST (Deluxe)/STX (II)
+ * ----------------------------------
  *
  * CMI8788:
  *
@@ -213,7 +213,7 @@
 #define GPIO_ST_HP		0x0080
 
 #define I2C_DEVICE_PCM1796(i)	(0x98 + ((i) << 1))	/* 10011, ii, /W=0 */
-#define I2C_DEVICE_CS2000	0x9c			/* 100111, 0, /W=0 */
+#define I2C_DEVICE_CS2000	0x9c
 
 #define PCM1796_REG_BASE	16
 
@@ -1134,6 +1134,14 @@ int get_xonar_pcm179x_model(struct oxygen *chip,
 	case 0x835c:
 		chip->model = model_xonar_st;
 		chip->model.shortname = "Xonar STX";
+		chip->model.init = xonar_stx_init;
+		chip->model.resume = xonar_stx_resume;
+		chip->model.set_dac_params = set_pcm1796_params;
+		break;
+	case 0x85f4:
+		chip->model = model_xonar_st;
+		/* TODO: daughterboard support */
+		chip->model.shortname = "Xonar STX II";
 		chip->model.init = xonar_stx_init;
 		chip->model.resume = xonar_stx_resume;
 		chip->model.set_dac_params = set_pcm1796_params;

@@ -11,6 +11,11 @@
  */
 
 / {
+
+        iommu {
+                compatible = "hisi,hi3630-iommu";
+        };
+
 	hisi,ion {
 		compatible = "hisi,k3v3-ion";
 	};

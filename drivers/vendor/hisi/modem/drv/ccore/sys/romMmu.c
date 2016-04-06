@@ -3,6 +3,7 @@
 
 #include <bsp_memmap.h>
 #include <product_config.h>
+#include "modem_l2_test_case.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -69,6 +70,24 @@ extern "C" {
 #define L2_CLEAN_INVALIDATE_PA   (L2_CTRL_BASE + 0x7f0)
 #define L2_CLEAN_INVALIDATE_WAY  (L2_CTRL_BASE + 0x7fc)
 
+#define L2_PREFETCH_CTRL        (L2_CTRL_BASE + 0xF60)
+#define L2_POWER_CTRL           (L2_CTRL_BASE + 0xF80)
+
+#define AUX_EARLY_BRESP         (0x1<<30)
+#define AUX_INSTR_PREFETCH      (0x1<<29)
+#define AUX_DATA_PREFETCH       (0x1<<28)
+#define AUX_FULL_LINE_OF_ZERO   (0x1<<0)
+
+#define PREF_DOUBLE_LINEFILL    (0x1<<30)
+#define PREF_INSTR_PREFETCH     (0x1<<29)   /*the same to aux bit29*/
+#define PREF_DATA_PREFETCH      (0x1<<28)  /*the same to aux bit28*/
+#define PREF_PREFETCH_DROP      (0x1<<24)
+#define PREF_PREFETCH_OFFSET    (0x7)
+
+#define POWER_CLK_GATING        (0x1<<1)
+#define POWER_STANDBY_MODE      (0x1<<0)
+
+
 #define L2_CONTROL_ENABLE        (0x1)
 #define L2_WAY_ALL               (0xff) /* 8-ways */
 #define L2_OPERATION_IN_PROGRESS (0x1)
@@ -78,6 +97,26 @@ extern "C" {
 #define L2_CACHE_SIZE            (0x80000)
 #define L2_CACHE_LINE_SIZE       (0x20)
 #define L2_CACHE_LINE_MASK       (L2_CACHE_LINE_SIZE - 1)
+
+#define BIT_A9_FULL_LINE 3
+#define BIT_A9_L1_PREFETCH 2
+#define BIT_A9_L2_PREFETCH_HINTS 1
+
+#define SCU_CTRL_OFFSET 0x0
+#define SCU_IC_STANDBY      (0x1<<6)
+#define SCU_STANDBY     (0x1<<5)
+#define SCU_SPECUL_LINEFILL (0x1<<3)
+#define SCU_SCU_ENABLE      (0x1<<0)
+
+#define SCU_CTRL_CONFIG (SCU_IC_STANDBY|SCU_STANDBY|SCU_SPECUL_LINEFILL|SCU_SCU_ENABLE)
+
+#define ARMA9CTX_REGISTER_READ(reg) \
+    *(volatile unsigned int *)(reg)
+
+#define ARMA9CTX_REGISTER_WRITE(reg, data)\
+    *(volatile unsigned int *)(reg) = (data)
+
+
 #endif
 
 typedef struct
@@ -90,7 +129,29 @@ typedef struct
 
 
 #define BUFFERABLE_ADDR_START       DDR_MCORE_ADDR
-
+#ifdef ATE_L2CACHE_TEST
+const MMU_DES_CONFIG g_mmu_desc_cfg[]=
+{
+    {
+          L2_CTRL_BASE,
+          L2_CTRL_BASE,
+          ROUND_UP(MMU_SECT_SIZE, MMU_SECT_SIZE),
+          (MMU_WRITEABLE)
+    },
+    {
+        ATE_l2_TEST_LOW_ADDR,
+        ATE_l2_TEST_LOW_ADDR,
+        ROUND_UP (ATE_L2_TEST_SIZE, MMU_SECT_SIZE),
+        (MMU_WRITEABLE) | (MMU_CACHEABLE) | (MMU_BUFFERABLE) | (MMU_WRITE_ALLOC)
+    },
+    {
+        HI_MDM_GIC_BASE_ADDR, /* MPCore functions including SCU */
+        HI_MDM_GIC_BASE_ADDR,
+        ROUND_UP(MMU_SECT_SIZE, MMU_SECT_SIZE),
+        (MMU_WRITEABLE)
+    },
+};
+#else
 const MMU_DES_CONFIG g_mmu_desc_cfg[]=
 {
 #ifdef BSP_CONFIG_HI3630
@@ -113,7 +174,14 @@ const MMU_DES_CONFIG g_mmu_desc_cfg[]=
         ROUND_UP (DDR_MCORE_SIZE, MMU_SECT_SIZE),
         (MMU_WRITEABLE) | (MMU_CACHEABLE) | (MMU_BUFFERABLE) | (MMU_WRITE_ALLOC)
     },
+    {
+        HI_MDM_GIC_BASE_ADDR, /* MPCore functions including SCU */
+        HI_MDM_GIC_BASE_ADDR,
+        ROUND_UP(MMU_SECT_SIZE, MMU_SECT_SIZE),
+        (MMU_WRITEABLE)
+    },
 };
+#endif
 
 #ifdef BSP_CONFIG_HI3630
 /* for compile writel */
@@ -121,65 +189,141 @@ void (* cache_sync_ops)(void) = 0;
 
 void rom_mmu_l2cache_sync(void)
 {
-    writel(0, L2_CACHE_SYNC);
-    asm volatile("DSB");
+	ARMA9CTX_REGISTER_WRITE(L2_CACHE_SYNC, 0);
+	__asm__ __volatile__ ("dsb" : : : "memory");
+	__asm__ __volatile__ ("isb" : : : "memory");
 }
 
 void rom_mmu_l2cache_invalidate(void)
 {
-    /* invalidate the whole L2 cache */
-    writel(L2_WAY_ALL, L2_INVALIDATE_WAY);
-
-    rom_mmu_l2cache_sync();
+    ARMA9CTX_REGISTER_WRITE(L2_INVALIDATE_WAY, L2_WAY_ALL);
 
     /* poll state until the background invalidate operation is complete */
-    while (readl(L2_INVALIDATE_WAY) & L2_WAY_ALL);
+
+    while (ARMA9CTX_REGISTER_READ(L2_INVALIDATE_WAY) & L2_WAY_ALL);
 
     rom_mmu_l2cache_sync();
 }
 
-void rom_mmu_l2cache_clean(void)
+void rom_mmu_l2cache_flush(void)
 {
-    /* clean the whole L2 cache */
-    writel(L2_WAY_ALL, L2_CLEAN_WAY);
+    ARMA9CTX_REGISTER_WRITE(L2_CLEAN_WAY, L2_WAY_ALL);
 
-    rom_mmu_l2cache_sync();
+    /* poll state until the background flush operation  is complete */
 
-    while (readl(L2_CLEAN_WAY) & L2_WAY_ALL);
+    while (ARMA9CTX_REGISTER_READ(L2_CLEAN_WAY) & L2_WAY_ALL);
 
     rom_mmu_l2cache_sync();
 }
 
 void rom_mmu_l2cache_clear(void)
 {
-    /* clean the whole L2 cache */
-    writel(L2_WAY_ALL, L2_CLEAN_INVALIDATE_WAY);
 
+    ARMA9CTX_REGISTER_WRITE(L2_CLEAN_INVALIDATE_WAY, L2_WAY_ALL);
+
+    /* poll state until the background clear operation  is complete */
+
+    while (ARMA9CTX_REGISTER_READ(L2_CLEAN_INVALIDATE_WAY) & L2_WAY_ALL);
+
+    /* cache sync */
     rom_mmu_l2cache_sync();
+}
 
-    while (readl(L2_CLEAN_INVALIDATE_WAY) & L2_WAY_ALL);
+void rom_mmu_l2cache_init(void)
+{
 
-    rom_mmu_l2cache_sync();
+    ARMA9CTX_REGISTER_WRITE(L2_CONTROL, 0x0); /* disable L2 cache */
+
+    /*
+     * We use the default configuration, so here we do not need use the
+     * auxiliary control register to configure associativity, way size and
+     * latency of RAM access.
+     */
+
+    /* invalidate the whole L2 cache through way operation  */
+
+    ARMA9CTX_REGISTER_WRITE(L2_INVALIDATE_WAY, L2_WAY_ALL);
+
+    /* poll state until the background invalidate operation  is complete */
+
+    while (ARMA9CTX_REGISTER_READ(L2_INVALIDATE_WAY) & L2_WAY_ALL);
+
+	rom_mmu_l2cache_sync();
+
+    /* clear all pending interrupts */
+
+    ARMA9CTX_REGISTER_WRITE(L2_INT_CLEAR, L2_INT_CLEAR_ALL);
+
+    /* mask all interrupts */
+
+    ARMA9CTX_REGISTER_WRITE(L2_INT_MASK, L2_INT_MASK_ALL);
+}
+static void  set_a9_aux_ctrl( unsigned int bit , unsigned int bool)
+{
+/* c1 - 0 - c0 - 1 */
+    unsigned int reg = 0;
+    __asm__ __volatile__  ("mrc p15, 0, %0, c1, c0, 1" : "=r" (reg) );
+
+    if(bool==1)
+        { reg = reg|(0x1<<bit);}
+    else
+        { reg = reg &(~(0x1<<bit)) ;}
+    __asm__ __volatile__  ("mcr p15, 0, %0, c1, c0, 1" : : "r" (reg));
+
+	__asm__ __volatile__ ("dsb" : : : "memory");
+	__asm__ __volatile__ ("isb" : : : "memory");
+
 }
 
 void rom_mmu_l2cache_enable(void)
 {
-    rom_mmu_l2cache_invalidate();
 
-    /* clear all pending interrupts */
-    writel(L2_INT_CLEAR_ALL, L2_INT_CLEAR);
+    unsigned int reg = 0;
+    unsigned int scu_reg_base = 0;
 
-    /* mask all interrupts */
-    writel(L2_INT_MASK_ALL, L2_INT_MASK);
+  /* l2cache config for optimize*/
+    reg = ARMA9CTX_REGISTER_READ(L2_AUX_CONTROL);
+    reg = reg|AUX_INSTR_PREFETCH|AUX_DATA_PREFETCH|AUX_EARLY_BRESP;
+    reg = reg|AUX_FULL_LINE_OF_ZERO; /*AUX_FULL_LINE_OF_ZERO*/
+    ARMA9CTX_REGISTER_WRITE(L2_AUX_CONTROL, reg);
 
-    writel(L2_CONTROL_ENABLE, L2_CONTROL); /* enable L2 cache */
+    reg = ARMA9CTX_REGISTER_READ(L2_PREFETCH_CTRL);
+    reg = reg|PREF_DOUBLE_LINEFILL|PREF_INSTR_PREFETCH|PREF_DATA_PREFETCH|PREF_PREFETCH_OFFSET|PREF_PREFETCH_DROP;
+    ARMA9CTX_REGISTER_WRITE(L2_PREFETCH_CTRL, reg);
+
+    reg = ARMA9CTX_REGISTER_READ(L2_POWER_CTRL);
+    reg = reg|POWER_CLK_GATING|POWER_STANDBY_MODE;
+    ARMA9CTX_REGISTER_WRITE(L2_POWER_CTRL, reg);
+
+    /*enable SCU*/
+    __asm__ __volatile__  ("mrc p15, 4, %0, c15, c0, 0" : "=r" (scu_reg_base) );
+    scu_reg_base &= 0xffffe000; /* get scu reg base - bit[31:13]*/
+
+    reg = ARMA9CTX_REGISTER_READ(scu_reg_base+SCU_CTRL_OFFSET);
+    reg= reg|SCU_CTRL_CONFIG;
+    ARMA9CTX_REGISTER_WRITE(scu_reg_base+SCU_CTRL_OFFSET, reg);
+	__asm__ __volatile__ ("dsb" : : : "memory");
+	__asm__ __volatile__ ("isb" : : : "memory");
+    ARMA9CTX_REGISTER_WRITE(L2_CONTROL, L2_CONTROL_ENABLE); /* enable L2 cache */
+	__asm__ __volatile__ ("dsb" : : : "memory");
+
+    /* after l2 full line zero enabled */
+    set_a9_aux_ctrl(BIT_A9_FULL_LINE, 1); /*AUX_FULL_LINE_OF_ZERO*/
+
+    set_a9_aux_ctrl(BIT_A9_L2_PREFETCH_HINTS, 1); /*  */
+    set_a9_aux_ctrl(BIT_A9_L1_PREFETCH, 1); /* config anywhere */
+	__asm__ __volatile__ ("dsb" : : : "memory");
+	__asm__ __volatile__ ("isb" : : : "memory");
+
 }
 
 void rom_mmu_l2cache_disable(void)
 {
-    rom_mmu_l2cache_clear();
+    set_a9_aux_ctrl(BIT_A9_FULL_LINE, 0); /*AUX_FULL_LINE_OF_ZERO*/
+    set_a9_aux_ctrl(BIT_A9_L2_PREFETCH_HINTS, 1); /*  */
 
-    writel(0x0, L2_CONTROL); /* disable L2 cache */
+    ARMA9CTX_REGISTER_WRITE(L2_CONTROL, 0x0); /* disable L2 cache */
+	__asm__ __volatile__ ("dsb" : : : "memory");
 }
 #endif
 

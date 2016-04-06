@@ -466,6 +466,7 @@ struct rq {
 	struct cpu_stop_work active_balance_work;
 #ifdef CONFIG_SCHED_HMP
 	struct task_struct *migrate_task;
+	int wake_for_idle_pull;
 #endif
 	/* cpu of this runqueue: */
 	int cpu;
@@ -650,21 +651,6 @@ static LIST_HEAD(hmp_domains);
 DECLARE_PER_CPU(struct hmp_domain *, hmp_cpu_domain);
 #define hmp_cpu_domain(cpu)	(per_cpu(hmp_cpu_domain, (cpu)))
 #endif /* CONFIG_SCHED_HMP */
-
-#ifdef CONFIG_HMP_FREQUENCY_INVARIANT_SCALE
-#ifdef CONFIG_HOTPLUG_CPU
-struct cpufreq_scale_cpu {
-	u32 fastcpu_max_freq;
-	u32 slowcpu_max_freq;
-	u32 dhry_scale;
-	u32 dhry_multi;
-	u32 freq_scale;
-	u32 freq_multi_bit;
-};
-extern struct cpufreq_scale_cpu cpu_freq_scale;
-
-#endif /* CONFIG_HOTPLUG_CPU */
-#endif /* CONFIG_HMP_FREQUENCY_INVARIANT_SCALE */
 
 #endif /* CONFIG_SMP */
 
@@ -969,8 +955,6 @@ static const int prio_to_weight[40] = {
  * into multiplications:
  */
 static const u32 prio_to_wmult[40] = {
- /* -20 */     48388,     59856,     76040,     92818,    118348,
- /* -15 */    147320,    184698,    229616,    287308,    360437,
  /* -10 */    449829,    563644,    704093,    875809,   1099582,
  /*  -5 */   1376151,   1717300,   2157191,   2708050,   3363326,
  /*   0 */   4194304,   5237765,   6557202,   8165337,  10153587,
@@ -1097,17 +1081,8 @@ static inline u64 steal_ticks(u64 steal)
 }
 #endif
 
-#ifdef CONFIG_SCHED_RQ_AVG_INFO
-extern void sched_update_nr_prod(int cpu, unsigned long nr, bool inc);
-extern void sched_get_nr_running_avg(int *avg, int *iowait_avg);
-#endif /* CONFIG_SCHED_RQ_AVG_INFO */
-
 static inline void inc_nr_running(struct rq *rq)
 {
-#ifdef CONFIG_SCHED_RQ_AVG_INFO
-	sched_update_nr_prod(cpu_of(rq), rq->nr_running, true);
-#endif /* CONFIG_SCHED_RQ_AVG_INFO */
-
 	rq->nr_running++;
 
 #ifdef CONFIG_NO_HZ_FULL
@@ -1123,10 +1098,6 @@ static inline void inc_nr_running(struct rq *rq)
 
 static inline void dec_nr_running(struct rq *rq)
 {
-#ifdef CONFIG_SCHED_RQ_AVG_INFO
-	sched_update_nr_prod(cpu_of(rq), rq->nr_running, false);
-#endif /* CONFIG_SCHED_RQ_AVG_INFO */
-
 	rq->nr_running--;
 }
 

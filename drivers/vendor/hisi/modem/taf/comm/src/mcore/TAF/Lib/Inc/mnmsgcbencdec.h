@@ -136,7 +136,10 @@ VOS_UINT32 MN_MSG_DecodeCbsDcs(
 
 #endif /* end of MnMsgCbEncDec.h */
 
-
+extern VOS_UINT32 MN_MSG_DecodeDcsIf01(
+    VOS_UINT8                           ucDcs,
+    MN_MSG_CBDCS_CODE_STRU              *pstDcsInfo
+);
 
 #if (VOS_OS_VER == VOS_WIN32)
 #pragma pack()

@@ -305,6 +305,7 @@ typedef struct
                                                                                     1：功率控制,此方式下usTxPower要配置；
                                                                                     2：8PSK PaVbias电压&DBB Atten&RF Atten控制，
                                                                                     usPAVbias和usRfAtten,sDbbAtten三个参数都要配置；*/
+    VOS_UINT8                           ucReserved;
     VOS_UINT16                          uhwRfAtten;
     VOS_UINT16                          usTxPower;                              /* 目标发射功率,单位为0.1dBm,GSM和EDGE共用 */
     VOS_UINT16                          usTxVpa;                                /* GSM PA发射功率控制电压,取值范围: */

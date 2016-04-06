@@ -2,7 +2,7 @@
 
 #include "dwc_notifier.h"
 #include "dwc_list.h"
-
+/*lint -e717 -e826*/
 typedef struct dwc_observer {
 	void *observer;
 	dwc_notifier_callback_t callback;
@@ -21,18 +21,15 @@ typedef struct dwc_notifier {
 } notifier_t;
 
 DWC_CIRCLEQ_HEAD(notifier_queue, dwc_notifier);
-
 typedef struct manager {
-	void *mem_ctx;
-	void *wkq_ctx;
 	dwc_workq_t *wq;
 //	dwc_mutex_t *mutex;
 	struct notifier_queue notifiers;
 } manager_t;
-
 static manager_t *manager = NULL;
 
-static int create_manager(void *mem_ctx, void *wkq_ctx)
+/*lint -e715*/
+static int create_manager(const void *mem_ctx, const void *wkq_ctx)
 {
 	manager = dwc_alloc(mem_ctx, sizeof(manager_t));
 	if (!manager) {
@@ -48,7 +45,7 @@ static int create_manager(void *mem_ctx, void *wkq_ctx)
 
 	return 0;
 }
-
+/*lint +e715*/
 static void free_manager(void)
 {
 	dwc_workq_free(manager->wq);
@@ -81,7 +78,8 @@ static void dump_manager(void)
 #define dump_manager(...)
 #endif
 
-static observer_t *alloc_observer(void *mem_ctx, void *observer, char *notification,
+/*lint -e715*/
+static observer_t *alloc_observer(const void *mem_ctx, void *observer, char *notification,
 				  dwc_notifier_callback_t callback, void *data)
 {
 	observer_t *new_observer = dwc_alloc(mem_ctx, sizeof(observer_t));
@@ -97,11 +95,14 @@ static observer_t *alloc_observer(void *mem_ctx, void *observer, char *notificat
 	new_observer->data = data;
 	return new_observer;
 }
+/*lint +e715*/
 
-static void free_observer(void *mem_ctx, observer_t *observer)
+/*lint -e715*/
+static void free_observer(const void *mem_ctx, observer_t *observer)
 {
 	dwc_free(mem_ctx, observer);
 }
+/*lint +e715*/
 
 static notifier_t *alloc_notifier(void *mem_ctx, void *object)
 {
@@ -135,7 +136,7 @@ static void free_notifier(notifier_t *notifier)
 	dwc_free(notifier->mem_ctx, notifier);
 }
 
-static notifier_t *find_notifier(void *object)
+static notifier_t *find_notifier(const void *object)
 {
 	notifier_t *notifier;
 
@@ -154,7 +155,7 @@ static notifier_t *find_notifier(void *object)
 	return NULL;
 }
 
-int dwc_alloc_notification_manager(void *mem_ctx, void *wkq_ctx)
+int dwc_alloc_notification_manager(const void *mem_ctx, const void *wkq_ctx)
 {
 	return create_manager(mem_ctx, wkq_ctx);
 }
@@ -238,7 +239,7 @@ int dwc_add_observer(void *observer, void *object, char *notification,
 	return 0;
 }
 
-int dwc_remove_observer(void *observer)
+int dwc_remove_observer(const void *observer)
 {
 	notifier_t *n;
 
@@ -280,7 +281,7 @@ static void cb_task(void *data)
 	dwc_free(cb->mem_ctx, cb);
 }
 
-void dwc_notify(dwc_notifier_t *notifier, char *notification, void *notification_data)
+void dwc_notify(const dwc_notifier_t *notifier, char *notification, void *notification_data)
 {
 	observer_t *o;
 
@@ -293,7 +294,7 @@ void dwc_notify(dwc_notifier_t *notifier, char *notification, void *notification
 			continue;
 		}
 
-		if (DWC_STRNCMP(o->notification, notification, len) == 0) {
+		if (DWC_STRNCMP(o->notification, notification, (uint32_t)len) == 0) {
 			cb_data_t *cb_data = dwc_alloc(notifier->mem_ctx, sizeof(cb_data_t));
 
 			if (!cb_data) {
@@ -315,5 +316,6 @@ void dwc_notify(dwc_notifier_t *notifier, char *notification, void *notification
 		}
 	}
 }
+/*lint +e717 +e826*/
 
 #endif	/* DWC_NOTIFYLIB */

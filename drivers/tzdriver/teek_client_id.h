@@ -141,15 +141,32 @@
     } \
 }
 /**
- *  * @ingroup  TEE_COMMON_DATA
- *   *
- *    * 靠靠secboot靠靠縄D
- *     */
+ * @ingroup  TEE_COMMON_DATA
+ *
+ * 安全服务secboot支持的命令ID
+ */
 enum SVC_SECBOOT_CMD_ID {
-    SECBOOT_CMD_ID_INVALID = 0x0,      /**< Secboot Task 靠ID*/
-    SECBOOT_CMD_ID_COPY_VRL,           /**< Secboot Task 靠VRL*/
-    SECBOOT_CMD_ID_COPY_DATA,          /**< Secboot Task 靠靠*/
-    SECBOOT_CMD_ID_VERIFY_DATA,        /**< Secboot Task 靠*/
+     SECBOOT_CMD_ID_INVALID = 0x0,      /**< Secboot Task 无效ID*/
+     SECBOOT_CMD_ID_COPY_VRL,           /**< Secboot Task 拷贝VRL*/
+     SECBOOT_CMD_ID_COPY_DATA,          /**< Secboot Task 拷贝镜像*/
+     SECBOOT_CMD_ID_VERIFY_DATA,        /**< Secboot Task 验证*/
+     SECBOOT_CMD_ID_RESET_IMAGE,        /**< Secboot Task 复位SoC请求*/
+     SECBOOT_CMD_ID_COPY_VRL_TYPE,     /**< Secboot Task 拷贝VRL，并传递SoC Type*/
+     SECBOOT_CMD_ID_COPY_DATA_TYPE,     /**< Secboot Task 拷贝镜像,并传递SoC Type*/
+     SECBOOT_CMD_ID_VERIFY_DATA_TYPE,    /**< Secboot Task 校验，并传递SoC Type，校验成功解复位SoC*/
+     SECBOOT_CMD_ID_VERIFY_DATA_TYPE_LOCAL, /**< Secboot Task原地校验，并传递SoC Type,校验成功解复位SoC*/
+};
+
+/**
+ * @ingroup TEE_COMMON_DATA
+ * 
+ * 安全服务secboot支持的镜像类型
+ */
+enum SVC_SECBOOT_IMG_TYPE {
+    MODEM,
+    HIFI,
+    DSP,
+    SOC_MAX
 };
 /**
  * @ingroup  TEEC_COMMON_DATA
@@ -277,9 +294,3 @@ enum SVC_KEYMASTER_CMD_ID {
     KM_CMD_ID_VERIFY_DATA,
 };
 #endif
-/**
- * History: \n
- * 2013-4-12 h00211444: Create this file\n
- *
- * vi: set expandtab ts=4 sw=4 tw=80:
-*/

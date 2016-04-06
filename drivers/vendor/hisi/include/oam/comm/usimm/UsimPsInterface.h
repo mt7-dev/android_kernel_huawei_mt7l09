@@ -888,7 +888,7 @@ typedef struct
     VOS_UINT16                          usEfLen;        /* EF文件长度(对二进制来说是文件长度，对其它文件来说是记录长度)*/
     VOS_UINT8                           ucRecordNum;    /* 此次读取记录ID */
     VOS_UINT8                           ucTotalNum;     /*此次读取的记录总个数*/
-    VOS_UINT8                           aucEf[4];       /* 指向待读取的EF文件内容*/
+    VOS_UINT8                           aucEf[6];       /* 指向待读取的EF文件内容*/
 }PS_USIM_GET_FILE_CNF_STRU;
 
 typedef struct
@@ -925,7 +925,7 @@ typedef struct
     VOS_UINT8                       aucGsmKc[9];        /*Len+Data*/
     VOS_UINT8                       aucAuts[15];        /*Len+Data*/
     VOS_UINT8                       aucAuthRes[17];     /*Len+Data*/
-    VOS_UINT8                       aucRsv[1];
+    VOS_UINT8                       aucRsv[5];
 }USIMM_TELECOM_AUTH_CNF_STRU;
 
 typedef struct
@@ -934,7 +934,7 @@ typedef struct
     VOS_UINT8                       aucCK[17];          /*Len+Data*/
     VOS_UINT8                       aucAuts[15];        /*Len+Data*/
     VOS_UINT8                       aucAuthRes[17];     /*Len+Data*/
-    VOS_UINT8                       aucKs_ext_NAF[2];   /*Len+Data*/
+    VOS_UINT8                       aucKs_ext_NAF[6];   /*Len+Data*/
 }USIMM_IMS_AUTH_CNF_STRU;
 
 typedef struct
@@ -979,6 +979,7 @@ typedef struct
     VOS_UINT16                      usRsv;
     VOS_UINT16                      usLen;                                      /* 返回数据长度*/
     VOS_UINT8                       aucContent[USIMM_APDU_RSP_MAX_LEN];         /* 返回Data*/
+    VOS_UINT16                      usRsv1;
 }PS_USIM_GENERIC_ACCESS_CNF_STRU;
 
 /*发给OM的透明消息*/
@@ -1174,9 +1175,8 @@ typedef struct
     VOS_UINT8                           ucP3;
     VOS_UINT8                           ucRsv;
     VOS_UINT16                          usCmdLen;
-    VOS_UINT16                          usRsv;
-    VOS_UINT8                           aucCommand[USIMM_T0_APDU_MAX_LEN+1];
     VOS_UINT16                          usPathLen;
+    VOS_UINT8                           aucCommand[USIMM_T0_APDU_MAX_LEN+4];
     VOS_UINT16                          ausPath[USIMM_MAX_PATH_LEN];
 }TAF_SIM_RESTRIC_ACCESS_STRU;
 
@@ -1382,6 +1382,7 @@ extern VOS_INT32 USIMM_File_Read(VOS_VOID *pBuf,VOS_UINT32 ulSize,VOS_UINT32 ulC
 extern VOS_INT32 USIMM_File_Rename(VOS_CHAR *pcOldFileName,VOS_CHAR *pcNewFileName);
 extern VOS_INT32 USIMM_OpenDir(VOS_CHAR *pcDirName);
 extern VOS_INT32 USIMM_Mkdir(VOS_CHAR *pcDirName);
+extern VOS_VOID USIMM_SaveHvteeVsimData(VOS_UINT32 ulDataLen, VOS_UINT8 *pucVsimData);
 #endif
 
 /*单编译接口的声明 */

@@ -1,26 +1,4 @@
-/*
- *  Hisilicon K3 SOC camera driver source file
- *
- *  Copyright (C) Huawei Technology Co., Ltd.
- *
- * Author:	  h00144661
- * Email:	  flying.he@huawei.com
- * Date:	  2013-12-27
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
- */
+
 
 
 #include <linux/module.h>
@@ -35,13 +13,22 @@
 
 #define I2S(i) container_of(i, sensor_t, intf)
 
+#define SENSOR_SCAMIF_GPIO 28
+
 extern struct hw_csi_pad hw_csi_pad;
 static hwsensor_vtbl_t s_imx179_front_vtbl;
 
-extern void set_sensor_module_id(int index, unsigned char module_id);
 int imx179_front_config(hwsensor_intf_t* si, void  *argp);
 
 struct sensor_power_setting imx179_front_power_setting[] = {
+
+	//MINIISP CS
+	{
+		.seq_type = SENSOR_CS,
+		.config_val = SENSOR_GPIO_HIGH,
+		.sensor_index = SENSOR_INDEX_INVALID,
+		.delay = 1,
+	},
 
 	//MINIISP CORE 1.1V
 	{
@@ -66,7 +53,7 @@ struct sensor_power_setting imx179_front_power_setting[] = {
 		.seq_val = PMIC_LDO4,
 		.config_val = PMIC_1P8V,
 		.sensor_index = SENSOR_INDEX_INVALID,
-		.delay = 2,
+		.delay = 1,
 	},
 
 	{
@@ -193,6 +180,8 @@ imx179_front_match_id(
 {
     sensor_t* sensor = I2S(si);
     struct sensor_cfg_data *cdata = (struct sensor_cfg_data *)data;
+    uint32_t gpio_id;
+    int ret, value;
 
     cam_info("%s TODO.", __func__);
 
@@ -205,11 +194,35 @@ imx179_front_match_id(
         sensor->board_info->sensor_index = CAMERA_SENSOR_INVALID;
     }
 */
-    set_sensor_module_id(sensor->board_info->sensor_index, 1);
     cdata->data = sensor->board_info->sensor_index;
 
     hwsensor_writefile(sensor->board_info->sensor_index,
 		sensor->board_info->name);
+
+    gpio_id = SENSOR_SCAMIF_GPIO;
+    ret = gpio_request(gpio_id, "factory_gpio");
+    if (ret < 0) {
+        cam_err("%s failed to request sensor factory gpio pin.", __func__);
+        gpio_free(gpio_id);
+        return ret;
+    }
+    gpio_direction_input(gpio_id);
+
+    value = gpio_get_value(gpio_id);
+    if(value < 0) {
+        cam_err("%s failed to get sensor factory gpio value.", __func__);
+        gpio_free(gpio_id);
+        return value;
+    }
+    else {
+        cdata->mode = value;
+    }
+
+    memset(cdata->cfg.name, 0, sizeof(cdata->cfg.name));
+    snprintf(cdata->cfg.name, sizeof(cdata->cfg.name)-1,  "imx179_front_%s",  ((value == 0) ? "sunny":"liteon"));
+    cam_debug("renew imx179 module name = %s.", cdata->cfg.name);
+    gpio_free(gpio_id);
+
     return 0;
 }
 
@@ -260,14 +273,14 @@ imx179_front_config(
 		case SEN_CONFIG_READ_REG_SETTINGS:
 			break;
 		case SEN_CONFIG_ENABLE_CSI:
-			if(!csi_enable)
+			if(imx179f_power_on && !csi_enable)
 			{
 				ret = si->vtbl->csi_enable(si);
 				csi_enable = true;
 			}
 			break;
 		case SEN_CONFIG_DISABLE_CSI:
-			if(csi_enable)
+			if(imx179f_power_on && csi_enable)
 			{
 				ret = si->vtbl->csi_disable(si);
 				csi_enable = false;

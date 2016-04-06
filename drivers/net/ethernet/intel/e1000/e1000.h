@@ -94,7 +94,7 @@ struct e1000_adapter;
 #define E1000_MIN_RXD			48
 #define E1000_MAX_82544_RXD		4096
 
-#define E1000_MIN_ITR_USECS		10 /* 100000 irq/sec */
+#define E1000_MIN_ITR_USECS		10
 #define E1000_MAX_ITR_USECS		10000 /* 100    irq/sec */
 
 /* this is the size past which hardware will drop packets when setting LPE=0 */

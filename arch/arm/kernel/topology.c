@@ -69,7 +69,7 @@ struct cpu_efficiency {
  * Processors that are not defined in the table,
  * use the default SCHED_POWER_SCALE value for cpu_scale.
  */
-struct cpu_efficiency table_efficiency[] = {
+static struct cpu_efficiency table_efficiency[] = {
 	{"arm,cortex-a15", 3891},
 	{"arm,cortex-a7",  2048},
 	{NULL, },
@@ -80,9 +80,9 @@ struct cpu_capacity {
 	unsigned long capacity;
 };
 
-struct cpu_capacity *cpu_capacity;
+static struct cpu_capacity *cpu_capacity;
 
-unsigned long middle_capacity = 1;
+static unsigned long middle_capacity = 1;
 
 /*
  * Iterate all CPUs' descriptor in DT and compute the efficiency
@@ -209,7 +209,7 @@ const struct cpumask *cpu_coregroup_mask(int cpu)
 	return &cpu_topology[cpu].core_sibling;
 }
 
-void update_siblings_masks(unsigned int cpuid)
+static void update_siblings_masks(unsigned int cpuid)
 {
 	struct cputopo_arm *cpu_topo, *cpuid_topo = &cpu_topology[cpuid];
 	int cpu;
@@ -269,6 +269,13 @@ void store_cpu_topology(unsigned int cpuid)
 			cpuid_topo->core_id = MPIDR_AFFINITY_LEVEL(mpidr, 0);
 			cpuid_topo->socket_id = MPIDR_AFFINITY_LEVEL(mpidr, 1);
 		}
+#if 0		
+		/*change core id in socket1 to avoid the question of load_balance */
+		if (cpuid_topo->socket_id> 0) {
+			cpuid_topo->core_id += cpuid_topo->socket_id *4;
+			cpuid_topo->socket_id = 0;
+		}
+#endif		
 	} else {
 		/*
 		 * This is an uniprocessor system

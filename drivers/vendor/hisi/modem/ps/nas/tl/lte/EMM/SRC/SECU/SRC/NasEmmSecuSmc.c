@@ -149,8 +149,10 @@ VOS_VOID  NAS_EMM_UpdateCurSecuCntxt(VOS_VOID)
         NAS_LMM_MEM_CPY(                NAS_EMM_GetSecuCurKasmeAddr(),
                                         NAS_EMM_GetSecuNewMappedKasmeAddr(),
                                         NAS_LMM_SECU_AUTH_KEY_ASME_LEN);
-        /*清空 new mapped security context*/
-        NAS_EMM_ClearNewMappedSecuCntxt();
+
+
+        /* 清空 new mapped security context */
+        /* NAS_EMM_ClearNewMappedSecuCntxt(); */
     }
     /*将 new native secu cntxt更新为当前安全上下文*/
     else if(NAS_EMM_SMC_UPDATE_NEW_NATIVE == NAS_EMM_GetSmcType())
@@ -187,6 +189,8 @@ VOS_VOID  NAS_EMM_UpdateCurSecuCntxt(VOS_VOID)
 
    return;
 }
+
+
 VOS_UINT32 NAS_EMM_Eia0SmcVerifyKsi
 (
     VOS_UINT8                           ucKsi

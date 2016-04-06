@@ -1,27 +1,4 @@
-/*
- *	Intel CPU Microcode Update Driver for Linux
- *
- *	Copyright (C) 2012 Fenghua Yu <fenghua.yu@intel.com>
- *			   H Peter Anvin" <hpa@zytor.com>
- *
- *	This driver allows to upgrade microcode on Intel processors
- *	belonging to IA-32 family - PentiumPro, Pentium II,
- *	Pentium III, Xeon, Pentium 4, etc.
- *
- *	Reference: Section 8.11 of Volume 3a, IA-32 Intel? Architecture
- *	Software Developer's Manual
- *	Order Number 253668 or free download from:
- *
- *	http://developer.intel.com/Assets/PDF/manual/253668.pdf
- *
- *	For more information, go to http://www.urbanmyth.org/microcode
- *
- *	This program is free software; you can redistribute it and/or
- *	modify it under the terms of the GNU General Public License
- *	as published by the Free Software Foundation; either version
- *	2 of the License, or (at your option) any later version.
- *
- */
+
 #include <linux/firmware.h>
 #include <linux/uaccess.h>
 #include <linux/kernel.h>

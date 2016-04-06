@@ -354,7 +354,7 @@ typedef struct
     VOS_UINT8                   aucReserve[2];
     VOS_UINT8                   ucSemCreated;                                /* 用于防止同一核上重复创建硬件信号量/本地互斥信号量的互斥标识
                                                                                 未创建时, 设置为0, 创建后设置为1 */
-    VOS_UINT32                  ulDiccLocalMutexSem;                         /* 防止同一时刻在一核上用于互斥的本地互斥信号量 */
+    VOS_SEM                     ulDiccLocalMutexSem;                         /* 防止同一时刻在一核上用于互斥的本地互斥信号量 */
     volatile DICC_CTRL_STRU    *pastDICCMgmt;                                /* DICC管理结构的首地址 */
     VOS_UINT32                  ulPid;                                       /* DICC PID */
 } DICC_CHAN_ROLE_STRU;

@@ -120,14 +120,6 @@ typedef enum
 }TAF_PRIM_MSG_TYPE;
 
 
-typedef struct
-{
-    VOS_UINT16  usClientId;
-    VOS_UINT16  usRsv;
-    VOS_VOID   *pDataIndCallBack;   /* 该Client ID对应的下行数据分发函数 */
-} TAF_RAB_DATA_IND_CALLBACK_FUNC_STRU;
-
-
 /*全局变量定义开始*/
 /*远端API所需全局变量定义*/
 /*APP/AT回调函数记录表*/
@@ -151,7 +143,6 @@ typedef struct
 
 VOS_VOID   Taf_EventReportProc(VOS_UINT16 usMuxId, VOS_UINT8 *pData, VOS_UINT16 usLen, VOS_UINT8 ucRegTabIndex);
 
-extern TAF_RAB_DATA_IND_CALLBACK_FUNC_STRU g_astAppDataIndCallBackFunc[];
 
 #if ((VOS_OS_VER == VOS_WIN32) || (VOS_OS_VER == VOS_NUCLEUS))
 #pragma pack()

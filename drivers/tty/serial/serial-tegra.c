@@ -76,7 +76,6 @@
 
 #define TEGRA_UART_MAXIMUM			5
 
-/* Default UART setting when started: 115200 no parity, stop, 8 data bits */
 #define TEGRA_UART_DEFAULT_BAUD			115200
 #define TEGRA_UART_DEFAULT_LSR			UART_LCR_WLEN8
 
@@ -856,11 +855,7 @@ static int tegra_uart_hw_init(struct tegra_uart_port *tup)
 	tup->fcr_shadow |= TEGRA_UART_TX_TRIG_16B;
 	tegra_uart_write(tup, tup->fcr_shadow, UART_FCR);
 
-	/*
-	 * Initialize the UART with default configuration
-	 * (115200, N, 8, 1) so that the receive DMA buffer may be
-	 * enqueued
-	 */
+
 	tup->lcr_shadow = TEGRA_UART_DEFAULT_LSR;
 	tegra_set_baudrate(tup, TEGRA_UART_DEFAULT_BAUD);
 	tup->fcr_shadow |= UART_FCR_DMA_SELECT;

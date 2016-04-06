@@ -1,74 +1,4 @@
-/*
- *  Copyright (c) 2004 James Courtier-Dutton <James@superbug.demon.co.uk>
- *  Driver CA0106 chips. e.g. Sound Blaster Audigy LS and Live 24bit
- *  Version: 0.0.22
- *
- *  FEATURES currently supported:
- *    See ca0106_main.c for features.
- * 
- *  Changelog:
- *    Support interrupts per period.
- *    Removed noise from Center/LFE channel when in Analog mode.
- *    Rename and remove mixer controls.
- *  0.0.6
- *    Use separate card based DMA buffer for periods table list.
- *  0.0.7
- *    Change remove and rename ctrls into lists.
- *  0.0.8
- *    Try to fix capture sources.
- *  0.0.9
- *    Fix AC3 output.
- *    Enable S32_LE format support.
- *  0.0.10
- *    Enable playback 48000 and 96000 rates. (Rates other that these do not work, even with "plug:front".)
- *  0.0.11
- *    Add Model name recognition.
- *  0.0.12
- *    Correct interrupt timing. interrupt at end of period, instead of in the middle of a playback period.
- *    Remove redundent "voice" handling.
- *  0.0.13
- *    Single trigger call for multi channels.
- *  0.0.14
- *    Set limits based on what the sound card hardware can do.
- *    playback periods_min=2, periods_max=8
- *    capture hw constraints require period_size = n * 64 bytes.
- *    playback hw constraints require period_size = n * 64 bytes.
- *  0.0.15
- *    Separated ca0106.c into separate functional .c files.
- *  0.0.16
- *    Implement 192000 sample rate.
- *  0.0.17
- *    Add support for SB0410 and SB0413.
- *  0.0.18
- *    Modified Copyright message.
- *  0.0.19
- *    Added I2C and SPI registers. Filled in interrupt enable.
- *  0.0.20
- *    Added GPIO info for SB Live 24bit.
- *  0.0.21
- *   Implement support for Line-in capture on SB Live 24bit.
- *  0.0.22
- *    Add support for mute control on SB Live 24bit (cards w/ SPI DAC)
- *
- *
- *  This code was initially based on code from ALSA's emu10k1x.c which is:
- *  Copyright (c) by Francisco Moraes <fmoraes@nc.rr.com>
- *
- *   This program is free software; you can redistribute it and/or modify
- *   it under the terms of the GNU General Public License as published by
- *   the Free Software Foundation; either version 2 of the License, or
- *   (at your option) any later version.
- *
- *   This program is distributed in the hope that it will be useful,
- *   but WITHOUT ANY WARRANTY; without even the implied warranty of
- *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *   GNU General Public License for more details.
- *
- *   You should have received a copy of the GNU General Public License
- *   along with this program; if not, write to the Free Software
- *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
- *
- */
+
 
 /************************************************************************************************/
 /* PCI function 0 registers, address = <val> + PCIBASE0						*/
@@ -418,7 +348,7 @@
 #define CA0106_MPU401_ENTER_UART	0x3f
 #define CA0106_MPU401_ACK		0xfe
 
-#define SAMPLE_RATE_TRACKER_STATUS 0x70         /* Readonly. Default 00108000 00108000 00500000 00500000 */
+#define SAMPLE_RATE_TRACKER_STATUS 0x70
 						/* Estimated sample rate [19:0] Relative to 48kHz. 0x8000 =  1.0
 						 * Rate Locked [20]
 						 * SPDIF Locked [21] For SPDIF channel only.
@@ -469,7 +399,7 @@
 						 * SPDIF output enable [27:24]
 						 */ 
 #define UNKNOWN73               0x73            /* Unknown. Readonly. Default 0x0 */
-#define CHIP_VERSION            0x74            /* P17 Chip version. Channel_id 0 only. Default 00000071 */
+#define CHIP_VERSION            0x74
 #define EXTENDED_INT_MASK       0x75            /* Used by both playback and capture interrupt handler */
 						/* Sets which Interrupts are enabled. */
 						/* 0x00000001 = Half period. Playback.
@@ -486,7 +416,7 @@
 #define EXTENDED_INT            0x76            /* Used by both playback and capture interrupt handler */
 						/* Shows which interrupts are active at the moment. */
 						/* Same bit layout as EXTENDED_INT_MASK */
-#define COUNTER77               0x77		/* Counter range 0 to 0x3fffff, 192000 counts per second. */
+#define COUNTER77               0x77
 #define COUNTER78               0x78		/* Counter range 0 to 0x3fffff, 44100 counts per second. */
 #define EXTENDED_INT_TIMER      0x79            /* Channel_id 0 only. Used by both playback and capture interrupt handler */
 						/* Causes interrupts based on timer intervals. */

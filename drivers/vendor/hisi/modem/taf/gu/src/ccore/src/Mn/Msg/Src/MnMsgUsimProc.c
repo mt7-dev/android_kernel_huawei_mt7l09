@@ -12,6 +12,7 @@
 
 #include "MnMsgSmCommProc.h"
 
+#include "MnMsgSendSpm.h"
 #ifdef  __cplusplus
   #if  __cplusplus
   extern "C"{
@@ -1417,9 +1418,9 @@ VOS_UINT32 MN_MSG_EnvelopRspRpAckWithTpdu(
     MN_MSG_EncodeRpAck(&stRpAck, pucSendData,&ucSendLen);
 
     enMsgSignallingType = MN_MSG_GetMtRouteStackType();
-    
+
     /*8. RP-ACK消息中RP-ACK消息发送*/
-    ulRet = MN_MSG_SendSmsRpReportReq(pucSendData,ucSendLen, enMsgSignallingType);    
+    ulRet = MN_MSG_SendSmsRpReportReq(pucSendData,ucSendLen, enMsgSignallingType);
     if (VOS_OK != ulRet)
     {
         MN_WARN_LOG("MN_MSG_EnvelopRspRpAckWithTpdu: Send Msg Failed");
@@ -1516,8 +1517,13 @@ VOS_UINT32 MN_MSG_EnvelopRspRpErrorWithTpdu(
     }
     MN_MSG_EncodeRpErr(&stRpErr, pucSendData,&ucSendLen);
 
+    NAS_EventReport(WUEPS_PID_TAF,
+                    NAS_OM_EVENT_SMS_MT_FAIL,
+                    &(stRpErr.stRpCause.enRpCause),
+                    sizeof(MN_MSG_RP_CAUSE_ENUM_U8));
+
     enMsgSignallingType = MN_MSG_GetMtRouteStackType();
-    
+
     /*8. RP-ERROR消息中RP-ERROR消息发送*/
     ulRet = MN_MSG_SendSmsRpReportReq(pucSendData,ucSendLen, enMsgSignallingType);
 
@@ -1766,6 +1772,7 @@ VOS_VOID MN_MSG_RcvUsimMoControlRsp(
     VOS_UINT32                          ulRet;
     VOS_BOOL                            bBufferEntity;
     VOS_UINT32                          ulIndex;
+    NAS_OM_SMS_MO_REPORT_STRU           stSmsMoReportPara;
 
     MN_MSG_StopTimer(MN_MGS_ID_WAIT_MO_SMS_CTRL_CHECK);
 
@@ -1807,7 +1814,25 @@ VOS_VOID MN_MSG_RcvUsimMoControlRsp(
         MN_SendClientResponse(stMoEntity.clientId,
                               stMoEntity.opId,
                               ulRet);
+
+        MN_MNTN_RecordSmsMoFailure(ulRet);
+
+#if (FEATURE_ON == FEATURE_PTM)
+        /* 记录短信发送异常log */
+        MN_MSG_FailErrRecord(ulRet);
+#endif
+
+        /* SMS MO FAIL事件上报 */
+        stSmsMoReportPara.ucSmsMr = stMoEntity.ucMr;
+        stSmsMoReportPara.ulCause = ulRet;
+
+        NAS_EventReport(WUEPS_PID_TAF, NAS_OM_EVENT_SMS_MO_FAIL,
+                        &stSmsMoReportPara, sizeof(stSmsMoReportPara));
+
         MN_MSG_DestroyMoInfo();
+
+        /* 通知SPM检查结果 */
+        TAF_MSG_SendSpmMsgCheckResultInd(stMoEntity.clientId, stMoEntity.opId,TAF_MSG_ERROR_CTRL_CHECK_FAIL);
     }
     else
     {
@@ -1834,7 +1859,6 @@ VOS_VOID MN_MSG_RcvUsimMoControlRsp(
 
 /* MN_MSG_ProcUsimFdnInd */
 
-
 VOS_VOID MN_MSG_ProcFdnCnf(struct MsgCB * pstMsg)
 {
     MN_MSG_MO_ENTITY_STRU               stMoEntity;
@@ -1843,6 +1867,7 @@ VOS_VOID MN_MSG_ProcFdnCnf(struct MsgCB * pstMsg)
     VOS_BOOL                            bCheckMoCtrl;
     VOS_BOOL                            bBufferEntity;
     PB_FDN_CHECK_CNF_STRU              *pstCheckCnf;
+    NAS_OM_SMS_MO_REPORT_STRU           stSmsMoReportPara;
 
     PS_MEM_SET(&stMoEntity, 0, sizeof(stMoEntity));
 
@@ -1860,7 +1885,8 @@ VOS_VOID MN_MSG_ProcFdnCnf(struct MsgCB * pstMsg)
     pstCheckCnf = (PB_FDN_CHECK_CNF_STRU *)pstMsg;
 
     /* 目前FDN的回复消息同时进CALL和MSG模块,需要丢弃不同client ID的消息 */
-    if (stMoEntity.clientId != pstCheckCnf->ulSendPara)
+    /* 后16位表示client Id */
+    if (stMoEntity.clientId != (pstCheckCnf->ulSendPara & 0x0000FFFF))
     {
         MN_INFO_LOG("MN_MSG_ProcFdnCnf: not same client ID,discard FDN RESPONSE.");
         return;
@@ -1877,16 +1903,49 @@ VOS_VOID MN_MSG_ProcFdnCnf(struct MsgCB * pstMsg)
             MN_SendClientResponse(stMoEntity.clientId,
                                   stMoEntity.opId,
                                   MN_ERR_CLASS_FDN_CHECK_SC_FAILURE);
+
+            MN_MNTN_RecordSmsMoFailure(ulRet);
+
+#if (FEATURE_ON == FEATURE_PTM)
+            /* 记录短信发送异常log */
+            MN_MSG_FailErrRecord(MN_ERR_CLASS_FDN_CHECK_SC_FAILURE);
+#endif
+
+            /* SMS MO FAIL事件上报 */
+            stSmsMoReportPara.ucSmsMr = stMoEntity.ucMr;
+            stSmsMoReportPara.ulCause = MN_ERR_CLASS_FDN_CHECK_SC_FAILURE;
+
+            NAS_EventReport(WUEPS_PID_TAF, NAS_OM_EVENT_SMS_MO_FAIL,
+                            &stSmsMoReportPara, sizeof(stSmsMoReportPara));
+
         }
         else
         {
             MN_SendClientResponse(stMoEntity.clientId,
                                   stMoEntity.opId,
                                   MN_ERR_CLASS_FDN_CHECK_DN_FAILURE);
+
+            MN_MNTN_RecordSmsMoFailure(MN_ERR_CLASS_FDN_CHECK_DN_FAILURE);
+
+#if (FEATURE_ON == FEATURE_PTM)
+            /* 记录短信发送异常log */
+            MN_MSG_FailErrRecord(MN_ERR_CLASS_FDN_CHECK_DN_FAILURE);
+#endif
+
+            /* SMS MO FAIL事件上报 */
+            stSmsMoReportPara.ucSmsMr = stMoEntity.ucMr;
+            stSmsMoReportPara.ulCause = MN_ERR_CLASS_FDN_CHECK_DN_FAILURE;
+
+            NAS_EventReport(WUEPS_PID_TAF, NAS_OM_EVENT_SMS_MO_FAIL,
+                            &stSmsMoReportPara, sizeof(stSmsMoReportPara));
         }
 
         /* 销毁等待FDN检查结果的MO实体或缓存 */
         MN_MSG_DestroySpecificMoEntity(bBufferEntity, ulIndex);
+
+        /* 通知SPM检查结果 */
+        TAF_MSG_SendSpmMsgCheckResultInd(stMoEntity.clientId, stMoEntity.opId,TAF_MSG_ERROR_FDN_CHECK_FAIL);
+
         return;
     }
 
@@ -1898,6 +1957,20 @@ VOS_VOID MN_MSG_ProcFdnCnf(struct MsgCB * pstMsg)
         MN_SendClientResponse(stMoEntity.clientId,
                               stMoEntity.opId,
                               ulRet);
+
+        MN_MNTN_RecordSmsMoFailure(ulRet);
+
+#if (FEATURE_ON == FEATURE_PTM)
+        /* 记录短信发送异常log */
+        MN_MSG_FailErrRecord(ulRet);
+#endif
+
+        /* SMS MO FAIL事件上报 */
+        stSmsMoReportPara.ucSmsMr = stMoEntity.ucMr;
+        stSmsMoReportPara.ulCause = ulRet;
+
+        NAS_EventReport(WUEPS_PID_TAF, NAS_OM_EVENT_SMS_MO_FAIL,
+                        &stSmsMoReportPara, sizeof(stSmsMoReportPara));
 
         /* 销毁等待FDN检查结果的MO实体或缓存 */
         MN_MSG_DestroySpecificMoEntity(bBufferEntity, ulIndex);
@@ -1916,6 +1989,20 @@ VOS_VOID MN_MSG_ProcFdnCnf(struct MsgCB * pstMsg)
             MN_SendClientResponse(stMoEntity.clientId,
                                   stMoEntity.opId,
                                   ulRet);
+
+            MN_MNTN_RecordSmsMoFailure(ulRet);
+
+#if (FEATURE_ON == FEATURE_PTM)
+            /* 记录短信发送异常log */
+            MN_MSG_FailErrRecord(ulRet);
+#endif
+
+            /* SMS MO FAIL事件上报 */
+            stSmsMoReportPara.ucSmsMr = stMoEntity.ucMr;
+            stSmsMoReportPara.ulCause = ulRet;
+
+            NAS_EventReport(WUEPS_PID_TAF, NAS_OM_EVENT_SMS_MO_FAIL,
+                            &stSmsMoReportPara, sizeof(stSmsMoReportPara));
 
             /* 销毁等待FDN检查结果的MO实体或缓存 */
             MN_MSG_DestroySpecificMoEntity(bBufferEntity, ulIndex);

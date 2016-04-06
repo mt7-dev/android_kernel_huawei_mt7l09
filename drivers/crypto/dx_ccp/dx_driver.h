@@ -45,7 +45,6 @@
 #include <crypto/aead.h>
 #include <crypto/authenc.h>
 #include <crypto/hash.h>
-#include <linux/regulator/consumer.h>
 
 #ifndef INT32_MAX /* Missing in Linux kernel */
 #define INT32_MAX 0x7FFFFFFFL
@@ -168,7 +167,7 @@ struct dx_drvdata {
 	void *request_mgr_handle;
 	void *ivgen_handle;
 	void *sram_mgr_handle;
-	struct regulator_bulk_data ccp_regu;
+	struct clk	*clk;
 
 #ifdef ENABLE_CYCLE_COUNT
 	cycles_t isr_exit_cycles; /* Save for isr-to-tasklet latency */

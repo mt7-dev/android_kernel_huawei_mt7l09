@@ -131,6 +131,10 @@ enum    NAS_MM_CN_CAUSE_ENUM
     NAS_LMM_CAUSE_CS_DOMAIN_TMP_NOT_ALLOWED                  = 0x27,
     NAS_LMM_CAUSE_NO_EPS_BEARER_CONTEXT_ACTIVATED            = 0x28,
 
+    /*add for 24301 C version start*/
+    NAS_LMM_CAUSE_SERVICE_NETWORK_FAILURE                    = 0x2a,
+    /*add for 24301 C version end*/
+
     NAS_LMM_CAUSE_SEMANTICALLY_INCORRECT_MSG                 = 0x5F, /* Semantically incorrect message           */
     NAS_LMM_CAUSE_INVALID_MANDATORY_INF                      = 0x60, /* Invalid mandatory information            */
     NAS_LMM_CAUSE_MSG_NONEXIST_NOTIMPLEMENTE                 = 0x61, /* Message type non-existent or
@@ -1247,6 +1251,10 @@ typedef struct
     NAS_EMM_EPS_BEARER_CONTEXT_STATUS_ENUM_UINT32   enStatusChange;
     /*leili modify for isr end*/
     NAS_EMM_SRVCC_FLAG_ENUM_UINT32                enSrvccFlag;
+    VOS_UINT32                                  ulVoiceDomainChange;    /* voice domain发生变化，需要触发TAU */
+    VOS_UINT8                                   ucLaiChangeFlag;        /* LAI发生变化 */
+    VOS_UINT8                                   ucEmcConnExitFlag;      /* 触发了紧急建链 */
+    VOS_UINT8                                   aucRsv[2];
 } NAS_EMM_TRIGGER_TAU_FLAG_STRU;
 
 /*leili modify for isr begin*/
@@ -1352,7 +1360,9 @@ typedef struct
 
     MMC_LMM_UTRAN_MODE_ENUM_UINT8               enUtranMode;
     VOS_UINT8                                   ucNetFeature;   /* 当前网络是否支持IMS */
-    VOS_UINT8                                   aucRsv1[2];
+    /* 关机标识,提供给LRRC,用于LRRC判断空口是否是关机detach,在lmm收到mmc的关机请求时置为1，在收到LRRC关机回复、等待LRRC关机回复超时或者开机时清除 */
+    VOS_UINT8                                   ucLtePowerOffFlag;
+    VOS_UINT8                                   ucRsv1;
     /* lihong00150010 ims begin */
     NAS_LMM_ADDITIONAL_UPDATE_RSLT_ENUM_UINT32  enAdditionUpRslt;
     /* lihong00150010 ims end */

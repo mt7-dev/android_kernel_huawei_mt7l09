@@ -23,9 +23,10 @@
 
 #include <asm/cacheflush.h>
 #include <asm/irq_regs.h>
-#include <asm/pmu.h>
+//#include <asm/pmu.h>
 #include <asm/smp_plat.h>
 #include <linux/syscore_ops.h>
+#include <asm/cputype.h>
 
 #define DRIVER_NAME		"CCI"
 
@@ -46,7 +47,7 @@ enum cci_ace_port_type {
 	ACE_PORT,
 	ACE_LITE_PORT,
 };
-#ifdef CONFIG_ARCH_HISI
+#ifdef CONFIG_ARCH_HI3XXX
 
 #define CCI400_SPECCTRL                  0x0004
 
@@ -114,7 +115,7 @@ static unsigned int nb_cci_ports;
 static void __iomem *cci_ctrl_base;
 static unsigned long cci_ctrl_phys;
 
-#ifdef CONFIG_HW_PERF_EVENTS
+//#ifdef CONFIG_HW_PERF_EVENTS
 
 static void __iomem *cci_pmu_base;
 
@@ -165,6 +166,7 @@ enum cci400_perf_events {
 #define CCI400_PMU_COUNTER_LAST(cci_pmu) (CCI400_PMU_CYCLE_COUNTER_IDX + cci_pmu->num_events - 1)
 
 
+#if 0
 static struct perf_event *events[CCI400_PMU_MAX_HW_EVENTS];
 static unsigned long used_mask[BITS_TO_LONGS(CCI400_PMU_MAX_HW_EVENTS)];
 static struct pmu_hw_events cci_hw_events = {
@@ -586,6 +588,16 @@ int cci_ace_get_port(struct device_node *dn)
 }
 EXPORT_SYMBOL_GPL(cci_ace_get_port);
 
+static inline int get_logical_idx(u32 mpidr)
+{
+	int cpu;
+	for (cpu = 0; cpu < nr_cpu_ids; cpu++)
+		if (cpu_logical_map(cpu) == mpidr){
+			return cpu;
+		}
+	return -EINVAL;
+}
+
 static void __init cci_ace_init_ports(void)
 {
 	int port, ac, cpu;
@@ -615,7 +627,7 @@ static void __init cci_ace_init_ports(void)
 			continue;
 
 		hwid = of_read_number(cell, ac);
-		cpu = get_logical_index(hwid & MPIDR_HWID_BITMASK);
+		cpu = get_logical_idx(hwid & MPIDR_HWID_BITMASK);
 
 		if (cpu < 0 || !cpu_possible(cpu))
 			continue;
@@ -653,7 +665,7 @@ static void __init cci_ace_init_ports(void)
  */
 static void notrace cci_port_control(unsigned int port, bool enable)
 {
-	void __iomem *base = ports[port].base;
+	void __iomem *base = ports[port & (~PORT_VALID)].base;
 
 	writel_relaxed(enable ? CCI_ENABLE_REQ : 0, base + CCI_PORT_CTRL);
 	/*
@@ -716,6 +728,7 @@ EXPORT_SYMBOL_GPL(cci_disable_port_by_cpu);
  * any failure this never returns as the inability to enable the CCI is
  * fatal and there is no possible recovery at this stage.
  */
+#ifdef CONFIG_ARCH_HI3630
 asmlinkage void __naked cci_enable_port_for_self(void)
 {
 	asm volatile ("\n"
@@ -760,7 +773,7 @@ asmlinkage void __naked cci_enable_port_for_self(void)
 
 	/* Enable the CCI port */
 "	ldr	r0, [r0, %[offsetof_port_phys]] \n"
-"	mov	r3, #"__stringify(CCI_ENABLE_REQ)" \n"
+"	mov	r3, %[cci_enable_req]\n"		   
 "	str	r3, [r0, #"__stringify(CCI_PORT_CTRL)"] \n"
 
 	/* poll the status reg for completion */
@@ -768,7 +781,7 @@ asmlinkage void __naked cci_enable_port_for_self(void)
 "	ldr	r0, [r1] \n"
 "	ldr	r0, [r0, r1]		@ cci_ctrl_base \n"
 "4:	ldr	r1, [r0, #"__stringify(CCI_CTRL_STATUS)"] \n"
-"	tst	r1, #1 \n"
+"	tst	r1, %[cci_control_status_bits] \n"			
 "	bne	4b \n"
 
 "	mov	r0, #0 \n"
@@ -781,6 +794,8 @@ asmlinkage void __naked cci_enable_port_for_self(void)
 "7:	.word	cci_ctrl_phys - . \n"
 	: :
 	[sizeof_cpu_port] "i" (sizeof(cpu_port)),
+	[cci_enable_req] "i" cpu_to_le32(CCI_ENABLE_REQ),
+	[cci_control_status_bits] "i" cpu_to_le32(1),
 #ifndef __ARMEB__
 	[offsetof_cpu_port_mpidr_lsb] "i" (offsetof(struct cpu_port, mpidr)),
 #else
@@ -793,7 +808,7 @@ asmlinkage void __naked cci_enable_port_for_self(void)
 
 	unreachable();
 }
-
+#endif
 /**
  * __cci_control_port_by_device() - function to control a CCI port by device
  *				    reference
@@ -866,7 +881,7 @@ static const struct of_device_id arm_cci_ctrl_if_matches[] = {
 	{},
 };
 
-#ifdef CONFIG_ARCH_HISI
+#ifdef CONFIG_ARCH_HI3XXX
 
 void hisi_cci_enable_detect(u32 cluster)
 {
@@ -901,6 +916,7 @@ static void cci_init_qos(void)
 	 */
 	data = QCR_QOS_REG_EN | QCR_RD_S_EN | QCR_MODE_WR | QCR_MODE_RD;
 	writel_relaxed(data, cci_ctrl_base + CCI400_SLAVE2_BASE + CCI400_SLAVE_QCR_OFFSET);
+
 	/* Banwidth: 10G */
 	data = RTR_RT_AW(0x3) | RTR_RT_AR(0x3);
 	writel_relaxed(data, cci_ctrl_base + CCI400_SLAVE2_BASE + CCI400_SLAVE_RTR_OFFSET);
@@ -966,6 +982,9 @@ static int __init cci_probe(void)
 		cci_ctrl_base = ioremap(res.start, resource_size(&res));
 		cci_ctrl_phys =	res.start;
 	}
+
+	pr_info("cci_ctrl_base = %p\n", cci_ctrl_base);
+
 	if (ret || !cci_ctrl_base) {
 		WARN(1, "unable to ioremap CCI ctrl\n");
 		ret = -ENXIO;
@@ -1025,13 +1044,21 @@ static int __init cci_probe(void)
 	 * Multi-cluster systems may need this data when non-coherent, during
 	 * cluster power-up/power-down. Make sure it reaches main memory.
 	 */
+#ifndef CONFIG_HISI_3635
 	sync_cache_w(&cci_ctrl_base);
 	sync_cache_w(&cci_ctrl_phys);
 	sync_cache_w(&ports);
 	sync_cache_w(&cpu_port);
 	__sync_cache_range_w(ports, sizeof(*ports) * nb_cci_ports);
+#else
+	__flush_dcache_area(&cci_ctrl_base, sizeof(cci_ctrl_base));
+	__flush_dcache_area(&cci_ctrl_phys, sizeof(cci_ctrl_phys));
+	__flush_dcache_area(&ports, sizeof(ports));
+	__flush_dcache_area(&cpu_port, sizeof(cpu_port));
+	__flush_dcache_area(ports, sizeof(*ports) * nb_cci_ports);
+#endif
 
-#ifdef CONFIG_ARCH_HISI
+#ifdef CONFIG_ARCH_HI3XXX
 	cci_init_speculation();
 
 	cci_init_qos();
@@ -1058,7 +1085,7 @@ memalloc_err:
 	return ret;
 }
 
-#ifdef CONFIG_ARCH_HISI
+#ifdef CONFIG_ARCH_HI3XXX
 
 static int cci_suspend(void)
 {
@@ -1096,7 +1123,7 @@ static int __init cci_init(void)
 		cci_init_status = cci_probe();
 	mutex_unlock(&cci_probing);
 
-#ifdef CONFIG_ARCH_HISI
+#ifdef CONFIG_ARCH_HI3XXX
        register_syscore_ops(&cci_syscore_ops);
 #endif
 	return cci_init_status;

@@ -418,11 +418,16 @@ void  hi6930_clock_init(void)
      writel(regvalue, HI_SYSCTRL_BASE_ADDR_VIRT + 0x450);
 
 #elif defined(CONFIG_K3V3_CLK_CRG) /* CONFIG_K3V3_CLK_CRG */
-      regvalue = readl(HI_SYSCTRL_BASE_ADDR_VIRT + 0x450);
-      regvalue |= 0x9140006B;
-      writel(regvalue, HI_SYSCTRL_BASE_ADDR_VIRT + 0x450);
-
-     regvalue = readl(HI_SYSCTRL_BASE_ADDR_VIRT + 0x454);
+      #ifdef BSP_CONFIG_BOARD_SFT
+        regvalue = readl(HI_SYSCTRL_BASE_ADDR_VIRT + 0x450);
+        regvalue |= 0x8140006B;
+        writel(regvalue, HI_SYSCTRL_BASE_ADDR_VIRT + 0x450);
+      #else
+        regvalue = readl(HI_SYSCTRL_BASE_ADDR_VIRT + 0x450);
+        regvalue |= 0x9140006B;
+        writel(regvalue, HI_SYSCTRL_BASE_ADDR_VIRT + 0x450);
+      #endif
+      regvalue = readl(HI_SYSCTRL_BASE_ADDR_VIRT + 0x454);
       regvalue |= 0x17EAC10;
       writel(regvalue, HI_SYSCTRL_BASE_ADDR_VIRT + 0x454);
 #else

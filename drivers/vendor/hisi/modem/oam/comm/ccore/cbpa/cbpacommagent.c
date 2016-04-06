@@ -1,21 +1,4 @@
-/******************************************************************************
 
-                  版权所有 (C), 2001-2011, 华为技术有限公司
-
- ******************************************************************************
-  文 件 名   : cbpacommagent.c
-  版 本 号   : 初稿
-  作    者   : L00256032
-  生成日期   :
-  最近修改   :
-  功能描述   : CBPCA模块功能实现
-  函数列表   :
-  修改历史   :
-
-  1.日    期 : 2013年12月19日
-    作    者 : L00256032
-    修改内容 : V9R1 L_plus_C项目新增
-******************************************************************************/
 
 /*****************************************************************************
   1 头文件包含
@@ -26,6 +9,8 @@
 #include "DrvInterface.h"
 #include "TafNvInterface.h"
 #include "pslog.h"
+#include "drv_nv_id.h"
+#include "drv_nv_def.h"
 
 #ifdef __cplusplus
 #if __cplusplus
@@ -36,9 +21,7 @@ extern "C" {
 /*****************************************************************************
     协议栈打印打点方式下的.C文件宏定义
 *****************************************************************************/
-/*lint -e767 修改人：h28225；检视人：l46160；原因简述：打点日志文件ID宏定义*/
 #define    THIS_FILE_ID        PS_FILE_ID_CBPACOMMAGENT_C
-/*lint +e767 修改人：h28225；检视人：l46160；*/
 
 #if (FEATURE_ON == FEATURE_CL_INTERWORK)
 /*****************************************************************************
@@ -63,20 +46,12 @@ CBPCA_PID_MSGID_MAP_TABLE_STRU          g_astCbpcaPidMsgIdMapTbl[] =
 };
 
 
+VOS_INT  CBPCA_UartRcvCBFunc(UART_CONSUMER_ID uPortNo, VOS_UINT8 *pucData, VOS_UINT32 ulLength);
+
 /*****************************************************************************
   3 函数实现
 *****************************************************************************/
-/*****************************************************************************
-函 数 名  : CBPCA_SetDebugSwitch
-功能描述  : CBPCA设置打印上下文开关
-输入参数  : ucFlag  --- 打印开关
-输出参数  : 无
-返 回 值  : VOS_VOID
-History     :
-1.日    期  : 2013年12月19日
-  作    者  : L00256032
-  修改内容  : Create
-*****************************************************************************/
+
 VOS_VOID CBPCA_SetDebugSwitch(VOS_UINT8 ucFlag)
 {
     g_ucCbpcaDbgFlag = ucFlag;
@@ -84,34 +59,14 @@ VOS_VOID CBPCA_SetDebugSwitch(VOS_UINT8 ucFlag)
     return;
 }
 
-/*****************************************************************************
-函 数 名  :CBPCA_ResetStatisticInfo
-功能描述  :清除CBPCA可维可测信息
-输入参数  :VOS_VOID
-输出参数  :无
-返 回 值  :VOS_VOID
-修订记录  :
-1.日    期  : 2013年12月19日
-  作    者  : L00256032
-  修改内容  : Create
-*****************************************************************************/
+
 VOS_VOID CBPCA_ResetStatisticInfo(VOS_VOID)
 {
     VOS_MemSet(&g_stCbpcaStatic, 0, sizeof(g_stCbpcaStatic));
     return;
 }
 
-/*****************************************************************************
-函 数 名  :CBPCA_ShowCtrlAndStatisticInfo
-功能描述  :打印CBPCA控制上下文及可维可测信息
-输入参数  :VOS_VOID
-输出参数  :无
-返 回 值  :VOS_VOID
-修订记录  :
-1.日    期  : 2013年12月19日
-  作    者  : L00256032
-  修改内容  : Create
-*****************************************************************************/
+
 VOS_VOID CBPCA_ShowCtrlAndStatisticInfo(VOS_VOID)
 {
     vos_printf("\r\n\r\n********************CBPCA 控制上下文信息************************\r\n");
@@ -148,20 +103,7 @@ VOS_VOID CBPCA_ShowCtrlAndStatisticInfo(VOS_VOID)
 
 }
 
-/*****************************************************************************
-函 数 名  : CBPCA_UartDataHook
-功能描述  : CBPCA与UART间数据交互勾包
-输入参数  : ulLength  --- 数据长度
-            pucData   --- 指针
-输出参数  : 无
-返 回 值  : 无
-调用函数  : 无
-被调函数  :
-修订记录  :
-1.日    期  : 2013年12月19日
-  作    者  : L00256032
-  修改内容  : Create
-*****************************************************************************/
+
 VOS_VOID CBPCA_UartDataHook(VOS_UINT32 ulLength, VOS_UINT8 *pucData)
 {
     MsgBlock                           *pstMsg;
@@ -201,33 +143,13 @@ VOS_VOID CBPCA_UartDataHook(VOS_UINT32 ulLength, VOS_UINT8 *pucData)
     return;
 }
 
-/*****************************************************************************
-函 数 名  : CBPCA_GetCtxAddr
-功能描述  : CBPCA管理上下文的指针获取
-输入参数  : 无
-输出参数  : 无
-返 回 值  : CBPCA_CTX_STRU *
-History     :
-1.日    期  : 2013年12月19日
-  作    者  : L00256032
-  修改内容  : Create
-*****************************************************************************/
+
 CBPCA_CTX_STRU* CBPCA_GetCtxAddr(VOS_VOID)
 {
     return &(g_stCbpcaCtx);
 }
 
-/*****************************************************************************
-函 数 名  : CBPCA_RestoreIndex
-功能描述  : 接收、发送Index的清零操作
-输入参数  : pusIndex -- 收发递加操作数
-输出参数  : VOS_VOID
-返 回 值  : VOS_VOID
-History     :
-1.日    期  : 2013年12月19日
-  作    者  : L00256032
-  修改内容  : Create
-*****************************************************************************/
+
 VOS_VOID CBPCA_RestoreIndex(VOS_VOID)
 {
     CBPCA_CTX_STRU                     *pstCbpcaCtx;
@@ -249,19 +171,7 @@ VOS_VOID CBPCA_RestoreIndex(VOS_VOID)
     return;
 }
 
-/*****************************************************************************
-函 数 名  : CBPCA_IncreaseIndex
-功能描述  : 接收、发送Index的递加操作
-            注: HDLC中Index的值有效范围为:0~0x7fff(0xFFFF固定为错误信息帧的索引),
-            累计到0x7fff后从0开始重新计数
-输入参数  : pusIndex -- 收发递加操作数
-输出参数  : VOS_VOID
-返 回 值  : VOS_VOID
-History     :
-1.日    期  : 2013年12月19日
-  作    者  : L00256032
-  修改内容  : Create
-*****************************************************************************/
+
 VOS_VOID CBPCA_IncreaseIndex(VOS_UINT16 *pusIndex)
 {
     VOS_INT32                           lLockKey;
@@ -284,20 +194,6 @@ VOS_VOID CBPCA_IncreaseIndex(VOS_UINT16 *pusIndex)
 
     return;
 }
-
-/*****************************************************************************
-函 数 名  : CBPCA_FindMatchPidByMsgId
-功能描述  : CBPCA 接收到CBP的帧后，需要根据MsgID找到对应的PID，以及与对应PID间的MsgType
-输入参数  : usMsgId        -- 消息ID
-输出参数  : pulPid         -- 对应PID
-            penMsgType     -- 与对应PID间的MsgType
-返 回 值  : VOS_OK         -- 找到匹配PID
-            VOS_ERR        -- 未找到匹配PID
-History     :
-1.日    期  : 2013年12月20日
-  作    者  : L00256032
-  修改内容  : Create
-*****************************************************************************/
 VOS_UINT32 CBPCA_FindMatchPidByMsgId(
     VOS_UINT16                          usMsgId,
     VOS_UINT32                         *pulPid,
@@ -321,18 +217,7 @@ VOS_UINT32 CBPCA_FindMatchPidByMsgId(
     return VOS_ERR;
 }
 
-/*****************************************************************************
-函 数 名  : CBPCA_FindMatchMsgIdByPid
-功能描述  : CBPCA 接收到上层应用发送的数据后，需要根据PID找到对应的MsgID
-输入参数  : ulPid          -- PID
-输出参数  : pusMsgId       -- 对应MsgId
-返 回 值  : VOS_OK         -- 找到匹配MsgId
-            VOS_ERR        -- 未找到匹配MsgId
-History     :
-1.日    期  : 2013年12月20日
-  作    者  : L00256032
-  修改内容  : Create
-*****************************************************************************/
+
 VOS_UINT32 CBPCA_FindMatchMsgIdByPid(VOS_UINT32 ulPid, VOS_UINT16 *pusMsgId)
 {
     VOS_UINT8       ucLoop;
@@ -352,21 +237,7 @@ VOS_UINT32 CBPCA_FindMatchMsgIdByPid(VOS_UINT32 ulPid, VOS_UINT16 *pusMsgId)
     return VOS_ERR;
 }
 
-/*****************************************************************************
-函 数 名  : CBPCA_SndDataToCbpca
-功能描述  : CBPCA 提供给上层应用的API接口，用于上层应用发送数据至CBPCA
-输入参数  : ulSndPid       -- 发送PID
-            enMsgType      -- 消息ID
-            pucData        -- 数据指针
-            ulLength       -- 数据长度
-输出参数  : 无
-返 回 值  : VOS_OK         -- 发送成功
-            VOS_ERR        -- 发送失败
-History     :
-1.日    期  : 2013年12月20日
-  作    者  : L00256032
-  修改内容  : Create
-*****************************************************************************/
+
 VOS_UINT32 CBPCA_SndDataToCbpca(
     VOS_UINT32                          ulSndPid,
     CBPCA_MSG_TYPE_ENUM_UINT32          enMsgType,
@@ -413,18 +284,7 @@ VOS_UINT32 CBPCA_SndDataToCbpca(
     return VOS_OK;
 }
 
-/*****************************************************************************
-函 数 名  : CBPCA_DataReqProc
-功能描述  : CBPCA 处理CBPCA_DATA_REQ_MSG_STRU消息
-输入参数  : pMsg CSIMA或CMMCA等上层适配模块发过来的消息内容
 
-输出参数  : 无
-返 回 值  : VOS_VOID
-History     :
-1.日    期  : 2013年12月19日
-  作    者  : L00256032
-  修改内容  : Create
-*****************************************************************************/
 VOS_VOID CBPCA_DataReqProc(CBPCA_DATA_REQ_MSG_STRU *pMsg)
 {
     CBPCA_CTX_STRU                     *pCbpcaCtx;
@@ -523,21 +383,12 @@ VOS_VOID CBPCA_DataReqProc(CBPCA_DATA_REQ_MSG_STRU *pMsg)
     return;
 }
 
-/*****************************************************************************
-函 数 名  : CBPCA_CSIMAModemResetIndProc
-功能描述  : CBPCA 处理CSIMA_CBPCA_MODEM_RESET_IND_MSG_STRU消息
-输入参数  : pMsg CSIMA向CBPCA发送的Modem复位状态指示
 
-输出参数  : 无
-返 回 值  : VOS_VOID
-History     :
-1.日    期  : 2013年12月20日
-  作    者  : L00256032
-  修改内容  : Create
-*****************************************************************************/
 VOS_VOID CBPCA_CSIMAModemResetIndProc(CSIMA_CBPCA_MODEM_RESET_IND_MSG_STRU *pMsg)
 {
     CBPCA_CTX_STRU                     *pCbpcaCtx;
+	VOS_INT32							iResult;
+	DRV_DM_UART5_STR 					dm_init_nv;
 
     pCbpcaCtx = CBPCA_GetCtxAddr();
 
@@ -549,6 +400,30 @@ VOS_VOID CBPCA_CSIMAModemResetIndProc(CSIMA_CBPCA_MODEM_RESET_IND_MSG_STRU *pMsg
     }
     else if (CSIMA_CBPCA_MODEM_RESET_SUCC == pMsg->enModemReset)
     {
+		if(NV_OK != NV_Read(NV_ID_DRV_DM_UART5_CFG, (VOS_UINT8*)&dm_init_nv, sizeof(DRV_DM_UART5_STR)))
+		{
+			vos_printf("CBPCA_CSIMAModemResetIndProc:read dm_uart5_irq_nv NV ERROR: %d \n",NV_ID_DRV_DM_UART5_CFG);
+			dm_init_nv.enUart5IrqCfg = 0;
+			dm_init_nv.dmInitCfg = 0;
+		}
+		if(1 == dm_init_nv.dmInitCfg)
+		{
+			if( 0 != bsp_dual_modem_init() )
+	    	{
+	    		CBPA_WARNING_LOG("CBPCA_CSIMAModemResetIndProc: uart_test_bsp_dual_modem_init fail!");
+	    	}
+			CBPA_ERROR_LOG("CBPCA_CSIMAModemResetIndProc after uart_test_bsp_dual_modem_init");
+		}
+	iResult = DRV_UART_RCV_CALLBACK_REGI(CBP_UART_PORT_ID, (pUARTRecv)CBPCA_UartRcvCBFunc);
+	if (VOS_OK != iResult)
+	{
+		CBPA_ERROR1_LOG("CBPCA_Init: Reg callback function fail!", iResult);
+		return;
+	}
+
+	CBPA_ERROR_LOG("CBPCA_CSIMAModemResetIndProc after register CBPCA_UartRcvCBFunc");
+
+    
         /* 清除HDLC封装的缓存数据 */
         VOS_MemSet(pCbpcaCtx->stEncapCtrlCtx.pucEncapBuff, 0, pCbpcaCtx->stEncapCtrlCtx.ulEncapBuffSize);
 
@@ -561,6 +436,8 @@ VOS_VOID CBPCA_CSIMAModemResetIndProc(CSIMA_CBPCA_MODEM_RESET_IND_MSG_STRU *pMsg
 
         /* 将CBP Ready标志置为"READY" */
         pCbpcaCtx->enCBPStatus = CBP_MODEM_STATUS_READY;
+
+	 CBPA_ERROR_LOG("CBPCA_CSIMAModemResetIndProc after enCBPStatus = CBP_MODEM_STATUS_READY");
     }
     else if (CSIMA_CBPCA_MODEM_RESET_FAIL == pMsg->enModemReset)
     {
@@ -575,18 +452,7 @@ VOS_VOID CBPCA_CSIMAModemResetIndProc(CSIMA_CBPCA_MODEM_RESET_IND_MSG_STRU *pMsg
     return;
 }
 
-/*****************************************************************************
-函 数 名  : CBPCA_CSIMAMsgProc
-功能描述  : CBPCA 处理CSIMA消息处理函数
-输入参数  : pMsg -- CSIMA 发来消息内容
 
-输出参数  : 无
-返 回 值  : VOS_VOID
-History     :
-1.日    期  : 2013年12月19日
-  作    者  : L00256032
-  修改内容  : Create
-*****************************************************************************/
 VOS_VOID CBPCA_CSIMAMsgProc(MsgBlock *pMsg)
 {
     CBPCA_MSG_HDR_STRU                 *pstDataReq;
@@ -611,18 +477,7 @@ VOS_VOID CBPCA_CSIMAMsgProc(MsgBlock *pMsg)
     return;
 }
 
-/*****************************************************************************
-函 数 名  : CBPCA_CMMCAMsgProc
-功能描述  : CBPCA 处理CMMCA消息处理函数
-输入参数  : pMsg -- CMMCA 发来消息内容
 
-输出参数  : 无
-返 回 值  : VOS_VOID
-History     :
-1.日    期  : 2014年2月18日
-  作    者  : L00256032
-  修改内容  : Create
-*****************************************************************************/
 VOS_VOID CBPCA_CMMCAMsgProc(MsgBlock *pMsg)
 {
     CBPCA_MSG_HDR_STRU                 *pstDataReq;
@@ -644,18 +499,7 @@ VOS_VOID CBPCA_CMMCAMsgProc(MsgBlock *pMsg)
 }
 
 
-/*****************************************************************************
-函 数 名  : CBPCA_PidMsgProc
-功能描述  : CBPCA PID消息处理入口
-输入参数  : pMsg -- 消息内容
 
-输出参数  : 无
-返 回 值  : VOS_VOID
-History     :
-1.日    期  : 2013年12月19日
-  作    者  : L00256032
-  修改内容  : Create
-*****************************************************************************/
 VOS_VOID CBPCA_PidMsgProc(MsgBlock *pMsg)
 {
     switch (pMsg->ulSenderPid)
@@ -676,21 +520,7 @@ VOS_VOID CBPCA_PidMsgProc(MsgBlock *pMsg)
     return;
 }
 
-/*****************************************************************************
-函 数 名  : CBPCA_TransferDataToUpperLayer
-功能描述  : CBPCA 将HDLC中的源数据转发给上层应用模块
-输入参数  : ulRcvPid       -- 对应的接收PID
-            enMsgType      -- 消息ID
-            pucData        -- 数据指针
-            ulLength       -- 数据长度
 
-输出参数  : 无
-返 回 值  : VOS_VOID
-History     :
-1.日    期  : 2013年12月20日
-  作    者  : L00256032
-  修改内容  : Create
-*****************************************************************************/
 VOS_VOID CBPCA_TransferDataToUpperLayer(
     VOS_UINT32                          ulRcvPid,
     CBPCA_MSG_TYPE_ENUM_UINT32          enMsgType,
@@ -736,20 +566,28 @@ VOS_VOID CBPCA_TransferDataToUpperLayer(
 
     return;
 }
+VOS_VOID CBPCA_DecreaseIndex(VOS_UINT16 *pusIndex)
+{
+    VOS_INT32                           lLockKey;
 
-/*****************************************************************************
-函 数 名  : CBPCA_DispatchReceivedData
-功能描述  : CBPCA 从HDLC中正常解析出DATA并执行转发
-输入参数  : pucData        -- 数据指针
-            ulInfoLength   -- 数据长度
+    /* 关中断 */
+    lLockKey = VOS_SplIMP();
 
-输出参数  : 无
-返 回 值  : VOS_VOID
-History     :
-1.日    期  : 2013年12月20日
-  作    者  : L00256032
-  修改内容  : Create
-*****************************************************************************/
+    /* Index减一 */
+    if (*pusIndex > 0)
+    {
+        (*pusIndex)--;
+    }
+    else
+    {
+        *pusIndex = CBPCA_MAX_INDEX;
+    }
+
+    /* 开中断 */
+    VOS_Splx(lLockKey);
+
+    return;
+}
 VOS_VOID CBPCA_DispatchReceivedData(VOS_UINT8 *pucData, VOS_UINT32 ulInfoLength)
 {
     VOS_UINT16                          usIndex  = 0;
@@ -759,6 +597,7 @@ VOS_VOID CBPCA_DispatchReceivedData(VOS_UINT8 *pucData, VOS_UINT32 ulInfoLength)
     VOS_UINT32                          ulRcvPid;
     CBPCA_MSG_TYPE_ENUM_UINT32          enMsgType;
     CBPCA_CTX_STRU                     *pCbpcaCtx;
+    VOS_UINT32                          i = 0;
 
     /* 接收到的数据码流格式如下
     | Index(Low byte) | Index(High byte) | Length(Low byte) | Length(High byte) | MsgId(Low byte) | MsgId(High byte) |
@@ -790,6 +629,29 @@ VOS_VOID CBPCA_DispatchReceivedData(VOS_UINT8 *pucData, VOS_UINT32 ulInfoLength)
     {
         /* 记录可维可测信息，当前先不实现重发，Index错误也继续处理 */
         CBPCA_STATISTIC_INC(CBPCA_STATISTIC_HDLC_DECAP_INVALID_INDEX);
+		if (0xffff == usIndex)
+		{
+			CBPCA_DecreaseIndex(&(CBPCA_GetCtxAddr()->usExpectRcvIndex));
+		}
+        else if(pCbpcaCtx->usExpectRcvIndex > usIndex)
+        {
+            /* 记录错误信息，index不重发，错误继续处理，也不需要复位 */
+            CBPCA_STATISTIC_INC(CBPCA_STATISTIC_HDLC_DECAP_INVALID_INDEX);
+            vos_printf("CBPCA_DispatchReceivedData:ExpectRcvIndex>usIndex,index is 0x%x,pCbpcaCtx->usExpectRcvIndex is 0x%x\n",usIndex,pCbpcaCtx->usExpectRcvIndex);
+            pCbpcaCtx->usExpectRcvIndex = usIndex;
+        }
+		else
+		{
+			/* 记录错误信息，index不重发，错误继续处理，复位 */
+			CBPCA_STATISTIC_INC(CBPCA_STATISTIC_HDLC_DECAP_INVALID_INDEX);
+			vos_printf("CBPCA_DispatchReceivedData: index is 0x%x,pCbpcaCtx->usExpectRcvIndex is 0x%x\n",usIndex,pCbpcaCtx->usExpectRcvIndex);
+			for(i=0;i<ulInfoLength;i++)
+			{
+			    vos_printf("pucData[%d]: 0x%x\n",i,pucData[i]);
+			}
+			DRV_SYSTEM_ERROR(CBPCA_VIAMSG_INDEX_ERROR,THIS_FILE_ID, __LINE__, 0, 0);
+			pCbpcaCtx->usExpectRcvIndex = usIndex;
+		}
     }
 
     /* Length为MsgId和Data域长度之和，判断其合法性 */
@@ -850,21 +712,6 @@ VOS_VOID CBPCA_DispatchReceivedData(VOS_UINT8 *pucData, VOS_UINT32 ulInfoLength)
 
     return;
 }
-
-/*****************************************************************************
-函 数 名  : CBPCA_UartRcvCBFunc
-功能描述  : CBPCA向底软UART注册的接收数据回调函数
-输入参数  : uPortNo  -- 底软通道编号
-            pData    -- 发给CBPA数据
-            ulLength -- 数据长度
-
-输出参数  : 无
-返 回 值  : VOS_INT
-History     :
-1.日    期  : 2013年12月19日
-  作    者  : L00256032
-  修改内容  : Create
-*****************************************************************************/
 VOS_INT  CBPCA_UartRcvCBFunc(UART_CONSUMER_ID uPortNo, VOS_UINT8 *pucData, VOS_UINT32 ulLength)
 {
     VOS_UINT32                          ulLoop;
@@ -1000,21 +847,11 @@ VOS_INT  CBPCA_UartRcvCBFunc(UART_CONSUMER_ID uPortNo, VOS_UINT8 *pucData, VOS_U
     return iResult;
 }
 
-/*****************************************************************************
-函 数 名  : CBPCA_Init
-功能描述  : CBPCA模块初始化
-输入参数  : 无
-输出参数  : 无
-返 回 值  : VOS_OK/VOS_ERR
-History     :
-1.日    期  : 2013年12月19日
-  作    者  : L00256032
-  修改内容  : Create
-*****************************************************************************/
+
 VOS_UINT32 CBPCA_Init(VOS_VOID)
 {
     CBPCA_CTX_STRU                     *pstCbpcaCtx;
-    VOS_INT                             iResult;
+/*    VOS_INT                             iResult;*/
     TAF_NV_LC_CTRL_PARA_STRU            stLcCtrl;
 
     /* 获取CBPCA CTX的指针 */
@@ -1070,6 +907,7 @@ VOS_UINT32 CBPCA_Init(VOS_VOID)
     pstCbpcaCtx->enCBPStatus = CBP_MODEM_STATUS_NOT_READY;
 
     /* 向DRV UART注册数据接收回调函数 */
+/*	
     iResult = DRV_UART_RCV_CALLBACK_REGI(CBP_UART_PORT_ID, (pUARTRecv)CBPCA_UartRcvCBFunc);
     if (VOS_OK != iResult)
     {
@@ -1080,21 +918,11 @@ VOS_UINT32 CBPCA_Init(VOS_VOID)
         VOS_MemFree(WUEPS_PID_CBPCA, pstCbpcaCtx->stDecapCtrlCtx.pucDecapBuff);
         return VOS_ERR;
     }
-
+*/
     return VOS_OK;
 }
 
-/*****************************************************************************
-函 数 名  : CBPCA_PidInit
-功能描述  : CBPCA PID初始化
-输入参数  : ip 初始化阶段
-输出参数  : 无
-返 回 值  : VOS_OK/VOS_ERR
-History     :
-1.日    期  : 2013年12月19日
-  作    者  : L00256032
-  修改内容  : Create
-*****************************************************************************/
+
 VOS_UINT32 CBPCA_PidInit(enum VOS_INIT_PHASE_DEFINE ip)
 {
     switch (ip)
@@ -1110,17 +938,6 @@ VOS_UINT32 CBPCA_PidInit(enum VOS_INIT_PHASE_DEFINE ip)
 }
 #endif /* FEATURE_ON == FEATURE_CL_INTERWORK */
 
-/*****************************************************************************
-函 数 名  : CBPCA_FidInit
-功能描述  : CBPA模块FID初始化
-输入参数  : ip  ---初始化所处阶段
-输出参数  : 无
-返 回 值  : VOS_OK/VOS_ERR
-History     :
-1.日    期  : 2013年12月19日
-  作    者  : L00256032
-  修改内容  : Create
-*****************************************************************************/
 VOS_UINT32 CBPCA_FidInit(enum VOS_INIT_PHASE_DEFINE ip)
 {
 #if (FEATURE_ON == FEATURE_CL_INTERWORK)

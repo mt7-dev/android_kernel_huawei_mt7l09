@@ -359,7 +359,9 @@ VOS_UINT32  APP_VC_SendSetCodecReq(
 }
 
 
-VOS_UINT32  APP_VC_SendEndCallReq(VOS_VOID)
+VOS_UINT32  APP_VC_SendEndCallReq(
+    APP_VC_OPEN_CHANNEL_FAIL_CAUSE_ENUM_UINT32  enCause
+)
 {
     VC_CALL_MSG_STRU            *pstMsg;
 
@@ -378,6 +380,7 @@ VOS_UINT32  APP_VC_SendEndCallReq(VOS_VOID)
 
     pstMsg->ulReceiverPid = WUEPS_PID_TAF;
     pstMsg->enMsgName     = VC_CALL_END_CALL;
+    pstMsg->enCause       = enCause;
 
     return PS_SEND_MSG(WUEPS_PID_VC, pstMsg);
 

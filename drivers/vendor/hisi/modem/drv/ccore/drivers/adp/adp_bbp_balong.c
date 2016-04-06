@@ -308,6 +308,19 @@ BSP_U16 BSP_LPS_GetTa(void)
 {
 	return bsp_bbp_lps_get_ta();
 }
+/*****************************************************************************
+* 函 数 : BSP_BBP_GET_WAKEUP_TIME
+* 功 能 : 获取dsp唤醒时间
+* 输 入 : void
+* 输 出 : void
+* 返 回 :
+* 说 明 :
+*****************************************************************************/
+
+BSP_U32 BSP_BBP_GET_WAKEUP_TIME(PWC_COMM_MODE_E mode)
+{
+    return bbp_get_wakeup_time(mode);
+}
 
 #else
 BSP_VOID BSP_BBPIntTimerRegCb(BSPBBPIntTimerFunc pFunc)
@@ -949,6 +962,19 @@ PWC_COMM_STATUS_E bsp_bbp_pwrctrl_twbbp_status(void)
 BSP_U16 BSP_LPS_Get_Ta(void)
 {
 	return 0xffff;
+}
+
+/*****************************************************************************
+* 函 数 : BSP_BBP_GET_WAKEUP_TIME
+* 功 能 : 获取dsp唤醒时间
+* 输 入 : void
+* 输 出 : void
+* 返 回 :
+* 说 明 :
+*****************************************************************************/
+BSP_U32 BSP_BBP_GET_WAKEUP_TIME(PWC_COMM_MODE_E mode)
+{
+    return 0xffffffff;
 }
 
 #endif

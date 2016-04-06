@@ -100,10 +100,6 @@ struct usb_request {
 	unsigned		no_interrupt:1;
 	unsigned		zero:1;
 	unsigned		short_not_ok:1;
-#ifdef CONFIG_K3V3_BALONG_MODEM
-	unsigned		sg_mode:1;
-#define USB_REQUEST_M_TRANSFER 0x01
-#endif
 	void			(*complete)(struct usb_ep *ep,
 					struct usb_request *req);
 	void			*context;
@@ -111,6 +107,8 @@ struct usb_request {
 
 	int			status;
 	unsigned		actual;
+    /*add by hisi-balong*/
+    unsigned int    no_unmap_flag;
 };
 
 /*-------------------------------------------------------------------------*/
@@ -176,10 +174,6 @@ struct usb_ep {
 	unsigned		max_streams:16;
 	unsigned		mult:2;
 	unsigned		maxburst:5;
-#ifdef CONFIG_K3V3_BALONG_MODEM
-	unsigned		masknotready:1;
-	unsigned		enable_xfer_in_progress:1;
-#endif
 	u8			address;
 	const struct usb_endpoint_descriptor	*desc;
 	const struct usb_ss_ep_comp_descriptor	*comp_desc;

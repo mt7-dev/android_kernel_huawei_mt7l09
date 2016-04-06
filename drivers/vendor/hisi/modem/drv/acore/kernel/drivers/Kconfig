@@ -160,7 +160,7 @@ source "drivers/slave/Kconfig"
 
 
 
-source "drivers/modem/Kconfig"
+source "drivers/hisi/modem_hi3630/drv/Kconfig"
 
 source "drivers/rtc/Kconfig"
 source "drivers/pwm/Kconfig"

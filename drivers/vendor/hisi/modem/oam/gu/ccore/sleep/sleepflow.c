@@ -221,10 +221,10 @@ HPA_LOAD_PHY_STATE_STRU                *g_pstLoadPhyState       = VOS_NULL_PTR;
 SLEEP_DEVICE_STATE_STRU                *g_pstSleepDeviceState   = VOS_NULL_PTR;
 
 /* 互斥信号量 */
-VOS_UINT32                              g_ulSleepSem;
+VOS_SEM                                 g_ulSleepSem;
 
 /* TCXO稳定信号量 */
-VOS_UINT32                              g_ulSleepTcxoSem;
+VOS_SEM                                 g_ulSleepTcxoSem;
 
 /* BBP寄存器备份恢复内容 */
 VOS_UINT32                              g_ulSleepBBPPosValue    = 0;
@@ -257,6 +257,9 @@ VOS_CHAR                                g_acSleepLogFilePath[SLEEP_INFO_MAX_NAME
 
 /* 记录SLEEP模块异常信息文件序列值，默认0 */
 VOS_UINT32                              g_ulSleepLogFileIndex = 0;
+
+/* 记录BBP状态获取场景，仅在开机首次需要获取状态 */
+VOS_UINT32                              g_ulSleepBBPReadyCheckFlag = 0x5A5A5A5A;
 
 /*****************************************************************************
   3 函数申明
@@ -323,10 +326,6 @@ VOS_UINT32 SLEEP_AwakeInfoGet( SLEEP_MODE_ENUM_UINT32 enMode, VOS_UINT32 *pstAwa
     if ( SLEEP_INFO_RESET_ENABLE == g_bDrxResetFlag )
     {
         VOS_ProtectionReboot(DRX_ACTIVATEHW_ERROR, THIS_FILE_ID, __LINE__, VOS_NULL_PTR, VOS_NULL);
-    }
-    else
-    {
-        SLEEP_IsrProc(SLEEP_ACTIVATE_ERROR_ID, enMode);
     }
 
     return VOS_OK;
@@ -656,6 +655,69 @@ VOS_VOID SLEEP_PowerUp(SLEEP_MODE_ENUM_UINT32 enMode)
 }
 
 
+VOS_VOID SLEEP_GBBPIsReady( VOS_VOID )
+{
+    if (0x5A5A5A5A != g_ulSleepBBPReadyCheckFlag)
+    {
+        return;
+    }
+
+    (VOS_VOID)VOS_SmP(g_ulSleepSem, 0);
+
+    /* 进行GBBP上电 */
+    SLEEP_VoteLock(VOS_RATMODE_GSM);
+
+    SLEEP_ActivateHw(VOS_RATMODE_GSM);
+
+    g_pstSleepDeviceState->ulBBPIsReadyStartSlice = OM_GetSlice();
+
+    for (;;)
+    {
+#if defined (INSTANCE_1)
+        /*判断GBBP(BIT31)状态是否满足搜网条件*/
+        if (0 == (HPA_Read32Reg(OAM_GBBP1_GAUGE_RESULT_RPT_ADDR) & 0x80000000))
+        {
+            break;
+        }
+#else
+        /*判断GBBP(BIT31)状态是否满足搜网条件*/
+        if (0 == (HPA_Read32Reg(OAM_GBBP0_GAUGE_RESULT_RPT_ADDR) & 0x80000000))
+        {
+            break;
+        }
+#endif
+
+        if ((OM_GetSlice() - g_pstSleepDeviceState->ulBBPIsReadyStartSlice) >= SLEEP_BBP_READY_TIMEOUT)
+        {
+            g_pstSleepDeviceState->ulBBPIsReadyTimeout  = VOS_TRUE;
+
+            break;
+        }
+
+        VOS_TaskDelay(9);
+    }
+
+    g_pstSleepDeviceState->ulBBPIsReadyEndSlice = OM_GetSlice();
+
+    /* 进行GBBP下电 */
+    SLEEP_DeactivateHw(VOS_RATMODE_GSM);
+
+    SLEEP_VoteUnlock(VOS_RATMODE_GSM);
+
+    VOS_SmV(g_ulSleepSem);
+
+    /* 如果发现timeout，则checkflag置特殊值便于查询 */
+    if (VOS_TRUE == g_pstSleepDeviceState->ulBBPIsReadyTimeout)
+    {
+        g_ulSleepBBPReadyCheckFlag  = 0x12345678;
+    }
+    else
+    {
+        g_ulSleepBBPReadyCheckFlag  = 0;
+    }
+
+    return;
+}
 VOS_UINT32 SLEEP_ReadBaseCntChip( VOS_VOID )
 {
     VOS_UINT32                          ulBaseSlot;
@@ -1806,7 +1868,7 @@ VOS_VOID SLEEP_Init(VOS_VOID)
     VOS_UINT32                          ulRecordAddr;
 
     /* 初始化定位信息 */
-    ulRecordAddr = DRV_EXCH_MEM_MALLOC(VOS_DUMP_MEM_TOTAL_SIZE);
+    ulRecordAddr = (VOS_UINT32)DRV_EXCH_MEM_MALLOC(VOS_DUMP_MEM_TOTAL_SIZE);
 
 #if defined (INSTANCE_1)
     if (VOS_NULL_PTR != ulRecordAddr)

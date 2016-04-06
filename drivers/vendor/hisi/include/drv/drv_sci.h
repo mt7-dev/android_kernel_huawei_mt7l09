@@ -79,23 +79,60 @@ typedef struct
     T1_ERR_DETECT_MODE errDetectMode;
 }SCI_ATRInfo;
 
+/*for SCI_LOG  mode*/
+typedef enum
+{
+    SCI_LOG_RESET_FAIL           = 0,     /*复位失败*/
+    SCI_LOG_PROTECT_RESET_SUCC   = 1,     /*保护性复位成功*/
+    SCI_LOG_PROTECT_RESET_FAIL   = 2,     /*保护性复位失败*/
+    SCI_LOG_NO_DATA              = 3,     /*没有数据返回*/
+    SCI_LOG_BUF_OVER             = 4,     /*数据接收溢出*/
+    SCI_LOG_VOL_SWITCH_FAIL      = 5,     /*USIM电压切换失败*/
+    SCI_LOG_BUTT
+}SCI_LOG_MODE;
+
+/*  SIM  硬件异常*/
+typedef enum tagSCI_HW_ABNORMAL_E
+{
+    SCI_HW_STATE_OK  = 0,                   /*HW  OK*/
+    SCI_HW_STATE_ATRSTOUT,                  /*ATR receive start timeout  */
+    SCI_HW_STATE_ATRDTOUT,                  /*between ATR TIME OUT*/
+    SCI_HW_STATE_TXERR,                     /*TX ERROR*/
+    SCI_HW_STATE_CHTOUT,                    /*between char timeout*/
+    SCI_HW_STATE_RORI,                      /*receive overrun interrupt*/
+
+    SCI_HW_STATE_BUTT                       /* Butt*/
+} SCI_HW_ABNORMAL_E;
+
 #define SCI_RECORD_ATR_LEN      (40)
 #define SCI_RECORD_REG_LEN      (36)
-#define SCI_RECORD_DATA_LEN     (72)
-#define SCI_RECORD_EVENT_LEN    (32)
-#define SCI_RECORD_TOTAL_LEN    (388)
+#define SCI_RECORD_DATA_CNT     (20)
+/*14 = 1(收发标志)+4(时间戳)+1(len)+8(数据)*/
+#define SCI_SIGLE_DATA_LEN      (14)
+#define SCI_RECORD_DATA_LEN     (SCI_RECORD_DATA_CNT * SCI_SIGLE_DATA_LEN)
+#define SCI_RECORD_EVENT_CNT    (80)
+#define SCI_RECORD_EVENT_LEN    (SCI_RECORD_EVENT_CNT * 4 )
+
 
 typedef struct  stSciRecordInfo
 {
     unsigned short  cardClass;   /*卡电压类型：1800或3000*/
     unsigned short  ATRlen;      /*ART数据实际长度*/
-    unsigned char   ATRData[SCI_RECORD_ATR_LEN];  /*ART数据记录,不超过40个字节*/
+    unsigned char   ATRData[SCI_RECORD_ATR_LEN];  /*ART数据记录,不超过40个字节*/    
+    SCI_HW_ABNORMAL_E         enSciHwStatus;                      /*记录sci硬件状态*/
     unsigned int    SciRegData[SCI_RECORD_REG_LEN];/*SCI所有寄存器记录*/
     unsigned char   SciRecordData[SCI_RECORD_DATA_LEN];/*至少记录和卡交互的最后8条数据，每条不超过9个字节*/
     unsigned int    SciEvent[SCI_RECORD_EVENT_LEN];/*SCI 底层事件最后8条记录*/
 }SCI_RECORD_INFO;
 
 /* T=1 add End */
+
+typedef enum 
+{
+    SCI_ID_0 = 0,
+    SCI_ID_1 = 1,
+    SCI_ID_BUTT
+}SCI_SLOT;
 
 
 typedef void (*OMSCIFUNCPTR)(unsigned int ulVal);
@@ -362,7 +399,7 @@ void DRV_USIMMSCI_FUNC_REGISTER(OMSCIFUNCPTR omSciFuncPtr);
              -1：操作失败，指针参数为空。
  注意事项  ：
 *****************************************************************************/
-BSP_U32 DRV_USIMMSCI_RECORD_DATA_SAVE(BSP_VOID);  
+BSP_U32 DRV_USIMMSCI_RECORD_DATA_SAVE(SCI_LOG_MODE log_mode);  
 
 /* T=1 add Begin:*/
 /*****************************************************************************
@@ -473,6 +510,38 @@ BSP_VOID DRV_USIMMSCI_POWER_ON(BSP_VOID);
 *
 *****************************************************************************/
 BSP_VOID DRV_USIMMSCI_POWER_OFF(BSP_VOID);
+
+/*****************************************************************************
+* 函 数 名  : DRV_USIMMSCI_SLOT_SWITCH
+*
+* 功能描述  : 本接口实现卡槽切换
+* 输入参数  : SCI_SLOT sci_slot0   卡槽0对应的SCI ID
+                            SCI_SLOT sci_slot1   卡槽1对应的SCI ID
+* 输出参数  : 无
+*
+* 返 回 值  : 切换状态
+*
+* 修改记录  : 
+*
+*****************************************************************************/
+
+BSP_S32  DRV_USIMMSCI_SLOT_SWITCH(SCI_SLOT sci_slot0,SCI_SLOT sci_slot1);
+/*****************************************************************************
+* 函 数 名  : DRV_USIMMSC_GET_SLOT_STATE
+*
+* 功能描述  : 本接口查询当前的卡槽对应关系
+* 输入参数  : 
+* 输出参数  : SCI_SLOT* sci_slot0   卡槽0对应的SCI ID
+                            SCI_SLOT* sci_slot1   卡槽1对应的SCI ID
+*
+* 返 回 值  : 查询状态
+*
+* 修改记录  : 
+*
+*****************************************************************************/
+
+BSP_S32  DRV_USIMMSCI_GET_SLOT_STATE(SCI_SLOT* sci_slot0,SCI_SLOT* sci_slot1);
+
 
 #ifdef __cplusplus
 }

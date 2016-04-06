@@ -179,7 +179,7 @@ u32 balong_version_get_hw_version(void)
 		return hardId;
 	}
 	/*版本号编码规则中将udp版本号高8位置0X7F*/
-	return (HW_VER_UDP_MASK)|(big_ver_high<<BIG_VER_OFFSET)|big_ver_low;
+	return (CONFIG_VER_MASK)|(big_ver_high<<BIG_VER_OFFSET)|big_ver_low;
 
 }
 
@@ -232,10 +232,15 @@ u32 bsp_version_get_board_chip_type(void)
 		return type;
 	}
 
-	if(HW_VER_UDP_MASK==(type & HW_VER_UDP_MASK)){
-		return HW_VER_PRODUCT_UDP;
+	switch( type & (~CONFIG_TYPE_MASK)){
+		case HW_VER_UDP_MASK:
+		case HW_VER_K3V3_UDP_MASK:
+		case HW_VER_K3V3_PLUS_UDP_MASK:
+		case HW_VER_V711_UDP_MASK:
+			return (CONFIG_VER_MASK | CONFIG_VER_UDP_MASK);
+		default:
+			return type;
 	}
-
 	return type;
 }
 

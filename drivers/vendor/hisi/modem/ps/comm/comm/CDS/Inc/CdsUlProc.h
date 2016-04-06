@@ -26,6 +26,7 @@ extern "C" {
 
 /*将RD中的FilterResult/ModemId/RabId保存到TTF的ulForCds[0]中*/
 /*lint -emacro({717}, CDS_UL_SAVE_RD_INFO_TO_TTF)*/
+/*lint -emacro({701}, CDS_UL_SAVE_RD_INFO_TO_TTF)*/
 #define CDS_UL_SAVE_RD_INFO_TO_TTF(pstIpPkt,pstRd)      \
                             do\
                             {\
@@ -47,6 +48,7 @@ extern "C" {
 
 /*上行将IPF RESULT保存到TTF的保留域中,用于二次过滤*/
 /*lint -emacro({717}, CDS_UL_SAVE_IPFRSLT_TO_TTF)*/
+/*lint -emacro({701}, CDS_UL_SAVE_IPFRSLT_TO_TTF)*/
 #define CDS_UL_SAVE_IPFRSLT_TO_TTF(pstIpPkt,usIpfRslt) \
                             do\
                             {\

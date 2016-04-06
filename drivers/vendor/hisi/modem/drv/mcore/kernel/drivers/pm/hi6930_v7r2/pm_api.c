@@ -445,11 +445,11 @@ static void pm_set_bbpwakeup_flag(void)
     tmp = tmp&0x100;
     if(tmp)
     {
-        writel(1, SHM_TIMESTAMP_ADDR);
+        writel(1, (unsigned)SHM_TIMESTAMP_ADDR);
     }
     else
     {
-        writel(0, SHM_TIMESTAMP_ADDR);
+        writel(0, (unsigned)SHM_TIMESTAMP_ADDR);
     }
 
     writel(readl(HI_SYSCRG_BASE_ADDR + 0x8), PWR_SRAM_CRG_REG);

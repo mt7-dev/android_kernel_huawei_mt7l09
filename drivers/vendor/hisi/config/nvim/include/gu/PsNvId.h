@@ -378,6 +378,9 @@ enum PS_NV_ID_ENUM
 /* 9261 */      en_NV_Item_Gas_Individual_Customize_Cfg = 9261,
 
 /* 9267 */      en_NV_Item_JAM_DETECT_CFG         = 9267,
+/* Added by w0014666 for ERRLOG Phase II, 2014-07-04, begin */ 
+                 en_NV_Item_GAS_MNTN_CONFIG        = 9277,
+/* Added by w0014666 for ERRLOG Phase II, 2014-07-04, begin */ 
 
                  /* Custom NVÏî */
                  en_NV_Item_ManufactureInfo = GU_CUSTOM_BASE_NV_ID_MIN,

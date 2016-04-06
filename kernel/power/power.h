@@ -175,17 +175,20 @@ extern void swsusp_show_speed(struct timeval *, struct timeval *,
 				unsigned int, char *);
 
 #ifdef CONFIG_SUSPEND
-/* kernel/power/suspend.c */
-extern const char *const pm_states[];
+struct pm_sleep_state {
+	const char *label;
+	suspend_state_t state;
+};
 
-extern bool valid_state(suspend_state_t state);
+/* kernel/power/suspend.c */
+extern struct pm_sleep_state pm_states[];
+
 extern int suspend_devices_and_enter(suspend_state_t state);
 #else /* !CONFIG_SUSPEND */
 static inline int suspend_devices_and_enter(suspend_state_t state)
 {
 	return -ENOSYS;
 }
-static inline bool valid_state(suspend_state_t state) { return false; }
 #endif /* !CONFIG_SUSPEND */
 
 #ifdef CONFIG_PM_TEST_SUSPEND
@@ -230,11 +233,6 @@ enum {
 extern int pm_test_level;
 
 #ifdef CONFIG_SUSPEND_FREEZER
-
-#ifdef CONFIG_ARCH_HI3630
-extern int hisi_sys_sync_wait(void);
-#endif
-
 static inline int suspend_freeze_processes(void)
 {
 	int error;
@@ -247,20 +245,7 @@ static inline int suspend_freeze_processes(void)
 	if (error)
 		return error;
 
-#ifdef CONFIG_ARCH_HI3630
-	error = hisi_sys_sync_wait();
-
-	if (error) {
-		printk("PM: sys_sync timeout.\n");
-		goto exit;
-	}
-#endif
-
 	error = freeze_kernel_threads();
-
-#ifdef CONFIG_ARCH_HI3630
-exit:
-#endif
 
 	/*
 	 * freeze_kernel_threads() thaws only kernel threads upon freezing

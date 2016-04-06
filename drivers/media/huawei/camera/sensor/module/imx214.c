@@ -1,26 +1,4 @@
-/*
- *  Hisilicon K3 SOC camera driver source file
- *
- *  Copyright (C) Huawei Technology Co., Ltd.
- *
- * Author:	  h00145353
- * Email:	  alan.hefeng@huawei.com
- * Date:	  2013-12-27
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
- */
+
 
 
 #include <linux/module.h>
@@ -41,13 +19,20 @@ static hwsensor_vtbl_t s_imx214_vtbl;
 int imx214_config(hwsensor_intf_t* si, void  *argp);
 
 struct sensor_power_setting hw_imx214_power_setting[] = {
-	{
-		.seq_type = SENSOR_AVDD,
-		.data = (void*)"main-sensor-avdd",
-		.config_val = LDO_VOLTAGE_2P8V,
-		.sensor_index = SENSOR_INDEX_INVALID,
-		.delay = 1,
-	},
+         //MINIISP CS
+        {
+        	.seq_type = SENSOR_CS,
+        	.config_val = SENSOR_GPIO_HIGH,
+        	.sensor_index = SENSOR_INDEX_INVALID,
+        	.delay = 1,
+        },
+        //MINIISP DVDD 1.1V
+        {
+            .seq_type = SENSOR_LDO_EN,
+            .config_val = SENSOR_GPIO_LOW,
+            .sensor_index = SENSOR_INDEX_INVALID,
+            .delay = 1,
+        },    
 	{
 		.seq_type = SENSOR_IOVDD,
 		.data = (void*)"common-iovdd",
@@ -55,6 +40,22 @@ struct sensor_power_setting hw_imx214_power_setting[] = {
 		.sensor_index = SENSOR_INDEX_INVALID,
 		.delay = 1,
 	},
+	{
+		.seq_type = SENSOR_AVDD,
+		.data = (void*)"main-sensor-avdd",
+		.config_val = LDO_VOLTAGE_2P8V,
+		.sensor_index = SENSOR_INDEX_INVALID,
+		.delay = 1,
+	},
+	#if 0
+	{
+		.seq_type = SENSOR_IOVDD,
+		.data = (void*)"common-iovdd",
+		.config_val = LDO_VOLTAGE_1P8V,
+		.sensor_index = SENSOR_INDEX_INVALID,
+		.delay = 1,
+	},
+	#endif
 	{
 		.seq_type = SENSOR_DVDD,
 		.config_val = LDO_VOLTAGE_1P05V,
@@ -92,12 +93,12 @@ struct sensor_power_setting hw_imx214_power_setting[] = {
 		.sensor_index = SENSOR_INDEX_INVALID,
 		.delay = 1,
 	},
+	/*
 	{
 		.seq_type = SENSOR_I2C,
 		.sensor_index = SENSOR_INDEX_INVALID,
 		.delay = 1,
-	},
-	/*
+	},	
 	{
 		.seq_type = SENSOR_SUSPEND,
 		.config_val = SENSOR_GPIO_HIGH,
@@ -119,10 +120,10 @@ static const struct of_device_id
 s_imx214_dt_match[] =
 {
 	{
-        .compatible = "huawei,imx214_sunny",
+        .compatible = "huawei,imx214",
         .data = &s_imx214.intf,
     },
-	{
+    {
     },
 };
 
@@ -188,30 +189,6 @@ int imx214_csi_disable(hwsensor_intf_t* si)
 	return ret;
 }
 
-static int
-imx214_match_id(
-        hwsensor_intf_t* si, void * data)
-{
-    sensor_t* sensor = I2S(si);
-    struct sensor_cfg_data *cdata = (struct sensor_cfg_data *)data;
-
-    cam_info("%s TODO.", __func__);
-
-/*
-    id = read_i2c();
-    if (id == chipid) {
-        cam_info("%s succeed to match id.", __func__);
-    } else {
-        cam_info("%s failed to match id.", __func__);
-        sensor->board_info->sensor_index = CAMERA_SENSOR_INVALID;
-    }
-*/
-    cdata->data = sensor->board_info->sensor_index;
-    hwsensor_writefile(sensor->board_info->sensor_index,
-        sensor->board_info->name);
-    return 0;
-}
-
 static int imx214_i2c_read (hwsensor_intf_t* intf, void * data)
 {
 	sensor_t* sensor = NULL;
@@ -221,6 +198,50 @@ static int imx214_i2c_read (hwsensor_intf_t* intf, void * data)
 	ret = hw_sensor_i2c_read(sensor,data);
 
 	return ret;
+}
+
+
+static int
+imx214_match_id(
+        hwsensor_intf_t* si, void * data)
+{
+    sensor_t* sensor = I2S(si);
+    struct sensor_cfg_data *cdata = (struct sensor_cfg_data *)data;
+
+    #if 0
+	struct sensor_cfg_data cdata_h;
+	struct sensor_cfg_data cdata_l;
+	u16 id_h = 0;
+	u16 id_l = 0;
+	u16 sensor_id = 0;
+
+    cam_info("%s TODO.", __func__);
+
+	cdata_h.cfg.reg.subaddr = 0x0016;
+	cdata_h.cfg.reg.value = 0;
+
+	cdata_l.cfg.reg.subaddr = 0x0017;
+	cdata_l.cfg.reg.value = 0;
+
+	imx214_i2c_read(sensor, &cdata_h);
+	imx214_i2c_read(sensor, &cdata_l);
+
+	sensor_id = (cdata_h.cfg.reg.value) << 8 | (cdata_l.cfg.reg.value);
+
+	cam_notice( "%s, line %d, sensor id: 0x%x", __func__, __LINE__, sensor_id);
+    id = read_i2c();
+    if (id == chipid) {
+        cam_info("%s succeed to match id.", __func__);
+    } else {
+        cam_info("%s failed to match id.", __func__);
+        sensor->board_info->sensor_index = CAMERA_SENSOR_INVALID;
+    }
+#endif
+
+    cdata->data = sensor->board_info->sensor_index;
+    hwsensor_writefile(sensor->board_info->sensor_index,
+        sensor->board_info->name);
+    return 0;
 }
 
 static int imx214_i2c_write (hwsensor_intf_t* intf, void * data)
@@ -290,6 +311,12 @@ imx214_config(
 	static bool csi_enable = false;
 	data = (struct sensor_cfg_data *)argp;
 	cam_debug("imx214 cfgtype = %d",data->cfgtype);
+
+	if(!imx214_power_on && (data->cfgtype != SEN_CONFIG_POWER_ON))
+	{
+		cam_err("%s POWER_ON must be done before other CMD %d",__func__,data->cfgtype);
+		return ret;
+	}
 	switch(data->cfgtype){
 		case SEN_CONFIG_POWER_ON:
 			if (!imx214_power_on) {
@@ -344,7 +371,7 @@ imx214_platform_probe(
         struct platform_device* pdev)
 {
 	int rc = 0;
-	cam_debug("enter %s",__func__);
+	cam_notice("enter %s",__func__);
 
 	if (pdev->dev.of_node) {
 		rc = hw_sensor_get_dt_data(pdev, &s_imx214);
@@ -365,6 +392,7 @@ imx214_sensor_probe_fail:
 static int __init
 imx214_init_module(void)
 {
+    cam_notice("enter %s",__func__);
     return platform_driver_probe(&s_imx214_driver,
             imx214_platform_probe);
 }

@@ -29,8 +29,9 @@
  */
 #include <linux/compat.h>
 
-#include <drm/drmP.h>
-#include <drm/radeon_drm.h>
+#include "drmP.h"
+#include "drm.h"
+#include "radeon_drm.h"
 #include "radeon_drv.h"
 
 typedef struct drm_radeon_init32 {
@@ -368,7 +369,7 @@ static int compat_radeon_cp_setparam(struct file *file, unsigned int cmd,
 #define compat_radeon_cp_setparam NULL
 #endif /* X86_64 || IA64 */
 
-static drm_ioctl_compat_t *radeon_compat_ioctls[] = {
+drm_ioctl_compat_t *radeon_compat_ioctls[] = {
 	[DRM_RADEON_CP_INIT] = compat_radeon_cp_init,
 	[DRM_RADEON_CLEAR] = compat_radeon_cp_clear,
 	[DRM_RADEON_STIPPLE] = compat_radeon_cp_stipple,

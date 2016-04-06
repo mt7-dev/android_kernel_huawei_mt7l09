@@ -60,9 +60,15 @@ VOS_UINT32 TAF_SPM_RcvAppReqMsg_Main(
     if (TAF_SPM_INVALID_CLIENT_ID_ENTITY_FSM_INDEX == ucIdleFsmIndex)
     {
         TAF_WARNING_LOG(WUEPS_PID_TAF, "TAF_SPM_RcvAppReqMsg_Main():WARNING: No Idle Entiy Fsm Exist!");
+
         /* 临时响应改为正式响应 */
         TAF_SPM_SendServiceRequetFail_Main(ulEventType, pstMsg, MN_ERR_CLASS_SPM_BEYOND_CONCURRENCY_CAPABILITY);
-        
+
+#if (FEATURE_ON == FEATURE_IMS)
+        TAF_SPM_SetEconfPreRslt(TAF_CS_CAUSE_UNKNOWN);
+
+        TAF_SPM_ReportEconfCheckRslt();
+#endif
     }
     else
     {
@@ -74,8 +80,8 @@ VOS_UINT32 TAF_SPM_RcvAppReqMsg_Main(
 
         /* 启动service ctrl状态机,进行fdn&CALL control检查 */
         TAF_SPM_FSM_InitEntityFsm(TAF_SPM_FSM_SERVICE_CTRL,
-                                      TAF_SPM_GetServiceCtrlFsmDescAddr(),
-                                      TAF_SPM_SERVICE_CTRL_STA_INIT);
+                                  TAF_SPM_GetServiceCtrlFsmDescAddr(),
+                                  TAF_SPM_SERVICE_CTRL_STA_INIT);
     }
 
     return VOS_TRUE;
@@ -92,12 +98,12 @@ VOS_UINT32 TAF_SPM_RcvSpmServiceCtrlResultInd_Main(
     struct MsgCB                                           *pstAppMsg          = VOS_NULL_PTR;
 #if (FEATURE_IMS == FEATURE_ON)
     TAF_SPM_DOMAIN_SEL_RESULT_ENUM_UINT8                    enDomainSelRslt;
-#endif    
+#endif
 
     ulRet   = VOS_TRUE;
 
     pstServiceCtrlRslt = (TAF_SPM_SERVICE_CTRL_RSLT_STRU*)pstMsg;
-    
+
     TAF_SPM_GetOpIdWithAppMsg((struct MsgCB*)pstServiceCtrlRslt->stEntryMsg.aucEntryMsgBuffer, &ucOpId);
 
     pstAppMsg      = (struct MsgCB*)&(pstServiceCtrlRslt->stEntryMsg.aucEntryMsgBuffer[0]);
@@ -112,9 +118,9 @@ VOS_UINT32 TAF_SPM_RcvSpmServiceCtrlResultInd_Main(
         return VOS_TRUE;
     }
 
-#if (FEATURE_IMS == FEATURE_ON)    
-    enDomainSelRslt = TAF_SPM_ProcServiceRequestDomainSelection(ulAppEventType, pstAppMsg);                            
-                                        
+#if (FEATURE_IMS == FEATURE_ON)
+    enDomainSelRslt = TAF_SPM_ProcServiceRequestDomainSelection(ulAppEventType, pstAppMsg);
+
     ulRet           = TAF_SPM_ProcInitialDomainSelectionResult(ulAppEventType, pstAppMsg, enDomainSelRslt);
 #else
     ulRet           = TAF_SPM_ProcReqMsgBasedOnNasSignalling(ulAppEventType, pstAppMsg);
@@ -166,7 +172,7 @@ VOS_VOID TAF_SPM_SendServiceRequetFail_Main(
             break;
 
     }
-    
+
     return;
 }
 

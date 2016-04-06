@@ -41,6 +41,8 @@ LOCAL VOS_VOID  NAS_CC_Init()
 
     NAS_CC_InitSsSwitchInfo();
 
+    NAS_CC_ClearAllCacheMsg();
+
     return;
 }
 
@@ -68,6 +70,10 @@ VOS_UINT32  NAS_CC_PidInit(
     {
     case VOS_IP_LOAD_CONFIG:
         NAS_CC_Init();
+
+#if (FEATURE_ON == FEATURE_PTM)
+        NAS_CC_InitErrLogInfo();
+#endif
         break;
     case VOS_IP_FARMALLOC:
     case VOS_IP_INITIAL:
@@ -122,6 +128,12 @@ VOS_VOID  NAS_CC_MsgRoute(
         case WUEPS_PID_AT:
             NAS_CC_ProcAtPrimitive(pMsg);
             break;
+
+#if (FEATURE_ON == FEATURE_PTM)
+        case ACPU_PID_OM:
+            NAS_CC_RcvAcpuOmMsg(pMsg);
+            break;
+#endif
 
         default :
             NAS_CC_WARN_LOG1("NAS_CC_MsgRoute: Unknown messge sender.", (VOS_INT32)(pMsg->ulSenderPid));
@@ -214,6 +226,37 @@ VOS_VOID  NAS_CC_PowerOff(VOS_VOID)
     NAS_CC_StopAllRunningTimer();
 
     NAS_CC_Init();
+}
+
+
+VOS_UINT32 NAS_CC_ProcessSpecTypeBufferMsg(VOS_UINT32 ulEventType)
+{
+    NAS_CC_ENTRY_MSG_STRU              *pstEntryMsg = VOS_NULL_PTR;
+    VOS_UINT32                          ulRet;
+
+    /* ÄÚ´æ¿Õ¼ä·ÖÅä */
+    pstEntryMsg = (NAS_CC_ENTRY_MSG_STRU *)PS_MEM_ALLOC(WUEPS_PID_CC,
+                                             sizeof(NAS_CC_ENTRY_MSG_STRU));
+
+    if (VOS_NULL_PTR == pstEntryMsg)
+    {
+        NAS_CC_ERR_LOG("NAS_CC_ProcessSpecTypeBufferMsg:ERROR: MEM ALLOC FAIL");
+
+        return VOS_FALSE;
+    }
+
+    ulRet = VOS_FALSE;
+
+    while (VOS_TRUE == NAS_CC_GetNextSpecEventTypeCachedMsg(ulEventType, pstEntryMsg))
+    {
+        NAS_CC_MsgRoute((struct MsgCB*)pstEntryMsg->aucEntryMsgBuffer);
+
+        ulRet = VOS_TRUE;
+    }
+
+    PS_MEM_FREE(WUEPS_PID_CC, pstEntryMsg);
+
+    return ulRet;
 }
 
 

@@ -110,7 +110,7 @@ typedef struct
 
 typedef struct
 {
-    u32                                 alloc_addr;
+    void*                                 alloc_addr;
     u32                                 len;
     struct list_head               p_list;
 } BSP_MEM_ALLOC_TRACE_STRU;
@@ -158,7 +158,7 @@ typedef struct
 
 typedef struct
 {
-     s32                 task_id;
+     void*                 task_id;
     u32                 report_swt;
     u32                 threshold_size;
     u32                 report_timer_len;

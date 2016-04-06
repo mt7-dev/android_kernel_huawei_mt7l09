@@ -59,9 +59,9 @@ typedef struct
     u32                     init_state;         /* 通道初始化状态，初始化后自动修改 */
     SOCP_CODER_SRC_ENUM_U32     en_src_chan_id;     /* 编码源通道ID，固定配置 */
     SOCP_CODER_DST_ENUM_U32     en_dst_chan_id;     /* 编码目的通道ID */
-    SOCP_DATA_TYPE_E            en_data_type;       /* 数据来源类型 */
-    SOCP_ENCSRC_CHNMODE_E       en_chan_mode;       /* 通道类型 */
-    SOCP_CHAN_PRIORITY_E        en_chan_level;      /* 通道优先级 */
+    SOCP_DATA_TYPE_ENUM_UIN32            en_data_type;       /* 数据来源类型 */
+    SOCP_ENCSRC_CHNMODE_ENUM_UIN32       en_chan_mode;       /* 通道类型 */
+    SOCP_CHAN_PRIORITY_ENUM_UIN32        en_chan_level;      /* 通道优先级 */
     u32                     bd_buf;             /* 编码源通道BD数据空间内存指针 */
     u32                     bd_buf_phy;         /* 编码源通道BD数据空间内存指针物理地址 */
     u32                     bd_buf_len;         /* 编码源通道BD数据空间大小 */

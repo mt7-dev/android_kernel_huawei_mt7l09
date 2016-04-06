@@ -43,15 +43,15 @@ VOS_VOID  NAS_CC_ReadCcTimerLenNvim( VOS_VOID )
     ulLength = 0;
 
     ulTimerLength = 0;
-    
+
     PS_MEM_SET(&stNasCcTimerLen, 0, sizeof(NAS_CC_NVIM_TIMER_LEN_STRU));
-    
-    NV_GetLength(en_NV_Item_CC_TimerLen, &ulLength);	
+
+    NV_GetLength(en_NV_Item_CC_TimerLen, &ulLength);
     if (ulLength > sizeof(NAS_CC_NVIM_TIMER_LEN_STRU))
     {
         return;
     }
-    
+
     if (VOS_OK != NV_Read(en_NV_Item_CC_TimerLen,
                          &stNasCcTimerLen, ulLength))
     {
@@ -59,7 +59,7 @@ VOS_VOID  NAS_CC_ReadCcTimerLenNvim( VOS_VOID )
 
         return;
     }
-    
+
     /* 如果NV中设置的值为0或者大于等于30s，则按照协议默认值30s处理，否则视为有效值，需要进行设置 */
     if ((stNasCcTimerLen.ucT305Len > 0)
       &&(stNasCcTimerLen.ucT305Len < 30))
@@ -98,18 +98,18 @@ VOS_VOID  NAS_CC_ReadCcbsNvim( VOS_VOID )
     VOS_UINT32                          ulLength;
 
     ulLength = 0;
-    
+
 
     stCcbsSupportFlg.ucCcbsSupportFlg = NAS_CC_NV_ITEM_DEACTIVE;
 
     pstCcbsSupportFlg = NAS_CC_GetCustomCfgInfo();
-    
-    NV_GetLength(en_NV_Item_NVIM_CCBS_SUPPORT_FLG, &ulLength);	
+
+    NV_GetLength(en_NV_Item_NVIM_CCBS_SUPPORT_FLG, &ulLength);
     if (ulLength > sizeof(NAS_NVIM_CCBS_SUPPORT_FLG_STRU))
     {
         return;
     }
-    
+
     if (VOS_OK != NV_Read(en_NV_Item_NVIM_CCBS_SUPPORT_FLG,
                          &stCcbsSupportFlg, ulLength))
     {
@@ -132,7 +132,35 @@ VOS_VOID  NAS_CC_ReadCcbsNvim( VOS_VOID )
     return;
 }
 
+#if (FEATURE_ON == FEATURE_PTM)
+VOS_VOID NAS_CC_ReadErrlogCtrlInfoNvim(VOS_VOID)
+{
+    VOS_UINT32                          ulResult;
+    VOS_UINT32                          ulLength;
+    NV_ID_ERR_LOG_CTRL_INFO_STRU        stErrorLogCtrlInfo;
 
+    ulLength = 0;
+    PS_MEM_SET(&stErrorLogCtrlInfo, 0x00, sizeof(NV_ID_ERR_LOG_CTRL_INFO_STRU));
+    NV_GetLength(en_NV_Item_ErrLogCtrlInfo, &ulLength);
+
+    ulResult = NV_Read(en_NV_Item_ErrLogCtrlInfo,
+                       &stErrorLogCtrlInfo,
+                       ulLength);
+
+    if (ulResult == NV_OK)
+    {
+        NAS_CC_SetErrlogCtrlFlag(stErrorLogCtrlInfo.ucAlmStatus);
+        NAS_CC_SetErrlogAlmLevel(stErrorLogCtrlInfo.ucAlmLevel);
+    }
+    else
+    {
+        NAS_CC_SetErrlogCtrlFlag(VOS_FALSE);
+        NAS_CC_SetErrlogAlmLevel(NAS_ERR_LOG_CTRL_LEVEL_CRITICAL);
+    }
+
+    return;
+}
+#endif
 
 VOS_VOID NAS_CC_ReadNvimInfo(VOS_VOID)
 {

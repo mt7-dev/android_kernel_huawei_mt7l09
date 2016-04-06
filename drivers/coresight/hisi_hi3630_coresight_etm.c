@@ -37,6 +37,7 @@
 
 #include "hisi_hi3630_coresight_priv.h"
 
+
 #define etm_writel_mm(drvdata, val, off)  \
 			__raw_writel((val), drvdata->base + off)
 #define etm_readl_mm(drvdata, off)        \
@@ -172,7 +173,7 @@ enum etm_addr_type {
 };
 
 #ifdef CONFIG_HISI_CS_ETM_DEFAULT_ENABLE
-static int boot_enable = 0;
+static int boot_enable = 1;
 #else
 static int boot_enable;
 #endif
@@ -195,7 +196,6 @@ struct etm_drvdata {
 	struct coresight_device		*csdev;
 	struct clk			*clk_at;
 	struct clk			*clk_dbg;
-	struct regulator_bulk_data *top_cssys_regu;
 	struct mutex			mutex;
 	struct wake_lock		wake_lock;
 	int				cpu;
@@ -243,7 +243,6 @@ struct etm_drvdata {
 
 static struct etm_drvdata *etm0drvdata;
 
-#if 0
 static int etm_enable_clock(struct etm_drvdata *drvdata)
 {
 	int ret = 0;
@@ -268,7 +267,7 @@ static void etm_disable_clock(struct etm_drvdata *drvdata)
 	clk_disable_unprepare(drvdata->clk_at);
 	clk_disable_unprepare(drvdata->clk_dbg);
 }
-#endif
+
 
 /*
  * ETM clock is derived from the processor clock and gets enabled on a
@@ -381,7 +380,7 @@ static void etm_save_pwrdwn(struct etm_drvdata *drvdata)
 {
 	drvdata->ctrl_pwrdwn = BVAL(etm_readl(drvdata, ETMCR), 0);
 }
-#if 0
+
 static void etm_restore_pwrdwn(struct etm_drvdata *drvdata)
 {
 	uint32_t etmcr;
@@ -390,7 +389,7 @@ static void etm_restore_pwrdwn(struct etm_drvdata *drvdata)
 	etmcr = (etmcr & ~BIT(0)) | drvdata->ctrl_pwrdwn;
 	etm_writel(drvdata, etmcr, ETMCR);
 }
-#endif
+
 static void etm_save_pwrup(struct etm_drvdata *drvdata)
 {
 	drvdata->pdcr_pwrup = BVAL(etm_readl_mm(drvdata, ETMPDCR), 3);
@@ -446,6 +445,7 @@ static void __etm_enable(void *info)
 	int i;
 	uint32_t etmcr;
 	struct etm_drvdata *drvdata = info;
+
 	ETM_UNLOCK(drvdata);
 	/*
 	 * Vote for ETM power/clock enable. ETMPDCR is only accessible via
@@ -551,7 +551,7 @@ static void __etm_enable(void *info)
 	dev_dbg(drvdata->dev, "ETMEIBCR: 0x%02x\n", etm_readl(drvdata, ETMEIBCR));
 	dev_dbg(drvdata->dev, "ETMTSEVR: 0x%02x\n", etm_readl(drvdata, ETMTSEVR));
 	dev_dbg(drvdata->dev, "ETMAUXCR: 0x%02x\n", etm_readl(drvdata, ETMAUXCR));
-	dev_err(drvdata->dev, "ETMTRACEIDR: 0x%02x\n", etm_readl(drvdata, ETMTRACEIDR));
+	dev_dbg(drvdata->dev, "ETMTRACEIDR: 0x%02x\n", etm_readl(drvdata, ETMTRACEIDR));
 	dev_dbg(drvdata->dev, "ETMVMIDCVR: 0x%02x\n", etm_readl(drvdata, ETMVMIDCVR));
 	dev_dbg(drvdata->dev, "ETMOSLAR: 0x%02x\n", etm_readl(drvdata, ETMOSLAR));
 	dev_dbg(drvdata->dev, "ETMOSLSR: 0x%02x\n", etm_readl(drvdata, ETMOSLSR));
@@ -560,6 +560,7 @@ static void __etm_enable(void *info)
 	dev_dbg(drvdata->dev, "ETMPDSR: 0x%02x\n", etm_readl(drvdata, ETMPDSR));
 
 	etm_clr_prog(drvdata);
+	etm_restore_pwrdwn(drvdata);
 	ETM_LOCK(drvdata);
 
 	dev_dbg(drvdata->dev, "cpu: %d enable smp call done\n", drvdata->cpu);
@@ -572,18 +573,9 @@ static int etm_enable(struct coresight_device *csdev)
 
 	wake_lock(&drvdata->wake_lock);
 
-#if 1
-	ret = regulator_bulk_enable(1, drvdata->top_cssys_regu);
-	if (ret) {
-		printk("failed to enable regulators %d\n", ret);
-		wake_unlock(&drvdata->wake_lock);
-		return ret;
-	}
-#else
 	ret = etm_enable_clock(drvdata);
 	if (ret)
 		goto err_clk;
-#endif
 
 	mutex_lock(&drvdata->mutex);
 	/* executing __etm_enable on the cpu whose ETM is being enabled
@@ -596,6 +588,10 @@ static int etm_enable(struct coresight_device *csdev)
 
 	dev_info(drvdata->dev, "ETM tracing enabled\n");
 	return 0;
+
+err_clk:
+	wake_unlock(&drvdata->wake_lock);
+	return ret;
 }
 
 static void __etm_disable(void *info)
@@ -614,9 +610,11 @@ static void __etm_disable(void *info)
 	/* program trace enable to low by using always false event */
 	etm_writel(drvdata, 0x6F | BIT(14), ETMTEEVR);
 
+	etm_restore_pwrdwn(drvdata);
 	/* Vote for ETM power/clock disable */
 	etm_clr_pwrup(drvdata);
 	ETM_LOCK(drvdata);
+
 	dev_dbg(drvdata->dev, "cpu: %d disable smp call done\n", drvdata->cpu);
 }
 
@@ -633,13 +631,7 @@ static void etm_disable(struct coresight_device *csdev)
 	smp_call_function_single(drvdata->cpu, __etm_disable, drvdata, 1);
 	mutex_unlock(&drvdata->mutex);
 
-#if 1
-	if (regulator_is_enabled(drvdata->top_cssys_regu->consumer)) {
-		regulator_bulk_disable(1, drvdata->top_cssys_regu);
-	}
-#else
 	etm_disable_clock(drvdata);
-#endif
 
 	wake_unlock(&drvdata->wake_lock);
 
@@ -1628,18 +1620,9 @@ static int __etm_store_pcsave(struct etm_drvdata *drvdata, unsigned long val)
 {
 	int ret;
 
-#if 1
-	ret = regulator_bulk_enable(1, drvdata->top_cssys_regu);
-	if (ret) {
-		printk("failed to enable regulators %d\n", ret);
-		return ret;
-	}
-#else
 	ret = etm_enable_clock(drvdata);
 	if (ret)
 		return ret;
-#endif
-
 
 	mutex_lock(&drvdata->mutex);
 	if (val) {
@@ -1653,14 +1636,7 @@ static int __etm_store_pcsave(struct etm_drvdata *drvdata, unsigned long val)
 	}
 	mutex_unlock(&drvdata->mutex);
 
-#if 1
-	if (regulator_is_enabled(drvdata->top_cssys_regu->consumer)) {
-		regulator_bulk_disable(1, drvdata->top_cssys_regu);
-	}
-#else
 	etm_disable_clock(drvdata);
-#endif
-
 
 	return 0;
 }
@@ -1828,30 +1804,17 @@ static int etm_probe(struct platform_device *pdev)
 	if (pdev->dev.of_node) {
 		pdata = of_get_coresight_platform_data(dev, pdev->dev.of_node);
 		if (IS_ERR(pdata)) {
-			dev_err(&pdev->dev, "get_coresight_platform_data error!\n");
+			dev_err(drvdata->dev, "get_coresight_platform_data error!\n");
 			return PTR_ERR(pdata);
 		}
 		pdev->dev.platform_data = pdata;
 	}
 
-	if (!pdata) {
-		dev_err(&pdev->dev, "coresight pdata is NULL\n");
-		return -ENODEV;
-	}
-
-#ifndef CONFIG_HISI_BALONG_MODEM
-	if (!strcmp("coresight-etm-a9", pdata->name)) {
-		dev_err(&pdev->dev, "no modem!!!!!!!!!!!\n");
-		return -ENODEV;
-	}
-#endif
-
 	drvdata = devm_kzalloc(dev, sizeof(*drvdata), GFP_KERNEL);
 	if (!drvdata) {
-		dev_err(&pdev->dev, "coresight kzalloc error!\n");
+		dev_err(drvdata->dev, "coresight kzalloc error!\n");
 		return -ENOMEM;
 	}
-
 	drvdata->dev = &pdev->dev;
 	platform_set_drvdata(pdev, drvdata);
 
@@ -1870,14 +1833,7 @@ static int etm_probe(struct platform_device *pdev)
 
 	mutex_init(&drvdata->mutex);
 	wake_lock_init(&drvdata->wake_lock, WAKE_LOCK_SUSPEND, "coresight-etm");
-#if 1
-	drvdata->top_cssys_regu = &pdata->top_cssys_regu;
-	ret = regulator_bulk_enable(1, drvdata->top_cssys_regu);
-	if (ret) {
-		printk("failed to enable regulators %d\n", ret);
-		goto err0;
-	}
-#else
+
 	drvdata->clk_at= devm_clk_get(dev, pdata->clock_at);
 	if (IS_ERR(drvdata->clk_at)) {
 		dev_err(drvdata->dev, "coresight get clock error!\n");
@@ -1905,10 +1861,9 @@ static int etm_probe(struct platform_device *pdev)
 		goto err0;
 	}
 
-	ret = etm_enable_clock(drvdata);
-#endif
-
 	drvdata->cpu = count++;
+
+	ret = etm_enable_clock(drvdata);
 
 	/* Use CPU0 to populate read-only configuration data for ETM0. For other
 	 * ETMs copy it over from ETM0.
@@ -1925,13 +1880,7 @@ static int etm_probe(struct platform_device *pdev)
 
 	drvdata->status = false;
 
-#if 1
-	if (regulator_is_enabled(drvdata->top_cssys_regu->consumer)) {
-		regulator_bulk_disable(1, drvdata->top_cssys_regu);
-	}
-#else
 	etm_disable_clock(drvdata);
-#endif
 
 #if 0
 	baddr = devm_kzalloc(dev, PAGE_SIZE + reg_size, GFP_KERNEL);

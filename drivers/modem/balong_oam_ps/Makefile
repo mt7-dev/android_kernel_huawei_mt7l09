@@ -1,1 +1,0 @@
-obj-$(CONFIG_BALONG_OAM_PS)  += LMSP.o LPS.o GUMSP.o GUPS.o

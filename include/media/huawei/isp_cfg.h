@@ -1,26 +1,4 @@
-/* 
- *  Hisilicon K3 SOC camera driver source file 
- * 
- *  Copyright (C) Huawei Technology Co., Ltd. 
- * 
- * Author:	  h00145353 
- * Email:	  alan.hefeng@huawei.com
- * Date:	  2013-12-12
- *
- * This program is free software; you can redistribute it and/or modify 
- * it under the terms of the GNU General Public License as published by 
- * the Free Software Foundation; either version 2 of the License, or 
- * (at your option) any later version. 
- *
- * This program is distributed in the hope that it will be useful, 
- * but WITHOUT ANY WARRANTY; without even the implied warranty of 
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
- * GNU General Public License for more details. 
- * 
- * You should have received a copy of the GNU General Public License 
- * along with this program; if not, write to the Free Software 
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA 
- */
+
 
 
 #ifndef __HW_ALAN_KERNEL_HWCAM_ISP_CFG_H__
@@ -30,6 +8,7 @@
 #include <linux/types.h>
 #include <linux/videodev2.h>
 #include <media/huawei/camera.h>
+#include <linux/compat.h>
 
 enum 
 {
@@ -47,6 +26,7 @@ typedef enum _tag_hwisp_event_kind
     HWISP_SOF,
     HWISP_EOF,
     HWISP_READY,
+    HWISP_VSYNC,
 } hwisp_event_kind_t;
 
 typedef struct _tag_hwisp_event 
@@ -65,9 +45,14 @@ typedef struct _tag_hwisp_event
         struct 
         {
             uint32_t                            cmd;
-            uint32_t                            result; 
-        }                                       ready; 
-    }data; 
+            uint32_t                            result;
+        }                                       ready;
+        struct
+        {
+            uint32_t                            pipeline;
+            uint64_t                            time;
+        }                                       vsync;
+    }data;
 } hwisp_event_t;
 
 typedef struct _tag_hwisp_info
@@ -129,8 +114,8 @@ typedef struct _tag_ovisp23_port_info
 typedef struct _tag_hwisp_stream_info
 {
     int                                         buf_queue_size; 
-    unsigned long                               stream_type : 2; 
-    unsigned long                               stream_direction : 2; 
+    uint32_t                              		stream_type;
+    uint32_t                               		stream_direction;
     int                                         fd_ispstream; 
     //ovisp23_port_info_t                       port;
     uint32_t                                    portid;
@@ -145,12 +130,53 @@ struct isp_cfg_reg{
 	uint32_t                                    mask;	
 };
 
+/* add for 32+64 */
 struct isp_cfg_reg_array{
 	uint32_t                                    length;
-	struct isp_cfg_reg*                         reg_array;	
+	union {
+		struct isp_cfg_reg*                     reg_array;
+		int64_t                                 _reg_array;
+	};
 };
 
 struct ion_handle;
+
+#if 1
+typedef struct _tag_hwisp_stream_buf_info
+{
+    union {
+        void*                                   user_buffer_handle; 
+        int64_t                                 _user_buffer_handle;
+    };
+
+    uint32_t                                    y_addr_phy;
+    uint32_t                                    u_addr_phy;
+    uint32_t                                    v_addr_phy;
+
+    uint32_t                                    y_addr_iommu;
+    uint32_t                                    u_addr_iommu;
+    uint32_t                                    v_addr_iommu;
+
+    int                                         ion_fd;
+    union {
+        struct ion_handle                       *ion_vc_hdl;
+        int64_t                                 _ion_vc_hdl;
+    };
+    union {
+        void                                    *ion_vaddr;
+        int64_t                                 _ion_vaddr;
+    };
+
+    union {
+        struct timeval                          timestamp;
+        int64_t                                 _timestamp[2];
+    };
+
+    ovisp23_port_info_t                         port;
+
+} hwisp_stream_buf_info_t;
+
+#else
 typedef struct _tag_hwisp_stream_buf_info
 {
     void*                                       user_buffer_handle; 
@@ -171,7 +197,7 @@ typedef struct _tag_hwisp_stream_buf_info
     ovisp23_port_info_t                         port;
 
 } hwisp_stream_buf_info_t;
-
+#endif
 
 typedef struct {
 	uint32_t exposure;
@@ -212,7 +238,7 @@ struct isp_cfg_data {
 	union {
 		struct isp_cfg_reg                      reg;
 		struct isp_cfg_reg_array                reg_settings;
-		struct reprocess_param_list		reprocess_params;
+		struct reprocess_param_list             reprocess_params;
 	}reg_s;
 };
 
@@ -321,6 +347,7 @@ typedef struct _meta_data_t {
 		raw_buffer_info_t raw_info[2];
 	} u;
 	uint8_t iq_debug_info[1788];
+	uint16_t pdaf_info[772];
 }meta_data_t;
 
 
@@ -332,6 +359,72 @@ typedef struct _meta_data_t {
 #define HWISP_STREAM_IOCTL_START                _IO('A', BASE_VIDIOC_PRIVATE + 0x03)
 #define HWISP_STREAM_IOCTL_STOP                 _IO('A', BASE_VIDIOC_PRIVATE + 0x04)
 #define HWISP_IOCTL_CFG_ISP          		    _IOWR('A', BASE_VIDIOC_PRIVATE + 0x05, struct isp_cfg_data)
+#define HWISP_IOCTL_FIX_DDR                     _IO('A', BASE_VIDIOC_PRIVATE + 0x06)
+
+typedef struct
+{
+	uint8_t low;
+	uint8_t high;
+}ae_target_meta_t;
+
+
+typedef struct ae_coff{
+    uint32_t exposure_max;
+    uint32_t exposure_min;
+    uint32_t gain_max;
+    uint32_t gain_min;
+    uint32_t luma_target_high;
+    uint32_t luma_target_low;
+    uint32_t exposure;
+    uint32_t exposure_time;
+    uint32_t gain;
+    uint32_t iso;
+    uint32_t aec_stable;
+    uint32_t fps;
+    uint32_t lum;
+}ae_coff_meta_t;
+
+typedef struct capture_ae_coeff {
+    uint32_t exposure[3];
+    uint32_t exposure_time[3];
+    uint32_t gain[3];
+    uint32_t iso[3];
+    uint32_t ratio[3];
+}capture_ae_coeff_t;
+
+typedef struct extra_coff {
+    uint32_t mean_y;
+    uint32_t motion_x;
+    uint32_t motion_y;
+    uint32_t focal_length;
+    uint32_t af_window_change;
+    uint32_t g_gain;
+    uint32_t b_gain;
+    uint32_t r_gain;
+    uint32_t awb_r_gain;
+    uint32_t awb_gr_gain;
+    uint32_t awb_gb_gain;
+    uint32_t awb_b_gain;
+}extra_coff_meta_t;
+
+typedef struct
+{
+    ae_target_meta_t ae_target;
+    //TODO...
+    ae_coff_meta_t ae_coff;
+    extra_coff_meta_t extra_coff;
+    uint16_t hw3a_lum_matrix[16][16];
+    uint8_t hw3a_hist_matrix[256][8];
+    uint32_t stat_left;
+    uint32_t stat_top;
+    uint32_t stat_width;
+    uint32_t stat_height;
+    uint32_t vts;
+    uint8_t  hwaAeEnable;
+    raw_buffer_info_t raw_info;
+    uint8_t minispEnable;
+    int32_t vcmcode;
+}ovisp_meta_t;
 
 #endif // __HW_ALAN_KERNEL_HWCAM_ISP_CFG_H__
 

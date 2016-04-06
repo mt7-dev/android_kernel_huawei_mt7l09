@@ -8,6 +8,7 @@
 #include "product_config.h"
 #include "NasNvInterface.h"
 #include "NVIM_Interface.h"
+#include "AtOamInterface.h"
 
 #ifdef __cplusplus
 #if __cplusplus
@@ -511,7 +512,270 @@ SI_UINT32 SI_PIH_GetCardATRReq(
     return TAF_SUCCESS;
 }
 
+/*****************************************************************************
+函 数 名  : SI_PIH_HvSstSet
+功能描述  : FDN去激活
+输入参数  : 无
+输出参数  : 无
+返 回 值  : SI_UINT32 函数执行结果
+调用函数  : 无
+被调函数  : 外部接口
+History     :
+1.日    期  : 2013年03月18日
+  作    者  : zhuli
+  修改内容  : Create
+2.日    期  : 2014年10月9日
+  作    者  : zhuli
+  修改内容  : 根据青松产品要求，该接口不受宏控制
+*****************************************************************************/
+
+VOS_UINT32 SI_PIH_HvSstSet (MN_CLIENT_ID_T                  ClientId,
+                             MN_OPERATION_ID_T                  OpId,
+                             SI_PIH_HVSST_SET_STRU              *pstHvSStSet)
+{
+    SI_PIH_HVSST_REQ_STRU   *pMsg;
+    VOS_UINT32               ulReceiverPid;
+
+    if(VOS_NULL_PTR == pstHvSStSet)
+    {
+        PIH_WARNING_LOG("SI_PIH_HvSstSet:Parameter is Wrong");
+
+        return TAF_FAILURE;
+    }
+
+    if (VOS_OK != SI_PIH_GetReceiverPid(ClientId, &ulReceiverPid))
+    {
+        PIH_ERROR_LOG("SI_PIH_HvSstSet:Get ulReceiverPid Error.");
+        return TAF_FAILURE;
+    }
+
+    pMsg = (SI_PIH_HVSST_REQ_STRU *)VOS_AllocMsg(WUEPS_PID_AT, sizeof(SI_PIH_HVSST_REQ_STRU) - VOS_MSG_HEAD_LENGTH);
+
+    if (VOS_NULL_PTR == pMsg)
+    {
+        PIH_WARNING_LOG("SI_PIH_HvSstSet:WARNING AllocMsg FAILED");
+
+        return TAF_FAILURE;
+    }
+
+    pMsg->stMsgHeader.ulReceiverPid = ulReceiverPid;
+    pMsg->stMsgHeader.usClient      = ClientId;
+    pMsg->stMsgHeader.ucOpID        = OpId;
+    pMsg->stMsgHeader.ulMsgName     = SI_PIH_HVSST_SET_REQ;
+    pMsg->stMsgHeader.ulEventType   = SI_PIH_EVENT_HVSST_SET_CNF;
+
+    VOS_MemCpy(&pMsg->stHvSSTData, pstHvSStSet, sizeof(SI_PIH_HVSST_SET_STRU));
+
+    if(VOS_OK !=  VOS_SendMsg(WUEPS_PID_AT, pMsg))
+    {
+        PIH_WARNING_LOG("SI_PIH_HvSstSet:WARNING SendMsg FAILED");
+
+        return TAF_FAILURE;
+    }
+
+    return TAF_SUCCESS;
+}
+
+/*****************************************************************************
+函 数 名  : SI_PIH_HvSstQuery
+功能描述  : HVSST命令查询函数
+输入参数  : 无
+输出参数  : 无
+返 回 值  : SI_UINT32 函数执行结果
+调用函数  : 无
+被调函数  : 外部接口
+History     :
+1.日    期  : 2013年3月18日
+  作    者  : zhuli
+  修改内容  : Create
+2.日    期  : 2014年10月9日
+  作    者  : zhuli
+  修改内容  : 根据青松产品要求，该接口不受宏控制
+*****************************************************************************/
+VOS_UINT32 SI_PIH_HvSstQuery(MN_CLIENT_ID_T                 ClientId,
+                                    MN_OPERATION_ID_T             OpId)
+{
+    SI_PIH_MSG_HEADER_STRU *pMsg;
+    VOS_UINT32              ulReceiverPid;
+
+    if (VOS_OK != SI_PIH_GetReceiverPid(ClientId, &ulReceiverPid))
+    {
+        PIH_ERROR_LOG("SI_PIH_HvSstQuery:Get ulReceiverPid Error.");
+        return TAF_FAILURE;
+    }
+
+    pMsg = (SI_PIH_MSG_HEADER_STRU *)VOS_AllocMsg(WUEPS_PID_AT, sizeof(SI_PIH_MSG_HEADER_STRU) - VOS_MSG_HEAD_LENGTH);
+
+    if (VOS_NULL_PTR == pMsg)
+    {
+        PIH_WARNING_LOG("SI_PIH_HvSstQuery:WARNING AllocMsg FAILED");
+
+        return TAF_FAILURE;
+    }
+
+    pMsg->ulReceiverPid = ulReceiverPid;
+    pMsg->usClient      = ClientId;
+    pMsg->ucOpID        = OpId;
+    pMsg->ulMsgName     = SI_PIH_HVSST_QUERY_REQ;
+    pMsg->ulEventType   = SI_PIH_EVENT_HVSST_QUERY_CNF;
+
+    if(VOS_OK !=  VOS_SendMsg(WUEPS_PID_AT, pMsg))
+    {
+        PIH_WARNING_LOG("SI_PIH_HvSstQuery:WARNING SendMsg FAILED");
+
+        return TAF_FAILURE;
+    }
+
+    return TAF_SUCCESS;
+}
+
+/*****************************************************************************
+函 数 名  : SI_PIH_SciCfgSet
+功能描述  : SCICFG Set
+输入参数  : 无
+输出参数  : 无
+返 回 值  : SI_UINT32 函数执行结果
+调用函数  : 无
+被调函数  : 外部接口
+History     :
+1.日    期  : 2014年10月9日
+  作    者  : zhuli
+  修改内容  : 根据青松产品要求，新增
+*****************************************************************************/
+
+VOS_UINT32 SI_PIH_SciCfgSet (MN_CLIENT_ID_T               ClientId,
+                             MN_OPERATION_ID_T                  OpId,
+                             SI_PIH_CARD_SLOT_ENUM_UINT32       enCard0Slot,
+                             SI_PIH_CARD_SLOT_ENUM_UINT32       enCard1Slot)
+{
+    SI_PIH_SCICFG_SET_REQ_STRU  *pstMsg;
+    VOS_UINT32                  ulReceiverPid;
+
+    if (VOS_OK != SI_PIH_GetReceiverPid(ClientId, &ulReceiverPid))
+    {
+        PIH_ERROR_LOG("SI_PIH_SciCfgSet:Get ulReceiverPid Error.");
+
+        return TAF_FAILURE;
+    }
+
+    pstMsg = (SI_PIH_SCICFG_SET_REQ_STRU *)VOS_AllocMsg(WUEPS_PID_AT, sizeof(SI_PIH_SCICFG_SET_REQ_STRU) - VOS_MSG_HEAD_LENGTH);
+
+    if (VOS_NULL_PTR == pstMsg)
+    {
+        PIH_WARNING_LOG("SI_PIH_SciCfgSet:WARNING AllocMsg FAILED");
+
+        return TAF_FAILURE;
+    }
+
+    pstMsg->stMsgHeader.ulReceiverPid   = ulReceiverPid;
+    pstMsg->stMsgHeader.usClient        = ClientId;
+    pstMsg->stMsgHeader.ucOpID          = OpId;
+    pstMsg->stMsgHeader.ulMsgName       = SI_PIH_SCICFG_SET_REQ;
+    pstMsg->stMsgHeader.ulEventType     = SI_PIH_EVENT_SCICFG_SET_CNF;
+
+    pstMsg->enCard0Slot                 = enCard0Slot;
+    pstMsg->enCard1Slot                 = enCard1Slot;
+
+    if(VOS_OK !=  VOS_SendMsg(WUEPS_PID_AT, pstMsg))
+    {
+        PIH_WARNING_LOG("SI_PIH_SciCfgSet:WARNING SendMsg FAILED");
+
+        return TAF_FAILURE;
+    }
+
+    return TAF_SUCCESS;
+}
+
+/*****************************************************************************
+函 数 名  : SI_PIH_SciCfgQuery
+功能描述  : SCICFG Query
+输入参数  : 无
+输出参数  : 无
+返 回 值  : SI_UINT32 函数执行结果
+调用函数  : 无
+被调函数  : 外部接口
+History     :
+1.日    期  : 2014年10月9日
+  作    者  : zhuli
+  修改内容  : 根据青松产品要求，新增
+*****************************************************************************/
+
+VOS_UINT32 SI_PIH_SciCfgQuery (MN_CLIENT_ID_T               ClientId,
+                             MN_OPERATION_ID_T                     OpId)
+{
+    SI_PIH_MSG_HEADER_STRU *pstMsg;
+    VOS_UINT32              ulReceiverPid;
+
+    if (VOS_OK != SI_PIH_GetReceiverPid(ClientId, &ulReceiverPid))
+    {
+        PIH_ERROR_LOG("SI_PIH_SciCfgQuery:Get ulReceiverPid Error.");
+
+        return TAF_FAILURE;
+    }
+
+    pstMsg = (SI_PIH_MSG_HEADER_STRU *)VOS_AllocMsg(WUEPS_PID_AT, sizeof(SI_PIH_MSG_HEADER_STRU) - VOS_MSG_HEAD_LENGTH);
+
+    if (VOS_NULL_PTR == pstMsg)
+    {
+        PIH_WARNING_LOG("SI_PIH_SciCfgQuery:WARNING AllocMsg FAILED");
+
+        return TAF_FAILURE;
+    }
+
+    pstMsg->ulReceiverPid = ulReceiverPid;
+    pstMsg->usClient      = ClientId;
+    pstMsg->ucOpID        = OpId;
+    pstMsg->ulMsgName     = SI_PIH_SCICFG_QUERY_REQ;
+    pstMsg->ulEventType   = SI_PIH_EVENT_SCICFG_QUERY_CNF;
+
+    if(VOS_OK !=  VOS_SendMsg(WUEPS_PID_AT, pstMsg))
+    {
+        PIH_WARNING_LOG("SI_PIH_SciCfgQuery:WARNING SendMsg FAILED");
+
+        return TAF_FAILURE;
+    }
+
+    return TAF_SUCCESS;
+}
+
+/*****************************************************************************
+函 数 名  : SI_PIH_AcpuInit
+功能描述  : HVTEE Set
+输入参数  : 无
+输出参数  : 无
+返 回 值  : SI_UINT32 函数执行结果
+调用函数  : 无
+被调函数  : 外部接口
+History     :
+1.日    期  : 2014年10月9日
+  作    者  : zhuli
+  修改内容  : 根据青松产品要求，新增
+*****************************************************************************/
+VOS_VOID SI_PIH_AcpuInit(VOS_VOID)
+{
 #if (FEATURE_ON == FEATURE_VSIM)
+#ifdef CONFIG_TZDRIVER
+    VOS_UINT8    aucUUID[] = {0x47,0x91,0xe8,0xab,
+                                0x61,0xcd,
+                                0x3f,0xf4,
+                                0x71,0xc4,0x1a,0x31,0x7e,0x40,0x53,0x12};
+
+    if (VOS_OK != TC_NS_RegisterServiceCallbackFunc((VOS_CHAR*)aucUUID, 
+                                                    SI_PIH_TEETimeOutCB, 
+                                                    VOS_NULL_PTR))
+    {
+        vos_printf("SI_PIH_AcpuInit: Reg TEE Timeout CB FUN Fail\r\n");
+    }
+
+    vos_printf("SI_PIH_AcpuInit: Reg TEE Timeout CB FUN\r\n");
+#endif  /* CONFIG_TZDRIVER */
+#endif  /*(FEATURE_ON == FEATURE_VSIM)*/
+
+    return;
+}
+
+#if (FEATURE_ON == FEATURE_VSIM)
+
 VOS_UINT32 SI_PIH_HvsDHSet(MN_CLIENT_ID_T                ClientId,
                                     MN_OPERATION_ID_T           OpId,
                                     VSIM_KEYDATA_STRU           *pstSKey)
@@ -643,117 +907,6 @@ VOS_UINT32 SI_PIH_HvsContQuery(MN_CLIENT_ID_T           ClientId,
 }
 
 /*****************************************************************************
-函 数 名  : SI_PIH_HvSstQuery
-功能描述  : HVSST命令查询函数
-输入参数  : 无
-输出参数  : 无
-返 回 值  : SI_UINT32 函数执行结果
-调用函数  : 无
-被调函数  : 外部接口
-History     :
-1.日    期  : 2013年3月18日
-  作    者  : zhuli
-  修改内容  : Create
-*****************************************************************************/
-VOS_UINT32 SI_PIH_HvSstQuery(MN_CLIENT_ID_T                 ClientId,
-                                    MN_OPERATION_ID_T             OpId)
-{
-    SI_PIH_MSG_HEADER_STRU *pMsg;
-    VOS_UINT32              ulReceiverPid;
-
-    if (VOS_OK != SI_PIH_GetReceiverPid(ClientId, &ulReceiverPid))
-    {
-        PIH_ERROR_LOG("SI_PIH_HvSstQuery:Get ulReceiverPid Error.");
-        return TAF_FAILURE;
-    }
-
-    pMsg = (SI_PIH_MSG_HEADER_STRU *)VOS_AllocMsg(WUEPS_PID_AT, sizeof(SI_PIH_MSG_HEADER_STRU) - VOS_MSG_HEAD_LENGTH);
-
-    if (VOS_NULL_PTR == pMsg)
-    {
-        PIH_WARNING_LOG("SI_PIH_HvSstQuery:WARNING AllocMsg FAILED");
-
-        return TAF_FAILURE;
-    }
-
-    pMsg->ulReceiverPid = ulReceiverPid;
-    pMsg->usClient      = ClientId;
-    pMsg->ucOpID        = OpId;
-    pMsg->ulMsgName     = SI_PIH_HVSST_QUERY_REQ;
-    pMsg->ulEventType   = SI_PIH_EVENT_HVSST_QUERY_CNF;
-
-    if(VOS_OK !=  VOS_SendMsg(WUEPS_PID_AT, pMsg))
-    {
-        PIH_WARNING_LOG("SI_PIH_HvSstQuery:WARNING SendMsg FAILED");
-
-        return TAF_FAILURE;
-    }
-
-    return TAF_SUCCESS;
-}
-
-/*****************************************************************************
-函 数 名  : SI_PIH_HvSstSet
-功能描述  : FDN去激活
-输入参数  : 无
-输出参数  : 无
-返 回 值  : SI_UINT32 函数执行结果
-调用函数  : 无
-被调函数  : 外部接口
-History     :
-1.日    期  : 2013年03月18日
-  作    者  : zhuli
-  修改内容  : Create
-*****************************************************************************/
-
-VOS_UINT32 SI_PIH_HvSstSet (MN_CLIENT_ID_T                  ClientId,
-                             MN_OPERATION_ID_T                  OpId,
-                             SI_PIH_HVSST_SET_STRU              *pstHvSStSet)
-{
-    SI_PIH_HVSST_REQ_STRU   *pMsg;
-    VOS_UINT32               ulReceiverPid;
-
-    if(VOS_NULL_PTR == pstHvSStSet)
-    {
-        PIH_WARNING_LOG("SI_PIH_HvSstSet:Parameter is Wrong");
-
-        return TAF_FAILURE;
-    }
-
-    if (VOS_OK != SI_PIH_GetReceiverPid(ClientId, &ulReceiverPid))
-    {
-        PIH_ERROR_LOG("SI_PIH_HvSstSet:Get ulReceiverPid Error.");
-        return TAF_FAILURE;
-    }
-
-    pMsg = (SI_PIH_HVSST_REQ_STRU *)VOS_AllocMsg(WUEPS_PID_AT, sizeof(SI_PIH_HVSST_REQ_STRU) - VOS_MSG_HEAD_LENGTH);
-
-    if (VOS_NULL_PTR == pMsg)
-    {
-        PIH_WARNING_LOG("SI_PIH_HvSstSet:WARNING AllocMsg FAILED");
-
-        return TAF_FAILURE;
-    }
-
-    pMsg->stMsgHeader.ulReceiverPid = ulReceiverPid;
-    pMsg->stMsgHeader.usClient      = ClientId;
-    pMsg->stMsgHeader.ucOpID        = OpId;
-    pMsg->stMsgHeader.ulMsgName     = SI_PIH_HVSST_SET_REQ;
-    pMsg->stMsgHeader.ulEventType   = SI_PIH_EVENT_HVSST_SET_CNF;
-
-    VOS_MemCpy(&pMsg->stHvSSTData, pstHvSStSet, sizeof(SI_PIH_HVSST_SET_STRU));
-
-    if(VOS_OK !=  VOS_SendMsg(WUEPS_PID_AT, pMsg))
-    {
-        PIH_WARNING_LOG("SI_PIH_HvSstSet:WARNING SendMsg FAILED");
-
-        return TAF_FAILURE;
-    }
-
-    return TAF_SUCCESS;
-}
-
-/*****************************************************************************
 函 数 名  : SI_PIH_AtFileWrite
 功能描述  : RSFW写文件请求
 输入参数  : 无
@@ -830,6 +983,150 @@ VOS_UINT32 SI_PIH_AtFileWrite(MN_CLIENT_ID_T                  ClientId,
     if(VOS_OK !=  VOS_SendMsg(WUEPS_PID_AT, pstMsg))
     {
         PIH_WARNING_LOG("SI_PIH_AtFileWrite:WARNING SendMsg FAILED");
+
+        return TAF_FAILURE;
+    }
+
+    return TAF_SUCCESS;
+}
+
+/*****************************************************************************
+函 数 名  : SI_PIH_HvteeSet
+功能描述  : HVTEE Set
+输入参数  : 无
+输出参数  : 无
+返 回 值  : SI_UINT32 函数执行结果
+调用函数  : 无
+被调函数  : 外部接口
+History     :
+1.日    期  : 2014年10月9日
+  作    者  : zhuli
+  修改内容  : 根据青松产品要求，新增
+*****************************************************************************/
+
+VOS_UINT32 SI_PIH_HvteeSet(MN_CLIENT_ID_T               ClientId,
+                             MN_OPERATION_ID_T                 OpId,
+                             SI_PIH_HVTEE_SET_STRU            *pstHvtee)
+{
+    SI_PIH_HVTEE_SET_REQ_STRU           *pstMsg;
+    VOS_UINT32                          ulReceiverPid;
+
+    if (VOS_NULL_PTR == pstHvtee)
+    {
+        PIH_ERROR_LOG("SI_PIH_HvteeSet: Input Para Error.");
+
+        return TAF_FAILURE;
+    }
+
+    if (VOS_OK != SI_PIH_GetReceiverPid(ClientId, &ulReceiverPid))
+    {
+        PIH_ERROR_LOG("SI_PIH_HvteeSet:Get ulReceiverPid Error.");
+
+        return TAF_FAILURE;
+    }
+
+    pstMsg = (SI_PIH_HVTEE_SET_REQ_STRU *)VOS_AllocMsg(WUEPS_PID_AT, sizeof(SI_PIH_HVTEE_SET_REQ_STRU) - VOS_MSG_HEAD_LENGTH);
+
+    if (VOS_NULL_PTR == pstMsg)
+    {
+        PIH_WARNING_LOG("SI_PIH_HvteeSet: AllocMsg FAILED");
+
+        return TAF_FAILURE;
+    }
+
+    pstMsg->stMsgHeader.ulReceiverPid = ulReceiverPid;
+    pstMsg->stMsgHeader.ulMsgName     = SI_PIH_HVTEE_SET_REQ;
+    pstMsg->stMsgHeader.usClient      = ClientId;
+    pstMsg->stMsgHeader.ucOpID        = OpId;
+    pstMsg->stMsgHeader.ulEventType   = SI_PIH_EVENT_HVTEE_SET_CNF;
+
+    VOS_MemCpy(&pstMsg->stHvtee, pstHvtee, sizeof(SI_PIH_HVTEE_SET_STRU));
+
+    if(VOS_OK != VOS_SendMsg(WUEPS_PID_AT, pstMsg))
+    {
+        PIH_WARNING_LOG("SI_PIH_HvsContQuery:WARNING SendMsg FAILED");
+
+        return TAF_FAILURE;
+    }
+
+    return TAF_SUCCESS;
+}
+
+/*****************************************************************************
+函 数 名  : SI_PIH_TEETimeOutCB
+功能描述  : HVTEE Set
+输入参数  : 无
+输出参数  : 无
+返 回 值  : SI_UINT32 函数执行结果
+调用函数  : 无
+被调函数  : 外部接口
+History     :
+1.日    期  : 2014年10月9日
+  作    者  : zhuli
+  修改内容  : 根据青松产品要求，新增
+*****************************************************************************/
+
+VOS_VOID SI_PIH_TEETimeOutCB (TEEC_TIMER_PROPERTY_STRU *pstTimerData)
+{
+    MN_APP_PIH_AT_CNF_STRU *pstMsg;
+
+    pstMsg = (MN_APP_PIH_AT_CNF_STRU*)VOS_AllocMsg(MAPS_PIH_PID,
+                                                sizeof(MN_APP_PIH_AT_CNF_STRU)-VOS_MSG_HEAD_LENGTH);
+
+    if (VOS_NULL_PTR == pstMsg)
+    {
+        PIH_ERROR_LOG("SI_PIH_TEETimeOutCB: Alloc Msg Failed!");
+
+        return ;
+    }
+
+    pstMsg->stPIHAtEvent.EventType                  = SI_PIH_EVENT_TEETIMEOUT_IND;
+
+    pstMsg->stPIHAtEvent.PIHError                   = TAF_ERR_NO_ERROR;
+
+    pstMsg->stPIHAtEvent.PIHEvent.TEETimeOut.ulData = pstTimerData->time_type;
+
+    pstMsg->ulReceiverPid                           = WUEPS_PID_AT;
+
+    pstMsg->ulMsgId                                 = PIH_AT_EVENT_CNF;
+
+    pstMsg->stPIHAtEvent.ClientId                   = (MN_CLIENT_ALL&AT_BROADCAST_CLIENT_ID_MODEM_0);
+
+    (VOS_VOID)VOS_SendMsg(MAPS_PIH_PID, pstMsg);
+
+    return ;
+}
+
+
+VOS_UINT32 SI_PIH_HvCheckCardQuery(MN_CLIENT_ID_T           ClientId,
+                                             MN_OPERATION_ID_T         OpId)
+{
+    SI_PIH_HVCHECKCARD_REQ_STRU         *pstMsg;
+    VOS_UINT32                          ulReceiverPid;
+
+    if (VOS_OK != SI_PIH_GetReceiverPid(ClientId, &ulReceiverPid))
+    {
+        PIH_ERROR_LOG("SI_PIH_HvCheckCardQuery:Get ulReceiverPid Error.");
+        return TAF_FAILURE;
+    }
+
+    pstMsg = (SI_PIH_HVCHECKCARD_REQ_STRU *)VOS_AllocMsg(WUEPS_PID_AT, sizeof(SI_PIH_HVCHECKCARD_REQ_STRU) - VOS_MSG_HEAD_LENGTH);
+
+    if (VOS_NULL_PTR == pstMsg)
+    {
+        PIH_WARNING_LOG("SI_PIH_HvCheckCardQuery: AllocMsg FAILED");
+        return TAF_FAILURE;
+    }
+
+    pstMsg->stMsgHeader.ulReceiverPid = ulReceiverPid;
+    pstMsg->stMsgHeader.ulMsgName     = SI_PIH_HVCHECKCARD_REQ;
+    pstMsg->stMsgHeader.usClient      = ClientId;
+    pstMsg->stMsgHeader.ucOpID        = OpId;
+    pstMsg->stMsgHeader.ulEventType   = SI_PIH_EVENT_HVCHECKCARD_CNF;
+
+    if(VOS_OK != VOS_SendMsg(WUEPS_PID_AT, pstMsg))
+    {
+        PIH_WARNING_LOG("SI_PIH_HvCheckCardQuery:WARNING SendMsg FAILED");
 
         return TAF_FAILURE;
     }
@@ -1205,6 +1502,61 @@ VOS_UINT32 PIH_RegISIMCardIndMsg(VOS_UINT32 ulRegPID)
     VOS_TaskUnlock();
 
     return ulResult;
+}
+
+/*****************************************************************************
+函 数 名  : PIH_GetVsimAPN
+功能描述  : VSIM卡APN接口
+输入参数  : APN的存储空间
+输出参数  : 无
+修订记录  :
+1. 日    期   : 2014年10月9日
+   作    者   : 祝锂
+   修改内容   : Creat
+*****************************************************************************/
+VOS_VOID PIH_GetVsimAPN(VOS_UINT32 ulApnMax, VOS_UINT8 *pucApnData, VOS_UINT8 *pucApnLen)
+{
+#if (FEATURE_ON == FEATURE_VSIM)
+    VOS_UINT32          ulDataLen;
+
+    if ((VOS_NULL_PTR == pucApnData)||(VOS_NULL_PTR == pucApnLen))
+    {
+        PIH_WARNING_LOG("PIH_GetVsimAPN: Input Para is NULL");
+
+        return;
+    }
+
+    if (VOS_FALSE == USIMM_VsimIsActive())   /*VSIM is Disable*/
+    {
+        PIH_WARNING_LOG("PIH_GetVsimAPN: USIMM_VsimIsActive return False");
+
+        return;
+    }
+
+    if (VOS_OK != VOS_TaskLock())
+    {
+        PIH_WARNING_LOG("PIH_GetVsimAPN: VOS_TaskLock Error");
+
+        return;
+    }
+
+    ulDataLen = VOS_StrLen((VOS_CHAR*)g_aucVsimAPNData);
+
+    if ((VOS_NULL != ulDataLen)&&(ulApnMax >= ulDataLen))
+    {
+        VOS_MemCpy(pucApnData, g_aucVsimAPNData, ulDataLen);  /*拷贝不包含字符串结尾*/
+
+        *pucApnLen = (VOS_UINT8)ulDataLen;
+    }
+    else
+    {
+        PIH_WARNING1_LOG("PIH_GetVsimAPN: VSIM Apn Data Len is %d", (VOS_INT32)ulDataLen);
+    }
+
+    VOS_TaskUnlock();
+#endif
+
+    return;
 }
 
 #endif

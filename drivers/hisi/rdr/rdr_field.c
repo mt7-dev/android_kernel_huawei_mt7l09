@@ -16,6 +16,8 @@
 #include "rdr_internal.h"
 #include <linux/vmalloc.h>
 
+#include <linux/hisi/hi3xxx/global_ddr_map.h>
+
 u32 *rdr_core_addr_fun(char *daddr, int core_id)
 {
 	char *addr = 0;
@@ -49,7 +51,7 @@ u32 *rdr_core_addr_fun(char *daddr, int core_id)
 
 s32 rdr_mem_init(void)
 {
-	pbb = (struct rdr_struct_s *)ioremap(hisi_reserved_debug_phymem,
+	pbb = (struct rdr_struct_s *)ioremap_wc(HISI_RESERVED_DEBUG_PHYMEM_BASE,
 								RDR_PHY_SIZE);
 	DUMP_LOG((u32)pbb);
 	if (pbb == NULL) {

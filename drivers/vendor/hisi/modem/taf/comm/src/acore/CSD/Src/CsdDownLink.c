@@ -37,16 +37,16 @@ extern VOS_UINT32 AT_SendCsdZcDataToModem(
 
 VOS_VOID CSD_DL_ProcIsr(VOS_VOID)
 {
-    VOS_UINT32                         *pDLDataSem;
+    VOS_SEM                             hDLDataSem = VOS_NULL_PTR;
 
-    pDLDataSem  = CSD_GetDownLinkDataSem();
+    hDLDataSem  = CSD_GetDownLinkDataSem();
 
 #if 0
     /*DICC关闭中断*/
     DICC_DisableIsr(ACPU_PID_CSD, DICC_SERVICE_TYPE_CSD_DATA, DICC_CPU_ID_ACPU);
 #endif
     /*释放下行取数据信号量*/
-    VOS_SmV(*pDLDataSem);
+    VOS_SmV(hDLDataSem);
 }
 
 
@@ -119,7 +119,7 @@ VOS_VOID CSD_DL_SendData(VOS_VOID)
             /*此步骤不能少用来偏移数据尾指针*/
             ImmZcData = (VOS_CHAR *)IMM_ZcPut(pstCsdDLMem, stDLData.usLen);
 
-            PS_MEM_CPY(ImmZcData, (VOS_UINT8 *)TTF_PHY_TO_VIRT((VOS_UINT32)stDLData.pucData), stDLData.usLen);
+            PS_MEM_CPY(ImmZcData, (VOS_UINT8 *)TTF_PHY_TO_VIRT((VOS_VOID *)(stDLData.pucData)), stDLData.usLen);
 
             /*发送数据到驱动,第一个参数为pppid目前不使用，由于失败AT会释放内存，
             所以此处不需要另行释放a核内存*/
@@ -209,15 +209,15 @@ VOS_VOID CSD_DL_ClearData(VOS_VOID)
 }
 VOS_VOID CSD_DL_ProcDataTask(VOS_VOID)
 {
-    VOS_UINT32                         *pulDownLinkSem;
+    VOS_SEM                             hDownLinkSem;
 
-    pulDownLinkSem = CSD_GetDownLinkDataSem();
+    hDownLinkSem = CSD_GetDownLinkDataSem();
 
     for ( ; ; )
     {
 
         /* 获取下行取数据信号量 */
-        if (VOS_OK != VOS_SmP( *pulDownLinkSem, 0 ))
+        if (VOS_OK != VOS_SmP(hDownLinkSem, 0 ))
         {
             CSD_NORMAL_LOG(ACPU_PID_CSD,
                 "CSD_DL_ProcDataTask:: VOS_SmP pulDownLinkSem then continue !");

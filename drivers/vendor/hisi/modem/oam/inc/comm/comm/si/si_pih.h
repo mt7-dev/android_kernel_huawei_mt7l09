@@ -18,7 +18,7 @@ extern "C" {
 #include "NVIM_Interface.h"
 #include "OamXmlComm.h"
 #include "usimmvsimauth.h"
-
+#include "MemoryMap.h"
 
 #pragma pack(4)
 
@@ -79,8 +79,33 @@ extern "C" {
 #define BIT_VSIMSTATE                   (1)             /*当前VSIM卡是否激活*/
 #define BIT_CURCARDOK                   (0)             /*当前卡是否在位 */
 
+#define SI_PIH_DH_PARAP_MAX             (128)           /*DH 参数 P的最大长度*/
+#define SI_PIH_DH_PARAG_MAX             (1)             /*DH 参数 G的最大长度*/
+
+#define SI_PIH_VSIMAPN_MAX              (100)           /*VSIM APN 的最大长度，按照TAF的容量定义*/
+
+#define SI_PIH_SMEM_ENDFLAG             (0x5A5A5A5A)
+
+#define SI_PIH_HUK_LEN                  (0x10)
+#define SI_PIH_HUK_BITS                 (128)
+
+#define SI_PIH_APNSET_SMEM_ADDR         (ECS_TEE_SHARE_BASE_ADDR)
+#define SI_PIH_APNSET_SMEM_LEN          (0x400)         /*预留1K*/
+
+#define SI_PIH_DHPARASET_SMEM_ADDR      (SI_PIH_APNSET_SMEM_ADDR+SI_PIH_APNSET_SMEM_LEN)
+#define SI_PIH_DHPARASET_SMEM_LEN       (0x400)         /*预留1K*/
+
+#define SI_PIH_VSIM_SMEM_ADDR           (SI_PIH_DHPARASET_SMEM_ADDR+SI_PIH_DHPARASET_SMEM_LEN)
+#define SI_PIH_VSIM_SMEM_LEN            (0x1000)        /*预留4K*/
 
 
+#define SI_PIH_GET_SCISTATUS_MAX        (200)
+
+#define SI_PIH_CB_TIMER_NAME_TASKDELAY  (1)
+
+#define SI_PIH_CB_TIMER_LEN_TASKDELAY   (20)
+
+#define SI_PIH_TASKDELAY_SEM_LEN        (1000)
 
 /*******************************************************************************
   3 枚举定义
@@ -108,6 +133,12 @@ enum SI_PIH_REQ_ENUM
     SI_PIH_UICCAUTH_REQ             = 18,
     SI_PIH_URSM_REQ                 = 19,
     SI_PIH_CARDTYPE_QUERY_REQ       = 20,
+
+    SI_PIH_SCICFG_SET_REQ           = 21,
+    SI_PIH_SCICFG_QUERY_REQ         = 22,
+    SI_PIH_HVTEE_SET_REQ            = 23,
+    SI_PIH_HVCHECKCARD_REQ          = 24,
+
     SI_PIH_REQ_BUTT
 };
 typedef VOS_UINT32      SI_PIH_REQ_ENUM_UINT32;
@@ -196,6 +227,15 @@ enum SI_PIH_HVSST_HANDLE_STATE_ENUM
     SI_PIH_HVSST_HANDLE_STATE_BUTT
 };
 typedef VOS_UINT8      SI_PIH_HVSST_HANDLE_STATE_ENUM_UINT8;
+
+enum SI_PIH_HVTEE_DATAFLAG_ENUM
+{
+    SI_PIH_HVTEE_APNSET                 = 0xA5A5A001,
+    SI_PIH_HVTEE_DHSET                  = 0xA5A5A002,
+    SI_PIH_HVTEE_VSIMDATA               = 0xA5A5A003,
+    SI_PIH_HVTEE_DATAFLAG_BUTT
+};
+typedef VOS_UINT32      SI_PIH_HVTEE_DATAFLAG_ENUM_UINT32;
 
 /*****************************************************************************
   4 STRUCT定义
@@ -384,6 +424,45 @@ typedef struct
     SI_PIH_ACCESSFILE_STRU              stCmdData;
 } SI_PIH_ACCESSFILE_REQ_STRU;
 
+typedef struct
+{
+    SI_PIH_MSG_HEADER_STRU              stMsgHeader;        /* PIH消息头 */
+    SI_PIH_CARD_SLOT_ENUM_UINT32        enCard0Slot;
+    SI_PIH_CARD_SLOT_ENUM_UINT32        enCard1Slot;
+} SI_PIH_SCICFG_SET_REQ_STRU;
+
+typedef struct
+{
+    SI_PIH_MSG_HEADER_STRU              stMsgHeader;        /* PIH消息头 */
+    SI_PIH_HVTEE_SET_STRU               stHvtee;
+} SI_PIH_HVTEE_SET_REQ_STRU;
+
+typedef struct
+{
+    SI_PIH_HVTEE_DATAFLAG_ENUM_UINT32   enFlag;
+    VOS_UINT32                          ulDataLen;
+}SI_PIH_HVTEE_SHAREHEAD_STRU;
+
+typedef struct
+{
+    VOS_UINT32                          ulSPublicKeyLen;
+    VOS_UINT8                           aucSPublicKey[VSIM_KEYLEN_MAX];
+    VOS_UINT32                          ulCPublicKeyLen;
+    VOS_UINT8                           aucCPublicKey[VSIM_KEYLEN_MAX];
+    VOS_UINT32                          ulCPrivateKeyLen;
+    VOS_UINT8                           aucCPrivateKey[VSIM_KEYLEN_MAX];
+    VOS_UINT32                          ulParaPLen;
+    VOS_UINT8                           aucParaPKey[SI_PIH_DH_PARAP_MAX];
+    VOS_UINT32                          ulParaGLen;
+    VOS_UINT8                           aucParaGKey[SI_PIH_DH_PARAG_MAX];
+    VOS_UINT8                           aucRsv[3];
+}SI_PIH_HVTEEDHPARA_STRU;
+
+typedef struct
+{
+    SI_PIH_MSG_HEADER_STRU              stMsgHeader;
+}SI_PIH_HVCHECKCARD_REQ_STRU;
+
 /*****************************************************************************
   5 全局变量声明
 *****************************************************************************/
@@ -397,9 +476,12 @@ extern VOS_UINT32                   g_aulPIHRefreshBCPid[SI_PIH_BCPID_REG_MAX];
 
 extern VOS_UINT32                   g_aulPIHISIMBCPid[SI_PIH_BCPID_REG_MAX];
 
+extern VOS_UINT32                   g_ulPIHDeactiveRetryCnt;
+
 #if (FEATURE_ON == FEATURE_VSIM)
 extern SI_PIH_FWRITE_PARA_STRU      g_stPIHFileWriteGlobal;
-extern VOS_UINT32                   g_ulPIHDeactiveRetryCnt;
+
+extern VOS_UINT8                    g_aucVsimAPNData[SI_PIH_VSIMAPN_MAX];
 #endif
 
 /*****************************************************************************
@@ -528,6 +610,22 @@ extern VOS_UINT32 SI_PIH_RegisterPID(VOS_UINT32 ulRegPID, VOS_UINT32 ulRegListNu
 extern VOS_UINT32 SI_PIH_IsSvlte(VOS_VOID);
 
 extern VOS_UINT32 SI_PIH_CardTypeQueryHandle(SI_PIH_MSG_HEADER_STRU *pMsg);
+
+extern VOS_UINT32 SI_PIH_HukEncode(VOS_UINT8 *pucSrc, VOS_UINT32 ulSrcLen, VOS_UINT8 *pucDst, VOS_UINT32 *pulDstLen);
+
+extern SI_PIH_HVTEE_ERROR_ENUM_UINT32 SI_PIH_HvteeDataCheck(SI_PIH_HVTEE_DATAFLAG_ENUM_UINT32 enFlag, VOS_UINT32  ulMaxLen, VOS_UINT8 *pucData);
+
+extern VOS_UINT32 SI_PIH_HvteeApnHandle(VOS_VOID);
+
+extern VOS_UINT32 SI_PIH_HvteeDHHandle(VOS_VOID);
+
+extern VOS_UINT32 SI_PIH_HvteeVSIMHandle(VOS_VOID);
+
+extern VOS_UINT32 SI_PIH_HvteeSetHandle(SI_PIH_HVTEE_SET_REQ_STRU *pstMsg);
+
+extern VOS_UINT32 SI_PIH_SciCfgSetHandle(SI_PIH_SCICFG_SET_REQ_STRU *pstMsg);
+
+extern VOS_UINT32 SI_PIH_SciCfgQueryHandle(SI_PIH_MSG_HEADER_STRU *pstMsg);
 
 #if ((VOS_OS_VER == VOS_WIN32) || (VOS_OS_VER == VOS_NUCLEUS))
 #pragma pack()

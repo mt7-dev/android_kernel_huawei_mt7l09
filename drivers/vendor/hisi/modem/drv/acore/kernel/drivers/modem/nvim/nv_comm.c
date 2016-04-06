@@ -55,6 +55,7 @@ void nv_mntn_record(char* fmt,...)
     FILE* fp = NULL;
     int ret = 0;
     int file_len;
+    int buffer_size = 0;
 
     /*lint -save -e530*/
     va_start(arglist, fmt);
@@ -89,7 +90,8 @@ void nv_mntn_record(char* fmt,...)
     ret = BSP_fwrite(buffer,1,(unsigned int)strlen(buffer),fp);
     if(ret != strlen(buffer))
     {
-        printf("BSP_fwrite   nv   log err!  ret :0x%x buffer len :0x%x\n",ret,strlen(buffer));
+        buffer_size = strlen(buffer);
+        printf("BSP_fwrite   nv   log err!  ret :0x%x buffer len :0x%x\n",ret,buffer_size);
     }
     /*lint -restore +e737*/
     BSP_fclose(fp);
@@ -530,8 +532,8 @@ bool nv_dload_file_check(void )
 {
     u32 i;
     struct nv_ctrl_file_info_stru* ctrl_info = (struct nv_ctrl_file_info_stru*)NV_GLOBAL_CTRL_INFO_ADDR;
-    struct nv_file_list_info_stru* file_info = (struct nv_file_list_info_stru*)(NV_GLOBAL_CTRL_INFO_ADDR+NV_GLOBAL_CTRL_INFO_SIZE);
-    struct nv_ref_data_info_stru* ref_info   = (struct nv_ref_data_info_stru*)(NV_GLOBAL_CTRL_INFO_ADDR+NV_GLOBAL_CTRL_INFO_SIZE\
+    struct nv_file_list_info_stru* file_info = (struct nv_file_list_info_stru*)((unsigned long)NV_GLOBAL_CTRL_INFO_ADDR+NV_GLOBAL_CTRL_INFO_SIZE);
+    struct nv_ref_data_info_stru* ref_info   = (struct nv_ref_data_info_stru*)((u32)NV_GLOBAL_CTRL_INFO_ADDR+NV_GLOBAL_CTRL_INFO_SIZE\
         +NV_GLOBAL_FILE_ELEMENT_SIZE*ctrl_info->file_num);
 
     struct nv_ref_data_info_stru* ref_info_next = ref_info+1;
@@ -770,7 +772,7 @@ u32 nv_revert_data(s8* path,const u16* revert_data,u32 len)
     if(datalen != sizeof(ctrl_head_info))
     {
         ret = BSP_ERR_NV_READ_FILE_FAIL;
-        nv_debug(NV_FUN_REVERT_DATA,2,(u32)fp,datalen,ret);
+        nv_debug(NV_FUN_REVERT_DATA,2,0,datalen,ret);
         goto close_file;
     }
     nv_file_seek(fp,0,SEEK_SET); /*jump to file head*/
@@ -935,7 +937,7 @@ u32 nv_search_byid(u32 itemid,u8* pdata,struct nv_ref_data_info_stru* ref_info,s
     high = ctrl_info->ref_count;
     low  = 1;
 
-    nv_debug(NV_FUN_SEARCH_NV,0,itemid,high,(u32)ctrl_info);
+    nv_debug(NV_FUN_SEARCH_NV,0,itemid,high,0);
 
     while(low <= high)
     {
@@ -1133,6 +1135,7 @@ u32 nv_write_to_file(struct nv_ref_data_info_stru* ref_info)
     u32 off;
     u32 temp_prio = 0;
     unsigned long nvflag;
+    struct nv_ctrl_file_info_stru* ctrl_info = (struct nv_ctrl_file_info_stru*)NV_GLOBAL_CTRL_INFO_ADDR;
 
     if(NV_HIGH_PRIORITY == ref_info->priority)
     {
@@ -1158,7 +1161,7 @@ u32 nv_write_to_file(struct nv_ref_data_info_stru* ref_info)
     {
          /*[false alarm]:Value Never Read*/
         off = ddr_info->file_info[ref_info->file_id-1].offset+ref_info->nv_off;
-        ret = bsp_nvm_flushEx(0,ddr_info->file_len,ref_info->itemid);
+        ret = bsp_nvm_flushEx(ctrl_info->ctrl_size,(ddr_info->file_len-ctrl_info->ctrl_size),ref_info->itemid);
     }
 
     if(true == nv_isSysNv(ref_info->itemid))
@@ -1255,6 +1258,7 @@ u32 nv_imei_data_comp(const s8* path)
     u32 ret;
     char fac_imei[16];
     char path_imei[16];
+    int  len = 0;
 
     memset(fac_imei,0,sizeof(fac_imei));
     memset(path_imei,0,sizeof(path_imei));
@@ -1291,8 +1295,10 @@ u32 nv_imei_data_comp(const s8* path)
     if(ret)
     {
         nv_modify_print_sw(1);
-        nv_debug_trace(fac_imei, sizeof(fac_imei));
-        nv_debug_trace(path_imei, sizeof(path_imei));
+        len = sizeof(fac_imei);
+        nv_debug_trace(fac_imei, len);
+        len = sizeof(path_imei);
+        nv_debug_trace(path_imei, len);
         nv_modify_print_sw(0);
         return ret;
     }
@@ -1305,15 +1311,15 @@ void show_ddr_info(void)
     u32 i;
     struct nv_global_ddr_info_stru* ddr_info = (struct nv_global_ddr_info_stru*)NV_GLOBAL_INFO_ADDR;
     struct nv_ctrl_file_info_stru* ctrl_info = (struct nv_ctrl_file_info_stru*)NV_GLOBAL_CTRL_INFO_ADDR;
-    struct nv_file_list_info_stru* file_info = (struct nv_file_list_info_stru*)(NV_GLOBAL_CTRL_INFO_ADDR+NV_GLOBAL_CTRL_INFO_SIZE);
-    struct nv_ref_data_info_stru* ref_info   = (struct nv_ref_data_info_stru*)(NV_GLOBAL_CTRL_INFO_ADDR+NV_GLOBAL_CTRL_INFO_SIZE\
+    struct nv_file_list_info_stru* file_info = (struct nv_file_list_info_stru*)((unsigned long)NV_GLOBAL_CTRL_INFO_ADDR+NV_GLOBAL_CTRL_INFO_SIZE);
+    struct nv_ref_data_info_stru* ref_info   = (struct nv_ref_data_info_stru*)((u32)NV_GLOBAL_CTRL_INFO_ADDR+NV_GLOBAL_CTRL_INFO_SIZE\
         +NV_GLOBAL_FILE_ELEMENT_SIZE*ctrl_info->file_num);
 
-    printf("global start ddr        :0x%x\n",NV_GLOBAL_INFO_ADDR);
-    printf("global ctrl file ddr    :0x%x\n",NV_GLOBAL_CTRL_INFO_ADDR);
-    printf("global file list ddr    :0x%x\n",file_info);
-    printf("global ref info  ddr    :0x%x\n",ref_info);
-    printf("icc core type           :0x%x\n",g_nv_ctrl.icc_core_type);
+    printf("global start ddr        :%p\n",NV_GLOBAL_INFO_ADDR);
+    printf("global ctrl file ddr    :%p\n",NV_GLOBAL_CTRL_INFO_ADDR);
+    printf("global file list ddr    :%p\n",file_info);
+    printf("global ref info  ddr    :%p\n",ref_info);
+    printf("icc core type           :%x\n",g_nv_ctrl.icc_core_type);
     printf("*******************ddr global ctrl************************\n");
     printf("acore init state: 0x%x\n",ddr_info->acore_init_state);
     printf("ccore init state: 0x%x\n",ddr_info->ccore_init_state);
@@ -1367,7 +1373,7 @@ void show_ref_info(u32 arg1,u32 arg2)
     u32 _max;
     u32 _min;
     struct nv_ctrl_file_info_stru* ctrl_info = (struct nv_ctrl_file_info_stru*)NV_GLOBAL_CTRL_INFO_ADDR;
-    struct nv_ref_data_info_stru* ref_info   = (struct nv_ref_data_info_stru*)(NV_GLOBAL_CTRL_INFO_ADDR+NV_GLOBAL_CTRL_INFO_SIZE\
+    struct nv_ref_data_info_stru* ref_info   = (struct nv_ref_data_info_stru*)((unsigned long)NV_GLOBAL_CTRL_INFO_ADDR+NV_GLOBAL_CTRL_INFO_SIZE\
         +NV_GLOBAL_FILE_ELEMENT_SIZE*ctrl_info->file_num);
 
     _max = arg2 > ctrl_info->ref_count ? ctrl_info->ref_count:arg2;

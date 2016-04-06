@@ -127,8 +127,9 @@ typedef VOS_UINT32 (*RNIC_RCV_TI_EXPRIED_PROC_FUNC)(
 typedef struct
 {
     AT_RNIC_DIAL_MODE_ENUM_UINT32                           enDialMode;         /* Dial模式 */
-    VOS_UINT32                                              ulIdleTime;        /* 定时器长度，单位为秒 */
+    VOS_UINT32                                              ulIdleTime;         /* 定时器长度，单位为秒 */
     RNIC_DIAL_EVENT_REPORT_FLAG_ENUM_UINT32                 enEventReportFlag;  /*是否给应用上报标识*/
+    VOS_UINT32                                              ulReserved;
 }RNIC_DIAL_MODE_STRU;
 typedef struct
 {
@@ -157,6 +158,7 @@ typedef struct
     VOS_UINT32                          ulMsgId;
     RNIC_RCV_TI_EXPRIED_PROC_FUNC       pTiExpriedProcFunc;
 }RNIC_RCV_TI_EXPRIED_PROC_STRU;
+
 
 
 
@@ -306,6 +308,18 @@ VOS_UINT32 RNIC_SndRnicRmnetConfigReq(
 VOS_VOID RNIC_MNTN_SndRmnetConfigInfoMsg(
     RNIC_RMNET_CONFIG_STRU             *pstConfigInfo
 );
+
+
+VOS_UINT32 RNIC_RcvRnicMsg(MsgBlock *pstMsg);
+#if (FEATURE_ON == FEATURE_IMS)
+VOS_UINT32 RNIC_RcvImsaMsg(MsgBlock *pstMsg);
+VOS_UINT32 RNIC_RcvImsaPdnActInd(
+    MsgBlock                           *pstMsg
+);
+VOS_UINT32 RNIC_RcvImsaPdnDeactInd(
+    MsgBlock                           *pstMsg
+);
+#endif
 
 
 #if (VOS_OS_VER == VOS_WIN32)

@@ -62,9 +62,12 @@ extern struct lock_info hi6930_lockinfo;
 *记录低功耗NV全局变量
 ********************************************************/
 extern ST_PWC_SWITCH_STRU g_nv_pwc_switch;
-
+#ifdef __KERNEL__
 /*记录低功耗共享地址*/
+extern void* g_lowpower_shared_addr;
+#else
 extern unsigned int g_lowpower_shared_addr;
+#endif
 
 /*******************************************************
 *此函数提供用于获取NV控制项

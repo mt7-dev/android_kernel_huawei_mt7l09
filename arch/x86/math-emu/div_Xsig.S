@@ -94,19 +94,7 @@ ENTRY(div_Xsig)
 #endif /* PARANOID */
 
 
-/*---------------------------------------------------------------------------+
- |  Divide:   Return  arg1/arg2 to arg3.                                     |
- |                                                                           |
- |  The maximum returned value is (ignoring exponents)                       |
- |               .ffffffff ffffffff                                          |
- |               ------------------  =  1.ffffffff fffffffe                  |
- |               .80000000 00000000                                          |
- | and the minimum is                                                        |
- |               .80000000 00000000                                          |
- |               ------------------  =  .80000000 00000001   (rounded)       |
- |               .ffffffff ffffffff                                          |
- |                                                                           |
- +---------------------------------------------------------------------------*/
+
 
 	/* Save extended dividend in local register */
 

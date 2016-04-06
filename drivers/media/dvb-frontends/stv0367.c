@@ -2843,7 +2843,6 @@ enum stv0367_cab_signal_type stv0367cab_algo(struct stv0367_state *state,
 	/* Timeouts calculation */
 	/* A max lock time of 25 ms is allowed for delayed AGC */
 	AGCTimeOut = 25;
-	/* 100000 symbols needed by the TRL as a maximum value */
 	TRLTimeOut = 100000000 / p->symbol_rate;
 	/* CRLSymbols is the needed number of symbols to achieve a lock
 	   within [-4%, +4%] of the symbol rate.

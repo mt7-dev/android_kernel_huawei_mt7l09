@@ -307,13 +307,25 @@ struct freq_attr {
 static struct freq_attr _name =			\
 __ATTR(_name, 0444, show_##_name, NULL)
 
+#ifdef CONFIG_CPU_FREQ
+void cpufreq_suspend(void);
+void cpufreq_resume(void);
+#else
+static inline void cpufreq_suspend(void) {}
+static inline void cpufreq_resume(void) {}
+#endif
+
+/*********************************************************************
+ *                     CPUFREQ NOTIFIER INTERFACE                    *
+ *********************************************************************/
+
 #define cpufreq_freq_attr_ro_perm(_name, _perm)	\
 static struct freq_attr _name =			\
 __ATTR(_name, _perm, show_##_name, NULL)
 
 #define cpufreq_freq_attr_rw(_name)		\
 static struct freq_attr _name =			\
-__ATTR(_name, 0664, show_##_name, store_##_name)
+__ATTR(_name, 0644, show_##_name, store_##_name)
 
 struct global_attr {
 	struct attribute attr;

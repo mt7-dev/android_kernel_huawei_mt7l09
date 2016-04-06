@@ -16,8 +16,22 @@ extern "C" {
 #if (VOS_OS_VER == VOS_LINUX)
 #include <linux/netdevice.h>
 #include <linux/etherdevice.h>
-#include <linux/version.h>
 #include <init.h>
+
+#if 0
+#if defined(FEATURE_KERNEL_LINUX_3_10)
+#include <linux/version.h>
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 8, 0)
+#include <linux/if.h>
+#else
+#include <if.h>
+#endif
+#else
+#include <if.h>
+#endif
+#endif
+
+#include <linux/version.h>
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 8, 0)
 #include <linux/if.h>
 #else
@@ -31,7 +45,7 @@ extern "C" {
 #include <gfp.h>
 #include <linux/netlink.h>
 #else
-#include "LinuxStub.h"
+#include "Linuxstub.h"
 #endif
 
 /******************************************************************************

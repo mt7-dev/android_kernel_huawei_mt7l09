@@ -198,7 +198,7 @@ void print_exchange_addr( void )
 {
     unsigned int * ulPtr = (unsigned int *)(SRAM_REBOOT_ADDR);
 
-    pr_dbg("############ (Linux) Addr = 0x%08X \r\n    0x00 = 0x%08X, 0x04 = 0x%08X, 0x08 = 0x%08X, 0x0C = 0x%08X\r\n",
+    pr_dbg("############ (Linux) Addr = 0x%p \r\n    0x00 = 0x%08X, 0x04 = 0x%08X, 0x08 = 0x%08X, 0x0C = 0x%08X\r\n",
          SRAM_REBOOT_ADDR, *(ulPtr+0), *(ulPtr+1), *(ulPtr+2), *(ulPtr+3));
 }
 #endif

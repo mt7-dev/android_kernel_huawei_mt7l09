@@ -445,7 +445,7 @@ struct edge_manuf_descriptor {
 
 	__u8	SerNumLength;				// F0C USB string descriptor len
 	__u8	SerNumDescType;				// F0D USB descriptor type (=STRING type)
-	__le16	SerialNumber[MAX_SERIALNUMBER_LEN];	// F0E "01-01-000100" Unicode Serial Number
+	__le16	SerialNumber[MAX_SERIALNUMBER_LEN];
 
 	__u8	AssemblyNumLength;			// F26 USB string descriptor len
 	__u8	AssemblyNumDescType;			// F27 USB descriptor type (=STRING type)
@@ -594,7 +594,7 @@ struct edge_boot_descriptor {
 
 struct ti_i2c_desc {
 	__u8	Type;			// Type of descriptor
-	__u16	Size;			// Size of data only not including header
+	__le16	Size;			// Size of data only not including header
 	__u8	CheckSum;		// Checksum (8 bit sum of data only)
 	__u8	Data[0];		// Data starts here
 } __attribute__((packed));

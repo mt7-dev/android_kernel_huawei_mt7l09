@@ -18,7 +18,7 @@ extern "C"
   宏定义
 **************************************************************************/
 //#ifdef __BSP_DEBUG__
-#define __BSP_MEM_DEBUG__
+/*#define __BSP_MEM_DEBUG__*/
 //#endif
 
 #ifdef __BSP_MEM_DEBUG__
@@ -89,6 +89,9 @@ typedef struct tagMEM_USED_INFO
 typedef struct tagMEM_ALLOC_INFO
 {
     void*           allocList[MEM_ALLOC_LIST_NUM];              /* 分配后回收的相应内存节点的大小*/
+#ifdef BSP_CONFIG_HI3635
+    void*           allocReserved[MEM_ALLOC_LIST_NUM];          /* 分配后回收的相应内存节点的大小*/
+#endif
     u32             allocNum[MEM_ALLOC_LIST_NUM];               /*已经分配出来的相应内存节点的数量*/
     MEM_USED_INFO   allocUsedInfoList[MEM_ALLOC_LIST_NUM];      /*调试使用*/
     MEM_POOL_INFO   memPoolInfo;                                /*内存池信息*/

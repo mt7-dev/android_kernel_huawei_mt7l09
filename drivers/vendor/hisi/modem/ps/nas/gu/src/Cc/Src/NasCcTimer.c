@@ -240,7 +240,7 @@ VOS_VOID  NAS_CC_StartTimer(
                 NAS_CC_GetNvTimerLen(enTimerId, &ulTimerLen);
             }
         }
-    
+
         /* 启动VOS定时器 */
         /* 需要将TimerId输入 */
         ulMsgName = (enTimerId ) | (entityId << 16) ;
@@ -394,7 +394,7 @@ VOS_VOID  NAS_CC_ProcTimeoutMsg(
     enEntityId = ((pTmrMsg->ulName) >> 16);
 
     NAS_TIMER_EventReport(enTid, WUEPS_PID_CC, NAS_OM_EVENT_TIMER_OPERATION_EXPIRED);
-    
+
     f_astCcTimerInfoTbl[enTid].pfnTimeoutProc(enEntityId, pTmrMsg->ulPara);
 }
 
@@ -409,11 +409,13 @@ LOCAL VOS_VOID  NAS_CC_T303Timeout(
     VOS_UINT8 ucTi = NAS_CC_GetEntityTi(entityId);
     NAS_CC_CALL_STATE_ENUM_U8  enCurrState = NAS_CC_GetCallState(entityId);
 
-    NAS_CC_CAUSE_VALUE_ENUM_U8          enCcCause;
+    NAS_CC_CAUSE_VALUE_ENUM_U32         enCcCause;
 
     NAS_CC_ASSERT(entityId < NAS_CC_MAX_ENTITY_NUM);
 
     NAS_CC_INFO_LOG("NAS_CC_T303Timeout");
+
+    NAS_CC_StopTimer(entityId, TI_NAS_CC_T303);
 
     if (NAS_CC_CALL_STATE_U1 == enCurrState)
     {
@@ -424,7 +426,7 @@ LOCAL VOS_VOID  NAS_CC_T303Timeout(
         NAS_CC_StopAllTimer(entityId);
         NAS_CC_SendMmccAbortReq(ucTi);
 
-        enCcCause = NAS_CC_CAUSE_CNM_REJ_TIMER_T303_EXP;
+        enCcCause = NAS_CC_CAUSE_CC_INTER_ERR_T303_TIME_OUT;
         NAS_CC_SendMnccMsg(entityId, MNCC_REJ_IND, &enCcCause, sizeof(enCcCause));
 
         NAS_CC_INFO_LOG1("NAS_CC_T303Timeout: ChangeCallState to U0, current state:", enCurrState);
@@ -437,20 +439,7 @@ LOCAL VOS_VOID  NAS_CC_T303Timeout(
 }
 
 
-/*****************************************************************************
- 函 数 名  : NAS_CC_T305Timeout
- 功能描述  : 定时器T305超时处理
- 输入参数  : entityId  - 超时的CC实体
-              ulParam   - 自定义参数，disconnect消息中的原因值
- 返 回 值  : 无
- 调用函数  :
- 被调函数  :
 
- 修改历史      :
-  1.日    期   : 2008年1月17日
-    作    者   : 丁庆 49431
-    修改内容   : 新生成函数
-*****************************************************************************/
 LOCAL VOS_VOID  NAS_CC_T305Timeout(
     NAS_CC_ENTITY_ID_T                  entityId,
     VOS_UINT32                          ulParam
@@ -462,6 +451,8 @@ LOCAL VOS_VOID  NAS_CC_T305Timeout(
 
     NAS_CC_INFO_LOG("NAS_CC_T305Timeout");
 
+    NAS_CC_StopTimer(entityId, TI_NAS_CC_T305);
+
     if (NAS_CC_CALL_STATE_U11 == enCurrState)
     {
         /*
@@ -472,7 +463,7 @@ LOCAL VOS_VOID  NAS_CC_T305Timeout(
         */
         NAS_CC_SendRelease(NAS_CC_GetEntityTi(entityId),
                            VOS_TRUE,
-                           (NAS_CC_CAUSE_VALUE_ENUM_U8)ulParam,
+                           (NAS_CC_CAUSE_VALUE_ENUM_U32)ulParam,
                            VOS_TRUE,
                            NAS_CC_CAUSE_102);
 
@@ -489,29 +480,20 @@ LOCAL VOS_VOID  NAS_CC_T305Timeout(
 }
 
 
-/*****************************************************************************
- 函 数 名  : NAS_CC_T308Timeout
- 功能描述  : 定时器T308超时处理
- 输入参数  : entityId  - 超时的CC实体
-              ulParam   - 自定义参数，启动T308的次数
- 返 回 值  : 无
- 调用函数  :
- 被调函数  :
 
- 修改历史      :
-  1.日    期   : 2008年1月17日
-    作    者   : 丁庆 49431
-    修改内容   : 新生成函数
-*****************************************************************************/
 LOCAL VOS_VOID  NAS_CC_T308Timeout(
     NAS_CC_ENTITY_ID_T                  entityId,
     VOS_UINT32                          ulParam
 )
 {
     NAS_CC_CALL_STATE_ENUM_U8  enCurrState = NAS_CC_GetCallState(entityId);
+    NAS_CC_MSG_RELEASE_COMPLETE_MT_STRU     stRelComp;
+
     VOS_UINT8  ucTi = NAS_CC_GetEntityTi(entityId);
 
     NAS_CC_ASSERT(entityId < NAS_CC_MAX_ENTITY_NUM);
+
+    NAS_CC_StopTimer(entityId, TI_NAS_CC_T308);
 
     if (enCurrState != NAS_CC_CALL_STATE_U19)
     {
@@ -532,30 +514,19 @@ LOCAL VOS_VOID  NAS_CC_T308Timeout(
         /* 释放MM连接 */
         NAS_CC_SendMmccRelReq(ucTi, MMCC_RELEASE_SPECIFIC);
 
+        /* CHR优化项目，T308第二次超时后，携带原因值102 */
+        PS_MEM_SET(&stRelComp, 0, sizeof(NAS_CC_MSG_RELEASE_COMPLETE_MT_STRU));
+
+        NAS_CC_FillCauseIe(NAS_CC_CAUSE_102, &stRelComp.stCause);
+
         /* 上报MNCC_REL_CNF原语 */
-        NAS_CC_SendMnccMsg(entityId, MNCC_REL_CNF, VOS_NULL_PTR, 0);
+        NAS_CC_SendMnccMsg(entityId, MNCC_REL_CNF, &stRelComp, sizeof(NAS_CC_MSG_RELEASE_COMPLETE_MT_STRU));
 
         /* 进入null状态 */
         NAS_CC_INFO_LOG("NAS_CC_T308Timeout ChangeCallState to U0");
         NAS_CC_ChangeCallState(entityId, NAS_CC_CALL_STATE_U0);
     }
 }
-
-
-/*****************************************************************************
- 函 数 名  : NAS_CC_T310Timeout
- 功能描述  : 定时器T310超时处理
- 输入参数  : entityId  - 超时的CC实体
-              ulParam   - 自定义参数，暂无用处
- 返 回 值  : 无
- 调用函数  :
- 被调函数  :
-
- 修改历史      :
-  1.日    期   : 2008年1月17日
-    作    者   : 丁庆 49431
-    修改内容   : 新生成函数
-*****************************************************************************/
 LOCAL VOS_VOID  NAS_CC_T310Timeout(
     NAS_CC_ENTITY_ID_T                  entityId,
     VOS_UINT32                          ulParam
@@ -566,6 +537,8 @@ LOCAL VOS_VOID  NAS_CC_T310Timeout(
     NAS_CC_ASSERT(entityId < NAS_CC_MAX_ENTITY_NUM);
 
     NAS_CC_INFO_LOG("NAS_CC_T310Timeout");
+
+    NAS_CC_StopTimer(entityId, TI_NAS_CC_T310);
 
     if (NAS_CC_CALL_STATE_U3 == enCurrState)
     {
@@ -578,20 +551,7 @@ LOCAL VOS_VOID  NAS_CC_T310Timeout(
 }
 
 
-/*****************************************************************************
- 函 数 名  : NAS_CC_T313Timeout
- 功能描述  : 定时器T313超时处理
- 输入参数  : entityId  - 超时的CC实体
-              ulParam   - 自定义参数，暂无用处
- 返 回 值  : 无
- 调用函数  :
- 被调函数  :
 
- 修改历史      :
-  1.日    期   : 2008年1月17日
-    作    者   : 丁庆 49431
-    修改内容   : 新生成函数
-*****************************************************************************/
 LOCAL VOS_VOID  NAS_CC_T313Timeout(
     NAS_CC_ENTITY_ID_T                  entityId,
     VOS_UINT32                          ulParam
@@ -602,6 +562,8 @@ LOCAL VOS_VOID  NAS_CC_T313Timeout(
     NAS_CC_ASSERT(entityId < NAS_CC_MAX_ENTITY_NUM);
 
     NAS_CC_INFO_LOG("NAS_CC_T313Timeout");
+
+    NAS_CC_StopTimer(entityId, TI_NAS_CC_T313);
 
     if (NAS_CC_CALL_STATE_U8 == enCurrState)
     {
@@ -614,20 +576,7 @@ LOCAL VOS_VOID  NAS_CC_T313Timeout(
 }
 
 
-/*****************************************************************************
- 函 数 名  : NAS_CC_T323Timeout
- 功能描述  : 定时器T323超时处理
- 输入参数  : entityId  - 超时的CC实体
-              ulParam   - 自定义参数，暂无用处
- 返 回 值  : 无
- 调用函数  :
- 被调函数  :
 
- 修改历史      :
-  1.日    期   : 2008年1月17日
-    作    者   : 丁庆 49431
-    修改内容   : 新生成函数
-*****************************************************************************/
 LOCAL VOS_VOID  NAS_CC_T323Timeout(
     NAS_CC_ENTITY_ID_T                  entityId,
     VOS_UINT32                          ulParam
@@ -638,6 +587,8 @@ LOCAL VOS_VOID  NAS_CC_T323Timeout(
     NAS_CC_ASSERT(entityId < NAS_CC_MAX_ENTITY_NUM);
 
     NAS_CC_INFO_LOG("NAS_CC_T323Timeout");
+
+    NAS_CC_StopTimer(entityId, TI_NAS_CC_T323);
 
     if (NAS_CC_CALL_STATE_U26 == enCurrState)
     {
@@ -650,20 +601,7 @@ LOCAL VOS_VOID  NAS_CC_T323Timeout(
 }
 
 
-/*****************************************************************************
- 函 数 名  : NAS_CC_T332Timeout
- 功能描述  : 定时器T332超时处理
- 输入参数  : entityId  - 超时的CC实体
-              ulParam   - 自定义参数，暂无用处
- 返 回 值  : 无
- 调用函数  :
- 被调函数  :
 
- 修改历史      :
-  1.日    期   : 2008年1月17日
-    作    者   : 丁庆 49431
-    修改内容   : 新生成函数
-*****************************************************************************/
 LOCAL VOS_VOID  NAS_CC_T332Timeout(
     NAS_CC_ENTITY_ID_T                  entityId,
     VOS_UINT32                          ulParam
@@ -675,6 +613,8 @@ LOCAL VOS_VOID  NAS_CC_T332Timeout(
     NAS_CC_ASSERT(entityId < NAS_CC_MAX_ENTITY_NUM);
 
     NAS_CC_INFO_LOG("NAS_CC_T332Timeout");
+
+    NAS_CC_StopTimer(entityId, TI_NAS_CC_T332);
 
     if (NAS_CC_CALL_STATE_U0_3 == enCurrState)
     {
@@ -701,9 +641,11 @@ LOCAL VOS_VOID  NAS_CC_T335Timeout(
     NAS_CC_CALL_STATE_ENUM_U8   enCurrState = NAS_CC_GetCallState(entityId);
     VOS_UINT8                   ucTi = NAS_CC_GetEntityTi(entityId);
 
-    NAS_CC_CAUSE_VALUE_ENUM_U8          enCcCause;
+    NAS_CC_CAUSE_VALUE_ENUM_U32         enCcCause;
 
     NAS_CC_ASSERT(entityId < NAS_CC_MAX_ENTITY_NUM);
+
+    NAS_CC_StopTimer(entityId, TI_NAS_CC_T335);
 
     if (NAS_CC_CALL_STATE_U0_5 == enCurrState)
     {
@@ -711,7 +653,7 @@ LOCAL VOS_VOID  NAS_CC_T335Timeout(
 
         NAS_CC_SendMmccRelReq(ucTi, MMCC_RELEASE_SPECIFIC);
 
-        enCcCause = NAS_CC_CAUSE_CNM_OTHER_REJ_CAUSES;
+        enCcCause = NAS_CC_CAUSE_CC_INTER_ERR_T335_TIME_OUT;
         NAS_CC_SendMnccMsg(entityId, MNCC_REJ_IND, &enCcCause, sizeof(enCcCause));
 
         NAS_CC_INFO_LOG("NAS_CC_T335Timeout ChangeCallState to U0");
@@ -730,11 +672,13 @@ LOCAL VOS_VOID  NAS_CC_T336Timeout(
     VOS_UINT32                          ulParam
 )
 {
-    NAS_CC_CAUSE_VALUE_ENUM_U8          cause;
+    NAS_CC_CAUSE_VALUE_ENUM_U32         cause;
 
     NAS_CC_ASSERT(entityId < NAS_CC_MAX_ENTITY_NUM);
 
     NAS_CC_INFO_LOG("NAS_CC_T336Timeout");
+
+    NAS_CC_StopTimer(entityId, TI_NAS_CC_T336);
 
     if (NAS_CC_GetDtmfState(entityId) != NAS_CC_DTMF_S_START_REQ)
     {
@@ -753,20 +697,7 @@ LOCAL VOS_VOID  NAS_CC_T336Timeout(
 }
 
 
-/*****************************************************************************
- 函 数 名  : NAS_CC_T337Timeout
- 功能描述  : 定时器T337超时处理
- 输入参数  : entityId  - 超时的CC实体
-              ulParam   - 自定义参数，暂无用处
- 返 回 值  : 无
- 调用函数  :
- 被调函数  :
 
- 修改历史      :
-  1.日    期   : 2008年1月17日
-    作    者   : 丁庆 49431
-    修改内容   : 新生成函数
-*****************************************************************************/
 LOCAL VOS_VOID  NAS_CC_T337Timeout(
     NAS_CC_ENTITY_ID_T                  entityId,
     VOS_UINT32                          ulParam
@@ -775,6 +706,8 @@ LOCAL VOS_VOID  NAS_CC_T337Timeout(
     NAS_CC_ASSERT(entityId < NAS_CC_MAX_ENTITY_NUM);
 
     NAS_CC_INFO_LOG("NAS_CC_T337Timeout");
+
+    NAS_CC_StopTimer(entityId, TI_NAS_CC_T337);
 
     if (NAS_CC_GetDtmfState(entityId) != NAS_CC_DTMF_S_STOP_REQ)
     {
@@ -801,9 +734,11 @@ LOCAL VOS_VOID  NAS_CC_HoldTimeout(
 )
 {
     NAS_CC_HOLD_AUX_STATE_ENUM_U8   holdState = NAS_CC_GetHoldAuxState(entityId);
-    NAS_CC_CAUSE_VALUE_ENUM_U8      cause = NAS_CC_CAUSE_102;
+    NAS_CC_CAUSE_VALUE_ENUM_U32     cause = NAS_CC_CAUSE_102;
 
     NAS_CC_ASSERT(entityId < NAS_CC_MAX_ENTITY_NUM);
+
+    NAS_CC_StopTimer(entityId, TI_NAS_CC_HOLD);
 
     if (NAS_CC_HOLD_AUX_S_HOLD_REQ == holdState)
     {
@@ -840,6 +775,8 @@ LOCAL VOS_VOID  NAS_CC_MptyTimeout(
     NAS_CC_ASSERT(entityId < NAS_CC_MAX_ENTITY_NUM);
 
     NAS_CC_INFO_LOG("NAS_CC_MptyTimeout");
+
+    NAS_CC_StopTimer(entityId, TI_NAS_CC_MPTY);
 
     if (NAS_CC_RestoreSsOperation(entityId, ucInvokeId, &enOperation) != VOS_OK)
     {
@@ -881,21 +818,6 @@ LOCAL VOS_VOID  NAS_CC_MptyTimeout(
 
     return;
 }
-
-/*****************************************************************************
- 函 数 名  : NAS_CC_ECTTimeout
- 功能描述  : ECT操作定时器超时处理
- 输入参数  : entityId  - 超时的CC实体
-              ulParam   - 自定义参数，存放操作的invoke ID
- 返 回 值  : 无
- 调用函数  :
- 被调函数  :
-
- 修改历史      :
-  1.日    期   : 2008年1月17日
-    作    者   : 丁庆 49431
-    修改内容   : 新生成函数
-*****************************************************************************/
 LOCAL VOS_VOID  NAS_CC_ECTTimeout(
     NAS_CC_ENTITY_ID_T                  entityId,
     VOS_UINT32                          ulParam
@@ -907,6 +829,8 @@ LOCAL VOS_VOID  NAS_CC_ECTTimeout(
     NAS_CC_ASSERT(entityId < NAS_CC_MAX_ENTITY_NUM);
 
     NAS_CC_INFO_LOG("NAS_CC_ECTTimeout");
+
+    NAS_CC_StopTimer(entityId, TI_NAS_CC_ECT);
 
     if (NAS_CC_RestoreSsOperation(entityId, ucInvokeId, &enOperation) != VOS_OK)
     {
@@ -922,22 +846,7 @@ LOCAL VOS_VOID  NAS_CC_ECTTimeout(
 
 
 
-/*****************************************************************************
- 函 数 名  : NAS_CC_UserConnTimeout
- 功能描述  : 用户面连接建立超时
- 输入参数  : entityId - 超时的CC实体
-             ulParam  - 自定义参数，暂无用处
- 输出参数  : 无
- 返 回 值  :
- 调用函数  :
- 被调函数  :
 
- 修改历史      :
-  1.日    期   : 2008年2月4日
-    作    者   : 丁庆 49431
-    修改内容   : 新生成函数
-
-*****************************************************************************/
 LOCAL VOS_VOID  NAS_CC_UserConnTimeout(
     NAS_CC_ENTITY_ID_T                  entityId,
     VOS_UINT32                          ulParam
@@ -953,6 +862,8 @@ LOCAL VOS_VOID  NAS_CC_UserConnTimeout(
 
     then the mobile station may initiate call clearing.
 */
+    NAS_CC_StopTimer(entityId, TI_NAS_CC_USER_CONN);
+
     NAS_CC_INFO_LOG("NAS_CC_UserConnTimeout");
 
 }
@@ -966,10 +877,12 @@ LOCAL VOS_VOID  NAS_CC_RabInactProtectTimeout(
 {
     VOS_UINT8                           ucTi;
 
-    NAS_CC_CAUSE_VALUE_ENUM_U8          enCcCause;
+    NAS_CC_CAUSE_VALUE_ENUM_U32         enCcCause;
 
 
     ucTi = NAS_CC_GetEntityTi(entityId);
+
+    NAS_CC_StopTimer(entityId, TI_NAS_CC_RABMINACT_PROTECT);
 
     /* 如果对应实体在active状态，挂断电话 */
     if (NAS_CC_CALL_STATE_U10 == NAS_CC_GetCallState(entityId))
@@ -978,7 +891,7 @@ LOCAL VOS_VOID  NAS_CC_RabInactProtectTimeout(
 
         NAS_CC_SendMmccRelReq(ucTi, MMCC_RELEASE_SPECIFIC);
 
-        enCcCause = NAS_CC_CAUSE_CNM_OTHER_REJ_CAUSES;
+        enCcCause = NAS_CC_CAUSE_CC_INTER_ERR_WAIT_RAB_TIME_OUT;
         NAS_CC_SendMnccMsg(entityId, MNCC_REJ_IND, &enCcCause, sizeof(enCcCause));
 
         NAS_CC_INFO_LOG("NAS_CC_RabInactProtectTimeout ChangeCallState to U0");

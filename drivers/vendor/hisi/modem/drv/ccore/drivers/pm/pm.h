@@ -55,7 +55,7 @@ typedef struct
 
 #endif
 
-#define PM_MEM_V2P(addr)            SHD_DDR_V2P(addr)
+#define PM_MEM_V2P(addr)            SHD_DDR_ASM_V2P(addr)
 #define PM_STAMP_ADDR       (TIMER_STAMP_ADDR)
 #define PM_STAMP_ADDR_PHY   (TIMER_STAMP_ADDR_PHY)
 
@@ -191,7 +191,7 @@ typedef struct
 #define CARM_GIC_ICDABR_NUM             (7)
 #define CARM_GIC_ICDISPR_OFFSET(x)      (CARM_GIC_ICDISPR  + ((x)*0x4))
 
-/* CPSR config bit . */;
+/* CPSR config bit . */
 #ifndef I_BIT
 #define I_BIT       (1 << 7)
 #endif

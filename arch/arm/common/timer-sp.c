@@ -214,7 +214,8 @@ static void __init sp804_of_init(struct device_node *np)
 	void __iomem *base;
 	int irq;
 	u32 irq_num = 0;
-	struct clk *clk1, *clk2;
+	struct clk *clk1 = 0;
+	struct clk *clk2 = 0;
 	const char *name = of_get_property(np, "compatible", NULL);
 
 	base = of_iomap(np, 0);
@@ -256,6 +257,7 @@ static void __init sp804_of_init(struct device_node *np)
 		__sp804_clocksource_and_sched_clock_init(base + TIMER_2_BASE,
 							 name, clk2, 1);
 	}
+
 	initialized = true;
 
 	return;

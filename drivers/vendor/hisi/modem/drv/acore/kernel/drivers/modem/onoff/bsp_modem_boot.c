@@ -5,6 +5,17 @@
 #include <linux/string.h>
 #include <linux/platform_device.h>
 #include <bsp_reset.h>
+#ifdef CONFIG_BALONG_MODEM_RESET
+#include <linux/huawei/rdr.h>
+#else  /* !CONFIG_BALONG_MODEM_RESET */
+#ifndef hisi_system_error
+static inline void hisi_system_error(u32 mod_id, u32 arg1, u32 arg2, char *data, u32 length)
+{
+	printk("[reset]: <%s> is stub\n", __FUNCTION__);
+	return;
+}
+#endif
+#endif /* CONFIG_BALONG_MODEM_RESET */
 
 #ifdef __cplusplus
 extern "C" {
@@ -31,6 +42,12 @@ static const char* const modem_state_str[] = {
 /*To make modem poweroff called only once when there are two rilds.*/
 static int modem_power_off_flag = 0;
 
+#ifndef HISI_RDR_MOD_CP_RILD
+#define HISI_RDR_MOD_CP_RILD 0x82000007
+#endif
+#ifndef HISI_RDR_MOD_CP_3RD
+#define HISI_RDR_MOD_CP_3RD  0x82000008
+#endif
 
 /*****************************************************************************
  º¯ Êý Ãû  : modem_state_set
@@ -95,7 +112,7 @@ ssize_t modem_reset_set(struct device *dev, struct device_attribute *attr, const
 	dev_info(dev, "Power set to %s\n", buf);
 	state = simple_strtol(buf, &endp, 10); /*10 means read as dec*/
 	pr_err("endp = 0x%x\n", *(int*)endp);
-	pr_err("count = %d\n", count);
+	pr_err("count = %lu\n", (unsigned long)count);
 	if (*buf == '\0' || *buf == *endp)/* return 0 means match failed */
 	{
 		return count;
@@ -123,6 +140,16 @@ ssize_t modem_reset_set(struct device *dev, struct device_attribute *attr, const
 	{
 		bsp_modem_power_on();
 		pr_err("modem power on %d\n", BALONG_MODEM_ON);
+	}
+	else if(state == BALONG_MODEM_RILD_SYS_ERR)
+	{
+		hisi_system_error(HISI_RDR_MOD_CP_RILD, 0, 0, NULL, 0);
+		pr_err("modem reset using hisi_system_error by rild %d\n", BALONG_MODEM_RILD_SYS_ERR);
+	}
+	else if(state == BALONG_MODEM_3RD_SYS_ERR)
+	{
+		hisi_system_error(HISI_RDR_MOD_CP_3RD, 0, 0, NULL, 0);
+		pr_err("modem reset using hisi_system_error by 3rd modem %d\n", HISI_RDR_MOD_CP_3RD);
 	}
 	else
 	{

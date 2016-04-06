@@ -1904,9 +1904,9 @@ VOS_UINT32 TAF_APS_QueryPfIdInTft(
     ucPfNum         = g_TafCidTab[ucCid].ucPfNum;
 
     /* 循环查找索引值 */
-    for (ucIndex = 0; ucIndex< ucPfNum; ucIndex++)
+    for (ucIndex = 0; ucIndex < ucPfNum; ucIndex++)
     {
-        if (ucPacketFilterId == g_TafCidTab[ucCid].astTftTab[ucIndex].ucPacketFilterId)
+        if (ucPacketFilterId == g_TafCidTab[ucCid].astPfTab[ucIndex].ucPacketFilterId)
         {
             *pucPfIndex = ucIndex;
             return VOS_TRUE;
@@ -1955,8 +1955,8 @@ VOS_UINT32 TAF_APS_CheckTftInfoValid(
     /* 同一个Cid下,优先级不能相同*/
     for (ulIndex = 0; ulIndex < g_TafCidTab[pstTftInfo->ucCid].ucPfNum; ulIndex++)
     {
-        ucPfPrecedence  = g_TafCidTab[pstTftInfo->ucCid].astTftTab[ulIndex].ucPrecedence;
-        ucPfId          = g_TafCidTab[pstTftInfo->ucCid].astTftTab[ulIndex].ucPacketFilterId;
+        ucPfPrecedence  = g_TafCidTab[pstTftInfo->ucCid].astPfTab[ulIndex].ucPrecedence;
+        ucPfId          = g_TafCidTab[pstTftInfo->ucCid].astPfTab[ulIndex].ucPacketFilterId;
 
         /* 允许对同一个Packetfilter设置相同的优先级*/
         if ((ucPfPrecedence == pstTftInfo->ucPrecedence)
@@ -1995,34 +1995,34 @@ VOS_VOID TAF_APS_FillTftInfo(
     /* pstTftInfo, ucCid, ucPfIndex的有效性由主调函数保证 */
     if ( VOS_TRUE == pstTftInfo->bitOpPktFilterId )
     {
-        g_TafCidTab[ucCid].astTftTab[ucPfIndex].ucPacketFilterId = pstTftInfo->ucPacketFilterId;
+        g_TafCidTab[ucCid].astPfTab[ucPfIndex].ucPacketFilterId = pstTftInfo->ucPacketFilterId;
     }
 
     if ( VOS_TRUE == pstTftInfo->bitOpPrecedence )
     {
-        g_TafCidTab[ucCid].astTftTab[ucPfIndex].ucPrecedence      = pstTftInfo->ucPrecedence;
+        g_TafCidTab[ucCid].astPfTab[ucPfIndex].ucPrecedence      = pstTftInfo->ucPrecedence;
     }
 
     if ( VOS_TRUE == pstTftInfo->bitOpSrcPortRange )
     {
         if(pstTftInfo->usLowSourcePort == pstTftInfo->usHighSourcePort)
         {
-            g_TafCidTab[ucCid].astTftTab[ucPfIndex].bitOpSingleRemotePort = VOS_TRUE;
-            g_TafCidTab[ucCid].astTftTab[ucPfIndex].bitOpRemotePortRange  = VOS_FALSE;
-            g_TafCidTab[ucCid].astTftTab[ucPfIndex].usSingleRmtPort       = pstTftInfo->usLowSourcePort;
+            g_TafCidTab[ucCid].astPfTab[ucPfIndex].bitOpSingleRemotePort = VOS_TRUE;
+            g_TafCidTab[ucCid].astPfTab[ucPfIndex].bitOpRemotePortRange  = VOS_FALSE;
+            g_TafCidTab[ucCid].astPfTab[ucPfIndex].usSingleRmtPort       = pstTftInfo->usLowSourcePort;
         }
         else if(pstTftInfo->usLowSourcePort < pstTftInfo->usHighSourcePort)
         {
-            g_TafCidTab[ucCid].astTftTab[ucPfIndex].bitOpSingleRemotePort = VOS_FALSE;
-            g_TafCidTab[ucCid].astTftTab[ucPfIndex].bitOpRemotePortRange  = VOS_TRUE;
+            g_TafCidTab[ucCid].astPfTab[ucPfIndex].bitOpSingleRemotePort = VOS_FALSE;
+            g_TafCidTab[ucCid].astPfTab[ucPfIndex].bitOpRemotePortRange  = VOS_TRUE;
 
-            g_TafCidTab[ucCid].astTftTab[ucPfIndex].usRmtPortHighLimit    = pstTftInfo->usHighSourcePort;
-            g_TafCidTab[ucCid].astTftTab[ucPfIndex].usRmtPortLowLimit     = pstTftInfo->usLowSourcePort;
+            g_TafCidTab[ucCid].astPfTab[ucPfIndex].usRmtPortHighLimit    = pstTftInfo->usHighSourcePort;
+            g_TafCidTab[ucCid].astPfTab[ucPfIndex].usRmtPortLowLimit     = pstTftInfo->usLowSourcePort;
         }
         else
         {
-            g_TafCidTab[ucCid].astTftTab[ucPfIndex].bitOpSingleRemotePort = VOS_FALSE;
-            g_TafCidTab[ucCid].astTftTab[ucPfIndex].bitOpRemotePortRange  = VOS_FALSE;
+            g_TafCidTab[ucCid].astPfTab[ucPfIndex].bitOpSingleRemotePort = VOS_FALSE;
+            g_TafCidTab[ucCid].astPfTab[ucPfIndex].bitOpRemotePortRange  = VOS_FALSE;
         }
 
     }
@@ -2031,22 +2031,22 @@ VOS_VOID TAF_APS_FillTftInfo(
     {
         if(pstTftInfo->usLowDestPort == pstTftInfo->usHighDestPort)
         {
-            g_TafCidTab[ucCid].astTftTab[ucPfIndex].bitOpSingleLocalPort = VOS_TRUE;
-            g_TafCidTab[ucCid].astTftTab[ucPfIndex].bitOpLocalPortRange  = VOS_FALSE;
-            g_TafCidTab[ucCid].astTftTab[ucPfIndex].usSingleLcPort       = pstTftInfo->usLowDestPort;
+            g_TafCidTab[ucCid].astPfTab[ucPfIndex].bitOpSingleLocalPort = VOS_TRUE;
+            g_TafCidTab[ucCid].astPfTab[ucPfIndex].bitOpLocalPortRange  = VOS_FALSE;
+            g_TafCidTab[ucCid].astPfTab[ucPfIndex].usSingleLcPort       = pstTftInfo->usLowDestPort;
         }
         else if(pstTftInfo->usLowDestPort < pstTftInfo->usHighDestPort)
         {
-            g_TafCidTab[ucCid].astTftTab[ucPfIndex].bitOpSingleLocalPort = VOS_FALSE;
-            g_TafCidTab[ucCid].astTftTab[ucPfIndex].bitOpLocalPortRange = VOS_TRUE;
+            g_TafCidTab[ucCid].astPfTab[ucPfIndex].bitOpSingleLocalPort = VOS_FALSE;
+            g_TafCidTab[ucCid].astPfTab[ucPfIndex].bitOpLocalPortRange = VOS_TRUE;
 
-            g_TafCidTab[ucCid].astTftTab[ucPfIndex].usLcPortLowLimit = pstTftInfo->usLowDestPort;
-            g_TafCidTab[ucCid].astTftTab[ucPfIndex].usLcPortHighLimit = pstTftInfo->usHighDestPort;
+            g_TafCidTab[ucCid].astPfTab[ucPfIndex].usLcPortLowLimit = pstTftInfo->usLowDestPort;
+            g_TafCidTab[ucCid].astPfTab[ucPfIndex].usLcPortHighLimit = pstTftInfo->usHighDestPort;
         }
         else
         {
-            g_TafCidTab[ucCid].astTftTab[ucPfIndex].bitOpSingleLocalPort = VOS_FALSE;
-            g_TafCidTab[ucCid].astTftTab[ucPfIndex].bitOpLocalPortRange  = VOS_FALSE;
+            g_TafCidTab[ucCid].astPfTab[ucPfIndex].bitOpSingleLocalPort = VOS_FALSE;
+            g_TafCidTab[ucCid].astPfTab[ucPfIndex].bitOpLocalPortRange  = VOS_FALSE;
         }
 
     }
@@ -2055,55 +2055,55 @@ VOS_VOID TAF_APS_FillTftInfo(
     {
         if (TAF_PDP_IPV4 == pstTftInfo->stSourceIpaddr.enPdpType )
         {
-            g_TafCidTab[ucCid].astTftTab[ucPfIndex].bitOpRmtIpv4AddrAndMask = VOS_TRUE;
-            PS_MEM_CPY(g_TafCidTab[ucCid].astTftTab[ucPfIndex].aucRmtIpv4Address,
+            g_TafCidTab[ucCid].astPfTab[ucPfIndex].bitOpRmtIpv4AddrAndMask = VOS_TRUE;
+            PS_MEM_CPY(g_TafCidTab[ucCid].astPfTab[ucPfIndex].aucRmtIpv4Address,
                        pstTftInfo->stSourceIpaddr.aucIpv4Addr,
                        TAF_IPV4_ADDR_LEN * sizeof(VOS_UINT8));
-            PS_MEM_CPY(g_TafCidTab[ucCid].astTftTab[ucPfIndex].aucRmtIpv4Mask,
+            PS_MEM_CPY(g_TafCidTab[ucCid].astPfTab[ucPfIndex].aucRmtIpv4Mask,
                        pstTftInfo->stSourceIpMask.aucIpv4Addr,
                        TAF_IPV4_ADDR_LEN * sizeof(VOS_UINT8));
 
-            g_TafCidTab[ucCid].astTftTab[ucPfIndex].bitOpRmtIpv6AddrAndMask = VOS_FALSE;
-            PS_MEM_SET(g_TafCidTab[ucCid].astTftTab[ucPfIndex].aucRmtIpv6Address,
+            g_TafCidTab[ucCid].astPfTab[ucPfIndex].bitOpRmtIpv6AddrAndMask = VOS_FALSE;
+            PS_MEM_SET(g_TafCidTab[ucCid].astPfTab[ucPfIndex].aucRmtIpv6Address,
                        0x00,
                        TAF_IPV6_ADDR_LEN * sizeof(VOS_UINT8));
-            PS_MEM_SET(g_TafCidTab[ucCid].astTftTab[ucPfIndex].aucRmtIpv6Mask,
+            PS_MEM_SET(g_TafCidTab[ucCid].astPfTab[ucPfIndex].aucRmtIpv6Mask,
                        0x00,
                        TAF_IPV6_ADDR_LEN * sizeof(VOS_UINT8));
         }
         else if (TAF_PDP_IPV6 == pstTftInfo->stSourceIpaddr.enPdpType )
         {
-            g_TafCidTab[ucCid].astTftTab[ucPfIndex].bitOpRmtIpv6AddrAndMask = VOS_TRUE;
-            PS_MEM_CPY(g_TafCidTab[ucCid].astTftTab[ucPfIndex].aucRmtIpv6Address,
+            g_TafCidTab[ucCid].astPfTab[ucPfIndex].bitOpRmtIpv6AddrAndMask = VOS_TRUE;
+            PS_MEM_CPY(g_TafCidTab[ucCid].astPfTab[ucPfIndex].aucRmtIpv6Address,
                        pstTftInfo->stSourceIpaddr.aucIpv6Addr,
                        TAF_IPV6_ADDR_LEN * sizeof(VOS_UINT8));
-            PS_MEM_CPY(g_TafCidTab[ucCid].astTftTab[ucPfIndex].aucRmtIpv6Mask,
+            PS_MEM_CPY(g_TafCidTab[ucCid].astPfTab[ucPfIndex].aucRmtIpv6Mask,
                        pstTftInfo->stSourceIpMask.aucIpv6Addr,
                        TAF_IPV6_ADDR_LEN * sizeof(VOS_UINT8));
 
-            g_TafCidTab[ucCid].astTftTab[ucPfIndex].bitOpRmtIpv4AddrAndMask = VOS_FALSE;
-            PS_MEM_SET(g_TafCidTab[ucCid].astTftTab[ucPfIndex].aucRmtIpv4Address,
+            g_TafCidTab[ucCid].astPfTab[ucPfIndex].bitOpRmtIpv4AddrAndMask = VOS_FALSE;
+            PS_MEM_SET(g_TafCidTab[ucCid].astPfTab[ucPfIndex].aucRmtIpv4Address,
                        0x00,
                        TAF_IPV4_ADDR_LEN * sizeof(VOS_UINT8));
-            PS_MEM_SET(g_TafCidTab[ucCid].astTftTab[ucPfIndex].aucRmtIpv4Mask,
+            PS_MEM_SET(g_TafCidTab[ucCid].astPfTab[ucPfIndex].aucRmtIpv4Mask,
                        0x00,
                        TAF_IPV4_ADDR_LEN * sizeof(VOS_UINT8));
         }
         else
         {
-            g_TafCidTab[ucCid].astTftTab[ucPfIndex].bitOpRmtIpv4AddrAndMask = VOS_TRUE;
-            PS_MEM_CPY(g_TafCidTab[ucCid].astTftTab[ucPfIndex].aucRmtIpv4Address,
+            g_TafCidTab[ucCid].astPfTab[ucPfIndex].bitOpRmtIpv4AddrAndMask = VOS_TRUE;
+            PS_MEM_CPY(g_TafCidTab[ucCid].astPfTab[ucPfIndex].aucRmtIpv4Address,
                        pstTftInfo->stSourceIpaddr.aucIpv4Addr,
                        TAF_IPV4_ADDR_LEN * sizeof(VOS_UINT8));
-            PS_MEM_CPY(g_TafCidTab[ucCid].astTftTab[ucPfIndex].aucRmtIpv4Mask,
+            PS_MEM_CPY(g_TafCidTab[ucCid].astPfTab[ucPfIndex].aucRmtIpv4Mask,
                        pstTftInfo->stSourceIpMask.aucIpv4Addr,
                        TAF_IPV4_ADDR_LEN * sizeof(VOS_UINT8));
 
-            g_TafCidTab[ucCid].astTftTab[ucPfIndex].bitOpRmtIpv6AddrAndMask = VOS_TRUE;
-            PS_MEM_CPY(g_TafCidTab[ucCid].astTftTab[ucPfIndex].aucRmtIpv6Address,
+            g_TafCidTab[ucCid].astPfTab[ucPfIndex].bitOpRmtIpv6AddrAndMask = VOS_TRUE;
+            PS_MEM_CPY(g_TafCidTab[ucCid].astPfTab[ucPfIndex].aucRmtIpv6Address,
                        pstTftInfo->stSourceIpaddr.aucIpv6Addr,
                        TAF_IPV6_ADDR_LEN * sizeof(VOS_UINT8));
-            PS_MEM_CPY(g_TafCidTab[ucCid].astTftTab[ucPfIndex].aucRmtIpv6Mask,
+            PS_MEM_CPY(g_TafCidTab[ucCid].astPfTab[ucPfIndex].aucRmtIpv6Mask,
                        pstTftInfo->stSourceIpMask.aucIpv6Addr,
                        TAF_IPV6_ADDR_LEN * sizeof(VOS_UINT8));
         }
@@ -2111,37 +2111,37 @@ VOS_VOID TAF_APS_FillTftInfo(
 
     if ( VOS_TRUE == pstTftInfo->bitOpTosMask )
     {
-        g_TafCidTab[ucCid].astTftTab[ucPfIndex].bitOpTypeOfService   = VOS_TRUE;
-        g_TafCidTab[ucCid].astTftTab[ucPfIndex].ucTypeOfService      = pstTftInfo->ucTypeOfService;
-        g_TafCidTab[ucCid].astTftTab[ucPfIndex].ucTypeOfServiceMask  = pstTftInfo->ucTypeOfServiceMask;
+        g_TafCidTab[ucCid].astPfTab[ucPfIndex].bitOpTypeOfService   = VOS_TRUE;
+        g_TafCidTab[ucCid].astPfTab[ucPfIndex].ucTypeOfService      = pstTftInfo->ucTypeOfService;
+        g_TafCidTab[ucCid].astPfTab[ucPfIndex].ucTypeOfServiceMask  = pstTftInfo->ucTypeOfServiceMask;
     }
 
     if ( VOS_TRUE == pstTftInfo->bitOpProtocolId )
     {
-        g_TafCidTab[ucCid].astTftTab[ucPfIndex].bitOpProtocolId    = VOS_TRUE;
-        g_TafCidTab[ucCid].astTftTab[ucPfIndex].ucProtocolId       = pstTftInfo->ucProtocolId;
+        g_TafCidTab[ucCid].astPfTab[ucPfIndex].bitOpProtocolId    = VOS_TRUE;
+        g_TafCidTab[ucCid].astPfTab[ucPfIndex].ucProtocolId       = pstTftInfo->ucProtocolId;
     }
 
     if ( VOS_TRUE == pstTftInfo->bitOpSpi )
     {
-        g_TafCidTab[ucCid].astTftTab[ucPfIndex].bitOpSecuParaIndex = VOS_TRUE;
-        g_TafCidTab[ucCid].astTftTab[ucPfIndex].ulSecuParaIndex    = pstTftInfo->ulSecuParaIndex;
+        g_TafCidTab[ucCid].astPfTab[ucPfIndex].bitOpSecuParaIndex = VOS_TRUE;
+        g_TafCidTab[ucCid].astPfTab[ucPfIndex].ulSecuParaIndex    = pstTftInfo->ulSecuParaIndex;
     }
 
     if ( VOS_TRUE == pstTftInfo->bitOpNwPktFilterId )
     {
-        g_TafCidTab[ucCid].astTftTab[ucPfIndex].ucNwPacketFilterId = pstTftInfo->ucNwPktFilterId;
+        g_TafCidTab[ucCid].astPfTab[ucPfIndex].ucNwPacketFilterId = pstTftInfo->ucNwPktFilterId;
     }
 
     if ( VOS_TRUE == pstTftInfo->bitOpFlowLable )
     {
-        g_TafCidTab[ucCid].astTftTab[ucPfIndex].bitOpFlowLabelType = VOS_TRUE;
-        g_TafCidTab[ucCid].astTftTab[ucPfIndex].ulFlowLabelType    = pstTftInfo->ulFlowLable;
+        g_TafCidTab[ucCid].astPfTab[ucPfIndex].bitOpFlowLabelType = VOS_TRUE;
+        g_TafCidTab[ucCid].astPfTab[ucPfIndex].ulFlowLabelType    = pstTftInfo->ulFlowLable;
     }
 
     if ( VOS_TRUE == pstTftInfo->bitOpDirection)
     {
-        g_TafCidTab[ucCid].astTftTab[ucPfIndex].enDirection = pstTftInfo->ucDirection;
+        g_TafCidTab[ucCid].astPfTab[ucPfIndex].enDirection = pstTftInfo->ucDirection;
     }
 
     return;
@@ -2183,18 +2183,18 @@ VOS_VOID TAF_APS_SetTftInfo(
         }
 
         /* 根据ucCid，删除本地相应结构中的TFT信息 */
-        g_TafCidTab[pstTftInfo->ucCid].ucTftTabFlag = APS_FREE;
+        g_TafCidTab[pstTftInfo->ucCid].ucPfTabFlag  = APS_FREE;
         g_TafCidTab[pstTftInfo->ucCid].ucPfNum      = VOS_NULL;
 
-        PS_MEM_SET((VOS_UINT32 *)(g_TafCidTab[pstTftInfo->ucCid].astTftTab),
+        PS_MEM_SET((VOS_UINT32 *)(g_TafCidTab[pstTftInfo->ucCid].astPfTab),
                    VOS_NULL,
-                   sizeof(TAF_PDP_TFT_STRU) * TAF_MAX_SDF_PF_NUM);
+                   sizeof(TAF_PDP_PF_STRU) * TAF_MAX_SDF_PF_NUM);
         *pulErrCode = TAF_PARA_OK;
     }
     else
     {
         /* 定义或者修改TFT参数 */
-        g_TafCidTab[pstTftInfo->ucCid].ucTftTabFlag = APS_USED;
+        g_TafCidTab[pstTftInfo->ucCid].ucPfTabFlag = APS_USED;
 
         /* 检查设置的TFT参数 */
         if (VOS_FALSE == TAF_APS_CheckTftInfoValid(pstTftInfo, &ucPfIndex))
@@ -2244,50 +2244,50 @@ VOS_VOID TAF_APS_FillTftQryParam(
     /* 循环填充所有的TFT参数 */
     for (ucIndex = 0; ucIndex < pPdpTftPara->ucPfNum; ucIndex++)
     {
-        pPdpTftPara->astTftInfo[ucIndex].bitOpRmtIpv4AddrAndMask    = g_TafCidTab[ucCid].astTftTab[ucIndex].bitOpRmtIpv4AddrAndMask;
-        pPdpTftPara->astTftInfo[ucIndex].bitOpRmtIpv6AddrAndMask    = g_TafCidTab[ucCid].astTftTab[ucIndex].bitOpRmtIpv6AddrAndMask;
-        pPdpTftPara->astTftInfo[ucIndex].bitOpProtocolId            = g_TafCidTab[ucCid].astTftTab[ucIndex].bitOpProtocolId;
-        pPdpTftPara->astTftInfo[ucIndex].bitOpSingleLocalPort       = g_TafCidTab[ucCid].astTftTab[ucIndex].bitOpSingleLocalPort;
-        pPdpTftPara->astTftInfo[ucIndex].bitOpLocalPortRange        = g_TafCidTab[ucCid].astTftTab[ucIndex].bitOpLocalPortRange;
-        pPdpTftPara->astTftInfo[ucIndex].bitOpSingleRemotePort      = g_TafCidTab[ucCid].astTftTab[ucIndex].bitOpSingleRemotePort;
-        pPdpTftPara->astTftInfo[ucIndex].bitOpRemotePortRange       = g_TafCidTab[ucCid].astTftTab[ucIndex].bitOpRemotePortRange;
-        pPdpTftPara->astTftInfo[ucIndex].bitOpSecuParaIndex         = g_TafCidTab[ucCid].astTftTab[ucIndex].bitOpSecuParaIndex;
-        pPdpTftPara->astTftInfo[ucIndex].bitOpTypeOfService         = g_TafCidTab[ucCid].astTftTab[ucIndex].bitOpTypeOfService;
-        pPdpTftPara->astTftInfo[ucIndex].bitOpFlowLabelType         = g_TafCidTab[ucCid].astTftTab[ucIndex].bitOpFlowLabelType;
-        pPdpTftPara->astTftInfo[ucIndex].bitOpSpare                 = g_TafCidTab[ucCid].astTftTab[ucIndex].bitOpSpare;
-        pPdpTftPara->astTftInfo[ucIndex].ucPacketFilterId           = g_TafCidTab[ucCid].astTftTab[ucIndex].ucPacketFilterId;
-        pPdpTftPara->astTftInfo[ucIndex].ucNwPacketFilterId         = g_TafCidTab[ucCid].astTftTab[ucIndex].ucNwPacketFilterId;
-        pPdpTftPara->astTftInfo[ucIndex].enDirection                = g_TafCidTab[ucCid].astTftTab[ucIndex].enDirection;
-        pPdpTftPara->astTftInfo[ucIndex].ucPrecedence               = g_TafCidTab[ucCid].astTftTab[ucIndex].ucPrecedence;
+        pPdpTftPara->astPfInfo[ucIndex].bitOpRmtIpv4AddrAndMask    = g_TafCidTab[ucCid].astPfTab[ucIndex].bitOpRmtIpv4AddrAndMask;
+        pPdpTftPara->astPfInfo[ucIndex].bitOpRmtIpv6AddrAndMask    = g_TafCidTab[ucCid].astPfTab[ucIndex].bitOpRmtIpv6AddrAndMask;
+        pPdpTftPara->astPfInfo[ucIndex].bitOpProtocolId            = g_TafCidTab[ucCid].astPfTab[ucIndex].bitOpProtocolId;
+        pPdpTftPara->astPfInfo[ucIndex].bitOpSingleLocalPort       = g_TafCidTab[ucCid].astPfTab[ucIndex].bitOpSingleLocalPort;
+        pPdpTftPara->astPfInfo[ucIndex].bitOpLocalPortRange        = g_TafCidTab[ucCid].astPfTab[ucIndex].bitOpLocalPortRange;
+        pPdpTftPara->astPfInfo[ucIndex].bitOpSingleRemotePort      = g_TafCidTab[ucCid].astPfTab[ucIndex].bitOpSingleRemotePort;
+        pPdpTftPara->astPfInfo[ucIndex].bitOpRemotePortRange       = g_TafCidTab[ucCid].astPfTab[ucIndex].bitOpRemotePortRange;
+        pPdpTftPara->astPfInfo[ucIndex].bitOpSecuParaIndex         = g_TafCidTab[ucCid].astPfTab[ucIndex].bitOpSecuParaIndex;
+        pPdpTftPara->astPfInfo[ucIndex].bitOpTypeOfService         = g_TafCidTab[ucCid].astPfTab[ucIndex].bitOpTypeOfService;
+        pPdpTftPara->astPfInfo[ucIndex].bitOpFlowLabelType         = g_TafCidTab[ucCid].astPfTab[ucIndex].bitOpFlowLabelType;
+        pPdpTftPara->astPfInfo[ucIndex].bitOpSpare                 = g_TafCidTab[ucCid].astPfTab[ucIndex].bitOpSpare;
+        pPdpTftPara->astPfInfo[ucIndex].ucPacketFilterId           = g_TafCidTab[ucCid].astPfTab[ucIndex].ucPacketFilterId;
+        pPdpTftPara->astPfInfo[ucIndex].ucNwPacketFilterId         = g_TafCidTab[ucCid].astPfTab[ucIndex].ucNwPacketFilterId;
+        pPdpTftPara->astPfInfo[ucIndex].enDirection                = g_TafCidTab[ucCid].astPfTab[ucIndex].enDirection;
+        pPdpTftPara->astPfInfo[ucIndex].ucPrecedence               = g_TafCidTab[ucCid].astPfTab[ucIndex].ucPrecedence;
 
-        pPdpTftPara->astTftInfo[ucIndex].ulSecuParaIndex            = g_TafCidTab[ucCid].astTftTab[ucIndex].ulSecuParaIndex;
-        pPdpTftPara->astTftInfo[ucIndex].usSingleLcPort             = g_TafCidTab[ucCid].astTftTab[ucIndex].usSingleLcPort;
-        pPdpTftPara->astTftInfo[ucIndex].usLcPortHighLimit          = g_TafCidTab[ucCid].astTftTab[ucIndex].usLcPortHighLimit;
-        pPdpTftPara->astTftInfo[ucIndex].usLcPortLowLimit           = g_TafCidTab[ucCid].astTftTab[ucIndex].usLcPortLowLimit;
-        pPdpTftPara->astTftInfo[ucIndex].usSingleRmtPort            = g_TafCidTab[ucCid].astTftTab[ucIndex].usSingleRmtPort;
-        pPdpTftPara->astTftInfo[ucIndex].usRmtPortHighLimit         = g_TafCidTab[ucCid].astTftTab[ucIndex].usRmtPortHighLimit;
-        pPdpTftPara->astTftInfo[ucIndex].usRmtPortLowLimit          = g_TafCidTab[ucCid].astTftTab[ucIndex].usRmtPortLowLimit;
-        pPdpTftPara->astTftInfo[ucIndex].ucProtocolId               = g_TafCidTab[ucCid].astTftTab[ucIndex].ucProtocolId;
-        pPdpTftPara->astTftInfo[ucIndex].ucTypeOfService            = g_TafCidTab[ucCid].astTftTab[ucIndex].ucTypeOfService;
-        pPdpTftPara->astTftInfo[ucIndex].ucTypeOfServiceMask        = g_TafCidTab[ucCid].astTftTab[ucIndex].ucTypeOfServiceMask;
+        pPdpTftPara->astPfInfo[ucIndex].ulSecuParaIndex            = g_TafCidTab[ucCid].astPfTab[ucIndex].ulSecuParaIndex;
+        pPdpTftPara->astPfInfo[ucIndex].usSingleLcPort             = g_TafCidTab[ucCid].astPfTab[ucIndex].usSingleLcPort;
+        pPdpTftPara->astPfInfo[ucIndex].usLcPortHighLimit          = g_TafCidTab[ucCid].astPfTab[ucIndex].usLcPortHighLimit;
+        pPdpTftPara->astPfInfo[ucIndex].usLcPortLowLimit           = g_TafCidTab[ucCid].astPfTab[ucIndex].usLcPortLowLimit;
+        pPdpTftPara->astPfInfo[ucIndex].usSingleRmtPort            = g_TafCidTab[ucCid].astPfTab[ucIndex].usSingleRmtPort;
+        pPdpTftPara->astPfInfo[ucIndex].usRmtPortHighLimit         = g_TafCidTab[ucCid].astPfTab[ucIndex].usRmtPortHighLimit;
+        pPdpTftPara->astPfInfo[ucIndex].usRmtPortLowLimit          = g_TafCidTab[ucCid].astPfTab[ucIndex].usRmtPortLowLimit;
+        pPdpTftPara->astPfInfo[ucIndex].ucProtocolId               = g_TafCidTab[ucCid].astPfTab[ucIndex].ucProtocolId;
+        pPdpTftPara->astPfInfo[ucIndex].ucTypeOfService            = g_TafCidTab[ucCid].astPfTab[ucIndex].ucTypeOfService;
+        pPdpTftPara->astPfInfo[ucIndex].ucTypeOfServiceMask        = g_TafCidTab[ucCid].astPfTab[ucIndex].ucTypeOfServiceMask;
 
-        PS_MEM_CPY(pPdpTftPara->astTftInfo[ucIndex].aucRmtIpv4Address,
-                   g_TafCidTab[ucCid].astTftTab[ucIndex].aucRmtIpv4Address,
+        PS_MEM_CPY(pPdpTftPara->astPfInfo[ucIndex].aucRmtIpv4Address,
+                   g_TafCidTab[ucCid].astPfTab[ucIndex].aucRmtIpv4Address,
                    TAF_IPV4_ADDR_LEN * sizeof(VOS_UINT8));
 
-        PS_MEM_CPY(pPdpTftPara->astTftInfo[ucIndex].aucRmtIpv4Mask,
-                   g_TafCidTab[ucCid].astTftTab[ucIndex].aucRmtIpv4Mask,
+        PS_MEM_CPY(pPdpTftPara->astPfInfo[ucIndex].aucRmtIpv4Mask,
+                   g_TafCidTab[ucCid].astPfTab[ucIndex].aucRmtIpv4Mask,
                    TAF_IPV4_ADDR_LEN * sizeof(VOS_UINT8));
 
-        PS_MEM_CPY(pPdpTftPara->astTftInfo[ucIndex].aucRmtIpv6Address,
-                   g_TafCidTab[ucCid].astTftTab[ucIndex].aucRmtIpv6Address,
+        PS_MEM_CPY(pPdpTftPara->astPfInfo[ucIndex].aucRmtIpv6Address,
+                   g_TafCidTab[ucCid].astPfTab[ucIndex].aucRmtIpv6Address,
                    TAF_IPV6_ADDR_LEN * sizeof(VOS_UINT8));
 
-        PS_MEM_CPY(pPdpTftPara->astTftInfo[ucIndex].aucRmtIpv6Mask,
-                   g_TafCidTab[ucCid].astTftTab[ucIndex].aucRmtIpv6Mask,
+        PS_MEM_CPY(pPdpTftPara->astPfInfo[ucIndex].aucRmtIpv6Mask,
+                   g_TafCidTab[ucCid].astPfTab[ucIndex].aucRmtIpv6Mask,
                    TAF_IPV6_ADDR_LEN * sizeof(VOS_UINT8));
 
-        pPdpTftPara->astTftInfo[ucIndex].ulFlowLabelType            = g_TafCidTab[ucCid].astTftTab[ucIndex].ulFlowLabelType;
+        pPdpTftPara->astPfInfo[ucIndex].ulFlowLabelType            = g_TafCidTab[ucCid].astPfTab[ucIndex].ulFlowLabelType;
     }
 
     return;

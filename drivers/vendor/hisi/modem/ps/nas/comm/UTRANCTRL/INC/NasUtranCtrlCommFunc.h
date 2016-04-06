@@ -140,11 +140,19 @@ VOS_VOID NAS_UTRANCTRL_SndGuAsSpecPlmnSearchReq(
 
 VOS_UINT32 NAS_UTRANCTRL_IsSndOmPcRecurMsgValid(VOS_VOID);
 
+VOS_UINT32 NAS_UTRANCTRL_IsNeedUtranCtrlFsmProcMsg(
+    struct MsgCB                       *pstMsg
+);
+
 VOS_UINT32 NAS_UTRANCTRL_IsNeedSndAnotherUtranModeMsg(
     struct MsgCB                      *pstMsg
 );
 
 VOS_UINT32 NAS_UTRANCTRL_IsNeedSkipSearchUtranFddMode(
+    struct MsgCB                       *pstMsg
+);
+
+VOS_UINT32 NAS_UTRANCTRL_IsNeedSkipSearchUtranTddMode(
     struct MsgCB                       *pstMsg
 );
 
@@ -184,6 +192,13 @@ VOS_UINT32 NAS_UTRANCTRL_StopUtranFddModeMsgTimer(
 VOS_UINT32 NAS_UTRANCTRL_StopUtranModeMsgTimer_SndUtranAsMsgPreProcessMsg(
     VOS_UINT32                          ulSndPid,
     struct MsgCB                       *pstMsg
+);
+
+
+
+VOS_UINT32 NAS_UTRANCTRL_IsSpecPlmnMccInGuRrcPlmnIdList(
+    VOS_UINT32                          ulSpecPlmnMcc,
+    RRC_PLMN_ID_LIST_STRU              *pstGuPlmnIdList
 );
 
 

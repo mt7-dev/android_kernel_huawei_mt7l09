@@ -56,9 +56,43 @@ extern "C" {
         (rstLo) = (argALo) - (argBLo); \
     }
 
+/* 64位长整型运算，比较 : rst = (argA > argB) ? GREAT : ((argA == argB) ? EQUAL : LESS) */
+#define TAF_APS_BIT64_COMPARE(argAHi, argALo, argBHi, argBLo, result) \
+    {\
+        if ((argAHi) > (argBHi))\
+        {\
+            result = TAF_APS_BIT64_GREAT;\
+        }\
+        else if (((argAHi) == (argBHi)) && ((argALo) > (argBLo)))\
+        {\
+            result = TAF_APS_BIT64_GREAT;\
+        }\
+        else if (((argAHi) == (argBHi)) && ((argALo) == (argBLo)))\
+        {\
+            result = TAF_APS_BIT64_EQUAL;\
+        }\
+        else\
+        {\
+            result = TAF_APS_BIT64_LESS;\
+        }\
+    }
+
+
 /*****************************************************************************
   3 枚举定义
 *****************************************************************************/
+
+/*****************************************************************************
+ 枚举名称  : TAF_APS_BIT64_CMP_RSLT_ENUM
+ 枚举说明  : 64位整型比较结果
+*****************************************************************************/
+enum TAF_APS_BIT64_CMP_RSLT_ENUM
+{
+    TAF_APS_BIT64_GREAT                 = 0,
+    TAF_APS_BIT64_EQUAL,
+    TAF_APS_BIT64_LESS
+};
+typedef VOS_UINT32 TAF_APS_BIT64_CMP_RSLT_ENUM_UINT32;
 
 
 /*****************************************************************************
@@ -149,6 +183,9 @@ VOS_UINT32  TAF_APS_CalcDsflowRate(
     VOS_UINT32                          ulPeriod,
     VOS_UINT32                         *pulRate
 );
+
+VOS_VOID TAF_APS_ClearApDsFlowStats(VOS_VOID);
+VOS_VOID TAF_APS_ProcApDsFlowRpt(VOS_VOID);
 
 VOS_VOID TAF_APS_ReleaseDfs(VOS_VOID);
 VOS_VOID TAF_APS_SwitchDdrRateByCurrentRate(

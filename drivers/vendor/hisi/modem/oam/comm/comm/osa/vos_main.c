@@ -426,12 +426,13 @@ extern unsigned int is_load_modem(void);
 VOS_INT VOS_ModuleInit(VOS_VOID)
 {
 #ifdef BSP_CONFIG_HI3630
-	/* 如果是升级模式，则不启动VOS */
-	if(!is_load_modem())
-	{
+    /* 如果是升级模式，则不启动VOS */
+    if(!is_load_modem())
+
+    {
         Print("update or charge mode, will not start vos.\r\n");
-		return 0;
-	}
+        return 0;
+    }
 #endif
     APP_VCOM_Init();
 

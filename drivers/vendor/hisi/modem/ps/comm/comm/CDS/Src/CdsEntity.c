@@ -917,7 +917,7 @@ VOS_UINT32 CDS_FidInit(enum VOS_INIT_PHASE_DEFINE enPhase)
             }
 
             /*同LRLCMAC_DL任务优先级相同*/
-            ulResult = VOS_RegisterMsgTaskPrio(UEPS_FID_CDS, VOS_PRIORITY_P4);
+            ulResult = VOS_RegisterMsgTaskPrio(UEPS_FID_CDS, VOS_PRIORITY_P3);
 
             if( PS_SUCC != ulResult )
             {

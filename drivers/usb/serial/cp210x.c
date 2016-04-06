@@ -104,6 +104,7 @@ static const struct usb_device_id id_table[] = {
 	{ USB_DEVICE(0x10C4, 0x8218) }, /* Lipowsky Industrie Elektronik GmbH, HARP-1 */
 	{ USB_DEVICE(0x10C4, 0x822B) }, /* Modem EDGE(GSM) Comander 2 */
 	{ USB_DEVICE(0x10C4, 0x826B) }, /* Cygnal Integrated Products, Inc., Fasttrax GPS demonstration module */
+	{ USB_DEVICE(0x10C4, 0x8281) }, /* Nanotec Plug & Drive */
 	{ USB_DEVICE(0x10C4, 0x8293) }, /* Telegesis ETRX2USB */
 	{ USB_DEVICE(0x10C4, 0x82F9) }, /* Procyon AVS */
 	{ USB_DEVICE(0x10C4, 0x8341) }, /* Siemens MC35PU GPRS Modem */
@@ -121,6 +122,7 @@ static const struct usb_device_id id_table[] = {
 	{ USB_DEVICE(0x10C4, 0x8665) }, /* AC-Services OBD-IF */
 	{ USB_DEVICE(0x10C4, 0x88A4) }, /* MMB Networks ZigBee USB Device */
 	{ USB_DEVICE(0x10C4, 0x88A5) }, /* Planet Innovation Ingeni ZigBee USB Device */
+	{ USB_DEVICE(0x10C4, 0x8946) }, /* Ketra N1 Wireless Interface */
 	{ USB_DEVICE(0x10C4, 0xEA60) }, /* Silicon Labs factory default */
 	{ USB_DEVICE(0x10C4, 0xEA61) }, /* Silicon Labs factory default */
 	{ USB_DEVICE(0x10C4, 0xEA70) }, /* Silicon Labs factory default */
@@ -152,7 +154,10 @@ static const struct usb_device_id id_table[] = {
 	{ USB_DEVICE(0x1843, 0x0200) }, /* Vaisala USB Instrument Cable */
 	{ USB_DEVICE(0x18EF, 0xE00F) }, /* ELV USB-I2C-Interface */
 	{ USB_DEVICE(0x1ADB, 0x0001) }, /* Schweitzer Engineering C662 Cable */
+	{ USB_DEVICE(0x1B1C, 0x1C00) }, /* Corsair USB Dongle */
+	{ USB_DEVICE(0x1BA4, 0x0002) },	/* Silicon Labs 358x factory default */
 	{ USB_DEVICE(0x1BE3, 0x07A6) }, /* WAGO 750-923 USB Service Cable */
+	{ USB_DEVICE(0x1D6F, 0x0010) }, /* Seluxit ApS RF Dongle */
 	{ USB_DEVICE(0x1E29, 0x0102) }, /* Festo CPX-USB */
 	{ USB_DEVICE(0x1E29, 0x0501) }, /* Festo CMSP */
 	{ USB_DEVICE(0x1FB9, 0x0100) }, /* Lake Shore Model 121 Current Source */
@@ -609,32 +614,7 @@ static void cp210x_get_termios_port(struct usb_serial_port *port,
 	*cflagp = cflag;
 }
 
-/*
- * CP2101 supports the following baud rates:
- *
- *	300, 600, 1200, 1800, 2400, 4800, 7200, 9600, 14400, 19200, 28800,
- *	38400, 56000, 57600, 115200, 128000, 230400, 460800, 921600
- *
- * CP2102 and CP2103 support the following additional rates:
- *
- *	4000, 16000, 51200, 64000, 76800, 153600, 250000, 256000, 500000,
- *	576000
- *
- * The device will map a requested rate to a supported one, but the result
- * of requests for rates greater than 1053257 is undefined (see AN205).
- *
- * CP2104, CP2105 and CP2110 support most rates up to 2M, 921k and 1M baud,
- * respectively, with an error less than 1%. The actual rates are determined
- * by
- *
- *	div = round(freq / (2 x prescale x request))
- *	actual = freq / (2 x prescale x div)
- *
- * For CP2104 and CP2105 freq is 48Mhz and prescale is 4 for request <= 365bps
- * or 1 otherwise.
- * For CP2110 freq is 24Mhz and prescale is 4 for request <= 300bps or 1
- * otherwise.
- */
+
 static void cp210x_change_speed(struct tty_struct *tty,
 		struct usb_serial_port *port, struct ktermios *old_termios)
 {

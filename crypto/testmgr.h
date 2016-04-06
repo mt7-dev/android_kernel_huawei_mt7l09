@@ -20761,7 +20761,7 @@ static struct cipher_testvec xeta_dec_tv_template[] = {
 #define FCRYPT_DEC_TEST_VECTORS	ARRAY_SIZE(fcrypt_pcbc_dec_tv_template)
 
 static struct cipher_testvec fcrypt_pcbc_enc_tv_template[] = {
-	{ /* http://www.openafs.org/pipermail/openafs-devel/2000-December/005320.html */
+	{ /* http:
 		.key	= "\x00\x00\x00\x00\x00\x00\x00\x00",
 		.klen	= 8,
 		.iv	= "\x00\x00\x00\x00\x00\x00\x00\x00",
@@ -20822,7 +20822,7 @@ static struct cipher_testvec fcrypt_pcbc_enc_tv_template[] = {
 };
 
 static struct cipher_testvec fcrypt_pcbc_dec_tv_template[] = {
-	{ /* http://www.openafs.org/pipermail/openafs-devel/2000-December/005320.html */
+	{ /* http:
 		.key	= "\x00\x00\x00\x00\x00\x00\x00\x00",
 		.klen	= 8,
 		.iv	= "\x00\x00\x00\x00\x00\x00\x00\x00",

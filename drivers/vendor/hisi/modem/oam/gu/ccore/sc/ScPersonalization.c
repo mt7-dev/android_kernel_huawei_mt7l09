@@ -534,7 +534,8 @@ SC_ERROR_CODE_ENUM_UINT32 SC_PERS_VerifySimLock(
         SC_ERROR1_LOG("SC_PERS_VerifySimLock: USIMM_GetCachedFile is failed.",
                       ulResult);
 
-        return SC_ERROR_CODE_OTHER_ERROR;
+        *penVerifySimlockRslt = SC_VERIFY_SIMLOCK_RESULT_READY;
+        return SC_ERROR_CODE_NO_ERROR;
     }
 
     /* 由BCD转换为数字 */

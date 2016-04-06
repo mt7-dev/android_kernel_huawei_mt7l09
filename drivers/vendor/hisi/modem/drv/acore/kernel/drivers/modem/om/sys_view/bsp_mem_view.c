@@ -37,7 +37,7 @@ BSP_SYS_MEM_INFO_CTRL_STRU      mem_info_stru = {{(softtimer_func)NULL,0,0,SOFTT
 * 返 回 值  : BSP_OK
 *****************************************************************************/
 
-static u32 mem_alloc_trace(bsp_module_e modu_id,u32 size,u32 addr)
+static u32 mem_alloc_trace(bsp_module_e modu_id,u32 size,void* addr)
 {
     BSP_MEM_ALLOC_TRACE_STRU     *p_alloc_trace     = NULL;
 
@@ -47,9 +47,9 @@ static u32 mem_alloc_trace(bsp_module_e modu_id,u32 size,u32 addr)
     }
 #ifdef __KERNEL__
 
-    p_alloc_trace = kmalloc(sizeof(BSP_MEM_ALLOC_TRACE_STRU),GFP_KERNEL);
+    p_alloc_trace = (BSP_MEM_ALLOC_TRACE_STRU *)kmalloc(sizeof(BSP_MEM_ALLOC_TRACE_STRU),GFP_KERNEL);
 #else
-    p_alloc_trace = malloc(sizeof(BSP_MEM_ALLOC_TRACE_STRU));
+    p_alloc_trace = (BSP_MEM_ALLOC_TRACE_STRU *)malloc(sizeof(BSP_MEM_ALLOC_TRACE_STRU));
 #endif
     if( NULL == p_alloc_trace)
     {
@@ -85,7 +85,7 @@ static u32 mem_alloc_trace(bsp_module_e modu_id,u32 size,u32 addr)
 * 返 回 值  : BSP_OK
 *****************************************************************************/
 
-u32 mem_free_trace_node(bsp_module_e modu_id,u32 addr)
+u32 mem_free_trace_node(bsp_module_e modu_id,void* addr)
 {
     struct list_head       *me;
     BSP_MEM_ALLOC_TRACE_STRU        *p_alloc_trace     = NULL;
@@ -131,7 +131,7 @@ u32 mem_free_trace_node(bsp_module_e modu_id,u32 addr)
 * 返 回 值  : BSP_OK
 *****************************************************************************/
 
-u32 mem_free_trace(bsp_module_e modu_id,u32 addr)
+u32 mem_free_trace(bsp_module_e modu_id,void* addr)
 {
     u32         mod = 0;
 
@@ -208,7 +208,7 @@ u32 report_mem_trace(void)
 
     if( BSP_OK != bsp_om_send_coder_src((u8 *)p_report_buf,buf_len))
     {
-        bsp_om_free_buf((u32)p_report_buf,buf_len );
+        bsp_om_free_buf(p_report_buf,buf_len );
 
         return BSP_ERR_SYSVIEW_FAIL;
     }
@@ -240,7 +240,7 @@ void* bsp_om_mem_alloc(bsp_module_e modu_id,u32 size,u32 flag)
     p_addr =  malloc(size);
 #endif
 
-    mem_alloc_trace(modu_id,size,(u32)p_addr);
+    mem_alloc_trace(modu_id,size,p_addr);
 
     return p_addr;
 }
@@ -258,7 +258,7 @@ void* bsp_om_mem_alloc(bsp_module_e modu_id,u32 size,u32 flag)
 * 返 回 值  : 无
 *****************************************************************************/
 
-void bsp_om_mem_free(bsp_module_e modu_id,u32 addr)
+void bsp_om_mem_free(bsp_module_e modu_id,void* addr)
 {
     if(BSP_OK != mem_free_trace(modu_id,addr))
     {

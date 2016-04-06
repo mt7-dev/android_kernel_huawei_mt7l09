@@ -293,6 +293,21 @@ VOS_UINT32 TAF_APS_RcvTiMsActivatingExpired_MsActivating_WaitSndcpActivateRspSus
     VOS_UINT32                          ulEventType,
     struct MsgCB                       *pstMsg
 );
+
+VOS_UINT32 TAF_APS_RcvSndcpActivateRsp_MsActivating_WaitSndcpActivateRspSuspend(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+);
+
+VOS_UINT32 TAF_APS_RcvSmPdpActCnf_MsActivating_WaitSmActivateCnfSuspend(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+);
+VOS_UINT32 TAF_APS_RcvApsInterPdpDeactivateReq_MsActivating_WaitSmActivateCnfSuspend(
+    VOS_UINT32                          ulEventType,
+    struct MsgCB                       *pstMsg
+);
+
 VOS_UINT32 TAF_APS_RcvAtPsCallAnswerReq_MsActivating_Init(
     VOS_UINT32                          ulEventType,
     struct MsgCB                       *pstMsg

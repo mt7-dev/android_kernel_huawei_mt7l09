@@ -27,4 +27,4 @@ obj-$(CONFIG_BALONG_PM_SUSPEND) += pm_asm_deepsleep.o
 obj-$(HUTAF_HLT_LTCOV)	+= ltcov.o
 
 
-KBUILD_CPPFLAGS +=	-Idrivers/modem/om/dump
+KBUILD_CPPFLAGS +=	-Idrivers/hisi/modem_hi3630/drv/om/dump

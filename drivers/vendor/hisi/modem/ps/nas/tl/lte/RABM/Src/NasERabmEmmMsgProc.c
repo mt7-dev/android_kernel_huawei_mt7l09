@@ -442,7 +442,11 @@ VOS_VOID  NAS_ERABM_RcvRabmEmmSuspendInd(const EMM_ERABM_SUSPEND_IND_STRU *pRcvM
         /* 将DRB状态设为NAS_ERABM_RB_SUSPENDED */
         for (ulEpsbId = NAS_ERABM_MIN_EPSB_ID; ulEpsbId<= NAS_ERABM_MAX_EPSB_ID; ulEpsbId++)
         {
-            NAS_ERABM_SetRbStateInfo(ulEpsbId, NAS_ERABM_RB_SUSPENDED);
+            /* 添加保护,防止出现RbState被误设置为挂起态 */
+            if(NAS_ERABM_ILL_RB_ID != NAS_ERABM_GetEpsbRbIdInfo(ulEpsbId))
+            {
+                NAS_ERABM_SetRbStateInfo(ulEpsbId, NAS_ERABM_RB_SUSPENDED);
+            }
         }
     }
 

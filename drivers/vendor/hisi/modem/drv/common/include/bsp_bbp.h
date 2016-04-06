@@ -274,6 +274,8 @@ int bsp_bbp_pwrctrl_wbbp_clk_enable(void);
 * หต ร๗ : 
 *****************************************************************************/
 u16 bsp_bbp_lps_get_ta(void);
+u32 bbp_get_wakeup_time(PWC_COMM_MODE_E mode);
+
 int bsp_bbp_int_debug(void);
 
 u32 bsp_bbp_get_gubbp_wakeup_status(void);

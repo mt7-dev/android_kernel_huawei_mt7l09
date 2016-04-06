@@ -41,16 +41,6 @@ extern "C" {
 #define NDIS_PERIOD_ARP_TMRNAME     1
 #define NDIS_ARP_REQ_TMRNAME        2
 
-
-/*Cache操作*/
-#if (VOS_OS_VER != VOS_WIN32)
-#define PS_CACHE_FLUSH(buffer,len) \
-        (VOS_VOID)cacheFlush(DATA_CACHE,(buffer),(len))
-
-#else
-#define PS_CACHE_FLUSH(buffer,len)  {}
-#endif
-
 /*****************************************************************************
   3 function
 *****************************************************************************/
@@ -199,11 +189,12 @@ VOS_UINT32  Ndis_InitRegToAt( VOS_VOID )
 
     pMsgBlock->ulReceiverPid = APP_AT_PID;
     pMsgBlock->ulSenderPid   = NDIS_TASK_PID;
-
-    pAtMsg                   = (AT_FW_MSG_STRU*)(VOS_UINT32)(pMsgBlock->aucValue);
+    /*lint -e826*/
+    pAtMsg                   = (AT_FW_MSG_STRU*)((VOS_VOID*)(pMsgBlock->aucValue));
+    /*lint +e826*/
     pAtMsg->ulMsgId          = ID_MSG_AT_FW_CLIENT_REGISTER_REQ;
 
-    pRegClient = (AT_FW_CLIENT_REGISTER_REQ_STRU*)(VOS_VOID*)pAtMsg->pMsgParam;
+    pRegClient = (AT_FW_CLIENT_REGISTER_REQ_STRU*)((VOS_VOID*)(pAtMsg->pMsgParam));
     pRegClient->bRegister          = TRUE;
     pRegClient->pstDiscardUrc      = NULL;
     pRegClient->ucClientId         = EN_AT_FW_CLIENT_ID_NDIS;
@@ -664,7 +655,7 @@ VOS_VOID Ndis_UlNcmFrmProc(UDI_HANDLE ulhandle, IMM_ZC_STRU *pstImmZc)
             return;
         }
 
-        pstIpFixHdr = (ETH_IPFIXHDR_STRU *)((VOS_UINT32)pucData);
+        pstIpFixHdr = (ETH_IPFIXHDR_STRU *)((VOS_VOID*)pucData);
         ulIpLen = IP_NTOHS(pstIpFixHdr->usTotalLen);
         if (ulIpLen < pstImmZc->len)
         {
@@ -1027,11 +1018,11 @@ VOS_UINT32 Ndis_SndMsgToAt(const VOS_UINT8 *pucBuf,VOS_UINT16 usMsgLen,VOS_UINT3
         return PS_FAIL;
     }
 
-    pstFwMsg          = (AT_FW_MSG_STRU *)(VOS_UINT32)(pstMsgBlock->aucValue);
+    /*lint -e826*/
+    pstFwMsg          = (AT_FW_MSG_STRU *)(VOS_VOID*)(pstMsgBlock->aucValue);
     pstFwMsg->ulMsgId = ID_MSG_AT_FW_CMD_BINARY_MSG;
 
-    /*lint -e826*/
-    pstAtCnf  = (AT_FW_CMD_BINARY_MSG_STRU  *)pstFwMsg->pMsgParam;
+    pstAtCnf  = (AT_FW_CMD_BINARY_MSG_STRU  *)((VOS_VOID*)pstFwMsg->pMsgParam);
     /*lint +e826*/
     pstAtCnf->usMsgSize  = usMsgLen;
     pstAtCnf->ulMsgId    = ulMsgId;
@@ -1457,9 +1448,10 @@ VOS_UINT32 Ndis_ProcArpMsg(ETH_ARP_FRAME_STRU* pstArpMsg, VOS_UINT8 ucRabId)
 
 VOS_VOID Ndis_AtMsgProc( const MsgBlock *pMsgBlock )
 {
-    AT_FW_MSG_STRU                   *pstAtFw  = (AT_FW_MSG_STRU *)(VOS_UINT32)(pMsgBlock->aucValue);
-    AT_FW_CMD_BINARY_MSG_STRU        *pstAtMsg;
+    /*lint -e826*/
+    AT_FW_MSG_STRU                   *pstAtFw  = (AT_FW_MSG_STRU *)((VOS_VOID*)(pMsgBlock->aucValue));
     /*lint +e826*/
+    AT_FW_CMD_BINARY_MSG_STRU        *pstAtMsg;
     AT_NDIS_MSG_TYPE_ENUM_UINT32      ulMsgId;
 
     if (ID_MSG_AT_FW_CMD_BINARY_MSG != pstAtFw->ulMsgId)
@@ -1487,8 +1479,6 @@ VOS_VOID Ndis_AtMsgProc( const MsgBlock *pMsgBlock )
 
     return;
 }
-
-
 VOS_VOID Ndis_AdsMsgProc(const MsgBlock* pMsgBlock )
 {
     ADS_NDIS_DATA_IND_STRU  *pstAdsNdisMsg  = (ADS_NDIS_DATA_IND_STRU*)(VOS_VOID*)pMsgBlock;
@@ -1719,152 +1709,6 @@ VOS_VOID GU_NDIS_OM_SWITCH_OFF(VOS_VOID)
     g_ulGUNdisOMSwitch = PS_FALSE;
     return;
 }
-VOS_VOID NDIS_OM_LOG( const VOS_CHAR  *pcFileName,  VOS_UINT32  ulLineNum,
-                           VOS_UINT32      ulModuleId,   VOS_UINT32 ulLevel,
-                           const VOS_CHAR  *pcString )
-{
-#if (FEATURE_ON == FEATURE_LTE)
-    VOS_UINT32          ulRslt = 0;
-
-
-    ulRslt = DIAG_PrintfV(DIAG_ID( ulModuleId,ulLevel ), (VOS_CHAR*)pcFileName, ulLineNum, (VOS_CHAR*)("%s"), (VOS_INT32)pcString);
-    if (PS_SUCC != ulRslt)
-    {
-        return;
-    }
-#else
-    if (PS_TRUE == g_ulGUNdisOMSwitch)
-    {
-        vos_printf(" %s, %d, %d, %d, %s\r\n ", pcFileName, ulLineNum, ulModuleId, ulLevel, pcString);
-    }
-#endif
-
-    return;
-}
-
-
-VOS_VOID NDIS_OM_LOG1( const VOS_CHAR   *pcFileName, VOS_UINT32  ulLineNum,
-                            VOS_UINT32  ulModuleId,       VOS_UINT32 ulLevel,
-                            const VOS_CHAR    *pcString,  VOS_INT32  lPara1)
-{
-#if (FEATURE_ON == FEATURE_LTE)
-    VOS_UINT32          ulRslt = 0;
-
-
-    ulRslt = DIAG_PrintfV(DIAG_ID( ulModuleId,ulLevel ),(VOS_CHAR*)pcFileName,ulLineNum, (VOS_CHAR*)("%s, %d"), (VOS_INT32)pcString,lPara1);
-    if (PS_SUCC != ulRslt)
-    {
-        return;
-    }
-#else
-    if (PS_TRUE == g_ulGUNdisOMSwitch)
-    {
-        vos_printf (" %s, %d, %d, %d, %s, %d, \r\n ",  pcFileName, ulLineNum, ulModuleId, ulLevel, pcString, lPara1);
-    }
-#endif
-
-    return;
-}
-
-
-VOS_VOID NDIS_OM_LOG2( const VOS_CHAR   *pcFileName, VOS_UINT32  ulLineNum,
-                            VOS_UINT32 ulModuleId,        VOS_UINT32 ulLevel,
-                            const VOS_CHAR   *pcString,   VOS_INT32  lPara1,
-                            VOS_INT32  lPara2)
-{
-#if (FEATURE_ON == FEATURE_LTE)
-    VOS_UINT32          ulRslt = 0;
-
-
-    ulRslt = DIAG_PrintfV(DIAG_ID( ulModuleId,ulLevel ),
-                           (VOS_CHAR*)pcFileName,
-                           ulLineNum,
-                           (VOS_CHAR*)("%s, %d, %d"),
-                           (VOS_INT32)pcString,
-                           lPara1,
-                           lPara2);
-    if (PS_SUCC != ulRslt)
-    {
-        return;
-    }
-#else
-    if (PS_TRUE == g_ulGUNdisOMSwitch)
-    {
-        vos_printf (" %s, %d, %d, %d, %s, %d, %d \r\n ",  pcFileName, ulLineNum,
-                                  ulModuleId, ulLevel, pcString, lPara1, lPara2);
-    }
-#endif
-
-    return;
-}
-
-VOS_VOID NDIS_OM_LOG3( const VOS_CHAR  *pcFileName,  VOS_UINT32  ulLineNum,
-                            VOS_UINT32 ulModuleId,        VOS_UINT32 ulLevel,
-                            const VOS_CHAR   *pcString,   VOS_INT32  lPara1,
-                            VOS_INT32  lPara2,            VOS_INT32  lPara3)
-{
-#if (FEATURE_ON == FEATURE_LTE)
-    VOS_UINT32          ulRslt = 0;
-
-
-    ulRslt = DIAG_PrintfV(DIAG_ID( ulModuleId,ulLevel ),
-                           (VOS_CHAR*)pcFileName,
-                           ulLineNum,
-                           (VOS_CHAR*)("%s, %d, %d, %d"),
-                           (VOS_INT32)pcString,
-                           lPara1,
-                           lPara2,
-                           lPara3);
-    if (PS_SUCC != ulRslt)
-    {
-        return;
-    }
-#else
-    if (PS_TRUE == g_ulGUNdisOMSwitch)
-    {
-        vos_printf (" %s, %d, %d, %d, %s, %d, %d, %d\r\n ",  pcFileName, ulLineNum,
-                               ulModuleId, ulLevel, pcString, lPara1, lPara2, lPara3);
-    }
-#endif
-
-    return;
-}
-
-
-VOS_VOID NDIS_OM_LOG4( const VOS_CHAR   *pcFileName, VOS_UINT32  ulLineNum,
-                            VOS_UINT32 ulModuleId,        VOS_UINT32 ulLevel,
-                            const VOS_CHAR   *pcString,   VOS_INT32  lPara1,
-                            VOS_INT32  lPara2,            VOS_INT32  lPara3,
-                            VOS_INT32  lPara4)
-{
-#if (FEATURE_ON == FEATURE_LTE)
-    VOS_UINT32          ulRslt = 0;
-
-
-    ulRslt = DIAG_PrintfV(DIAG_ID( ulModuleId,ulLevel ),
-                           (VOS_CHAR*)pcFileName,
-                           ulLineNum,
-                           (VOS_CHAR*)("%s, %d, %d, %d, %d"),
-                           (VOS_INT32)pcString,
-                           lPara1,
-                           lPara2,
-                           lPara3,
-                           lPara4);
-    if (PS_SUCC != ulRslt)
-    {
-        return;
-    }
-#else
-    if (PS_TRUE == g_ulGUNdisOMSwitch)
-    {
-        (" %s, %d, %d, %d, %s, %d, %d, %d, %d\r\n ",  pcFileName, ulLineNum,
-                            ulModuleId, ulLevel, pcString, lPara1, lPara2, lPara3, lPara4);
-    }
-#endif
-
-    return;
-}
-
 
 /*======================================统计信息==============================*/
 

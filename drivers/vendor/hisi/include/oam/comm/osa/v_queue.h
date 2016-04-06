@@ -31,6 +31,7 @@
 
 #include "v_typdef.h"
 #include "v_msg.h"
+#include "v_sem.h"
 #include "vos_config.h"
 
 #ifdef __cplusplus
@@ -78,9 +79,9 @@ VOS_UINT32 VOS_FixedQueueWrite( VOS_UINT32 ulQueueID, VOS_VOID * pBufferAddr,
                            VOS_UINT32 ulPid );
 
 VOS_UINT32 VOS_FixedQueueRead( VOS_UINT32 ulQueueID, VOS_UINT32 ulTimeOut,
-                          VOS_UINT32 *pBufferAddr, VOS_UINT32 ulBufferSize );
+                          VOS_UINT_PTR *pBufferAddr, VOS_UINT32 ulBufferSize );
 
-VOS_UINT32 VOS_GetSemIDFromQueue(VOS_UINT32 ulQueue);
+VOS_SEM VOS_GetSemIDFromQueue(VOS_UINT32 ulQueue);
 
 VOS_VOID* VOS_GetMsg( VOS_UINT32 ulTaskID );
 
@@ -94,7 +95,9 @@ VOS_UINT32 VOS_CheckTaskQueue(VOS_UINT32 ulPid,VOS_UINT32 ulEntries);
 
 VOS_VOID VOS_ClearQueueInfoByFid(VOS_UINT32 ulFid);
 
+VOS_UINT32 VOS_FixedQueueWriteDirect( VOS_UINT32 ulQueueID, VOS_VOID * pBufferAddr, VOS_UINT32 Pri);
 
+VOS_VOID* VOS_FixedQueueReadMsg( VOS_UINT32 ulFidID );
 
 #ifdef __cplusplus
 #if __cplusplus

@@ -556,8 +556,6 @@ VOS_UINT32 CDS_ERABM_GetEpsbId
     if (NAS_ERABM_SUCCESS != NAS_ERABM_GetEpsbIdByDrbId(  ucDrbId,
                                                          &ulEpsbId))
     {
-        NAS_ERABM_WARN_LOG("CDS_ERABM_GetEpsbId:NAS_ERABM_GetEpsbIdByDrbId failed!");
-
         return PS_FAIL;
     }
 

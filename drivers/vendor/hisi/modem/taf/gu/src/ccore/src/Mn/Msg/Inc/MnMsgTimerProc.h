@@ -40,6 +40,8 @@ VOS_VOID MN_MSG_StopTimer(
     MN_MSG_TIMER_ID_ENUM_U32            enTimerId
 );
 
+VOS_VOID  MN_MSG_StopAllRunningTimer(VOS_VOID);
+
 
 VOS_UINT32  MN_MSG_IsTimerStarting(
     MN_MSG_TIMER_ID_ENUM_U32            enTimerId

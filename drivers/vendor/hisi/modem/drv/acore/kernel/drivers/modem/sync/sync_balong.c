@@ -96,7 +96,7 @@ int BSP_SYNC_Lock(SYNC_MODULE_E u32Module, unsigned int *pState, unsigned int u3
 	 BSP_SYNC_Init();
 	if(!pState || (u32Module >= SYNC_MODULE_BUTT))
 	{
-		bsp_trace(BSP_LOG_LEVEL_ERROR,BSP_MODU_SYNC,"BSP_SYNC_Lock, invalid param, module=0x%x, pState=0x%x\n", u32Module, (u32)pState);
+		bsp_trace(BSP_LOG_LEVEL_ERROR,BSP_MODU_SYNC,"BSP_SYNC_Lock, invalid param, module=0x%x, pState=%p\n", u32Module, pState);
 		return BSP_ERROR;
 	}
 	tick_begin = bsp_get_slice_value();

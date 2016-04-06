@@ -247,9 +247,7 @@ static int init_chipset_ali15x3(struct pci_dev *dev)
 		 * clear bit 7
 		 */
 		pci_write_config_byte(dev, 0x4b, tmpbyte & 0x7F);
-		/*
-		 * check m1533, 0x5e, bit 1~4 == 1001 => & 00011110 = 00010010
-		 */
+
 		if (m5229_revision >= 0x20 && isa_dev) {
 			pci_read_config_byte(isa_dev, 0x5e, &tmpbyte);
 			chip_is_1543c_e = ((tmpbyte & 0x1e) == 0x12) ? 1: 0;

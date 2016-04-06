@@ -7,17 +7,13 @@
  * version 2. This program is licensed "as is" without any warranty of any
  * kind, whether express or implied.
  */
+/*lint --e{750}*/
 #include <linux/module.h>
 #include <linux/init.h>
 #include <linux/debugfs.h>
 #include <linux/seq_file.h>
 #include <linux/interrupt.h>
 #include <linux/delay.h>
-//#include <linux/dma-mapping.h>
-//#include <linux/platform_device.h>
-//#include <linux/workqueue.h>
-//#include <linux/timer.h>
-//#include <linux/clk.h>
 #include <linux/mmc/host.h>
 #include <linux/mmc/core.h>
 #include <linux/mmc/mmc.h>
@@ -25,14 +21,10 @@
 #include <linux/mmc/sd.h>
 #include <linux/io.h>
 #include <linux/semaphore.h>
-//#include <mach/platform.h>
 
 #include "k3v3_mmc_raw.h"
-//#include <mach/boardid.h>
-#include <linux/huawei/dsm_pub.h>
 
-extern struct dsm_client *mshci_dclient;
-
+/*The macro define in *.h is better*/
 /*
  * emmc reg address offset
  */
@@ -74,25 +66,7 @@ extern struct dsm_client *mshci_dclient;
 #define EMMC_REG_OFF_ENABLE_SHIFT		(0x110)
 #define EMMC_REG_OFF_FIFO_START         (0x200)
 
-#define BURST_SIZE                      (3)
-#define BIT_FIFOTH_DMA_MSIZE            (BURST_SIZE<<28)
-
-#define BIT_IDSTS_TI                    (1<<0)
-#define BIT_IDSTS_RI                    (1<<1)
-
-#define BIT_IDINTEN_AI                  (1<<9)
-#define BIT_IDINTEN_CES                 (1<<5)
-#define BIT_IDINTEN_DU                  (1<<4)
-#define BIT_IDINTEN_FBE                 (1<<2)
-
-#define BIT_BMOD_IDMAC_ENABLE           (1<<7)
-#define BIT_BMOD_FIXED_BURST            (1<<1)
-#define BIT_BMOD_SOFTWARE_RESET         (1<<0)
-
 /* control */
-#define BIT_FIFO_RESET                  (0x1<<1)
-#define BIT_DMA_RESET                   (0x1<<2)
-#define BIT_INT_ENABLE                  (0x1<<4)
 #define BIT_DMA_ENABLE                  (0x1<<5)
 #define BIT_INTERNAL_DMA                (0x1<<25)
 
@@ -103,117 +77,56 @@ extern struct dsm_client *mshci_dclient;
 #define BIT_CMD_DATA_EXPECTED           (0x1<<9)
 #define BIT_CMD_READ                    (0x0<<10)
 #define BIT_CMD_WRITE                   (0x1<<10)
-#define BIT_CMD_BLOCK_TRANSFER          (0x0<<11)
-#define BIT_CMD_STREAM_TRANSFER         (0x1<<11)
-#define BIT_CMD_SEND_AUTO_STOP          (0x1<<12)
 #define BIT_CMD_WAIT_PRVDATA_COMPLETE   (0x1<<13)
 #define BIT_CMD_STOP_ABORT_CMD          (0x1<<14)
 #define BIT_CMD_SEND_INIT               (0x1<<15)
-#define BIT_CMD_UPDATE_CLOCK_ONLY       (0x1<<21)
-#define BIT_CMD_READ_CEATA_DEVICE       (0x1<<22)
-#define BIT_CMD_CCS_EXPECTED            (0x1<<23)
-#define BIT_CMD_ENABLE_BOOT             (0x1<<24)
-#define BIT_CMD_EXPECT_BOOT_ACK         (0x1<<25)
-#define BIT_CMD_DISABLE_BOOT            (0x1<<26)
-#define BIT_CMD_MANDATORY_BOOT          (0x0<<27)
-#define BIT_CMD_ALTERNATE_BOOT          (0x1<<27)
-#define BIT_CMD_VOLT_SWITCH             (0x1<<28)
 #define BIT_CMD_START_CMD               (0x1<<31)
 
 /* interrupt */
-#define BIT_INT_BAR                     (0x1<<8)
-#define BIT_INT_BDS                     (0x1<<9)
 #define BIT_INT_HLE                     (0x1<<12)
-#define BIT_INT_ACD                     (0x1<<14)
-#define BIT_INT_RXDR                    (0x1<<5)
-#define BIT_INT_TXDR                    (0x1<<4)
 #define BIT_INT_DTO                     (0x1<<3)
 #define INT_DATA_FIFO_ERROR             (0xA280)
-#define INT_BOOT_DATA_ERROR             (0xA200)
 
 /* emmc status */
 #define BIT_INT_DATA_BUSY               (0x1<<9)
-
-/* emmc control */
-#define EMMC_RESET_ALL                  (0x7)
 
 /* clock update cmd */
 #define CMD_UPDATE_CLK                  0xA0202000
 #define CMD_START_BIT                   (0x1<<31)
 
 /* time count */
-#define MAX_COUNT_POLL_CMD              (100)
+#define MAX_COUNT_POLL_CMD              (500)
 #define MAX_DELAY_POLL_CMD              (0xFF)
+#define EMMC_RESET_ALL                  (0x7)
 
 /* cmd defines */
 #define CMD0                            0
 #define CMD1                            1
 #define CMD2                            2
 #define CMD3                            3
-#define CMD4                            4
-#define CMD5                            5
 #define CMD6                            6
 #define CMD7                            7
 #define CMD8                            8
 #define CMD9                            9
-#define CMD10                           10
-#define CMD11                           11
 #define CMD12                           12
 #define CMD13                           13
-#define CMD14                           14
-#define CMD15                           15
-#define CMD16                           16
 #define CMD17                           17
 #define CMD18                           18
-#define CMD19                           19
-#define CMD20                           20
-#define CMD21                           21
-#define CMD22                           22
-#define CMD23                           23
 #define CMD24                           24
 #define CMD25                           25
-#define CMD26                           26
-#define CMD27                           27
-#define CMD28                           28
-#define CMD29                           29
-#define CMD30                           30
-#define CMD31                           31
-#define CMD32                           32
-#define CMD33                           33
-#define CMD34                           34
-#define CMD35                           35
-#define CMD36                           36
-#define CMD37                           37
-#define CMD38                           38
-#define CMD39                           39
-#define CMD41                           41
 #define CMD55                           55
 
 #define EXTCSD_PARTITION_CONFIG         179
 #define EXTCSD_BUS_WIDTH                183
 #define EXTCSD_HS_TIMING                185
 
-/* ext_csd partition config */
-#define BOOT_ENABLE_BOOTPARTITION1      (1<<3)
-#define RW_PARTITION_DEFAULT            0
-#define RW_BOOTPARTITION1               1
-#define BOOT_PARTITION                  BOOT_ENABLE_BOOTPARTITION1
-
 #define EMMC_FIX_RCA                    6
-#define EMMC_BLOCK_SIZE                 512
 
 /*
  * ext_csd fields
  */
 #define EXT_CSD_REV						192	/* RO */
-#define EXT_CSD_CSD_STRUCTURE			194	/* RO */
 #define EXT_CSD_SEC_CNT					212	/* RO, 4 bytes */
-
-#define CURRENT_STATE_MASK				0x1E00
-#define CURRENT_STATE_TRAN				0x800
-
-#define ERASE_WR_BLK_START				32
-#define ERASE_WR_BLK_END				33
 
 #undef DEBUG
 //#define DEBUG
@@ -225,34 +138,13 @@ extern struct dsm_client *mshci_dclient;
 #define DPRINTK(fmt, args...)
 #endif
 
-/*
- * io address
- */
-
-//#define IO_ADDRESS_EMMC					IO_ADDRESS(REG_BASE_MMC1)
-										/* FIXME */
-#define IO_ADDRESS_PMU					IO_ADDRESS(REG_BASE_PMUSPI)
-#define IO_ADDRESS_IOC					IO_ADDRESS(REG_BASE_IOC)
-#define IO_ADDRESS_SC					IO_ADDRESS(REG_BASE_SCTRL)
-#define IO_ADDRESS_PC					IO_ADDRESS(REG_BASE_PCTRL)
-/*
- * pmu related
- */
-#define BIT_6421_LDO0_EN		(0x1<<4)
-#define BIT_6421_LDO0_V285		(0x6)
-#define BIT_6421_LDO0_DIS		(0x0<<4)
-#define BIT_6421_LDO0_ECO		(0x1<<5)
-#define REG_OFF_LDO_ADDR				(0x20*4)
-
-#define BIT_PCTRL22_MMC1_CLKEN			(0x1<<12)
-#define PMU_RST_CTRL                    (0x035<<2)
 
 struct raw_k3v3_mmc_host {
-	unsigned int		pmuioaddr;
-	unsigned int		mmcioaddr;
-	unsigned int		iocioaddr;
-	unsigned int		scioaddr;
-	unsigned int		pcioaddr;
+	void *		pmuioaddr;
+	void *		mmcioaddr;
+	void *		iocioaddr;
+	void *          scioaddr;
+	void *          pcioaddr;
 	unsigned int		clock_base;
 	unsigned int		f_min;
 	unsigned int		f_max;
@@ -263,8 +155,8 @@ struct raw_k3v3_mmc_host {
 /* global mmc host */
 static struct raw_k3v3_mmc_host emmc_host;
 static struct raw_k3v3_mmc_host *kpanic_host;
-static unsigned int apanic_ioaddr;
-static unsigned int apanic_crgperi_ioaddr;
+static void * apanic_ioaddr;
+static void * apanic_crgperi_ioaddr;
 
 static void k3v3_mmc_dumpregs(struct raw_k3v3_mmc_host *host)
 {
@@ -335,90 +227,6 @@ static void k3v3_mmc_dumpregs(struct raw_k3v3_mmc_host *host)
 	*/
 	printk(KERN_ERR ": ===========================================\n");
 }
-
-static void mshci_dsm_dump(struct raw_k3v3_mmc_host *host)
-{
-	if(!dsm_client_ocuppy(mshci_dclient)){
-		dsm_client_record(mshci_dclient, "MSHCI TYPE: %d\n", host->type);
-		dsm_client_record(mshci_dclient, "MSHCI_CTRL: 0x%x\n", readl((void
-		*)(host->mmcioaddr + EMMC_REG_OFF_CTRL)));
-		dsm_client_record(mshci_dclient, "MSHCI_PWREN: 0x%x\n", readl((void
-		*)(host->mmcioaddr + EMMC_REG_OFF_PWREN)));
-		dsm_client_record(mshci_dclient, "MSHCI_CLKDIV: 0x%x\n", readl((void
-		*)(host->mmcioaddr + EMMC_REG_OFF_CLKDIV)));
-		dsm_client_record(mshci_dclient, "MSHCI_CLKSRC: 0x%x\n", readl((void
-		*)(host->mmcioaddr + EMMC_REG_OFF_CLKSRC)));
-		dsm_client_record(mshci_dclient, "MSHCI_CLKENA: 0x%x\n", readl((void
-		*)(host->mmcioaddr + EMMC_REG_OFF_CLKENA)));
-		dsm_client_record(mshci_dclient, "MSHCI_TMOUT: 0x%x\n", readl((void
-		*)(host->mmcioaddr + EMMC_REG_OFF_TMOUT)));
-		dsm_client_record(mshci_dclient, "MSHCI_CTYPE: 0x%x\n", readl((void
-		*)(host->mmcioaddr + EMMC_REG_OFF_CTYPE)));
-		dsm_client_record(mshci_dclient, "MSHCI_BLKSIZ: 0x%x\n", readl((void
-		*)(host->mmcioaddr + EMMC_REG_OFF_BLKSIZ)));
-		dsm_client_record(mshci_dclient, "MSHCI_BYTCNT: 0x%x\n", readl((void
-		*)(host->mmcioaddr + EMMC_REG_OFF_BYTCNT)));
-		dsm_client_record(mshci_dclient, "MSHCI_INTMSK: 0x%x\n", readl((void
-		*)(host->mmcioaddr + EMMC_REG_OFF_INTMSK)));
-		dsm_client_record(mshci_dclient, "MSHCI_CMDARG: 0x%x\n", readl((void
-		*)(host->mmcioaddr + EMMC_REG_OFF_CMDARG)));
-		dsm_client_record(mshci_dclient, "MSHCI_CMD: 0x%x\n", readl((void
-		*)(host->mmcioaddr + EMMC_REG_OFF_CMD)));
-		dsm_client_record(mshci_dclient, "MSHCI_RESP0: 0x%x\n", readl((void
-		*)(host->mmcioaddr + EMMC_REG_OFF_RESP0)));
-		dsm_client_record(mshci_dclient, "MSHCI_RESP1: 0x%x\n", readl((void
-		*)(host->mmcioaddr +	EMMC_REG_OFF_RESP1)));
-		dsm_client_record(mshci_dclient, "MSHCI_RESP2: 0x%x\n", readl((void
-		*)(host->mmcioaddr +	EMMC_REG_OFF_RESP2)));
-		dsm_client_record(mshci_dclient, "MSHCI_RESP3: 0x%x\n", readl((void
-		*)(host->mmcioaddr + EMMC_REG_OFF_RESP3)));
-		dsm_client_record(mshci_dclient, "MSHCI_MINTSTS: 0x%x\n", readl((void
-		*)(host->mmcioaddr + EMMC_REG_OFF_MINTSTS)));
-		dsm_client_record(mshci_dclient, "MSHCI_RINTSTS: 0x%x\n", readl((void
-		*)(host->mmcioaddr + EMMC_REG_OFF_RINTSTS)));
-		dsm_client_record(mshci_dclient, "MSHCI_STATUS: 0x%x\n", readl((void
-		*)(host->mmcioaddr + EMMC_REG_OFF_STATUS)));
-		dsm_client_record(mshci_dclient, "MSHCI_FIFOTH: 0x%x\n", readl((void
-		*)(host->mmcioaddr +	EMMC_REG_OFF_FIFOTH)));
-		dsm_client_record(mshci_dclient, "MSHCI_CDETECT: 0x%x\n", readl((void
-		*)(host->mmcioaddr +	EMMC_REG_OFF_CDETECT)));
-		dsm_client_record(mshci_dclient, "MSHCI_WRTPRT: 0x%x\n", readl((void
-		*)(host->mmcioaddr + EMMC_REG_OFF_WRTPRT)));
-		dsm_client_record(mshci_dclient, "MSHCI_GPIO: 0x%x\n", readl((void
-		*)(host->mmcioaddr + EMMC_REG_OFF_GPIO)));
-		dsm_client_record(mshci_dclient, "MSHCI_TCBCNT: 0x%x\n", readl((void
-		*)(host->mmcioaddr + EMMC_REG_OFF_TCBCNT)));
-		dsm_client_record(mshci_dclient, "MSHCI_TBBCNT: 0x%x\n", readl((void
-		*)(host->mmcioaddr + EMMC_REG_OFF_TBBCNT)));
-		dsm_client_record(mshci_dclient, "MSHCI_DEBNCE: 0x%x\n", readl((void
-		*)(host->mmcioaddr + EMMC_REG_OFF_DEBNCE)));
-		dsm_client_record(mshci_dclient, "MSHCI_USRID: 0x%x\n", readl((void
-		*)(host->mmcioaddr + EMMC_REG_OFF_USRID)));
-		dsm_client_record(mshci_dclient, "MSHCI_VERID: 0x%x\n", readl((void
-		*)(host->mmcioaddr + EMMC_REG_OFF_VERID)));
-		dsm_client_record(mshci_dclient, "MSHCI_HCON: 0x%x\n", readl((void
-		*)(host->mmcioaddr + EMMC_REG_OFF_HCON)));
-		dsm_client_record(mshci_dclient, "MSHCI_UHS_REG: 0x%x\n", readl((void
-		*)(host->mmcioaddr + EMMC_REG_OFF_UHS)));
-		dsm_client_record(mshci_dclient, "MSHCI_BMOD: 0x%x\n", readl((void
-		*)(host->mmcioaddr + EMMC_REG_OFF_BMOD)));
-		dsm_client_record(mshci_dclient, "MSHCI_DBADDR: 0x%x\n", readl((void
-		*)(host->mmcioaddr + EMMC_REG_OFF_DBADDR)));
-		dsm_client_record(mshci_dclient, "MSHCI_IDSTS: 0x%x\n", readl((void
-		*)(host->mmcioaddr + EMMC_REG_OFF_IDSTS)));
-		dsm_client_record(mshci_dclient, "MSHCI_IDINTEN: 0x%x\n", readl((void
-		*)(host->mmcioaddr + EMMC_REG_OFF_IDINTEN)));
-		dsm_client_record(mshci_dclient, "MSHCI_UHS_REG_EXT: 0x%x\n", readl((void
-		*)(host->mmcioaddr + EMMC_REG_OFF_UHS_REG_EXT)));
-		dsm_client_record(mshci_dclient, "MSHCI_ENABLE_SHIFT: 0x%x\n", readl((void
-		*)(host->mmcioaddr + EMMC_REG_OFF_ENABLE_SHIFT)));
-		dsm_client_record(mshci_dclient, "MSHCI_FIFO_START: 0x%x\n", readl((void
-		*)(host->mmcioaddr + EMMC_REG_OFF_FIFO_START)));
-		dsm_client_notify(mshci_dclient,  DSM_SDIO_RW_ERROR_NO);
-	}else
-		printk("DSM CALL FAIL, TYPE: %d\n", host->type);
-}
-
 #if 0
 static int k3v3_set_pmu_rst2n(struct raw_k3v3_mmc_host *host, unsigned int enable)
 {
@@ -666,7 +474,7 @@ static int k3v3_mmc_send_cmd(struct raw_k3v3_mmc_host *host,
 
 	/* check if normal result */
 	/* bit1:RE;bit6:RCRC;bit8:RTO;bit12:HLE;bit15:End bit error.*/
-	if (reg_val & 0x9142) {
+	if (reg_val & 0x9040) {
 		printk(KERN_ERR "KPANIC_MMC: send cmd error 0x%x(cmd%d)\n", reg_val, cmd_index);
 		return -1;
 	}
@@ -769,15 +577,17 @@ static int k3v3_mmc_update_clock(struct raw_k3v3_mmc_host *host)
 /*
  * set mmc clock
  */
-int k3v3_mmc_set_clock(struct raw_k3v3_mmc_host *host, unsigned int clock)
+static int k3v3_mmc_set_clock(struct raw_k3v3_mmc_host *host, unsigned int clock)
 {
 	unsigned int clock_div;
-
+	volatile unsigned delay_loop = 0xFF;
 
 	if (clock) {
 		if (clock <= 400*1000) {
 			writel(3|(0xF<<16), (void *)(apanic_crgperi_ioaddr + 0xB4));
 			writel(0, (void *)(host->mmcioaddr + EMMC_REG_OFF_GPIO));
+			while(delay_loop--){};
+
 			writel(0, (void *)(host->mmcioaddr + EMMC_REG_OFF_UHS_REG_EXT));
 			writel(1, (void *)(host->mmcioaddr + EMMC_REG_OFF_ENABLE_SHIFT));
 			writel((1<<16)|(9<<8)|(1<<12), (void *)(host->mmcioaddr + EMMC_REG_OFF_GPIO));
@@ -785,6 +595,8 @@ int k3v3_mmc_set_clock(struct raw_k3v3_mmc_host *host, unsigned int clock)
 		} else {
 			writel(3|(0xF<<16), (void *)(apanic_crgperi_ioaddr + 0xB4));
 			writel(0, (void *)(host->mmcioaddr + EMMC_REG_OFF_GPIO));
+			while(delay_loop--){};
+
 			writel((1<<16), (void *)(host->mmcioaddr + EMMC_REG_OFF_UHS_REG_EXT));
 			writel(0, (void *)(host->mmcioaddr + EMMC_REG_OFF_ENABLE_SHIFT));
 			writel((1<<16)|(6<<8)|(1<<12), (void *)(host->mmcioaddr + EMMC_REG_OFF_GPIO));
@@ -809,7 +621,7 @@ int k3v3_mmc_set_clock(struct raw_k3v3_mmc_host *host, unsigned int clock)
 /*
  * Set clock rate and bus width
  */
-int k3v3_mmc_set_clock_and_width(struct raw_k3v3_mmc_host *host,
+static int k3v3_mmc_set_clock_and_width(struct raw_k3v3_mmc_host *host,
 			unsigned int clock, unsigned int bus_width)
 {
 	int ret = 0;
@@ -909,7 +721,7 @@ static int k3v3_mmc_check_tran_mode(struct raw_k3v3_mmc_host *host)
 	return -1;
 }
 
-#if 0
+#if 1
 /*
  * reset emmc ip
  */
@@ -940,7 +752,7 @@ static int k3v3_mmc_reset_ip(struct raw_k3v3_mmc_host *host)
 	writel(0xFFFFFFFF, host->mmcioaddr + EMMC_REG_OFF_IDINTEN);
 	writel(0xFFFFFFFF, host->mmcioaddr + EMMC_REG_OFF_IDSTS);
 
-
+#if 0
 	/* config io */
 	k3v3_sys_set_io(host, 1);
 
@@ -954,7 +766,7 @@ static int k3v3_mmc_reset_ip(struct raw_k3v3_mmc_host *host)
 	if (k3v3_mmc_set_clock(host, host->f_min)) {
 		printk(KERN_ERR "KPANIC_MMC: k3v3_mmc_set_clock f_min failed\n");
 	}
-
+#endif
 	/* bit mode: 1 bit */
 	writel(0x0, host->mmcioaddr + EMMC_REG_OFF_CTYPE);
 
@@ -1265,15 +1077,13 @@ static int k3v3_mmc_probe(struct raw_hd_struct *rhd)
 	host->type		= MMC_TYPE_MMC;		/* mmc */
 	host->clock_base = 32*1000*1000;
 #endif
-
-	/*Panic may access emmc after emmc suspend, so we should unreset emmc*/
 	writel((0x1<<17), (void *)(apanic_crgperi_ioaddr + 0x94));
 	writel((0x1<<16), (void *)(apanic_crgperi_ioaddr + 0x40));
 	writel((0x1 << 2 | ((0x1 << 2) << 16)), (void *)(apanic_crgperi_ioaddr + 0xF4));
-
-	if(k3v3_mmc_set_ready(host)){
+	k3v3_mmc_reset_ip(host);
+	ret = k3v3_mmc_set_ready(host);
+	if(ret){
 		k3v3_mmc_dumpregs(host);
-		mshci_dsm_dump(host);
 	}
 
 	return ret;
@@ -1347,15 +1157,14 @@ int raw_mmc_panic_erase(struct raw_hd_struct *rhd, unsigned int offset,
 
 static int __init raw_mmc_panic_init (void)
 {
-	apanic_ioaddr = (unsigned int)ioremap_nocache(0xFF1FE000, 0x1000);
+	apanic_ioaddr = (void *)ioremap_nocache(0xFF1FE000, 0x1000);
 	if (apanic_ioaddr == 0) {
 		printk(KERN_ERR "remap mmc controler addr failed\n");
 		return -1;
 	} else {
 		printk(KERN_INFO "remap mmc controler addr succeed\n");
 	}
-
-	apanic_crgperi_ioaddr = (unsigned int)ioremap_nocache(0xFFF35000, 0x1000);
+	apanic_crgperi_ioaddr = (void *)ioremap_nocache(0xFFF35000, 0x1000);
 	if (apanic_crgperi_ioaddr == 0) {
 		printk(KERN_ERR "remap crgperi addr failed\n");
 		return -1;
@@ -1370,6 +1179,65 @@ static void __exit raw_mmc_panic_exit(void)
 {
 	return;
 }
+
+#ifdef CONFIG_MODEM_SUPPORT
+#ifdef CONFIG_ARCH_HI6XXX
+#include <soc_baseaddr_interface.h>
+extern unsigned int omTimerGet(void);
+int raw_mmc_read_async_done(void)
+{
+    struct raw_k3v3_mmc_host* host = &emmc_host;
+    int ret, dwRegVal = 0;
+    char *mmc_base_addr = (char *)ioremap_nocache(SOC_eMMC_BASE_ADDR, 0x1000);
+
+	memset(host, 0, sizeof(emmc_host));
+	host->mmcioaddr = mmc_base_addr;
+    printk(KERN_INFO"%s:%d start loading\n", __FUNCTION__, __LINE__);
+
+    while ( 1 )
+    {
+        dwRegVal = readl((volatile void*)( mmc_base_addr + EMMC_REG_OFF_RINTSTS ) );
+        // check error 7,9,13,15, do not check crc error
+        if( dwRegVal & INT_DATA_FIFO_ERROR )
+        {
+            // got error
+            printk(KERN_ERR "%s:%d\n",__FUNCTION__,__LINE__);
+            writel( 0xFFFFFFFF, (volatile void*)(mmc_base_addr + EMMC_REG_OFF_RINTSTS ));
+            goto error;
+        }
+        if (dwRegVal & BIT_INT_DTO)
+        {
+            break;
+        }
+        //load print
+    }
+
+    ret = k3v3_mmc_send_cmd( host, CMD12, EMMC_FIX_RCA<<16, NULL);
+    if( ret != 0 )
+    {
+        printk(KERN_ERR "%s:%d\n",__FUNCTION__,__LINE__);
+        goto error;
+    }
+
+    dwRegVal = readl( (volatile void*)(mmc_base_addr + EMMC_REG_OFF_RINTSTS ));
+    // check error 7,9,13,15, do not check crc error
+    if( dwRegVal & INT_DATA_FIFO_ERROR)
+    {
+        // got error
+        printk(KERN_ERR "%s:%d\n",__FUNCTION__,__LINE__);
+        writel( 0xFFFFFFFF, (volatile void*)(mmc_base_addr + EMMC_REG_OFF_RINTSTS ));
+        goto error;
+    }
+
+    writel( 0xFFFFFFFF, (volatile void*)(mmc_base_addr + EMMC_REG_OFF_RINTSTS) );
+    iounmap(mmc_base_addr);
+    return 0;
+error:
+    iounmap(mmc_base_addr);
+    return -1;
+}
+#endif
+#endif
 
 arch_initcall(raw_mmc_panic_init);
 module_exit(raw_mmc_panic_exit);

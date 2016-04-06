@@ -79,7 +79,7 @@ extern VOS_UINT32 WuepsSleepFidInit(enum VOS_INIT_PHASE_DEFINE ip);
 
 #if (FEATURE_ON == FEATURE_UE_MODE_TDS)/* TDS begin */
 extern VOS_UINT32 process_pdc_FidInit ( enum VOS_INIT_PHASE_DEFINE ip );
-extern VOS_UINT32 process_rlc_FidInit ( enum VOS_INIT_PHASE_DEFINE ip );
+/*extern VOS_UINT32 process_rlc_FidInit ( enum VOS_INIT_PHASE_DEFINE ip );*/
 extern VOS_UINT32 process_mac_FidInit ( enum VOS_INIT_PHASE_DEFINE ip );
 extern VOS_UINT32 hl100_SndCmd_FidInit ( enum VOS_INIT_PHASE_DEFINE ip );
 #endif/*(FEATURE_ON == FEATURE_UE_MODE_TDS) TDS end */
@@ -229,7 +229,7 @@ BEGIN_FID_DEFINITION()
     DEFINE_FID(I0_UEPS_FID_PBD)
 #if (FEATURE_ON == FEATURE_UE_MODE_TDS)/* TDS begin */
     DEFINE_FID(HL1_FID_SNDCMD)
-    DEFINE_FID(TPS_FID_RLC)
+    /*DEFINE_FID(TPS_FID_RLC)*/
     DEFINE_FID(TPS_FID_MAC)
     DEFINE_FID(TPS_FID_PDC)
 #endif      /*(FEATURE_ON == FEATURE_UE_MODE_TDS) TDS end */
@@ -429,7 +429,6 @@ END_FID_DEFINITION()
     {UEPS_FID_NDCLIENT, "NCCLIENT_FID", NDCLIENT_FidInit,VOS_START_THIRD,    8192,      0  },\
     {I0_UEPS_FID_PBD,       "I0_PBD_FID",   PBD_FID_Init,           VOS_START_THIRD,    16384,  0  },\
     {HL1_FID_SNDCMD,        "SNDCMD_FID",   hl100_SndCmd_FidInit,  VOS_START_THIRD,    0,      0  },\
-    {TPS_FID_RLC,           "TPS_FID_RLC",  process_rlc_FidInit,    VOS_START_THIRD,    0,      0  },\
     {TPS_FID_MAC,           "TPS_FID_MAC",  process_mac_FidInit,    VOS_START_THIRD,    0,      0  },\
     {TPS_FID_PDC,           "TPS_FID_PDC",  process_pdc_FidInit,    VOS_START_THIRD,    0,      0  },\
     {WUEPS_FID_NVIM_FLUSH,  "NV_FLUSH",     VOS_NULL_PTR,           VOS_START_THIRD,    8192,   0  },\
@@ -746,7 +745,6 @@ END_FID_DEFINITION()
     {UEPS_FID_NDCLIENT,     "NCCLIENT_FID", NDCLIENT_FidInit,       VOS_START_THIRD,    8192,   0  },\
     {I0_UEPS_FID_PBD,       "I0_PBD_FID",   PBD_FID_Init,           VOS_START_THIRD,    16384,  0  },\
     {HL1_FID_SNDCMD,        "SNDCMD_FID",   hl100_SndCmd_FidInit,   VOS_START_THIRD,    0,      0  },\
-    {TPS_FID_RLC,           "TPS_FID_RLC",  process_rlc_FidInit,    VOS_START_THIRD,    0,      0  },\
     {TPS_FID_MAC,           "TPS_FID_MAC",  process_mac_FidInit,    VOS_START_THIRD,    0,      0  },\
     {TPS_FID_PDC,           "TPS_FID_PDC",  process_pdc_FidInit,    VOS_START_THIRD,    0,      0  },\
     {WUEPS_FID_NVIM_FLUSH,  "NV_FLUSH",     VOS_NULL_PTR,           VOS_START_THIRD,    8192,   0  },\
@@ -817,7 +815,6 @@ END_FID_DEFINITION()
     {UEPS_FID_NDCLIENT,     "NCCLIENT_FID", NDCLIENT_FidInit,       VOS_START_THIRD,    8192,   0  },\
     {I0_UEPS_FID_PBD,       "I0_PBD_FID",   PBD_FID_Init,           VOS_START_THIRD,    16384,  0  },\
     {HL1_FID_SNDCMD,        "SNDCMD_FID",   hl100_SndCmd_FidInit,   VOS_START_THIRD,    0,      0  },\
-    {TPS_FID_RLC,           "TPS_FID_RLC",  process_rlc_FidInit,    VOS_START_THIRD,    0,      0  },\
     {TPS_FID_MAC,           "TPS_FID_MAC",  process_mac_FidInit,    VOS_START_THIRD,    0,      0  },\
     {TPS_FID_PDC,           "TPS_FID_PDC",  process_pdc_FidInit,    VOS_START_THIRD,    0,      0  },\
     {WUEPS_FID_NVIM_FLUSH,  "NV_FLUSH",     VOS_NULL_PTR,           VOS_START_THIRD,    8192,   0  },\
@@ -930,8 +927,8 @@ END_FID_DEFINITION()
     {PS_FID_RM_DL,          "MACRLCDL_FID", LMAC_RLC_DlFidInit,     VOS_START_THIRD,    16384,  0  },\
     {PS_FID_HPA,            "LHPA_FID",     LHPA_FidPidInit,        VOS_START_THIRD,    4096,   0  },\
     {PS_FID_COMM,           "PS_FID_COMM",  VOS_NULL_PTR,           VOS_START_THIRD,    4096,   0  },\
-    {PS_FID_IMSA,           "IMSA_FID",     VOS_NULL_PTR,           VOS_START_THIRD,    4096,  0  },\
-    {PS_FID_IMSVA,          "IMSVA_FID",    VOS_NULL_PTR,           VOS_START_THIRD,    4096,   0  },\
+    {PS_FID_IMSA,           "IMSA_FID",     IMSA_FidInit,           VOS_START_THIRD,    4096,  0  },\
+    {PS_FID_IMSVA,          "IMSVA_FID",    IMSVA_FidInit,          VOS_START_THIRD,    4096,   0  },\
     {UEPS_FID_FLOWCTRL_C,   "CCpuFlowCtrl", FC_CCORE_FidInit,       VOS_START_THIRD,    8192,   0  },\
     {UEPS_FID_RM_DL,        "RM_DL_FID",    WTTF_MAC_RLC_DlFidInit, VOS_START_THIRD,    0,      0  },\
     {WUEPS_FID_NOSIG,       "OM_NOSIG",     OM_NoSigFidInit,        VOS_START_THIRD,    0,      0  },\

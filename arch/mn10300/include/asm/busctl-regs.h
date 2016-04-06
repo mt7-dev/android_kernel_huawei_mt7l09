@@ -19,7 +19,7 @@
 /* bus controller registers */
 #define BCCR			__SYSREG(0xc0002000, u32)	/* bus controller control reg */
 #define BCCR_B0AD		0x00000003	/* block 0 (80000000-83ffffff) bus allocation */
-#define BCCR_B1AD		0x0000000c	/* block 1 (84000000-87ffffff) bus allocation */
+#define BCCR_B1AD		0x0000000c
 #define BCCR_B2AD		0x00000030	/* block 2 (88000000-8bffffff) bus allocation */
 #define BCCR_B3AD		0x000000c0	/* block 3 (8c000000-8fffffff) bus allocation */
 #define BCCR_B4AD		0x00000300	/* block 4 (90000000-93ffffff) bus allocation */

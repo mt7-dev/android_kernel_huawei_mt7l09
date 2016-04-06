@@ -1,18 +1,4 @@
-/**
-    @copyright: Huawei Technologies Co., Ltd. 2012-2012. All rights reserved.
-    
-    @file: srecorder_kernel_symbols.c
-    
-    @brief: 读取内核符号的地址
-    
-    @version: 1.0 
-    
-    @author: QiDechun ID: 216641
-    
-    @date: 2012-06-21
-    
-    @history:
-*/
+
 
 /*----includes-----------------------------------------------------------------------*/
 
@@ -22,12 +8,10 @@
 #include <linux/file.h>
 #include <linux/slab.h>
 #include <linux/kallsyms.h>
-/* DTS2012110206142 wupeng-qidechun 20121105 begin */
 #include <linux/version.h>
-/* DTS2012110206142 wupeng-qidechun 20121105 end */
 
 #include <asm/uaccess.h>
-#include <asm/errno.h>
+//#include <asm/errno.h>
 
 #include "../include/srecorder_common.h"
 #include "../include/srecorder_kernel_symbols.h"
@@ -35,7 +19,7 @@
 
 /*----local macroes------------------------------------------------------------------*/
 
-#define KALLSYMS_LOOKUP_NAME_FUNC ("kallsyms_lookup_name")
+//#define KALLSYMS_LOOKUP_NAME_FUNC ("kallsyms_lookup_name")
 
 
 /*----local prototypes----------------------------------------------------------------*/
@@ -131,12 +115,10 @@ static srec_ksym_addr_t s_log_end = INVALID_KSYM_ADDR;
 /*             local variables for dump modem log begin             */
 /*==================================================================*/
 #if defined(CONFIG_DUMP_MODEM_LOG)
-/* DTS2012101502012 wupeng 20121015 begin */
 static srec_ksym_addr_t s_spinlocks_initialized = INVALID_KSYM_ADDR;
 static srec_ksym_addr_t s_remote_spinlock = INVALID_KSYM_ADDR;
 static srec_ksym_addr_t s_smem_areas = INVALID_KSYM_ADDR;
 static srec_ksym_addr_t s_num_smem_areas = INVALID_KSYM_ADDR;
-/* DTS2012101502012 wupeng 20121015 end */
 #endif
 /*==================================================================*/
 /*             local variables for dump modem log end               */
@@ -286,12 +268,10 @@ static syschk_sym_addr s_kernel_symbols_table[] =
     /*             local variables for dump modem log begin             */
     /*==================================================================*/
 #if defined(CONFIG_DUMP_MODEM_LOG)
-    /* DTS2012101502012 wupeng 20121015 begin */
     {"spinlocks_initialized", &s_spinlocks_initialized}, 
     {"remote_spinlock", &s_remote_spinlock}, 
     {"smem_areas", &s_smem_areas}, 
     {"num_smem_areas", &s_num_smem_areas}, 
-    /* DTS2012101502012 wupeng 20121015 end */
 #endif
     /*==================================================================*/
     /*             local variables for dump modem log end               */
@@ -325,8 +305,6 @@ static syschk_sym_addr s_kernel_symbols_table[] =
     /*            local variables for dump all ps info begin            */
     /*==================================================================*/
 #if defined(CONFIG_DUMP_ALLPS_INFO)
-    /* DTS2012110206142 wupeng-qidechun 20121105 begin */
-    /* DTS2012110206142 wupeng-qidechun 20121105 end */
 #endif
     /*==================================================================*/
     /*             local variables for dump all ps info end             */
@@ -596,7 +574,6 @@ srec_ksym_addr_t srecorder_get_vmap_area_list(void)
 
 
 #if defined(CONFIG_DUMP_MODEM_LOG)
-/* DTS2012101502012 wupeng 20121015 begin */
 /**
     @function: srec_ksym_addr_t srecorder_get_spinlocks_initialized(void)
     @brief: 获取变量spinlocks_initialized的地址
@@ -659,7 +636,6 @@ srec_ksym_addr_t srecorder_get_num_smem_areas(void)
 {
     return s_num_smem_areas;
 }
-/* DTS2012101502012 wupeng 20121015 end */
 #endif
 
 

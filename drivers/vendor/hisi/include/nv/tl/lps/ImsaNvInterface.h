@@ -74,7 +74,7 @@ typedef struct
     VOS_UINT8                           ucGsmEmsSupportFlag;    /**< GSM EMS使能项,VOS_TRUE :支持，VOS_FALSE :不支持 */
     VOS_UINT8                           ucUtranEmsSupportFlag; /**< UNTRAN EMS使能项,VOS_TRUE :支持，VOS_FALSE :不支持 */
     VOS_UINT8                           ucLteEmsSupportFlag;    /**< LTE EMS使能项,VOS_TRUE :支持，VOS_FALSE :不支持 */
-    VOS_UINT8                           ucReserved1;
+    VOS_UINT8                           ucRoamingImsNotSupportFlag; /**< 漫游网络下不允许IMS注册使能项，VOS_TRUE:支持 VOS_FALSE:不支持 */
     VOS_UINT8                           ucReserved2;
 
 }IMSA_NV_IMS_RAT_SUPPORT_STRU;
@@ -105,6 +105,16 @@ typedef struct
     VOS_UINT16                          ausRedialCauseList[IMSA_IMS_MAX_REDIAL_CAUSE_NUM];       /* 重播原因值列表 */
 }IMSA_NV_IMS_REDIAL_CFG_STRU;
 
+typedef struct
+{
+    VOS_UINT8                           ucCMCCCustomDeregFlag;    /**< 中国移动定制需求, 条件满足时去注册使能项*/
+    VOS_UINT8                           ucCMCCCustomTcallFlag;    /**< 中国移动定制需求, Tcall SilentRedial使能项*/
+    VOS_UINT8                           ucCMCCCustomTqosFlag;     /**< 中国移动定制需求, Tqos SilentRedial使能项*/
+    VOS_UINT8                           aucReserved[1];
+
+    VOS_UINT32                          ulTcallTimerLen;            /**< 中国移动定制需求, Tcall timer定时器时长, 单位为ms*/
+    VOS_UINT32                          ulTqosTimerLen;             /**< 中国移动定制需求, Tqos timer定时器时长, 单位为ms*/
+} IMSA_NV_CMCC_CUSTOM_REQ_STRU;
 
 typedef struct
 {
@@ -115,8 +125,9 @@ typedef struct
     VOS_UINT32                          ulMaxTime;              /**< max time，单位为s */
     VOS_UINT32                          ulBaseTime;             /**< base time，单位为s */
     VOS_UINT32                          ulRegFailRetryIntervel; /**< 注册失败重试间隔，单位为s，0表示非固定间隔 */
-
+    VOS_UINT32                          ulRegTimerLen;
     IMSA_NV_IMS_REDIAL_CFG_STRU         stImsRedialCfg;         /**< IMS域内重播配置 */
+    IMSA_NV_CMCC_CUSTOM_REQ_STRU        stCMCCCustomReq;        /**< 中国移动定制需求 */
 }IMSA_NV_IMSA_CONFIG_STRU;
 
 typedef struct
@@ -172,6 +183,69 @@ typedef struct
     IMSA_NV_PDP_IPV6_PCSCF_STRU             stIpv6Pcscf;            /**< 承载IPv6 P-CSCF信息 */
 }IMSA_NV_PCSCF_DISCOVERY_POLICY_STRU;
 
+/* zhaochen 00308719 begin for HIFI mailbox full reset 2015-11-09 */
+typedef struct
+{
+    VOS_UINT8                           ucHifiDataControlFlag; /*是否支持HIFI限流：TRUE:支持；FALSE：不支持 */
+    VOS_UINT8                           ucHifiDataNeedAckNum;  /*HIFI限流功能，需要每多少条回复一次ack */
+    VOS_UINT8                           ucHifiDatMaxBufferNum; /*HIFI限流功能，IMSA缓存的消息数 */
+    VOS_UINT8                           ucRsv1;
+
+    VOS_UINT8                           ucRsv2;
+    VOS_UINT8                           ucRsv3;
+    VOS_UINT8                           ucRsv4;
+    VOS_UINT8                           ucRsv5;
+
+    VOS_UINT8                           ucRsv6;
+    VOS_UINT8                           ucRsv7;
+    VOS_UINT8                           ucRsv8;
+    VOS_UINT8                           ucRsv9;
+
+    VOS_UINT8                           ucRsv10;
+    VOS_UINT8                           ucRsv11;
+    VOS_UINT8                           ucRsv12;
+    VOS_UINT8                           ucRsv13;
+
+    VOS_UINT8                           ucRsv14;
+    VOS_UINT8                           ucRsv15;
+    VOS_UINT8                           ucRsv16;
+    VOS_UINT8                           ucRsv17;
+
+    VOS_UINT16                          usRsv1;
+    VOS_UINT16                          usRsv2;
+
+    VOS_UINT16                          usRsv3;
+    VOS_UINT16                          usRsv4;
+
+    VOS_UINT16                          usRsv5;
+    VOS_UINT16                          usRsv6;
+
+    VOS_UINT16                          usRsv7;
+    VOS_UINT16                          usRsv8;
+
+    VOS_UINT16                          usRsv9;
+    VOS_UINT16                          usRsv10;
+
+    VOS_UINT32                          ulRsv1;
+    VOS_UINT32                          ulRsv2;
+
+    VOS_UINT32                          ulRsv3;
+    VOS_UINT32                          ulRsv4;
+
+    VOS_UINT32                          ulRsv5;
+    VOS_UINT32                          ulRsv6;
+
+    VOS_UINT32                          ulRsv7;
+    VOS_UINT32                          ulRsv8;
+
+    VOS_UINT32                          ulRsv9;
+    VOS_UINT32                          ulRsv10;
+
+    VOS_UINT32                          ulRsv11;
+    VOS_UINT32                          ulRsv12;
+} IMSA_COMM_PARA_CONFIG_STRU;
+
+/* zhaochen 00308719 end for HIFI mailbox full reset 2015-11-09 */
 /*****************************************************************************
   6 UNION
 *****************************************************************************/

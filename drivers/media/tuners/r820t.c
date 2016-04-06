@@ -1363,7 +1363,6 @@ static int r820t_xtal_check(struct r820t_priv *priv)
 	if (rc < 0)
 		return rc;
 
-	/* set manual initial reg = 111111;  */
 	rc = r820t_write_reg_mask(priv, 0x13, 0x7f, 0x7f);
 	if (rc < 0)
 		return rc;

@@ -49,6 +49,9 @@ extern "C" {
 #define RRC_MAX_NUM_OF_BANDS                    (64)
 #define RRC_MAX_NUM_OF_CDMA_BAND_CLASS          (32)
 #define RRC_MAX_NUM_OF_FEATURE_GROUP            (32)
+/* add for MFBI begin */
+#define RRC_FGI_MULTIBAND_SUPPORT_IN_ARRAY      (30)
+/* add for MFBI end */
 /* v7r2 LLD begin */
 #if 0
 #define RRC_MAX_NUM_OF_BAND_COMB_R10            (128)

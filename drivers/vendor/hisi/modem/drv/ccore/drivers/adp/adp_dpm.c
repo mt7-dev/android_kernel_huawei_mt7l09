@@ -180,7 +180,7 @@ static void check_pastar_stable_timestamp(void)
 static void clear_pastar_suspend_mark_and_config(void)
 {
     u32 temp = 0;
-    
+
 	/*清suspend 标记*/
 	if(*(dpm_info.suspend_mask) & 0x1){
         temp = *(dpm_info.suspend_mask);
@@ -196,13 +196,15 @@ static s32 pastar_suspend(struct dpm_device *dev)
 {
 	int ret = 0;
     u32 temp = 0;
-    
+
 	if(!(vote_map[0].lock || vote_map[1].lock || vote_map[2].lock || vote_map[3].lock)){
+			check_pastar_stable_timestamp();
+			clear_pastar_suspend_mark_and_config();
+
 			ret = (int)pmu_hi6561_reg_save();
 			if(ret)
 				return -1;
-			check_pastar_stable_timestamp();
-			clear_pastar_suspend_mark_and_config();
+			pmu_hi6561_close_all_power();
 #ifndef CONFIG_PASTAR_DPM_M3
 			ret = regulator_disable(pastar_regulator);
 			if(ret){
@@ -229,7 +231,7 @@ static s32 pastar_suspend(struct dpm_device *dev)
 static s32 pastar_resume_early(struct dpm_device *dev)
 {
     u32 temp = 0;
-    
+
 	/*判断pastar是否关闭过smart star LVS5*/
 	if(*(dpm_info.suspend_mask) & 0x1){
 		if(0 != regulator_enable(pastar_regulator))
@@ -249,7 +251,12 @@ static s32 pastar_resume_early(struct dpm_device *dev)
 	return 0;
 }
 
-
+/*for关机前，或modem 异常调用*/
+void bsp_pastar_leakage_bugfix(void)
+{
+	check_pastar_stable_timestamp();
+	clear_pastar_suspend_mark_and_config();
+}
 static struct dpm_device pastar_dpm =
 {
 	.device_name = "pastar dpm",
@@ -296,7 +303,7 @@ void  bsp_adp_dpm_debug_init(void)
     /* 写共享内存不能直接赋值，最好调用writel。如果直接赋值，需要cache_sync */
     writel(0, (unsigned)(dpm_info.suspend_mask));
     writel(0, (unsigned)(dpm_info.en_timestamp));
-    writel(0, (unsigned)(dpm_info.ps_switch));    
+    writel(0, (unsigned)(dpm_info.ps_switch));
 
 	return;
 }
@@ -306,6 +313,8 @@ void debug_pastar_dpm(void)
 	adp_dpm_printf("pastar suspend count: %d\n",vote_map[18].disable_refct);
 	adp_dpm_printf("pastar resume count : %d\n",vote_map[18].enable_refct);
 	adp_dpm_printf("read timestamp count: %d\n",vote_map[18].enable_count[0]);
+	adp_dpm_printf("suspend_mask:     0x%x\n",*(dpm_info.suspend_mask));
+	adp_dpm_printf("en_timestamp:     0x%x\n",*(dpm_info.en_timestamp));
 	if(*(dpm_info.suspend_mask) & (0x1 << 1)){
 		adp_dpm_printf("regulator_disable pastar failure!\n");
 	}
@@ -321,7 +330,7 @@ static int bsp_pa_power_up(PWC_COMM_MODE_E enCommMode, PWC_COMM_MODULE_E enCommM
 {
      unsigned long flags = 0;
      int ret = RET_OK;
-     
+
 #if defined(CONFIG_PASTAR)
      check_pastar_stable_timestamp();
 #endif
@@ -430,9 +439,9 @@ static int bsp_rfic_power_up(PWC_COMM_MODE_E enCommMode, PWC_COMM_MODULE_E enCom
 #endif
      if(enModemId == PWC_COMM_MODEM_0){
 		spin_lock_irqsave(&vote_map[2].spinlock, flags);
-        
+
         writel(1, (unsigned)(dpm_info.ps_switch));
-        
+
 #if defined(CONFIG_PASTAR)
 		clear_pastar_suspend_mark_and_config();
 #endif
@@ -446,9 +455,9 @@ static int bsp_rfic_power_up(PWC_COMM_MODE_E enCommMode, PWC_COMM_MODULE_E enCom
      }else if(enModemId == PWC_COMM_MODEM_1){
 
 		spin_lock_irqsave(&vote_map[3].spinlock, flags);
-        
+
         writel(1, (unsigned)(dpm_info.ps_switch));
-        
+
 #if defined(CONFIG_PASTAR)
 		clear_pastar_suspend_mark_and_config();
 #endif
@@ -1211,7 +1220,7 @@ static int dfs_mode_disable (struct pll_info *pll)
         writel(clkcon, HI_SYSCRG_BASE_ADDR_VIRT + pll->reg);
         return RET_OK;
 }
-#elif defined(CONFIG_K3V3_CLK_CRG) /* CONFIG_K3V3_CLK_CRG */
+#elif defined(CONFIG_K3V3_CLK_CRG) && ! defined(BSP_CONFIG_BOARD_SFT)/* CONFIG_K3V3_CLK_CRG */
 static int dfs_mode_isenable(struct pll_info *pll)
 {
         unsigned int clkcon = 0;

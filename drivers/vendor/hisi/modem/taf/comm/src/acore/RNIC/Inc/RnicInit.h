@@ -64,7 +64,6 @@ extern "C" {
   10 º¯ÊýÉùÃ÷
 *****************************************************************************/
 extern VOS_UINT32 RNIC_PidInit (enum VOS_INIT_PHASE_DEFINE enPhase);
-extern VOS_UINT32 RNIC_FidInit (enum VOS_INIT_PHASE_DEFINE enPhase);
 
 VOS_INT RNIC_CCpuResetCallback(
     DRV_RESET_CALLCBFUN_MOMENT          enParam,

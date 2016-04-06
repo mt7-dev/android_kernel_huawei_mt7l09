@@ -166,27 +166,6 @@ VOS_UINT32 LUP_EnQue(LUP_QUEUE_STRU *pstQue, VOS_VOID *pNode)
     return PS_SUCC;
 }
 
-VOS_UINT32 LUP_EnSharedQueAcpu(LUP_QUEUE_STRU *pstQue, VOS_VOID *pNode)
-{
-    VOS_UINT32          ulTail;
-    VOS_VOID          **pBuf;
-
-    OSA_ASSERT_RTN (VOS_NULL_PTR != pstQue, PS_PTR_NULL);
-    OSA_ASSERT_RTN (VOS_NULL_PTR != pNode, PS_PTR_NULL);
-
-    ulTail = TTF_MOD_ADD(pstQue->ulTail, 1, pstQue->ulMaxNum);
-    if (pstQue->ulHead == ulTail)
-    {
-        return PS_QUE_FULL;
-    }
-
-    pBuf = (VOS_VOID**)DRV_DDR_PHY_TO_VIRT((VOS_UINT32)(pstQue->pBuff));/*注意:DRV_DDR_PHY_TO_VIRT 只适用于A核.虚拟内存地址 和物理 内存地址不一致,需转换*/
-    pBuf[ulTail] = pNode;
-    pstQue->ulTail = ulTail;
-
-    return PS_SUCC;
-}
-
 /*****************************************************************************
  函 数 名  : LUP_DeQue
  功能描述  : 出队操作，取出头接点
@@ -214,26 +193,6 @@ VOS_UINT32 LUP_DeQue(LUP_QUEUE_STRU *pstQue, VOS_VOID **ppNode)
 
     pstQue->ulHead  = TTF_MOD_ADD(pstQue->ulHead, 1, pstQue->ulMaxNum);
     *ppNode         = pstQue->pBuff[pstQue->ulHead];
-
-    return PS_SUCC;
-}
-
-VOS_UINT32 LUP_DeSharedQueAcpu(LUP_QUEUE_STRU *pstQue, VOS_VOID **ppNode)
-{
-    VOS_VOID **pBuf;
-
-    OSA_ASSERT_RTN (VOS_NULL_PTR != pstQue, PS_PTR_NULL);
-    OSA_ASSERT_RTN(VOS_NULL_PTR != ppNode, PS_PTR_NULL);
-
-    if (pstQue->ulHead == pstQue->ulTail)
-    {
-        return  PS_QUE_EMPTY;
-    }
-
-    pstQue->ulHead  = TTF_MOD_ADD(pstQue->ulHead, 1, pstQue->ulMaxNum);
-    pBuf = (VOS_VOID**)DRV_DDR_PHY_TO_VIRT((VOS_UINT32)(pstQue->pBuff));/*注意:DRV_DDR_PHY_TO_VIRT 只适用于A核.虚拟内存地址 和物理 内存地址不一致,需转换*/
-    *ppNode = pBuf[pstQue->ulHead];
-
 
     return PS_SUCC;
 }
@@ -324,48 +283,6 @@ VOS_UINT32 LUP_CreateQue(VOS_UINT32 ulPid, LUP_QUEUE_STRU **ppQue,
         PS_MEM_FREE(ulPid, pBuffer);
         return PS_MEM_ALLOC_FAIL;
     }
-
-    pstQue->ulHead      = ulMaxNodeNum;
-    pstQue->ulTail      = ulMaxNodeNum;
-    pstQue->ulMaxNum    = ulMaxNodeNum+1;
-    /*lint -e826*/
-    pstQue->pBuff       = (VOS_VOID **)pBuffer;
-    /*lint +e826*/
-    *ppQue              = pstQue;
-
-    return  PS_SUCC;
-}
-
-VOS_UINT32 LUP_CreateSharedQue(VOS_UINT32 ulPid, LUP_QUEUE_STRU **ppQue,
-                                       VOS_UINT32 ulMaxNodeNum,VOS_UINT8 *pucAddr,
-                                       VOS_UINT32 ulAddrBufLen)
-{
-    LUP_QUEUE_STRU  *pstQue     = VOS_NULL_PTR;
-    VOS_UINT8       *pBuffer    = VOS_NULL_PTR;
-    VOS_UINT32       ulLenth;
-
-    if (0 == ulMaxNodeNum)
-    {
-        return PS_PARA_ERR;
-    }
-
-    if (VOS_NULL_PTR == ppQue)
-    {
-        return PS_PTR_NULL;
-    }
-
-    ulLenth = (ulMaxNodeNum+5) * sizeof(VOS_VOID*);
-
-    if ((ulLenth + sizeof(LUP_QUEUE_STRU)) > ulAddrBufLen)
-    {
-        vos_printf("%s,%d\n",__FILE__,__LINE__);
-        vos_printf("lenth error\n");
-        return PS_FAIL;
-    }
-
-    pBuffer = pucAddr;
-
-    pstQue = (LUP_QUEUE_STRU *)(VOS_VOID *)(pucAddr + ulLenth);
 
     pstQue->ulHead      = ulMaxNodeNum;
     pstQue->ulTail      = ulMaxNodeNum;

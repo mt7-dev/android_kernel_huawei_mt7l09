@@ -16,7 +16,7 @@
 #include <linux/slab.h>
 #include <linux/io.h>
 #include <linux/err.h>
-#ifdef CONFIG_HI3630_CLK_DEBUG
+#ifdef CONFIG_HISI_CLK_DEBUG
 #include <linux/clk-private.h>
 #endif
 
@@ -108,7 +108,7 @@ static int clk_mux_set_parent(struct clk_hw *hw, u8 index)
 	return 0;
 }
 
-#ifdef CONFIG_HI3630_CLK_DEBUG
+#ifdef CONFIG_HISI_CLK_DEBUG
 static int k3_selreg_check(struct clk_hw *hw)
 {
 	struct clk_mux *mux = to_clk_mux(hw);
@@ -123,6 +123,10 @@ static int k3_selreg_check(struct clk_hw *hw)
 	if (val && (mux->flags & CLK_MUX_INDEX_ONE))
 		val--;
 
+	if(NULL == clk->parents) {
+		return 3; 
+	}
+
 	if (clk->parents[val] == clk_get_parent(clk))
 		return 1;
 	else
@@ -134,7 +138,7 @@ const struct clk_ops clk_mux_ops = {
 	.get_parent = clk_mux_get_parent,
 	.set_parent = clk_mux_set_parent,
 	.determine_rate = __clk_mux_determine_rate,
-#ifdef CONFIG_HI3630_CLK_DEBUG
+#ifdef CONFIG_HISI_CLK_DEBUG
 	.check_selreg = k3_selreg_check,
 #endif
 };

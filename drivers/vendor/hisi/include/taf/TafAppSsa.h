@@ -355,7 +355,7 @@ typedef struct
 {
     TAF_UINT8   ucStatus;        /* 1: NV有效标志位，0：无效 */
     TAF_UINT8   ucUssdTransMode;
-	TAF_UINT8   aucRsv[2];
+    TAF_UINT8   aucRsv[2];
 }USSD_TRANS_MODE_STRU;
 
 typedef struct
@@ -654,6 +654,7 @@ typedef  TAF_SS_ERASESS_REQ_STRU            TAF_SS_INTERROGATESS_REQ_STRU;
 typedef struct
 {
     TAF_SS_CODE                             SsCode;
+    VOS_UINT8                               aucReserved[3];
     TAF_UINT8                               aucOldPwdStr[TAF_SS_MAX_PASSWORD_LEN];
     TAF_UINT8                               aucNewPwdStr[TAF_SS_MAX_PASSWORD_LEN];
     TAF_UINT8                               aucNewPwdStrCnf[TAF_SS_MAX_PASSWORD_LEN];
@@ -694,10 +695,10 @@ typedef struct
     TAF_UINT32                              OP_Msisdn:1;
     TAF_UINT32                              OP_Spare:30;
 
+    TAF_SS_USSD_STRING_STRU                 UssdStr;
+
     TAF_SS_CUSD_TYPE_ENUM_UINT8             enCusdType;
     TAF_SS_DATA_CODING_SCHEME               DatacodingScheme;
-    TAF_UINT8                               aucRsv[2];
-    TAF_SS_USSD_STRING_STRU                 UssdStr;
     TAF_SS_ALERTINGPATTERN                  AlertingPattern;
     TAF_UINT8                               aucMsisdn[TAF_SS_MAX_MSISDN_LEN + 1];
 }TAF_SS_PROCESS_USS_REQ_STRU;
@@ -727,6 +728,7 @@ typedef struct
 
     TAF_SS_CODE                             SsCode;
     TAF_SS_CCBSINDEX                        CcbsIndex;
+    VOS_UINT8                               aucReserved[2];
 }TAF_SS_ERASECC_ENTRY_REQ_STRU;
 
 /*12. SS-TAF  struct:eraseCCEntry -result  NETWORK->MS*/
@@ -737,6 +739,7 @@ typedef struct
 
     TAF_SS_CODE                             SsCode;
     TAF_SS_STATUS                           SsStatus;
+    VOS_UINT8                               aucReserved[2];
 }TAF_SS_ERASECC_ENTRY_CNF_STRU;
 
 
@@ -845,31 +848,41 @@ typedef struct
 
 /*****************定义TAF提供给APP/AT的操作接口函数********************/
 /*RegisterSS操作*/
-TAF_UINT32 TAF_RegisterSSReq(MN_CLIENT_ID_T                              ClientId,
-                             MN_OPERATION_ID_T                                     OpId,
-                             TAF_SS_REGISTERSS_REQ_STRU                *para);
+/*lint -esym(752,TAF_RegisterSSReq)*/
+TAF_UINT32 TAF_RegisterSSReq(
+    MN_CLIENT_ID_T                      ClientId,
+    MN_OPERATION_ID_T                   OpId,
+    TAF_SS_REGISTERSS_REQ_STRU         *para
+);
 
 /*EraseSS操作*/
+/*lint -esym(752,TAF_EraseSSReq)*/
 TAF_UINT32 TAF_EraseSSReq(MN_CLIENT_ID_T                                 ClientId,
                           MN_OPERATION_ID_T                                        OpId,
                           TAF_SS_ERASESS_REQ_STRU                      *pPara);
 
 /*ActivateSS操作*/
-TAF_UINT32 TAF_ActivateSSReq(MN_CLIENT_ID_T                              ClientId,
-                             MN_OPERATION_ID_T                                     OpId,
-                             TAF_SS_ACTIVATESS_REQ_STRU                *pPara);
+/*lint -esym(752,TAF_ActivateSSReq)*/
+TAF_UINT32 TAF_ActivateSSReq(
+    MN_CLIENT_ID_T                      ClientId,
+    MN_OPERATION_ID_T                   OpId,
+    TAF_SS_ACTIVATESS_REQ_STRU         *pPara
+);
 
 /*DeactivateSS操作*/
+/*lint -esym(752,TAF_DeactivateSSReq)*/
 TAF_UINT32 TAF_DeactivateSSReq(MN_CLIENT_ID_T                             ClientId,
                               MN_OPERATION_ID_T                                    OpId,
                               TAF_SS_DEACTIVATESS_REQ_STRU             *pPara);
 
 /*InterrogateSS操作*/
+/*lint -esym(752,TAF_InterrogateSSReq)*/
 TAF_UINT32 TAF_InterrogateSSReq(MN_CLIENT_ID_T                           ClientId,
                                 MN_OPERATION_ID_T                                  OpId,
                                 TAF_SS_INTERROGATESS_REQ_STRU          *pPara);
 
 /*RegisterPassword操作*/
+/*lint -esym(752,TAF_RegisterPasswordReq)*/
 TAF_UINT32 TAF_RegisterPasswordReq(MN_CLIENT_ID_T                        ClientId,
                                    MN_OPERATION_ID_T                               OpId,
                                    TAF_SS_REGPWD_REQ_STRU              *pPara);
@@ -878,39 +891,29 @@ TAF_UINT32 TAF_RegisterPasswordReq(MN_CLIENT_ID_T                        ClientI
 
 
 /*ProcessUnstructuredSS-Request操作*/
+/*lint -esym(752,TAF_ProcessUnstructuredSSReq)*/
 TAF_UINT32 TAF_ProcessUnstructuredSSReq(MN_CLIENT_ID_T                   ClientId,
                                         MN_OPERATION_ID_T                          OpId,
                                         TAF_SS_PROCESS_USS_REQ_STRU    *pPara);
 
 
 /*EraseCCEntry操作*/
+/*lint -esym(752,TAF_EraseCCEntryReq)*/
 TAF_UINT32 TAF_EraseCCEntryReq(MN_CLIENT_ID_T                            ClientId,
                                MN_OPERATION_ID_T                                   OpId,
                                TAF_SS_ERASECC_ENTRY_REQ_STRU           *pPara);
 
-/*ProcessUnstructuredSS-Data操作*/
-TAF_UINT32 TAF_ProcessUSSDataReq(MN_CLIENT_ID_T                          ClientId,
-                                 MN_OPERATION_ID_T                                 OpId,
-                                 TAF_SS_PROCESS_USSDATA_REQ_STRU       *pPara);
 
 /*ReleaseComplete操作,释放当前操作占用的链路*/
+/*lint -esym(752,TAF_SsReleaseComplete)*/
 TAF_UINT32 TAF_SsReleaseComplete(MN_CLIENT_ID_T                                  ClientId,
                          MN_OPERATION_ID_T                                         OpId);
 
-/************************************************************************************/
-/*SSA事件上报给TAFM*/
-void Taf_SsEventReport (TAF_SS_CALL_INDEPENDENT_EVENT_STRU             *pEvent);
-
-
-/*SSA接收到CCA转发的MMI字串,执行相应的呼叫无关操作*/
-TAF_UINT32 Taf_MMIStrProc(MN_CLIENT_ID_T                                 ClientId,
-                          MN_OPERATION_ID_T                                        OpId,
-                          TAF_UINT8                                    *pucMMIStr,
-                          TAF_UINT8                                     ucStrLen);
 
 
 
-#if ((VOS_OS_VER == VOS_WIN32) || (VOS_OS_VER == VOS_NUCLEUS))
+
+#if (VOS_OS_VER == VOS_WIN32)
 #pragma pack()
 #else
 #pragma pack(0)

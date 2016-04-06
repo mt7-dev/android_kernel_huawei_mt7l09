@@ -44,8 +44,23 @@
 #define SOCP_TEST_INVALID_CACHE(ptr, size)  __dma_single_dev_to_cpu(ptr, size, 2)
 #endif
 
-#define SOCP_TEST_FLUSH_CACHE(ptr, size)    dma_map_single(NULL, ptr, size, DMA_TO_DEVICE)
-#define SOCP_TEST_INVALID_CACHE(ptr, size)  dma_map_single(NULL, ptr, size, DMA_FROM_DEVICE)
+//#define SOCP_TEST_FLUSH_CACHE(ptr, size)    dma_map_single(NULL, ptr, size, DMA_TO_DEVICE)
+//#define SOCP_TEST_INVALID_CACHE(ptr, size)  dma_map_single(NULL, ptr, size, DMA_FROM_DEVICE)
+unsigned long long g_socp_dma_test_mask=0xffffffffULL;
+#define SOCP_TEST_FLUSH_CACHE(ptr, size)                      \
+    do{                                                 \
+        struct device dev;                              \
+        memset(&dev,0,sizeof(struct device));           \
+        dev.dma_mask = (unsigned long long *)(&g_socp_dma_test_mask);    \
+        dma_map_single(&dev, ptr, size, DMA_TO_DEVICE);  \
+    }while(0)
+#define SOCP_TEST_INVALID_CACHE(ptr, size)                    \
+    do{                                                 \
+        struct device dev;                              \
+        memset(&dev,0,sizeof(struct device));           \
+        dev.dma_mask = (unsigned long long *)(&g_socp_dma_test_mask);    \
+        dma_map_single(&dev, ptr, size, DMA_FROM_DEVICE);  \
+    }while(0)
 
 #else   
 #define SOCP_TEST_FLUSH_CACHE(ptr, size)  (0)
@@ -80,7 +95,7 @@ BSP_S32 TM_socp_free(BSP_VOID* pMem)
 
     pItem = pMem;
 
-    (void)free_pages((u32)pItem,4);
+    (void)free_pages((unsigned long)pItem,4);
     return BSP_OK;
 }
 static BSP_BOOL g_bInit = BSP_FALSE;
@@ -146,7 +161,7 @@ do{\
     Socp_printf("%s(%d)\n", __FUNCTION__, __LINE__);\
 }
 
-BSP_S32 SocpEventCB(BSP_U32 u32ChanID, SOCP_EVENT_E u32Event, BSP_U32 u32Param)
+BSP_S32 SocpEventCB(BSP_U32 u32ChanID, SOCP_EVENT_ENUM_UIN32 u32Event, BSP_U32 u32Param)
 {
     return 0;
 }
@@ -163,7 +178,7 @@ BSP_S32 SocpReadCB(BSP_U32 u32ChanID)
 BSP_S32 SocpSetEncChan1(BSP_U32 id)
 {
     BSP_U32 u32ChanId = id;
-    SOCP_CODER_DEST_CHAN_S EncDstAttr;
+    SOCP_CODER_DEST_CHAN_STRU EncDstAttr;
     BSP_U32 len = 0x1000;
     BSP_U8 *p;
     BSP_U32 ret;
@@ -194,7 +209,7 @@ BSP_S32 SocpSetEncChan1(BSP_U32 id)
 BSP_S32 SocpSetEncChan2(BSP_U32 id)
 {
     BSP_U32 u32ChanId = id;
-    SOCP_CODER_DEST_CHAN_S EncDstAttr;
+    SOCP_CODER_DEST_CHAN_STRU EncDstAttr;
     BSP_U32 len = 0x1000;
     BSP_U8 *p;
     BSP_U32 ret;
@@ -227,7 +242,7 @@ BSP_S32 SocpSetEncChan2(BSP_U32 id)
 BSP_S32 SocpSetDecChan1(BSP_U32 id)
 {
     BSP_U32 u32ChanId = id;
-    SOCP_DECODER_SRC_CHAN_S DecSrcAttr;
+    SOCP_DECODER_SRC_CHAN_STRU DecSrcAttr;
     BSP_U32 len = 0x1000;
     BSP_U8 *p;
     BSP_U32 ret;
@@ -260,7 +275,7 @@ BSP_S32 SocpSetDecChan1(BSP_U32 id)
 
 BSP_S32 SocpAllocEncChan1(BSP_U32 u32ChanId)
 {
-    SOCP_CODER_SRC_CHAN_S EncSrcAttr;
+    SOCP_CODER_SRC_CHAN_STRU EncSrcAttr;
     BSP_U32 len = 0x1000;
     BSP_U8 *p;
     BSP_U32 ret;
@@ -322,7 +337,7 @@ BSP_S32 SocpResetAll(void)
 
 BSP_S32 SocpAllocEncChan2(BSP_U32 u32ChanId)
 {
-    SOCP_CODER_SRC_CHAN_S EncSrcAttr;
+    SOCP_CODER_SRC_CHAN_STRU EncSrcAttr;
     BSP_U32 len = 0x1000;
     BSP_U32 len2 = 64;
     BSP_U8 *p1, *p2;
@@ -374,7 +389,7 @@ BSP_S32 SocpAllocEncChan2(BSP_U32 u32ChanId)
 
 BSP_S32 SocpAllocDecChan1(BSP_U32 u32ChanId)
 {
-    SOCP_DECODER_DEST_CHAN_S DecDstAttr;
+    SOCP_DECODER_DEST_CHAN_STRU DecDstAttr;
     BSP_U32 len = 0x1000;
     BSP_U8 *p;
     BSP_U32 ret;
@@ -466,7 +481,7 @@ BSP_U32 SOCP_ST_INIT_004(void)
 BSP_S32 SOCP_ST_ENC_DST_001(void)
 {
     BSP_U32 u32ChanId;
-    SOCP_CODER_DEST_CHAN_S EncDstAttr;
+    SOCP_CODER_DEST_CHAN_STRU EncDstAttr;
 
     DEV_INIT();
 
@@ -490,7 +505,7 @@ BSP_S32 SOCP_ST_ENC_DST_001(void)
 BSP_S32 SOCP_ST_ENC_DST_002(void)
 {
     BSP_U32 u32ChanId = SOCP_CODER_DEST_CHAN_0;
-    SOCP_CODER_DEST_CHAN_S EncDstAttr;
+    SOCP_CODER_DEST_CHAN_STRU EncDstAttr;
 
     DEV_INIT();
 
@@ -499,7 +514,7 @@ BSP_S32 SOCP_ST_ENC_DST_002(void)
     EncDstAttr.sCoderSetDstBuf.u32Threshold = 0x1000;
     EncDstAttr.u32EncDstThrh = 0;
 
-    EncDstAttr.sCoderSetDstBuf.u32OutputStart = (BSP_U32)BSP_NULL;
+    EncDstAttr.sCoderSetDstBuf.u32OutputStart = 0;
     CHECK_RET(bsp_socp_coder_set_dest_chan_attr(u32ChanId, &EncDstAttr), BSP_ERR_SOCP_NULL);
     EncDstAttr.sCoderSetDstBuf.u32OutputStart = 0x30004000;
 
@@ -511,7 +526,7 @@ BSP_S32 SOCP_ST_ENC_DST_002(void)
     CHECK_RET(bsp_socp_coder_set_dest_chan_attr(u32ChanId, &EncDstAttr), BSP_ERR_SOCP_INVALID_PARA);
     EncDstAttr.sCoderSetDstBuf.u32OutputEnd = 0x30007fff;
     
-    EncDstAttr.sCoderSetDstBuf.u32OutputEnd = (BSP_U32)BSP_NULL;
+    EncDstAttr.sCoderSetDstBuf.u32OutputEnd = 0;
     CHECK_RET(bsp_socp_coder_set_dest_chan_attr(u32ChanId, &EncDstAttr), BSP_ERR_SOCP_NULL);
     EncDstAttr.sCoderSetDstBuf.u32OutputEnd = 0x30007fff;
     
@@ -532,7 +547,7 @@ BSP_S32 SOCP_ST_ENC_DST_002(void)
 BSP_S32 SOCP_ST_ENC_DST_003(void)
 {
     BSP_U32 u32ChanId = SOCP_CODER_DEST_CHAN_0;
-    SOCP_CODER_DEST_CHAN_S EncDstAttr;
+    SOCP_CODER_DEST_CHAN_STRU EncDstAttr;
 
     DEV_INIT();
 
@@ -552,7 +567,7 @@ BSP_S32 SOCP_ST_ENC_DST_003(void)
 BSP_S32 SOCP_ST_ENC_DST_004(void)
 {
     BSP_U32 u32ChanId = SOCP_CODER_DEST_CHAN_0;
-    SOCP_CODER_DEST_CHAN_S EncDstAttr;
+    SOCP_CODER_DEST_CHAN_STRU EncDstAttr;
 
     DEV_INIT();
 
@@ -573,7 +588,7 @@ BSP_S32 SOCP_ST_ENC_DST_004(void)
 BSP_S32 SOCP_ST_ENC_DST_005(void)
 {
     BSP_U32 u32ChanId = SOCP_CODER_DEST_CHAN_0;
-    SOCP_CODER_DEST_CHAN_S EncDstAttr;
+    SOCP_CODER_DEST_CHAN_STRU EncDstAttr;
 
     DEV_INIT();
 
@@ -632,7 +647,7 @@ BSP_S32 SOCP_ST_ENC_SRC_001(void)
 BSP_S32 SOCP_ST_ENC_SRC_002(void)
 {
     BSP_U32 u32ChanId = 0;
-    SOCP_CODER_SRC_CHAN_S EncSrcAttr;
+    SOCP_CODER_SRC_CHAN_STRU EncSrcAttr;
 
     DEV_INIT();
 
@@ -674,7 +689,7 @@ BSP_S32 SOCP_ST_ENC_SRC_002(void)
     CHECK_RET(bsp_socp_coder_set_src_chan(u32ChanId, &EncSrcAttr), BSP_ERR_SOCP_INVALID_CHAN);
     EncSrcAttr.u32DestChanID = SOCP_CODER_DEST_CHAN_0;
     
-    EncSrcAttr.sCoderSetSrcBuf.u32InputStart = (BSP_U32)BSP_NULL;
+    EncSrcAttr.sCoderSetSrcBuf.u32InputStart = 0;
     CHECK_RET(bsp_socp_coder_set_src_chan(u32ChanId, &EncSrcAttr), BSP_ERR_SOCP_NULL);
     EncSrcAttr.sCoderSetSrcBuf.u32InputStart = 0x30004000;
     
@@ -686,7 +701,7 @@ BSP_S32 SOCP_ST_ENC_SRC_002(void)
     CHECK_RET(bsp_socp_coder_set_src_chan(u32ChanId, &EncSrcAttr), BSP_ERR_SOCP_INVALID_PARA);
     EncSrcAttr.sCoderSetSrcBuf.u32InputEnd = 0x30007fff;
     
-    EncSrcAttr.sCoderSetSrcBuf.u32InputEnd = (BSP_U32)BSP_NULL;
+    EncSrcAttr.sCoderSetSrcBuf.u32InputEnd = 0;
     CHECK_RET(bsp_socp_coder_set_src_chan(u32ChanId, &EncSrcAttr), BSP_ERR_SOCP_NULL);
     EncSrcAttr.sCoderSetSrcBuf.u32InputEnd = 0x30007fff;
     
@@ -696,7 +711,7 @@ BSP_S32 SOCP_ST_ENC_SRC_002(void)
 
     EncSrcAttr.eMode = SOCP_ENCSRC_CHNMODE_LIST;
     EncSrcAttr.sCoderSetSrcBuf.u32RDThreshold = 0x10;
-    EncSrcAttr.sCoderSetSrcBuf.u32RDStart = (BSP_U32)BSP_NULL;
+    EncSrcAttr.sCoderSetSrcBuf.u32RDStart = 0;
     CHECK_RET(bsp_socp_coder_set_src_chan(u32ChanId, &EncSrcAttr), BSP_ERR_SOCP_NULL);
     EncSrcAttr.sCoderSetSrcBuf.u32RDStart = 0x30004000;
     
@@ -708,7 +723,7 @@ BSP_S32 SOCP_ST_ENC_SRC_002(void)
     CHECK_RET(bsp_socp_coder_set_src_chan(u32ChanId, &EncSrcAttr), BSP_ERR_SOCP_INVALID_PARA);
     EncSrcAttr.sCoderSetSrcBuf.u32RDEnd = 0x30007fff;
     
-    EncSrcAttr.sCoderSetSrcBuf.u32RDEnd = (BSP_U32)BSP_NULL;
+    EncSrcAttr.sCoderSetSrcBuf.u32RDEnd = 0;
     CHECK_RET(bsp_socp_coder_set_src_chan(u32ChanId, &EncSrcAttr), BSP_ERR_SOCP_NULL);
     EncSrcAttr.sCoderSetSrcBuf.u32RDEnd = 0x30007fff;
     
@@ -725,7 +740,7 @@ BSP_S32 SOCP_ST_ENC_SRC_002(void)
 BSP_S32 SOCP_ST_ENC_SRC_003(void)
 {
     BSP_U32 u32ChanId = 0;
-    SOCP_CODER_SRC_CHAN_S EncSrcAttr;
+    SOCP_CODER_SRC_CHAN_STRU EncSrcAttr;
 
     DEV_INIT();
 
@@ -756,7 +771,7 @@ BSP_S32 SOCP_ST_ENC_SRC_003(void)
 BSP_S32 SOCP_ST_DEC_SRC_001(void)
 {
     BSP_U32 u32ChanId;
-    SOCP_DECODER_SRC_CHAN_S DecSrcAttr;
+    SOCP_DECODER_SRC_CHAN_STRU DecSrcAttr;
 
     DEV_INIT();
 
@@ -781,7 +796,7 @@ BSP_S32 SOCP_ST_DEC_SRC_001(void)
 BSP_S32 SOCP_ST_DEC_SRC_002(void)
 {
     BSP_U32 u32ChanId = SOCP_DECODER_SRC_CHAN_0;
-    SOCP_DECODER_SRC_CHAN_S DecSrcAttr;
+    SOCP_DECODER_SRC_CHAN_STRU DecSrcAttr;
 
     DEV_INIT();
 
@@ -794,7 +809,7 @@ BSP_S32 SOCP_ST_DEC_SRC_002(void)
     CHECK_RET(bsp_socp_decoder_set_src_chan_attr(u32ChanId, &DecSrcAttr), BSP_ERR_SOCP_INVALID_PARA);
     DecSrcAttr.eDataTypeEn = SOCP_DATA_TYPE_EN;
 
-    DecSrcAttr.sDecoderSetSrcBuf.u32InputStart = (BSP_U32)BSP_NULL; 
+    DecSrcAttr.sDecoderSetSrcBuf.u32InputStart = 0; 
     CHECK_RET(bsp_socp_decoder_set_src_chan_attr(u32ChanId, &DecSrcAttr), BSP_ERR_SOCP_NULL);
     DecSrcAttr.sDecoderSetSrcBuf.u32InputStart = 0x30004000;
 
@@ -806,7 +821,7 @@ BSP_S32 SOCP_ST_DEC_SRC_002(void)
     CHECK_RET(bsp_socp_decoder_set_src_chan_attr(u32ChanId, &DecSrcAttr), BSP_ERR_SOCP_INVALID_PARA);
     DecSrcAttr.sDecoderSetSrcBuf.u32InputEnd = 0x30007fff;
     
-    DecSrcAttr.sDecoderSetSrcBuf.u32InputEnd = (BSP_U32)BSP_NULL;
+    DecSrcAttr.sDecoderSetSrcBuf.u32InputEnd = 0;
     CHECK_RET(bsp_socp_decoder_set_src_chan_attr(u32ChanId, &DecSrcAttr), BSP_ERR_SOCP_NULL);
     DecSrcAttr.sDecoderSetSrcBuf.u32InputEnd = 0x30007fff;
     
@@ -824,7 +839,7 @@ BSP_S32 SOCP_ST_DEC_SRC_002(void)
 BSP_S32 SOCP_ST_DEC_SRC_003(void)
 {
     BSP_U32 u32ChanId = SOCP_DECODER_SRC_CHAN_0;
-    SOCP_DECODER_SRC_CHAN_S DecSrcAttr;
+    SOCP_DECODER_SRC_CHAN_STRU DecSrcAttr;
 
     DEV_INIT();
 
@@ -847,7 +862,7 @@ BSP_S32 SOCP_ST_DEC_SRC_004(void)
 {
     /* 对应通道1*/
     BSP_U32 u32ChanId = SOCP_DECODER_SRC_CHAN_0;
-    SOCP_DECODER_SRC_CHAN_S DecSrcAttr;
+    SOCP_DECODER_SRC_CHAN_STRU DecSrcAttr;
 
     DEV_INIT();
 
@@ -870,7 +885,7 @@ BSP_S32 SOCP_ST_DEC_SRC_004(void)
 BSP_S32 SOCP_ST_DEC_SRC_005(void)
 {
     BSP_U32 u32ChanId = SOCP_DECODER_SRC_CHAN_0;
-    SOCP_DECODER_SRC_CHAN_S DecSrcAttr;
+    SOCP_DECODER_SRC_CHAN_STRU DecSrcAttr;
     int i;
 
     DEV_INIT();
@@ -911,7 +926,7 @@ BSP_S32 SOCP_ST_DEC_DST_001(void)
 BSP_S32 SOCP_ST_DEC_DST_002(void)
 {
     BSP_U32 u32ChanId;
-    SOCP_DECODER_DEST_CHAN_S DecDestAttr;
+    SOCP_DECODER_DEST_CHAN_STRU DecDestAttr;
 
     DEV_INIT();
 
@@ -968,7 +983,7 @@ BSP_S32 SOCP_ST_DEC_DST_002(void)
 BSP_S32 SOCP_ST_DEC_DST_003(void)
 {
     BSP_U32 u32ChanId;
-    SOCP_DECODER_DEST_CHAN_S DecDestAttr;
+    SOCP_DECODER_DEST_CHAN_STRU DecDestAttr;
 
     DEV_INIT();
 
@@ -992,7 +1007,7 @@ BSP_S32 SOCP_ST_DEC_DST_003(void)
 BSP_S32 SOCP_ST_DEC_DST_004(void)
 {
     BSP_U32 u32ChanId1, u32ChanId2, u32ChanId3, u32ChanId4;
-    SOCP_DECODER_DEST_CHAN_S DecDestAttr;
+    SOCP_DECODER_DEST_CHAN_STRU DecDestAttr;
 
     DEV_INIT();
 
@@ -1903,10 +1918,10 @@ typedef struct tagSOCP_ST_CASE_S{
     BSP_U32                 bDstSet;   
     BSP_U32                 SrcCh;
     BSP_U32                 DstCh;
-    BSP_U32		            u32BypassEn; 
-    SOCP_DATA_TYPE_E        eDataType;
-    SOCP_ENCSRC_CHNMODE_E   eMode;
-    SOCP_CHAN_PRIORITY_E    ePriority;
+    BSP_U32		            u32BypassEn;
+    SOCP_DATA_TYPE_ENUM_UIN32        eDataType;
+    SOCP_ENCSRC_CHNMODE_ENUM_UIN32   eMode;
+    SOCP_CHAN_PRIORITY_ENUM_UIN32    ePriority;
     BSP_U32                 u32InputStart;
     BSP_U32                 u32InputSize;
     BSP_U32                 u32RDStart;
@@ -1922,8 +1937,8 @@ typedef struct tagSOCP_ST_CASE_S{
     struct task_struct*    TaskId;
     BSP_U32                 u32DataLen;
     BSP_U32                 u32DataCnt;
-    SOCP_DATA_TYPE_EN_E     eDataTypeEn;
-    SOCP_ENC_DEBUG_EN_E     eEncDebugEn;
+    SOCP_DATA_TYPE_EN_ENUM_UIN32     eDataTypeEn;
+    SOCP_ENC_DEBUG_EN_ENUM_UIN32     eEncDebugEn;
     BSP_U32                 u32EncDstThrh;
 }SOCP_ST_CASE_S;
 
@@ -1932,9 +1947,9 @@ typedef struct tagSOCP_ST_CASE_DECODER_S{
     BSP_U32                 bSrcSet;   
     BSP_U32                 SrcCh;
     BSP_U32                 DstCh;
-    BSP_U32		            u32DebugEn; 
-    SOCP_DECSRC_CHNMODE_E   eMode;
-    SOCP_DATA_TYPE_E        eDataType;
+    BSP_U32		            u32DebugEn;
+    SOCP_DECSRC_CHNMODE_ENUM_UIN32   eMode;
+    SOCP_DATA_TYPE_ENUM_UIN32        eDataType;
     BSP_U32                 u32InputStart;
     BSP_U32                 u32InputSize;
     BSP_U32                 u32RDStart;
@@ -1949,7 +1964,7 @@ typedef struct tagSOCP_ST_CASE_DECODER_S{
     struct task_struct*     TaskId;
     BSP_U32                 u32sendDataLen;
     BSP_U32                 u32sendDataCnt;
-    SOCP_DATA_TYPE_EN_E     eDataTypeEn;
+    SOCP_DATA_TYPE_EN_ENUM_UIN32     eDataTypeEn;
 }SOCP_ST_CASE_DECODER_S;
 
 static BSP_U8 g_socpRxdata[4096];
@@ -1959,7 +1974,7 @@ BSP_U32 g_socpTxTotal[25] = {0};
 
 BSP_S32 SocpStSetEncDst(SOCP_ST_CASE_S *pCase)
 {
-    SOCP_CODER_DEST_CHAN_S EncDstAttr;
+    SOCP_CODER_DEST_CHAN_STRU EncDstAttr;
 
     if(!pCase->bDstSet)
     {
@@ -1971,14 +1986,14 @@ BSP_S32 SocpStSetEncDst(SOCP_ST_CASE_S *pCase)
         
         p = (BSP_U8*)TM_socp_malloc(pCase->u32OutputSize);
 
-        Socp_printf("kmalloc succussed 0x%x\n", (u32)p);
+        Socp_printf("kmalloc succussed %p\n", p);
 
         if(BSP_NULL == p)
         {
             Socp_printf("%s[%d] SET ENC DST FAILED!\n", __FUNCTION__, __LINE__);
             return BSP_ERROR;
         }
-        pCase->u32OutputStart = (BSP_U32)p;
+        pCase->u32OutputStart = (uintptr_t)p;
         g_pSocpBuf[g_SocpBufCnt++] = p;
 
         EncDstAttr.sCoderSetDstBuf.u32OutputStart = (BSP_U32)SOCP_VIRT_TO_PHYS(p);
@@ -2009,7 +2024,7 @@ BSP_S32 SocpStSetEncDst(SOCP_ST_CASE_S *pCase)
 
 BSP_S32 SocpStSetDecSrc(SOCP_ST_CASE_DECODER_S *pCase)
 {
-    SOCP_DECODER_SRC_CHAN_S DecSrcAttr;
+    SOCP_DECODER_SRC_CHAN_STRU DecSrcAttr;
 
     if(!pCase->bSrcSet)
     {
@@ -2025,7 +2040,7 @@ BSP_S32 SocpStSetDecSrc(SOCP_ST_CASE_DECODER_S *pCase)
             return BSP_ERROR;
         }
         g_pSocpBuf[g_SocpBufCnt++] = p;
-        pCase->u32InputStart= (BSP_U32)p;
+        pCase->u32InputStart= (uintptr_t)p;
 
         DecSrcAttr.sDecoderSetSrcBuf.u32InputStart = (BSP_U32)SOCP_VIRT_TO_PHYS(p);
         DecSrcAttr.sDecoderSetSrcBuf.u32InputEnd = (BSP_U32)SOCP_VIRT_TO_PHYS(p) + pCase->u32InputSize- 1;
@@ -2046,7 +2061,7 @@ BSP_S32 SocpStSetDecSrc(SOCP_ST_CASE_DECODER_S *pCase)
 
 BSP_S32 SocpStAllocDecDst(SOCP_ST_CASE_DECODER_S *pCase)
 {
-    SOCP_DECODER_DEST_CHAN_S DecDstAttr;
+    SOCP_DECODER_DEST_CHAN_STRU DecDstAttr;
     BSP_U8 *p;
 
     //p = (BSP_U8*)cacheDmaMalloc(pCase->u32OutputSize);
@@ -2059,7 +2074,7 @@ BSP_S32 SocpStAllocDecDst(SOCP_ST_CASE_DECODER_S *pCase)
         return BSP_ERROR;
     }
     g_pSocpBuf[g_SocpBufCnt++] = p;
-    pCase->u32OutputStart = (BSP_U32)p;
+    pCase->u32OutputStart = (uintptr_t)p;
     
     DecDstAttr.eDataType = pCase->eDataType;
     DecDstAttr.u32SrcChanID = pCase->SrcCh;
@@ -2078,7 +2093,7 @@ BSP_S32 SocpStAllocDecDst(SOCP_ST_CASE_DECODER_S *pCase)
 
 BSP_S32 SocpStAllocEncSrc(SOCP_ST_CASE_S *pCase)
 {
-    SOCP_CODER_SRC_CHAN_S EncSrcAttr;
+    SOCP_CODER_SRC_CHAN_STRU EncSrcAttr;
     BSP_U8 *p;
     BSP_U8 *pRd = 0;
 
@@ -2089,7 +2104,7 @@ BSP_S32 SocpStAllocEncSrc(SOCP_ST_CASE_S *pCase)
         Socp_printf("%s[%d] ALLOC ENC SRC FAILED!\n", __FUNCTION__, __LINE__);
         return BSP_ERROR;
     }
-    pCase->u32InputStart = (BSP_U32)p;
+    pCase->u32InputStart = (uintptr_t)p;
     g_pSocpBuf[g_SocpBufCnt++] = p;
 
     if(pCase->eMode == SOCP_ENCSRC_CHNMODE_LIST)
@@ -2101,11 +2116,11 @@ BSP_S32 SocpStAllocEncSrc(SOCP_ST_CASE_S *pCase)
             TM_socp_free(g_pSocpBuf[--g_SocpBufCnt]); 
             return BSP_ERROR;
         }
-        pCase->u32RDStart = (BSP_U32)pRd;
+        pCase->u32RDStart = (uintptr_t)pRd;
         g_pSocpBuf[g_SocpBufCnt++] = pRd;
     }
     
-    pCase->u32InputStart = (BSP_U32)p;
+    pCase->u32InputStart = (uintptr_t)p;
     EncSrcAttr.eDataType = pCase->eDataType;
     EncSrcAttr.eDataTypeEn = pCase->eDataTypeEn;
     EncSrcAttr.eDebugEn = pCase->eEncDebugEn;
@@ -2135,7 +2150,7 @@ BSP_S32 SocpStAllocEncSrc(SOCP_ST_CASE_S *pCase)
     return 0;
 }
 
-BSP_S32 SocpStEventCB_1(BSP_U32 u32ChanID, SOCP_EVENT_E u32Event, BSP_U32 u32Param)
+BSP_S32 SocpStEventCB_1(BSP_U32 u32ChanID, SOCP_EVENT_ENUM_UIN32 u32Event, BSP_U32 u32Param)
 {
     BSP_U32 u32ChanType =  SOCP_REAL_CHAN_TYPE(u32ChanID); 
     BSP_U32 u32ChanId   =  SOCP_REAL_CHAN_ID(u32ChanID);
@@ -2199,7 +2214,7 @@ BSP_S32 SocpStEventCB_1(BSP_U32 u32ChanID, SOCP_EVENT_E u32Event, BSP_U32 u32Par
 BSP_S32 SocpStReadCB_1(BSP_U32 u32ChanID)
 {
     BSP_U32 len;
-    SOCP_BUFFER_RW_S Buffer;
+    SOCP_BUFFER_RW_STRU Buffer;
     int i;
     
     CHECK_RET(bsp_socp_get_read_buff(u32ChanID, &Buffer), BSP_OK);
@@ -2235,7 +2250,7 @@ BSP_S32 SocpStReadCB_1(BSP_U32 u32ChanID)
 BSP_S32 SocpStReadCB_2(BSP_U32 u32ChanID)
 {
     BSP_U32 len;
-    SOCP_BUFFER_RW_S Buffer;
+    SOCP_BUFFER_RW_STRU Buffer;
     int i, c;
     static BSP_BOOL flag = BSP_TRUE;
 
@@ -2278,7 +2293,7 @@ BSP_S32 SocpStReadCB_2(BSP_U32 u32ChanID)
 BSP_S32 SocpStReadCB_3(BSP_U32 u32ChanID)
 {
     BSP_U32 len;
-    SOCP_BUFFER_RW_S Buffer;
+    SOCP_BUFFER_RW_STRU Buffer;
     int chan;
     
     chan = u32ChanID&0xff;
@@ -2310,7 +2325,7 @@ BSP_U32 rEncCnt = 0;
 BSP_S32 SocpStReadCB_Enc_Stress(BSP_U32 u32ChanID)
 {
     BSP_U32 len;
-    SOCP_BUFFER_RW_S Buffer;
+    SOCP_BUFFER_RW_STRU Buffer;
 
     CHECK_RET(bsp_socp_get_read_buff(u32ChanID, &Buffer), BSP_OK);
     len = Buffer.u32Size + Buffer.u32RbSize;
@@ -2333,8 +2348,8 @@ BSP_S32 SocpStReadCB_Enc_Stress(BSP_U32 u32ChanID)
 BSP_S32 SocpStReadCB_4(BSP_U32 u32ChanID)
 {
     BSP_U32 len;
-    SOCP_BUFFER_RW_S Buffer;
-    
+    SOCP_BUFFER_RW_STRU Buffer;
+
     CHECK_RET(bsp_socp_get_read_buff(u32ChanID, &Buffer), BSP_OK);
     len = Buffer.u32Size + Buffer.u32RbSize;
     Socp_printf("func: SocpStReadCB_4: chan[%x] get data len=[%d]\n", u32ChanID, len);
@@ -2348,7 +2363,7 @@ BSP_U32 rCnt = 0;
 BSP_S32 SocpStReadCB_19(BSP_U32 u32ChanID)
 {
     BSP_U32 len;
-    SOCP_BUFFER_RW_S Buffer;
+    SOCP_BUFFER_RW_STRU Buffer;
     int chan;
     
     chan = u32ChanID&0xff;
@@ -2389,9 +2404,9 @@ static BSP_U32 g_socpRDdata[8];
 BSP_S32 SocpStRdCB_1(BSP_U32 u32ChanID)
 {
     BSP_U32 len;
-    SOCP_BUFFER_RW_S Buffer;
-    
-    CHECK_RET(bsp_socp_get_rd_buffer(u32ChanID, (SOCP_BUFFER_RW_S *)&Buffer), BSP_OK);
+    SOCP_BUFFER_RW_STRU Buffer;
+
+    CHECK_RET(bsp_socp_get_rd_buffer(u32ChanID, (SOCP_BUFFER_RW_STRU *)&Buffer), BSP_OK);
     len = Buffer.u32Size + Buffer.u32RbSize;
     Socp_printf("%d chan[0x%x] get RD len=[%d]\n", __LINE__, u32ChanID, len);
     //g_socpRDdata[0] = (BSP_U32)&Buffer;
@@ -2407,12 +2422,12 @@ BSP_S32 SocpStRdCB_1(BSP_U32 u32ChanID)
 BSP_S32 SocpStRdCB_19(BSP_U32 u32ChanID)
 {
     BSP_U32 len;
-    SOCP_BUFFER_RW_S Buffer;
-    
-    CHECK_RET(bsp_socp_get_rd_buffer(u32ChanID, (SOCP_BUFFER_RW_S *)&Buffer), BSP_OK);
+    SOCP_BUFFER_RW_STRU Buffer;
+
+    CHECK_RET(bsp_socp_get_rd_buffer(u32ChanID, (SOCP_BUFFER_RW_STRU *)&Buffer), BSP_OK);
     len = Buffer.u32Size + Buffer.u32RbSize;
     //Socp_printf("%d chan[0x%x] get RD len=[%d]\n", __LINE__, u32ChanID, len);
-    g_socpRDdata[0] = (BSP_U32)&Buffer;
+    g_socpRDdata[0] = (uintptr_t)&Buffer;
     g_socpRDdata[1] = len;
 
     CHECK_RET(bsp_socp_read_rd_done(u32ChanID, len), BSP_OK);
@@ -2424,7 +2439,7 @@ BSP_S32 SocpStRdCB_19(BSP_U32 u32ChanID)
 BSP_S32 SocpStReadCB_5(BSP_U32 u32ChanID)
 {
     BSP_U32 len;
-    SOCP_BUFFER_RW_S Buffer;
+    SOCP_BUFFER_RW_STRU Buffer;
     int i;
     
     CHECK_RET(bsp_socp_get_read_buff(u32ChanID, &Buffer), BSP_OK);
@@ -2458,7 +2473,7 @@ BSP_S32 SocpStReadCB_5(BSP_U32 u32ChanID)
 BSP_S32 SocpStReadCB_6(BSP_U32 u32ChanID)
 {
     BSP_U32 len;
-    SOCP_BUFFER_RW_S Buffer;
+    SOCP_BUFFER_RW_STRU Buffer;
     int i;
     
     CHECK_RET(bsp_socp_get_read_buff(u32ChanID, &Buffer), BSP_OK);
@@ -2494,8 +2509,8 @@ BSP_U32 rDecCnt = 0;
 BSP_S32 SocpStReadCB_Dec_Stress(BSP_U32 u32ChanID)
 {
     BSP_U32 len;
-    SOCP_BUFFER_RW_S Buffer;
-    
+    SOCP_BUFFER_RW_STRU Buffer;
+
     CHECK_RET(bsp_socp_get_read_buff(u32ChanID, &Buffer), BSP_OK);
     len = Buffer.u32Size + Buffer.u32RbSize;
  
@@ -2996,24 +3011,22 @@ BSP_VOID SocpStGenPkt3(BSP_U8 *pBuff, BSP_U32 u32DataLen)
 
 BSP_VOID SocpStGenBD1(BSP_U32 *pBD, BSP_U8 *pBuff, BSP_U32 u32DataLen)
 {
-    pBD[0] = (BSP_U32)pBuff;
+    pBD[0] = (uintptr_t)pBuff;
     pBD[1] = 0;
     pBD[1] |= (0xffff & u32DataLen);
 
     SocpStGenPayLoad(pBuff, u32DataLen);
-    
     return;
 }
 
 
 BSP_VOID SocpStGenBD2(BSP_U32 *pBD, BSP_U8 *pBuff, BSP_U32 u32DataLen)
 {
-    pBD[0] = (BSP_U32)pBuff;
+    pBD[0] = (uintptr_t)pBuff;
     pBD[1] = 0;
     pBD[1] |= (0xffff & u32DataLen);
 
     SocpStGenPayLoad(pBuff, u32DataLen);
-    
     return;
 }
 
@@ -3039,23 +3052,23 @@ BSP_VOID SocpStGenBD3(BSP_U32 *pBD, BSP_U32 *pCD, BSP_U8 *pBuff, BSP_U32 u32Data
         pBuff[i] = i;
     }
 
-    pBD[0] = (BSP_U32)pCD;
+    pBD[0] = (uintptr_t)pCD;
     pBD[1] = 0x10001;
     
-    pCD[0] = (BSP_U32)pBuff;
+    pCD[0] = (uintptr_t)pBuff;
     pCD[1] = 0x10;
-    pCD[2] = (BSP_U32)pBuff+0x10;
+    pCD[2] = (uintptr_t)pBuff+0x10;
     pCD[3] = 0x18;
-    pCD[4] = (BSP_U32)pBuff+0x10+0x18;
+    pCD[4] = (uintptr_t)pBuff+0x10+0x18;
     u32DataLen = u32DataLen - 0x18;
     pCD[5] = 0x10000|u32DataLen;
-
     return;
 }
 
 
 BSP_VOID SocpStGenBD4(BSP_U32 *pBD, BSP_U32 *pCD, BSP_U8 *pBuff, BSP_U32 u32DataLen)
 {
+
     int i;
 
     for(i=0; i<16; i++)
@@ -3063,19 +3076,16 @@ BSP_VOID SocpStGenBD4(BSP_U32 *pBD, BSP_U32 *pCD, BSP_U8 *pBuff, BSP_U32 u32Data
         pBuff[i] = i;
     }
 
-    pBD[0] = (BSP_U32)pCD;
+    pBD[0] = (uintptr_t)pCD;
     pBD[1] = 0x10001;
     
-    pCD[0] = (BSP_U32)pBuff;
+    pCD[0] = (uintptr_t)pBuff;
     pCD[1] = 0x10000|u32DataLen;
-#if 0
-    pCD[2] = (BSP_U32)pBuff+0x10;
+    pCD[2] = (uintptr_t)pBuff+0x10;
     pCD[3] = 0x18;
-    pCD[4] = (BSP_U32)pBuff+0x10+0x18;
+    pCD[4] = (uintptr_t)pBuff+0x10+0x18;
     u32DataLen = u32DataLen - 0x18;
     pCD[5] = 0x10000|u32DataLen;
-
-#endif
     return;
 }
 
@@ -3085,7 +3095,7 @@ BSP_S32 socp_encode_task001(BSP_VOID *param)
     int cnt = pCase->u32DataCnt;
     int len = pCase->u32DataLen + 8;
     BSP_U8* packet;
-    SOCP_BUFFER_RW_S WtBuff;
+    SOCP_BUFFER_RW_STRU WtBuff;
     int vfcnt = 0;
     int c;
 
@@ -3101,7 +3111,7 @@ BSP_S32 socp_encode_task001(BSP_VOID *param)
         return -1;
     }
     //g_pSocpBuf[g_SocpBufCnt++] = packet;
-    bsp_log("packet 0x%x, len %d\n", (u32)packet, pCase->u32DataLen);
+    bsp_log("packet %p, len %d\n", packet, pCase->u32DataLen);
     SocpStGenPkt(packet, pCase->u32DataLen);
     
     while(cnt)
@@ -3156,7 +3166,7 @@ BSP_S32 socp_encode_task002(BSP_VOID *param)
     int cnt = pCase->u32DataCnt;
     int len = pCase->u32DataLen + 8;
     BSP_U8* packet;
-    SOCP_BUFFER_RW_S WtBuff;
+    SOCP_BUFFER_RW_STRU WtBuff;
     int i;
     
     //packet = (BSP_U8*)kmalloc(len, GFP_KERNEL);
@@ -3253,7 +3263,7 @@ BSP_S32 socp_encode_task003(BSP_VOID *param)
     int cnt = pCase->u32DataCnt;
     int len = pCase->u32DataLen;
     BSP_U8* packet;
-    SOCP_BUFFER_RW_S WtBuff;
+    SOCP_BUFFER_RW_STRU WtBuff;
     BSP_U8 bd[8];
     int vfcnt = 0;
     int c;
@@ -3321,10 +3331,10 @@ BSP_S32 socp_encode_task004(BSP_VOID *param)
     int cnt = pCase->u32DataCnt;
     int len = pCase->u32DataLen;
     BSP_U8* packet;
-    SOCP_BUFFER_RW_S WtBuff;
+    SOCP_BUFFER_RW_STRU WtBuff;
     BSP_U8 bd[8];
-    SOCP_BUFFER_RW_S Buffer;
-    
+    SOCP_BUFFER_RW_STRU Buffer;
+
     //packet = kmalloc(len, GFP_KERNEL);
     packet = (BSP_U8*)TM_socp_malloc(len);
     if(!packet)
@@ -3386,7 +3396,7 @@ BSP_S32 socp_encode_task005(BSP_VOID *param)
     int cnt = pCase->u32DataCnt;
     int len = pCase->u32DataLen + 8;
     BSP_U8* packet;
-    SOCP_BUFFER_RW_S WtBuff;
+    SOCP_BUFFER_RW_STRU WtBuff;
     int vfcnt = 0;
     int c;
 
@@ -3487,7 +3497,7 @@ BSP_S32 socp_encode_task008(BSP_VOID *param)
     int cnt = pCase->u32DataCnt;
     int len = pCase->u32DataLen + 8;
     BSP_U8* packet;
-    SOCP_BUFFER_RW_S WtBuff;
+    SOCP_BUFFER_RW_STRU WtBuff;
     int vfcnt = 0;
     int c;
     
@@ -3554,7 +3564,7 @@ BSP_S32 socp_encode_task009(BSP_VOID *param)
     int cnt = pCase->u32DataCnt;
     int len = pCase->u32DataLen + 8;
     BSP_U8* packet;
-    SOCP_BUFFER_RW_S WtBuff;
+    SOCP_BUFFER_RW_STRU WtBuff;
     int vfcnt = 0;
     int c;
     
@@ -3619,7 +3629,7 @@ BSP_S32 socp_encode_task010(BSP_VOID *param)
     int cnt = pCase->u32DataCnt;
     int len = pCase->u32DataLen + 8;
     BSP_U8* packet;
-    SOCP_BUFFER_RW_S WtBuff;
+    SOCP_BUFFER_RW_STRU WtBuff;
     int vfcnt = 0;
     int c;
     int i;
@@ -3702,7 +3712,7 @@ BSP_S32 socp_encode_task011(BSP_VOID *param)
     int cnt = pCase->u32DataCnt;
     int len = pCase->u32DataLen + 8;
     BSP_U8* packet;
-    SOCP_BUFFER_RW_S WtBuff;
+    SOCP_BUFFER_RW_STRU WtBuff;
     int vfcnt = 0;
     int c;
     
@@ -3767,7 +3777,7 @@ BSP_S32 socp_encode_task013(BSP_VOID *param)
     int cnt = pCase->u32DataCnt;
     int len = pCase->u32DataLen + 8;
     BSP_U8* packet;
-    SOCP_BUFFER_RW_S WtBuff;
+    SOCP_BUFFER_RW_STRU WtBuff;
     int vfcnt = 0;
     int c;
     
@@ -3833,7 +3843,7 @@ BSP_S32 socp_encode_task_stress_001(BSP_VOID *param)
     SOCP_ST_CASE_S *pCase = (SOCP_ST_CASE_S*)param;
     int len = pCase->u32DataLen + 8;
     BSP_U8* packet;
-    SOCP_BUFFER_RW_S WtBuff;
+    SOCP_BUFFER_RW_STRU WtBuff;
     int vfcnt = 0;
     int c;
 
@@ -3899,12 +3909,12 @@ BSP_S32 socp_encode_task_stress_002(BSP_VOID *param)
     SOCP_ST_CASE_S *pCase = (SOCP_ST_CASE_S*)param;
     int len = pCase->u32DataLen;
     BSP_U8* packet;
-    SOCP_BUFFER_RW_S WtBuff;
+    SOCP_BUFFER_RW_STRU WtBuff;
     BSP_U8 bd[8];
     int vfcnt = 0;
     int c;
-    SOCP_BUFFER_RW_S Buffer;
-    
+    SOCP_BUFFER_RW_STRU Buffer;
+
     c = pCase->SrcCh&0xff;
     g_socpTxTotal[c] = 0;
     
@@ -3976,7 +3986,7 @@ BSP_S32 socp_encode_task_stress_003(BSP_VOID *param)
     int cnt = pCase->u32DataCnt;
     int len = pCase->u32DataLen + 8;
     BSP_U8* packet;
-    SOCP_BUFFER_RW_S WtBuff;
+    SOCP_BUFFER_RW_STRU WtBuff;
     int vfcnt = 0;
     int c;
     
@@ -4044,12 +4054,12 @@ BSP_S32 socp_encode_task_stress_004(BSP_VOID *param)
     SOCP_ST_CASE_S *pCase = (SOCP_ST_CASE_S*)param;
     int len = pCase->u32DataLen;
     BSP_U8* packet;
-    SOCP_BUFFER_RW_S WtBuff;
+    SOCP_BUFFER_RW_STRU WtBuff;
     BSP_U8 bd[8];
     int vfcnt = 0;
     int c;
-    SOCP_BUFFER_RW_S Buffer;
-    
+    SOCP_BUFFER_RW_STRU Buffer;
+
     c = pCase->SrcCh&0xff;
     g_socpTxTotal[c] = 0;
     
@@ -4153,7 +4163,7 @@ BSP_S32 socp_decode_task001(BSP_VOID *param)
     int cnt = pCase->u32sendDataCnt;
     int len = pCase->u32sendDataLen;
     BSP_U8* packet;
-    SOCP_BUFFER_RW_S WtBuff;
+    SOCP_BUFFER_RW_STRU WtBuff;
     int vfcnt = 0;
     int c;
     
@@ -4174,7 +4184,7 @@ BSP_S32 socp_decode_task001(BSP_VOID *param)
     while(cnt)
     {
         CHECK_RET(bsp_socp_get_write_buff(pCase->SrcCh, &WtBuff), BSP_OK);
-        Socp_printf("0x%x, 0x%x, 0x%x ,0x%x\n", WtBuff.u32Size, WtBuff.u32RbSize, cnt, (u32)WtBuff.pBuffer);
+        Socp_printf("0x%x, 0x%x, 0x%x ,0x%p\n", WtBuff.u32Size, WtBuff.u32RbSize, cnt, WtBuff.pBuffer);
         if(WtBuff.u32Size + WtBuff.u32RbSize >= (u32)len)
         {
             if(WtBuff.u32Size >= (u32)len)
@@ -4218,7 +4228,7 @@ BSP_S32 socp_decode_task013(BSP_VOID *param)
     int cnt = pCase->u32sendDataCnt;
     int len = pCase->u32sendDataLen;
     BSP_U8* packet;
-    SOCP_BUFFER_RW_S WtBuff;
+    SOCP_BUFFER_RW_STRU WtBuff;
     int vfcnt = 0;
     int c;
     
@@ -4283,7 +4293,7 @@ BSP_S32 socp_decode_task002(BSP_VOID *param)
     int cnt = pCase->u32sendDataCnt;
     int len = pCase->u32sendDataLen;
     BSP_U8* packet;
-    SOCP_BUFFER_RW_S WtBuff;
+    SOCP_BUFFER_RW_STRU WtBuff;
     int vfcnt = 0;
     int c;
     
@@ -4350,7 +4360,7 @@ BSP_S32 socp_decode_task003(BSP_VOID *param)
     int cnt = pCase->u32sendDataCnt;
     int len = pCase->u32sendDataLen;
     BSP_U8* packet;
-    SOCP_BUFFER_RW_S WtBuff;
+    SOCP_BUFFER_RW_STRU WtBuff;
     int vfcnt = 0;
     int i,j,c;
     BSP_U8  packetMain[258];
@@ -4439,7 +4449,7 @@ BSP_S32 socp_decode_task004(BSP_VOID *param)
     int cnt = pCase->u32sendDataCnt;
     int len = pCase->u32sendDataLen;
     BSP_U8* packet;
-    SOCP_BUFFER_RW_S WtBuff;
+    SOCP_BUFFER_RW_STRU WtBuff;
     int vfcnt = 0;
     int c;
     
@@ -4505,7 +4515,7 @@ BSP_S32 socp_decode_task005(BSP_VOID *param)
     int cnt = pCase->u32sendDataCnt;
     int len = pCase->u32sendDataLen;
     BSP_U8* packet;
-    SOCP_BUFFER_RW_S WtBuff;
+    SOCP_BUFFER_RW_STRU WtBuff;
     int vfcnt = 0;
     int c;
     
@@ -4570,7 +4580,7 @@ BSP_S32 socp_decode_task006(BSP_VOID *param)
     int cnt = pCase->u32sendDataCnt;
     int len = pCase->u32sendDataLen;
     BSP_U8* packet;
-    SOCP_BUFFER_RW_S WtBuff;
+    SOCP_BUFFER_RW_STRU WtBuff;
     int vfcnt = 0;
     int c;
     
@@ -4635,7 +4645,7 @@ BSP_S32 socp_decode_task007(BSP_VOID *param)
     int cnt = pCase->u32sendDataCnt;
     int len = pCase->u32sendDataLen;
     BSP_U8* packet;
-    SOCP_BUFFER_RW_S WtBuff;
+    SOCP_BUFFER_RW_STRU WtBuff;
     int vfcnt = 0;
     int c;
     
@@ -4699,7 +4709,7 @@ BSP_S32 socp_decode_task008(BSP_VOID *param)
     int cnt = pCase->u32sendDataCnt;
     int len = pCase->u32sendDataLen;
     BSP_U8* packet;
-    SOCP_BUFFER_RW_S WtBuff;
+    SOCP_BUFFER_RW_STRU WtBuff;
     int vfcnt = 0;
     int c;
     
@@ -4763,7 +4773,7 @@ BSP_S32 socp_decode_task009(BSP_VOID *param)
     int cnt;
     int len = pCase->u32sendDataLen;
     BSP_U8  *packet;
-    SOCP_BUFFER_RW_S WtBuff;
+    SOCP_BUFFER_RW_STRU WtBuff;
     int vfcnt = 0;
     int c;
     cnt = (pCase->u32sendDataCnt)/4;
@@ -4943,7 +4953,7 @@ BSP_S32 socp_decode_task010(BSP_VOID *param)
     int cnt;
     int len = pCase->u32sendDataLen;
     BSP_U8  *packet;
-    SOCP_BUFFER_RW_S WtBuff;
+    SOCP_BUFFER_RW_STRU WtBuff;
     int vfcnt = 0;
     int c;
     cnt = (pCase->u32sendDataCnt)/4;
@@ -5123,7 +5133,7 @@ BSP_S32 socp_decode_task011(BSP_VOID *param)
     int cnt;
     int len = pCase->u32sendDataLen;
     BSP_U8  *packet;
-    SOCP_BUFFER_RW_S WtBuff;
+    SOCP_BUFFER_RW_STRU WtBuff;
     int vfcnt = 0;
     int c;
     cnt = (pCase->u32sendDataCnt)/4;
@@ -5306,7 +5316,7 @@ BSP_S32 socp_decode_task_stress_001(BSP_VOID *param)
     int lenDiv;
     int len = pCase->u32sendDataLen;
     BSP_U8  *packet;
-    SOCP_BUFFER_RW_S WtBuff;
+    SOCP_BUFFER_RW_STRU WtBuff;
     int vfcnt = 0;
     int c;
     lenDiv = len/4;
@@ -5374,7 +5384,7 @@ BSP_S32 socp_decode_task012(BSP_VOID *param)
     int cnt = pCase->u32sendDataCnt;
     int len = pCase->u32sendDataLen;
     BSP_U8* packet;
-    SOCP_BUFFER_RW_S WtBuff;
+    SOCP_BUFFER_RW_STRU WtBuff;
     int vfcnt = 0;
     int c;
     
@@ -5438,7 +5448,7 @@ BSP_S32 socp_decode_dcore_task_stress(BSP_VOID *param)
     SOCP_ST_CASE_DECODER_S *pCase = (SOCP_ST_CASE_DECODER_S*)param;
     int len = pCase->u32sendDataLen;
     BSP_U8* packet;
-    SOCP_BUFFER_RW_S WtBuff;
+    SOCP_BUFFER_RW_STRU WtBuff;
     int vfcnt = 0;
     int c;
     
@@ -7152,7 +7162,7 @@ BSP_S32 SOCP_ST_DECODE_004_STOP(void)
 BSP_S32 SOCP_ST_DECODE_005_START(void)
 {
     char taskName[30] = {0};
-    SOCP_DEC_PKTLGTH_S  pPktlgth;
+    SOCP_DEC_PKTLGTH_STRU  pPktlgth;
     pPktlgth.u32PktMax = 2;
     pPktlgth.u32PktMin = 6;
 
@@ -7208,7 +7218,7 @@ BSP_S32 SOCP_ST_DECODE_005_STOP(void)
 BSP_S32 SOCP_ST_DECODE_006_START(void)
 {
     char taskName[30] = {0};
-    SOCP_DEC_PKTLGTH_S  pPktlgth;
+    SOCP_DEC_PKTLGTH_STRU  pPktlgth;
     pPktlgth.u32PktMax = 2;
     pPktlgth.u32PktMin = 0;
 
@@ -7371,7 +7381,7 @@ BSP_S32 SOCP_ST_DECODE_008_STOP(void)
 BSP_S32 SOCP_ST_DECODE_009_START(void)
 {
     char taskName[30] = {0};
-    SOCP_DEC_PKTLGTH_S pPktlgth;
+    SOCP_DEC_PKTLGTH_STRU pPktlgth;
     pPktlgth.u32PktMax = 1;
     pPktlgth.u32PktMin = 20;
 
@@ -7429,7 +7439,7 @@ BSP_S32 SOCP_ST_DECODE_009_STOP(void)
 BSP_S32 SOCP_ST_DECODE_010_START(void)
 {
     char taskName[30] = {0};
-    SOCP_DEC_PKTLGTH_S pPktlgth;
+    SOCP_DEC_PKTLGTH_STRU pPktlgth;
 
     g_ul_event_flag = false;
   
@@ -7685,8 +7695,8 @@ BSP_S32 SOCP_ST_DECODE_014_START(void)
 {
     char taskName[30] = {0};
 
-    SOCP_DEC_PKTLGTH_S pPktlgth = {0,0};
-    
+    SOCP_DEC_PKTLGTH_STRU pPktlgth = {0,0};
+
     SOCP_ST_CASE_DECODER_S *pCaseDec0 = &g_stDecCase[1];
     SOCP_ST_CASE_DECODER_S  pCaseDec1 = g_stDecCase[1];
     SOCP_ST_CASE_DECODER_S  pCaseDec2 = g_stDecCase[1];
@@ -8034,8 +8044,8 @@ BSP_S32 SOCP_ST_DECODE_STRESS(void)
 {
     char taskName[30] = {0};
 
-    SOCP_DEC_PKTLGTH_S pPktlgth = {0,0};
-    
+    SOCP_DEC_PKTLGTH_STRU pPktlgth = {0,0};
+
     SOCP_ST_CASE_DECODER_S *pCaseDec0 = &g_stDecCase[12];
     SOCP_ST_CASE_DECODER_S  pCaseDec1 = g_stDecCase[12];
     SOCP_ST_CASE_DECODER_S  pCaseDec2 = g_stDecCase[12];

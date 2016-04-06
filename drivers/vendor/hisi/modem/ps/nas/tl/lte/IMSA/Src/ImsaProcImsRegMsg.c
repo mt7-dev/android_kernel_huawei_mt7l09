@@ -61,6 +61,7 @@ extern VOS_UINT32 IMSA_RegProcImsMsgState(const IMSA_IMS_OUTPUT_SERVICE_EVENT_ST
 VOS_VOID IMSA_RegProcImsMsgAuth(IMSA_IMS_OUTPUT_SERVICE_EVENT_STRU* pstOutputService)
 {
     USIMM_AUTH_DATA_STRU     stUsimAuthData ={0};
+    VOS_UINT8                          ucOpId;
 
     if(pstOutputService->bitOpAka == 0)
     {
@@ -69,7 +70,21 @@ VOS_VOID IMSA_RegProcImsMsgAuth(IMSA_IMS_OUTPUT_SERVICE_EVENT_STRU* pstOutputSer
     }
 
     /*保存IMS消息对应的OPID*/
-    IMSA_SaveRcvImsOpid(pstOutputService->ulOpId);
+    /* 如果IMS上报的是紧急类型的鉴权请求，则将OPID保存在紧急全局变量中 */
+    ucOpId = IMSA_AllocUsimOpId();
+    if (IMSA_TRUE == pstOutputService->ulIsEmergency)
+    {
+        IMSA_SaveRcvImsEmcOpid(pstOutputService->ulOpId);
+        IMSA_SetUsimEmcOpid(ucOpId);
+        stUsimAuthData.ucOpId = IMSA_GetUsimEmcOpid();
+    }
+    else
+    {
+        IMSA_SaveRcvImsNormOpid(pstOutputService->ulOpId);
+        IMSA_SetUsimNormOpid(ucOpId);
+        stUsimAuthData.ucOpId = IMSA_GetUsimNormOpid();
+    }
+
 
     stUsimAuthData.enAuthType = USIMM_IMS_AUTH;
     stUsimAuthData.unAuthPara.stImsAuth.stAutn.ulDataLen = 16;

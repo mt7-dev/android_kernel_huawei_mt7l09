@@ -100,6 +100,12 @@ VOS_VOID     NAS_EMM_Attach_SuspendInitClearResourse(VOS_VOID)
     NAS_LMM_StopStateTimer(TI_NAS_EMM_WAIT_ESM_PDN_RSP);
     NAS_LMM_StopStateTimer(TI_NAS_EMM_WAIT_RRC_DATA_CNF);
 
+    if (NAS_EMM_OK == NAS_EMM_CheckAppMsgPara(ID_MMC_LMM_ATTACH_REQ))
+    {
+        NAS_EMM_ATTACH_LOG_NORM("NAS_EMM_Attach_SuspendInitClearResourse is entered: send mmc attach fail");
+        NAS_EMM_MmcSendAttCnf(MMC_LMM_ATT_RSLT_FAILURE);
+    }
+
     /*赋初值*/
     NAS_LMM_MEM_SET(NAS_EMM_GLO_AD_GetAttCtrlAddr(), 0, sizeof(NAS_EMM_ATTACH_CTRL_STRU));
     /*NAS_EMM_GLO_AD_GetAttRst()          = EMM_ATTACH_RST_PS;*/
@@ -231,7 +237,7 @@ VOS_VOID    NAS_EMM_AtmpCntEqual5Proc()
 
     /*必须先删除TAI List再启动T3402,顺序不能颠倒*/
     /*启动定时器T3402*/
-    NAS_LMM_StartPtlTimer(               TI_NAS_EMM_PTL_T3402);
+    NAS_LMM_Start3402Timer(NAS_LMM_TIMER_161722Atmpt5CSPS1_FALSE);
 
     /*重设attach attempt counter*/
     /*NAS_EMM_GLO_AD_GetAttAtmpCnt()      = 0;*/
@@ -518,10 +524,14 @@ VOS_VOID  NAS_EMM_ProcCause161722TauAttemptCont(VOS_VOID )
     }
     else
     {
-        /*启动定时器TI_NAS_EMM_T3402*/
-        NAS_LMM_StartPtlTimer(      TI_NAS_EMM_PTL_T3402);
-		
-		/* lihong00150010 emergency delete */
+        if (NAS_LMM_UE_CS_PS_MODE_1 == NAS_LMM_GetEmmInfoUeOperationMode())
+        {
+            NAS_LMM_Start3402Timer(NAS_LMM_TIMER_161722Atmpt5CSPS1_TRUE);
+        }
+        else if (NAS_LMM_UE_CS_PS_MODE_2 == NAS_LMM_GetEmmInfoUeOperationMode())
+        {
+            NAS_LMM_Start3402Timer(NAS_LMM_TIMER_161722Atmpt5CSPS1_FALSE);
+        }
 
         /*修改状态：进入主状态REG子状态EMM_SS_REG_ATTEMPTING_TO_UPDATE_MM*/
         NAS_EMM_AdStateConvert(     EMM_MS_REG,
@@ -786,7 +796,7 @@ VOS_VOID  NAS_EMM_AttProcT3410Exp( VOS_VOID )
 
         /*必须先删除TAI List再启动T3402,顺序不能颠倒*/
         /*启动定时器T3402*/
-        NAS_LMM_StartPtlTimer(               TI_NAS_EMM_PTL_T3402);
+        NAS_LMM_Start3402Timer(NAS_LMM_TIMER_161722Atmpt5CSPS1_FALSE);
 
 
 
@@ -818,7 +828,7 @@ VOS_VOID  NAS_EMM_AttProcEpsOnlyRejValueOther( VOS_VOID )
 
         /*必须先删除TAI List再启动T3402,顺序不能颠倒*/
         /*启动定时器T3402*/
-        NAS_LMM_StartPtlTimer(               TI_NAS_EMM_PTL_T3402);
+        NAS_LMM_Start3402Timer(NAS_LMM_TIMER_161722Atmpt5CSPS1_FALSE);
 
 
 
@@ -856,7 +866,7 @@ VOS_VOID  NAS_EMM_ProcRejCauOtherAbnormal( VOS_VOID )
 
         /*必须先删除TAI List再启动T3402,顺序不能颠倒*/
         /*启动定时器T3402*/
-        NAS_LMM_StartPtlTimer(               TI_NAS_EMM_PTL_T3402);
+        NAS_LMM_Start3402Timer(NAS_LMM_TIMER_161722Atmpt5CSPS1_FALSE);
 
 
 
@@ -956,7 +966,7 @@ VOS_VOID  NAS_EMM_ProcAttachConnFailOtherCause( VOS_VOID )
 
         /*必须先删除TAI List再启动T3402,顺序不能颠倒*/
         /*启动定时器T3402*/
-        NAS_LMM_StartPtlTimer(               TI_NAS_EMM_PTL_T3402);
+        NAS_LMM_Start3402Timer(NAS_LMM_TIMER_161722Atmpt5CSPS1_FALSE);
 
         /* 必须先转状态，再上报ATTACH结果，最后清除 attach attempt counter,
             顺序不能变 */
@@ -1279,7 +1289,7 @@ VOS_VOID  NAS_EMM_MsRegInitSsWtCnAttCnfProcMsgRrcRelInd(VOS_UINT32 ulCause)
 
         /*必须先删除TAI List再启动T3402,顺序不能颠倒*/
         /*启动定时器T3402*/
-        NAS_LMM_StartPtlTimer(               TI_NAS_EMM_PTL_T3402);
+        NAS_LMM_Start3402Timer(NAS_LMM_TIMER_161722Atmpt5CSPS1_FALSE);
 
         /* 必须先转状态，再上报结果，再清除 attach attempt counter */
 
@@ -1309,35 +1319,6 @@ VOS_VOID  NAS_EMM_MsRegInitSsWtCnAttCnfProcMsgRrcRelInd(VOS_UINT32 ulCause)
 }
 
 
-
-VOS_UINT32  NAS_EMM_MsRegInitSsWtCnAttCnfMsgAuthFail(
-                                                    VOS_UINT32  ulMsgId,
-                                                    VOS_VOID   *pMsgStru )
-{
-    NAS_EMM_INTRA_AUTH_FAIL_STRU        *pMsgAuthFail   =   (NAS_EMM_INTRA_AUTH_FAIL_STRU *)pMsgStru;
-    VOS_UINT32                          ulCause;
-
-    /*打印进入该函数*/
-    NAS_EMM_ATTACH_LOG_NORM("NAS_EMM_MsRegInitSsWtCnAttCnfMsgAuthFail is entered");
-    (VOS_VOID)ulMsgId;
-    (VOS_VOID)pMsgStru;
-
-
-    /*获得原因值*/
-    ulCause                                       =         pMsgAuthFail->ulCause;
-
-    /*依据原因值处理*/
-    if(NAS_EMM_AUTH_REJ_INTRA_CAUSE_NORMAL        ==        ulCause)
-    {
-        NAS_EMM_MsRegInitSsWtCnAttCnfProcMsgAuthRej(        ulCause);
-    }
-    else
-    {
-        NAS_EMM_MsRegInitSsWtCnAttCnfProcMsgRrcRelInd(      ulCause);
-    }
-
-    return  NAS_LMM_MSG_HANDLED;
-}
 VOS_UINT32  NAS_EMM_MsRegInitSsWtCnAttCnfMsgAuthRej(
                                         VOS_UINT32  ulMsgId,
                                         VOS_VOID   *pMsgStru )
@@ -1347,13 +1328,17 @@ VOS_UINT32  NAS_EMM_MsRegInitSsWtCnAttCnfMsgAuthRej(
     (VOS_VOID)ulMsgId;
     (VOS_VOID)pMsgStru;
 
+    /* 鉴权拒绝优化处理 */
+    if (NAS_EMM_YES == NAS_EMM_IsNeedIgnoreHplmnAuthRej())
+    {
+        return  NAS_LMM_MSG_HANDLED;
+    }
+
     NAS_EMM_MsRegInitSsWtCnAttCnfProcMsgAuthRej(NAS_EMM_AUTH_REJ_INTRA_CAUSE_NORMAL);
 
 
     return  NAS_LMM_MSG_HANDLED;
 }
-
-
 
 VOS_UINT32  NAS_EMM_MsRegInitSsWtCnAttCnfMsgRrcRelInd(
                                                     VOS_UINT32  ulMsgId,
@@ -1369,7 +1354,9 @@ VOS_UINT32  NAS_EMM_MsRegInitSsWtCnAttCnfMsgRrcRelInd(
 
     /*获得原因值*/
     ulCause                             =         pRrcRelInd->enRelCause;
-
+    #if (FEATURE_PTM == FEATURE_ON)
+    NAS_EMM_AttachErrRecord(pMsgStru, EMM_OM_ERRLOG_TYPE_LRRC_REL);
+    #endif
     NAS_EMM_MsRegInitSsWtCnAttCnfProcMsgRrcRelInd(ulCause);
 
     return  NAS_LMM_MSG_HANDLED;
@@ -1413,6 +1400,10 @@ VOS_UINT32  NAS_EMM_MsRegInitSsWtCnAttCnfMsgT3410Exp(VOS_UINT32  ulMsgId,
         NAS_EMM_ATTACH_LOG_WARN("NAS_EMM_MsRegInitSsWtCnAttCnfMsgT3410Exp: STATE ERR!");
         return  NAS_LMM_MSG_DISCARD;
     }
+
+    #if (FEATURE_PTM == FEATURE_ON)
+    NAS_EMM_AttachErrRecord(pMsgStru, EMM_OM_ERRLOG_TYPE_TIMEOUT);
+    #endif
 
     /*ATTACH尝试计数器加1*/
     NAS_EMM_GLO_AD_GetAttAtmpCnt()++;
@@ -1734,7 +1725,7 @@ VOS_VOID  NAS_EMM_ProcAttCompleteSendFail( VOS_VOID )
 
         /*必须先删除TAI List再启动T3402,顺序不能颠倒*/
         /*启动定时器T3402*/
-        NAS_LMM_StartPtlTimer(               TI_NAS_EMM_PTL_T3402);
+        NAS_LMM_Start3402Timer(NAS_LMM_TIMER_161722Atmpt5CSPS1_FALSE);
 
         /* 必须先转状态再上报结果，再清除 attach attempt counter*/
 
@@ -2025,6 +2016,12 @@ VOS_UINT32  NAS_EMM_MsRegSsNmlSrvMsgAuthRej(
     (VOS_VOID)ulMsgId;
     (VOS_VOID)pMsgStru;
 
+    /* 鉴权拒绝优化处理 */
+    if (NAS_EMM_YES == NAS_EMM_IsNeedIgnoreHplmnAuthRej())
+    {
+        return  NAS_LMM_MSG_HANDLED;
+    }
+
     NAS_EMM_MsRegSsNmlSrvProcMsgAuthRej(NAS_EMM_AUTH_REJ_INTRA_CAUSE_NORMAL);
 
     return NAS_LMM_MSG_HANDLED;
@@ -2052,11 +2049,18 @@ VOS_UINT32  NAS_EMM_MsRegSsLimitedSrvMsgAuthRej
     (VOS_VOID)ulMsgId;
     (VOS_VOID)pMsgStru;
 
+    /* 鉴权拒绝优化处理 */
+    if (NAS_EMM_YES == NAS_EMM_IsNeedIgnoreHplmnAuthRej())
+    {
+        return  NAS_LMM_MSG_HANDLED;
+    }
+
     NAS_EMM_MsRegSsNmlSrvProcMsgAuthRej(NAS_EMM_AUTH_REJ_INTRA_CAUSE_NORMAL);
 
     return NAS_LMM_MSG_HANDLED;
 }
 /* lihong00150010 emergency tau&service end */
+
 
 VOS_UINT32  NAS_EMM_MsRegSsRegAttemptUpdateMmMsgAuthRej
 (
@@ -2070,14 +2074,16 @@ VOS_UINT32  NAS_EMM_MsRegSsRegAttemptUpdateMmMsgAuthRej
     (VOS_VOID)ulMsgId;
     (VOS_VOID)pMsgStru;
 
+    /* 鉴权拒绝优化处理 */
+    if (NAS_EMM_YES == NAS_EMM_IsNeedIgnoreHplmnAuthRej())
+    {
+        return  NAS_LMM_MSG_HANDLED;
+    }
+
     NAS_EMM_MsRegSsNmlSrvProcMsgAuthRej(NAS_EMM_AUTH_REJ_INTRA_CAUSE_NORMAL);
 
     return NAS_LMM_MSG_HANDLED;
 }
-
-
-
-
 VOS_VOID  NAS_EMM_MsRegSsNmlSrvProcMsgAuthRej( VOS_UINT32  ulCause)
 {
     MMC_LMM_TAU_RSLT_ENUM_UINT32        ulTauRslt = MMC_LMM_TAU_RSLT_BUTT;

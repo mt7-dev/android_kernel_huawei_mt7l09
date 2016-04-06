@@ -380,7 +380,6 @@ static void max310x_wait_pll(struct max310x_port *s)
 
 static int max310x_update_best_err(unsigned long f, long *besterr)
 {
-	/* Use baudrate 115200 for calculate error */
 	long err = f % (115200 * 16);
 
 	if ((*besterr < 0) || (*besterr > err)) {

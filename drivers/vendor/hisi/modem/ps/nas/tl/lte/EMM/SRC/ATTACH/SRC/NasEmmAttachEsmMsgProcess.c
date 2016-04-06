@@ -1080,8 +1080,9 @@ VOS_VOID  NAS_EMM_CompMappedGuti
 {
     VOS_UINT8                           *pucReqMsg = VOS_NULL_PTR;
     VOS_UINT32                          ulIndex = NAS_EMM_NULL;
-    NAS_LMM_GUTI_STRU                    stMappedGuti = {0};
+    NAS_LMM_GUTI_STRU                    stMappedGuti;
 
+    PS_MEM_SET(&stMappedGuti, 0, sizeof(NAS_LMM_GUTI_STRU));
     NAS_EMM_ATTACH_LOG_NORM("NAS_EMM_CompMappedGuti is entered!");
 
     if((VOS_NULL_PTR == pMsg) ||
@@ -1680,7 +1681,10 @@ VOS_VOID  NAS_EMM_EncodeMsNetworkCapability
     VOS_UINT32                          ulIndex = NAS_EMM_NULL;
     NAS_EMM_MS_NET_CAP_STRU             *pstMsNetCap;
     NAS_LMM_PUB_INFO_STRU               *pstEmmInfo;
-    NAS_MML_MS_NETWORK_CAPACILITY_STRU  stMsNetCapa;
+
+    /*add by lifuxin 2014-07-22 for coverity start*/
+    NAS_MML_MS_NETWORK_CAPACILITY_STRU  stMsNetCapa = {0};
+    /*add by lifuxin 2014-07-22 for coverity start*/
 
     if((VOS_NULL_PTR == pMsg) ||
        (VOS_NULL_PTR == pulIeLength))
@@ -3098,6 +3102,10 @@ VOS_UINT32  NAS_EMM_MsRegSsLimitedSrvMsgEsmDataReq
     /*向MMC发送本地LMM_MMC_DETACH_IND消息*/
     NAS_EMM_MmcSendDetIndLocal(MMC_LMM_L_LOCAL_DETACH_OTHERS);
 
+    #if (FEATURE_PTM == FEATURE_ON)
+    NAS_EMM_LocalDetachErrRecord(EMM_ERR_LOG_LOCAL_DETACH_TYPE_OTHER);
+    #endif
+
     /*保存ESM消息*/
     NAS_LMM_MEM_CPY(        NAS_EMM_GLO_AD_GetEsmMsgAddr(),
                            &(pstEsmDataReq->stEsmMsg),
@@ -3320,14 +3328,18 @@ VOS_UINT32  NAS_EMM_MsRegSsRegAttemptUpdateMmMsgEsmEstReq
 
 VOS_UINT32  NAS_EMM_MsAnyStateSsAnySateProcMsgEsmStatusReq( VOS_VOID )
 {
-    VOS_UINT32                                    ulCurEmmMsStat;
-    VOS_UINT32                                    ulCurEmmSsStat;
+    VOS_UINT32                          ulCurEmmMsStat = NAS_LMM_GetEmmCurFsmMS();
+    VOS_UINT32                          ulCurEmmSsStat = NAS_LMM_GetEmmCurFsmSS();
 
-    /*打印进入该函数*/
-    NAS_EMM_ATTACH_LOG_NORM(                      "NAS_EMM_MsAnyStateSsAnySateProcMsgEsmStatusReq:EpsNumId=0");
+    NAS_EMM_ATTACH_LOG_NORM("NAS_EMM_MsAnyStateSsAnySateProcMsgEsmStatusReq:EpsNumId=0");
 
-    ulCurEmmMsStat                                =   NAS_EMM_CUR_MAIN_STAT;
-    ulCurEmmSsStat                                =   NAS_EMM_CUR_SUB_STAT;
+    /* 主状态为非注册态，直接返回 */
+    if ((EMM_MS_NULL == ulCurEmmMsStat)||(EMM_MS_DEREG == ulCurEmmMsStat))
+    {
+        return NAS_LMM_MSG_HANDLED;
+    }
+
+    /* R10版本对CSFB的特殊处理 */
     if (NAS_RELEASE_CTRL)
     {
         if ((EMM_MS_SER_INIT == ulCurEmmMsStat)
@@ -3346,6 +3358,10 @@ VOS_UINT32  NAS_EMM_MsAnyStateSsAnySateProcMsgEsmStatusReq( VOS_VOID )
             /*向MMC发送本地LMM_MMC_DETACH_IND消息*/
             NAS_EMM_MmcSendDetIndLocal(MMC_LMM_L_LOCAL_DETACH_OTHERS);
 
+            #if (FEATURE_PTM == FEATURE_ON)
+            NAS_EMM_LocalDetachErrRecord(EMM_ERR_LOG_LOCAL_DETACH_TYPE_OTHER);
+            #endif
+
             NAS_EMM_MmcSendSerResultIndOtherType(MMC_LMM_SERVICE_RSLT_FAILURE);
 
             /* 本地DETACH释放资源:动态内存、赋初值 */
@@ -3358,55 +3374,98 @@ VOS_UINT32  NAS_EMM_MsAnyStateSsAnySateProcMsgEsmStatusReq( VOS_VOID )
 
         }
     }
-    if((EMM_MS_NULL                               !=   ulCurEmmMsStat)&&
-       (EMM_MS_DEREG                              !=   ulCurEmmMsStat))
+
+    /* lihong00150010 emergency tau&service begin */
+    if (VOS_TRUE == NAS_EMM_GLO_AD_GetUsimPullOutFlag())
     {
-        NAS_EMM_ATTACH_LOG_NORM(                   "NAS_EMM_MsAnyStateSsAnySateProcMsgEsmStatusReq:Local Detach");
+        /* 清除拔卡标识 */
+        NAS_EMM_GLO_AD_GetUsimPullOutFlag() = VOS_FALSE;
 
-        /*本地Detach的清资源操作在DETACH 模块收到 REL IND后
-        执行，此处只先停止定时器*/
-        #if 0
-        /* 停止所有EMM状态定时器 */
-        NAS_LMM_StopAllEmmStateTimer();
+        /* 给MMC回复LMM_MMC_USIM_STATUS_CNF */
+        NAS_EMM_SendMmcUsimStatusCnf();
+    }
+    /* lihong00150010 emergency tau&service end */
 
-        /* 停止所有EMM协议定时器 */
-        NAS_LMM_StopAllEmmPtlTimer();
+    /* 根据当前的状态执行不同的本地DETACH处理 */
+    switch(ulCurEmmMsStat)
+    {
+        case    EMM_MS_REG:
+        case    EMM_MS_TAU_INIT:
+        case    EMM_MS_SER_INIT:
 
-        /*保存APP DETACH类型消息*/
-        NAS_EMM_GLO_AD_GetDetTypeMo()             =   MMC_LMM_MO_DET_PS_ONLY;
-        #endif
+                /* 通知ESM执行了本地DETACH */
+                NAS_EMM_EsmSendStatResult(EMM_ESM_ATTACH_STATUS_DETACHED);
 
-        /*向ESM发送ID_EMM_ESM_STATUS_IND消息*/
-        NAS_EMM_EsmSendStatResult(          EMM_ESM_ATTACH_STATUS_DETACHED);
-        /* lihong00150010 emergency tau&service begin */
-        if (VOS_TRUE == NAS_EMM_GLO_AD_GetUsimPullOutFlag())
-        {
-            /*状态转换，通知MMC卡无效*/
-            NAS_EMM_ProcLocalNoUsim();
+                /* 根据不同的子状态转到对应的未注册状态 */
+                NAS_LMM_MsRegSsAnyLocalDetStateTrans();
 
-            /*向MMC发送本地LMM_MMC_DETACH_IND消息*/
-            NAS_EMM_MmcSendDetIndLocal(MMC_LMM_L_LOCAL_DETACH_OTHERS);
-        }/* lihong00150010 emergency tau&service end */
-        else
-        {
-            NAS_EMM_AdStateConvert( EMM_MS_DEREG,
-                                    EMM_SS_DEREG_PLMN_SEARCH,
-                                    TI_NAS_EMM_STATE_NO_TIMER);
+                /*向MMC发送本地LMM_MMC_DETACH_IND消息*/
+                NAS_EMM_MmcSendDetIndLocal(MMC_LMM_L_LOCAL_DETACH_OTHERS);
 
-            /* 本地DETACH释放资源:动态内存、赋初值 */
-            NAS_LMM_DeregReleaseResource();
+                /* 本地DETACH释放资源:动态内存、赋初值 */
+                NAS_LMM_DeregReleaseResource();
 
-            /*向MMC发送本地LMM_MMC_DETACH_IND消息*/
-            NAS_EMM_MmcSendDetIndLocal(MMC_LMM_L_LOCAL_DETACH_OTHERS);
+                /* 如果未注册状态的目标状态为正常服务，重新发起ATTACH */
+                if(EMM_SS_DEREG_NORMAL_SERVICE == NAS_LMM_GetEmmCurFsmSS())
+                {
+                    /* 本身处于IDLE正常驻留直接发起ATTACH，否则释放链路等收到系统消息再发起 */
+                    if(NAS_EMM_CONN_IDLE == NAS_EMM_GetConnState())
+                    {
+                        (VOS_VOID)NAS_EMM_SendIntraAttachReq();
+                        return NAS_LMM_MSG_HANDLED;
+                    }
 
-        }
+                    NAS_EMM_RelReq(NAS_LMM_NOT_BARRED);
+                    return NAS_LMM_MSG_HANDLED;
+                }
 
-        /*向MRRC发送NAS_EMM_MRRC_REL_REQ消息*/
-        NAS_EMM_RelReq(                           NAS_LMM_NOT_BARRED);
+                /* 其它非normal状态直接等系统消息 */
+                break;
+
+        case    EMM_MS_SUSPEND:
+
+                /* 通知ESM执行了本地DETACH */
+                NAS_EMM_EsmSendStatResult(EMM_ESM_ATTACH_STATUS_DETACHED);
+
+                /*向MMC发送本地LMM_MMC_DETACH_IND消息*/
+                NAS_EMM_MmcSendDetIndLocal(MMC_LMM_L_LOCAL_DETACH_OTHERS);
+                #if (FEATURE_PTM == FEATURE_ON)
+                NAS_EMM_LocalDetachErrRecord(EMM_ERR_LOG_LOCAL_DETACH_TYPE_OTHER);
+                #endif				
+
+                /* 修改挂起前状态，继续挂起流程 */
+                NAS_EMM_SetMsBefSuspend(EMM_MS_DEREG);
+
+                /* 有可能是处于紧急注册的无卡状态 */
+                if (NAS_LMM_SIM_STATUS_UNAVAILABLE == NAS_LMM_GetSimState())
+                {
+                    NAS_EMM_SetSsBefSuspend(EMM_SS_DEREG_NO_IMSI);
+                }
+                else
+                {
+                    NAS_EMM_SetSsBefSuspend(EMM_SS_DEREG_NO_CELL_AVAILABLE);
+                }
+
+                /* 停止所有EMM协议定时器 ，不调用NAS_LMM_DeregReleaseResource为防止误停当前状态定时器 */
+                NAS_LMM_StopAllEmmPtlTimer();
+
+                /* 本地DETACH释放资源:动态内存、赋初值 */
+                NAS_LMM_PUBM_ClearResource();
+                NAS_EMM_PUBU_ClearResource();
+                NAS_EMM_SECU_ClearResource();
+                NAS_EMM_Attach_ClearResourse();
+                NAS_EMM_Detach_ClearResourse();
+                NAS_EMM_TAU_ClearResouce();
+                NAS_EMM_SER_ClearResource();
+                break;
+
+        default:
+                /* 其它状态，如RESUME，REG_INIT仅在前面更新承载状态 */
+                break;
 
     }
 
-    return(NAS_LMM_MSG_HANDLED);
+    return NAS_LMM_MSG_HANDLED;
 }
 /*leili modify for isr begin*/
 
@@ -3437,7 +3496,13 @@ NAS_EMM_BEARER_STATE_ENUM_UINT8  NAS_EMM_IsEpsBearStatusAct (VOS_VOID)
     NAS_MML_PS_BEARER_CONTEXT_STRU      *pstEpsBearerCxt;
     VOS_UINT32              i = 0;
 
+    /*add by lifuxin 2014-07-22 for coverity start*/
     pstEpsBearerCxt = NAS_MML_GetPsBearerCtx();
+    if(VOS_NULL == pstEpsBearerCxt)
+    {
+        return NAS_EMM_BEARER_STATE_INACTIVE;
+    }
+    /*add by lifuxin 2014-07-22 for coverity end*/
 
     for(i = 0; i < EMM_ESM_MAX_EPS_BEARER_NUM; i++)
     {
@@ -3452,13 +3517,15 @@ NAS_EMM_BEARER_STATE_ENUM_UINT8  NAS_EMM_IsEpsBearStatusAct (VOS_VOID)
 
 VOS_VOID  NAS_EMM_UpdateEpsBearStatus(VOS_VOID *pstMsg)
 {
-    NAS_MML_PS_BEARER_CONTEXT_STRU      astPsBearerCtx[EMM_ESM_MAX_EPS_BEARER_NUM] = {0};
+    NAS_MML_PS_BEARER_CONTEXT_STRU      astPsBearerCtx[EMM_ESM_MAX_EPS_BEARER_NUM];
     EMM_ESM_BEARER_STATUS_REQ_STRU     *pstEsmBearerStatusReq   = VOS_NULL_PTR;
     VOS_UINT32                          ulEpsId;
     NAS_EMM_BEARER_STATE_ENUM_UINT8     ucEsmBearerState;
     VOS_UINT32                          i = NAS_EMM_NULL;
     VOS_UINT32                          j = NAS_EMM_NULL;
     VOS_UINT16                          usBearerSate;
+
+    PS_MEM_SET(astPsBearerCtx, 0, sizeof(NAS_MML_PS_BEARER_CONTEXT_STRU)*EMM_ESM_MAX_EPS_BEARER_NUM);
 
     NAS_EMM_PUBU_LOG_INFO("NAS_EMM_UpdateEpsBearStatus: GET MML PS BEARER INFO:");
     NAS_COMM_PrintArray(                NAS_COMM_GET_MM_PRINT_BUF(),
@@ -3607,8 +3674,10 @@ VOS_VOID  NAS_EMM_UpdateRegStatusWhenEsmBearStatusReq
     const EMM_ESM_BEARER_STATUS_REQ_STRU *pstEsmBearerStatusReq
 )
 {
-    NAS_MML_PS_BEARER_CONTEXT_STRU      astPsBearerCtx[EMM_ESM_MAX_EPS_BEARER_NUM] = {0};
+    NAS_MML_PS_BEARER_CONTEXT_STRU      astPsBearerCtx[EMM_ESM_MAX_EPS_BEARER_NUM];
     VOS_UINT32                          ulCurEmmStat = NAS_EMM_NULL;
+
+    PS_MEM_SET(astPsBearerCtx, 0, sizeof(NAS_MML_PS_BEARER_CONTEXT_STRU)*EMM_ESM_MAX_EPS_BEARER_NUM);
 
     if (0 == pstEsmBearerStatusReq->ulEpsIdNum)
     {
@@ -3705,7 +3774,8 @@ VOS_UINT32  NAS_EMM_MsAnyStateSsAnySateEsmBearStatusReq( VOS_VOID *pstMsg )
 {
     VOS_UINT32                          ulRes = NAS_LMM_MSG_HANDLED;
     EMM_ESM_BEARER_STATUS_REQ_STRU     *pstEsmBearerStatusReq   = VOS_NULL_PTR;
-
+    NAS_LMM_FSM_STATE_STACK_STRU       *pstFsmStack = VOS_NULL_PTR;
+    NAS_LMM_FSM_STATE_STRU             *pstFsmStackBase = VOS_NULL_PTR;
 
     NAS_EMM_ATTACH_LOG_NORM("NAS_EMM_MsAnyStateSsAnySateEsmBearStatusReq is enter.");
 
@@ -3716,28 +3786,17 @@ VOS_UINT32  NAS_EMM_MsAnyStateSsAnySateEsmBearStatusReq( VOS_VOID *pstMsg )
         return  NAS_LMM_FAIL;
     }
     /*leili modify for isr begin*/
-    #if 0
-    /* 更新EMM本地维护的承载上下文*/
-    pstEsmBearerStatusReq               =(EMM_ESM_BEARER_STATUS_REQ_STRU *)(pstMsg);
-    pstEmmBearerCntxt                   = NAS_EMM_GetEpsContextStatusAddr();
-
-    pstEmmBearerCntxt->ulEpsIdNum       = pstEsmBearerStatusReq->ulEpsIdNum;
-    NAS_LMM_MEM_CPY(                     pstEmmBearerCntxt->aulEsmEpsId,
-                                        pstEsmBearerStatusReq->aulEsmEpsId,
-                                        sizeof(VOS_UINT32)*EMM_ESM_MAX_EPS_BEARER_NUM);
-    #endif
-
     pstEsmBearerStatusReq               =(EMM_ESM_BEARER_STATUS_REQ_STRU *)(pstMsg);
 
-
-
-    /* 若是挂起期间收到的，更新本地全局变量后则退出 */
-    if((NAS_LMM_CUR_LTE_SUSPEND == NAS_EMM_GetCurLteState()))
+    /* 挂起过程中或从模收到的，设置承载发生变更直接返回，MML公共维护的承载上下文全局变量不做修改，由主模进行维护 */
+    if(NAS_LMM_CUR_LTE_SUSPEND == NAS_EMM_GetCurLteState())
     {
         NAS_EMM_ATTACH_LOG_NORM("NAS_EMM_MsAnyStateSsAnySateEsmBearStatusReq: LTE CUR SUSPEND");
         NAS_EMM_SetEpsContextStatusChange(NAS_EMM_EPS_BEARER_STATUS_CHANGEED);
         return  NAS_LMM_MSG_HANDLED;
     }
+
+    /* L主模  */
 
     /* 更新EMM本地维护的承载上下文*/
     NAS_EMM_UpdateEpsBearStatus((VOS_VOID*)pstEsmBearerStatusReq);
@@ -3746,18 +3805,24 @@ VOS_UINT32  NAS_EMM_MsAnyStateSsAnySateEsmBearStatusReq( VOS_VOID *pstMsg )
     /* 更新注册状态 */
     NAS_EMM_UpdateRegStatusWhenEsmBearStatusReq(pstEsmBearerStatusReq);
 
-    /* 如果激活承载数为0，本地DETACH，再重新ATTACH,流程结束*/
+    /* 承载数为0，统一在此处理 */
     if (0 == pstEsmBearerStatusReq->ulEpsIdNum)
     {
-        /* 判读状态是否需要出栈*/
-        NAS_LMM_IfEmmHasBeenPushedThenPop();
+        /* 获取状态栈栈底地址 */
+        pstFsmStack  =  NAS_LMM_GetFsmStackAddr(NAS_LMM_PARALLEL_FSM_EMM);
+        pstFsmStackBase = &((pstFsmStack->astFsmStack)[NAS_LMM_STACK_BASE]);
+        /*如果栈底状态不是DEREG状态，才判断是否需要出栈*/
+        if (EMM_MS_DEREG != pstFsmStackBase->enMainState)
+        {
+            /* 判读状态是否需要出栈*/
+            NAS_LMM_IfEmmHasBeenPushedThenPop();
+        }
         ulRes = NAS_EMM_MsAnyStateSsAnySateProcMsgEsmStatusReq();
         return ulRes;
     }
 
-    /* 激活承载数不为零，判断本次承载变化如果是ESM本地执行，
-       则消息进入状态机继续处理，
-       否则流程结束*/
+    /* 承载数不为0，且L是主模，判断本次承载变化如果是ESM本地执行，
+       则消息进入状态机继续处理，否则流程结束 */
     if (EMM_ESM_BEARER_CNTXT_MOD_LOCAL == pstEsmBearerStatusReq->enBearerCntxtMod)
     {
         return NAS_LMM_MSG_DISCARD;

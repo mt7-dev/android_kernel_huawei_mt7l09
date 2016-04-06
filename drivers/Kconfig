@@ -1,7 +1,7 @@
 menu "Device Drivers"
 
 source "drivers/tzdriver/Kconfig"
-
+source "drivers/atfdriver/Kconfig"
 source "drivers/base/Kconfig"
 
 source "drivers/bus/Kconfig"
@@ -21,6 +21,7 @@ source "drivers/block/Kconfig"
 # misc before ide - BLK_DEV_SGIIOC4 depends on SGI_IOC4
 
 source "drivers/misc/Kconfig"
+source "drivers/misc_via/Kconfig"
 
 source "drivers/ide/Kconfig"
 
@@ -86,9 +87,12 @@ source "drivers/regulator/Kconfig"
 
 source "drivers/media/Kconfig"
 
-source "drivers/vcodec/Kconfig"
+source "drivers/vcodec/imagination/Kconfig"
 
-source "drivers/vpp/Kconfig"
+source "drivers/vcodec/chipmedia/Kconfig"
+source "drivers/videocom/Kconfig"
+
+source "drivers/vcodec/vpp/Kconfig"
 
 source "drivers/video/Kconfig"
 
@@ -172,21 +176,32 @@ source "drivers/ipack/Kconfig"
 
 source "drivers/reset/Kconfig"
 
+source "drivers/android/Kconfig"
+
 source "drivers/gpu/arm/Kconfig"
 
 source "drivers/coresight/Kconfig"
-source "drivers/jpu/Kconfig"
+
+source "drivers/vcodec/jpu/v8_jpu/Kconfig"
+source "drivers/vcodec/jpu/v3_jpu/Kconfig"
+
 source "drivers/hisi/Kconfig"
-source "drivers/modem/Kconfig"
+
 source "drivers/devdetect/Kconfig"
-source "drivers/huawei/Kconfig"
-source "drivers/ddr/Kconfig"
+
 source "drivers/gator/Kconfig"
 
-source "drivers/tspdrv/Kconfig"
+source "drivers/tzdriver/Kconfig"
 
-# /* DTS2013031107868 qidechun 2013-03-11 begin */ 
+source "drivers/sensors/Kconfig"
 source "drivers/srecorder/Kconfig"
-# /* DTS2013031107868 qidechun 2013-03-11 end */ 
 
+source "drivers/huawei_platform/Kconfig"
+
+source "drivers/huawei_platform_legacy/Kconfig"
+
+source "drivers/hwusb/Kconfig"
+
+source "drivers/hisi_pilot/Kconfig"
 endmenu
+

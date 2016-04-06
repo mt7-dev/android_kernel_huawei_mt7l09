@@ -43,6 +43,8 @@ extern "C" {
 #define AT_MTA_HANDLEDECT_MIN_TYPE                (0)
 #define AT_MTA_HANDLEDECT_MAX_TYPE                (4)
 
+#define AT_RSA_CIPHERTEXT_LEN           (128)
+
 /*****************************************************************************
   3 枚举定义
 *****************************************************************************/
@@ -95,6 +97,11 @@ enum AT_MTA_MSG_TYPE_ENUM
     ID_AT_MTA_QRY_DPDT_VALUE_REQ        = 0x0020,           /* _H2ASN_MsgChoice AT_MTA_QRY_DPDT_VALUE_REQ_STRU */
 
     ID_AT_MTA_SET_JAM_DETECT_REQ        = 0x0021,           /* _H2ASN_MsgChoice AT_MTA_SET_JAM_DETECT_REQ_STRU */
+
+    ID_AT_MTA_SET_GSM_FREQLOCK_REQ      = 0x0025,          /* _H2ASN_MsgChoice AT_MTA_SET_GSM_FREQLOCK_REQ_STRU */
+
+    ID_AT_MTA_NVWRSECCTRL_SET_REQ       = 0x0027,
+
 
     /* MTA发给AT的消息 */
     ID_MTA_AT_CPOS_SET_CNF              = 0x1000,           /* _H2ASN_MsgChoice MTA_AT_CPOS_CNF_STRU        */
@@ -149,8 +156,12 @@ enum AT_MTA_MSG_TYPE_ENUM
     ID_MTA_AT_SET_JAM_DETECT_CNF        = 0x1025,           /* _H2ASN_MsgChoice MTA_AT_SET_JAM_DETECT_CNF_STRU */
     ID_MTA_AT_JAM_DETECT_IND            = 0x1026,           /* _H2ASN_MsgChoice MTA_AT_JAM_DETECT_IND_STRU */
 
+    ID_MTA_AT_NVWRSECCTRL_SET_CNF       = 0x1027,
+
+    ID_MTA_AT_SET_GSM_FREQLOCK_CNF      = 0x102A,           /* _H2ASN_MsgChoice MTA_AT_SET_GSM_FREQLOCK_CNF_STRU */
+
     /* 最后一条消息 */
-    ID_MTA_MSG_TYPE_BUTT
+    ID_AT_MTA_MSG_TYPE_BUTT
 
 };
 typedef VOS_UINT32 AT_MTA_MSG_TYPE_ENUM_UINT32;
@@ -166,6 +177,21 @@ enum MTA_AT_RESULT_ENUM
 
     /* 装备命令特有错误码 */
     MTA_AT_RESULT_DEVICE_ERROR_BASE             = 0x100000,
+    MTA_AT_RESULT_DEVICE_SEC_IDENTIFY_FAIL,                                     /* 产线鉴权失败 */
+    MTA_AT_RESULT_DEVICE_SEC_SIGNATURE_FAIL,                                    /* 签名校验失败 */
+    MTA_AT_RESULT_DEVICE_SEC_DK_INCORRECT,                                      /* 端口密码错误 */
+    MTA_AT_RESULT_DEVICE_SEC_UNLOCK_KEY_INCORRECT,                              /* 解锁密码错误 */
+    MTA_AT_RESULT_DEVICE_SEC_PH_PHYNUM_LEN_ERROR,                               /* 物理号长度错误 */
+    MTA_AT_RESULT_DEVICE_SEC_PH_PHYNUM_VALUE_ERROR,                             /* 物理号码错误 */
+    MTA_AT_RESULT_DEVICE_SEC_PH_PHYNUM_TYPE_ERROR,                              /* 物理号类型错误 */
+    MTA_AT_RESULT_DEVICE_SEC_RSA_ENCRYPT_FAIL,                                  /* RSA加密失败 */
+    MTA_AT_RESULT_DEVICE_SEC_RSA_DECRYPT_FAIL,                                  /* RSA解密失败 */
+    MTA_AT_RESULT_DEVICE_SEC_GET_RAND_NUMBER_FAIL,                              /* 获取随机数失败(crypto_rand) */
+    MTA_AT_RESULT_DEVICE_SEC_WRITE_HUK_FAIL,                                    /* HUK写入错误 */
+    MTA_AT_RESULT_DEVICE_SEC_FLASH_ERROR,                                       /* Flash错误 */
+    MTA_AT_RESULT_DEVICE_SEC_NV_ERROR,                                          /* NV读写错误 */
+    MTA_AT_RESULT_DEVICE_SEC_OTHER_ERROR,                                       /* 其它错误 */
+
 
     /* 私有命令特有错误码 */
     MTA_AT_RESULT_PRICMD_ERROR_BASE             = 0x200000,
@@ -269,6 +295,33 @@ enum MTA_AT_JAM_RESULT_ENUM
     MTA_AT_JAM_RESULT_BUTT
 };
 typedef VOS_UINT32 MTA_AT_JAM_RESULT_ENUM_UINT32;
+
+
+enum AT_MTA_FREQLOCK_RATMODE_ENUM
+{
+    AT_MTA_FREQLOCK_RATMODE_GSM         = 0x01,
+    AT_MTA_FREQLOCK_RATMODE_WCDMA,
+    AT_MTA_FREQLOCK_RATMODE_LTE,
+    AT_MTA_FREQLOCK_RATMODE_CDMA1X,
+    AT_MTA_FREQLOCK_RATMODE_TD,
+    AT_MTA_FREQLOCK_RATMODE_WIMAX,
+    AT_MTA_FREQLOCK_RATMODE_EVDO,
+
+    AT_MTA_FREQLOCK_RATMODE_BUTT
+};
+typedef VOS_UINT8 AT_MTA_FREQLOCK_RATMODE_ENUM_UINT8;
+
+
+enum AT_MTA_GSM_BAND_ENUM
+{
+    AT_MTA_GSM_BAND_850                 = 0x00,
+    AT_MTA_GSM_BAND_900,
+    AT_MTA_GSM_BAND_1800,
+    AT_MTA_GSM_BAND_1900,
+
+    AT_MTA_GSM_BAND_BUTT
+};
+typedef VOS_UINT16 AT_MTA_GSM_BAND_ENUM_UINT16;
 
 
 /*****************************************************************************
@@ -741,6 +794,33 @@ typedef struct
 {
     MTA_AT_JAM_RESULT_ENUM_UINT32       enJamResult;
 } MTA_AT_JAM_DETECT_IND_STRU;
+
+
+typedef struct
+{
+    PS_BOOL_ENUM_UINT8                  enableFlag;                             /* PS_TRUE:锁定，PS_FALSE:去锁定 */
+    VOS_UINT8                           aucReserved[3];                         /* 保留位 */
+    VOS_UINT16                          usFreq;                                 /* 频点值 */
+    AT_MTA_GSM_BAND_ENUM_UINT16         enBand;                                 /* GSM频段 */
+} AT_MTA_SET_GSM_FREQLOCK_REQ_STRU;
+
+
+typedef struct
+{
+    MTA_AT_RESULT_ENUM_UINT32           enResult;
+} MTA_AT_SET_GSM_FREQLOCK_CNF_STRU;
+
+
+
+typedef struct
+{
+    VOS_UINT8                           ucSecType;                              /* 安全控制类型 */
+    VOS_UINT8                           ucSecStrFlg;                            /* 是否携带安全校验密文 */
+    VOS_UINT8                           aucReserved[2];
+    VOS_UINT8                           aucSecString[AT_RSA_CIPHERTEXT_LEN];    /* 安全校验密文 */
+} AT_MTA_NVWRSECCTRL_SET_REQ_STRU;
+
+
 
 /*****************************************************************************
   8 UNION定义

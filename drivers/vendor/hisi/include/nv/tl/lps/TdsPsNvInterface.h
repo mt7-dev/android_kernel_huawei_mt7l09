@@ -473,7 +473,10 @@ typedef struct
 {
   VOS_UINT8   ucIratRscpthreshold;
   VOS_UINT8   ucIratRscpDifference;
-  VOS_UINT16  usRsve[33];
+  /* Cell-Reselection optimazation in CELL-FACH when Srx/SNR are lower than the thresholds*/
+  VOS_UINT16  usCellReselFachSrxThresh; /* CELL-FACH 重选服务小区能量门限*/
+  VOS_UINT16  usCellReselFachSNRThresh;  /* CELL-FACH 重选服务小区信噪比门限*/
+  VOS_UINT16  usRsve[31];
 }TDS_FEATURE_PARA_STRU;
 
 typedef struct T_NVM_HsupaCtrlPara_Tag

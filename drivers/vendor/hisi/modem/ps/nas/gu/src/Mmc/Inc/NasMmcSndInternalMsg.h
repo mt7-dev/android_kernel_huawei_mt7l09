@@ -61,6 +61,10 @@ enum NAS_MMC_INTERNAL_MSG_ID_ENUM
 
     MMCMMC_INTER_SKIP_SEARCH_W_IND             = 13,
 
+    MMCMMC_INTER_SKIP_SEARCH_TDS_IND           = 14,
+    MMCMMC_INTER_ABORT_UTRAN_CTRL_PLMN_SEARCH_REQ = 15,
+    MMCMMC_INTER_ABORT_UTRAN_CTRL_PLMN_SEARCH_CNF = 16,
+
     MMCMMC_INTERNAL_MSG_ID_BUTT
 };
 typedef VOS_UINT32 NAS_MMC_INTERNAL_MSG_ID_ENUM_U32;
@@ -245,6 +249,28 @@ typedef struct
 } NAS_MMCMMC_INTER_SKIP_SEARCH_W_IND_STRU;
 
 
+typedef struct
+{
+    MSG_HEADER_STRU                             MsgHeader;
+    VOS_UINT8                                   aucReserved[4];
+} NAS_MMCMMC_INTER_SKIP_SEARCH_TDS_IND_STRU;
+
+
+typedef struct
+{
+    MSG_HEADER_STRU                             MsgHeader;
+    VOS_UINT8                                   aucReserved[4];
+} NAS_MMCMMC_INTER_ABORT_UTRAN_CTRL_PLMN_SEARCH_REQ_STRU;
+
+
+typedef struct
+{
+    MSG_HEADER_STRU                             MsgHeader;
+    VOS_UINT8                                   aucReserved[4];
+} NAS_MMCMMC_INTER_ABORT_UTRAN_CTRL_PLMN_SEARCH_CNF_STRU;
+
+
+
 
 typedef struct
 {
@@ -362,6 +388,14 @@ VOS_VOID  NAS_MMC_SndPlmnSelectionRslt(
 );
 
 VOS_VOID  NAS_MMC_SndInterSkipSearchWIndMsg(VOS_VOID);
+
+VOS_VOID  NAS_MMC_SndInterSkipSearchTdsIndMsg(VOS_VOID);
+
+VOS_VOID  NAS_MMC_SndInterAbortUtranCtrlPlmnSearchCnfMsg(VOS_VOID);
+
+VOS_VOID  NAS_MMC_SndInterAbortUtranCtrlPlmnSearchReqMsg(VOS_VOID);
+
+
 
 VOS_VOID NAS_MMC_SndAnycellSearchRslt(
     NAS_MMC_ANYCELL_SEARCH_RESULT_ENUM_UINT32               enResult

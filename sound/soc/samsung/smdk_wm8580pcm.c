@@ -19,15 +19,7 @@
 #include "dma.h"
 #include "pcm.h"
 
-/*
- * Board Settings:
- *  o '1' means 'ON'
- *  o '0' means 'OFF'
- *  o 'X' means 'Don't care'
- *
- * SMDK6410, SMDK6440, SMDK6450 Base B/D: CFG1-0000, CFG2-1111
- * SMDKC110, SMDKV210: CFGB11-100100, CFGB12-0000
- */
+
 
 #define SMDK_WM8580_EXT_OSC 12000000
 #define SMDK_WM8580_EXT_MCLK 4096000

@@ -23,7 +23,7 @@
 
 VOS_UINT16 OS_GetTaskIdList(int iTaskIdList[], int iTaskMaxNum)
 {
-    VOS_UINT16              usTaskNum   = iTaskMaxNum;
+    VOS_UINT16              usTaskNum   = (VOS_UINT16)iTaskMaxNum;
 
     if (VOS_NULL_PTR == iTaskIdList)
     {

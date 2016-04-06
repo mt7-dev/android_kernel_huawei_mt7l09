@@ -2,13 +2,13 @@
 #define __HISI_BATTERY_DATA
 
 #define MAX_SINGLE_LUT_COLS	20
+#define BAT_DATA_ARRAR_SIZE    16
 
 #define PC_CC_ROWS             29
 #define PC_CC_COLS             13
 
 #define PC_TEMP_ROWS		29
 #define PC_TEMP_COLS		8
-#define TEMP_SAMPLING_POINTS    6
 
 struct single_row_lut {
 	int x[MAX_SINGLE_LUT_COLS];
@@ -54,7 +54,7 @@ struct pc_temp_ocv_lut {
 };
 
 /**
- * struct hisi_hi6421v300_coul_battery_data -
+ * struct hisi_smartstar_coul_battery_data -
  * @id_voltage_min: the min voltage on ID pin of this battery (mV)
  * @id_voltage_max: the max voltage on ID pin of this battery (mV)
  * @fcc:		full charge capacity (mAmpHour)
@@ -69,7 +69,7 @@ struct pc_temp_ocv_lut {
  * @delta_rbatt_mohm:	the resistance to be added towards lower soc to
  *			compensate for battery capacitance.
  */
-struct hisi_hi6421v300_coul_battery_data {
+struct hisi_smartstar_coul_battery_data {
     unsigned int    id_voltage_min;
     unsigned int    id_voltage_max;
     unsigned int    fcc;
@@ -88,5 +88,21 @@ struct hisi_hi6421v300_coul_battery_data {
     unsigned int      charge_in_temp_10;
     char *batt_brand;
 };
-struct hisi_hi6421v300_coul_battery_data *get_battery_data(unsigned int id);
+
+enum SS_PRODUCT_INDEX {
+    SS_PRODUCT_INDEX_0 = 0,
+    SS_PRODUCT_INDEX_1,
+    SS_PRODUCT_INDEX_2,
+    SS_PRODUCT_INDEX_SUM,
+};
+
+struct hisi_smartstar_product_index_map {
+    char *product_name;
+    enum SS_PRODUCT_INDEX index;
+};
+
+typedef struct hisi_smartstar_coul_battery_data * (*p_bat_data_array)[BAT_DATA_ARRAR_SIZE];
+
+extern struct hisi_smartstar_coul_battery_data *get_battery_data(unsigned int id, unsigned int product_index);
+
 #endif

@@ -21,6 +21,7 @@
 int efuseWriteHUK(char *pBuf,unsigned int len)
 {
     BSP_U32 tmpLen = 0,i = 0;
+    int ret = 0;
 
     BSP_U32 readBuf[EFUSE_HUK_SIZE] = {0};
     
@@ -50,6 +51,11 @@ int efuseWriteHUK(char *pBuf,unsigned int len)
         return BSP_ERROR;
     }
 
+    for(i=0;i<len;i++)
+    {
+        efuse_print_info( " huk para pBuf[%d] = 0x%x!\n", i, (BSP_U8)pBuf[i]);
+    }
+
     tmpLen = len/EFUSE_GROUP_SIZE;
 
     /*read HUK first,ensure just write once*/
@@ -73,6 +79,25 @@ int efuseWriteHUK(char *pBuf,unsigned int len)
     if( BSP_OK != bsp_efuse_write( (BSP_U32 *)pBuf, EFUSE_GRP_HUK, tmpLen ) )
     {
         efuse_print_error( " efuseWrite error!\n" );
+        return BSP_ERROR;
+    }
+
+    /*read back HUK value,ensure value ok*/
+    ret = bsp_efuse_read( readBuf,EFUSE_GRP_HUK,EFUSE_HUK_SIZE);
+    if(BSP_OK != ret)
+    {
+        efuse_print_error( " read back huk failed, ret=%d!\n" ,ret);
+        return BSP_ERROR;
+    }
+
+    if(memcmp((const void*)readBuf, (const void*)pBuf, len))
+    {
+        efuse_print_info( " read back compare different:\n");
+        
+        for(i=0;i<EFUSE_HUK_SIZE;i++)
+        {
+            efuse_print_info("0x%x \n" ,readBuf[i]);
+        }
         return BSP_ERROR;
     }
 
@@ -120,6 +145,8 @@ int CheckHukIsValid()
 
     return BSP_FALSE;
 }
+
+
 int DRV_GET_DIEID(unsigned char* buf,int length)
 {
     u32 *buf_die_id = (u32*)buf;

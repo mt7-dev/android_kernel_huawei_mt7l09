@@ -1252,6 +1252,55 @@ NAS_MML_NET_RAT_TYPE_ENUM_UINT8 NAS_MMC_GetDestModeRat_SysCfg(
 }
 
 
+
+VOS_UINT32  NAS_MMC_IsHighPrioRatSrchNeed_SysCfg(
+    MMA_MMC_SYS_CFG_SET_REQ_STRU        *pstSysCfgSetParm
+)
+{
+    VOS_UINT8                           ucSetRatNum;                            /* 用户设置的接入技术个数  */
+    MMA_MMC_NET_RAT_TYPE_ENUM_UINT8    *pstSetRatPrio = VOS_NULL_PTR;           /* 用户设置的接入优先级里列表 index表示优先级次序,0最高，2最低 */
+
+    NAS_MML_PLMN_RAT_PRIO_STRU         *pstCurPrioRatList = VOS_NULL_PTR;       /* 当前接入优先级里列表 */
+    MMA_MMC_NET_RAT_TYPE_ENUM_UINT8    *pstCurRatPrio = VOS_NULL_PTR;           /* 当前接入优先级里列表 index表示优先级次序,0最高，2最低 */
+    VOS_UINT8                           ucCurRatNum;                            /* 当前支持的接入技术个数  */
+    NAS_MML_NET_RAT_TYPE_ENUM_UINT8     enCurrRat;
+
+
+    /* 取得用户设置的接入优先个数 */
+    ucSetRatNum        = pstSysCfgSetParm->stRatPrioList.ucRatNum;
+
+    /* 取得用户设置的接入优先级列表 */
+    pstSetRatPrio      = pstSysCfgSetParm->stRatPrioList.aucRatPrio;
+
+    pstCurPrioRatList  = NAS_MML_GetMsPrioRatList();
+
+    /* 取得当前的接入模式 */
+    enCurrRat          = NAS_MML_GetCurrNetRatType();
+
+    /* 取得当前的接入优先个数 */
+    ucCurRatNum        = pstCurPrioRatList->ucRatNum;
+
+    /* 取得当前的接入优先级列表 */
+    pstCurRatPrio      = pstCurPrioRatList->aucRatPrio;
+
+    if ( (0 == ucSetRatNum)
+      || (0 == ucCurRatNum) )
+    {
+        return VOS_FALSE;
+    }
+
+    /* 触发依据:1、当前的最高优先级接入技术与设置的最高优先级不同 */
+    /*          2、当前的RAT不是新设的最高RAT                     */
+    if ( (pstSetRatPrio[0] != pstCurRatPrio[0])
+      && (enCurrRat != pstSetRatPrio[0]) )
+    {
+        return  VOS_TRUE;
+    }
+
+    /* 默认不需要进行高优先级列表搜网 */
+    return VOS_FALSE;
+}
+
 #ifdef __cplusplus
     #if __cplusplus
         }

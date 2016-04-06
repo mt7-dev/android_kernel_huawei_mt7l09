@@ -43,6 +43,13 @@ typedef enum tagProductType
 	PRODUCT_TYPE_PHONE
 }eProductType;
 
+typedef enum{
+     BOARD_TYPE_BBIT        = 0,
+     BOARD_TYPE_SFT,
+     BOARD_TYPE_ASIC,
+     BOARD_TYPE_MAX
+}BOARD_ACTUAL_TYPE_E;
+
 #define HW_VER_PRODUCT_TYPE_MASK	(BSP_U32)0x00FF0000
 #define HW_VER_PRODUCT_TYPE_OS		16
 
@@ -72,6 +79,9 @@ typedef enum tagProductType
 #define HW_VER_UDP_MASK				(BSP_U32)0X7F000000
 #define HW_VER_UN_UDP_MASK			(BSP_U32)0X00FFFFFF
 
+#define CONFIG_VER_UDP_MASK			(BSP_U32)0X00FFFFFB
+#define CONFIG_TYPE_MASK			(BSP_U32)0X00FFFFFF
+
 /* RF 扣板 */
 #define HW_VER_PRODUCT_UDP_RF_HI6361EVB5_VER_D_RF_T	(BSP_U32)0X7F000100/*编号为1j, wangjiaan 提供*/
 #define HW_VER_PRODUCT_UDP_RF_HIBV7R2RF6_VB			(BSP_U32)0X7F000908/*编号无,wangjiaan 提供*/
@@ -89,19 +99,24 @@ typedef enum tagProductType
 #define HW_VER_PRODUCT_UDP_RF_HI6361SEVB5_VER_D_RF_T		(BSP_U32)0X7F000702/*使用EVB5扣板通过改电阻编号为72, 刘道明给出*/
 
 /*K3V3_FPGA*/
-#define HW_VER_K3V3_FPGA			(BSP_U32)0X33333333
-#define HW_VER_K3V3_FPGA_MASK		(BSP_U32)0X33000000
-#define HW_VER_K3V3_FPGA_UN_MASK	(BSP_U32)0X00FFFFFF
+#define HW_VER_K3V3_FPGA				(BSP_U32)0X33333333
+#define HW_VER_K3V3_FPGA_MASK			(BSP_U32)0X33000000
+#define HW_VER_K3V3_FPGA_UN_MASK		(BSP_U32)0X00FFFFFF
 
 /*K3V3 UDP*/
-#define HW_VER_K3V3_UDP				(BSP_U32)0X3FFFFFFB
-#define HW_VER_K3V3_UDP_MASK        (BSP_U32)0X3F000000
-#define HW_VER_K3V3_UN_UDP_MASK     (BSP_U32)0X00FFFFFF
+#define HW_VER_K3V3_UDP					(BSP_U32)0X3FFFFFFB
+#define HW_VER_K3V3_UDP_MASK        	(BSP_U32)0X3F000000
+#define HW_VER_K3V3_UN_UDP_MASK     	(BSP_U32)0X00FFFFFF
+
+/*K3V3 plus UDP*/
+#define HW_VER_K3V3_PLUS_UDP			(BSP_U32)0X3EFFFFFB
+#define HW_VER_K3V3_PLUS_UDP_MASK   	(BSP_U32)0X3E000000
+#define HW_VER_K3V3_PLUS_UN_UDP_MASK	(BSP_U32)0X00FFFFFF
 
 /*V711 UDP*/
-#define HW_VER_V711_UDP				(BSP_U32)0X71FFFFFB
-#define HW_VER_V711_UDP_MASK        (BSP_U32)0X71000000
-#define HW_VER_V711_UN_UDP_MASK     (BSP_U32)0X00FFFFFF
+#define HW_VER_V711_UDP					(BSP_U32)0X71FFFFFB
+#define HW_VER_V711_UDP_MASK        	(BSP_U32)0X71000000
+#define HW_VER_V711_UN_UDP_MASK     	(BSP_U32)0X00FFFFFF
 
 /*K3V3 RF 扣板 */
 #define HW_VER_K3V3_UDP_RF_HI6361EVB5_VER_D_RF_T	(BSP_U32)0X3F000100/*编号为1j, wangjiaan 提供*/
@@ -109,6 +124,19 @@ typedef enum tagProductType
 #define HW_VER_K3V3_RF_HIBV7R2RF7					(BSP_U32)0X3F000604/*编号为2m,wangjiaan 提供58*/
 #define HW_VER_K3V3__UDP_RF_K3V3RFU2_RFMD_VER_A		(BSP_U32)0X3F000602/*K3V3RFU2_VA(RFMD),yuanshutian*/
 
+
+
+/*芯片版本号*/
+#define CHIP_VER_HI6950_ASIC    (BSP_U32)0X69500100
+#define CHIP_VER_HI6930_ASIC    (BSP_U32)0X69300100
+#define CHIP_VER_HI6921_ASIC    (BSP_U32)0X69210100
+#define CHIP_VER_HI3630_ASIC    (BSP_U32)0X36300100
+#define CHIP_VER_HI3635_ASIC    (BSP_U32)0X36350100
+#define CHIP_VER_P532_ASIC      (BSP_U32)0X05320100
+#define CHIP_VER_P531_ASIC      (BSP_U32)0X05300100
+
+#define CHIP_VER_HI6950_SFT     (BSP_U32)0X6950A100
+#define CHIP_VER_HI3635_SFT     (BSP_U32)0X3635FFFF
 
 /*VERSIONINFO_I数据结构中版本字符串最大有效字符长度*/
 #ifndef VER_MAX_LENGTH
@@ -213,7 +241,7 @@ extern BSP_S32 BSP_GetProductName (char * pProductName, unsigned int ulLength);
  输出参数  : u32PlatformInfo:芯片的版本号
  返 回 值  : void
 *****************************************************************************/
-extern BSP_VOID DRV_GET_PLATFORM_INFO(unsigned long *u32PlatformInfo);
+extern BSP_VOID DRV_GET_PLATFORM_INFO(unsigned int *u32PlatformInfo);
 
 /*****************************************************************************
 * 函 数 名  : BSP_OM_GetChipType
@@ -413,8 +441,26 @@ char * bsp_version_get_release(void);
  输出参数  : 无。
  返 回 值  : 无。
 *****************************************************************************/
-extern int BSP_MNTN_GetHwGpioInfo(unsigned char *pGpioInfo, unsigned long usLength );
+extern int BSP_MNTN_GetHwGpioInfo(unsigned char *pGpioInfo, unsigned int usLength );
 #define DRV_GET_GPIO_INFO(pGpioInfo, usLength)    BSP_MNTN_GetHwGpioInfo(pGpioInfo, usLength )
+
+/*****************************************************************************
+* 函 数 名  : DRV_GET_BOARDACTUALTYPE
+*
+* 功能描述  : 获取单板物理类型
+*
+* 输入参数  : 无
+*
+* 输出参数  : 无
+*
+* 返 回 值  : BSP单板类型枚举
+*             BBIT/SFT/ASIC
+*
+* 其它说明  : 无
+*
+*****************************************************************************/
+BOARD_ACTUAL_TYPE_E bsp_get_board_actual_type(BSP_VOID);
+#define DRV_GET_BOARDACTUALTYPE()   bsp_get_board_actual_type()
 
 /*************************VERSION END  *****************************/
 

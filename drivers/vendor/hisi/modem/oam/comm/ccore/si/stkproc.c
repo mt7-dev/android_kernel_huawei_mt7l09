@@ -517,6 +517,8 @@ VOS_UINT32 SI_STK_SetUpMenuProc(SI_STK_DATA_INFO_STRU *pCmdData)
 
         VOS_MemCpy(&gstSetUpMenuData.CmdDevice, &pCmdData->CmdDevice, sizeof(gstSetUpMenuData.CmdDevice));
 
+        VOS_MemSet(&pCmdData->CmdStru, 0, sizeof(gstSetUpMenuData.stSetUpMenu));
+
         gstSetUpMenuData.ucUsatTag = SI_STK_MENU_EXIST;
 
         /* 对CmdDetail字段重新赋值，以免主动命令上报的参数与aucRsp中默认值不一致导致的兼容性问题 */
@@ -1468,10 +1470,29 @@ VOS_VOID SI_STK_CardStatusMsgProc(PS_SI_MSG_STRU *pMsg)
         /* 清空Event List */
         VOS_MemSet(&g_stSTKEventState, 0, sizeof(g_stSTKEventState));
 
-        return;
-    }
+        if (SI_STK_SETUPMENU == gstUsatCmdDecode.SatType)
+        {
+            gstSetUpMenuData.ucUsatTag = SI_STK_MENU_NOTEXIST;
 
-    STK_ProfileInit(&g_stSTKProfileContent, pstUsimStatus->enCardType);
+            SI_STKCommDataFree(SI_STK_SETUPMENU, (SI_SAT_COMMDATA_STRU *)&gstSetUpMenuData.stSetUpMenu);
+
+            VOS_MemSet(&gstSetUpMenuData, 0, sizeof(gstSetUpMenuData));
+        }
+        else if (SI_STK_NOCMDDATA != gstUsatCmdDecode.SatType)
+        {
+            SI_STKCommDataFree(gstUsatCmdDecode.SatType, (SI_SAT_COMMDATA_STRU *)&gstUsatCmdDecode.CmdStru);
+
+            VOS_MemSet(&gstUsatCmdDecode, 0, sizeof(gstUsatCmdDecode));
+        }
+        else
+        {
+
+        }
+    }
+    else
+    {
+        STK_ProfileInit(&g_stSTKProfileContent, pstUsimStatus->enCardType);
+    }
 
     return;
 }

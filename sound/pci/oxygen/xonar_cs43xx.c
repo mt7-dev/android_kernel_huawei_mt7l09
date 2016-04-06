@@ -66,7 +66,7 @@
 #define GPIO_D1_INPUT_ROUTE	0x0100
 
 #define I2C_DEVICE_CS4398	0x9e	/* 10011, AD1=1, AD0=1, /W=0 */
-#define I2C_DEVICE_CS4362A	0x30	/* 001100, AD0=0, /W=0 */
+#define I2C_DEVICE_CS4362A	0x30
 
 struct xonar_cs43xx {
 	struct xonar_generic generic;

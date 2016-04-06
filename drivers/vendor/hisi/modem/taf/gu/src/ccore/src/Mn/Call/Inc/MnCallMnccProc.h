@@ -77,7 +77,7 @@ typedef struct
     MN_OPERATION_ID_T                                       opId;
     VOS_UINT8                                               ucCallId;
     VOS_UINT8                                               ucTi;                      /* TI信息，保护TI FLAG和TI两项，具体格式参考上面描述 */
-    MN_CALL_STATE_ENUM_UINT8                                enCallState;               /* IMSA同步过来的IMS域下的呼叫状态 */ 
+    MN_CALL_STATE_ENUM_UINT8                                enCallState;               /* IMSA同步过来的IMS域下的呼叫状态 */
     MN_CALL_MODE_ENUM_U8                                    enCallMode;
     MN_CALL_MPTY_STATE_ENUM_U8                              enMptyState;
     MN_CALL_DIR_ENUM_U8                                     enCallDir;
@@ -625,25 +625,6 @@ VOS_VOID  MN_CALL_ProcEmergencyListInd(
 
 
 
-/*****************************************************************************
- 函 数 名  : MN_CALL_ReportErrIndEvent
- 功能描述  : 上报MN_CALL_EVT_ERR_IND事件
- 输入参数  : usClientId - 客户端ID
-             ucOpId     - 操作码ID
-             enCause    - 错误码
-             ucCallId   - Call ID
- 输出参数  : 无
- 返 回 值  : VOS_VOID
- 调用函数  :
- 被调函数  :
-*****************************************************************************/
-VOS_VOID MN_CALL_ReportErrIndEvent(
-    VOS_UINT16                          usClientId,
-    VOS_UINT8                           ucOpId,
-    TAF_CS_CAUSE_ENUM_UINT32            enCause,
-    MN_CALL_ID_T                        ucCallId
-);
-
 VOS_VOID MN_CALL_ReportHoldEvent(
     MN_CLIENT_ID_T                      usClientId,
     VOS_UINT8                           ucCallNum,
@@ -693,7 +674,7 @@ VOS_VOID  TAF_CALL_ProcMnccSrvccStatusInd(
 
 VOS_VOID TAF_CALL_MapCallInfoToCcInfo(
     MNCC_ENTITY_STATUS_STRU            *pstCcInfo,
-    VOS_UINT8                          *pucCallNum    
+    VOS_UINT8                          *pucCallNum
 );
 
 VOS_VOID TAF_CALL_ProcDtmfBuffer(VOS_VOID);

@@ -822,6 +822,15 @@ VOS_VOID NAS_RABM_SuspendFastDorm(VOS_VOID)
         NAS_RABM_SndOmFastdormStatus();
 
     }
+
+    /* stop状态，fd没有开启，中断releaserrc流程 */
+    /* FD功能开启时, 以FD的处理流程为准 */
+    if ((NAS_RABM_FASTDORM_STOP == NAS_RABM_GetCurrFastDormStatus())
+     && (VOS_TRUE == NAS_RABM_GET_FD_REL_RRC_EXEC_FLG()))
+    {
+        NAS_RABM_CLR_FD_REL_RRC_EXEC_FLG();
+        NAS_RABM_SndWasFastDormStopReq();
+    }
 }
 VOS_VOID NAS_RABM_ResumeFastDorm(VOS_VOID)
 {
@@ -1134,6 +1143,9 @@ VOS_VOID NAS_RABM_InitFastDormCtx(VOS_VOID)
 
     g_stNasRabmFastDormCtx.ulDlDataCnt             = 0;
     g_stNasRabmFastDormCtx.ulUlDataCnt             = 0;
+
+    g_stNasRabmFastDormCtx.ulRelRrcExecFlg         = VOS_FALSE;
+
 }
 
 
@@ -1309,6 +1321,30 @@ VOS_VOID NAS_RABM_RcvReleaseRrcReq(
         /* 向GMM发送查询消息 */
         NAS_RABM_SndGmmMmlProcStatusQryReq(RABM_RELEASE_RRC_ENUM);
 
+    }
+
+    return;
+}
+
+
+VOS_VOID NAS_RABM_AbortRelRrcProcedure(VOS_VOID)
+{
+    /* 非wcdma模式，直接返回 */
+    if (NAS_MML_NET_RAT_TYPE_WCDMA != NAS_RABM_GetCurrentSysMode())
+    {
+        return;
+    }
+
+    /* FD功能开启时, 以FD的处理流程为准 */
+    if (NAS_RABM_FASTDORM_STOP != NAS_RABM_GetCurrFastDormStatus())
+    {
+        return;
+    }
+
+    if (VOS_TRUE == NAS_RABM_GET_FD_REL_RRC_EXEC_FLG())
+    {
+        NAS_RABM_CLR_FD_REL_RRC_EXEC_FLG();
+        NAS_RABM_SndWasFastDormStopReq();
     }
 
     return;

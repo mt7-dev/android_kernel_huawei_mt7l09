@@ -72,7 +72,22 @@ extern "C" {
 
 #define TLRRC_FAST_CSFB_FEATURE             TLRRC_FEATURE_ON
 #define LHPA_DATA_ABORT_LAST_MSG           16
+/*32KTime Stamp翻转一次对应的时间，秒级单位，对应右移位数*/
+#define TLPS_32TSTAMP_HIGHBIT_MOVE_BIT_IN_SECOND  (17)
 
+/*32KTime Stamp和秒的对应关系，除以32768，即左移15位*/
+#define TLPS_32TSTAMP_ACCURACY_MOVE_BIT_IN_SECOND       (15)
+
+/*32KTime Stamp 高位最大值，如果差值大于此值，即按照32位计秒达到溢出*/
+#define TLPS_32TSTAMP_MAX_HIGH_VAL       (0x7FFFUL)
+
+/* 32KTime Stamp和毫秒的对应关系，除以32.768 */
+#define TLPS_32TSTAMP_ACCURACY_IN_MILL_SECOND      (32.768)
+
+/*32KTime Stamp 高位最大值，如果差值大于此值，即按照毫秒记差值达到溢出*/
+#define TLPS_32TSTAMP_MAX_HIGH_VAL_MILL_SECOND     (0x20UL)
+
+#define TLPS_PRINT2LAYER_INVALID_VALUE     (0xa5a5a5a5)
 
 #if (VOS_OS_VER != VOS_WIN32)
 #define PS_LOG_RETURN() \
@@ -177,6 +192,7 @@ extern "C" {
 
 #define LPS_GET_HO_AllSuccTime(enHoType)    (g_stPsHoInfo.aulAllHoSuccTime[enHoType])
 /* mod by guojiyu 可维可测切换时延 end */
+#define LPS_OM_GET32K_TIMESTAMP(pulHigBit,pulLowBit)  DRV_GET_BBP_TIMER_VALUE((pulHigBit),(pulLowBit))
 #else
 #define LPS_HO_SET_LATENCY_TIME(ucLatencyType)
 /* 设置建链接时延 */
@@ -206,6 +222,9 @@ extern "C" {
 
 #define LPS_GET_HO_AllSuccTime(enHoType)
 /* mod by guojiyu 可维可测切换时延 end */
+
+#define LPS_OM_GET32K_TIMESTAMP(pulHigBit,pulLowBit)
+
 
 #endif
 /*TDS begin*/
@@ -353,6 +372,29 @@ typedef VOS_UINT32 LPS_REBOOT_MOD_ID_ENUM_UINT32;
 /*****************************************************************************
    5 STRUCT
 *****************************************************************************/
+
+
+#define TLPS_EXC_BUILD_MSG_PID(ulSendPid, ulRcvPid) \
+            ((ulSendPid << 16) | (ulRcvPid & 0xffff))
+
+#define TLPS_EXC_MSG_PRIVATE_OFFSET        6
+#define TLPS_EXC_MAX_SAVE_MSG_NUM          200
+#define TLPS_EXC_HPA_SEND_FAIL_MSG_NUM      8
+
+typedef struct
+{
+    VOS_UINT32 ulTimeStamp; /* 时间戳*/
+    VOS_UINT32 ulCompPid;   /* ulSendPid | ulRcvPid */
+    VOS_UINT32 ulMsgId;     /* 消息ID */
+    VOS_UINT32 ulPrivate;   /* 用来保存一些重要消息的关键参数*/
+}TLPS_EXC_MSG_ELEMENT_STRU;
+
+
+typedef struct
+{
+    VOS_UINT32                ulNextIndex;
+    TLPS_EXC_MSG_ELEMENT_STRU astMsgList[TLPS_EXC_MAX_SAVE_MSG_NUM];
+}TLPS_EXC_MSG_MNTN_STRU;
  /*****************************************************************************
  结构名    : LPS_HO_LATENCY_STRU
  结构说明  : PS切换时延统计信息数据结构(
@@ -491,6 +533,35 @@ typedef struct
 
 extern LHPA_MAILBOX_DATAABORT_STRU  g_stHpaMailBoxDataAbortMsg;
 
+#define     TDS_AIR_MSG_MAX    64
+
+typedef struct
+{
+    VOS_UINT32                    ulTimeStamp;
+    VOS_UINT32                    ulMsgId;
+}TDS_AIR_MSG_STRU;
+
+typedef struct
+{
+    VOS_UINT32                    ulMsgCnt;
+    TDS_AIR_MSG_STRU              ulTdsMsg[TDS_AIR_MSG_MAX];
+
+}TDS_AIR_MSG_RECORD_STRU;
+
+extern TDS_AIR_MSG_RECORD_STRU  g_stTdsAirMsgRecord;
+
+
+/*****************************************************************************
+ 结构名    : LPS_32K_TIMESTAMP
+ 结构说明  : 32KTIMESTAMP
+*****************************************************************************/
+typedef struct
+{
+    VOS_UINT32   ul32KTStampHighBit;
+    VOS_UINT32   ul32KTStampLowBit;
+}LPS_32K_TIMESTAMP;
+
+
 /*****************************************************************************
   6 UNION
 *****************************************************************************/
@@ -528,6 +599,8 @@ extern VOS_UINT32                       g_ulPsFreqInAllBandWidthFlg;
 extern LPS_NV_MEAS_THRESHOLD_STRU g_LPsNvCellMeasThredhold;
 
 extern VOS_UINT32 g_ulNasPlainRejMsgFlag;
+
+extern VOS_UINT32 g_ulNasCsfbTauType2Flag;
 /*****************************************************************************
   8 Fuction Extern
 *****************************************************************************/
@@ -576,9 +649,7 @@ extern VOS_UINT32 LPS_OM_GetTmode(FTM_TMODE_ENUM* penFtmMode);
 
 extern VOS_UINT32 LPS_OM_IsTestMode(VOS_VOID);
 
-#if (PLATFORM != hi6930_v7r2)
 extern VOS_VOID TLPS_ExcLog_Save(VOS_VOID);
-#endif
 extern VOS_UINT32 TLPS_TaskDelay(VOS_UINT32 ulLength);
 
 /*封装取得时间戳函数*/

@@ -48,12 +48,22 @@ struct iommu_domain_geometry {
 	bool force_aperture;       /* DMA only allowed in mappable range? */
 };
 
+struct iommu_domain_capablity {
+	unsigned int  iova_start;  /* First address that can be mapped    */
+	unsigned int  iova_end;    /* Last address that can be mapped     */
+	unsigned int  iova_align;  /* domain io address aligned           */
+	unsigned int  pg_sz;       /* io domain page size                 */
+	unsigned int  pgtbl_base;
+	bool off_on;               /* iommu is online or offline          */
+};
+
 struct iommu_domain {
 	struct iommu_ops *ops;
 	void *priv;
 	iommu_fault_handler_t handler;
 	void *handler_token;
-	struct iommu_domain_geometry geometry;
+	struct iommu_domain_geometry  geometry;
+	struct iommu_domain_capablity capablity;
 };
 
 #define IOMMU_CAP_CACHE_COHERENCY	0x1
@@ -63,6 +73,8 @@ enum iommu_attr {
 	DOMAIN_ATTR_GEOMETRY,
 	DOMAIN_ATTR_PAGING,
 	DOMAIN_ATTR_WINDOWS,
+	DOMAIN_ATTR_CAPABLITY,
+	DOMAIN_ATTR_FORMAT_DATA,
 	DOMAIN_ATTR_MAX,
 };
 
@@ -131,6 +143,8 @@ struct iommu_ops {
 			       enum iommu_attr attr, void *data);
 	int (*domain_set_attr)(struct iommu_domain *domain,
 			       enum iommu_attr attr, void *data);
+	int (*get_pgtbl_base)(struct iommu_domain *domain, unsigned long iova_start,
+			unsigned long *ptb_base, unsigned long *iova_base);
 
 	/* Window handling functions */
 	int (*domain_window_enable)(struct iommu_domain *domain, u32 wnd_nr,
@@ -211,7 +225,8 @@ extern int iommu_domain_get_attr(struct iommu_domain *domain, enum iommu_attr,
 				 void *data);
 extern int iommu_domain_set_attr(struct iommu_domain *domain, enum iommu_attr,
 				 void *data);
-
+extern int iommu_get_pgtbl_base(struct iommu_domain *domain, unsigned long iova_start,
+				unsigned long *ptb_base, unsigned long *iova_base);
 /* Window handling function prototypes */
 extern int iommu_domain_window_enable(struct iommu_domain *domain, u32 wnd_nr,
 				      phys_addr_t offset, u64 size,
@@ -411,6 +426,12 @@ static inline int iommu_domain_get_attr(struct iommu_domain *domain,
 
 static inline int iommu_domain_set_attr(struct iommu_domain *domain,
 					enum iommu_attr attr, void *data)
+{
+	return -EINVAL;
+}
+
+static inline int iommu_get_pgtbl_base(struct iommu_domain *domain, unsigned long iova_start,
+					unsigned long *ptb_base, unsigned long *iova_base)
 {
 	return -EINVAL;
 }

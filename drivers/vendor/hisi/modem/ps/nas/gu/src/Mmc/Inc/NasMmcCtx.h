@@ -76,6 +76,10 @@ extern "C" {
 
 #define NAS_MMC_MAX_PLMN_NUM_IN_SELECTION_LIST       (410)    /* 搜网列表PLMN个数扩展160个，250+160 */
 
+#define NAS_MMC_MAX_ROAM_PLMN_NUM_IN_SELECTION_LIST   (60)
+#define NAS_MMC_PLMN_SELECTION_LIST_INVALID_INDEX     (0xFFFF)
+
+
 #define NAS_MMC_INTRA_MAX_HIGH_QUALITY_PLMN_NUM        (RRC_MAX_HIGH_PLMN_NUM/3)  /* 内部搜网消息中携带的高质量PLMN的最大个数 */
 #define NAS_MMC_INTRA_MAX_LOW_QUALITY_PLMN_NUM         (RRC_MAX_LOW_PLMN_NUM/3)   /* 内部搜网消息中携带的低质量PLMN的最大个数 */
 
@@ -92,6 +96,21 @@ extern "C" {
 #define  NAS_MMC_LTE_ARFCN_MAX_NUM                      (8)                     /* LTE频点列表最大个数，用于GAS根据邻区结构给MTC上报频点信息 */
 
 #define  NAS_MMC_LTE_CELL_MAX_NUM                       (8)                     /* LTE小区列表最大个数 */
+
+
+/* Modified by c00318887 for DPlmn扩容和优先接入HPLMN, 2015-5-18, begin */
+/* en_NV_Item_CMCC_Cfg_Dplmn_Nplmn_Info DPLMN数据,每7个字节代表一个dplmn信息，第1-3个字节为sim卡格式plmn id，
+   第4-5字节为支持的接入技术(0x8000为支持w，0x4000为支持lte，0x0080为支持gsm)，
+   第6字节为域信息:1(cs域注册成功)；2(ps域注册成功)；3(cs ps均注册成功)
+   第7直接为预置标示信息: 1(预置Dplmn), 0(自学习到的DPLMN) */
+#define NAS_MMC_DPLMN_NPLMN_NV_INFO_LEN                   (7) /* en_NV_Item_CMCC_Cfg_Dplmn_Nplmn_Info nv中DPLMN信息总字节数 */
+#define NAS_MMC_DPLMN_NPLMN_NV_PRESETING_FLAG_INDEX       (6) /* en_NV_Item_CMCC_Cfg_Dplmn_Nplmn_Info nv中DPLMN信息中预置标示信息位置 */
+
+#define NAS_MMC_MAX_CFG_DPLMN_NUM       (256)            /* DPLMN的最大个数 */
+#define NAS_MMC_MAX_CFG_NPLMN_NUM       (256)            /* NPLMN的最大个数 */
+/* Modified by c00318887 for DPlmn扩容和优先接入HPLMN, 2015-5-18, end */
+
+#define NAS_MMC_MAX_CFG_HPLMN_NUM       (8)              /* HPLMN的最大个数*/
 
 
 #define NAS_MMC_WCDMA_BAND_NULL                 0x0000
@@ -339,9 +358,9 @@ enum NAS_MMC_PLMN_SEARCH_SCENE_ENUM
     NAS_MMC_PLMN_SEARCH_SCENE_REG_PREF_PLMN,                    /* 只搜索和注册(E)HPLMN+UPLMN+OPLMN */
     NAS_MMC_PLMN_SEARCH_SCENE_REG_ANY_PLMN,                     /* 可以搜索和注册任何非禁止网络 */
 
-    NAS_MMC_PLMN_SEARCH_SCENE_SYSCFG_SET_HIGH_PRIO_RAT,         /* syscfg触发的高优先级接入技术搜网 */
-    
+
     NAS_MMC_PLMN_SEARCH_SCENE_AREA_LOST_ROAMING_CFG,           /*软银定制漫游状态下丢网的搜网场景*/
+    NAS_MMC_PLMN_SEARCH_SCENE_ENABLE_LTE_PLMN_SEARCH,         /* enable lte定时器超时触发搜网的场景 */
     NAS_MMC_PLMN_SEARCH_SCENE_BUTT
 };
 typedef VOS_UINT32 NAS_MMC_PLMN_SEARCH_SCENE_ENUM_UINT32;
@@ -431,6 +450,20 @@ enum NAS_MMC_PLMN_TYPE_ENUM
     NAS_MMC_PLMN_TYPE_BUTT
 };
 typedef VOS_UINT8 NAS_MMC_PLMN_TYPE_ENUM_UINT8;
+enum NAS_MMC_ROAM_PLMN_TYPE_ENUM
+{
+    NAS_MMC_ROAM_PLMN_TYPE_FORBIDDEN    = 0,          /* 该网络在禁止网络中 */
+    NAS_MMC_ROAM_PLMN_TYPE_NPLMN        = 1,          /* 该网络在NPLMN中 */
+    NAS_MMC_ROAM_PLMN_TYPE_AVAIL_PLMN   = 2,          /* 该网络为其它可用网络 */
+    NAS_MMC_ROAM_PLMN_TYPE_OPLMN        = 3,          /* 该网络为Operator Controlled PLMN */
+    NAS_MMC_ROAM_PLMN_TYPE_UPLMN        = 4,          /* 该网络为User Controlled PLMN */
+    NAS_MMC_ROAM_PLMN_TYPE_DPLMN        = 5,          /* 该网络在DPLMN中 */
+    NAS_MMC_ROAM_PLMN_TYPE_BUTT
+};
+typedef VOS_UINT8 NAS_MMC_ROAM_PLMN_TYPE_ENUM_UINT8;
+
+
+
 enum NAS_MMC_WAIT_REG_RESULT_IND_ENUM
 {
     NAS_MMC_WAIT_REG_RESULT_IND_NULL   = 0x00,                                  /*当前不需要等待CS/PS的注册结果*/
@@ -535,6 +568,24 @@ enum NAS_MMC_REG_CONTROL_ENUM
     NAS_MMC_REG_CONTROL_BUTT
 };
 typedef VOS_UINT8 NAS_MMC_REG_CONTROL_ENUM_UINT8;
+
+/*****************************************************************************
+ 枚举名    : NAS_MMC_DPLMN_NPLMN_SETTING_TYPE_ENUM_UINT8
+ 结构说明  : DPLMN NPLMN是自学习得到的还是NV预置的
+ 1.日    期   : 2015年5月18日
+   作    者   : c00318887
+   修改内容   : 新建
+*****************************************************************************/
+enum NAS_MMC_DPLMN_NPLMN_SETTING_TYPE_ENUM
+{
+    NAS_MMC_DPLMN_NPLMN_SELF_LEARING_TYPE = 0,           /* DPLMN NPLMN是自学习得到的 */
+    NAS_MMC_DPLMN_NPLMN_PRESETTING_TYPE,                 /* DPLMN NPLMN是NV预置的 */
+    NAS_MMC_DPLMN_NPLMN_SETTING_TYPE_BUTT
+};
+typedef VOS_UINT8 NAS_MMC_DPLMN_NPLMN_SETTING_TYPE_ENUM_UINT8;
+
+/* Added by c00318887 for DPlmn扩容和优先接入HPLMN, 2015-5-18, end */
+
 /*****************************************************************************
   4 全局变量声明
 *****************************************************************************/
@@ -600,6 +651,15 @@ typedef struct
     NAS_MMC_COVERAGE_TYPE_ENUM_UINT8    enCoverageType;    /* 当前接入技术下的网络覆盖类型, 0:不存在覆盖，1:存在低质量网络覆盖,2:存在高质量网络覆盖 */
     NAS_MML_NET_RAT_TYPE_ENUM_UINT8     enRatType;         /* 网络的接入技术 */
     VOS_UINT8                           ucSearchRplmnAndHplmnFlg;
+
+    VOS_UINT8                           ucSearchRplmnAndEplmnFlg;
+    VOS_UINT8                           ucSearchedRoamPlmnSortedFlag;
+    
+    /* Modified by c00318887 for DPlmn扩容和优先接入HPLMN, 2015-5-22, begin */
+    VOS_UINT8                           ucSearchDplmnAndHplmnFlg;
+    VOS_UINT8                           aucReserved[1];
+    /* Modified by c00318887 for DPlmn扩容和优先接入HPLMN, 2015-5-22, end */
+    
 }NAS_MMC_RAT_SEARCH_INFO_STRU;
 typedef struct
 {
@@ -616,6 +676,23 @@ typedef struct
     VOS_UINT8                              aucReserve[2];
     NAS_MMC_PLMN_SELECTION_PLMN_INFO_STRU  astPlmnSelectionList[NAS_MMC_MAX_PLMN_NUM_IN_SELECTION_LIST]; /* 搜网列表 */
 }NAS_MMC_PLMN_SELECTION_LIST_INFO_STRU;
+
+
+typedef struct
+{
+    NAS_MML_PLMN_WITH_RAT_STRU          stPlmnWithRat;
+    NAS_MMC_PLMN_TYPE_ENUM_UINT8        enPlmnType;
+    NAS_MMC_NET_STATUS_ENUM_UINT8       enNetStatus;
+    VOS_UINT8                           aucLac[NAS_MML_MAX_LAC_LEN];
+}NAS_MMC_ROAM_PLMN_INFO_STRU;
+
+
+typedef struct
+{
+    VOS_UINT16                             usSearchPlmnNum;                     /* 列表中保存的PLMN个数 */
+    VOS_UINT8                              aucReserve[2];
+    NAS_MMC_ROAM_PLMN_INFO_STRU            astPlmnSelectionList[NAS_MMC_MAX_ROAM_PLMN_NUM_IN_SELECTION_LIST]; /* 搜网列表 */
+}NAS_MMC_ROAM_PLMN_LIST_INFO_STRU;
 
 
 
@@ -664,7 +741,13 @@ typedef struct
     NAS_MML_PLMN_ID_STRU                      stCsPsMode1ReCampLtePlmn;         /* 保存当前L网络的PLMNID */
 
     NAS_MML_PLMN_WITH_RAT_STRU                stCurrSearchingPlmn;                /* 当前正在尝试的网络及其接入技术,用于at+cops=0 9074 nv项开启打断时判断当前正在搜索的网络是否为hplmn */
+
+    VOS_UINT8                                 ucExistRplmnOrHplmnFlag;        /* 接入层上报的searched plmn info是否存在rplmn和hplmn标识，
+                                                                                 如果存在则按非漫游搜网处理，后续即使上报了与rplmn和hplmn不同国家码的网络也不打断*/
 }NAS_MMC_FSM_PLMN_SELECTION_CTX_STRU;
+
+
+
 typedef struct
 {
     VOS_UINT8                       ucTotalSwitchOnRatNum;                         /* 向接入层发送开机请求的总个数 */
@@ -1032,6 +1115,34 @@ typedef struct
 
 
 
+
+typedef struct
+{
+    NAS_MML_SIM_PLMN_WITH_RAT_STRU                stSimPlmnWithRat;
+    NAS_MMC_REG_DOMAIN_ENUM_UINT8                 enRegDomain;
+    /* Modified by c00318887 for DPlmn扩容和优先接入HPLMN, 2015-5-20, begin */
+    NAS_MMC_DPLMN_NPLMN_SETTING_TYPE_ENUM_UINT8   enType;
+    VOS_UINT8                                     aucReserved[2];
+    /* Modified by c00318887 for DPlmn扩容和优先接入HPLMN, 2015-5-20, end */
+}NAS_MMC_SIM_PLMN_WITH_REG_DOMAIN_STRU;
+
+
+typedef struct
+{
+    VOS_UINT8                               ucActiveFlg;                                               /* 定制项使能标志 */
+    VOS_UINT8                               ucCMCCHplmnNum;
+    NAS_MML_PLMN_ID_STRU                    astCMCCHplmnList[NAS_MMC_NVIM_MAX_CFG_HPLMN_NUM];
+    VOS_UINT8                               ucUNICOMHplmnNum;
+    NAS_MML_PLMN_ID_STRU                    astUNICOMHplmnList[NAS_MMC_NVIM_MAX_CFG_HPLMN_NUM];
+    VOS_UINT8                               ucCTHplmnNum;
+    NAS_MML_PLMN_ID_STRU                    astCTHplmnList[NAS_MMC_NVIM_MAX_CFG_HPLMN_NUM];
+    VOS_UINT16                              usDplmnListNum;                                       /* 本地配置的Dplmn的个数 */
+    NAS_MMC_SIM_PLMN_WITH_REG_DOMAIN_STRU   astDPlmnList[NAS_MMC_MAX_CFG_DPLMN_NUM];
+    VOS_UINT16                              usNplmnListNum;                                       /* 本地配置的Nplmn的个数 */
+    NAS_MMC_SIM_PLMN_WITH_REG_DOMAIN_STRU   astNPlmnList[NAS_MMC_MAX_CFG_NPLMN_NUM];
+}NAS_MMC_DPLMN_NPLMN_CFG_INFO_STRU;
+
+
 typedef struct
 {
     NAS_MMC_PLMN_SELECTION_MODE_ENUM_UINT8        enSelectionMode;              /* MMC当前搜网模式,自动模式或手动模式*/
@@ -1071,6 +1182,8 @@ typedef struct
     NAS_MMC_PLMN_SEARCH_NO_RF_INFO_STRU           stPlmnSrchNoRfInfo;
     NAS_MML_PLMN_ID_STRU                                    stLastCampedPlmnId;                      /*存储丢网时上次驻留的PLMN*/
 
+    NAS_MMC_DPLMN_NPLMN_CFG_INFO_STRU                       stDplmnNplmnInfo;
+
 }NAS_MMC_PLMN_SEARCH_CTRL_CTX_STRU;
 
 
@@ -1079,7 +1192,8 @@ typedef struct
     NAS_MMC_PLMN_SELECTION_LIST_INFO_STRU                   stHighPrioPlmnSearchListInfo; /* 记录高优先级搜网列表信息(HPLMN+UPLMN+OPLMN支持的接入技术及网络状态)*/
     VOS_UINT8                                               ucFirstStartHPlmnTimerFlg;    /* 记录是否为首次启动HPLMN定时器:VOS_TRUE:首次启动HPLMN定时器；VOS_FALSE:非首次启动HPLMN定时器 */
     NAS_MMC_PLMN_SELECTION_LIST_TYPE_ENUM_UINT8             enPlmnSelectionListType; 
-    VOS_UINT8                                               aucReserve[2];
+    VOS_UINT8                                               ucTdHighRatSearchCount;
+    VOS_UINT8                                               aucReserve[1];
 }NAS_MMC_HIGH_PRIO_PLMN_SEARCH_CTRL_CTX_STRU;
 
 
@@ -1356,6 +1470,9 @@ NAS_MMC_PLMN_REG_REJ_CTX_STRU *NAS_MMC_GetPlmnRegRejInfo(VOS_VOID);
 
 NAS_MMC_SERVICE_INFO_CTX_STRU *NAS_MMC_GetServiceInfo(VOS_VOID);
 
+NAS_MMC_SERVICE_ENUM_UINT8 NAS_MMC_GetCurrCsService(VOS_VOID);
+NAS_MMC_SERVICE_ENUM_UINT8 NAS_MMC_GetCurrPsService(VOS_VOID);
+
 NAS_MMC_MAINTAIN_CTX_STRU *NAS_MMC_GetMaintainInfo(VOS_VOID);
 
 VOS_UINT32 NAS_MMC_IsCsNormalService( VOS_VOID );
@@ -1581,6 +1698,14 @@ VOS_VOID NAS_MMC_SetRelRequestFlag_PlmnSelection(
     VOS_UINT8                           ucRelRequestFlg
 );
 
+VOS_VOID NAS_MMC_SetExistRplmnOrHplmnFlag_PlmnSelection(
+    VOS_UINT8                           ucExistRplmnOrHplmnFlag
+);
+
+VOS_UINT8 NAS_MMC_GetExistRplmnOrHplmnFlag_PlmnSelection(VOS_VOID);
+
+
+
 VOS_VOID NAS_MMC_SetInterSysSuspendRat_PlmnSelection(
     NAS_MML_NET_RAT_TYPE_ENUM_UINT8     enRat
 );
@@ -1592,6 +1717,16 @@ NAS_MMC_PLMN_SELECTION_LIST_INFO_STRU * NAS_MMC_GetPlmnSelectionListInfo_PlmnSel
 VOS_UINT8 NAS_MMC_GetAllBandSearch_PlmnSelection(
     NAS_MML_NET_RAT_TYPE_ENUM_UINT8     enRat
 );
+
+VOS_VOID NAS_MMC_SetSearchedRoamPlmnSortedFlag_PlmnSelection(
+    NAS_MML_NET_RAT_TYPE_ENUM_UINT8     enRat,
+    VOS_UINT8                           ucSearchedRoamPlmnSortedFlag
+);
+VOS_UINT8 NAS_MMC_GetSearchedRoamPlmnSortedFlag_PlmnSelection(
+    NAS_MML_NET_RAT_TYPE_ENUM_UINT8     enRat
+);
+
+
 
 VOS_VOID NAS_MMC_SetAllBandSearch_PlmnSelection(
     NAS_MML_NET_RAT_TYPE_ENUM_UINT8     enRat,
@@ -1614,6 +1749,25 @@ VOS_VOID NAS_MMC_SetSearchRplmnAndHplmnFlg_PlmnSelection(
     VOS_UINT8                           ucSearchRplmnAndHplmnFlg
 );
 
+
+VOS_VOID NAS_MMC_SetSearchRplmnAndEplmnFlg_PlmnSelection(
+    NAS_MML_NET_RAT_TYPE_ENUM_UINT8     enRat,
+    VOS_UINT8                           ucSearchRplmnAndEplmnFlg
+);
+VOS_UINT8 NAS_MMC_GetSearchRplmnAndEplmnFlg_PlmnSelection(
+    NAS_MML_NET_RAT_TYPE_ENUM_UINT8     enRat
+);
+
+
+/* Modified by c00318887 for DPlmn扩容和优先接入HPLMN, 2015-5-18, begin */
+VOS_UINT8 NAS_MMC_GetSearchDplmnAndHplmnFlg_PlmnSelection(
+    NAS_MML_NET_RAT_TYPE_ENUM_UINT8     enRat
+);
+VOS_VOID NAS_MMC_SetSearchDplmnAndHplmnFlg_PlmnSelection(
+    NAS_MML_NET_RAT_TYPE_ENUM_UINT8     enRat,
+    VOS_UINT8                           ucSwithOnAddHplmnFlg
+);
+/* Modified by c00318887 for DPlmn扩容和优先接入HPLMN, 2015-5-18, end */
 
 VOS_VOID NAS_MMC_InitSearchRatInfo_PlmnSelection(VOS_VOID);
 
@@ -1788,6 +1942,10 @@ NAS_MMC_PLMN_SELECTION_LIST_TYPE_ENUM_UINT8 NAS_MMC_GetPlmnSelectionListType(VOS
 VOS_VOID NAS_MMC_SetPlmnSelectionListType(
     NAS_MMC_PLMN_SELECTION_LIST_TYPE_ENUM_UINT8             enPlmnSelectionListType       
 );
+
+VOS_UINT8 NAS_MMC_GetTdHighRatSearchCount(VOS_VOID);
+VOS_VOID NAS_MMC_AddTdHighRatSearchCount(VOS_VOID);
+VOS_VOID NAS_MMC_InitTdHighRatSearchCount(VOS_VOID);
 
 VOS_UINT32 NAS_MMC_GetEHPlmn(
     RRC_PLMN_ID_STRU                   *pstEHPlmn,
@@ -2008,6 +2166,13 @@ VOS_UINT32  NAS_MMC_GetCurHighPrioRatHplmnTimerFirstSearchCount_L1Main(VOS_VOID)
 VOS_VOID    NAS_MMC_ResetCurHighPrioRatHplmnTimerFirstSearchCount_L1Main(VOS_VOID);
 
 VOS_VOID    NAS_MMC_AddCurHighPrioRatHplmnTimerFirstSearchCount_L1Main(VOS_VOID);
+
+
+VOS_VOID  NAS_MMC_InitUserDPlmnNPlmnInfo(
+    NAS_MMC_DPLMN_NPLMN_CFG_INFO_STRU                 *pstDPlmnNPlmnCfgInfo
+);
+NAS_MMC_DPLMN_NPLMN_CFG_INFO_STRU* NAS_MMC_GetDPlmnNPlmnCfgInfo( VOS_VOID );
+
 
 NAS_MMC_REG_CONTROL_ENUM_UINT8 NAS_MMC_GetRegCtrl( VOS_VOID );
 

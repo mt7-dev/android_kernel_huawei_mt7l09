@@ -72,8 +72,6 @@ extern void show_mem(unsigned int filter);
 /*lint -restore*/
 /*lint -esym(526, dump_stack_bl) */
 extern void dump_stack_bl(struct task_struct *tsk);
-/*lint -esym(526, regcpy) */
-extern void regcpy(void* dst, void* src, int size);
 
 s32 dump_init_phase2(void);
 s32 dump_global_info_clear(void);
@@ -683,14 +681,14 @@ void dump_save_regs(void)
     if(g_dump_cfg.dump_cfg.Bits.appRegSave1)
     {
         size = (g_dump_cfg.appRegSize1 < DUMP_REG_SET_MAX) ? g_dump_cfg.appRegSize1 : DUMP_REG_SET_MAX;
-        regcpy((char *)DUMP_REGS_ADDR + sizeof(dump_regs_map_t), (void*)g_dump_cfg.appRegAddr1, size);
+        memcpy_fromio((char *)DUMP_REGS_ADDR + sizeof(dump_regs_map_t), (void*)g_dump_cfg.appRegAddr1, size);
         g_dump_reg_map->reg_addr1 = g_dump_cfg.appRegAddr1;
         g_dump_reg_map->reg_size1 = size;
     }
     if(g_dump_cfg.dump_cfg.Bits.appRegSave2)
     {
         size = (g_dump_cfg.appRegSize2 < DUMP_REG_SET_MAX) ? g_dump_cfg.appRegSize2 : DUMP_REG_SET_MAX;
-        regcpy((char *)DUMP_REGS_ADDR+ DUMP_REG_SET_MAX + sizeof(dump_regs_map_t), (void*)g_dump_cfg.appRegAddr2, size);
+        memcpy_fromio((char *)DUMP_REGS_ADDR+ DUMP_REG_SET_MAX + sizeof(dump_regs_map_t), (void*)g_dump_cfg.appRegAddr2, size);
         g_dump_reg_map->reg_addr2 = g_dump_cfg.appRegAddr2;
         g_dump_reg_map->reg_size2 = size;
     }
@@ -699,7 +697,7 @@ void dump_save_regs(void)
         size = (g_dump_cfg.appRegSize3 < (DUMP_REG_SET_MAX-sizeof(dump_regs_map_t)))
             ? g_dump_cfg.appRegSize3
             : (DUMP_REG_SET_MAX-sizeof(dump_regs_map_t));
-        regcpy((char *)DUMP_REGS_ADDR+ DUMP_REG_SET_MAX*2 + sizeof(dump_regs_map_t), (void*)g_dump_cfg.appRegAddr3, size);
+        memcpy_fromio((char *)DUMP_REGS_ADDR+ DUMP_REG_SET_MAX*2 + sizeof(dump_regs_map_t), (void*)g_dump_cfg.appRegAddr3, size);
         g_dump_reg_map->reg_addr3 = g_dump_cfg.appRegAddr3;
         g_dump_reg_map->reg_size3 = size;
     }

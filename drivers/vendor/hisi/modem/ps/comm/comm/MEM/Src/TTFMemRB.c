@@ -8,25 +8,15 @@
 #include "v_id.h"
 #include "TTFMem.h"
 #include "pslog.h"
-#include "LUPQueue.h"
 #include "TtfMemoryMap.h"
 #include "TtfMemAtInterface.h"
-#include "PsCommonDef.h"
-
-
-
 #include "MemoryLayout.h"
-
-
-
 
 #ifdef __cplusplus
 #if __cplusplus
 extern "C" {
 #endif
 #endif
-
-
 
 
 /*****************************************************************************
@@ -37,8 +27,6 @@ extern "C" {
 /*lint +e767*/
 
 #if (FEATURE_ON == FEATURE_SKB_EXP)
-
-
 /* 垃圾回收任务定时器时长 */
 const VOS_UINT16 TTF_MEM_RB_TX_MEM_FREE_INTERVAL            = 1000;
 
@@ -60,7 +48,7 @@ LUP_QUEUE_STRU  *g_pstCcpuIMMMemFreeQue                     = VOS_NULL_PTR;
 VOS_UINT8        g_ulFreeTtfMemBlkNoticNum                  = 0x1f;
 
 /* CCPU通知IMC接收垃圾回收通知任务信号量 */
-VOS_UINT32      g_ulTtfMemRbFreeSem                         = 0;
+VOS_SEM         g_ulTtfMemRbFreeSem                         = 0;
 
 /* TTF MEM RB 可维可测实体 */
 TTF_MEM_RB_MNTN_INFO_STRU               g_stTtfMemRbMntnEntity;
@@ -80,6 +68,7 @@ TTF_MEM_RB_MNTN_INFO_STRU               g_stTtfMemRbMntnEntity;
 /*****************************************************************************
   3 私有定义
 *****************************************************************************/
+VOS_SPINLOCK             g_stTtfMemRBSpinLock;
 
 /*****************************************************************************
   4 函数实现
@@ -201,17 +190,16 @@ VOS_UINT32 TTF_MemRbFreeMsgProc(const MsgBlock *pMsg)
 
 VOS_VOID TTF_MemRbRemoteFreeMem( VOS_VOID *pucAddr)
 {
-    VOS_INT32                           lLockKey;
+    VOS_ULONG                           ulLockLevel;
     VOS_UINT32                          ulResult;
     VOS_UINT32                          ulNum;
     VOS_INT32                           lIsrRet;    /* 中断操作返回值 */
 
-
-    lLockKey    = VOS_SplIMP();
+    VOS_SpinLockIntLock(&g_stTtfMemRBSpinLock, ulLockLevel);
     ulResult    = LUP_EnQue(g_pstCcpuIMMMemFreeQue, pucAddr);
     g_stTtfMemRbMntnEntity.ulTtfMemRbEnQTotalCnt++;
     ulNum       = LUP_QueCnt(g_pstCcpuIMMMemFreeQue);
-    VOS_Splx(lLockKey);
+    VOS_SpinUnlockIntUnlock(&g_stTtfMemRBSpinLock, ulLockLevel);
 
     if (PS_SUCC != ulResult)
     {
@@ -346,7 +334,7 @@ VOS_VOID TTF_RbRxFreeMemTaskInit( VOS_VOID )
     PS_MEM_SET(&g_stTtfMemRbMntnEntity, 0x0, sizeof(TTF_MEM_RB_MNTN_INFO_STRU));
 
     /* 初始化信号量 */
-    if ( VOS_OK != VOS_SmBCreate("ulMemFreeSem", 0, VOS_SEMA4_FIFO, &g_ulTtfMemRbFreeSem ) )
+    if ( VOS_OK != VOS_SmBCreate("ulMemFreeSem", 0, VOS_SEMA4_FIFO, (VOS_SEM *)&g_ulTtfMemRbFreeSem ) )
     {
          TTF_LOG(UEPS_PID_TTF_MEM_RB_FREE, PS_PRINT_ERROR, "TTF_MemRb, TTF_MEM_RB_RxFreeMemTaskInit, ERROR, Create ulMemFreeSem fail!\n");
          return ;

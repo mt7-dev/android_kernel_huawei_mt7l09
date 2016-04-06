@@ -27,7 +27,7 @@ BSP_TASK_CPU_INFO_STRU      g_om_cpu_trace[BSP_OM_MAX_TASK_NUM];
 u32                     g_task_num = 0;
 BSP_SYS_CPU_INFO_CTRL_STRU      cpu_info_stru = {{(softtimer_func)NULL,0,0,SOFTTIMER_NOWAKE,{NULL,NULL},0,0,0,0},0,0};
 
-int         kernel_tid_list[BSP_OM_MAX_TASK_NUM] = {0};
+void*         kernel_tid_list[BSP_OM_MAX_TASK_NUM] = {0};
 
 u32         old_slice           = 0;
 u32         cpu_state           = 0;
@@ -95,9 +95,9 @@ void cpu_view_report_init(void)
             break;
         }
 
-        kernel_tid_list[task_num]= (int)pTid;
+        kernel_tid_list[task_num]= (void*)(pTid);
 
-        tempPtr = (struct task_struct *)((u32)kernel_tid_list[task_num]);
+        tempPtr = (struct task_struct *)(kernel_tid_list[task_num]);
         tempPtr->suffix = task_num;
         strncpy((char *)g_om_cpu_trace[task_num].task_name, (const char *)tempPtr->comm, BSP_SYSVIEW_TASK_NAME_LEN);
         g_om_cpu_trace[task_num].slices = 0;
@@ -281,9 +281,9 @@ u32 report_cpu_trace(void)
 
     if(cpu_info_stru.report_swt == BSP_SYSVIEW_SWT_ON)
     {
-        if( BSP_OK != bsp_om_into_send_list((u32)p_cpu_trace_stru,buf_len))
+        if( BSP_OK != bsp_om_into_send_list(p_cpu_trace_stru,buf_len))
         {
-            bsp_om_free_buf((u32)p_cpu_trace_stru,buf_len );
+            bsp_om_free_buf(p_cpu_trace_stru,buf_len );
             bsp_om_buf_sem_give();
             return BSP_ERR_SYSVIEW_FAIL;
         }

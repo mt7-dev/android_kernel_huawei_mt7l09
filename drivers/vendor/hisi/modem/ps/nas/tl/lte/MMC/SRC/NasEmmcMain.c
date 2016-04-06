@@ -51,6 +51,7 @@ static NAS_EMMC_COMM_ACT_STRU               g_astEmmcRsvMsgProcMap[] =
     {ID_EMMC_EMM_STOP_REQ,              PS_PID_MM,              NAS_EMMC_RcvEmmStopReq},
 
     /*========== LRRC_MSG ==========*/
+    {ID_LRRC_LMM_SEARCHED_PLMN_INFO_IND, PS_PID_ERRC,            NAS_EMMC_RcvRrcSearchPlmnInfoInd},
     {ID_LRRC_LMM_PLMN_SEARCH_CNF,       PS_PID_ERRC,            NAS_EMMC_RcvRrcPlmnSrchCnf},
     {ID_LRRC_LMM_SYS_INFO_IND,          PS_PID_ERRC,            NAS_EMMC_RcvRrcSysInfoInd},
     {ID_LRRC_LMM_PLMN_SEARCH_STOP_CNF,  PS_PID_ERRC,            NAS_EMMC_RcvRrcPlmnSrchStopCnf},
@@ -58,6 +59,9 @@ static NAS_EMMC_COMM_ACT_STRU               g_astEmmcRsvMsgProcMap[] =
     {ID_LRRC_LMM_BG_PLMN_SEARCH_CNF,    PS_PID_ERMM,            NAS_EMMC_RcvRrcBgPlmnSearchCnf},
     {ID_LRRC_LMM_BG_PLMN_SEARCH_STOP_CNF,PS_PID_ERMM,           NAS_EMMC_RcvRrcBgPlmnSearchStopCnf},
     {ID_LRRC_LMM_NOT_CAMP_ON_IND,        PS_PID_ERRC,           NAS_EMMC_RcvRrcNotCampOnInd},
+
+
+
 
     /*========== TIMER_MSG ==========*/
     {TI_NAS_EMMC_STATE_WAIT_PLMN_SRCH_CNF_TIMER,    VOS_PID_TIMER,  NAS_EMMC_ProcTimerMsgWaitPlmnSrchcnfTimerExp},

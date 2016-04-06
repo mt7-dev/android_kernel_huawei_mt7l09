@@ -393,8 +393,9 @@ enum RRC_SS_ID_ENUM
     /* END of SIB模块的子状态 */
 
     /* begin: 2014-03- 20 CL MULT add */
-	LRRC_LRRC_SS_WAIT_CDMA_CNF,                      /* 等待CMDA重定向/重选响应的子状态 */
-	/* end: 2014-03- 20 CL MULT add */
+    LRRC_LRRC_SS_WAIT_CDMA_CNF,                      /* 等待CDMA重定向/重选响应的子状态 */
+    LRRC_LRRC_SS_WAIT_CDMA_STOP_CNF,                 /* 等待CDMA重定向/重选停止响应的子状态 */
+    /* end: 2014-03- 20 CL MULT add */
     /* 状态机预处状态，子要用于不进状态机的消息的处理 */
     RRC_SS_PRE_PROCESS,
 

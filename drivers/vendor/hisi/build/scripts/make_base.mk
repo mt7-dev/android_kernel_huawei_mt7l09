@@ -56,7 +56,7 @@ OBB_ANDROID_DIR :=$(BALONG_TOPDIR)/modem/system/android/android_4.2_r1
 #include $(OBB_SCRIPTS_DIR)/main.env
 
 # include product define macros file
-include $(OBB_PRODUCT_CONFIG_DIR)/balong_product_config.mk
+-include $(OBB_PRODUCT_CONFIG_DIR)/balong_product_config.mk
 
 # drv test code control
 ifeq ($(CFG_ENABLE_TEST_CODE),YES)
@@ -97,6 +97,10 @@ OBB_SYNC_DESTINATION_DIR := /cygdrive/e/$(OBB_USERNAME)/$(OBB_PRODUCT_NAME)
 ifneq ($(USE_CCACHE),)
 CCACHE :=$(BALONG_TOPDIR)/build/tools/ccache/ccache
 endif
+
+export CCACHE_SLOPPINESS := include_file_mtime,file_macro
+
+
 
 #linux distcc
 #ifneq ($(distcc-acore),true)

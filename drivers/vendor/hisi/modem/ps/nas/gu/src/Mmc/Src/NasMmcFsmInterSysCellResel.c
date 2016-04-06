@@ -427,12 +427,22 @@ VOS_UINT32 NAS_MMC_RcvMmcAbortFsmMsg_InterSysCellResel_WaitAsResumeInd(
     struct MsgCB                       *pstMsg
 )
 {
+#if (FEATURE_ON == FEATURE_CL_INTERWORK)
+    VOS_UINT32                          ulIsSysChgToHrpd;
+
+    ulIsSysChgToHrpd = NAS_MMC_IsInterSysReselectToHrpd(NAS_MMC_GetCurrEntryMsg());
+#endif
+
     /* 记录打断标志 */
     NAS_MMC_SetAbortFlag_InterSysCellResel(VOS_TRUE);
 
     /* 如果是GU重定向,给GU接入层发RRMM_SUSPEND_REL_REQ
        如果是L模重定向到GU，给LMM发送LMM_SUSPEND_REL_REQ */
-    if ( MMC_SUSPEND_CAUSE_REDIRECTION == NAS_MMC_GetSuspendCause(NAS_MMC_GetCurrEntryMsg()))
+    if (( MMC_SUSPEND_CAUSE_REDIRECTION == NAS_MMC_GetSuspendCause(NAS_MMC_GetCurrEntryMsg()))
+#if (FEATURE_ON == FEATURE_CL_INTERWORK)
+      || (VOS_TRUE == ulIsSysChgToHrpd)
+#endif
+      )
     {
 
         /* 停止MMC_WAIT_AS_RESUME_IND_TIMER */
@@ -514,7 +524,9 @@ VOS_UINT32 NAS_MMC_RcvGmmResumeRsp_InterSysCellResel_WaitMmResumeRsp(
     NAS_MML_NET_RAT_TYPE_ENUM_UINT8     enCurNetType;
 #if (FEATURE_ON == FEATURE_LTE)
     MMC_SUSPEND_CAUSE_ENUM_UINT8        enSuspendCause;
-
+#if (FEATURE_ON == FEATURE_CL_INTERWORK)
+    VOS_UINT32                          ulIsSysChgToHrpd;
+#endif
     enSuspendCause                      = NAS_MMC_GetSuspendCause(NAS_MMC_GetCurrEntryMsg());
 #endif
     enCurNetType                        = NAS_MML_GetCurrNetRatType();
@@ -556,9 +568,17 @@ VOS_UINT32 NAS_MMC_RcvGmmResumeRsp_InterSysCellResel_WaitMmResumeRsp(
        如果当前接入技术是LTE,需要继续等LTE的系统消息 */
     if (VOS_TRUE == NAS_MMC_GetAbortFlag_InterSysCellResel())
     {
-#if   (FEATURE_ON == FEATURE_LTE)
+#if (FEATURE_ON == FEATURE_LTE)
+#if (FEATURE_ON == FEATURE_CL_INTERWORK)
+        ulIsSysChgToHrpd = NAS_MMC_IsInterSysReselectToHrpd(NAS_MMC_GetCurrEntryMsg());
+#endif
+
         if ( (NAS_MML_NET_RAT_TYPE_LTE != enCurNetType)
-           || (MMC_SUSPEND_CAUSE_CELLRESELECT == enSuspendCause) )
+           || ((MMC_SUSPEND_CAUSE_CELLRESELECT == enSuspendCause)
+#if (FEATURE_ON == FEATURE_CL_INTERWORK)
+          &&(VOS_FALSE == ulIsSysChgToHrpd)
+#endif
+          ))
 #endif
         {
             /* 回复InterSysCellResel执行结果 */
@@ -642,7 +662,9 @@ VOS_UINT32 NAS_MMC_RcvMmResumeRsp_InterSysCellResel_WaitMmResumeRsp(
     NAS_MML_NET_RAT_TYPE_ENUM_UINT8     enCurNetType;
 #if (FEATURE_ON == FEATURE_LTE)
     MMC_SUSPEND_CAUSE_ENUM_UINT8        enSuspendCause;
-
+#if (FEATURE_ON == FEATURE_CL_INTERWORK)
+    VOS_UINT32                          ulIsSysChgToHrpd;
+#endif
     enSuspendCause                      = NAS_MMC_GetSuspendCause(NAS_MMC_GetCurrEntryMsg());
 #endif
     enCurNetType                        = NAS_MML_GetCurrNetRatType();
@@ -686,8 +708,15 @@ VOS_UINT32 NAS_MMC_RcvMmResumeRsp_InterSysCellResel_WaitMmResumeRsp(
     if (VOS_TRUE == NAS_MMC_GetAbortFlag_InterSysCellResel())
     {
 #if   (FEATURE_ON == FEATURE_LTE)
+#if   (FEATURE_ON == FEATURE_CL_INTERWORK)
+        ulIsSysChgToHrpd = NAS_MMC_IsInterSysReselectToHrpd(NAS_MMC_GetCurrEntryMsg());
+#endif
         if ( (NAS_MML_NET_RAT_TYPE_LTE != enCurNetType)
-          || (MMC_SUSPEND_CAUSE_CELLRESELECT == enSuspendCause) )
+          || ((MMC_SUSPEND_CAUSE_CELLRESELECT == enSuspendCause)
+#if (FEATURE_ON == FEATURE_CL_INTERWORK)
+          &&(VOS_FALSE == ulIsSysChgToHrpd)
+#endif
+          ))
 #endif
         {
             /* 回复InterSysCellResel执行结果 */
@@ -1851,6 +1880,13 @@ VOS_UINT32 NAS_MMC_RcvLmmResumeInd_InterSysCellResel_WaitAsResumeInd(
 
     /* 停止MMC_WAIT_AS_RESUME_IND_TIMER */
     NAS_MMC_StopTimer(TI_NAS_MMC_WAIT_AS_RESUME_IND);
+
+#if (FEATURE_ON == FEATURE_CL_INTERWORK)
+    if (VOS_TRUE == NAS_MMC_IsInterSysReselectToHrpd(NAS_MMC_GetCurrEntryMsg()))
+    {
+        NAS_MMC_StopTimer(TI_NAS_MMC_WAIT_CMMCA_RESUME_IND);
+    }
+#endif
 
     NAS_MML_SetCurrNetRatType(NAS_MML_NET_RAT_TYPE_LTE);
 

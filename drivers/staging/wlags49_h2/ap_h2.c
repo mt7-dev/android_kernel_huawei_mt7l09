@@ -1,28 +1,4 @@
-/*
- * File:	ap_h24.236
- *
- * Abstract:	This file contains memory image 'fw_image'.
- *
- * Contents:	Total size of the memory image: 51010 bytes.
- *		Total number of blocks: 4 blocks.
- *		Block  1 : load address 00000060, 326 bytes.
- *		Block  2 : load address 00000C16, 6424 bytes.
- *		Block  3 : load address 001E252E, 444 bytes.
- *		Block  4 : load address 001F4000, 43816 bytes.
- *
- * Identity:	component id: 32 (variant 2) version 2.36
- *
- * Compatibility:
- *		supplying interface 8 (variant 2) : 2 - 4
- *		acting on interface 1 (variant 4) : 6 - 7
- *		acting on interface 1 (variant 5) : 6 - 7
- *		acting on interface 1 (variant 6) : 6 - 7
- *		acting on interface 2 (variant 2) : 1 - 2
- *
- * Generated:	by g:\fw\fupu3.exe version 4.26
- *
- * Commandline:	g:\fw\fupu3.exe /f=4 /n=fw_image /i=t2023600.hex
- */
+
 
 
 #include "hcfcfg.h"			/* to get hcf_16 etc defined as well as */

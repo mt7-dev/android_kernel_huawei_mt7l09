@@ -362,9 +362,29 @@ config BATTERY_GOLDFISH
 	  Say Y to enable support for the battery and AC power in the
 	  Goldfish emulator.
 
-source "drivers/power/reset/Kconfig"
+config MTCMOS_HI6XXX
+	bool "hisilicon hi6xxx mtcmos driver"
+	help
+		support hi6xxx mtcmos type regulator
+
+config POWER_HUAWEI
+    bool "huawei power driver"
+    default n
+	help
+		support huawei power driver
+
+config SCHARGER_POWER_HI6XXX
+	bool "hisilicon hi6xxx scharger power driver"
+	default n
+	help
+		support hi6xxx scharger power type regulator
+
+if POWER_HUAWEI
+source "drivers/power/huawei/Kconfig"
+endif
 
 endif # POWER_SUPPLY
+source "drivers/power/reset/Kconfig"
+
 
 source "drivers/power/avs/Kconfig"
-source "drivers/power/huawei/Kconfig"

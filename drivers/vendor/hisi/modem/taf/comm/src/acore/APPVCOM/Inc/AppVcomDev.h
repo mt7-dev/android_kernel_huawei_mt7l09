@@ -46,9 +46,9 @@
 #include <linux/cdev.h>
 #include <linux/semaphore.h>
 #include <asm/io.h>
-#include <asm/system.h>
 #include <asm/uaccess.h>
 #include <asm/bitops.h>
+#include <linux/wakelock.h>
 #else
 #include "Linuxstub.h"
 #endif
@@ -74,7 +74,9 @@ extern "C" {
 
 #define APP_VCOM_BUILD_DEV_ID(dev, type) (((unsigned int)(dev) << 8) | ((unsigned int)(type) & 0x00ff))
 #define APP_VCOM_BUILD_CMD_ID(dev, cmd)  (((unsigned int)(dev) << 8) | ((unsigned int)(cmd) & 0xffff))
-#define APP_VCOM_SET_BIT(n)              (1 << n)
+#define APP_VCOM_SET_BIT(n)              (1U << n)
+
+#define APP_VCOM_RD_WAKE_LOCK_NAME_LEN  (32)
 
 /* 虚拟串口设备名称 */
 #define APP_VCOM_DEV_NAME_0              "appvcom"
@@ -157,6 +159,55 @@ extern "C" {
 /* 虚拟串口设备名称长度*/
 #define APP_VCOM_DEV_NAME_MAX_LEN       (16)
 #define APP_VCOM_SEM_NAME_MAX_LEN       (8)
+
+/* Add by w00316404 for add read wake lock, 2015-11-06, Begin */
+#define APP_VCOM_READ_WAKE_LOCK_LEN     (100)
+/* Add by w00316404 for add read wake lock, 2015-11-06, End */
+
+#define APP_VCOM_TRACE_BUF_LEN 	            (256)
+
+#define APP_VCOM_TRACE_LEVEL_INFO           (0x00000001)
+#define APP_VCOM_TRACE_LEVEL_NORM           (0x00000002)
+#define APP_VCOM_TRACE_LEVEL_ERR            (0x00000004)
+#define APP_VCOM_TRACE_LEVEL_DEBUG          (APP_VCOM_TRACE_LEVEL_INFO | APP_VCOM_TRACE_LEVEL_NORM | APP_VCOM_TRACE_LEVEL_ERR)
+
+#define APP_VCOM_LOG_FORMAT(ulPrintLength, pcBuf, ulBufSize, pcFmt)\
+            {\
+                va_list pArgList;\
+                va_start(pArgList, pcFmt);\
+                ulPrintLength += VOS_nvsprintf(pcBuf + ulPrintLength,\
+                                    ulBufSize - ulPrintLength, pcFmt, pArgList);\
+                va_end(pArgList);\
+                if (ulPrintLength > (ulBufSize - 1))\
+                {\
+                    ulPrintLength = ulBufSize - 1;\
+                }\
+                *(pcBuf + ulPrintLength) = '\0';\
+            }
+
+#if (VOS_OS_VER == VOS_WIN32) || defined(_lint)
+#define APP_VCOM_DBG_PRINT(lvl, index, fmt, ...)\
+            vos_printf(fmt, index, ##__VA_ARGS__)
+#else
+#define APP_VCOM_DBG_PRINT(lvl, index, fmt, ...)\
+            do\
+            {\
+                if ((lvl == (g_stAppVcomDebugCfg.ulDebugLevel & lvl))\
+                   && (0 != (g_stAppVcomDebugCfg.ulPortIdMask & APP_VCOM_SET_BIT(index))))\
+                {\
+                    APP_VCOM_MNTN_LogPrintf("[VCOM:%2d][TICK:%u][%s][LINE:%d] "fmt"\n", index, VOS_GetTick(), __FUNCTION__, __LINE__, ##__VA_ARGS__);\
+                }\
+            }while(0)
+#endif
+
+#define APP_VCOM_TRACE_INFO(index, ...)\
+            APP_VCOM_DBG_PRINT(APP_VCOM_TRACE_LEVEL_INFO, index, __VA_ARGS__)
+
+#define APP_VCOM_TRACE_NORM(index, ...)\
+            APP_VCOM_DBG_PRINT(APP_VCOM_TRACE_LEVEL_NORM, index, __VA_ARGS__)
+
+#define APP_VCOM_TRACE_ERR(index, ...)\
+            APP_VCOM_DBG_PRINT(APP_VCOM_TRACE_LEVEL_ERR, index, __VA_ARGS__)
 
 /*****************************************************************************
   3 枚举定义
@@ -294,26 +345,28 @@ typedef unsigned int APP_VCOM_DEV_MAJORDEVID_UINT32;
 typedef struct
 {
     struct cdev                         stAppVcomDev;                           /* 虚拟串口结构体 */
-    VOS_UINT32                          current_len;                            /* fifo有效数据长度 */
     VOS_UINT8                          *pucAppVcomMem;                          /* 设备内存 */
-    VOS_UINT8                          *pucWrtBuffer;                           /* 写缓存 */
-    VOS_UINT32                          ulWrtBufferLen;
-    VOS_UINT32                          ulReadWakeUpFlg;
     wait_queue_head_t                   Read_Wait;                              /* 阻塞读用的等待队列头 */
     wait_queue_head_t                   Write_Wait;                             /* 阻塞写用的等待队列头 */
     struct semaphore                    stMsgSendSem;
     struct semaphore                    stWrtSem;
+    VOS_UINT8                          *pucWrtBuffer;                           /* 写缓存 */
+    VOS_UINT32                          ulWrtBufferLen;
+    size_t                              current_len;                            /* fifo有效数据长度 */
+    VOS_UINT32                          ulReadWakeUpFlg;
     VOS_UINT32                          ulIsDeviceOpen ;
+    struct wake_lock                    stRdWakeLock;
 }APP_VCOM_DEV_ENTITY_STRU;
 
 
 typedef struct
 {
-    VOS_UINT32                          ulAppVcomMajorId;                          /* 设备号 */
     APP_VCOM_DEV_ENTITY_STRU           *pstAppVcomDevEntity;                       /* 设备实体 */
+    SEND_UL_AT_FUNC                     pSendUlAtFunc;                             /*对应的上行At码流发送函数*/
+    VOS_UINT32                          ulAppVcomMajorId;                          /* 设备号 */
     VOS_CHAR                            aucAppVcomName[APP_VCOM_DEV_NAME_MAX_LEN]; /* 设备名称*/
     VOS_CHAR                            aucSendSemName[APP_VCOM_SEM_NAME_MAX_LEN]; /*信号量名称*/
-    SEND_UL_AT_FUNC                     pSendUlAtFunc;                             /*对应的上行At码流发送函数*/
+    VOS_UINT8                           aucReserved[4];
     EVENT_FUNC                          pEventFunc;                                /* 事件处理回调 */
 }APP_VCOM_DEV_CTX_STRU;
 
@@ -324,6 +377,7 @@ typedef struct
     VOS_CHAR                           *pcAppVcomName;
     VOS_CHAR                           *pcSendSemName;
     VOS_UINT32                          ulAppVcomMemSize;                       /* 设备缓存大小 */
+    VOS_UINT32                          ulReserved;
 }APP_VCOM_DEV_CONFIG_STRU;
 
 typedef struct
@@ -335,6 +389,16 @@ typedef struct
     VOS_UINT32                          ulReadLenErr[APP_VCOM_MAX_NUM];         /* 读取数据长度为0 */
     VOS_UINT32                          ulAtCallBackErr[APP_VCOM_MAX_NUM];      /* AT回调处理函数返回失败 */
 }APP_VCOM_DEBUG_INFO_STRU;
+
+
+
+typedef struct
+{
+    VOS_UINT32                          ulPortIdMask;                           /* VCOM端口ID掩码 */
+    VOS_UINT32                          ulDebugLevel;                           /* VCOM DEBUG级别:ERR,NORMAL,INFO,DEBUG */
+} APP_VCOM_DEBUG_CFG_STRU;
+
+extern APP_VCOM_DEBUG_CFG_STRU          g_stAppVcomDebugCfg;
 
 
 /*****************************************************************************
@@ -359,7 +423,6 @@ ssize_t APP_VCOM_Write(struct file *stFilp, const char __user *buf, size_t count
 unsigned int APP_VCOM_Poll(struct file *fp, struct poll_table_struct *wait);
 APP_VCOM_DEV_CTX_STRU* APP_VCOM_GetVcomCtxAddr(VOS_UINT8 ucIndex);
 APP_VCOM_DEV_ENTITY_STRU* APP_VCOM_GetAppVcomDevEntity(VOS_UINT8 ucIndex);
-VOS_UINT32 APP_VCOM_RegDataCallback(VOS_UINT8 ucDevIndex, SEND_UL_AT_FUNC pFunc);
 VOS_UINT8 APP_VCOM_GetIndexFromMajorDevId(VOS_UINT ulMajorDevId);
 VOS_VOID  APP_VCOM_InitSpecCtx(VOS_UINT8 ucDevIndex);
 VOS_VOID APP_VCOM_Setup(APP_VCOM_DEV_ENTITY_STRU *pstDev, VOS_UINT8 ucIndex);
@@ -369,6 +432,14 @@ VOS_INT APP_VCOM_Init(VOS_VOID);
 VOS_VOID APP_VCOM_FreeMem(VOS_VOID);
 #endif
 
+VOS_VOID APP_VCOM_SendDebugNvCfg(
+    VOS_UINT32                          ulPortIdMask,
+    VOS_UINT32                          ulDebugLevel
+);
+
+/*lint -esym(960,69)*/
+VOS_VOID APP_VCOM_MNTN_LogPrintf(VOS_CHAR *pcFmt, ...);
+/*lint +esym(960,69)*/
 
 #if (VOS_OS_VER == VOS_WIN32)
 #pragma pack()

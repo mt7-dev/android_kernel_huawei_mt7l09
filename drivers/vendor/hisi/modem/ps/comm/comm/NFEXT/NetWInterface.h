@@ -22,10 +22,10 @@ extern "C" {
 /*****************************************************************************
   1 其他头文件包含
 *****************************************************************************/
-#if !defined(__UT_CENTER__) && !defined(_lint)
-#include<linux/types.h>
-#else
+#if (VOS_OS_VER == VOS_WIN32) || defined (__PC_LINT__)
 #include "linuxstub.h"
+#else
+#include <linux/types.h>
 #endif
 
 /*****************************************************************************
@@ -68,8 +68,8 @@ extern "C" {
 *********************************************/
 typedef struct
 {
-    unsigned long ulOnOffMask;                  /* 功能开关掩码 */
-    unsigned long ulTimerLen;                   /* 上报周期定时器长度 */
+    unsigned int ulOnOffMask;                  /* 功能开关掩码 */
+    unsigned int ulTimerLen;                   /* 上报周期定时器长度 */
 }NETWORK_INQUIRE_CONFIG_STRU;
 
 

@@ -597,7 +597,7 @@ VOS_VOID vos_FidTask( VOS_UINT32 ulQueueID, VOS_UINT32 FID_value,
     MSG_CB                  *pMsg;
     VOS_UINT32              *pulMsgAddr;
     VOS_UINT32              iThePid;
-    VOS_UINT32              Msg_Address;
+    VOS_UINT_PTR            Msg_Address;
 
     /* coverity[no_escape] */
     for(;;)
@@ -1032,7 +1032,7 @@ VOS_VOID VOS_ShowFidsQueueInfo(VOS_UINT32 Para0, VOS_UINT32 Para1,
  *****************************************************************************/
 VOS_VOID VOS_IncreasePidMemory(VOS_PID ulPid, VOS_UINT32 ulSize, VOS_UINT32 ulType)
 {
-    VOS_UINT32                  ulLockLevel;
+    VOS_ULONG                   ulLockLevel;
 
     /*intLockLevel = VOS_SplIMP();*/
     VOS_SpinLockIntLock(&g_stVosPidMemAnaSpinLock, ulLockLevel);
@@ -1071,7 +1071,7 @@ VOS_VOID VOS_IncreasePidMemory(VOS_PID ulPid, VOS_UINT32 ulSize, VOS_UINT32 ulTy
  *****************************************************************************/
 VOS_VOID VOS_DecreasePidMemory(VOS_PID ulPid, VOS_UINT32 ulSize, VOS_UINT32 ulType)
 {
-    VOS_UINT32                  ulLockLevel;
+    VOS_ULONG                   ulLockLevel;
 
     /*intLockLevel = VOS_SplIMP();*/
     VOS_SpinLockIntLock(&g_stVosPidMemAnaSpinLock, ulLockLevel);

@@ -73,6 +73,15 @@ enum NAS_CC_BC_PARAM_IDX_ENUM
 };
 typedef VOS_UINT8  NAS_CC_BC_PARAM_IDX_ENUM_U8;
 
+
+enum NAS_CC_OM_MSG_ID_ENUM
+{
+    /* CC发送给OM的消息 */
+    CCOM_LOG_BUFFER_MSG_INFO_IND                  = 0x1001,      /*_H2ASN_MsgChoice  NAS_CC_LOG_BUFFER_MSG_INFO_STRU */
+    CCOM_LOG_BUTT
+};
+typedef VOS_UINT32 NAS_CC_OM_MSG_ID_ENUM_UINT32;
+
 #define NAS_CC_MAX_BC_PARAM_NUM    (NAS_CC_BC_PARAM_2 + 1)
 
 
@@ -754,9 +763,26 @@ VOS_VOID  NAS_CC_CreateCcEntityWithCallEntityInfo(
 VOS_VOID  NAS_CC_DeleteAllEntities(VOS_VOID);
 VOS_VOID  NAS_CC_GetEntityTiInfo(
     VOS_UINT8                          *pucTiNum,
-    VOS_UINT8                          *pucTi 
+    VOS_UINT8                          *pucTi
 );
 
+
+#if (FEATURE_ON == FEATURE_PTM)
+VOS_VOID NAS_CC_SndAcpuOmErrLogRptCnf(
+    VOS_CHAR                           *pbuffer,
+    VOS_UINT32                          ulBufUseLen
+);
+VOS_VOID NAS_CC_RcvAcpuOmErrLogRptReq(
+    const VOS_VOID                           *pMsg
+);
+VOS_VOID NAS_CC_RcvAcpuOmErrLogCtrlInd(
+    const VOS_VOID                           *pMsg
+);
+VOS_VOID NAS_CC_RcvAcpuOmMsg(
+    const VOS_VOID                     *pMsg
+);
+#endif
+VOS_UINT32 NAS_CC_IsLastCallEntityID(NAS_CC_ENTITY_ID_T EntityID);
 
 #if ((VOS_OS_VER == VOS_WIN32) || (VOS_OS_VER == VOS_NUCLEUS))
 #pragma pack()

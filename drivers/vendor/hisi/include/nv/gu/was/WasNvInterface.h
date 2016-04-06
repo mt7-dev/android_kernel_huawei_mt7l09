@@ -63,6 +63,7 @@ extern "C" {
 #define NV_ITEM_FREQBANDS_LIST_SIZE             (52)
 #define WAS_NV_MEAS_THRESHOLD_HALF_THRHLD_SIZE  (NV_ITEM_MEAS_THRESHOLD_SIZE/2)
 #define WAS_NV_MEAS_THRESHOLD_RESERVE_SIZE      (WAS_NV_MEAS_THRESHOLD_HALF_THRHLD_SIZE-4)
+#define NV_ITEM_WAS_ERRORLOG_CSHO_LEN_SIZE      (2)
 #define WAS_NV_PTL_VER_R3                       (0)                             /* WAS_PTL_VER_R3 */
 #define WAS_NV_PTL_VER_R4                       (1)                             /* WAS_PTL_VER_R4 */
 #define WAS_NV_PTL_VER_R5                       (2)                             /* WAS_PTL_VER_R5 */
@@ -162,7 +163,7 @@ typedef struct
     VOS_INT8                                cGSM_RSSI_Threshold;                /*Range:[-125,0]*/ /*GSM RSSI门限,默认值:-95*/
     VOS_UINT8                               ucBgGsmMeasSqualOffset;             /* 高优先级RAT搜时GSM测量启动门限Squal offset */
     VOS_UINT8                               ucBgGsmMeasSrxlevOffset;            /* 高优先级RAT搜时GSM测量启动门限Srxlev offset */
-    VOS_UINT8                               aucReserve1[1];
+    PS_BOOL_ENUM_UINT8                      enBgModifyDrxThresholdFlg;          /* 修改BG搜DRX门限标记 */
 }WAS_NVIM_BG_THRESHOLD_STRU;
 
 /*****************************************************************************
@@ -626,7 +627,17 @@ typedef struct
     VOS_UINT32                    ulYoigoMnc;                       /* YOIGO网络的MNC */
 }WAS_NV_YOIGO_CUSTOM_PARA_INFO_STRU;
 
+typedef struct
+{
+    VOS_UINT8                   aucUeWcdmaBandPriodiry[NVIM_MAX_FDD_FREQ_BANDS_NUM];
+}NVIM_WAS_FREQ_BAND_PRIORITY_STRU;
 
+
+typedef struct
+{
+    VOS_UINT16                              usCSHandoverTime;                   /* cs切换需要的默认时间，超过该时间就主动上报 */
+    VOS_UINT8                               aucReserve[2];                     /* 保留位 */
+}WAS_ERR_LOG_CS_HO_LEN_STRU;
 
 /*****************************************************************************
   6 UNION

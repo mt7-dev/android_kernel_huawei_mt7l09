@@ -40,7 +40,7 @@ extern "C" {
 
 /* C核单独复位统计信息 */
 #define AT_DBG_SET_SEM_INIT_FLAG(flag)              (g_stAtStatsInfo.stCCpuResetStatsInfo.ulSemInitFlg = (flag))
-#define AT_DBG_SAVE_BINARY_SEM_ID(sem_id)           (g_stAtStatsInfo.stCCpuResetStatsInfo.ulBinarySemId = (sem_id))
+#define AT_DBG_SAVE_BINARY_SEM_ID(sem_id)           (g_stAtStatsInfo.stCCpuResetStatsInfo.hBinarySemId = (sem_id))
 #define AT_DBG_CREATE_BINARY_SEM_FAIL_NUM(n)        (g_stAtStatsInfo.stCCpuResetStatsInfo.ulCreateBinarySemFailNum += (n))
 #define AT_DBG_LOCK_BINARY_SEM_FAIL_NUM(n)          (g_stAtStatsInfo.stCCpuResetStatsInfo.ulLockBinarySemFailNum += (n))
 #define AT_DBG_SAVE_LAST_BIN_SEM_ERR_RSLT(rslt)     (g_stAtStatsInfo.stCCpuResetStatsInfo.ulLastBinarySemErrRslt = (rslt))
@@ -214,7 +214,7 @@ typedef struct
     VOS_UINT32                          ulDlWriteAsyncSuccNum;
     VOS_UINT32                          ulDlWriteAsyncFailNum;
     VOS_UINT32                          ulDlFreeBuffNum;
-
+    VOS_UINT32                          ulReserved;
 } AT_MNTN_MODEM_STATS_STRU;
 
 
@@ -283,14 +283,15 @@ typedef struct
 typedef struct
 {
     /* 复位信号量信息 */
+    VOS_SEM                 hBinarySemId;                                       /* 二进制信号量ID */
     VOS_UINT32              ulSemInitFlg;                                       /* 初始化标识, VOS_TRUE: 成功; VOS_FALSE: 失败 */
-    VOS_UINT32              ulBinarySemId;                                      /* 二进制信号量ID */
     VOS_UINT32              ulCreateBinarySemFailNum;                           /* 创建二进制信号量失败次数 */
     VOS_UINT32              ulLockBinarySemFailNum;                             /* 锁二进制信号量失败次数 */
     VOS_UINT32              ulLastBinarySemErrRslt;                             /* 最后一次锁二进制信号量失败结果 */
     VOS_UINT32              ulResetBeforeNum;                                   /* C核复位前的次数 */
     VOS_UINT32              ulResetAfterNum;                                    /* C核复位后的次数 */
     VOS_UINT32              ulHifiResetNum;                                     /* HIFI复位的次数 */
+    VOS_UINT32              ulReserved;
 }AT_RESET_STATS_INFO_STRU;
 
 /*****************************************************************************
@@ -507,6 +508,8 @@ VOS_VOID AT_InitHsUartStats(VOS_VOID);
 VOS_VOID AT_InitModemStats(VOS_VOID);
 
 VOS_VOID AT_SetPcuiCtrlConcurrentFlag(VOS_UINT8 ucFlag);
+
+VOS_VOID AT_ShowClientCtxInfo(VOS_VOID);
 
 #if (VOS_OS_VER == VOS_WIN32)
 #pragma pack()

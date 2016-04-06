@@ -21,21 +21,57 @@ extern "C" {
 *****************************************************************************/
 #include  "vos.h"
 #include "omerrorlog.h"
+#include "omringbuffer.h"
 /*****************************************************************************
   3 Massage Declare
 *****************************************************************************/
 /* TDS邻区的最大个数，上报最强3个临区 */
 #define TRRC_APP_MAX_NCELL_NUM                     (3)
 
-/* RRC error发生时，最新RRC错误码的最大记录个数 */
-#define TRRC_ERRLOG_CODE_MAX_NUM                   (4)
-
-/* RRC error发生时，模块接收最新信息的最大记录个数 */
-#define TRRC_APP_INFO_NUM                          (16)
-
 /*****************************************************************************
   4 Enum
 *****************************************************************************/
+/*****************************************************************************
+ 枚举名    : TRRC_ERRORLOG_ALARM_ID_ENUM_UINT16
+ 协议表格  :
+ ASN.1描述 :
+ 枚举说明  : ERRORLOG ALARM_ID定义
+*****************************************************************************/
+enum TRRC_ERRORLOG_ALARM_ID_ENUM
+{
+    TRRC_ERRORLOG_ALARM_ID_EST_FAIL           =1,   /* 建连失败*/
+    TRRC_ERRORLOG_ALARM_ID_RB_FAIL,                 /* RB配置失败 */
+    TRRC_ERRORLOG_ALARM_ID_RBREC_FAIL,              /* RB重配置失败 */
+    TRRC_ERRORLOG_ALARM_ID_CELLUPDATE_FAIL,         /* CELLUPDATE失败 */
+    TRRC_ERRORLOG_ALARM_ID_AREA_LOST,               /* 丢网 */
+    TRRC_ERRORLOG_ALARM_ID_INTEGRITY_FAIL,          /* 完整性验证失败*/
+    TRRC_ERRORLOG_ALARM_ID_ASN_RSLT_FAIL,           /* asn解码错误 */
+    TRRC_ERRORLOG_ALARM_ID_MEAS_CTRL_FAIL,          /* 测量配置错误 */
+    TRRC_ERRORLOG_ALARM_ID_CS_HO_FAIL,              /* CS切换失败告警 */
+    TRRC_ERRORLOG_ALARM_ID_CS_HO_EXP,               /* CS切换超时告警 */
+    TRRC_ERRORLOG_ALARM_ID_RL_FAIL,                 /* 无线链路失败告警 */
+    TRRC_ERRORLOG_ALARM_ID_BUFF_OVER_FLOW,          /* 缓冲溢出告警*/
+    TRRC_ERRORLOG_ALARM_ID_BUTT
+};
+typedef VOS_UINT16  TRRC_ERRORLOG_ALARM_ID_ENUM_UINT16;
+
+/*****************************************************************************
+ 枚举名    : TRRC_ERRORLOG_ALARM_TYPE_ENUM_UINT16
+ 协议表格  :
+ ASN.1描述 :
+ 枚举说明  : 商用告警类型枚举定义
+*****************************************************************************/
+enum TRRC_ERRORLOG_ALARM_TYPE_ENUM
+{
+    TRRC_ERRORLOG_ALARM_TYPE_COMMUNICATION             = 1 ,      /* 表示通信: 产线确认从1开始，GUTL分别解码*/
+    TRRC_ERRORLOG_ALARM_TYPE_TRANSACTION_QULITY            ,      /* 表示业务质量 */
+    TRRC_ERRORLOG_ALARM_TYPE_PROCESS_ERROR                 ,      /* 表示处理出错 */
+    TRRC_ERRORLOG_ALARM_TYPE_EQIPMENT_ERROR                ,      /* 表示设备故障 */
+    TRRC_ERRORLOG_ALARM_TYPE_ENVIR_ERROR                   ,      /* 表示环境故障 */
+    TRRC_ERRORLOG_ALARM_TYPE_BUTT
+};
+typedef VOS_UINT16  TRRC_ERRORLOG_ALARM_TYPE_ENUM_UINT16;
+
 
 /*****************************************************************************
  枚举名    : RRC_APP_ERROR_CODE_ENUM
@@ -68,6 +104,12 @@ enum TRRC_APP_ERROR_CODE_ENUM
 
     TRRC_APP_MEAS_CTRL_PROTOCOL_CHECK_ERR         =50,  /* 测量控制失败--Protocol检查失败 */
     TRRC_APP_MEAS_CTRL_TRANSACTION_CHECK_ERR,           /* 测量控制失败--Transaction ID检查失败 */
+
+    TRRC_APP_HO_FAIL_ERR                          =60,  /* 切换失败 */
+    TRRC_APP_HO_TIMER_EXP_ERR,                          /* 切换超时 */
+
+    TRRC_APP_RL_FAIL_ERR                          =70,  /* 无线链路失败 */
+
 
     TRRC_APP_ERR_CODE_BUTT
 };
@@ -299,6 +341,105 @@ enum TRRC_APP_EST_CAUSE_ENUM
     TRRC_APP_EST_CAUSE_BUTT
 };
 typedef VOS_UINT32 TRRC_APP_EST_CAUSE_ENUM_UINT32;
+
+/* ErrorLog新增丢网信息begin */
+/*****************************************************************************
+ 枚举名    : TDS_APP_FREQ_BAND_LIST_ENUM
+ 协议表格  :
+ ASN.1描述 :
+ 枚举说明  : TDS band信息枚举值
+*****************************************************************************/
+enum TDS_APP_FREQ_BAND_LIST_ENUM
+{
+    TDS_APP_FREQ_BAND_NONE      = 0x00,
+    TDS_APP_FREQ_BAND_A         = 0x01,         /* 频点范围: 9504~9596  10054~10121 */
+    TDS_APP_FREQ_BAND_B         = 0x02,         /* 频点范围: 9254~9546  9654~9946 */
+    TDS_APP_FREQ_BAND_C         = 0x04,         /* 频点范围: 9554~9646 */
+    TDS_APP_FREQ_BAND_D         = 0x08,         /* 频点范围: 12854~13096 */
+    TDS_APP_FREQ_BAND_E         = 0x10,         /* 频点范围: 11504~11996 */
+    TDS_APP_FREQ_BAND_F         = 0x20,         /* 频点范围: 9404~9596 */
+    TDS_APP_FREQ_BAND_BUTT
+};
+typedef VOS_UINT8  TDS_APP_FREQ_BAND_LIST_ENUM_UINT8;
+
+/*****************************************************************************
+ 枚举名    : TDS_APP_ERR_LOG_RAT_TYPE_ENUM
+ 协议表格  :
+ ASN.1描述 :
+ 枚举说明  : 接入技术枚举值，根据检视意见GUTL各自定义但保持各制式顺序一致
+*****************************************************************************/
+enum TDS_APP_ERR_LOG_RAT_TYPE_ENUM
+{
+    TDS_APP_ERR_LOG_RAT_TYPE_GSM      = 1,      /* GSM 接入技术*/
+    TDS_APP_ERR_LOG_RAT_TYPE_WCDMA,             /* WCDMA 接入技术*/
+    TDS_APP_ERR_LOG_RAT_TYPE_LTE,               /* LTE 接入技术*/
+    TDS_APP_ERR_LOG_RAT_TYPE_TDS,               /* TDS 接入技术*/
+    TDS_APP_ERR_LOG_RAT_TYPE_BUTT
+};
+typedef VOS_UINT8  TDS_APP_ERR_LOG_RAT_TYPE_ENUM_UINT8;
+
+/*****************************************************************************
+ 枚举名    : TDS_APP_ERR_LOG_AREA_LOST_CAUSE_ENUM
+ 协议表格  :
+ ASN.1描述 :
+ 枚举说明  : 丢网上报原因值
+*****************************************************************************/
+enum TDS_APP_ERR_LOG_AREA_LOST_CAUSE_ENUM
+{
+    TDS_APP_ERR_LOG_AREA_LOST_BUTT = 1         /* 当前预留该枚举值*/
+};
+typedef VOS_UINT8  TDS_APP_ERR_LOG_AREA_LOST_CAUSE_ENUM_UINT8;
+/* ErrorLog新增丢网信息end */
+/* Seattle Begin */
+/*****************************************************************************
+ 枚举名    : TDS_ERR_LOG_CS_HANDOVER_FAIL_ENUM
+ 协议表格  :
+ ASN.1描述 :
+ 枚举说明  : 切换失败的原因值
+*****************************************************************************/
+enum TDS_ERR_LOG_CS_HANDOVER_FAIL_ENUM
+{
+    ERR_TRRC_GRR_HANDOVER_RESULT_FREQ_NOT_IMPLEMENTED =1,
+    ERR_TRRC_GRR_HANDOVER_RESULT_CONFIG_UNKNOW,
+    ERR_TRRC_GRR_HANDOVER_RESULT_INVALID_CONFIG,
+    ERR_TRRC_GRR_HANDOVER_RESULT_RRC_CONNECT_FAILURE,
+    ERR_TRRC_GRR_HANDOVER_RESULT_PROTOCOL_ERROR,
+    ERR_TRRC_GRR_HANDOVER_RESULT_UNSUPORTED_CONFIGURATION,
+    ERR_TRRC_GRR_HANDOVER_RESULT_PHY_CHANNEL_FAIL,
+    ERR_TRRC_GRR_HANDOVER_RESULT_MESSAGE_INVALID,
+    ERR_TRRC_GRR_HANDOVER_RESULT_UNSPECIFIC,
+    ERR_TRRC_GRR_HANDOVER_RESULT_BUTT
+};
+typedef VOS_UINT16 TDS_ERR_LOG_CS_HANDOVER_FAIL_ENUM_UINT16;
+
+/*****************************************************************************
+ 枚举名    : TDS_ERR_LOG_CS_LINK_ERROR_ENUM
+ 协议表格  :
+ ASN.1描述 :
+ 枚举说明  : 无线链路失败的原因值
+*****************************************************************************/
+enum TDS_ERR_LOG_CS_LINK_ERROR_ENUM
+{
+    TDS_CS_LINK_ERROR_T312_TIMEOUT =0,
+    TDS_CS_LINK_ERROR_T313_TIMEOUT,
+    TDS_CS_LINK_ERROR_BUTT
+};
+typedef VOS_UINT16 TDS_ERR_LOG_CS_LINK_ERROR_ENUM_UINT16;
+
+/*****************************************************************************
+ 枚举名     :ERR_LOG_GSM_BAND_INDICATOR_ENUM
+ 协议表格  :
+ ASN.1描述   :
+ 枚举说明 : GSM小区频段指示枚举
+*****************************************************************************/
+typedef enum
+{
+    ERR_LOG_EN_DSC_1800_USED                    = 0,
+    ERR_LOG_EN_PDS_1900_USED
+}ERR_LOG_GSM_BAND_INDICATOR_ENUM;
+typedef VOS_UINT32  ERR_LOG_GSM_BAND_INDICATOR_ENUM_UINT32;
+
+/* Seattle End */
 /*****************************************************************************
    5 STRUCT
 *****************************************************************************/
@@ -502,44 +643,109 @@ typedef struct
     TRRC_OM_FTM_REPROT_CONTENT_STRU     stTrrcFtmContent;
 }TRRC_OM_FTM_REPROT_IND_STRU;
 
+/* Seattle Begin */
+/*****************************************************************************
+ 结构名     :ERR_LOG_SAVE_CELL_INFO_FOR_GAS_ST
+ 协议表格  :
+ ASN.1描述   :
+ 结构说明  :GSM小区的信息结构
+*****************************************************************************/
+typedef struct
+{
+    VOS_UINT32                          ulNCC;
+    VOS_UINT32                          ulBCC;
+    VOS_UINT32                          ulBcchArcfn;
+    VOS_UINT32                          ulFreqBandInd;
+    VOS_UINT32                          ulFlag;                                 /* 该标记用于指示lFNOffset、ulTimeAlignmt是否有数据，0:表示无数据 1: 表示有数据*/
+    VOS_INT32                           lFNOffset;
+    VOS_UINT32                          ulTimeAlignmt;
+    VOS_INT16                           sRxlev;                                 /* G小区信号电平，单位是dBm,没有测到信号电平时赋值为RRWRR_INVALID_RXLEV */
+    VOS_UINT8                           aucReserve1[2];                         /* 4字节对齐，保留 */
+
+}ERR_LOG_SAVE_CELL_INFO_FOR_GAS_ST;
+
+/*****************************************************************************
+ 结构名     :TDS_ERR_LOG_CELL_INFO_STRU
+ 协议表格  :
+ ASN.1描述   :
+ 结构说明  :
+*****************************************************************************/
+typedef struct
+{
+    VOS_UINT8                                   ucCellId;                   /*小区ID*/
+    VOS_UINT8                                   ucRscp;                     /*能量*/
+    VOS_UINT16                                  usFreqId;                   /*工作频点*/
+} TDS_ERR_LOG_CELL_INFO_STRU;
+
+/*****************************************************************************
+ 结构名     :TDS_ERR_LOG_GSM_CELL_INFO_STRU
+ 协议表格  :
+ ASN.1描述   :
+ 结构说明  :
+*****************************************************************************/
+typedef struct
+{
+    ERR_LOG_SAVE_CELL_INFO_FOR_GAS_ST           stRrcSaveInfoForGas;        /* 注意，只有1个小区的信息，与切换接口不同s */
+    ERR_LOG_GSM_BAND_INDICATOR_ENUM_UINT32      enBandIndictor;             /* Band指示 */
+} TDS_ERR_LOG_GSM_CELL_INFO_STRU;
+
+/*****************************************************************************
+ 结构名     :TDS_ERR_LOG_EVT_CS_HANDOVER_FAIL_STRU
+ 协议表格  :
+ ASN.1描述   :
+ 结构说明  :
+*****************************************************************************/
+typedef struct
+{
+    TDS_ERR_LOG_CS_HANDOVER_FAIL_ENUM_UINT16    enHandoverFailCause;  /* 切换失败原因值*/
+    VOS_UINT8                                   aucReserve[2];        /* 保留位 */
+    TDS_ERR_LOG_CELL_INFO_STRU                  stTdsOrginalCell;     /* 切换的TDS源小区信息 */
+    TDS_ERR_LOG_GSM_CELL_INFO_STRU              stGsmTargetCell;      /* 切换的GSM目标小区信息*/
+}TDS_ERR_LOG_EVT_CS_HANDOVER_FAIL_STRU;
+
+/*****************************************************************************
+ 结构名     :TDS_ERR_LOG_EVT_CS_HANDOVER_SLOW_STRU
+ 协议表格  :
+ ASN.1描述   :
+ 结构说明  :
+*****************************************************************************/
+typedef struct
+{
+    TDS_ERR_LOG_CELL_INFO_STRU                  stTdsOrginalCell;     /* 切换的TDS源小区信息 */
+    TDS_ERR_LOG_GSM_CELL_INFO_STRU              stGsmTargetCell;      /* 切换的GSM 目标小区信息*/
+    VOS_UINT32                                  ulHandoverTime;       /* 切换时长*/
+}TDS_ERR_LOG_EVT_CS_HANDOVER_SLOW_STRU;
+
+/*****************************************************************************
+ 结构名     :TDS_ERR_LOG_EVT_CS_HANDOVER_SLOW_STRU
+ 协议表格  :
+ ASN.1描述   :
+ 结构说明  :
+*****************************************************************************/
+typedef struct
+{
+    VOS_UINT32                                  ulStatus;           /*当前状态*/
+    TDS_ERR_LOG_CELL_INFO_STRU                  stTdsOrginalCell;   /* 切换的TDS源小区信息 */
+} TDS_ERR_LOG_STATUS_INFO_STRU;
+
+/*****************************************************************************
+ 结构名     :TDS_ERR_LOG_EVT_CS_LINK_ERROR_STRU
+ 协议表格  :
+ ASN.1描述   :
+ 结构说明  :
+*****************************************************************************/
+typedef struct
+{
+    TDS_ERR_LOG_CS_LINK_ERROR_ENUM_UINT16       enRadioLinkErrorCause;      /*无线链路异常原因*/
+    VOS_UINT8                                   aucReserve[2];              /* 保留位 */
+    TDS_ERR_LOG_STATUS_INFO_STRU                stTdsStatusInfo;            /* TDS 当前状态信息记录*/
+}TDS_ERR_LOG_EVT_CS_LINK_ERROR_STRU;
+/* Seattle End */
+
 /*****************************************************************************
                                ERROR LOG 上报数据结构
 *****************************************************************************/
 
-/*****************************************************************************
- 结构名    : RRC_APP_FTM_PERIOD_INFO
- 结构说明  : ERROR LOG 数据结构
- ulNextIndex保存下一个错误码索引，例如ulNextIndex = 1，则aenRrcAppErrorCode[0]
- 是最新的错误码
- 如果ulNextIndex = 0；aenRrcAppErrorCode[0] = TRRC_APP_ERR_CODE_BUTT；则没有保存错误码
-*****************************************************************************/
-typedef struct
-{
-    VOS_INT32                        ulNextIndex;
-    TRRC_APP_ERROR_CODE_ENUM_UINT8   aenRrcAppErrorCode[TRRC_ERRLOG_CODE_MAX_NUM];
-}TRRC_APP_ERROR_CODE_INFO_STRU;
-/*****************************************************************************
- 结构名    : RRC_APP_RECIVE_MSG_STRU
- 结构说明  : RRC 入口消息的信息
-*****************************************************************************/
-typedef struct
-{
-    VOS_UINT32                   ulSendPid;    /* 发送任务Pid */
-    VOS_UINT32                   ulMsgName;    /* 发送消息ID */
-}TRRC_APP_RECIVE_MSG_STRU;
-/*****************************************************************************
- 结构名    : RRC_APP_RECIVE_MSG_INFO_STRU
- 协议表格  :
- ASN.1描述 :
- 结构说明  :ERROR打印信息保存结构
-  ulNextIndex保存下一个收到消息索引，例如ulNextIndex = 1，则astReciveMsgInfo[0]
- 是最新的收到的消息ID
-*****************************************************************************/
-typedef struct
-{
-    VOS_UINT32                          ulNextIndex;
-    TRRC_APP_RECIVE_MSG_STRU            astReciveMsgInfo[TRRC_APP_INFO_NUM];
-} TRRC_APP_RECIVE_MSG_INFO_STRU;
 /*****************************************************************************
  结构名    : RRC_APP_STATE_INFO_STRU
  结构说明  : ERROR LOG RRC状态信息，包括协议状态，内部状态，异系统过程
@@ -550,75 +756,186 @@ typedef struct
     TRRC_APP_RRC_STATE_ENUM_UINT8               enRrcState;            /* RRC状态，内部状态，非协议状态 */
     TRRC_APP_FLOW_CTRL_TYPE_ENUM_UINT16         enErrcFlowCtrlType;    /* TD-SCDMA发生异系统过程时，异系统过程标识 */
 }TRRC_APP_STATE_INFO_STRU;
+
 /*****************************************************************************
  结构名    : TRRC_APP_EST_INFO_STRU
- 结构说明  : ERROR LOG RRC状态信息
+ 结构说明  : ERROR LOG RRC建连信息
  enEstSignallingType[0]:CS;enEstSignallingType[1]:ps
 *****************************************************************************/
 typedef struct
 {
-    TRRC_APP_EST_SIGNALLING_TYPE_UINT32        enEstSignallingType[2];
-    TRRC_APP_EST_CAUSE_ENUM_UINT32             enEstCause;
+    OM_ERR_LOG_HEADER_STRU                     stHeader;                /* Errorlog 消息头 */
+    TRRC_APP_ERROR_CODE_ENUM_UINT8             enErrorCode;             /* 错误码*/
+    VOS_UINT8                                  aucResv[3];              /* 保留位 */
+    TRRC_APP_STATE_INFO_STRU                   stRrcAppStateInfo;       /* 发生故障时状态信息 */
+    TRRC_APP_EST_SIGNALLING_TYPE_UINT32        enEstSignallingType[2];  /* 域建连状态信息*/
+    TRRC_APP_EST_CAUSE_ENUM_UINT32             enEstCause;              /* 建连原因 */
 }TRRC_APP_EST_INFO_STRU;
 
+/* ErrorLog新增丢网信息begin */
+
 /*****************************************************************************
- 结构名    : RRC_APP_FTM_PERIOD_INFO
- 结构说明  : ERROR LOG 数据结构
+ 结构名    : TDS_APP_AREA_LOST_INFO_STRU
+ 结构说明  : TDS丢网定位信息
 *****************************************************************************/
 typedef struct
 {
-    TRRC_APP_RECIVE_MSG_INFO_STRU     stRrAppReciveMsgInfo;
-    TRRC_APP_STATE_INFO_STRU          stRrcAppStateInfo;
-    TRRC_APP_EST_INFO_STRU            stRrcAppEstInfo;
-
-}TRRC_APP_ERR_LOG_RRC_INFO_STRU;
+    VOS_UINT32                                 ulTimeStamp;     /* 记录丢网的时刻 */
+    VOS_UINT32                                 ulMcc;           /* MCC,3 bytes      */
+    VOS_UINT32                                 ulMnc;           /* MNC,2 or 3 bytes */
+    VOS_UINT16                                 usFrequency;     /* 丢网时服务小区中心频点 单位:100Khz */
+    VOS_UINT16                                 usCellId;        /* 丢网时服务小区ID信息 */
+    TDS_APP_FREQ_BAND_LIST_ENUM_UINT8          enBandInfo;      /* 丢网时服务小区所属band信息 */
+    VOS_INT8                                   ucRscp;          /* 丢网前服务小区测量值,实际值 - 116；单位dbm */
+    VOS_INT8                                   ucQrxLevMin;     /* 丢网时服务小区驻留门限*/
+    VOS_UINT8                                  ucRac;           /* Rac */
+    VOS_UINT16                                 usLac;           /* lac */
+    TDS_APP_ERR_LOG_AREA_LOST_CAUSE_ENUM_UINT8 ucSubCause;      /* 记录丢网原因值:暂时保留待后续扩展使用 */
+    VOS_UINT8                                  ucResv;          /* 保留 */
+}TDS_APP_AREA_LOST_INFO_STRU;
 
 /*****************************************************************************
- 结构名    : TRRC_APP_ERR_LOG_INFO_STRU
- 结构说明  : ERROR LOG 数据结构
+ 结构名    : TRRC_APP_AREA_LOST_INFO_STRU
+ 结构说明  : TDS丢网定位信息
 *****************************************************************************/
 typedef struct
 {
-    TRRC_APP_ERROR_CODE_INFO_STRU    stErrorCodeInfo;
-    TRRC_APP_ERR_LOG_RRC_INFO_STRU   stErrorLogInfo;
-}TRRC_APP_ERR_LOG_INFO_STRU;
+    OM_ERR_LOG_HEADER_STRU                     stHeader;                /* Errorlog 消息头*/
+    TRRC_APP_ERROR_CODE_ENUM_UINT8             enErrorCode;             /* 错误码*/
+    TDS_APP_ERR_LOG_RAT_TYPE_ENUM_UINT8        enRatType;               /* 丢网发生的网络制式 */
+    VOS_UINT8                                  aucResv[2];
+    TRRC_APP_STATE_INFO_STRU                   stRrcAppStateInfo;       /* 发生故障时状态信息 */
+    TDS_APP_AREA_LOST_INFO_STRU                stTdsArealostInfo;       /* 丢网信息结构 */
+}TRRC_APP_AREA_LOST_INFO_STRU;
+
+/* ErrorLog新增丢网信息end */
 /*****************************************************************************
- 结构名    : RRC_APP_FTM_PERIOD_INFO
- 结构说明  : ERROR LOG 数据结构
+ 结构名    : TRRC_APP_CS_HO_FAIL_ERROR_INFO_STRU
+ 结构说明  : TDS CS切换失败
 *****************************************************************************/
 typedef struct
 {
-    /* 子模块ID */
-    OM_ERR_LOG_MOUDLE_ID_ENUM_UINT32    ulMsgModuleID;
+    OM_ERR_LOG_HEADER_STRU                          stHeader;                /* Errorlog 消息头*/
+    TRRC_APP_ERROR_CODE_ENUM_UINT8                  enErrorCode;             /* 错误码*/
+    VOS_UINT8                                       aucResv[3];
+    TRRC_APP_STATE_INFO_STRU                        stRrcAppStateInfo;       /* 发生故障时状态信息 */
+    TDS_ERR_LOG_EVT_CS_HANDOVER_FAIL_STRU           stTdsHoFailInfo;         /* 切换失败*/
+}TRRC_APP_CS_HO_FAIL_ERROR_INFO_STRU;
 
-    /* 00：主卡, 01：副卡 ,10/11:保留  */
-    VOS_UINT16                          usModemId;
+/*****************************************************************************
+ 结构名    : TRRC_APP_CS_HO_EXP_ERROR_INFO_STRU
+ 结构说明  : TDS CS切换超时
+*****************************************************************************/
+typedef struct
+{
+    OM_ERR_LOG_HEADER_STRU                          stHeader;                /* Errorlog 消息头*/
+    TRRC_APP_ERROR_CODE_ENUM_UINT8                  enErrorCode;             /* 错误码*/
+    VOS_UINT8                                       aucResv[3];
+    TRRC_APP_STATE_INFO_STRU                        stRrcAppStateInfo;       /* 发生故障时状态信息 */
+    TDS_ERR_LOG_EVT_CS_HANDOVER_SLOW_STRU           stTdsHoTimeExpInfo;      /* CS切换超时*/
+}TRRC_APP_CS_HO_EXP_ERROR_INFO_STRU;
 
-    /*  sub sys,modeule,sub module   暂不使用   */
-    VOS_UINT16                          usALMID;
 
-    /* ERR LOG上报级别,
-    Warning：0x04代表提示，
-    Minor：0x03代表次要
-    Major：0x02答标重要
-    Critical：0x01代表紧急    */
-    VOS_UINT16                          usALMLevel;
+/*****************************************************************************
+ 结构名    : TRRC_APP_RL_ERROR_INFO_STRU
+ 结构说明  : TDS无线链路失败信息
+*****************************************************************************/
+typedef struct
+{
+    OM_ERR_LOG_HEADER_STRU                     stHeader;                /* Errorlog 消息头*/
+    TRRC_APP_ERROR_CODE_ENUM_UINT8             enErrorCode;             /* 错误码*/
+    VOS_UINT8                                  aucResv[3];
+    TRRC_APP_STATE_INFO_STRU                   stRrcAppStateInfo;       /* 发生故障时状态信息 */
+    TDS_ERR_LOG_EVT_CS_LINK_ERROR_STRU         stTdsRLErrorInfo;        /* 无线链路失败信息结构 */
+}TRRC_APP_RL_ERROR_INFO_STRU;
+/* Seattle End */
 
-    /* 每个ERR LOG都有其类型:
-    故障&告警类型
-    通信：0x00
-    业务质量：0x01
-    处理出错：0x02
-    设备故障：0x03
-    环境故障：0x04    */
-    VOS_UINT16                          usALMType;
+/*****************************************************************************
+ 结构名    : TRRC_APP_RB_ERROR_INFO_STRU
+ 结构说明  : TDS RB配置错误信息
+*****************************************************************************/
+typedef struct
+{
+    OM_ERR_LOG_HEADER_STRU                     stHeader;                /* Errorlog 消息头*/
+    TRRC_APP_ERROR_CODE_ENUM_UINT8             enErrorCode;             /* 错误码*/
+    VOS_UINT8                                  aucResv[3];
+    TRRC_APP_STATE_INFO_STRU                   stRrcAppStateInfo;       /* 发生故障时状态信息 */
 
-    VOS_UINT32                          usAlmLowSlice;/*时间戳*/
-    VOS_UINT32                          usAlmHighSlice;
+}TRRC_APP_RB_ERROR_INFO_STRU;
 
-    VOS_UINT32                          ulAlmLength;
-    TRRC_APP_ERR_LOG_INFO_STRU          stAlmInfo;
-}TRRC_OM_ERR_LOG_INFO_STRU;
+/*****************************************************************************
+ 结构名    : TRRC_APP_RBREC_ERROR_INFO_STRU
+ 结构说明  : TDS RB重配置错误信息
+*****************************************************************************/
+typedef struct
+{
+    OM_ERR_LOG_HEADER_STRU                     stHeader;                /* Errorlog 消息头*/
+    TRRC_APP_ERROR_CODE_ENUM_UINT8             enErrorCode;             /* 错误码*/
+    VOS_UINT8                                  aucResv[3];
+    TRRC_APP_STATE_INFO_STRU                   stRrcAppStateInfo;       /* 发生故障时状态信息 */
+
+}TRRC_APP_RBREC_ERROR_INFO_STRU;
+
+/*****************************************************************************
+ 结构名    : TRRC_APP_CELLUPDATE_ERROR_INFO_STRU
+ 结构说明  : TDS cellupdateconfirm错误信息
+*****************************************************************************/
+typedef struct
+{
+    OM_ERR_LOG_HEADER_STRU                     stHeader;                /* Errorlog 消息头*/
+    TRRC_APP_ERROR_CODE_ENUM_UINT8             enErrorCode;             /* 错误码*/
+    VOS_UINT8                                  aucResv[3];
+    TRRC_APP_STATE_INFO_STRU                   stRrcAppStateInfo;       /* 发生故障时状态信息 */
+
+}TRRC_APP_CELLUPDATE_ERROR_INFO_STRU;
+
+/*****************************************************************************
+ 结构名    : TRRC_APP_INTEGRITY_ERROR_INFO_STRU
+ 结构说明  : TDS INTEGRITY fail信息
+*****************************************************************************/
+typedef struct
+{
+    OM_ERR_LOG_HEADER_STRU                     stHeader;                /* Errorlog 消息头*/
+    TRRC_APP_ERROR_CODE_ENUM_UINT8             enErrorCode;             /* 错误码*/
+    VOS_UINT8                                  aucResv[3];
+    TRRC_APP_STATE_INFO_STRU                   stRrcAppStateInfo;       /* 发生故障时状态信息 */
+
+}TRRC_APP_INTEGRITY_ERROR_INFO_STRU;
+
+/*****************************************************************************
+ 结构名    : TRRC_APP_MEAS_CTRL_ERROR_INFO_STRU
+ 结构说明  : TDS MEAS_CTRL错误信息
+*****************************************************************************/
+typedef struct
+{
+    OM_ERR_LOG_HEADER_STRU                     stHeader;                /* Errorlog 消息头*/
+    TRRC_APP_ERROR_CODE_ENUM_UINT8             enErrorCode;             /* 错误码*/
+    VOS_UINT8                                  aucResv[3];
+    TRRC_APP_STATE_INFO_STRU                   stRrcAppStateInfo;       /* 发生故障时状态信息 */
+
+}TRRC_APP_MEAS_CTRL_ERROR_INFO_STRU;
+
+/*****************************************************************************
+ 结构名    : TRRC_APP_ASN_RLST_ERR_INFO_STRU
+ 结构说明  : TDS ASN解码失败信息
+*****************************************************************************/
+typedef struct
+{
+    OM_ERR_LOG_HEADER_STRU                     stHeader;                /* Errorlog 消息头*/
+    TRRC_APP_ERROR_CODE_ENUM_UINT8             enErrorCode;             /* 错误码*/
+    VOS_UINT8                                  aucResv[3];
+    TRRC_APP_STATE_INFO_STRU                   stRrcAppStateInfo;       /* 发生故障时状态信息 */
+
+}TRRC_APP_ASN_RLST_ERR_INFO_STRU;
+/*****************************************************************************
+ 结构名    : TRRC_APP_BUFF_OVER_FLOW_ERR_INFO_STRU
+ 结构说明  : 缓冲溢出
+*****************************************************************************/
+typedef struct
+{
+    OM_ERR_LOG_HEADER_STRU                     stHeader;                /* Errorlog 消息头*/
+    VOS_UINT32                                 ulCount;                 /* 溢出计数 */
+}TRRC_APP_BUFF_OVER_FLOW_ERR_INFO_STRU;
 
 /*****************************************************************************
  结构名    : OM_ERR_LOG_REPORT_CNF_STRU
@@ -631,7 +948,7 @@ typedef struct
     VOS_UINT32                          ulMsgType;
     VOS_UINT32                          ulMsgSN;
     VOS_UINT32                          ulRptlen;      /* 故障内容长度,如果ulRptlen为0,aucContent内容长度也为0 */
-    TRRC_OM_ERR_LOG_INFO_STRU           stAppFtmInfo;
+    VOS_UINT8                           aucContent[4]; /* 故障内容 */
 } TRRC_OM_ERR_LOG_REPORT_CNF_STRU;
 
 /*****************************************************************************

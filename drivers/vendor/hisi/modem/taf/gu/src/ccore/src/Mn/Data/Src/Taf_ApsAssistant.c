@@ -46,6 +46,8 @@ TAF_PDP_TABLE_STRU                     *g_TafCidTab         = VOS_NULL_PTR;
 APS_PDP_CONTEXT_ENTITY_ST              *g_PdpEntity         = VOS_NULL_PTR;
 TAF_PS_ANSWER_MODE_STRU                 g_PsAnsMode;
 
+TAF_APS_CID_IMS_CFG_TBL_STRU          g_stCidImsCfgTable;
+
 
 
 /* 终端可配置需求:2G拨号请求禁止Spare_bit3等参数 */
@@ -121,6 +123,8 @@ VOS_UINT32  Aps_Init(VOS_VOID)
         APS_ERR_LOG("VOS_MemAlloc for g_ApsNdisAuthdataTab err!");
         return  APS_FAIL;
     }
+
+    PS_MEM_SET(&g_stCidImsCfgTable, 0x00, sizeof(g_stCidImsCfgTable));
 
     /*读取PDP Profile及可配置需求的NV数据*/
     Aps_DbInit();
@@ -572,9 +576,9 @@ VOS_VOID TAF_APS_ConvertLocalPdpTab2NvPdpTab(
     PS_MEM_CPY(&pstNvPdpTab->MinQosTab, &pstNvPdpTab->MinQosTab, sizeof(TAF_UMTS_QOS_STRU));
 
     /* TFT */
-    pstNvPdpTab->ucTftTabFlag               = pstNvPdpTab->ucTftTabFlag;
+    pstNvPdpTab->ucPfTabFlag               = pstNvPdpTab->ucPfTabFlag;
     pstNvPdpTab->ucPfNum                    = pstNvPdpTab->ucPfNum;
-    PS_MEM_CPY(&pstNvPdpTab->astTftTab[0], &pstNvPdpTab->astTftTab[0], sizeof(TAF_PDP_TFT_STRU) * TAF_MAX_SDF_PF_NUM);
+    PS_MEM_CPY(&pstNvPdpTab->astPfTab[0], &pstNvPdpTab->astPfTab[0], sizeof(TAF_PDP_PF_STRU) * TAF_MAX_SDF_PF_NUM);
 
     /* AUTH */
     pstNvPdpTab->ucAuthFlag                 = pstNvPdpTab->ucAuthFlag;
@@ -627,9 +631,9 @@ VOS_VOID TAF_APS_ConvertNvPdpTab2LocalPdpTab(
     PS_MEM_CPY(&pstLocalPdpTab->MinQosTab, &pstNvPdpTab->MinQosTab, sizeof(TAF_UMTS_QOS_STRU));
 
     /* TFT */
-    pstLocalPdpTab->ucTftTabFlag                = pstNvPdpTab->ucTftTabFlag;
+    pstLocalPdpTab->ucPfTabFlag                 = pstNvPdpTab->ucPfTabFlag;
     pstLocalPdpTab->ucPfNum                     = pstNvPdpTab->ucPfNum;
-    PS_MEM_CPY(&pstLocalPdpTab->astTftTab[0], &pstNvPdpTab->astTftTab[0], sizeof(TAF_PDP_TFT_STRU) * TAF_MAX_SDF_PF_NUM);
+    PS_MEM_CPY(&pstLocalPdpTab->astPfTab[0], &pstNvPdpTab->astPfTab[0], sizeof(TAF_PDP_PF_STRU) * TAF_MAX_SDF_PF_NUM);
 
     /* AUTH */
     pstLocalPdpTab->ucAuthFlag                  = pstNvPdpTab->ucAuthFlag;
@@ -679,7 +683,7 @@ VOS_VOID    Aps_PdpTabInit(VOS_VOID)
         g_TafCidTab[usIndex].ucEpsQosInfoFlg = APS_FREE;
         g_TafCidTab[usIndex].ucQosTabFlag   = APS_FREE;
         g_TafCidTab[usIndex].ucMinQosFlag   = APS_FREE;
-        g_TafCidTab[usIndex].ucTftTabFlag   = APS_FREE;
+        g_TafCidTab[usIndex].ucPfTabFlag    = APS_FREE;
         g_TafCidTab[usIndex].ucAuthFlag     = APS_FREE;
         g_TafCidTab[usIndex].ucDnsFlag      = APS_FREE;
         g_TafCidTab[usIndex].ucPriCidFlag   = APS_FREE;
@@ -1635,6 +1639,18 @@ VOS_VOID TAF_APS_SetEvtPcscf(
         pstPcscf->bitOpSecPcscfAddr     = VOS_FALSE;
     }
 
+    if (VOS_TRUE == pstPdpEntity->stPdpPcscf.bitOpThiPcscfAddr)
+    {
+        pstPcscf->bitOpThiPcscfAddr      = VOS_TRUE;
+        PS_MEM_CPY(pstPcscf->aucThiPcscfAddr,
+                   pstPdpEntity->stPdpPcscf.aucThiPcscfAddr,
+                   TAF_IPV4_ADDR_LEN);
+    }
+    else
+    {
+        pstPcscf->bitOpThiPcscfAddr     = VOS_FALSE;
+    }
+
 #if (FEATURE_ON == FEATURE_IPV6)
     if (VOS_TRUE == pstPdpEntity->stPdpIpv6Pcscf.bitOpPrimPcscfAddr)
     {
@@ -1659,6 +1675,19 @@ VOS_VOID TAF_APS_SetEvtPcscf(
     {
         pstIpv6Pcscf->bitOpSecPcscfAddr  = VOS_FALSE;
     }
+
+    if (VOS_TRUE == pstPdpEntity->stPdpIpv6Pcscf.bitOpThiPcscfAddr)
+    {
+        pstIpv6Pcscf->bitOpThiPcscfAddr  = VOS_TRUE;
+        PS_MEM_CPY(pstIpv6Pcscf->aucThiPcscfAddr,
+                   pstPdpEntity->stPdpIpv6Pcscf.aucThiPcscfAddr,
+                   TAF_IPV6_ADDR_LEN);
+    }
+    else
+    {
+        pstIpv6Pcscf->bitOpThiPcscfAddr  = VOS_FALSE;
+    }
+
 #endif
 
     return;
@@ -2830,6 +2859,65 @@ VOS_VOID TAF_APS_FillEvtPdpType(
 }
 
 
+#if (FEATURE_ON == FEATURE_LTE)
+
+VOS_VOID TAF_APS_SetEvtTftInfo(
+    VOS_UINT8                           ucPdpId,
+    TAF_PDP_TFT_STRU                   *pstTft
+)
+{
+    VOS_UINT32                          i;
+    TAF_PDP_PF_STRU                    *pstTafPf = VOS_NULL_PTR;
+    SM_ESM_PF_STRU                     *pstPdpPf = VOS_NULL_PTR;
+    APS_PDP_CONTEXT_ENTITY_ST          *pstPdpEntity;
+
+    /* 获取该PDPID的PDP实体内容地址 */
+    pstPdpEntity    = TAF_APS_GetPdpEntInfoAddr(ucPdpId);
+    pstTft->ulPfNum = pstPdpEntity->stTft.ulPfNum;
+
+    for (i = 0; i < pstTft->ulPfNum; i++)
+    {
+        pstTafPf = &pstTft->astPf[i];
+        pstPdpPf = &pstPdpEntity->stTft.astCidPf[i].stPf;
+
+        pstTafPf->bitOpRmtIpv4AddrAndMask = pstPdpPf->bitOpRmtIpv4AddrAndMask;
+        pstTafPf->bitOpRmtIpv6AddrAndMask = pstPdpPf->bitOpRmtIpv6AddrAndMask;
+        pstTafPf->bitOpProtocolId         = pstPdpPf->bitOpProtocolId;
+        pstTafPf->bitOpSingleLocalPort    = pstPdpPf->bitOpSingleLocalPort;
+        pstTafPf->bitOpLocalPortRange     = pstPdpPf->bitOpLocalPortRange;
+        pstTafPf->bitOpSingleRemotePort   = pstPdpPf->bitOpSingleRemotePort;
+        pstTafPf->bitOpRemotePortRange    = pstPdpPf->bitOpRemotePortRange;
+        pstTafPf->bitOpSecuParaIndex      = pstPdpPf->bitOpSecuParaIndex;
+        pstTafPf->bitOpTypeOfService      = pstPdpPf->bitOpTypeOfService;
+        pstTafPf->bitOpFlowLabelType      = pstPdpPf->bitOpFlowLabelType;
+        pstTafPf->bitOpSpare              = pstPdpPf->bitOpSpare;
+
+        pstTafPf->ucPacketFilterId        = pstPdpPf->ucPacketFilterId;
+        pstTafPf->ucNwPacketFilterId      = pstPdpPf->ucNwPacketFilterId;
+        pstTafPf->enDirection             = pstPdpPf->enDirection;
+        pstTafPf->ucPrecedence            = pstPdpPf->ucPrecedence;
+        pstTafPf->ulSecuParaIndex         = pstPdpPf->ulSecuParaIndex;
+        pstTafPf->usSingleLcPort          = pstPdpPf->usSingleLcPort;
+        pstTafPf->usLcPortHighLimit       = pstPdpPf->usLcPortHighLimit;
+        pstTafPf->usLcPortLowLimit        = pstPdpPf->usLcPortLowLimit;
+        pstTafPf->usSingleRmtPort         = pstPdpPf->usSingleRmtPort;
+        pstTafPf->usRmtPortHighLimit      = pstPdpPf->usRmtPortHighLimit;
+        pstTafPf->usRmtPortLowLimit       = pstPdpPf->usRmtPortLowLimit;
+        pstTafPf->ucProtocolId            = pstPdpPf->ucProtocolId;
+        pstTafPf->ucTypeOfService         = pstPdpPf->ucTypeOfService;
+        pstTafPf->ucTypeOfServiceMask     = pstPdpPf->ucTypeOfServiceMask;
+        pstTafPf->ulFlowLabelType         = pstPdpPf->ulFlowLabelType;
+
+        PS_MEM_CPY(pstTafPf->aucRmtIpv4Address, pstPdpPf->aucRmtIpv4Address, TAF_IPV4_ADDR_LEN * sizeof(VOS_UINT8));
+        PS_MEM_CPY(pstTafPf->aucRmtIpv4Mask,    pstPdpPf->aucRmtIpv4Mask,    TAF_IPV4_ADDR_LEN * sizeof(VOS_UINT8));
+        PS_MEM_CPY(pstTafPf->aucRmtIpv6Address, pstPdpPf->aucRmtIpv6Address, TAF_IPV6_ADDR_LEN * sizeof(VOS_UINT8));
+        PS_MEM_CPY(pstTafPf->aucRmtIpv6Mask,    pstPdpPf->aucRmtIpv6Mask,    TAF_IPV6_ADDR_LEN * sizeof(VOS_UINT8));
+
+    }
+
+    return;
+}
+#endif
 
 #ifdef  __cplusplus
   #if  __cplusplus

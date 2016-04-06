@@ -18,6 +18,11 @@ ifeq ($(strip $(CFG_FEATURE_UE_MODE_TDS)),FEATURE_ON)
 CC_USER_FLAGS   += \
 			-DSTACK_TD_EDGE_DM -DMEMO_BLOCK -DVERS_TD_ONLY_IP -DYNMIC_LOAD_DSP -DTDSCDMA_ONLY -DRRC_ASN_EXTEND -DBSP_CORE_MODEM
 endif #end of CFG_FEATURE_UE_MODE_TDS
+
+ifeq ($(CFG_THUMB_COMPILE),YES)
+CC_USER_FLAGS += -mlong-calls -mthumb-interwork -mthumb -march=armv6
+endif
+
 AS_USER_FLAGS   := 
 
 #***********************************************************#

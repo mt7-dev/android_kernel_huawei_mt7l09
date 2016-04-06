@@ -39,7 +39,7 @@ enum TAF_SPM_INTERNAL_MSG_ID_ENUM
 {
     TAF_SPM_INTERNAL_SERVICE_CTRL_RESULT_IND               = ID_TAF_MNTN_MSG_SPM_BASE +0x100, /*_H2ASN_MsgChoice TAF_SPM_SERVICE_CTRL_RSLT_STRU */
 
-    TAF_SPM_INTERNAL_DOMAIN_SEL_IND,                                                        /*_H2ASN_MsgChoice TAF_SPM_DOMAIN_SEL_IND_STRU */ 
+    TAF_SPM_INTERNAL_DOMAIN_SEL_IND,                                                        /*_H2ASN_MsgChoice TAF_SPM_DOMAIN_SEL_IND_STRU */
 
     TAF_SPM_INTERNAL_MSG_BUTT
 };
@@ -71,7 +71,7 @@ typedef struct
     TAF_SPM_SERVICE_CTRL_RESULT_ENUM_UINT32     enResult;                               /* SERVICE CTRL结果 */
     VOS_UINT32                                  ulCause;                                /* 失败时携带的原因值 */
     VOS_UINT16                                  usClientId;                             /* 对应的client id */
-    VOS_UINT8                                   aucRsv[2];    
+    VOS_UINT8                                   aucRsv[2];
     TAF_SPM_ENTRY_MSG_STRU                      stEntryMsg;                             /* at或STK向SS发送的消息 */
 } TAF_SPM_SERVICE_CTRL_RSLT_STRU;
 
@@ -106,7 +106,8 @@ VOS_UINT32 TAF_SPM_SndServiceCtrlRsltInd(
 VOS_UINT32 TAF_SPM_SndInternalDomainSelectionInd(VOS_VOID);
 
 VOS_VOID TAF_SPM_SendMsgSmmaRsp(
-    TAF_MSG_SIGNALLING_TYPE_ENUM_UINT32 enMsgSignallingType
+    TAF_MSG_SIGNALLING_TYPE_ENUM_UINT32 enMsgSignallingType,
+    struct MsgCB                       *pstMsg
 );
 
 #endif

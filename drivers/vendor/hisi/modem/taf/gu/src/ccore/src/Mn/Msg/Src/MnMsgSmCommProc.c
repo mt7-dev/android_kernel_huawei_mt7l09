@@ -65,6 +65,11 @@ VOS_CHAR *g_pucSmsFileOnFlash                               = VOS_NULL_PTR;
 #define MN_MSG_CARD_TYPE_USIM     1
 #define MN_MSG_CARD_TYPE_SIM      2
 
+#define TAF_MSG_MIN_DESTINATION_ADDRESS_LEN                 (2)
+#define TAF_MSG_MAX_DESTINATION_ADDRESS_LEN                 (11)
+
+
+
 /*存储flash短信文件句柄*/
 FILE                                   *gfpSmsFlash;
 
@@ -979,6 +984,21 @@ LOCAL VOS_VOID MSG_ParseSmsp(
     ulPos += MN_MSG_EFSMSP_ADDR_UNIT_LEN;
 
     /*TP-service centre address data:*/
+    /* 在解析短信中心号码前，先判断一下短信中心号码长度字节，如果长度有效，
+       就把ind的标示bit置为存在短信中心号码，9061 nv项可配置
+       24011 8.2.5.2 Destination address element
+       In the case of MO transfer, this element contains the destination Service Centre address.
+       The RP Destination Address information element is coded as shown in figure 8.6/3GPP TS 24.011.
+       The RP Destination Address is a type 4 information element. In the mobile station to network
+       direction the minimum value of the length octet is 2 and the maximum value is 11. In the network to mobile station direction,
+       the value of the length octet of the element is set to 0.*/
+    if ((MN_MSG_NV_ITEM_ACTIVE == pstCustomCfgAddr->ucGetScAddrIgnoreScIndication)
+     && (pucSmspContent[ulPos] >= TAF_MSG_MIN_DESTINATION_ADDRESS_LEN)
+     && (pucSmspContent[ulPos] <= TAF_MSG_MAX_DESTINATION_ADDRESS_LEN))
+    {
+        pstSrvParam->ucParmInd &= ~MN_MSG_SRV_PARM_MASK_SC_ADDR;
+    }
+
     if (0 == (pstSrvParam->ucParmInd & MN_MSG_SRV_PARM_MASK_SC_ADDR))
     {
         ulRet = MN_MSG_ReadAddressFromUsim(&pucSmspContent[ulPos],
@@ -1039,8 +1059,6 @@ LOCAL VOS_VOID MSG_ParseSmsp(
 
     return;
 }
-
-
 LOCAL VOS_UINT32 MSG_GetUsimFileReq(
     VOS_UINT16                          usEfId
 )
@@ -1081,8 +1099,6 @@ LOCAL VOS_UINT32 MSG_GetUsimFileReq(
 
     return ulRet;
 }
-
-
  VOS_VOID MN_MSG_SetSmsFileRefreshFlag (VOS_UINT16 usEfId, VOS_UINT8 ucFileRefreshFlag)
 {
     switch (usEfId)
@@ -1534,7 +1550,7 @@ VOS_UINT32 MN_MSG_CreateMoInfo(
         if (MN_MSG_SEND_DOMAIN_CS == f_stMsgMoEntity.enSendDomain)
         {
             TAF_SDC_SetCsSmsSrvExistFlg(VOS_TRUE);
-            
+
 #if (FEATURE_MULTI_MODEM == FEATURE_ON)
             /* 给MTC模块上报当前CS域业务状态 */
             TAF_SendMtcCsSrvInfoInd();
@@ -1609,7 +1625,7 @@ VOS_VOID TAF_MSG_UpdateSmsExistFlg_DestroyMoInfo(VOS_VOID)
         TAF_SDC_SetImsSmsSrvExistFlg(VOS_FALSE);
         TAF_SDC_SetCsSmsSrvExistFlg(VOS_FALSE);
         TAF_SDC_SetPsSmsSrvExistFlg(VOS_FALSE);
-        
+
 #if (FEATURE_MULTI_MODEM == FEATURE_ON)
         /* 给MTC模块上报当前CS域业务状态 */
         TAF_SendMtcCsSrvInfoInd();
@@ -1637,7 +1653,7 @@ VOS_VOID TAF_MSG_UpdateSmsExistFlg_DestroyMoInfo(VOS_VOID)
 
         {
             TAF_SDC_SetCsSmsSrvExistFlg(VOS_FALSE);
-            
+
 #if (FEATURE_MULTI_MODEM == FEATURE_ON)
             /* 给MTC模块上报当前CS域业务状态 */
             TAF_SendMtcCsSrvInfoInd();
@@ -1671,14 +1687,14 @@ VOS_VOID TAF_MSG_UpdateSmsExistFlg_DestroyMtInfo(VOS_VOID)
         TAF_SDC_SetImsSmsSrvExistFlg(VOS_FALSE);
         TAF_SDC_SetCsSmsSrvExistFlg(VOS_FALSE);
         TAF_SDC_SetPsSmsSrvExistFlg(VOS_FALSE);
-        
+
 #if (FEATURE_MULTI_MODEM == FEATURE_ON)
         /* 给MTC模块上报当前CS域业务状态 */
         TAF_SendMtcCsSrvInfoInd();
 #endif
         return;
     }
-    
+
     /* Destroy IMS域MT时,不存在IMS域MO流程,把IMS标志置为FALSE */
     if (TAF_MSG_SIGNALLING_TYPE_CS_OVER_IP == f_stMsgMtEntity.enMsgSignallingType)
     {
@@ -1695,7 +1711,7 @@ VOS_VOID TAF_MSG_UpdateSmsExistFlg_DestroyMtInfo(VOS_VOID)
         {
 
             TAF_SDC_SetCsSmsSrvExistFlg(VOS_FALSE);
-            
+
 #if (FEATURE_MULTI_MODEM == FEATURE_ON)
             /* 给MTC模块上报当前CS域业务状态 */
             TAF_SendMtcCsSrvInfoInd();
@@ -1764,7 +1780,7 @@ VOS_UINT32 MN_MSG_CreateMtInfo(VOS_VOID)
         if (MN_MSG_RCV_DOMAIN_CS == f_stMsgMtEntity.enRcvDomain)
         {
             TAF_SDC_SetCsSmsSrvExistFlg(VOS_TRUE);
-            
+
 #if (FEATURE_MULTI_MODEM == FEATURE_ON)
             /* 给MTC模块上报当前CS域业务状态 */
             TAF_SendMtcCsSrvInfoInd();
@@ -2002,10 +2018,15 @@ VOS_VOID MN_MSG_Internal_SendRpt(
         stRpErr.aucRpUserData[ucIdx++] = 0;
         stRpErr.ucRpUserDataLen = ucIdx;
         MN_MSG_EncodeRpErr(&stRpErr,aucSendData,&ucSendLen);
+
+        NAS_EventReport(WUEPS_PID_TAF,
+                        NAS_OM_EVENT_SMS_MT_FAIL,
+                        &(enRpCause),
+                        sizeof(MN_MSG_RP_CAUSE_ENUM_U8));
     }
 
     enMsgSignallingType = MN_MSG_GetMtRouteStackType();
-    
+
     ulRet = MN_MSG_SendSmsRpReportReq(aucSendData,ucSendLen, enMsgSignallingType);
 
     if (VOS_OK != ulRet)
@@ -2421,6 +2442,14 @@ VOS_UINT32  MN_MSG_SendSmma(
         ulRet = MN_ERR_CLASS_SMS_NOAVAILDOMAIN;
         return ulRet;
     }
+
+    if ( (VOS_TRUE == TAF_SDC_GetSvlteSupportFlag())
+      && (MN_MSG_SEND_DOMAIN_PS == enRealDomain) )
+    {
+        ulRet = MN_ERR_CLASS_SMS_NOAVAILDOMAIN;
+        return ulRet;
+    }
+
     ulRet = MN_MSG_SendSmsSmmaReq(enRealDomain, enMsgSignallingType);
     if (VOS_ERR == ulRet)
     {
@@ -2484,7 +2513,7 @@ VOS_VOID MN_MSG_SendMemAvail(VOS_VOID)
         /* 如果IMS宏打开需要到SPM模块做域选择，否则直接走NAS信令 */
         TAF_MSG_SendSpmSmmaInd();
 #else
-        MN_MSG_SendSmma(0, 0, VOS_FALSE, TAF_MSG_SIGNALLING_TYPE_NAS_SIGNALLING);
+        MN_MSG_SendSmma(stMoEntity.clientId, stMoEntity.opId, VOS_FALSE, TAF_MSG_SIGNALLING_TYPE_NAS_SIGNALLING);
 #endif
     }
 }
@@ -2820,7 +2849,7 @@ VOS_UINT32 MN_MSG_ReadSmspInfo(
         }
         PS_MEM_CPY(aucSmspContent, &stEfsmsp, MN_MSG_MAX_EF_LEN);
 
-        PS_MEM_CPY(pstSrvParam, 
+        PS_MEM_CPY(pstSrvParam,
                    &f_stMsgEfSmspInfo.astEachEfSmspInfo[0].stParm,
                    sizeof(MN_MSG_SRV_PARAM_STRU));
 
@@ -2859,10 +2888,10 @@ VOS_VOID  MN_MSG_UpdateTotalSmspInfo(
 
     for (i = 0; i < f_stMsgEfSmspInfo.ucSmspRealRecNum; i++)
     {
-        PS_MEM_CPY(&stSrvParm, 
+        PS_MEM_CPY(&stSrvParm,
                    &f_stMsgEfSmspInfo.astEachEfSmspInfo[i].stParm,
                    sizeof(stSrvParm));
-		
+
         MSG_ParseSmsp(ucEfLen,
                       (pucSmspContent +  (i * ucEfLen)),
                       &bValid,
@@ -3061,7 +3090,7 @@ VOS_VOID MN_MSG_GetSmspStorageList(
     }
     else
     {
-        PS_MEM_CPY(&stSrvParm, 
+        PS_MEM_CPY(&stSrvParm,
                    &f_stMsgEfSmspInfo.astEachEfSmspInfo[0].stParm,
                    sizeof(MN_MSG_SRV_PARAM_STRU));
 
@@ -3527,7 +3556,7 @@ VOS_UINT32  MN_MSG_UpdateRcvMsgPath(
 
             /* 保存MT信息，在<MT>=3，收到CLASS3短信时候，按照+CMT方式上报 */
             f_stMsgCfgParm.enMtType         = pstRcvPath->enCnmiMtType;
-            
+
             MN_INFO_LOG("MN_MSG_UpdateRcvMsgPath():The content to write is same as NV's");
             return MN_ERR_NO_ERROR;
         }
@@ -3556,7 +3585,7 @@ VOS_UINT32  MN_MSG_UpdateRcvMsgPath(
 
     /* 保存MT信息，在<MT>=3，收到CLASS3短信时候，按照+CMT方式上报 */
     f_stMsgCfgParm.enMtType         = pstRcvPath->enCnmiMtType;
-    
+
     return MN_ERR_NO_ERROR;
 }
 
@@ -5221,8 +5250,8 @@ VOS_VOID MN_MSG_RptMsg(
             /* 此处+1的原语为,该index短信已被列表,需列表下一条短信 */
             ulBeginIdx++;
             MN_MSG_ReportListEvent(clientId,opId,pstListRptEvt,MN_MSG_EVT_LIST);
-            
-            
+
+
             MN_MSG_UpdateListInfo(clientId,opId,ulLeftReportNum,pstList);
         }
         break;

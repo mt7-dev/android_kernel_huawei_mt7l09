@@ -246,12 +246,15 @@ VOS_VOID  NAS_ERABM_RcvRabmEsmActInd(const ESM_ERABM_ACT_IND_STRU *pRcvMsg )
 
     /*找到对应的EPS承载*/
     ulEpsbId = pRcvMsg->ulEpsId;
+    (VOS_VOID)VOS_TaskLock();
 
     /*清除对应的EPS承载的相关信息*/
     NAS_ERABM_ClearEpsbResource(ulEpsbId);
 
     /*记录相应的参数*/
     NAS_ERABM_SaveEpsbActInfo(pRcvMsg, ulEpsbId);
+
+    (VOS_VOID)VOS_TaskUnlock();
 
     /* 给CDS发送CDS_ERABM_RAB_CREATE_IND */
     NAS_ERABM_SndErabmCdsRabCreatInd(ulEpsbId);
@@ -266,7 +269,7 @@ VOS_VOID  NAS_ERABM_RcvRabmEsmActInd(const ESM_ERABM_ACT_IND_STRU *pRcvMsg )
             NAS_ERABM_TimerStop(NAS_ERABM_WAIT_EPSB_ACT_TIMER);
 
             /* 向ESM发承载状态消息 */
-            NAS_ERABM_InformEsmBearerStatus();
+            NAS_ERABM_InformEsmBearerStatus(pRcvMsg->ucSessionId);
 
             /*清除等待标识*/
             NAS_ERABM_SetWaitEpsBActSign(NAS_ERABM_NOT_WAIT_EPSB_ACT_MSG);
@@ -501,7 +504,8 @@ VOS_VOID NAS_ERABM_SndRabmEsmRelReq( VOS_VOID )
 
 *****************************************************************************/
 VOS_VOID NAS_ERABM_SndRabmEsmBearerStatusReq(const VOS_UINT32 *pulEpsbId,
-                                                              VOS_UINT32 ulEpsbIdNum )
+                                                              VOS_UINT32 ulEpsbIdNum,
+                                                              VOS_UINT8 ucSessionId)
 {
     ESM_ERABM_BEARER_STATUS_REQ_STRU    *pstBearerStatusReq  = VOS_NULL_PTR;
 
@@ -527,6 +531,7 @@ VOS_VOID NAS_ERABM_SndRabmEsmBearerStatusReq(const VOS_UINT32 *pulEpsbId,
     NAS_ERABM_WRITE_ESM_MSG_HEAD(pstBearerStatusReq, ID_ESM_ERABM_BEARER_STATUS_REQ);
 
     /*填写消息实体*/
+    pstBearerStatusReq->ucSessionId = ucSessionId;
     pstBearerStatusReq->ulEpsIdNum = ulEpsbIdNum;
     NAS_ERABM_MEM_CPY((VOS_UINT8*)pstBearerStatusReq->aulEpsId, (VOS_UINT8*)pulEpsbId,
               (pstBearerStatusReq->ulEpsIdNum)*(sizeof(VOS_UINT32)/sizeof(VOS_UINT8)));

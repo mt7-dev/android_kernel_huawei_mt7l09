@@ -259,7 +259,8 @@ typedef struct
     VOS_UINT32                          bitOpSecNbns    : 1;
     VOS_UINT32                          bitOpPriPcscf   : 1;
     VOS_UINT32                          bitOpSecPcscf   : 1;
-    VOS_UINT32                          bitOpSpare      : 25;
+    VOS_UINT32                          bitOpThiPcscf   : 1;
+    VOS_UINT32                          bitOpSpare      : 24;
 
     VOS_UINT8                           aucPriDns[SM_ESM_IPV4_ADDR_LEN];
     VOS_UINT8                           aucSecDns[SM_ESM_IPV4_ADDR_LEN];
@@ -268,6 +269,7 @@ typedef struct
     VOS_UINT8                           aucSecNbns[SM_ESM_IPV4_ADDR_LEN];
     VOS_UINT8                           aucPriPcscf[SM_ESM_IPV4_ADDR_LEN];
     VOS_UINT8                           aucSecPcscf[SM_ESM_IPV4_ADDR_LEN];
+    VOS_UINT8                           aucThiPcscf[SM_ESM_IPV4_ADDR_LEN];
 
 } SM_ESM_PCO_IPV4_ITEM_STRU;
 
@@ -292,12 +294,14 @@ typedef struct
     VOS_UINT32                          bitOpSecDns     : 1;
     VOS_UINT32                          bitOpPriPcscf   : 1;
     VOS_UINT32                          bitOpSecPcscf   : 1;
-    VOS_UINT32                          bitOpSpare      : 28;
+    VOS_UINT32                          bitOpThiPcscf   : 1;
+    VOS_UINT32                          bitOpSpare      : 27;
 
     VOS_UINT8                           aucPriDns[SM_ESM_IPV6_ADDR_LEN];
     VOS_UINT8                           aucSecDns[SM_ESM_IPV6_ADDR_LEN];
     VOS_UINT8                           aucPriPcscf[SM_ESM_IPV6_ADDR_LEN];
     VOS_UINT8                           aucSecPcscf[SM_ESM_IPV6_ADDR_LEN];
+    VOS_UINT8                           aucThiPcscf[SM_ESM_IPV6_ADDR_LEN];
 
 } SM_ESM_PCO_IPV6_ITEM_STRU;
 

@@ -5,6 +5,4 @@
 #
 
 include/generated/mach-types.h: $(src)/gen-mach-types $(src)/mach-types
-	@$(kecho) '  Generating $@'
-	@mkdir -p $(dir $@)
-	$(Q)$(AWK) -f $^ > $@ || { rm -f $@; /bin/false; }
+	@$(kecho) '  Generating $@'; mkdir -p $(dir $@); $(AWK) -f $^ > $@ || { rm -f $@; /bin/false; }

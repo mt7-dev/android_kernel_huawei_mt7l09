@@ -68,7 +68,7 @@ s32 bsp_tem_data_receive(void)
 	len = bsp_icc_read(channel_id, (u8*)&msg, sizeof(struct tem_msg_stru));
 	if(len != (int)sizeof(struct tem_msg_stru))
 	{
-		tem_print_error("read len(%x) != expected len(%x).\n", len, sizeof(struct tem_msg_stru));
+		tem_print_error("read len(%x) != expected len(%lu).\n", len, (unsigned long)sizeof(struct tem_msg_stru));
 		return TEMPERATURE_ERROR;
 	}
 

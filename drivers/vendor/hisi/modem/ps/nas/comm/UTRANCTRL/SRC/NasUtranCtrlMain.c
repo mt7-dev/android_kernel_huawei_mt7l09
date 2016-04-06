@@ -20,6 +20,10 @@
 #include "NasUtranCtrlCommFunc.h"
 #include "NasMmlLib.h"
 
+#include "NasMmcSndInternalMsg.h"
+
+
+
 #ifdef __cplusplus
 #if __cplusplus
 extern "C" {
@@ -166,9 +170,6 @@ VOS_UINT32 NAS_UTRANCTRL_ProcessMmcMsg(
     VOS_UINT32                          ulRslt;
     MSG_HEADER_STRU                    *pstMsgHeader;
     REL_TIMER_MSG                      *pRcvTimerMsg;
-    VOS_UINT32                          ulSupportFddFlg;
-    VOS_UINT32                          ulSupportTddFlg;
-
     NAS_UTRANCTRL_FSM_ID_ENUM_UINT32    enPreFsmId;
 
     pstMsgHeader = (MSG_HEADER_STRU *)pstMsg;
@@ -196,11 +197,10 @@ VOS_UINT32 NAS_UTRANCTRL_ProcessMmcMsg(
         return VOS_TRUE;
     }
 #endif
-    ulSupportFddFlg = NAS_MML_IsPlatformSupportUtranFdd();
-    ulSupportTddFlg = NAS_MML_IsPlatformSupportUtranTdd();
 
-    /* 如果FDD或TDD仅支持其一，则不进Utran状态机处理，直接返回VOS_FALSE */
-    if (ulSupportFddFlg != ulSupportTddFlg)
+
+    /* 判断当前是否需要进Utran状态机处理*/
+    if ( VOS_FALSE == NAS_UTRANCTRL_IsNeedUtranCtrlFsmProcMsg(pstMsg))
     {
         return VOS_FALSE;
 

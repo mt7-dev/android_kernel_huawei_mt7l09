@@ -224,7 +224,7 @@ extern int _find_next_bit_be(const unsigned long *p, int size, int offset);
 
 #else
 
-static inline int constant_fls(int x)
+static inline unsigned long constant_fls(unsigned long x)
 {
 	int r = 32;
 
@@ -258,7 +258,7 @@ static inline int constant_fls(int x)
  * the clz instruction for much better code efficiency.
  */
 
-static inline int fls(int x)
+static inline unsigned long fls(unsigned long x)
 {
 	int ret;
 

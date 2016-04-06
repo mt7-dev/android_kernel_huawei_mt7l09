@@ -37,6 +37,8 @@ extern VOS_BOOL Fc_CdsDlPktDiscard(VOS_UINT8 ucRabId);
    4 全局变量定义
 ******************************************************************************/
 
+/*CDS L2钩包开关*/
+VOS_UINT32  g_ulCdsTraceDataPktFlg = PS_FALSE;
 
 /******************************************************************************
    5 函数实现
@@ -73,6 +75,54 @@ VOS_UINT32 CDS_GUGetDefaultRabId(VOS_UINT8 ucRabId, VOS_UINT8 *pucDeftRabId, MOD
     }
 }
 
+VOS_VOID CDS_TraceIpPktToRabmDataInd(TTF_MEM_ST *pstIpPkt)
+{
+    CDS_RX_SDU_DATA_IND_STRU         *pstTraceMsg;
+    VOS_UINT32                       ulMsgLen;
+    VOS_UINT32                       ulTraceDataLen;
+
+    if (PS_FALSE == g_ulCdsTraceDataPktFlg)
+    {
+        return;
+    }
+
+    if (VOS_NULL_PTR == pstIpPkt)
+    {
+        return;
+    }
+
+    ulTraceDataLen = PS_MIN(pstIpPkt->usUsed,1500);
+    ulMsgLen = ulTraceDataLen + sizeof(CDS_RX_SDU_DATA_IND_STRU) - 4;
+    pstTraceMsg = (CDS_RX_SDU_DATA_IND_STRU *)PS_ALLOC_MSG_ALL_CHECK(UEPS_PID_CDS,ulMsgLen);
+    if (VOS_NULL_PTR == pstTraceMsg)
+    {
+        return;
+    }
+
+    /*初始化消息*/
+    pstTraceMsg->ulSenderCpuId    = VOS_LOCAL_CPUID;
+    pstTraceMsg->ulSenderPid      = WUEPS_PID_PDCP;
+    pstTraceMsg->ulReceiverCpuId  = VOS_LOCAL_CPUID;
+    pstTraceMsg->ulReceiverPid    = WUEPS_PID_RABM;
+
+    /*MsgName需要同ID_PDCP_RABM_TRACE_DATA_IND保持一致*/
+    pstTraceMsg->usMsgName        = 0x8014;
+    pstTraceMsg->ucRbId           = 0xFF;
+    pstTraceMsg->ucPduType        = 0xFF;
+    pstTraceMsg->ucPdcpPid        = 0xFF;
+    pstTraceMsg->usPdcpSn         = 0xFFFF;
+    pstTraceMsg->ulDataLen        = ulTraceDataLen;
+
+    TTF_MemGetHeadData(UEPS_PID_CDS,
+                       pstIpPkt,
+                       pstTraceMsg->aucData,
+                       (VOS_UINT16)ulTraceDataLen);
+
+    (VOS_VOID)OM_TraceMsgHook(pstTraceMsg);
+
+    VOS_FreeMsg(UEPS_PID_CDS,pstTraceMsg);
+    return;
+}
 
 VOS_UINT32 CDS_RxDlSdu(TTF_MEM_ST *pstIpPkt)
 {
@@ -348,6 +398,8 @@ VOS_VOID CDS_LTE_RecvDbgData(TTF_MEM_ST *pstIpPkt)
     {
         return;
     }
+
+    CDS_TraceIpPktToRabmDataInd(pstIpPkt);
 
     /*LTE默认放在Modem0*/
     pstCdsEntity = CDS_GetCdsEntity(MODEM_ID_0);

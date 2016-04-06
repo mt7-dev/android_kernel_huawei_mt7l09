@@ -16,7 +16,6 @@ struct word_at_a_time {
 /* Carl Chatfield / Jan Achrenius G+ version for 32-bit */
 static inline long count_masked_bytes(long mask)
 {
-	/* (000000 0000ff 00ffff ffffff) -> ( 1 1 2 3 ) */
 	long a = (0x0ff0001+mask) >> 23;
 	/* Fix the 1 for 00 case */
 	return a & mask;

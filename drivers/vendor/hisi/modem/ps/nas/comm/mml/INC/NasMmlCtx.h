@@ -12,6 +12,7 @@
 #include "MmcLmmInterface.h"
 
 #include "omringbuffer.h"
+#include "NasErrorLog.h"
 
 
 #ifdef __cplusplus
@@ -45,6 +46,7 @@ extern "C" {
 
 #define NAS_MML_ADDITIONAL_OLD_RAI_IEI_LEN              (6)                     /* ADDITIONAL OLD RAI 选项的IEI的长度值 */
 
+#define NAS_MML_MAX_NORETRYCAUSE_NUM                        (8)
 #define NAS_MML_MAX_LAC_LEN                             (2)                     /* LAC的长度 */
 #define NAS_MML_SIM_FORMAT_PLMN_LEN                     (3)                     /* Sim卡格式的Plmn长度 */
 #define NAS_MML_PLMN_WITH_RAT_UNIT_LEN                  (5)                     /* sim卡中带接入技术网络的基本元素长度，如6F62文件的基本长度单元为5 */
@@ -211,6 +213,7 @@ extern "C" {
 #define NAS_MML_MAX_USER_CFG_IMSI_PLMN_NUM              (6)                     /* 用户配置的最多可支持的USIM/SIM卡的个数 */
 #define NAS_MML_MAX_USER_CFG_EHPLMN_NUM                 (6)                     /* 用户配置的EHplmn的个数 */
 #define NAS_MML_MAX_DISABLED_RAT_PLMN_NUM               (8)                     /* 止接入技术的PLMN ID的最大个数 */
+#define NAS_MML_MAX_ROAMING_REJECT_NO_RETRY_CAUSE_NUM               (8)
 
 #define NAS_MML_MAX_USER_OPLMN_VERSION_LEN               (8)               /* 用户配置的OPLMN版本号最大长度 */
 #define NAS_MML_MAX_USER_OPLMN_IMSI_NUM                  (6)               /* 用户配置的OPLMN最多可支持的USIM/SIM卡的个数 */
@@ -351,6 +354,26 @@ extern "C" {
 
 
 #define NAS_MML_PS_TRANSFER_FROM_MODEM1_TO_MODEM0           (1)
+
+
+#define NAS_MML_CALL_MAX_UMTS_CODEC_TYPE_NUM                (7)
+#define NAS_MML_CALL_UMTS_CODEC_TYPE_AMR                    (5)
+#define NAS_MML_CALL_UMTS_CODEC_TYPE_AMR2                   (6)
+#define NAS_MML_CALL_UMTS_CODEC_TYPE_AMRWB                  (10)
+
+#define NAS_MML_CALL_BC_MAX_SPH_VER_NUM                     (6)
+#define NAS_MML_CALL_BC_VAL_SPH_VER_FR_1                    (0)
+#define NAS_MML_CALL_BC_VAL_SPH_VER_FR_2                    (2)
+#define NAS_MML_CALL_BC_VAL_SPH_VER_FR_3                    (4)
+#define NAS_MML_CALL_BC_VAL_SPH_VER_HR_1                    (1)
+#define NAS_MML_CALL_BC_VAL_SPH_VER_HR_3                    (5)
+#define NAS_MML_CALL_BC_VAL_SPH_VER_FR_5                    (8)
+
+#define NAS_MML_MAX_LOG_EVENT_STATE_NUM                     (60)                /* 保存的入口消息最大值 */
+
+#define NAS_MML_PROTECT_MT_CSFB_PAGING_PROCEDURE_DEFAULT_LEN (35)               /* mt csfb到PAGING RSP发出去或LAU成功的保护定时器时长，单位秒 */
+#define NAS_MML_PROTECT_MT_CSFB_PAGING_PROCEDURE_MIN_LEN (10)                   /* mt csfb到PAGING RSP发出去或LAU成功的保护定时器最短时长 */
+#define NAS_MML_PROTECT_MT_CSFB_PAGING_PROCEDURE_MAX_LEN (60)                   /* mt csfb到PAGING RSP发出去或LAU成功的保护定时器最大时长 */
 
 /*****************************************************************************
   3 枚举定义
@@ -788,6 +811,7 @@ enum NAS_MML_SIM_AUTH_FAIL_ENUM
     NAS_MML_SIM_AUTH_FAIL_SYNC_FAILURE          = 3,
     NAS_MML_SIM_AUTH_FAIL_UMTS_OTHER_FAILURE    = 4,
     NAS_MML_SIM_AUTH_FAIL_GSM_OTHER_FAILURE     = 5,
+    NAS_MML_SIM_AUTH_FAIL_LTE_OTHER_FAILURE     = 6,
     NAS_MML_SIM_AUTH_FAIL_BUTT
 };
 typedef VOS_UINT16 NAS_MML_SIM_AUTH_FAIL_ENUM_UINT16;
@@ -1067,11 +1091,12 @@ enum NAS_MML_SINGLE_DOMAIN_REG_FAIL_ACTION_ENUM
     NAS_MML_SINGLE_DOMAIN_REG_FAIL_ACTION_NORMAL_CAMP_ON                    = 2,            /* 正常驻留 */
     NAS_MML_SINGLE_DOMAIN_REG_FAIL_ACTION_OPTIONAL_PLMN_SELECTION           = 3,            /* 触发可选搜网 */
     NAS_MML_SINGLE_DOMAIN_REG_FAIL_ACTION_LIMITED_CAMP_ON                   = 4,            /* 限制驻留 */
+
+    NAS_MML_SINGLE_DOMAIN_ROAMING_REG_FAIL_ACTION_PLMN_SELECTION            = 5,            /* 在漫游网络上注册发起搜网，在HOME网络上不生效 */
+
     NAS_MML_SINGLE_DOMAIN_REG_FAIL_ACTION_BUTT
 };
 typedef VOS_UINT8 NAS_MML_SINGLE_DOMAIN_REG_FAIL_ACTION_ENUM_UINT8;
-
-
 enum NAS_MML_PS_REG_CONTAIN_DRX_PARA_ENUM
 {
     NAS_MML_LTE_PS_REG_CONTAIN_DRX_PARA                     = 0,                /* LTE ATTACH或TAU携带了DRX参数 */
@@ -1111,7 +1136,7 @@ typedef VOS_UINT8 NAS_MML_NW_IMS_VOICE_CAP_ENUM_UINT8;
 enum NAS_MML_AUTO_SRCH_FLG_TYPE_ENUM
 {
     NAS_MML_AUTO_SRCH_FLG_TYPE_RPLMN_FIRST               = 0,                /* 自动开机或丢网时，先搜RPLMN */
-    NAS_MML_AUTO_SRCH_FLG_TYPE_PLMN_SEL_IND              = 1,      /* PLMN SEL IND文件6FDC中获取PLMN */  
+    NAS_MML_AUTO_SRCH_FLG_TYPE_PLMN_SEL_IND              = 1,      /* PLMN SEL IND文件6FDC中获取PLMN */
     NAS_MML_AUTO_SRCH_FLG_TYPE_HPLMN_FIRST               = 2,                /* 自动开机或丢网时，先搜HPLMN */
     NAS_MML_AUTO_SRCH_FLG_TYPE_RPLMN_WITH_HPLMN_FIRST    = 3,                /* 自动开机或丢网时，先搜RPLMN但此时需带HPLMN */
     NAS_MML_SEARCH_HPLMN_FLG_TYPE_BUTT
@@ -1119,6 +1144,20 @@ enum NAS_MML_AUTO_SRCH_FLG_TYPE_ENUM
 typedef VOS_UINT8 NAS_MML_AUTO_SRCH_FLG_TYPE_ENUM_UINT8;
 
 
+
+/*****************************************************************************
+ 结构名称: NAS_MML_LMM_ACCESS_TYPE_ENUM
+ 协议表格:
+ ASN.1 描述:
+ 结构说明:
+*****************************************************************************/
+enum NAS_MML_LMM_ACCESS_TYPE_ENUM
+{
+    NAS_MML_LMM_ACCESS_TYPE_EUTRAN_TDD      = 0,
+    NAS_MML_LMM_ACCESS_TYPE_EUTRAN_FDD         ,
+    NAS_MML_LMM_ACCESS_TYPE_BUTT
+};
+typedef VOS_UINT8 NAS_MML_LMM_ACCESS_TYPE_ENUM_UINT8;
 
 /*****************************************************************************
   4 全局变量声明
@@ -1155,8 +1194,8 @@ typedef struct
     VOS_UINT8                                   ucSimPsRegStatus;    /* SIM卡PS域的注册结果导致的卡是否有效VOS_TRUE:PS域的卡有效,VOS_FALSE:PS域的卡无效*/
     NAS_MML_ROUTING_UPDATE_STATUS_ENUM_UINT8    enPsUpdateStatus;    /* status of routing update */
     NAS_MML_LOCATION_UPDATE_STATUS_ENUM_UINT8   enCsUpdateStatus;    /* status of location update */
-    VOS_UINT8                                   aucReserve[2];
-
+    VOS_UINT8                                   ucImsiRefreshStatus; /* IMSI Refresh状态，VOS_TRUE表示Refresh，VOS_FALSE表示没有Refresh*/
+    VOS_UINT8                                   aucReserve[1];
 }NAS_MML_SIM_STATUS_STRU;
 
 
@@ -1285,7 +1324,7 @@ typedef struct
 {
     NAS_MML_PLMN_ID_STRU                stPlmnId;                               /* PLMN ID */
     VOS_UINT16                          usSimRat;                               /* SIM卡中支持的接入技术 */
-    VOS_UINT16                          aucReserve[2];
+    VOS_UINT8                           aucReserve[2];
 }NAS_MML_SIM_PLMN_WITH_RAT_STRU;
 
 
@@ -1496,7 +1535,7 @@ typedef struct
 {
     VOS_UINT8                           ucClassmark1;                           /* classmark 1 information */
     VOS_UINT8                           aucClassmark2[NAS_MML_CLASSMARK2_LEN];  /* classmark 2 information */
-    VOS_UINT8                           aucFddClassmark3[NAS_MML_CLASSMARK3_LEN];  /* classmark 3 information 第0位代表实际长度 */    
+    VOS_UINT8                           aucFddClassmark3[NAS_MML_CLASSMARK3_LEN];  /* classmark 3 information 第0位代表实际长度 */
     VOS_UINT8                           aucTddClassmark3[NAS_MML_CLASSMARK3_LEN];  /* classmark 3 information 第0位代表实际长度 */
     NAS_MML_MS_NETWORK_CAPACILITY_STRU  stMsNetworkCapability;                  /* MS network capability*/
     VOS_UINT8                           aucImeisv[NAS_MML_MAX_IMEISV_LEN];      /* IMEISV */
@@ -1542,6 +1581,37 @@ typedef struct
     VOS_UINT8                           aucReserved[1];
 }NAS_MML_3GPP2_RAT_PRIO_STRU;
 
+
+
+typedef struct
+{
+    VOS_UINT8                           ucGsmImsSupportFlag;    /**< GSM IMS使能项,VOS_TRUE :支持，VOS_FALSE :不支持 */
+    VOS_UINT8                           ucUtranImsSupportFlag;  /**< UNTRAN IMS使能项,VOS_TRUE :支持，VOS_FALSE :不支持 */
+    VOS_UINT8                           ucLteImsSupportFlag;    /**< LTE IMS使能项,VOS_TRUE :支持，VOS_FALSE :不支持 */
+    VOS_UINT8                           ucGsmEmsSupportFlag;    /**< GSM EMS使能项,VOS_TRUE :支持，VOS_FALSE :不支持 */
+    VOS_UINT8                           ucUtranEmsSupportFlag;  /**< UNTRAN EMS使能项,VOS_TRUE :支持，VOS_FALSE :不支持 */
+    VOS_UINT8                           ucLteEmsSupportFlag;    /**< LTE EMS使能项,VOS_TRUE :支持，VOS_FALSE :不支持 */
+    VOS_UINT8                           aucReserved[2];
+}NAS_MML_IMS_RAT_SUPPORT_STRU;
+
+
+
+typedef struct
+{
+    VOS_UINT8                           ucVoiceCallOnImsSupportFlag;            /* IMS语音使能项,VOS_TRUE :支持，VOS_FALSE :不支持 */
+    VOS_UINT8                           ucSmsOnImsSupportFlag;                  /* IMS短信使能项,VOS_TRUE :支持，VOS_FALSE :不支持 */
+    VOS_UINT8                           ucVideoCallOnImsSupportFlag;            /* IMS域VIDEO CALL使能项,VOS_TRUE :支持，VOS_FALSE :不支持 */
+    VOS_UINT8                           ucUssdOnImsSupportFlag;                 /* IMS USSD业务使能项，VOS_TRUE :支持，VOS_FALSE :不支持 */
+}NAS_MML_IMS_CAPABILITY_STRU;
+
+
+typedef struct
+{
+    NAS_MML_IMS_RAT_SUPPORT_STRU        stImsRatSupport;
+    NAS_MML_IMS_CAPABILITY_STRU         stImsCapability;
+}NAS_MML_IMS_CONFIG_STRU;
+
+
 typedef struct
 {
 
@@ -1552,21 +1622,23 @@ typedef struct
     VOS_UINT32                                              ulDisableLteRoamFlg;/* 禁止LTE漫游导致的disable LTE标记 */
     NAS_MML_LTE_CS_SERVICE_CFG_ENUM_UINT8                   enLteCsServiceCfg;  /* LTE支持的 cs域业务能力*/
 
-    VOS_UINT8                                               ucImsSupportFlg;    /* IMS是否支持标记,VOS_TRUE:支持,VOS_FALSE:不支持 */
-    VOS_UINT8                                               aucReserve[2];
 
 
     NAS_MML_LTE_UE_USAGE_SETTING_ENUM_UINT8                 enLteUeUsageSetting;
     NAS_MML_VOICE_DOMAIN_PREFERENCE_ENUM_UINT8              enVoiceDomainPreference;
     NAS_MML_MS_MODE_ENUM_UINT8                              enMsMode;           /* 手机模式 */
     VOS_UINT8                                               ucPsAutoAttachFlg;  /* PS自动Attach标志 */
+    VOS_UINT8                                               aucReserve[3];
     NAS_MML_MS_BAND_INFO_STRU                               stMsBand;           /* 当前MS支持的频段 */
     NAS_MML_PLMN_RAT_PRIO_STRU                              stPrioRatList;      /* 接入技术以及优先级 */
 
     NAS_MML_3GPP2_RAT_PRIO_STRU                             st3Gpp2RatList;     /* 3GPP2接入技术以及优先级 */
+    NAS_MML_IMS_CONFIG_STRU                                 stImsConfig;        /* IMS相关配置信息 */
 
     VOS_UINT8                                               ucDelayedCsfbLauFlg;
-    VOS_UINT8                                               aucReserved2[3];
+
+    VOS_UINT8                                               ucSyscfgTriHighRatSrchFlg;
+    VOS_UINT8                                               aucReserved2[2];
 }NAS_MML_MS_SYS_CFG_INFO_STRU;
 
 /*****************************************************************************
@@ -1611,7 +1683,7 @@ typedef struct
     VOS_UINT8                           aucVersion[NAS_MML_MAX_USER_OPLMN_VERSION_LEN];         /* 用户配置的OPMN的版本号 */
     VOS_UINT16                          usOplmnListNum;                                         /* 用户配置的的OPlmn的个数 */
     VOS_UINT8                           ucImsiPlmnListNum;                                      /* 定制的IMSI列表个数 */
-    VOS_UINT8                           aucResv[3];    
+    VOS_UINT8                           aucResv[3];
     NAS_MML_PLMN_ID_STRU                astImsiPlmnList[NAS_MML_MAX_USER_OPLMN_IMSI_NUM];
 }NAS_MML_USER_CFG_OPLMN_INFO_STRU;
 typedef struct
@@ -1693,8 +1765,9 @@ typedef struct
 typedef struct
 {
     VOS_UINT8                           ucActiveFLg;                             /* 该定时器是否使能 */
-    VOS_UINT8                           aucRsv[3];
-    VOS_UINT32                          ulFirstSearchTimeLen;                   /* high prio rat timer定时器第一次的时长 单位:秒 */    
+    VOS_UINT8                           ucTdThreshold;
+    VOS_UINT8                           aucRsv[2];
+    VOS_UINT32                          ulFirstSearchTimeLen;                   /* high prio rat timer定时器第一次的时长 单位:秒 */
     VOS_UINT32                          ulFirstSearchTimeCount;                 /* high prio rat timer定时器第一次时长的搜索次数 */
     VOS_UINT32                          ulNonFirstSearchTimeLen;                /* high prio rat timer定时器非首次次的时长 单位:秒 */
     VOS_UINT32                          ulRetrySearchTimeLen;                   /* high prio rat 搜被中止或不能立即发起重试的时长 单位:秒*/
@@ -1741,17 +1814,17 @@ typedef struct
 
 enum NAS_MML_RAT_FORBIDDEN_LIST_SWITCH_FLAG_ENUM
 {
-    NAS_MML_RAT_FORBIDDEN_LIST_SWITCH_INACTIVE                   = 0,           /* 功能未激活 */                     
-    NAS_MML_RAT_FORBIDDEN_LIST_SWITCH_BLACK                      = 1,           /* 开启黑名单功能 */                 
-    NAS_MML_RAT_FORBIDDEN_LIST_SWITCH_WHITE                      = 2,           /* 开启白名单功能 */ 
+    NAS_MML_RAT_FORBIDDEN_LIST_SWITCH_INACTIVE                   = 0,           /* 功能未激活 */
+    NAS_MML_RAT_FORBIDDEN_LIST_SWITCH_BLACK                      = 1,           /* 开启黑名单功能 */
+    NAS_MML_RAT_FORBIDDEN_LIST_SWITCH_WHITE                      = 2,           /* 开启白名单功能 */
     NAS_MML_RAT_FORBIDDEN_LIST_SWITCH_BUTT
 };
 typedef VOS_UINT8 NAS_MML_RAT_FORBIDDEN_LIST_SWITCH_FLAG_ENUM_UINT8;
 enum NAS_MML_PLATFORM_SUPPORT_RAT_ENUM
 {
-    NAS_MML_PLATFORM_SUPPORT_RAT_GERAN                   = 0,           /* GERAN */                     
-    NAS_MML_PLATFORM_SUPPORT_RAT_UTRAN                   = 1,           /* UTRAN包括WCDMA/TDS-CDMA */                 
-    NAS_MML_PLATFORM_SUPPORT_RAT_EUTRAN                  = 2,           /* E-UTRAN */ 
+    NAS_MML_PLATFORM_SUPPORT_RAT_GERAN                   = 0,           /* GERAN */
+    NAS_MML_PLATFORM_SUPPORT_RAT_UTRAN                   = 1,           /* UTRAN包括WCDMA/TDS-CDMA */
+    NAS_MML_PLATFORM_SUPPORT_RAT_EUTRAN                  = 2,           /* E-UTRAN */
     NAS_MML_PLATFORM_SUPPORT_RAT_BUTT
 };
 typedef VOS_UINT8 NAS_MML_PLATFORM_SUPPORT_RAT_ENUM_UINT8;
@@ -1766,8 +1839,8 @@ typedef struct
 }NAS_MML_RAT_FORBIDDEN_LIST_STRU;
 enum NAS_MML_RAT_CAPABILITY_STATUS_ENUM
 {
-    NAS_MML_RAT_CAPABILITY_STATUS_DISABLE                   = 0,                       
-    NAS_MML_RAT_CAPABILITY_STATUS_REENABLE                  = 1,                      
+    NAS_MML_RAT_CAPABILITY_STATUS_DISABLE                   = 0,
+    NAS_MML_RAT_CAPABILITY_STATUS_REENABLE                  = 1,
     NAS_MML_RAT_CAPABILITY_STATUS_BUTT
 };
 typedef VOS_UINT8 NAS_MML_RAT_CAPABILITY_STATUS_ENUM_UINT8;
@@ -1878,9 +1951,9 @@ typedef struct
 }NAS_MML_DAIL_REJECT_CFG_STRU;
 enum NAS_MML_CHANGE_REG_REJ_CAUSE_TYPE_ENUM
 {
-    NAS_MML_CHANGE_REG_REJ_CAUSE_TYPE_INACTIVE,      /* 功能不生效 */                                             
-    NAS_MML_CHANGE_REG_REJ_CAUSE_TYPE_CS_PS,         /* 修改CS+PS的拒绝原因值 */                                         
-    NAS_MML_CHANGE_REG_REJ_CAUSE_TYPE_CS_ONLY,       /* 仅修改CS域的拒绝原因值 */                                     
+    NAS_MML_CHANGE_REG_REJ_CAUSE_TYPE_INACTIVE,      /* 功能不生效 */
+    NAS_MML_CHANGE_REG_REJ_CAUSE_TYPE_CS_PS,         /* 修改CS+PS的拒绝原因值 */
+    NAS_MML_CHANGE_REG_REJ_CAUSE_TYPE_CS_ONLY,       /* 仅修改CS域的拒绝原因值 */
     NAS_MML_CHANGE_REG_REJ_CAUSE_TYPE_PS_ONLY,       /* 仅修改PS域的拒绝原因值 */
     NAS_MML_CHANGE_REG_REJ_CAUSE_TYPE_BUTT
 };
@@ -1903,6 +1976,22 @@ typedef struct
     NAS_MML_HPLMN_REJ_CAUSE_CHANGED_COUNTER_STRU            stHplmnRejCauseChangedCounter;
 }NAS_MML_CHANGE_REG_REJ_CAUSE_INFO_STRU;
 
+
+typedef struct
+{
+    VOS_UINT8                           ucRelPsSigConFlg; /*是否开启数据域网络防呆功能*/
+    VOS_UINT8                           aucRsv[3];
+    VOS_UINT32                          ulT3340TimerLen;  /* 配置的GMM T3340的时长 单位:秒 */
+}NAS_MML_REL_PS_SIGNAL_CON_INFO_STRU;
+
+
+
+typedef struct
+{
+    VOS_UINT8   ucNoRetryRejectCauseNum;
+    VOS_UINT8   aucNoRetryRejectCause[NAS_MML_MAX_NORETRYCAUSE_NUM];
+    VOS_UINT8   aucReserve[3];
+}NAS_MML_ROAMINGREJECT_NORETYR_CFG_STRU;
 
 typedef struct
 {
@@ -1944,6 +2033,24 @@ typedef struct
     VOS_UINT8                           acReserved[2];
 }NAS_MML_IMS_VOICE_MOBILE_MANAGEMENT;
 
+
+
+typedef struct
+{
+    VOS_UINT8  ucCnt;
+    VOS_UINT8  aucUmtsCodec[NAS_MML_CALL_MAX_UMTS_CODEC_TYPE_NUM];
+}NAS_MML_CALL_UMTS_CODEC_TYPE_STRU;
+
+
+
+typedef struct
+{
+    VOS_UINT8                           ucCodecTypeNum;
+    VOS_UINT8                           aucCodecType[NAS_MML_CALL_BC_MAX_SPH_VER_NUM];
+    VOS_UINT8                           ucReserve;
+}NAS_MML_CALL_GSM_CODEC_TYPE_STRU;
+
+
 typedef struct
 {
     NAS_MML_RPLMN_CFG_INFO_STRU         stRplmnCfg;                             /* RPLMN的定制特性 */
@@ -1969,6 +2076,7 @@ typedef struct
 
     NAS_MML_CHANGE_REG_REJ_CAUSE_INFO_STRU stChangeRegRejCauInfo;
 
+    NAS_MML_ROAMINGREJECT_NORETYR_CFG_STRU  stRoamingRejectNoRetryInfo;
     NAS_MML_RAT_FORBIDDEN_LIST_STRU             stRatForbiddenListInfo;
     NAS_MML_RAT_FORBIDDEN_STATUS_STRU           stRatFirbiddenStatusCfg;
 
@@ -1980,14 +2088,23 @@ typedef struct
     VOS_UINT8                           ucSvlteSupportFlag;
 
     VOS_UINT16                          usDsdsRfShareSupportFlg;
-	
+
     VOS_UINT8                           ucLcEnableFLg;
 
     /* 从NV中读取是否需要强制LAU和IMS移动性管理的nv */
     NAS_MML_IMS_VOICE_MOBILE_MANAGEMENT stImsVoiceMM;
     VOS_UINT8                           uc3GPPUplmnNotPrefFlg;
-    VOS_UINT8                           ucReserve[3];
+    VOS_UINT8                           ucSupportSrvccFlg;
+    VOS_UINT8                           ucReserve[1];
+    VOS_UINT8                           ucHplmnInEplmnDisplayHomeFlg;
 
+    VOS_UINT16                          usMtCsfbPagingProcedureLen;
+ 
+
+    NAS_MML_CALL_UMTS_CODEC_TYPE_STRU   stCallUmtsCodecType;
+    NAS_MML_CALL_GSM_CODEC_TYPE_STRU    stCallGsmCodecType;
+    /*从NV 中读取的网络防呆功能配置的T3340时长*/
+    NAS_MML_REL_PS_SIGNAL_CON_INFO_STRU stRelPsSigConInfo;
 
 }NAS_MML_CUSTOM_CFG_INFO_STRU;
 
@@ -2075,11 +2192,14 @@ typedef struct
 
     NAS_MML_LAI_STRU                    stLai;                                  /* 当前驻留网络的PLMN ID和位置区 */
     VOS_UINT8                           ucRac;                                  /* 当前驻留网络的RAC */
-    VOS_UINT8                           aucReserve[3];
+    NAS_MML_LMM_ACCESS_TYPE_ENUM_UINT8  enLmmAccessType;                        /* 驻留在LTE下的接入模式TDD/FDD */
+    VOS_UINT8                           aucReserve[2];
     NAS_MML_CAMP_CELL_INFO_STRU         stCampCellInfo;                         /* 当前驻留的小区信息 */
     NAS_MML_OPERATOR_NAME_INFO_STRU     stOperatorNameInfo;                     /* 当前驻留的运营商名称信息 */
     NAS_MML_RRC_NCELL_INFO_STRU         stRrcNcellInfo;
 }NAS_MML_CAMP_PLMN_INFO_STRU;
+
+
 typedef struct
 {
     VOS_UINT8                           ucRestrictPagingRsp;          /*是否限制响应寻呼 */
@@ -2194,7 +2314,7 @@ typedef struct
     VOS_UINT8                           ucPsTcServiceFlg;                       /* PS域触发的TC业务是否存在，VOS_FALSE:不存在，VOS_TRUE:存在
                                                                                    CS域触发的TC业务时就直接使用CS域业务连接存在的标志 */
     VOS_UINT8                           ucEmcPdpStatusFlg;                      /* 紧急PDN是否存在标志,VOS_FALSE:不存在,VOS_TRUE:存在 */
-                                                                                   
+
     NAS_MML_CSFB_SERVICE_STATUS_ENUM_UINT8                  enCsfbServiceStatus;/* 标识当前是否在CSFB流程 */
     VOS_UINT8                                               aucReserved[2];
 }NAS_MML_CONN_STATUS_INFO_STRU;
@@ -2205,13 +2325,9 @@ typedef struct
     VOS_UINT8                                               ucImsVoiceAvail;         /* VOS_TRUE:  IMS voice可用
                                                                                         VOS_FALSE: IMS voice不可用 */
     NAS_MML_IMS_NORMAL_REG_STATUS_ENUM_UINT8                enImsNormalRegSta;
-
-    VOS_UINT8                                               aucReserved[2];
+    VOS_UINT8                                               ucImsCallFlg;           /* VOS_TRUE:存在IMS call;VOS_FALSE:不存在IMS call */
+    VOS_UINT8                                               aucReserved[1];
 }NAS_MML_IMS_DOMAIN_INFO_STRU;
-
-
-
-
 typedef struct
 {
     NAS_MML_CAMP_PLMN_INFO_STRU         stCampPlmnInfo;                         /* 当前驻留PLMN信息 */
@@ -2225,7 +2341,7 @@ typedef struct
     NAS_MML_PS_BEARER_CONTEXT_STRU      astPsBearerContext[NAS_MML_MAX_PS_BEARER_NUM];  /* PS承载上下文信息 */
     NAS_MML_EMERGENCY_NUM_LIST_STRU     stEmergencyNumList;
 
-    NAS_MML_IMS_DOMAIN_INFO_STRU        stImsDomainInfo;                        /* IMS域信息 */    
+    NAS_MML_IMS_DOMAIN_INFO_STRU        stImsDomainInfo;                        /* IMS域信息 */
 }NAS_MML_NETWORK_INFO_STRU;
 
 
@@ -2280,10 +2396,55 @@ typedef struct
 }NAS_MML_UE_MAINTAIN_INFO_STRU;
 typedef struct
 {
-    OM_RING_ID                          pstRingBuffer;                          /* MM层的共享缓存 */
     VOS_UINT8                           ucErrLogCtrlFlag;                       /* ERRLOG打开标识 */
-    VOS_UINT8                           ucReserved;                             /* 工程菜单打开标识 */
+    VOS_UINT8                           ucReserved;
     VOS_UINT16                          usAlmLevel;                             /* 故障告警级别 */
+}NAS_MML_ERRLOG_CTRL_INFO_STRU;
+
+
+typedef struct
+{
+    OM_RING_ID                          pstRingBuffer;                          /* MM层的共享缓存 */
+    VOS_UINT32                          ulOverflowCnt;                          /* Ringbuf溢出的次数 */
+}NAS_MML_ERRLOG_BUFF_INFO_STRU;
+
+
+typedef struct
+{
+    NAS_ERR_LOG_CSFB_MT_STATE_ENUM_U32  enCsfbMtState;                          /* CSFB MT状态变量 */
+    VOS_UINT8                           ucEstCnfCsfbMtFailRecordFlag;           /* CSFB MT FAIL记录标记, VOS_TRUE:记录，VOS_FALSE:未记录 */
+    VOS_UINT8                           ucWaitForRrConnRcvEstCnfFlag;           /* VOS_TRUE:在Mm_Cell_S12_E32函数处理中，VOS_FALSE:不在Mm_Cell_S12_E32函数处理中 */
+    VOS_UINT8                           ucReserve[2];
+}NAS_MML_ERRLOG_STATE_INFO_STRU;
+
+/* Added by zwx247453 for CHR optimize, 2015-03-13 begin */
+/*****************************************************************************
+ 结构名    : NAS_MML_ERRLOG_PAGING_INFO_STRU
+ 结构说明  : NAS_MML_ERRLOG_PAGING_INFO_STRU信息
+ 1.日    期   : 2015年03月13日
+   作    者   : zwx247453
+   修改内容   : 新建
+*****************************************************************************/
+typedef struct
+{
+    VOS_UINT8                               ucGMsIdType;
+    VOS_UINT8                               ucGPagingType;
+    VOS_UINT8                               aucReserve1[2];
+    VOS_UINT32                              ulWCnDomainId;
+    VOS_UINT32                              ulWPagingType;
+    VOS_UINT32                              ulWPagingCause;
+    VOS_UINT32                              ulWPagingUeId;
+}NAS_MML_ERRLOG_PAGING_INFO_STRU;
+/* Added by zwx247453 for CHR optimize, 2015-03-13 end */
+
+typedef struct
+{
+    NAS_MML_ERRLOG_CTRL_INFO_STRU       stCtrlInfo;
+    NAS_MML_ERRLOG_BUFF_INFO_STRU       stBuffInfo;
+    NAS_MML_ERRLOG_STATE_INFO_STRU      stStateInfo;
+    /* Added by zwx247453 for CHR optimize, 2015-03-13 begin */
+    NAS_MML_ERRLOG_PAGING_INFO_STRU     stPagingInfo;
+    /* Added by zwx247453 for CHR optimize, 2015-03-13 end */
 }NAS_MML_ERRLOG_MNTN_INFO_STRU;
 
 
@@ -2294,10 +2455,34 @@ typedef struct
 }NAS_MML_FTM_MNTN_INFO_STRU;
 typedef struct
 {
+    VOS_UINT32                          ulReceiveTime;                          /* 接收时间 */
+    VOS_UINT16                          usSendPid;                              /* 发送PID */
+    VOS_UINT16                          usReceivePid;                           /* 接收PID */
+    VOS_UINT16                          usMsgName;                              /* 消息名  */
+    VOS_UINT8                           ucMmcFsmId;                             /* MMC当前状态机标识 */
+    VOS_UINT8                           ucMmcState;                             /* MMC当前状态 */
+    VOS_UINT8                           ucGmmState;                             /* GMM当前状态 */
+    VOS_UINT8                           ucMmState;                              /* MM当前状态 */
+    VOS_UINT8                           aucReserve[2];
+}NAS_MML_EVENT_STATE_STRU;
+
+
+typedef struct
+{
+    NAS_MML_EVENT_STATE_STRU            stEventState[NAS_MML_MAX_LOG_EVENT_STATE_NUM];
+    VOS_UINT32                          ulExitTime;
+    VOS_UINT8                           ucLatestIndex;
+    VOS_UINT8                           ucReserve[3];
+}NAS_MML_LOG_EVENT_STATE_STRU;
+
+
+typedef struct
+{
     NAS_MML_OM_MAINTAIN_INFO_STRU       stOmMaintainInfo;
     NAS_MML_UE_MAINTAIN_INFO_STRU       stUeMaintainInfo;
     NAS_MML_ERRLOG_MNTN_INFO_STRU       stErrLogMntnInfo;
     NAS_MML_FTM_MNTN_INFO_STRU          stFtmMntnInfo;
+    NAS_MML_LOG_EVENT_STATE_STRU        stLogEventState;
 
 }NAS_MML_MAINTAIN_CTX_STRU;
 
@@ -2381,6 +2566,8 @@ VOS_VOID NAS_MML_SetPsServiceBufferStatusFlg(
     VOS_UINT8                           ucPsServiceBufferStatusFlg
 );
 
+VOS_UINT8 NAS_MML_GetPsServiceBufferStatusFlg(VOS_VOID);
+
 VOS_VOID NAS_MML_SetCsEmergencyServiceFlg(
     VOS_UINT8                           ucEmergencyServiceFlg
 );
@@ -2393,6 +2580,15 @@ VOS_VOID NAS_MML_SetPsTcServiceFlg(
 NAS_MML_CS_DOMAIN_INFO_STRU* NAS_MML_GetCsDomainInfo( VOS_VOID );
 
 NAS_MML_LAI_STRU* NAS_MML_GetCsLastSuccLai( VOS_VOID );
+
+VOS_UINT32 NAS_MML_GetCsLastSuccLac( VOS_VOID );
+
+NAS_MML_PLMN_ID_STRU*  NAS_MML_GetCsLastSuccPlmnId( VOS_VOID );
+
+VOS_UINT32  NAS_MML_GetCsLastSuccMcc( VOS_VOID );
+
+VOS_UINT32  NAS_MML_GetCsLastSuccMnc( VOS_VOID );
+
 
 NAS_MML_RAI_STRU* NAS_MML_GetPsLastSuccRai( VOS_VOID );
 
@@ -2516,7 +2712,7 @@ VOS_VOID NAS_MML_SetPreferredRegRejCause_NOT_HPLMN_EHPLMN(
 );
 
 NAS_MML_CHANGE_REG_REJ_CAUSE_TYPE_ENUM_UINT8 NAS_MML_GetChangeRegRejCauFlg(VOS_VOID);
-
+NAS_MML_ROAMINGREJECT_NORETYR_CFG_STRU* NAS_MML_GetRoamingRejectNoRetryCfg( VOS_VOID );
 VOS_UINT8 NAS_MML_GetPreferredRegRejCause_HPLMN_EHPLMN(VOS_VOID);
 
 VOS_UINT8 NAS_MML_GetPreferredRegRejCause_NOT_HPLMN_EHPLMN(VOS_VOID);
@@ -2541,6 +2737,9 @@ NAS_MML_HPLMN_REJ_CAUSE_CHANGED_COUNTER_STRU* NAS_MML_GetHplmnRejCauseChangedCou
 
 VOS_VOID  NAS_MML_InitHplmnRejCauseChangedCounter(
     NAS_MML_HPLMN_REJ_CAUSE_CHANGED_COUNTER_STRU           *pstChangeCounInfo
+);
+VOS_VOID  NAS_MML_InitRoamingRejectNoRetryInfo(
+    NAS_MML_ROAMINGREJECT_NORETYR_CFG_STRU           *pstRetryInfo
 );
 VOS_VOID NAS_MML_SetMsMode(NAS_MML_MS_MODE_ENUM_UINT8 enMsMode);
 
@@ -2585,6 +2784,8 @@ NAS_MML_NETWORK_INFO_STRU* NAS_MML_GetNetworkInfo( VOS_VOID );
 
 NAS_MML_PLMN_LOCK_CFG_INFO_STRU* NAS_MML_GetPlmnLockCfg( VOS_VOID );
 
+NAS_MML_CUSTOM_CFG_INFO_STRU* NAS_MML_GetCustomCfg( VOS_VOID );
+
 NAS_MML_DISABLED_RAT_PLMN_CFG_INFO_STRU* NAS_MML_GetDisabledRatPlmnCfg( VOS_VOID );
 
 
@@ -2604,8 +2805,8 @@ VOS_VOID NAS_MML_SetLteForbiddenStatusFlg( NAS_MML_RAT_CAPABILITY_STATUS_ENUM_UI
 
 VOS_UINT8 NAS_MML_GetImsiInForbiddenListFlg( VOS_VOID );
 
-VOS_VOID NAS_MML_SetImsiInForbiddenListFlg( 
-    VOS_UINT8 ucIsImsiInForbiddenList 
+VOS_VOID NAS_MML_SetImsiInForbiddenListFlg(
+    VOS_UINT8 ucIsImsiInForbiddenList
 );
 
 NAS_MML_PS_DOMAIN_INFO_STRU* NAS_MML_GetPsDomainInfo( VOS_VOID );
@@ -2932,6 +3133,12 @@ VOS_VOID NAS_MML_SetCsUpdateStatus(
 );
 NAS_MML_LOCATION_UPDATE_STATUS_ENUM_UINT8 NAS_MML_GetCsUpdateStatus(VOS_VOID);
 
+VOS_UINT8 NAS_MML_GetImsiRefreshStatus(VOS_VOID);
+
+VOS_VOID NAS_MML_SetImsiRefreshStatus(
+    VOS_UINT8                           ucImsiRefreshStatus
+);
+
 VOS_VOID NAS_MML_SetSimUserPlmnList(
     NAS_MML_SIM_USERPLMN_INFO_STRU      *pstUserPlmnList
 );
@@ -3127,6 +3334,12 @@ NAS_MML_CSFB_SERVICE_STATUS_ENUM_UINT8 NAS_MML_GetCsfbServiceStatus( VOS_VOID );
 NAS_MML_VOICE_DOMAIN_PREFERENCE_ENUM_UINT8 NAS_MML_GetVoiceDomainPreference( VOS_VOID );
 NAS_MML_LTE_UE_USAGE_SETTING_ENUM_UINT8 NAS_MML_GetLteUeUsageSetting( VOS_VOID );
 
+VOS_UINT8 NAS_MML_GetLteImsSupportFlg( VOS_VOID );
+VOS_UINT8 NAS_MML_GetVoiceCallOnImsSupportFlag( VOS_VOID );
+VOS_UINT8 NAS_MML_GetSmsOnImsSupportFlag( VOS_VOID );
+VOS_UINT8 NAS_MML_GetVideoCallOnImsSupportFlag( VOS_VOID );
+VOS_UINT8 NAS_MML_GetUssdOnImsSupportFlag( VOS_VOID );
+
 NAS_MML_TIMER_INFO_ENUM_UINT8 NAS_MML_GetT3412Status(VOS_VOID);
 NAS_MML_TIMER_INFO_ENUM_UINT8 NAS_MML_GetT3423Status(VOS_VOID);
 VOS_VOID NAS_MML_SetCsfbServiceStatus(NAS_MML_CSFB_SERVICE_STATUS_ENUM_UINT8 enCsfbServiceStatus);
@@ -3135,6 +3348,22 @@ VOS_VOID NAS_MML_SetLteUeUsageSetting(
 );
 VOS_VOID NAS_MML_SetVoiceDomainPreference(
     NAS_MML_VOICE_DOMAIN_PREFERENCE_ENUM_UINT8              enVoiceDomainPrefer
+);
+
+VOS_VOID NAS_MML_SetLteImsSupportFlg(
+    VOS_UINT8                           ucImsSupportFlg
+);
+VOS_VOID NAS_MML_SetVoiceCallOnImsSupportFlag(
+    VOS_UINT8                           ucVoiceCallOnImsSupportFlag
+);
+VOS_VOID NAS_MML_SetSmsOnImsSupportFlag(
+    VOS_UINT8                           ucSmsOnImsSupportFlag
+);
+VOS_VOID NAS_MML_SetVideoCallOnImsSupportFlag(
+    VOS_UINT8                           ucVideoCallOnImsSupportFlag
+);
+VOS_VOID NAS_MML_SetUssdOnImsSupportFlag(
+    VOS_UINT8                           ucUssdOnImsSupportFlag
 );
 
 VOS_VOID NAS_MML_SetT3412Status(NAS_MML_TIMER_INFO_ENUM_UINT8 enTimerStatus);
@@ -3325,6 +3554,49 @@ VOS_UINT32 NAS_MML_GetErrLogRingBufContent(
 VOS_UINT32 NAS_MML_GetErrLogRingBufUseBytes(VOS_VOID);
 VOS_VOID NAS_MML_CleanErrLogRingBuf(VOS_VOID);
 VOS_UINT32 NAS_MML_RegFailCauseNeedRecord(NAS_MML_REG_FAIL_CAUSE_ENUM_UINT16 enRegFailCause);
+
+VOS_VOID NAS_MML_SetErrLogCsfbMtState(
+    NAS_ERR_LOG_CSFB_MT_STATE_ENUM_U32  enCsfbMtState
+);
+NAS_ERR_LOG_CSFB_MT_STATE_ENUM_U32 NAS_MML_GetErrLogCsfbMtState(VOS_VOID);
+VOS_UINT32 NAS_MML_GetErrlogOverflowCnt(VOS_VOID);
+VOS_VOID NAS_MML_SetErrlogOverflowCnt(VOS_UINT32 ulOverflowCnt);
+
+/* Added by zwx247453 for CHR optimize, 2015-03-13 begin */
+VOS_VOID NAS_MML_SetErrLogEstCnfCsfbMtFailRecordFlag(
+    VOS_UINT8                           ucEstCnfCsfbMtFailRecordFlag
+);
+VOS_UINT8 NAS_MML_GetErrLogEstCnfCsfbMtFailRecordFlag(VOS_VOID);
+VOS_VOID NAS_MML_SetErrLogWaitForRrConnRcvEstCnfFlag(
+    VOS_UINT8                           ucWaitForRrConnRcvEstCnfFlag
+);
+VOS_UINT8 NAS_MML_GetErrLogWaitForRrConnRcvEstCnfFlag(VOS_VOID);
+VOS_VOID NAS_MML_SetErrLogGMsIdType(
+    VOS_UINT8                               ucGMsIdType
+);
+VOS_UINT8 NAS_MML_GetErrLogGMsIdType(VOS_VOID);
+VOS_VOID NAS_MML_SetErrLogGPagingType(
+    VOS_UINT8                               ucGPagingType
+);
+VOS_UINT8 NAS_MML_GetErrLogGPagingType(VOS_VOID);
+VOS_VOID NAS_MML_SetErrLogWCnDomainId(
+    VOS_UINT32                              ulWCnDomainId
+);
+VOS_UINT32 NAS_MML_GetErrLogWCnDomainId(VOS_VOID);
+VOS_VOID NAS_MML_SetErrLogWPagingType(
+    VOS_UINT32                              ulWPagingType
+);
+VOS_UINT32 NAS_MML_GetErrLogWPagingType(VOS_VOID);
+VOS_VOID NAS_MML_SetErrLogWPagingCause(
+    VOS_UINT32                              ulWPagingCause
+);
+VOS_UINT32 NAS_MML_GetErrLogWPagingCause(VOS_VOID);
+VOS_VOID NAS_MML_SetErrLogWPagingUeId(
+    VOS_UINT32                              ulWPagingUeId
+);
+VOS_UINT32 NAS_MML_GetErrLogWPagingUeId(VOS_VOID);
+VOS_VOID NAS_MML_InitErrLogPagingInfo(VOS_VOID);
+/* Added by zwx247453 for CHR optimize, 2015-03-13 end */
 #endif
 VOS_UINT8 NAS_MML_GetDelayedCsfbLauFlg(VOS_VOID);
 
@@ -3372,7 +3644,7 @@ VOS_VOID  NAS_MML_InitUserCfgOPlmnInfo(
 
 
 
-VOS_VOID  NAS_MML_SetRrcLteNcellExistFlg( 
+VOS_VOID  NAS_MML_SetRrcLteNcellExistFlg(
     VOS_UINT8                           ucLteNcellExist
 );
 
@@ -3380,12 +3652,12 @@ VOS_UINT8  NAS_MML_GetRrcLteNcellExistFlg( VOS_VOID );
 
 VOS_UINT8  NAS_MML_GetRrcUtranNcellExistFlg( VOS_VOID );
 
-VOS_VOID  NAS_MML_SetRrcUtranNcellExistFlg( 
+VOS_VOID  NAS_MML_SetRrcUtranNcellExistFlg(
     VOS_UINT8                           ucUtranNcellExist
 );
 
 VOS_VOID  NAS_MML_SetDsdsRfShareFlg(
-    VOS_UINT16                          usDsdsRfShareFlg    
+    VOS_UINT16                          usDsdsRfShareFlg
 );
 VOS_UINT16 NAS_MML_GetDsdsRfShareFlg(VOS_VOID);
 VOS_VOID NAS_MML_SetGsmBandCapability(
@@ -3407,7 +3679,12 @@ VOS_VOID    NAS_MML_SetImsVoiceAvailFlg(
 
 VOS_UINT8   NAS_MML_GetImsVoiceAvailFlg(VOS_VOID);
 
-VOS_VOID NAS_MML_SetEmcPdpStatusFlg( 
+VOS_VOID    NAS_MML_SetImsCallFlg(
+    VOS_UINT8                                               ucImsCallFlg
+);
+VOS_UINT8   NAS_MML_GetImsCallFlg(VOS_VOID);
+
+VOS_VOID NAS_MML_SetEmcPdpStatusFlg(
     VOS_UINT8                           ucEmcPdpStatusFlg
 );
 VOS_UINT8 NAS_MML_GetEmcPdpStatusFlg( VOS_VOID );
@@ -3422,7 +3699,7 @@ VOS_VOID NAS_MML_SetImsVoiceMMEnableFlg( VOS_UINT8 );
 
 NAS_MML_NW_IMS_VOICE_CAP_ENUM_UINT8 NAS_MML_GetGUNwImsVoiceSupportFlg(VOS_VOID);
 VOS_VOID NAS_MML_SetGUNwImsVoiceSupportFlg(
-    NAS_MML_NW_IMS_VOICE_CAP_ENUM_UINT8 enSupport    
+    NAS_MML_NW_IMS_VOICE_CAP_ENUM_UINT8 enSupport
 );
 
 NAS_MML_NW_IMS_VOICE_CAP_ENUM_UINT8 NAS_MML_GetLteNwImsVoiceSupportFlg(VOS_VOID);
@@ -3444,8 +3721,54 @@ VOS_VOID  NAS_MML_InitHighPrioRatHplmnTimerCfgInfo(
 VOS_UINT8  NAS_MML_GetHighPrioRatHplmnTimerActiveFlg( VOS_VOID );
 
 
+VOS_UINT8 NAS_MML_GetHighPrioRatHplmnTimerTdThreshold( VOS_VOID );
+
 VOS_UINT8 NAS_MML_Get3GPP2UplmnNotPrefFlg( VOS_VOID );
 VOS_VOID NAS_MML_Set3GPP2UplmnNotPrefFlg(VOS_UINT8 uc3GPPUplmnNotPrefFlg);
+
+
+VOS_UINT8 NAS_MML_GetSupportSrvccFlg(VOS_VOID);
+VOS_VOID NAS_MML_SetSupportSrvccFlg(
+    VOS_UINT8 ucSupportSrvccFlg
+);
+
+NAS_MML_CALL_UMTS_CODEC_TYPE_STRU *NAS_MML_CALL_GetCallUmtsCodecType(VOS_VOID);
+VOS_VOID NAS_MML_CALL_SetCallUmtsCodecType(
+    NAS_MML_CALL_UMTS_CODEC_TYPE_STRU        *pstCodecType
+);
+VOS_VOID NAS_MML_CALL_InitCallUmtsCodecType(
+    NAS_MML_CALL_UMTS_CODEC_TYPE_STRU        *pstCodecType
+);
+NAS_MML_CALL_GSM_CODEC_TYPE_STRU *NAS_MML_CALL_GetCallGsmCodeType(VOS_VOID);
+VOS_VOID NAS_MML_CALL_SetCallGsmCodecType(
+    NAS_MML_CALL_GSM_CODEC_TYPE_STRU *pstCodecType
+);
+VOS_VOID NAS_MML_CALL_InitCallGsmCodecType(
+    NAS_MML_CALL_GSM_CODEC_TYPE_STRU *pstCodecType
+);
+VOS_UINT8 NAS_MML_GetSyscfgTriHighRatSrchFlg(VOS_VOID);
+
+VOS_VOID NAS_MML_SetSyscfgTriHighRatSrchFlg(VOS_UINT8 ucSyscfgTriHighRatSrchFlg);
+
+VOS_VOID NAS_MML_AddLogEventState(VOS_UINT16 usSendPid, VOS_UINT16 usReceivePid, VOS_UINT16 usMsgName);
+
+VOS_VOID NAS_MML_UpdateExitTime(VOS_VOID);
+
+VOS_VOID NAS_MML_InitLogEventState(NAS_MML_LOG_EVENT_STATE_STRU *pstLogEventState);
+extern VOS_VOID NAS_MML_SetRelPsSigConFlg(VOS_UINT8 ucRelPsSigConFlg);
+extern VOS_UINT8 NAS_MML_GetRelPsSigConFlg(VOS_VOID);
+extern VOS_VOID NAS_MML_SetRelPsSigConCfg_T3340TimerLen(VOS_UINT32 ulTimerLen);
+extern VOS_UINT32 NAS_MML_GetRelPsSigConCfg_T3340TimerLen(VOS_VOID);
+VOS_VOID  NAS_MML_SetHplmnInEplmnDisplayHomeFlg(
+    VOS_UINT8                           ucHplmnInEplmnDisplayHomeFlg
+);
+
+VOS_UINT8 NAS_MML_GetHplmnInEplmnDisplayHomeFlg(VOS_VOID);
+
+VOS_VOID  NAS_MML_SetProtectMtCsfbPagingProcedureLen(
+    VOS_UINT16                          usMtCsfbPagingProcedureLen
+);
+VOS_UINT16 NAS_MML_GetProtectMtCsfbPagingProcedureLen(VOS_VOID);
 
 #if (VOS_OS_VER == VOS_WIN32)
 #pragma pack()

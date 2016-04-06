@@ -3119,7 +3119,7 @@ static void XGI_SetLockRegs(unsigned short ModeNo, unsigned short ModeIdIndex,
 	/* 0x06 Horizontal Blank end */
 	xgifb_reg_set(pVBInfo->Part1Port, 0x06, 0x03);
 
-	if (!(pVBInfo->VBInfo & DisableCRT2Display)) { /* 030226 bainy */
+	if (!(pVBInfo->VBInfo & DisableCRT2Display)) {
 		if (pVBInfo->VBInfo & SetCRT2ToTV)
 			tempax = pVBInfo->VGAHT;
 		else

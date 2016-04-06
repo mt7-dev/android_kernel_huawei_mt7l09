@@ -78,7 +78,7 @@ enum NV_ITEM_ID_ENUM
     EN_NV_ID_IMS_SS_CONF_CONFIG                     = 0xD211,
     EN_NV_ID_ATTACH_BEARER_RE_ESTABLISH             = 0xD212,
     EN_NV_ID_IMS_SECURITY_CONFIG                    = 0xD213,
-    EN_NV_ID_PS_BEARER_CNTXT_PARA1                  = 0xD214,
+    EN_NV_ID_IMS_MEDIA_PARM_CONFIG                  = 0xD214,
     EN_NV_ID_PS_BEARER_CNTXT_PARA2                  = 0xD215,
     EN_NV_ID_PS_BEARER_CNTXT_PARA3                  = 0xD216,
     EN_NV_ID_PS_BEARER_CNTXT_PARA4                  = 0xD217,
@@ -125,12 +125,13 @@ enum NV_ITEM_ID_ENUM
     EN_NV_ID_UE_RFRD_TYPE                           = 0xD234,
     EN_NV_ID_LTE_IRAT_TDS_CAPABILITY_INFO           = 0xD235,
     EN_NV_ID_UE_EXTBAND_INFO                        = 0xD236,
+    EN_NV_ID_EXTBAND_INFO_WITH_BANDWIDTH		    = 0xD237,
 
     EN_NV_ID_RF_HW                                  = 0xD242,
     EN_NV_ID_USIM_BEGIN                             = 0xD250,
     EN_NV_ID_UST_FILE                               = 0xD251,
     EN_NV_ID_MNC_LEN_FILE                           = 0xD252,
-    EN_NV_ID_FORBIDDEN_PLMN_LIST_FILE               = 0xD253,
+    EN_NV_ID_IMSA_COMM_PARA_CONFIG                  = 0xD253,
     EN_NV_ID_UPLMN_SEL_FILE                         = 0xD254,
     EN_NV_ID_OPLMN_SEL_FILE                         = 0xD255,
     EN_NV_ID_HPLMN_PERI_FILE                        = 0xD256,
@@ -409,6 +410,12 @@ enum NV_ITEM_ID_ENUM
     EN_NV_ID_TDS_MTC_RESEL_PARA                     = 0xD333,
     /* MTC RESEL End */
 
+    /* TL L2 Begin */
+    EN_NV_ID_TL_L2_PARA                     = 0xD334,
+    /* TL L2 End */
+
+
+
     /* R11 NV修改 begin */
      EN_NV_ID_UE_CAP_V1090                          = 0xD340,
      EN_NV_ID_UE_CAP_V1130                          = 0xD341,
@@ -481,6 +488,7 @@ enum NV_ITEM_ID_ENUM
     EN_NV_ID_LTE_TX_UL_ONE_RB_MPR_B19                = 0xD935,
     EN_NV_ID_LTE_TX_PD_PARA_B19                      = 0xD936,
     EN_NV_ID_TX_ET_BAND_PARA_B19                      = 0xD937,
+    EN_NV_ID_LTE_DPDT_ANT_SAR_B19                     = 0xD938,
 
     EN_NV_ID_FTM_CAND_CELL_LIST_B21                 = 0xD940,
     EN_NV_ID_LTE_RX_CALIBRATION_FREQ_B21            = 0xD941,
@@ -528,6 +536,7 @@ enum NV_ITEM_ID_ENUM
     EN_NV_ID_LTE_TX_UL_ONE_RB_MPR_B21               = 0xD975,
     EN_NV_ID_LTE_TX_PD_PARA_B21                     = 0xD976,
     EN_NV_ID_TX_ET_BAND_PARA_B21                     = 0xD977,
+    EN_NV_ID_LTE_DPDT_ANT_SAR_B21                    = 0xD978,
 
     EN_NV_ID_FTM_CAND_CELL_LIST_B2                  = 0xD980,
     EN_NV_ID_LTE_RX_CALIBRATION_FREQ_B2             = 0xD981,
@@ -576,6 +585,7 @@ enum NV_ITEM_ID_ENUM
     EN_NV_ID_LTE_TX_UL_ONE_RB_MPR_B2                = 0xD9b5,
     EN_NV_ID_LTE_TX_PD_PARA_B2                      = 0xD9b6,
     EN_NV_ID_TX_ET_BAND_PARA_B2                     = 0xD9b7,
+    EN_NV_ID_LTE_DPDT_ANT_SAR_B2                    = 0xD9b8,
 
     EN_NV_ID_FTM_CAND_CELL_LIST_B4                  = 0xD9c0,
     EN_NV_ID_LTE_RX_CALIBRATION_FREQ_B4             = 0xD9c1,
@@ -624,7 +634,7 @@ enum NV_ITEM_ID_ENUM
     EN_NV_ID_LTE_TX_UL_ONE_RB_MPR_B4                = 0xD9f5,
     EN_NV_ID_LTE_TX_PD_PARA_B4                      = 0xD9f6,
     EN_NV_ID_TX_ET_BAND_PARA_B4                     = 0xD9f7,
-
+    EN_NV_ID_LTE_DPDT_ANT_SAR_B4                    = 0xD9f8,
 
     EN_NV_ID_FTM_CAND_CELL_LIST_B6                  = 0xDa00,
     EN_NV_ID_LTE_RX_CALIBRATION_FREQ_B6             = 0xDa01,
@@ -673,7 +683,7 @@ enum NV_ITEM_ID_ENUM
     EN_NV_ID_LTE_TX_UL_ONE_RB_MPR_B6                = 0xDa35,
     EN_NV_ID_LTE_TX_PD_PARA_B6                      = 0xDa36,
     EN_NV_ID_TX_ET_BAND_PARA_B6                     = 0xDa37,
-
+    EN_NV_ID_LTE_DPDT_ANT_SAR_B6                    = 0xDa38,
 
     EN_NV_ID_FTM_CAND_CELL_LIST_B9                  = 0xDa40,
     EN_NV_ID_LTE_RX_CALIBRATION_FREQ_B9             = 0xDa41,
@@ -722,6 +732,7 @@ enum NV_ITEM_ID_ENUM
     EN_NV_ID_LTE_TX_UL_ONE_RB_MPR_B9                = 0xDa75,
     EN_NV_ID_LTE_TX_PD_PARA_B9                      = 0xDa76,
     EN_NV_ID_TX_ET_BAND_PARA_B9                     = 0xDa77,
+    EN_NV_ID_LTE_DPDT_ANT_SAR_B9                    = 0xDa78,
 
     EN_NV_ID_FTM_CAND_CELL_LIST_B10                 = 0xDa80,
     EN_NV_ID_LTE_RX_CALIBRATION_FREQ_B10            = 0xDa81,
@@ -770,7 +781,7 @@ enum NV_ITEM_ID_ENUM
     EN_NV_ID_LTE_TX_UL_ONE_RB_MPR_B10               = 0xDab5,
     EN_NV_ID_LTE_TX_PD_PARA_B10                     = 0xDab6,
     EN_NV_ID_TX_ET_BAND_PARA_B10                    = 0xDab7,
-
+    EN_NV_ID_LTE_DPDT_ANT_SAR_B10                   = 0xDab8,
 
     EN_NV_ID_FTM_CAND_CELL_LIST_B11                 = 0xDac0,
     EN_NV_ID_LTE_RX_CALIBRATION_FREQ_B11            = 0xDac1,
@@ -819,7 +830,7 @@ enum NV_ITEM_ID_ENUM
     EN_NV_ID_LTE_TX_UL_ONE_RB_MPR_B11               = 0xDaf5,
     EN_NV_ID_LTE_TX_PD_PARA_B11                     = 0xDaf6,
     EN_NV_ID_TX_ET_BAND_PARA_B11                    = 0xDaf7,
-
+    EN_NV_ID_LTE_DPDT_ANT_SAR_B11                   = 0xDaf8,
 
     EN_NV_ID_FTM_CAND_CELL_LIST_B12                 = 0xDb00,
     EN_NV_ID_LTE_RX_CALIBRATION_FREQ_B12            = 0xDb01,
@@ -868,6 +879,7 @@ enum NV_ITEM_ID_ENUM
     EN_NV_ID_LTE_TX_UL_ONE_RB_MPR_B12               = 0xDb35,
     EN_NV_ID_LTE_TX_PD_PARA_B12                     = 0xDb36,
     EN_NV_ID_TX_ET_BAND_PARA_B12                    = 0xDb37,
+    EN_NV_ID_LTE_DPDT_ANT_SAR_B12                   = 0xDb38,
 
     EN_NV_ID_FTM_CAND_CELL_LIST_B13                 = 0xDb40,
     EN_NV_ID_LTE_RX_CALIBRATION_FREQ_B13            = 0xDb41,
@@ -916,6 +928,7 @@ enum NV_ITEM_ID_ENUM
     EN_NV_ID_LTE_TX_UL_ONE_RB_MPR_B13               = 0xDb75,
     EN_NV_ID_LTE_TX_PD_PARA_B13                     = 0xDb76,
     EN_NV_ID_TX_ET_BAND_PARA_B13                    = 0xDb77,
+    EN_NV_ID_LTE_DPDT_ANT_SAR_B13                   = 0xDb78,
 
     EN_NV_ID_FTM_CAND_CELL_LIST_B14                 = 0xDb80,
     EN_NV_ID_LTE_RX_CALIBRATION_FREQ_B14            = 0xDb81,
@@ -964,6 +977,7 @@ enum NV_ITEM_ID_ENUM
     EN_NV_ID_LTE_TX_UL_ONE_RB_MPR_B14               = 0xDbb5,
     EN_NV_ID_LTE_TX_PD_PARA_B14                     = 0xDbb6,
     EN_NV_ID_TX_ET_BAND_PARA_B14                    = 0xDbb7,
+    EN_NV_ID_LTE_DPDT_ANT_SAR_B14                   = 0xDbb8,
 
     EN_NV_ID_FTM_CAND_CELL_LIST_B17                 = 0xDbc0,
     EN_NV_ID_LTE_RX_CALIBRATION_FREQ_B17            = 0xDbc1,
@@ -1012,6 +1026,7 @@ enum NV_ITEM_ID_ENUM
     EN_NV_ID_LTE_TX_UL_ONE_RB_MPR_B17               = 0xDbf5,
     EN_NV_ID_LTE_TX_PD_PARA_B17                     = 0xDbf6,
     EN_NV_ID_TX_ET_BAND_PARA_B17                    = 0xDbf7,
+    EN_NV_ID_LTE_DPDT_ANT_SAR_B17                   = 0xDbf8,
 
     EN_NV_ID_FTM_CAND_CELL_LIST_B18                 = 0xDc00,
     EN_NV_ID_LTE_RX_CALIBRATION_FREQ_B18            = 0xDc01,
@@ -1060,6 +1075,7 @@ enum NV_ITEM_ID_ENUM
     EN_NV_ID_LTE_TX_UL_ONE_RB_MPR_B18               = 0xDc35,
     EN_NV_ID_LTE_TX_PD_PARA_B18                     = 0xDc36,
     EN_NV_ID_TX_ET_BAND_PARA_B18                    = 0xDc37,
+    EN_NV_ID_LTE_DPDT_ANT_SAR_B18                   = 0xDc38,
 
     EN_NV_ID_FTM_CAND_CELL_LIST_B22                 = 0xDc40,
     EN_NV_ID_LTE_RX_CALIBRATION_FREQ_B22            = 0xDc41,
@@ -1108,6 +1124,7 @@ enum NV_ITEM_ID_ENUM
     EN_NV_ID_LTE_TX_UL_ONE_RB_MPR_B22               = 0xDc75,
     EN_NV_ID_LTE_TX_PD_PARA_B22                     = 0xDC36,
     EN_NV_ID_TX_ET_BAND_PARA_B22                    = 0xDc77,
+    EN_NV_ID_LTE_DPDT_ANT_SAR_B22                   = 0xDc78,
 
     EN_NV_ID_FTM_CAND_CELL_LIST_B23                 = 0xDc80,
     EN_NV_ID_LTE_RX_CALIBRATION_FREQ_B23            = 0xDc81,
@@ -1156,6 +1173,7 @@ enum NV_ITEM_ID_ENUM
     EN_NV_ID_LTE_TX_UL_ONE_RB_MPR_B23               = 0xDcb5,
     EN_NV_ID_LTE_TX_PD_PARA_B23                     = 0xDcb6,
     EN_NV_ID_TX_ET_BAND_PARA_B23                    = 0xDcb7,
+    EN_NV_ID_LTE_DPDT_ANT_SAR_B23                   = 0xDcb8,
 
     EN_NV_ID_FTM_CAND_CELL_LIST_B24                 = 0xDcc0,
     EN_NV_ID_LTE_RX_CALIBRATION_FREQ_B24            = 0xDcc1,
@@ -1204,6 +1222,7 @@ enum NV_ITEM_ID_ENUM
     EN_NV_ID_LTE_TX_UL_ONE_RB_MPR_B24               = 0xDcf5,
     EN_NV_ID_LTE_TX_PD_PARA_B24                     = 0xDcf6,
     EN_NV_ID_TX_ET_BAND_PARA_B24                    = 0xDcf7,
+    EN_NV_ID_LTE_DPDT_ANT_SAR_B24                   = 0xDcf8,
 
     EN_NV_ID_FTM_CAND_CELL_LIST_B25                 = 0xDd00,
     EN_NV_ID_LTE_RX_CALIBRATION_FREQ_B25            = 0xDd01,
@@ -1252,6 +1271,7 @@ enum NV_ITEM_ID_ENUM
     EN_NV_ID_LTE_TX_UL_ONE_RB_MPR_B25               = 0xDd35,
     EN_NV_ID_LTE_TX_PD_PARA_B25                     = 0xDd36,
     EN_NV_ID_TX_ET_BAND_PARA_B25                    = 0xDd37,
+    EN_NV_ID_LTE_DPDT_ANT_SAR_B25                   = 0xDd38,
 
     EN_NV_ID_FTM_CAND_CELL_LIST_B33                 = 0xDd40,
     EN_NV_ID_LTE_RX_CALIBRATION_FREQ_B33            = 0xDd41,
@@ -1300,6 +1320,7 @@ enum NV_ITEM_ID_ENUM
     EN_NV_ID_LTE_TX_UL_ONE_RB_MPR_B33               = 0xDd75,
     EN_NV_ID_LTE_TX_PD_PARA_B33                     = 0xDd76,
     EN_NV_ID_TX_ET_BAND_PARA_B33                    = 0xDd77,
+    EN_NV_ID_LTE_DPDT_ANT_SAR_B33                   = 0xDd78,
 
     EN_NV_ID_FTM_CAND_CELL_LIST_B34                 = 0xDd80,
     EN_NV_ID_LTE_RX_CALIBRATION_FREQ_B34            = 0xDd81,
@@ -1348,6 +1369,7 @@ enum NV_ITEM_ID_ENUM
     EN_NV_ID_LTE_TX_UL_ONE_RB_MPR_B34               = 0xDdb5,
     EN_NV_ID_LTE_TX_PD_PARA_B34                     = 0xDdb6,
     EN_NV_ID_TX_ET_BAND_PARA_B34                    = 0xDdb7,
+    EN_NV_ID_LTE_DPDT_ANT_SAR_B34                   = 0xDdb8,
 
     EN_NV_ID_FTM_CAND_CELL_LIST_B35                 = 0xDdc0,
     EN_NV_ID_LTE_RX_CALIBRATION_FREQ_B35            = 0xDdc1,
@@ -1396,6 +1418,7 @@ enum NV_ITEM_ID_ENUM
     EN_NV_ID_LTE_TX_UL_ONE_RB_MPR_B35               = 0xDdf5,
     EN_NV_ID_LTE_TX_PD_PARA_B35                     = 0xDdf6,
     EN_NV_ID_TX_ET_BAND_PARA_B35                    = 0xDdf7,
+    EN_NV_ID_LTE_DPDT_ANT_SAR_B35                   = 0xDdf8,
 
     EN_NV_ID_FTM_CAND_CELL_LIST_B36                 = 0xDe00,
     EN_NV_ID_LTE_RX_CALIBRATION_FREQ_B36            = 0xDe01,
@@ -1444,6 +1467,7 @@ enum NV_ITEM_ID_ENUM
     EN_NV_ID_LTE_TX_UL_ONE_RB_MPR_B36               = 0xDe35,
     EN_NV_ID_LTE_TX_PD_PARA_B36                     = 0xDe36,
     EN_NV_ID_TX_ET_BAND_PARA_B36                    = 0xDe37,
+    EN_NV_ID_LTE_DPDT_ANT_SAR_B36                   = 0xDe38,
 
     EN_NV_ID_FTM_CAND_CELL_LIST_B37                 = 0xDe40,
     EN_NV_ID_LTE_RX_CALIBRATION_FREQ_B37            = 0xDe41,
@@ -1492,6 +1516,7 @@ enum NV_ITEM_ID_ENUM
     EN_NV_ID_LTE_TX_UL_ONE_RB_MPR_B37               = 0xDe75,
     EN_NV_ID_LTE_TX_PD_PARA_B37                     = 0xDe76,
     EN_NV_ID_TX_ET_BAND_PARA_B37                    = 0xDe77,
+    EN_NV_ID_LTE_DPDT_ANT_SAR_B37                   = 0xDe78,
 
     EN_NV_ID_FTM_CAND_CELL_LIST_B42                 = 0xDe80,
     EN_NV_ID_LTE_RX_CALIBRATION_FREQ_B42            = 0xDe81,
@@ -1540,6 +1565,7 @@ enum NV_ITEM_ID_ENUM
     EN_NV_ID_LTE_TX_UL_ONE_RB_MPR_B42               = 0xDeb5,
     EN_NV_ID_LTE_TX_PD_PARA_B42						=0xDeb6,
     EN_NV_ID_TX_ET_BAND_PARA_B42                    = 0xDeb7,
+    EN_NV_ID_LTE_DPDT_ANT_SAR_B42                   = 0xDeb8,
 
     EN_NV_ID_FTM_CAND_CELL_LIST_B43                 = 0xDec0,
     EN_NV_ID_LTE_RX_CALIBRATION_FREQ_B43            = 0xDec1,
@@ -1588,6 +1614,7 @@ enum NV_ITEM_ID_ENUM
     EN_NV_ID_LTE_TX_UL_ONE_RB_MPR_B43               = 0xDef5,
     EN_NV_ID_LTE_TX_PD_PARA_B43						= 0xDef6,
     EN_NV_ID_TX_ET_BAND_PARA_B43                     = 0xDef7,
+    EN_NV_ID_LTE_DPDT_ANT_SAR_B43                   = 0xDef8,
 
     EN_NV_ID_FTM_CAND_CELL_LIST_B39                 = 0xDf00,
     EN_NV_ID_LTE_RX_CALIBRATION_FREQ_B39            = 0xDf01,
@@ -1636,6 +1663,7 @@ enum NV_ITEM_ID_ENUM
     EN_NV_ID_LTE_TX_UL_ONE_RB_MPR_B39               = 0xDf35,
     EN_NV_ID_LTE_TX_PD_PARA_B39                     = 0xDf36,
     EN_NV_ID_TX_ET_BAND_PARA_B39                    = 0xDf37,
+    EN_NV_ID_LTE_DPDT_ANT_SAR_B39                   = 0xDf38,
 
 
 
@@ -1686,6 +1714,7 @@ enum NV_ITEM_ID_ENUM
     EN_NV_ID_LTE_TX_UL_ONE_RB_MPR_B20               = 0xD635,
     EN_NV_ID_LTE_TX_PD_PARA_B20                     = 0xD636,
     EN_NV_ID_TX_ET_BAND_PARA_B20                    = 0xD637,
+    EN_NV_ID_LTE_DPDT_ANT_SAR_B20                   = 0xD638,
 
     EN_NV_ID_FTM_CAND_CELL_LIST_B40                 = 0xD640,
     EN_NV_ID_LTE_RX_CALIBRATION_FREQ_B40            = 0xD641,
@@ -1734,6 +1763,7 @@ enum NV_ITEM_ID_ENUM
     EN_NV_ID_LTE_TX_UL_ONE_RB_MPR_B40               = 0xD675,
     EN_NV_ID_LTE_TX_PD_PARA_B40                     = 0xD676,
     EN_NV_ID_TX_ET_BAND_PARA_B40                    = 0xD677,
+    EN_NV_ID_LTE_DPDT_ANT_SAR_B40                   = 0xD678,
 
     EN_NV_ID_FTM_CAND_CELL_LIST_B38                 = 0xD680,
     EN_NV_ID_LTE_RX_CALIBRATION_FREQ_B38            = 0xD681,
@@ -1783,6 +1813,8 @@ enum NV_ITEM_ID_ENUM
     EN_NV_ID_LTE_TX_PD_PARA_B38                     = 0xD6b6,
     EN_NV_ID_TX_ET_BAND_PARA_B38                    = 0xD6b7,
 
+    EN_NV_ID_LTE_DPDT_ANT_SAR_B38                   = 0xD6b8,
+
     EN_NV_ID_FTM_CAND_CELL_LIST_B41                 = 0xD6c0,
     EN_NV_ID_LTE_RX_CALIBRATION_FREQ_B41            = 0xD6c1,
     EN_NV_ID_LTE_TX_CALIBRATION_FREQ_B41            = 0xD6c2,
@@ -1830,6 +1862,7 @@ enum NV_ITEM_ID_ENUM
     EN_NV_ID_LTE_TX_UL_ONE_RB_MPR_B41               = 0xD6f5,
     EN_NV_ID_LTE_TX_PD_PARA_B41                     = 0xD6f6,
     EN_NV_ID_TX_ET_BAND_PARA_B41                    = 0xD6f7,
+    EN_NV_ID_LTE_DPDT_ANT_SAR_B41                   = 0xD6f8,
 
     EN_NV_ID_FTM_CAND_CELL_LIST_B7                  = 0xD700,
     EN_NV_ID_LTE_RX_CALIBRATION_FREQ_B7             = 0xD701,
@@ -1878,6 +1911,7 @@ enum NV_ITEM_ID_ENUM
     EN_NV_ID_LTE_TX_UL_ONE_RB_MPR_B7               = 0xD735,
     EN_NV_ID_LTE_TX_PD_PARA_B7                      = 0xD736,
     EN_NV_ID_TX_ET_BAND_PARA_B7                    = 0xD737,
+    EN_NV_ID_LTE_DPDT_ANT_SAR_B7                   = 0xD738,
 
     EN_NV_ID_FTM_CAND_CELL_LIST_B3                  = 0xD800,
     EN_NV_ID_LTE_RX_CALIBRATION_FREQ_B3             = 0xD801,
@@ -1926,6 +1960,7 @@ enum NV_ITEM_ID_ENUM
     EN_NV_ID_LTE_TX_UL_ONE_RB_MPR_B3               = 0xD835,
     EN_NV_ID_LTE_TX_PD_PARA_B3                      = 0xD836,
     EN_NV_ID_TX_ET_BAND_PARA_B3                     = 0xD837,
+    EN_NV_ID_LTE_DPDT_ANT_SAR_B3                    = 0xD838,
 
     EN_NV_ID_FTM_CAND_CELL_LIST_B1                  = 0xD840,
     EN_NV_ID_LTE_RX_CALIBRATION_FREQ_B1             = 0xD841,
@@ -1974,6 +2009,7 @@ enum NV_ITEM_ID_ENUM
     EN_NV_ID_LTE_TX_UL_ONE_RB_MPR_B1                = 0xD875,
     EN_NV_ID_LTE_TX_PD_PARA_B1                      = 0xD876,
     EN_NV_ID_TX_ET_BAND_PARA_B1                     = 0xD877,
+    EN_NV_ID_LTE_DPDT_ANT_SAR_B1                    = 0xD878,
 
     EN_NV_ID_FTM_CAND_CELL_LIST_B5                  = 0xD880,
     EN_NV_ID_LTE_RX_CALIBRATION_FREQ_B5             = 0xD881,
@@ -2022,6 +2058,7 @@ enum NV_ITEM_ID_ENUM
     EN_NV_ID_LTE_TX_UL_ONE_RB_MPR_B5               = 0xD8b5,
     EN_NV_ID_LTE_TX_PD_PARA_B5                      = 0xD8b6,
     EN_NV_ID_TX_ET_BAND_PARA_B5                     = 0xD8b7,
+    EN_NV_ID_LTE_DPDT_ANT_SAR_B5                    = 0xD8b8,
 
     EN_NV_ID_FTM_CAND_CELL_LIST_B8                  = 0xD8c0,
     EN_NV_ID_LTE_RX_CALIBRATION_FREQ_B8             = 0xD8c1,
@@ -2070,6 +2107,7 @@ enum NV_ITEM_ID_ENUM
     EN_NV_ID_LTE_TX_UL_ONE_RB_MPR_B8               = 0xD8f5,
     EN_NV_ID_LTE_TX_PD_PARA_B8                      = 0xD8f6,
     EN_NV_ID_TX_ET_BAND_PARA_B8                     = 0xD8f7,
+    EN_NV_ID_LTE_DPDT_ANT_SAR_B8                    = 0xD8f8,
 
 /*Band28 相关NV 项*/
 	EN_NV_ID_FTM_CAND_CELL_LIST_B28                  = 0xDf40,
@@ -2119,6 +2157,8 @@ enum NV_ITEM_ID_ENUM
     EN_NV_ID_LTE_TX_UL_ONE_RB_MPR_B28               = 0xDf75,
     EN_NV_ID_LTE_TX_PD_PARA_B28                     = 0xDf76,
     EN_NV_ID_TX_ET_BAND_PARA_B28                    = 0xDf77,
+    EN_NV_ID_LTE_DPDT_ANT_SAR_B28                   = 0xDf78,
+
 /* 非标频段begin */
        /* EN_NV_ID_FTM_CAND_CELL_LIST_BNon1                 = 0xDf40,
     EN_NV_ID_LTE_RX_CALIBRATION_FREQ_BNon1            = 0xDf41,
@@ -2208,6 +2248,7 @@ enum NV_ITEM_ID_ENUM
     EN_NV_ID_LTE_TX_UL_ONE_RB_MPR_B128                = 0xDfb5,
     EN_NV_ID_LTE_TX_PD_PARA_B128                       = 0xDfb6,
     EN_NV_ID_TX_ET_BAND_PARA_B128                      = 0xDfb7,
+    EN_NV_ID_LTE_DPDT_ANT_SAR_B128                     = 0xDfb8,
 
 #if 0
     EN_NV_ID_FTM_CAND_CELL_LIST_BNon2                 = 0xDf80,
@@ -4928,6 +4969,11 @@ enum NV_ITEM_ID_ENUM
     EN_NV_ID_TX_FILTER_CMP                          = 0xD3E3,
 
     EN_NV_ID_LPHY_PD_COMM_PARA                      = 0xD3E5,
+    EN_NV_ID_FE_ADDED_MIPI_INFO                     = 0xD4FB, /*mipi*/
+    EN_NV_EXT_TCXO_STATE_STRU                       = 0xD4FD,
+
+    EN_NV_ID_FE_RFIC_S_INIT                         = 0xD4FE,
+
     EN_NV_ID_FE_NOTCH_INFO                          = 0xD4FF, /*notch*/
     EN_NV_ID_FE_BASIC_INFO                          = 0xD500,
     EN_NV_ID_FE_RFIC_INIT                           = 0xD501,

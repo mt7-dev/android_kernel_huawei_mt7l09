@@ -1376,6 +1376,8 @@ VOS_VOID  NAS_MMC_InitFsmCtx_PlmnSelection(VOS_VOID)
 
     NAS_MMC_SetCurrSearchingPlmn_PlmnSelection(&stInvalidPlmnId);
 
+    NAS_MMC_SetExistRplmnOrHplmnFlag_PlmnSelection(VOS_FALSE);
+
     return;
 }
 VOS_VOID  NAS_MMC_InitFsmCtx_AnyCellSearch(VOS_VOID)
@@ -1579,6 +1581,8 @@ VOS_VOID  NAS_MMC_InitPlmnSearchCtrlCtx(
     NAS_MMC_SetRegCtrl(NAS_MMC_REG_CONTROL_BY_3GPP_MMC);
 
     NAS_MMC_SetAsAnyCampOn(VOS_FALSE);
+
+    NAS_MMC_InitUserDPlmnNPlmnInfo(&pstPlmnSearchCtrl->stDplmnNplmnInfo);
 }
 
 /*****************************************************************************
@@ -1946,6 +1950,19 @@ NAS_MMC_PLMN_REG_REJ_CTX_STRU *NAS_MMC_GetPlmnRegRejInfo(VOS_VOID)
 NAS_MMC_SERVICE_INFO_CTX_STRU *NAS_MMC_GetServiceInfo(VOS_VOID)
 {
     return &(NAS_MMC_GetMmcCtxAddr()->stServiceInfo);
+}
+
+
+
+NAS_MMC_SERVICE_ENUM_UINT8 NAS_MMC_GetCurrCsService(VOS_VOID)
+{
+    return (NAS_MMC_GetMmcCtxAddr()->stServiceInfo.enCsCurrService);
+}
+
+
+NAS_MMC_SERVICE_ENUM_UINT8 NAS_MMC_GetCurrPsService(VOS_VOID)
+{
+    return (NAS_MMC_GetMmcCtxAddr()->stServiceInfo.enPsCurrService);
 }
 
 
@@ -3477,6 +3494,29 @@ VOS_VOID NAS_MMC_SetRelRequestFlag_PlmnSelection(
 
     g_stNasMmcCtx.stCurFsm.unFsmCtx.stPlmnSelectionCtx.ucRelRequestFlg = ucRelRequestFlg;
 }
+VOS_UINT8 NAS_MMC_GetExistRplmnOrHplmnFlag_PlmnSelection(VOS_VOID)
+{
+    /* 如果当前状态机不是PLMN SELECTION */
+    if (NAS_MMC_FSM_PLMN_SELECTION != NAS_MMC_GetCurrFsmId())
+    {
+        NAS_ERROR_LOG(WUEPS_PID_MMC, "NAS_MMC_GetExistRplmnOrHplmnFlag_PlmnSelection,ERROR:FsmId Error");
+    }
+
+    return (g_stNasMmcCtx.stCurFsm.unFsmCtx.stPlmnSelectionCtx.ucExistRplmnOrHplmnFlag);
+}
+VOS_VOID NAS_MMC_SetExistRplmnOrHplmnFlag_PlmnSelection(
+    VOS_UINT8                           ucExistRplmnOrHplmnFlag
+)
+{
+    /* 如果当前状态机不是PLMN SELECTION */
+    if (NAS_MMC_FSM_PLMN_SELECTION != NAS_MMC_GetCurrFsmId())
+    {
+        NAS_ERROR_LOG(WUEPS_PID_MMC, "NAS_MMC_SetExistRplmnOrHplmnFlag_PlmnSelection,ERROR:FsmId Error");
+    }
+
+    g_stNasMmcCtx.stCurFsm.unFsmCtx.stPlmnSelectionCtx.ucExistRplmnOrHplmnFlag = ucExistRplmnOrHplmnFlag;
+    return;
+}
 VOS_VOID NAS_MMC_SetInterSysSuspendRat_PlmnSelection(
     NAS_MML_NET_RAT_TYPE_ENUM_UINT8     enRat
 )
@@ -3653,6 +3693,59 @@ NAS_MMC_PLMN_SELECTION_LIST_INFO_STRU * NAS_MMC_GetPlmnSelectionListInfo_PlmnSel
 
     return &(g_stNasMmcCtx.stCurFsm.unFsmCtx.stPlmnSelectionCtx.stPlmnSelectionListInfo);
 }
+VOS_UINT8 NAS_MMC_GetSearchedRoamPlmnSortedFlag_PlmnSelection(
+    NAS_MML_NET_RAT_TYPE_ENUM_UINT8     enRat
+)
+{
+    VOS_UINT32                          i;
+
+    /* 如果当前状态机不是PLMN SELECTION */
+    if (NAS_MMC_FSM_PLMN_SELECTION != NAS_MMC_GetCurrFsmId())
+    {
+        NAS_ERROR_LOG(WUEPS_PID_MMC, "NAS_MMC_GetSearchedRoamPlmnSortedFlag_PlmnSelection,ERROR:FsmId Error");
+    }
+
+    /* 查找选网状态机上下文中与enRat相同的接入技术数组 */
+    for (i = 0 ; i < NAS_MML_MAX_RAT_NUM; i++)
+    {
+        if (enRat == (g_stNasMmcCtx.stCurFsm.unFsmCtx.stPlmnSelectionCtx.astSearchRatInfo[i].enRatType))
+        {
+            return g_stNasMmcCtx.stCurFsm.unFsmCtx.stPlmnSelectionCtx.astSearchRatInfo[i].ucSearchedRoamPlmnSortedFlag;
+        }
+    }
+
+    NAS_ERROR_LOG(WUEPS_PID_MMC, "NAS_MMC_GetSearchedRoamPlmnSortedFlag_PlmnSelection,ERROR:enRatType Error");
+
+    return VOS_FALSE;
+}
+
+
+VOS_VOID NAS_MMC_SetSearchedRoamPlmnSortedFlag_PlmnSelection(
+    NAS_MML_NET_RAT_TYPE_ENUM_UINT8     enRat,
+    VOS_UINT8                           ucSearchedRoamPlmnSortedFlag
+)
+{
+    VOS_UINT32                          i;
+
+    /* 如果当前状态机不是PLMN SELECTION */
+    if (NAS_MMC_FSM_PLMN_SELECTION != NAS_MMC_GetCurrFsmId())
+    {
+        NAS_ERROR_LOG(WUEPS_PID_MMC, "NAS_MMC_SetSearchedRoamPlmnSortedFlag_PlmnSelection,ERROR:FsmId Error");
+        return;
+    }
+
+    /* 查找选网状态机上下文中与enRat相同的接入技术数组 */
+    for (i = 0 ; i < NAS_MML_MAX_RAT_NUM; i++)
+    {
+        if (enRat == (g_stNasMmcCtx.stCurFsm.unFsmCtx.stPlmnSelectionCtx.astSearchRatInfo[i].enRatType))
+        {
+            g_stNasMmcCtx.stCurFsm.unFsmCtx.stPlmnSelectionCtx.astSearchRatInfo[i].ucSearchedRoamPlmnSortedFlag = ucSearchedRoamPlmnSortedFlag;
+            return;
+        }
+    }
+}
+
+
 VOS_UINT8 NAS_MMC_GetAllBandSearch_PlmnSelection(
     NAS_MML_NET_RAT_TYPE_ENUM_UINT8     enRat
 )
@@ -3797,6 +3890,140 @@ VOS_VOID NAS_MMC_SetSearchRplmnAndHplmnFlg_PlmnSelection(
 
 
 
+VOS_UINT8 NAS_MMC_GetSearchRplmnAndEplmnFlg_PlmnSelection(
+    NAS_MML_NET_RAT_TYPE_ENUM_UINT8     enRat
+)
+{
+    VOS_UINT32                          i;
+
+    /* 如果当前状态机不是PLMN SELECTION */
+    if (NAS_MMC_FSM_PLMN_SELECTION != NAS_MMC_GetCurrFsmId())
+    {
+        NAS_ERROR_LOG(WUEPS_PID_MMC, "NAS_MMC_GetSearchRplmnAndEplmnFlg_PlmnSelection,ERROR:FsmId Error");
+    }
+
+    /* 查找选网状态机上下文中与enRat相同的接入技术数组 */
+    for (i = 0 ; i < NAS_MML_MAX_RAT_NUM; i++)
+    {
+        if (enRat == (g_stNasMmcCtx.stCurFsm.unFsmCtx.stPlmnSelectionCtx.astSearchRatInfo[i].enRatType))
+        {
+            return g_stNasMmcCtx.stCurFsm.unFsmCtx.stPlmnSelectionCtx.astSearchRatInfo[i].ucSearchRplmnAndEplmnFlg;
+        }
+    }
+
+    NAS_ERROR_LOG(WUEPS_PID_MMC, "NAS_MMC_GetSearchRplmnAndEplmnFlg_PlmnSelection,ERROR:enRatType Error");
+
+    return VOS_FALSE;
+}
+
+
+VOS_VOID NAS_MMC_SetSearchRplmnAndEplmnFlg_PlmnSelection(
+    NAS_MML_NET_RAT_TYPE_ENUM_UINT8     enRat,
+    VOS_UINT8                           ucSearchRplmnAndEplmnFlg
+)
+{
+    VOS_UINT32                          i;
+
+    /* 如果当前状态机不是PLMN SELECTION */
+    if (NAS_MMC_FSM_PLMN_SELECTION != NAS_MMC_GetCurrFsmId())
+    {
+        NAS_ERROR_LOG(WUEPS_PID_MMC, "NAS_MMC_SetSearchRplmnAndEplmnFlg_PlmnSelection,ERROR:FsmId Error");
+        return;
+    }
+
+    /* 查找选网状态机上下文中与enRat相同的接入技术数组 */
+    for (i = 0 ; i < NAS_MML_MAX_RAT_NUM; i++)
+    {
+        if (enRat == (g_stNasMmcCtx.stCurFsm.unFsmCtx.stPlmnSelectionCtx.astSearchRatInfo[i].enRatType))
+        {
+            g_stNasMmcCtx.stCurFsm.unFsmCtx.stPlmnSelectionCtx.astSearchRatInfo[i].ucSearchRplmnAndEplmnFlg = ucSearchRplmnAndEplmnFlg;
+            return;
+        }
+    }
+}
+
+
+/* Modified by c00318887 for DPlmn扩容和优先接入HPLMN, 2015-5-18, begin */
+/*****************************************************************************
+ 函 数 名  : NAS_MMC_GetSearchDplmnAndHplmnFlg_PlmnSelection
+ 功能描述  : 漫游优化方案中开机搜网HPLMN优先，获取是否已经搜过HPLMN的标示
+ 输出参数  : 无
+ 返 回 值  : VOS_VOID
+ 调用函数  :
+ 被调函数  :
+
+ 修改历史      :
+ 1.日    期   : 2015年05月18日
+   作    者   : c00318887
+   修改内容   : 新生成函数
+
+*****************************************************************************/
+VOS_UINT8 NAS_MMC_GetSearchDplmnAndHplmnFlg_PlmnSelection(
+    NAS_MML_NET_RAT_TYPE_ENUM_UINT8     enRat
+)
+{
+    VOS_UINT32                          i;
+
+    /* 如果当前状态机不是PLMN SELECTION */
+    if (NAS_MMC_FSM_PLMN_SELECTION != NAS_MMC_GetCurrFsmId())
+    {
+        NAS_ERROR_LOG(WUEPS_PID_MMC, "NAS_MMC_GetSearchDplmnAndHplmnFlg_PlmnSelection,ERROR:FsmId Error");
+    }
+
+    /* 查找选网状态机上下文中与enRat相同的接入技术数组 */
+    for (i = 0 ; i < NAS_MML_MAX_RAT_NUM; i++)
+    {
+        if (enRat == (g_stNasMmcCtx.stCurFsm.unFsmCtx.stPlmnSelectionCtx.astSearchRatInfo[i].enRatType))
+        {
+            return g_stNasMmcCtx.stCurFsm.unFsmCtx.stPlmnSelectionCtx.astSearchRatInfo[i].ucSearchDplmnAndHplmnFlg;
+        }
+    }
+
+    NAS_ERROR_LOG(WUEPS_PID_MMC, "NAS_MMC_GetSearchDplmnAndHplmnFlg_PlmnSelection,ERROR:enRatType Error");
+
+    return VOS_FALSE;
+}
+
+/*****************************************************************************
+ 函 数 名  : NAS_MMC_SetSearchDplmnAndHplmnFlg_PlmnSelection
+ 功能描述  : 漫游优化方案中开机搜网HPLMN优先，设置是否已经搜过HPLMN的标示
+ 输出参数  : enRat                        - 接入技术
+             ucSwithOnAddHplmnFlg         - 是否已经搜过HPLMN的标示
+ 返 回 值  : VOS_VOID
+ 调用函数  :
+ 被调函数  :
+
+ 修改历史      :
+ 1.日    期   : 2015年05月18日
+   作    者   : c00318887
+   修改内容   : 新生成函数
+*****************************************************************************/
+VOS_VOID NAS_MMC_SetSearchDplmnAndHplmnFlg_PlmnSelection(
+    NAS_MML_NET_RAT_TYPE_ENUM_UINT8     enRat,
+    VOS_UINT8                           ucSearchDplmnAndHplmnFlg
+)
+{
+    VOS_UINT32                          i;
+
+    /* 如果当前状态机不是PLMN SELECTION */
+    if (NAS_MMC_FSM_PLMN_SELECTION != NAS_MMC_GetCurrFsmId())
+    {
+        NAS_ERROR_LOG(WUEPS_PID_MMC, "NAS_MMC_SetSearchDplmnAndHplmnFlg_PlmnSelection,ERROR:FsmId Error");
+        return;
+    }
+
+    /* 查找选网状态机上下文中与enRat相同的接入技术数组 */
+    for (i = 0 ; i < NAS_MML_MAX_RAT_NUM; i++)
+    {
+        if (enRat == (g_stNasMmcCtx.stCurFsm.unFsmCtx.stPlmnSelectionCtx.astSearchRatInfo[i].enRatType))
+        {
+            g_stNasMmcCtx.stCurFsm.unFsmCtx.stPlmnSelectionCtx.astSearchRatInfo[i].ucSearchDplmnAndHplmnFlg = ucSearchDplmnAndHplmnFlg;
+            return;
+        }
+    }
+}
+/* Modified by c00318887 for DPlmn扩容和优先接入HPLMN, 2015-5-18, end */
+
 VOS_VOID NAS_MMC_InitSearchRatInfo_PlmnSelection(VOS_VOID)
 {
     VOS_UINT32                          i;
@@ -3811,6 +4038,13 @@ VOS_VOID NAS_MMC_InitSearchRatInfo_PlmnSelection(VOS_VOID)
         pstSearchRatInfo[i].ucSearchAllBand = VOS_FALSE;
         pstSearchRatInfo[i].enCoverageType  = NAS_MMC_COVERAGE_TYPE_BUTT;
         pstSearchRatInfo[i].ucSearchRplmnAndHplmnFlg   = VOS_FALSE;
+
+        pstSearchRatInfo[i].ucSearchRplmnAndEplmnFlg = VOS_FALSE;
+
+        /* Modified by c00318887 for DPlmn扩容和优先接入HPLMN, 2015-5-18, begin */
+        pstSearchRatInfo[i].ucSearchDplmnAndHplmnFlg = VOS_FALSE;
+        pstSearchRatInfo[i].aucReserved[0]           = 0;
+        /* Modified by c00318887 for DPlmn扩容和优先接入HPLMN, 2015-5-18, end */
     }
 
     i = 0;
@@ -3823,6 +4057,15 @@ VOS_VOID NAS_MMC_InitSearchRatInfo_PlmnSelection(VOS_VOID)
         pstSearchRatInfo[i].ucSearchAllBand = VOS_FALSE;
         pstSearchRatInfo[i].enCoverageType  = NAS_MMC_COVERAGE_TYPE_BUTT;
         pstSearchRatInfo[i].ucSearchRplmnAndHplmnFlg = VOS_FALSE;
+
+        pstSearchRatInfo[i].ucSearchRplmnAndEplmnFlg = VOS_FALSE;
+        
+        /* Modified by c00318887 for DPlmn扩容和优先接入HPLMN, 2015-5-18, begin */
+        pstSearchRatInfo[i].ucSearchDplmnAndHplmnFlg = VOS_FALSE;
+        pstSearchRatInfo[i].aucReserved[0]           = 0;
+        /* Modified by c00318887 for DPlmn扩容和优先接入HPLMN, 2015-5-18, end */
+        
+        pstSearchRatInfo[i].ucSearchedRoamPlmnSortedFlag = VOS_FALSE;
         i++;
     }
 #endif
@@ -3834,6 +4077,14 @@ VOS_VOID NAS_MMC_InitSearchRatInfo_PlmnSelection(VOS_VOID)
         pstSearchRatInfo[i].ucSearchAllBand = VOS_FALSE;
         pstSearchRatInfo[i].enCoverageType  = NAS_MMC_COVERAGE_TYPE_BUTT;
         pstSearchRatInfo[i].ucSearchRplmnAndHplmnFlg = VOS_FALSE;
+
+        pstSearchRatInfo[i].ucSearchRplmnAndEplmnFlg = VOS_FALSE;
+
+        /* Modified by c00318887 for DPlmn扩容和优先接入HPLMN, 2015-5-18, begin */
+        pstSearchRatInfo[i].ucSearchDplmnAndHplmnFlg = VOS_FALSE;
+        pstSearchRatInfo[i].aucReserved[0]           = 0;
+        /* Modified by c00318887 for DPlmn扩容和优先接入HPLMN, 2015-5-18, end */
+        
         i++;
     }
 
@@ -3844,14 +4095,19 @@ VOS_VOID NAS_MMC_InitSearchRatInfo_PlmnSelection(VOS_VOID)
         pstSearchRatInfo[i].ucSearchAllBand = VOS_FALSE;
         pstSearchRatInfo[i].enCoverageType  = NAS_MMC_COVERAGE_TYPE_BUTT;
         pstSearchRatInfo[i].ucSearchRplmnAndHplmnFlg = VOS_FALSE;
+
+        pstSearchRatInfo[i].ucSearchRplmnAndEplmnFlg = VOS_FALSE;
+
+        /* Modified by c00318887 for DPlmn扩容和优先接入HPLMN, 2015-5-18, begin */
+        pstSearchRatInfo[i].ucSearchDplmnAndHplmnFlg = VOS_FALSE;
+        pstSearchRatInfo[i].aucReserved[0]           = 0;
+        /* Modified by c00318887 for DPlmn扩容和优先接入HPLMN, 2015-5-18, end */
+        
         i++;
     }
 
     return;
 }
-
-
-
 NAS_MML_FORBIDPLMN_ROAMING_LAS_INFO_STRU* NAS_MMC_GetForbRoamLaInfo_PlmnSelection(VOS_VOID)
 {
     /* 如果当前状态机不是PLMN SELECTION */
@@ -4988,8 +5244,8 @@ VOS_VOID NAS_MMC_InitHighPrioPlmnSearchCtx(NAS_MMC_HIGH_PRIO_PLMN_SEARCH_CTRL_CT
 
     pstHighPrioPlmnSearchCtrl->ucFirstStartHPlmnTimerFlg                       = VOS_TRUE;
     pstHighPrioPlmnSearchCtrl->enPlmnSelectionListType                         = NAS_MMC_STORE_HIGH_PRIO_PLMN_SELECTION_LIST;
+    pstHighPrioPlmnSearchCtrl->ucTdHighRatSearchCount                          = 0; 
     pstHighPrioPlmnSearchCtrl->aucReserve[0]                                   = 0;
-    pstHighPrioPlmnSearchCtrl->aucReserve[1]                                   = 0;
     
     pstHighPrioPlmnSearchCtrl->stHighPrioPlmnSearchListInfo.usSearchPlmnNum = 0;
     pstHighPrioPlmnSearchCtrl->stHighPrioPlmnSearchListInfo.aucReserve[0]   = 0;
@@ -5036,6 +5292,28 @@ VOS_VOID NAS_MMC_SetPlmnSelectionListType(
 )
 {
     g_stNasMmcCtx.stHighPrioPlmnSearchCtrl.enPlmnSelectionListType = enListType;
+
+    return;
+}
+
+
+VOS_UINT8 NAS_MMC_GetTdHighRatSearchCount(VOS_VOID)
+{
+    return g_stNasMmcCtx.stHighPrioPlmnSearchCtrl.ucTdHighRatSearchCount;   
+}
+
+
+VOS_VOID NAS_MMC_AddTdHighRatSearchCount(VOS_VOID)
+{
+    g_stNasMmcCtx.stHighPrioPlmnSearchCtrl.ucTdHighRatSearchCount++;
+
+    return;
+}
+
+
+VOS_VOID NAS_MMC_InitTdHighRatSearchCount(VOS_VOID)
+{
+    g_stNasMmcCtx.stHighPrioPlmnSearchCtrl.ucTdHighRatSearchCount = 0;
 
     return;
 }
@@ -6317,6 +6595,62 @@ VOS_VOID    NAS_MMC_AddCurHighPrioRatHplmnTimerFirstSearchCount_L1Main(VOS_VOID)
 
     g_stNasMmcCtx.stCurFsm.unFsmCtx.stL1MainCtx.ulCurHighRatHplmnTimerCount++;
 }
+NAS_MMC_DPLMN_NPLMN_CFG_INFO_STRU* NAS_MMC_GetDPlmnNPlmnCfgInfo( VOS_VOID )
+{
+    return &(NAS_MMC_GetMmcCtxAddr()->stPlmnSearchCtrl.stDplmnNplmnInfo);
+}
+
+
+VOS_VOID  NAS_MMC_InitUserDPlmnNPlmnInfo(
+    NAS_MMC_DPLMN_NPLMN_CFG_INFO_STRU                      *pstDPlmnNPlmnCfgInfo
+)
+{
+    VOS_UINT32                          i;
+
+    pstDPlmnNPlmnCfgInfo->ucActiveFlg    = VOS_FALSE;
+    pstDPlmnNPlmnCfgInfo->ucCMCCHplmnNum= 0;
+    pstDPlmnNPlmnCfgInfo->ucUNICOMHplmnNum = 0;
+    pstDPlmnNPlmnCfgInfo->ucCTHplmnNum = 0;
+
+    for ( i = 0 ; i < NAS_MMC_MAX_CFG_HPLMN_NUM; i++ )
+    {
+        pstDPlmnNPlmnCfgInfo->astCMCCHplmnList[i].ulMcc   = NAS_MML_INVALID_MCC;
+        pstDPlmnNPlmnCfgInfo->astCMCCHplmnList[i].ulMnc   = NAS_MML_INVALID_MNC;
+    }
+    for ( i = 0 ; i < NAS_MMC_MAX_CFG_HPLMN_NUM; i++ )
+    {
+        pstDPlmnNPlmnCfgInfo->astUNICOMHplmnList[i].ulMcc   = NAS_MML_INVALID_MCC;
+        pstDPlmnNPlmnCfgInfo->astUNICOMHplmnList[i].ulMnc   = NAS_MML_INVALID_MNC;
+    }
+    for ( i = 0 ; i < NAS_MMC_MAX_CFG_HPLMN_NUM; i++ )
+    {
+        pstDPlmnNPlmnCfgInfo->astCTHplmnList[i].ulMcc   = NAS_MML_INVALID_MCC;
+        pstDPlmnNPlmnCfgInfo->astCTHplmnList[i].ulMnc   = NAS_MML_INVALID_MNC;
+    }
+
+    pstDPlmnNPlmnCfgInfo->usDplmnListNum =0;
+    pstDPlmnNPlmnCfgInfo->usNplmnListNum =0;
+
+    for ( i = 0 ; i < NAS_MMC_MAX_CFG_DPLMN_NUM ; i++ )
+    {
+        pstDPlmnNPlmnCfgInfo->astDPlmnList[i].stSimPlmnWithRat.stPlmnId.ulMcc   = NAS_MML_INVALID_MCC;
+        pstDPlmnNPlmnCfgInfo->astDPlmnList[i].stSimPlmnWithRat.stPlmnId.ulMnc   = NAS_MML_INVALID_MNC;
+        pstDPlmnNPlmnCfgInfo->astDPlmnList[i].stSimPlmnWithRat.usSimRat         = NAS_MML_INVALID_SIM_RAT;
+        pstDPlmnNPlmnCfgInfo->astDPlmnList[i].enRegDomain                       = NAS_MMC_REG_DOMAIN_NONE;
+    }
+
+    for ( i = 0 ; i < NAS_MMC_MAX_CFG_NPLMN_NUM ; i++ )
+    {
+        pstDPlmnNPlmnCfgInfo->astNPlmnList[i].stSimPlmnWithRat.stPlmnId.ulMcc   = NAS_MML_INVALID_MCC;
+        pstDPlmnNPlmnCfgInfo->astNPlmnList[i].stSimPlmnWithRat.stPlmnId.ulMnc   = NAS_MML_INVALID_MNC;
+        pstDPlmnNPlmnCfgInfo->astNPlmnList[i].stSimPlmnWithRat.usSimRat         = NAS_MML_INVALID_SIM_RAT;
+        pstDPlmnNPlmnCfgInfo->astNPlmnList[i].enRegDomain                       = NAS_MMC_REG_DOMAIN_NONE;
+    }
+
+    return;
+}
+
+
 NAS_MMC_REG_CONTROL_ENUM_UINT8 NAS_MMC_GetRegCtrl( VOS_VOID )
 {
     return (NAS_MMC_GetMmcCtxAddr()->stPlmnSearchCtrl.enRegCtrl);

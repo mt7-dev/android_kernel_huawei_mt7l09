@@ -9,7 +9,8 @@
 
 #include    "vos.h"
 #include    "AtImsaInterface.h"
-
+#include    "ImsaEntity.h"
+#include    "ImsaProcImsCallMsg.h"
 
 /*****************************************************************************
   1.1 Cplusplus Announce
@@ -93,6 +94,9 @@ extern VOS_VOID IMSA_SndMsgAtCcwaiSetCnf
 (
     VOS_UINT32 ulResult
 );
+extern VOS_VOID IMSA_SndMsgAtPdpActInd (const IMSA_PDP_CNTXT_INFO_STRU     *pstPdpInfo);
+extern VOS_VOID IMSA_SndMsgAtPdpDeactInd (TAF_PDP_TYPE_ENUM_UINT8             enPdpType);
+extern VOS_VOID IMSA_SndMsgAtMtStatusInd(const IMSA_MT_STATUS_REPORT_STRU    *pstMtReport);
 /*****************************************************************************
   9 OTHERS
 *****************************************************************************/

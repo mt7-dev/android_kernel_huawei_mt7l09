@@ -112,6 +112,7 @@ extern "C" {
 /*-----------------------------------------------------------------------------*/
 /*----------------------------Cause Value--------------------------------------*/
 /*-----------------------------------------------------------------------------*/
+#define  SS_CAUSE_NORMAL_CALL_CLEARING              0x10                        /* Normal Call Clearing */
 #define  SS_CAUSE_NORMAL_UNSPECIFIED                0x9f
 #define  SS_CAUSE_INVALID_TI_VALUE                  0xd1                          /* invalid transaction identifier value             */
 #define  SS_CAUSE_MSG_TYPE_ERR_OR_NOT_IMPLEMENT     0xe1                          /* message type non-existent or not implemented     */

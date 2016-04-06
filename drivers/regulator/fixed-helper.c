@@ -54,8 +54,8 @@ struct platform_device *regulator_register_always_on(int id, const char *name,
 	data->pdev.id = id;
 	data->pdev.dev.platform_data = &data->cfg;
 	data->pdev.dev.release = regulator_fixed_release;
-
-	platform_device_register(&data->pdev);
-
+	
+	(void)platform_device_register(&data->pdev);
+	
 	return &data->pdev;
 }

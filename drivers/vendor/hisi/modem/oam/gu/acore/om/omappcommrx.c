@@ -30,6 +30,11 @@
 #include "DrvInterface.h"
 #include "FileSysInterface.h"
 #include "AtAppVcomInterface.h"
+#include "dms.h"
+
+#if (FEATURE_ON == FEATURE_MERGE_OM_CHAN)
+#include "OmCommonPpm.h"
+#endif
 
 #ifdef __cplusplus
 #if __cplusplus
@@ -39,6 +44,8 @@ extern "C" {
 
 
 #define    THIS_FILE_ID        PS_FILE_ID_OM_COMMRX_C
+
+#if (FEATURE_OFF == FEATURE_MERGE_OM_CHAN)
 
 VOS_UINT32                             g_ulAcpuFTMFlag = VOS_FALSE;
 
@@ -137,11 +144,16 @@ VOS_UINT32 GU_OamPortSend(OM_PROT_HANDLE_ENUM_UINT32 enHandle, VOS_UINT8 *pucDat
     VOS_UINT32          ulOutSlice;
     VOS_UINT32          ulWriteSlice;
     VOS_CHAR            aucUsbLog[100];
-
+#ifndef FEATURE_USB_ZERO_COPY
     stVcom.pBuffer = (VOS_CHAR*)pucData;
     stVcom.u32Size = ulDataLen;
     stVcom.pDrvPriv= VOS_NULL_PTR;
-
+#else
+    stVcom.pVirAddr= pucData;
+    stVcom.pPhyAddr= VOS_NULL_PTR;
+    stVcom.u32Size = ulDataLen;
+    stVcom.pDrvPriv= VOS_NULL_PTR;
+#endif
     g_stAcpuDebugInfo.astPortInfo[enHandle].ulUSBWriteNum1++;
 
     if (VOS_ERROR == g_astOMPortUDIHandle[enHandle])
@@ -286,7 +298,11 @@ VOS_VOID GU_OamPortWriteAsyCB(OM_PROT_HANDLE_ENUM_UINT32 enHandle, VOS_UINT8* pu
 
     return;
 }
+#ifdef FEATURE_USB_ZERO_COPY
+VOS_VOID GU_OamAppWriteDataCB(VOS_UINT8* pucData, VOS_UINT8 *pucPhyAddr, VOS_INT lLen)
+#else
 VOS_VOID GU_OamAppWriteDataCB(VOS_UINT8* pucData, VOS_INT lLen)
+#endif
 {
     GU_OamPortWriteAsyCB(OM_APP_PORT_HANDLE, pucData, lLen);
 
@@ -294,7 +310,11 @@ VOS_VOID GU_OamAppWriteDataCB(VOS_UINT8* pucData, VOS_INT lLen)
 }
 
 
+#ifdef FEATURE_USB_ZERO_COPY
+VOS_VOID GU_OamCtrlWriteDataCB(VOS_UINT8* pucData, VOS_UINT8 *pucPhyAddr, VOS_INT lLen)
+#else
 VOS_VOID GU_OamCtrlWriteDataCB(VOS_UINT8* pucData, VOS_INT lLen)
+#endif
 {
     /*当前只承载OM数据*/
     GU_OamPortWriteAsyCB(OM_CTRL_PORT_HANDLE, pucData, lLen);
@@ -316,7 +336,11 @@ VOS_VOID GU_OamCtrlWriteDataCB(VOS_UINT8* pucData, VOS_INT lLen)
      作    者  : zhuli
      修改内容  : Creat Function
 *****************************************************************************/
+#ifdef FEATURE_USB_ZERO_COPY
+VOS_VOID GU_OamHsicWriteDataCB(VOS_UINT8* pucData, VOS_UINT8 *pucPhyAddr, VOS_INT lLen)
+#else
 VOS_VOID GU_OamHsicWriteDataCB(VOS_UINT8* pucData, VOS_INT lLen)
+#endif
 {
     /*当前只承载OM数据*/
     GU_OamPortWriteAsyCB(OM_HSIC_PORT_HANDLE, pucData, lLen);
@@ -484,6 +508,7 @@ VOS_INT32 GU_OamReadPortData(CPM_PHY_PORT_ENUM_UINT32 enPhyPort, UDI_HANDLE UdiH
     ACM_WR_ASYNC_INFO                   stInfo;
     CPM_PHY_PORT_ENUM_UINT32            enPcvoiceRet;
     CPM_PHY_PORT_ENUM_UINT32            enDiagRet;
+    VOS_CHAR* pdata = NULL;
 
     if (VOS_ERROR == UdiHandle)
     {
@@ -501,9 +526,14 @@ VOS_INT32 GU_OamReadPortData(CPM_PHY_PORT_ENUM_UINT32 enPhyPort, UDI_HANDLE UdiH
 
         return VOS_ERR;
     }
+#ifdef FEATURE_USB_ZERO_COPY
+    pdata = stInfo.pVirAddr;
+#else
+    pdata = stInfo.pBuffer;
+#endif
 
     /*lint -e40*/
-    OM_ACPU_DEBUG_TRACE((VOS_UINT8*)stInfo.pBuffer, stInfo.u32Size, OM_ACPU_USB_CB);
+    OM_ACPU_DEBUG_TRACE((VOS_UINT8*)pdata, stInfo.u32Size, OM_ACPU_USB_CB);
     /*lint +e40*/
 
     /*判断当前是否承载的是Pcvoice*/
@@ -514,7 +544,7 @@ VOS_INT32 GU_OamReadPortData(CPM_PHY_PORT_ENUM_UINT32 enPhyPort, UDI_HANDLE UdiH
         CPM_PnpAppPortCB(enPhyPort, VOS_TRUE);  /*需要重新链接物理和逻辑端口关系*/
     }
 
-    if(VOS_OK != CPM_ComRcv(enPhyPort, (VOS_UINT8*)stInfo.pBuffer, stInfo.u32Size))
+    if(VOS_OK != CPM_ComRcv(enPhyPort, (VOS_UINT8*)pdata, stInfo.u32Size))
     {
         LogPrint1("\r\n Info: GU_OamReadPortData:Call CPM_ComRcv is NULL, PhyPort is %d\n", (VOS_INT)enPhyPort);
     }
@@ -928,11 +958,11 @@ VOS_VOID GU_OamHsicPortInit(VOS_VOID)
 }
 
 
-VOS_INT GU_OamVComReadData(VOS_UINT8 ucDevIndex, VOS_UINT8 *pData, VOS_UINT32 uslength)
+VOS_UINT32 GU_OamVComReadData(VOS_UINT32 ulChan, VOS_UINT8 *pData, VOS_UINT32 uslength)
 {
-    if(ucDevIndex != APP_VCOM_DEV_INDEX_LOG)
+    if(ulChan != DMS_VCOM_OM_CHAN_GU_DATA)
     {
-        vos_printf("\r\n GU_OamVComReadData:PhyPort port is error: %d\n", ucDevIndex);
+        vos_printf("\r\n GU_OamVComReadData:PhyPort port is error: %d\n", ulChan);
 
         return VOS_ERR;
     }
@@ -993,12 +1023,12 @@ VOS_INT GU_OamVComReadData(VOS_UINT8 ucDevIndex, VOS_UINT8 *pData, VOS_UINT32 us
      作    者  : zhuli
      修改内容  : Creat Function
 *****************************************************************************/
-VOS_VOID GU_OamVComStatus(APP_VCOM_EVT_UINT32 enPortState)
+VOS_VOID GU_OamVComStatus(VOS_UINT32 ulChan, VOS_UINT32 enPortState)
 {
-    if(APP_VCOM_EVT_RELEASE == enPortState)
+    if(DMS_CHAN_EVT_CLOSE == enPortState)
     {
         g_stVComDebugInfo.ulVCOMOutNum++;
-        
+
         g_stVComDebugInfo.ulVCOMOutTime = OM_GetSlice();
 
         if (CPM_VCOM_PORT == CPM_QueryPhyPort(CPM_OM_COMM))
@@ -1010,7 +1040,7 @@ VOS_VOID GU_OamVComStatus(APP_VCOM_EVT_UINT32 enPortState)
             g_stAcpuPcToUeSucRecord.stRlsInfo.ulSlice = OM_GetSlice();
         }
     }
-    else if(APP_VCOM_EVT_OPEN == enPortState)
+    else if(DMS_CHAN_EVT_OPEN == enPortState)
     {
         g_stVComDebugInfo.ulVCOMInNum++;
 
@@ -1030,7 +1060,7 @@ VOS_UINT32 GU_OamVComSendData(VOS_UINT8 *pData, VOS_UINT32 uslength)
     g_stVComDebugInfo.ulVCOMSendNum++;
     g_stVComDebugInfo.ulVCOMSendLen += uslength;
 
-    if(VOS_OK != APP_VCOM_Send(APP_VCOM_DEV_INDEX_LOG, pData, uslength))
+    if(VOS_OK != DMS_WriteOmData(DMS_VCOM_OM_CHAN_GU_DATA, pData, uslength))
     {
         g_stVComDebugInfo.ulVCOMSendErrNum++;
         g_stVComDebugInfo.ulVCOMSendErrLen += uslength;
@@ -1095,9 +1125,9 @@ VOS_VOID GU_OamVComPortInit(VOS_VOID)
     sema_init(&g_stVCOMRxBuffSem, 1);
 #endif
 
-    APP_VCOM_RegDataCallback(APP_VCOM_DEV_INDEX_LOG, GU_OamVComReadData);
+    DMS_RegOmChanDataReadCB(DMS_VCOM_OM_CHAN_GU_DATA, GU_OamVComReadData);
 
-    APP_VCOM_RegEvtCallback(APP_VCOM_DEV_INDEX_LOG, GU_OamVComStatus);
+    DMS_RegOmChanEventCB(DMS_VCOM_OM_CHAN_GU_DATA, GU_OamVComStatus);
 
     CPM_PhySendReg(CPM_VCOM_PORT, GU_OamVComSendData);
 
@@ -1420,7 +1450,7 @@ VOS_VOID GU_OmVComInfoShow(VOS_VOID)
 #if (FEATURE_ON == FEATURE_CBT_LOG)
     vos_printf("\r\nVCom CBT LOG Hdlc num is           %d", g_stVComCBTDebugInfo.ulVCOMHdlcEnNum);
     vos_printf("\r\nVCom CBT LOG Hdlc Fail num is      %d", g_stVComCBTDebugInfo.ulVCOMHdlcEnFailNum);
-    
+
     vos_printf("\r\nVCom CBT LOG Send num is           %d", g_stVComCBTDebugInfo.ulVCOMSendNum);
     vos_printf("\r\nVCom CBT LOG Send Len is           %d", g_stVComCBTDebugInfo.ulVCOMSendLen);
 
@@ -1459,7 +1489,7 @@ VOS_VOID OM_AcpuReadNVLog(VOS_VOID)
     {
         vos_printf("g_pstRecordAppToOm is null\n");
         DRV_FILE_CLOSE(fp);
-        
+
         return;
     }
 
@@ -1550,6 +1580,335 @@ VOS_VOID OM_AcpuLogShowToFile(VOS_BOOL bIsSendMsg)
     return;
 }
 
+#else
+
+/*****************************************************************************
+  2 全局变量定义
+*****************************************************************************/
+
+/* 用于ACPU上ICC通道的控制数据列表 */
+OM_ICC_CHANNEL_CTRL_STRU                g_astOMACPUIccCtrlTable[OM_ICC_CHANNEL_BUTT];
+
+/* 用于ACPU上SOCP接收 通道的统计信息 */
+OM_ACPU_DEBUG_INFO                      g_stAcpuDebugInfo={0};
+
+VOS_SPINLOCK                            g_stVosErrLogSendSpinLock;  /* 自旋锁，用来作Err Log上报状态机的临界资源保护 */
+
+/*****************************************************************************
+  3 外部引用声明
+*****************************************************************************/
+
+extern UDI_HANDLE                       g_OSAIccUDIHandle;
+
+extern OM_RECORD_BUF_STRU               g_astAcpuRecordInfo[VOS_EXC_DUMP_MEM_NUM_BUTT];
+
+extern OM_APP_MSG_RECORD_STRU           g_stOmAppMsgRecord;
+
+extern OM_VCOM_DEBUG_INFO               g_stVComDebugInfo[3];
+
+#if(FEATURE_ON == FEATURE_PTM)
+extern struct semaphore                        g_stOmRxErrorLogBuffSem;
+#endif
+
+extern VOS_UINT V_ICC_OSAMsg_CB(VOS_UINT ulChannelID,VOS_INT lLen);
+
+VOS_VOID SCM_LogToFile(FILE *fp);
+VOS_VOID SOCP_LogToFile(FILE *fp);
+
+VOS_INT OM_AcpuReadVComData(VOS_UINT8 ucDevIndex, VOS_UINT8 *pucData, VOS_UINT32 uslength);
+
+VOS_VOID OM_SendAcpuSocpVote(SOCP_VOTE_TYPE_ENUM_U32 enVote);
+
+/*****************************************************************************
+  4 函数实现
+*****************************************************************************/
+
+
+VOS_UINT32 GU_OamSndPcMsgToCcpu(OMRL_RCV_CHAN_CTRL_INFO_STRU *pstCtrlInfo, VOS_UINT8 *pucData, VOS_UINT32 ulSize)
+{
+    VOS_INT32  lResult = VOS_ERROR;
+
+    lResult = BSP_ICC_Write(UDI_ICC_GUOM0, pucData, (VOS_INT32)ulSize);
+
+    /* 由于C核复位，写ICC通道失败会返回一个特殊值，不能复位单板 */
+    if (BSP_ERR_ICC_CCORE_RESETTING == lResult )
+    {
+        LogPrint1("\n# GU_OamSndPcMsgToCcpu Error,Ccore Reset,ulSize %d .\n",(VOS_INT)ulSize);
+
+        return VOS_ERR;
+    }
+
+    /* 当前写操作失败 */
+    if(ulSize != (VOS_UINT32)lResult)
+    {
+        LogPrint2("GU_OamSndPcMsgToCcpu: The ICC UDI Write is Error.Size:%d,lResult:%d\n",(VOS_INT)ulSize,lResult);
+
+        pstCtrlInfo->stPcToUeErrRecord.stICCSendFailInfo.ulICCOmSendErrNum++;
+        pstCtrlInfo->stPcToUeErrRecord.stICCSendFailInfo.ulICCOmSendErrLen += ulSize;
+        pstCtrlInfo->stPcToUeErrRecord.stICCSendFailInfo.ulICCOmSendErrSlice= VOS_GetSlice();
+
+        return VOS_ERR;
+    }
+    pstCtrlInfo->stPcToUeSucRecord.stICCSendSUCInfo.ulICCOmSendMsgNum++;
+    pstCtrlInfo->stPcToUeSucRecord.stICCSendSUCInfo.ulICCOmSendLen += ulSize;
+    pstCtrlInfo->stPcToUeSucRecord.stICCSendSUCInfo.ulICCOmSendSlice= VOS_GetSlice();
+
+    return VOS_OK;
+}
+
+
+VOS_VOID GU_OamErrLogVComPortInit(VOS_VOID)
+{
+#if(FEATURE_ON == FEATURE_PTM)
+    VOS_SpinLockInit(&g_stVosErrLogSendSpinLock);
+
+    /* 商用ERR LOG上报全局变量初始化 */
+    g_stOmAppMsgRecord.ulErrLogReportSend = 0;/* 记录Err Log需要上报组件 */
+    g_stOmAppMsgRecord.ulFTMReportSend    = 0;/* 记录FTM需要上报组件 */
+    g_stOmAppMsgRecord.pulErrorLogModule  = VOS_NULL_PTR;
+    g_stOmAppMsgRecord.pulFTMModule       = VOS_NULL_PTR;
+    g_stOmAppMsgRecord.usModemId          = MODEM_ID_BUTT;
+
+#if (VOS_LINUX == VOS_OS_VER)
+    sema_init(&g_stOmRxErrorLogBuffSem, 1);
+#endif
+
+    /* 注册收Vcom Error log函数给NAS */
+    APP_VCOM_RegDataCallback(APP_VCOM_DEV_INDEX_ERRLOG, OM_AcpuReadVComData);
+#endif
+    return;
+}
+
+
+
+
+
+VOS_UINT GU_OamAcpu_ICCError_CB(VOS_UINT ulChanID, VOS_UINT ulEvent, VOS_VOID* pParam)
+{
+    VOS_UINT32 ulChannelID;
+
+    if(g_astOMACPUIccCtrlTable[OM_OM_ICC_CHANNEL].UDIHdle == ulChanID)
+    {
+        ulChannelID = OM_OM_ICC_CHANNEL;
+    }
+    else if(g_astOMACPUIccCtrlTable[OM_OSA_MSG_ICC_CHANNEL].UDIHdle == ulChanID)
+    {
+        ulChannelID = OM_OSA_MSG_ICC_CHANNEL;
+    }
+    else
+    {
+        LogPrint("GU_OamAcpu_ICCError_CB: The Channel ID is not used by OAM\n");
+
+        return VOS_ERR;
+    }
+
+    LogPrint2("GU_OAMAcpu_ICCError_CB: The Error Channel ID is %d,and Event is %d\n",
+                (VOS_INT32)ulChannelID, (VOS_INT32)ulEvent);
+
+    return VOS_OK;
+}
+
+
+VOS_UINT32 OM_ComRx_ICC_Init(VOS_VOID)
+{
+    VOS_INT32       i;
+
+    /*初始化 ICC通道*/
+    VOS_MemSet(g_astOMACPUIccCtrlTable, 0, sizeof(g_astOMACPUIccCtrlTable));
+
+    for(i=0; i<OM_ICC_CHANNEL_BUTT; i++)
+    {
+        g_astOMACPUIccCtrlTable[i].stUDICtrl.pstICCAttr
+                                    = (ICC_CHAN_ATTR_S*)VOS_MemAlloc(ACPU_PID_OM,
+                                                                     STATIC_MEM_PT,
+                                                                     sizeof(ICC_CHAN_ATTR_S));
+
+        if(VOS_NULL_PTR == g_astOMACPUIccCtrlTable[i].stUDICtrl.pstICCAttr)
+        {
+            LogPrint1("OM_ComRx_ICC_Init: VOS_MemAlloc Failed, Index is %d.\n", i);
+
+            return VOS_ERR;             /*分配内存失败单板会重启，因此不需要释放之前已经申请的内存*/
+        }
+    }
+
+    g_astOMACPUIccCtrlTable[OM_OM_ICC_CHANNEL].stUDICtrl.enICCId                    = UDI_ICC_GUOM0_ID;
+
+    g_astOMACPUIccCtrlTable[OM_OSA_MSG_ICC_CHANNEL].stUDICtrl.enICCId               = UDI_ICC_GUOM4_ID;
+    g_astOMACPUIccCtrlTable[OM_OSA_MSG_ICC_CHANNEL].stUDICtrl.pstICCAttr->read_cb   = V_ICC_OSAMsg_CB;
+
+    for(i=0; i<OM_ICC_CHANNEL_BUTT; i++)
+    {
+        g_astOMACPUIccCtrlTable[i].stUDICtrl.pstICCAttr->u32Priority    = OM_ICC_CHANNEL_PRIORITY;
+        g_astOMACPUIccCtrlTable[i].stUDICtrl.pstICCAttr->u32TimeOut     = OM_ICC_HANDSHAKE_TIME_MAX;
+
+        if( i == OM_OSA_MSG_ICC_CHANNEL)
+        {
+            g_astOMACPUIccCtrlTable[i].stUDICtrl.pstICCAttr->u32FIFOInSize  = OSA_ICC_BUFFER_SIZE;
+            g_astOMACPUIccCtrlTable[i].stUDICtrl.pstICCAttr->u32FIFOOutSize = OSA_ICC_BUFFER_SIZE;
+        }
+        else
+        {
+            g_astOMACPUIccCtrlTable[i].stUDICtrl.pstICCAttr->u32FIFOInSize  = OM_ICC_BUFFER_SIZE;
+            g_astOMACPUIccCtrlTable[i].stUDICtrl.pstICCAttr->u32FIFOOutSize = OM_ICC_BUFFER_SIZE;
+        }
+
+        g_astOMACPUIccCtrlTable[i].stUDICtrl.pstICCAttr->enChanMode     = ICC_CHAN_MODE_PACKET;
+        g_astOMACPUIccCtrlTable[i].stUDICtrl.pstICCAttr->event_cb       = GU_OamAcpu_ICCError_CB;
+
+        g_astOMACPUIccCtrlTable[i].UDIHdle = DRV_UDI_OPEN((UDI_OPEN_PARAM *)&(g_astOMACPUIccCtrlTable[i].stUDICtrl));
+
+        if(VOS_ERROR == g_astOMACPUIccCtrlTable[i].UDIHdle)
+        {
+            /* 打开失败时记录当前ICC通道信息 */
+            DRV_SYSTEM_ERROR(OM_APP_ICC_INIT_ERROR, THIS_FILE_ID, __LINE__,
+                            (VOS_CHAR*)&i, sizeof(VOS_INT32));
+
+            return VOS_ERR;
+        }
+    }
+
+    g_OSAIccUDIHandle = g_astOMACPUIccCtrlTable[OM_OSA_MSG_ICC_CHANNEL].UDIHdle;
+
+    return VOS_OK;
+}
+
+/*****************************************************************************
+ Prototype       : GU_OmAcpuSwitchOnOff
+ Description     : ON or Off Acpu Switch
+ Input           : VOS_UINT32
+ Output          : None
+ Return Value    : None
+
+ History         : ---
+    Date         :
+    Author       :
+    Modification : Created function
+ *****************************************************************************/
+VOS_VOID GU_OmAcpuSwitchOnOff(VOS_UINT32 ulFlag)
+{
+    g_stAcpuCnfCtrlInfo.ulOMSwitchOnOff = ulFlag;
+}
+
+
+
+VOS_VOID OM_AcpuLogShowToFile(VOS_BOOL bIsSendMsg)
+{
+    FILE                               *fp;
+    OM_AUTOCONFIG_CNF_STRU             *pstSendCnf;
+    VOS_UINT32                          ulTemp = 0x5a5a5a5a;
+
+#if(VOS_WIN32 == VOS_OS_VER)
+    VOS_CHAR                  g_acLogPath[] = ".\\yaffs0\\A_OmLog.bin";
+
+#else
+#if (FEATURE_ON == FEATURE_MULTI_FS_PARTITION)
+    VOS_CHAR                  g_acLogPath[] = "/modem_log/A_OmLog.bin";
+
+#else
+    VOS_CHAR                  g_acLogPath[] = "/yaffs0/A_OmLog.bin";
+#endif
+#endif
+
+    fp = DRV_FILE_OPEN(g_acLogPath, "w+");
+
+    if (VOS_NULL_PTR == fp)
+    {
+        return;
+    }
+
+    DRV_FILE_WRITE((VOS_VOID*)&(g_stAcpuCnfCtrlInfo.stPcToUeSucRecord), sizeof(VOS_CHAR), sizeof(g_stAcpuCnfCtrlInfo.stPcToUeSucRecord), fp);
+    DRV_FILE_WRITE((VOS_VOID*)&(g_stAcpuCbtCtrlInfo.stPcToUeSucRecord), sizeof(VOS_CHAR), sizeof(g_stAcpuCbtCtrlInfo.stPcToUeSucRecord), fp);
+    DRV_FILE_WRITE((VOS_VOID*)&ulTemp, sizeof(VOS_CHAR), sizeof(VOS_UINT32), fp);
+    DRV_FILE_WRITE((VOS_VOID*)&(g_stAcpuCnfCtrlInfo.stPcToUeErrRecord), sizeof(VOS_CHAR), sizeof(g_stAcpuCnfCtrlInfo.stPcToUeErrRecord), fp);
+    DRV_FILE_WRITE((VOS_VOID*)&(g_stAcpuCbtCtrlInfo.stPcToUeErrRecord), sizeof(VOS_CHAR), sizeof(g_stAcpuCbtCtrlInfo.stPcToUeErrRecord), fp);
+    DRV_FILE_WRITE((VOS_VOID*)&ulTemp, sizeof(VOS_CHAR), sizeof(VOS_UINT32), fp);
+
+    DRV_FILE_WRITE((VOS_VOID*)&(g_stAcpuTxCnfCtrlInfo.stUeToPcSucRecord), sizeof(VOS_CHAR), sizeof(g_stAcpuTxCnfCtrlInfo.stUeToPcSucRecord), fp);
+    DRV_FILE_WRITE((VOS_VOID*)&(g_stAcpuTxIndCtrlInfo.stUeToPcSucRecord), sizeof(VOS_CHAR), sizeof(g_stAcpuTxIndCtrlInfo.stUeToPcSucRecord), fp);
+    DRV_FILE_WRITE((VOS_VOID*)&ulTemp, sizeof(VOS_CHAR), sizeof(VOS_UINT32), fp);
+    DRV_FILE_WRITE((VOS_VOID*)&(g_stAcpuTxCnfCtrlInfo.stUeToPcErrRecord), sizeof(VOS_CHAR), sizeof(g_stAcpuTxCnfCtrlInfo.stUeToPcErrRecord), fp);
+    DRV_FILE_WRITE((VOS_VOID*)&(g_stAcpuTxIndCtrlInfo.stUeToPcErrRecord), sizeof(VOS_CHAR), sizeof(g_stAcpuTxIndCtrlInfo.stUeToPcErrRecord), fp);
+    DRV_FILE_WRITE((VOS_VOID*)&ulTemp, sizeof(VOS_CHAR), sizeof(VOS_UINT32), fp);
+
+    DRV_FILE_WRITE((VOS_VOID*)&g_stAcpuDebugInfo , sizeof(VOS_CHAR), sizeof(g_stAcpuDebugInfo), fp);
+    DRV_FILE_WRITE((VOS_VOID*)&ulTemp, sizeof(VOS_CHAR), sizeof(VOS_UINT32), fp);
+    DRV_FILE_WRITE((VOS_VOID*)&g_stVComDebugInfo[0], sizeof(VOS_CHAR), sizeof(g_stVComDebugInfo), fp);
+    DRV_FILE_WRITE((VOS_VOID*)&ulTemp, sizeof(VOS_CHAR), sizeof(VOS_UINT32), fp);
+    DRV_FILE_WRITE((VOS_VOID*)g_astAcpuRecordInfo , sizeof(VOS_CHAR), sizeof(g_astAcpuRecordInfo), fp);
+    DRV_FILE_WRITE((VOS_VOID*)&ulTemp, sizeof(VOS_CHAR), sizeof(VOS_UINT32), fp);
+
+    DRV_FILE_WRITE((VOS_VOID*)&g_stAcpuCnfCtrlInfo.ulOMSwitchOnOff , sizeof(VOS_CHAR), sizeof(g_stAcpuCnfCtrlInfo.ulOMSwitchOnOff), fp);
+    DRV_FILE_WRITE((VOS_VOID*)&ulTemp, sizeof(VOS_CHAR), sizeof(VOS_UINT32), fp);
+
+    /* SCM 相关*/
+    SCM_LogToFile(fp);
+    DRV_FILE_WRITE((VOS_VOID*)&ulTemp, sizeof(VOS_CHAR), sizeof(VOS_UINT32), fp);
+
+    /* SOCP 相关*/
+    SOCP_LogToFile(fp);
+    DRV_FILE_WRITE((VOS_VOID*)&ulTemp, sizeof(VOS_CHAR), sizeof(VOS_UINT32), fp);
+    DRV_FILE_CLOSE(fp);
+
+    /* 发送消息給 Acpu */
+    if(VOS_FALSE == bIsSendMsg)
+    {
+        return;
+    }
+
+    pstSendCnf = (OM_AUTOCONFIG_CNF_STRU*)VOS_AllocMsg(ACPU_PID_OMAGENT,
+                            sizeof(OM_AUTOCONFIG_CNF_STRU) - VOS_MSG_HEAD_LENGTH);
+
+    /* 分配消息失败 */
+    if (VOS_NULL_PTR == pstSendCnf)
+    {
+        return;
+    }
+
+    pstSendCnf->ulReceiverPid  = CCPU_PID_OMAGENT;
+    pstSendCnf->usPrimId       = OM_RECORD_DBU_INFO_REQ;
+
+    (VOS_VOID)VOS_SendMsg(ACPU_PID_OMAGENT, pstSendCnf);
+
+    return;
+}
+
+
+VOS_VOID OmAcpuPortInfoShow(OM_PROT_HANDLE_ENUM_UINT32  enHandle)
+{
+    vos_printf("\r\nThe Port Write num 1 is          %d",   g_stAcpuDebugInfo.astPortInfo[enHandle].ulUSBWriteNum1);
+    vos_printf("\r\nThe Port Write num 2 is          %d",   g_stAcpuDebugInfo.astPortInfo[enHandle].ulUSBWriteNum2);
+    vos_printf("\r\nThe Port Write Max Time is       0x%x", g_stAcpuDebugInfo.astPortInfo[enHandle].ulUSBWriteMaxTime);
+
+    vos_printf("\r\nThe Port Write CB Num is         %d",   g_stAcpuDebugInfo.astPortInfo[enHandle].ulUSBWriteCBNum);
+
+    vos_printf("\r\nThe Port Write Err Time is       %d",   g_stAcpuDebugInfo.astPortInfo[enHandle].ulUSBWriteErrNum);
+    vos_printf("\r\nThe Port Write Err Value is      0x%x", g_stAcpuDebugInfo.astPortInfo[enHandle].ulUSBWriteErrValue);
+    vos_printf("\r\nThe Port Write Err Len is        0x%x", g_stAcpuDebugInfo.astPortInfo[enHandle].ulUSBWriteErrLen);
+
+    vos_printf("\r\nThe Port In CB Num is            %d",   g_stAcpuDebugInfo.astPortInfo[enHandle].ulUSBINNum);
+    vos_printf("\r\nThe Port In CB Time is           0x%x", g_stAcpuDebugInfo.astPortInfo[enHandle].ulUSBINTime);
+    vos_printf("\r\nThe Port Out CB Num is           %d",   g_stAcpuDebugInfo.astPortInfo[enHandle].ulUSBOutNum);
+    vos_printf("\r\nThe Port Out CB Time is          0x%x", g_stAcpuDebugInfo.astPortInfo[enHandle].ulUSBOutTime);
+    vos_printf("\r\nThe Port State CB Err Num is     %d",   g_stAcpuDebugInfo.astPortInfo[enHandle].ulUSBStateErrNum);
+    vos_printf("\r\nThe Port State CB Err Time is    0x%x", g_stAcpuDebugInfo.astPortInfo[enHandle].ulUSBStateErrTime);
+
+    vos_printf("\r\nThe Port Open num is            %d",    g_stAcpuDebugInfo.astPortInfo[enHandle].ulUSBOpenNum);
+    vos_printf("\r\nThe Port Open slice is          0x%x",  g_stAcpuDebugInfo.astPortInfo[enHandle].ulUSBOpenSlice);
+
+    vos_printf("\r\nThe Port Open OK num is         %d",    g_stAcpuDebugInfo.astPortInfo[enHandle].ulUSBOpenOkNum);
+    vos_printf("\r\nThe Port Open OK slice is       0x%x",  g_stAcpuDebugInfo.astPortInfo[enHandle].ulUSBOpenOkSlice);
+
+    vos_printf("\r\nThe Port Open OK2 num is        %d",    g_stAcpuDebugInfo.astPortInfo[enHandle].ulUSBOpenOk2Num);
+    vos_printf("\r\nThe Port Open OK2 slice is      0x%x",  g_stAcpuDebugInfo.astPortInfo[enHandle].ulUSBOpenOk2Slice);
+
+    vos_printf("\r\nThe Port Close num is           %d",    g_stAcpuDebugInfo.astPortInfo[enHandle].ulUSBCloseNum);
+    vos_printf("\r\nThe Port Close slice is         0x%x",  g_stAcpuDebugInfo.astPortInfo[enHandle].ulUSBCloseSlice);
+
+    vos_printf("\r\nThe Port Close OK num is        %d",    g_stAcpuDebugInfo.astPortInfo[enHandle].ulUSBCloseOkNum);
+    vos_printf("\r\nThe Port Close OK slice is      0x%x",  g_stAcpuDebugInfo.astPortInfo[enHandle].ulUSBCloseOkSlice);
+}
+
+#endif //(FEATURE_OFF == FEATURE_MERGE_OM_CHAN)
 #ifdef __cplusplus
 #if __cplusplus
     }

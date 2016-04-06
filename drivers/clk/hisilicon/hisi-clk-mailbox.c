@@ -1,6 +1,6 @@
 #include <linux/module.h>
 #include <linux/init.h>
-#include <linux/huawei/mailbox.h>
+#include <linux/hisi/hisi_mailbox.h>
 #include <linux/interrupt.h>
 #include <linux/slab.h>
 #include <linux/mutex.h>
@@ -115,7 +115,7 @@ static int hisi_clkmbox_send_ipc(mbox_msg_t *msg, void *context, int autoack)
 	}
 
 
-	tx_task = hisi_mbox_task_alloc(mbox_clk->mbox, HI3630_MAILBOX_RP_LPM3,
+	tx_task = hisi_mbox_task_alloc(mbox_clk->mbox, HISI_MAILBOX_RP_LPM3,
 							tx_msg, LPM3_CMD_LEN, autoack, hisi_clkmbox_default_complete, context);
 	if (!tx_task) {
 		pr_err("[%s] fail to alloc mbox task!\n", __func__);
@@ -187,7 +187,7 @@ static int __init hisi_clkmbox_init(void)
 	}
 
 	/* get mailbox to communicate with lpm3 */
-	mbox_clk->mbox = hisi_mbox_get(HI3630_MAILBOX_RP_LPM3, NULL);
+	mbox_clk->mbox = hisi_mbox_get(HISI_MAILBOX_RP_LPM3, NULL);
 	if (!mbox_clk->mbox) {
 		pr_err("[%s] fail to get mbox!\n", __func__);
 		ret = -ENODEV;

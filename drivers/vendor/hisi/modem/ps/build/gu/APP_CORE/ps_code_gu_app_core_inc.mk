@@ -43,6 +43,12 @@ PS_INC_DIRS += \
 	$(BALONG_TOPDIR)/include/oam/lt/msp \
 	$(BALONG_TOPDIR)/include/oam/lt/diag \
 	$(BALONG_TOPDIR)/platform/$(CFG_PLATFORM_HISI_BALONG)/ \
+
+ifeq ($(CFG_FEATURE_MERGE_OM_CHAN),FEATURE_ON)	
+PS_INC_DIRS += \
+	$(BALONG_TOPDIR)/include/oam/comm/cpm \
+	$(BALONG_TOPDIR)/include/oam/comm/comm/ppm \	
+endif
 	
 PS_INC_DIRS += \
         $(BALONG_TOPDIR)/modem/ps/inc/gu/ \

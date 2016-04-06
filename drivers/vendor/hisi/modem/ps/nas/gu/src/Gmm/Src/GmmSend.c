@@ -1962,7 +1962,6 @@ VOS_VOID NAS_GMM_SndAcpuOmChangePtmsi(VOS_VOID)
 }
 #endif
 
-
 VOS_VOID Gmm_SndAgentUsimUpdateFileReq(
                                    VOS_UINT16 usEfId                                /* 希望获取的文件ID                         */
                                    )
@@ -2043,6 +2042,13 @@ VOS_VOID Gmm_SndAgentUsimUpdateFileReq(
         Gmm_MemFree(pucPsKey);                                                  /* 释放内存                                 */
         break;
     case GMM_USIM_FILE_PS_LOC_INFO:                                             /* 更新PS Location information              */
+        /* IMSI Refresh, 不更新卡文件，直接返回 */
+        if (VOS_TRUE == NAS_MML_GetImsiRefreshStatus())
+        {
+            PS_LOG(WUEPS_PID_GMM, VOS_NULL, PS_PRINT_INFO, "Gmm_SndAgentUsimUpdateFileReq: IMSI Refresh, do not write EFPSLOCI file");
+            return;
+        }
+
         pucPsLocInfo = (VOS_UINT8 *)Gmm_MemMalloc(14);                              /* 申请空间                                 */
         if (VOS_NULL_PTR == pucPsLocInfo)
         {
@@ -2108,8 +2114,6 @@ VOS_VOID Gmm_SndAgentUsimUpdateFileReq(
 
     return;                                                                     /* 返回                                     */
 }
-
-
 VOS_VOID Gmm_SndAgentUsimAuthenticationReq(
                                        VOS_UINT32    ulLength,                       /* AUTN的长度                               */
                                        VOS_VOID     *pAutn                          /* 指向参数AUTN的的指针                     */
@@ -2117,6 +2121,7 @@ VOS_VOID Gmm_SndAgentUsimAuthenticationReq(
 {
     VOS_UINT8   ucAuthenType;
     VOS_UINT8   ucTempOpId = 0;
+    VOS_UINT8   aucAutn[GMM_IE_AUTN_MAX_LEN + 1];
 
 
     if (GMM_UMTS_AUTHEN_SUPPORTED == g_GmmAuthenCtrl.ucUmtsAuthFlg)
@@ -2132,12 +2137,22 @@ VOS_VOID Gmm_SndAgentUsimAuthenticationReq(
 
     g_GmmAuthenCtrl.ucOpId = (VOS_UINT8)((ucTempOpId) % 255);
     g_GmmAuthenCtrl.ucOpId++;
+     
+    aucAutn[0]  = (VOS_UINT8)ulLength;
+    if (GMM_IE_AUTN_MAX_LEN < ulLength)
+    {
+        aucAutn[0] = GMM_IE_AUTN_MAX_LEN;
+    }
+
+    /* aucAutn第一个长度为Length，从第二个字节开始是value */
+    PS_MEM_CPY(aucAutn, pAutn, (aucAutn[0] + 1));
+    
 
     /* 调用USIM的API发送函数 */
     NAS_USIMMAPI_AuthReq( WUEPS_PID_GMM,
                    ucAuthenType,
                    (VOS_UINT8 *)g_GmmAuthenCtrl.aucRandSav,
-                   (VOS_UINT8 *)pAutn,
+                   aucAutn,
                    g_GmmAuthenCtrl.ucOpId);
 
     g_GmmReqCnfMng.ucCnfMask |= GMM_AGENT_USIM_AUTHENTICATION_CNF_FLG;          /* 置等待响应标志                           */
@@ -3395,6 +3410,8 @@ VOS_VOID NAS_GMM_SndMmcMmDetachInfo()
             Gmm_TimerStop(GMM_TIMER_PROTECT_PS_DETACH);
         }
     }
+
+    g_GmmDetachCtrl.ucT3321OutCnt = 0;
 }
 VOS_VOID NAS_GMM_SndMmcActionResultIndWhenBarorNotSupportGprs(
     NAS_MML_REG_FAIL_CAUSE_ENUM_UINT16  enCause

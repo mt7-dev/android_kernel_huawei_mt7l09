@@ -243,6 +243,9 @@ extern VOS_VOID  NAS_EMM_MsSuspendSsRrcOriWaitMmcSuspendFailProc(VOS_VOID);
 
 extern VOS_UINT32  NAS_EMM_PreProcMsgRrcSuspendInfoChangeInd( MsgBlock  *pstMsg );
 
+extern VOS_VOID NAS_EMM_MsRrcConnEstInitRcvLrrcSuspendIndProc(MsgBlock * pMsg);
+
+
 /*****************************************************************************
   9 OTHERS
 *****************************************************************************/

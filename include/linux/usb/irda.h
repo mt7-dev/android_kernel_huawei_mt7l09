@@ -105,22 +105,6 @@ struct usb_irda_cs_descriptor {
 /* Data Format */
 
 #define USB_IRDA_STATUS_MEDIA_BUSY	(1 << 7)
-
-/* The following is a 4-bit value used for both
- * inbound and outbound headers:
- *
- * 0 - speed ignored
- * 1 - 2400 bps
- * 2 - 9600 bps
- * 3 - 19200 bps
- * 4 - 38400 bps
- * 5 - 57600 bps
- * 6 - 115200 bps
- * 7 - 576000 bps
- * 8 - 1.152 Mbps
- * 9 - 5 mbps
- * 10..15 - Reserved
- */
 #define USB_IRDA_STATUS_LINK_SPEED	0x0f
 
 /* The following is a 4-bit value used only for

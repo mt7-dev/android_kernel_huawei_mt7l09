@@ -1607,6 +1607,12 @@ static __net_init int ipv4_mib_init_net(struct net *net)
 			  sizeof(struct tcp_mib),
 			  __alignof__(struct tcp_mib)) < 0)
 		goto err_tcp_mib;
+#ifdef CONFIG_HW_WIFIPRO
+    if (snmp_mib_init((void __percpu **)net->mib.wifipro_tcp_statistics,
+              sizeof(struct wifipro_tcp_mib),
+              __alignof__(struct wifipro_tcp_mib)) < 0)
+        goto err_wifipro_tcp_mib;
+#endif
 	if (snmp_mib_init((void __percpu **)net->mib.ip_statistics,
 			  sizeof(struct ipstats_mib),
 			  __alignof__(struct ipstats_mib)) < 0)
@@ -1647,6 +1653,10 @@ err_net_mib:
 	snmp_mib_free((void __percpu **)net->mib.ip_statistics);
 err_ip_mib:
 	snmp_mib_free((void __percpu **)net->mib.tcp_statistics);
+#ifdef CONFIG_HW_WIFIPRO
+err_wifipro_tcp_mib:
+    snmp_mib_free((void __percpu **)net->mib.wifipro_tcp_statistics);
+#endif
 err_tcp_mib:
 	return -ENOMEM;
 }
@@ -1659,6 +1669,10 @@ static __net_exit void ipv4_mib_exit_net(struct net *net)
 	snmp_mib_free((void __percpu **)net->mib.udp_statistics);
 	snmp_mib_free((void __percpu **)net->mib.net_statistics);
 	snmp_mib_free((void __percpu **)net->mib.ip_statistics);
+#ifdef CONFIG_HW_WIFIPRO
+    snmp_mib_free((void __percpu **)net->mib.wifipro_tcp_statistics);
+#endif
+
 	snmp_mib_free((void __percpu **)net->mib.tcp_statistics);
 }
 

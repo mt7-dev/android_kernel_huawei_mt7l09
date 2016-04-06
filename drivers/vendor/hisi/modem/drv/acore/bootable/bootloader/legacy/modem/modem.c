@@ -2,40 +2,48 @@
 #include <debug.h>
 #include <platform.h>
 #include <bsp_memmap.h>
+#ifdef HI3630_FASTBOOT_MODEM
 #include <libfdt.h>
 #include <flash.h>
+#include <hisi_udp_board_id.h>
+#include <adc.h>
+#include <modem_id_conversion.h>
+#ifdef HISI_SECBOOT
+#include <hisi_secureboot.h>
+#endif
+#else
+#include <fdt_ops.h>
+#include <partition_ops.h>
+#include <hi_modem.h>
+#include <module.h>
+#include <system.h>
+#include <boardid.h>
+#include <emmc_ops.h>
+#include <hkadc.h>
+#include <hisi_secureboot.h>
+#include <modemid.h>
+#endif
 #include <modem.h>
 #include <nv_balong.h>
 #include <sys.h>
-#include <adc.h>
+/*K3V3 32bit, k3v3+ 64 bit*/
 #include <gpio.h>
 #include <drv_nv_def.h>
 #include <drv_nv_id.h>
-#include <modem_id_conversion.h>
-#include <hisi_udp_board_id.h>
+
 #include <bsp_memrepair.h>
 #include <bsp_pmu_hi6561.h>
 //#include <preboot.h>
 
 //#include <bsp_om.h>
 
-#ifdef HISI_SECBOOT
-#include <hisi_secureboot.h>
-#endif
+/*version*/
+#define HW_VER_K3V3_UDP_RF_HI6361EVB5   (unsigned int)0X3F000606/*丝印名称HI6361EVB5 VER.D RF T*/
+#define HW_VER_K3V3_RF_HIBV7R2RF7       (unsigned int)0X3F000604/*丝印名称HIBV7R2RF7*/
+#define HW_INVALID_VER                  (unsigned int)0X7FFFFFFF/* 非法版本号*/
+#define HW_VER_K3V3_UDP_MASK            (unsigned int)0X3F000000
 
-#define HW_VER_K3V3_UDP_RF_HI6361EVB5_VER_D_RF_T_B	(unsigned int)0X3F000606/*丝印名称HI6361EVB5 VER.D RF T*/
-#define HW_VER_K3V3_RF_HIBV7R2RF7					(unsigned int)0X3F000604/*丝印名称HIBV7R2RF7*/
-
-#ifdef BSP_CONFIG_BOARD_SFT
-#define HW_VERSION				0x33333333
-#elif defined(BSP_CONFIG_BOARD_UDP)
-#define HW_VERSION				HW_VER_K3V3_UDP_RF_HI6361EVB5_VER_D_RF_T_B
-#else
-#error "error board config."
-#endif
-
-#define HW_VER_K3V3_UDP_MASK        (unsigned int)0X3F000000
-
+#define GPIO_MAX_NUMBER         0x8
 #define MODEM_CSHELL_DEFAULT	0x0
 #define PRT_FLAG_EN_MAGIC_M		0x24680136
 #define EMMC_BLOCK_SIZE			512
@@ -102,6 +110,10 @@ static vol_range version_vol_tab[] =
     {2079,2354},
     {2355,2500}
 };
+
+
+
+
 int bsp_version_get_hwversion_index(void)
 {
     int hw_ver=0;
@@ -119,11 +131,30 @@ int set_modem_cshell_mod(unsigned int mod)
 unsigned int get_hkadc_convert_value(unsigned int chn)
 {
 	unsigned int idx;
-	int adc_result;			/*hkadc读取到的值*/
-	unsigned int hkadc_ver = 0X7FFFFFFF;	/*按照转换列表将hkadc值进行转换*/
+	int adc_result;			                    /*hkadc读取到的值*/
+	unsigned int hkadc_ver = HW_INVALID_VER;	/*按照转换列表将hkadc值进行转换*/
+	#ifndef HI3630_FASTBOOT_MODEM
 
+	struct hkadc_operators *hkadc_ops = get_operators(HKADC_MODULE_NAME_STR);
+
+	if(!hkadc_ops){
+		cprintf("get hkadc ops failed !\n");
+		return hkadc_ver;
+	}
+
+	adc_result = hkadc_ops->get_value(chn);
+	if(-1 == adc_result){/*wangxiaoyin 后续提供非法宏*/
+         cprintf("hkadc stub or read error,value is -1,please check!\n");
+		 return hkadc_ver;
+	}
+
+	/*hkadc 返回值单位为us，将其单位转换为mv*/
+	adc_result = adc_result / 1000;
+	#else
 	adc_result = hisi_adc_get_value(chn)/1000;
+	#endif
 	cprintf("chn:%d,hkadc_ver:0x%x \n",chn,adc_result);
+
 	/*将HKADC的值转换为board_id*/
 	for(idx=0;idx<ARRAY_SIZE(version_vol_tab);idx++)
 	{
@@ -131,7 +162,7 @@ unsigned int get_hkadc_convert_value(unsigned int chn)
             && adc_result <= version_vol_tab[idx].vol_high)
 		{
 			/*cprintf("ver%d is:%d\n", hw_ver, idx);*/
-			hkadc_ver=idx;
+			hkadc_ver = idx;
 			break;
 		}
 	}
@@ -140,12 +171,20 @@ unsigned int get_hkadc_convert_value(unsigned int chn)
 	if(idx == ARRAY_SIZE(version_vol_tab))
 	{
 		cprintf("get hkadc value fail, idx:%d, adc_result:%d\n", idx, adc_result);
-		return 0X7FFFFFFF;/*返回一个无效version值*/
+		return HW_INVALID_VER;/*返回一个无效version值*/
 	}
 	//cprintf("chn:%d,hkadc_ver:0x%x \n",chn,hkadc_ver);
 	return hkadc_ver;
 }
+#ifndef HI3630_FASTBOOT_MODEM
+#define EXTRACT_BYTE(n)	((unsigned long long)((uint8_t *)&x)[n])
+static inline uint32_t fdt32_to_cpu(uint32_t x)
+{
+        return (EXTRACT_BYTE(0) << 24) | (EXTRACT_BYTE(1) << 16) | (EXTRACT_BYTE(2) << 8) | EXTRACT_BYTE(3);
+}
 
+#define cpu_to_fdt32(x) fdt32_to_cpu(x)
+#endif
 
 #ifdef CONFIG_MODEM_PINTRL
 void pintrl_data_convert(struct pintrl_stru *iocfg, unsigned int len)
@@ -409,18 +448,35 @@ int modem_pintrl_dts_parse(void *fdt)
     const struct fdt_property *pro = NULL;
     struct modem_pintrl_cfg *pintrl_cfg = (struct modem_pintrl_cfg *)SHM_MEM_MODEM_PINTRL_ADDR;
     struct pintrl_stru *cur_addr = (struct pintrl_stru *)(SHM_MEM_MODEM_PINTRL_ADDR + sizeof(struct modem_pintrl_cfg));
+#ifndef HI3630_FASTBOOT_MODEM
+	struct fdt_operators *fdt_ops = get_operators(FDT_MODULE_NAME_STR);
+	if(!fdt_ops){
+		PRINT_ERROR("can not get fdt_ops!\n");
+		return -1;
+	}
+#endif
+
+	 PRINT_ERROR("modem pinctrl parse start.\n");
 
     memset(SHM_MEM_MODEM_PINTRL_ADDR, 0, SHM_MEM_MODEM_PINTRL_SIZE);
 
 	/* let's give it all the room it could need */
+	#ifdef HI3630_FASTBOOT_MODEM
 	ret = fdt_open_into(fdt, (void*)fdt, total_space);
+	#else
+	ret = fdt_ops->fdt_open_into(fdt, (void*)fdt, total_space);
+	#endif
 	if (ret < 0){
 		PRINT_ERROR("Could not open modem dts, fdt=0x%x ret=0x%x.\n", fdt, ret);
 		return ret;
     }
 
 	/* Get offset of the chosen node */
-	ret = fdt_path_offset(fdt, "/modem_pintrl");
+	#ifdef HI3630_FASTBOOT_MODEM
+	ret = fdt_path_offset(fdt, "/modem_pinctrl");
+	#else
+	ret = fdt_ops->fdt_path_offset(fdt, "/modem_pinctrl");
+	#endif
 	if (ret < 0) {
 		PRINT_ERROR("Could not find modem_pintrl node, fdt=0x%x ret=0x%x.\n", fdt, ret);
 		return ret;
@@ -429,7 +485,11 @@ int modem_pintrl_dts_parse(void *fdt)
 	offset = ret;
 
 	/* Get property of the chosen node */
+	#ifdef HI3630_FASTBOOT_MODEM
     pro = fdt_get_property(fdt, offset, (const char*)"pinctrl-num",&len);
+	#else
+	pro = fdt_ops->fdt_get_property(fdt, offset, (const char*)"pinctrl-num",&len);
+	#endif
     if((int)pro <= 0){
         PRINT_ERROR("Could not get property, pro=0x%x fdt=0x%x offset=0x%x len=0x%x.\n", pro, fdt, offset, len);
         return -1;
@@ -442,8 +502,11 @@ int modem_pintrl_dts_parse(void *fdt)
         pintrl_cfg->pintrl_size[i] = cpu_to_fdt32(data[i]);
 
         snprintf(pintrl_name,16,"pinctrl-%d",i);
-
+		#ifdef HI3630_FASTBOOT_MODEM
         pro = fdt_get_property(fdt, offset, pintrl_name, &len);
+		#else
+		pro = fdt_ops->fdt_get_property(fdt, offset, pintrl_name, &len);
+		#endif
         if((int)pro <= 0){
             PRINT_ERROR("Could not get property, pro=0x%x fdt=0x%x offset=0x%x len=0x%x.\n", pro, fdt, offset, len);
             return -1;
@@ -465,9 +528,12 @@ int modem_pintrl_dts_parse(void *fdt)
     modem_ldo_io_mux();
 
     pintrl_config(pintrl_cfg->pintrl_addr[MODEM_PIN_INIT], pintrl_cfg->pintrl_size[MODEM_PIN_INIT]);
-
+	#ifdef HI3630_FASTBOOT_MODEM
 	fdt_pack(fdt);
-
+	#else
+	fdt_ops->fdt_pack(fdt);
+	#endif
+	PRINT_ERROR("modem pinctrl parse end.\n");
 	return 0;
 }
 
@@ -491,30 +557,36 @@ int save_hw_version(void)
 	unsigned int *hw_addr = (unsigned int *)SHM_MEM_HW_VER_ADDR;
 
 	unsigned int modem_id;
+	#ifndef HI3630_FASTBOOT_MODEM
+	struct boardid_operators *boardid_ops = get_operators(BOARDID_MODULE_NAME_STR);
+	if(!boardid_ops){
+		PRINT_ERROR("can not get boardid_ops!\n");
+		return -1;
+	}
+	#endif
 
-#ifdef BSP_CONFIG_K3V3_SFT
+#ifdef CONFIG_VERSION_STUB
 
-	modem_id = 0x33000100;/*FPGA 形态默认返回EVB5扣板ID*/
+	modem_id = HW_VERSION_STUB;/*FPGA 形态默认返回EVB5扣板ID*/
 
-#endif
-
-#ifdef BSP_CONFIG_K3V3_ASIC/*后续需要加上UDP与产品板区别*/
-
+#else
+	#ifdef HI3630_FASTBOOT_MODEM
 	if (UDP_BOARD_BOARDID == get_boardid())
+	#else
+	if (UDP_BOARD_BOARDID == boardid_ops->get_boardid())
+	#endif
 	{
-	/*获取HKADC4和HKADC5的值*/
+	    /*获取HKADC4和HKADC5的值*/
 		unsigned int hkadc4_val = get_hkadc_convert_value(ADC_ADCIN4);
 		unsigned int hkadc5_val = get_hkadc_convert_value(ADC_ADCIN5);
 
-		modem_id = HW_VER_K3V3_UDP_MASK | hkadc4_val | hkadc5_val<<8;
+		modem_id = CONFIG_VER_MASK  | hkadc4_val | hkadc5_val<<8;
 	}
 	else
 	{
 		modem_id = get_productid();
 	}
 
-	//board_id = HW_VERSION;/*for 回片v9r1扣板*/
-	//board_id = HW_VER_K3V3_RF_HIBV7R2RF7;/*for V7R2扣板*/
 #endif
 
 	*hw_addr = modem_id;
@@ -549,6 +621,7 @@ void modem_memrepair_init(void)
 
 void startup_modem(void)
 {
+/*
 	if(0 == modem_addr)
 	{
 		PRINT_INFO("modem img is not loaded...\n");
@@ -560,7 +633,7 @@ void startup_modem(void)
 	writel(BIT_RST_MODEM,PERI_CRG_RSTDIS4);
 	writel((BIT_RST_MCPU2DDR | BIT_RST_MBUS2BUS),PERI_CRG_RSTDIS0);
 	mdelay(10);
-	writel((MDMA9_PD_SRST_DIS | MDMA9_CPU_SRST_EN),CRG_SRSTDIS1);
+	writel((MDMA9_PD_SRST_DIS | MDMA9_CPU_SRST_EN),CRG_SRSTDIS1);*/
 }
 #elif defined(BSP_CONFIG_BOARD_UDP)
 
@@ -690,11 +763,33 @@ int load_modem()
 	unsigned char *img_head;
 	unsigned head_size;
 	struct image_head *head;
+#ifdef HI3630_FASTBOOT_MODEM
 	int ret;
+
 
     /*lint -save -e570*/
     writel(LOAD_MODEM_ERROR_FLAG, SHM_MEM_LOADM_ADDR);
     /*lint -restore*/
+#else
+	unsigned int ret;
+	struct secboot_operators *secboot_ops;
+	struct partition_operators *part_ops = get_operators(PARTITION_MODULE_NAME_STR);
+	if(!part_ops){
+		PRINT_ERROR("can not get part_ops!\n");
+		return -1;
+	}
+	struct emmc_operators *emmc_ops = NULL;
+
+    /*lint -save -e570*/
+    writel(LOAD_MODEM_ERROR_FLAG, SHM_MEM_LOADM_ADDR);
+    /*lint -restore*/
+
+	emmc_ops = get_operators(EMMC_MODULE_NAME_STR);
+	if(!emmc_ops){
+		PRINT_ERROR("can not get emmc_ops!\n");
+		return -1;
+	}
+#endif
 
 	head_size = sizeof(struct image_head);
 	img_head = alloc(EMMC_BLOCK_SIZE);
@@ -704,7 +799,11 @@ int load_modem()
     }
 
 	char *str_modem = "modem";
+	#ifdef HI3630_FASTBOOT_MODEM
 	ptn = find_ptn(str_modem);
+	#else
+	ptn = part_ops->find_ptn(str_modem);
+	#endif
 	if (0 == ptn) {
 		PRINT_ERROR("can't find ptn modem\n");
 		return -1;
@@ -712,11 +811,17 @@ int load_modem()
 
 	/* read head info */
 	bytes = EMMC_BLOCK_SIZE;
+	#ifdef HI3630_FASTBOOT_MODEM
 	if (flash_read(ptn, offset, (void *)img_head, &bytes)) {
 		PRINT_ERROR("read modem fail\n");
 		return -1;
 	}
-
+	#else
+	if (emmc_ops->emmc_read(ptn, offset, (void *)img_head, &bytes)) {
+		PRINT_ERROR("read modem fail\n");
+		return -1;
+	}
+	#endif
 	/* copy data to dest */
 	//lint --e{826}
 	head = (struct image_head*)img_head;
@@ -732,11 +837,17 @@ int load_modem()
 	/* read the whole modem image to img_addr.
 	this will load image head to load_addr - head_size, and
 	image data to load_addr. */
+	#ifdef HI3630_FASTBOOT_MODEM
 	if (flash_read(ptn, offset, (void *)img_addr, &bytes)) {
 		PRINT_ERROR("read modem fail\n");
 		return -1;
 	}
-
+	#else
+	if (emmc_ops->emmc_read(ptn, offset, (void *)img_addr, &bytes)) {
+		PRINT_ERROR("read modem fail\n");
+		return -1;
+	}
+	#endif
     /*lint -save -e570*/
     writel(LOAD_MODEM_OK_FLAG, SHM_MEM_LOADM_ADDR);
     writel(head->load_addr, SHM_MEM_LOADM_ADDR + 4);
@@ -744,11 +855,25 @@ int load_modem()
     /*lint -restore*/
 
 	/* change to use RAM verification. */
+
+#ifdef HI3630_FASTBOOT_MODEM
 #ifdef HISI_SECBOOT
 	ret = hisi_secboot_preload_verification((UINT32)img_addr, ptn->name, SECBOOT_USE_DEFAULT_MAGICNUM);
 	if (SECBOOT_RET_SUCCESS != ret) {
 		PRINT_ERROR("%s: secure verification error, hold system!\n", __func__);
 		hisi_secboot_hold_system();
+	}
+#endif
+#else
+	secboot_ops = get_operators(SECBOOT_MODULE_NAME_STR);
+	if(!secboot_ops){
+		PRINT_ERROR("can not get secboot_ops!\n");
+		return -1;
+	}
+	ret = secboot_ops->bootup_verification((UINT32)img_addr, ptn->name, SECBOOT_USE_DEFAULT_MAGICNUM);
+	if (SECBOOT_RET_SUCCESS != ret) {
+		PRINT_ERROR("%s: secure verification error, hold system!\n", __func__);
+		secboot_ops->hold_system();
 	}
 #endif
 	modem_addr = head->load_addr;
@@ -766,29 +891,51 @@ int load_modem_dsp()
 
 	unsigned head_size = sizeof(struct image_head);
 	char *str_modem = "modem_dsp";
+	#ifndef HI3630_FASTBOOT_MODEM
+	struct partition_operators *part_ops = get_operators(PARTITION_MODULE_NAME_STR);
+	if(!part_ops){
+		PRINT_ERROR("can not get part_ops!\n");
+		return -1;
+	}
+	struct emmc_operators *emmc_ops = get_operators(EMMC_MODULE_NAME_STR);
+	if(!emmc_ops){
+		PRINT_ERROR("can not get emmc_ops!\n");
+		return -1;
+	}
+	#endif
 
 	img_addr = alloc(DSP_PARTITON_SIZE);
+	#ifdef HI3630_FASTBOOT_MODEM
 	ptn = find_ptn(str_modem);
+	#else
+	ptn = part_ops->find_ptn(str_modem);
+	#endif
 	if (0 == ptn) {
 		PRINT_ERROR("can't find ptn modem dsp\n");
 		return -1;
 	}
 
 	bytes = DSP_PARTITON_SIZE;
+	#ifdef HI3630_FASTBOOT_MODEM
 	if (flash_read(ptn, offset, (void *)img_addr, &bytes)) {
 		PRINT_ERROR("read modem dsp fail\n");
 		return -1;
 	}
-
+	#else
+	if (emmc_ops->emmc_read(ptn, offset, (void *)img_addr, &bytes)) {
+		PRINT_ERROR("read modem dsp fail\n");
+		return -1;
+	}
+	#endif
 	/*load dsp to DDR_TLPHY_IMAGE_ADDR*/
 	//lint --e{835}
 	dest_addr = (void *)DDR_TLPHY_IMAGE_ADDR;
-	memcpy(dest_addr, (char *)(img_addr + head_size), MODEM_DSP_SIZE);
+	memcpy(dest_addr, (char *)(img_addr + head_size), LPHY_BBE16_MUTI_IMAGE_SIZE);
 
 	/* load TDS to DDR_LPHY_SDR_ADDR+1.75MB */
 	//lint --e{835}
 	dest_addr = (void *)(DDR_LPHY_SDR_ADDR + MODEM_DSP_SIZE + MODEM_TDS_SIZE);
-	memcpy(dest_addr, (char *)(img_addr + head_size + MODEM_DSP_SIZE), MODEM_TDS_SIZE);
+	memcpy(dest_addr, (char *)(img_addr + head_size + LPHY_BBE16_MUTI_IMAGE_SIZE), MODEM_TDS_SIZE);
 
 	return 0;
 }
@@ -802,7 +949,7 @@ void fastboot_set_modem_cshell()
 void set_socp_sec_config(void)
 {
     /* set 4-9 12-31 encsrc chan to secure access */
-    writel(0xfffff3f0, HI_SOCP_REGBASE_ADDR + 0x30);
+    writel(0xfffffbf0, HI_SOCP_REGBASE_ADDR + 0x30);
 }
 void set_has_l2cache_flag(void)
 {
@@ -933,7 +1080,9 @@ extern unsigned char binArrayEnd[];
 
     memcpy(MCORE_TEXT_START_ADDR_COMPRESSED, binArrayStart, binArrayEnd - binArrayStart);
 
+#ifndef BSP_CONFIG_BOARD_SFT
     startup_modem_processor(MCORE_TEXT_START_ADDR_COMPRESSED);
+#endif
 
     do
     {
@@ -949,3 +1098,24 @@ extern unsigned char binArrayEnd[];
 
     return;
 }
+#ifndef HI3630_FASTBOOT_MODEM
+int load_modem_init(struct system_table *systable)
+{
+	return OK;
+}
+
+static struct load_modem_operators load_modem_ops = {
+	.modem_main	= modem_main,
+	.fastboot_set_modem_cshell	= fastboot_set_modem_cshell,
+	.startup_modem	= startup_modem,
+};
+
+static struct module_data load_modem_prv_data = {
+	.name		= MODEM_MODULE_NAME_STR,
+	.level		= 133,
+	.init 		= load_modem_init,
+	.operators 	= &load_modem_ops,
+};
+
+MODULE_INIT(MODEM_MODULE_NAME, load_modem_prv_data);
+#endif

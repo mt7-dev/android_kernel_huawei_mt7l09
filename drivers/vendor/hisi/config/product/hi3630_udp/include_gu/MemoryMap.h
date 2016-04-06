@@ -62,11 +62,12 @@ extern "C" {
 #define ECS_BBP_MASTER_SIZE                 (0x00000000)
 #define ECS_NV_SIZE                         (0x00000000)
 #define ECS_TTF_DICC_SIZE                   (0x00000000)
-#define ZSP_UP_SIZE                         (0x00008000)/*monan for v9r1bbit
- */
+#define ZSP_UP_SIZE                         (0x00008000)/*monan for v9r1bbit */
+#define ECS_TEE_SHARE_SIZE                  (0x00010000)
+
 #define ECS_MDDR_RESERVE_SIZE               (ECS_TTF_SIZE + ECS_BBPHAC_SIZE+ ECS_ARM_DSP_BUFFER_SIZE + ECS_UPA_SIZE \
                                              + ECS_CQI_SIZE + ECS_APT_SIZE + ECS_ET_SIZE + ECS_BBP_MASTER_SIZE \
-                                             + ECS_NV_SIZE + ECS_TTF_DICC_SIZE + ZSP_UP_SIZE + HUTAF_HLT_MEM_SIZE + ECS_TTF_SAVE_SIZE)
+                                             + ECS_NV_SIZE + ECS_TTF_DICC_SIZE + ZSP_UP_SIZE + HUTAF_HLT_MEM_SIZE + ECS_TTF_SAVE_SIZE + ECS_TEE_SHARE_SIZE)
 
 #define ECS_TTF_BASE_ADDR                   (ECS_MDDR_RESERVE_BASE_ADDR)
 #define HUTAF_HLT_MEM_ADDR                  (ECS_TTF_BASE_ADDR            + ECS_TTF_SIZE)
@@ -80,8 +81,8 @@ extern "C" {
 #define ECS_BBP_MASTER_BASE_ADDR            (ECS_ET_BASE_ADDR             + ECS_ET_SIZE)
 #define ECS_NV_BASE_ADDR                    (ECS_BBP_MASTER_BASE_ADDR     + ECS_BBP_MASTER_SIZE)
 #define ECS_TTF_DICC_ADDR                   (ECS_NV_BASE_ADDR             + ECS_NV_SIZE)
-#define ZSP_UP_ADDR                         (ECS_TTF_DICC_ADDR            + ECS_TTF_DICC_SIZE)/*monan for v9r1bbit
- */
+#define ZSP_UP_ADDR                         (ECS_TTF_DICC_ADDR            + ECS_TTF_DICC_SIZE)/*monan for v9r1bbit */
+#define ECS_TEE_SHARE_BASE_ADDR             (ZSP_UP_ADDR                  + ZSP_UP_SIZE)
 
 /*TTF Memory Virtual Address*/
 #define ECS_TTF_BASE_ADDR_VIRT              (ECS_MDDR_RESERVE_BASE_ADDR_VIRT)

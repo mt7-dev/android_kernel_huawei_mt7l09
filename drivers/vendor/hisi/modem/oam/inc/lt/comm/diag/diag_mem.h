@@ -26,7 +26,7 @@ extern "C" {
 #endif
 
 #if(VOS_OS_VER == VOS_LINUX)
-#define MSP_NOCACHEMAP(addr,size)   					ioremap(addr,size)
+#define MSP_NOCACHEMAP(addr,size)   					ioremap_wc(addr,size)
 #else
 #define MSP_NOCACHEMAP(addr,size)   					(addr)
 #endif
@@ -72,6 +72,9 @@ extern "C" {
 * BBP DS   :  随机
 * TOTAL SIZE: BBPDS + 112K
 ****************************************************************/
+/*BBP 数采要求内存必须为2K对齐的*/
+#define BBP_DS_MEM_UNIT_SIZE                        (2*1024)
+
 #define BBP_MEM_ADDR_BASE                         	(DIAG_CODER_SRC_IND_BUF_A_ADDR + DIAG_CODER_SRC_IND_BUF_A_SIZE)
 
 #define BBP_LOG0_MEM_ADDR                        	(BBP_MEM_ADDR_BASE)
@@ -99,8 +102,8 @@ extern "C" {
 #define BBP_LOG7_MEM_SIZE                        	(8*1024)
 
 #define BBP_DS_MEM_ADDR                         	(BBP_LOG7_MEM_ADDR + BBP_LOG7_MEM_SIZE)
-#define BBP_DS_MEM_SIZE                         	(SOCP_GLOBAL_MEM_ADDR+SOCP_GLOBAL_MEM_SIZE -BBP_DS_MEM_ADDR)
-
+#define BBP_DS_ORIGIAL_MEM_SIZE                     (SOCP_GLOBAL_MEM_ADDR+SOCP_GLOBAL_MEM_SIZE -BBP_DS_MEM_ADDR)
+#define BBP_DS_MEM_SIZE                             (BBP_DS_ORIGIAL_MEM_SIZE - BBP_DS_ORIGIAL_MEM_SIZE%BBP_DS_MEM_UNIT_SIZE)
 
 
 /*****************************************************************************

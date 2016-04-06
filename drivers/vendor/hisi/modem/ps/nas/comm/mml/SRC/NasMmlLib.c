@@ -779,7 +779,7 @@ VOS_UINT32 NAS_MML_IsBcchPlmnIdInLockPlmnList (
     pstPlmnLockInfo         = NAS_MML_GetPlmnLockCfg();
 
     ulDisabledPlmnFlg       = VOS_TRUE;
-    
+
     ulRatDisabledFlg        = VOS_TRUE;
 
     /* E5形态PLMN ID在黑名单中 */
@@ -1112,7 +1112,7 @@ VOS_UINT32  NAS_MML_GetGsmForbidFlg( VOS_VOID )
             {
                 return VOS_TRUE;
             }
-        }        
+        }
     }
 
     /* 该NV已修改为W和G都为UINT32了, 原为UINT16, 即 aulSptBand[0]为W的BAND, aulSptBand[1]为G的BAND */
@@ -1121,7 +1121,7 @@ VOS_UINT32  NAS_MML_GetGsmForbidFlg( VOS_VOID )
     {
         return VOS_TRUE;
     }
-    
+
 
     return VOS_FALSE;
 }
@@ -1354,8 +1354,12 @@ VOS_UINT32 NAS_MML_GetGU_CsRPlmn(
 {
     NAS_MML_PLMN_ID_STRU                stRPlmnId;
     NAS_MML_LAI_STRU                   *pstLai = VOS_NULL_PTR;
+    NAS_MML_LOCATION_UPDATE_STATUS_ENUM_UINT8   enStatus;
 
-    if (NAS_MML_LOCATION_UPDATE_STATUS_PLMN_NOT_ALLOWED == NAS_MML_GetCsUpdateStatus())
+    enStatus = NAS_MML_GetCsUpdateStatus();
+
+    if ((NAS_MML_LOCATION_UPDATE_STATUS_PLMN_NOT_ALLOWED == enStatus)
+     || (NAS_MML_LOCATION_UPDATE_STATUS_BUTT == enStatus))
     {
         return VOS_FALSE;
     }
@@ -1383,8 +1387,12 @@ VOS_UINT32 NAS_MML_GetGU_PsRPlmn(
 {
     NAS_MML_PLMN_ID_STRU                stRPlmnId;
     NAS_MML_RAI_STRU                   *pstRai = VOS_NULL_PTR;
+    NAS_MML_ROUTING_UPDATE_STATUS_ENUM_UINT8    enStatus;
 
-    if (NAS_MML_ROUTING_UPDATE_STATUS_PLMN_NOT_ALLOWED == NAS_MML_GetPsUpdateStatus())
+    enStatus = NAS_MML_GetPsUpdateStatus();
+
+    if ((NAS_MML_ROUTING_UPDATE_STATUS_PLMN_NOT_ALLOWED == enStatus)
+     || (NAS_MML_ROUTING_UPDATE_STATUS_BUTT == enStatus))
     {
         return VOS_FALSE;
     }
@@ -1436,8 +1444,6 @@ VOS_UINT32 NAS_MML_GetGURPlmn(
     }
 
 }
-
-
 VOS_UINT32 NAS_MML_GetEfLociPlmn(
     NAS_MML_PLMN_ID_STRU               *pstPlmnId
 )
@@ -1445,16 +1451,30 @@ VOS_UINT32 NAS_MML_GetEfLociPlmn(
     NAS_MML_PLMN_ID_STRU                stRPlmnId;
     NAS_MML_RAI_STRU                   *pstRai = VOS_NULL_PTR;
     NAS_MML_LAI_STRU                   *pstLai = VOS_NULL_PTR;
+    NAS_MML_ROUTING_UPDATE_STATUS_ENUM_UINT8    enPsStatus;
+    NAS_MML_LOCATION_UPDATE_STATUS_ENUM_UINT8   enCsStatus;
 
-    pstRai  = NAS_MML_GetPsLastSuccRai();
-    pstLai  = NAS_MML_GetCsLastSuccLai();
+    pstRai      = NAS_MML_GetPsLastSuccRai();
+    pstLai      = NAS_MML_GetCsLastSuccLai();
+    enPsStatus  = NAS_MML_GetPsUpdateStatus();
+    enCsStatus  = NAS_MML_GetCsUpdateStatus();
 
     if (NAS_MML_MS_MODE_PS_ONLY == NAS_MML_GetMsMode())
     {
+        if (NAS_MML_ROUTING_UPDATE_STATUS_BUTT == enPsStatus)
+        {
+            return VOS_FALSE;
+        }
+
         stRPlmnId = pstRai->stLai.stPlmnId;
     }
     else
     {
+        if (NAS_MML_LOCATION_UPDATE_STATUS_BUTT == enCsStatus)
+        {
+            return VOS_FALSE;
+        }
+
         stRPlmnId = pstLai->stPlmnId;
     }
 
@@ -1519,7 +1539,7 @@ VOS_UINT32 NAS_MML_AddForbPlmn (
     if (VOS_FALSE == ulRlst)
     {
         /* 列表已满时，删除最先保存的元素 */
-        if ((( NAS_MML_MAX_FORBPLMN_NUM == ucForbPlmnNum) 
+        if ((( NAS_MML_MAX_FORBPLMN_NUM == ucForbPlmnNum)
          || (pstForbPlmnInfo->ucUsimForbPlmnNum == ucForbPlmnNum))&& (ucForbPlmnNum != 0))
         {
             PS_MEM_MOVE(pstForbPlmnInfo->astForbPlmnIdList,
@@ -2182,6 +2202,49 @@ VOS_UINT32 NAS_MMC_IsRoam()
         return VOS_TRUE;
     }
 }
+VOS_UINT32 NAS_MML_IsHplmnInEplmnList()
+{
+    NAS_MML_EQUPLMN_INFO_STRU          *pstEplmnList = VOS_NULL_PTR;
+    VOS_UINT32                          i;
+
+    pstEplmnList = NAS_MML_GetEquPlmnList();
+
+    if (VOS_TRUE == pstEplmnList->ucValidFlg)
+    {
+        for (i = 0; i < pstEplmnList->ucEquPlmnNum; i++)
+        {
+            if (VOS_TRUE == NAS_MML_ComparePlmnIdWithHplmn(&pstEplmnList->astEquPlmnAddr[i]))
+            {
+                return VOS_TRUE;
+            }
+        }
+    }
+    return VOS_FALSE;
+}
+
+
+VOS_UINT32 NAS_MML_IsCurrCampPlmnInEplmnList(VOS_VOID)
+{
+    NAS_MML_EQUPLMN_INFO_STRU          *pstEplmnList        = VOS_NULL_PTR;
+    NAS_MML_PLMN_ID_STRU               *pstCurrCampPlmnId   = VOS_NULL_PTR;
+    VOS_UINT32                          i;
+
+    pstEplmnList              = NAS_MML_GetEquPlmnList();
+    pstCurrCampPlmnId         = NAS_MML_GetCurrCampPlmnId();
+
+    if (VOS_TRUE == pstEplmnList->ucValidFlg)
+    {
+        for (i = 0; i < pstEplmnList->ucEquPlmnNum; i++)
+        {
+            if (VOS_TRUE == NAS_MML_CompareBcchPlmnwithSimPlmn(pstCurrCampPlmnId, &pstEplmnList->astEquPlmnAddr[i]))
+            {
+                return VOS_TRUE;
+            }
+        }
+    }
+    return VOS_FALSE;
+}
+
 VOS_UINT32 NAS_MML_GetLaiForbType(
     NAS_MML_LAI_STRU                   *pstLai
 )
@@ -2322,11 +2385,6 @@ VOS_UINT32 NAS_MML_GetLaiForbType(
 
     return ulPlmnLaType;
 }
-
-
-
-
-
 VOS_UINT32 NAS_MML_IsCampPlmnInfoChanged(
     NAS_MML_CAMP_PLMN_INFO_STRU        *pstOldCampInfo,
     NAS_MML_CAMP_PLMN_INFO_STRU        *pstNewCampInfo
@@ -3008,7 +3066,7 @@ VOS_UINT32 NAS_MML_UnCompressData(
     pucSrc += sizeof(VOS_UINT32);
 
     /* 从第五个字节开始存放压缩后的数据 */
-    ulRslt  = (VOS_UINT32)_uncompress(pucDest, pulDestLen,
+    ulRslt  = (VOS_UINT32)_uncompress(pucDest, (uLongf *)pulDestLen,
                                       pucSrc, *pulSrcLen);
     if (VOS_OK != ulRslt)
     {
@@ -3046,7 +3104,7 @@ VOS_UINT32  NAS_MML_CompressData(
     /*预留前四个字节，从第五个字节开始存放压缩后的数据*/
     (*pulDestLen) -= sizeof(VOS_UINT32);
 
-    ulRslt         = (VOS_UINT32)compress(pucDest + sizeof(VOS_UINT32), pulDestLen,
+    ulRslt         = (VOS_UINT32)compress(pucDest + sizeof(VOS_UINT32), (uLongf *)pulDestLen,
                                    pucSrc, ulSrcLen);
 
     if( VOS_OK != ulRslt )
@@ -3429,27 +3487,27 @@ VOS_UINT32 NAS_MML_IsImsiInForbiddenList (VOS_VOID)
         return VOS_FALSE;
     }
 
-    
+
     if ( NAS_MML_RAT_FORBIDDEN_LIST_SWITCH_INACTIVE == pstRatBlackList->enSwitchFlag )
     {
         return VOS_FALSE;
     }
-    
+
     /* 取得本地维护的IMSI的地址 */
     pucImsi    = NAS_MML_GetSimImsi();
 
     /* 从当前的IMSI中取出home plmn */
     stHplmnId  = NAS_MML_GetImsiHomePlmn(pucImsi);
-    
+
     /* 判断IMSI是否在禁止的IMSI列表中 */
     if (NAS_MML_RAT_FORBIDDEN_LIST_SWITCH_BLACK == pstRatBlackList->enSwitchFlag)
-    {   
+    {
         for (i = 0; i < pstRatBlackList->ucImsiListNum; i++)
-        {   
+        {
             /* 如果在黑名单中，将ucIsPlmnIdInPlmnBlackList置为TRUE，需要禁止对应的RAT */
             stBlackPlmnId.ulMcc = pstRatBlackList->astImsiList[i].ulMcc;
-            stBlackPlmnId.ulMnc = pstRatBlackList->astImsiList[i].ulMnc;      
-            
+            stBlackPlmnId.ulMnc = pstRatBlackList->astImsiList[i].ulMnc;
+
             if (VOS_TRUE == NAS_MML_CompareBcchPlmnwithSimPlmn(&stBlackPlmnId, &stHplmnId))
             {
                 return VOS_TRUE;
@@ -3461,11 +3519,11 @@ VOS_UINT32 NAS_MML_IsImsiInForbiddenList (VOS_VOID)
     else if (NAS_MML_RAT_FORBIDDEN_LIST_SWITCH_WHITE == pstRatBlackList->enSwitchFlag)
     {
         for (i = 0; i < pstRatBlackList->ucImsiListNum; i++)
-        {   
+        {
             /* 如果在白名单中，直接返回VOS_FALSE(不在黑名单) */
             stBlackPlmnId.ulMcc = pstRatBlackList->astImsiList[i].ulMcc;
-            stBlackPlmnId.ulMnc = pstRatBlackList->astImsiList[i].ulMnc;  
-            
+            stBlackPlmnId.ulMnc = pstRatBlackList->astImsiList[i].ulMnc;
+
             if (VOS_TRUE == NAS_MML_CompareBcchPlmnwithSimPlmn(&stBlackPlmnId, &stHplmnId))
             {
                 return VOS_FALSE;
@@ -3477,7 +3535,7 @@ VOS_UINT32 NAS_MML_IsImsiInForbiddenList (VOS_VOID)
     else
     {
     }
-    
+
     return VOS_FALSE;
 
 }
@@ -3919,7 +3977,7 @@ VOS_UINT32 NAS_MML_DecodeEmergencyNumList(
     pstEmergencyNumList->ucEmergencyNumber = 0;
 
     /* 整个紧急呼IE的长度，包括IEI */
-    ucTotalIeLength       = pucRcvMsg[usIndex + 1] + 2; 
+    ucTotalIeLength       = pucRcvMsg[usIndex + 1] + 2;
 
     /* Length of Emergency Number List IE contents */
     ucParseEmcTotalLength = pucRcvMsg[usIndex + 1];
@@ -3928,9 +3986,9 @@ VOS_UINT32 NAS_MML_DecodeEmergencyNumList(
     if ( ( *pusIndex + ucTotalIeLength) > usMsgSize )
     {
         NAS_WARNING_LOG(WUEPS_PID_MM, "NAS_MML_DecodeEmergencyNumList: IE emergency number length error!!!");
-        
+
         *pusIndex = usMsgSize;
-        
+
         /* 解析异常，直接返回END */
         return VOS_FALSE;
     }
@@ -3940,8 +3998,8 @@ VOS_UINT32 NAS_MML_DecodeEmergencyNumList(
         NAS_WARNING_LOG(WUEPS_PID_MM, "NAS_MML_DecodeEmergencyNumList: IE emergency number length < NAS_MML_MIN_EMERGENCY_NUM_LEN error !!!");
 
         /* 直接指向紧急呼的结束符号:即下一个IEI或解析完毕了 */
-        *pusIndex = *pusIndex + ucTotalIeLength;        
-        
+        *pusIndex = *pusIndex + ucTotalIeLength;
+
         return VOS_FALSE;
     }
 
@@ -3949,27 +4007,27 @@ VOS_UINT32 NAS_MML_DecodeEmergencyNumList(
     {
         NAS_WARNING_LOG(WUEPS_PID_MM, "NAS_MML_DecodeEmergencyNumList: IE emergency number length > NAS_MML_MAX_EMERGENCY_NUM_LEN error !!!");
 
-        ucParseEmcTotalLength =  NAS_MML_MAX_EMERGENCY_NUM_LEN;        
-    }    
+        ucParseEmcTotalLength =  NAS_MML_MAX_EMERGENCY_NUM_LEN;
+    }
 
     /* 指向第一个紧急呼列表 */
-    usIndex = usIndex + 2;    
+    usIndex = usIndex + 2;
 
     while (ucParseEmcTotalLength > ucTempLength)
     {
 
        ucLength     = pucRcvMsg[usIndex];                                      /* Length of Nst Emergency Number information */
-        
+
        /*************************************************************************
        *TS 24.007, section 11.4.2
-       * -- It is not a syntactical error that a type 4 standard IE specifies in 
-       * its length indicator a greater length than possible according to the 
+       * -- It is not a syntactical error that a type 4 standard IE specifies in
+       * its length indicator a greater length than possible according to the
        * value part specification: extra bits shall be ignored.
        *
        *TS 24.007, section 11.2.1.1.4
-       *A type 4 standard information element has format LV or TLV. Its LI precedes 
-       *the value part, which consists of zero, one, or more octets; if present, 
-       *its IEI has one octet length and precedes the LI. 
+       *A type 4 standard information element has format LV or TLV. Its LI precedes
+       *the value part, which consists of zero, one, or more octets; if present,
+       *its IEI has one octet length and precedes the LI.
        *
        *Hence, this is a type 4 information element.
        **************************************************************************/
@@ -3977,7 +4035,7 @@ VOS_UINT32 NAS_MML_DecodeEmergencyNumList(
         {
             /* 直接指向紧急呼的结束符号:即下一个IEI或解析完毕了 */
             *pusIndex = *pusIndex + ucTotalIeLength;
-            
+
             return VOS_FALSE;
         }
 
@@ -3987,15 +4045,15 @@ VOS_UINT32 NAS_MML_DecodeEmergencyNumList(
             pstEmergencyNumList->ucEmergencyNumber = 0;
             *pusIndex = *pusIndex + ucTotalIeLength;
             return VOS_FALSE;
-        }    
-        
+        }
+
         ucTempLength = ucTempLength + ucLength + 1;                             /* 累计所有Emergency Number List的总长度，包括 Length IE */
 
         if (ucLength > NAS_MML_MAX_EMERGENCY_NUM_INFO_LEN)
         {
             /* usIndex指向下一个紧急呼长度 */
             usIndex += ucTempLength;
-            
+
             /* 仅忽略掉当前紧急呼项 */
             continue;
         }
@@ -4007,7 +4065,7 @@ VOS_UINT32 NAS_MML_DecodeEmergencyNumList(
             = pucRcvMsg[usIndex + 1] & 0x1F;                                    /* Emergency Service Category Value         */
 
         /* 偏移到 Number digit 1 字节 */
-        usIndex = usIndex + 2;                                                  
+        usIndex = usIndex + 2;
 
         for (i = 0; i < (ucLength - 1); i++)
         {
@@ -4021,10 +4079,10 @@ VOS_UINT32 NAS_MML_DecodeEmergencyNumList(
         {
             /* 达到自大紧急呼个数，则认为解析完毕 */
             *pusIndex = *pusIndex + ucTotalIeLength;
-            
+
             return VOS_TRUE;
         }
-        
+
     }
 
     /* 解析完毕，则指向最后一个字符 */
@@ -4276,7 +4334,7 @@ VOS_VOID NAS_MML_DelEqualPlmnNotInAllowLteRoamMccList(
     VOS_UINT8                           ucPlmnNum;
     VOS_UINT8                           ucLteRoamFlg;
 
-    
+
     ucPlmnNum       = *pucEPlmnNum;
     ucLteRoamFlg    = NAS_MML_GetLteRoamAllowedFlg();
 
@@ -4287,7 +4345,7 @@ VOS_VOID NAS_MML_DelEqualPlmnNotInAllowLteRoamMccList(
     }
 
     for ( i = 0; i < ucPlmnNum;  )
-    {        
+    {
             /* EPLMN ID为国际漫游网络,不允许漫游,需要删除 */
         if (VOS_FALSE == NAS_MML_IsMccInDestMccList(pstEPlmnList[i].ulMcc, ulAllowLteRoamMccNum, pulAllowLteRoamMccList))
         {
@@ -4327,12 +4385,12 @@ VOS_VOID NAS_MMC_DelDuplicatedPlmnInPlmnList(
     VOS_UINT8                           i;
     VOS_UINT8                           ucPlmnNum;
 
-    
+
     ucPlmnNum       = *pucPlmnNum;
 
     /* 第一个PLMN肯定不会重复，默认在列表中，循环变量从1开始 */
     for ( i = 1; i < ucPlmnNum;  )
-    {        
+    {
         if (VOS_TRUE == NAS_MML_IsBcchPlmnIdInDestSimPlmnList(&(pstPlmnList[i]),
                                                i, pstPlmnList))
         {
@@ -4369,11 +4427,11 @@ VOS_VOID NAS_MML_DelForbPlmnInPlmnList(
     VOS_UINT8                           i;
     VOS_UINT8                           ucPlmnNum;
 
-    
+
     ucPlmnNum       = *pucPlmnNum;
 
     for ( i = 0; i < ucPlmnNum;  )
-    {        
+    {
         if (VOS_TRUE == NAS_MML_IsPlmnIdInForbidPlmnList(&(pstPlmnList[i])))
         {
             if (i < (ucPlmnNum - 1))
@@ -4479,6 +4537,94 @@ VOS_UINT32  NAS_MML_IsCurrentRatHighestRat(VOS_VOID)
     return VOS_FALSE;
 }
 
+
+
+VOS_UINT8 NAS_MML_IsRoamingRejectNoRetryFlgActived(VOS_UINT8 ucCause)
+ {
+    NAS_MML_PLMN_ID_STRU                                   *pstCurplmn    = VOS_NULL_PTR;
+    VOS_UINT32                                              ulIsRoam;
+    NAS_MML_ROAMINGREJECT_NORETYR_CFG_STRU                 *pstNoRetryCfg = VOS_NULL_PTR;
+    VOS_UINT32                                              i;
+
+    i               = 0;
+    pstCurplmn      = NAS_MML_GetCurrCampPlmnId();
+    ulIsRoam        = NAS_MMC_IsRoam();
+    pstNoRetryCfg   = NAS_MML_GetRoamingRejectNoRetryCfg();
+
+    /*
+    满足如下条件的时候收到reject 17不重试
+    1. 不是测试卡；
+    2. 定制nv打开,拒绝原因值在nv配置中；
+    3. 漫游状态且当前PLMN不是UPLMN也不是OPLMN；
+    */
+
+    if (VOS_TRUE == NAS_USIMMAPI_IsTestCard())
+    {
+        return VOS_FALSE;
+    }
+
+    if (VOS_FALSE == ulIsRoam)
+    {
+        return VOS_FALSE;
+    }
+
+    if (VOS_TRUE == NAS_MML_ComparePlmnIdWithUplmn(pstCurplmn))
+    {
+        return VOS_FALSE;
+    }
+
+    if (VOS_TRUE == NAS_MML_ComparePlmnIdWithOplmn(pstCurplmn))
+    {
+        return VOS_FALSE;
+    }
+
+    if (0 == pstNoRetryCfg->ucNoRetryRejectCauseNum)
+    {
+        return VOS_FALSE;
+    }
+
+    for (i=0; i<pstNoRetryCfg->ucNoRetryRejectCauseNum; i++)
+    {
+        if (ucCause == pstNoRetryCfg->aucNoRetryRejectCause[i])
+        {
+            return VOS_TRUE;
+        }
+    }
+
+    return VOS_FALSE;
+}
+
+
+VOS_UINT8 NAS_MML_IsUeSupportIms(VOS_VOID)
+{
+    VOS_UINT8                           ucVoiceOnIms;
+    VOS_UINT8                           ucSmsOnIms;
+    VOS_UINT8                           ucVideoOnIms;
+    VOS_UINT8                           ucUssdOnIms;
+    
+
+    /* 总控开关未打开时，认为UE不支持IMS */
+    if (VOS_FALSE == NAS_MML_GetLteImsSupportFlg())
+    {
+        return VOS_FALSE;
+    }
+
+    /* 任意一项业务能力支持时，认为UE支持IMS */
+    ucVoiceOnIms    = NAS_MML_GetVoiceCallOnImsSupportFlag();
+    ucSmsOnIms      = NAS_MML_GetSmsOnImsSupportFlag();
+    ucVideoOnIms    = NAS_MML_GetVideoCallOnImsSupportFlag();
+    ucUssdOnIms     = NAS_MML_GetUssdOnImsSupportFlag();
+
+    if ( (VOS_TRUE == ucVoiceOnIms)
+      || (VOS_TRUE == ucSmsOnIms)
+      || (VOS_TRUE == ucVideoOnIms)
+      || (VOS_TRUE == ucUssdOnIms) )
+    {
+        return VOS_TRUE;
+    }
+
+    return VOS_FALSE;
+}
 
 
 #ifdef  __cplusplus

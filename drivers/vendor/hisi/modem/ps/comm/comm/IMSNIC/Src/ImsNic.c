@@ -2172,6 +2172,9 @@ VOS_UINT32 IMS_NIC_InitAll(VOS_VOID)
         }
     }
 
+    /* 关闭IPv6重复地址检查 */
+    IMS_TCPIP_CLOSE_IPV6_BAD();
+
 #ifdef  ST_IMS_NIC
     ST_IMS_NIC_InitQ();
 #endif

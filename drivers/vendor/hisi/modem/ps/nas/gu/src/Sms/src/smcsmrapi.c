@@ -574,9 +574,19 @@ VOS_VOID SMC_SmrApiAbortReq(
                 /* g_SmcPsEnt.SmcMo.TimerInfo.ucTimerSta    = SMS_TIMER_STATUS_STOP; */
                 g_SmcPsEnt.SmcMo.TimerInfo.ucExpireTimes = 0;
 
-                SMC_SndGmmDataReq( SMC_DATA_TYPE_CP_ERR,
-                                   SMS_CP_ERR_PROT_ERR_UNSPEC,
-                                   g_SmcPsEnt.SmcMo.ucTi );                     /* 向网侧指示错误                           */
+#if (FEATURE_ON == FEATURE_LTE)
+                if (NAS_GMM_NET_RAT_TYPE_LTE == GMM_GetCurNetwork())
+                {
+                    /* 当前驻留在L模,构造SMS_LMM_DATA_REQ消息，通过NAS_SMS_SndLmmDataReq发送 */
+                    NAS_SMS_SndLmmDataReq(SMC_DATA_TYPE_CP_ERR, SMS_CP_ERR_PROT_ERR_UNSPEC, g_SmcPsEnt.SmcMo.ucTi);
+                }
+                else
+#endif
+                {
+                    SMC_SndGmmDataReq( SMC_DATA_TYPE_CP_ERR,
+                                       SMS_CP_ERR_PROT_ERR_UNSPEC,
+                                       g_SmcPsEnt.SmcMo.ucTi );                     /* 向网侧指示错误                           */
+                }
 
             }
             PS_LOG(WUEPS_PID_SMS, VOS_NULL, PS_PRINT_NORMAL, "SMC_SmrApiAbortReq:NORMAL:SMS state = SMC_MO_IDLE");
@@ -629,7 +639,6 @@ VOS_VOID SMC_SmrApiAbortReq(
 
     }
 }
-
 VOS_VOID SMC_SmrApiRelReq(
                       VOS_UINT8     ucRelCause,                                     /* 释放原因                                 */
                       VOS_UINT8     ucMtFlg                                         /* 是MT过程                                 */
@@ -797,7 +806,7 @@ VOS_UINT32 SMR_SmcApiDataInd(
     VOS_UINT32  ulRet = VOS_OK;
     NAS_OM_SMS_MO_REPORT_STRU stSmsMoReportPara;
 
-    stSmsMoReportPara.ucCause = 0;
+    stSmsMoReportPara.ulCause = 0;
     stSmsMoReportPara.ucSmsMr = g_SmrEnt.SmrMo.ucMr;
 
     /*When a message is received that is too short to contain a complete message
@@ -908,9 +917,7 @@ VOS_UINT32 SMR_SmcApiDataInd(
                 PS_LOG(WUEPS_PID_SMS, VOS_NULL, PS_PRINT_NORMAL, "SMR_SmcApiDataInd:NORMAL:SMS state = SMR_IDLE");
                 g_SmrEnt.SmrMo.ucState = SMR_IDLE;                                      /* 状态迁移到空闲状态                       */
             }
-            stSmsMoReportPara.ucCause = pucData[3];
-            NAS_EventReport(WUEPS_PID_SMS, NAS_OM_EVENT_SMS_MO_FAIL,
-                            &stSmsMoReportPara, sizeof(stSmsMoReportPara));
+            /* 刚解析完消息，后面还会判断要不要重试，此处报SMS MO FAIL太早 */
             break;
         default:
             /* 向网侧指示错误          */
@@ -931,6 +938,7 @@ VOS_UINT32 SMR_SmcApiDataInd(
     }
     return ulRet;
 }
+
 VOS_UINT32 SMR_SmcApiEstInd(
                       VOS_UINT8 *pucData,                                       /* 数据首地址           */
                       VOS_UINT32  ulLen,                                        /* 数据长度             */

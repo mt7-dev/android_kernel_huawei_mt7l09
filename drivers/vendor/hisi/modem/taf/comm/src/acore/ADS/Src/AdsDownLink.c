@@ -57,7 +57,7 @@ VOS_VOID ADS_DL_RcvTiProtectExpired(
     ADS_DBG_DL_RD_TI_PROTECT_EXPIRED_NUM(1);
 
     /* 停止定时器 */
-    ADS_StopTimer(ACPU_PID_ADS_DL, TI_ADS_DL_PROTECT);
+    ADS_StopTimer(ACPU_PID_ADS_DL, TI_ADS_DL_PROTECT, ADS_TIMER_STOP_CAUSE_USER);
 
     if (BSP_IPF_GetDlRdNum() > 0)
     {
@@ -130,7 +130,7 @@ VOS_VOID ADS_DL_ProcIpfAdqEmtpyEvent(VOS_VOID)
     }
     else
     {
-        ADS_StopTimer(ACPU_PID_ADS_DL, TI_ADS_DL_ADQ_EMPTY);
+        ADS_StopTimer(ACPU_PID_ADS_DL, TI_ADS_DL_ADQ_EMPTY, ADS_TIMER_STOP_CAUSE_USER);
     }
 
     return;
@@ -158,6 +158,14 @@ VOS_VOID ADS_DL_ConfigAdq(
     VOS_UINT16                          usLen;
     IPF_AD_DESC_S                      *pstIpfAdDesc = VOS_NULL_PTR;
     VOS_INT32                           lRslt;
+#ifdef CONFIG_ARM64
+    struct device                       dev;
+    VOS_UINT64                          dma_mask = 0xffffffffULL;
+
+    VOS_MemSet(&dev, 0, (VOS_SIZE_T)sizeof(dev));
+
+    dev.dma_mask = &(dma_mask);
+#endif
 
     ulActAdNum = 0;
 
@@ -191,13 +199,18 @@ VOS_VOID ADS_DL_ConfigAdq(
         /* 偏移head指针14个字节，用于MAC头 */
         pstZcPullData = (VOS_CHAR *)IMM_ZcPull(pstZcData, ADS_DL_AD_DATA_PTR_OFFSET);
 
+#ifdef CONFIG_ARM64
+        ADS_CACHE_INVALIDATE_WITH_DEV(&dev, pstZcHead, usLen);
+#else
         ADS_CACHE_INVALIDATE(pstZcHead, usLen);
+#endif
 
         /* 填充OUTPUT0，目的地址 */
-        pstIpfAdDesc->u32OutPtr0 = (VOS_UINT32)virt_to_phys((VOS_UINT32 *)pstZcPullData);
+        pstIpfAdDesc->u32OutPtr0 = (VOS_UINT32)virt_to_phys((VOS_VOID *)pstZcPullData);
 
         /* 填充OUTPUT1，SKBUFF */
-        pstIpfAdDesc->u32OutPtr1 = (VOS_UINT32)pstZcData;
+        pstIpfAdDesc->u32OutPtr1 = (VOS_UINT32)virt_to_phys((VOS_VOID *)pstZcData);
+
 
         ADS_DBG_DL_ALLOC_AD_SUCC_NUM(enAdType, 1);;
 
@@ -216,7 +229,7 @@ VOS_VOID ADS_DL_ConfigAdq(
             /* 配置失败，释放内存 */
             for (i = 0; i < ulActAdNum; i++)
             {
-                IMM_ZcFree((IMM_ZC_STRU *)ADS_DL_GET_IPF_AD_BUFFER_PTR(enAdType, i)->u32OutPtr1);
+                IMM_ZcFree((IMM_ZC_STRU *)phys_to_virt(ADS_DL_GET_IPF_AD_BUFFER_PTR(enAdType, i)->u32OutPtr1));
             }
 
             *pulActAdNum = 0;
@@ -304,7 +317,7 @@ VOS_VOID ADS_DL_SendNdClientDataInd(
 
     PS_MEM_SET((VOS_INT8 *)pstDataInd + VOS_MSG_HEAD_LENGTH,
                0x00,
-               sizeof(ADS_NDCLIENT_DATA_IND_STRU) + usDataLen - 2 - VOS_MSG_HEAD_LENGTH);
+               (VOS_SIZE_T)(sizeof(ADS_NDCLIENT_DATA_IND_STRU) + usDataLen - 2 - VOS_MSG_HEAD_LENGTH));
 
     /*填写消息内容*/
     /* ND CLIENT 的PID */
@@ -335,13 +348,13 @@ VOS_VOID ADS_DL_FreeIpfUsedAd0(VOS_VOID)
     IPF_AD_DESC_S                       astAdDesc[IPF_DLAD0_DESC_SIZE];
 
     ulAdNum = 0;
-    PS_MEM_SET(astAdDesc, 0, sizeof(IPF_AD_DESC_S) * IPF_DLAD0_DESC_SIZE);
+    PS_MEM_SET(astAdDesc, 0, (VOS_SIZE_T)(sizeof(IPF_AD_DESC_S) * IPF_DLAD0_DESC_SIZE));
     if (IPF_SUCCESS == BSP_IPF_GetUsedDlAd(IPF_AD_0, (BSP_U32 *)&ulAdNum, astAdDesc))
     {
         /* 释放ADQ0的内存 */
         for (i = 0; i < PS_MIN(ulAdNum, IPF_DLAD0_DESC_SIZE); i++)
         {
-            IMM_ZcFree((IMM_ZC_STRU *)astAdDesc[i].u32OutPtr1);
+            IMM_ZcFree((IMM_ZC_STRU *)phys_to_virt(astAdDesc[i].u32OutPtr1));
         }
     }
 
@@ -355,13 +368,13 @@ VOS_VOID ADS_DL_FreeIpfUsedAd1(VOS_VOID)
     IPF_AD_DESC_S                       astAdDesc[IPF_DLAD1_DESC_SIZE];
 
     ulAdNum = 0;
-    PS_MEM_SET(astAdDesc, 0, sizeof(IPF_AD_DESC_S) * IPF_DLAD1_DESC_SIZE);
-    if (IPF_SUCCESS == BSP_IPF_GetUsedDlAd(IPF_AD_1, (BSP_U32 *)&ulAdNum, astAdDesc))
+    PS_MEM_SET(astAdDesc, 0, (VOS_SIZE_T)(sizeof(IPF_AD_DESC_S) * IPF_DLAD1_DESC_SIZE));
+    if (IPF_SUCCESS == BSP_IPF_GetUsedDlAd(IPF_AD_1, (VOS_UINT32 *)&ulAdNum, astAdDesc))
     {
         /* 释放ADQ1的内存 */
         for (i = 0; i < PS_MIN(ulAdNum, IPF_DLAD1_DESC_SIZE); i++)
         {
-            IMM_ZcFree((IMM_ZC_STRU *)astAdDesc[i].u32OutPtr1);
+            IMM_ZcFree((IMM_ZC_STRU *)phys_to_virt(astAdDesc[i].u32OutPtr1));
         }
     }
 
@@ -470,7 +483,7 @@ VOS_VOID ADS_DL_SendNdClientDataInd(
     pstDataInd->ucRabId       = ADS_DL_GET_RAB_ID_FROM_RD_USER_FIELD1(pstRdDesc->u16UsrField1);
     pstDataInd->usLen         = usDataLen;
 
-    PS_MEM_CPY(pstDataInd->aucData, (VOS_UINT8 *)TTF_PHY_TO_VIRT(pstRdDesc->u32OutPtr), usDataLen);
+    PS_MEM_CPY(pstDataInd->aucData, (VOS_VOID *)TTF_PHY_TO_VIRT((VOS_VOID *)(pstRdDesc->u32OutPtr)), usDataLen);
 
     /* 调用VOS发送原语 */
     ulResult = PS_SEND_MSG(ACPU_PID_ADS_DL, pstDataInd);
@@ -659,7 +672,7 @@ VOS_VOID ADS_DL_ProcRd(
     pstImmZc->len  = ulIpLen;
 #else
     /* 将IPF过滤出的数据转换成Zc数据 */
-    pstImmZc = IMM_DataTransformImmZc((VOS_UINT8*)TTF_PHY_TO_VIRT((VOS_UINT32)ADS_DL_GET_DATA_FROM_IPF_OUT(pstRdDesc->u32OutPtr)),
+    pstImmZc = IMM_DataTransformImmZc((VOS_UINT8*)TTF_PHY_TO_VIRT((VOS_VOID *)ADS_DL_GET_DATA_FROM_IPF_OUT(pstRdDesc->u32OutPtr)),
                                       ADS_DL_GET_LEN_FROM_IPF_PKT_LEN(pstRdDesc->u16PktLen),
                                       ADS_DL_GET_TTFMEM_FROM_IPF_USR2(pstRdDesc->u32UsrField2));
     if (VOS_NULL_PTR == pstImmZc)
@@ -684,7 +697,7 @@ VOS_VOID ADS_DL_ProcRd(
 
 VOS_VOID ADS_DL_ProcIpfResult(VOS_VOID)
 {
-    BSP_U32                             ulRdNum = IPF_DLRD_DESC_SIZE;
+    VOS_UINT32                          ulRdNum = IPF_DLRD_DESC_SIZE;
     VOS_UINT32                          ulCnt;
     ADS_DL_IPF_RESULT_STRU             *pstIpfRslt;
     IPF_RD_DESC_S                      *pstRdDesc;
@@ -695,6 +708,16 @@ VOS_VOID ADS_DL_ProcIpfResult(VOS_VOID)
     IMM_ZC_STRU                        *pstImmZc = VOS_NULL_PTR;
 #endif
 
+#ifdef CONFIG_ARM64
+    struct device                       dev;
+    VOS_UINT64                          dma_mask = 0xffffffffULL;
+
+    VOS_MemSet(&dev, 0, (VOS_SIZE_T)sizeof(dev));
+
+    dev.dma_mask = &(dma_mask);
+#endif
+
+    ucInstanceIndex = 0;
     /*
     IPF_RD_DESC_S中u16Result含义
     [15]Reserve
@@ -760,7 +783,11 @@ VOS_VOID ADS_DL_ProcIpfResult(VOS_VOID)
 
 #if(FEATURE_OFF == FEATURE_SKB_EXP)
         pstImmZc = (IMM_ZC_STRU *)ADS_DL_GET_DATA_FROM_IPF_OUT(pstRdDesc->u32OutPtr);
+#ifdef CONFIG_ARM64
+        ADS_CACHE_INVALIDATE_WITH_DEV(&dev, pstImmZc->data - ADS_DL_AD_DATA_PTR_OFFSET, pstRdDesc->u16PktLen + ADS_DL_AD_DATA_PTR_OFFSET);
+#else
         ADS_CACHE_INVALIDATE(pstImmZc->data - ADS_DL_AD_DATA_PTR_OFFSET, pstRdDesc->u16PktLen + ADS_DL_AD_DATA_PTR_OFFSET);
+#endif
 #endif
 
         /* 接口修改后，获取此值 */
@@ -799,13 +826,13 @@ VOS_VOID ADS_DL_ProcIpfResult(VOS_VOID)
         }
     }
 
+    /*lint -e771*/
     for (ucRabId = ADS_RAB_ID_MIN; ucRabId < ADS_RAB_ID_MAX; ucRabId++)
     {
         ADS_DL_Xmit(ucRabId, ucInstanceIndex, 0, VOS_NULL_PTR);
     }
+    /*lint +e771*/
 
-
-    BSP_NCM_Write_Ready();
 
     return;
 }
@@ -819,7 +846,7 @@ VOS_UINT32 ADS_DL_IsFcAssemTuneNeeded(VOS_UINT32 ulRdNum)
     /* 获取流控阈值参数 */
     pstFcAssemInfo = ADS_DL_GET_FC_ASSEM_INFO_PTR(ADS_INSTANCE_INDEX_0);
 
-    if (VOS_TRUE != pstFcAssemInfo->ulEnableMask)
+    if (0 != pstFcAssemInfo->ulEnableMask)
     {
         pstFcAssemInfo->ulRdCnt += ulRdNum;
 
@@ -1032,7 +1059,7 @@ VOS_UINT32 ADS_DL_RcvCcpuResetStartInd(
     /* 停止所有启动的定时器 */
     for (ucIndex = 0; ucIndex < ADS_MAX_TIMER_NUM; ucIndex++)
     {
-        ADS_StopTimer(ACPU_PID_ADS_DL, ucIndex);
+        ADS_StopTimer(ACPU_PID_ADS_DL, ucIndex, ADS_TIMER_STOP_CAUSE_USER);
     }
 
 #if (FEATURE_OFF == FEATURE_SKB_EXP)

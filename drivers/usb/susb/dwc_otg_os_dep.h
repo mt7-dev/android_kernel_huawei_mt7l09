@@ -27,8 +27,11 @@
 #include <linux/workqueue.h>
 #include <linux/stat.h>
 #include <linux/pci.h>
-
+#include <linux/io.h>
 #include <linux/version.h>
+#include <linux/wakelock.h>
+#include <linux/platform_device.h>
+#include <asm/cacheflush.h>
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,20)
 # include <linux/irq.h>
@@ -59,8 +62,10 @@
 # include <asm/sizes.h>
 # include <asm/param.h>
 # include <asm/io.h>
-
 # include "lm.h"
+#ifndef CONFIG_HI3635_USB
+#include "soc_peri_sctrl_interface.h"
+#endif
 #endif
 
 /** The OS page size */

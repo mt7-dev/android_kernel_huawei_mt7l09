@@ -65,27 +65,31 @@ VOS_UINT32                              g_ulAtUsbDebugFlag = VOS_FALSE;
 AT_HSIC_CONTEXT_STRU                    g_astAtHsicCtx[] =
 {
     {
-        UDI_ACM_HSIC_ACM0_ID,      UDI_INVALID_HANDLE,        AT_HsicOneReadDataCB,
-        AT_HsicOneFreeDlDataBuf,   AT_CLIENT_TAB_HSIC1_INDEX, AT_CLIENT_ID_HSIC1,
-        AT_HSIC1_USER,             AT_HSIC1_PORT_NO,          AT_HSIC_REPORT_ON
+        UDI_ACM_HSIC_ACM0_ID,      AT_HSIC_REPORT_ON,         AT_HsicOneReadDataCB,
+        AT_HsicOneFreeDlDataBuf,   UDI_INVALID_HANDLE,        AT_CLIENT_ID_HSIC1,
+        AT_CLIENT_TAB_HSIC1_INDEX, AT_HSIC1_USER,             AT_HSIC1_PORT_NO,
+        {0, 0, 0, 0, 0, 0, 0}
     },
 
     {
-        UDI_ACM_HSIC_ACM2_ID,      UDI_INVALID_HANDLE,        AT_HsicTwoReadDataCB,
-        AT_HsicTwoFreeDlDataBuf,   AT_CLIENT_TAB_HSIC2_INDEX, AT_CLIENT_ID_HSIC2,
-        AT_HSIC2_USER,             AT_HSIC2_PORT_NO,          AT_HSIC_REPORT_ON
+        UDI_ACM_HSIC_ACM2_ID,      AT_HSIC_REPORT_ON,         AT_HsicTwoReadDataCB,
+        AT_HsicTwoFreeDlDataBuf,   UDI_INVALID_HANDLE,        AT_CLIENT_ID_HSIC2,
+        AT_CLIENT_TAB_HSIC2_INDEX, AT_HSIC2_USER,             AT_HSIC2_PORT_NO,
+        {0, 0, 0, 0, 0, 0, 0}
     },
 
     {
-        UDI_ACM_HSIC_ACM4_ID,      UDI_INVALID_HANDLE,        AT_HsicThreeReadDataCB,
-        AT_HsicThreeFreeDlDataBuf, AT_CLIENT_TAB_HSIC3_INDEX, AT_CLIENT_ID_HSIC3,
-        AT_HSIC3_USER,             AT_HSIC3_PORT_NO,          AT_HSIC_REPORT_OFF
+        UDI_ACM_HSIC_ACM4_ID,      AT_HSIC_REPORT_OFF,        AT_HsicThreeReadDataCB,
+        AT_HsicThreeFreeDlDataBuf, UDI_INVALID_HANDLE,        AT_CLIENT_ID_HSIC3,
+        AT_CLIENT_TAB_HSIC3_INDEX, AT_HSIC3_USER,             AT_HSIC3_PORT_NO,
+        {0, 0, 0, 0, 0, 0, 0}
     },
 
     {
-        UDI_ACM_HSIC_ACM12_ID,     UDI_INVALID_HANDLE,        AT_HsicFourReadDataCB,
-        AT_HsicFourFreeDlDataBuf,  AT_CLIENT_TAB_HSIC4_INDEX, AT_CLIENT_ID_HSIC4,
-        AT_HSIC4_USER,             AT_HSIC4_PORT_NO,          AT_HSIC_REPORT_ON
+        UDI_ACM_HSIC_ACM12_ID,     AT_HSIC_REPORT_ON,         AT_HsicFourReadDataCB,
+        AT_HsicFourFreeDlDataBuf,  UDI_INVALID_HANDLE,        AT_CLIENT_ID_HSIC4,
+        AT_CLIENT_TAB_HSIC4_INDEX, AT_HSIC4_USER,             AT_HSIC4_PORT_NO,
+        {0, 0, 0, 0, 0, 0, 0}
     }
 };
 #endif
@@ -292,6 +296,7 @@ VOS_UINT32 At_CmdStreamPreProc(VOS_UINT8 ucIndex, VOS_UINT8* pData, VOS_UINT16 u
         {
             if ( BSP_MODULE_SUPPORT == DRV_GET_WIFI_SUPPORT() )
             {
+#if (FEATURE_OFF == FEATURE_MERGE_OM_CHAN)
                 if ((usLen > 2) && (ucAtS3 == pData[usLen - 2]) && (ucAtS4 == pData[usLen - 1]))
                 {
                     CPM_ComSend(CPM_AT_COMM, pData, usLen - 1);
@@ -300,6 +305,16 @@ VOS_UINT32 At_CmdStreamPreProc(VOS_UINT8 ucIndex, VOS_UINT8* pData, VOS_UINT16 u
                 {
                     CPM_ComSend(CPM_AT_COMM, pData, usLen);
                 }
+#else
+                if ((usLen > 2) && (ucAtS3 == pData[usLen - 2]) && (ucAtS4 == pData[usLen - 1]))
+                {
+                    CPM_ComSend(CPM_AT_COMM, pData, VOS_NULL_PTR, usLen - 1);
+                }
+                else
+                {
+                    CPM_ComSend(CPM_AT_COMM, pData, VOS_NULL_PTR, usLen);
+                }
+#endif				
             }
 
         }
@@ -344,7 +359,9 @@ VOS_UINT32 At_CmdStreamPreProc(VOS_UINT8 ucIndex, VOS_UINT8* pData, VOS_UINT16 u
     /* 解析到如下字符才将码流以消息方式发送到AT的消息队列中: <CR>/<ctrl-z>/<ESC> */
     while(usCount++ < usLen)
     {
+        /*lint -e960 Note -- Violates MISRA 2004 Required Rule 4.1, Prohibited escape sequence used (hexadecimal)*/
         if (At_CheckSplitChar((*((pData + usCount) - 1))))
+        /*lint +e960*/
         {
             if(g_aucAtDataBuff[ucIndex].ulBuffLen > 0)
             {
@@ -1000,7 +1017,7 @@ VOS_UINT32 At_ModemMscInd (
 {
     AT_PPP_MODEM_MSC_IND_MSG_STRU      *pMsg;
     VOS_UINT32                          ulLength;
-    VOS_UINT32                          ulTmpAddr;
+    VOS_UINT_PTR                        ulTmpAddr;
 
     ulLength = (sizeof(AT_PPP_MODEM_MSC_IND_MSG_STRU) - VOS_MSG_HEAD_LENGTH)
                + (sizeof(AT_DCE_MSC_STRU) - 2);
@@ -1026,7 +1043,8 @@ VOS_UINT32 At_ModemMscInd (
     pMsg->ucDlci                    = ucDlci;
 
     /* 填写管脚数据 */
-    ulTmpAddr                       = (VOS_UINT32)(pMsg->aucMscInd);
+    ulTmpAddr = (VOS_UINT_PTR)(pMsg->aucMscInd);
+
     PS_MEM_CPY((VOS_VOID *)ulTmpAddr, (VOS_UINT8 *)pMscStru, sizeof(AT_DCE_MSC_STRU));
 
     /* 发送消息 */
@@ -1065,7 +1083,11 @@ VOS_UINT32 AT_ModemGetUlDataBuf(
         return AT_FAILURE;
     }
 
+#ifdef FEATURE_USB_ZERO_COPY
+    if (VOS_NULL_PTR == stCtlParam.pVirAddr)
+#else
     if (VOS_NULL_PTR == stCtlParam.pBuffer)
+#endif
     {
         AT_ERR_LOG("AT_ModemGetUlDataBuf, WARNING, Data buffer error");
         AT_MODEM_DBG_UL_INVALID_RD_NUM(1);
@@ -1074,7 +1096,11 @@ VOS_UINT32 AT_ModemGetUlDataBuf(
 
     AT_MODEM_DBG_UL_GET_RD_SUCC_NUM(1);
 
+#ifdef FEATURE_USB_ZERO_COPY
+    *ppstBuf = (IMM_ZC_STRU *)stCtlParam.pVirAddr;
+#else
     *ppstBuf = (IMM_ZC_STRU *)stCtlParam.pBuffer;
+#endif
 
     return AT_SUCCESS;
 }
@@ -1216,7 +1242,12 @@ VOS_UINT32 AT_ModemFreeUlDataBuf(
     VOS_INT32                           ulResult;
 
     /* 填写需要释放的内存指针 */
+#ifdef FEATURE_USB_ZERO_COPY
+    stCtlParam.pVirAddr = (VOS_CHAR*)pstBuf;
+    stCtlParam.pPhyAddr = VOS_NULL_PTR;
+#else
     stCtlParam.pBuffer  = (VOS_CHAR*)pstBuf;
+#endif
     stCtlParam.u32Size  = 0;
     stCtlParam.pDrvPriv = VOS_NULL_PTR;
 
@@ -1253,7 +1284,12 @@ VOS_UINT32 AT_ModemWriteData(
     VOS_INT32                           ulResult;
 
     /* 待写入数据内存地址 */
+#ifdef FEATURE_USB_ZERO_COPY
+    stCtlParam.pVirAddr                 = (VOS_CHAR*)pstBuf;
+    stCtlParam.pPhyAddr                 = VOS_NULL_PTR;
+#else
     stCtlParam.pBuffer                  = (VOS_CHAR*)pstBuf;
+#endif
     stCtlParam.u32Size                  = 0;
     stCtlParam.pDrvPriv                 = VOS_NULL_PTR;
 
@@ -1708,7 +1744,12 @@ VOS_UINT32 AT_UART_GetUlDataBuff(
     }
 
     /* 获取底软上行数据BUFFER */
-    stCtlParam.pBuffer  = VOS_NULL_PTR;
+#ifdef FEATURE_USB_ZERO_COPY
+    stCtlParam.pVirAddr = VOS_NULL_PTR;
+    stCtlParam.pPhyAddr = VOS_NULL_PTR;
+#else
+    stCtlParam.pBuffer = VOS_NULL_PTR;
+#endif
     stCtlParam.u32Size  = 0;
     stCtlParam.pDrvPriv = VOS_NULL_PTR;
 
@@ -1719,14 +1760,23 @@ VOS_UINT32 AT_UART_GetUlDataBuff(
         return AT_FAILURE;
     }
 
+#ifdef FEATURE_USB_ZERO_COPY
+    if ( (VOS_NULL_PTR == stCtlParam.pVirAddr)
+      || (AT_INIT_DATA_LEN == stCtlParam.u32Size) )
+#else
     if ( (VOS_NULL_PTR == stCtlParam.pBuffer)
       || (AT_INIT_DATA_LEN == stCtlParam.u32Size) )
+#endif
     {
         AT_ERR_LOG("AT_UART_GetUlDataBuff: Data buffer error!\r\n");
         return AT_FAILURE;
     }
 
+#ifdef FEATURE_USB_ZERO_COPY
+    *ppucData = (VOS_UINT8 *)stCtlParam.pVirAddr;
+#else
     *ppucData = (VOS_UINT8 *)stCtlParam.pBuffer;
+#endif
     *pulLen   = stCtlParam.u32Size;
 
     return AT_SUCCESS;
@@ -1776,6 +1826,7 @@ VOS_UINT32 AT_UART_SendDlData(
     /* 同步写UART设备, 数据无需释放 */
     return AT_UART_WriteDataSync(ucIndex, pucData, usLen);
 }
+#if (FEATURE_OFF == FEATURE_MERGE_OM_CHAN)
 VOS_UINT32 AT_UART_SendRawDataFromOm(
     VOS_UINT8                          *pucData,
     VOS_UINT32                          ulLen
@@ -1794,6 +1845,24 @@ VOS_UINT32 AT_UART_SendRawDataFromOm(
 
     return VOS_OK;
 }
+#else
+VOS_UINT32 AT_UART_SendRawDataFromOm(
+    VOS_UINT8                          *pucVirAddr,
+    VOS_UINT8                          *pucPhyAddr,
+    VOS_UINT32                          ulLen
+)
+{
+    VOS_UINT32                          ulResult;
+    VOS_UINT8                           ucIndex;
+    ucIndex  = AT_CLIENT_TAB_UART_INDEX;
+    ulResult = AT_UART_WriteDataSync(ucIndex, pucVirAddr, (VOS_UINT16)ulLen);
+    if (AT_SUCCESS != ulResult)
+    {
+        return VOS_ERR;
+    }
+    return VOS_OK;
+}
+#endif
 
 /*****************************************************************************
  函 数 名  : AT_HSUART_UlDataReadCB
@@ -1860,7 +1929,11 @@ VOS_VOID AT_UART_InitLink(VOS_UINT8 ucIndex)
         AT_AddUsedClientId2Tab(AT_CLIENT_TAB_UART_INDEX);
 
         /* 通知OAM切换UART至OM模式 */
+#if (FEATURE_OFF == FEATURE_MERGE_OM_CHAN)		
         CPM_NotifyChangePort(AT_UART_PORT, CPM_OM_COMM);
+#else
+        CBTCPM_NotifyChangePort(AT_UART_PORT);	
+#endif	
     }
     else
     {
@@ -1879,7 +1952,11 @@ VOS_VOID AT_UART_InitLink(VOS_UINT8 ucIndex)
             AT_AddUsedClientId2Tab(AT_CLIENT_TAB_UART_INDEX);
 
             /* 通知OAM切换UART至OM模式 */
+#if (FEATURE_OFF == FEATURE_MERGE_OM_CHAN)			
             CPM_NotifyChangePort(AT_UART_PORT, CPM_OM_COMM);
+#else
+            CBTCPM_NotifyChangePort(AT_UART_PORT);
+#endif
         }
         else
         {
@@ -2196,7 +2273,12 @@ VOS_UINT32 AT_HSUART_FreeUlDataBuff(
     }
 
     /* 填写待释放的内存地址 */
+#ifdef FEATURE_USB_ZERO_COPY
+    stCtlParam.pVirAddr = (VOS_CHAR *)pstImmZc;
+    stCtlParam.pPhyAddr = VOS_NULL_PTR;
+#else
     stCtlParam.pBuffer  = (VOS_CHAR *)pstImmZc;
+#endif
     stCtlParam.u32Size  = 0;
     stCtlParam.pDrvPriv = VOS_NULL_PTR;
 
@@ -2244,7 +2326,12 @@ VOS_UINT32 AT_HSUART_GetUlDataBuff(
     }
 
     /* 获取底软上行数据BUFFER */
+#ifdef FEATURE_USB_ZERO_COPY
+    stCtlParam.pVirAddr = VOS_NULL_PTR;
+    stCtlParam.pPhyAddr = VOS_NULL_PTR;
+#else
     stCtlParam.pBuffer  = VOS_NULL_PTR;
+#endif
     stCtlParam.u32Size  = 0;
     stCtlParam.pDrvPriv = VOS_NULL_PTR;
 
@@ -2257,8 +2344,13 @@ VOS_UINT32 AT_HSUART_GetUlDataBuff(
     }
 
     /* 数据有效性检查 */
+#ifdef FEATURE_USB_ZERO_COPY
+    if ( (VOS_NULL_PTR == stCtlParam.pVirAddr)
+      || (AT_INIT_DATA_LEN == stCtlParam.u32Size) )
+#else
     if ( (VOS_NULL_PTR == stCtlParam.pBuffer)
       || (AT_INIT_DATA_LEN == stCtlParam.u32Size) )
+#endif
     {
         AT_ERR_LOG("AT_HSUART_GetUlDataBuff: Data buffer error");
         AT_HSUART_DBG_UL_INVALID_RD_NUM(1);
@@ -2267,7 +2359,11 @@ VOS_UINT32 AT_HSUART_GetUlDataBuff(
 
     AT_HSUART_DBG_UL_GET_RD_SUCC_NUM(1);
 
+#ifdef FEATURE_USB_ZERO_COPY
+    *pstImmZc = (IMM_ZC_STRU *)stCtlParam.pVirAddr;
+#else
     *pstImmZc = (IMM_ZC_STRU *)stCtlParam.pBuffer;
+#endif
     *pulLen   = stCtlParam.u32Size;
 
     return AT_SUCCESS;
@@ -2291,7 +2387,12 @@ VOS_UINT32 AT_HSUART_WriteDataAsync(
     }
 
     /* 待写入数据内存地址 */
-    stCtlParam.pBuffer  = (VOS_CHAR *)pstImmZc;
+#ifdef FEATURE_USB_ZERO_COPY
+    stCtlParam.pVirAddr = (VOS_CHAR *)pstImmZc;
+    stCtlParam.pPhyAddr = VOS_NULL_PTR;
+#else
+    stCtlParam.pBuffer = (VOS_CHAR *)pstImmZc;
+#endif
     stCtlParam.u32Size  = 0;
     stCtlParam.pDrvPriv = VOS_NULL_PTR;
 
@@ -2566,6 +2667,7 @@ VOS_VOID AT_HSUART_UlDataReadCB(VOS_VOID)
 
     return;
 }
+#if (FEATURE_OFF == FEATURE_MERGE_OM_CHAN)
 VOS_UINT32 AT_HSUART_SendRawDataFromOm(
     VOS_UINT8                          *pucData,
     VOS_UINT32                          ulLen
@@ -2588,6 +2690,27 @@ VOS_UINT32 AT_HSUART_SendRawDataFromOm(
 
     return VOS_OK;
 }
+#else
+VOS_UINT32 AT_HSUART_SendRawDataFromOm(
+    VOS_UINT8                          *pucVirAddr,
+    VOS_UINT8                          *pucPhyAddr,
+    VOS_UINT32                          ulLen
+)
+{
+    VOS_UINT32                          ulResult;
+    VOS_UINT8                           ucIndex;
+    ucIndex = AT_CLIENT_TAB_HSUART_INDEX;
+    ulResult = AT_UART_WriteDataSync(ucIndex, pucVirAddr, ulLen);
+    if (AT_SUCCESS != ulResult)
+    {
+        AT_ERR_LOG("AT_HSUART_SendRawDataFromOm: Send data failed!\r\n");
+        AT_HSUART_DBG_DL_WRITE_SYNC_FAIL_NUM(1);
+        return VOS_ERR;
+    }
+    AT_HSUART_DBG_DL_WRITE_SYNC_SUCC_NUM(1);
+    return VOS_OK;
+}
+#endif
 
 
 VOS_VOID AT_HSUART_MscReadCB(AT_DCE_MSC_STRU *pstDceMsc)
@@ -3132,7 +3255,11 @@ VOS_INT32 AT_SockComEst(VOS_UINT8 ucPortNo)
     g_stParseContext[ucIndex].ucClientStatus = AT_FW_CLIENT_STATUS_READY;
 
     /*向DMS注册从串口中获取数据的回调函数*/
+#if (FEATURE_OFF == FEATURE_MERGE_OM_CHAN)	
     (VOS_VOID)CPM_LogicRcvReg(CPM_AT_COMM,(CPM_FUNC)AT_RcvFromSock);
+#else
+    (VOS_VOID)CPM_LogicRcvReg(CPM_AT_COMM,(CPM_RCV_FUNC)AT_RcvFromSock);	
+#endif
 
     return VOS_OK;
 }
@@ -3315,7 +3442,7 @@ VOS_INT AT_RcvFromNdisCom(
     }
 
     /*设置NDIS通道状态为可上报数据*/
-    Dms_SetNdisChanStatus(ACM_EVT_DEV_READY);
+    DMS_SetNdisChanStatus(ACM_EVT_DEV_READY);
 
     if (AT_CMD_MODE == gastAtClientTab[ucIndex].Mode)
     {
@@ -4086,15 +4213,24 @@ VOS_UINT32 AT_HsicGetUlDataBuf(
         return AT_FAILURE;
     }
 
+#ifdef FEATURE_USB_ZERO_COPY
+    if ( (VOS_NULL_PTR == stCtlParam.pVirAddr)
+      || (AT_INIT_DATA_LEN == stCtlParam.u32Size))
+#else
     if ( (VOS_NULL_PTR == stCtlParam.pBuffer)
       || (AT_INIT_DATA_LEN == stCtlParam.u32Size))
+#endif
     {
         AT_ERR_LOG("AT_HsicGetUlDataBuf, WARNING, Data buffer error");
 
         return AT_FAILURE;
     }
 
+#ifdef FEATURE_USB_ZERO_COPY
+    *ppucBuf = (VOS_UINT8 *)stCtlParam.pVirAddr;
+#else
     *ppucBuf = (VOS_UINT8 *)stCtlParam.pBuffer;
+#endif
     *pulLen  = stCtlParam.u32Size;
 
     return AT_SUCCESS;
@@ -4112,7 +4248,12 @@ VOS_UINT32 AT_HsicFreeUlDataBuf(
     VOS_INT32                           lResult;
 
     /* 填写需要释放的内存指针 */
-    stCtlParam.pBuffer  = (VOS_CHAR*)pucBuf;
+#ifdef FEATURE_USB_ZERO_COPY
+    stCtlParam.pVirAddr = (VOS_CHAR*)pucBuf;
+    stCtlParam.pPhyAddr = VOS_NULL_PTR;
+#else
+    stCtlParam.pBuffer = (VOS_CHAR*)pucBuf;
+#endif
     stCtlParam.u32Size  = ulLen;
     stCtlParam.pDrvPriv = VOS_NULL_PTR;
 
@@ -4187,7 +4328,12 @@ VOS_UINT32 AT_HsicWriteData(
     }
 
     /* 将写入数据内存地址放入底软的ACM_WR_ASYNC_INFO结构体中 */
-    stCtlParam.pBuffer                  = (VOS_CHAR*)pucBuf;
+#ifdef FEATURE_USB_ZERO_COPY
+    stCtlParam.pVirAddr                 = (VOS_CHAR*)pucBuf;
+    stCtlParam.pPhyAddr                 = VOS_NULL_PTR;
+#else
+    stCtlParam.pBuffer                 = (VOS_CHAR*)pucBuf;
+#endif
     stCtlParam.u32Size                  = ulLen;
     stCtlParam.pDrvPriv                 = VOS_NULL_PTR;
 
@@ -4681,7 +4827,7 @@ VOS_VOID AT_InitFcMap(VOS_VOID)
     for (ucLoop = 0; ucLoop < FC_ID_BUTT; ucLoop++)
     {
         g_stFcIdMaptoFcPri[ucLoop].ulUsed  = VOS_FALSE;
-        g_stFcIdMaptoFcPri[ucLoop].ulFcPri = FC_PRI_BUTT;
+        g_stFcIdMaptoFcPri[ucLoop].enFcPri = FC_PRI_BUTT;
         g_stFcIdMaptoFcPri[ucLoop].ulRabIdMask  = 0;
         g_stFcIdMaptoFcPri[ucLoop].enModemId    = MODEM_ID_BUTT;
     }
@@ -4695,7 +4841,7 @@ VOS_UINT32 AT_SendDiagCmdFromOm(
 {
     return VOS_OK;
 }
-
+#if (FEATURE_OFF == FEATURE_MERGE_OM_CHAN)
 
 VOS_UINT32 AT_SendPcuiDataFromOm(
     VOS_UINT8                          *pData,
@@ -4733,10 +4879,53 @@ VOS_UINT32 AT_SendCtrlDataFromOm(
         return VOS_OK;
     }
 }
+#else
+
+VOS_UINT32 AT_SendPcuiDataFromOm(
+    VOS_UINT8                          *pucVirAddr,
+    VOS_UINT8                          *pucPhyAddr,
+    VOS_UINT32                          ulLength
+)
+{
+    if (AT_SUCCESS != At_SendData(AT_CLIENT_TAB_PCUI_INDEX,
+                                  gastAtClientTab[AT_CLIENT_TAB_PCUI_INDEX].DataMode,
+                                  pucVirAddr,
+                                  (VOS_UINT16)ulLength))
+    {
+        return VOS_ERR;
+    }
+    else
+    {
+        return VOS_OK;
+    }
+}
+
+VOS_UINT32 AT_SendCtrlDataFromOm(
+    VOS_UINT8                          *pucVirAddr,
+    VOS_UINT8                          *pucPhyAddr,
+    VOS_UINT32                          ulLength
+)
+{
+    if (AT_SUCCESS != At_SendData(AT_CLIENT_TAB_CTRL_INDEX,
+                                  gastAtClientTab[AT_CLIENT_TAB_CTRL_INDEX].DataMode,
+                                  pucVirAddr,
+                                  (VOS_UINT16)ulLength))
+    {
+        return VOS_ERR;
+    }
+    else
+    {
+        return VOS_OK;
+    }
+}
+#endif
 
 
-
+#if (FEATURE_OFF == FEATURE_MERGE_OM_CHAN)
 CPM_FUNC AT_QuerySndFunc(AT_PHY_PORT_ENUM_UINT32 ulPhyPort)
+#else
+CPM_SEND_FUNC AT_QuerySndFunc(AT_PHY_PORT_ENUM_UINT32 ulPhyPort)
+#endif
 {
     switch(ulPhyPort)
     {
@@ -4764,7 +4953,7 @@ CPM_FUNC AT_QuerySndFunc(AT_PHY_PORT_ENUM_UINT32 ulPhyPort)
 TAF_UINT32 At_SendCmdMsg (TAF_UINT8 ucIndex,TAF_UINT8* pData, TAF_UINT16 usLen,TAF_UINT8 ucType)
 {
     AT_MSG_STRU                        *pMsg = TAF_NULL_PTR;
-    TAF_UINT32                          ulTmpAddr;
+    VOS_UINT_PTR                        ulTmpAddr;
     VOS_UINT32                          ulLength;
 
     if (VOS_NULL_PTR == pData)
@@ -4817,8 +5006,8 @@ TAF_UINT32 At_SendCmdMsg (TAF_UINT8 ucIndex,TAF_UINT8* pData, TAF_UINT16 usLen,T
     PS_MEM_SET(pMsg->aucReserved, 0x00, sizeof(pMsg->aucReserved));
 
     /* 填写新消息内容 */
-    ulTmpAddr = (TAF_UINT32)(pMsg->aucValue);
-    PS_MEM_CPY((TAF_VOID*)ulTmpAddr, pData, usLen);  /* 内容 */
+    ulTmpAddr = (VOS_UINT_PTR)(pMsg->aucValue);
+    PS_MEM_CPY((VOS_VOID*)ulTmpAddr, pData, usLen);  /* 内容 */
 
     /*发送消息到AT_PID;*/
     if ( 0 != PS_SEND_MSG( WUEPS_PID_AT, pMsg ) )
@@ -4888,7 +5077,7 @@ VOS_INT AT_ProcCCpuResetBefore(VOS_VOID)
     /* 初始化消息 */
     PS_MEM_SET((VOS_CHAR *)pstMsg + VOS_MSG_HEAD_LENGTH,
                0x00,
-               sizeof(AT_MSG_STRU) - VOS_MSG_HEAD_LENGTH);
+               (VOS_SIZE_T)(sizeof(AT_MSG_STRU) - VOS_MSG_HEAD_LENGTH));
 
     /* 填写消息头 */
     pstMsg->ulReceiverCpuId             = VOS_LOCAL_CPUID;
@@ -4936,7 +5125,7 @@ VOS_INT AT_ProcCCpuResetAfter(VOS_VOID)
     /* 初始化消息 */
     PS_MEM_SET((VOS_CHAR *)pstMsg + VOS_MSG_HEAD_LENGTH,
                0x00,
-               sizeof(AT_MSG_STRU) - VOS_MSG_HEAD_LENGTH);
+               (VOS_SIZE_T)(sizeof(AT_MSG_STRU) - VOS_MSG_HEAD_LENGTH));
 
     /* 填写消息头 */
     pstMsg->ulReceiverCpuId             = VOS_LOCAL_CPUID;
@@ -5001,7 +5190,7 @@ VOS_INT AT_HifiResetCallback(
         /* 初始化消息 */
         PS_MEM_SET((VOS_CHAR *)pstMsg + VOS_MSG_HEAD_LENGTH,
                    0x00,
-                   sizeof(AT_MSG_STRU) - VOS_MSG_HEAD_LENGTH);
+                   (VOS_SIZE_T)(sizeof(AT_MSG_STRU) - VOS_MSG_HEAD_LENGTH));
 
         /* 填写消息头 */
         pstMsg->ulReceiverCpuId             = VOS_LOCAL_CPUID;
@@ -5034,7 +5223,7 @@ VOS_INT AT_HifiResetCallback(
         /* 初始化消息 */
         PS_MEM_SET((VOS_CHAR *)pstMsg + VOS_MSG_HEAD_LENGTH,
                    0x00,
-                   sizeof(AT_MSG_STRU) - VOS_MSG_HEAD_LENGTH);
+                   (VOS_SIZE_T)(sizeof(AT_MSG_STRU) - VOS_MSG_HEAD_LENGTH));
 
         /* 填写消息头 */
         pstMsg->ulReceiverCpuId             = VOS_LOCAL_CPUID;

@@ -40,7 +40,9 @@ ret_fast_syscall:
 #endif
 #endif
 	disable_irq				@ disable interrupts
-	ldr	r1, [tsk, #TI_FLAGS]
+	ldr	r1, [tsk, #TI_FLAGS]		@ re-check for syscall tracing
+	tst	r1, #_TIF_SYSCALL_WORK
+	bne	__sys_trace_return
 	tst	r1, #_TIF_WORK_MASK
 	bne	fast_work_pending
 	asm_trace_hardirqs_on
@@ -391,16 +393,13 @@ ENTRY(vector_swi)
 	 * value to determine if it is an EABI or an old ABI call.
 	 */
 #ifdef CONFIG_ARM_THUMB
-    tst	r8, #PSR_T_BIT
-    movne	r10, #0				@ no thumb OABI emulation
-    USER(	ldreq	r10, [lr, #-4]		)	@ get SWI instruction
- #else
-    USER(	ldr	r10, [lr, #-4]		)	@ get SWI instruction
- #endif
-
-#ifdef CONFIG_CPU_ENDIAN_BE8
-	rev	r10, r10			@ little endian instruction
+	tst	r8, #PSR_T_BIT
+	movne	r10, #0				@ no thumb OABI emulation
+ USER(	ldreq	r10, [lr, #-4]		)	@ get SWI instruction
+#else
+ USER(	ldr	r10, [lr, #-4]		)	@ get SWI instruction
 #endif
+ ARM_BE8(rev	r10, r10)			@ little endian instruction
 
 #elif defined(CONFIG_AEABI)
 
@@ -411,12 +410,13 @@ ENTRY(vector_swi)
 	/* Legacy ABI only, possibly thumb mode. */
 	tst	r8, #PSR_T_BIT			@ this is SPSR from save_user_regs
 	addne	scno, r7, #__NR_SYSCALL_BASE	@ put OS number in
-        USER(	ldreq	scno, [lr, #-4]		)
+ USER(	ldreq	scno, [lr, #-4]		)
+
 #else
 	/* Legacy ABI only. */
-        USER(	ldr	scno, [lr, #-4]		)	@ get SWI instruction
-
+ USER(	ldr	scno, [lr, #-4]		)	@ get SWI instruction
 #endif
+
 	adr	tbl, sys_call_table		@ load syscall table pointer
 
 #if defined(CONFIG_OABI_COMPAT)
@@ -463,7 +463,6 @@ local_restart:
 	eor	r0, scno, #__NR_SYSCALL_BASE	@ put OS number back
 	bcs	arm_syscall	
 	b	sys_ni_syscall			@ not private func
-
 
 #if defined(CONFIG_OABI_COMPAT) || !defined(CONFIG_AEABI)
 	/*

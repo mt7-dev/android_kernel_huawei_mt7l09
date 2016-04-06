@@ -172,6 +172,9 @@ VOS_VOID IMSA_ProcSmsMsgReportReq(const MSG_IMSA_REPORT_REQ_STRU *pstReportReq)
 
         /*消息发给IMS协议栈*/
         IMSA_SMS_SndImsSmsMsg(aucTmpData, ulLength,VOS_NULL_PTR);
+        /* zhaochen 00308719 begin for VoLTE 2015-08-25 */
+        IMSA_CommonDeregProc();
+        /* zhaochen 00308719 end for VoLTE 2015-08-25 */
     }
     else
     {
@@ -398,6 +401,9 @@ VOS_VOID IMSA_SMS_MemNotifyRetrans( VOS_UINT32 ulErrCode )
         pstSmrMoEntity->ucRetransFlg  = IMSA_SMR_RETRANS_PERMIT;                /* 将RETRANS FLAG置0清除                    */
         pstSmrMoEntity->ucMemAvailFlg = IMSA_SMS_FALSE;                         /* 清除标志位                               */
         pstSmrMoEntity->enState = IMSA_SMS_SMR_STATE_IDLE;                      /* 状态迁移到空闲状态                       */
+        /* zhaochen 00308719 begin for VoLTE 2015-08-25 */
+        IMSA_CommonDeregProc();
+        /* zhaochen 00308719 end for VoLTE 2015-08-25 */
     }
     else
     {
@@ -450,6 +456,9 @@ VOS_VOID IMSA_SMS_ProcTimerMsgTr1m(const VOS_VOID *pTimerMsg)
 
             /*MO实体进入空闲态*/
             pstSmrMoEntity->enState = IMSA_SMS_SMR_STATE_IDLE;
+            /* zhaochen 00308719 begin for VoLTE 2015-08-25 */
+            IMSA_CommonDeregProc();
+            /* zhaochen 00308719 end for VoLTE 2015-08-25 */
         }
     }
 }
@@ -483,6 +492,9 @@ VOS_VOID IMSA_SMS_ProcTimerMsgTr2m(const VOS_VOID *pTimerMsg)
 
         /*MO实体进入空闲态*/
         pstSmrMtEntity->enState = IMSA_SMS_SMR_STATE_IDLE;
+        /* zhaochen 00308719 begin for VoLTE 2015-08-25 */
+        IMSA_CommonDeregProc();
+        /* zhaochen 00308719 end for VoLTE 2015-08-25 */
 
     }
 }
@@ -686,6 +698,28 @@ VOS_VOID IMSA_SMS_ClearResource(VOS_VOID)
 
     pstSmrMtEntity->enState = IMSA_SMS_SMR_STATE_IDLE;
     pstSmrMtEntity->ucMessageReference= 0;
+}
+VOS_UINT32 IMSA_IsSmsConnExist(VOS_VOID)
+{
+    IMSA_SMS_SMR_MO_STRU                *pstSmrMoEntity;
+    IMSA_SMS_SMR_MT_STRU                *pstSmrMtEntity;
+
+    pstSmrMoEntity = IMSA_SMS_GetSmrMoEntityAddress();
+    pstSmrMtEntity = IMSA_SMS_GetSmrMtEntityAddress();
+
+    if ((IMSA_SMS_SMR_STATE_IDLE != pstSmrMoEntity->enState) &&
+        (IMSA_SMS_SMR_STATE_BUTT != pstSmrMoEntity->enState))
+    {
+        return VOS_TRUE;
+    }
+
+    if ((IMSA_SMS_SMR_STATE_IDLE != pstSmrMtEntity->enState) &&
+        (IMSA_SMS_SMR_STATE_BUTT != pstSmrMtEntity->enState))
+    {
+        return VOS_TRUE;
+    }
+
+    return VOS_FALSE;
 }
 /*lint +e961*/
 /*lint +e960*/

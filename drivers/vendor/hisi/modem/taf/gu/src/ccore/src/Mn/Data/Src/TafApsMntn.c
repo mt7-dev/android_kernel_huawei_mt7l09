@@ -9,6 +9,7 @@
 #include "MnApsComm.h"
 #include "TafApsApi.h"
 #include "Taf_Aps.h"
+#include "TafApsCtx.h"
 
 
 
@@ -254,6 +255,22 @@ VOS_VOID TAF_APS_ShowCidSdfParaInfo(
     return;
 }
 #endif
+
+
+VOS_VOID TAF_APS_ShowDsFlowInfo(VOS_VOID)
+{
+    TAF_APS_DSFLOW_STATS_CTX_STRU      *pstApsDsflowCtx = VOS_NULL_PTR;
+
+    pstApsDsflowCtx = TAF_APS_GetDsFlowCtxAddr();
+
+    vos_printf("\n");
+    vos_printf("AP流量上报标识              %d\n", pstApsDsflowCtx->ulFluxThresRptFlg);
+    vos_printf("AP流量上报阈值(KByte)       %u\n", pstApsDsflowCtx->ulFluxThresKByte);
+    vos_printf("AP流量上报阈值(Byte)        0x%08X%08X\n", pstApsDsflowCtx->ulFluxThresHigh, pstApsDsflowCtx->ulFluxThresLow);
+    vos_printf("AP流量累计值(Byte)          0x%08X%08X\n", pstApsDsflowCtx->ulTotalFluxHigh, pstApsDsflowCtx->ulTotalFluxLow);
+
+    return;
+}
 
 
 VOS_VOID TAF_APS_Help(

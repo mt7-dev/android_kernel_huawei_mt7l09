@@ -15,7 +15,7 @@ u32 aEncSrc[8] = {0x48495349, 0x00000018, 0x04030201, 0x00000064,
 				  0x08070605, 0x0d0c0b0a, 0xc0c0c0c0, 0xc0c0c0c0};
 void socp_m3_core()
 {
-	SOCP_BUFFER_RW_S sBuff;
+	SOCP_BUFFER_RW_STRU sBuff;
 	
 	bsp_socp_get_write_buff(SOCP_ENCSRC_LPM3_BASE, &sBuff);
 

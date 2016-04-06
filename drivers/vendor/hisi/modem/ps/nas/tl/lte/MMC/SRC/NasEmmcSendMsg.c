@@ -556,6 +556,8 @@ VOS_VOID    NAS_EMMC_SendEmmSysInfoInd
 VOS_VOID  NAS_EMMC_SendMmcSysInfo(const LRRC_LMM_SYS_INFO_IND_STRU  *pstRcvMsg  )
 {
     LMM_MMC_SYS_INFO_IND_STRU          *pstSysInfoIndMsg = NAS_EMMC_NULL_PTR;
+    LRRC_LNAS_CELL_STATUS_ENUM_UINT32   enCellStatus;
+    NAS_MM_TA_STRU                      stTa;
 
     if(NAS_EMMC_NULL_PTR == pstRcvMsg)
     {
@@ -598,10 +600,50 @@ VOS_VOID  NAS_EMMC_SendMmcSysInfo(const LRRC_LMM_SYS_INFO_IND_STRU  *pstRcvMsg  
     pstSysInfoIndMsg->stLteSysInfo.stTac.ucTacCnt = pstRcvMsg->stTac.ucTacCont;
 
     pstSysInfoIndMsg->stLteSysInfo.ulCellId       = pstRcvMsg->ulCellId;
-    pstSysInfoIndMsg->stLteSysInfo.enCellStatusInd = pstRcvMsg->enCellStatusInd;
+
+    /* GU NAS让LNAS在收到RRC系统消息时先判断小区状态是否是NORMAL上报给MMC，以便GU NAS判断是否停止3212等定时器 */
+
+    /* 初始化小区状态为NORMAL */
+    enCellStatus = EMMC_EMM_CELL_STATUS_NORMAL;
+
+    stTa.stPlmnId.aucPlmnId[0] = pstRcvMsg->stSpecPlmnIdList.astSuitPlmnList[0].aucPlmnId[0];
+    stTa.stPlmnId.aucPlmnId[1] = pstRcvMsg->stSpecPlmnIdList.astSuitPlmnList[0].aucPlmnId[1];
+    stTa.stPlmnId.aucPlmnId[2] = pstRcvMsg->stSpecPlmnIdList.astSuitPlmnList[0].aucPlmnId[2];
+    stTa.stPlmnId.ucRsv        = 0x00;
+    stTa.stTac.ucTac           = pstRcvMsg->stTac.ucTac;
+    stTa.stTac.ucTacCnt        = pstRcvMsg->stTac.ucTacCont;
+    stTa.stTac.aucRsv[0]       = 0x00;
+    stTa.stTac.aucRsv[1]       = 0x00;
+
+    /* 如果收到RRC上报小区状态为ANY CELL，判断是否真的是ANY CELL，是则修改小区状态为ANY,否则不修改 */
+    if (LRRC_LNAS_CELL_STATUS_ANYCELL == pstRcvMsg->enCellStatusInd)
+    {
+        if (VOS_FALSE == NAS_LMM_IsCellStatusNormal( &pstSysInfoIndMsg->stLteSysInfo.stSpecPlmnIdList.astSuitPlmnList[0],
+                                                    &stTa))
+        {
+            NAS_LMM_EMMC_LOG_NORM("NAS_EMMC_ProcessMmcLteSysInfoInd: anycell search find avaiable cell,cellStatus: ANYCELL");
+            enCellStatus = EMMC_EMM_CELL_STATUS_ANYCELL;
+        }
+    }
+    else if(LRRC_LNAS_CELL_STATUS_NORMAL == pstRcvMsg->enCellStatusInd)
+    {
+        /* 本身NORMAL无需修改 */
+        NAS_LMM_EMMC_LOG_NORM("NAS_LMM_PreProcMmcLteSysInfoInd:cellstauts is NORMAL! ");
+    }
+    else
+    {
+        /* 不是ANY CELL，但也不是NORMAL，说明RRC上报小区状态非法，修改为BUTT */
+        NAS_LMM_EMMC_LOG_WARN("NAS_LMM_PreProcMmcLteSysInfoInd:cellstauts is err! ");
+        enCellStatus = EMMC_EMM_CELL_STATUS_BUTT;
+    }
+
+    pstSysInfoIndMsg->stLteSysInfo.enCellStatusInd = enCellStatus;
+
     pstSysInfoIndMsg->stLteSysInfo.usArfcn        = pstRcvMsg->usArfcn;
     /* 添加bandwidth信息 */
     pstSysInfoIndMsg->stLteSysInfo.ucBandWidth         = pstRcvMsg->ucBandWidth;
+
+    pstSysInfoIndMsg->stLteSysInfo.enAccessType = pstRcvMsg->enAccessType;
     /* 增加BAND信息 */
     NAS_LMM_MEM_CPY(pstSysInfoIndMsg->stLteSysInfo.stLteBand.aulLteBand,
                     pstRcvMsg->aulLteBand,
@@ -612,6 +654,9 @@ VOS_VOID  NAS_EMMC_SendMmcSysInfo(const LRRC_LMM_SYS_INFO_IND_STRU  *pstRcvMsg  
 
     return;
 }
+
+
+
 VOS_VOID  NAS_EMMC_SendRrcEplmnNotifyReq(const MMC_LMM_EPLMN_NOTIFY_REQ_STRU *pstRcvMsg)
 {
     LRRC_LMM_EQU_PLMN_NOTIFY_REQ_STRU   *pstEplmnReq;
@@ -1078,6 +1123,47 @@ VOS_VOID NAS_EMMC_SendMmcNotCampOnInd(VOS_VOID)
 
     return;
 }
+
+
+
+VOS_VOID NAS_EMMC_SendMmcSearchPlmnInfoInd
+(
+    const LRRC_LMM_SEARCHED_PLMN_INFO_IND_STRU *pstLrrcMsg
+)
+{
+    LMM_MMC_SEARCHED_PLMN_INFO_IND_STRU  *pstMmcMsg = NAS_LMM_NULL_PTR;
+
+    /* 申请MMC内部消息 */
+    pstMmcMsg = (VOS_VOID *)NAS_LMM_GetLmmMmcMsgBuf(sizeof(LMM_MMC_SEARCHED_PLMN_INFO_IND_STRU));
+
+    if (NAS_LMM_NULL_PTR == pstMmcMsg)
+    {
+        NAS_LMM_EMMC_LOG_ERR("NAS_EMMC_SendMmcSearchPlmnInfoInd: alloc memory failure");
+        return;
+    }
+
+    /* 初始化 */
+    NAS_LMM_MEM_SET(pstMmcMsg, 0, sizeof(LMM_MMC_SEARCHED_PLMN_INFO_IND_STRU));
+
+    /* 构造消息头 */
+    NAS_EMMC_COMP_MMC_MSG_HEADER(pstMmcMsg, (sizeof(LMM_MMC_SEARCHED_PLMN_INFO_IND_STRU) - NAS_EMMC_LEN_VOS_MSG_HEADER));
+
+    /* 填充消息ID */
+    pstMmcMsg->ulMsgId = ID_LMM_MMC_SEARCHED_PLMN_INFO_IND;
+
+    /* 填充消息内容 */
+    pstMmcMsg->ulTaiNum = pstLrrcMsg->ulTaiNum;
+
+    NAS_LMM_MEM_CPY(pstMmcMsg->stTaiList, pstLrrcMsg->stTaiList,
+                    (LRRC_LMM_MAX_SEARCHED_TAI_NUM)*sizeof(LRRC_LNAS_TA_STRU));
+
+    /* 发送MMC消息 */
+    NAS_LMM_SendLmmMmcMsg((VOS_VOID *)pstMmcMsg);
+
+    return;
+
+}
+
 /*lint +e961*/
 /*lint +e960*/
 /*lint +e72*/

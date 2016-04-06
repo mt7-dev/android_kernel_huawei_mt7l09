@@ -55,167 +55,172 @@
 
 const AT_RETURN_TAB_TYPE_STRU gastAtReturnCodeTab[]=
 {
-    {AT_SUCCESS,                                           {TAF_NULL_PTR   ,TAF_NULL_PTR                          }  },
-    {AT_FAILURE,                                           {TAF_NULL_PTR   ,TAF_NULL_PTR                          }  },
-    {AT_WAIT_SMS_INPUT,                                    {(TAF_UINT8*)"\r\n> ",       (TAF_UINT8*)"\r\n> "      }  },
-    {AT_WAIT_XML_INPUT,                                    {(TAF_UINT8*)"\r\n> ",       (TAF_UINT8*)"\r\n> "      }  },
-    {AT_WAIT_ASYNC_RETURN,                                 {TAF_NULL_PTR   ,TAF_NULL_PTR                          }  },
+    {AT_SUCCESS,                                           {TAF_NULL_PTR,          TAF_NULL_PTR             }  },
+    {AT_FAILURE,                                           {TAF_NULL_PTR,          TAF_NULL_PTR             }  },
+    {AT_WAIT_SMS_INPUT,                                    {(TAF_UINT8*)"\r\n> ", (TAF_UINT8*)"\r\n> "      }  },
+    {AT_WAIT_XML_INPUT,                                    {(TAF_UINT8*)"\r\n> ", (TAF_UINT8*)"\r\n> "      }  },
+    {AT_WAIT_ASYNC_RETURN,                                 {TAF_NULL_PTR,          TAF_NULL_PTR             }  },
 
-    {AT_BASIC_CODE_ENUM_BEGAIN,                            {TAF_NULL_PTR   ,TAF_NULL_PTR                          }  },
+    {AT_BASIC_CODE_ENUM_BEGAIN,                            {TAF_NULL_PTR,          TAF_NULL_PTR             }  },
 
-    {AT_OK,                                                {(TAF_UINT8*)"0",(TAF_UINT8*)"OK"           }},
-    {AT_CONNECT,                                           {(TAF_UINT8*)"1",(TAF_UINT8*)"CONNECT"      }},
-    {AT_RING,                                              {(TAF_UINT8*)"2",(TAF_UINT8*)"RING"         }},
-    {AT_NO_CARRIER,                                        {(TAF_UINT8*)"3",(TAF_UINT8*)"NO CARRIER"   }},
-    {AT_ERROR,                                             {(TAF_UINT8*)"4",(TAF_UINT8*)"ERROR"        }},
-    {AT_NO_DIALTONE,                                       {(TAF_UINT8*)"6",(TAF_UINT8*)"NO DIALTONE"  }},
-    {AT_BUSY,                                              {(TAF_UINT8*)"7",(TAF_UINT8*)"BUSY"         }},
-    {AT_NO_ANSWER,                                         {(TAF_UINT8*)"8",(TAF_UINT8*)"NO ANSWER"    }},
+    {AT_OK,                                                {(TAF_UINT8*)"0", (TAF_UINT8*)"OK"           }},
+    {AT_CONNECT,                                           {(TAF_UINT8*)"1", (TAF_UINT8*)"CONNECT"      }},
+    {AT_RING,                                              {(TAF_UINT8*)"2", (TAF_UINT8*)"RING"         }},
+    {AT_NO_CARRIER,                                        {(TAF_UINT8*)"3", (TAF_UINT8*)"NO CARRIER"   }},
+    {AT_ERROR,                                             {(TAF_UINT8*)"4", (TAF_UINT8*)"ERROR"        }},
+    {AT_NO_DIALTONE,                                       {(TAF_UINT8*)"6", (TAF_UINT8*)"NO DIALTONE"  }},
+    {AT_BUSY,                                              {(TAF_UINT8*)"7", (TAF_UINT8*)"BUSY"         }},
+    {AT_NO_ANSWER,                                         {(TAF_UINT8*)"8", (TAF_UINT8*)"NO ANSWER"    }},
+    {AT_BASIC_CODE_ENUM_END,                               {TAF_NULL_PTR,     TAF_NULL_PTR              }  },
+    {AT_CME_ERROR_ENUM_BEGAIN,                             {TAF_NULL_PTR,     TAF_NULL_PTR              }  },
+    {AT_CME_PHONE_FAILURE,                                 {(TAF_UINT8*)"0" , (TAF_UINT8*)"phone failure"                                  }  },
+    {AT_CME_NO_CONNECTION_TO_PHONE,                        {(TAF_UINT8*)"1" , (TAF_UINT8*)"NO CONNECTION TO PHONE"                         }  },
+    {AT_CME_PHONE_ADAPTOR_LINK_RESERVED,                   {(TAF_UINT8*)"2" , (TAF_UINT8*)"PHONE ADAPTOR LINK RESERVED"                    }  },
+    {AT_CME_OPERATION_NOT_ALLOWED,                         {(TAF_UINT8*)"3" , (TAF_UINT8*)"operation not allowed"                          }  },
+    {AT_CME_OPERATION_NOT_SUPPORTED,                       {(TAF_UINT8*)"4" , (TAF_UINT8*)"operation not supported"                        }  },
+    {AT_CME_PH_SIM_PIN_REQUIRED,                           {(TAF_UINT8*)"5" , (TAF_UINT8*)"PH SIM PIN REQUIRED"                            }  },
+    {AT_CME_PH_FSIM_PIN_REQUIRED,                          {(TAF_UINT8*)"6" , (TAF_UINT8*)"PH-FSIM PIN REQUIRED"                           }  },
+    {AT_CME_PH_FSIM_PUK_REQUIRED,                          {(TAF_UINT8*)"7" , (TAF_UINT8*)"PH-FSIM PUK REQUIRED"                           }  },
+    {AT_CME_SIM_NOT_INSERTED,                              {(TAF_UINT8*)"10", (TAF_UINT8*)"SIM not inserted"                               }  },
+    {AT_CME_SIM_PIN_REQUIRED,                              {(TAF_UINT8*)"11", (TAF_UINT8*)"SIM PIN required"                               }  },
+    {AT_CME_SIM_PUK_REQUIRED,                              {(TAF_UINT8*)"12", (TAF_UINT8*)"SIM PUK required"                               }  },
+    {AT_CME_SIM_FAILURE,                                   {(TAF_UINT8*)"13", (TAF_UINT8*)"SIM failure"                                    }  },
+    {AT_CME_SIM_BUSY,                                      {(TAF_UINT8*)"14", (TAF_UINT8*)"SIM busy"                                       }  },
+    {AT_CME_SIM_WRONG,                                     {(TAF_UINT8*)"15", (TAF_UINT8*)"SIM wrong"                                      }  },
+    {AT_CME_INCORRECT_PASSWORD,                            {(TAF_UINT8*)"16", (TAF_UINT8*)"incorrect password"                             }  },
+    {AT_CME_SIM_PIN2_REQUIRED,                             {(TAF_UINT8*)"17", (TAF_UINT8*)"SIM PIN2 required"                              }  },
+    {AT_CME_SIM_PUK2_REQUIRED,                             {(TAF_UINT8*)"18", (TAF_UINT8*)"SIM PUK2 required"                              }  },
+    {AT_CME_MEMORY_FULL,                                   {(TAF_UINT8*)"20", (TAF_UINT8*)"memory full"                                    }  },
+    {AT_CME_INVALID_INDEX,                                 {(TAF_UINT8*)"21", (TAF_UINT8*)"invalid index"                                  }  },
+    {AT_CME_NOT_FOUND,                                     {(TAF_UINT8*)"22", (TAF_UINT8*)"not found"                                      }  },
+    {AT_CME_MEMORY_FAILURE,                                {(TAF_UINT8*)"23", (TAF_UINT8*)"memory failure"                                 }  },
+    {AT_CME_TEXT_STRING_TOO_LONG,                          {(TAF_UINT8*)"24", (TAF_UINT8*)"text string too long"                           }  },
+    {AT_CME_INVALID_CHARACTERS_IN_TEXT_STRING,             {(TAF_UINT8*)"25", (TAF_UINT8*)"INVALID CHARACTERS IN TEXT STRING"              }  },
+    {AT_CME_DIAL_STRING_TOO_LONG,                          {(TAF_UINT8*)"26", (TAF_UINT8*)"dial string too long"                           }  },
+    {AT_CME_INVALID_CHARACTERS_IN_DIAL_STRING,             {(TAF_UINT8*)"27", (TAF_UINT8*)"invalid characters in dial string"              }  },
 
-    {AT_BASIC_CODE_ENUM_END,                               {TAF_NULL_PTR   ,TAF_NULL_PTR                          }  },
+    {AT_CME_SPN_FILE_CONTENT_ERROR,                        {(TAF_UINT8*)"65284", (TAF_UINT8*)"SPN FILE CONTENT ERROR"                      }  },
+    {AT_CME_SPN_FILE_QUERY_REJECT,                         {(TAF_UINT8*)"65285", (TAF_UINT8*)"READ SPN FILE REJECTED"                      }  },
+    {AT_CME_SPN_FILE_NOT_EXISTS,                           {(TAF_UINT8*)"65286", (TAF_UINT8*)"SPN FILE NOT EXIST"                          }  },
 
-    {AT_CME_ERROR_ENUM_BEGAIN,                             {TAF_NULL_PTR   ,TAF_NULL_PTR                          }  },
-    {AT_CME_PHONE_FAILURE,                                 {(TAF_UINT8*)"0"   ,(TAF_UINT8*)"phone failure"                                  }  },
-    {AT_CME_NO_CONNECTION_TO_PHONE,                        {(TAF_UINT8*)"1"   ,(TAF_UINT8*)"NO CONNECTION TO PHONE"                         }  },
-    {AT_CME_PHONE_ADAPTOR_LINK_RESERVED,                   {(TAF_UINT8*)"2"   ,(TAF_UINT8*)"PHONE ADAPTOR LINK RESERVED"                    }  },
-    {AT_CME_OPERATION_NOT_ALLOWED,                         {(TAF_UINT8*)"3"   ,(TAF_UINT8*)"operation not allowed"                          }  },
-    {AT_CME_OPERATION_NOT_SUPPORTED,                       {(TAF_UINT8*)"4"   ,(TAF_UINT8*)"operation not supported"                        }  },
-    {AT_CME_PH_SIM_PIN_REQUIRED,                           {(TAF_UINT8*)"5"   ,(TAF_UINT8*)"PH SIM PIN REQUIRED"                            }  },
-    {AT_CME_PH_FSIM_PIN_REQUIRED,                          {(TAF_UINT8*)"6"   ,(TAF_UINT8*)"PH-FSIM PIN REQUIRED"                           }  },
-    {AT_CME_PH_FSIM_PUK_REQUIRED,                          {(TAF_UINT8*)"7"   ,(TAF_UINT8*)"PH-FSIM PUK REQUIRED"                           }  },
-    {AT_CME_SIM_NOT_INSERTED,                              {(TAF_UINT8*)"10"  ,(TAF_UINT8*)"SIM not inserted"                               }  },
-    {AT_CME_SIM_PIN_REQUIRED,                              {(TAF_UINT8*)"11"  ,(TAF_UINT8*)"SIM PIN required"                               }  },
-    {AT_CME_SIM_PUK_REQUIRED,                              {(TAF_UINT8*)"12"  ,(TAF_UINT8*)"SIM PUK required"                               }  },
-    {AT_CME_SIM_FAILURE,                                   {(TAF_UINT8*)"13"  ,(TAF_UINT8*)"SIM failure"                                    }  },
-    {AT_CME_SIM_BUSY,                                      {(TAF_UINT8*)"14"  ,(TAF_UINT8*)"SIM busy"                                       }  },
-    {AT_CME_SIM_WRONG,                                     {(TAF_UINT8*)"15"  ,(TAF_UINT8*)"SIM wrong"                                      }  },
-    {AT_CME_INCORRECT_PASSWORD,                            {(TAF_UINT8*)"16"  ,(TAF_UINT8*)"incorrect password"                             }  },
-    {AT_CME_SIM_PIN2_REQUIRED,                             {(TAF_UINT8*)"17"  ,(TAF_UINT8*)"SIM PIN2 required"                              }  },
-    {AT_CME_SIM_PUK2_REQUIRED,                             {(TAF_UINT8*)"18"  ,(TAF_UINT8*)"SIM PUK2 required"                              }  },
-    {AT_CME_MEMORY_FULL,                                   {(TAF_UINT8*)"20"  ,(TAF_UINT8*)"memory full"                                    }  },
-    {AT_CME_INVALID_INDEX,                                 {(TAF_UINT8*)"21"  ,(TAF_UINT8*)"invalid index"                                  }  },
-    {AT_CME_NOT_FOUND,                                     {(TAF_UINT8*)"22"  ,(TAF_UINT8*)"not found"                                      }  },
-    {AT_CME_MEMORY_FAILURE,                                {(TAF_UINT8*)"23"  ,(TAF_UINT8*)"memory failure"                                 }  },
-    {AT_CME_TEXT_STRING_TOO_LONG,                          {(TAF_UINT8*)"24"  ,(TAF_UINT8*)"text string too long"                           }  },
-    {AT_CME_INVALID_CHARACTERS_IN_TEXT_STRING,             {(TAF_UINT8*)"25"  ,(TAF_UINT8*)"INVALID CHARACTERS IN TEXT STRING"              }  },
-    {AT_CME_DIAL_STRING_TOO_LONG,                          {(TAF_UINT8*)"26"  ,(TAF_UINT8*)"dial string too long"                           }  },
-    {AT_CME_INVALID_CHARACTERS_IN_DIAL_STRING,             {(TAF_UINT8*)"27"  ,(TAF_UINT8*)"invalid characters in dial string"              }  },
+    {AT_CME_NO_NETWORK_SERVICE,                            {(TAF_UINT8*)"30",  (TAF_UINT8*)"NO NETWORK SERVICE"                             }  },
+    {AT_CME_NETWORK_TIMEOUT,                               {(TAF_UINT8*)"31",  (TAF_UINT8*)"NETWORK TIMEOUT"                                }  },
+    {AT_CME_NETWORK_NOT_ALLOWED_EMERGENCY_CALLS_ONLY,      {(TAF_UINT8*)"32",  (TAF_UINT8*)"NETWORK NOT ALLOWED - EMERGENCY CALLS ONLY"     }  },
+    {AT_CME_NETWORK_PERSONALIZATION_PIN_REQUIRED,          {(TAF_UINT8*)"40",  (TAF_UINT8*)"NETWORK PERSONALIZATION PIN REQUIRED"           }  },
+    {AT_CME_NETWORK_PERSONALIZATION_PUK_REQUIRED,          {(TAF_UINT8*)"41",  (TAF_UINT8*)"NETWORK PERSONALIZATION PUK REQUIRED"           }  },
+    {AT_CME_NETWORK_SUBSET_PERSONALIZATION_PIN_REQUIRED,   {(TAF_UINT8*)"42",  (TAF_UINT8*)"NETWORK SUBSET PERSONALIZATION PIN REQUIRED"    }  },
+    {AT_CME_NETWORK_SUBSET_PERSONALIZATION_PUK_REQUIRED,   {(TAF_UINT8*)"43",  (TAF_UINT8*)"NETWORK SUBSET PERSONALIZATION PUK REQUIRED"    }  },
+    {AT_CME_SERVICE_PROVIDER_PERSONALIZATION_PIN_REQUIRED, {(TAF_UINT8*)"44",  (TAF_UINT8*)"SERVICE PROVIDER PERSONALIZATION PIN REQUIRED"  }  },
+    {AT_CME_SERVICE_PROVIDER_PERSONALIZATION_PUK_REQUIRED, {(TAF_UINT8*)"45",  (TAF_UINT8*)"SERVICE PROVIDER PERSONALIZATION PUK REQUIRED"  }  },
+    {AT_CME_CORPORATE_PERSONALIZATION_PIN_REQUIRED,        {(TAF_UINT8*)"46",  (TAF_UINT8*)"CORPORATE PERSONALIZATION PIN REQUIRED"         }  },
+    {AT_CME_CORPORATE_PERSONALIZATION_PUK_REQUIRED,        {(TAF_UINT8*)"47",  (TAF_UINT8*)"CORPORATE PERSONALIZATION PUK REQUIRED"         }  },
+    {AT_CME_HIDDEN_KEY_REQUIRED,                           {(TAF_UINT8*)"48",  (TAF_UINT8*)"hidden key required"                            }  },
+    {AT_CME_EAP_METHOD_NOT_SUPPORTED,                      {(TAF_UINT8*)"49",  (TAF_UINT8*)"EAP method not supported"                       }  },
+    {AT_CME_INCORRECT_PARAMETERS,                          {(TAF_UINT8*)"50",  (TAF_UINT8*)"Incorrect parameters"                           }  },
+    {AT_CME_RX_DIV_NOT_SUPPORTED,                          {(TAF_UINT8*)"0" ,  (TAF_UINT8*)"NOT SUPPORTED"                                  }  },
+    {AT_CME_RX_DIV_OTHER_ERR,                              {(TAF_UINT8*)"1" ,  (TAF_UINT8*)"OTHER ERROR"                                    }  },
+    {AT_CME_UNKNOWN,                                       {(TAF_UINT8*)"100", (TAF_UINT8*)"UNKNOWN"                                        }  },
 
-    {AT_CME_SPN_FILE_CONTENT_ERROR,                        {(TAF_UINT8*)"65284"  ,(TAF_UINT8*)"SPN FILE CONTENT ERROR"                         }  },
-    {AT_CME_SPN_FILE_QUERY_REJECT,                         {(TAF_UINT8*)"65285"  ,(TAF_UINT8*)"READ SPN FILE REJECTED"                         }  },
-    {AT_CME_SPN_FILE_NOT_EXISTS,                           {(TAF_UINT8*)"65286"  ,(TAF_UINT8*)"SPN FILE NOT EXIST"                            }  },
+    {AT_CME_ILLEGAL_MS,                                    {(TAF_UINT8*)"103", (TAF_UINT8*)"Illegal MS"                                     }  },
+    {AT_CME_ILLEGAL_ME,                                    {(TAF_UINT8*)"106", (TAF_UINT8*)"Illegal ME"                                     }  },
+    {AT_CME_GPRS_SERVICES_NOT_ALLOWED,                     {(TAF_UINT8*)"107", (TAF_UINT8*)"GPRS services not allowed"                      }  },
+    {AT_CME_PLMN_NOT_ALLOWED,                              {(TAF_UINT8*)"111", (TAF_UINT8*)"PLMN not allowed"                               }  },
+    {AT_CME_LOCATION_AREA_NOT_ALLOWED,                     {(TAF_UINT8*)"112", (TAF_UINT8*)"Location area not allowed"                      }  },
+    {AT_CME_ROAMING_NOT_ALLOWED_IN_THIS_LOCATION_AREA,     {(TAF_UINT8*)"113", (TAF_UINT8*)"Roaming not allowed in this location area"      }  },
 
-    {AT_CME_NO_NETWORK_SERVICE,                            {(TAF_UINT8*)"30"  ,(TAF_UINT8*)"NO NETWORK SERVICE"                             }  },
-    {AT_CME_NETWORK_TIMEOUT,                               {(TAF_UINT8*)"31"  ,(TAF_UINT8*)"NETWORK TIMEOUT"                                }  },
-    {AT_CME_NETWORK_NOT_ALLOWED_EMERGENCY_CALLS_ONLY,      {(TAF_UINT8*)"32"  ,(TAF_UINT8*)"NETWORK NOT ALLOWED - EMERGENCY CALLS ONLY"     }  },
-    {AT_CME_NETWORK_PERSONALIZATION_PIN_REQUIRED,          {(TAF_UINT8*)"40"  ,(TAF_UINT8*)"NETWORK PERSONALIZATION PIN REQUIRED"           }  },
-    {AT_CME_NETWORK_PERSONALIZATION_PUK_REQUIRED,          {(TAF_UINT8*)"41"  ,(TAF_UINT8*)"NETWORK PERSONALIZATION PUK REQUIRED"           }  },
-    {AT_CME_NETWORK_SUBSET_PERSONALIZATION_PIN_REQUIRED,   {(TAF_UINT8*)"42"  ,(TAF_UINT8*)"NETWORK SUBSET PERSONALIZATION PIN REQUIRED"    }  },
-    {AT_CME_NETWORK_SUBSET_PERSONALIZATION_PUK_REQUIRED,   {(TAF_UINT8*)"43"  ,(TAF_UINT8*)"NETWORK SUBSET PERSONALIZATION PUK REQUIRED"    }  },
-    {AT_CME_SERVICE_PROVIDER_PERSONALIZATION_PIN_REQUIRED, {(TAF_UINT8*)"44"  ,(TAF_UINT8*)"SERVICE PROVIDER PERSONALIZATION PIN REQUIRED"  }  },
-    {AT_CME_SERVICE_PROVIDER_PERSONALIZATION_PUK_REQUIRED, {(TAF_UINT8*)"45"  ,(TAF_UINT8*)"SERVICE PROVIDER PERSONALIZATION PUK REQUIRED"  }  },
-    {AT_CME_CORPORATE_PERSONALIZATION_PIN_REQUIRED,        {(TAF_UINT8*)"46"  ,(TAF_UINT8*)"CORPORATE PERSONALIZATION PIN REQUIRED"         }  },
-    {AT_CME_CORPORATE_PERSONALIZATION_PUK_REQUIRED,        {(TAF_UINT8*)"47"  ,(TAF_UINT8*)"CORPORATE PERSONALIZATION PUK REQUIRED"         }  },
-    {AT_CME_HIDDEN_KEY_REQUIRED,                           {(TAF_UINT8*)"48"  ,(TAF_UINT8*)"hidden key required"                            }  },
-    {AT_CME_EAP_METHOD_NOT_SUPPORTED,                      {(TAF_UINT8*)"49"  ,(TAF_UINT8*)"EAP method not supported"                       }  },
-    {AT_CME_INCORRECT_PARAMETERS,                          {(TAF_UINT8*)"50"  ,(TAF_UINT8*)"Incorrect parameters"                           }  },
-    {AT_CME_RX_DIV_NOT_SUPPORTED,                          {(TAF_UINT8*)"0"   ,(TAF_UINT8*)"NOT SUPPORTED"                           }  },
-    {AT_CME_RX_DIV_OTHER_ERR,                              {(TAF_UINT8*)"1"   ,(TAF_UINT8*)"OTHER ERROR"                           }  },
-    {AT_CME_UNKNOWN,                                       {(TAF_UINT8*)"100" ,(TAF_UINT8*)"UNKNOWN"                                        }  },
-
-    {AT_CME_ILLEGAL_MS,                                    {(TAF_UINT8*)"103" ,(TAF_UINT8*)"Illegal MS"                                     }  },
-    {AT_CME_ILLEGAL_ME,                                    {(TAF_UINT8*)"106" ,(TAF_UINT8*)"Illegal ME"                                     }  },
-    {AT_CME_GPRS_SERVICES_NOT_ALLOWED,                     {(TAF_UINT8*)"107" ,(TAF_UINT8*)"GPRS services not allowed"                      }  },
-    {AT_CME_PLMN_NOT_ALLOWED,                              {(TAF_UINT8*)"111" ,(TAF_UINT8*)"PLMN not allowed"                               }  },
-    {AT_CME_LOCATION_AREA_NOT_ALLOWED,                     {(TAF_UINT8*)"112" ,(TAF_UINT8*)"Location area not allowed"                      }  },
-    {AT_CME_ROAMING_NOT_ALLOWED_IN_THIS_LOCATION_AREA,     {(TAF_UINT8*)"113" ,(TAF_UINT8*)"Roaming not allowed in this location area"      }  },
-
-    {AT_CME_SERVICE_OPTION_NOT_SUPPORTED,                  {(TAF_UINT8*)"132" ,(TAF_UINT8*)"service option not supported"                   }  },
-    {AT_CME_REQUESTED_SERVICE_OPTION_NOT_SUBSCRIBED,       {(TAF_UINT8*)"133" ,(TAF_UINT8*)"requested service option not subscribed"        }  },
-    {AT_CME_SERVICE_OPTION_TEMPORARILY_OUT_OF_ORDER,       {(TAF_UINT8*)"134" ,(TAF_UINT8*)"service option temporarily out of order"        }  },
-    {AT_CME_PDP_AUTHENTICATION_FAILURE,                    {(TAF_UINT8*)"149" ,(TAF_UINT8*)"PDP authentication failure"                     }  },
+    {AT_CME_SERVICE_OPTION_NOT_SUPPORTED,                  {(TAF_UINT8*)"132", (TAF_UINT8*)"service option not supported"                   }  },
+    {AT_CME_REQUESTED_SERVICE_OPTION_NOT_SUBSCRIBED,       {(TAF_UINT8*)"133", (TAF_UINT8*)"requested service option not subscribed"        }  },
+    {AT_CME_SERVICE_OPTION_TEMPORARILY_OUT_OF_ORDER,       {(TAF_UINT8*)"134", (TAF_UINT8*)"service option temporarily out of order"        }  },
+    {AT_CME_PDP_AUTHENTICATION_FAILURE,                    {(TAF_UINT8*)"149", (TAF_UINT8*)"PDP authentication failure"                     }  },
 
     {AT_CME_INVALID_MOBILE_CLASS,                          {(TAF_UINT8*)"150" ,(TAF_UINT8*)"invalid mobile class"                           }  },
     {AT_CME_UNSPECIFIED_GPRS_ERROR,                        {(TAF_UINT8*)"148" ,(TAF_UINT8*)"unspecified GPRS error"                         }  },
 
-    {AT_CME_VBS_VGCS_NOT_SUPPORTED_BY_THE_NETWORK,         {(TAF_UINT8*)"151" ,(TAF_UINT8*)"VBS/VGCS not supported by the network"          }  },
-    {AT_CME_NO_SERVICE_SUBSCRIPTION_ON_SIM,                {(TAF_UINT8*)"152" ,(TAF_UINT8*)"No service subscription on SIM"                 }  },
-    {AT_CME_NO_SUBSCRIPTION_FOR_GROUP_ID,                  {(TAF_UINT8*)"153" ,(TAF_UINT8*)"No subscription for group ID"                   }  },
-    {AT_CME_GROUP_ID_NOT_ACTIVATED_ON_SIM,                 {(TAF_UINT8*)"154" ,(TAF_UINT8*)"Group Id not activated on SIM"                  }  },
-    {AT_CME_NO_MATCHING_NOTIFICATION,                      {(TAF_UINT8*)"155" ,(TAF_UINT8*)"No matching notification"                       }  },
-    {AT_CME_VBS_VGCS_CALL_ALREADY_PRESENT,                 {(TAF_UINT8*)"156" ,(TAF_UINT8*)"VBS/VGCS call already present"                  }  },
-    {AT_CME_CONGESTION,                                    {(TAF_UINT8*)"157" ,(TAF_UINT8*)"Congestion"                                     }  },
-    {AT_CME_NETWORK_FAILURE,                               {(TAF_UINT8*)"158" ,(TAF_UINT8*)"Network failure"                                }  },
-    {AT_CME_UPLINK_BUSY,                                   {(TAF_UINT8*)"159" ,(TAF_UINT8*)"Uplink busy"                                    }  },
-    {AT_CME_NO_ACCESS_RIGHTS_FOR_SIM_FILE,                 {(TAF_UINT8*)"160" ,(TAF_UINT8*)"No access rights for SIM file"                  }  },
-    {AT_CME_NO_SUBSCRIPTION_FOR_PRIORITY,                  {(TAF_UINT8*)"161" ,(TAF_UINT8*)"No subscription for priority"                   }  },
-    {AT_CME_OPERATION_NOT_APPLICABLE_OR_NOT_POSSIBLE,      {(TAF_UINT8*)"162" ,(TAF_UINT8*)"operation not applicable or not possible"       }  },
-    {AT_CME_FILE_NOT_EXISTS,                               {(TAF_UINT8*)"163"  ,(TAF_UINT8*)"FILE NOT EXIST"                            }  },
+    {AT_CME_VBS_VGCS_NOT_SUPPORTED_BY_THE_NETWORK,         {(TAF_UINT8*)"151", (TAF_UINT8*)"VBS/VGCS not supported by the network"          }  },
+    {AT_CME_NO_SERVICE_SUBSCRIPTION_ON_SIM,                {(TAF_UINT8*)"152", (TAF_UINT8*)"No service subscription on SIM"                 }  },
+    {AT_CME_NO_SUBSCRIPTION_FOR_GROUP_ID,                  {(TAF_UINT8*)"153", (TAF_UINT8*)"No subscription for group ID"                   }  },
+    {AT_CME_GROUP_ID_NOT_ACTIVATED_ON_SIM,                 {(TAF_UINT8*)"154", (TAF_UINT8*)"Group Id not activated on SIM"                  }  },
+    {AT_CME_NO_MATCHING_NOTIFICATION,                      {(TAF_UINT8*)"155", (TAF_UINT8*)"No matching notification"                       }  },
+    {AT_CME_VBS_VGCS_CALL_ALREADY_PRESENT,                 {(TAF_UINT8*)"156", (TAF_UINT8*)"VBS/VGCS call already present"                  }  },
+    {AT_CME_CONGESTION,                                    {(TAF_UINT8*)"157", (TAF_UINT8*)"Congestion"                                     }  },
+    {AT_CME_NETWORK_FAILURE,                               {(TAF_UINT8*)"158", (TAF_UINT8*)"Network failure"                                }  },
+    {AT_CME_UPLINK_BUSY,                                   {(TAF_UINT8*)"159", (TAF_UINT8*)"Uplink busy"                                    }  },
+    {AT_CME_NO_ACCESS_RIGHTS_FOR_SIM_FILE,                 {(TAF_UINT8*)"160", (TAF_UINT8*)"No access rights for SIM file"                  }  },
+    {AT_CME_NO_SUBSCRIPTION_FOR_PRIORITY,                  {(TAF_UINT8*)"161", (TAF_UINT8*)"No subscription for priority"                   }  },
+    {AT_CME_OPERATION_NOT_APPLICABLE_OR_NOT_POSSIBLE,      {(TAF_UINT8*)"162", (TAF_UINT8*)"operation not applicable or not possible"       }  },
+    {AT_CME_FILE_NOT_EXISTS,                               {(TAF_UINT8*)"163", (TAF_UINT8*)"FILE NOT EXIST"                            }  },
 
-    {AT_CME_SERVICE_NOT_PROVISIONED,                       {(VOS_UINT8*)"171"  ,(VOS_UINT8*)"Service not provisioned"       }  },
+    {AT_CME_SERVICE_NOT_PROVISIONED,                       {(VOS_UINT8*)"171", (VOS_UINT8*)"Service not provisioned"       }  },
 
     /* 3GPP 27007 9.2.3 Also all other values below 256 are reserved */
-    {AT_CME_PDP_ACT_LIMIT,                                 {(TAF_UINT8*)"300"  ,(TAF_UINT8*)"PDP ACT LIMIT"                            }  },
-    {AT_CME_NET_SEL_MENU_DISABLE,                          {(TAF_UINT8*)"301"  ,(TAF_UINT8*)"NETWORK SELECTION MENU DISABLE"           }  },
+    {AT_CME_PDP_ACT_LIMIT,                                 {(TAF_UINT8*)"300", (TAF_UINT8*)"PDP ACT LIMIT"                            }  },
+    {AT_CME_NET_SEL_MENU_DISABLE,                          {(TAF_UINT8*)"301", (TAF_UINT8*)"NETWORK SELECTION MENU DISABLE"           }  },
 
-    {AT_CME_CS_SERV_EXIST,                                 {(TAF_UINT8*)"302"  ,(TAF_UINT8*)"CS SERVICE EXIST"                         }  },
+    {AT_CME_CS_SERV_EXIST,                                 {(TAF_UINT8*)"302", (TAF_UINT8*)"CS SERVICE EXIST"                         }  },
 
-    {AT_CME_FDN_FAILED,                                    {(TAF_UINT8*)"303"  ,(TAF_UINT8*)"FDN Failed"                              }  },
-    {AT_CME_CALL_CONTROL_FAILED,                           {(TAF_UINT8*)"304"  ,(TAF_UINT8*)"Call Control Failed"                           }  },
-    {AT_CME_CALL_CONTROL_BEYOND_CAPABILITY,                {(TAF_UINT8*)"305"  ,(TAF_UINT8*)"Call Control beyond Capability"                }  },
+    {AT_CME_FDN_FAILED,                                    {(TAF_UINT8*)"303", (TAF_UINT8*)"FDN Failed"                              }  },
+    {AT_CME_CALL_CONTROL_FAILED,                           {(TAF_UINT8*)"304", (TAF_UINT8*)"Call Control Failed"                           }  },
+    {AT_CME_CALL_CONTROL_BEYOND_CAPABILITY,                {(TAF_UINT8*)"305", (TAF_UINT8*)"Call Control beyond Capability"                }  },
 
-    {AT_CME_APN_LEN_ILLEGAL,                               {(VOS_UINT8*)"700" ,(VOS_UINT8*)"APN length illegal"              }  },
-    {AT_CME_APN_SYNTACTICAL_ERROR,                         {(VOS_UINT8*)"701" ,(VOS_UINT8*)"APN syntactical error"           }  },
-    {AT_CME_SET_APN_BEFORE_SET_AUTH,                       {(VOS_UINT8*)"702" ,(VOS_UINT8*)"set APN before set auth"         }  },
-    {AT_CME_AUTH_TYPE_ILLEGAL,                             {(VOS_UINT8*)"703" ,(VOS_UINT8*)"auth type illegal"               }  },
-    {AT_CME_USER_NAME_TOO_LONG,                            {(VOS_UINT8*)"704" ,(VOS_UINT8*)"user name too long"              }  },
-    {AT_CME_USER_PASSWORD_TOO_LONG,                        {(VOS_UINT8*)"705" ,(VOS_UINT8*)"user password too long"          }  },
-    {AT_CME_ACCESS_NUM_TOO_LONG,                           {(VOS_UINT8*)"706" ,(VOS_UINT8*)"access number too long"          }  },
-    {AT_CME_CALL_CID_IN_OPERATION,                         {(VOS_UINT8*)"707" ,(VOS_UINT8*)"call cid in operation"           }  },
-    {AT_CME_BEARER_TYPE_NOT_DEFAULT,                       {(VOS_UINT8*)"708" ,(VOS_UINT8*)"bearer type not default"         }  },
-    {AT_CME_CALL_CID_INVALID,                              {(VOS_UINT8*)"709" ,(VOS_UINT8*)"call cid invalid"                }  },
-    {AT_CME_CALL_CID_ACTIVE,                               {(VOS_UINT8*)"710" ,(VOS_UINT8*)"call cid active"                 }  },
-    {AT_CME_BEARER_TYPE_ILLEGAL,                           {(VOS_UINT8*)"711" ,(VOS_UINT8*)"bearer type illegal"             }  },
-    {AT_CME_MUST_EXIST_DEFAULT_TYPE_CID,                   {(VOS_UINT8*)"712" ,(VOS_UINT8*)"must exist default type cid"     }  },
-    {AT_CME_PDN_TYPE_ILLEGAL,                              {(VOS_UINT8*)"713" ,(VOS_UINT8*)"PDN type illegal"                }  },
-    {AT_CME_IPV4_ADDR_ALLOC_TYPE_ILLEGAL,                  {(VOS_UINT8*)"714" ,(VOS_UINT8*)"IPV4 address alloc type illegal" }  },
-    {AT_CME_LINK_CID_INVALID,                              {(VOS_UINT8*)"715" ,(VOS_UINT8*)"link cid invalid"                }  },
-    {AT_CME_NO_SUCH_ELEMENT,                               {(VOS_UINT8*)"716" ,(VOS_UINT8*)"no such element"                 }  },
-    {AT_CME_MISSING_RESOURCE,                              {(VOS_UINT8*)"717" ,(VOS_UINT8*)"missing resource"                }  },
-    {AT_CME_ERROR_ENUM_END,                                {TAF_NULL_PTR   ,TAF_NULL_PTR                          }  },
+    /* Added by zwx247453 for VOLTE SWITCH, 2015-02-02, Begin */
+    {AT_CME_IMS_NOT_SUPPORT,                               {(VOS_UINT8*)"306", (VOS_UINT8*)"IMS Not Support"                 }  },
+    {AT_CME_IMS_SERVICE_EXIST,                             {(VOS_UINT8*)"307", (VOS_UINT8*)"IMS Service Exist"               }  },
+    {AT_CME_IMS_VOICE_DOMAIN_PS_ONLY,                      {(VOS_UINT8*)"308", (VOS_UINT8*)"IMS Voice Domain PS Only"              }  },
+    {AT_CME_IMS_STACK_TIMEOUT,                             {(VOS_UINT8*)"309", (VOS_UINT8*)"IMS Stack Time Out"              }  },
+    /* Added by zwx247453 for VOLTE SWITCH, 2015-02-02, End */
+
+    {AT_CME_APN_LEN_ILLEGAL,                               {(VOS_UINT8*)"700", (VOS_UINT8*)"APN length illegal"              }  },
+    {AT_CME_APN_SYNTACTICAL_ERROR,                         {(VOS_UINT8*)"701", (VOS_UINT8*)"APN syntactical error"           }  },
+    {AT_CME_SET_APN_BEFORE_SET_AUTH,                       {(VOS_UINT8*)"702", (VOS_UINT8*)"set APN before set auth"         }  },
+    {AT_CME_AUTH_TYPE_ILLEGAL,                             {(VOS_UINT8*)"703", (VOS_UINT8*)"auth type illegal"               }  },
+    {AT_CME_USER_NAME_TOO_LONG,                            {(VOS_UINT8*)"704", (VOS_UINT8*)"user name too long"              }  },
+    {AT_CME_USER_PASSWORD_TOO_LONG,                        {(VOS_UINT8*)"705", (VOS_UINT8*)"user password too long"          }  },
+    {AT_CME_ACCESS_NUM_TOO_LONG,                           {(VOS_UINT8*)"706", (VOS_UINT8*)"access number too long"          }  },
+    {AT_CME_CALL_CID_IN_OPERATION,                         {(VOS_UINT8*)"707", (VOS_UINT8*)"call cid in operation"           }  },
+    {AT_CME_BEARER_TYPE_NOT_DEFAULT,                       {(VOS_UINT8*)"708", (VOS_UINT8*)"bearer type not default"         }  },
+    {AT_CME_CALL_CID_INVALID,                              {(VOS_UINT8*)"709", (VOS_UINT8*)"call cid invalid"                }  },
+    {AT_CME_CALL_CID_ACTIVE,                               {(VOS_UINT8*)"710", (VOS_UINT8*)"call cid active"                 }  },
+    {AT_CME_BEARER_TYPE_ILLEGAL,                           {(VOS_UINT8*)"711", (VOS_UINT8*)"bearer type illegal"             }  },
+    {AT_CME_MUST_EXIST_DEFAULT_TYPE_CID,                   {(VOS_UINT8*)"712", (VOS_UINT8*)"must exist default type cid"     }  },
+    {AT_CME_PDN_TYPE_ILLEGAL,                              {(VOS_UINT8*)"713", (VOS_UINT8*)"PDN type illegal"                }  },
+    {AT_CME_IPV4_ADDR_ALLOC_TYPE_ILLEGAL,                  {(VOS_UINT8*)"714", (VOS_UINT8*)"IPV4 address alloc type illegal" }  },
+    {AT_CME_LINK_CID_INVALID,                              {(VOS_UINT8*)"715", (VOS_UINT8*)"link cid invalid"                }  },
+    {AT_CME_NO_SUCH_ELEMENT,                               {(VOS_UINT8*)"716", (VOS_UINT8*)"no such element"                 }  },
+    {AT_CME_MISSING_RESOURCE,                              {(VOS_UINT8*)"717", (VOS_UINT8*)"missing resource"                }  },
+    {AT_CME_ERROR_ENUM_END,                                {TAF_NULL_PTR,       TAF_NULL_PTR                 }  },
 
     /*装备AT命令错误码提示*/
-    {AT_DEVICE_ERROR_BEGIN,                                {VOS_NULL_PTR   ,VOS_NULL_PTR                                                    }  },
-    {AT_DEVICE_MODE_ERROR,                                 {(VOS_UINT8*)"0" ,(VOS_UINT8*)"Mode Error"                                       }  },
-    {AT_FCHAN_BAND_NOT_MATCH,                              {(VOS_UINT8*)"1" ,(VOS_UINT8*)"Band not match"                                   }  },
-    {AT_FCHAN_SET_CHANNEL_FAIL,                            {(VOS_UINT8*)"2" ,(VOS_UINT8*)"Channel number set fail"                          }  },
-    {AT_FCHAN_BAND_CHANNEL_NOT_MATCH,                      {(VOS_UINT8*)"3" ,(VOS_UINT8*)"Band and Channel not match"                       }  },
-    {AT_FCHAN_OTHER_ERR,                                   {(VOS_UINT8*)"4" ,(VOS_UINT8*)"Other error"                                      }  },
-    {AT_FDAC_CHANNEL_NOT_SET,                              {(VOS_UINT8*)"0" ,(VOS_UINT8*)"channel not set"                                  }  },
-    {AT_FDAC_SET_FAIL,                                     {(VOS_UINT8*)"2" ,(VOS_UINT8*)"Set DAC fail"                                     }  },
-    {AT_CHANNEL_NOT_SET,                                   {(VOS_UINT8*)"1" ,(VOS_UINT8*)"channel not set"                                  }  },
-    {AT_FTXON_SET_FAIL,                                    {(VOS_UINT8*)"2" ,(VOS_UINT8*)"Set FTXON fail"                                   }  },
-    {AT_FTXON_OTHER_ERR,                                   {(VOS_UINT8*)"3" ,(VOS_UINT8*)"other FTXON Error"                                }  },
-    {AT_DATA_UNLOCK_ERROR,                                 {(VOS_UINT8*)"0" ,(VOS_UINT8*)"Data UNLock Error:0"                              }  },
-    {AT_DPAUPA_ERROR,                                      {(VOS_UINT8*)"1" ,(VOS_UINT8*)"DPA UPA Error:1"                                  }  },
-    {AT_SN_LENGTH_ERROR,                                   {(VOS_UINT8*)"0" ,(VOS_UINT8*)"SN LENGTH Error:1"                                }  },
-    {AT_FRXON_OTHER_ERR,                                   {(VOS_UINT8*)"3" ,(VOS_UINT8*)"other FRXON Error"                                }  },
-    {AT_FRXON_SET_FAIL,                                    {(VOS_UINT8*)"2" ,(VOS_UINT8*)"Set FRXON fail"                                   }  },
-    {AT_FPA_OTHER_ERR,                                     {(VOS_UINT8*)"3" ,(VOS_UINT8*)"Other FPA error"                                  }  },
-    {AT_FLNA_OTHER_ERR,                                    {(VOS_UINT8*)"3" ,(VOS_UINT8*)"Other LNA error"                                  }  },
-    {AT_FRSSI_OTHER_ERR,                                   {(VOS_UINT8*)"4" ,(VOS_UINT8*)"Other FRSSI error"                                }  },
-    {AT_FRSSI_RX_NOT_OPEN,                                 {(VOS_UINT8*)"2" ,(VOS_UINT8*)"RX Not Open"                                      }  },
-    {AT_SD_CARD_NOT_EXIST,                                 {(VOS_UINT8*)"0" ,(VOS_UINT8*)"SD Card Not Exist"                                }  },
-    {AT_SD_CARD_INIT_FAILED,                               {(VOS_UINT8*)"1" ,(VOS_UINT8*)"SD Card init fail"                                }  },
-    {AT_SD_CARD_OPRT_NOT_ALLOWED,                          {(VOS_UINT8*)"2" ,(VOS_UINT8*)"Sd Oprt not allowed"                              }  },
-    {AT_SD_CARD_ADDR_ERR,                                  {(VOS_UINT8*)"3" ,(VOS_UINT8*)"Sd Card Address Error"                            }  },
-    {AT_SD_CARD_OTHER_ERR,                                 {(VOS_UINT8*)"4" ,(VOS_UINT8*)"Sd Card Other Error"                              }  },
-    {AT_DEVICE_OTHER_ERROR,                                {(VOS_UINT8*)"1" ,(VOS_UINT8*)"1"                                                }  },
-    {AT_PHYNUM_LENGTH_ERR,                                 {(VOS_UINT8*)"0" ,(VOS_UINT8*)"Physical Number length error"                     }  },
-    {AT_PHYNUM_NUMBER_ERR,                                 {(VOS_UINT8*)"1" ,(VOS_UINT8*)"Physical Number number error"                     }  },
-    {AT_PHYNUM_TYPE_ERR,                                   {(VOS_UINT8*)"2" ,(VOS_UINT8*)"Physical Number type error"                       }  },
-    {AT_SIMLOCK_PLMN_NUM_ERR,                              {(VOS_UINT8*)"2" ,(VOS_UINT8*)"Simlock Plmn num invalid"                              }  },
-    {AT_SIMLOCK_PLMN_MNC_LEN_ERR,                          {(VOS_UINT8*)"3" ,(VOS_UINT8*)"Simlock Plmn MNC len Err"                              }  },
+    {AT_DEVICE_ERROR_BEGIN,                                {VOS_NULL_PTR   ,VOS_NULL_PTR                                     }  },
+    {AT_DEVICE_MODE_ERROR,                                 {(VOS_UINT8*)"0", (VOS_UINT8*)"Mode Error"                        }  },
+    {AT_FCHAN_BAND_NOT_MATCH,                              {(VOS_UINT8*)"1", (VOS_UINT8*)"Band not match"                    }  },
+    {AT_FCHAN_SET_CHANNEL_FAIL,                            {(VOS_UINT8*)"2", (VOS_UINT8*)"Channel number set fail"           }  },
+    {AT_FCHAN_BAND_CHANNEL_NOT_MATCH,                      {(VOS_UINT8*)"3", (VOS_UINT8*)"Band and Channel not match"        }  },
+    {AT_FCHAN_OTHER_ERR,                                   {(VOS_UINT8*)"4", (VOS_UINT8*)"Other error"                       }  },
+    {AT_FDAC_CHANNEL_NOT_SET,                              {(VOS_UINT8*)"0", (VOS_UINT8*)"channel not set"                   }  },
+    {AT_FDAC_SET_FAIL,                                     {(VOS_UINT8*)"2", (VOS_UINT8*)"Set DAC fail"                      }  },
+    {AT_CHANNEL_NOT_SET,                                   {(VOS_UINT8*)"1", (VOS_UINT8*)"channel not set"                   }  },
+    {AT_FTXON_SET_FAIL,                                    {(VOS_UINT8*)"2", (VOS_UINT8*)"Set FTXON fail"                    }  },
+    {AT_FTXON_OTHER_ERR,                                   {(VOS_UINT8*)"3", (VOS_UINT8*)"other FTXON Error"                 }  },
+    {AT_DATA_UNLOCK_ERROR,                                 {(VOS_UINT8*)"0", (VOS_UINT8*)"Data UNLock Error:0"               }  },
+    {AT_DPAUPA_ERROR,                                      {(VOS_UINT8*)"1", (VOS_UINT8*)"DPA UPA Error:1"                   }  },
+    {AT_SN_LENGTH_ERROR,                                   {(VOS_UINT8*)"0", (VOS_UINT8*)"SN LENGTH Error:1"                 }  },
+    {AT_FRXON_OTHER_ERR,                                   {(VOS_UINT8*)"3", (VOS_UINT8*)"other FRXON Error"                 }  },
+    {AT_FRXON_SET_FAIL,                                    {(VOS_UINT8*)"2", (VOS_UINT8*)"Set FRXON fail"                    }  },
+    {AT_FPA_OTHER_ERR,                                     {(VOS_UINT8*)"3", (VOS_UINT8*)"Other FPA error"                   }  },
+    {AT_FLNA_OTHER_ERR,                                    {(VOS_UINT8*)"3", (VOS_UINT8*)"Other LNA error"                   }  },
+    {AT_FRSSI_OTHER_ERR,                                   {(VOS_UINT8*)"4", (VOS_UINT8*)"Other FRSSI error"                 }  },
+    {AT_FRSSI_RX_NOT_OPEN,                                 {(VOS_UINT8*)"2", (VOS_UINT8*)"RX Not Open"                       }  },
+    {AT_SD_CARD_NOT_EXIST,                                 {(VOS_UINT8*)"0", (VOS_UINT8*)"SD Card Not Exist"                 }  },
+    {AT_SD_CARD_INIT_FAILED,                               {(VOS_UINT8*)"1", (VOS_UINT8*)"SD Card init fail"                 }  },
+    {AT_SD_CARD_OPRT_NOT_ALLOWED,                          {(VOS_UINT8*)"2", (VOS_UINT8*)"Sd Oprt not allowed"               }  },
+    {AT_SD_CARD_ADDR_ERR,                                  {(VOS_UINT8*)"3", (VOS_UINT8*)"Sd Card Address Error"             }  },
+    {AT_SD_CARD_OTHER_ERR,                                 {(VOS_UINT8*)"4", (VOS_UINT8*)"Sd Card Other Error"               }  },
+    {AT_DEVICE_OTHER_ERROR,                                {(VOS_UINT8*)"1", (VOS_UINT8*)"1"                                 }  },
+    {AT_PHYNUM_LENGTH_ERR,                                 {(VOS_UINT8*)"0", (VOS_UINT8*)"Physical Number length error"      }  },
+    {AT_PHYNUM_NUMBER_ERR,                                 {(VOS_UINT8*)"1", (VOS_UINT8*)"Physical Number number error"      }  },
+    {AT_PHYNUM_TYPE_ERR,                                   {(VOS_UINT8*)"2", (VOS_UINT8*)"Physical Number type error"        }  },
+    {AT_SIMLOCK_PLMN_NUM_ERR,                              {(VOS_UINT8*)"2", (VOS_UINT8*)"Simlock Plmn num invalid"          }  },
+    {AT_SIMLOCK_PLMN_MNC_LEN_ERR,                          {(VOS_UINT8*)"3", (VOS_UINT8*)"Simlock Plmn MNC len Err"          }  },
 
     {AT_DEVICE_NOT_SUPPORT,                                {(VOS_UINT8*)"500", (VOS_UINT8*)"Undone",                            }},
     {AT_DEVICE_ERR_UNKNOWN,                                {(VOS_UINT8*)"501", (VOS_UINT8*)"Unknown error",                     }},
@@ -264,100 +269,100 @@ const AT_RETURN_TAB_TYPE_STRU gastAtReturnCodeTab[]=
     {AT_DEVICE_CLOSE_DL_CHAN_FAILURE,                      {(VOS_UINT8*)"561", (VOS_UINT8*)"Close RX Transmitter Failure",      }},
     {AT_DEVICE_NV_DATA_INVALID,                            {(VOS_UINT8*)"562", (VOS_UINT8*)"NV DATA INVALID",                   }},
 
-    {AT_PERSONALIZATION_ERR_BEGIN,                          {VOS_NULL_PTR     , VOS_NULL_PTR                                     }},
-    {AT_PERSONALIZATION_IDENTIFY_FAIL,                      {(VOS_UINT8*)"301", (VOS_UINT8*)"Identify failure",                  }},
-    {AT_PERSONALIZATION_SIGNATURE_FAIL,                     {(VOS_UINT8*)"302", (VOS_UINT8*)"Signature verification failed",     }},
-    {AT_PERSONALIZATION_DK_INCORRECT,                       {(VOS_UINT8*)"303", (VOS_UINT8*)"Debug port password incorrect",     }},
-    {AT_PERSONALIZATION_PH_PHYNUM_LEN_ERROR,                {(VOS_UINT8*)"304", (VOS_UINT8*)"Phone physical number length error",}},
-    {AT_PERSONALIZATION_PH_PHYNUM_VALUE_ERROR,              {(VOS_UINT8*)"305", (VOS_UINT8*)"Phone physical number value error", }},
-    {AT_PERSONALIZATION_PH_PHYNUM_TYPE_ERROR,               {(VOS_UINT8*)"306", (VOS_UINT8*)"Phone physical number type error",  }},
-    {AT_PERSONALIZATION_RSA_ENCRYPT_FAIL,                   {(VOS_UINT8*)"307", (VOS_UINT8*)"RSA encryption failed",             }},
-    {AT_PERSONALIZATION_RSA_DECRYPT_FAIL,                   {(VOS_UINT8*)"308", (VOS_UINT8*)"RSA decryption failed",             }},
-    {AT_PERSONALIZATION_GET_RAND_NUMBER_FAIL,               {(VOS_UINT8*)"309", (VOS_UINT8*)"Generate random number failed",     }},
-    {AT_PERSONALIZATION_WRITE_HUK_FAIL,                     {(VOS_UINT8*)"310", (VOS_UINT8*)"Write HUK failed",                  }},
-    {AT_PERSONALIZATION_FLASH_ERROR,                        {(VOS_UINT8*)"311", (VOS_UINT8*)"Flash error",                       }},
-    {AT_PERSONALIZATION_OTHER_ERROR,                        {(VOS_UINT8*)"312", (VOS_UINT8*)"Other error",                       }},
-    {AT_PERSONALIZATION_ERR_END,                            {VOS_NULL_PTR     , VOS_NULL_PTR                                     }},
+    {AT_PERSONALIZATION_ERR_BEGIN,                          {VOS_NULL_PTR     , VOS_NULL_PTR                                     } },
+    {AT_PERSONALIZATION_IDENTIFY_FAIL,                      {(VOS_UINT8*)"301", (VOS_UINT8*)"Identify failure",                  } },
+    {AT_PERSONALIZATION_SIGNATURE_FAIL,                     {(VOS_UINT8*)"302", (VOS_UINT8*)"Signature verification failed",     } },
+    {AT_PERSONALIZATION_DK_INCORRECT,                       {(VOS_UINT8*)"303", (VOS_UINT8*)"Debug port password incorrect",     } },
+    {AT_PERSONALIZATION_PH_PHYNUM_LEN_ERROR,                {(VOS_UINT8*)"304", (VOS_UINT8*)"Phone physical number length error",} },
+    {AT_PERSONALIZATION_PH_PHYNUM_VALUE_ERROR,              {(VOS_UINT8*)"305", (VOS_UINT8*)"Phone physical number value error", } },
+    {AT_PERSONALIZATION_PH_PHYNUM_TYPE_ERROR,               {(VOS_UINT8*)"306", (VOS_UINT8*)"Phone physical number type error",  } },
+    {AT_PERSONALIZATION_RSA_ENCRYPT_FAIL,                   {(VOS_UINT8*)"307", (VOS_UINT8*)"RSA encryption failed",             } },
+    {AT_PERSONALIZATION_RSA_DECRYPT_FAIL,                   {(VOS_UINT8*)"308", (VOS_UINT8*)"RSA decryption failed",             } },
+    {AT_PERSONALIZATION_GET_RAND_NUMBER_FAIL,               {(VOS_UINT8*)"309", (VOS_UINT8*)"Generate random number failed",     } },
+    {AT_PERSONALIZATION_WRITE_HUK_FAIL,                     {(VOS_UINT8*)"310", (VOS_UINT8*)"Write HUK failed",                  } },
+    {AT_PERSONALIZATION_FLASH_ERROR,                        {(VOS_UINT8*)"311", (VOS_UINT8*)"Flash error",                       } },
+    {AT_PERSONALIZATION_OTHER_ERROR,                        {(VOS_UINT8*)"312", (VOS_UINT8*)"Other error",                       } },
+    {AT_PERSONALIZATION_ERR_END,                            {VOS_NULL_PTR     , VOS_NULL_PTR                                     } },
 
-    {AT_DEVICE_ERROR_END,                                  {VOS_NULL_PTR   ,  VOS_NULL_PTR                                                  }  },
+    {AT_DEVICE_ERROR_END,                                  {VOS_NULL_PTR,       VOS_NULL_PTR                                     } },
 
-    {AT_CMS_ERROR_ENUM_BEGAIN,                             {TAF_NULL_PTR   ,TAF_NULL_PTR                          }  },
-    {AT_CMS_UNASSIGNED_UNALLOCATED_NUMBER,                            { (TAF_UINT8*)"1  " , (TAF_UINT8*)"Unassigned (unallocated) number"                             } },
-    {AT_CMS_OPERATOR_DETERMINED_BARRING,                              { (TAF_UINT8*)"8  " , (TAF_UINT8*)"Operator determined barring"                                 } },
-    {AT_CMS_CALL_BARRED,                                              { (TAF_UINT8*)"10 " , (TAF_UINT8*)"Call barred"                                                 } },
-    {AT_CMS_SHORT_MESSAGE_TRANSFER_REJECTED,                          { (TAF_UINT8*)"21 " , (TAF_UINT8*)"Short message transfer rejected"                             } },
-    {AT_CMS_DESTINATION_OUT_OF_SERVICE,                               { (TAF_UINT8*)"27 " , (TAF_UINT8*)"Destination out of service"                                  } },
-    {AT_CMS_UNIDENTIFIED_SUBSCRIBER,                                  { (TAF_UINT8*)"28 " , (TAF_UINT8*)"Unidentified subscriber"                                     } },
-    {AT_CMS_FACILITY_REJECTED,                                        { (TAF_UINT8*)"29 " , (TAF_UINT8*)"Facility rejected"                                           } },
-    {AT_CMS_UNKNOWN_SUBSCRIBER,                                       { (TAF_UINT8*)"30 " , (TAF_UINT8*)"Unknown subscriber"                                          } },
-    {AT_CMS_NETWORK_OUT_OF_ORDER,                                     { (TAF_UINT8*)"38 " , (TAF_UINT8*)"Network out of order"                                        } },
-    {AT_CMS_TEMPORARY_FAILURE,                                        { (TAF_UINT8*)"41 " , (TAF_UINT8*)"Temporary failure"                                           } },
-    {AT_CMS_CONGESTION,                                               { (TAF_UINT8*)"42 " , (TAF_UINT8*)"Congestion"                                                  } },
-    {AT_CMS_RESOURCES_UNAVAILABLE_UNSPECIFIED,                        { (TAF_UINT8*)"47 " , (TAF_UINT8*)"Resources unavailable, unspecified"                          } },
-    {AT_CMS_REQUESTED_FACILITY_NOT_SUBSCRIBED,                        { (TAF_UINT8*)"50 " , (TAF_UINT8*)"Requested facility not subscribed"                           } },
-    {AT_CMS_REQUESTED_FACILITY_NOT_IMPLEMENTED,                       { (TAF_UINT8*)"69 " , (TAF_UINT8*)"Requested facility not implemented"                          } },
-    {AT_CMS_INVALID_SHORT_MESSAGE_TRANSFER_REFERENCE_VALUE,           { (TAF_UINT8*)"81 " , (TAF_UINT8*)"Invalid short message transfer reference value"              } },
-    {AT_CMS_INVALID_MESSAGE_UNSPECIFIED,                              { (TAF_UINT8*)"95 " , (TAF_UINT8*)"Invalid message, unspecified"                                } },
-    {AT_CMS_INVALID_MANDATORY_INFORMATION,                            { (TAF_UINT8*)"96 " , (TAF_UINT8*)"Invalid mandatory information"                               } },
-    {AT_CMS_MESSAGE_TYPE_NON_EXISTENT_OR_NOT_IMPLEMENTED,             { (TAF_UINT8*)"97 " , (TAF_UINT8*)"Message type non existent or not implemented"                } },
-    {AT_CMS_MESSAGE_NOT_COMPATIBLE_WITH_SHORT_MESSAGE_PROTOCOL_STATE, { (TAF_UINT8*)"98 " , (TAF_UINT8*)"Message not compatible with short message protocol state"    } },
-    {AT_CMS_INFORMATION_ELEMENT_NON_EXISTENT_OR_NOT_IMPLEMENTED,      { (TAF_UINT8*)"99 " , (TAF_UINT8*)"Information element non existent or not implemented"         } },
-    {AT_CMS_PROTOCOL_ERROR_UNSPECIFIED,                               { (TAF_UINT8*)"111" , (TAF_UINT8*)"Protocol error, unspecified"                                 } },
-    {AT_CMS_INTERWORKING_UNSPECIFIED,                                 { (TAF_UINT8*)"127" , (TAF_UINT8*)"Interworking, unspecified"                                   } },
+    {AT_CMS_ERROR_ENUM_BEGAIN,                             {TAF_NULL_PTR,       TAF_NULL_PTR                                     } },
+    {AT_CMS_UNASSIGNED_UNALLOCATED_NUMBER,                            { (TAF_UINT8*)"1  ", (TAF_UINT8*)"Unassigned (unallocated) number"                             } },
+    {AT_CMS_OPERATOR_DETERMINED_BARRING,                              { (TAF_UINT8*)"8  ", (TAF_UINT8*)"Operator determined barring"                                 } },
+    {AT_CMS_CALL_BARRED,                                              { (TAF_UINT8*)"10 ", (TAF_UINT8*)"Call barred"                                                 } },
+    {AT_CMS_SHORT_MESSAGE_TRANSFER_REJECTED,                          { (TAF_UINT8*)"21 ", (TAF_UINT8*)"Short message transfer rejected"                             } },
+    {AT_CMS_DESTINATION_OUT_OF_SERVICE,                               { (TAF_UINT8*)"27 ", (TAF_UINT8*)"Destination out of service"                                  } },
+    {AT_CMS_UNIDENTIFIED_SUBSCRIBER,                                  { (TAF_UINT8*)"28 ", (TAF_UINT8*)"Unidentified subscriber"                                     } },
+    {AT_CMS_FACILITY_REJECTED,                                        { (TAF_UINT8*)"29 ", (TAF_UINT8*)"Facility rejected"                                           } },
+    {AT_CMS_UNKNOWN_SUBSCRIBER,                                       { (TAF_UINT8*)"30 ", (TAF_UINT8*)"Unknown subscriber"                                          } },
+    {AT_CMS_NETWORK_OUT_OF_ORDER,                                     { (TAF_UINT8*)"38 ", (TAF_UINT8*)"Network out of order"                                        } },
+    {AT_CMS_TEMPORARY_FAILURE,                                        { (TAF_UINT8*)"41 ", (TAF_UINT8*)"Temporary failure"                                           } },
+    {AT_CMS_CONGESTION,                                               { (TAF_UINT8*)"42 ", (TAF_UINT8*)"Congestion"                                                  } },
+    {AT_CMS_RESOURCES_UNAVAILABLE_UNSPECIFIED,                        { (TAF_UINT8*)"47 ", (TAF_UINT8*)"Resources unavailable, unspecified"                          } },
+    {AT_CMS_REQUESTED_FACILITY_NOT_SUBSCRIBED,                        { (TAF_UINT8*)"50 ", (TAF_UINT8*)"Requested facility not subscribed"                           } },
+    {AT_CMS_REQUESTED_FACILITY_NOT_IMPLEMENTED,                       { (TAF_UINT8*)"69 ", (TAF_UINT8*)"Requested facility not implemented"                          } },
+    {AT_CMS_INVALID_SHORT_MESSAGE_TRANSFER_REFERENCE_VALUE,           { (TAF_UINT8*)"81 ", (TAF_UINT8*)"Invalid short message transfer reference value"              } },
+    {AT_CMS_INVALID_MESSAGE_UNSPECIFIED,                              { (TAF_UINT8*)"95 ", (TAF_UINT8*)"Invalid message, unspecified"                                } },
+    {AT_CMS_INVALID_MANDATORY_INFORMATION,                            { (TAF_UINT8*)"96 ", (TAF_UINT8*)"Invalid mandatory information"                               } },
+    {AT_CMS_MESSAGE_TYPE_NON_EXISTENT_OR_NOT_IMPLEMENTED,             { (TAF_UINT8*)"97 ", (TAF_UINT8*)"Message type non existent or not implemented"                } },
+    {AT_CMS_MESSAGE_NOT_COMPATIBLE_WITH_SHORT_MESSAGE_PROTOCOL_STATE, { (TAF_UINT8*)"98 ", (TAF_UINT8*)"Message not compatible with short message protocol state"    } },
+    {AT_CMS_INFORMATION_ELEMENT_NON_EXISTENT_OR_NOT_IMPLEMENTED,      { (TAF_UINT8*)"99 ", (TAF_UINT8*)"Information element non existent or not implemented"         } },
+    {AT_CMS_PROTOCOL_ERROR_UNSPECIFIED,                               { (TAF_UINT8*)"111", (TAF_UINT8*)"Protocol error, unspecified"                                 } },
+    {AT_CMS_INTERWORKING_UNSPECIFIED,                                 { (TAF_UINT8*)"127", (TAF_UINT8*)"Interworking, unspecified"                                   } },
 
-    {AT_CMS_TELEMATIC_INTERWORKING_NOT_SUPPORTED,                     { (TAF_UINT8*)"128" , (TAF_UINT8*)"Telematic interworking not supported"                        } },
-    {AT_CMS_SHORT_MESSAGE_TYPE_0_NOT_SUPPORTED,                       { (TAF_UINT8*)"129" , (TAF_UINT8*)"Short message Type 0 not supported"                          } },
-    {AT_CMS_CANNOT_REPLACE_SHORT_MESSAGE,                             { (TAF_UINT8*)"130" , (TAF_UINT8*)"Cannot replace short message"                                } },
-    {AT_CMS_UNSPECIFIED_TPPID_ERROR,                                  { (TAF_UINT8*)"143" , (TAF_UINT8*)"Unspecified TPPID error"                                     } },
-    {AT_CMS_DATA_CODING_SCHEME_ALPHABET_NOT_SUPPORTED,                { (TAF_UINT8*)"144" , (TAF_UINT8*)"Data coding scheme (alphabet) not supported"                 } },
-    {AT_CMS_MESSAGE_CLASS_NOT_SUPPORTED,                              { (TAF_UINT8*)"145" , (TAF_UINT8*)"Message class not supported"                                 } },
-    {AT_CMS_UNSPECIFIED_TPDCS_ERROR,                                  { (TAF_UINT8*)"159" , (TAF_UINT8*)"Unspecified TPDCS error"                                     } },
-    {AT_CMS_COMMAND_CANNOT_BE_ACTIONED,                               { (TAF_UINT8*)"160" , (TAF_UINT8*)"Command cannot be actioned"                                  } },
-    {AT_CMS_COMMAND_UNSUPPORTED,                                      { (TAF_UINT8*)"161" , (TAF_UINT8*)"Command unsupported"                                         } },
-    {AT_CMS_UNSPECIFIED_TPCOMMAND_ERROR,                              { (TAF_UINT8*)"175" , (TAF_UINT8*)"Unspecified TPCommand erro"                                  } },
-    {AT_CMS_TPDU_NOT_SUPPORTED,                                       { (TAF_UINT8*)"176" , (TAF_UINT8*)"TPDU not supported"                                          } },
-    {AT_CMS_SC_BUSY,                                                  { (TAF_UINT8*)"192" , (TAF_UINT8*)"SC busy"                                                     } },
-    {AT_CMS_NO_SC_SUBSCRIPTION,                                       { (TAF_UINT8*)"193" , (TAF_UINT8*)"No SC subscription"                                          } },
-    {AT_CMS_SC_SYSTEM_FAILURE,                                        { (TAF_UINT8*)"194" , (TAF_UINT8*)"SC system failure"                                           } },
-    {AT_CMS_INVALID_SME_ADDRESS,                                      { (TAF_UINT8*)"195" , (TAF_UINT8*)"Invalid SME address"                                         } },
-    {AT_CMS_DESTINATION_SME_BARRED,                                   { (TAF_UINT8*)"196" , (TAF_UINT8*)"Destination SME barred"                                      } },
-    {AT_CMS_SM_REJECTEDDUPLICATE_SM,                                  { (TAF_UINT8*)"197" , (TAF_UINT8*)"SM RejectedDuplicate SM"                                     } },
-    {AT_CMS_TPVPF_NOT_SUPPORTED,                                      { (TAF_UINT8*)"198" , (TAF_UINT8*)"TPVPF not supported"                                         } },
-    {AT_CMS_TPVP_NOT_SUPPORTED,                                       { (TAF_UINT8*)"199" , (TAF_UINT8*)"TPVP not supported"                                          } },
-    {AT_CMS_SIM_SMS_STORAGE_FULL,                                     { (TAF_UINT8*)"208" , (TAF_UINT8*)"(U)SIM SMS storage full"                                     } },
-    {AT_CMS_NO_SMS_STORAGE_CAPABILITY_IN_SIM,                         { (TAF_UINT8*)"209" , (TAF_UINT8*)"No SMS storage capability in (U)SIM"                         } },
-    {AT_CMS_ERROR_IN_MS,                                              { (TAF_UINT8*)"210" , (TAF_UINT8*)"Error in MS"                                                 } },
-    {AT_CMS_MEMORY_CAPACITY_EXCEEDED,                                 { (TAF_UINT8*)"211" , (TAF_UINT8*)"Memory Capacity Exceeded"                                    } },
-    {AT_CMS_SIM_APPLICATION_TOOLKIT_BUSY,                             { (TAF_UINT8*)"212" , (TAF_UINT8*)"(U)SIM Application Toolkit Busy"                             } },
-    {AT_CMS_SIM_DATA_DOWNLOAD_ERROR,                                  { (TAF_UINT8*)"213" , (TAF_UINT8*)"(U)SIM data download error"                                  } },
-    {AT_CMS_UNSPECIFIED_ERROR_CAUSE,                                  { (TAF_UINT8*)"255" , (TAF_UINT8*)"Unspecified error cause"                                     } },
+    {AT_CMS_TELEMATIC_INTERWORKING_NOT_SUPPORTED,                     { (TAF_UINT8*)"128", (TAF_UINT8*)"Telematic interworking not supported"                        } },
+    {AT_CMS_SHORT_MESSAGE_TYPE_0_NOT_SUPPORTED,                       { (TAF_UINT8*)"129", (TAF_UINT8*)"Short message Type 0 not supported"                          } },
+    {AT_CMS_CANNOT_REPLACE_SHORT_MESSAGE,                             { (TAF_UINT8*)"130", (TAF_UINT8*)"Cannot replace short message"                                } },
+    {AT_CMS_UNSPECIFIED_TPPID_ERROR,                                  { (TAF_UINT8*)"143", (TAF_UINT8*)"Unspecified TPPID error"                                     } },
+    {AT_CMS_DATA_CODING_SCHEME_ALPHABET_NOT_SUPPORTED,                { (TAF_UINT8*)"144", (TAF_UINT8*)"Data coding scheme (alphabet) not supported"                 } },
+    {AT_CMS_MESSAGE_CLASS_NOT_SUPPORTED,                              { (TAF_UINT8*)"145", (TAF_UINT8*)"Message class not supported"                                 } },
+    {AT_CMS_UNSPECIFIED_TPDCS_ERROR,                                  { (TAF_UINT8*)"159", (TAF_UINT8*)"Unspecified TPDCS error"                                     } },
+    {AT_CMS_COMMAND_CANNOT_BE_ACTIONED,                               { (TAF_UINT8*)"160", (TAF_UINT8*)"Command cannot be actioned"                                  } },
+    {AT_CMS_COMMAND_UNSUPPORTED,                                      { (TAF_UINT8*)"161", (TAF_UINT8*)"Command unsupported"                                         } },
+    {AT_CMS_UNSPECIFIED_TPCOMMAND_ERROR,                              { (TAF_UINT8*)"175", (TAF_UINT8*)"Unspecified TPCommand erro"                                  } },
+    {AT_CMS_TPDU_NOT_SUPPORTED,                                       { (TAF_UINT8*)"176", (TAF_UINT8*)"TPDU not supported"                                          } },
+    {AT_CMS_SC_BUSY,                                                  { (TAF_UINT8*)"192", (TAF_UINT8*)"SC busy"                                                     } },
+    {AT_CMS_NO_SC_SUBSCRIPTION,                                       { (TAF_UINT8*)"193", (TAF_UINT8*)"No SC subscription"                                          } },
+    {AT_CMS_SC_SYSTEM_FAILURE,                                        { (TAF_UINT8*)"194", (TAF_UINT8*)"SC system failure"                                           } },
+    {AT_CMS_INVALID_SME_ADDRESS,                                      { (TAF_UINT8*)"195", (TAF_UINT8*)"Invalid SME address"                                         } },
+    {AT_CMS_DESTINATION_SME_BARRED,                                   { (TAF_UINT8*)"196", (TAF_UINT8*)"Destination SME barred"                                      } },
+    {AT_CMS_SM_REJECTEDDUPLICATE_SM,                                  { (TAF_UINT8*)"197", (TAF_UINT8*)"SM RejectedDuplicate SM"                                     } },
+    {AT_CMS_TPVPF_NOT_SUPPORTED,                                      { (TAF_UINT8*)"198", (TAF_UINT8*)"TPVPF not supported"                                         } },
+    {AT_CMS_TPVP_NOT_SUPPORTED,                                       { (TAF_UINT8*)"199", (TAF_UINT8*)"TPVP not supported"                                          } },
+    {AT_CMS_SIM_SMS_STORAGE_FULL,                                     { (TAF_UINT8*)"208", (TAF_UINT8*)"(U)SIM SMS storage full"                                     } },
+    {AT_CMS_NO_SMS_STORAGE_CAPABILITY_IN_SIM,                         { (TAF_UINT8*)"209", (TAF_UINT8*)"No SMS storage capability in (U)SIM"                         } },
+    {AT_CMS_ERROR_IN_MS,                                              { (TAF_UINT8*)"210", (TAF_UINT8*)"Error in MS"                                                 } },
+    {AT_CMS_MEMORY_CAPACITY_EXCEEDED,                                 { (TAF_UINT8*)"211", (TAF_UINT8*)"Memory Capacity Exceeded"                                    } },
+    {AT_CMS_SIM_APPLICATION_TOOLKIT_BUSY,                             { (TAF_UINT8*)"212", (TAF_UINT8*)"(U)SIM Application Toolkit Busy"                             } },
+    {AT_CMS_SIM_DATA_DOWNLOAD_ERROR,                                  { (TAF_UINT8*)"213", (TAF_UINT8*)"(U)SIM data download error"                                  } },
+    {AT_CMS_UNSPECIFIED_ERROR_CAUSE,                                  { (TAF_UINT8*)"255", (TAF_UINT8*)"Unspecified error cause"                                     } },
 
-    {AT_CMS_ME_FAILURE,                                               { (TAF_UINT8*)"300" , (TAF_UINT8*)"ME failure"                                                  } },
-    {AT_CMS_SMS_SERVICE_OF_ME_RESERVED,                               { (TAF_UINT8*)"301" , (TAF_UINT8*)"SMS service of ME reserved"                                  } },
-    {AT_CMS_OPERATION_NOT_ALLOWED,                                    { (TAF_UINT8*)"302" , (TAF_UINT8*)"operation not allowed"                                       } },
-    {AT_CMS_OPERATION_NOT_SUPPORTED,                                  { (TAF_UINT8*)"303" , (TAF_UINT8*)"operation not supported"                                     } },
-    {AT_CMS_INVALID_PDU_MODE_PARAMETER,                               { (TAF_UINT8*)"304" , (TAF_UINT8*)"304"                                                         } },/*"invalid PDU mode parameter"*/
-    {AT_CMS_INVALID_TEXT_MODE_PARAMETER,                              { (TAF_UINT8*)"305" , (TAF_UINT8*)"305"                                                         } },/*"invalid text mode parameter"*/
-    {AT_CMS_U_SIM_NOT_INSERTED,                                       { (TAF_UINT8*)"310" , (TAF_UINT8*)"(U)SIM not inserted"                                         } },
-    {AT_CMS_U_SIM_PIN_REQUIRED,                                       { (TAF_UINT8*)"311" , (TAF_UINT8*)"(U)SIM PIN required"                                         } },
-    {AT_CMS_PH_U_SIM_PIN_REQUIRED,                                    { (TAF_UINT8*)"312" , (TAF_UINT8*)"PH-(U)SIM PIN required"                                      } },
-    {AT_CMS_U_SIM_FAILURE,                                            { (TAF_UINT8*)"313" , (TAF_UINT8*)"313"                                                         } },
-    {AT_CMS_U_SIM_BUSY,                                               { (TAF_UINT8*)"314" , (TAF_UINT8*)"(U)SIM busy"                                                 } },
-    {AT_CMS_U_SIM_WRONG,                                              { (TAF_UINT8*)"315" , (TAF_UINT8*)"(U)SIM wrong"                                                } },
-    {AT_CMS_U_SIM_PUK_REQUIRED,                                       { (TAF_UINT8*)"316" , (TAF_UINT8*)"(U)SIM PUK required"                                         } },
-    {AT_CMS_U_SIM_PIN2_REQUIRED,                                      { (TAF_UINT8*)"317" , (TAF_UINT8*)"(U)SIM PIN2 required"                                        } },
-    {AT_CMS_U_SIM_PUK2_REQUIRED,                                      { (TAF_UINT8*)"318" , (TAF_UINT8*)"(U)SIM PUK2 required"                                        } },
-    {AT_CMS_MEMORY_FAILURE,                                           { (TAF_UINT8*)"320" , (TAF_UINT8*)"memory failure"                                              } },
-    {AT_CMS_INVALID_MEMORY_INDEX,                                     { (TAF_UINT8*)"321" , (TAF_UINT8*)"invalid memory index"                                        } },
-    {AT_CMS_MEMORY_FULL,                                              { (TAF_UINT8*)"322" , (TAF_UINT8*)"memory full"                                                 } },
-    {AT_CMS_SMSC_ADDRESS_UNKNOWN,                                     { (TAF_UINT8*)"330" , (TAF_UINT8*)"330"                                                         } },/*"SMSC address unknown"*/
-    {AT_CMS_NO_NETWORK_SERVICE,                                       { (TAF_UINT8*)"331" , (TAF_UINT8*)"no network service"                                          } },
-    {AT_CMS_NETWORK_TIMEOUT,                                          { (TAF_UINT8*)"332" , (TAF_UINT8*)"network timeout"                                             } },
-    {AT_CMS_NO_CNMA_ACKNOWLEDGEMENT_EXPECTED,                         { (TAF_UINT8*)"340" , (TAF_UINT8*)"no +CNMA acknowledgement expected"                           } },
-    {AT_CMS_FDN_DEST_ADDR_FAILED,                                     { (TAF_UINT8*)"341" , (TAF_UINT8*)"FDN Failed"                                                  } },
-    {AT_CMS_FDN_SERVICE_CENTER_ADDR_FAILED,                           { (TAF_UINT8*)"342" , (TAF_UINT8*)"Service Centre Address FDN failed"                           } },
-    {AT_CMS_MO_SMS_CONTROL_FAILED,                                    { (TAF_UINT8*)"343" , (TAF_UINT8*)"MO SMS Control Failed"                                       } },
-    {AT_CMS_UNKNOWN_ERROR,                                            { (TAF_UINT8*)"500" , (TAF_UINT8*)"500"                                               } },/*"unknown error"*/
+    {AT_CMS_ME_FAILURE,                                               { (TAF_UINT8*)"300", (TAF_UINT8*)"ME failure"                                                  } },
+    {AT_CMS_SMS_SERVICE_OF_ME_RESERVED,                               { (TAF_UINT8*)"301", (TAF_UINT8*)"SMS service of ME reserved"                                  } },
+    {AT_CMS_OPERATION_NOT_ALLOWED,                                    { (TAF_UINT8*)"302", (TAF_UINT8*)"operation not allowed"                                       } },
+    {AT_CMS_OPERATION_NOT_SUPPORTED,                                  { (TAF_UINT8*)"303", (TAF_UINT8*)"operation not supported"                                     } },
+    {AT_CMS_INVALID_PDU_MODE_PARAMETER,                               { (TAF_UINT8*)"304", (TAF_UINT8*)"304"                                                         } },/*"invalid PDU mode parameter"*/
+    {AT_CMS_INVALID_TEXT_MODE_PARAMETER,                              { (TAF_UINT8*)"305", (TAF_UINT8*)"305"                                                         } },/*"invalid text mode parameter"*/
+    {AT_CMS_U_SIM_NOT_INSERTED,                                       { (TAF_UINT8*)"310", (TAF_UINT8*)"(U)SIM not inserted"                                         } },
+    {AT_CMS_U_SIM_PIN_REQUIRED,                                       { (TAF_UINT8*)"311", (TAF_UINT8*)"(U)SIM PIN required"                                         } },
+    {AT_CMS_PH_U_SIM_PIN_REQUIRED,                                    { (TAF_UINT8*)"312", (TAF_UINT8*)"PH-(U)SIM PIN required"                                      } },
+    {AT_CMS_U_SIM_FAILURE,                                            { (TAF_UINT8*)"313", (TAF_UINT8*)"313"                                                         } },
+    {AT_CMS_U_SIM_BUSY,                                               { (TAF_UINT8*)"314", (TAF_UINT8*)"(U)SIM busy"                                                 } },
+    {AT_CMS_U_SIM_WRONG,                                              { (TAF_UINT8*)"315", (TAF_UINT8*)"(U)SIM wrong"                                                } },
+    {AT_CMS_U_SIM_PUK_REQUIRED,                                       { (TAF_UINT8*)"316", (TAF_UINT8*)"(U)SIM PUK required"                                         } },
+    {AT_CMS_U_SIM_PIN2_REQUIRED,                                      { (TAF_UINT8*)"317", (TAF_UINT8*)"(U)SIM PIN2 required"                                        } },
+    {AT_CMS_U_SIM_PUK2_REQUIRED,                                      { (TAF_UINT8*)"318", (TAF_UINT8*)"(U)SIM PUK2 required"                                        } },
+    {AT_CMS_MEMORY_FAILURE,                                           { (TAF_UINT8*)"320", (TAF_UINT8*)"memory failure"                                              } },
+    {AT_CMS_INVALID_MEMORY_INDEX,                                     { (TAF_UINT8*)"321", (TAF_UINT8*)"invalid memory index"                                        } },
+    {AT_CMS_MEMORY_FULL,                                              { (TAF_UINT8*)"322", (TAF_UINT8*)"memory full"                                                 } },
+    {AT_CMS_SMSC_ADDRESS_UNKNOWN,                                     { (TAF_UINT8*)"330", (TAF_UINT8*)"330"                                                         } },/*"SMSC address unknown"*/
+    {AT_CMS_NO_NETWORK_SERVICE,                                       { (TAF_UINT8*)"331", (TAF_UINT8*)"no network service"                                          } },
+    {AT_CMS_NETWORK_TIMEOUT,                                          { (TAF_UINT8*)"332", (TAF_UINT8*)"network timeout"                                             } },
+    {AT_CMS_NO_CNMA_ACKNOWLEDGEMENT_EXPECTED,                         { (TAF_UINT8*)"340", (TAF_UINT8*)"no +CNMA acknowledgement expected"                           } },
+    {AT_CMS_FDN_DEST_ADDR_FAILED,                                     { (TAF_UINT8*)"341", (TAF_UINT8*)"FDN Failed"                                                  } },
+    {AT_CMS_FDN_SERVICE_CENTER_ADDR_FAILED,                           { (TAF_UINT8*)"342", (TAF_UINT8*)"Service Centre Address FDN failed"                           } },
+    {AT_CMS_MO_SMS_CONTROL_FAILED,                                    { (TAF_UINT8*)"343", (TAF_UINT8*)"MO SMS Control Failed"                                       } },
+    {AT_CMS_UNKNOWN_ERROR,                                            { (TAF_UINT8*)"500", (TAF_UINT8*)"500"                                               } },/*"unknown error"*/
 
     {AT_CMS_ERROR_ENUM_END,                                           {TAF_NULL_PTR   ,TAF_NULL_PTR                          }  },
 };
@@ -481,7 +486,11 @@ TAF_UINT32 At_SendData(TAF_UINT8 ucIndex,TAF_UINT8 ucType,TAF_UINT8* pData,TAF_U
         {
             if (BSP_MODULE_SUPPORT == DRV_GET_WIFI_SUPPORT())
             {
+#if (FEATURE_OFF == FEATURE_MERGE_OM_CHAN)
                 CPM_ComSend(CPM_AT_COMM, pData, usLen);
+#else
+                CPM_ComSend(CPM_AT_COMM, pData, VOS_NULL_PTR, usLen);
+#endif
                 return AT_SUCCESS;
             }
          }
@@ -741,7 +750,11 @@ VOS_VOID  AT_DisplayResultData (
     {
         if (BSP_MODULE_SUPPORT == DRV_GET_WIFI_SUPPORT())
         {
+#if (FEATURE_OFF == FEATURE_MERGE_OM_CHAN)
             CPM_ComSend(CPM_AT_COMM, gstAtSendDataBuffer, usLen);
+#else
+            CPM_ComSend(CPM_AT_COMM, gstAtSendDataBuffer, VOS_NULL_PTR, usLen);
+#endif
         }
     }
     else if (AT_NDIS_USER == gastAtClientTab[ucIndex].UserType)
@@ -837,7 +850,11 @@ VOS_VOID AT_DisplaySelResultData(
         {
             if (BSP_MODULE_SUPPORT == DRV_GET_WIFI_SUPPORT())
             {
+#if (FEATURE_OFF == FEATURE_MERGE_OM_CHAN)
                 CPM_ComSend(CPM_AT_COMM, gstAtSendDataBuffer, usLen);
+#else
+                CPM_ComSend(CPM_AT_COMM, gstAtSendDataBuffer, VOS_NULL_PTR, usLen);
+#endif
             }
         }
         else if (AT_NDIS_USER == gastAtClientTab[ucIndex].UserType)
@@ -887,7 +904,7 @@ VOS_VOID At_BufferorSendResultData(
     {
         return;
     }
-    
+
     ulBufferLength = gstAtCombineSendData[ucIndex].usBufLen + usLength;
 
     /* 若缓冲区存储空间不够用则将当前已缓存信息输出 */
@@ -1137,7 +1154,7 @@ VOS_UINT32 AT_GetReturnCodeId(
 
 VOS_VOID AT_FormatAtCmdNotSupportResult(
     VOS_UINT8                           ucIndex,
-    AT_RRETURN_CODE_ENUM                enReturnCode
+    AT_RRETURN_CODE_ENUM_UINT32         enReturnCode
 )
 {
     VOS_UINT16                          usLength;
@@ -1174,7 +1191,7 @@ VOS_VOID AT_FormatAtCmdNotSupportResult(
 
 VOS_VOID AT_FormatAtTooManyParaResult(
     VOS_UINT8                           ucIndex,
-    AT_RRETURN_CODE_ENUM                enReturnCode
+    AT_RRETURN_CODE_ENUM_UINT32         enReturnCode
 )
 {
     VOS_UINT16                          usLength;
@@ -1212,7 +1229,7 @@ VOS_VOID AT_FormatAtTooManyParaResult(
 
 VOS_VOID AT_FormatAtAbortResult(
     VOS_UINT8                           ucIndex,
-    AT_RRETURN_CODE_ENUM                enReturnCode
+    AT_RRETURN_CODE_ENUM_UINT32         enReturnCode
 )
 {
     VOS_UINT16                          usLength;
@@ -1299,7 +1316,7 @@ VOS_VOID At_FormatResultData(
     {
         /* 提取函数降复杂度 */
 
-        AT_FormatAtCmdNotSupportResult(ucIndex, (AT_RRETURN_CODE_ENUM)ulReturnCode);
+        AT_FormatAtCmdNotSupportResult(ucIndex, (AT_RRETURN_CODE_ENUM_UINT32)ulReturnCode);
 
         At_ResetCombinParseInfo(ucIndex);
         AT_CheckProcBlockCmd();
@@ -1310,7 +1327,7 @@ VOS_VOID At_FormatResultData(
     {
         /* 提取函数降复杂度 */
 
-        AT_FormatAtTooManyParaResult(ucIndex, (AT_RRETURN_CODE_ENUM)ulReturnCode);
+        AT_FormatAtTooManyParaResult(ucIndex, (AT_RRETURN_CODE_ENUM_UINT32)ulReturnCode);
 
         At_ResetCombinParseInfo(ucIndex);
         AT_CheckProcBlockCmd();
@@ -1319,7 +1336,7 @@ VOS_VOID At_FormatResultData(
 
     if (AT_ABORT == ulReturnCode)
     {
-        AT_FormatAtAbortResult(ucIndex, (AT_RRETURN_CODE_ENUM)ulReturnCode);
+        AT_FormatAtAbortResult(ucIndex, (AT_RRETURN_CODE_ENUM_UINT32)ulReturnCode);
 
         At_ResetCombinParseInfo(ucIndex);
 
@@ -1593,15 +1610,10 @@ VOS_VOID At_FormatResultData(
 
             At_SendResultData(ucIndex, gstAtCombineSendData[ucIndex].aucBuffer, gstAtCombineSendData[ucIndex].usBufLen);
 
-#if (FEATURE_ON == FEATURE_AT_HSUART)
             if (VOS_TRUE == ulMdmMscFlg)
             {
                 AT_ProcFormatResultMsc(ucIndex, ulReturnCode);
             }
-#else
-            /* make pclint happy */
-            ulMdmMscFlg = ulMdmMscFlg;
-#endif
 
             At_ResetCombinParseInfo(ucIndex);
             AT_CheckProcBlockCmd();
@@ -1691,8 +1703,6 @@ VOS_VOID At_FormatResultData(
     }
 
 }
-
-
 VOS_UINT32 AT_GetDlRateDisplayIndex(
     VOS_UINT8                           ucWasCategory
 )
@@ -2396,6 +2406,7 @@ VOS_VOID AT_RcvTiVoiceRiExpired(REL_TIMER_MSG *pstTmrMsg)
 
     return;
 }
+#endif
 VOS_VOID AT_ProcFormatResultMsc(
     VOS_UINT8                           ucIndex,
     VOS_UINT32                          ulReturnCode
@@ -2454,7 +2465,7 @@ VOS_VOID AT_ProcFormatResultMsc(
     }
 
 }
-#endif
+
 
 
 #ifdef  __cplusplus

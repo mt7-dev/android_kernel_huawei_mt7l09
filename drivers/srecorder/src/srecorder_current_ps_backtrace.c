@@ -1,18 +1,4 @@
-/**
-    @copyright: Huawei Technologies Co., Ltd. 2012-2012. All rights reserved.
-    
-    @file: srecorder_current_ps_backtrace.c
-    
-    @brief: 读取死机时当前进程的调用栈
-    
-    @version: 1.0 
-    
-    @author: QiDechun ID: 216641
-    
-    @date: 2012-06-30
-    
-    @history:
-*/
+
 
 /*----includes-----------------------------------------------------------------------*/
 
@@ -337,6 +323,7 @@ static struct frame_tail *srecorder_user_backtrace(srecorder_reserved_mem_info_t
 */
 static int srecorder_report_trace(srecorder_reserved_mem_info_t *pmem_info, struct stackframe *frame, void *d)
 {
+#ifdef CONFIG_ARM
     struct stacktrace_state *sts = d;
     int bytes_read = 0;
     
@@ -360,6 +347,9 @@ static int srecorder_report_trace(srecorder_reserved_mem_info_t *pmem_info, stru
     srecorder_renew_meminfo(pmem_info, bytes_read);
     
     return sts->depth == 0;
+#else
+    return 0;
+#endif
 }
 
 
@@ -472,14 +462,14 @@ static int srecorder_prepend_path(const struct path *path, const struct path *ro
 static int srecorder_prepend_path(const struct path *path, struct path *root, char **buffer, int *buflen)
 #endif
 {
-    struct dentry *dentry = path->dentry;
-    struct vfsmount *vfsmnt = path->mnt;
+    struct dentry *dentry;
+    struct vfsmount *vfsmnt;
     bool slash = false;
     int error = 0;
     arch_spinlock_t *lock;
     
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 3, 0))
-    struct mount *mnt = srecorder_real_mount(vfsmnt);
+    struct mount *mnt;
 #endif
 
     if (unlikely(NULL == path || NULL == root || NULL == buffer || NULL == buflen 
@@ -487,10 +477,16 @@ static int srecorder_prepend_path(const struct path *path, struct path *root, ch
     {
         return -1;
     }
-
-    preempt_disable(); 
+    dentry = path->dentry;
+    vfsmnt = path->mnt;
+ 
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 3, 0))
+    mnt = srecorder_real_mount(vfsmnt);
+#endif
+    preempt_disable();
+/*lint -e666 */ 
     lock = &__get_cpu_var(*(arch_spinlock_t *)srecorder_get_vfsmount_lock_lock()); 
-    
+/*lint +e666 */ 
 #if (LINUX_VERSION_CODE < KERNEL_VERSION(3, 3, 0))
     if (arch_spin_trylock(lock))
     {
@@ -822,11 +818,11 @@ static char *srecorder_d_path(const struct path *path, char *buf, int buflen)
     int error;
     int have_lock = 0;
 
-    if (unlikely(NULL == path || NULL == buf 
+    if (unlikely(NULL == path || NULL == buf)
 #if (LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 38))
-        || INVALID_KSYM_ADDR == srecorder_get_dcache_lock())
+        || INVALID_KSYM_ADDR == srecorder_get_dcache_lock()
 #else
-        || INVALID_KSYM_ADDR == srecorder_get_rename_lock())
+        || INVALID_KSYM_ADDR == srecorder_get_rename_lock()
 #endif
         )
     {
@@ -999,6 +995,7 @@ static void srecorder_get_process_maps(srecorder_reserved_mem_info_t *pmem_info,
 */
 static void srecorder_dump_user_backtrace(srecorder_reserved_mem_info_t *pmem_info, struct task_struct *ptask)
 {
+#ifdef CONFIG_ARM
     struct frame_tail *tail;
     struct stackframe frame;
     int bytes_read = 0;
@@ -1106,7 +1103,6 @@ static void srecorder_dump_user_backtrace(srecorder_reserved_mem_info_t *pmem_in
 #endif
         }
     
-        /* DTS2012110206142 wupeng-qidechun 20121105 begin */
         bytes_read = SRECORDER_SNPRINTF(pmem_info->start_addr + pmem_info->bytes_read, pmem_info->bytes_left, 
             "* User stack: from 0x%08lx to 0x%08lx\n* User heap: from 0x%08lx to 0x%08lx\n"
             "* cmd arg: from 0x%08lx to 0x%08lx\n* env: from 0x%08lx to 0x%08lx\n", 
@@ -1114,7 +1110,6 @@ static void srecorder_dump_user_backtrace(srecorder_reserved_mem_info_t *pmem_in
             current->mm->start_brk, current->mm->brk, 
             current->mm->arg_start, current->mm->arg_end, 
             current->mm->env_start, current->mm->env_end);
-        /* DTS2012110206142 wupeng-qidechun 20121105 end */
         srecorder_renew_meminfo(pmem_info, bytes_read);
 
         /* 读取current进程的用户态映射信息 */
@@ -1128,7 +1123,7 @@ static void srecorder_dump_user_backtrace(srecorder_reserved_mem_info_t *pmem_in
         }
         
         i = 0;
-        
+#if 0        
 #ifdef CONFIG_STACK_GROWSUP
         while (top >= base)
 #else
@@ -1139,13 +1134,11 @@ static void srecorder_dump_user_backtrace(srecorder_reserved_mem_info_t *pmem_in
             {
                 break;
             }
-#if 0
             if (0 == i % 32)
             {
                 bytes_read = SRECORDER_SNPRINTF(pmem_info->start_addr + pmem_info->bytes_read, pmem_info->bytes_left, "%08lx: ", top);
                 srecorder_renew_meminfo(pmem_info, bytes_read);
             }
-#endif
             bytes_read = SRECORDER_SNPRINTF(pmem_info->start_addr + pmem_info->bytes_read, 
                 pmem_info->bytes_left, "%08lx ", *(unsigned long *)top);
             srecorder_renew_meminfo(pmem_info, bytes_read);
@@ -1162,6 +1155,7 @@ static void srecorder_dump_user_backtrace(srecorder_reserved_mem_info_t *pmem_in
                 i = 0;
             }
         }
+#endif
  
         bytes_read = SRECORDER_SNPRINTF(pmem_info->start_addr + pmem_info->bytes_read, pmem_info->bytes_left, 
             "%s", "\n****************************** dump user stack end ******************************\n");
@@ -1172,6 +1166,7 @@ static void srecorder_dump_user_backtrace(srecorder_reserved_mem_info_t *pmem_in
     {
         srecorder_walk_stackframe(pmem_info, &frame, srecorder_report_trace, &sts);
     }
+#endif
 }
 
 
@@ -1301,13 +1296,11 @@ static int srecorder_dump_current_ps_backtrace(srecorder_reserved_mem_info_t *pm
 */
 int srecorder_get_current_ps_backtrace(srecorder_reserved_mem_info_t *pmem_info)
 {
-    /* DTS2012101502012 wupeng 20121015 begin */
     if (srecorder_log_has_been_dumped(CURRENT_PS_BACKTRACE_BIT5) || pmem_info->dump_modem_crash_log_only)
     {
         SRECORDER_PRINTK("current ps backtrace has been dumped successfully!\n");
         return 0;
     }
-    /* DTS2012101502012 wupeng 20121015 end */
     
     return srecorder_dump_current_ps_backtrace(pmem_info, SRECORDER_SHOW_ALL);
 }

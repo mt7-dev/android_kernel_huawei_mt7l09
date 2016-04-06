@@ -119,6 +119,31 @@ VOS_VOID TAF_SPM_SendImsaReleaseSsReq(
 VOS_UINT32 TAF_SPM_SendImsaCallInviteNewPtptReq(
     MN_CALL_APP_REQ_MSG_STRU           *pstAppMsg
 );
+
+VOS_UINT32 TAF_SPM_SendImsaCallModifyReq(
+    MN_CALL_APP_REQ_MSG_STRU           *pstAppMsg
+);
+
+VOS_UINT32 TAF_SPM_SendImsaCallAnswerRemoteModifyReq(
+    MN_CALL_APP_REQ_MSG_STRU           *pstAppMsg
+);
+
+VOS_UINT32 TAF_SPM_SendImsaEconfAddUsersReq(
+    MN_CALL_APP_REQ_MSG_STRU           *pstAppMsg
+);
+VOS_UINT32 TAF_SPM_SendImsaEconfDialReq(
+    MN_CALL_APP_REQ_MSG_STRU           *pstAppMsg
+);
+
+VOS_UINT32 TAF_SPM_SendImsaGetEconfInfoReq(
+    MN_CALL_APP_REQ_MSG_STRU           *pstAppMsg
+);
+
+VOS_VOID TAF_SPM_FillImsaEconfCallList(
+    TAF_CALL_ECONF_CALL_LIST_STRU      *pstCallList
+);
+
+
 #endif
 
 #if (VOS_OS_VER == VOS_WIN32)

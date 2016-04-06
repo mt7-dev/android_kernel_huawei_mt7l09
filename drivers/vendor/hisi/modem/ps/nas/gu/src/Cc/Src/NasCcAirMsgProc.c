@@ -215,12 +215,24 @@ LOCAL NAS_PROTOCOL_ERR_ENUM_U8  NAS_CC_ProcSetupMsg(
     {
         NAS_CC_ChangeCallState(entityId, NAS_CC_CALL_STATE_U0);
         NAS_CC_WARN_LOG("NAS_CC_ProcSetupMsg: INCOMPATIBLE STATE");
+
+#if (FEATURE_ON == FEATURE_PTM)
+        /* setup消息按协议检查失败的异常记录 */
+        NAS_CC_CsMtCallFailRecord(NAS_ERR_LOG_CS_MT_CALL_CAUSE_NEW_CALL_NOT_ALLOW);
+#endif
+
         return NAS_PROT_ERR_INCOMPATIBLE_STATE;
     }
     if (VOS_OK != NAS_CC_CheckMtSetupCondIe(pstMsg))
     {
         NAS_CC_ChangeCallState(entityId, NAS_CC_CALL_STATE_U0);
         NAS_CC_WARN_LOG("NAS_CC_ProcSetupMsg: Conditional Ie should exist");
+
+#if (FEATURE_ON == FEATURE_PTM)
+        /* setup消息按协议检查失败的异常记录 */
+        NAS_CC_CsMtCallFailRecord(NAS_ERR_LOG_CS_MT_CALL_CAUSE_OPTIONAL_IE_ERR);
+#endif
+
         return NAS_PROT_ERR_OPTIONAL_IE_ERR;
     }
 
@@ -1176,7 +1188,7 @@ LOCAL NAS_PROTOCOL_ERR_ENUM_U8  NAS_CC_ProcStartDtmfRejMsg(
 )
 {
     NAS_CC_DTMF_STATE_ENUM      enDtmfState = NAS_CC_GetDtmfState(entityId);
-    NAS_CC_CAUSE_VALUE_ENUM_U8  enCause;
+    NAS_CC_CAUSE_VALUE_ENUM_U32 enCause;
 
     if (NAS_CC_DTMF_S_START_REQ == enDtmfState)
     {
@@ -1496,12 +1508,16 @@ VOS_UINT32 NAS_CC_CheckAirMsgValidity(
     /* Check TI according to 3GPP 24.008 8.3.1 */
     if (0x7 == (ucNwTi & 0x7))
     {
-       NAS_CC_WARN_LOG("NAS_CC_CheckAirMsgValidity: TI coded as 111.");
+        NAS_CC_WARN_LOG("NAS_CC_CheckAirMsgValidity: TI coded as 111.");
 
        if (NAS_CC_MSG_SETUP == *pucMsgType)
        {
            NAS_CC_SendReleaseComplete(*pucMsTi, VOS_TRUE, 81);
            NAS_CC_SendMmccRelReq(*pucMsTi, MMCC_RELEASE_SPECIFIC);
+#if (FEATURE_ON == FEATURE_PTM)
+            /* setup消息按协议检查失败的异常记录 */
+            NAS_CC_CsMtCallFailRecord(NAS_ERR_LOG_CS_MT_CALL_CAUSE_TI_CODED_AS_111);
+#endif
        }
        return VOS_ERR;
     }
@@ -1521,6 +1537,10 @@ VOS_UINT32 NAS_CC_CheckAirMsgValidity(
                */
                NAS_CC_WARN_LOG("NAS_CC_CheckAirMsgValidity: TI flag in SETUP etc. set to 1.");
                NAS_CC_SendMmccRelReq(*pucMsTi, MMCC_RELEASE_SPECIFIC);
+#if (FEATURE_ON == FEATURE_PTM)
+                /* setup消息按协议检查失败的异常记录 */
+                NAS_CC_CsMtCallFailRecord(NAS_ERR_LOG_CS_MT_CALL_CAUSE_TI_INC_SET_TO_1);
+#endif
                return VOS_ERR;
            }
            else
@@ -1528,6 +1548,10 @@ VOS_UINT32 NAS_CC_CheckAirMsgValidity(
                if (NAS_CC_CreateEntity( (*pucMsTi + 1), *pucMsTi, pulEntityId) != VOS_OK)
                {
                    NAS_CC_ERR_LOG("NAS_CC_CheckAirMsgValidity: Fail to create entity.");
+#if (FEATURE_ON == FEATURE_PTM)
+                    /* setup消息按协议检查失败的异常记录 */
+                    NAS_CC_CsMtCallFailRecord(NAS_ERR_LOG_CS_MT_CALL_CAUSE_CC_CREATE_ENTYTY_FAIL);
+#endif
                    return VOS_ERR;
                }
            }
@@ -1553,16 +1577,20 @@ VOS_UINT32 NAS_CC_CheckAirMsgValidity(
            /* When a SETUP message is received by the mobile station specifying
               a TI which is recognized as relating to an active call or to a call
               in progress, this SETUP message shall be ignored.
-           */
-           NAS_CC_WARN_LOG1("NAS_CC_CheckAirMsgValidity: TI in a SETUP is in use.", ucNwTi);
-           return VOS_ERR;
+            */
+            NAS_CC_WARN_LOG1("NAS_CC_CheckAirMsgValidity: TI in a SETUP is in use.", ucNwTi);
+
+#if (FEATURE_ON == FEATURE_PTM)
+            /* setup消息按协议检查失败的异常记录 */
+            NAS_CC_CsMtCallFailRecord(NAS_ERR_LOG_CS_MT_CALL_CAUSE_TI_IS_USED);
+#endif
+
+            return VOS_ERR;
        }
     }
 
     return VOS_OK;
 }
-
-
 VOS_VOID  NAS_CC_ProcAirMsg(
     const VOS_UINT8                    *pucData,
     VOS_UINT32                          ulDataLen
@@ -1593,9 +1621,18 @@ VOS_VOID  NAS_CC_ProcAirMsg(
 
     if (enProtErr != NAS_PROT_ERR_NO_ERROR)
     {
-       NAS_CC_ProcProtocolError(ucMsTi, ucMsgType, enProtErr);
-       NAS_CC_WARN_LOG1("NAS_CC_ProcAirMsg: decode msg err, msgtype:", ucMsgType);
-       return;
+        NAS_CC_ProcProtocolError(ucMsTi, ucMsgType, enProtErr);
+        NAS_CC_WARN_LOG1("NAS_CC_ProcAirMsg: decode msg err, msgtype:", ucMsgType);
+
+        /* setup消息按协议检查失败的异常记录 */
+#if (FEATURE_ON == FEATURE_PTM)
+        if (NAS_CC_MSG_SETUP == ucMsgType)
+        {
+            NAS_CC_CsMtCallFailRecord(NAS_ERR_LOG_CS_MT_CALL_CAUSE_DECODE_FAIL);
+        }
+#endif
+
+        return;
     }
 
     NAS_CC_INFO_LOG1("NAS_CC_ProcAirMsg: process normal msgtype:", ucMsgType);
@@ -1605,6 +1642,16 @@ VOS_VOID  NAS_CC_ProcAirMsg(
     {
         case NAS_CC_MSG_SETUP:
            enProtErr = NAS_CC_ProcSetupMsg(ulEntityId, &f_unCcDecodeBuf.stSetupMT);
+
+           if (NAS_PROT_ERR_NO_ERROR == enProtErr)
+           {
+               NAS_CC_ProcessSpecTypeBufferMsg(NAS_BuildEventType(WUEPS_PID_MM, MMCC_SYNC_IND));
+           }
+           else
+           {
+               NAS_CC_ClearSpecEventTypeCacheMsg(NAS_BuildEventType(WUEPS_PID_MM, MMCC_SYNC_IND));
+           }
+
            break;
 
         case NAS_CC_MSG_RELEASE:

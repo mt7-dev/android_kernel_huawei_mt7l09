@@ -202,6 +202,21 @@ TAF_ACT_STRU        g_astTafApsPreProcessActTbl[]   =
                       ID_MSG_TAF_PS_CONFIG_DSFLOW_RPT_REQ,
                       TAF_APS_RcvAtConfigDsFlowRptReq_PreProc),
 
+    /* ^APDSFLOWRPTCFG */
+    TAF_ACT_TBL_ITEM( WUEPS_PID_TAF,
+                      ID_MSG_TAF_PS_SET_APDSFLOW_RPT_CFG_REQ,
+                      TAF_APS_RcvSetApDsFlowRptCfgReq_PreProc),
+    TAF_ACT_TBL_ITEM( WUEPS_PID_TAF,
+                      ID_MSG_TAF_PS_GET_APDSFLOW_RPT_CFG_REQ,
+                      TAF_APS_RcvGetApDsFlowRptCfgReq_PreProc),
+
+    TAF_ACT_TBL_ITEM( WUEPS_PID_TAF,
+                      ID_MSG_TAF_PS_SET_DSFLOW_NV_WRITE_CFG_REQ,
+                      TAF_APS_RcvSetDsFlowNvWriteCfgReq_PreProc),
+    TAF_ACT_TBL_ITEM( WUEPS_PID_TAF,
+                      ID_MSG_TAF_PS_GET_DSFLOW_NV_WRITE_CFG_REQ,
+                      TAF_APS_RcvGetDsFlowNvWriteCfgReq_PreProc),
+
     /* ^CGAUTH */
     TAF_ACT_TBL_ITEM( WUEPS_PID_TAF,
                       ID_MSG_TAF_PS_SET_PDP_AUTH_INFO_REQ,
@@ -510,6 +525,10 @@ TAF_ACT_STRU        g_astTafApsPreProcessActTbl[]   =
                       TAF_APS_RcvL4aApsPdpDeactivateInd_PreProc),
 
     TAF_ACT_TBL_ITEM( MSP_L4_L4A_PID,
+                      ID_L4A_APS_PDP_SETUP_IND,
+                      TAF_APS_RcvL4aApsPdpSetupInd_PreProc),
+
+    TAF_ACT_TBL_ITEM( MSP_L4_L4A_PID,
                       ID_L4A_APS_SET_NDISCONN_CNF,
                       TAF_APS_RcvL4aSenNdisconnCnf_PreProc),
 
@@ -560,6 +579,14 @@ TAF_ACT_STRU        g_astTafApsPreProcessActTbl[]   =
     TAF_ACT_TBL_ITEM( WUEPS_PID_OM,
                       ID_NAS_OM_SET_DSFLOW_RPT_REQ,
                       TAF_APS_RcvOmSetDsflowRptReq_PreProc),
+
+    TAF_ACT_TBL_ITEM( WUEPS_PID_MMC,
+                      ID_MMC_APS_SERVICE_STATUS_IND,
+                      TAF_APS_RcvMmcServiceStatusInd_PreProc),
+
+    TAF_ACT_TBL_ITEM( WUEPS_PID_TAF,
+                      ID_MSG_TAF_PS_SET_IMS_PDP_CFG_REQ,
+                      TAF_APS_RcvSetImsPdpCfgReq_PreProc),
 
 };
 

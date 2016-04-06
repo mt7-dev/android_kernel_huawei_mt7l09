@@ -87,15 +87,12 @@
 #include <asm/smp.h>
 #endif
 
-/* DTS2013031107868 qidechun 2013-03-11 begin */ 
 #ifdef CONFIG_SRECORDER
 #include <linux/ioport.h>
 #include <linux/bootmem.h>
 #include <linux/module.h>
 #include <linux/srecorder.h>
 #endif
-/* DTS2013031107868 qidechun 2013-03-11 end */ 
-
 static int kernel_init(void *);
 
 extern void init_IRQ(void);
@@ -479,10 +476,9 @@ static void __init mm_init(void)
 	vmalloc_init();
 }
 
-/* DTS2013031107868 qidechun 2013-03-11 begin */ 
 #ifdef CONFIG_SRECORDER
 static bool s_reserve_special_mem_successfully = false;
-struct resource srecorder_res =
+static struct resource srecorder_res =
 {
     .name  = "srecorder",
     .start = 0,
@@ -490,27 +486,27 @@ struct resource srecorder_res =
     .flags = IORESOURCE_BUSY | IORESOURCE_MEM
 };
 static char *psrecorder_temp_buf = NULL;
-
 char* get_srecorder_temp_buf_addr(void)
 {
     return psrecorder_temp_buf;
 }
 EXPORT_SYMBOL(get_srecorder_temp_buf_addr);
 
-void move_srecorder_log(void)
+static void move_srecorder_log(void)
 {
     int mem_header_size = sizeof(srecorder_reserved_mem_header_t);
     int bytes_to_write = 0;
     char *psrc = __va(CONFIG_KERNEL_LOAD_PHYS_OFFSET + CONFIG_SRECORDER_TEMPBUF_ADDR_FROM_PHYS_OFFSET);
     srecorder_reserved_mem_header_t *pheader = (srecorder_reserved_mem_header_t *)psrc;
+    unsigned long memset_size = sizeof(*pheader) - sizeof(pheader->reserved);
 
-    if ((srecorder_get_crc32((unsigned char *)pheader, mem_header_size - sizeof(pheader->crc32) 
+    if ((srecorder_get_crc32((unsigned char *)pheader, mem_header_size - sizeof(pheader->crc32)
         - sizeof(pheader->reserved)) != pheader->crc32)
         || (SRECORDER_MAGIC_NUM != pheader->magic_num))
     {
         /* invalid log, return */
         printk("~_~_~_~ [SRecorder]: Magic number=%08lx reset flag %lu data length=%lu "
-            "original CRC=%08lx boot CRC=%08lx\n", pheader->magic_num, pheader->reset_flag, 
+            "original CRC=%08lx boot CRC=%08lx\n", pheader->magic_num, pheader->reset_flag,
             pheader->data_length, pheader->crc32, pheader->reserved_mem_size);
         return;
     }
@@ -524,16 +520,16 @@ void move_srecorder_log(void)
     }
 
     memcpy(psrecorder_temp_buf, psrc, bytes_to_write);
-    memset(pheader, 0, mem_header_size - sizeof(pheader->reserved));
+    memset(pheader, 0, memset_size);
 }
 
-void __init srecorder_reserve_special_mem(void)
+#ifdef CONFIG_ARM
+static void __init srecorder_reserve_special_mem(void)
 {
     unsigned long mem_len = sizeof(platform_special_reserved_mem_info_t);
     unsigned long mem_addr = (unsigned long)(CONFIG_KERNEL_LOAD_PHYS_OFFSET 
         + CONFIG_SRECORDER_SPECIAL_MEM_ADDR_FROM_PHYS_OFFSET);
     int ret = -1;
-
     ret = reserve_bootmem(mem_addr, mem_len, BOOTMEM_EXCLUSIVE);
     if (ret < 0)
     {
@@ -541,12 +537,12 @@ void __init srecorder_reserve_special_mem(void)
         s_reserve_special_mem_successfully = false;
         return;
     }
-    
     srecorder_res.start = mem_addr;
     srecorder_res.end = mem_addr + mem_len - 1;
     insert_resource(&iomem_resource, &srecorder_res);
     s_reserve_special_mem_successfully = true;
 }
+#endif
 
 bool srecorder_reserve_special_mem_successfully(void)
 {
@@ -554,8 +550,6 @@ bool srecorder_reserve_special_mem_successfully(void)
 }
 EXPORT_SYMBOL(srecorder_reserve_special_mem_successfully);
 #endif
-/* DTS2013031107868 qidechun 2013-03-11 end */ 
-
 asmlinkage void __init start_kernel(void)
 {
 	char * command_line;
@@ -588,7 +582,9 @@ asmlinkage void __init start_kernel(void)
 	pr_notice("%s", linux_banner);
 	setup_arch(&command_line);
 #ifdef CONFIG_SRECORDER
+#ifdef CONFIG_ARM
     srecorder_reserve_special_mem();
+#endif
 #endif
 #ifdef CONFIG_PASR
 	early_pasr_setup();
@@ -703,6 +699,10 @@ asmlinkage void __init start_kernel(void)
 	if (efi_enabled(EFI_RUNTIME_SERVICES))
 		efi_enter_virtual_mode();
 #endif
+#ifdef CONFIG_X86_ESPFIX64
+	/* Should be run before the first non-init thread is created */
+	init_espfix_bsp();
+#endif
 	thread_info_cache_init();
 	cred_init();
 	fork_init(totalram_pages);
@@ -736,12 +736,9 @@ asmlinkage void __init start_kernel(void)
 	ftrace_init();
 
 	/* Do the rest non-__init'ed, we're now alive */
-/* DTS2013031107868 qidechun 2013-03-11 begin */ 
 #ifdef CONFIG_SRECORDER
     move_srecorder_log();
 #endif
-/* DTS2013031107868 qidechun 2013-03-11 end */ 
-
 	rest_init();
 }
 

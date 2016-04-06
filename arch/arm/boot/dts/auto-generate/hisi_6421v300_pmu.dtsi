@@ -15,6 +15,7 @@
 		gpios = <&gpio24 4 0>;
 		pinctrl-names = "default";
 		pinctrl-0 = <>;
+                disable-smpl = <0>;
 		hisilicon,hi6421-ocp-deb-ctrl = <0xf1 0x00 0x2>;/*addr buck_delay ldo_delay*/
 
 		ldo0_2: ldo@78 {
@@ -325,14 +326,6 @@
 			hisilicon,hi6421-enable-time-us = <240>;
 		};
 
-		boost5v: lsw@b0 {
-			compatible = "hisilicon,hi6421-lsw";
-			regulator-name = "BOOST5V";
-			hisilicon,hi6421-ctrl = <0xb0 0x01 0x00>;
-			hisilicon,hi6421-off-on-delay-us = <20000>;
-			hisilicon,hi6421-enable-time-us = <240>;
-		};
-
 		lsw50: lsw@ac {
 			compatible = "hisilicon,hi6421-lsw";
 			regulator-name = "LSW50";
@@ -355,16 +348,6 @@
 			hisilicon,hi6421-ctrl = <0xae 0x10 0x00>;
 			hisilicon,hi6421-off-on-delay-us = <20000>;
 			hisilicon,hi6421-enable-time-us = <240>;
-		};
-
-		fledldo: lsw@da {
-			compatible = "hisilicon,hi6421-lsw";
-			regulator-name = "FLASHLEDLDO";
-			hisilicon,hi6421-ctrl = <0xda 0x01 0x00>;
-			hisilicon,hi6421-off-on-delay-us = <20000>;
-			hisilicon,hi6421-enable-time-us = <240>;
-			fledldo-supply = <&boost5v>;
-			hisilicon,supply_name = "fledldo";
 		};
 
 		dr1: lsw@c4 {
@@ -460,7 +443,7 @@
 		};
 
 		ponkey {
-			compatible = "hisilicon,hi6421-powerkey";
+			compatible = "hisilicon,hisi-powerkey";
 			interrupt-parent = <&pmic>;
 			interrupts = <7 0>, <6 0>, <5 0>, <4 0>, <3 0>;
 			interrupt-names = "down", "up", "hold 1s", "hold 8s", "hold 10s";

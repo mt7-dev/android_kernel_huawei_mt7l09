@@ -573,7 +573,7 @@ XX1( CFG_SCAN,					SCAN_RS_STRCT, scan_result[32]		 ) /*Scan results											*
 #define UIL_ACT_RESET	 		0x80
 #define UIL_ACT_REBIND	 		0x81
 #define UIL_ACT_APPLY	 		0x82
-#define UIL_ACT_DISCONNECT		0x83	//;?040108 possibly obsolete	//Special for WINCE
+#define UIL_ACT_DISCONNECT		0x83
 
 // HCF Specific
 /* Note that UIL_ACT-codes must match HCF_ACT-codes across a run-time bound I/F

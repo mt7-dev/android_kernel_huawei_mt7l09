@@ -112,6 +112,11 @@ VOS_UINT32 AT_RcvMtaJamDetectInd(
     VOS_VOID                           *pMsg
 );
 
+VOS_UINT32 AT_RcvMtaSetGFreqLockCnf(
+    VOS_VOID                           *pMsg
+);
+VOS_UINT32 AT_SetGFreqLock(VOS_UINT8 ucIndex);
+
 
 #if (VOS_OS_VER == VOS_WIN32)
 #pragma pack()

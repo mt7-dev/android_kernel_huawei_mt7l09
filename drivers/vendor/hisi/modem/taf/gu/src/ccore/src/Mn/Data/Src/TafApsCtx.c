@@ -846,6 +846,7 @@ VOS_UINT32 TAF_APS_GetCidSdfParaInfo(
 )
 {
     TAF_PDP_TABLE_STRU                 *pstTafCidInfo;
+    TAF_APS_CID_IMS_CFG_TBL_STRU       *pstCidImsCfgTbl;
 
     if (ucCid > TAF_MAX_CID)
     {
@@ -914,17 +915,62 @@ VOS_UINT32 TAF_APS_GetCidSdfParaInfo(
     pstSdfParaInfo->enPcscfDiscovery    = pstTafCidInfo->CidTab.enPcscfDiscovery;
 
     /* TFT */
-    if (APS_FREE != pstTafCidInfo->ucTftTabFlag)
+    if (APS_FREE != pstTafCidInfo->ucPfTabFlag)
     {
         pstSdfParaInfo->ulPfNum = pstTafCidInfo->ucPfNum;
         PS_MEM_CPY(pstSdfParaInfo->astCntxtTftInfo,
-                   pstTafCidInfo->astTftTab,
-                   (TAF_MAX_SDF_PF_NUM * sizeof(TAF_PDP_TFT_STRU)));
+                   pstTafCidInfo->astPfTab,
+                   (TAF_MAX_SDF_PF_NUM * sizeof(TAF_PDP_PF_STRU)));
 
+    }
+
+    pstCidImsCfgTbl = TAF_APS_GetCidImsCfgTable();
+
+    if (VOS_TRUE == pstCidImsCfgTbl->aucImsFlag[ucCid])
+    {
+        pstSdfParaInfo->bitImsSuppFlag  = VOS_TRUE;
+        pstSdfParaInfo->enImsSuppFlag   = VOS_TRUE;
     }
 
     return VOS_OK;
 }
+
+/*****************************************************************************
+ 函 数 名  : TAF_APS_GetCidImsCfgFlag
+ 功能描述  : 获取CID对应的IMS配置
+ 输入参数  : ucCid                      - CID
+ 输出参数  : 无
+ 返 回 值  : VOS_TRUE                   - CID支持IMS
+             VOS_FALSE                  - CID不支持IMS
+ 调用函数  :
+ 被调函数  :
+
+ 修改历史      :
+  1.日    期   : 2015年8月1日
+    作    者   : z00301431
+    修改内容   : 新生成函数
+
+*****************************************************************************/
+VOS_UINT8 TAF_APS_GetCidImsCfgFlag(VOS_UINT8 ucCid)
+{
+    TAF_APS_CID_IMS_CFG_TBL_STRU       *pstCidImsCfgTbl;
+
+    if (ucCid > TAF_MAX_CID)
+    {
+        return VOS_FALSE;
+    }
+
+    pstCidImsCfgTbl = TAF_APS_GetCidImsCfgTable();
+
+    if (VOS_TRUE == pstCidImsCfgTbl->aucImsFlag[ucCid])
+    {
+        return VOS_TRUE;
+    }
+
+    return VOS_FALSE;
+}
+
+
 VOS_UINT32 TAF_APS_GetPdpManageInfo(
     APS_L4A_PDP_MANAGE_INFO_STRU       *pstPdpManageInfo
 )
@@ -1186,6 +1232,7 @@ VOS_UINT32 TAF_APS_GetSdfParaInfo(
 )
 {
     TAF_PDP_TABLE_STRU                 *pstTafCidInfo;
+    TAF_APS_CID_IMS_CFG_TBL_STRU       *pstCidImsCfgTbl;
 
     if (ucCid > TAF_MAX_CID_NV)
     {
@@ -1253,12 +1300,19 @@ VOS_UINT32 TAF_APS_GetSdfParaInfo(
         pstSdfParaInfo->stUmtsQosInfo   = pstTafCidInfo->QosTab;
     }
     /* TFT */
-    if (APS_FREE != pstTafCidInfo->ucTftTabFlag)
+    if (APS_FREE != pstTafCidInfo->ucPfTabFlag)
     {
         pstSdfParaInfo->ucPfNum = pstTafCidInfo->ucPfNum;
         PS_MEM_CPY(pstSdfParaInfo->astCntxtTftInfo,
-                   pstTafCidInfo->astTftTab,
-                   (TAF_MAX_SDF_PF_NUM * sizeof(TAF_PDP_TFT_STRU)));
+                   pstTafCidInfo->astPfTab,
+                   (TAF_MAX_SDF_PF_NUM * sizeof(TAF_PDP_PF_STRU)));
+    }
+
+    pstCidImsCfgTbl = TAF_APS_GetCidImsCfgTable();
+    if (VOS_TRUE == pstCidImsCfgTbl->aucImsFlag[ucCid])
+    {
+        pstSdfParaInfo->bitOpImsSuppFlg = VOS_TRUE;
+        pstSdfParaInfo->ucImsSuppFlg    = VOS_TRUE;
     }
 
     return VOS_OK;
@@ -1297,7 +1351,61 @@ VOS_UINT32 TAF_APS_GetCallRemainTmrLen(VOS_UINT8 ucCid)
     return pstTafApsCtx->aulCallRemainTmrLen[ucCid];
 }
 
+#if (FEATURE_ON == FEATURE_LTE)
 
+VOS_VOID TAF_APS_InitPdnTeardownPolicy(VOS_VOID)
+{
+    TAF_APS_PDN_TEARDOWN_POLICY_STRU   *pstPdnTeardownPolicy = VOS_NULL_PTR;
+
+    pstPdnTeardownPolicy = TAF_APS_GetPdnTeardownPolicy();
+    pstPdnTeardownPolicy->ucAllowDefPdnTeardownFlg = VOS_FALSE;
+
+    TAF_APS_ReadPdnTeardownPolicyNV();
+    return;
+}
+
+
+TAF_APS_PDN_TEARDOWN_POLICY_STRU* TAF_APS_GetPdnTeardownPolicy(VOS_VOID)
+{
+    return &(TAF_APS_GetApsCtxAddr()->stPdnTeardownPolicy);
+}
+
+
+VOS_UINT8 TAF_APS_GetAllowDefPdnTeardownFlg(VOS_VOID)
+{
+    return TAF_APS_GetPdnTeardownPolicy()->ucAllowDefPdnTeardownFlg;
+}
+
+
+VOS_VOID TAF_APS_SetAllowDefPdnTeardownFlg(VOS_UINT8 ucAllowFlg)
+{
+    TAF_APS_GetPdnTeardownPolicy()->ucAllowDefPdnTeardownFlg = ucAllowFlg;
+    return;
+}
+#endif
+
+
+
+
+/*****************************************************************************
+ 函 数 名  : TAF_APS_GetCidImsCfgTable
+ 功能描述  : 获取g_stCidImsCfgTable
+ 输入参数  : VOS_VOID
+ 输出参数  : VOS_VOID
+ 返 回 值  : TAF_APS_CID_IMS_CFG_TBL_STRU *
+ 调用函数  :
+ 被调函数  :
+
+ 修改历史      :
+  1.日    期   : 2015年8月1日
+    作    者   : z00301431
+    修改内容   : 新生成函数
+
+*****************************************************************************/
+TAF_APS_CID_IMS_CFG_TBL_STRU* TAF_APS_GetCidImsCfgTable(VOS_VOID)
+{
+    return &g_stCidImsCfgTable;
+}
 #ifdef __cplusplus
     #if __cplusplus
         }

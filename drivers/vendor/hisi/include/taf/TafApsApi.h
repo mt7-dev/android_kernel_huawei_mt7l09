@@ -100,6 +100,8 @@ extern "C" {
 
 #define TAF_PPP_IPCP_FRAME_BUF_MAX_LEN      (256)
 
+#define TAF_DEFAULT_DSFLOW_NV_WR_INTERVAL   (2)             /* DSFLOW流量统计NV写间隔, 单位(min) */
+
 #define TAF_PS_CAUSE_APS_SECTION_BEGIN      (0x0000)
 #define TAF_PS_CAUSE_SM_SECTION_BEGIN       (0x0080)
 #define TAF_PS_CAUSE_SM_NW_SECTION_BEGIN    (0x0100)
@@ -114,6 +116,9 @@ extern "C" {
 #define TAF_PS_CONVERT_SM_CAUSE_TO_PS_CAUSE(sm_cause)\
             ((sm_cause) + TAF_PS_CAUSE_SM_NW_SECTION_BEGIN)
 
+#define TAF_PS_GET_MSG_CONTENT(pstMsg)\
+            ((VOS_VOID *)(((TAF_PS_MSG_STRU *)(pstMsg))->aucContent))
+
 
 /*****************************************************************************
   3 枚举定义
@@ -122,7 +127,9 @@ extern "C" {
 
 enum TAF_PS_MSG_ID_ENUM
 {
-    /* 以下消息为标准命令[0x0000, 0x0099] */
+    /*----------------------------------------------------------------------
+       标准命令[0x0000, 0x0099]
+    *---------------------------------------------------------------------*/
     /* +CGDCONT */
     ID_MSG_TAF_PS_SET_PRIM_PDP_CONTEXT_INFO_REQ             = TAF_PS_MSG_ID_BASE + 0x0001,  /* _H2ASN_MsgChoice TAF_PS_SET_PRIM_PDP_CONTEXT_INFO_REQ_STRU */
     ID_MSG_TAF_PS_GET_PRIM_PDP_CONTEXT_INFO_REQ             = TAF_PS_MSG_ID_BASE + 0x0002,  /* _H2ASN_MsgChoice TAF_PS_GET_PRIM_PDP_CONTEXT_INFO_REQ_STRU */
@@ -190,7 +197,9 @@ enum TAF_PS_MSG_ID_ENUM
     /* +CGEQOSRDP */
     ID_MSG_TAF_PS_GET_DYNAMIC_EPS_QOS_INFO_REQ              = TAF_PS_MSG_ID_BASE + 0x001E,  /* _H2ASN_MsgChoice TAF_PS_GET_DYNAMIC_EPS_QOS_INFO_REQ_STRU */
 
-    /* 以下消息为私有命令[0x0100, 0x0199] */
+    /*----------------------------------------------------------------------
+       私有命令[0x0100, 0x0199]
+    *---------------------------------------------------------------------*/
     /* ^NDISCONN/^NDISDUP */
     ID_MSG_TAF_PS_CALL_ORIG_REQ                             = TAF_PS_MSG_ID_BASE + 0x0101,  /* _H2ASN_MsgChoice TAF_PS_CALL_ORIG_REQ_STRU */
     ID_MSG_TAF_PS_CALL_END_REQ                              = TAF_PS_MSG_ID_BASE + 0x0102,  /* _H2ASN_MsgChoice TAF_PS_CALL_END_REQ_STRU */
@@ -246,7 +255,20 @@ enum TAF_PS_MSG_ID_ENUM
     /* 异步接口获取CID */
     ID_MSG_TAF_PS_GET_UNUSED_CID_REQ                        = TAF_PS_MSG_ID_BASE + 0x0115,  /* _H2ASN_MsgChoice */
 
-    /* 以下是APS内部消息[0x0200, 0x0299] */
+    /* ^APDSFLOWRPT */
+    ID_MSG_TAF_PS_SET_APDSFLOW_RPT_CFG_REQ                  = TAF_PS_MSG_ID_BASE + 0x0119,  /* _H2ASN_MsgChoice TAF_PS_SET_APDSFLOW_RPT_CFG_REQ_STRU */
+    ID_MSG_TAF_PS_GET_APDSFLOW_RPT_CFG_REQ                  = TAF_PS_MSG_ID_BASE + 0x011A,  /* _H2ASN_MsgChoice TAF_PS_GET_APDSFLOW_RPT_CFG_REQ_STRU */
+
+    ID_MSG_TAF_PS_SET_DSFLOW_NV_WRITE_CFG_REQ               = TAF_PS_MSG_ID_BASE + 0x011B,  /* _H2ASN_MsgChoice TAF_PS_SET_DSFLOW_NV_WRITE_CFG_REQ_STRU */
+    ID_MSG_TAF_PS_GET_DSFLOW_NV_WRITE_CFG_REQ               = TAF_PS_MSG_ID_BASE + 0x011C,  /* _H2ASN_MsgChoice TAF_PS_GET_DSFLOW_NV_WRITE_CFG_REQ_STRU */
+
+
+    /* ^IMSPDPCFG */
+    ID_MSG_TAF_PS_SET_IMS_PDP_CFG_REQ                       = TAF_PS_MSG_ID_BASE + 0x0121,  /* _H2ASN_MsgChoice TAF_PS_SET_IMS_PDP_CFG_REQ_STRU */
+
+    /*----------------------------------------------------------------------
+       APS内部消息[0x0200, 0x0299]
+    *---------------------------------------------------------------------*/
     /* APS内部去激活请求 */
     ID_MSG_TAF_PS_APS_INTERNAL_PDP_DEACTIVATE_REQ           = TAF_PS_MSG_ID_BASE + 0x0200,  /* _H2ASN_MsgChoice */
 
@@ -265,6 +287,8 @@ enum TAF_PS_MSG_ID_ENUM
 
 };
 typedef VOS_UINT32 TAF_PS_MSG_ID_ENUM_UINT32;
+
+
 enum TAF_PS_EVT_ID_ENUM
 {
     /* PS CALL */
@@ -396,16 +420,23 @@ enum TAF_PS_EVT_ID_ENUM
     /* 异步接口获取SDF信息 */
     ID_EVT_TAF_PS_GET_CID_SDF_CNF                           = TAF_PS_EVT_ID_BASE + 0x012D,           /* _H2ASN_MsgChoice TAF_PS_SDF_INFO_CNF_STRU */
 
+    /* ^APDSFLOWRPT */
+    ID_EVT_TAF_PS_SET_APDSFLOW_RPT_CFG_CNF                  = TAF_PS_EVT_ID_BASE + 0x012F,           /* _H2ASN_MsgChoice TAF_PS_SET_APDSFLOW_RPT_CFG_CNF_STRU */
+    ID_EVT_TAF_PS_GET_APDSFLOW_RPT_CFG_CNF                  = TAF_PS_EVT_ID_BASE + 0x0130,           /* _H2ASN_MsgChoice TAF_PS_GET_APDSFLOW_RPT_CFG_CNF_STRU */
+    ID_EVT_TAF_PS_APDSFLOW_REPORT_IND                       = TAF_PS_EVT_ID_BASE + 0x0131,           /* _H2ASN_MsgChoice TAF_PS_APDSFLOW_REPORT_IND_STRU */
+
+    ID_EVT_TAF_PS_SET_DSFLOW_NV_WRITE_CFG_CNF               = TAF_PS_EVT_ID_BASE + 0x0132,           /* _H2ASN_MsgChoice TAF_PS_SET_DSFLOW_NV_WRITE_CFG_CNF_STRU */
+    ID_EVT_TAF_PS_GET_DSFLOW_NV_WRITE_CFG_CNF               = TAF_PS_EVT_ID_BASE + 0x0133,           /* _H2ASN_MsgChoice TAF_PS_GET_DSFLOW_NV_WRITE_CFG_CNF_STRU */
+
     /* 其它事件 */
     /* APS->IMSA通知SRVCC CANCEL */
     ID_EVT_TAF_PS_SRVCC_CANCEL_NOTIFY_IND                   = TAF_PS_EVT_ID_BASE + 0x0200,           /* _H2ASN_MsgChoice TAF_SRVCC_CANCEL_NOTIFY_IND_STRU */
 
+    ID_EVT_TAF_PS_SET_IMS_PDP_CFG_CNF                       = TAF_PS_EVT_ID_BASE + 0x0201,           /* _H2ASN_MsgChoice TAF_PS_SET_IMS_PDP_CFG_CNF_STRU */
+
     ID_EVT_TAF_PS_BUTT
 };
 typedef VOS_UINT32 TAF_PS_EVT_ID_ENUM_UINT32;
-
-
-
 enum TAF_PS_CAUSE_ENUM
 {
     /*----------------------------------------------------------------------
@@ -922,10 +953,12 @@ typedef struct
 {
     VOS_UINT32                          bitOpPrimPcscfAddr  : 1;
     VOS_UINT32                          bitOpSecPcscfAddr   : 1;
-    VOS_UINT32                          bitOpSpare          : 30;
+    VOS_UINT32                          bitOpThiPcscfAddr   : 1;
+    VOS_UINT32                          bitOpSpare          : 29;
 
     VOS_UINT8                           aucPrimPcscfAddr[TAF_IPV4_ADDR_LEN];
     VOS_UINT8                           aucSecPcscfAddr[TAF_IPV4_ADDR_LEN];
+    VOS_UINT8                           aucThiPcscfAddr[TAF_IPV4_ADDR_LEN];
 
 } TAF_PDP_PCSCF_STRU;
 
@@ -935,10 +968,12 @@ typedef struct
 {
     VOS_UINT32                          bitOpPrimPcscfAddr  : 1;
     VOS_UINT32                          bitOpSecPcscfAddr   : 1;
-    VOS_UINT32                          bitOpSpare          : 30;
+    VOS_UINT32                          bitOpThiPcscfAddr   : 1;
+    VOS_UINT32                          bitOpSpare          : 29;
 
     VOS_UINT8                           aucPrimPcscfAddr[TAF_IPV6_ADDR_LEN];
     VOS_UINT8                           aucSecPcscfAddr[TAF_IPV6_ADDR_LEN];
+    VOS_UINT8                           aucThiPcscfAddr[TAF_IPV6_ADDR_LEN];
 
 } TAF_PDP_IPV6_PCSCF_STRU;
 
@@ -1047,7 +1082,7 @@ typedef struct
     VOS_UINT8                           aucRmtIpv6Mask[TAF_IPV6_ADDR_LEN];
 
     VOS_UINT32                          ulFlowLabelType;                        /*FlowLabelType*/
-}TAF_PDP_TFT_STRU;
+}TAF_PDP_PF_STRU;
 typedef struct
 {
     VOS_UINT8                           ucTrafficClass;                         /*UMTS承载服务优化类型*/
@@ -1081,9 +1116,9 @@ typedef struct
 typedef struct
 {
     VOS_UINT8                           ucCid;
-    VOS_UINT8                           ucPfNum;                                /*ProFile个数*/
+    VOS_UINT8                           ucPfNum;                                /* pf个数 */
     VOS_UINT8                           aucReserved[2];
-    TAF_PDP_TFT_STRU                    astTftInfo[TAF_MAX_SDF_PF_NUM];         /*Tft表*/
+    TAF_PDP_PF_STRU                     astPfInfo[TAF_MAX_SDF_PF_NUM];          /* pf表 */
 
 }TAF_TFT_QUREY_INFO_STRU;
 
@@ -1125,6 +1160,12 @@ typedef struct
 }TAF_AUTHDATA_QUERY_INFO_STRU;
 
 
+typedef struct
+{
+    VOS_UINT32                          ulPfNum;                                /* pf个数 */
+    TAF_PDP_PF_STRU                     astPf[TAF_MAX_SDF_PF_NUM];              /* pf表 */
+}TAF_PDP_TFT_STRU;
+
 
 typedef struct
 {
@@ -1138,7 +1179,8 @@ typedef struct
     VOS_UINT32                          bitOpCause          : 1;
     VOS_UINT32                          bitOpUmtsQos        : 1;
     VOS_UINT32                          bitOpEpsQos         : 1;
-    VOS_UINT32                          bitOpSpare          : 24;
+    VOS_UINT32                          bitOpTft            : 1;
+    VOS_UINT32                          bitOpSpare          : 23;
 
     VOS_UINT8                           ucCid;
     VOS_UINT8                           ucRabId;
@@ -1159,7 +1201,7 @@ typedef struct
     TAF_PDP_GATEWAY_STRU                stGateWay;
     TAF_PDP_IPV6_DNS_STRU               stIpv6Dns;
     TAF_PDP_IPV6_PCSCF_STRU             stIpv6Pcscf;
-
+    TAF_PDP_TFT_STRU                    stTft;
 } TAF_PS_CALL_PDP_ACTIVATE_CNF_STRU;
 
 
@@ -1236,7 +1278,8 @@ typedef struct
     VOS_UINT32                          bitLinkdRabId       : 1;
     VOS_UINT32                          bitOpUmtsQos        : 1;
     VOS_UINT32                          bitOpEpsQos         : 1;
-    VOS_UINT32                          bitOpSpare          : 29;
+    VOS_UINT32                          bitOpTft            : 1;
+    VOS_UINT32                          bitOpSpare          : 28;
 
     VOS_UINT8                           ucCid;
     VOS_UINT8                           ucRabId;
@@ -1251,7 +1294,7 @@ typedef struct
     TAF_PDP_PCSCF_STRU                  stPcscf;
     TAF_PDP_IPV6_DNS_STRU               stIpv6Dns;
     TAF_PDP_IPV6_PCSCF_STRU             stIpv6Pcscf;
-
+    TAF_PDP_TFT_STRU                    stTft;
 } TAF_PS_CALL_PDP_MODIFY_CNF_STRU;
 
 
@@ -1378,6 +1421,40 @@ typedef struct
 
 typedef TAF_PS_COMMON_CNF_STRU TAF_PS_SET_PRIM_PDP_CONTEXT_INFO_CNF_STRU;
 
+/*****************************************************************************
+ 结构名称: TAF_SET_IMS_PDP_CFG_STRU
+ 结构说明: ^IMSPDPCFG命令参数
+
+ 修改历史      :
+  1.日    期   : 2015年07月30日
+    作    者   : z00301431
+    修改内容   : 新增结构
+*****************************************************************************/
+typedef struct
+{
+    VOS_UINT8                           ucCid;
+    VOS_UINT8                           ucImsFlag;
+    VOS_UINT8                           aucReserved[2];
+} TAF_IMS_PDP_CFG_STRU;
+
+/*****************************************************************************
+ 结构名称: TAF_PS_SET_IMS_PDP_CFG_REQ_STRU
+ 结构说明: ID_MSG_TAF_PS_SET_IMS_PDP_CFG_REQ
+           ID_EVT_TAF_PS_SET_IMS_PDP_CFG_CNF消息
+
+ 修改历史      :
+  1.日    期   : 2015年07月30日
+    作    者   : z00301431
+    修改内容   : 新增结构
+*****************************************************************************/
+typedef struct
+{
+    TAF_CTRL_STRU                       stCtrl;
+
+    TAF_IMS_PDP_CFG_STRU                stImsPdpCfg;
+} TAF_PS_SET_IMS_PDP_CFG_REQ_STRU;
+
+typedef TAF_PS_COMMON_CNF_STRU TAF_PS_SET_IMS_PDP_CFG_CNF_STRU;
 
 
 typedef struct
@@ -2261,6 +2338,108 @@ typedef struct
 
 
 /*****************************************************************************
+ 描述 : 针对命令 ^APDSFLOWRPT
+ ID   :
+
+ REQ  :
+ CNF  :
+ IND  : -
+ 说明 : ...
+*****************************************************************************/
+
+typedef struct
+{
+    VOS_UINT32                          ulRptEnabled;       /* 流量上报开启标记   */
+    VOS_UINT32                          ulFluxThreshold;    /* 流量上报门限, 单位KByte */
+} TAF_APDSFLOW_RPT_CFG_STRU;
+
+
+
+typedef struct
+{
+    VOS_UINT32                          ulCurrentTxRate;    /*当前发送速率*/
+    VOS_UINT32                          ulCurrentRxRate;    /*当前接收速率*/
+    TAF_DSFLOW_INFO_STRU                stCurrentFlowInfo;  /*当前连接流量信息*/
+    TAF_DSFLOW_INFO_STRU                stTotalFlowInfo;    /*累计流量信息*/
+} TAF_APDSFLOW_REPORT_STRU;
+
+
+
+typedef struct
+{
+    TAF_CTRL_STRU                       stCtrl;
+
+    TAF_APDSFLOW_RPT_CFG_STRU           stRptCfg;
+} TAF_PS_SET_APDSFLOW_RPT_CFG_REQ_STRU;
+
+
+
+typedef TAF_PS_COMMON_CNF_STRU TAF_PS_SET_APDSFLOW_RPT_CFG_CNF_STRU;
+
+
+
+typedef struct
+{
+    TAF_CTRL_STRU                       stCtrl;
+} TAF_PS_GET_APDSFLOW_RPT_CFG_REQ_STRU;
+
+
+
+typedef struct
+{
+    TAF_CTRL_STRU                       stCtrl;
+
+    TAF_PS_CAUSE_ENUM_UINT32            enCause;
+    TAF_APDSFLOW_RPT_CFG_STRU           stRptCfg;
+} TAF_PS_GET_APDSFLOW_RPT_CFG_CNF_STRU;
+
+
+
+typedef struct
+{
+    TAF_CTRL_STRU                       stCtrl;
+
+    TAF_APDSFLOW_REPORT_STRU            stApDsFlowRptInfo;
+} TAF_PS_APDSFLOW_REPORT_IND_STRU;
+
+
+
+typedef struct
+{
+    VOS_UINT8                           ucEnabled;          /* 流量写NV开启标记   */
+    VOS_UINT8                           ucInterval;         /* 流量写NV周期, 单位min */
+    VOS_UINT8                           aucReserved[2];     /* 保留字节 */
+} TAF_DSFLOW_NV_WRITE_CFG_STRU;
+typedef struct
+{
+    TAF_CTRL_STRU                       stCtrl;
+
+    TAF_DSFLOW_NV_WRITE_CFG_STRU        stNvWriteCfg;
+} TAF_PS_SET_DSFLOW_NV_WRITE_CFG_REQ_STRU;
+
+
+
+typedef TAF_PS_COMMON_CNF_STRU TAF_PS_SET_DSFLOW_NV_WRITE_CFG_CNF_STRU;
+
+
+
+typedef struct
+{
+    TAF_CTRL_STRU                       stCtrl;
+} TAF_PS_GET_DSFLOW_NV_WRITE_CFG_REQ_STRU;
+
+
+
+typedef struct
+{
+    TAF_CTRL_STRU                       stCtrl;
+
+    TAF_PS_CAUSE_ENUM_UINT32            enCause;
+    TAF_DSFLOW_NV_WRITE_CFG_STRU        stNvWriteCfg;
+} TAF_PS_GET_DSFLOW_NV_WRITE_CFG_CNF_STRU;
+
+
+/*****************************************************************************
  描述 : 针对命令 ^CGAUTH
  ID   :
 
@@ -2916,7 +3095,8 @@ typedef struct
     VOS_UINT32                          bitOpIpv4AddrAllocType: 1;
     VOS_UINT32                          bitOpPcscfDiscovery : 1;
     VOS_UINT32                          bitOpImCnSignalFlg  : 1;
-    VOS_UINT32                          bitOpSpare          : 22;
+    VOS_UINT32                          bitOpImsSuppFlg     : 1;
+    VOS_UINT32                          bitOpSpare          : 21;
 
     VOS_UINT8                           ucCid;
     VOS_UINT8                           ucLinkdCid;
@@ -2927,12 +3107,14 @@ typedef struct
     TAF_PDP_PCSCF_DISCOVERY_ENUM_UINT8  enPcscfDiscovery;
     TAF_PDP_IM_CN_SIG_FLAG_ENUM_UINT8   enImCnSignalFlg;
     VOS_UINT8                           ucPfNum;
+    VOS_UINT8                           ucImsSuppFlg;
+    VOS_UINT8                           aucReserved[3];
 
     TAF_UMTS_QOS_STRU                   stUmtsQosInfo;
     TAF_EPS_QOS_STRU                    stEpsQosInfo;
     TAF_PDP_APN_STRU                    stApnInfo;
     TAF_GW_AUTH_STRU                    stGwAuthInfo;
-    TAF_PDP_TFT_STRU                    astCntxtTftInfo[TAF_MAX_SDF_PF_NUM];
+    TAF_PDP_PF_STRU                     astCntxtTftInfo[TAF_MAX_SDF_PF_NUM];
 
 }TAF_SDF_PARA_STRU;
 
@@ -3881,6 +4063,82 @@ VOS_UINT32 TAF_PS_GetDynamicDnsInfo(
     VOS_UINT16                          usClientId,
     VOS_UINT8                           ucOpId,
     VOS_UINT8                           ucCid
+);
+
+/*****************************************************************************
+ 函 数 名  : TAF_PS_SetApDsFlowRptCfg
+ 功能描述  : 设置AP流量上报参数
+ 输入参数  : ulModuleId                 - PID
+             usClientId                 - 客户端ID
+             ucOpId                     - 操作码ID
+             pstRptCfg                  - 配置信息
+ 输出参数  : 无
+ 返 回 值  : VOS_OK                     - 成功
+             VOS_ERR                    - 失败
+*****************************************************************************/
+VOS_UINT32 TAF_PS_SetApDsFlowRptCfg(
+    VOS_UINT32                          ulModuleId,
+    VOS_UINT16                          usClientId,
+    VOS_UINT8                           ucOpId,
+    TAF_APDSFLOW_RPT_CFG_STRU          *pstRptCfg
+);
+
+/*****************************************************************************
+ 函 数 名  : TAF_PS_GetApDsFlowRptCfg
+ 功能描述  : 获取AP流量上报参数
+ 输入参数  : ulModuleId                 - PID
+             usClientId                 - 客户端ID
+             ucOpId                     - 操作码ID
+ 输出参数  : 无
+ 返 回 值  : VOS_OK                     - 成功
+             VOS_ERR                    - 失败
+*****************************************************************************/
+VOS_UINT32 TAF_PS_GetApDsFlowRptCfg(
+    VOS_UINT32                          ulModuleId,
+    VOS_UINT16                          usClientId,
+    VOS_UINT8                           ucOpId
+);
+
+/*****************************************************************************
+ 函 数 名  : TAF_PS_SetDsFlowNvWriteCfg
+ 功能描述  : 设置流量写NV配置
+ 输入参数  : ulModuleId                 - PID
+             usClientId                 - 客户端ID
+             ucOpId                     - 操作码ID
+             pstNvWriteCfg              - 流量写NV配置
+ 输出参数  : 无
+ 返 回 值  : VOS_OK                     - 成功
+             VOS_ERR                    - 失败
+*****************************************************************************/
+VOS_UINT32 TAF_PS_SetDsFlowNvWriteCfg(
+    VOS_UINT32                          ulModuleId,
+    VOS_UINT16                          usClientId,
+    VOS_UINT8                           ucOpId,
+    TAF_DSFLOW_NV_WRITE_CFG_STRU       *pstNvWriteCfg
+);
+
+/*****************************************************************************
+ 函 数 名  : TAF_PS_GetDsFlowNvWriteCfg
+ 功能描述  : 获取流量写NV配置
+ 输入参数  : ulModuleId                 - PID
+             usClientId                 - 客户端ID
+             ucOpId                     - 操作码ID
+ 输出参数  : 无
+ 返 回 值  : VOS_OK                     - 成功
+             VOS_ERR                    - 失败
+*****************************************************************************/
+VOS_UINT32 TAF_PS_GetDsFlowNvWriteCfg(
+    VOS_UINT32                          ulModuleId,
+    VOS_UINT16                          usClientId,
+    VOS_UINT8                           ucOpId
+);
+
+
+VOS_UINT32 TAF_PS_SetImsPdpCfg(
+    VOS_UINT32                          ulModuleId,
+    VOS_UINT16                          usClientId,
+    VOS_UINT8                           ucOpId,
+    TAF_IMS_PDP_CFG_STRU               *pstImsPdpCfg
 );
 
 #if (VOS_OS_VER == VOS_WIN32)

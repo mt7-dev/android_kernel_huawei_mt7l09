@@ -27,7 +27,7 @@ extern "C" {
 #define TTF_MEM_ACPU_FREE_MEM_CNT_ADDR  (ECS_TTF_ACPU_FREE_MEM_CNT_ADDR)
 
 /* A 核向C核上报内存空闲块数的地址 */
-unsigned long *                         g_pACpuFreeMemBlkCnt;
+unsigned int *                         g_pACpuFreeMemBlkCnt;
 
 /* IMM MEM 数据内存池档位控制结构 */
 const IMM_MEM_CLUSTER_CFG_INFO_STRU     g_astImmMemSharePoolClusterTableInfo[] =
@@ -50,12 +50,12 @@ const IMM_MEM_CLUSTER_CFG_INFO_STRU     g_astImmMemCtrlPoolClusterTableInfo[] =
 #endif
 
 /* IMM MEM 控制头内存池内存块已使用的长度 */
-unsigned long                           g_ulImmMemCtrlMemSuffix = 0;
-const  unsigned long * const            g_pulImmMemCtrlMemSuffix = &g_ulImmMemCtrlMemSuffix;
+unsigned int                           g_ulImmMemCtrlMemSuffix = 0;
+const  unsigned int * const            g_pulImmMemCtrlMemSuffix = &g_ulImmMemCtrlMemSuffix;
 
 /* IMM MEM 控制头内存池内存 */
-unsigned long                           g_aulImmMemCtrlMemSpace[IMM_MEM_CTRL_MEM_TOTAL_SIZE/4];
-const unsigned long * const             g_paulImmMemCtrlMemSpace = &g_aulImmMemCtrlMemSpace[0];
+unsigned int                           g_aulImmMemCtrlMemSpace[IMM_MEM_CTRL_MEM_TOTAL_SIZE/4];
+const unsigned int * const             g_paulImmMemCtrlMemSpace = &g_aulImmMemCtrlMemSpace[0];
 
 
 /* IMM MEM 数据内存池档位个数 */
@@ -68,7 +68,7 @@ const unsigned char IMM_MEM_CTRL_POOL_CLUSTER_CNT  = (sizeof(g_astImmMemCtrlPool
 const unsigned short IMM_MAGIC_NUM = 0x4E8F;
 
 /* 零拷贝内存池初始化标志，防止重复调用初始化函数 */
-unsigned long                           g_ulImmMemInitFlag  = IMM_FALSE;
+unsigned int                           g_ulImmMemInitFlag  = IMM_FALSE;
 
 /* IMM MEM 数据内存池总控制结构 */
 IMM_MEM_POOL_STRU                       g_astImmMemPool[IMM_MEM_POOL_ID_BUTT];
@@ -132,14 +132,14 @@ VOS_SPINLOCK                      g_stImmFreeMntnSpinLock;
             do{\
                 VOS_SpinLockIntLock(pstSpinLock , ulFlags);\
                 (astImmMemFreeInvalidMemInfo).ulInvalidImmMemCnt++;\
-                (astImmMemFreeInvalidMemInfo).ulInvalidImmMemAddr   = (unsigned long)pstTtfMem;\
+                (astImmMemFreeInvalidMemInfo).ulInvalidImmMemAddr   = (unsigned int)pstTtfMem;\
                 (astImmMemFreeInvalidMemInfo).usImmMemFreeFileId    = (usFileId);\
                 (astImmMemFreeInvalidMemInfo).usImmMemFreeLineNum   = (usLineNum);\
                 (astImmMemFreeInvalidMemInfo).ucImmMemInvalidType   = (ucType);\
                 (astImmMemFreeInvalidMemInfo).usImmMemInvalidValue  = (usInvalidvalue);\
                 VOS_SpinUnlockIntUnlock(pstSpinLock , ulFlags);\
             }while(0)
-void *IMM_MemCtrlMemAlloc(unsigned long ulSize)
+void *IMM_MemCtrlMemAlloc(unsigned int ulSize)
 {
     unsigned char                       *pucSpace;
     void                                *pAlloc;
@@ -165,7 +165,7 @@ void *IMM_MemCtrlMemAlloc(unsigned long ulSize)
 
 } /* IMM_MemCtrlMemAlloc */
 
-unsigned long IMM_MemPoolInit
+unsigned int IMM_MemPoolInit
 (
     unsigned char                            ucPoolId,
     unsigned char                          **ppucDataMemAddr
@@ -175,12 +175,12 @@ unsigned long IMM_MemPoolInit
     IMM_MEM_STRU                      **ppst1stImmMem;
     IMM_MEM_STRU                       *pstImmMem;
     IMM_MEM_CLUSTER_STRU               *pstImmMemCluster;
-    unsigned long                       ulImmMemCnt;
+    unsigned int                       ulImmMemCnt;
     unsigned char                       ucClusterId;
     IMM_MEM_STRU                      **ppTempMem;
 
     /*lint -e778*/
-    g_pACpuFreeMemBlkCnt = (unsigned long *)DRV_AXI_PHY_TO_VIRT(TTF_MEM_ACPU_FREE_MEM_CNT_ADDR);
+    g_pACpuFreeMemBlkCnt = (unsigned int *)DRV_AXI_PHY_TO_VIRT(TTF_MEM_ACPU_FREE_MEM_CNT_ADDR);
     /*lint +e778*/
 
     pstImmMemPool = IMM_MEM_GET_POOL(ucPoolId);
@@ -376,11 +376,11 @@ unsigned int IMM_MemPoolCreate
     return IMM_SUCC;
 } /* IMM_MemPoolCreate */
 
-unsigned long IMM_MemGetBaseAddr(void)
+unsigned int IMM_MemGetBaseAddr(void)
 {
     BSP_DDR_SECT_QUERY             stQuery;
     BSP_DDR_SECT_INFO              stInfo;
-    unsigned long                  ulBaseAddr;
+    unsigned int                  ulBaseAddr;
 
     stQuery.enSectType = BSP_DDR_SECT_TYPE_TTF;
     DRV_GET_FIX_DDR_ADDR(&stQuery, &stInfo);
@@ -389,14 +389,14 @@ unsigned long IMM_MemGetBaseAddr(void)
 
     return (IMM_MEM_POOL_BASE_ADDR(ulBaseAddr));
 }
-unsigned long IMM_MemBlkInit(void)
+unsigned int IMM_MemBlkInit(void)
 {
     unsigned int                        ulRet1;
     unsigned int                        ulRet2;
     unsigned char                      *pucBaseAddr;
     IMM_MEM_POOL_CFG_INFO_STRU          stSharePoolCfgInfo;
     IMM_MEM_POOL_CFG_INFO_STRU          stExtPoolCfgInfo;
-    unsigned long                       ulBaseAddr;
+    unsigned int                       ulBaseAddr;
 
     /*初始化函数只会被skbuf_init 调用 */
     if ( IMM_TRUE == g_ulImmMemInitFlag )
@@ -461,7 +461,7 @@ unsigned long IMM_MemBlkInit(void)
 
 } /* IMM_MemBlkInit */
 
-unsigned long IMM_MemFreeMemCheck(unsigned short usFileId, unsigned short usLineNum, IMM_MEM_STRU **ppstImm, VOS_SPINLOCK *pstSpinLock, VOS_UINT32 ulFlags)
+unsigned int IMM_MemFreeMemCheck(unsigned short usFileId, unsigned short usLineNum, IMM_MEM_STRU **ppstImm, VOS_SPINLOCK *pstSpinLock, VOS_UINT32 ulFlags)
 {
     if ( VOS_NULL_PTR == ppstImm )
     {
@@ -507,7 +507,7 @@ unsigned long IMM_MemFreeMemCheck(unsigned short usFileId, unsigned short usLine
 
 #if (FEATURE_ON == FEATURE_IMM_MEM_DEBUG)
 
-unsigned long IMM_MemGetSlice(void)
+unsigned int IMM_MemGetSlice(void)
 {
     if ( VOS_NULL_PTR == g_pstImmRegMntnFuc->pImmOmGetSliceFunc )
     {
@@ -543,17 +543,17 @@ void IMM_MemSaveAllocDebugInfo
 
 unsigned char IMM_MemSaveFreeDebugInfo(unsigned short usFileId, unsigned short usLineNum, IMM_MEM_STRU *pstImmMem, VOS_SPINLOCK *pstSpinLock, VOS_UINT32 ulFlags)
 {
-    unsigned long                ulMemAddr;
+    unsigned int                ulMemAddr;
     IMM_BLK_MEM_DEBUG_STRU      *pstImmMemDebugInfo = &pstImmMem->stDbgInfo;
 
 
     IMM_DEBUG_TRACE_FUNC_ENTER();
 
-    ulMemAddr = (unsigned long)pstImmMem;
+    ulMemAddr = (unsigned int)pstImmMem;
 
     /*pstImmMem 地址范围检查*/
-    if (( (unsigned long)g_paulImmMemCtrlMemSpace > ulMemAddr )
-        ||(((unsigned long)g_paulImmMemCtrlMemSpace + (*g_pulImmMemCtrlMemSuffix)) < ulMemAddr))
+    if (( (unsigned int)g_paulImmMemCtrlMemSpace > ulMemAddr )
+        ||(((unsigned int)g_paulImmMemCtrlMemSpace + (*g_pulImmMemCtrlMemSuffix)) < ulMemAddr))
     {
         /*lint -e717*/
         IMM_MEM_FREE_SAVE_INVALID_MEM_INFO(g_stImmMemFreeMntnEntity.astImmMemFreeInvalidMemInfo, pstImmMem,IMM_INVALID_MEM_TYPE_CTRLADDR, 0, usFileId, usLineNum,pstSpinLock,ulFlags);
@@ -597,7 +597,7 @@ IMM_MEM_POOL_STRU *IMM_MemPoolGet(unsigned char ucPoolId)
 
 } /* IMM_MemPoolGet */
 
-unsigned long IMM_ZcGetLocalFreeMemCnt(void)
+unsigned int IMM_ZcGetLocalFreeMemCnt(void)
 {
     IMM_DEBUG_TRACE_FUNC_ENTER();
     IMM_DEBUG_TRACE_FUNC_LEAVE();
@@ -605,7 +605,7 @@ unsigned long IMM_ZcGetLocalFreeMemCnt(void)
     return *g_pACpuFreeMemBlkCnt;
 } /* IMM_ZcGetLocalFreeMemCnt */
 
-void IMM_ZcSetLocalFreeMemCnt(unsigned long ulMemValue)
+void IMM_ZcSetLocalFreeMemCnt(unsigned int ulMemValue)
 {
     IMM_DEBUG_TRACE_FUNC_ENTER();
     IMM_DEBUG_TRACE_FUNC_LEAVE();
@@ -620,10 +620,10 @@ IMM_MEM_STRU *IMM_MemAlloc_Debug(unsigned short usFileID, unsigned short usLineN
     IMM_MEM_POOL_STRU              *pstImmMemPool;
     IMM_MEM_CLUSTER_STRU           *pstImmMemCluster;
     IMM_MEM_STRU                   *pMem;
-    unsigned long                   ulMaxClusterFreeCnt;
+    unsigned int                    ulMaxClusterFreeCnt;
     unsigned char                   ucClusterId;
     unsigned char                   ucMostFitLev;
-    unsigned long                   ulSaveFlags  = 0;
+    unsigned int                    ulSaveFlags  = 0;
     VOS_SPINLOCK                   *pstImmSpinLock;
 
 
@@ -724,8 +724,8 @@ void IMM_MemFree_Debug(unsigned short usFileId, unsigned short usLineNum, IMM_ME
     IMM_MEM_POOL_STRU                  *pstImmMemPool;
     IMM_MEM_CLUSTER_STRU               *pstImmMemCluster;
     IMM_MEM_STRU                       *pstImmMem;
-    unsigned long                       ulMaxClusterFreeCnt;
-    unsigned long                       ulSaveFlags  = 0;
+    unsigned int                        ulMaxClusterFreeCnt;
+    unsigned int                        ulSaveFlags  = 0;
     VOS_SPINLOCK                       *pstImmSpinLock;
 
 
@@ -807,7 +807,7 @@ void IMM_MemFree_Debug(unsigned short usFileId, unsigned short usLineNum, IMM_ME
     return ;
 } /* IMM_MemFree_Debug */
 
-unsigned long IMM_MemRegExtFreeCallBack
+unsigned int IMM_MemRegExtFreeCallBack
 (
     IMM_MEM_EXT_FREE_CALLBACK           pMemExtFreeFunc
 )
@@ -843,7 +843,7 @@ void IMM_MemRegMntnFuncCallBack
 
     return;
 }
-unsigned long IMM_MemRegEventCallBack
+unsigned int IMM_MemRegEventCallBack
 (
     IMM_MEM_POOL_ID_ENUM_UINT8          enPoolId,
     IMM_MEM_EVENT_CALLBACK              pMemAllocEvent,
@@ -851,7 +851,7 @@ unsigned long IMM_MemRegEventCallBack
 )
 {
     IMM_MEM_POOL_STRU              *pstImmMemPool;
-    unsigned long                   ulMaxClusterFreeCnt;
+    unsigned int                    ulMaxClusterFreeCnt;
 
     pstImmMemPool   = IMM_MemPoolGet(enPoolId);
 
@@ -915,7 +915,7 @@ void IMM_MemFreeShowMntnInfo( void )
 /*******************************V9R1版本***************************************/
 /******************************************************************************/
 
-unsigned long IMM_MemRegEventCallBack
+unsigned int IMM_MemRegEventCallBack
 (
     IMM_MEM_POOL_ID_ENUM_UINT8          enPoolId,
     IMM_MEM_EVENT_CALLBACK              pMemAllocEvent,
@@ -925,7 +925,7 @@ unsigned long IMM_MemRegEventCallBack
     return IMM_SUCC;
 } /* IMM_MemRegEventCallBack */
 
-unsigned long IMM_ZcGetLocalFreeMemCnt(void)
+unsigned int IMM_ZcGetLocalFreeMemCnt(void)
 {
     return  0;
 } /* IMM_ZcGetLocalFreeMemCnt */

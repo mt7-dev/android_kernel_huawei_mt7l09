@@ -86,8 +86,10 @@ VOS_VOID RABM_RcvGmmReestCnf(
             SN_RabmClear2G3Share();
         }
     }
-    else if (GMM_RABM_SERVICEREQ_DELAYED == pTempMsg->ulResult)
+    else if ((GMM_RABM_SERVICEREQ_DELAYED == pTempMsg->ulResult)
+          || (GMM_RABM_SERVICEREQ_OOS == pTempMsg->ulResult))
     {
+        NAS_RABM_SetRabRsestTimerFlg();
         NAS_RabmStartTimer(RABM_TIMER_NAME_COMMON, RABM_TIMER_RESEND_EST_REQ);
     }
     else
@@ -130,9 +132,50 @@ VOS_VOID RABM_RcvSmActInd(
                    pTempMsg->Qos.aucQosValue,
                    NAS_RABM_MAX_QOS_LEN);                                      /* 保存参数QoS到RABM实体                    */
 
-        RABM_SetWState(ucEntId, RABM_NSAPI_ACTIVE_PENDING);                     /* 状态迁移到RABM_NSAPI_ACTIVE_PENDING      */
+        if ((RABMSM_ACT_MSG_2 == pTempMsg->ulActMsgType)
+         && (VOS_TRUE == NAS_RABM_GetDataSuspendFlg()))
+        {
+            if ( (g_aRabmPsEnt[ucEntId].QoS.aucQosValue[3] & NAS_RABM_QOS_DELIVERY_ERRORNEOUS_SDU_MASK)
+                 != (pTempMsg->Qos.aucQosValue[3] & NAS_RABM_QOS_DELIVERY_ERRORNEOUS_SDU_MASK) )
+            {                                                                       /* 参数DeliveryErrSdu发生改变               */
+                ucRabUpdFlg = RABM_TRUE;                                            /* 设置RAB参数发生改变标志                  */
+            }
+            if( g_aRabmPsEnt[ucEntId].ucPppFlg != pTempMsg->ulPppFlag )
+            {                                                                       /* 没有采用PPP协议                          */
+                ucRabUpdFlg = RABM_TRUE;                                            /* 设置RAB参数发生改变标志                  */
+            }
 
-        PS_LOG(WUEPS_PID_RABM, VOS_NULL, PS_PRINT_NORMAL, "RABM_RcvSmActInd:NORMAL:RABM state: RABM_NULL ==> RABM_NSAPI_ACTIVE_PENDING");
+            g_aRabmPsEnt[ucEntId].QoS.ulQosLength = pTempMsg->Qos.ulLength;         /* 保存参数QoS长度                          */
+            PS_MEM_CPY(g_aRabmPsEnt[ucEntId].QoS.aucQosValue,
+                       pTempMsg->Qos.aucQosValue,
+                       NAS_RABM_MAX_QOS_LEN);                      /* 保存参数QoS到RABM实体                    */
+
+            /* data suspend状态收到第二条pdp激活消息，设置w状态为RABM_DATA_TRANSFER_STOP */
+            RABM_SetWState(ucEntId, RABM_DATA_TRANSFER_STOP);                      /* 状态迁移到RABM_DATA_TRANSFER_STOP       */
+            PS_LOG(WUEPS_PID_RABM, VOS_NULL, PS_PRINT_NORMAL, "RABM_RcvSmActInd:NORMAL:RABM_NULL ==> RABM_DATA_TRANSFER_STOP");
+
+            if( RABM_TRUE == ucRabUpdFlg )
+            {                                                                       /* RAB参数发生改变                          */
+                RABM_SndRrcQosUpdReq(ucEntId);                                      /* 通知RRC                                  */
+            }
+
+            /*创建RAB_MAP映射实体*/
+            NAS_RABM_CreateRabMapEntity((VOS_UINT8)(pTempMsg->ulNsapi),
+                                        (VOS_UINT8)(pTempMsg->ulLinkdNsapi),
+                                        (VOS_UINT8)(pTempMsg->ulNsapi));
+
+            /* 给CDS发送消息通知CDS QOS信息 */
+            enQci = NAS_RABM_GetQciFromQos(g_aRabmPsEnt[ucEntId].QoS.ulQosLength,
+                                           g_aRabmPsEnt[ucEntId].QoS.aucQosValue);
+
+            NAS_RABM_SndCdsQosFcRabCreateInd(ucEntId + RABM_NSAPI_OFFSET, enQci);
+        }
+        else
+        {
+            RABM_SetWState(ucEntId, RABM_NSAPI_ACTIVE_PENDING);                     /* 状态迁移到RABM_NSAPI_ACTIVE_PENDING      */
+            PS_LOG(WUEPS_PID_RABM, VOS_NULL, PS_PRINT_NORMAL, "RABM_RcvSmActInd:NORMAL:RABM state: RABM_NULL ==> RABM_NSAPI_ACTIVE_PENDING");
+        }
+
         if(RABM_SM_PPP_PROT == pTempMsg->ulPppFlag)
         {
             g_aRabmPsEnt[ucEntId].ucPppFlg = RABM_SM_PPP_PROT;
@@ -432,6 +475,7 @@ VOS_VOID RABM_RcvSmDeactInd(
         if (VOS_TRUE == NAS_RABM_GetRabRsestTimerFlg())
         {
             RABM_TimerStop(0);
+            NAS_RabmStopTimer(RABM_TIMER_NAME_COMMON, RABM_TIMER_RESEND_EST_REQ);
             NAS_RABM_ClearRabRsestTimerFlg();
         }
     }
@@ -951,6 +995,11 @@ VOS_VOID RABM_RcvRrcRabInd(VOS_VOID *pMsg)
                 NAS_RABM_SetCurrFastDormStatus(NAS_RABM_FASTDORM_PAUSE);
                 NAS_RABM_SndOmFastdormStatus();
             }
+            if (NAS_RABM_FASTDORM_STOP == enFastDormStatus)
+            {
+                NAS_RABM_AbortRelRrcProcedure();
+            }
+            NAS_RABM_SndGmmRbSetupInd();
         }
 
         break;
@@ -1033,6 +1082,7 @@ VOS_VOID RABM_RcvRrcRelAllReq(VOS_VOID)
     if( RABM_FALSE != g_ucReestTimerFlg )
     {
         RABM_TimerStop(0);
+        NAS_RabmStopTimer(RABM_TIMER_NAME_COMMON, RABM_TIMER_RESEND_EST_REQ);
         g_ucReestTimerFlg = RABM_FALSE;
     }
 

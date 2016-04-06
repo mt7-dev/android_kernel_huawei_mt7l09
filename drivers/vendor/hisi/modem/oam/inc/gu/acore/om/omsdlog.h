@@ -383,7 +383,11 @@ typedef struct
 /*****************************************************************************
   10 º¯ÊýÉùÃ÷
 *****************************************************************************/
+#if (FEATURE_OFF == FEATURE_MERGE_OM_CHAN)
 extern VOS_UINT32 OM_SDWriteCard(VOS_UINT8* pucData, VOS_UINT16 usLen);
+#else
+extern VOS_UINT32 OM_SDWriteCard(VOS_UINT8* pucVirAddr, VOS_UINT8 *pucPhyAddr, VOS_UINT16 usLen);
+#endif
 
 
 #if ((VOS_OS_VER == VOS_WIN32) || (VOS_OS_VER == VOS_NUCLEUS))

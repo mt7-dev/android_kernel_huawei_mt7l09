@@ -439,11 +439,7 @@ static void oti6858_set_termios(struct tty_struct *tty,
 		break;
 	}
 
-	/* manufacturer claims that this device can work with baud rates
-	 * up to 3 Mbps; I've tested it only on 115200 bps, so I can't
-	 * guarantee that any other baud rate will work (especially
-	 * the higher ones)
-	 */
+
 	br = tty_get_baud_rate(tty);
 	if (br == 0) {
 		divisor = 0;

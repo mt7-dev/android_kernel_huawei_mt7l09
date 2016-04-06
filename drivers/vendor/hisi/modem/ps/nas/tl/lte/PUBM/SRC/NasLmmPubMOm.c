@@ -12,8 +12,13 @@
 #include    "ImsaNvInterface.h"
 /* lihong00150010 ims end */
 #include    "SysNvId.h"
+#include    "omringbuffer.h"
 #include    "omnvinterface.h"
+#if (VOS_WIN32 == VOS_OS_VER)
+#include    "NasMmPubMTest.h"
+#endif
 
+#include    "NasCommSndOm.h"
 
 /*lint -e767*/
 #define    THIS_FILE_ID        PS_FILE_ID_NASMMPUBMOM_C
@@ -37,6 +42,70 @@ NAS_EMM_DRX_CYCLE_LEN_CHANGE_ENUM_UINT32    g_ulDrxCycleLenChange
 static APP_MM_REPORT_MODE_ENUM_UINT32      g_ulMmInfoRptFlag = APP_MM_RM_AUTO;
 static APP_EMM_INFO_STRU                   g_stAppEmmInfo = {0};
 */
+#if (FEATURE_ON == FEATURE_PTM)
+LNAS_ERRLOG_GLO_INFO_STRU  stErrlogGloInfo;
+/* LNAS模块Error Log异常级别表 */
+LNAS_ERRLOG_ALM_LEVEL_STRU g_astLNasErrAlmLevelTb[] = {
+    {LNAS_OM_ERRLOG_ALM_ID_ATTACH_FAIL,         LNAS_ERR_LOG_CTRL_LEVEL_CRITICAL},
+    {LNAS_OM_ERRLOG_ALM_ID_TAU_FAIL,            LNAS_ERR_LOG_CTRL_LEVEL_CRITICAL},
+    {LNAS_OM_ERRLOG_ALM_ID_DETACH_FAIL,         LNAS_ERR_LOG_CTRL_LEVEL_CRITICAL},
+    {LNAS_OM_ERRLOG_ALM_ID_NOR_SERVICE_FAIL,    LNAS_ERR_LOG_CTRL_LEVEL_CRITICAL},
+    {LNAS_OM_ERRLOG_ALM_ID_EXT_SERVICE_FAIL,    LNAS_ERR_LOG_CTRL_LEVEL_CRITICAL},
+    {LNAS_OM_ERRLOG_ALM_ID_PAGING_FAIL,         LNAS_ERR_LOG_CTRL_LEVEL_CRITICAL},
+    {LNAS_OM_ERRLOG_ALM_ID_RAT_FAIL,            LNAS_ERR_LOG_CTRL_LEVEL_CRITICAL},
+    {LNAS_OM_ERRLOG_ALM_ID_ESM_PDN_CONN_FAIL,   LNAS_ERR_LOG_CTRL_LEVEL_CRITICAL},
+    {LNAS_OM_ERRLOG_ALM_ID_ESM_PDN_DISCONN_FAIL,LNAS_ERR_LOG_CTRL_LEVEL_CRITICAL},
+    {LNAS_OM_ERRLOG_ALM_ID_ESM_RES_MOD_FAIL,    LNAS_ERR_LOG_CTRL_LEVEL_CRITICAL},
+    {LNAS_OM_ERRLOG_ALM_ID_ESM_RES_ALLOC_FAIL,  LNAS_ERR_LOG_CTRL_LEVEL_CRITICAL},
+    {LNAS_OM_ERRLOG_ALM_ID_OVERFLOW_FAIL,       LNAS_ERR_LOG_CTRL_LEVEL_CRITICAL},
+    {LNAS_OM_ERRLOG_ALM_ID_LOCAL_DETACH_FAIL,   LNAS_ERR_LOG_CTRL_LEVEL_CRITICAL},
+    {LNAS_OM_ERRLOG_ALM_ID_AUTH_REJ,            LNAS_ERR_LOG_CTRL_LEVEL_CRITICAL},
+};
+
+NAS_LMM_CN_CAUSE_TRANS_STRU          g_astEmmErrlogCnCauseMap[] =
+{
+    /*------------casue-----------------------------------error id---------------------------*/
+    {NAS_LMM_CAUSE_IMSI_UNKNOWN_IN_HSS,                 EMM_OM_ERRLOG_CN_CAUSE_IMSI_UNKNOWN_IN_HSS},
+    {NAS_LMM_CAUSE_ILLEGAL_UE,                          EMM_OM_ERRLOG_CN_CAUSE_ILLEGAL_UE},
+    {NAS_LMM_CAUSE_IMEI_NOT_ACCEPTED,                   EMM_OM_ERRLOG_CN_CAUSE_IMEI_NOT_ACCEPTED},
+    {NAS_LMM_CAUSE_ILLEGAL_ME,                          EMM_OM_ERRLOG_CN_CAUSE_ILLEGAL_ME},
+    {NAS_LMM_CAUSE_EPS_SERV_NOT_ALLOW,                  EMM_OM_ERRLOG_CN_CAUSE_EPS_SERV_NOT_ALLOW},
+    {NAS_LMM_CAUSE_EPS_SERV_AND_NON_EPS_SERV_NOT_ALLOW, EMM_OM_ERRLOG_CN_CAUSE_EPS_SERV_AND_NON_EPS_SERV_NOT_ALLOW},
+    {NAS_LMM_CAUSE_UE_ID_NOT_DERIVED,                   EMM_OM_ERRLOG_CN_CAUSE_UE_ID_NOT_DERIVED},
+    {NAS_LMM_CAUSE_IMPLICIT_DETACHED,                   EMM_OM_ERRLOG_CN_CAUSE_IMPLICIT_DETACHED},
+    {NAS_LMM_CAUSE_PLMN_NOT_ALLOW,                      EMM_OM_ERRLOG_CN_CAUSE_PLMN_NOT_ALLOW},
+    {NAS_LMM_CAUSE_TA_NOT_ALLOW,                        EMM_OM_ERRLOG_CN_CAUSE_TA_NOT_ALLOW},
+    {NAS_LMM_CAUSE_ROAM_NOT_ALLOW,                      EMM_OM_ERRLOG_CN_CAUSE_ROAM_NOT_ALLOW},
+    {NAS_LMM_CAUSE_EPS_SERV_NOT_ALLOW_IN_PLMN,          EMM_OM_ERRLOG_CN_CAUSE_EPS_SERV_NOT_ALLOW_IN_PLMN},
+    {NAS_LMM_CAUSE_NO_SUITABL_CELL,                     EMM_OM_ERRLOG_CN_CAUSE_NO_SUITABL_CELL},
+    {NAS_LMM_CAUSE_MSC_UNREACHABLE,                     EMM_OM_ERRLOG_CN_CAUSE_MSC_UNREACHABLE},
+    {NAS_LMM_CAUSE_NETWORK_FAILURE,                     EMM_OM_ERRLOG_CN_CAUSE_NETWORK_FAILURE},
+    {NAS_LMM_CAUSE_CS_NOT_AVAIL,                        EMM_OM_ERRLOG_CN_CAUSE_CS_NOT_AVAIL},
+    {NAS_LMM_CAUSE_ESM_FAILURE,                         EMM_OM_ERRLOG_CN_CAUSE_ESM_FAILURE},
+    {NAS_LMM_CAUSE_MAC_FAILURE,                         EMM_OM_ERRLOG_CN_CAUSE_MAC_FAILURE},
+    {NAS_LMM_CAUSE_SYNCH_FAILURE,                       EMM_OM_ERRLOG_CN_CAUSE_SYNCH_FAILURE},
+    {NAS_LMM_CAUSE_PROCEDURE_CONGESTION,                EMM_OM_ERRLOG_CN_CAUSE_PROCEDURE_CONGESTION},
+    {NAS_LMM_CAUSE_UE_SECU_CAP_MISMATCH,                EMM_OM_ERRLOG_CN_CAUSE_UE_SECU_CAP_MISMATCH},
+    {NAS_LMM_CAUSE_SECU_MODE_REJECTED_UNSPECIFIED,      EMM_OM_ERRLOG_CN_CAUSE_SECU_MODE_REJECTED_UNSPECIFIED},
+    {NAS_LMM_CAUSE_NOT_AUTHORIZED_FOR_THIS_CSG,         EMM_OM_ERRLOG_CN_CAUSE_NOT_AUTHORIZED_FOR_THIS_CSG},
+    {NAS_LMM_CAUSE_REQUESTED_SER_OPTION_NOT_AUTHORIZED_IN_PLMN, EMM_OM_ERRLOG_CN_CAUSE_REQUESTED_SER_OPTION_NOT_AUTHORIZED_IN_PLMN},
+    {NAS_LMM_CAUSE_CS_FALLBACK_CALL_EST_NOT_ALLOWED,    EMM_OM_ERRLOG_CN_CAUSE_CS_FALLBACK_CALL_EST_NOT_ALLOWED},
+    {NAS_LMM_CAUSE_CS_DOMAIN_TMP_NOT_ALLOWED,           EMM_OM_ERRLOG_CN_CAUSE_CS_DOMAIN_TMP_NOT_ALLOWED},
+    {NAS_LMM_CAUSE_NO_EPS_BEARER_CONTEXT_ACTIVATED,     EMM_OM_ERRLOG_CN_CAUSE_NO_EPS_BEARER_CONTEXT_ACTIVATED},
+    {NAS_LMM_CAUSE_SERVICE_NETWORK_FAILURE,             EMM_OM_ERRLOG_CN_CAUSE_SERVER_NETWORK_FAILURE},
+    {NAS_LMM_CAUSE_SEMANTICALLY_INCORRECT_MSG,          EMM_OM_ERRLOG_CN_CAUSE_SEMANTICALLY_INCORRECT_MSG},
+    {NAS_LMM_CAUSE_INVALID_MANDATORY_INF,               EMM_OM_ERRLOG_CN_CAUSE_INVALID_MANDATORY_INFORMATION},
+    {NAS_LMM_CAUSE_IE_NONEXIST_NOTIMPLEMENTED,          EMM_OM_ERRLOG_CN_CAUSE_MSG_TYPE_NON_EXIST_OR_IMPLEMENT},
+    {NAS_LMM_CAUSE_MSG_TYPE_NOT_COMPATIBLE,             EMM_OM_ERRLOG_CN_CAUSE_MSG_TYPE_NOT_COMPATIBLE},
+    {NAS_LMM_CAUSE_MSG_NONEXIST_NOTIMPLEMENTE,          EMM_OM_ERRLOG_CN_CAUSE_INFO_ELEMENT_NON_EXIST_OR_NOT_IMPLEMENT},
+    {NAS_LMM_CAUSE_CONDITIONAL_IE_ERROR,                EMM_OM_ERRLOG_CN_CAUSE_CONDITIONAL_IE_ERROR},
+    {NAS_LMM_CAUSE_MSG_NOT_COMPATIBLE,                  EMM_OM_ERRLOG_CN_CAUSE_MSG_NOT_COMPATIBLE},
+    {NAS_LMM_CAUSE_PROTOCOL_ERROR,                      EMM_OM_ERRLOG_CN_CAUSE_PROTOCOL_ERROR},
+};
+
+static VOS_UINT32   g_astEmmErrlogCnCauseNum
+        = sizeof(g_astEmmErrlogCnCauseMap)/sizeof(NAS_LMM_CN_CAUSE_TRANS_STRU);
+#endif
 
 
 static NAS_EMM_PROTOCOL_STATE_MAP_STRU g_astProtocolStateMap[] =
@@ -181,35 +250,9 @@ EMM_FTM_INFO_MANAGE_STRU             g_astEmmFtmInfoManage;
 EMM_DATABASE_INFO_STRU               g_astEmmInfo;
 /* xiongxianghui00253310 modify for ftmerrlog end   */
 
-/*lifuxin00253982 modify for error log start*/
-EMM_ERRLOG_INFO_MANAGE_STRU          g_astEmmErrlogInfoManage;
-NAS_LMM_CN_CAUSE_TRANS_STRU          g_astEmmErrlogErrNoMap[] =
-{
-
-    /*------------casue-----------------------------------error id---------------------------*/
-    {NAS_LMM_CAUSE_ILLEGAL_UE,                  LNAS_OM_ERRLOG_ID_LMM_CN_CAUSE_ILLEGAL_UE},
-    {NAS_LMM_CAUSE_EPS_SERV_NOT_ALLOW,          LNAS_OM_ERRLOG_ID_LMM_CN_CAUSE_EPS_SERV_AND_NON_EPS_SERV_NOT_ALLOW},
-    {NAS_LMM_CAUSE_EPS_SERV_AND_NON_EPS_SERV_NOT_ALLOW, LNAS_OM_ERRLOG_ID_LMM_CN_CAUSE_EPS_SERV_AND_NON_EPS_SERV_NOT_ALLOW},
-    {NAS_LMM_CAUSE_PLMN_NOT_ALLOW,              LNAS_OM_ERRLOG_ID_LMM_CN_CAUSE_PLMN_NOT_ALLOW},
-    {NAS_LMM_CAUSE_TA_NOT_ALLOW,                LNAS_OM_ERRLOG_ID_LMM_CN_CAUSE_TA_NOT_ALLOW},
-    {NAS_LMM_CAUSE_ROAM_NOT_ALLOW,              LNAS_OM_ERRLOG_ID_LMM_CN_CAUSE_ROAM_NOT_ALLOW},
-    {NAS_LMM_CAUSE_EPS_SERV_NOT_ALLOW_IN_PLMN,  LNAS_OM_ERRLOG_ID_LMM_CN_CAUSE_EPS_SERV_NOT_ALLOW_IN_PLMN},
-    {NAS_LMM_CAUSE_NO_SUITABL_CELL,             LNAS_OM_ERRLOG_ID_LMM_CN_CAUSE_NO_SUITABL_CELL},
-    {NAS_LMM_CAUSE_ESM_FAILURE,                 LNAS_OM_ERRLOG_ID_LMM_CN_CAUSE_ESM_FAILURE},
-    {NAS_LMM_CAUSE_NOT_AUTHORIZED_FOR_THIS_CSG, LNAS_OM_ERRLOG_ID_LMM_CN_CAUSE_NOT_AUTHORIZED_FOR_THIS_CSG},
-    {NAS_LMM_CAUSE_SEMANTICALLY_INCORRECT_MSG,  LNAS_OM_ERRLOG_ID_LMM_CN_CAUSE_SEMANTICALLY_INCORRECT_MSG},
-    {NAS_LMM_CAUSE_INVALID_MANDATORY_INF,       LNAS_OM_ERRLOG_ID_LMM_CN_CAUSE_INVALID_MANDATORY_INFORMATION},
-    {NAS_LMM_CAUSE_MSG_NONEXIST_NOTIMPLEMENTE,  LNAS_OM_ERRLOG_ID_LMM_CN_CAUSE_MSG_TYPE_NON_EXIST_OR_IMPLEMENT},
-    {NAS_LMM_CAUSE_IE_NONEXIST_NOTIMPLEMENTED,  LNAS_OM_ERRLOG_ID_LMM_CN_CAUSE_INFO_ELEMENT_NON_EXIST_OR_NOT_IMPLEMENT},
-    {NAS_LMM_CAUSE_PROTOCOL_ERROR,              LNAS_OM_ERRLOG_ID_LMM_CN_CAUSE_PROTOCOL_ERROR},
-};
-
-static VOS_UINT32   g_astEmmErrlogErrNum
-        = sizeof(g_astEmmErrlogErrNoMap)/sizeof(NAS_LMM_CN_CAUSE_TRANS_STRU);
-/*lifuxin00253982 modify for error log end*/
 
 APP_MM_DT_STRU                    g_stEmmDtInfo = {0};
-
+LNAS_EXC_LOG_INFO_STRU  g_stLNasResetInfo;
 /*****************************************************************************
   3 Function
 *****************************************************************************/
@@ -459,6 +502,8 @@ VOS_UINT32 NAS_LMM_DtCompareImsi(VOS_VOID)
     VOS_UINT32                          ulRst = NAS_EMM_SUCC;
     NAS_OM_IMSI_INFO_STRU              stImsiInfo;
     VOS_UINT8                          ucIndex;
+
+    PS_MEM_SET(&stImsiInfo, 0, sizeof(NAS_OM_IMSI_INFO_STRU));
 
     /*如果当前无卡,向OM回复查询IMSI为空*/
     if (NAS_LMM_SIM_STATUS_AVAILABLE == NAS_LMM_GetSimState())
@@ -1484,7 +1529,7 @@ VOS_VOID  NAS_LMM_PubmIndImsi(VOS_VOID)
 VOS_VOID  NAS_LMM_PubmIndEmmState(VOS_VOID)
 {
     APP_MM_INQ_EMM_STATE_IND_STRU      *pstAppEmmStateInd;
-    NAS_OM_EMM_STATE_STRU              stEmmPtlState;
+    NAS_OM_EMM_STATE_STRU              stEmmPtlState    = {0};
 
     NAS_LMM_PUBM_LOG_WARN("NAS_LMM_PubmIndEmmState: enter");
 
@@ -2260,40 +2305,69 @@ VOS_UINT32 NAS_LMM_CompareEmmDatabaseInfo( VOS_VOID )
      return;
 
  }
-VOS_VOID NAS_LMM_ErrlogInfoInit(VOS_VOID)
+
+#if (FEATURE_ON == FEATURE_PTM)
+/*lint -e826*/
+VOS_UINT32 NAS_LMM_PreProcMsgEsmSaveErrlogInd(MsgBlock *     pMsg)
 {
-    VOS_UINT32                         ulRslt;
-    NV_ID_ERR_LOG_CTRL_INFO_STRU       stNvErrlogCtrl;
+    EMM_ESM_SAVE_ERRLOG_IND_STRU        *pstSaveEsmErrMsg = VOS_NULL;
+    VOS_VOID                            *pstEsmErrlogRslt = VOS_NULL;
+    VOS_UINT32                          ulLength = 0;
+    VOS_UINT32                          ulResult = 0;
 
-    NAS_LMM_PUBM_LOG_INFO("NAS_LMM_ErrlogInfoInit!");
+    NAS_LMM_PUBM_LOG_INFO("NAS_LMM_PreProcMsgEsmSaveErrlogInd Enter.");
 
-    NAS_LMM_MEM_SET(&stNvErrlogCtrl, 0, sizeof(NV_ID_ERR_LOG_CTRL_INFO_STRU));
-    NAS_LMM_MEM_SET(NAS_EMM_GetErrlogManageAddr(), 0, sizeof(EMM_ERRLOG_INFO_MANAGE_STRU));
-    /*lint -e516*/
-    /*lint -e732*/
-    ulRslt = LPs_NvimItem_Read(en_NV_Item_ErrLogCtrlInfo, &stNvErrlogCtrl, sizeof(NV_ID_ERR_LOG_CTRL_INFO_STRU));
-    /*lint +e732*/
-    /*lint +e516*/
-    if(EN_NV_OK != ulRslt)
+    /*取出buffer中的ESM errlog数据*/
+    pstSaveEsmErrMsg = (EMM_ESM_SAVE_ERRLOG_IND_STRU*)pMsg;
+    pstEsmErrlogRslt = (VOS_VOID*)pstSaveEsmErrMsg->stEmmEsmErrlog.aucEsmMsg;
+    ulLength = pstSaveEsmErrMsg->stEmmEsmErrlog.ulEsmMsgSize;
+
+    /*
+       将异常信息写入Buffer中
+       实际写入的字符数与需要写入的不等则打印异常
+     */
+    ulResult = NAS_EMM_PutErrLogRingBuf((VOS_CHAR *)pstEsmErrlogRslt, ulLength);
+    if (ulResult != ulLength)
     {
-        NAS_EMM_GetErrlogActionFlag() = NAS_EMM_ERRLOG_ACTION_FLAG_CLOSE;
-        NAS_EMM_GetErrlogAlmLevel() = NAS_EMM_ERRLOG_LEVEL_CRITICAL;
+        NAS_LMM_PUBM_LOG2_ERR("NAS_LMM_PreProcMsgEsmSaveErrlogInd: Push buffer error. ulLength =, ulResult = ", ulLength, ulResult);
+    }
+
+    return NAS_LMM_MSG_HANDLED;
+}
+/*lint +e826*/
+
+VOS_VOID NAS_LMM_RevNvCtrl(VOS_VOID)
+{
+    VOS_UINT32                              ulRslt;
+    NV_ID_ERR_LOG_CTRL_INFO_STRU            stOMErrLogCtrlInfo;
+    NAS_LMM_PUBM_LOG_INFO("NAS_LMM_RevNvCtrl!!!");
+
+    PS_MEM_SET(&stOMErrLogCtrlInfo, 0x00, sizeof(NV_ID_ERR_LOG_CTRL_INFO_STRU));
+
+    ulRslt = LPs_NvimItem_Read(en_NV_Item_ErrLogCtrlInfo, &stOMErrLogCtrlInfo, sizeof(NV_ID_ERR_LOG_CTRL_INFO_STRU) );
+    if(PS_SUCC != ulRslt)
+    {
         return;
     }
 
-    if(1 == stNvErrlogCtrl.ucAlmStatus)
+    /* 更新ERRLOG控制标识, 0表示关闭errlog， 1表示开启errlog*/
+    if ((VOS_FALSE == stOMErrLogCtrlInfo.ucAlmStatus)
+     || (VOS_TRUE  == stOMErrLogCtrlInfo.ucAlmStatus))
     {
-        NAS_EMM_GetErrlogActionFlag() = NAS_EMM_ERRLOG_ACTION_FLAG_OPEN;
-        NAS_EMM_GetErrlogAlmLevel() = stNvErrlogCtrl.ucAlmLevel;
+        NAS_EMM_SetErrlogCtrlInfoCtrlFlag(stOMErrLogCtrlInfo.ucAlmStatus);
     }
-    else
+
+    /*根据下发的errlog等级去决定是否存储log信息*/
+    if ((stOMErrLogCtrlInfo.ucAlmLevel >= LNAS_ERR_LOG_CTRL_LEVEL_CRITICAL)
+     && (stOMErrLogCtrlInfo.ucAlmLevel <= LNAS_ERR_LOG_CTRL_LEVEL_WARNING))
     {
-        NAS_EMM_GetErrlogActionFlag() = NAS_EMM_ERRLOG_ACTION_FLAG_CLOSE;
-        NAS_EMM_GetErrlogAlmLevel() = NAS_EMM_ERRLOG_LEVEL_CRITICAL;
+        NAS_EMM_SetErrlogCtrlInfoALMLevel(stOMErrLogCtrlInfo.ucAlmLevel);
     }
 
     return;
 }
+
+
 
 
 VOS_UINT32 NAS_LMM_RevOmErrlogCtrlMsg(MsgBlock   *pMsgStru)
@@ -2311,26 +2385,115 @@ VOS_UINT32 NAS_LMM_RevOmErrlogCtrlMsg(MsgBlock   *pMsgStru)
 
     pstOmErrlogCtlInfo = (OM_ERROR_LOG_CTRL_IND_STRU *)(VOS_VOID *)pMsgStru;
 
-    if(1 == pstOmErrlogCtlInfo->ucAlmStatus)
+    /* 更新ERRLOG控制标识, 0表示关闭errlog， 1表示开启errlog*/
+    if ((VOS_FALSE == pstOmErrlogCtlInfo->ucAlmStatus)
+     || (VOS_TRUE  == pstOmErrlogCtlInfo->ucAlmStatus))
     {
-        /*设置商用Errlog功能打开*/
-        NAS_EMM_SetErrlogActionFlag(NAS_EMM_ERRLOG_ACTION_FLAG_OPEN);
-        NAS_EMM_SetErrlogAlmLevel(pstOmErrlogCtlInfo->ucAlmLevel);
+        NAS_EMM_SetErrlogCtrlInfoCtrlFlag(pstOmErrlogCtlInfo->ucAlmStatus);
     }
-    else
+
+    /*根据下发的errlog等级去决定是否存储log信息*/
+    if ((pstOmErrlogCtlInfo->ucAlmLevel >= LNAS_ERR_LOG_CTRL_LEVEL_CRITICAL)
+     && (pstOmErrlogCtlInfo->ucAlmLevel <= LNAS_ERR_LOG_CTRL_LEVEL_WARNING))
     {
-        /*设置商用Errlog功能关闭*/
-        NAS_LMM_MEM_SET(NAS_EMM_GetErrlogManageAddr(), 0, sizeof(EMM_ERRLOG_INFO_MANAGE_STRU));
-        NAS_EMM_SetErrlogActionFlag(NAS_EMM_ERRLOG_ACTION_FLAG_CLOSE);
+        NAS_EMM_SetErrlogCtrlInfoALMLevel(pstOmErrlogCtlInfo->ucAlmLevel);
     }
 
     return NAS_LMM_MSG_HANDLED;
 }
 
 
- VOS_UINT32   NAS_LMM_RevOmReadErrlogReq(const MsgBlock   *pMsgStru)
- {
-    VOS_UINT32  ulErrIndex = 0;
+
+
+VOS_UINT32 NAS_EMM_GetErrLogRingBufUseBytes(VOS_VOID)
+{
+    return (VOS_UINT32)OM_RingBufferNBytes(NAS_EMM_GetErrlogBufferInfoRingBuffer());
+}
+
+
+ VOS_UINT32 NAS_EMM_GetErrLogRingBufContent(
+    VOS_CHAR                           *pbuffer,
+    VOS_UINT32                          ulbytes
+)
+{
+    return (VOS_UINT32)OM_RingBufferGet(NAS_EMM_GetErrlogBufferInfoRingBuffer(), pbuffer, (VOS_INT)ulbytes);
+}
+
+
+VOS_VOID NAS_EMM_CleanErrLogRingBuf(VOS_VOID)
+{
+    OM_RingBufferFlush(NAS_EMM_GetErrlogBufferInfoRingBuffer());
+
+    return;
+}
+
+
+VOS_UINT16 NAS_EMM_GetErrLogAlmLevel(LNAS_OM_ERRLOG_ALM_ID_ENUM_UINT16 enAlmId)
+{
+     VOS_UINT16                          usTableLen;
+     VOS_UINT16                          usStep;
+
+     /* 获取Tab表长度 */
+     usTableLen = sizeof(g_astLNasErrAlmLevelTb)/sizeof(g_astLNasErrAlmLevelTb[0]);
+
+     /* 查表返回对应Alm ID的log等级 */
+     for (usStep = 0; usStep < usTableLen; usStep++)
+     {
+         if (g_astLNasErrAlmLevelTb[usStep].enAlmID == enAlmId)
+         {
+             return g_astLNasErrAlmLevelTb[usStep].usLogLevel;
+         }
+     }
+
+ /* 未查到，返回未定义等级 */
+ return LNAS_ERR_LOG_CTRL_LEVEL_NULL;
+}
+VOS_VOID NAS_EMM_SndAcpuOmErrLogReportCnf(
+ VOS_CHAR                           *pbuffer,
+ VOS_UINT32                          ulBufUseLen
+)
+{
+     LNAS_OM_ERR_LOG_REPORT_CNF_STRU     *pstReqErrlogCnf = VOS_NULL_PTR;
+     VOS_UINT32                          ulMsgLen;
+
+     /* 上报的消息总长度 */
+     ulMsgLen  = sizeof(LNAS_OM_ERR_LOG_REPORT_CNF_STRU) - 4 + ulBufUseLen;
+
+     /* 消息空间申请 */
+     pstReqErrlogCnf = (VOS_VOID*)NAS_LMM_ALLOC_MSG(ulMsgLen);
+     if (VOS_NULL_PTR == pstReqErrlogCnf)
+     {
+         NAS_LMM_PUBM_LOG_INFO("NAS_EMM_SndAcpuOmErrLogReportCnf, Alloc mem error!");
+         return;
+     }
+
+     pstReqErrlogCnf->ulReceiverCpuId  = VOS_LOCAL_CPUID;
+     pstReqErrlogCnf->ulSenderCpuId    = VOS_LOCAL_CPUID;
+     pstReqErrlogCnf->ulReceiverPid    = ACPU_PID_OM;
+     pstReqErrlogCnf->ulSenderPid      = PS_PID_MM;
+     pstReqErrlogCnf->ulMsgName        = ID_LNAS_OM_ERR_LOG_REPORT_CNF;
+     pstReqErrlogCnf->ulMsgType        = OM_ERR_LOG_MSG_ERR_REPORT;
+     pstReqErrlogCnf->ulMsgSN          = 0;
+     pstReqErrlogCnf->ulRptlen         = ulBufUseLen;
+
+     if (VOS_NULL_PTR != pbuffer)
+     {
+         PS_MEM_CPY(pstReqErrlogCnf->aucContent, pbuffer, ulBufUseLen);
+     }
+
+     NAS_LMM_SEND_MSG(pstReqErrlogCnf);
+
+     return;
+}
+
+
+VOS_UINT32   NAS_LMM_RevOmReadErrlogReq(MsgBlock   *pMsgStru)
+{
+    VOS_CHAR                                       *pbuffer   = VOS_NULL_PTR;
+    VOS_UINT32                                     ulBufUseLen;
+    VOS_UINT32                                     ulRealLen;
+    VOS_UINT32                                     ulTotalLen;
+    LNAS_ERR_INFO_OVERFLOW_COUNT_EVENT_STRU        stLnasErrLogOverflowEvent;
 
     NAS_LMM_PUBM_LOG_INFO("NAS_LMM_RevOmReadErrlogReq!");
 
@@ -2341,251 +2504,1072 @@ VOS_UINT32 NAS_LMM_RevOmErrlogCtrlMsg(MsgBlock   *pMsgStru)
         return NAS_LMM_MSG_DISCARD;
     }
 
-    /*发送error log信息到OM*/
-    NAS_LMM_SendOmErrlogCnf();
+    /* RING BUFFER数据长度 */
+    ulBufUseLen = NAS_EMM_GetErrLogRingBufUseBytes();
 
-    /*上报之后将error log buffer清空*/
-    for(ulErrIndex = 0; ulErrIndex < NAS_EMM_ERRLOG_MAX_NUM; ulErrIndex++)
+    ulTotalLen = ulBufUseLen + sizeof(LNAS_ERR_INFO_OVERFLOW_COUNT_EVENT_STRU);
+
+    pbuffer = (VOS_CHAR *)NAS_LMM_MEM_ALLOC(ulTotalLen);
+    if (VOS_NULL_PTR == pbuffer)
     {
-        NAS_LMM_MEM_SET(&NAS_EMM_GetErrlogInfo(ulErrIndex), 0, sizeof(LMM_ERR_INFO_DETAIL_STRU));
+        /* 发送ID_OM_ERR_LOG_REPORT_CNF内容为空的消息给OM */
+        NAS_EMM_SndAcpuOmErrLogReportCnf(VOS_NULL_PTR, 0);
+        return VOS_TRUE;
     }
 
-    NAS_EMM_GetErrlogAmount() = 0;
-    NAS_EMM_GetErrlogNextNullPos() = 0;
+    PS_MEM_SET(pbuffer, 0, ulTotalLen);
+
+    /* 获取RING BUFFER的内容 */
+    ulRealLen = NAS_EMM_GetErrLogRingBufContent(pbuffer, ulBufUseLen);
+    if (ulRealLen != ulBufUseLen)
+    {
+        /* 发送ID_OM_ERR_LOG_REPORT_CNF内容为空的消息给OM */
+        NAS_EMM_SndAcpuOmErrLogReportCnf(VOS_NULL_PTR, 0);
+        NAS_LMM_MEM_FREE(pbuffer);
+        return VOS_TRUE;
+    }
+
+    /* 将缓冲区溢出次数信息追加在RingBuf后面 */
+    NAS_EMM_COMM_BULID_ERRLOG_HEADER_INFO(&stLnasErrLogOverflowEvent.stHeader,
+                                      VOS_GetModemIDFromPid(PS_PID_MM),
+                                      LNAS_OM_ERRLOG_ALM_ID_OVERFLOW_FAIL,
+                                      NAS_EMM_GetErrLogAlmLevel(LNAS_OM_ERRLOG_ALM_ID_OVERFLOW_FAIL),
+                                      VOS_GetSlice(),
+                                      (sizeof(LNAS_ERR_INFO_OVERFLOW_COUNT_EVENT_STRU) - sizeof(OM_ERR_LOG_HEADER_STRU)));
+
+    stLnasErrLogOverflowEvent.ulOverflowCount = NAS_EMM_GetErrlogBufferInfoOverflowCnt();
+
+    PS_MEM_CPY(pbuffer + ulBufUseLen, &stLnasErrLogOverflowEvent, sizeof(stLnasErrLogOverflowEvent));
+
+    /* 获取完了后需要将RINGBUFFER清空 */
+    NAS_EMM_CleanErrLogRingBuf();
+
+    /* 重置溢出计数 */
+    NAS_EMM_SetErrlogBufferInfoOverflowCnt(0);
+
+    /* 发送ID_OM_ERR_LOG_REPORT_CNF消息给ACPU OM */
+    NAS_EMM_SndAcpuOmErrLogReportCnf(pbuffer, ulTotalLen);
+
+    NAS_LMM_MEM_FREE(pbuffer);
 
     return NAS_LMM_MSG_HANDLED;
- }
-
-
-VOS_VOID     NAS_LMM_SendOmErrlogCnf(VOS_VOID)
-{
-    LMM_OM_ERR_LOG_REPORT_CNF_STRU *pErrLogMsg;
-    VOS_UINT32  ulErrIndex = 0;
-
-    NAS_LMM_PUBM_LOG1_INFO("NAS_LMM_SendOmErrlogCnf: ActionFlag = ", NAS_EMM_GetErrlogActionFlag());
-
-    /*申请消息内存*/
-    pErrLogMsg = (VOS_VOID *)NAS_LMM_ALLOC_MSG(sizeof(LMM_OM_ERR_LOG_REPORT_CNF_STRU));
-
-    /*判断申请结果，若失败打印错误并退出*/
-    if (VOS_NULL_PTR == pErrLogMsg)
-    {
-        /*打印错误*/
-        NAS_LMM_PUBM_LOG_ERR("NAS_LMM_SendOmErrlogCnf: MSG ALLOC ERR!");
-        return;
-    }
-
-    NAS_LMM_MEM_SET(pErrLogMsg, 0, sizeof(LMM_OM_ERR_LOG_REPORT_CNF_STRU))
-
-    /*构造ID_EMM_ESM_PDN_CON_IND消息*/
-    /*填充消息头*/
-    NAS_LMM_COMP_OM_MSG_HEADER(         pErrLogMsg,
-                                         (sizeof(LMM_OM_ERR_LOG_REPORT_CNF_STRU)-
-                                         NAS_EMM_LEN_VOS_MSG_HEADER));
-
-    /*填充消息ID*/
-    pErrLogMsg->ulMsgName                  = ID_OM_ERR_LOG_REPORT_CNF;
-
-    /*填充消息内容*/
-    pErrLogMsg->ulMsgType                  = OM_ERR_LOG_MSG_ERR_REPORT;
-    pErrLogMsg->ulMsgSN                    = NAS_EMM_GetErrlogMsgSN();
-    NAS_EMM_GetErrlogMsgSN()++;
-
-    if((NAS_EMM_ERRLOG_ACTION_FLAG_OPEN != NAS_EMM_GetErrlogActionFlag())
-        ||(0 == NAS_EMM_GetErrlogAmount()))
-    {
-        pErrLogMsg->ulRptlen = 0;
-    }
-    else
-    {
-        pErrLogMsg->ulRptlen = sizeof(LMM_OM_ERR_LOG_INFO_STRU);
-    }
-
-    pErrLogMsg->stLmmErrlogInfo.ulMsgModuleID = OM_ERR_LOG_MOUDLE_ID_LMM;
-    pErrLogMsg->stLmmErrlogInfo.usModemId = 0;
-    pErrLogMsg->stLmmErrlogInfo.usALMLevel = NAS_EMM_GetErrlogAlmLevel();
-    pErrLogMsg->stLmmErrlogInfo.usALMType = NAS_EMM_GetErrlogAlmType();
-
-    pErrLogMsg->stLmmErrlogInfo.ulAlmLowSlice = NAS_EMM_GetErrlogAlmLowSlice();
-    pErrLogMsg->stLmmErrlogInfo.ulAlmHighSlice = NAS_EMM_GetErrlogAlmHighSlice();
-
-    pErrLogMsg->stLmmErrlogInfo.ulAlmLength = sizeof(LMM_ALM_INFO_STRU);
-
-    pErrLogMsg->stLmmErrlogInfo.stAlmInfo.ulErrlogNum = NAS_EMM_GetErrlogAmount();
-
-    NAS_LMM_PUBM_LOG1_INFO("ulMsgModuleID = ", pErrLogMsg->stLmmErrlogInfo.ulMsgModuleID);
-    NAS_LMM_PUBM_LOG1_INFO("usModemId = ", pErrLogMsg->stLmmErrlogInfo.usModemId);
-    NAS_LMM_PUBM_LOG1_INFO("usALMLevel = ", pErrLogMsg->stLmmErrlogInfo.usALMLevel);
-    NAS_LMM_PUBM_LOG1_INFO("usALMType = ", pErrLogMsg->stLmmErrlogInfo.usALMType);
-    NAS_LMM_PUBM_LOG1_INFO("ulAlmLowSlice = ", pErrLogMsg->stLmmErrlogInfo.ulAlmLowSlice);
-    NAS_LMM_PUBM_LOG1_INFO("ulAlmHighSlice = ", pErrLogMsg->stLmmErrlogInfo.ulAlmHighSlice);
-    NAS_LMM_PUBM_LOG1_INFO("ulAlmLength = ", pErrLogMsg->stLmmErrlogInfo.ulAlmLength);
-    NAS_LMM_PUBM_LOG1_INFO("ulErrlogNum = ", pErrLogMsg->stLmmErrlogInfo.stAlmInfo.ulErrlogNum);
-
-    for(ulErrIndex = 0; ulErrIndex < NAS_EMM_GetErrlogAmount(); ulErrIndex++)
-    {
-        pErrLogMsg->stLmmErrlogInfo.stAlmInfo.stLmmErrInfoDetail[ulErrIndex].usErrLogID =
-            NAS_EMM_GetErrlogInfo(ulErrIndex).usErrLogID;
-        NAS_LMM_PUBM_LOG1_INFO("usErrLogID = ", NAS_EMM_GetErrlogInfo(ulErrIndex).usErrLogID);
-    }
-
-    /*向OM模块发送状态变化消息*/
-    NAS_LMM_SEND_MSG( pErrLogMsg);
-
-    return;
 }
 
 
-VOS_VOID NAS_LMM_ErrlogInfoProc(VOS_UINT8 ucCnCause)
+VOS_UINT32 NAS_EMM_IsErrLogNeedRecord(VOS_UINT16 usLevel)
 {
-    VOS_UINT64                          ulCurTime;
-    LMM_ERR_INFO_DETAIL_STRU            stErrlogInfo;
+     /* Log开关关闭，不需要上报 */
+     if (0 == NAS_EMM_GetErrlogCtrlInfoCtrlFlag())
+     {
+        NAS_LMM_PUBM_LOG_INFO("NAS_EMM_IsErrLogNeedRecord1");
+        return VOS_FALSE;
+     }
 
-    NAS_LMM_PUBM_LOG_INFO("NAS_LMM_ErrlogInfoProc!");
+     /* 模块log级别usLevel大于用户设置的log上报级别或usLevel无效，不需要上报 */
+     if ((NAS_EMM_GetErrlogCtrlInfoALMLevel() < usLevel)
+      || (LNAS_ERR_LOG_CTRL_LEVEL_NULL == usLevel))
+     {
+        NAS_LMM_PUBM_LOG_INFO("NAS_EMM_IsErrLogNeedRecord2");
+        return VOS_FALSE;
+     }
 
-    if (NAS_EMM_ERRLOG_ACTION_FLAG_OPEN != NAS_EMM_GetErrlogActionFlag())
-    {
-        NAS_LMM_PUBM_LOG_INFO("NAS_EMM_ERRLOG_ACTION_FLAG_OPEN != NAS_EMM_GetErrlogActionFlag()!");
-
-        return;
-    }
-    (VOS_VOID)BSP_BBPGetCurTime(&ulCurTime);
-    NAS_EMM_GetErrlogAlmLowSlice() = ulCurTime & 0xffffffff;
-    NAS_EMM_GetErrlogAlmHighSlice() = 0;
-
-    stErrlogInfo.usErrLogID = NAS_LMM_CnCauseProc(ucCnCause);
-
-    NAS_LMM_MEM_CPY(&NAS_EMM_GetErrlogInfo(NAS_EMM_GetErrlogNextNullPos()),
-                    &stErrlogInfo,
-                    sizeof(LMM_ERR_INFO_DETAIL_STRU));
-
-    if(NAS_EMM_GetErrlogAmount() < NAS_EMM_ERRLOG_MAX_NUM)
-    {
-        /* 存储的商用Errlog个数小于NAS_EMM_ERRLOG_MAX_NUM */
-
-        NAS_EMM_GetErrlogNextNullPos()++;
-
-        NAS_EMM_GetErrlogAmount()++;
-
-        if(NAS_EMM_GetErrlogAmount() >= NAS_EMM_ERRLOG_MAX_NUM)
-        {
-            NAS_EMM_GetErrlogNextNullPos() = 0;
-        }
-    }
-    else
-    {
-        /* 存储的商用Errlog个数等于NAS_EMM_ERRLOG_MAX_NUM */
-
-        NAS_EMM_GetErrlogNextNullPos()++;
-
-        if(NAS_EMM_GetErrlogNextNullPos() >= NAS_EMM_ERRLOG_MAX_NUM)
-        {
-            NAS_EMM_GetErrlogNextNullPos() = 0;
-        }
-    }
-
-    return;
+     return VOS_TRUE;
 }
 
 
-
-LNAS_OM_ERRLOG_ID_ENUM_UINT16  NAS_LMM_CnCauseProc(NAS_EMM_CN_CAUSE_ENUM_UINT8 ucCnCause)
+EMM_OM_ERRLOG_CN_CAUSE_ENUM_UINT16  NAS_LMM_CnCauseProc(NAS_EMM_CN_CAUSE_ENUM_UINT8 ucCnCause)
 {
-    LNAS_OM_ERRLOG_ID_ENUM_UINT16   ulErrId = 0;
+    EMM_OM_ERRLOG_CN_CAUSE_ENUM_UINT16   ulErrId = 0;
     VOS_UINT32 i;
 
     NAS_LMM_PUBM_LOG_INFO("NAS_LMM_CnCauseProc!");
 
-    for(i = 0; i < g_astEmmErrlogErrNum; i++)
+    for(i = 0; i < g_astEmmErrlogCnCauseNum; i++)
     {
-        if(ucCnCause == g_astEmmErrlogErrNoMap[i].ulCauseId)
+        if(ucCnCause == g_astEmmErrlogCnCauseMap[i].ulCauseId)
         {
-            ulErrId = g_astEmmErrlogErrNoMap[i].ulErrorlogID;
+            ulErrId = g_astEmmErrlogCnCauseMap[i].ulErrorlogID;
             break;
         }
     }
-    if(g_astEmmErrlogErrNum == i)
+    if(g_astEmmErrlogCnCauseNum == i)
     {
-        ulErrId = LNAS_OM_ERRLOG_ID_CN_CAUSE_OTHERS;
+        ulErrId = EMM_OM_ERRLOG_CN_CAUSE_OTHERS;
     }
 
     return ulErrId;
 }
 
-/* xiongxianghui00253310 modify for ftmerrlog end  */
 
-/*leixiantiao fix pclint error 826 begin*/
-/*lint -e826*/
-VOS_VOID NAS_LMM_SaveRevMsgInfo(MsgBlock *pMsg)
+VOS_UINT32 NAS_EMM_PutErrLogRingBuf(
+    VOS_CHAR                           *pbuffer,
+    VOS_UINT32                          ulbytes
+)
 {
-    NAS_LMM_MSG_SAVE_INFO_STRU    *pstRevMsgInfo = VOS_NULL_PTR;
-    NAS_LMM_PID_MSG_STRU          *pMmPidMsg = VOS_NULL_PTR;
-    pMmPidMsg                = (NAS_LMM_PID_MSG_STRU *)pMsg;
+    VOS_UINT32                          ulFreeSize;
+    VOS_UINT32                          ulCount;
+    OM_RING_ID                          pLnasRingBuffer;
 
-
-    /*获取地址*/
-    pstRevMsgInfo = NAS_EMM_GetErrlogMsgQueueAddr();
-
-    if(NAS_SAVE_RECEIVE_MSG_INFO_NUM <= pstRevMsgInfo->ulNextIndex)
+    pLnasRingBuffer = NAS_EMM_GetErrlogBufferInfoRingBuffer();
+    if (VOS_NULL_PTR == pLnasRingBuffer)
     {
-        pstRevMsgInfo->ulNextIndex = 0;
+        return 0;
     }
 
-    /*填写错误打印信息*/
-    pstRevMsgInfo->astReciveMsgInfo[pstRevMsgInfo->ulNextIndex].ulTimeStamp = VOS_GetTick();
-    pstRevMsgInfo->astReciveMsgInfo[pstRevMsgInfo->ulNextIndex].ulSendPid = pMmPidMsg->ulSenderPid;
-    pstRevMsgInfo->astReciveMsgInfo[pstRevMsgInfo->ulNextIndex].ulMsgName = pMmPidMsg->ulMsgId;
+    /* 如果写入比RING BUFFER还大则不写入 */
+    if (ulbytes > LNAS_RING_BUFFER_SIZE)
+    {
+        return 0;
+    }
 
-    pstRevMsgInfo->ulNextIndex++;
+    /* 获取RING BUFFER剩余空间大小 */
+    ulFreeSize = (VOS_UINT32)OM_RingBufferFreeBytes(pLnasRingBuffer);
+
+    ulCount = NAS_EMM_GetErrlogBufferInfoOverflowCnt();
+    /* 如果剩余空间不足写入的大小，则清空RING BUFFER */
+    if (ulFreeSize < ulbytes)
+    {
+        ulCount++;
+        NAS_EMM_SetErrlogBufferInfoOverflowCnt(ulCount);
+
+        OM_RingBufferFlush(pLnasRingBuffer);
+    }
+
+    /* 写入RING BUFFER */
+    return (VOS_UINT32)OM_RingBufferPut(pLnasRingBuffer, pbuffer, (VOS_INT)ulbytes);
 }
+
+
+
+
+EMM_OM_ERRLOG_EST_RESULT_ENUM_UINT32  NAS_LMM_EstCnfFailRsltProc(LRRC_LNAS_EST_RESULT_ENUM_UINT32 ulLrrcEstCnfRslt)
+{
+    EMM_OM_ERRLOG_EST_RESULT_ENUM_UINT32   ulErrlogEstRslt = 0;
+
+    NAS_LMM_PUBM_LOG_INFO("NAS_LMM_EstCnfFailRsltProc!");
+
+    switch(ulLrrcEstCnfRslt)
+    {
+        case LRRC_EST_DELING:
+            ulErrlogEstRslt = EMM_OM_ERRLOG_EST_DELING;
+            break;
+        case LRRC_EST_ACCESS_BARRED_MO_CALL:
+            ulErrlogEstRslt = EMM_OM_ERRLOG_EST_ACCESS_BARRED_MO_CALL;
+            break;
+        case LRRC_EST_ACCESS_BARRED_MO_SIGNAL:
+            ulErrlogEstRslt = EMM_OM_ERRLOG_EST_ACCESS_BARRED_MO_SIGNAL;
+            break;
+        case LRRC_EST_ACCESS_BARRED_ALL:
+            ulErrlogEstRslt = EMM_OM_ERRLOG_EST_ACCESS_BARRED_ALL;
+            break;
+        case LRRC_EST_EST_CONN_FAIL:
+            ulErrlogEstRslt = EMM_OM_ERRLOG_EST_EST_CONN_FAIL;
+            break;
+        case LRRC_EST_CELL_SEARCHING:
+            ulErrlogEstRslt = EMM_OM_ERRLOG_EST_CELL_SEARCHING;
+            break;
+        case LRRC_EST_ACCESS_BARRED_MT_CALL:
+            ulErrlogEstRslt = EMM_OM_ERRLOG_EST_ACCESS_BARRED_MT_CALL;
+            break;
+        case LRRC_EST_ACCESS_BARRED_MO_CSFB:
+            ulErrlogEstRslt = EMM_OM_ERRLOG_EST_ACCESS_BARRED_MO_CSFB;
+            break;
+        case LRRC_EST_ACCESS_BARRED_MO_CALL_AND_CSFB:
+            ulErrlogEstRslt = EMM_OM_ERRLOG_EST_ACCESS_BARRED_MO_CALL_AND_CSFB;
+            break;
+        default:
+             ulErrlogEstRslt = EMM_OM_ERRLOG_EST_RESULT_BUTT;
+            break;
+    }
+
+    return ulErrlogEstRslt;
+}
+
+
+EMM_OM_ERRLOG_SEND_RSLT_ENUM_UINT32  NAS_LMM_DataCnfFailRsltProc(LRRC_LMM_SEND_RSLT_ENUM_UINT32 ulLrrcDataCnfRslt)
+{
+    EMM_OM_ERRLOG_SEND_RSLT_ENUM_UINT32   ulErrlogDataCnfRslt = 0;
+
+    NAS_LMM_PUBM_LOG_INFO("NAS_LMM_DataCnfFailRsltProc!");
+
+    switch(ulLrrcDataCnfRslt)
+    {
+        case LRRC_LMM_SEND_RSLT_FAILURE_HO:
+            ulErrlogDataCnfRslt = EMM_OM_ERRLOG_SEND_RSLT_FAILURE_HO;
+            break;
+        case LRRC_LMM_SEND_RSLT_FAILURE_CONN_REL:
+            ulErrlogDataCnfRslt = EMM_OM_ERRLOG_SEND_RSLT_FAILURE_CONN_REL;
+            break;
+        case LRRC_LMM_SEND_RSLT_FAILURE_CTRL_NOT_CONN:
+            ulErrlogDataCnfRslt = EMM_OM_ERRLOG_SEND_RSLT_FAILURE_CTRL_NOT_CONN;
+            break;
+        case LRRC_LMM_SEND_RSLT_FAILURE_TXN:
+            ulErrlogDataCnfRslt = EMM_OM_ERRLOG_SEND_RSLT_FAILURE_TXN;
+            break;
+        case LRRC_LMM_SEND_RSLT_FAILURE_RLF:
+            ulErrlogDataCnfRslt = EMM_OM_ERRLOG_SEND_RSLT_FAILURE_RLF;
+            break;
+        default:
+            ulErrlogDataCnfRslt = EMM_OM_ERRLOG_SEND_RSLT_BUTT;
+            break;
+    }
+
+    return ulErrlogDataCnfRslt;
+}
+
+VOS_VOID NAS_EMM_AttachErrRecord(
+         VOS_VOID*                         pstAttachFail,
+         EMM_OM_ERRLOG_TYPE_ENUM_UINT16    enErrType)
+{
+    EMM_ERR_INFO_ATTACH_RESULT_EVENT_STRU                   stAttachRslt;
+    NAS_EMM_CN_ATTACH_REJ_STRU                              *pstCnAttachRej = VOS_NULL_PTR;
+
+    LRRC_LMM_EST_CNF_STRU                                   *pstEstCnfMsg = VOS_NULL_PTR;
+    LRRC_LMM_DATA_CNF_STRU                                  *pRrcDataCnf = VOS_NULL_PTR;
+    VOS_UINT32                                              ulIsLogRecord;
+    VOS_UINT32                                              ulLength;
+    VOS_UINT32                                              ulResult;
+    VOS_UINT16                                              usLevel;
+
+    NAS_LMM_PUBM_LOG_INFO("NAS_EMM_AttachErrRecord!!");
+    if(VOS_NULL_PTR == pstAttachFail)
+    {
+        return;
+    }
+
+    /*根据attach不同的fail类型决定传入的结构类型*/
+    switch(enErrType)
+    {
+        case EMM_OM_ERRLOG_TYPE_CN_REJ:
+            pstCnAttachRej = (NAS_EMM_CN_ATTACH_REJ_STRU*)(VOS_VOID*)pstAttachFail;
+            break;
+        case EMM_OM_ERRLOG_TYPE_EST_CNF_FAIL:
+            pstEstCnfMsg = (LRRC_LMM_EST_CNF_STRU*)(VOS_VOID*)pstAttachFail;
+            break;
+        case EMM_OM_ERRLOG_TYPE_DATA_CNF_FAIL:
+            pRrcDataCnf = (LRRC_LMM_DATA_CNF_STRU*)(VOS_VOID*)pstAttachFail;
+            break;
+
+
+        case EMM_OM_ERRLOG_TYPE_TIMEOUT:
+        case EMM_OM_ERRLOG_TYPE_LRRC_REL:
+            break;
+        default:
+            NAS_LMM_PUBM_LOG_ERR("NAS_EMM_AttachErrRecord: Err Type");
+            return;
+    }
+
+    /* 查询对应Alarm Id是否需要记录异常信息 */
+    usLevel       = NAS_EMM_GetErrLogAlmLevel(LNAS_OM_ERRLOG_ALM_ID_ATTACH_FAIL);
+    ulIsLogRecord = NAS_EMM_IsErrLogNeedRecord(usLevel);
+
+    /* 模块异常不需要记录或异常原因值不需要记录时，不保存异常信息 */
+    if (VOS_FALSE == ulIsLogRecord)
+    {
+        return;
+    }
+
+    ulLength = sizeof(EMM_ERR_INFO_ATTACH_RESULT_EVENT_STRU);
+
+    PS_MEM_SET(&stAttachRslt, 0x00, ulLength);
+
+    /*填充attach fail异常场景头*/
+    NAS_EMM_COMM_BULID_ERRLOG_HEADER_INFO(&stAttachRslt.stHeader,
+                                      VOS_GetModemIDFromPid(PS_PID_MM),
+                                      LNAS_OM_ERRLOG_ALM_ID_ATTACH_FAIL,
+                                      usLevel,
+                                      VOS_GetSlice(),
+                                      (ulLength - sizeof(OM_ERR_LOG_HEADER_STRU)));
+    stAttachRslt.enErrType = enErrType;
+
+    /*lint -e613*/
+    /*填充对于attach rej引起的attach fail异常相关的信息，目前填充拒绝原因值，以及attach类型*/
+    if(EMM_OM_ERRLOG_TYPE_CN_REJ == stAttachRslt.enErrType)
+    {
+        stAttachRslt.stAttachCnRej.enCnRejCause = NAS_LMM_CnCauseProc(pstCnAttachRej->ucCause);
+        stAttachRslt.stAttachCnRej.enReqType = (VOS_UINT16)NAS_EMM_GLO_GetCnAttReqType();
+    }
+    else if(EMM_OM_ERRLOG_TYPE_EST_CNF_FAIL == stAttachRslt.enErrType)
+    {
+        stAttachRslt.enEstCnfRslt = NAS_LMM_EstCnfFailRsltProc(pstEstCnfMsg->enResult);
+    }
+    else if(EMM_OM_ERRLOG_TYPE_DATA_CNF_FAIL == stAttachRslt.enErrType)
+    {
+        stAttachRslt.enDataCnfRslt = NAS_LMM_DataCnfFailRsltProc(pRrcDataCnf->enSendRslt);
+    }
+    else
+    {
+        NAS_LMM_PUBM_LOG_INFO("NAS_EMM_AttachErrRecord: No item to Save!");
+    }
+    /*lint +e613*/
+
+
+    /*
+       将异常信息写入Buffer中
+       实际写入的字符数与需要写入的不等则打印异常
+     */
+    ulResult = NAS_EMM_PutErrLogRingBuf((VOS_CHAR *)&stAttachRslt, ulLength);
+    if (ulResult != ulLength)
+    {
+        NAS_LMM_PUBM_LOG2_ERR("NAS_EMM_AttachErrRecord: Push buffer error. ulLength =, ulResult = ", ulLength, ulResult);
+    }
+
+    return;
+}
+
+
+EMM_ERR_LOG_TAU_TYPE_ENUM_UINT16  NAS_LMM_TauTypeTrans(NAS_EMM_CN_TAU_TYPE_ENUM_UINT32 ulTauType)
+{
+    EMM_ERR_LOG_TAU_TYPE_ENUM_UINT16   ulErrTauType = 0;
+
+    switch(ulTauType)
+    {
+        case NAS_EMM_CN_TAU_TYPE_TA_UPDATING:
+            ulErrTauType = EMM_ERR_LOG_TA_UPDATING;
+            break;
+
+        case NAS_EMM_CN_TAU_TYPE_COMBINED_TA_LA_UPDATING:
+            ulErrTauType = EMM_ERR_LOG_COMBINED_TA_LA_UPDATING;
+            break;
+
+        case NAS_EMM_CN_TAU_TYPE_COMBINED_TA_LA_WITH_IMSI:
+            ulErrTauType = EMM_ERR_LOG_COMBINED_TA_LA_WITH_IMSI;
+            break;
+
+        case NAS_EMM_CN_TAU_TYPE_PERIODIC_UPDATING:
+            if(NAS_LMM_REG_DOMAIN_PS == NAS_LMM_GetEmmInfoRegDomain())
+            {
+                ulErrTauType = EMM_ERR_LOG_PS_PERIODIC_UPDATING;
+            }
+            else if(NAS_LMM_REG_DOMAIN_CS_PS == NAS_LMM_GetEmmInfoRegDomain())
+            {
+                ulErrTauType = EMM_ERR_LOG_CS_PS_PERIODIC_UPDATING;
+            }
+            else
+            {
+
+            }
+            break;
+
+        default:
+            break;
+    }
+
+    return ulErrTauType;
+}
+
+
+
+VOS_VOID NAS_EMM_TAUErrRecord(
+         VOS_VOID*                         pstTAUFail,
+         EMM_OM_ERRLOG_TYPE_ENUM_UINT16    enErrType)
+{
+    EMM_ERR_INFO_TAU_RESULT_EVENT_STRU                      stTAURslt;
+    NAS_EMM_CN_TAU_REJ_STRU                                 *pstCnTAURej = VOS_NULL_PTR;
+    LRRC_LMM_EST_CNF_STRU                                   *pstEstCnfMsg = VOS_NULL_PTR;
+    LRRC_LMM_DATA_CNF_STRU                                  *pRrcDataCnf = VOS_NULL_PTR;
+    VOS_UINT32                                              ulIsLogRecord;
+    VOS_UINT32                                              ulLength;
+    VOS_UINT32                                              ulResult;
+    VOS_UINT16                                              usLevel;
+
+    NAS_LMM_PUBM_LOG_INFO("NAS_EMM_TAUErrRecord!!");
+    if(VOS_NULL_PTR == pstTAUFail)
+    {
+        return;
+    }
+
+    /*根据attach不同的fail类型决定传入的结构类型*/
+    switch(enErrType)
+    {
+        case EMM_OM_ERRLOG_TYPE_CN_REJ:
+            pstCnTAURej = (NAS_EMM_CN_TAU_REJ_STRU*)(VOS_VOID*)pstTAUFail;
+            break;
+
+        case EMM_OM_ERRLOG_TYPE_EST_CNF_FAIL:
+            pstEstCnfMsg = (LRRC_LMM_EST_CNF_STRU*)(VOS_VOID*)pstTAUFail;
+            break;
+        case EMM_OM_ERRLOG_TYPE_DATA_CNF_FAIL:
+            pRrcDataCnf = (LRRC_LMM_DATA_CNF_STRU*)(VOS_VOID*)pstTAUFail;
+            break;
+        case EMM_OM_ERRLOG_TYPE_TIMEOUT:
+        case EMM_OM_ERRLOG_TYPE_LRRC_REL:
+            break;
+        default:
+            NAS_LMM_PUBM_LOG_ERR("NAS_EMM_TAUErrRecord: Err Type");
+            return;
+    }
+
+    /* 查询对应Alarm Id是否需要记录异常信息 */
+    usLevel       = NAS_EMM_GetErrLogAlmLevel(LNAS_OM_ERRLOG_ALM_ID_TAU_FAIL);
+    ulIsLogRecord = NAS_EMM_IsErrLogNeedRecord(usLevel);
+
+    /* 模块异常不需要记录或异常原因值不需要记录时，不保存异常信息 */
+    if (VOS_FALSE == ulIsLogRecord)
+    {
+        return;
+    }
+
+    ulLength = sizeof(EMM_ERR_INFO_TAU_RESULT_EVENT_STRU);
+
+    PS_MEM_SET(&stTAURslt, 0x00, ulLength);
+
+    /*填充TAU fail异常场景头*/
+    NAS_EMM_COMM_BULID_ERRLOG_HEADER_INFO(&stTAURslt.stHeader,
+                                      VOS_GetModemIDFromPid(PS_PID_MM),
+                                      LNAS_OM_ERRLOG_ALM_ID_TAU_FAIL,
+                                      usLevel,
+                                      VOS_GetSlice(),
+                                      (ulLength - sizeof(OM_ERR_LOG_HEADER_STRU)));
+    stTAURslt.enErrType = enErrType;
+
+    /*lint -e613*/
+    /*填充对于TAU rej引起的TAU fail异常相关的信息，目前填充拒绝原因值，以及TAU类型*/
+    if(EMM_OM_ERRLOG_TYPE_CN_REJ == stTAURslt.enErrType)
+    {
+        stTAURslt.stTauCnRej.enCnRejCause = NAS_LMM_CnCauseProc(pstCnTAURej->ucEMMCause);
+        stTAURslt.stTauCnRej.enReqType = NAS_LMM_TauTypeTrans(NAS_EMM_TAU_GetTAUtype());
+    }
+    else if(EMM_OM_ERRLOG_TYPE_EST_CNF_FAIL == stTAURslt.enErrType)
+    {
+        stTAURslt.enEstCnfRslt = NAS_LMM_EstCnfFailRsltProc(pstEstCnfMsg->enResult);
+    }
+    else if(EMM_OM_ERRLOG_TYPE_DATA_CNF_FAIL == stTAURslt.enErrType)
+    {
+        stTAURslt.enDataCnfRslt = NAS_LMM_DataCnfFailRsltProc(pRrcDataCnf->enSendRslt);
+    }
+    else
+    {
+        NAS_LMM_PUBM_LOG_INFO("NAS_EMM_TAUErrRecord: No item to Save!");
+    }
+    /*lint +e613*/
+
+    /*
+       将异常信息写入Buffer中
+       实际写入的字符数与需要写入的不等则打印异常
+     */
+    ulResult = NAS_EMM_PutErrLogRingBuf((VOS_CHAR *)&stTAURslt, ulLength);
+    if (ulResult != ulLength)
+    {
+        NAS_LMM_PUBM_LOG2_ERR("NAS_EMM_TAUErrRecord: Push buffer error. ulLength =, ulResult = ", ulLength, ulResult);
+    }
+
+    return;
+}
+
+
+
+VOS_VOID NAS_EMM_DetachErrRecord(
+        NAS_EMM_CN_DETACH_REQ_MT_STRU       *pstCnDetach)
+{
+    EMM_ERR_INFO_MT_DETACH_RESULT_EVENT_STRU                stDetachRslt;
+    VOS_UINT32                                              ulIsLogRecord;
+    VOS_UINT32                                              ulLength;
+    VOS_UINT32                                              ulResult;
+    VOS_UINT16                                              usLevel;
+
+    NAS_LMM_PUBM_LOG_INFO("NAS_EMM_DetachErrRecord!!");
+    if(VOS_NULL_PTR == pstCnDetach)
+    {
+       return;
+    }
+
+    /* 查询对应Alarm Id是否需要记录异常信息 */
+    usLevel       = NAS_EMM_GetErrLogAlmLevel(LNAS_OM_ERRLOG_ALM_ID_DETACH_FAIL);
+    ulIsLogRecord = NAS_EMM_IsErrLogNeedRecord(usLevel);
+
+    /* 模块异常不需要记录或异常原因值不需要记录时，不保存异常信息 */
+    if (VOS_FALSE == ulIsLogRecord)
+    {
+        return;
+    }
+
+    ulLength = sizeof(EMM_ERR_INFO_MT_DETACH_RESULT_EVENT_STRU);
+
+    PS_MEM_SET(&stDetachRslt, 0x00, ulLength);
+
+    /*填充Cn Detach fail异常场景头*/
+    NAS_EMM_COMM_BULID_ERRLOG_HEADER_INFO(&stDetachRslt.stHeader,
+                                      VOS_GetModemIDFromPid(PS_PID_MM),
+                                      LNAS_OM_ERRLOG_ALM_ID_DETACH_FAIL,
+                                      usLevel,
+                                      VOS_GetSlice(),
+                                      (ulLength - sizeof(OM_ERR_LOG_HEADER_STRU)));
+
+    /*填充Cn Detach相关上报项*/
+    /*如果网络侧带原因值，则直接填充，如果不带原因值，则设置成NULL*/
+    if(NAS_EMM_BIT_SLCT == pstCnDetach->ucBitOpCause)
+    {
+        stDetachRslt.enCnDetCause = NAS_LMM_CnCauseProc(pstCnDetach->ucEmmCause);
+    }
+    else
+    {
+        stDetachRslt.enCnDetCause = EMM_OM_ERRLOG_CN_CAUSE_NULL;
+    }
+    stDetachRslt.enCnDetReqType = pstCnDetach->ucDetType;
+
+    /*
+       将异常信息写入Buffer中
+       实际写入的字符数与需要写入的不等则打印异常
+     */
+    ulResult = NAS_EMM_PutErrLogRingBuf((VOS_CHAR *)&stDetachRslt, ulLength);
+    if (ulResult != ulLength)
+    {
+        NAS_LMM_PUBM_LOG2_ERR("NAS_EMM_DetachErrRecord: Push buffer error. ulLength =, ulResult = ", ulLength, ulResult);
+    }
+
+    return;
+}
+
+
+VOS_VOID NAS_EMM_NorServiceErrRecord(
+            VOS_VOID*                         pstNorServiceFail,
+            EMM_OM_ERRLOG_TYPE_ENUM_UINT16    enErrType)
+
+{
+    EMM_ERR_INFO_NOR_SERVICE_RESULT_EVENT_STRU              stNorServerRslt;
+    NAS_EMM_CN_SER_REJ_STRU                                 *pstCnSerRej = VOS_NULL_PTR;
+    LRRC_LMM_EST_CNF_STRU                                   *pstEstCnfMsg = VOS_NULL_PTR;
+    LRRC_LMM_DATA_CNF_STRU                                  *pRrcDataCnf = VOS_NULL_PTR;
+    VOS_UINT32                                              ulIsLogRecord;
+    VOS_UINT32                                              ulLength;
+    VOS_UINT32                                              ulResult;
+    VOS_UINT16                                              usLevel;
+
+    NAS_LMM_PUBM_LOG_INFO("NAS_EMM_NorServiceErrRecord!!");
+    if(VOS_NULL_PTR == pstNorServiceFail)
+    {
+        return;
+    }
+
+    /*根据service不同的fail类型决定传入的结构类型*/
+    switch(enErrType)
+    {
+        case EMM_OM_ERRLOG_TYPE_CN_REJ:
+            pstCnSerRej = (NAS_EMM_CN_SER_REJ_STRU*)(VOS_VOID*)pstNorServiceFail;
+            break;
+        case EMM_OM_ERRLOG_TYPE_EST_CNF_FAIL:
+            pstEstCnfMsg = (LRRC_LMM_EST_CNF_STRU*)(VOS_VOID*)pstNorServiceFail;
+            break;
+        case EMM_OM_ERRLOG_TYPE_DATA_CNF_FAIL:
+            pRrcDataCnf = (LRRC_LMM_DATA_CNF_STRU*)(VOS_VOID*)pstNorServiceFail;
+            break;
+        case EMM_OM_ERRLOG_TYPE_TIMEOUT:
+        case EMM_OM_ERRLOG_TYPE_LRRC_REL:
+            break;
+        default:
+            NAS_LMM_PUBM_LOG_ERR("NAS_EMM_NorServiceErrRecord: Err Type");
+            return;
+    }
+
+    /* 查询对应Alarm Id是否需要记录异常信息 */
+    usLevel       = NAS_EMM_GetErrLogAlmLevel(LNAS_OM_ERRLOG_ALM_ID_NOR_SERVICE_FAIL);
+    ulIsLogRecord = NAS_EMM_IsErrLogNeedRecord(usLevel);
+
+    /* 模块异常不需要记录或异常原因值不需要记录时，不保存异常信息 */
+    if (VOS_FALSE == ulIsLogRecord)
+    {
+        return;
+    }
+
+    ulLength = sizeof(EMM_ERR_INFO_NOR_SERVICE_RESULT_EVENT_STRU);
+
+    PS_MEM_SET(&stNorServerRslt, 0x00, ulLength);
+
+    /*填充Service异常场景头*/
+    NAS_EMM_COMM_BULID_ERRLOG_HEADER_INFO(&stNorServerRslt.stHeader,
+                                      VOS_GetModemIDFromPid(PS_PID_MM),
+                                      LNAS_OM_ERRLOG_ALM_ID_NOR_SERVICE_FAIL,
+                                      usLevel,
+                                      VOS_GetSlice(),
+                                      (ulLength - sizeof(OM_ERR_LOG_HEADER_STRU)));
+
+    stNorServerRslt.enErrType = enErrType;
+
+    /*lint -e613*/
+    if(EMM_OM_ERRLOG_TYPE_CN_REJ == stNorServerRslt.enErrType)
+    {
+        stNorServerRslt.stNorServiceCnRej.enCnRejCause =
+                                        NAS_LMM_CnCauseProc(pstCnSerRej->ucEMMCause);
+    }
+    else if(EMM_OM_ERRLOG_TYPE_EST_CNF_FAIL == stNorServerRslt.enErrType)
+    {
+        stNorServerRslt.enEstCnfRslt = NAS_LMM_EstCnfFailRsltProc(pstEstCnfMsg->enResult);
+    }
+    else if(EMM_OM_ERRLOG_TYPE_DATA_CNF_FAIL == stNorServerRslt.enErrType)
+    {
+        stNorServerRslt.enDataCnfRslt = NAS_LMM_DataCnfFailRsltProc(pRrcDataCnf->enSendRslt);
+    }
+    else
+    {
+        NAS_LMM_PUBM_LOG_INFO("NAS_EMM_NorServiceErrRecord: No item need to Save!");
+    }
+    /*lint +e613*/
+
+    /*
+       将异常信息写入Buffer中
+       实际写入的字符数与需要写入的不等则打印异常
+     */
+    ulResult = NAS_EMM_PutErrLogRingBuf((VOS_CHAR *)&stNorServerRslt, ulLength);
+    if (ulResult != ulLength)
+    {
+        NAS_LMM_PUBM_LOG2_ERR("NAS_EMM_NorServiceErrRecord: Push buffer error. ulLength =, ulResult = ", ulLength, ulResult);
+    }
+
+    return;
+}
+
+
+VOS_VOID NAS_EMM_ExtServiceErrRecord(
+        NAS_EMM_CN_CAUSE_ENUM_UINT8                 enCnRejCause,
+        EMM_OM_LMM_CSFB_FAIL_CAUSE_ENUM_UINT8       enCsfbFailCause)
+{
+    EMM_ERR_INFO_EXT_SERVICE_RESULT_EVENT_STRU              stExtServerRslt;
+    VOS_UINT32                                              ulIsLogRecord;
+    VOS_UINT32                                              ulLength;
+    VOS_UINT32                                              ulResult;
+    VOS_UINT16                                              usLevel;
+
+    NAS_LMM_PUBM_LOG_INFO("NAS_EMM_ExtServiceErrRecord!!");
+
+    /* 查询对应Alarm Id是否需要记录异常信息 */
+    usLevel       = NAS_EMM_GetErrLogAlmLevel(LNAS_OM_ERRLOG_ALM_ID_EXT_SERVICE_FAIL);
+    ulIsLogRecord = NAS_EMM_IsErrLogNeedRecord(usLevel);
+
+    /* 模块异常不需要记录或异常原因值不需要记录时，不保存异常信息 */
+    if (VOS_FALSE == ulIsLogRecord)
+    {
+        return;
+    }
+
+    ulLength = sizeof(EMM_ERR_INFO_EXT_SERVICE_RESULT_EVENT_STRU);
+
+    PS_MEM_SET(&stExtServerRslt, 0x00, ulLength);
+
+    /*填充Service异常场景头*/
+    NAS_EMM_COMM_BULID_ERRLOG_HEADER_INFO(&stExtServerRslt.stHeader,
+                                    VOS_GetModemIDFromPid(PS_PID_MM),
+                                    LNAS_OM_ERRLOG_ALM_ID_EXT_SERVICE_FAIL,
+                                    usLevel,
+                                    VOS_GetSlice(),
+                                    (ulLength - sizeof(OM_ERR_LOG_HEADER_STRU)));
+
+    stExtServerRslt.enCsfbFailCause = enCsfbFailCause;
+    stExtServerRslt.enCnRejCause = NAS_LMM_CnCauseProc(enCnRejCause);
+
+    /*
+     将异常信息写入Buffer中
+     实际写入的字符数与需要写入的不等则打印异常
+    */
+    ulResult = NAS_EMM_PutErrLogRingBuf((VOS_CHAR *)&stExtServerRslt, ulLength);
+    if (ulResult != ulLength)
+    {
+        NAS_LMM_PUBM_LOG2_ERR("NAS_EMM_ExtServiceErrRecord: Push buffer error. ulLength =, ulResult = ", ulLength, ulResult);
+    }
+
+    return;
+}
+
+
+VOS_VOID NAS_EMM_PagingErrRecord(
+        EMM_OM_ERRLOG_PAGING_ENUM_UINT16  enPagingType)
+{
+    EMM_ERR_INFO_PAGING_RESULT_EVENT_STRU                   stPagingRslt;
+    VOS_UINT32                                              ulIsLogRecord;
+    VOS_UINT32                                              ulLength;
+    VOS_UINT32                                              ulResult;
+    VOS_UINT16                                              usLevel;
+
+    NAS_LMM_PUBM_LOG_INFO("NAS_EMM_PagingErrRecord!!");
+
+    /* 查询对应Alarm Id是否需要记录异常信息 */
+    usLevel       = NAS_EMM_GetErrLogAlmLevel(LNAS_OM_ERRLOG_ALM_ID_PAGING_FAIL);
+    ulIsLogRecord = NAS_EMM_IsErrLogNeedRecord(usLevel);
+
+    /* 模块异常不需要记录或异常原因值不需要记录时，不保存异常信息 */
+    if (VOS_FALSE == ulIsLogRecord)
+    {
+        return;
+    }
+
+    ulLength = sizeof(EMM_ERR_INFO_PAGING_RESULT_EVENT_STRU);
+
+    PS_MEM_SET(&stPagingRslt, 0x00, ulLength);
+
+    /*填充PS IMSI PAGING fail异常场景头*/
+    NAS_EMM_COMM_BULID_ERRLOG_HEADER_INFO(&stPagingRslt.stHeader,
+                                      VOS_GetModemIDFromPid(PS_PID_MM),
+                                      LNAS_OM_ERRLOG_ALM_ID_PAGING_FAIL,
+                                      usLevel,
+                                      VOS_GetSlice(),
+                                      (ulLength - sizeof(OM_ERR_LOG_HEADER_STRU)));
+
+    /*填充IMSI PAGING相关上报项*/
+    stPagingRslt.enPagingProcess = enPagingType;
+
+    /*
+       将异常信息写入Buffer中
+       实际写入的字符数与需要写入的不等则打印异常
+     */
+    ulResult = NAS_EMM_PutErrLogRingBuf((VOS_CHAR *)&stPagingRslt, ulLength);
+    if (ulResult != ulLength)
+    {
+        NAS_LMM_PUBM_LOG2_ERR("NAS_EMM_PagingErrRecord: Push buffer error. ulLength =, ulResult = ", ulLength, ulResult);
+    }
+
+    return;
+}
+
+
+VOS_VOID NAS_EMM_RatErrRecord(
+            EMM_OM_ERRLOG_RAT_ENUM_UINT16           enRatType)
+{
+    EMM_ERR_INFO_RAT_RESULT_EVENT_STRU                      stRatRslt;
+    VOS_UINT32                                              ulIsLogRecord;
+    VOS_UINT32                                              ulLength;
+    VOS_UINT32                                              ulResult;
+    VOS_UINT16                                              usLevel;
+
+    NAS_LMM_PUBM_LOG_INFO("NAS_EMM_RatErrRecord!!");
+
+    /* 查询对应Alarm Id是否需要记录异常信息 */
+    usLevel       = NAS_EMM_GetErrLogAlmLevel(LNAS_OM_ERRLOG_ALM_ID_PAGING_FAIL);
+    ulIsLogRecord = NAS_EMM_IsErrLogNeedRecord(usLevel);
+
+    /* 模块异常不需要记录或异常原因值不需要记录时，不保存异常信息 */
+    if (VOS_FALSE == ulIsLogRecord)
+    {
+        return;
+    }
+
+    ulLength = sizeof(EMM_ERR_INFO_RAT_RESULT_EVENT_STRU);
+
+    PS_MEM_SET(&stRatRslt, 0x00, ulLength);
+
+    /*填充rat异常场景头*/
+    NAS_EMM_COMM_BULID_ERRLOG_HEADER_INFO(&stRatRslt.stHeader,
+                                      VOS_GetModemIDFromPid(PS_PID_MM),
+                                      LNAS_OM_ERRLOG_ALM_ID_RAT_FAIL,
+                                      usLevel,
+                                      VOS_GetSlice(),
+                                      (ulLength - sizeof(OM_ERR_LOG_HEADER_STRU)));
+
+    /*填充RAT相关上报项*/
+    stRatRslt.enRatProcess = enRatType;
+
+    /*
+       将异常信息写入Buffer中
+       实际写入的字符数与需要写入的不等则打印异常
+     */
+    ulResult = NAS_EMM_PutErrLogRingBuf((VOS_CHAR *)&stRatRslt, ulLength);
+    if (ulResult != ulLength)
+    {
+        NAS_LMM_PUBM_LOG2_ERR("NAS_EMM_RatErrRecord: Push buffer error. ulLength =, ulResult = ", ulLength, ulResult);
+    }
+
+    return;
+}
+
+
+VOS_VOID NAS_EMM_LocalDetachErrRecord(
+        EMM_ERR_LOG_LOCAL_DETACH_TYPE_ENUM_UINT16       enLocalDetType)
+{
+    EMM_ERR_INFO_LOCAL_DETACH_RESULT_EVENT_STRU             stLocalDetRslt;
+    VOS_UINT32                                              ulIsLogRecord;
+    VOS_UINT32                                              ulLength;
+    VOS_UINT32                                              ulResult;
+    VOS_UINT16                                              usLevel;
+
+    NAS_LMM_PUBM_LOG_INFO("NAS_EMM_LocalDetachErrRecord!!");
+
+    /* 查询对应Alarm Id是否需要记录异常信息 */
+    usLevel       = NAS_EMM_GetErrLogAlmLevel(LNAS_OM_ERRLOG_ALM_ID_LOCAL_DETACH_FAIL);
+    ulIsLogRecord = NAS_EMM_IsErrLogNeedRecord(usLevel);
+
+    /* 模块异常不需要记录或异常原因值不需要记录时，不保存异常信息 */
+    if (VOS_FALSE == ulIsLogRecord)
+    {
+        return;
+    }
+
+    ulLength = sizeof(EMM_ERR_INFO_LOCAL_DETACH_RESULT_EVENT_STRU);
+
+    PS_MEM_SET(&stLocalDetRslt, 0x00, ulLength);
+
+    /*填充Cn Detach fail异常场景头*/
+    NAS_EMM_COMM_BULID_ERRLOG_HEADER_INFO(&stLocalDetRslt.stHeader,
+                                      VOS_GetModemIDFromPid(PS_PID_MM),
+                                      LNAS_OM_ERRLOG_ALM_ID_LOCAL_DETACH_FAIL,
+                                      usLevel,
+                                      VOS_GetSlice(),
+                                      (ulLength - sizeof(OM_ERR_LOG_HEADER_STRU)));
+
+    /*填充Cn Detach相关上报项*/
+    stLocalDetRslt.enLocalDetType = enLocalDetType;
+    /*
+       将异常信息写入Buffer中
+       实际写入的字符数与需要写入的不等则打印异常
+     */
+    ulResult = NAS_EMM_PutErrLogRingBuf((VOS_CHAR *)&stLocalDetRslt, ulLength);
+    if (ulResult != ulLength)
+    {
+        NAS_LMM_PUBM_LOG_ERR("NAS_EMM_LocalDetachErrRecord: Push buffer error.");
+    }
+
+    return;
+}
+
+
+VOS_VOID NAS_EMM_AuthCnFailErrRecord(
+        EMM_OM_ERRLOG_AUTH_FAIL_ENUM_UINT16       enErrAuthFail)
+{
+    EMM_ERR_INFO_AUTH_FAIL_RESULT_EVENT_STRU                stAuthCnFailRslt;
+    VOS_UINT32                                              ulIsLogRecord;
+    VOS_UINT32                                              ulLength;
+    VOS_UINT32                                              ulResult;
+    VOS_UINT16                                              usLevel;
+
+    NAS_LMM_PUBM_LOG_INFO("NAS_EMM_AuthCnFailErrRecord!!");
+
+    /* 查询对应Alarm Id是否需要记录异常信息 */
+    usLevel       = NAS_EMM_GetErrLogAlmLevel(LNAS_OM_ERRLOG_ALM_ID_AUTH_REJ);
+    ulIsLogRecord = NAS_EMM_IsErrLogNeedRecord(usLevel);
+
+    /* 模块异常不需要记录或异常原因值不需要记录时，不保存异常信息 */
+    if (VOS_FALSE == ulIsLogRecord)
+    {
+        return;
+    }
+
+    ulLength = sizeof(EMM_ERR_INFO_AUTH_FAIL_RESULT_EVENT_STRU);
+
+    PS_MEM_SET(&stAuthCnFailRslt, 0x00, ulLength);
+
+    /*填充Cn Detach fail异常场景头*/
+    NAS_EMM_COMM_BULID_ERRLOG_HEADER_INFO(&stAuthCnFailRslt.stHeader,
+                                      VOS_GetModemIDFromPid(PS_PID_MM),
+                                      LNAS_OM_ERRLOG_ALM_ID_AUTH_REJ,
+                                      usLevel,
+                                      VOS_GetSlice(),
+                                      (ulLength - sizeof(OM_ERR_LOG_HEADER_STRU)));
+
+    /*填充Cn Detach相关上报项*/
+    stAuthCnFailRslt.enAuthFail = enErrAuthFail;
+    /*
+       将异常信息写入Buffer中
+       实际写入的字符数与需要写入的不等则打印异常
+     */
+    ulResult = NAS_EMM_PutErrLogRingBuf((VOS_CHAR *)&stAuthCnFailRslt, ulLength);
+    if (ulResult != ulLength)
+    {
+        NAS_LMM_PUBM_LOG_ERR("NAS_EMM_AuthCnFailErrRecord: Push buffer error.");
+    }
+
+    return;
+}
+#endif
+
 /*lint +e826*/
 /*leixiantiao fix pclint error 826 end*/
 
 
-VOS_VOID NAS_LMM_ExportRevMsgQueque2ExcLog(VOS_UINT32* pulExcLogAddr, VOS_UINT32 ulSaveSize)
+VOS_UINT32 NAS_LMM_ExportEmmInfoExcLog(VOS_UINT32* pulExcLogAddr, VOS_UINT32 *pulLeftSpace)
 {
-    NAS_LMM_MSG_SAVE_INFO_STRU    *pstRevMsgInfo = VOS_NULL_PTR;
     VOS_UINT32                     *pulSaveAddr = pulExcLogAddr;
-    VOS_UINT32                      i = 0;
-    VOS_UINT32                      ulEntryNum = 0;
-    VOS_UINT32                      ulLeftSpace = ulSaveSize;
+    VOS_UINT32                      ulSaveSize = 0;
+    VOS_UINT32                      ulstNasInfoSize = 0;
+    LNAS_EXC_LOG_STRU               stNasInfo;
+    VOS_UINT32                      ulLoop;
 
-    /*获取地址*/
-    pstRevMsgInfo = NAS_EMM_GetErrlogMsgQueueAddr();
-
-    *pulSaveAddr = (VOS_UINT32)NAS_LMM_GetEmmCurFsmMS();
-    *(pulSaveAddr+1) = (VOS_UINT32)NAS_LMM_GetEmmCurFsmSS();
-    pulSaveAddr += 2;
-    ulLeftSpace -= (2 * sizeof(VOS_UINT32));
-
-    /*最新的消息排在最前面保存，依次排列 */
-    for (i = pstRevMsgInfo->ulNextIndex; i > 0; i--)
+    if((0 == *pulLeftSpace)||(NAS_EMM_NULL_PTR == pulExcLogAddr))
     {
-        *(pulSaveAddr + ulEntryNum*3) = pstRevMsgInfo->astReciveMsgInfo[i - 1].ulTimeStamp;
-        *(pulSaveAddr + ulEntryNum*3 + 1) = pstRevMsgInfo->astReciveMsgInfo[i - 1].ulSendPid;
-        *(pulSaveAddr + ulEntryNum*3 + 2) = pstRevMsgInfo->astReciveMsgInfo[i - 1].ulMsgName;
-        ulEntryNum++;
-        if (ulLeftSpace < ((ulEntryNum + 1) * sizeof(NAS_LMM_RECIVE_MSG_STRU)))
-        {
-            return;
-        }
+        return ulSaveSize;
+    }
+    NAS_LMM_MEM_SET(&stNasInfo, 0, sizeof(LNAS_EXC_LOG_STRU));
+    /* 填充需要到处的信息 */
+    for(ulLoop = 0; ulLoop < NAS_LMM_PARALLEL_FSM_BUTT; ulLoop++)
+    {
+        stNasInfo.astCurFsm[ulLoop].enFsmId = NAS_LMM_GetCurFsmAddr(ulLoop)->enFsmId;
+        stNasInfo.astCurFsm[ulLoop].enMainState = NAS_LMM_GetCurFsmAddr(ulLoop)->enMainState;
+        stNasInfo.astCurFsm[ulLoop].enStaTId = NAS_LMM_GetCurFsmAddr(ulLoop)->enStaTId;
+        stNasInfo.astCurFsm[ulLoop].enSubState = NAS_LMM_GetCurFsmAddr(ulLoop)->enSubState;
+    }
+    stNasInfo.ucRrcConnState = NAS_EMM_GetConnState();
+    stNasInfo.ulCurLteState = NAS_EMM_GetCurLteState();
+    /*获取拷贝长度*/
+    ulstNasInfoSize = sizeof(LNAS_EXC_LOG_STRU);
+    /* 保存EMM状态机和安全状态机 */
+    if(ulstNasInfoSize < *pulLeftSpace)
+    {
+        NAS_LMM_MEM_CPY((VOS_VOID *)pulSaveAddr, &stNasInfo,ulstNasInfoSize);
+        ulSaveSize = ulstNasInfoSize;
+        *pulLeftSpace -= ulstNasInfoSize;
+    }
+    else
+    {
+        NAS_LMM_MEM_CPY((VOS_VOID *)pulSaveAddr, &stNasInfo, *pulLeftSpace);
+        ulSaveSize = *pulLeftSpace;
+        *pulLeftSpace = 0;
+    }
+    return ulSaveSize;
+}
+#if (FEATURE_ON == FEATURE_PTM)
+/*lint -e593*/
+VOS_VOID  LNAS_InitErrLogGloInfo(LNAS_ERRLOG_GLO_INFO_STRU *pstErrlogGloInfo)
+{
+    VOS_CHAR                               *pbuffer;
+    OM_RING_ID                              pRingbuffer;
+
+    pstErrlogGloInfo->stCtrlInfo.ucErrLogCtrlFlag         = VOS_FALSE;
+    pstErrlogGloInfo->stCtrlInfo.usAlmLevel               = LNAS_ERR_LOG_CTRL_LEVEL_CRITICAL;
+
+    /* 申请cache的动态内存 , 长度加1是因为读和写指针之间在写满时会相差一个字节 */
+    pbuffer = (char *)NAS_LMM_MEM_ALLOC(LNAS_RING_BUFFER_SIZE + 1);
+    if (VOS_NULL_PTR == pbuffer)
+    {
+         pstErrlogGloInfo->stBuffInfo.pstRingBuffer = VOS_NULL_PTR;
+         return;
     }
 
-    for (i = NAS_SAVE_RECEIVE_MSG_INFO_NUM; i > pstRevMsgInfo->ulNextIndex; i--)
+    /* 调用OM的接口，将申请的动态内存创建为RING BUFFER */
+    pRingbuffer = OM_RingBufferCreateEx(pbuffer, LNAS_RING_BUFFER_SIZE + 1);
+    if (VOS_NULL_PTR == pRingbuffer)
     {
-        *(pulSaveAddr + ulEntryNum*3) = pstRevMsgInfo->astReciveMsgInfo[i - 1].ulTimeStamp;
-        *(pulSaveAddr + ulEntryNum*3 + 1) = pstRevMsgInfo->astReciveMsgInfo[i - 1].ulSendPid;
-        *(pulSaveAddr + ulEntryNum*3 + 2) = pstRevMsgInfo->astReciveMsgInfo[i - 1].ulMsgName;
-        ulEntryNum++;
-        if (ulLeftSpace < ((ulEntryNum + 1) * sizeof(NAS_LMM_RECIVE_MSG_STRU)))
-        {
-            return;
-        }
+        NAS_LMM_MEM_FREE(pbuffer);
     }
 
+    /* 保存ringbuffer指针 */
+    pstErrlogGloInfo->stBuffInfo.pstRingBuffer = pRingbuffer;
+
+    pstErrlogGloInfo->stBuffInfo.ulOverflowCnt = 0;
+
+    NAS_LMM_RevNvCtrl();
+
+    return;
+}
+/*lint +e593*/
+#endif
+VOS_VOID NAS_EMM_SaveRecvMsgList(VOS_VOID *pMsg)
+{
+    PS_MSG_HEADER_STRU         *pMsgHeader    = (PS_MSG_HEADER_STRU *)pMsg;
+    LNAS_EXC_MSG_MNTN_STRU     *pstMsgMntn    = VOS_NULL_PTR;
+    TLPS_EXC_MSG_ELEMENT_STRU  *pstMsgElement = VOS_NULL_PTR;
+    pstMsgMntn = &g_stLNasResetInfo.stLNasMsgList;
+    if (VOS_NULL_PTR == pMsg)
+    {
+        return;
+    }
+    /* 循环保存消息到指定全局变量 */
+    if(pstMsgMntn->ulNextIndex >= LNAS_EXC_MAX_SAVE_MSG_NUM)
+    {
+        pstMsgMntn->ulNextIndex = 0;
+    }
+    pstMsgElement = &(pstMsgMntn ->astMsgList[pstMsgMntn->ulNextIndex]);
+    /* 保存时间戳以及消息ID等信息 */
+    pstMsgElement->ulTimeStamp = VOS_GetSlice();
+    pstMsgElement->ulCompPid   = TLPS_EXC_BUILD_MSG_PID(pMsgHeader->ulSenderPid,
+                                         pMsgHeader->ulReceiverPid);
+    pstMsgElement->ulMsgId = pMsgHeader->ulMsgName;
+
+    /*目前暂时对所有消息都多保存4个字节,这4个字节基本是OPid或者切态或者切模式的方向 */
+    pstMsgElement->ulPrivate = *((VOS_UINT32*)pMsg + TLPS_EXC_MSG_PRIVATE_OFFSET);
+
+    /* 先保存后索引加1,所以Index前一个记录是复位前最后一条记录 */
+    pstMsgMntn->ulNextIndex++;
 }
 
+VOS_VOID NAS_EMM_SavePreEmmState(VOS_VOID)
+{
+    LNAS_EXC_PRE_STATE_STRU             *pstLNasPreState = VOS_NULL_PTR;
+    pstLNasPreState = &g_stLNasResetInfo.stLNasPreState;
 
+    pstLNasPreState->enPreMainState = NAS_LMM_GetEmmCurFsmMS();
+    pstLNasPreState->enPreSubState  = NAS_LMM_GetEmmCurFsmSS();
+    pstLNasPreState->ulTimeStamp    = VOS_GetSlice();
+}
+
+VOS_UINT32 NAS_EMM_ExportMsgInfoExcLog(VOS_UINT8* pulExcLogAddr, VOS_UINT32 *pulLeftSize)
+{
+    VOS_UINT32                  ulLoop        = 0;
+    VOS_UINT8                   *pulSaveAddr   = pulExcLogAddr;
+    VOS_UINT32                  ulSaveSize    = 0;
+    VOS_UINT32                  ulMsgStruSize = sizeof(TLPS_EXC_MSG_ELEMENT_STRU);
+    VOS_UINT32                  ulMsgNum      = 0;
+    LNAS_EXC_MSG_MNTN_STRU     *pstMsgMntn    = VOS_NULL_PTR;
+
+    pstMsgMntn = &g_stLNasResetInfo.stLNasMsgList;
+
+    /* 获取复位前最后一条消息索引 */
+    if(0 == pstMsgMntn->ulNextIndex)
+    {
+        ulLoop = LNAS_EXC_MAX_SAVE_MSG_NUM - 1;
+    }
+    else
+    {
+        ulLoop = pstMsgMntn->ulNextIndex - 1;
+    }
+
+    /* 循环保存到rdr内存中 */
+    for( ; ulMsgNum < LNAS_EXC_MAX_SAVE_MSG_NUM; ulMsgNum++ )
+    {
+        /* 当分给TLPS的复位可维可测剩余内存小于一条消息所需内存时退出 */
+        if(*pulLeftSize < ulMsgStruSize)
+        {
+            return ulSaveSize;
+        }
+
+        /* 拷贝数据 */
+        *pulLeftSize -= ulMsgStruSize;
+        ulSaveSize += ulMsgStruSize;
+        PS_MEM_CPY(pulSaveAddr, &(pstMsgMntn->astMsgList[ulLoop]), ulMsgStruSize);
+        pulSaveAddr += ulMsgStruSize;
+
+        /* 索引循环 */
+        if(0 == ulLoop)
+        {
+            ulLoop = LNAS_EXC_MAX_SAVE_MSG_NUM;
+        }
+        ulLoop--;
+    }
+    return ulSaveSize;
+}
+/* Add by y00307272 for IMSI REFRESH PORTECT,2015-11-18,Begin */
+
+/*****************************************************************************
+ Function Name   : NAS_LMM_SndOmImsiRefreshStatus
+ Description     : 上报imsi刷新状态
+ Input           : VOS_UINT8   ucImsiRefreshStatusFlag
+ Output          : None
+ Return          : VOS_VOID
+
+ History         :
+    1.    yanglei 00307272      2015-11-18  Draft Enact
+*****************************************************************************/
+VOS_VOID  NAS_LMM_SndOmImsiRefreshStatus(VOS_UINT8   ucImsiRefreshStatusFlag)
+{
+    NAS_EMM_IMSI_REFRESH_STATUS_STRU                   *pstImsiRefreshStatusInfo = VOS_NULL_PTR;
+
+    pstImsiRefreshStatusInfo = (NAS_EMM_IMSI_REFRESH_STATUS_STRU *)NAS_LMM_MEM_ALLOC(sizeof(NAS_EMM_IMSI_REFRESH_STATUS_STRU));
+    if (VOS_NULL_PTR == pstImsiRefreshStatusInfo)
+    {
+        return;
+    }
+
+    NAS_LMM_MEM_SET(pstImsiRefreshStatusInfo, 0, sizeof(NAS_EMM_IMSI_REFRESH_STATUS_STRU));
+    pstImsiRefreshStatusInfo->stMsgHeader.ulSenderCpuId        = VOS_LOCAL_CPUID;
+    pstImsiRefreshStatusInfo->stMsgHeader.ulSenderPid          = PS_PID_MM;
+    pstImsiRefreshStatusInfo->stMsgHeader.ulReceiverCpuId      = VOS_LOCAL_CPUID;
+    pstImsiRefreshStatusInfo->stMsgHeader.ulReceiverPid        = PS_PID_MM;
+    pstImsiRefreshStatusInfo->stMsgHeader.ulLength             = sizeof(NAS_EMM_IMSI_REFRESH_STATUS_STRU) - NAS_EMM_LEN_VOS_MSG_HEADER;
+    pstImsiRefreshStatusInfo->stMsgHeader.ulMsgName            = LNAS_OM_LOG_IMSI_REFRESH_STATUS_IND;
+    pstImsiRefreshStatusInfo->ucImsiRefreshStatusFlag          = ucImsiRefreshStatusFlag;
+
+    /* 单板发送，PC则因打桩无操作不会发送消息，不会影响PC ST */
+    (VOS_VOID)LTE_MsgHook((VOS_VOID*)pstImsiRefreshStatusInfo);
+    NAS_LMM_MEM_FREE(pstImsiRefreshStatusInfo);
+    return;
+}
+/* Add by y00307272 for IMSI REFRESH PORTECT,2015-11-18,End */
 
 #ifdef __cplusplus
     #if __cplusplus

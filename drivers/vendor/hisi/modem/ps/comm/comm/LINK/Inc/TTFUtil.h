@@ -158,8 +158,8 @@ typedef struct
 #define    TTF_CPY_LINK_EXECUTE_DL(ulPid)                                                TTF_CopyLink_DL_Execute(ulPid, &g_stTtfCopyLinkDL)
 #define    TTF_CPY_LINK_EXECUTE_UL(ulPid)                                                TTF_CopyLink_UL_Execute(ulPid, &g_stTtfCopyLinkUL)
 
-#define    TTF_CPY_LINK_DEL_DL(ulPid)                                                    TTF_CopyLink_DL_Rel(&g_stTtfCopyLinkDL)
-#define    TTF_CPY_LINK_DEL_UL(ulPid)                                                    TTF_CopyLink_UL_Rel(&g_stTtfCopyLinkUL)
+#define    TTF_CPY_LINK_DEL_DL()                                                        TTF_CopyLink_DL_Rel(&g_stTtfCopyLinkDL)
+#define    TTF_CPY_LINK_DEL_UL()                                                        TTF_CopyLink_UL_Rel(&g_stTtfCopyLinkUL)
 
 #define    TTF_CPY_LINK_INIT()                                                           TTF_CopyLink_DL_Init(&g_stTtfCopyLinkDL); \
                                                                                          TTF_CopyLink_UL_Init(&g_stTtfCopyLinkUL)

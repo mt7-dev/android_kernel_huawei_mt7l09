@@ -74,7 +74,7 @@ static int psci_to_linux_errno(int errno)
 #define PSCI_POWER_STATE_ID_SHIFT	0
 #define PSCI_POWER_STATE_TYPE_MASK	0x1
 #define PSCI_POWER_STATE_TYPE_SHIFT	16
-#define PSCI_POWER_STATE_AFFL_MASK	0xFF
+#define PSCI_POWER_STATE_AFFL_MASK	0x3
 #define PSCI_POWER_STATE_AFFL_SHIFT	24
 
 static u32 psci_power_state_pack(struct psci_power_state state)

@@ -80,7 +80,7 @@ extern "C" {
 #define NF_EXT_IP6_FORWARD_HOOK_ON_MASK             (1 << 16)
 #define NF_EXT_BR_FORWARD_FLOW_CTRL_HOOK_ON_MASK    (1 << 17)
 
-#define NF_EXT_BR_FORWARD_FLOW_CTRL_MASK            (1)
+#define NF_EXT_BR_FORWARD_FLOW_CTRL_MASK            (1U)
 
 #define NF_EXT_BR_NAME                              "br0"
 #if(NF_EXT_DBG == DBG_ON)
@@ -149,6 +149,7 @@ enum NF_EXT_STATS_ENUM
 typedef struct
 {
     u_int32_t                       ulHookMask;
+    VOS_UINT8                       aucRsv[4];
     struct nf_hook_ops              stNfExtOps;
 } NF_EXT_MASK_OPS_STRU;
 
@@ -159,24 +160,16 @@ typedef struct
     VOS_UINT32                      ulCurHookOnMask;           /* 当前Hook掩码 */
     VOS_UINT32                      ulIsDeviceOpen ;           /* 设备是否开启的标志 */
     VOS_UINT32                      ulOmIp;
-    VOS_UINT8                       aucKbuff[DEV_BUFF_LEN];    /* 内核空间的缓冲区 */
-#ifndef __UT_CENTER__
-    struct class                   *pstNfExtClass;
-#else
-    struct classStub               *pstNfExtClass;
-#endif
-    struct cdev                     stNfExtCdev;               /* 字符设备结构体 */
-    dev_t                           ulDevNo;                   /* 字符设备号 */
     OM_RING_ID                      pRingBufferId;             /* 环形buff*/
-    wait_queue_head_t               stWaitHeadDev;             /* 等待队列头 */
     wait_queue_head_t               stWaitHeadTxTask;          /* 等待队列头，自处理任务使用 */
     spinlock_t                      stLockTxTask;              /* 自旋锁，用于环形buff操作的互斥保护 */
+    VOS_UINT8                       aucRsv2[4];
 }NF_EXT_ENTITY_STRU;
 
 typedef struct
 {
     VOS_UINT16   usDataLen;
-    VOS_UINT8    aucRsv[2];
+    VOS_UINT8    aucRsv[6];
     VOS_UINT8   *pData;
 }NF_EXT_DATA_RING_BUF_STRU;
 
@@ -185,7 +178,6 @@ typedef struct
 {
     VOS_UINT32         ulFlowCtrlMsk;
     VOS_UINT32         aulTxBytesCnt[NF_EXT_TX_BYTES_CNT_BUTT];
-    VOS_UINT8          aucRsv[4];
     struct net_device *pstBrDev;
 }NF_EXT_FLOW_CTRL_ENTITY;
 
@@ -324,15 +316,6 @@ extern unsigned int NFExt_BrForwardFlowCtrlHook(unsigned int hooknum,
                             int (*okfn)(struct sk_buff *));
 
 
-extern unsigned int NFExt_Poll(struct file *file, poll_table *wait);
-extern int NFExt_Open(struct inode *inode, struct file *file);
-
-extern int NFExt_Release(struct inode *inode, struct file *file);
-
-extern ssize_t NFExt_Read(struct file *filp, char *buff, size_t len, loff_t *offset);
-
-extern ssize_t NFExt_Write(struct file *filp, const char *buff, size_t len, loff_t *offset);
-
 extern PS_BOOL_ENUM_UINT8 NFExt_ConfigEffective(IPS_MNTN_TRACE_CONFIG_REQ_STRU *pRcvMsg);
 
 extern VOS_UINT32 NFExt_AddDataToRingBuf(NF_EXT_DATA_RING_BUF_STRU *pstMsg);
@@ -340,10 +323,45 @@ extern VOS_UINT32 NFExt_AddDataToRingBuf(NF_EXT_DATA_RING_BUF_STRU *pstMsg);
 extern VOS_UINT32 NFExt_SaveBrDev(VOS_VOID);
 
 extern VOS_VOID NFExt_FlowCtrlInit(VOS_VOID);
+extern NF_EXT_FLAG_OM_DATA_ENUM_U32 NFExt_IsOmData(struct sk_buff *skb);
+extern VOS_VOID NFExt_BrDataExport( struct sk_buff *skb,
+                                const struct net_device *device_in,
+                                const struct net_device *device_out,
+                                IPS_MNTN_TRACE_MSG_TYPE_ENUM_UINT16 usType);
+extern VOS_VOID NFExt_ArpDataExport( struct sk_buff *skb,
+                                const struct net_device *device,
+                                IPS_MNTN_TRACE_MSG_TYPE_ENUM_UINT16 usType);
+extern VOS_VOID NFExt_IpDataExport( struct sk_buff *skb,
+                         const struct net_device *device,
+                         IPS_MNTN_TRACE_MSG_TYPE_ENUM_UINT16 usType);
+
+extern VOS_VOID  NFExt_UnregHooks(VOS_UINT32 ulMask);
+extern VOS_INT  NFExt_RegHooks(VOS_UINT32 ulMask);
+extern VOS_INT  NFExt_ReRegHooks(VOS_UINT32 ulMask);
+extern VOS_UINT32  NFExt_Get1stInetIpv4Addr(struct net_device *pstDev);
+extern VOS_VOID NFExt_RcvNfExtInfoCfgReq(VOS_VOID *pMsg);
+extern VOS_VOID NFExt_SelfTaskInit(VOS_VOID);
+extern VOS_INT NFExt_RingBufferPut( OM_RING_ID rngId, VOS_CHAR *buffer, VOS_INT nbytes );
+extern VOS_INT NFExt_RingBufferGet( OM_RING_ID rngId, VOS_CHAR *buffer, VOS_INT maxbytes );
+extern VOS_VOID NFExt_FlushRingBuffer(OM_RING_ID rngId);
+extern VOS_VOID NFExt_CtrlTxMsgTask(VOS_VOID);
+extern VOS_UINT32 NFExt_ReadNvCfg(VOID);
+extern VOS_VOID NFExt_SetDefaultNvCfg(VOID);
+extern VOS_VOID NFExt_EntityInit(VOS_VOID);
+extern VOS_INT NFExt_Init(VOS_VOID);
+extern void NFExt_Uninit(VOS_VOID);
+extern VOS_VOID  NFExt_BrSetFlowCtrl(VOS_VOID);
+extern VOS_VOID  NFExt_BrStopFlowCtrl(VOS_VOID);
+extern VOS_UINT32 NFExt_GetBrBytesCnt(VOS_VOID);
 
 #if(NF_EXT_DBG == DBG_ON)
 extern VOS_VOID NFExt_StatsShow(VOS_VOID);
+extern VOS_VOID NFExt_ResetPri(VOS_UINT32 ulHookNode, VOS_INT32 iPri);
 #endif
+
+extern VOS_VOID NFExt_RcvOmMsg(VOS_VOID *pMsg);
+extern VOS_VOID NFExt_MsgProc( struct MsgCB * pMsg );
+extern VOS_UINT32 NFExt_PidInit( enum VOS_INIT_PHASE_DEFINE ip );
 
 #ifdef __cplusplus
 #if __cplusplus

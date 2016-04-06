@@ -30,6 +30,20 @@
 #include "core.h"
 #include "host.h"
 
+#ifdef CONFIG_HUAWEI_SDCARD_DSM
+#include <linux/mmc/dsm_sdcard.h>
+struct dsm_dev dsm_sdcard = {
+	.name = "dsm_sdcard",
+	.device_name = NULL,
+	.ic_name = NULL,
+	.module_name = NULL,
+	.fops = NULL,
+	.buff_size = 1024,
+};
+struct dsm_client *sdcard_dclient = NULL;
+char g_dsm_log_sum[1024] = {0};
+
+#endif
 #define cls_dev_to_mmc_host(d)	container_of(d, struct mmc_host, class_dev)
 
 static void mmc_host_classdev_release(struct device *dev)
@@ -435,7 +449,6 @@ struct mmc_host *mmc_alloc_host(int extra, struct device *dev)
 
 	/* scanning will be enabled when we're ready */
 	host->rescan_disable = 1;
-	printk(KERN_ERR "%s, %d.\n", __FUNCTION__, __LINE__);
 	idr_preload(GFP_KERNEL);
 	spin_lock(&mmc_host_lock);
 	err = idr_alloc(&mmc_host_idr, host, 0, 0, GFP_NOWAIT);
@@ -462,6 +475,11 @@ struct mmc_host *mmc_alloc_host(int extra, struct device *dev)
 	init_waitqueue_head(&host->wq);
 	wake_lock_init(&host->detect_wake_lock, WAKE_LOCK_SUSPEND,
 		kasprintf(GFP_KERNEL, "%s_detect", mmc_hostname(host)));
+#ifdef CONFIG_HUAWEI_SDCARD_DSM
+	if (!sdcard_dclient) {
+		sdcard_dclient = dsm_register_client(&dsm_sdcard);
+	}
+#endif
 	INIT_DELAYED_WORK(&host->detect, mmc_rescan);
 #ifdef CONFIG_PM
 	host->pm_notify.notifier_call = mmc_pm_notify;
@@ -484,7 +502,9 @@ free:
 	kfree(host);
 	return NULL;
 }
-
+#ifdef CONFIG_HUAWEI_SDCARD_DSM
+EXPORT_SYMBOL(sdcard_dclient);
+#endif
 EXPORT_SYMBOL(mmc_alloc_host);
 
 /**

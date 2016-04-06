@@ -584,7 +584,6 @@ static void MGA1064_ramdac_init(struct matrox_fb_info *minfo)
 
 	DBG(__func__)
 
-	/* minfo->features.DAC1064.vco_freq_min = 120000; */
 	minfo->features.pll.vco_freq_min = 62000;
 	minfo->features.pll.ref_freq	 = 14318;
 	minfo->features.pll.feed_div_min = 100;

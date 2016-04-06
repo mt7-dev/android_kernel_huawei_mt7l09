@@ -1,18 +1,4 @@
-/**
-    @copyright: Huawei Technologies Co., Ltd. 2012-2012. All rights reserved.
-    
-    @file: srecorder_main.c
-    
-    @brief: SRecorder初始化模块
-    
-    @version: 1.0 
-    
-    @author: QiDechun ID: 216641
-    
-    @date: 2012-06-30
-    
-    @history:
-*/
+
 
 /*----includes-----------------------------------------------------------------------*/
 
@@ -27,13 +13,13 @@
 #include <linux/reboot.h>
 #include <linux/io.h>
 #include <linux/oom.h>
+#include <linux/vmalloc.h>
 
-/* DTS2012110206142 wupeng-qidechun 20121105 begin */
 #include <linux/mm.h>
 #include <linux/highmem.h>
 #include <linux/version.h>
-/* DTS2012110206142 wupeng-qidechun 20121105 end */
 #include <asm/uaccess.h>
+#include <linux/srecorder.h>
 
 #include "../include/srecorder_common.h"
 #include "../include/srecorder_kernel_symbols.h"
@@ -52,19 +38,17 @@
 
 /*----local macroes------------------------------------------------------------------*/
 
-#define CRASH_CAUSED_BY_OOPS ("oops ")
-#define CRASH_CAUSED_BY_OOM ("oom ")
+//#define CRASH_CAUSED_BY_OOPS ("oops ")
+//#define CRASH_CAUSED_BY_OOM ("oom ")
 
-/* DTS2012091002904 Qidechun-wupeng 20120910 begin */
+#if defined(CONFIG_DUMP_MODEM_LOG)
 #define CRASH_CAUSED_BY_MODEM "modemcrash "
+#endif
 #define CRASH_CAUSED_BY_APANIC "apanic "
 
-/* DTS2012110506430 wupeng-qidechun 20121114 begin */
 #if defined(CONFIG_DUMP_MODEM_LOG)
 #define MODEM_NOTIFIER_START_RESET 0x1 /* 这个要根据高通modem的代码及时修改 */
 #endif
-/* DTS2012110506430 wupeng-qidechun 20121114 end */
-/* DTS2012091002904 Qidechun-wupeng 20120910 end */
 
 /*----local prototypes----------------------------------------------------------------*/
 
@@ -96,14 +80,12 @@ typedef struct
 
 /*----local function prototypes---------------------------------------------------------*/
 
-/* DTS2012091002904 Qidechun-wupeng 20120910 begin */
 #ifndef CONFIG_SRECORDER_DUMP_LOG_TO_STORAGECARD
 static int srecorder_panic_notifier_handler(struct notifier_block *this, unsigned long event, void *panic_reason);
 #endif
 
 static int srecorder_oom_notifier_handler(struct notifier_block *this, unsigned long event, void *unused);
 
-/* DTS2012110506430 wupeng-qidechun 20121114 begin */
 #if DUMP_REBOOT_LOG
 static inline void srecorder_reboot_handler(void);
 #ifdef CONFIG_KPROBES
@@ -127,41 +109,28 @@ static void srecorder_jmodem_queue_start_reset_notify(void);
 static int srecorder_modem_notifier_handler(struct notifier_block *this, unsigned long code, void *cmd);
 #endif
 #endif
-/* DTS2012110506430 wupeng-qidechun 20121114 end */
 
-/* DTS2012091002904 Qidechun-wupeng 20120910 end */
 static int srecorder_init_modules(srecorder_module_init_params_t *pinit_params);
-/* DTS2012091002904 Qidechun-wupeng 20120910 delete */
 
 #ifndef CONFIG_SRECORDER_DUMP_LOG_TO_STORAGECARD
 static void srecorder_reboot_machine(void);
 #endif
 
-/* DTS2012091002904 Qidechun-wupeng 20120910 begin */
 static void srecorder_dump_log(char *reason);
-/* DTS2012091002904 Qidechun-wupeng 20120910 end */
-/* DTS2012110206142 wupeng-qidechun 20121105 begin */
 /* 删除 */
-/* DTS2012110206142 wupeng-qidechun 20121105 end */
 
 static unsigned long srecorder_convert_version_string2num(char *pversion);
 
-/* DTS2012110206142 wupeng-qidechun 20121105 begin */
-/* DTS2012110206142 wupeng-qidechun 20121105 end */
 
 
-/* DTS2012091002904 Qidechun-wupeng 20120910 begin */
 
 
 /*----global function prototypes---------------------------------------------------------*/
 
-/* DTS2012110506430 wupeng-qidechun 20121114 begin */
 #if defined(CONFIG_DUMP_MODEM_LOG)
 extern int modem_register_notifier(struct notifier_block *nb);
 extern int modem_unregister_notifier(struct notifier_block *nb);
 #endif
-/* DTS2012110506430 wupeng-qidechun 20121114 end */
-/* DTS2012091002904 Qidechun-wupeng 20120910 end */
 
 extern bool srecorder_reserve_special_mem_successfully(void);
 
@@ -171,26 +140,17 @@ extern bool srecorder_reserve_special_mem_successfully(void);
 #ifndef CONFIG_SRECORDER_DUMP_LOG_TO_STORAGECARD
 static struct notifier_block s_panic_notifier_block = 
 {
-    /* DTS2012091002904 Qidechun-wupeng 20120910 begin */
     .notifier_call = srecorder_panic_notifier_handler, 
-    /* DTS2012091002904 Qidechun-wupeng 20120910 end */
 };
 #endif
 
-/* DTS2012110206142 wupeng-qidechun 20121105 begin */
 /* 删除 */
-/* DTS2012110206142 wupeng-qidechun 20121105 end */
 
 static struct notifier_block s_oom_notifier_block = 
 {
-    /* DTS2012091002904 Qidechun-wupeng 20120910 begin */
     .notifier_call = srecorder_oom_notifier_handler, 
-    /* DTS2012091002904 Qidechun-wupeng 20120910 end */
 };
-/* DTS2012091002904 Qidechun-wupeng 20120910 begin */
-/* DTS2012110506430 wupeng-qidechun 20121114 begin */
 #if defined(CONFIG_DUMP_MODEM_LOG)
-/* DTS2012110506430 wupeng-qidechun 20121114 end */
 #if defined(CONFIG_DUMP_MODEM_LOG_BY_FIQ)
 static struct notifier_block s_modem_fiq_notifier_block =
 {
@@ -214,9 +174,7 @@ static struct notifier_block s_modem_notifier_block =
 };
 #endif
 #endif
-/* DTS2012091002904 Qidechun-wupeng 20120910 end */
 
-/* DTS2012110506430 wupeng-qidechun 20121114 begin */
 #if DUMP_REBOOT_LOG
 #ifdef CONFIG_KPROBES
 static struct jprobe s_srecorder_jkernel_restart = 
@@ -248,7 +206,6 @@ static struct notifier_block s_emergency_reboot_notifier_block =
 };
 #endif
 #endif
-/* DTS2012110506430 wupeng-qidechun 20121114 end */
 
 static DEFINE_SPINLOCK(s_srecorder_dump_log_lock);
 
@@ -257,9 +214,7 @@ static srecorder_reserved_mem_info_t s_srecorder_reserved_mem_info;
 
 static srecorder_module_init_params_t s_srecorder_module_init_params;
 
-/* DTS2012092100720 wupeng 20120921 begin */
 /* static char *s_crash_reason = NULL; */
-/* DTS2012092100720 wupeng 20120921 end */
 /*设定SRecorder模块接收的参数*/
 
 #if 0
@@ -281,14 +236,15 @@ module_param(use_io_memory, ulong, S_IRUSR);
 * params[2] - 内存读写方式, 1 - use io memory；0 - use normal system ram
 */
 static unsigned long params[3] = {0x0, 0x0, 0x0};
+/*lint -e665 */
 module_param_array(params, ulong, NULL, 0444);
+/*lint +e665 */
 MODULE_PARM_DESC(params, "SRecorder Install Parameters");
 #endif
 
 /*判断SRecorder保留内存区是否已经映射完毕*/
 static bool s_srecorder_log_info_saved = false;
 
-/* DTS2012091401464 Qidechun-wupeng 20120914 begin */
 static srecorder_module_operations s_srecorder_common_operations[] = 
 {
     /*==================================================================*/
@@ -325,12 +281,10 @@ static srecorder_log_dump_module_operations s_srecorder_log_operations[] =
     /*==================================================================*/
     /*                         Linux死机日志 begin                      */
     /*==================================================================*/
-#ifdef CONFIG_SRECORDER_DUMP_LOG_TO_STORAGECARD
     {
         .type = DMESG_BIT2,
         .module_operation = {"dmesg", srecorder_init_dmesg, srecorder_get_dmesg, srecorder_exit_dmesg} /* dump dmesg in boot stage */
     }, 
-#endif
     {
         .type = CURRENT_PS_BACKTRACE_BIT5,
         .module_operation = {"current ps backtrace", srecorder_init_current_ps_backtrace, 
@@ -373,7 +327,6 @@ static srecorder_log_dump_module_operations s_srecorder_log_operations[] =
     /*                         modem死机信息 end                        */
     /*==================================================================*/
 };
-/* DTS2012091401464 Qidechun-wupeng 20120914 begin */
 
 static DEFINE_SPINLOCK(s_srecorder_write_header_lock);
 
@@ -419,7 +372,6 @@ bool get_srecorder_log_buf(char *panic_reason, char **pbuf, unsigned long *plog_
 #endif
 
 
-/* DTS2012110506430 wupeng-qidechun 20121114 begin */
 /**
     @function: void srecorder_write_reserved_mem_header(bool normal_reset, 
         bool need_flush_cache, unsigned long magic_number, int valid_log_len)
@@ -437,14 +389,24 @@ bool get_srecorder_log_buf(char *panic_reason, char **pbuf, unsigned long *plog_
 void srecorder_write_reserved_mem_header(bool normal_reset, 
     bool need_flush_cache, unsigned long magic_number, int valid_log_len)
 {
-    srecorder_reserved_mem_header_t *pmem_header = (srecorder_reserved_mem_header_t *)params[0];
-    unsigned long data_len = (unsigned long)(sizeof(srecorder_reserved_mem_header_t) 
+    srecorder_reserved_mem_header_t *pmem_header;
+    unsigned long data_len;
+#ifndef CONFIG_SRECORDER_RESERVED_MEM_PHYS_ADDR
+    get_srecorder_log_buf_info(&params[0], &params[1]);
+#endif
+
+    pmem_header = (srecorder_reserved_mem_header_t *)params[0];
+    data_len = (unsigned long)(sizeof(srecorder_reserved_mem_header_t) 
         - sizeof(pmem_header->crc32) 
         - sizeof(pmem_header->reserved)); 
     
     /* This means SRecorder has dumped log successfully, we should not do anything in that case */
+#ifndef CONFIG_SRECORDER_RESERVED_MEM_PHYS_ADDR
     if (s_srecorder_reserved_mem_info.log_has_been_dumped_previously
         || !srecorder_reserve_special_mem_successfully())
+#else
+    if (s_srecorder_reserved_mem_info.log_has_been_dumped_previously)
+#endif
     {
         return;
     }
@@ -461,8 +423,10 @@ void srecorder_write_reserved_mem_header(bool normal_reset,
     pmem_header->reset_flag = (normal_reset) ? (NORMAL_RESET) : (ABNORMAL_RESET); /* 系统正常重启时将该标志清0 */
     /*if (!s_srecorder_log_info_saved)*/
     {
+#ifndef CONFIG_SRECORDER_RESERVED_MEM_PHYS_ADDR
         platform_special_reserved_mem_info_t *pmem_info = (platform_special_reserved_mem_info_t *)
             __va(CONFIG_KERNEL_LOAD_PHYS_OFFSET + CONFIG_SRECORDER_SPECIAL_MEM_ADDR_FROM_PHYS_OFFSET);
+#endif
 
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 5, 0))
         kernel_log_buf_info_t kernel_log_buf_info = {0};
@@ -505,6 +469,7 @@ void srecorder_write_reserved_mem_header(bool normal_reset,
         pmem_header->reserved_mem_size = params[1];
 #endif
 
+#ifndef CONFIG_SRECORDER_RESERVED_MEM_PHYS_ADDR
         /* 保存SRecorder的物理地址和大小 */
         memset(pmem_info, 0, sizeof(platform_special_reserved_mem_info_t));
         pmem_info->srecorder_log_buf = __pa(params[0]);
@@ -526,6 +491,7 @@ void srecorder_write_reserved_mem_header(bool normal_reset,
         /* 保存Linux内核ring buffer的物理地址和大小 */
         pmem_info->crc32 = srecorder_get_crc32((unsigned char *)pmem_info, (unsigned long)
             (sizeof(platform_special_reserved_mem_info_t) - sizeof(pmem_info->crc32)));
+#endif
 
 #if 0
         srecorder_write_data_to_phys_page(CONFIG_KERNEL_LOAD_PHYS_OFFSET 
@@ -540,17 +506,22 @@ void srecorder_write_reserved_mem_header(bool normal_reset,
     if (need_flush_cache)
     {    
         flush_cache_all();
+#ifdef CONFIG_ARM
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 37))
         outer_flush_all();
 #endif
+#endif
     }
-    
+
+#ifdef CONFIG_SRECORDER_RESERVED_MEM_PHYS_ADDR
+    memcpy_toio(s_srecorder_reserved_mem_info.start_addr_mapped_by_ioremap, 
+        (void *)pmem_header, sizeof(srecorder_reserved_mem_header_t));
+#endif
+
     spin_unlock(&s_srecorder_write_header_lock);
 }
-/* DTS2012110506430 wupeng-qidechun 20121114 end */
 
 
-/* DTS2012091002904 Qidechun-wupeng 20120910 begin */
 /**
     @function: static void srecorder_dump_log(char *reason)
     @brief: dump 系统发生panic时候的信息
@@ -563,12 +534,13 @@ void srecorder_write_reserved_mem_header(bool normal_reset,
 */
 static void srecorder_dump_log(char *reason)
 {
-    /* DTS2012110506430 wupeng-qidechun 20121114 begin */
     /* 删除2行 */
-    /* DTS2012110506430 wupeng-qidechun 20121114 end */
     int i = 0;
     int array_size = 0;
-
+#ifdef CONFIG_SRECORDER_RESERVED_MEM_PHYS_ADDR
+    srecorder_reserved_mem_header_t *pmem_header;
+    pmem_header = (srecorder_reserved_mem_header_t *)params[0];
+#endif
     if (!srecorder_has_been_enabled())
     {
         SRECORDER_PRINTK("SRecorder hasn't been enabled, it can not dump anything!\n");
@@ -601,16 +573,17 @@ static void srecorder_dump_log(char *reason)
     }
     
     /* 修改保留内存头部描述信息 - 填写有效信息长度*/
-    /* DTS2012110506430 wupeng-qidechun 20121114 begin */
     srecorder_write_reserved_mem_header(true, true, SRECORDER_MAGIC_NUM, s_srecorder_reserved_mem_info.bytes_read);
-    /* DTS2012110506430 wupeng-qidechun 20121114 end */
     
     s_srecorder_reserved_mem_info.log_has_been_dumped_previously = true;
+#ifdef CONFIG_SRECORDER_RESERVED_MEM_PHYS_ADDR
+    memcpy_toio(s_srecorder_reserved_mem_info.start_addr_mapped_by_ioremap, 
+        (void *)params[0], (size_t)(pmem_header->data_length 
+        + sizeof(srecorder_reserved_mem_header_t)));
+#endif
 }
 
 
-/* DTS2012092100720 wupeng 20120921 begin */
-/* DTS2012110506430 wupeng-qidechun 20121114 begin */
 #if defined(CONFIG_DUMP_MODEM_LOG)
 static inline void srecorder_modem_reset_handler(bool do_delay, void *cmd)
 {
@@ -629,7 +602,6 @@ static inline void srecorder_modem_reset_handler(bool do_delay, void *cmd)
 }
 
 
-/* DTS2012110506430 wupeng-qidechun 20121114 end */
 #if defined(CONFIG_DUMP_MODEM_LOG_BY_FIQ)
 static int srecorder_modem_fiq_notifier_handler(struct notifier_block *this, unsigned long code, void *cmd)
 {
@@ -659,15 +631,10 @@ static int srecorder_modem_notifier_handler(struct notifier_block *this, unsigne
 }
 #endif
 #endif
-/* DTS2012092100720 wupeng 20120921 end */
-/* DTS2012091002904 Qidechun-wupeng 20120910 end */
 
-/* DTS2012110206142 wupeng-qidechun 20121105 begin */
 /* 删除此宏内全部内容 */
-/* DTS2012110206142 wupeng-qidechun 20121105 end */
 
 
-/* DTS2012110506430 wupeng-qidechun 20121114 begin */
 #if DUMP_REBOOT_LOG
 static inline void srecorder_reboot_handler(void)
 {
@@ -710,7 +677,6 @@ static int srecorder_emergency_reboot_notifier_handler(struct notifier_block *th
 }
 #endif
 #endif
-/* DTS2012110506430 wupeng-qidechun 20121114 end */
 
 
 #ifndef CONFIG_SRECORDER_DUMP_LOG_TO_STORAGECARD
@@ -724,16 +690,14 @@ static int srecorder_emergency_reboot_notifier_handler(struct notifier_block *th
 
     @note: 
 */
-/* DTS2012110206142 wupeng-qidechun 20121105 begin */
 static void srecorder_reboot_machine(void)
 {
 #if LET_MODEM_OR_WATCHDOG_RESET_SYSTEM
     /* Let the modem or watchdog reset the system */
 #else
-    emergency_restart();
+    /*emergency_restart();*/
 #endif
 }
-/* DTS2012110206142 wupeng-qidechun 20121105 end */
 #endif
 
 
@@ -791,15 +755,12 @@ static unsigned long srecorder_convert_version_string2num(char *pversion)
 
     @note: 
 */
-/* DTS2012091002904 Qidechun-wupeng 20120910 begin */
 static int srecorder_oom_notifier_handler(struct notifier_block *this, unsigned long event, void *unused)
-/* DTS2012091002904 Qidechun-wupeng 20120910 end */
 {
     /*
     * 发生OOM的时候只是记录死机的原因和调用栈即可，考虑到多CPU的情况，还是要加锁。
     */
     /* 内核中已经有了对oom很全面的记录和处理，SRecorder没必要再记录信息 */
-/* DTS2012092100720 wupeng 20120921 begin */
 #if 0
     if (spin_trylock_irq(&s_srecorder_reserved_mem_info.lock))
     {
@@ -810,16 +771,13 @@ static int srecorder_oom_notifier_handler(struct notifier_block *this, unsigned 
         spin_unlock_irq(&s_srecorder_reserved_mem_info.lock);
     }
 #endif
-/* DTS2012092100720 wupeng 20120921 end */
 
     return 0;
 }
 
-/* DTS2012091002904 Qidechun-wupeng 20120910 delete function srecorder_dump_panic_info() */
 
 
 #ifndef CONFIG_SRECORDER_DUMP_LOG_TO_STORAGECARD
-/* DTS2012091002904 Qidechun-wupeng 20120910 begin */
 /**
     @function: static int srecorder_panic_notifier_handler(struct notifier_block *this, unsigned long event, void *panic_reason)
     @brief: 系统panic时回调函数
@@ -832,7 +790,6 @@ static int srecorder_oom_notifier_handler(struct notifier_block *this, unsigned 
 
     @note: 
 */
-/* DTS2012092100720 wupeng 20120921 begin */
 static int srecorder_panic_notifier_handler(struct notifier_block *this, unsigned long event, void *panic_reason)
 {
     if (spin_trylock(&s_srecorder_reserved_mem_info.lock))
@@ -849,8 +806,6 @@ static int srecorder_panic_notifier_handler(struct notifier_block *this, unsigne
     
     return 0;
 }
-/* DTS2012092100720 wupeng 20120921 end */
-/* DTS2012091002904 Qidechun-wupeng 20120910 end */
 #endif
 
 
@@ -934,33 +889,20 @@ __error_exit:
 static int __init srecorder_init(void)
 {
     int ret = -1;
-    
-#if !USE_LICENSE_GPL
-    register_jprobe_func register_jprobe;
-    unregister_jprobe_func unregister_jprobe;
-    
-#ifndef CONFIG_SRECORDER_DUMP_LOG_TO_STORAGECARD
-    atomic_notifier_chain_register_func atomic_notifier_chain_register;
-    atomic_notifier_chain_unregister_func atomic_notifier_chain_unregister;
+
+#ifdef CONFIG_SRECORDER_RESERVED_MEM_PHYS_ADDR
+    char *start_addr = NULL;
+    char *temp_buf = NULL;
 #endif
 
-    register_oom_notifier_func register_oom_notifier;
-    unregister_oom_notifier_func unregister_oom_notifier;
-#endif
-
-/* DTS2012110206142 wupeng-qidechun 20121105 begin */
 /* 删除内容 */
-/* DTS2012110206142 wupeng-qidechun 20121105 end */
 #ifndef CONFIG_SRECORDER_DUMP_LOG_TO_STORAGECARD
     bool register_panic_notifier_block_successfully = false;
 #endif
 
     bool register_oom_notifier_successfully = false;
 
-/* DTS2012091002904 Qidechun-wupeng 20120910 begin */
-/* DTS2012110506430 wupeng-qidechun 20121114 begin */
 #if defined(CONFIG_DUMP_MODEM_LOG)
-/* DTS2012110506430 wupeng-qidechun 20121114 end */
 #if defined(CONFIG_DUMP_MODEM_LOG_BY_FIQ)
     bool register_modem_fiq_notifier_successfully = false;
 #endif
@@ -971,9 +913,7 @@ static int __init srecorder_init(void)
     bool register_modem_notifier_successfully = false;
 #endif
 #endif
-/* DTS2012091002904 Qidechun-wupeng 20120910 end */
 
-/* DTS2012110506430 wupeng-qidechun 20121114 begin */
 #if DUMP_REBOOT_LOG
 #ifdef CONFIG_KPROBES
     bool register_jkernel_restart_successfully = false;
@@ -983,7 +923,6 @@ static int __init srecorder_init(void)
     bool register_emergency_reboot_notifier_successfully = false;
 #endif
 #endif
-/* DTS2012110506430 wupeng-qidechun 20121114 end */
 
 #ifdef CONFIG_SRECORDER_DUMP_LOG_TO_STORAGECARD
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 5, 0))
@@ -1003,7 +942,8 @@ static int __init srecorder_init(void)
     
     /* 获取SRecorder的保留内存地址和大小 */
     get_srecorder_log_buf_info(&params[0], &params[1]);
-    
+
+#ifndef CONFIG_SRECORDER_RESERVED_MEM_PHYS_ADDR
 #ifdef CONFIG_SRECORDER_DUMP_LOG_TO_STORAGECARD
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 5, 0))
     memset((void *)&kernel_log_buf_info, 0, sizeof(kernel_log_buf_info_t));
@@ -1020,13 +960,14 @@ static int __init srecorder_init(void)
         return -ENOMEM;
     }
 #endif
-
     SRECORDER_PRINTK("Install SRecorder\n@@@@ SRecorder's buffer addr = 0x%08lx size = 0x%08lx\n", params[0], params[1]);
-    
+#endif
+
     /* 初始化s_reserved_mem_info，该结构体保存SRecorder保留内存的详细信息 */
     memset(&s_srecorder_reserved_mem_info, 0, sizeof(srecorder_reserved_mem_info_t));
     memset((char *)params[0], 0, sizeof(srecorder_reserved_mem_header_t));
-    
+
+#ifndef CONFIG_SRECORDER_RESERVED_MEM_PHYS_ADDR
 #ifdef CONFIG_SRECORDER_DUMP_LOG_TO_STORAGECARD
     s_srecorder_reserved_mem_info.mem_size = temp_buf_size_for_srecorder - sizeof(srecorder_reserved_mem_header_t);
     s_srecorder_reserved_mem_info.bytes_left = s_srecorder_reserved_mem_info.mem_size;
@@ -1036,13 +977,65 @@ static int __init srecorder_init(void)
     s_srecorder_reserved_mem_info.bytes_left = s_srecorder_reserved_mem_info.mem_size;
     s_srecorder_reserved_mem_info.start_addr = (char *)(params[0] + sizeof(srecorder_reserved_mem_header_t));
 #endif
+#else
+    s_srecorder_reserved_mem_info.mem_size = 
+        (size_t)CONFIG_SRECORDER_RESERVED_MEM_SIZE
+        - sizeof(srecorder_reserved_mem_header_t);
+    s_srecorder_reserved_mem_info.bytes_left = s_srecorder_reserved_mem_info.mem_size;
+    start_addr = (char *)vmalloc((size_t)CONFIG_SRECORDER_RESERVED_MEM_SIZE);
+    if (NULL == start_addr)
+    {
+        printk("File: %s Line: %d Failed to malloc memory for SRecorder!\n", __FILE__, __LINE__);
+        goto __error_exit;
+    }
+    memset(start_addr, 0, (size_t)CONFIG_SRECORDER_RESERVED_MEM_SIZE);
+
+    /* This will be freed by vfree soon */
+    temp_buf = (char *)vmalloc((size_t)CONFIG_SRECORDER_RESERVED_MEM_SIZE);
+    if (NULL == temp_buf)
+    {
+        printk("File: %s Line: %d Failed to malloc memory for SRecorder!\n", __FILE__, __LINE__);
+        goto __error_exit;
+    }
+    memset(temp_buf, 0, (size_t)CONFIG_SRECORDER_RESERVED_MEM_SIZE);
+    s_srecorder_reserved_mem_info.start_addr = (char *)((long)start_addr 
+        + sizeof(srecorder_reserved_mem_header_t));
+    s_srecorder_reserved_mem_info.start_addr_mapped_by_ioremap = 
+        (char *)ioremap_nocache((phys_addr_t)
+        CONFIG_SRECORDER_RESERVED_MEM_PHYS_ADDR, 
+        (size_t)CONFIG_SRECORDER_RESERVED_MEM_SIZE);
+    if (NULL == s_srecorder_reserved_mem_info.start_addr_mapped_by_ioremap)
+    {
+        printk("IO remap addr for SRecorder failed!\n");
+        goto __error_exit; 
+    }
+    printk("SRecorder's Reserved Mem info: add: %llx size: %llx\n", 
+        (phys_addr_t)CONFIG_SRECORDER_RESERVED_MEM_PHYS_ADDR, 
+        (size_t)CONFIG_SRECORDER_RESERVED_MEM_SIZE);
+    memcpy_fromio(temp_buf, s_srecorder_reserved_mem_info.start_addr_mapped_by_ioremap, 
+        (size_t)CONFIG_SRECORDER_RESERVED_MEM_SIZE);
+    memset_io(s_srecorder_reserved_mem_info.start_addr_mapped_by_ioremap, 
+        0, (size_t)CONFIG_SRECORDER_RESERVED_MEM_SIZE);
+    params[0] = start_addr;
+    params[1] = (size_t)CONFIG_SRECORDER_RESERVED_MEM_SIZE;
+    SRECORDER_PRINTK("Install SRecorder\n@@@@ SRecorder's buffer "
+        "addr = %p size = 0x%lx\n", 
+        (void *)s_srecorder_reserved_mem_info.start_addr_mapped_by_ioremap, 
+        (size_t)CONFIG_SRECORDER_RESERVED_MEM_SIZE);
+#endif
     s_srecorder_reserved_mem_info.lock = s_srecorder_dump_log_lock;
     s_srecorder_reserved_mem_info.log_has_been_dumped_previously = false;
 
     memset(&s_srecorder_module_init_params, 0, sizeof(srecorder_module_init_params_t));
+#ifndef CONFIG_SRECORDER_RESERVED_MEM_PHYS_ADDR
     s_srecorder_module_init_params.srecorder_reserved_mem_start_addr = (char *)params[0];
     s_srecorder_module_init_params.srecorder_reserved_mem_size = params[1];
     s_srecorder_module_init_params.srecorder_log_temp_buf = get_srecorder_temp_buf_addr();
+#else
+    s_srecorder_module_init_params.srecorder_reserved_mem_start_addr = (char *)params[0];
+    s_srecorder_module_init_params.srecorder_reserved_mem_size = params[1];
+    s_srecorder_module_init_params.srecorder_log_temp_buf = temp_buf;
+#endif
     if (NULL != s_srecorder_module_init_params.srecorder_log_temp_buf)
     {
         s_srecorder_module_init_params.srecorder_log_len = 
@@ -1056,7 +1049,6 @@ static int __init srecorder_init(void)
         goto __error_exit;
     }
     
-#if USE_LICENSE_GPL
 #ifndef CONFIG_SRECORDER_DUMP_LOG_TO_STORAGECARD
     if (0 > atomic_notifier_chain_register(&panic_notifier_list, &s_panic_notifier_block))
     {
@@ -1068,55 +1060,12 @@ static int __init srecorder_init(void)
     
     if (0 > register_oom_notifier(&s_oom_notifier_block))
     {
-        /* DTS2012091002904 Qidechun-wupeng 20120910 begin */
         PRINT_INFO(("unable to register s_reboot_notifier_block!\n"), DEBUG_SRECORDER);
-        /* DTS2012091002904 Qidechun-wupeng 20120910 end */
         goto __error_exit;
     }
     register_oom_notifier_successfully = true;
+//删除内容
 
-/* DTS2012110206142 wupeng-qidechun 20121105 begin */
-/* 删除内容 */
-/* DTS2012110206142 wupeng-qidechun 20121105 end */
-#else
-#ifndef CONFIG_SRECORDER_DUMP_LOG_TO_STORAGECARD
-    atomic_notifier_chain_register = (atomic_notifier_chain_register_func)srecorder_get_atomic_notifier_chain_register();
-    if (NULL == atomic_notifier_chain_register)
-    {
-        PRINT_INFO(("srecorder_get_atomic_notifier_chain_register = %p!\n", 
-            srecorder_get_atomic_notifier_chain_register), DEBUG_SRECORDER);
-        goto __error_exit;
-    }
-    ret = atomic_notifier_chain_register(&panic_notifier_list, &s_panic_notifier_block);
-    if (ret < 0)
-    {
-        PRINT_INFO(("unable to register s_panic_notifier_block!\n"), DEBUG_SRECORDER);
-        goto __error_exit;
-    }
-    register_panic_notifier_block_successfully = true;
-#endif
-
-/* DTS2012110206142 wupeng-qidechun 20121105 begin */
-/* 删除内容 */
-/* DTS2012110206142 wupeng-qidechun 20121105 end */
- 
-    register_oom_notifier = (register_oom_notifier_func)srecorder_get_register_oom_notifier();
-    if (NULL == register_oom_notifier)
-    {
-        PRINT_INFO(("register_oom_notifier is NULL!\n"), DEBUG_SRECORDER);
-        goto __error_exit;
-    }
-    if (0 > register_oom_notifier(&s_oom_notifier_block))
-    {
-/* DTS2012091002904 Qidechun-wupeng 20120910 begin */
-        PRINT_INFO(("unable to register s_reboot_notifier_block\n"), DEBUG_SRECORDER);
-/* DTS2012091002904 Qidechun-wupeng 20120910 end */
-        goto __error_exit;
-    }
-    register_oom_notifier_successfully = true;
-#endif
-
-/* DTS2012110506430 wupeng-qidechun 20121114 begin */
 #if DUMP_REBOOT_LOG
 #ifdef CONFIG_KPROBES
     if (0 > register_jprobe(&s_srecorder_jkernel_restart))
@@ -1150,12 +1099,8 @@ static int __init srecorder_init(void)
     register_emergency_reboot_notifier_successfully = true;
 #endif
 #endif
-/* DTS2012110506430 wupeng-qidechun 20121114 end */
 
-/* DTS2012091002904 Qidechun-wupeng 20120910 begin */
-/* DTS2012110506430 wupeng-qidechun 20121114 begin */
 #if defined(CONFIG_DUMP_MODEM_LOG)
-/* DTS2012110506430 wupeng-qidechun 20121114 end */
 #if defined(CONFIG_DUMP_MODEM_LOG_BY_FIQ)
     if (0 > register_modem_fiq_notifier(&s_modem_fiq_notifier_block))
     {
@@ -1182,7 +1127,6 @@ static int __init srecorder_init(void)
     register_modem_notifier_successfully = true;
 #endif
 #endif
-/* DTS2012091002904 Qidechun-wupeng 20120910 end */
 
     /* Enable SRecorder dump all kinds of log except the "log cat" */
     for (i = 0; i < LOG_TYPE_COUNT; i++)
@@ -1190,13 +1134,12 @@ static int __init srecorder_init(void)
         srecorder_set_dump_enable_bit((unsigned long)i);
     }
     srecorder_clear_dump_enable_bit(LOGCAT_BIT9);
-        
+
     SRECORDER_PRINTK("^_^ SRecorder has been installed successfully!\n");
     
     return 0;
     
 __error_exit:
-#if USE_LICENSE_GPL
 #ifndef CONFIG_SRECORDER_DUMP_LOG_TO_STORAGECARD
     if (register_panic_notifier_block_successfully)
     {
@@ -1208,32 +1151,8 @@ __error_exit:
     {
         unregister_oom_notifier(&s_oom_notifier_block);
     }
+//删除内容
 
-    /* DTS2012110206142 wupeng-qidechun 20121105 begin */
-/* 删除内容 */
-    /* DTS2012110206142 wupeng-qidechun 20121105 end */
-#else
-#ifndef CONFIG_SRECORDER_DUMP_LOG_TO_STORAGECARD
-    atomic_notifier_chain_unregister = (atomic_notifier_chain_unregister_func)
-        srecorder_get_atomic_notifier_chain_unregister();
-    if (NULL != atomic_notifier_chain_unregister && register_panic_notifier_block_successfully)
-    {
-        atomic_notifier_chain_unregister(&panic_notifier_list, &s_panic_notifier_block);
-    }
-
-    unregister_oom_notifier = (unregister_oom_notifier_func)srecorder_get_unregister_oom_notifier();
-    if (NULL != unregister_oom_notifier && register_oom_notifier_successfully)
-    {
-        unregister_oom_notifier(&s_oom_notifier_block);
-    }
-#endif
-
-    /* DTS2012110206142 wupeng-qidechun 20121105 begin */
-    /* 删除内容 */
-    /* DTS2012110206142 wupeng-qidechun 20121105 end */
-#endif
-
-/* DTS2012110506430 wupeng-qidechun 20121114 begin */
 #if DUMP_REBOOT_LOG
 #ifdef CONFIG_KPROBES
     if (register_jkernel_restart_successfully)
@@ -1257,12 +1176,8 @@ __error_exit:
     }
 #endif
 #endif
-/* DTS2012110506430 wupeng-qidechun 20121114 end */
 
-/* DTS2012091002904 Qidechun-wupeng 20120910 begin */
-/* DTS2012110506430 wupeng-qidechun 20121114 begin */
 #if defined(CONFIG_DUMP_MODEM_LOG)
-/* DTS2012110506430 wupeng-qidechun 20121114 end */
 #if defined(CONFIG_DUMP_MODEM_LOG_BY_FIQ)
     if (register_modem_fiq_notifier_successfully)
     {
@@ -1282,7 +1197,17 @@ __error_exit:
     }
 #endif
 #endif
-/* DTS2012091002904 Qidechun-wupeng 20120910 end */
+#ifdef CONFIG_SRECORDER_RESERVED_MEM_PHYS_ADDR
+    if (NULL != start_addr)
+    {
+        vfree(start_addr);
+    }
+
+    if (NULL != temp_buf)
+    {
+        vfree(temp_buf);
+    }
+#endif
     return -1;
 }
 
@@ -1294,48 +1219,14 @@ static void __exit srecorder_exit(void)
     
     PRINT_INFO(("Uninstall SRecorder!\n"), DEBUG_SRECORDER);
 
-#if USE_LICENSE_GPL
 #ifndef CONFIG_SRECORDER_DUMP_LOG_TO_STORAGECARD
     atomic_notifier_chain_unregister(&panic_notifier_list, &s_panic_notifier_block);
 #endif
 
     unregister_oom_notifier(&s_oom_notifier_block);
-    /* DTS2012110206142 wupeng-qidechun 20121105 begin */
     /* 删除内容 */
-    /* DTS2012110206142 wupeng-qidechun 20121105 end */
-#else
-    {
-#ifndef CONFIG_SRECORDER_DUMP_LOG_TO_STORAGECARD
-        atomic_notifier_chain_unregister_func atomic_notifier_chain_unregister;
-#endif
+//删除内容
 
-        /* DTS2012110206142 wupeng-qidechun 20121105 begin */
-        /* 删除内容 */
-        /* DTS2012110206142 wupeng-qidechun 20121105 end */
-        unregister_oom_notifier_func unregister_oom_notifier;
-        
-#ifndef CONFIG_SRECORDER_DUMP_LOG_TO_STORAGECARD
-        atomic_notifier_chain_unregister = (atomic_notifier_chain_unregister_func)
-            srecorder_get_atomic_notifier_chain_unregister();
-        if (NULL != atomic_notifier_chain_unregister)
-        {
-            atomic_notifier_chain_unregister(&panic_notifier_list, &s_panic_notifier_block);
-        }
-#endif
-
-        /* DTS2012110206142 wupeng-qidechun 20121105 begin */
-        /* 删除内容 */
-        /* DTS2012110206142 wupeng-qidechun 20121105 end */
-
-        unregister_oom_notifier = (unregister_oom_notifier_func)srecorder_get_unregister_oom_notifier();
-        if (NULL != unregister_oom_notifier)
-        {
-            unregister_oom_notifier(&s_oom_notifier_block);
-        }
-    }
-#endif
-
-/* DTS2012110506430 wupeng-qidechun 20121114 begin */
 #if DUMP_REBOOT_LOG
 #ifdef CONFIG_KPROBES
     unregister_jprobe(&s_srecorder_jkernel_restart);
@@ -1345,12 +1236,8 @@ static void __exit srecorder_exit(void)
     unregister_emergency_reboot_notifier(&s_emergency_reboot_notifier_block);
 #endif
 #endif
-/* DTS2012110506430 wupeng-qidechun 20121114 end */
 
-/* DTS2012091002904 Qidechun-wupeng 20120910 begin */
-/* DTS2012110506430 wupeng-qidechun 20121114 begin */
 #if defined(CONFIG_DUMP_MODEM_LOG)
-/* DTS2012110506430 wupeng-qidechun 20121114 end */
 #if defined(CONFIG_DUMP_MODEM_LOG_BY_FIQ)
     unregister_modem_fiq_notifier(&s_modem_fiq_notifier_block);
 #endif
@@ -1361,7 +1248,6 @@ static void __exit srecorder_exit(void)
     modem_unregister_notifier(&s_modem_notifier_block);
 #endif
 #endif
-/* DTS2012091002904 Qidechun-wupeng 20120910 end */
 
     /* 退出模块 */
     for (i = 0; i < array_size; i++)

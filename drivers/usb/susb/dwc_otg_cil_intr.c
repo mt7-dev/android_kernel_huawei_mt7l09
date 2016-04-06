@@ -39,18 +39,17 @@
  *
  * This file contains the Common Interrupt handlers.
  */
-#include <linux/usb.h>
-#include <linux/usb/hcd.h>
-#include <linux/huawei/usb/hisi_usb.h>
-
 #include "dwc_os.h"
 #include "dwc_otg_regs.h"
 #include "dwc_otg_cil.h"
 #include "dwc_otg_driver.h"
 #include "dwc_otg_pcd.h"
 #include "dwc_otg_hcd.h"
+#include "dwc_otg_os_dep.h"
 
-#include "dwc_otg_hi3630.h"
+#ifndef CONFIG_HI3635_USB
+#include "dwc_otg_hi6xxx.h"
+#endif
 
 #ifdef DEBUG
 inline const char *op_state_str(dwc_otg_core_if_t * core_if)
@@ -72,7 +71,6 @@ int32_t dwc_otg_handle_mode_mismatch_intr(dwc_otg_core_if_t * core_if)
 	gintsts_data_t gintsts;
 	DWC_WARN("Mode Mismatch Interrupt: currently in %s mode\n",
 		 dwc_otg_mode(core_if) ? "Host" : "Device");
-	printk(KERN_INFO "[USB]%s\n", __func__);
 
 	/* Clear interrupt */
 	gintsts.d32 = 0;
@@ -101,8 +99,6 @@ int32_t dwc_otg_handle_otg_intr(dwc_otg_core_if_t * core_if)
 	DWC_DEBUGPL(DBG_CIL, "++OTG Interrupt gotgint=%0x [%s]\n", gotgint.d32,
 		    op_state_str(core_if));
 
-	printk(KERN_INFO "[USB]%s: gotgint 0x%08x\n", __func__, gotgint.d32);
-
 	if (gotgint.b.sesenddet) {
 		DWC_DEBUGPL(DBG_ANY, " ++OTG Interrupt: "
 			    "Session End Detected++ (%s)\n",
@@ -115,6 +111,9 @@ int32_t dwc_otg_handle_otg_intr(dwc_otg_core_if_t * core_if)
 		} else {
 			/* If not B_HOST and Device HNP still set. HNP
 			 * Did not succeed!*/
+            //dwc_otg_pcd_t *pcd = (dwc_otg_pcd_t *)core_if->pcd_cb->p;
+            //struct lm_device *lm_dev = pcd->otg_dev->os_dep.lmdev;
+
 			if (gotgctl.b.devhnpen) {
 				DWC_DEBUGPL(DBG_ANY, "Session End Detected\n");
 				__DWC_ERROR("Device Not Connected/Responding!\n");
@@ -269,29 +268,26 @@ int32_t dwc_otg_handle_otg_intr(dwc_otg_core_if_t * core_if)
 	return 1;
 }
 
-void w_conn_id_status_change(struct work_struct *work)
+void w_conn_id_status_change(void *p)
 {
-	dwc_otg_core_if_t *core_if = container_of(work,
-			dwc_otg_core_if_t, id_change_work.work);
+	dwc_otg_core_if_t *core_if = p;
 	uint32_t count = 0;
 	gotgctl_data_t gotgctl = {.d32 = 0 };
 
-	mutex_lock(&core_if->id_change_mutex);
-
-	dwc_otg_disable_global_interrupts(core_if);
-
 	gotgctl.d32 = DWC_READ_REG32(&core_if->core_global_regs->gotgctl);
 	DWC_DEBUGPL(DBG_CIL, "gotgctl=%0x\n", gotgctl.d32);
-	printk("gotgctl.b.conidsts=%d\n", gotgctl.b.conidsts);
+	DWC_DEBUGPL(DBG_CIL, "gotgctl.b.conidsts=%d\n", gotgctl.b.conidsts);
 
 	/* B-Device connector (Device Mode) */
 	if (gotgctl.b.conidsts) {
 #if 0
+		dwc_otg_disable_global_interrupts(core_if);
 		/* Wait for switch to device mode. */
 		while (!dwc_otg_is_device_mode(core_if)) {
 			DWC_PRINTF("Waiting for Peripheral Mode, Mode=%s\n",
 				   (dwc_otg_is_host_mode(core_if) ? "Host" :
 				    "Peripheral"));
+			/* dwc_mdelay(100); */
 			dwc_msleep(10);
 			if (++count > 10000)
 				break;
@@ -303,9 +299,9 @@ void w_conn_id_status_change(struct work_struct *work)
 		cil_pcd_start(core_if);
 		dwc_otg_enable_global_interrupts(core_if);
 #endif
-#ifndef FORCE_ID_STATE
-		/* added by l00196665 */
-		hisi_usb_otg_event(ID_RISE_EVENT);
+
+#ifndef CONFIG_HI3635_USB
+        hisi_usb_id_change(ID_RISE_EVENT);
 #endif
 	} else {
 		/* A-Device connector (Host Mode) */
@@ -313,6 +309,7 @@ void w_conn_id_status_change(struct work_struct *work)
 			DWC_PRINTF("Waiting for Host Mode, Mode=%s\n",
 				   (dwc_otg_is_host_mode(core_if) ? "Host" :
 				    "Peripheral"));
+			/* dwc_mdelay(100); */
 			dwc_msleep(10);
 			if (++count > 10000)
 				break;
@@ -323,17 +320,10 @@ void w_conn_id_status_change(struct work_struct *work)
 		/*
 		 * Initialize the Core for Host mode.
 		 */
-		dwc_otg_core_init(core_if);
-		msleep(100);
-		if (dwc_otg_is_host_mode(core_if)) {
-			core_if->op_state = A_HOST;
-			printk(KERN_INFO "[usbotg][%s]:usb mode %s\n", __func__, "Host");
-		}
-		cil_hcd_start(core_if);
-		// do not enable interrupt here, but in delayed work
+		//dwc_otg_core_init(core_if);
 		//dwc_otg_enable_global_interrupts(core_if);
+		cil_hcd_start(core_if);
 	}
-	mutex_unlock(&core_if->id_change_mutex);
 }
 
 /**
@@ -360,7 +350,6 @@ int32_t dwc_otg_handle_conn_id_status_change_intr(dwc_otg_core_if_t * core_if)
 	gintmsk_data_t gintmsk = {.d32 = 0 };
 	gintsts_data_t gintsts = {.d32 = 0 };
 
-	/* mask sof interrupt */
 	gintmsk.b.sofintr = 1;
 	DWC_MODIFY_REG32(&core_if->core_global_regs->gintmsk, gintmsk.d32, 0);
 
@@ -368,11 +357,7 @@ int32_t dwc_otg_handle_conn_id_status_change_intr(dwc_otg_core_if_t * core_if)
 		    " ++Connector ID Status Change Interrupt++  (%s)\n",
 		    (dwc_otg_is_host_mode(core_if) ? "Host" : "Device"));
 
-	printk(KERN_INFO "[USB]%s: current mode %s\n", __func__,
-		(dwc_otg_is_host_mode(core_if) ? "Host" : "Device"));
-
-/* modified by l00196665 */
-#if 0
+#ifndef CONFIG_HI3635_USB
 	DWC_SPINUNLOCK(core_if->lock);
 
 	/*
@@ -383,10 +368,6 @@ int32_t dwc_otg_handle_conn_id_status_change_intr(dwc_otg_core_if_t * core_if)
 	DWC_WORKQ_SCHEDULE(core_if->wq_otg, w_conn_id_status_change,
 			   core_if, "connection id status change");
 	DWC_SPINLOCK(core_if->lock);
-#else
-	/* disable global interrupt, and enable it in delayed work */
-	dwc_otg_disable_global_interrupts(core_if);
-	schedule_delayed_work(&core_if->id_change_work, 0);
 #endif
 
 	/* Set flag and clear interrupt */
@@ -437,10 +418,9 @@ int32_t dwc_otg_handle_session_req_intr(dwc_otg_core_if_t * core_if)
 	return 1;
 }
 
-void w_wakeup_detected(unsigned long data)
+void w_wakeup_detected(void *p)
 {
-	dwc_otg_core_if_t *core_if = (dwc_otg_core_if_t *) data;
-
+	dwc_otg_core_if_t *core_if = (dwc_otg_core_if_t *) p;
 	/*
 	 * Clear the Resume after 70ms. (Need 20 ms minimum. Use 70 ms
 	 * so that OPT tests pass with all PHYs).
@@ -460,9 +440,10 @@ void w_wakeup_detected(unsigned long data)
 	pcgcctl.b.stoppclk = 1;
 	DWC_MODIFY_REG32(core_if->pcgcctl, pcgcctl.d32, 0);
 	dwc_udelay(10);
-#endif
+#endif //0
 	hprt0.d32 = dwc_otg_read_hprt0(core_if);
 	DWC_DEBUGPL(DBG_ANY, "Resume: HPRT0=%0x\n", hprt0.d32);
+//      dwc_mdelay(70);
 	hprt0.b.prtres = 0;	/* Resume */
 	DWC_WRITE_REG32(core_if->host_if->hprt0, hprt0.d32);
 	DWC_DEBUGPL(DBG_ANY, "Clear Resume: HPRT0=%0x\n",
@@ -520,15 +501,9 @@ int32_t dwc_otg_handle_wakeup_detected_intr(dwc_otg_core_if_t * core_if)
 					 dctl, dctl.d32, 0);
 
 			DWC_SPINUNLOCK(core_if->lock);
-
-/* modified by l00196665 */
-#if 0
 			if (core_if->pcd_cb && core_if->pcd_cb->resume_wakeup) {
 				core_if->pcd_cb->resume_wakeup(core_if->pcd_cb->p);
 			}
-#else
-			cil_pcd_resume(core_if);
-#endif
 			DWC_SPINLOCK(core_if->lock);
 		} else {
 			glpmcfg_data_t lpmcfg;
@@ -547,12 +522,7 @@ int32_t dwc_otg_handle_wakeup_detected_intr(dwc_otg_core_if_t * core_if)
 			/* Restart the Phy Clock */
 			pcgcctl.b.stoppclk = 1;
 			DWC_MODIFY_REG32(core_if->pcgcctl, pcgcctl.d32, 0);
-
-			/* schedule timer */
-			if (timer_pending(&core_if->wkp_timer))
-				printk(KERN_INFO "wkp_timer pending\n");
-			else
-				mod_timer(&core_if->wkp_timer, jiffies + msecs_to_jiffies(71));
+			DWC_TIMER_SCHEDULE(core_if->wkp_timer, 71);
 		} else {
 			/** Change to L0 state*/
 			core_if->lx_state = DWC_OTG_L0;
@@ -577,10 +547,10 @@ static int32_t dwc_otg_handle_pwrdn_disconnect_intr(dwc_otg_core_if_t * core_if)
 	gpwrdn_data_t gpwrdn_temp = {.d32 = 0 };
 	gpwrdn_temp.d32 = DWC_READ_REG32(&core_if->core_global_regs->gpwrdn);
 
-	DWC_DEBUGPL(DBG_CIL, "%s called\n", __FUNCTION__);
+	DWC_PRINTF("%s called\n", __FUNCTION__);
 
 	if (!core_if->hibernation_suspend) {
-		DWC_DEBUGPL(DBG_CIL, "Already exited from Hibernation\n");
+		DWC_PRINTF("Already exited from Hibernation\n");
 		return 1;
 	}
 
@@ -645,7 +615,7 @@ static int32_t dwc_otg_handle_pwrdn_wakeup_detected_intr(dwc_otg_core_if_t * cor
 		    "++Powerdown Remote Wakeup Detected Interrupt++\n");
 
 	if (!core_if->hibernation_suspend) {
-		DWC_DEBUGPL(DBG_CIL, "Already exited from Hibernation\n");
+		DWC_PRINTF("Already exited from Hibernation\n");
 		return 1;
 	}
 
@@ -674,7 +644,7 @@ static int32_t dwc_otg_handle_pwrdn_idsts_change(dwc_otg_device_t * otg_dev)
 	gpwrdn_temp.d32 = DWC_READ_REG32(&core_if->core_global_regs->gpwrdn);
 	if (core_if->power_down == 2) {
 		if (!core_if->hibernation_suspend) {
-			DWC_DEBUGPL(DBG_ANY, "Already exited from Hibernation\n");
+			DWC_PRINTF("Already exited from Hibernation\n");
 			return 1;
 		}
 		DWC_DEBUGPL(DBG_ANY, "Exit from hibernation on ID sts change\n");
@@ -738,8 +708,13 @@ static int32_t dwc_otg_handle_pwrdn_idsts_change(dwc_otg_device_t * otg_dev)
 		uint8_t is_host = 0;
 		DWC_SPINUNLOCK(core_if->lock);
 		/* Change the core_if's lock to hcd/pcd lock depend on mode? */
+#ifndef DWC_HOST_ONLY
+		if (gpwrdn_temp.b.idsts)
+			core_if->lock = otg_dev->pcd->lock;
+#endif
 #ifndef DWC_DEVICE_ONLY
 		if (!gpwrdn_temp.b.idsts) {
+			core_if->lock = otg_dev->hcd->lock;
 			is_host = 1;
 		}
 #endif
@@ -782,7 +757,7 @@ static int32_t dwc_otg_handle_pwrdn_session_change(dwc_otg_core_if_t * core_if)
 	gpwrdn.d32 = DWC_READ_REG32(&core_if->core_global_regs->gpwrdn);
 	if (core_if->power_down == 2) {
 		if (!core_if->hibernation_suspend) {
-			DWC_DEBUGPL(DBG_ANY, "Already exited from Hibernation\n");
+			DWC_PRINTF("Already exited from Hibernation\n");
 			return 1;
 		}
 
@@ -857,12 +832,12 @@ static int32_t dwc_otg_handle_pwrdn_session_change(dwc_otg_core_if_t * core_if)
  */
 static uint32_t dwc_otg_handle_pwrdn_stschng_intr(dwc_otg_device_t * otg_dev)
 {
-	int retval = 0;
+	uint32_t retval;
 	gpwrdn_data_t gpwrdn = {.d32 = 0 };
 	gpwrdn_data_t gpwrdn_temp = {.d32 = 0 };
 	dwc_otg_core_if_t *core_if = otg_dev->core_if;
 
-	DWC_DEBUGPL(DBG_ANY, "%s called\n", __FUNCTION__);
+	DWC_PRINTF("%s called\n", __FUNCTION__);
 
 	if (core_if->power_down == 2) {
 		if (core_if->hibernation_suspend <= 0) {
@@ -894,10 +869,10 @@ static int32_t dwc_otg_handle_pwrdn_srp_intr(dwc_otg_core_if_t * core_if)
 {
 	gpwrdn_data_t gpwrdn = {.d32 = 0 };
 
-	DWC_DEBUGPL(DBG_ANY, "%s called\n", __FUNCTION__);
+	DWC_PRINTF("%s called\n", __FUNCTION__);
 
 	if (!core_if->hibernation_suspend) {
-		DWC_DEBUGPL(DBG_ANY, "Already exited from Hibernation\n");
+		DWC_PRINTF("Already exited from Hibernation\n");
 		return 1;
 	}
 #ifdef DWC_DEV_SRPCAP
@@ -957,7 +932,6 @@ static int32_t dwc_otg_handle_pwrdn_srp_intr(dwc_otg_core_if_t * core_if)
 	return 1;
 }
 
-#if 0
 /** This interrupt indicates that restore command after Hibernation
  * was completed by the core. */
 int32_t dwc_otg_handle_restore_done_intr(dwc_otg_core_if_t * core_if)
@@ -980,7 +954,6 @@ int32_t dwc_otg_handle_restore_done_intr(dwc_otg_core_if_t * core_if)
 
 	return 1;
 }
-#endif
 
 /**
  * This interrupt indicates that a device has been disconnected from
@@ -993,8 +966,6 @@ int32_t dwc_otg_handle_disconnect_intr(dwc_otg_core_if_t * core_if)
 	DWC_DEBUGPL(DBG_ANY, "++Disconnect Detected Interrupt++ (%s) %s\n",
 		    (dwc_otg_is_host_mode(core_if) ? "Host" : "Device"),
 		    op_state_str(core_if));
-
-	printk(KERN_INFO "[USB]%s\n", __func__);
 
 /** @todo Consolidate this if statement. */
 #ifndef DWC_HOST_ONLY
@@ -1032,12 +1003,9 @@ int32_t dwc_otg_handle_disconnect_intr(dwc_otg_core_if_t * core_if)
 			DWC_DEBUGPL(DBG_ANY, "!a_peripheral && !devhnpen\n");
 		}
 	} else {
-		/* host mode */
-
 		if (core_if->op_state == A_HOST) {
 			/* A-Cable still connected but device disconnected. */
 			cil_hcd_disconnect(core_if);
-
 			if (core_if->adp_enable) {
 				gpwrdn_data_t gpwrdn = {.d32 = 0 };
 				cil_hcd_stop(core_if);
@@ -1079,12 +1047,11 @@ int32_t dwc_otg_handle_disconnect_intr(dwc_otg_core_if_t * core_if)
  * When power management is enabled the core will be put in low power
  * mode.
  */
-static int32_t dwc_otg_handle_usb_suspend_intr(dwc_otg_device_t *otg_dev)
+int32_t dwc_otg_handle_usb_suspend_intr(dwc_otg_core_if_t * core_if)
 {
 	dsts_data_t dsts;
 	gintsts_data_t gintsts;
 	dcfg_data_t dcfg;
-	dwc_otg_core_if_t *core_if = otg_dev->core_if;
 
 	DWC_DEBUGPL(DBG_ANY, "USB SUSPEND\n");
 
@@ -1120,7 +1087,8 @@ static int32_t dwc_otg_handle_usb_suspend_intr(dwc_otg_device_t *otg_dev)
 #endif
 		/* PCD callback for suspend. Release the lock inside of callback function */
 		cil_pcd_suspend(core_if);
-		if (core_if->power_down == 2) {
+		if (core_if->power_down == 2)
+		{
 			dcfg.d32 = DWC_READ_REG32(&core_if->dev_if->dev_global_regs->dcfg);
 			DWC_DEBUGPL(DBG_ANY,"lx_state = %08x\n",core_if->lx_state);
 			DWC_DEBUGPL(DBG_ANY," device address = %08d\n",dcfg.b.devaddr);
@@ -1138,13 +1106,16 @@ static int32_t dwc_otg_handle_usb_suspend_intr(dwc_otg_device_t *otg_dev)
 				gintsts.b.usbsuspend = 1;
 				DWC_WRITE_REG32(&core_if->core_global_regs->
 						gintsts, gintsts.d32);
-				DWC_DEBUGPL(DBG_ANY, "Start of hibernation completed\n");
+				DWC_PRINTF("Start of hibernation completed\n");
 				dwc_otg_save_global_regs(core_if);
 				dwc_otg_save_dev_regs(core_if);
 
 				gusbcfg.d32 =
 				    DWC_READ_REG32(&core_if->core_global_regs->
 						   gusbcfg);
+				#ifndef CONFIG_HI3635_USB
+                hiusb_hibernation_init();
+                #endif
 				if (gusbcfg.b.ulpi_utmi_sel == 1) {
 					/* ULPI interface */
 					/* Suspend the Phy Clock */
@@ -1193,20 +1164,21 @@ static int32_t dwc_otg_handle_usb_suspend_intr(dwc_otg_device_t *otg_dev)
 				/* Enable Power Down Clamp */
 				gpwrdn.d32 = 0;
 				gpwrdn.b.pwrdnclmp = 1;
-				DWC_MODIFY_REG32(&core_if->core_global_regs->
-						 gpwrdn, 0, gpwrdn.d32);
+				/*DWC_MODIFY_REG32(&core_if->core_global_regs->
+						 gpwrdn, 0, gpwrdn.d32);*/
 				dwc_udelay(10);
 
 				/* Switch off VDD */
 				gpwrdn.d32 = 0;
 				gpwrdn.b.pwrdnswtch = 1;
-				DWC_MODIFY_REG32(&core_if->core_global_regs->
-						 gpwrdn, 0, gpwrdn.d32);
+				/*DWC_MODIFY_REG32(&core_if->core_global_regs->
+						 gpwrdn, 0, gpwrdn.d32);*/
+				dwc_udelay(10);
 
 				/* Save gpwrdn register for further usage if stschng interrupt */
 				core_if->gr_backup->gpwrdn_local =
 							DWC_READ_REG32(&core_if->core_global_regs->gpwrdn);
-				DWC_DEBUGPL(DBG_ANY, "Hibernation completed\n");
+				DWC_PRINTF("Hibernation completed\n");
 
 				return 1;
 			}
@@ -1351,11 +1323,11 @@ static int32_t dwc_otg_handle_lpm_intr(dwc_otg_core_if_t * core_if)
 	gintsts_data_t gintsts;
 
 	if (!core_if->core_params->lpm_enable) {
-		DWC_DEBUGPL(DBG_ANY, "Unexpected LPM interrupt\n");
+		DWC_PRINTF("Unexpected LPM interrupt\n");
 	}
 
 	lpmcfg.d32 = DWC_READ_REG32(&core_if->core_global_regs->glpmcfg);
-	DWC_DEBUGPL(DBG_ANY, "LPM config register = 0x%08x\n", lpmcfg.d32);
+	DWC_PRINTF("LPM config register = 0x%08x\n", lpmcfg.d32);
 
 	if (dwc_otg_is_host_mode(core_if)) {
 		cil_hcd_sleep(core_if);
@@ -1381,6 +1353,7 @@ static int32_t dwc_otg_handle_lpm_intr(dwc_otg_core_if_t * core_if)
 }
 #endif /* CONFIG_USB_DWC_OTG_LPM */
 
+#ifdef CONFIG_HI3635_USB
 static int32_t dwc_otg_clear_gotgintr(dwc_otg_core_if_t * core_if)
 {
 	gotgint_data_t gotgint;
@@ -1394,7 +1367,7 @@ static int32_t dwc_otg_clear_gotgintr(dwc_otg_core_if_t * core_if)
 
 	return 1;
 }
-
+#endif
 /**
  * This function returns the Core Interrupt register.
  */
@@ -1404,14 +1377,10 @@ static inline uint32_t dwc_otg_read_common_intr(dwc_otg_core_if_t * core_if)
 	gintsts_data_t gintsts;
 	gintmsk_data_t gintmsk;
 	gintmsk_data_t gintmsk_common = {.d32 = 0 };
-
 	gintmsk_common.b.wkupintr = 1;
 	gintmsk_common.b.sessreqintr = 1;
 	gintmsk_common.b.conidstschng = 1;
-/* removed by l00196665, do not handle this interrupt on hi3630 */
-#if 0
 	gintmsk_common.b.otgintr = 1;
-#endif
 	gintmsk_common.b.modemismatch = 1;
 	gintmsk_common.b.disconnect = 1;
 	gintmsk_common.b.usbsuspend = 1;
@@ -1428,8 +1397,9 @@ static inline uint32_t dwc_otg_read_common_intr(dwc_otg_core_if_t * core_if)
 	gintmsk.d32 = DWC_READ_REG32(&core_if->core_global_regs->gintmsk);
 	gahbcfg.d32 = DWC_READ_REG32(&core_if->core_global_regs->gahbcfg);
 
-	/* added by l00196665, GOTGINT[20] can not be masked, so need clear it */
+#ifdef CONFIG_HI3635_USB
 	dwc_otg_clear_gotgintr(core_if);
+#endif
 
 #ifdef DEBUG
 	/* if any common interrupts set */
@@ -1438,11 +1408,11 @@ static inline uint32_t dwc_otg_read_common_intr(dwc_otg_core_if_t * core_if)
 			    gintsts.d32, gintmsk.d32);
 	}
 #endif
-
 	if (gahbcfg.b.glblintrmsk)
 		return ((gintsts.d32 & gintmsk.d32) & gintmsk_common.d32);
 	else
 		return 0;
+
 }
 
 /* MACRO for clearing interupt bits in GPWRDN register */
@@ -1476,21 +1446,12 @@ int32_t dwc_otg_handle_common_intr(void *dev)
 	gpwrdn_data_t gpwrdn = {.d32 = 0 };
 	dwc_otg_device_t *otg_dev = dev;
 	dwc_otg_core_if_t *core_if = otg_dev->core_if;
-
-	if (core_if->lock)
-		DWC_SPINLOCK(core_if->lock);
-
-	if (unlikely(!dwc_otg_hi3630_is_power_on())) {
-		printk("[%s]do not access registers after power off\n", __func__);
-		if (core_if->lock)
-			DWC_SPINUNLOCK(core_if->lock);
-		return 1;
-	}
-
 	gpwrdn.d32 = DWC_READ_REG32(&core_if->core_global_regs->gpwrdn);
 	if (dwc_otg_is_device_mode(core_if))
 		core_if->frame_num = dwc_otg_get_frame_number(core_if);
 
+	if (core_if->lock)
+		DWC_SPINLOCK(core_if->lock);
 
 	if (core_if->power_down == 3 && core_if->xhib == 1) {
 		DWC_DEBUGPL(DBG_ANY, "Exiting from xHIB state\n");
@@ -1525,7 +1486,7 @@ int32_t dwc_otg_handle_common_intr(void *dev)
 			retval |= dwc_otg_handle_wakeup_detected_intr(core_if);
 		}
 		if (gintsts.b.usbsuspend) {
-			retval |= dwc_otg_handle_usb_suspend_intr(otg_dev);
+			retval |= dwc_otg_handle_usb_suspend_intr(core_if);
 		}
 #ifdef CONFIG_USB_DWC_OTG_LPM
 		if (gintsts.b.lpmtranrcvd) {
@@ -1589,7 +1550,7 @@ int32_t dwc_otg_handle_common_intr(void *dev)
 
 			gintsts.b.restoredone = 1;
 			DWC_WRITE_REG32(&core_if->core_global_regs->gintsts,gintsts.d32);
-			DWC_DEBUGPL(DBG_ANY, " --Restore done interrupt received-- \n");
+			DWC_PRINTF(" --Restore done interrupt received-- \n");
 			retval |= 1;
 		}
 		if (gintsts.b.portintr && dwc_otg_is_device_mode(core_if)) {
@@ -1610,7 +1571,7 @@ int32_t dwc_otg_handle_common_intr(void *dev)
 			if (gpwrdn.b.linestate == 0) {
 				dwc_otg_handle_pwrdn_disconnect_intr(core_if);
 			} else {
-				DWC_DEBUGPL(DBG_ANY, "Disconnect detected while linestate is not 0\n");
+				DWC_PRINTF("Disconnect detected while linestate is not 0\n");
 			}
 
 			retval |= 1;
@@ -1621,14 +1582,14 @@ int32_t dwc_otg_handle_common_intr(void *dev)
 			if (gpwrdn.b.linestate == 2 || gpwrdn.b.linestate == 1) {
 				dwc_otg_handle_pwrdn_wakeup_detected_intr(core_if);
 			} else {
-				DWC_DEBUGPL(DBG_ANY, "gpwrdn.linestate = %d\n", gpwrdn.b.linestate);
+				DWC_PRINTF("gpwrdn.linestate = %d\n", gpwrdn.b.linestate);
 			}
 			retval |= 1;
 		}
 		if (gpwrdn.b.rst_det && gpwrdn.b.rst_det_msk) {
 			CLEAR_GPWRDN_INTR(core_if, rst_det);
 			if (gpwrdn.b.linestate == 0) {
-				DWC_DEBUGPL(DBG_ANY, "Reset detected\n");
+				DWC_PRINTF("Reset detected\n");
 				retval |= dwc_otg_device_hibernation_restore(core_if, 0, 1);
 			}
 		}
@@ -1638,6 +1599,7 @@ int32_t dwc_otg_handle_common_intr(void *dev)
 			retval |= 1;
 		}
 	}
+
 	/* Handle ADP interrupt here */
 	if (gpwrdn.b.adp_int) {
 		DWC_PRINTF("ADP interrupt\n");

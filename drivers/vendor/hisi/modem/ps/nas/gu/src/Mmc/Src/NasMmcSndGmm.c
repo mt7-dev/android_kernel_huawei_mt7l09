@@ -884,6 +884,35 @@ VOS_VOID  NAS_MMC_SndGmmWasAcInfoChangeInd(
 
     return;
 }
+VOS_VOID  NAS_MMC_SndGmmVoiceDomainChangeNotify(VOS_VOID)
+{
+    MMCGMM_VOICE_DOMAIN_CHANGE_NOTIFY_STRU *pstSndMsg           = VOS_NULL_PTR;
+
+    /* 从内部消息队列中获取一个还没有使用的空间 */
+    pstSndMsg       = (MMCGMM_VOICE_DOMAIN_CHANGE_NOTIFY_STRU *)NAS_MML_GetIntMsgSendBuf(sizeof(MMCGMM_VOICE_DOMAIN_CHANGE_NOTIFY_STRU));
+    if ( VOS_NULL_PTR == pstSndMsg)
+    {
+        NAS_ERROR_LOG(WUEPS_PID_MMC,"NAS_MMC_SndGmmVoiceDomainChangeNotify:ERROR: Memory Alloc Error for pMsg");
+        return;
+    }
+
+    pstSndMsg->MsgHeader.ulSenderCpuId     = VOS_LOCAL_CPUID;
+    pstSndMsg->MsgHeader.ulSenderPid       = WUEPS_PID_MMC;
+    pstSndMsg->MsgHeader.ulReceiverCpuId   = VOS_LOCAL_CPUID;
+    pstSndMsg->MsgHeader.ulReceiverPid     = WUEPS_PID_GMM;
+    pstSndMsg->MsgHeader.ulLength
+        = sizeof(MMCGMM_VOICE_DOMAIN_CHANGE_NOTIFY_STRU) - VOS_MSG_HEAD_LENGTH;
+
+    /* 填写消息类别 */
+    pstSndMsg->MsgHeader.ulMsgName         = MMCGMM_VOICE_DOMAIN_CHANGE_NOTIFY;
+
+    /* 内部消息的发送 */
+    NAS_MML_SndInternalMsg(pstSndMsg);
+
+    return;
+}
+
+
 #ifdef __cplusplus
     #if __cplusplus
         }

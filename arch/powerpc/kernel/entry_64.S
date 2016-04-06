@@ -501,7 +501,7 @@ BEGIN_FTR_SECTION
 FTR_SECTION_ELSE
 	b	2f
 ALT_MMU_FTR_SECTION_END_IFSET(MMU_FTR_SLB)
-	clrldi.	r0,r6,2		/* is new ESID c00000000? */
+	clrldi.	r0,r6,2
 	cmpd	cr1,r6,r9	/* or is new ESID the same as current ESID? */
 	cror	eq,4*cr1+eq,eq
 	beq	2f		/* if yes, don't slbie it */

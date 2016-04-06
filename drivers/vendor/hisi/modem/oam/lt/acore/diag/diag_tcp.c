@@ -454,7 +454,7 @@ VOS_UINT32 diag_TcpSendData(DIAG_TCPIP_PORT_ENUM enTcpPort,VOS_UINT8 *pcData, VO
 	len = send((int)(pstTcpIpInfo->astTcpIpPort[enTcpPort].Tcp), (VOS_CHAR*)pcData, (int)usDataLen, 0);
     if(g_dmsPrintFlag == 1)
     {
-       diag_printf("***********diag_TcpSendData !! usDataLen = %d,enTcpPort=%d,pcData = 0x%p\n" ,usDataLen ,enTcpPort, pcData);
+       diag_printf("***********diag_TcpSendData !! usDataLen = %d,enTcpPort=%d,pcData = %p\n" ,usDataLen ,enTcpPort, pcData);
        diag_printf("***********diag_TcpSendData !! len=%d,astTcpIpPort[enTcpPort].Tcp=%d \n" ,len,pstTcpIpInfo->astTcpIpPort[enTcpPort].Tcp);
     }
 

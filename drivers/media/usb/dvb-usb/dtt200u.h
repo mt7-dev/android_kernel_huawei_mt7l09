@@ -36,14 +36,7 @@ extern int dvb_usb_dtt200u_debug;
 #define GET_RS_ERR_CNT		0x8d
 #define GET_RS_UNCOR_BLK_CNT	0x8e
 
-/* write
- *  01 - init
- *  02 - frequency (divided by 250000)
- *  03 - bandwidth
- *  04 - pid table (index pid(7:0) pid(12:8))
- *  05 - reset the pid table
- *  08 - transfer switch
- */
+
 
 #define SET_INIT		0x01
 #define SET_RF_FREQ		0x02

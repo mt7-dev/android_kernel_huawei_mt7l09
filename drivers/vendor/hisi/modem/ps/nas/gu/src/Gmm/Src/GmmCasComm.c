@@ -1483,104 +1483,39 @@ VOS_UINT32 GMM_RcvGsmPagingAtRegNmlServ(GRRMM_PAGING_IND_ST *pMsg)
         Gmm_PagingInd_common();
     }
     else
-    {/* 寻呼的类型为P_TMSI */
-        /* BEGIN: Modified by liurui id:40632, 2006/4/25   PN:A32D03000 */
-        /* 2G网络下去除paging响应的GMM服务状态判断 */
-        /*modify,sunxibo,2006-02-24,itt begin*/
-        /*if (GMM_FALSE == g_GmmGlobalCtrl.ucSigConFlg)*/
-        /*if (GMM_AGB_GPRS_STANDBY == gstGmmCasGlobalCtrl.GmmSrvState)*/
-        /*modify,sunxibo,2006-02-24,itt end*/
-        /*{*/                                                                   /* 无信令                                   */
-            if (GMM_TIMER_T3302_FLG
-                == (g_GmmTimerMng.ulTimerRunMask & GMM_TIMER_T3302_FLG))
-            {                                                                   /* T3302正在运行                            */
-                Gmm_TimerPause(GMM_TIMER_T3302);                                /* 挂起T3302                                */
-            }
-            else if (GMM_TIMER_T3311_FLG
-                == (g_GmmTimerMng.ulTimerRunMask & GMM_TIMER_T3311_FLG))
-            {                                                                   /* T3311正在运行                            */
-                Gmm_TimerPause(GMM_TIMER_T3311);                                /* 挂起T3311                                */
-            }
-            else
-            {
-            }
+    {            
+        /* 在收到PAGING IND时不进入READY状态，在收到LLC INFOM时进入 */
 
-            /* 进入READY状态 */
-            if ( GMM_TIMER_T3314_FLG & g_GmmTimerMng.ulTimerRunMask  )
-            {
-                Gmm_TimerStop(GMM_TIMER_T3314);
-            }
-
-            if ( GMM_TIMER_T3312_FLG & g_GmmTimerMng.ulTimerRunMask  )
-            {
-                Gmm_TimerStop(GMM_TIMER_T3312);
+        if ( 0 == gstGmmCasGlobalCtrl.ulReadyTimerValue )
+        {
+            gstGmmCasGlobalCtrl.GmmSrvState = GMM_AGB_GPRS_STANDBY;
 #if (FEATURE_LTE == FEATURE_ON)
-                 NAS_GMM_SndLmmTimerInfoNotify(GMM_TIMER_T3312, GMM_LMM_TIMER_STOP);
-#endif
-            }
-
-            if ( 0xffffffff == gstGmmCasGlobalCtrl.ulReadyTimerValue )
+            if (GMM_TIMER_T3312_FLG != (GMM_TIMER_T3312_FLG & g_GmmTimerMng.ulTimerRunMask))
             {
-                gstGmmCasGlobalCtrl.GmmSrvState = GMM_AGB_GPRS_READY;
-#if (FEATURE_LTE == FEATURE_ON)
-            if (NAS_GMM_TIMER_T3323_FLG == (NAS_GMM_TIMER_T3323_FLG & g_GmmTimerMng.ulTimerRunMask))
-            {
-                Gmm_TimerStop(GMM_TIMER_T3323);
+                NAS_GMM_SndLmmTimerInfoNotify(GMM_TIMER_T3312, GMM_LMM_TIMER_START);
             }
 #endif
-            }
-            else if ( 0 == gstGmmCasGlobalCtrl.ulReadyTimerValue )
-            {
-                gstGmmCasGlobalCtrl.GmmSrvState = GMM_AGB_GPRS_STANDBY;
-#if (FEATURE_LTE == FEATURE_ON)
-                if (GMM_TIMER_T3312_FLG != (GMM_TIMER_T3312_FLG & g_GmmTimerMng.ulTimerRunMask))
-                {
-                    NAS_GMM_SndLmmTimerInfoNotify(GMM_TIMER_T3312, GMM_LMM_TIMER_START);
-                }
-#endif
-                Gmm_TimerStart(GMM_TIMER_T3312);
-            }
-            else
-            {
-                gstGmmCasGlobalCtrl.GmmSrvState = GMM_AGB_GPRS_READY;
-#if (FEATURE_LTE == FEATURE_ON)
-                if (NAS_GMM_TIMER_T3323_FLG == (NAS_GMM_TIMER_T3323_FLG & g_GmmTimerMng.ulTimerRunMask))
-                {
-                    Gmm_TimerStop(GMM_TIMER_T3323);
-                }
-#endif
-                /*A32D12829==>*/
-                /*g_GmmTimerMng.aTimerInf[GMM_TIMER_T3314].ulTimerVal
-                    = gstGmmCasGlobalCtrl.ulReadyTimerValue/2;*/
-                g_GmmTimerMng.aTimerInf[GMM_TIMER_T3314].ulTimerVal
-                    = gstGmmCasGlobalCtrl.ulReadyTimerValue;
-                if (0 != (g_GmmTimerMng.ulTimerRunMask & (0x00000001 << GMM_TIMER_T3314)))
-                {                                                                           /* 该timer已经启动                          */
-                    Gmm_TimerStop(GMM_TIMER_T3314);
-                }
-                /*<==A32D12704*/
-                g_GmmTimerMng.ulTimerValMask |= GMM_TIMER_T3314_FLG;
-                Gmm_TimerStart(GMM_TIMER_T3314);
-            }
-            NAS_GMM_SndGasInfoChangeReq(NAS_GSM_MASK_GSM_GMM_STATE);
+            Gmm_TimerStart(GMM_TIMER_T3312);
+        }
 
-            enRatType   = NAS_MML_GetCurrNetRatType();
-            if ((GMM_RAU_FOR_WAITSERVICE == gstGmmSuspendCtrl.ucRauCause)
-             && (gstGmmCasGlobalCtrl.ucLastDataSender != enRatType)
+
+        enRatType   = NAS_MML_GetCurrNetRatType();
+        if ((GMM_RAU_FOR_WAITSERVICE == gstGmmSuspendCtrl.ucRauCause)
+         && (gstGmmCasGlobalCtrl.ucLastDataSender != enRatType)
 #if (FEATURE_ON == FEATURE_LTE)
-          && (gstGmmCasGlobalCtrl.ucLastDataSender != NAS_MML_NET_RAT_TYPE_LTE)
+         && (gstGmmCasGlobalCtrl.ucLastDataSender != NAS_MML_NET_RAT_TYPE_LTE)
 #endif
-             )
-            {
-                GMM_LOG_INFO("GMM_RcvGsmPagingAtRegNmlServ:Inter System change, Exec select RAU.");
-                Gmm_RoutingAreaUpdateInitiate(GMM_UPDATING_TYPE_INVALID);
-                gstGmmSuspendCtrl.ucRauCause = GMM_RAU_FOR_NORMAL;
-                return GMM_SUCCESS;
-            }
+         )
+        {
+            GMM_LOG_INFO("GMM_RcvGsmPagingAtRegNmlServ:Inter System change, Exec select RAU.");
+            Gmm_RoutingAreaUpdateInitiate(GMM_UPDATING_TYPE_INVALID);
+            gstGmmSuspendCtrl.ucRauCause = GMM_RAU_FOR_NORMAL;
+            return GMM_SUCCESS;
+        }
 
-            GMM_SndLlcTriggerReq(LL_GMM_TRIG_CAUSE_PAG_RSP);
-        /*}*/
-        /* END:   Modified by liurui id:40632, 2006/4/25   PN:A32D03000 */
+        GMM_SndLlcTriggerReq(LL_GMM_TRIG_CAUSE_PAG_RSP);
+    /*}*/
+    /* END:   Modified by liurui id:40632, 2006/4/25   PN:A32D03000 */
     }
 
     return GMM_SUCCESS;

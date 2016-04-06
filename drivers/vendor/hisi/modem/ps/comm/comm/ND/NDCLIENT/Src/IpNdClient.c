@@ -55,6 +55,7 @@ IP_NDCLIENT_STATISTIC_INFO_STRU g_stNdClientStatInfo;
 
 VOS_UINT32              g_ulNdRtrSolicitationInterval   = 4000; /* milliseconds */
 VOS_UINT32              g_ulNdMaxRtrSolicitaion         = 20;
+VOS_UINT32              g_ulNdMaxRtrRSTimes             = 20;
 
 VOS_UINT32      g_ulNdClientMtu = 1500;
 
@@ -1232,10 +1233,12 @@ VOS_VOID IP_NdClient_AddrRequest
     VOS_UINT8               *pucRs = IP_NULL_PTR;
     VOS_UINT16              usCheckSum;
     VOS_UINT32              ulUpperLength = 8;
-    IPV6_PSEDUOHEADER_STRU  stPseduoHeader  = {IP_NULL};
+    IPV6_PSEDUOHEADER_STRU  stPseduoHeader;
 
     IP_ASSERT(IP_NULL_PTR != pstNdClientEntity);
     IP_ASSERT(IP_NULL_PTR == pstNdClientEntity->stIpSndNwMsg.pucSendMsg);
+
+    PS_MEM_SET(&stPseduoHeader, 0, sizeof(IPV6_PSEDUOHEADER_STRU));
 
     pucRs = PS_MEM_ALLOC(NDCLIENT_TASK_PID,IP_ICMPV6_RS_MAX_LENGTH);
     if(IP_NULL_PTR == pucRs)
@@ -1388,7 +1391,7 @@ VOS_VOID IP_NDCLIENT_ProcCdsNdDataInd
     CDS_NDCLIENT_ND_DATA_IND_STRU  *pstNdDataInd;
     VOS_UINT8                       ucExRabId;
 
-    pstNdDataInd = (CDS_NDCLIENT_ND_DATA_IND_STRU*)((VOS_UINT32)pRcvMsg);
+    pstNdDataInd = (CDS_NDCLIENT_ND_DATA_IND_STRU*)((VOS_VOID*)pRcvMsg);
     IP_ASSERT(VOS_NULL_PTR != pstNdDataInd);
 
     IP_NDCLIENT_IncRevPackageNum();
@@ -1650,6 +1653,8 @@ VOS_VOID NdClient_AdsMsgProc( MsgBlock *pMsgBlock )
 
     return;
 }
+extern VOS_UINT32 LPS_OM_IsTestMode(VOS_VOID);
+extern VOS_UINT32 g_ulPsIPV6PrefixSend;
 VOS_VOID NdClient_ProcTmrMsg(const REL_TIMER_MSG *pRcvMsg)
 {
     VOS_UINT32                          ulTmrId;
@@ -1679,7 +1684,17 @@ VOS_VOID NdClient_ProcTmrMsg(const REL_TIMER_MSG *pRcvMsg)
     case IP_NDCLIENT_TIMER_RS:
         IPND_INFO_LOG(NDCLIENT_TASK_PID, "NdClient receive RS Timeout!");
         pstNdClientEntity->stTimerInfo.hTm = IP_NULL_PTR;
-        if(pstNdClientEntity->stTimerInfo.ucLoopTimes < g_ulNdMaxRtrSolicitaion)
+        /*²âÊÔ¿¨*/
+        if(PS_SUCC == LPS_OM_IsTestMode())
+        {
+             g_ulNdMaxRtrRSTimes = g_ulPsIPV6PrefixSend;
+        }
+        else
+        {
+             g_ulNdMaxRtrRSTimes = g_ulNdMaxRtrSolicitaion;
+        }
+
+        if(pstNdClientEntity->stTimerInfo.ucLoopTimes < g_ulNdMaxRtrRSTimes)
         {
             if(IP_SUCC == IP_NdClient_SendIpToNw(pstNdClientEntity))
             {
@@ -1700,8 +1715,6 @@ VOS_VOID NdClient_ProcTmrMsg(const REL_TIMER_MSG *pRcvMsg)
 
     return;
 }
-
-
 VOS_VOID APP_NdClient_PidMsgProc( MsgBlock* pMsgBlock )
 {
     if (VOS_NULL_PTR == pMsgBlock)

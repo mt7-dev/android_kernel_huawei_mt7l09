@@ -1,26 +1,4 @@
-/*
- *  Hisilicon K3 SOC camera driver source file
- *
- *  Copyright (C) Huawei Technology Co., Ltd.
- *
- * Author:	  h00144661
- * Email:	  flying.he@huawei.com
- * Date:	  2013-12-27
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
- */
+
 
 
 #include <linux/module.h>
@@ -38,10 +16,17 @@
 extern struct hw_csi_pad hw_csi_pad;
 static hwsensor_vtbl_t s_ov8865_rear_vtbl;
 
-extern void set_sensor_module_id(int index, unsigned char module_id);
 int ov8865_rear_config(hwsensor_intf_t* si, void  *argp);
 
 struct sensor_power_setting ov8865_rear_power_setting[] = {
+
+    //MINIISP CS
+    {
+        .seq_type = SENSOR_CS,
+        .config_val = SENSOR_GPIO_HIGH,
+        .sensor_index = SENSOR_INDEX_INVALID,
+        .delay = 1,
+    },
 
     //MINIISP CORE 1.1V
     {
@@ -66,7 +51,7 @@ struct sensor_power_setting ov8865_rear_power_setting[] = {
         .seq_val = PMIC_LDO4,
         .config_val = PMIC_1P8V,
         .sensor_index = SENSOR_INDEX_INVALID,
-        .delay = 2,
+        .delay = 1,
     },
 
     //MCAM2 AFVDD 2.85V
@@ -187,6 +172,27 @@ s_ov8865_rear_dt_match[] =
 
 MODULE_DEVICE_TABLE(of, s_ov8865_rear_dt_match);
 
+static int ov8865_suspend(struct platform_device *pdev, pm_message_t state)
+{
+    return 0;
+}
+static int ov8865_resume(struct platform_device *pdev)
+{
+    int ret = 0;
+    struct v4l2_event event =
+    {
+        .type = HWCAM_V4L2_EVENT_TYPE,
+        .id = HWCAM_HARDWARE_RESUME,
+    };
+    cam_info("%s +", __func__);
+    ret = hwsensor_notify(&pdev->dev,&event);
+    if(ret!=0){
+        cam_err("%s fail to notify resume event to video device user",__func__);
+    }
+    cam_info("%s -", __func__);
+    return ret;
+}
+
 static struct platform_driver
 s_ov8865_rear_driver =
 {
@@ -196,6 +202,8 @@ s_ov8865_rear_driver =
 		.owner = THIS_MODULE,
 		.of_match_table = s_ov8865_rear_dt_match,
 	},
+    .suspend = ov8865_suspend,
+    .resume = ov8865_resume,
 };
 
 char const*
@@ -348,13 +356,13 @@ ov8865_rear_match_id(
     } else {
     	cam_notice("%s camera[%s] match successfully.", __func__, board_info->name);
 	sensor_index = board_info->sensor_index;
-	set_sensor_module_id(sensor->board_info->sensor_index, 0);
     	ret = 0;
     }
 
 out_gpio:
 	gpio_free(board_info->gpios[FSIN].gpio);
 out:
+    memset(cdata->cfg.name, 0, sizeof(cdata->cfg.name));
     cdata->data = sensor_index;
     if (ret == 0)
         hwsensor_writefile(sensor->board_info->sensor_index,
@@ -373,7 +381,11 @@ static ssize_t ov8865_powerctrl_show(struct device *dev,
 static ssize_t ov8865_powerctrl_store(struct device *dev,
 	struct device_attribute *attr, const char *buf, size_t count)
 {
-	int state = simple_strtol(buf, NULL, 10);
+#ifndef DEBUG_HISI_CAMERA
+    return count;
+#else
+    int state  = 0;
+    state = simple_strtol(buf, NULL, 10);
 	cam_info("enter %s, state %d", __func__, state);
 
 	if (state == POWER_ON)
@@ -382,6 +394,7 @@ static ssize_t ov8865_powerctrl_store(struct device *dev,
 		ov8865_rear_power_down(&s_ov8865_rear.intf);
 
 	return count;
+#endif
 }
 
 
@@ -450,14 +463,14 @@ ov8865_rear_config(
 		case SEN_CONFIG_READ_REG_SETTINGS:
 			break;
 		case SEN_CONFIG_ENABLE_CSI:
-			if(!csi_enable)
+			if(ov8865_power_on && !csi_enable)
 			{
 				ret = si->vtbl->csi_enable(si);
 				csi_enable = true;
 			}
 			break;
 		case SEN_CONFIG_DISABLE_CSI:
-			if(csi_enable)
+			if(ov8865_power_on && csi_enable)
 			{
 				ret = si->vtbl->csi_disable(si);
 				csi_enable = false;

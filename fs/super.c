@@ -76,6 +76,8 @@ static int prune_super(struct shrinker *shrink, struct shrink_control *sc)
 
 	total_objects = sb->s_nr_dentry_unused +
 			sb->s_nr_inodes_unused + fs_objects + 1;
+	if (!total_objects)
+		total_objects = 1;
 
 	if (sc->nr_to_scan) {
 		int	dentries;
@@ -765,10 +767,16 @@ cancel_readonly:
 	return retval;
 }
 
+#ifdef CONFIG_HW_SYSTEM_WR_PROTECT
+extern int blk_set_ro_secure_debuggable(int state);
+#endif
 static void do_emergency_remount(struct work_struct *work)
 {
 	struct super_block *sb, *p = NULL;
 
+#ifdef CONFIG_HW_SYSTEM_WR_PROTECT
+	blk_set_ro_secure_debuggable(0);
+#endif
 	spin_lock(&sb_lock);
 	list_for_each_entry(sb, &super_blocks, s_list) {
 		if (hlist_unhashed(&sb->s_instances))
@@ -796,17 +804,9 @@ static void do_emergency_remount(struct work_struct *work)
 	printk("Emergency Remount complete\n");
 }
 
-#ifdef CONFIG_HW_SYSTEM_WR_PROTECT
-extern int blk_set_ro_secure_debuggable(int state);
-#endif
-
 void emergency_remount(void)
 {
 	struct work_struct *work;
-
-#ifdef CONFIG_HW_SYSTEM_WR_PROTECT
-	blk_set_ro_secure_debuggable(0);
-#endif
 
 	work = kmalloc(sizeof(*work), GFP_ATOMIC);
 	if (work) {

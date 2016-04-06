@@ -111,6 +111,17 @@ enum LRRC_CDMA_MSG_TYPE_ENUM
     /* C->L MESA STOP */
     CDMA_LRRC_STOP_MEAS_REQ                     = (CDMA_LRRC_INTRA_MSG_HDR + 0x06),     /* _H2ASN_MsgChoice CDMA_LRRC_STOP_MEAS_REQ_STRU */
 
+    /* L->C STOP Mobility */
+    LRRC_CDMA_STOP_CELL_RESEL_REQ                 = (LRRC_CDMA_INTRA_MSG_HDR + 0x07),     /* _H2ASN_MsgChoice LRRC_CDMA_STOP_CELL_RESEL_REQ_STRU */
+
+    /* C->L STOP Mobility CNF */
+    CDMA_LRRC_STOP_CELL_RESEL_CNF                 = (CDMA_LRRC_INTRA_MSG_HDR + 0x07),     /* _H2ASN_MsgChoice CDMA_LRRC_STOP_CELL_RESEL_CNF_STRU */
+
+    /* L->C STOP Mobility */
+    LRRC_CDMA_STOP_CELL_REDIR_REQ                 = (LRRC_CDMA_INTRA_MSG_HDR + 0x08),     /* _H2ASN_MsgChoice LRRC_CDMA_STOP_CELL_REDIR_REQ_STRU */
+
+    /* C->L STOP Mobility CNF */
+    CDMA_LRRC_STOP_CELL_REDIR_CNF                 = (CDMA_LRRC_INTRA_MSG_HDR + 0x08),     /* _H2ASN_MsgChoice CDMA_LRRC_STOP_CELL_REDIR_CNF_STRU */
 
     LRRC_CDMA_MSG_TYPE_BUTT
 };
@@ -269,6 +280,20 @@ enum CDMA_LRRC_MEAS_BAND_WIDTH_ENUM
 };
 typedef VOS_UINT8 CDMA_LRRC_MEAS_BAND_WIDTH_ENUM_UINT8;
 
+/*****************************************************************************
+ 枚举名     :CDMA_LRRC_SYSCHG_STOP_REASON_ENUM
+ 协议表格   :
+ ASN.1描述   :
+ 枚举说明 : 测量带宽枚举
+*****************************************************************************/
+enum LRRC_CDMA_SYSCHG_STOP_REASON_ENUM
+{
+    LRRC_CDMA_SYSCHG_STOP_REASON_RESEL              = 0,                /* 停止重选  */
+    LRRC_CDMA_SYSCHG_STOP_REASON_REDIR                 ,                /* 停止重定向  */
+
+    LRRC_CDMA_SYSCHG_STOP_REASON_BUTT
+};
+typedef VOS_UINT32 LRRC_CDMA_SYSCHG_STOP_REASON_ENUM_UINT32;
 
 
 /*****************************************************************************
@@ -884,6 +909,67 @@ typedef struct
     LRRC_CDMA_MSG_DATA                                       stMsgData;
 }LRrcCdmaInterface_MSG;
 
+/*****************************************************************************
+ 结构名    : LRRC_CDMA_STOP_CELL_RESEL_REQ_STRU
+ 协议表格  :
+ ASN.1描述 :
+ 结构说明  : LTE向CDMA发送停止互操作的请求
+             1、原VIA接口是MmcRatAPI_IRAT_System_Change_Abort_Cmd
+*****************************************************************************/
+typedef struct
+{
+    VOS_MSG_HEADER                                                              /*_H2ASN_Skip*/
+    LRRC_CDMA_MSG_TYPE_ENUM_UINT32                          enMsgId;            /*_H2ASN_Skip*/
+
+    LRRC_CDMA_SYSCHG_STOP_REASON_ENUM_UINT32                ulLrrcCdmaSysChgStopReason;
+}LRRC_CDMA_STOP_CELL_RESEL_REQ_STRU;
+
+/*****************************************************************************
+ 结构名    : LRRC_CDMA_STOP_CELL_REDIR_REQ_STRU
+ 协议表格  :
+ ASN.1描述 :
+ 结构说明  : LTE向CDMA发送停止互操作的请求
+             1、原VIA接口是MmcRatAPI_IRAT_System_Change_Abort_Cmd
+*****************************************************************************/
+typedef struct
+{
+    VOS_MSG_HEADER                                                              /*_H2ASN_Skip*/
+    LRRC_CDMA_MSG_TYPE_ENUM_UINT32                          enMsgId;            /*_H2ASN_Skip*/
+
+    LRRC_CDMA_SYSCHG_STOP_REASON_ENUM_UINT32                ulLrrcCdmaSysChgStopReason;
+}LRRC_CDMA_STOP_CELL_REDIR_REQ_STRU;
+
+/*****************************************************************************
+ 结构名    : CDMA_LRRC_STOP_CELL_RESEL_CNF_STRU
+ 协议表格  :
+ ASN.1描述 :
+ 结构说明  : CDMA发给LTE停止系统间重选回复
+             1、原VIA接口是RatMmcAPI_IRAT_System_Change_Rsp
+*****************************************************************************/
+typedef struct
+{
+    VOS_MSG_HEADER                                                              /*_H2ASN_Skip*/
+    LRRC_CDMA_MSG_TYPE_ENUM_UINT32                          enMsgId;            /*_H2ASN_Skip*/
+
+    CDMA_LRRC_CELL_RESEL_RESULT_ENUM_UINT8                  ucCellReselResult;
+    VOS_UINT8                                               aucReserved[3];
+}CDMA_LRRC_STOP_CELL_RESEL_CNF_STRU;
+
+/*****************************************************************************
+ 结构名    : CDMA_LRRC_STOP_CELL_RESEL_CNF_STRU
+ 协议表格  :
+ ASN.1描述 :
+ 结构说明  : CDMA发给LTE停止系统间重定向回复
+             1、原VIA接口是RatMmcAPI_IRAT_System_Change_Rsp
+*****************************************************************************/
+typedef struct
+{
+    VOS_MSG_HEADER                                                              /*_H2ASN_Skip*/
+    LRRC_CDMA_MSG_TYPE_ENUM_UINT32                          enMsgId;            /*_H2ASN_Skip*/
+
+    CDMA_LRRC_CELL_REDIR_RESULT_ENUM_UINT8                  ucCellRedirResult;
+    VOS_UINT8                                               aucReserved[3];
+}CDMA_LRRC_STOP_CELL_REDIR_CNF_STRU;
 
 /*****************************************************************************
   6 UNION
