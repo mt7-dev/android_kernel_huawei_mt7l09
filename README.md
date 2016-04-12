@@ -61,4 +61,12 @@ index 472fe50..d2416e6 100644
 
 
 ## How to build
+### Only the kernel
 Please read [README_Kernel.txt](README_Kernel.txt)
+
+### With the Cyanogenmod
+- In [Android.mk](Android.mk) edit the line with the directory where you have the linaro cross compiling toolchain
+```make
+KERNEL_TOOLCHAIN := /home/gabry3795/cyanogen/bin/gcc-linaro-arm-linux-gnueabihf-4.7/bin
+``` 
+
