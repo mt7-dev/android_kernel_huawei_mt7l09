@@ -4,7 +4,7 @@ TARGET_KERNEL_CROSS_COMPILE_PREFIX := arm-linux-gnueabihf-
 
 # TO BUILD THE KERNEL WITH ANDROID:
 #  Symlink the kernel source to out/target/product/mt7_l09/obj/kernel
-SYMLINK_KERNEL := $(shell ln -sf $(shell pwd)/$(TARGET_KERNEL_SOURCE) $(TARGET_OUT_INTERMEDIATES)/kernel)
+SYMLINK_KERNEL := $(shell mkdir -p $(TARGET_OUT_INTERMEDIATES) && ln -sf $(shell pwd)/$(TARGET_KERNEL_SOURCE) $(TARGET_OUT_INTERMEDIATES)/kernel)
 
 
 # ifeq ($(BALONG_TOPDIR),)
