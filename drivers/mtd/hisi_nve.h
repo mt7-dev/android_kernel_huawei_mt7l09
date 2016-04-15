@@ -8,8 +8,8 @@
 
 #ifndef __NVE_H
 #define __NVE_H
-// EDIT TO GET IT TO WORK - gabry3795
-// #include "hisi_partition.h"
+
+#include "hisi_partition.h"
 
 #define TEST_NV_IN_KERNEL       1
 

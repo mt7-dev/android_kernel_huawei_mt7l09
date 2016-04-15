@@ -56,8 +56,7 @@
 
 #include "queue.h"
 
-// EDIT TO GET IT TO WORK - gabry3795
-//#include "hisi_partition.h"
+#include "hisi_partition.h"
 #ifdef CONFIG_HW_SD_HEALTH_DETECT
 #include "mmc_health_diag.h"
 #endif
