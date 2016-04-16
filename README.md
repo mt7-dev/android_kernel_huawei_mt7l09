@@ -5,14 +5,13 @@
 
 ## Details
 This is the kernel 3.10.86 shipped with the Marshmallow release for Huawei Mate 7. This is the adapted version and it's **compilable**, please see the branch *3.10.86-stock* to get the stock version
-### Edited files at init branch
-From the first commit this branch differs from the stock one in these edited files:
+
+### Differences from stock
+The branch differs from the stock one in these edited files:
 - `modified:   drivers/hisi/modem_hi363/drv/Makefile`
-- `modified:   drivers/mmc/card/block.c`
-- `modified:   drivers/mtd/hisi_nve.h`
 
 #### diff
-Here's the differences
+Here's the differences:
 ```
 diff --git a/drivers/hisi/modem_hi3630/drv/Makefile b/drivers/hisi/modem_hi3630/drv/Makefile
 index 430a5b8..24668a2 100755
@@ -28,45 +27,21 @@ index 430a5b8..24668a2 100755
 ++obj-$(CONFIG_BALONG_OAM_PS)  += $(if $(findstring .o,$(shell ls $(BALONG_TOPDIR)/../../../drivers/hisi/modem_hi3630/drv/balong_oam_ps)), balong_oam_ps/, )
  
  subdir-ccflags-y := -Werror
- 
-diff --git a/drivers/mmc/card/block.c b/drivers/mmc/card/block.c
-index 8cbd06e..ed44262 100755
---- a/drivers/mmc/card/block.c
-+++ b/drivers/mmc/card/block.c
-@@ -56,7 +56,8 @@
- 
- #include "queue.h"
- 
--#include "hisi_partition.h"
-+// EDIT TO GET IT TO WORK - gabry3795
-+//#include "hisi_partition.h"
- #ifdef CONFIG_HW_SD_HEALTH_DETECT
- #include "mmc_health_diag.h"
- #endif
-diff --git a/drivers/mtd/hisi_nve.h b/drivers/mtd/hisi_nve.h
-index 472fe50..d2416e6 100644
---- a/drivers/mtd/hisi_nve.h
-+++ b/drivers/mtd/hisi_nve.h
-@@ -8,8 +8,8 @@
- 
- #ifndef __NVE_H
- #define __NVE_H
--
--#include "hisi_partition.h"
-+// EDIT TO GET IT TO WORK - gabry3795
-+// #include "hisi_partition.h"
- 
- #define TEST_NV_IN_KERNEL       1
 ```
-
 
 ## How to build
 ### Only the kernel
 Please read [README_Kernel.txt](README_Kernel.txt)
 
-### With the Cyanogenmod
-- In [Android.mk](Android.mk) edit the line with the directory where you have the linaro cross compiling toolchain
-```make
-KERNEL_TOOLCHAIN := /home/gabry3795/cyanogen/bin/gcc-linaro-arm-linux-gnueabihf-4.7/bin
-``` 
+### The kernel inside Android source
+In [Android.mk](Android.mk) edit the line
+`KERNEL_TOOLCHAIN := /home/gabry3795/cyanogen/bin/gcc-linaro-arm-linux-gnueabihf-4.7/bin`
+with the directory where you have the linaro cross compiling toolchain binaries.
+
+# Thanks
+Thanks to:
+- @[ruffy91](https://github.com/ruffy91) for his first compiling suggestions [XDA Post](http://forum.xda-developers.com/showpost.php?p=66223787&postcount=18) 
+- @acbka for the *hisi_partitions.h* header - [XDA post](http://forum.xda-developers.com/showpost.php?p=66382078&postcount=28)
+
+That's all.
 
