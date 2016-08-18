@@ -22,3 +22,5 @@
 		$ make ARCH=arm distclean
 		$ rm -rf out
 ################################################################################
+
+** Note :: kernel source directory has to be named "kernel" to build with above instructions!
