@@ -1,10 +1,13 @@
 # Kernel for Huawei Ascend Mate 7
 **Version**: 3.10.86
 **Shipped with**: Android 6.0 Marshmallow
-**Type**: adapted to be compiled
+**Type**: adapted for aosp build tree
 
 ## Details
-This is the kernel 3.10.86 shipped with the Marshmallow release for Huawei Mate 7. This is the adapted version and it's **compilable**, please see the branch *3.10.86-stock* to get the stock version
+This is the kernel 3.10.86 shipped with the Marshmallow release for Huawei Mate 7. This is the adapted version to build with the aosp tree, please see the branch *3.10.86-stock* to get the stock version or the branch *3.10.86-adapted* to get the compilable stock version
+
+### Differences from adapted version
+ *Work in progress...*
 
 ### Differences from stock
 The branch differs from the stock one in these edited files:
@@ -44,4 +47,3 @@ Thanks to:
 - @acbka for the *hisi_partitions.h* header - [XDA post](http://forum.xda-developers.com/showpost.php?p=66382078&postcount=28)
 
 That's all.
-
