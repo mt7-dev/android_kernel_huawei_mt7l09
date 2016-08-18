@@ -1185,8 +1185,7 @@ CONFIG_CDROM_PKTCDVD_BUFFERS=8
 CONFIG_APANIC=y
 CONFIG_APANIC_PLABEL="splash"
 CONFIG_APANIC_MMC=y
-# Marshmallow often asks for uid time -- gabry3795
-CONFIG_UID_CPUTIME=y
+
 # CONFIG_C2PORT is not set
 
 #
